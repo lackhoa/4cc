@@ -696,7 +696,9 @@ int main(int argc, char **argv){
 #endif
     
 #if defined(DEV_BUILD) || defined(OPT_BUILD) || defined(DEV_BUILD_X86) || defined(OPT_BUILD_X86)
-    standard_build(&arena, cdir, flags, arch);
+    // PATCH(kv): Don't build the custom layer
+    // standard_build(&arena, cdir, flags, arch);
+    build_main(&arena, cdir, false, flags, arch);
     
 #elif defined(PACKAGE_DEMO_X64)
     package(&arena, cdir, Tier_Demo, Arch_X64);

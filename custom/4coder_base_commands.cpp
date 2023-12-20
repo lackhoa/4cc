@@ -7,7 +7,7 @@ moving the cursor, which work even without the default 4coder framework.
 
 function void
 write_text(Application_Links *app, String_Const_u8 insert){
-    ProfileScope(app, "write character");
+    ProfileScope(app, "write text");
     if (insert.str != 0 && insert.size > 0){
         View_ID view = get_active_view(app, Access_ReadWriteVisible);
         if_view_has_highlighted_range_delete_range(app, view);
