@@ -553,7 +553,7 @@ CUSTOM_DOC("Puts the cursor at the top of the file, and the mark at the bottom o
 
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(to_uppercase)
+CUSTOM_COMMAND_SIG(To_uppercase)
 CUSTOM_DOC("Converts all ascii text in the range between the cursor and the mark to uppercase.")
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);

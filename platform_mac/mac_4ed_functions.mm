@@ -333,6 +333,7 @@ system_load_library_sig(){
         c_file_name[file_name.size] = 0;
 
         lib = dlopen(c_file_name, RTLD_LAZY | RTLD_GLOBAL);
+        const char *error = dlerror();
 
         end_temp(temp);
     }

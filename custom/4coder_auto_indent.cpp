@@ -422,8 +422,8 @@ CUSTOM_DOC("Auto-indents the line on which the cursor sits.")
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    i64 pos = view_get_cursor_pos(app, view);
     auto_indent_buffer(app, buffer, Ii64(pos));
+    i64 pos = view_get_cursor_pos(app, view);
     move_past_lead_whitespace(app, view, buffer);
 }
 

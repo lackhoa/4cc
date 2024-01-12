@@ -115,7 +115,9 @@ char *arch_names[] = {
 #define FOREIGN "../4coder-non-source/foreign"
 #define FOREIGN_WIN "..\\4coder-non-source\\foreign"
 
-char *includes[] = { "custom", FOREIGN "/freetype2", 0, };
+#define AUTODRAW "../../AutoDraw"  // note(kv): relative paths
+
+char *includes[] = { "custom", FOREIGN "/freetype2", AUTODRAW "/code", AUTODRAW "/libs", 0, };
 
 //
 // Platform layer file tables
@@ -402,7 +404,8 @@ build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, cha
 #define CLANG_LIBS_COMMON \
 "-framework Cocoa -framework QuartzCore " \
 "-framework CoreServices " \
-"-framework OpenGL -framework IOKit -framework Metal -framework MetalKit "
+"-framework OpenGL -framework IOKit -framework Metal -framework MetalKit " \
+AUTODRAW "/build/autodraw.o "
 
 #define CLANG_LIBS_X64 CLANG_LIBS_COMMON \
 FOREIGN "/x64/libfreetype-mac.a"
@@ -442,7 +445,7 @@ build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, cha
             fm_add_to_line(line, "-I%s", str);
         }
     }
-    
+   
     if (flags & DEBUG_INFO){
         fm_add_to_line(line, "-g -O0");
     }
@@ -690,6 +693,7 @@ int main(int argc, char **argv){
 #endif
 #if defined(OPT_BUILD) || defined(OPT_BUILD_X86)
     flags |= OPTIMIZATION;
+    printf("optimization on!\n");
 #endif
 #if defined(DEV_BUILD_X86) || defined(OPT_BUILD_X86)
     arch = Arch_X86;

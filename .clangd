@@ -1,0 +1,25 @@
+# note: clang compile command is run in the same dir as the source
+CompileFlags:
+  Compiler: clang++
+  Add:
+    - -I/Users/khoa/AutoDraw/4coder_kv/custom_patch
+    - -ferror-limit=0
+    - -std=c++11
+    - -DOS_MAC=1
+    - -DOS_WINDOWS=0
+    - -DOS_LINUX=0
+    - -Wno-writable-strings
+    - -Wno-c++17-extensions
+    - -Wno-pointer-to-int-cast
+    - -Wno-tautological-constant-out-of-range-compare
+    - -Wno-reorder-init-list
+    - -Wno-macro-redefined
+    - -Wno-deprecated-declarations
+    - -Wno-write-strings
+    - -Wno-null-dereference
+    - -Wno-comment
+    - -Wno-switch
+    - -Wno-missing-declarations
+    - -Wno-logical-op-parentheses
+    - -Wno-unused-includes
+    # - -Wno-undefined-internal
