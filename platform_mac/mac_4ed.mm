@@ -75,7 +75,7 @@
 #include <time.h> // NOTE(allen): I don't know a better way to get Date_Time data; replace if there is a Mac low-level option time.h doesn't give milliseconds
 
 // NOTE(kv): AutoDraw
-#include "ad_editor.h"
+// #include "ad_editor.h"
 
 #define function static
 #define internal static
@@ -1497,9 +1497,9 @@ main(int arg_count, char **args){
             String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
             curdir = string_mod_replace_character(curdir, '\\', '/');
             app.init(mac_vars.tctx, &target, mac_vars.base_ptr, curdir, custom);
-            // TODO(kv): hacking to draw my window
-            char *todo_autodraw_path = (char *)"/Users/khoa/AutoDraw/build";
-            adMainFcoder(todo_autodraw_path); 
+            // todo(kv): hacking to draw my window
+            // char *todo_autodraw_path = (char *)"/Users/khoa/AutoDraw/build";
+            // adMainFcoder(todo_autodraw_path); 
         }
 
         //

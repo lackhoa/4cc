@@ -9,6 +9,16 @@
 
 // TOP
 
+//////// kv ////////
+
+api(custom) function void
+kv_set_fiddle_value(f32 value)
+{
+  kv_fcoder_fiddle = value;
+}
+
+//////// kv ////////
+
 function void
 output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String_Const_u8 value){
     i64 end = buffer_size(&file->state.buffer);

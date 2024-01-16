@@ -96,5 +96,4 @@ defcolor_macro = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_
 defcolor_control = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_control"));
 defcolor_struct = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_struct"));
 defcolor_non_text = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_non_text"));
-f4_recentfiles_viewstate = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("f4_recentfiles_viewstate"));
 }

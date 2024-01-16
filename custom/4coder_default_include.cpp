@@ -74,6 +74,7 @@
 
 #include "4coder_file.cpp"
 
+#include "4coder_kv_api.h"  // NOTE(kv): I can't find the script to generate the custom_api, so have to define new APIs manually for now
 #define DYNAMIC_LINK_API
 #include "generated/custom_api.cpp"
 #define DYNAMIC_LINK_API

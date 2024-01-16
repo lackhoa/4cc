@@ -1,0 +1,1 @@
+function void kv_set_fiddle_value(f32 value);

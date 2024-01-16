@@ -2,7 +2,7 @@
 #define command_id(c) (fcoder_metacmd_ID_##c)
 #define command_metadata(c) (&fcoder_metacmd_table[command_id(c)])
 #define command_metadata_by_id(id) (&fcoder_metacmd_table[id])
-#define command_one_past_last_id 374
+#define command_one_past_last_id 299
 #if defined(CUSTOM_COMMAND_SIG)
 #define PROC_LINKS(x,y) x
 #else
@@ -10,7 +10,6 @@
 #endif
 #if defined(CUSTOM_COMMAND_SIG)
 CUSTOM_COMMAND_SIG(To_uppercase);
-CUSTOM_COMMAND_SIG(ad_toggle_test);
 CUSTOM_COMMAND_SIG(allow_mouse);
 CUSTOM_COMMAND_SIG(auto_indent_line_at_cursor);
 CUSTOM_COMMAND_SIG(auto_indent_range);
@@ -24,17 +23,6 @@ CUSTOM_COMMAND_SIG(build);
 CUSTOM_COMMAND_SIG(build_in_build_panel);
 CUSTOM_COMMAND_SIG(build_search);
 CUSTOM_COMMAND_SIG(byp_reset_face_size);
-CUSTOM_COMMAND_SIG(casey_clean_file_and_save);
-CUSTOM_COMMAND_SIG(casey_delete_to_end_of_line);
-CUSTOM_COMMAND_SIG(casey_demo_audio);
-CUSTOM_COMMAND_SIG(casey_demo_audio_one_shot);
-CUSTOM_COMMAND_SIG(casey_demo_audio_switch_panel);
-CUSTOM_COMMAND_SIG(casey_find_matching_file);
-CUSTOM_COMMAND_SIG(casey_go_to_code_peek);
-CUSTOM_COMMAND_SIG(casey_newline_and_indent);
-CUSTOM_COMMAND_SIG(casey_seek_beginning_of_line_and_tab);
-CUSTOM_COMMAND_SIG(casey_switch_to_keybinding_0);
-CUSTOM_COMMAND_SIG(casey_switch_to_keybinding_1);
 CUSTOM_COMMAND_SIG(center_view);
 CUSTOM_COMMAND_SIG(change_active_panel);
 CUSTOM_COMMAND_SIG(change_active_panel_backwards);
@@ -79,66 +67,7 @@ CUSTOM_COMMAND_SIG(e);
 CUSTOM_COMMAND_SIG(execute_any_cli);
 CUSTOM_COMMAND_SIG(execute_previous_cli);
 CUSTOM_COMMAND_SIG(exit_4coder);
-CUSTOM_COMMAND_SIG(f4_autocomplete_or_indent);
-CUSTOM_COMMAND_SIG(f4_backspace_alpha_numeric_or_camel_boundary);
-CUSTOM_COMMAND_SIG(f4_backspace_token_boundary);
-CUSTOM_COMMAND_SIG(f4_bump_to_column);
-CUSTOM_COMMAND_SIG(f4_code_peek);
-CUSTOM_COMMAND_SIG(f4_code_peek_clear);
-CUSTOM_COMMAND_SIG(f4_code_peek_yank);
-CUSTOM_COMMAND_SIG(f4_comment_selection);
-CUSTOM_COMMAND_SIG(f4_delete_alpha_numeric_or_camel_boundary);
-CUSTOM_COMMAND_SIG(f4_delete_token_boundary);
-CUSTOM_COMMAND_SIG(f4_go_to_definition);
-CUSTOM_COMMAND_SIG(f4_go_to_definition_same_panel);
-CUSTOM_COMMAND_SIG(f4_home);
-CUSTOM_COMMAND_SIG(f4_home_first_non_whitespace);
-CUSTOM_COMMAND_SIG(f4_interactive_open_or_new_in_project);
-CUSTOM_COMMAND_SIG(f4_leave_event_unhandled);
-CUSTOM_COMMAND_SIG(f4_lego_buffer_place);
-CUSTOM_COMMAND_SIG(f4_lego_click_store_token_1);
-CUSTOM_COMMAND_SIG(f4_lego_click_store_token_2);
-CUSTOM_COMMAND_SIG(f4_lego_store_line);
-CUSTOM_COMMAND_SIG(f4_lego_store_range);
-CUSTOM_COMMAND_SIG(f4_lego_store_token);
-CUSTOM_COMMAND_SIG(f4_loc);
-CUSTOM_COMMAND_SIG(f4_move_down_token_occurrence);
-CUSTOM_COMMAND_SIG(f4_move_left);
-CUSTOM_COMMAND_SIG(f4_move_left_token_boundary);
-CUSTOM_COMMAND_SIG(f4_move_right);
-CUSTOM_COMMAND_SIG(f4_move_right_token_boundary);
-CUSTOM_COMMAND_SIG(f4_move_to_next_divider_comment);
-CUSTOM_COMMAND_SIG(f4_move_to_prev_divider_comment);
-CUSTOM_COMMAND_SIG(f4_move_up_token_occurrence);
-CUSTOM_COMMAND_SIG(f4_open_project);
-CUSTOM_COMMAND_SIG(f4_powermode_allow);
-CUSTOM_COMMAND_SIG(f4_powermode_disallow);
-CUSTOM_COMMAND_SIG(f4_recent_files_menu);
-CUSTOM_COMMAND_SIG(f4_remedy_open_cursor);
-CUSTOM_COMMAND_SIG(f4_reverse_search);
-CUSTOM_COMMAND_SIG(f4_search);
-CUSTOM_COMMAND_SIG(f4_search_for_definition__current_file);
-CUSTOM_COMMAND_SIG(f4_search_for_definition__project_wide);
-CUSTOM_COMMAND_SIG(f4_setup_new_project);
-CUSTOM_COMMAND_SIG(f4_switch_syntax_option);
-CUSTOM_COMMAND_SIG(f4_toggle_battery_saver);
-CUSTOM_COMMAND_SIG(f4_toggle_compilation_expand);
-CUSTOM_COMMAND_SIG(f4_toggle_enclosure_side);
-CUSTOM_COMMAND_SIG(f4_uncomment_selection);
-CUSTOM_COMMAND_SIG(f4_unindent);
-CUSTOM_COMMAND_SIG(f4_write_text_and_auto_indent);
-CUSTOM_COMMAND_SIG(f4_write_text_input);
-CUSTOM_COMMAND_SIG(f4_write_zero_struct);
 CUSTOM_COMMAND_SIG(file);
-CUSTOM_COMMAND_SIG(fleury_go_to_definition);
-CUSTOM_COMMAND_SIG(fleury_go_to_definition_same_panel);
-CUSTOM_COMMAND_SIG(fleury_home);
-CUSTOM_COMMAND_SIG(fleury_startup);
-CUSTOM_COMMAND_SIG(fleury_toggle_battery_saver);
-CUSTOM_COMMAND_SIG(fleury_toggle_compilation_expand);
-CUSTOM_COMMAND_SIG(fleury_write_text_and_auto_indent);
-CUSTOM_COMMAND_SIG(fleury_write_text_input);
-CUSTOM_COMMAND_SIG(fleury_write_zero_struct);
 CUSTOM_COMMAND_SIG(fold_clear);
 CUSTOM_COMMAND_SIG(fold_pop_cursor);
 CUSTOM_COMMAND_SIG(fold_range);
@@ -346,10 +275,6 @@ CUSTOM_COMMAND_SIG(sp);
 CUSTOM_COMMAND_SIG(string_repeat);
 CUSTOM_COMMAND_SIG(suppress_mouse);
 CUSTOM_COMMAND_SIG(swap_panels);
-CUSTOM_COMMAND_SIG(switch_to_keybinding_0);
-CUSTOM_COMMAND_SIG(switch_to_keybinding_1);
-CUSTOM_COMMAND_SIG(switch_to_keybinding_2);
-CUSTOM_COMMAND_SIG(switch_to_keybinding_3);
 CUSTOM_COMMAND_SIG(theme_lister);
 CUSTOM_COMMAND_SIG(to_lowercase);
 CUSTOM_COMMAND_SIG(toggle_filebar);
@@ -411,33 +336,21 @@ char *source_name;
 i32 source_name_len;
 i32 line_number;
 };
-static Command_Metadata fcoder_metacmd_table[374] = {
+static Command_Metadata fcoder_metacmd_table[299] = {
 { PROC_LINKS(To_uppercase, 0), false, "To_uppercase", 12, "Converts all ascii text in the range between the cursor and the mark to uppercase.", 82, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 554 },
-{ PROC_LINKS(ad_toggle_test, 0), false, "ad_toggle_test", 14, "test ad integration", 19, "/Users/khoa/autodraw/4coder_kv/4coder_kv.cpp", 44, 449 },
 { PROC_LINKS(allow_mouse, 0), false, "allow_mouse", 11, "Shows the mouse and causes all mouse input to be processed normally.", 68, "/Users/khoa/4ed/code/custom/4coder_default_framework.cpp", 56, 481 },
 { PROC_LINKS(auto_indent_line_at_cursor, 0), false, "auto_indent_line_at_cursor", 26, "Auto-indents the line on which the cursor sits.", 47, "/Users/khoa/4ed/code/custom/4coder_auto_indent.cpp", 50, 419 },
 { PROC_LINKS(auto_indent_range, 0), false, "auto_indent_range", 17, "Auto-indents the range between the cursor and the mark.", 55, "/Users/khoa/4ed/code/custom/4coder_auto_indent.cpp", 50, 429 },
 { PROC_LINKS(auto_indent_whole_file, 0), false, "auto_indent_whole_file", 22, "Audo-indents the entire current buffer.", 39, "/Users/khoa/4ed/code/custom/4coder_auto_indent.cpp", 50, 410 },
-{ PROC_LINKS(b, 0), false, "b", 1, "Vim: Open file", 14, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 938 },
+{ PROC_LINKS(b, 0), false, "b", 1, "Vim: Open file", 14, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 938 },
 { PROC_LINKS(backspace_alpha_numeric_boundary, 0), false, "backspace_alpha_numeric_boundary", 32, "Delete characters between the cursor position and the first alphanumeric boundary to the left.", 94, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 154 },
 { PROC_LINKS(backspace_char, 0), false, "backspace_char", 14, "Deletes the character to the left of the cursor.", 48, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 96 },
 { PROC_LINKS(basic_change_active_panel, 0), false, "basic_change_active_panel", 25, "Change the currently active panel, moving to the panel with the next highest view_id.  Will not skipe the build panel if it is open.", 132, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 666 },
 { PROC_LINKS(begin_clipboard_collection_mode, 0), true, "begin_clipboard_collection_mode", 31, "Allows the user to copy multiple strings from other applications before switching to 4coder and pasting them all.", 113, "/Users/khoa/4ed/code/custom/4coder_clipboard.cpp", 48, 71 },
-{ PROC_LINKS(build, 0), false, "build", 5, "kv goto build file (todo rename me)", 35, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 596 },
+{ PROC_LINKS(build, 0), false, "build", 5, "kv goto build file (todo rename me)", 35, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 593 },
 { PROC_LINKS(build_in_build_panel, 0), false, "build_in_build_panel", 20, "Looks for a build.bat, build.sh, or makefile in the current and parent directories.  Runs the first that it finds and prints the output to *compilation*.  Puts the *compilation* buffer in a panel at the footer of the current view.", 230, "/Users/khoa/4ed/code/custom/4coder_build_commands.cpp", 53, 160 },
 { PROC_LINKS(build_search, 0), false, "build_search", 12, "Looks for a build.bat, build.sh, or makefile in the current and parent directories.  Runs the first that it finds and prints the output to *compilation*.", 153, "/Users/khoa/4ed/code/custom/4coder_build_commands.cpp", 53, 123 },
-{ PROC_LINKS(byp_reset_face_size, 0), false, "byp_reset_face_size", 19, "Resets face size to default", 27, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 112 },
-{ PROC_LINKS(casey_clean_file_and_save, 0), false, "casey_clean_file_and_save", 25, "Standardizes line endings and tabs, then saves the active buffer.", 65, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 47 },
-{ PROC_LINKS(casey_delete_to_end_of_line, 0), false, "casey_delete_to_end_of_line", 27, "Deletes everything from the cursor to the end of the line.", 58, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 93 },
-{ PROC_LINKS(casey_demo_audio, 0), false, "casey_demo_audio", 16, "He used to cut my grass... he was a very nice boy!", 50, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 10 },
-{ PROC_LINKS(casey_demo_audio_one_shot, 0), false, "casey_demo_audio_one_shot", 25, "... if you gotta load, or if you gotta unload, you go to the white zone...", 74, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 31 },
-{ PROC_LINKS(casey_demo_audio_switch_panel, 0), false, "casey_demo_audio_switch_panel", 29, "The white zone is for loading and unloading only...", 51, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 22 },
-{ PROC_LINKS(casey_find_matching_file, 0), false, "casey_find_matching_file", 24, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the same view.", 109, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 121 },
-{ PROC_LINKS(casey_go_to_code_peek, 0), false, "casey_go_to_code_peek", 21, "Jumps to the most likely thing you'd want to see for the identifier you're on.", 78, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 132 },
-{ PROC_LINKS(casey_newline_and_indent, 0), false, "casey_newline_and_indent", 24, "Inserts a newline at the cursor position and indent the next line automatically.", 80, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 72 },
-{ PROC_LINKS(casey_seek_beginning_of_line_and_tab, 0), false, "casey_seek_beginning_of_line_and_tab", 36, "Goes to the beginning of the line and indents the line with default indenting.", 78, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 40 },
-{ PROC_LINKS(casey_switch_to_keybinding_0, 0), false, "casey_switch_to_keybinding_0", 28, "WENSLEYDALE.", 12, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 58 },
-{ PROC_LINKS(casey_switch_to_keybinding_1, 0), false, "casey_switch_to_keybinding_1", 28, "STILTON.", 8, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_casey.cpp", 68, 65 },
+{ PROC_LINKS(byp_reset_face_size, 0), false, "byp_reset_face_size", 19, "Resets face size to default", 27, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 112 },
 { PROC_LINKS(center_view, 0), false, "center_view", 11, "Centers the view vertically on the line on which the cursor sits.", 65, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 195 },
 { PROC_LINKS(change_active_panel, 0), false, "change_active_panel", 19, "Change the currently active panel, moving to the panel with the next highest view_id.", 85, "/Users/khoa/4ed/code/custom/4coder_default_framework.cpp", 56, 356 },
 { PROC_LINKS(change_active_panel_backwards, 0), false, "change_active_panel_backwards", 29, "Change the currently active panel, moving to the panel with the next lowest view_id.", 84, "/Users/khoa/4ed/code/custom/4coder_default_framework.cpp", 56, 362 },
@@ -473,79 +386,20 @@ static Command_Metadata fcoder_metacmd_table[374] = {
 { PROC_LINKS(delete_file_query, 0), false, "delete_file_query", 17, "Deletes the file of the current buffer if 4coder has the appropriate access rights. Will ask the user for confirmation first.", 125, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1383 },
 { PROC_LINKS(delete_line, 0), false, "delete_line", 11, "Delete the line the on which the cursor sits.", 45, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1555 },
 { PROC_LINKS(delete_range, 0), false, "delete_range", 12, "Deletes the text in the range between the cursor and the mark.", 62, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 134 },
-{ PROC_LINKS(dir, 0), false, "dir", 3, "kv copy dir name", 16, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 572 },
+{ PROC_LINKS(dir, 0), false, "dir", 3, "kv copy dir name", 16, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 568 },
 { PROC_LINKS(display_key_codes, 0), false, "display_key_codes", 17, "Example of input handling loop", 30, "/Users/khoa/4ed/code/custom/4coder_examples.cpp", 47, 90 },
 { PROC_LINKS(display_text_input, 0), false, "display_text_input", 18, "Example of to_writable and leave_current_input_unhandled", 56, "/Users/khoa/4ed/code/custom/4coder_examples.cpp", 47, 137 },
 { PROC_LINKS(double_backspace, 0), false, "double_backspace", 16, "Example of history group helpers", 32, "/Users/khoa/4ed/code/custom/4coder_examples.cpp", 47, 10 },
 { PROC_LINKS(duplicate_line, 0), false, "duplicate_line", 14, "Create a copy of the line on which the cursor sits.", 51, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1541 },
-{ PROC_LINKS(e, 0), false, "e", 1, "Vim: Open file", 14, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 935 },
+{ PROC_LINKS(e, 0), false, "e", 1, "Vim: Open file", 14, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 935 },
 { PROC_LINKS(execute_any_cli, 0), false, "execute_any_cli", 15, "Queries for an output buffer name and system command, runs the system command as a CLI and prints the output to the specified buffer.", 133, "/Users/khoa/4ed/code/custom/4coder_cli_command.cpp", 50, 22 },
 { PROC_LINKS(execute_previous_cli, 0), false, "execute_previous_cli", 20, "If the command execute_any_cli has already been used, this will execute a CLI reusing the most recent buffer name and command.", 126, "/Users/khoa/4ed/code/custom/4coder_cli_command.cpp", 50, 7 },
 { PROC_LINKS(exit_4coder, 0), false, "exit_4coder", 11, "Attempts to close 4coder.", 25, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 846 },
-{ PROC_LINKS(f4_autocomplete_or_indent, 0), false, "f4_autocomplete_or_indent", 25, "Tries to autocomplete the word currently being typed, and inserts indentation if such a word is not found.", 106, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1040 },
-{ PROC_LINKS(f4_backspace_alpha_numeric_or_camel_boundary, 0), false, "f4_backspace_alpha_numeric_or_camel_boundary", 44, "Deletes left to a alphanumeric or camel boundary.", 49, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 830 },
-{ PROC_LINKS(f4_backspace_token_boundary, 0), false, "f4_backspace_token_boundary", 27, "Deletes left to a token boundary.", 33, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 816 },
-{ PROC_LINKS(f4_bump_to_column, 0), false, "f4_bump_to_column", 17, "Insert the required number of spaces to get to a specified column number.", 73, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1715 },
-{ PROC_LINKS(f4_code_peek, 0), false, "f4_code_peek", 12, "Toggles code peek.", 18, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_code_peek.cpp", 72, 129 },
-{ PROC_LINKS(f4_code_peek_clear, 0), false, "f4_code_peek_clear", 18, "Clears the *peek* buffer.", 25, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_code_peek.cpp", 72, 149 },
-{ PROC_LINKS(f4_code_peek_yank, 0), false, "f4_code_peek_yank", 17, "Yanks the current cursor identifier into the *peek* buffer.", 59, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_code_peek.cpp", 72, 135 },
-{ PROC_LINKS(f4_comment_selection, 0), false, "f4_comment_selection", 20, "Performs VS-style commenting on the selected range.", 51, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1492 },
-{ PROC_LINKS(f4_delete_alpha_numeric_or_camel_boundary, 0), false, "f4_delete_alpha_numeric_or_camel_boundary", 41, "Deletes right to an alphanumeric or camel boundary.", 51, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 839 },
-{ PROC_LINKS(f4_delete_token_boundary, 0), false, "f4_delete_token_boundary", 24, "Deletes right to a token boundary.", 34, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 823 },
-{ PROC_LINKS(f4_go_to_definition, 0), false, "f4_go_to_definition", 19, "Goes to the definition of the identifier under the cursor.", 58, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 178 },
-{ PROC_LINKS(f4_go_to_definition_same_panel, 0), false, "f4_go_to_definition_same_panel", 30, "Goes to the definition of the identifier under the cursor in the same panel.", 76, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 190 },
-{ PROC_LINKS(f4_home, 0), false, "f4_home", 7, "Goes to the beginning of the line.", 34, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 72 },
-{ PROC_LINKS(f4_home_first_non_whitespace, 0), false, "f4_home_first_non_whitespace", 28, "Goes to the beginning of the line.", 34, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 848 },
-{ PROC_LINKS(f4_interactive_open_or_new_in_project, 0), true, "f4_interactive_open_or_new_in_project", 37, "Interactively open a file out of the file system, filtered to files only in the project.", 88, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1247 },
-{ PROC_LINKS(f4_leave_event_unhandled, 0), false, "f4_leave_event_unhandled", 24, "when bound to keystroke, ensures the event falls through to text insertion", 74, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 9 },
-{ PROC_LINKS(f4_lego_buffer_place, 0), false, "f4_lego_buffer_place", 20, "Will place the lego, determined by the pressed F-key, at the cursor in the active buffer.", 89, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_lego.cpp", 67, 76 },
-{ PROC_LINKS(f4_lego_click_store_token_1, 0), false, "f4_lego_click_store_token_1", 27, "Sets the cursor to the clicked position, and then stores the token under that position into the F1 slot.", 104, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_lego.cpp", 67, 154 },
-{ PROC_LINKS(f4_lego_click_store_token_2, 0), false, "f4_lego_click_store_token_2", 27, "Sets the cursor to the clicked position, and then stores the token under that position into the F2 slot.", 104, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_lego.cpp", 67, 160 },
-{ PROC_LINKS(f4_lego_store_line, 0), false, "f4_lego_store_line", 18, "Will store the selected range into the lego determined by the associated F-key.", 79, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_lego.cpp", 67, 121 },
-{ PROC_LINKS(f4_lego_store_range, 0), false, "f4_lego_store_range", 19, "Will store the selected range into the lego determined by the associated F-key.", 79, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_lego.cpp", 67, 106 },
-{ PROC_LINKS(f4_lego_store_token, 0), false, "f4_lego_store_token", 19, "Will store the token under the cursor into the lego determined by the associated F-key.", 87, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_lego.cpp", 67, 88 },
-{ PROC_LINKS(f4_loc, 0), false, "f4_loc", 6, "Counts the lines of code in the current buffer, breaks it down by section, and outputs to the *loc* buffer.", 107, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1630 },
-{ PROC_LINKS(f4_move_down_token_occurrence, 0), false, "f4_move_down_token_occurrence", 29, "Moves the cursor to the next occurrence of the token that the cursor is over.", 77, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 795 },
-{ PROC_LINKS(f4_move_left, 0), false, "f4_move_left", 12, "Moves the cursor one character to the left.", 43, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 760 },
-{ PROC_LINKS(f4_move_left_token_boundary, 0), false, "f4_move_left_token_boundary", 27, "Seek left for boundary between alphanumeric characters and non-alphanumeric characters.", 87, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 809 },
-{ PROC_LINKS(f4_move_right, 0), false, "f4_move_right", 13, "Moves the cursor one character to the right.", 44, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 774 },
-{ PROC_LINKS(f4_move_right_token_boundary, 0), false, "f4_move_right_token_boundary", 28, "Seek right for boundary between alphanumeric characters and non-alphanumeric characters.", 88, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 802 },
-{ PROC_LINKS(f4_move_to_next_divider_comment, 0), false, "f4_move_to_next_divider_comment", 31, "Seek right for next divider comment in the buffer.", 50, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_divider_comments.cpp", 79, 79 },
-{ PROC_LINKS(f4_move_to_prev_divider_comment, 0), false, "f4_move_to_prev_divider_comment", 31, "Seek left for previous divider comment in the buffer.", 53, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_divider_comments.cpp", 79, 86 },
-{ PROC_LINKS(f4_move_up_token_occurrence, 0), false, "f4_move_up_token_occurrence", 27, "Moves the cursor to the previous occurrence of the token that the cursor is over.", 81, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 788 },
-{ PROC_LINKS(f4_open_project, 0), true, "f4_open_project", 15, "Open a project by navigating to the project file.", 49, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 414 },
-{ PROC_LINKS(f4_powermode_allow, 0), false, "f4_powermode_allow", 18, "Allow power mode.", 17, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_power_mode.cpp", 73, 41 },
-{ PROC_LINKS(f4_powermode_disallow, 0), false, "f4_powermode_disallow", 21, "Disallow power mode.", 20, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_power_mode.cpp", 73, 45 },
-{ PROC_LINKS(f4_recent_files_menu, 0), true, "f4_recent_files_menu", 20, "Lists the recent files used in the current panel.", 49, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_recent_files.cpp", 75, 80 },
-{ PROC_LINKS(f4_remedy_open_cursor, 0), false, "f4_remedy_open_cursor", 21, "Opens the active panel's file in an actively-running RemedyBG instance, and moves to the cursor's line position.", 112, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1701 },
-{ PROC_LINKS(f4_reverse_search, 0), false, "f4_reverse_search", 17, "Searches the current buffer backwards. If something is highlighted, will fill search query with it.", 99, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 38 },
-{ PROC_LINKS(f4_search, 0), false, "f4_search", 9, "Searches the current buffer forward. If something is highlighted, will fill search query with it.", 97, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 32 },
-{ PROC_LINKS(f4_search_for_definition__current_file, 0), true, "f4_search_for_definition__current_file", 38, "List all definitions in the current file and jump to the one selected by the user.", 82, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 317 },
-{ PROC_LINKS(f4_search_for_definition__project_wide, 0), true, "f4_search_for_definition__project_wide", 38, "List all definitions in the index and jump to the one selected by the user.", 75, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 276 },
-{ PROC_LINKS(f4_setup_new_project, 0), false, "f4_setup_new_project", 20, "Sets up a blank 4coder project provided some user folder.", 57, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 465 },
-{ PROC_LINKS(f4_switch_syntax_option, 0), false, "f4_switch_syntax_option", 23, "Switches the syntax highlighting mode.", 38, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_colors.cpp", 69, 56 },
-{ PROC_LINKS(f4_toggle_battery_saver, 0), false, "f4_toggle_battery_saver", 23, "Toggles battery saving mode.", 28, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 82 },
-{ PROC_LINKS(f4_toggle_compilation_expand, 0), false, "f4_toggle_compilation_expand", 28, "Expand the compilation window.", 30, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 88 },
-{ PROC_LINKS(f4_toggle_enclosure_side, 0), false, "f4_toggle_enclosure_side", 24, "Moves the cursor between the open/close brace/paren/bracket of the closest enclosure.", 85, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 357 },
-{ PROC_LINKS(f4_uncomment_selection, 0), false, "f4_uncomment_selection", 22, "Performs VS-style uncommenting on the selected range.", 53, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1508 },
-{ PROC_LINKS(f4_unindent, 0), false, "f4_unindent", 11, "Unindent the selected range.", 28, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1109 },
-{ PROC_LINKS(f4_write_text_and_auto_indent, 0), false, "f4_write_text_and_auto_indent", 29, "Inserts text and auto-indents the line on which the cursor sits if any of the text contains 'layout punctuation' such as ;:{}()[]# and new lines.", 145, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 54 },
-{ PROC_LINKS(f4_write_text_input, 0), false, "f4_write_text_input", 19, "Inserts whatever text was used to trigger this command.", 55, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 44 },
-{ PROC_LINKS(f4_write_zero_struct, 0), false, "f4_write_zero_struct", 20, "At the cursor, insert a ' = {0};'.", 34, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 64 },
-{ PROC_LINKS(file, 0), false, "file", 4, "kv copy file name", 17, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 563 },
-{ PROC_LINKS(fleury_go_to_definition, 0), false, "fleury_go_to_definition", 23, "Deprecated name. Please update to f4_go_to_definition.", 54, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1766 },
-{ PROC_LINKS(fleury_go_to_definition_same_panel, 0), false, "fleury_go_to_definition_same_panel", 34, "Deprecated name. Please update to f4_go_to_definition_same_panel.", 65, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1769 },
-{ PROC_LINKS(fleury_home, 0), false, "fleury_home", 11, "Deprecated name. Please update to f4_home.", 42, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1757 },
-{ PROC_LINKS(fleury_startup, 0), false, "fleury_startup", 14, "Fleury startup event", 20, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury.cpp", 62, 529 },
-{ PROC_LINKS(fleury_toggle_battery_saver, 0), false, "fleury_toggle_battery_saver", 27, "Deprecated name. Please update to f4_toggle_battery_saver.", 58, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1760 },
-{ PROC_LINKS(fleury_toggle_compilation_expand, 0), false, "fleury_toggle_compilation_expand", 32, "Deprecated name. Please update to f4_toggle_compilation_expand.", 63, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1763 },
-{ PROC_LINKS(fleury_write_text_and_auto_indent, 0), false, "fleury_write_text_and_auto_indent", 33, "Deprecated name. Please update to f4_write_text_and_auto_indent.", 64, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1751 },
-{ PROC_LINKS(fleury_write_text_input, 0), false, "fleury_write_text_input", 23, "Deprecated name. Please update to f4_write_text_input.", 54, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1748 },
-{ PROC_LINKS(fleury_write_zero_struct, 0), false, "fleury_write_zero_struct", 24, "Deprecated name. Please update to f4_write_zero_struct.", 55, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_base_commands.cpp", 76, 1754 },
-{ PROC_LINKS(fold_clear, 0), false, "fold_clear", 10, "Clears all folds in buffer", 26, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_folds.hpp", 58, 134 },
-{ PROC_LINKS(fold_pop_cursor, 0), false, "fold_pop_cursor", 15, "Pops fold at cursor", 19, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_folds.hpp", 58, 147 },
-{ PROC_LINKS(fold_range, 0), false, "fold_range", 10, "Folds cursor mark range", 23, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_folds.hpp", 58, 163 },
-{ PROC_LINKS(fold_toggle_cursor, 0), false, "fold_toggle_cursor", 18, "Toggles fold at cursor", 22, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_folds.hpp", 58, 155 },
+{ PROC_LINKS(file, 0), false, "file", 4, "kv copy file name", 17, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 559 },
+{ PROC_LINKS(fold_clear, 0), false, "fold_clear", 10, "Clears all folds in buffer", 26, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_folds.hpp", 58, 134 },
+{ PROC_LINKS(fold_pop_cursor, 0), false, "fold_pop_cursor", 15, "Pops fold at cursor", 19, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_folds.hpp", 58, 147 },
+{ PROC_LINKS(fold_range, 0), false, "fold_range", 10, "Folds cursor mark range", 23, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_folds.hpp", 58, 163 },
+{ PROC_LINKS(fold_toggle_cursor, 0), false, "fold_toggle_cursor", 18, "Toggles fold at cursor", 22, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_folds.hpp", 58, 155 },
 { PROC_LINKS(go_to_user_directory, 0), false, "go_to_user_directory", 20, "Go to the 4coder user directory", 31, "/Users/khoa/4ed/code/custom/4coder_config.cpp", 45, 1648 },
 { PROC_LINKS(goto_beginning_of_file, 0), false, "goto_beginning_of_file", 22, "Sets the cursor to the beginning of the file.", 45, "/Users/khoa/4ed/code/custom/4coder_helper.cpp", 45, 2247 },
 { PROC_LINKS(goto_end_of_file, 0), false, "goto_end_of_file", 16, "Sets the cursor to the end of the file.", 39, "/Users/khoa/4ed/code/custom/4coder_helper.cpp", 45, 2255 },
@@ -574,21 +428,21 @@ static Command_Metadata fcoder_metacmd_table[374] = {
 { PROC_LINKS(jump_to_definition, 0), true, "jump_to_definition", 18, "List all definitions in the code index and jump to one chosen by the user.", 74, "/Users/khoa/4ed/code/custom/4coder_code_index_listers.cpp", 57, 12 },
 { PROC_LINKS(jump_to_definition_at_cursor, 0), true, "jump_to_definition_at_cursor", 28, "Jump to the first definition in the code index matching an identifier at the cursor", 83, "/Users/khoa/4ed/code/custom/4coder_code_index_listers.cpp", 57, 68 },
 { PROC_LINKS(jump_to_last_point, 0), false, "jump_to_last_point", 18, "Read from the top of the point stack and jump there; if already there pop the top and go to the next option", 107, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1336 },
-{ PROC_LINKS(jumps, 0), false, "jumps", 5, "Vim: Interactive jump stack lister", 34, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 950 },
+{ PROC_LINKS(jumps, 0), false, "jumps", 5, "Vim: Interactive jump stack lister", 34, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 950 },
 { PROC_LINKS(keyboard_macro_finish_recording, 0), false, "keyboard_macro_finish_recording", 31, "Stop macro recording, do nothing if macro recording is not already started", 74, "/Users/khoa/4ed/code/custom/4coder_keyboard_macro.cpp", 53, 54 },
 { PROC_LINKS(keyboard_macro_replay, 0), false, "keyboard_macro_replay", 21, "Replay the most recently recorded keyboard macro", 48, "/Users/khoa/4ed/code/custom/4coder_keyboard_macro.cpp", 53, 77 },
 { PROC_LINKS(keyboard_macro_start_recording, 0), false, "keyboard_macro_start_recording", 30, "Start macro recording, do nothing if macro recording is already started", 71, "/Users/khoa/4ed/code/custom/4coder_keyboard_macro.cpp", 53, 41 },
 { PROC_LINKS(kill_buffer, 0), false, "kill_buffer", 11, "Kills the current buffer.", 25, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1726 },
 { PROC_LINKS(kill_tutorial, 0), false, "kill_tutorial", 13, "If there is an active tutorial, kill it.", 40, "/Users/khoa/4ed/code/custom/4coder_tutorial.cpp", 47, 9 },
-{ PROC_LINKS(kv_build_full_rebuild, 0), false, "kv_build_full_rebuild", 21, "Same as kv_build_search, only run", 33, "/Users/khoa/autodraw/4coder_kv/4coder_kv_build.cpp", 50, 135 },
-{ PROC_LINKS(kv_build_normal, 0), false, "kv_build_normal", 15, "Like build_search, but using my standard script names.", 54, "/Users/khoa/autodraw/4coder_kv/4coder_kv_build.cpp", 50, 123 },
-{ PROC_LINKS(kv_build_run_only, 0), false, "kv_build_run_only", 17, "Same as kv_build_search, only run", 33, "/Users/khoa/autodraw/4coder_kv/4coder_kv_build.cpp", 50, 129 },
-{ PROC_LINKS(kv_list_all_locations, 0), false, "kv_list_all_locations", 21, "adapted from list_all_locations for fuzzy search, if cursor at identifier then search for that instead", 102, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 655 },
-{ PROC_LINKS(kv_open_file_ultimate, 0), false, "kv_open_file_ultimate", 21, "The one-stop-shop for all your file-opening need", 48, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 419 },
-{ PROC_LINKS(kv_profile_disable_and_inspect, 0), false, "kv_profile_disable_and_inspect", 30, "disable and inspect profile", 27, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 122 },
-{ PROC_LINKS(kv_reopen_with_confirmation, 0), false, "kv_reopen_with_confirmation", 27, "Like reopen, but asks for confirmation", 38, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 334 },
-{ PROC_LINKS(kv_run, 0), false, "kv_run", 6, "run the current script", 22, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 544 },
-{ PROC_LINKS(kv_view_input_handler, 0), false, "kv_view_input_handler", 21, "Input consumption loop for view behavior (why is this a command?)", 65, "/Users/khoa/autodraw/4coder_kv/4coder_kv_input.cpp", 50, 188 },
+{ PROC_LINKS(kv_build_full_rebuild, 0), false, "kv_build_full_rebuild", 21, "Same as kv_build_search, only run", 33, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_build.cpp", 50, 135 },
+{ PROC_LINKS(kv_build_normal, 0), false, "kv_build_normal", 15, "Like build_search, but using my standard script names.", 54, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_build.cpp", 50, 123 },
+{ PROC_LINKS(kv_build_run_only, 0), false, "kv_build_run_only", 17, "Same as kv_build_search, only run", 33, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_build.cpp", 50, 129 },
+{ PROC_LINKS(kv_list_all_locations, 0), false, "kv_list_all_locations", 21, "adapted from list_all_locations for fuzzy search, if cursor at identifier then search for that instead", 102, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 652 },
+{ PROC_LINKS(kv_open_file_ultimate, 0), false, "kv_open_file_ultimate", 21, "The one-stop-shop for all your file-opening need", 48, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 415 },
+{ PROC_LINKS(kv_profile_disable_and_inspect, 0), false, "kv_profile_disable_and_inspect", 30, "disable and inspect profile", 27, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 122 },
+{ PROC_LINKS(kv_reopen_with_confirmation, 0), false, "kv_reopen_with_confirmation", 27, "Like reopen, but asks for confirmation", 38, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 330 },
+{ PROC_LINKS(kv_run, 0), false, "kv_run", 6, "run the current script", 22, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 540 },
+{ PROC_LINKS(kv_view_input_handler, 0), false, "kv_view_input_handler", 21, "Input consumption loop for view behavior (why is this a command?)", 65, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_input.cpp", 50, 189 },
 { PROC_LINKS(left_adjust_view, 0), false, "left_adjust_view", 16, "Sets the left size of the view near the x position of the cursor.", 65, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 210 },
 { PROC_LINKS(list_all_functions_all_buffers, 0), false, "list_all_functions_all_buffers", 30, "Creates a jump list of lines from all buffers that appear to define or declare functions.", 89, "/Users/khoa/4ed/code/custom/4coder_function_list.cpp", 52, 296 },
 { PROC_LINKS(list_all_functions_all_buffers_lister, 0), true, "list_all_functions_all_buffers_lister", 37, "Creates a lister of locations that look like function definitions and declarations all buffers.", 95, "/Users/khoa/4ed/code/custom/4coder_function_list.cpp", 52, 302 },
@@ -647,8 +501,8 @@ static Command_Metadata fcoder_metacmd_table[374] = {
 { PROC_LINKS(multi_paste_interactive_quick, 0), false, "multi_paste_interactive_quick", 29, "Paste multiple lines from the clipboard history, controlled by inputing the number of lines to paste", 100, "/Users/khoa/4ed/code/custom/4coder_clipboard.cpp", 48, 380 },
 { PROC_LINKS(music_start, 0), false, "music_start", 11, "Starts the music.", 17, "/Users/khoa/4ed/code/custom/4coder_examples.cpp", 47, 213 },
 { PROC_LINKS(music_stop, 0), false, "music_stop", 10, "Stops the music.", 16, "/Users/khoa/4ed/code/custom/4coder_examples.cpp", 47, 234 },
-{ PROC_LINKS(no_op, 0), false, "no_op", 5, "no op for binding keybinds to resolve without side effect", 57, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_helper.cpp", 63, 5 },
-{ PROC_LINKS(note, 0), false, "note", 4, "run the current script", 22, "/Users/khoa/autodraw/4coder_kv/4coder_kv_commands.cpp", 53, 555 },
+{ PROC_LINKS(no_op, 0), false, "no_op", 5, "no op for binding keybinds to resolve without side effect", 57, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_helper.cpp", 63, 5 },
+{ PROC_LINKS(note, 0), false, "note", 4, "run the current script", 22, "/Users/khoa/AutoDraw/4coder_kv/4coder_kv_commands.cpp", 53, 551 },
 { PROC_LINKS(open_all_code, 0), false, "open_all_code", 13, "Open all code in the current directory. File types are determined by extensions. An extension is considered code based on the extensions specified in 4coder.config.", 164, "/Users/khoa/4ed/code/custom/4coder_project_commands.cpp", 55, 805 },
 { PROC_LINKS(open_all_code_recursive, 0), false, "open_all_code_recursive", 23, "Works as open_all_code but also runs in all subdirectories.", 59, "/Users/khoa/4ed/code/custom/4coder_project_commands.cpp", 55, 814 },
 { PROC_LINKS(open_file_in_quotes, 0), false, "open_file_in_quotes", 19, "Reads a filename from surrounding '\"' characters and attempts to open the corresponding file.", 94, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1576 },
@@ -675,16 +529,16 @@ static Command_Metadata fcoder_metacmd_table[374] = {
 { PROC_LINKS(project_fkey_command, 0), false, "project_fkey_command", 20, "Run an 'fkey command' configured in a project.4coder file.  Determines the index of the 'fkey command' by which function key or numeric key was pressed to trigger the command.", 175, "/Users/khoa/4ed/code/custom/4coder_project_commands.cpp", 55, 941 },
 { PROC_LINKS(project_go_to_root_directory, 0), false, "project_go_to_root_directory", 28, "Changes 4coder's hot directory to the root directory of the currently loaded project. With no loaded project nothing hapepns.", 125, "/Users/khoa/4ed/code/custom/4coder_project_commands.cpp", 55, 967 },
 { PROC_LINKS(project_reprint, 0), false, "project_reprint", 15, "Prints the current project to the file it was loaded from; prints in the most recent project file version", 105, "/Users/khoa/4ed/code/custom/4coder_project_commands.cpp", 55, 1013 },
-{ PROC_LINKS(q, 0), false, "q", 1, "Vim: Close panel", 16, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 926 },
-{ PROC_LINKS(qa, 0), false, "qa", 2, "Vim: Attempt to exit", 20, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 932 },
-{ PROC_LINKS(qk, 0), false, "qk", 2, "Vim: Attempt to kill buffer and close panel", 43, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 929 },
+{ PROC_LINKS(q, 0), false, "q", 1, "Vim: Close panel", 16, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 926 },
+{ PROC_LINKS(qa, 0), false, "qa", 2, "Vim: Attempt to exit", 20, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 932 },
+{ PROC_LINKS(qk, 0), false, "qk", 2, "Vim: Attempt to kill buffer and close panel", 43, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 929 },
 { PROC_LINKS(query_replace, 0), false, "query_replace", 13, "Queries the user for two strings, and incrementally replaces every occurence of the first string with the second string.", 120, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1282 },
 { PROC_LINKS(query_replace_identifier, 0), false, "query_replace_identifier", 24, "Queries the user for a string, and incrementally replace every occurence of the word or token found at the cursor with the specified string.", 140, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1303 },
 { PROC_LINKS(query_replace_selection, 0), false, "query_replace_selection", 23, "Queries the user for a string, and incrementally replace every occurence of the string found in the selected range with the specified string.", 141, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1319 },
 { PROC_LINKS(quick_swap_buffer, 0), false, "quick_swap_buffer", 17, "Change to the most recently used buffer in this view - or to the top of the buffer stack if the most recent doesn't exist anymore", 129, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1706 },
 { PROC_LINKS(redo, 0), false, "redo", 4, "Advances forwards through the undo history of the current buffer.", 65, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1886 },
 { PROC_LINKS(redo_all_buffers, 0), false, "redo_all_buffers", 16, "Advances forward through the undo history in the buffer containing the most recent regular edit.", 96, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1983 },
-{ PROC_LINKS(reg, 0), false, "reg", 3, "Vim: Display registers", 22, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 82 },
+{ PROC_LINKS(reg, 0), false, "reg", 3, "Vim: Display registers", 22, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 82 },
 { PROC_LINKS(rename_file_query, 0), false, "rename_file_query", 17, "Queries the user for a new name and renames the file of the current buffer, altering the buffer's name too.", 107, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1460 },
 { PROC_LINKS(reopen, 0), false, "reopen", 6, "Reopen the current buffer from the hard drive.", 46, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1744 },
 { PROC_LINKS(replace_in_all_buffers, 0), false, "replace_in_all_buffers", 22, "Queries the user for a needle and string. Replaces all occurences of needle with string in all editable buffers.", 112, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1192 },
@@ -692,8 +546,8 @@ static Command_Metadata fcoder_metacmd_table[374] = {
 { PROC_LINKS(replace_in_range, 0), false, "replace_in_range", 16, "Queries the user for a needle and string. Replaces all occurences of needle with string in the range between cursor and the mark in the active buffer.", 150, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1174 },
 { PROC_LINKS(reverse_search, 0), false, "reverse_search", 14, "Begins an incremental search up through the current buffer for a user specified string.", 87, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1115 },
 { PROC_LINKS(reverse_search_identifier, 0), false, "reverse_search_identifier", 25, "Begins an incremental search up through the current buffer for the word or token under the cursor.", 98, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1127 },
-{ PROC_LINKS(right_adjust_view, 0), false, "right_adjust_view", 17, "Sets the right size of the view near the x position of the cursor.", 66, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 63 },
-{ PROC_LINKS(s, 0), false, "s", 1, "Vim: Substitute", 15, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 947 },
+{ PROC_LINKS(right_adjust_view, 0), false, "right_adjust_view", 17, "Sets the right size of the view near the x position of the cursor.", 66, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 63 },
+{ PROC_LINKS(s, 0), false, "s", 1, "Vim: Substitute", 15, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 947 },
 { PROC_LINKS(save, 0), false, "save", 4, "Saves the current buffer.", 25, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1734 },
 { PROC_LINKS(save_all_dirty_buffers, 0), false, "save_all_dirty_buffers", 22, "Saves all buffers marked dirty (showing the '*' indicator).", 59, "/Users/khoa/4ed/code/custom/4coder_default_framework.cpp", 56, 454 },
 { PROC_LINKS(save_to_query, 0), false, "save_to_query", 13, "Queries the user for a file name and saves the contents of the current buffer, altering the buffer's name too.", 110, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1427 },
@@ -729,14 +583,10 @@ static Command_Metadata fcoder_metacmd_table[374] = {
 { PROC_LINKS(snipe_backward_whitespace_or_token_boundary, 0), false, "snipe_backward_whitespace_or_token_boundary", 43, "Delete a single, whole token on or to the left of the cursor and post it to the clipboard.", 90, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 177 },
 { PROC_LINKS(snipe_forward_whitespace_or_token_boundary, 0), false, "snipe_forward_whitespace_or_token_boundary", 42, "Delete a single, whole token on or to the right of the cursor and post it to the clipboard.", 91, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 185 },
 { PROC_LINKS(snippet_lister, 0), true, "snippet_lister", 14, "Opens a snippet lister for inserting whole pre-written snippets of text.", 72, "/Users/khoa/4ed/code/custom/4coder_combined_write_commands.cpp", 62, 237 },
-{ PROC_LINKS(sp, 0), false, "sp", 2, "Vim: Horizontal split", 21, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 944 },
+{ PROC_LINKS(sp, 0), false, "sp", 2, "Vim: Horizontal split", 21, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 944 },
 { PROC_LINKS(string_repeat, 0), false, "string_repeat", 13, "Example of query_user_string and query_user_number", 50, "/Users/khoa/4ed/code/custom/4coder_examples.cpp", 47, 179 },
 { PROC_LINKS(suppress_mouse, 0), false, "suppress_mouse", 14, "Hides the mouse and causes all mosue input (clicks, position, wheel) to be ignored.", 83, "/Users/khoa/4ed/code/custom/4coder_default_framework.cpp", 56, 475 },
 { PROC_LINKS(swap_panels, 0), false, "swap_panels", 11, "Swaps the active panel with it's sibling.", 41, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1684 },
-{ PROC_LINKS(switch_to_keybinding_0, 0), false, "switch_to_keybinding_0", 22, "Switch the keybindings to mode 0.", 33, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_bindings.cpp", 71, 13 },
-{ PROC_LINKS(switch_to_keybinding_1, 0), false, "switch_to_keybinding_1", 22, "Switch the keybindings to mode 1.", 33, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_bindings.cpp", 71, 19 },
-{ PROC_LINKS(switch_to_keybinding_2, 0), false, "switch_to_keybinding_2", 22, "Switch the keybindings to mode 2.", 33, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_bindings.cpp", 71, 25 },
-{ PROC_LINKS(switch_to_keybinding_3, 0), false, "switch_to_keybinding_3", 22, "Switch the keybindings to mode 3.", 33, "/Users/khoa/autodraw/4coder_kv/4coder_fleury/4coder_fleury_bindings.cpp", 71, 31 },
 { PROC_LINKS(theme_lister, 0), true, "theme_lister", 12, "Opens an interactive list of all registered themes.", 51, "/Users/khoa/4ed/code/custom/4coder_lists.cpp", 44, 785 },
 { PROC_LINKS(to_lowercase, 0), false, "to_lowercase", 12, "Converts all ascii text in the range between the cursor and the mark to lowercase.", 82, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 567 },
 { PROC_LINKS(toggle_filebar, 0), false, "toggle_filebar", 14, "Toggles the visibility status of the current view's filebar.", 60, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 711 },
@@ -757,26 +607,26 @@ static Command_Metadata fcoder_metacmd_table[374] = {
 { PROC_LINKS(undo_all_buffers, 0), false, "undo_all_buffers", 16, "Advances backward through the undo history in the buffer containing the most recent regular edit.", 97, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1912 },
 { PROC_LINKS(view_buffer_other_panel, 0), false, "view_buffer_other_panel", 23, "Set the other non-active panel to view the buffer that the active panel views, and switch to that panel.", 104, "/Users/khoa/4ed/code/custom/4coder_base_commands.cpp", 52, 1672 },
 { PROC_LINKS(view_jump_list_with_lister, 0), false, "view_jump_list_with_lister", 26, "When executed on a buffer with jumps, creates a persistent lister for all the jumps", 83, "/Users/khoa/4ed/code/custom/4coder_jump_lister.cpp", 50, 59 },
-{ PROC_LINKS(vim_command_mode, 0), true, "vim_command_mode", 16, "Enter Command Mode", 18, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 52 },
-{ PROC_LINKS(vim_dec_buffer_peek, 0), false, "vim_dec_buffer_peek", 19, "Decrements buffer peek index", 28, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 31 },
-{ PROC_LINKS(vim_inc_buffer_peek, 0), false, "vim_inc_buffer_peek", 19, "Incremenets buffer peek index", 29, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 23 },
-{ PROC_LINKS(vim_interactive_open_or_new, 0), true, "vim_interactive_open_or_new", 27, "Interactively open a file out of the file system.", 49, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 198 },
-{ PROC_LINKS(vim_jump_lister, 0), true, "vim_jump_lister", 15, "Opens an interactive lists of the views jumps", 45, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 411 },
-{ PROC_LINKS(vim_list_all_functions_current_buffer_lister, 0), true, "vim_list_all_functions_current_buffer_lister", 44, "Creates a lister of locations that look like function definitions and declarations in the buffer.", 97, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 336 },
-{ PROC_LINKS(vim_proj_cmd_lister, 0), true, "vim_proj_cmd_lister", 19, "Opens an interactive list of all project commands.", 50, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 354 },
-{ PROC_LINKS(vim_scoll_buffer_peek_down, 0), false, "vim_scoll_buffer_peek_down", 26, "Scrolls buffer peek down", 24, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 59 },
-{ PROC_LINKS(vim_scoll_buffer_peek_up, 0), false, "vim_scoll_buffer_peek_up", 24, "Scrolls buffer peek up", 22, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 55 },
-{ PROC_LINKS(vim_switch_lister, 0), true, "vim_switch_lister", 17, "Opens an interactive list of all loaded buffers.", 48, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 275 },
-{ PROC_LINKS(vim_theme_lister, 0), true, "vim_theme_lister", 16, "Opens an interactive list of all registered themes.", 51, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 247 },
-{ PROC_LINKS(vim_toggle_relative_line_num, 0), false, "vim_toggle_relative_line_num", 28, "Toggles relative line numbers", 29, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 5 },
-{ PROC_LINKS(vim_toggle_show_buffer_peek, 0), false, "vim_toggle_show_buffer_peek", 27, "Toggles buffer peek", 19, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 9 },
-{ PROC_LINKS(vim_try_exit, 0), false, "vim_try_exit", 12, "Vim command for responding to a try-exit event", 46, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_hooks.cpp", 62, 172 },
-{ PROC_LINKS(vs, 0), false, "vs", 2, "Vim: Vertical split", 19, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 941 },
-{ PROC_LINKS(w, 0), false, "w", 1, "Vim: Saves the buffer", 21, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 917 },
+{ PROC_LINKS(vim_command_mode, 0), true, "vim_command_mode", 16, "Enter Command Mode", 18, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 52 },
+{ PROC_LINKS(vim_dec_buffer_peek, 0), false, "vim_dec_buffer_peek", 19, "Decrements buffer peek index", 28, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 31 },
+{ PROC_LINKS(vim_inc_buffer_peek, 0), false, "vim_inc_buffer_peek", 19, "Incremenets buffer peek index", 29, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 23 },
+{ PROC_LINKS(vim_interactive_open_or_new, 0), true, "vim_interactive_open_or_new", 27, "Interactively open a file out of the file system.", 49, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 198 },
+{ PROC_LINKS(vim_jump_lister, 0), true, "vim_jump_lister", 15, "Opens an interactive lists of the views jumps", 45, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 411 },
+{ PROC_LINKS(vim_list_all_functions_current_buffer_lister, 0), true, "vim_list_all_functions_current_buffer_lister", 44, "Creates a lister of locations that look like function definitions and declarations in the buffer.", 97, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 336 },
+{ PROC_LINKS(vim_proj_cmd_lister, 0), true, "vim_proj_cmd_lister", 19, "Opens an interactive list of all project commands.", 50, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 354 },
+{ PROC_LINKS(vim_scoll_buffer_peek_down, 0), false, "vim_scoll_buffer_peek_down", 26, "Scrolls buffer peek down", 24, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 59 },
+{ PROC_LINKS(vim_scoll_buffer_peek_up, 0), false, "vim_scoll_buffer_peek_up", 24, "Scrolls buffer peek up", 22, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 55 },
+{ PROC_LINKS(vim_switch_lister, 0), true, "vim_switch_lister", 17, "Opens an interactive list of all loaded buffers.", 48, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 275 },
+{ PROC_LINKS(vim_theme_lister, 0), true, "vim_theme_lister", 16, "Opens an interactive list of all registered themes.", 51, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_lists.cpp", 62, 247 },
+{ PROC_LINKS(vim_toggle_relative_line_num, 0), false, "vim_toggle_relative_line_num", 28, "Toggles relative line numbers", 29, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 5 },
+{ PROC_LINKS(vim_toggle_show_buffer_peek, 0), false, "vim_toggle_show_buffer_peek", 27, "Toggles buffer peek", 19, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 9 },
+{ PROC_LINKS(vim_try_exit, 0), false, "vim_try_exit", 12, "Vim command for responding to a try-exit event", 46, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_hooks.cpp", 62, 172 },
+{ PROC_LINKS(vs, 0), false, "vs", 2, "Vim: Vertical split", 19, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 941 },
+{ PROC_LINKS(w, 0), false, "w", 1, "Vim: Saves the buffer", 21, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 917 },
 { PROC_LINKS(word_complete, 0), false, "word_complete", 13, "Iteratively tries completing the word to the left of the cursor with other words in open buffers that have the same prefix string.", 130, "/Users/khoa/4ed/code/custom/4coder_search.cpp", 45, 433 },
 { PROC_LINKS(word_complete_drop_down, 0), false, "word_complete_drop_down", 23, "Word complete with drop down menu.", 34, "/Users/khoa/4ed/code/custom/4coder_search.cpp", 45, 679 },
-{ PROC_LINKS(wq, 0), false, "wq", 2, "Vim: Saves and quits the buffer", 31, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 920 },
-{ PROC_LINKS(wqa, 0), false, "wqa", 3, "Vim: Saves and quits all buffers", 32, "/Users/khoa/autodraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 923 },
+{ PROC_LINKS(wq, 0), false, "wq", 2, "Vim: Saves and quits the buffer", 31, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 920 },
+{ PROC_LINKS(wqa, 0), false, "wqa", 3, "Vim: Saves and quits all buffers", 32, "/Users/khoa/AutoDraw/4coder_kv/4coder_vim/4coder_vim_commands.cpp", 65, 923 },
 { PROC_LINKS(write_block, 0), false, "write_block", 11, "At the cursor, insert a block comment.", 38, "/Users/khoa/4ed/code/custom/4coder_combined_write_commands.cpp", 62, 94 },
 { PROC_LINKS(write_hack, 0), false, "write_hack", 10, "At the cursor, insert a '// HACK' comment, includes user name if it was specified in config.4coder.", 99, "/Users/khoa/4ed/code/custom/4coder_combined_write_commands.cpp", 62, 82 },
 { PROC_LINKS(write_note, 0), false, "write_note", 10, "At the cursor, insert a '// NOTE' comment, includes user name if it was specified in config.4coder.", 99, "/Users/khoa/4ed/code/custom/4coder_combined_write_commands.cpp", 62, 88 },
@@ -788,377 +638,302 @@ static Command_Metadata fcoder_metacmd_table[374] = {
 { PROC_LINKS(write_zero_struct, 0), false, "write_zero_struct", 17, "At the cursor, insert a ' = {};'.", 33, "/Users/khoa/4ed/code/custom/4coder_combined_write_commands.cpp", 62, 100 },
 };
 static i32 fcoder_metacmd_ID_To_uppercase = 0;
-static i32 fcoder_metacmd_ID_ad_toggle_test = 1;
-static i32 fcoder_metacmd_ID_allow_mouse = 2;
-static i32 fcoder_metacmd_ID_auto_indent_line_at_cursor = 3;
-static i32 fcoder_metacmd_ID_auto_indent_range = 4;
-static i32 fcoder_metacmd_ID_auto_indent_whole_file = 5;
-static i32 fcoder_metacmd_ID_b = 6;
-static i32 fcoder_metacmd_ID_backspace_alpha_numeric_boundary = 7;
-static i32 fcoder_metacmd_ID_backspace_char = 8;
-static i32 fcoder_metacmd_ID_basic_change_active_panel = 9;
-static i32 fcoder_metacmd_ID_begin_clipboard_collection_mode = 10;
-static i32 fcoder_metacmd_ID_build = 11;
-static i32 fcoder_metacmd_ID_build_in_build_panel = 12;
-static i32 fcoder_metacmd_ID_build_search = 13;
-static i32 fcoder_metacmd_ID_byp_reset_face_size = 14;
-static i32 fcoder_metacmd_ID_casey_clean_file_and_save = 15;
-static i32 fcoder_metacmd_ID_casey_delete_to_end_of_line = 16;
-static i32 fcoder_metacmd_ID_casey_demo_audio = 17;
-static i32 fcoder_metacmd_ID_casey_demo_audio_one_shot = 18;
-static i32 fcoder_metacmd_ID_casey_demo_audio_switch_panel = 19;
-static i32 fcoder_metacmd_ID_casey_find_matching_file = 20;
-static i32 fcoder_metacmd_ID_casey_go_to_code_peek = 21;
-static i32 fcoder_metacmd_ID_casey_newline_and_indent = 22;
-static i32 fcoder_metacmd_ID_casey_seek_beginning_of_line_and_tab = 23;
-static i32 fcoder_metacmd_ID_casey_switch_to_keybinding_0 = 24;
-static i32 fcoder_metacmd_ID_casey_switch_to_keybinding_1 = 25;
-static i32 fcoder_metacmd_ID_center_view = 26;
-static i32 fcoder_metacmd_ID_change_active_panel = 27;
-static i32 fcoder_metacmd_ID_change_active_panel_backwards = 28;
-static i32 fcoder_metacmd_ID_change_to_build_panel = 29;
-static i32 fcoder_metacmd_ID_clean_all_lines = 30;
-static i32 fcoder_metacmd_ID_clean_trailing_whitespace = 31;
-static i32 fcoder_metacmd_ID_clear_all_themes = 32;
-static i32 fcoder_metacmd_ID_clear_clipboard = 33;
-static i32 fcoder_metacmd_ID_click_set_cursor = 34;
-static i32 fcoder_metacmd_ID_click_set_cursor_and_mark = 35;
-static i32 fcoder_metacmd_ID_click_set_cursor_if_lbutton = 36;
-static i32 fcoder_metacmd_ID_click_set_mark = 37;
-static i32 fcoder_metacmd_ID_clipboard_record_clip = 38;
-static i32 fcoder_metacmd_ID_close_all_code = 39;
-static i32 fcoder_metacmd_ID_close_build_panel = 40;
-static i32 fcoder_metacmd_ID_close_panel = 41;
-static i32 fcoder_metacmd_ID_command_documentation = 42;
-static i32 fcoder_metacmd_ID_command_lister = 43;
-static i32 fcoder_metacmd_ID_comment_line = 44;
-static i32 fcoder_metacmd_ID_comment_line_toggle = 45;
-static i32 fcoder_metacmd_ID_copy = 46;
-static i32 fcoder_metacmd_ID_cursor_mark_swap = 47;
-static i32 fcoder_metacmd_ID_custom_api_documentation = 48;
-static i32 fcoder_metacmd_ID_cut = 49;
-static i32 fcoder_metacmd_ID_decrease_face_size = 50;
-static i32 fcoder_metacmd_ID_default_file_externally_modified = 51;
-static i32 fcoder_metacmd_ID_default_startup = 52;
-static i32 fcoder_metacmd_ID_default_try_exit = 53;
-static i32 fcoder_metacmd_ID_default_view_input_handler = 54;
-static i32 fcoder_metacmd_ID_delete_alpha_numeric_boundary = 55;
-static i32 fcoder_metacmd_ID_delete_char = 56;
-static i32 fcoder_metacmd_ID_delete_current_scope = 57;
-static i32 fcoder_metacmd_ID_delete_file_query = 58;
-static i32 fcoder_metacmd_ID_delete_line = 59;
-static i32 fcoder_metacmd_ID_delete_range = 60;
-static i32 fcoder_metacmd_ID_dir = 61;
-static i32 fcoder_metacmd_ID_display_key_codes = 62;
-static i32 fcoder_metacmd_ID_display_text_input = 63;
-static i32 fcoder_metacmd_ID_double_backspace = 64;
-static i32 fcoder_metacmd_ID_duplicate_line = 65;
-static i32 fcoder_metacmd_ID_e = 66;
-static i32 fcoder_metacmd_ID_execute_any_cli = 67;
-static i32 fcoder_metacmd_ID_execute_previous_cli = 68;
-static i32 fcoder_metacmd_ID_exit_4coder = 69;
-static i32 fcoder_metacmd_ID_f4_autocomplete_or_indent = 70;
-static i32 fcoder_metacmd_ID_f4_backspace_alpha_numeric_or_camel_boundary = 71;
-static i32 fcoder_metacmd_ID_f4_backspace_token_boundary = 72;
-static i32 fcoder_metacmd_ID_f4_bump_to_column = 73;
-static i32 fcoder_metacmd_ID_f4_code_peek = 74;
-static i32 fcoder_metacmd_ID_f4_code_peek_clear = 75;
-static i32 fcoder_metacmd_ID_f4_code_peek_yank = 76;
-static i32 fcoder_metacmd_ID_f4_comment_selection = 77;
-static i32 fcoder_metacmd_ID_f4_delete_alpha_numeric_or_camel_boundary = 78;
-static i32 fcoder_metacmd_ID_f4_delete_token_boundary = 79;
-static i32 fcoder_metacmd_ID_f4_go_to_definition = 80;
-static i32 fcoder_metacmd_ID_f4_go_to_definition_same_panel = 81;
-static i32 fcoder_metacmd_ID_f4_home = 82;
-static i32 fcoder_metacmd_ID_f4_home_first_non_whitespace = 83;
-static i32 fcoder_metacmd_ID_f4_interactive_open_or_new_in_project = 84;
-static i32 fcoder_metacmd_ID_f4_leave_event_unhandled = 85;
-static i32 fcoder_metacmd_ID_f4_lego_buffer_place = 86;
-static i32 fcoder_metacmd_ID_f4_lego_click_store_token_1 = 87;
-static i32 fcoder_metacmd_ID_f4_lego_click_store_token_2 = 88;
-static i32 fcoder_metacmd_ID_f4_lego_store_line = 89;
-static i32 fcoder_metacmd_ID_f4_lego_store_range = 90;
-static i32 fcoder_metacmd_ID_f4_lego_store_token = 91;
-static i32 fcoder_metacmd_ID_f4_loc = 92;
-static i32 fcoder_metacmd_ID_f4_move_down_token_occurrence = 93;
-static i32 fcoder_metacmd_ID_f4_move_left = 94;
-static i32 fcoder_metacmd_ID_f4_move_left_token_boundary = 95;
-static i32 fcoder_metacmd_ID_f4_move_right = 96;
-static i32 fcoder_metacmd_ID_f4_move_right_token_boundary = 97;
-static i32 fcoder_metacmd_ID_f4_move_to_next_divider_comment = 98;
-static i32 fcoder_metacmd_ID_f4_move_to_prev_divider_comment = 99;
-static i32 fcoder_metacmd_ID_f4_move_up_token_occurrence = 100;
-static i32 fcoder_metacmd_ID_f4_open_project = 101;
-static i32 fcoder_metacmd_ID_f4_powermode_allow = 102;
-static i32 fcoder_metacmd_ID_f4_powermode_disallow = 103;
-static i32 fcoder_metacmd_ID_f4_recent_files_menu = 104;
-static i32 fcoder_metacmd_ID_f4_remedy_open_cursor = 105;
-static i32 fcoder_metacmd_ID_f4_reverse_search = 106;
-static i32 fcoder_metacmd_ID_f4_search = 107;
-static i32 fcoder_metacmd_ID_f4_search_for_definition__current_file = 108;
-static i32 fcoder_metacmd_ID_f4_search_for_definition__project_wide = 109;
-static i32 fcoder_metacmd_ID_f4_setup_new_project = 110;
-static i32 fcoder_metacmd_ID_f4_switch_syntax_option = 111;
-static i32 fcoder_metacmd_ID_f4_toggle_battery_saver = 112;
-static i32 fcoder_metacmd_ID_f4_toggle_compilation_expand = 113;
-static i32 fcoder_metacmd_ID_f4_toggle_enclosure_side = 114;
-static i32 fcoder_metacmd_ID_f4_uncomment_selection = 115;
-static i32 fcoder_metacmd_ID_f4_unindent = 116;
-static i32 fcoder_metacmd_ID_f4_write_text_and_auto_indent = 117;
-static i32 fcoder_metacmd_ID_f4_write_text_input = 118;
-static i32 fcoder_metacmd_ID_f4_write_zero_struct = 119;
-static i32 fcoder_metacmd_ID_file = 120;
-static i32 fcoder_metacmd_ID_fleury_go_to_definition = 121;
-static i32 fcoder_metacmd_ID_fleury_go_to_definition_same_panel = 122;
-static i32 fcoder_metacmd_ID_fleury_home = 123;
-static i32 fcoder_metacmd_ID_fleury_startup = 124;
-static i32 fcoder_metacmd_ID_fleury_toggle_battery_saver = 125;
-static i32 fcoder_metacmd_ID_fleury_toggle_compilation_expand = 126;
-static i32 fcoder_metacmd_ID_fleury_write_text_and_auto_indent = 127;
-static i32 fcoder_metacmd_ID_fleury_write_text_input = 128;
-static i32 fcoder_metacmd_ID_fleury_write_zero_struct = 129;
-static i32 fcoder_metacmd_ID_fold_clear = 130;
-static i32 fcoder_metacmd_ID_fold_pop_cursor = 131;
-static i32 fcoder_metacmd_ID_fold_range = 132;
-static i32 fcoder_metacmd_ID_fold_toggle_cursor = 133;
-static i32 fcoder_metacmd_ID_go_to_user_directory = 134;
-static i32 fcoder_metacmd_ID_goto_beginning_of_file = 135;
-static i32 fcoder_metacmd_ID_goto_end_of_file = 136;
-static i32 fcoder_metacmd_ID_goto_first_jump = 137;
-static i32 fcoder_metacmd_ID_goto_first_jump_same_panel_sticky = 138;
-static i32 fcoder_metacmd_ID_goto_jump_at_cursor = 139;
-static i32 fcoder_metacmd_ID_goto_jump_at_cursor_same_panel = 140;
-static i32 fcoder_metacmd_ID_goto_line = 141;
-static i32 fcoder_metacmd_ID_goto_next_jump = 142;
-static i32 fcoder_metacmd_ID_goto_next_jump_no_skips = 143;
-static i32 fcoder_metacmd_ID_goto_prev_jump = 144;
-static i32 fcoder_metacmd_ID_goto_prev_jump_no_skips = 145;
-static i32 fcoder_metacmd_ID_hide_filebar = 146;
-static i32 fcoder_metacmd_ID_hide_scrollbar = 147;
-static i32 fcoder_metacmd_ID_hit_sfx = 148;
-static i32 fcoder_metacmd_ID_hms_demo_tutorial = 149;
-static i32 fcoder_metacmd_ID_if0_off = 150;
-static i32 fcoder_metacmd_ID_if_read_only_goto_position = 151;
-static i32 fcoder_metacmd_ID_if_read_only_goto_position_same_panel = 152;
-static i32 fcoder_metacmd_ID_increase_face_size = 153;
-static i32 fcoder_metacmd_ID_interactive_kill_buffer = 154;
-static i32 fcoder_metacmd_ID_interactive_new = 155;
-static i32 fcoder_metacmd_ID_interactive_open = 156;
-static i32 fcoder_metacmd_ID_interactive_open_or_new = 157;
-static i32 fcoder_metacmd_ID_interactive_switch_buffer = 158;
-static i32 fcoder_metacmd_ID_jump_to_definition = 159;
-static i32 fcoder_metacmd_ID_jump_to_definition_at_cursor = 160;
-static i32 fcoder_metacmd_ID_jump_to_last_point = 161;
-static i32 fcoder_metacmd_ID_jumps = 162;
-static i32 fcoder_metacmd_ID_keyboard_macro_finish_recording = 163;
-static i32 fcoder_metacmd_ID_keyboard_macro_replay = 164;
-static i32 fcoder_metacmd_ID_keyboard_macro_start_recording = 165;
-static i32 fcoder_metacmd_ID_kill_buffer = 166;
-static i32 fcoder_metacmd_ID_kill_tutorial = 167;
-static i32 fcoder_metacmd_ID_kv_build_full_rebuild = 168;
-static i32 fcoder_metacmd_ID_kv_build_normal = 169;
-static i32 fcoder_metacmd_ID_kv_build_run_only = 170;
-static i32 fcoder_metacmd_ID_kv_list_all_locations = 171;
-static i32 fcoder_metacmd_ID_kv_open_file_ultimate = 172;
-static i32 fcoder_metacmd_ID_kv_profile_disable_and_inspect = 173;
-static i32 fcoder_metacmd_ID_kv_reopen_with_confirmation = 174;
-static i32 fcoder_metacmd_ID_kv_run = 175;
-static i32 fcoder_metacmd_ID_kv_view_input_handler = 176;
-static i32 fcoder_metacmd_ID_left_adjust_view = 177;
-static i32 fcoder_metacmd_ID_list_all_functions_all_buffers = 178;
-static i32 fcoder_metacmd_ID_list_all_functions_all_buffers_lister = 179;
-static i32 fcoder_metacmd_ID_list_all_functions_current_buffer = 180;
-static i32 fcoder_metacmd_ID_list_all_functions_current_buffer_lister = 181;
-static i32 fcoder_metacmd_ID_list_all_locations = 182;
-static i32 fcoder_metacmd_ID_list_all_locations_case_insensitive = 183;
-static i32 fcoder_metacmd_ID_list_all_locations_of_identifier = 184;
-static i32 fcoder_metacmd_ID_list_all_locations_of_identifier_case_insensitive = 185;
-static i32 fcoder_metacmd_ID_list_all_locations_of_selection = 186;
-static i32 fcoder_metacmd_ID_list_all_locations_of_selection_case_insensitive = 187;
-static i32 fcoder_metacmd_ID_list_all_locations_of_type_definition = 188;
-static i32 fcoder_metacmd_ID_list_all_locations_of_type_definition_of_identifier = 189;
-static i32 fcoder_metacmd_ID_list_all_substring_locations = 190;
-static i32 fcoder_metacmd_ID_list_all_substring_locations_case_insensitive = 191;
-static i32 fcoder_metacmd_ID_load_project = 192;
-static i32 fcoder_metacmd_ID_load_theme_current_buffer = 193;
-static i32 fcoder_metacmd_ID_load_themes_default_folder = 194;
-static i32 fcoder_metacmd_ID_load_themes_hot_directory = 195;
-static i32 fcoder_metacmd_ID_make_directory_query = 196;
-static i32 fcoder_metacmd_ID_miblo_decrement_basic = 197;
-static i32 fcoder_metacmd_ID_miblo_decrement_time_stamp = 198;
-static i32 fcoder_metacmd_ID_miblo_decrement_time_stamp_minute = 199;
-static i32 fcoder_metacmd_ID_miblo_increment_basic = 200;
-static i32 fcoder_metacmd_ID_miblo_increment_time_stamp = 201;
-static i32 fcoder_metacmd_ID_miblo_increment_time_stamp_minute = 202;
-static i32 fcoder_metacmd_ID_mouse_wheel_change_face_size = 203;
-static i32 fcoder_metacmd_ID_mouse_wheel_scroll = 204;
-static i32 fcoder_metacmd_ID_move_down = 205;
-static i32 fcoder_metacmd_ID_move_down_10 = 206;
-static i32 fcoder_metacmd_ID_move_down_textual = 207;
-static i32 fcoder_metacmd_ID_move_down_to_blank_line = 208;
-static i32 fcoder_metacmd_ID_move_down_to_blank_line_end = 209;
-static i32 fcoder_metacmd_ID_move_down_to_blank_line_skip_whitespace = 210;
-static i32 fcoder_metacmd_ID_move_left = 211;
-static i32 fcoder_metacmd_ID_move_left_alpha_numeric_boundary = 212;
-static i32 fcoder_metacmd_ID_move_left_alpha_numeric_or_camel_boundary = 213;
-static i32 fcoder_metacmd_ID_move_left_token_boundary = 214;
-static i32 fcoder_metacmd_ID_move_left_whitespace_boundary = 215;
-static i32 fcoder_metacmd_ID_move_left_whitespace_or_token_boundary = 216;
-static i32 fcoder_metacmd_ID_move_line_down = 217;
-static i32 fcoder_metacmd_ID_move_line_up = 218;
-static i32 fcoder_metacmd_ID_move_right = 219;
-static i32 fcoder_metacmd_ID_move_right_alpha_numeric_boundary = 220;
-static i32 fcoder_metacmd_ID_move_right_alpha_numeric_or_camel_boundary = 221;
-static i32 fcoder_metacmd_ID_move_right_token_boundary = 222;
-static i32 fcoder_metacmd_ID_move_right_whitespace_boundary = 223;
-static i32 fcoder_metacmd_ID_move_right_whitespace_or_token_boundary = 224;
-static i32 fcoder_metacmd_ID_move_up = 225;
-static i32 fcoder_metacmd_ID_move_up_10 = 226;
-static i32 fcoder_metacmd_ID_move_up_to_blank_line = 227;
-static i32 fcoder_metacmd_ID_move_up_to_blank_line_end = 228;
-static i32 fcoder_metacmd_ID_move_up_to_blank_line_skip_whitespace = 229;
-static i32 fcoder_metacmd_ID_multi_paste = 230;
-static i32 fcoder_metacmd_ID_multi_paste_interactive = 231;
-static i32 fcoder_metacmd_ID_multi_paste_interactive_quick = 232;
-static i32 fcoder_metacmd_ID_music_start = 233;
-static i32 fcoder_metacmd_ID_music_stop = 234;
-static i32 fcoder_metacmd_ID_no_op = 235;
-static i32 fcoder_metacmd_ID_note = 236;
-static i32 fcoder_metacmd_ID_open_all_code = 237;
-static i32 fcoder_metacmd_ID_open_all_code_recursive = 238;
-static i32 fcoder_metacmd_ID_open_file_in_quotes = 239;
-static i32 fcoder_metacmd_ID_open_in_other = 240;
-static i32 fcoder_metacmd_ID_open_long_braces = 241;
-static i32 fcoder_metacmd_ID_open_long_braces_break = 242;
-static i32 fcoder_metacmd_ID_open_long_braces_semicolon = 243;
-static i32 fcoder_metacmd_ID_open_matching_file_cpp = 244;
-static i32 fcoder_metacmd_ID_open_panel_hsplit = 245;
-static i32 fcoder_metacmd_ID_open_panel_vsplit = 246;
-static i32 fcoder_metacmd_ID_page_down = 247;
-static i32 fcoder_metacmd_ID_page_up = 248;
-static i32 fcoder_metacmd_ID_paste = 249;
-static i32 fcoder_metacmd_ID_paste_and_indent = 250;
-static i32 fcoder_metacmd_ID_paste_next = 251;
-static i32 fcoder_metacmd_ID_paste_next_and_indent = 252;
-static i32 fcoder_metacmd_ID_place_in_scope = 253;
-static i32 fcoder_metacmd_ID_play_with_a_counter = 254;
-static i32 fcoder_metacmd_ID_profile_clear = 255;
-static i32 fcoder_metacmd_ID_profile_disable = 256;
-static i32 fcoder_metacmd_ID_profile_enable = 257;
-static i32 fcoder_metacmd_ID_profile_inspect = 258;
-static i32 fcoder_metacmd_ID_project_command_lister = 259;
-static i32 fcoder_metacmd_ID_project_fkey_command = 260;
-static i32 fcoder_metacmd_ID_project_go_to_root_directory = 261;
-static i32 fcoder_metacmd_ID_project_reprint = 262;
-static i32 fcoder_metacmd_ID_q = 263;
-static i32 fcoder_metacmd_ID_qa = 264;
-static i32 fcoder_metacmd_ID_qk = 265;
-static i32 fcoder_metacmd_ID_query_replace = 266;
-static i32 fcoder_metacmd_ID_query_replace_identifier = 267;
-static i32 fcoder_metacmd_ID_query_replace_selection = 268;
-static i32 fcoder_metacmd_ID_quick_swap_buffer = 269;
-static i32 fcoder_metacmd_ID_redo = 270;
-static i32 fcoder_metacmd_ID_redo_all_buffers = 271;
-static i32 fcoder_metacmd_ID_reg = 272;
-static i32 fcoder_metacmd_ID_rename_file_query = 273;
-static i32 fcoder_metacmd_ID_reopen = 274;
-static i32 fcoder_metacmd_ID_replace_in_all_buffers = 275;
-static i32 fcoder_metacmd_ID_replace_in_buffer = 276;
-static i32 fcoder_metacmd_ID_replace_in_range = 277;
-static i32 fcoder_metacmd_ID_reverse_search = 278;
-static i32 fcoder_metacmd_ID_reverse_search_identifier = 279;
-static i32 fcoder_metacmd_ID_right_adjust_view = 280;
-static i32 fcoder_metacmd_ID_s = 281;
-static i32 fcoder_metacmd_ID_save = 282;
-static i32 fcoder_metacmd_ID_save_all_dirty_buffers = 283;
-static i32 fcoder_metacmd_ID_save_to_query = 284;
-static i32 fcoder_metacmd_ID_search = 285;
-static i32 fcoder_metacmd_ID_search_identifier = 286;
-static i32 fcoder_metacmd_ID_seek_beginning_of_line = 287;
-static i32 fcoder_metacmd_ID_seek_beginning_of_textual_line = 288;
-static i32 fcoder_metacmd_ID_seek_end_of_line = 289;
-static i32 fcoder_metacmd_ID_seek_end_of_textual_line = 290;
-static i32 fcoder_metacmd_ID_select_all = 291;
-static i32 fcoder_metacmd_ID_select_next_scope_absolute = 292;
-static i32 fcoder_metacmd_ID_select_next_scope_after_current = 293;
-static i32 fcoder_metacmd_ID_select_prev_scope_absolute = 294;
-static i32 fcoder_metacmd_ID_select_prev_top_most_scope = 295;
-static i32 fcoder_metacmd_ID_select_surrounding_scope = 296;
-static i32 fcoder_metacmd_ID_select_surrounding_scope_maximal = 297;
-static i32 fcoder_metacmd_ID_set_eol_mode_from_contents = 298;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_binary = 299;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_crlf = 300;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_lf = 301;
-static i32 fcoder_metacmd_ID_set_face_size = 302;
-static i32 fcoder_metacmd_ID_set_face_size_this_buffer = 303;
-static i32 fcoder_metacmd_ID_set_mark = 304;
-static i32 fcoder_metacmd_ID_set_mode_to_notepad_like = 305;
-static i32 fcoder_metacmd_ID_set_mode_to_original = 306;
-static i32 fcoder_metacmd_ID_setup_build_bat = 307;
-static i32 fcoder_metacmd_ID_setup_build_bat_and_sh = 308;
-static i32 fcoder_metacmd_ID_setup_build_sh = 309;
-static i32 fcoder_metacmd_ID_setup_new_project = 310;
-static i32 fcoder_metacmd_ID_show_filebar = 311;
-static i32 fcoder_metacmd_ID_show_scrollbar = 312;
-static i32 fcoder_metacmd_ID_show_the_log_graph = 313;
-static i32 fcoder_metacmd_ID_snipe_backward_whitespace_or_token_boundary = 314;
-static i32 fcoder_metacmd_ID_snipe_forward_whitespace_or_token_boundary = 315;
-static i32 fcoder_metacmd_ID_snippet_lister = 316;
-static i32 fcoder_metacmd_ID_sp = 317;
-static i32 fcoder_metacmd_ID_string_repeat = 318;
-static i32 fcoder_metacmd_ID_suppress_mouse = 319;
-static i32 fcoder_metacmd_ID_swap_panels = 320;
-static i32 fcoder_metacmd_ID_switch_to_keybinding_0 = 321;
-static i32 fcoder_metacmd_ID_switch_to_keybinding_1 = 322;
-static i32 fcoder_metacmd_ID_switch_to_keybinding_2 = 323;
-static i32 fcoder_metacmd_ID_switch_to_keybinding_3 = 324;
-static i32 fcoder_metacmd_ID_theme_lister = 325;
-static i32 fcoder_metacmd_ID_to_lowercase = 326;
-static i32 fcoder_metacmd_ID_toggle_filebar = 327;
-static i32 fcoder_metacmd_ID_toggle_fps_meter = 328;
-static i32 fcoder_metacmd_ID_toggle_fullscreen = 329;
-static i32 fcoder_metacmd_ID_toggle_highlight_enclosing_scopes = 330;
-static i32 fcoder_metacmd_ID_toggle_highlight_line_at_cursor = 331;
-static i32 fcoder_metacmd_ID_toggle_line_numbers = 332;
-static i32 fcoder_metacmd_ID_toggle_line_wrap = 333;
-static i32 fcoder_metacmd_ID_toggle_mouse = 334;
-static i32 fcoder_metacmd_ID_toggle_paren_matching_helper = 335;
-static i32 fcoder_metacmd_ID_toggle_show_whitespace = 336;
-static i32 fcoder_metacmd_ID_toggle_virtual_whitespace = 337;
-static i32 fcoder_metacmd_ID_tutorial_maximize = 338;
-static i32 fcoder_metacmd_ID_tutorial_minimize = 339;
-static i32 fcoder_metacmd_ID_uncomment_line = 340;
-static i32 fcoder_metacmd_ID_undo = 341;
-static i32 fcoder_metacmd_ID_undo_all_buffers = 342;
-static i32 fcoder_metacmd_ID_view_buffer_other_panel = 343;
-static i32 fcoder_metacmd_ID_view_jump_list_with_lister = 344;
-static i32 fcoder_metacmd_ID_vim_command_mode = 345;
-static i32 fcoder_metacmd_ID_vim_dec_buffer_peek = 346;
-static i32 fcoder_metacmd_ID_vim_inc_buffer_peek = 347;
-static i32 fcoder_metacmd_ID_vim_interactive_open_or_new = 348;
-static i32 fcoder_metacmd_ID_vim_jump_lister = 349;
-static i32 fcoder_metacmd_ID_vim_list_all_functions_current_buffer_lister = 350;
-static i32 fcoder_metacmd_ID_vim_proj_cmd_lister = 351;
-static i32 fcoder_metacmd_ID_vim_scoll_buffer_peek_down = 352;
-static i32 fcoder_metacmd_ID_vim_scoll_buffer_peek_up = 353;
-static i32 fcoder_metacmd_ID_vim_switch_lister = 354;
-static i32 fcoder_metacmd_ID_vim_theme_lister = 355;
-static i32 fcoder_metacmd_ID_vim_toggle_relative_line_num = 356;
-static i32 fcoder_metacmd_ID_vim_toggle_show_buffer_peek = 357;
-static i32 fcoder_metacmd_ID_vim_try_exit = 358;
-static i32 fcoder_metacmd_ID_vs = 359;
-static i32 fcoder_metacmd_ID_w = 360;
-static i32 fcoder_metacmd_ID_word_complete = 361;
-static i32 fcoder_metacmd_ID_word_complete_drop_down = 362;
-static i32 fcoder_metacmd_ID_wq = 363;
-static i32 fcoder_metacmd_ID_wqa = 364;
-static i32 fcoder_metacmd_ID_write_block = 365;
-static i32 fcoder_metacmd_ID_write_hack = 366;
-static i32 fcoder_metacmd_ID_write_note = 367;
-static i32 fcoder_metacmd_ID_write_space = 368;
-static i32 fcoder_metacmd_ID_write_text_and_auto_indent = 369;
-static i32 fcoder_metacmd_ID_write_text_input = 370;
-static i32 fcoder_metacmd_ID_write_todo = 371;
-static i32 fcoder_metacmd_ID_write_underscore = 372;
-static i32 fcoder_metacmd_ID_write_zero_struct = 373;
+static i32 fcoder_metacmd_ID_allow_mouse = 1;
+static i32 fcoder_metacmd_ID_auto_indent_line_at_cursor = 2;
+static i32 fcoder_metacmd_ID_auto_indent_range = 3;
+static i32 fcoder_metacmd_ID_auto_indent_whole_file = 4;
+static i32 fcoder_metacmd_ID_b = 5;
+static i32 fcoder_metacmd_ID_backspace_alpha_numeric_boundary = 6;
+static i32 fcoder_metacmd_ID_backspace_char = 7;
+static i32 fcoder_metacmd_ID_basic_change_active_panel = 8;
+static i32 fcoder_metacmd_ID_begin_clipboard_collection_mode = 9;
+static i32 fcoder_metacmd_ID_build = 10;
+static i32 fcoder_metacmd_ID_build_in_build_panel = 11;
+static i32 fcoder_metacmd_ID_build_search = 12;
+static i32 fcoder_metacmd_ID_byp_reset_face_size = 13;
+static i32 fcoder_metacmd_ID_center_view = 14;
+static i32 fcoder_metacmd_ID_change_active_panel = 15;
+static i32 fcoder_metacmd_ID_change_active_panel_backwards = 16;
+static i32 fcoder_metacmd_ID_change_to_build_panel = 17;
+static i32 fcoder_metacmd_ID_clean_all_lines = 18;
+static i32 fcoder_metacmd_ID_clean_trailing_whitespace = 19;
+static i32 fcoder_metacmd_ID_clear_all_themes = 20;
+static i32 fcoder_metacmd_ID_clear_clipboard = 21;
+static i32 fcoder_metacmd_ID_click_set_cursor = 22;
+static i32 fcoder_metacmd_ID_click_set_cursor_and_mark = 23;
+static i32 fcoder_metacmd_ID_click_set_cursor_if_lbutton = 24;
+static i32 fcoder_metacmd_ID_click_set_mark = 25;
+static i32 fcoder_metacmd_ID_clipboard_record_clip = 26;
+static i32 fcoder_metacmd_ID_close_all_code = 27;
+static i32 fcoder_metacmd_ID_close_build_panel = 28;
+static i32 fcoder_metacmd_ID_close_panel = 29;
+static i32 fcoder_metacmd_ID_command_documentation = 30;
+static i32 fcoder_metacmd_ID_command_lister = 31;
+static i32 fcoder_metacmd_ID_comment_line = 32;
+static i32 fcoder_metacmd_ID_comment_line_toggle = 33;
+static i32 fcoder_metacmd_ID_copy = 34;
+static i32 fcoder_metacmd_ID_cursor_mark_swap = 35;
+static i32 fcoder_metacmd_ID_custom_api_documentation = 36;
+static i32 fcoder_metacmd_ID_cut = 37;
+static i32 fcoder_metacmd_ID_decrease_face_size = 38;
+static i32 fcoder_metacmd_ID_default_file_externally_modified = 39;
+static i32 fcoder_metacmd_ID_default_startup = 40;
+static i32 fcoder_metacmd_ID_default_try_exit = 41;
+static i32 fcoder_metacmd_ID_default_view_input_handler = 42;
+static i32 fcoder_metacmd_ID_delete_alpha_numeric_boundary = 43;
+static i32 fcoder_metacmd_ID_delete_char = 44;
+static i32 fcoder_metacmd_ID_delete_current_scope = 45;
+static i32 fcoder_metacmd_ID_delete_file_query = 46;
+static i32 fcoder_metacmd_ID_delete_line = 47;
+static i32 fcoder_metacmd_ID_delete_range = 48;
+static i32 fcoder_metacmd_ID_dir = 49;
+static i32 fcoder_metacmd_ID_display_key_codes = 50;
+static i32 fcoder_metacmd_ID_display_text_input = 51;
+static i32 fcoder_metacmd_ID_double_backspace = 52;
+static i32 fcoder_metacmd_ID_duplicate_line = 53;
+static i32 fcoder_metacmd_ID_e = 54;
+static i32 fcoder_metacmd_ID_execute_any_cli = 55;
+static i32 fcoder_metacmd_ID_execute_previous_cli = 56;
+static i32 fcoder_metacmd_ID_exit_4coder = 57;
+static i32 fcoder_metacmd_ID_file = 58;
+static i32 fcoder_metacmd_ID_fold_clear = 59;
+static i32 fcoder_metacmd_ID_fold_pop_cursor = 60;
+static i32 fcoder_metacmd_ID_fold_range = 61;
+static i32 fcoder_metacmd_ID_fold_toggle_cursor = 62;
+static i32 fcoder_metacmd_ID_go_to_user_directory = 63;
+static i32 fcoder_metacmd_ID_goto_beginning_of_file = 64;
+static i32 fcoder_metacmd_ID_goto_end_of_file = 65;
+static i32 fcoder_metacmd_ID_goto_first_jump = 66;
+static i32 fcoder_metacmd_ID_goto_first_jump_same_panel_sticky = 67;
+static i32 fcoder_metacmd_ID_goto_jump_at_cursor = 68;
+static i32 fcoder_metacmd_ID_goto_jump_at_cursor_same_panel = 69;
+static i32 fcoder_metacmd_ID_goto_line = 70;
+static i32 fcoder_metacmd_ID_goto_next_jump = 71;
+static i32 fcoder_metacmd_ID_goto_next_jump_no_skips = 72;
+static i32 fcoder_metacmd_ID_goto_prev_jump = 73;
+static i32 fcoder_metacmd_ID_goto_prev_jump_no_skips = 74;
+static i32 fcoder_metacmd_ID_hide_filebar = 75;
+static i32 fcoder_metacmd_ID_hide_scrollbar = 76;
+static i32 fcoder_metacmd_ID_hit_sfx = 77;
+static i32 fcoder_metacmd_ID_hms_demo_tutorial = 78;
+static i32 fcoder_metacmd_ID_if0_off = 79;
+static i32 fcoder_metacmd_ID_if_read_only_goto_position = 80;
+static i32 fcoder_metacmd_ID_if_read_only_goto_position_same_panel = 81;
+static i32 fcoder_metacmd_ID_increase_face_size = 82;
+static i32 fcoder_metacmd_ID_interactive_kill_buffer = 83;
+static i32 fcoder_metacmd_ID_interactive_new = 84;
+static i32 fcoder_metacmd_ID_interactive_open = 85;
+static i32 fcoder_metacmd_ID_interactive_open_or_new = 86;
+static i32 fcoder_metacmd_ID_interactive_switch_buffer = 87;
+static i32 fcoder_metacmd_ID_jump_to_definition = 88;
+static i32 fcoder_metacmd_ID_jump_to_definition_at_cursor = 89;
+static i32 fcoder_metacmd_ID_jump_to_last_point = 90;
+static i32 fcoder_metacmd_ID_jumps = 91;
+static i32 fcoder_metacmd_ID_keyboard_macro_finish_recording = 92;
+static i32 fcoder_metacmd_ID_keyboard_macro_replay = 93;
+static i32 fcoder_metacmd_ID_keyboard_macro_start_recording = 94;
+static i32 fcoder_metacmd_ID_kill_buffer = 95;
+static i32 fcoder_metacmd_ID_kill_tutorial = 96;
+static i32 fcoder_metacmd_ID_kv_build_full_rebuild = 97;
+static i32 fcoder_metacmd_ID_kv_build_normal = 98;
+static i32 fcoder_metacmd_ID_kv_build_run_only = 99;
+static i32 fcoder_metacmd_ID_kv_list_all_locations = 100;
+static i32 fcoder_metacmd_ID_kv_open_file_ultimate = 101;
+static i32 fcoder_metacmd_ID_kv_profile_disable_and_inspect = 102;
+static i32 fcoder_metacmd_ID_kv_reopen_with_confirmation = 103;
+static i32 fcoder_metacmd_ID_kv_run = 104;
+static i32 fcoder_metacmd_ID_kv_view_input_handler = 105;
+static i32 fcoder_metacmd_ID_left_adjust_view = 106;
+static i32 fcoder_metacmd_ID_list_all_functions_all_buffers = 107;
+static i32 fcoder_metacmd_ID_list_all_functions_all_buffers_lister = 108;
+static i32 fcoder_metacmd_ID_list_all_functions_current_buffer = 109;
+static i32 fcoder_metacmd_ID_list_all_functions_current_buffer_lister = 110;
+static i32 fcoder_metacmd_ID_list_all_locations = 111;
+static i32 fcoder_metacmd_ID_list_all_locations_case_insensitive = 112;
+static i32 fcoder_metacmd_ID_list_all_locations_of_identifier = 113;
+static i32 fcoder_metacmd_ID_list_all_locations_of_identifier_case_insensitive = 114;
+static i32 fcoder_metacmd_ID_list_all_locations_of_selection = 115;
+static i32 fcoder_metacmd_ID_list_all_locations_of_selection_case_insensitive = 116;
+static i32 fcoder_metacmd_ID_list_all_locations_of_type_definition = 117;
+static i32 fcoder_metacmd_ID_list_all_locations_of_type_definition_of_identifier = 118;
+static i32 fcoder_metacmd_ID_list_all_substring_locations = 119;
+static i32 fcoder_metacmd_ID_list_all_substring_locations_case_insensitive = 120;
+static i32 fcoder_metacmd_ID_load_project = 121;
+static i32 fcoder_metacmd_ID_load_theme_current_buffer = 122;
+static i32 fcoder_metacmd_ID_load_themes_default_folder = 123;
+static i32 fcoder_metacmd_ID_load_themes_hot_directory = 124;
+static i32 fcoder_metacmd_ID_make_directory_query = 125;
+static i32 fcoder_metacmd_ID_miblo_decrement_basic = 126;
+static i32 fcoder_metacmd_ID_miblo_decrement_time_stamp = 127;
+static i32 fcoder_metacmd_ID_miblo_decrement_time_stamp_minute = 128;
+static i32 fcoder_metacmd_ID_miblo_increment_basic = 129;
+static i32 fcoder_metacmd_ID_miblo_increment_time_stamp = 130;
+static i32 fcoder_metacmd_ID_miblo_increment_time_stamp_minute = 131;
+static i32 fcoder_metacmd_ID_mouse_wheel_change_face_size = 132;
+static i32 fcoder_metacmd_ID_mouse_wheel_scroll = 133;
+static i32 fcoder_metacmd_ID_move_down = 134;
+static i32 fcoder_metacmd_ID_move_down_10 = 135;
+static i32 fcoder_metacmd_ID_move_down_textual = 136;
+static i32 fcoder_metacmd_ID_move_down_to_blank_line = 137;
+static i32 fcoder_metacmd_ID_move_down_to_blank_line_end = 138;
+static i32 fcoder_metacmd_ID_move_down_to_blank_line_skip_whitespace = 139;
+static i32 fcoder_metacmd_ID_move_left = 140;
+static i32 fcoder_metacmd_ID_move_left_alpha_numeric_boundary = 141;
+static i32 fcoder_metacmd_ID_move_left_alpha_numeric_or_camel_boundary = 142;
+static i32 fcoder_metacmd_ID_move_left_token_boundary = 143;
+static i32 fcoder_metacmd_ID_move_left_whitespace_boundary = 144;
+static i32 fcoder_metacmd_ID_move_left_whitespace_or_token_boundary = 145;
+static i32 fcoder_metacmd_ID_move_line_down = 146;
+static i32 fcoder_metacmd_ID_move_line_up = 147;
+static i32 fcoder_metacmd_ID_move_right = 148;
+static i32 fcoder_metacmd_ID_move_right_alpha_numeric_boundary = 149;
+static i32 fcoder_metacmd_ID_move_right_alpha_numeric_or_camel_boundary = 150;
+static i32 fcoder_metacmd_ID_move_right_token_boundary = 151;
+static i32 fcoder_metacmd_ID_move_right_whitespace_boundary = 152;
+static i32 fcoder_metacmd_ID_move_right_whitespace_or_token_boundary = 153;
+static i32 fcoder_metacmd_ID_move_up = 154;
+static i32 fcoder_metacmd_ID_move_up_10 = 155;
+static i32 fcoder_metacmd_ID_move_up_to_blank_line = 156;
+static i32 fcoder_metacmd_ID_move_up_to_blank_line_end = 157;
+static i32 fcoder_metacmd_ID_move_up_to_blank_line_skip_whitespace = 158;
+static i32 fcoder_metacmd_ID_multi_paste = 159;
+static i32 fcoder_metacmd_ID_multi_paste_interactive = 160;
+static i32 fcoder_metacmd_ID_multi_paste_interactive_quick = 161;
+static i32 fcoder_metacmd_ID_music_start = 162;
+static i32 fcoder_metacmd_ID_music_stop = 163;
+static i32 fcoder_metacmd_ID_no_op = 164;
+static i32 fcoder_metacmd_ID_note = 165;
+static i32 fcoder_metacmd_ID_open_all_code = 166;
+static i32 fcoder_metacmd_ID_open_all_code_recursive = 167;
+static i32 fcoder_metacmd_ID_open_file_in_quotes = 168;
+static i32 fcoder_metacmd_ID_open_in_other = 169;
+static i32 fcoder_metacmd_ID_open_long_braces = 170;
+static i32 fcoder_metacmd_ID_open_long_braces_break = 171;
+static i32 fcoder_metacmd_ID_open_long_braces_semicolon = 172;
+static i32 fcoder_metacmd_ID_open_matching_file_cpp = 173;
+static i32 fcoder_metacmd_ID_open_panel_hsplit = 174;
+static i32 fcoder_metacmd_ID_open_panel_vsplit = 175;
+static i32 fcoder_metacmd_ID_page_down = 176;
+static i32 fcoder_metacmd_ID_page_up = 177;
+static i32 fcoder_metacmd_ID_paste = 178;
+static i32 fcoder_metacmd_ID_paste_and_indent = 179;
+static i32 fcoder_metacmd_ID_paste_next = 180;
+static i32 fcoder_metacmd_ID_paste_next_and_indent = 181;
+static i32 fcoder_metacmd_ID_place_in_scope = 182;
+static i32 fcoder_metacmd_ID_play_with_a_counter = 183;
+static i32 fcoder_metacmd_ID_profile_clear = 184;
+static i32 fcoder_metacmd_ID_profile_disable = 185;
+static i32 fcoder_metacmd_ID_profile_enable = 186;
+static i32 fcoder_metacmd_ID_profile_inspect = 187;
+static i32 fcoder_metacmd_ID_project_command_lister = 188;
+static i32 fcoder_metacmd_ID_project_fkey_command = 189;
+static i32 fcoder_metacmd_ID_project_go_to_root_directory = 190;
+static i32 fcoder_metacmd_ID_project_reprint = 191;
+static i32 fcoder_metacmd_ID_q = 192;
+static i32 fcoder_metacmd_ID_qa = 193;
+static i32 fcoder_metacmd_ID_qk = 194;
+static i32 fcoder_metacmd_ID_query_replace = 195;
+static i32 fcoder_metacmd_ID_query_replace_identifier = 196;
+static i32 fcoder_metacmd_ID_query_replace_selection = 197;
+static i32 fcoder_metacmd_ID_quick_swap_buffer = 198;
+static i32 fcoder_metacmd_ID_redo = 199;
+static i32 fcoder_metacmd_ID_redo_all_buffers = 200;
+static i32 fcoder_metacmd_ID_reg = 201;
+static i32 fcoder_metacmd_ID_rename_file_query = 202;
+static i32 fcoder_metacmd_ID_reopen = 203;
+static i32 fcoder_metacmd_ID_replace_in_all_buffers = 204;
+static i32 fcoder_metacmd_ID_replace_in_buffer = 205;
+static i32 fcoder_metacmd_ID_replace_in_range = 206;
+static i32 fcoder_metacmd_ID_reverse_search = 207;
+static i32 fcoder_metacmd_ID_reverse_search_identifier = 208;
+static i32 fcoder_metacmd_ID_right_adjust_view = 209;
+static i32 fcoder_metacmd_ID_s = 210;
+static i32 fcoder_metacmd_ID_save = 211;
+static i32 fcoder_metacmd_ID_save_all_dirty_buffers = 212;
+static i32 fcoder_metacmd_ID_save_to_query = 213;
+static i32 fcoder_metacmd_ID_search = 214;
+static i32 fcoder_metacmd_ID_search_identifier = 215;
+static i32 fcoder_metacmd_ID_seek_beginning_of_line = 216;
+static i32 fcoder_metacmd_ID_seek_beginning_of_textual_line = 217;
+static i32 fcoder_metacmd_ID_seek_end_of_line = 218;
+static i32 fcoder_metacmd_ID_seek_end_of_textual_line = 219;
+static i32 fcoder_metacmd_ID_select_all = 220;
+static i32 fcoder_metacmd_ID_select_next_scope_absolute = 221;
+static i32 fcoder_metacmd_ID_select_next_scope_after_current = 222;
+static i32 fcoder_metacmd_ID_select_prev_scope_absolute = 223;
+static i32 fcoder_metacmd_ID_select_prev_top_most_scope = 224;
+static i32 fcoder_metacmd_ID_select_surrounding_scope = 225;
+static i32 fcoder_metacmd_ID_select_surrounding_scope_maximal = 226;
+static i32 fcoder_metacmd_ID_set_eol_mode_from_contents = 227;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_binary = 228;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_crlf = 229;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_lf = 230;
+static i32 fcoder_metacmd_ID_set_face_size = 231;
+static i32 fcoder_metacmd_ID_set_face_size_this_buffer = 232;
+static i32 fcoder_metacmd_ID_set_mark = 233;
+static i32 fcoder_metacmd_ID_set_mode_to_notepad_like = 234;
+static i32 fcoder_metacmd_ID_set_mode_to_original = 235;
+static i32 fcoder_metacmd_ID_setup_build_bat = 236;
+static i32 fcoder_metacmd_ID_setup_build_bat_and_sh = 237;
+static i32 fcoder_metacmd_ID_setup_build_sh = 238;
+static i32 fcoder_metacmd_ID_setup_new_project = 239;
+static i32 fcoder_metacmd_ID_show_filebar = 240;
+static i32 fcoder_metacmd_ID_show_scrollbar = 241;
+static i32 fcoder_metacmd_ID_show_the_log_graph = 242;
+static i32 fcoder_metacmd_ID_snipe_backward_whitespace_or_token_boundary = 243;
+static i32 fcoder_metacmd_ID_snipe_forward_whitespace_or_token_boundary = 244;
+static i32 fcoder_metacmd_ID_snippet_lister = 245;
+static i32 fcoder_metacmd_ID_sp = 246;
+static i32 fcoder_metacmd_ID_string_repeat = 247;
+static i32 fcoder_metacmd_ID_suppress_mouse = 248;
+static i32 fcoder_metacmd_ID_swap_panels = 249;
+static i32 fcoder_metacmd_ID_theme_lister = 250;
+static i32 fcoder_metacmd_ID_to_lowercase = 251;
+static i32 fcoder_metacmd_ID_toggle_filebar = 252;
+static i32 fcoder_metacmd_ID_toggle_fps_meter = 253;
+static i32 fcoder_metacmd_ID_toggle_fullscreen = 254;
+static i32 fcoder_metacmd_ID_toggle_highlight_enclosing_scopes = 255;
+static i32 fcoder_metacmd_ID_toggle_highlight_line_at_cursor = 256;
+static i32 fcoder_metacmd_ID_toggle_line_numbers = 257;
+static i32 fcoder_metacmd_ID_toggle_line_wrap = 258;
+static i32 fcoder_metacmd_ID_toggle_mouse = 259;
+static i32 fcoder_metacmd_ID_toggle_paren_matching_helper = 260;
+static i32 fcoder_metacmd_ID_toggle_show_whitespace = 261;
+static i32 fcoder_metacmd_ID_toggle_virtual_whitespace = 262;
+static i32 fcoder_metacmd_ID_tutorial_maximize = 263;
+static i32 fcoder_metacmd_ID_tutorial_minimize = 264;
+static i32 fcoder_metacmd_ID_uncomment_line = 265;
+static i32 fcoder_metacmd_ID_undo = 266;
+static i32 fcoder_metacmd_ID_undo_all_buffers = 267;
+static i32 fcoder_metacmd_ID_view_buffer_other_panel = 268;
+static i32 fcoder_metacmd_ID_view_jump_list_with_lister = 269;
+static i32 fcoder_metacmd_ID_vim_command_mode = 270;
+static i32 fcoder_metacmd_ID_vim_dec_buffer_peek = 271;
+static i32 fcoder_metacmd_ID_vim_inc_buffer_peek = 272;
+static i32 fcoder_metacmd_ID_vim_interactive_open_or_new = 273;
+static i32 fcoder_metacmd_ID_vim_jump_lister = 274;
+static i32 fcoder_metacmd_ID_vim_list_all_functions_current_buffer_lister = 275;
+static i32 fcoder_metacmd_ID_vim_proj_cmd_lister = 276;
+static i32 fcoder_metacmd_ID_vim_scoll_buffer_peek_down = 277;
+static i32 fcoder_metacmd_ID_vim_scoll_buffer_peek_up = 278;
+static i32 fcoder_metacmd_ID_vim_switch_lister = 279;
+static i32 fcoder_metacmd_ID_vim_theme_lister = 280;
+static i32 fcoder_metacmd_ID_vim_toggle_relative_line_num = 281;
+static i32 fcoder_metacmd_ID_vim_toggle_show_buffer_peek = 282;
+static i32 fcoder_metacmd_ID_vim_try_exit = 283;
+static i32 fcoder_metacmd_ID_vs = 284;
+static i32 fcoder_metacmd_ID_w = 285;
+static i32 fcoder_metacmd_ID_word_complete = 286;
+static i32 fcoder_metacmd_ID_word_complete_drop_down = 287;
+static i32 fcoder_metacmd_ID_wq = 288;
+static i32 fcoder_metacmd_ID_wqa = 289;
+static i32 fcoder_metacmd_ID_write_block = 290;
+static i32 fcoder_metacmd_ID_write_hack = 291;
+static i32 fcoder_metacmd_ID_write_note = 292;
+static i32 fcoder_metacmd_ID_write_space = 293;
+static i32 fcoder_metacmd_ID_write_text_and_auto_indent = 294;
+static i32 fcoder_metacmd_ID_write_text_input = 295;
+static i32 fcoder_metacmd_ID_write_todo = 296;
+static i32 fcoder_metacmd_ID_write_underscore = 297;
+static i32 fcoder_metacmd_ID_write_zero_struct = 298;
 #endif
