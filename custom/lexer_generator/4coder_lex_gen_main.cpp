@@ -3905,7 +3905,18 @@ file_read_all(Arena *arena, FILE *file){
     return(result);
 }
 
-int main(void){
+int main(int argc, char **argv){
+  String_Const_u8 output_path;
+  {// handle input
+    if (argc != 2)
+    {
+      printf("error: we need one argument");
+      exit(1);
+    }
+
+    output_path = SCu8(argv[1]);
+  }
+
     pcg32_srandom(time(0), time(0));
     
     Base_Allocator *allocator = get_allocator_malloc();
@@ -4001,10 +4012,10 @@ int main(void){
     
     String_Const_u8 path_to_src = string_remove_last_folder(path_to_self);
     
-    String_Const_u8 out_h_name = push_u8_stringf(&ctx->arena, "%.*sgenerated/lexer_" LANG_NAME_LOWER_STR ".h",
-                                                 string_expand(path_to_src));
-    String_Const_u8 out_cpp_name = push_u8_stringf(&ctx->arena, "%.*sgenerated/lexer_" LANG_NAME_LOWER_STR ".cpp",
-                                                   string_expand(path_to_src));
+    String_Const_u8 out_h_name = push_u8_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".h",
+                                                 string_expand(output_path));
+    String_Const_u8 out_cpp_name = push_u8_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".cpp",
+                                                   string_expand(output_path));
     
     FILE *out_h_file = fopen((char*)out_h_name.str, "wb");
     if (out_h_file == 0){
