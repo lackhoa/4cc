@@ -1,3 +1,5 @@
+#pragma once
+
 #define system_error_box_sig() void system_error_box(char* msg)
 #define system_get_path_sig() String_Const_u8 system_get_path(Arena* arena, System_Path_Code path_code)
 #define system_get_canonical_sig() String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name)

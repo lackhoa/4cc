@@ -43,9 +43,8 @@ char **argv)
 
 typedef App_Read_Command_Line_Sig(App_Read_Command_Line);
 
-// #modified(kv)
-extern "C" _Get_Version_Type custom_get_version;
-extern "C" _Init_APIs_Type   custom_init_apis;
+function _Get_Version_Type custom_get_version;
+function _Init_APIs_Type   custom_init_apis;
 /*
 struct Custom_API{
     _Get_Version_Type *get_version;

@@ -9,7 +9,7 @@
 
 // TOP
 
-//#define FM_PRINT_COMMANDS
+#define FM_PRINT_COMMANDS
 
 #include "4coder_base_types.h"
 #include "4coder_version.h"
@@ -115,9 +115,7 @@ char *arch_names[] = {
 #define FOREIGN "../4coder-non-source/foreign"
 #define FOREIGN_WIN "..\\4coder-non-source\\foreign"
 
-#define AUTODRAW "../../AutoDraw"  // note(kv): relative paths
-
-char *includes[] = { "custom", FOREIGN "/freetype2", AUTODRAW "/code", AUTODRAW "/libs", 0, };
+char *includes[] = { "custom", FOREIGN "/freetype2", "4coder_kv", "4coder_kv/libs", 0, };
 
 //
 // Platform layer file tables
@@ -168,6 +166,8 @@ get_defines_from_flags(Arena *arena, u32 flags){
     }
     if (HasFlag(flags, INTERNAL)){
         result = fm_list(arena, fm_list_one_item(arena, "FRED_INTERNAL"), result);
+        result = fm_list(arena, fm_list_one_item(arena, "KV_INTERNAL=1"), result);
+        result = fm_list(arena, fm_list_one_item(arena, "KV_SLOW=1"), result);
     }
     if (HasFlag(flags, SUPER)){
         result = fm_list(arena, fm_list_one_item(arena, "FRED_SUPER"), result);
@@ -418,78 +418,87 @@ FOREIGN "/x86/libfreetype-mac.a"
 
 //;build_clang
 internal void
-build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, char *out_path, char *out_file, char **defines, char **exports, char **inc_folders){
-    // todo(kv): add a "link" line
-    Build_Line compile;
+build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, char *out_path, char *out_file, char **defines, char **exports, char **inc_folders)
+{
+  // bookmark: split the build step out for ccache
+  Build_Line compile;
+  {
     fm_init_build_line(&compile);
     
     switch (arch){
-        case Arch_X64:
-        fm_add_to_line(compile, "-m64");
-        fm_add_to_line(compile, "-DFTECH_64_BIT"); break;
-        
-        case Arch_X86:
-        fm_add_to_line(compile, "-m32");
-        fm_add_to_line(compile, "-DFTECH_32_BIT"); break;
-        
-        default: InvalidPath;
+      case Arch_X64:
+      fm_add_to_line(compile, "-m64");
+      fm_add_to_line(compile, "-DFTECH_64_BIT"); break;
+      
+      case Arch_X86:
+      fm_add_to_line(compile, "-m32");
+      fm_add_to_line(compile, "-DFTECH_32_BIT"); break;
+      
+      default: InvalidPath;
     }
     
     if (flags & OPTS){
-        fm_add_to_line(compile, CLANG_OPTS);
+      fm_add_to_line(compile, CLANG_OPTS);
     }
     
     fm_add_to_line(compile, "-I%s", code_path);
     if (inc_folders != 0){
-        for (u32 i = 0; inc_folders[i] != 0; ++i){
-            char *str = fm_str(arena, code_path, "/", inc_folders[i]);
-            fm_add_to_line(compile, "-I%s", str);
-        }
-    }
-   
-    if (flags & DEBUG_INFO){
-        fm_add_to_line(compile, "-g -O0");
+      for (u32 i = 0; inc_folders[i] != 0; ++i){
+        char *str = fm_str(arena, code_path, "/", inc_folders[i]);
+        fm_add_to_line(compile, "-I%s", str);
+      }
     }
     
-    if (flags & OPTIMIZATION){
-        fm_add_to_line(compile, "-O3");
-    }
-    
-    if (flags & SHARED_CODE){
-        fm_add_to_line(compile, "-shared");
+    if (flags & DEBUG_INFO)
+    {
+      fm_add_to_line(compile, "-g -O0");
+    } 
+    else if (flags & OPTIMIZATION)
+    {
+      fm_add_to_line(compile, "-O3");
     }
     
     if (defines != 0){
-        for (u32 i = 0; defines[i]; ++i){
-            char *define_flag = fm_str(arena, "-D", defines[i]);
-            fm_add_to_line(compile, "%s", define_flag);
-        }
+      for (u32 i = 0; defines[i]; ++i){
+        char *define_flag = fm_str(arena, "-D", defines[i]);
+        fm_add_to_line(compile, "%s", define_flag);
+      }
     }
     
     fm_add_to_line(compile, "-I\"%s\"", code_path);
+    
+    // note(kv): the code to compile
+    fm_add_to_line(compile, "-c");
     for (u32 i = 0; code_files[i] != 0; ++i)
     {
-        char *file = code_files[i];
-        // NOTE(kv): relative vs absolute path
-        if (file[0] == '/') fm_add_to_line(compile, "\"%s\"", file);
-        else                fm_add_to_line(compile, "\"%s/%s\"", code_path, file);
-    }
-    
-    if (flags & LIBS){
-        if (arch == Arch_X64)      fm_add_to_line(compile, CLANG_LIBS_X64);
-        else if (arch == Arch_X86) fm_add_to_line(compile, CLANG_LIBS_X86);
+      char *file = code_files[i];
+      // NOTE(kv): relative vs absolute path
+      if (file[0] == '/') fm_add_to_line(compile, "\"%s\"", file);
+      else                fm_add_to_line(compile, "\"%s/%s\"", code_path, file);
     }
     
     fm_finish_build_line(&compile);
-    
-    Temp_Dir temp = fm_pushdir(out_path);
-    
-    // systemf("clang++ %s -E -o %s", compile.build_options, "4ed.i");
-    // bookmark: split the build step out for ccache
-    printf("Producing %s\n", out_file);
-    systemf("ccache clang++ %s -o %s", compile.build_options, out_file);
-    // systemf("clang++ -c %s -o ", link.build_options, out_object);
-    fm_popdir(temp);
+  }
+  
+  Build_Line link;
+  {
+    fm_init_build_line(&link);
+    if (flags & LIBS){
+      if      (arch == Arch_X64) fm_add_to_line(link, CLANG_LIBS_X64);
+      else if (arch == Arch_X86) fm_add_to_line(link, CLANG_LIBS_X86);
+    }
+    if (flags & SHARED_CODE){
+      fm_add_to_line(link, "-shared");
+    }
+    fm_finish_build_line(&link);
+  }
+  
+  Temp_Dir temp = fm_pushdir(out_path);
+  
+  printf("Producing %s\n", out_file);
+  systemf("ccache clang++ %s -o %s.o", compile.build_options, out_file);
+  systemf("clang++ %s %s.o -o %s", link.build_options, out_file, out_file);
+  fm_popdir(temp);
 }
 
 #else
@@ -558,9 +567,9 @@ build_main(Arena *arena, char *cdir, b32 update_local_theme, u32 flags, u32 arch
   
     char *dir = fm_str(arena, BUILD_DIR);
     char **defines = get_defines_from_flags(arena, flags);
-    
+   
     {// NOTE(kv): 4ed_app
-        char *code_files[] = { fm_str(arena, "4ed_app_target.cpp"), "/Users/khoa/4coder/custom_4coder.o", 0 };
+        char *code_files[] = { fm_str(arena, "4ed_app_target.cpp"), 0 };
         char **exports = fm_list_one_item(arena, "app_get_functions");
         char **build_includes = includes;
         u32 build_flags = OPTS | SHARED_CODE | flags;
@@ -731,4 +740,3 @@ int main(int argc, char **argv){
 }
 
 // BOTTOM
-

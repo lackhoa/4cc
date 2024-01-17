@@ -13,15 +13,19 @@ def run(command, update_env={}):
     env.update(update_env)
     process = subprocess.run(command, shell=True, capture_output=True, env=env)
 
-    end = time.time()
-    print(f'Time taken: {end - begin:.3f} seconds')
     if len(process.stdout):
         print(process.stdout.decode("utf-8"))
     if len(process.stderr):
         print(process.stderr.decode("utf-8"))
-    if process.returncode != 0:
+
+    if process.returncode == 0:
+        end = time.time()
+        if (end - begin) > 0.05:
+            print(f'Time taken: {end - begin:.3f} seconds')
+            print()
+    else:
         exit(1)
-    print()
+
     return process
 
 def mtime(path):
@@ -50,8 +54,6 @@ try:
     ADDRESS_SANITIZER_ON = False
 
     INCLUDES=f'-I{HERE}/custom_patch -I{CUSTOM} -I{AUTODRAW}/libs -I{AUTODRAW}/4coder_kv/libs -I{AUTODRAW}/code'
-    OPTIMIZATION='-O0' if DEBUG_MODE else '-O2'
-    opts = f"-Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses -g -DOS_MAC=1 -DOS_WINDOWS=0 -DOS_LINUX=0 {INCLUDES} {OPTIMIZATION}"
     arch = "-m64"
     debug="-g" if DEBUG_MODE else ""
     COPY_TO_STABLE = False

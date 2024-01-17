@@ -1,3 +1,5 @@
+#pragma once
+
 #define custom_global_set_setting_sig() b32 custom_global_set_setting(Application_Links* app, Global_Setting_ID setting, i64 value)
 #define custom_global_get_screen_rectangle_sig() Rect_f32 custom_global_get_screen_rectangle(Application_Links* app)
 #define custom_get_thread_context_sig() Thread_Context* custom_get_thread_context(Application_Links* app)

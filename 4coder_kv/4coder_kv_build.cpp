@@ -1,4 +1,3 @@
-/* 4coder_build_commands.cpp */
 #include "4coder_kv_utils.cpp"
 
 #if OS_WINDOWS

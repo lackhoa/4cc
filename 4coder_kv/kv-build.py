@@ -51,7 +51,7 @@ try:
 
     run_only       = (len(sys.argv) > 1 and sys.argv[1] == 'run')
     full_rebuild   = (len(sys.argv) > 1 and sys.argv[1] == 'full')  # hopefully never have to be used
-    full_rebuild = True  #temp
+    full_rebuild = True  # note: actually with unity build this might be the only use of this script
 
     ADDRESS_SANITIZER_ON = False
 
@@ -93,11 +93,11 @@ try:
             print('Meta-generator: Run')
             run(f'"{CUSTOM}/metadata_generator" -R "{CUSTOM}" "{os.getcwd()}/{preproc_file}"')
 
-        print('custom_4coder.o: Compile')
-        run(f'ccache clang++ -c "{SOURCE}" -I"{CUSTOM}" {arch} {opts} {debug} -std=c++11 -fPIC -o custom_4coder.o {sanitize_address}')
-        if not DEBUG_MODE:
-            print(f'Move binary to stable')
-            run(f'mv custom_4coder.o ~/4coder_stable/')
+        # print('custom_4coder.o: Compile')
+        # run(f'ccache clang++ -c "{SOURCE}" -I"{CUSTOM}" {arch} {opts} {debug} -std=c++11 -fPIC -o custom_4coder.o {sanitize_address}')
+        # if not DEBUG_MODE:
+            # print(f'Move binary to stable')
+            # run(f'mv custom_4coder.o ~/4coder_stable/')
 
         print("NOTE: Setup 4coder config files")
         run(f'ln -sf "{HERE}/config.4coder" "{FCODER_USER}/config.4coder"')

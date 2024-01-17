@@ -29,7 +29,8 @@ FLAGS="-D_GNU_SOURCE -fPIC -fpermissive $BUILD_MODE"
 INCLUDES="-I$SRC_ROOT -I$CUSTOM_ROOT"
 
 # Execute
-clang++ $WARNINGS $FLAGS $INCLUDES "$BIN_ROOT/4ed_build.cpp" -g -o "$BUILD_ROOT/build"
+ccache clang++ $WARNINGS $FLAGS $INCLUDES -c "$BIN_ROOT/4ed_build.cpp" -g -o "$BUILD_ROOT/build.o"
+clang++ "$BUILD_ROOT/build.o" -o "$BUILD_ROOT/build"
 pushd "$SRC_ROOT"
 "$BUILD_ROOT/build"
 popd

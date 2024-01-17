@@ -346,12 +346,13 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
 	
 	kv_render_buffer(app, frame_info, view, face_id, buffer, text_layout_id, region);
 
-  if (KV_INTERNAL)
+  #if (KV_INTERNAL)
   {// my test hud
     Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
 		kv_draw_test_hud(app, face_id, text_layout_id, pair.max);
 		region = pair.min;
   }
+  #endif
   
 	text_layout_free(app, text_layout_id);
 	draw_set_clip(app, prev_clip);

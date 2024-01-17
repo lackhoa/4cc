@@ -21,8 +21,6 @@
 #include "4coder_types.h"
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
-#define EXTERNAL_LINK_API
-#include "generated/custom_api.h"
 #include "4coder_system_types.h"
 #define DYNAMIC_LINK_API
 #include "generated/system_api.h"
@@ -31,7 +29,6 @@
 #endif
 
 #include "4coder_token.h"
-#include "generated/lexer_cpp.h"
 
 #include "4coder_variables.h"
 #include "4coder_audio.h"
@@ -70,32 +67,31 @@
 #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 // #include "4coder_app_links_allocator.cpp"  // note(kv): static link
-#include "4coder_system_allocator.cpp"
+// #include "4coder_system_allocator.cpp"
 
 #include "4coder_file.cpp"
+#include "4coder_async_tasks.cpp"
+#include "4coder_custom.cpp"
 
-#define EXTERNAL_LINK_API
-#include "generated/custom_api.cpp"
-#define DYNAMIC_LINK_API
-#include "generated/system_api.cpp"
+// #define DYNAMIC_LINK_API
+// #include "generated/system_api.cpp"
 // #include "4coder_system_helpers.cpp"  // note(kv): static link
+/*
 #include "4coder_layout.cpp"
 #include "4coder_profile.cpp"
-#include "4coder_profile_commands.cpp"
 #include "4coder_profile_static_enable.cpp"
 #include "4coder_events.cpp"
-#include "4coder_custom.cpp"
 #include "4coder_log.cpp"
 #include "4coder_hash_functions.cpp"
 #include "4coder_table.cpp"
 #include "4coder_codepoint_map.cpp"
-#include "4coder_async_tasks.cpp"
 #include "4coder_string_match.cpp"
 #include "4coder_buffer_seek_constructors.cpp"
 #include "4coder_token.cpp"
 #include "4coder_command_map.cpp"
+*/
 
-#include "generated/lexer_cpp.cpp"
+#include "4coder_profile_commands.cpp"
 
 #include "4coder_default_map.cpp"
 #include "4coder_mac_map.cpp"
@@ -136,9 +132,11 @@
 #include "4coder_miblo_numbers.cpp"
 #include "4coder_profile_inspect.cpp"
 #include "4coder_tutorial.cpp"
+/*
 #include "4coder_doc_content_types.cpp"
 #include "4coder_doc_commands.cpp"
 #include "4coder_docs.cpp"
+*/
 #include "4coder_variables.cpp"
 #include "4coder_audio.cpp"
 #include "4coder_search_list.cpp"

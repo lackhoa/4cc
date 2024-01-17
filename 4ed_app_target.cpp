@@ -11,6 +11,9 @@
 
 #define REMOVE_OLD_STRING
 
+#define KV_IMPLEMENTATION
+#include "kv.h"
+#undef  KV_IMPLEMENTATION
 #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_table.h"
@@ -18,7 +21,7 @@
 #include "4coder_types.h"
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
-#define EXTERNAL_LINK_API
+#define STATIC_LINK_API
 #include "generated/custom_api.h"
 
 #include "4coder_string_match.h"
@@ -95,7 +98,7 @@
 #include "generated/font_api.cpp"
 
 #include "4coder_token.cpp"
-// #include "generated/lexer_cpp.cpp"
+#include "generated/lexer_cpp.cpp"
 
 #include "4ed_api_definition.cpp"
 #include "generated/custom_api_constructor.cpp"
@@ -124,6 +127,7 @@
 #include "4ed_edit.cpp"
 #include "4ed_text_layout.cpp"
 #include "4ed_api_implementation.cpp"
+#include "4coder_kv.cpp"
 #include "4ed.cpp"
 
 // BOTTOM

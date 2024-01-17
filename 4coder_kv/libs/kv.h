@@ -21,11 +21,7 @@
 
   All non-nil-terminated strings must be marked explicitly with "non_nil"
 
-  todo: debate: Actually let's just use C string, because it's more ergonomic.
-  Because of printf, concate and all that.
-  If we don't have nil terminator, we're screwed when using those standard C funcitons.
-  But if we don't use nil terminator, we can't have cheap substrings (which is
-  the only attraction).
+  todo: let's assert that the our build flags are correct.
 */
 
 #pragma once  // NOTE: #pragma once means that you have to define the
@@ -54,8 +50,10 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 
+#undef internal
 #    include "stb_ds.h"
 #    include "gb.h"
+#define internal static
 
 #pragma clang diagnostic pop
 
@@ -351,11 +349,6 @@ rotateRight(u32 value, i32 rotateAmount)
 
 #define UNUSED_VAR __attribute__((unused))
 #define unused_var __attribute__((unused))
-
-#define internal        static
-#define global_variable UNUSED_VAR static
-#define global_constant UNUSED_VAR static
-#define local_persist   static
 
 #define kiloBytes(value) ((value)*1024LL)
 #define megaBytes(value) (kiloBytes(value)*1024LL)
