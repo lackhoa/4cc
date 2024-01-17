@@ -21,7 +21,7 @@
 #include "4coder_types.h"
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
-#define DYNAMIC_LINK_API
+#define EXTERNAL_LINK_API
 #include "generated/custom_api.h"
 #include "4coder_system_types.h"
 #define DYNAMIC_LINK_API
@@ -69,19 +69,19 @@
 
 #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
-#include "4coder_app_links_allocator.cpp"
+// #include "4coder_app_links_allocator.cpp"  // note(kv): static link
 #include "4coder_system_allocator.cpp"
 
 #include "4coder_file.cpp"
 
-#include "4coder_kv_api.h"  // NOTE(kv): I can't find the script to generate the custom_api, so have to define new APIs manually for now
-#define DYNAMIC_LINK_API
+#define EXTERNAL_LINK_API
 #include "generated/custom_api.cpp"
 #define DYNAMIC_LINK_API
 #include "generated/system_api.cpp"
-#include "4coder_system_helpers.cpp"
+// #include "4coder_system_helpers.cpp"  // note(kv): static link
 #include "4coder_layout.cpp"
 #include "4coder_profile.cpp"
+#include "4coder_profile_commands.cpp"
 #include "4coder_profile_static_enable.cpp"
 #include "4coder_events.cpp"
 #include "4coder_custom.cpp"

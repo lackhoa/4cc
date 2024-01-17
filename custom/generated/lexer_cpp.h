@@ -194,7 +194,8 @@ TokenCppKind_PPUnknown = 175,
 TokenCppKind_PPDefined = 176,
 TokenCppKind_COUNT = 177,
 };
-char *token_cpp_kind_names[] = {
+// #modified(kv): add global we don't really need it
+global char *token_cpp_kind_names[] = {
 "EOF",
 "Whitespace",
 "LexError",

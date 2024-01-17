@@ -23,7 +23,7 @@ enum{
      November,
      December,
 };
-char *doc_month_names[] = {
+global char *doc_month_names[] = {
     "None",
     "January",
     "February",
@@ -38,7 +38,7 @@ char *doc_month_names[] = {
     "November",
     "December",
 };
-char *doc_day_names[] = {
+global char *doc_day_names[] = {
     "0",
     "1st",
     "2nd",
@@ -107,7 +107,7 @@ enum{
     DocCodeLanguage_Cpp,
     DocCodeLanguage_Bat,
 };
-char *doc_language_name[] = {
+global char *doc_language_name[] = {
     "none",
     "C++",
     "Batch",

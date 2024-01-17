@@ -28,7 +28,7 @@ static i32 prev_error = 0;
 #define SYSTEMF_PRINTF(...)
 #endif
 
-#define systemf(...) do{                                       \
+#define systemf(...) do{                                   \
 i32 n = snprintf(SF_CMD, sizeof(SF_CMD), __VA_ARGS__);     \
 Assert(n < sizeof(SF_CMD));                                \
 SYSTEMF_PRINTF("%s\n", SF_CMD);                            \

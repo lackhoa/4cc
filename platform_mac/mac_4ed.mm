@@ -40,6 +40,7 @@
 #include "generated/font_api.cpp"
 
 #include "4coder_base_types.cpp"
+#include "4coder_base_types_member_functions.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_events.cpp"
 #include "4coder_hash_functions.cpp"
@@ -1350,8 +1351,11 @@ main(int arg_count, char **args){
         }
 
         // NOTE(yuval): Load custom layer
+        // todo(kv): removeme
+    /*
         System_Library custom_library = {};
         Custom_API custom = {};
+        if (0)
         {
             char custom_not_found_msg[] = "Did not find a library for the custom layer.";
             char custom_fail_version_msg[] = "Failed to load custom code due to missing version information or a version mismatch.  Try rebuilding with buildsuper.";
@@ -1402,6 +1406,7 @@ main(int arg_count, char **args){
                 system_error_box(custom_fail_init_apis);
             }
         }
+*/
 
         //
         // Window and Renderer Initialization
@@ -1496,8 +1501,8 @@ main(int arg_count, char **args){
             Scratch_Block scratch(mac_vars.tctx);
             String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
             curdir = string_mod_replace_character(curdir, '\\', '/');
-            app.init(mac_vars.tctx, &target, mac_vars.base_ptr, curdir, custom);
-            // todo(kv): hacking to draw my window
+            app.init(mac_vars.tctx, &target, mac_vars.base_ptr, curdir);
+            // todo(kv): removeme hacking to draw my window
             // char *todo_autodraw_path = (char *)"/Users/khoa/AutoDraw/build";
             // adMainFcoder(todo_autodraw_path); 
         }

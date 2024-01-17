@@ -200,24 +200,27 @@ App_Read_Command_Line_Sig(app_read_command_line){
     return(models);
 }
 
+// todo(kv): move this somewhere good better
+extern "C" void custom_layer_init(Application_Links *app);
+
 App_Init_Sig(app_init){
     Models *models = (Models*)base_ptr;
     models->keep_playing = true;
     models->hard_exit = false;
     
-    models->config_api = api;
+    // models->config_api = api;
     models->virtual_event_arena = make_arena_system();
     
     profile_init(&models->profile_list);
     
     managed_ids_init(tctx->allocator, &models->managed_id_set);
-    
-    API_VTable_custom custom_vtable = {};
-    custom_api_fill_vtable(&custom_vtable);
+   
     API_VTable_system system_vtable = {};
     system_api_fill_vtable(&system_vtable);
-    Custom_Layer_Init_Type *custom_init = api.init_apis(&custom_vtable, &system_vtable);
-    Assert(custom_init != 0);
+    // todo(kv): removeme
+    // Custom_Layer_Init_Type *custom_init = api.init_apis(&system_vtable);
+    // Assert(custom_init != 0);
+    custom_init_apis(&system_vtable);
     
     // NOTE(allen): coroutines
     coroutine_system_init(&models->coroutines);
@@ -290,7 +293,7 @@ App_Init_Sig(app_init){
     Application_Links app = {};
     app.tctx = tctx;
     app.cmd_context = models;
-    custom_init(&app);
+    custom_layer_init(&app);
     
     // NOTE(allen): init baked in buffers
     File_Init init_files[] = {

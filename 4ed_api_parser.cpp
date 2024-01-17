@@ -274,6 +274,7 @@ api_parse_source__union(Arena *arena, String_Const_u8 source_name, String_Const_
     return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Union, token_it, api_name, list));
 }
 
+#if 0 // NOTE(kv): this is the meta generator, which we don't use
 function void
 api_parse_source_add_to_list(Arena *arena, String_Const_u8 source_name, String_Const_u8 source, API_Definition_List *list){
     Token_List token_list = lex_full_input_cpp(arena, source);
@@ -317,6 +318,7 @@ api_parse_source(Arena *arena, String_Const_u8 source_name, String_Const_u8 sour
     api_parse_source_add_to_list(arena, source_name, source, &list);
     return(list);
 }
+#endif
 
 // BOTTOM
 

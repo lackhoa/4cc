@@ -12,14 +12,13 @@ struct Application_Links{
     void *cmd_context;
 };
 api(custom)
-typedef void Custom_Layer_Init_Type(Application_Links *app);
-void custom_layer_init(Application_Links *app);
+// typedef void Custom_Layer_Init_Type(Application_Links *app);
+// void custom_layer_init(Application_Links *app);
 
 api(custom)
 typedef b32 _Get_Version_Type(i32 maj, i32 min, i32 patch);
 api(custom)
-typedef Custom_Layer_Init_Type *_Init_APIs_Type(struct API_VTable_custom *custom_vtable,
-                                                struct API_VTable_system *system_vtable);
+typedef void *_Init_APIs_Type(struct API_VTable_system *system_vtable);
 
 ////////////////////////////////
 

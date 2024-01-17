@@ -404,8 +404,7 @@ build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, cha
 #define CLANG_LIBS_COMMON \
 "-framework Cocoa -framework QuartzCore " \
 "-framework CoreServices " \
-"-framework OpenGL -framework IOKit -framework Metal -framework MetalKit " \
-AUTODRAW "/build/autodraw.o "
+"-framework OpenGL -framework IOKit -framework Metal -framework MetalKit "
 
 #define CLANG_LIBS_X64 CLANG_LIBS_COMMON \
 FOREIGN "/x64/libfreetype-mac.a"
@@ -417,75 +416,79 @@ FOREIGN "/x86/libfreetype-mac.a"
 # error clang options not set for this platform
 #endif
 
+//;build_clang
 internal void
 build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, char *out_path, char *out_file, char **defines, char **exports, char **inc_folders){
-    Build_Line line;
-    fm_init_build_line(&line);
+    // todo(kv): add a "link" line
+    Build_Line compile;
+    fm_init_build_line(&compile);
     
     switch (arch){
         case Arch_X64:
-        fm_add_to_line(line, "-m64");
-        fm_add_to_line(line, "-DFTECH_64_BIT"); break;
+        fm_add_to_line(compile, "-m64");
+        fm_add_to_line(compile, "-DFTECH_64_BIT"); break;
         
         case Arch_X86:
-        fm_add_to_line(line, "-m32");
-        fm_add_to_line(line, "-DFTECH_32_BIT"); break;
+        fm_add_to_line(compile, "-m32");
+        fm_add_to_line(compile, "-DFTECH_32_BIT"); break;
         
         default: InvalidPath;
     }
     
     if (flags & OPTS){
-        fm_add_to_line(line, CLANG_OPTS);
+        fm_add_to_line(compile, CLANG_OPTS);
     }
     
-    fm_add_to_line(line, "-I%s", code_path);
+    fm_add_to_line(compile, "-I%s", code_path);
     if (inc_folders != 0){
         for (u32 i = 0; inc_folders[i] != 0; ++i){
             char *str = fm_str(arena, code_path, "/", inc_folders[i]);
-            fm_add_to_line(line, "-I%s", str);
+            fm_add_to_line(compile, "-I%s", str);
         }
     }
    
     if (flags & DEBUG_INFO){
-        fm_add_to_line(line, "-g -O0");
+        fm_add_to_line(compile, "-g -O0");
     }
     
     if (flags & OPTIMIZATION){
-        fm_add_to_line(line, "-O3");
+        fm_add_to_line(compile, "-O3");
     }
     
     if (flags & SHARED_CODE){
-        fm_add_to_line(line, "-shared");
+        fm_add_to_line(compile, "-shared");
     }
     
     if (defines != 0){
         for (u32 i = 0; defines[i]; ++i){
             char *define_flag = fm_str(arena, "-D", defines[i]);
-            fm_add_to_line(line, "%s", define_flag);
+            fm_add_to_line(compile, "%s", define_flag);
         }
     }
     
-    fm_add_to_line(line, "-I\"%s\"", code_path);
-    for (u32 i = 0; code_files[i] != 0; ++i){
-        fm_add_to_line(line, "\"%s/%s\"", code_path, code_files[i]);
+    fm_add_to_line(compile, "-I\"%s\"", code_path);
+    for (u32 i = 0; code_files[i] != 0; ++i)
+    {
+        char *file = code_files[i];
+        // NOTE(kv): relative vs absolute path
+        if (file[0] == '/') fm_add_to_line(compile, "\"%s\"", file);
+        else                fm_add_to_line(compile, "\"%s/%s\"", code_path, file);
     }
     
     if (flags & LIBS){
-        if (arch == Arch_X64){
-            fm_add_to_line(line, CLANG_LIBS_X64);
-        }
-        else if (arch == Arch_X86)
-        {
-            fm_add_to_line(line, CLANG_LIBS_X86);
-        }
+        if (arch == Arch_X64)      fm_add_to_line(compile, CLANG_LIBS_X64);
+        else if (arch == Arch_X86) fm_add_to_line(compile, CLANG_LIBS_X86);
     }
     
-    fm_finish_build_line(&line);
+    fm_finish_build_line(&compile);
     
     Temp_Dir temp = fm_pushdir(out_path);
     
-    // systemf("clang++ %s -E -o %s", line.build_options, "4ed.i");
-    systemf("clang++ %s -o %s", line.build_options, out_file);
+    // systemf("clang++ %s -E -o %s", compile.build_options, "4ed.i");
+    // bookmark: split the build step out for ccache
+    printf("Producing %s\n", out_file);
+    systemf("ccache clang++ %s -o %s", compile.build_options, out_file);
+    // systemf("clang++ -c %s -o ", link.build_options, out_object);
     fm_popdir(temp);
 }
 
@@ -550,21 +553,27 @@ buildsuper(Arena *arena, char *cdir, char *file, u32 arch){
 
 internal void
 build_main(Arena *arena, char *cdir, b32 update_local_theme, u32 flags, u32 arch){
+    dup2(1,2);  // NOTE(kv): there's no order guarantee between stderr and stdout, which messes up our error reporting.
+    setbuf(stdout, NULL);
+  
     char *dir = fm_str(arena, BUILD_DIR);
+    char **defines = get_defines_from_flags(arena, flags);
     
-    {
-        char *file = fm_str(arena, "4ed_app_target.cpp");
+    {// NOTE(kv): 4ed_app
+        char *code_files[] = { fm_str(arena, "4ed_app_target.cpp"), "/Users/khoa/4coder/custom_4coder.o", 0 };
         char **exports = fm_list_one_item(arena, "app_get_functions");
-        
         char **build_includes = includes;
-        
-        build(arena, OPTS | SHARED_CODE | flags, arch, cdir, file, dir, "4ed_app" DLL, get_defines_from_flags(arena, flags), exports, build_includes);
+        u32 build_flags = OPTS | SHARED_CODE | flags;
+        build(arena, build_flags, arch, cdir, code_files, dir, "4ed_app" DLL, defines, exports, build_includes);
     }
-    
-    {
+    if (error_state) return; 
+  
+    {// NOTE(kv): 4ed
         char **inc = (char**)fm_list(arena, includes, platform_includes[This_OS][This_Compiler]);
-        build(arena, OPTS | LIBS | ICON | flags, arch, cdir, platform_layers[This_OS], dir, "4ed", get_defines_from_flags(arena, flags), 0, inc);
+        u32 build_flags = OPTS | LIBS | ICON | flags;
+        build(arena, build_flags, arch, cdir, platform_layers[This_OS], dir, "4ed", defines, 0, inc);
     }
+    if (error_state) return; 
     
     if (update_local_theme){
         char *themes_folder = fm_str(arena, "../build/themes");
@@ -573,8 +582,6 @@ build_main(Arena *arena, char *cdir, b32 update_local_theme, u32 flags, u32 arch
         fm_make_folder_if_missing(arena, themes_folder);
         fm_copy_all(source_themes_folder, themes_folder);
     }
-    
-    fflush(stdout);
 }
 
 internal void

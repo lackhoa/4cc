@@ -18,7 +18,7 @@
 #include "4coder_types.h"
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
-#define STATIC_LINK_API
+#define EXTERNAL_LINK_API
 #include "generated/custom_api.h"
 
 #include "4coder_string_match.h"
@@ -67,6 +67,7 @@
 ////////////////////////////////
 
 #include "4coder_base_types.cpp"
+#include "4coder_base_types_member_functions.cpp"
 #include "4coder_layout.cpp"
 #include "4coder_string_match.cpp"
 #include "4coder_stringf.cpp"
@@ -75,12 +76,14 @@
 #include "4coder_app_links_allocator.cpp"
 #include "4coder_system_allocator.cpp"
 #include "4coder_profile.cpp"
+#include "4coder_profile_member_functions.cpp"
 #include "4coder_profile_static_enable.cpp"
 #include "4coder_hash_functions.cpp"
 #include "4coder_table.cpp"
 #include "4coder_log.cpp"
 #include "4coder_buffer_seek_constructors.cpp"
 #include "4coder_command_map.cpp"
+#include "4coder_command_map_member_functions.cpp"
 #include "4coder_codepoint_map.cpp"
 
 #include "generated/custom_api.cpp"
@@ -92,7 +95,7 @@
 #include "generated/font_api.cpp"
 
 #include "4coder_token.cpp"
-#include "generated/lexer_cpp.cpp"
+// #include "generated/lexer_cpp.cpp"
 
 #include "4ed_api_definition.cpp"
 #include "generated/custom_api_constructor.cpp"

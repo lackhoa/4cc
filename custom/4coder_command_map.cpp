@@ -14,22 +14,6 @@
 #define BindingGetPtr(b) ((b).custom)
 #endif
 
-Command_Binding::Command_Binding(){
-    block_zero_struct(this);
-}
-Command_Binding::Command_Binding(Custom_Command_Function *c){
-    this->custom = c;
-}
-Command_Binding::Command_Binding(char *n){
-    this->name = n;
-}
-Command_Binding::operator Custom_Command_Function*(){
-    return(this->custom);
-}
-Command_Binding::operator char*(){
-    return(this->name);
-}
-
 function u64
 mapping__key(Input_Event_Kind kind, u32 sub_code){
     return((((u64)kind) << 32) | sub_code);

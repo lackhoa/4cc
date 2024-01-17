@@ -171,65 +171,77 @@ system_set_key_mode_type *set_key_mode;
 system_set_source_mixer_type *set_source_mixer;
 system_set_destination_mixer_type *set_destination_mixer;
 };
-#if defined(STATIC_LINK_API)
-internal void system_error_box(char* msg);
-internal String_Const_u8 system_get_path(Arena* arena, System_Path_Code path_code);
-internal String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name);
-internal File_List system_get_file_list(Arena* arena, String_Const_u8 directory);
-internal File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 file_name);
-internal b32 system_load_handle(Arena* scratch, char* file_name, Plat_Handle* out);
-internal File_Attributes system_load_attributes(Plat_Handle handle);
-internal b32 system_load_file(Plat_Handle handle, char* buffer, u32 size);
-internal b32 system_load_close(Plat_Handle handle);
-internal File_Attributes system_save_file(Arena* scratch, char* file_name, String_Const_u8 data);
-internal b32 system_load_library(Arena* scratch, String_Const_u8 file_name, System_Library* out);
-internal b32 system_release_library(System_Library handle);
-internal Void_Func* system_get_proc(System_Library handle, char* proc_name);
-internal u64 system_now_time(void);
-internal Date_Time system_now_date_time_universal(void);
-internal Date_Time system_local_date_time_from_universal(Date_Time* date_time);
-internal Date_Time system_universal_date_time_from_local(Date_Time* date_time);
-internal Plat_Handle system_wake_up_timer_create(void);
-internal void system_wake_up_timer_release(Plat_Handle handle);
-internal void system_wake_up_timer_set(Plat_Handle handle, u32 time_milliseconds);
-internal void system_signal_step(u32 code);
-internal void system_sleep(u64 microseconds);
-internal String_Const_u8 system_get_clipboard(Arena* arena, i32 index);
-internal void system_post_clipboard(String_Const_u8 str, i32 index);
-internal void system_set_clipboard_catch_all(b32 enabled);
-internal b32 system_get_clipboard_catch_all(void);
-internal b32 system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out);
-internal void system_cli_begin_update(CLI_Handles* cli);
-internal b32 system_cli_update_step(CLI_Handles* cli, char* dest, u32 max, u32* amount);
-internal b32 system_cli_end_update(CLI_Handles* cli);
-internal void system_open_color_picker(Color_Picker* picker);
-internal f32 system_get_screen_scale_factor(void);
-internal System_Thread system_thread_launch(Thread_Function* proc, void* ptr);
-internal void system_thread_join(System_Thread thread);
-internal void system_thread_free(System_Thread thread);
-internal i32 system_thread_get_id(void);
-internal void system_acquire_global_frame_mutex(Thread_Context* tctx);
-internal void system_release_global_frame_mutex(Thread_Context* tctx);
-internal System_Mutex system_mutex_make(void);
-internal void system_mutex_acquire(System_Mutex mutex);
-internal void system_mutex_release(System_Mutex mutex);
-internal void system_mutex_free(System_Mutex mutex);
-internal System_Condition_Variable system_condition_variable_make(void);
-internal void system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex);
-internal void system_condition_variable_signal(System_Condition_Variable cv);
-internal void system_condition_variable_free(System_Condition_Variable cv);
-internal void* system_memory_allocate(u64 size, String_Const_u8 location);
-internal b32 system_memory_set_protection(void* ptr, u64 size, u32 flags);
-internal void system_memory_free(void* ptr, u64 size);
-internal Memory_Annotation system_memory_annotation(Arena* arena);
-internal void system_show_mouse_cursor(i32 show);
-internal b32 system_set_fullscreen(b32 full_screen);
-internal b32 system_is_fullscreen(void);
-internal Input_Modifier_Set system_get_keyboard_modifiers(Arena* arena);
-internal void system_set_key_mode(Key_Mode mode);
-internal void system_set_source_mixer(void* ctx, Audio_Mix_Sources_Function* mix_func);
-internal void system_set_destination_mixer(Audio_Mix_Destination_Function* mix_func);
-#undef STATIC_LINK_API
+
+// NOTE(kv): defining linkage class for these functions
+#if defined(STATIC_LINK_API) || defined(EXTERNAL_LINK_API)
+#    if defined(STATIC_LINK_API)
+#        define LINKAGE internal
+#        undef STATIC_LINK_API
+#    elif defined(EXTERNAL_LINK_API)
+#        define LINKAGE extern "C"
+#        undef EXTERNAL_LINK_API
+#    endif
+
+LINKAGE void system_error_box(char* msg);
+LINKAGE String_Const_u8 system_get_path(Arena* arena, System_Path_Code path_code);
+LINKAGE String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name);
+LINKAGE File_List system_get_file_list(Arena* arena, String_Const_u8 directory);
+LINKAGE File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 file_name);
+LINKAGE b32 system_load_handle(Arena* scratch, char* file_name, Plat_Handle* out);
+LINKAGE File_Attributes system_load_attributes(Plat_Handle handle);
+LINKAGE b32 system_load_file(Plat_Handle handle, char* buffer, u32 size);
+LINKAGE b32 system_load_close(Plat_Handle handle);
+LINKAGE File_Attributes system_save_file(Arena* scratch, char* file_name, String_Const_u8 data);
+LINKAGE b32 system_load_library(Arena* scratch, String_Const_u8 file_name, System_Library* out);
+LINKAGE b32 system_release_library(System_Library handle);
+LINKAGE Void_Func* system_get_proc(System_Library handle, char* proc_name);
+LINKAGE u64 system_now_time(void);
+LINKAGE Date_Time system_now_date_time_universal(void);
+LINKAGE Date_Time system_local_date_time_from_universal(Date_Time* date_time);
+LINKAGE Date_Time system_universal_date_time_from_local(Date_Time* date_time);
+LINKAGE Plat_Handle system_wake_up_timer_create(void);
+LINKAGE void system_wake_up_timer_release(Plat_Handle handle);
+LINKAGE void system_wake_up_timer_set(Plat_Handle handle, u32 time_milliseconds);
+LINKAGE void system_signal_step(u32 code);
+LINKAGE void system_sleep(u64 microseconds);
+LINKAGE String_Const_u8 system_get_clipboard(Arena* arena, i32 index);
+LINKAGE void system_post_clipboard(String_Const_u8 str, i32 index);
+LINKAGE void system_set_clipboard_catch_all(b32 enabled);
+LINKAGE b32 system_get_clipboard_catch_all(void);
+LINKAGE b32 system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out);
+LINKAGE void system_cli_begin_update(CLI_Handles* cli);
+LINKAGE b32 system_cli_update_step(CLI_Handles* cli, char* dest, u32 max, u32* amount);
+LINKAGE b32 system_cli_end_update(CLI_Handles* cli);
+LINKAGE void system_open_color_picker(Color_Picker* picker);
+LINKAGE f32 system_get_screen_scale_factor(void);
+LINKAGE System_Thread system_thread_launch(Thread_Function* proc, void* ptr);
+LINKAGE void system_thread_join(System_Thread thread);
+LINKAGE void system_thread_free(System_Thread thread);
+LINKAGE i32 system_thread_get_id(void);
+LINKAGE void system_acquire_global_frame_mutex(Thread_Context* tctx);
+LINKAGE void system_release_global_frame_mutex(Thread_Context* tctx);
+LINKAGE System_Mutex system_mutex_make(void);
+LINKAGE void system_mutex_acquire(System_Mutex mutex);
+LINKAGE void system_mutex_release(System_Mutex mutex);
+LINKAGE void system_mutex_free(System_Mutex mutex);
+LINKAGE System_Condition_Variable system_condition_variable_make(void);
+LINKAGE void system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex);
+LINKAGE void system_condition_variable_signal(System_Condition_Variable cv);
+LINKAGE void system_condition_variable_free(System_Condition_Variable cv);
+LINKAGE void* system_memory_allocate(u64 size, String_Const_u8 location);
+LINKAGE b32 system_memory_set_protection(void* ptr, u64 size, u32 flags);
+LINKAGE void system_memory_free(void* ptr, u64 size);
+LINKAGE Memory_Annotation system_memory_annotation(Arena* arena);
+LINKAGE void system_show_mouse_cursor(i32 show);
+LINKAGE b32 system_set_fullscreen(b32 full_screen);
+LINKAGE b32 system_is_fullscreen(void);
+LINKAGE Input_Modifier_Set system_get_keyboard_modifiers(Arena* arena);
+LINKAGE void system_set_key_mode(Key_Mode mode);
+LINKAGE void system_set_source_mixer(void* ctx, Audio_Mix_Sources_Function* mix_func);
+LINKAGE void system_set_destination_mixer(Audio_Mix_Destination_Function* mix_func);
+
+#    undef LINKAGE
+
 #elif defined(DYNAMIC_LINK_API)
 global system_error_box_type *system_error_box = 0;
 global system_get_path_type *system_get_path = 0;

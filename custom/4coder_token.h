@@ -29,7 +29,7 @@ enum{
     TokenBaseKind_COUNT = 16,
 };
 
-char *token_base_kind_names[] ={
+global char *token_base_kind_names[] ={
     "EOF",
     "Whitespace",
     "LexError",
