@@ -1572,7 +1572,15 @@ load_theme_file_into_live_set(Application_Links *app, char *file_name){
     Color_Table color_table = make_color_table(app, arena);
     Scratch_Block scratch(app, arena);
     Config *config = theme_parse__file_name(app, scratch, file_name, arena, &color_table);
-    String_Const_u8 error_text = config_stringize_errors(app, scratch, config);
+    String_Const_u8 error_text;
+    if (config)
+    {
+      error_text = config_stringize_errors(app, scratch, config);
+    }
+    else 
+    {
+      error_text = push_stringf(arena, "cannot find config file %s", file_name);
+    }
     print_message(app, error_text);
     
     String_Const_u8 name = SCu8(file_name);

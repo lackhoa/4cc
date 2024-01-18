@@ -20,3 +20,5 @@ function g {
 
 g "TODO(kv)" ${FCODER_ROOT}/code | grep -v 'ignore_todo'
 g "nono"     ${FCODER_ROOT}/code | grep -v 'ignore_nono'
+
+exit 0

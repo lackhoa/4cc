@@ -4,10 +4,9 @@
 #include "4coder_kv_draw.cpp"
 #include "4coder_kv_vim_stuff.cpp"
 #include "4coder_kv_lang_list.h"
-// #include "ad_editor.h"
 
-// note: Custom layer swapping for testing and trying out.
-// note: Please enable only one layer, or else it explodes!
+// NOTE: Custom layer swapping for testing and trying out.
+// NOTE: Please enable only one layer, or else it explodes!
 #if KV_INTERNAL
 #    define USE_LAYER_kv               1
 #    define USE_LAYER_fleury_lite      0
@@ -61,7 +60,7 @@ function void kv_open_startup_files(Application_Links *app)
   View_ID view = get_this_ctx_view(app, Access_Always);
 
 #if USE_LAYER_fleury || USE_LAYER_fleury_lite
-  char *startup_file = "~/AutoDraw/4coder_kv/4coder_fleury/4coder_fleury_plots_demo.cpp";
+  char *startup_file = "~/4ed/code/4coder_kv/4coder_fleury/4coder_fleury_plots_demo.cpp";
 #else
   char *startup_file = "~/notes/note.skm";
 #endif

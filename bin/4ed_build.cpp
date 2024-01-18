@@ -476,7 +476,8 @@ build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, cha
       if (file[0] == '/') fm_add_to_line(compile, "\"%s\"", file);
       else                fm_add_to_line(compile, "\"%s/%s\"", code_path, file);
     }
-    
+   
+    // fm_add_to_line(compile, "-ftime-trace");
     fm_finish_build_line(&compile);
   }
   

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3 -u
 
+# todo(kv): this file really has to go away!
+
 import os
 import subprocess
 from subprocess import PIPE, STDOUT
@@ -36,12 +38,11 @@ def mtime(path):
 
 # cd to script directory
 HOME=os.path.expanduser("~")
-HERE = os.path.dirname(os.path.realpath(__file__))
 FCODER_USER=f'{HOME}/4coder'
 FCODER_ROOT=f'{HOME}/4ed'
 CUSTOM=f'{FCODER_ROOT}/code/custom'
-FCODER_KV=f'{HERE}'
-SOURCE=f'{HERE}/4coder_kv.cpp'
+FCODER_KV = f'{FCODER_ROOT}/code/4coder_kv'
+SOURCE=f'{FCODER_KV}/4coder_kv.cpp'
 DEBUG_MODE = True
 DEBUG_MODE_01 = 1 if DEBUG_MODE else 0
 
@@ -50,8 +51,6 @@ try:
     print(f'Workdir: {os.getcwd()}')
 
     run_only       = (len(sys.argv) > 1 and sys.argv[1] == 'run')
-    full_rebuild   = (len(sys.argv) > 1 and sys.argv[1] == 'full')  # hopefully never have to be used
-    full_rebuild = True  # note: actually with unity build this might be the only use of this script
 
     ADDRESS_SANITIZER_ON = False
 
@@ -73,11 +72,11 @@ try:
         if full_rebuild:  # Lexer generator
             print('Lexer: Generate (one-time thing)')
             OPTIMIZATION="-O0"
-            run(f'clang++ {HERE}/4coder_kv_skm_lexer_gen.cpp {arch} {opts} {debug} -Wno-tautological-compare -std=c++11 {OPTIMIZATION} -o {HERE}/lexer_generator')
+            run(f'clang++ {FCODER_KV}/4coder_kv_skm_lexer_gen.cpp {arch} {opts} {debug} -Wno-tautological-compare -std=c++11 {OPTIMIZATION} -o {FCODER_KV}/lexer_generator')
             #
             print('running lexer generator')
-            run(f'mkdir -p {HERE}/generated && {HERE}/lexer_generator {HERE}/generated')
-            run(f'rm {HERE}/lexer_generator & rm -rf {HERE}/lexer_generator.dSYM')
+            run(f'mkdir -p {FCODER_KV}/generated && {FCODER_KV}/lexer_generator {FCODER_KV}/generated')
+            run(f'rm {FCODER_KV}/lexer_generator & rm -rf {FCODER_KV}/lexer_generator.dSYM')
 
         sanitize_address = '-fsanitize=address' if ADDRESS_SANITIZER_ON else ''
         meta_macros="-DMETA_PASS"
@@ -93,24 +92,9 @@ try:
             print('Meta-generator: Run')
             run(f'"{CUSTOM}/metadata_generator" -R "{CUSTOM}" "{os.getcwd()}/{preproc_file}"')
 
-        # print('custom_4coder.o: Compile')
-        # run(f'ccache clang++ -c "{SOURCE}" -I"{CUSTOM}" {arch} {opts} {debug} -std=c++11 -fPIC -o custom_4coder.o {sanitize_address}')
-        # if not DEBUG_MODE:
-            # print(f'Move binary to stable')
-            # run(f'mv custom_4coder.o ~/4coder_stable/')
-
         print("NOTE: Setup 4coder config files")
-        run(f'ln -sf "{HERE}/config.4coder" "{FCODER_USER}/config.4coder"')
-        run(f'ln -sf "{HERE}/theme-kv.4coder" "{FCODER_USER}/themes/theme-kv.4coder"')
-
-        print("NOTE: trigger 4ed rebuild")
-        run(f'{FCODER_ROOT}/code/kv-build.py')
-
-        print('Build complete!')
-
-        if full_rebuild:
-            print('Run verification script')
-            run(f'{FCODER_KV}/tools/find-todo.sh')
+        run(f'ln -sf "{FCODER_KV}/config.4coder" "{FCODER_USER}/config.4coder"')
+        run(f'ln -sf "{FCODER_KV}/theme-kv.4coder" "{FCODER_USER}/themes/theme-kv.4coder"')
 
 except Exception as e:
     print(f'Error: {e}')
