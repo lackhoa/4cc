@@ -10,8 +10,6 @@
 // TOP
 
 
-global f32 kv_fcoder_fiddle;
-
 internal void
 draw__begin_new_group(Render_Target *target){
     Render_Group *group = 0;
@@ -187,11 +185,6 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
     
     Vec2_f32 y_axis = V2f32(-x_axis.y, x_axis.x);
     Vec2_f32 x_min = bounds.xy_off.x0*x_axis;
-#if FRED_INTERNAL
-  
-      x_min.x += kv_fcoder_fiddle;
-  
-#endif
     Vec2_f32 x_max = bounds.xy_off.x1*x_axis;
     Vec2_f32 y_min = bounds.xy_off.y0*y_axis;
     Vec2_f32 y_max = bounds.xy_off.y1*y_axis;

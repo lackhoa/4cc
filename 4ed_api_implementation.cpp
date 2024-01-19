@@ -77,7 +77,7 @@ is_running_coroutine(Application_Links *app){
     return(info->coroutine != 0);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 global_set_setting(Application_Links *app, Global_Setting_ID setting, i64 value){
     Models *models = (Models*)app->cmd_context;
     b32 result = true;
@@ -94,18 +94,18 @@ global_set_setting(Application_Links *app, Global_Setting_ID setting, i64 value)
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 global_get_screen_rectangle(Application_Links *app){
     Models *models = (Models*)app->cmd_context;
     return(Rf32(V2f32(0, 0), V2f32(layout_get_root_size(&models->layout))));
 }
 
-api(custom) extern "C" Thread_Context*
+api(custom) function Thread_Context*
 get_thread_context(Application_Links *app){
     return(app->tctx);
 }
 
-api(custom) extern "C" Child_Process_ID
+api(custom) function Child_Process_ID
 create_child_process(Application_Links *app, String_Const_u8 path, String_Const_u8 command){
     Models *models = (Models*)app->cmd_context;
     Child_Process_ID result = 0;
@@ -115,7 +115,7 @@ create_child_process(Application_Links *app, String_Const_u8 path, String_Const_
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 child_process_set_target_buffer(Application_Links *app, Child_Process_ID child_process_id, Buffer_ID buffer_id, Child_Process_Set_Target_Flags flags){
     Models *models = (Models*)app->cmd_context;
     Child_Process *child_process = child_process_from_id(&models->child_processes, child_process_id);
@@ -127,7 +127,7 @@ child_process_set_target_buffer(Application_Links *app, Child_Process_ID child_p
     return(result);
 }
 
-api(custom) extern "C" Child_Process_ID
+api(custom) function Child_Process_ID
 buffer_get_attached_child_process(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -138,7 +138,7 @@ buffer_get_attached_child_process(Application_Links *app, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) extern "C" Buffer_ID
+api(custom) function Buffer_ID
 child_process_get_attached_buffer(Application_Links *app, Child_Process_ID child_process_id){
     Models *models = (Models*)app->cmd_context;
     Child_Process *child_process = child_process_from_id(&models->child_processes, child_process_id);
@@ -149,13 +149,13 @@ child_process_get_attached_buffer(Application_Links *app, Child_Process_ID child
     return(result);
 }
 
-api(custom) extern "C" Process_State
+api(custom) function Process_State
 child_process_get_state(Application_Links *app, Child_Process_ID child_process_id){
     Models *models = (Models*)app->cmd_context;
     return(child_process_get_state(&models->child_processes, child_process_id));
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 enqueue_virtual_event(Application_Links *app, Input_Event *event){
     Models *models = (Models*)app->cmd_context;
     b32 result = false;
@@ -165,7 +165,7 @@ enqueue_virtual_event(Application_Links *app, Input_Event *event){
     return(result);
 }
 
-api(custom) extern "C" i32
+api(custom) function i32
 get_buffer_count(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
@@ -173,7 +173,7 @@ get_buffer_count(Application_Links *app)
     return(working_set->active_file_count);
 }
 
-api(custom) extern "C" Buffer_ID
+api(custom) function Buffer_ID
 get_buffer_next(Application_Links *app, Buffer_ID buffer_id, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
@@ -190,7 +190,7 @@ get_buffer_next(Application_Links *app, Buffer_ID buffer_id, Access_Flag access)
     return(result);
 }
 
-api(custom) extern "C" Buffer_ID
+api(custom) function Buffer_ID
 get_buffer_by_name(Application_Links *app, String_Const_u8 name, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
@@ -203,7 +203,7 @@ get_buffer_by_name(Application_Links *app, String_Const_u8 name, Access_Flag acc
     return(result);
 }
 
-api(custom) extern "C" Buffer_ID
+api(custom) function Buffer_ID
 get_buffer_by_file_name(Application_Links *app, String_Const_u8 file_name, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
@@ -220,7 +220,7 @@ get_buffer_by_file_name(Application_Links *app, String_Const_u8 file_name, Acces
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_read_range(Application_Links *app, Buffer_ID buffer_id, Range_i64 range, u8 *out)
 {
     Models *models = (Models*)app->cmd_context;
@@ -254,7 +254,7 @@ get_active_edit_behaviors(Models *models, Editing_File *file){
     return(behaviors);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_replace_range(Application_Links *app, Buffer_ID buffer_id, Range_i64 range, String_Const_u8 string)
 {
     Models *models = (Models*)app->cmd_context;
@@ -271,7 +271,7 @@ buffer_replace_range(Application_Links *app, Buffer_ID buffer_id, Range_i64 rang
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_batch_edit(Application_Links *app, Buffer_ID buffer_id, Batch_Edit *batch)
 {
     Models *models = (Models*)app->cmd_context;
@@ -284,7 +284,7 @@ buffer_batch_edit(Application_Links *app, Buffer_ID buffer_id, Batch_Edit *batch
     return(result);
 }
 
-api(custom) extern "C" String_Match
+api(custom) function String_Match
 buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 needle, Scan_Direction direction, i64 start_pos){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer);
@@ -329,7 +329,7 @@ buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 nee
     return(result);
 }
 
-api(custom) extern "C" String_Match
+api(custom) function String_Match
 buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_Predicate *predicate, Scan_Direction direction, i64 start_pos){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer);
@@ -383,7 +383,7 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
     return(result);
 }
 
-api(custom) extern "C" f32
+api(custom) function f32
 buffer_line_y_difference(Application_Links *app, Buffer_ID buffer_id,
                          f32 width, Face_ID face_id,
                          i64 line_a, i64 line_b){
@@ -402,7 +402,7 @@ buffer_line_y_difference(Application_Links *app, Buffer_ID buffer_id,
     return(result);
 }
 
-api(custom) extern "C" Line_Shift_Vertical
+api(custom) function Line_Shift_Vertical
 buffer_line_shift_y(Application_Links *app, Buffer_ID buffer_id,
                     f32 width, Face_ID face_id,
                     i64 line, f32 y_shift){
@@ -421,7 +421,7 @@ buffer_line_shift_y(Application_Links *app, Buffer_ID buffer_id,
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 buffer_pos_at_relative_xy(Application_Links *app, Buffer_ID buffer_id,
                           f32 width, Face_ID face_id,
                           i64 base_line, Vec2_f32 relative_xy){
@@ -440,7 +440,7 @@ buffer_pos_at_relative_xy(Application_Links *app, Buffer_ID buffer_id,
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 buffer_relative_box_of_pos(Application_Links *app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -457,7 +457,7 @@ buffer_relative_box_of_pos(Application_Links *app, Buffer_ID buffer_id, f32 widt
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 buffer_padded_box_of_pos(Application_Links *app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -474,7 +474,7 @@ buffer_padded_box_of_pos(Application_Links *app, Buffer_ID buffer_id, f32 width,
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 buffer_relative_character_from_pos(Application_Links *app, Buffer_ID buffer_id,
                                    f32 width, Face_ID face_id, i64 base_line, i64 pos)
 {
@@ -493,7 +493,7 @@ buffer_relative_character_from_pos(Application_Links *app, Buffer_ID buffer_id,
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 buffer_pos_from_relative_character(Application_Links *app,  Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 relative_character)
 {
     Models *models = (Models*)app->cmd_context;
@@ -512,7 +512,7 @@ buffer_pos_from_relative_character(Application_Links *app,  Buffer_ID buffer_id,
 }
 
 
-api(custom) extern "C" f32
+api(custom) function f32
 view_line_y_difference(Application_Links *app, View_ID view_id, i64 line_a, i64 line_b){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -523,7 +523,7 @@ view_line_y_difference(Application_Links *app, View_ID view_id, i64 line_a, i64 
     return(result);
 }
 
-api(custom) extern "C" Line_Shift_Vertical
+api(custom) function Line_Shift_Vertical
 view_line_shift_y(Application_Links *app, View_ID view_id, i64 line, f32 y_shift){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -534,7 +534,7 @@ view_line_shift_y(Application_Links *app, View_ID view_id, i64 line, f32 y_shift
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 view_pos_at_relative_xy(Application_Links *app, View_ID view_id, i64 base_line, Vec2_f32 relative_xy){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -545,7 +545,7 @@ view_pos_at_relative_xy(Application_Links *app, View_ID view_id, i64 base_line, 
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 view_relative_box_of_pos(Application_Links *app, View_ID view_id, i64 base_line, i64 pos){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -556,7 +556,7 @@ view_relative_box_of_pos(Application_Links *app, View_ID view_id, i64 base_line,
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 view_padded_box_of_pos(Application_Links *app, View_ID view_id, i64 base_line, i64 pos){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -567,7 +567,7 @@ view_padded_box_of_pos(Application_Links *app, View_ID view_id, i64 base_line, i
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 view_relative_character_from_pos(Application_Links *app,  View_ID view_id, i64 base_line, i64 pos){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -578,7 +578,7 @@ view_relative_character_from_pos(Application_Links *app,  View_ID view_id, i64 b
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 view_pos_from_relative_character(Application_Links *app,  View_ID view_id, i64 base_line, i64 character){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -589,14 +589,14 @@ view_pos_from_relative_character(Application_Links *app,  View_ID view_id, i64 b
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_exists(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     return(api_check_buffer(file));
 }
 
-api(custom) extern "C" Access_Flag
+api(custom) function Access_Flag
 buffer_get_access_flags(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -607,7 +607,7 @@ buffer_get_access_flags(Application_Links *app, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 buffer_get_size(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -618,7 +618,7 @@ buffer_get_size(Application_Links *app, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 buffer_get_line_count(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -629,7 +629,7 @@ buffer_get_line_count(Application_Links *app, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) extern "C" String_Const_u8
+api(custom) function String_Const_u8
 push_buffer_base_name(Application_Links *app, Arena *arena, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -640,7 +640,7 @@ push_buffer_base_name(Application_Links *app, Arena *arena, Buffer_ID buffer_id)
     return(result);
 }
 
-api(custom) extern "C" String_Const_u8
+api(custom) function String_Const_u8
 push_buffer_unique_name(Application_Links *app, Arena *out, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -651,7 +651,7 @@ push_buffer_unique_name(Application_Links *app, Arena *out, Buffer_ID buffer_id)
     return(result);
 }
 
-api(custom) extern "C" String_Const_u8
+api(custom) function String_Const_u8
 push_buffer_file_name(Application_Links *app, Arena *arena, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -662,7 +662,7 @@ push_buffer_file_name(Application_Links *app, Arena *arena, Buffer_ID buffer_id)
     return(result);
 }
 
-api(custom) extern "C" Dirty_State
+api(custom) function Dirty_State
 buffer_get_dirty_state(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -673,7 +673,7 @@ buffer_get_dirty_state(Application_Links *app, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_set_dirty_state(Application_Links *app, Buffer_ID buffer_id, Dirty_State dirty_state){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -685,7 +685,7 @@ buffer_set_dirty_state(Application_Links *app, Buffer_ID buffer_id, Dirty_State 
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_set_layout(Application_Links *app, Buffer_ID buffer_id, Layout_Function *layout_func){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -698,7 +698,7 @@ buffer_set_layout(Application_Links *app, Buffer_ID buffer_id, Layout_Function *
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_clear_layout_cache(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -710,7 +710,7 @@ buffer_clear_layout_cache(Application_Links *app, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) extern "C" Layout_Function*
+api(custom) function Layout_Function*
 buffer_get_layout(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -721,7 +721,7 @@ buffer_get_layout(Application_Links *app, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_get_setting(Application_Links *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 *value_out)
 {
     Models *models = (Models*)app->cmd_context;
@@ -759,7 +759,7 @@ buffer_get_setting(Application_Links *app, Buffer_ID buffer_id, Buffer_Setting_I
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_set_setting(Application_Links *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value)
 {
     Models *models = (Models*)app->cmd_context;
@@ -812,7 +812,7 @@ buffer_set_setting(Application_Links *app, Buffer_ID buffer_id, Buffer_Setting_I
     return(result);
 }
 
-api(custom) extern "C" Managed_Scope
+api(custom) function Managed_Scope
 buffer_get_managed_scope(Application_Links *app, Buffer_ID buffer_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -824,7 +824,7 @@ buffer_get_managed_scope(Application_Links *app, Buffer_ID buffer_id)
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_send_end_signal(Application_Links *app, Buffer_ID buffer_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -837,7 +837,7 @@ buffer_send_end_signal(Application_Links *app, Buffer_ID buffer_id)
     return(result);
 }
 
-api(custom) extern "C" Buffer_ID
+api(custom) function Buffer_ID
 create_buffer(Application_Links *app, String_Const_u8 file_name, Buffer_Create_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
@@ -849,7 +849,7 @@ create_buffer(Application_Links *app, String_Const_u8 file_name, Buffer_Create_F
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_save(Application_Links *app, Buffer_ID buffer_id, String_Const_u8 file_name, Buffer_Save_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
@@ -876,7 +876,7 @@ buffer_save(Application_Links *app, Buffer_ID buffer_id, String_Const_u8 file_na
     return(result);
 }
 
-api(custom) extern "C" Buffer_Kill_Result
+api(custom) function Buffer_Kill_Result
 buffer_kill(Application_Links *app, Buffer_ID buffer_id, Buffer_Kill_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
@@ -943,7 +943,7 @@ buffer_kill(Application_Links *app, Buffer_ID buffer_id, Buffer_Kill_Flag flags)
     return(result);
 }
 
-api(custom) extern "C" Buffer_Reopen_Result
+api(custom) function Buffer_Reopen_Result
 buffer_reopen(Application_Links *app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1015,7 +1015,7 @@ buffer_reopen(Application_Links *app, Buffer_ID buffer_id, Buffer_Reopen_Flag fl
     return(result);
 }
 
-api(custom) extern "C" File_Attributes
+api(custom) function File_Attributes
 buffer_get_file_attributes(Application_Links *app, Buffer_ID buffer_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1065,7 +1065,7 @@ get_view_prev__inner(Layout *layout, View *view){
     return(view);
 }
 
-api(custom) extern "C" View_ID
+api(custom) function View_ID
 get_view_next(Application_Links *app, View_ID view_id, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1082,7 +1082,7 @@ get_view_next(Application_Links *app, View_ID view_id, Access_Flag access)
     return(result);
 }
 
-api(custom) extern "C" View_ID
+api(custom) function View_ID
 get_view_prev(Application_Links *app, View_ID view_id, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1099,7 +1099,7 @@ get_view_prev(Application_Links *app, View_ID view_id, Access_Flag access)
     return(result);
 }
 
-api(custom) extern "C" View_ID
+api(custom) function View_ID
 get_this_ctx_view(Application_Links *app, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1116,7 +1116,7 @@ get_this_ctx_view(Application_Links *app, Access_Flag access)
     return(result);
 }
 
-api(custom) extern "C" View_ID
+api(custom) function View_ID
 get_active_view(Application_Links *app, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1131,7 +1131,7 @@ get_active_view(Application_Links *app, Access_Flag access)
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_exists(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1142,7 +1142,7 @@ view_exists(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" Buffer_ID
+api(custom) function Buffer_ID
 view_get_buffer(Application_Links *app, View_ID view_id, Access_Flag access){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1156,7 +1156,7 @@ view_get_buffer(Application_Links *app, View_ID view_id, Access_Flag access){
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 view_get_cursor_pos(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1168,7 +1168,7 @@ view_get_cursor_pos(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 view_get_mark_pos(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1179,7 +1179,7 @@ view_get_mark_pos(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" f32
+api(custom) function f32
 view_get_preferred_x(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1190,7 +1190,7 @@ view_get_preferred_x(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_set_preferred_x(Application_Links *app, View_ID view_id, f32 x){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1202,7 +1202,7 @@ view_set_preferred_x(Application_Links *app, View_ID view_id, f32 x){
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 view_get_screen_rect(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     Rect_f32 result = {};
@@ -1213,7 +1213,7 @@ view_get_screen_rect(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" Panel_ID
+api(custom) function Panel_ID
 view_get_panel(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     Layout *layout = &models->layout;
@@ -1226,7 +1226,7 @@ view_get_panel(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" View_ID
+api(custom) function View_ID
 panel_get_view(Application_Links *app, Panel_ID panel_id, Access_Flag access){
     Models *models = (Models*)app->cmd_context;
     Panel *panel = imp_get_panel(models, panel_id);
@@ -1242,7 +1242,7 @@ panel_get_view(Application_Links *app, Panel_ID panel_id, Access_Flag access){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 panel_is_split(Application_Links *app, Panel_ID panel_id){
     Models *models = (Models*)app->cmd_context;
     b32 result = false;
@@ -1255,7 +1255,7 @@ panel_is_split(Application_Links *app, Panel_ID panel_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 panel_is_leaf(Application_Links *app, Panel_ID panel_id){
     Models *models = (Models*)app->cmd_context;
     b32 result = false;
@@ -1268,7 +1268,7 @@ panel_is_leaf(Application_Links *app, Panel_ID panel_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 panel_split(Application_Links *app, Panel_ID panel_id, Dimension split_dim){
     Models *models = (Models*)app->cmd_context;
     Layout *layout = &models->layout;
@@ -1287,7 +1287,7 @@ panel_split(Application_Links *app, Panel_ID panel_id, Dimension split_dim){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 panel_set_split(Application_Links *app, Panel_ID panel_id, Panel_Split_Kind kind,
                 f32 t){
     Models *models = (Models*)app->cmd_context;
@@ -1322,7 +1322,7 @@ panel_set_split(Application_Links *app, Panel_ID panel_id, Panel_Split_Kind kind
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 panel_swap_children(Application_Links *app, Panel_ID panel_id){
     Models *models = (Models*)app->cmd_context;
     Layout *layout = &models->layout;
@@ -1337,7 +1337,7 @@ panel_swap_children(Application_Links *app, Panel_ID panel_id){
     return(result);
 }
 
-api(custom) extern "C" Panel_ID
+api(custom) function Panel_ID
 panel_get_root(Application_Links *app){
     Models *models = (Models*)app->cmd_context;
     Layout *layout = &models->layout;
@@ -1345,7 +1345,7 @@ panel_get_root(Application_Links *app){
     return(panel_get_id(layout, panel));
 }
 
-api(custom) extern "C" Panel_ID
+api(custom) function Panel_ID
 panel_get_parent(Application_Links *app, Panel_ID panel_id){
     Models *models = (Models*)app->cmd_context;
     Layout *layout = &models->layout;
@@ -1357,7 +1357,7 @@ panel_get_parent(Application_Links *app, Panel_ID panel_id){
     return(result);
 }
 
-api(custom) extern "C" Panel_ID
+api(custom) function Panel_ID
 panel_get_child(Application_Links *app, Panel_ID panel_id, Side which_child){
     Models *models = (Models*)app->cmd_context;
     Layout *layout = &models->layout;
@@ -1384,7 +1384,7 @@ panel_get_child(Application_Links *app, Panel_ID panel_id, Side which_child){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_close(Application_Links *app, View_ID view_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1397,7 +1397,7 @@ view_close(Application_Links *app, View_ID view_id)
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 view_get_buffer_region(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1408,7 +1408,7 @@ view_get_buffer_region(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" Buffer_Scroll
+api(custom) function Buffer_Scroll
 view_get_buffer_scroll(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     Buffer_Scroll  result = {};
@@ -1420,7 +1420,7 @@ view_get_buffer_scroll(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_set_active(Application_Links *app, View_ID view_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1433,7 +1433,7 @@ view_set_active(Application_Links *app, View_ID view_id)
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_enqueue_command_function(Application_Links *app, View_ID view_id, Custom_Command_Function *custom_func)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1446,7 +1446,7 @@ view_enqueue_command_function(Application_Links *app, View_ID view_id, Custom_Co
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_get_setting(Application_Links *app, View_ID view_id, View_Setting_ID setting, i64 *value_out)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1480,7 +1480,7 @@ view_get_setting(Application_Links *app, View_ID view_id, View_Setting_ID settin
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_set_setting(Application_Links *app, View_ID view_id, View_Setting_ID setting, i64 value)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1514,7 +1514,7 @@ view_set_setting(Application_Links *app, View_ID view_id, View_Setting_ID settin
     return(result);
 }
 
-api(custom) extern "C" Managed_Scope
+api(custom) function Managed_Scope
 view_get_managed_scope(Application_Links *app, View_ID view_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1527,7 +1527,7 @@ view_get_managed_scope(Application_Links *app, View_ID view_id)
     return(result);
 }
 
-api(custom) extern "C" Buffer_Cursor
+api(custom) function Buffer_Cursor
 buffer_compute_cursor(Application_Links *app, Buffer_ID buffer, Buffer_Seek seek)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1539,7 +1539,7 @@ buffer_compute_cursor(Application_Links *app, Buffer_ID buffer, Buffer_Seek seek
     return(result);
 }
 
-api(custom) extern "C" Buffer_Cursor
+api(custom) function Buffer_Cursor
 view_compute_cursor(Application_Links *app, View_ID view_id, Buffer_Seek seek){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1550,7 +1550,7 @@ view_compute_cursor(Application_Links *app, View_ID view_id, Buffer_Seek seek){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_set_camera_bounds(Application_Links *app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push_in_multiplier)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1568,7 +1568,7 @@ view_set_camera_bounds(Application_Links *app, View_ID view_id, Vec2_f32 margin,
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_get_camera_bounds(Application_Links *app, View_ID view_id, Vec2_f32 *margin, Vec2_f32 *push_in_multiplier)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1582,7 +1582,7 @@ view_get_camera_bounds(Application_Links *app, View_ID view_id, Vec2_f32 *margin
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_set_cursor(Application_Links *app, View_ID view_id, Buffer_Seek seek)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1600,7 +1600,7 @@ view_set_cursor(Application_Links *app, View_ID view_id, Buffer_Seek seek)
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_set_buffer_scroll(Application_Links *app, View_ID view_id, Buffer_Scroll scroll,
                        Set_Buffer_Scroll_Rule rule)
 {
@@ -1632,7 +1632,7 @@ view_set_buffer_scroll(Application_Links *app, View_ID view_id, Buffer_Scroll sc
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_set_mark(Application_Links *app, View_ID view_id, Buffer_Seek seek)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1656,7 +1656,7 @@ view_set_mark(Application_Links *app, View_ID view_id, Buffer_Seek seek)
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_quit_ui(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1668,7 +1668,7 @@ view_quit_ui(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_set_buffer(Application_Links *app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1689,7 +1689,7 @@ view_set_buffer(Application_Links *app, View_ID view_id, Buffer_ID buffer_id, Se
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_push_context(Application_Links *app, View_ID view_id, View_Context *ctx){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1701,7 +1701,7 @@ view_push_context(Application_Links *app, View_ID view_id, View_Context *ctx){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_pop_context(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1713,7 +1713,7 @@ view_pop_context(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 view_alter_context(Application_Links *app, View_ID view_id, View_Context *ctx){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1725,7 +1725,7 @@ view_alter_context(Application_Links *app, View_ID view_id, View_Context *ctx){
     return(result);
 }
 
-api(custom) extern "C" View_Context
+api(custom) function View_Context
 view_current_context(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1736,7 +1736,7 @@ view_current_context(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-api(custom) extern "C" String_Const_u8
+api(custom) function String_Const_u8
 view_current_context_hook_memory(Application_Links *app, View_ID view_id,
                                  Hook_ID hook_id){
     Models *models = (Models*)app->cmd_context;
@@ -1769,7 +1769,7 @@ get_dynamic_workspace(Models *models, Managed_Scope handle){
     return(result);
 }
 
-api(custom) extern "C" Managed_Scope
+api(custom) function Managed_Scope
 create_user_managed_scope(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1779,7 +1779,7 @@ create_user_managed_scope(Application_Links *app)
     return(scope);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 destroy_user_managed_scope(Application_Links *app, Managed_Scope scope)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1793,7 +1793,7 @@ destroy_user_managed_scope(Application_Links *app, Managed_Scope scope)
     return(result);
 }
 
-api(custom) extern "C" Managed_Scope
+api(custom) function Managed_Scope
 get_global_managed_scope(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1826,7 +1826,7 @@ get_lifetime_object_from_workspace(Dynamic_Workspace *workspace){
     return(result);
 }
 
-api(custom) extern "C" Managed_Scope
+api(custom) function Managed_Scope
 get_managed_scope_with_multiple_dependencies(Application_Links *app, Managed_Scope *scopes, i32 count)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1910,7 +1910,7 @@ get_managed_scope_with_multiple_dependencies(Application_Links *app, Managed_Sco
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 managed_scope_clear_contents(Application_Links *app, Managed_Scope scope)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1923,7 +1923,7 @@ managed_scope_clear_contents(Application_Links *app, Managed_Scope scope)
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 managed_scope_clear_self_all_dependent_scopes(Application_Links *app, Managed_Scope scope)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1938,7 +1938,7 @@ managed_scope_clear_self_all_dependent_scopes(Application_Links *app, Managed_Sc
     return(result);
 }
 
-api(custom) extern "C" Base_Allocator*
+api(custom) function Base_Allocator*
 managed_scope_allocator(Application_Links *app, Managed_Scope scope)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1950,14 +1950,14 @@ managed_scope_allocator(Application_Links *app, Managed_Scope scope)
     return(result);
 }
 
-api(custom) extern "C" u64
+api(custom) function u64
 managed_id_group_highest_id(Application_Links *app, String_Const_u8 group){
     Models *models = (Models*)app->cmd_context;
     Managed_ID_Set *set = &models->managed_id_set;
     return(managed_ids_group_highest_id(set, group));
 }
 
-api(custom) extern "C" Managed_ID
+api(custom) function Managed_ID
 managed_id_declare(Application_Links *app, String_Const_u8 group, String_Const_u8 name)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1965,14 +1965,14 @@ managed_id_declare(Application_Links *app, String_Const_u8 group, String_Const_u
     return(managed_ids_declare(set, group, name));
 }
 
-api(custom) extern "C" Managed_ID
+api(custom) function Managed_ID
 managed_id_get(Application_Links *app, String_Const_u8 group, String_Const_u8 name){
     Models *models = (Models*)app->cmd_context;
     Managed_ID_Set *set = &models->managed_id_set;
     return(managed_ids_get(set, group, name));
 }
 
-api(custom) extern "C" void*
+api(custom) function void*
 managed_scope_get_attachment(Application_Links *app, Managed_Scope scope, Managed_ID id, u64 size){
     Models *models = (Models*)app->cmd_context;
     Dynamic_Workspace *workspace = get_dynamic_workspace(models, scope);
@@ -1993,7 +1993,7 @@ managed_scope_get_attachment(Application_Links *app, Managed_Scope scope, Manage
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 managed_scope_attachment_erase(Application_Links *app, Managed_Scope scope, Managed_ID id){
     Models *models = (Models*)app->cmd_context;
     Dynamic_Workspace *workspace = get_dynamic_workspace(models, scope);
@@ -2006,7 +2006,7 @@ managed_scope_attachment_erase(Application_Links *app, Managed_Scope scope, Mana
     return(result);
 }
 
-api(custom) extern "C" Managed_Object
+api(custom) function Managed_Object
 alloc_managed_memory_in_scope(Application_Links *app, Managed_Scope scope, i32 item_size, i32 count)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2018,7 +2018,7 @@ alloc_managed_memory_in_scope(Application_Links *app, Managed_Scope scope, i32 i
     return(result);
 }
 
-api(custom) extern "C" Managed_Object
+api(custom) function Managed_Object
 alloc_buffer_markers_on_buffer(Application_Links *app, Buffer_ID buffer_id, i32 count, Managed_Scope *optional_extra_scope)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2054,7 +2054,7 @@ get_dynamic_object_ptrs(Models *models, Managed_Object object){
     return(result);
 }
 
-api(custom) extern "C" u32
+api(custom) function u32
 managed_object_get_item_size(Application_Links *app, Managed_Object object)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2066,7 +2066,7 @@ managed_object_get_item_size(Application_Links *app, Managed_Object object)
     return(result);
 }
 
-api(custom) extern "C" u32
+api(custom) function u32
 managed_object_get_item_count(Application_Links *app, Managed_Object object)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2078,7 +2078,7 @@ managed_object_get_item_count(Application_Links *app, Managed_Object object)
     return(result);
 }
 
-api(custom) extern "C" void*
+api(custom) function void*
 managed_object_get_pointer(Application_Links *app, Managed_Object object)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2086,7 +2086,7 @@ managed_object_get_pointer(Application_Links *app, Managed_Object object)
     return(get_dynamic_object_memory_ptr(object_ptrs.header));
 }
 
-api(custom) extern "C" Managed_Object_Type
+api(custom) function Managed_Object_Type
 managed_object_get_type(Application_Links *app, Managed_Object object)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2101,7 +2101,7 @@ managed_object_get_type(Application_Links *app, Managed_Object object)
     return(ManagedObjectType_Error);
 }
 
-api(custom) extern "C" Managed_Scope
+api(custom) function Managed_Scope
 managed_object_get_containing_scope(Application_Links *app, Managed_Object object)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2113,7 +2113,7 @@ managed_object_get_containing_scope(Application_Links *app, Managed_Object objec
     return(0);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 managed_object_free(Application_Links *app, Managed_Object object)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2127,7 +2127,7 @@ managed_object_free(Application_Links *app, Managed_Object object)
 }
 
 // TODO(allen): ELIMINATE STORE & LOAD
-api(custom) extern "C" b32
+api(custom) function b32
 managed_object_store_data(Application_Links *app, Managed_Object object, u32 first_index, u32 count, void *mem)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2146,7 +2146,7 @@ managed_object_store_data(Application_Links *app, Managed_Object object, u32 fir
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 managed_object_load_data(Application_Links *app, Managed_Object object, u32 first_index, u32 count, void *mem_out)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2165,7 +2165,7 @@ managed_object_load_data(Application_Links *app, Managed_Object object, u32 firs
     return(result);
 }
 
-api(custom) extern "C" User_Input
+api(custom) function User_Input
 get_next_input_raw(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2188,34 +2188,34 @@ get_next_input_raw(Application_Links *app)
     return(result);
 }
 
-api(custom) extern "C" i64
+api(custom) function i64
 get_current_input_sequence_number(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
     return(models->current_input_sequence_number);
 }
 
-api(custom) extern "C" User_Input
+api(custom) function User_Input
 get_current_input(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
     return(models->current_input);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 set_current_input(Application_Links *app, User_Input *input)
 {
     Models *models = (Models*)app->cmd_context;
     block_copy_struct(&models->current_input, input);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 leave_current_input_unhandled(Application_Links *app){
     Models *models = (Models*)app->cmd_context;
     models->current_input_unhandled = true;
 }
 
-api(custom) extern "C" void
+api(custom) function void
 set_custom_hook(Application_Links *app, Hook_ID hook_id, Void_Func *func_ptr){
     Models *models = (Models*)app->cmd_context;
     switch (hook_id){
@@ -2282,7 +2282,7 @@ set_custom_hook(Application_Links *app, Hook_ID hook_id, Void_Func *func_ptr){
     }
 }
 
-api(custom) extern "C" Void_Func*
+api(custom) function Void_Func*
 get_custom_hook(Application_Links *app, Hook_ID hook_id){
     Void_Func *result = 0;
     Models *models = (Models*)app->cmd_context;
@@ -2351,7 +2351,7 @@ get_custom_hook(Application_Links *app, Hook_ID hook_id){
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 set_custom_hook_memory_size(Application_Links *app, Hook_ID hook_id, u64 size){
     Models *models = (Models*)app->cmd_context;
     b32 result = true;
@@ -2368,14 +2368,14 @@ set_custom_hook_memory_size(Application_Links *app, Hook_ID hook_id, u64 size){
     return(result);
 }
 
-api(custom) extern "C" Mouse_State
+api(custom) function Mouse_State
 get_mouse_state(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
     return(models->input->mouse);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 get_active_query_bars(Application_Links *app, View_ID view_id, i32 max_result_count, Query_Bar_Ptr_Array *array_out)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2397,7 +2397,7 @@ get_active_query_bars(Application_Links *app, View_ID view_id, i32 max_result_co
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 start_query_bar(Application_Links *app, Query_Bar *bar, u32 flags)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2411,7 +2411,7 @@ start_query_bar(Application_Links *app, Query_Bar *bar, u32 flags)
     return(result);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 end_query_bar(Application_Links *app, Query_Bar *bar, u32 flags)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2420,7 +2420,7 @@ end_query_bar(Application_Links *app, Query_Bar *bar, u32 flags)
     free_query_slot(&active_view->query_set, bar);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 clear_all_query_bars(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -2429,7 +2429,7 @@ clear_all_query_bars(Application_Links *app, View_ID view_id){
     }
 }
 
-api(custom) extern "C" void
+api(custom) function void
 print_message(Application_Links *app, String_Const_u8 message)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2440,19 +2440,19 @@ print_message(Application_Links *app, String_Const_u8 message)
     }
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 log_string(Application_Links *app, String_Const_u8 str){
     return(log_string(str));
 }
 
-api(custom) extern "C" Face_ID
+api(custom) function Face_ID
 get_largest_face_id(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
     return(font_set_get_largest_id(&models->font_set));
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 set_global_face(Application_Links *app, Face_ID id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2465,7 +2465,7 @@ set_global_face(Application_Links *app, Face_ID id)
     return(result);
 }
 
-api(custom) extern "C" History_Record_Index
+api(custom) function History_Record_Index
 buffer_history_get_max_record_index(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -2499,7 +2499,7 @@ buffer_history__fill_record_info(Record *record, Record_Info *out){
     }
 }
 
-api(custom) extern "C" Record_Info
+api(custom) function Record_Info
 buffer_history_get_record_info(Application_Links *app, Buffer_ID buffer_id, History_Record_Index index){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -2531,7 +2531,7 @@ buffer_history_get_record_info(Application_Links *app, Buffer_ID buffer_id, Hist
     return(result);
 }
 
-api(custom) extern "C" Record_Info
+api(custom) function Record_Info
 buffer_history_get_group_sub_record(Application_Links *app, Buffer_ID buffer_id, History_Record_Index index, i32 sub_index){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -2574,7 +2574,7 @@ buffer_history_get_group_sub_record(Application_Links *app, Buffer_ID buffer_id,
     return(result);
 }
 
-api(custom) extern "C" History_Record_Index
+api(custom) function History_Record_Index
 buffer_history_get_current_state_index(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -2585,7 +2585,7 @@ buffer_history_get_current_state_index(Application_Links *app, Buffer_ID buffer_
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_history_set_current_state_index(Application_Links *app, Buffer_ID buffer_id, History_Record_Index index){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -2600,7 +2600,7 @@ buffer_history_set_current_state_index(Application_Links *app, Buffer_ID buffer_
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_history_merge_record_range(Application_Links *app, Buffer_ID buffer_id, History_Record_Index first_index, History_Record_Index last_index, Record_Merge_Flag flags){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -2611,7 +2611,7 @@ buffer_history_merge_record_range(Application_Links *app, Buffer_ID buffer_id, H
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_history_clear_after_current_state(Application_Links *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -2623,19 +2623,19 @@ buffer_history_clear_after_current_state(Application_Links *app, Buffer_ID buffe
     return(result);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 global_history_edit_group_begin(Application_Links *app){
     Models *models = (Models*)app->cmd_context;
     global_history_adjust_edit_grouping_counter(&models->global_history, 1);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 global_history_edit_group_end(Application_Links *app){
     Models *models = (Models*)app->cmd_context;
     global_history_adjust_edit_grouping_counter(&models->global_history, -1);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 buffer_set_face(Application_Links *app, Buffer_ID buffer_id, Face_ID id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2652,7 +2652,7 @@ buffer_set_face(Application_Links *app, Buffer_ID buffer_id, Face_ID id)
     return(did_change);
 }
 
-api(custom) extern "C" Face_Description
+api(custom) function Face_Description
 get_face_description(Application_Links *app, Face_ID face_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2671,7 +2671,7 @@ get_face_description(Application_Links *app, Face_ID face_id)
     return(description);
 }
 
-api(custom) extern "C" Face_Metrics
+api(custom) function Face_Metrics
 get_face_metrics(Application_Links *app, Face_ID face_id){
     Models *models = (Models*)app->cmd_context;
     Face_Metrics result = {};
@@ -2684,7 +2684,7 @@ get_face_metrics(Application_Links *app, Face_ID face_id){
     return(result);
 }
 
-api(custom) extern "C" Face_Advance_Map
+api(custom) function Face_Advance_Map
 get_face_advance_map(Application_Links *app, Face_ID face_id){
     Models *models = (Models*)app->cmd_context;
     Face_Advance_Map result = {};
@@ -2697,7 +2697,7 @@ get_face_advance_map(Application_Links *app, Face_ID face_id){
     return(result);
 }
 
-api(custom) extern "C" Face_ID
+api(custom) function Face_ID
 get_face_id(Application_Links *app, Buffer_ID buffer_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2714,7 +2714,7 @@ get_face_id(Application_Links *app, Buffer_ID buffer_id)
     return(result);
 }
 
-api(custom) extern "C" Face_ID
+api(custom) function Face_ID
 try_create_new_face(Application_Links *app, Face_Description *description)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2743,7 +2743,7 @@ try_create_new_face(Application_Links *app, Face_Description *description)
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 try_modify_face(Application_Links *app, Face_ID id, Face_Description *description)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2770,7 +2770,7 @@ try_modify_face(Application_Links *app, Face_ID id, Face_Description *descriptio
     return(result);
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 try_release_face(Application_Links *app, Face_ID id, Face_ID replacement_id)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2780,7 +2780,7 @@ try_release_face(Application_Links *app, Face_ID id, Face_ID replacement_id)
     return(release_font_and_update(models, face, replacement));
 }
 
-api(custom) extern "C" String_Const_u8
+api(custom) function String_Const_u8
 push_hot_directory(Application_Links *app, Arena *arena)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2789,7 +2789,7 @@ push_hot_directory(Application_Links *app, Arena *arena)
     return(push_string_copy(arena, hot->string));
 }
 
-api(custom) extern "C" void
+api(custom) function void
 set_hot_directory(Application_Links *app, String_Const_u8 string)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2797,21 +2797,21 @@ set_hot_directory(Application_Links *app, String_Const_u8 string)
     hot_directory_set(hot, string);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 send_exit_signal(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
     models->keep_playing = false;
 }
 
-api(custom) extern "C" void
+api(custom) function void
 hard_exit(Application_Links *app)
 {
     Models *models = (Models*)app->cmd_context;
     models->hard_exit = true;
 }
 
-api(custom) extern "C" void
+api(custom) function void
 set_window_title(Application_Links *app, String_Const_u8 title)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2822,7 +2822,7 @@ set_window_title(Application_Links *app, String_Const_u8 title)
     models->title_space[copy_size] = 0;
 }
 
-api(custom) extern "C" void
+api(custom) function void
 acquire_global_frame_mutex(Application_Links *app){
     Thread_Context *tctx = app->tctx;
     Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
@@ -2838,7 +2838,7 @@ acquire_global_frame_mutex(Application_Links *app){
     }
 }
 
-api(custom) extern "C" void
+api(custom) function void
 release_global_frame_mutex(Application_Links *app){
     Thread_Context *tctx = app->tctx;
     Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
@@ -2856,7 +2856,7 @@ release_global_frame_mutex(Application_Links *app){
 
 ////////////////////////////////
 
-api(custom) extern "C" Vec2_f32
+api(custom) function Vec2_f32
 draw_string_oriented(Application_Links *app, Face_ID font_id, ARGB_Color color,
                      String_Const_u8 str, Vec2_f32 point, u32 flags, Vec2_f32 delta)
 {
@@ -2874,7 +2874,7 @@ draw_string_oriented(Application_Links *app, Face_ID font_id, ARGB_Color color,
     return(result);
 }
 
-api(custom) extern "C" f32
+api(custom) function f32
 get_string_advance(Application_Links *app, Face_ID font_id, String_Const_u8 str)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2882,7 +2882,7 @@ get_string_advance(Application_Links *app, Face_ID font_id, String_Const_u8 str)
     return(font_string_width(models->target, face, str));
 }
 
-api(custom) extern "C" void
+api(custom) function void
 draw_rectangle(Application_Links *app, Rect_f32 rect, f32 roundness, ARGB_Color color){
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode){
@@ -2890,7 +2890,13 @@ draw_rectangle(Application_Links *app, Rect_f32 rect, f32 roundness, ARGB_Color 
     }
 }
 
-api(custom) extern "C" void
+inline void
+draw_rectangle(Application_Links *app, v2 p0, v2 p1, v4 color)
+{
+  draw_rectangle(app, rect2{p0, p1}, 0, pack_color(color));
+}
+
+api(custom) function void
 draw_rectangle_outline(Application_Links *app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color){
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode){
@@ -2898,13 +2904,13 @@ draw_rectangle_outline(Application_Links *app, Rect_f32 rect, f32 roundness, f32
     }
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 draw_set_clip(Application_Links *app, Rect_f32 new_clip){
     Models *models = (Models*)app->cmd_context;
     return(draw_set_clip(models->target, new_clip));
 }
 
-api(custom) extern "C" Text_Layout_ID
+api(custom) function Text_Layout_ID
 text_layout_create(Application_Links *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -2951,7 +2957,7 @@ text_layout_create(Application_Links *app, Buffer_ID buffer_id, Rect_f32 rect, B
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 text_layout_region(Application_Links *app, Text_Layout_ID text_layout_id){
     Models *models = (Models*)app->cmd_context;
     Rect_f32 result = {};
@@ -2962,7 +2968,7 @@ text_layout_region(Application_Links *app, Text_Layout_ID text_layout_id){
     return(result);
 }
 
-api(custom) extern "C" Buffer_ID
+api(custom) function Buffer_ID
 text_layout_get_buffer(Application_Links *app, Text_Layout_ID text_layout_id){
     Models *models = (Models*)app->cmd_context;
     Buffer_ID result = 0;
@@ -2973,7 +2979,7 @@ text_layout_get_buffer(Application_Links *app, Text_Layout_ID text_layout_id){
     return(result);
 }
 
-api(custom) extern "C" Range_i64
+api(custom) function Range_i64
 text_layout_get_visible_range(Application_Links *app, Text_Layout_ID text_layout_id){
     Models *models = (Models*)app->cmd_context;
     Range_i64 result = {};
@@ -2984,7 +2990,7 @@ text_layout_get_visible_range(Application_Links *app, Text_Layout_ID text_layout
     return(result);
 }
 
-api(custom) extern "C" Range_f32
+api(custom) function Range_f32
 text_layout_line_on_screen(Application_Links *app, Text_Layout_ID layout_id, i64 line_number){
     Models *models = (Models*)app->cmd_context;
     Range_f32 result = {};
@@ -3027,7 +3033,7 @@ text_layout_line_on_screen(Application_Links *app, Text_Layout_ID layout_id, i64
     return(result);
 }
 
-api(custom) extern "C" Rect_f32
+api(custom) function Rect_f32
 text_layout_character_on_screen(Application_Links *app, Text_Layout_ID layout_id, i64 pos){
     Models *models = (Models*)app->cmd_context;
     Rect_f32 result = {};
@@ -3091,7 +3097,7 @@ text_layout_character_on_screen(Application_Links *app, Text_Layout_ID layout_id
     return(result);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 paint_text_color(Application_Links *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color){
     Models *models = (Models*)app->cmd_context;
     Rect_f32 result = {};
@@ -3108,7 +3114,7 @@ paint_text_color(Application_Links *app, Text_Layout_ID layout_id, Range_i64 ran
     }
 }
 
-api(custom) extern "C" void
+api(custom) function void
 paint_text_color_blend(Application_Links *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color, f32 blend){
     Models *models = (Models*)app->cmd_context;
     Rect_f32 result = {};
@@ -3130,13 +3136,13 @@ paint_text_color_blend(Application_Links *app, Text_Layout_ID layout_id, Range_i
     }
 }
 
-api(custom) extern "C" b32
+api(custom) function b32
 text_layout_free(Application_Links *app, Text_Layout_ID text_layout_id){
     Models *models = (Models*)app->cmd_context;
     return(text_layout_erase(app->tctx, models, &models->text_layouts, text_layout_id));
 }
 
-api(custom) extern "C" void
+api(custom) function void
 draw_text_layout(Application_Links *app, Text_Layout_ID layout_id, ARGB_Color special_color, ARGB_Color ghost_color){
     Models *models = (Models*)app->cmd_context;
     Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
@@ -3145,7 +3151,7 @@ draw_text_layout(Application_Links *app, Text_Layout_ID layout_id, ARGB_Color sp
     }
 }
 
-api(custom) extern "C" void
+api(custom) function void
 open_color_picker(Application_Links *app, Color_Picker *picker)
 {
     Models *models = (Models*)app->cmd_context;
@@ -3155,7 +3161,7 @@ open_color_picker(Application_Links *app, Color_Picker *picker)
     system_open_color_picker(picker);
 }
 
-api(custom) extern "C" void
+api(custom) function void
 animate_in_n_milliseconds(Application_Links *app, u32 n)
 {
     Models *models = (Models*)app->cmd_context;
@@ -3167,7 +3173,7 @@ animate_in_n_milliseconds(Application_Links *app, u32 n)
     }
 }
 
-api(custom) extern "C" String_Match_List
+api(custom) function String_Match_List
 buffer_find_all_matches(Application_Links *app, Arena *arena, Buffer_ID buffer,
                         i32 string_id, Range_i64 range, String_Const_u8 needle,
                         Character_Predicate *predicate, Scan_Direction direction){
@@ -3196,13 +3202,13 @@ buffer_find_all_matches(Application_Links *app, Arena *arena, Buffer_ID buffer,
 
 ////////////////////////////////
 
-api(custom) extern "C" Profile_Global_List*
+api(custom) function Profile_Global_List*
 get_core_profile_list(Application_Links *app){
     Models *models = (Models*)app->cmd_context;
     return(&models->profile_list);
 }
 
-api(custom) extern "C" Doc_Cluster*
+api(custom) function Doc_Cluster*
 get_custom_layer_boundary_docs(Application_Links *app, Arena *arena){
     API_Definition *api_def = custom_api_construct(arena);
     return(doc_custom_api(arena, api_def));

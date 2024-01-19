@@ -656,27 +656,6 @@ operator+(Vec4_i32 a, Vec4_i32 b){
     a.w += b.w;
     return(a);
 }
-function Vec2_f32
-operator+(Vec2_f32 a, Vec2_f32 b){
-    a.x += b.x;
-    a.y += b.y;
-    return(a);
-}
-function Vec3_f32
-operator+(Vec3_f32 a, Vec3_f32 b){
-    a.x += b.x;
-    a.y += b.y;
-    a.z += b.z;
-    return(a);
-}
-function Vec4_f32
-operator+(Vec4_f32 a, Vec4_f32 b){
-    a.x += b.x;
-    a.y += b.y;
-    a.z += b.z;
-    a.w += b.w;
-    return(a);
-}
 
 function Vec2_i8&
 operator+=(Vec2_i8 &a, Vec2_i8 b){
@@ -735,27 +714,6 @@ operator+=(Vec3_i32 &a, Vec3_i32 b){
 }
 function Vec4_i32&
 operator+=(Vec4_i32 &a, Vec4_i32 b){
-    a.x += b.x;
-    a.y += b.y;
-    a.z += b.z;
-    a.w += b.w;
-    return(a);
-}
-function Vec2_f32&
-operator+=(Vec2_f32 &a, Vec2_f32 b){
-    a.x += b.x;
-    a.y += b.y;
-    return(a);
-}
-function Vec3_f32&
-operator+=(Vec3_f32 &a, Vec3_f32 b){
-    a.x += b.x;
-    a.y += b.y;
-    a.z += b.z;
-    return(a);
-}
-function Vec4_f32&
-operator+=(Vec4_f32 &a, Vec4_f32 b){
     a.x += b.x;
     a.y += b.y;
     a.z += b.z;
@@ -826,27 +784,6 @@ operator-(Vec4_i32 a, Vec4_i32 b){
     a.w -= b.w;
     return(a);
 }
-function Vec2_f32
-operator-(Vec2_f32 a, Vec2_f32 b){
-    a.x -= b.x;
-    a.y -= b.y;
-    return(a);
-}
-function Vec3_f32
-operator-(Vec3_f32 a, Vec3_f32 b){
-    a.x -= b.x;
-    a.y -= b.y;
-    a.z -= b.z;
-    return(a);
-}
-function Vec4_f32
-operator-(Vec4_f32 a, Vec4_f32 b){
-    a.x -= b.x;
-    a.y -= b.y;
-    a.z -= b.z;
-    a.w -= b.w;
-    return(a);
-}
 
 function Vec2_i8&
 operator-=(Vec2_i8 &a, Vec2_i8 b){
@@ -905,27 +842,6 @@ operator-=(Vec3_i32 &a, Vec3_i32 b){
 }
 function Vec4_i32&
 operator-=(Vec4_i32 &a, Vec4_i32 b){
-    a.x -= b.x;
-    a.y -= b.y;
-    a.z -= b.z;
-    a.w -= b.w;
-    return(a);
-}
-function Vec2_f32&
-operator-=(Vec2_f32 &a, Vec2_f32 b){
-    a.x -= b.x;
-    a.y -= b.y;
-    return(a);
-}
-function Vec3_f32&
-operator-=(Vec3_f32 &a, Vec3_f32 b){
-    a.x -= b.x;
-    a.y -= b.y;
-    a.z -= b.z;
-    return(a);
-}
-function Vec4_f32&
-operator-=(Vec4_f32 &a, Vec4_f32 b){
     a.x -= b.x;
     a.y -= b.y;
     a.z -= b.z;
@@ -1059,48 +975,6 @@ operator*(Vec4_i32 v, i32 s){
     v.w *= s;
     return(v);
 }
-function Vec2_f32
-operator*(f32 s, Vec2_f32 v){
-    v.x *= s;
-    v.y *= s;
-    return(v);
-}
-function Vec2_f32
-operator*(Vec2_f32 v, f32 s){
-    v.x *= s;
-    v.y *= s;
-    return(v);
-}
-function Vec3_f32
-operator*(f32 s, Vec3_f32 v){
-    v.x *= s;
-    v.y *= s;
-    v.z *= s;
-    return(v);
-}
-function Vec3_f32
-operator*(Vec3_f32 v, f32 s){
-    v.x *= s;
-    v.y *= s;
-    v.z *= s;
-    return(v);
-}
-function Vec4_f32
-operator*(f32 s, Vec4_f32 v){
-    v.x *= s;
-    v.y *= s;
-    v.z *= s;
-    v.w *= s;
-    return(v);
-}
-function Vec4_f32
-operator*(Vec4_f32 v, f32 s){
-    v.x *= s;
-    v.y *= s;
-    v.z *= s;
-    v.w *= s;
-    return(v);
-}
 
 function Vec2_i8&
 operator*=(Vec2_i8 &v, i8 s){
@@ -1159,27 +1033,6 @@ operator*=(Vec3_i32 &v, i32 s){
 }
 function Vec4_i32&
 operator*=(Vec4_i32 &v, i32 s){
-    v.x *= s;
-    v.y *= s;
-    v.z *= s;
-    v.w *= s;
-    return(v);
-}
-function Vec2_f32&
-operator*=(Vec2_f32 &v, f32 s){
-    v.x *= s;
-    v.y *= s;
-    return(v);
-}
-function Vec3_f32&
-operator*=(Vec3_f32 &v, f32 s){
-    v.x *= s;
-    v.y *= s;
-    v.z *= s;
-    return(v);
-}
-function Vec4_f32&
-operator*=(Vec4_f32 &v, f32 s){
     v.x *= s;
     v.y *= s;
     v.z *= s;
@@ -1248,19 +1101,6 @@ operator/(Vec4_i32 v, i32 s){
     v.y /= s;
     v.z /= s;
     v.w /= s;
-    return(v);
-}
-function Vec2_f32
-operator/(Vec2_f32 v, f32 s){
-    v.x /= s;
-    v.y /= s;
-    return(v);
-}
-function Vec3_f32
-operator/(Vec3_f32 v, f32 s){
-    v.x /= s;
-    v.y /= s;
-    v.z /= s;
     return(v);
 }
 function Vec4_f32
@@ -1394,14 +1234,6 @@ operator==(Vec4_i32 a, Vec4_i32 b){
     return(a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w);
 }
 function b32
-operator==(Vec2_f32 a, Vec2_f32 b){
-    return(a.x == b.x && a.y == b.y);
-}
-function b32
-operator==(Vec3_f32 a, Vec3_f32 b){
-    return(a.x == b.x && a.y == b.y && a.z == b.z);
-}
-function b32
 operator==(Vec4_f32 a, Vec4_f32 b){
     return(a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w);
 }
@@ -1443,14 +1275,6 @@ operator!=(Vec4_i32 a, Vec4_i32 b){
     return(a.x != b.x || a.y != b.y || a.z != b.z || a.w != b.w);
 }
 function b32
-operator!=(Vec2_f32 a, Vec2_f32 b){
-    return(a.x != b.x || a.y != b.y);
-}
-function b32
-operator!=(Vec3_f32 a, Vec3_f32 b){
-    return(a.x != b.x || a.y != b.y || a.z != b.z);
-}
-function b32
 operator!=(Vec4_f32 a, Vec4_f32 b){
     return(a.x != b.x || a.y != b.y || a.z != b.z || a.w != b.w);
 }
@@ -1489,25 +1313,7 @@ near_zero(Vec3_f32 p){ return(near_zero(p, epsilon_f32)); }
 function b32
 near_zero(Vec4_f32 p){ return(near_zero(p, epsilon_f32)); }
 
-function Vec2_f32
-hadamard(Vec2_f32 a, Vec2_f32 b){
-    return(V2f32(a.x*b.x, a.y*b.y));
-}
-function Vec3_f32
-hadamard(Vec3_f32 a, Vec3_f32 b){
-    return(V3f32(a.x*b.x, a.y*b.y, a.z*b.z));
-}
-function Vec4_f32
-hadamard(Vec4_f32 a, Vec4_f32 b){
-    return(V4f32(a.x*b.x, a.y*b.y, a.z*b.z, a.w*b.w));
-}
-
 ////////////////////////////////
-
-function f32
-lerp(f32 a, f32 t, f32 b){
-    return(a + (b-a)*t);
-}
 
 function f32
 lerp(f32 t, Range_f32 x){
@@ -1526,11 +1332,6 @@ lerp(Vec2_f32 a, f32 t, Vec2_f32 b){
 
 function Vec3_f32
 lerp(Vec3_f32 a, f32 t, Vec3_f32 b){
-    return(a + (b-a)*t);
-}
-
-function Vec4_f32
-lerp(Vec4_f32 a, f32 t, Vec4_f32 b){
     return(a + (b-a)*t);
 }
 

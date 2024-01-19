@@ -4,6 +4,7 @@
 #include "4coder_kv_draw.cpp"
 #include "4coder_kv_vim_stuff.cpp"
 #include "4coder_kv_lang_list.h"
+#include "game.cpp"
 
 // NOTE: Custom layer swapping for testing and trying out.
 // NOTE: Please enable only one layer, or else it explodes!

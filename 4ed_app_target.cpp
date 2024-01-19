@@ -14,6 +14,8 @@
 #define KV_IMPLEMENTATION
 #include "kv.h"
 #undef  KV_IMPLEMENTATION
+#include "kv_math.h"
+
 #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_table.h"

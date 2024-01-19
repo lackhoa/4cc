@@ -680,47 +680,8 @@ union Vec4_i32{
   };
   i32 v[4];
 };
-union Vec2_f32{
-  struct{
-    f32 x;
-    f32 y;
-  };
-  f32 v[2];
-};
-union Vec3_f32{
-  struct{
-    f32 x;
-    f32 y;
-    f32 z;
-  };
-  struct{
-    f32 r;
-    f32 g;
-    f32 b;
-  };
-  f32 v[3];
-};
-union Vec4_f32{
-  struct{
-    f32 x;
-    f32 y;
-    f32 z;
-    f32 w;
-  };
-  struct{
-    f32 r;
-    f32 g;
-    f32 b;
-    f32 a;
-  };
-  struct{
-    f32 h;
-    f32 s;
-    f32 l;
-    f32 __a;
-  };
-  f32 v[4];
-};
+
+typedef v3 Vec3_f32;
 
 union Range_i32{
   struct{
@@ -809,19 +770,8 @@ union Rect_i32{
   };
   Vec2_i32 p[2];
 };
-union Rect_f32{
-  struct{
-    f32 x0;
-    f32 y0;
-    f32 x1;
-    f32 y1;
-  };
-  struct{
-    Vec2_f32 p0;
-    Vec2_f32 p1;
-  };
-  Vec2_f32 p[2];
-};
+
+typedef rect2 Rect_f32;
 
 union Rect_f32_Pair{
   struct{

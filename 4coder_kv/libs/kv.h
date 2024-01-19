@@ -50,10 +50,8 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 
-#undef internal
 #    include "stb_ds.h"
 #    include "gb.h"
-#define internal static
 
 #pragma clang diagnostic pop
 
@@ -64,7 +62,6 @@
 /*
   END: Other single-header libraries
 */
-
 
 
 
