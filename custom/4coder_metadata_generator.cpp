@@ -7,6 +7,7 @@
 #define COMMAND_METADATA_OUT "generated/command_metadata.h"
 #define ID_METADATA_OUT "generated/managed_id_metadata.cpp"
 
+#include "kv.h"
 #include "4coder_base_types.h"
 #include "4coder_token.h"
 #include "generated/lexer_cpp.h"

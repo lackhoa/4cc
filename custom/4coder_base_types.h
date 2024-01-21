@@ -4,8 +4,7 @@
 
 // TOP
 
-#if !defined(FCODER_BASE_TYPES)
-#define FCODER_BASE_TYPES
+#pragma once
 
 ////////////////////////////////
 
@@ -645,26 +644,10 @@ union Vec4_i16{
   };
   i16 v[4];
 };
-union Vec2_i32{
-  struct{
-    i32 x;
-    i32 y;
-  };
-  i32 v[2];
-};
-union Vec3_i32{
-  struct{
-    i32 x;
-    i32 y;
-    i32 z;
-  };
-  struct{
-    i32 r;
-    i32 g;
-    i32 b;
-  };
-  i32 v[3];
-};
+
+typedef v2i Vec2_i32;
+typedef v3i Vec3_i32;
+
 union Vec4_i32{
   struct{
     i32 x;
@@ -1404,8 +1387,6 @@ struct Heap{
   u64 used_space;
   u64 total_space;
 };
-
-#endif
 
 // BOTTOM
 

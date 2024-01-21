@@ -9,12 +9,10 @@
 
 // TOP
 
-#define REMOVE_OLD_STRING
-
 #define KV_IMPLEMENTATION
 #include "kv.h"
-#undef  KV_IMPLEMENTATION
-#include "kv_math.h"
+
+#define REMOVE_OLD_STRING
 
 #include "4coder_base_types.h"
 #include "4coder_version.h"

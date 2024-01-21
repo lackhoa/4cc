@@ -7,8 +7,6 @@
 
 #define KV_IMPLEMENTATION
 #include "kv.h"
-#undef KV_IMPLEMENTATION
-#include "kv_math.h"
 #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_events.h"
@@ -78,9 +76,6 @@
 
 #include <stdlib.h> // NOTE(yuval): Used for free
 #include <time.h> // NOTE(allen): I don't know a better way to get Date_Time data; replace if there is a Mac low-level option time.h doesn't give milliseconds
-
-// NOTE(kv): AutoDraw
-// #include "ad_editor.h"
 
 #define function static
 #define internal static
@@ -244,7 +239,7 @@ struct Mac_Vars {
 ////////////////////////////////
 
 global Mac_Vars mac_vars;
-global Mac_Renderer *renderer;
+global Mac_Renderer *mac_renderer;
 global Render_Target target;
 global App_Functions app;
 
@@ -369,7 +364,7 @@ glue(_i_, __LINE__) = 1, mac_profile(name, glue(_begin_, __LINE__), system_now_t
 
 ////////////////////////////////
 
-#import "mac_4ed_renderer.mm"
+#import "mac_4ed_metal.mm"
 
 #include "4ed_font_provider_freetype.h"
 #include "4ed_font_provider_freetype.cpp"
@@ -861,7 +856,7 @@ mac_toggle_fullscreen(void){
 
         // NOTE(yuval): Render
         MacProfileScope("Render"){
-            renderer->render(renderer, &target);
+            mac_renderer->render(mac_renderer, &target);
         }
 
         // NOTE(yuval): Toggle full screen
@@ -1354,64 +1349,6 @@ main(int arg_count, char **args){
             }
         }
 
-        // NOTE(yuval): Load custom layer
-        // todo(kv): removeme
-    /*
-        System_Library custom_library = {};
-        Custom_API custom = {};
-        if (0)
-        {
-            char custom_not_found_msg[] = "Did not find a library for the custom layer.";
-            char custom_fail_version_msg[] = "Failed to load custom code due to missing version information or a version mismatch.  Try rebuilding with buildsuper.";
-            char custom_fail_init_apis[] = "Failed to load custom code due to missing 'init_apis' symbol.  Try rebuilding with buildsuper";
-
-            Scratch_Block scratch(mac_vars.tctx);
-            String_Const_u8 default_file_name = string_u8_litexpr("custom_4coder.so");
-            String8List search_list = {};
-            def_search_list_add_system_path(scratch, &search_list, SystemPath_CurrentDirectory);
-            def_search_list_add_system_path(scratch, &search_list, SystemPath_UserDirectory);
-            def_search_list_add_system_path(scratch, &search_list, SystemPath_Binary);
-
-            String_Const_u8 custom_file_names[2] = {};
-            i32 custom_file_count = 1;
-            if (plat_settings.custom_dll != 0){
-                custom_file_names[0] = SCu8(plat_settings.custom_dll);
-                if (!plat_settings.custom_dll_is_strict){
-                    custom_file_names[1] = default_file_name;
-                    custom_file_count += 1;
-                }
-            }
-            else{
-                custom_file_names[0] = default_file_name;
-            }
-            String_Const_u8 custom_file_name = {};
-            for (i32 i = 0; i < custom_file_count; i += 1){
-                custom_file_name = def_search_get_full_path(scratch, &search_list, custom_file_names[i]);
-                if (custom_file_name.size > 0){
-                    break;
-                }
-            }
-            b32 has_library = false;
-            if (custom_file_name.size > 0){
-                if (system_load_library(scratch, custom_file_name, &custom_library)){
-                    has_library = true;
-                }
-            }
-
-            if (!has_library){
-                system_error_box(custom_not_found_msg);
-            }
-            custom.get_version = (_Get_Version_Type*)system_get_proc(custom_library, "get_version");
-            if (custom.get_version == 0 || custom.get_version(MAJOR, MINOR, PATCH) == 0){
-                system_error_box(custom_fail_version_msg);
-            }
-            custom.init_apis = (_Init_APIs_Type*)system_get_proc(custom_library, "init_apis");
-            if (custom.init_apis == 0){
-                system_error_box(custom_fail_init_apis);
-            }
-        }
-*/
-
         //
         // Window and Renderer Initialization
         //
@@ -1458,7 +1395,10 @@ main(int arg_count, char **args){
         [mac_vars.window makeKeyAndOrderFront:nil];
 
         // NOTE(yuval): Initialize the renderer
-        renderer = mac_init_renderer(MacRenderer_Metal, mac_vars.window, &target);
+        mac_renderer = (Mac_Renderer *)mac_metal__init(mac_vars.window, &target);
+        if (!mac_renderer){
+            system_error_box("Unable to initialize the renderer!");
+        }
 
         mac_resize(w, h);
 

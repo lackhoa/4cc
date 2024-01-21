@@ -2440,6 +2440,9 @@ print_message(Application_Links *app, String_Const_u8 message)
     }
 }
 
+#define printf_message(app, arena, str, ...) \
+ print_message(app, push_stringf(arena, str, ##__VA_ARGS__))
+
 api(custom) function b32
 log_string(Application_Links *app, String_Const_u8 str){
     return(log_string(str));
@@ -2868,7 +2871,7 @@ draw_string_oriented(Application_Links *app, Face_ID font_id, ARGB_Color color,
         result += delta*width;
     }
     else{
-        f32 width = draw_string(models->target, face, str, point, color, flags, delta);
+        f32 width = draw_string_inner(models->target, face, str, point, color, flags, delta);
         result += delta*width;
     }
     return(result);
@@ -2891,16 +2894,25 @@ draw_rectangle(Application_Links *app, Rect_f32 rect, f32 roundness, ARGB_Color 
 }
 
 inline void
-draw_rectangle(Application_Links *app, v2 p0, v2 p1, v4 color)
+draw_rect(Application_Links *app, v2 p0, v2 p1, v4 color)
 {
   draw_rectangle(app, rect2{p0, p1}, 0, pack_color(color));
+}
+
+internal void
+draw_line(Application_Links *app, v2 p0, v2 p1, f32 thickness, v4 color)
+{
+    Models *models = (Models*)app->cmd_context;
+    if (models->in_render_mode){
+        draw_line(models->target, p0, p1, 0, thickness, pack_color(color));
+    }
 }
 
 api(custom) function void
 draw_rectangle_outline(Application_Links *app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color){
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode){
-        draw_rectangle_outline(models->target, rect, roundness, thickness, color);
+        draw_rectangle_outline_to_target(models->target, rect, roundness, thickness, color);
     }
 }
 

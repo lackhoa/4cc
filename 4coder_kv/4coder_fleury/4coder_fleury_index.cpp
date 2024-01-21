@@ -686,7 +686,9 @@ function void
 F4_Index_Tick(Application_Links *app)
 {
     Scratch_Block scratch(app);
-    for (Buffer_Modified_Node *node = global_buffer_modified_set.first; node != 0;node = node->next)
+    for (Buffer_Modified_Node *node = global_buffer_modified_set.first; 
+         node != 0;
+         node = node->next)
     {
         Temp_Memory_Block temp(scratch);
         Buffer_ID buffer_id = node->buffer;

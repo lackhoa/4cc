@@ -230,6 +230,8 @@ VIM_COMMAND_SIG(kv_sexpr_down)
   GET_VIEW_AND_BUFFER;
   vim_push_jump(app, view);
   Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
+  if ( !token_it.tokens ) return;
+  
   do
   {
     Token *token = token_it_read(&token_it);
@@ -239,18 +241,19 @@ VIM_COMMAND_SIG(kv_sexpr_down)
       move_right(app);
       break;
     }
-  } while (token_it_inc(&token_it));
+  }
+  while ( token_it_inc(&token_it) );
 }
 
 VIM_COMMAND_SIG(kv_sexpr_right)
 {
   GET_VIEW_AND_BUFFER;
   Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
-  Token *token = token_it_read(&token_it);
-  if (!token) return;
+  if ( !token_it.tokens ) return;
+  
   do
   {
-    token = token_it_read(&token_it);
+    Token *token = token_it_read(&token_it);
     if (token->kind == TokenBaseKind_LiteralString)
     {
       i64 token_end = token_range(token).end;
@@ -673,14 +676,21 @@ VIM_COMMAND_SIG(kv_handle_return)
   View_ID view = get_active_view(app, Access_ReadVisible);
   Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
   if (buffer)
-  {
-    save_all_dirty_buffers(app);
+  { // writable buffer
+    if ( fui_handle_slider(app, view, buffer) )
+    {
+      // pass
+    }
+    else
+    {
+      save_all_dirty_buffers(app);
+    }
   }
   else
   {
     buffer = view_get_buffer(app, view, Access_ReadVisible);
     if (buffer)
-    {
+    { // readonly buffer
       vim_push_jump(app, get_active_view(app, Access_ReadVisible));
       goto_jump_at_cursor(app);
       lock_jump_buffer(app, buffer);

@@ -145,7 +145,7 @@ isn't happening, so command bindings don't trigger unless you trigger them yours
  
  Query_Bar_Group group(app);
  Query_Bar bar = {};
- bar.prompt = SCu8("Weird String: ");
+ bar.prompt = SCu8("Text input: ");
  if (!start_query_bar(app, &bar, 0)){
   return;
  }

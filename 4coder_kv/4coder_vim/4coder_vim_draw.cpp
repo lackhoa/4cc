@@ -504,4 +504,3 @@ vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 	}
 	draw_string(app, face_id, vim_keystroke_text.string, bot_right, chord_color);
 }
-

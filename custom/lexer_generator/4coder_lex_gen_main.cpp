@@ -8,6 +8,8 @@
 #error 4coder_lex_get_main.cpp not correctly included.
 #endif
 
+#define KV_IMPLEMENTATION
+#include "kv.h"
 #include "4coder_base_types.h"
 #include "4coder_table.h"
 #include "4coder_token.h"

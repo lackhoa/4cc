@@ -1,7 +1,9 @@
-#pragma once
+/* 
+  This file contains ad-hoc things that are useful for the entire codebase 
+  todo(kv): merge this with the core?
+*/
 
-#include "kv.h"
-#include "4coder_default_include.cpp"
+#pragma once
 
 #define GET_VIEW_AND_BUFFER \
   View_ID   view = get_active_view(app, Access_ReadVisible); \
@@ -40,7 +42,7 @@ kv_token_at_cursor(Application_Links *app, i64 delta=0)
 {
   GET_VIEW_AND_BUFFER;
   Token_Array tokens = get_token_array_from_buffer(app, buffer);
-  i64 pos = view_correct_cursor(app, view) + delta;
+  i64 pos = view_get_cursor_pos(app, view) + delta;
   return token_from_pos(&tokens, pos);
 }
 
@@ -49,7 +51,7 @@ kv_token_it_at_cursor(Application_Links *app, i64 delta=0)
 {
   GET_VIEW_AND_BUFFER;
   Token_Array tokens = get_token_array_from_buffer(app, buffer);
-  i64 pos = view_correct_cursor(app, view) + delta;
+  i64 pos = view_get_cursor_pos(app, view) + delta;
   return token_iterator_pos(0, &tokens, pos);
 }
 
@@ -109,4 +111,10 @@ get_cursor_rect(Application_Links *app, Text_Layout_ID text_layout_id)
   i64 cursor_pos = view_get_cursor_pos(app, view);
   Rect_f32 result = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
   return result;
+}
+
+// ;fui
+inline f32 fslider(f32 value)
+{
+  return value;
 }

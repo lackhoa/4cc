@@ -2439,7 +2439,7 @@ F4_CLC_RenderCode(Application_Links *app, Buffer_ID buffer,
 
 function void
 F4_CLC_RenderBuffer(Application_Links *app, Buffer_ID buffer, View_ID view,
-                    Text_Layout_ID text_layout_id, Frame_Info frame_info)
+                    Text_Layout_ID text_layout_id)
 {
     Scratch_Block scratch(app);
     Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
@@ -2450,7 +2450,7 @@ F4_CLC_RenderBuffer(Application_Links *app, Buffer_ID buffer, View_ID view,
 
 function void
 F4_CLC_RenderComments(Application_Links *app, Buffer_ID buffer, View_ID view,
-                      Text_Layout_ID text_layout_id, Frame_Info frame_info)
+                      Text_Layout_ID text_layout_id)
 {
     if(def_get_config_b32(vars_save_string_lit("f4_disable_calc_comments")))
     {

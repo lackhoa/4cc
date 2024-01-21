@@ -6,9 +6,6 @@
 #define LANG_NAME_LOWER skm
 #define LANG_NAME_CAMEL Skm
 
-#define KV_IMPLEMENTATION
-#include "kv.h"
-#undef KV_IMPLEMENTATION
 #include "lexer_generator/4coder_lex_gen_main.cpp"
 
 internal void

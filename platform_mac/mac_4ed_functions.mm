@@ -967,13 +967,13 @@ system_set_destination_mixer(Audio_Mix_Destination_Function* mix_func){
 
 function
 graphics_get_texture_sig(){
-    u32 result = renderer->get_texture(renderer, dim, texture_kind);
+    u32 result = mac_renderer->get_texture(mac_renderer, dim, texture_kind);
     return(result);
 }
 
 function
 graphics_fill_texture_sig(){
-    b32 result = renderer->fill_texture(renderer, texture_kind, texture, p, dim, data);
+    b32 result = mac_renderer->fill_texture(mac_renderer, texture_kind, texture, p, dim, data);
     return(result);
 }
 

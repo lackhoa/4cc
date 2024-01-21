@@ -62,30 +62,57 @@ screenProject(Screen screen, v3 p)
             dot(screen.y_axis, d)};
 }
 
-gb_internal void
-draw_line(Application_Links *app, v2 p0, v2 p1, f32 thickness, v4 color)
-{
-  if (thickness < 2) thickness = 2;
-  v2 d = noz(p1 - p0);
-  v2 perpendicular = 0.5f * thickness * perp(d);
-  draw_rectangle(app, p0 - perpendicular, p1 + perpendicular, color);
+/*
+internal void 
+line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color)
+{ 
+    for (float t=0.; t<1.; t+=.01) { 
+        int x = x0 + (x1-x0)*t; 
+        int y = y0 + (y1-y0)*t; 
+        image.set(x, y, color); 
+    } 
 }
+*/
 
-gb_internal void game_update_and_render(Application_Links *app)
+internal void
+game_update_and_render(Application_Links *app, View_ID view, rect2 region)
 {
-  v2 screen_dim      = {100,100};
+  if(1)  // test draw texture
+  {
+    local_persist b32 initial = true;
+    defer(initial = false);
+    v3i dim = {100, 100, 1};
+    if (initial)
+    {
+      u32 texture = graphics_get_texture(dim, TextureKind_Mono);
+      u8 *data = (u8 *)malloc(dim.x * dim.y);
+      for_i32(y, 0, dim.y)
+      {
+        for_i32(x, 0, dim.x)
+        {
+          data[y*dim.x + x] = 0x66;  // fill with gray
+        }
+      }
+      graphics_fill_texture(TextureKind_Mono, texture, v3i{}, dim, data);
+    }
+    v2 position = {0,0};
+    // bookmark
+    // draw_rect(app, position, dim, texture, white);
+  }
+  
+  v2 screen_dim      = get_rect_dim(region);
   v2 screen_half_dim = 0.5f * screen_dim;
 
   f32 E3 = 1000.f;
 
   {// push backdrop
     v4 bg_color = v4{0,0,0,1};
-    draw_rectangle(app, -screen_half_dim, screen_half_dim, bg_color);
+    draw_rect(app, v2{0, 0}, screen_dim, bg_color);
   }
 
   {
-    // push canvas rect //
-    v2 layout_center = {-350, 0};
+    // push canvas rect
+    v2 layout_center = screen_half_dim;
     
     // push coordinate system
     v3 eye_p = E3 * v3{-1, -.2f, 3};
@@ -109,7 +136,7 @@ gb_internal void game_update_and_render(Application_Links *app)
     auto py_hit = raycastPlane(eye_p, py - eye_p, screen_N, screen_d);
     auto pz_hit = raycastPlane(eye_p, pz - eye_p, screen_N, screen_d);
     
-    if (p0_hit.hit && px_hit.hit && py_hit.hit && pz_hit.hit) 
+    if (p0_hit.hit && px_hit.hit && py_hit.hit && pz_hit.hit)
     {
       Screen screen = {screen_center, eye_x, eye_y};
       v2 p0_screen = screenProject(screen, p0_hit.p);
@@ -117,9 +144,9 @@ gb_internal void game_update_and_render(Application_Links *app)
       v2 py_screen = screenProject(screen, py_hit.p);
       v2 pz_screen = screenProject(screen, pz_hit.p);
       auto &O = layout_center;
-      draw_line(app, p0_screen+O, px_screen+O, 2.f, {.2,  0,  0, 1});
-      draw_line(app, p0_screen+O, py_screen+O, 2.f, { 0, .2,  0, 1});
-      draw_line(app, p0_screen+O, pz_screen+O, 2.f, { 0,  0, .2, 1});
+      draw_line(app, p0_screen+O, px_screen+O, 2.f, {.5,  0,  0, 1});
+      draw_line(app, p0_screen+O, py_screen+O, 2.f, { 0, .5,  0, 1});
+      draw_line(app, p0_screen+O, pz_screen+O, 2.f, { 0,  0, .5, 1});
       
       // pushDebugText("eye_p: %2.f, %2.f, %2.f", eye_p.x, eye_p.y, eye_p.z);
       // v3 px = px_hit.p;

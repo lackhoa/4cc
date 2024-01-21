@@ -1,10 +1,17 @@
+#include "game.cpp"
+#include "4coder_default_include.cpp"
+#include "4coder_kv_utils.cpp"  // TODO(kv): we wanna include this everwhere
+#include "4coder_kv_debug.cpp"
+#include "4coder_fleury/4coder_fleury_kv.cpp"
+#include "4coder_fleury/4coder_fleury_calc.cpp"
 #include "4coder_kv_build.cpp"
+#include "4coder_kv_fui.cpp"
 #include "4coder_kv_commands.cpp"
 #include "4coder_kv_hooks.cpp"
+#include "4coder_byp_token.cpp"
 #include "4coder_kv_draw.cpp"
 #include "4coder_kv_vim_stuff.cpp"
 #include "4coder_kv_lang_list.h"
-#include "game.cpp"
 
 // NOTE: Custom layer swapping for testing and trying out.
 // NOTE: Please enable only one layer, or else it explodes!
@@ -12,7 +19,7 @@
 #    define USE_LAYER_kv               1
 #    define USE_LAYER_fleury_lite      0
 #    define USE_LAYER_fleury           0
-#    define USE_LAYER_default_bindings 0
+#    define USE_LAYER_default          0
 #else
 #    define USE_LAYER_kv               1
 #endif
@@ -62,6 +69,9 @@ function void kv_open_startup_files(Application_Links *app)
 
 #if USE_LAYER_fleury || USE_LAYER_fleury_lite
   char *startup_file = "~/4ed/code/4coder_kv/4coder_fleury/4coder_fleury_plots_demo.cpp";
+#elif KV_INTERNAL
+  // char *startup_file = "*render*";
+  char *startup_file = "~/4ed/code/4coder_kv/4coder_kv.cpp";
 #else
   char *startup_file = "~/notes/note.skm";
 #endif
@@ -139,11 +149,23 @@ kv_default_bindings(Mapping *mapping)
   ParentMap(file_id);
 }
 
+inline void create_unimportant_buffer(Application_Links *app, char *name)
+{
+  Buffer_ID buffer = create_buffer(app, string_u8_litexpr(name),
+                                   BufferCreate_NeverAttachToFile |
+                                   BufferCreate_AlwaysNew);
+  buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
+}
+
 CUSTOM_COMMAND_SIG(kv_startup)
 {
-  default_startup(app);  // NOTE(kv): this thing stomps over your binding
+  default_startup(app);  // NOTE(kv): This thing stomps over your binding
   kv_essential_mapping(&framework_mapping);
   kv_default_bindings(&framework_mapping);
+  { // NOTE(rjf): Create special buffers.
+    create_unimportant_buffer(app, "*calc*");
+    create_unimportant_buffer(app, "*render*");
+  }
   kv_open_startup_files(app);
 	set_window_title(app, string_u8_litexpr("4coder kv"));
 }
@@ -209,7 +231,6 @@ function void kv_vim_bindings(Application_Links *app)
 
   /// Rebinds
   BIND(N|MAP, undo,                                 KeyCode_U);
-  BIND(N|MAP, undo,                              (C|KeyCode_Z));
   BIND(N|MAP, redo,                              (C|KeyCode_R));
   BIND(N|MAP, vim_interactive_open_or_new,    SUB_G,  KeyCode_F);
   BIND(N|MAP, kv_open_file_ultimate,             M|KeyCode_F);
@@ -260,8 +281,7 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|V|MAP,   vim_combine_line,             (S|KeyCode_J));
   BIND(N|V|MAP,   vim_combine_line,      SUB_G, (S|KeyCode_J));
   BIND(N|MAP,     vim_last_command,                KeyCode_Period);
-  // BIND(N|MAP,     vim_backspace_char,              KeyCode_Backspace);
-  // BIND(N|MAP,     vim_delete_char,                 KeyCode_Delete);
+  BIND(N|MAP,     vim_backspace_char,              KeyCode_Backspace);
   BIND(I|MAP,     word_complete,                   KeyCode_Tab);
   BIND(I|MAP,     vim_paste_before,              M|KeyCode_V);
   BIND(I|MAP,     kv_newline_and_indent,           KeyCode_Return)
@@ -387,7 +407,7 @@ function void kv_vim_bindings(Application_Links *app)
 }
 
 function void 
-default_bindings_custom_layer_init(Application_Links *app)
+default_custom_layer_init(Application_Links *app)
 {
     Thread_Context *tctx = get_thread_context(app);
     
@@ -457,26 +477,7 @@ kv_custom_layer_init(Application_Links *app)
   F4_Index_Initialize();
   // NOTE(rjf): Register languages.
   F4_RegisterLanguages();
- 
-  /*
-  {// AutoDraw code, which has to be run in a main thread unfortunately because it creates a window
-    char *todo_autodraw_path = (char *)"/Users/khoa/AutoDraw/build";
-    adMainFcoder(todo_autodraw_path);
-  }
-
-  // gb_mutex_init(&var_mutex);
-  */
 }
-
-/*
-CUSTOM_COMMAND_SIG(ad_toggle_test)
-CUSTOM_DOC("test ad integration")
-{
-  gb_mutex_lock(&var_mutex);
-  ad_test_boolean = !ad_test_boolean;
-  gb_mutex_unlock(&var_mutex);
-}
-*/
 
 extern "C" void
 custom_layer_init(Application_Links *app)
@@ -487,8 +488,8 @@ custom_layer_init(Application_Links *app)
   fleury_custom_layer_init(app);
 #elif USE_LAYER_fleury_lite
   fleury_lite_custom_layer_init(app);
-#elif USE_LAYER_default_bindings
-  default_bindings_custom_layer_init(app);
+#elif USE_LAYER_default
+  default_custom_layer_init(app);
 #endif
 
   {// note(kv): shared startup code
@@ -499,4 +500,6 @@ custom_layer_init(Application_Links *app)
     SelectMap(global_id);
     BindCore(kv_startup, CoreCode_Startup);
   }
+  // test fslider
+  fslider( 0.3f );
 }

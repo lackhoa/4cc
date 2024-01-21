@@ -7,8 +7,6 @@
 #define ArrayInc(a,i) ((i+1) % ArrayCount(a))
 #define ArrayDec(a,i) ((i + ArrayCount(a)-1) % ArrayCount(a))
 
-#define printf_message(app, arena, str, ...) print_message(app, push_stringf(arena, str, ##__VA_ARGS__))
-
 // NOTE(BYP): Used in vim_request_vtable
 #define VIM_REQUEST_SIG(name) void name(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64 range)
 typedef void Vim_Apply_Request(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64 range);

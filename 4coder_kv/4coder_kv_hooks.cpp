@@ -1,7 +1,3 @@
-#include "4coder_kv_utils.cpp"
-#include "4coder_fleury/4coder_fleury_kv.cpp"
-#include "4coder_fleury/4coder_fleury_calc.cpp"
-
 BUFFER_HOOK_SIG(kv_file_save)
 {
   default_file_save(app, buffer_id);
@@ -24,15 +20,6 @@ BUFFER_HOOK_SIG(kv_new_file)
 
 	return 0;
 }
-
-#if KV_INTERNAL
-inline void
-kv_fiddle(Application_Links *app)
-{
-  f32 linum = get_current_line(app);
-  // kv_set_fiddle_value(linum);
-}
-#endif
 
 function Tick_Function kv_tick;
 function void kv_tick(Application_Links *app, Frame_Info frame_info)
@@ -88,12 +75,6 @@ function void kv_tick(Application_Links *app, Frame_Info frame_info)
       kv_print_message(app, "auto-saved all dirty buffers\n");
     }
   }
- 
-#if KV_INTERNAL
- 
-  kv_fiddle(app);
-  
-#endif
 }
 
 BUFFER_HOOK_SIG(kv_begin_buffer)

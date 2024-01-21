@@ -132,7 +132,34 @@ end_render_section(Render_Target *target){
 ////////////////////////////////
 
 internal void
-draw_rectangle_outline(Render_Target *target, Rect_f32 rect, f32 roundness, f32 thickness, u32 color){
+draw_line(Render_Target *target, v2 p0, v2 p1, f32 roundness, f32 thickness, u32 color)
+{
+  kv_clamp_min(thickness, 2.0f);
+  f32 half_thickness = 0.5f * thickness;
+ 
+  v2 d = noz(p1 - p0);
+  v2 perpendicular = 0.5f * thickness * perp(d);
+  
+  Render_Vertex vertices[6];
+  vertices[0].xy = p0-perpendicular;
+  vertices[1].xy = p0+perpendicular;
+  vertices[2].xy = p1+perpendicular;
+  vertices[3].xy = vertices[1].xy;
+  vertices[4].xy = vertices[2].xy;
+  vertices[5].xy = p1-perpendicular;
+ 
+  v2 center = 0.5f * (p1 - p0);
+  for (i32 i=0; i < kv_array_count(vertices); i++)
+  {
+    vertices[i].uvw   = v3{center.x, center.y, roundness};
+    vertices[i].color = color;
+    vertices[i].half_thickness = half_thickness;
+  }
+  draw__write_vertices_in_current_group(target, vertices, kv_array_count(vertices));
+}
+
+internal void
+draw_rectangle_outline_to_target(Render_Target *target, Rect_f32 rect, f32 roundness, f32 thickness, u32 color){
     if (roundness < epsilon_f32){
         roundness = 0.f;
     }
@@ -143,14 +170,15 @@ draw_rectangle_outline(Render_Target *target, Rect_f32 rect, f32 roundness, f32 
     vertices[0].xy = V2f32(rect.x0, rect.y0);
     vertices[1].xy = V2f32(rect.x1, rect.y0);
     vertices[2].xy = V2f32(rect.x0, rect.y1);
-    vertices[3].xy = V2f32(rect.x1, rect.y0);
-    vertices[4].xy = V2f32(rect.x0, rect.y1);
+    vertices[3]    = vertices[1];
+    vertices[4]    = vertices[2];
     vertices[5].xy = V2f32(rect.x1, rect.y1);
     
     Vec2_f32 center = rect_center(rect);
     for (i32 i = 0; i < ArrayCount(vertices); i += 1)
     {
         vertices[i].uvw = V3f32(center.x, center.y, roundness);
+        // vertices[i].uvw = V3f32(center.x/2, center.y/2, roundness);  // @test(kv)
         vertices[i].color = color;
         vertices[i].half_thickness = half_thickness;
     }
@@ -160,7 +188,8 @@ draw_rectangle_outline(Render_Target *target, Rect_f32 rect, f32 roundness, f32 
 internal void
 draw_rectangle(Render_Target *target, Rect_f32 rect, f32 roundness, u32 color){
     Vec2_f32 dim = rect_dim(rect);
-    draw_rectangle_outline(target, rect, roundness, Max(dim.x, dim.y), color);
+    f32 thickness = Max(dim.x, dim.y);
+    draw_rectangle_outline_to_target(target, rect, roundness, thickness, color);
 }
 
 internal void
@@ -215,8 +244,8 @@ floor32(Vec2_f32 point){
 }
 
 internal f32
-draw_string(Render_Target *target, Face *face, String_Const_u8 string, Vec2_f32 point,
-            ARGB_Color color, u32 flags, Vec2_f32 delta){
+draw_string_inner(Render_Target *target, Face *face, String_Const_u8 string, Vec2_f32 point,
+                  ARGB_Color color, u32 flags, Vec2_f32 delta){
     f32 total_delta = 0.f;
     if (face != 0){
         point = floor32(point);
@@ -286,27 +315,27 @@ draw_string(Render_Target *target, Face *face, String_Const_u8 string, Vec2_f32 
 
 internal f32
 draw_string(Render_Target *target, Face *face, String_Const_u8 string, Vec2_f32 point, u32 color){
-    return(draw_string(target, face, string, point, color, 0, V2f32(1.f, 0.f)));
+    return(draw_string_inner(target, face, string, point, color, 0, V2f32(1.f, 0.f)));
 }
 
 internal f32
 draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color, u32 flags, Vec2_f32 delta){
-    return(draw_string(target, face, SCu8(str), point, color, flags, delta));
+    return(draw_string_inner(target, face, SCu8(str), point, color, flags, delta));
 }
 
 internal f32
 draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color){
-    return(draw_string(target, face, SCu8(str), point, color, 0, V2f32(1.f, 0.f)));
+    return(draw_string_inner(target, face, SCu8(str), point, color, 0, V2f32(1.f, 0.f)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, String_Const_u8 str){
-    return(draw_string(target, face, str, V2f32(0, 0), 0, 0, V2f32(0, 0)));
+    return(draw_string_inner(target, face, str, V2f32(0, 0), 0, 0, V2f32(0, 0)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, u8 *str){
-    return(draw_string(target, face, SCu8(str), V2f32(0, 0), 0, 0, V2f32(0, 0)));
+    return(draw_string_inner(target, face, SCu8(str), V2f32(0, 0), 0, 0, V2f32(0, 0)));
 }
 
 // BOTTOM
