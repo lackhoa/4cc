@@ -99,13 +99,19 @@ CUSTOM_COMMAND_SIG(vim_goto_definition_other_panel)
 
 VIM_COMMAND_SIG(kv_newline_above)
 {
+  GET_VIEW_AND_BUFFER;
+  HISTORY_GROUP_SCOPE;
   vim_newline_above(app);
+  vim_down(app);
   vim_normal_mode(app);
 }
 
 VIM_COMMAND_SIG(kv_newline_below)
 {
+  GET_VIEW_AND_BUFFER;
+  HISTORY_GROUP_SCOPE;
   vim_newline_below(app);
+  vim_up(app);
   vim_normal_mode(app);
 }
 
@@ -551,12 +557,18 @@ CUSTOM_DOC("run the current script")
   standard_build_exec_command(app, view, dir, cmd);
 }
 
+internal void
+switch_to_buffer_named(Application_Links *app, char *name)
+{
+  View_ID   view = get_active_view(app, Access_ReadVisible);
+  Buffer_ID buffer = create_buffer(app, SCu8(name), 0);
+  view_set_buffer(app, view, buffer, 0);
+}
+
 CUSTOM_COMMAND_SIG(note)
 CUSTOM_DOC("run the current script")
 {
-  View_ID   view = get_active_view(app, Access_ReadVisible);
-  Buffer_ID buffer = create_buffer(app, SCu8("~/notes/note.skm"), 0);
-  view_set_buffer(app, view, buffer, 0);
+  switch_to_buffer_named(app, "~/notes/note.skm");
 }
 
 CUSTOM_COMMAND_SIG(file)
@@ -696,4 +708,28 @@ VIM_COMMAND_SIG(kv_handle_return)
       lock_jump_buffer(app, buffer);
     }
   }
+}
+
+CUSTOM_COMMAND_SIG(b)
+CUSTOM_DOC("change to build buffer")
+{
+  switch_to_buffer_named(app, "*compilation*");
+}
+
+CUSTOM_COMMAND_SIG(s)
+CUSTOM_DOC("change to search buffer")
+{
+  switch_to_buffer_named(app, "*search*");
+}
+
+VIM_COMMAND_SIG(switch_to_file_buffer)
+{
+  GET_VIEW_AND_BUFFER;
+  Scratch_Block scratch(app);
+  char *kv_file_filename = "/Users/khoa/notes/file.skm";
+  String8 buffer_file = push_buffer_file_name(app, scratch, buffer);
+  b32 already_in_file_file = string_compare( buffer_file, SCu8(kv_file_filename)) == 0;
+  
+  if (already_in_file_file) kv_open_file_ultimate(app);
+  else                      switch_to_buffer_named(app, kv_file_filename);
 }

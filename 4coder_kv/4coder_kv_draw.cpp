@@ -203,13 +203,18 @@ kv_render_buffer(Application_Links *app, Frame_Info frame_info, View_ID view, Fa
     }
   }
 
-  F4_Language *language = F4_LanguageFromBuffer(app, buffer);
-  F4_Language *skm_lang = F4_LanguageFromString(SCu8("skm"));
-  b32 use_paren_helper = (language == skm_lang);
-  if (use_paren_helper)
-  {
-    Color_Array colors = finalize_color_array(defcolor_text_cycle);
-    kv_draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
+  { // note(kv): draw paren highlight
+    b32 is_skm = false;
+    {
+      F4_Language *language = F4_LanguageFromBuffer(app, buffer);
+      F4_Language *skm_lang = F4_LanguageFromString(SCu8("skm"));
+      is_skm = (language == skm_lang);
+    }
+      Color_Array colors = finalize_color_array(defcolor_text_cycle);
+    if (is_skm)
+      kv_draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
+    else
+      draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
   }
 
   b64 show_whitespace = false;
@@ -257,7 +262,11 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
   View_ID active_view = get_active_view(app, Access_Always);
   b32 is_active_view = (active_view == view);
 
-  Rect_f32 region = draw_background_and_margin(app, view, is_active_view);
+  // NOTE(kv): I'd love to call draw_background_and_margin, since it has panel border
+  //           but it messes with vim's command lister :<
+  // Rect_f32 region = draw_background_and_margin(app, view, is_active_view);
+  
+  Rect_f32 region = view_get_screen_rect(app, view);
 	Rect_f32 prev_clip = draw_set_clip(app, region);
   
 	Buffer_ID buffer = view_get_buffer(app, view, Access_Always);

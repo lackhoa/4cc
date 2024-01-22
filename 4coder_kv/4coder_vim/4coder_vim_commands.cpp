@@ -187,7 +187,7 @@ VIM_COMMAND_SIG(vim_newline_below)
 	vim_insert_end(app);
 	vim_state.insert_index++;
 	write_text(app, string_u8_litexpr("\n"));
-    auto_indent_line_at_cursor(app);
+  auto_indent_line_at_cursor(app);
 }
 
 VIM_COMMAND_SIG(vim_newline_above)
@@ -197,7 +197,7 @@ VIM_COMMAND_SIG(vim_newline_above)
 	vim_state.insert_index++;
 	write_text(app, string_u8_litexpr("\n"));
 	move_vertical_lines(app, -1);
-    auto_indent_line_at_cursor(app);
+  auto_indent_line_at_cursor(app);
 }
 
 VIM_COMMAND_SIG(vim_visual_mode){
@@ -908,44 +908,3 @@ VIM_COMMAND_SIG(vim_play_macro){
 		keyboard_macro_play(app, macro);
 	}
 }
-
-// VIM_COMMAND_SIG(vim_insert_command);
-
-
-
-/// Vim commands aliases for lister
-CUSTOM_COMMAND_SIG(w)
-CUSTOM_DOC("Vim: Saves the buffer") { save(app); }
-
-CUSTOM_COMMAND_SIG(wq)
-CUSTOM_DOC("Vim: Saves and quits the buffer") { save(app); close_panel(app); }
-
-CUSTOM_COMMAND_SIG(wqa)
-CUSTOM_DOC("Vim: Saves and quits all buffers") { save_all_dirty_buffers(app); exit_4coder(app); }
-
-CUSTOM_COMMAND_SIG(q)
-CUSTOM_DOC("Vim: Close panel") { close_panel(app); }
-
-CUSTOM_COMMAND_SIG(qk)
-CUSTOM_DOC("Vim: Attempt to kill buffer and close panel") { vim_try_buffer_kill(app); close_panel(app); }
-
-CUSTOM_COMMAND_SIG(qa)
-CUSTOM_DOC("Vim: Attempt to exit") { exit_4coder(app); }
-
-CUSTOM_COMMAND_SIG(e)
-CUSTOM_DOC("Vim: Open file") { vim_interactive_open_or_new(app); }
-
-CUSTOM_COMMAND_SIG(b)
-CUSTOM_DOC("Vim: Open file") { vim_interactive_open_or_new(app); }
-
-CUSTOM_COMMAND_SIG(vs)
-CUSTOM_DOC("Vim: Vertical split") { open_panel_vsplit(app); }
-
-CUSTOM_COMMAND_SIG(sp)
-CUSTOM_DOC("Vim: Horizontal split") { open_panel_hsplit(app); }
-
-CUSTOM_COMMAND_SIG(s)
-CUSTOM_DOC("Vim: Substitute"){ replace_in_buffer(app); }
-
-CUSTOM_COMMAND_SIG(jumps)
-CUSTOM_DOC("Vim: Interactive jump stack lister"){ vim_jump_lister(app); }

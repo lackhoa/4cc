@@ -25,7 +25,7 @@ VIM_COMMAND_SIG(vim_end_line){
 
 function void vim_scroll_inner(Application_Links *app, f32 ratio){
 	View_ID view = get_active_view(app, Access_ReadVisible);
-	vim_push_jump(app, view);
+	// vim_push_jump(app, view);  @modified(kv): this is just moving the screen, so why jump?
 	Vim_Motion_Block vim_motion_block(app);
 	vim_state.params.edit_type = EDIT_LineWise;
 

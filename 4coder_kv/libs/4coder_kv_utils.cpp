@@ -1,6 +1,6 @@
 /* 
   This file contains ad-hoc things that are useful for the entire codebase 
-  todo(kv): merge this with the core?
+  todo(kv): merge this with the core? 4coder_helper.cpp
 */
 
 #pragma once
@@ -118,3 +118,7 @@ inline f32 fslider(f32 value)
 {
   return value;
 }
+
+#define HISTORY_GROUP_SCOPE \
+  History_Group history_group = history_group_begin(app, buffer); \
+  defer( history_group_end(history_group) );

@@ -63,24 +63,20 @@ function void kvInitShiftedTable()
 
 function void kv_open_startup_files(Application_Links *app)
 {
+  Scratch_Block scratch(app);
   set_hot_directory(app, SCu8("/Users/khoa/AutoDraw/4coder_kv/"));
   load_project(app);
   View_ID view = get_this_ctx_view(app, Access_Always);
 
-#if USE_LAYER_fleury || USE_LAYER_fleury_lite
-  char *startup_file = "~/4ed/code/4coder_kv/4coder_fleury/4coder_fleury_plots_demo.cpp";
-#elif KV_INTERNAL
-  // char *startup_file = "*render*";
-  char *startup_file = "~/4ed/code/4coder_kv/4coder_kv.cpp";
+  String8 startup_file;
+#if KV_INTERNAL
+  startup_file = def_get_config_string(scratch, vars_save_string_lit("startup_file1"));
 #else
-  char *startup_file = "~/notes/note.skm";
+  startup_file = def_get_config_string(scratch, vars_save_string_lit("startup_file"));
 #endif
 
-  Buffer_ID buffer = create_buffer(app, SCu8(startup_file), 0);
-  if (view && buffer)
-  {
-    view_set_buffer(app, view, buffer, 0);
-  }
+  Buffer_ID buffer = create_buffer(app, startup_file, 0);
+  view_set_buffer(app, view, buffer, 0);
 }
 
 // NOTE(kv): shared between custom layers
@@ -298,7 +294,7 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|V|MAP, vim_backward_WORD,               (S|KeyCode_B));
   BIND(N|V|MAP, vim_forward_end,                    KeyCode_E);
   BIND(N|V|MAP, vim_forward_END,                 (S|KeyCode_E));
-  BIND(N|V|MAP, vim_modal_0,                        KeyCode_0);
+  BIND(N|0|MAP, vim_modal_0,                        KeyCode_0);
 
   BIND(N|V|MAP, vim_forward_word,  KeyCode_W);
   BIND(N|V|MAP, vim_backward_word, KeyCode_B);
@@ -308,9 +304,10 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|V|MAP, vim_goto_column,                 (S|KeyCode_BackwardSlash));
   BIND(N|V|MAP, vim_modal_percent,               (S|KeyCode_5));
   BIND(N|V|MAP, vim_bounce,                      (C|KeyCode_5));
-  BIND(N|V|MAP, vim_set_seek_char,                    KeyCode_F);
-  BIND(N|0|MAP, vim_paragraph_up,                     KeyCode_LeftBracket);
-  BIND(N|0|MAP, vim_paragraph_down,                   KeyCode_RightBracket);
+  BIND(N|0|MAP, switch_to_file_buffer,              KeyCode_F);
+  BIND(0|V|MAP, vim_set_seek_char,                  KeyCode_F);
+  BIND(N|0|MAP, vim_paragraph_up,                   KeyCode_LeftBracket);
+  BIND(N|0|MAP, vim_paragraph_down,                 KeyCode_RightBracket);
   BIND(N|V|MAP, vim_screen_top,                  (S|KeyCode_H));
   BIND(N|V|MAP, vim_screen_bot,                  (S|KeyCode_L));
   BIND(N|V|MAP, vim_screen_mid,                  (S|KeyCode_M));
@@ -331,8 +328,8 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|MAP, vim_next_jump,                     (C|KeyCode_I));
 
   /// Screen Adjust Binds
-  BIND(N|V|MAP, vim_whole_page_up,                 (C|KeyCode_B));
-  BIND(N|V|MAP, vim_whole_page_down,               (C|KeyCode_F));
+  BIND(N|V|MAP, vim_half_page_up,                 (C|KeyCode_B));
+  BIND(N|V|MAP, vim_half_page_down,               (C|KeyCode_F));
   BIND(N|V|MAP, vim_line_down,               (C|S|KeyCode_Y));
   BIND(N|V|MAP, vim_line_down,                     (C|KeyCode_Y));
   BIND(N|V|MAP, vim_line_up,                 (C|S|KeyCode_E));

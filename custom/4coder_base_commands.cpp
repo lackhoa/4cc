@@ -1237,6 +1237,7 @@ query_replace_base(Application_Links *app, View_ID view, Buffer_ID buffer_id, i6
         }
         
         seek_string_forward(app, buffer_id, pos, 0, r, &new_pos);
+        center_view(app);  // @modified(kv): scroll the darn thing into view so I can see what's being replaced
     }
     
     view_disable_highlight_range(app, view);

@@ -170,7 +170,8 @@ vim_draw_cursor(Application_Links *app, View_ID view, b32 is_active_view, Buffer
 	if(is_active_view && vim_state.mode == VIM_Visual_Insert){
 		animate_in_n_milliseconds(app, 1000);  // #modified(kv)
 		
-		if(ACTIVE_BLINK(vim_cursor_blink)){
+		// if(ACTIVE_BLINK(vim_cursor_blink))  @modified(kv): no blinking!
+    {
 			Range_i64 range = get_view_range(app, view);
 			Rect_f32 block_rect = vim_get_abs_block_rect(app, view, buffer, text_layout_id, range);
 			
@@ -195,7 +196,9 @@ vim_draw_cursor(Application_Links *app, View_ID view, b32 is_active_view, Buffer
 			animate_in_n_milliseconds(app, 1000);  // #modified(kv)
 			Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
 			
-			if(ACTIVE_BLINK(vim_cursor_blink) && !vim_is_selecting_register){
+			// if(ACTIVE_BLINK(vim_cursor_blink) && !vim_is_selecting_register) @modified(kv)
+			if(!vim_is_selecting_register)
+      {
 				if(vim_state.mode == VIM_Insert){ rect = rect_split_top_bottom_neg(rect, 5.f).b; }
 				if(rect.p1 != V2f32(0,0)){
 					vim_nxt_cursor_pos = rect.p1;
@@ -454,7 +457,8 @@ vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 	
 	if(vim_use_bottom_cursor){
 		Vec2_f32 p = draw_string(app, face_id, vim_bot_text.string, bot_left, finalize_color(defcolor_text_default, 0));
-		if(ACTIVE_BLINK(vim_cursor_blink)){
+		// if(ACTIVE_BLINK(vim_cursor_blink))  @modified(kv)
+    {
 			p.x -= 0.37f*(p.x - bot_left.x)/vim_bot_text.size;
 			draw_string(app, face_id, string_u8_litexpr("|"), p, finalize_color(defcolor_text_default, 0));
 		}

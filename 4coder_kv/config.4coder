@@ -1,8 +1,4 @@
 // Command Mapping
-// ""                - Leave the bindings unaltered - use this when writing your own customization!
-// "choose"          - Ask 4coder to choose based on platform.
-// "default"         - Use the default keybindings 4coder has always had.
-// "mac-default"     - Use keybindings similar to those found in other Mac applications.
 mapping = "";
 
 // MODE
@@ -77,3 +73,7 @@ user_name = "khoa";
 
 // Keyboard AltGr setting
 lalt_lctrl_is_altgr = false;
+
+// NOTE(kv): quick startup file setting
+startup_file  = "/Users/khoa/notes/note.skm";
+startup_file1 = "/Users/khoa/notes/test.skm";

@@ -177,6 +177,7 @@ vim_to_pattern_inner(Application_Links *app, Buffer_Seek_String_Flags seek_flags
     Vim_Motion_Block vim_motion_block(app);
     view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
   }
+  vim_scroll_screen_mid(app);  // @modified(kv): hack so that we don't obscure the cursor
 }
 
 function void
