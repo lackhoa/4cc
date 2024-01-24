@@ -100,7 +100,7 @@ game_update_and_render(Application_Links *app, View_ID view, rect2 region)
     // draw_rect(app, position, dim, texture, white);
   }
   
-  v2 screen_dim      = get_rect_dim(region);
+  v2 screen_dim      = rect_get_dim(region);
   v2 screen_half_dim = 0.5f * screen_dim;
 
   f32 E3 = 1000.f;

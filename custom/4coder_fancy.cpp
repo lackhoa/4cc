@@ -63,6 +63,11 @@ fcolor_resolve(FColor color){
     return(result);
 }
 
+inline ARGB_Color
+fcolor_resolve(Managed_ID color_id){
+    return(fcolor_resolve(fcolor_id(color_id)));
+}
+
 function FColor
 fcolor_change_alpha(FColor color, f32 alpha){
     Vec4_f32 v = unpack_color(fcolor_resolve(color));

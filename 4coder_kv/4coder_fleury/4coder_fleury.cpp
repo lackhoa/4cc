@@ -394,7 +394,6 @@ typedef int socklen_t;
 // #include <stdlib.h>
 // #include <stdio.h>
 // #include <string.h>
-// #include "4coder_default_include.cpp"
 #pragma warning(disable : 4706)
 #pragma warning(disable : 4456)
 #define COMMAND_SERVER_PORT 4041
@@ -725,4 +724,6 @@ CUSTOM_DOC("Fleury startup event")
         def_enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
         clear_all_layouts(app);
     }
+  
+  open_startup_file(app);
 }

@@ -4778,6 +4778,21 @@ string_compare(String_Const_u8 a, String_Const_u8 b){
     }
     return(result);
 }
+inline b32
+string_equal(String8 a, String8 b)
+{
+  return string_compare(a,b) == 0;
+}
+inline b32
+string_equal(String8 a, char *b)
+{
+  return string_equal(a, SCu8(b));
+}
+inline b32
+string_equal(String8 a, char c)
+{
+  return (a.size == 1) && (a.str[0] == c);
+}
 function i32
 string_compare(String_Const_u16 a, String_Const_u16 b){
     i32 result = 0;

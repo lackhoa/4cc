@@ -302,7 +302,7 @@ vim_make_request(Application_Links *app, Vim_Request_Type request){
 
 function void vim_page_scroll_inner(Application_Links *app, f32 ratio){
 	View_ID view = get_active_view(app, Access_ReadVisible);
-	vim_push_jump(app, view);
+	// vim_push_jump(app, view);  @modified(kv)
 	
 	f32 scroll_pixels = ratio*get_page_jump(app, view);
 	move_vertical_pixels(app, scroll_pixels);

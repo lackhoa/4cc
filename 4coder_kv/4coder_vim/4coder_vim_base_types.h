@@ -1,7 +1,5 @@
 #pragma once
 
-#include "4coder_default_include.cpp"
-
 #define foreach(i,N) for(i32 i=0; i<N; i++)
 #define in_range(bot,mid,top) ((bot) <= (mid) && (mid) < (top))
 #define ArrayInc(a,i) ((i+1) % ArrayCount(a))

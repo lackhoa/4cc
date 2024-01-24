@@ -6,6 +6,7 @@
 
 function void
 setup_mac_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id){
+  /*
     MappingScope();
     SelectMapping(mapping);
     
@@ -145,6 +146,7 @@ setup_mac_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id){
     Bind(open_matching_file_cpp,     KeyCode_2, KeyCode_Control);
     Bind(write_zero_struct,          KeyCode_0, KeyCode_Command);
     Bind(jump_to_definition_at_cursor, KeyCode_W, KeyCode_Command);
+*/
 }
 
 // BOTTOM

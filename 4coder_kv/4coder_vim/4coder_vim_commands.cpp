@@ -1,7 +1,3 @@
-#include "4coder_vim_movement.cpp"
-#include "4coder_vim_lists.cpp"
-#include "4coder_kv_utils.cpp"
-
 CUSTOM_COMMAND_SIG(vim_toggle_relative_line_num)
 CUSTOM_DOC("Toggles relative line numbers")
 { vim_relative_numbers ^= 1; }
@@ -553,7 +549,7 @@ VIM_COMMAND_SIG(vim_paste_before)
   if( vim_state.mode == VIM_Visual )
   {
     Range_i64 selected = get_view_range(app, view);
-    kv_buffer_delete_range(app, buffer, selected.min, selected.max+1);
+    buffer_delete_range(app, buffer, selected.min, selected.max+1);
     vim_normal_mode(app);  // NOTE(kv): don't know if this should be here
   }
   // paste

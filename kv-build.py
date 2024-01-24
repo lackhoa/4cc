@@ -1,12 +1,14 @@
 #!/usr/bin/env python3 -u
 
+# NOTE(kv): 4ed build script
+
 import os
 import subprocess
 from subprocess import PIPE, STDOUT
 import sys
 import time
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 DEBUG_MODE_01 = 1 if DEBUG_MODE else 0
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
@@ -41,9 +43,6 @@ def mtime(path):
         return 0
 
 def autogen():
-    # os.chdir(f'{FCODER_USER}')  # TODO(kv): removeme
-    print(f'Workdir: {os.getcwd()}')
-
     CUSTOM=f'{FCODER_ROOT}/code/custom'
     INCLUDES=f'-I{CUSTOM} -I{FCODER_KV}/libs'
     OPTIMIZATION='-O0' if DEBUG_MODE else '-O2'

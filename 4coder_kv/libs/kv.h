@@ -632,61 +632,6 @@ endString(StartString start)
   return out;
 }
 
-inline b32
-equal(String s, const char *cstring)
-{
-  if (!s.chars)
-  {
-    return false;
-  }
-  else
-  {
-    i32 at = 0;
-    for (;
-         at < s.length;
-         at++)
-    {
-      if ((cstring[at] == 0) || (s.chars[at] != cstring[at]))
-      {
-        return false;
-      }
-    }
-    return (cstring[at] == 0);
-  }
-}
-
-inline b32
-stringEqual(const char *cstring, String s)
-{
-  return equal(s, cstring);
-}
-
-inline b32
-stringEqual(String a, String b)
-{
-    b32 out = true;
-    if (a.length != b.length)
-        out = false;
-    else
-    {
-        for (int i = 0; i < a.length; i++)
-        {
-            if (a.chars[i] != b.chars[i])
-            {
-                out = false;
-                break;
-            }
-        }
-    }
-    return out;
-}
-
-inline b32
-stringEqual(String a, char c)
-{
-  return a.length == 1 && a.chars[0] == c;
-}
-
 inline String
 toString(const char *c)
 {
@@ -1547,19 +1492,19 @@ inRectangle(rect2 rect, v2 point)
 }
 
 inline rect2
-rectRadius(v2 radius)
+rect_get_radius(v2 radius)
 {
     return {-radius, radius};
 }
 
 inline v2
-get_rect_dim(rect2 rect)
+rect_get_dim(rect2 rect)
 {
     return (rect.max - rect.min);
 }
 
 inline rect2
-rectCenterRadius(v2 center, v2 radius)
+rect_center_radius(v2 center, v2 radius)
 {
     kv_assert((radius.x >= 0) && (radius.y >= 0));
     rect2 result;
@@ -1571,7 +1516,7 @@ rectCenterRadius(v2 center, v2 radius)
 inline rect2
 rect_center_dim(v2 center, v2 dim)
 {
-    rect2 result = rectCenterRadius(center, 0.5f*dim);
+    rect2 result = rect_center_radius(center, 0.5f*dim);
     return result;
 }
 
@@ -1592,10 +1537,6 @@ intersect(rect2 a, rect2 b)
     result.max.y = minimum(a.max.y, b.max.y);
     return result;
 }
-
-//
-// rect2]
-//
 
 //
 // ;rect3

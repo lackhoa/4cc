@@ -1,8 +1,5 @@
 /* NOTE(kv): This file is for miscellaneous commands */
 
-#include "4coder_kv_utils.cpp"
-#include "4coder_kv_input.cpp"
-
 Table_u64_u64 shifted_version_of_characters;
 
 VIM_COMMAND_SIG(kv_shift_character)
@@ -420,15 +417,22 @@ character_is_path(char character)
   }
 }
 
-// todo: support relative path maybe
-CUSTOM_COMMAND_SIG(kv_open_file_ultimate)
-CUSTOM_DOC("The one-stop-shop for all your file-opening need")
+VIM_COMMAND_SIG(open_file_from_current_dir)
 {
   GET_VIEW_AND_BUFFER;
+  file(app);  // NOTE(kv): copy the current file name because why not?
   Scratch_Block temp(app);
+  String8 dirname = push_buffer_dir_name(app, temp, buffer);
+  set_hot_directory(app, dirname);
+  vim_interactive_open_or_new(app);
+}
 
+internal Range_i64
+get_surrounding_file_range(Application_Links *app)
+{
+  GET_VIEW_AND_BUFFER;
   i64 curpos = view_get_cursor_pos(app, view);
-
+  
   i64 buffer_size = buffer_get_size(app, buffer);
   i64 min = curpos;
   i64 max = curpos;
@@ -449,17 +453,41 @@ CUSTOM_DOC("The one-stop-shop for all your file-opening need")
     else
       break;
   }
+  
+  if (max > min) 
+    return {.min = min, .max = max};
+  else
+    return {};
+}
 
-  b32 looking_at_file = false;
-  if (max > min)
+internal void
+switch_to_buffer_named(Application_Links *app, char *name)
+{
+  View_ID   view = get_active_view(app, Access_ReadVisible);
+  Buffer_ID buffer = create_buffer(app, SCu8(name), 0);
+  view_set_buffer(app, view, buffer, 0);
+}
+
+
+// todo: support relative path maybe
+VIM_COMMAND_SIG(kv_jump_ultimate)
+{
+  GET_VIEW_AND_BUFFER;
+  Scratch_Block temp(app);
+  
+  char *kv_file_filename = "/Users/khoa/notes/file.skm";
+  
+  b32 already_jumped = false;
+  Range_i64 file_range = get_surrounding_file_range(app);
+  if (file_range.max > 0)
   {
-    String_Const_u8 path = push_buffer_range(app, temp, buffer, Range_i64{min, max});
+    String8 path = push_buffer_range(app, temp, buffer, file_range);
     if ( view_open_file(app, view, path, true) )
     {
-      looking_at_file = true;
+      already_jumped = true;
     }
     else
-    { // todo debug this codepath
+    { // todo(kv) debug this path
       File_Attributes attributes = system_quick_file_attributes(temp, path);
       if(attributes.flags & FileAttribute_IsDirectory)
       {
@@ -467,12 +495,19 @@ CUSTOM_DOC("The one-stop-shop for all your file-opening need")
       }
     }
   }
-
-  if ( !looking_at_file )
+ 
+  if (!already_jumped)
   {
-    String_Const_u8 dirname = push_buffer_dir_name(app, temp, buffer);
-    set_hot_directory(app, dirname);
-    vim_interactive_open_or_new(app);
+    String8 buffer_file = push_buffer_file_name(app, temp, buffer);
+    b32 already_in_file_file = string_equal( buffer_file, kv_file_filename);
+    if (already_in_file_file)
+    {
+      open_file_from_current_dir(app);
+    }
+    else
+    {
+      switch_to_buffer_named(app, kv_file_filename);
+    }
   }
 }
 
@@ -486,8 +521,8 @@ VIM_COMMAND_SIG(kv_delete_surrounding_groupers)
   Range_i64 range = {};
   if ( kv_find_current_nest(app, buffer, pos, &range) )
   {
-    kv_buffer_delete_pos(app, buffer, range.max-1);
-    kv_buffer_delete_pos(app, buffer, range.min);
+    buffer_delete_pos(app, buffer, range.max-1);
+    buffer_delete_pos(app, buffer, range.min);
   }
 }
 
@@ -502,7 +537,7 @@ function void kv_do_t_internal(Application_Links *app, b32 shiftp)
   // 1. optionally delete space
   if (current_char == ' ')
   {
-    kv_buffer_delete_pos(app, buffer, pos);
+    buffer_delete_pos(app, buffer, pos);
     current_char = buffer_get_char(app, buffer, pos);
   }
   else if (current_char == '_')
@@ -532,7 +567,7 @@ function void kv_do_t_internal(Application_Links *app, b32 shiftp)
       replacement = push_string_const_u8(temp, 1);
       replacement.str[0] = upper;
     }
-    kv_buffer_replace_range(app, buffer, pos, max, replacement);
+    buffer_replace_range(app, buffer, pos, max, replacement);
 
     // 3. move
     view_set_cursor_and_preferred_x(app, view, seek_pos(alpha_max));
@@ -557,27 +592,22 @@ CUSTOM_DOC("run the current script")
   standard_build_exec_command(app, view, dir, cmd);
 }
 
-internal void
-switch_to_buffer_named(Application_Links *app, char *name)
-{
-  View_ID   view = get_active_view(app, Access_ReadVisible);
-  Buffer_ID buffer = create_buffer(app, SCu8(name), 0);
-  view_set_buffer(app, view, buffer, 0);
-}
-
-CUSTOM_COMMAND_SIG(note)
-CUSTOM_DOC("run the current script")
+CUSTOM_COMMAND_SIG(kv_open_note_file)
+CUSTOM_DOC("switch to my note file")
 {
   switch_to_buffer_named(app, "~/notes/note.skm");
 }
 
 CUSTOM_COMMAND_SIG(file)
-CUSTOM_DOC("kv copy file name")
+CUSTOM_DOC("copy the file name")
 {
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
   String_Const_u8 filename = push_buffer_file_name(app, temp, buffer);
-  clipboard_post(0, filename);
+  if (filename.size)
+  {
+    clipboard_post(0, filename);
+  }
 }
 
 CUSTOM_COMMAND_SIG(dir)
@@ -709,8 +739,8 @@ VIM_COMMAND_SIG(kv_handle_return)
   }
 }
 
-CUSTOM_COMMAND_SIG(b)
-CUSTOM_DOC("change to build buffer")
+CUSTOM_COMMAND_SIG(c)
+CUSTOM_DOC("change to compilation buffer")
 {
   switch_to_buffer_named(app, "*compilation*");
 }
@@ -721,14 +751,16 @@ CUSTOM_DOC("change to search buffer")
   switch_to_buffer_named(app, "*search*");
 }
 
+/* TODO(kv) removeme
 VIM_COMMAND_SIG(switch_to_file_buffer)
 {
   GET_VIEW_AND_BUFFER;
-  Scratch_Block scratch(app);
+  Scratch_Block temp(app);
   char *kv_file_filename = "/Users/khoa/notes/file.skm";
-  String8 buffer_file = push_buffer_file_name(app, scratch, buffer);
+  String8 buffer_file = push_buffer_file_name(app, temp, buffer);
   b32 already_in_file_file = string_compare( buffer_file, SCu8(kv_file_filename)) == 0;
   
   if (already_in_file_file) kv_open_file_ultimate(app);
   else                      switch_to_buffer_named(app, kv_file_filename);
 }
+*/

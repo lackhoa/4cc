@@ -6,6 +6,8 @@
 
 function void
 setup_default_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id){
+  // todo(kv): we have problem compiling these somehow
+  /*
     MappingScope();
     SelectMapping(mapping);
     
@@ -145,6 +147,7 @@ setup_default_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id)
     Bind(open_matching_file_cpp,     KeyCode_2, KeyCode_Alt);
     Bind(write_zero_struct,          KeyCode_0, KeyCode_Control);
     Bind(jump_to_definition_at_cursor, KeyCode_W, KeyCode_Control);
+*/
 }
 
 // BOTTOM

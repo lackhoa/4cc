@@ -217,9 +217,6 @@ App_Init_Sig(app_init){
    
     API_VTable_system system_vtable = {};
     system_api_fill_vtable(&system_vtable);
-    // todo(kv): removeme
-    // Custom_Layer_Init_Type *custom_init = api.init_apis(&system_vtable);
-    // Assert(custom_init != 0);
     custom_init_apis(&system_vtable);
     
     // NOTE(allen): coroutines

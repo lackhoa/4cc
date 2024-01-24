@@ -271,6 +271,24 @@ buffer_replace_range(Application_Links *app, Buffer_ID buffer_id, Range_i64 rang
     return(result);
 }
 
+inline void
+buffer_replace_range(Application_Links *app, Buffer_ID buffer, i64 min, i64 max, String_Const_u8 replacement)
+{
+  buffer_replace_range(app, buffer, Ii64(min, max), replacement);
+}
+
+inline void 
+buffer_delete_range(Application_Links *app, Buffer_ID buffer, i64 min, i64 max)
+{
+  buffer_replace_range(app, buffer, Ii64(min, max), string_u8_empty);
+}
+
+inline void 
+buffer_delete_pos(Application_Links *app, Buffer_ID buffer, i64 min)
+{
+  buffer_replace_range(app, buffer, Ii64(min, min+1), string_u8_empty);
+}
+
 api(custom) function b32
 buffer_batch_edit(Application_Links *app, Buffer_ID buffer_id, Batch_Edit *batch)
 {
@@ -3256,6 +3274,23 @@ api(custom) function Doc_Cluster*
 get_custom_layer_boundary_docs(Application_Links *app, Arena *arena){
     API_Definition *api_def = custom_api_construct(arena);
     return(doc_custom_api(arena, api_def));
+}
+
+////////////////////////////////////
+
+inline String_Const_u8
+push_buffer_dir_name(Application_Links *app, Arena *arena, Buffer_ID buffer)
+{
+  String_Const_u8 filename = push_buffer_file_name(app, arena, buffer);
+  return string_remove_last_folder(filename);
+}
+
+inline Range_i64 token_range(Token *token)
+{
+  if (token)
+    return Range_i64{token->pos, token->pos + token->size};
+  else
+    return Range_i64{};
 }
 
 // BOTTOM

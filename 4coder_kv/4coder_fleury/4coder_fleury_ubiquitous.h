@@ -2,7 +2,6 @@
 #define FCODER_FLEURY_UBIQUITOUS_H
 
 #include <string.h>
-#include "4coder_default_include.cpp"
 
 enum keybinding_mode
 {

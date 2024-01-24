@@ -1,11 +1,11 @@
-defcolor_orange       = 0xFF9a6644;
+defcolor_base         = 0xFF9a6644;  // NOTE(kv): the text color on vim filebar
 defcolor_text_default = 0xFF787878;
 defcolor_function     = 0xFF787898;
-defcolor_green        = 0xFF557700;
 defcolor_keyword      = 0xFFaa9a74;
+defcolor_comment      = 0xFF557700;
+defcolor_macro        = 0xFF996666;
 
 defcolor_bar                   = 0xFF000000;
-defcolor_base                  = defcolor_orange;  // NOTE(kv): the text color on vim filebar
 defcolor_pop1                  = 0xFFDE8150;
 defcolor_pop2                  = 0xFFFF0000;
 defcolor_back                  = 0xFF020202;
@@ -21,7 +21,6 @@ defcolor_highlight_cursor_line = 0xFF1E1E1E;
 defcolor_highlight             = 0xFF303040;
 defcolor_at_highlight          = 0xFFAA44AA;
 defcolor_mark                  = 0xFF494949;
-defcolor_comment               = defcolor_green;
 defcolor_comment_pop           = { 0xFF2AB34F, 0xFFbB2828, 0xFFbbbb00 };
 defcolor_str_constant          = defcolor_function;
 defcolor_char_constant         = defcolor_function;
@@ -29,7 +28,7 @@ defcolor_int_constant          = defcolor_function;
 defcolor_float_constant        = defcolor_function;
 defcolor_bool_constant         = defcolor_function;
 defcolor_preproc               = defcolor_keyword;
-defcolor_include               = defcolor_orange;
+defcolor_include               = defcolor_base;
 defcolor_special_character     = 0xFFFF0000;
 defcolor_ghost_character       = 0xFF4E5E46;
 defcolor_highlight_junk        = 0xFF3A0000;
@@ -42,9 +41,8 @@ defcolor_line_numbers_back     = 0xFF101010;
 defcolor_line_numbers_text     = 0xFF404040;
 
 /// BYP Colors
-defcolor_type                       =  defcolor_orange;
-defcolor_primitive                  =  defcolor_orange;
-defcolor_macro                      =  0xFF996666;
+defcolor_type                       =  defcolor_base;
+defcolor_primitive                  =  defcolor_base;
 defcolor_control                    =  defcolor_preproc;
 defcolor_struct                     =  defcolor_keyword;
 defcolor_non_text                   =  defcolor_text_default;  // note(kv): parens

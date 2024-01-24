@@ -1,5 +1,3 @@
-#include "4coder_kv_utils.cpp"
-
 #if OS_WINDOWS
 
 global String_Const_u8 kv_build_file_name_array[] = {

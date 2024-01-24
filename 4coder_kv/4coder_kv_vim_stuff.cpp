@@ -1,5 +1,3 @@
-#include "4coder_kv_utils.cpp"
-
 VIM_REQUEST_SIG(byp_apply_title)
 {
 	Scratch_Block scratch(app);

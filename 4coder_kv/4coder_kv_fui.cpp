@@ -1,3 +1,7 @@
+#if 0  // note: test fslider
+  fslider( -0.526403 );
+#endif
+
 struct FUI
 {
   Application_Links *app;
@@ -35,19 +39,53 @@ fui_draw_slider(Application_Links *app, Buffer_ID buffer, rect2 region)
   b32 at_slider = fui__at_slider_p(f);
   if (!at_slider) return;
 
-  v2 slider_dim = v2{100,100};
-  v2 slider_origin = region.max - slider_dim;
+  v2 slider_radius = v2{50,50};
+  v2 slider_dim    = 2 * slider_radius;
+  v2 slider_origin = region.max - slider_radius;
   { //note: the whole slider outline
-    rect2 rect = rect_min_dim(slider_origin, slider_dim);
-    v4 color = fui_slider_active ? v4{1,1,1,1} : v4{0.2f,0.2f,0.2f,1};
+    rect2 rect = rect_center_dim(slider_origin, slider_dim);
+    v4 color = v4{1,1,1,1};
+    if (!fui_slider_active) color.a = 0.5f;
     draw_rect_outline(app, rect, 2, color);
   }
-  { //note: the dot
-    auto &v = fui_slider_value;
-    v2 center = slider_origin + hadamard(fui_slider_value.xy, slider_dim);
-    rect2 rect = rect_center_dim(center, v2{10,10});
+  { //note: the slider cursor
+    v2 v = fui_slider_value.xy;
+    v.y = -v.y;  // note: invert y to fit math coordinates
+    v2 center = slider_origin + hadamard(v, slider_radius);
+    rect2 rect = rect_center_radius(center, v2{5,5});
     draw_rect(app, rect, v4{0,0.5f,0,1});
   }
+}
+
+// TODO(kv): how do I make an arena on the stack?
+// TODO(kv): the parser is SO bad
+internal b32
+parse_float(Application_Links *app, Buffer_ID buffer, Token_Iterator_Array *it, f32 *out)
+{
+  *out = 0;
+  Scratch_Block temp(app);
+  if ( !token_it_inc(it) ) return false;
+ 
+  // note(kv): parse the sign
+  f32 sign = 1;
+  if (it->ptr->kind == TokenBaseKind_Operator)
+  {
+    String8 string = push_token_lexeme(app, temp, buffer, it->ptr);
+    if (string_equal(string, "-"))      sign = -1;
+    else if (string_equal(string, "+")) {}
+    else                                return false;
+    
+    if ( !token_it_inc(it)) return false;
+  }
+  
+  if (it->ptr->kind != TokenBaseKind_LiteralFloat)
+    return false;
+  
+  String8 string = push_token_lexeme(app, temp, buffer, it->ptr);
+  char *cstring = to_c_string(temp, string);
+  *out = sign * gb_str_to_f32(cstring, 0);
+  
+  return true;
 }
 
 internal b32
@@ -66,29 +104,29 @@ fui_handle_slider(Application_Links *app, Buffer_ID buffer)
   Token *token = it->ptr;
   i64 slider_begin = token->pos;
   
-  Scratch_Block scratch(app);
   breakable_block
   {
-    if ( !require_token_kind(it, TokenBaseKind_ParentheticalOpen) ) break;
-    if ( !require_token_kind(it, TokenBaseKind_LiteralFloat) ) break;
-    
-    String8 string = push_token_lexeme(app, scratch, buffer, token);
-    {
-      char *cstring = to_c_string(scratch, string);
-      f32 value = gb_str_to_f32(cstring, 0);
-      printf_message(app, scratch, "value f32: %f\n", value);
-    }
-    
+    if ( !require_token_kind(it, TokenBaseKind_ParentheticalOpen) )   break;
+    f32 value;
+    if ( !parse_float(app, buffer, it, &value) ) break;
     if ( !require_token_kind(it, TokenBaseKind_ParentheticalClose ) ) break;
     i64 slider_end = it->ptr->pos + 1;
     
-    string = push_buffer_range(app, scratch, buffer, Ii64(slider_begin, slider_end));
-    printf_message(app, scratch, "buffer range: %.*s\n", string_expand(string));
+    fui_slider_value = v3{.x=value};
+   
+#if 0
+    {
+      printf_message(app, temp, "value f32: %f\n", value);
+      String8 string = push_buffer_range(app, temp, buffer, slider_begin, slider_end);
+      printf_message(app, temp, "slider range: %.*s\n", string_expand(string));
+    }
+#endif
   
     for (;;)
     { // note: ui loop
-      fui_slider_active = true;
-      defer(fui_slider_active = false);
+      Scratch_Block temp(app);
+      
+      fui_slider_active = true; defer(fui_slider_active = false);
       
       User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
       if (in.abort) break; 
@@ -109,6 +147,12 @@ fui_handle_slider(Application_Links *app, Buffer_ID buffer)
       }
       else leave_current_input_unhandled(app);
     }
+    
+    { //note(kv): save the results back
+      Scratch_Block temp(app);
+      String8 save = push_stringf(temp, "fslider( %f )", fui_slider_value.x);
+      buffer_replace_range(app, buffer, slider_begin, slider_end, save);
+    }
   }
   
   return true;
@@ -118,7 +162,7 @@ internal void
 fui_tick(Application_Links *app, Frame_Info frame_info)
 {
   DEBUG_clear;
-  f32 speed = 0.5f;
+  f32 speed = 1.0f;
   f32 dt = frame_info.animation_dt;  // using actual literal_dt would trigger a big jump when the user initially presses a key
   fui_slider_value += dt * speed * fui_slider_direction;
   DEBUG_text(fui_slider_value, fui_slider_value);

@@ -251,13 +251,13 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
         Buffer_ID calc_buffer_id = get_buffer_by_name(app, string_u8_litexpr("*calc*"), AccessFlag_Read);
         if(calc_buffer_id == buffer)
         {
-            F4_CLC_RenderBuffer(app, buffer, view_id, text_layout_id, frame_info);
+            F4_CLC_RenderBuffer(app, buffer, view_id, text_layout_id);
         }
     }
     
     // NOTE(rjf): Draw calc comments.
     {
-        F4_CLC_RenderComments(app, buffer, view_id, text_layout_id, frame_info);
+        F4_CLC_RenderComments(app, buffer, view_id, text_layout_id);
     }
     
     draw_set_clip(app, prev_clip);

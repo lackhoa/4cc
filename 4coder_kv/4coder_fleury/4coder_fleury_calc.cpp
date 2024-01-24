@@ -1229,59 +1229,59 @@ GetDataFromSourceCode(Application_Links *app, Buffer_ID buffer, Text_Layout_ID t
 
 static void
 GraphCalcExpression(Application_Links *app, Face_ID face_id,
-                    Rect_f32 rect, CalcInterpretGraph *first_graph,
+                    Rect_f32 region, CalcInterpretGraph *first_graph,
                     CalcInterpretContext *context)
 {
     CalcNode *parent_call = first_graph->parent_call;
     Rect_f32 plot_view = first_graph->plot_view;
     
     int plot_count = 0;
-    for(CalcInterpretGraph *graph = first_graph; graph && graph->parent_call == parent_call;
+    for(CalcInterpretGraph *graph = first_graph; 
+        graph && graph->parent_call == parent_call;
         graph = graph->next)
     {
         ++plot_count;
     }
     
-    Plot2DInfo plot_data = {0};
+    Plot2DInfo plot = {};
     {
-        plot_data.mode           = first_graph->mode;
-        plot_data.title          = first_graph->plot_title;
-        plot_data.x_axis         = first_graph->x_axis;
-        plot_data.y_axis         = first_graph->y_axis;
-        plot_data.screen_rect    = rect;
-        plot_data.app            = app;
-        plot_data.title_face_id  = global_styled_title_face;
-        plot_data.label_face_id  = global_styled_label_face;
-        plot_data.plot_view      = plot_view;
-        plot_data.num_bins       = first_graph->num_bins;
-        plot_data.bin_data_range = first_graph->bin_data_range;
+        plot.mode           = first_graph->mode;
+        plot.title          = first_graph->plot_title;
+        plot.x_axis         = first_graph->x_axis;
+        plot.y_axis         = first_graph->y_axis;
+        plot.region         = region;
+        plot.app            = app;
+        plot.title_face     = global_styled_title_face;
+        plot.label_face     = global_styled_label_face;
+        plot.plot_view      = plot_view;
+        plot.num_bins       = first_graph->num_bins;
+        plot.bin_data_range = first_graph->bin_data_range;
         
         if(first_graph->num_bins > 0)
         {
-            plot_data.bin_group_count = plot_count;
-            plot_data.bins = push_array_zero(context->arena, int, plot_data.num_bins*plot_data.bin_group_count);
+            plot.bin_group_count = plot_count;
+            plot.bins = push_array_zero(context->arena, int, plot.num_bins*plot.bin_group_count);
         }
     }
-    Plot2DBegin(&plot_data);
+    Plot2DBegin(&plot);
     
-    for(CalcInterpretGraph *graph = first_graph; graph && graph->parent_call == parent_call;
+    for(CalcInterpretGraph *graph = first_graph; 
+        graph && graph->parent_call == parent_call;
         graph = graph->next)
     {
-        
-        switch(plot_data.mode)
+        switch(plot.mode)
         {
-            
             //~ NOTE(rjf): Line Graphs
             case Plot2DMode_Line:
             {
-                Plot2DPoints(&plot_data, graph->style_flags, graph->x_data, graph->y_data, graph->data_count);
+                Plot2DPoints(&plot, graph->style_flags, graph->x_data, graph->y_data, graph->data_count);
                 break;
             }
             
             //~ NOTE(rjf): Histogram
             case Plot2DMode_Histogram:
             {
-                Plot2DHistogram(&plot_data, graph->data, graph->data_count);
+                Plot2DHistogram(&plot, graph->data, graph->data_count);
                 break;
             }
             
@@ -1289,7 +1289,7 @@ GraphCalcExpression(Application_Links *app, Face_ID face_id,
         }
     }
     
-    Plot2DEnd(&plot_data);
+    Plot2DEnd(&plot);
 }
 
 typedef struct CalcFindInputResult CalcFindInputResult;

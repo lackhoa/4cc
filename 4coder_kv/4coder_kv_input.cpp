@@ -1,6 +1,3 @@
-#include "4coder_kv_utils.cpp"
-#include "4coder_vim/4coder_vim_include.h"
-
 struct KvQuailEntry
 {
   char *key;

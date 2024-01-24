@@ -1,5 +1,4 @@
 
-#include "4coder_default_include.cpp"
 #include "generated/lexer_skm.h"
 #include "generated/lexer_skm.cpp"
 #include "4coder_fleury/4coder_fleury_index.cpp"

@@ -8,7 +8,7 @@ struct Debug_Entry
   rect2 rect;
 };
 
-global b32 DEBUG_draw_hud_p = 1;
+global b32 DEBUG_draw_hud_p;
 global Debug_Entry *DEBUG_entries;
 
 internal void

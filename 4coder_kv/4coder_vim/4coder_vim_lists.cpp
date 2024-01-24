@@ -521,6 +521,28 @@ vim_do_4coder_close_user_check(Application_Links *app, View_ID view){
 	return do_exit;
 }
 
+internal b32
+vim_4coder_close_are_you_sure_check(Application_Links *app, View_ID view)
+{
+	Scratch_Block scratch(app);
+	Lister_Choice_List list = {};
+	lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
+	lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
+
+#define M "Are you sure you want to close?"
+	Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr(M), list);
+#undef M
+
+	if(choice != 0){
+		switch(choice->user_data){
+			case SureToKill_No:  return false;
+			case SureToKill_Yes: return true;
+		}
+	}
+
+	return false;
+}
+
 function void
 vim_reload_external_changes_lister(Application_Links *app, Buffer_ID buffer){
 	Scratch_Block scratch(app);

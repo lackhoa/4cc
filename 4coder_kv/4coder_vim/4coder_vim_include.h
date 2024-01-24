@@ -1,7 +1,5 @@
 #pragma once
 
-#include "4coder_default_include.cpp"
-
 //// Author(BYP)
 //
 // You can add or even 'override' entries in vim_request_vtable and vim_text_object_vtable if you'd like

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "4coder_default_include.cpp"
-
 /*
 * Hooks:
 *  BeginBuffer     - [fold_begin_buffer_hook], [fold_begin_buffer_inner, fold_set_layouts]

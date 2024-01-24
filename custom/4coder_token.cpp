@@ -686,8 +686,6 @@ token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, 
     return(relex);
 }
 
-//NOTE(kv): my additions
-
 internal b32
 require_token_kind(Token_Iterator_Array *it, Token_Base_Kind kind)
 {

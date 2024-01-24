@@ -152,6 +152,7 @@ function i64 vim_pattern_inner_v(Application_Links *app, Buffer_Seek_String_Flag
     }
 }
 
+/* NOTE(kv): don't know what this does
 function void vim_in_pattern_inner(Application_Links *app, Buffer_Seek_String_Flags seek_flags){
 	String_u8 *pattern = &vim_registers.search.data;
 	i64 new_pos = vim_pattern_inner_v(app, seek_flags);
@@ -164,6 +165,7 @@ function void vim_in_pattern_inner(Application_Links *app, Buffer_Seek_String_Fl
 		view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
 	}
 }
+*/
 
 function void
 vim_to_pattern_inner(Application_Links *app, Buffer_Seek_String_Flags seek_flags)
