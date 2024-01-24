@@ -1569,14 +1569,14 @@ rectCenterRadius(v2 center, v2 radius)
 }
 
 inline rect2
-rectCenterDim(v2 center, v2 dim)
+rect_center_dim(v2 center, v2 dim)
 {
     rect2 result = rectCenterRadius(center, 0.5f*dim);
     return result;
 }
 
 inline rect2
-rectMinDim(v2 min, v2 dim)
+rect_min_dim(v2 min, v2 dim)
 {
   rect2 out = rect2{.min=min, .max=min+dim};
   return out;

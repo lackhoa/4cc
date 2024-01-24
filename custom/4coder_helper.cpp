@@ -1023,6 +1023,15 @@ push_token_lexeme(Application_Links *app, Arena *arena, Buffer_ID buffer, Token 
     return(push_buffer_range(app, arena, buffer, Ii64(token)));
 }
 
+inline b32
+token_equal_cstring(Application_Links *app, Buffer_ID buffer, Token *token, char *cstring)
+{
+  Scratch_Block scratch(app);
+  String8 string = push_token_lexeme(app, scratch, buffer, token);
+  b32 result = string_compare(string, SCu8(cstring)) == 0;
+  return result;
+}
+
 function String_Const_u8
 push_buffer_line(Application_Links *app, Arena *arena, Buffer_ID buffer, i64 line_number){
     // NOTE(allen): 4coder flaw

@@ -168,9 +168,9 @@ function void
 vim_draw_cursor(Application_Links *app, View_ID view, b32 is_active_view, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness, f32 thickness){
 	
 	if(is_active_view && vim_state.mode == VIM_Visual_Insert){
-		animate_in_n_milliseconds(app, 1000);  // #modified(kv)
-		
-		// if(ACTIVE_BLINK(vim_cursor_blink))  @modified(kv): no blinking!
+    // @modified(kv): no blinking!
+		// animate_in_n_milliseconds(app, 1000);
+		// if(ACTIVE_BLINK(vim_cursor_blink))
     {
 			Range_i64 range = get_view_range(app, view);
 			Rect_f32 block_rect = vim_get_abs_block_rect(app, view, buffer, text_layout_id, range);
@@ -193,9 +193,8 @@ vim_draw_cursor(Application_Links *app, View_ID view, b32 is_active_view, Buffer
 		i64 cursor_pos = view_get_cursor_pos(app, view);
 		i64 mark_pos = view_get_mark_pos(app, view);
 		if(is_active_view && vim_lister_view_id == 0){
-			animate_in_n_milliseconds(app, 1000);  // #modified(kv)
 			Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
-			
+			// animate_in_n_milliseconds(app, 1000);  // @modified(kv)
 			// if(ACTIVE_BLINK(vim_cursor_blink) && !vim_is_selecting_register) @modified(kv)
 			if(!vim_is_selecting_register)
       {

@@ -21,8 +21,8 @@ BUFFER_HOOK_SIG(kv_new_file)
 	return 0;
 }
 
-function Tick_Function kv_tick;
-function void kv_tick(Application_Links *app, Frame_Info frame_info)
+internal Tick_Function kv_tick;
+internal void kv_tick(Application_Links *app, Frame_Info frame_info)
 {
   // NOTE(kv): F4
   linalloc_clear(&global_frame_arena);
@@ -36,6 +36,9 @@ function void kv_tick(Application_Links *app, Frame_Info frame_info)
   vim_animate_filebar(app, frame_info);
   vim_animate_cursor(app, frame_info);
   vim_cursor_blink++;
+  
+  // NOTE(kv): fui update
+  fui_tick(app, frame_info);
 
   // NOTE(kv): autosave
   f32 AUTOSAVE_PERIOD_SECONDS = 5.0f;
@@ -72,7 +75,7 @@ function void kv_tick(Application_Links *app, Frame_Info frame_info)
       }
     }
     if (saved_at_least_one_buffer) {
-      kv_print_message(app, "auto-saved all dirty buffers\n");
+      print_message(app, "auto-saved all dirty buffers\n");
     }
   }
 }

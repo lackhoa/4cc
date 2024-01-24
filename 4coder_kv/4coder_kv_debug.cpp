@@ -1,3 +1,6 @@
+// NOTE(kv): it is really annoying to have different command sets for debug and release build,
+//           so let's have the same commands for both.
+
 #if KV_INTERNAL
 struct Debug_Entry
 {
@@ -5,7 +8,7 @@ struct Debug_Entry
   rect2 rect;
 };
 
-global b32 DEBUG_draw_hud_p;
+global b32 DEBUG_draw_hud_p = 1;
 global Debug_Entry *DEBUG_entries;
 
 internal void
@@ -46,12 +49,6 @@ DEBUG_draw_hud(Application_Links *app, Face_ID face_id, Text_Layout_ID text_layo
   }
 }
 
-CUSTOM_COMMAND_SIG(DEBUG_draw_hud_toggle)
-CUSTOM_DOC("toggle debug hud")
-{
-  DEBUG_draw_hud_p ^= 1;
-}
-
 internal void
 DEBUG_text_inner(char *name, rect2 value)
 {
@@ -68,9 +65,25 @@ DEBUG_text_inner(char *name, bool value)
   arrput(DEBUG_entries, entry);
 }
 
+internal void
+DEBUG_text_inner(char *name, v3 v)
+{
+  rect2 rect = {v.x,v.y,v.z,0};
+  Debug_Entry entry = {.name=name, .rect=rect};
+  arrput(DEBUG_entries, entry);
+}
+
 #    define DEBUG_text(NAME, VALUE) DEBUG_text_inner(#NAME, VALUE)
 #    define DEBUG_clear   arrsetlen(DEBUG_entries, 0)
 #else
 #    define DEBUG_text(...)
 #    define DEBUG_clear
 #endif
+
+CUSTOM_COMMAND_SIG(DEBUG_draw_hud_toggle)
+CUSTOM_DOC("toggle debug hud")
+{
+#if KV_INTERNAL
+  DEBUG_draw_hud_p ^= 1;
+#endif
+}

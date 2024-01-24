@@ -2440,6 +2440,26 @@ print_message(Application_Links *app, String_Const_u8 message)
     }
 }
 
+inline void 
+print_message(Application_Links *app, char *message) 
+{
+  print_message(app, SCu8(message));
+}
+
+inline void
+printf_message_inner(Application_Links *app, char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  Scratch_Block scratch(app);
+  String8 string = push_stringfv(scratch, format, args);
+  print_message(app, string);
+  va_end(args);
+}
+
+#define printf_message_test(app, format, ...) \
+ do{ printf_message_inner(app, format, ##__VA_ARGS__); }while(0)
+
 #define printf_message(app, arena, str, ...) \
  print_message(app, push_stringf(arena, str, ##__VA_ARGS__))
 
@@ -2899,6 +2919,12 @@ draw_rect(Application_Links *app, v2 p0, v2 p1, v4 color)
   draw_rectangle(app, rect2{p0, p1}, 0, pack_color(color));
 }
 
+inline void
+draw_rect(Application_Links *app, rect2 rect, v4 color)
+{
+  draw_rectangle(app, rect, 0, pack_color(color));
+}
+
 internal void
 draw_line(Application_Links *app, v2 p0, v2 p1, f32 thickness, v4 color)
 {
@@ -2914,6 +2940,12 @@ draw_rectangle_outline(Application_Links *app, Rect_f32 rect, f32 roundness, f32
     if (models->in_render_mode){
         draw_rectangle_outline_to_target(models->target, rect, roundness, thickness, color);
     }
+}
+
+inline void
+draw_rect_outline(Application_Links *app, rect2 rect, f32 thickness, v4 color)
+{
+  draw_rectangle_outline(app, rect, 0, thickness, pack_color(color));
 }
 
 api(custom) function Rect_f32

@@ -4,8 +4,7 @@
 
 // TOP
 
-#if !defined(FCODER_BASE_TYPES_CPP)
-#define FCODER_BASE_TYPES_CPP
+#pragma once
 
 #define C_MATH 1
 
@@ -3393,6 +3392,15 @@ push_data_copy(Arena *arena, String_Const_u8 data){
     result.str = push_array_write(arena, u8, data.size, data.str);
     result.size = data.size;
     return(result);
+}
+
+internal char *
+to_c_string(Arena *arena, String8 data)
+{
+  char *result = {};
+  result = push_array_write(arena, char, data.size, data.str);
+  push_array_zero(arena, char, 1);
+  return result;
 }
 
 function b32
@@ -7081,7 +7089,5 @@ date_time_from_time_stamp(u64 time_stamp){
     result.year = (u32)time_stamp;
     return(result);
 }
-
-#endif
 
 // BOTTOM

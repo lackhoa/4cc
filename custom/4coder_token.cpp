@@ -241,6 +241,7 @@ token_it_dec_non_whitespace(Token_Iterator_Array *it){
     return(result);
 }
 
+// todo(kv): argh why not just return the token here?
 internal b32
 token_it_inc(Token_Iterator_Array *it){
     b32 result = false;
@@ -685,5 +686,16 @@ token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, 
     return(relex);
 }
 
-// BOTTOM
+//NOTE(kv): my additions
 
+internal b32
+require_token_kind(Token_Iterator_Array *it, Token_Base_Kind kind)
+{
+  if( token_it_inc(it) )
+  {
+    return it->ptr->kind == kind;
+  }
+  return false;
+}
+
+// BOTTOM

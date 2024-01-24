@@ -6448,11 +6448,11 @@ gb_inline f32 gb_str_to_f32(char const *str, char **end_ptr) {
 	return r;
 }
 
-gb_inline f64 gb_str_to_f64(char const *str, char **end_ptr) {
+gb_inline f64 gb_str_to_f64(char const *str, char **end_ptr_out) {
 	f64 result, value, sign, scale;
 	i32 frac;
 
-	while (gb_char_is_space(*str)) {
+	while ( gb_char_is_space(*str) ) {
 		str++;
 	}
 
@@ -6465,10 +6465,12 @@ gb_inline f64 gb_str_to_f64(char const *str, char **end_ptr) {
 	}
 
 	for (value = 0.0; gb_char_is_digit(*str); str++) {
+    // note(kv): before the decimal point
 		value = value * 10.0 + (*str-'0');
 	}
 
 	if (*str == '.') {
+    // note(kv): after the decimal point
 		f64 pow10 = 10.0;
 		str++;
 		while (gb_char_is_digit(*str)) {
@@ -6503,7 +6505,7 @@ gb_inline f64 gb_str_to_f64(char const *str, char **end_ptr) {
 
 	result = sign * (frac ? (value / scale) : (value * scale));
 
-	if (end_ptr) *end_ptr = cast(char *)str;
+	if (end_ptr_out) *end_ptr_out = cast(char *)str;
 
 	return result;
 }

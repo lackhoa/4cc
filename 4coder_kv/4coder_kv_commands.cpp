@@ -684,12 +684,11 @@ CUSTOM_DOC("adapted from list_all_locations for fuzzy search, if cursor at ident
 
 VIM_COMMAND_SIG(kv_handle_return)
 {
-  // note(kv): The behavior mimicks "if_read_only_goto_position", doesn't make too much sense for us.
   View_ID view = get_active_view(app, Access_ReadVisible);
   Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
   if (buffer)
   { // writable buffer
-    if ( fui_handle_slider(app, view, buffer) )
+    if ( fui_handle_slider(app, buffer) )
     {
       // pass
     }
