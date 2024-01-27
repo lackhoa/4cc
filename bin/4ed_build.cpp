@@ -11,12 +11,14 @@
 
 #define FM_PRINT_COMMANDS
 
+#include "kv.h"  // nono(kv): move this file somewhere else, this is very annoying
 #include "4coder_base_types.h"
 #include "4coder_version.h"
 
 #include "4coder_base_types.cpp"
 #include "4coder_malloc_allocator.cpp"
 
+#define FM_PRINT_COMMANDS
 #define FTECH_FILE_MOVING_IMPLEMENTATION
 #include "4coder_file_moving.h"
 
@@ -563,7 +565,7 @@ buildsuper(Arena *arena, char *cdir, char *file, u32 arch){
 
 internal void
 build_main(Arena *arena, char *cdir, b32 update_local_theme, u32 flags, u32 arch){
-    dup2(1,2);  // NOTE(kv): there's no order guarantee between stderr and stdout, which messes up our error reporting.
+  // dup2(1,2);  // NOTE(kv): there's no order guarantee between stderr and stdout, which messes up our error reporting.
     setbuf(stdout, NULL);
   
     char *dir = fm_str(arena, BUILD_DIR);

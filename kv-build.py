@@ -1,21 +1,67 @@
 #!/usr/bin/env python3 -u
 
 # NOTE(kv): 4ed build script
+# NOTE(kv): assumes only Windows and Mac (and clang)
 
 import os
 import subprocess
-from subprocess import PIPE, STDOUT
 import sys
 import time
 
-DEBUG_MODE = False
-DEBUG_MODE_01 = 1 if DEBUG_MODE else 0
+DEBUG_MODE = True
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
 FCODER_ROOT=f'{HOME}/4ed'
-FCODER_KV=f'{FCODER_ROOT}/code/4coder_kv'
+SOURCE=f"{FCODER_ROOT}/code"
+NON_SOURCE=f"{FCODER_ROOT}/4coder-non-source"
+FCODER_KV = f'{SOURCE}/4coder_kv'
+OS_WINDOWS = os.name== "nt"
+OS_MAC = not OS_WINDOWS
+
+# todo(kv): we should change to a build  dir instead, so we can clean all the crap out!
+def delete_all_pdb_files(dir_name):
+    files = os.listdir(dir_name)
+    for item in files:
+        if item.endswith(".pdb") or item.endswith('.ilk'):
+            os.remove(os.path.join(dir_name, item))
+
+# NOTE: unused
+def setup_msvc_envvars():
+    if not OS_WINDOWS:
+        return
+
+    ROOT = f"{HOME}/msvc"
+    MSVC_VERSION = "14.38.33130"
+    MSVC_HOST        = "Hostx64"
+    MSVC_ARCH       = "x64"
+    SDK_VERSION    = "10.0.22621.0"
+    SDK_ARCH          = "x64"
+
+    os.environ['ROOT'] = ROOT
+    os.environ['MSVC_VERSION'] = MSVC_VERSION
+    os.environ['MSVC_HOST']  = MSVC_HOST
+    os.environ['MSVC_ARCH'] = MSVC_ARCH
+    os.environ['SDK_VERSION'] = SDK_VERSION
+    os.environ['SDK_ARCH']      = SDK_ARCH
+
+    MSVC_ROOT   = f"{ROOT}/VC/Tools/MSVC/{MSVC_VERSION}"
+    SDK_INCLUDE = f"{ROOT}/Windows Kits/10/Include/{SDK_VERSION}"
+    SDK_LIBS         = f"{ROOT}/Windows Kits/10/Lib/{SDK_VERSION}"
+
+    os.environ['MSVC_ROOT'] = MSVC_ROOT
+    os.environ['SDK_INCLUDE'] = SDK_INCLUDE
+    os.environ['SDK_LIBS'] = SDK_LIBS
+
+    os.environ["VCToolsInstallDir"] = f"{MSVC_ROOT}/"
+    PATH = os.environ["PATH"]
+    os.environ["PATH"] = f"{MSVC_ROOT}/bin/{MSVC_HOST}/{MSVC_ARCH};{ROOT}/Windows Kits/10/bin/{SDK_VERSION}/{SDK_ARCH};{ROOT}/Windows Kits/10/bin/{SDK_VERSION}/{SDK_ARCH}/ucrt;{PATH}"
+    os.environ["INCLUDE"] = f"{MSVC_ROOT}/include;{SDK_INCLUDE}/ucrt;{SDK_INCLUDE}/shared;{SDK_INCLUDE}/um;{SDK_INCLUDE}/winrt;{SDK_INCLUDE}/cppwinrt"
+    os.environ["LIB"]          = f"{MSVC_ROOT}/lib/{MSVC_ARCH};{SDK_LIBS}/ucrt/{SDK_ARCH};{SDK_LIBS}/um/{SDK_ARCH}"
 
 def run(command, update_env={}):
+    if OS_WINDOWS:
+        command = f'{HOME}/msvc/setup.bat && {command}'
+
     print(command)
     begin = time.time()
     env = os.environ.copy()
@@ -46,7 +92,7 @@ def autogen():
     CUSTOM=f'{FCODER_ROOT}/code/custom'
     INCLUDES=f'-I{CUSTOM} -I{FCODER_KV}/libs'
     OPTIMIZATION='-O0' if DEBUG_MODE else '-O2'
-    SYMBOLS=f'-DOS_MAC=1 -DOS_WINDOWS=0 -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE_01} -DKV_SLOW={DEBUG_MODE_01}'
+    SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={int(DEBUG_MODE)} -DKV_SLOW={int(DEBUG_MODE)}'
     arch="-m64"
     debug="-g" if DEBUG_MODE else ""
     opts=f"-Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses {SYMBOLS} {debug} {INCLUDES} {OPTIMIZATION}"
@@ -76,6 +122,7 @@ script_begin = time.time()
 
 try:
     OUTDIR = FCODER_USER if DEBUG_MODE else f"{HOME}/4coder_stable"
+
     os.chdir(f'{OUTDIR}')
     print(f'Workdir: {os.getcwd()}')
 
@@ -84,33 +131,47 @@ try:
     if DEBUG_MODE:
         full_rebuild = (len(sys.argv) > 1 and sys.argv[1] == 'full')
 
-    ADDRESS_SANITIZER_ON = False
-
     arch = "-m64"
     debug="-g" if DEBUG_MODE else ""
 
     if run_only:
-        dyld_insert_libraries="DYLD_INSERT_LIBRARIES=/usr/local/Cellar/llvm/17.0.6/lib/clang/17/lib/darwin/libclang_rt.asan_osx_dynamic.dylib" if ADDRESS_SANITIZER_ON else ""
-        run(f'{dyld_insert_libraries} {FCODER_USER}/4ed > /dev/null')
+        run(f'{FCODER_USER}/4ed')
     else:
-        if full_rebuild:  # do some generation business in the custom layer (todo(kv): this script is busted, it's in the wrong folder!)
+        if full_rebuild:  # do some generation business in the custom layer
             autogen()
 
         print(f'NOTE: Building the 4ed binary at {os.getcwd()}')
 
-        print('Producing 4ed_app.so')
+        DLL_EXTENSION="dll" if OS_WINDOWS else "so"
+        print('Producing 4ed_app.{DLL_EXTENSION}')
+        delete_all_pdb_files(OUTDIR)
+        # TODO(kv): vet these warnings
         WARNINGS="-Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
-        INCLUDES=f'-I{FCODER_ROOT}/code -I{FCODER_ROOT}/code/custom -I{FCODER_ROOT}/4coder-non-source/foreign/freetype2 -I{FCODER_ROOT}/code/4coder_kv -I{FCODER_ROOT}/code/4coder_kv/libs'
-        SYMBOLS="-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DFTECH_64_BIT -DFRED_SUPER" if DEBUG_MODE else "-DFRED_SUPER -DFTECH_64_BIT"
+        INCLUDES=f'-I{SOURCE} -I{SOURCE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{SOURCE}/4coder_kv -I{SOURCE}/4coder_kv/libs'
+        #
+        COMMON_SYMBOLS="-DFRED_SUPER -DFTECH_64_BIT"
+        SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
+        #
         OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"
-        COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} -g -m64 -std=c++11"
-        run(f'ccache clang++ {COMPILE_FLAGS} -c {FCODER_ROOT}/code/4ed_app_target.cpp -o 4ed_app.so.o')
-        run(f'clang++ -shared 4ed_app.so.o -o 4ed_app.so')
+        COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
+        run(f'ccache clang++ {COMPILE_FLAGS} -c {SOURCE}/4ed_app_target.cpp -o 4ed_app.o')
+        #
+        run(f'clang++ -shared 4ed_app.o -o 4ed_app.{DLL_EXTENSION} -Wl,-export:app_get_functions {debug}')
 
         print('Producing 4ed')
-        run(f'ccache clang++ {COMPILE_FLAGS} -I{FCODER_ROOT}/code/platform_all -c "{FCODER_ROOT}/code/platform_mac/mac_4ed.mm" -o 4ed.o')
-        LINKED_LIBS=f"{FCODER_ROOT}/4coder-non-source/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
-        run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed')
+        if OS_WINDOWS:
+            PLATFORM_CPP = f"{SOURCE}/platform_win32/win32_4ed.cpp"
+        else:
+            PLATFORM_CPP =  f"{SOURCE}/platform_mac/mac_4ed.mm"
+         #
+        run(f'ccache clang++ {COMPILE_FLAGS} -I{SOURCE}/platform_all -c {PLATFORM_CPP} -o 4ed.o')
+        #
+        if OS_WINDOWS:
+            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/freetype.lib -luser32.lib -lwinmm.lib -lgdi32.lib -lopengl32.lib -lcomdlg32.lib -luserenv.lib {NON_SOURCE}/res/icon.res"
+        else:
+            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
+        #
+        run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed.exe {debug}')
 
         if full_rebuild:
             print('Run verification script')

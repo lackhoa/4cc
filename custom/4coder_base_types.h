@@ -8,7 +8,28 @@
 
 ////////////////////////////////
 
-#if defined(_MSC_VER)
+#if defined(__clang__)
+
+# define COMPILER_CLANG 1
+
+# if defined(__APPLE__) && defined(__MACH__)
+#  define OS_MAC 1
+# elif defined(_WIN32)
+#  define OS_WINDOWS 1
+# else
+#  error This compiler/platform combo is not supported yet
+# endif
+
+# if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
+#  define ARCH_X64 1
+# elif defined(i386) || defined(__i386) || defined(__i386__)
+#  define ARCH_X86 1
+# elif defined(__aarch64__)
+#  define ARCH_ARM64 1
+# elif defined(__arm__)
+#  define ARCH_ARM32 1
+
+#elif defined(_MSC_VER)
 
 # define COMPILER_CL 1
 
@@ -30,24 +51,6 @@
 #  error architecture not supported yet
 # endif
 
-#elif defined(__clang__)
-
-# define COMPILER_CLANG 1
-
-# if defined(__APPLE__) && defined(__MACH__)
-#  define OS_MAC 1
-# else
-#  error This compiler/platform combo is not supported yet
-# endif
-
-# if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
-#  define ARCH_X64 1
-# elif defined(i386) || defined(__i386) || defined(__i386__)
-#  define ARCH_X86 1
-# elif defined(__aarch64__)
-#  define ARCH_ARM64 1
-# elif defined(__arm__)
-#  define ARCH_ARM32 1
 # else
 #  error architecture not supported yet
 # endif

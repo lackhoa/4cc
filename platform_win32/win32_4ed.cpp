@@ -12,6 +12,9 @@
 #define FPS 60
 #define frame_useconds (1000000 / FPS)
 
+#define KV_IMPLEMENTATION
+#include "kv.h"
+
 #include <stdio.h>
 
 #include "4coder_base_types.h"
@@ -53,6 +56,7 @@
 #undef function
 #define UNICODE
 #include <Windows.h>
+#include "timeapi.h"
 #define function static
 
 #include "win32_utf8.h"
@@ -272,6 +276,7 @@ handle_type_ptr(void *ptr){
 ////////////////////////////////
 
 #include "win32_4ed_functions.cpp"
+#include "mmeapi.h"
 #include "win32_audio.cpp"
 
 ////////////////////////////////
@@ -512,7 +517,7 @@ system_cli_call_sig(){
     HANDLE out_write = INVALID_HANDLE_VALUE;
     if (CreatePipe(&out_read, &out_write, &security_atrb, 0)){
         if (SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0)){
-            STARTUPINFO startup = {};
+            STARTUPINFOW startup = {};
             startup.cb = sizeof(STARTUPINFO);
             startup.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
             
@@ -1607,17 +1612,7 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
             
             i32 suggested_format_index = 0;
             u32 ignore = 0;
-            if (!wglChoosePixelFormatARB(dc, pixel_attrib_list, 0, 1, &suggested_format_index, &ignore)){
-                goto fail_window_init;
-            }
-            
-            DescribePixelFormat(dc, suggested_format_index, sizeof(format), &format);
-            if (!SetPixelFormat(dc, suggested_format_index, &format)){
-                goto fail_window_init;
-            }
-            
-            log_os(" setting graphics attributes...\n");
-            
+            HGLRC context = {};
             i32 context_attrib_list[] = {
                 /*0*/WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
                 /*2*/WGL_CONTEXT_MINOR_VERSION_ARB, 2,
@@ -1629,9 +1624,20 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
                 /*6*/WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
                 /*8*/0
             };
+
+            if (!wglChoosePixelFormatARB(dc, pixel_attrib_list, 0, 1, &suggested_format_index, &ignore)){
+                goto fail_window_init;
+            }
+            
+            DescribePixelFormat(dc, suggested_format_index, sizeof(format), &format);
+            if (!SetPixelFormat(dc, suggested_format_index, &format)){
+                goto fail_window_init;
+            }
+            
+            log_os(" setting graphics attributes...\n");
             
             log_os(" creating graphics GL context...\n");
-            HGLRC context = wglCreateContextAttribsARB(dc, 0, context_attrib_list);
+            context = wglCreateContextAttribsARB(dc, 0, context_attrib_list);
             if (context == 0){
                 goto fail_window_init;
             }
@@ -1732,7 +1738,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         HDC dc = GetDC(0);
         i32 x_dpi = GetDeviceCaps(dc, LOGPIXELSX);
         i32 y_dpi = GetDeviceCaps(dc, LOGPIXELSY);
-        i32 max_dpi = max(x_dpi, y_dpi);
+        i32 max_dpi = maximum(x_dpi, y_dpi);
         win32vars.screen_scale_factor = ((f32)max_dpi)/96.f;
         ReleaseDC(0, dc);
         log_os(" detected dpi %f\n", win32vars.screen_scale_factor);
@@ -1811,6 +1817,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         w32_override_user_directory = SCu8((u8*)plat_settings.user_directory);
     }
     
+#if 0  // TODO(kv): removeme
     // NOTE(allen): load custom layer
     log_os("Loading custom layer...\n");
     
@@ -1885,6 +1892,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
             system_error_box(custom_fail_init_apis);
         }
     }
+#endif
     
     log_os(" loaded successfully\n");
     
@@ -1906,7 +1914,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     if (!plat_settings.fullscreen_window && plat_settings.maximize_window){
         window_style |= WS_MAXIMIZE;
     }
-    log_os(" windowed dimensions: %d, %d\n"
+    log_os(" windowed dimensions: %ld, %ld\n"
            " initially maximized: %d",
            window_rect.right - window_rect.left,
            window_rect.bottom - window_rect.top,
@@ -1986,7 +1994,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         Scratch_Block scratch(win32vars.tctx);
         String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
         curdir = string_mod_replace_character(curdir, '\\', '/');
-        app.init(win32vars.tctx, &target, base_ptr, curdir, custom);
+        app.init(win32vars.tctx, &target, base_ptr, curdir);
     }
     
     //

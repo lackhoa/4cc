@@ -28,12 +28,18 @@ static i32 prev_error = 0;
 #define SYSTEMF_PRINTF(...)
 #endif
 
+// #define systemf(...) do{                                   \
+// i32 n = snprintf(SF_CMD, sizeof(SF_CMD), __VA_ARGS__);     \
+// Assert(n < sizeof(SF_CMD));                                \
+// SYSTEMF_PRINTF("%s\n", SF_CMD);                            \
+// prev_error = system(SF_CMD);                               \
+// if (prev_error != 0) error_state = 1;                      \
+// }while(0)
+
 #define systemf(...) do{                                   \
 i32 n = snprintf(SF_CMD, sizeof(SF_CMD), __VA_ARGS__);     \
 Assert(n < sizeof(SF_CMD));                                \
-SYSTEMF_PRINTF("%s\n", SF_CMD);                            \
-prev_error = system(SF_CMD);                               \
-if (prev_error != 0) error_state = 1;                      \
+SYSTEMF_PRINTF("systemf dry-run: %s\n", SF_CMD);                            \
 }while(0)
 
 internal void fm_execute_in_dir(char *dir, char *str, char *args);
@@ -198,13 +204,14 @@ fm__show_details_for_zip_output(void){
 
 #if OS_WINDOWS
 
-typedef u32 DWORD;
-typedef i32  LONG;
+/*typedef unsigned long DWORD;
+typedef long  LONG;
 typedef i64  LONGLONG;
 typedef char*    LPTSTR;
-typedef char*    LPCTSTR;
+typedef const char*    LPCTSTR;
 typedef i32  BOOL;
 typedef void*    LPSECURITY_ATTRIBUTES;
+
 typedef union    _LARGE_INTEGER {
     struct {
         DWORD LowPart;
@@ -238,6 +245,7 @@ typedef struct _OVERLAPPED {
     };
     HANDLE    hEvent;
 } OVERLAPPED, *LPOVERLAPPED;
+*/
 
 #define WINAPI
 

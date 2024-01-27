@@ -28,12 +28,12 @@
               // implementation at the top of whatever your main file is, since
               // this file ain't gonna apear twice.
 
-#include <stdlib.h> // malloc, free
-#include <stdio.h>  // printf, perror
 #include <stdarg.h>
 #include <stddef.h>
-#include <cstdint>
 #include <float.h>
+#include <stdlib.h> // malloc, free
+#include <stdio.h>  // printf, perror
+#include <cstdint>
 #include <string.h>
 
 /*
@@ -62,11 +62,6 @@
 /*
   END: Other single-header libraries
 */
-
-
-
-
-
 
 
 

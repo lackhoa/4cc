@@ -357,14 +357,16 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
 }
 function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
-                        String_Const_u8 value, i32 max){
+                        String_Const_u8 value, i32 max)
+{
     if (value.size <= max){
-        return(push_fancy_stringf(arena, line, (Face_ID)0, fore, 0.f, 0.f,
-                                  "%-*.*s", max, string_expand(value)));
+      char *format = "%-*.*s";
+      Fancy_String *result = push_fancy_stringf(arena, line, (Face_ID)0, fore, 0.f, 0.f, format, max, string_expand(value));
+        return(result);
     }
     else{
-        return(push_fancy_stringf(arena, line, (Face_ID)0, fore, 0.f, 0.f,
-                                  "%-*.*s...", max - 3, string_expand(value)));
+      char *format = "%-*.*s...";
+        return(push_fancy_stringf(arena, line, (Face_ID)0, fore, 0.f, 0.f, format, max - 3, string_expand(value)));
     }
 }
 function Fancy_String*
@@ -372,26 +374,30 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
                         i32 max){
     if (value.size <= max){
+      char *format = "%-*.*s";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(),
                                   pre_margin, post_margin,
-                                  "%-*.*s", max, string_expand(value)));
+                                  format, max, string_expand(value)));
     }
     else{
+      char *format = "%-*.*s...";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(),
                                   pre_margin, post_margin,
-                                  "%-*.*s...", max - 3, string_expand(value)));
+                                  format, max - 3, string_expand(value)));
     }
 }
 function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, String_Const_u8 value,
                         i32 max){
     if (value.size <= max){
-        return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(), 0.f, 0.f,
-                                  "%-*.*s", max, string_expand(value)));
+      char *format = "%-*.*s";
+      Fancy_String *result = push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(), 0.f, 0.f,
+                                                format, max, string_expand(value));
+        return(result);
     }
     else{
-        return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(), 0.f, 0.f,
-                                  "%-*.*s...", max - 3, string_expand(value)));
+      char *format = "%-*.*s...";
+        return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(), 0.f, 0.f, format, max - 3, string_expand(value)));
     }
 }
 
@@ -400,12 +406,14 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
                         f32 pre_margin, f32 post_margin,
                         String_Const_u8 value, i32 max){
     if (value.size <= max){
+      char *format = "%.*s";
         return(push_fancy_stringf(arena, line, face, fore, pre_margin, post_margin,
-                                  "%.*s", string_expand(value)));
+                                  format, string_expand(value)));
     }
     else{
+      char *format = "%.*s...";
         return(push_fancy_stringf(arena, line, face, fore, pre_margin, post_margin,
-                                  "%.*s...", max - 3, value.str));
+                                  format, max - 3, value.str));
     }
 }
 function Fancy_String*
@@ -425,14 +433,16 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
                         i32 max){
     if (value.size <= max){
+      char *format = "%.*s";
         return(push_fancy_stringf(arena, line, face, fcolor_zero(),
                                   pre_margin, post_margin,
-                                  "%.*s", string_expand(value)));
+                                  format, string_expand(value)));
     }
     else{
+      char *format = "%.*s...";
         return(push_fancy_stringf(arena, line, face, fcolor_zero(),
                                   pre_margin, post_margin,
-                                  "%.*s...", max - 3, value.str));
+                                  format, max - 3, value.str));
     }
 }
 function Fancy_String*
@@ -464,12 +474,14 @@ function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
                         String_Const_u8 value, i32 max){
     if (value.size <= max){
+      char *format = "%.*s";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fore, 0.f, 0.f,
-                                  "%.*s", string_expand(value)));
+                                  format, string_expand(value)));
     }
     else{
+      char *format = "%.*s...";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fore, 0.f, 0.f,
-                                  "%.*s...", max - 3, value.str));
+                                  format, max - 3, value.str));
     }
 }
 function Fancy_String*
@@ -477,26 +489,30 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
                         i32 max){
     if (value.size <= max){
+      char *format = "%.*s";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(),
                                   pre_margin, post_margin,
-                                  "%.*s", string_expand(value)));
+                                  format, string_expand(value)));
     }
     else{
+      char *format = "%.*s...";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(),
                                   pre_margin, post_margin,
-                                  "%.*s...", max - 3, value.str));
+                                  format, max - 3, value.str));
     }
 }
 function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, String_Const_u8 value,
                         i32 max){
     if (value.size <= max){
+      char *format = "%.*s";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(), 0.f, 0.f,
-                                  "%.*s", string_expand(value)));
+                                  format, string_expand(value)));
     }
     else{
+      char *format = "%.*s...";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(), 0.f, 0.f,
-                                  "%.*s...", max - 3, value.str));
+                                  format, max - 3, value.str));
     }
 }
 

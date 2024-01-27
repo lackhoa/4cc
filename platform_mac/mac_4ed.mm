@@ -1446,9 +1446,6 @@ main(int arg_count, char **args){
             String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
             curdir = string_mod_replace_character(curdir, '\\', '/');
             app.init(mac_vars.tctx, &target, mac_vars.base_ptr, curdir);
-            // todo(kv): removeme hacking to draw my window
-            // char *todo_autodraw_path = (char *)"/Users/khoa/AutoDraw/build";
-            // adMainFcoder(todo_autodraw_path); 
         }
 
         //

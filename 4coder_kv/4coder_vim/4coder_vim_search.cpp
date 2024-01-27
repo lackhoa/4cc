@@ -310,8 +310,8 @@ VIM_COMMAND_SIG(vim_start_search_backward){ vim_start_search_inner(app, Scan_Bac
 VIM_COMMAND_SIG(vim_to_next_pattern){ vim_to_pattern_inner(app, 0); }
 VIM_COMMAND_SIG(vim_to_prev_pattern){ vim_to_pattern_inner(app, BufferSeekString_Backward); }
 
-VIM_COMMAND_SIG(vim_in_next_pattern){ vim_in_pattern_inner(app, 0); }
-VIM_COMMAND_SIG(vim_in_prev_pattern){ vim_in_pattern_inner(app, BufferSeekString_Backward); }
+// VIM_COMMAND_SIG(vim_in_next_pattern){ vim_in_pattern_inner(app, 0); }
+// VIM_COMMAND_SIG(vim_in_prev_pattern){ vim_in_pattern_inner(app, BufferSeekString_Backward); }
 
 VIM_COMMAND_SIG(vim_search_identifier){
 	View_ID view = get_active_view(app, Access_ReadVisible);

@@ -1,3 +1,4 @@
+nono removeme
 Command_Binding::Command_Binding(){
     block_zero_struct(this);
 }
