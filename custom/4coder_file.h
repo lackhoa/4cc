@@ -134,7 +134,8 @@ filter_is_code_file(Filename_Character *name, int32_t len){
 
 //// WINDOWS BEGIN ////
 static Cross_Platform_File_List
-get_file_list(Arena *arena, Filename_Character *pattern, File_Filter *filter){
+get_file_list(Arena *arena, Filename_Character *pattern, File_Filter *filter)
+{
     if (arena == 0){
         fprintf(stdout, "fatal error: NULL part passed to %s\n", __FUNCTION__);
         exit(1);
@@ -147,7 +148,9 @@ get_file_list(Arena *arena, Filename_Character *pattern, File_Filter *filter){
     int32_t pattern_length = 0;
     for (; pattern[pattern_length] != 0; ++pattern_length);
     int32_t last_slash = pattern_length;
-    for (; last_slash >= 0 && pattern[last_slash] != SLASH; --last_slash);
+    for (;
+         last_slash >= 0 && (pattern[last_slash] != '\\' && pattern[last_slash] != '/');
+         --last_slash);
     if (last_slash < 0){
         fprintf(stdout, "fatal error: invalid file pattern\n");
         exit(1);

@@ -801,6 +801,7 @@ concatenate(kv_Arena &arena, String a, char *b)
   return concatenate(arena, a, toString(b));
 }
 
+/*
 inline String
 concatenate(String a, String b)
 {
@@ -815,6 +816,7 @@ concatenate(String a, String b)
   chars[length] = 0;
   return String{chars, length};
 }
+*/
 
 /* MARK: End of String */
 

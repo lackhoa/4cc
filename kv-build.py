@@ -7,22 +7,37 @@ import os
 import subprocess
 import sys
 import time
+import shutil
+import re
 
-DEBUG_MODE = True
+pjoin = os.path.join
+
+DEBUG_MODE = 1
+FORCE_FULL_REBUILD = 0
+
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
 FCODER_ROOT=f'{HOME}/4ed'
 SOURCE=f"{FCODER_ROOT}/code"
 NON_SOURCE=f"{FCODER_ROOT}/4coder-non-source"
 FCODER_KV = f'{SOURCE}/4coder_kv'
-OS_WINDOWS = os.name== "nt"
-OS_MAC = not OS_WINDOWS
+OS_WINDOWS = int(os.name== "nt")
+OS_MAC = int(not OS_WINDOWS)
+
+DOT_DLL=".dll" if OS_WINDOWS else ".so"
+DOT_EXE='.exe' if OS_WINDOWS else ''
+
+# TODO(kv): vet these warnings
+WARNINGS="-Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
+
+def mkdir_p(path):
+    os.makedirs(path, exist_ok=True)
 
 # todo(kv): we should change to a build  dir instead, so we can clean all the crap out!
 def delete_all_pdb_files(dir_name):
     files = os.listdir(dir_name)
     for item in files:
-        if item.endswith(".pdb") or item.endswith('.ilk'):
+        if item.endswith(".pdb") or item.endswith('.ilk') or item.endswith(".dSYM"):
             os.remove(os.path.join(dir_name, item))
 
 # NOTE: unused
@@ -58,6 +73,35 @@ def setup_msvc_envvars():
     os.environ["INCLUDE"] = f"{MSVC_ROOT}/include;{SDK_INCLUDE}/ucrt;{SDK_INCLUDE}/shared;{SDK_INCLUDE}/um;{SDK_INCLUDE}/winrt;{SDK_INCLUDE}/cppwinrt"
     os.environ["LIB"]          = f"{MSVC_ROOT}/lib/{MSVC_ARCH};{SDK_LIBS}/ucrt/{SDK_ARCH};{SDK_LIBS}/um/{SDK_ARCH}"
 
+def rm_tree(path, topdown=False) :
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            file_path = os.path.join(path, file)
+            os.remove(file_path)
+        for dir in dirs:
+            dir_path = os.path.join(path, dir)
+            os.rmdir(dir_path)
+    os.removedirs(path)
+
+def rm_rf_inner(path):
+    if not os.path.exists(path):
+        return
+    if os.path.isfile(path):
+        os.remove(path)
+    elif os.path.isdir(path):
+        shutil.rmtree(path)
+    else:
+        print('dont know what this path is')
+        exit(1)
+
+def rm_rf(*paths):
+    for path in paths:
+        rm_rf_inner(path)
+
+def symlink_force(src, dst):
+    rm_rf(dst)
+    os.symlink(src, dst)
+
 def run(command, update_env={}):
     if OS_WINDOWS:
         command = f'{HOME}/msvc/setup.bat && {command}'
@@ -90,33 +134,33 @@ def mtime(path):
 
 def autogen():
     CUSTOM=f'{FCODER_ROOT}/code/custom'
-    INCLUDES=f'-I{CUSTOM} -I{FCODER_KV}/libs'
-    OPTIMIZATION='-O0' if DEBUG_MODE else '-O2'
-    SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={int(DEBUG_MODE)} -DKV_SLOW={int(DEBUG_MODE)}'
+    INCLUDES=f'-I{CUSTOM} -I{SOURCE}'
+    OPTIMIZATION='-O0'
+    SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={DEBUG_MODE}'
     arch="-m64"
-    debug="-g" if DEBUG_MODE else ""
-    opts=f"-Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses {SYMBOLS} {debug} {INCLUDES} {OPTIMIZATION}"
+    opts=f"{WARNINGS} {SYMBOLS} {debug} {INCLUDES} {OPTIMIZATION} -g"
     preproc_file="4coder_command_metadata.i"
 
     print('Lexer: Generate (one-time thing)')
-    OPTIMIZATION="-O0"
-    run(f'clang++ {FCODER_KV}/4coder_kv_skm_lexer_gen.cpp {arch} {opts} {debug} -Wno-tautological-compare -std=c++11 {OPTIMIZATION} -o {FCODER_KV}/lexer_generator')
+    LEXER_GEN=f"{FCODER_KV}/lexer_gen{DOT_EXE}"
+    run(f'clang++ {pjoin(FCODER_KV, '4coder_kv_skm_lexer_gen.cpp')} {arch} {opts} {debug} {WARNINGS} -std=c++11 {OPTIMIZATION} -o {LEXER_GEN}')
     #
     print('running lexer generator')
-    run(f'mkdir -p {FCODER_KV}/generated && {FCODER_KV}/lexer_generator {FCODER_KV}/generated')
-    run(f'rm {FCODER_KV}/lexer_generator & rm -rf {FCODER_KV}/lexer_generator.dSYM')
+    mkdir_p(f'{FCODER_KV}/generated')
+    run(f'{LEXER_GEN} {FCODER_KV}/generated')
 
     meta_macros="-DMETA_PASS"
     print('preproc_file: Generate')
     run(f'clang++ -I{CUSTOM} {meta_macros} {arch} {opts} {debug} -std=c++11 "{FCODER_KV}/4coder_kv.cpp" -E -o {preproc_file}')
     #
     print('Meta-generator: Compile & Link')
-    run(f'ccache clang++ -c "{CUSTOM}/4coder_metadata_generator.cpp" -I"{CUSTOM}" {opts} -O2 -std=c++11 -o "{CUSTOM}/metadata_generator.o"')
+    run(f'ccache clang++ -c "{CUSTOM}/4coder_metadata_generator.cpp" -I"{CUSTOM}" {opts} -std=c++11 -o "{CUSTOM}/metadata_generator.o"')
     #
-    run(f'clang++ -I"{CUSTOM}" "{CUSTOM}/metadata_generator.o" -o "{CUSTOM}/metadata_generator"')
+    run(f'clang++ -I"{CUSTOM}" "{CUSTOM}/metadata_generator.o" -o "{CUSTOM}/metadata_generator{DOT_EXE}" -g')
     #
     print('Meta-generator: Run')
-    run(f'"{CUSTOM}/metadata_generator" -R "{CUSTOM}" "{os.getcwd()}/{preproc_file}"')
+    preproc_file_path = os.path.realpath(f'{os.getcwd()}/{preproc_file}')  # todo(kv): gotta use the right slash, wtf!
+    run(f'"{CUSTOM}/metadata_generator" -R "{CUSTOM}" {preproc_file_path}')
 
 script_begin = time.time()
 
@@ -128,35 +172,34 @@ try:
 
     run_only       = (len(sys.argv) > 1 and sys.argv[1] == 'run')
     full_rebuild   = True  # NOTE(kv): there are commands not available in release mode
-    if DEBUG_MODE:
+    if DEBUG_MODE and (not FORCE_FULL_REBUILD):
         full_rebuild = (len(sys.argv) > 1 and sys.argv[1] == 'full')
 
     arch = "-m64"
     debug="-g" if DEBUG_MODE else ""
 
     if run_only:
-        run(f'{FCODER_USER}/4ed')
+        run(pjoin(FCODER_USER, f'4ed{DOT_EXE}'))
     else:
+        # NOTE(kv): cleanup (todo: arrange our build output directory so we don't have to do manual cleaning crap)
+        delete_all_pdb_files(OUTDIR)
+
         if full_rebuild:  # do some generation business in the custom layer
             autogen()
 
         print(f'NOTE: Building the 4ed binary at {os.getcwd()}')
 
-        DLL_EXTENSION="dll" if OS_WINDOWS else "so"
-        print('Producing 4ed_app.{DLL_EXTENSION}')
-        delete_all_pdb_files(OUTDIR)
-        # TODO(kv): vet these warnings
-        WARNINGS="-Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
+        print('Producing 4ed_app{DOT_DLL}')
         INCLUDES=f'-I{SOURCE} -I{SOURCE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{SOURCE}/4coder_kv -I{SOURCE}/4coder_kv/libs'
         #
         COMMON_SYMBOLS="-DFRED_SUPER -DFTECH_64_BIT"
         SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
-        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"
+        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O2"
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
-        run(f'ccache clang++ {COMPILE_FLAGS} -c {SOURCE}/4ed_app_target.cpp -o 4ed_app.o')
+        run(f'ccache clang++ -c {SOURCE}/4ed_app_target.cpp -o 4ed_app.o {COMPILE_FLAGS}')
         #
-        run(f'clang++ -shared 4ed_app.o -o 4ed_app.{DLL_EXTENSION} -Wl,-export:app_get_functions {debug}')
+        run(f'clang++ -shared 4ed_app.o -o 4ed_app{DOT_DLL} -Wl,-export:app_get_functions {debug}')
 
         print('Producing 4ed')
         if OS_WINDOWS:
@@ -171,19 +214,19 @@ try:
         else:
             LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
         #
-        run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed.exe {debug}')
+        run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed{DOT_EXE} {debug}')
 
         if full_rebuild:
-            print('Run verification script')
-            run(f'{FCODER_ROOT}/code/4coder_kv/tools/find-todo.sh')
+            # print('Run verification script')  #NOTE(kv): just do this in 4coder
+            # run(f'{SOURCE}/4coder_kv/tools/find-todo.sh')
             #
             print("NOTE: Setup 4coder config files")
-            run(f'ln -sf "{FCODER_KV}/config.4coder" "{FCODER_USER}/config.4coder"')
-            run(f'ln -sf "{FCODER_KV}/theme-kv.4coder" "{FCODER_USER}/themes/theme-kv.4coder"')
-
+            symlink_force(pjoin(FCODER_KV, "config.4coder"), pjoin(FCODER_USER, "config.4coder"))
+            symlink_force(pjoin(FCODER_KV, "theme-kv.4coder"), pjoin(FCODER_USER, 'themes', "theme-kv.4coder"))
 
 except Exception as e:
     print(f'Error: {e}')
+    exit(1)
 
 script_end = time.time()
 print(f'-----------\nScript total time: {script_end - script_begin:.3f} seconds')

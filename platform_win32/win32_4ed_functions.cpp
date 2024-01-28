@@ -127,6 +127,20 @@ GetUserProfileDirectoryW(HANDLE  hToken, LPWSTR  lpProfileDir, LPDWORD lpcchSize
 
 global String_Const_u8 w32_override_user_directory = {};
 
+internal String8 get_home_directory(Arena *arena)
+{
+  HANDLE current_process_token = GetCurrentProcessToken();
+  DWORD size = 0;
+  GetUserProfileDirectoryW(current_process_token, 0, &size);
+  u16 *buffer_u16 = push_array(arena, u16, size);
+  if (GetUserProfileDirectoryW(current_process_token, (WCHAR*)buffer_u16, &size))
+  {
+    String8 result = string_u8_from_string_u16(arena, SCu16(buffer_u16, size), StringFill_NullTerminate).string;
+    return result;
+  }
+  else return {};
+}
+
 internal
 system_get_path_sig(){
     String_Const_u8 result = {};
@@ -154,22 +168,20 @@ system_get_path_sig(){
             }
             result = push_string_copy(arena, win32vars.binary_path);
         }break;
-        
+
         case SystemPath_UserDirectory:
         {
-            if (w32_override_user_directory.size == 0){
-                HANDLE current_process_token = GetCurrentProcessToken();
-                DWORD size = 0;
-                GetUserProfileDirectoryW(current_process_token, 0, &size);
-                u16 *buffer_u16 = push_array(arena, u16, size);
-                if (GetUserProfileDirectoryW(current_process_token, (WCHAR*)buffer_u16, &size)){
-                    String8 path = string_u8_from_string_u16(arena, SCu16(buffer_u16, size), StringFill_NullTerminate).string;
-                    result = push_stringf(arena, "%.*s\\4coder\\", string_expand(path));
-                }
+          if (w32_override_user_directory.size == 0)
+          {
+            HANDLE current_process_token = GetCurrentProcessToken();
+            DWORD size = 0;
+            String8 home = get_home_directory(arena);
+            if (home.str)
+            {
+              result = push_stringf(arena, "%.*s\\4coder\\", string_expand(home));
             }
-            else{
-                result = w32_override_user_directory;
-            }
+          }
+          else result = w32_override_user_directory;
         }break;
     }
     return(result);
@@ -200,61 +212,78 @@ win32_remove_unc_prefix_characters(String_Const_u8 path){
     return(path);
 }
 
-internal
-system_get_canonical_sig(){
-    String_Const_u8 result = {};
-    if ((character_is_alpha(string_get_character(name, 0)) &&
-         string_get_character(name, 1) == ':') ||
-        string_match(string_prefix(name, 2), string_u8_litexpr("\\\\"))){
-        
-        u8 *c_name = push_array(arena, u8, name.size + 1);
-        block_copy(c_name, name.str, name.size);
-        c_name[name.size] = 0;
-        HANDLE file = CreateFile_utf8(arena, c_name, GENERIC_READ, 0, 0, OPEN_EXISTING,
-                                      FILE_ATTRIBUTE_NORMAL, 0);
-        
-        if (file != INVALID_HANDLE_VALUE){
-            DWORD capacity = GetFinalPathNameByHandle_utf8(arena, file, 0, 0, 0);
-            u8 *buffer = push_array(arena, u8, capacity);
-            DWORD length = GetFinalPathNameByHandle_utf8(arena, file, buffer, capacity, 0);
-            if (length > 0 && buffer[length - 1] == 0){
-                length -= 1;
-            }
-            result = SCu8(buffer, length);
-            result = win32_remove_unc_prefix_characters(result);
-            CloseHandle(file);
-        }
-        else{
-            String_Const_u8 path = string_remove_front_of_path(name);
-            String_Const_u8 front = string_front_of_path(name);
-            
-            u8 *c_path = push_array(arena, u8, path.size + 1);
-            block_copy(c_path, path.str, path.size);
-            c_path[path.size] = 0;
-            
-            HANDLE dir = CreateFile_utf8(arena, c_path, FILE_LIST_DIRECTORY,
-                                         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0,
-                                         OPEN_EXISTING,
-                                         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, 0);
-            
-            if (dir != INVALID_HANDLE_VALUE){
-                DWORD capacity = GetFinalPathNameByHandle_utf8(arena, dir, 0, 0, 0);
-                u8 *buffer = push_array(arena, u8, capacity + front.size + 1);
-                DWORD length = GetFinalPathNameByHandle_utf8(arena, dir, buffer, capacity, 0);
-                if (length > 0 && buffer[length - 1] == 0){
-                    length -= 1;
-                }
-                buffer[length] = '\\';
-                length += 1;
-                block_copy(buffer + length, front.str, front.size);
-                length += (DWORD)front.size;
-                result = SCu8(buffer, length);
-                result = win32_remove_unc_prefix_characters(result);
-                CloseHandle(dir);
-            }
-        }
+
+// String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name)
+internal system_get_canonical_sig()
+{
+  String8 result = {};
+  b32 correct_format = false;
+  u8 char0 = string_get_character(name, 0);
+  u8 char1 = string_get_character(name, 1);
+  if (char0 == '~' && (char1 == '/' || char1 == '\\'))
+  { //NOTE(kv): expand tilde
+    correct_format = true;
+    String8 home = get_home_directory(arena);
+    u64 bufsize = (name.size + home.size + 10);
+    name = push_stringf(arena, "%.*s\\%.*s", string_expand(home), (i32)name.size-2, name.str+2);
+  }
+  else if ((character_is_alpha(char0) && (char1 == ':')) ||
+           string_match(string_prefix(name, 2), SCu8("\\\\")))
+  {// NOTE(kv): normal Windows path with drive letter
+    correct_format = true;
+  }
+
+  if (correct_format)
+  {
+    u8 *cname = push_array(arena, u8, name.size + 1);
+    block_copy(cname, name.str, name.size);
+    cname[name.size] = 0;
+
+    HANDLE file = CreateFile_utf8(arena, cname, GENERIC_READ, 0, 0, OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL, 0);
+    
+    if (file != INVALID_HANDLE_VALUE){
+      DWORD capacity = GetFinalPathNameByHandle_utf8(arena, file, 0, 0, 0);
+      u8 *buffer = push_array(arena, u8, capacity);
+      DWORD length = GetFinalPathNameByHandle_utf8(arena, file, buffer, capacity, 0);
+      if (length > 0 && buffer[length - 1] == 0){
+        length -= 1;
+      }
+      result = SCu8(buffer, length);
+      result = win32_remove_unc_prefix_characters(result);
+      CloseHandle(file);
     }
-    return(result);
+    else{
+      String8 path = string_remove_front_of_path(name);
+      String8 front = string_front_of_path(name);
+      
+      u8 *c_path = push_array(arena, u8, path.size + 1);
+      block_copy(c_path, path.str, path.size);
+      c_path[path.size] = 0;
+      
+      HANDLE dir = CreateFile_utf8(arena, c_path, FILE_LIST_DIRECTORY,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0,
+                                   OPEN_EXISTING,
+                                   FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, 0);
+      
+      if (dir != INVALID_HANDLE_VALUE){
+        DWORD capacity = GetFinalPathNameByHandle_utf8(arena, dir, 0, 0, 0);
+        u8 *buffer = push_array(arena, u8, capacity + front.size + 1);
+        DWORD length = GetFinalPathNameByHandle_utf8(arena, dir, buffer, capacity, 0);
+        if (length > 0 && buffer[length - 1] == 0){
+          length -= 1;
+        }
+        buffer[length] = '\\';
+        length += 1;
+        block_copy(buffer + length, front.str, front.size);
+        length += (DWORD)front.size;
+        result = SCu8(buffer, length);
+        result = win32_remove_unc_prefix_characters(result);
+        CloseHandle(dir);
+      }
+    }
+  }
+  return(result);
 }
 
 internal File_Attribute_Flag

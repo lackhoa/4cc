@@ -11,7 +11,7 @@
 
 #define FM_PRINT_COMMANDS
 
-#include "kv.h"  // nono(kv): move this file somewhere else, this is very annoying
+#include "kv.h"
 #include "4coder_base_types.h"
 #include "4coder_version.h"
 

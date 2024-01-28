@@ -750,17 +750,3 @@ CUSTOM_DOC("change to search buffer")
 {
   switch_to_buffer_named(app, "*search*");
 }
-
-/* TODO(kv) removeme
-VIM_COMMAND_SIG(switch_to_file_buffer)
-{
-  GET_VIEW_AND_BUFFER;
-  Scratch_Block temp(app);
-  char *kv_file_filename = "/Users/khoa/notes/file.skm";
-  String8 buffer_file = push_buffer_file_name(app, temp, buffer);
-  b32 already_in_file_file = string_compare( buffer_file, SCu8(kv_file_filename)) == 0;
-  
-  if (already_in_file_file) kv_open_file_ultimate(app);
-  else                      switch_to_buffer_named(app, kv_file_filename);
-}
-*/

@@ -185,7 +185,8 @@ block_fill_ones(String_Const_u8 data){
     block_fill_ones(data.str, data.size);
 }
 function void
-block_copy(void *dst, const void *src, u64 size){
+block_copy(void *dst, const void *src, u64 size)
+{
     u8 *d = (u8*)dst;
     u8 *s = (u8*)src;
     if (d < s){
