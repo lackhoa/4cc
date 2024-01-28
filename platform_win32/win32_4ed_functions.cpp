@@ -213,6 +213,21 @@ win32_remove_unc_prefix_characters(String_Const_u8 path){
 }
 
 
+internal String8 
+expand_tilde(Arena *arena, String8 path)
+{
+  String8 result = path;
+  u8 char0 = string_get_character(path, 0);
+  u8 char1 = string_get_character(path, 1);
+  if (char0 == '~' && (char1 == '/' || char1 == '\\'))
+  {
+    String8 home = get_home_directory(arena);
+    u64 bufsize = (path.size + path.size + 10);
+    result = push_stringf(arena, "%.*s\\%.*s", string_expand(home), (i32)path.size-2, path.str+2);
+  }
+  return result;
+}
+
 // String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name)
 internal system_get_canonical_sig()
 {
@@ -223,9 +238,7 @@ internal system_get_canonical_sig()
   if (char0 == '~' && (char1 == '/' || char1 == '\\'))
   { //NOTE(kv): expand tilde
     correct_format = true;
-    String8 home = get_home_directory(arena);
-    u64 bufsize = (name.size + home.size + 10);
-    name = push_stringf(arena, "%.*s\\%.*s", string_expand(home), (i32)name.size-2, name.str+2);
+    name = expand_tilde(arena, name);
   }
   else if ((character_is_alpha(char0) && (char1 == ':')) ||
            string_match(string_prefix(name, 2), SCu8("\\\\")))
@@ -314,8 +327,8 @@ win32_file_attributes_from_HANDLE(HANDLE file){
     return(result);
 }
 
-internal
-system_get_file_list_sig(){
+internal system_get_file_list_sig()
+{
     File_List result = {};
     String_Const_u8 search_pattern = {};
     if (character_is_slash(string_get_character(directory, directory.size - 1))){

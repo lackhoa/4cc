@@ -417,10 +417,21 @@ character_is_path(char character)
   }
 }
 
+internal void copy_current_file_name(Application_Links *app)
+{
+  GET_VIEW_AND_BUFFER;
+  Scratch_Block temp(app);
+  String_Const_u8 filename = push_buffer_file_name(app, temp, buffer);
+  if (filename.size)
+  {
+    clipboard_post(0, filename);
+  }
+}
+
 VIM_COMMAND_SIG(open_file_from_current_dir)
 {
   GET_VIEW_AND_BUFFER;
-  file(app);  // NOTE(kv): copy the current file name because why not?
+  copy_current_file_name(app);  // NOTE(kv): copy the current file name because why not?
   Scratch_Block temp(app);
   String8 dirname = push_buffer_dir_name(app, temp, buffer);
   set_hot_directory(app, dirname);
@@ -506,6 +517,7 @@ VIM_COMMAND_SIG(kv_jump_ultimate)
     }
     else
     { // NOTE(kv): go to file file
+      copy_current_file_name(app);  // In case we wanna paste add the current filename in
       switch_to_buffer_named(app, kv_file_filename);
     }
   }
@@ -598,18 +610,6 @@ CUSTOM_DOC("switch to my note file")
   switch_to_buffer_named(app, "~/notes/note.skm");
 }
 
-CUSTOM_COMMAND_SIG(file)
-CUSTOM_DOC("copy the file name")
-{
-  GET_VIEW_AND_BUFFER;
-  Scratch_Block temp(app);
-  String_Const_u8 filename = push_buffer_file_name(app, temp, buffer);
-  if (filename.size)
-  {
-    clipboard_post(0, filename);
-  }
-}
-
 CUSTOM_COMMAND_SIG(dir)
 CUSTOM_DOC("kv copy dir name")
 {
@@ -633,19 +633,6 @@ VIM_COMMAND_SIG(kv_vim_visual_line_mode)
 		vim_state.mode = VIM_Visual;
 	}
 	vim_state.params.edit_type = EDIT_LineWise;
-}
-
-CUSTOM_COMMAND_SIG(build)
-CUSTOM_DOC("kv goto build file (todo rename me)")
-{
-  GET_VIEW_AND_BUFFER;
-  Scratch_Block temp(app);
-  String_Const_u8 dirname = push_buffer_dir_name(app, temp, buffer);
-  String_Const_u8 build_file = kv_search_build_file_from_dir(app, temp, dirname);
-  if (build_file.size)
-  {
-    view_open_file(app, view, build_file, true);
-  }
 }
 
 function void
@@ -739,6 +726,20 @@ VIM_COMMAND_SIG(kv_handle_return)
   }
 }
 
+CUSTOM_COMMAND_SIG(b)
+CUSTOM_DOC("kv goto build file")
+{
+  GET_VIEW_AND_BUFFER;
+  Scratch_Block temp(app);
+  String_Const_u8 dirname = push_buffer_dir_name(app, temp, buffer);
+  String_Const_u8 build_file = kv_search_build_file_from_dir(app, temp, dirname);
+  if (build_file.size)
+  {
+    view_open_file(app, view, build_file, true);
+  }
+}
+
+
 CUSTOM_COMMAND_SIG(c)
 CUSTOM_DOC("change to compilation buffer")
 {
@@ -749,4 +750,11 @@ CUSTOM_COMMAND_SIG(s)
 CUSTOM_DOC("change to search buffer")
 {
   switch_to_buffer_named(app, "*search*");
+}
+
+CUSTOM_COMMAND_SIG(vim_select_all)
+CUSTOM_DOC("select whole file")
+{
+  vim_visual_char_mode(app);
+  select_all(app);
 }

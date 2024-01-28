@@ -12,7 +12,7 @@ import shutil
 pjoin = os.path.join
 
 DEBUG_MODE = 1
-FORCE_FULL_REBUILD = 1
+FORCE_FULL_REBUILD = 0
 
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
@@ -194,7 +194,8 @@ def autogen():
 script_begin = time.time()
 
 try:
-    OUTDIR = FCODER_USER if DEBUG_MODE else f"{HOME}/4coder_stable"
+    FCODER_STABLE = pjoin(HOME, "4coder_stable")
+    OUTDIR = FCODER_USER if DEBUG_MODE else FCODER_STABLE
 
     os.chdir(f'{OUTDIR}')
     print(f'Workdir: {os.getcwd()}')
@@ -244,12 +245,10 @@ try:
         run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed{DOT_EXE} {debug}')
 
         if full_rebuild:
-            # print('Run verification script')  #NOTE(kv): just do this in 4coder
-            # run(f'{SOURCE}/4coder_kv/tools/find-todo.sh')
-            #
             print("NOTE: Setup 4coder config files")
             symlink_force(pjoin(FCODER_KV, "config.4coder"), pjoin(FCODER_USER, "config.4coder"))
             symlink_force(pjoin(FCODER_KV, "theme-kv.4coder"), pjoin(FCODER_USER, 'themes', "theme-kv.4coder"))
+            symlink_force(pjoin(SOURCE, "project.4coder"), pjoin(FCODER_STABLE, "project.4coder"))
 
 except Exception as e:
     print(f'Error: {e}')

@@ -200,7 +200,18 @@ VIM_COMMAND_SIG(vim_newline_above)
   auto_indent_line_at_cursor(app);
 }
 
-VIM_COMMAND_SIG(vim_visual_mode){
+internal void vim_visual_char_mode(Application_Links *app)
+{
+	if(vim_state.mode != VIM_Visual)
+  {
+		set_mark(app);
+    vim_state.mode = VIM_Visual;
+	}
+	vim_state.params.edit_type = EDIT_CharWise;
+}
+
+VIM_COMMAND_SIG(vim_visual_mode)
+{
 	if(vim_state.mode != VIM_Visual){
 		set_mark(app);
 		vim_state.mode = VIM_Visual;

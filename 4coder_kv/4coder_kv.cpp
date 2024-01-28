@@ -152,9 +152,6 @@ CUSTOM_COMMAND_SIG(kv_startup)
     create_unimportant_buffer(app, "*render*");
   }
   
-  set_hot_directory(app, SCu8("/Users/khoa/AutoDraw/4coder_kv/"));
-  load_project(app);
-  
   // NOTE(kv): debug system startup
   Scratch_Block temp(app);
 #if KV_INTERNAL
@@ -226,11 +223,9 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|MAP, redo,                              C|KeyCode_R);
   BIND(N|MAP, kv_open_note_file,            SUB_G, KeyCode_N);
   BIND(N|MAP, open_file_from_current_dir,   SUB_G, KeyCode_F);
-  BIND(N|MAP, open_file_from_current_dir,        M|KeyCode_F);
   BIND(N|MAP, vim_next_4coder_jump,              M|KeyCode_N);
   BIND(N|MAP, vim_prev_4coder_jump,              M|KeyCode_P);
   BIND(N|MAP, view_buffer_other_panel,           M|KeyCode_D);
-  BIND(N|MAP, vim_switch_lister,                 M|KeyCode_B);  // TODO(kv): removeme
   
   /// Mode Binds
   BIND(N|V|MAP, vim_modal_i,                        KeyCode_I);
@@ -271,6 +266,7 @@ function void kv_vim_bindings(Application_Links *app)
   /// Edit Binds
   BIND(N|V|MAP,   vim_paste_before,                KeyCode_P);
   BIND(N|MAP,     vim_delete_char,                 KeyCode_X);
+  BIND(N|MAP,     kill_buffer,                   S|KeyCode_X);
   BIND(N|MAP,     vim_replace_next_char,           KeyCode_R);
   BIND(N|V|MAP,   vim_combine_line,             (S|KeyCode_J));
   BIND(N|V|MAP,   vim_combine_line,      SUB_G, (S|KeyCode_J));
@@ -389,6 +385,7 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|  MAP,  vim_insert_end,             KeyCode_A);
   BIND(  V|MAP,  vim_end_line,               KeyCode_A);
   BIND(N  |MAP,  vim_end_line,             S|KeyCode_A);
+  BIND(N  |MAP,  vim_select_all,           C|KeyCode_A);
   BIND(N|  MAP,  kv_shift_character,         KeyCode_Comma);
   BIND(N|  MAP,  exit_4coder,              M|KeyCode_Q);
   BIND(N|V|MAP,  vim_command_mode,           KeyCode_Semicolon);
