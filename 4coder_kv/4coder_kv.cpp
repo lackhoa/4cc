@@ -225,6 +225,7 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|MAP, undo,                                KeyCode_U);
   BIND(N|MAP, redo,                              C|KeyCode_R);
   BIND(N|MAP, kv_open_note_file,            SUB_G, KeyCode_N);
+  BIND(N|MAP, open_file_from_current_dir,   SUB_G, KeyCode_F);
   BIND(N|MAP, open_file_from_current_dir,        M|KeyCode_F);
   BIND(N|MAP, vim_next_4coder_jump,              M|KeyCode_N);
   BIND(N|MAP, vim_prev_4coder_jump,              M|KeyCode_P);

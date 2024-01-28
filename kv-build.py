@@ -12,7 +12,7 @@ import shutil
 pjoin = os.path.join
 
 DEBUG_MODE = 1
-FORCE_FULL_REBUILD = 0
+FORCE_FULL_REBUILD = 1
 
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
@@ -131,35 +131,65 @@ def mtime(path):
     except:
         return 0
 
+class pushd: # pylint: disable=invalid-name
+    __slots__ = ('_pushstack',)
+
+    def __init__(self, dirname):
+        self._pushstack = list()
+        self.pushd(dirname)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exec_type, exec_val, exc_tb) -> bool:
+        # skip all the intermediate directories, just go back to the original one.
+        if self._pushstack:
+            os.chdir( self._pushstack.pop(0) )
+        if exec_type:
+            return False
+        return True
+
+    def popd(self) -> None:
+        if len(self._pushstack):
+            os.chdir(self._pushstack.pop())
+
+    def pushd(self, dirname) -> None:
+        self._pushstack.append(os.getcwd())
+        os.chdir(dirname)
+
 def autogen():
     CUSTOM=f'{FCODER_ROOT}/code/custom'
-    INCLUDES=f'-I{CUSTOM} -I{SOURCE}'
-    OPTIMIZATION='-O0'
-    SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={DEBUG_MODE}'
-    arch="-m64"
-    opts=f"{WARNINGS} {SYMBOLS} {debug} {INCLUDES} {OPTIMIZATION} -g"
-    preproc_file="4coder_command_metadata.i"
-
-    print('Lexer: Generate (one-time thing)')
-    LEXER_GEN=f"{FCODER_KV}/lexer_gen{DOT_EXE}"
-    run(f'clang++ {pjoin(FCODER_KV, '4coder_kv_skm_lexer_gen.cpp')} {arch} {opts} {debug} {WARNINGS} -std=c++11 {OPTIMIZATION} -o {LEXER_GEN}')
-    #
-    print('running lexer generator')
-    mkdir_p(f'{FCODER_KV}/generated')
-    run(f'{LEXER_GEN} {FCODER_KV}/generated')
-
-    meta_macros="-DMETA_PASS"
-    print('preproc_file: Generate')
-    run(f'clang++ -I{CUSTOM} {meta_macros} {arch} {opts} {debug} -std=c++11 "{FCODER_KV}/4coder_kv.cpp" -E -o {preproc_file}')
-    #
-    print('Meta-generator: Compile & Link')
-    run(f'ccache clang++ -c "{CUSTOM}/4coder_metadata_generator.cpp" -I"{CUSTOM}" {opts} -std=c++11 -o "{CUSTOM}/metadata_generator.o"')
-    #
-    run(f'clang++ -I"{CUSTOM}" "{CUSTOM}/metadata_generator.o" -o "{CUSTOM}/metadata_generator{DOT_EXE}" -g')
-    #
-    print('Meta-generator: Run')
-    preproc_file_path = os.path.realpath(f'{os.getcwd()}/{preproc_file}')  # todo(kv): gotta use the right slash, wtf!
-    run(f'"{CUSTOM}/metadata_generator" -R "{CUSTOM}" {preproc_file_path}')
+    BUILD_DIR = pjoin(CUSTOM, "build")
+    rm_rf(BUILD_DIR)
+    mkdir_p(BUILD_DIR)
+    with pushd(BUILD_DIR):
+        # print(f"BUILD_DIR: {os.getcwd()}")
+        INCLUDES=f'-I{CUSTOM} -I{SOURCE}'
+        OPTIMIZATION='-O0'
+        SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={DEBUG_MODE}'
+        arch="-m64"
+        opts=f"{WARNINGS} {SYMBOLS} {debug} {INCLUDES} {OPTIMIZATION} -g"
+        preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
+    
+        print('Lexer: Generate (one-time thing)')
+        LEXER_GEN = pjoin(BUILD_DIR, f"lexer_gen{DOT_EXE}")
+        run(f'clang++ {pjoin(FCODER_KV, '4coder_kv_skm_lexer_gen.cpp')} {arch} {opts} {debug} {WARNINGS} -std=c++11 {OPTIMIZATION} -o {LEXER_GEN}')
+        #
+        print('running lexer generator')
+        mkdir_p(f'{FCODER_KV}/generated')
+        run(f'{LEXER_GEN} {FCODER_KV}/generated')
+    
+        meta_macros="-DMETA_PASS"
+        print('preproc_file: Generate')
+        run(f'clang++ -I{CUSTOM} {meta_macros} {arch} {opts} {debug} -std=c++11 "{FCODER_KV}/4coder_kv.cpp" -E -o {preproc_file}')
+        #
+        print('Meta-generator: Compile & Link')
+        run(f'ccache clang++ -c "{CUSTOM}/4coder_metadata_generator.cpp" -I"{CUSTOM}" {opts} -std=c++11 -o "{BUILD_DIR}/metadata_generator.o"')
+        #
+        run(f'clang++ -I"{CUSTOM}" "{CUSTOM}/metadata_generator.o" -o "{BUILD_DIR}/metadata_generator{DOT_EXE}" -g')
+        #
+        print('Meta-generator: Run')
+        run(f'"{BUILD_DIR}/metadata_generator" -R "{CUSTOM}" {preproc_file}')
 
 script_begin = time.time()
 
@@ -186,15 +216,13 @@ try:
         if full_rebuild:  # do some generation business in the custom layer
             autogen()
 
-        print(f'NOTE: Building the 4ed binary at {os.getcwd()}')
-
-        print('Producing 4ed_app{DOT_DLL}')
+        print(f'Producing 4ed_app{DOT_DLL}')
         INCLUDES=f'-I{SOURCE} -I{SOURCE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{SOURCE}/4coder_kv -I{SOURCE}/4coder_kv/libs'
         #
         COMMON_SYMBOLS="-DFRED_SUPER -DFTECH_64_BIT"
         SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
-        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O2"
+        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
         run(f'ccache clang++ -c {SOURCE}/4ed_app_target.cpp -o 4ed_app.o {COMPILE_FLAGS}')
         #
