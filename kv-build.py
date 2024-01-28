@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 import shutil
-import re
 
 pjoin = os.path.join
 

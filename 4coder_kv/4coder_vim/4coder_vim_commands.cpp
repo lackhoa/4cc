@@ -146,7 +146,11 @@ VIM_COMMAND_SIG(vim_insert_mode_after){
 	vim_enter_insert_mode(app);
 }
 VIM_COMMAND_SIG(vim_insert_begin){ vim_begin_line(app); vim_enter_insert_mode(app); }
-VIM_COMMAND_SIG(vim_insert_end){ vim_end_line(app); vim_insert_mode_after(app); }
+VIM_COMMAND_SIG(vim_insert_end)
+{
+  vim_end_line(app);
+  vim_insert_mode_after(app);
+}
 
 VIM_COMMAND_SIG(vim_modal_i)
 {

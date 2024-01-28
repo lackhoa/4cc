@@ -1,34 +1,25 @@
-#if OS_WINDOWS
-
-global String_Const_u8 kv_build_file_name_array[] = {
-    str8_lit("build.bat"),
-};
-global String_Const_u8 kv_build_cmd_string_array[] = {
-    str8_lit("build"),
-};
-
-#elif OS_LINUX || OS_MAC
-
-global String_Const_u8 kv_build_file_name_array[] =
+global String8 kv_build_file_name_array[] =
 {
   str8_lit("kv-build.py"),
   str8_lit("build.py"),
   str8_lit("kv-build.sh"),
   str8_lit("build.sh"),
   str8_lit("Makefile"),
+#if OS_WINDOWS
+  str8_lit("build.bat"),
+#endif
 };
-global String_Const_u8 kv_build_cmd_string_array[] =
+global String8 kv_build_cmd_string_array[] =
 {
   str8_lit("kv-build.py"),
   str8_lit("build.py"),
   str8_lit("kv-build.sh"),
   str8_lit("build.sh"),
   str8_lit("make"),
-};
-
-#else
-#    error OS needs standard search and build rules
+#if OS_WINDOWS
+  str8_lit("build"),
 #endif
+};
 
 function String_Const_u8 
 kv_search_build_file_from_dir(Application_Links *app, Arena *arena, String_Const_u8 start_dir)

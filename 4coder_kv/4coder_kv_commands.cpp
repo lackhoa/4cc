@@ -410,7 +410,7 @@ character_is_path(char character)
 {
   switch (character)
   {
-    case '/': case '~': case '.': case '\\':  case '-':
+    case '/': case '~': case '.': case '\\':  case '-': case ':':
       return true;
     default:
       return character_is_alpha_numeric(character);
@@ -475,7 +475,7 @@ VIM_COMMAND_SIG(kv_jump_ultimate)
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
   
-  char *kv_file_filename = "/Users/khoa/notes/file.skm";
+  char *kv_file_filename = "~/notes/file.skm";
   
   b32 already_jumped = false;
   Range_i64 file_range = get_surrounding_file_range(app);
@@ -505,7 +505,7 @@ VIM_COMMAND_SIG(kv_jump_ultimate)
       open_file_from_current_dir(app);
     }
     else
-    {
+    { // NOTE(kv): go to file file
       switch_to_buffer_named(app, kv_file_filename);
     }
   }
