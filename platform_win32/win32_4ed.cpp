@@ -1793,7 +1793,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     {
         Scratch_Block scratch(win32vars.tctx);
         String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
-        curdir = string_mod_replace_character(curdir, '\\', '/');
+        string_mod_replace_character(curdir, '\\', '/');
         char **files = 0;
         i32 *file_count = 0;
         base_ptr = app.read_command_line(win32vars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
@@ -1993,7 +1993,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     {
         Scratch_Block scratch(win32vars.tctx);
         String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
-        curdir = string_mod_replace_character(curdir, '\\', '/');
+        string_mod_replace_character(curdir, '\\', '/');
         app.init(win32vars.tctx, &target, base_ptr, curdir);
     }
     

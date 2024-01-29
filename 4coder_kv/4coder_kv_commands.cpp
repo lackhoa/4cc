@@ -421,9 +421,10 @@ internal void copy_current_file_name(Application_Links *app)
 {
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
-  String_Const_u8 filename = push_buffer_file_name(app, temp, buffer);
+  String8 filename = push_buffer_file_name(app, temp, buffer);
   if (filename.size)
   {
+    string_mod_replace_character(filename, '\\', '/');
     clipboard_post(0, filename);
   }
 }
@@ -757,4 +758,19 @@ CUSTOM_DOC("select whole file")
 {
   vim_visual_char_mode(app);
   select_all(app);
+}
+
+CUSTOM_COMMAND_SIG(kv_miscellaneous_debug_command)
+CUSTOM_DOC("just a placeholder command so I can test stuff")
+{
+  GET_VIEW_AND_BUFFER;
+  Scratch_Block temp(app);
+  String8 bufname = push_buffer_base_name(app ,temp, buffer);
+  printf_message(app, temp, "buffer name: %.*s\n", string_expand(bufname));
+}
+
+CUSTOM_COMMAND_SIG(init)
+CUSTOM_DOC("configure your editor!")
+{
+  switch_to_buffer_named(app, "~/4ed/code/4coder_kv/4coder_kv.cpp");
 }

@@ -2961,9 +2961,10 @@ draw_rectangle_outline(Application_Links *app, Rect_f32 rect, f32 roundness, f32
 }
 
 inline void
-draw_rect_outline(Application_Links *app, rect2 rect, f32 thickness, v4 color)
+draw_rect_outline(Application_Links *app, rect2 rect, f32 thickness, v4 color, f32 roundness=0)
 {
-  draw_rectangle_outline(app, rect, 0, thickness, pack_color(color));
+  kv_assert(in_between(0.0f, roundness, 0.5f));
+  draw_rectangle_outline(app, rect, roundness, thickness, pack_color(color));
 }
 
 api(custom) function Rect_f32

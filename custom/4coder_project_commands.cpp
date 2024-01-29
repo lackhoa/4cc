@@ -386,9 +386,9 @@ prj_generate_bat(Arena *scratch, String8 opts, String8 compiler, String8 script_
     String8 od = push_string_copy(scratch, output_dir);
     String8 bf = push_string_copy(scratch, binary_file);
     
-    cf = string_mod_replace_character(cf, '/', '\\');
-    od = string_mod_replace_character(od, '/', '\\');
-    bf = string_mod_replace_character(bf, '/', '\\');
+    string_mod_replace_character(cf, '/', '\\');
+    string_mod_replace_character(od, '/', '\\');
+    string_mod_replace_character(bf, '/', '\\');
     
     String8 file_name = push_u8_stringf(scratch, "%.*s/%.*s.bat",
                                         string_expand(script_path),
@@ -854,15 +854,15 @@ CUSTOM_DOC("Works as open_all_code but also runs in all subdirectories.")
 }
 
 CUSTOM_COMMAND_SIG(load_project)
-CUSTOM_DOC("Looks for a project.4coder file in the current directory and tries to load it.  Looks in parent directories until a project file is found or there are no more parents.")
+CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to load it.  Looks in parent directories until a project file is found or there are no more parents.")
 {
   // TODO(allen): compress this _thoughtfully_
   
   ProfileScope(app, "load project");
   save_all_dirty_buffers(app);
   Scratch_Block scratch(app);
-  
-  // NOTE(allen): Load the project file from the hot directory
+ 
+  // NOTE(allen): Load the project file from the hot directory, as advertised
   String8 project_path = push_hot_directory(app, scratch);
   File_Name_Data dump = dump_file_search_up_path(app, scratch, project_path, string_u8_litexpr("project.4coder"));
   String8 project_root = string_remove_last_folder(dump.file_name);
@@ -942,8 +942,12 @@ CUSTOM_DOC("Looks for a project.4coder file in the current directory and tries t
     b32 recursive = vars_b32_from_var(recursive_var);
     b32 relative = vars_b32_from_var(relative_var);
   
-    //todo(kv): does this cause a performance concern?
-    path = system_get_canonical(scratch, path);
+    // NOTE(kv): system_get_canonical seems to not like relative path, 
+    // but we only need it to expand tilde anyway so it doesn't matter in the relative path case
+    if (!relative)
+    {
+      path = system_get_canonical(scratch, path);
+    }
     
     u32 flags = 0;
     if (recursive){
@@ -972,6 +976,16 @@ CUSTOM_DOC("Looks for a project.4coder file in the current directory and tries t
     String8 title = push_u8_stringf(scratch, "4coder project: %.*s", string_expand(proj_name));
     set_window_title(app, title);
   }
+}
+
+CUSTOM_COMMAND_SIG(load_project_current_dir)
+CUSTOM_DOC("Looks for a project.4coder file in the current directory and tries to load it.  Looks in parent directories until a project file is found or there are no more parents.")
+{
+  GET_VIEW_AND_BUFFER;
+  Scratch_Block scratch(app);
+  String8 dirname = push_buffer_dir_name(app, scratch, buffer);
+  set_hot_directory(app, dirname);
+  load_project(app);
 }
 
 CUSTOM_COMMAND_SIG(project_fkey_command)

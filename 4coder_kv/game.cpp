@@ -77,7 +77,7 @@ line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color)
 internal void
 game_update_and_render(Application_Links *app, View_ID view, rect2 region)
 {
-  if(1)  // test draw texture
+  if(0)  // test draw texture
   {
     local_persist b32 initial = true;
     defer(initial = false);
@@ -109,12 +109,15 @@ game_update_and_render(Application_Links *app, View_ID view, rect2 region)
     v4 bg_color = v4{0,0,0,1};
     draw_rect(app, v2{0, 0}, screen_dim, bg_color);
   }
+ 
+  { // draw a freaking sphere! like Britney Sphere
+    rect2 rect = {0,0, 100,100};
+    v4 gray = {.5, .5, .5, 1};
+    draw_rect_outline(app, rect, 6, gray, 0.5f);
+  }
 
-  {
-    // push canvas rect
+  { // push coordinate system
     v2 layout_center = screen_half_dim;
-    
-    // push coordinate system
     v3 eye_p = E3 * v3{-1, -.2f, 3};
     v3 eye_z = noz(eye_p);  // NOTE: z comes at you
     v3 eye_x = cross(eye_z, v3{0,0,1});
@@ -147,11 +150,6 @@ game_update_and_render(Application_Links *app, View_ID view, rect2 region)
       draw_line(app, p0_screen+O, px_screen+O, 2.f, {.5,  0,  0, 1});
       draw_line(app, p0_screen+O, py_screen+O, 2.f, { 0, .5,  0, 1});
       draw_line(app, p0_screen+O, pz_screen+O, 2.f, { 0,  0, .5, 1});
-      
-      // pushDebugText("eye_p: %2.f, %2.f, %2.f", eye_p.x, eye_p.y, eye_p.z);
-      // v3 px = px_hit.p;
-      // pushDebugText("p0_hit: %.1f, %.1f, %.1f", p0_hit.p.x, p0_hit.p.y, p0_hit.p.z);
-      // pushDebugText("p0_screen: %.1f, %.1f", p0_screen.x, p0_screen.y);
     }
   }
 }

@@ -1,3 +1,5 @@
+// ~/4ed/code/4coder_kv/config.4coder
+
 #include "game.cpp"
 // TODO(kv): remember this file is processed by the meta-generator.
 //           particularly the command metadata is required for the code to compile (and it's depressing).
@@ -134,7 +136,7 @@ kv_default_bindings(Mapping *mapping)
 
 inline void create_unimportant_buffer(Application_Links *app, char *name)
 {
-  Buffer_ID buffer = create_buffer(app, string_u8_litexpr(name),
+  Buffer_ID buffer = create_buffer(app, SCu8(name),
                                    BufferCreate_NeverAttachToFile |
                                    BufferCreate_AlwaysNew);
   buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
@@ -143,7 +145,7 @@ inline void create_unimportant_buffer(Application_Links *app, char *name)
 CUSTOM_COMMAND_SIG(kv_startup)
 {
   default_startup(app);  // todo(kv): This thing stomps over your binding, let's yank the relevant part out.
-	set_window_title(app, string_u8_litexpr("4coder kv"));
+	set_window_title(app, SCu8("4coder kv"));
   
   kv_essential_mapping(&framework_mapping);
   kv_default_bindings(&framework_mapping);

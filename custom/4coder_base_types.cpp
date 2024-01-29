@@ -4945,13 +4945,12 @@ string_mod_replace_character(String_Const_char str, char o, char n){
     }
     return(str);
 }
-function String_Const_u8
+function void
 string_mod_replace_character(String_Const_u8 str, u8 o, u8 n){
     for (u64 i = 0; i < str.size; i += 1){
         u8 c = str.str[i];
         str.str[i] = (c == o)?(n):(c);
     }
-    return(str);
 }
 function String_Const_u16
 string_mod_replace_character(String_Const_u16 str, u16 o, u16 n){

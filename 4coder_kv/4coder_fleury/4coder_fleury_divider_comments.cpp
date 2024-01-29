@@ -2,8 +2,9 @@
 
 #include "4coder_fleury_ubiquitous.h"
 
-String_Const_u8 strong_divider_comment_signifier = string_u8_litexpr("//~");
-String_Const_u8 weak_divider_comment_signifier = string_u8_litexpr("//-");
+// NOTE(kv): originally not a global?
+global String8 strong_divider_comment_signifier = SCu8("//~");
+global String8 weak_divider_comment_signifier   = SCu8("//-");
 
 function i64
 _F4_Boundary_DividerComment(Application_Links *app, Buffer_ID buffer, 

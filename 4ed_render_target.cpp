@@ -136,7 +136,7 @@ draw_line(Render_Target *target, v2 p0, v2 p1, f32 roundness, f32 thickness, u32
 {
   kv_clamp_min(thickness, 2.0f);
   f32 half_thickness = 0.5f * thickness;
- 
+  
   v2 d = noz(p1 - p0);
   v2 perpendicular = 0.5f * thickness * perp(d);
   
@@ -178,7 +178,6 @@ draw_rectangle_outline_to_target(Render_Target *target, Rect_f32 rect, f32 round
     for (i32 i = 0; i < ArrayCount(vertices); i += 1)
     {
         vertices[i].uvw = V3f32(center.x, center.y, roundness);
-        // vertices[i].uvw = V3f32(center.x/2, center.y/2, roundness);  // @test(kv)
         vertices[i].color = color;
         vertices[i].half_thickness = half_thickness;
     }

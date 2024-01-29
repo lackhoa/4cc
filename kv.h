@@ -870,7 +870,9 @@ inline void *kv_xmalloc(size_t size) {
 }
 
 #define breakable_block for (i32 __kv_breakable_block__=0; __kv_breakable_block__ == 0; __kv_breakable_block__++)
-
+#define in_range(bot,mid,top) ((bot) <= (mid) && (mid) < (top))
+#define in_between(bot,mid,top) ((bot) <= (mid) && (mid) <= (top))
+#define in_range_inclusive in_between
 
 /* ;math */
 
