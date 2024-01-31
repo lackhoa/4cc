@@ -176,7 +176,7 @@ struct Win32_Vars{
     String_Const_u8 binary_path;
     
     b8 clip_catch_all;
-    b8 next_clipboard_is_self;
+    // b8 next_clipboard_is_self;  @modified(kv)
     DWORD clipboard_sequence;
     Plat_Handle clip_wakeup_timer;
     
@@ -430,31 +430,35 @@ win32_post_clipboard(Arena *scratch, char *text, i32 len){
             dest[len] = 0;
             GlobalUnlock(memory_handle);
             SetClipboardData(CF_TEXT, memory_handle);
-            win32vars.next_clipboard_is_self = true;
+            // win32vars.next_clipboard_is_self = true;
         }
         CloseClipboard();
     }
 }
 
 internal
-system_get_clipboard_sig(){
-    String_Const_u8 result = {};
-    DWORD new_number = GetClipboardSequenceNumber();
-    if (new_number != win32vars.clipboard_sequence){
-        win32vars.clipboard_sequence = new_number;
-        if (win32vars.next_clipboard_is_self){
-            win32vars.next_clipboard_is_self = false;
-        }
-        else{
-            for (i32 R = 0; R < 8; ++R){
-                result = win32_read_clipboard_contents(win32vars.tctx, arena);
-                if (result.str == 0){
-                    break;
-                }
-            }
-        }
+system_get_clipboard_sig()
+{
+  String_Const_u8 result = {};
+  DWORD new_number = GetClipboardSequenceNumber();
+  if (new_number != win32vars.clipboard_sequence){
+    win32vars.clipboard_sequence = new_number;
+    /*
+    if (win32vars.next_clipboard_is_self){
+      win32vars.next_clipboard_is_self = false;
     }
-    return(result);
+    else
+*/
+    {
+      for (i32 R = 0; R < 8; ++R){
+        result = win32_read_clipboard_contents(win32vars.tctx, arena);
+        if (result.str == 0){
+          break;
+        }
+      }
+    }
+  }
+  return(result);
 }
 
 internal
@@ -1942,7 +1946,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     }
     win32vars.clip_wakeup_timer = system_wake_up_timer_create();
     win32vars.clipboard_sequence = 0;
-    win32vars.next_clipboard_is_self = 0;
+    // win32vars.next_clipboard_is_self = 0;
 #if 0
     if (win32vars.clipboard_sequence == 0){
         Scratch_Block scratch(win32vars.tctx);

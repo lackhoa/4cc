@@ -2541,7 +2541,8 @@ set_buffer_system_command(Application_Links *app, Child_Process_ID process, Buff
 
 function b32
 exec_system_command(Application_Links *app, View_ID view, Buffer_Identifier buffer_id,
-                    String_Const_u8 path, String_Const_u8 command, Command_Line_Interface_Flag flags){
+                    String_Const_u8 path, String_Const_u8 command, Command_Line_Interface_Flag flags)
+{
     b32 result = false;
     Child_Process_ID child_process_id = create_child_process(app, path, command);
     if (child_process_id != 0){

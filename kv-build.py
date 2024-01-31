@@ -213,6 +213,10 @@ try:
     else:
         # NOTE(kv): cleanup (todo: arrange our build output directory so we don't have to do manual cleaning crap)
         delete_all_pdb_files(OUTDIR)
+        # NOTE(kv): remedy stop debugging
+        if OS_WINDOWS:
+            remedybg = "remedybg.exe"
+            run(f"{remedybg} stop-debugging")
 
         if full_rebuild:  # do some generation business in the custom layer
             autogen()

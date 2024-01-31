@@ -1,4 +1,5 @@
 // ~/4ed/code/4coder_kv/config.4coder
+// ~/4ed/code/project.4coder
 
 #include "game.cpp"
 // TODO(kv): remember this file is processed by the meta-generator.
