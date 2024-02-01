@@ -71,7 +71,7 @@ kv_fuzzy_search_forward(Application_Links *app, Buffer_ID buffer, i64 pos, Strin
       break;
     }
 
-    kv_assert_defend(pos > original_pos, return buffer_size;);
+    assert_defend(pos > original_pos, return buffer_size;);
   }
 
   return result;
@@ -127,7 +127,7 @@ kv_fuzzy_search_backward(Application_Links *app, Buffer_ID buffer, i64 pos, Stri
       break;
     }
 
-    kv_assert_defend(pos < original_pos, return result;);
+    assert_defend(pos < original_pos, return result;);
   }
 
   return result;

@@ -17,14 +17,15 @@ FORCE_FULL_REBUILD = 0
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
 FCODER_ROOT=f'{HOME}/4ed'
-SOURCE=f"{FCODER_ROOT}/code"
+CODE=f"{FCODER_ROOT}/code"
 NON_SOURCE=f"{FCODER_ROOT}/4coder-non-source"
-FCODER_KV = f'{SOURCE}/4coder_kv'
+FCODER_KV = f'{CODE}/4coder_kv'
 OS_WINDOWS = int(os.name== "nt")
 OS_MAC = int(not OS_WINDOWS)
 
 DOT_DLL=".dll" if OS_WINDOWS else ".so"
 DOT_EXE='.exe' if OS_WINDOWS else ''
+remedybg = "remedybg.exe"
 
 # TODO(kv): vet these warnings
 WARNINGS="-Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
@@ -164,7 +165,7 @@ def autogen():
     mkdir_p(BUILD_DIR)
     with pushd(BUILD_DIR):
         # print(f"BUILD_DIR: {os.getcwd()}")
-        INCLUDES=f'-I{CUSTOM} -I{SOURCE}'
+        INCLUDES=f'-I{CUSTOM} -I{CODE}'
         OPTIMIZATION='-O0'
         SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={DEBUG_MODE}'
         arch="-m64"
@@ -209,37 +210,40 @@ try:
     debug="-g" if DEBUG_MODE else ""
 
     if run_only:
-        run(pjoin(FCODER_USER, f'4ed{DOT_EXE}'))
+        if OS_WINDOWS:
+            run(f"{remedybg} start-debugging")
+        else:
+            run(pjoin(FCODER_USER, f'4ed{DOT_EXE}'))
     else:
-        # NOTE(kv): cleanup (todo: arrange our build output directory so we don't have to do manual cleaning crap)
-        delete_all_pdb_files(OUTDIR)
         # NOTE(kv): remedy stop debugging
         if OS_WINDOWS:
-            remedybg = "remedybg.exe"
             run(f"{remedybg} stop-debugging")
+
+        # NOTE(kv): cleanup (todo: arrange our build output directory so we don't have to do manual cleaning crap)
+        delete_all_pdb_files(OUTDIR)
 
         if full_rebuild:  # do some generation business in the custom layer
             autogen()
 
         print(f'Producing 4ed_app{DOT_DLL}')
-        INCLUDES=f'-I{SOURCE} -I{SOURCE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{SOURCE}/4coder_kv -I{SOURCE}/4coder_kv/libs'
+        INCLUDES=f'-I{CODE} -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/4coder_kv/libs'
         #
         COMMON_SYMBOLS="-DFRED_SUPER -DFTECH_64_BIT"
         SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
         OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
-        run(f'ccache clang++ -c {SOURCE}/4ed_app_target.cpp -o 4ed_app.o {COMPILE_FLAGS}')
+        run(f'ccache clang++ -c {CODE}/4ed_app_target.cpp -o 4ed_app.o {COMPILE_FLAGS}')
         #
         run(f'clang++ -shared 4ed_app.o -o 4ed_app{DOT_DLL} -Wl,-export:app_get_functions {debug}')
 
         print('Producing 4ed')
         if OS_WINDOWS:
-            PLATFORM_CPP = f"{SOURCE}/platform_win32/win32_4ed.cpp"
+            PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
         else:
-            PLATFORM_CPP =  f"{SOURCE}/platform_mac/mac_4ed.mm"
+            PLATFORM_CPP =  f"{CODE}/platform_mac/mac_4ed.mm"
          #
-        run(f'ccache clang++ {COMPILE_FLAGS} -I{SOURCE}/platform_all -c {PLATFORM_CPP} -o 4ed.o')
+        run(f'ccache clang++ {COMPILE_FLAGS} -I{CODE}/platform_all -c {PLATFORM_CPP} -o 4ed.o')
         #
         if OS_WINDOWS:
             LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/freetype.lib -luser32.lib -lwinmm.lib -lgdi32.lib -lopengl32.lib -lcomdlg32.lib -luserenv.lib {NON_SOURCE}/res/icon.res"
@@ -252,7 +256,7 @@ try:
             print("NOTE: Setup 4coder config files")
             symlink_force(pjoin(FCODER_KV, "config.4coder"), pjoin(FCODER_USER, "config.4coder"))
             symlink_force(pjoin(FCODER_KV, "theme-kv.4coder"), pjoin(FCODER_USER, 'themes', "theme-kv.4coder"))
-            symlink_force(pjoin(SOURCE, "project.4coder"), pjoin(FCODER_STABLE, "project.4coder"))
+            symlink_force(pjoin(CODE, "project.4coder"), pjoin(FCODER_STABLE, "project.4coder"))
 
 except Exception as e:
     print(f'Error: {e}')

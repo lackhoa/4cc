@@ -657,13 +657,21 @@ os_popup_error(char *title, char *message){
 #include "opengl/4ed_opengl_render.cpp"
 
 internal
-graphics_get_texture_sig(){
+graphics_get_texture_sig()
+{
     return(gl__get_texture(dim, texture_kind));
 }
 
 internal
-graphics_fill_texture_sig(){
+graphics_fill_texture_sig()
+{
     return(gl__fill_texture(texture_kind, texture, p, dim, data));
+}
+
+internal void 
+graphics_set_game_texture(Texture_ID texture)
+{
+    global_game_texture = texture;
 }
 
 internal
@@ -1821,83 +1829,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         w32_override_user_directory = SCu8((u8*)plat_settings.user_directory);
     }
     
-#if 0  // TODO(kv): removeme
-    // NOTE(allen): load custom layer
-    log_os("Loading custom layer...\n");
-    
-    System_Library custom_library = {};
-    Custom_API custom = {};
-    {
-        char custom_not_found_msg[] = "Did not find a library for the custom layer.";
-        char custom_fail_version_msg[] = "Failed to load custom code due to missing version information or a version mismatch.  Try rebuilding with buildsuper.";
-        char custom_fail_init_apis[] = "Failed to load custom code due to missing 'init_apis' symbol.  Try rebuilding with buildsuper";
-        
-        Scratch_Block scratch(win32vars.tctx);
-        String_Const_u8 default_file_name = string_u8_litexpr("custom_4coder.dll");
-        List_String_Const_u8 search_list = {};
-        def_search_list_add_system_path(scratch, &search_list, SystemPath_UserDirectory);
-        def_search_list_add_system_path(scratch, &search_list, SystemPath_Binary);
-        
-        if (log_os_enabled){
-            log_os(" search list (paths):");
-            for (Node_String_Const_u8 *node = search_list.first;
-                 node != 0;
-                 node = node->next){
-                log_os("'%.*s'", string_expand(node->string));
-                if (node->next != 0){
-                    log_os(", ");
-                }
-            }
-            log_os("\n");
-        }
-        
-        String_Const_u8 custom_file_names[2] = {};
-        i32 custom_file_count = 1;
-        if (plat_settings.custom_dll != 0){
-            custom_file_names[0] = SCu8(plat_settings.custom_dll);
-            if (!plat_settings.custom_dll_is_strict){
-                custom_file_names[1] = default_file_name;
-                custom_file_count += 1;
-            }
-        }
-        else{
-            custom_file_names[0] = default_file_name;
-        }
-        
-        log_os(" search list (file names): '%.*s', '%.*s'\n",
-               string_expand(custom_file_names[0]), string_expand(custom_file_names[1]));
-        
-        String_Const_u8 custom_file_name = {};
-        for (i32 i = 0; i < custom_file_count; i += 1){
-            custom_file_name = def_search_get_full_path(scratch, &search_list, custom_file_names[i]);
-            if (custom_file_name.size > 0){
-                break;
-            }
-        }
-        
-        log_os(" trying to load: '%.*s'\n", string_expand(custom_file_name));
-        
-        b32 has_library = false;
-        if (custom_file_name.size > 0){
-            if (system_load_library(scratch, custom_file_name, &custom_library)){
-                has_library = true;
-            }
-        }
-        
-        if (!has_library){
-            system_error_box(custom_not_found_msg);
-        }
-        custom.get_version = (_Get_Version_Type*)system_get_proc(custom_library, "get_version");
-        if (custom.get_version == 0 || custom.get_version(MAJOR, MINOR, PATCH) == 0){
-            system_error_box(custom_fail_version_msg);
-        }
-        custom.init_apis = (_Init_APIs_Type*)system_get_proc(custom_library, "init_apis");
-        if (custom.init_apis == 0){
-            system_error_box(custom_fail_init_apis);
-        }
-    }
-#endif
-    
     log_os(" loaded successfully\n");
     
     // NOTE(allen): Window Init
@@ -2244,7 +2175,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         }
         
         // NOTE(allen): sleep a bit to cool off :)
-		system_release_global_frame_mutex(win32vars.tctx);
+		    system_release_global_frame_mutex(win32vars.tctx);
         
         u64 timer_end = system_now_time();
         u64 end_target = timer_start + frame_useconds;

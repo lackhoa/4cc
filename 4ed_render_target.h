@@ -45,11 +45,13 @@ struct Render_Group{
     Rect_f32 clip_box;
 };
 
+global const Face_ID FACE_ID_SOFTWARE_RENDER = U32_MAX;
+
 struct Render_Target{
     b8 clip_all;
     i32 width;
     i32 height;
-    i32 bound_texture;
+    Texture_ID bound_texture; //NOTE(kv): I guess this is to avoid talking to the GPU?
     u32 color;
     
     i32 frame_index;
@@ -67,7 +69,7 @@ struct Render_Target{
     Face_ID current_face_id;
     Rect_f32 current_clip_box;
     void *font_set;
-    u32 fallback_texture_id;
+    Texture_ID fallback_texture_id;
 };
 
 #endif

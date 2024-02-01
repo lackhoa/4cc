@@ -663,7 +663,7 @@ kv_list_all_locations_from_string(Application_Links *app, String_Const_u8 needle
           Range_i64 range = {pos, pos+1};
           string_match_list_push(temp, &buffer_matches, buffer, 0, 0, range);
         }
-        kv_assert_defend(pos > original_pos, break;);
+        assert_defend(pos > original_pos, break;);
       }
     }
     all_matches = string_match_list_join(&all_matches, &buffer_matches);

@@ -37,7 +37,7 @@ lister_roundness = 20;
 // Code
 treat_as_code = ".cpp.c.hpp.h.cc.cs.java.rs.glsl.m.mm.mdesk";
 enable_virtual_whitespace         = false;
-virtual_whitespace_regular_indent = 2;
+virtual_whitespace_regular_indent = 4;
 enable_code_wrapping              = true;
 
 // This only applies to code files in code-wrapping mode.
@@ -52,8 +52,8 @@ automatically_load_project = true;
 
 // Indentation
 indent_with_tabs = false;
-indent_width = 2;
-default_tab_width = 2;  // todo(kv): tab_width actually controls indentation width, which is a bug
+indent_width = 4;
+default_tab_width = 4;  // todo(kv): tab_width actually controls indentation width, which is a bug
 
 // Theme
 default_theme_name = "theme-kv";
@@ -77,8 +77,6 @@ lalt_lctrl_is_altgr = false;
 // NOTE(kv): quick startup file setting
 startup_file  = "C:/Users/vodan/notes/note.skm";
 // startup_file1 = "C:/Users/vodan/4ed/code/4coder_kv/4coder_kv_fui.cpp";
-// startup_file1 = "C:/Users/vodan/4ed/code/4coder_kv/4coder_fleury/4coder_fleury_plots_demo.cpp";
-// startup_file1 = "C:/Users/vodan/notes/note.skm";
 startup_file1 = "*render*";
 
 DEBUG_draw_hud_p = false;

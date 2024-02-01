@@ -305,7 +305,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         ft__bad_rect_store_finish(&pack);
         
         Texture_Kind texture_kind = TextureKind_Mono;
-        u32 texture = graphics_get_texture(pack.dim, texture_kind);
+        Texture_ID texture = graphics_get_texture(pack.dim, texture_kind);
         face->texture_kind = texture_kind;
         face->texture = texture;
         

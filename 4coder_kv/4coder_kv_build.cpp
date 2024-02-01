@@ -127,4 +127,3 @@ CUSTOM_DOC("Same as kv_build_search, only run")
 {
   kv_search_and_build_other_panel(app, "full");
 }
-

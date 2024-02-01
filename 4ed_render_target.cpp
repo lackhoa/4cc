@@ -79,17 +79,22 @@ draw__write_vertices_in_current_group(Render_Target *target, Render_Vertex *vert
 }
 
 internal void
-draw__set_face_id(Render_Target *target, Face_ID face_id){
-    if (target->current_face_id != face_id){
-        if (target->current_face_id != 0){
+draw__set_face_id(Render_Target *target, Face_ID face_id)
+{
+    if (target->current_face_id != face_id)
+    {
+        if (target->current_face_id != 0)
+        {// NOTE: has existing face_id
             target->current_face_id = face_id;
             draw__begin_new_group(target);
         }
-        else{
+        else
+        {// NOTE: No face id set
             target->current_face_id = face_id;
             for (Render_Group *group = target->group_first;
                  group != 0;
-                 group = group->next){
+                 group = group->next)
+            {
                 group->face_id = face_id;
             }
         }
@@ -134,7 +139,7 @@ end_render_section(Render_Target *target){
 internal void
 draw_line(Render_Target *target, v2 p0, v2 p1, f32 roundness, f32 thickness, u32 color)
 {
-  kv_clamp_min(thickness, 2.0f);
+  kv_clamp_bot(thickness, 2.0f);
   f32 half_thickness = 0.5f * thickness;
   
   v2 d = noz(p1 - p0);
@@ -158,12 +163,13 @@ draw_line(Render_Target *target, v2 p0, v2 p1, f32 roundness, f32 thickness, u32
   draw__write_vertices_in_current_group(target, vertices, kv_array_count(vertices));
 }
 
+// NOTE(kv): roundness is between 0 and 50, just like in the config file
 internal void
-draw_rectangle_outline_to_target(Render_Target *target, Rect_f32 rect, f32 roundness, f32 thickness, u32 color){
-    if (roundness < epsilon_f32){
-        roundness = 0.f;
-    }
-    thickness = clamp_bot(1.f, thickness);
+draw_rect_outline_to_target(Render_Target *target, rect2 rect, f32 roundness, f32 thickness, u32 color)
+{
+    kv_clamp_bot(roundness, epsilon_f32);
+    kv_clamp_bot(thickness, 1.f);
+    
     f32 half_thickness = thickness*0.5f;
     
     Render_Vertex vertices[6] = {};
@@ -175,33 +181,37 @@ draw_rectangle_outline_to_target(Render_Target *target, Rect_f32 rect, f32 round
     vertices[5].xy = V2f32(rect.x1, rect.y1);
     
     Vec2_f32 center = rect_center(rect);
-    for (i32 i = 0; i < ArrayCount(vertices); i += 1)
+    for (i32 i = 0; i < alen(vertices); i += 1)
     {
         vertices[i].uvw = V3f32(center.x, center.y, roundness);
         vertices[i].color = color;
         vertices[i].half_thickness = half_thickness;
     }
-    draw__write_vertices_in_current_group(target, vertices, ArrayCount(vertices));
+    draw__write_vertices_in_current_group(target, vertices, alen(vertices));
 }
 
 internal void
-draw_rectangle(Render_Target *target, Rect_f32 rect, f32 roundness, u32 color){
+draw_rect_to_target(Render_Target *target, rect2 rect, f32 roundness, u32 color)
+{
     Vec2_f32 dim = rect_dim(rect);
     f32 thickness = Max(dim.x, dim.y);
-    draw_rectangle_outline_to_target(target, rect, roundness, thickness, color);
+    draw_rect_outline_to_target(target, rect, roundness, thickness, color);
 }
 
 internal void
 draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
-                ARGB_Color color, Glyph_Flag flags, Vec2_f32 x_axis){
+                ARGB_Color color, Glyph_Flag flags, Vec2_f32 x_axis)
+{
     draw__set_face_id(target, face->id);
     
     u16 glyph_index = 0;
     if (!codepoint_index_map_read(&face->advance_map.codepoint_to_index,
-                                  codepoint, &glyph_index)){
+                                  codepoint, &glyph_index))
+    {
         glyph_index = 0;
     }
     Glyph_Bounds bounds = face->bounds[glyph_index];
+    alert_if_false(bounds.w == 0);
     
     Render_Vertex vertices[6] = {};
     
@@ -225,12 +235,44 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
     vertices[4]    = vertices[2];
     vertices[5].xy = p_x_max + y_max;
     
-    for (i32 i = 0; i < ArrayCount(vertices); i += 1){
+    for (i32 i = 0; i < alen(vertices); i += 1)
+    {
         vertices[i].color = color;
         vertices[i].half_thickness = 0.f;
     }
     
-    draw__write_vertices_in_current_group(target, vertices, ArrayCount(vertices));
+    draw__write_vertices_in_current_group(target, vertices, alen(vertices));
+}
+
+internal void
+draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color)
+{
+    draw__set_face_id(target, FACE_ID_SOFTWARE_RENDER);
+    
+    Render_Vertex vertices[6] = {};
+    
+    vertices[0].uvw = V3f32(0, 0, 0);
+    vertices[1].uvw = V3f32(1, 0, 0);
+    vertices[2].uvw = V3f32(0, 1, 0);
+    vertices[5].uvw = V3f32(1, 1, 0);
+   
+    auto &min = rect.min;
+    auto &max = rect.max;
+    vertices[0].xy = min;
+    vertices[1].xy = v2{max.x, min.y};
+    vertices[2].xy = v2{min.x, max.y};
+    vertices[5].xy = max;
+    
+    for_i32(i, 0, alen(vertices))
+    {
+        vertices[i].color = color;
+        vertices[i].half_thickness = 0.f;
+    }
+    
+    vertices[3]    = vertices[1];
+    vertices[4]    = vertices[2];
+    
+    draw__write_vertices_in_current_group(target, vertices, alen(vertices));
 }
 
 ////////////////////////////////

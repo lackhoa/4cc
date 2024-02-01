@@ -36,12 +36,11 @@ kv_quail_defrule(Application_Links *app, char *key, char *insert,
 function b32
 kv_handle_quail(Application_Links *app, u8 character)
 {
-  kv_assert_defend(arrlen(kv_quail_keystroke_buffer) < 1024, 
-                   {
-                       print_message(app, SCu8("ERROR: kv_quail_keystroke_buffer grown too big!"));
-                       return false;
-                     });
-  
+  assert_defend(arrlen(kv_quail_keystroke_buffer) < 1024, 
+                  {
+                      print_message(app, SCu8("ERROR: 'kv_quail_keystroke_buffer' grown too big!"));
+                      return false;
+                  });
 
   GET_VIEW_AND_BUFFER;
 

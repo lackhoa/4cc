@@ -370,12 +370,14 @@ rotateRight(u32 value, i32 rotateAmount)
 #define breakhere       { int x = 5; (void)x; }
 
 #if KV_INTERNAL
-#    define kv_soft_assert        kv_assert
-#    define kv_assert_defend(CLAIM, DEFEND)   kv_assert(CLAIM)
+#    define soft_assert                  kv_assert
+#    define assert_defend(CLAIM, DEFEND) kv_assert(CLAIM)
 #else
-#    define kv_soft_assert(CLAIM)
-#    define kv_assert_defend(CLAIM, DEFEND)   if (!(CLAIM))  { DEFEND; }
+#    define soft_assert(CLAIM)
+#    define assert_defend(CLAIM, DEFEND)   if (!(CLAIM))  { DEFEND; }
 #endif
+
+#define alert_if_false soft_assert
 
 #if KV_SLOW
 #    define slow_assert kv_assert
@@ -390,7 +392,8 @@ inline i32 safeTruncateToInt32(u64 value)
   return (i32)value;
 }
 
-#define kv_array_count(array) safeTruncateToInt32(sizeof(array) / sizeof((array)[0]))
+#define kv_array_count(array)  (sizeof(array) / sizeof((array)[0]))
+#define alen kv_array_count
 
 // source: https://groups.google.com/g/comp.std.c/c/d-6Mj5Lko_s
 #define PP_NARG(...) PP_NARG_(__VA_ARGS__,PP_RSEQ_N())
@@ -531,7 +534,7 @@ inline void
 endTemporaryMemory(TempMemoryMarker temp)
 {
   temp.arena.temp_count--;
-  kv_assert_defend(temp.arena.used >= temp.original_used, 
+  assert_defend(temp.arena.used >= temp.original_used, 
                    printf("Memory leak detected!\n"));
   temp.arena.used = temp.original_used;
 }
@@ -881,8 +884,8 @@ inline void *kv_xmalloc(size_t size) {
 #define Pi32 3.14159265359f
 #define Tau32 6.28318530717958647692f
 
-#define kv_clamp_min(VAR, VAL)   if (VAR < VAL) VAR = VAL
-#define kv_clamp_max(VAR, VAL)   if (VAR > VAL) VAR = VAL;
+#define kv_clamp_bot(VAR, VAL)   if (VAR < VAL) VAR = VAL
+#define kv_clamp_top(VAR, VAL)   if (VAR > VAL) VAR = VAL;
 
 inline f32
 toBilateral(f32 r)
@@ -1527,6 +1530,13 @@ rect_min_dim(v2 min, v2 dim)
 }
 
 inline rect2
+rect_min_max(v2 min, v2 max)
+{
+    rect2 result = rect2{min, max};
+    return result;
+}
+
+inline rect2
 intersect(rect2 a, rect2 b)
 {
     rect2 result;
@@ -1680,6 +1690,9 @@ union v3i{
     i32 g;
     i32 b;
   };
+  struct{
+    i32 xy;
+  };
   i32 v[3];
 };
 
@@ -1688,6 +1701,12 @@ union v3i{
 #define kvAssert       kv_assert
 typedef kv_Arena KvArena;
 /* Old names > */
+
+#define v2_expand(v) v.x, v.y
+#define v3_expand(v) v.x, v.y, v.z
+#define v4_expand(v) v.x, v.y, v.z, v.w
+
+// IMPORTANT: NO TRESPASS /////////////////////////////////////////////////////
 
 // NOTE(kv): do the people including this file a favor and not pollute.
 #ifdef KV_IMPLEMENTATION

@@ -11,6 +11,7 @@ struct Application_Links{
     Thread_Context *tctx;
     void *cmd_context;
 };
+typedef Application_Links FApp;
 api(custom)
 // typedef void Custom_Layer_Init_Type(Application_Links *app);
 // void custom_layer_init(Application_Links *app);
@@ -68,6 +69,8 @@ struct Color_Picker{
 
 api(custom)
 typedef u32 Face_ID;
+
+struct Texture_ID { u32 v; };  // NOTE(kv): just changing to learn the API
 
 api(custom)
 struct Fancy_String{
