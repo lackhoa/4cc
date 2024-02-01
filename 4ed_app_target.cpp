@@ -32,7 +32,7 @@
 #include "generated/system_api.h"
 #include "4ed_font_interface.h"
 #define DYNAMIC_LINK_API
-#include "generated/graphics_api.h"
+#include "graphics_api.h"
 #define DYNAMIC_LINK_API
 #include "generated/font_api.h"
 
@@ -89,8 +89,6 @@
 #include "generated/custom_api.cpp"
 #define DYNAMIC_LINK_API
 #include "generated/system_api.cpp"
-#define DYNAMIC_LINK_API
-#include "generated/graphics_api.cpp"
 #define DYNAMIC_LINK_API
 #include "generated/font_api.cpp"
 

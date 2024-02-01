@@ -478,22 +478,22 @@ extern "C" void
 custom_layer_init(Application_Links *app)
 {
 #if USE_LAYER_kv
-  kv_custom_layer_init(app);
-  
-  {// note(kv): shared startup code
-    MappingScope();
-    SelectMapping(&framework_mapping);
+    kv_custom_layer_init(app);
     
-    String_ID global_id = vars_save_string_lit("keys_global");
-    SelectMap(global_id);
-    BindCore(kv_startup, CoreCode_Startup);
-  }
-  
+    {// note(kv): shared startup code
+        MappingScope();
+        SelectMapping(&framework_mapping);
+        
+        String_ID global_id = vars_save_string_lit("keys_global");
+        SelectMap(global_id);
+        BindCore(kv_startup, CoreCode_Startup);
+    }
+    
 #elif USE_LAYER_fleury
-  fleury_custom_layer_init(app);
+    fleury_custom_layer_init(app);
 #elif USE_LAYER_fleury_lite
-  fleury_lite_custom_layer_init(app);
+    fleury_lite_custom_layer_init(app);
 #elif USE_LAYER_default
-  default_custom_layer_init(app);
+    default_custom_layer_init(app);
 #endif
 }

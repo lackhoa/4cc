@@ -9,9 +9,6 @@
 
 // TOP
 
-#define FPS 60
-#define frame_useconds (1000000 / FPS)
-
 #define KV_IMPLEMENTATION
 #include "kv.h"
 
@@ -31,7 +28,7 @@
 
 #include "4ed_font_interface.h"
 #define STATIC_LINK_API
-#include "generated/graphics_api.h"
+#include "graphics_api.h"
 #define STATIC_LINK_API
 #include "generated/font_api.h"
 
@@ -41,7 +38,6 @@
 #include "4ed.h"
 
 #include "generated/system_api.cpp"
-#include "generated/graphics_api.cpp"
 #include "generated/font_api.cpp"
 
 #include "4coder_base_types.cpp"
@@ -63,6 +59,9 @@
 #include "win32_gl.h"
 
 ////////////////////////////////
+
+#define FPS 60
+#define frame_useconds (1000000 / FPS)
 
 global b32 log_os_enabled = false;
 #define log_os(...) \
@@ -656,20 +655,20 @@ os_popup_error(char *title, char *message){
 #include "opengl/4ed_opengl_funcs.h"
 #include "opengl/4ed_opengl_render.cpp"
 
-internal
-graphics_get_texture_sig()
+internal graphics_get_texture_return 
+graphics_get_texture graphics_get_texture_params
 {
     return(gl__get_texture(dim, texture_kind));
 }
 
-internal
-graphics_fill_texture_sig()
+internal graphics_fill_texture_return
+graphics_fill_texture graphics_fill_texture_params
 {
     return(gl__fill_texture(texture_kind, texture, p, dim, data));
 }
 
-internal void 
-graphics_set_game_texture(Texture_ID texture)
+internal graphics_set_game_texture_return
+graphics_set_game_texture graphics_set_game_texture_params
 {
     global_game_texture = texture;
 }

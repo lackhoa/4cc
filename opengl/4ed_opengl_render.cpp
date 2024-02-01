@@ -219,10 +219,6 @@ gl__make_program(char *header, char *vertex, char *fragment){
 
 Texture_ID global_game_texture;
 
-void graphics_set_game_texture()
-{
-}
-
 internal void
 gl_render(Render_Target *t)
 {

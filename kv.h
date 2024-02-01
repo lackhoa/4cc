@@ -405,6 +405,8 @@ inline i32 safeTruncateToInt32(u64 value)
 #define CONCATENATE1(arg1, arg2)  CONCATENATE2(arg1, arg2)
 #define CONCATENATE2(arg1, arg2)  arg1##arg2
 
+#define PPConcat CONCATENATE
+
 #define DUMP_1(x) dump(x)
 #define DUMP_2(x, ...) dump(x); DUMP_1(__VA_ARGS__)
 #define DUMP_3(x, ...) dump(x); DUMP_2(__VA_ARGS__)
@@ -1705,6 +1707,14 @@ typedef kv_Arena KvArena;
 #define v2_expand(v) v.x, v.y
 #define v3_expand(v) v.x, v.y, v.z
 #define v4_expand(v) v.x, v.y, v.z, v.w
+
+// X macros //////////////////////////////////
+#define XTypedef(N,R,P) typedef R N##_type P;
+#define XPointer(N,R,P)        N##_type *N;
+#define XGlobalPointer(N,R,P)  global N##_type *N;
+#define XInternalFunction(N,R,P)  internal N##_type N;
+
+
 
 // IMPORTANT: NO TRESPASS /////////////////////////////////////////////////////
 

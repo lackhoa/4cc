@@ -233,6 +233,8 @@ try:
         #
         OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
+        if 0: # in case I wanna debug some f-ing macro
+            run(f'clang++ -E {CODE}/4ed_app_target.cpp -o 4ed_app_e.cpp {COMPILE_FLAGS}')
         run(f'ccache clang++ -c {CODE}/4ed_app_target.cpp -o 4ed_app.o {COMPILE_FLAGS}')
         #
         run(f'clang++ -shared 4ed_app.o -o 4ed_app{DOT_DLL} -Wl,-export:app_get_functions {debug}')

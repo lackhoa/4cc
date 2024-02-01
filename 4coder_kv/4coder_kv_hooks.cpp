@@ -22,7 +22,7 @@ BUFFER_HOOK_SIG(kv_new_file)
 }
 
 internal Tick_Function kv_tick;
-internal void kv_tick(Application_Links *app, Frame_Info frame_info)
+internal void kv_tick(FApp *app, Frame_Info frame_info)
 {
   // NOTE(kv): F4
   linalloc_clear(&global_frame_arena);
