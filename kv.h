@@ -360,13 +360,13 @@ rotateRight(u32 value, i32 rotateAmount)
 
 #define kv_assert(claim) do{if (!(claim)) { debugbreak; }} while(0)
 
-#define invalidCodePath kv_assert(false)
-#define todoErrorReport kv_assert(false)
-#define todoIncomplete  kv_assert(false)
-#define todoTestMe      kv_assert(false)
-#define todoOutlaw      kv_assert(false)
-#define todoUnknown     kv_assert(false)
-#define invalidDefaultCase default: { kv_assert(false); };
+#define invalid_code_path   kv_assert(false)
+#define todo_error_report   kv_assert(false)
+#define todo_incomplete     kv_assert(false)
+#define todo_test_me        kv_assert(false)
+#define todo_outlaw         kv_assert(false)
+#define todo_unknown        kv_assert(false)
+#define invalid_default_case default: { kv_assert(false); };
 #define breakhere       { int x = 5; (void)x; }
 
 #if KV_INTERNAL
@@ -393,7 +393,8 @@ inline i32 safeTruncateToInt32(u64 value)
 }
 
 #define kv_array_count(array)  (sizeof(array) / sizeof((array)[0]))
-#define alen kv_array_count
+#define arlen kv_array_count
+#define alen kv_array_count  // TODO: removeme
 
 // source: https://groups.google.com/g/comp.std.c/c/d-6Mj5Lko_s
 #define PP_NARG(...) PP_NARG_(__VA_ARGS__,PP_RSEQ_N())
@@ -1374,7 +1375,8 @@ toBilateral(v3 v)
 
 // ;v4
 
-union v4 {
+union v4 
+{
   struct {
     f32 x, y, z, w;
   };
@@ -1693,15 +1695,15 @@ union v3i{
     i32 b;
   };
   struct{
-    i32 xy;
+    v2i xy;
   };
   i32 v[3];
 };
 
 /* todo: Old names */
-#define kvXmalloc      kv_xmalloc
-#define kvAssert       kv_assert
-typedef kv_Arena KvArena;
+#define kvXmalloc    kv_xmalloc
+#define kvAssert     kv_assert
+typedef kv_Arena     KvArena;
 /* Old names > */
 
 #define v2_expand(v) v.x, v.y
@@ -1715,6 +1717,39 @@ typedef kv_Arena KvArena;
 #define XInternalFunction(N,R,P)  internal N##_type N;
 
 
+// Bitmap //////////////////////////////////////
+
+struct Bitmap 
+{
+  u32 *data;
+  v2i  dim;
+  i32  pitch;
+};
+
+inline v4
+linearToSrgb(v4 linear)
+{
+    v4 result;
+    result.r = squareRoot(linear.r);
+    result.g = squareRoot(linear.g);
+    result.b = squareRoot(linear.b);
+    result.a = linear.a;
+    return result;
+}
+
+inline u32
+pack_sRGBA(v4 color)
+{
+  // linear to srgb
+  color.r = squareRoot(color.r);
+  color.g = squareRoot(color.g);
+  color.b = squareRoot(color.b);
+  u32 result = ((u32)(color.a*255.0f + 0.5f) << 24
+                | (u32)(color.b*255.0f + 0.5f) << 16
+                | (u32)(color.g*255.0f + 0.5f) << 8
+                | (u32)(color.r*255.0f + 0.5f));
+  return result;
+}
 
 // IMPORTANT: NO TRESPASS /////////////////////////////////////////////////////
 

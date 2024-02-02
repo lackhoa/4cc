@@ -148,7 +148,8 @@ char *default_custom_target = "../code/custom/4coder_default_bindings.cpp";
 
 // NOTE(allen): Build flags
 
-enum{
+enum
+{
     OPTS = 0x1,
     LIBS = 0x2,
     ICON = 0x4,
@@ -672,7 +673,8 @@ tier_flags(Tier_Code code){
 }
 
 internal void
-package(Arena *arena, char *cdir, Tier_Code tier, Arch_Code arch){
+package(Arena *arena, char *cdir, Tier_Code tier, Arch_Code arch)
+{
     // NOTE(allen): meta
     char *build_dir = fm_str(arena, BUILD_DIR);
     char *pack_dir = fm_str(arena, PACK_DIR);
@@ -698,7 +700,8 @@ package(Arena *arena, char *cdir, Tier_Code tier, Arch_Code arch){
     end_temp(temp);
 }
 
-int main(int argc, char **argv){
+int main(int argc, char **argv)
+{
     Arena arena = fm_init_system(DetailLevel_FileOperations);
     
     char cdir[256];

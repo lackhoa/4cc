@@ -52,12 +52,13 @@ push_fallback_command(Arena *arena){
     return(push_fallback_command(arena, standard_build_file_name_array[0]));
 }
 
-global_const Buffer_Identifier standard_build_build_buffer_identifier = buffer_identifier(string_u8_litexpr("*compilation*"));
+global_const Buffer_Identifier standard_build_build_buffer_identifier = buffer_identifier(str8_lit("*compilation*"));
 
 global_const u32 standard_build_exec_flags = CLI_OverlapWithConflict|CLI_SendEndSignal;
 
 static void
-standard_build_exec_command(Application_Links *app, View_ID view, String_Const_u8 dir, String_Const_u8 cmd){
+standard_build_exec_command(FApp *app, View_ID view, String8 dir, String8 cmd)
+{
     exec_system_command(app, view, standard_build_build_buffer_identifier,
                         dir, cmd,
                         standard_build_exec_flags);

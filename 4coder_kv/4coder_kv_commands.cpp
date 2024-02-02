@@ -616,7 +616,7 @@ CUSTOM_DOC("kv copy dir name")
 {
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
-  String_Const_u8 dirname = push_buffer_dir_name(app, temp, buffer);
+  String8 dirname = push_buffer_dir_name(app, temp, buffer);
   clipboard_post(0, dirname);
 }
 
@@ -727,19 +727,17 @@ VIM_COMMAND_SIG(kv_handle_return)
   }
 }
 
-CUSTOM_COMMAND_SIG(b)
-CUSTOM_DOC("kv goto build file")
+VIM_COMMAND_SIG(open_build_script)
 {
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
-  String_Const_u8 dirname = push_buffer_dir_name(app, temp, buffer);
-  String_Const_u8 build_file = kv_search_build_file_from_dir(app, temp, dirname);
+  String8 dirname = push_buffer_dir_name(app, temp, buffer);
+  String8 build_file = kv_search_build_file_from_dir(app, temp, dirname);
   if (build_file.size)
   {
     view_open_file(app, view, build_file, true);
   }
 }
-
 
 CUSTOM_COMMAND_SIG(c)
 CUSTOM_DOC("change to compilation buffer")
@@ -753,8 +751,7 @@ CUSTOM_DOC("change to search buffer")
   switch_to_buffer_named(app, "*search*");
 }
 
-CUSTOM_COMMAND_SIG(vim_select_all)
-CUSTOM_DOC("select whole file")
+VIM_COMMAND_SIG(vim_select_all)
 {
   vim_visual_char_mode(app);
   select_all(app);
@@ -773,4 +770,48 @@ CUSTOM_COMMAND_SIG(init)
 CUSTOM_DOC("configure your editor!")
 {
   switch_to_buffer_named(app, "~/4ed/code/4coder_kv/4coder_kv.cpp");
+}
+
+// todo: We don't wanna bind to a buffer
+internal void kv_system_command(FApp *app, String8 cmd)
+{
+    GET_VIEW_AND_BUFFER;
+    Scratch_Block temp(app);
+    String8 dir = push_buffer_dir_name(app, temp, buffer);
+    exec_system_command(app, view, standard_build_build_buffer_identifier,
+                        dir, cmd, standard_build_exec_flags);
+}
+
+VIM_COMMAND_SIG(remedy_add_breakpoint)
+{
+    GET_VIEW_AND_BUFFER;
+    Scratch_Block temp(app);
+    String8 filename = push_buffer_file_name(app, temp, buffer);
+    i64 linum = get_current_line_number(app);
+    String8 cmd = push_stringf(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
+                               string_expand(filename), linum);
+    kv_system_command(app, cmd);
+}
+
+VIM_COMMAND_SIG(remedy_start_debugging)
+{
+    String8 cmd = str8_lit("remedybg.exe start-debugging");
+    kv_system_command(app, cmd);
+}
+
+VIM_COMMAND_SIG(remedy_stop_debugging)
+{
+    String8 cmd = str8_lit("remedybg.exe stop-debugging");
+    kv_system_command(app, cmd);
+}
+
+VIM_COMMAND_SIG(remedy_run_to_cursor)
+{
+    GET_VIEW_AND_BUFFER;
+    Scratch_Block temp(app);
+    String8 filename = push_buffer_file_name(app, temp, buffer);
+    i64 linum = get_current_line_number(app);
+    String8 cmd = push_stringf(temp, "remedybg.exe run-to-cursor %.*s %lld",
+                               string_expand(filename), linum);
+    kv_system_command(app, cmd);
 }

@@ -1,5 +1,6 @@
 // ~/4ed/code/4coder_kv/config.4coder
 // ~/4ed/code/project.4coder
+// ~/4ed/code/4coder_kv/4coder_kv_commands.cpp
 
 #include "game.cpp"
 // TODO(kv): remember this file is processed by the meta-generator.
@@ -205,7 +206,7 @@ function void kvInitQuailTable(Application_Links *app)
 }
 
 // ;binding
-function void kv_vim_bindings(Application_Links *app)
+function void kv_vim_bindings(FApp *app)
 {
   u32 N = bit_1;
   u32 I = bit_2;
@@ -341,6 +342,7 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|V|MAP, vim_toggle_macro,                   S|KeyCode_Q);
   BIND(N|V|MAP, vim_play_macro,                     S|KeyCode_2);
   BIND(N|MAP,   open_matching_file_cpp,               KeyCode_F12);
+  BIND(N|MAP,   open_matching_file_cpp_other_panel, M|KeyCode_F12);
   
   /// Panel
   BIND(N|MAP, change_active_panel,         C|KeyCode_Tab);
@@ -397,6 +399,13 @@ function void kv_vim_bindings(Application_Links *app)
   BIND(N|0|MAP,  kv_do_t,                    KeyCode_T);
   BIND(N|0|MAP,  kv_do_T,                  S|KeyCode_T);
   BIND(N|0|MAP,  open_panel_vsplit,        M|KeyCode_V);
+  // NOTE(kv): remedy
+  BIND(N|0|MAP,  remedy_add_breakpoint,      KeyCode_F9);
+  BIND(N|0|MAP,  remedy_start_debugging,     KeyCode_F5);
+  BIND(N|0|MAP,  remedy_stop_debugging,    S|KeyCode_F5);
+  BIND(N|0|MAP,  remedy_run_to_cursor,     C|KeyCode_F10);
+  //
+  BIND(N|0|MAP,  open_build_script,          KeyCode_F3);
   
 #undef BIND
 }
@@ -413,8 +422,8 @@ default_custom_layer_init(Application_Links *app)
   set_all_default_hooks(app);
   mapping_init(tctx, &framework_mapping);
   String_ID global_map_id = vars_save_string_lit("keys_global");
-  String_ID file_map_id = vars_save_string_lit("keys_file");
-  String_ID code_map_id = vars_save_string_lit("keys_code");
+  String_ID file_map_id   = vars_save_string_lit("keys_file");
+  String_ID code_map_id   = vars_save_string_lit("keys_code");
 #if OS_MAC
   setup_mac_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 #else

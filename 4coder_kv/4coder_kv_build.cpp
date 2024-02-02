@@ -81,8 +81,6 @@ kv_search_and_build(Application_Links *app, char *command_args)
 {
   GET_VIEW_AND_BUFFER;
   
-  // TODO(kv): In the future let's have a way to configure whether we wanna stop or not
-  
   Scratch_Block scratch(app);
   b32 did_build = false;
   String8 build_dir = push_build_directory_at_file(app, scratch, buffer);

@@ -154,7 +154,7 @@ draw_line(Render_Target *target, v2 p0, v2 p1, f32 roundness, f32 thickness, u32
   vertices[5].xy = p1-perpendicular;
  
   v2 center = 0.5f * (p1 - p0);
-  for (i32 i=0; i < kv_array_count(vertices); i++)
+  for (i32 i=0; i < arlen(vertices); i++)
   {
     vertices[i].uvw   = v3{center.x, center.y, roundness};
     vertices[i].color = color;

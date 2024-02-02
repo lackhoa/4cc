@@ -1859,11 +1859,14 @@ open_file(Application_Links *app, Buffer_ID *buffer_out, String_Const_u8 file_na
 }
 
 function b32
-view_open_file(Application_Links *app, View_ID view, String_Const_u8 file_name, b32 never_new){
+view_open_file(FApp *app, View_ID view, String8 file_name, b32 never_new)
+{
     b32 result = false;
-    if (view != 0){
+    if (view != 0)
+    {
         Buffer_ID buffer = 0;
-        if (open_file(app, &buffer, file_name, false, never_new)){
+        if (open_file(app, &buffer, file_name, false, never_new))
+        {
             view_set_buffer(app, view, buffer, 0);
             result = true;
         }
@@ -2540,7 +2543,7 @@ set_buffer_system_command(Application_Links *app, Child_Process_ID process, Buff
 }
 
 function b32
-exec_system_command(Application_Links *app, View_ID view, Buffer_Identifier buffer_id,
+exec_system_command(FApp *app, View_ID view, Buffer_Identifier buffer_id,
                     String_Const_u8 path, String_Const_u8 command, Command_Line_Interface_Flag flags)
 {
     b32 result = false;
@@ -2600,21 +2603,21 @@ inline i64 get_pos_column(Application_Links *app, Buffer_ID buffer, i64 pos)
   return column;
 }
 
-inline i64 get_current_column(Application_Links *app)
+inline i64 get_current_column(FApp *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 column = get_pos_column(app, buffer, view_get_cursor_pos(app, view));
   return column;
 }
 
-inline i64 get_current_line(Application_Links *app)
+inline i64 get_current_line_number(FApp *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 line = get_line_number_from_pos(app, buffer, view_get_cursor_pos(app, view));
   return line;
 }
 
-inline i64 get_current_char(Application_Links *app)
+inline i64 get_current_char(FApp *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 pos = view_get_cursor_pos(app, view);

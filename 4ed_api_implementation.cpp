@@ -680,6 +680,13 @@ push_buffer_file_name(FApp *app, Arena *arena, Buffer_ID buffer_id){
     return(result);
 }
 
+inline String_Const_u8
+push_buffer_dir_name(FApp *app, Arena *arena, Buffer_ID buffer)
+{
+  String_Const_u8 filename = push_buffer_file_name(app, arena, buffer);
+  return string_remove_last_folder(filename);
+}
+
 api(custom) function Dirty_State
 buffer_get_dirty_state(FApp *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
@@ -2936,13 +2943,13 @@ draw_rectangle(FApp *app, Rect_f32 rect, f32 roundness, ARGB_Color color)
 inline void
 draw_rect(FApp *app, rect2 rect, v4 color)
 {
-  draw_rectangle(app, rect, 0, pack_color(color));
+  draw_rectangle(app, rect, 0, pack_argb(color));
 }
 
 inline void
 draw_rect(FApp *app, rect2 rect, Texture_ID texture, v4 color)
 {
-    draw_rectangle(app, rect, 0, pack_color(color));
+    draw_rectangle(app, rect, 0, pack_argb(color));
 }
 
 internal void
@@ -2951,7 +2958,7 @@ draw_line(FApp *app, v2 p0, v2 p1, f32 thickness, v4 color)
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)
     {
-        draw_line(models->target, p0, p1, 0, thickness, pack_color(color));
+        draw_line(models->target, p0, p1, 0, thickness, pack_argb(color));
     }
 }
 
@@ -2961,7 +2968,7 @@ draw_textured_rect(FApp *app, rect2 rect, v4 color)
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)
     {
-        draw_textured_rect_to_target(models->target, rect, pack_color(color));
+        draw_textured_rect_to_target(models->target, rect, pack_argb(color));
     }
 }
 
@@ -2977,7 +2984,7 @@ inline void
 draw_rect_outline(FApp *app, rect2 rect, f32 thickness, v4 color, f32 roundness=0)
 {
   kv_assert(in_between(0.0f, roundness, 50.0f));
-  draw_rectangle_outline(app, rect, roundness, thickness, pack_color(color));
+  draw_rectangle_outline(app, rect, roundness, thickness, pack_argb(color));
 }
 
 api(custom) function Rect_f32
@@ -3191,7 +3198,8 @@ paint_text_color(FApp *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Colo
 }
 
 api(custom) function void
-paint_text_color_blend(FApp *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color, f32 blend){
+paint_text_color_blend(FApp *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color, f32 blend)
+{
     Models *models = (Models*)app->cmd_context;
     Rect_f32 result = {};
     Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
@@ -3200,14 +3208,14 @@ paint_text_color_blend(FApp *app, Text_Layout_ID layout_id, Range_i64 range, ARG
         range.max = clamp_top(range.max, layout->visible_range.max);
         range.min -= layout->visible_range.min;
         range.max -= layout->visible_range.min;
-        Vec4_f32 color_v4f32 = unpack_color(color);
+        Vec4_f32 color_v4f32 = unpack_argb(color);
         Vec4_f32 color_pm_v4f32 = color_v4f32*blend;
         f32 neg_blend = 1.f - blend;
         ARGB_Color *color_ptr = layout->item_colors + range.min;
         for (i64 i = range.min; i < range.max; i += 1, color_ptr += 1){
-            Vec4_f32 color_ptr_v4f32 = unpack_color(*color_ptr);
+            Vec4_f32 color_ptr_v4f32 = unpack_argb(*color_ptr);
             Vec4_f32 blended_v4f32 = color_ptr_v4f32*neg_blend + color_pm_v4f32;
-            *color_ptr = pack_color(blended_v4f32);
+            *color_ptr = pack_argb(blended_v4f32);
         }
     }
 }
@@ -3291,13 +3299,6 @@ get_custom_layer_boundary_docs(FApp *app, Arena *arena){
 }
 
 ////////////////////////////////////
-
-inline String_Const_u8
-push_buffer_dir_name(FApp *app, Arena *arena, Buffer_ID buffer)
-{
-  String_Const_u8 filename = push_buffer_file_name(app, arena, buffer);
-  return string_remove_last_folder(filename);
-}
 
 inline Range_i64 token_range(Token *token)
 {

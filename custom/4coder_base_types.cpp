@@ -1405,17 +1405,19 @@ operator!=(Rect_f32 a, Rect_f32 b){
 ////////////////////////////////
 
 function Vec4_f32
-unpack_color(ARGB_Color color){
+unpack_argb(ARGB_Color color)
+{
     Vec4_f32 result;
     result.a = ((color >> 24) & 0xFF)/255.f;
     result.r = ((color >> 16) & 0xFF)/255.f;
-    result.g = ((color >> 8) & 0xFF)/255.f;
-    result.b = ((color >> 0) & 0xFF)/255.f;
+    result.g = ((color >> 8)  & 0xFF)/255.f;
+    result.b = ((color >> 0)  & 0xFF)/255.f;
     return(result);
 }
 
 function ARGB_Color
-pack_color(Vec4_f32 color){
+pack_argb(v4 color)
+{
     ARGB_Color result =
         ((u8)(color.a*255) << 24) |
         ((u8)(color.r*255) << 16) |
@@ -1426,14 +1428,15 @@ pack_color(Vec4_f32 color){
 
 function ARGB_Color
 color_blend(ARGB_Color a, f32 t, ARGB_Color b){
-    Vec4_f32 av = unpack_color(a);
-    Vec4_f32 bv = unpack_color(b);
+    Vec4_f32 av = unpack_argb(a);
+    Vec4_f32 bv = unpack_argb(b);
     Vec4_f32 v = lerp(av, t, bv);
-    return(pack_color(v));
+    return(pack_argb(v));
 }
 
 function Vec4_f32
-rgba_to_hsla(Vec4_f32 rgba){
+rgba_to_hsla(Vec4_f32 rgba)
+{
     Vec4_f32 hsla = {};
     f32 max, min, delta;
     i32 maxc;
@@ -1489,7 +1492,8 @@ rgba_to_hsla(Vec4_f32 rgba){
 }
 
 function Vec4_f32
-hsla_to_rgba(Vec4_f32 hsla){
+hsla_to_rgba(Vec4_f32 hsla)
+{
     if (hsla.h >= 1.f){
         hsla.h = 0.f;
     }

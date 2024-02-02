@@ -79,30 +79,33 @@ global char *gl__header = R"foo(#version 130
 
 global char *gl__vertex = 
 R"foo(
-   uniform vec2 view_t;
+   uniform vec2   view_t;
    uniform mat2x2 view_m;
-   in vec2 vertex_p;
-   in vec3 vertex_t;
-   in uint vertex_c;
-   in float vertex_ht;
+
+   in vec2 vertex_xy;
+   in vec3 vertex_uvw;
+   in uint vertex_color;
+   in float vertex_half_thickness;
+
    smooth out vec4 fragment_color;
    smooth out vec3 uvw;
    smooth out vec2 xy;
    smooth out vec2 adjusted_half_dim;
    smooth out float half_thickness;
+
    void main(void)
    {
-       gl_Position = vec4(view_m*(vertex_p - view_t), 0.0, 1.0);
-       fragment_color.b = (float((vertex_c     )&0xFFu))/255.0;
-       fragment_color.g = (float((vertex_c>> 8u)&0xFFu))/255.0;
-       fragment_color.r = (float((vertex_c>>16u)&0xFFu))/255.0;
-       fragment_color.a = (float((vertex_c>>24u)&0xFFu))/255.0;
-       uvw = vertex_t;
-       vec2 center = vertex_t.xy;
-       vec2 half_dim = abs(vertex_p - center);
-       adjusted_half_dim = half_dim - vertex_t.zz + vec2(0.5, 0.5);
-       half_thickness = vertex_ht;
-       xy = vertex_p;
+       gl_Position = vec4(view_m*(vertex_xy - view_t), 0.0, 1.0);
+       fragment_color.b = (float((vertex_color     )&0xFFu))/255.0;
+       fragment_color.g = (float((vertex_color>> 8u)&0xFFu))/255.0;
+       fragment_color.r = (float((vertex_color>>16u)&0xFFu))/255.0;
+       fragment_color.a = (float((vertex_color>>24u)&0xFFu))/255.0;
+       uvw = vertex_uvw;
+       vec2 center = vertex_uvw.xy;
+       vec2 half_dim = abs(vertex_xy - center);
+       adjusted_half_dim = half_dim - vertex_uvw.zz + vec2(0.5, 0.5);
+       half_thickness = vertex_half_thickness;
+       xy = vertex_xy;
    }
    )foo";
 
@@ -141,41 +144,46 @@ R"foo(
    }
    )foo";
 
-#define AttributeList(X) \
-X(vertex_p) \
-X(vertex_t) \
-X(vertex_c) \
-X(vertex_ht)
+#define XAttribute(X) \
+    X(xy,    2, GL_FLOAT) \
+    X(uvw,   3, GL_FLOAT) \
+    X(color, 1, GL_UNSIGNED_INT) \
+    X(half_thickness, 1, GL_FLOAT)
 
-#define UniformList(X) \
-X(view_t) \
-X(view_m) \
-X(sampler)
+#define XUniform(X) \
+    X(view_t) \
+    X(view_m) \
+    X(sampler)
 
-struct GL_Program{
+struct GL_Program
+{
     u32 program;
-#define GetAttributeLocation(N) i32 N;
-    AttributeList(GetAttributeLocation)
-#undef GetAttributeLocation
-#define GetUniformLocation(N) i32 N;
-    UniformList(GetUniformLocation)
-#undef GetUniformLocation
+    
+#define X(N,...) i32 vertex_##N;
+    XAttribute(X)
+#undef X
+    
+#define X(N) i32 N;
+    XUniform(X)
+#undef X
 };
 
 internal GL_Program
-gl__make_program(char *header, char *vertex, char *fragment){
-    if (header == 0){
+gl__make_program(char *header, char *vertex, char *fragment)
+{
+    if (header == 0)
+    {
         header = "";
     }
     
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     GLchar *vertex_source_array[] = { header, vertex };
-    glShaderSource(vertex_shader, ArrayCount(vertex_source_array), vertex_source_array, 0);
+    glShaderSource(vertex_shader, alen(vertex_source_array), vertex_source_array, 0);
     glCompileShader(vertex_shader);
     
     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     GLchar *fragment_source_array[] = { header, fragment };
-    glShaderSource(fragment_shader, ArrayCount(fragment_source_array), fragment_source_array, 0);
+    glShaderSource(fragment_shader, alen(fragment_source_array), fragment_source_array, 0);
     glCompileShader(fragment_shader);
     
     GLuint program = glCreateProgram();
@@ -183,10 +191,12 @@ gl__make_program(char *header, char *vertex, char *fragment){
     glAttachShader(program, fragment_shader);
     glLinkProgram(program);
     glValidateProgram(program);
-    
+   
+    // NOTE(kv): validation
     GLint success = false;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success){
+    if (!success)
+    {
         GLsizei ignore = 0;
         char vertex_errors[KB(4)];
         char fragment_errors[KB(4)];
@@ -205,12 +215,15 @@ gl__make_program(char *header, char *vertex, char *fragment){
     
     GL_Program result = {};
     result.program = program;
-#define GetAttributeLocation(N) result.N = glGetAttribLocation(program, #N);
-    AttributeList(GetAttributeLocation)
-#undef GetAttributeLocation
-#define GetUniformLocation(N) result.N = glGetUniformLocation(program, #N);
-    UniformList(GetUniformLocation)
-#undef GetUniformLocation
+    
+#define X(N,...) result.vertex_##N = glGetAttribLocation(program, "vertex_" #N);
+    XAttribute(X);
+#undef X
+    
+#define X(N) result.N = glGetUniformLocation(program, #N);
+    XUniform(X);
+#undef X
+    
     return(result);
 }
 
@@ -220,19 +233,35 @@ gl__make_program(char *header, char *vertex, char *fragment){
 Texture_ID global_game_texture;
 
 internal void
+gl_vertex_attrib_pointer(GLuint index, GLint size, GLenum type, const void *pointer)
+{
+    if (type == GL_FLOAT)
+    {
+        glVertexAttribPointer(index, size, GL_FLOAT, true, sizeof(Render_Vertex), pointer);
+    }
+    else if (type == GL_UNSIGNED_INT)
+    {
+        glVertexAttribIPointer(index, size, GL_UNSIGNED_INT, sizeof(Render_Vertex), pointer);
+    }
+    else
+    {
+        invalid_code_path;
+    }
+}
+
+internal void
 gl_render(Render_Target *t)
 {
     Font_Set *font_set = (Font_Set*)t->font_set;
     
     local_persist b32 first_opengl_call = true;
     local_persist u32 attribute_buffer = 0;
-    local_persist GL_Program gpu_program = {};
+    local_persist GL_Program gl_program = {};
     
     if (first_opengl_call)
     {
         first_opengl_call = false;
        
-        // TODO(kv): check if SHIP_MODE is really a thing?
 #if !SHIP_MODE
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -269,8 +298,8 @@ gl_render(Render_Target *t)
         
         ////////////////////////////////
         
-        gpu_program = gl__make_program(gl__header, gl__vertex, gl__fragment);
-        glUseProgram(gpu_program.program);
+        gl_program = gl__make_program(gl__header, gl__vertex, gl__fragment);
+        glUseProgram(gl_program.program);
         
         ////////////////////////////////
         
@@ -304,7 +333,7 @@ gl_render(Render_Target *t)
     for (Render_Group *group = t->group_first;
          group != 0;
          group = group->next)
-    {
+    
         i32 vertex_count = group->vertex_list.vertex_count;
         if (vertex_count <= 0) continue;
         
@@ -347,38 +376,32 @@ gl_render(Render_Target *t)
             cursor += size;
         }
         
-        glEnableVertexAttribArray(gpu_program.vertex_p);
-        glEnableVertexAttribArray(gpu_program.vertex_t);
-        glEnableVertexAttribArray(gpu_program.vertex_c);
-        glEnableVertexAttribArray(gpu_program.vertex_ht);
+        // glEnableVertexAttribArray
+#define X(N,...) glEnableVertexAttribArray(gl_program.vertex_##N);
+        XAttribute(X);
+#undef X
+       
+        // glVertexAttribPointer
+#define X(N,S,T) gl_vertex_attrib_pointer(gl_program.vertex_##N, S, T, GLOffset(Render_Vertex, N));
+        XAttribute(X);
+#undef X
         
-        glVertexAttribPointer(gpu_program.vertex_p, 2, GL_FLOAT, true, sizeof(Render_Vertex),
-                              GLOffset(Render_Vertex, xy));
-        glVertexAttribPointer(gpu_program.vertex_t, 3, GL_FLOAT, true, sizeof(Render_Vertex),
-                              GLOffset(Render_Vertex, uvw));
-        glVertexAttribIPointer(gpu_program.vertex_c, 1, GL_UNSIGNED_INT, sizeof(Render_Vertex),
-                               GLOffset(Render_Vertex, color));
-        glVertexAttribPointer(gpu_program.vertex_ht, 1, GL_FLOAT, true, sizeof(Render_Vertex),
-                              GLOffset(Render_Vertex, half_thickness));
-        
-        glUniform2f(gpu_program.view_t, width/2.f, height/2.f);
+        glUniform2f(gl_program.view_t, width/2.f, height/2.f);
         f32 m[4] = 
         {
             2.f/width, 0.f,
             0.f, -2.f/height,
         };
-        glUniformMatrix2fv(gpu_program.view_m, 1, GL_FALSE, m);
-        glUniform1i(gpu_program.sampler, 0);
+        glUniformMatrix2fv(gl_program.view_m, 1, GL_FALSE, m);
+        glUniform1i(gl_program.sampler, 0);
         
         glDrawArrays(GL_TRIANGLES, 0, vertex_count);
-        glDisableVertexAttribArray(gpu_program.vertex_p);
-        glDisableVertexAttribArray(gpu_program.vertex_t);
-        glDisableVertexAttribArray(gpu_program.vertex_c);
-        glDisableVertexAttribArray(gpu_program.vertex_ht);
-    }
+        
+        // glDisableVertexAttribArray todo(kv): I don't understand this
+#define X(N,...) glDisableVertexAttribArray(gl_program.vertex_##N);
+        XAttribute(X);
+#undef X
+    
     
     glFlush();
 }
-
-// BOTTOM
-

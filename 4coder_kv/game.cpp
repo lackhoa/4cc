@@ -7,7 +7,8 @@
   pma = pre-multiplied alpha
  */
 
-struct Scene {
+struct Scene 
+{
   v3 eye_position;
 };
 
@@ -62,17 +63,34 @@ screenProject(Screen screen, v3 p)
             dot(screen.y_axis, d)};
 }
 
-/*
+internal void
+image_set(Bitmap *image, i32 x, i32 y, u32 color)
+{
+    image->data[y*image->pitch + x] = color;
+}
+
 internal void 
-line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color)
+tr_line(Bitmap *image, int x0, int y0, int x1, int y1, v4 color_v4)
 { 
-    for (float t=0.; t<1.; t+=.01) { 
+    u32 color = pack_sRGBA(color_v4);
+    for (float t=0.; t<1.; t+=.01)
+    {
         int x = x0 + (x1-x0)*t; 
         int y = y0 + (y1-y0)*t; 
-        image.set(x, y, color); 
+        image_set(image, x, y, color); 
     } 
 }
-*/
+
+internal void
+tiny_renderer_main(v2i dim, u8 *data)
+{
+    #if 0
+    Bitmap image_value = {.data=data, .dim=dim, .pitch=4*dim.x};
+    Bitmap *image = &image_value;
+    v4 red = {1,0,0,1};
+    tr_line(image, 0, 0, 50, 50, red);
+    #endif
+}
 
 internal void
 game_update_and_render(FApp *app, View_ID view, rect2 region)
@@ -97,17 +115,14 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
             Texture_ID game_texture = graphics_get_texture(dim, TextureKind_Mono);
             graphics_set_game_texture(game_texture);
             
-            u8 *data = (u8 *)malloc(dim.x * dim.y);
-            for_i32(y, 0, dim.y)
-            {
-                for_i32(x, 0, dim.x)
-                {
-                    data[y*dim.x + x] = 0x66;  // fill with gray
-                }
-            }
-            graphics_fill_texture(TextureKind_Mono, game_texture, v3i{}, dim, data);
+            u8 *image = (u8 *)malloc(dim.x * dim.y * dim.z);
+            tiny_renderer_main(dim.xy, image);
+            graphics_fill_texture(TextureKind_Mono, game_texture, v3i{}, dim, image);
+            free(image);
+            
             initial = false;
         }
+        
         v2 position = {0,0};
         v2 draw_dim = V2f32(game_dim.x, game_dim.y);
         draw_textured_rect(app, rect_min_dim(position, draw_dim), white);

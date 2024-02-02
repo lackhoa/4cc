@@ -5,27 +5,32 @@
 // TOP
 
 function Color_Array
-finalize_color_array(Color_Table table, u64 id){
+finalize_color_array(Color_Table table, u64 id)
+{
     return(table.arrays[id % table.count]);
 }
 
 function ARGB_Color
-finalize_color(Color_Array array, i32 sub_index){
+finalize_color(Color_Array array, i32 sub_index)
+{
     ARGB_Color result = 0xFFFFFFFF;
-    if (array.count > 0){
+    if (array.count > 0)
+    {
         result = array.vals[sub_index % array.count];
     }
     return(result);
 }
 
 function ARGB_Color
-finalize_color(Color_Table color_table, u64 id, i32 sub_index){
+finalize_color(Color_Table color_table, u64 id, i32 sub_index)
+{
     Color_Array array = finalize_color_array(color_table, id);
     return(finalize_color(array, sub_index));
 }
 
 function Color_Array
-finalize_color_array(u64 id){
+finalize_color_array(u64 id)
+{
 	return(finalize_color_array(active_color_table, id));
 }
 

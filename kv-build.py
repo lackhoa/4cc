@@ -228,7 +228,7 @@ try:
         print(f'Producing 4ed_app{DOT_DLL}')
         INCLUDES=f'-I{CODE} -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/4coder_kv/libs'
         #
-        COMMON_SYMBOLS="-DFRED_SUPER -DFTECH_64_BIT"
+        COMMON_SYMBOLS="-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
         SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
         OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"

@@ -1,9 +1,10 @@
-defcolor_base         = 0xFF9a6644;  // NOTE(kv): the text color on vim filebar
+defcolor_base         = 0xFF777700;  // NOTE(kv): the text color on vim filebar
 defcolor_text_default = 0xFF787878;
 defcolor_function     = 0xFF787898;
 defcolor_keyword      = 0xFFaa9a74;
 defcolor_comment      = 0xFF557700;
 defcolor_macro        = 0xFF996666;
+defcolor_non_text     = 0xFF707040;  // note(kv): parens
 
 defcolor_bar                   = 0xFF000000;
 defcolor_pop1                  = 0xFFDE8150;
@@ -45,7 +46,6 @@ defcolor_type                       =  defcolor_base;
 defcolor_primitive                  =  defcolor_base;
 defcolor_control                    =  defcolor_preproc;
 defcolor_struct                     =  defcolor_keyword;
-defcolor_non_text                   =  defcolor_text_default;  // note(kv): parens
 
 /// Vim Colors
 defcolor_vim_filebar_pop            =  0xFF333333;

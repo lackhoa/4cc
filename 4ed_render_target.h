@@ -17,9 +17,10 @@ struct Render_Free_Texture{
     u32 tex_id;
 };
 
-struct Render_Vertex{
-    Vec2_f32 xy;
-    Vec3_f32 uvw;
+struct Render_Vertex
+{
+    v2  xy;
+    v3  uvw;
     u32 color;
     f32 half_thickness;
 };
@@ -75,4 +76,3 @@ struct Render_Target{
 #endif
 
 // BOTTOM
-
