@@ -696,4 +696,18 @@ require_token_kind(Token_Iterator_Array *it, Token_Base_Kind kind)
   return false;
 }
 
+#if 0
+internal b32
+require_token_char(FApp *app, Buffer_ID buffer, Token_Iterator_Array *it, u8 c)
+{
+    if( token_it_inc(it) )
+    {
+        Scratch_Block temp(app);
+        String8 c = push_token_lexeme(app, temp, buffer, token);
+        return token_equal(it->ptr, c);
+    }
+    return false;
+}
+#endif
+
 // BOTTOM

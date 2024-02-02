@@ -2,7 +2,6 @@
 // ~/4ed/code/project.4coder
 // ~/4ed/code/4coder_kv/4coder_kv_commands.cpp
 
-#include "game.cpp"
 // TODO(kv): remember this file is processed by the meta-generator.
 //           particularly the command metadata is required for the code to compile (and it's depressing).
 #include "4coder_custom_include.cpp"
@@ -15,12 +14,14 @@
 #include "4coder_kv_input.cpp"
 #include "4coder_kv_build.cpp"
 #include "4coder_kv_fui.cpp"
+#include "game.cpp"
 #include "4coder_kv_commands.cpp"
 #include "4coder_kv_hooks.cpp"
 #include "4coder_byp_token.cpp"
 #include "4coder_kv_draw.cpp"
 #include "4coder_kv_vim_stuff.cpp"
 #include "4coder_kv_lang_list.h"
+
 
 // NOTE: Custom layer swapping for testing and trying out.
 // NOTE: Please enable only one layer, or else it explodes!

@@ -34,7 +34,26 @@ gl__get_texture(Vec3_i32 dim, Texture_Kind texture_kind)
     Texture_ID tex = {};
     glGenTextures(1, &tex.v);
     glBindTexture(GL_TEXTURE_2D_ARRAY, tex.v);
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_R8, v3_expand(dim), 0, GL_RED, GL_UNSIGNED_BYTE, 0);
+    
+    GLint internal_format;
+    GLenum pixel_format = 0;
+    GLenum data_type = 0;
+    if (texture_kind == TextureKind_Mono)
+    {
+        internal_format = GL_R8;
+        pixel_format = GL_RED;
+        data_type = GL_UNSIGNED_BYTE;
+    }
+    else if (texture_kind == TextureKind_ARGB)
+    {
+        internal_format = GL_RGBA8;
+        pixel_format = GL_BGRA;
+        data_type = GL_UNSIGNED_INT_8_8_8_8_REV;
+    }
+    else invalid_code_path;
+    //
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internal_format, v3_expand(dim), 0, pixel_format, data_type, 0);
+    
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -51,11 +70,29 @@ gl__fill_texture(Texture_Kind texture_kind, Texture_ID texture, Vec3_i32 p, Vec3
     {
         glBindTexture(GL_TEXTURE_2D_ARRAY, texture.v);
     }
+    
+    GLenum pixel_format;
+    GLenum data_type;
     if (dim.x > 0 && dim.y > 0 && dim.z > 0)
     {
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, v3_expand(p), v3_expand(dim), GL_RED, GL_UNSIGNED_BYTE, data);
+        if (texture_kind == TextureKind_Mono)
+        {
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            pixel_format = GL_RED;
+            data_type = GL_UNSIGNED_BYTE;
+        }
+        else if (texture_kind == TextureKind_ARGB)
+        {
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            pixel_format = GL_BGRA;
+            data_type = GL_UNSIGNED_INT_8_8_8_8_REV;
+        }
+        else invalid_code_path;
+        
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, v3_expand(p), v3_expand(dim), pixel_format, data_type, data);
+        result = true;
     }
+    
     return(result);
 }
 
@@ -67,17 +104,14 @@ gl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
             // NOTE(allen): performance warning, do nothing.
         }break;
         
-        default:
-        {
-            InvalidPath;
-        }break;
+        invalid_default_case;
     }
 }
 
 global char *gl__header = R"foo(#version 130
         )foo";
 
-global char *gl__vertex = 
+global char *gl__vertex_shader = 
 R"foo(
    uniform vec2   view_t;
    uniform mat2x2 view_m;
@@ -95,7 +129,8 @@ R"foo(
 
    void main(void)
    {
-       gl_Position = vec4(view_m*(vertex_xy - view_t), 0.0, 1.0);
+       vec2 position_xy = view_m * (vertex_xy - view_t);
+       gl_Position = vec4(position_xy, 0.0, 1.0);
        fragment_color.b = (float((vertex_color     )&0xFFu))/255.0;
        fragment_color.g = (float((vertex_color>> 8u)&0xFFu))/255.0;
        fragment_color.r = (float((vertex_color>>16u)&0xFFu))/255.0;
@@ -109,7 +144,7 @@ R"foo(
    }
    )foo";
 
-char *gl__fragment = 
+char *gl__fragment_shader = 
 R"foo(
    smooth in vec4 fragment_color;
    smooth in vec3 uvw;
@@ -261,7 +296,7 @@ gl_render(Render_Target *t)
     if (first_opengl_call)
     {
         first_opengl_call = false;
-       
+        
 #if !SHIP_MODE
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -298,7 +333,7 @@ gl_render(Render_Target *t)
         
         ////////////////////////////////
         
-        gl_program = gl__make_program(gl__header, gl__vertex, gl__fragment);
+        gl_program = gl__make_program(gl__header, gl__vertex_shader, gl__fragment_shader);
         glUseProgram(gl_program.program);
         
         ////////////////////////////////
@@ -333,7 +368,7 @@ gl_render(Render_Target *t)
     for (Render_Group *group = t->group_first;
          group != 0;
          group = group->next)
-    
+    {
         i32 vertex_count = group->vertex_list.vertex_count;
         if (vertex_count <= 0) continue;
         
@@ -380,20 +415,21 @@ gl_render(Render_Target *t)
 #define X(N,...) glEnableVertexAttribArray(gl_program.vertex_##N);
         XAttribute(X);
 #undef X
-       
+        
         // glVertexAttribPointer
 #define X(N,S,T) gl_vertex_attrib_pointer(gl_program.vertex_##N, S, T, GLOffset(Render_Vertex, N));
         XAttribute(X);
 #undef X
         
+        // uniform
         glUniform2f(gl_program.view_t, width/2.f, height/2.f);
-        f32 m[4] = 
+        f32 view_m[4] = 
         {
             2.f/width, 0.f,
             0.f, -2.f/height,
         };
-        glUniformMatrix2fv(gl_program.view_m, 1, GL_FALSE, m);
-        glUniform1i(gl_program.sampler, 0);
+        glUniformMatrix2fv(gl_program.view_m, 1, GL_FALSE, view_m);
+        glUniform1i(gl_program.sampler, 0);  // note(kv): idk if this has a meaning?
         
         glDrawArrays(GL_TRIANGLES, 0, vertex_count);
         
@@ -401,7 +437,7 @@ gl_render(Render_Target *t)
 #define X(N,...) glDisableVertexAttribArray(gl_program.vertex_##N);
         XAttribute(X);
 #undef X
-    
-    
+        
+    }
     glFlush();
 }

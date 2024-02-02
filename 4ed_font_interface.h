@@ -13,9 +13,11 @@
 #define FCODER_FONT_INTERFACE_H
 
 typedef i32 Texture_Kind;
-enum{
+enum
+{
     TextureKind_Error,
     TextureKind_Mono,
+    TextureKind_ARGB,
 };
 
 typedef u32 Graphics_Get_Texture_Function(Vec3_i32 dim, Texture_Kind texture_kind);

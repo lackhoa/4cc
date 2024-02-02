@@ -239,9 +239,6 @@ enum{
 #define function static
 #define api(x)
 
-#define internal static
-#define local_persist static
-#define global static
 #define local_const static const
 #define global_const static const
 #define external extern "C"

@@ -64,6 +64,9 @@
 */
 
 
+#define internal static
+#define local_persist static
+#define global static
 
 
 
@@ -76,6 +79,7 @@ typedef int8_t   b8;
 typedef int32_t  b32;
 typedef uint32_t u32;
 typedef uint64_t u64;
+typedef size_t   umm;
 
 typedef float    r32;
 typedef float    f32;
@@ -88,25 +92,39 @@ typedef float    f32;
 
 /* Intrinsics */
 
-inline void
-zeroMemory(void *dst, size_t size)
-{
-  // todo #speed
-  u8 *dst8 = (u8 *)dst;
-  while (size--) {
-    *dst8++ = 0;
-  }
+internal void
+block_zero(void *mem, u64 size){
+    for (u8 *p = (u8*)mem, *e = p + size; p < e; p += 1){
+        *p = 0;
+    }
 }
 
-inline void
-copyMemory_(void *src, void *dst, size_t size) // source to dest
+internal void
+block_fill_ones(void *mem, u64 size){
+    for (u8 *p = (u8*)mem, *e = p + size; p < e; p += 1){
+        *p = 0xFF;
+    }
+}
+
+internal void
+block_copy(void *dst, const void *src, u64 size)
 {
-  // todo #speed
-  u8 *dst8 = (u8 *)dst;
-  u8 *src8 = (u8 *)src;
-  while (size--) {
-    *dst8++ = *src8++;
-  }
+    u8 *d = (u8*)dst;
+    u8 *s = (u8*)src;
+    if (d < s){
+        u8 *e = d + size;
+        for (; d < e; d += 1, s += 1){
+            *d = *s;
+        }
+    }
+    else if (d > s){
+        u8 *e = d;
+        d += size - 1;
+        s += size - 1;
+        for (; d >= e; d -= 1, s -= 1){
+            *d = *s;
+        }
+    }
 }
 
 inline i32
@@ -554,23 +572,6 @@ checkArena(kv_Arena *arena)
     kv_assert(arena->temp_count == 0);
 }
 
-inline void
-resetArena(kv_Arena &arena, b32 zero=false)
-{
-  arena.used = 0;
-  if (zero) {
-    zeroMemory(arena.base, arena.cap);
-  }
-}
-
-inline void *
-pushCopySize(kv_Arena &arena, void *src, size_t size)
-{
-  void *dst = pushSize(arena, size);
-  copyMemory_(src, dst, size);
-  return dst;
-}
-
 #if COMPILER_MSVC
 #    define mytypeof decltype
 #else
@@ -586,148 +587,6 @@ inline u8 *getNext(kv_Arena &buffer)
   return (buffer.base + buffer.used);
 }
 
-/* MARK: String */
-
-struct String
-{
-  char *chars;
-  i32   length;                 // note: does not include the nil terminator
-  operator bool() {return chars;}
-};
-
-inline i32
-stringLength(char *string)
-{
-    i32 out = 0;
-    char *c = string;
-    while (*c)
-    {
-        out++;
-        c++;
-    }
-    return out;
-}
-
-typedef kv_Arena StringBuffer;
-
-struct StartString {
-  StringBuffer &arena;
-  char         *chars;
-};
-
-inline StartString
-startString(kv_Arena &arena)
-{
-  char *start = (char *)getNext(arena);
-  return {.arena=arena, .chars=start};
-};
-
-inline String
-endString(StartString start)
-{
-  String out = {};
-  out.chars = start.chars;
-  out.length = (i32)((char*)getNext(start.arena) - start.chars);
-  int zero = 0;
-  pushCopy(start.arena, &zero);
-  return out;
-}
-
-inline String
-toString(const char *c)
-{
-  String out;
-  out.chars  = (char*)c;
-  out.length = 0;
-  while (*c++) {
-    out.length++;
-  }
-  return out;
-}
-
-inline String
-toString(kv_Arena &arena, const char *c)
-{
-  String out = {};
-  out.chars = (char *)getNext(arena);
-  char *dst = out.chars;
-  while ((*dst++ = *c++)) {
-    out.length++;
-  }
-  *dst = '\0';
-  pushSize(arena, out.length+1);
-  return out;
-}
-
-inline char *
-toCString(kv_Arena &arena, String string)
-{
-  char *out = (char *)pushCopySize(arena, string.chars, string.length+1);
-  u8 *next = getNext(arena) - 1;
-  *next = 0;
-  return out;
-}
-
-// NOTE: "temporary" means that your string nil terminator might be stomped on in the future
-// Useful for passing the string to fopen or something.
-inline char *
-toCStringTemporary(String string)
-{
-  kv_assert(*(string.chars + string.length) == 0);
-  return string.chars;
-}
-
-inline String
-printVA(kv_Arena &buffer, char *format, va_list arg_list)
-{
-  char *at = (char *)getNext(buffer);
-  int printed = vsnprintf(at, (buffer.cap - buffer.used), format, arg_list);
-  buffer.used += printed;
-  return String{at, printed};
-}
-
-extern String
-print(kv_Arena &buffer, char *format, ...)
-#ifdef KV_IMPLEMENTATION
-{
-  String out = {};
-
-  va_list arg_list;
-  va_start(arg_list, format);
-
-  out.chars = (char *)getNext(buffer);
-  auto printed = vsnprintf(out.chars, (buffer.cap-1 - buffer.used), format, arg_list);
-  buffer.used += printed;
-  out.length   = printed;
-  buffer.base[buffer.used] = 0; // nil-termination
-
-  va_end(arg_list);
-
-  return out;
-}
-#else
-;
-#endif
-
-inline String
-print(kv_Arena &buffer, String s)
-{
-  String out = {};
-  {
-    out.chars = (char *)getNext(buffer);
-    char *at = out.chars;
-    const char *c = s.chars;
-    for (i32 index = 0; index < s.length; index++)
-      *at++ = *c++;
-    *at = 0;
-    out.length = (i32)(at - out.chars);
-    buffer.used += out.length;
-    kv_assert(buffer.used <= buffer.cap);  // todo: don't crash!
-  }
-
-  return out;
-}
-
 // todo #cleanup same as "inArena"?
 inline b32
 belongsToArena(kv_Arena *arena, u8 *memory)
@@ -741,88 +600,6 @@ belongsToArena(kv_Arena *arena, u8 *memory)
 // Metaprogramming tags
 #define forward_declare(FILE_NAME)
 #define function_typedef(FILE_NAME)
-
-inline char
-toLowerCase(char c)
-{
-  if (('a' <= c) && (c <= 'z'))
-    return c - 32;
-  return c;
-}
-
-inline b32
-isSubstring(String full, String sub, b32 case_sensitive=true)
-{
-  b32 out = true;
-  if (sub.length > full.length)
-  {
-    out = false;
-  }
-  else
-  {
-    for (i32 id = 0;
-         id < sub.length;
-         id++)
-    {
-      char s = sub.chars[id];
-      char f = full.chars[id];
-      b32 mismatch = case_sensitive ? (s != f) : (toLowerCase(s) != toLowerCase(f));
-      if (mismatch)
-      {
-        out = false;
-        break;
-      }
-    }
-  }
-  return out;
-}
-
-inline String
-copyString(kv_Arena &buffer, String src)
-{
-  String out;
-  out.chars  = pushCopyArray(buffer, src.length, src.chars);
-  out.length = src.length;
-  return out;
-}
-
-inline void dump() {printf("\n");}
-inline void dump(int d) {printf("%d", d);}
-inline void dump(char *c) {printf("%s", c);}
-inline void dump(String s) {printf("%.*s", s.length, s.chars);}
-
-inline String
-concatenate(kv_Arena &arena, String a, String b)
-{
-  auto string = startString(arena);
-  print(string.arena, a);
-  print(string.arena, b);
-  String out = endString(string);
-  return out;
-}
-
-inline String
-concatenate(kv_Arena &arena, String a, char *b)
-{
-  return concatenate(arena, a, toString(b));
-}
-
-/*
-inline String
-concatenate(String a, String b)
-{
-  i32 length = a.length + b.length;
-  char *chars = (char *)malloc(a.length + b.length + 1);
-  if (!chars)
-  {
-    return String{};
-  }
-  strncpy(chars, a.chars, a.length);
-  strncpy(chars + a.length, b.chars, b.length);
-  chars[length] = 0;
-  return String{chars, length};
-}
-*/
 
 /* MARK: End of String */
 

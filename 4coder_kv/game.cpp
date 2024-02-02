@@ -70,26 +70,30 @@ image_set(Bitmap *image, i32 x, i32 y, u32 color)
 }
 
 internal void 
-tr_line(Bitmap *image, int x0, int y0, int x1, int y1, v4 color_v4)
-{ 
-    u32 color = pack_sRGBA(color_v4);
-    for (float t=0.; t<1.; t+=.01)
+tr_line(Bitmap *image, v2i p0, v2i p1, v4 color_v4)
+{
+    ARGB_Color color = pack_argb(color_v4);
+    i32 x0 = p0.x;
+    i32 y0 = p0.y;
+    i32 x1 = p1.x;
+    i32 y1 = p1.y;
+    for (f32 t=0.; t < 1.0f; t+=0.01f)
     {
-        int x = x0 + (x1-x0)*t; 
-        int y = y0 + (y1-y0)*t; 
+        i32 x = x0 + (x1-x0)*t; 
+        i32 y = y0 + (y1-y0)*t; 
         image_set(image, x, y, color); 
     } 
 }
 
 internal void
-tiny_renderer_main(v2i dim, u8 *data)
+tiny_renderer_main(v2i dim, u32 *data)
 {
-    #if 0
     Bitmap image_value = {.data=data, .dim=dim, .pitch=4*dim.x};
     Bitmap *image = &image_value;
     v4 red = {1,0,0,1};
-    tr_line(image, 0, 0, 50, 50, red);
-    #endif
+    fslider( 0 );
+    f32 xf = lerp((f32)0, fui_slider_value.x, (f32)(dim.x-1));
+    tr_line(image, {0,0}, {(i32)xf, 50}, red);
 }
 
 internal void
@@ -112,12 +116,14 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
         if (initial)
         {
             auto &dim = game_dim;
-            Texture_ID game_texture = graphics_get_texture(dim, TextureKind_Mono);
+            Texture_ID game_texture = graphics_get_texture(dim, TextureKind_ARGB);
             graphics_set_game_texture(game_texture);
-            
-            u8 *image = (u8 *)malloc(dim.x * dim.y * dim.z);
+           
+            umm size = 4 * dim.x * dim.y * dim.z;
+            u32 *image = (u32 *)malloc(size);
+            block_zero(image, size);
             tiny_renderer_main(dim.xy, image);
-            graphics_fill_texture(TextureKind_Mono, game_texture, v3i{}, dim, image);
+            graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, image);
             free(image);
             
             initial = false;

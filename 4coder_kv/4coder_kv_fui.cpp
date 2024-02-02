@@ -1,5 +1,5 @@
 #if 0  // note: test fslider
-  fslider( -0.526403 );
+  fslider( 0.233908, 0.285825 );
 #endif
 
 struct FUI
@@ -57,10 +57,9 @@ fui_draw_slider(Application_Links *app, Buffer_ID buffer, rect2 region)
   }
 }
 
-// TODO(kv): how do I make an arena on the stack?
 // TODO(kv): the parser is SO bad
 internal b32
-parse_float(Application_Links *app, Buffer_ID buffer, Token_Iterator_Array *it, f32 *out)
+parse_float(FApp *app, Buffer_ID buffer, Token_Iterator_Array *it, f32 *out)
 {
   *out = 0;
   Scratch_Block temp(app);
@@ -89,73 +88,89 @@ parse_float(Application_Links *app, Buffer_ID buffer, Token_Iterator_Array *it, 
 }
 
 internal b32
-fui_handle_slider(Application_Links *app, Buffer_ID buffer)
+fui_handle_slider(FApp *app, Buffer_ID buffer)
 {
-  FUI f_value; 
-  auto *f = &f_value;
-  f->app    = app;
-  f->buffer = buffer;
-  
-  b32 at_slider = fui__at_slider_p(f);
-  if (!at_slider) return false;
-  
-  Token_Iterator_Array *it = &f->it;
-
-  Token *token = it->ptr;
-  i64 slider_begin = token->pos;
-  
-  breakable_block
-  {
-    if ( !require_token_kind(it, TokenBaseKind_ParentheticalOpen) )   break;
-    f32 value;
-    if ( !parse_float(app, buffer, it, &value) ) break;
-    if ( !require_token_kind(it, TokenBaseKind_ParentheticalClose ) ) break;
-    i64 slider_end = it->ptr->pos + 1;
+    FUI f_value; 
+    auto *f = &f_value;
+    f->app    = app;
+    f->buffer = buffer;
     
-    fui_slider_value = v3{.x=value};
-   
-#if 0
+    b32 at_slider = fui__at_slider_p(f);
+    if (!at_slider) return false;
+    
+    Token_Iterator_Array *it = &f->it;
+    
+    Token *token = it->ptr;
+    i64 slider_begin = token->pos;
+    
+    breakable_block
     {
-      printf_message(app, temp, "value f32: %f\n", value);
-      String8 string = push_buffer_range(app, temp, buffer, slider_begin, slider_end);
-      printf_message(app, temp, "slider range: %.*s\n", string_expand(string));
-    }
+        f32 value_x = 0;
+        f32 value_y = 0;
+        if ( !require_token_kind(it, TokenBaseKind_ParentheticalOpen) ) break;
+        if ( !parse_float(app, buffer, it, &value_x) ) break;
+        if ( !require_token_kind(it, TokenBaseKind_StatementClose) ) break;
+        if ( !parse_float(app, buffer, it, &value_y) ) break;
+        if ( !require_token_kind(it, TokenBaseKind_ParentheticalClose ) ) break;
+        i64 slider_end = it->ptr->pos + 1;
+        
+        fui_slider_value = v3{.x=value_x, .y=value_y};
+        
+#if 0
+        {
+            printf_message(app, temp, "value f32: %f\n", value);
+            String8 string = push_buffer_range(app, temp, buffer, slider_begin, slider_end);
+            printf_message(app, temp, "slider range: %.*s\n", string_expand(string));
+        }
 #endif
-  
-    for (;;)
-    { // note: ui loop
-      Scratch_Block temp(app);
-      
-      fui_slider_active = true; defer(fui_slider_active = false);
-      
-      User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
-      if (in.abort) break; 
-     
-      b32 keydown = (in.event.kind == InputEventKind_KeyStroke);
-      b32 keyup   = (in.event.kind == InputEventKind_KeyRelease);
-      if (keydown || keyup)
-      {
-        v3 &direction = fui_slider_direction;
+        
+        b32 save_result = false;
+        v3 fui_slider_save = fui_slider_value;
+        for (;;)
+        { // note: ui loop
+            Scratch_Block temp(app);
+            
+            fui_slider_active = true; defer(fui_slider_active = false);
+            
+            User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
+            if (in.abort) break; 
+            
+            b32 keydown = (in.event.kind == InputEventKind_KeyStroke);
+            b32 keyup   = (in.event.kind == InputEventKind_KeyRelease);
+            if (keydown || keyup)
+            {
+                v3 &direction = fui_slider_direction;
 #define Match(CODE)  in.event.key.code == KeyCode_##CODE
-        if      (Match(L)) direction.x = keydown ? +1 : 0;
-        else if (Match(H)) direction.x = keydown ? -1 : 0;
-        else if (Match(K)) direction.y = keydown ? +1 : 0;
-        else if (Match(J)) direction.y = keydown ? -1 : 0;
-        else if (Match(I)) direction.z = keydown ? +1 : 0;
-        else if (Match(O)) direction.z = keydown ? -1 : 0;
+                
+                if ( Match(Return) && keydown )
+                {
+                    save_result = true; 
+                    break;
+                }
+                else if (Match(L)) direction.x = keydown ? +1 : 0;
+                else if (Match(H)) direction.x = keydown ? -1 : 0;
+                else if (Match(K)) direction.y = keydown ? +1 : 0;
+                else if (Match(J)) direction.y = keydown ? -1 : 0;
+                else if (Match(I)) direction.z = keydown ? +1 : 0;
+                else if (Match(O)) direction.z = keydown ? -1 : 0;
 #undef Match
-      }
-      else leave_current_input_unhandled(app);
+            }
+            else leave_current_input_unhandled(app);
+        }
+        
+        if (save_result)
+        { //note(kv): save the results back
+            Scratch_Block temp(app);
+            String8 save = push_stringf(temp, "fslider( %f, %f )", fui_slider_value.x, fui_slider_value.y);
+            buffer_replace_range(app, buffer, slider_begin, slider_end, save);
+        }
+        else
+        {
+            fui_slider_value = fui_slider_save;
+        }
     }
     
-    { //note(kv): save the results back
-      Scratch_Block temp(app);
-      String8 save = push_stringf(temp, "fslider( %f )", fui_slider_value.x);
-      buffer_replace_range(app, buffer, slider_begin, slider_end, save);
-    }
-  }
-  
-  return true;
+    return true;
 }
 
 internal void 

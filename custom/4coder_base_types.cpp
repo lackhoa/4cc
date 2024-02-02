@@ -1,5 +1,7 @@
 /*
  * 4coder base types
+ * NOTE(kv): color in v4 is RGBA, but when packed it is [register:ARGB -> memory:BGRA]
+ * Idk why, but it is what it is.
  */
 
 // TOP
@@ -164,46 +166,15 @@ global_const String_Const_u8 zero_data = {};
 
 ////////////////////////////////
 
-function void
-block_zero(void *mem, u64 size){
-    for (u8 *p = (u8*)mem, *e = p + size; p < e; p += 1){
-        *p = 0;
-    }
-}
-function void
-block_zero(String_Const_u8 data){
+internal void
+block_zero(String8 data){
     block_zero(data.str, data.size);
 }
-function void
-block_fill_ones(void *mem, u64 size){
-    for (u8 *p = (u8*)mem, *e = p + size; p < e; p += 1){
-        *p = 0xFF;
-    }
-}
-function void
-block_fill_ones(String_Const_u8 data){
+internal void
+block_fill_ones(String8 data){
     block_fill_ones(data.str, data.size);
 }
-function void
-block_copy(void *dst, const void *src, u64 size)
-{
-    u8 *d = (u8*)dst;
-    u8 *s = (u8*)src;
-    if (d < s){
-        u8 *e = d + size;
-        for (; d < e; d += 1, s += 1){
-            *d = *s;
-        }
-    }
-    else if (d > s){
-        u8 *e = d;
-        d += size - 1;
-        s += size - 1;
-        for (; d >= e; d -= 1, s -= 1){
-            *d = *s;
-        }
-    }
-}
+
 function b32
 block_match(void *a, void *b, u64 size){
     b32 result = true;
