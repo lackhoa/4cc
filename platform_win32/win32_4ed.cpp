@@ -656,19 +656,19 @@ os_popup_error(char *title, char *message){
 #include "opengl/4ed_opengl_render.cpp"
 
 internal graphics_get_texture_return 
-graphics_get_texture graphics_get_texture_params
+graphics_get_texture(graphics_get_texture_params)
 {
     return(gl__get_texture(dim, texture_kind));
 }
 
 internal graphics_fill_texture_return
-graphics_fill_texture graphics_fill_texture_params
+graphics_fill_texture(graphics_fill_texture_params)
 {
     return(gl__fill_texture(texture_kind, texture, p, dim, data));
 }
 
 internal graphics_set_game_texture_return
-graphics_set_game_texture graphics_set_game_texture_params
+graphics_set_game_texture(graphics_set_game_texture_params)
 {
     global_game_texture = texture;
 }

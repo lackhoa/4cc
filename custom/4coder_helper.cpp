@@ -13,9 +13,16 @@
   defer( history_group_end(history_group) );
 
 // ;fui
-inline f32 fslider(f32 value)
+global v3  fui_slider_value;
+global b32 fui_slider_inited;
+internal void fslider(f32 x, f32 y)
 {
-  return value;
+    // todo(kv): slider values aren't persistent across runs, because you still have to recompile the program!
+    if (!fui_slider_inited)
+    {
+        fui_slider_inited = true;
+        fui_slider_value.xy = {x,y};
+    }
 }
 
 #define scope_attachment(app,S,I,T) ((T*)managed_scope_get_attachment((app), (S), (I), sizeof(T)))

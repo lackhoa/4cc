@@ -64,74 +64,84 @@ screenProject(Screen screen, v3 p)
 }
 
 internal void
-image_set(Bitmap *image, i32 x, i32 y, u32 color)
+bitmap_write(Bitmap *bitmap, i32 x, i32 y, u32 color)
 {
-    image->data[y*image->pitch + x] = color;
+    i32 index = y * bitmap->dim.x + x;
+    bitmap->data[index] = color;
 }
 
 internal void 
-tr_line(Bitmap *image, v2i p0, v2i p1, v4 color_v4)
+tr_line(Bitmap *bitmap, v2i p0, v2i p1, v4 color_v4)
 {
     ARGB_Color color = pack_argb(color_v4);
-    i32 x0 = p0.x;
-    i32 y0 = p0.y;
-    i32 x1 = p1.x;
-    i32 y1 = p1.y;
-    for (f32 t=0.; t < 1.0f; t+=0.01f)
+    for (f32 t=0.f; 
+         t < 1.0f; 
+         t += 0.01f)
     {
-        i32 x = x0 + (x1-x0)*t; 
-        i32 y = y0 + (y1-y0)*t; 
-        image_set(image, x, y, color); 
+        i32 x = p0.x + (p1.x - p0.x)*t; 
+        i32 y = p0.y + (p1.y - p0.y)*t; 
+        bitmap_write(bitmap, x, y, color); 
     } 
+}
+
+inline umm
+get_bitmap_size(Bitmap *bitmap)
+{
+    return bitmap->dim.y * bitmap->pitch;
 }
 
 internal void
 tiny_renderer_main(v2i dim, u32 *data)
 {
-    Bitmap image_value = {.data=data, .dim=dim, .pitch=4*dim.x};
-    Bitmap *image = &image_value;
-    v4 red = {1,0,0,1};
-    fslider( 0 );
-    f32 xf = lerp((f32)0, fui_slider_value.x, (f32)(dim.x-1));
-    tr_line(image, {0,0}, {(i32)xf, 50}, red);
+    Bitmap bitmap_value = {.data=data, .dim=dim, .pitch=4*dim.x};
+    Bitmap *bitmap = &bitmap_value;
+    v4 black = {0,0,0,1};
+    v4 red   = {1,0,0,1};
+    fslider( 0.579974, 0.210499 );
+    v4 color_v4 = lerp(black, fui_slider_value.x, red);
+    tr_line(bitmap, {0,0}, {99, 99}, color_v4);
 }
 
 internal void
 game_update_and_render(FApp *app, View_ID view, rect2 region)
 {
     v4 white = {1, 1, 1, 1};
-    v4 gray = {.5, .5, .5, 1};
+    v4 gray  = {.5, .5, .5, 1};
+    v4 black = {0,0,0,1};
     
     v2 screen_dim      = rect_get_dim(region);
     v2 screen_half_dim = 0.5f * screen_dim;
     
     {// push backdrop
-        v4 bg_color = v4{0,0,0,1};
+        v4 bg_color = black;
         draw_rect(app, rect_min_max(v2{0, 0}, screen_dim), bg_color);
     }
-    
-    { // NOTE(kv): test draw texture
-        v3i game_dim = {100, 100, 1};
+   
+    { // NOTE(kv): tiny renderer
+        v3i dim = {100, 100, 1};
         local_persist b32 initial = true;
+        local_persist u32 *data = 0;
+        local_persist Texture_ID game_texture = {};
         if (initial)
         {
-            auto &dim = game_dim;
-            Texture_ID game_texture = graphics_get_texture(dim, TextureKind_ARGB);
+            initial = false;
+           
+            // create game texture
+            game_texture = graphics_get_texture(dim, TextureKind_ARGB);
             graphics_set_game_texture(game_texture);
            
+            // allocate memory
             umm size = 4 * dim.x * dim.y * dim.z;
-            u32 *image = (u32 *)malloc(size);
-            block_zero(image, size);
-            tiny_renderer_main(dim.xy, image);
-            graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, image);
-            free(image);
-            
-            initial = false;
+            data = (u32 *)malloc(size);
+            block_zero(data, size);
         }
         
+        tiny_renderer_main(dim.xy, data);
+        graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
+        
         v2 position = {0,0};
-        v2 draw_dim = V2f32(game_dim.x, game_dim.y);
-        draw_textured_rect(app, rect_min_dim(position, draw_dim), white);
+        v2 draw_dim = V2f32(dim.x, dim.y);
+        draw_textured_rect(app, rect_min_dim(position, draw_dim));
     }
     
     f32 E3 = 1000.f;

@@ -412,7 +412,7 @@ inline i32 safeTruncateToInt32(u64 value)
 
 #define kv_array_count(array)  (sizeof(array) / sizeof((array)[0]))
 #define arlen kv_array_count
-#define alen kv_array_count  // TODO: removeme
+#define alen kv_array_count  // @deprecated
 
 // source: https://groups.google.com/g/comp.std.c/c/d-6Mj5Lko_s
 #define PP_NARG(...) PP_NARG_(__VA_ARGS__,PP_RSEQ_N())

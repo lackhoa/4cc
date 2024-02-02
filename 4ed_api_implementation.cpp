@@ -2963,7 +2963,7 @@ draw_line(FApp *app, v2 p0, v2 p1, f32 thickness, v4 color)
 }
 
 internal void
-draw_textured_rect(FApp *app, rect2 rect, v4 color)
+draw_textured_rect(FApp *app, rect2 rect, v4 color=v4{1,1,1,1})
 {
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)

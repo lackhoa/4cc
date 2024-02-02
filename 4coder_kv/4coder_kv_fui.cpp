@@ -9,7 +9,6 @@ struct FUI
   Token_Iterator_Array it;
 };
 
-global v3  fui_slider_value;
 global v3  fui_slider_direction;
 global b32 fui_slider_active;
 

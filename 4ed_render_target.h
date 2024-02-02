@@ -38,7 +38,8 @@ struct Render_Vertex_List{
     i32 vertex_count;
 };
 
-struct Render_Group{
+struct Render_Group
+{
     Render_Group *next;
     Render_Vertex_List vertex_list;
     // parameters
@@ -46,9 +47,10 @@ struct Render_Group{
     Rect_f32 clip_box;
 };
 
-global const Face_ID FACE_ID_SOFTWARE_RENDER = U32_MAX;
+global const Face_ID FACE_ID_GAME = U32_MAX;
 
-struct Render_Target{
+struct Render_Target
+{
     b8 clip_all;
     i32 width;
     i32 height;

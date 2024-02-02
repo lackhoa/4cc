@@ -247,7 +247,9 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
 internal void
 draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color)
 {
-    draw__set_face_id(target, FACE_ID_SOFTWARE_RENDER);
+    // note(kv): we still don't know what a group is, so for now let's juts monkey around with the FaceID for now
+    Face_ID old_face_id = target->current_face_id;
+    draw__set_face_id(target, FACE_ID_GAME);
     
     Render_Vertex vertices[6] = {};
     
@@ -273,6 +275,10 @@ draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color
     vertices[4]    = vertices[2];
     
     draw__write_vertices_in_current_group(target, vertices, alen(vertices));
+    {
+        target->current_face_id = old_face_id;
+        draw__begin_new_group(target);
+    }
 }
 
 ////////////////////////////////
