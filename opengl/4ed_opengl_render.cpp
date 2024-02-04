@@ -204,7 +204,7 @@ R"foo(
         fragment_color.r = (float((vertex_color>>16u)&0xFFu))/255.0;
         fragment_color.a = (float((vertex_color>>24u)&0xFFu))/255.0;
         uvw = vertex_uvw;
-        float what = vertex_half_thickness;  // TODO(kv): we're just hoping that the god of opengl wouldn't optimize out this "half_thickness" attribute.
+        // float what = vertex_half_thickness;  // TODO(kv): we're just hoping that the god of opengl wouldn't optimize out this "half_thickness" attribute.
     }
     )foo";
 
@@ -417,6 +417,7 @@ gl_render(Render_Target *t)
         if (vertex_count <= 0) continue;
         
         b32 game_mode = (group->face_id == FACE_ID_GAME);
+        GL_Program *program = game_mode ? &gl_program_game : &gl_program;
         
         {
             Rect_i32 box = Ri32(group->clip_box);
@@ -466,36 +467,31 @@ gl_render(Render_Target *t)
             cursor += size;
         }
         
-        // glEnableVertexAttribArray
-#define X(N,...) { glEnableVertexAttribArray(gl_program.vertex_##N); }
+        // NOTE: glEnableVertexAttribArray
+#define X(N,...) { glEnableVertexAttribArray(program->vertex_##N); }
         XAttribute(X);
 #undef X
         
-        // glVertexAttribPointer
-#define X(N,S,T) { gl_vertex_attrib_pointer(gl_program.vertex_##N, S, T, GLOffset(Render_Vertex, N)); }
-        XAttribute(X);
-#undef X
-        
-        // glEnableVertexAttribArray
-#define X(N,...) { glEnableVertexAttribArray(gl_program.vertex_##N); }
+        // NOTE: tell opengl how to read vertex attributes
+#define X(N,S,T) { gl_vertex_attrib_pointer(program->vertex_##N, S, T, GLOffset(Render_Vertex, N)); }
         XAttribute(X);
 #undef X
         
         // NOTE: uniform
-        glUniform2f(gl_program.view_t, width/2.f, height/2.f);
+        glUniform2f(program->view_t, width/2.f, height/2.f);
         f32 view_m[4] = 
         {
             2.f/width, 0.f,
             0.f, -2.f/height,
         };
-        glUniformMatrix2fv(gl_program.view_m, 1, GL_FALSE, view_m);
-        glUniform1i(gl_program.sampler, 0);  // note(kv): idk if this has a meaning?
+        glUniformMatrix2fv(program->view_m, 1, GL_FALSE, view_m);
+        glUniform1i(program->sampler, 0);  // note(kv): idk if this has a meaning?
        
         // NOTE
         glDrawArrays(GL_TRIANGLES, 0, vertex_count);
         
-        // NOTE: glDisableVertexAttribArray
-#define X(N,...) { glDisableVertexAttribArray(gl_program.vertex_##N); }
+        // NOTE: disable
+#define X(N,...) { glDisableVertexAttribArray(program->vertex_##N); }
         XAttribute(X);
 #undef X
        

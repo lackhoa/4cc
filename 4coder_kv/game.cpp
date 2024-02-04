@@ -99,7 +99,17 @@ tiny_renderer_main(v2i dim, u32 *data)
     v4 red   = {1,0,0,1};
     fslider( 0.579974, 0.210499 );
     v4 color_v4 = lerp(black, fui_slider_value.x, red);
+#if 0
     tr_line(bitmap, {0,0}, {99, 99}, color_v4);
+#else
+    for_i32 (y, 0, dim.y)
+    {
+        for_i32 (x, 0, dim.x)
+        {
+            bitmap_write(bitmap, x, y, pack_argb(red));
+        }
+    }
+#endif
 }
 
 internal void

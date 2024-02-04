@@ -159,8 +159,8 @@ function void byp_draw_token_colors(Application_Links *app, View_ID view, Buffer
 			{string_u8_litexpr("TODO"), finalize_color(defcolor_comment_pop, 1)},
 			{string_u8_litexpr("todo"), finalize_color(defcolor_comment_pop, 1)},
 			{string_u8_litexpr("important"), finalize_color(defcolor_comment_pop, 2)},
-      {string_u8_litexpr("IMPORTANT"), finalize_color(defcolor_comment_pop, 2)},
-      {string_u8_litexpr("nono"),      finalize_color(defcolor_comment_pop, 2)},  // ignore_nono
+            {string_u8_litexpr("IMPORTANT"), finalize_color(defcolor_comment_pop, 2)},
+            {string_u8_litexpr("nono"),      finalize_color(defcolor_comment_pop, 2)},  // ignore_nono
 		};
 		draw_comment_highlights(app, buffer, text_layout_id, &token_array, pairs, ArrayCount(pairs));
 	}
