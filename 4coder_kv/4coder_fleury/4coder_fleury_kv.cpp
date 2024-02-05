@@ -18,8 +18,8 @@ function DELTA_RULE_SIG(F4_DeltaRule_lite)
     }
     Smooth_Step step_x = smooth_camera_step(pending.x, velocity->x, 80.f, 1.f/4.f);
     Smooth_Step step_y = smooth_camera_step(pending.y, velocity->y, 80.f, 1.f/4.f);
-    *velocity = V2f32(step_x.v, step_y.v);
-    return(V2f32(step_x.p, step_y.p));
+    *velocity = V2(step_x.v, step_y.v);
+    return(V2(step_x.p, step_y.p));
 }
 
 function void

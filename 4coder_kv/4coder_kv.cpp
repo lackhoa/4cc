@@ -14,6 +14,8 @@
 #include "4coder_kv_input.cpp"
 #include "4coder_kv_build.cpp"
 #include "4coder_kv_fui.cpp"
+// #define STB_C_LEXER_IMPLEMENTATION  @Removeme
+// #include "stb_c_lexer.h"
 #include "game.cpp"
 #include "4coder_kv_commands.cpp"
 #include "4coder_kv_hooks.cpp"

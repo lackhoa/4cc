@@ -147,7 +147,7 @@ view_get_buffer_rect(Thread_Context *tctx, Models *models, View *view){
     Rect_f32 region = Rf32(view->panel->rect_full);
     if (models->buffer_region != 0){
         Rect_f32 rect = region;
-        Rect_f32 sub_region = Rf32(V2f32(0, 0), rect_dim(rect));
+        Rect_f32 sub_region = Rf32(V2(0, 0), rect2_get_dim(rect));
         Application_Links app = {};
         app.tctx = tctx;
         app.cmd_context = models;
@@ -273,7 +273,7 @@ view_move_buffer_point(Thread_Context *tctx, Models *models, View *view,
     delta += buffer_point.pixel_shift;
     Line_Shift_Vertical shift = view_line_shift_y(tctx, models, view, buffer_point.line_number, delta.y);
     buffer_point.line_number = shift.line;
-    buffer_point.pixel_shift = V2f32(delta.x, delta.y - shift.y_delta);
+    buffer_point.pixel_shift = V2(delta.x, delta.y - shift.y_delta);
     return(buffer_point);
 }
 
@@ -334,7 +334,7 @@ view_move_view_to_cursor(Thread_Context *tctx, Models *models, View *view, Buffe
     Editing_File *file = view->file;
     Face *face = file_get_face(models, file);
     Rect_f32 rect = view_get_buffer_rect(tctx, models, view);
-    Vec2_f32 view_dim = rect_dim(rect);
+    Vec2_f32 view_dim = rect2_get_dim(rect);
     
     Layout_Function *layout_func = file_get_layout_func(file);
     
@@ -354,7 +354,7 @@ view_move_view_to_cursor(Thread_Context *tctx, Models *models, View *view, Buffe
     margin.x = clamp_top(margin.x, lim_dim.x);
     margin.y = clamp_top(margin.y, lim_dim.y);
     
-    Vec2_f32 push_in_lim_dim = hadamard(lim_dim, V2f32(1.f/line_height, 1.f/normal_advance)) - margin;
+    Vec2_f32 push_in_lim_dim = hadamard(lim_dim, V2(1.f/line_height, 1.f/normal_advance)) - margin;
 	push_in_lim_dim.x = clamp_bot(0.f, push_in_lim_dim.x);
 	push_in_lim_dim.y = clamp_bot(0.f, push_in_lim_dim.y);
     push_in.x = clamp_top(push_in.x, push_in_lim_dim.x);
@@ -378,7 +378,7 @@ view_move_view_to_cursor(Thread_Context *tctx, Models *models, View *view, Buffe
     scroll->target.pixel_shift.x = f32_round32(scroll->target.pixel_shift.x);
     scroll->target.pixel_shift.y = f32_round32(scroll->target.pixel_shift.y);
     
-    return(target_p_relative != V2f32(0.f, 0.f));
+    return(target_p_relative != V2(0.f, 0.f));
 }
 
 internal b32
@@ -386,7 +386,7 @@ view_move_cursor_to_view(Thread_Context *tctx, Models *models, View *view, Buffe
     Editing_File *file = view->file;
     Face *face = file_get_face(models, file);
     Rect_f32 rect = view_get_buffer_rect(tctx, models, view);
-    Vec2_f32 view_dim = rect_dim(rect);
+    Vec2_f32 view_dim = rect2_get_dim(rect);
     
     Layout_Function *layout_func = file_get_layout_func(file);
     
@@ -603,8 +603,8 @@ view_init(Thread_Context *tctx, Models *models, View *view, Editing_File *initia
     first_ctx.delta_rule_memory_size = models->delta_rule_memory_size;
     view_push_context(view, &first_ctx);
     
-    view->cursor_margin = V2f32(0.f, 0.f);
-    view->cursor_push_in_multiplier = V2f32(1.5f, 1.5f);
+    view->cursor_margin = V2(0.f, 0.f);
+    view->cursor_push_in_multiplier = V2(1.5f, 1.5f);
     
     view->co = coroutine_create(&models->coroutines, view_event_context_base__inner);
     view->co->user_data = view;

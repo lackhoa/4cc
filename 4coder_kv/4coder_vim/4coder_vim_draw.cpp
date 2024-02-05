@@ -22,8 +22,8 @@ vim_draw_visual_mode(Application_Links *app, View_ID view, Buffer_ID buffer, Fac
 			ARGB_Color helper_color = fcolor_resolve(fcolor_id(defcolor_mark));
 			for(i64 i=test_line_min; i<=test_line_max; i++){
 				if(line_is_valid_and_blank(app, buffer, i) && i != line_min && i != line_max){ continue; }
-				Vec2_f32 min_point = block_rect.p0 + V2f32(0, line_advance*(i-line_min));
-				Vec2_f32 max_point = min_point + V2f32(wid,0);
+				Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*(i-line_min));
+				Vec2_f32 max_point = min_point + V2(wid,0);
 				i64 min_pos = view_pos_from_xy(app, view, min_point);
 				i64 max_pos = view_pos_from_xy(app, view, max_point);
 				paint_text_color(app, text_layout_id, Ii64(min_pos, max_pos), text_color);
@@ -110,7 +110,7 @@ vim_draw_filebar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Fram
 	}
 	
 	
-	Vec2_f32 p = V2f32(title_rect.x1 + 4.5f*char_wid, bar.y0 + 3.f);
+	Vec2_f32 p = V2(title_rect.x1 + 4.5f*char_wid, bar.y0 + 3.f);
 	p = draw_string(app, face_id, str.string, p, base_color);
 	
 	str = Su8(space, 0, 5);
@@ -199,11 +199,11 @@ vim_draw_cursor(Application_Links *app, View_ID view, b32 is_active_view, Buffer
 			if(!vim_is_selecting_register)
       {
 				if(vim_state.mode == VIM_Insert){ rect = rect_split_top_bottom_neg(rect, 5.f).b; }
-				if(rect.p1 != V2f32(0,0)){
+				if(rect.p1 != V2(0,0)){
 					vim_nxt_cursor_pos = rect.p1;
 				}
 				
-				Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - rect_dim(rect), rect_dim(rect));
+				Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - rect2_get_dim(rect), rect2_get_dim(rect));
         // note(kv): this draws the normal cursor
 				draw_rectangle_fcolor(app, cursor_rect, roundness, fcolor_id(defcolor_cursor, cursor_sub_id));
 				
@@ -303,7 +303,7 @@ vim_draw_rel_line_number_margin(Application_Links *app, View_ID view, Buffer_ID 
 	small_digit++;
 	
 	Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, cur_line);
-	Vec2_f32 p = V2f32(margin.x0, line_y.min);
+	Vec2_f32 p = V2(margin.x0, line_y.min);
 	
 	// NOTE(BYP): This assumes background is darker than font color
 	FColor text_color = fcolor_id(defcolor_line_numbers_text);
@@ -324,7 +324,7 @@ vim_draw_rel_line_number_margin(Application_Links *app, View_ID view, Buffer_ID 
 			if(line_y.min != line_y.max){ break; }
 			rel_num++;
 		}
-		p = V2f32(margin.x0, line_y.min);
+		p = V2(margin.x0, line_y.min);
 		draw_string(app, face, digit_string, p, fcolor_resolve(text_color));
 		
 		rel_num++;
@@ -349,7 +349,7 @@ vim_draw_rel_line_number_margin(Application_Links *app, View_ID view, Buffer_ID 
 			if(line_y.min != line_y.max){ break; }
 			rel_num++;
 		}
-		p = V2f32(margin.x0, line_y.min);
+		p = V2(margin.x0, line_y.min);
 		draw_string(app, face, digit_string, p, fcolor_resolve(text_color));
 		
 		rel_num++;
@@ -391,7 +391,7 @@ vim_draw_line_number_margin(Application_Links *app, View_ID view, Buffer_ID buff
 	}
 	
 	Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, cur_line);
-	Vec2_f32 p = V2f32(margin.x0, line_y.min);
+	Vec2_f32 p = V2(margin.x0, line_y.min);
 	
 	// NOTE(BYP): This assumes background is darker than font color
 	FColor text_color = fcolor_id(defcolor_line_numbers_text);
@@ -404,7 +404,7 @@ vim_draw_line_number_margin(Application_Links *app, View_ID view, Buffer_ID buff
 		
 		line_y = text_layout_line_on_screen(app, text_layout_id, cur_line);
 		if(line_y.min != line_y.max){
-			p = V2f32(margin.x0, line_y.min);
+			p = V2(margin.x0, line_y.min);
 			draw_string(app, face, digit_string, p, fcolor_resolve(text_color));
 		}
 		
@@ -433,7 +433,7 @@ vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 	
 	// NOTE(BYP): Drawing the cursor for view transitions
 	if(vim_cur_cursor_pos != vim_nxt_cursor_pos){
-		Vec2_f32 cursor_dim = V2f32(9.f, (vim_state.mode == VIM_Insert ? 4.f : 18.f));
+		Vec2_f32 cursor_dim = V2(9.f, (vim_state.mode == VIM_Insert ? 4.f : 18.f));
 		Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - cursor_dim, cursor_dim);
 		u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
 		f32 roundness = char_wid*cursor_roundness_100*0.01f;

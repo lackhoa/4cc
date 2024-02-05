@@ -131,7 +131,8 @@ VERSION HISTORY
 #define GB_INCLUDE_GB_H
 
 #if defined(__cplusplus)
-extern "C" {
+// extern "C" {
+EXTERN_C_BEGIN
 #endif
 
 #if defined(__cplusplus)
@@ -2525,7 +2526,8 @@ GB_DEF void  gb_platform_hide_window                (gbPlatform *p);
 #endif // GB_PLATFORM
 
 #if defined(__cplusplus)
-}
+//}
+EXTERN_C_END
 #endif
 
 #endif // GB_INCLUDE_GB_H

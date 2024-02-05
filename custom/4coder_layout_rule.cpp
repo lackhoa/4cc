@@ -152,7 +152,7 @@ result.metrics = metrics;
 result.tab_width = tab_width;
 result.line_to_text_shift = text_height - line_height;
 
-result.blank_dim = V2f32(metrics->space_advance, text_height);
+result.blank_dim = V2(metrics->space_advance, text_height);
 
 result.line_y = line_height;
 result.text_y = text_height;
@@ -182,7 +182,7 @@ codepoint = ' ';
 }
 vars->p.x = f32_ceil32(vars->p.x);
 f32 next_x = vars->p.x + advance;
-layout_write(arena, list, face, index, codepoint, flags, Rf32(vars->p, V2f32(next_x, vars->text_y)), vars->line_y);
+layout_write(arena, list, face, index, codepoint, flags, Rf32(vars->p, V2(next_x, vars->text_y)), vars->line_y);
 vars->p.x = next_x;
 }
 
@@ -209,67 +209,73 @@ return(vars->metrics->byte_advance);
 }
 
 function void
-lr_tb_write_byte_with_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32 advance, Arena *arena, Layout_Item_List *list, i64 index, u8 byte){
-Face_Metrics *metrics = vars->metrics;
-
-f32 final_next_x = vars->p.x + advance;
-u32 lo = ((u32)byte     )&0xF;
-u32 hi = ((u32)byte >> 4)&0xF;
-
-Vec2_f32 p = vars->p;
-p.x = f32_ceil32(p.x);
-f32 next_x = p.x + metrics->byte_sub_advances[0];
-f32 text_y = vars->text_y;
-
-Layout_Item_Flag flags = LayoutItemFlag_Special_Character;
-layout_write(arena, list, face, index, '\\', flags, Rf32(p, V2f32(next_x, text_y)), vars->line_y);
-p.x = next_x;
-
-flags = LayoutItemFlag_Ghost_Character;
-next_x += metrics->byte_sub_advances[1];
-layout_write(arena, list, face, index, integer_symbols[hi], flags, Rf32(p, V2f32(next_x, text_y)), vars->line_y);
-p.x = next_x;
-next_x += metrics->byte_sub_advances[2];
-layout_write(arena, list, face, index, integer_symbols[lo], flags, Rf32(p, V2f32(next_x, text_y)), vars->line_y);
-
-vars->p.x = final_next_x;
+lr_tb_write_byte_with_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32 advance, Arena *arena, Layout_Item_List *list, i64 index, u8 byte)
+{
+    Face_Metrics *metrics = vars->metrics;
+    
+    f32 final_next_x = vars->p.x + advance;
+    u32 lo = ((u32)byte     )&0xF;
+    u32 hi = ((u32)byte >> 4)&0xF;
+    
+    Vec2_f32 p = vars->p;
+    p.x = f32_ceil32(p.x);
+    f32 next_x = p.x + metrics->byte_sub_advances[0];
+    f32 text_y = vars->text_y;
+    
+    Layout_Item_Flag flags = LayoutItemFlag_Special_Character;
+    layout_write(arena, list, face, index, '\\', flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+    p.x = next_x;
+    
+    flags = LayoutItemFlag_Ghost_Character;
+    next_x += metrics->byte_sub_advances[1];
+    layout_write(arena, list, face, index, integer_symbols[hi], flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+    p.x = next_x;
+    next_x += metrics->byte_sub_advances[2];
+    layout_write(arena, list, face, index, integer_symbols[lo], flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+    
+    vars->p.x = final_next_x;
 }
 
 function void
 lr_tb_write_byte(LefRig_TopBot_Layout_Vars *vars, Face_ID face,
-                 Arena *arena, Layout_Item_List *list, i64 index, u8 byte){
-lr_tb_write_byte_with_advance(vars, face, vars->metrics->byte_advance,
-                              arena, list, index, byte);
+                 Arena *arena, Layout_Item_List *list, i64 index, u8 byte)
+{
+    lr_tb_write_byte_with_advance(vars, face, vars->metrics->byte_advance,
+                                  arena, list, index, byte);
 }
 
 function void
 lr_tb_write_blank_dim(LefRig_TopBot_Layout_Vars *vars, Face_ID face, Vec2_f32 dim,
-                      Arena *arena, Layout_Item_List *list, i64 index){
-layout_write(arena, list, face, index, ' ', 0, Rf32_xy_wh(vars->p, dim), vars->line_y);
-vars->p.x += dim.x;
+                      Arena *arena, Layout_Item_List *list, i64 index)
+{
+    layout_write(arena, list, face, index, ' ', 0, Rf32_xy_wh(vars->p, dim), vars->line_y);
+    vars->p.x += dim.x;
 }
 
 function void
 lr_tb_write_blank(LefRig_TopBot_Layout_Vars *vars, Face_ID face,
-                  Arena *arena, Layout_Item_List *list, i64 index){
-lr_tb_write_blank_dim(vars, face, vars->blank_dim, arena, list, index);
+                  Arena *arena, Layout_Item_List *list, i64 index)
+{
+    lr_tb_write_blank_dim(vars, face, vars->blank_dim, arena, list, index);
 }
 
 function void
-lr_tb_next_line(LefRig_TopBot_Layout_Vars *vars){
-vars->p.x = 0.f;
-vars->p.y = vars->line_y;
-vars->line_y += vars->metrics->line_height;
-vars->text_y = vars->line_y + vars->line_to_text_shift;
+lr_tb_next_line(LefRig_TopBot_Layout_Vars *vars)
+{
+    vars->p.x = 0.f;
+    vars->p.y = vars->line_y;
+    vars->line_y += vars->metrics->line_height;
+    vars->text_y = vars->line_y + vars->line_to_text_shift;
 }
 
 function void
-lr_tb_next_line_padded(LefRig_TopBot_Layout_Vars *vars, f32 top, f32 bot){
-vars->p.x = 0.f;
-vars->p.y = vars->line_y + top;
-vars->line_y += top + vars->metrics->line_height;
-vars->text_y = vars->line_y + vars->line_to_text_shift;
-vars->line_y += bot;
+lr_tb_next_line_padded(LefRig_TopBot_Layout_Vars *vars, f32 top, f32 bot)
+{
+    vars->p.x = 0.f;
+    vars->p.y = vars->line_y + top;
+    vars->line_y += top + vars->metrics->line_height;
+    vars->text_y = vars->line_y + vars->line_to_text_shift;
+    vars->line_y += bot;
 }
 
 function void
@@ -285,98 +291,99 @@ vars->p.x = clamp_bot(align_x, vars->p.x);
 ////////////////////////////////
 
 function Layout_Item_List
-layout_unwrapped_small_blank_lines(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
-Layout_Item_List list = get_empty_item_list(range);
-
-Scratch_Block scratch(app);
-String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
-
-Face_Advance_Map advance_map = get_face_advance_map(app, face);
-Face_Metrics metrics = get_face_metrics(app, face);
-f32 tab_width = (f32)def_get_config_u64(app, vars_save_string_lit("default_tab_width"));
-tab_width = clamp_bot(1, tab_width);
-LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
-
-pos_vars.blank_dim = V2f32(metrics.space_advance, metrics.text_height*0.5f);
-
-if (text.size == 0){
-lr_tb_write_blank(&pos_vars, face, arena, &list, range.start);
-}
-else{
-Newline_Layout_Vars newline_vars = get_newline_layout_vars();
-
-b32 all_whitespace = true;
-for (u64 i = 0; i < text.size; i += 1){
-if (!character_is_whitespace(text.str[i])){
-all_whitespace = false;
-break;
-}
-}
-
-if (!all_whitespace){
-pos_vars.blank_dim.y = metrics.text_height;
-}
-
-u8 *ptr = text.str;
-u8 *end_ptr = ptr + text.size;
-for (;ptr < end_ptr;){
-Character_Consume_Result consume = utf8_consume(ptr, (u64)(end_ptr - ptr));
-
-i64 index = layout_index_from_ptr(ptr, text.str, range.first);
-switch (consume.codepoint){
-case '\t':
+layout_unwrapped_small_blank_lines(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width)
 {
-newline_layout_consume_default(&newline_vars);
-Vec2_f32 dim = pos_vars.blank_dim;
-dim.x = lr_tb_advance(&pos_vars, face, '\t');
-lr_tb_write_blank_dim(&pos_vars, face, dim, arena, &list, index);
-}break;
-
-case ' ':
-case '\f':
-case '\v':
-{
-newline_layout_consume_default(&newline_vars);
-lr_tb_write_blank(&pos_vars, face, arena, &list, index);
-}break;
-
-default:
-{
-newline_layout_consume_default(&newline_vars);
-lr_tb_write(&pos_vars, face, arena, &list, index, consume.codepoint);
-}break;
-
-case '\r':
-{
-newline_layout_consume_CR(&newline_vars, index);
-}break;
-
-case '\n':
-{
-i64 newline_index = newline_layout_consume_LF(&newline_vars, index);
-lr_tb_write_blank(&pos_vars, face, arena, &list, newline_index);
-lr_tb_next_line(&pos_vars);
-}break;
-
-case max_u32:
-{
-newline_layout_consume_default(&newline_vars);
-lr_tb_write_byte(&pos_vars, face, arena, &list, index, *ptr);
-}break;
-}
-
-ptr += consume.inc;
-}
-
-if (newline_layout_consume_finish(&newline_vars)){
-i64 index = layout_index_from_ptr(ptr, text.str, range.first);
-lr_tb_write_blank(&pos_vars, face, arena, &list, index);
-}
-}
-
-layout_item_list_finish(&list, -pos_vars.line_to_text_shift);
-
-return(list);
+    Layout_Item_List list = get_empty_item_list(range);
+    
+    Scratch_Block scratch(app);
+    String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+    
+    Face_Advance_Map advance_map = get_face_advance_map(app, face);
+    Face_Metrics metrics = get_face_metrics(app, face);
+    f32 tab_width = (f32)def_get_config_u64(app, vars_save_string_lit("default_tab_width"));
+    tab_width = clamp_bot(1, tab_width);
+    LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
+    
+    pos_vars.blank_dim = V2(metrics.space_advance, metrics.text_height*0.5f);
+    
+    if (text.size == 0){
+        lr_tb_write_blank(&pos_vars, face, arena, &list, range.start);
+    }
+    else{
+        Newline_Layout_Vars newline_vars = get_newline_layout_vars();
+        
+        b32 all_whitespace = true;
+        for (u64 i = 0; i < text.size; i += 1){
+            if (!character_is_whitespace(text.str[i])){
+                all_whitespace = false;
+                break;
+            }
+        }
+        
+        if (!all_whitespace){
+            pos_vars.blank_dim.y = metrics.text_height;
+        }
+        
+        u8 *ptr = text.str;
+        u8 *end_ptr = ptr + text.size;
+        for (;ptr < end_ptr;){
+            Character_Consume_Result consume = utf8_consume(ptr, (u64)(end_ptr - ptr));
+            
+            i64 index = layout_index_from_ptr(ptr, text.str, range.first);
+            switch (consume.codepoint){
+                case '\t':
+                {
+                    newline_layout_consume_default(&newline_vars);
+                    Vec2_f32 dim = pos_vars.blank_dim;
+                    dim.x = lr_tb_advance(&pos_vars, face, '\t');
+                    lr_tb_write_blank_dim(&pos_vars, face, dim, arena, &list, index);
+                }break;
+                
+                case ' ':
+                case '\f':
+                case '\v':
+                {
+                    newline_layout_consume_default(&newline_vars);
+                    lr_tb_write_blank(&pos_vars, face, arena, &list, index);
+                }break;
+                
+                default:
+                {
+                    newline_layout_consume_default(&newline_vars);
+                    lr_tb_write(&pos_vars, face, arena, &list, index, consume.codepoint);
+                }break;
+                
+                case '\r':
+                {
+                    newline_layout_consume_CR(&newline_vars, index);
+                }break;
+                
+                case '\n':
+                {
+                    i64 newline_index = newline_layout_consume_LF(&newline_vars, index);
+                    lr_tb_write_blank(&pos_vars, face, arena, &list, newline_index);
+                    lr_tb_next_line(&pos_vars);
+                }break;
+                
+                case max_u32:
+                {
+                    newline_layout_consume_default(&newline_vars);
+                    lr_tb_write_byte(&pos_vars, face, arena, &list, index, *ptr);
+                }break;
+            }
+            
+            ptr += consume.inc;
+        }
+        
+        if (newline_layout_consume_finish(&newline_vars)){
+            i64 index = layout_index_from_ptr(ptr, text.str, range.first);
+            lr_tb_write_blank(&pos_vars, face, arena, &list, index);
+        }
+    }
+    
+    layout_item_list_finish(&list, -pos_vars.line_to_text_shift);
+    
+    return(list);
 }
 
 function Layout_Item_List

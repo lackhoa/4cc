@@ -1,11 +1,13 @@
 /*
-  Rules for the renderer:
+  NOTE(kv): OLD Rules for the renderer:
   - When you push render entries, dimensions are specified in "meter"
   - Textures and bitmaps are srgb premultiplied-alpha
   - v4 colors are in linear space, alpha=1 (so pma doesn't matter)
   - Packed colors are rgba in memory order (i.e abgr in u32 register order)
   pma = pre-multiplied alpha
  */
+
+#include "tr_model.cpp"
 
 struct Scene 
 {
@@ -70,24 +72,70 @@ bitmap_write(Bitmap *bitmap, i32 x, i32 y, u32 color)
     bitmap->data[index] = color;
 }
 
-internal void 
-tr_line(Bitmap *bitmap, v2i p0, v2i p1, v4 color_v4)
-{
-    ARGB_Color color = pack_argb(color_v4);
-    for (f32 t=0.f; 
-         t < 1.0f; 
-         t += 0.01f)
-    {
-        i32 x = p0.x + (p1.x - p0.x)*t; 
-        i32 y = p0.y + (p1.y - p0.y)*t; 
-        bitmap_write(bitmap, x, y, color); 
-    } 
-}
-
 inline umm
 get_bitmap_size(Bitmap *bitmap)
 {
     return bitmap->dim.y * bitmap->pitch;
+}
+
+internal void
+tr_rectangle2i(Bitmap *bitmap, rect2i rect, v4 color)
+{
+    v2i dim = rect2i_get_dim(rect);
+    for_i32 (y, rect.min.x, dim.y)
+    {
+        for_i32 (x, rect.min.x, dim.x)
+        {
+            bitmap_write(bitmap, x, y, pack_argb(color));
+        }
+    }
+}
+
+internal void 
+tr_line(Bitmap *bitmap, v2i p0, v2i p1, v4 color_v4)
+{
+    ARGB_Color color = pack_argb(color_v4);
+    i32 x0 = p0.x; i32 y0 = p0.y;
+    i32 x1 = p1.x; i32 y1 = p1.y;
+    
+    bool steep = false; 
+   
+    if (absolute(x0-x1) < absolute(y0-y1))
+    {// if the line is steep, we transpose the image 
+        macro_swap(x0, y0); 
+        macro_swap(x1, y1); 
+        steep = true; 
+    }
+    
+    if (x0 > x1)
+    {// make it left to right
+        macro_swap(x0, x1); 
+        macro_swap(y0, y1); 
+    }
+    
+    i32 dx = x1-x0;
+    i32 dy = y1-y0;
+    i32 derror = absolute(dy) * 2.0f; 
+    i32 error = 0;
+    i32 y = y0; 
+    
+    for (i32 x=x0; 
+         x <= x1; 
+         x++)
+    { 
+        if (steep)
+            bitmap_write(bitmap, y, x, color);   // if transposed, detranspose
+        else
+            bitmap_write(bitmap, x, y, color);
+       
+        error += derror;
+        if (error > dx)
+        {
+            if (y1 > y0) y += 1;
+            else         y -= 1;
+            error -= 2 * dx;
+        }
+    } 
 }
 
 internal void
@@ -97,19 +145,18 @@ tiny_renderer_main(v2i dim, u32 *data)
     Bitmap *bitmap = &bitmap_value;
     v4 black = {0,0,0,1};
     v4 red   = {1,0,0,1};
+    v4 white = {1,1,1,1};
+    
+#if 0
     fslider( 0.579974, 0.210499 );
     v4 color_v4 = lerp(black, fui_slider_value.x, red);
-#if 0
     tr_line(bitmap, {0,0}, {99, 99}, color_v4);
-#else
-    for_i32 (y, 0, dim.y)
-    {
-        for_i32 (x, 0, dim.x)
-        {
-            bitmap_write(bitmap, x, y, pack_argb(red));
-        }
-    }
 #endif
+    
+    tr_line(bitmap, {13, 20}, {80, 40}, white); 
+    tr_line(bitmap, {20, 13}, {40, 80}, red); 
+    tr_line(bitmap, {0, 0}, {50, 50}, red);
+    // tr_line(bitmap, {80, 40}, {13, 20}, red);
 }
 
 internal void
@@ -119,7 +166,7 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
     v4 gray  = {.5, .5, .5, 1};
     v4 black = {0,0,0,1};
     
-    v2 screen_dim      = rect_get_dim(region);
+    v2 screen_dim      = rect2_get_dim(region);
     v2 screen_half_dim = 0.5f * screen_dim;
     
     {// push backdrop
@@ -127,19 +174,19 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
         draw_rect(app, rect_min_max(v2{0, 0}, screen_dim), bg_color);
     }
    
-    { // NOTE(kv): tiny renderer
-        v3i dim = {100, 100, 1};
+    {// NOTE(kv): tiny renderer
+        v3i dim = {256, 256, 1};
         local_persist b32 initial = true;
         local_persist u32 *data = 0;
         local_persist Texture_ID game_texture = {};
+        Model model;
         if (initial)
         {
+            model = new_model("C:/Users/vodan/4ed/4coder-non-source/tiny_renderer/diablo3_pose.obj");
             initial = false;
-           
             // create game texture
             game_texture = graphics_get_texture(dim, TextureKind_ARGB);
             graphics_set_game_texture(game_texture);
-           
             // allocate memory
             umm size = 4 * dim.x * dim.y * dim.z;
             data = (u32 *)malloc(size);
@@ -149,8 +196,8 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
         tiny_renderer_main(dim.xy, data);
         graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
         
-        v2 position = {0,0};
-        v2 draw_dim = V2f32(dim.x, dim.y);
+        v2 position = {10,10};
+        v2 draw_dim = V2(dim.x, dim.y);
         draw_textured_rect(app, rect_min_dim(position, draw_dim));
     }
     

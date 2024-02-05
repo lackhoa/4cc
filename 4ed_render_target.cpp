@@ -173,12 +173,12 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, f32 roundness, f3
     f32 half_thickness = thickness*0.5f;
     
     Render_Vertex vertices[6] = {};
-    vertices[0].xy = V2f32(rect.x0, rect.y0);
-    vertices[1].xy = V2f32(rect.x1, rect.y0);
-    vertices[2].xy = V2f32(rect.x0, rect.y1);
+    vertices[0].xy = V2(rect.x0, rect.y0);
+    vertices[1].xy = V2(rect.x1, rect.y0);
+    vertices[2].xy = V2(rect.x0, rect.y1);
     vertices[3]    = vertices[1];
     vertices[4]    = vertices[2];
-    vertices[5].xy = V2f32(rect.x1, rect.y1);
+    vertices[5].xy = V2(rect.x1, rect.y1);
     
     Vec2_f32 center = rect_center(rect);
     for (i32 i = 0; i < alen(vertices); i += 1)
@@ -193,7 +193,7 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, f32 roundness, f3
 internal void
 draw_rect_to_target(Render_Target *target, rect2 rect, f32 roundness, u32 color)
 {
-    Vec2_f32 dim = rect_dim(rect);
+    Vec2_f32 dim = rect2_get_dim(rect);
     f32 thickness = Max(dim.x, dim.y);
     draw_rect_outline_to_target(target, rect, roundness, thickness, color);
 }
@@ -221,7 +221,7 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
     vertices[2].uvw = V3f32(uv.x0, uv.y1, bounds.w);
     vertices[5].uvw = V3f32(uv.x1, uv.y1, bounds.w);
     
-    Vec2_f32 y_axis = V2f32(-x_axis.y, x_axis.x);
+    Vec2_f32 y_axis = V2(-x_axis.y, x_axis.x);
     Vec2_f32 x_min = bounds.xy_off.x0*x_axis;
     Vec2_f32 x_max = bounds.xy_off.x1*x_axis;
     Vec2_f32 y_min = bounds.xy_off.y0*y_axis;
@@ -362,7 +362,7 @@ draw_string_inner(Render_Target *target, Face *face, String_Const_u8 string, Vec
 
 internal f32
 draw_string(Render_Target *target, Face *face, String_Const_u8 string, Vec2_f32 point, u32 color){
-    return(draw_string_inner(target, face, string, point, color, 0, V2f32(1.f, 0.f)));
+    return(draw_string_inner(target, face, string, point, color, 0, V2(1.f, 0.f)));
 }
 
 internal f32
@@ -372,17 +372,17 @@ draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 colo
 
 internal f32
 draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color){
-    return(draw_string_inner(target, face, SCu8(str), point, color, 0, V2f32(1.f, 0.f)));
+    return(draw_string_inner(target, face, SCu8(str), point, color, 0, V2(1.f, 0.f)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, String_Const_u8 str){
-    return(draw_string_inner(target, face, str, V2f32(0, 0), 0, 0, V2f32(0, 0)));
+    return(draw_string_inner(target, face, str, V2(0, 0), 0, 0, V2(0, 0)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, u8 *str){
-    return(draw_string_inner(target, face, SCu8(str), V2f32(0, 0), 0, 0, V2f32(0, 0)));
+    return(draw_string_inner(target, face, SCu8(str), V2(0, 0), 0, 0, V2(0, 0)));
 }
 
 // BOTTOM

@@ -58,7 +58,7 @@ get_panel_margin_color(i32 level){
 
 function Vec2_f32
 draw_string(Application_Links *app, Face_ID font_id, String_Const_u8 string, Vec2_f32 p, ARGB_Color color){
-    return(draw_string_oriented(app, font_id, color, string, p, 0, V2f32(1.f, 0.f)));
+    return(draw_string_oriented(app, font_id, color, string, p, 0, V2(1.f, 0.f)));
 }
 
 function Vec2_f32
@@ -362,7 +362,7 @@ draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID
         push_fancy_string(scratch, &list, pop2_color, str.string);
     }
     
-    Vec2_f32 p = bar.p0 + V2f32(2.f, 2.f);
+    Vec2_f32 p = bar.p0 + V2(2.f, 2.f);
     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
 }
 
@@ -372,7 +372,7 @@ draw_query_bar(Application_Links *app, Query_Bar *query_bar, Face_ID face_id, Re
     Fancy_Line list = {};
     push_fancy_string(scratch, &list, fcolor_id(defcolor_pop1)        , query_bar->prompt);
     push_fancy_string(scratch, &list, fcolor_id(defcolor_text_default), query_bar->string);
-    Vec2_f32 p = bar.p0 + V2f32(2.f, 2.f);
+    Vec2_f32 p = bar.p0 + V2(2.f, 2.f);
     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
 }
 
@@ -420,7 +420,7 @@ draw_line_number_margin(Application_Links *app, View_ID view_id, Buffer_ID buffe
     for (;line_number < one_past_last_line_number &&
          line_number < line_count;){
         Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, line_number);
-        Vec2_f32 p = V2f32(margin.x0, line_y.min);
+        Vec2_f32 p = V2(margin.x0, line_y.min);
         
         fill_fancy_string(&fstring, 0, line_color, 0, 0, digit_string);
         draw_fancy_string(app, face_id, fcolor_zero(), &fstring, p);
@@ -891,10 +891,10 @@ draw_notepad_style_cursor_highlight(Application_Links *app, View_ID view_id,
 
 function Rect_f32
 get_contained_box_near_point(Rect_f32 container, Vec2_f32 p, Vec2_f32 box_dims){
-    Vec2_f32 container_dims = rect_dim(container);
+    Vec2_f32 container_dims = rect2_get_dim(container);
     box_dims.x = clamp_top(box_dims.x, container_dims.x);
     box_dims.y = clamp_top(box_dims.y, container_dims.y);
-    Vec2_f32 q = p + V2f32(-20.f, 22.f);
+    Vec2_f32 q = p + V2(-20.f, 22.f);
     if (q.x + box_dims.x > container.x1){
         q.x = container.x1 - box_dims.x;
     }
@@ -914,7 +914,7 @@ draw_tool_tip(Application_Links *app, Face_ID face, Fancy_Block *block,
     Rect_f32 box = Rf32(p, p);
     if (block->line_count > 0){
         Vec2_f32 dims = get_fancy_block_dim(app, face, block);
-        dims += V2f32(x_padding, 2.f);
+        dims += V2(x_padding, 2.f);
         box = get_contained_box_near_point(region, p, dims);
         box.x0 = f32_round32(box.x0);
         box.y0 = f32_round32(box.y0);
@@ -923,7 +923,7 @@ draw_tool_tip(Application_Links *app, Face_ID face, Fancy_Block *block,
         Rect_f32 prev_clip = draw_set_clip(app, box);
         draw_rectangle_fcolor(app, box, 6.f, back_color);
         draw_fancy_block(app, face, fcolor_zero(), block,
-                         box.p0 + V2f32(x_half_padding, 1.f));
+                         box.p0 + V2(x_half_padding, 1.f));
         draw_set_clip(app, prev_clip);
     }
     return(box);
@@ -936,7 +936,7 @@ draw_drop_down(Application_Links *app, Face_ID face, Fancy_Block *block,
     Rect_f32 box = Rf32(p, p);
     if (block->line_count > 0){
         Vec2_f32 dims = get_fancy_block_dim(app, face, block);
-        dims += V2f32(x_padding, 4.f);
+        dims += V2(x_padding, 4.f);
         box = get_contained_box_near_point(region, p, dims);
         box.x0 = f32_round32(box.x0);
         box.y0 = f32_round32(box.y0);
@@ -946,7 +946,7 @@ draw_drop_down(Application_Links *app, Face_ID face, Fancy_Block *block,
         draw_rectangle_fcolor(app, box, 0.f, back_color);
         draw_margin(app, box, rect_inner(box, 1.f), outline_color);
         draw_fancy_block(app, face, fcolor_zero(), block,
-                         box.p0 + V2f32(x_half_padding, 2.f));
+                         box.p0 + V2(x_half_padding, 2.f));
         draw_set_clip(app, prev_clip);
     }
     return(box);

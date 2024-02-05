@@ -308,6 +308,6 @@ function void vim_page_scroll_inner(Application_Links *app, f32 ratio){
 	move_vertical_pixels(app, scroll_pixels);
 	
 	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-	scroll.target = view_move_buffer_point(app, view, scroll.target, V2f32(0.f, scroll_pixels));
+	scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, scroll_pixels));
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
 }

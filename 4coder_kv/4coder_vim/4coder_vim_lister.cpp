@@ -178,7 +178,7 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
 
 function Vec2_i32
 calc_col_row(Application_Links *app, Lister *lister){
-	Vec2_f32 dim = rect_dim(global_get_screen_rectangle(app));
+	v2 dim = rect2_get_dim(global_get_screen_rectangle(app));
 	Face_ID face_id = get_face_id(app, 0);
 	Face_Metrics metrics = get_face_metrics(app, face_id);
 	f32 line_height = metrics.line_height;
@@ -256,7 +256,7 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	draw_set_clip(app, region);
 	
 	Mouse_State mouse = get_mouse_state(app);
-	Vec2_f32 m_p = V2f32(mouse.p);
+	Vec2_f32 m_p = V2(mouse.p);
 	
 	// NOTE(allen): auto scroll to the item if the flag is set.
 	f32 scroll_y = lister->scroll.position.y;
@@ -349,7 +349,7 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 		u64 index = string_find_last(node->status, '\n');
 		push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), string_prefix(node->status, index));
 		
-		Vec2_f32 p = item_inner.p0 + V2f32(3.f, (block_height - line_height)*0.5f);
+		Vec2_f32 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
 		draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
 	}
 	f32 x_padding = metrics.normal_advance;
@@ -526,7 +526,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
 		
 		// NOTE: This is a bit of a hack to make clicking the lister not change views
 		Mouse_State mouse_state = get_mouse_state(app);
-		Vec2_f32 mouse_pos = V2f32(mouse_state.p);
+		Vec2_f32 mouse_pos = V2(mouse_state.p);
 		if(mouse_state.press_l){
 			void *clicked = vim_lister_user_data_at_p(app, view, lister, mouse_pos, col_num);
 			if(clicked){

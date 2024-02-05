@@ -355,8 +355,8 @@ V4i32(i32 x, i32 y, i32 z, i32 w){
     Vec4_i32 v = {x, y, z, w};
     return(v);
 }
-function Vec2_f32
-V2f32(f32 x, f32 y){
+internal Vec2_f32
+V2(f32 x, f32 y){
     Vec2_f32 v = {x, y};
     return(v);
 }
@@ -516,20 +516,20 @@ V4i32(Vec4_f32 o){
     return(V4i32((i32)o.x, (i32)o.y, (i32)o.z, (i32)o.w));
 }
 function Vec2_f32
-V2f32(Vec2_i8 o){
-    return(V2f32((f32)o.x, (f32)o.y));
+V2(Vec2_i8 o){
+    return(V2((f32)o.x, (f32)o.y));
 }
 function Vec2_f32
-V2f32(Vec2_i16 o){
-    return(V2f32((f32)o.x, (f32)o.y));
+V2(Vec2_i16 o){
+    return(V2((f32)o.x, (f32)o.y));
 }
 function Vec2_f32
-V2f32(Vec2_i32 o){
-    return(V2f32((f32)o.x, (f32)o.y));
+V2(Vec2_i32 o){
+    return(V2((f32)o.x, (f32)o.y));
 }
 function Vec2_f32
-V2f32(Vec2_f32 o){
-    return(V2f32((f32)o.x, (f32)o.y));
+V2(Vec2_f32 o){
+    return(V2((f32)o.x, (f32)o.y));
 }
 function Vec3_f32
 V3f32(Vec3_i8 o){
@@ -2141,7 +2141,8 @@ rect_inner(Rect_f32 r, f32 m){
 }
 
 function Vec2_i32
-rect_dim(Rect_i32 r){
+rect2i_get_dim(Rect_i32 r)
+{
     Vec2_i32 v = {r.x1 - r.x0, r.y1 - r.y0};
     return(v);
 }
@@ -2160,11 +2161,6 @@ rect_width(Rect_i32 r){
 function i32
 rect_height(Rect_i32 r){
     return(r.y1 - r.y0);
-}
-function Vec2_f32
-rect_dim(Rect_f32 r){
-    Vec2_f32 v = {r.x1 - r.x0, r.y1 - r.y0};
-    return(v);
 }
 function Range_f32
 rect_x(Rect_f32 r){
@@ -2231,11 +2227,11 @@ rect_overlap(Rect_f32 a, Rect_f32 b){
 
 function Vec2_i32
 rect_half_dim(Rect_i32 r){
-    return(rect_dim(r)/2);
+    return(rect2i_get_dim(r)/2);
 }
 function Vec2_f32
 rect_half_dim(Rect_f32 r){
-    return(rect_dim(r)*0.5f);
+    return(rect2_get_dim(r)*0.5f);
 }
 
 function Rect_i32

@@ -250,7 +250,7 @@ view_move_buffer_point(Application_Links *app, View_ID view, Buffer_Point buffer
     delta += buffer_point.pixel_shift;
     Line_Shift_Vertical shift = view_line_shift_y(app, view, buffer_point.line_number, delta.y);
     buffer_point.line_number = shift.line;
-    buffer_point.pixel_shift = V2f32(delta.x, delta.y - shift.y_delta);
+    buffer_point.pixel_shift = V2(delta.x, delta.y - shift.y_delta);
     return(buffer_point);
 }
 

@@ -98,8 +98,8 @@ function void byp_draw_token_colors(Application_Links *app, View_ID view, Buffer
 	if(do_cursor_tok_highlight){
 		token_string = push_token_lexeme(app, scratch, buffer, cursor_token);
 		cursor_tok_rect = text_layout_character_on_screen(app, text_layout_id, cursor_token->pos);
-		tok_rect_dim = V2f32(cursor_token->size*rect_width(cursor_tok_rect), 2.f);
-		cursor_tok_rect = Rf32_xy_wh(V2f32(cursor_tok_rect.x0, cursor_tok_rect.y1 - 2.f), tok_rect_dim);
+		tok_rect_dim = V2(cursor_token->size*rect_width(cursor_tok_rect), 2.f);
+		cursor_tok_rect = Rf32_xy_wh(V2(cursor_tok_rect.x0, cursor_tok_rect.y1 - 2.f), tok_rect_dim);
 	}
 
 	ARGB_Color function_color = fcolor_resolve(fcolor_id(defcolor_function));
@@ -175,7 +175,7 @@ function void byp_draw_token_colors(Application_Links *app, View_ID view, Buffer
 		if(do_cursor_tok_highlight){
 			if(data_match(lexeme, token_string)){
 				Rect_f32 cur_tok_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
-				cur_tok_rect = Rf32_xy_wh(V2f32(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
+				cur_tok_rect = Rf32_xy_wh(V2(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
 				draw_rectangle(app, cur_tok_rect, 5.f, argb_color_blend(cursor_tok_color, 0.7f, back_color));
 			}
 		}

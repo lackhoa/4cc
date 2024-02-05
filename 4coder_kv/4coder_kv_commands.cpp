@@ -316,21 +316,25 @@ VIM_COMMAND_SIG(kv_sexpr_end)
   move_left(app);
 }
 
-void kv_surround_with(Application_Links *app, char *opener, char *closer)
+internal void 
+kv_surround_with(FApp *app, char *opener, char *closer)
 {
-  GET_VIEW_AND_BUFFER;
-  History_Group group = history_group_begin(app, buffer);
-  defer(history_group_end(group));
-
-  i64 min = view_get_cursor_pos(app, view);
-  i64 max = view_get_mark_pos(app, view);
-  if (max < min) SWAP(min, max);
-  max += 1;
-
-  buffer_replace_range(app, buffer, Ii64(max), SCu8(closer));
-  buffer_replace_range(app, buffer, Ii64(min), SCu8(opener));
-
-  vim_normal_mode(app);
+    GET_VIEW_AND_BUFFER;
+    History_Group group = history_group_begin(app, buffer);
+    defer(history_group_end(group));
+    
+    i64 min = view_get_cursor_pos(app, view);
+    i64 max = view_get_mark_pos(app, view);
+    if (max < min)
+    {
+        macro_swap(min, max);
+    }
+    max += 1;
+    
+    buffer_replace_range(app, buffer, Ii64(max), SCu8(closer));
+    buffer_replace_range(app, buffer, Ii64(min), SCu8(opener));
+    
+    vim_normal_mode(app);
 }
 
 CUSTOM_COMMAND_SIG(kv_reopen_with_confirmation)
@@ -417,7 +421,8 @@ character_is_path(char character)
   }
 }
 
-internal void copy_current_file_name(Application_Links *app)
+internal void 
+copy_current_file_name(FApp *app)
 {
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
@@ -539,7 +544,8 @@ VIM_COMMAND_SIG(kv_delete_surrounding_groupers)
   }
 }
 
-function void kv_do_t_internal(Application_Links *app, b32 shiftp)
+function void 
+kv_do_t_internal(FApp *app, b32 shiftp)
 {
   GET_VIEW_AND_BUFFER;
   History_Group group = history_group_begin(app, buffer);

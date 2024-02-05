@@ -11,7 +11,7 @@ panel_space_from_screen_space(Vec2_f32 p, Vec2_f32 file_region_p0){
 
 function Vec2_f32
 get_mouse_position_in_panel_space(Mouse_State mouse, Vec2_f32 file_region_p0){
-    return(panel_space_from_screen_space(V2f32(mouse.p), file_region_p0));
+    return(panel_space_from_screen_space(V2(mouse.p), file_region_p0));
 }
 
 function Vec2_f32
@@ -206,7 +206,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     }
     
     Mouse_State mouse = get_mouse_state(app);
-    Vec2_f32 m_p = V2f32(mouse.p);
+    Vec2_f32 m_p = V2(mouse.p);
     
     lister->visible_count = (i32)((rect_height(region)/block_height)) - 3;
     lister->visible_count = clamp_bot(1, lister->visible_count);
@@ -220,7 +220,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     }
     
     {
-        Vec2_f32 p = V2f32(text_field_rect.x0 + 3.f, text_field_rect.y0);
+        Vec2_f32 p = V2(text_field_rect.x0 + 3.f, text_field_rect.y0);
         Fancy_Line text_field = {};
         push_fancy_string(scratch, &text_field, fcolor_id(defcolor_pop1),
                           lister->query.string);
@@ -331,7 +331,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
         push_fancy_stringf(scratch, &line, " ");
         push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), node->status);
         
-        Vec2_f32 p = item_inner.p0 + V2f32(3.f, (block_height - line_height)*0.5f);
+        Vec2_f32 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
         draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
     }
     
@@ -633,7 +633,7 @@ run_lister(Application_Links *app, Lister *lister){
                 switch (in.event.mouse.code){
                     case MouseCode_Left:
                     {
-                        Vec2_f32 p = V2f32(in.event.mouse.p);
+                        Vec2_f32 p = V2(in.event.mouse.p);
                         void *clicked = lister_user_data_at_p(app, view, lister, p);
                         lister->hot_user_data = clicked;
                     }break;
@@ -651,7 +651,7 @@ run_lister(Application_Links *app, Lister *lister){
                     case MouseCode_Left:
                     {
                         if (lister->hot_user_data != 0){
-                            Vec2_f32 p = V2f32(in.event.mouse.p);
+                            Vec2_f32 p = V2(in.event.mouse.p);
                             void *clicked = lister_user_data_at_p(app, view, lister, p);
                             if (lister->hot_user_data == clicked){
                                 lister_activate(app, lister, clicked, true);

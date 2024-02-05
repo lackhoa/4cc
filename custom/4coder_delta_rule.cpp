@@ -172,8 +172,8 @@ DELTA_RULE_SIG(original_delta){
     }
     Smooth_Step step_x = smooth_camera_step(pending.x, velocity->x, 80.f, 1.f/2.f);
     Smooth_Step step_y = smooth_camera_step(pending.y, velocity->y, 80.f, 1.f/2.f);
-    *velocity = V2f32(step_x.v, step_y.v);
-    return(V2f32(step_x.p, step_y.p));
+    *velocity = V2(step_x.v, step_y.v);
+    return(V2(step_x.p, step_y.p));
 }
 global_const u64 original_delta_memory_size = sizeof(Vec2_f32);
 

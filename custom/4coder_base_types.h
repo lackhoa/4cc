@@ -241,7 +241,7 @@ enum{
 
 #define local_const static const
 #define global_const static const
-#define external extern "C"
+#define external extern "C"  // todo(kv): wtf removeme?
 
 #define ArrayCount(a) ((sizeof(a))/(sizeof(*a)))
 #define ArraySafe(a,i) ((a)[(i)%ArrayCount(a)])
@@ -740,20 +740,25 @@ struct Range_f32_Array{
   i32 count;
 };
 
-union Rect_i32{
-  struct{
-    i32 x0;
-    i32 y0;
-    i32 x1;
-    i32 y1;
-  };
-  struct{
-    Vec2_i32 p0;
-    Vec2_i32 p1;
-  };
-  Vec2_i32 p[2];
+union rect2i {
+    struct{
+        i32 x0;
+        i32 y0;
+        i32 x1;
+        i32 y1;
+    };
+    struct{
+        Vec2_i32 p0;
+        Vec2_i32 p1;
+    };
+    struct{
+        Vec2_i32 min;
+        Vec2_i32 max;
+    };
+    Vec2_i32 p[2];
 };
 
+typedef rect2i Rect_i32;
 typedef rect2 Rect_f32;
 
 union Rect_f32_Pair{

@@ -46,6 +46,13 @@
 #    define GB_IMPLEMENTATION
 #endif
 
+
+
+#define DLL_EXPORT extern "C" __attribute__((visibility("default")))
+#define EXTERN_C_BEGIN extern "C" {
+#define EXTERN_C_END   }
+
+
 // NOTE: These header files are supposed to be in the same directory as this file.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
@@ -80,6 +87,7 @@ typedef int32_t  b32;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef size_t   umm;
+typedef i64      imm;
 
 typedef float    r32;
 typedef float    f32;
@@ -378,14 +386,14 @@ rotateRight(u32 value, i32 rotateAmount)
 
 #define kv_assert(claim) do{if (!(claim)) { debugbreak; }} while(0)
 
-#define invalid_code_path   kv_assert(false)
-#define todo_error_report   kv_assert(false)
-#define todo_incomplete     kv_assert(false)
-#define todo_test_me        kv_assert(false)
-#define todo_outlaw         kv_assert(false)
-#define todo_unknown        kv_assert(false)
-#define invalid_default_case default: { kv_assert(false); };
-#define breakhere       { int x = 5; (void)x; }
+#define invalid_code_path   debugbreak
+#define todo_error_report   debugbreak
+#define todo_incomplete     debugbreak
+#define todo_test_me        debugbreak
+#define todo_testme         debugbreak
+#define todo_untested       debugbreak
+#define invalid_default_case default: { debugbreak; };
+#define breakhere       do{ int x = 5; (void)x; }while(0)  // NOTE(kv): actually not "debugbreak" :>
 
 #if KV_INTERNAL
 #    define soft_assert                  kv_assert
@@ -627,7 +635,7 @@ unsetFlag(u32 *flags, u32 flag)
   *flags &= ~flag;
 }
 
-#define SWAP(a, b) { \
+#define macro_swap(a, b) { \
     auto temp = a; \
     a = b; \
     b = temp; \
@@ -640,8 +648,6 @@ unsetFlag(u32 *flags, u32 flag)
   list                    = new_list;
 
 #define EAT_TYPE(POINTER, TYPE) (TYPE *)(POINTER += sizeof(TYPE), POINTER - sizeof(TYPE))
-
-#define DLL_EXPORT extern "C" __attribute__((visibility("default")))
 
 inline void *kv_xmalloc(size_t size) {
   void *ptr = malloc(size);
@@ -874,13 +880,14 @@ normalize(v2 v)
 inline v2
 noz(v2 v)  // normalize or zero
 {
-  f32 lsq = lengthSq(v);
-  v2 result = {};
-  if (lsq > square(.0001f)) {
-    // prevent the result from getting too big
-    result = v * 1.f / squareRoot(lsq);
-  }
-  return result;
+    f32 lsq = lengthSq(v);
+    v2 result = {};
+    if (lsq > square(0.0001f))
+    {
+        // prevent the result from getting too big
+        result = v * 1.f / squareRoot(lsq);
+    }
+    return result;
 }
 
 inline v2
@@ -1281,7 +1288,7 @@ rect_get_radius(v2 radius)
 }
 
 inline v2
-rect_get_dim(rect2 rect)
+rect2_get_dim(rect2 rect)
 {
     return (rect.max - rect.min);
 }
@@ -1383,7 +1390,7 @@ rectCenterDim(v3 center, v3 dim)
 }
 
 inline Rect3
-rectDim(v3 dim)
+rect3_get_dim(v3 dim)
 {
     Rect3 result = rectCenterDim(v3All(0), dim);
     return result;
@@ -1528,7 +1535,10 @@ pack_sRGBA(v4 color)
   return result;
 }
 
-// IMPORTANT: NO TRESPASS /////////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+
+// IMPORTANT: NO TRESPASS ////////////////////////////////////
 
 // NOTE(kv): do the people including this file a favor and not pollute.
 #ifdef KV_IMPLEMENTATION

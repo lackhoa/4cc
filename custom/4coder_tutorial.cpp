@@ -131,7 +131,7 @@ tutorial_render(Application_Links *app, Frame_Info frame_info, View_ID view_id){
     draw_rectangle_fcolor(app, region, 20.f, fcolor_id(defcolor_back));
     region = rect_inner(region, 10.f);
     
-    Vec2_f32 title_p = V2f32(region.x0, panel_y0 + (metrics.line_height*2.f) - title_height*0.5f);
+    Vec2_f32 title_p = V2(region.x0, panel_y0 + (metrics.line_height*2.f) - title_height*0.5f);
     
     tutorial.hover_action = TutorialAction_None;
     if (tutorial.is_active){
@@ -146,7 +146,7 @@ tutorial_render(Application_Links *app, Frame_Info frame_info, View_ID view_id){
         
         f32 b_width = metrics.normal_advance*10.f;
         Mouse_State mouse = get_mouse_state(app);
-        Vec2_f32 m_p = V2f32(mouse.p);
+        Vec2_f32 m_p = V2(mouse.p);
         
         {
             Rect_f32_Pair pair = rect_split_left_right(footer, b_width);

@@ -688,7 +688,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
         log_graph.selected_event = selected_event;
         
         Mouse_State mouse = get_mouse_state(app);
-        Vec2_f32 m_p = V2f32(mouse.p) - inner.p0;
+        Vec2_f32 m_p = V2(mouse.p) - inner.p0;
         
         Face_Metrics metrics = get_face_metrics(app, log_graph.face_id);
         f32 line_height = metrics.line_height;
@@ -741,7 +741,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             }
             
             
-            Vec2_f32 p = V2f32(box_inner.x0 + 3.f,
+            Vec2_f32 p = V2(box_inner.x0 + 3.f,
                                (f32_round32((box_inner.y0 + box_inner.y1 - line_height)*0.5f)));
             draw_fancy_line(app, log_graph.face_id, fcolor_zero(), &line, p);
         }
@@ -778,7 +778,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                             }break;
                         }
                         
-                        Vec2_f32 p = V2f32(x_cursor, y_cursor);
+                        Vec2_f32 p = V2(x_cursor, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id,
                                                          &line);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
@@ -828,7 +828,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                             push_fancy_stringf(scratch, &line, f_white, "]");
                         }
                         
-                        Vec2_f32 p = V2f32(box_inner.x0 + 3.f, y_cursor);
+                        Vec2_f32 p = V2(box_inner.x0 + 3.f, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id,
                                                          &line);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
@@ -860,9 +860,9 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                     push_fancy_stringf(scratch, &line, f_white, "%.*s:", string_expand(file_name));
                     push_fancy_stringf(scratch, &line, f_pink, "%llu", view_event->line_number);
                     
-                    Vec2_f32 right_p = V2f32(box_inner.x1 - 3.f, y_cursor);
+                    Vec2_f32 right_p = V2(box_inner.x1 - 3.f, y_cursor);
                     f32 width = get_fancy_line_width(app, log_graph.face_id, &line);
-                    Vec2_f32 p = V2f32(right_p.x - width, right_p.y);
+                    Vec2_f32 p = V2(right_p.x - width, right_p.y);
                     draw_fancy_line(app, log_graph.face_id, fcolor_zero(), &line, p);
                 }
                 
@@ -876,9 +876,9 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                         Fancy_Line line = {};
                         log_graph_render__tag(scratch, &line, &log_parse, tag);
                         
-                        Vec2_f32 right_p = V2f32(box_inner.x1 - 3.f, y_cursor);
+                        Vec2_f32 right_p = V2(box_inner.x1 - 3.f, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id, &line);
-                        Vec2_f32 p = V2f32(right_p.x - width, right_p.y);
+                        Vec2_f32 p = V2(right_p.x - width, right_p.y);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
                                         &line, p);
                         
@@ -940,7 +940,7 @@ log_graph__get_box_at_point(Log_Graph *graph, Vec2_f32 p){
 internal Log_Graph_Box*
 log_graph__get_box_at_mouse_point(Application_Links *app, Log_Graph *graph){
     Mouse_State mouse = get_mouse_state(app);
-    Vec2_f32 m_p = V2f32(mouse.p) - graph->layout_region.p0;
+    Vec2_f32 m_p = V2(mouse.p) - graph->layout_region.p0;
     return(log_graph__get_box_at_point(graph, m_p));
 }
 
@@ -1036,7 +1036,7 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
             
             case InputEventKind_MouseButton:
             {
-                Vec2_f32 m_p = V2f32(in.event.mouse.p) - log_graph.layout_region.p0;
+                Vec2_f32 m_p = V2(in.event.mouse.p) - log_graph.layout_region.p0;
                 switch (in.event.mouse.code){
                     case MouseCode_Left:
                     {

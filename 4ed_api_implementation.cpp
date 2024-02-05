@@ -97,7 +97,7 @@ global_set_setting(FApp *app, Global_Setting_ID setting, i64 value){
 api(custom) function Rect_f32
 global_get_screen_rectangle(FApp *app){
     Models *models = (Models*)app->cmd_context;
-    return(Rf32(V2f32(0, 0), V2f32(layout_get_root_size(&models->layout))));
+    return(Rf32(V2(0, 0), V2(layout_get_root_size(&models->layout))));
 }
 
 api(custom) function Thread_Context*
@@ -3006,7 +3006,7 @@ text_layout_create(FApp *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point b
         
         Layout_Function *layout_func = file_get_layout_func(file);
         
-        Vec2_f32 dim = rect_dim(rect);
+        Vec2_f32 dim = rect2_get_dim(rect);
         
         i64 line_count = buffer_line_count(buffer);
         i64 line_number = buffer_point.line_number;
@@ -3171,7 +3171,7 @@ text_layout_character_on_screen(FApp *app, Text_Layout_ID layout_id, i64 pos){
                     }
                 }
                 
-                Vec2_f32 shift = V2f32(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
+                Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
                 result.p0 += shift;
                 result.p1 += shift;
             }

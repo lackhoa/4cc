@@ -440,7 +440,7 @@ VIM_COMMAND_SIG(vim_line_up){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	f32 line_height = get_face_metrics(app, get_face_id(app, 0)).line_height;
 	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-	scroll.target = view_move_buffer_point(app, view, scroll.target, V2f32(0.f, line_height));
+	scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, line_height));
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
 }
 
@@ -448,7 +448,7 @@ VIM_COMMAND_SIG(vim_line_down){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	f32 line_height = get_face_metrics(app, get_face_id(app, 0)).line_height;
 	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-	scroll.target = view_move_buffer_point(app, view, scroll.target, V2f32(0.f, -line_height));
+	scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, -line_height));
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
 }
 

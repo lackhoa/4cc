@@ -92,7 +92,7 @@ text_layout_render(Thread_Context *tctx, Models *models, Text_Layout *layout,
         Face *face = file_get_face(models, file);
         f32 width = rect_width(layout->rect);
         
-        Vec2_f32 delta = V2f32(1.f, 0.f);
+        Vec2_f32 delta = V2(1.f, 0.f);
         
         Vec2_f32 shift_p = layout->rect.p0 - layout->point.pixel_shift;
         i64 first_index = layout->visible_range.first;

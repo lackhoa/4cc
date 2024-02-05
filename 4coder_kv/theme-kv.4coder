@@ -1,6 +1,6 @@
 defcolor_base         = 0xFF777700;  // NOTE(kv): the text color on vim filebar
 defcolor_text_default = 0xFF787878;
-defcolor_function     = 0xFF787898;
+defcolor_function     = 0xFF587898;
 defcolor_keyword      = 0xFFaa9a74;
 defcolor_comment      = 0xFF557700;
 defcolor_macro        = 0xFF996666;

@@ -645,7 +645,7 @@ draw_fancy_string__inner(Application_Links *app, Face_ID face, FColor fore, Fanc
         }
     }
     
-    Vec2_f32 down_delta = V2f32(-delta.y, delta.x);
+    Vec2_f32 down_delta = V2(-delta.y, delta.x);
     for (Fancy_String *string = first_string;
          string != 0;
          string = string->next){
@@ -718,7 +718,7 @@ internal Vec2_f32
 get_fancy_string_dim(Application_Links *app, Face_ID face, Fancy_String *string){
     Fancy_String *next = string->next;
     string->next = 0;
-    Vec2_f32 result = V2f32(get_fancy_string_width__inner(app, face, string),
+    Vec2_f32 result = V2(get_fancy_string_width__inner(app, face, string),
                             get_fancy_string_height__inner(app, face, string));
     string->next = next;
     return(result);
@@ -777,7 +777,7 @@ get_fancy_line_dim(Application_Links *app, Face_ID face, Fancy_Line *line){
         if (line->face != 0){
             face = line->face;
         }
-        result = V2f32(get_fancy_string_width__inner(app, face, line->first), get_fancy_string_height__inner(app, face, line->first));
+        result = V2(get_fancy_string_width__inner(app, face, line->first), get_fancy_string_height__inner(app, face, line->first));
     }
     return(result);
 }
@@ -843,24 +843,24 @@ draw_fancy_block(Application_Links *app, Face_ID face, FColor fore,
 internal Vec2_f32
 draw_fancy_string(Application_Links *app, Face_ID face, FColor fore,
                   Fancy_String *string, Vec2_f32 p){
-    return(draw_fancy_string(app, face, fore, string, p, 0, V2f32(1.f, 0.f)));
+    return(draw_fancy_string(app, face, fore, string, p, 0, V2(1.f, 0.f)));
 }
 
 internal Vec2_f32
 draw_fancy_string(Application_Links *app, Fancy_String *string, Vec2_f32 p){
-    return(draw_fancy_string(app, 0, fcolor_zero(), string, p, 0, V2f32(1.f, 0.f)));
+    return(draw_fancy_string(app, 0, fcolor_zero(), string, p, 0, V2(1.f, 0.f)));
 }
 
 internal Vec2_f32
 draw_fancy_line(Application_Links *app, Face_ID face, FColor fore,
                 Fancy_Line *line, Vec2_f32 p){
-    return(draw_fancy_line(app, face, fore, line, p, 0, V2f32(1.f, 0.f)));
+    return(draw_fancy_line(app, face, fore, line, p, 0, V2(1.f, 0.f)));
 }
 
 internal void
 draw_fancy_block(Application_Links *app, Face_ID face, FColor fore,
                  Fancy_Block *block, Vec2_f32 p){
-    draw_fancy_block(app, face, fore, block, p, 0, V2f32(1.f, 0.f));
+    draw_fancy_block(app, face, fore, block, p, 0, V2(1.f, 0.f));
 }
 
 ////////////////////////////////
