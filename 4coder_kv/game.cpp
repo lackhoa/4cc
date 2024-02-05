@@ -139,7 +139,7 @@ tr_line(Bitmap *bitmap, v2i p0, v2i p1, v4 color_v4)
 }
 
 internal void
-tiny_renderer_main(v2i dim, u32 *data)
+tiny_renderer_main(v2i dim, u32 *data, Model *model)
 {
     Bitmap bitmap_value = {.data=data, .dim=dim, .pitch=4*dim.x};
     Bitmap *bitmap = &bitmap_value;
@@ -147,16 +147,23 @@ tiny_renderer_main(v2i dim, u32 *data)
     v4 red   = {1,0,0,1};
     v4 white = {1,1,1,1};
     
-#if 0
-    fslider( 0.579974, 0.210499 );
-    v4 color_v4 = lerp(black, fui_slider_value.x, red);
-    tr_line(bitmap, {0,0}, {99, 99}, color_v4);
-#endif
-    
-    tr_line(bitmap, {13, 20}, {80, 40}, white); 
-    tr_line(bitmap, {20, 13}, {40, 80}, red); 
-    tr_line(bitmap, {0, 0}, {50, 50}, red);
-    // tr_line(bitmap, {80, 40}, {13, 20}, red);
+    for (int facei=0; 
+         facei < arrlen(model->faces);
+         facei++) 
+    { 
+        i32 *face = model->faces[facei]; 
+        for_i32 (verti,0,3)
+        { 
+            v3 v0 = model->vertices[face[verti]];
+            v3 v1 = model->vertices[face[(verti+1) % 3]];
+            // NOTE: the model coordinates are in clip space?
+            i32 x0 = unilateral(v0.x)*dim.x; 
+            i32 y0 = unilateral(v0.y)*dim.y;
+            i32 x1 = unilateral(v1.x)*dim.x;
+            i32 y1 = unilateral(v1.y)*dim.y;
+            tr_line(bitmap, {x0, y0}, {x1, y1}, white); 
+        } 
+    }
 }
 
 internal void
@@ -193,11 +200,12 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
             block_zero(data, size);
         }
         
-        tiny_renderer_main(dim.xy, data);
+        tiny_renderer_main(dim.xy, data, &model);
         graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
         
         v2 position = {10,10};
-        v2 draw_dim = V2(dim.x, dim.y);
+        f32 scale = fslider( 1.373590, 1.000000 ).x;
+        v2 draw_dim = scale * V2(dim.x, dim.y);
         draw_textured_rect(app, rect_min_dim(position, draw_dim));
     }
     

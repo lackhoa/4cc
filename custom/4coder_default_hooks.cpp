@@ -7,18 +7,23 @@
 function void 
 open_startup_file(Application_Links *app)
 {
-  Scratch_Block scratch(app);
-  View_ID view = get_this_ctx_view(app, Access_Always);
-
-  String8 startup_file;
+    Scratch_Block scratch(app);
+    View_ID view = get_this_ctx_view(app, Access_Always);
+    
 #if KV_INTERNAL
-  startup_file = def_get_config_string(scratch, vars_save_string_lit("startup_file1"));
+    String8 startup_file = def_get_config_string(scratch, "startup_file1");
+    String8 other_startup_file = def_get_config_string(scratch, "other_startup_file1");
 #else
-  startup_file = def_get_config_string(scratch, vars_save_string_lit("startup_file"));
+    String8 startup_file = def_get_config_string(scratch, "startup_file");
+    String8 other_startup_file = def_get_config_string(scratch, "other_startup_file");
 #endif
-
-  Buffer_ID buffer = create_buffer(app, startup_file, 0);
-  view_set_buffer(app, view, buffer, 0);
+    
+    Buffer_ID buffer = create_buffer(app, startup_file, 0);
+    view_set_buffer(app, view, buffer, 0);
+   
+    View_ID other_panel = get_next_view_looped_all_panels(app, view, Access_Always);
+    Buffer_ID other_buffer = create_buffer(app, other_startup_file, 0);
+    view_set_buffer(app, other_panel, other_buffer, 0);
 }
 
 CUSTOM_COMMAND_SIG(default_startup)

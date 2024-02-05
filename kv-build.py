@@ -12,7 +12,7 @@ import shutil
 pjoin = os.path.join
 
 DEBUG_MODE = 1
-FORCE_FULL_REBUILD = 0
+FORCE_FULL_REBUILD = 1
 
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
@@ -27,8 +27,8 @@ DOT_DLL=".dll" if OS_WINDOWS else ".so"
 DOT_EXE='.exe' if OS_WINDOWS else ''
 remedybg = "remedybg.exe"
 
-# TODO(kv): vet these warnings
-WARNINGS="-Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
+WARNINGS="-Werror -Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
+# WARNINGS="-Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
 
 def mkdir_p(path):
     os.makedirs(path, exist_ok=True)

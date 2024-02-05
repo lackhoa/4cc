@@ -69,3 +69,30 @@ optional_char(stb_lexer *tk)
         
     return result;
 }
+
+// NOTE(kv): "geometry.h"
+
+template <class t> struct Vec2 
+{
+	union 
+    {
+		struct {t u, v;};
+		struct {t x, y;};
+		t raw[2];
+	};
+	Vec2() : u(0), v(0) {}
+	Vec2(t _u, t _v) : u(_u),v(_v) {}
+};
+
+template <class t> struct Vec3 
+{
+	union 
+    {
+		struct {t x, y, z;};
+		struct { t ivert, iuv, inorm; };
+		t raw[3];
+	};
+	Vec3() : x(0), y(0), z(0) {}
+	inline Vec3<t> operator ^(const Vec3<t> &v) const { return Vec3<t>(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x); }
+	Vec3<t> & normalize(t l=1) { *this = (*this)*(l/norm()); return *this; }
+};

@@ -14,8 +14,7 @@
 #include "4coder_kv_input.cpp"
 #include "4coder_kv_build.cpp"
 #include "4coder_kv_fui.cpp"
-// #define STB_C_LEXER_IMPLEMENTATION  @Removeme
-// #include "stb_c_lexer.h"
+#include "kv_lexer.h"
 #include "game.cpp"
 #include "4coder_kv_commands.cpp"
 #include "4coder_kv_hooks.cpp"
@@ -149,20 +148,20 @@ inline void create_unimportant_buffer(Application_Links *app, char *name)
 
 CUSTOM_COMMAND_SIG(kv_startup)
 {
-  default_startup(app);  // todo(kv): This thing stomps over your binding, let's yank the relevant part out.
+    default_startup(app);  // todo(kv): This thing stomps over your binding, let's yank the relevant part out.
 	set_window_title(app, SCu8("4coder kv"));
-  
-  kv_essential_mapping(&framework_mapping);
-  kv_default_bindings(&framework_mapping);
-  { // NOTE(kv): Create special buffers.
-    create_unimportant_buffer(app, "*calc*");
-    create_unimportant_buffer(app, "*render*");
-  }
-  
-  // NOTE(kv): debug system startup
-  Scratch_Block temp(app);
+    
+    kv_essential_mapping(&framework_mapping);
+    kv_default_bindings(&framework_mapping);
+    { // NOTE(kv): Create special buffers.
+        create_unimportant_buffer(app, "*calc*");
+        create_unimportant_buffer(app, "*render*");
+    }
+    
+    // NOTE(kv): debug system startup
+    Scratch_Block temp(app);
 #if KV_INTERNAL
-  DEBUG_draw_hud_p = def_get_config_b32(vars_save_string_lit("DEBUG_draw_hud_p"));
+    DEBUG_draw_hud_p = def_get_config_b32(vars_save_string_lit("DEBUG_draw_hud_p"));
 #endif
 }
 

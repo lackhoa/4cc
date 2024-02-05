@@ -674,13 +674,13 @@ inline void *kv_xmalloc(size_t size) {
 #define kv_clamp_top(VAR, VAL)   if (VAR > VAL) VAR = VAL;
 
 inline f32
-toBilateral(f32 r)
+bilateral(f32 r)
 {
     return (r * 2.0f) - 1.0f;
 }
 
 inline f32
-toUnilateral(f32 r)
+unilateral(f32 r)
 {
     return (r * 0.5f) + 0.5f;
 }
@@ -898,9 +898,9 @@ perp(v2 v)
 }
 
 inline v2
-toBilateral(v2 v)
+bilateral(v2 v)
 {
-    v2 result = {toBilateral(v.x), toBilateral(v.y)};
+    v2 result = {bilateral(v.x), bilateral(v.y)};
     return result;
 }
 
@@ -1148,12 +1148,12 @@ project(v3 onto, v3 v)
 }
 
 inline v3
-toBilateral(v3 v)
+bilateral(v3 v)
 {
     v3 result;
-    result.x = toBilateral(v.x);
-    result.y = toBilateral(v.y);
-    result.z = toBilateral(v.z);
+    result.x = bilateral(v.x);
+    result.y = bilateral(v.y);
+    result.z = bilateral(v.z);
     return result;
 }
 

@@ -1,7 +1,3 @@
-#if 0  // note: test fslider
-  fslider( 0.233908, 0.285825 );
-#endif
-
 struct FUI
 {
   Application_Links *app;
@@ -58,32 +54,35 @@ fui_draw_slider(Application_Links *app, Buffer_ID buffer, rect2 region)
 
 // TODO(kv): the parser is SO bad
 internal b32
-parse_float(FApp *app, Buffer_ID buffer, Token_Iterator_Array *it, f32 *out)
+parse_number(FApp *app, Buffer_ID buffer, Token_Iterator_Array *it, f32 *out)
 {
-  *out = 0;
-  Scratch_Block temp(app);
-  if ( !token_it_inc(it) ) return false;
- 
-  // note(kv): parse the sign
-  f32 sign = 1;
-  if (it->ptr->kind == TokenBaseKind_Operator)
-  {
-    String8 string = push_token_lexeme(app, temp, buffer, it->ptr);
-    if (string_equal(string, "-"))      sign = -1;
-    else if (string_equal(string, "+")) {}
-    else                                return false;
+    *out = 0;
+    Scratch_Block temp(app);
+    if ( !token_it_inc(it) ) return false;
     
-    if ( !token_it_inc(it)) return false;
-  }
-  
-  if (it->ptr->kind != TokenBaseKind_LiteralFloat)
-    return false;
-  
-  String8 string = push_token_lexeme(app, temp, buffer, it->ptr);
-  char *cstring = to_c_string(temp, string);
-  *out = sign * gb_str_to_f32(cstring, 0);
-  
-  return true;
+    // note(kv): parse the sign
+    f32 sign = 1;
+    if (it->ptr->kind == TokenBaseKind_Operator)
+    {
+        String8 string = push_token_lexeme(app, temp, buffer, it->ptr);
+        if (string_equal(string, "-"))      sign = -1;
+        else if (string_equal(string, "+")) {}
+        else                                return false;
+        
+        if ( !token_it_inc(it)) return false;
+    }
+   
+    if (it->ptr->kind != TokenBaseKind_LiteralFloat &&
+        it->ptr->kind != TokenBaseKind_LiteralInteger )
+    {
+        return false;
+    }
+    
+    String8 string = push_token_lexeme(app, temp, buffer, it->ptr);
+    char *cstring = to_c_string(temp, string);
+    *out = sign * gb_str_to_f32(cstring, 0);
+    
+    return true;
 }
 
 internal b32
@@ -107,9 +106,9 @@ fui_handle_slider(FApp *app, Buffer_ID buffer)
         f32 value_x = 0;
         f32 value_y = 0;
         if ( !require_token_kind(it, TokenBaseKind_ParentheticalOpen) ) break;
-        if ( !parse_float(app, buffer, it, &value_x) ) break;
+        if ( !parse_number(app, buffer, it, &value_x) ) break;
         if ( !require_token_kind(it, TokenBaseKind_StatementClose) ) break;
-        if ( !parse_float(app, buffer, it, &value_y) ) break;
+        if ( !parse_number(app, buffer, it, &value_y) ) break;
         if ( !require_token_kind(it, TokenBaseKind_ParentheticalClose ) ) break;
         i64 slider_end = it->ptr->pos + 1;
         
