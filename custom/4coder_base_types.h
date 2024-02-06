@@ -877,6 +877,7 @@ struct String_Const_u8_Array{
   };
   i32 count;
 };
+typedef String_Const_u8_Array String8_Array;
 struct String_Const_u16_Array{
   union{
     String_Const_u16 *strings;

@@ -49,7 +49,7 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
     {
         ProfileScope(app, "[F4] Brace Annotation");
         
-        Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+        text_layout_get_visible_range(app, text_layout_id);
         Token_Array token_array = get_token_array_from_buffer(app, buffer);
         Face_ID face_id = global_small_code_face;
         
@@ -102,7 +102,6 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
             
             // NOTE(rjf): Find token set before this scope begins.
             Token *start_token = 0;
-            i64 token_count = 0;
             {
                 Token_Iterator_Array it = token_iterator_pos(0, &token_array, range.start-1);
                 int paren_nest = 0;
@@ -113,8 +112,6 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
                     
                     if(token)
                     {
-                        token_count += 1;
-                        
                         if(token->kind == TokenBaseKind_ParentheticalClose)
                         {
                             ++paren_nest;
@@ -262,7 +259,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
             
             if(def_enable_virtual_whitespace)
             {
-                x_position = (ranges.count - i - 1) * metrics.space_advance * vw_indent;
+                x_position = (f32)(ranges.count - i - 1) * metrics.space_advance * (f32)vw_indent;
             }
             else
             {
@@ -271,7 +268,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
                 {
                     if(!character_is_whitespace(line.str[char_idx]))
                     {
-                        x_position = metrics.space_advance * char_idx;
+                        x_position = metrics.space_advance * (f32)char_idx;
                         break;
                     }
                 }
@@ -288,7 +285,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
                 y_end = range_end_rect.y0;
             }
             
-            Rect_f32 line_rect = {0};
+            Rect_f32 line_rect = {};
             line_rect.x0 = x_position+x_offset;
             line_rect.x1 = x_position+1+x_offset;
             line_rect.y0 = y_start;

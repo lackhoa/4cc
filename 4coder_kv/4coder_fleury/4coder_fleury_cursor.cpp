@@ -249,15 +249,15 @@ F4_Cursor_RenderEmacsStyle(Application_Links *app, View_ID view_id, b32 is_activ
                 // NOTE(rjf): GLOW IT UP
                 for(int glow = 0; glow < 20; ++glow)
                 {
-                    f32 alpha = 0.1f - (power_mode.enabled ? (glow*0.005f) : (glow*0.015f));
+                    f32 alpha = 0.1f - (power_mode.enabled ? ((f32)glow*0.005f) : ((f32)glow*0.015f));
                     if(alpha > 0)
                     {
                         Rect_f32 glow_rect = target_cursor;
-                        glow_rect.x0 -= glow;
-                        glow_rect.y0 -= glow;
-                        glow_rect.x1 += glow;
-                        glow_rect.y1 += glow;
-                        C4_RenderCursorSymbolThingy(app, glow_rect, roundness + glow*0.7f, 2.f,
+                        glow_rect.x0 -= (f32)glow;
+                        glow_rect.y0 -= (f32)glow;
+                        glow_rect.x1 += (f32)glow;
+                        glow_rect.y1 += (f32)glow;
+                        C4_RenderCursorSymbolThingy(app, glow_rect, roundness + (f32)glow*0.7f, 2.f,
                                                     fcolor_resolve(fcolor_change_alpha(fcolor_argb(cursor_color), alpha)), cursor_type);
                     }
                     else

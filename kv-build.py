@@ -11,8 +11,9 @@ import shutil
 
 pjoin = os.path.join
 
-DEBUG_MODE = 1
-FORCE_FULL_REBUILD = 0
+DEBUG_MODE = 0
+FORCE_FULL_REBUILD = 1
+STOP_DEBUGGING_BEFORE_BUILD = 0
 
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
@@ -34,6 +35,7 @@ WARNINGS_ARRAY = [
     "-Wimplicit-int-float-conversion",
     "-Wshadow",
 
+    "-Wno-unused-variable",
     "-Wno-write-strings",
     "-Wno-null-dereference",
     "-Wno-comment",
@@ -199,7 +201,7 @@ try:
             run(pjoin(FCODER_USER, f'4ed{DOT_EXE}'))
     else:
         # NOTE(kv): remedy stop debugging
-        if OS_WINDOWS:
+        if OS_WINDOWS and STOP_DEBUGGING_BEFORE_BUILD:
             run(f"{remedybg} stop-debugging")
 
         # NOTE(kv): cleanup (todo: arrange our build output directory so we don't have to do manual cleaning crap)

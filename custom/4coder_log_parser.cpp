@@ -970,8 +970,7 @@ log_graph__click_jump_to_event_source(Application_Links *app, Vec2_f32 m_p){
             Log_Event *event = box_node->event;
             log_graph.selected_event = event;
             
-            View_ID target_view = get_next_view_looped_primary_panels(app, log_view,
-                                                                      Access_ReadVisible);
+            View_ID target_view = get_next_view_looped_primary_panels(app, log_view, Access_ReadVisible, true);
             if (target_view != 0){
                 String_Const_u8 file_name = log_parse__get_string(&log_parse, event->src_file_name);
                 Buffer_ID target_buffer = get_buffer_by_file_name(app, file_name, Access_Always);

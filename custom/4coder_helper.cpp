@@ -1052,8 +1052,9 @@ get_snipe_range(Application_Links *app, Boundary_Function *func, Buffer_ID buffe
 
 ////////////////////////////////
 
-function String_Const_u8
-push_buffer_range(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range){
+function String8
+push_buffer_range(FApp *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
+{
     String_Const_u8 result = {};
     i64 length = range_size(range);
     if (length > 0){
@@ -1067,6 +1068,22 @@ push_buffer_range(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_
         }
     }
     return(result);
+}
+
+internal Range_i64
+get_selected_range(FApp *app)
+{
+    GET_VIEW_AND_BUFFER;
+    i64 curpos = view_get_cursor_pos(app, view);
+    i64 markpos = view_get_mark_pos(app, view);
+    return Ii64(curpos, markpos);
+}
+
+internal String8
+push_buffer_selected_range(FApp *app, Arena *arena, Buffer_ID buffer)
+{
+    Range_i64 range = get_selected_range(app);
+    return push_buffer_range(app, arena, buffer, range);
 }
 
 function String_Const_u8
@@ -2638,4 +2655,9 @@ get_cursor_rect(Application_Links *app, Text_Layout_ID text_layout_id)
   return result;
 }
 
-// BOTTOM
+internal b32
+view_is_active(FApp *app, View_ID view)
+{
+    View_ID active_view = get_active_view(app, Access_Always);
+    return (active_view == view);
+}

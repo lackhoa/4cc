@@ -867,8 +867,7 @@ profile_inspect__left_click(Application_Links *app, View_ID view,
     if (has_modifier(event, KeyCode_Shift)){
         if (insp->location_jump_hovered.size != 0){
             View_ID target_view = view;
-            target_view = get_next_view_looped_primary_panels(app, target_view,
-                                                              Access_Always);
+            target_view = get_next_view_looped_primary_panels(app, target_view, Access_Always, true);
             String_Const_u8 location = insp->location_jump_hovered;
             jump_to_location(app, target_view, location);
         }

@@ -14,8 +14,8 @@
 
 struct Hot_Directory{
     Arena arena;
-    String_Const_u8 string;
-    String_Const_u8 canonical;
+    String8 string;  // NOTE(kv): this might not exist, and we can reload it.
+    String8 canonical;
     File_List file_list;
 };
 

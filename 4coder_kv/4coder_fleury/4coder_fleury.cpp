@@ -509,22 +509,6 @@ void fleury_custom_layer_init(Application_Links *app)
 //~ NOTE(rjf): @f4_startup Whenever 4coder's core is ready for the custom layer to start up,
 // this is called.
 
-// TODO(rjf): This is only being used to check if a font file exists because
-// there's a bug in try_create_new_face that crashes the program if a font is
-// not found. This function is only necessary until that is fixed.
-function b32
-IsFileReadable(String_Const_u8 path)
-{
-    b32 result = 0;
-    FILE *file = fopen((char *)path.str, "r");
-    if(file)
-    {
-        result = 1;
-        fclose(file);
-    }
-    return result;
-}
-
 CUSTOM_COMMAND_SIG(fleury_startup)
 CUSTOM_DOC("Fleury startup event")
 {
@@ -655,7 +639,7 @@ CUSTOM_DOC("Fleury startup event")
         
         // NOTE(rjf): Title font.
         {
-            Face_Description desc = {0};
+            Face_Description desc = {};
             {
                 desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = 18;
@@ -676,7 +660,7 @@ CUSTOM_DOC("Fleury startup event")
         
         // NOTE(rjf): Label font.
         {
-            Face_Description desc = {0};
+            Face_Description desc = {};
             {
                 desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = 10;
@@ -699,7 +683,7 @@ CUSTOM_DOC("Fleury startup event")
         {
             Face_Description normal_code_desc = get_face_description(app, get_face_id(app, 0));
             
-            Face_Description desc = {0};
+            Face_Description desc = {};
             {
                 desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = normal_code_desc.parameters.pt_size - 1;
@@ -724,6 +708,4 @@ CUSTOM_DOC("Fleury startup event")
         def_enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
         clear_all_layouts(app);
     }
-  
-  open_startup_file(app);
 }

@@ -98,7 +98,7 @@ F4_PosContext_Render(Application_Links *app, View_ID view, Buffer_ID buffer,
     ProfileScope(app, "[F4] Pos Context Rendering");
     Scratch_Block scratch(app);
     
-    Rect_f32 cursor_rect = text_layout_character_on_screen(app, text_layout_id, pos);
+    text_layout_character_on_screen(app, text_layout_id, pos);
     Rect_f32 view_rect = view_get_screen_rect(app, view);
     Face_ID face = global_small_code_face;
     Face_Metrics metrics = get_face_metrics(app, face);

@@ -777,7 +777,9 @@ VIM_COMMAND_SIG(vim_goto_mark){
 }
 
 
-VIM_COMMAND_SIG(vim_open_file_in_quotes){
+/*
+VIM_COMMAND_SIG(vim_open_file_in_quotes)
+{
 	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -808,6 +810,7 @@ VIM_COMMAND_SIG(vim_open_file_in_quotes){
 		}
 	}
 }
+*/
 
 VIM_COMMAND_SIG(vim_goto_definition){
 	vim_push_jump(app, get_active_view(app, Access_ReadVisible));

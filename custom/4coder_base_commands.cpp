@@ -986,6 +986,19 @@ isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
                 change_scan = Scan_Backward;
                 do_scan_action = true;
             }
+            else if (match_key_code(&in, KeyCode_V) && 
+                     has_modifier(&in, KeyCode_Control))
+            {
+                Scratch_Block scratch(app);
+                String8 clipboard_string = push_clipboard_index(scratch, 0, 0);
+                if (clipboard_string.size)
+                {
+                    String_u8 bar_string = Su8(bar.string, sizeof(bar_string_space));
+                    string_append(&bar_string, clipboard_string);
+                    bar.string = bar_string.string;
+                    string_change = true;
+                }
+            }
             else{
                 // NOTE(allen): is the user trying to execute another command?
                 View_Context ctx = view_current_context(app, view);
@@ -1599,7 +1612,7 @@ CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to op
         
         String_Const_u8 new_file_name = push_u8_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
         
-        view = get_next_view_looped_primary_panels(app, view, Access_Always);
+        view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
         if (view != 0){
             if (view_open_file(app, view, new_file_name, true)){
                 view_set_active(app, view);
@@ -1679,14 +1692,13 @@ CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the correspo
     Buffer_ID new_buffer = 0;
     if ( get_cpp_matching_file(app, buffer, &new_buffer) )
     {
-        view = get_next_view_looped_primary_panels(app, view, Access_Always);
+        view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
         view_set_buffer(app, view, new_buffer, 0);
         view_set_active(app, view);
     }
 }
 
-CUSTOM_COMMAND_SIG(view_buffer_other_panel)
-CUSTOM_DOC("Set the other non-active panel to view the buffer that the active panel views, and switch to that panel.")
+internal void view_buffer_other_panel(FApp *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);

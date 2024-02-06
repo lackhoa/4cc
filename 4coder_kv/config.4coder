@@ -74,6 +74,8 @@ user_name = "khoa";
 // Keyboard AltGr setting
 lalt_lctrl_is_altgr = false;
 
+startup_hot_directory = "~/4ed/code";
+
 // NOTE(kv): quick startup file setting
 startup_file  = "C:/Users/vodan/notes/note.skm";
 // startup_file1 = "C:/Users/vodan/4ed/code/4coder_kv/4coder_kv_fui.cpp";

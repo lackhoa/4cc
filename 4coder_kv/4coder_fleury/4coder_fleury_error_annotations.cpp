@@ -117,8 +117,8 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
                         draw_string(app, face, jump_line, draw_position, fcolor_id(fleury_color_error_annotation));
                         
                         Mouse_State mouse_state = get_mouse_state(app);
-                        if(mouse_state.x >= region.x0 && mouse_state.x <= region.x1 &&
-                           mouse_state.y >= y.min && mouse_state.y <= y.max)
+                        if((f32)mouse_state.x >= region.x0 && (f32)mouse_state.x <= region.x1 &&
+                           (f32)mouse_state.y >= y.min && (f32)mouse_state.y <= y.max)
                         {
                             F4_PushTooltip(jump_line, 0xffff0000);
                         }

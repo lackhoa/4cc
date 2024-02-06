@@ -1,35 +1,12 @@
-global String8 kv_build_file_name_array[] =
+function String8 
+kv_search_build_file_from_dir(FApp *app, Arena *arena, String8 start_dir)
 {
-  str8_lit("kv-build.py"),
-  str8_lit("build.py"),
-  str8_lit("kv-build.sh"),
-  str8_lit("build.sh"),
-  str8_lit("Makefile"),
-#if OS_WINDOWS
-  str8_lit("build.bat"),
-#endif
-};
-global String8 kv_build_cmd_string_array[] =
-{
-  str8_lit("kv-build.py"),
-  str8_lit("build.py"),
-  str8_lit("kv-build.sh"),
-  str8_lit("build.sh"),
-  str8_lit("make"),
-#if OS_WINDOWS
-  str8_lit("build"),
-#endif
-};
-
-function String_Const_u8 
-kv_search_build_file_from_dir(Application_Links *app, Arena *arena, String_Const_u8 start_dir)
-{
-    String_Const_u8 full_file_path = {};
+    String8 full_file_path = {};
     for (u32 i = 0; 
-         i < ArrayCount(kv_build_file_name_array); 
+         i < ArrayCount(standard_build_file_name_array); 
          i += 1)
     {
-        full_file_path = push_file_search_up_path(app, arena, start_dir, kv_build_file_name_array[i]);
+        full_file_path = push_file_search_up_path(app, arena, start_dir, standard_build_file_name_array[i]);
         if (full_file_path.size > 0)
         {
             break;
@@ -38,15 +15,17 @@ kv_search_build_file_from_dir(Application_Links *app, Arena *arena, String_Const
     return full_file_path;
 }
 
+/*
 function b32
-kv_search_and_build_from_dir(Application_Links *app, View_ID view, String_Const_u8 start_dir, char *command_args)
+kv_search_and_build_from_dir(FApp *app, View_ID view, String8 start_dir, char *command_args)
 {
     Scratch_Block scratch(app);
 
     // NOTE(allen): Search
     String_Const_u8 full_file_path = {};
     String_Const_u8 cmd_string  = {};
-    for (u32 i = 0; i < ArrayCount(kv_build_file_name_array); i += 1){
+    for (u32 i = 0; i < ArrayCount(kv_build_file_name_array); i += 1)
+    {
         full_file_path = push_file_search_up_path(app, scratch, start_dir, kv_build_file_name_array[i]);
         if (full_file_path.size > 0){
             cmd_string = kv_build_cmd_string_array[i];
@@ -55,15 +34,17 @@ kv_search_and_build_from_dir(Application_Links *app, View_ID view, String_Const_
     }
 
     b32 result = (full_file_path.size > 0);
-    if (result){
+    if (result)
+    {
         // NOTE(allen): Build
-        String_Const_u8 path = string_remove_last_folder(full_file_path);
-        String_Const_u8 command = push_u8_stringf(scratch, "\"%.*s/%.*s\" %s",
-                                                  string_expand(path),
-                                                  string_expand(cmd_string),
-                                                  command_args);
+        String8 path = string_remove_last_folder(full_file_path);
+        String8 command = push_u8_stringf(scratch, "\"%.*s/%.*s\" %s",
+                                          string_expand(path),
+                                          string_expand(cmd_string),
+                                          command_args);
         b32 auto_save = def_get_config_b32(vars_save_string_lit("automatically_save_changes_on_build"));
-        if (auto_save){
+        if (auto_save)
+        {
             save_all_dirty_buffers(app);
         }
         standard_build_exec_command(app, view, path, command);
@@ -79,49 +60,40 @@ kv_search_and_build_from_dir(Application_Links *app, View_ID view, String_Const_
 static void
 kv_search_and_build(Application_Links *app, char *command_args)
 {
-  GET_VIEW_AND_BUFFER;
-  
-  Scratch_Block scratch(app);
-  b32 did_build = false;
-  String8 build_dir = push_build_directory_at_file(app, scratch, buffer);
-  if (build_dir.size > 0)
-  {
-    did_build = kv_search_and_build_from_dir(app, view, build_dir, command_args);
-  }
-  if (!did_build)
-  {
-    build_dir = push_hot_directory(app, scratch);
+    GET_VIEW_AND_BUFFER;
+    
+    Scratch_Block scratch(app);
+    b32 did_build = false;
+    String8 build_dir = push_build_directory_at_file(app, scratch, buffer);
     if (build_dir.size > 0)
     {
-      did_build = kv_search_and_build_from_dir(app, view, build_dir, command_args);
+        did_build = kv_search_and_build_from_dir(app, view, build_dir, command_args);
     }
-  }
+    if (!did_build)
+    {
+        build_dir = push_hot_directory(app, scratch);
+        if (build_dir.size > 0)
+        {
+            did_build = kv_search_and_build_from_dir(app, view, build_dir, command_args);
+        }
+    }
+}
+*/
+
+internal void 
+kv_build_normal(FApp *app)
+{
+  build_in_bottom_view(app, "");
 }
 
-inline void
-kv_search_and_build_other_panel(Application_Links *app, char *command_args)
+internal void 
+kv_build_run_only(FApp *app)
 {
-  view_buffer_other_panel(app);
-  block_zero_struct(&prev_location);
-  lock_jump_buffer(app, string_u8_litexpr("*compilation*"));
-  kv_search_and_build(app, command_args);
-  return;
+  build_in_bottom_view(app, "run");
 }
 
-CUSTOM_COMMAND_SIG(kv_build_normal)
-CUSTOM_DOC("Like build_search, but using my standard script names.")
+internal void 
+kv_build_full_rebuild(FApp *app)
 {
-  kv_search_and_build_other_panel(app, "");
-}
-
-CUSTOM_COMMAND_SIG(kv_build_run_only)
-CUSTOM_DOC("Same as kv_build_search, only run")
-{
-  kv_search_and_build_other_panel(app, "run");
-}
-
-CUSTOM_COMMAND_SIG(kv_build_full_rebuild)
-CUSTOM_DOC("Same as kv_build_search, only run")
-{
-  kv_search_and_build_other_panel(app, "full");
+  build_in_bottom_view(app, "full");
 }

@@ -4,28 +4,6 @@
 
 // TOP
 
-function void 
-open_startup_file(Application_Links *app)
-{
-    Scratch_Block scratch(app);
-    View_ID view = get_this_ctx_view(app, Access_Always);
-    
-#if KV_INTERNAL
-    String8 startup_file = def_get_config_string(scratch, "startup_file1");
-    String8 other_startup_file = def_get_config_string(scratch, "other_startup_file1");
-#else
-    String8 startup_file = def_get_config_string(scratch, "startup_file");
-    String8 other_startup_file = def_get_config_string(scratch, "other_startup_file");
-#endif
-    
-    Buffer_ID buffer = create_buffer(app, startup_file, 0);
-    view_set_buffer(app, view, buffer, 0);
-   
-    View_ID other_panel = get_next_view_looped_all_panels(app, view, Access_Always);
-    Buffer_ID other_buffer = create_buffer(app, other_startup_file, 0);
-    view_set_buffer(app, other_panel, other_buffer, 0);
-}
-
 CUSTOM_COMMAND_SIG(default_startup)
 CUSTOM_DOC("Default command for responding to a startup event")
 {
@@ -50,8 +28,6 @@ CUSTOM_DOC("Default command for responding to a startup event")
         def_enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
         clear_all_layouts(app);
     }
-  
-    open_startup_file(app);
 }
 
 CUSTOM_COMMAND_SIG(default_try_exit)

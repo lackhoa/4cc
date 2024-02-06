@@ -699,7 +699,7 @@ prj_exec_command(Application_Links *app, Variable_Handle cmd_var){
             
             b32 footer_panel = vars_b32_from_var(vars_read_key(cmd_var, footer_panel_id));
             if (footer_panel){
-                view = get_or_open_build_panel(app);
+                view = global_bottom_view;
                 if (string_match(out, string_u8_litexpr("*compilation*"))){
                     set_fancy_font = true;
                 }

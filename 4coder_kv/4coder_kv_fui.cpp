@@ -47,7 +47,7 @@ fui_draw_slider(Application_Links *app, Buffer_ID buffer, rect2 region)
     v2 v = fui_slider_value.xy;
     v.y = -v.y;  // note: invert y to fit math coordinates
     v2 center = slider_origin + hadamard(v, slider_radius);
-    rect2 rect = rect_center_radius(center, v2{5,5});
+    rect2 rect = rect2_center_radius(center, v2{5,5});
     draw_rect(app, rect, v4{0,0.5f,0,1});
   }
 }

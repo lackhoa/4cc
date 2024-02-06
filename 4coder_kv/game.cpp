@@ -9,11 +9,6 @@
 
 #include "tr_model.cpp"
 
-struct Scene 
-{
-  v3 eye_position;
-};
-
 v4 warm_yellow = v4{.5, .5, .3, 1};
 
 struct RaycastOutput 
@@ -25,16 +20,16 @@ struct RaycastOutput
 RaycastOutput
 raycastPlane(v3 ray_origin, v3 ray_direction, v3 plane_N, f32 plane_d)
 {
-  RaycastOutput out = {};
-  f32 denom = dot(plane_N, ray_direction);
-  if (absolute(denom) >= .0001f) {
-    f32 t = -(plane_d + dot(plane_N, ray_origin)) / denom;
-    if (t >= 0) {
-      out.hit = true;
-      out.p = ray_origin + t*ray_direction;
+    RaycastOutput out = {};
+    f32 denom = dot(plane_N, ray_direction);
+    if (absolute(denom) >= .0001f) {
+        f32 t = -(plane_d + dot(plane_N, ray_origin)) / denom;
+        if (t >= 0) {
+            out.hit = true;
+            out.p = ray_origin + t*ray_direction;
+        }
     }
-  }
-  return out;
+    return out;
 }
 
 RaycastOutput
@@ -173,12 +168,12 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
     unused_var v4 gray  = {.5, .5, .5, 1};
     v4 black = {0,0,0,1};
     
-    v2 screen_dim      = rect2_get_dim(region);
+    v2 screen_dim      = rect2_dim(region);
     v2 screen_half_dim = 0.5f * screen_dim;
     
     {// push backdrop
         v4 bg_color = black;
-        draw_rect(app, rect_min_max(v2{0, 0}, screen_dim), bg_color);
+        draw_rect(app, rect2_min_max(v2{0, 0}, screen_dim), bg_color);
     }
    
     {// NOTE(kv): tiny renderer
@@ -206,7 +201,7 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
         v2 position = {10,10};
         f32 scale = fslider( 2.355828, 1.000000 ).x;
         v2 draw_dim = scale * castV2(dim.x, dim.y);
-        draw_textured_rect(app, rect_min_dim(position, draw_dim));
+        draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }
     
     f32 E3 = 1000.f;

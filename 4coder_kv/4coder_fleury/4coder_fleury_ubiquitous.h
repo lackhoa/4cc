@@ -12,18 +12,16 @@ enum keybinding_mode
     KeyBindingMode_MAX
 };
 
-static keybinding_mode GlobalKeybindingMode;
-static Face_ID global_styled_title_face = 0;
-static Face_ID global_styled_label_face = 0;
-static Face_ID global_small_code_face = 0;
-static Rect_f32 global_cursor_rect = {};
-static Rect_f32 global_last_cursor_rect = {};
-static Rect_f32 global_mark_rect = {};
-static Rect_f32 global_last_mark_rect = {};
-static b32 global_dark_mode = 1;
-static b32 global_battery_saver = 0;
-static View_ID global_compilation_view = 0;
-static b32 global_compilation_view_expanded = 0;
+global keybinding_mode GlobalKeybindingMode;
+global Face_ID global_styled_title_face = 0;
+global Face_ID global_styled_label_face = 0;
+global Face_ID global_small_code_face = 0;
+global Rect_f32 global_cursor_rect = {};
+global Rect_f32 global_last_cursor_rect = {};
+global Rect_f32 global_mark_rect = {};
+global Rect_f32 global_last_mark_rect = {};
+global b32 global_dark_mode = 1;
+global b32 global_battery_saver = 0;
 global Arena permanent_arena = {};
 
 #define MemorySet                 memset

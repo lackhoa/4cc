@@ -1,12 +1,25 @@
-// NOTE(kv): This is the part the fleury layer that matters to my layer,
-// and that conflicts with the other stuff in his layer that depends on 
-// the stuff that I haven't absorbed yet.
-// NOTE: I'm not a big fan of putting them in a separate file, but oh well...
+// NOTE(kv): This is the part the fleury layer that matters to my layer.
 
 #pragma once
 
 #include "4coder_fleury_ubiquitous.cpp"
 #include "4coder_fleury_index.cpp"
+
+// TODO(rjf): This is only being used to check if a font file exists because
+// there's a bug in try_create_new_face that crashes the program if a font is
+// not found. This function is only necessary until that is fixed.
+function b32
+IsFileReadable(String_Const_u8 path)
+{
+    b32 result = 0;
+    FILE *file = fopen((char *)path.str, "r");
+    if(file)
+    {
+        result = 1;
+        fclose(file);
+    }
+    return result;
+}
 
 function DELTA_RULE_SIG(F4_DeltaRule_lite)
 {

@@ -42,7 +42,7 @@ internal void
 F4_TickColors(Application_Links *app, Frame_Info frame_info)
 {
     F4_SyntaxOptions opts = f4_syntax_opts[f4_active_syntax_opt_idx];
-    for(int i = 0; i < sizeof(F4_SyntaxFlags)*8; i += 1)
+    for(u32 i = 0; i < sizeof(F4_SyntaxFlags)*8; i += 1)
     {
         f32 delta = ((f32)!!(opts.flags & (1<<i)) - f4_syntax_flag_transitions[i]) * frame_info.animation_dt * 8.f;
         f4_syntax_flag_transitions[i] += delta;
@@ -83,7 +83,7 @@ struct ColorCtx
 internal ColorCtx
 ColorCtx_Token(Token token, Buffer_ID buffer)
 {
-    ColorCtx ctx = {0};
+    ColorCtx ctx = {};
     ctx.token = token;
     ctx.buffer = buffer;
     return ctx;
@@ -92,7 +92,7 @@ ColorCtx_Token(Token token, Buffer_ID buffer)
 internal ColorCtx
 ColorCtx_Cursor(ColorFlags flags, keybinding_mode mode)
 {
-    ColorCtx ctx = {0};
+    ColorCtx ctx = {};
     ctx.flags = flags;
     ctx.mode = mode;
     return ctx;

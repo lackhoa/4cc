@@ -45,7 +45,7 @@ F4_ImplicitMap(Application_Links *app, String_ID lang, String_ID mode, Input_Eve
     Command_Map_ID map_id = orig_id;
 	if(GlobalKeybindingMode == KeyBindingMode_1)
 	{
-		for(int PairIndex = 0;
+		for(u32 PairIndex = 0;
 			PairIndex < ArrayCount(GlobalCommandMapReroute);
 			++PairIndex)
 		{

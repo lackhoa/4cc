@@ -1194,7 +1194,8 @@ view_get_cursor_pos(FApp *app, View_ID view_id){
 }
 
 api(custom) function i64
-view_get_mark_pos(FApp *app, View_ID view_id){
+view_get_mark_pos(FApp *app, View_ID view_id)
+{
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
     i64 result = 0;;
@@ -2838,7 +2839,7 @@ push_hot_directory(FApp *app, Arena *arena)
     Models *models = (Models*)app->cmd_context;
     Hot_Directory *hot = &models->hot_directory;
     hot_directory_clean_end(hot);
-    return(push_string_copy(arena, hot->string));
+    return( push_string_copy(arena, hot->canonical) );
 }
 
 api(custom) function void
@@ -3010,7 +3011,7 @@ text_layout_create(FApp *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point b
         
         Layout_Function *layout_func = file_get_layout_func(file);
         
-        Vec2_f32 dim = rect2_get_dim(rect);
+        Vec2_f32 dim = rect2_dim(rect);
         
         i64 line_count = buffer_line_count(buffer);
         i64 line_number = buffer_point.line_number;

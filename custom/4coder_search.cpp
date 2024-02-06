@@ -5,10 +5,11 @@ and list all locations.
 
 // TOP
 
-global String_Const_u8 search_name = string_u8_litexpr("*search*");
+global String8 search_buffer_name = string_u8_litexpr("*search*");
 
 internal void
-print_string_match_list_to_buffer(Application_Links *app, Buffer_ID out_buffer_id, String_Match_List matches){
+print_string_match_list_to_buffer(FApp *app, Buffer_ID out_buffer_id, String_Match_List matches)
+{
     Scratch_Block scratch(app);
     clear_buffer(app, out_buffer_id);
     Buffer_Insertion out = begin_buffer_insertion_at_buffered(app, out_buffer_id, 0, scratch, KB(64));
@@ -55,7 +56,8 @@ print_string_match_list_to_buffer(Application_Links *app, Buffer_ID out_buffer_i
 }
 
 internal void
-print_all_matches_all_buffers(Application_Links *app, String_Const_u8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id){
+print_all_matches_all_buffers(Application_Links *app, String8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id)
+{
     Scratch_Block scratch(app);
     String_Match_List matches = find_all_matches_all_buffers(app, scratch, match_patterns, must_have_flags, must_not_have_flags);
     string_match_list_filter_remove_buffer(&matches, out_buffer_id);
@@ -64,33 +66,39 @@ print_all_matches_all_buffers(Application_Links *app, String_Const_u8_Array matc
 }
 
 internal void
-print_all_matches_all_buffers(Application_Links *app, String_Const_u8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id){
-    String_Const_u8_Array array = {&pattern, 1};
+print_all_matches_all_buffers(FApp *app, String8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id)
+{
+    String8_Array array = {&pattern, 1};
     print_all_matches_all_buffers(app, array, must_have_flags, must_not_have_flags, out_buffer_id);
 }
 
 internal void
-print_all_matches_all_buffers_to_search(Application_Links *app, String_Const_u8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, View_ID default_target_view){
-    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_name, default_target_view);
+print_all_matches_all_buffers_to_search(FApp *app, String8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, View_ID default_target_view)
+{
+    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_buffer_name, default_target_view);
     print_all_matches_all_buffers(app, match_patterns, must_have_flags, must_not_have_flags, search_buffer);
 }
 
 internal void
-print_all_matches_all_buffers_to_search(Application_Links *app, String_Const_u8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, View_ID default_target_view){
-    String_Const_u8_Array array = {&pattern, 1};
+print_all_matches_all_buffers_to_search(FApp *app, String8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, View_ID default_target_view)
+{
+    String8_Array array = {&pattern, 1};
     print_all_matches_all_buffers_to_search(app, array, must_have_flags, must_not_have_flags, default_target_view);
 }
 
 internal String_Const_u8
-query_user_list_needle(Application_Links *app, Arena *arena){
+query_user_list_needle(Application_Links *app, Arena *arena)
+{
     u8 *space = push_array(arena, u8, KB(1));
     return(get_query_string(app, "List Locations For: ", space, KB(1)));
 }
 
 internal String_Const_u8_Array
-user_list_definition_array(Application_Links *app, Arena *arena, String_Const_u8 base_needle){
+user_list_definition_array(FApp *app, Arena *arena, String_Const_u8 base_needle)
+{
     String_Const_u8_Array result = {};
-    if (base_needle.size > 0){
+    if (base_needle.size > 0)
+    {
         result.count = 12;
         result.vals = push_array(arena, String_Const_u8, result.count);
         i32 i = 0;
@@ -119,24 +127,30 @@ query_user_list_definition_needle(Application_Links *app, Arena *arena){
 }
 
 internal void
-list_all_locations__generic(Application_Links *app, String_Const_u8_Array needle, List_All_Locations_Flag flags){
-    if (needle.count > 0){
-        View_ID target_view = get_next_view_after_active(app, Access_Always);
+list_all_locations__generic(FApp *app, String8_Array needle, List_All_Locations_Flag flags)
+{
+    if (needle.count > 0)
+    {
         String_Match_Flag must_have_flags = 0;
         String_Match_Flag must_not_have_flags = 0;
-        if (HasFlag(flags, ListAllLocationsFlag_CaseSensitive)){
+        if (HasFlag(flags, ListAllLocationsFlag_CaseSensitive))
+        {
             AddFlag(must_have_flags, StringMatch_CaseSensitive);
         }
-        if (!HasFlag(flags, ListAllLocationsFlag_MatchSubstring)){
+        if (!HasFlag(flags, ListAllLocationsFlag_MatchSubstring))
+        {
             AddFlag(must_not_have_flags, StringMatch_LeftSideSloppy);
             AddFlag(must_not_have_flags, StringMatch_RightSideSloppy);
         }
-        print_all_matches_all_buffers_to_search(app, needle, must_have_flags, must_not_have_flags, target_view);
+        
+        print_all_matches_all_buffers_to_search(app, needle, must_have_flags, must_not_have_flags, global_bottom_view);
+        lock_jump_buffer(app, search_buffer_name);
     }
 }
 
 internal void
-list_all_locations__generic(Application_Links *app, String_Const_u8 needle, List_All_Locations_Flag flags){
+list_all_locations__generic(Application_Links *app, String_Const_u8 needle, List_All_Locations_Flag flags)
+{
     if (needle.size != 0){
         String_Const_u8_Array array = {&needle, 1};
         list_all_locations__generic(app, array, flags);
@@ -152,14 +166,15 @@ list_all_locations__generic_query(Application_Links *app, List_All_Locations_Fla
 }
 
 internal void
-list_all_locations__generic_identifier(Application_Links *app, List_All_Locations_Flag flags){
+list_all_locations__generic_identifier(Application_Links *app, List_All_Locations_Flag flags)
+{
     Scratch_Block scratch(app);
     String_Const_u8 needle = push_token_or_word_under_active_cursor(app, scratch);
     list_all_locations__generic(app, needle, flags);
 }
 
 internal void
-list_all_locations__generic_view_range(Application_Links *app, List_All_Locations_Flag flags){
+list_all_locations__generic_view_range(FApp *app, List_All_Locations_Flag flags){
     Scratch_Block scratch(app);
     String_Const_u8 needle = push_view_range_string(app, scratch);
     list_all_locations__generic(app, needle, flags);

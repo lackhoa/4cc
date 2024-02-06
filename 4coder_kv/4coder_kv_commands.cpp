@@ -70,7 +70,8 @@ inline void byp_make_vim_request(Application_Links *app, BYP_Vim_Request request
 VIM_COMMAND_SIG(byp_request_title){ byp_make_vim_request(app, BYP_REQUEST_Title); }
 VIM_COMMAND_SIG(byp_request_comment){ byp_make_vim_request(app, BYP_REQUEST_Comment); }
 VIM_COMMAND_SIG(byp_request_uncomment){ byp_make_vim_request(app, BYP_REQUEST_UnComment); }
-VIM_COMMAND_SIG(byp_visual_comment){
+VIM_COMMAND_SIG(byp_visual_comment)
+{
 	if(vim_state.mode == VIM_Visual){
 		Vim_Edit_Type edit = vim_state.params.edit_type;
 		byp_request_comment(app);
@@ -87,7 +88,8 @@ VIM_COMMAND_SIG(byp_visual_uncomment){
 	}
 }
 
-CUSTOM_COMMAND_SIG(vim_goto_definition_other_panel)
+internal void
+vim_goto_definition_other_panel(FApp *app)
 {
   vim_push_jump(app, get_active_view(app, Access_ReadVisible));
   view_buffer_other_panel(app);
@@ -433,16 +435,15 @@ copy_current_file_name(FApp *app)
 
 VIM_COMMAND_SIG(open_file_from_current_dir)
 {
-  GET_VIEW_AND_BUFFER;
-  copy_current_file_name(app);  // NOTE(kv): copy the current file name because why not?
-  Scratch_Block temp(app);
-  String8 dirname = push_buffer_dir_name(app, temp, buffer);
-  set_hot_directory(app, dirname);
-  vim_interactive_open_or_new(app);
+    GET_VIEW_AND_BUFFER;
+    Scratch_Block temp(app);
+    String8 dirname = push_buffer_dir_name(app, temp, buffer);
+    set_hot_directory(app, dirname);
+    vim_interactive_open_or_new(app);
 }
 
 internal Range_i64
-get_surrounding_file_range(Application_Links *app)
+get_surrounding_file_range(FApp *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 curpos = view_get_cursor_pos(app, view);
@@ -631,8 +632,8 @@ VIM_COMMAND_SIG(kv_newline_and_indent)
 
 VIM_COMMAND_SIG(kv_vim_visual_line_mode)
 {
-	if(vim_state.mode != VIM_Visual)
-  {
+    if(vim_state.mode != VIM_Visual)
+    {
 		set_mark(app);
 		vim_state.mode = VIM_Visual;
 	}
@@ -640,12 +641,9 @@ VIM_COMMAND_SIG(kv_vim_visual_line_mode)
 }
 
 function void
-kv_list_all_locations_from_string(Application_Links *app, String_Const_u8 needle_str)
+kv_list_all_locations_from_string(FApp *app, String8 needle_str)
 {
     Scratch_Block temp(app);
-    
-    View_ID default_target_view = get_next_view_after_active(app, Access_Always);
-    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_name, default_target_view);
     
     String_Match_List all_matches = {};
     for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
@@ -672,34 +670,59 @@ kv_list_all_locations_from_string(Application_Links *app, String_Const_u8 needle
         all_matches = string_match_list_join(&all_matches, &buffer_matches);
     }
     
+    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
     string_match_list_filter_remove_buffer(&all_matches, search_buffer);
     string_match_list_filter_remove_buffer_predicate(app, &all_matches, buffer_has_name_with_star);
-    
+    //
     print_string_match_list_to_buffer(app, search_buffer, all_matches);
+    lock_jump_buffer(app, search_buffer);
 }
 
-u8 kv_get_current_char(Application_Links *app)
+internal u8 
+kv_get_current_char(FApp *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 pos = view_get_cursor_pos(app, view);
   return buffer_get_char(app, buffer, pos);
 }
 
-CUSTOM_COMMAND_SIG(kv_list_all_locations)
-CUSTOM_DOC("adapted from list_all_locations for fuzzy search, if cursor at identifier then search for that instead")
+// CUSTOM_DOC("adapted from list_all_locations for fuzzy search, if cursor at identifier then search for that instead")
+internal void 
+kv_list_all_locations(FApp *app)
 {
-  if ( character_is_alpha(kv_get_current_char(app)) )
-  {
-    list_all_locations_of_identifier(app);
-  }
-  else
-  {
-    Scratch_Block temp(app);
-    u8 *space = push_array(temp, u8, KB(1));
-    String_Const_u8 needle_str = get_query_string(app, "List Locations For: ", space, KB(1));
-    if (!needle_str.size) return;
-    kv_list_all_locations_from_string(app, needle_str); 
-  }
+    b32 at_identifier = false;
+    b32 is_visual = (vim_state.mode == VIM_Visual);
+    
+    if (!is_visual)
+    {
+        if ( character_is_alpha_numeric(kv_get_current_char(app)) )
+        {
+            at_identifier = true;
+            list_all_locations_of_identifier(app);
+        }
+    }
+   
+    if ( !at_identifier )
+    {
+        String8 needle_str = {};
+        Scratch_Block temp(app);
+        if (is_visual)
+        {
+            GET_VIEW_AND_BUFFER;
+            needle_str = push_buffer_selected_range(app, temp, buffer);
+            vim_normal_mode(app);
+        }
+        else
+        {
+            u8 *space = push_array(temp, u8, KB(1));
+            needle_str = get_query_string(app, "List Locations For: ", space, KB(1));
+        }
+        
+        if (needle_str.size)
+        {
+            kv_list_all_locations_from_string(app, needle_str); 
+        }
+    }
 }
 
 VIM_COMMAND_SIG(kv_handle_return)

@@ -365,6 +365,13 @@ V4i32(i32 x, i32 y, i32 z, i32 w){
     Vec4_i32 v = {x, y, z, w};
     return(v);
 }
+
+internal Vec2_f32
+V2f32(f32 x, f32 y){
+    Vec2_f32 v = {x, y};
+    return(v);
+}
+
 internal Vec2_f32
 V2(f32 x, f32 y){
     Vec2_f32 v = {x, y};
@@ -2243,12 +2250,12 @@ rect_overlap(Rect_f32 a, Rect_f32 b){
 }
 
 function Vec2_i32
-rect_half_dim(Rect_i32 r){
+rect2_half_dim(Rect_i32 r){
     return(rect2i_get_dim(r)/2);
 }
 function Vec2_f32
-rect_half_dim(Rect_f32 r){
-    return(rect2_get_dim(r)*0.5f);
+rect2_half_dim(Rect_f32 r){
+    return(rect2_dim(r)*0.5f);
 }
 
 function Rect_i32

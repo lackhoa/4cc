@@ -88,7 +88,7 @@ F4_PowerMode_CharacterPressed(void)
         }
     }
     
-    if(power_mode.keypress_history_count >= ArrayCount(power_mode.keypress_history))
+    if(power_mode.keypress_history_count >= ArrayCountSigned(power_mode.keypress_history))
     {
         memmove(power_mode.keypress_history + 0, power_mode.keypress_history + 1,
                 (ArrayCount(power_mode.keypress_history) - 1) * sizeof(power_mode.keypress_history[0]));
@@ -109,7 +109,7 @@ F4_PowerMode_Particle(f32 x, f32 y, f32 velocity_x, f32 velocity_y, f32 decay_ra
                       f32 roundness, f32 scale, String_Const_u8 str)
 {
     Particle *result = 0;
-    if(power_mode.particle_count < ArrayCount(power_mode.particles))
+    if(power_mode.particle_count < ArrayCountSigned(power_mode.particles))
     {
         int i = power_mode.particle_count++;
         result = power_mode.particles + i;
@@ -212,7 +212,7 @@ F4_PowerMode_Tick(Application_Links *app, Frame_Info frame_info)
     // NOTE(rjf): Load keystroke sounds.
     if(power_mode.enabled && power_mode.allowed)
     {
-        for(int i = 0; i < ArrayCount(f4_powermode_keystroke_sounds); i += 1)
+        for(u32 i = 0; i < ArrayCount(f4_powermode_keystroke_sounds); i += 1)
         {
             char path[256];
             snprintf(path, sizeof(path), "sounds/PowerKey-%03d.wav", i+1);
@@ -301,7 +301,7 @@ F4_PowerMode_RenderBuffer(Application_Links *app, View_ID view, Face_ID face, Fr
     }
     
     f32 camera_x = buffer_scroll.position.pixel_shift.x;
-    f32 camera_y = buffer_scroll.position.pixel_shift.y + buffer_scroll.position.line_number*metrics.line_height;
+    f32 camera_y = buffer_scroll.position.pixel_shift.y + (f32)buffer_scroll.position.line_number*metrics.line_height;
     
     for(int i = 0; i < power_mode.particle_count;)
     {
@@ -368,6 +368,6 @@ F4_PowerMode_RenderWholeScreen(Application_Links *app, Frame_Info frame_info)
         Face_ID face_id = get_face_id(app, 0);
         String_Const_u8 string = push_stringf(scratch, "CPM: %.2f", F4_PowerMode_ActiveCharactersPerMinute());
         f32 advance = get_string_advance(app, face_id, string);
-        draw_string(app, face_id, string, V2f32(rect.x1 - advance, rect.y0), 0xffffffff);
+        draw_string(app, face_id, string, V2(rect.x1 - advance, rect.y0), 0xffffffff);
     }
 }

@@ -85,22 +85,6 @@ CUSTOM_DOC("Toggles battery saving mode.")
     global_battery_saver = !global_battery_saver;
 }
 
-CUSTOM_COMMAND_SIG(f4_toggle_compilation_expand)
-CUSTOM_DOC("Expand the compilation window.")
-{
-    Buffer_ID buffer = view_get_buffer(app, global_compilation_view, Access_Always);
-    Face_ID face_id = get_face_id(app, buffer);
-    Face_Metrics metrics = get_face_metrics(app, face_id);
-    if(global_compilation_view_expanded ^= 1)
-    {
-        view_set_split_pixel_size(app, global_compilation_view, (i32)(metrics.line_height*32.f));
-    }
-    else
-    {
-        view_set_split_pixel_size(app, global_compilation_view, (i32)(metrics.line_height*4.f));
-    }
-}
-
 internal void
 F4_GoToDefinition(Application_Links *app, F4_Index_Note *note, b32 same_panel)
 {
@@ -645,8 +629,8 @@ F4_Boundary_TokenAndWhitespace(Application_Links *app, Buffer_ID buffer,
                     if(token->kind == TokenBaseKind_Comment ||
                        token->kind == TokenBaseKind_LiteralString ||
                        (token2 && 
-                        token2->kind == TokenBaseKind_Comment ||
-                        token2->kind == TokenBaseKind_LiteralString))
+                        (token2->kind == TokenBaseKind_Comment ||
+                         token2->kind == TokenBaseKind_LiteralString)))
                     {
                         result = boundary_non_whitespace(app, buffer, side, direction, pos);
                         break;
@@ -1692,8 +1676,7 @@ CUSTOM_DOC("Counts the lines of code in the current buffer, breaks it down by se
                                                   (int)info->whitespace_only_lines,
                                                   (int)info->open_brace_only_lines,
                                                   (int)(info->lines - (info->whitespace_only_lines+info->open_brace_only_lines)));
-            b32 write_successful = buffer_replace_range(app, loc_buffer, Ii64(buffer_get_size(app, loc_buffer)), string);
-            write_successful = write_successful;
+            buffer_replace_range(app, loc_buffer, Ii64(buffer_get_size(app, loc_buffer)), string);
         }
     }
 }
@@ -1717,9 +1700,7 @@ CUSTOM_DOC("Insert the required number of spaces to get to a specified column nu
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Face_ID face_id = get_face_id(app, buffer);
-    Face_Description description = get_face_description(app, face_id);
-    
+    get_face_id(app, buffer);
     Query_Bar_Group group(app);
     u8 string_space[256];
     Query_Bar bar = {};
@@ -1733,14 +1714,14 @@ CUSTOM_DOC("Insert the required number of spaces to get to a specified column nu
         i64 cursor_line = get_line_number_from_pos(app, buffer, cursor);
         i64 cursor_column = cursor - get_line_start_pos(app, buffer, cursor_line) + 1;
         i64 spaces_to_insert = column_number - cursor_column;
-        History_Group group = history_group_begin(app, buffer);
+        History_Group hgroup = history_group_begin(app, buffer);
         for(i64 i = 0; i < spaces_to_insert; i += 1)
         {
             buffer_replace_range(app, buffer, Ii64(cursor, cursor), str8_lit(" "));
         }
         view_set_cursor(app, view, seek_pos(cursor+spaces_to_insert));
         view_set_mark(app, view, seek_pos(cursor+spaces_to_insert));
-        history_group_end(group);
+        history_group_end(hgroup);
     }
 }
 

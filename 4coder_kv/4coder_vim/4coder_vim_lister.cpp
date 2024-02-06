@@ -182,7 +182,7 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
 function Vec2_i32
 calc_col_row(Application_Links *app, Lister *lister)
 {
-	v2 dim = rect2_get_dim(global_get_screen_rectangle(app));
+	v2 dim = rect2_dim(global_get_screen_rectangle(app));
 	Face_ID face_id = get_face_id(app, 0);
 	Face_Metrics metrics = get_face_metrics(app, face_id);
 	f32 line_height = metrics.line_height;

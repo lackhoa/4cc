@@ -69,12 +69,12 @@ peek_count += 1;\
     
 #undef PushPeek
     
-    f32 peek_height = (f32)((view_rect.y1 - view_rect.y0) * (0.5f + 0.4f*(clamp_top(peek_count / 4, 1)))) / peek_count;
-    Rect_f32 rect = {0};
+    f32 peek_height = (f32)((view_rect.y1 - view_rect.y0) * (0.5f + 0.4f*(f32)(clamp_top(peek_count / 4, 1)))) / (f32)peek_count;
+    Rect_f32 rect = {};
     {
         rect.x0 = view_rect.x0;
         rect.x1 = view_rect.x1;
-        rect.y0 = view_rect.y1 - peek_height*peek_count;
+        rect.y0 = view_rect.y1 - peek_height*(f32)peek_count;
         rect.y1 = rect.y0 + peek_height;
     }
     
@@ -94,8 +94,7 @@ peek_count += 1;\
                 
                 Buffer_Point buffer_point =
                 {
-                    get_line_number_from_pos(app, match_buffer, note->pos.min),
-                    0,
+                    .line_number = get_line_number_from_pos(app, match_buffer, note->pos.min),
                 };
                 Text_Layout_ID text_layout_id = text_layout_create(app, match_buffer, inner_rect, buffer_point);
                 

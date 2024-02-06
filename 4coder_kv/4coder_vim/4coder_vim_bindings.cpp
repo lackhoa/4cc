@@ -36,7 +36,7 @@ function b32 VimBind(u32 mode, Custom_Command_Function *custom, u64 key){
 	return vim_map_set_binding(mode, SUB_None, (void *)custom, key);
 }
 
-#if 0  // note(kv): I don't use this
+/*  // note(kv): I don't use this
 function void vim_default_bindings_(Application_Links *app, Key_Code leader){
 
 	// Normal, Insert, Visual
@@ -229,4 +229,4 @@ function void vim_default_bindings_(Application_Links *app, Key_Code leader){
 #undef V
 #undef MAP
 }
-#endif
+*/

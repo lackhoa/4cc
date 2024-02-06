@@ -214,7 +214,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     // NOTE(allen): Cursor shape
     Face_Metrics metrics = get_face_metrics(app, face_id);
     u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
-    f32 cursor_roundness = metrics.normal_advance*cursor_roundness_100*0.01f;
+    f32 cursor_roundness = metrics.normal_advance*(f32)cursor_roundness_100*0.01f;
     f32 mark_thickness = (f32)def_get_config_u64(app, vars_save_string_lit("mark_thickness"));
     
     // NOTE(rjf): Cursor
@@ -552,7 +552,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     
     // NOTE(rjf): Render command server
 #if OS_WINDOWS
-    CS_render_caller(app, frame_info, view_id);
+    // CS_render_caller(app, frame_info, view_id);
 #endif
     
     text_layout_free(app, text_layout_id);

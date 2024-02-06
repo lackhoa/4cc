@@ -21,60 +21,63 @@ kv_string_split_wildcards(Arena *arena, String_Const_u8 string)
   return(array);
 }
 
+// todo(kv): We don't handle multiline string! @FuzzyMultiline
 function i64
-kv_fuzzy_search_forward(Application_Links *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
+kv_fuzzy_search_forward(FApp *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
 {
-  i64 buffer_size = buffer_get_size(app, buffer);
-  i64 result = buffer_size;
-
-  Scratch_Block temp(app);
-  String_Const_u8_Array splits = kv_string_split_wildcards(temp, needle);
-  if ( !splits.count ) { return result; }
-
-  while( pos < buffer_size )
-  {
-    i64 original_pos = pos;
-    String_Match first_match = buffer_seek_string(app, buffer, splits.strings[0], Scan_Forward, pos);
-    if ( !first_match.buffer ) break;
-
-    i64 match_start = first_match.range.min;
-    i64 line_end    = get_line_end_pos_from_pos(app, buffer, match_start);
-    pos = first_match.range.end - 1;
-    b32 matched = true;
-    for (i64 index = 1;
-         index < splits.count;
-         index++)
+    i64 buffer_size = buffer_get_size(app, buffer);
+    i64 result = buffer_size;
+    
+    Scratch_Block temp(app);
+    String_Const_u8_Array splits = kv_string_split_wildcards(temp, needle);
+    if ( !splits.count ) { return result; }
+    
+    while( pos < buffer_size )
     {
-      String_Const_u8 substring = splits.strings[index];
-      String_Match match = buffer_seek_string(app, buffer, substring, Scan_Forward, pos);
-      if ( match.buffer )
-      {
-        if ( match.range.max <= line_end )
+        i64 original_pos = pos;
+        String_Match first_match = buffer_seek_string(app, buffer, splits.strings[0], Scan_Forward, pos);
+        if ( !first_match.buffer ) break;
+        
+        i64 match_start = first_match.range.min;
+        i64 line_end    = get_line_end_pos_from_pos(app, buffer, match_start);
+        pos = first_match.range.end - 1;
+        b32 matched = true;
+        for (i64 index = 1;
+             index < splits.count;
+             index++)
         {
-          pos = match.range.end - 1;
+            String8 substring = splits.strings[index];
+            String_Match match = buffer_seek_string(app, buffer, substring, Scan_Forward, pos);
+            if ( match.buffer )
+            {
+                if ( match.range.max <= line_end )
+                {
+                    pos = match.range.end - 1;
+                }
+                else
+                {
+                    // This breaks for @FuzzyMultiline
+                    pos = get_line_start_pos_from_pos(app, buffer, match.range.start) - 1;
+                    matched = false;
+                    break;
+                }
+            }
+            else
+            {
+                return result;
+            }
         }
-        else
+        
+        if ( matched )
         {
-          pos = get_line_start_pos_from_pos(app, buffer, match.range.start) - 1;
-          matched = false;
-          break;
+            result = match_start;
+            break;
         }
-      }
-      else
-      {
-        return result;
-      }
+        
+        assert_defend(pos > original_pos, return buffer_size;);
     }
-    if ( matched )
-    {
-      result = match_start;
-      break;
-    }
-
-    assert_defend(pos > original_pos, return buffer_size;);
-  }
-
-  return result;
+    
+    return result;
 }
 
 function i64

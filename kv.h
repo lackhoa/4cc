@@ -1308,13 +1308,13 @@ rect_get_radius(v2 radius)
 }
 
 inline v2
-rect2_get_dim(rect2 rect)
+rect2_dim(rect2 rect)
 {
     return (rect.max - rect.min);
 }
 
 inline rect2
-rect_center_radius(v2 center, v2 radius)
+rect2_center_radius(v2 center, v2 radius)
 {
     kv_assert((radius.x >= 0) && (radius.y >= 0));
     rect2 result;
@@ -1326,19 +1326,19 @@ rect_center_radius(v2 center, v2 radius)
 inline rect2
 rect_center_dim(v2 center, v2 dim)
 {
-    rect2 result = rect_center_radius(center, 0.5f*dim);
+    rect2 result = rect2_center_radius(center, 0.5f*dim);
     return result;
 }
 
 inline rect2
-rect_min_dim(v2 min, v2 dim)
+rect2_min_dim(v2 min, v2 dim)
 {
   rect2 out = rect2{.min=min, .max=min+dim};
   return out;
 }
 
 inline rect2
-rect_min_max(v2 min, v2 max)
+rect2_min_max(v2 min, v2 max)
 {
     rect2 result = rect2{min, max};
     return result;

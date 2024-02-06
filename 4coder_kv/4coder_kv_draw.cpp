@@ -136,9 +136,6 @@ kv_draw_paren_highlight(Application_Links *app, Buffer_ID buffer, Text_Layout_ID
   }
 }
 
-// function void
-// kv_render_buffer(Application_Links *app, Frame_Info frame_info, View_ID view, Face_ID face_id, Buffer_ID buffer, Text_Layout_ID text_layout_id, Rect_f32 region)
-
 function Render_Caller_Function kv_render_caller;
 function void
 kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
@@ -169,15 +166,15 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
 	draw_rectangle_fcolor(app, region, 0.f, fcolor_id(defcolor_back));
     
 	region = vim_draw_query_bars(app, region, view, face_id);
-    
-	{// File bar
-		Rect_f32_Pair pair = layout_file_bar_on_bot(region, line_height);
-		vim_draw_filebar(app, view, buffer, frame_info, face_id, pair.b);
-		region = pair.a;
+   
+    if ( rect2_dim(region).y > 200 )
+	{// Draw file bar
+        Rect_f32_Pair pair = layout_file_bar_on_bot(region, line_height);
+        vim_draw_filebar(app, view, buffer, frame_info, face_id, pair.b);
+        region = pair.a;
 	}
     
-    {
-        // Draw borders
+    {// Draw borders
         if(region.x0 > global_rect.x0){
             Rect_f32_Pair border_pair = rect_split_left_right(region, 2.f);
             draw_rectangle_fcolor(app, border_pair.a, 0.f, fcolor_id(defcolor_margin));
@@ -191,7 +188,8 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
         region.y0 += 3.f;
     }
     
-	if(show_fps_hud){
+	if(show_fps_hud)
+    {
 		Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
 		draw_fps_hud(app, frame_info, face_id, pair.max);
 		region = pair.min;
@@ -210,9 +208,10 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
     
 	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
 	Buffer_Point_Delta_Result delta = delta_apply(app, view, frame_info.animation_dt, scroll);
-	if(!block_match_struct(&scroll.position, &delta.point)){
-		block_copy_struct(&scroll.position, &delta.point);
-		view_set_buffer_scroll(app, view, scroll, SetBufferScroll_NoCursorChange);
+	if(!block_match_struct(&scroll.position, &delta.point))
+    {
+        block_copy_struct(&scroll.position, &delta.point);
+        view_set_buffer_scroll(app, view, scroll, SetBufferScroll_NoCursorChange);
 	}
 	if(delta.still_animating)
     {
@@ -225,7 +224,7 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
         vim_draw_line_number_margin(app, view, buffer, face_id, text_layout_id, line_number_rect);
     // else
     //   draw_rectangle_fcolor(app, line_number_rect, 0.f, fcolor_id(defcolor_back));
-    
+   
     { // NOTE(kv): kv_render_buffer(app, frame_info, view, face_id, buffer, text_layout_id, region);
         // NOTE(kv): originally from "byp_render_buffer"
         ProfileScope(app, "render buffer");
