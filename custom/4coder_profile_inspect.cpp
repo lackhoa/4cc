@@ -491,6 +491,10 @@ profile_memory_sort_by_count(Memory_Bucket **buckets, i32 first, i32 one_past_la
     }
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 function void
 profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     Scratch_Block scratch(app);
@@ -854,6 +858,8 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     
     draw_set_clip(app, prev_clip);
 }
+
+#pragma clang diagnostic pop
 
 function void
 profile_inspect__left_click(Application_Links *app, View_ID view,

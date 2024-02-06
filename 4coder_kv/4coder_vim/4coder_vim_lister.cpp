@@ -2,6 +2,9 @@
 
 #include "4coder_vim.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+
 // TODO(BYP): Clean this up a bit more
 function String_Const_u8
 ctrl_backspace_utf8(String_Const_u8 string){
@@ -162,7 +165,7 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
 	Rect_f32 region = vim_get_bottom_rect(app);
 	f32 line_height = get_face_metrics(app, get_face_id(app, 0)).line_height;
 	f32 block_height = vim_lister_get_block_height(line_height);
-	f32 block_width = rect_width(region)/col_num;
+	f32 block_width = rect_width(region)/(f32)col_num;
 	
 	if(rect_contains_point(region, m_p)){
 		f32 y = m_p.y - region.y0 + lister->scroll.position.y;
@@ -177,7 +180,8 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
 
 
 function Vec2_i32
-calc_col_row(Application_Links *app, Lister *lister){
+calc_col_row(Application_Links *app, Lister *lister)
+{
 	v2 dim = rect2_get_dim(global_get_screen_rectangle(app));
 	Face_ID face_id = get_face_id(app, 0);
 	Face_Metrics metrics = get_face_metrics(app, face_id);
@@ -233,21 +237,21 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 		}
 	}
 	
-	i32 col_num = i32(rect_width(region)/((max_name_size+7)*max_advance));
+	i32 col_num = i32(rect_width(region)/(((f64)max_name_size+7)*max_advance));
 	//i32 col_num = i32(rect_width(region)/((max_name_size)*max_advance));
 	col_num = clamp(lister_range.min, col_num, lister_range.max);
 	
 	i32 max_row_num = 1 + (lister->filtered.count-1)/col_num;
 	i32 row_num;
-	if(lister->filtered.count == 0.f){ row_num = 0; }
+	if(lister->filtered.count == 0){ row_num = 0; }
 	else{ row_num = Min(i32(max_lister_height/block_height), max_row_num); }
 	
 	lister->visible_count = Min(col_num*row_num, lister->filtered.count);
 	
 	// TODO(BYP) check exactly why row_num+2. Had to update when changing block_height
-	region = rect_split_top_bottom_neg(region, (row_num+2)*block_height).b;
+	region = rect_split_top_bottom_neg(region, (f32)(row_num+2)*block_height).b;
 	region = rect_split_top_bottom_neg(region, 2.f*line_height).a;
-	vim_nxt_filebar_offset = row_num*block_height + 0.1f;
+	vim_nxt_filebar_offset = (f32)row_num*block_height + 0.1f;
 	// non-zero so when lister displays no results, it still displays the cursor
 	
 	// Render the view
@@ -263,7 +267,7 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	
 	if(lister->set_vertical_focus_to_item){
 		lister->set_vertical_focus_to_item = false;
-		Range_f32 item_y = If32_size((lister->item_index/col_num)*block_height, block_height);
+		Range_f32 item_y = If32_size(((f32)lister->item_index/col_num)*block_height, block_height);
 		f32 view_h = rect_height(region);
 		Range_f32 view_y = If32_size(scroll_y, view_h);
 		if(view_y.min > item_y.min || item_y.max > view_y.max){
@@ -284,7 +288,7 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	// NOTE(allen): clamp scroll target and position; smooth scroll rule
 	i32 count = lister->filtered.count;
 	//Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, (count/col_num)*block_height));
-	Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, (count/col_num - 1)*block_height));
+	Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, ((f32)(count/col_num - 1)*block_height)));
 	lister->scroll.target.y = clamp_range(scroll_range, lister->scroll.target.y);
 	lister->scroll.target.x = 0.f;
 	
@@ -384,14 +388,13 @@ vim_run_lister(Application_Links *app, Lister *lister){
 	vim_show_buffer_peek = false;
 	
 	View_Context ctx = view_current_context(app, view);
-	Rect_f32 global_rect = global_get_screen_rectangle(app);
 	
 	ctx.render_caller = vim_lister_render;
 	ctx.hides_buffer = false;
 	View_Context_Block ctx_block(app, view, &ctx);
 	
-	u8 *begin, *dest;
-	begin = dest = vim_bot_text.str + vim_bot_text.size;
+	u8 *dest;
+	dest = vim_bot_text.str + vim_bot_text.size;
 	u64 base_size, after_size;
 	base_size = after_size = vim_bot_text.size;
 	
@@ -601,3 +604,5 @@ vim_get_file_name_from_user(Application_Links *app, Arena *arena, String_Const_u
 	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, arena, query, handlers);
 	return vim_convert_lister_result_to_file_name_result(l_result);
 }
+
+#pragma clang diagnostic pop

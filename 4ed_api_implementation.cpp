@@ -369,7 +369,7 @@ buffer_seek_character_class(FApp *app, Buffer_ID buffer, Character_Predicate *pr
             // there are almost certainly lower hanging fruit with higher payoffs elsewhere... unless need to change
             // this anyway or whatever.
             String_Const_u8 chunk_mem[3] = {};
-            String_Const_u8_Array chunks = {chunk_mem};
+            String_Const_u8_Array chunks = {.strings=chunk_mem};
             for (Node_String_Const_u8 *node = chunks_list.first;
                  node != 0;
                  node = node->next){
@@ -1413,7 +1413,6 @@ api(custom) function b32
 view_close(FApp *app, View_ID view_id)
 {
     Models *models = (Models*)app->cmd_context;
-    Layout *layout = &models->layout;
     View *view = imp_get_view(models, view_id);
     b32 result = false;
     if (api_check_view(view)){
@@ -1782,6 +1781,10 @@ view_current_context_hook_memory(FApp *app, View_ID view_id,
     return(result);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 function Dynamic_Workspace*
 get_dynamic_workspace(Models *models, Managed_Scope handle){
     Dynamic_Workspace *result = 0;
@@ -1793,6 +1796,8 @@ get_dynamic_workspace(Models *models, Managed_Scope handle){
     }
     return(result);
 }
+
+#pragma clang diagnostic pop
 
 api(custom) function Managed_Scope
 create_user_managed_scope(FApp *app)
@@ -2193,7 +2198,6 @@ managed_object_load_data(FApp *app, Managed_Object object, u32 first_index, u32 
 api(custom) function User_Input
 get_next_input_raw(FApp *app)
 {
-    Models *models = (Models*)app->cmd_context;
     Thread_Context *tctx = app->tctx;
     Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
     User_Input result = {};
@@ -3150,7 +3154,6 @@ text_layout_character_on_screen(FApp *app, Text_Layout_ID layout_id, i64 pos){
                 // TODO(allen): optimization: This is some fairly heavy computation.  We really
                 // need to accelerate the (pos -> item) lookup within a single
                 // Buffer_Layout_Item_List.
-                b32 is_first_item = true;
                 result = Rf32_negative_infinity;
                 for (Layout_Item_Block *block = line.first;
                      block != 0;
@@ -3183,7 +3186,6 @@ text_layout_character_on_screen(FApp *app, Text_Layout_ID layout_id, i64 pos){
 api(custom) function void
 paint_text_color(FApp *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color){
     Models *models = (Models*)app->cmd_context;
-    Rect_f32 result = {};
     Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
     if (layout != 0){
         range.min = clamp_bot(layout->visible_range.min, range.min);
@@ -3201,7 +3203,6 @@ api(custom) function void
 paint_text_color_blend(FApp *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color, f32 blend)
 {
     Models *models = (Models*)app->cmd_context;
-    Rect_f32 result = {};
     Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
     if (layout != 0){
         range.min = clamp_bot(layout->visible_range.min, range.min);
@@ -3238,7 +3239,6 @@ draw_text_layout(FApp *app, Text_Layout_ID layout_id, ARGB_Color special_color, 
 api(custom) function void
 open_color_picker(FApp *app, Color_Picker *picker)
 {
-    Models *models = (Models*)app->cmd_context;
     if (picker->finished != 0){
         *picker->finished = false;
     }

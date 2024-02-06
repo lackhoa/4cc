@@ -297,6 +297,17 @@ absolute(f32 x)
     return result;
 }
 
+inline i32
+absolute(i32 x)
+{
+#if COMPILER_MSVC
+    #error "unimplemented"
+#else
+    i32 result = abs(x);
+#endif
+    return result;
+}
+
 inline u32
 rotateLeft(u32 value, i32 rotateAmount)
 {
@@ -685,6 +696,12 @@ unilateral(f32 r)
     return (r * 0.5f) + 0.5f;
 }
 
+inline i32
+unilateral(i32 r)
+{
+    return (r + 1) / 2;
+}
+
 inline f32
 lerp(f32 a, f32 t, f32 b)
 {
@@ -703,12 +720,15 @@ unlerp_or_zero(f32 a, f32 v, f32 b)
 
 /* ;v2 */
 
-union v2 {
-  struct {
-    f32 x, y;
-  };
-  f32 E[2];
-  f32 v[2];
+union v2
+{
+    struct 
+    {
+        f32 x;
+        f32 y;
+    };
+    f32 E[2];
+    f32 v[2];
 };
 
 inline v2
@@ -893,7 +913,7 @@ noz(v2 v)  // normalize or zero
 inline v2
 perp(v2 v)
 {
-    v2 result = {-v.y, v.x};
+    v2 result = v2{-v.y, v.x};
     return result;
 }
 

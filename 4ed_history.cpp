@@ -317,8 +317,6 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
             b32 do_merge = false;
             
             Temp_Memory temp = begin_temp(scratch);
-            i64 new_length_forward  = left->single.forward_text.size  + right->single.forward_text.size ;
-            i64 new_length_backward = left->single.backward_text.size + right->single.backward_text.size;
             
             String_Const_u8 merged_forward = {};
             String_Const_u8 merged_backward = {};

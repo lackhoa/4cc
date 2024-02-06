@@ -12,7 +12,7 @@ import shutil
 pjoin = os.path.join
 
 DEBUG_MODE = 1
-FORCE_FULL_REBUILD = 1
+FORCE_FULL_REBUILD = 0
 
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
@@ -27,51 +27,32 @@ DOT_DLL=".dll" if OS_WINDOWS else ".so"
 DOT_EXE='.exe' if OS_WINDOWS else ''
 remedybg = "remedybg.exe"
 
-WARNINGS="-Werror -Wno-write-strings -Wno-null-dereference -Wno-comment -Wno-switch -Wno-missing-declarations -Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
-# WARNINGS="-Wno-logical-op-parentheses -Wno-deprecated-declarations -Wno-tautological-compare -Wno-unused-result -Wno-nullability-completeness"
+WARNINGS_ARRAY = [
+    "-Werror", 
+    "-Wall",
+    "-Wextra",
+    "-Wimplicit-int-float-conversion",
+    "-Wno-write-strings",
+    "-Wno-null-dereference",
+    "-Wno-comment",
+    "-Wno-switch",
+    "-Wno-missing-declarations",
+    "-Wno-deprecated-declarations",
+    "-Wno-missing-braces",  # todo(kv): removeme
+    "-Wno-unused-parameter",
+    "-Wno-unused-function",
+]
+WARNINGS = ' '.join(WARNINGS_ARRAY)
 
 def mkdir_p(path):
     os.makedirs(path, exist_ok=True)
 
-# todo(kv): we should change to a build  dir instead, so we can clean all the crap out!
+# todo(kv): We should change to a build dir instead, so we can clean all the crap out!
 def delete_all_pdb_files(dir_name):
     files = os.listdir(dir_name)
     for item in files:
         if item.endswith(".pdb") or item.endswith('.ilk') or item.endswith(".dSYM"):
             os.remove(os.path.join(dir_name, item))
-
-# NOTE: unused
-def setup_msvc_envvars():
-    if not OS_WINDOWS:
-        return
-
-    ROOT = f"{HOME}/msvc"
-    MSVC_VERSION = "14.38.33130"
-    MSVC_HOST        = "Hostx64"
-    MSVC_ARCH       = "x64"
-    SDK_VERSION    = "10.0.22621.0"
-    SDK_ARCH          = "x64"
-
-    os.environ['ROOT'] = ROOT
-    os.environ['MSVC_VERSION'] = MSVC_VERSION
-    os.environ['MSVC_HOST']  = MSVC_HOST
-    os.environ['MSVC_ARCH'] = MSVC_ARCH
-    os.environ['SDK_VERSION'] = SDK_VERSION
-    os.environ['SDK_ARCH']      = SDK_ARCH
-
-    MSVC_ROOT   = f"{ROOT}/VC/Tools/MSVC/{MSVC_VERSION}"
-    SDK_INCLUDE = f"{ROOT}/Windows Kits/10/Include/{SDK_VERSION}"
-    SDK_LIBS         = f"{ROOT}/Windows Kits/10/Lib/{SDK_VERSION}"
-
-    os.environ['MSVC_ROOT'] = MSVC_ROOT
-    os.environ['SDK_INCLUDE'] = SDK_INCLUDE
-    os.environ['SDK_LIBS'] = SDK_LIBS
-
-    os.environ["VCToolsInstallDir"] = f"{MSVC_ROOT}/"
-    PATH = os.environ["PATH"]
-    os.environ["PATH"] = f"{MSVC_ROOT}/bin/{MSVC_HOST}/{MSVC_ARCH};{ROOT}/Windows Kits/10/bin/{SDK_VERSION}/{SDK_ARCH};{ROOT}/Windows Kits/10/bin/{SDK_VERSION}/{SDK_ARCH}/ucrt;{PATH}"
-    os.environ["INCLUDE"] = f"{MSVC_ROOT}/include;{SDK_INCLUDE}/ucrt;{SDK_INCLUDE}/shared;{SDK_INCLUDE}/um;{SDK_INCLUDE}/winrt;{SDK_INCLUDE}/cppwinrt"
-    os.environ["LIB"]          = f"{MSVC_ROOT}/lib/{MSVC_ARCH};{SDK_LIBS}/ucrt/{SDK_ARCH};{SDK_LIBS}/um/{SDK_ARCH}"
 
 def rm_tree(path, topdown=False) :
     for root, dirs, files in os.walk(path):
@@ -228,7 +209,7 @@ try:
         print(f'Producing 4ed_app{DOT_DLL}')
         INCLUDES=f'-I{CODE} -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/4coder_kv/libs'
         #
-        COMMON_SYMBOLS="-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
+        COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
         SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
         OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"

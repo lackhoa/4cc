@@ -128,10 +128,7 @@
 #endif
 
 #if !defined(SHIP_MODE)
-#define SHIP_MODE 0
-#else
-#undef SHIP_MODE
-#define SHIP_MODE 1
+#    define SHIP_MODE 0
 #endif
 
 // names
@@ -241,23 +238,36 @@ enum{
 
 #define local_const static const
 #define global_const static const
-#define external extern "C"  // todo(kv): wtf removeme?
+#define external extern "C"  // TODO(kv): wtf removeme?
 
 #define ArrayCount(a) ((sizeof(a))/(sizeof(*a)))
+
+// TODO(kv): temporary
+#define ArrayCountSigned(a)  (isize)ArrayCount(a)
+
 #define ArraySafe(a,i) ((a)[(i)%ArrayCount(a)])
 #define ExpandArray(a) (a), (ArrayCount(a))
 #define FixSize(s) struct{ u8 __size_fixer__[s]; }
 
 #define PtrDif(a,b) ((u8*)(a) - (u8*)(b))
-#define PtrAsInt(a) PtrDif(a,0)
+
+// @Experiment(kv) : Pointer to integer exploits
+//
+// NOTE(kv): compiler doesn't like this version
+// #define PtrAsInt(a) PtrDif(a,0)
+// #define IntAsPtr(a) (void*)( ((u8*)0) + a )
+//
+#define PtrAsInt(a) (usize)(a)
+#define IntAsPtr(a) (void*)((usize)(a))
+
+
 #define HandleAsU64(a) (u64)(PtrAsInt(a))
 #define Member(S,m) (((S*)0)->m)
 #define NullMember(S,m) (&Member(S,m))
-#define OffsetOfMember(S,m) PtrAsInt(&Member(S,m))
+// #define OffsetOfMember(S,m) PtrAsInt(&Member(S,m))
 #define OffsetOfMemberStruct(s,m) PtrDif(&(s)->m, (s))
-#define SizeAfterMember(S,m) (sizeof(S) - OffsetOfMember(S,m))
-#define CastFromMember(S,m,ptr) (S*)( (u8*)(ptr) - OffsetOfMember(S,m) )
-#define IntAsPtr(a) (void*)(((u8*)0) + a)
+#define SizeAfterMember(S,m) (sizeof(S) - gb_offset_of(S,m))
+#define CastFromMember(S,m,ptr) (S*)( (u8*)(ptr) - gb_offset_of(S,m) )
 
 #define Stmnt(s) do{ s }while(0)
 
@@ -273,7 +283,7 @@ enum{
 // Static = asserts that contain only compile time constants and become compilation errors
 // Disambiguate = for static asserts that happen to have name conflicts
 
-#define AssertBreak(m) (*((i32*)0) = 0xA11E)
+#define AssertBreak(m) debugbreak
 #define AssertAlways(c) Stmnt( if (!(c)) { AssertBreak(c); } )
 #define AssertMessageAlways(m) AssertBreak(m)
 #define StaticAssertDisambiguateAlways(c,d) char glue(__ignore__, glue(__LINE__, d))[(c)?1:-1];

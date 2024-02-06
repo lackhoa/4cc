@@ -775,6 +775,10 @@ buffer_modified_set__alloc_node(Buffer_Modified_Set *set){
     return(result);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 function void
 buffer_mark_as_modified(Buffer_ID buffer){
     Buffer_Modified_Set *set = &global_buffer_modified_set;
@@ -802,6 +806,8 @@ buffer_unmark_as_modified(Buffer_ID buffer){
         sll_stack_push(set->free, node);
     }
 }
+
+#pragma clang diagnostic pop
 
 function void
 buffer_modified_set_clear(void){

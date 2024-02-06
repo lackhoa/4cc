@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-compare"
 VIM_REQUEST_SIG(byp_apply_title)
 {
 	Scratch_Block scratch(app);
@@ -11,6 +13,7 @@ VIM_REQUEST_SIG(byp_apply_title)
 	buffer_replace_range(app, buffer, range, text);
 	buffer_post_fade(app, buffer, 0.667f, range, fcolor_resolve(fcolor_id(defcolor_paste)));
 }
+#pragma clang diagnostic pop
 
 VIM_TEXT_OBJECT_SIG(byp_object_param)
 {

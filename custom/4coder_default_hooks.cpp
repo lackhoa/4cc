@@ -302,7 +302,7 @@ default_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     // NOTE(allen): Cursor shape
     Face_Metrics metrics = get_face_metrics(app, face_id);
     u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
-    f32 cursor_roundness = metrics.normal_advance*cursor_roundness_100*0.01f;
+    f32 cursor_roundness = metrics.normal_advance*cast(f32)cursor_roundness_100*0.01f;
     f32 mark_thickness = (f32)def_get_config_u64(app, vars_save_string_lit("mark_thickness"));
     
     // NOTE(allen): Token colorizing

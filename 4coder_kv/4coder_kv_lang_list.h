@@ -18,7 +18,7 @@ F4_RegisterLanguages(void)
             S8Lit("cpp"), S8Lit("cc"), S8Lit("c"), S8Lit("cxx"),
             S8Lit("C"), S8Lit("h"), S8Lit("hpp"),
         };
-        for(int i = 0; i < ArrayCount(extensions); i += 1)
+        for(u32 i=0; i < ArrayCount(extensions); i += 1)
         {
             F4_RegisterLanguage(extensions[i],
                                 F4_CPP_IndexFile,

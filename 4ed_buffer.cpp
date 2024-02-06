@@ -611,7 +611,6 @@ buffer_cursor_from_pos(Gap_Buffer *buffer, i64 pos){
 
 internal Buffer_Cursor
 buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
-    i64 size = buffer_size(buffer);
     i64 line_index = line - 1;
     i64 line_count = buffer_line_count(buffer);
     line_index = clamp(0, line_index, line_count - 1);
@@ -655,21 +654,6 @@ buffer_invert_edit_shift(Arena *arena, Gap_Buffer *buffer, Edit edit, Edit *inv,
     inv->text = string;
     inv->range = Ii64(edit.range.start + shift_amount, edit.range.start + edit.text.size + shift_amount);
     return(string);
-}
-
-internal b32
-buffer_invert_batch(Arena *arena, Gap_Buffer *buffer, Edit *edits, Edit *inverse, i64 count){
-    b32 result = false;
-    i64 pos = 0;
-    i64 shift_amount = 0;
-    Edit *edit = edits;
-    Edit *inv_edit = inverse;
-    for (i64 i = 0; i < count; i += 1, edit += 1, inv_edit += 1){
-        String_Const_u8 inv_str = buffer_invert_edit_shift(arena, buffer, *edit, inv_edit, shift_amount);
-        shift_amount += replace_range_shift(edit->range, edit->text.size);
-        pos += inv_str.size;
-    }
-    return(result);
 }
 
 internal Buffer_Chunk_Position

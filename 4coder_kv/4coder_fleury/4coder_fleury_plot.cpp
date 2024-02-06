@@ -40,8 +40,6 @@ Plot2DBegin(Plot2DInfo *plot)
   // NOTE(rjf): Draw grid lines.
   if(plot->mode != Plot2DMode_Histogram)
   {
-    Face_Metrics metrics = get_face_metrics(plot->app, plot->label_face);
-    
     ARGB_Color grid_line_color = comment_color;
     grid_line_color &= 0x00ffffff;
     grid_line_color |= 0x91000000;
@@ -66,7 +64,7 @@ Plot2DBegin(Plot2DInfo *plot)
       for(float x = plot_view.x0 - fmodf(plot_view.x0, tick_increment_x);
           x <= plot_view.x1; x += tick_increment_x)
       {
-        Rect_f32 line_rect = {0};
+        Rect_f32 line_rect = {};
         {
           line_rect.x0 = region.x0 + region_width * (x - plot_view.x0) / (plot_view.x1 - plot_view.x0);
           line_rect.y0 = region.y0;
@@ -97,7 +95,7 @@ Plot2DBegin(Plot2DInfo *plot)
           y <= plot_view.y1; 
           y += tick_increment_y)
       {
-        Rect_f32 line_rect = {0};
+        Rect_f32 line_rect = {};
         {
           line_rect.x0 = region.x0;
           line_rect.y0 = region.y0 + region_height - region_height * (y - plot_view.y0) / (plot_view.y1 - plot_view.y0);
@@ -128,7 +126,6 @@ Plot2DPoints(Plot2DInfo *plot, i32 style_flags,
              float *x_data, float *y_data, int data_count)
 {
     Rect_f32 region = plot->region;
-    Rect_f32 plot_view = plot->plot_view;
     
     f32 region_width = region.x1 - region.x0;
     f32 region_height = region.y1 - region.y0;
@@ -182,7 +179,7 @@ Plot2DHistogram(Plot2DInfo *plot, float *data, int data_count)
         for(int i = 0; i < data_count; ++i)
         {
             float t = (data[i] - plot->bin_data_range.min) / (plot->bin_data_range.max - plot->bin_data_range.min);
-            int bin_to_go_in = (int)(plot->num_bins * t);
+            int bin_to_go_in = (int)(cast(f32)plot->num_bins * t);
             if(bin_to_go_in >= 0 && bin_to_go_in < plot->num_bins)
             {
                 ++plot->bins[bin_to_go_in + plot->current_bin_group*plot->num_bins];
@@ -197,7 +194,7 @@ Plot2DEnd(Plot2DInfo *plot)
 {
     if(plot->mode == Plot2DMode_Histogram)
     {
-        f32 bin_screen_width = ((plot->region.x1-plot->region.x0) / plot->num_bins) / plot->bin_group_count;
+        f32 bin_screen_width = ((plot->region.x1-plot->region.x0) / cast(f32)plot->num_bins) / cast(f32)plot->bin_group_count;
         
         for(int bin_group = 0; bin_group < plot->bin_group_count; ++bin_group)
         {
@@ -215,11 +212,11 @@ Plot2DEnd(Plot2DInfo *plot)
             for(int i = 0; i < plot->num_bins; ++i)
             {
                 int bin_index = i + bin_group*plot->num_bins;
-                Rect_f32 bin_rect = {0};
-                bin_rect.x0 = plot->region.x0 + ((float)i/plot->num_bins)*(plot->region.x1-plot->region.x0) + bin_screen_width*bin_group;
+                Rect_f32 bin_rect = {};
+                bin_rect.x0 = plot->region.x0 + ((float)i/cast(f32)plot->num_bins)*(plot->region.x1-plot->region.x0) + bin_screen_width*cast(f32)bin_group;
                 bin_rect.x1 = bin_rect.x0 + bin_screen_width;
                 bin_rect.y0 = bin_rect.y1 = plot->region.y1;
-                bin_rect.y0 -= ((float)plot->bins[bin_index] / total_data) * (plot->region.y1 - plot->region.y0);
+                bin_rect.y0 -= ((float)plot->bins[bin_index] / cast(f32)total_data) * (plot->region.y1 - plot->region.y0);
                 draw_rectangle(plot->app, bin_rect, 4.f, color);
             }
         }

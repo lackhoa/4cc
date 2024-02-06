@@ -9,6 +9,11 @@
 
 // TOP
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+#pragma clang diagnostic ignored "-Wsign-compare"
+
 internal void
 managed_ids_init(Base_Allocator *allocator, Managed_ID_Set *set){
     set->arena = make_arena(allocator, KB(4), 8);
@@ -527,5 +532,6 @@ managed_object_free(Dynamic_Workspace *workspace, Managed_Object object){
     return(result);
 }
 
-// BOTTOM
+#pragma clang diagnostic pop
 
+// BOTTOM

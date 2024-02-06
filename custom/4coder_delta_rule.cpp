@@ -149,7 +149,7 @@ smooth_camera_step(f32 target, f32 v, f32 S, f32 T){
         }
         else{
             f32 L = step.p + T*(target - step.p);
-            i32 sign = (target > step.p) - (target < step.p);
+            f32 sign = cast(f32)((target > step.p) - (target < step.p));
             f32 V = step.p + sign*step.v;
             if (sign > 0){
                 step.p = (L<V)?(L):(V);

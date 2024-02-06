@@ -30,7 +30,7 @@ file_edit_positions_set_scroll(File_Edit_Positions *edit_pos, Buffer_Scroll scro
 
 internal void
 file_edit_positions_push(Editing_File *file, File_Edit_Positions edit_pos){
-    if (file->state.edit_pos_stack_top + 1 < ArrayCount(file->state.edit_pos_stack)){
+    if (file->state.edit_pos_stack_top + 1 < ArrayCountSigned(file->state.edit_pos_stack)){
         file->state.edit_pos_stack_top += 1;
         file->state.edit_pos_stack[file->state.edit_pos_stack_top] = edit_pos;
     }
@@ -140,7 +140,6 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
         }
         
         Gap_Buffer *buffer = &file->state.buffer;
-        b32 dos_write_mode = file->settings.dos_write_mode;
         
         Scratch_Block scratch(tctx);
         
@@ -242,7 +241,6 @@ file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file
 internal void
 file_free(Thread_Context *tctx, Models *models, Editing_File *file){
     Lifetime_Allocator *lifetime_allocator = &models->lifetime_allocator;
-    Working_Set *working_set = &models->working_set;
     
     lifetime_free_object(lifetime_allocator, file->lifetime_object);
     
@@ -276,6 +274,10 @@ file_get_managed_scope(Editing_File *file){
 }
 
 ////////////////////////////////
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 internal Layout_Item_List
 file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
@@ -317,6 +319,7 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
     
     return(result);
 }
+#pragma clang diagnostic pop
 
 internal void
 file_clear_layout_cache(Editing_File *file){

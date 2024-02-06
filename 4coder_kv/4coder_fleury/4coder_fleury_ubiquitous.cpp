@@ -7,7 +7,7 @@ static struct
     String_Const_u8 string;
     ARGB_Color color;
 }
-global_tooltips[32] = {0};
+global_tooltips[32] = {};
 static int global_tooltip_count = 0;
 static Arena global_frame_arena;
 
@@ -65,7 +65,7 @@ static double
 GetFirstDoubleFromBuffer(char *buffer)
 {
     char number_str[256];
-    int number_write_pos = 0;
+    u32 number_write_pos = 0;
     double value = 0;
     for(int i = 0; buffer[i] && number_write_pos < sizeof(number_str); ++i)
     {

@@ -1639,7 +1639,10 @@ CUSTOM_DOC("Parse the current buffer as a theme file and add the theme to the th
         print_message(app, error_text);
         
         u64 problem_score = 0;
+#pragma clang diagnostic push 
+#pragma clang diagnostic ignored "-Wsign-compare"
         if (color_table.count < defcolor_line_numbers_text){
+#pragma clang diagnostic pop
             problem_score = defcolor_line_numbers_text - color_table.count;
         }
         for (i32 i = 0; i < color_table.count; i += 1){

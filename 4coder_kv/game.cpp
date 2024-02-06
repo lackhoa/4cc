@@ -115,7 +115,7 @@ tr_line(Bitmap *bitmap, v2i p0, v2i p1, v4 color_v4)
     
     i32 dx = x1-x0;
     i32 dy = y1-y0;
-    i32 derror = absolute(dy) * 2.0f; 
+    i32 derror = absolute(dy) * 2; 
     i32 error = 0;
     i32 y = y0; 
     
@@ -143,8 +143,8 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
 {
     Bitmap bitmap_value = {.data=data, .dim=dim, .pitch=4*dim.x};
     Bitmap *bitmap = &bitmap_value;
-    v4 black = {0,0,0,1};
-    v4 red   = {1,0,0,1};
+    unused_var v4 black = {0,0,0,1};
+    unused_var v4 red   = {1,0,0,1};
     v4 white = {1,1,1,1};
     
     for (int facei=0; 
@@ -157,10 +157,10 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
             v3 v0 = model->vertices[face[verti]];
             v3 v1 = model->vertices[face[(verti+1) % 3]];
             // NOTE: the model coordinates are in clip space?
-            i32 x0 = unilateral(v0.x)*dim.x; 
-            i32 y0 = unilateral(v0.y)*dim.y;
-            i32 x1 = unilateral(v1.x)*dim.x;
-            i32 y1 = unilateral(v1.y)*dim.y;
+            i32 x0 = i32(unilateral(v0.x)*(f32)dim.x); 
+            i32 y0 = i32(unilateral(v0.y)*(f32)dim.y);
+            i32 x1 = i32(unilateral(v1.x)*(f32)dim.x);
+            i32 y1 = i32(unilateral(v1.y)*(f32)dim.y);
             tr_line(bitmap, {x0, y0}, {x1, y1}, white); 
         } 
     }
@@ -169,8 +169,8 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
 internal void
 game_update_and_render(FApp *app, View_ID view, rect2 region)
 {
-    v4 white = {1, 1, 1, 1};
-    v4 gray  = {.5, .5, .5, 1};
+    unused_var v4 white = {1, 1, 1, 1};
+    unused_var v4 gray  = {.5, .5, .5, 1};
     v4 black = {0,0,0,1};
     
     v2 screen_dim      = rect2_get_dim(region);
@@ -204,8 +204,8 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
         graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
         
         v2 position = {10,10};
-        f32 scale = fslider( 1.373590, 1.000000 ).x;
-        v2 draw_dim = scale * V2(dim.x, dim.y);
+        f32 scale = fslider( 2.355828, 1.000000 ).x;
+        v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect_min_dim(position, draw_dim));
     }
     

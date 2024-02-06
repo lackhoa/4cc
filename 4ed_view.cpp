@@ -22,7 +22,7 @@ init_query_set(Query_Set *set){
     Query_Slot *slot = set->slots;
     set->free_slot = slot;
     set->used_slot = 0;
-    for (i32 i = 0; i+1 < ArrayCount(set->slots); ++i, ++slot){
+    for (u64 i = 0; i+1 < ArrayCount(set->slots); ++i, ++slot){
         slot->next = slot + 1;
     }
 }
@@ -678,9 +678,6 @@ co_full_abort(Thread_Context *tctx, Models *models, View *view){
 function b32
 co_send_event(Thread_Context *tctx, Models *models, View *view, Input_Event *event){
     b32 event_was_handled = false;
-    
-    Coroutine *co = view->co;
-    Co_Out *co_out = &view->co_out;
     
     {
         models->current_input_unhandled = false;

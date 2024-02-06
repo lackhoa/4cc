@@ -10,6 +10,9 @@
 
 #define C_MATH 1
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+
 function i32
 i32_ceil32(f32 v){
     return(((v)>0)?( (v == (i32)(v))?((i32)(v)):((i32)((v)+1.f)) ):( ((i32)(v)) ));
@@ -19,6 +22,8 @@ function i32
 i32_floor32(f32 v){
     return(((v)<0)?( (v == (i32)(v))?((i32)(v)):((i32)((v)-1.f)) ):( ((i32)(v)) ));
 }
+
+#pragma clang diagnostic pop
 
 function i32
 i32_round32(f32 v){
@@ -289,6 +294,9 @@ abs_f32(f32 x){
 #if C_MATH
 #include <math.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+
 function f32
 mod_f32(f32 x, i32 m){
     f32 whole;
@@ -296,6 +304,8 @@ mod_f32(f32 x, i32 m){
     f32 r = ((i32)(whole) % m) + frac;
     return(r);
 }
+
+#pragma clang diagnostic pop
 
 function f32
 sin_f32(f32 x){
@@ -360,6 +370,13 @@ V2(f32 x, f32 y){
     Vec2_f32 v = {x, y};
     return(v);
 }
+
+internal Vec2_f32
+castV2(i32 x, i32 y){
+    Vec2_f32 v = {(f32)x, (f32)y};
+    return(v);
+}
+
 function Vec3_f32
 V3f32(f32 x, f32 y, f32 z){
     Vec3_f32 v = {x, y, z};
@@ -2403,7 +2420,7 @@ Su32(u32 *str, u64 size, u64 cap){
 
 function String_Any
 Sany(void *str, u64 size, u64 cap, String_Encoding encoding){
-    String_Any string = {encoding};
+    String_Any string = {.encoding=encoding};
     switch (encoding){
         case StringEncoding_ASCII: string.s_char = Schar((char*)str, size, cap); break;
         case StringEncoding_UTF8:  string.s_u8 = Su8((u8*)str, size, cap); break;
@@ -2436,7 +2453,7 @@ Su32(u32 *str, u64 size){
 
 function String_Any
 Sany(void *str, u64 size, String_Encoding encoding){
-    String_Any string = {encoding};
+    String_Any string = {.encoding=encoding};
     switch (encoding){
         case StringEncoding_ASCII: string.s_char = Schar((char*)str, size); break;
         case StringEncoding_UTF8:  string.s_u8 = Su8((u8*)str, size); break;
@@ -2465,7 +2482,7 @@ Su32(u32 *str, u32 *one_past_last){
 
 function String_Any
 Sany(void *str, void *one_past_last, String_Encoding encoding){
-    String_Any string = {encoding};
+    String_Any string = {.encoding=encoding};
     switch (encoding){
         case StringEncoding_ASCII: string.s_char = Schar((char*)str, (char*)one_past_last); break;
         case StringEncoding_UTF8:  string.s_u8 = Su8((u8*)str, (u8*)one_past_last); break;
@@ -2502,7 +2519,7 @@ Su32(u32 *str){
 
 function String_Any
 Sany(void *str, String_Encoding encoding){
-    String_Any string = {encoding};
+    String_Any string = {.encoding=encoding};
     switch (encoding){
         case StringEncoding_ASCII: string.s_char = Schar((char*)str); break;
         case StringEncoding_UTF8:  string.s_u8 = Su8((u8*)str); break;
@@ -2535,25 +2552,25 @@ Su32(String_Const_u32 str, u64 cap){
 
 function String_Any
 SCany(String_char str){
-    String_Any string = {StringEncoding_ASCII};
+    String_Any string = {.encoding=StringEncoding_ASCII};
     string.s_char = str;
     return(string);
 }
 function String_Any
 SCany(String_u8 str){
-    String_Any string = {StringEncoding_UTF8};
+    String_Any string = {.encoding=StringEncoding_UTF8};
     string.s_u8 = str;
     return(string);
 }
 function String_Any
 SCany(String_u16 str){
-    String_Any string = {StringEncoding_UTF16};
+    String_Any string = {.encoding=StringEncoding_UTF16};
     string.s_u16 = str;
     return(string);
 }
 function String_Any
 SCany(String_u32 str){
-    String_Any string = {StringEncoding_UTF32};
+    String_Any string = {.encoding=StringEncoding_UTF32};
     string.s_u32 = str;
     return(string);
 }
@@ -2581,7 +2598,7 @@ SCu32(u32 *str, u64 size){
 
 function String_Const_Any
 SCany(void *str, u64 size, String_Encoding encoding){
-    String_Const_Any string = {encoding};
+    String_Const_Any string = {.encoding=encoding};
     switch (encoding){
         case StringEncoding_ASCII: string.s_char = SCchar((char*)str, size); break;
         case StringEncoding_UTF8:  string.s_u8 = SCu8((u8*)str, size); break;
@@ -2631,7 +2648,7 @@ SCu32(u32 *str, u32 *one_past_last){
 
 function String_Const_Any
 SCany(void *str, void *one_past_last, String_Encoding encoding){
-    String_Const_Any string = {encoding};
+    String_Const_Any string = {.encoding=encoding};
     switch (encoding){
         case StringEncoding_ASCII: string.s_char = SCchar((char*)str, (char*)one_past_last); break;
         case StringEncoding_UTF8:  string.s_u8 = SCu8((u8*)str, (u8*)one_past_last); break;
@@ -2716,7 +2733,7 @@ SCu16(wchar_t *str){
 
 function String_Const_Any
 SCany(void *str, String_Encoding encoding){
-    String_Const_Any string = {encoding};
+    String_Const_Any string = {.encoding=encoding};
     switch (encoding){
         case StringEncoding_ASCII: string.s_char = SCchar((char*)str); break;
         case StringEncoding_UTF8:  string.s_u8 = SCu8((u8*)str); break;
@@ -2728,25 +2745,25 @@ SCany(void *str, String_Encoding encoding){
 
 function String_Const_Any
 SCany(String_Const_char str){
-    String_Const_Any string = {StringEncoding_ASCII};
+    String_Const_Any string = {.encoding=StringEncoding_ASCII};
     string.s_char = str;
     return(string);
 }
 function String_Const_Any
 SCany(String_Const_u8 str){
-    String_Const_Any string = {StringEncoding_UTF8};
+    String_Const_Any string = {.encoding=StringEncoding_UTF8};
     string.s_u8 = str;
     return(string);
 }
 function String_Const_Any
 SCany(String_Const_u16 str){
-    String_Const_Any string = {StringEncoding_UTF16};
+    String_Const_Any string = {.encoding=StringEncoding_UTF16};
     string.s_u16 = str;
     return(string);
 }
 function String_Const_Any
 SCany(String_Const_u32 str){
-    String_Const_Any string = {StringEncoding_UTF32};
+    String_Const_Any string = {.encoding=StringEncoding_UTF32};
     string.s_u32 = str;
     return(string);
 }
@@ -3006,13 +3023,13 @@ linalloc_wrap_write(String_Const_u8 data, u64 size, void *src){
 #define push_align_zero(a,b) (linalloc_wrap_zero(linalloc_align((a), (b))))
 function Temp_Memory
 begin_temp(Cursor *cursor){
-    Temp_Memory temp = {LinearAllocatorKind_Cursor};
+    Temp_Memory temp = {.kind=LinearAllocatorKind_Cursor};
     temp.temp_memory_cursor = linalloc_begin_temp(cursor);
     return(temp);
 }
 function Temp_Memory
 begin_temp(Arena *arena){
-    Temp_Memory temp = {LinearAllocatorKind_Arena};
+    Temp_Memory temp = {.kind=LinearAllocatorKind_Arena};
     temp.temp_memory_arena = linalloc_begin_temp(arena);
     return(temp);
 }
@@ -3144,6 +3161,11 @@ tctx_reserve(Thread_Context *tctx, Arena *a1, Arena *a2, Arena *a3){
 function void
 tctx_release(Thread_Context *tctx, Arena *arena){
     Arena_Node *node = CastFromMember(Arena_Node, arena, arena);
+#if 0
+    CastFromMember(S=Arena_Node, m=arena, ptr=arena)
+    ( (u8*)(arena) - OffsetOfMember(Arena_Node,arena) )
+    ( (u8*)(arena) - PtrAsInt(&Member(Arena_Node,arena)) )
+#endif
     node->ref_counter -= 1;
     if (node->ref_counter == 0){
         // TODO(allen): make a version of clear that keeps memory allocated from the sytem level
@@ -6533,7 +6555,7 @@ string_u32_from_any(Arena *arena, String_Const_Any string){
 
 function String_Const_Any
 string_any_from_any(Arena *arena, String_Encoding encoding, String_Const_Any string){
-    String_Const_Any result = {encoding};
+    String_Const_Any result = {.encoding=encoding};
     switch (encoding){
         case StringEncoding_ASCII: result.s_char = string_char_from_any(arena, string); break;
         case StringEncoding_UTF8:  result.s_u8   = string_u8_from_any  (arena, string); break;
@@ -6952,6 +6974,7 @@ string_to_integer(String_Const_char string, u32 radix){
     return(string_to_integer(SCu8((u8*)string.str, string.size), radix));
 }
 
+#if 0  // @CompileError
 function String_Const_u8
 string_base64_encode_from_binary(Arena *arena, void *data, u64 size){
     u64 char_count = div_round_up_positive(size*8, 6);
@@ -7035,6 +7058,7 @@ data_decode_from_base64(Arena *arena, u8 *str, u64 size){
     }
     return(data);
 }
+#endif
 
 ////////////////////////////////
 

@@ -36,7 +36,6 @@ win32_default_mix_sources(void *ctx, f32 *mix_buffer, u32 sample_count){
 
 function void
 win32_default_mix_destination(i16 *dst, f32 *src, u32 sample_count){
-    u32 opl = sample_count*2;
     for(u32 i = 0; i < sample_count; i += 1){
         dst[i] = (i16)src[i];
     }
@@ -136,8 +135,6 @@ win32_audio_loop(void *Passthrough){
     Format.nBlockAlign = (Format.nChannels*Format.wBitsPerSample)/8;
     Format.nAvgBytesPerSec = Format.nBlockAlign * Format.nSamplesPerSec;
     
-    b32 quit = false;
-    
     void *MixBuffer = 0;
     void *AudioBufferMemory = 0;
     if(waveOutOpen(&WaveOut, WAVE_MAPPER, &Format, GetCurrentThreadId(), 0, CALLBACK_THREAD) == MMSYSERR_NOERROR)
@@ -165,13 +162,11 @@ win32_audio_loop(void *Passthrough){
         else
         {
             // TODO(allen): audio error
-            quit = true;
         }
     }
     else
     {
         // TODO(allen): audio error
-        quit = true;
     }
     
     //
@@ -179,7 +174,7 @@ win32_audio_loop(void *Passthrough){
     //
     
     SetTimer(0, 0, 100, 0);
-    for (;!quit;)
+    for (;;)
     {
         MSG Message = {};
         GetMessage(&Message, 0, 0, 0);

@@ -255,7 +255,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     
     if (lister->set_vertical_focus_to_item){
         lister->set_vertical_focus_to_item = false;
-        Range_f32 item_y = If32_size(lister->item_index*block_height, block_height);
+        Range_f32 item_y = If32_size(cast(f32)lister->item_index*block_height, block_height);
         f32 view_h = rect_height(list_rect);
         Range_f32 view_y = If32_size(scroll_y, view_h);
         if (view_y.min > item_y.min || item_y.max > view_y.max){
@@ -275,7 +275,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     
     // NOTE(allen): clamp scroll target and position; smooth scroll rule
     i32 count = lister->filtered.count;
-    Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, count*block_height - block_height));
+    Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, cast(f32)count*block_height - block_height));
     lister->scroll.target.y = clamp_range(scroll_range, lister->scroll.target.y);
     lister->scroll.target.x = 0.f;
     
@@ -293,7 +293,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     f32 y_pos = list_rect.y0 - scroll_y;
     
     i32 first_index = (i32)(scroll_y/block_height);
-    y_pos += first_index*block_height;
+    y_pos += cast(f32)first_index*block_height;
     
     for (i32 i = first_index; i < count; i += 1){
         Lister_Node *node = lister->filtered.node_ptrs[i];
@@ -322,7 +322,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
         }
         
         u64 lister_roundness_100 = def_get_config_u64(app, vars_save_string_lit("lister_roundness"));
-        f32 roundness = block_height*lister_roundness_100*0.01f;
+        f32 roundness = block_height*cast(f32)lister_roundness_100*0.01f;
         draw_rectangle_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
         draw_rectangle_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
         
@@ -432,7 +432,7 @@ lister_update_filtered_list(Application_Links *app, Lister *lister){
     end_temp(lister->filter_restore_point);
     
     i32 total_count = 0;
-    for (i32 array_index = 0; array_index < ArrayCount(node_ptr_arrays); array_index += 1){
+    for (u32 array_index = 0; array_index < ArrayCount(node_ptr_arrays); array_index += 1){
         Lister_Node_Ptr_Array node_ptr_array = node_ptr_arrays[array_index];
         total_count += node_ptr_array.count;
     }
@@ -441,7 +441,7 @@ lister_update_filtered_list(Application_Links *app, Lister *lister){
     lister->filtered.node_ptrs = node_ptrs;
     lister->filtered.count = total_count;
     i32 counter = 0;
-    for (i32 array_index = 0; array_index < ArrayCount(node_ptr_arrays); array_index += 1){
+    for (u32 array_index = 0; array_index < ArrayCount(node_ptr_arrays); array_index += 1){
         Lister_Node_Ptr_Array node_ptr_array = node_ptr_arrays[array_index];
         for (i32 node_index = 0; node_index < node_ptr_array.count; node_index += 1){
             Lister_Node *node = node_ptr_array.node_ptrs[node_index];
@@ -671,7 +671,7 @@ run_lister(Application_Links *app, Lister *lister){
             case InputEventKind_MouseWheel:
             {
                 Mouse_State mouse = get_mouse_state(app);
-                lister->scroll.target.y += mouse.wheel;
+                lister->scroll.target.y += cast(f32)mouse.wheel;
                 lister_update_filtered_list(app, lister);
             }break;
             
@@ -888,6 +888,11 @@ lister_choice(Arena *arena, Lister_Choice_List *list, String_Const_u8 string, St
     choice->user_data = user_data;
 }
 
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 function void
 lister_choice(Arena *arena, Lister_Choice_List *list, char *string, String_Const_u8 status, Key_Code code, u64 user_data){
     lister_choice(arena, list, SCu8(string), status, code, (u64)PtrAsInt(user_data));
@@ -923,6 +928,8 @@ function void
 lister_choice(Arena *arena, Lister_Choice_List *list, char *string, char *status, Key_Code code, void *user_data){
     lister_choice(arena, list, string, status, code, (u64)PtrAsInt(user_data));
 }
+
+#pragma clang diagnostic pop
 
 function Lister_Activation_Code
 lister__key_stroke__choice_list(Application_Links *app){

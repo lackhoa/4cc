@@ -47,8 +47,9 @@ api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Str
 }
 
 function API_Type*
-api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, char *name, List_String_Const_u8 member_list, char *definition, char *location){
-    return(api_type_structure_with_location(arena, api, kind, name, member_list, definition, location));
+api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, char *name, List_String_Const_u8 member_list, char *definition, char *location)
+{
+    return(api_type_structure_with_location(arena, api, kind, SCu8(name), member_list, SCu8(definition), SCu8(location)));
 }
 
 #define api_call(arena, api, name, type) \

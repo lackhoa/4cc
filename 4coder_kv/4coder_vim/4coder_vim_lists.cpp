@@ -272,6 +272,10 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 	if(result != 0){ active_color_table = *result; }
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 CUSTOM_UI_COMMAND_SIG(vim_switch_lister)
 CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 {
@@ -293,7 +297,6 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 		view_set_buffer(app, view, buffer, 0);
 	}
 }
-
 
 function Jump_Lister_Result
 vim_get_jump_index_from_user(Application_Links *app, Marker_List *list,
@@ -326,6 +329,7 @@ vim_get_jump_index_from_user(Application_Links *app, Marker_List *list,
 
 	return(result);
 }
+
 
 function Jump_Lister_Result
 vim_get_jump_index_from_user(Application_Links *app, Marker_List *list, char *query){
@@ -374,7 +378,7 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 		Variable_Handle os_cmd = vars_read_key(cmd, os_id);
 		if(!vars_is_nil(os_cmd)){
 			String8 cmd_name = vars_key_from_var(scratch, cmd);
-			String8 os_cmd_str = vars_string_from_var(scratch, os_cmd);
+			vars_string_from_var(scratch, os_cmd);
 			u8 *f_str = push_array(scratch, u8, 3);
 			f_str[0] = 'F';
 			f_str[1] = '0' + u8(i%10);
@@ -571,4 +575,6 @@ CUSTOM_COMMAND_SIG(vim_file_externally_modified){
 		vim_reload_external_changes_lister(app, input.event.core.id);
 	}
 }
+
+#pragma clang diagnostic pop
 

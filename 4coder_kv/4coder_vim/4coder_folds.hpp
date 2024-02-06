@@ -209,7 +209,7 @@ function void fold_draw(Application_Links *app, Buffer_ID buffer, Text_Layout_ID
 					nest_level++;
 				}
 			}
-			Rect_f32 rect = rect_split_left_right(region, nest_level*3.f).a;
+			Rect_f32 rect = rect_split_left_right(region, (f32)nest_level*3.f).a;
 			Rect_f32 prev_clip = draw_set_clip(app, rect);
 			Range_i64 line_nums = Ii64(get_line_number_from_pos(app, buffer, fold->range.min),
 									   get_line_number_from_pos(app, buffer, fold->range.max));

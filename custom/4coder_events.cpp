@@ -38,7 +38,7 @@ copy_modifier_set(Arena *arena, Input_Modifier_Set_Fixed *set){
 
 function void
 copy_modifier_set(Input_Modifier_Set_Fixed *dst, Input_Modifier_Set *set){
-    i32 count = clamp_top(set->count, ArrayCount(dst->mods));
+    i32 count = clamp_top(set->count, ArrayCountSigned(dst->mods));
     dst->count = count;
     block_copy(dst->mods, set->mods, count*sizeof(*set->mods));
 }
@@ -46,7 +46,7 @@ copy_modifier_set(Input_Modifier_Set_Fixed *dst, Input_Modifier_Set *set){
 function void
 add_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod){
     if (!has_modifier(set, mod)){
-        if (set->count < ArrayCount(set->mods)){
+        if (set->count < ArrayCountSigned(set->mods)){
             set->mods[set->count] = mod;
             set->count += 1;
         }
@@ -437,7 +437,7 @@ parse_keyboard_event(Arena *arena, String_Const_u8 text){
                     pos += 1;
                     
                     Input_Modifier_Set_Fixed mods = {};
-                    for (;mods.count < ArrayCount(mods.mods);){
+                    for (;mods.count < ArrayCountSigned(mods.mods);){
                         for (;pos < text.size && character_is_whitespace(text.str[pos]); pos += 1);
                         range.first = pos;
                         for (;pos < text.size && character_is_base16(text.str[pos]); pos += 1);

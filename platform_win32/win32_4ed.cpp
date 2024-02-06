@@ -318,7 +318,7 @@ win32_toggle_fullscreen(){
     DWORD style = GetWindowLongW(win, GWL_STYLE);
     b32 is_full = ((style & WS_OVERLAPPEDWINDOW) == 0);
     if (!is_full){
-        MONITORINFO info = {sizeof(MONITORINFO)};
+        MONITORINFO info = {.cbSize=sizeof(MONITORINFO)};
         if (GetWindowPlacement(win, &win32vars.bordered_win_pos) && GetMonitorInfo(MonitorFromWindow(win, MONITOR_DEFAULTTOPRIMARY), &info)){
             SetWindowLongW(win, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
             
@@ -893,7 +893,7 @@ system_now_time_sig(){
     u64 result = 0;
     LARGE_INTEGER t;
     if (QueryPerformanceCounter(&t)){
-        result = (u64)(t.QuadPart*win32vars.usecond_per_count);
+        result = (u64)((f64)t.QuadPart * win32vars.usecond_per_count);
     }
     return(result);
 }
@@ -1373,7 +1373,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
             
             LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
             if (!(style & WS_OVERLAPPEDWINDOW)){
-                MONITORINFO monitor_info = {sizeof(MONITORINFO)};
+                MONITORINFO monitor_info = {.cbSize=sizeof(MONITORINFO)};
                 if(GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &monitor_info))
                 {
                     SetWindowPos(hwnd, HWND_TOP,
@@ -1389,7 +1389,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
         {
             win32vars.got_useful_event = true;
             PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hwnd, &ps);
+            BeginPaint(hwnd, &ps);
             // NOTE(allen): Do nothing?
             EndPaint(hwnd, &ps);
         }break;

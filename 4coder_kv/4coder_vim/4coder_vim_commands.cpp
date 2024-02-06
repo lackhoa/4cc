@@ -13,7 +13,7 @@ CUSTOM_DOC("Toggles buffer peek")
 		height = VIM_LISTER_MAX_RATIO*screen_height;
 	}
 
-	vim_nxt_filebar_offset = vim_show_buffer_peek*height;
+	vim_nxt_filebar_offset = (f32)vim_show_buffer_peek*height;
 }
 
 CUSTOM_COMMAND_SIG(vim_inc_buffer_peek)
@@ -43,9 +43,9 @@ vim_scoll_buffer_peek_inner(Application_Links *app, f32 ratio){
 
 	Rect_f32 back_rect = vim_get_bottom_rect(app);
 	f32 lines_per_page = rect_height(back_rect) / line_height;
-	f32 current_line = entry->nxt_ratio*total_lines;
-	entry->nxt_ratio = (current_line + ratio*lines_per_page) / total_lines;
-	entry->nxt_ratio = clamp(f32(lines_per_page / total_lines), entry->nxt_ratio, 1.f);
+	f32 current_line = entry->nxt_ratio*(f32)total_lines;
+	entry->nxt_ratio = ((f32)current_line + ratio*(f32)lines_per_page) / (f32)total_lines;
+	entry->nxt_ratio = clamp(f32(lines_per_page / (f32)total_lines), entry->nxt_ratio, 1.f);
 }
 
 CUSTOM_COMMAND_SIG(vim_scoll_buffer_peek_up)
@@ -637,7 +637,6 @@ VIM_COMMAND_SIG(vim_last_command)
 
     if (do_insert)
     {
-      i64 cursor_pos = view_get_cursor_pos(app, view);
       vim_paste_from_register(app, view, buffer, &vim_registers.insert);
       vim_state.mode = VIM_Normal;
     }

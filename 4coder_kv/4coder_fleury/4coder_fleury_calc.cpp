@@ -33,7 +33,7 @@ struct CalcToken
 static CalcToken
 GetNextCalcToken(char *buffer)
 {
-    CalcToken token = { CalcTokenType_Invalid };
+    CalcToken token = { .type=CalcTokenType_Invalid };
     
     enum
     {
@@ -820,7 +820,7 @@ struct CalcSymbolTable
 static CalcValue
 CalcValueNone(void)
 {
-    CalcValue calc_value = {0};
+    CalcValue calc_value = {};
     calc_value.type = CalcType_None;
     return calc_value;
 }
@@ -828,7 +828,7 @@ CalcValueNone(void)
 static CalcValue
 CalcValueF64(double num)
 {
-    CalcValue val = {0};
+    CalcValue val = {};
     val.type = CalcType_Number;
     val.as_f64 = num;
     return val;
@@ -837,7 +837,7 @@ CalcValueF64(double num)
 static CalcValue
 CalcValueError(String_Const_u8 string)
 {
-    CalcValue val = {0};
+    CalcValue val = {};
     val.type = CalcType_Error;
     val.as_error = string;
     return val;
@@ -846,7 +846,7 @@ CalcValueError(String_Const_u8 string)
 static CalcValue
 CalcValueString(String_Const_u8 string)
 {
-    CalcValue val = {0};
+    CalcValue val = {};
     val.type = CalcType_String;
     val.as_string = string;
     return val;
@@ -855,7 +855,7 @@ CalcValueString(String_Const_u8 string)
 static CalcValue
 CalcValueSourceCodeReference(i64 token_position)
 {
-    CalcValue val = {0};
+    CalcValue val = {};
     val.type = CalcType_SourceCodeReference;
     val.as_token_offset = token_position;
     return val;
@@ -892,7 +892,7 @@ InterpretCalcExpression(CalcInterpretContext *context, CalcNode *root);
 static CalcValue
 CalcValueArray(CalcInterpretContext *context, CalcNode *first_member)
 {
-    CalcValue val = {0};
+    CalcValue val = {};
     val.type = CalcType_Array;
     
     CalcType array_type = CalcType_None;
@@ -950,7 +950,7 @@ CalcValueArray(CalcInterpretContext *context, CalcNode *first_member)
 static CalcSymbolTable
 CalcSymbolTableInit(Arena *arena, unsigned int size)
 {
-    CalcSymbolTable table = {0};
+    CalcSymbolTable table = {};
     table.size = size;
     table.keys = push_array(arena, CalcSymbolKey, size);
     table.values = push_array(arena, CalcSymbolValue, size);
@@ -1009,7 +1009,7 @@ CalcSymbolTableLookup_(CalcSymbolTable *table, char *string, int length)
 static CalcValue
 CalcSymbolTableLookup(CalcSymbolTable *table, char *string, int string_length)
 {
-    CalcValue result = {0};
+    CalcValue result = {};
     CalcSymbolValue *value = CalcSymbolTableLookup_(table, string, string_length);
     if(value)
     {
@@ -1117,7 +1117,6 @@ GetDataFromSourceCode(Application_Links *app, Buffer_ID buffer, Text_Layout_ID t
                       i64 start_pos, Arena *arena, float **data_ptr, int *data_count_ptr)
 {
     Token_Array token_array = get_token_array_from_buffer(app, buffer);
-    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     
     if(token_array.tokens != 0)
     {
@@ -1211,7 +1210,7 @@ GetDataFromSourceCode(Application_Links *app, Buffer_ID buffer, Text_Layout_ID t
             data = push_array_zero(arena, float, total_value_count);
             for(DataChunk *chunk = first_data_chunk; chunk; chunk = chunk->next)
             {
-                for(int i = 0; i < ArrayCount(chunk->values); i += 1)
+                for(u32 i = 0; i < ArrayCount(chunk->values); i += 1)
                 {
                     data[data_count] = chunk->values[i];
                     data_count += 1;
@@ -1302,7 +1301,7 @@ struct CalcFindInputResult
 static CalcFindInputResult
 FindUnknownForGraph(CalcSymbolTable *table, CalcNode *expression)
 {
-    CalcFindInputResult result = {0};
+    CalcFindInputResult result = {};
     
     if(expression && expression->type != CalcNodeType_Invalid)
     {
@@ -1328,7 +1327,7 @@ FindUnknownForGraph(CalcSymbolTable *table, CalcNode *expression)
                 FindUnknownForGraph(table, expression->next),
             };
             
-            for(int i = 0; i < ArrayCount(results); ++i)
+            for(u32 i = 0; i < ArrayCount(results); ++i)
             {
                 if(results[i].unknown)
                 {
@@ -1359,7 +1358,7 @@ typedef CALC_BUILT_IN_FUNCTION(CalcBuiltInFunction);
 static
 CALC_BUILT_IN_FUNCTION(CalcSin)
 {
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueF64(sin(params[0].value.as_f64));
     return result;
 }
@@ -1367,7 +1366,7 @@ CALC_BUILT_IN_FUNCTION(CalcSin)
 static
 CALC_BUILT_IN_FUNCTION(CalcCos)
 {
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueF64(cos(params[0].value.as_f64));
     return result;
 }
@@ -1375,7 +1374,7 @@ CALC_BUILT_IN_FUNCTION(CalcCos)
 static
 CALC_BUILT_IN_FUNCTION(CalcTan)
 {
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueF64(tan(params[0].value.as_f64));
     return result;
 }
@@ -1383,7 +1382,7 @@ CALC_BUILT_IN_FUNCTION(CalcTan)
 static
 CALC_BUILT_IN_FUNCTION(CalcAbs)
 {
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueF64(fabs(params[0].value.as_f64));
     return result;
 }
@@ -1394,7 +1393,7 @@ CALC_BUILT_IN_FUNCTION(CalcPlotTitle)
     context->plot_title = params[0].value.as_string;
     context->plot_title.str += 1;
     context->plot_title.size -= 2;
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueNone();
     return result;
 }
@@ -1403,7 +1402,7 @@ static
 CALC_BUILT_IN_FUNCTION(CalcPlotFunctionSamples)
 {
     context->num_function_samples = (int)params[0].value.as_f64;
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueNone();
     return result;
 }
@@ -1412,7 +1411,7 @@ static
 CALC_BUILT_IN_FUNCTION(CalcPlotBinCount)
 {
     context->num_bins = (int)params[0].value.as_f64;
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueNone();
     return result;
 }
@@ -1422,7 +1421,7 @@ CALC_BUILT_IN_FUNCTION(CalcPlotBinRange)
 {
     context->bin_range_low = (f32)params[0].value.as_f64;
     context->bin_range_high = (f32)params[1].value.as_f64;
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueNone();
     return result;
 }
@@ -1430,7 +1429,7 @@ CALC_BUILT_IN_FUNCTION(CalcPlotBinRange)
 static
 CALC_BUILT_IN_FUNCTION(CalcTime)
 {
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     result.value = CalcValueF64((f64)context->current_time);
     animate_in_n_milliseconds(context->app, 0);
     return result;
@@ -1551,7 +1550,7 @@ GenerateLinePlotData(CalcInterpretContext *context, CalcNode *expression,
         {
             for(int i = 0; i < values_to_plot; ++i)
             {
-                double new_x_value = (context->plot_view.x0 + (i / (float)values_to_plot) *
+                double new_x_value = (context->plot_view.x0 + (cast(f32)i / (float)values_to_plot) *
                                       (context->plot_view.x1 - context->plot_view.x0));
                 if(symbol_value_ptr)
                 {
@@ -1646,7 +1645,7 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
     
 #define MAX_BUILTIN_PARAM 4
     
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     
     b32 function_valid = 0;
     
@@ -1661,7 +1660,7 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
         char *name;
         CalcBuiltInFunction *proc;
         CalcType return_type;
-        int required_parameter_count;
+        u32 required_parameter_count;
         CalcType parameter_types[MAX_BUILTIN_PARAM];
     }
     functions[] =
@@ -1699,18 +1698,18 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
             2, { CalcType_Number, CalcType_Number },
         },
         
-        { "time", CalcTime, CalcType_Number, },
+        { "time", CalcTime, CalcType_Number, 0, {  } },
         
     };
     
-    for(int i = 0; i < ArrayCount(functions); ++i)
+    for(u32 i = 0; i < ArrayCount(functions); ++i)
     {
         if(CalcTokenMatch(root->token, functions[i].name))
         {
             function_valid = 1;
             
-            int param_count = 0;
-            CalcInterpretResult param_results[MAX_BUILTIN_PARAM] = {0};
+            u32 param_count = 0;
+            CalcInterpretResult param_results[MAX_BUILTIN_PARAM] = {};
             for(CalcNode *param = root->first_parameter; param; param = param->next)
             {
                 param_results[param_count++] = InterpretCalcExpression(context, param);
@@ -1732,7 +1731,7 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
             
             if(correct_call)
             {
-                for(int j = 0; j < param_count; ++j)
+                for(u32 j = 0; j < param_count; ++j)
                 {
                     if(param_results[j].value.type != functions[i].parameter_types[j])
                     {
@@ -1765,9 +1764,9 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
                 CalcNode *low_param = 0;
                 CalcNode *high_param = 0;
                 
-                CalcInterpretResult title_result = {0};
-                CalcInterpretResult low_result = {0};
-                CalcInterpretResult high_result = {0};
+                CalcInterpretResult title_result = {};
+                CalcInterpretResult low_result = {};
+                CalcInterpretResult high_result = {};
                 
                 for(CalcNode *param = root->first_parameter;
                     param; param = param->next)
@@ -1877,7 +1876,7 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
                 };
                 
                 Plot2DMode mode = Plot2DMode_Line;
-                for(int j = 0; j < ArrayCount(plot_functions); ++j)
+                for(u32 j = 0; j < ArrayCount(plot_functions); ++j)
                 {
                     if(CalcTokenMatch(root->token, plot_functions[j].name))
                     {
@@ -1957,7 +1956,7 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
 static CalcInterpretResult
 InterpretCalcExpression(CalcInterpretContext *context, CalcNode *root)
 {
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     
     if(root == 0)
     {
@@ -2207,7 +2206,7 @@ IdentifierExistsInCalcExpression(CalcNode *root, char *string, int string_length
 static CalcInterpretResult
 InterpretCalcCode(CalcInterpretContext *context, CalcNode *root)
 {
-    CalcInterpretResult result = {0};
+    CalcInterpretResult result = {};
     CalcInterpretResult last_result = result;
     
     if(root)
@@ -2275,7 +2274,7 @@ static CalcInterpretContext
 CalcInterpretContextInit(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                          Arena *arena, CalcSymbolTable *symbol_table, f32 current_time)
 {
-    CalcInterpretContext context = {0};
+    CalcInterpretContext context = {};
     context.app = app;
     context.buffer = buffer;
     context.text_layout_id = text_layout_id;
@@ -2325,7 +2324,7 @@ F4_CLC_RenderCode(Application_Links *app, Buffer_ID buffer,
     expr = ParseCalcCode(arena, &at);
   }
   
-  Rect_f32 last_graph_rect = {0};
+  Rect_f32 last_graph_rect = {};
   
   for(CalcNode *interpret_expression = expr; 
       interpret_expression;
@@ -2334,7 +2333,7 @@ F4_CLC_RenderCode(Application_Links *app, Buffer_ID buffer,
     char *at_source = interpret_expression->at_source;
     
     // NOTE(rjf): Find starting result layout position.
-    Vec2_f32 result_layout_position = {0};
+    Vec2_f32 result_layout_position = {};
     if(at_source)
     {
       i64 offset = (i64)(at_source - code_buffer);
@@ -2355,7 +2354,7 @@ F4_CLC_RenderCode(Application_Links *app, Buffer_ID buffer,
     {
       // NOTE(rjf): Draw result, if there's one.
       {
-        String_Const_u8 result_string = {0};
+        String_Const_u8 result_string = {};
         
         switch(result.value.type)
         {
@@ -2396,7 +2395,7 @@ F4_CLC_RenderCode(Application_Links *app, Buffer_ID buffer,
       {
         Rect_f32 view_rect = view_get_screen_rect(app, view);
         
-        Rect_f32 graph_rect = {0};
+        Rect_f32 graph_rect = {};
         {
           graph_rect.x0 = view_rect.x1 - 30 - 300;
           graph_rect.y0 = result_layout_position.y + 30 - 100;

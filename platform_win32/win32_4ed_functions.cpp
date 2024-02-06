@@ -173,8 +173,6 @@ system_get_path_sig(){
         {
           if (w32_override_user_directory.size == 0)
           {
-            HANDLE current_process_token = GetCurrentProcessToken();
-            DWORD size = 0;
             String8 home = get_home_directory(arena);
             if (home.str)
             {
@@ -222,7 +220,6 @@ expand_tilde(Arena *arena, String8 path)
   if (char0 == '~' && (char1 == '/' || char1 == '\\'))
   {
     String8 home = get_home_directory(arena);
-    u64 bufsize = (path.size + path.size + 10);
     result = push_stringf(arena, "%.*s\\%.*s", string_expand(home), (i32)path.size-2, path.str+2);
   }
   return result;

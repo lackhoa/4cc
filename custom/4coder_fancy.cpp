@@ -303,7 +303,7 @@ push_fancy_stringf(Arena *arena, Fancy_Line *line,
 internal Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                         f32 pre_margin, f32 post_margin,
-                        String_Const_u8 value, i32 max){
+                        String_Const_u8 value, u32 max){
     if (value.size <= max){
         return(push_fancy_stringf(arena, line, face, fore, pre_margin, post_margin,
                                   "%-*.*s", max, string_expand(value)));
@@ -315,7 +315,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
 }
 internal Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
-                        String_Const_u8 value, i32 max){
+                        String_Const_u8 value, u32 max){
     if (value.size <= max){
         return(push_fancy_stringf(arena, line, face, fore, 0.f, 0.f,
                                   "%-*.*s", max, string_expand(value)));
@@ -328,7 +328,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
 internal Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
-                        i32 max){
+                        u32 max){
     if (value.size <= max){
         return(push_fancy_stringf(arena, line, face, fcolor_zero(),
                                   pre_margin, post_margin,
@@ -343,7 +343,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
 internal Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
-                        i32 max){
+                        u32 max){
     if (value.size <= max){
         return(push_fancy_stringf(arena, line, 0, fore, pre_margin, post_margin,
                                   "%-*.*s", max, string_expand(value)));
@@ -355,7 +355,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
 }
 internal Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
-                        String_Const_u8 value, i32 max){
+                        String_Const_u8 value, u32 max){
     if (value.size <= max){
         return(push_fancy_stringf(arena, line, face, fcolor_zero(), 0.f, 0.f,
                                   "%-*.*s", max, string_expand(value)));
@@ -367,7 +367,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
 }
 internal Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
-                        String_Const_u8 value, i32 max)
+                        String_Const_u8 value, u32 max)
 {
     if (value.size <= max){
       char *format = "%-*.*s";
@@ -382,7 +382,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
 internal Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
-                        i32 max){
+                        u32 max){
     if (value.size <= max){
       char *format = "%-*.*s";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(),
@@ -398,7 +398,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line,
 }
 internal Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, String_Const_u8 value,
-                        i32 max){
+                        u32 max){
     if (value.size <= max){
       char *format = "%-*.*s";
       Fancy_String *result = push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(), 0.f, 0.f,
@@ -414,7 +414,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, String_Const_u8 value,
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                         f32 pre_margin, f32 post_margin,
-                        String_Const_u8 value, i32 max){
+                        String_Const_u8 value, u32 max){
     if (value.size <= max){
       char *format = "%.*s";
         return(push_fancy_stringf(arena, line, face, fore, pre_margin, post_margin,
@@ -428,7 +428,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
 }
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
-                        String_Const_u8 value, i32 max){
+                        String_Const_u8 value, u32 max){
     if (value.size <= max){
         return(push_fancy_stringf(arena, line, face, fore, 0.f, 0.f,
                                   "%.*s", string_expand(value)));
@@ -441,7 +441,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
-                        i32 max){
+                        u32 max){
     if (value.size <= max){
       char *format = "%.*s";
         return(push_fancy_stringf(arena, line, face, fcolor_zero(),
@@ -458,7 +458,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
-                        i32 max){
+                        u32 max){
     if (value.size <= max){
         return(push_fancy_stringf(arena, line, 0, fore, pre_margin, post_margin,
                                   "%.*s", string_expand(value)));
@@ -470,7 +470,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
 }
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
-                        String_Const_u8 value, i32 max){
+                        String_Const_u8 value, u32 max){
     if (value.size <= max){
         return(push_fancy_stringf(arena, line, face, fcolor_zero(), 0.f, 0.f,
                                   "%.*s", string_expand(value)));
@@ -482,7 +482,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
 }
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
-                        String_Const_u8 value, i32 max){
+                        String_Const_u8 value, u32 max){
     if (value.size <= max){
       char *format = "%.*s";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fore, 0.f, 0.f,
@@ -497,7 +497,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line,
                         f32 pre_margin, f32 post_margin, String_Const_u8 value,
-                        i32 max){
+                        u32 max){
     if (value.size <= max){
       char *format = "%.*s";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(),
@@ -513,7 +513,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line,
 }
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, String_Const_u8 value,
-                        i32 max){
+                        u32 max){
     if (value.size <= max){
       char *format = "%.*s";
         return(push_fancy_stringf(arena, line, (Face_ID)0, fcolor_zero(), 0.f, 0.f,

@@ -232,7 +232,7 @@ vim_handle_visual_insert_mode(Application_Links *app, Input_Event *event){
 					i64 line_min = get_line_number_from_pos(app, buffer, range.min);
 					Rect_f32 block_rect = vim_get_rel_block_rect(app, view, buffer, range, line_min);
 
-					f32 x_off = vim_visual_insert_after*rect_width(block_rect);
+					f32 x_off = (f32)vim_visual_insert_after*rect_width(block_rect);
 					Vec2_f32 point = block_rect.p0 + V2(x_off, 0.f);
 					i64 pos = view_pos_at_relative_xy(app, view, line_min, point) + vim_visual_insert_after;
 

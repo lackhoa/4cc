@@ -14,6 +14,12 @@
 #define BindingGetPtr(b) ((b).custom)
 #endif
 
+// TODO(kv): revisit
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+#pragma clang diagnostic ignored "-Wsign-compare"
+
 function u64
 mapping__key(Input_Event_Kind kind, u32 sub_code){
     return((((u64)kind) << 32) | sub_code);
@@ -829,5 +835,8 @@ Command_Binding::operator Custom_Command_Function*(){
 Command_Binding::operator char*(){
     return(this->name);
 }
+
+#pragma clang diagnostic pop
+
 
 // BOTTOM

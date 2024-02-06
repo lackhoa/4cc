@@ -22,7 +22,7 @@ vim_draw_visual_mode(Application_Links *app, View_ID view, Buffer_ID buffer, Fac
 			ARGB_Color helper_color = fcolor_resolve(fcolor_id(defcolor_mark));
 			for(i64 i=test_line_min; i<=test_line_max; i++){
 				if(line_is_valid_and_blank(app, buffer, i) && i != line_min && i != line_max){ continue; }
-				Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*(i-line_min));
+				Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*(f32)(i-line_min));
 				Vec2_f32 max_point = min_point + V2(wid,0);
 				i64 min_pos = view_pos_from_xy(app, view, min_point);
 				i64 max_pos = view_pos_from_xy(app, view, max_point);
@@ -83,7 +83,7 @@ vim_draw_filebar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Fram
 	
 	f32 char_wid = get_face_metrics(app, face_id).normal_advance;
 	Rect_f32 title_rect = bar;
-	title_rect.x1 = bar.x0 + char_wid*unique_name.size;
+	title_rect.x1 = bar.x0 + char_wid*(f32)unique_name.size;
 	draw_rectangle_fcolor(app, title_rect, 0.f, fcolor_id(defcolor_vim_filebar_pop));
 	
 	Rect_f32 triangle_rect = title_rect;
@@ -139,7 +139,7 @@ vim_draw_filebar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Fram
 	}else if(cursor_position ==  buffer_size){
 		PosText = string_u8_litexpr("Bot");
 	}else{
-		PosText = push_stringf(scratch, "%d%%", i64(100.f*cursor_position/(buffer_size)));
+		PosText = push_stringf(scratch, "%d%%", i64(100.L*cast(f64)cursor_position/(f64)(buffer_size)));
 	}
 	draw_string(app, face_id, PosText, p, base_color);
 }
@@ -158,7 +158,7 @@ vim_draw_search_highlight(Application_Links *app, View_ID view, Buffer_ID buffer
 		else{
 			cur_pos = new_pos;
 			Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, cur_pos);
-			rect.x1 = rect.x0 + pattern->size*(rect_width(rect));
+			rect.x1 = rect.x0 + (f64)pattern->size*(rect_width(rect));
 			draw_rectangle_fcolor(app, rect, roundness, fcolor_id(defcolor_highlight));
 		}
 	}
@@ -423,7 +423,6 @@ vim_draw_line_number_margin(Application_Links *app, View_ID view, Buffer_ID buff
 function void
 vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 	Rect_f32 region = global_get_screen_rectangle(app);
-	Vec2_f32 center = rect_center(region);
 	draw_set_clip(app, region);
 	
 	Face_ID face_id = get_face_id(app, 0);
@@ -436,7 +435,7 @@ vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 		Vec2_f32 cursor_dim = V2(9.f, (vim_state.mode == VIM_Insert ? 4.f : 18.f));
 		Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - cursor_dim, cursor_dim);
 		u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
-		f32 roundness = char_wid*cursor_roundness_100*0.01f;
+		f32 roundness = char_wid*(f32)cursor_roundness_100*0.01f;
 		draw_rectangle_fcolor(app, cursor_rect, roundness, fcolor_id(defcolor_cursor, default_cursor_sub_id()));
 	}
 	
@@ -456,9 +455,8 @@ vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 	
 	if(vim_use_bottom_cursor){
 		Vec2_f32 p = draw_string(app, face_id, vim_bot_text.string, bot_left, finalize_color(defcolor_text_default, 0));
-		// if(ACTIVE_BLINK(vim_cursor_blink))  @modified(kv)
     {
-			p.x -= 0.37f*(p.x - bot_left.x)/vim_bot_text.size;
+			p.x -= 0.37f*(p.x - bot_left.x)/cast(f32)vim_bot_text.size;
 			draw_string(app, face_id, string_u8_litexpr("|"), p, finalize_color(defcolor_text_default, 0));
 		}
 	}else{
@@ -479,7 +477,7 @@ vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 			Buffer_Point buffer_point = {};
 			i64 line_count = buffer_get_line_count(app, buffer);
 			//buffer_point.line_number = i64(entry->cur_ratio*(line_count+1) - rect_height(back_rect)/line_height);
-			buffer_point.pixel_shift.y = line_height*entry->cur_ratio*(line_count+1) - rect_height(back_rect);
+			buffer_point.pixel_shift.y = line_height*entry->cur_ratio*(f32)(line_count+1) - rect_height(back_rect);
 			
 			FColor peek_back_color = fcolor_id(defcolor_back);
 			draw_rectangle_fcolor(app, back_rect, 0.f, peek_back_color);

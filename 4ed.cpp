@@ -303,8 +303,7 @@ App_Init_Sig(app_init){
     Buffer_Hook_Function *begin_buffer_func = models->begin_buffer;
     models->begin_buffer = 0;
     
-    Heap *heap = &models->heap;
-    for (i32 i = 0; i < ArrayCount(init_files); ++i){
+    for (u32 i = 0; i < ArrayCount(init_files); ++i){
         Editing_File *file = working_set_allocate_file(&models->working_set, &models->lifetime_allocator);
         buffer_bind_name(tctx, models, arena, &models->working_set, file, init_files[i].name);
         
@@ -379,13 +378,11 @@ App_Step_Sig(app_step){
             
             // TODO(allen): do(call a 'child process updated hook' let that hook populate the buffer if it so chooses)
             
-            b32 edited_file = false;
             u32 amount = 0;
             system_cli_begin_update(cli);
             if (system_cli_update_step(cli, dest, max, &amount)){
                 if (file != 0 && amount > 0){
                     output_file_append(tctx, models, file, SCu8(dest, amount));
-                    edited_file = true;
                 }
             }
             
@@ -393,7 +390,6 @@ App_Step_Sig(app_step){
                 if (file != 0){
                     String_Const_u8 str = push_u8_stringf(scratch, "exited with code %d", cli->exit);
                     output_file_append(tctx, models, file, str);
-                    edited_file = true;
                 }
                 processes_to_free[processes_to_free_count++] = child_process;
                 child_process_set_return_code(models, child_processes, child_process->id, cli->exit);

@@ -35,6 +35,10 @@ text_layout_release(Thread_Context *tctx, Models *models, Text_Layout_Container 
     sll_stack_push(container->free_nodes, layout);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 internal Text_Layout_ID
 text_layout_new(Text_Layout_Container *container, Arena *arena,
                 Buffer_ID buffer_id, Buffer_Point point,
@@ -80,6 +84,8 @@ text_layout_erase(Thread_Context *tctx, Models *models, Text_Layout_Container *c
     }
     return(result);
 }
+
+#pragma clang diagnostic pop
 
 ////////////////////////////////
 

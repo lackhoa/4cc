@@ -1,7 +1,10 @@
 #pragma once
 
 #include "4coder_vim_helper.cpp"
-#include "calc.hpp"
+// #include "calc.hpp"
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-compare"
 
 function void
 vim_update_registers(Application_Links *app){
@@ -59,11 +62,13 @@ vim_update_registers(Application_Links *app){
 #endif
 }
 
+#if 0
 function void vim_eval_register(Application_Links *app, Vim_Register *reg){
 	reg->data.str[reg->data.size] = 0;
 	Scratch_Block scratch(app);
 	vim_register_copy(reg, push_stringf(scratch, "%g", EXPR_ParseString(scratch, (char *)reg->data.str)));
 }
+#endif
 
 function void vim_push_reg_cycle(Application_Links *app){
 	Scratch_Block scratch(app);
@@ -103,7 +108,7 @@ vim_copy(Application_Links *app, Buffer_ID buffer, Range_i64 range, Vim_Register
 
 	if(0){}
 	else if(reg == &vim_registers.system){ clipboard_post(0, reg->data.string); }
-	else if(reg == &vim_registers.expression){ vim_eval_register(app, reg); }
+	// else if(reg == &vim_registers.expression){ vim_eval_register(app, reg); }
 
 	vim_update_registers(app);
 }
@@ -207,3 +212,5 @@ vim_process_insert_record(Record_Info record, i64 *prev_pos)
 	if(next_size >= text->cap){ vim_realloc_string(text, next_size); }
 	string_append(text, record.single_string_forward);
 }
+
+#pragma clang diagnostic pop

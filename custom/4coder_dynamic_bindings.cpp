@@ -71,9 +71,9 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                         Config_Get_Result_List list = typed_compound_array_reference_list(scratch, parsed, compound);
                         for (Config_Get_Result_Node *node = list.first; node != 0; node = node->next){
                             Config_Compound *src = node->result.compound;
-                            String_Const_u8 cmd_string = {0};
-                            String_Const_u8 key_string = {0};
-                            String_Const_u8 mod_string[9] = {0};
+                            String_Const_u8 cmd_string = {};
+                            String_Const_u8 key_string = {};
+                            String_Const_u8 mod_string[9] = {};
                             
                             if (!config_compound_string_member(parsed, src, "cmd", 0, &cmd_string)){
                                 def_config_push_error(scratch, parsed, node->result.pos, "Command string is required in binding");
@@ -85,7 +85,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                                 goto finish_map;
                             }
                             
-                            for (i32 mod_idx = 0; mod_idx < ArrayCount(mod_string); mod_idx += 1){
+                            for (u32 mod_idx = 0; mod_idx < ArrayCount(mod_string); mod_idx += 1){
                                 String_Const_u8 str = push_stringf(scratch, "mod_%i", mod_idx);
                                 if (config_compound_string_member(parsed, src, str, 2 + mod_idx, &mod_string[mod_idx])){
                                     // NOTE(rjf): No-Op
@@ -103,7 +103,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                                 // NOTE(rjf): Find mods.
                                 i32 mod_count = 0;
                                 Key_Code mods[ArrayCount(mod_string)] = {0};
-                                for (i32 i = 0; i < ArrayCount(mod_string); i += 1){
+                                for (u32 i = 0; i < ArrayCount(mod_string); i += 1){
                                     if (mod_string[i].str){
                                         mods[mod_count] = dynamic_binding_key_code_from_string(mod_string[i]);
                                         mod_count += 1;

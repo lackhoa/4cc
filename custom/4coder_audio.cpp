@@ -266,7 +266,6 @@ audio_clip_from_wav_FILE(Arena *arena, FILE *file){
 function Audio_Clip
 audio_clip_from_wav_file_name(Arena *arena, char *file_name){
  Audio_Clip result = {};
- String_Const_u8 data = {};
  FILE *file = fopen(file_name, "rb");
  if (file != 0){
   result = audio_clip_from_wav_FILE(arena, file);

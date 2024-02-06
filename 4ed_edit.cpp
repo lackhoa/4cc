@@ -170,8 +170,6 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
         buffer_unsort_cursors(  cursors,   cursor_count);
         buffer_unsort_cursors(r_cursors, r_cursor_count);
         
-        Face *face = file_get_face(models, file);
-        
         cursor_count = 0;
         r_cursor_count = 0;
         for (Panel *panel = layout_get_first_open_panel(layout);
@@ -469,7 +467,6 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
             Range_i64 new_range = Ii64_neg_inf;
             Gap_Buffer *buffer = &file->state.buffer;
             
-            i32 batch_count = 0;
             i64 shift = 0;
             for (Batch_Edit *edit = batch;
                  edit != 0;
@@ -491,7 +488,6 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
                     edit__apply(tctx, models, file, edit_range, insert_string,
                                 behaviors);
                     shift += replace_range_shift(edit_range, insert_string.size);
-                    batch_count += 1;
                 }
                 else{
                     result = false;

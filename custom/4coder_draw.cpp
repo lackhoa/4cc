@@ -233,12 +233,12 @@ layout_file_bar_on_bot(Rect_f32 rect, f32 line_height){
 
 function Rect_f32_Pair
 layout_query_bar_on_top(Rect_f32 rect, f32 line_height, i32 bar_count){
-    return(rect_split_top_bottom(rect, (line_height + 2.f)*bar_count));
+    return(rect_split_top_bottom(rect, (line_height + 2.f)*cast(f32)bar_count));
 }
 
 function Rect_f32_Pair
 layout_query_bar_on_bot(Rect_f32 rect, f32 line_height, i32 bar_count){
-    return(rect_split_top_bottom_neg(rect, (line_height + 2.f)*bar_count));
+    return(rect_split_top_bottom_neg(rect, (line_height + 2.f)*cast(f32)bar_count));
 }
 
 function Rect_f32_Pair

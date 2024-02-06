@@ -59,6 +59,9 @@ check_is_note(String_Const_u8 line, u64 colon_pos){
     return(is_note);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-compare"
+
 function Parsed_Jump
 parse_jump_location(String_Const_u8 line){
     Parsed_Jump jump = {};
@@ -182,6 +185,7 @@ parse_jump_location(String_Const_u8 line){
     }
     return(jump);
 }
+#pragma clang diagnostic pop
 
 function Parsed_Jump
 parse_jump_location(String_Const_u8 line, Jump_Flag flags){

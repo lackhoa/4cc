@@ -51,7 +51,7 @@ string_compute_needle_jump_table(Arena *arena, u64_Array longest_prefixes){
     array.count = longest_prefixes.count + 1;
     array.vals = push_array(arena, u64, array.count);
     array.vals[0] = 0;
-    for (u64 i = 1; i < array.count; i += 1){
+    for (i64 i = 1; i < array.count; i += 1){
         array.vals[i] = i - longest_prefixes.vals[i - 1];
     }
     return(array);

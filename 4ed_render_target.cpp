@@ -154,7 +154,7 @@ draw_line(Render_Target *target, v2 p0, v2 p1, f32 roundness, f32 thickness, u32
   vertices[5].xy = p1-perpendicular;
  
   v2 center = 0.5f * (p1 - p0);
-  for (i32 i=0; i < arlen(vertices); i++)
+  for (u32 i=0; i < arlen(vertices); i++)
   {
     vertices[i].uvw   = v3{center.x, center.y, roundness};
     vertices[i].color = color;
@@ -181,7 +181,7 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, f32 roundness, f3
     vertices[5].xy = V2(rect.x1, rect.y1);
     
     Vec2_f32 center = rect_center(rect);
-    for (i32 i = 0; i < alen(vertices); i += 1)
+    for (u32 i = 0; i < alen(vertices); i += 1)
     {
         vertices[i].uvw = V3f32(center.x, center.y, roundness);
         vertices[i].color = color;
@@ -235,7 +235,7 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
     vertices[4]    = vertices[2];
     vertices[5].xy = p_x_max + y_max;
     
-    for (i32 i = 0; i < alen(vertices); i += 1)
+    for (u32 i = 0; i < alen(vertices); i += 1)
     {
         vertices[i].color = color;
         vertices[i].half_thickness = 0.f;
@@ -265,7 +265,7 @@ draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color
     vertices[2].xy = v2{min.x, max.y};
     vertices[5].xy = max;
     
-    for_i32(i, 0, alen(vertices))
+    for_u32(i, 0, alen(vertices))
     {
         vertices[i].color = color;
         vertices[i].half_thickness = 0.f;

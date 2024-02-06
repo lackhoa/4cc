@@ -659,7 +659,11 @@ internal Token_Relex
 token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, i64 relex_first, i64 relex_last){
     Token_Relex relex = {};
     if (relex_list.total_count > 0){
-        Token_Array relexed_tokens = {tokens + relex_first, relex_last - relex_first + 1};
+        Token_Array relexed_tokens = 
+        {
+            .tokens = tokens + relex_first, 
+            .count = relex_last - relex_first + 1,
+        };
         Token_Iterator_List it = token_iterator_index(0, &relex_list, relex_list.total_count - 1);
         for (;;){
             Token *token = token_it_read(&it);

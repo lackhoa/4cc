@@ -214,7 +214,6 @@ VIM_COMMAND_SIG(kv_sexpr_up)
   GET_VIEW_AND_BUFFER;
   vim_push_jump(app, view);
   Vim_Motion_Block vim_motion_block(app);
-  Token_Array tokens = get_token_array_from_buffer(app, buffer);
 
   i64 pos = view_correct_cursor(app, view);
   if ( kv_is_group_opener(buffer_get_char(app, buffer, pos)) ) 
@@ -222,7 +221,6 @@ VIM_COMMAND_SIG(kv_sexpr_up)
     pos--;
   }
 
-  Find_Nest_Flag flags = FindNest_Scope | FindNest_Paren | FindNest_Balanced;
   Range_i64 range = {pos, pos};
   kv_find_current_nest(app, buffer, pos, &range);
   kv_goto_pos(app, view, range.start);
@@ -230,7 +228,7 @@ VIM_COMMAND_SIG(kv_sexpr_up)
 
 VIM_COMMAND_SIG(kv_sexpr_down)
 {
-  GET_VIEW_AND_BUFFER;
+  View_ID   view = get_active_view(app, Access_ReadVisible);
   vim_push_jump(app, view);
   Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
   if ( !token_it.tokens ) return;
@@ -250,7 +248,7 @@ VIM_COMMAND_SIG(kv_sexpr_down)
 
 VIM_COMMAND_SIG(kv_sexpr_right)
 {
-  GET_VIEW_AND_BUFFER;
+  View_ID   view = get_active_view(app, Access_ReadVisible);
   Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
   if ( !token_it.tokens ) return;
   
@@ -281,7 +279,6 @@ VIM_COMMAND_SIG(kv_sexpr_right)
 
 VIM_COMMAND_SIG(kv_sexpr_left)
 {
-  GET_VIEW_AND_BUFFER;
   Token_Iterator_Array token_it = kv_token_it_at_cursor(app, -1);
   Token *token = token_it_read(&token_it);
   if (!token) return;
@@ -691,7 +688,6 @@ u8 kv_get_current_char(Application_Links *app)
 CUSTOM_COMMAND_SIG(kv_list_all_locations)
 CUSTOM_DOC("adapted from list_all_locations for fuzzy search, if cursor at identifier then search for that instead")
 {
-  GET_VIEW_AND_BUFFER;
   if ( character_is_alpha(kv_get_current_char(app)) )
   {
     list_all_locations_of_identifier(app);

@@ -5,6 +5,8 @@ open file, switch buffer, or kill buffer.
 
 // TOP
 
+
+
 function void
 generate_all_buffers_list__output_buffer(Application_Links *app, Lister *lister,
                                          Buffer_ID buffer){
@@ -790,6 +792,7 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
         active_color_table = *color_table;
     }
 }
+
 
 // BOTTOM
 

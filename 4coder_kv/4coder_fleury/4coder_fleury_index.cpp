@@ -342,12 +342,12 @@ _F4_Index_Parse(Application_Links *app, F4_Index_File *file, String_Const_u8 str
 {
     F4_Index_ParseCtx ctx =
     {
-        false,
-        app,
-        file,
-        string,
-        tokens,
-        token_iterator_pos(0, &ctx.tokens, 0),
+        .done=false,
+        .app=app,
+        .file=file,
+        .string=string,
+        .tokens=tokens,
+        .it=token_iterator_pos(0, &ctx.tokens, 0),
     };
     if(language != 0)
     {

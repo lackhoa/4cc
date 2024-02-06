@@ -4,6 +4,11 @@
 
 // TOP
 
+// todo(kv): actually idk if we use this file
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 global Code_Index global_code_index = {};
 
 ////////////////////////////////
@@ -339,22 +344,24 @@ index_new_note(Code_Index_File *index, Generic_Parse_State *state, Range_i64 ran
 }
 
 function void
-cpp_parse_type_structure(Code_Index_File *index, Generic_Parse_State *state, Code_Index_Nest *parent){
-  generic_parse_inc(state);
-  generic_parse_skip_soft_tokens(index, state);
-  if (state->finished){
-    return;
-  }
-  Token *token = token_it_read(&state->it);
-  if (token != 0 && token->kind == TokenBaseKind_Identifier){
+cpp_parse_type_structure(Code_Index_File *index, Generic_Parse_State *state, Code_Index_Nest *parent)
+{
     generic_parse_inc(state);
     generic_parse_skip_soft_tokens(index, state);
-    Token *peek = token_it_read(&state->it);
-    if (peek != 0 && peek->kind == TokenBaseKind_StatementClose ||
-        peek->kind == TokenBaseKind_ScopeOpen){
-      index_new_note(index, state, Ii64(token), CodeIndexNote_Type, parent);
+    if (state->finished){
+        return;
     }
-  }
+    Token *token = token_it_read(&state->it);
+    if (token != 0 && token->kind == TokenBaseKind_Identifier){
+        generic_parse_inc(state);
+        generic_parse_skip_soft_tokens(index, state);
+        Token *peek = token_it_read(&state->it);
+        if (peek != 0 && 
+            (peek->kind == TokenBaseKind_StatementClose || peek->kind == TokenBaseKind_ScopeOpen))
+        {
+            index_new_note(index, state, Ii64(token), CodeIndexNote_Type, parent);
+        }
+    }
 }
 
 function void
@@ -372,8 +379,7 @@ cpp_parse_type_def(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
       generic_parse_skip_soft_tokens(index, state);
       did_advance = true;
       Token *peek = token_it_read(&state->it);
-      if (peek != 0 && peek->kind == TokenBaseKind_StatementClose ||
-          peek->kind == TokenBaseKind_ParentheticalOpen){
+      if (peek != 0 && (peek->kind == TokenBaseKind_StatementClose || peek->kind == TokenBaseKind_ParentheticalOpen)){
         index_new_note(index, state, Ii64(token), CodeIndexNote_Type, parent);
         break;
       }
@@ -440,8 +446,7 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
       generic_parse_skip_soft_tokens(index, state);
       peek = token_it_read(&state->it);
       if (peek != 0 &&
-          peek->kind == TokenBaseKind_ScopeOpen ||
-          peek->kind == TokenBaseKind_StatementClose){
+          (peek->kind == TokenBaseKind_ScopeOpen || peek->kind == TokenBaseKind_StatementClose)){
         index_new_note(index, state, Ii64(token), CodeIndexNote_Function, parent);
       }
     }
@@ -671,7 +676,6 @@ generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state){
   result->close = Ii64(max_i64);
   result->file = index;
   
-  i64 manifested_characters_on_line = 0;
   {
     u8 *ptr = state->prev_line_start;
     u8 *end_ptr = state->contents.str + token->pos;
@@ -681,8 +685,6 @@ generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state){
         break;
       }
     }
-    // NOTE(allen): Manifested characters
-    manifested_characters_on_line = (i64)(end_ptr - ptr) + token->size;
   }
   
   state->paren_counter += 1;
@@ -951,7 +953,7 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
   LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
   
   u64 vw_indent = def_get_config_u64(app, vars_save_string_lit("virtual_whitespace_regular_indent"));
-  f32 regular_indent = metrics.space_advance*vw_indent;
+  f32 regular_indent = metrics.space_advance*(cast(f32)vw_indent);
   f32 wrap_align_x = width - metrics.normal_advance;
   
   Layout_Reflex reflex = get_layout_reflex(&list, buffer, width, face);
@@ -1125,8 +1127,8 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
             new_wrap_ptr_is_better = true;
           }
           else if (new_wrap_token_score == pending_wrap_token_score){
-            f32 new_score = new_wrap_paren_nest_count*10.f + new_wrap_x;
-            f32 old_score = pending_wrap_paren_nest_count*10.f + pending_wrap_x + metrics.normal_advance*4.f + pending_wrap_accumulated_w*0.5f;
+            f32 new_score = cast(f32)new_wrap_paren_nest_count*10.f + new_wrap_x;
+            f32 old_score = cast(f32)pending_wrap_paren_nest_count*10.f + pending_wrap_x + metrics.normal_advance*4.f + pending_wrap_accumulated_w*0.5f;
             
             if (new_score < old_score){
               new_wrap_ptr_is_better = true;
@@ -1240,5 +1242,7 @@ CUSTOM_DOC("Toggles virtual whitespace for all files.")
   b32 enable_virtual_whitespace = def_get_config_b32(key);
   def_set_config_b32(key, !enable_virtual_whitespace);
 }
+
+#pragma clang diagnostic pop
 
 // BOTTOM

@@ -99,7 +99,6 @@ kv_draw_paren_highlight(Application_Links *app, Buffer_ID buffer, Text_Layout_ID
     {// get_enclosure_ranges(app, scratch, buffer, pos);
       i32 max = 16;
       ranges.ranges = push_array(scratch, Range_i64, max);
-      i32 original_pos = pos;
       while ((ranges.count < max) && (pos >= 1))
       {
         // NOTE(kv): this algorithm is weird and inefficient: just keep two
@@ -245,7 +244,7 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
     Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     
     u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
-    f32 cursor_roundness = face_metrics.normal_advance*cursor_roundness_100*0.01f;
+    f32 cursor_roundness = face_metrics.normal_advance*(f32)cursor_roundness_100*0.01f;
     f32 mark_thickness = (f32)def_get_config_u64(app, vars_save_string_lit("mark_thickness"));
     
     i64 cursor_pos = view_correct_cursor(app, view);

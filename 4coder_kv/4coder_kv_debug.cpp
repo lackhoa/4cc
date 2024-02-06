@@ -29,9 +29,6 @@ debug_rect_position(Application_Links *app, Arena *scratch, Face_ID face_id, Deb
 internal void
 DEBUG_draw_hud(Application_Links *app, Face_ID face_id, Text_Layout_ID text_layout_id, Rect_f32 rect)
 {
-  Face_Metrics face_metrics = get_face_metrics(app, face_id);
-  f32 line_height = face_metrics.line_height;
-  
   draw_rectangle_fcolor(app, rect, 0.f, fcolor_change_alpha(f_black, 0.3f));
   
   Scratch_Block scratch(app);

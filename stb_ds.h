@@ -654,13 +654,13 @@ extern void * stbds_shmode_func(size_t elemsize, int mode);
 #define stbds_shgetp_null(t,k)  (stbds_shgeti(t,k) == -1 ? NULL : &(t)[stbds_temp((t)-1)])
 #define stbds_shlen        stbds_hmlen
 
-typedef struct
+struct stbds_array_header
 {
   size_t      length;
   size_t      capacity;
   void      * hash_table;
   ptrdiff_t   temp;
-} stbds_array_header;
+};
 
 typedef struct stbds_string_block
 {

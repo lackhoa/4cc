@@ -306,7 +306,7 @@ gl__make_program(char *header, char *vertex, char *fragment)
 }
 
 #define GLOffsetStruct(p,m) ((void*)(OffsetOfMemberStruct(p,m)))
-#define GLOffset(S,m)       ((void*)(OffsetOfMember(S,m)))
+#define GLOffset(S,m)       ((void*)(gb_offset_of(S,m)))
 
 Texture_ID global_game_texture;
 
@@ -478,7 +478,7 @@ gl_render(Render_Target *t)
 #undef X
         
         // NOTE: uniform
-        glUniform2f(program->view_t, width/2.f, height/2.f);
+        glUniform2f(program->view_t, (f32)width/2.f, (f32)height/2.f);
         f32 view_m[4] = 
         {
             2.f/width, 0.f,

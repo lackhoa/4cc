@@ -108,7 +108,7 @@ function void vim_reset_state(){
 
 /// If you _really_ want to change dynamic register allocation, go for it
 #ifndef VIM_GROW_RATE
-#define VIM_GROW_RATE(S) (Max(u64(128), u64(1.5*(S))))
+#define VIM_GROW_RATE(S) (Max(u64(128), u64(2*(S))))
 #endif
 
 function b32

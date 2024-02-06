@@ -29,6 +29,11 @@
 
 // NOTE(allen): PRIMARY MODEL
 
+// TODO(kv): revisit
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction" 
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+
 struct Token_Kind_Node{
     Token_Kind_Node *next;
     b32 optimized_in;
@@ -715,6 +720,8 @@ smi_field_set_subtract(Arena *arena, Field_Set a, Field_Set b){
     return(result);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare"
 internal Field_Set
 smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
     Field_Set result = {};
@@ -760,6 +767,7 @@ smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
     }
     return(result);
 }
+#pragma clang diagnostic pop
 
 internal b32
 smi_field_set_match(Arena *scratch, Field_Set a, Field_Set b){
@@ -2748,14 +2756,14 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
     // heavy optimization effort
     f32 acceptable_error_threshold = 2.f;
     f32 accumulated_error_threshold = 8000.f;
-    i32 acceptable_max_single_error = 4;
-    i32 accumulated_max_single_error_threshold = Thousand(800);
+    u32 acceptable_max_single_error = 4;
+    u32 accumulated_max_single_error_threshold = Thousand(800);
 #else
     // light optimization effort
     f32 acceptable_error_threshold = 1.1f;
     f32 accumulated_error_threshold = 200.f;
-    i32 acceptable_max_single_error = 5;
-    i32 accumulated_max_single_error_threshold = Thousand(40);
+    u32 acceptable_max_single_error = 5;
+    u32 accumulated_max_single_error_threshold = Thousand(40);
 #endif
     
     Keyword_Layout best_layout = {};
@@ -4012,8 +4020,6 @@ int main(int argc, char **argv){
     String_Const_u8 hand_written = file_read_all(&ctx->arena, hand_written_file);
     fclose(hand_written_file);
     
-    String_Const_u8 path_to_src = string_remove_last_folder(path_to_self);
-    
     String_Const_u8 out_h_name = push_u8_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".h",
                                                  string_expand(output_path));
     String_Const_u8 out_cpp_name = push_u8_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".cpp",
@@ -4066,6 +4072,8 @@ int main(int argc, char **argv){
     // Feature: Temporally chunked input
     return(0);
 }
+
+#pragma clang diagnostic pop  // #pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 // BOTTOM
 

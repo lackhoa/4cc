@@ -8,6 +8,9 @@
  */
 
 // TOP
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 internal u64
 log_parse__string_code(Log_Parse *parse, String_Const_u8 string, Log_String_Source string_source){
@@ -577,7 +580,7 @@ log_graph_fill(Application_Links *app, Rect_f32 layout_region, Face_ID face_id){
         Face_Metrics metrics = get_face_metrics(app, face_id);
         f32 line_height = metrics.line_height;
         f32 box_h = f32_floor32(line_height*1.5f);
-        f32 box_w = f32_floor32(rect_width(event_list_region)/log_graph.bucket_count);
+        f32 box_w = f32_floor32(rect_width(event_list_region)/cast(f32)log_graph.bucket_count);
         f32 y_cursor = event_list_region.y0 - layout_region.y0;
         
         if (log_graph.bucket_count > 0){
@@ -612,8 +615,8 @@ log_graph_fill(Application_Links *app, Rect_f32 layout_region, Face_ID face_id){
                 Log_Graph_Box *box_node = push_array(&log_arena, Log_Graph_Box, 1);
                 sll_queue_push(log_graph.first_box, log_graph.last_box, box_node);
                 log_graph.box_count += 1;
-                Rect_f32 rect = Rf32(box_w*bucket_with_next_event_index      , y_cursor,
-                                     box_w*(bucket_with_next_event_index + 1), y_cursor + box_h);
+                Rect_f32 rect = Rf32(box_w*cast(f32)bucket_with_next_event_index      , y_cursor,
+                                     box_w*cast(f32)(bucket_with_next_event_index + 1), y_cursor + box_h);
                 box_node->rect = rect;
                 box_node->event = next_event;
                 
@@ -1076,6 +1079,9 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
     
     log_view = 0;
 }
+
+#pragma clang diagnostic pop
+
 
 // BOTTOM
 

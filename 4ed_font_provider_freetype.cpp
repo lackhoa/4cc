@@ -175,7 +175,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         face = push_array_zero(arena, Face, 1);
         
         u32 pt_size_unscaled = Max(description->parameters.pt_size, 8); 
-        u32 pt_size = (u32)(pt_size_unscaled*scale_factor);
+        u32 pt_size = (u32)((f32)pt_size_unscaled*scale_factor);
         b32 hinting = description->parameters.hinting;
         
         FT_Size_RequestRec_ size = {};
@@ -188,10 +188,10 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         
         Face_Metrics *met = &face->metrics;
         
-        met->max_advance = f32_ceil32(ft_face->size->metrics.max_advance/64.f);
-        met->ascent      = f32_ceil32(ft_face->size->metrics.ascender/64.f);
-        met->descent     = f32_floor32(ft_face->size->metrics.descender/64.f);
-        met->text_height = f32_ceil32(ft_face->size->metrics.height/64.f);
+        met->max_advance = f32_ceil32((f32)ft_face->size->metrics.max_advance/64.f);
+        met->ascent      = f32_ceil32((f32)ft_face->size->metrics.ascender/64.f);
+        met->descent     = f32_floor32((f32)ft_face->size->metrics.descender/64.f);
+        met->text_height = f32_ceil32((f32)ft_face->size->metrics.height/64.f);
         met->line_skip   = met->text_height - (met->ascent - met->descent);
         met->line_skip   = clamp_bot(1.f, met->line_skip);
         met->line_height = met->text_height + met->line_skip;
@@ -235,9 +235,9 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
                 bitmap->data = push_array(arena, u8, dim.x*dim.y);
                 
                 face->bounds[i].xy_off.x0 = (f32)(ft_face->glyph->bitmap_left);
-                face->bounds[i].xy_off.y0 = (f32)(met->ascent - ft_face->glyph->bitmap_top);
-                face->bounds[i].xy_off.x1 = (f32)(face->bounds[i].xy_off.x0 + dim.x);
-                face->bounds[i].xy_off.y1 = (f32)(face->bounds[i].xy_off.y0 + dim.y);
+                face->bounds[i].xy_off.y0 = (f32)(met->ascent - (f32)ft_face->glyph->bitmap_top);
+                face->bounds[i].xy_off.x1 = (f32)(face->bounds[i].xy_off.x0 + (f32)dim.x);
+                face->bounds[i].xy_off.y1 = (f32)(face->bounds[i].xy_off.y0 + (f32)dim.y);
                 
                 switch (ft_glyph->bitmap.pixel_mode){
                     case FT_PIXEL_MODE_MONO:
@@ -280,7 +280,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
                     }break;
                 }
                 
-                face->advance_map.advance[i] = f32_ceil32(ft_glyph->advance.x/64.0f);
+                face->advance_map.advance[i] = f32_ceil32((f32)ft_glyph->advance.x/64.0f);
             }
         }
         

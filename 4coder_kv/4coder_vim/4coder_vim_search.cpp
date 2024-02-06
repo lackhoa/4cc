@@ -80,7 +80,6 @@ kv_fuzzy_search_forward(Application_Links *app, Buffer_ID buffer, i64 pos, Strin
 function i64
 kv_fuzzy_search_backward(Application_Links *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
 {
-  i64 buffer_size = buffer_get_size(app, buffer);
   i64 result = -1;
 
   Scratch_Block temp(app);
@@ -206,8 +205,8 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
 	String_Const_u8 prefix = (start_direction == Scan_Forward ? string_u8_litexpr("/") : string_u8_litexpr("?"));
 	vim_set_bottom_text(prefix);
 	u8 *dest = vim_bot_text.str + vim_bot_text.size;
-	u64 base_size, after_size;
-	base_size = after_size = vim_bot_text.size;
+	u64 after_size;
+	after_size = vim_bot_text.size;
 
 	Vim_Register *reg = &vim_registers.search;
 	if(reg->data.size < 256){ vim_realloc_string(&reg->data, 0); }

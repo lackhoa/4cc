@@ -71,7 +71,7 @@ standard_search_and_build_from_dir(Application_Links *app, View_ID view, String_
     // NOTE(allen): Search
     String_Const_u8 full_file_path = {};
     String_Const_u8 cmd_string  = {};
-    for (i32 i = 0; i < ArrayCount(standard_build_file_name_array); i += 1){
+    for (u32 i = 0; i < ArrayCount(standard_build_file_name_array); i += 1){
         full_file_path = push_file_search_up_path(app, scratch, start_dir, standard_build_file_name_array[i]);
         if (full_file_path.size > 0){
             cmd_string = standard_build_cmd_string_array[i];

@@ -27,6 +27,10 @@ child_process_container_release(Child_Process_Container *container, Models *mode
     block_zero_struct(container);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 internal Child_Process_And_ID
 child_process_alloc_new(Models *models, Child_Process_Container *container){
     Child_Process_And_ID result = {};
@@ -63,6 +67,8 @@ child_process_from_id(Child_Process_Container *container, Child_Process_ID id){
     }
     return(process);
 }
+
+#pragma clang diagnostic pop
 
 internal b32
 child_process_free(Child_Process_Container *container, Child_Process_ID id){
@@ -142,7 +148,7 @@ child_process_set_target_buffer(Models *models, Child_Process *child_process, Ed
 
 internal Process_State
 child_process_get_state(Child_Process_Container *child_processes, Child_Process_ID child_process_id){
-    Child_Process *child_process = child_process_from_id(child_processes, child_process_id);
+    child_process_from_id(child_processes, child_process_id);
     Process_State result = {};
     if (child_processes != 0){
         result.valid = true;

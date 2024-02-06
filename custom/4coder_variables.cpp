@@ -259,14 +259,12 @@ function Variable_Handle
 vars_new_variable(Variable_Handle var, String_ID key){
     Variable_Handle handle = vars_get_nil();
     if (var.ptr != &vars_nil){
-        Variable *prev = vars_get_nil().ptr;
         Variable *node = var.ptr->first;
         for (; !vars_is_nil(node);
              node = node->next){
             if (node->key == key){
                 break;
             }
-            prev = node;
         }
         
         if (!vars_is_nil(node)){
@@ -326,7 +324,7 @@ vars_print_indented(Application_Links *app, Variable_Handle var, i32 indent){
     String_Const_u8 var_val = vars_string_from_var(scratch, var);
     
     String_Const_u8 line = push_stringf(scratch, "%.*s%.*s: \"%.*s\"\n",
-                                        clamp_top(indent, sizeof(spaces)), spaces,
+                                        clamp_top(indent, (i32)sizeof(spaces)), spaces,
                                         string_expand(var_key),
                                         string_expand(var_val));
     print_message(app, line);

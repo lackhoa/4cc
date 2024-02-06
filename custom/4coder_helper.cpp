@@ -34,7 +34,7 @@ internal v3 fslider(f32 x, f32 y)
 function i32
 get_command_id(Custom_Command_Function *func){
     i32 result = -1;
-    for (i32 i = 0; i < ArrayCount(fcoder_metacmd_table); i += 1){
+    for (i32 i = 0; i < ArrayCountSigned(fcoder_metacmd_table); i += 1){
         if (func == fcoder_metacmd_table[i].proc){
             result = i;
             break;
@@ -57,7 +57,7 @@ function Command_Metadata*
 get_command_metadata_from_name(String_Const_u8 name){
     Command_Metadata *result = 0;
     Command_Metadata *candidate = fcoder_metacmd_table;
-    for (i32 i = 0; i < ArrayCount(fcoder_metacmd_table); i += 1, candidate += 1){
+    for (i32 i = 0; i < ArrayCountSigned(fcoder_metacmd_table); i += 1, candidate += 1){
         if (string_match(SCu8(candidate->name, candidate->name_len), name)){
             result = candidate;
             break;
@@ -172,7 +172,7 @@ character_predicate_from_character(u8 character){
 function Character_Predicate
 character_predicate_or(Character_Predicate *a, Character_Predicate *b){
     Character_Predicate p = {};
-    for (i32 i = 0; i < ArrayCount(p.b); i += 1){
+    for (u32 i = 0; i < ArrayCount(p.b); i += 1){
         p.b[i] = a->b[i] | b->b[i];
     }
     return(p);
@@ -181,7 +181,7 @@ character_predicate_or(Character_Predicate *a, Character_Predicate *b){
 function Character_Predicate
 character_predicate_and(Character_Predicate *a, Character_Predicate *b){
     Character_Predicate p = {};
-    for (i32 i = 0; i < ArrayCount(p.b); i += 1){
+    for (u32 i = 0; i < ArrayCount(p.b); i += 1){
         p.b[i] = a->b[i] & b->b[i];
     }
     return(p);
@@ -190,7 +190,7 @@ character_predicate_and(Character_Predicate *a, Character_Predicate *b){
 function Character_Predicate
 character_predicate_not(Character_Predicate *a){
     Character_Predicate p = {};
-    for (i32 i = 0; i < ArrayCount(p.b); i += 1){
+    for (u32 i = 0; i < ArrayCount(p.b); i += 1){
         p.b[i] = ~(a->b[i]);
     }
     return(p);
@@ -1912,10 +1912,6 @@ view_set_highlight_range(Application_Links *app, View_ID view, Range_i64 range){
 function void
 view_look_at_region(Application_Links *app, View_ID view, i64 major_pos, i64 minor_pos){
     Range_i64 range = Ii64(major_pos, minor_pos);
-    b32 bottom_major = false;
-    if (major_pos == range.max){
-        bottom_major = true;
-    }
     
     Buffer_Cursor top = view_compute_cursor(app, view, seek_pos(range.min));
     if (top.line > 0){
@@ -2636,7 +2632,7 @@ inline i64 get_current_char(FApp *app)
 inline Rect_f32 
 get_cursor_rect(Application_Links *app, Text_Layout_ID text_layout_id)
 {
-  GET_VIEW_AND_BUFFER;
+  View_ID view = get_active_view(app, Access_ReadVisible);
   i64 cursor_pos = view_get_cursor_pos(app, view);
   Rect_f32 result = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
   return result;

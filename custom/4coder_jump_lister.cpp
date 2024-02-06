@@ -4,6 +4,10 @@
 
 // TOP
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 function Jump_Lister_Result
 get_jump_index_from_user(Application_Links *app, Marker_List *list,
                          String_Const_u8 query){
@@ -35,6 +39,8 @@ get_jump_index_from_user(Application_Links *app, Marker_List *list,
     
     return(result);
 }
+
+#pragma clang diagnostic pop
 
 function Jump_Lister_Result
 get_jump_index_from_user(Application_Links *app, Marker_List *list, char *query){

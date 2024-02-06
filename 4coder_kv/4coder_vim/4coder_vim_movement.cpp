@@ -87,7 +87,7 @@ VIM_COMMAND_SIG(vim_percent_file){
 
 	i64 percent = vim_consume_number();
 	percent = Min(percent, 100);
-	i64 target_line = i64(0.01f*percent*buffer_get_line_count(app, buffer));
+	i64 target_line = i64(0.01f*(f64)percent*(f64)buffer_get_line_count(app, buffer));
 	view_set_cursor_and_preferred_x(app, view, seek_line_col(target_line, 0));;
 }
 
@@ -105,7 +105,7 @@ function void vim_screen_inner(Application_Links *app, f32 ratio, i32 offset){
 	Text_Layout_ID text_layout_id = text_layout_create(app, buffer, region, buffer_point);
 	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
 
-	i64 pos = i64(ratio*(range_size(visible_range))) + visible_range.min;
+	i64 pos = i64(ratio*(cast(f64)range_size(visible_range))) + visible_range.min;
 	Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
 	cursor = view_compute_cursor(app, view, seek_line_col(cursor.line + offset, 0));
 	view_set_cursor_and_preferred_x(app, view, seek_pos(cursor.pos));

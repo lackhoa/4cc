@@ -489,7 +489,7 @@ make_word_complete_menu(Render_Caller_Function *prev_render_caller, Word_Complet
 function void
 word_complete_menu_next(Word_Complete_Menu *menu){
     i32 count = 0;
-    for (i32 i = 0; i < ArrayCount(menu->options); i += 1){
+    for (u32 i = 0; i < ArrayCount(menu->options); i += 1){
         word_complete_iter_next(menu->it);
         if (word_complete_iter_is_at_base_slot(menu->it)){
             break;

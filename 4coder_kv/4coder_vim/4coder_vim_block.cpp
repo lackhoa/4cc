@@ -63,7 +63,7 @@ vim_block_copy(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 
 	u64 size = 0;
 	for(i64 i=line_max; i>=line_min; i--){
-		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*(i-line_min));
+		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*cast(f32)(i-line_min));
 		Vec2_f32 max_point = min_point + V2(wid,0);
 		i64 min_pos = view_pos_at_relative_xy(app, view, line_min, min_point);
 		i64 max_pos = view_pos_at_relative_xy(app, view, line_min, max_point)+1;
@@ -77,7 +77,7 @@ vim_block_copy(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 
 	reg->data.size = 0;
 	for(i64 i=line_max; i>=line_min; i--){
-		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*(i-line_min));
+		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*cast(f32)(i-line_min));
 		Vec2_f32 max_point = min_point + V2(wid,0);
 		i64 min_pos = view_pos_at_relative_xy(app, view, line_min, min_point);
 		i64 max_pos = view_pos_at_relative_xy(app, view, line_min, max_point)+1;
@@ -89,6 +89,10 @@ vim_block_copy(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 		reg->data.str[reg->data.size-1] = '\n';
 	}
 }
+
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-compare"
 
 function void
 vim_block_paste(Application_Links *app, View_ID view, Buffer_ID buffer, Vim_Register *reg){
@@ -111,7 +115,7 @@ vim_block_paste(Application_Links *app, View_ID view, Buffer_ID buffer, Vim_Regi
 	Range_i64 substring = {};
 	substring.max = -1;
 	for(i64 i=line_max; i>=line_min; i--){
-		Vec2_f32 point = block_rect.p0 + V2(wid, line_advance*(i-line_min));
+		Vec2_f32 point = block_rect.p0 + V2(wid, line_advance*cast(f32)(i-line_min));
 		i64 pos = view_pos_at_relative_xy(app, view, line_min, point);
 
 		b32 valid=true;
@@ -134,6 +138,7 @@ vim_block_paste(Application_Links *app, View_ID view, Buffer_ID buffer, Vim_Regi
 
 	vim_default_register();
 }
+#pragma clang diagnostic pop
 
 function void
 vim_block_edit(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64 range){
@@ -162,7 +167,7 @@ vim_block_edit(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 
 	for(i64 i=line_max; i>=line_min; i--){
 		if(line_is_valid_and_blank(app, buffer, i)){ continue; }
-		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*(i-line_min));
+		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*cast(f32)(i-line_min));
 		Vec2_f32 max_point = min_point + V2(wid,0);
 		i64 min_pos = view_pos_at_relative_xy(app, view, line_min, min_point);
 		i64 max_pos = view_pos_at_relative_xy(app, view, line_min, max_point);
@@ -190,11 +195,11 @@ vim_visual_insert_char(Application_Links *app, View_ID view, Buffer_ID buffer, u
 
 	f32 line_advance = rect_height(block_rect)/f32(Max(1, line_max-line_min));
 	f32 wid = rect_width(block_rect);
-	f32 x_off = vim_visual_insert_after*wid;
+	f32 x_off = (f32)vim_visual_insert_after*wid;
 
 	for(i64 i=line_max; i>=line_min; i--){
 		if(line_is_valid_and_blank(app, buffer, i) && i != line_min && i != line_max){ continue; }
-		Vec2_f32 point = block_rect.p0 + V2(x_off, line_advance*(i-line_min));
+		Vec2_f32 point = block_rect.p0 + V2(x_off, line_advance*cast(f32)(i-line_min));
 		i64 pos = view_pos_at_relative_xy(app, view, line_min, point);
 		buffer_replace_range(app, buffer, Ii64(pos + vim_visual_insert_after), SCu8(&character,1));
 	}

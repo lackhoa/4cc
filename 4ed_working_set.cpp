@@ -72,6 +72,10 @@ file_change_notification_thread_main(void *ptr){
 
 ////////////////////////////////
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
+#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
+
 internal Editing_File*
 working_set_allocate_file(Working_Set *working_set, Lifetime_Allocator *lifetime_allocator){
     Editing_File *file = working_set->free_files;
@@ -119,6 +123,8 @@ working_set_get_file(Working_Set *working_set, Buffer_ID id){
     }
     return(result);
 }
+
+#pragma clang diagnostic pop
 
 internal void
 working_set_init(Models *models, Working_Set *working_set){
@@ -357,7 +363,7 @@ buffer_bind_name_low_level(Arena *scratch, Working_Set *working_set, Editing_Fil
         file->unique_name.name_size = size;
     }
     
-    b32 result = working_set_add_name(working_set, file, string_from_file_name(&file->unique_name));
+    unused_var b32 result = working_set_add_name(working_set, file, string_from_file_name(&file->unique_name));
     Assert(result);
 }
 

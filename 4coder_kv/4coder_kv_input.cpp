@@ -74,6 +74,7 @@ kv_handle_quail(Application_Links *app, u8 character)
   return substituted;
 }
 
+
 // NOTE(kv): re-appropriated from the vim layer
 function b32
 kv_handle_keyboard_input(Application_Links *app, Input_Event *event)
