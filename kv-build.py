@@ -32,6 +32,8 @@ WARNINGS_ARRAY = [
     "-Wall",
     "-Wextra",
     "-Wimplicit-int-float-conversion",
+    "-Wshadow",
+
     "-Wno-write-strings",
     "-Wno-null-dereference",
     "-Wno-comment",

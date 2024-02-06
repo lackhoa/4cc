@@ -793,8 +793,8 @@ generic_parse_full_input_breaks(Code_Index_File *index, Generic_Parse_State *sta
       generic_parse_inc(state);
     }
     
-    i64 index = token_it_index(&state->it);
-    if (index >= one_past_last_index){
+    i64 token_index = token_it_index(&state->it);
+    if (token_index >= one_past_last_index){
       token = token_it_read(&state->it);
       if (token == 0){
         result = true;

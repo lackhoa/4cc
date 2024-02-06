@@ -715,9 +715,9 @@ def_var_dump_rvalue(Application_Links *app, Config *config, Variable_Handle dst,
             }
             
             if (sub_l_value != 0){
-                Config_RValue *r = node->r;
-                if (r != 0){
-                    def_var_dump_rvalue(app, config, sub_var, sub_l_value, r);
+                Config_RValue *r2 = node->r;
+                if (r2 != 0){
+                    def_var_dump_rvalue(app, config, sub_var, sub_l_value, r2);
                 }
             }
         }

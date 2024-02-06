@@ -279,30 +279,30 @@ VIM_COMMAND_SIG(kv_sexpr_right)
 
 VIM_COMMAND_SIG(kv_sexpr_left)
 {
-  Token_Iterator_Array token_it = kv_token_it_at_cursor(app, -1);
-  Token *token = token_it_read(&token_it);
-  if (!token) return;
-  do
-  {
+    Token_Iterator_Array token_it = kv_token_it_at_cursor(app, -1);
     Token *token = token_it_read(&token_it);
-    if (token->kind == TokenBaseKind_LiteralString)
+    if (!token) return;
+    do
     {
-      kv_goto_token(app, token);
-      break;
-    }
-    else if (kv_is_group_opener(token))
-    {
-      kv_goto_token(app, token);
-      move_right(app);
-      break;
-    }
-    else if (kv_is_group_closer(token))
-    {
-      kv_goto_token(app, token);
-      kv_vim_bounce(app);
-      break;
-    }
-  } while (token_it_dec(&token_it));
+        token = token_it_read(&token_it);
+        if (token->kind == TokenBaseKind_LiteralString)
+        {
+            kv_goto_token(app, token);
+            break;
+        }
+        else if (kv_is_group_opener(token))
+        {
+            kv_goto_token(app, token);
+            move_right(app);
+            break;
+        }
+        else if (kv_is_group_closer(token))
+        {
+            kv_goto_token(app, token);
+            kv_vim_bounce(app);
+            break;
+        }
+    } while (token_it_dec(&token_it));
 }
 
 VIM_COMMAND_SIG(kv_sexpr_end)
@@ -642,40 +642,40 @@ VIM_COMMAND_SIG(kv_vim_visual_line_mode)
 function void
 kv_list_all_locations_from_string(Application_Links *app, String_Const_u8 needle_str)
 {
-  Scratch_Block temp(app);
- 
-  View_ID default_target_view = get_next_view_after_active(app, Access_Always);
-  Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_name, default_target_view);
-  
-  String_Match_List all_matches = {};
-  for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-       buffer != 0;
-       buffer = get_buffer_next(app, buffer, Access_Always))
-  {
-    String_Match_List buffer_matches = {};
-    Range_i64 range = buffer_range(app, buffer);
+    Scratch_Block temp(app);
+    
+    View_ID default_target_view = get_next_view_after_active(app, Access_Always);
+    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_name, default_target_view);
+    
+    String_Match_List all_matches = {};
+    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+         buffer != 0;
+         buffer = get_buffer_next(app, buffer, Access_Always))
     {
-      for (i64 pos = 0; 
-           pos < range.end;)
-      {
-        i64 original_pos = pos;
-        pos = kv_fuzzy_search_forward(app, buffer, pos, needle_str);
-        if (pos < range.end)
+        String_Match_List buffer_matches = {};
+        Range_i64 range = buffer_range(app, buffer);
         {
-          // note(kv): just a dummy range, not sure if it's even used
-          Range_i64 range = {pos, pos+1};
-          string_match_list_push(temp, &buffer_matches, buffer, 0, 0, range);
+            for (i64 pos = 0; 
+                 pos < range.end;)
+            {
+                i64 original_pos = pos;
+                pos = kv_fuzzy_search_forward(app, buffer, pos, needle_str);
+                if (pos < range.end)
+                {
+                    // note(kv): just a dummy range, not sure if it's even used
+                    Range_i64 range2 = {pos, pos+1};
+                    string_match_list_push(temp, &buffer_matches, buffer, 0, 0, range2);
+                }
+                assert_defend(pos > original_pos, break;);
+            }
         }
-        assert_defend(pos > original_pos, break;);
-      }
+        all_matches = string_match_list_join(&all_matches, &buffer_matches);
     }
-    all_matches = string_match_list_join(&all_matches, &buffer_matches);
-  }
-
-  string_match_list_filter_remove_buffer(&all_matches, search_buffer);
-  string_match_list_filter_remove_buffer_predicate(app, &all_matches, buffer_has_name_with_star);
-
-  print_string_match_list_to_buffer(app, search_buffer, all_matches);
+    
+    string_match_list_filter_remove_buffer(&all_matches, search_buffer);
+    string_match_list_filter_remove_buffer_predicate(app, &all_matches, buffer_has_name_with_star);
+    
+    print_string_match_list_to_buffer(app, search_buffer, all_matches);
 }
 
 u8 kv_get_current_char(Application_Links *app)

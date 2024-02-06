@@ -261,7 +261,10 @@ F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_
         {
             F4_Index_Note *list_head = F4_Index_LookupNote(string);
             F4_Index_Note *list_tail = list_head;
-            for(F4_Index_Note *note = list_tail; note; list_tail = note, note = note->next);
+            for(F4_Index_Note *note2 = list_tail; 
+                note2; 
+                list_tail = note2, note2 = note->next);
+            
             if(list_tail != 0)
             {
                 list_tail->next = note;
