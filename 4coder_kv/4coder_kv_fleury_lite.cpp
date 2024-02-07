@@ -100,7 +100,7 @@ F4_RenderLite(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     //~ NOTE(rjf): Draw background.
     {
         ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_back));
-        if(string_match(buffer_name, string_u8_litexpr("*compilation*")))
+        if(string_match(buffer_name, compilation_buffer_name))
         {
             color = color_blend(color, 0.5f, 0xff000000);
         }

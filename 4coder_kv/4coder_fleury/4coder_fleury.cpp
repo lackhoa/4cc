@@ -572,7 +572,7 @@ CUSTOM_DOC("Fleury startup event")
     
     //~ NOTE(rjf): Initialize panels
     {
-        Buffer_Identifier comp = buffer_identifier(string_u8_litexpr("*compilation*"));
+        Buffer_Identifier comp = buffer_identifier(compilation_buffer_name);
         Buffer_Identifier left  = buffer_identifier(string_u8_litexpr("*calc*"));
         Buffer_Identifier right = buffer_identifier(string_u8_litexpr("*messages*"));
         Buffer_ID comp_id = buffer_identifier_to_id(app, comp);

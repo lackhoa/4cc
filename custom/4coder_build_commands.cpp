@@ -53,14 +53,15 @@ push_fallback_command(Arena *arena){
     return(push_fallback_command(arena, standard_build_file_name_array[0]));
 }
 
-global_const Buffer_Identifier standard_build_build_buffer_identifier = buffer_identifier(str8_lit("*compilation*"));
+global_const String8 compilation_buffer_name = str8_lit("*compilation*");
+global_const Buffer_Identifier standard_build_compilation_buffer_identifier = buffer_identifier(compilation_buffer_name);
 
 global_const u32 standard_build_exec_flags = CLI_OverlapWithConflict|CLI_SendEndSignal;
 
 internal void
 standard_build_exec_command(FApp *app, View_ID view, String8 dir, String8 cmd)
 {
-    exec_system_command(app, view, standard_build_build_buffer_identifier,
+    exec_system_command(app, view, standard_build_compilation_buffer_identifier,
                         dir, cmd,
                         standard_build_exec_flags);
 }
@@ -137,12 +138,13 @@ CUSTOM_DOC("Looks for a build.bat, build.sh, or makefile in the current and pare
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     standard_search_and_build(app, view, buffer, "");
     block_zero_struct(&prev_location);
-    lock_jump_buffer(app, string_u8_litexpr("*compilation*"));
+    lock_jump_buffer(app, compilation_buffer_name);
 }
 
 static Buffer_ID
-get_comp_buffer(Application_Links *app){
-    return(get_buffer_by_name(app, string_u8_litexpr("*compilation*"), Access_Always));
+get_comp_buffer(FApp *app)
+{
+    return(get_buffer_by_name(app, compilation_buffer_name, Access_Always));
 }
 
 /*
@@ -182,7 +184,7 @@ build_in_bottom_view(FApp *app, char *command_args)
     set_fancy_compilation_buffer_font(app);
     
     block_zero_struct(&prev_location);
-    lock_jump_buffer(app, string_u8_litexpr("*compilation*"));
+    lock_jump_buffer(app, compilation_buffer_name);
     expand_bottom_view(app);
 }
 

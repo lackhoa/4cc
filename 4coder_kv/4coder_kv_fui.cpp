@@ -174,12 +174,11 @@ fui_handle_slider(FApp *app, Buffer_ID buffer)
 internal void 
 fui_tick(Application_Links *app, Frame_Info frame_info)
 {
-  DEBUG_clear;
   f32 speed = 1.0f;
   f32 dt = frame_info.animation_dt;  // using actual literal_dt would trigger a big jump when the user initially presses a key
   fui_slider_value += dt * speed * fui_slider_direction;
-  DEBUG_text(fui_slider_value, fui_slider_value);
-  DEBUG_text(fui_slider_direction, fui_slider_direction);
+  DEBUG_text("fui_slider_value", fui_slider_value);
+  DEBUG_text("fui_slider_direction", fui_slider_direction);
   if( fui_slider_direction != v3{0,0,0} )
   {
     animate_in_n_milliseconds(app, 0);

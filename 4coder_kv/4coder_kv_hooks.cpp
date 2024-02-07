@@ -22,62 +22,69 @@ BUFFER_HOOK_SIG(kv_new_file)
 }
 
 internal Tick_Function kv_tick;
-internal void kv_tick(FApp *app, Frame_Info frame_info)
+//
+internal void 
+kv_tick(FApp *app, Frame_Info frame_info)
 {
-  // NOTE(kv): F4
-  linalloc_clear(&global_frame_arena);
-  F4_Index_Tick(app);
-  F4_CLC_Tick(frame_info);
-
-  // NOTE(kv): Default tick stuff from the 4th dimension:
-  default_tick(app, frame_info);
-
-  // NOTE(kv): vim
-  vim_animate_filebar(app, frame_info);
-  vim_animate_cursor(app, frame_info);
-  vim_cursor_blink++;
-  
-  // NOTE(kv): fui update
-  fui_tick(app, frame_info);
-
-  // NOTE(kv): autosave
-  f32 AUTOSAVE_PERIOD_SECONDS = 5.0f;
-  seconds_since_last_keystroke += frame_info.literal_dt;
-  if (seconds_since_last_keystroke > AUTOSAVE_PERIOD_SECONDS)
-  {
-    seconds_since_last_keystroke = 0;
-    b32 saved_at_least_one_buffer = false;
+    DEBUG_clear;
+    
+    // NOTE(kv): F4
+    linalloc_clear(&global_frame_arena);
+    F4_Index_Tick(app);
+    F4_CLC_Tick(frame_info);
+    
+    // NOTE(kv): Default tick stuff from the 4th dimension:
+    default_tick(app, frame_info);
+    
+    // NOTE(kv): vim
+    vim_animate_filebar(app, frame_info);
+    vim_animate_cursor(app, frame_info);
+    vim_cursor_blink++;
+    
+    // NOTE(kv): fui update
+    fui_tick(app, frame_info);
+    
+    // NOTE(kv): autosave
+    f32 AUTOSAVE_PERIOD_SECONDS = 5.0f;
+    seconds_since_last_keystroke += frame_info.literal_dt;
+    if (seconds_since_last_keystroke > AUTOSAVE_PERIOD_SECONDS)
     {
-      ProfileScope(app, "save all dirty buffers");
-      Scratch_Block scratch(app);
-      for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
-           buffer != 0;
-           buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
-      {
-        switch(buffer_get_dirty_state(app, buffer))
+        seconds_since_last_keystroke = 0;
+        b32 saved_at_least_one_buffer = false;
         {
-          case DirtyState_UnsavedChanges:
-          {
-            saved_at_least_one_buffer = true;
-            String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-            buffer_save(app, buffer, file_name, 0);
-          }
-          break;
-
-          case DirtyState_UnloadedChanges:
-          {
-            buffer_reopen(app, buffer, 0);
-            String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-            printf_message(app, scratch, "automatically reloaded file %.*s\n", string_expand(file_name));
-          }break;
+            ProfileScope(app, "save all dirty buffers");
+            Scratch_Block scratch(app);
+            for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
+                 buffer != 0;
+                 buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
+            {
+                switch(buffer_get_dirty_state(app, buffer))
+                {
+                    case DirtyState_UnsavedChanges:
+                    {
+                        saved_at_least_one_buffer = true;
+                        String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
+                        buffer_save(app, buffer, file_name, 0);
+                    }
+                    break;
+                    
+                    case DirtyState_UnloadedChanges:
+                    {
+                        buffer_reopen(app, buffer, 0);
+                        String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
+                        printf_message(app, scratch, "automatically reloaded file %.*s\n", string_expand(file_name));
+                    }break;
+                }
+                
+            }
         }
-        
-      }
+        if (saved_at_least_one_buffer) 
+        {
+            print_message(app, "auto-saved all dirty buffers\n");
+        }
     }
-    if (saved_at_least_one_buffer) {
-      print_message(app, "auto-saved all dirty buffers\n");
-    }
-  }
+    
+    DEBUG_text("clip_index", global_clipboard0.clip_index);
 }
 
 BUFFER_HOOK_SIG(kv_begin_buffer)

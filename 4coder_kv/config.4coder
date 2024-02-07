@@ -83,4 +83,4 @@ startup_file  = "C:/Users/vodan/notes/note.skm";
 // startup_file1 = "*render*";
 other_startup_file1 = "C:/Users/vodan/4ed/code/4coder_kv/game.cpp";
 
-DEBUG_draw_hud_p = false;
+DEBUG_draw_hud_p = true;

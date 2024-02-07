@@ -138,9 +138,10 @@ kv_default_bindings(Mapping *mapping)
   ParentMap(file_id);
 }
 
-inline void create_unimportant_buffer(Application_Links *app, char *name)
+inline void 
+create_unimportant_buffer(FApp *app, String8 name)
 {
-  Buffer_ID buffer = create_buffer(app, SCu8(name),
+  Buffer_ID buffer = create_buffer(app, name,
                                    BufferCreate_NeverAttachToFile |
                                    BufferCreate_AlwaysNew);
   buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
@@ -174,7 +175,7 @@ startup_panels_and_files(FApp *app)
     view_set_buffer(app, left_view, left_buffer, 0);
     
     // NOTE(kv): Bottom view
-    Buffer_Identifier comp = buffer_identifier(string_u8_litexpr("*compilation*"));
+    Buffer_Identifier comp = buffer_identifier(compilation_buffer_name);
     Buffer_ID comp_id = buffer_identifier_to_id(app, comp);
     View_ID compilation_view = 0;  // todo: rename
     {
@@ -300,9 +301,9 @@ VIM_COMMAND_SIG(kv_startup)
     kv_default_bindings(&framework_mapping);
     
     { // NOTE(kv): Create special buffers.
-        create_unimportant_buffer(app, "*calc*");
-        create_unimportant_buffer(app, "*compilation*");
-        create_unimportant_buffer(app, "*render*");
+        create_unimportant_buffer(app, string_u8_litexpr("*calc*"));
+        create_unimportant_buffer(app, compilation_buffer_name);
+        create_unimportant_buffer(app, string_u8_litexpr("*render*"));
     }
   
     startup_panels_and_files(app);
@@ -366,7 +367,7 @@ kv_vim_bindings(FApp *app)
     u32 I = bit_2;
     u32 V = bit_3;
     u32 MAP = 0;
-   
+    
     // todo(kv): tons of ifs :<
 #define BIND(...) if (!VimBind(__VA_ARGS__)) { printf("Keymap conflict at line %d!!!\n", __LINE__); }
     
@@ -564,6 +565,8 @@ kv_vim_bindings(FApp *app)
     BIND(N|0|MAP,  open_build_script,             KeyCode_F3);
     BIND(N|0|MAP,  toggle_bottom_view_command,  M|KeyCode_Period);
     BIND(N|0|MAP,  toggle_bottom_view_command,  C|KeyCode_Period);
+    //
+    BIND(N|0|MAP,  clipboard_pop_command,  S|KeyCode_P);
     
 #undef BIND
 }
@@ -571,74 +574,74 @@ kv_vim_bindings(FApp *app)
 function void 
 default_custom_layer_init(Application_Links *app)
 {
-  Thread_Context *tctx = get_thread_context(app);
-  
-  // NOTE(allen): setup for default framework
-  default_framework_init(app);
-  
-  // NOTE(allen): default hooks and command maps
-  set_all_default_hooks(app);
-  mapping_init(tctx, &framework_mapping);
-  String_ID global_map_id = vars_save_string_lit("keys_global");
-  String_ID file_map_id   = vars_save_string_lit("keys_file");
-  String_ID code_map_id   = vars_save_string_lit("keys_code");
+    Thread_Context *tctx = get_thread_context(app);
+    
+    // NOTE(allen): setup for default framework
+    default_framework_init(app);
+    
+    // NOTE(allen): default hooks and command maps
+    set_all_default_hooks(app);
+    mapping_init(tctx, &framework_mapping);
+    String_ID global_map_id = vars_save_string_lit("keys_global");
+    String_ID file_map_id   = vars_save_string_lit("keys_file");
+    String_ID code_map_id   = vars_save_string_lit("keys_code");
 #if OS_MAC
-  setup_mac_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+    setup_mac_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 #else
-  setup_default_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+    setup_default_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 #endif
-  setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+    setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 }
 
 function void 
 kv_custom_layer_init(Application_Links *app)
 {
-  default_framework_init(app);
-  set_all_default_hooks(app);
-  
-  // fleury
-  global_frame_arena = make_arena(get_base_allocator_system());
-  permanent_arena = make_arena(get_base_allocator_system());
-  
-  vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(string_u8_litexpr("*scratch*")), 1.f, 1.f };
-  vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(string_u8_litexpr("todo.txt")),  1.f, 1.f };
-  vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Title]     = byp_apply_title;
-  vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Comment]   = byp_apply_comment;
-  vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_UnComment] = byp_apply_uncomment;
-  
-  vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param0] = {',', (Vim_Text_Object_Func *)byp_object_param};
-  vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param1] = {';', (Vim_Text_Object_Func *)byp_object_param};
-  vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel0] = {'_', (Vim_Text_Object_Func *)byp_object_camel};
-  vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel1] = {'-', (Vim_Text_Object_Func *)byp_object_camel};
-  kv_vim_init(app);
-  
-  set_custom_hook(app, HookID_SaveFile,                kv_file_save);
-  // set_custom_hook(app, HookID_BufferRegion,            byp_buffer_region);
-  set_custom_hook(app, HookID_RenderCaller,            kv_render_caller);
-  set_custom_hook(app, HookID_WholeScreenRenderCaller, vim_draw_whole_screen);
-  //
-  set_custom_hook(app, HookID_Tick,             kv_tick);
-  set_custom_hook(app, HookID_NewFile,          kv_new_file);
-  set_custom_hook(app, HookID_BeginBuffer,      kv_begin_buffer);
-  set_custom_hook(app, HookID_BufferEditRange,  kv_buffer_edit_range);
-  set_custom_hook(app, HookID_ViewChangeBuffer, vim_view_change_buffer);
-  set_custom_hook(app, HookID_ViewEventHandler, kv_view_input_handler);
-  set_custom_hook(app, HookID_DeltaRule,        F4_DeltaRule_lite);
-  set_custom_hook_memory_size(app, HookID_DeltaRule, delta_ctx_size(sizeof(Vec2_f32)));
-  
-  Thread_Context *tctx = get_thread_context(app);
-  mapping_init(tctx, &framework_mapping);
-  kv_essential_mapping(&framework_mapping);
-  //
-  kvInitShiftedTable();
-  kvInitQuailTable(app);
-  //
-  kv_vim_bindings(app);
-  
-  // NOTE(rjf): Set up custom code index.
-  F4_Index_Initialize();
-  // NOTE(rjf): Register languages.
-  F4_RegisterLanguages();
+    default_framework_init(app);
+    set_all_default_hooks(app);
+    
+    // fleury
+    global_frame_arena = make_arena(get_base_allocator_system());
+    permanent_arena = make_arena(get_base_allocator_system());
+    
+    vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(string_u8_litexpr("*scratch*")), 1.f, 1.f };
+    vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(string_u8_litexpr("todo.txt")),  1.f, 1.f };
+    vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Title]     = byp_apply_title;
+    vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Comment]   = byp_apply_comment;
+    vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_UnComment] = byp_apply_uncomment;
+    
+    vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param0] = {',', (Vim_Text_Object_Func *)byp_object_param};
+    vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param1] = {';', (Vim_Text_Object_Func *)byp_object_param};
+    vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel0] = {'_', (Vim_Text_Object_Func *)byp_object_camel};
+    vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel1] = {'-', (Vim_Text_Object_Func *)byp_object_camel};
+    kv_vim_init(app);
+    
+    set_custom_hook(app, HookID_SaveFile,                kv_file_save);
+    // set_custom_hook(app, HookID_BufferRegion,            byp_buffer_region);
+    set_custom_hook(app, HookID_RenderCaller,            kv_render_caller);
+    set_custom_hook(app, HookID_WholeScreenRenderCaller, vim_draw_whole_screen);
+    //
+    set_custom_hook(app, HookID_Tick,             kv_tick);
+    set_custom_hook(app, HookID_NewFile,          kv_new_file);
+    set_custom_hook(app, HookID_BeginBuffer,      kv_begin_buffer);
+    set_custom_hook(app, HookID_BufferEditRange,  kv_buffer_edit_range);
+    set_custom_hook(app, HookID_ViewChangeBuffer, vim_view_change_buffer);
+    set_custom_hook(app, HookID_ViewEventHandler, kv_view_input_handler);
+    set_custom_hook(app, HookID_DeltaRule,        F4_DeltaRule_lite);
+    set_custom_hook_memory_size(app, HookID_DeltaRule, delta_ctx_size(sizeof(Vec2_f32)));
+    
+    Thread_Context *tctx = get_thread_context(app);
+    mapping_init(tctx, &framework_mapping);
+    kv_essential_mapping(&framework_mapping);
+    //
+    kvInitShiftedTable();
+    kvInitQuailTable(app);
+    //
+    kv_vim_bindings(app);
+    
+    // NOTE(rjf): Set up custom code index.
+    F4_Index_Initialize();
+    // NOTE(rjf): Register languages.
+    F4_RegisterLanguages();
 }
 
 extern "C" void

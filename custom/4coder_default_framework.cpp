@@ -5,7 +5,8 @@
 // TOP
 
 function void
-point_stack_push(Application_Links *app, Buffer_ID buffer, i64 pos){
+point_stack_push(Application_Links *app, Buffer_ID buffer, i64 pos)
+{
     Managed_Object object = alloc_buffer_markers_on_buffer(app, buffer, 1, 0);
     Marker *marker = (Marker*)managed_object_get_pointer(app, object);
     marker->pos = pos;
@@ -87,7 +88,8 @@ unlock_jump_buffer(void){
 function void
 lock_jump_buffer(FApp *app, String8 name)
 {
-    if (name.size < sizeof(locked_buffer_space)){
+    if (name.size < sizeof(locked_buffer_space))
+    {
         block_copy(locked_buffer_space, name.str, name.size);
         locked_buffer = SCu8(locked_buffer_space, name.size);
         Scratch_Block scratch(app);
@@ -208,7 +210,7 @@ get_next_view_looped_primary_panels(FApp *app, View_ID start_view, Access_Flag a
     } 
     while(view_id != start_view);
    
-    // note(kv): split
+    // note(kv): vsplit path
     if (view_id == start_view &&
         vsplit_if_fail)
     {
@@ -217,6 +219,14 @@ get_next_view_looped_primary_panels(FApp *app, View_ID start_view, Access_Flag a
     }
     
     return(view_id);
+}
+
+internal void
+switch_to_other_primary_panel(FApp *app)
+{
+    View_ID view = get_active_view(app, Access_Always);
+    View_ID next_view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
+    view_set_active(app, next_view);
 }
 
 function View_ID
@@ -457,38 +467,37 @@ CUSTOM_DOC("Create a new panel by horizontally splitting the active panel.")
 // NOTE(allen): Credits to nj/FlyingSolomon for authoring the original version of this helper.
 
 function Buffer_ID
-create_or_switch_to_buffer_and_clear_by_name(FApp *app, String8 name_string, View_ID default_target_view)
+maybe_create_buffer_and_clear_by_name(FApp *app, String8 name_string, View_ID default_target_view)
 {
     Buffer_ID search_buffer = get_buffer_by_name(app, name_string, Access_Always);
-    if (search_buffer != 0){
+    if (search_buffer != 0)
+    {
         buffer_set_setting(app, search_buffer, BufferSetting_ReadOnly, true);
         
         View_ID target_view = default_target_view;
         
         View_ID view_with_buffer_already_open = get_first_view_with_buffer(app, search_buffer);
-        if (view_with_buffer_already_open != 0){
+        if (view_with_buffer_already_open != 0)
+        {
             target_view = view_with_buffer_already_open;
             // TODO(allen): there needs to be something like
             // view_exit_to_base_context(app, target_view);
             //view_end_ui_mode(app, target_view);
         }
-        else{
+        else
+        {
             view_set_buffer(app, target_view, search_buffer, 0);
         }
-        view_set_active(app, target_view);
         
         clear_buffer(app, search_buffer);
         buffer_send_end_signal(app, search_buffer);
     }
-    else{
+    else
+    {
         search_buffer = create_buffer(app, name_string, BufferCreate_AlwaysNew);
         buffer_set_setting(app, search_buffer, BufferSetting_Unimportant, true);
         buffer_set_setting(app, search_buffer, BufferSetting_ReadOnly, true);
-#if 0
-        buffer_set_setting(app, search_buffer, BufferSetting_WrapLine, false);
-#endif
         view_set_buffer(app, default_target_view, search_buffer, 0);
-        view_set_active(app, default_target_view);
     }
     
     return(search_buffer);
@@ -979,7 +988,8 @@ paint_fade_ranges(Application_Links *app, Text_Layout_ID layout, Buffer_ID buffe
 ////////////////////////////////
 
 function void
-clipboard_init_empty(Clipboard *clipboard, u32 history_depth){
+clipboard_init_empty(Clipboard *clipboard, u32 history_depth)
+{
     history_depth = clamp_bot(1, history_depth);
     heap_init(&clipboard->heap, &clipboard->arena);
     clipboard->clip_index = 0;
@@ -996,24 +1006,28 @@ clipboard_init(Base_Allocator *allocator, u32 history_depth, Clipboard *clipboar
 }
 
 function void
-clipboard_clear(Clipboard *clipboard){
+clipboard_clear(Clipboard *clipboard)
+{
     linalloc_clear(&clipboard->arena);
     clipboard_init_empty(clipboard, clipboard->clip_capacity);
 }
 
-function String_Const_u8
-clipboard_post_internal_only(Clipboard *clipboard, String_Const_u8 string){
-    u32 rolled_index = clipboard->clip_index%clipboard->clip_capacity;
+function String8
+clipboard_post_internal_only(Clipboard *clipboard, String8 string)
+{
+    u32 rolled_index = clipboard->clip_index % clipboard->clip_capacity;
     clipboard->clip_index += 1;
-    String_Const_u8 *slot = &clipboard->clips[rolled_index];
-    if (slot->str != 0){
+    String8 *slot = &clipboard->clips[rolled_index];
+    if (slot->str != 0)
+    {
         if (slot->size < string.size ||
             (slot->size - string.size) > KB(1)){
             heap_free(&clipboard->heap, slot->str);
             goto alloc_new;
         }
     }
-    else{
+    else
+    {
         alloc_new:;
         u8 *new_buf = (u8*)heap_allocate(&clipboard->heap, string.size);
         slot->str = new_buf;
@@ -1024,27 +1038,31 @@ clipboard_post_internal_only(Clipboard *clipboard, String_Const_u8 string){
 }
 
 function u32
-clipboard_count(Clipboard *clipboard){
+clipboard_count(Clipboard *clipboard)
+{
     u32 result = clipboard->clip_index;
     result = clamp_top(result, clipboard->clip_capacity);
     return(result);
 }
 
-function String_Const_u8
-get_clipboard_index(Clipboard *clipboard, u32 item_index){
-    String_Const_u8 result = {};
+function String8
+get_clipboard_index(Clipboard *clipboard, u32 item_index)
+{
+    String8 result = {};
     u32 top = Min(clipboard->clip_index, clipboard->clip_capacity);
-    if (top > 0){
-        item_index = item_index%top;
-        i32 array_index = ((clipboard->clip_index - 1) - item_index)%top;
-        result = clipboard->clips[array_index];
-    }
+    
+    item_index = item_index % top;
+    // NOTE(kv): item_index is BACKWARD from the array index
+    i32 array_index = ((clipboard->clip_index - 1) - item_index) % top;
+    result = clipboard->clips[array_index];
+    
     return(result);
 }
 
-function String_Const_u8
-push_clipboard_index(Arena *arena, Clipboard *clipboard, i32 item_index){
-    String_Const_u8 result = get_clipboard_index(clipboard, item_index);
+function String8
+push_clipboard_index_inner(Arena *arena, Clipboard *clipboard, i32 item_index)
+{
+    String8 result = get_clipboard_index(clipboard, item_index);
     result = push_string_copy(arena, result);
     return(result);
 }
@@ -1053,30 +1071,34 @@ push_clipboard_index(Arena *arena, Clipboard *clipboard, i32 item_index){
 
 function void
 clipboard_clear(i32 clipboard_id){
-    clipboard_clear(&clipboard0);
+    clipboard_clear(&global_clipboard0);
 }
 
 function String_Const_u8
-clipboard_post_internal_only(i32 clipboard_id, String_Const_u8 string){
-    return(clipboard_post_internal_only(&clipboard0, string));
+clipboard_post_internal_only(i32 clipboard_id, String_Const_u8 string)
+{
+    return(clipboard_post_internal_only(&global_clipboard0, string));
 }
 
-function b32
-clipboard_post(i32 clipboard_id, String_Const_u8 string){
+function void
+clipboard_post(i32 clipboard_id, String8 string)
+{
     clipboard_post_internal_only(clipboard_id, string);
     system_post_clipboard(string, clipboard_id);
-    return(true);
 }
 
 function i32
-clipboard_count(i32 clipboard_id){
-    return(clipboard_count(&clipboard0));
+clipboard_count(i32 clipboard_id)
+{
+    return(clipboard_count(&global_clipboard0));
 }
 
-function String_Const_u8
-push_clipboard_index(Arena *arena, i32 clipboard_id, i32 item_index){
-    return(push_clipboard_index(arena, &clipboard0, item_index));
+function String8
+push_clipboard_index_inner(Arena *arena, i32 clipboard_id, i32 item_index)
+{
+    return(push_clipboard_index_inner(arena, &global_clipboard0, item_index));
 }
+
 
 ////////////////////////////////
 
@@ -1084,10 +1106,11 @@ function void
 initialize_managed_id_metadata(Application_Links *app);
 
 function void
-default_framework_init(Application_Links *app){
+default_framework_init(Application_Links *app)
+{
     Thread_Context *tctx = get_thread_context(app);
     async_task_handler_init(app, &global_async_system);
-    clipboard_init(get_base_allocator_system(), /*history_depth*/ 64, &clipboard0);
+    clipboard_init(get_base_allocator_system(), /*history_depth*/ 64, &global_clipboard0);
     code_index_init();
     buffer_modified_set_init();
     Profile_Global_List *list = get_core_profile_list(app);
@@ -1146,14 +1169,17 @@ set_next_rewrite(Application_Links *app, View_ID view, Rewrite_Type rewrite){
 }
 
 function void
-default_pre_command(Application_Links *app, Managed_Scope scope){
+default_pre_command(FApp *app, Managed_Scope scope)
+{
     Rewrite_Type *next_rewrite =
         scope_attachment(app, scope, view_next_rewrite_loc, Rewrite_Type);
     *next_rewrite = Rewrite_None;
-    if (fcoder_mode == FCoderMode_NotepadLike){
+    if (fcoder_mode == FCoderMode_NotepadLike)
+    {
         for (View_ID view_it = get_view_next(app, 0, Access_Always);
              view_it != 0;
-             view_it = get_view_next(app, view_it, Access_Always)){
+             view_it = get_view_next(app, view_it, Access_Always))
+        {
             Managed_Scope scope_it = view_get_managed_scope(app, view_it);
             b32 *snap_mark_to_cursor =
                 scope_attachment(app, scope_it, view_snap_mark_to_cursor,
@@ -1164,7 +1190,8 @@ default_pre_command(Application_Links *app, Managed_Scope scope){
 }
 
 function void
-default_post_command(Application_Links *app, Managed_Scope scope){
+default_post_command(Application_Links *app, Managed_Scope scope)
+{
     Rewrite_Type *next_rewrite = scope_attachment(app, scope, view_next_rewrite_loc, Rewrite_Type);
     if (next_rewrite != 0){
         if (*next_rewrite != Rewrite_NoChange){

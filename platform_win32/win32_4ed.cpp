@@ -175,7 +175,7 @@ struct Win32_Vars{
     String_Const_u8 binary_path;
     
     b8 clip_catch_all;
-    // b8 next_clipboard_is_self;  @modified(kv)
+    // b8 next_clipboard_is_self;
     DWORD clipboard_sequence;
     Plat_Handle clip_wakeup_timer;
     
@@ -376,15 +376,18 @@ system_set_key_mode_sig(){
 ////////////////////////////////
 // NOTE(allen): Clipboard
 
-internal String_Const_u8
-win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena){
+internal String8
+win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
+{
     Scratch_Block scratch(tctx, arena);
     
-    String_Const_u8 result = {};
+    String8 result = {};
     
-    if (OpenClipboard(win32vars.window_handle)){
+    if (OpenClipboard(win32vars.window_handle))
+    {
         b32 got_result = false;
-        if (!got_result){
+        if (!got_result)
+        {
             HANDLE clip_data = GetClipboardData(CF_UNICODETEXT);
             if (clip_data != 0){
                 u16 *clip_16_ptr = (u16*)GlobalLock(clip_data);
@@ -396,11 +399,14 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena){
                 GlobalUnlock(clip_data);
             }
         }
-        if (!got_result){
+        if (!got_result)
+        {
             HANDLE clip_data = GetClipboardData(CF_TEXT);
-            if (clip_data != 0){
+            if (clip_data != 0)
+            {
                 char *clip_ascii_ptr = (char*)GlobalLock(clip_data);
-                if (clip_ascii_ptr != 0){
+                if (clip_ascii_ptr != 0)
+                {
                     String_Const_char clip_ascii = SCchar(clip_ascii_ptr);
                     got_result = true;
                     result = string_u8_from_string_char(arena, clip_ascii, StringFill_NullTerminate).string;
@@ -411,19 +417,22 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena){
         CloseClipboard();
     }
     
-    
     return(result);
 }
 
 internal void
-win32_post_clipboard(Arena *scratch, char *text, i32 len){
-    if (OpenClipboard(win32vars.window_handle)){
-        if (!EmptyClipboard()){
-            String_Const_u8 error_string = win32_get_error_string();
+win32_post_clipboard(Arena *scratch, char *text, i32 len)
+{
+    if ( OpenClipboard(win32vars.window_handle) )
+    {
+        if (!EmptyClipboard())
+        {
+            String8 error_string = win32_get_error_string();
             win32_output_error_string(error_string);
         }
         HANDLE memory_handle = GlobalAlloc(GMEM_MOVEABLE, len  + 1);
-        if (memory_handle){
+        if (memory_handle)
+        {
             char *dest = (char*)GlobalLock(memory_handle);
             memmove(dest, text, len);
             dest[len] = 0;
@@ -432,50 +441,63 @@ win32_post_clipboard(Arena *scratch, char *text, i32 len){
             // win32vars.next_clipboard_is_self = true;
         }
         CloseClipboard();
+
+        // NOTE(kv): Acknowledge the new sequence number,
+        // So "system_get_clipboard" won't import it back into our clipboard history.
+        // TODO(kv): Do this for other platforms
+        win32vars.clipboard_sequence = GetClipboardSequenceNumber();
     }
 }
 
 internal
 system_get_clipboard_sig()
 {
-  String_Const_u8 result = {};
-  DWORD new_number = GetClipboardSequenceNumber();
-  if (new_number != win32vars.clipboard_sequence){
-    win32vars.clipboard_sequence = new_number;
-    /*
-    if (win32vars.next_clipboard_is_self){
-      win32vars.next_clipboard_is_self = false;
-    }
-    else
-*/
+    String8 result = {};
+    DWORD new_number = GetClipboardSequenceNumber();
+    if (new_number != win32vars.clipboard_sequence)
     {
-      for (i32 R = 0; R < 8; ++R){
-        result = win32_read_clipboard_contents(win32vars.tctx, arena);
-        if (result.str == 0){
-          break;
+        win32vars.clipboard_sequence = new_number;
+/*
+        if (win32vars.next_clipboard_is_self){
+          win32vars.next_clipboard_is_self = false;
         }
-      }
+        else
+*/
+        {
+            for (i32 R = 0; R < 8; ++R)
+            {
+                result = win32_read_clipboard_contents(win32vars.tctx, arena);
+                if (result.str == 0)
+                {
+                    break;
+                }
+            }
+        }
     }
-  }
-  return(result);
+    return(result);
 }
 
 internal
-system_post_clipboard_sig(){
+system_post_clipboard_sig()
+{
     Arena *arena = &win32vars.clip_post_arena;
-    if (arena->base_allocator == 0){
+    if (arena->base_allocator == 0)
+    {
         *arena = make_arena_system();
     }
-    else{
+    else
+    {
         linalloc_clear(arena);
     }
     win32vars.clip_post.str = push_array(arena, u8, str.size + 1);
-    if (win32vars.clip_post.str != 0){
+    if (win32vars.clip_post.str != 0)
+    {
         block_copy(win32vars.clip_post.str, str.str, str.size);
         win32vars.clip_post.str[str.size] = 0;
         win32vars.clip_post.size = str.size;
     }
-    else{
+    else
+    {
         log_os("Failed to allocate buffer for clipboard post (%d)\n", (i32)str.size + 1);
     }
 }
@@ -2116,7 +2138,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         }
         
         // NOTE(allen): Post New Clipboard Content
-        if (win32vars.clip_post.size > 0){
+        if (win32vars.clip_post.size > 0)
+        {
             win32_post_clipboard(scratch, (char*)win32vars.clip_post.str, (i32)win32vars.clip_post.size);
         }
         

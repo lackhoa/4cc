@@ -990,7 +990,7 @@ isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
                      has_modifier(&in, KeyCode_Control))
             {
                 Scratch_Block scratch(app);
-                String8 clipboard_string = push_clipboard_index(scratch, 0, 0);
+                String8 clipboard_string = push_clipboard_index_inner(scratch, 0, 0);
                 if (clipboard_string.size)
                 {
                     String_u8 bar_string = Su8(bar.string, sizeof(bar_string_space));

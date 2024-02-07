@@ -3,6 +3,11 @@
 # NOTE(kv): 4ed build script
 # NOTE(kv): assumes only Windows and Mac (and clang)
 
+# NOTE: configuration #########################
+DEBUG_MODE = 0
+FORCE_FULL_REBUILD = 0
+STOP_DEBUGGING_BEFORE_BUILD = 0
+
 import os
 import subprocess
 import sys
@@ -10,10 +15,6 @@ import time
 import shutil
 
 pjoin = os.path.join
-
-DEBUG_MODE = 0
-FORCE_FULL_REBUILD = 1
-STOP_DEBUGGING_BEFORE_BUILD = 0
 
 HOME = os.path.expanduser("~")
 FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build

@@ -667,7 +667,8 @@ prj_setup_scripts(Application_Links *app, Prj_Setup_Script_Flags flags){
 // NOTE(allen): Project Operations
 
 function void
-prj_exec_command(Application_Links *app, Variable_Handle cmd_var){
+prj_exec_command(Application_Links *app, Variable_Handle cmd_var)
+{
     Scratch_Block scratch(app);
     
     String_ID os_id = vars_save_string_lit(OS_NAME);
@@ -700,7 +701,7 @@ prj_exec_command(Application_Links *app, Variable_Handle cmd_var){
             b32 footer_panel = vars_b32_from_var(vars_read_key(cmd_var, footer_panel_id));
             if (footer_panel){
                 view = global_bottom_view;
-                if (string_match(out, string_u8_litexpr("*compilation*"))){
+                if (string_match(out, compilation_buffer_name)){
                     set_fancy_font = true;
                 }
             }

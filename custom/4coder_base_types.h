@@ -257,8 +257,8 @@ enum{
 // #define PtrAsInt(a) PtrDif(a,0)
 // #define IntAsPtr(a) (void*)( ((u8*)0) + a )
 //
-#define PtrAsInt(a) (usize)(a)
-#define IntAsPtr(a) (void*)((usize)(a))
+#define PtrAsInt(a) (uptr)(a)
+#define IntAsPtr(a) (void*)((uptr)(a))
 
 
 #define HandleAsU64(a) (u64)(PtrAsInt(a))
@@ -986,7 +986,8 @@ struct String_char{
   };
   u64 cap;
 };
-struct String_u8{
+struct String_u8
+{
   union{
     String_Const_u8 string;
     struct{

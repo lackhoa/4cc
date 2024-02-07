@@ -112,7 +112,7 @@ global Point_Stack point_stack = {};
 
 ////////////////////////////////
 
-global Clipboard clipboard0 = {};
+global Clipboard global_clipboard0 = {};
 
 // BOTTOM
 

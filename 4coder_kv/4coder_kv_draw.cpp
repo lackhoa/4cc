@@ -138,9 +138,9 @@ kv_draw_paren_highlight(Application_Links *app, Buffer_ID buffer, Text_Layout_ID
 
 function Render_Caller_Function kv_render_caller;
 function void
-kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
+kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
 {
-	ProfileScope(app, "render caller");
+    ProfileScope(app, "render caller");
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view);
     
@@ -148,31 +148,31 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
     // Rect_f32 region = draw_background_and_margin(app, view, is_active_view);
     
     Rect_f32 region = view_get_screen_rect(app, view);
-	Rect_f32 prev_clip = draw_set_clip(app, region);
+    Rect_f32 prev_clip = draw_set_clip(app, region);
     
-	Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-	Face_ID face_id = get_face_id(app, buffer);
-	Face_Metrics face_metrics = get_face_metrics(app, face_id);
-	f32 line_height = face_metrics.line_height;
-	f32 digit_advance = face_metrics.decimal_digit_advance;
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    Face_ID face_id = get_face_id(app, buffer);
+    Face_Metrics face_metrics = get_face_metrics(app, face_id);
+    f32 line_height = face_metrics.line_height;
+    f32 digit_advance = face_metrics.decimal_digit_advance;
     
-	Rect_f32 global_rect = global_get_screen_rectangle(app);
+    Rect_f32 global_rect = global_get_screen_rectangle(app);
     {
         f32 filebar_y = global_rect.y1 - 2.f*line_height - vim_cur_filebar_offset;
         if(region.y1 >= filebar_y){ region.y1 = filebar_y; }
     }
     
     // clear
-	draw_rectangle_fcolor(app, region, 0.f, fcolor_id(defcolor_back));
+    draw_rectangle_fcolor(app, region, 0.f, fcolor_id(defcolor_back));
     
-	region = vim_draw_query_bars(app, region, view, face_id);
+    region = vim_draw_query_bars(app, region, view, face_id);
    
     if ( rect2_dim(region).y > 200 )
-	{// Draw file bar
+    {// Draw file bar
         Rect_f32_Pair pair = layout_file_bar_on_bot(region, line_height);
         vim_draw_filebar(app, view, buffer, frame_info, face_id, pair.b);
         region = pair.a;
-	}
+    }
     
     {// Draw borders
         if(region.x0 > global_rect.x0){
@@ -190,10 +190,10 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
     
 	if(show_fps_hud)
     {
-		Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
-		draw_fps_hud(app, frame_info, face_id, pair.max);
-		region = pair.min;
-		animate_in_n_milliseconds(app, 1000);
+        Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
+        draw_fps_hud(app, frame_info, face_id, pair.max);
+        region = pair.min;
+        animate_in_n_milliseconds(app, 1000);
 	}
     
     // NOTE(allen): layout line numbers
@@ -273,15 +273,19 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
         
         b32 use_error_highlight = def_get_config_b32(vars_save_string_lit("use_error_highlight"));
         b32 use_jump_highlight  = def_get_config_b32(vars_save_string_lit("use_jump_highlight"));
-        if(use_error_highlight || use_jump_highlight){
-            Buffer_ID comp_buffer = get_buffer_by_name(app, string_u8_litexpr("*compilation*"), Access_Always);
-            if(use_error_highlight){
+        if(use_error_highlight || use_jump_highlight)
+        {
+            Buffer_ID comp_buffer = get_buffer_by_name(app, compilation_buffer_name, Access_Always);
+            if(use_error_highlight)
+            {
                 draw_jump_highlights(app, buffer, text_layout_id, comp_buffer, fcolor_id(defcolor_highlight_junk));
                 // TODO(BYP): Draw error messsage annotations
             }
-            if(use_jump_highlight){
+            if(use_jump_highlight)
+            {
                 Buffer_ID jump_buffer = get_locked_jump_buffer(app);
-                if(jump_buffer != comp_buffer){
+                if(jump_buffer != comp_buffer)
+                {
                     draw_jump_highlights(app, buffer, text_layout_id, jump_buffer, fcolor_id(defcolor_highlight_white));
                 }
             }
@@ -303,15 +307,20 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
         
         b64 show_whitespace = false;
         view_get_setting(app, view, ViewSetting_ShowWhitespace, &show_whitespace);
-        if(show_whitespace){
-            if(token_array.tokens == 0){
+        if(show_whitespace)
+        {
+            if(token_array.tokens == 0)
+            {
                 draw_whitespace_highlight(app, buffer, text_layout_id, cursor_roundness);
-            }else{
+            }
+            else
+            {
                 draw_whitespace_highlight(app, text_layout_id, &token_array, cursor_roundness);
             }
         }
         
-        if(is_active_view && vim_state.mode == VIM_Visual){
+        if(is_active_view && vim_state.mode == VIM_Visual)
+        {
             vim_draw_visual_mode(app, view, buffer, face_id, text_layout_id);
         }
         
@@ -337,7 +346,7 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
             F4_CLC_RenderComments(app, buffer, view, text_layout_id);
         }
         
-        // NOTE(kv)
+        // NOTE(kv): fui
         fui_draw_slider(app, buffer, region);
     }
     
@@ -351,5 +360,5 @@ kv_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view)
 #endif
     
 	text_layout_free(app, text_layout_id);
-	draw_set_clip(app, prev_clip);
+    draw_set_clip(app, prev_clip);
 }

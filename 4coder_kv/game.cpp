@@ -11,7 +11,7 @@
 
 v4 warm_yellow = v4{.5, .5, .3, 1};
 
-struct RaycastOutput 
+struct RaycastOutput
 {
   b32 hit;
   v3  p;
@@ -22,9 +22,11 @@ raycastPlane(v3 ray_origin, v3 ray_direction, v3 plane_N, f32 plane_d)
 {
     RaycastOutput out = {};
     f32 denom = dot(plane_N, ray_direction);
-    if (absolute(denom) >= .0001f) {
+    if (absolute(denom) >= .0001f) 
+    {
         f32 t = -(plane_d + dot(plane_N, ray_origin)) / denom;
-        if (t >= 0) {
+        if (t >= 0)
+        {
             out.hit = true;
             out.p = ray_origin + t*ray_direction;
         }

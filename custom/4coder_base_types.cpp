@@ -2777,6 +2777,7 @@ SCany(String_Const_u32 str){
 
 #define string_litexpr(s) SCchar((s), sizeof(s) - 1)
 #define string_u8_litexpr(s) SCu8((u8*)(s), (u64)(sizeof(s) - 1))
+#define str8lit string_u8_litexpr
 #define string_u16_litexpr(s) SCu16((u16*)(s), (u64)(sizeof(s)/2 - 1))
 
 #define string_expand(s) (i32)(s).size, (char*)(s).str

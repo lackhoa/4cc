@@ -550,57 +550,61 @@ VIM_COMMAND_SIG(vim_modal_percent){
 
 VIM_COMMAND_SIG(vim_paste_before)
 {
-	if(!vim_state.params.selected_reg) return;
-  
-  View_ID   view   = get_active_view(app, Access_ReadVisible);
-  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-  History_Group group = history_group_begin(app, buffer);
-  defer(history_group_end(group));
-  
-  if( vim_state.params.selected_reg->edit_type == EDIT_LineWise )
-  {
-    seek_beginning_of_line(app);
-  }
-  if( vim_state.mode == VIM_Visual )
-  {
-    Range_i64 selected = get_view_range(app, view);
-    buffer_delete_range(app, buffer, selected.min, selected.max+1);
-    vim_normal_mode(app);  // NOTE(kv): don't know if this should be here
-  }
-  // paste
-  vim_paste_from_register(app, view, buffer, vim_state.params.selected_reg);
-  vim_state.params.command = vim_paste_before;
-
-  // note(kv): I don't understand this part at all
-  Vim_Register *prev_reg = vim_state.prev_params.selected_reg;
-  vim_state.prev_params              = vim_state.params;
-  vim_state.prev_params.selected_reg = prev_reg;
+    if(!vim_state.params.selected_reg) return;
+    
+    View_ID   view   = get_active_view(app, Access_ReadVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    History_Group group = history_group_begin(app, buffer);
+    defer(history_group_end(group));
+    
+    if( vim_state.params.selected_reg->edit_type == EDIT_LineWise )
+    {
+        seek_beginning_of_line(app);
+    }
+    if( vim_state.mode == VIM_Visual )
+    {
+        Range_i64 selected = get_view_range(app, view);
+        buffer_delete_range(app, buffer, selected.min, selected.max+1);
+        vim_normal_mode(app);  // NOTE(kv): don't know if this should be here
+    }
+    // paste
+    vim_paste_from_register(app, view, buffer, vim_state.params.selected_reg);
+    vim_state.params.command = vim_paste_before;
+    
+    // note(kv): I don't understand this part at all
+    Vim_Register *prev_reg = vim_state.prev_params.selected_reg;
+    vim_state.prev_params              = vim_state.params;
+    vim_state.prev_params.selected_reg = prev_reg;
 }
 
 // IMPORTANT(kv): the original function is broken and I'm just hacking it
-function void vim_backspace_char_inner(Application_Links *app, i32 offset){
-	View_ID view = get_active_view(app, Access_ReadWriteVisible);
-  Vim_Register *reg = vim_state.params.selected_reg;
-  if (!reg) return;
-  
-	if(!if_view_has_highlighted_range_delete_range(app, view))
-  {
-		Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-		i64 pos = view_get_cursor_pos(app, view);
-		i64 buffer_size = buffer_get_size(app, buffer);
-		if(in_range(0, pos, buffer_size))
+function void vim_backspace_char_inner(Application_Links *app, i32 offset)
+{
+    View_ID view = get_active_view(app, Access_ReadWriteVisible);
+    Vim_Register *reg = vim_state.params.selected_reg;
+    if (!reg) return;
+    
+    if(!if_view_has_highlighted_range_delete_range(app, view))
     {
-			Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
-			i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
-			i64 start = view_pos_from_relative_character(app, view, cursor.line, character + offset);
-			u8 c = buffer_get_char(app, buffer, start);
-      
-			vim_register_copy(reg, SCu8(&c, 1));
-			reg->edit_type = EDIT_CharWise;
-      if (reg == &vim_registers.system) { clipboard_post(0, reg->data.string); }
-      
-			vim_update_registers(app);
-			buffer_replace_range(app, buffer, Ii64(start, start+1), string_u8_empty);
+        Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+        i64 pos = view_get_cursor_pos(app, view);
+        i64 buffer_size = buffer_get_size(app, buffer);
+        if(in_range(0, pos, buffer_size))
+        {
+            Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+            i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
+            i64 start = view_pos_from_relative_character(app, view, cursor.line, character + offset);
+            u8 c = buffer_get_char(app, buffer, start);
+            
+            vim_register_copy(reg, SCu8(&c, 1));
+            reg->edit_type = EDIT_CharWise;
+            if (reg == &vim_registers.system) 
+            {// NOTE(kv): always?
+                clipboard_post(0, reg->data.string);
+            }
+            
+            vim_update_registers(app);
+            buffer_replace_range(app, buffer, Ii64(start, start+1), string_u8_empty);
 		}
 	}
 }

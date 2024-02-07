@@ -62,7 +62,7 @@ global i32 vim_buffer_peek_index;
 
 
 global Vim_Buffer_Peek_Entry vim_default_peek_list[] = {
-	{ buffer_identifier(string_u8_litexpr("*compilation*")), 1.f, 1.f },
+	{ buffer_identifier(compilation_buffer_name), 1.f, 1.f },
 #if VIM_USE_REIGSTER_BUFFER
 	{ buffer_identifier(string_u8_litexpr("*registers*")),   1.f, 1.f },
 #endif
@@ -76,13 +76,22 @@ CUSTOM_ID(attachment, vim_buffer_prev_visual);
 CUSTOM_ID(attachment, vim_buffer_marks);
 CUSTOM_ID(attachment, vim_view_jumps);
 
-function void vim_reset_bottom_text(){ vim_bot_text.size=0; }
+internal void 
+vim_reset_bottom_text(){ vim_bot_text.size=0; }
 
-function void vim_set_bottom_text(i32 size, char *str){
-	block_copy(vim_bot_buffer, str, size);
-	vim_bot_text.size = size;
+internal void 
+vim_set_bottom_text(u32 size, char *str)
+{
+    u32 copy_size = clamp_top(size, arlen(vim_bot_buffer));
+    block_copy(vim_bot_buffer, str, copy_size);
+    vim_bot_text.size = copy_size;
 }
-function void vim_set_bottom_text(String_Const_u8 msg){ vim_set_bottom_text(string_expand((msg))); }
+
+function void 
+vim_set_bottom_text(String_Const_u8 msg)
+{
+    vim_set_bottom_text(string_expand((msg)));
+}
 
 function i32 vim_consume_number(){
 	i32 result = Max(1, vim_state.number)*Max(1, vim_state.params.count);

@@ -91,9 +91,11 @@ text_layout_erase(Thread_Context *tctx, Models *models, Text_Layout_Container *c
 
 internal void
 text_layout_render(Thread_Context *tctx, Models *models, Text_Layout *layout,
-                   ARGB_Color special_color, ARGB_Color ghost_color){
+                   ARGB_Color special_color, ARGB_Color ghost_color)
+{
     Editing_File *file = imp_get_file(models, layout->buffer_id);
-    if (file != 0){
+    if (file != 0)
+    {
         Render_Target *target = models->target;
         Face *face = file_get_face(models, file);
         f32 width = rect_width(layout->rect);
@@ -111,12 +113,15 @@ text_layout_render(Thread_Context *tctx, Models *models, Text_Layout *layout,
                                                          line_number);
             for (Layout_Item_Block *block = line.first;
                  block != 0;
-                 block = block->next){
+                 block = block->next)
+            {
                 Layout_Item *item = block->items;
                 i64 count = block->item_count;
                 ARGB_Color *item_colors = layout->item_colors;
-                for (i32 i = 0; i < count; i += 1, item += 1){
-                    if (item->codepoint != 0){
+                for (i32 i = 0; i < count; i += 1, item += 1)
+                {
+                    if (item->codepoint != 0)
+                    {
                         ARGB_Color color = 0;
                         if (HasFlag(item->flags, LayoutItemFlag_Special_Character)){
                             color = special_color;

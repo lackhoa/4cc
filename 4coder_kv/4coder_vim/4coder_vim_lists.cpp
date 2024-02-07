@@ -299,10 +299,12 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 }
 
 function Jump_Lister_Result
-vim_get_jump_index_from_user(Application_Links *app, Marker_List *list,
-                             String_Const_u8 query){
+vim_get_jump_index_from_user(FApp *app, Marker_List *list,
+                             String8 query)
+{
 	Jump_Lister_Result result = {};
-	if (list != 0){
+	if (list != 0)
+    {
 		Scratch_Block scratch(app);
 		Lister_Block lister(app, scratch);
 		lister_set_query(lister, query);
@@ -324,15 +326,15 @@ vim_get_jump_index_from_user(Application_Links *app, Marker_List *list,
 		if (!l_result.canceled){
 			result.success = true;
 			result.index = (i32)PtrAsInt(l_result.user_data);
-		}
-	}
+        }
+    }
 
-	return(result);
+    return(result);
 }
 
-
 function Jump_Lister_Result
-vim_get_jump_index_from_user(Application_Links *app, Marker_List *list, char *query){
+vim_get_jump_index_from_user(Application_Links *app, Marker_List *list, char *query)
+{
 	return(vim_get_jump_index_from_user(app, list, SCu8(query)));
 }
 
@@ -398,7 +400,9 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 	}
 }
 
-function void vim_jump_navigate(Application_Links *app, View_ID view, Lister *lister, i32 index_delta){
+function void 
+vim_jump_navigate(Application_Links *app, View_ID view, Lister *lister, i32 index_delta)
+{
 	lister__navigate__default(app, view, lister, index_delta);
 
 	Managed_Scope scope = view_get_managed_scope(app, view);
@@ -577,4 +581,3 @@ CUSTOM_COMMAND_SIG(vim_file_externally_modified){
 }
 
 #pragma clang diagnostic pop
-

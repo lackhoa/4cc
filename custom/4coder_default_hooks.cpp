@@ -335,17 +335,20 @@ default_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     b32 use_jump_highlight = def_get_config_b32(vars_save_string_lit("use_jump_highlight"));
     if (use_error_highlight || use_jump_highlight){
         // NOTE(allen): Error highlight
-        String_Const_u8 name = string_u8_litexpr("*compilation*");
+        String8 name = str8lit("*compilation*");
         Buffer_ID compilation_buffer = get_buffer_by_name(app, name, Access_Always);
-        if (use_error_highlight){
+        if (use_error_highlight)
+        {
             draw_jump_highlights(app, buffer, text_layout_id, compilation_buffer,
                                  fcolor_id(defcolor_highlight_junk));
         }
         
         // NOTE(allen): Search highlight
-        if (use_jump_highlight){
+        if (use_jump_highlight)
+        {
             Buffer_ID jump_buffer = get_locked_jump_buffer(app);
-            if (jump_buffer != compilation_buffer){
+            if (jump_buffer != compilation_buffer)
+            {
                 draw_jump_highlights(app, buffer, text_layout_id, jump_buffer,
                                      fcolor_id(defcolor_highlight_white));
             }

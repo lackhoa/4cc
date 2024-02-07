@@ -3,16 +3,18 @@
 #include "4coder_folds.hpp"
 
 function void
-vim_file_save(Application_Links *app, Buffer_ID buffer_id){
-	Scratch_Block scratch(app);
-	String_Const_u8 unique_name = push_buffer_unique_name(app, scratch, buffer_id);
-	i64 line_count = buffer_get_line_count(app, buffer_id);
-	i64 bytes = buffer_get_size(app, buffer_id);
-	String_Const_u8 msg = push_stringf(scratch, "\"%.*s\"  %dL, %dC written", string_expand(unique_name), line_count, bytes);
-	vim_set_bottom_text(msg);
+vim_file_save(FApp *app, Buffer_ID buffer_id)
+{
+    Scratch_Block scratch(app);
+    String8 unique_name = push_buffer_unique_name(app, scratch, buffer_id);
+    i64 line_count = buffer_get_line_count(app, buffer_id);
+    i64 bytes = buffer_get_size(app, buffer_id);
+    String8 msg = push_stringf(scratch, "\"%.*s\"  %dL, %dC written", string_expand(unique_name), line_count, bytes);
+    vim_set_bottom_text(msg);
 }
 
-BUFFER_HOOK_SIG(vim_file_save_hook){
+BUFFER_HOOK_SIG(vim_file_save_hook)
+{
 	default_file_save(app, buffer_id);
 	vim_file_save(app, buffer_id);
 	return 0;

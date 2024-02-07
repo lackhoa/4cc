@@ -5,7 +5,139 @@ and list all locations.
 
 // TOP
 
-global String8 search_buffer_name = string_u8_litexpr("*search*");
+global_const String8 search_buffer_name = string_u8_litexpr("*search*");
+
+function String8_Array
+kv_string_split_wildcards(Arena *arena, String8 string)
+{
+  String_Const_u8_Array array = {};
+  List_String_Const_u8 list = string_split(arena, string, (u8*)"* ", 2);
+  array.count   = list.node_count;
+  array.strings = push_array(arena, String_Const_u8, array.count);
+  i64 index = 0;
+  for (Node_String_Const_u8 *node = list.first;
+       node;
+       node = node->next)
+  {
+    kv_assert(index < array.count);
+    array.strings[index++] = node->string;
+  }
+  return(array);
+}
+
+// todo(kv): We don't handle multiline string! @FuzzyMultiline
+function i64
+kv_fuzzy_search_forward(FApp *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
+{
+    i64 buffer_size = buffer_get_size(app, buffer);
+    i64 result = buffer_size;
+    
+    Scratch_Block temp(app);
+    String_Const_u8_Array splits = kv_string_split_wildcards(temp, needle);
+    if ( !splits.count ) { return result; }
+    
+    while( pos < buffer_size )
+    {
+        i64 original_pos = pos;
+        String_Match first_match = buffer_seek_string(app, buffer, splits.strings[0], Scan_Forward, pos);
+        if ( !first_match.buffer ) break;
+        
+        i64 match_start = first_match.range.min;
+        i64 line_end    = get_line_end_pos_from_pos(app, buffer, match_start);
+        pos = first_match.range.end - 1;
+        b32 matched = true;
+        for (i64 index = 1;
+             index < splits.count;
+             index++)
+        {
+            String8 substring = splits.strings[index];
+            String_Match match = buffer_seek_string(app, buffer, substring, Scan_Forward, pos);
+            if ( match.buffer )
+            {
+                if ( match.range.max <= line_end )
+                {
+                    pos = match.range.end - 1;
+                }
+                else
+                {
+                    // This breaks for @FuzzyMultiline
+                    pos = get_line_start_pos_from_pos(app, buffer, match.range.start) - 1;
+                    matched = false;
+                    break;
+                }
+            }
+            else
+            {
+                return result;
+            }
+        }
+        
+        if ( matched )
+        {
+            result = match_start;
+            break;
+        }
+        
+        assert_defend(pos > original_pos, return buffer_size;);
+    }
+    
+    return result;
+}
+
+function i64
+kv_fuzzy_search_backward(Application_Links *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
+{
+  i64 result = -1;
+
+  Scratch_Block temp(app);
+  String_Const_u8_Array splits = kv_string_split_wildcards(temp, needle);
+  if ( !splits.count ) { return result; }
+
+  while( pos > -1 )
+  {
+    i64 original_pos = pos;
+    String_Match first_match = buffer_seek_string(app, buffer, splits.strings[splits.count-1], Scan_Backward, pos);
+    if( !first_match.buffer ) break;
+
+    i64 match_start = first_match.range.max;
+    i64 line_start   = get_line_start_pos_from_pos(app, buffer, match_start);
+    pos = first_match.range.start;
+    b32 matched = true;
+    for (i64 index = splits.count-2;
+         index >= 0;
+         index--)
+    {
+      String_Const_u8 substring = splits.strings[index];
+      String_Match match = buffer_seek_string(app, buffer, substring, Scan_Backward, pos);
+      if ( match.buffer)
+      {
+        if ( match.range.min >= line_start )
+        {
+          pos = match.range.start;
+        }
+        else
+        {
+          pos = get_line_end_pos_from_pos(app, buffer, match.range.start);
+          matched = false;
+          break;
+        }
+      }
+      else
+      {
+        return result;
+      }
+    }
+    if ( matched )
+    {
+      result = pos;
+      break;
+    }
+
+    assert_defend(pos < original_pos, return result;);
+  }
+
+  return result;
+}
 
 internal void
 print_string_match_list_to_buffer(FApp *app, Buffer_ID out_buffer_id, String_Match_List matches)
@@ -72,20 +204,6 @@ print_all_matches_all_buffers(FApp *app, String8 pattern, String_Match_Flag must
     print_all_matches_all_buffers(app, array, must_have_flags, must_not_have_flags, out_buffer_id);
 }
 
-internal void
-print_all_matches_all_buffers_to_search(FApp *app, String8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, View_ID default_target_view)
-{
-    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_buffer_name, default_target_view);
-    print_all_matches_all_buffers(app, match_patterns, must_have_flags, must_not_have_flags, search_buffer);
-}
-
-internal void
-print_all_matches_all_buffers_to_search(FApp *app, String8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, View_ID default_target_view)
-{
-    String8_Array array = {&pattern, 1};
-    print_all_matches_all_buffers_to_search(app, array, must_have_flags, must_not_have_flags, default_target_view);
-}
-
 internal String_Const_u8
 query_user_list_needle(Application_Links *app, Arena *arena)
 {
@@ -142,9 +260,11 @@ list_all_locations__generic(FApp *app, String8_Array needle, List_All_Locations_
             AddFlag(must_not_have_flags, StringMatch_LeftSideSloppy);
             AddFlag(must_not_have_flags, StringMatch_RightSideSloppy);
         }
-        
-        print_all_matches_all_buffers_to_search(app, needle, must_have_flags, must_not_have_flags, global_bottom_view);
+       
+        Buffer_ID search_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
+        print_all_matches_all_buffers(app, needle, must_have_flags, must_not_have_flags, search_buffer);
         lock_jump_buffer(app, search_buffer_name);
+        switch_to_other_primary_panel(app);
     }
 }
 

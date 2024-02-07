@@ -7,7 +7,8 @@
 #pragma clang diagnostic ignored "-Wsign-compare"
 
 function void
-vim_update_registers(Application_Links *app){
+vim_update_registers(FApp *app)
+{
 #if VIM_USE_REIGSTER_BUFFER
 	Buffer_ID buffer = buffer_identifier_to_id(app, buffer_identifier(string_u8_litexpr("*registers*")));
 	i64 buffer_size = buffer_get_size(app, buffer);
@@ -80,13 +81,15 @@ function void vim_push_reg_cycle(Application_Links *app){
 }
 
 function void
-vim_copy(Application_Links *app, Buffer_ID buffer, Range_i64 range, Vim_Register *reg){
-	if(reg->flags & REGISTER_ReadOnly){
-		vim_state.chord_resolved = bitmask_2;
-		Scratch_Block scratch(app);
-		vim_set_bottom_text(push_stringf(scratch, "Register %c is Read Only", vim_get_register_char(reg)));
-		return;
-	}
+vim_copy(Application_Links *app, Buffer_ID buffer, Range_i64 range, Vim_Register *reg)
+{
+    if(reg->flags & REGISTER_ReadOnly)
+    {
+        vim_state.chord_resolved = bitmask_2;
+        Scratch_Block scratch(app);
+        vim_set_bottom_text(push_stringf(scratch, "Register %c is Read Only", vim_get_register_char(reg)));
+        return;
+    }
 
 	u32 append = ((reg->flags & REGISTER_Append) != 0);
 	u64 size = u64(range_size(range)) + append*reg->data.size;
@@ -107,48 +110,55 @@ vim_copy(Application_Links *app, Buffer_ID buffer, Range_i64 range, Vim_Register
 	}
 
 	if(0){}
-	else if(reg == &vim_registers.system){ clipboard_post(0, reg->data.string); }
+	else if (reg == &vim_registers.system)
+    {
+        clipboard_post(0, reg->data.string); 
+    }
 	// else if(reg == &vim_registers.expression){ vim_eval_register(app, reg); }
 
 	vim_update_registers(app);
 }
 
 function void
-vim_paste_from_register(Application_Links *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
+vim_paste_from_register(FApp *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 {
-	if(reg->edit_type == EDIT_Block)
-  {
-    vim_block_paste(app, view, buffer, reg);
-    return;
-  }
-
-	i64 pos = view_get_cursor_pos(app, view);
-	if(reg == &vim_registers.system){
-		clipboard_update_history_from_system(app, 0);
-		i32 count = clipboard_count(0);
-		if(count > 0){
-			Managed_Scope scope = view_get_managed_scope(app, view);
-			i32 *paste_index = scope_attachment(app, scope, view_paste_index_loc, i32);
-			if(paste_index){
-				Scratch_Block scratch(app);
-				vim_register_copy(reg, push_clipboard_index(app, scratch, 0, *paste_index=0));
-				vim_update_registers(app);
-			}
-		}
-	}
-	buffer_replace_range(app, buffer, Ii64(pos), reg->data.string);
-	view_set_mark(app, view, seek_pos(pos));
-	i64 cursor_pos = pos + ((i32)reg->data.string.size - (vim_state.mode != VIM_Insert));
-	view_set_cursor_and_preferred_x(app, view, seek_pos(cursor_pos));
-
-	ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
-	buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, reg->data.string.size), argb);
-
-	vim_state.prev_params.selected_reg = vim_state.params.selected_reg;
-	vim_default_register();
+    if(reg->edit_type == EDIT_Block)
+    {
+        vim_block_paste(app, view, buffer, reg);
+        return;
+    }
+    
+    i64 pos = view_get_cursor_pos(app, view);
+    // if (reg == &vim_registers.system)  @Experiment
+    {
+        clipboard_update_history_from_system(app, 0);
+        
+        i32 count = clipboard_count(0);
+        if (count > 0)
+        {
+            Managed_Scope scope = view_get_managed_scope(app, view);
+            i32 *paste_index = scope_attachment(app, scope, view_paste_index_loc, i32);
+            if(paste_index)
+            {
+                Scratch_Block scratch(app);
+                vim_register_copy(reg, push_clipboard_index(app, scratch, 0, *paste_index=0));
+                vim_update_registers(app);
+            }
+        }
+    }
+    buffer_replace_range(app, buffer, Ii64(pos), reg->data.string);
+    view_set_mark(app, view, seek_pos(pos));
+    i64 cursor_pos = pos + ((i32)reg->data.string.size - (vim_state.mode != VIM_Insert));
+    view_set_cursor_and_preferred_x(app, view, seek_pos(cursor_pos));
+    
+    ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
+    buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, reg->data.string.size), argb);
+    
+    vim_state.prev_params.selected_reg = vim_state.params.selected_reg;
+    vim_default_register();
 }
 
-/* note(kv): nouse
+/* @Nouse
 VIM_COMMAND_SIG(vim_select_register)
 {
 	vim_is_selecting_register = true;
@@ -198,19 +208,19 @@ VIM_COMMAND_SIG(vim_select_register)
 function void
 vim_process_insert_record(Record_Info record, i64 *prev_pos)
 {
-	String_u8 *text = &vim_registers.insert.data;
-	if( *prev_pos != record.pos_before_edit )
-  {
-		*prev_pos = record.pos_before_edit;
-		text->size = 0;
-	}
-	*prev_pos -= record.single_string_backward.size;
-  *prev_pos += record.single_string_forward.size;
-  if (text->size >= record.single_string_backward.size)
-      text->size -= record.single_string_backward.size;
-	u64 next_size = text->size + record.single_string_forward.size;
-	if(next_size >= text->cap){ vim_realloc_string(text, next_size); }
-	string_append(text, record.single_string_forward);
+    String_u8 *text = &vim_registers.insert.data;
+    if( *prev_pos != record.pos_before_edit )
+    {
+        *prev_pos = record.pos_before_edit;
+        text->size = 0;
+    }
+    *prev_pos -= record.single_string_backward.size;
+    *prev_pos += record.single_string_forward.size;
+    if (text->size >= record.single_string_backward.size)
+        text->size -= record.single_string_backward.size;
+    u64 next_size = text->size + record.single_string_forward.size;
+    if(next_size >= text->cap){ vim_realloc_string(text, next_size); }
+    string_append(text, record.single_string_forward);
 }
 
 #pragma clang diagnostic pop

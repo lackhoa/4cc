@@ -384,6 +384,9 @@ rotateRight(u32 value, i32 rotateAmount)
 #define UNUSED_VAR __attribute__((unused))
 #define unused_var __attribute__((unused))
 
+typedef uintptr_t uptr;
+typedef intptr_t  iptr;
+
 #define kiloBytes(value) ((value)*1024LL)
 #define megaBytes(value) (kiloBytes(value)*1024LL)
 #define gigaBytes(value) (megaBytes(value)*1024LL)
@@ -400,9 +403,18 @@ rotateRight(u32 value, i32 rotateAmount)
 #define invalid_code_path   debugbreak
 #define todo_error_report   debugbreak
 #define todo_incomplete     debugbreak
-#define todo_test_me        debugbreak
-#define todo_testme         debugbreak
-#define todo_untested       debugbreak
+#define nono                debugbreak  // ignore_nono
+
+#if KV_INTERNAL
+#    define todo_test_me        debugbreak
+#    define todo_testme         debugbreak
+#    define todo_untested       debugbreak
+#else
+#    define todo_test_me
+#    define todo_testme
+#    define todo_untested
+#endif
+
 #define invalid_default_case default: { debugbreak; };
 #define breakhere       do{ int x = 5; (void)x; }while(0)  // NOTE(kv): actually not "debugbreak" :>
 

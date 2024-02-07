@@ -72,7 +72,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     // NOTE(allen): Line highlight
     {
         b32 highlight_line_at_cursor = def_get_config_b32(vars_save_string_lit("highlight_line_at_cursor"));
-        String_Const_u8 name = string_u8_litexpr("*compilation*");
+        String_Const_u8 name = compilation_buffer_name;
         Buffer_ID compilation_buffer = get_buffer_by_name(app, name, Access_Always);
         if(highlight_line_at_cursor && (is_active_view || buffer == compilation_buffer))
         {
@@ -88,7 +88,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
         b32 use_jump_highlight = def_get_config_b32(vars_save_string_lit("use_jump_highlight"));
         if (use_error_highlight || use_jump_highlight){
             // NOTE(allen): Error highlight
-            String_Const_u8 name = string_u8_litexpr("*compilation*");
+            String_Const_u8 name = compilation_buffer_name;
             Buffer_ID compilation_buffer = get_buffer_by_name(app, name, Access_Always);
             if (use_error_highlight){
                 draw_jump_highlights(app, buffer, text_layout_id, compilation_buffer,
@@ -108,7 +108,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     
     // NOTE(rjf): Error annotations
     {
-        String_Const_u8 name = string_u8_litexpr("*compilation*");
+        String_Const_u8 name = compilation_buffer_name;
         Buffer_ID compilation_buffer = get_buffer_by_name(app, name, Access_Always);
         F4_RenderErrorAnnotations(app, buffer, text_layout_id, compilation_buffer);
     }
@@ -439,7 +439,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     //~ NOTE(rjf): Draw background.
     {
         ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_back));
-        if(string_match(buffer_name, string_u8_litexpr("*compilation*")))
+        if(string_match(buffer_name, compilation_buffer_name))
         {
             color = color_blend(color, 0.5f, 0xff000000);
         }
@@ -636,7 +636,7 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
         use_lexer = true;
     }
     
-    if(string_match(buffer_name, string_u8_litexpr("*compilation*")))
+    if(string_match(buffer_name, compilation_buffer_name))
     {
         wrap_lines = false;
     }

@@ -476,11 +476,17 @@ get_surrounding_file_range(FApp *app)
 }
 
 internal void
-switch_to_buffer_named(Application_Links *app, char *name)
+switch_to_buffer_named(FApp *app, String8 name)
 {
   View_ID   view = get_active_view(app, Access_ReadVisible);
-  Buffer_ID buffer = create_buffer(app, SCu8(name), 0);
+  Buffer_ID buffer = create_buffer(app, name, 0);
   view_set_buffer(app, view, buffer, 0);
+}
+
+inline void
+switch_to_buffer_named(FApp *app, char *name)
+{
+    switch_to_buffer_named(app, SCu8(name));
 }
 
 
@@ -522,7 +528,7 @@ VIM_COMMAND_SIG(kv_jump_ultimate)
     else
     { // NOTE(kv): go to file file
       copy_current_file_name(app);  // In case we wanna paste add the current filename in
-      switch_to_buffer_named(app, kv_file_filename);
+      switch_to_buffer_named(app, SCu8(kv_file_filename));
     }
   }
 }
@@ -670,12 +676,14 @@ kv_list_all_locations_from_string(FApp *app, String8 needle_str)
         all_matches = string_match_list_join(&all_matches, &buffer_matches);
     }
     
-    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
+    Buffer_ID search_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
     string_match_list_filter_remove_buffer(&all_matches, search_buffer);
     string_match_list_filter_remove_buffer_predicate(app, &all_matches, buffer_has_name_with_star);
     //
     print_string_match_list_to_buffer(app, search_buffer, all_matches);
+    
     lock_jump_buffer(app, search_buffer);
+    switch_to_other_primary_panel(app);
 }
 
 internal u8 
@@ -767,7 +775,7 @@ VIM_COMMAND_SIG(open_build_script)
 CUSTOM_COMMAND_SIG(c)
 CUSTOM_DOC("change to compilation buffer")
 {
-  switch_to_buffer_named(app, "*compilation*");
+  switch_to_buffer_named(app, compilation_buffer_name);
 }
 
 CUSTOM_COMMAND_SIG(s)
@@ -797,13 +805,13 @@ CUSTOM_DOC("configure your editor!")
   switch_to_buffer_named(app, "~/4ed/code/4coder_kv/4coder_kv.cpp");
 }
 
-// todo: We don't wanna bind to a buffer
+// todo: We don't wanna bind to a buffer, maybe?
 internal void kv_system_command(FApp *app, String8 cmd)
 {
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
     String8 dir = push_buffer_dir_name(app, temp, buffer);
-    exec_system_command(app, view, standard_build_build_buffer_identifier,
+    exec_system_command(app, global_bottom_view, standard_build_compilation_buffer_identifier,
                         dir, cmd, standard_build_exec_flags);
 }
 
@@ -839,4 +847,20 @@ VIM_COMMAND_SIG(remedy_run_to_cursor)
     String8 cmd = push_stringf(temp, "remedybg.exe run-to-cursor %.*s %lld",
                                string_expand(filename), linum);
     kv_system_command(app, cmd);
+}
+
+internal void
+clipboard_pop_command(FApp *app)
+{
+    clipboard_pop(app, 0);
+    Scratch_Block scratch(app);
+    String8 current_item = push_clipboard_index(app, scratch, 0, 0);
+   
+    // NOTE(kv): hack to make vim paste this thing (don't understand it)
+    // Managed_Scope scope = view_get_managed_scope(app, view);
+    // i32 *paste_index_ptr = scope_attachment(app, scope, view_paste_index_loc, i32);
+    // *paste_index_ptr = 0;
+   
+    // NOTE(kv): print it
+    vim_set_bottom_text(current_item);
 }

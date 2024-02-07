@@ -144,8 +144,10 @@ vim_draw_filebar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Fram
 	draw_string(app, face_id, PosText, p, base_color);
 }
 
+// NOTE: this is the in-buffer search highlight (like with "/")
 function void
-vim_draw_search_highlight(Application_Links *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness){
+vim_draw_search_highlight(FApp *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness)
+{
 	String_u8 *pattern = &vim_registers.search.data;
 	if(pattern->size == 0){ return; }
 	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);

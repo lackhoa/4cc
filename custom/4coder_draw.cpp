@@ -180,7 +180,8 @@ draw_line_highlight(Application_Links *app, Text_Layout_ID layout, Range_i64 lin
     Range_f32 y1 = text_layout_line_on_screen(app, layout, line_range.min);
     Range_f32 y2 = text_layout_line_on_screen(app, layout, line_range.max);
     Range_f32 y = range_union(y1, y2);
-    if (range_size(y) > 0.f){
+    if (range_size(y) > 0.f)
+    {
         Rect_f32 region = text_layout_region(app, layout);
         draw_rectangle(app, Rf32(rect_range_x(region), y), 0.f, color);
     }
@@ -783,23 +784,26 @@ draw_paren_highlight(Application_Links *app, Buffer_ID buffer, Text_Layout_ID te
 }
 
 function void
-draw_jump_highlights(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
-                     Buffer_ID jump_buffer, FColor line_color){
+draw_jump_highlights(FApp *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
+                     Buffer_ID jump_buffer, FColor line_color)
+{
+    if (jump_buffer == 0) return;
+    
     Scratch_Block scratch(app);
-    if (jump_buffer != 0){
-        Managed_Scope scopes[2];
-        scopes[0] = buffer_get_managed_scope(app, jump_buffer);
-        scopes[1] = buffer_get_managed_scope(app, buffer);
-        Managed_Scope comp_scope = get_managed_scope_with_multiple_dependencies(app, scopes, ArrayCount(scopes));
-        Managed_Object *markers_object = scope_attachment(app, comp_scope, sticky_jump_marker_handle, Managed_Object);
-        
-        i32 count = managed_object_get_item_count(app, *markers_object);
-        Marker *markers = push_array(scratch, Marker, count);
-        managed_object_load_data(app, *markers_object, 0, count, markers);
-        for (i32 i = 0; i < count; i += 1){
-            i64 line_number = get_line_number_from_pos(app, buffer, markers[i].pos);
-            draw_line_highlight(app, text_layout_id, line_number, line_color);
-        }
+    
+    Managed_Scope scopes[2];
+    scopes[0] = buffer_get_managed_scope(app, jump_buffer);
+    scopes[1] = buffer_get_managed_scope(app, buffer);
+    Managed_Scope comp_scope = get_managed_scope_with_multiple_dependencies(app, scopes, ArrayCount(scopes));
+    Managed_Object *markers_object = scope_attachment(app, comp_scope, sticky_jump_marker_handle, Managed_Object);
+    
+    i32 count = managed_object_get_item_count(app, *markers_object);
+    Marker *markers = push_array(scratch, Marker, count);
+    managed_object_load_data(app, *markers_object, 0, count, markers);
+    for (i32 i = 0; i < count; i += 1)
+    {
+        i64 line_number = get_line_number_from_pos(app, buffer, markers[i].pos);
+        draw_line_highlight(app, text_layout_id, line_number, line_color);
     }
 }
 

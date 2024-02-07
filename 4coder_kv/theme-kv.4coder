@@ -4,7 +4,10 @@ defcolor_function     = 0xFF587898;
 defcolor_keyword      = 0xFFaa9a74;
 defcolor_comment      = 0xFF557700;
 defcolor_macro        = 0xFF996666;
-defcolor_non_text     = 0xFF707040;  // note(kv): parens
+defcolor_non_text     = 0xFF707040;  // NOTE(kv): parens
+
+defcolor_highlight_junk  = 0xFF3A0000;  // NOTE: error highlight
+defcolor_highlight_white = 0x80003A3A;  // NOTE: search highlight
 
 defcolor_bar                   = 0xFF000000;
 defcolor_pop1                  = 0xFFDE8150;
@@ -32,8 +35,6 @@ defcolor_preproc               = defcolor_keyword;
 defcolor_include               = defcolor_base;
 defcolor_special_character     = 0xFFFF0000;
 defcolor_ghost_character       = 0xFF4E5E46;
-defcolor_highlight_junk        = 0xFF3A0000;
-defcolor_highlight_white       = 0xFF003A3A;
 defcolor_paste                 = 0xFFDDEE00;
 defcolor_undo                  = 0xFF00DDEE;
 defcolor_back_cycle            = { 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF100202, 0xFF300202, 0xFF500202, 0xFF700202};
