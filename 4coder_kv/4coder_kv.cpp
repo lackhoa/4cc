@@ -76,9 +76,9 @@ function void kvInitShiftedTable()
 function void
 kv_essential_mapping(Mapping *mapping)
 {
-  String_ID global_id = vars_save_string_lit("keys_global");
-  String_ID file_id   = vars_save_string_lit("keys_file");
-  String_ID code_id   = vars_save_string_lit("keys_code");
+  String_ID global_id = vars_intern_lit("keys_global");
+  String_ID file_id   = vars_intern_lit("keys_file");
+  String_ID code_id   = vars_intern_lit("keys_code");
   
   MappingScope();
   SelectMapping(mapping);
@@ -106,9 +106,9 @@ kv_essential_mapping(Mapping *mapping)
 function void 
 kv_default_bindings(Mapping *mapping)
 {
-  String_ID global_id = vars_save_string_lit("keys_global");
-  String_ID file_id   = vars_save_string_lit("keys_file");
-  String_ID code_id   = vars_save_string_lit("keys_code");
+  String_ID global_id = vars_intern_lit("keys_global");
+  String_ID file_id   = vars_intern_lit("keys_file");
+  String_ID code_id   = vars_intern_lit("keys_code");
   
   MappingScope();
   SelectMapping(mapping);
@@ -285,7 +285,7 @@ VIM_COMMAND_SIG(kv_startup)
     load_themes_default_folder(app);
     kv_4coder_initialize(app);
     
-    String8 startup_hot_directory = def_get_config_string(temp, vars_save_string_lit("startup_hot_directory"));
+    String8 startup_hot_directory = def_get_config_string(temp, vars_intern_lit("startup_hot_directory"));
     set_hot_directory(app, startup_hot_directory);
    
 #if !KV_INTERNAL
@@ -294,7 +294,7 @@ VIM_COMMAND_SIG(kv_startup)
     
     def_audio_init();
     
-    def_enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
+    def_enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
     clear_all_layouts(app);
     
     kv_essential_mapping(&framework_mapping);
@@ -312,7 +312,7 @@ VIM_COMMAND_SIG(kv_startup)
     
     // NOTE(kv): debug system startup
 #if KV_INTERNAL
-    DEBUG_draw_hud_p = def_get_config_b32(vars_save_string_lit("DEBUG_draw_hud_p"));
+    DEBUG_draw_hud_p = def_get_config_b32(vars_intern_lit("DEBUG_draw_hud_p"));
 #endif
 }
 
@@ -582,9 +582,9 @@ default_custom_layer_init(Application_Links *app)
     // NOTE(allen): default hooks and command maps
     set_all_default_hooks(app);
     mapping_init(tctx, &framework_mapping);
-    String_ID global_map_id = vars_save_string_lit("keys_global");
-    String_ID file_map_id   = vars_save_string_lit("keys_file");
-    String_ID code_map_id   = vars_save_string_lit("keys_code");
+    String_ID global_map_id = vars_intern_lit("keys_global");
+    String_ID file_map_id   = vars_intern_lit("keys_file");
+    String_ID code_map_id   = vars_intern_lit("keys_code");
 #if OS_MAC
     setup_mac_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 #else
@@ -654,7 +654,7 @@ custom_layer_init(Application_Links *app)
         MappingScope();
         SelectMapping(&framework_mapping);
         
-        String_ID global_id = vars_save_string_lit("keys_global");
+        String_ID global_id = vars_intern_lit("keys_global");
         SelectMap(global_id);
         BindCore(kv_startup, CoreCode_Startup);
     }

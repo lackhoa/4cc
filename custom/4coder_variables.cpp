@@ -26,41 +26,38 @@ _vars_init(void)
     }
 }
 
-// NOTE(kv): this is string interning (probably)
 function String_ID
-vars_save_string(String8 string)
+vars_intern(String8 string)
 {
     _vars_init();
     
-    String_ID string_id = 0;
+    String_ID id = 0;
     
-    Table_Lookup location = table_lookup(&vars_string_to_id, string);
-    if (location.found_match)
+    Table_Lookup lookup = table_lookup(&vars_string_to_id, string);
+    if (lookup.found_match)
     {
-        table_read(&vars_string_to_id, location, &string_id);
+        table_read(&vars_string_to_id, lookup, &id);
     }
     else
     {
-        string_id = ++vars_string_id_counter;
-        String8 string_data = push_data_copy(&vars_arena, string);
-        table_insert(&vars_string_to_id, string_data, string_id);
-        table_insert(&vars_id_to_string, string_id, string_data);
+        id = ++vars_string_id_counter;
+        String8 string_copy = push_data_copy(&vars_arena, string);
+        table_insert(&vars_string_to_id, string_copy, id);
+        table_insert(&vars_id_to_string, id, string_copy);  // NOTE(kv): why is it a table?
     }
-    return(string_id);
+    return(id);
 }
 
 function String8
-vars_read_string(Arena *arena, String_ID id)
+vars_push_string(Arena *arena, String_ID id)
 {
     _vars_init();
     
     Table_Lookup lookup = table_lookup(&vars_id_to_string, id);
-    
     String8 data = {};
     table_read(&vars_id_to_string, lookup, &data);
     
     String8 result = push_data_copy(arena, data);
-    
     return(result);
 }
 
@@ -151,7 +148,7 @@ function String8
 vars_key_from_var(Arena *arena, Variable_Handle var)
 {
     String_ID id = vars_key_id_from_var(var);
-    String_Const_u8 result = vars_read_string(arena, id);
+    String_Const_u8 result = vars_push_string(arena, id);
     return(result);
 }
 
@@ -165,7 +162,7 @@ function String8
 vars_string_from_var(Arena *arena, Variable_Handle var)
 {
     String_ID id   = vars_string_id_from_var(var);
-    String8 result = vars_read_string(arena, id);
+    String8 result = vars_push_string(arena, id);
     return(result);
 }
 
@@ -173,7 +170,8 @@ function b32
 vars_b32_from_var(Variable_Handle var)
 {
     String_ID val = vars_string_id_from_var(var);
-    b32 result = (val != 0  &&  val != var_save_strlit("false"));
+    b32 result = (val != 0  &&  
+                  val != vars_intern_lit("false"));
     return(result);
 }
 
@@ -182,7 +180,7 @@ vars_u64_from_var(App *app, Variable_Handle var)
 {
     Scratch_Block scratch(app);
     String_ID val = vars_string_id_from_var(var);
-    String8 string = vars_read_string(scratch, val);
+    String8 string = vars_push_string(scratch, val);
     u64 result = 0;
     if ( string_match(string_prefix(string, 2), str8_lit("0x")) )
     {
@@ -220,7 +218,7 @@ vars_read_key(Variable_Handle var, String_ID key)
 function Variable_Handle
 vars_read_key(Variable_Handle var, String8 key)
 {
-    String_ID id = vars_save_string(key);
+    String_ID id = vars_intern(key);
     Variable_Handle result = vars_read_key(var, id);
     return(result);
 }
@@ -237,7 +235,7 @@ vars_set(Variable_Handle var, String_ID val)
 function void
 vars_set(Variable_Handle var, String8 val)
 {
-    String_ID id = vars_save_string(val);
+    String_ID id = vars_intern(val);
     vars_set(var, id);
 }
 
@@ -388,4 +386,3 @@ vars_print(App *app, Variable_Handle var)
 }
 
 // BOTTOM
-

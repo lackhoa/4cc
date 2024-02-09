@@ -42,7 +42,7 @@ kv_search_and_build_from_dir(FApp *app, View_ID view, String8 start_dir, char *c
                                           string_expand(path),
                                           string_expand(cmd_string),
                                           command_args);
-        b32 auto_save = def_get_config_b32(vars_save_string_lit("automatically_save_changes_on_build"));
+        b32 auto_save = def_get_config_b32(vars_intern_lit("automatically_save_changes_on_build"));
         if (auto_save)
         {
             save_all_dirty_buffers(app);

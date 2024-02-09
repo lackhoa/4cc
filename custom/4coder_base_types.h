@@ -849,8 +849,12 @@ struct String_Const_char{
   u64 size;
 };
 struct String_Const_u8{
-  u8 *str;
-  u64 size;
+    u8 *str;
+    union
+    {
+        u64 size;
+        u64 len;
+    };
 };
 struct String_Const_u16{
   u16 *str;
@@ -1352,7 +1356,7 @@ struct Thread_Context{
   void *user_data;
 };
 
-struct Scratch_Block{
+struct Scratch_Block {
   Thread_Context *tctx;
   Arena *arena;
   Temp_Memory temp;
@@ -1369,6 +1373,7 @@ struct Scratch_Block{
   operator Arena*();
   void restore(void);
 };
+typedef Scratch_Block Temp_Block;
 
 struct Temp_Memory_Block{
   Temp_Memory temp;

@@ -102,7 +102,7 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
   {
     if(file_name.size > 0)
     {
-      String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_save_string_lit("treat_as_code"));
+      String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
       String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
       String_Const_u8 ext = string_file_extension(file_name);
       for(i32 i = 0; i < extensions.count; ++i)
@@ -135,8 +135,8 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
     }
   }
   
-  String_ID file_map_id = vars_save_string_lit("keys_file");
-  String_ID code_map_id = vars_save_string_lit("keys_code");
+  String_ID file_map_id = vars_intern_lit("keys_file");
+  String_ID code_map_id = vars_intern_lit("keys_code");
   
   Command_Map_ID map_id = (treat_as_code) ? (code_map_id) : (file_map_id);
   Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);

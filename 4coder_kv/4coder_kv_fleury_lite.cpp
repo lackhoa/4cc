@@ -31,14 +31,14 @@ F4_RenderBufferLite(Application_Links *app, View_ID view_id, Face_ID face_id,
         F4_SyntaxHighlight(app, text_layout_id, &token_array);
         
         // NOTE(allen): Scan for TODOs and NOTEs
-        b32 use_comment_keywords = def_get_config_b32(vars_save_string_lit("use_comment_keywords"));
+        b32 use_comment_keywords = def_get_config_b32(vars_intern_lit("use_comment_keywords"));
         if(use_comment_keywords)
         {
             Comment_Highlight_Pair pairs[] =
             {
                 {str8_lit("NOTE"), finalize_color(defcolor_comment_pop, 0)},
                 {str8_lit("TODO"), finalize_color(defcolor_comment_pop, 1)},
-                {def_get_config_string(scratch, vars_save_string_lit("user_name")), finalize_color(fleury_color_comment_user_name, 0)},
+                {def_get_config_string(scratch, vars_intern_lit("user_name")), finalize_color(fleury_color_comment_user_name, 0)},
             };
             draw_comment_highlights(app, buffer, text_layout_id,
                                     &token_array, pairs, ArrayCount(pairs));
@@ -55,9 +55,9 @@ F4_RenderBufferLite(Application_Links *app, View_ID view_id, Face_ID face_id,
     
     // NOTE(allen): Cursor shape
     Face_Metrics metrics = get_face_metrics(app, face_id);
-    u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
+    u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));
     f32 cursor_roundness = metrics.normal_advance*cursor_roundness_100*0.01f;
-    f32 mark_thickness = (f32)def_get_config_u64(app, vars_save_string_lit("mark_thickness"));
+    f32 mark_thickness = (f32)def_get_config_u64(app, vars_intern_lit("mark_thickness"));
     
     // NOTE(rjf): Cursor
     F4_Cursor_RenderEmacsStyle(app, view_id, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness, frame_info);
@@ -90,7 +90,7 @@ F4_RenderLite(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view_id);
     
-    f32 margin_size = (f32)def_get_config_u64(app, vars_save_string_lit("f4_margin_size"));
+    f32 margin_size = (f32)def_get_config_u64(app, vars_intern_lit("f4_margin_size"));
     Rect_f32 view_rect = view_get_screen_rect(app, view_id);
     Rect_f32 region = rect_inner(view_rect, margin_size);
     
@@ -120,7 +120,7 @@ F4_RenderLite(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     //~ NOTE(rjf): Draw margin.
     {
         ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_margin));
-        if(def_get_config_b32(vars_save_string_lit("f4_margin_use_mode_color")) &&
+        if(def_get_config_b32(vars_intern_lit("f4_margin_use_mode_color")) &&
            is_active_view)
         {
             color = F4_GetColor(app, ColorCtx_Cursor(power_mode.enabled ? ColorFlag_PowerMode : 0,
@@ -198,9 +198,9 @@ fleury_lite_custom_layer_init(Application_Links *app)
         Thread_Context *tctx = get_thread_context(app);
         mapping_init(tctx, &framework_mapping);
         default_4coder_initialize(app);
-        String_ID global_id = vars_save_string_lit("keys_global");
-        String_ID file_id   = vars_save_string_lit("keys_file");
-        String_ID code_id   = vars_save_string_lit("keys_code");
+        String_ID global_id = vars_intern_lit("keys_global");
+        String_ID file_id   = vars_intern_lit("keys_file");
+        String_ID code_id   = vars_intern_lit("keys_code");
         setup_essential_mapping(&framework_mapping, global_id, file_id, code_id);
         setup_default_mapping(&framework_mapping, global_id, file_id, code_id);
     }

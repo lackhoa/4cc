@@ -312,37 +312,37 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed){
     
     Prj_V1 *project = prj_v1_parse_from_config(app, scratch, dir, parsed);
     
-    String_ID project_id = vars_save_string_lit("prj_config");
-    String_ID version_id = vars_save_string(str8_lit("version"));
-    String_ID project_name_id = vars_save_string(str8_lit("project_name"));
-    String_ID patterns_id = vars_save_string(str8_lit("patterns"));
-    String_ID blacklist_patterns_id = vars_save_string(str8_lit("blacklist_patterns"));
+    String_ID project_id = vars_intern_lit("prj_config");
+    String_ID version_id = vars_intern(str8_lit("version"));
+    String_ID project_name_id = vars_intern(str8_lit("project_name"));
+    String_ID patterns_id = vars_intern(str8_lit("patterns"));
+    String_ID blacklist_patterns_id = vars_intern(str8_lit("blacklist_patterns"));
     
-    String_ID load_paths_id = vars_save_string(str8_lit("load_paths"));
-    String_ID path_id = vars_save_string(str8_lit("path"));
-    String_ID recursive_id = vars_save_string(str8_lit("recursive"));
-    String_ID relative_id = vars_save_string(str8_lit("relative"));
-    String_ID true_id = vars_save_string(str8_lit("true"));
-    String_ID false_id = vars_save_string(str8_lit("false"));
-    String_ID commands_id = vars_save_string(str8_lit("commands"));
+    String_ID load_paths_id = vars_intern(str8_lit("load_paths"));
+    String_ID path_id = vars_intern(str8_lit("path"));
+    String_ID recursive_id = vars_intern(str8_lit("recursive"));
+    String_ID relative_id = vars_intern(str8_lit("relative"));
+    String_ID true_id = vars_intern(str8_lit("true"));
+    String_ID false_id = vars_intern(str8_lit("false"));
+    String_ID commands_id = vars_intern(str8_lit("commands"));
     
-    String_ID out_id = vars_save_string(str8_lit("out"));
-    String_ID footer_panel_id = vars_save_string(str8_lit("footer_panel"));
-    String_ID save_dirty_files_id = vars_save_string(str8_lit("save_dirty_files"));
-    String_ID cursor_at_end_id = vars_save_string(str8_lit("cursor_at_end"));
+    String_ID out_id = vars_intern(str8_lit("out"));
+    String_ID footer_panel_id = vars_intern(str8_lit("footer_panel"));
+    String_ID save_dirty_files_id = vars_intern(str8_lit("save_dirty_files"));
+    String_ID cursor_at_end_id = vars_intern(str8_lit("cursor_at_end"));
     
-    String_ID fkey_command_id = vars_save_string(str8_lit("fkey_command"));
+    String_ID fkey_command_id = vars_intern(str8_lit("fkey_command"));
     
-    String_ID os_id = vars_save_string(str8_lit(OS_NAME));;
+    String_ID os_id = vars_intern(str8_lit(OS_NAME));;
     
-    Variable_Handle proj_var = vars_new_variable(vars_get_root(), project_id, vars_save_string(parsed->file_name));
+    Variable_Handle proj_var = vars_new_variable(vars_get_root(), project_id, vars_intern(parsed->file_name));
     
     if (parsed->version != 0){
         String8 version_str = push_stringf(scratch, "%d", *parsed->version);
-        vars_new_variable(proj_var, version_id, vars_save_string(version_str));
+        vars_new_variable(proj_var, version_id, vars_intern(version_str));
     }
     
-    vars_new_variable(proj_var, project_name_id, vars_save_string(project->name));
+    vars_new_variable(proj_var, project_name_id, vars_intern(project->name));
     
     // NOTE(allen): Load Pattern
     struct PatternVars{
@@ -364,8 +364,8 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed){
              node != 0;
              node = node->next, i += 1){
             String8 pattern_string = prj_v1_join_pattern_string(scratch, node->pattern.absolutes);
-            String_ID key = vars_save_string(push_stringf(scratch, "%d", i));
-            String_ID pattern_id = vars_save_string(pattern_string);
+            String_ID key = vars_intern(push_stringf(scratch, "%d", i));
+            String_ID pattern_id = vars_intern(pattern_string);
             vars_new_variable(patterns, key, pattern_id);
         }
     }
@@ -377,9 +377,9 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed){
         i32 count = project->load_path_array.count;
         Prj_V1_File_Load_Path *load_path = project->load_path_array.paths;
         for (i32 i = 0; i < count; i += 1, load_path += 1){
-            String_ID key = vars_save_string(push_stringf(scratch, "%d", i));
+            String_ID key = vars_intern(push_stringf(scratch, "%d", i));
             Variable_Handle path_var = vars_new_variable(os_var, key);
-            vars_new_variable(path_var, path_id, vars_save_string(load_path->path));
+            vars_new_variable(path_var, path_id, vars_intern(load_path->path));
             vars_new_variable(path_var, recursive_id, load_path->recursive?true_id:false_id);
             vars_new_variable(path_var, relative_id, load_path->relative?true_id:false_id);
         }
@@ -392,9 +392,9 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed){
         Prj_V1_Command *cmd = project->command_array.commands;
         for (i32 i = 0; i < count; i += 1, cmd += 1){
             String8 cmd_name = prj_v1_sanitize_string(scratch, cmd->name);
-            Variable_Handle cmd_var = vars_new_variable(cmd_list_var, vars_save_string(cmd_name));
-            vars_new_variable(cmd_var, os_id, vars_save_string(cmd->cmd));
-            vars_new_variable(cmd_var, out_id, vars_save_string(cmd->out));
+            Variable_Handle cmd_var = vars_new_variable(cmd_list_var, vars_intern(cmd_name));
+            vars_new_variable(cmd_var, os_id, vars_intern(cmd->cmd));
+            vars_new_variable(cmd_var, out_id, vars_intern(cmd->out));
             vars_new_variable(cmd_var, footer_panel_id, cmd->footer_panel?true_id:false_id);
             vars_new_variable(cmd_var, save_dirty_files_id, cmd->save_dirty_files?true_id:false_id);
             vars_new_variable(cmd_var, cursor_at_end_id, cmd->cursor_at_end?true_id:false_id);
@@ -410,8 +410,8 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed){
                 Prj_V1_Command *cmd = project->command_array.commands + cmd_index;
                 if (cmd->name.size > 0){
                     String8 cmd_name = prj_v1_sanitize_string(scratch, cmd->name);
-                    String_ID key = vars_save_string(push_stringf(scratch, "F%d", i + 1));
-                    String_ID val = vars_save_string(cmd_name);
+                    String_ID key = vars_intern(push_stringf(scratch, "F%d", i + 1));
+                    String_ID val = vars_intern(cmd_name);
                     vars_new_variable(fkeys_var, key, val);
                 }
             }

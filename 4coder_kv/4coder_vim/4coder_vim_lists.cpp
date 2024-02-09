@@ -360,7 +360,7 @@ CUSTOM_DOC("Creates a lister of locations that look like function definitions an
 CUSTOM_UI_COMMAND_SIG(vim_proj_cmd_lister)
 CUSTOM_DOC("Opens an interactive list of all project commands.")
 {
-	Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_save_string_lit("prj_config"));
+	Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_intern_lit("prj_config"));
 
 	Scratch_Block scratch(app);
 	Lister_Block lister(app, scratch);
@@ -372,8 +372,8 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 	vim_reset_bottom_text();
 	string_append(&vim_bot_text, string_u8_litexpr("Command:"));
 
-	Variable_Handle cmd_list_var = vars_read_key(prj_var, vars_save_string_lit("commands"));
-	String_ID os_id = vars_save_string_lit(OS_NAME);
+	Variable_Handle cmd_list_var = vars_read_key(prj_var, vars_intern_lit("commands"));
+	String_ID os_id = vars_intern_lit(OS_NAME);
 
 	i32 i=1;
 	for(Variable_Handle cmd=vars_first_child(cmd_list_var); !vars_is_nil(cmd); cmd=vars_next_sibling(cmd), i++){

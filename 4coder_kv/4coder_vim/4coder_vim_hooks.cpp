@@ -113,7 +113,7 @@ vim_tick(Application_Links *app, Frame_Info frame_info){
 
 	fold_tick(app, frame_info);
 
-	b32 enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
+	b32 enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
 	if(enable_virtual_whitespace != def_enable_virtual_whitespace){
 		def_enable_virtual_whitespace = enable_virtual_whitespace;
 		clear_all_layouts(app);

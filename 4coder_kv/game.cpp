@@ -79,14 +79,14 @@ get_bitmap_size(Bitmap *bitmap)
 }
 
 internal void
-tr_rectangle2i(Bitmap *bitmap, rect2i rect, v4 color)
+tr_rectangle2i(Bitmap *bitmap, rect2i rect, ARGB_Color color)
 {
     v2i dim = rect2i_get_dim(rect);
     for_i32 (y, rect.min.x, dim.y)
     {
         for_i32 (x, rect.min.x, dim.x)
         {
-            bitmap_set(bitmap, x, y, pack_argb(color));
+            bitmap_set(bitmap, x, y, color);
         }
     }
 }
@@ -142,7 +142,7 @@ tr_linev(Bitmap *bitmap,  v2i p0, v2i p1,  ARGB_Color color)
     tr_line(bitmap, p0.x, p0.y, p1.x, p1.y, color);
 }
 
-inline void 
+inline void
 tr_linev2(Bitmap *bitmap,  v2 p0, v2 p1,  ARGB_Color color)
 {
     tr_line(bitmap, (i32)p0.x, (i32)p0.y, (i32)p1.x, (i32)p1.y, color);
@@ -184,8 +184,8 @@ tr_triangle(Bitmap *bitmap, v2i p0i, v2i p1i, v2i p2i, ARGB_Color color)
  
     }
     
-    b32 draw_outline = 0;
-    if (draw_outline)
+    fslider( v1, draw_outline, -0.298632 );
+    if (draw_outline > 0)
     {
         tr_linev2(bitmap, (p1), (p2), red); 
         tr_linev2(bitmap, (p0), (p2), green); 
@@ -199,6 +199,8 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     Bitmap bitmap_value = {.data=data, .dim=dim, .pitch=4*dim.x};
     Bitmap *bitmap = &bitmap_value;
     
+    tr_rectangle2i(bitmap, rect2i{.p0={0,0}, .p1=dim}, black);
+    
     {// NOTE(kv): outline
         i32 X = dim.x-1;
         i32 Y = dim.y-1;
@@ -208,7 +210,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
         tr_linev(bitmap, {0,Y}, {X,Y}, red);
     }
    
-    b32 draw_mesh = def_get_config_b32(vars_save_string_lit("draw_mesh"));
+    b32 draw_mesh = def_get_config_b32(vars_intern_lit("draw_mesh"));
     if (draw_mesh)
     {
         for (int facei=0; 
@@ -252,14 +254,14 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
         v4 bg_color = blackv4;
         draw_rect(app, rect2_min_max(v2{0, 0}, screen_dim), bg_color);
     }
-   
+    
     {// NOTE(kv): tiny renderer
         v3i dim = {256, 256, 1};
         local_persist b32 initial = true;
         local_persist u32 *data = 0;
         local_persist Texture_ID game_texture = {};
         Model model = {};
-        b32 draw_mesh = def_get_config_b32(vars_save_string_lit("draw_mesh"));
+        b32 draw_mesh = def_get_config_b32(vars_intern_lit("draw_mesh"));
         if (initial)
         {
             initial = false;
@@ -281,7 +283,7 @@ game_update_and_render(FApp *app, View_ID view, rect2 region)
         graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
         
         v2 position = {10,10};
-        f32 scale = fslider( 0.819921 );
+        fslider( v1, scale, 2.891296 );
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }

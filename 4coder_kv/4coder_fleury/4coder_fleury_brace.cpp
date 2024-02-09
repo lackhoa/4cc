@@ -7,7 +7,7 @@ function void
 F4_Brace_RenderHighlight(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                          i64 pos, ARGB_Color *colors, i32 color_count)
 {
-    if(!def_get_config_b32(vars_save_string_lit("f4_disable_brace_highlight")))
+    if(!def_get_config_b32(vars_intern_lit("f4_disable_brace_highlight")))
     {
         ProfileScope(app, "[F4] Brace Highlight");
         Token_Array token_array = get_token_array_from_buffer(app, buffer);
@@ -45,7 +45,7 @@ function void
 F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                                     i64 pos)
 {
-    if(!def_get_config_b32(vars_save_string_lit("f4_disable_close_brace_annotation")))
+    if(!def_get_config_b32(vars_intern_lit("f4_disable_close_brace_annotation")))
     {
         ProfileScope(app, "[F4] Brace Annotation");
         
@@ -192,7 +192,7 @@ static void
 F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
                      Text_Layout_ID text_layout_id, i64 pos)
 {
-    if(!def_get_config_b32(vars_save_string_lit("f4_disable_brace_lines")))
+    if(!def_get_config_b32(vars_intern_lit("f4_disable_brace_lines")))
     {
         ProfileScope(app, "[F4] Brace Lines");
         
@@ -230,7 +230,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
         Range_i64_Array ranges = get_enclosure_ranges(app, scratch, buffer, pos, RangeHighlightKind_CharacterHighlight);
         
         Rect_f32 line_number_rect = {};
-        b32 show_line_number_margins = def_get_config_b32(vars_save_string_lit("show_line_number_margins"));
+        b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
         if(show_line_number_margins)
         {
             Rect_f32 rect = view_get_screen_rect(app, view);
@@ -248,7 +248,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
             (line_number_rect.x1 - line_number_rect.x0);
         float x_position = 0.f;
         
-        u64 vw_indent = def_get_config_u64(app, vars_save_string_lit("virtual_whitespace_regular_indent"));
+        u64 vw_indent = def_get_config_u64(app, vars_intern_lit("virtual_whitespace_regular_indent"));
         
         for (i32 i = ranges.count - 1; i >= 0; i -= 1)
         {

@@ -370,7 +370,7 @@ BUFFER_HOOK_SIG(fold_begin_buffer_hook){
 	b32 treat_as_code = false;
 	String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
 	if (file_name.size > 0){
-		String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_save_string_lit("treat_as_code"));
+		String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
 		String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
 		String_Const_u8 ext = string_file_extension(file_name);
 		for (i32 i = 0; i < extensions.count; ++i){
@@ -387,8 +387,8 @@ BUFFER_HOOK_SIG(fold_begin_buffer_hook){
 		}
 	}
 
-	String_ID file_map_id = vars_save_string_lit("keys_file");
-	String_ID code_map_id = vars_save_string_lit("keys_code");
+	String_ID file_map_id = vars_intern_lit("keys_file");
+	String_ID code_map_id = vars_intern_lit("keys_code");
 
 	Command_Map_ID map_id = (treat_as_code)?(code_map_id):(file_map_id);
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
@@ -403,13 +403,13 @@ BUFFER_HOOK_SIG(fold_begin_buffer_hook){
 	b32 wrap_lines = true;
 	b32 use_lexer = false;
 	if (treat_as_code){
-		wrap_lines = def_get_config_b32(vars_save_string_lit("enable_code_wrapping"));
+		wrap_lines = def_get_config_b32(vars_intern_lit("enable_code_wrapping"));
 		use_lexer = true;
 	}
 
 	String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
 	if (buffer_name.size > 0 && buffer_name.str[0] == '*' && buffer_name.str[buffer_name.size - 1] == '*'){
-		wrap_lines = def_get_config_b32(vars_save_string_lit("enable_output_wrapping"));
+		wrap_lines = def_get_config_b32(vars_intern_lit("enable_output_wrapping"));
 	}
 
 	if (use_lexer){

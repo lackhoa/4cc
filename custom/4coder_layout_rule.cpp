@@ -300,7 +300,7 @@ layout_unwrapped_small_blank_lines(Application_Links *app, Arena *arena, Buffer_
     
     Face_Advance_Map advance_map = get_face_advance_map(app, face);
     Face_Metrics metrics = get_face_metrics(app, face);
-    f32 tab_width = (f32)def_get_config_u64(app, vars_save_string_lit("default_tab_width"));
+    f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
     tab_width = clamp_bot(1, tab_width);
     LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
     
@@ -396,7 +396,7 @@ String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
 
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
-f32 tab_width = (f32)def_get_config_u64(app, vars_save_string_lit("default_tab_width"));
+f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
 tab_width = clamp_bot(1, tab_width);
 LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
 
@@ -471,7 +471,7 @@ String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
 
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
-f32 tab_width = (f32)def_get_config_u64(app, vars_save_string_lit("default_tab_width"));
+f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
 tab_width = clamp_bot(1, tab_width);
 LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
 
@@ -551,7 +551,7 @@ String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
 
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
-f32 tab_width = (f32)def_get_config_u64(app, vars_save_string_lit("default_tab_width"));
+f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
 tab_width = clamp_bot(1, tab_width);
 LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
 

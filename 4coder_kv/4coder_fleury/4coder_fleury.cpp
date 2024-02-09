@@ -612,7 +612,7 @@ CUSTOM_DOC("Fleury startup event")
     
     //~ NOTE(rjf): Auto-Load Project.
     {
-        b32 auto_load = def_get_config_b32(vars_save_string_lit("automatically_load_project"));
+        b32 auto_load = def_get_config_b32(vars_intern_lit("automatically_load_project"));
         if (auto_load)
         {
             load_project(app);
@@ -621,7 +621,7 @@ CUSTOM_DOC("Fleury startup event")
     
     //~ NOTE(rjf): Set misc options.
     {
-        global_battery_saver = def_get_config_b32(vars_save_string_lit("f4_battery_saver"));
+        global_battery_saver = def_get_config_b32(vars_intern_lit("f4_battery_saver"));
     }
     
     //~ NOTE(rjf): Initialize audio.
@@ -705,7 +705,7 @@ CUSTOM_DOC("Fleury startup event")
     
     //~ NOTE(rjf): Prep virtual whitespace.
     {
-        def_enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
+        def_enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
         clear_all_layouts(app);
     }
 }

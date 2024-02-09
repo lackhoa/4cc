@@ -948,11 +948,11 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
   
   Face_Advance_Map advance_map = get_face_advance_map(app, face);
   Face_Metrics metrics = get_face_metrics(app, face);
-  f32 tab_width = (f32)def_get_config_u64(app, vars_save_string_lit("default_tab_width"));
+  f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
   tab_width = clamp_bot(1, tab_width);
   LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
   
-  u64 vw_indent = def_get_config_u64(app, vars_save_string_lit("virtual_whitespace_regular_indent"));
+  u64 vw_indent = def_get_config_u64(app, vars_intern_lit("virtual_whitespace_regular_indent"));
   f32 regular_indent = metrics.space_advance*(cast(f32)vw_indent);
   f32 wrap_align_x = width - metrics.normal_advance;
   
@@ -1198,7 +1198,7 @@ function Layout_Item_List
 layout_virt_indent_index(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Wrap_Kind kind){
   Layout_Item_List result = {};
   
-  b32 enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
+  b32 enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
   if (enable_virtual_whitespace){
     code_index_lock();
     Code_Index_File *file = code_index_get_file(buffer);
@@ -1238,7 +1238,7 @@ layout_virt_indent_index_generic(Application_Links *app, Arena *arena, Buffer_ID
 CUSTOM_COMMAND_SIG(toggle_virtual_whitespace)
 CUSTOM_DOC("Toggles virtual whitespace for all files.")
 {
-  String_ID key = vars_save_string_lit("enable_virtual_whitespace");
+  String_ID key = vars_intern_lit("enable_virtual_whitespace");
   b32 enable_virtual_whitespace = def_get_config_b32(key);
   def_set_config_b32(key, !enable_virtual_whitespace);
 }

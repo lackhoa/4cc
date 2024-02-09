@@ -161,7 +161,7 @@ kv_handle_keyboard_input(Application_Links *app, Input_Event *event)
     }
     else 
     { // global keymap passthrough
-      String_ID map_id = vars_save_string_lit("keys_global");
+      String_ID map_id = vars_intern_lit("keys_global");
       Command_Binding command_binding = map_get_binding_non_recursive(&framework_mapping, map_id, event);
       if (command_binding.custom) {
         vim_reset_state();

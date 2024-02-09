@@ -54,8 +54,8 @@ vim_draw_visual_mode(Application_Links *app, View_ID view, Buffer_ID buffer, Fac
 			/// Virtual Whitespace handling
 			Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 			Command_Map_ID *map_id_ptr = scope_attachment(app, scope, buffer_map_id, Command_Map_ID);
-			b32 is_code = *map_id_ptr == i64(vars_save_string_lit("keys_code"));
-			b32 virtual_enabled = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
+			b32 is_code = *map_id_ptr == i64(vars_intern_lit("keys_code"));
+			b32 virtual_enabled = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
 			if((virtual_enabled && is_code) && character_is_whitespace(buffer_get_char(app, buffer, range.min))){
 				//range.min = get_pos_past_lead_whitespace(app, buffer, range.min);
 				i64 line_end = get_line_end_pos(app, buffer, get_line_number_from_pos(app, buffer, range.min));
@@ -231,7 +231,7 @@ vim_draw_after_text(Application_Links *app, View_ID view, b32 is_active_view, Bu
 		i64 cursor_pos = view_get_cursor_pos(app, view);
 		Rect_f32 cursor_rect = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
 		draw_rectangle_fcolor(app, cursor_rect, 0.f, fcolor_id(defcolor_back));
-		if(!def_get_config_b32(vars_save_string_lit("highlight_line_at_cursor"))){
+		if(!def_get_config_b32(vars_intern_lit("highlight_line_at_cursor"))){
 			draw_rectangle_fcolor(app, cursor_rect, 0.f, fcolor_id(defcolor_highlight_cursor_line));
 		}
 		vim_draw_cursor(app, view, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness);
@@ -436,7 +436,7 @@ vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 	if(vim_cur_cursor_pos != vim_nxt_cursor_pos){
 		Vec2_f32 cursor_dim = V2(9.f, (vim_state.mode == VIM_Insert ? 4.f : 18.f));
 		Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - cursor_dim, cursor_dim);
-		u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
+		u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));
 		f32 roundness = char_wid*(f32)cursor_roundness_100*0.01f;
 		draw_rectangle_fcolor(app, cursor_rect, roundness, fcolor_id(defcolor_cursor, default_cursor_sub_id()));
 	}

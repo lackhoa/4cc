@@ -120,7 +120,7 @@ CUSTOM_DOC("Resets face size to default")
   GET_VIEW_AND_BUFFER;
   Face_ID face_id = get_face_id(app, buffer);
   Face_Description description = get_face_description(app, face_id);
-  description.parameters.pt_size = (i32)def_get_config_u64(app, vars_save_string_lit("default_font_size"));
+  description.parameters.pt_size = (i32)def_get_config_u64(app, vars_intern_lit("default_font_size"));
   try_modify_face(app, face_id, &description);
 }
 

@@ -30,12 +30,10 @@ struct Variable_Handle
 ////////////////////////////////
 // NOTE(allen): Functions
 
-function String_ID    vars_save_string(String8 string);
-#define var_save_strlit(S) vars_save_string( string_u8_litexpr(S) )
+function String_ID         vars_intern(String8 string);
+#define vars_intern_lit(S) vars_intern( string_u8_litexpr(S) )
 //
-#define vars_save_string_lit var_save_strlit
-//
-function String8         vars_read_string(Arena *arena, String_ID id);
+function String8         vars_push_string(Arena *arena, String_ID id);
 
 function Variable_Handle vars_get_root(void);
 function Variable_Handle vars_get_nil(void);

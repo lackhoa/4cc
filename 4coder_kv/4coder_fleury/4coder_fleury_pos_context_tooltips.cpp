@@ -90,7 +90,7 @@ internal void
 F4_PosContext_Render(Application_Links *app, View_ID view, Buffer_ID buffer,
                      Text_Layout_ID text_layout_id, i64 pos)
 {
-    if(def_get_config_b32(vars_save_string_lit("f4_disable_poscontext")))
+    if(def_get_config_b32(vars_intern_lit("f4_disable_poscontext")))
     {
         return;
     }
@@ -109,7 +109,7 @@ F4_PosContext_Render(Application_Links *app, View_ID view, Buffer_ID buffer,
     {
         
         b32 render_at_cursor = 1;
-        if(def_get_config_b32(vars_save_string_lit("f4_poscontext_draw_at_bottom_of_buffer")))
+        if(def_get_config_b32(vars_intern_lit("f4_poscontext_draw_at_bottom_of_buffer")))
         {
             render_at_cursor = 0;
         }

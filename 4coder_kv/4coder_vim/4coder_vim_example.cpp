@@ -16,16 +16,16 @@ EXAMPLE_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id, 
 	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
 
 	Face_Metrics metrics = get_face_metrics(app, face_id);
-	u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
+	u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));
 	f32 cursor_roundness = metrics.normal_advance*cursor_roundness_100*0.01f;
-	f32 mark_thickness = (f32)def_get_config_u64(app, vars_save_string_lit("mark_thickness"));
+	f32 mark_thickness = (f32)def_get_config_u64(app, vars_intern_lit("mark_thickness"));
 
 	Token_Array token_array = get_token_array_from_buffer(app, buffer);
 	if(token_array.tokens == 0){
 		paint_text_color_fcolor(app, text_layout_id, visible_range, fcolor_id(defcolor_text_default));
 	}else{
 		draw_cpp_token_colors(app, text_layout_id, &token_array);
-		b32 use_comment_keyword = def_get_config_b32(vars_save_string_lit("use_comment_keyword"));
+		b32 use_comment_keyword = def_get_config_b32(vars_intern_lit("use_comment_keyword"));
 		if(use_comment_keyword){
 			Comment_Highlight_Pair pairs[] = {
 				{string_u8_litexpr("NOTE"), finalize_color(defcolor_comment_pop, 0)},
@@ -38,20 +38,20 @@ EXAMPLE_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id, 
 	i64 cursor_pos = view_correct_cursor(app, view_id);
 	view_correct_mark(app, view_id);
 
-	b32 highlight_line_at_cursor = def_get_config_b32(vars_save_string_lit("highlight_line_at_cursor"));
+	b32 highlight_line_at_cursor = def_get_config_b32(vars_intern_lit("highlight_line_at_cursor"));
 	if(highlight_line_at_cursor && is_active_view){
 		i64 line_number = get_line_number_from_pos(app, buffer, cursor_pos);
 		draw_line_highlight(app, text_layout_id, line_number, fcolor_id(defcolor_highlight_cursor_line));
 	}
 
-	b32 use_scope_highlight = def_get_config_b32(vars_save_string_lit("use_scope_highlight"));
+	b32 use_scope_highlight = def_get_config_b32(vars_intern_lit("use_scope_highlight"));
 	if(use_scope_highlight){
 		Color_Array colors = finalize_color_array(defcolor_back_cycle);
 		draw_scope_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
 	}
 
-	b32 use_error_highlight = def_get_config_b32(vars_save_string_lit("use_error_highlight"));
-	b32 use_jump_highlight  = def_get_config_b32(vars_save_string_lit("use_jump_highlight"));
+	b32 use_error_highlight = def_get_config_b32(vars_intern_lit("use_error_highlight"));
+	b32 use_jump_highlight  = def_get_config_b32(vars_intern_lit("use_jump_highlight"));
 	if(use_error_highlight || use_jump_highlight){
 		Buffer_ID comp_buffer = get_buffer_by_name(app, string_u8_litexpr("*compilation*"), Access_Always);
 		if(use_error_highlight){
@@ -66,7 +66,7 @@ EXAMPLE_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id, 
 		}
 	}
 
-	b32 use_paren_helper = def_get_config_b32(vars_save_string_lit("use_paren_helper"));
+	b32 use_paren_helper = def_get_config_b32(vars_intern_lit("use_paren_helper"));
 	if(use_paren_helper){
 		Color_Array colors = finalize_color_array(defcolor_text_cycle);
 		draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
@@ -151,7 +151,7 @@ EXAMPLE_render_caller(Application_Links *app, Frame_Info frame_info, View_ID vie
 		animate_in_n_milliseconds(app, 1000);
 	}
 
-	b32 show_line_number_margins = def_get_config_b32(vars_save_string_lit("show_line_number_margins"));
+	b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
 	Rect_f32 line_number_rect = {};
 	if(show_line_number_margins){
 		Rect_f32_Pair pair = (vim_relative_numbers ?
@@ -221,7 +221,7 @@ EXAMPLE_buffer_region(Application_Links *app, View_ID view_id, Rect_f32 region){
 
 	if(show_fps_hud){ region = layout_fps_hud_on_bottom(region, line_height).min; }
 
-	b32 show_line_number_margins = def_get_config_b32(vars_save_string_lit("show_line_number_margins"));
+	b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
 	if(show_line_number_margins){
 		region = (vim_relative_numbers ?
 				  vim_line_number_margin(app, buffer, region, digit_advance) :
@@ -324,9 +324,9 @@ custom_layer_init(Application_Links *app){
 
 	Thread_Context *tctx = get_thread_context(app);
 	mapping_init(tctx, &framework_mapping);
-	String_ID global_map_id = vars_save_string_lit("keys_global");
-	String_ID file_map_id = vars_save_string_lit("keys_file");
-	String_ID code_map_id = vars_save_string_lit("keys_code");
+	String_ID global_map_id = vars_intern_lit("keys_global");
+	String_ID file_map_id = vars_intern_lit("keys_file");
+	String_ID code_map_id = vars_intern_lit("keys_code");
 	setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 #if OS_MAC
 	setup_mac_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);

@@ -138,7 +138,7 @@ get_view_for_locked_jump_buffer(Application_Links *app){
 // TODO(allen): re-evaluate the setup of this.
 function void
 new_view_settings(Application_Links *app, View_ID view){
-    b32 use_file_bars = def_get_config_b32(vars_save_string_lit("use_file_bars"));
+    b32 use_file_bars = def_get_config_b32(vars_intern_lit("use_file_bars"));
     view_set_setting(app, view, ViewSetting_ShowFileBar, use_file_bars);
 }
 
@@ -578,7 +578,7 @@ CUSTOM_DOC("Sets the edit mode to Notepad like.")
 CUSTOM_COMMAND_SIG(toggle_highlight_line_at_cursor)
 CUSTOM_DOC("Toggles the line highlight at the cursor.")
 {
-    String_ID key = vars_save_string_lit("highlight_line_at_cursor");
+    String_ID key = vars_intern_lit("highlight_line_at_cursor");
     b32 val = def_get_config_b32(key);
     def_set_config_b32(key, !val);
 }
@@ -586,7 +586,7 @@ CUSTOM_DOC("Toggles the line highlight at the cursor.")
 CUSTOM_COMMAND_SIG(toggle_highlight_enclosing_scopes)
 CUSTOM_DOC("In code files scopes surrounding the cursor are highlighted with distinguishing colors.")
 {
-    String_ID key = vars_save_string_lit("use_scope_highlight");
+    String_ID key = vars_intern_lit("use_scope_highlight");
     b32 val = def_get_config_b32(key);
     def_set_config_b32(key, !val);
 }
@@ -594,7 +594,7 @@ CUSTOM_DOC("In code files scopes surrounding the cursor are highlighted with dis
 CUSTOM_COMMAND_SIG(toggle_paren_matching_helper)
 CUSTOM_DOC("In code files matching parentheses pairs are colored with distinguishing colors.")
 {
-    String_ID key = vars_save_string_lit("use_paren_helper");
+    String_ID key = vars_intern_lit("use_paren_helper");
     b32 val = def_get_config_b32(key);
     def_set_config_b32(key, !val);
 }
@@ -699,7 +699,7 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array file_nam
     load_config_and_apply(app, &global_config_arena, override_font_size, override_hinting);
     
     String_Const_u8 bindings_file_name = string_u8_litexpr("bindings.4coder");
-    String_Const_u8 mapping = def_get_config_string(scratch, vars_save_string_lit("mapping"));
+    String_Const_u8 mapping = def_get_config_string(scratch, vars_intern_lit("mapping"));
     
     if (string_match(mapping, string_u8_litexpr("mac-default"))){
         bindings_file_name = string_u8_litexpr("mac-bindings.4coder");
@@ -709,9 +709,9 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array file_nam
     }
     
     // TODO(allen): cleanup
-    String_ID global_map_id = vars_save_string_lit("keys_global");
-    String_ID file_map_id = vars_save_string_lit("keys_file");
-    String_ID code_map_id = vars_save_string_lit("keys_code");
+    String_ID global_map_id = vars_intern_lit("keys_global");
+    String_ID file_map_id = vars_intern_lit("keys_file");
+    String_ID code_map_id = vars_intern_lit("keys_code");
     
     if (dynamic_binding_load_from_file(app, &framework_mapping, bindings_file_name)){
         setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
@@ -1137,7 +1137,7 @@ default_input_handler_init(Application_Links *app, Arena *arena){
     
     View_Context ctx = view_current_context(app, view);
     ctx.mapping = &framework_mapping;
-    ctx.map_id = vars_save_string_lit("keys_global");
+    ctx.map_id = vars_intern_lit("keys_global");
     view_alter_context(app, view, &ctx);
 }
 
@@ -1149,12 +1149,12 @@ default_get_map_id(Application_Links *app, View_ID view){
     Command_Map_ID *result_ptr = scope_attachment(app, buffer_scope, buffer_map_id, Command_Map_ID);
     if (result_ptr != 0){
         if (*result_ptr == 0){
-            *result_ptr = vars_save_string_lit("keys_file");
+            *result_ptr = vars_intern_lit("keys_file");
         }
         result = *result_ptr;
     }
     else{
-        result = vars_save_string_lit("keys_global");
+        result = vars_intern_lit("keys_global");
     }
     return(result);
 }

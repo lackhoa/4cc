@@ -197,7 +197,7 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
 	}
     
     // NOTE(allen): layout line numbers
-	b32 show_line_number_margins = def_get_config_b32(vars_save_string_lit("show_line_number_margins"));
+	b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
     Rect_f32 line_number_rect = {};
     if (show_line_number_margins)
     {
@@ -242,20 +242,20 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
         
         Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
         
-        u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
+        u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));
         f32 cursor_roundness = face_metrics.normal_advance*(f32)cursor_roundness_100*0.01f;
-        f32 mark_thickness = (f32)def_get_config_u64(app, vars_save_string_lit("mark_thickness"));
+        f32 mark_thickness = (f32)def_get_config_u64(app, vars_intern_lit("mark_thickness"));
         
         i64 cursor_pos = view_correct_cursor(app, view);
         view_correct_mark(app, view);
         
-        b32 use_scope_highlight = def_get_config_b32(vars_save_string_lit("use_scope_highlight"));
+        b32 use_scope_highlight = def_get_config_b32(vars_intern_lit("use_scope_highlight"));
         if(use_scope_highlight){
             Color_Array colors = finalize_color_array(defcolor_back_cycle);
             draw_scope_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
         }
         
-        b32 highlight_line_at_cursor = def_get_config_b32(vars_save_string_lit("highlight_line_at_cursor"));
+        b32 highlight_line_at_cursor = def_get_config_b32(vars_intern_lit("highlight_line_at_cursor"));
         if(highlight_line_at_cursor && is_active_view){
             i64 line_number = get_line_number_from_pos(app, buffer, cursor_pos);
             draw_line_highlight(app, text_layout_id, line_number, fcolor_id(defcolor_highlight_cursor_line));
@@ -271,8 +271,8 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
             paint_text_color_fcolor(app, text_layout_id, visible_range, fcolor_id(defcolor_text_default));
         }
         
-        b32 use_error_highlight = def_get_config_b32(vars_save_string_lit("use_error_highlight"));
-        b32 use_jump_highlight  = def_get_config_b32(vars_save_string_lit("use_jump_highlight"));
+        b32 use_error_highlight = def_get_config_b32(vars_intern_lit("use_error_highlight"));
+        b32 use_jump_highlight  = def_get_config_b32(vars_intern_lit("use_jump_highlight"));
         if(use_error_highlight || use_jump_highlight)
         {
             Buffer_ID comp_buffer = get_buffer_by_name(app, compilation_buffer_name, Access_Always);

@@ -78,13 +78,13 @@ CUSTOM_COMMAND_SIG(fleury_startup);
 function void
 F4_SetAbsolutelyNecessaryBindings(Mapping *mapping)
 {
-    String_ID global_map_id = vars_save_string_lit("keys_global");
-    String_ID file_map_id = vars_save_string_lit("keys_file");
-    String_ID code_map_id = vars_save_string_lit("keys_code");
+    String_ID global_map_id = vars_intern_lit("keys_global");
+    String_ID file_map_id = vars_intern_lit("keys_file");
+    String_ID code_map_id = vars_intern_lit("keys_code");
     
-	String_ID global_command_map_id = vars_save_string_lit("keys_global_1");
-	String_ID file_command_map_id = vars_save_string_lit("keys_file_1");
-    String_ID code_command_map_id = vars_save_string_lit("keys_code_1");
+	String_ID global_command_map_id = vars_intern_lit("keys_global_1");
+	String_ID file_command_map_id = vars_intern_lit("keys_file_1");
+    String_ID code_command_map_id = vars_intern_lit("keys_code_1");
     
 	implicit_map_function = F4_ImplicitMap;
 	
@@ -132,9 +132,9 @@ F4_SetAbsolutelyNecessaryBindings(Mapping *mapping)
 function void
 F4_SetDefaultBindings(Mapping *mapping)
 {
-    String_ID global_map_id = vars_save_string_lit("keys_global");
-    String_ID file_map_id = vars_save_string_lit("keys_file");
-    String_ID code_map_id = vars_save_string_lit("keys_code");
+    String_ID global_map_id = vars_intern_lit("keys_global");
+    String_ID file_map_id = vars_intern_lit("keys_file");
+    String_ID code_map_id = vars_intern_lit("keys_code");
     
     MappingScope();
     SelectMapping(mapping);

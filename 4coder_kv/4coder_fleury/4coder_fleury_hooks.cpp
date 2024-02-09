@@ -30,14 +30,14 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
         F4_SyntaxHighlight(app, text_layout_id, &token_array);
         
         // NOTE(allen): Scan for TODOs and NOTEs
-        b32 use_comment_keywords = def_get_config_b32(vars_save_string_lit("use_comment_keywords"));
+        b32 use_comment_keywords = def_get_config_b32(vars_intern_lit("use_comment_keywords"));
         if(use_comment_keywords)
         {
             Comment_Highlight_Pair pairs[] =
             {
                 {str8_lit("NOTE"), finalize_color(defcolor_comment_pop, 0)},
                 {str8_lit("TODO"), finalize_color(defcolor_comment_pop, 1)},
-                {def_get_config_string(scratch, vars_save_string_lit("user_name")), finalize_color(fleury_color_comment_user_name, 0)},
+                {def_get_config_string(scratch, vars_intern_lit("user_name")), finalize_color(fleury_color_comment_user_name, 0)},
             };
             draw_comment_highlights(app, buffer, text_layout_id,
                                     &token_array, pairs, ArrayCount(pairs));
@@ -53,7 +53,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     view_correct_mark(app, view_id);
     
     // NOTE(allen): Scope highlight
-    b32 use_scope_highlight = def_get_config_b32(vars_save_string_lit("use_scope_highlight"));
+    b32 use_scope_highlight = def_get_config_b32(vars_intern_lit("use_scope_highlight"));
     if (use_scope_highlight){
         Color_Array colors = finalize_color_array(defcolor_back_cycle);
         draw_scope_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
@@ -71,7 +71,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     
     // NOTE(allen): Line highlight
     {
-        b32 highlight_line_at_cursor = def_get_config_b32(vars_save_string_lit("highlight_line_at_cursor"));
+        b32 highlight_line_at_cursor = def_get_config_b32(vars_intern_lit("highlight_line_at_cursor"));
         String_Const_u8 name = compilation_buffer_name;
         Buffer_ID compilation_buffer = get_buffer_by_name(app, name, Access_Always);
         if(highlight_line_at_cursor && (is_active_view || buffer == compilation_buffer))
@@ -84,8 +84,8 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     
     // NOTE(rjf): Error/Search Highlight
     {
-        b32 use_error_highlight = def_get_config_b32(vars_save_string_lit("use_error_highlight"));
-        b32 use_jump_highlight = def_get_config_b32(vars_save_string_lit("use_jump_highlight"));
+        b32 use_error_highlight = def_get_config_b32(vars_intern_lit("use_error_highlight"));
+        b32 use_jump_highlight = def_get_config_b32(vars_intern_lit("use_jump_highlight"));
         if (use_error_highlight || use_jump_highlight){
             // NOTE(allen): Error highlight
             String_Const_u8 name = compilation_buffer_name;
@@ -114,7 +114,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     }
     
     // NOTE(jack): Token Occurance Highlight
-    if (!def_get_config_b32(vars_save_string_lit("f4_disable_cursor_token_occurance"))) 
+    if (!def_get_config_b32(vars_intern_lit("f4_disable_cursor_token_occurance"))) 
     {
         ProfileScope(app, "[Fleury] Token Occurance Highlight");
         
@@ -194,7 +194,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     }
     
     // NOTE(allen): Color parens
-    if(def_get_config_b32(vars_save_string_lit("use_paren_helper")))
+    if(def_get_config_b32(vars_intern_lit("use_paren_helper")))
     {
         Color_Array colors = finalize_color_array(defcolor_text_cycle);
         draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
@@ -213,9 +213,9 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     
     // NOTE(allen): Cursor shape
     Face_Metrics metrics = get_face_metrics(app, face_id);
-    u64 cursor_roundness_100 = def_get_config_u64(app, vars_save_string_lit("cursor_roundness"));
+    u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));
     f32 cursor_roundness = metrics.normal_advance*(f32)cursor_roundness_100*0.01f;
-    f32 mark_thickness = (f32)def_get_config_u64(app, vars_save_string_lit("mark_thickness"));
+    f32 mark_thickness = (f32)def_get_config_u64(app, vars_intern_lit("mark_thickness"));
     
     // NOTE(rjf): Cursor
     switch (fcoder_mode)
@@ -400,7 +400,7 @@ F4_DrawFileBar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_I
     Vec2_f32 p = bar.p0 + V2f32(2.f, 2.f);
     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
     
-    if(!def_get_config_b32(vars_save_string_lit("f4_disable_progress_bar")))
+    if(!def_get_config_b32(vars_intern_lit("f4_disable_progress_bar")))
     {
         f32 progress = (f32)cursor.line / (f32)buffer_get_line_count(app, buffer);
         Rect_f32 progress_bar_rect =
@@ -429,7 +429,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view_id);
     
-    f32 margin_size = (f32)def_get_config_u64(app, vars_save_string_lit("f4_margin_size"));
+    f32 margin_size = (f32)def_get_config_u64(app, vars_intern_lit("f4_margin_size"));
     Rect_f32 view_rect = view_get_screen_rect(app, view_id);
     Rect_f32 region = rect_inner(view_rect, margin_size);
     
@@ -459,7 +459,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     //~ NOTE(rjf): Draw margin.
     {
         ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_margin));
-        if(def_get_config_b32(vars_save_string_lit("f4_margin_use_mode_color")) &&
+        if(def_get_config_b32(vars_intern_lit("f4_margin_use_mode_color")) &&
            is_active_view)
         {
             color = F4_GetColor(app, ColorCtx_Cursor(power_mode.enabled ? ColorFlag_PowerMode : 0,
@@ -525,7 +525,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     
     // NOTE(allen): layout line numbers
     Rect_f32 line_number_rect = {};
-    if(def_get_config_b32(vars_save_string_lit("show_line_number_margins")))
+    if(def_get_config_b32(vars_intern_lit("show_line_number_margins")))
     {
         Rect_f32_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
         line_number_rect = pair.min;
@@ -542,7 +542,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     Text_Layout_ID text_layout_id = text_layout_create(app, buffer, region, buffer_point);
     
     // NOTE(allen): draw line numbers
-    if(def_get_config_b32(vars_save_string_lit("show_line_number_margins")))
+    if(def_get_config_b32(vars_intern_lit("show_line_number_margins")))
     {
         draw_line_number_margin(app, view_id, buffer, face_id, text_layout_id, line_number_rect);
     }
@@ -575,7 +575,7 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
     {
         if(file_name.size > 0)
         {
-            String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_save_string_lit("treat_as_code"));
+            String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
             String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
             String_Const_u8 ext = string_file_extension(file_name);
             for(i32 i = 0; i < extensions.count; ++i)
@@ -615,8 +615,8 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
         }
     }
     
-    String_ID file_map_id = vars_save_string_lit("keys_file");
-    String_ID code_map_id = vars_save_string_lit("keys_code");
+    String_ID file_map_id = vars_intern_lit("keys_file");
+    String_ID code_map_id = vars_intern_lit("keys_code");
     
     Command_Map_ID map_id = (treat_as_code) ? (code_map_id) : (file_map_id);
     Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
@@ -632,7 +632,7 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
     b32 use_lexer = false;
     if(treat_as_code)
     {
-        wrap_lines = def_get_config_b32(vars_save_string_lit("enable_code_wrapping"));
+        wrap_lines = def_get_config_b32(vars_intern_lit("enable_code_wrapping"));
         use_lexer = true;
     }
     
@@ -685,7 +685,7 @@ F4_LayoutInner(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64
     
     Face_Advance_Map advance_map = get_face_advance_map(app, face);
     Face_Metrics metrics = get_face_metrics(app, face);
-    f32 tab_width = (f32)def_get_config_u64(app, vars_save_string_lit("default_tab_width"));
+    f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
     tab_width = clamp_bot(1, tab_width);
     LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
     

@@ -95,7 +95,7 @@ function void
 F4_RenderDividerComments(Application_Links *app, Buffer_ID buffer, View_ID view,
                          Text_Layout_ID text_layout_id)
 {
-    if(!def_get_config_b32(vars_save_string_lit("f4_disable_divider_comments")))
+    if(!def_get_config_b32(vars_intern_lit("f4_disable_divider_comments")))
     {
         ProfileScope(app, "[F4] Divider Comments");
         

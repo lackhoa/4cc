@@ -933,8 +933,8 @@ F4_ReIndentLine(Application_Links *app, Buffer_ID buffer, i64 line, i64 indent_d
             line_indent_range.max + line_start_pos,
         };
         
-        i64 indent_width = (i64)def_get_config_u64(app, vars_save_string_lit("indent_width"));
-        b32 indent_with_tabs = def_get_config_b32(vars_save_string_lit("indent_with_tabs"));
+        i64 indent_width = (i64)def_get_config_u64(app, vars_intern_lit("indent_width"));
+        b32 indent_with_tabs = def_get_config_b32(vars_intern_lit("indent_with_tabs"));
         i64 spaces_per_indent_level = indent_width;
         i64 indent_level = spaces_at_beginning / spaces_per_indent_level + tabs_at_beginning;
         i64 new_indent_level = indent_level + indent_delta;

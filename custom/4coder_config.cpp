@@ -9,7 +9,7 @@
 
 function void
 def_search_normal_load_list(Arena *arena, String8List *list){
-    Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_save_string_lit("prj_config"));
+    Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_intern_lit("prj_config"));
     String_Const_u8 prj_dir = prj_path_from_project(arena, prj_var);
     if (prj_dir.size > 0){
         string_list_push(arena, list, prj_dir);
@@ -666,21 +666,21 @@ def_var_dump_rvalue(Application_Links *app, Config *config, Variable_Handle dst,
         String_ID val = 0;
         if (*boolean)
         {
-            val = vars_save_string_lit("true");
+            val = vars_intern_lit("true");
         }
         else
         {
-            val = vars_save_string_lit("false");
+            val = vars_intern_lit("false");
         }
         vars_new_variable(dst, l_value, val);
     }
     else if (integer != 0){
         // TODO(allen): signed/unsigned problem
-        String_ID val = vars_save_string(push_stringf(scratch, "%d", *integer));
+        String_ID val = vars_intern(push_stringf(scratch, "%d", *integer));
         vars_new_variable(dst, l_value, val);
     }
     else if (string != 0){
-        String_ID val = vars_save_string(*string);
+        String_ID val = vars_intern(*string);
         vars_new_variable(dst, l_value, val);
     }
     else if (compound != 0){
@@ -701,20 +701,20 @@ def_var_dump_rvalue(Application_Links *app, Config *config, Variable_Handle dst,
                 case ConfigLayoutType_Unset:
                 {
                     if (implicit_allowed){
-                        sub_l_value = vars_save_string(push_stringf(scratch, "%d", implicit_index));
+                        sub_l_value = vars_intern(push_stringf(scratch, "%d", implicit_index));
                     }
                 }break;
                 
                 case ConfigLayoutType_Identifier:
                 {
                     implicit_allowed = false;
-                    sub_l_value = vars_save_string(node->l.identifier);
+                    sub_l_value = vars_intern(node->l.identifier);
                 }break;
                 
                 case ConfigLayoutType_Integer:
                 {
                     implicit_allowed = false;
-                    sub_l_value = vars_save_string(push_stringf(scratch, "%d", node->l.integer));
+                    sub_l_value = vars_intern(push_stringf(scratch, "%d", node->l.integer));
                 }break;
             }
             
@@ -735,7 +735,7 @@ def_fill_var_from_config(App *app, Variable_Handle parent, String_ID key, Config
     
     if (key != 0)
     {
-        String_ID file_name_id = vars_save_string(config->file_name);
+        String_ID file_name_id = vars_intern(config->file_name);
         result = vars_new_variable(parent, key, file_name_id);
         
         Variable_Handle var = result;
@@ -744,8 +744,8 @@ def_fill_var_from_config(App *app, Variable_Handle parent, String_ID key, Config
         
         if (config->version != 0)
         {
-            String_ID version_key = vars_save_string_lit("version");
-            String_ID version_value = vars_save_string(push_stringf(scratch, "%d", *config->version));
+            String_ID version_key = vars_intern_lit("version");
+            String_ID version_value = vars_intern(push_stringf(scratch, "%d", *config->version));
             vars_new_variable(parent, version_key, version_value);
         }
         
@@ -759,7 +759,7 @@ def_fill_var_from_config(App *app, Variable_Handle parent, String_ID key, Config
                 if (l->index != 0){
                     string = push_stringf(scratch, "%.*s.%d", string_expand(string), l->index);
                 }
-                l_value = vars_save_string(string);
+                l_value = vars_intern(string);
             }
             
             if (l_value != 0){
@@ -784,10 +784,10 @@ global String_ID def_config_lookup_table[def_config_lookup_count] = {};
 function void
 _def_config_table_init(void){
     if (def_config_lookup_table[0] == 0){
-        def_config_lookup_table[0] = vars_save_string(str8_lit("ses_config"));
-        def_config_lookup_table[1] = vars_save_string(str8_lit("prj_config"));
-        def_config_lookup_table[2] = vars_save_string(str8_lit("usr_config"));
-        def_config_lookup_table[3] = vars_save_string(str8_lit("def_config"));
+        def_config_lookup_table[0] = vars_intern(str8_lit("ses_config"));
+        def_config_lookup_table[1] = vars_intern(str8_lit("prj_config"));
+        def_config_lookup_table[2] = vars_intern(str8_lit("usr_config"));
+        def_config_lookup_table[3] = vars_intern(str8_lit("def_config"));
     }
 }
 
@@ -828,13 +828,13 @@ def_get_config_b32(String_ID key)
 {
     Variable_Handle var = def_get_config_var(key);
     String_ID val = vars_string_id_from_var(var);
-    b32 result = (val != 0 && val != vars_save_string_lit("false"));
+    b32 result = (val != 0 && val != vars_intern_lit("false"));
     return(result);
 }
 
 function void
 def_set_config_b32(String_ID key, b32 val){
-    String_ID val_id = val?vars_save_string_lit("true"):vars_save_string_lit("false");
+    String_ID val_id = val?vars_intern_lit("true"):vars_intern_lit("false");
     def_set_config_var(key, val_id);
 }
 
@@ -849,13 +849,13 @@ inline String8
 def_get_config_string(Arena *arena, char *key)
 {
     // NOTE(kv): a bit slow but who cares
-    return def_get_config_string(arena, vars_save_string(SCu8(key)));
+    return def_get_config_string(arena, vars_intern(SCu8(key)));
 }
 
 function void
 def_set_config_string(String_ID key, String_Const_u8 val)
 {
-    def_set_config_var(key, vars_save_string(val));
+    def_set_config_var(key, vars_intern(val));
 }
 
 function u64
@@ -871,7 +871,7 @@ function void
 def_set_config_u64(Application_Links *app, String_ID key, u64 val){
     Scratch_Block scratch(app);
     String_Const_u8 val_string = push_stringf(scratch, "%llu", val);
-    def_set_config_var(key, vars_save_string(val_string));
+    def_set_config_var(key, vars_intern(val_string));
 }
 
 
@@ -1512,7 +1512,7 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
         {
             // TODO(allen): this always applies to "def_config" need to get "usr_config" working too
             Variable_Handle config_var = def_fill_var_from_config(app, vars_get_root(),
-                                                                  vars_save_string_lit("def_config"),
+                                                                  vars_intern_lit("def_config"),
                                                                   parsed);
 			vars_print(app, config_var);
             print_message(app, string_u8_litexpr("\n"));
@@ -1522,11 +1522,11 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
         print_message(app, string_u8_litexpr("Using default config:\n"));
         Face_Description description = get_face_description(app, 0);
         if (description.font.file_name.str != 0){
-            def_set_config_string(vars_save_string_lit("default_font_name"), description.font.file_name);
+            def_set_config_string(vars_intern_lit("default_font_name"), description.font.file_name);
         }
     }
     
-    String_Const_u8 default_font_name = def_get_config_string(scratch, vars_save_string_lit("default_font_name"));
+    String_Const_u8 default_font_name = def_get_config_string(scratch, vars_intern_lit("default_font_name"));
     if (default_font_name.size == 0){
         default_font_name = string_u8_litexpr("liberation-mono.ttf");
     }
@@ -1536,13 +1536,13 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
     // not by a state that gets evaled and saved *now*!!
     
     // Apply config
-    String_Const_u8 mode = def_get_config_string(scratch, vars_save_string_lit("mode"));
+    String_Const_u8 mode = def_get_config_string(scratch, vars_intern_lit("mode"));
     change_mode(app, mode);
     
-    b32 lalt_lctrl_is_altgr = def_get_config_b32(vars_save_string_lit("lalt_lctrl_is_altgr"));
+    b32 lalt_lctrl_is_altgr = def_get_config_b32(vars_intern_lit("lalt_lctrl_is_altgr"));
     global_set_setting(app, GlobalSetting_LAltLCtrlIsAltGr, lalt_lctrl_is_altgr);
     
-    String_Const_u8 default_theme_name = def_get_config_string(scratch, vars_save_string_lit("default_theme_name"));
+    String_Const_u8 default_theme_name = def_get_config_string(scratch, vars_intern_lit("default_theme_name"));
     Color_Table *colors = get_color_table_by_name(default_theme_name);
     set_active_color(colors);
     
@@ -1551,17 +1551,17 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
         description.parameters.pt_size = override_font_size;
     }
     else{
-        description.parameters.pt_size = (i32)def_get_config_u64(app, vars_save_string_lit("default_font_size"));
+        description.parameters.pt_size = (i32)def_get_config_u64(app, vars_intern_lit("default_font_size"));
     }
     if (description.parameters.pt_size == 0){
         description.parameters.pt_size = 12;
     }
     
-    b32 default_font_hinting = def_get_config_b32(vars_save_string_lit("default_font_hinting"));
+    b32 default_font_hinting = def_get_config_b32(vars_intern_lit("default_font_hinting"));
     description.parameters.hinting = default_font_hinting || override_hinting;
     
     Face_Antialiasing_Mode aa_mode = FaceAntialiasingMode_8BitMono;
-    String8 aa_mode_string = def_get_config_string(scratch, vars_save_string_lit("default_font_aa_mode"));
+    String8 aa_mode_string = def_get_config_string(scratch, vars_intern_lit("default_font_aa_mode"));
     if (string_match(aa_mode_string, str8_lit("8bit"))){
         aa_mode = FaceAntialiasingMode_8BitMono;
     }
@@ -1577,7 +1577,7 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
         modify_global_face_by_description(app, description);
     }
     
-    b32 bind_by_physical_key = def_get_config_b32(vars_save_string_lit("bind_by_physical_key"));
+    b32 bind_by_physical_key = def_get_config_b32(vars_intern_lit("bind_by_physical_key"));
     if (bind_by_physical_key){
         system_set_key_mode(KeyMode_Physical);
     }
@@ -1655,9 +1655,10 @@ CUSTOM_DOC("Parse the current buffer as a theme file and add the theme to the th
 #pragma clang diagnostic push 
 #pragma clang diagnostic ignored "-Wsign-compare"
         if (color_table.count < defcolor_line_numbers_text){
-#pragma clang diagnostic pop
             problem_score = defcolor_line_numbers_text - color_table.count;
         }
+#pragma clang diagnostic pop
+        //
         for (i32 i = 0; i < color_table.count; i += 1){
             if (color_table.arrays[i].count == 0){
                 problem_score += 1;
@@ -1695,4 +1696,3 @@ CUSTOM_DOC("Go to the 4coder user directory")
 }
 
 // BOTTOM
-

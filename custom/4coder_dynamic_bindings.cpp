@@ -61,7 +61,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                     Config_Get_Result rvalue = config_evaluate_rvalue(parsed, assignment, assignment->r);
                     if (rvalue.type == ConfigRValueType_Compound){
                         String_Const_u8 map_name = l->identifier;
-                        String_ID map_name_id = vars_save_string(map_name);
+                        String_ID map_name_id = vars_intern(map_name);
                         
                         SelectMap(map_name_id);
                         

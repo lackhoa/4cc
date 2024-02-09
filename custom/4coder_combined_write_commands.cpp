@@ -21,7 +21,7 @@ write_string(Application_Links *app, String_Const_u8 string){
 function void
 write_named_comment_string(Application_Links *app, char *type_string){
     Scratch_Block scratch(app);
-    String_Const_u8 name = def_get_config_string(scratch, vars_save_string_lit("user_name"));
+    String_Const_u8 name = def_get_config_string(scratch, vars_intern_lit("user_name"));
     String_Const_u8 str = {};
     if (name.size > 0){
         str = push_u8_stringf(scratch, "// %s(%.*s): ", type_string, string_expand(name));

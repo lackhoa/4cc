@@ -882,7 +882,7 @@ normalize(v2 v)
     f32 len = length(v);
     if (len == 0)
     {
-        result = toV2(0,0);
+        result = v2{};
     }
     else
     {
@@ -947,7 +947,7 @@ toV3(v2 xy, f32 z)
 inline v3
 v3All(f32 c)
 {
-    return toV3(c, c, c);
+    return v3{c, c, c};
 }
 
 inline v3
