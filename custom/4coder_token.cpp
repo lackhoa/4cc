@@ -656,7 +656,8 @@ token_relex_resync(Token_Array *tokens, i64 edit_range_first, i64 look_ahead_rep
 }
 
 internal Token_Relex
-token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, i64 relex_first, i64 relex_last){
+token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, i64 relex_first, i64 relex_last)
+{
     Token_Relex relex = {};
     if (relex_list.total_count > 0){
         Token_Array relexed_tokens = 
@@ -691,13 +692,22 @@ token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, 
 }
 
 internal b32
-require_token_kind(Token_Iterator_Array *it, Token_Base_Kind kind)
+require_token_kind(Token_Iterator_Array *tk, Token_Base_Kind kind)
 {
-  if( token_it_inc(it) )
+  if( token_it_inc(tk) )
   {
-    return it->ptr->kind == kind;
+    return tk->ptr->kind == kind;
   }
   return false;
+}
+
+internal b32
+maybe_token_kind(Token_Iterator_Array *tk, Token_Base_Kind kind)
+{
+    Token_Iterator_Array tk_save = *tk;
+    b32 result = require_token_kind(tk, kind);
+    if (!result) *tk = tk_save;
+    return result;
 }
 
 #if 0

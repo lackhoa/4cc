@@ -597,7 +597,8 @@ function Config_Get_Result
 config_var(Config *config, String_Const_u8 var_name, i32 subscript);
 
 function void
-def_var_dump_rvalue(Application_Links *app, Config *config, Variable_Handle dst, String_ID l_value, Config_RValue *r){
+def_var_dump_rvalue(Application_Links *app, Config *config, Variable_Handle dst, String_ID l_value, Config_RValue *r)
+{
     Scratch_Block scratch(app);
     
     b32 *boolean = 0;
@@ -660,13 +661,16 @@ def_var_dump_rvalue(Application_Links *app, Config *config, Variable_Handle dst,
         }break;
     }
     
-    if (boolean != 0){
+    if (boolean != 0)
+    {
         String_ID val = 0;
-        if (*boolean){
-            val = vars_save_string(str8_lit("true"));
+        if (*boolean)
+        {
+            val = vars_save_string_lit("true");
         }
-        else{
-            val = vars_save_string(str8_lit("false"));
+        else
+        {
+            val = vars_save_string_lit("false");
         }
         vars_new_variable(dst, l_value, val);
     }
@@ -725,10 +729,12 @@ def_var_dump_rvalue(Application_Links *app, Config *config, Variable_Handle dst,
 }
 
 function Variable_Handle
-def_fill_var_from_config(Application_Links *app, Variable_Handle parent, String_ID key, Config *config){
+def_fill_var_from_config(App *app, Variable_Handle parent, String_ID key, Config *config)
+{
     Variable_Handle result = vars_get_nil();
     
-    if (key != 0){
+    if (key != 0)
+    {
         String_ID file_name_id = vars_save_string(config->file_name);
         result = vars_new_variable(parent, key, file_name_id);
         
@@ -736,8 +742,9 @@ def_fill_var_from_config(Application_Links *app, Variable_Handle parent, String_
         
         Scratch_Block scratch(app);
         
-        if (config->version != 0){
-            String_ID version_key = vars_save_string(string_u8_litexpr("version"));
+        if (config->version != 0)
+        {
+            String_ID version_key = vars_save_string_lit("version");
             String_ID version_value = vars_save_string(push_stringf(scratch, "%d", *config->version));
             vars_new_variable(parent, version_key, version_value);
         }
@@ -785,7 +792,8 @@ _def_config_table_init(void){
 }
 
 function Variable_Handle
-def_get_config_var(String_ID key){
+def_get_config_var(String_ID key)
+{
     _def_config_table_init();
     
     Variable_Handle result = vars_get_nil();
@@ -804,7 +812,8 @@ def_get_config_var(String_ID key){
 }
 
 function void
-def_set_config_var(String_ID key, String_ID val){
+def_set_config_var(String_ID key, String_ID val)
+{
     _def_config_table_init();
     Variable_Handle root = vars_get_root();
     Variable_Handle block_var = vars_read_key(root, def_config_lookup_table[0]);
@@ -815,7 +824,8 @@ def_set_config_var(String_ID key, String_ID val){
 }
 
 function b32
-def_get_config_b32(String_ID key){
+def_get_config_b32(String_ID key)
+{
     Variable_Handle var = def_get_config_var(key);
     String_ID val = vars_string_id_from_var(var);
     b32 result = (val != 0 && val != vars_save_string_lit("false"));
@@ -843,12 +853,14 @@ def_get_config_string(Arena *arena, char *key)
 }
 
 function void
-def_set_config_string(String_ID key, String_Const_u8 val){
+def_set_config_string(String_ID key, String_Const_u8 val)
+{
     def_set_config_var(key, vars_save_string(val));
 }
 
 function u64
-def_get_config_u64(Application_Links *app, String_ID key){
+def_get_config_u64(App *app, String_ID key)
+{
     Scratch_Block scratch(app);
     Variable_Handle var = def_get_config_var(key);
     u64 result = vars_u64_from_var(app, var);
@@ -1496,7 +1508,8 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
         }
         
         // NOTE(allen): Save As Variables
-        if (error_text.str == 0){
+        if (error_text.str == 0)
+        {
             // TODO(allen): this always applies to "def_config" need to get "usr_config" working too
             Variable_Handle config_var = def_fill_var_from_config(app, vars_get_root(),
                                                                   vars_save_string_lit("def_config"),

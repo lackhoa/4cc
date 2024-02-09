@@ -230,7 +230,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
             error = FT_Load_Glyph(ft_face, i, load_flags);
             if (error == 0){
                 FT_GlyphSlot ft_glyph = ft_face->glyph;
-                Vec2_i32 dim = V2i32(ft_glyph->bitmap.width, ft_glyph->bitmap.rows);
+                Vec2_i32 dim = V2i(ft_glyph->bitmap.width, ft_glyph->bitmap.rows);
                 bitmap->dim = dim;
                 bitmap->data = push_array(arena, u8, dim.x*dim.y);
                 
@@ -292,11 +292,11 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         };
         
         Bitmap white = {};
-        white.dim = V2i32(4, 4);
+        white.dim = V2i(4, 4);
         white.data = white_data;
         
         Bad_Rect_Pack pack = {};
-        ft__bad_rect_pack_init(&pack, V2i32(1024, 1024));
+        ft__bad_rect_pack_init(&pack, V2i(1024, 1024));
         ft__glyph_bounds_store_uv_raw(ft__bad_rect_pack_next(&pack, white.dim), white.dim, &face->white);
         for (u16 i = 0; i < index_count; i += 1){
             Vec2_i32 dim = glyph_bitmaps[i].dim;

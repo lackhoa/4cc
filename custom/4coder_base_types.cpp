@@ -154,9 +154,10 @@ round_up_pot_u32(u32 x){
 
 ////////////////////////////////
 
-function String_Const_u8
-make_data(void *memory, u64 size){
-    String_Const_u8 data = {(u8*)memory, size};
+function String8
+make_data(void *memory, u64 size)
+{
+    String8 data = {(u8*)memory, size};
     return(data);
 }
 
@@ -351,7 +352,8 @@ V4i16(i16 x, i16 y, i16 z, i16 w){
     return(v);
 }
 function Vec2_i32
-V2i32(i32 x, i32 y){
+V2i(i32 x, i32 y)
+{
     Vec2_i32 v = {x, y};
     return(v);
 }
@@ -382,6 +384,11 @@ internal Vec2_f32
 castV2(i32 x, i32 y){
     Vec2_f32 v = {(f32)x, (f32)y};
     return(v);
+}
+
+internal v2
+castV2(v2i v){
+    return {(f32)v.x, (f32)v.y};
 }
 
 function Vec3_f32
@@ -492,20 +499,23 @@ V4i16(Vec4_f32 o){
     return(V4i16((i16)o.x, (i16)o.y, (i16)o.z, (i16)o.w));
 }
 function Vec2_i32
-V2i32(Vec2_i8 o){
-    return(V2i32((i32)o.x, (i32)o.y));
+V2i(Vec2_i8 o){
+    return(V2i((i32)o.x, (i32)o.y));
 }
 function Vec2_i32
-V2i32(Vec2_i16 o){
-    return(V2i32((i32)o.x, (i32)o.y));
+V2i(Vec2_i16 o){
+    return(V2i((i32)o.x, (i32)o.y));
 }
+/*
 function Vec2_i32
 V2i32(Vec2_i32 o){
-    return(V2i32((i32)o.x, (i32)o.y));
+    return(V2i((i32)o.x, (i32)o.y));
 }
+*/
 function Vec2_i32
-V2i32(Vec2_f32 o){
-    return(V2i32((i32)o.x, (i32)o.y));
+V2i(Vec2_f32 o)
+{
+    return(V2i((i32)o.x, (i32)o.y));
 }
 function Vec3_i32
 V3i32(Vec3_i8 o){
@@ -1422,7 +1432,8 @@ pack_argb(v4 color)
 }
 
 function ARGB_Color
-color_blend(ARGB_Color a, f32 t, ARGB_Color b){
+color_blend(ARGB_Color a, f32 t, ARGB_Color b)
+{
     Vec4_f32 av = unpack_argb(a);
     Vec4_f32 bv = unpack_argb(b);
     Vec4_f32 v = lerp(av, t, bv);
@@ -3380,17 +3391,19 @@ base_allocator_on_heap(Heap *heap){
 
 ////////////////////////////////
 
-function String_Const_u8
-push_data(Arena *arena, u64 size){
+function String8
+push_data(Arena *arena, u64 size)
+{
     String_Const_u8 result = {};
     result.str = push_array(arena, u8, size);
     result.size = size;
     return(result);
 }
 
-function String_Const_u8
-push_data_copy(Arena *arena, String_Const_u8 data){
-    String_Const_u8 result = {};
+function String8
+push_data_copy(Arena *arena, String8 data)
+{
+    String8 result = {};
     result.str = push_array_write(arena, u8, data.size, data.str);
     result.size = data.size;
     return(result);
@@ -4424,7 +4437,8 @@ string_skip_chop_whitespace(String_Const_u32 str){
 }
 
 function b32
-string_match(String_Const_char a, String_Const_char b){
+string_match(String_Const_char a, String_Const_char b)
+{
     b32 result = false;
     if (a.size == b.size){
         result = true;
@@ -6961,15 +6975,20 @@ string_is_integer(String_Const_u8 string, u32 radix){
 }
 
 function u64
-string_to_integer(String_Const_u8 string, u32 radix){
+string_to_integer(String8 string, u32 radix)
+{
     u64 x = 0;
-    if (radix <= 16){
-        for (u64 i = 0; i < string.size; i += 1){
+    if (radix <= 16)
+    {
+        for (u64 i = 0; i < string.size; i += 1)
+        {
             x *= radix;
-            if (string.str[i] < 128){
+            if (string.str[i] < 128)
+            {
                 x += integer_symbol_reverse[character_to_upper(string.str[i])];
             }
-            else{
+            else
+            {
                 x += 0xFF;
             }
         }

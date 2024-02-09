@@ -264,7 +264,6 @@ list_all_locations__generic(FApp *app, String8_Array needle, List_All_Locations_
         Buffer_ID search_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
         print_all_matches_all_buffers(app, needle, must_have_flags, must_not_have_flags, search_buffer);
         lock_jump_buffer(app, search_buffer_name);
-        switch_to_other_primary_panel(app);
     }
 }
 

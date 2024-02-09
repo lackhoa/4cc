@@ -363,7 +363,7 @@ buffer_bind_name_low_level(Arena *scratch, Working_Set *working_set, Editing_Fil
         file->unique_name.name_size = size;
     }
     
-    unused_var b32 result = working_set_add_name(working_set, file, string_from_file_name(&file->unique_name));
+    b32 result = working_set_add_name(working_set, file, string_from_file_name(&file->unique_name));
     Assert(result);
 }
 

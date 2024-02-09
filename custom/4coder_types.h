@@ -12,6 +12,7 @@ struct Application_Links {
     void *cmd_context;
 };
 typedef Application_Links FApp;
+typedef Application_Links App;
 
 api(custom)
 typedef b32 _Get_Version_Type(i32 maj, i32 min, i32 patch);

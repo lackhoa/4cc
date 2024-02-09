@@ -12,29 +12,29 @@
 
 typedef u64 String_ID;
 
-struct Variable{
+struct Variable
+{
     Variable *parent;
     Variable *next;
     String_ID key;
-    String_ID string;
+    String_ID val;
     Variable *first;
     Variable *last;
 };
 
-struct Variable_Handle{
+struct Variable_Handle
+{
     Variable *ptr;
 };
 
 ////////////////////////////////
 // NOTE(allen): Functions
 
-// TODO(allen): fix names fuck you for picking these allen:
-// read_string
-// read_keyu
-// save_string
-
-function String_ID       vars_save_string(String_Const_u8 string);
-#define vars_save_string_lit(S) vars_save_string(string_u8_litexpr(S))
+function String_ID    vars_save_string(String8 string);
+#define var_save_strlit(S) vars_save_string( string_u8_litexpr(S) )
+//
+#define vars_save_string_lit var_save_strlit
+//
 function String8         vars_read_string(Arena *arena, String_ID id);
 
 function Variable_Handle vars_get_root(void);
@@ -58,7 +58,7 @@ function String8         vars_string_from_var(Arena *arena, Variable_Handle var)
 function b32             vars_b32_from_var(Variable_Handle var);
 function u64             vars_u64_from_var(Application_Links *app, Variable_Handle var);
 
-function void            vars_set_string(Variable_Handle var, String_ID string);
+function void            vars_set(Variable_Handle var, String_ID string);
 function void            vars_erase(Variable_Handle var, String_ID key);
 function Variable_Handle vars_new_variable(Variable_Handle var, String_ID key);
 function Variable_Handle vars_new_variable(Variable_Handle var, String_ID key, String_ID string);

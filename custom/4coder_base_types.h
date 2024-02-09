@@ -283,7 +283,7 @@ enum{
 // Static = asserts that contain only compile time constants and become compilation errors
 // Disambiguate = for static asserts that happen to have name conflicts
 
-#define AssertBreak(m) debugbreak
+#define AssertBreak(m) kv_fail
 #define AssertAlways(c) Stmnt( if (!(c)) { AssertBreak(c); } )
 #define AssertMessageAlways(m) AssertBreak(m)
 #define StaticAssertDisambiguateAlways(c,d) char glue(__ignore__, glue(__LINE__, d))[(c)?1:-1];

@@ -56,7 +56,7 @@ DEBUG_text_inner(char *name, rect2 value)
 internal void
 DEBUG_text_inner(char *name, i32 value)
 {
-    rect2 rect = {.x0=(f32)value};  // nono
+    rect2 rect = {.x0=(f32)value};  // TODO(kv): we don't have types...
     Debug_Entry entry = {.name=name, .rect=rect};
     arrput(DEBUG_entries, entry);
 }

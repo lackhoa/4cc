@@ -235,11 +235,11 @@ function void            def_set_config_var(String_ID key, String_ID val);
 function b32  def_get_config_b32(String_ID key);
 function void def_set_config_b32(String_ID key, b32 val);
 
-function String_Const_u8 def_get_config_string(Arena *arena, String_ID key);
-function void            def_set_config_string(String_ID key, String_Const_u8 val);
+function String8 def_get_config_string(Arena *arena, String_ID key);
+function void    def_set_config_string(String_ID key, String8 val);
 
-function u64  def_get_config_u64(Application_Links *app, String_ID key);
-function void def_set_config_u64(Application_Links *app, String_ID key, u64 val);
+function u64  def_get_config_u64(App *app, String_ID key);
+function void def_set_config_u64(App *app, String_ID key, u64 val);
 
 #endif
 

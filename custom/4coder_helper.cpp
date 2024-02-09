@@ -12,19 +12,96 @@
   History_Group history_group = history_group_begin(app, buffer); \
   defer( history_group_end(history_group) );
 
-// ;fui
-global v3  fui_slider_value;
-global b32 fui_slider_inited;
-internal v3 fslider(f32 x, f32 y)
+// ;fui ///////////////////////////////////
+enum Fui_Slider_Type
 {
-    // todo(kv): slider values aren't persistent across runs, because you still have to recompile the program!
-    if (!fui_slider_inited)
-    {
-        fui_slider_inited = true;
-        fui_slider_value.xy = {x,y};
-    }
-    return fui_slider_value;
+    Fui_Slider_Type_v1,
+    Fui_Slider_Type_v2,
+    Fui_Slider_Type_v3,
+    Fui_Slider_Type_boolean,
+};
+struct Fui_Slider
+{
+    Fui_Slider_Type type;
+    b32 inited;
+    v4  value;
+};
+global Fui_Slider *fui_slider_store;
+
+internal Fui_Slider *
+fui_slider_get(i32 index)
+{
+    if ( index < arrlen(fui_slider_store) )
+        return &fui_slider_store[index];
+    else
+        // NOTE: the slider might not have been inited yet
+        return 0;
 }
+
+/*
+internal b32
+fui_slider_set(i32 index, v4 value)
+{
+    if ( index < arrlen(fui_slider_store) )
+    {
+        fui_slider_store[index].value = value;
+        return true;
+    }
+    return false;
+}
+*/
+
+// TODO(kv): slider values aren't persistent across runs, because you still have to recompile the program!
+internal void *
+fui_slider_init_or_get_main(i32 index, Fui_Slider_Type type, void *init_value)
+{
+    Fui_Slider* &store = fui_slider_store;
+    i64 new_len = index+1;
+    
+    if ( arrlen(store) < new_len )
+    {
+        i64 old_len = arrlen(store);
+        arrsetlen(store, new_len);
+        for_i64 (new_index, old_len, new_len)
+        {
+            store[new_index] = Fui_Slider{};
+        }
+    }
+    
+    Fui_Slider *slider = store + index;
+    if (!(slider->inited))
+    {
+        slider->value  = *(v4 *)init_value;
+        slider->inited = true;
+    }
+    
+    return &slider->value;
+}
+
+inline v2 fui_slider_init_or_get(i32 index, f32 x, f32 y)
+{
+    Fui_Slider_Type type = Fui_Slider_Type_v2;
+    v2 init_value = v2{x,y};
+    void *value = fui_slider_init_or_get_main(index, type, &init_value);
+    return *(v2 *)value;
+}
+
+inline f32 fui_slider_init_or_get(i32 index, f32 x)
+{
+    Fui_Slider_Type type = Fui_Slider_Type_v1;
+    f32 init_value = x;
+    void *value = fui_slider_init_or_get_main(index, type, &init_value);
+    return *(f32 *)value;
+}
+
+/*
+#define fslider(TYPE, NAME, ...) \
+    TYPE NAME = fui_slider_init_or_get(__FILE__, NAME, ##__VA_ARGS__)
+*/
+#define fslider(...) \
+    fui_slider_init_or_get(0, ##__VA_ARGS__)
+
+////////////////////////////////
 
 #define scope_attachment(app,S,I,T) ((T*)managed_scope_get_attachment((app), (S), (I), sizeof(T)))
 #define set_custom_hook(app,ID,F) set_custom_hook((app),(ID),(Void_Func*)(F))

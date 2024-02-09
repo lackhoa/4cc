@@ -13,9 +13,11 @@ global Table_u64_Data vars_id_to_string = {};
 global String_ID vars_string_id_counter = 0;
 
 function void
-_vars_init(void){
+_vars_init(void)
+{
     local_persist b32 did_init = false;
-    if (!did_init){
+    if (!did_init)
+    {
         did_init = true;
         Base_Allocator *base = get_base_allocator_system();
         vars_arena = make_arena(base);
@@ -24,68 +26,74 @@ _vars_init(void){
     }
 }
 
+// NOTE(kv): this is string interning (probably)
 function String_ID
-vars_save_string(String_Const_u8 string){
+vars_save_string(String8 string)
+{
     _vars_init();
     
-    String_ID result = 0;
-    String_Const_u8 string_data = make_data(string.str, string.size);
-    Table_Lookup location = table_lookup(&vars_string_to_id, string_data);
-    if (location.found_match){
-        table_read(&vars_string_to_id, location, &result);
+    String_ID string_id = 0;
+    
+    Table_Lookup location = table_lookup(&vars_string_to_id, string);
+    if (location.found_match)
+    {
+        table_read(&vars_string_to_id, location, &string_id);
     }
-    else{
-        vars_string_id_counter += 1;
-        result = vars_string_id_counter;
-        string_data = push_data_copy(&vars_arena, string_data);
-        table_insert(&vars_string_to_id, string_data, result);
-        table_insert(&vars_id_to_string, result, string_data);
+    else
+    {
+        string_id = ++vars_string_id_counter;
+        String8 string_data = push_data_copy(&vars_arena, string);
+        table_insert(&vars_string_to_id, string_data, string_id);
+        table_insert(&vars_id_to_string, string_id, string_data);
     }
-    return(result);
+    return(string_id);
 }
 
-function String_Const_u8
-vars_read_string(Arena *arena, String_ID id){
+function String8
+vars_read_string(Arena *arena, String_ID id)
+{
     _vars_init();
     
-    String_Const_u8 result = {};
-    Table_Lookup location = table_lookup(&vars_id_to_string, id);
-    if (location.found_match){
-        String_Const_u8 data = {};
-        table_read(&vars_id_to_string, location, &data);
-        result.str = push_array(arena, u8 , data.size);
-        block_copy(result.str, data.str, data.size);
-        result.size = data.size;
-    }
+    Table_Lookup lookup = table_lookup(&vars_id_to_string, id);
+    
+    String8 data = {};
+    table_read(&vars_id_to_string, lookup, &data);
+    
+    String8 result = push_data_copy(arena, data);
+    
     return(result);
 }
 
 ////////////////////////////////
 // NOTE(allen): Variable structure
 
-global Variable vars_global_root = {};
-global Variable vars_nil = {};
+global Variable vars_global_root     = {};
+global Variable vars_nil             = {};
 global Variable *vars_free_variables = 0;
 
 function Variable_Handle
-vars_get_root(void){
-    Variable_Handle handle = {&vars_global_root};
+vars_get_root(void)
+{
+    Variable_Handle handle = {.ptr = &vars_global_root};
     local_persist b32 first_call = true;
-    if (first_call){
+    if (first_call)
+    {
         first_call = false;
         Variable *nil = vars_get_nil().ptr;
         vars_global_root.parent = nil;
-        vars_global_root.next = nil;
-        vars_global_root.first = nil;
-        vars_global_root.last = nil;
+        vars_global_root.next   = nil;
+        vars_global_root.first  = nil;
+        vars_global_root.last   = nil;
     }
     return(handle);
 }
 
 function Variable_Handle
-vars_get_nil(void){
-    Variable_Handle handle = {&vars_nil};
-    if (vars_nil.parent == 0){
+vars_get_nil(void)
+{
+    Variable_Handle handle = {.ptr = &vars_nil};
+    if (vars_nil.parent == 0)
+    {
         vars_nil.parent = &vars_nil;
         vars_nil.next = &vars_nil;
         vars_nil.first = &vars_nil;
@@ -95,96 +103,113 @@ vars_get_nil(void){
 }
 
 function b32
-vars_is_nil(Variable_Handle var){
+vars_is_nil(Variable_Handle var) 
+{
     return(var.ptr == &vars_nil);
 }
 
 function b32
-vars_is_nil(Variable* ptr) {
+vars_is_nil(Variable* ptr) 
+{
 	return(ptr == &vars_nil);
 }
 
 function b32
-vars_match(Variable_Handle a, Variable_Handle b){
+vars_match(Variable_Handle a, Variable_Handle b)
+{
     return(a.ptr == b.ptr);
 }
 
 function Variable_Handle
-vars_first_child(Variable_Handle var){
+vars_first_child(Variable_Handle var)
+{
     Variable_Handle result = {var.ptr->first};
     return(result);
 }
 
 function Variable_Handle
-vars_next_sibling(Variable_Handle var){
+vars_next_sibling(Variable_Handle var)
+{
     Variable_Handle result = {var.ptr->next};
     return(result);
 }
 
 function Variable_Handle
-vars_parent(Variable_Handle var){
+vars_parent(Variable_Handle var)
+{
     Variable_Handle result = {var.ptr->parent};
     return(result);
 }
 
 function String_ID
-vars_key_id_from_var(Variable_Handle var){
+vars_key_id_from_var(Variable_Handle var)
+{
     return(var.ptr->key);
 }
 
-function String_Const_u8
-vars_key_from_var(Arena *arena, Variable_Handle var){
+function String8
+vars_key_from_var(Arena *arena, Variable_Handle var)
+{
     String_ID id = vars_key_id_from_var(var);
     String_Const_u8 result = vars_read_string(arena, id);
     return(result);
 }
 
 function String_ID
-vars_string_id_from_var(Variable_Handle var){
-    return(var.ptr->string);
+vars_string_id_from_var(Variable_Handle var)
+{
+    return(var.ptr->val);
 }
 
-function String_Const_u8
-vars_string_from_var(Arena *arena, Variable_Handle var){
-    String_ID id = vars_string_id_from_var(var);
-    String_Const_u8 result = vars_read_string(arena, id);
+function String8
+vars_string_from_var(Arena *arena, Variable_Handle var)
+{
+    String_ID id   = vars_string_id_from_var(var);
+    String8 result = vars_read_string(arena, id);
     return(result);
 }
 
 function b32
-vars_b32_from_var(Variable_Handle var){
+vars_b32_from_var(Variable_Handle var)
+{
     String_ID val = vars_string_id_from_var(var);
-    b32 result = (val != 0 && val != vars_save_string_lit("false"));
+    b32 result = (val != 0  &&  val != var_save_strlit("false"));
     return(result);
 }
 
 function u64
-vars_u64_from_var(Application_Links *app, Variable_Handle var){
+vars_u64_from_var(App *app, Variable_Handle var)
+{
     Scratch_Block scratch(app);
     String_ID val = vars_string_id_from_var(var);
-    String_Const_u8 string = vars_read_string(scratch, val);
+    String8 string = vars_read_string(scratch, val);
     u64 result = 0;
-    if (string_match(string_prefix(string, 2), str8_lit("0x"))){
-        String_Const_u8 string_hex = string_skip(string, 2);
-        if (string_is_integer(string_hex, 0x10)){
+    if ( string_match(string_prefix(string, 2), str8_lit("0x")) )
+    {
+        String8 string_hex = string_skip(string, 2);
+        if ( string_is_integer(string_hex, 0x10) )
+        {
             result = string_to_integer(string_hex, 0x10);
         }
     }
-    else{
-        if (string_is_integer(string, 10)){
-            result = string_to_integer(string, 10);
-        }
+    else if (string_is_integer(string, 10))
+    {
+        result = string_to_integer(string, 10);
     }
+    
     return(result);
 }
 
 function Variable_Handle
-vars_read_key(Variable_Handle var, String_ID key){
+vars_read_key(Variable_Handle var, String_ID key)
+{
     Variable_Handle result = vars_get_nil();
     for (Variable *node = var.ptr->first;
          !vars_is_nil(node);
-         node = node->next){
-        if (node->key == key){
+         node = node->next)
+    {
+        if (node->key == key)
+        {
             result.ptr = node;
             break;
         }
@@ -193,55 +218,69 @@ vars_read_key(Variable_Handle var, String_ID key){
 }
 
 function Variable_Handle
-vars_read_key(Variable_Handle var, String_Const_u8 key){
+vars_read_key(Variable_Handle var, String8 key)
+{
     String_ID id = vars_save_string(key);
     Variable_Handle result = vars_read_key(var, id);
     return(result);
 }
 
 function void
-vars_set_string(Variable_Handle var, String_ID string){
-    if (var.ptr != &vars_nil){
-        var.ptr->string = string;
+vars_set(Variable_Handle var, String_ID val)
+{
+    if (var.ptr != &vars_nil)
+    {
+        var.ptr->val = val;
     }
 }
 
 function void
-vars_set_string(Variable_Handle var, String_Const_u8 string){
-    String_ID id = vars_save_string(string);
-    vars_set_string(var, id);
+vars_set(Variable_Handle var, String8 val)
+{
+    String_ID id = vars_save_string(val);
+    vars_set(var, id);
 }
 
 function void
-_vars_free_variable_children(Variable *var){
+_vars_free_variable_children(Variable *var)
+{
     for (Variable *node = var->first;
          !vars_is_nil(node);
-         node = node->next){
+         node = node->next)
+    {
         _vars_free_variable_children(node);
     }
     
-    if (!vars_is_nil(var->first)){
+    if ( !vars_is_nil(var->first) )
+    {
         var->last->next = vars_free_variables;
         vars_free_variables = var->first;
     }
 }
 
 function void
-vars_erase(Variable_Handle var, String_ID key){
-    if (var.ptr != &vars_nil){
+vars_erase(Variable_Handle var, String_ID key)
+{
+    if (var.ptr != &vars_nil)
+    {
         Variable *prev = vars_get_nil().ptr;
         Variable *node = var.ptr->first;
-        for (; vars_is_nil(node);
-             node = node->next){
-            if (node->key == key){
+        for (;
+             vars_is_nil(node);
+             node = node->next)
+        {
+            if (node->key == key)
+            {
                 break;
             }
             prev = node;
         }
         
-        if (!vars_is_nil(node)){
+        if ( !vars_is_nil(node) )
+        {
             _vars_free_variable_children(node);
-            if (!vars_is_nil(prev)){
+            if (!vars_is_nil(prev))
+            {
                 prev->next = node->next;
             }
             if (var.ptr->first == node){
@@ -256,9 +295,11 @@ vars_erase(Variable_Handle var, String_ID key){
 }
 
 function Variable_Handle
-vars_new_variable(Variable_Handle var, String_ID key){
+vars_new_variable(Variable_Handle var, String_ID key)
+{
     Variable_Handle handle = vars_get_nil();
-    if (var.ptr != &vars_nil){
+    if (var.ptr != &vars_nil)
+    {
         Variable *node = var.ptr->first;
         for (; !vars_is_nil(node);
              node = node->next){
@@ -291,28 +332,31 @@ vars_new_variable(Variable_Handle var, String_ID key){
             handle.ptr->key = key;
         }
         
-        handle.ptr->string = 0;
+        handle.ptr->val = 0;
         handle.ptr->first = handle.ptr->last = vars_get_nil().ptr;
     }
     return(handle);
 }
 
 function Variable_Handle
-vars_new_variable(Variable_Handle var, String_ID key, String_ID string){
+vars_new_variable(Variable_Handle var, String_ID key, String_ID string)
+{
     Variable_Handle result = vars_new_variable(var, key);
-    vars_set_string(result, string);
+    vars_set(result, string);
     return(result);
 }
 
 function void
-vars_clear_keys(Variable_Handle var){
+vars_clear_keys(Variable_Handle var)
+{
     if (var.ptr != &vars_nil){
         _vars_free_variable_children(var.ptr);
     }
 }
 
 function void
-vars_print_indented(Application_Links *app, Variable_Handle var, i32 indent){
+vars_print_indented(App *app, Variable_Handle var, i32 indent)
+{
     Scratch_Block scratch(app);
     local_persist char spaces[] =
         "                                                                "
@@ -320,8 +364,8 @@ vars_print_indented(Application_Links *app, Variable_Handle var, i32 indent){
         "                                                                "
         "                                                                ";
     
-    String_Const_u8 var_key = vars_key_from_var(scratch, var);
-    String_Const_u8 var_val = vars_string_from_var(scratch, var);
+    String8 var_key = vars_key_from_var(scratch, var);
+    String8 var_val = vars_string_from_var(scratch, var);
     
     String_Const_u8 line = push_stringf(scratch, "%.*s%.*s: \"%.*s\"\n",
                                         clamp_top(indent, (i32)sizeof(spaces)), spaces,
@@ -338,7 +382,8 @@ vars_print_indented(Application_Links *app, Variable_Handle var, i32 indent){
 }
 
 function void
-vars_print(Application_Links *app, Variable_Handle var){
+vars_print(App *app, Variable_Handle var)
+{
     vars_print_indented(app, var, 0);
 }
 

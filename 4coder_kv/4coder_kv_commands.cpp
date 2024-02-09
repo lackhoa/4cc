@@ -683,7 +683,6 @@ kv_list_all_locations_from_string(FApp *app, String8 needle_str)
     print_string_match_list_to_buffer(app, search_buffer, all_matches);
     
     lock_jump_buffer(app, search_buffer);
-    switch_to_other_primary_panel(app);
 }
 
 internal u8 

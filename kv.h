@@ -381,8 +381,9 @@ rotateRight(u32 value, i32 rotateAmount)
 #    define COMPILER_MSVC 1
 #endif
 
-#define UNUSED_VAR __attribute__((unused))
-#define unused_var __attribute__((unused))
+// NOTE(kv): Don't enable this warning!
+// #define UNUSED_VAR __attribute__((unused))
+// #define unused_var __attribute__((unused))
 
 typedef uintptr_t uptr;
 typedef intptr_t  iptr;
@@ -393,30 +394,30 @@ typedef intptr_t  iptr;
 #define teraBytes(value) (gigaBytes(value)*1024LL)
 
 #if COMPILER_MSVC
-#  define debugbreak __debugbreak()
+#  define kv_fail __debugbreak()
 #else
-#  define debugbreak __builtin_trap()
+#  define kv_fail __builtin_trap()
 #endif
 
-#define kv_assert(claim) do{if (!(claim)) { debugbreak; }} while(0)
+#define kv_assert(claim) do{if (!(claim)) { kv_fail; }} while(0)
 
-#define invalid_code_path   debugbreak
-#define todo_error_report   debugbreak
-#define todo_incomplete     debugbreak
-#define nono                debugbreak  // ignore_nono
+#define invalid_code_path   kv_fail
+#define nono                kv_fail  // ignore_nono
 
 #if KV_INTERNAL
-#    define todo_test_me        debugbreak
-#    define todo_testme         debugbreak
-#    define todo_untested       debugbreak
+#    define kv_fail_in_debug  kv_fail
 #else
-#    define todo_test_me
-#    define todo_testme
-#    define todo_untested
+#    define kv_fail_in_debug
 #endif
 
-#define invalid_default_case default: { debugbreak; };
-#define breakhere       do{ int x = 5; (void)x; }while(0)  // NOTE(kv): actually not "debugbreak" :>
+#define todo_test_me        kv_fail_in_debug
+#define todo_testme         kv_fail_in_debug
+#define todo_untested       kv_fail_in_debug
+#define todo_error_report   kv_fail_in_debug
+#define todo_incomplete     kv_fail_in_debug
+
+#define invalid_default_case default: { kv_fail; };
+#define breakhere       do{ int x = 5; (void)x; }while(0)
 
 #if KV_INTERNAL
 #    define soft_assert                  kv_assert
@@ -730,6 +731,8 @@ unlerp_or_zero(f32 a, f32 v, f32 b)
   return result;
 }
 
+typedef f32 v1;  // NOTE(kv): purely for symmetry.
+
 /* ;v2 */
 
 union v2
@@ -742,21 +745,6 @@ union v2
     f32 E[2];
     f32 v[2];
 };
-
-inline v2
-toV2(f32 x, f32 y)
-{
-    v2 result;
-    result.x = x;
-    result.y = y;
-    return result;
-}
-
-inline v2
-v2All(f32 c)
-{
-    return toV2(c, c);
-}
 
 inline b32
 operator==(v2 u, v2 v)
@@ -783,12 +771,6 @@ operator+(v2 u, v2 v)
     return result;
 }
 
-inline v2 &
-operator+=(v2 &v, v2 u)
-{
-    v = u + v;
-    return v;
-}
 
 inline v2
 operator-(v2 u, v2 v)
@@ -954,13 +936,6 @@ union v3 {
 };
 
 inline v3
-toV3(f32 x, f32 y, f32 z)
-{
-    v3 result = { x, y, z };
-    return result;
-}
-
-inline v3
 toV3(v2 xy, f32 z)
 {
     v3 result;
@@ -1053,20 +1028,12 @@ operator+(v3 u, v3 v)
     return result;
 }
 
-inline v3 &
-operator+=(v3 &v, v3 u)
-{
-    v = u + v;
-    return v;
-}
-
 inline v3
 operator-=(v3 &v, v3 u)
 {
     v = v - u;
     return v;
 }
-
 
 inline v3
 operator-(v3 v)
@@ -1224,13 +1191,6 @@ union v4
 typedef v4 Vec4_f32;
 
 inline v4
-toV4(v3 xyz, f32 w)
-{
-    v4 result = { xyz.x, xyz.y, xyz.z , w };
-    return result;
-}
-
-inline v4
 hadamard(v4 u, v4 v)
 {
     v4 result;
@@ -1282,6 +1242,27 @@ lerp(v4 a, f32 t, v4 b)
     v4 result;
     result = a + t*(b - a);
     return result;
+}
+
+inline v3 &
+operator+=(v3 &v, v3 u)
+{
+    v = u + v;
+    return v;
+}
+
+inline v2 &
+operator+=(v2 &v, v2 u)
+{
+    v = u + v;
+    return v;
+}
+
+inline v4 &
+operator+=(v4 &v, v4 u)
+{
+    v = u + v;
+    return v;
 }
 
 // ;rect2

@@ -1316,7 +1316,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
         
         case WM_MOUSEMOVE:
         {
-            Vec2_i32 new_m = V2i32(LOWORD(lParam), HIWORD(lParam));
+            v2i new_m = V2i(LOWORD(lParam), HIWORD(lParam));
             if (new_m != win32vars.input_chunk.pers.mouse){
                 win32vars.input_chunk.pers.mouse = new_m;
                 win32vars.got_useful_event = true;
@@ -2079,7 +2079,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         if (GetCursorPos(&mouse_point) &&
             ScreenToClient(win32vars.window_handle, &mouse_point)){
             Rect_i32 screen = Ri32(0, 0, target.width, target.height);
-            Vec2_i32 mp = V2i32(mouse_point.x, mouse_point.y);
+            v2i mp = V2i(mouse_point.x, mouse_point.y);
             win32vars.input_chunk.trans.out_of_window = (!rect_contains_point(screen, mp));
             win32vars.input_chunk.pers.mouse = mp;
         }

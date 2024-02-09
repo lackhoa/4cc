@@ -45,7 +45,8 @@ table_free(Table_u64_u64 *table){
 }
 
 internal Table_Lookup
-table_lookup(Table_u64_u64 *table, u64 key){
+table_lookup(Table_u64_u64 *table, u64 key)
+{
     Table_Lookup result = {};
     
     if (key != table_empty_key && key != table_erased_key &&
@@ -91,9 +92,11 @@ table_lookup(Table_u64_u64 *table, u64 key){
 }
 
 internal b32
-table_read(Table_u64_u64 *table, Table_Lookup lookup, u64 *val_out){
+table_read(Table_u64_u64 *table, Table_Lookup lookup, u64 *val_out)
+{
     b32 result = false;
-    if (lookup.found_match){
+    if (lookup.found_match)
+    {
         *val_out = table->vals[lookup.index];
         result = true;
     }
@@ -351,7 +354,8 @@ table_clear(Table_u32_u16 *table){
 ////////////////////////////////
 
 internal Table_Data_u64
-make_table_Data_u64__inner(Base_Allocator *allocator, u32 slot_count, String_Const_u8 location){
+make_table_Data_u64__inner(Base_Allocator *allocator, u32 slot_count, String8 location)
+{
     Table_Data_u64 table = {};
     table.allocator = allocator;
     slot_count = clamp_bot(8, slot_count);
