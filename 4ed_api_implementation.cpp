@@ -2936,57 +2936,163 @@ get_string_advance(FApp *app, Face_ID font_id, String_Const_u8 str)
 }
 
 api(custom) function void
-draw_rectangle(FApp *app, Rect_f32 rect, f32 roundness, ARGB_Color color)
+draw_rectangle(App *app, Rect_f32 rect, f32 roundness, ARGB_Color color)
 {
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)
     {
         draw_rect_to_target(models->target, rect, roundness, color);
     }
+    else kv_debug_trap;
 }
 
 inline void
-draw_rect(FApp *app, rect2 rect, v4 color)
+draw_rect(App *app, rect2 rect, ARGB_Color color)
 {
-  draw_rectangle(app, rect, 0, pack_argb(color));
+  draw_rectangle(app, rect, 0, color);
 }
 
 inline void
-draw_rect(FApp *app, rect2 rect, Texture_ID texture, v4 color)
+draw_rect(App *app, rect2 rect, Texture_ID texture, ARGB_Color color)
 {
-    draw_rectangle(app, rect, 0, pack_argb(color));
+    draw_rectangle(app, rect, 0, color);
 }
 
 internal void
-draw_line(FApp *app, v2 p0, v2 p1, f32 thickness, v4 color)
+draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
+{
+    Models *models = (Models*)app->cmd_context;
+    v1 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
+    if (models->in_render_mode)
+    {
+        Render_Target *target = models->target;
+        b32 steep = false;
+        v1 x0 = p0.x; v1 y0 = p0.y;
+        v1 x1 = p1.x; v1 y1 = p1.y;
+        
+        if (absolute(x0-x1) < 
+            absolute(y0-y1))
+        {// if the line is steep, we transpose the image 
+            macro_swap(x0, y0);
+            macro_swap(x1, y1);
+            steep = true;
+        }
+        
+        if (x0 > x1)
+        {// make it "left to right"
+            macro_swap(x0, x1); 
+            macro_swap(y0, y1); 
+        }
+        
+        f32 dx = x1-x0;
+        if (dx > 0.0001f)
+        {
+            f32 dy = y1 - y0;
+            f32 slope = dy / dx;
+             
+            // NOTE: Clipping (todo: What about the upside-down case? The clipbox is gonna be reversed)
+            fslider(clip_slider, 0);
+            f32 x_start = x0;
+            f32 x_end   = x1;
+            if (clip_slider > 0)
+            {
+                if (steep)
+                {
+                    kv_clamp_bot(x_start, 0);
+                    kv_clamp_top(x_end, target->current_clip_box.y1);
+                }
+                else
+                {
+                    kv_clamp_bot(x_start, target->current_clip_box.x0);
+                    kv_clamp_top(x_end, target->current_clip_box.x1);
+                }
+            }
+            
+            i32 nsamples = 16;
+            f32 interval = (x_end - x_start) / (f32)nsamples;
+            for (i32 index = 0; 
+                 index <= nsamples; 
+                 index++)
+            {
+                f32 x = x_start + (f32)index * interval;
+                f32 y = y0 + slope*(x-x0);
+                v2 center = (steep ? 
+                             v2{y,x} :
+                             v2{x,y});
+                rect2 square = rect2_center_radius(center, v2_all(half_thickness));
+                draw_rect_to_target(target, square, 0, color);
+            }
+        }
+    }
+    else kv_debug_trap;
+}
+
+internal void
+draw_circle(App *app, v2 center, v1 radius, ARGB_Color color)
 {
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)
     {
-        draw_line(models->target, p0, p1, 0, thickness, pack_argb(color));
+        rect2 square = rect2_center_radius(center, v2{radius, radius});
+        draw_rect_to_target(models->target, square, radius, color);
     }
+    else kv_debug_trap;
 }
 
 internal void
-draw_textured_rect(FApp *app, rect2 rect, v4 color=v4{1,1,1,1})
+draw_textured_rect(App *app, rect2 rect, ARGB_Color color=0xFFFFFF)
 {
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)
     {
-        draw_textured_rect_to_target(models->target, rect, pack_argb(color));
+        draw_textured_rect_to_target(models->target, rect, color);
     }
+    else kv_debug_trap;
 }
 
-api(custom) function void
-draw_rectangle_outline(FApp *app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color){
+api(custom) internal void
+draw_rectangle_outline(App *app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color)
+{
     Models *models = (Models*)app->cmd_context;
-    if (models->in_render_mode){
+    if (models->in_render_mode)
+    {
         draw_rect_outline_to_target(models->target, rect, roundness, thickness, color);
     }
+    else kv_debug_trap;
+}
+
+internal void
+draw_set_y_up(App *app, b32 value=true)
+{
+    Models *models = (Models*)app->cmd_context;
+    Render_Target *target = models->target;
+    if (target->current_y_is_up != value)
+    {
+        target->current_y_is_up = value;
+        draw__begin_new_group(target);
+    }
 }
 
 inline void
-draw_rect_outline(FApp *app, rect2 rect, f32 thickness, v4 color, f32 roundness=0)
+draw_set_y_down(App *app)
+{
+    draw_set_y_up(app, false);
+}
+
+internal void
+draw_set_offset(App *app, v2 value)
+{
+    Models *models = (Models*)app->cmd_context;
+    Render_Target *target = models->target;
+    if (target->current_offset != value)
+    {
+        target->current_offset = value;
+        draw__begin_new_group(target);
+    }
+}
+
+inline void
+draw_rect_outline(App *app, rect2 rect, f32 thickness, v4 color, f32 roundness=0)
 {
   kv_assert(in_between(0.0f, roundness, 50.0f));
   draw_rectangle_outline(app, rect, roundness, thickness, pack_argb(color));

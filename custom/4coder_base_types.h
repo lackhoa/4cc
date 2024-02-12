@@ -563,6 +563,7 @@ union SNode{
 #define sll_stack_push(h,n) (sll_stack_push_((h),(n)))
 #define sll_stack_pop(h) (sll_stack_pop_((h)))
 #define sll_queue_push_multiple(f,l,ff,ll) Stmnt( sll_queue_push_multiple_((f),(l),(ff),(ll)) )
+// NOTE(kv): pretty sure "queue_push" means "push_last"
 #define sll_queue_push(f,l,n) Stmnt( sll_queue_push_((f),(l),(n)) )
 #define sll_queue_pop(f,l) Stmnt( sll_queue_pop_((f),(l)) )
 

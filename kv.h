@@ -142,7 +142,7 @@ absoslute(i32 in)
 }
 
 inline f32
-square(f32 x)
+squared(f32 x)
 {
     f32 result = x*x;
     return result;
@@ -415,6 +415,7 @@ typedef intptr_t  iptr;
 #define todo_untested       kv_fail_in_debug
 #define todo_error_report   kv_fail_in_debug
 #define todo_incomplete     kv_fail_in_debug
+#define kv_debug_trap       kv_fail_in_debug
 
 #define invalid_default_case default: { kv_fail; };
 #define breakhere       do{ int x = 5; (void)x; }while(0)
@@ -626,8 +627,10 @@ belongsToArena(kv_Arena *arena, u8 *memory)
   return ((memory >= arena->base) && (memory < arena->base + arena->cap));
 }
 
-#define maximum(a, b) ((a < b) ? b : a)
-#define minimum(a, b) ((a < b) ? a : b)
+#define macro_min(a, b) ((a < b) ? a : b)
+#define macro_max(a, b) ((a < b) ? b : a)
+#define minimum  macro_min // @ Deprecated
+#define maximum  macro_max // @ Deprecated
 
 // Metaprogramming tags
 #define forward_declare(FILE_NAME)
@@ -746,6 +749,11 @@ union v2
     f32 v[2];
 };
 
+inline v2 v2_all(f32 input)
+{
+    return v2{input, input};
+}
+
 inline b32
 operator==(v2 u, v2 v)
 {
@@ -839,7 +847,7 @@ dot(v2 v, v2 u)
 inline f32
 lengthSq(v2 v)
 {
-    f32 result = square(v.x) + square(v.y);
+    f32 result = squared(v.x) + squared(v.y);
     return result;
 }
 
@@ -896,7 +904,7 @@ noz(v2 v)  // normalize or zero
 {
     f32 lsq = lengthSq(v);
     v2 result = {};
-    if (lsq > square(0.0001f))
+    if (lsq > squared(0.0001f))
     {
         // prevent the result from getting too big
         result = v * 1.f / squareRoot(lsq);
@@ -920,20 +928,28 @@ bilateral(v2 v)
 
 // ;v3
 
-union v3 {
-  struct {
-    f32 x, y, z;
-  };
-  struct {
-    f32 r, g, b;
-  };
-  struct {
-    v2 xy;
-    f32 ignored;
-  };
-  f32 E[3];
-  f32 v[3];
+union v3 
+{
+    struct {
+        f32 x, y, z;
+    };
+    struct {
+        f32 r, g, b;
+    };
+    struct {
+        v2 xy;
+        f32 ignored;
+    };
+    f32 E[3];
+    f32 v[3];
+    
+    f32 operator[](i32);
 };
+
+inline f32 v3::operator[](i32 index)
+{
+    return v[index];
+}
 
 inline v3
 toV3(v2 xy, f32 z)
@@ -941,26 +957,6 @@ toV3(v2 xy, f32 z)
     v3 result;
     result.xy = xy;
     result.z = z;
-    return result;
-}
-
-inline v3
-v3All(f32 c)
-{
-    return v3{c, c, c};
-}
-
-inline v3
-v3z(f32 z)
-{
-    v3 result = {0,0,z};
-    return result;
-}
-
-inline v3
-v3xy(v2 v)
-{
-    v3 result = {v.x, v.y, 0};
     return result;
 }
 
@@ -1107,7 +1103,7 @@ hadamard(v3 v, v3 u)
 inline f32
 lengthSq(v3 v)
 {
-    f32 result = square(v.x) + square(v.y) + square(v.z);
+    f32 result = squared(v.x) + squared(v.y) + squared(v.z);
     return result;
 }
 
@@ -1129,13 +1125,14 @@ normalize(v3 v)
 inline v3
 noz(v3 v)  // normalize or zero
 {
-  f32 lsq = lengthSq(v);
-  v3 result = {};
-  if (lsq > square(.0001f)) {
-    // prevent the result from getting too big
-    result = v * 1.f / squareRoot(lsq);
-  }
-  return result;
+    f32 lsq = lengthSq(v);
+    v3 result = {};
+    if (lsq > squared(0.0001f)) 
+    {
+        // prevent the result from getting too big
+        result = v * 1.f / squareRoot(lsq);
+    }
+    return result;
 }
 
 inline v3
@@ -1317,7 +1314,7 @@ rect2_center_radius(v2 center, v2 radius)
 }
 
 inline rect2
-rect_center_dim(v2 center, v2 dim)
+rect2_center_dim(v2 center, v2 dim)
 {
     rect2 result = rect2_center_radius(center, 0.5f*dim);
     return result;
@@ -1405,7 +1402,7 @@ rectCenterDim(v3 center, v3 dim)
 inline Rect3
 rect3_get_dim(v3 dim)
 {
-    Rect3 result = rectCenterDim(v3All(0), dim);
+    Rect3 result = rectCenterDim(v3{}, dim);
     return result;
 }
 
@@ -1523,7 +1520,7 @@ struct Bitmap
   i32  pitch;
 };
 
-inline v4
+internal v4
 linearToSrgb(v4 linear)
 {
     v4 result;
@@ -1534,7 +1531,7 @@ linearToSrgb(v4 linear)
     return result;
 }
 
-inline u32
+internal u32
 pack_sRGBA(v4 color)
 {
   // linear to srgb
@@ -1546,6 +1543,14 @@ pack_sRGBA(v4 color)
                 | (u32)(color.g*255.0f + 0.5f) << 8
                 | (u32)(color.r*255.0f + 0.5f));
   return result;
+}
+
+internal v3 matvmul3(v3 matrix[3], v3 v)
+{
+    v3 result = (v.x * matrix[0] + 
+                 v.y * matrix[1] + 
+                 v.z * matrix[2]);
+    return result;
 }
 
 //////////////////////////////////////////////////

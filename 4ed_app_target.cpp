@@ -70,6 +70,7 @@
 ////////////////////////////////
 
 #include "4coder_base_types.cpp"
+#include "4ed_fui_user.cpp"
 #include "4coder_layout.cpp"
 #include "4coder_string_match.cpp"
 #include "4coder_stringf.cpp"

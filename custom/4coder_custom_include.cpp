@@ -66,16 +66,11 @@
 
 #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
-// #include "4coder_app_links_allocator.cpp"  // note(kv): static link
-// #include "4coder_system_allocator.cpp"
 
 #include "4coder_file.cpp"
 #include "4coder_async_tasks.cpp"
 #include "4coder_custom.cpp"
 
-// #define DYNAMIC_LINK_API
-// #include "generated/system_api.cpp"
-// #include "4coder_system_helpers.cpp"  // note(kv): static link
 /*
 #include "4coder_layout.cpp"
 #include "4coder_profile.cpp"

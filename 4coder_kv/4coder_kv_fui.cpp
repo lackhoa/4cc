@@ -1,8 +1,8 @@
 struct FUI
 {
-  App *app;
-  Buffer_ID buffer;
-  Token_Iterator_Array tk;
+    App *app;
+    Buffer_ID buffer;
+    Token_Iterator_Array tk;
 };
 
 global v4  fui_slider_direction;
@@ -38,7 +38,7 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
         v2 slider_dim    = 2 * slider_radius;
         v2 slider_origin = region.max - slider_radius;
         {// NOTE: the whole slider outline
-            rect2 rect = rect_center_dim(slider_origin, slider_dim);
+            rect2 rect = rect2_center_dim(slider_origin, slider_dim);
             v4 color = v4{1,1,1,0.5f};
             if (fui_active_slider_index)  color.a = 1.0f;
             draw_rect_outline(app, rect, 2, color);
@@ -50,7 +50,7 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
             v.y = -v.y;  // NOTE: invert y to fit math coordinates
             v2 center = slider_origin + hadamard(v, slider_radius);
             rect2 rect = rect2_center_radius(center, v2{5,5});
-            draw_rect(app, rect, v4{0,0.5f,0,1});
+            draw_rect(app, rect, pack_argb(v4{0,0.5f,0,1}));
         }
     }
 }
@@ -120,8 +120,6 @@ fui_handle_slider(App *app, Buffer_ID buffer)
         i32 slider_index = 0;
         // NOTE(kv): Parsing and find slider
         if (require_token_kind(tk, TokenBaseKind_ParentheticalOpen) &&
-            require_token_kind(tk, TokenBaseKind_Identifier       ) &&  // type
-            require_token_kind(tk, TokenBaseKind_StatementClose   ) &&  // comma
             require_token_kind(tk, TokenBaseKind_Identifier       ))
         {
             Temp_Block temp(app);
@@ -176,8 +174,8 @@ fui_handle_slider(App *app, Buffer_ID buffer)
                     else if (Match(H)) direction.x = keydown ? -1 : 0;
                     else if (Match(K)) direction.y = keydown ? +1 : 0;
                     else if (Match(J)) direction.y = keydown ? -1 : 0;
-                    else if (Match(I)) direction.z = keydown ? +1 : 0;
-                    else if (Match(O)) direction.z = keydown ? -1 : 0;
+                    else if (Match(O)) direction.z = keydown ? +1 : 0;
+                    else if (Match(I)) direction.z = keydown ? -1 : 0;
 #undef Match
                 }
                 else leave_current_input_unhandled(app);
@@ -192,7 +190,15 @@ fui_handle_slider(App *app, Buffer_ID buffer)
                 {
                     case Fui_Slider_Type_v1:
                     {
-                        save = push_stringf(temp, "fslider( v1, %.*s, %f )", string_expand(slider->name), slider->value.x);
+                        save = push_stringf(temp, "fslider( %.*s, %f )", string_expand(slider->name), slider->value.x);
+                    }break;
+                    case Fui_Slider_Type_v2:
+                    {
+                        save = push_stringf(temp, "fslider( %.*s, %f, %f )", string_expand(slider->name), slider->value.x, slider->value.y);
+                    }break;
+                    case Fui_Slider_Type_v3:
+                    {
+                        save = push_stringf(temp, "fslider( %.*s, %f, %f, %f )", string_expand(slider->name), slider->value.x, slider->value.y, slider->value.z);
                     }break;
                     
                     default: todo_incomplete; 
@@ -223,6 +229,10 @@ fui_tick(App *app, Frame_Info frame_info)
             f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key
             slider->value += dt * speed * fui_slider_direction;
             animate_in_n_milliseconds(app, 0);
+         
+            Temp_Block temp(app);
+            String8 slider_value = push_stringf(temp, "%f, %f, %f, %f", slider->value.x, slider->value.y, slider->value.z, slider->value.w);
+            vim_set_bottom_text(slider_value);
         }
     }
 }

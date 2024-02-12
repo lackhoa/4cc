@@ -131,7 +131,7 @@ R"foo(
 
    void main(void)
    {
-       vec2 position_xy = view_m * (vertex_xy - view_t);
+       vec2 position_xy = view_m * (vertex_xy + view_t);
        gl_Position = vec4(position_xy, 0.0, 1.0);
        fragment_color.b = (float((vertex_color     )&0xFFu))/255.0;
        fragment_color.g = (float((vertex_color>> 8u)&0xFFu))/255.0;
@@ -197,14 +197,13 @@ R"foo(
 
     void main(void)
     {
-        vec2 position_xy = view_m * (vertex_xy - view_t);
+        vec2 position_xy = view_m * (vertex_xy + view_t);
         gl_Position = vec4(position_xy, 0.0, 1.0);
         fragment_color.b = (float((vertex_color     )&0xFFu))/255.0;
         fragment_color.g = (float((vertex_color>> 8u)&0xFFu))/255.0;
         fragment_color.r = (float((vertex_color>>16u)&0xFFu))/255.0;
         fragment_color.a = (float((vertex_color>>24u)&0xFFu))/255.0;
         uvw = vertex_uvw;
-        // float what = vertex_half_thickness;  // TODO(kv): we're just hoping that the god of opengl wouldn't optimize out this "half_thickness" attribute.
     }
     )foo";
 
@@ -413,7 +412,7 @@ gl_render(Render_Target *t)
          group != 0;
          group = group->next)
     {
-        i32 vertex_count = group->vertex_list.vertex_count;
+        i32 vertex_count = group->vertex_list.count;
         if (vertex_count <= 0) continue;
         
         b32 game_mode = (group->face_id == FACE_ID_GAME);
@@ -477,16 +476,20 @@ gl_render(Render_Target *t)
         XAttribute(X);
 #undef X
         
-        // NOTE: uniform
-        glUniform2f(program->view_t, (f32)width/2.f, (f32)height/2.f);
+        // NOTE: Transforms
+        // NOTE(kv): offset to opengl's bilateral normalized space, as well as render group offset
+        glUniform2f(program->view_t, 
+                    group->offset.x - (f32)width/2.f, 
+                    group->offset.y - (f32)height/2.f);
+        f32 view_m_y_sign = ((group->y_is_up) ? +1 : -1);
         f32 view_m[4] = 
         {
             2.f/width, 0.f,
-            0.f, -2.f/height,
+            0.f, 2.f/height * view_m_y_sign,
         };
         glUniformMatrix2fv(program->view_m, 1, GL_FALSE, view_m);
-        glUniform1i(program->sampler, 0);  // note(kv): idk if this has a meaning?
-       
+        glUniform1i(program->sampler, 0);  // NOTE(kv): idk if this has a meaning?
+        
         // NOTE
         glDrawArrays(GL_TRIANGLES, 0, vertex_count);
         
@@ -503,4 +506,3 @@ gl_render(Render_Target *t)
     
     glFlush();
 }
-

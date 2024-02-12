@@ -211,7 +211,7 @@ struct Win32_Vars{
 ////////////////////////////////
 
 global Win32_Vars win32vars;
-global Render_Target target;
+global Render_Target render_target;
 
 ////////////////////////////////
 
@@ -844,8 +844,8 @@ keycode_physical_translaion_is_wrong(u64 vk){
 internal void
 win32_resize(i32 width, i32 height){
     if (width > 0 && height > 0){
-        target.width = width;
-        target.height = height;
+        render_target.width = width;
+        render_target.height = height;
     }
 }
 
@@ -1750,7 +1750,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     // NOTE(allen): memory
     win32vars.frame_arena = make_arena_system();
     // TODO(allen): *arena;
-    target.arena = make_arena_system(KB(256));
+    render_target.arena = make_arena_system(KB(256));
     
     win32vars.cursor_show = MouseCursorShow_Always;
     win32vars.prev_cursor_show = MouseCursorShow_Always;
@@ -1950,7 +1950,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         Scratch_Block scratch(win32vars.tctx);
         String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
         string_mod_replace_character(curdir, '\\', '/');
-        app.init(win32vars.tctx, &target, base_ptr, curdir);
+        app.init(win32vars.tctx, &render_target, base_ptr, curdir);
     }
     
     //
@@ -2078,7 +2078,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         POINT mouse_point;
         if (GetCursorPos(&mouse_point) &&
             ScreenToClient(win32vars.window_handle, &mouse_point)){
-            Rect_i32 screen = Ri32(0, 0, target.width, target.height);
+            Rect_i32 screen = Ri32(0, 0, render_target.width, render_target.height);
             v2i mp = V2i(mouse_point.x, mouse_point.y);
             win32vars.input_chunk.trans.out_of_window = (!rect_contains_point(screen, mp));
             win32vars.input_chunk.pers.mouse = mp;
@@ -2130,7 +2130,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         
         
         // NOTE(allen): Application Core Update
-        Application_Step_Result result = app.step(win32vars.tctx, &target, base_ptr, &input);
+        Application_Step_Result result = app.step(win32vars.tctx, &render_target, base_ptr, &input);
         
         // NOTE(allen): Finish the Loop
         if (result.perform_kill){
@@ -2178,7 +2178,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         
         // NOTE(allen): render
         HDC hdc = GetDC(win32vars.window_handle);
-        gl_render(&target);
+        gl_render(&render_target);
         SwapBuffers(hdc);
         ReleaseDC(win32vars.window_handle, hdc);
         

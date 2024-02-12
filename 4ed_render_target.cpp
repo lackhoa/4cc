@@ -9,21 +9,25 @@
 
 // TOP
 
-
 internal void
-draw__begin_new_group(Render_Target *target){
+draw__begin_new_group(Render_Target *target)
+{
     Render_Group *group = 0;
-    if (target->group_last != 0){
-        if (target->group_last->vertex_list.vertex_count == 0){
-            group = target->group_last;
-        }
+    Render_Group *last = target->group_last;
+    if (last &&
+        (last->vertex_list.count == 0))
+    {// NOTE(kv): Use existing empty group
+        group = last;
     }
-    if (group == 0){
+    else
+    {
         group = push_array_zero(&target->arena, Render_Group, 1);
         sll_queue_push(target->group_first, target->group_last, group);
     }
-    group->face_id = target->current_face_id;
+    group->face_id  = target->current_face_id;
     group->clip_box = target->current_clip_box;
+    group->offset   = target->current_offset;
+    group->y_is_up  = target->current_y_is_up;
 }
 
 internal Render_Vertex_Array_Node*
@@ -36,10 +40,13 @@ draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i32 siz
 }
 
 internal void
-draw__write_vertices_in_current_group(Render_Target *target, Render_Vertex *vertices, i32 count){
-    if (count > 0){
+draw__write_vertices_in_current_group(Render_Target *target, Render_Vertex *vertices, i32 count)
+{
+    if (count > 0)
+    {
         Render_Group *group = target->group_last;
-        if (group == 0){
+        if (group == 0)
+        {
             draw__begin_new_group(target);
             group = target->group_last;
         }
@@ -50,31 +57,33 @@ draw__write_vertices_in_current_group(Render_Target *target, Render_Vertex *vert
         
         Render_Vertex *tail_vertex = 0;
         i32 tail_count = 0;
-        if (last != 0){
+        if (last != 0)
+        {
             tail_vertex = last->vertices + last->vertex_count;
             tail_count = last->vertex_max - last->vertex_count;
         }
         
         i32 base_vertex_max = 64;
         i32 transfer_count = clamp_top(count, tail_count);
-        if (transfer_count > 0){
+        if (transfer_count > 0)
+        {
             block_copy_dynamic_array(tail_vertex, vertices, transfer_count);
             last->vertex_count += transfer_count;
-            list->vertex_count += transfer_count;
+            list->count += transfer_count;
             base_vertex_max = last->vertex_max;
         }
         
         i32 count_left_over = count - transfer_count;
-        if (count_left_over > 0){
+        if (count_left_over > 0)
+        {
             Render_Vertex *vertices_left_over = vertices + transfer_count;
             
             i32 next_node_size = (base_vertex_max + count_left_over)*2;
             Render_Vertex_Array_Node *memory = draw__extend_group_vertex_memory(&target->arena, list, next_node_size);
             block_copy_dynamic_array(memory->vertices, vertices_left_over, count_left_over);
             memory->vertex_count += count_left_over;
-            list->vertex_count += count_left_over;
+            list->count += count_left_over;
         }
-        
     }
 }
 
@@ -136,8 +145,10 @@ end_render_section(Render_Target *target){
 
 ////////////////////////////////
 
+/* NOTE: Doesn't actually work, the shader has to be setup for that.
 internal void
-draw_line(Render_Target *target, v2 p0, v2 p1, f32 roundness, f32 thickness, u32 color)
+draw_line_to_target(Render_Target *target, v2 p0, v2 p1, 
+                    f32 roundness, f32 thickness, u32 color)
 {
   kv_clamp_bot(thickness, 2.0f);
   f32 half_thickness = 0.5f * thickness;
@@ -152,16 +163,17 @@ draw_line(Render_Target *target, v2 p0, v2 p1, f32 roundness, f32 thickness, u32
   vertices[3].xy = vertices[1].xy;
   vertices[4].xy = vertices[2].xy;
   vertices[5].xy = p1-perpendicular;
- 
+  
   v2 center = 0.5f * (p1 - p0);
-  for (u32 i=0; i < arlen(vertices); i++)
+  for_u32 (i, 0, arlen(vertices))
   {
     vertices[i].uvw   = v3{center.x, center.y, roundness};
     vertices[i].color = color;
     vertices[i].half_thickness = half_thickness;
   }
-  draw__write_vertices_in_current_group(target, vertices, kv_array_count(vertices));
+  draw__write_vertices_in_current_group(target, vertices, arlen(vertices));
 }
+*/
 
 // NOTE(kv): roundness is between 0 and 50, just like in the config file
 internal void

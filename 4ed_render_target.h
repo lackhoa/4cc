@@ -9,8 +9,7 @@
 
 // TOP
 
-#if !defined(FRED_RENDER_TARGET_H)
-#define FRED_RENDER_TARGET_H
+#pragma once
 
 struct Render_Free_Texture{
     Render_Free_Texture *next;
@@ -35,16 +34,18 @@ struct Render_Vertex_Array_Node{
 struct Render_Vertex_List{
     Render_Vertex_Array_Node *first;
     Render_Vertex_Array_Node *last;
-    i32 vertex_count;
+    i32 count;
 };
 
 struct Render_Group
 {
     Render_Group *next;
     Render_Vertex_List vertex_list;
-    // parameters
+    // Parameters (new ones inherited from the target)
     Face_ID face_id;
     Rect_f32 clip_box;
+    v2 offset;  // NOTE(kv): I wish this could be merged with clip_box, oh well...
+    b8 y_is_up;
 };
 
 global const Face_ID FACE_ID_GAME = U32_MAX;
@@ -52,9 +53,11 @@ global const Face_ID FACE_ID_GAME = U32_MAX;
 struct Render_Target
 {
     b8 clip_all;
+    b8 current_y_is_up;
+    v2 current_offset;
     i32 width;
     i32 height;
-    Texture_ID bound_texture; //NOTE(kv): I guess this is to avoid talking to the GPU?
+    Texture_ID bound_texture;  //NOTE(kv): I guess this is to avoid talking to the GPU?
     u32 color;
     
     i32 frame_index;
@@ -74,7 +77,5 @@ struct Render_Target
     void *font_set;
     Texture_ID fallback_texture_id;
 };
-
-#endif
 
 // BOTTOM
