@@ -5,6 +5,9 @@
  *
  * Render target function implementations.
  *
+ * NOTE(kv): Currently we leave the clipping, offset, upside-down y transform to the GPU.
+ * When you change those values, we'll make a new render group.
+ *
  */
 
 // TOP
@@ -24,10 +27,10 @@ draw__begin_new_group(Render_Target *target)
         group = push_array_zero(&target->arena, Render_Group, 1);
         sll_queue_push(target->group_first, target->group_last, group);
     }
-    group->face_id  = target->current_face_id;
-    group->clip_box = target->current_clip_box;
-    group->offset   = target->current_offset;
-    group->y_is_up  = target->current_y_is_up;
+    group->face_id  = target->face_id;
+    group->clip_box = target->clip_box;
+    group->offset   = target->offset;
+    group->y_is_up  = target->y_is_up;
 }
 
 internal Render_Vertex_Array_Node*
@@ -90,16 +93,16 @@ draw__write_vertices_in_current_group(Render_Target *target, Render_Vertex *vert
 internal void
 draw__set_face_id(Render_Target *target, Face_ID face_id)
 {
-    if (target->current_face_id != face_id)
+    if (target->face_id != face_id)
     {
-        if (target->current_face_id != 0)
+        if (target->face_id != 0)
         {// NOTE: has existing face_id
-            target->current_face_id = face_id;
+            target->face_id = face_id;
             draw__begin_new_group(target);
         }
         else
         {// NOTE: No face id set
-            target->current_face_id = face_id;
+            target->face_id = face_id;
             for (Render_Group *group = target->group_first;
                  group != 0;
                  group = group->next)
@@ -114,9 +117,9 @@ draw__set_face_id(Render_Target *target, Face_ID face_id)
 
 internal Rect_f32
 draw_set_clip(Render_Target *target, Rect_f32 clip_box){
-    Rect_f32 result = target->current_clip_box;
-    if (target->current_clip_box != clip_box){
-        target->current_clip_box = clip_box;
+    Rect_f32 result = target->clip_box;
+    if (target->clip_box != clip_box){
+        target->clip_box = clip_box;
         draw__begin_new_group(target);
     }
     return(result);
@@ -127,8 +130,8 @@ begin_frame(Render_Target *target, void *font_set){
     linalloc_clear(&target->arena);
     target->group_first = 0;
     target->group_last = 0;
-    target->current_face_id = 0;
-    target->current_clip_box = Rf32(0, 0, (f32)target->width, (f32)target->height);
+    target->face_id = 0;
+    target->clip_box = Rf32(0, 0, (f32)target->width, (f32)target->height);
     target->font_set = font_set;
 }
 
@@ -260,7 +263,7 @@ internal void
 draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color)
 {
     // note(kv): we still don't know what a group is, so for now let's juts monkey around with the FaceID for now
-    Face_ID old_face_id = target->current_face_id;
+    Face_ID old_face_id = target->face_id;
     draw__set_face_id(target, FACE_ID_GAME);
     
     Render_Vertex vertices[6] = {};
@@ -288,7 +291,7 @@ draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color
     
     draw__write_vertices_in_current_group(target, vertices, alen(vertices));
     {
-        target->current_face_id = old_face_id;
+        target->face_id = old_face_id;
         draw__begin_new_group(target);
     }
 }

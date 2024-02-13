@@ -2991,20 +2991,20 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
             f32 slope = dy / dx;
              
             // NOTE: Clipping (todo: What about the upside-down case? The clipbox is gonna be reversed)
-            fslider(clip_slider, 0);
+            fslider( clip_slider, 0.1 );
             f32 x_start = x0;
             f32 x_end   = x1;
             if (clip_slider > 0)
             {
                 if (steep)
-                {
-                    kv_clamp_bot(x_start, 0);
-                    kv_clamp_top(x_end, target->current_clip_box.y1);
+                {// nono
+                    kv_clamp_bot(x_start, (target->clip_box.y0 - target->offset.y));
+                    kv_clamp_top(x_end,   (target->clip_box.y1 - target->offset.y));
                 }
                 else
                 {
-                    kv_clamp_bot(x_start, target->current_clip_box.x0);
-                    kv_clamp_top(x_end, target->current_clip_box.x1);
+                    kv_clamp_bot(x_start, (target->clip_box.x0 - target->offset.x));
+                    kv_clamp_top(x_end,   (target->clip_box.x1 - target->offset.x));
                 }
             }
             
@@ -3020,7 +3020,7 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
                              v2{y,x} :
                              v2{x,y});
                 rect2 square = rect2_center_radius(center, v2_all(half_thickness));
-                draw_rect_to_target(target, square, 0, color);
+                draw_rect_to_target(target, square, half_thickness, color);
             }
         }
     }
@@ -3066,9 +3066,15 @@ draw_set_y_up(App *app, b32 value=true)
 {
     Models *models = (Models*)app->cmd_context;
     Render_Target *target = models->target;
-    if (target->current_y_is_up != value)
+    if (target->y_is_up != value)
     {
-        target->current_y_is_up = value;
+        target->y_is_up = value;
+        rect2 new_clip_box = target->clip_box;
+        // NOTE: Fun times with changing coordinates
+        new_clip_box.y0 = (f32)target->height - target->clip_box.y1;
+        new_clip_box.y1 = (f32)target->height - target->clip_box.y0;
+        target->clip_box = new_clip_box;
+        //
         draw__begin_new_group(target);
     }
 }
@@ -3084,9 +3090,9 @@ draw_set_offset(App *app, v2 value)
 {
     Models *models = (Models*)app->cmd_context;
     Render_Target *target = models->target;
-    if (target->current_offset != value)
+    if (target->offset != value)
     {
-        target->current_offset = value;
+        target->offset = value;
         draw__begin_new_group(target);
     }
 }

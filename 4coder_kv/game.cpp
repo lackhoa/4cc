@@ -332,14 +332,15 @@ game_update_and_render(App *app, View_ID view, rect2 region)
     v2 layout_center = region.min + screen_half_dim;
   
     draw_set_y_up(app);
-    draw_set_offset(app, layout_center);  // bookmark: this offset might be fishy
-   
-    if (0)
+    draw_set_offset(app, layout_center);
+  
+#if 1
+    if (1)
     {// NOTE: bezier surface experiment!
-        fslider( c0, -0.734662, -0.376241 );
-        fslider( c1, -0.804357, 0.527681 );
-        fslider( c2, 3.321372, -3.042244 );
-        fslider( c3, 0.210481, 0.705720 );
+        fslider( c0, -0.661388, 0.113373 );
+        fslider( c1, -0.277691, 0.574466 );
+        fslider( c2, 3.951374, -1.415742 );
+        fslider( c3, 0.785138, 0.500963 );
         v1 pos_unit = 500;
         v2 control_points[] = {pos_unit*c0, pos_unit*c1, pos_unit*c2, pos_unit*c3};
         //
@@ -386,17 +387,18 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }
     
-    fslider( debug_toggling, 0.175208 );
+    fslider( debug_offset, -0.185188 );
     v2 debug_draw_offset = layout_center;
-    if (debug_toggling > 0) debug_draw_offset = {0,0};
+    if (debug_offset > 0) debug_draw_offset = {0,0};
     draw_set_offset(app, debug_draw_offset);
     
     { // push coordinate system
-        fslider( camera_p_slider, 0.204678, -0.832920, -1.146499 );
+        fslider( camera_p_slider, 2.228511, 2.995006, 1.477940 );
         v3 camera_p = 1e3 * camera_p_slider;
-        v3 camera_z = noz(camera_p);  // NOTE: z comes at you
-        v3 camera_x = cross(camera_z, v3{0,0,1});
-        v3 camera_y = cross(camera_z, camera_x);
+        v3 camera_x, camera_y, camera_z;
+        camera_z = noz(camera_p);  // NOTE: z comes at you
+        camera_x = noz(v3{-camera_z.y, camera_z.x, 0});
+        camera_y = noz(cross(camera_z, camera_x));
        
         // NOTE: Our matrix is column-first, because that's how I roll ya'll!
         v3 camera_transform[3] = {camera_x, camera_y, camera_z};
@@ -442,11 +444,15 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         }
         
         v2 O = {};
-        if (debug_toggling > 0) O = layout_center;
-        draw_line(app, O+pO_screen, O+px_screen, 2.f, pack_argb({.5,  0,  0, 1}));
-        draw_line(app, O+pO_screen, O+py_screen, 2.f, pack_argb({ 0, .5,  0, 1}));
-        draw_line(app, O+pO_screen, O+pz_screen, 2.f, pack_argb({ 0,  .5, 1, 1}));
+        if (debug_offset > 0) O = layout_center;
+        f32 line_thickness = 8.0f;
+        draw_line(app, O+pO_screen, O+px_screen, line_thickness, pack_argb({.5,  0,  0, 1}));
+        draw_line(app, O+pO_screen, O+py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
+        draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
     }
+#else
+    draw_rect(app, rect2_min_dim({0,0}, {100,100}), gray);
+#endif
     
     draw_set_y_down(app);
     draw_set_offset(app, v2{});

@@ -53,8 +53,8 @@ global const Face_ID FACE_ID_GAME = U32_MAX;
 struct Render_Target
 {
     b8 clip_all;
-    b8 current_y_is_up;
-    v2 current_offset;
+    b8 y_is_up;
+    v2 offset;
     i32 width;
     i32 height;
     Texture_ID bound_texture;  //NOTE(kv): I guess this is to avoid talking to the GPU?
@@ -72,8 +72,8 @@ struct Render_Target
     Render_Group *group_last;
     i32 group_count;
     
-    Face_ID current_face_id;
-    Rect_f32 current_clip_box;
+    Face_ID  face_id;
+    Rect_f32 clip_box;
     void *font_set;
     Texture_ID fallback_texture_id;
 };

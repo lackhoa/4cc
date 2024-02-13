@@ -421,7 +421,9 @@ gl_render(Render_Target *t)
         {
             Rect_i32 box = Ri32(group->clip_box);
             GLint   scissor_x = box.x0;
-            GLint   scissor_y = height - box.y1;
+            GLint   scissor_y = (group->y_is_up?
+                                 box.y0 :
+                                 height - box.y1);
             GLsizei scissor_w = box.x1 - box.x0;
             GLsizei scissor_h = box.y1 - box.y0;
             
