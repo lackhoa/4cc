@@ -20,8 +20,8 @@
   ), because we feel like it's just a conversion, and can be converted back.
 
   All non-nil-terminated strings must be marked explicitly with "non_nil"
-
-  todo: let's assert that the our build flags are correct.
+  
+  TODO: Let's assert that the our build flags are correct.
 */
 
 #pragma once  // NOTE: #pragma once means that you have to define the
@@ -734,7 +734,9 @@ unlerp_or_zero(f32 a, f32 v, f32 b)
   return result;
 }
 
-typedef f32 v1;  // NOTE(kv): purely for symmetry.
+// NOTE: This can't be its own type because C++ doesn't allow us to convert float to v1, because they don't (know how to) programm, at all.
+// They don't even think. Because what good is it to allow conversion from user-defined type to built-in type, but not the revers?
+typedef f32 v1;
 
 /* ;v2 */
 

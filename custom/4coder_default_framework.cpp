@@ -197,7 +197,7 @@ open_build_footer_panel(FApp *app)
 }
 
 function View_ID
-get_next_view_looped_primary_panels(FApp *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
+get_next_view_looped_primary_panels(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
 {
     View_ID view_id = start_view;
     do
@@ -619,7 +619,7 @@ CUSTOM_DOC("Loads all the theme files in the default theme folder.")
          node != 0;
          node = node->next){
         String8 folder_path = node->string;
-        String8 themes_path = push_u8_stringf(scratch, "%.*sthemes", string_expand(folder_path));
+        String8 themes_path = push_stringf(scratch, "%.*sthemes", string_expand(folder_path));
         load_folder_of_themes_into_live_set(app, themes_path);
     }
 }
@@ -725,7 +725,7 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array file_nam
     for (i32 i = 0; i < file_names.count; i += 1){
         Temp_Memory_Block temp(scratch);
         String_Const_u8 input_name = file_names.vals[i];
-        String_Const_u8 full_name = push_u8_stringf(scratch, "%.*s/%.*s",
+        String_Const_u8 full_name = push_stringf(scratch, "%.*s/%.*s",
                                                     string_expand(hot_directory),
                                                     string_expand(input_name));
         Buffer_ID new_buffer = create_buffer(app, full_name, BufferCreate_NeverNew|BufferCreate_MustAttachToFile);
@@ -1130,7 +1130,7 @@ default_input_handler_init(Application_Links *app, Arena *arena){
     Thread_Context *tctx = get_thread_context(app);
     
     View_ID view = get_this_ctx_view(app, Access_Always);
-    String_Const_u8 name = push_u8_stringf(arena, "view %d", view);
+    String_Const_u8 name = push_stringf(arena, "view %d", view);
     
     Profile_Global_List *list = get_core_profile_list(app);
     ProfileThreadName(tctx, list, name);

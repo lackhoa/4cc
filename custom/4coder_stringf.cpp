@@ -29,18 +29,6 @@ push_stringf(Arena *arena, char *format, ...){
     va_end(args);
     return(result);
 }
-function String_Const_u8
-push_u8_stringfv(Arena *arena, char *format, va_list args){
-    return(push_stringfv(arena, format, args));
-}
-function String_Const_u8
-push_u8_stringf(Arena *arena, char *format, ...){
-    va_list args;
-    va_start(args, format);
-    String_Const_u8 result = push_stringfv(arena, format, args);
-    va_end(args);
-    return(result);
-}
 
 function void
 string_list_pushfv(Arena *arena, List_String_Const_char *list, char *format, va_list args){
@@ -59,7 +47,7 @@ string_list_pushf(Arena *arena, List_String_Const_char *list, char *format, ...)
 }
 function void
 string_list_pushfv(Arena *arena, List_String_Const_u8 *list, char *format, va_list args){
-    String_Const_u8 string = push_u8_stringfv(arena, format, args);
+    String_Const_u8 string = push_stringfv(arena, format, args);
     if (arena->alignment < sizeof(u64)){
         push_align(arena, sizeof(u64));
     }

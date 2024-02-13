@@ -1474,7 +1474,7 @@ theme_parse__file_name(Application_Links *app, Arena *arena, char *file_name, Ar
     }
     if (parsed == 0){
         Scratch_Block scratch(app, arena);
-        String_Const_u8 str = push_u8_stringf(scratch, "Did not find %s, theme not loaded", file_name);
+        String_Const_u8 str = push_stringf(scratch, "Did not find %s, theme not loaded", file_name);
         print_message(app, str);
     }
     return(parsed);
@@ -1572,7 +1572,7 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
     
     description.font.file_name = default_font_name;
     if (!modify_global_face_by_description(app, description)){
-        String8 name_in_fonts_folder = push_u8_stringf(scratch, "fonts/%.*s", string_expand(default_font_name));
+        String8 name_in_fonts_folder = push_stringf(scratch, "fonts/%.*s", string_expand(default_font_name));
         description.font.file_name = def_search_normal_full_path(scratch, name_in_fonts_folder);
         modify_global_face_by_description(app, description);
     }
@@ -1624,7 +1624,7 @@ load_folder_of_themes_into_live_set(Application_Links *app, String_Const_u8 path
             String_Const_u8 name = info->file_name;
             if (string_match(string_postfix(name, 7), str8_lit(".4coder"))){
                 Temp_Memory_Block temp(scratch);
-                String_Const_u8 full_name = push_u8_stringf(scratch, "%.*s/%.*s",
+                String_Const_u8 full_name = push_stringf(scratch, "%.*s/%.*s",
                                                             string_expand(path),
                                                             string_expand(name));
                 load_theme_file_into_live_set(app, (char*)full_name.str);
@@ -1666,7 +1666,7 @@ CUSTOM_DOC("Parse the current buffer as a theme file and add the theme to the th
         }
         
         if (error_text.size > 0 || problem_score >= 10){
-            String_Const_u8 string = push_u8_stringf(scratch, "There appears to be a problem parsing %.*s; no theme change applied\n", string_expand(file_name));
+            String_Const_u8 string = push_stringf(scratch, "There appears to be a problem parsing %.*s; no theme change applied\n", string_expand(file_name));
             print_message(app, string);
         }
         else{
@@ -1690,7 +1690,7 @@ CUSTOM_DOC("Go to the 4coder user directory")
     Scratch_Block scratch(app);
     String_Const_u8 hot = push_hot_directory(app, scratch);
     String8 user_4coder_path = system_get_path(scratch, SystemPath_UserDirectory);
-    String8 cmd = push_u8_stringf(scratch, "mkdir \"%.*s\"", string_expand(user_4coder_path));
+    String8 cmd = push_stringf(scratch, "mkdir \"%.*s\"", string_expand(user_4coder_path));
     exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
     set_hot_directory(app, user_4coder_path);
 }

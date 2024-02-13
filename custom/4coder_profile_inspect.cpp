@@ -77,7 +77,7 @@ profile_parse_record(Arena *arena, Profile_Inspection *insp,
             }
             else{
 #define M "Node '%.*s' closed by parent ending (or higher priority sibling starting)"
-                String_Const_u8 str = push_u8_stringf(arena, M, string_expand(name));
+                String_Const_u8 str = push_stringf(arena, M, string_expand(name));
                 profile_parse_error(arena, insp, str, location);
 #undef M
                 if (parent->id != 0){
@@ -579,18 +579,18 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                 String_Const_u8 string = {};
                 if (inspect->selected_thread != 0){
                     String_Const_u8 name = inspect->selected_thread->name;
-                    string = push_u8_stringf(scratch, "%.*s (%d)",
+                    string = push_stringf(scratch, "%.*s (%d)",
                                              string_expand(name),
                                              inspect->selected_thread->thread_id);
                 }
                 else if (inspect->selected_slot != 0){
                     String_Const_u8 name = inspect->selected_slot->name;
-                    string = push_u8_stringf(scratch, "block %.*s",
+                    string = push_stringf(scratch, "block %.*s",
                                              string_expand(name));
                 }
                 else if (inspect->selected_node != 0){
                     String_Const_u8 name = profile_node_name(inspect->selected_node);
-                    string = push_u8_stringf(scratch, "node %.*s",
+                    string = push_stringf(scratch, "node %.*s",
                                              string_expand(name));
                 }
                 else{

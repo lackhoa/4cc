@@ -1,19 +1,35 @@
 // ;fui ///////////////////////////////////
 
+#define X_Fui_Slider_Types(X)  \
+    X(v1) \
+    X(v2) \
+    X(v3) \
+    X(v4) \
+
 enum Fui_Slider_Type
 {
-    Fui_Slider_Type_v1,
-    Fui_Slider_Type_v2,
-    Fui_Slider_Type_v3,
-    Fui_Slider_Type_boolean,
+#define X(T)   Fui_Slider_Type_##T,
+    //
+    X_Fui_Slider_Types(X)
+    //
+#undef X
+};
+
+union Fui_Slider_Value
+{
+#define X(T)   T T;
+    // 
+    X_Fui_Slider_Types(X);
+    // 
+#undef X
 };
 
 struct Fui_Slider
 {
     String8 id;
     String8 name;
-    Fui_Slider_Type type;
-    v4  value;
+    Fui_Slider_Type  type;
+    Fui_Slider_Value value;
 };
 
 global Fui_Slider *fui_slider_store;
@@ -33,8 +49,8 @@ fui_get_slider_by_name(String8 name)
     return 0;
 }
 
-internal v4
-fui_slider_init_or_get_main(String8 id, Fui_Slider_Type type, void *init_value)
+internal Fui_Slider_Value
+fui_slider_init_or_get_main(String8 id, Fui_Slider_Type type, Fui_Slider_Value init_value)
 {
     Fui_Slider *&store = fui_slider_store;
 
@@ -59,7 +75,7 @@ fui_slider_init_or_get_main(String8 id, Fui_Slider_Type type, void *init_value)
     if (slider_index == arrlen(store))
     {
         Fui_Slider new_slider = { .id = id, .type = type, };
-        new_slider.value = *(v4 *)init_value;
+        new_slider.value = init_value;
         
         // NOTE(kv): find file|name separator
         u64 separator_index = id.size-1;
@@ -77,30 +93,51 @@ fui_slider_init_or_get_main(String8 id, Fui_Slider_Type type, void *init_value)
     return store[slider_index].value;
 }
 
-// NOTE: overloads are used to distinguish types, which is cutnpasty so let's use varargs when we have time
-inline v3 fui_slider_init_or_get(String8 id, f32 x, f32 y, f32 z)
+// NOTE: Overloads are used to pass types to "fui_slider_init_or_get", based on argument type,
+// as well as receive the appropriate values.
+/*
+inline v3 fui_slider_init_or_get(String8 id, v3 init_value)
 {
     Fui_Slider_Type type = Fui_Slider_Type_v3;
-    v3 init_value = v3{x,y,z};
-    v4 value = fui_slider_init_or_get_main(id, type, &init_value);
-    return value.xyz;
+    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, &init_value);
+    return value.v3_value;
 }
 
-inline v2 fui_slider_init_or_get(String8 id, f32 x, f32 y)
+inline v2 fui_slider_init_or_get(String8 id, v2 init_value)
 {
     Fui_Slider_Type type = Fui_Slider_Type_v2;
-    v2 init_value = v2{x,y};
-    v4 value = fui_slider_init_or_get_main(id, type, &init_value);
-    return value.xy;
+    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, &init_value);
+    return value.v2_value;
 }
 
-inline f32 fui_slider_init_or_get(String8 id, f32 x)
+inline v1 fui_slider_init_or_get(String8 id, v1 init_value)
 {
     Fui_Slider_Type type = Fui_Slider_Type_v1;
-    f32 init_value = x;
-    v4 value = fui_slider_init_or_get_main(id, type, &init_value);
-    return value.x;
+    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, &init_value);
+    return value.v1_value;
 }
+
+inline bool fui_slider_init_or_get(String8 id, bool init_value)
+{
+    Fui_Slider_Type type = Fui_Slider_Type_bool;
+    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, &init_value);
+    return (bool)value;
+}
+*/
+
+#define X(T) \
+\
+internal T fui_slider_init_or_get(String8 id, T init_value_T) \
+{ \
+    Fui_Slider_Type  type = Fui_Slider_Type_##T; \
+    Fui_Slider_Value init_value = { .T = init_value_T }; \
+    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, init_value); \
+    return value.T; \
+}
+//
+X_Fui_Slider_Types(X)
+//
+#undef X
 
 #define fslider(NAME, ...) \
     auto NAME = fui_slider_init_or_get(str8lit(__FILE__ "|" #NAME), ##__VA_ARGS__)

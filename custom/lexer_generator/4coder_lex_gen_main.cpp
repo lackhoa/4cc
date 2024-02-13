@@ -3154,9 +3154,9 @@ debug_print_keyword_table_metrics(Keyword_Layout key_layout, i32 keyword_count){
 
 internal char*
 gen_token_full_name(Arena *arena, String_Const_u8 base_name){
-    String_Const_u8 string = push_u8_stringf(arena,
-                                             "Token" LANG_NAME_CAMEL_STR "Kind_%.*s",
-                                             string_expand(base_name));
+    String_Const_u8 string = push_stringf(arena,
+                                          "Token" LANG_NAME_CAMEL_STR "Kind_%.*s",
+                                          string_expand(base_name));
     return((char*)(string.str));
 }
 
@@ -3994,10 +3994,10 @@ int main(int argc, char **argv){
     String_Const_u8 path_to_self = string_u8_litexpr(__FILE__);
     path_to_self = string_remove_last_folder(path_to_self);
     
-    String_Const_u8 hand_written_h_name = push_u8_stringf(&ctx->arena,
+    String_Const_u8 hand_written_h_name = push_stringf(&ctx->arena,
                                                           "%.*s4coder_lex_gen_hand_written.h",
                                                           string_expand(path_to_self));
-    String_Const_u8 hand_written_name = push_u8_stringf(&ctx->arena,
+    String_Const_u8 hand_written_name = push_stringf(&ctx->arena,
                                                         "%.*s4coder_lex_gen_hand_written.cpp",
                                                         string_expand(path_to_self));
     
@@ -4020,9 +4020,9 @@ int main(int argc, char **argv){
     String_Const_u8 hand_written = file_read_all(&ctx->arena, hand_written_file);
     fclose(hand_written_file);
     
-    String_Const_u8 out_h_name = push_u8_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".h",
+    String_Const_u8 out_h_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".h",
                                                  string_expand(output_path));
-    String_Const_u8 out_cpp_name = push_u8_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".cpp",
+    String_Const_u8 out_cpp_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".cpp",
                                                    string_expand(output_path));
     
     FILE *out_h_file = fopen((char*)out_h_name.str, "wb");

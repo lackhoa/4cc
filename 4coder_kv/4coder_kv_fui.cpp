@@ -5,6 +5,36 @@ struct FUI
     Token_Iterator_Array tk;
 };
 
+internal String8
+fui_push_slider_value(Arena *arena, Fui_Slider_Type type, Fui_Slider_Value value)
+{
+    String8 result = {};
+    switch (type)
+    {
+        case Fui_Slider_Type_v1:
+        {
+            result = push_stringf(arena, "%f", value.v1);
+        }break;
+        case Fui_Slider_Type_v2:
+        {
+            v2 v = value.v2;
+            result = push_stringf(arena, "v2{ %f, %f }", v.x, v.y);
+        }break;
+        case Fui_Slider_Type_v3:
+        {
+            v3 v = value.v3;
+            result = push_stringf(arena, "v3{ %f, %f, %f }", v.x, v.y, v.z);
+        }break;
+        case Fui_Slider_Type_v4:
+        {
+            v4 v = value.v4;
+            result = push_stringf(arena, "v4{ %f, %f, %f, %f }", v.x, v.y, v.z, v.w);
+        }break;
+        default: todo_incomplete;
+    }
+    return result;
+}
+
 global v4  fui_slider_direction;
 global i32 fui_active_slider_index;
 
@@ -46,56 +76,13 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
         if (fui_active_slider_index)
         {// NOTE: the slider cursor
             Fui_Slider *slider = &fui_slider_store[fui_active_slider_index];
-            v2 v = slider->value.xy;
+            v2 v = slider->value.v2;
             v.y = -v.y;  // NOTE: invert y to fit math coordinates
             v2 center = slider_origin + hadamard(v, slider_radius);
             rect2 rect = rect2_center_radius(center, v2{5,5});
             draw_rect(app, rect, pack_argb(v4{0,0.5f,0,1}));
         }
     }
-}
-
-internal b32
-require_number(App *app, Buffer_ID buffer, Token_Iterator_Array *tk, f32 *out)
-{
-    *out = 0;
-    Scratch_Block temp(app);
-    if ( !token_it_inc(tk) ) return false;
-    
-    // note(kv): parse the sign
-    f32 sign = 1;
-    if (tk->ptr->kind == TokenBaseKind_Operator)
-    {
-        String8 string = push_token_lexeme(app, temp, buffer, tk->ptr);
-        if (string_equal(string, "-"))      sign = -1;
-        else if (string_equal(string, "+")) {}
-        else                                return false;
-        
-        if ( !token_it_inc(tk)) return false;
-    }
-   
-    if (tk->ptr->kind != TokenBaseKind_LiteralFloat &&
-        tk->ptr->kind != TokenBaseKind_LiteralInteger )
-    {
-        return false;
-    }
-    
-    String8 string = push_token_lexeme(app, temp, buffer, tk->ptr);
-    char *cstring = to_c_string(temp, string);
-    *out = sign * gb_str_to_f32(cstring, 0);
-    
-    return true;
-}
-
-// TODO(kv): don't need the parser yo!
-internal b32
-maybe_parse_number(App *app, Buffer_ID buffer, Token_Iterator_Array *tk, f32 *out)
-{
-    Token_Iterator_Array tk_save = *tk;
-    b32 result = require_number(app, buffer, tk, out);
-    if (!result) *tk = tk_save;
-
-    return result;
 }
 
 internal b32
@@ -147,7 +134,7 @@ fui_handle_slider(App *app, Buffer_ID buffer)
         if (parse_ok && slider_index)
         {
             i64 slider_end = tk->ptr->pos + 1;
-            v4 slider_value_save = store[slider_index].value;
+            Fui_Slider_Value slider_value_save = store[slider_index].value;
             b32 write_back = false;
             
             fui_active_slider_index = slider_index;
@@ -185,26 +172,9 @@ fui_handle_slider(App *app, Buffer_ID buffer)
             if (write_back)
             { //note(kv): save the results back
                 Scratch_Block temp(app);
-                String8 save = {};
-                switch (slider->type)
-                {
-                    case Fui_Slider_Type_v1:
-                    {
-                        save = push_stringf(temp, "fslider( %.*s, %f )", string_expand(slider->name), slider->value.x);
-                    }break;
-                    case Fui_Slider_Type_v2:
-                    {
-                        save = push_stringf(temp, "fslider( %.*s, %f, %f )", string_expand(slider->name), slider->value.x, slider->value.y);
-                    }break;
-                    case Fui_Slider_Type_v3:
-                    {
-                        save = push_stringf(temp, "fslider( %.*s, %f, %f, %f )", string_expand(slider->name), slider->value.x, slider->value.y, slider->value.z);
-                    }break;
-                    
-                    default: todo_incomplete; 
-                }
-                
-                buffer_replace_range(app, buffer, slider_begin, slider_end, save);
+                String8 value_string = fui_push_slider_value(temp, slider->type, slider->value);
+                String8 update_string = push_stringf(temp, "fslider( %.*s, %.*s )", string_expand(slider->name), string_expand(value_string));
+                buffer_replace_range(app, buffer, slider_begin, slider_end, update_string);
             }
             else 
                 slider->value = slider_value_save;
@@ -227,11 +197,12 @@ fui_tick(App *app, Frame_Info frame_info)
         {
             f32 speed = 1.0f;
             f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key
-            slider->value += dt * speed * fui_slider_direction;
+            v4 *value = &slider->value.v4;
+            *value += dt * speed * fui_slider_direction;
             animate_in_n_milliseconds(app, 0);
          
             Temp_Block temp(app);
-            String8 slider_value = push_stringf(temp, "%f, %f, %f, %f", slider->value.x, slider->value.y, slider->value.z, slider->value.w);
+            String8 slider_value = fui_push_slider_value(temp, slider->type, slider->value);
             vim_set_bottom_text(slider_value);
         }
     }

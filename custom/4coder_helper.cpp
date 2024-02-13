@@ -1658,7 +1658,7 @@ query_user_number(Application_Links *app, Query_Bar *bar){
 function b32
 query_user_number(Application_Links *app, Query_Bar *bar, i32 x){
     Scratch_Block scratch(app);
-    String_Const_u8 string = push_u8_stringf(scratch, "%d", x);
+    String_Const_u8 string = push_stringf(scratch, "%d", x);
     return(query_user_general(app, bar, true, string));
 }
 
@@ -1751,17 +1751,17 @@ place_begin_and_end_on_own_lines(Application_Links *app, char *begin, char *end)
         i64 max_adjustment = 0;
         
         if (min_line_blank){
-            begin_str = push_u8_stringf(scratch, "\n%s", begin);
+            begin_str = push_stringf(scratch, "\n%s", begin);
             min_adjustment += 1;
         }
         else{
-            begin_str = push_u8_stringf(scratch, "%s\n", begin);
+            begin_str = push_stringf(scratch, "%s\n", begin);
         }
         if (max_line_blank){
-            end_str = push_u8_stringf(scratch, "%s\n", end);
+            end_str = push_stringf(scratch, "%s\n", end);
         }
         else{
-            end_str = push_u8_stringf(scratch, "\n%s", end);
+            end_str = push_stringf(scratch, "\n%s", end);
             max_adjustment += 1;
         }
         
@@ -1776,7 +1776,7 @@ place_begin_and_end_on_own_lines(Application_Links *app, char *begin, char *end)
         set_view_range(app, view, new_pos);
     }
     else{
-        String_Const_u8 str = push_u8_stringf(scratch, "%s\n\n%s", begin, end);
+        String_Const_u8 str = push_stringf(scratch, "%s\n\n%s", begin, end);
         buffer_replace_range(app, buffer, range, str);
         i64 center_pos = range.min + cstring_length(begin) + 1;
         view_set_cursor_and_preferred_x(app, view, seek_pos(center_pos));
@@ -2111,7 +2111,7 @@ push_file_search_up_path(Application_Links *app, Arena *arena, String_Const_u8 s
         if (character_is_slash(string_get_character(path, path.size - 1))){
             path = string_chop(path, 1);
         }
-        String_Const_u8 full_path = push_u8_stringf(arena, "%.*s/%.*s",
+        String_Const_u8 full_path = push_stringf(arena, "%.*s/%.*s",
                                                     string_expand(path),
                                                     string_expand(file_name));
         if (file_exists(app, full_path)){

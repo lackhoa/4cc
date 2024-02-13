@@ -2962,13 +2962,13 @@ internal void
 draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
 {
     Models *models = (Models*)app->cmd_context;
-    v1 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
+    f32 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
     if (models->in_render_mode)
     {
         Render_Target *target = models->target;
         b32 steep = false;
-        v1 x0 = p0.x; v1 y0 = p0.y;
-        v1 x1 = p1.x; v1 y1 = p1.y;
+        f32 x0 = p0.x; f32 y0 = p0.y;
+        f32 x1 = p1.x; f32 y1 = p1.y;
         
         if (absolute(x0-x1) < 
             absolute(y0-y1))
@@ -2991,7 +2991,7 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
             f32 slope = dy / dx;
              
             // NOTE: Clipping (todo: What about the upside-down case? The clipbox is gonna be reversed)
-            fslider( clip_slider, 0.1 );
+            fslider( clip_slider, v1{0.1f} );
             f32 x_start = x0;
             f32 x_end   = x1;
             if (clip_slider > 0)
@@ -3028,7 +3028,7 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
 }
 
 internal void
-draw_circle(App *app, v2 center, v1 radius, ARGB_Color color)
+draw_circle(App *app, v2 center, f32 radius, ARGB_Color color)
 {
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)
@@ -3234,17 +3234,22 @@ text_layout_line_on_screen(FApp *app, Text_Layout_ID layout_id, i64 line_number)
 }
 
 api(custom) function Rect_f32
-text_layout_character_on_screen(FApp *app, Text_Layout_ID layout_id, i64 pos){
+text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
+{
     Models *models = (Models*)app->cmd_context;
     Rect_f32 result = {};
     Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
-    if (layout != 0 && range_contains_inclusive(layout->visible_range, pos)){
+    if (layout != 0 && 
+        range_contains_inclusive(layout->visible_range, pos))
+    {
         Editing_File *file = imp_get_file(models, layout->buffer_id);
-        if (api_check_buffer(file)){
+        if ( api_check_buffer(file) )
+        {
             Gap_Buffer *buffer = &file->state.buffer;
             i64 line_number = buffer_get_line_index(buffer, pos) + 1;
             
-            if (range_contains_inclusive(layout->visible_line_number_range, line_number)){
+            if ( range_contains_inclusive(layout->visible_line_number_range, line_number) )
+            {
                 Rect_f32 rect = layout->rect;
                 f32 width = rect_width(rect);
                 Face *face = file_get_face(models, file);
@@ -3254,11 +3259,13 @@ text_layout_character_on_screen(FApp *app, Text_Layout_ID layout_id, i64 pos){
                 f32 y = 0.f;
                 Layout_Item_List line = {};
                 for (i64 line_number_it = layout->visible_line_number_range.first;;
-                     line_number_it += 1){
+                     line_number_it += 1)
+                {
                     line = file_get_line_layout(app->tctx, models, file,
                                                 layout_func, width, face,
                                                 line_number_it);
-                    if (line_number_it == line_number){
+                    if (line_number_it == line_number)
+                    {
                         break;
                     }
                     y += line.height;
@@ -3268,24 +3275,34 @@ text_layout_character_on_screen(FApp *app, Text_Layout_ID layout_id, i64 pos){
                 // need to accelerate the (pos -> item) lookup within a single
                 // Buffer_Layout_Item_List.
                 result = Rf32_negative_infinity;
+                b32 found_item = false;
                 for (Layout_Item_Block *block = line.first;
                      block != 0;
-                     block = block->next){
+                     block = block->next)
+                {
                     i64 count = block->item_count;
                     Layout_Item *item_ptr = block->items;
-                    for (i32 i = 0; i < count; i += 1, item_ptr += 1){
-                        if (HasFlag(item_ptr->flags, LayoutItemFlag_Ghost_Character)){
+                    for (i32 i = 0; 
+                         i < count; 
+                         i += 1, item_ptr += 1)
+                    {
+                        if ( HasFlag(item_ptr->flags, LayoutItemFlag_Ghost_Character) )
+                        {
                             continue;
                         }
                         i64 index = item_ptr->index;
-                        if (index == pos){
+                        if (index == pos)
+                        {
                             result = rect_union(result, item_ptr->rect);
+                            found_item = true;
                         }
-                        else if (index > pos){
+                        else if (index > pos)
+                        {
                             break;
                         }
                     }
                 }
+                soft_assert(found_item);
                 
                 Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
                 result.p0 += shift;

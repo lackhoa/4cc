@@ -131,7 +131,7 @@ api_parse_location(Arena *arena, String_Const_u8 source_name, String_Const_u8 so
             ptr += 1;
         }
     }
-    return(push_u8_stringf(arena, "%.*s:%d:%d:", string_expand(source_name), line_number, col_number));
+    return(push_stringf(arena, "%.*s:%d:%d:", string_expand(source_name), line_number, col_number));
 }
 
 function b32

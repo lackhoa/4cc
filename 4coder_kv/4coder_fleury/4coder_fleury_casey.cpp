@@ -139,16 +139,16 @@ BUFFER_HOOK_SIG(casey_new_file)
 {
 	Scratch_Block scratch(app);
 	String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
-    String_Const_u8 header_text = push_u8_stringf(scratch,
-                                                  "/* ========================================================================\n"
-                                                  "   %cFile: %.*s $\n"
-                                                  "   %cDate: $\n"
-                                                  "   %cRevision: $\n"
-                                                  "   %cCreator: Casey Muratori $\n"
-                                                  "   %cNotice: (C) Copyright by Molly Rocket, Inc., All Rights Reserved. $\n"
-                                                  "   ======================================================================== */\n\n",
-                                                  '$', string_expand(file_name),
-                                                  '$', '$', '$', '$');
+    String_Const_u8 header_text = push_stringf(scratch,
+                                               "/* ========================================================================\n"
+                                               "   %cFile: %.*s $\n"
+                                               "   %cDate: $\n"
+                                               "   %cRevision: $\n"
+                                               "   %cCreator: Casey Muratori $\n"
+                                               "   %cNotice: (C) Copyright by Molly Rocket, Inc., All Rights Reserved. $\n"
+                                               "   ======================================================================== */\n\n",
+                                               '$', string_expand(file_name),
+                                               '$', '$', '$', '$');
     
     buffer_replace_range(app, buffer_id, Ii64(0, 0), header_text);
     

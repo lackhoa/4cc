@@ -139,7 +139,7 @@ kv_default_bindings(Mapping *mapping)
 }
 
 inline void 
-create_unimportant_buffer(FApp *app, String8 name)
+create_unimportant_buffer(App *app, String8 name)
 {
   Buffer_ID buffer = create_buffer(app, name,
                                    BufferCreate_NeverAttachToFile |
@@ -148,7 +148,7 @@ create_unimportant_buffer(FApp *app, String8 name)
 }
 
 function void
-kv_4coder_initialize(FApp *app)
+kv_4coder_initialize(App *app)
 {
     Face_Description description = get_face_description(app, 0);
     i32 override_font_size = description.parameters.pt_size;
@@ -157,7 +157,7 @@ kv_4coder_initialize(FApp *app)
 }
 
 internal void
-startup_panels_and_files(FApp *app)
+startup_panels_and_files(App *app)
 {
     Scratch_Block temp(app);
     
@@ -202,7 +202,7 @@ startup_panels_and_files(FApp *app)
 }
 
 internal void
-initialize_stylist_fonts(FApp *app)
+initialize_stylist_fonts(App *app)
 {
     Scratch_Block scratch(app);
     String_Const_u8 bin_path = system_get_path(scratch, SystemPath_Binary);
@@ -214,7 +214,7 @@ initialize_stylist_fonts(FApp *app)
     {
         Face_Description desc = {};
         {
-            desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+            desc.font.file_name =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = 18;
             desc.parameters.bold = 0;
             desc.parameters.italic = 0;
@@ -235,7 +235,7 @@ initialize_stylist_fonts(FApp *app)
     {
         Face_Description desc = {};
         {
-            desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+            desc.font.file_name =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = 10;
             desc.parameters.bold = 1;
             desc.parameters.italic = 1;
@@ -258,7 +258,7 @@ initialize_stylist_fonts(FApp *app)
         
         Face_Description desc = {};
         {
-            desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
+            desc.font.file_name =  push_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = normal_code_desc.parameters.pt_size - 1;
             desc.parameters.bold = 1;
             desc.parameters.italic = 1;
@@ -361,7 +361,7 @@ kvInitQuailTable(Application_Links *app)
 
 // ;binding
 function void 
-kv_vim_bindings(FApp *app)
+kv_vim_bindings(App *app)
 {
     u32 N = bit_1;
     u32 I = bit_2;
@@ -601,7 +601,7 @@ kv_custom_layer_init(Application_Links *app)
     
     // fleury
     global_frame_arena = make_arena(get_base_allocator_system());
-    permanent_arena = make_arena(get_base_allocator_system());
+    permanent_arena    = make_arena(get_base_allocator_system());
     
     vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(string_u8_litexpr("*scratch*")), 1.f, 1.f };
     vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(string_u8_litexpr("todo.txt")),  1.f, 1.f };

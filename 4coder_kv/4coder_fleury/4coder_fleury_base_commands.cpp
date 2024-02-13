@@ -96,7 +96,7 @@ F4_GoToDefinition(Application_Links *app, F4_Index_Note *note, b32 same_panel)
         Buffer_ID buffer = note->file->buffer;
         if(!same_panel)
         {
-            view = get_next_view_looped_primary_panels(app, view, Access_Always);
+            view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
         }
         point_stack_push_view_cursor(app, view);
         view_set_buffer(app, view, buffer, 0);
@@ -412,9 +412,9 @@ CUSTOM_DOC("Open a project by navigating to the project file.")
         }
         if (file_name.size == 0) break;
         
-        String_Const_u8 path = result.path_in_text_field;
-        String_Const_u8 full_file_name = push_u8_stringf(scratch, "%.*s/%.*s",
-                                                         string_expand(path), string_expand(file_name));
+        String8 path = result.path_in_text_field;
+        String8 full_file_name = push_stringf(scratch, "%.*s/%.*s",
+                                                      string_expand(path), string_expand(file_name));
         
         if (result.is_folder)
         {
@@ -461,11 +461,11 @@ CUSTOM_DOC("Sets up a blank 4coder project provided some user folder.")
         path_bar.string_capacity = sizeof(project_folder_absolute);
         if(query_user_string(app, &path_bar))
         {
-            String_Const_u8 full_file_name = push_u8_stringf(scratch, "%.*s/",
-                                                             string_expand(path_bar.string));
+            String8 full_file_name = push_stringf(scratch, "%.*s/",
+                                                          string_expand(path_bar.string));
             set_hot_directory(app, full_file_name);
             
-            String_Const_u8 project_file_path = push_u8_stringf(scratch, "%.*s/project.4coder", string_expand(path_bar.string));
+            String8 project_file_path = push_stringf(scratch, "%.*s/project.4coder", string_expand(path_bar.string));
             FILE *file = fopen((char *)project_file_path.str, "wb");
             if(file)
             {
@@ -1245,8 +1245,8 @@ CUSTOM_DOC("Interactively open a file out of the file system, filtered to files 
         if (file_name.size == 0) break;
         
         String_Const_u8 path = result.path_in_text_field;
-        String_Const_u8 full_file_name = push_u8_stringf(scratch, "%.*s/%.*s",
-                                                         string_expand(path), string_expand(file_name));
+        String8 full_file_name = push_stringf(scratch, "%.*s/%.*s",
+                                              string_expand(path), string_expand(file_name));
         
         if(result.is_folder)
         {
@@ -1741,9 +1741,8 @@ CUSTOM_DOC("Deprecated name. Please update to f4_home.")
 CUSTOM_COMMAND_SIG(fleury_toggle_battery_saver)
 CUSTOM_DOC("Deprecated name. Please update to f4_toggle_battery_saver.")
 {f4_toggle_battery_saver(app);}
-CUSTOM_COMMAND_SIG(fleury_toggle_compilation_expand)
-CUSTOM_DOC("Deprecated name. Please update to f4_toggle_compilation_expand.")
-{f4_toggle_compilation_expand(app);}
+
+
 CUSTOM_COMMAND_SIG(fleury_go_to_definition)
 CUSTOM_DOC("Deprecated name. Please update to f4_go_to_definition.")
 {f4_go_to_definition(app);}

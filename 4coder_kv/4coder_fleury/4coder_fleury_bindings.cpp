@@ -70,10 +70,9 @@ F4_ImplicitMap(Application_Links *app, String_ID lang, String_ID mode, Input_Eve
     return(result);
 }
 
+CUSTOM_COMMAND_SIG(fleury_startup);
 
 //~ NOTE(rjf): Bindings
-
-CUSTOM_COMMAND_SIG(fleury_startup);
 
 function void
 F4_SetAbsolutelyNecessaryBindings(Mapping *mapping)
@@ -151,11 +150,8 @@ F4_SetDefaultBindings(Mapping *mapping)
     Bind(interactive_switch_buffer,     KeyCode_I, KeyCode_Control);
     Bind(project_go_to_root_directory,  KeyCode_H, KeyCode_Control);
     Bind(save_all_dirty_buffers,        KeyCode_S, KeyCode_Control, KeyCode_Shift);
-    Bind(change_to_build_panel,         KeyCode_Period, KeyCode_Alt);
-    Bind(close_build_panel,             KeyCode_Comma, KeyCode_Alt);
     Bind(goto_next_jump,                KeyCode_N, KeyCode_Alt);
     Bind(goto_prev_jump,                KeyCode_N, KeyCode_Alt, KeyCode_Shift);
-    Bind(build_in_build_panel,          KeyCode_M, KeyCode_Alt);
     Bind(goto_first_jump,               KeyCode_M, KeyCode_Alt, KeyCode_Shift);
     Bind(toggle_filebar,                KeyCode_B, KeyCode_Alt);
     Bind(execute_any_cli,               KeyCode_Z, KeyCode_Alt);

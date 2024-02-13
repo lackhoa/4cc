@@ -160,7 +160,7 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
         }    
     }
     
-    fslider( draw_outline, -0.298632 );
+    fslider( draw_outline, v1{-0.298632f} );
     if (draw_outline > 0)
     {
         tr_line(bitmap, (p1), (p2), red); 
@@ -272,7 +272,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
         v2 beg = v2{0,0};
         v2 mid = v2{0, dim_y-1};
         v2 end = V2(dim_x-1, dim_y-1);
-        v1 step = 1.0f / dim_x;  // NOTE: I don't know what I'm doing!
+        v1 step = {1.0f / dim_x};  // NOTE: I don't know what I'm doing!
         for (f32 t = 0;
              t <= 1.0f;
              t += step)
@@ -285,8 +285,8 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     }
 }
 
-internal v1
-pow(v1 input, i32 power)
+internal f32
+pow(f32 input, i32 power)
 {
     f32 result = 1; 
     for_i32 (index, 0, power)
@@ -303,16 +303,16 @@ draw_bezier(App *app, v2 *controls)
     u32 gray   = pack_argb(grayv4);
     
     i32 nslices = 16;
-    v1 du = 1.0f / (v1)nslices;
+    f32 du = 1.0f / (f32)nslices;
     i32 ncontrols = 4;
     for_i32 (sample_index, 1, nslices)
     {
-        v1 u = du * (v1)sample_index;
+        f32 u = du * (f32)sample_index;
         v2 position = {};
         for_i32 (control_index, 0, ncontrols)
         {
-            v1 u_factor     = pow(u, control_index);
-            v1 inv_u_factor = pow(1-u, ncontrols-control_index-1);
+            f32 u_factor     = pow(u, control_index);
+            f32 inv_u_factor = pow(1-u, ncontrols-control_index-1);
             position += inv_u_factor * u_factor * controls[control_index];
         }
         draw_circle(app, position, 10, gray);
@@ -333,27 +333,27 @@ game_update_and_render(App *app, View_ID view, rect2 region)
   
     draw_set_y_up(app);
     draw_set_offset(app, layout_center);
-  
-#if 1
+ 
     if (1)
     {// NOTE: bezier surface experiment!
-        fslider( c0, -0.661388, 0.113373 );
-        fslider( c1, -0.277691, 0.574466 );
-        fslider( c2, 3.951374, -1.415742 );
-        fslider( c3, 0.785138, 0.500963 );
-        v1 pos_unit = 500;
+        fslider( c0, v2{ -0.762436, 0.447450 } );
+        fslider( c1, v2{-0.277691, 0.574466} );
+        fslider( c2, v2{3.951374, -1.415742} );
+        fslider( c3, v2{0.785138, 0.500963} );
+        f32 pos_unit = 500;
         v2 control_points[] = {pos_unit*c0, pos_unit*c1, pos_unit*c2, pos_unit*c3};
         //
-        fslider( radius, 1.0f );  //unit=10
-        v1 radius_unit = 10.0f;
+        fslider( radius, v1{1.0f} );  //unit=10
+        f32 radius_unit = 10.0f;
         for_i32 (index, 0, 4)
         {
             draw_circle(app, control_points[index], radius*radius_unit, gray);
         }
         draw_bezier(app, control_points);
     }
-   
-    if (0)
+  
+    fslider(software_rendering_slider, 0.1);
+    if (software_rendering_slider > 0)
     {// NOTE: software rendering experiments
         v3i dim = {768, 768, 1};
         local_persist b32 initial = true;
@@ -382,18 +382,19 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
         
         v2 position = region.min + v2{10,10};
-        fslider( scale, 0.338275 );
+        fslider( scale, 0.338275f );
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }
     
-    fslider( debug_offset, -0.185188 );
+    fslider( debug_offset, 0.148896 );
     v2 debug_draw_offset = layout_center;
-    if (debug_offset > 0) debug_draw_offset = {0,0};
+    if (debug_offset > 0)
+        debug_draw_offset = {0,0};
     draw_set_offset(app, debug_draw_offset);
     
     { // push coordinate system
-        fslider( camera_p_slider, 2.228511, 2.995006, 1.477940 );
+        fslider( camera_p_slider, v3{-0.132543, 0.284832, 1.307981} );
         v3 camera_p = 1e3 * camera_p_slider;
         v3 camera_x, camera_y, camera_z;
         camera_z = noz(camera_p);  // NOTE: z comes at you
@@ -450,9 +451,6 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         draw_line(app, O+pO_screen, O+py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
         draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
     }
-#else
-    draw_rect(app, rect2_min_dim({0,0}, {100,100}), gray);
-#endif
     
     draw_set_y_down(app);
     draw_set_offset(app, v2{});

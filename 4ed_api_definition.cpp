@@ -196,10 +196,10 @@ function String_Const_u8
 api_get_callable_name(Arena *arena, String_Const_u8 api_name, String_Const_u8 name, API_Generation_Flag flags){
     String_Const_u8 result = {};
     if (HasFlag(flags, APIGeneration_NoAPINameOnCallables)){
-        result = push_u8_stringf(arena, "%.*s", string_expand(name));
+        result = push_stringf(arena, "%.*s", string_expand(name));
     }
     else{
-        result = push_u8_stringf(arena, "%.*s_%.*s",
+        result = push_stringf(arena, "%.*s_%.*s",
                                  string_expand(api_name),
                                  string_expand(name));
     }
@@ -442,22 +442,22 @@ api_definition_generate_api_includes(Arena *arena, API_Definition *api, Generate
         }break;
     }
     
-    fname_ml = push_u8_stringf(arena, "%.*s%.*s%.*s_api_master_list.h",
+    fname_ml = push_stringf(arena, "%.*s%.*s%.*s_api_master_list.h",
                                string_expand(path_to_self),
                                string_expand(root),
                                string_expand(api->name));
     
-    fname_h = push_u8_stringf(arena, "%.*s%.*s%.*s_api.h",
+    fname_h = push_stringf(arena, "%.*s%.*s%.*s_api.h",
                               string_expand(path_to_self),
                               string_expand(root),
                               string_expand(api->name));
     
-    fname_cpp = push_u8_stringf(arena, "%.*s%.*s%.*s_api.cpp",
+    fname_cpp = push_stringf(arena, "%.*s%.*s%.*s_api.cpp",
                                 string_expand(path_to_self),
                                 string_expand(root),
                                 string_expand(api->name));
     
-    fname_con = push_u8_stringf(arena, "%.*s%.*s%.*s_api_constructor.cpp",
+    fname_con = push_stringf(arena, "%.*s%.*s%.*s_api_constructor.cpp",
                                 string_expand(path_to_self),
                                 string_expand(root),
                                 string_expand(api->name));

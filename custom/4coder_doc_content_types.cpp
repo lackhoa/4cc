@@ -82,7 +82,7 @@ new_doc_page(Arena *arena, Doc_Cluster *cluster, char *title, char *name){
 
 function Doc_Page*
 new_doc_page_normal_title(Arena *arena, Doc_Cluster *cluster, char *title, char *name){
-    String_Const_u8 full_title = push_u8_stringf(arena, "%s - %.*s", title, string_expand(cluster->title));
+    String_Const_u8 full_title = push_stringf(arena, "%s - %.*s", title, string_expand(cluster->title));
     return(new_doc_page(arena, cluster, (char*)full_title.str, name));
 }
 
@@ -154,7 +154,7 @@ doc_log(Arena *arena, Doc_Cluster *cluster, char *str){
 
 function void
 doc_logfv(Arena *arena, Doc_Cluster *cluster, char *format, va_list args){
-    String_Const_u8 str = push_u8_stringfv(arena, format, args);
+    String_Const_u8 str = push_stringfv(arena, format, args);
     doc_log(arena, cluster, str);
 }
 

@@ -479,7 +479,7 @@ gl_render(Render_Target *t)
 #undef X
         
         // NOTE: Transforms
-        // NOTE(kv): offset to opengl's bilateral normalized space, as well as render group offset
+        // NOTE(kv): Offset to opengl's bilateral normalized space, as well as render group offset
         glUniform2f(program->view_t, 
                     group->offset.x - (f32)width/2.f, 
                     group->offset.y - (f32)height/2.f);
@@ -495,7 +495,7 @@ gl_render(Render_Target *t)
         // NOTE
         glDrawArrays(GL_TRIANGLES, 0, vertex_count);
         
-        // NOTE: disable
+        // NOTE: Disable Vertex Attrib Array
 #define X(N,...) { glDisableVertexAttribArray(program->vertex_##N); }
         XAttribute(X);
 #undef X

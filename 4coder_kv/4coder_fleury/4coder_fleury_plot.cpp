@@ -6,50 +6,50 @@
 function void
 Plot2DBegin(Plot2DInfo *plot)
 {
-  Scratch_Block scratch(plot->app);
-  
-  Rect_f32 region = plot->region;
-  Rect_f32 plot_view = plot->plot_view;
-  ARGB_Color comment_color = fcolor_resolve(defcolor_comment);
-  
-  { // NOTE(kv): plot labels
-    if(plot->title.str)
-    {
-      Face_Metrics metrics = get_face_metrics(plot->app, plot->title_face);
-      v2 pos = V2(region.x0, region.y0 - metrics.line_height);
-      draw_string(plot->app, plot->title_face, plot->title, pos, comment_color);
+    Scratch_Block scratch(plot->app);
+    
+    Rect_f32 region = plot->region;
+    Rect_f32 plot_view = plot->plot_view;
+    ARGB_Color comment_color = fcolor_resolve(defcolor_comment);
+    
+    { // NOTE(kv): plot labels
+        if(plot->title.str)
+        {
+            Face_Metrics metrics = get_face_metrics(plot->app, plot->title_face);
+            v2 pos = V2(region.x0, region.y0 - metrics.line_height);
+            draw_string(plot->app, plot->title_face, plot->title, pos, comment_color);
+        }
+        
+        if(plot->x_axis.str)
+        {
+            draw_string(plot->app, plot->label_face, plot->x_axis, V2(region.x0, region.y1), comment_color);
+        }
+        
+        if(plot->y_axis.str)
+        {
+            draw_string_oriented(plot->app, plot->label_face, comment_color, plot->y_axis,
+                                 V2(region.x0 - 10, region.y0 + 5), 0, V2(0.f, 1.f));
+        }
     }
     
-    if(plot->x_axis.str)
+    plot->last_clip = draw_set_clip(plot->app, region);
+    f32 region_width = region.x1 - region.x0;
+    f32 region_height = region.y1 - region.y0;
+    draw_rectangle(plot->app, region, 4.f, fcolor_resolve(defcolor_back));
+    
+    // NOTE(rjf): Draw grid lines.
+    if(plot->mode != Plot2DMode_Histogram)
     {
-      draw_string(plot->app, plot->label_face, plot->x_axis, V2(region.x0, region.y1), comment_color);
-    }
-    
-    if(plot->y_axis.str)
-    {
-      draw_string_oriented(plot->app, plot->label_face, comment_color, plot->y_axis,
-                           V2(region.x0 - 10, region.y0 + 5), 0, V2(0.f, 1.f));
-    }
-  }
-  
-  plot->last_clip = draw_set_clip(plot->app, region);
-  f32 region_width = region.x1 - region.x0;
-  f32 region_height = region.y1 - region.y0;
-  draw_rectangle(plot->app, region, 4.f, fcolor_resolve(defcolor_back));
-  
-  // NOTE(rjf): Draw grid lines.
-  if(plot->mode != Plot2DMode_Histogram)
-  {
-    ARGB_Color grid_line_color = comment_color;
-    grid_line_color &= 0x00ffffff;
-    grid_line_color |= 0x91000000;
-    
-    float tick_increment_x = (plot_view.x1 - plot_view.x0) / 10.f + 1.f;
-    float tick_increment_y = (plot_view.y1 - plot_view.y0) / 10.f + 1.f;
-    
-    tick_increment_x = powf(10.f, floorf(log10f(tick_increment_x)));
-    tick_increment_y = powf(10.f, floorf(log10f(tick_increment_y)));
-    
+        ARGB_Color grid_line_color = comment_color;
+        grid_line_color &= 0x00ffffff;
+        grid_line_color |= 0x91000000;
+        
+        float tick_increment_x = (plot_view.x1 - plot_view.x0) / 10.f + 1.f;
+        float tick_increment_y = (plot_view.y1 - plot_view.y0) / 10.f + 1.f;
+        
+        tick_increment_x = powf(10.f, floorf(log10f(tick_increment_x)));
+        tick_increment_y = powf(10.f, floorf(log10f(tick_increment_y)));
+        
 		if(tick_increment_x <= 0)
 		{
 			tick_increment_x = 1;
@@ -58,67 +58,67 @@ Plot2DBegin(Plot2DInfo *plot)
 		{
 			tick_increment_y = 1;
 		}
-    
-    // NOTE(rjf): Draw vertical lines.
-    {
-      for(float x = plot_view.x0 - fmodf(plot_view.x0, tick_increment_x);
-          x <= plot_view.x1; x += tick_increment_x)
-      {
-        Rect_f32 line_rect = {};
+        
+        // NOTE(rjf): Draw vertical lines.
         {
-          line_rect.x0 = region.x0 + region_width * (x - plot_view.x0) / (plot_view.x1 - plot_view.x0);
-          line_rect.y0 = region.y0;
-          line_rect.x1 = line_rect.x0+1;
-          line_rect.y1 = region.y1;
+            for(float x = plot_view.x0 - fmodf(plot_view.x0, tick_increment_x);
+                x <= plot_view.x1; x += tick_increment_x)
+            {
+                Rect_f32 line_rect = {};
+                {
+                    line_rect.x0 = region.x0 + region_width * (x - plot_view.x0) / (plot_view.x1 - plot_view.x0);
+                    line_rect.y0 = region.y0;
+                    line_rect.x1 = line_rect.x0+1;
+                    line_rect.y1 = region.y1;
+                }
+                
+                draw_rectangle(plot->app, line_rect, 1.f, grid_line_color);
+                
+                // NOTE(rjf): Draw number label.
+                {
+                    float nearest_y_tick = (plot_view.y1 + plot_view.y0) / 2;
+                    nearest_y_tick -= fmodf(nearest_y_tick, tick_increment_y);
+                    
+                    String_Const_u8 str = push_stringf(scratch, "%.*f", tick_increment_y >= 1 ? 0 : 3, x);
+                    draw_string(plot->app, plot->label_face, str,
+                                V2(line_rect.x0,
+                                   region.y0 + region_height -
+                                   region_height * (nearest_y_tick - plot_view.y0) / (plot_view.y1 - plot_view.y0)),
+                                grid_line_color);
+                }
+            }
         }
         
-        draw_rectangle(plot->app, line_rect, 1.f, grid_line_color);
-        
-        // NOTE(rjf): Draw number label.
+        // NOTE(rjf): Draw horizontal lines.
         {
-          float nearest_y_tick = (plot_view.y1 + plot_view.y0) / 2;
-          nearest_y_tick -= fmodf(nearest_y_tick, tick_increment_y);
-          
-          String_Const_u8 str = push_stringf(scratch, "%.*f", tick_increment_y >= 1 ? 0 : 3, x);
-          draw_string(plot->app, plot->label_face, str,
-                      V2(line_rect.x0,
-                            region.y0 + region_height -
-                            region_height * (nearest_y_tick - plot_view.y0) / (plot_view.y1 - plot_view.y0)),
-                      grid_line_color);
+            for(float y = plot_view.y0 - fmodf(plot_view.y0, tick_increment_y);
+                y <= plot_view.y1; 
+                y += tick_increment_y)
+            {
+                Rect_f32 line_rect = {};
+                {
+                    line_rect.x0 = region.x0;
+                    line_rect.y0 = region.y0 + region_height - region_height * (y - plot_view.y0) / (plot_view.y1 - plot_view.y0);
+                    line_rect.x1 = region.x1;
+                    line_rect.y1 = line_rect.y0+1;
+                }
+                
+                draw_rectangle(plot->app, line_rect, 1.f, grid_line_color);
+                
+                // NOTE(rjf): Draw number label.
+                {
+                    float nearest_x_tick = (plot_view.x1 + plot_view.x0) / 2;
+                    nearest_x_tick -= fmodf(nearest_x_tick, tick_increment_x);
+                    
+                    String_Const_u8 str = push_stringf(scratch, "%.*f", tick_increment_y >= 1 ? 0 : 3, y);
+                    draw_string(plot->app, plot->label_face, str,
+                                V2(region.x0 + region_width * (nearest_x_tick - plot_view.x0) / (plot_view.x1 - plot_view.x0),
+                                   line_rect.y0),
+                                grid_line_color);
+                }
+            }
         }
-      }
     }
-    
-    // NOTE(rjf): Draw horizontal lines.
-    {
-      for(float y = plot_view.y0 - fmodf(plot_view.y0, tick_increment_y);
-          y <= plot_view.y1; 
-          y += tick_increment_y)
-      {
-        Rect_f32 line_rect = {};
-        {
-          line_rect.x0 = region.x0;
-          line_rect.y0 = region.y0 + region_height - region_height * (y - plot_view.y0) / (plot_view.y1 - plot_view.y0);
-          line_rect.x1 = region.x1;
-          line_rect.y1 = line_rect.y0+1;
-        }
-        
-        draw_rectangle(plot->app, line_rect, 1.f, grid_line_color);
-        
-        // NOTE(rjf): Draw number label.
-        {
-          float nearest_x_tick = (plot_view.x1 + plot_view.x0) / 2;
-          nearest_x_tick -= fmodf(nearest_x_tick, tick_increment_x);
-          
-          String_Const_u8 str = push_stringf(scratch, "%.*f", tick_increment_y >= 1 ? 0 : 3, y);
-          draw_string(plot->app, plot->label_face, str,
-                      V2(region.x0 + region_width * (nearest_x_tick - plot_view.x0) / (plot_view.x1 - plot_view.x0),
-                            line_rect.y0),
-                      grid_line_color);
-        }
-      }
-    }
-  }
 }
 
 function void

@@ -4,7 +4,7 @@
 # NOTE(kv): assumes only Windows and Mac (and clang)
 
 # NOTE: configuration #########################
-DEBUG_MODE = 1
+DEBUG_MODE = 0
 FORCE_FULL_REBUILD = 0
 STOP_DEBUGGING_BEFORE_BUILD = 0
 
@@ -37,6 +37,7 @@ WARNINGS_ARRAY = [
     "-Wshadow",
 
     "-Wno-unused-variable",
+    "-Wno-unused-but-set-variable",
     "-Wno-write-strings",
     "-Wno-null-dereference",
     "-Wno-comment",

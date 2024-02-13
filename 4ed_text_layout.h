@@ -12,9 +12,11 @@
 #if !defined(FRED_TEXT_LAYOUT_H)
 #define FRED_TEXT_LAYOUT_H
 
-union Text_Layout{
+union Text_Layout
+{
     Text_Layout *next;
-    struct{
+    struct
+    {
         Arena *arena;
         Buffer_ID buffer_id;
         Buffer_Point point;

@@ -329,10 +329,10 @@ internal system_get_file_list_sig()
     File_List result = {};
     String_Const_u8 search_pattern = {};
     if (character_is_slash(string_get_character(directory, directory.size - 1))){
-        search_pattern = push_u8_stringf(arena, "%.*s*", string_expand(directory));
+        search_pattern = push_stringf(arena, "%.*s*", string_expand(directory));
     }
     else{
-        search_pattern = push_u8_stringf(arena, "%.*s\\*", string_expand(directory));
+        search_pattern = push_stringf(arena, "%.*s\\*", string_expand(directory));
     }
     
     WIN32_FIND_DATAW find_data = {};

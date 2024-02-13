@@ -75,7 +75,7 @@ hot_directory_init(Arena *scratch, Hot_Directory *hot_directory, String_Const_u8
     Temp_Memory temp = begin_temp(scratch);
     String_Const_u8 dir = directory;
     if (!character_is_slash(string_get_character(directory, directory.size - 1))){
-        dir = push_u8_stringf(scratch, "%.*s/", string_expand(directory));
+        dir = push_stringf(scratch, "%.*s/", string_expand(directory));
     }
     hot_directory_set(hot_directory, dir);
     end_temp(temp);

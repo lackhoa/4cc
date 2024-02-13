@@ -524,7 +524,7 @@ system_cli_call_sig(){
     char *env_variables = 0;
     
     Temp_Memory temp = begin_temp(scratch);
-    String_Const_u8 s = push_u8_stringf(scratch, "/C %s", script);
+    String_Const_u8 s = push_stringf(scratch, "/C %s", script);
     
     b32 success = false;
     

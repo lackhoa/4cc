@@ -1406,7 +1406,7 @@ CUSTOM_DOC("Deletes the file of the current buffer if 4coder has the appropriate
     if (file_name.size > 0){
         Query_Bar_Group group(app);
         Query_Bar bar = {};
-        bar.prompt = push_u8_stringf(scratch, "Delete '%.*s' (Y)es, (n)o", string_expand(file_name));
+        bar.prompt = push_stringf(scratch, "Delete '%.*s' (Y)es, (n)o", string_expand(file_name));
         if (start_query_bar(app, &bar, 0) != 0){
             b32 cancelled = false;
             for (;!cancelled;){
@@ -1453,7 +1453,7 @@ CUSTOM_DOC("Queries the user for a file name and saves the contents of the curre
     // Query the user
     u8 name_space[4096];
     Query_Bar bar = {};
-    bar.prompt = push_u8_stringf(scratch, "Save '%.*s' to: ", string_expand(buffer_name));
+    bar.prompt = push_stringf(scratch, "Save '%.*s' to: ", string_expand(buffer_name));
     bar.string = SCu8(name_space, (u64)0);
     bar.string_capacity = sizeof(name_space);
     if (query_user_string(app, &bar)){
@@ -1488,7 +1488,7 @@ CUSTOM_DOC("Queries the user for a new name and renames the file of the current 
         String_Const_u8 front = string_front_of_path(file_name);
         u8 name_space[4096];
         Query_Bar bar = {};
-        bar.prompt = push_u8_stringf(scratch, "Rename '%.*s' to: ", string_expand(front));
+        bar.prompt = push_stringf(scratch, "Rename '%.*s' to: ", string_expand(front));
         bar.string = SCu8(name_space, (u64)0);
         bar.string_capacity = sizeof(name_space);
         if (query_user_string(app, &bar) && bar.string.size != 0){
@@ -1519,14 +1519,14 @@ CUSTOM_DOC("Queries the user for a name and creates a new directory with the giv
     Query_Bar_Group group(app);
     u8 name_space[4096];
     Query_Bar bar = {};
-    bar.prompt = push_u8_stringf(scratch, "Make directory at '%.*s': ", string_expand(hot));
+    bar.prompt = push_stringf(scratch, "Make directory at '%.*s': ", string_expand(hot));
     bar.string = SCu8(name_space, (u64)0);
     bar.string_capacity = sizeof(name_space);
     
     if (!query_user_string(app, &bar)) return;
     if (bar.string.size == 0) return;
     
-    String_Const_u8 cmd = push_u8_stringf(scratch, "mkdir %.*s", string_expand(bar.string));
+    String_Const_u8 cmd = push_stringf(scratch, "mkdir %.*s", string_expand(bar.string));
     exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
 }
 
@@ -1563,7 +1563,7 @@ CUSTOM_DOC("Create a copy of the line on which the cursor sits.")
     i64 line = get_line_number_from_pos(app, buffer, pos);
     Scratch_Block scratch(app);
     String_Const_u8 s = push_buffer_line(app, scratch, buffer, line);
-    s = push_u8_stringf(scratch, "%.*s\n", string_expand(s));
+    s = push_stringf(scratch, "%.*s\n", string_expand(s));
     pos = get_line_side_pos(app, buffer, line, Side_Min);
     buffer_replace_range(app, buffer, Ii64(pos), s);
 }
@@ -1610,7 +1610,7 @@ CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to op
             path = string_chop(path, 1);
         }
         
-        String_Const_u8 new_file_name = push_u8_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
+        String_Const_u8 new_file_name = push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
         
         view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
         if (view != 0){
@@ -1653,7 +1653,7 @@ get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffe
         for (i32 i = 0; i < new_extensions_count; i += 1){
             Temp_Memory temp = begin_temp(scratch);
             String_Const_u8 new_extension = new_extensions[i];
-            String_Const_u8 new_file_name = push_u8_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
+            String_Const_u8 new_file_name = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
             if (open_file(app, buffer_out, new_file_name, false, true)){
                 result = true;
                 break;
@@ -1662,7 +1662,7 @@ get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffe
         }
         
         if (!result && new_extensions_count > 0){
-            String_Const_u8 new_file_name = push_u8_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
+            String_Const_u8 new_file_name = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
             if (open_file(app, buffer_out, new_file_name, false, false)){
                 result = true;
             }
@@ -2098,7 +2098,7 @@ CUSTOM_DOC("Notes the external modification of attached files by printing a mess
         Scratch_Block scratch(app);
         Buffer_ID buffer_id = input.event.core.id;
         String_Const_u8 name = push_buffer_unique_name(app, scratch, buffer_id);
-        String_Const_u8 str = push_u8_stringf(scratch, "Modified externally: %s\n", name.str);
+        String_Const_u8 str = push_stringf(scratch, "Modified externally: %s\n", name.str);
         print_message(app, str);
     }
 }

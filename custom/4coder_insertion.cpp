@@ -91,7 +91,7 @@ insertf(Buffer_Insertion *insertion, char *format, ...){
     Scratch_Block scratch(insertion->app);
     va_list args;
     va_start(args, format);
-    String_Const_u8 string = push_u8_stringfv(scratch, format, args);
+    String_Const_u8 string = push_stringfv(scratch, format, args);
     va_end(args);
     insert_string(insertion, string);
     return(string.size);

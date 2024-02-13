@@ -586,7 +586,7 @@ vim_run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String
 	}
 	else{
 #define M "ERROR: No refresh handler specified for lister (query_string = \"%.*s\")\n"
-		print_message(app, push_u8_stringf(arena, M, string_expand(query)));
+		print_message(app, push_stringf(arena, M, string_expand(query)));
 #undef M
 		result.canceled = true;
 	}

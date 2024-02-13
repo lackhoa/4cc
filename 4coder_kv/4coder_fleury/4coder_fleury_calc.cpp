@@ -1226,8 +1226,8 @@ GetDataFromSourceCode(Application_Links *app, Buffer_ID buffer, Text_Layout_ID t
     }
 }
 
-static void
-GraphCalcExpression(Application_Links *app, Face_ID face_id,
+internal void
+GraphCalcExpression(App *app, Face_ID face_id,
                     Rect_f32 region, CalcInterpretGraph *first_graph,
                     CalcInterpretContext *context)
 {
@@ -1235,9 +1235,9 @@ GraphCalcExpression(Application_Links *app, Face_ID face_id,
     Rect_f32 plot_view = first_graph->plot_view;
     
     int plot_count = 0;
-    for(CalcInterpretGraph *graph = first_graph; 
-        graph && graph->parent_call == parent_call;
-        graph = graph->next)
+    for (CalcInterpretGraph *graph = first_graph; 
+         graph && graph->parent_call == parent_call;
+         graph = graph->next)
     {
         ++plot_count;
     }
@@ -1264,9 +1264,9 @@ GraphCalcExpression(Application_Links *app, Face_ID face_id,
     }
     Plot2DBegin(&plot);
     
-    for(CalcInterpretGraph *graph = first_graph; 
-        graph && graph->parent_call == parent_call;
-        graph = graph->next)
+    for (CalcInterpretGraph *graph = first_graph; 
+         graph && graph->parent_call == parent_call;
+         graph = graph->next)
     {
         switch(plot.mode)
         {
@@ -1274,15 +1274,13 @@ GraphCalcExpression(Application_Links *app, Face_ID face_id,
             case Plot2DMode_Line:
             {
                 Plot2DPoints(&plot, graph->style_flags, graph->x_data, graph->y_data, graph->data_count);
-                break;
-            }
+            }break;
             
             //~ NOTE(rjf): Histogram
             case Plot2DMode_Histogram:
             {
                 Plot2DHistogram(&plot, graph->data, graph->data_count);
-                break;
-            }
+            }break;
             
             default: break;
         }
@@ -1298,7 +1296,7 @@ struct CalcFindInputResult
     int number_unknowns;
 };
 
-static CalcFindInputResult
+internal CalcFindInputResult
 FindUnknownForGraph(CalcSymbolTable *table, CalcNode *expression)
 {
     CalcFindInputResult result = {};
@@ -2298,142 +2296,145 @@ CalcInterpretContextInit(Application_Links *app, Buffer_ID buffer, Text_Layout_I
 }
 
 function void
-F4_CLC_RenderCode(Application_Links *app, Buffer_ID buffer,
+F4_CLC_RenderCode(App *app, Buffer_ID buffer,
                   View_ID view, Text_Layout_ID text_layout_id,
                   Arena *arena, char *code_buffer,
                   i64 start_char_offset)
 {
-  ProfileScope(app, "[Fleury] Render Calc Code");
-  
-  f32 current_time = global_calc_time;
-  CalcSymbolTable symbol_table = CalcSymbolTableInit(arena, 1024);
-  {// NOTE(rjf): Add default symbols.
-    CalcValue pi = CalcValueF64(3.1415926535897);
-    CalcValue e  = CalcValueF64(2.71828);
-    CalcSymbolTableAdd(&symbol_table, "pi", 2, pi);
-    CalcSymbolTableAdd(&symbol_table, "e", 1, e);
-  }
-  
-  CalcInterpretContext context_ = CalcInterpretContextInit(app, buffer, text_layout_id, arena,
-                                                           &symbol_table, current_time);
-  CalcInterpretContext *context = &context_;
-  
-  CalcNode *expr;
-  {
-    char *at = code_buffer;
-    expr = ParseCalcCode(arena, &at);
-  }
-  
-  Rect_f32 last_graph_rect = {};
-  
-  for(CalcNode *interpret_expression = expr; 
-      interpret_expression;
-      interpret_expression = interpret_expression->next)
-  {
-    char *at_source = interpret_expression->at_source;
+    ProfileScope(app, "[Fleury] Render Calc Code");
     
-    // NOTE(rjf): Find starting result layout position.
-    Vec2_f32 result_layout_position = {};
-    if(at_source)
-    {
-      i64 offset = (i64)(at_source - code_buffer);
-      for (int i = 0; at_source[i] && at_source[i] != '\n'; ++i)
-      {
-        ++offset;
-      }
-      i64 buffer_offset = start_char_offset + offset;
-      Rect_f32 last_character_rect = text_layout_character_on_screen(app, text_layout_id, buffer_offset);
-      result_layout_position.x = last_character_rect.x0;
-      result_layout_position.y = last_character_rect.y0;
-      result_layout_position.x += 20;
+    f32 current_time = global_calc_time;
+    CalcSymbolTable symbol_table = CalcSymbolTableInit(arena, 1024);
+    {// NOTE(rjf): Add default symbols.
+        CalcValue pi = CalcValueF64(3.1415926535897);
+        CalcValue e  = CalcValueF64(2.71828);
+        CalcSymbolTableAdd(&symbol_table, "pi", 2, pi);
+        CalcSymbolTableAdd(&symbol_table, "e", 1, e);
     }
     
-    CalcInterpretResult result = InterpretCalcCode(context, interpret_expression);
+    CalcInterpretContext context_ = CalcInterpretContextInit(app, buffer, text_layout_id, arena,
+                                                             &symbol_table, current_time);
+    CalcInterpretContext *context = &context_;
     
-    if(result_layout_position.x > 0 && result_layout_position.y > 0)
+    CalcNode *expr;
     {
-      // NOTE(rjf): Draw result, if there's one.
-      {
-        String_Const_u8 result_string = {};
-        
-        switch(result.value.type)
-        {
-          case CalcType_Error:
-          {
-            if(expr == 0 || !result.value.as_error.size)
-            {
-              result_string = push_stringf(arena, "(error: Parse failure.)");
-            }
-            else
-            {
-              result_string = push_stringf(arena, "(error: %.*s)", string_expand(result.value.as_error));
-            }
-            break;
-          }
-          case CalcType_Number:
-          {
-            result_string = push_stringf(arena, "= %f", result.value.as_f64);
-            break;
-          }
-          case CalcType_String:
-          {
-            result_string = push_stringf(arena, "= %.*s", string_expand(result.value.as_string));
-            break;
-          }
-          default: break;
-        }
-        
-        Vec2_f32 point = result_layout_position;
-        
-        u32 color = finalize_color(defcolor_comment, 0);
-        color &= 0x00ffffff;
-        color |= 0x80000000;
-        draw_string(app, get_face_id(app, buffer), result_string, point, color);
-      }
-      
-      // NOTE(rjf): Draw graphs.
-      {
-        Rect_f32 view_rect = view_get_screen_rect(app, view);
-        
-        Rect_f32 graph_rect = {};
-        {
-          graph_rect.x0 = view_rect.x1 - 30 - 300;
-          graph_rect.y0 = result_layout_position.y + 30 - 100;
-          graph_rect.x1 = graph_rect.x0 + 300;
-          graph_rect.y1 = graph_rect.y0 + 200;
-        }
-        
-        CalcNode *last_parent_call = 0;
-        for(CalcInterpretGraph *graph = result.first_graph; 
-              graph;
-            graph = graph->next)
-        {
-          if(last_parent_call == 0 || graph->parent_call != last_parent_call)
-          {
-            if(last_graph_rect.x0 != 0 && rect_overlap(graph_rect, last_graph_rect))
-            {
-              graph_rect.y0 = last_graph_rect.y1 + 50;
-              graph_rect.y1 = graph_rect.y0 + 200;
-            }
-            
-            last_graph_rect = graph_rect;
-            
-            GraphCalcExpression(app, get_face_id(app, buffer), graph_rect, graph, context);
-            
-            // NOTE(rjf): Bump graph rect forward.
-            {
-              f32 rect_height = graph_rect.y1 - graph_rect.y0;
-              graph_rect.y0 += rect_height + 50;
-              graph_rect.y1 += rect_height + 50;
-              result_layout_position.y += rect_height + 50;
-            }
-            
-            last_parent_call = graph->parent_call;
-          }
-        }
-      }
+        char *at = code_buffer;
+        expr = ParseCalcCode(arena, &at);
     }
-  }
+    
+    Rect_f32 last_graph_rect = {};
+    
+    for(CalcNode *interpret_expression = expr; 
+        interpret_expression;
+        interpret_expression = interpret_expression->next)
+    {
+        char *at_source = interpret_expression->at_source;
+        
+        // NOTE(rjf): Find starting result layout position.
+        Vec2_f32 result_layout_position = {};
+        if(at_source)
+        {
+            i64 offset = (i64)(at_source - code_buffer);
+            for (int i = 0; 
+                 at_source[i] && (at_source[i] != '\r') && (at_source[i] != '\n'); 
+                 ++i)
+            {
+                ++offset;
+            }
+            i64 buffer_offset = start_char_offset + offset;
+            Rect_f32 last_character_rect = text_layout_character_on_screen(app, text_layout_id, buffer_offset);
+            result_layout_position.x = last_character_rect.x0;
+            result_layout_position.y = last_character_rect.y0;
+            result_layout_position.x += 20;
+        }
+        
+        CalcInterpretResult result = InterpretCalcCode(context, interpret_expression);
+        
+        if(result_layout_position.x > 0 && result_layout_position.y > 0)
+        {
+            // NOTE(rjf): Draw result, if there's one.
+            {
+                String_Const_u8 result_string = {};
+                
+                switch(result.value.type)
+                {
+                    case CalcType_Error:
+                    {
+                        if(expr == 0 || !result.value.as_error.size)
+                        {
+                            result_string = push_stringf(arena, "(error: Parse failure.)");
+                        }
+                        else
+                        {
+                            result_string = push_stringf(arena, "(error: %.*s)", string_expand(result.value.as_error));
+                        }
+                        break;
+                    }
+                    case CalcType_Number:
+                    {
+                        result_string = push_stringf(arena, "= %f", result.value.as_f64);
+                        break;
+                    }
+                    case CalcType_String:
+                    {
+                        result_string = push_stringf(arena, "= %.*s", string_expand(result.value.as_string));
+                        break;
+                    }
+                    default: break;
+                }
+                
+                Vec2_f32 point = result_layout_position;
+                
+                u32 color = finalize_color(defcolor_comment, 0);
+                color &= 0x00ffffff;
+                color |= 0x80000000;
+                draw_string(app, get_face_id(app, buffer), result_string, point, color);
+            }
+            
+            // NOTE(rjf): Draw graphs.
+            {
+                Rect_f32 view_rect = view_get_screen_rect(app, view);
+                
+                Rect_f32 graph_rect = {};
+                {
+                    graph_rect.x0 = view_rect.x1 - 30 - 300;
+                    graph_rect.y0 = result_layout_position.y + 30 - 100;
+                    graph_rect.x1 = graph_rect.x0 + 300;
+                    graph_rect.y1 = graph_rect.y0 + 200;
+                }
+                
+                CalcNode *last_parent_call = 0;
+                for(CalcInterpretGraph *graph = result.first_graph; 
+                    graph;
+                    graph = graph->next)
+                {
+                    if(last_parent_call == 0 || graph->parent_call != last_parent_call)
+                    {
+                        if(last_graph_rect.x0 != 0 && 
+                           rect_overlap(graph_rect, last_graph_rect))
+                        {
+                            graph_rect.y0 = last_graph_rect.y1 + 50;
+                            graph_rect.y1 = graph_rect.y0 + 200;
+                        }
+                        
+                        last_graph_rect = graph_rect;
+                        
+                        GraphCalcExpression(app, get_face_id(app, buffer), graph_rect, graph, context);
+                        
+                        // NOTE(rjf): Bump graph rect forward.
+                        {
+                            f32 rect_height = graph_rect.y1 - graph_rect.y0;
+                            graph_rect.y0 += rect_height + 50;
+                            graph_rect.y1 += rect_height + 50;
+                            result_layout_position.y += rect_height + 50;
+                        }
+                        
+                        last_parent_call = graph->parent_call;
+                    }
+                }
+            }
+        }
+    }
 }
 
 function void

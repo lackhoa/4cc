@@ -126,7 +126,7 @@ prj_open_files_pattern_filter__rec(Application_Links *app, String8 path, Prj_Pat
             if (prj_match_in_pattern_list(file_name, blacklist)){
                 continue;
             }
-            String8 new_path = push_u8_stringf(scratch, "%.*s%.*s/", string_expand(path), string_expand(file_name));
+            String8 new_path = push_stringf(scratch, "%.*s%.*s/", string_expand(path), string_expand(file_name));
             prj_open_files_pattern_filter__rec(app, new_path, whitelist, blacklist, flags);
         }
         else{
@@ -136,7 +136,7 @@ prj_open_files_pattern_filter__rec(Application_Links *app, String8 path, Prj_Pat
             if (prj_match_in_pattern_list(file_name, blacklist)){
                 continue;
             }
-            String8 full_path = push_u8_stringf(scratch, "%.*s%.*s", string_expand(path), string_expand(file_name));
+            String8 full_path = push_stringf(scratch, "%.*s%.*s", string_expand(path), string_expand(file_name));
             create_buffer(app, full_path, 0);
         }
     }
@@ -148,7 +148,7 @@ prj_open_files_pattern_filter(Application_Links *app, String8 dir, Prj_Pattern_L
     Scratch_Block scratch(app);
     String8 directory = dir;
     if (!character_is_slash(string_get_character(directory, directory.size - 1))){
-        directory = push_u8_stringf(scratch, "%.*s/", string_expand(dir));
+        directory = push_stringf(scratch, "%.*s/", string_expand(dir));
     }
     prj_open_files_pattern_filter__rec(app, directory, whitelist, blacklist, flags);
 }
@@ -159,7 +159,7 @@ prj_open_all_files_with_ext_in_hot(Application_Links *app, String8Array array, P
     String8 hot = push_hot_directory(app, scratch);
     String8 directory = hot;
     if (!character_is_slash(string_get_character(hot, hot.size - 1))){
-        directory = push_u8_stringf(scratch, "%.*s/", string_expand(hot));
+        directory = push_stringf(scratch, "%.*s/", string_expand(hot));
     }
     Prj_Pattern_List whitelist = prj_pattern_list_from_extension_array(scratch, array);
     Prj_Pattern_List blacklist = prj_get_standard_blacklist(scratch);
@@ -353,21 +353,21 @@ prj_file_is_setup(Application_Links *app, String8 script_path, String8 script_fi
     Prj_Setup_Status result = {};
     {
         Scratch_Block scratch(app);
-        String8 bat_path = push_u8_stringf(scratch, "%.*s/%.*s.bat",
+        String8 bat_path = push_stringf(scratch, "%.*s/%.*s.bat",
                                            string_expand(script_path),
                                            string_expand(script_file));
         result.bat_exists = file_exists(app, bat_path);
     }
     {
         Scratch_Block scratch(app);
-        String8 sh_path = push_u8_stringf(scratch, "%.*s/%.*s.sh",
+        String8 sh_path = push_stringf(scratch, "%.*s/%.*s.sh",
                                           string_expand(script_path),
                                           string_expand(script_file));
         result.sh_exists = file_exists(app, sh_path);
     }
     {
         Scratch_Block scratch(app);
-        String8 project_path = push_u8_stringf(scratch, "%.*s/project.4coder",
+        String8 project_path = push_stringf(scratch, "%.*s/project.4coder",
                                                string_expand(script_path));
         result.sh_exists = file_exists(app, project_path);
     }
@@ -390,7 +390,7 @@ prj_generate_bat(Arena *scratch, String8 opts, String8 compiler, String8 script_
     string_mod_replace_character(od, '/', '\\');
     string_mod_replace_character(bf, '/', '\\');
     
-    String8 file_name = push_u8_stringf(scratch, "%.*s/%.*s.bat",
+    String8 file_name = push_stringf(scratch, "%.*s/%.*s.bat",
                                         string_expand(script_path),
                                         string_expand(script_file));
     
@@ -422,7 +422,7 @@ prj_generate_sh(Arena *scratch, String8 opts, String8 compiler, String8 script_p
     String8 od = output_dir;
     String8 bf = binary_file;
     
-    String8 file_name = push_u8_stringf(scratch, "%.*s/%.*s.sh",
+    String8 file_name = push_stringf(scratch, "%.*s/%.*s.sh",
                                         string_expand(script_path),
                                         string_expand(script_file));
     
@@ -457,7 +457,7 @@ prj_generate_project(Arena *scratch, String8 script_path, String8 script_file, S
     String8 bf_win = string_replace(scratch, bf,
                                     string_u8_litexpr("/"), string_u8_litexpr("\\"));
     
-    String8 file_name = push_u8_stringf(scratch, "%.*s/project.4coder", string_expand(script_path));
+    String8 file_name = push_stringf(scratch, "%.*s/project.4coder", string_expand(script_path));
     
     FILE *out = fopen((char*)file_name.str, "wb");
     if (out != 0){
@@ -975,7 +975,7 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
     if (proj_name_id != 0)
     {
         String8 proj_name = vars_push_string(scratch, proj_name_id);
-        String8 title = push_u8_stringf(scratch, "4coder project: %.*s", string_expand(proj_name));
+        String8 title = push_stringf(scratch, "4coder project: %.*s", string_expand(proj_name));
         set_window_title(app, title);
     }
 }

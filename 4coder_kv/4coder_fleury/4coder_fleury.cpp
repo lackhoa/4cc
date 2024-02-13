@@ -572,17 +572,18 @@ CUSTOM_DOC("Fleury startup event")
     
     //~ NOTE(rjf): Initialize panels
     {
+        Temp_Block temp(app);
         Buffer_Identifier comp = buffer_identifier(compilation_buffer_name);
-        Buffer_Identifier left  = buffer_identifier(string_u8_litexpr("*calc*"));
-        Buffer_Identifier right = buffer_identifier(string_u8_litexpr("*messages*"));
         Buffer_ID comp_id = buffer_identifier_to_id(app, comp);
-        Buffer_ID left_id = buffer_identifier_to_id(app, left);
-        Buffer_ID right_id = buffer_identifier_to_id(app, right);
+        String8 startup_file       = def_get_config_string(temp, "startup_file1");
+        String8 other_startup_file = def_get_config_string(temp, "other_startup_file1");
+        Buffer_ID left_buffer  = create_buffer(app, startup_file, 0);
+        Buffer_ID right_buffer = create_buffer(app, other_startup_file, 0);
         
         // NOTE(rjf): Left Panel
         View_ID view = get_active_view(app, Access_Always);
         new_view_settings(app, view);
-        view_set_buffer(app, view, left_id, 0);
+        view_set_buffer(app, view, left_buffer, 0);
         
         // NOTE(rjf): Bottom panel
         View_ID compilation_view = 0;
@@ -594,7 +595,7 @@ CUSTOM_DOC("Fleury startup event")
             Face_Metrics metrics = get_face_metrics(app, face_id);
             view_set_split_pixel_size(app, compilation_view, (i32)(metrics.line_height*4.f));
             view_set_passive(app, compilation_view, true);
-            global_compilation_view = compilation_view;
+            global_bottom_view = compilation_view;
             view_set_buffer(app, compilation_view, comp_id, 0);
         }
         
@@ -604,7 +605,7 @@ CUSTOM_DOC("Fleury startup event")
         open_panel_vsplit(app);
         
         View_ID right_view = get_active_view(app, Access_Always);
-        view_set_buffer(app, right_view, right_id, 0);
+        view_set_buffer(app, right_view, right_buffer, 0);
         
         // NOTE(rjf): Restore Active to Left
         view_set_active(app, view);
@@ -641,7 +642,7 @@ CUSTOM_DOC("Fleury startup event")
         {
             Face_Description desc = {};
             {
-                desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+                desc.font.file_name =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = 18;
                 desc.parameters.bold = 0;
                 desc.parameters.italic = 0;
@@ -662,7 +663,7 @@ CUSTOM_DOC("Fleury startup event")
         {
             Face_Description desc = {};
             {
-                desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+                desc.font.file_name =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = 10;
                 desc.parameters.bold = 1;
                 desc.parameters.italic = 1;
@@ -685,7 +686,7 @@ CUSTOM_DOC("Fleury startup event")
             
             Face_Description desc = {};
             {
-                desc.font.file_name =  push_u8_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
+                desc.font.file_name =  push_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = normal_code_desc.parameters.pt_size - 1;
                 desc.parameters.bold = 1;
                 desc.parameters.italic = 1;

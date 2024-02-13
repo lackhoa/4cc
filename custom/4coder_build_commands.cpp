@@ -45,7 +45,7 @@ global String_Const_u8 standard_build_cmd_string_array[] =
 
 internal String_Const_u8
 push_fallback_command(Arena *arena, String_Const_u8 file_name){
-    return(push_u8_stringf(arena, "echo could not find %.*s", string_expand(file_name)));
+    return(push_stringf(arena, "echo could not find %.*s", string_expand(file_name)));
 }
 
 internal String_Const_u8
@@ -88,7 +88,7 @@ standard_search_and_build_from_dir(FApp *app, View_ID view, String8 start_dir, c
     {
         // NOTE(allen): Build
         String_Const_u8 path = string_remove_last_folder(full_file_path);
-        String_Const_u8 command = push_u8_stringf(scratch, "\"%.*s/%.*s\" %s",
+        String_Const_u8 command = push_stringf(scratch, "\"%.*s/%.*s\" %s",
                                                   string_expand(path),
                                                   string_expand(cmd_string),
                                                   command_args);
@@ -97,7 +97,7 @@ standard_search_and_build_from_dir(FApp *app, View_ID view, String8 start_dir, c
             save_all_dirty_buffers(app);
         }
         standard_build_exec_command(app, view, path, command);
-        print_message(app, push_u8_stringf(scratch, "Building with: %.*s\n",
+        print_message(app, push_stringf(scratch, "Building with: %.*s\n",
                                            string_expand(full_file_path)));
     }
     

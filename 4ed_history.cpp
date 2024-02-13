@@ -324,20 +324,20 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
             i64 merged_first = 0;
             if (left->single.first + (i64)left->single.forward_text.size == right->single.first){
                 do_merge = true;
-                merged_forward = push_u8_stringf(scratch, "%.*s%.*s",
+                merged_forward = push_stringf(scratch, "%.*s%.*s",
                                                  string_expand(left->single.forward_text),
                                                  string_expand(right->single.forward_text));
-                merged_backward = push_u8_stringf(scratch, "%.*s%.*s",
+                merged_backward = push_stringf(scratch, "%.*s%.*s",
                                                   string_expand(left->single.backward_text),
                                                   string_expand(right->single.backward_text));
                 merged_first = left->single.first;
             }
             else if (right->single.first + (i64)right->single.backward_text.size == left->single.first){
                 do_merge = true;
-                merged_forward = push_u8_stringf(scratch, "%.*s%.*s",
+                merged_forward = push_stringf(scratch, "%.*s%.*s",
                                                  string_expand(right->single.forward_text),
                                                  string_expand(left->single.forward_text));
-                merged_backward = push_u8_stringf(scratch, "%.*s%.*s",
+                merged_backward = push_stringf(scratch, "%.*s%.*s",
                                                   string_expand(right->single.backward_text),
                                                   string_expand(left->single.backward_text));
                 merged_first = right->single.first;

@@ -24,10 +24,10 @@ write_named_comment_string(Application_Links *app, char *type_string){
     String_Const_u8 name = def_get_config_string(scratch, vars_intern_lit("user_name"));
     String_Const_u8 str = {};
     if (name.size > 0){
-        str = push_u8_stringf(scratch, "// %s(%.*s): ", type_string, string_expand(name));
+        str = push_stringf(scratch, "// %s(%.*s): ", type_string, string_expand(name));
     }
     else{
-        str = push_u8_stringf(scratch, "// %s: ", type_string);
+        str = push_stringf(scratch, "// %s: ", type_string);
     }
     write_string(app, str);
 }

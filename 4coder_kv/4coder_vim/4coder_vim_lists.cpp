@@ -77,7 +77,7 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 	Temp_Memory temp = begin_temp(lister->arena);
 	String_Const_u8 hot = push_hot_directory(app, lister->arena);
 	if (!character_is_slash(string_get_character(hot, hot.size - 1))){
-		hot = push_u8_stringf(lister->arena, "%.*s/", string_expand(hot));
+		hot = push_stringf(lister->arena, "%.*s/", string_expand(hot));
 	}
 	lister_set_text_field(lister, hot);
 	lister_set_key(lister, string_front_of_path(hot));
@@ -98,7 +98,7 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 			 info < one_past_last;
 			 info += 1){
 			if (!HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-			String_Const_u8 file_name = push_u8_stringf(lister->arena, "%.*s/",
+			String_Const_u8 file_name = push_stringf(lister->arena, "%.*s/",
 														string_expand((**info).file_name));
 			lister_add_item(lister, lister_prealloced(file_name), empty_string_prealloced, file_name.str, 0);
 			;
@@ -133,7 +133,7 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 					case DirtyState_UnsavedChangesAndUnloadedChanges: status_flag = " *!"; break;
 				}
 			}
-			String_Const_u8 status = push_u8_stringf(lister->arena, "%s%s", is_loaded, status_flag);
+			String_Const_u8 status = push_stringf(lister->arena, "%s%s", is_loaded, status_flag);
 			lister_add_item(lister, lister_prealloced(file_name), lister_prealloced(status), file_name.str, 0);
 		}
 	}
@@ -169,7 +169,7 @@ vim_query_create_folder(Application_Links *app, String_Const_u8 folder_name){
     lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
     lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
 
-    String_Const_u8 message = push_u8_stringf(scratch, "Create the folder %.*s?", string_expand(folder_name));
+    String_Const_u8 message = push_stringf(scratch, "Create the folder %.*s?", string_expand(folder_name));
     Lister_Choice *choice = vim_get_choice_from_user(app, message, list);
 
 	b32 did_create_folder = false;
@@ -184,7 +184,7 @@ vim_query_create_folder(Application_Links *app, String_Const_u8 folder_name){
 					if(fixed_folder_name.str[i] == '/'){ fixed_folder_name.str[i] = '\\'; }
 				}
                 if(fixed_folder_name.size > 0){
-                    String_Const_u8 cmd = push_u8_stringf(scratch, "mkdir %.*s", string_expand(fixed_folder_name));
+                    String_Const_u8 cmd = push_stringf(scratch, "mkdir %.*s", string_expand(fixed_folder_name));
                     exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
                     did_create_folder = true;
 				}
@@ -210,7 +210,7 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
 
 		String_Const_u8 path = result.path_in_text_field;
 		String_Const_u8 full_file_name =
-			push_u8_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(file_name));
+			push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(file_name));
 
 		if(result.is_folder){
 			set_hot_directory(app, full_file_name);
@@ -471,7 +471,7 @@ vim_do_buffer_close_user_check(Application_Links *app, Buffer_ID buffer, View_ID
                     do_kill = true;
                 }else{
 #define M "Did not close '%.*s' because it did not successfully save."
-                    String_Const_u8 str = push_u8_stringf(scratch, M, string_expand(file_name));
+                    String_Const_u8 str = push_stringf(scratch, M, string_expand(file_name));
 #undef M
                     print_message(app, str);
                 }

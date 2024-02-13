@@ -571,12 +571,12 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                         
                         uniqueifier = SCu8(start, end);
                         if (past_the_end){
-                            uniqueifier = push_u8_stringf(scratch, "%.*s~%d",
+                            uniqueifier = push_stringf(scratch, "%.*s~%d",
                                                           string_expand(uniqueifier), i);
                         }
                     }
                     else{
-                        uniqueifier = push_u8_stringf(scratch, "%d", i);
+                        uniqueifier = push_stringf(scratch, "%d", i);
                     }
                     
                     String_u8 builder = Su8(conflict->unique_name_in_out,

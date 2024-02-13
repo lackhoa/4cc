@@ -185,7 +185,7 @@ push_fancy_stringfv(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                     f32 pre_margin, f32 post_margin,
                     char *format, va_list args){
     return(push_fancy_string(arena, line, face, fore, pre_margin, post_margin,
-                             push_u8_stringfv(arena, format, args)));
+                             push_stringfv(arena, format, args)));
 }
 internal Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
@@ -239,7 +239,7 @@ push_fancy_stringf(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                    char *format, ...){
     StringFBegin();
     StringFPass(push_fancy_string(arena, line, face, fore, pre_margin, post_margin,
-                                  push_u8_stringfv(arena, format, args)));
+                                  push_stringfv(arena, format, args)));
     StringFEnd();
 }
 internal Fancy_String*

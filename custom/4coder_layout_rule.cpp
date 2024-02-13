@@ -57,47 +57,54 @@ list->height += bottom_padding;
 }
 
 function void
-layout_write(Arena *arena, Layout_Item_List *list, Face_ID face, i64 index, u32 codepoint, Layout_Item_Flag flags, Rect_f32 rect, f32 padded_y1){
-Temp_Memory restore_point = begin_temp(arena);
-Layout_Item *item = push_array(arena, Layout_Item, 1);
-Layout_Item_Block *block = list->last;
-if (block != 0){
-if (block->face != face){
-block = 0;
-}
-else if (block->items + block->item_count == item){
-block->item_count += 1;
-}
-else{
-block = 0;
-}
-}
-if (block == 0){
-end_temp(restore_point);
-block = push_array(arena, Layout_Item_Block, 1);
-item = push_array(arena, Layout_Item, 1);
-sll_queue_push(list->first, list->last, block);
-list->node_count += 1;
-block->items = item;
-block->item_count = 1;
-block->face = face;
-}
-
-list->item_count += 1;
-list->manifested_index_range.min = Min(list->manifested_index_range.min, index);
-list->manifested_index_range.max = Max(list->manifested_index_range.max, index);
-
-if (!HasFlag(flags, LayoutItemFlag_Ghost_Character)){
-block->character_count += 1;
-list->character_count += 1;
-}
-
-item->index = index;
-item->codepoint = codepoint;
-item->flags = flags;
-item->rect = rect;
-item->padded_y1 = padded_y1;
-list->height = Max(list->height, rect.y1);
+layout_write(Arena *arena, Layout_Item_List *list, Face_ID face, i64 index, u32 codepoint, Layout_Item_Flag flags, Rect_f32 rect, f32 padded_y1)
+{
+    Temp_Memory restore_point = begin_temp(arena);
+    Layout_Item *item = push_array(arena, Layout_Item, 1);
+    Layout_Item_Block *block = list->last;
+    if (block != 0)
+    {
+        if (block->face != face)
+        {
+            block = 0;
+        }
+        else if (block->items + block->item_count == item)
+        {
+            block->item_count += 1;
+        }
+        else
+        {
+            block = 0;
+        }
+    }
+    if (block == 0)
+    {
+        end_temp(restore_point);
+        block = push_array(arena, Layout_Item_Block, 1);
+        item  = push_array(arena, Layout_Item, 1);
+        sll_queue_push(list->first, list->last, block);
+        list->node_count += 1;
+        block->items = item;
+        block->item_count = 1;
+        block->face = face;
+    }
+    
+    list->item_count += 1;
+    list->manifested_index_range.min = Min(list->manifested_index_range.min, index);
+    list->manifested_index_range.max = Max(list->manifested_index_range.max, index);
+    
+    if (!HasFlag(flags, LayoutItemFlag_Ghost_Character))
+    {
+        block->character_count += 1;
+        list->character_count += 1;
+    }
+    
+    item->index = index;
+    item->codepoint = codepoint;
+    item->flags = flags;
+    item->rect = rect;
+    item->padded_y1 = padded_y1;
+    list->height = Max(list->height, rect.y1);
 }
 
 ////

@@ -263,7 +263,7 @@ App_Init_Sig(app_init){
         Scratch_Block scratch(tctx, arena);
         
         String8 binary_path = system_get_path(scratch, SystemPath_Binary);
-        String8 full_path = push_u8_stringf(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
+        String8 full_path = push_stringf(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
         
         Face_Description description = {};
         description.font.file_name = full_path;
@@ -388,7 +388,7 @@ App_Step_Sig(app_step){
             
             if (system_cli_end_update(cli)){
                 if (file != 0){
-                    String_Const_u8 str = push_u8_stringf(scratch, "exited with code %d", cli->exit);
+                    String_Const_u8 str = push_stringf(scratch, "exited with code %d", cli->exit);
                     output_file_append(tctx, models, file, str);
                 }
                 processes_to_free[processes_to_free_count++] = child_process;
