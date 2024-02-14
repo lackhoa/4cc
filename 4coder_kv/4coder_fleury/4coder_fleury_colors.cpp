@@ -98,7 +98,7 @@ ColorCtx_Cursor(ColorFlags flags, keybinding_mode mode)
     return ctx;
 }
 
-static ARGB_Color
+internal ARGB_Color
 F4_ARGBFromID(Color_Table table, Managed_ID id, int subindex)
 {
     ARGB_Color result = 0;
@@ -114,7 +114,7 @@ F4_ARGBFromID(Color_Table table, Managed_ID id, int subindex)
     return(result);
 }
 
-static ARGB_Color
+internal ARGB_Color
 F4_ARGBFromID(Color_Table table, Managed_ID id)
 {
     return F4_ARGBFromID(table, id, 0);

@@ -79,7 +79,9 @@ byp_draw_cpp_token_colors(Application_Links *app, Text_Layout_ID text_layout_id,
 	}
 }
 
-function void byp_draw_token_colors(Application_Links *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id){
+function void 
+byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id)
+{
 	Token_Array token_array = get_token_array_from_buffer(app, buffer);
 	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
 
@@ -122,46 +124,57 @@ function void byp_draw_token_colors(Application_Links *app, View_ID view, Buffer
 		}
 	}
 
-	// NOTE(BYP): @Annotations
-	{
+    ARGB_Color comment_pop_0 = finalize_color(defcolor_comment_pop, 0);
+    ARGB_Color comment_pop_1 = finalize_color(defcolor_comment_pop, 1);
+    ARGB_Color comment_pop_2 = finalize_color(defcolor_comment_pop, 2);
+    
+	{// NOTE(BYP): @Annotations
 		i64 first_index = token_index_from_pos(&token_array, visible_range.first);
 		Token_Iterator_Array comment_it = token_iterator_index(buffer, &token_array, first_index);
-		for(;;){
+		for(;;)
+        {
 			Token *token = token_it_read(&comment_it);
 			if(token->pos >= visible_range.max){ break; }
 			String_Const_u8 tail = {};
-			if(token_it_check_and_get_lexeme(app, scratch, &comment_it, TokenBaseKind_Comment, &tail)){
-				foreach(i, token->size){
-					if(tail.str[i] == '@'){
-						Range_i64 annot_range = Ii64(i);
+			if(token_it_check_and_get_lexeme(app, scratch, &comment_it, TokenBaseKind_Comment, &tail))
+            {
+				foreach(i, token->size)
+                {
+					if(tail.str[i] == '@')
+                    {
+                        Range_i64 annot_range = Ii64(i);
 						i32 j=i+1;
-						for(; j<token->size; j++){
-							if(character_is_whitespace(tail.str[j]) || !character_is_alpha_numeric(tail.str[j])){
+						for(; j<token->size; j++)
+                        {
+							if( character_is_whitespace   (tail.str[j]) || 
+                               !character_is_alpha_numeric(tail.str[j]) )
+                            {
 								break;
 							}
 						}
 						annot_range.max = j;
-						if(annot_range.min != annot_range.max-1){
+						if(annot_range.min != annot_range.max-1)
+                        {
 							annot_range += token->pos;
-							paint_text_color(app, text_layout_id, annot_range, 0xFFFF0000);
+							paint_text_color(app, text_layout_id, annot_range, comment_pop_0);
 						}
 					}
 				}
 			}
-			if(!token_it_inc_non_whitespace(&comment_it)){ break; }
+			if (!token_it_inc_non_whitespace(&comment_it)){ break; }
 		}
 	}
 
 	// NOTE(allen): Scan for TODOs and NOTEs
 	{
 		Comment_Highlight_Pair pairs[] = {
-			{string_u8_litexpr("NOTE"), finalize_color(defcolor_comment_pop, 0)},
-			{string_u8_litexpr("note"), finalize_color(defcolor_comment_pop, 0)},
-			{string_u8_litexpr("TODO"), finalize_color(defcolor_comment_pop, 1)},
-			{string_u8_litexpr("todo"), finalize_color(defcolor_comment_pop, 1)},
-			{string_u8_litexpr("important"), finalize_color(defcolor_comment_pop, 2)},
-            {string_u8_litexpr("IMPORTANT"), finalize_color(defcolor_comment_pop, 2)},
-            {string_u8_litexpr("nono"),      finalize_color(defcolor_comment_pop, 2)},  // ignore_nono
+			{str8lit("NOTE"), comment_pop_0},
+			{str8lit("note"), comment_pop_0},
+			{str8lit("TODO"), comment_pop_1},
+			{str8lit("todo"), comment_pop_1},
+			{str8lit("important"), comment_pop_2},
+            {str8lit("IMPORTANT"), comment_pop_2},
+            {str8lit("nono"),      comment_pop_2},  // ignore_nono
 		};
 		draw_comment_highlights(app, buffer, text_layout_id, &token_array, pairs, ArrayCount(pairs));
 	}

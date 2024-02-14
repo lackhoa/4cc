@@ -297,26 +297,33 @@ pow(f32 input, i32 power)
 }
 
 internal void
-draw_bezier(App *app, v2 *controls)
+draw_cubic_bezier(App *app, v2 P[4])
 {
     v4 grayv4  = {.5, .5, .5, 1};
     u32 gray   = pack_argb(grayv4);
     
     i32 nslices = 16;
     f32 du = 1.0f / (f32)nslices;
-    i32 ncontrols = 4;
     for_i32 (sample_index, 1, nslices)
     {
         f32 u = du * (f32)sample_index;
-        v2 position = {};
-        for_i32 (control_index, 0, ncontrols)
-        {
-            f32 u_factor     = pow(u, control_index);
-            f32 inv_u_factor = pow(1-u, ncontrols-control_index-1);
-            position += inv_u_factor * u_factor * controls[control_index];
-        }
+        f32 U = 1.0f-u;
+        v2 position = (pow(U,3)*    P[0] + 
+                       3*pow(U,2)*u*P[1] +
+                       3*U*pow(u,2)*P[2] +
+                       pow(u,3)*    P[3]);
         draw_circle(app, position, 10, gray);
     }
+}
+
+internal v2 
+perspective_project(v3 camera_p, v3 camera_transposed[3], f32 d_camera_screen, v3 point)
+{
+    v3 projected = matvmul3(camera_transposed, point);
+    // NOTE: distance is in z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
+    f32 dz_point_camera = absolute(camera_p.z - projected.z);
+    v3 result_v3 = (d_camera_screen / dz_point_camera) * projected;
+    return result_v3.xy;
 }
 
 internal void
@@ -336,10 +343,10 @@ game_update_and_render(App *app, View_ID view, rect2 region)
  
     if (1)
     {// NOTE: bezier surface experiment!
-        fslider( c0, v2{ -0.762436, 0.447450 } );
-        fslider( c1, v2{-0.277691, 0.574466} );
-        fslider( c2, v2{3.951374, -1.415742} );
-        fslider( c3, v2{0.785138, 0.500963} );
+        fslider( c0, v2{ -0.910617, -0.632750 } );
+        fslider( c1, v2{ -0.627254, 1.040406 } );
+        fslider( c2, v2{ 0.954310, -0.706654 } );
+        fslider( c3, v2{ 0.344152, 1.014585 } );
         f32 pos_unit = 500;
         v2 control_points[] = {pos_unit*c0, pos_unit*c1, pos_unit*c2, pos_unit*c3};
         //
@@ -349,7 +356,7 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         {
             draw_circle(app, control_points[index], radius*radius_unit, gray);
         }
-        draw_bezier(app, control_points);
+        draw_cubic_bezier(app, control_points);
     }
   
     fslider(software_rendering_slider, 0.1);
@@ -394,13 +401,13 @@ game_update_and_render(App *app, View_ID view, rect2 region)
     draw_set_offset(app, debug_draw_offset);
     
     { // push coordinate system
-        fslider( camera_p_slider, v3{-0.132543, 0.284832, 1.307981} );
+        fslider( camera_p_slider, v3{ 3.893280, -1.663852, 3.886681 } );
         v3 camera_p = 1e3 * camera_p_slider;
         v3 camera_x, camera_y, camera_z;
         camera_z = noz(camera_p);  // NOTE: z comes at you
         camera_x = noz(v3{-camera_z.y, camera_z.x, 0});
         camera_y = noz(cross(camera_z, camera_x));
-       
+        
         // NOTE: Our matrix is column-first, because that's how I roll ya'll!
         v3 camera_transform[3] = {camera_x, camera_y, camera_z};
         
@@ -416,32 +423,17 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         f32 d_camera_screen = 2000.f;  // NOTE: based on real life distance from eye to the screen
         v3 screen_center = camera_p - d_camera_screen * camera_z;
         
-        v3 pO = 1e3 * v3{0,0,0};
-        v3 px = 1e3 * v3{1,0,0};
-        v3 py = 1e3 * v3{0,1,0};
-        v3 pz = 1e3 * v3{0,0,1};
-        
-        v2 pO_screen;
-        v2 px_screen;
-        v2 py_screen;
-        v2 pz_screen;
+        v2 pO_screen, px_screen, py_screen, pz_screen;
         {
-            v3 pO_camera = matvmul3(camera_transposed, pO);
-            v3 px_camera = matvmul3(camera_transposed, px);
-            v3 py_camera = matvmul3(camera_transposed, py);
-            v3 pz_camera = matvmul3(camera_transposed, pz);
-            
-            f32 camera_distance = length(camera_p);
-            f32 screen_ratio = d_camera_screen / camera_distance;
-            v3 pO_screen3 = screen_ratio * pO_camera;
-            v3 px_screen3 = screen_ratio * px_camera;
-            v3 py_screen3 = screen_ratio * py_camera;
-            v3 pz_screen3 = screen_ratio * pz_camera;
+            v3 pO = 1e3 * v3{0,0,0};
+            v3 px = 1e3 * v3{1,0,0};
+            v3 py = 1e3 * v3{0,1,0};
+            v3 pz = 1e3 * v3{0,0,1};
             //
-            pO_screen = pO_screen3.xy;
-            px_screen = px_screen3.xy;
-            py_screen = py_screen3.xy;
-            pz_screen = pz_screen3.xy;
+            pO_screen = perspective_project(camera_p, camera_transposed, d_camera_screen, pO);
+            px_screen = perspective_project(camera_p, camera_transposed, d_camera_screen, px);
+            py_screen = perspective_project(camera_p, camera_transposed, d_camera_screen, py);
+            pz_screen = perspective_project(camera_p, camera_transposed, d_camera_screen, pz);
         }
         
         v2 O = {};

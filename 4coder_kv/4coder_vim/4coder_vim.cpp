@@ -33,7 +33,8 @@ VIM_REQUEST_SIG(vim_apply_delete){
 	}
 }
 
-VIM_REQUEST_SIG(vim_apply_change){
+VIM_REQUEST_SIG(vim_apply_change)
+{
 	vim_enter_insert_mode(app);
 	vim_apply_delete(app, view, buffer, range);
 }

@@ -400,7 +400,7 @@ expand_bottom_view(FApp *app)
     Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
     Face_ID face_id = get_face_id(app, buffer);
     Face_Metrics metrics = get_face_metrics(app, face_id);
-    view_set_split_pixel_size(app, global_bottom_view, (i32)(metrics.line_height*32.f));
+    view_set_split_pixel_size(app, global_bottom_view, (i32)(metrics.line_height*24.f));
     global_bottom_view_expanded = true;
 }
 
@@ -415,7 +415,7 @@ collapse_bottom_view(FApp *app)
 }
 
 internal void
-toggle_bottom_view_command(FApp *app)
+toggle_bottom_view_command(App *app)
 {
     if (global_bottom_view_expanded)
     {// NOTE: collapse

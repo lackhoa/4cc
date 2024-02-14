@@ -107,7 +107,10 @@ text_layout_render(Thread_Context *tctx, Models *models, Text_Layout *layout,
         i64 line_number = layout->visible_line_number_range.min;
         i64 line_number_last = layout->visible_line_number_range.max;
         Layout_Function *layout_func = layout->layout_func;
-        for (;line_number <= line_number_last; line_number += 1){
+        for (;
+             line_number <= line_number_last; 
+             line_number += 1)
+        {
             Layout_Item_List line = file_get_line_layout(tctx, models, file,
                                                          layout_func, width, face,
                                                          line_number);

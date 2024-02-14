@@ -35,8 +35,9 @@ VIM_REQUEST_SIG(byp_apply_comment){
 	i64 line0 = get_line_number_from_pos(app, buffer, range.min);
 	i64 line1 = get_line_number_from_pos(app, buffer, range.max);
 	line1 += (line0 == line1);
-	History_Group history_group = history_group_begin(app, buffer);
-	for(i64 l=line0; l<line1; l++){
+	HISTORY_GROUP_SCOPE;
+	for(i64 l=line0; l<line1; l++)
+    {
 		i64 line_start = get_pos_past_lead_whitespace_from_line_number(app, buffer, l);
 		b32 has_comment = c_line_comment_starts_at_position(app, buffer, line_start);
 		if(!has_comment){
@@ -44,14 +45,13 @@ VIM_REQUEST_SIG(byp_apply_comment){
 			buffer_post_fade(app, buffer, 0.667f, Ii64_size(line_start,2), fcolor_resolve(fcolor_id(defcolor_paste)));
 		}
 	}
-	history_group_end(history_group);
 }
 
 VIM_REQUEST_SIG(byp_apply_uncomment){
 	i64 line0 = get_line_number_from_pos(app, buffer, range.min);
 	i64 line1 = get_line_number_from_pos(app, buffer, range.max);
 	line1 += (line0 == line1);
-	History_Group history_group = history_group_begin(app, buffer);
+	HISTORY_GROUP_SCOPE;
 	for(i64 l=line0; l<line1; l++){
 		i64 line_start = get_pos_past_lead_whitespace_from_line_number(app, buffer, l);
 		b32 has_comment = c_line_comment_starts_at_position(app, buffer, line_start);
@@ -59,16 +59,17 @@ VIM_REQUEST_SIG(byp_apply_uncomment){
 			buffer_replace_range(app, buffer, Ii64_size(line_start,2), string_u8_empty);
 		}
 	}
-	history_group_end(history_group);
 }
 
 
-inline void byp_make_vim_request(Application_Links *app, BYP_Vim_Request request){
-	vim_make_request(app, Vim_Request_Type(VIM_REQUEST_COUNT + request));
+inline void 
+byp_make_vim_request(App *app, BYP_Vim_Request request)
+{
+    vim_make_request(app, Vim_Request_Type(VIM_REQUEST_COUNT + request));
 }
 
 VIM_COMMAND_SIG(byp_request_title){ byp_make_vim_request(app, BYP_REQUEST_Title); }
-VIM_COMMAND_SIG(byp_request_comment){ byp_make_vim_request(app, BYP_REQUEST_Comment); }
+VIM_COMMAND_SIG(byp_request_comment) { byp_make_vim_request(app, BYP_REQUEST_Comment); }
 VIM_COMMAND_SIG(byp_request_uncomment){ byp_make_vim_request(app, BYP_REQUEST_UnComment); }
 VIM_COMMAND_SIG(byp_visual_comment)
 {
@@ -319,8 +320,7 @@ internal void
 kv_surround_with(FApp *app, char *opener, char *closer)
 {
     GET_VIEW_AND_BUFFER;
-    History_Group group = history_group_begin(app, buffer);
-    defer(history_group_end(group));
+    HISTORY_GROUP_SCOPE;
     
     i64 min = view_get_cursor_pos(app, view);
     i64 max = view_get_mark_pos(app, view);
@@ -421,7 +421,7 @@ character_is_path(char character)
 }
 
 internal void 
-copy_current_file_name(FApp *app)
+copy_current_file_name(App *app)
 {
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
@@ -433,13 +433,21 @@ copy_current_file_name(FApp *app)
   }
 }
 
-VIM_COMMAND_SIG(open_file_from_current_dir)
+internal void 
+open_file_from_current_dir(App *app)
 {
     GET_VIEW_AND_BUFFER;
-    Scratch_Block temp(app);
+    Temp_Block temp(app);
     String8 dirname = push_buffer_dir_name(app, temp, buffer);
     set_hot_directory(app, dirname);
     vim_interactive_open_or_new(app);
+}
+
+internal void 
+kv_handle_g_f(App *app)
+{
+    copy_current_file_name(app);
+    open_file_from_current_dir(app);
 }
 
 internal Range_i64
@@ -536,8 +544,7 @@ VIM_COMMAND_SIG(kv_jump_ultimate)
 VIM_COMMAND_SIG(kv_delete_surrounding_groupers)
 {
   GET_VIEW_AND_BUFFER;
-  History_Group group = history_group_begin(app, buffer);
-  defer(history_group_end(group));
+  HISTORY_GROUP_SCOPE;
 
   i64 pos = view_get_cursor_pos(app, view);
   Range_i64 range = {};
@@ -552,9 +559,8 @@ function void
 kv_do_t_internal(FApp *app, b32 shiftp)
 {
   GET_VIEW_AND_BUFFER;
-  History_Group group = history_group_begin(app, buffer);
-  defer(history_group_end(group));
-
+  HISTORY_GROUP_SCOPE;
+    
   i64 pos = view_get_cursor_pos(app, view);
   u8 current_char = buffer_get_char(app, buffer, pos);
   // 1. optionally delete space
@@ -632,13 +638,15 @@ CUSTOM_DOC("kv copy dir name")
 
 VIM_COMMAND_SIG(kv_newline_and_indent)
 {
-  write_text(app, string_u8_litexpr("\n"));
-  auto_indent_line_at_cursor(app);
+    GET_VIEW_AND_BUFFER;
+    HISTORY_GROUP_SCOPE;
+    write_text(app, str8lit("\n"));
+    auto_indent_line_at_cursor(app);
 }
 
 VIM_COMMAND_SIG(kv_vim_visual_line_mode)
 {
-    if(vim_state.mode != VIM_Visual)
+    if (vim_state.mode != VIM_Visual)
     {
 		set_mark(app);
 		vim_state.mode = VIM_Visual;

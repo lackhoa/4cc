@@ -2,12 +2,12 @@
 4coder_draw.cpp - Layout and rendering implementation of standard UI pieces (including buffers)
 */
 
-// TOP
+// TOP @alksdjfasldkfjasdlfkj
 
 function void
 draw_text_layout_default(Application_Links *app, Text_Layout_ID layout_id){
     ARGB_Color special_color = finalize_color(defcolor_special_character, 0);
-    ARGB_Color ghost_color = finalize_color(defcolor_ghost_character, 0);
+    ARGB_Color ghost_color   = finalize_color(defcolor_ghost_character, 0);
     draw_text_layout(app, layout_id, special_color, ghost_color);
 }
 

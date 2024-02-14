@@ -250,7 +250,8 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
         view_correct_mark(app, view);
         
         b32 use_scope_highlight = def_get_config_b32(vars_intern_lit("use_scope_highlight"));
-        if(use_scope_highlight){
+        if(use_scope_highlight)
+        {
             Color_Array colors = finalize_color_array(defcolor_back_cycle);
             draw_scope_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
         }
@@ -271,27 +272,18 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
             paint_text_color_fcolor(app, text_layout_id, visible_range, fcolor_id(defcolor_text_default));
         }
         
-        b32 use_error_highlight = def_get_config_b32(vars_intern_lit("use_error_highlight"));
-        b32 use_jump_highlight  = def_get_config_b32(vars_intern_lit("use_jump_highlight"));
-        if(use_error_highlight || use_jump_highlight)
-        {
+        {// Error, jump (search) highlightss
             Buffer_ID comp_buffer = get_buffer_by_name(app, compilation_buffer_name, Access_Always);
-            if(use_error_highlight)
+            draw_jump_highlights(app, buffer, text_layout_id, comp_buffer, fcolor_id(defcolor_highlight_junk));
+            // TODO(BYP): Draw error messsage annotations
+            Buffer_ID jump_buffer = get_locked_jump_buffer(app);
+            if (jump_buffer != comp_buffer)
             {
-                draw_jump_highlights(app, buffer, text_layout_id, comp_buffer, fcolor_id(defcolor_highlight_junk));
-                // TODO(BYP): Draw error messsage annotations
-            }
-            if(use_jump_highlight)
-            {
-                Buffer_ID jump_buffer = get_locked_jump_buffer(app);
-                if(jump_buffer != comp_buffer)
-                {
-                    draw_jump_highlights(app, buffer, text_layout_id, jump_buffer, fcolor_id(defcolor_highlight_white));
-                }
+                draw_jump_highlights(app, buffer, text_layout_id, jump_buffer, fcolor_id(defcolor_highlight_white));
             }
         }
-        
-        { // note(kv): draw paren highlight
+       
+        { // draw paren highlight
             b32 is_skm = false;
             {
                 F4_Language *language = F4_LanguageFromBuffer(app, buffer);
@@ -332,7 +324,7 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
         
         paint_fade_ranges(app, text_layout_id, buffer);
         
-        draw_text_layout_default(app, text_layout_id);
+        draw_text_layout_default(app, text_layout_id);  // NOTE: this highlights the @Notes
         
         vim_draw_after_text(app, view, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness);
         

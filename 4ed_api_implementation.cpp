@@ -3358,10 +3358,12 @@ text_layout_free(FApp *app, Text_Layout_ID text_layout_id){
 }
 
 api(custom) function void
-draw_text_layout(FApp *app, Text_Layout_ID layout_id, ARGB_Color special_color, ARGB_Color ghost_color){
+draw_text_layout(App *app, Text_Layout_ID layout_id, ARGB_Color special_color, ARGB_Color ghost_color)
+{
     Models *models = (Models*)app->cmd_context;
     Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
-    if (layout != 0 && models->target != 0){
+    if (layout != 0 && models->target != 0)
+    {
         text_layout_render(app->tctx, models, layout, special_color, ghost_color);
     }
 }

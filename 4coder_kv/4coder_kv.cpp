@@ -2,6 +2,7 @@
 // ~/4ed/code/project.4coder
 // ~/4ed/code/4coder_kv/4coder_kv_commands.cpp
 
+// @test
 // TODO(kv): remember this file is processed by the meta-generator.
 //           particularly the command metadata is required for the code to compile (and it's depressing).
 #include "4coder_custom_include.cpp"
@@ -383,7 +384,7 @@ kv_vim_bindings(App *app)
     BIND(N|MAP, undo,                                KeyCode_U);
     BIND(N|MAP, redo,                              C|KeyCode_R);
     BIND(N|MAP, kv_open_note_file,          SUB_G,   KeyCode_N);
-    BIND(N|MAP, open_file_from_current_dir, SUB_G,   KeyCode_F);
+    BIND(N|MAP, kv_handle_g_f,              SUB_G,   KeyCode_F);
     BIND(N|MAP, vim_next_4coder_jump,              M|KeyCode_N);
     BIND(N|MAP, vim_prev_4coder_jump,              M|KeyCode_P);
     BIND(N|MAP, view_buffer_other_panel,           M|KeyCode_D);
@@ -546,7 +547,7 @@ kv_vim_bindings(App *app)
     BIND(N|  MAP,  write_space,                KeyCode_Space);
     BIND(N|  MAP,  vim_insert_end,             KeyCode_A);
     BIND(  V|MAP,  vim_end_line,               KeyCode_A);
-    BIND(N  |MAP,  vim_end_line,             S|KeyCode_A);
+    BIND(N  |MAP,  vim_end_line,             M|KeyCode_A);
     BIND(N  |MAP,  vim_select_all,           C|KeyCode_A);
     BIND(N|  MAP,  kv_shift_character,         KeyCode_Comma);
     BIND(N|  MAP,  exit_4coder,              M|KeyCode_Q);

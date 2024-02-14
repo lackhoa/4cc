@@ -281,7 +281,8 @@ file_get_managed_scope(Editing_File *file){
 
 internal Layout_Item_List
 file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
-                     Layout_Function *layout_func, f32 width, Face *face, i64 line_number){
+                     Layout_Function *layout_func, f32 width, Face *face, i64 line_number)
+{
     Layout_Item_List result = {};
     
     i64 line_count = buffer_line_count(&file->state.buffer);
