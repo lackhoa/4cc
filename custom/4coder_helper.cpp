@@ -1074,7 +1074,7 @@ push_buffer_selected_range(FApp *app, Arena *arena, Buffer_ID buffer)
     return push_buffer_range(app, arena, buffer, range);
 }
 
-function String_Const_u8
+function String8
 push_token_lexeme(App *app, Arena *arena, Buffer_ID buffer, Token *token){
     return(push_buffer_range(app, arena, buffer, Ii64(token)));
 }

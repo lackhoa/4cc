@@ -42,7 +42,7 @@ struct F4_Index_Note
     F4_Index_Note *last_child;
     
     u64 hash;
-    String_Const_u8 string;
+    String8 string;
     F4_Index_NoteKind kind;
     F4_Index_NoteFlags flags;
     Range_i64 range;
@@ -75,7 +75,7 @@ struct F4_Index_ParseCtx
     b32 done;
     Application_Links *app;
     F4_Index_File *file;
-    String_Const_u8 string;
+    String8 string;
     Token_Array tokens;
     Token_Iterator_Array it;
     F4_Index_Note *active_parent;

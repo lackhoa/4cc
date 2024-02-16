@@ -23,7 +23,7 @@ fcolor_argb(v4 color)
 internal FColor
 fcolor_argb(f32 r, f32 g, f32 b, f32 a)
 {
-    return(fcolor_argb(pack_argb(V4f32(r, g, b, a))));
+    return(fcolor_argb(pack_argb(V4(r, g, b, a))));
 }
 
 internal FColor

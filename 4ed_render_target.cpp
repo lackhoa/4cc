@@ -198,7 +198,7 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, f32 roundness, f3
     Vec2_f32 center = rect_center(rect);
     for (u32 i = 0; i < alen(vertices); i += 1)
     {
-        vertices[i].uvw = V3f32(center.x, center.y, roundness);
+        vertices[i].uvw = V3(center.x, center.y, roundness);
         vertices[i].color = color;
         vertices[i].half_thickness = half_thickness;
     }
@@ -231,10 +231,10 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
     Render_Vertex vertices[6] = {};
     
     Rect_f32 uv = bounds.uv;
-    vertices[0].uvw = V3f32(uv.x0, uv.y0, bounds.w);
-    vertices[1].uvw = V3f32(uv.x1, uv.y0, bounds.w);
-    vertices[2].uvw = V3f32(uv.x0, uv.y1, bounds.w);
-    vertices[5].uvw = V3f32(uv.x1, uv.y1, bounds.w);
+    vertices[0].uvw = V3(uv.x0, uv.y0, bounds.w);
+    vertices[1].uvw = V3(uv.x1, uv.y0, bounds.w);
+    vertices[2].uvw = V3(uv.x0, uv.y1, bounds.w);
+    vertices[5].uvw = V3(uv.x1, uv.y1, bounds.w);
     
     Vec2_f32 y_axis = V2(-x_axis.y, x_axis.x);
     Vec2_f32 x_min = bounds.xy_off.x0*x_axis;
@@ -268,10 +268,10 @@ draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color
     
     Render_Vertex vertices[6] = {};
     
-    vertices[0].uvw = V3f32(0, 0, 0);
-    vertices[1].uvw = V3f32(1, 0, 0);
-    vertices[2].uvw = V3f32(0, 1, 0);
-    vertices[5].uvw = V3f32(1, 1, 0);
+    vertices[0].uvw = V3(0, 0, 0);
+    vertices[1].uvw = V3(1, 0, 0);
+    vertices[2].uvw = V3(0, 1, 0);
+    vertices[5].uvw = V3(1, 1, 0);
    
     auto &min = rect.min;
     auto &max = rect.max;

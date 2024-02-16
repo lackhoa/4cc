@@ -1374,7 +1374,8 @@ struct Scratch_Block {
   operator Arena*();
   void restore(void);
 };
-typedef Scratch_Block Temp_Block;
+typedef Scratch_Block X_Block;
+typedef Scratch_Block Temp_Block;  // @Deprecated: conflicts with the Temp_Memory_Block concept
 
 struct Temp_Memory_Block{
   Temp_Memory temp;

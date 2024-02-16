@@ -309,7 +309,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         face->texture_kind = texture_kind;
         face->texture = texture;
         
-        Vec3_f32 texture_dim = V3f32(pack.dim);
+        Vec3_f32 texture_dim = V3(pack.dim);
         face->texture_dim = texture_dim;
         
         {

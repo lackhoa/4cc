@@ -1480,16 +1480,8 @@ union v2i{
 };
 
 union v3i{
-  struct{
-    i32 x;
-    i32 y;
-    i32 z;
-  };
-  struct{
-    i32 r;
-    i32 g;
-    i32 b;
-  };
+  struct{ i32 x, y, z; };
+  struct{ i32 r, g, b; };
   struct{
     v2i xy;
   };
@@ -1547,11 +1539,16 @@ pack_sRGBA(v4 color)
   return result;
 }
 
-internal v3 matvmul3(v3 matrix[3], v3 v)
+struct m3x3
 {
-    v3 result = (v.x * matrix[0] + 
-                 v.y * matrix[1] + 
-                 v.z * matrix[2]);
+    v3 columns[3];  // columns
+};
+
+internal v3 matvmul3(m3x3 matrix, v3 v)
+{
+    v3 result = (v.x * matrix.columns[0] + 
+                 v.y * matrix.columns[1] + 
+                 v.z * matrix.columns[2]);
     return result;
 }
 

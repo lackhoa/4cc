@@ -6,26 +6,26 @@ struct FUI
 };
 
 internal String8
-fui_push_slider_value(Arena *arena, Fui_Slider_Type type, Fui_Slider_Value value)
+fui_push_slider_value(Arena *arena, Fui_Type type, Fui_Value value)
 {
     String8 result = {};
     switch (type)
     {
-        case Fui_Slider_Type_v1:
+        case Fui_Type_v1:
         {
             result = push_stringf(arena, "%f", value.v1);
         }break;
-        case Fui_Slider_Type_v2:
+        case Fui_Type_v2:
         {
             v2 v = value.v2;
             result = push_stringf(arena, "v2{ %f, %f }", v.x, v.y);
         }break;
-        case Fui_Slider_Type_v3:
+        case Fui_Type_v3:
         {
             v3 v = value.v3;
             result = push_stringf(arena, "v3{ %f, %f, %f }", v.x, v.y, v.z);
         }break;
-        case Fui_Slider_Type_v4:
+        case Fui_Type_v4:
         {
             v4 v = value.v4;
             result = push_stringf(arena, "v4{ %f, %f, %f, %f }", v.x, v.y, v.z, v.w);
@@ -35,22 +35,22 @@ fui_push_slider_value(Arena *arena, Fui_Slider_Type type, Fui_Slider_Value value
     return result;
 }
 
-global v4  fui_slider_direction;
+global v4  fui_slider_direction;  // TODO: could compress this down to just 2 bits
 global i32 fui_active_slider_index;
 
 internal b32
 fui__at_slider_p(FUI *f)
 {
-  App *app = f->app;
-  Token_Iterator_Array tk_value = kv_token_it_at_cursor(app); 
-  auto *tk = &tk_value;
-  f->tk = *tk;
-  if ( !tk->tokens ) return false;
- 
-  Token *token = tk->ptr;
-  Scratch_Block scratch(app);
-  b32 at_slider = token_equal_cstring(app, f->buffer, token, "fslider");
-  return at_slider;
+    App *app = f->app;
+    Token_Iterator_Array tk_value = kv_token_it_at_cursor(app); 
+    auto *tk = &tk_value;
+    f->tk = *tk;
+    if ( !tk->tokens ) return false;
+    
+    Token *token = tk->ptr;
+    Scratch_Block scratch(app);
+    b32 at_slider = token_equal_cstring(app, f->buffer, token, "fslider");
+    return at_slider;
 }
 
 internal void
@@ -88,60 +88,63 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
 internal b32
 fui_handle_slider(App *app, Buffer_ID buffer)
 {
+    b32 result = false;
     FUI  f_value; 
     FUI *f = &f_value;
     f->app    = app;
     f->buffer = buffer;
-   
+    
     Fui_Slider *&store = fui_slider_store;
     b32 at_slider = fui__at_slider_p(f);
     
     if (at_slider)
     {
-        Token_Iterator_Array *tk = &f->tk;
+        X_Block xblock(app);
+       
+        Range_i64 slider_value_range = {};
+        String8 slider_name;
+        b32 parser_ok = false;
+        {// NOTE(kv): Parsing
+            Quick_Parser parser_value = qp_new(app, buffer, &f->tk);
+            Quick_Parser *parser = &parser_value;
+            qp_eat_token_kind(parser, TokenBaseKind_ParentheticalOpen);
+            qp_eat_token_kind(parser, TokenBaseKind_Identifier);
+            // NOTE: Slider name
+            slider_name = qp_push_token(parser, xblock);
+            // NOTE: Find the slider value range (so we can write back later)
+            qp_eat_comma(parser);
+            // NOTE: at value
+            slider_value_range.min = get_next_token_pos(parser);
+            u32 eat_index = qp_eat_until_lit(parser, ",)");
+            slider_value_range.max = qp_get_pos(parser);
+            if (eat_index == 1)
+            {
+                qp_eat_until_lit(parser, ")");
+            }
+            parser_ok = parser->ok;
+        }
         
-        Token *token = tk->ptr;
-        i64 slider_begin = token->pos;
-        
-        b32 parse_ok = false;
+        // NOTE: find slider
         i32 slider_index = 0;
-        // NOTE(kv): Parsing and find slider
-        if (require_token_kind(tk, TokenBaseKind_ParentheticalOpen) &&
-            require_token_kind(tk, TokenBaseKind_Identifier       ))
+        if (parser_ok)
         {
-            Temp_Block temp(app);
-            String8 name = push_token_lexeme(app, temp, buffer, tk->ptr);
-            Fui_Slider *slider = fui_get_slider_by_name(name);
+            Fui_Slider *slider = fui_get_slider_by_name(slider_name);
             if (slider)
             {
                 slider_index = slider - store;
-                b32 found_paren_close = false;
-                do
-                {
-                    if (tk->ptr->kind == TokenBaseKind_ParentheticalClose)
-                    {
-                        found_paren_close = true;
-                        break;
-                    }
-                }
-                while ( token_it_inc(tk) );
-                
-                if (found_paren_close) 
-                    parse_ok = true;
             }
         }
         
-        if (parse_ok && slider_index)
+        if (slider_index)
         {
-            i64 slider_end = tk->ptr->pos + 1;
-            Fui_Slider_Value slider_value_save = store[slider_index].value;
+            Fui_Value slider_value_save = store[slider_index].value;
             b32 write_back = false;
             
             fui_active_slider_index = slider_index;
             defer(fui_active_slider_index = 0);
             
             for (;;)
-            { // note: ui loop
+            { // NOTE: ui loop
                 User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
                 if (in.abort) break; 
                 
@@ -150,8 +153,8 @@ fui_handle_slider(App *app, Buffer_ID buffer)
                 if (keydown || keyup)
                 {
                     v4 &direction = fui_slider_direction;
-#define Match(CODE)  in.event.key.code == KeyCode_##CODE
-                    
+#define Match(CODE) in.event.key.code == KeyCode_##CODE
+                    //
                     if ( Match(Return) && keydown )
                     {
                         write_back = true; 
@@ -163,6 +166,7 @@ fui_handle_slider(App *app, Buffer_ID buffer)
                     else if (Match(J)) direction.y = keydown ? -1 : 0;
                     else if (Match(O)) direction.z = keydown ? +1 : 0;
                     else if (Match(I)) direction.z = keydown ? -1 : 0;
+                    //
 #undef Match
                 }
                 else leave_current_input_unhandled(app);
@@ -171,39 +175,33 @@ fui_handle_slider(App *app, Buffer_ID buffer)
             Fui_Slider *slider = &store[slider_index];
             if (write_back)
             { //note(kv): save the results back
-                Scratch_Block temp(app);
-                String8 value_string = fui_push_slider_value(temp, slider->type, slider->value);
-                String8 update_string = push_stringf(temp, "fslider( %.*s, %.*s )", string_expand(slider->name), string_expand(value_string));
-                buffer_replace_range(app, buffer, slider_begin, slider_end, update_string);
+                String8 value_string = fui_push_slider_value(xblock, slider->type, slider->value);
+                buffer_replace_range(app, buffer, slider_value_range, value_string);
             }
             else 
                 slider->value = slider_value_save;
             
-            return true;
+            result = true;
         }
-        else return false;
     }
-    else return false;
+    
+    return result;
 }
 
 internal void
 fui_tick(App *app, Frame_Info frame_info)
 {
-    if (fui_active_slider_index)
+    if (fui_active_slider_index &&
+        fui_slider_direction != v4{})
     {
+        f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key.
         Fui_Slider *slider = &fui_slider_store[fui_active_slider_index];
+        slider->update_value_function(slider, dt, fui_slider_direction);
         
-        if ( fui_slider_direction != v4{} )
-        {
-            f32 speed = 1.0f;
-            f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key
-            v4 *value = &slider->value.v4;
-            *value += dt * speed * fui_slider_direction;
-            animate_in_n_milliseconds(app, 0);
-         
-            Temp_Block temp(app);
-            String8 slider_value = fui_push_slider_value(temp, slider->type, slider->value);
-            vim_set_bottom_text(slider_value);
-        }
+        animate_in_n_milliseconds(app, 0);
+        
+        Temp_Block temp(app);
+        String8 slider_value = fui_push_slider_value(temp, slider->type, slider->value);
+        vim_set_bottom_text(slider_value);
     }
 }

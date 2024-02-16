@@ -1,40 +1,52 @@
 // ;fui ///////////////////////////////////
+// TODO: It's not really about sliders anymore
 
-#define X_Fui_Slider_Types(X)  \
+#define X_Fui_Types(X)  \
     X(v1) \
     X(v2) \
     X(v3) \
     X(v4) \
 
-enum Fui_Slider_Type
+enum Fui_Type
 {
-#define X(T)   Fui_Slider_Type_##T,
+#define X(T)   Fui_Type_##T,
     //
-    X_Fui_Slider_Types(X)
+    X_Fui_Types(X)
     //
 #undef X
 };
 
-union Fui_Slider_Value
+union Fui_Value
 {
 #define X(T)   T T;
     // 
-    X_Fui_Slider_Types(X);
+    X_Fui_Types(X);
     // 
 #undef X
+    
+    operator union v4() {return this->v4;}
 };
+
+struct Fui_Slider;
+
+#define FUI_UPDATE_VALUE_RETURN void
+#define FUI_UPDATE_VALUE_PARAMS Fui_Slider *slider, f32 dt, v4 direction
+//
+typedef FUI_UPDATE_VALUE_RETURN Fui_Update_Value_Sig(FUI_UPDATE_VALUE_PARAMS);
 
 struct Fui_Slider
 {
     String8 id;
     String8 name;
-    Fui_Slider_Type  type;
-    Fui_Slider_Value value;
+    Fui_Type  type;
+    Fui_Value value;
+    Fui_Update_Value_Sig *update_value_function;
+    void *userdata;
 };
 
 global Fui_Slider *fui_slider_store;
 
-// TODO(kv): @ Incomplete, need to search by filename as well.
+// TODO(kv): @Incomplete, need to search by filename as well.
 internal Fui_Slider *
 fui_get_slider_by_name(String8 name)
 {
@@ -49,8 +61,22 @@ fui_get_slider_by_name(String8 name)
     return 0;
 }
 
-internal Fui_Slider_Value
-fui_slider_init_or_get_main(String8 id, Fui_Slider_Type type, Fui_Slider_Value init_value)
+internal FUI_UPDATE_VALUE_RETURN
+fui_update_value_linear(FUI_UPDATE_VALUE_PARAMS)
+{
+    f32 speed = 1.0f;
+    slider->value.v4 += dt * speed * direction;
+}
+
+struct Fui_Options
+{
+    Range_f32 range;
+    Fui_Update_Value_Sig *update_value_function;
+    void *userdata;
+};
+
+internal Fui_Value
+fui_slider_user_main(String8 id, Fui_Type type, Fui_Value init_value, Fui_Options options)
 {
     Fui_Slider *&store = fui_slider_store;
 
@@ -89,55 +115,49 @@ fui_slider_init_or_get_main(String8 id, Fui_Slider_Type type, Fui_Slider_Value i
         
         arrput(store, new_slider);
     }
+   
+    Fui_Slider *slider = &store[slider_index];
     
-    return store[slider_index].value;
+    // NOTE: update function
+    slider->update_value_function = options.update_value_function;
+    if (!slider->update_value_function)
+        slider->update_value_function = fui_update_value_linear;
+    
+    // NOTE: External result
+    Range_f32 range = options.range;
+    if (range.min == 0.0f && 
+        range.max == 0.0f)
+    {
+        range.min = 0.0f;
+        range.max = 1.0f;
+    }
+   
+    v4 internal_value = slider->value.v4;
+    v4 result;
+    result.x = lerp(range.min, internal_value.x, range.max);
+    result.y = lerp(range.min, internal_value.y, range.max);
+    result.z = lerp(range.min, internal_value.z, range.max);
+    result.w = lerp(range.min, internal_value.w, range.max);
+   
+    return Fui_Value{.v4 = result};
 }
 
-// NOTE: Overloads are used to pass types to "fui_slider_init_or_get", based on argument type,
+// NOTE: We define overloads to avoid having to specify the type as a separate argument 
+// TODO: (This might be the wrong decision?),
 // as well as receive the appropriate values.
-/*
-inline v3 fui_slider_init_or_get(String8 id, v3 init_value)
-{
-    Fui_Slider_Type type = Fui_Slider_Type_v3;
-    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, &init_value);
-    return value.v3_value;
-}
-
-inline v2 fui_slider_init_or_get(String8 id, v2 init_value)
-{
-    Fui_Slider_Type type = Fui_Slider_Type_v2;
-    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, &init_value);
-    return value.v2_value;
-}
-
-inline v1 fui_slider_init_or_get(String8 id, v1 init_value)
-{
-    Fui_Slider_Type type = Fui_Slider_Type_v1;
-    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, &init_value);
-    return value.v1_value;
-}
-
-inline bool fui_slider_init_or_get(String8 id, bool init_value)
-{
-    Fui_Slider_Type type = Fui_Slider_Type_bool;
-    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, &init_value);
-    return (bool)value;
-}
-*/
-
 #define X(T) \
 \
-internal T fui_slider_init_or_get(String8 id, T init_value_T) \
+internal T fui_slider_user(String8 id, T init_value_T, Fui_Options options={}) \
 { \
-    Fui_Slider_Type  type = Fui_Slider_Type_##T; \
-    Fui_Slider_Value init_value = { .T = init_value_T }; \
-    Fui_Slider_Value value = fui_slider_init_or_get_main(id, type, init_value); \
+    Fui_Type  type = Fui_Type_##T; \
+    Fui_Value init_value = { .T = init_value_T }; \
+    Fui_Value value = fui_slider_user_main(id, type, init_value, options); \
     return value.T; \
 }
 //
-X_Fui_Slider_Types(X)
+X_Fui_Types(X)
 //
 #undef X
 
 #define fslider(NAME, ...) \
-    auto NAME = fui_slider_init_or_get(str8lit(__FILE__ "|" #NAME), ##__VA_ARGS__)
+    auto NAME = fui_slider_user(str8lit(__FILE__ "|" #NAME), ##__VA_ARGS__)

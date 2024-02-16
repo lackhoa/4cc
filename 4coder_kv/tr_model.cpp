@@ -19,7 +19,7 @@ new_model(const char *filepath)
     char lexer_string_buffer[64];
     Lexer  lex_value = new_lexer((char *)contents.data, lexer_string_buffer, 64);
     Lexer *lex = &lex_value;
-    while ( lexer_ok(lex) )
+    while ( lex->ok )
     {
         if ( maybe_eat_string(lex, "v ") )
         {// NOTE(kv): Vertex
@@ -35,7 +35,7 @@ new_model(const char *filepath)
         {// NOTE(kv): Face
             i32 *face = 0;
             lex->newline_encountered = false;
-            while ( lexer_ok(lex) && !lexer_newline_encountered(lex) )
+            while ( lex->ok && !lexer_newline_encountered(lex) )
             {// NOTE(kv): Parse vertex indexes;
                 eat_integer(lex);
                 i32 idx = lex->int_value;
@@ -48,9 +48,7 @@ new_model(const char *filepath)
             arrput(model.faces, face);
         }
         else 
-        {
             eat_line(lex);
-        }
     }
     
     usize nvertices = arrlen(model.vertices);

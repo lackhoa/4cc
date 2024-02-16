@@ -176,9 +176,11 @@ token_iterator_pos(u64 user_id, Token_Array *tokens, i64 pos){
 }
 
 internal Token*
-token_it_read(Token_Iterator_Array *it){
+token_it_read(Token_Iterator_Array *it)
+{
     Token *result = 0;
-    if (it->tokens != 0){
+    if (it->tokens != 0)
+    {
         result = it->ptr;
     }
     return(result);
@@ -192,9 +194,11 @@ token_it_index(Token_Iterator_Array *it){
 internal b32
 token_it_inc_all(Token_Iterator_Array *it){
     b32 result = false;
-    if (it->tokens != 0){
-        if (it->ptr < it->tokens + it->count - 1){
-            it->ptr += 1;
+    if (it->tokens != 0)
+    {
+        if (it->ptr < (it->tokens + it->count - 1))
+        {
+            it->ptr++;
             result = true;
         }
     }
@@ -243,13 +247,16 @@ token_it_dec_non_whitespace(Token_Iterator_Array *it){
 
 // todo(kv): argh why not just return the token here?
 internal b32
-token_it_inc(Token_Iterator_Array *it){
+token_it_inc(Token_Iterator_Array *it)
+{
     b32 result = false;
     repeat:
-    if (token_it_inc_all(it)){
+    if ( token_it_inc_all(it) )
+    {
         Token *token = token_it_read(it);
         if (token != 0 && (token->kind == TokenBaseKind_Whitespace ||
-                           token->kind == TokenBaseKind_Comment)){
+                           token->kind == TokenBaseKind_Comment))
+        {
             goto repeat;
         }
         result = true;
@@ -432,10 +439,12 @@ internal b32
 token_it_inc(Token_Iterator_List *it){
     b32 result = false;
     repeat:
-    if (token_it_inc_all(it)){
+    if (token_it_inc_all(it))
+    {
         Token *token = token_it_read(it);
-        if (token != 0 && (token->kind == TokenBaseKind_Whitespace ||
-                           token->kind == TokenBaseKind_Comment)){
+        if (token && (token->kind == TokenBaseKind_Whitespace || 
+                      token->kind == TokenBaseKind_Comment))
+        {
             goto repeat;
         }
         result = true;
@@ -691,37 +700,12 @@ token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, 
     return(relex);
 }
 
-internal b32
-require_token_kind(Token_Iterator_Array *tk, Token_Base_Kind kind)
+inline Range_i64 token_range(Token *token)
 {
-  if( token_it_inc(tk) )
-  {
-    return tk->ptr->kind == kind;
-  }
-  return false;
+  if (token)
+    return Range_i64{token->pos, token->pos + token->size};
+  else
+    return Range_i64{};
 }
-
-internal b32
-maybe_token_kind(Token_Iterator_Array *tk, Token_Base_Kind kind)
-{
-    Token_Iterator_Array tk_save = *tk;
-    b32 result = require_token_kind(tk, kind);
-    if (!result) *tk = tk_save;
-    return result;
-}
-
-#if 0
-internal b32
-require_token_char(FApp *app, Buffer_ID buffer, Token_Iterator_Array *it, u8 c)
-{
-    if( token_it_inc(it) )
-    {
-        Scratch_Block temp(app);
-        String8 c = push_token_lexeme(app, temp, buffer, token);
-        return token_equal(it->ptr, c);
-    }
-    return false;
-}
-#endif
 
 // BOTTOM

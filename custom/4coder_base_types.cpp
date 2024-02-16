@@ -391,13 +391,15 @@ castV2(v2i v){
     return {(f32)v.x, (f32)v.y};
 }
 
-function Vec3_f32
-V3f32(f32 x, f32 y, f32 z){
+internal Vec3_f32
+V3(f32 x, f32 y, f32 z)
+{
     Vec3_f32 v = {x, y, z};
     return(v);
 }
 function Vec4_f32
-V4f32(f32 x, f32 y, f32 z, f32 w){
+V4(f32 x, f32 y, f32 z, f32 w)
+{
     Vec4_f32 v = {x, y, z, w};
     return(v);
 }
@@ -566,36 +568,36 @@ V2(Vec2_f32 o){
     return(V2((f32)o.x, (f32)o.y));
 }
 function Vec3_f32
-V3f32(Vec3_i8 o){
-    return(V3f32((f32)o.x, (f32)o.y, (f32)o.z));
+V3(Vec3_i8 o){
+    return(V3((f32)o.x, (f32)o.y, (f32)o.z));
 }
 function Vec3_f32
-V3f32(Vec3_i16 o){
-    return(V3f32((f32)o.x, (f32)o.y, (f32)o.z));
+V3(Vec3_i16 o){
+    return(V3((f32)o.x, (f32)o.y, (f32)o.z));
 }
 function Vec3_f32
-V3f32(Vec3_i32 o){
-    return(V3f32((f32)o.x, (f32)o.y, (f32)o.z));
+V3(Vec3_i32 o){
+    return(V3((f32)o.x, (f32)o.y, (f32)o.z));
 }
 function Vec3_f32
-V3f32(Vec3_f32 o){
-    return(V3f32((f32)o.x, (f32)o.y, (f32)o.z));
+V3(Vec3_f32 o){
+    return(V3((f32)o.x, (f32)o.y, (f32)o.z));
 }
 function Vec4_f32
-V4f32(Vec4_i8 o){
-    return(V4f32((f32)o.x, (f32)o.y, (f32)o.z, (f32)o.w));
+V4(Vec4_i8 o){
+    return(V4((f32)o.x, (f32)o.y, (f32)o.z, (f32)o.w));
 }
 function Vec4_f32
-V4f32(Vec4_i16 o){
-    return(V4f32((f32)o.x, (f32)o.y, (f32)o.z, (f32)o.w));
+V4(Vec4_i16 o){
+    return(V4((f32)o.x, (f32)o.y, (f32)o.z, (f32)o.w));
 }
 function Vec4_f32
-V4f32(Vec4_i32 o){
-    return(V4f32((f32)o.x, (f32)o.y, (f32)o.z, (f32)o.w));
+V4(Vec4_i32 o){
+    return(V4((f32)o.x, (f32)o.y, (f32)o.z, (f32)o.w));
 }
 function Vec4_f32
-V4f32(Vec4_f32 o){
-    return(V4f32((f32)o.x, (f32)o.y, (f32)o.z, (f32)o.w));
+V4(Vec4_f32 o){
+    return(V4((f32)o.x, (f32)o.y, (f32)o.z, (f32)o.w));
 }
 
 function Vec2_i8

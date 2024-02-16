@@ -14,6 +14,7 @@
 
 #include "4coder_kv_input.cpp"
 #include "4coder_kv_build.cpp"
+#include "4ed_kv_parser.cpp"
 #include "4coder_kv_fui.cpp"
 #include "kv_lexer.h"
 #include "game.cpp"
@@ -446,6 +447,7 @@ kv_vim_bindings(App *app)
     BIND(N|V|MAP, vim_right,                          KeyCode_L);
     BIND(N|V|MAP, vim_end_line,                    (S|KeyCode_4));
     BIND(N|V|MAP, vim_begin_line,                   M|KeyCode_I);
+    BIND(0|V|MAP, vim_begin_line,                     KeyCode_I);
     BIND(N|V|MAP, vim_forward_WORD,                (S|KeyCode_W));
     BIND(N|V|MAP, vim_backward_WORD,               (S|KeyCode_B));
     BIND(N|V|MAP, vim_forward_end,                    KeyCode_E);
@@ -547,7 +549,7 @@ kv_vim_bindings(App *app)
     BIND(N|  MAP,  write_space,                KeyCode_Space);
     BIND(N|  MAP,  vim_insert_end,             KeyCode_A);
     BIND(  V|MAP,  vim_end_line,               KeyCode_A);
-    BIND(N  |MAP,  vim_end_line,             M|KeyCode_A);
+    BIND(N|0|MAP,  vim_end_line,             M|KeyCode_A);
     BIND(N  |MAP,  vim_select_all,           C|KeyCode_A);
     BIND(N|  MAP,  kv_shift_character,         KeyCode_Comma);
     BIND(N|  MAP,  exit_4coder,              M|KeyCode_Q);

@@ -1,11 +1,13 @@
 // Tiny Lexer ////////////////////////////////////////////////
+// For ad-hoc parsing of weird file formats.
+// TODO: Implement "maybe_eat" variants by default?
 
 // NOTE(kv): assume that the stream is nil-terminated.
 struct Lexer
 {
     b32 ok;
-    // NOTE(kv): "at" never goes past the nil-terminator
-    // NOTE(kv): "at" never point at a space character? (point in contention)
+    // NOTE(kv): "at" never goes past the nil-terminator (so we can always deref it).
+    // NOTE(kv): "at" never point at a space character(?)
     char *at;
     b32 newline_encountered;
     
@@ -16,12 +18,6 @@ struct Lexer
     u32 string_len;
     u32 string_buffer_size;
 };
-
-inline b32
-lexer_ok(Lexer *lex)
-{
-    return lex->ok && *lex->at;
-}
 
 internal void
 eat_all_spaces(Lexer *lex)
@@ -75,7 +71,12 @@ eat_float(Lexer *lex)
 internal void
 eat_character(Lexer *lex, char character)
 {
-    if ( *lex->at == character )  ++lex->at;
+    lex->ok = (*lex->at == character);
+    if ( lex->ok )
+    {
+        ++lex->at;
+        eat_all_spaces(lex);
+    }
 }
 
 internal b32
@@ -90,6 +91,7 @@ maybe_eat_character(Lexer *lex, char character)
     else return false;
 }
 
+// TODO dunno This should be just a "save" version of eat_string
 internal b32
 maybe_eat_string(Lexer *lex, char *string)
 {
@@ -119,11 +121,16 @@ maybe_eat_string(Lexer *lex, char *string)
 internal void
 eat_line(Lexer *lex)
 {
-    while ( lexer_ok(lex) )
+    if (*lex->at)
     {
-        if (*lex->at++ == '\n') break;
+        while (*lex->at != 0 && 
+               *lex->at != '\n')
+        {
+            lex->at++;
+        }
+        eat_all_spaces(lex);
     }
-    eat_all_spaces(lex);
+    else lex->ok = false;
 }
 
 inline b32

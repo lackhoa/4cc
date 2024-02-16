@@ -5,7 +5,7 @@ defcolor_keyword      = 0xFF998963;
 defcolor_comment      = 0xFF557700;
 defcolor_macro        = 0xFF996666;
 defcolor_non_text     = 0xFF707040;  // NOTE(kv): parens
-defcolor_comment_pop  = { 0xFF2AB34F, 0xFFbB2828, 0xFFbbbb00 };  // todos, notes
+defcolor_comment_pop  = { 0xFF2A83a0, 0xFFbb2828, 0xFFbbbb00 };  // todos, notes
 
 defcolor_highlight_junk  = 0xFF3A0000;  // NOTE: error highlight
 defcolor_highlight_white = 0x80003A3A;  // NOTE: search highlight

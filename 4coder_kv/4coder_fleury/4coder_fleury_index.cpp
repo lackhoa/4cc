@@ -24,15 +24,15 @@ F4_Index_Unlock(void)
 }
 
 function u64
-_F4_Index_FileHash(Application_Links *app, Buffer_ID id)
+_F4_Index_FileHash(App *app, Buffer_ID id)
 {
     Scratch_Block scratch(app);
-    String_Const_u8 unique_name = push_buffer_unique_name(app, scratch, id);
+    String8 unique_name = push_buffer_unique_name(app, scratch, id);
     return table_hash_u8(unique_name.str, unique_name.size);
 }
 
 function F4_Index_File *
-_F4_Index_LookupFile(Application_Links *app, u64 hash, Buffer_ID buffer)
+_F4_Index_LookupFile(App *app, u64 hash, Buffer_ID buffer)
 {
     F4_Index_File *result = 0;
     u64 slot = hash % ArrayCount(f4_index.file_table);
@@ -48,13 +48,13 @@ _F4_Index_LookupFile(Application_Links *app, u64 hash, Buffer_ID buffer)
 }
 
 function F4_Index_File *
-F4_Index_LookupFile(Application_Links *app, Buffer_ID buffer)
+F4_Index_LookupFile(App *app, Buffer_ID buffer)
 {
     return _F4_Index_LookupFile(app, _F4_Index_FileHash(app, buffer), buffer);
 }
 
 function F4_Index_File *
-F4_Index_LookupOrMakeFile(Application_Links *app, Buffer_ID buffer)
+F4_Index_LookupOrMakeFile(App *app, Buffer_ID buffer)
 {
     F4_Index_File *result = 0;
     u64 hash = _F4_Index_FileHash(app, buffer);
@@ -96,7 +96,7 @@ F4_Index_LookupOrMakeFile(Application_Links *app, Buffer_ID buffer)
 }
 
 function void
-F4_Index_EraseFile(Application_Links *app, Buffer_ID id)
+F4_Index_EraseFile(App *app, Buffer_ID id)
 {
     u64 hash = _F4_Index_FileHash(app, id);
     F4_Index_File *file = _F4_Index_LookupFile(app, hash, id);
@@ -202,7 +202,7 @@ F4_Index_ClearFile(F4_Index_File *file)
 }
 
 function F4_Index_Note *
-F4_Index_LookupNote(String_Const_u8 string, F4_Index_Note *parent)
+F4_Index_LookupNote(String8 string, F4_Index_Note *parent)
 {
     F4_Index_Note *result = 0;
     u64 hash = table_hash_u8(string.str, string.size);
@@ -222,7 +222,7 @@ F4_Index_LookupNote(String_Const_u8 string, F4_Index_Note *parent)
 }
 
 function F4_Index_Note *
-F4_Index_LookupNote(String_Const_u8 string)
+F4_Index_LookupNote(String8 string)
 {
     return F4_Index_LookupNote(string, 0);
 }
@@ -249,7 +249,7 @@ F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_
 {
     F4_Index_File *file = ctx->file;
     F4_Index_Note *parent = ctx->active_parent;
-    String_Const_u8 string = F4_Index_StringFromRange(ctx, name_range);
+    String8 string = F4_Index_StringFromRange(ctx, name_range);
     Range_i64 range = name_range;
     
     if(file)
@@ -341,7 +341,7 @@ F4_Index_MakeNote(F4_Index_ParseCtx *ctx, Range_i64 name_range, F4_Index_NoteKin
 }
 
 function void
-_F4_Index_Parse(Application_Links *app, F4_Index_File *file, String_Const_u8 string, Token_Array tokens, F4_Language *language)
+_F4_Index_Parse(App *app, F4_Index_File *file, String8 string, Token_Array tokens, F4_Language *language)
 {
     F4_Index_ParseCtx ctx =
     {
@@ -359,7 +359,7 @@ _F4_Index_Parse(Application_Links *app, F4_Index_File *file, String_Const_u8 str
 }
 
 function void
-F4_Index_ParseFile(Application_Links *app, F4_Index_File *file, String_Const_u8 string, Token_Array tokens)
+F4_Index_ParseFile(App *app, F4_Index_File *file, String8 string, Token_Array tokens)
 {
     F4_Index_Lock();
     F4_Language *lang = F4_LanguageFromBuffer(app, file->buffer);
@@ -367,14 +367,14 @@ F4_Index_ParseFile(Application_Links *app, F4_Index_File *file, String_Const_u8 
     F4_Index_Unlock();
 }
 
-function String_Const_u8
+function String8
 F4_Index_StringFromRange(F4_Index_ParseCtx *ctx, Range_i64 range)
 {
-    String_Const_u8 string = string_substring(ctx->string, range);
+    String8 string = string_substring(ctx->string, range);
     return string;
 }
 
-function String_Const_u8
+function String8
 F4_Index_StringFromToken(F4_Index_ParseCtx *ctx, Token *token)
 {
     return F4_Index_StringFromRange(ctx, Ii64(token));
@@ -409,14 +409,13 @@ F4_Index_ParseCtx_Inc(F4_Index_ParseCtx *ctx, F4_Index_TokenSkipFlags flags)
 }
 
 function b32
-F4_Index_RequireToken(F4_Index_ParseCtx *ctx, String_Const_u8 string, F4_Index_TokenSkipFlags flags)
+F4_Index_RequireToken(F4_Index_ParseCtx *ctx, String8 string, F4_Index_TokenSkipFlags flags)
 {
     b32 result = 0;
     Token *token = token_it_read(&ctx->it);
     if(token)
     {
-        String_Const_u8 token_string =
-            string_substring(ctx->string, Ii64(token->pos, token->pos+token->size));
+        String8 token_string = string_substring(ctx->string, token_range(token));
         if(string_match(string, token_string))
         {
             result = 1;
@@ -452,7 +451,9 @@ F4_Index_RequireTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **
     else
     {
         ctx->done = 1;
-    }if(result)
+    }
+    
+    if(result)
     {
         F4_Index_ParseCtx_Inc(ctx, flags);
     }
@@ -486,30 +487,27 @@ F4_Index_RequireTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token
 }
 
 function b32
-F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string)
+F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String8 string)
 {
     b32 result = 0;
     Token *token = token_it_read(&ctx->it);
-    if(token)
+    if ( token )
     {
-        String_Const_u8 token_string =
-            string_substring(ctx->string, Ii64(token->pos, token->pos+token->size));
-        if(string_match(string, token_string))
+        String8 token_string = string_substring(ctx->string, token_range(token));
+        if (string_match(string, token_string))
         {
             result = 1;
         }
     }
-    else
-    {
-        ctx->done = 1;
-    }
+    else ctx->done = 1;
+    
     return result;
 }
 
 function void
 F4_Index_ParseComment(F4_Index_ParseCtx *ctx, Token *token)
 {
-    String_Const_u8 string = F4_Index_StringFromToken(ctx, token);
+    String8 string = F4_Index_StringFromToken(ctx, token);
     
     for(u64 i = 0; i < string.size; i += 1)
     {
@@ -520,7 +518,8 @@ F4_Index_ParseComment(F4_Index_ParseCtx *ctx, Token *token)
             F4_Index_MakeNote(ctx, range, F4_Index_NoteKind_CommentTag, 0);
             break;
         }
-        else if(i+4 < string.size && string_match(S8Lit("TODO"), string_substring(string, Ii64(i, i + 4))))
+        else if(i+4 < string.size && 
+                string_match(S8Lit("TODO"), string_substring(string, Ii64(i, i + 4))))
         {
             Range_i64 range = Ii64(token);
             range.min += i;
@@ -686,7 +685,7 @@ F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...)
 }
 
 function void
-F4_Index_Tick(Application_Links *app)
+F4_Index_Tick(App *app)
 {
     Scratch_Block scratch(app);
     for (Buffer_Modified_Node *node = global_buffer_modified_set.first; 
@@ -696,19 +695,20 @@ F4_Index_Tick(Application_Links *app)
         Temp_Memory_Block temp(scratch);
         Buffer_ID buffer_id = node->buffer;
         
-        String_Const_u8 contents = push_whole_buffer(app, scratch, buffer_id);
+        String8 contents = push_whole_buffer(app, scratch, buffer_id);
         Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
-        if(tokens.count == 0) { continue; }
-        
-        F4_Index_Lock();
-        F4_Index_File *file = F4_Index_LookupOrMakeFile(app, buffer_id);
-        if(file)
+        if (tokens.count > 0)
         {
-            ProfileScope(app, "[f] reparse");
-            F4_Index_ClearFile(file);
-            F4_Index_ParseFile(app, file, contents, tokens);
+            F4_Index_Lock();
+            F4_Index_File *file = F4_Index_LookupOrMakeFile(app, buffer_id);
+            if(file)
+            {
+                ProfileScope(app, "[f] reparse");
+                F4_Index_ClearFile(file);
+                F4_Index_ParseFile(app, file, contents, tokens);
+            }
+            F4_Index_Unlock();
+            buffer_clear_layout_cache(app, buffer_id);
         }
-        F4_Index_Unlock();
-        buffer_clear_layout_cache(app, buffer_id);
     }
 }

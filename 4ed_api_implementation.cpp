@@ -255,7 +255,7 @@ get_active_edit_behaviors(Models *models, Editing_File *file){
 }
 
 api(custom) function b32
-buffer_replace_range(FApp *app, Buffer_ID buffer_id, Range_i64 range, String_Const_u8 string)
+buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String8 string)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -272,7 +272,7 @@ buffer_replace_range(FApp *app, Buffer_ID buffer_id, Range_i64 range, String_Con
 }
 
 inline void
-buffer_replace_range(FApp *app, Buffer_ID buffer, i64 min, i64 max, String_Const_u8 replacement)
+buffer_replace_range(App *app, Buffer_ID buffer, i64 min, i64 max, String8 replacement)
 {
   buffer_replace_range(app, buffer, Ii64(min, max), replacement);
 }
@@ -2996,16 +2996,15 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
             f32 x_end   = x1;
             if (clip_slider > 0)
             {
+                f32 x_bot = (target->clip_box.x0 - target->offset.x);
+                f32 x_top = (target->clip_box.x1 - target->offset.x);
                 if (steep)
-                {// nono
-                    kv_clamp_bot(x_start, (target->clip_box.y0 - target->offset.y));
-                    kv_clamp_top(x_end,   (target->clip_box.y1 - target->offset.y));
-                }
-                else
                 {
-                    kv_clamp_bot(x_start, (target->clip_box.x0 - target->offset.x));
-                    kv_clamp_top(x_end,   (target->clip_box.x1 - target->offset.x));
+                    x_bot = (target->clip_box.y0 - target->offset.y);
+                    x_top = (target->clip_box.y1 - target->offset.y);
                 }
+                kv_clamp_bot(x_start, x_bot);
+                kv_clamp_top(x_end,   x_top);
             }
             
             i32 nsamples = 16;
@@ -3428,16 +3427,6 @@ api(custom) function Doc_Cluster*
 get_custom_layer_boundary_docs(FApp *app, Arena *arena){
     API_Definition *api_def = custom_api_construct(arena);
     return(doc_custom_api(arena, api_def));
-}
-
-////////////////////////////////////
-
-inline Range_i64 token_range(Token *token)
-{
-  if (token)
-    return Range_i64{token->pos, token->pos + token->size};
-  else
-    return Range_i64{};
 }
 
 // BOTTOM

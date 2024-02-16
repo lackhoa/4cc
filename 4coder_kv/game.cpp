@@ -296,8 +296,26 @@ pow(f32 input, i32 power)
     return result;
 }
 
+struct Camera
+{
+    v3   world_p;
+    m3x3 transform;    // transform to project the object onto the camera axes
+    v1   focal_length;
+};
+
+
+internal v2 
+perspective_project(Camera *camera, v3 point)
+{
+    v3 projected = matvmul3(camera->transform, point);
+    // NOTE: distance is in z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
+    f32 dz_point_camera = absolute(camera->world_p.z - projected.z);
+    v3 result_v3 = (camera->focal_length / dz_point_camera) * projected;
+    return result_v3.xy;
+}
+
 internal void
-draw_cubic_bezier(App *app, v2 P[4])
+draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
 {
     v4 grayv4  = {.5, .5, .5, 1};
     u32 gray   = pack_argb(grayv4);
@@ -308,22 +326,14 @@ draw_cubic_bezier(App *app, v2 P[4])
     {
         f32 u = du * (f32)sample_index;
         f32 U = 1.0f-u;
-        v2 position = (pow(U,3)*    P[0] + 
-                       3*pow(U,2)*u*P[1] +
-                       3*U*pow(u,2)*P[2] +
-                       pow(u,3)*    P[3]);
-        draw_circle(app, position, 10, gray);
+        v3 world_p = (pow(U,3)*    P[0] + 
+                      3*pow(U,2)*u*P[1] +
+                      3*U*pow(u,2)*P[2] +
+                      pow(u,3)*    P[3]);
+        //
+        v2 screen_p = perspective_project(camera, world_p);
+        draw_circle(app, screen_p, 10, gray);
     }
-}
-
-internal v2 
-perspective_project(v3 camera_p, v3 camera_transposed[3], f32 d_camera_screen, v3 point)
-{
-    v3 projected = matvmul3(camera_transposed, point);
-    // NOTE: distance is in z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
-    f32 dz_point_camera = absolute(camera_p.z - projected.z);
-    v3 result_v3 = (d_camera_screen / dz_point_camera) * projected;
-    return result_v3.xy;
 }
 
 internal void
@@ -340,23 +350,74 @@ game_update_and_render(App *app, View_ID view, rect2 region)
   
     draw_set_y_up(app);
     draw_set_offset(app, layout_center);
- 
+    
+    fslider(camera_p, v3{ 4.635629, 3.477934, 3.695460 }, {.range = If32(0.0f, 1e3f)});
+    v3 camera_x, camera_y, camera_z;
+    camera_z = noz(camera_p);  // NOTE: z comes at you
+    camera_x = noz(v3{-camera_z.y, camera_z.x, 0});
+    camera_y = noz(cross(camera_z, camera_x));
+    
+    // NOTE: Our matrix is column-first, because that's how I roll ya'll!
+    v3 camera_axes[3] = {camera_x, camera_y, camera_z};
+   
+#define t camera_axes
+    m3x3 camera_transform =
+    {
+        .columns=
+        {
+            {t[0][0], t[1][0], t[2][0]},
+            {t[0][1], t[1][1], t[2][1]},
+            {t[0][2], t[1][2], t[2][2]},
+        }
+    };
+#undef t
+    
+    Camera camera_value = 
+    {
+        .world_p      = camera_p,
+        .focal_length = 2000.f,
+    };
+    camera_value.transform = camera_transform;
+    Camera *camera = &camera_value;
+
+    { // push coordinate system
+        
+        v2 pO_screen, px_screen, py_screen, pz_screen;
+        {
+            v3 pO = 1e3 * v3{0,0,0};
+            v3 px = 1e3 * v3{1,0,0};
+            v3 py = 1e3 * v3{0,1,0};
+            v3 pz = 1e3 * v3{0,0,1};
+            //
+            pO_screen = perspective_project(camera, pO);
+            px_screen = perspective_project(camera, px);
+            py_screen = perspective_project(camera, py);
+            pz_screen = perspective_project(camera, pz);
+        }
+        
+        v2 O = {};
+        f32 line_thickness = 8.0f;
+        draw_line(app, O+pO_screen, O+px_screen, line_thickness, pack_argb({.5,  0,  0, 1}));
+        draw_line(app, O+pO_screen, O+py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
+        draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
+    }    
+    
     if (1)
-    {// NOTE: bezier surface experiment!
-        fslider( c0, v2{ -0.910617, -0.632750 } );
-        fslider( c1, v2{ -0.627254, 1.040406 } );
-        fslider( c2, v2{ 0.954310, -0.706654 } );
-        fslider( c3, v2{ 0.344152, 1.014585 } );
+    {// NOTE: bezier curve experiment!
+        fslider( c0, v3{ 0.201875, -0.531298, 1.008943 });
+        fslider( c1, v3{ -0.460013, 1.040406, 1.143159 });
+        fslider( c2, V3( 0.954310, -0.706654, 0 ) );
+        fslider( c3, V3( 0.344152, 1.014585, 0 ) );
         f32 pos_unit = 500;
-        v2 control_points[] = {pos_unit*c0, pos_unit*c1, pos_unit*c2, pos_unit*c3};
+        v3 control_points[] = {pos_unit*c0, pos_unit*c1, pos_unit*c2, pos_unit*c3};
         //
-        fslider( radius, v1{1.0f} );  //unit=10
+        fslider( radius, v1{1.0f} );
         f32 radius_unit = 10.0f;
         for_i32 (index, 0, 4)
         {
-            draw_circle(app, control_points[index], radius*radius_unit, gray);
+            draw_circle(app, control_points[index].xy, radius*radius_unit, gray);
         }
-        draw_cubic_bezier(app, control_points);
+        draw_cubic_bezier(app, camera, control_points);
     }
   
     fslider(software_rendering_slider, 0.1);
@@ -392,56 +453,6 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         fslider( scale, 0.338275f );
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
-    }
-    
-    fslider( debug_offset, 0.148896 );
-    v2 debug_draw_offset = layout_center;
-    if (debug_offset > 0)
-        debug_draw_offset = {0,0};
-    draw_set_offset(app, debug_draw_offset);
-    
-    { // push coordinate system
-        fslider( camera_p_slider, v3{ 3.893280, -1.663852, 3.886681 } );
-        v3 camera_p = 1e3 * camera_p_slider;
-        v3 camera_x, camera_y, camera_z;
-        camera_z = noz(camera_p);  // NOTE: z comes at you
-        camera_x = noz(v3{-camera_z.y, camera_z.x, 0});
-        camera_y = noz(cross(camera_z, camera_x));
-        
-        // NOTE: Our matrix is column-first, because that's how I roll ya'll!
-        v3 camera_transform[3] = {camera_x, camera_y, camera_z};
-        
-#define t camera_transform
-        v3 camera_transposed[3] =
-        {
-            {t[0][0], t[1][0], t[2][0]},
-            {t[0][1], t[1][1], t[2][1]},
-            {t[0][2], t[1][2], t[2][2]},
-        };
-#undef t
-        
-        f32 d_camera_screen = 2000.f;  // NOTE: based on real life distance from eye to the screen
-        v3 screen_center = camera_p - d_camera_screen * camera_z;
-        
-        v2 pO_screen, px_screen, py_screen, pz_screen;
-        {
-            v3 pO = 1e3 * v3{0,0,0};
-            v3 px = 1e3 * v3{1,0,0};
-            v3 py = 1e3 * v3{0,1,0};
-            v3 pz = 1e3 * v3{0,0,1};
-            //
-            pO_screen = perspective_project(camera_p, camera_transposed, d_camera_screen, pO);
-            px_screen = perspective_project(camera_p, camera_transposed, d_camera_screen, px);
-            py_screen = perspective_project(camera_p, camera_transposed, d_camera_screen, py);
-            pz_screen = perspective_project(camera_p, camera_transposed, d_camera_screen, pz);
-        }
-        
-        v2 O = {};
-        if (debug_offset > 0) O = layout_center;
-        f32 line_thickness = 8.0f;
-        draw_line(app, O+pO_screen, O+px_screen, line_thickness, pack_argb({.5,  0,  0, 1}));
-        draw_line(app, O+pO_screen, O+py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
-        draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
     }
     
     draw_set_y_down(app);
