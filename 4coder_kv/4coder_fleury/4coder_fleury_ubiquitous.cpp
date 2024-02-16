@@ -4,7 +4,7 @@
 
 static struct
 {
-    String_Const_u8 string;
+    String8 string;
     ARGB_Color color;
 }
 global_tooltips[32] = {};

@@ -303,7 +303,6 @@ struct Camera
     v1   focal_length;
 };
 
-
 internal v2 
 perspective_project(Camera *camera, v3 point)
 {
@@ -336,6 +335,12 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
     }
 }
 
+internal FUI_UPDATE_VALUE_RETURN
+update_camera(FUI_UPDATE_VALUE_PARAMS)
+{
+    return;
+}
+
 internal void
 game_update_and_render(App *app, View_ID view, rect2 region)
 {
@@ -351,7 +356,7 @@ game_update_and_render(App *app, View_ID view, rect2 region)
     draw_set_y_up(app);
     draw_set_offset(app, layout_center);
     
-    fslider(camera_p, v3{ 4.635629, 3.477934, 3.695460 }, {.range = If32(0.0f, 1e3f)});
+    fslider(camera_p, v3{ 4.635629, 3.477934, 3.695460 }, {.range=If32(0.0f, 1e3f), .update_function=update_camera});
     v3 camera_x, camera_y, camera_z;
     camera_z = noz(camera_p);  // NOTE: z comes at you
     camera_x = noz(v3{-camera_z.y, camera_z.x, 0});
@@ -362,14 +367,11 @@ game_update_and_render(App *app, View_ID view, rect2 region)
    
 #define t camera_axes
     m3x3 camera_transform =
-    {
-        .columns=
-        {
+    {{
             {t[0][0], t[1][0], t[2][0]},
             {t[0][1], t[1][1], t[2][1]},
             {t[0][2], t[1][2], t[2][2]},
-        }
-    };
+    }};
 #undef t
     
     Camera camera_value = 
@@ -404,23 +406,22 @@ game_update_and_render(App *app, View_ID view, rect2 region)
     
     if (1)
     {// NOTE: bezier curve experiment!
-        fslider( c0, v3{ 0.201875, -0.531298, 1.008943 });
+        fslider( c0, v3{ -0.501223, -0.417632, 0.768833 });
         fslider( c1, v3{ -0.460013, 1.040406, 1.143159 });
         fslider( c2, V3( 0.954310, -0.706654, 0 ) );
         fslider( c3, V3( 0.344152, 1.014585, 0 ) );
         f32 pos_unit = 500;
         v3 control_points[] = {pos_unit*c0, pos_unit*c1, pos_unit*c2, pos_unit*c3};
         //
-        fslider( radius, v1{1.0f} );
-        f32 radius_unit = 10.0f;
+        fslider( radius, v1{1.0f}, {.range=If32(0, 10.0f)});
         for_i32 (index, 0, 4)
         {
-            draw_circle(app, control_points[index].xy, radius*radius_unit, gray);
+            draw_circle(app, control_points[index].xy, radius, gray);
         }
         draw_cubic_bezier(app, camera, control_points);
     }
   
-    fslider(software_rendering_slider, 0.1);
+    fslider(software_rendering_slider, 0.0f);
     if (software_rendering_slider > 0)
     {// NOTE: software rendering experiments
         v3i dim = {768, 768, 1};

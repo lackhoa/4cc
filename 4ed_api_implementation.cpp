@@ -3377,7 +3377,7 @@ open_color_picker(FApp *app, Color_Picker *picker)
 }
 
 api(custom) function void
-animate_in_n_milliseconds(FApp *app, u32 n)
+animate_in_n_milliseconds(App *app, u32 n)
 {
     Models *models = (Models*)app->cmd_context;
     if (n == 0){
@@ -3386,6 +3386,11 @@ animate_in_n_milliseconds(FApp *app, u32 n)
     else{
         models->next_animate_delay = Min(models->next_animate_delay, n);
     }
+}
+
+inline void animate_next_frame(App *app)
+{
+    animate_in_n_milliseconds(app, 0);
 }
 
 api(custom) function String_Match_List

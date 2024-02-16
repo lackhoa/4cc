@@ -11,12 +11,14 @@
 // TODO(allen): Make these as fast as possible
 
 #if 0
+/*
 internal void
 block_zero(void *a, u64 size){
     for (u8 *ptr = (u8*)a, *e = ptr + size; ptr < e; ptr += 1){
         *ptr = 0;
     }
 }
+*/
 internal void
 block_fill_ones(void *a, u64 size){
     for (u8 *ptr = (u8*)a, *e = ptr + size; ptr < e; ptr += 1){

@@ -35,9 +35,6 @@ fui_push_slider_value(Arena *arena, Fui_Type type, Fui_Value value)
     return result;
 }
 
-global v4  fui_slider_direction;  // TODO: could compress this down to just 2 bits
-global i32 fui_active_slider_index;
-
 internal b32
 fui__at_slider_p(FUI *f)
 {
@@ -143,8 +140,12 @@ fui_handle_slider(App *app, Buffer_ID buffer)
             fui_active_slider_index = slider_index;
             defer(fui_active_slider_index = 0);
             
+            Fui_Slider *slider = &store[slider_index];
+            
+            block_zero_array(global_fui_key_states);
+           
             for (;;)
-            { // NOTE: ui loop
+            {// NOTE: ui loop
                 User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
                 if (in.abort) break; 
                 
@@ -152,29 +153,26 @@ fui_handle_slider(App *app, Buffer_ID buffer)
                 b32 keyup   = (in.event.kind == InputEventKind_KeyRelease);
                 if (keydown || keyup)
                 {
-                    v4 &direction = fui_slider_direction;
-#define Match(CODE) in.event.key.code == KeyCode_##CODE
+                    Key_Code keycode = in.event.key.code;
+#define Match(CODE) keycode == KeyCode_##CODE
                     //
                     if ( Match(Return) && keydown )
                     {
                         write_back = true; 
                         break;
                     }
-                    else if (Match(L)) direction.x = keydown ? +1 : 0;
-                    else if (Match(H)) direction.x = keydown ? -1 : 0;
-                    else if (Match(K)) direction.y = keydown ? +1 : 0;
-                    else if (Match(J)) direction.y = keydown ? -1 : 0;
-                    else if (Match(O)) direction.z = keydown ? +1 : 0;
-                    else if (Match(I)) direction.z = keydown ? -1 : 0;
+                    else
+                    {
+                        global_fui_key_states[keycode] = keydown;
+                    }
                     //
 #undef Match
                 }
                 else leave_current_input_unhandled(app);
             }
             
-            Fui_Slider *slider = &store[slider_index];
             if (write_back)
-            { //note(kv): save the results back
+            { // NOTE(kv): save the results back
                 String8 value_string = fui_push_slider_value(xblock, slider->type, slider->value);
                 buffer_replace_range(app, buffer, slider_value_range, value_string);
             }
@@ -191,17 +189,21 @@ fui_handle_slider(App *app, Buffer_ID buffer)
 internal void
 fui_tick(App *app, Frame_Info frame_info)
 {
-    if (fui_active_slider_index &&
-        fui_slider_direction != v4{})
+    if (fui_active_slider_index)
     {
         f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key.
         Fui_Slider *slider = &fui_slider_store[fui_active_slider_index];
-        slider->update_value_function(slider, dt, fui_slider_direction);
-        
-        animate_in_n_milliseconds(app, 0);
-        
-        Temp_Block temp(app);
-        String8 slider_value = fui_push_slider_value(temp, slider->type, slider->value);
-        vim_set_bottom_text(slider_value);
+      
+        v4 old_value = slider->value.v4;
+        slider->update_function(slider, dt);
+        v4 new_value = slider->value.v4;
+        if (old_value != new_value)
+        {
+            X_Block x(app);
+            String8 slider_value = fui_push_slider_value(x, slider->type, slider->value);
+            vim_set_bottom_text(slider_value);  // todo Allow customizing this too?
+            
+            animate_next_frame(app);
+        }
     }
 }
