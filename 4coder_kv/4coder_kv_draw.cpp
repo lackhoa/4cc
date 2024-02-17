@@ -343,7 +343,8 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
     }
     
 #if KV_INTERNAL
-    if (DEBUG_draw_hud_p)
+    if (arrlen(DEBUG_entries) > 0 &&
+        DEBUG_draw_hud_p)
     {// my test hud
         Rect_f32_Pair pair = rect_split_top_bottom_neg(region, 5*line_height);
 		DEBUG_draw_hud(app, face_id, text_layout_id, pair.max);

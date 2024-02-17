@@ -1177,7 +1177,7 @@ union v4
   };
   struct {
     v3 xyz;
-    f32 w_ignored;
+    v1 xyz_w;
   };
   struct {
     v2 xy;
@@ -1269,21 +1269,22 @@ operator+=(v4 &v, v4 u)
 typedef v2 Vec2_f32;
 
 union rect2 {
-  struct {
-    v2 min;
-    v2 max;
-  };
-  struct{
-    f32 x0;
-    f32 y0;
-    f32 x1;
-    f32 y1;
-  };
-  struct{
-    Vec2_f32 p0;
-    Vec2_f32 p1;
-  };
-  Vec2_f32 p[2];
+    struct {
+        v2 min;
+        v2 max;
+    };
+    struct{
+        f32 x0;
+        f32 y0;
+        f32 x1;
+        f32 y1;
+    };
+    struct{
+        Vec2_f32 p0;
+        Vec2_f32 p1;
+    };
+    Vec2_f32 p[2];
+    v4 v4_value;
 };
 
 inline b32
@@ -1539,16 +1540,22 @@ pack_sRGBA(v4 color)
   return result;
 }
 
-struct m3x3
+union m3x3
 {
-    v3 columns[3];  // columns
+    v3 columns[3];
+    struct
+    {
+        v3 x;
+        v3 y;
+        v3 z;
+    };
 };
 
-internal v3 matvmul3(m3x3 matrix, v3 v)
+internal v3 matvmul3(m3x3 *matrix, v3 v)
 {
-    v3 result = (v.x * matrix.columns[0] + 
-                 v.y * matrix.columns[1] + 
-                 v.z * matrix.columns[2]);
+    v3 result = (v.x * matrix->columns[0] + 
+                 v.y * matrix->columns[1] + 
+                 v.z * matrix->columns[2]);
     return result;
 }
 

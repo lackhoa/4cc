@@ -403,6 +403,18 @@ V4(f32 x, f32 y, f32 z, f32 w)
     Vec4_f32 v = {x, y, z, w};
     return(v);
 }
+internal v4
+V4(v3 xyz, v1 w)
+{
+    v4 v = {.xyz=xyz, .xyz_w=w};
+    return v;
+}
+internal v4
+castV4(v3 xyz)
+{
+    v4 v = {.xyz=xyz};
+    return v;
+}
 
 function Vec2_i8
 V2i8(Vec2_i8 o){

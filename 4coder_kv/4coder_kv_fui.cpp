@@ -191,19 +191,18 @@ fui_tick(App *app, Frame_Info frame_info)
 {
     if (fui_active_slider_index)
     {
+        animate_next_frame(app);
+        
         f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key.
         Fui_Slider *slider = &fui_slider_store[fui_active_slider_index];
-      
-        v4 old_value = slider->value.v4;
-        slider->update_function(slider, dt);
-        v4 new_value = slider->value.v4;
-        if (old_value != new_value)
+        
+        v4 new_value = slider->update(slider, dt);
+        if (new_value != slider->value.v4)
         {
+            slider->value.v4 = new_value;
             X_Block x(app);
             String8 slider_value = fui_push_slider_value(x, slider->type, slider->value);
             vim_set_bottom_text(slider_value);  // todo Allow customizing this too?
-            
-            animate_next_frame(app);
         }
     }
 }

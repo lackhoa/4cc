@@ -76,10 +76,8 @@ startup_hot_directory = "~/4ed/code";
 
 // NOTE(kv): quick startup file setting
 startup_file  = "C:/Users/vodan/notes/note.skm";
-startup_file1 = "*messages*";
-
-startup_file1       = "C:/Users/vodan/4ed/code/4coder_kv/game.cpp" ;
-// other_startup_file1 = "C:/Users/vodan/4ed/code/4coder_kv/4coder_fleury/4coder_fleury_plots_demo.cpp" ;
+//
+startup_file1       = "C:/Users/vodan/4ed/code/4coder_kv/game.cpp";
 other_startup_file1 = "*render*" ;
 
-DEBUG_draw_hud_p = false;
+DEBUG_draw_hud_p = true;

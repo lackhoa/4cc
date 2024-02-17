@@ -32,14 +32,15 @@ union Fui_Value
 
 struct Fui_Slider;
 
-#define FUI_UPDATE_VALUE_RETURN void
+// todo @Rename should be "fui_delta" instead
+#define FUI_UPDATE_VALUE_RETURN v4
 #define FUI_UPDATE_VALUE_PARAMS Fui_Slider *slider, f32 dt
 //
 typedef FUI_UPDATE_VALUE_RETURN Fui_Update_Value(FUI_UPDATE_VALUE_PARAMS);
 
 #define X_FUI_OPTIONS(X) \
     Range_f32 range; \
-    Fui_Update_Value *update_function; \
+    Fui_Update_Value *update; \
     void *userdata;
 
 struct Fui_Options
@@ -85,10 +86,9 @@ fui_get_slider_by_name(String8 name)
     return 0;
 }
 
-internal FUI_UPDATE_VALUE_RETURN
-fui_update_value_linear(FUI_UPDATE_VALUE_PARAMS)
+internal v4
+fui__direction_from_key_states()
 {
-    // NOTE: Direction from key state
     v4 direction = {};
     //
 #define Down(N)  (global_fui_key_states[KeyCode_##N] != 0)
@@ -101,10 +101,17 @@ fui_update_value_linear(FUI_UPDATE_VALUE_PARAMS)
     if (Down(I)) direction.z = -1;
     //
 #undef Down
-    
+    return direction;
+}
+
+internal FUI_UPDATE_VALUE_RETURN
+fui_update_value_linear(FUI_UPDATE_VALUE_PARAMS)
+{
+    v4 direction = fui__direction_from_key_states();
     f32 speed = 1.0f;
     // NOTE: Update slider value
-    slider->value.v4 += dt * speed * direction;
+    v4 delta = dt * speed * direction;
+    return slider->value + delta;
 }
 
 #if 0
@@ -156,8 +163,8 @@ fui_slider_user_main(String8 id, Fui_Type type, Fui_Value init_value, Fui_Option
         slider.value = init_value;
         
         // NOTE: update function
-        if (!slider.update_function)
-            slider.update_function = fui_update_value_linear;
+        if (!slider.update)
+            slider.update = fui_update_value_linear;
         
         // NOTE: range
         if (slider.range.min == 0.0f && slider.range.max == 0.0f)

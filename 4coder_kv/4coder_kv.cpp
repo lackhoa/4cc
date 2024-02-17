@@ -161,14 +161,14 @@ kv_4coder_initialize(App *app)
 internal void
 startup_panels_and_files(App *app)
 {
-    Scratch_Block temp(app);
+    X_Block xblock(app);
     
 #if KV_INTERNAL
-    String8 startup_file = def_get_config_string(temp, "startup_file1");
-    String8 other_startup_file = def_get_config_string(temp, "other_startup_file1");
+    String8 startup_file = def_get_config_string(xblock, "startup_file1");
+    String8 other_startup_file = def_get_config_string(xblock, "other_startup_file1");
 #else
-    String8 startup_file = def_get_config_string(temp, "startup_file");
-    String8 other_startup_file = def_get_config_string(temp, "other_startup_file");
+    String8 startup_file = def_get_config_string(xblock, "startup_file");
+    String8 other_startup_file = def_get_config_string(xblock, "other_startup_file");
 #endif
   
     // NOTE: left (actually top-left)
@@ -201,6 +201,10 @@ startup_panels_and_files(App *app)
     view_set_buffer(app, right_view, right_buffer, 0);
     
     view_set_active(app, left_view);
+    
+#if KV_INTERNAL
+    view_goto(app, left_view, 429, 10);
+#endif
 }
 
 internal void

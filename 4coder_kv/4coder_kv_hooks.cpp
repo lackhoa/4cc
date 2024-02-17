@@ -26,7 +26,7 @@ internal Tick_Function kv_tick;
 internal void 
 kv_tick(FApp *app, Frame_Info frame_info)
 {
-    DEBUG_clear;
+    DEBUG_CLEAR;
     
     // NOTE(kv): F4
     linalloc_clear(&global_frame_arena);
@@ -83,8 +83,6 @@ kv_tick(FApp *app, Frame_Info frame_info)
             print_message(app, "auto-saved all dirty buffers\n");
         }
     }
-    
-    DEBUG_text("clip_index", global_clipboard0.clip_index);
 }
 
 BUFFER_HOOK_SIG(kv_begin_buffer)

@@ -12,6 +12,23 @@
 
 #include "tr_model.cpp"
 
+struct Camera
+{
+    v3   world_p;
+    union
+    {
+        m3x3 axes;    // transform to project the object onto the camera axes
+        struct
+        {
+            v3 x;
+            v3 y;
+            v3 z;
+        };
+    };
+    m3x3 project;
+    v1   focal_length;
+};
+
 struct Screen
 {
   v3 center;
@@ -296,17 +313,10 @@ pow(f32 input, i32 power)
     return result;
 }
 
-struct Camera
-{
-    v3   world_p;
-    m3x3 transform;    // transform to project the object onto the camera axes
-    v1   focal_length;
-};
-
 internal v2 
 perspective_project(Camera *camera, v3 point)
 {
-    v3 projected = matvmul3(camera->transform, point);
+    v3 projected = matvmul3(&camera->project, point);
     // NOTE: distance is in z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
     f32 dz_point_camera = absolute(camera->world_p.z - projected.z);
     v3 result_v3 = (camera->focal_length / dz_point_camera) * projected;
@@ -335,61 +345,106 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
     }
 }
 
+/*
+global Camera global_camera;
+
 internal FUI_UPDATE_VALUE_RETURN
-update_camera(FUI_UPDATE_VALUE_PARAMS)
+update_camera_position(FUI_UPDATE_VALUE_PARAMS)
 {
-    return;
+    Camera *camera = &global_camera;
+    
+    v4 input_direction = fui__direction_from_key_states();
+    
+    v1 speed = 1.0f;
+    m3x3 axes = camera->axes;
+    axes.x = noz(camera->axes.x);
+    axes.y = noz(camera->axes.y);
+    axes.z = noz(camera->axes.z);
+    v3 direction = matvmul3(&axes, input_direction.xyz);
+    v3 delta = dt * speed * direction;
+    v3 result = noz(slider->value.v3 + delta);
+    return castV4(result);
+}
+*/
+
+internal FUI_UPDATE_VALUE_RETURN
+fui_update_get_delta(FUI_UPDATE_VALUE_PARAMS)
+{
+    v4 result = dt * fui__direction_from_key_states();
+    return result;
 }
 
 internal void
-game_update_and_render(App *app, View_ID view, rect2 region)
+setup_camera_from_z(Camera *camera, v3 camera_z, v1 distance)
 {
-    v4 whitev4 = {1, 1, 1, 1};
-    v4 grayv4  = {.5, .5, .5, 1};
-    u32 gray   = pack_argb(grayv4);
-    v4 blackv4 = {0,0,0,1};
-    
-    v2 screen_dim      = rect2_dim(region);
-    v2 screen_half_dim = 0.5f * screen_dim;
-    v2 layout_center = region.min + screen_half_dim;
-  
-    draw_set_y_up(app);
-    draw_set_offset(app, layout_center);
-    
-    fslider(camera_p, v3{ 4.635629, 3.477934, 3.695460 }, {.range=If32(0.0f, 1e3f), .update_function=update_camera});
-    v3 camera_x, camera_y, camera_z;
-    camera_z = noz(camera_p);  // NOTE: z comes at you
-    camera_x = noz(v3{-camera_z.y, camera_z.x, 0});
-    camera_y = noz(cross(camera_z, camera_x));
-    
-    // NOTE: Our matrix is column-first, because that's how I roll ya'll!
-    v3 camera_axes[3] = {camera_x, camera_y, camera_z};
+    // NOTE: "camera_z" is normalized.
+    camera->world_p = distance * camera_z;
    
-#define t camera_axes
-    m3x3 camera_transform =
+    camera->x = noz( v3{-camera_z.y, camera_z.x, 0} );  // NOTE: z axis' projection should point up on the screen
+    if (camera->x == v3{})
+    {// NOTE: Happens when we look STRAIGHT DOWN on the target.
+        camera->x = noz( v3{camera_z.z, 0, -camera_z.x} );  // NOTE: we want y axis to point up in this case
+    }
+    camera->y = noz( cross(camera_z, camera->x) );
+    
+#define t camera->axes.columns
+    camera->project =
     {{
             {t[0][0], t[1][0], t[2][0]},
             {t[0][1], t[1][1], t[2][1]},
             {t[0][2], t[1][2], t[2][2]},
     }};
 #undef t
+}
+
+internal void
+game_update_and_render(App *app, View_ID view, rect2 region)
+{
+    v4 whitev4 = {1,1,1,1};
+    v4 grayv4  = {0.5,0.5,0.5,1};
+    u32 gray   = pack_argb(grayv4);
+    v4 blackv4 = {0,0,0,1};
     
-    Camera camera_value = 
-    {
-        .world_p      = camera_p,
-        .focal_length = 2000.f,
-    };
-    camera_value.transform = camera_transform;
+    v2 screen_dim      = rect2_dim(region);
+    v2 screen_half_dim = 0.5f * screen_dim;
+    v2 layout_center = region.min + screen_half_dim;
+    
+    draw_set_y_up(app);
+    draw_set_offset(app, layout_center);
+   
+    v1 X = 1e3;  // distance multiplier
+    local_persist Camera camera_value = {};
     Camera *camera = &camera_value;
+    v1 initial_camera_distance = X * 1.0f;
+    {// NOTE: Initialization
+        local_persist b32 inited = false;
+        if (!inited)
+        {
+            inited = true;
+            camera->focal_length = 2000.f;
+            setup_camera_from_z(camera, v3{.z=1}, initial_camera_distance);
+        }
+    }
+    
+    {// NOTE: Camera setup
+        // BOOKMARK: Make this slider stateful, by passing in current camera value (sad!)
+        fslider(camera_delta, v3{ 0.000000, 0.000000, 0.000000 }, {.update=fui_update_get_delta});
+        camera_delta *= X;
+        
+        v3 adjusted_delta = matvmul3(&camera->axes, camera_delta);
+        v3 camera_z = noz(camera->world_p + adjusted_delta);
+        v1 new_distance = length(camera->world_p) + camera_delta.z;
+        
+        setup_camera_from_z(camera, camera_z, new_distance);
+    }
 
     { // push coordinate system
-        
         v2 pO_screen, px_screen, py_screen, pz_screen;
         {
-            v3 pO = 1e3 * v3{0,0,0};
-            v3 px = 1e3 * v3{1,0,0};
-            v3 py = 1e3 * v3{0,1,0};
-            v3 pz = 1e3 * v3{0,0,1};
+            v3 pO = v3{0,0,0};
+            v3 px = X * v3{1,0,0};
+            v3 py = X * v3{0,1,0};
+            v3 pz = X * v3{0,0,1};
             //
             pO_screen = perspective_project(camera, pO);
             px_screen = perspective_project(camera, px);
@@ -404,7 +459,6 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
     }    
     
-    if (1)
     {// NOTE: bezier curve experiment!
         fslider( c0, v3{ -0.501223, -0.417632, 0.768833 });
         fslider( c1, v3{ -0.460013, 1.040406, 1.143159 });
