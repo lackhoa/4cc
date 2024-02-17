@@ -1168,7 +1168,7 @@ view_exists(FApp *app, View_ID view_id){
 }
 
 api(custom) function Buffer_ID
-view_get_buffer(FApp *app, View_ID view_id, Access_Flag access){
+view_get_buffer(App *app, View_ID view_id, Access_Flag access){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
     Buffer_ID result = 0;
@@ -1411,7 +1411,7 @@ panel_get_child(FApp *app, Panel_ID panel_id, Side which_child){
 }
 
 api(custom) function b32
-view_close(FApp *app, View_ID view_id)
+view_close(App *app, View_ID view_id)
 {
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1694,7 +1694,7 @@ view_quit_ui(FApp *app, View_ID view_id){
 }
 
 api(custom) function b32
-view_set_buffer(FApp *app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags)
+view_set_buffer(App *app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);

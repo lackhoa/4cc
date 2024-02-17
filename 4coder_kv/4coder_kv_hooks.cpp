@@ -83,6 +83,7 @@ kv_tick(FApp *app, Frame_Info frame_info)
             print_message(app, "auto-saved all dirty buffers\n");
         }
     }
+    animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));
 }
 
 BUFFER_HOOK_SIG(kv_begin_buffer)

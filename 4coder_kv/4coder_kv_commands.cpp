@@ -1,6 +1,7 @@
 /* NOTE(kv): This file is for miscellaneous commands */
 
-Table_u64_u64 shifted_version_of_characters;
+global Table_u64_u64 shifted_version_of_characters;
+global Buffer_ID global_other_view_buffer;
 
 VIM_COMMAND_SIG(kv_shift_character)
 {
@@ -870,4 +871,31 @@ clipboard_pop_command(FApp *app)
    
     // NOTE(kv): print it
     vim_set_bottom_text(current_item);
+}
+
+internal void
+view_goto_first_search_position(App *app, View_ID view, String8 needle)
+{
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    i64 pos = kv_fuzzy_search_forward(app, buffer, 0, needle);
+    view_goto_pos(app, view, pos);
+}
+
+internal void
+kv_toggle_split_panel(App *app)
+{
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    View_ID next_view = get_next_view_looped_primary_panels(app, view, Access_Always, false);
+    if ( next_view != view )
+    {
+        global_other_view_buffer = view_get_buffer(app, next_view, Access_Always);
+        view_close(app, next_view);
+    }
+    else
+    {
+        View_ID new_view = open_view(app, view, ViewSplit_Right);
+        new_view_settings(app, new_view);
+        view_set_buffer(app, new_view, global_other_view_buffer, 0);
+        view_set_active(app, view);
+    }
 }

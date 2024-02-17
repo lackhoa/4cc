@@ -27,13 +27,13 @@ kv_string_split_wildcards(Arena *arena, String8 string)
 
 // todo(kv): We don't handle multiline string! @FuzzyMultiline
 function i64
-kv_fuzzy_search_forward(FApp *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
+kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String8 needle)
 {
     i64 buffer_size = buffer_get_size(app, buffer);
     i64 result = buffer_size;
     
     Scratch_Block temp(app);
-    String_Const_u8_Array splits = kv_string_split_wildcards(temp, needle);
+    String8_Array splits = kv_string_split_wildcards(temp, needle);
     if ( !splits.count ) { return result; }
     
     while( pos < buffer_size )
@@ -85,12 +85,12 @@ kv_fuzzy_search_forward(FApp *app, Buffer_ID buffer, i64 pos, String_Const_u8 ne
 }
 
 function i64
-kv_fuzzy_search_backward(Application_Links *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
+kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
 {
   i64 result = -1;
 
   Scratch_Block temp(app);
-  String_Const_u8_Array splits = kv_string_split_wildcards(temp, needle);
+  String8_Array splits = kv_string_split_wildcards(temp, needle);
   if ( !splits.count ) { return result; }
 
   while( pos > -1 )

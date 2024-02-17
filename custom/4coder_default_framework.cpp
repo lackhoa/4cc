@@ -196,7 +196,23 @@ open_build_footer_panel(FApp *app)
     return build_footer_panel_view_id;
 }
 
-function View_ID
+internal b32
+is_there_another_primary_panels(App *app, View_ID start_view)
+{
+    View_ID view = start_view;
+    do
+    {
+        view = get_next_view_looped_all_panels(app, start_view, Access_Always);
+        if (!view_get_is_passive(app, view))
+            break;
+    }
+    while (view != start_view);
+    
+    b32 result = (view == start_view);
+    return result;
+}
+
+internal View_ID
 get_next_view_looped_primary_panels(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
 {
     View_ID view_id = start_view;
@@ -219,14 +235,6 @@ get_next_view_looped_primary_panels(App *app, View_ID start_view, Access_Flag ac
     }
     
     return(view_id);
-}
-
-internal void
-switch_to_other_primary_panel(FApp *app)
-{
-    View_ID view = get_active_view(app, Access_Always);
-    View_ID next_view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
-    view_set_active(app, next_view);
 }
 
 function View_ID
@@ -372,7 +380,7 @@ view_buffer_set(Application_Links *app, Buffer_ID *buffers, i64 *positions, i32 
 ////////////////////////////////
 
 function void
-change_active_panel_send_command(FApp *app, Custom_Command_Function *custom_func)
+change_active_panel_send_command(App *app, Custom_Command_Function *custom_func)
 {
     View_ID view = get_active_view(app, Access_Always);
     view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
@@ -388,11 +396,10 @@ change_active_panel_send_command(FApp *app, Custom_Command_Function *custom_func
 
 // CUSTOM_DOC("Change the currently active panel, moving to the panel with the next highest view_id.")
 internal void
-change_active_panel(FApp *app)
+change_active_panel(App *app)
 {
     change_active_panel_send_command(app, 0);
 }
-
 
 internal void
 expand_bottom_view(FApp *app)

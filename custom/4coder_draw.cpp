@@ -625,43 +625,51 @@ draw_whitespace_highlight(Application_Links *app, Buffer_ID buffer, Text_Layout_
 }
 
 function void
-draw_comment_highlights(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
-                        Token_Array *array, Comment_Highlight_Pair *pairs, i32 pair_count){
+draw_comment_highlights(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
+                        Token_Array *array, Comment_Highlight_Pair *pairs, i32 pair_count)
+{
     Scratch_Block scratch(app);
     Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     i64 first_index = token_index_from_pos(array, visible_range.first);
     Token_Iterator_Array it = token_iterator_index(buffer, array, first_index);
-    for (;;){
+    for (;;)
+    {
         Temp_Memory_Block temp(scratch);
         Token *token = token_it_read(&it);
-        if (token->pos >= visible_range.one_past_last){
+        if (token->pos >= visible_range.one_past_last)
+        {
             break;
         }
-        String_Const_u8 tail = {};
-        if (token_it_check_and_get_lexeme(app, scratch, &it, TokenBaseKind_Comment, &tail)){
+        String8 tail = {};
+        if ( token_it_check_and_get_lexeme(app, scratch, &it, TokenBaseKind_Comment, &tail) )
+        {
             for (i64 index = token->pos;
                  tail.size > 0;
-                 tail = string_skip(tail, 1), index += 1){
+                 tail = string_skip(tail, 1), index += 1)
+            {
                 Comment_Highlight_Pair *pair = pairs;
-                for (i32 i = 0; i < pair_count; i += 1, pair += 1){
+                for (i32 i = 0; 
+                     i < pair_count; 
+                     i += 1, pair += 1)
+                {
                     u64 needle_size = pair->needle.size;
-                    if (needle_size == 0){
-                        continue;
-                    }
-                    String_Const_u8 prefix = string_prefix(tail, needle_size);
-                    if (string_match(prefix, pair->needle)){
-                        Range_i64 range = Ii64_size(index, needle_size);
-                        paint_text_color(app, text_layout_id, range, pair->color);
-                        tail = string_skip(tail, needle_size - 1);
-                        index += needle_size - 1;
-                        break;
+                    if (needle_size > 0)
+                    {
+                        String8 prefix = string_prefix(tail, needle_size);
+                        if ( string_match(prefix, pair->needle, StringMatch_CaseInsensitive) )
+                        {
+                            Range_i64 range = Ii64_size(index, needle_size);
+                            paint_text_color(app, text_layout_id, range, pair->color);
+                            tail = string_skip(tail, needle_size - 1);
+                            index += needle_size - 1;
+                            break;
+                        }
                     }
                 }
             }
         }
-        if (!token_it_inc_non_whitespace(&it)){
+        if ( !token_it_inc_non_whitespace(&it) )
             break;
-        }
     }
 }
 

@@ -869,10 +869,16 @@ CUSTOM_DOC("Queries the user for a number, and jumps the cursor to the correspon
     }
 }
 
-internal void
-view_goto(App *app, View_ID view, i64 linum, i64 colnum=0)
+inline void
+view_goto_line_column(App *app, View_ID view, i64 linum, i64 colnum=0)
 {
     view_set_cursor_and_preferred_x(app, view, seek_line_col(linum, colnum));
+}
+
+inline void
+view_goto_pos(App *app, View_ID view, i64 pos)
+{
+    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
 CUSTOM_COMMAND_SIG(search);

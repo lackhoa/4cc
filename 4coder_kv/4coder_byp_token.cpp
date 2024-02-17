@@ -168,13 +168,11 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
 	// NOTE(allen): Scan for TODOs and NOTEs
 	{
 		Comment_Highlight_Pair pairs[] = {
-			{str8lit("NOTE"), comment_pop_0},
 			{str8lit("note"), comment_pop_0},
-			{str8lit("TODO"), comment_pop_1},
 			{str8lit("todo"), comment_pop_1},
 			{str8lit("important"), comment_pop_2},
-            {str8lit("IMPORTANT"), comment_pop_2},
             {str8lit("nono"),      comment_pop_2},  // ignore_nono
+            {str8lit("bookmark"),  comment_pop_2}
 		};
 		draw_comment_highlights(app, buffer, text_layout_id, &token_array, pairs, ArrayCount(pairs));
 	}

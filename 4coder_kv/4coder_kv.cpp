@@ -2,7 +2,6 @@
 // ~/4ed/code/project.4coder
 // ~/4ed/code/4coder_kv/4coder_kv_commands.cpp
 
-// @test
 // TODO(kv): remember this file is processed by the meta-generator.
 //           particularly the command metadata is required for the code to compile (and it's depressing).
 #include "4coder_custom_include.cpp"
@@ -149,7 +148,7 @@ create_unimportant_buffer(App *app, String8 name)
   buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
 }
 
-function void
+internal void
 kv_4coder_initialize(App *app)
 {
     Face_Description description = get_face_description(app, 0);
@@ -164,6 +163,7 @@ startup_panels_and_files(App *app)
     X_Block xblock(app);
     
 #if KV_INTERNAL
+    // @Cleanup @Rename
     String8 startup_file = def_get_config_string(xblock, "startup_file1");
     String8 other_startup_file = def_get_config_string(xblock, "other_startup_file1");
 #else
@@ -179,17 +179,17 @@ startup_panels_and_files(App *app)
     // NOTE(kv): Bottom view
     Buffer_Identifier comp = buffer_identifier(compilation_buffer_name);
     Buffer_ID comp_id = buffer_identifier_to_id(app, comp);
-    View_ID compilation_view = 0;  // todo: rename
+    View_ID bottom_view = 0;
     {
-        compilation_view = open_view(app, left_view, ViewSplit_Bottom);
-        new_view_settings(app, compilation_view);
-        Buffer_ID buffer = view_get_buffer(app, compilation_view, Access_Always);
+        bottom_view = open_view(app, left_view, ViewSplit_Bottom);
+        new_view_settings(app, bottom_view);
+        Buffer_ID buffer = view_get_buffer(app, bottom_view, Access_Always);
         Face_ID face_id = get_face_id(app, buffer);
         Face_Metrics metrics = get_face_metrics(app, face_id);
-        view_set_split_pixel_size(app, compilation_view, (i32)(metrics.line_height*4.f));
-        view_set_passive(app, compilation_view, true);
-        global_bottom_view = compilation_view;
-        view_set_buffer(app, compilation_view, comp_id, 0);
+        view_set_split_pixel_size(app, bottom_view, (i32)(metrics.line_height*4.f));
+        view_set_passive(app, bottom_view, true);
+        global_bottom_view = bottom_view;
+        view_set_buffer(app, bottom_view, comp_id, 0);
     }
     
     // NOTE: right (actually top-right)
@@ -203,7 +203,7 @@ startup_panels_and_files(App *app)
     view_set_active(app, left_view);
     
 #if KV_INTERNAL
-    view_goto(app, left_view, 429, 10);
+    view_goto_first_search_position(app, left_view, str8lit("bookmark"));
 #endif
 }
 
@@ -510,7 +510,7 @@ kv_vim_bindings(App *app)
     
     /// Panel
     BIND(N|MAP, change_active_panel,         C|KeyCode_Tab);
-    BIND(N|MAP, close_panel,                 M|KeyCode_W);
+    BIND(N|MAP, kv_toggle_split_panel,       M|KeyCode_W);
     
     // Sub modes
     BIND(N|V|MAP, vim_leader_d, SUB_Leader,       KeyCode_D);
@@ -562,7 +562,7 @@ kv_vim_bindings(App *app)
     BIND(N|  MAP,  quick_swap_buffer,        M|KeyCode_Comma);
     BIND(N|0|MAP,  kv_do_t,                    KeyCode_T);
     BIND(N|0|MAP,  kv_do_T,                  S|KeyCode_T);
-    BIND(N|0|MAP,  open_panel_vsplit,        M|KeyCode_V);
+    // BIND(N|0|MAP,  open_panel_vsplit,        M|KeyCode_V);
     // NOTE(kv): remedy
     BIND(N|0|MAP,  remedy_add_breakpoint,      KeyCode_F9);
     BIND(N|0|MAP,  remedy_start_debugging,     KeyCode_F5);
@@ -579,7 +579,7 @@ kv_vim_bindings(App *app)
 }
 
 function void 
-default_custom_layer_init(Application_Links *app)
+default_custom_layer_init(App *app)
 {
     Thread_Context *tctx = get_thread_context(app);
     
@@ -601,7 +601,7 @@ default_custom_layer_init(Application_Links *app)
 }
 
 function void 
-kv_custom_layer_init(Application_Links *app)
+kv_custom_layer_init(App *app)
 {
     default_framework_init(app);
     set_all_default_hooks(app);

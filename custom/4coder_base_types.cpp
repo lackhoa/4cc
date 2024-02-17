@@ -4466,12 +4466,18 @@ string_match(String_Const_char a, String_Const_char b)
     return(result);
 }
 function b32
-string_match(String_Const_u8 a, String_Const_u8 b){
+string_match(String8 a, String8 b)
+{
     b32 result = false;
-    if (a.size == b.size){
+    if (a.size == b.size)
+    {
         result = true;
-        for (u64 i = 0; i < a.size; i += 1){
-            if (a.str[i] != b.str[i]){
+        for (u64 i = 0; 
+             i < a.size; 
+             i += 1)
+        {
+            if (a.str[i] != b.str[i])
+            {
                 result = false;
                 break;
             }
@@ -4580,7 +4586,8 @@ string_match_insensitive(String_Const_u32 a, String_Const_u32 b){
 }
 
 function b32
-string_match(String_Const_char a, String_Const_char b, String_Match_Rule rule){
+string_match(String_Const_char a, String_Const_char b, String_Match_Rule rule)
+{
     b32 result = false;
     switch (rule){
         case StringMatch_Exact:
@@ -4595,13 +4602,16 @@ string_match(String_Const_char a, String_Const_char b, String_Match_Rule rule){
     return(result);
 }
 function b32
-string_match(String_Const_u8 a, String_Const_u8 b, String_Match_Rule rule){
+string_match(String8 a, String8 b, String_Match_Rule rule)
+{
     b32 result = false;
-    switch (rule){
+    switch (rule)
+    {
         case StringMatch_Exact:
         {
             result = string_match(a, b);
         }break;
+        
         case StringMatch_CaseInsensitive:
         {
             result = string_match_insensitive(a, b);
@@ -4795,7 +4805,8 @@ string_compare(String_Const_char a, String_Const_char b){
     return(result);
 }
 function i32
-string_compare(String_Const_u8 a, String_Const_u8 b){
+string_compare(String8 a, String8 b)
+{
     i32 result = 0;
     for (u64 i = 0; i < a.size || i < b.size; i += 1){
         u8 ca = (i < a.size)?a.str[i]:0;
@@ -4808,15 +4819,14 @@ string_compare(String_Const_u8 a, String_Const_u8 b){
     }
     return(result);
 }
-inline b32
-string_equal(String8 a, String8 b)
-{
-  return string_compare(a,b) == 0;
-}
+
+// @Deprecated Use "string_match"
+inline b32 string_equal(String8 a, String8 b) { return string_match(a,b); }
+
 inline b32
 string_equal(String8 a, char *b)
 {
-  return string_equal(a, SCu8(b));
+  return string_match(a, SCu8(b));
 }
 inline b32
 string_equal(String8 a, char c)
