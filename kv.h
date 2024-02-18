@@ -405,17 +405,17 @@ typedef intptr_t  iptr;
 #define nono                kv_fail  // ignore_nono
 
 #if KV_INTERNAL
-#    define kv_fail_in_debug  kv_fail
+#    define fail_in_debug  kv_fail
 #else
-#    define kv_fail_in_debug
+#    define fail_in_debug
 #endif
 
-#define todo_test_me        kv_fail_in_debug
-#define todo_testme         kv_fail_in_debug
-#define todo_untested       kv_fail_in_debug
-#define todo_error_report   kv_fail_in_debug
-#define todo_incomplete     kv_fail_in_debug
-#define kv_debug_trap       kv_fail_in_debug
+#define todo_test_me        fail_in_debug
+#define todo_testme         fail_in_debug
+#define todo_untested       fail_in_debug
+#define todo_error_report   fail_in_debug
+#define todo_incomplete     fail_in_debug
+#define kv_debug_trap       fail_in_debug
 
 #define invalid_default_case default: { kv_fail; };
 #define breakhere       do{ int x = 5; (void)x; }while(0)

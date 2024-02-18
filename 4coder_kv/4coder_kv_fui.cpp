@@ -67,12 +67,12 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
         {// NOTE: the whole slider outline
             rect2 rect = rect2_center_dim(slider_origin, slider_dim);
             v4 color = v4{1,1,1,0.5f};
-            if (fui_active_slider_index)  color.a = 1.0f;
+            if (global_fui_active_item_index)  color.a = 1.0f;
             draw_rect_outline(app, rect, 2, color);
         }
-        if (fui_active_slider_index)
+        if (global_fui_active_item_index)
         {// NOTE: the slider cursor
-            Fui_Slider *slider = &fui_slider_store[fui_active_slider_index];
+            Fui_Slider *slider = &global_fui_store[global_fui_active_item_index];
             v2 v = slider->value.v2;
             v.y = -v.y;  // NOTE: invert y to fit math coordinates
             v2 center = slider_origin + hadamard(v, slider_radius);
@@ -91,7 +91,7 @@ fui_handle_slider(App *app, Buffer_ID buffer)
     f->app    = app;
     f->buffer = buffer;
     
-    Fui_Slider *&store = fui_slider_store;
+    Fui_Slider *&store = global_fui_store;
     b32 at_slider = fui__at_slider_p(f);
     
     if (at_slider)
@@ -137,8 +137,8 @@ fui_handle_slider(App *app, Buffer_ID buffer)
             Fui_Value slider_value_save = store[slider_index].value;
             b32 write_back = false;
             
-            fui_active_slider_index = slider_index;
-            defer(fui_active_slider_index = 0);
+            global_fui_active_item_index = slider_index;
+            defer(global_fui_active_item_index = 0);
             
             Fui_Slider *slider = &store[slider_index];
             
@@ -177,7 +177,9 @@ fui_handle_slider(App *app, Buffer_ID buffer)
                 buffer_replace_range(app, buffer, slider_value_range, value_string);
             }
             else 
+            {
                 slider->value = slider_value_save;
+            }
             
             result = true;
         }
@@ -189,17 +191,19 @@ fui_handle_slider(App *app, Buffer_ID buffer)
 internal void
 fui_tick(App *app, Frame_Info frame_info)
 {
-    if (fui_active_slider_index)
+    if (global_fui_active_item_index)
     {
         animate_next_frame(app);
-        
-        f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key.
-        Fui_Slider *slider = &fui_slider_store[fui_active_slider_index];
-        
-        v4 new_value = slider->update(slider, dt);
-        if (new_value != slider->value.v4)
-        {
+        Fui_Slider *slider = &global_fui_store[global_fui_active_item_index];
+     
+        if (slider->update != fui_update_null)
+        {// NOTE: Update
+            f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key.
+            v4 new_value = slider->update(slider, dt);
             slider->value.v4 = new_value;
+        }
+       
+        {// NOTE: Printing
             X_Block x(app);
             String8 slider_value = fui_push_slider_value(x, slider->type, slider->value);
             vim_set_bottom_text(slider_value);  // todo Allow customizing this too?

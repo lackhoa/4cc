@@ -367,25 +367,18 @@ update_camera_position(FUI_UPDATE_VALUE_PARAMS)
 }
 */
 
-internal FUI_UPDATE_VALUE_RETURN
-fui_update_get_delta(FUI_UPDATE_VALUE_PARAMS)
-{
-    v4 result = dt * fui__direction_from_key_states();
-    return result;
-}
-
 internal void
-setup_camera_from_z(Camera *camera, v3 camera_z, v1 distance)
+setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
 {
-    // NOTE: "camera_z" is normalized.
-    camera->world_p = distance * camera_z;
+    // NOTE: "camz" is normalized.
+    camera->world_p = distance * camz;
    
-    camera->x = noz( v3{-camera_z.y, camera_z.x, 0} );  // NOTE: z axis' projection should point up on the screen
+    camera->x = noz( v3{-camz.y, camz.x, 0} );  // NOTE: z axis' projection should point up on the screen
     if (camera->x == v3{})
     {// NOTE: Happens when we look STRAIGHT DOWN on the target.
-        camera->x = noz( v3{camera_z.z, 0, -camera_z.x} );  // NOTE: we want y axis to point up in this case
+        camera->x = noz( v3{camz.z, 0, -camz.x} );  // NOTE: we want y axis to point up in this case
     }
-    camera->y = noz( cross(camera_z, camera->x) );
+    camera->y = noz( cross(camz, camera->x) );
     
 #define t camera->axes.columns
     camera->project =
@@ -398,53 +391,66 @@ setup_camera_from_z(Camera *camera, v3 camera_z, v1 distance)
 }
 
 internal void
-game_update_and_render(App *app, View_ID view, rect2 region)
+game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
 {
     v4 whitev4 = {1,1,1,1};
     v4 grayv4  = {0.5,0.5,0.5,1};
     u32 gray   = pack_argb(grayv4);
     v4 blackv4 = {0,0,0,1};
     
-    v2 screen_dim      = rect2_dim(region);
+    v2 screen_dim      = rect2_dim(clip);
     v2 screen_half_dim = 0.5f * screen_dim;
-    v2 layout_center = region.min + screen_half_dim;
+    v2 layout_center = clip.min + screen_half_dim;
     
     draw_set_y_up(app);
     draw_set_offset(app, layout_center);
    
-    v1 X = 1e3;  // distance multiplier
-    local_persist Camera camera_value = {};
-    Camera *camera = &camera_value;
-    v1 initial_camera_distance = X * 1.0f;
+    v1 U = 1e3;  // distance multiplier (@Cleanup push this scale down to the renderer also)
+    v1 initial_camera_distance = U * 1.0f;
     {// NOTE: Initialization
         local_persist b32 inited = false;
         if (!inited)
         {
             inited = true;
-            camera->focal_length = 2000.f;
-            setup_camera_from_z(camera, v3{.z=1}, initial_camera_distance);
         }
     }
     
+    Camera camera_value = {};
+    Camera *camera = &camera_value;
     {// NOTE: Camera setup
-        // BOOKMARK: Make this slider stateful, by passing in current camera value (sad!)
-        fslider(camera_delta, v3{ 0.000000, 0.000000, 0.000000 }, {.update=fui_update_get_delta});
-        camera_delta *= X;
+        camera->focal_length = 2000.f;
         
-        v3 adjusted_delta = matvmul3(&camera->axes, camera_delta);
-        v3 camera_z = noz(camera->world_p + adjusted_delta);
-        v1 new_distance = length(camera->world_p) + camera_delta.z;
+        Fui_Item_Index camera_input_index;
+        // BOOKMARK NOTE: The input combines both z and distance (distance in w)
+        fslider(camera_input, v4{ -0.254903, -0.786681, 0.562278, 3.509801 }, Fui_Options{.update=fui_update_null}, &camera_input_index);
+        v3 camz = camera_input.xyz;
+        v1 cam_distance = U * camera_input.w;
         
-        setup_camera_from_z(camera, camera_z, new_distance);
+        setup_camera_from_data(camera, camz, cam_distance);
+       
+        v3 cam_delta = {};
+        if ( fui_is_active(camera_input_index) )
+        {
+            cam_delta = U * dt * fui_direction_from_key_states().xyz;
+            
+            // NOTE: align movement to the camera
+            v3 adjusted_delta = matvmul3(&camera->axes, cam_delta);
+            camz = noz(camera->world_p + adjusted_delta);
+            cam_distance = length(camera->world_p) + cam_delta.z;
+            
+            setup_camera_from_data(camera, camz, cam_distance);
+            
+            fui_post_value(camera_input_index, V4(camz, cam_distance / U));
+        }
     }
 
     { // push coordinate system
         v2 pO_screen, px_screen, py_screen, pz_screen;
         {
             v3 pO = v3{0,0,0};
-            v3 px = X * v3{1,0,0};
-            v3 py = X * v3{0,1,0};
-            v3 pz = X * v3{0,0,1};
+            v3 px = U * v3{1,0,0};
+            v3 py = U * v3{0,1,0};
+            v3 pz = U * v3{0,0,1};
             //
             pO_screen = perspective_project(camera, pO);
             px_screen = perspective_project(camera, px);
@@ -460,8 +466,9 @@ game_update_and_render(App *app, View_ID view, rect2 region)
     }    
     
     {// NOTE: bezier curve experiment!
-        fslider( c0, v3{ -0.501223, -0.417632, 0.768833 });
-        fslider( c1, v3{ -0.460013, 1.040406, 1.143159 });
+        // BOOKMARK
+        fslider( c0, v3{ -0.637700, 0.176406, 0.768833 });
+        fslider( c1, v3{ -0.680432, 1.040406, 1.143159 });
         fslider( c2, V3( 0.954310, -0.706654, 0 ) );
         fslider( c3, V3( 0.344152, 1.014585, 0 ) );
         f32 pos_unit = 500;
@@ -474,7 +481,7 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         }
         draw_cubic_bezier(app, camera, control_points);
     }
-  
+     
     fslider(software_rendering_slider, 0.0f);
     if (software_rendering_slider > 0)
     {// NOTE: software rendering experiments
@@ -504,7 +511,7 @@ game_update_and_render(App *app, View_ID view, rect2 region)
         tiny_renderer_main(dim.xy, data, &model);
         graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
         
-        v2 position = region.min + v2{10,10};
+        v2 position = clip.min + v2{10,10};
         fslider( scale, 0.338275f );
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));

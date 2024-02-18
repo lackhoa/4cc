@@ -1,8 +1,15 @@
 // ;fui ///////////////////////////////////
 // TODO: It's not really about sliders anymore
 
-global i32 fui_active_slider_index;
-global b8  global_fui_key_states[KeyCode_COUNT];
+typedef i32 Fui_Item_Index;
+global      Fui_Item_Index global_fui_active_item_index;
+
+inline b32 fui_is_active(Fui_Item_Index index)
+{
+    return (index == global_fui_active_item_index);
+}
+//
+global b8 global_fui_key_states[KeyCode_COUNT];
 
 #define X_Fui_Types(X)  \
     X(v1) \
@@ -33,10 +40,10 @@ union Fui_Value
 struct Fui_Slider;
 
 // todo @Rename should be "fui_delta" instead
-#define FUI_UPDATE_VALUE_RETURN v4
-#define FUI_UPDATE_VALUE_PARAMS Fui_Slider *slider, f32 dt
+#define FUI_UPDATE_RETURN v4
+#define FUI_UPDATE_PARAMS Fui_Slider *slider, f32 dt
 //
-typedef FUI_UPDATE_VALUE_RETURN Fui_Update_Value(FUI_UPDATE_VALUE_PARAMS);
+typedef FUI_UPDATE_RETURN Fui_Update_Value(FUI_UPDATE_PARAMS);
 
 #define X_FUI_OPTIONS(X) \
     Range_f32 range; \
@@ -69,15 +76,15 @@ struct Fui_Slider
     
 };
 
-global Fui_Slider *fui_slider_store;
+global Fui_Slider *global_fui_store;
 
 // TODO(kv): @Incomplete, need to search by filename as well.
 internal Fui_Slider *
 fui_get_slider_by_name(String8 name)
 {
-    Fui_Slider *&store = fui_slider_store;
+    Fui_Slider *&store = global_fui_store;
    
-    for_i32 ( index, 0, arrlen(fui_slider_store) )
+    for_i32 ( index, 0, arrlen(store) )
     {
         if ( string_equal(name, store[index].name) )
         return &store[index];
@@ -87,7 +94,7 @@ fui_get_slider_by_name(String8 name)
 }
 
 internal v4
-fui__direction_from_key_states()
+fui_direction_from_key_states()
 {
     v4 direction = {};
     //
@@ -104,69 +111,51 @@ fui__direction_from_key_states()
     return direction;
 }
 
-internal FUI_UPDATE_VALUE_RETURN
-fui_update_value_linear(FUI_UPDATE_VALUE_PARAMS)
+internal FUI_UPDATE_RETURN
+fui_update_linear(FUI_UPDATE_PARAMS)
 {
-    v4 direction = fui__direction_from_key_states();
+    v4 direction = fui_direction_from_key_states();
     f32 speed = 1.0f;
     // NOTE: Update slider value
     v4 delta = dt * speed * direction;
     return slider->value + delta;
 }
 
-#if 0
-internal FUI_EVENT_HANDLER_RETURN
-fui_event_handler_linear(FUI_EVENT_HANDLER_PARAMS)
-{
-    // NOTE: This direction value is persistent, so we can't quite get rid of it.
-    v4 &direction = fui_slider_direction;
-    
-#define Match(CODE) keycode == KeyCode_##CODE
-    //
-    if (0) {}
-    else if (Match(L)) direction.x = keydown ? +1 : 0;
-    else if (Match(H)) direction.x = keydown ? -1 : 0;
-    else if (Match(K)) direction.y = keydown ? +1 : 0;
-    else if (Match(J)) direction.y = keydown ? -1 : 0;
-    else if (Match(O)) direction.z = keydown ? +1 : 0;
-    else if (Match(I)) direction.z = keydown ? -1 : 0;
-    //
-#undef Match
-}
-#endif
+internal FUI_UPDATE_RETURN 
+fui_update_null(FUI_UPDATE_PARAMS)
+{ return slider->value; }
 
-internal Fui_Value
-fui_slider_user_main(String8 id, Fui_Type type, Fui_Value init_value, Fui_Options options)
+internal Fui_Item_Index
+fui_get_item_index(String8 id, Fui_Type type, Fui_Value init_value, Fui_Options options)
 {
-    Fui_Slider *&store = fui_slider_store;
+    Fui_Slider *&store = global_fui_store;
     if ( arrlen(store) == 0 )
     {
+        arrsetcap(store, 32);
         arrput( store, Fui_Slider{} );
     }
-        
-    // NOTE(kv): Find match @Slow
-    i32 slider_index = 0;
+    
+    // NOTE(kv): Find matching item index
+    i32 item_index = 0;
     for (;
-         slider_index < arrlen(store); 
-         slider_index++)
+         item_index < arrlen(store); 
+         item_index++)
     {
-        String8 item_id = store[slider_index].id;
+        String8 item_id = store[item_index].id;
         if ( id.str == item_id.str )
-        {
             break;
-        }
     }
    
-    if ( slider_index == arrlen(store) )
+    if ( item_index == arrlen(store) )
     {
         Fui_Slider slider = { .id = id, .type = type, .options = options};
         slider.value = init_value;
         
-        // NOTE: update function
+        // NOTE: Update function
         if (!slider.update)
-            slider.update = fui_update_value_linear;
+            slider.update = fui_update_linear;
         
-        // NOTE: range
+        // NOTE: Range
         if (slider.range.min == 0.0f && slider.range.max == 0.0f)
         {
             slider.range = If32(0.0f,  1.0f);
@@ -184,8 +173,17 @@ fui_slider_user_main(String8 id, Fui_Type type, Fui_Value init_value, Fui_Option
         
         arrput(store, slider);
     }
+    return item_index;
+}
+
+internal Fui_Value
+fui_user_main(String8 id, Fui_Type type, Fui_Value init_value, 
+              Fui_Options options, Fui_Item_Index *index_out)
+{
+    Fui_Item_Index item_index = fui_get_item_index(id, type, init_value, options);
+    if (index_out) *index_out = item_index;
     
-    Fui_Slider *slider = &store[slider_index];
+    Fui_Slider *slider = &global_fui_store[item_index];
     
     // NOTE: Convert internal to external result (@Slow We could do this in the event handler)
     Range_f32 range = slider->range;
@@ -204,11 +202,11 @@ fui_slider_user_main(String8 id, Fui_Type type, Fui_Value init_value, Fui_Option
 // as well as receive the appropriate values.
 #define X(T) \
 \
-internal T fui_slider_user(String8 id, T init_value_T, Fui_Options options={}) \
+internal T fui_user(String8 id, T init_value_T, Fui_Options options={}, Fui_Item_Index *index=0) \
 { \
     Fui_Type  type = Fui_Type_##T; \
     Fui_Value init_value = { .T = init_value_T }; \
-    Fui_Value value = fui_slider_user_main(id, type, init_value, options); \
+    Fui_Value value = fui_user_main(id, type, init_value, options, index); \
     return value.T; \
 }
 //
@@ -217,4 +215,10 @@ X_Fui_Types(X)
 #undef X
 
 #define fslider(NAME, ...) \
-    auto NAME = fui_slider_user(str8lit(__FILE__ "|" #NAME), ##__VA_ARGS__)
+    auto NAME = fui_user(str8lit(__FILE__ "|" #NAME), ##__VA_ARGS__)
+
+internal void 
+fui_post_value(Fui_Item_Index index, v4 value)
+{
+    global_fui_store[index].value.v4 = value;
+}

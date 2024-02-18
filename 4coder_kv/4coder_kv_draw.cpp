@@ -235,7 +235,7 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
             Buffer_ID render_buffer = get_buffer_by_name(app, SCu8("*render*"), AccessFlag_Read);
             if (render_buffer == buffer)
             {
-                game_update_and_render(app, view, region);
+                game_update_and_render(app, view, frame_info.animation_dt, region);
                 return;
             }
         }
