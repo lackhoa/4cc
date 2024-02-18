@@ -150,25 +150,28 @@ ft__bad_rect_pack_next(Bad_Rect_Pack *pack, Vec2_i32 dim){
 }
 
 internal void
-ft__bad_rect_store_finish(Bad_Rect_Pack *pack){
+ft__bad_rect_store_finish(Bad_Rect_Pack *pack)
+{
     ft__bad_rect_pack_end_line(pack);
 }
 
 internal void
-ft__glyph_bounds_store_uv_raw(Vec3_i32 p, Vec2_i32 dim, Glyph_Bounds *bounds){
+ft__glyph_bounds_store_uv_raw(Vec3_i32 p, Vec2_i32 dim, Glyph_Bounds *bounds)
+{
     bounds->uv = Rf32((f32)p.x, (f32)p.y, (f32)dim.x, (f32)dim.y);
     bounds->w = (f32)p.z;
 }
 
 internal Face*
-ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor){
-    String_Const_u8 file_name = push_string_copy(arena, description->font.file_name);
+ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor)
+{
+    String8 filename = push_string_copy(arena, description->font.filename);
     
     FT_Library ft;
     FT_Init_FreeType(&ft);
     
     FT_Face ft_face;
-    FT_Error error = FT_New_Face(ft, (char*)file_name.str, 0, &ft_face);
+    FT_Error error = FT_New_Face(ft, (char*)filename.str, 0, &ft_face);
     
     Face *face = 0;
     if (error == 0){
@@ -183,7 +186,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         size.height = (pt_size << 6);
         FT_Request_Size(ft_face, &size);
         
-        face->description.font.file_name = file_name;
+        face->description.font.filename = filename;
         face->description.parameters = description->parameters;
         
         Face_Metrics *met = &face->metrics;

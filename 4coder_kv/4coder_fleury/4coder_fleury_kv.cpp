@@ -71,11 +71,11 @@ F4_DoFullLex_ASYNC_Inner(Async_Context *actx, Buffer_ID buffer_id)
         for(;;)
         {
             ProfileBlock(app, "[F4] Async Lex Block");
-            if(language->LexFullInput(scratch, &list, lexing_state, limit_factor))
+            if (language->LexFullInput(scratch, &list, lexing_state, limit_factor))
             {
                 break;
             }
-            if(async_check_canceled(actx))
+            if (async_check_canceled(actx))
             {
                 canceled = true;
                 break;

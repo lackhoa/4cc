@@ -51,7 +51,7 @@ struct Log_Tag{
 
 struct Log_Event{
     Log_Event *next;
-    u64 src_file_name;
+    u64 src_filename;
     u64 event_name;
     u64 line_number;
     

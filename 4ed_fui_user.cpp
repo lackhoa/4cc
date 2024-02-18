@@ -46,7 +46,6 @@ struct Fui_Slider;
 typedef FUI_UPDATE_RETURN Fui_Update_Value(FUI_UPDATE_PARAMS);
 
 #define X_FUI_OPTIONS(X) \
-    Range_f32 range; \
     Fui_Update_Value *update; \
     void *userdata;
 
@@ -155,12 +154,6 @@ fui_get_item_index(String8 id, Fui_Type type, Fui_Value init_value, Fui_Options 
         if (!slider.update)
             slider.update = fui_update_linear;
         
-        // NOTE: Range
-        if (slider.range.min == 0.0f && slider.range.max == 0.0f)
-        {
-            slider.range = If32(0.0f,  1.0f);
-        }
-        
         // NOTE(kv): find file|name separator
         u64 separator_index = id.size-1;
         while ( id.str[separator_index] != '|' ) { separator_index--; }
@@ -184,17 +177,8 @@ fui_user_main(String8 id, Fui_Type type, Fui_Value init_value,
     if (index_out) *index_out = item_index;
     
     Fui_Slider *slider = &global_fui_store[item_index];
-    
-    // NOTE: Convert internal to external result (@Slow We could do this in the event handler)
-    Range_f32 range = slider->range;
-    v4 internal_value = slider->value.v4;
-    v4 result;
-    result.x = lerp(range.min, internal_value.x, range.max);
-    result.y = lerp(range.min, internal_value.y, range.max);
-    result.z = lerp(range.min, internal_value.z, range.max);
-    result.w = lerp(range.min, internal_value.w, range.max);
-    
-    return Fui_Value{.v4 = result};
+    Fui_Value result = slider->value;
+    return result;
 }
 
 // NOTE: We define overloads to avoid having to specify the type as a separate argument 
@@ -202,7 +186,7 @@ fui_user_main(String8 id, Fui_Type type, Fui_Value init_value,
 // as well as receive the appropriate values.
 #define X(T) \
 \
-internal T fui_user(String8 id, T init_value_T, Fui_Options options={}, Fui_Item_Index *index=0) \
+internal T fui_user_type(String8 id, T init_value_T, Fui_Options options={}, Fui_Item_Index *index=0) \
 { \
     Fui_Type  type = Fui_Type_##T; \
     Fui_Value init_value = { .T = init_value_T }; \
@@ -214,10 +198,13 @@ X_Fui_Types(X)
 //
 #undef X
 
-#define fslider(NAME, ...) \
-    auto NAME = fui_user(str8lit(__FILE__ "|" #NAME), ##__VA_ARGS__)
+#define fui_user(NAME, ...) \
+    fui_user_type(str8lit(__FILE__ "|" #NAME), ##__VA_ARGS__)
 
-internal void 
+#define fslider(NAME, ...) \
+    auto NAME = fui_user(NAME, ##__VA_ARGS__)
+
+internal void
 fui_post_value(Fui_Item_Index index, v4 value)
 {
     global_fui_store[index].value.v4 = value;

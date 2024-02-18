@@ -4,13 +4,13 @@
 #define system_get_path_sig() String_Const_u8 system_get_path(Arena* arena, System_Path_Code path_code)
 #define system_get_canonical_sig() String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name)
 #define system_get_file_list_sig() File_List system_get_file_list(Arena* arena, String_Const_u8 directory)
-#define system_quick_file_attributes_sig() File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 file_name)
-#define system_load_handle_sig() b32 system_load_handle(Arena* scratch, char* file_name, Plat_Handle* out)
+#define system_quick_file_attributes_sig() File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 filename)
+#define system_load_handle_sig() b32 system_load_handle(Arena* scratch, char* filename, Plat_Handle* out)
 #define system_load_attributes_sig() File_Attributes system_load_attributes(Plat_Handle handle)
 #define system_load_file_sig() b32 system_load_file(Plat_Handle handle, char* buffer, u32 size)
 #define system_load_close_sig() b32 system_load_close(Plat_Handle handle)
-#define system_save_file_sig() File_Attributes system_save_file(Arena* scratch, char* file_name, String_Const_u8 data)
-#define system_load_library_sig() b32 system_load_library(Arena* scratch, String_Const_u8 file_name, System_Library* out)
+#define system_save_file_sig() File_Attributes system_save_file(Arena* scratch, char* filename, String_Const_u8 data)
+#define system_load_library_sig() b32 system_load_library(Arena* scratch, String_Const_u8 filename, System_Library* out)
 #define system_release_library_sig() b32 system_release_library(System_Library handle)
 #define system_get_proc_sig() Void_Func* system_get_proc(System_Library handle, char* proc_name)
 #define system_now_time_sig() u64 system_now_time(void)
@@ -61,13 +61,13 @@ typedef void system_error_box_type(char* msg);
 typedef String_Const_u8 system_get_path_type(Arena* arena, System_Path_Code path_code);
 typedef String_Const_u8 system_get_canonical_type(Arena* arena, String_Const_u8 name);
 typedef File_List system_get_file_list_type(Arena* arena, String_Const_u8 directory);
-typedef File_Attributes system_quick_file_attributes_type(Arena* scratch, String_Const_u8 file_name);
-typedef b32 system_load_handle_type(Arena* scratch, char* file_name, Plat_Handle* out);
+typedef File_Attributes system_quick_file_attributes_type(Arena* scratch, String_Const_u8 filename);
+typedef b32 system_load_handle_type(Arena* scratch, char* filename, Plat_Handle* out);
 typedef File_Attributes system_load_attributes_type(Plat_Handle handle);
 typedef b32 system_load_file_type(Plat_Handle handle, char* buffer, u32 size);
 typedef b32 system_load_close_type(Plat_Handle handle);
-typedef File_Attributes system_save_file_type(Arena* scratch, char* file_name, String_Const_u8 data);
-typedef b32 system_load_library_type(Arena* scratch, String_Const_u8 file_name, System_Library* out);
+typedef File_Attributes system_save_file_type(Arena* scratch, char* filename, String_Const_u8 data);
+typedef b32 system_load_library_type(Arena* scratch, String_Const_u8 filename, System_Library* out);
 typedef b32 system_release_library_type(System_Library handle);
 typedef Void_Func* system_get_proc_type(System_Library handle, char* proc_name);
 typedef u64 system_now_time_type(void);
@@ -188,13 +188,13 @@ LINKAGE void system_error_box(char* msg);
 LINKAGE String_Const_u8 system_get_path(Arena* arena, System_Path_Code path_code);
 LINKAGE String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name);
 LINKAGE File_List system_get_file_list(Arena* arena, String_Const_u8 directory);
-LINKAGE File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 file_name);
-LINKAGE b32 system_load_handle(Arena* scratch, char* file_name, Plat_Handle* out);
+LINKAGE File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 filename);
+LINKAGE b32 system_load_handle(Arena* scratch, char* filename, Plat_Handle* out);
 LINKAGE File_Attributes system_load_attributes(Plat_Handle handle);
 LINKAGE b32 system_load_file(Plat_Handle handle, char* buffer, u32 size);
 LINKAGE b32 system_load_close(Plat_Handle handle);
-LINKAGE File_Attributes system_save_file(Arena* scratch, char* file_name, String_Const_u8 data);
-LINKAGE b32 system_load_library(Arena* scratch, String_Const_u8 file_name, System_Library* out);
+LINKAGE File_Attributes system_save_file(Arena* scratch, char* filename, String_Const_u8 data);
+LINKAGE b32 system_load_library(Arena* scratch, String_Const_u8 filename, System_Library* out);
 LINKAGE b32 system_release_library(System_Library handle);
 LINKAGE Void_Func* system_get_proc(System_Library handle, char* proc_name);
 LINKAGE u64 system_now_time(void);

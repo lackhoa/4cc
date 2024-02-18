@@ -79,10 +79,10 @@ prj_close_files_with_ext(Application_Links *app, String8Array extension_array){
             
             if (extension_array.count > 0){
                 Temp_Memory name_temp = begin_temp(scratch);
-                String8 file_name = push_buffer_file_name(app, scratch, buffer);
+                String8 filename = push_buffer_filename(app, scratch, buffer);
                 is_match = false;
-                if (file_name.size > 0){
-                    String8 extension = string_file_extension(file_name);
+                if (filename.size > 0){
+                    String8 extension = string_file_extension(filename);
                     for (i32 i = 0; i < extension_array.count; ++i){
                         if (string_match(extension, extension_array.strings[i])){
                             is_match = true;
@@ -118,25 +118,25 @@ prj_open_files_pattern_filter__rec(Application_Links *app, String8 path, Prj_Pat
     
     File_Info **info = list.infos;
     for (u32 i = 0; i < list.count; ++i, ++info){
-        String8 file_name = (**info).file_name;
+        String8 filename = (**info).filename;
         if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)){
             if ((flags & PrjOpenFileFlag_Recursive) == 0){
                 continue;
             }
-            if (prj_match_in_pattern_list(file_name, blacklist)){
+            if (prj_match_in_pattern_list(filename, blacklist)){
                 continue;
             }
-            String8 new_path = push_stringf(scratch, "%.*s%.*s/", string_expand(path), string_expand(file_name));
+            String8 new_path = push_stringf(scratch, "%.*s%.*s/", string_expand(path), string_expand(filename));
             prj_open_files_pattern_filter__rec(app, new_path, whitelist, blacklist, flags);
         }
         else{
-            if (!prj_match_in_pattern_list(file_name, whitelist)){
+            if (!prj_match_in_pattern_list(filename, whitelist)){
                 continue;
             }
-            if (prj_match_in_pattern_list(file_name, blacklist)){
+            if (prj_match_in_pattern_list(filename, blacklist)){
                 continue;
             }
-            String8 full_path = push_stringf(scratch, "%.*s%.*s", string_expand(path), string_expand(file_name));
+            String8 full_path = push_stringf(scratch, "%.*s%.*s", string_expand(path), string_expand(filename));
             create_buffer(app, full_path, 0);
         }
     }
@@ -390,11 +390,11 @@ prj_generate_bat(Arena *scratch, String8 opts, String8 compiler, String8 script_
     string_mod_replace_character(od, '/', '\\');
     string_mod_replace_character(bf, '/', '\\');
     
-    String8 file_name = push_stringf(scratch, "%.*s/%.*s.bat",
+    String8 filename = push_stringf(scratch, "%.*s/%.*s.bat",
                                         string_expand(script_path),
                                         string_expand(script_file));
     
-    FILE *bat_script = fopen((char*)file_name.str, "wb");
+    FILE *bat_script = fopen((char*)filename.str, "wb");
     if (bat_script != 0){
         fprintf(bat_script, "@echo off\n\n");
         fprintf(bat_script, "set opts=%.*s\n", (i32)opts.size, opts.str);
@@ -422,11 +422,11 @@ prj_generate_sh(Arena *scratch, String8 opts, String8 compiler, String8 script_p
     String8 od = output_dir;
     String8 bf = binary_file;
     
-    String8 file_name = push_stringf(scratch, "%.*s/%.*s.sh",
+    String8 filename = push_stringf(scratch, "%.*s/%.*s.sh",
                                         string_expand(script_path),
                                         string_expand(script_file));
     
-    FILE *sh_script = fopen((char*)file_name.str, "wb");
+    FILE *sh_script = fopen((char*)filename.str, "wb");
     if (sh_script != 0){
         fprintf(sh_script, "#!/bin/bash\n\n");
         fprintf(sh_script, "code=\"$PWD\"\n");
@@ -457,9 +457,9 @@ prj_generate_project(Arena *scratch, String8 script_path, String8 script_file, S
     String8 bf_win = string_replace(scratch, bf,
                                     string_u8_litexpr("/"), string_u8_litexpr("\\"));
     
-    String8 file_name = push_stringf(scratch, "%.*s/project.4coder", string_expand(script_path));
+    String8 filename = push_stringf(scratch, "%.*s/project.4coder", string_expand(script_path));
     
-    FILE *out = fopen((char*)file_name.str, "wb");
+    FILE *out = fopen((char*)filename.str, "wb");
     if (out != 0){
         fprintf(out, "version(2);\n");
         fprintf(out, "project_name = \"%.*s\";\n", string_expand(binary_file));
@@ -865,35 +865,40 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
     
     // NOTE(allen): Load the project file from the hot directory, as advertised
     String8 project_path = push_hot_directory(app, scratch);
-    File_Name_Data dump = dump_file_search_up_path(app, scratch, project_path, string_u8_litexpr("project.4coder"));
-    String8 project_root = string_remove_last_folder(dump.file_name);
+    File_Name_Data dump = dump_file_search_up_path(app, scratch, project_path, str8lit("project.4coder"));
+    String8 project_root = string_remove_last_folder(dump.filename);
     
-    if (dump.data.str == 0){
-        print_message(app, string_u8_litexpr("Did not find project.4coder.\n"));
+    if (dump.data.str == 0)
+    {
+        print_message(app, str8lit("Did not find project.4coder.\n"));
     }
     
     // NOTE(allen): Parse config data out of project file
-    Config *config_parse = 0;
+    Config *config = 0;
     Variable_Handle prj_var = vars_get_nil();
-    if (dump.data.str != 0){
+    if (dump.data.str != 0)
+    {
         Token_Array array = token_array_from_text(app, scratch, dump.data);
-        if (array.tokens != 0){
-            config_parse = def_config_parse(app, scratch, dump.file_name, dump.data, array);
-            if (config_parse != 0){
+        if (array.tokens != 0)
+        {
+            config = config_parse(app, scratch, dump.filename, dump.data, array);
+            if (config != 0)
+            {
                 i32 version = 0;
-                if (config_parse->version != 0){
-                    version = *config_parse->version;
+                if (config->version != 0)
+                {
+                    version = *config->version;
                 }
                 
                 switch (version){
                     case 0:
                     case 1:
                     {
-                        prj_var = prj_v1_to_v2(app, project_root, config_parse);
+                        prj_var = prj_v1_to_v2(app, project_root, config);
                     }break;
                     default:
                     {
-                        prj_var = def_fill_var_from_config(app, vars_get_root(), vars_intern_lit("prj_config"), config_parse);
+                        prj_var = def_fill_var_from_config(app, vars_get_root(), vars_intern_lit("prj_config"), config);
                     }break;
                 }
                 
@@ -902,15 +907,18 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
     }
     
     // NOTE(allen): Print Project
-    if (!vars_is_nil(prj_var)){
+    if ( !vars_is_nil(prj_var) )
+    {
         vars_print(app, prj_var);
-        print_message(app, string_u8_litexpr("\n"));
+        print_message(app, str8lit("\n"));
     }
     
     // NOTE(allen): Print Errors
-    if (config_parse != 0){
-        String8 error_text = config_stringize_errors(app, scratch, config_parse);
-        if (error_text.size > 0){
+    if (config != 0)
+    {
+        String8 error_text = config_stringize_errors(app, scratch, config);
+        if (error_text.size > 0)
+        {
             print_message(app, string_u8_litexpr("Project errors:\n"));
             print_message(app, error_text);
             print_message(app, string_u8_litexpr("\n"));
@@ -1089,7 +1097,7 @@ CUSTOM_DOC("Prints the current project to the file it was loaded from; prints in
             fclose(file);
             print_message(app, str8_lit("Reloading project buffer\n"));
             
-            Buffer_ID buffer = get_buffer_by_file_name(app, prj_full_path, Access_Always);
+            Buffer_ID buffer = get_buffer_by_filename(app, prj_full_path, Access_Always);
             if (buffer != 0){
                 buffer_reopen(app, buffer, 0);
             }

@@ -87,7 +87,7 @@ struct Input_Event{
                 i32 id;
                 struct{
                     String_Const_u8_Array flag_strings;
-                    String_Const_u8_Array file_names;
+                    String_Const_u8_Array filenames;
                 };
             };
         } core;

@@ -26,7 +26,7 @@ hot_directory_quick_partition(File_Info **infos, i32 start, i32 pivot){
         b32 a_folder = (HasFlag((**a).attributes.flags, FileAttribute_IsDirectory));
         i32 comp = p_folder - a_folder;
         if (comp == 0){
-            comp = string_compare((**a).file_name, (**p).file_name);
+            comp = string_compare((**a).filename, (**p).filename);
         }
         if (comp < 0){
             Swap(File_Info*, *a, infos[start]);

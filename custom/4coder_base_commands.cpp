@@ -1391,8 +1391,8 @@ CUSTOM_DOC("Read from the top of the point stack and jump there; if already ther
 ////////////////////////////////
 
 function void
-delete_file_base(Application_Links *app, String_Const_u8 file_name, Buffer_ID buffer_id){
-    String_Const_u8 path = string_remove_last_folder(file_name);
+delete_file_base(Application_Links *app, String_Const_u8 filename, Buffer_ID buffer_id){
+    String_Const_u8 path = string_remove_last_folder(filename);
     Scratch_Block scratch(app);
     List_String_Const_u8 list = {};
 #if OS_WINDOWS
@@ -1402,7 +1402,7 @@ delete_file_base(Application_Links *app, String_Const_u8 file_name, Buffer_ID bu
 #else
 # error no delete file command for this platform
 #endif
-    string_list_pushf(scratch, &list, "\"%.*s\"", string_expand(file_name));
+    string_list_pushf(scratch, &list, "\"%.*s\"", string_expand(filename));
     String_Const_u8 cmd = string_list_flatten(scratch, list, StringFill_NullTerminate);
     exec_system_command(app, 0, buffer_identifier(0), path, cmd, 0);
     buffer_kill(app, buffer_id, BufferKill_AlwaysKill);
@@ -1414,11 +1414,11 @@ CUSTOM_DOC("Deletes the file of the current buffer if 4coder has the appropriate
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Scratch_Block scratch(app);
-    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-    if (file_name.size > 0){
+    String8 filename = push_buffer_filename(app, scratch, buffer);
+    if (filename.size > 0){
         Query_Bar_Group group(app);
         Query_Bar bar = {};
-        bar.prompt = push_stringf(scratch, "Delete '%.*s' (Y)es, (n)o", string_expand(file_name));
+        bar.prompt = push_stringf(scratch, "Delete '%.*s' (Y)es, (n)o", string_expand(filename));
         if (start_query_bar(app, &bar, 0) != 0){
             b32 cancelled = false;
             for (;!cancelled;){
@@ -1430,7 +1430,7 @@ CUSTOM_DOC("Deletes the file of the current buffer if 4coder has the appropriate
                     switch (in.event.key.code){
                         case KeyCode_Y:
                         {
-                            delete_file_base(app, file_name, buffer);
+                            delete_file_base(app, filename, buffer);
                             cancelled = true;
                         }break;
                         
@@ -1470,12 +1470,12 @@ CUSTOM_DOC("Queries the user for a file name and saves the contents of the curre
     bar.string_capacity = sizeof(name_space);
     if (query_user_string(app, &bar)){
         if (bar.string.size != 0){
-            List_String_Const_u8 new_file_name_list = {};
-            string_list_push(scratch, &new_file_name_list, push_hot_directory(app, scratch));
-            string_list_push(scratch, &new_file_name_list, bar.string);
-            String_Const_u8 new_file_name = string_list_flatten(scratch, new_file_name_list);
-            if (buffer_save(app, buffer, new_file_name, BufferSave_IgnoreDirtyFlag)){
-                Buffer_ID new_buffer = create_buffer(app, new_file_name, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
+            List_String_Const_u8 new_filename_list = {};
+            string_list_push(scratch, &new_filename_list, push_hot_directory(app, scratch));
+            string_list_push(scratch, &new_filename_list, bar.string);
+            String_Const_u8 new_filename = string_list_flatten(scratch, new_filename_list);
+            if (buffer_save(app, buffer, new_filename, BufferSave_IgnoreDirtyFlag)){
+                Buffer_ID new_buffer = create_buffer(app, new_filename, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
                 if (new_buffer != 0 && new_buffer != buffer){
                     buffer_kill(app, buffer, BufferKill_AlwaysKill);
                     view_set_buffer(app, view, new_buffer, 0);
@@ -1493,11 +1493,11 @@ CUSTOM_DOC("Queries the user for a new name and renames the file of the current 
     
     Scratch_Block scratch(app);
     
-    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-    if (file_name.size > 0){
+    String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+    if (filename.size > 0){
         // Query the user
         Query_Bar_Group group(app);
-        String_Const_u8 front = string_front_of_path(file_name);
+        String_Const_u8 front = string_front_of_path(filename);
         u8 name_space[4096];
         Query_Bar bar = {};
         bar.prompt = push_stringf(scratch, "Rename '%.*s' to: ", string_expand(front));
@@ -1505,14 +1505,14 @@ CUSTOM_DOC("Queries the user for a new name and renames the file of the current 
         bar.string_capacity = sizeof(name_space);
         if (query_user_string(app, &bar) && bar.string.size != 0){
             // TODO(allen): There should be a way to say, "detach a buffer's file" and "attach this file to a buffer"
-            List_String_Const_u8 new_file_name_list = {};
-            string_list_push(scratch, &new_file_name_list, string_remove_front_of_path(file_name));
-            string_list_push(scratch, &new_file_name_list, bar.string);
-            String_Const_u8 new_file_name = string_list_flatten(scratch, new_file_name_list, StringFill_NullTerminate);
-            if (buffer_save(app, buffer, new_file_name, BufferSave_IgnoreDirtyFlag)){
-                Buffer_ID new_buffer = create_buffer(app, new_file_name, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
+            List_String_Const_u8 new_filename_list = {};
+            string_list_push(scratch, &new_filename_list, string_remove_front_of_path(filename));
+            string_list_push(scratch, &new_filename_list, bar.string);
+            String_Const_u8 new_filename = string_list_flatten(scratch, new_filename_list, StringFill_NullTerminate);
+            if (buffer_save(app, buffer, new_filename, BufferSave_IgnoreDirtyFlag)){
+                Buffer_ID new_buffer = create_buffer(app, new_filename, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
                 if (new_buffer != 0 && new_buffer != buffer){
-                    delete_file_base(app, file_name, buffer);
+                    delete_file_base(app, filename, buffer);
                     view_set_buffer(app, view, new_buffer, 0);
                 }
             }
@@ -1615,18 +1615,18 @@ CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to op
         
         String_Const_u8 quoted_name = push_buffer_range(app, scratch, buffer, range);
         
-        String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-        String_Const_u8 path = string_remove_last_folder(file_name);
+        String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+        String_Const_u8 path = string_remove_last_folder(filename);
         
         if (character_is_slash(string_get_character(path, path.size - 1))){
             path = string_chop(path, 1);
         }
         
-        String_Const_u8 new_file_name = push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
+        String_Const_u8 new_filename = push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
         
         view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
         if (view != 0){
-            if (view_open_file(app, view, new_file_name, true)){
+            if (view_open_file(app, view, new_filename, true)){
                 view_set_active(app, view);
             }
         }
@@ -1637,9 +1637,9 @@ function b32
 get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffer_out){
     b32 result = false;
     Scratch_Block scratch(app);
-    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-    if (file_name.size > 0){
-        String_Const_u8 extension = string_file_extension(file_name);
+    String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+    if (filename.size > 0){
+        String_Const_u8 extension = string_file_extension(filename);
         String_Const_u8 new_extensions[2] = {};
         i32 new_extensions_count = 0;
         if (string_match(extension, string_u8_litexpr("cpp")) || string_match(extension, string_u8_litexpr("cc"))){
@@ -1661,12 +1661,12 @@ get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffe
             new_extensions_count = 1;
         }
         
-        String_Const_u8 file_without_extension = string_file_without_extension(file_name);
+        String_Const_u8 file_without_extension = string_file_without_extension(filename);
         for (i32 i = 0; i < new_extensions_count; i += 1){
             Temp_Memory temp = begin_temp(scratch);
             String_Const_u8 new_extension = new_extensions[i];
-            String_Const_u8 new_file_name = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
-            if (open_file(app, buffer_out, new_file_name, false, true)){
+            String_Const_u8 new_filename = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
+            if (open_file(app, buffer_out, new_filename, false, true)){
                 result = true;
                 break;
             }
@@ -1674,8 +1674,8 @@ get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffe
         }
         
         if (!result && new_extensions_count > 0){
-            String_Const_u8 new_file_name = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
-            if (open_file(app, buffer_out, new_file_name, false, false)){
+            String_Const_u8 new_filename = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
+            if (open_file(app, buffer_out, new_filename, false, false)){
                 result = true;
             }
         }
@@ -1777,8 +1777,8 @@ CUSTOM_DOC("Saves the current buffer.")
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
     Scratch_Block scratch(app);
-    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-    buffer_save(app, buffer, file_name, 0);
+    String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+    buffer_save(app, buffer, filename, 0);
 }
 
 CUSTOM_COMMAND_SIG(reopen)

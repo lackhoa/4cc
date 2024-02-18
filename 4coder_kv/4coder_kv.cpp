@@ -1,5 +1,4 @@
 // ~/4ed/code/4coder_kv/config.4coder
-// ~/4ed/code/project.4coder
 // ~/4ed/code/4coder_kv/4coder_kv_commands.cpp
 
 // TODO(kv): remember this file is processed by the meta-generator.
@@ -77,75 +76,75 @@ function void kvInitShiftedTable()
 function void
 kv_essential_mapping(Mapping *mapping)
 {
-  String_ID global_id = vars_intern_lit("keys_global");
-  String_ID file_id   = vars_intern_lit("keys_file");
-  String_ID code_id   = vars_intern_lit("keys_code");
-  
-  MappingScope();
-  SelectMapping(mapping);
-  
-  SelectMap(global_id);
-  BindCore(vim_try_exit, CoreCode_TryExit);
-  BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
-  BindMouseWheel(mouse_wheel_scroll);
-  BindMouseWheel(mouse_wheel_change_face_size, KeyCode_Control);
-  // BindCore(vim_file_externally_modified, CoreCode_FileExternallyModified);  NOTE(kv): cool idea but there are auto-generated files that we don't care about
-  
-  SelectMap(file_id);
-  ParentMap(global_id);
-  BindTextInput(write_text_input);
-  BindMouse(click_set_cursor_and_mark, MouseCode_Left);
-  BindMouseRelease(click_set_cursor, MouseCode_Left);
-  BindCore(click_set_cursor_and_mark, CoreCode_ClickActivateView);
-  BindMouseMove(click_set_cursor_if_lbutton);
-  
-  SelectMap(code_id);
-  ParentMap(file_id);
+    String_ID global_id = vars_intern_lit("keys_global");
+    String_ID file_id   = vars_intern_lit("keys_file");
+    String_ID code_id   = vars_intern_lit("keys_code");
+    
+    MappingScope();
+    SelectMapping(mapping);
+    
+    SelectMap(global_id);
+    BindCore(vim_try_exit, CoreCode_TryExit);
+    BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
+    BindMouseWheel(mouse_wheel_scroll);
+    BindMouseWheel(mouse_wheel_change_face_size, KeyCode_Control);
+    // BindCore(vim_file_externally_modified, CoreCode_FileExternallyModified);  NOTE(kv): cool idea but there are auto-generated files that we don't care about
+    
+    SelectMap(file_id);
+    ParentMap(global_id);
+    BindTextInput(write_text_input);
+    BindMouse(click_set_cursor_and_mark, MouseCode_Left);
+    BindMouseRelease(click_set_cursor, MouseCode_Left);
+    BindCore(click_set_cursor_and_mark, CoreCode_ClickActivateView);
+    BindMouseMove(click_set_cursor_if_lbutton);
+    
+    SelectMap(code_id);
+    ParentMap(file_id);
 }
 
 // NOTE(kv): shared between custom layers
 function void 
 kv_default_bindings(Mapping *mapping)
 {
-  String_ID global_id = vars_intern_lit("keys_global");
-  String_ID file_id   = vars_intern_lit("keys_file");
-  String_ID code_id   = vars_intern_lit("keys_code");
-  
-  MappingScope();
-  SelectMapping(mapping);
-  
-  SelectMap(global_id);
-  
-  Bind(toggle_fullscreen,   KeyCode_F11);
-  Bind(increase_face_size,  KeyCode_Equal, KeyCode_Control);
-  Bind(decrease_face_size,  KeyCode_Minus, KeyCode_Control);
-  Bind(byp_reset_face_size, KeyCode_0, KeyCode_Control);
-  Bind(exit_4coder,         KeyCode_Q, KeyCode_Control);
-  Bind(exit_4coder,         KeyCode_Q, KeyCode_Command);
-  
-  SelectMap(file_id);
-  ParentMap(global_id);
-  
-  Bind(delete_char,        KeyCode_Delete);
-  Bind(backspace_char,     KeyCode_Backspace);
-  Bind(move_up,            KeyCode_Up);
-  Bind(move_down,          KeyCode_Down);
-  Bind(move_left,          KeyCode_Left);
-  Bind(move_right,         KeyCode_Right);
-  Bind(seek_end_of_line,   KeyCode_End);
-  Bind(right_adjust_view,  KeyCode_Home);
-  
-  SelectMap(code_id);
-  ParentMap(file_id);
+    String_ID global_id = vars_intern_lit("keys_global");
+    String_ID file_id   = vars_intern_lit("keys_file");
+    String_ID code_id   = vars_intern_lit("keys_code");
+    
+    MappingScope();
+    SelectMapping(mapping);
+    
+    SelectMap(global_id);
+    
+    Bind(toggle_fullscreen,   KeyCode_F11);
+    Bind(increase_face_size,  KeyCode_Equal, KeyCode_Control);
+    Bind(decrease_face_size,  KeyCode_Minus, KeyCode_Control);
+    Bind(byp_reset_face_size, KeyCode_0, KeyCode_Control);
+    Bind(exit_4coder,         KeyCode_Q, KeyCode_Control);
+    Bind(exit_4coder,         KeyCode_Q, KeyCode_Command);
+    
+    SelectMap(file_id);
+    ParentMap(global_id);
+    
+    Bind(delete_char,        KeyCode_Delete);
+    Bind(backspace_char,     KeyCode_Backspace);
+    Bind(move_up,            KeyCode_Up);
+    Bind(move_down,          KeyCode_Down);
+    Bind(move_left,          KeyCode_Left);
+    Bind(move_right,         KeyCode_Right);
+    Bind(seek_end_of_line,   KeyCode_End);
+    Bind(right_adjust_view,  KeyCode_Home);
+    
+    SelectMap(code_id);
+    ParentMap(file_id);
 }
 
 inline void 
 create_unimportant_buffer(App *app, String8 name)
 {
-  Buffer_ID buffer = create_buffer(app, name,
-                                   BufferCreate_NeverAttachToFile |
-                                   BufferCreate_AlwaysNew);
-  buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
+    Buffer_ID buffer = create_buffer(app, name,
+                                     BufferCreate_NeverAttachToFile |
+                                     BufferCreate_AlwaysNew);
+    buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
 }
 
 internal void
@@ -220,14 +219,14 @@ initialize_stylist_fonts(App *app)
     {
         Face_Description desc = {};
         {
-            desc.font.file_name =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+            desc.font.filename =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = 18;
             desc.parameters.bold = 0;
             desc.parameters.italic = 0;
             desc.parameters.hinting = 0;
         }
         
-        if(IsFileReadable(desc.font.file_name))
+        if(IsFileReadable(desc.font.filename))
         {
             global_styled_title_face = try_create_new_face(app, &desc);
         }
@@ -241,14 +240,14 @@ initialize_stylist_fonts(App *app)
     {
         Face_Description desc = {};
         {
-            desc.font.file_name =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+            desc.font.filename =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = 10;
             desc.parameters.bold = 1;
             desc.parameters.italic = 1;
             desc.parameters.hinting = 0;
         }
         
-        if(IsFileReadable(desc.font.file_name))
+        if(IsFileReadable(desc.font.filename))
         {
             global_styled_label_face = try_create_new_face(app, &desc);
         }
@@ -264,14 +263,14 @@ initialize_stylist_fonts(App *app)
         
         Face_Description desc = {};
         {
-            desc.font.file_name =  push_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
+            desc.font.filename =  push_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = normal_code_desc.parameters.pt_size - 1;
             desc.parameters.bold = 1;
             desc.parameters.italic = 1;
             desc.parameters.hinting = 0;
         }
         
-        if(IsFileReadable(desc.font.file_name))
+        if(IsFileReadable(desc.font.filename))
         {
             global_small_code_face = try_create_new_face(app, &desc);
         }
@@ -294,7 +293,7 @@ VIM_COMMAND_SIG(kv_startup)
     String8 startup_hot_directory = def_get_config_string(temp, vars_intern_lit("startup_hot_directory"));
     set_hot_directory(app, startup_hot_directory);
    
-#if !KV_INTERNAL
+#if 1 || !KV_INTERNAL  //nono here to test
     load_project(app);
 #endif
     
@@ -307,9 +306,9 @@ VIM_COMMAND_SIG(kv_startup)
     kv_default_bindings(&framework_mapping);
     
     { // NOTE(kv): Create special buffers.
-        create_unimportant_buffer(app, string_u8_litexpr("*calc*"));
+        create_unimportant_buffer(app, str8lit("*calc*"));
         create_unimportant_buffer(app, compilation_buffer_name);
-        create_unimportant_buffer(app, string_u8_litexpr("*render*"));
+        create_unimportant_buffer(app, str8lit("*render*"));
     }
   
     startup_panels_and_files(app);

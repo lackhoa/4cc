@@ -282,7 +282,7 @@ handle_type_ptr(void *ptr){
 
 internal
 system_load_library_sig(){
-    HMODULE lib = LoadLibrary_utf8String(scratch, file_name);
+    HMODULE lib = LoadLibrary_utf8String(scratch, filename);
     b32 result = false;
     if (lib != 0){
         result = true;
@@ -882,7 +882,7 @@ win32_alloc_object(Win32_Object_Kind kind){
     }
     if (result == 0){
         i32 count = 512;
-        Win32_Object *objects = (Win32_Object*)system_memory_allocate(count*sizeof(Win32_Object), file_name_line_number_lit_u8);
+        Win32_Object *objects = (Win32_Object*)system_memory_allocate(count*sizeof(Win32_Object), filename_line_number_lit_u8);
         objects[0].node.prev = &win32vars.free_win32_objects;
         win32vars.free_win32_objects.next = &objects[0].node;
         for (i32 i = 1; i < count; i += 1){

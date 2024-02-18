@@ -36,7 +36,7 @@ make_table_u64_u64__inner(Base_Allocator *allocator, u32 slot_count, String_Cons
     return(table);
 }
 
-#define make_table_u64_u64(a,s) make_table_u64_u64__inner((a),(s),file_name_line_number_lit_u8)
+#define make_table_u64_u64(a,s) make_table_u64_u64__inner((a),(s),filename_line_number_lit_u8)
 
 internal void
 table_free(Table_u64_u64 *table){
@@ -206,7 +206,7 @@ make_table_u32_u16__inner(Base_Allocator *allocator, u32 slot_count, String_Cons
     return(table);
 }
 
-#define make_table_u32_u16(a,s) make_table_u32_u16__inner((a),(s),file_name_line_number_lit_u8)
+#define make_table_u32_u16(a,s) make_table_u32_u16__inner((a),(s),filename_line_number_lit_u8)
 
 internal void
 table_free(Table_u32_u16 *table){
@@ -371,7 +371,7 @@ make_table_Data_u64__inner(Base_Allocator *allocator, u32 slot_count, String8 lo
     return(table);
 }
 
-#define make_table_Data_u64(a,s) make_table_Data_u64__inner((a),(s),file_name_line_number_lit_u8)
+#define make_table_Data_u64(a,s) make_table_Data_u64__inner((a),(s),filename_line_number_lit_u8)
 
 internal void
 table_free(Table_Data_u64 *table){
@@ -549,7 +549,7 @@ make_table_u64_Data__inner(Base_Allocator *allocator, u32 slot_count, String_Con
     return(table);
 }
 
-#define make_table_u64_Data(a,s) make_table_u64_Data__inner((a),(s),file_name_line_number_lit_u8)
+#define make_table_u64_Data(a,s) make_table_u64_Data__inner((a),(s),filename_line_number_lit_u8)
 
 internal void
 table_free(Table_u64_Data *table){
@@ -719,7 +719,7 @@ make_table_Data_Data__inner(Base_Allocator *allocator, u32 slot_count, String_Co
     return(table);
 }
 
-#define make_table_Data_Data(a,s) make_table_Data_Data__inner((a),(s),file_name_line_number_lit_u8)
+#define make_table_Data_Data(a,s) make_table_Data_Data__inner((a),(s),filename_line_number_lit_u8)
 
 internal void
 table_free(Table_Data_Data *table){

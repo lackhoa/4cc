@@ -71,7 +71,7 @@ prj_v1_parse_from_config(Application_Links *app, Arena *arena, String8 dir, Conf
             Config_Compound *best_paths = 0;
             
             for (i32 i = 0;; ++i){
-                Config_Iteration_Step_Result result = typed_array_iteration_step(parsed, compound, ConfigRValueType_Compound, i);
+                Config_Iteration_Step_Result result = typed_array_iteration_step(parsed, compound, Config_RValue_Type_Compound, i);
                 if (result.step == Iteration_Skip){
                     continue;
                 }
@@ -158,24 +158,24 @@ prj_v1_parse_from_config(Application_Links *app, Arena *arena, String8 dir, Conf
                 
                 if (!config_compound_string_member(parsed, src, "name", 0, &name)){
                     can_emit_command = false;
-                    def_config_push_error(arena, parsed, pos, "a command must have a string type name member");
+                    config_push_error(arena, parsed, pos, "a command must have a string type name member");
                     goto finish_command;
                 }
                 
                 cmd_result = config_compound_member(parsed, src, string_u8_litexpr("cmd"), 1);
-                if (cmd_result.success && cmd_result.type == ConfigRValueType_Compound){
+                if (cmd_result.success && cmd_result.type == Config_RValue_Type_Compound){
                     cmd_set = cmd_result.compound;
                     cmd_pos = cmd_result.pos;
                 }
                 else{
                     can_emit_command = false;
-                    def_config_push_error(arena, parsed, pos, "a command must have an array type cmd member");
+                    config_push_error(arena, parsed, pos, "a command must have an array type cmd member");
                     goto finish_command;
                 }
                 
                 can_emit_command = false;
                 for (i32 j = 0;; ++j){
-                    Config_Iteration_Step_Result result = typed_array_iteration_step(parsed, cmd_set, ConfigRValueType_Compound, j);
+                    Config_Iteration_Step_Result result = typed_array_iteration_step(parsed, cmd_set, Config_RValue_Type_Compound, j);
                     if (result.step == Iteration_Skip){
                         continue;
                     }
@@ -205,7 +205,7 @@ prj_v1_parse_from_config(Application_Links *app, Arena *arena, String8 dir, Conf
                 }
                 
                 if (!can_emit_command){
-                    def_config_push_error(arena, parsed, cmd_pos, "no usable command strings found in cmd");
+                    config_push_error(arena, parsed, cmd_pos, "no usable command strings found in cmd");
                     goto finish_command;
                 }
                 
@@ -307,7 +307,8 @@ prj_v1_sanitize_string(Arena *arena, String8 string){
 }
 
 function Variable_Handle
-prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed){
+prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed)
+{
     Scratch_Block scratch(app);
     
     Prj_V1 *project = prj_v1_parse_from_config(app, scratch, dir, parsed);
@@ -335,7 +336,7 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed){
     
     String_ID os_id = vars_intern(str8_lit(OS_NAME));;
     
-    Variable_Handle proj_var = vars_new_variable(vars_get_root(), project_id, vars_intern(parsed->file_name));
+    Variable_Handle proj_var = vars_new_variable(vars_get_root(), project_id, vars_intern(parsed->filename));
     
     if (parsed->version != 0){
         String8 version_str = push_stringf(scratch, "%d", *parsed->version);

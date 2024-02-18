@@ -9,8 +9,9 @@
 
 // TOP
 
-internal String_Const_u8
-string_from_file_name(Editing_File_Name *name){
+internal String8
+string_from_filename(Editing_File_Name *name)
+{
     return(SCu8(name->name_space, name->name_size));
 }
 
@@ -110,7 +111,7 @@ file_clear_dirty_flags(Editing_File *file){
 ////////////////////////////////
 
 internal void
-file_name_terminate(Editing_File_Name *name){
+filename_terminate(Editing_File_Name *name){
     u64 size = name->name_size;
     size = clamp_top(size, sizeof(name->name_space) - 1);
     name->name_space[size] = 0;
@@ -119,19 +120,19 @@ file_name_terminate(Editing_File_Name *name){
 
 ////////////////////////////////
 
-// TODO(allen): file_name should be String_Const_u8
+// TODO(allen): filename should be String_Const_u8
 internal b32
-save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *file_name){
+save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *filename){
     b32 result = false;
-    b32 using_actual_file_name = false;
+    b32 using_actual_filename = false;
     
-    if (file_name == 0){
-        file_name_terminate(&file->canon);
-        file_name = file->canon.name_space;
-        using_actual_file_name = true;
+    if (filename == 0){
+        filename_terminate(&file->canon);
+        filename = file->canon.name_space;
+        using_actual_filename = true;
     }
     
-    if (file_name != 0){
+    if (filename != 0){
         if (models->save_file != 0){
             Application_Links app = {};
             app.tctx = tctx;
@@ -143,19 +144,19 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
         
         Scratch_Block scratch(tctx);
         
-        if (!using_actual_file_name){
-            String_Const_u8 s_file_name = SCu8(file_name);
-            String_Const_u8 canonical_file_name = system_get_canonical(scratch, s_file_name);
-            if (string_match(canonical_file_name, string_from_file_name(&file->canon))){
-                using_actual_file_name = true;
+        if (!using_actual_filename){
+            String_Const_u8 s_filename = SCu8(filename);
+            String_Const_u8 canonical_filename = system_get_canonical(scratch, s_filename);
+            if (string_match(canonical_filename, string_from_filename(&file->canon))){
+                using_actual_filename = true;
             }
         }
         
         String_Const_u8 saveable_string = buffer_stringify(scratch, buffer, Ii64(0, buffer_size(buffer)));
         
-        File_Attributes new_attributes = system_save_file(scratch, (char*)file_name, saveable_string);
+        File_Attributes new_attributes = system_save_file(scratch, (char*)filename, saveable_string);
         if (new_attributes.last_write_time > 0 &&
-            using_actual_file_name){
+            using_actual_filename){
             file->state.save_state = FileSaveState_SavedWaitingForNotification;
             file_clear_dirty_flags(file);
         }

@@ -8,8 +8,8 @@ BUFFER_HOOK_SIG(kv_file_save)
 BUFFER_HOOK_SIG(kv_new_file)
 {
 	Scratch_Block scratch(app);
-	String_Const_u8 file_name = push_buffer_base_name(app, scratch, buffer_id);
-	if(string_match(string_postfix(file_name, 4), string_u8_litexpr(".bat"))){
+	String_Const_u8 filename = push_buffer_base_name(app, scratch, buffer_id);
+	if(string_match(string_postfix(filename, 4), string_u8_litexpr(".bat"))){
 		Buffer_Insertion insert = begin_buffer_insertion_at_buffered(app, buffer_id, 0, scratch, KB(16));
 		insertf(&insert, "@echo off" "\n");
 		end_buffer_insertion(&insert);
@@ -63,16 +63,15 @@ kv_tick(FApp *app, Frame_Info frame_info)
                     case DirtyState_UnsavedChanges:
                     {
                         saved_at_least_one_buffer = true;
-                        String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-                        buffer_save(app, buffer, file_name, 0);
-                    }
-                    break;
+                        String8 filename = push_buffer_filename(app, scratch, buffer);
+                        buffer_save(app, buffer, filename, 0);
+                    }break;
                     
                     case DirtyState_UnloadedChanges:
                     {
                         buffer_reopen(app, buffer, 0);
-                        String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-                        printf_message(app, scratch, "automatically reloaded file %.*s\n", string_expand(file_name));
+                        String8 filename = push_buffer_filename(app, scratch, buffer);
+                        printf_message(app, scratch, "automatically reloaded file %.*s\n", string_expand(filename));
                     }break;
                 }
                 
@@ -93,17 +92,17 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
   
   Scratch_Block scratch(app);
   b32 treat_as_code = false;
-  String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
+  String_Const_u8 filename = push_buffer_filename(app, scratch, buffer_id);
   String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
   
   // NOTE(rjf): Treat as code if the config tells us to.
   if(treat_as_code == false)
   {
-    if(file_name.size > 0)
+    if(filename.size > 0)
     {
       String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
       String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-      String_Const_u8 ext = string_file_extension(file_name);
+      String_Const_u8 ext = string_file_extension(filename);
       for(i32 i = 0; i < extensions.count; ++i)
       {
         if(string_match(ext, extensions.strings[i]))

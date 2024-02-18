@@ -21,7 +21,7 @@ get_global_face_description(Application_Links *app){
 
 internal b32
 font_load_location_match(Font_Load_Location *a, Font_Load_Location *b){
-    return(string_match(a->file_name, b->file_name));
+    return(string_match(a->filename, b->filename));
 }
 
 internal b32

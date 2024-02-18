@@ -8,18 +8,18 @@ static String8
 push_build_directory_at_file(FApp *app, Arena *arena, Buffer_ID buffer)
 {
     String_Const_u8 result = {};
-    String_Const_u8 file_name = push_buffer_file_name(app, arena, buffer);
+    String_Const_u8 filename = push_buffer_filename(app, arena, buffer);
     Temp_Memory restore_point = begin_temp(arena);
     String_Const_u8 base_name = push_buffer_base_name(app, arena, buffer);
-    b32 is_match = string_match(file_name, base_name);
+    b32 is_match = string_match(filename, base_name);
     end_temp(restore_point);
     if (!is_match){
-        result = push_string_copy(arena, string_remove_last_folder(file_name));
+        result = push_string_copy(arena, string_remove_last_folder(filename));
     }
     return(result);
 }
 
-global String_Const_u8 standard_build_file_name_array[] = 
+global String_Const_u8 standard_build_filename_array[] = 
 {
     str8_lit("kv-build.py"),
     str8_lit("build.py"),
@@ -44,13 +44,13 @@ global String_Const_u8 standard_build_cmd_string_array[] =
 };
 
 internal String_Const_u8
-push_fallback_command(Arena *arena, String_Const_u8 file_name){
-    return(push_stringf(arena, "echo could not find %.*s", string_expand(file_name)));
+push_fallback_command(Arena *arena, String_Const_u8 filename){
+    return(push_stringf(arena, "echo could not find %.*s", string_expand(filename)));
 }
 
 internal String_Const_u8
 push_fallback_command(Arena *arena){
-    return(push_fallback_command(arena, standard_build_file_name_array[0]));
+    return(push_fallback_command(arena, standard_build_filename_array[0]));
 }
 
 global_const String8 compilation_buffer_name = str8_lit("*compilation*");
@@ -74,9 +74,9 @@ standard_search_and_build_from_dir(FApp *app, View_ID view, String8 start_dir, c
     // NOTE(allen): Search
     String8 full_file_path = {};
     String8 cmd_string  = {};
-    for (u32 i = 0; i < ArrayCount(standard_build_file_name_array); i += 1)
+    for (u32 i = 0; i < ArrayCount(standard_build_filename_array); i += 1)
     {
-        full_file_path = push_file_search_up_path(app, scratch, start_dir, standard_build_file_name_array[i]);
+        full_file_path = search_up_path(app, scratch, start_dir, standard_build_filename_array[i]);
         if (full_file_path.size > 0){
             cmd_string = standard_build_cmd_string_array[i];
             break;
@@ -170,7 +170,7 @@ set_fancy_compilation_buffer_font(Application_Links *app){
     Scratch_Block scratch(app);
     Buffer_ID buffer = get_comp_buffer(app);
     Font_Load_Location font = {};
-    font.file_name = def_search_normal_full_path(scratch, str8_lit("fonts/Inconsolata-Regular.ttf"));
+    font.filename = def_search_normal_full_path(scratch, str8_lit("fonts/Inconsolata-Regular.ttf"));
     set_buffer_face_by_font_load_location(app, buffer, &font);
 }
 

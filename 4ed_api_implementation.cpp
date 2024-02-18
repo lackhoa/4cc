@@ -204,15 +204,15 @@ get_buffer_by_name(FApp *app, String_Const_u8 name, Access_Flag access)
 }
 
 api(custom) function Buffer_ID
-get_buffer_by_file_name(FApp *app, String_Const_u8 file_name, Access_Flag access)
+get_buffer_by_filename(FApp *app, String_Const_u8 filename, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File_Name canon = {};
     Buffer_ID result = false;
     Scratch_Block scratch(app);
-    if (get_canon_name(scratch, file_name, &canon)){
+    if (get_canon_name(scratch, filename, &canon)){
         Working_Set *working_set = &models->working_set;
-        Editing_File *file = working_set_contains_canon(working_set, string_from_file_name(&canon));
+        Editing_File *file = working_set_contains_canon(working_set, string_from_filename(&canon));
         if (api_check_buffer(file, access)){
             result = file->id;
         }
@@ -653,7 +653,7 @@ push_buffer_base_name(FApp *app, Arena *arena, Buffer_ID buffer_id){
     Editing_File *file = imp_get_file(models, buffer_id);
     String_Const_u8 result = {};
     if (api_check_buffer(file)){
-        result = push_string_copy(arena, string_from_file_name(&file->base_name));
+        result = push_string_copy(arena, string_from_filename(&file->base_name));
     }
     return(result);
 }
@@ -664,18 +664,19 @@ push_buffer_unique_name(FApp *app, Arena *out, Buffer_ID buffer_id){
     Editing_File *file = imp_get_file(models, buffer_id);
     String_Const_u8 result = {};
     if (api_check_buffer(file)){
-        result = push_string_copy(out, string_from_file_name(&file->unique_name));
+        result = push_string_copy(out, string_from_filename(&file->unique_name));
     }
     return(result);
 }
 
 api(custom) function String_Const_u8
-push_buffer_file_name(FApp *app, Arena *arena, Buffer_ID buffer_id){
+push_buffer_filename(FApp *app, Arena *arena, Buffer_ID buffer_id)
+{
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     String_Const_u8 result = {};
     if (api_check_buffer(file)){
-        result = push_string_copy(arena, string_from_file_name(&file->canon));
+        result = push_string_copy(arena, string_from_filename(&file->canon));
     }
     return(result);
 }
@@ -683,7 +684,7 @@ push_buffer_file_name(FApp *app, Arena *arena, Buffer_ID buffer_id){
 inline String_Const_u8
 push_buffer_dir_name(FApp *app, Arena *arena, Buffer_ID buffer)
 {
-  String_Const_u8 filename = push_buffer_file_name(app, arena, buffer);
+  String_Const_u8 filename = push_buffer_filename(app, arena, buffer);
   return string_remove_last_folder(filename);
 }
 
@@ -863,10 +864,10 @@ buffer_send_end_signal(FApp *app, Buffer_ID buffer_id)
 }
 
 api(custom) function Buffer_ID
-create_buffer(FApp *app, String_Const_u8 file_name, Buffer_Create_Flag flags)
+create_buffer(FApp *app, String_Const_u8 filename, Buffer_Create_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
-    Editing_File *new_file = create_file(app->tctx, models, file_name, flags);
+    Editing_File *new_file = create_file(app->tctx, models, filename, flags);
     Buffer_ID result = 0;
     if (new_file != 0){
         result = new_file->id;
@@ -875,7 +876,7 @@ create_buffer(FApp *app, String_Const_u8 file_name, Buffer_Create_Flag flags)
 }
 
 api(custom) function b32
-buffer_save(FApp *app, Buffer_ID buffer_id, String_Const_u8 file_name, Buffer_Save_Flag flags)
+buffer_save(FApp *app, Buffer_ID buffer_id, String_Const_u8 filename, Buffer_Save_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -892,7 +893,7 @@ buffer_save(FApp *app, Buffer_ID buffer_id, String_Const_u8 file_name, Buffer_Sa
         if (!skip_save){
             Thread_Context *tctx = app->tctx;
             Scratch_Block scratch(tctx);
-            String_Const_u8 name = push_string_copy(scratch, file_name);
+            String_Const_u8 name = push_string_copy(scratch, filename);
             save_file_to_name(tctx, models, file, name.str);
             result = true;
         }
@@ -2833,8 +2834,8 @@ try_release_face(FApp *app, Face_ID id, Face_ID replacement_id)
     return(release_font_and_update(models, face, replacement));
 }
 
-api(custom) function String_Const_u8
-push_hot_directory(FApp *app, Arena *arena)
+api(custom) function String8
+push_hot_directory(App *app, Arena *arena)
 {
     Models *models = (Models*)app->cmd_context;
     Hot_Directory *hot = &models->hot_directory;
@@ -2843,7 +2844,7 @@ push_hot_directory(FApp *app, Arena *arena)
 }
 
 api(custom) function void
-set_hot_directory(FApp *app, String_Const_u8 string)
+set_hot_directory(App *app, String_Const_u8 string)
 {
     Models *models = (Models*)app->cmd_context;
     Hot_Directory *hot = &models->hot_directory;
@@ -2851,7 +2852,7 @@ set_hot_directory(FApp *app, String_Const_u8 string)
 }
 
 api(custom) function void
-send_exit_signal(FApp *app)
+send_exit_signal(App *app)
 {
     Models *models = (Models*)app->cmd_context;
     models->keep_playing = false;

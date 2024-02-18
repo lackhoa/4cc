@@ -519,10 +519,10 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
 ////////////////////////////////
 
 function Editing_File*
-create_file(Thread_Context *tctx, Models *models, String_Const_u8 file_name, Buffer_Create_Flag flags){
+create_file(Thread_Context *tctx, Models *models, String_Const_u8 filename, Buffer_Create_Flag flags){
     Editing_File *result = 0;
     
-    if (file_name.size > 0){
+    if (filename.size > 0){
         Working_Set *working_set = &models->working_set;
         Heap *heap = &models->heap;
         
@@ -536,9 +536,9 @@ create_file(Thread_Context *tctx, Models *models, String_Const_u8 file_name, Buf
         
         // NOTE(allen): Try to get the file by canon name.
         if (HasFlag(flags, BufferCreate_NeverAttachToFile) == 0){
-            if (get_canon_name(scratch, file_name, &canon)){
+            if (get_canon_name(scratch, filename, &canon)){
                 has_canon_name = true;
-                file = working_set_contains_canon(working_set, string_from_file_name(&canon));
+                file = working_set_contains_canon(working_set, string_from_filename(&canon));
             }
             else{
                 do_empty_buffer = true;
@@ -548,7 +548,7 @@ create_file(Thread_Context *tctx, Models *models, String_Const_u8 file_name, Buf
         // NOTE(allen): Try to get the file by buffer name.
         if ((flags & BufferCreate_MustAttachToFile) == 0){
             if (file == 0){
-                file = working_set_contains_name(working_set, file_name);
+                file = working_set_contains_name(working_set, filename);
             }
         }
         
@@ -576,9 +576,9 @@ create_file(Thread_Context *tctx, Models *models, String_Const_u8 file_name, Buf
                     file = working_set_allocate_file(working_set, &models->lifetime_allocator);
                     if (file != 0){
                         if (has_canon_name){
-                            file_bind_file_name(working_set, file, string_from_file_name(&canon));
+                            file_bind_filename(working_set, file, string_from_filename(&canon));
                         }
-                        String_Const_u8 front = string_front_of_path(file_name);
+                        String_Const_u8 front = string_front_of_path(filename);
                         buffer_bind_name(tctx, models, scratch, working_set, file, front);
                         File_Attributes attributes = {};
                         file_create_from_string(tctx, models, file, SCu8(""), attributes);
@@ -601,8 +601,8 @@ create_file(Thread_Context *tctx, Models *models, String_Const_u8 file_name, Buf
                     system_load_close(handle);
                     file = working_set_allocate_file(working_set, &models->lifetime_allocator);
                     if (file != 0){
-                        file_bind_file_name(working_set, file, string_from_file_name(&canon));
-                        String_Const_u8 front = string_front_of_path(file_name);
+                        file_bind_filename(working_set, file, string_from_filename(&canon));
+                        String_Const_u8 front = string_front_of_path(filename);
                         buffer_bind_name(tctx, models, scratch, working_set, file, front);
                         file_create_from_string(tctx, models, file, SCu8(buffer, (i32)attributes.size), attributes);
                         result = file;

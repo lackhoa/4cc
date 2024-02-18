@@ -67,7 +67,8 @@ struct Editing_File_State{
     Table_Data_u64 line_layout_table;
 };
 
-struct Editing_File_Name{
+struct Editing_File_Name
+{
     u8 name_space[256];
     u64 name_size;
 };

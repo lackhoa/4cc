@@ -270,27 +270,29 @@ working_set_clipboard_index(Working_Set *working, i32 index){
 
 // TODO(allen): get rid of this???
 internal b32
-get_canon_name(Arena *scratch, String_Const_u8 file_name, Editing_File_Name *canon_name){
+get_canon_name(Arena *scratch, String_Const_u8 filename, Editing_File_Name *canon_name)
+{
     Temp_Memory temp = begin_temp(scratch);
-    String_Const_u8 canonical = system_get_canonical(scratch, file_name);
+    String_Const_u8 canonical = system_get_canonical(scratch, filename);
     u64 size = Min(sizeof(canon_name->name_space), canonical.size);
     block_copy(canon_name->name_space, canonical.str, size);
     canon_name->name_size = size;
     end_temp(temp);
-    file_name_terminate(canon_name);
+    filename_terminate(canon_name);
     return(canon_name->name_size > 0);
 }
 
 internal void
-file_bind_file_name(Working_Set *working_set, Editing_File *file, String_Const_u8 canon_file_name){
+file_bind_filename(Working_Set *working_set, Editing_File *file, String_Const_u8 canon_filename)
+{
     Assert(file->unique_name.name_size == 0);
     Assert(file->canon.name_size == 0);
-    u64 size = canon_file_name.size;
+    u64 size = canon_filename.size;
     size = clamp_top(size, sizeof(file->canon.name_space) - 1);
     file->canon.name_size = size;
-    block_copy(file->canon.name_space, canon_file_name.str, size);
-    file_name_terminate(&file->canon);
-    b32 result = working_set_canon_add(working_set, file, string_from_file_name(&file->canon));
+    block_copy(file->canon.name_space, canon_filename.str, size);
+    filename_terminate(&file->canon);
+    b32 result = working_set_canon_add(working_set, file, string_from_filename(&file->canon));
     Assert(result);
 }
 
@@ -298,7 +300,7 @@ internal void
 buffer_unbind_file(Working_Set *working_set, Editing_File *file){
     Assert(file->unique_name.name_size == 0);
     Assert(file->canon.name_size != 0);
-    working_set_canon_remove(working_set, string_from_file_name(&file->canon));
+    working_set_canon_remove(working_set, string_from_filename(&file->canon));
     file->canon.name_size = 0;
 }
 
@@ -310,7 +312,7 @@ buffer_name_has_conflict(Working_Set *working_set, String_Const_u8 base_name){
          node != used_nodes;
          node = node->next){
         Editing_File *file_ptr = CastFromMember(Editing_File, main_chain_node, node);
-        if (file_ptr && string_match(base_name, string_from_file_name(&file_ptr->unique_name))){
+        if (file_ptr && string_match(base_name, string_from_filename(&file_ptr->unique_name))){
             hit_conflict = true;
             break;
         }
@@ -363,7 +365,7 @@ buffer_bind_name_low_level(Arena *scratch, Working_Set *working_set, Editing_Fil
         file->unique_name.name_size = size;
     }
     
-    b32 result = working_set_add_name(working_set, file, string_from_file_name(&file->unique_name));
+    b32 result = working_set_add_name(working_set, file, string_from_filename(&file->unique_name));
     Assert(result);
 }
 
@@ -371,7 +373,7 @@ internal void
 buffer_unbind_name_low_level(Working_Set *working_set, Editing_File *file){
     Assert(file->base_name.name_size != 0);
     Assert(file->unique_name.name_size != 0);
-    working_set_remove_name(working_set, string_from_file_name(&file->unique_name));
+    working_set_remove_name(working_set, string_from_filename(&file->unique_name));
     file->base_name.name_size = 0;
     file->unique_name.name_size = 0;
 }
@@ -401,7 +403,7 @@ buffer_bind_name(Thread_Context *tctx, Models *models, Arena *scratch, Working_S
          node != used_nodes;
          node = node->next){
         Editing_File *file_ptr = CastFromMember(Editing_File, main_chain_node, node);
-        if (file_ptr != 0 && string_match(base_name, string_from_file_name(&file_ptr->base_name))){
+        if (file_ptr != 0 && string_match(base_name, string_from_filename(&file_ptr->base_name))){
             Node_Ptr *new_node = push_array(scratch, Node_Ptr, 1);
             sll_queue_push(conflict_first, conflict_last, new_node);
             new_node->file_ptr = file_ptr;
@@ -421,12 +423,12 @@ buffer_bind_name(Thread_Context *tctx, Models *models, Arena *scratch, Working_S
             Buffer_Name_Conflict_Entry *entry = &conflicts[i];
             entry->buffer_id = file_ptr->id;
             
-            entry->file_name = push_string_copy(scratch, string_from_file_name(&file_ptr->canon));
+            entry->filename = push_string_copy(scratch, string_from_filename(&file_ptr->canon));
             entry->base_name = push_string_copy(scratch, base_name);
             
             String_Const_u8 b = base_name;
             if (i > 0){
-                b = string_from_file_name(&file_ptr->unique_name);
+                b = string_from_filename(&file_ptr->unique_name);
             }
             u64 unique_name_capacity = 256;
             u8 *unique_name_buffer = push_array(scratch, u8, unique_name_capacity);

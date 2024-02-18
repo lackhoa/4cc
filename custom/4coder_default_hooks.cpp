@@ -9,13 +9,15 @@ CUSTOM_DOC("Default command for responding to a startup event")
 {
     ProfileScope(app, "default startup");
     User_Input input = get_current_input(app);
-    if (match_core_code(&input, CoreCode_Startup)){
-        String_Const_u8_Array file_names = input.event.core.file_names;
+    if ( match_core_code(&input, CoreCode_Startup) )
+    {
+        String8_Array filenames = input.event.core.filenames;
         load_themes_default_folder(app);
-        default_4coder_initialize(app, file_names);
-        default_4coder_side_by_side_panels(app, file_names);
+        default_4coder_initialize(app, filenames);
+        default_4coder_side_by_side_panels(app, filenames);
         b32 auto_load = def_get_config_b32(vars_intern_lit("automatically_load_project"));
-        if (auto_load){
+        if (auto_load)
+        {
             load_project(app);
         }
     }
@@ -546,28 +548,28 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                 conflict->unique_name_len_in_out = size;
                 block_copy(conflict->unique_name_in_out, conflict->base_name.str, size);
                 
-                if (conflict->file_name.str != 0){
+                if (conflict->filename.str != 0){
                     Temp_Memory_Block temp(scratch);
                     String_Const_u8 uniqueifier = {};
                     
-                    String_Const_u8 file_name = string_remove_last_folder(conflict->file_name);
-                    if (file_name.size > 0){
-                        file_name = string_chop(file_name, 1);
-                        u8 *end = file_name.str + file_name.size;
+                    String8 filename = string_remove_last_folder(conflict->filename);
+                    if (filename.size > 0){
+                        filename = string_chop(filename, 1);
+                        u8 *end = filename.str + filename.size;
                         b32 past_the_end = false;
                         for (i32 j = 0; j < x; ++j){
-                            file_name = string_remove_last_folder(file_name);
+                            filename = string_remove_last_folder(filename);
                             if (j + 1 < x){
-                                file_name = string_chop(file_name, 1);
+                                filename = string_chop(filename, 1);
                             }
-                            if (file_name.size == 0){
+                            if (filename.size == 0){
                                 if (j + 1 < x){
                                     past_the_end = true;
                                 }
                                 break;
                             }
                         }
-                        u8 *start = file_name.str + file_name.size;
+                        u8 *start = filename.str + filename.size;
                         
                         uniqueifier = SCu8(start, end);
                         if (past_the_end){
@@ -598,7 +600,7 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                                                      conflict->unique_name_len_in_out);
                 
                 b32 hit_conflict = false;
-                if (conflict->file_name.str != 0){
+                if (conflict->filename.str != 0){
                     for (i32 j = 0; j < unresolved_count; ++j){
                         if (i == j) continue;
                         
@@ -738,11 +740,11 @@ BUFFER_HOOK_SIG(default_begin_buffer){
     Scratch_Block scratch(app);
     
     b32 treat_as_code = false;
-    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
-    if (file_name.size > 0){
+    String_Const_u8 filename = push_buffer_filename(app, scratch, buffer_id);
+    if (filename.size > 0){
         String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
         String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-        String_Const_u8 ext = string_file_extension(file_name);
+        String_Const_u8 ext = string_file_extension(filename);
         for (i32 i = 0; i < extensions.count; ++i){
             if (string_match(ext, extensions.strings[i])){
                 
@@ -865,16 +867,16 @@ BUFFER_HOOK_SIG(default_begin_buffer){
 
 BUFFER_HOOK_SIG(default_new_file){
     Scratch_Block scratch(app);
-    String_Const_u8 file_name = push_buffer_base_name(app, scratch, buffer_id);
-    if (!string_match(string_postfix(file_name, 2), string_u8_litexpr(".h"))) {
+    String_Const_u8 filename = push_buffer_base_name(app, scratch, buffer_id);
+    if (!string_match(string_postfix(filename, 2), string_u8_litexpr(".h"))) {
         return(0);
     }
     
     List_String_Const_u8 guard_list = {};
-    for (u64 i = 0; i < file_name.size; ++i){
+    for (u64 i = 0; i < filename.size; ++i){
         u8 c[2] = {};
         u64 c_size = 1;
-        u8 ch = file_name.str[i];
+        u8 ch = filename.str[i];
         if ('A' <= ch && ch <= 'Z'){
             c_size = 2;
             c[0] = '_';

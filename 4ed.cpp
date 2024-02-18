@@ -266,7 +266,7 @@ App_Init_Sig(app_init){
         String8 full_path = push_stringf(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
         
         Face_Description description = {};
-        description.font.file_name = full_path;
+        description.font.filename = full_path;
         description.parameters.pt_size = 12;
         Face *new_face = font_set_new_face(&models->font_set, &description);
         if (new_face == 0){
@@ -501,11 +501,11 @@ App_Step_Sig(app_step){
     if (input->first_step){
         Temp_Memory_Block temp(scratch);
         
-        String_Const_u8_Array file_names = {};
-        file_names.count = models->settings.init_files_count;
-        file_names.vals = push_array(scratch, String_Const_u8, file_names.count);
-        for (i32 i = 0; i < file_names.count; i += 1){
-            file_names.vals[i] = SCu8(models->settings.init_files[i]);
+        String_Const_u8_Array filenames = {};
+        filenames.count = models->settings.init_files_count;
+        filenames.vals = push_array(scratch, String_Const_u8, filenames.count);
+        for (i32 i = 0; i < filenames.count; i += 1){
+            filenames.vals[i] = SCu8(models->settings.init_files[i]);
         }
         
         String_Const_u8_Array flags = {};
@@ -519,7 +519,7 @@ App_Step_Sig(app_step){
         event.kind = InputEventKind_Core;
         event.core.code = CoreCode_Startup;
         event.core.flag_strings = flags;
-        event.core.file_names = file_names;
+        event.core.filenames = filenames;
         co_send_event(tctx, models, &event);
         
         // NOTE(allen): Actually do the buffer settings for the built ins now.

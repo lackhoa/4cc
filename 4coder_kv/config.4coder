@@ -33,7 +33,7 @@ mark_thickness = 2;
 lister_roundness = 20;
 
 // Code
-treat_as_code = ".cpp.c.hpp.h.cc.cs.java.rs.glsl.m.mm.mdesk";
+treat_as_code = ".cpp.c.hpp.h.cc.cs.java.rs.glsl.m.mm.4coder";
 enable_virtual_whitespace         = false;
 virtual_whitespace_regular_indent = 4;
 enable_code_wrapping              = true;
@@ -77,7 +77,8 @@ startup_hot_directory = "~/4ed/code";
 // NOTE(kv): quick startup file setting
 startup_file  = "C:/Users/vodan/notes/note.skm";
 //
-startup_file1       = "C:/Users/vodan/4ed/code/4coder_kv/game.cpp";
+// startup_file1       = "C:/Users/vodan/4ed/code/4coder_kv/game.cpp";
+startup_file1       = "*messages*";
 other_startup_file1 = "*render*" ;
 
 DEBUG_draw_hud_p = true;

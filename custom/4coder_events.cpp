@@ -332,7 +332,7 @@ copy_input_event(Arena *arena, Input_Event *event){
                 case CoreCode_Startup:
                 {
                     result.core.flag_strings = push_string_array_copy(arena, event->core.flag_strings);
-                    result.core.file_names = push_string_array_copy(arena, event->core.file_names);
+                    result.core.filenames = push_string_array_copy(arena, event->core.filenames);
                 }break;
                 
                 case CoreCode_FileExternallyModified:

@@ -46,11 +46,11 @@ log_parse__get_string(Log_Parse *parse, u64 code){
 
 internal Log_Event*
 log_parse__event(Log_Parse *parse,
-                 String_Const_u8 file_name, String_Const_u8 line_number, String_Const_u8 event_name){
+                 String_Const_u8 filename, String_Const_u8 line_number, String_Const_u8 event_name){
     Log_Event *new_event = push_array(parse->arena, Log_Event, 1);
     sll_queue_push(parse->first_event, parse->last_event, new_event);
     parse->event_count += 1;
-    new_event->src_file_name = log_parse__string_code(parse, file_name, LogParse_ExternalString);
+    new_event->src_filename = log_parse__string_code(parse, filename, LogParse_ExternalString);
     new_event->event_name = log_parse__string_code(parse, event_name, LogParse_ExternalString);
     new_event->line_number = string_to_integer(line_number, 10);
     new_event->event_number = parse->event_count;
@@ -179,7 +179,7 @@ make_log_parse(Arena *arena, String_Const_u8 source){
         line = string_skip_chop_whitespace(line);
         source = string_skip(source, end_of_line + 1);
         
-        String_Const_u8 src_file_name = {};
+        String_Const_u8 src_filename = {};
         String_Const_u8 src_line_number = {};
         b32 got_source_position = false;
         
@@ -187,7 +187,7 @@ make_log_parse(Arena *arena, String_Const_u8 source){
         
         {
             u64 colon1 = string_find_first(line, ':');
-            src_file_name = string_prefix(line, colon1);
+            src_filename = string_prefix(line, colon1);
             line = string_skip(line, colon1 + 1);
             
             u64 colon2 = string_find_first(line, ':');
@@ -204,7 +204,7 @@ make_log_parse(Arena *arena, String_Const_u8 source){
             
             u64 colon0 = string_find_first(line, ':');
             u64 colon1 = string_find_first(line, colon0 + 1, ':');
-            src_file_name = string_prefix(line, colon1);
+            src_filename = string_prefix(line, colon1);
             line = string_skip(line, colon1 + 1);
             
             u64 colon2 = string_find_first(line, ':');
@@ -223,7 +223,7 @@ make_log_parse(Arena *arena, String_Const_u8 source){
             line = string_skip(line, bracket_open + 1);
             
             Log_Event *event = log_parse__event(&parse,
-                                                src_file_name, src_line_number, event_name);
+                                                src_filename, src_line_number, event_name);
             
             for (;line.size > 0;){
                 u64 bracket_close = string_find_first(line, ']');
@@ -858,9 +858,9 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                 
                 {
                     Fancy_Line line = {};
-                    String_Const_u8 file_name = log_parse__get_string(&log_parse, view_event->src_file_name);
+                    String_Const_u8 filename = log_parse__get_string(&log_parse, view_event->src_filename);
                     push_fancy_stringf(scratch, &line, f_green, "[%d]  ", view_event->event_number);
-                    push_fancy_stringf(scratch, &line, f_white, "%.*s:", string_expand(file_name));
+                    push_fancy_stringf(scratch, &line, f_white, "%.*s:", string_expand(filename));
                     push_fancy_stringf(scratch, &line, f_pink, "%llu", view_event->line_number);
                     
                     Vec2_f32 right_p = V2(box_inner.x1 - 3.f, y_cursor);
@@ -963,8 +963,10 @@ log_graph__click_select_event(Application_Links *app, Vec2_f32 m_p)
 }
 
 function void
-log_graph__click_jump_to_event_source(Application_Links *app, Vec2_f32 m_p){
-    if (log_view != 0 && log_graph.holding_temp){
+log_graph__click_jump_to_event_source(App *app, Vec2_f32 m_p)
+{
+    if (log_view != 0 && log_graph.holding_temp)
+    {
         Log_Graph_Box *box_node = log_graph__get_box_at_point(&log_graph, m_p);
         if (box_node != 0){
             Log_Event *event = box_node->event;
@@ -972,10 +974,10 @@ log_graph__click_jump_to_event_source(Application_Links *app, Vec2_f32 m_p){
             
             View_ID target_view = get_next_view_looped_primary_panels(app, log_view, Access_ReadVisible, true);
             if (target_view != 0){
-                String_Const_u8 file_name = log_parse__get_string(&log_parse, event->src_file_name);
-                Buffer_ID target_buffer = get_buffer_by_file_name(app, file_name, Access_Always);
+                String8 filename = log_parse__get_string(&log_parse, event->src_filename);
+                Buffer_ID target_buffer = get_buffer_by_filename(app, filename, Access_Always);
                 if (target_buffer == 0){
-                    target_buffer = get_buffer_by_name(app, file_name, Access_Always);
+                    target_buffer = get_buffer_by_name(app, filename, Access_Always);
                 }
                 if (target_buffer != 0){
                     set_view_to_location(app, target_view, target_buffer,

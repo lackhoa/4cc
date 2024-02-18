@@ -130,21 +130,21 @@ vim_lister_set_default_handlers(Lister *lister){
 }
 
 function File_Name_Result
-vim_convert_lister_result_to_file_name_result(Lister_Result l_result){
+vim_convert_lister_result_to_filename_result(Lister_Result l_result){
 	File_Name_Result result = {};
 	result.canceled = l_result.canceled;
 	if(l_result.canceled){ return result; }
 	result.clicked = l_result.activated_by_click;
 	if(l_result.user_data != 0){
 		String_Const_u8 name = SCu8((u8*)l_result.user_data);
-		result.file_name_activated = name;
+		result.filename_activated = name;
 		result.is_folder = character_is_slash(string_get_character(name, name.size - 1));
 	}
-	result.file_name_in_text_field = string_front_of_path(l_result.text_field);
+	result.filename_in_text_field = string_front_of_path(l_result.text_field);
 	
 	String_Const_u8 path = {};
-	if(l_result.user_data && result.file_name_in_text_field.size && l_result.text_field.size > 0){
-		result.file_name_in_text_field = string_front_folder_of_path(l_result.text_field);
+	if(l_result.user_data && result.filename_in_text_field.size && l_result.text_field.size > 0){
+		result.filename_in_text_field = string_front_folder_of_path(l_result.text_field);
 		path = string_remove_front_folder_of_path(l_result.text_field);
 	}else{
 		path = string_remove_front_of_path(l_result.text_field);
@@ -594,7 +594,7 @@ vim_run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String
 }
 
 function File_Name_Result
-vim_get_file_name_from_user(Application_Links *app, Arena *arena, String_Const_u8 query, View_ID view){
+vim_get_filename_from_user(Application_Links *app, Arena *arena, String_Const_u8 query, View_ID view){
 	Lister_Handlers handlers = lister_get_default_handlers();
 	handlers.refresh = generate_hot_directory_file_list;
 	handlers.write_character = vim_lister__write_character__file_path;
@@ -602,7 +602,7 @@ vim_get_file_name_from_user(Application_Links *app, Arena *arena, String_Const_u
 	
 	vim_reset_bottom_text();
 	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, arena, query, handlers);
-	return vim_convert_lister_result_to_file_name_result(l_result);
+	return vim_convert_lister_result_to_filename_result(l_result);
 }
 
 #pragma clang diagnostic pop

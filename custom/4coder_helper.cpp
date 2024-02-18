@@ -1697,7 +1697,7 @@ buffer_identifier_to_id(Application_Links *app, Buffer_Identifier identifier){
         String_Const_u8 name = SCu8(identifier.name, identifier.name_len);
         id = get_buffer_by_name(app, name, Access_Always);
         if (id == 0){
-            id = get_buffer_by_file_name(app, name, Access_Always);
+            id = get_buffer_by_filename(app, name, Access_Always);
         }
     }
     return(id);
@@ -1847,9 +1847,9 @@ get_first_view_with_buffer(Application_Links *app, Buffer_ID buffer_id){
 }
 
 function b32
-open_file(Application_Links *app, Buffer_ID *buffer_out, String_Const_u8 file_name, b32 background, b32 never_new){
+open_file(Application_Links *app, Buffer_ID *buffer_out, String_Const_u8 filename, b32 background, b32 never_new){
     b32 result = false;
-    Buffer_ID buffer = get_buffer_by_name(app, file_name, Access_ReadVisible);
+    Buffer_ID buffer = get_buffer_by_name(app, filename, Access_ReadVisible);
     b32 exists = buffer_exists(app, buffer);
     if (!exists){
         Buffer_Create_Flag flags = 0;
@@ -1859,7 +1859,7 @@ open_file(Application_Links *app, Buffer_ID *buffer_out, String_Const_u8 file_na
         if (never_new){
             flags |= BufferCreate_NeverNew;
         }
-        buffer = create_buffer(app, file_name, flags);
+        buffer = create_buffer(app, filename, flags);
         exists = buffer_exists(app, buffer);
     }
     if (exists){
@@ -1872,13 +1872,13 @@ open_file(Application_Links *app, Buffer_ID *buffer_out, String_Const_u8 file_na
 }
 
 function b32
-view_open_file(FApp *app, View_ID view, String8 file_name, b32 never_new)
+view_open_file(FApp *app, View_ID view, String8 filename, b32 never_new)
 {
     b32 result = false;
     if (view != 0)
     {
         Buffer_ID buffer = 0;
-        if (open_file(app, &buffer, file_name, false, never_new))
+        if (open_file(app, &buffer, filename, false, never_new))
         {
             view_set_buffer(app, view, buffer, 0);
             result = true;
@@ -2066,34 +2066,38 @@ push_token_or_word_under_active_cursor(Application_Links *app, Arena *arena){
 ////////////////////////////////
 
 function b32
-file_exists(Application_Links *app, String_Const_u8 file_name){
+file_exists(Application_Links *app, String_Const_u8 filename){
     Scratch_Block scratch(app);
-    File_Attributes attributes = system_quick_file_attributes(scratch, file_name);
+    File_Attributes attributes = system_quick_file_attributes(scratch, filename);
     return(attributes.last_write_time > 0);
 }
 
 function b32
-file_exists_and_is_file(Application_Links *app, String_Const_u8 file_name){
+file_exists_and_is_file(Application_Links *app, String_Const_u8 filename){
     Scratch_Block scratch(app);
-    File_Attributes attributes = system_quick_file_attributes(scratch, file_name);
+    File_Attributes attributes = system_quick_file_attributes(scratch, filename);
     return(attributes.last_write_time > 0 && !HasFlag(attributes.flags, FileAttribute_IsDirectory));
 }
 
 function b32
-file_exists_and_is_folder(Application_Links *app, String_Const_u8 file_name){
+file_exists_and_is_folder(App *app, String8 filename)
+{
     Scratch_Block scratch(app);
-    File_Attributes attributes = system_quick_file_attributes(scratch, file_name);
+    File_Attributes attributes = system_quick_file_attributes(scratch, filename);
     return(attributes.last_write_time > 0 && HasFlag(attributes.flags, FileAttribute_IsDirectory));
 }
 
-function String_Const_u8
-dump_file_handle(Arena *arena, FILE *file){
-    String_Const_u8 result = {};
-    if (file != 0){
+function String8
+dump_file_handle(Arena *arena, FILE *file)
+{
+    String8 result = {};
+    if (file != 0)
+    {
         fseek(file, 0, SEEK_END);
         u64 size = ftell(file);
         char *mem = push_array(arena, char, size);
-        if (mem != 0){
+        if (mem != 0)
+        {
             fseek(file, 0, SEEK_SET);
             fread(mem, 1, (size_t)size, file);
             result = make_data(mem, size);
@@ -2102,19 +2106,21 @@ dump_file_handle(Arena *arena, FILE *file){
     return(result);
 }
 
-function String_Const_u8
-push_file_search_up_path(Application_Links *app, Arena *arena, String_Const_u8 start_path, String_Const_u8 file_name){
-    String_Const_u8 result = {};
-    String_Const_u8 path = start_path;
+function String8
+search_up_path(App *app, Arena *arena, String8 start_path, String8 filename)
+{
+    String8 result = {};
+    String8 path = start_path;
     for (;path.size > 0;){
         Temp_Memory temp = begin_temp(arena);
         if (character_is_slash(string_get_character(path, path.size - 1))){
             path = string_chop(path, 1);
         }
-        String_Const_u8 full_path = push_stringf(arena, "%.*s/%.*s",
+        String8 full_path = push_stringf(arena, "%.*s/%.*s",
                                                     string_expand(path),
-                                                    string_expand(file_name));
-        if (file_exists(app, full_path)){
+                                                    string_expand(filename));
+        if (file_exists(app, full_path))
+        {
             result = full_path;
             break;
         }
@@ -2124,21 +2130,24 @@ push_file_search_up_path(Application_Links *app, Arena *arena, String_Const_u8 s
     return(result);
 }
 
-function FILE*
-open_file(Arena *scratch, String_Const_u8 name){
+function FILE *
+open_file(Arena *scratch, String_Const_u8 name)
+{
     Temp_Memory temp = begin_temp(scratch);
-    String_Const_u8 name_copy = push_string_copy(scratch, name);
+    String8 name_copy = push_string_copy(scratch, name);
     FILE *file = fopen((char*)name_copy.str, "rb");
     end_temp(temp);
     return(file);
 }
 
 function File_Name_Data
-dump_file(Arena *arena, String_Const_u8 file_name){
+dump_file(Arena *arena, String8 filename)
+{
     File_Name_Data result = {};
-    FILE *file = open_file(arena, file_name);
-    if (file != 0){
-        result.file_name = file_name;
+    FILE *file = open_file(arena, filename);
+    if (file != 0)
+    {
+        result.filename = filename;
         result.data = dump_file_handle(arena, file);
         fclose(file);
     }
@@ -2146,10 +2155,12 @@ dump_file(Arena *arena, String_Const_u8 file_name){
 }
 
 function File_Name_Data
-dump_file_search_up_path(Application_Links *app, Arena *arena, String_Const_u8 path, String_Const_u8 file_name){
+dump_file_search_up_path(App *app, Arena *arena, String8 path, String8 filename)
+{
     File_Name_Data result = {};
-    String_Const_u8 full_path = push_file_search_up_path(app, arena, path, file_name);
-    if (full_path.size > 0){
+    String8 full_path = search_up_path(app, arena, path, filename);
+    if (full_path.size > 0)
+    {
         result = dump_file(arena, full_path);
     }
     return(result);
@@ -2644,7 +2655,7 @@ get_cursor_rect(Application_Links *app, Text_Layout_ID text_layout_id)
 }
 
 internal b32
-view_is_active(FApp *app, View_ID view)
+view_is_active(App *app, View_ID view)
 {
     View_ID active_view = get_active_view(app, Access_Always);
     return (active_view == view);

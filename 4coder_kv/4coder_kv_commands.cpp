@@ -422,16 +422,16 @@ character_is_path(char character)
 }
 
 internal void 
-copy_current_file_name(App *app)
+copy_current_filename(App *app)
 {
-  GET_VIEW_AND_BUFFER;
-  Scratch_Block temp(app);
-  String8 filename = push_buffer_file_name(app, temp, buffer);
-  if (filename.size)
-  {
-    string_mod_replace_character(filename, '\\', '/');
-    clipboard_post(0, filename);
-  }
+    GET_VIEW_AND_BUFFER;
+    Scratch_Block temp(app);
+    String8 filename = push_buffer_filename(app, temp, buffer);
+    if (filename.size)
+    {
+        string_mod_replace_character(filename, '\\', '/');
+        clipboard_post(0, filename);
+    }
 }
 
 internal void 
@@ -447,7 +447,7 @@ open_file_from_current_dir(App *app)
 internal void 
 kv_handle_g_f(App *app)
 {
-    copy_current_file_name(app);
+    copy_current_filename(app);
     open_file_from_current_dir(app);
 }
 
@@ -528,7 +528,7 @@ VIM_COMMAND_SIG(kv_jump_ultimate)
  
   if (!already_jumped)
   {
-    String8 buffer_file = push_buffer_file_name(app, temp, buffer);
+    String8 buffer_file = push_buffer_filename(app, temp, buffer);
     b32 already_in_file_file = string_equal( buffer_file, kv_file_filename);
     if (already_in_file_file)
     {
@@ -536,7 +536,7 @@ VIM_COMMAND_SIG(kv_jump_ultimate)
     }
     else
     { // NOTE(kv): go to file file
-      copy_current_file_name(app);  // In case we wanna paste add the current filename in
+      copy_current_filename(app);  // In case we wanna paste add the current filename in
       switch_to_buffer_named(app, SCu8(kv_file_filename));
     }
   }
@@ -618,7 +618,7 @@ CUSTOM_DOC("run the current script")
   Scratch_Block temp(app);
 
   String_Const_u8 dir = push_hot_directory(app, temp);
-  String_Const_u8 cmd = push_buffer_file_name(app, temp, buffer);
+  String_Const_u8 cmd = push_buffer_filename(app, temp, buffer);
   standard_build_exec_command(app, view, dir, cmd);
 }
 
@@ -827,7 +827,7 @@ VIM_COMMAND_SIG(remedy_add_breakpoint)
 {
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
-    String8 filename = push_buffer_file_name(app, temp, buffer);
+    String8 filename = push_buffer_filename(app, temp, buffer);
     i64 linum = get_current_line_number(app);
     String8 cmd = push_stringf(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
                                string_expand(filename), linum);
@@ -850,7 +850,7 @@ VIM_COMMAND_SIG(remedy_run_to_cursor)
 {
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
-    String8 filename = push_buffer_file_name(app, temp, buffer);
+    String8 filename = push_buffer_filename(app, temp, buffer);
     i64 linum = get_current_line_number(app);
     String8 cmd = push_stringf(temp, "remedybg.exe run-to-cursor %.*s %lld",
                                string_expand(filename), linum);

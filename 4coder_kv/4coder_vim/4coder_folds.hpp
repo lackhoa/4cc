@@ -368,11 +368,11 @@ BUFFER_HOOK_SIG(fold_begin_buffer_hook){
 	Scratch_Block scratch(app);
 
 	b32 treat_as_code = false;
-	String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
-	if (file_name.size > 0){
+	String8 filename = push_buffer_filename(app, scratch, buffer_id);
+	if (filename.size > 0){
 		String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
 		String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-		String_Const_u8 ext = string_file_extension(file_name);
+		String_Const_u8 ext = string_file_extension(filename);
 		for (i32 i = 0; i < extensions.count; ++i){
 			if (string_match(ext, extensions.strings[i])){
 				if (string_match(ext, string_u8_litexpr("cpp")) ||

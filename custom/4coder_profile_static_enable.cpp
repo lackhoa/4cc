@@ -20,37 +20,37 @@
 
 #define ProfileBlock(T,N) \
 Profile_Block glue(profile_block_, __LINE__) \
-((T), string_u8_litexpr(N), string_u8_litexpr(file_name_line_number))
+((T), string_u8_litexpr(N), string_u8_litexpr(filename_line_number))
 
 #define ProfileScope(T,N) \
 Profile_Scope_Block glue(profile_block_, __LINE__) \
-((T), string_u8_litexpr(N), string_u8_litexpr(file_name_line_number))
+((T), string_u8_litexpr(N), string_u8_litexpr(filename_line_number))
 
 #define ProfileBlockNamed(T,N,M) \
 Profile_Block M \
-((T), string_u8_litexpr(N), string_u8_litexpr(file_name_line_number))
+((T), string_u8_litexpr(N), string_u8_litexpr(filename_line_number))
 
 #define ProfileScopeNamed(T,N,M) \
 Profile_Scope_Block M \
-((T), string_u8_litexpr(N), string_u8_litexpr(file_name_line_number))
+((T), string_u8_litexpr(N), string_u8_litexpr(filename_line_number))
 
 
 
 #define ProfileTLBlock(T,L,N) \
 Profile_Block glue(profile_block_, __LINE__) \
-((T), (L), string_u8_litexpr(N), string_u8_litexpr(file_name_line_number))
+((T), (L), string_u8_litexpr(N), string_u8_litexpr(filename_line_number))
 
 #define ProfileTLScope(T,L,N) \
 Profile_Scope_Block glue(profile_block_, __LINE__) \
-((T), (L), string_u8_litexpr(N), string_u8_litexpr(file_name_line_number))
+((T), (L), string_u8_litexpr(N), string_u8_litexpr(filename_line_number))
 
 #define ProfileTLBlockNamed(T,L,N,M) \
 Profile_Block M \
-((T), (L), string_u8_litexpr(N), string_u8_litexpr(file_name_line_number))
+((T), (L), string_u8_litexpr(N), string_u8_litexpr(filename_line_number))
 
 #define ProfileTLScopeNamed(T,L,N,M) \
 Profile_Scope_Block M \
-((T), (L), string_u8_litexpr(N), string_u8_litexpr(file_name_line_number))
+((T), (L), string_u8_litexpr(N), string_u8_litexpr(filename_line_number))
 
 
 

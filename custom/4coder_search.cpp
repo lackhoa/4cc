@@ -149,7 +149,7 @@ print_string_match_list_to_buffer(FApp *app, Buffer_ID out_buffer_id, String_Mat
     buffer_set_setting(app, out_buffer_id, BufferSetting_RecordsHistory, false);
     
     Temp_Memory buffer_name_restore_point = begin_temp(scratch);
-    String_Const_u8 current_file_name = {};
+    String_Const_u8 current_filename = {};
     Buffer_ID current_buffer = 0;
     
     if (matches.first != 0){
@@ -163,9 +163,9 @@ print_string_match_list_to_buffer(FApp *app, Buffer_ID out_buffer_id, String_Mat
                 if (current_buffer != node->buffer){
                     end_temp(buffer_name_restore_point);
                     current_buffer = node->buffer;
-                    current_file_name = push_buffer_file_name(app, scratch, current_buffer);
-                    if (current_file_name.size == 0){
-                        current_file_name = push_buffer_unique_name(app, scratch, current_buffer);
+                    current_filename = push_buffer_filename(app, scratch, current_buffer);
+                    if (current_filename.size == 0){
+                        current_filename = push_buffer_unique_name(app, scratch, current_buffer);
                     }
                 }
                 
@@ -174,7 +174,7 @@ print_string_match_list_to_buffer(FApp *app, Buffer_ID out_buffer_id, String_Mat
                 String_Const_u8 full_line_str = push_buffer_line(app, scratch, current_buffer, cursor.line);
                 String_Const_u8 line_str = string_skip_chop_whitespace(full_line_str);
                 insertf(&out, "%.*s:%d:%d: %.*s\n",
-                        string_expand(current_file_name), cursor.line, cursor.col,
+                        string_expand(current_filename), cursor.line, cursor.col,
                         string_expand(line_str));
                 end_temp(line_temp);
             }

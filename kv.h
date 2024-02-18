@@ -443,9 +443,9 @@ inline i32 safeTruncateToInt32(u64 value)
   return (i32)value;
 }
 
-#define kv_array_count(array)  (sizeof(array) / sizeof((array)[0]))
+#define kv_array_count(array)  (isize)(sizeof(array) / sizeof((array)[0]))
 #define arlen kv_array_count
-#define alen kv_array_count  // @deprecated
+#define alen kv_array_count
 
 // source: https://groups.google.com/g/comp.std.c/c/d-6Mj5Lko_s
 #define PP_NARG(...) PP_NARG_(__VA_ARGS__,PP_RSEQ_N())
@@ -1556,6 +1556,17 @@ internal v3 matvmul3(m3x3 *matrix, v3 v)
     v3 result = (v.x * matrix->columns[0] + 
                  v.y * matrix->columns[1] + 
                  v.z * matrix->columns[2]);
+    return result;
+}
+
+internal f32
+pow(f32 input, i32 power)
+{
+    f32 result = 1; 
+    for_i32 (index, 0, power)
+    {
+        result *= input;
+    }
     return result;
 }
 

@@ -41,7 +41,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
     
     if (file != 0){
         String_Const_u8 data = dump_file_handle(scratch, file);
-        Config *parsed = def_config_from_text(app, scratch, filename, data);
+        Config *parsed = config_from_text(app, scratch, filename, data);
 		fclose(file);
         
         if (parsed != 0){
@@ -59,7 +59,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                 Config_LValue *l = assignment->l;
                 if (l != 0 && l->index == 0){
                     Config_Get_Result rvalue = config_evaluate_rvalue(parsed, assignment, assignment->r);
-                    if (rvalue.type == ConfigRValueType_Compound){
+                    if (rvalue.type == Config_RValue_Type_Compound){
                         String_Const_u8 map_name = l->identifier;
                         String_ID map_name_id = vars_intern(map_name);
                         
@@ -76,12 +76,12 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                             String_Const_u8 mod_string[9] = {};
                             
                             if (!config_compound_string_member(parsed, src, "cmd", 0, &cmd_string)){
-                                def_config_push_error(scratch, parsed, node->result.pos, "Command string is required in binding");
+                                config_push_error(scratch, parsed, node->result.pos, "Command string is required in binding");
                                 goto finish_map;
                             }
                             
                             if (!config_compound_string_member(parsed, src, "key", 1, &key_string)){
-                                def_config_push_error(scratch, parsed, node->result.pos, "Key string is required in binding");
+                                config_push_error(scratch, parsed, node->result.pos, "Key string is required in binding");
                                 goto finish_map;
                             }
                             
@@ -114,11 +114,12 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                                     Input_Modifier_Set mods_set = { mods, mod_count, };
                                     map_set_binding(mapping, map, command->proc, InputEventKind_KeyStroke, keycode, &mods_set);
                                 }
-                                else{
-                                    def_config_push_error(scratch, parsed, node->result.pos,
-                                                          (keycode != 0) ? (char*)"Invalid command" :
-                                                          (command != 0) ? (char*)"Invalid key":
-                                                          (char*)"Invalid command and key");
+                                else
+                                {
+                                    config_push_error(scratch, parsed, node->result.pos,
+                                                      (keycode != 0) ? (char*)"Invalid command" :
+                                                      (command != 0) ? (char*)"Invalid key":
+                                                      (char*)"Invalid command and key");
                                 }
                             }
                             

@@ -12,7 +12,7 @@
 #define custom_get_buffer_count_sig() i32 custom_get_buffer_count(Application_Links* app)
 #define custom_get_buffer_next_sig() Buffer_ID custom_get_buffer_next(Application_Links* app, Buffer_ID buffer_id, Access_Flag access)
 #define custom_get_buffer_by_name_sig() Buffer_ID custom_get_buffer_by_name(Application_Links* app, String_Const_u8 name, Access_Flag access)
-#define custom_get_buffer_by_file_name_sig() Buffer_ID custom_get_buffer_by_file_name(Application_Links* app, String_Const_u8 file_name, Access_Flag access)
+#define custom_get_buffer_by_filename_sig() Buffer_ID custom_get_buffer_by_filename(Application_Links* app, String_Const_u8 filename, Access_Flag access)
 #define custom_buffer_read_range_sig() b32 custom_buffer_read_range(Application_Links* app, Buffer_ID buffer_id, Range_i64 range, u8* out)
 #define custom_buffer_replace_range_sig() b32 custom_buffer_replace_range(Application_Links* app, Buffer_ID buffer_id, Range_i64 range, String_Const_u8 string)
 #define custom_buffer_batch_edit_sig() b32 custom_buffer_batch_edit(Application_Links* app, Buffer_ID buffer_id, Batch_Edit* batch)
@@ -38,7 +38,7 @@
 #define custom_buffer_get_line_count_sig() i64 custom_buffer_get_line_count(Application_Links* app, Buffer_ID buffer_id)
 #define custom_push_buffer_base_name_sig() String_Const_u8 custom_push_buffer_base_name(Application_Links* app, Arena* arena, Buffer_ID buffer_id)
 #define custom_push_buffer_unique_name_sig() String_Const_u8 custom_push_buffer_unique_name(Application_Links* app, Arena* out, Buffer_ID buffer_id)
-#define custom_push_buffer_file_name_sig() String_Const_u8 custom_push_buffer_file_name(Application_Links* app, Arena* arena, Buffer_ID buffer_id)
+#define custom_push_buffer_filename_sig() String_Const_u8 custom_push_buffer_filename(Application_Links* app, Arena* arena, Buffer_ID buffer_id)
 #define custom_buffer_get_dirty_state_sig() Dirty_State custom_buffer_get_dirty_state(Application_Links* app, Buffer_ID buffer_id)
 #define custom_buffer_set_dirty_state_sig() b32 custom_buffer_set_dirty_state(Application_Links* app, Buffer_ID buffer_id, Dirty_State dirty_state)
 #define custom_buffer_set_layout_sig() b32 custom_buffer_set_layout(Application_Links* app, Buffer_ID buffer_id, Layout_Function* layout_func)
@@ -48,8 +48,8 @@
 #define custom_buffer_set_setting_sig() b32 custom_buffer_set_setting(Application_Links* app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value)
 #define custom_buffer_get_managed_scope_sig() Managed_Scope custom_buffer_get_managed_scope(Application_Links* app, Buffer_ID buffer_id)
 #define custom_buffer_send_end_signal_sig() b32 custom_buffer_send_end_signal(Application_Links* app, Buffer_ID buffer_id)
-#define custom_create_buffer_sig() Buffer_ID custom_create_buffer(Application_Links* app, String_Const_u8 file_name, Buffer_Create_Flag flags)
-#define custom_buffer_save_sig() b32 custom_buffer_save(Application_Links* app, Buffer_ID buffer_id, String_Const_u8 file_name, Buffer_Save_Flag flags)
+#define custom_create_buffer_sig() Buffer_ID custom_create_buffer(Application_Links* app, String_Const_u8 filename, Buffer_Create_Flag flags)
+#define custom_buffer_save_sig() b32 custom_buffer_save(Application_Links* app, Buffer_ID buffer_id, String_Const_u8 filename, Buffer_Save_Flag flags)
 #define custom_buffer_kill_sig() Buffer_Kill_Result custom_buffer_kill(Application_Links* app, Buffer_ID buffer_id, Buffer_Kill_Flag flags)
 #define custom_buffer_reopen_sig() Buffer_Reopen_Result custom_buffer_reopen(Application_Links* app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags)
 #define custom_buffer_get_file_attributes_sig() File_Attributes custom_buffer_get_file_attributes(Application_Links* app, Buffer_ID buffer_id)
@@ -191,7 +191,7 @@ typedef b32 custom_enqueue_virtual_event_type(Application_Links* app, Input_Even
 typedef i32 custom_get_buffer_count_type(Application_Links* app);
 typedef Buffer_ID custom_get_buffer_next_type(Application_Links* app, Buffer_ID buffer_id, Access_Flag access);
 typedef Buffer_ID custom_get_buffer_by_name_type(Application_Links* app, String_Const_u8 name, Access_Flag access);
-typedef Buffer_ID custom_get_buffer_by_file_name_type(Application_Links* app, String_Const_u8 file_name, Access_Flag access);
+typedef Buffer_ID custom_get_buffer_by_filename_type(Application_Links* app, String_Const_u8 filename, Access_Flag access);
 typedef b32 custom_buffer_read_range_type(Application_Links* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
 typedef b32 custom_buffer_replace_range_type(Application_Links* app, Buffer_ID buffer_id, Range_i64 range, String_Const_u8 string);
 typedef b32 custom_buffer_batch_edit_type(Application_Links* app, Buffer_ID buffer_id, Batch_Edit* batch);
@@ -217,7 +217,7 @@ typedef i64 custom_buffer_get_size_type(Application_Links* app, Buffer_ID buffer
 typedef i64 custom_buffer_get_line_count_type(Application_Links* app, Buffer_ID buffer_id);
 typedef String_Const_u8 custom_push_buffer_base_name_type(Application_Links* app, Arena* arena, Buffer_ID buffer_id);
 typedef String_Const_u8 custom_push_buffer_unique_name_type(Application_Links* app, Arena* out, Buffer_ID buffer_id);
-typedef String_Const_u8 custom_push_buffer_file_name_type(Application_Links* app, Arena* arena, Buffer_ID buffer_id);
+typedef String_Const_u8 custom_push_buffer_filename_type(Application_Links* app, Arena* arena, Buffer_ID buffer_id);
 typedef Dirty_State custom_buffer_get_dirty_state_type(Application_Links* app, Buffer_ID buffer_id);
 typedef b32 custom_buffer_set_dirty_state_type(Application_Links* app, Buffer_ID buffer_id, Dirty_State dirty_state);
 typedef b32 custom_buffer_set_layout_type(Application_Links* app, Buffer_ID buffer_id, Layout_Function* layout_func);
@@ -227,8 +227,8 @@ typedef b32 custom_buffer_get_setting_type(Application_Links* app, Buffer_ID buf
 typedef b32 custom_buffer_set_setting_type(Application_Links* app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value);
 typedef Managed_Scope custom_buffer_get_managed_scope_type(Application_Links* app, Buffer_ID buffer_id);
 typedef b32 custom_buffer_send_end_signal_type(Application_Links* app, Buffer_ID buffer_id);
-typedef Buffer_ID custom_create_buffer_type(Application_Links* app, String_Const_u8 file_name, Buffer_Create_Flag flags);
-typedef b32 custom_buffer_save_type(Application_Links* app, Buffer_ID buffer_id, String_Const_u8 file_name, Buffer_Save_Flag flags);
+typedef Buffer_ID custom_create_buffer_type(Application_Links* app, String_Const_u8 filename, Buffer_Create_Flag flags);
+typedef b32 custom_buffer_save_type(Application_Links* app, Buffer_ID buffer_id, String_Const_u8 filename, Buffer_Save_Flag flags);
 typedef Buffer_Kill_Result custom_buffer_kill_type(Application_Links* app, Buffer_ID buffer_id, Buffer_Kill_Flag flags);
 typedef Buffer_Reopen_Result custom_buffer_reopen_type(Application_Links* app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags);
 typedef File_Attributes custom_buffer_get_file_attributes_type(Application_Links* app, Buffer_ID buffer_id);
@@ -371,7 +371,7 @@ custom_enqueue_virtual_event_type *enqueue_virtual_event;
 custom_get_buffer_count_type *get_buffer_count;
 custom_get_buffer_next_type *get_buffer_next;
 custom_get_buffer_by_name_type *get_buffer_by_name;
-custom_get_buffer_by_file_name_type *get_buffer_by_file_name;
+custom_get_buffer_by_filename_type *get_buffer_by_filename;
 custom_buffer_read_range_type *buffer_read_range;
 custom_buffer_replace_range_type *buffer_replace_range;
 custom_buffer_batch_edit_type *buffer_batch_edit;
@@ -397,7 +397,7 @@ custom_buffer_get_size_type *buffer_get_size;
 custom_buffer_get_line_count_type *buffer_get_line_count;
 custom_push_buffer_base_name_type *push_buffer_base_name;
 custom_push_buffer_unique_name_type *push_buffer_unique_name;
-custom_push_buffer_file_name_type *push_buffer_file_name;
+custom_push_buffer_filename_type *push_buffer_filename;
 custom_buffer_get_dirty_state_type *buffer_get_dirty_state;
 custom_buffer_set_dirty_state_type *buffer_set_dirty_state;
 custom_buffer_set_layout_type *buffer_set_layout;
@@ -566,7 +566,7 @@ LINKAGE b32 enqueue_virtual_event(Application_Links* app, Input_Event* event);
 LINKAGE i32 get_buffer_count(Application_Links* app);
 LINKAGE Buffer_ID get_buffer_next(Application_Links* app, Buffer_ID buffer_id, Access_Flag access);
 LINKAGE Buffer_ID get_buffer_by_name(Application_Links* app, String_Const_u8 name, Access_Flag access);
-LINKAGE Buffer_ID get_buffer_by_file_name(Application_Links* app, String_Const_u8 file_name, Access_Flag access);
+LINKAGE Buffer_ID get_buffer_by_filename(Application_Links* app, String_Const_u8 filename, Access_Flag access);
 LINKAGE b32 buffer_read_range(Application_Links* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
 LINKAGE b32 buffer_replace_range(Application_Links* app, Buffer_ID buffer_id, Range_i64 range, String_Const_u8 string);
 LINKAGE b32 buffer_batch_edit(Application_Links* app, Buffer_ID buffer_id, Batch_Edit* batch);
@@ -592,7 +592,7 @@ LINKAGE i64 buffer_get_size(Application_Links* app, Buffer_ID buffer_id);
 LINKAGE i64 buffer_get_line_count(Application_Links* app, Buffer_ID buffer_id);
 LINKAGE String_Const_u8 push_buffer_base_name(Application_Links* app, Arena* arena, Buffer_ID buffer_id);
 LINKAGE String_Const_u8 push_buffer_unique_name(Application_Links* app, Arena* out, Buffer_ID buffer_id);
-LINKAGE String_Const_u8 push_buffer_file_name(Application_Links* app, Arena* arena, Buffer_ID buffer_id);
+LINKAGE String_Const_u8 push_buffer_filename(Application_Links* app, Arena* arena, Buffer_ID buffer_id);
 LINKAGE Dirty_State buffer_get_dirty_state(Application_Links* app, Buffer_ID buffer_id);
 LINKAGE b32 buffer_set_dirty_state(Application_Links* app, Buffer_ID buffer_id, Dirty_State dirty_state);
 LINKAGE b32 buffer_set_layout(Application_Links* app, Buffer_ID buffer_id, Layout_Function* layout_func);
@@ -602,8 +602,8 @@ LINKAGE b32 buffer_get_setting(Application_Links* app, Buffer_ID buffer_id, Buff
 LINKAGE b32 buffer_set_setting(Application_Links* app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value);
 LINKAGE Managed_Scope buffer_get_managed_scope(Application_Links* app, Buffer_ID buffer_id);
 LINKAGE b32 buffer_send_end_signal(Application_Links* app, Buffer_ID buffer_id);
-LINKAGE Buffer_ID create_buffer(Application_Links* app, String_Const_u8 file_name, Buffer_Create_Flag flags);
-LINKAGE b32 buffer_save(Application_Links* app, Buffer_ID buffer_id, String_Const_u8 file_name, Buffer_Save_Flag flags);
+LINKAGE Buffer_ID create_buffer(Application_Links* app, String_Const_u8 filename, Buffer_Create_Flag flags);
+LINKAGE b32 buffer_save(Application_Links* app, Buffer_ID buffer_id, String_Const_u8 filename, Buffer_Save_Flag flags);
 LINKAGE Buffer_Kill_Result buffer_kill(Application_Links* app, Buffer_ID buffer_id, Buffer_Kill_Flag flags);
 LINKAGE Buffer_Reopen_Result buffer_reopen(Application_Links* app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags);
 LINKAGE File_Attributes buffer_get_file_attributes(Application_Links* app, Buffer_ID buffer_id);
@@ -754,7 +754,7 @@ global custom_enqueue_virtual_event_type *enqueue_virtual_event = 0;
 global custom_get_buffer_count_type *get_buffer_count = 0;
 global custom_get_buffer_next_type *get_buffer_next = 0;
 global custom_get_buffer_by_name_type *get_buffer_by_name = 0;
-global custom_get_buffer_by_file_name_type *get_buffer_by_file_name = 0;
+global custom_get_buffer_by_filename_type *get_buffer_by_filename = 0;
 global custom_buffer_read_range_type *buffer_read_range = 0;
 global custom_buffer_replace_range_type *buffer_replace_range = 0;
 global custom_buffer_batch_edit_type *buffer_batch_edit = 0;
@@ -780,7 +780,7 @@ global custom_buffer_get_size_type *buffer_get_size = 0;
 global custom_buffer_get_line_count_type *buffer_get_line_count = 0;
 global custom_push_buffer_base_name_type *push_buffer_base_name = 0;
 global custom_push_buffer_unique_name_type *push_buffer_unique_name = 0;
-global custom_push_buffer_file_name_type *push_buffer_file_name = 0;
+global custom_push_buffer_filename_type *push_buffer_filename = 0;
 global custom_buffer_get_dirty_state_type *buffer_get_dirty_state = 0;
 global custom_buffer_set_dirty_state_type *buffer_set_dirty_state = 0;
 global custom_buffer_set_layout_type *buffer_set_layout = 0;

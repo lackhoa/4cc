@@ -142,9 +142,11 @@ internal String8 get_home_directory(Arena *arena)
 }
 
 internal
-system_get_path_sig(){
-    String_Const_u8 result = {};
-    switch (path_code){
+system_get_path_sig()
+{
+    String8 result = {};
+    switch (path_code)
+    {
         case SystemPath_CurrentDirectory:
         {
             DWORD size = GetCurrentDirectory_utf8(arena, 0, 0);
@@ -156,10 +158,11 @@ system_get_path_sig(){
         case SystemPath_Binary:
         {
             local_persist b32 has_stashed_4ed_path = false;
-            if (!has_stashed_4ed_path){
+            if (!has_stashed_4ed_path)
+            {
                 has_stashed_4ed_path = true;
                 local_const i32 binary_path_capacity = KB(32);
-                u8 *memory = (u8*)system_memory_allocate(binary_path_capacity, string_u8_litexpr(file_name_line_number));
+                u8 *memory = (u8*)system_memory_allocate(binary_path_capacity, string_u8_litexpr(filename_line_number));
                 i32 size = GetModuleFileName_utf8(arena, 0, memory, binary_path_capacity);
                 Assert(size <= binary_path_capacity - 1);
                 win32vars.binary_path = SCu8(memory, size);
@@ -343,17 +346,17 @@ internal system_get_file_list_sig()
         i32 count = 0;
         
         for (;;){
-            String_Const_u16 file_name_utf16 = SCu16(find_data.cFileName);
-            if (!(string_match(file_name_utf16, string_u16_litexpr(L".")) ||
-                  string_match(file_name_utf16, string_u16_litexpr(L"..")))){
-                String_Const_u8 file_name = string_u8_from_string_u16(arena, file_name_utf16,
+            String_Const_u16 filename_utf16 = SCu16(find_data.cFileName);
+            if (!(string_match(filename_utf16, string_u16_litexpr(L".")) ||
+                  string_match(filename_utf16, string_u16_litexpr(L"..")))){
+                String_Const_u8 filename = string_u8_from_string_u16(arena, filename_utf16,
                                                                       StringFill_NullTerminate).string;
                 
                 File_Info *info = push_array(arena, File_Info, 1);
                 sll_queue_push(first, last, info);
                 count += 1;
                 
-                info->file_name = file_name;
+                info->filename = filename;
                 info->attributes.size = win32_u64_from_u32_u32(find_data.nFileSizeHigh,
                                                                find_data.nFileSizeLow);
                 info->attributes.last_write_time = win32_u64_from_filetime(find_data.ftLastWriteTime);
@@ -383,7 +386,7 @@ internal
 system_quick_file_attributes_sig(){
     WIN32_FILE_ATTRIBUTE_DATA info = {};
     File_Attributes result = {};
-    if (GetFileAttributesEx_utf8String(scratch, file_name, GetFileExInfoStandard, &info)){
+    if (GetFileAttributesEx_utf8String(scratch, filename, GetFileExInfoStandard, &info)){
         result.size = ((u64)info.nFileSizeHigh << 32LL) | ((u64)info.nFileSizeLow);
         result.last_write_time = ((u64)info.ftLastWriteTime.dwHighDateTime << 32LL) | ((u64)info.ftLastWriteTime.dwLowDateTime);
         result.flags = win32_convert_file_attribute_flags(info.dwFileAttributes);
@@ -394,7 +397,7 @@ system_quick_file_attributes_sig(){
 internal
 system_load_handle_sig(){
     b32 result = false;
-    HANDLE file = CreateFile_utf8(scratch, (u8*)file_name, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    HANDLE file = CreateFile_utf8(scratch, (u8*)filename, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (file != INVALID_HANDLE_VALUE){
         *(HANDLE*)out = file;
         result = true;
@@ -435,7 +438,7 @@ internal
 system_save_file_sig(){
     File_Attributes result = {};
     
-    HANDLE file = CreateFile_utf8(scratch, (u8*)file_name, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    HANDLE file = CreateFile_utf8(scratch, (u8*)filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     
     if (file != INVALID_HANDLE_VALUE){
         u64 written_total = 0;
@@ -599,7 +602,7 @@ system_open_color_picker_sig(){
     // NOTE(casey): Because this is going to be used by a semi-permanent thread, we need to
     // copy it to system memory where it can live as long as it wants, no matter what we do
     // over here on the 4coder threads.
-    Color_Picker *perm = (Color_Picker*)system_memory_allocate(sizeof(Color_Picker), string_u8_litexpr(file_name_line_number));
+    Color_Picker *perm = (Color_Picker*)system_memory_allocate(sizeof(Color_Picker), string_u8_litexpr(filename_line_number));
     *perm = *picker;
     
     HANDLE ThreadHandle = CreateThread(0, 0, color_picker_thread, perm, 0, 0);

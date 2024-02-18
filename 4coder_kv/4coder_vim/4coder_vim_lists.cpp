@@ -98,9 +98,9 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 			 info < one_past_last;
 			 info += 1){
 			if (!HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-			String_Const_u8 file_name = push_stringf(lister->arena, "%.*s/",
-														string_expand((**info).file_name));
-			lister_add_item(lister, lister_prealloced(file_name), empty_string_prealloced, file_name.str, 0);
+			String_Const_u8 filename = push_stringf(lister->arena, "%.*s/",
+														string_expand((**info).filename));
+			lister_add_item(lister, lister_prealloced(filename), empty_string_prealloced, filename.str, 0);
 			;
 		}
 
@@ -108,7 +108,7 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 			 info < one_past_last;
 			 info += 1){
 			if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-			String_Const_u8 file_name = push_string_copy(lister->arena, (**info).file_name);
+			String_Const_u8 filename = push_string_copy(lister->arena, (**info).filename);
 			char *is_loaded = "";
 			char *status_flag = "";
 
@@ -118,9 +118,9 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 				Temp_Memory path_temp = begin_temp(lister->arena);
 				List_String_Const_u8 list = {};
 				string_list_push(lister->arena, &list, hot);
-				string_list_push_overlap(lister->arena, &list, '/', (**info).file_name);
+				string_list_push_overlap(lister->arena, &list, '/', (**info).filename);
 				String_Const_u8 full_file_path = string_list_flatten(lister->arena, list);
-				buffer = get_buffer_by_file_name(app, full_file_path, Access_Always);
+				buffer = get_buffer_by_filename(app, full_file_path, Access_Always);
 				end_temp(path_temp);
 			}
 
@@ -134,7 +134,7 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 				}
 			}
 			String_Const_u8 status = push_stringf(lister->arena, "%s%s", is_loaded, status_flag);
-			lister_add_item(lister, lister_prealloced(file_name), lister_prealloced(status), file_name.str, 0);
+			lister_add_item(lister, lister_prealloced(filename), lister_prealloced(status), filename.str, 0);
 		}
 	}
 }
@@ -202,33 +202,33 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
   {
 		Scratch_Block scratch(app);
 		View_ID view = get_this_ctx_view(app, Access_Always);
-		File_Name_Result result = vim_get_file_name_from_user(app, scratch, SCu8("Open/New:"), view);
+		File_Name_Result result = vim_get_filename_from_user(app, scratch, SCu8("Open/New:"), view);
 		if(result.canceled || result.path_in_text_field.str == 0){ break; }
 
-		String_Const_u8 file_name = result.file_name_activated;
-		if(file_name.size == 0){ file_name = result.file_name_in_text_field; }
+		String_Const_u8 filename = result.filename_activated;
+		if(filename.size == 0){ filename = result.filename_in_text_field; }
 
 		String_Const_u8 path = result.path_in_text_field;
-		String_Const_u8 full_file_name =
-			push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(file_name));
+		String_Const_u8 full_filename =
+			push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(filename));
 
 		if(result.is_folder){
-			set_hot_directory(app, full_file_name);
+			set_hot_directory(app, full_filename);
 			continue;
 		}
 
-		if(character_is_slash(file_name.str[file_name.size - 1])){
-			File_Attributes attribs = system_quick_file_attributes(scratch, full_file_name);
+		if(character_is_slash(filename.str[filename.size - 1])){
+			File_Attributes attribs = system_quick_file_attributes(scratch, full_filename);
 			if(HasFlag(attribs.flags, FileAttribute_IsDirectory)){
-				set_hot_directory(app, full_file_name);
+				set_hot_directory(app, full_filename);
 				continue;
 			}
-			if(string_looks_like_drive_letter(file_name)){
-				set_hot_directory(app, file_name);
+			if(string_looks_like_drive_letter(filename)){
+				set_hot_directory(app, filename);
 				continue;
 			}
-			if(vim_query_create_folder(app, full_file_name)){
-				set_hot_directory(app, full_file_name);
+			if(vim_query_create_folder(app, full_filename)){
+				set_hot_directory(app, full_filename);
 				continue;
 			}else{
 				set_hot_directory(app, result.path_in_text_field);
@@ -237,7 +237,7 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
 			break;
 		}
 
-		Buffer_ID buffer = create_buffer(app, full_file_name, 0);
+		Buffer_ID buffer = create_buffer(app, full_filename, 0);
 		if(buffer != 0){ view_set_buffer(app, view, buffer, 0); }
 		break;
 	}
@@ -466,12 +466,12 @@ vim_do_buffer_close_user_check(Application_Links *app, Buffer_ID buffer, View_ID
             case SureToKill_Yes:{ do_kill = true; } break;
 
             case SureToKill_Save:{
-                String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-                if(buffer_save(app, buffer, file_name, BufferSave_IgnoreDirtyFlag)){
+                String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+                if(buffer_save(app, buffer, filename, BufferSave_IgnoreDirtyFlag)){
                     do_kill = true;
                 }else{
 #define M "Did not close '%.*s' because it did not successfully save."
-                    String_Const_u8 str = push_stringf(scratch, M, string_expand(file_name));
+                    String_Const_u8 str = push_stringf(scratch, M, string_expand(filename));
 #undef M
                     print_message(app, str);
                 }

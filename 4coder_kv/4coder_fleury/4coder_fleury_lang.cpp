@@ -76,8 +76,8 @@ F4_LanguageFromBuffer(Application_Links *app, Buffer_ID buffer)
 {
     F4_Language *language = 0;
     Scratch_Block scratch(app);
-    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
-    String_Const_u8 extension = string_file_extension(file_name);
+    String8 filename = push_buffer_filename(app, scratch, buffer);
+    String8 extension = string_file_extension(filename);
     language = F4_LanguageFromString(extension);
     return language;
 }

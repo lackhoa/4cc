@@ -386,7 +386,7 @@ global_const f64 epsilon_f64 = 1.11022302462515650e-16;
 #define clamp_unsigned_to_u64(x) (u64)(clamp_top((u64)(x), (u64)u64_max))
 
 #define line_number_as_string stringify(__LINE__)
-#define file_name_line_number __FILE__ ":" line_number_as_string ":"
+#define filename_line_number __FILE__ ":" line_number_as_string ":"
 
 #define require(c) Stmnt( if (!(c)){ return(0); } )
 
@@ -849,7 +849,7 @@ struct String_Const_char{
   char *str;
   u64 size;
 };
-struct String_Const_u8{
+struct String8{
     u8 *str;
     union
     {
@@ -857,6 +857,8 @@ struct String_Const_u8{
         u64 len;
     };
 };
+typedef String8 String_Const_u8;
+
 struct String_Const_u16{
   u16 *str;
   u64 size;
@@ -865,8 +867,6 @@ struct String_Const_u32{
   u32 *str;
   u64 size;
 };
-
-typedef String_Const_u8 String8;
 
 struct String_Const_char_Array{
   union{

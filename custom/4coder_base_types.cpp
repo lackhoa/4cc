@@ -2810,7 +2810,7 @@ SCany(String_Const_u32 str){
 function String_Const_char string_empty = {"", 0};
 function String_Const_u8 string_u8_empty = {(u8*)"", 0};
 
-#define file_name_line_number_lit_u8 string_u8_litexpr(file_name_line_number)
+#define filename_line_number_lit_u8 string_u8_litexpr(filename_line_number)
 
 ////////////////////////////////
 
@@ -2874,9 +2874,9 @@ base_free(Base_Allocator *allocator, void *ptr){
     }
 }
 
-#define base_allocate(a,s) base_allocate__inner((a), (s), file_name_line_number_lit_u8)
+#define base_allocate(a,s) base_allocate__inner((a), (s), filename_line_number_lit_u8)
 #define base_array_loc(a,T,c,l) (T*)(base_allocate__inner((a), sizeof(T)*(c), (l)).str)
-#define base_array(a,T,c) base_array_loc(a,T,c, file_name_line_number_lit_u8)
+#define base_array(a,T,c) base_array_loc(a,T,c, filename_line_number_lit_u8)
 
 ////////////////////////////////
 
@@ -2891,7 +2891,7 @@ make_cursor(String_Const_u8 data){
 }
 function Cursor
 make_cursor(Base_Allocator *allocator, u64 size){
-    String_Const_u8 memory = base_allocate(allocator, size);
+    String8 memory = base_allocate(allocator, size);
     return(make_cursor(memory));
 }
 function String_Const_u8
@@ -2917,7 +2917,7 @@ function String_Const_u8
 linalloc_align(Cursor *cursor, u64 alignment){
     u64 pos = round_up_u64(cursor->pos, alignment);
     u64 new_size = pos - cursor->pos;
-    return(linalloc_push(cursor, new_size, file_name_line_number_lit_u8));
+    return(linalloc_push(cursor, new_size, filename_line_number_lit_u8));
 }
 function Temp_Memory_Cursor
 linalloc_begin_temp(Cursor *cursor){
@@ -3048,9 +3048,9 @@ linalloc_wrap_write(String_Const_u8 data, u64 size, void *src){
     block_copy(data.str, src, clamp_top(data.size, size));
     return(data.str);
 }
-#define push_array(a,T,c) ((T*)linalloc_wrap_unintialized(linalloc_push((a), sizeof(T)*(c), file_name_line_number_lit_u8)))
-#define push_array_zero(a,T,c) ((T*)linalloc_wrap_zero(linalloc_push((a), sizeof(T)*(c), file_name_line_number_lit_u8)))
-#define push_array_write(a,T,c,s) ((T*)linalloc_wrap_write(linalloc_push((a), sizeof(T)*(c), file_name_line_number_lit_u8), sizeof(T)*(c), (s)))
+#define push_array(a,T,c) ((T*)linalloc_wrap_unintialized(linalloc_push((a), sizeof(T)*(c), filename_line_number_lit_u8)))
+#define push_array_zero(a,T,c) ((T*)linalloc_wrap_zero(linalloc_push((a), sizeof(T)*(c), filename_line_number_lit_u8)))
+#define push_array_write(a,T,c,s) ((T*)linalloc_wrap_write(linalloc_push((a), sizeof(T)*(c), filename_line_number_lit_u8), sizeof(T)*(c), (s)))
 #define pop_array(a,T,c) (linalloc_pop((a), sizeof(T)*(c)))
 #define push_align(a,b) (linalloc_align((a), (b)))
 #define push_align_zero(a,b) (linalloc_wrap_zero(linalloc_align((a), (b))))
@@ -4454,9 +4454,11 @@ function b32
 string_match(String_Const_char a, String_Const_char b)
 {
     b32 result = false;
-    if (a.size == b.size){
+    if (a.size == b.size)
+    {
         result = true;
-        for (u64 i = 0; i < a.size; i += 1){
+        for (u64 i = 0; i < a.size; i += 1)
+        {
             if (a.str[i] != b.str[i]){
                 result = false;
                 break;

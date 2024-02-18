@@ -4,8 +4,7 @@
 
 // TOP
 
-#if !defined(FCODER_STRINGF_CPP)
-#define FCODER_STRINGF_CPP
+#pragma once
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -299,7 +298,11 @@ date_time_format(Arena *arena, char *format, Date_Time *date_time){
     return(date_time_format(arena, SCu8(format), date_time));
 }
 
-#endif
+internal String8
+to_string(Arena *arena, i32 value)
+{
+    return push_stringf(arena, "%d", value);
+}
 
 // BOTTOM
 

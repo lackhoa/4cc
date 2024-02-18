@@ -354,7 +354,7 @@ struct File_Attributes{
 api(custom)
 struct File_Info{
     File_Info *next;
-    String_Const_u8 file_name;
+    String_Const_u8 filename;
     File_Attributes attributes;
 };
 
@@ -496,7 +496,7 @@ struct Query_Bar_Group{
 
 api(custom)
 struct Font_Load_Location{
-    String_Const_u8 file_name;
+    String_Const_u8 filename;
 };
 
 api(custom)
@@ -668,7 +668,7 @@ typedef i32 Hook_Function(Application_Links *app);
 api(custom)
 struct Buffer_Name_Conflict_Entry{
     Buffer_ID buffer_id;
-    String_Const_u8 file_name;
+    String_Const_u8 filename;
     String_Const_u8 base_name;
     u8 *unique_name_in_out;
     u64 unique_name_len_in_out;

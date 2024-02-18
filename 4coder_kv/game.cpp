@@ -113,7 +113,7 @@ tr_linei(Bitmap *bitmap,
     }
 }
 
-internal void 
+internal void
 tr_line(Bitmap *bitmap, 
         f32 x0, f32 y0, f32 x1, f32 y1,
         ARGB_Color color)
@@ -302,17 +302,6 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     }
 }
 
-internal f32
-pow(f32 input, i32 power)
-{
-    f32 result = 1; 
-    for_i32 (index, 0, power)
-    {
-        result *= input;
-    }
-    return result;
-}
-
 internal v2 
 perspective_project(Camera *camera, v3 point)
 {
@@ -345,28 +334,6 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
     }
 }
 
-/*
-global Camera global_camera;
-
-internal FUI_UPDATE_VALUE_RETURN
-update_camera_position(FUI_UPDATE_VALUE_PARAMS)
-{
-    Camera *camera = &global_camera;
-    
-    v4 input_direction = fui__direction_from_key_states();
-    
-    v1 speed = 1.0f;
-    m3x3 axes = camera->axes;
-    axes.x = noz(camera->axes.x);
-    axes.y = noz(camera->axes.y);
-    axes.z = noz(camera->axes.z);
-    v3 direction = matvmul3(&axes, input_direction.xyz);
-    v3 delta = dt * speed * direction;
-    v3 result = noz(slider->value.v3 + delta);
-    return castV4(result);
-}
-*/
-
 internal void
 setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
 {
@@ -390,6 +357,11 @@ setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
 #undef t
 }
 
+struct Game_Data
+{
+    i32 the_number;
+};
+
 internal void
 game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
 {
@@ -406,13 +378,39 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
     draw_set_offset(app, layout_center);
    
     v1 U = 1e3;  // distance multiplier (@Cleanup push this scale down to the renderer also)
-    v1 initial_camera_distance = U * 1.0f;
+    local_persist Game_Data game_data;
+    
+    local_persist b32 inited = false;
+    if ( !inited )
     {// NOTE: Initialization
-        local_persist b32 inited = false;
-        if (!inited)
+        // BOOKMARK
+        X_Block x(app);
+        String8 hotdir = push_hot_directory(app, x);
+        auto file_data = dump_file_search_up_path(app, x, hotdir, str8lit("test_data.4coder"));
+        Config *parsed = config_from_text(app, x, file_data.filename, file_data.data);
+        for (Config_Assignment *assignment = parsed->first;
+             assignment;
+             assignment = assignment->next)
         {
-            inited = true;
+            String8 value = {};
+            {
+                Config_RValue r = *assignment->r;
+                switch (r.type)
+                {
+                    case Config_RValue_Type_String:
+                    {
+                        value = r.string;
+                    }break;
+                    
+                    case Config_RValue_Type_Integer:
+                    {
+                        value = push_stringf(x, "%i", r.integer);
+                    }break;
+                }
+            }
+            printf_message(app, x, "%.*s: %.*s\n", string_expand(assignment->l->identifier), string_expand(value));
         }
+        inited = true;
     }
     
     Camera camera_value = {};
@@ -422,7 +420,7 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         
         Fui_Item_Index camera_input_index;
         // BOOKMARK NOTE: The input combines both z and distance (distance in w)
-        fslider(camera_input, v4{ -0.254903, -0.786681, 0.562278, 3.509801 }, Fui_Options{.update=fui_update_null}, &camera_input_index);
+        fslider(camera_input, v4{ 0.245445, 0.871441, 0.424672, 6.564896 }, Fui_Options{.update=fui_update_null}, &camera_input_index);
         v3 camz = camera_input.xyz;
         v1 cam_distance = U * camera_input.w;
         
@@ -468,17 +466,27 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
     {// NOTE: bezier curve experiment!
         // BOOKMARK
         fslider( c0, v3{ -0.637700, 0.176406, 0.768833 });
-        fslider( c1, v3{ -0.680432, 1.040406, 1.143159 });
-        fslider( c2, V3( 0.954310, -0.706654, 0 ) );
-        fslider( c3, V3( 0.344152, 1.014585, 0 ) );
+        fslider( c1, v3{ -0.411237, 0.887374, 1.143159 });
+        fslider( c2, v3{ 1.666014, -0.706654, 0.000000 });
+        fslider( c3, v3{ 0.344152, 0.116179, 0.000000 } );
+        
         f32 pos_unit = 500;
-        v3 control_points[] = {pos_unit*c0, pos_unit*c1, pos_unit*c2, pos_unit*c3};
+        v3 control_points[] = {c0, c1, c2, c3};
+        for_i32 (index, 0, alen(control_points))
+        {
+            control_points[index] *= pos_unit;
+        }
+       
+        // NOTE: Draw the control points
+        fslider( radius, v1{1.0f} );
+        radius *= 10.0f;
         //
-        fslider( radius, v1{1.0f}, {.range=If32(0, 10.0f)});
         for_i32 (index, 0, 4)
         {
-            draw_circle(app, control_points[index].xy, radius, gray);
+            v2 screen_p = perspective_project(camera, control_points[index]);
+            draw_circle(app, screen_p, radius, gray);
         }
+        
         draw_cubic_bezier(app, camera, control_points);
     }
      

@@ -8,12 +8,12 @@
 #define FCODER_HELPER_H
 
 struct File_Name_Data{
-    String_Const_u8 file_name;
-    String_Const_u8 data;
+    String8 filename;
+    String8 data;
 };
 
 struct View_Context_Block{
-    Application_Links *app;
+    App *app;
     View_ID view;
     
     View_Context_Block(Application_Links *app, View_ID view, View_Context *ctx);

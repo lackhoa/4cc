@@ -148,7 +148,7 @@ function String8
 vars_key_from_var(Arena *arena, Variable_Handle var)
 {
     String_ID id = vars_key_id_from_var(var);
-    String_Const_u8 result = vars_push_string(arena, id);
+    String8 result = vars_push_string(arena, id);
     return(result);
 }
 
@@ -299,18 +299,20 @@ vars_new_variable(Variable_Handle var, String_ID key)
     if (var.ptr != &vars_nil)
     {
         Variable *node = var.ptr->first;
-        for (; !vars_is_nil(node);
-             node = node->next){
-            if (node->key == key){
+        for (; 
+             !vars_is_nil(node);
+             node = node->next)
+        {
+            if (node->key == key)
                 break;
-            }
         }
         
         if (!vars_is_nil(node)){
             handle.ptr = node;
             _vars_free_variable_children(node);
         }
-        else{
+        else
+        {
             handle.ptr = vars_free_variables;
             if (handle.ptr != 0){
                 sll_stack_pop(vars_free_variables);
@@ -365,10 +367,10 @@ vars_print_indented(App *app, Variable_Handle var, i32 indent)
     String8 var_key = vars_key_from_var(scratch, var);
     String8 var_val = vars_string_from_var(scratch, var);
     
-    String_Const_u8 line = push_stringf(scratch, "%.*s%.*s: \"%.*s\"\n",
-                                        clamp_top(indent, (i32)sizeof(spaces)), spaces,
-                                        string_expand(var_key),
-                                        string_expand(var_val));
+    String8 line = push_stringf(scratch, "%.*s%.*s: \"%.*s\"\n",
+                                clamp_top(indent, (i32)sizeof(spaces)), spaces,
+                                string_expand(var_key),
+                                string_expand(var_val));
     print_message(app, line);
     
     i32 sub_indent = indent + 1;
