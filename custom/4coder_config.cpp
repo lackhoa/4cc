@@ -199,32 +199,18 @@ config_parser_get_pos(Config_Parser *p)
 
 // @Cleanup @Remove
 function b32
-config_parser_recognize_base_kind(Config_Parser *p, Token_Base_Kind kind)
-{
-    b32 result = (p->token->kind == kind);
-    return(result);
-}
-
-// @Cleanup @Remove
-function b32
 config_parser_recognize_cpp_kind(Config_Parser *p, Token_Cpp_Kind kind)
 {
     b32 result = (p->token->sub_kind == kind);
     return(result);
 }
 
-// BOOKMARK: We're trying to eliminate the "p->opl" junk.
 function b32
 config_parser_recognize_boolean(Config_Parser *p)
 {
-    b32 result = false;
     Token *token = p->token;
-    if (token < p->opl)
-    {
-        result = (token->sub_kind == TokenCppKind_LiteralTrue ||
-                  token->sub_kind == TokenCppKind_LiteralFalse);
-    }
-    return(result);
+    return (token->sub_kind == TokenCppKind_LiteralTrue ||
+            token->sub_kind == TokenCppKind_LiteralFalse);
 }
 
 function String8
@@ -247,9 +233,9 @@ config_parser_recognize_text(Config_Parser *p, String8 text)
 }
 
 function b32
-config_parser_match_cpp_kind(Config_Parser *p, Token_Cpp_Kind kind)
+config_parser_eat_cpp_kind(Config_Parser *p, Token_Cpp_Kind kind)
 {
-    b32 result = config_parser_recognize_cpp_kind(p, kind);
+    b32 result = (p->token->sub_kind == kind);
     if (result)
     {
         config_parser_inc(p);
@@ -258,7 +244,7 @@ config_parser_match_cpp_kind(Config_Parser *p, Token_Cpp_Kind kind)
 }
 
 function b32
-config_parser_match_text(Config_Parser *p, String8 text)
+config_parser_eat_text(Config_Parser *p, String8 text)
 {
     b32 result = config_parser_recognize_text(p, text);
     if (result)
@@ -303,7 +289,7 @@ config_parser_get_boolean(Config_Parser *p)
 }
 
 function Config_Error*
-config_push_error(Arena *arena, Config_Error_List *list, String_Const_u8 filename, u8 *pos, char *error_text)
+config_push_error(Arena *arena, Config_Error_List *list, String8 filename, u8 *pos, char *error_text)
 {
     Config_Error *error = push_array(arena, Config_Error, 1);
     zdll_push_back(list->first, list->last, error);
@@ -337,11 +323,8 @@ config_parser_recover(Config_Parser *p)
 {
     for (;;)
     {
-        if ( config_parser_match_cpp_kind(p, TokenCppKind_Semicolon) )
-        {
-            break;
-        }
-        if ( config_parser_recognize_cpp_kind(p, TokenCppKind_EOF) )
+        if (p->token->sub_kind == TokenCppKind_Semicolon ||
+            p->token->sub_kind == TokenCppKind_EOF)
         {
             break;
         }
@@ -352,16 +335,17 @@ config_parser_recover(Config_Parser *p)
 function i32 *
 config_parser_version(Config_Parser *p)
 {
-    require(config_parser_match_text(p, str8_lit("version")));
+    macro_require(config_parser_eat_text(p, str8_lit("version")));
     
-    if (!config_parser_match_cpp_kind(p, TokenCppKind_ParenOp))
+    if (!config_parser_eat_cpp_kind(p, TokenCppKind_ParenOp))
     {
         config_parser_push_error_here(p, "expected token '(' for version specifier: 'version(#)'");
         config_parser_recover(p);
         return(0);
     }
     
-    if (!config_parser_recognize_base_kind(p, TokenBaseKind_LiteralInteger)){
+    if (p->token->kind != TokenBaseKind_LiteralInteger)
+    {
         config_parser_push_error_here(p, "expected an integer constant for version specifier: 'version(#)'");
         config_parser_recover(p);
         return(0);
@@ -370,13 +354,13 @@ config_parser_version(Config_Parser *p)
     Config_Integer value = config_parser_get_int(p);
     config_parser_inc(p);
     
-    if (!config_parser_match_cpp_kind(p, TokenCppKind_ParenCl)){
+    if (!config_parser_eat_cpp_kind(p, TokenCppKind_ParenCl)){
         config_parser_push_error_here(p, "expected token ')' for version specifier: 'version(#)'");
         config_parser_recover(p);
         return(0);
     }
     
-    if (!config_parser_match_cpp_kind(p, TokenCppKind_Semicolon)){
+    if (!config_parser_eat_cpp_kind(p, TokenCppKind_Semicolon)){
         config_parser_push_error_here(p, "expected token ';' for version specifier: 'version(#)'");
         config_parser_recover(p);
         return(0);
@@ -390,17 +374,17 @@ config_parser_version(Config_Parser *p)
 function Config_LValue*
 config_parser_lvalue(Config_Parser *p)
 {
-    require(config_parser_recognize_cpp_kind(p, TokenCppKind_Identifier));
+    macro_require(config_parser_recognize_cpp_kind(p, TokenCppKind_Identifier));
     String8 identifier = config_parser_get_lexeme(p);
     config_parser_inc(p);
     
     i32 index = 0;
-    if (config_parser_match_cpp_kind(p, TokenCppKind_BrackOp)){
-        require(config_parser_recognize_base_kind(p, TokenBaseKind_LiteralInteger));
+    if (config_parser_eat_cpp_kind(p, TokenCppKind_BrackOp)){
+        macro_require(p->token->kind == TokenBaseKind_LiteralInteger);
         Config_Integer value = config_parser_get_int(p);
         index = value.integer;
         config_parser_inc(p);
-        require(config_parser_match_cpp_kind(p, TokenCppKind_BrackCl));
+        macro_require(config_parser_eat_cpp_kind(p, TokenCppKind_BrackCl));
     }
     
     Config_LValue *lvalue = push_array_zero(p->arena, Config_LValue, 1);
@@ -416,7 +400,7 @@ config_parser_element(Config_Parser *p)
 {
     Config_Layout layout = {};
     layout.pos = config_parser_get_pos(p);
-    if ( config_parser_match_cpp_kind(p, TokenCppKind_Dot) )
+    if ( config_parser_eat_cpp_kind(p, TokenCppKind_Dot) )
     {
         if ( config_parser_recognize_cpp_kind(p, TokenCppKind_Identifier) )
         {
@@ -424,7 +408,7 @@ config_parser_element(Config_Parser *p)
             layout.identifier = config_parser_get_lexeme(p);
             config_parser_inc(p);
         }
-        else if ( config_parser_recognize_base_kind(p, TokenBaseKind_LiteralInteger) )
+        else if ( p->token->kind == TokenBaseKind_LiteralInteger )
         {
             layout.type = ConfigLayoutType_Integer;
             Config_Integer value = config_parser_get_int(p);
@@ -435,10 +419,10 @@ config_parser_element(Config_Parser *p)
         {
             return(0);
         }
-        require(config_parser_match_cpp_kind(p, TokenCppKind_Eq));
+        macro_require(config_parser_eat_cpp_kind(p, TokenCppKind_Eq));
     }
     Config_RValue *rvalue = config_parser_rvalue(p);
-    require(rvalue != 0);
+    macro_require(rvalue != 0);
     Config_Compound_Element *element = push_array(p->arena, Config_Compound_Element, 1);
     block_zero_struct(element);
     element->l = layout;
@@ -473,23 +457,23 @@ config_parser_compound(Config_Parser *p)
     i32 count = 0;
     
     Config_Compound_Element *element = config_parser_element(p);
-    require(element != 0);
+    macro_require(element != 0);
     zdll_push_back(first, last, element);
     count += 1;
     
-    while ( config_parser_match_cpp_kind(p, TokenCppKind_Comma) )
+    while ( config_parser_eat_cpp_kind(p, TokenCppKind_Comma) )
     {
         if (config_parser_recognize_cpp_kind(p, TokenCppKind_BraceCl))
         {
             break;
         }
         element = config_parser_element(p);
-        require(element != 0);
+        macro_require(element != 0);
         zdll_push_back(first, last, element);
         count += 1;
     }
     
-    require(config_parser_match_cpp_kind(p, TokenCppKind_BraceCl));
+    macro_require(config_parser_eat_cpp_kind(p, TokenCppKind_BraceCl));
     
     Config_Compound *compound = push_array(p->arena, Config_Compound, 1);
     block_zero_struct(compound);
@@ -507,7 +491,7 @@ config_parser_rvalue(Config_Parser *p)
     if ( config_parser_recognize_cpp_kind(p, TokenCppKind_Identifier) )
     {
         Config_LValue *l = config_parser_lvalue(p);
-        require(l != 0);
+        macro_require(l != 0);
         rvalue = push_array_zero(p->arena, Config_RValue, 1);
         rvalue->type = Config_RValue_Type_LValue;
         rvalue->lvalue = l;
@@ -516,7 +500,7 @@ config_parser_rvalue(Config_Parser *p)
     {
         config_parser_inc(p);
         Config_Compound *compound = config_parser_compound(p);
-        require(compound != 0);
+        macro_require(compound != 0);
         rvalue = push_array_zero(p->arena, Config_RValue, 1);
         rvalue->type = Config_RValue_Type_Compound;
         rvalue->compound = compound;
@@ -529,7 +513,7 @@ config_parser_rvalue(Config_Parser *p)
         rvalue->type = Config_RValue_Type_Boolean;
         rvalue->boolean = b;
     }
-    else if (config_parser_recognize_base_kind(p, TokenBaseKind_LiteralInteger))
+    else if ( p->token->kind == TokenBaseKind_LiteralInteger )
     {
         Config_Integer value = config_parser_get_int(p);
         config_parser_inc(p);
@@ -570,7 +554,7 @@ config_parser_assignment(Config_Parser *p)
         return(0);
     }
     
-    if (!config_parser_match_cpp_kind(p, TokenCppKind_Eq))
+    if (!config_parser_eat_cpp_kind(p, TokenCppKind_Eq))
     {
         config_parser_push_error_here(p, "expected token '=' for assignment: 'l-value = r-value;'");
         config_parser_recover(p);
@@ -589,7 +573,8 @@ config_parser_assignment(Config_Parser *p)
         return(0);
     }
     
-    if (!config_parser_match_cpp_kind(p, TokenCppKind_Semicolon)){
+    if (!config_parser_eat_cpp_kind(p, TokenCppKind_Semicolon))
+    {
         config_parser_push_error_here(p, "expected token ';' for assignment: 'l-value = r-value;'");
         config_parser_recover(p);
         return(0);

@@ -1,6 +1,7 @@
 // Tiny Lexer ////////////////////////////////////////////////
 // For ad-hoc parsing of weird file formats.
 // TODO: Implement "maybe_eat" variants by default?
+// TODO: Perhaps we should be stashing one more token by default? i.e "peek" is free.
 
 // NOTE(kv): assume that the stream is nil-terminated.
 struct Lexer

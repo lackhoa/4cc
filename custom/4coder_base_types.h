@@ -388,7 +388,7 @@ global_const f64 epsilon_f64 = 1.11022302462515650e-16;
 #define line_number_as_string stringify(__LINE__)
 #define filename_line_number __FILE__ ":" line_number_as_string ":"
 
-#define require(c) Stmnt( if (!(c)){ return(0); } )
+#define macro_require(c) Stmnt( if (!(c)){ return(0); } )
 
 ////////////////////////////////
 

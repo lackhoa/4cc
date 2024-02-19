@@ -59,7 +59,6 @@ enum
     Config_RValue_Type_LValue,
     Config_RValue_Type_Boolean,
     Config_RValue_Type_Integer,
-    Config_RValue_Type_f32,
     Config_RValue_Type_String,
     Config_RValue_Type_Compound,
     

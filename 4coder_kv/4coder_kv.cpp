@@ -293,7 +293,7 @@ VIM_COMMAND_SIG(kv_startup)
     String8 startup_hot_directory = def_get_config_string(temp, vars_intern_lit("startup_hot_directory"));
     set_hot_directory(app, startup_hot_directory);
    
-#if 1 || !KV_INTERNAL  //nono here to test
+#if !KV_INTERNAL
     load_project(app);
 #endif
     
