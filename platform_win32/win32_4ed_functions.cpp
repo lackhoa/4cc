@@ -125,7 +125,7 @@ system_memory_annotation_sig(){
 extern "C" BOOL CALL_CONVENTION
 GetUserProfileDirectoryW(HANDLE  hToken, LPWSTR  lpProfileDir, LPDWORD lpcchSize);
 
-global String_Const_u8 w32_override_user_directory = {};
+global String8 w32_override_user_directory = {};
 
 internal String8 get_home_directory(Arena *arena)
 {
@@ -155,7 +155,7 @@ system_get_path_sig()
             result = SCu8(out, size);
         }break;
         
-        case SystemPath_Binary:
+        case SystemPath_BinaryDirectory:
         {
             local_persist b32 has_stashed_4ed_path = false;
             if (!has_stashed_4ed_path)
@@ -166,7 +166,7 @@ system_get_path_sig()
                 i32 size = GetModuleFileName_utf8(arena, 0, memory, binary_path_capacity);
                 Assert(size <= binary_path_capacity - 1);
                 win32vars.binary_path = SCu8(memory, size);
-                win32vars.binary_path = string_remove_last_folder(win32vars.binary_path);
+                win32vars.binary_path = path_dirname(win32vars.binary_path);
                 win32vars.binary_path.str[win32vars.binary_path.size] = 0;
             }
             result = push_string_copy(arena, win32vars.binary_path);

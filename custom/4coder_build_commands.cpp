@@ -13,8 +13,9 @@ push_build_directory_at_file(FApp *app, Arena *arena, Buffer_ID buffer)
     String_Const_u8 base_name = push_buffer_base_name(app, arena, buffer);
     b32 is_match = string_match(filename, base_name);
     end_temp(restore_point);
-    if (!is_match){
-        result = push_string_copy(arena, string_remove_last_folder(filename));
+    if ( !is_match )
+    {
+        result = push_string_copy(arena, path_dirname(filename));
     }
     return(result);
 }
@@ -67,7 +68,7 @@ standard_build_exec_command(FApp *app, View_ID view, String8 dir, String8 cmd)
 }
 
 function b32
-standard_search_and_build_from_dir(FApp *app, View_ID view, String8 start_dir, char *command_args)
+standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, char *command_args)
 {
     Scratch_Block scratch(app);
     
@@ -76,7 +77,7 @@ standard_search_and_build_from_dir(FApp *app, View_ID view, String8 start_dir, c
     String8 cmd_string  = {};
     for (u32 i = 0; i < ArrayCount(standard_build_filename_array); i += 1)
     {
-        full_file_path = search_up_path(app, scratch, start_dir, standard_build_filename_array[i]);
+        full_file_path = search_up_path(scratch, start_dir, standard_build_filename_array[i]);
         if (full_file_path.size > 0){
             cmd_string = standard_build_cmd_string_array[i];
             break;
@@ -87,8 +88,8 @@ standard_search_and_build_from_dir(FApp *app, View_ID view, String8 start_dir, c
     if (result)
     {
         // NOTE(allen): Build
-        String_Const_u8 path = string_remove_last_folder(full_file_path);
-        String_Const_u8 command = push_stringf(scratch, "\"%.*s/%.*s\" %s",
+        String8 path = path_dirname(full_file_path);
+        String8 command = push_stringf(scratch, "\"%.*s/%.*s\" %s",
                                                   string_expand(path),
                                                   string_expand(cmd_string),
                                                   command_args);

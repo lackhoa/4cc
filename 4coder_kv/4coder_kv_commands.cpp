@@ -439,7 +439,7 @@ open_file_from_current_dir(App *app)
 {
     GET_VIEW_AND_BUFFER;
     Temp_Block temp(app);
-    String8 dirname = push_buffer_dir_name(app, temp, buffer);
+    String8 dirname = push_buffer_dirname(app, temp, buffer);
     set_hot_directory(app, dirname);
     vim_interactive_open_or_new(app);
 }
@@ -633,7 +633,7 @@ CUSTOM_DOC("kv copy dir name")
 {
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
-  String8 dirname = push_buffer_dir_name(app, temp, buffer);
+  String8 dirname = push_buffer_dirname(app, temp, buffer);
   clipboard_post(0, dirname);
 }
 
@@ -771,9 +771,9 @@ VIM_COMMAND_SIG(kv_handle_return)
 VIM_COMMAND_SIG(open_build_script)
 {
   GET_VIEW_AND_BUFFER;
-  Scratch_Block temp(app);
-  String8 dirname = push_buffer_dir_name(app, temp, buffer);
-  String8 build_file = kv_search_build_file_from_dir(app, temp, dirname);
+  Scratch_Block scratch(app);
+  String8 dirname = push_buffer_dirname(app, scratch, buffer);
+  String8 build_file = kv_search_build_file_from_dir(scratch, dirname);
   if (build_file.size)
   {
     view_open_file(app, view, build_file, true);
@@ -818,7 +818,7 @@ internal void kv_system_command(FApp *app, String8 cmd)
 {
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
-    String8 dir = push_buffer_dir_name(app, temp, buffer);
+    String8 dir = push_buffer_dirname(app, temp, buffer);
     exec_system_command(app, global_bottom_view, standard_build_compilation_buffer_identifier,
                         dir, cmd, standard_build_exec_flags);
 }

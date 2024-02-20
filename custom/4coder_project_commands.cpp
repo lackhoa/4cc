@@ -349,27 +349,28 @@ prj_stringize_project(Application_Links *app, Arena *arena, Variable_Handle proj
 }
 
 function Prj_Setup_Status
-prj_file_is_setup(Application_Links *app, String8 script_path, String8 script_file){
+prj_file_is_setup(App *app, String8 script_path, String8 script_file)
+{
     Prj_Setup_Status result = {};
     {
         Scratch_Block scratch(app);
         String8 bat_path = push_stringf(scratch, "%.*s/%.*s.bat",
-                                           string_expand(script_path),
-                                           string_expand(script_file));
-        result.bat_exists = file_exists(app, bat_path);
+                                        string_expand(script_path),
+                                        string_expand(script_file));
+        result.bat_exists = file_exists(scratch, bat_path);
     }
     {
         Scratch_Block scratch(app);
         String8 sh_path = push_stringf(scratch, "%.*s/%.*s.sh",
                                           string_expand(script_path),
                                           string_expand(script_file));
-        result.sh_exists = file_exists(app, sh_path);
+        result.sh_exists = file_exists(scratch, sh_path);
     }
     {
         Scratch_Block scratch(app);
         String8 project_path = push_stringf(scratch, "%.*s/project.4coder",
                                                string_expand(script_path));
-        result.sh_exists = file_exists(app, project_path);
+        result.sh_exists = file_exists(scratch, project_path);
     }
     result.everything_exists = (result.bat_exists && result.sh_exists && result.project_exists);
     return(result);
@@ -377,7 +378,8 @@ prj_file_is_setup(Application_Links *app, String8 script_path, String8 script_fi
 
 function b32
 prj_generate_bat(Arena *scratch, String8 opts, String8 compiler, String8 script_path, String8 script_file,
-                 String8 code_file, String8 output_dir, String8 binary_file){
+                 String8 code_file, String8 output_dir, String8 binary_file)
+{
     b32 success = false;
     
     Temp_Memory temp = begin_temp(scratch);
@@ -788,7 +790,7 @@ prj_full_file_path_from_project(Arena *arena, Variable_Handle project){
 function String8
 prj_path_from_project(Arena *arena, Variable_Handle project){
     String8 project_full_path = prj_full_file_path_from_project(arena, project);
-    String8 project_dir = string_remove_last_folder(project_full_path);
+    String8 project_dir = path_dirname(project_full_path);
     return(project_dir);
 }
 
@@ -865,8 +867,8 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
     
     // NOTE(allen): Load the project file from the hot directory, as advertised
     String8 project_path = push_hot_directory(app, scratch);
-    File_Name_Data dump = dump_file_search_up_path(app, scratch, project_path, str8lit("project.4coder"));
-    String8 project_root = string_remove_last_folder(dump.filename);
+    File_Name_Data dump = read_entire_file_search_up_path(scratch, project_path, str8lit("project.4coder"));
+    String8 project_root = path_dirname(dump.filename);
     
     if (dump.data.str == 0)
     {
@@ -993,7 +995,7 @@ CUSTOM_DOC("Looks for a project.4coder file in the current directory and tries t
 {
   GET_VIEW_AND_BUFFER;
   Scratch_Block scratch(app);
-  String8 dirname = push_buffer_dir_name(app, scratch, buffer);
+  String8 dirname = push_buffer_dirname(app, scratch, buffer);
   set_hot_directory(app, dirname);
   load_project(app);
 }

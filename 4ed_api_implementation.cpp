@@ -681,11 +681,11 @@ push_buffer_filename(FApp *app, Arena *arena, Buffer_ID buffer_id)
     return(result);
 }
 
-inline String_Const_u8
-push_buffer_dir_name(FApp *app, Arena *arena, Buffer_ID buffer)
+inline String8
+push_buffer_dirname(App *app, Arena *arena, Buffer_ID buffer)
 {
-  String_Const_u8 filename = push_buffer_filename(app, arena, buffer);
-  return string_remove_last_folder(filename);
+  String8 filename = push_buffer_filename(app, arena, buffer);
+  return path_dirname(filename);
 }
 
 api(custom) function Dirty_State
@@ -2825,7 +2825,7 @@ try_modify_face(FApp *app, Face_ID id, Face_Description *description)
 }
 
 api(custom) function b32
-try_release_face(FApp *app, Face_ID id, Face_ID replacement_id)
+try_release_face(App *app, Face_ID id, Face_ID replacement_id)
 {
     Models *models = (Models*)app->cmd_context;
     Font_Set *font_set = &models->font_set;
@@ -2840,11 +2840,11 @@ push_hot_directory(App *app, Arena *arena)
     Models *models = (Models*)app->cmd_context;
     Hot_Directory *hot = &models->hot_directory;
     hot_directory_clean_end(hot);
-    return( push_string_copy(arena, hot->canonical) );
+    return push_string_copy(arena, hot->canonical);
 }
 
 api(custom) function void
-set_hot_directory(App *app, String_Const_u8 string)
+set_hot_directory(App *app, String8 string)
 {
     Models *models = (Models*)app->cmd_context;
     Hot_Directory *hot = &models->hot_directory;
@@ -2859,14 +2859,14 @@ send_exit_signal(App *app)
 }
 
 api(custom) function void
-hard_exit(FApp *app)
+hard_exit(App *app)
 {
     Models *models = (Models*)app->cmd_context;
     models->hard_exit = true;
 }
 
 api(custom) function void
-set_window_title(FApp *app, String_Const_u8 title)
+set_window_title(App *app, String8 title)
 {
     Models *models = (Models*)app->cmd_context;
     models->has_new_title = true;
@@ -2877,7 +2877,8 @@ set_window_title(FApp *app, String_Const_u8 title)
 }
 
 api(custom) function void
-acquire_global_frame_mutex(FApp *app){
+acquire_global_frame_mutex(App *app)
+{
     Thread_Context *tctx = app->tctx;
     Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
     if (tctx_info != 0 && tctx_info->coroutine != 0){
@@ -2893,7 +2894,8 @@ acquire_global_frame_mutex(FApp *app){
 }
 
 api(custom) function void
-release_global_frame_mutex(FApp *app){
+release_global_frame_mutex(App *app)
+{
     Thread_Context *tctx = app->tctx;
     Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
     if (tctx_info != 0 && tctx_info->coroutine != 0){
@@ -2929,7 +2931,7 @@ draw_string_oriented(FApp *app, Face_ID font_id, ARGB_Color color,
 }
 
 api(custom) function f32
-get_string_advance(FApp *app, Face_ID font_id, String_Const_u8 str)
+get_string_advance(FApp *app, Face_ID font_id, String8 str)
 {
     Models *models = (Models*)app->cmd_context;
     Face *face = font_set_face_from_id(&models->font_set, font_id);
@@ -3105,13 +3107,13 @@ draw_rect_outline(App *app, rect2 rect, f32 thickness, v4 color, f32 roundness=0
 }
 
 api(custom) function Rect_f32
-draw_set_clip(FApp *app, Rect_f32 new_clip){
+draw_set_clip(App *app, Rect_f32 new_clip){
     Models *models = (Models*)app->cmd_context;
     return(draw_set_clip(models->target, new_clip));
 }
 
 api(custom) function Text_Layout_ID
-text_layout_create(FApp *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point){
+text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     Text_Layout_ID result = 0;
@@ -3424,13 +3426,15 @@ buffer_find_all_matches(FApp *app, Arena *arena, Buffer_ID buffer,
 ////////////////////////////////
 
 api(custom) function Profile_Global_List*
-get_core_profile_list(FApp *app){
+get_core_profile_list(App *app)
+{
     Models *models = (Models*)app->cmd_context;
     return(&models->profile_list);
 }
 
 api(custom) function Doc_Cluster*
-get_custom_layer_boundary_docs(FApp *app, Arena *arena){
+get_custom_layer_boundary_docs(App *app, Arena *arena)
+{
     API_Definition *api_def = custom_api_construct(arena);
     return(doc_custom_api(arena, api_def));
 }

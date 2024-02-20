@@ -39,7 +39,8 @@ binary_search(i64 *array, i32 stride, i32 count, i64 x){
 }
 
 internal Sticky_Jump_Array
-parse_buffer_to_jump_array(Application_Links *app, Arena *arena, Buffer_ID buffer){
+parse_buffer_to_jump_array(App *app, Arena *arena, Buffer_ID buffer)
+{
     Sticky_Jump_Node *jump_first = 0;;
     Sticky_Jump_Node *jump_last = 0;
     i32 jump_count = 0;
@@ -53,15 +54,20 @@ parse_buffer_to_jump_array(Application_Links *app, Arena *arena, Buffer_ID buffe
         
         {
             Temp_Memory_Block line_auto_closer(arena);
-            if (is_valid_line(app, buffer, line)){
+            if (is_valid_line(app, buffer, line))
+            {
                 String_Const_u8 line_str = push_buffer_line(app, arena, buffer, line);
                 Parsed_Jump parsed_jump = parse_jump_location(line_str);
-                if (parsed_jump.success){
+                if (parsed_jump.success)
+                {
                     Buffer_ID jump_buffer = {};
-                    if (open_file(app, &jump_buffer, parsed_jump.location.file, false, true)){
-                        if (buffer_exists(app, jump_buffer)){
+                    if (open_editing_file(app, &jump_buffer, parsed_jump.location.file, false, true))
+                    {
+                        if (buffer_exists(app, jump_buffer))
+                        {
                             Buffer_Cursor cursor = buffer_compute_cursor(app, jump_buffer, seek_jump(parsed_jump));
-                            if (cursor.line > 0){
+                            if (cursor.line > 0)
+                            {
                                 out_buffer_id = jump_buffer;
                                 out_pos = cursor.pos;
                                 output_jump = true;
@@ -75,7 +81,8 @@ parse_buffer_to_jump_array(Application_Links *app, Arena *arena, Buffer_ID buffe
             }
         }
         
-        if (output_jump){
+        if (output_jump)
+        {
             Sticky_Jump_Node *jump = push_array(arena, Sticky_Jump_Node, 1);
             sll_queue_push(jump_first, jump_last, jump);
             jump_count += 1;

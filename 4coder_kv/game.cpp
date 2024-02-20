@@ -384,32 +384,16 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
     if ( !inited )
     {// NOTE: Initialization
         // BOOKMARK
-        X_Block x(app);
-        String8 hotdir = push_hot_directory(app, x);
-        auto file_data = dump_file_search_up_path(app, x, hotdir, str8lit("test_data.4coder"));
-        Config *parsed = config_from_text(app, x, file_data.filename, file_data.data);
-        for (Config_Assignment *assignment = parsed->first;
-             assignment;
-             assignment = assignment->next)
-        {
-            String8 value = {};
-            {
-                Config_RValue r = *assignment->r;
-                switch (r.type)
-                {
-                    case Config_RValue_Type_String:
-                    {
-                        value = r.string;
-                    }break;
-                    
-                    case Config_RValue_Type_Integer:
-                    {
-                        value = push_stringf(x, "%i", r.integer);
-                    }break;
-                }
-            }
-            printf_message(app, x, "%.*s: %.*s\n", string_expand(assignment->l->identifier), string_expand(value));
-        }
+        Scratch_Block scratch(app);
+        // String8 current_dir = push_exe_directory(app, scratch);
+        String8 binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+        // String8 binary_dir = path_dirname(binary_path);
+        // It's not a string, surprisingly!
+        String8 test_data = str8lit("new data for me to write");
+        String8 filename = str8lit("data.kv");
+        String8 filepath = push_stringf(scratch, "%.*s/data/%.*s", string_expand(binary_dir), string_expand(filename));
+        write_entire_file(scratch, filepath, test_data.str, test_data.size);
+        // File_Name_Data file_data = read_entire_file_search_up_path(scratch, hotdir, str8lit("test_data.kv"));
         inited = true;
     }
     

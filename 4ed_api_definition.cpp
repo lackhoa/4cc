@@ -422,8 +422,8 @@ function b32
 api_definition_generate_api_includes(Arena *arena, API_Definition *api, Generated_Group group, API_Generation_Flag flags){
     // NOTE(allen): Arrange output files
     
-    String_Const_u8 path_to_self = string_u8_litexpr(__FILE__);
-    path_to_self = string_remove_last_folder(path_to_self);
+    String8 path_to_self = string_u8_litexpr(__FILE__);
+    path_to_self = path_dirname(path_to_self);
     
     String_Const_u8 fname_ml = {};
     String_Const_u8 fname_h = {};

@@ -1787,7 +1787,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         Scratch_Block scratch(win32vars.tctx);
         
         List_String_Const_u8 search_list = {};
-        def_search_list_add_system_path(scratch, &search_list, SystemPath_Binary);
+        def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
         
         String_Const_u8 core_path =
             def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.dll"));

@@ -25,7 +25,7 @@ system_get_path_sig(){
             result = SCu8(out, working_dir_length);
         } break;
 
-        case SystemPath_Binary:
+        case SystemPath_BinaryDirectory:
         {
             local_persist b32 has_stashed_4ed_path = false;
             if (!has_stashed_4ed_path){

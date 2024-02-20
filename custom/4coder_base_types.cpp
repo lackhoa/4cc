@@ -3868,13 +3868,15 @@ string_skip(String_Const_Any str, u64 n){
 }
 
 function String_Const_char
-string_chop(String_Const_char str, u64 n){
+string_chop(String_Const_char str, u64 n)
+{
     n = clamp_top(n, str.size);
     str.size -= n;
     return(str);
 }
 function String_Const_u8
-string_chop(String_Const_u8 str, u64 n){
+string_chop(String_Const_u8 str, u64 n)
+{
     n = clamp_top(n, str.size);
     str.size -= n;
     return(str);
@@ -4151,7 +4153,8 @@ string_find_last_slash(String_Const_u32 str){
 }
 
 function String_Const_char
-string_remove_last_folder(String_Const_char str){
+string_remove_last_folder(String_Const_char str)
+{
     if (str.size > 0){
         str.size -= 1;
     }
@@ -4164,20 +4167,22 @@ string_remove_last_folder(String_Const_char str){
     }
     return(str);
 }
-function String_Const_u8
-string_remove_last_folder(String_Const_u8 str){
-    if (str.size > 0){
+
+function String8
+path_dirname(String8 str)
+{
+    if (str.size > 0)
+    {// NOTE: Remove the last slash
         str.size -= 1;
     }
     i64 slash_pos = string_find_last_slash(str);
-    if (slash_pos < 0){
-        str.size = 0;
-    }
-    else{
-        str.size = slash_pos + 1;
-    }
+    
+    str.size = 0;
+    if (slash_pos >= 0) str.size = slash_pos + 1;
+    
     return(str);
 }
+
 function String_Const_u16
 string_remove_last_folder(String_Const_u16 str){
     if (str.size > 0){
@@ -5202,7 +5207,8 @@ string_const_any_push(Arena *arena, u64 size, String_Encoding encoding){
 #define push_string_const_u64 string_const_u64_push
 
 function String_Const_char
-push_string_copy(Arena *arena, String_Const_char src){
+push_string_copy(Arena *arena, String_Const_char src)
+{
     String_Const_char string = {};
     string.str = push_array(arena, char, src.size + 1);
     string.size = src.size;
@@ -5210,8 +5216,9 @@ push_string_copy(Arena *arena, String_Const_char src){
     string.str[string.size] = 0;
     return(string);
 }
-function String_Const_u8
-push_string_copy(Arena *arena, String_Const_u8 src){
+function String8
+push_string_copy(Arena *arena, String8 src)
+{
     String_Const_u8 string = {};
     string.str = push_array(arena, u8, src.size + 1);
     string.size = src.size;

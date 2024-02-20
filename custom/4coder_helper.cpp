@@ -1847,38 +1847,47 @@ get_first_view_with_buffer(Application_Links *app, Buffer_ID buffer_id){
 }
 
 function b32
-open_file(Application_Links *app, Buffer_ID *buffer_out, String_Const_u8 filename, b32 background, b32 never_new){
+open_editing_file(App *app, Buffer_ID *buffer_out, String8 filename, b32 background, b32 never_new)
+{
     b32 result = false;
     Buffer_ID buffer = get_buffer_by_name(app, filename, Access_ReadVisible);
     b32 exists = buffer_exists(app, buffer);
-    if (!exists){
+    if (!exists)
+    {
         Buffer_Create_Flag flags = 0;
-        if (background){
-            flags |= BufferCreate_Background;
-        }
-        if (never_new){
-            flags |= BufferCreate_NeverNew;
-        }
+        if (background) flags |= BufferCreate_Background;
+        if (never_new)  flags |= BufferCreate_NeverNew;
+        
         buffer = create_buffer(app, filename, flags);
         exists = buffer_exists(app, buffer);
     }
-    if (exists){
-        if (buffer_out != 0){
-            *buffer_out = buffer;
-        }
+    if (exists)
+    {
         result = true;
+        if (buffer_out != 0)
+            *buffer_out = buffer;
     }
     return(result);
 }
 
+// NOTE(kv): Just fopen, but let's keep this so we can switch it out later.
+internal FILE *
+open_file(Arena *scratch, String8 name, char *mode)
+{
+    Temp_Memory_Block temp(scratch);
+    String8 name_copy = push_string_copy(scratch, name);
+    FILE *file = fopen((char*)name_copy.str, mode);
+    return(file);
+}
+
 function b32
-view_open_file(FApp *app, View_ID view, String8 filename, b32 never_new)
+view_open_file(App *app, View_ID view, String8 filename, b32 never_new)
 {
     b32 result = false;
     if (view != 0)
     {
         Buffer_ID buffer = 0;
-        if (open_file(app, &buffer, filename, false, never_new))
+        if (open_editing_file(app, &buffer, filename, false, never_new))
         {
             view_set_buffer(app, view, buffer, 0);
             result = true;
@@ -1888,7 +1897,7 @@ view_open_file(FApp *app, View_ID view, String8 filename, b32 never_new)
 }
 
 function void
-view_disable_highlight_range(Application_Links *app, View_ID view){
+view_disable_highlight_range(App *app, View_ID view){
     Managed_Scope scope = view_get_managed_scope(app, view);
     Managed_Object *highlight = scope_attachment(app, scope, view_highlight_range, Managed_Object);
     if (*highlight != 0){
@@ -2055,7 +2064,7 @@ push_token_or_word_under_pos(Application_Links *app, Arena *arena, Buffer_ID buf
     return(result);
 }
 
-function String_Const_u8
+function String8
 push_token_or_word_under_active_cursor(Application_Links *app, Arena *arena){
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -2066,29 +2075,28 @@ push_token_or_word_under_active_cursor(Application_Links *app, Arena *arena){
 ////////////////////////////////
 
 function b32
-file_exists(Application_Links *app, String_Const_u8 filename){
-    Scratch_Block scratch(app);
+file_exists(Arena *scratch, String8 filename)
+{
     File_Attributes attributes = system_quick_file_attributes(scratch, filename);
     return(attributes.last_write_time > 0);
 }
 
 function b32
-file_exists_and_is_file(Application_Links *app, String_Const_u8 filename){
-    Scratch_Block scratch(app);
+file_exists_and_is_file(Arena *scratch, String8 filename)
+{
     File_Attributes attributes = system_quick_file_attributes(scratch, filename);
     return(attributes.last_write_time > 0 && !HasFlag(attributes.flags, FileAttribute_IsDirectory));
 }
 
 function b32
-file_exists_and_is_folder(App *app, String8 filename)
+file_exists_and_is_folder(Arena *scratch, String8 filename)
 {
-    Scratch_Block scratch(app);
     File_Attributes attributes = system_quick_file_attributes(scratch, filename);
     return(attributes.last_write_time > 0 && HasFlag(attributes.flags, FileAttribute_IsDirectory));
 }
 
 function String8
-dump_file_handle(Arena *arena, FILE *file)
+read_entire_file_handle(Arena *arena, FILE *file)
 {
     String8 result = {};
     if (file != 0)
@@ -2107,61 +2115,68 @@ dump_file_handle(Arena *arena, FILE *file)
 }
 
 function String8
-search_up_path(App *app, Arena *arena, String8 start_path, String8 filename)
+search_up_path(Arena *scratch, String8 start_path, String8 filename)
 {
     String8 result = {};
     String8 path = start_path;
-    for (;path.size > 0;){
-        Temp_Memory temp = begin_temp(arena);
-        if (character_is_slash(string_get_character(path, path.size - 1))){
+    for (;path.size > 0;)
+    {
+        Temp_Memory_Block temp(scratch);
+        char last_char = string_get_character(path, path.size - 1);
+        if (character_is_slash(last_char))
+        {
             path = string_chop(path, 1);
         }
-        String8 full_path = push_stringf(arena, "%.*s/%.*s",
-                                                    string_expand(path),
-                                                    string_expand(filename));
-        if (file_exists(app, full_path))
+        String8 full_path = push_stringf(scratch, "%.*s/%.*s",
+                                         string_expand(path),
+                                         string_expand(filename));
+        if (file_exists(scratch, full_path))
         {
             result = full_path;
             break;
         }
-        path = string_remove_last_folder(path);
-        end_temp(temp);
+        path = path_dirname(path);
     }
     return(result);
 }
 
-function FILE *
-open_file(Arena *scratch, String_Const_u8 name)
-{
-    Temp_Memory temp = begin_temp(scratch);
-    String8 name_copy = push_string_copy(scratch, name);
-    FILE *file = fopen((char*)name_copy.str, "rb");
-    end_temp(temp);
-    return(file);
-}
-
-function File_Name_Data
-dump_file(Arena *arena, String8 filename)
+internal File_Name_Data
+read_entire_file(Arena *arena, String8 filename)
 {
     File_Name_Data result = {};
-    FILE *file = open_file(arena, filename);
+    FILE *file = open_file(arena, filename, "rb");
     if (file != 0)
     {
         result.filename = filename;
-        result.data = dump_file_handle(arena, file);
+        result.data = read_entire_file_handle(arena, file);
         fclose(file);
     }
     return(result);
 }
 
+internal b32
+write_entire_file(Arena *scratch, String8 filename, u8 *data, u64 size)
+{
+    b32 result = false;
+    gbFile file_value = {}; gbFile *file = &file_value;
+    char *filename_c = to_c_string(scratch, filename);
+    gbFileError err = gb_file_open_mode(file, gbFileMode_Write, filename_c);
+    if (err == gbFileError_None)
+    {
+        result = gb_file_write(file, data, size);
+    }
+    gb_file_close(file);
+    return result;
+}
+
 function File_Name_Data
-dump_file_search_up_path(App *app, Arena *arena, String8 path, String8 filename)
+read_entire_file_search_up_path(Arena *arena, String8 path, String8 filename)
 {
     File_Name_Data result = {};
-    String8 full_path = search_up_path(app, arena, path, filename);
+    String8 full_path = search_up_path(arena, path, filename);
     if (full_path.size > 0)
     {
-        result = dump_file(arena, full_path);
+        result = read_entire_file(arena, full_path);
     }
     return(result);
 }

@@ -519,10 +519,12 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
 ////////////////////////////////
 
 function Editing_File*
-create_file(Thread_Context *tctx, Models *models, String_Const_u8 filename, Buffer_Create_Flag flags){
+create_file(Thread_Context *tctx, Models *models, String8 filename, Buffer_Create_Flag flags)
+{
     Editing_File *result = 0;
     
-    if (filename.size > 0){
+    if (filename.size > 0)
+    {
         Working_Set *working_set = &models->working_set;
         Heap *heap = &models->heap;
         
@@ -638,7 +640,8 @@ create_file(Thread_Context *tctx, Models *models, String_Const_u8 filename, Buff
         
         if (file != 0 && buffer_is_for_new_file &&
             !HasFlag(flags, BufferCreate_SuppressNewFileHook) &&
-            models->new_file != 0){
+            models->new_file != 0)
+        {
             Application_Links app = {};
             app.tctx = tctx;
             app.cmd_context = models;

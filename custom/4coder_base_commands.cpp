@@ -1391,8 +1391,9 @@ CUSTOM_DOC("Read from the top of the point stack and jump there; if already ther
 ////////////////////////////////
 
 function void
-delete_file_base(Application_Links *app, String_Const_u8 filename, Buffer_ID buffer_id){
-    String_Const_u8 path = string_remove_last_folder(filename);
+delete_file_base(App *app, String_Const_u8 filename, Buffer_ID buffer_id)
+{
+    String8 path = path_dirname(filename);
     Scratch_Block scratch(app);
     List_String_Const_u8 list = {};
 #if OS_WINDOWS
@@ -1400,7 +1401,7 @@ delete_file_base(Application_Links *app, String_Const_u8 filename, Buffer_ID buf
 #elif OS_LINUX || OS_MAC
     string_list_push_u8_lit(scratch, &list, "rm ");
 #else
-# error no delete file command for this platform
+#   error no delete file command for this platform
 #endif
     string_list_pushf(scratch, &list, "\"%.*s\"", string_expand(filename));
     String_Const_u8 cmd = string_list_flatten(scratch, list, StringFill_NullTerminate);
@@ -1606,23 +1607,25 @@ CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to op
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    if (buffer_exists(app, buffer)){
+    if (buffer_exists(app, buffer))
+    {
         Scratch_Block scratch(app);
         
         i64 pos = view_get_cursor_pos(app, view);
         
         Range_i64 range = enclose_pos_inside_quotes(app, buffer, pos);
         
-        String_Const_u8 quoted_name = push_buffer_range(app, scratch, buffer, range);
+        String8 quoted_name = push_buffer_range(app, scratch, buffer, range);
         
-        String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
-        String_Const_u8 path = string_remove_last_folder(filename);
+        String8 filename = push_buffer_filename(app, scratch, buffer);
+        String8 path = path_dirname(filename);
         
-        if (character_is_slash(string_get_character(path, path.size - 1))){
+        if (character_is_slash(string_get_character(path, path.size - 1)))
+        {
             path = string_chop(path, 1);
         }
         
-        String_Const_u8 new_filename = push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
+        String8 new_filename = push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
         
         view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
         if (view != 0){
@@ -1634,11 +1637,13 @@ CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to op
 }
 
 function b32
-get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffer_out){
+get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffer_out)
+{
     b32 result = false;
     Scratch_Block scratch(app);
     String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
-    if (filename.size > 0){
+    if (filename.size > 0)
+    {
         String_Const_u8 extension = string_file_extension(filename);
         String_Const_u8 new_extensions[2] = {};
         i32 new_extensions_count = 0;
@@ -1664,9 +1669,9 @@ get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffe
         String_Const_u8 file_without_extension = string_file_without_extension(filename);
         for (i32 i = 0; i < new_extensions_count; i += 1){
             Temp_Memory temp = begin_temp(scratch);
-            String_Const_u8 new_extension = new_extensions[i];
-            String_Const_u8 new_filename = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
-            if (open_file(app, buffer_out, new_filename, false, true)){
+            String8 new_extension = new_extensions[i];
+            String8 new_filename = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
+            if (open_editing_file(app, buffer_out, new_filename, false, true)){
                 result = true;
                 break;
             }
@@ -1674,8 +1679,8 @@ get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffe
         }
         
         if (!result && new_extensions_count > 0){
-            String_Const_u8 new_filename = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
-            if (open_file(app, buffer_out, new_filename, false, false)){
+            String8 new_filename = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
+            if (open_editing_file(app, buffer_out, new_filename, false, false)){
                 result = true;
             }
         }

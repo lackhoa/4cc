@@ -274,8 +274,8 @@ lister__backspace_text_field__file_path(Application_Links *app){
             lister->text_field.string = backspace_utf8(lister->text_field.string);
             if (character_is_slash(last_char)){
                 User_Input input = get_current_input(app);
-                String_Const_u8 text_field = lister->text_field.string;
-                String_Const_u8 new_hot = string_remove_last_folder(text_field);
+                String8 text_field = lister->text_field.string;
+                String8 new_hot = path_dirname(text_field);
                 b32 is_modified = has_modifier(&input, KeyCode_Control);
                 b32 whole_word_when_mod = def_get_config_b32(vars_intern_lit("lister_whole_word_backspace_when_modified"));
                 b32 whole_word_backspace = (is_modified == whole_word_when_mod);

@@ -29,7 +29,7 @@ system_get_path(Arena* arena, System_Path_Code path_code){
             result = SCu8(out, working_dir_len + 1);
         } break;
         
-        case SystemPath_Binary: {
+        case SystemPath_BinaryDirectory: {
             // linux-specific: binary path symlinked at /proc/self/exe
             // PATH_MAX is probably good enough...
             // read the 'readlink' manpage for some comedy about it being 'broken by design'.

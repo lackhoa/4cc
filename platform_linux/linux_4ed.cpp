@@ -598,7 +598,7 @@ font_make_face(Arena* arena, Face_Description* description, f32 scale_factor) {
     
     // if description->font.file_name is a relative path, prepend the font directory.
     if(string_get_character(*name, 0) != '/') {
-        String_Const_u8 binary = system_get_path(arena, SystemPath_Binary);
+        String_Const_u8 binary = system_get_path(arena, SystemPath_BinaryDirectory);
         *name = push_u8_stringf(arena, "%.*sfonts/%.*s", string_expand(binary), string_expand(*name));
     }
     
@@ -1803,7 +1803,7 @@ main(int argc, char **argv){
         App_Get_Functions *get_funcs = 0;
         Scratch_Block scratch(&linuxvars.tctx);
         List_String_Const_u8 search_list = {};
-        def_search_list_add_system_path(scratch, &search_list, SystemPath_Binary);
+        def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
         
         String_Const_u8 core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.so"));
         if (system_load_library(scratch, core_path, &core_library)){
@@ -1870,7 +1870,7 @@ main(int argc, char **argv){
         String_Const_u8 default_file_name = string_u8_litexpr("custom_4coder.so");
         List_String_Const_u8 search_list = {};
         def_search_list_add_system_path(scratch, &search_list, SystemPath_UserDirectory);
-        def_search_list_add_system_path(scratch, &search_list, SystemPath_Binary);
+        def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
         String_Const_u8 custom_file_names[2] = {};
         i32 custom_file_count = 1;
         if (plat_settings.custom_dll != 0){

@@ -1303,7 +1303,7 @@ main(int arg_count, char **args){
             App_Get_Functions *get_funcs = 0;
             Scratch_Block scratch(mac_vars.tctx);
             String8List search_list = {};
-            def_search_list_add_system_path(scratch, &search_list, SystemPath_Binary);
+            def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
 
             String_Const_u8 core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.so"));
             if (system_load_library(scratch, core_path, &core_library)){

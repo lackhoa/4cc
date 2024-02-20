@@ -15,7 +15,7 @@ def_search_normal_load_list(Arena *arena, String8List *list){
         string_list_push(arena, list, prj_dir);
     }
     def_search_list_add_system_path(arena, list, SystemPath_UserDirectory);
-    def_search_list_add_system_path(arena, list, SystemPath_Binary);
+    def_search_list_add_system_path(arena, list, SystemPath_BinaryDirectory);
 }
 
 function String8
@@ -1536,7 +1536,7 @@ theme_parse__filename(Application_Links *app, Arena *arena, char *filename, Aren
         file = def_search_normal_fopen(arena, filename, "rb");
     }
     if (file != 0){
-        String_Const_u8 data = dump_file_handle(arena, file);
+        String_Const_u8 data = read_entire_file_handle(arena, file);
         fclose(file);
         parsed = theme_parse__data(app, arena, SCu8(filename), data, color_arena, color_table);
     }
@@ -1560,7 +1560,7 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
     Config *parsed = 0;
     FILE *file = def_search_normal_fopen(scratch, "config.4coder", "rb");
     if (file != 0){
-        String_Const_u8 data = dump_file_handle(scratch, file);
+        String_Const_u8 data = read_entire_file_handle(scratch, file);
         fclose(file);
         if (data.str != 0){
             parsed = config_from_text(app, scratch, str8_lit("config.4coder"), data);

@@ -210,7 +210,7 @@ internal void
 initialize_stylist_fonts(App *app)
 {
     Scratch_Block scratch(app);
-    String_Const_u8 bin_path = system_get_path(scratch, SystemPath_Binary);
+    String8 bin_path = system_get_path(scratch, SystemPath_BinaryDirectory);
     
     // NOTE(rjf): Fallback font.
     Face_ID face_that_should_totally_be_there = get_face_id(app, 0);

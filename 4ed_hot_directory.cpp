@@ -10,10 +10,12 @@
 // TOP
 
 internal void
-hot_directory_clean_end(Hot_Directory *hot_directory){
-    String_Const_u8 str = hot_directory->string;
-    if (!character_is_slash(string_get_character(str, str.size - 1))){
-        hot_directory->string = string_remove_last_folder(str);
+hot_directory_clean_end(Hot_Directory *hot_directory)
+{
+    String8 str = hot_directory->string;
+    if (!character_is_slash(string_get_character(str, str.size - 1)))
+    {
+        hot_directory->string = path_dirname(str);
     }
 }
 

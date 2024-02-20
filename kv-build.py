@@ -17,11 +17,11 @@ import shutil
 pjoin = os.path.join
 
 HOME = os.path.expanduser("~")
-FCODER_USER=f'{HOME}/4coder'  # NOTE: for debug build
-FCODER_ROOT=f'{HOME}/4ed'
-CODE=f"{FCODER_ROOT}/code"
-NON_SOURCE=f"{FCODER_ROOT}/4coder-non-source"
-FCODER_KV = f'{CODE}/4coder_kv'
+FCODER_USER=pjoin(HOME, '4coder')  # NOTE: for debug build
+FCODER_ROOT=pjoin(HOME, '4ed')
+CODE=pjoin(FCODER_ROOT, "code")
+NON_SOURCE=pjoin(FCODER_ROOT, "4coder-non-source")
+FCODER_KV = pjoin(CODE, '4coder_kv')
 OS_WINDOWS = int(os.name== "nt")
 OS_MAC = int(not OS_WINDOWS)
 
@@ -71,14 +71,14 @@ def rm_tree(path, topdown=False) :
     os.removedirs(path)
 
 def rm_rf_inner(path):
-    if not os.path.exists(path):
-        return
-    if os.path.isfile(path):
+    if os.path.islink(path):
+        os.unlink(path)
+    elif os.path.isfile(path):
         os.remove(path)
     elif os.path.isdir(path):
         shutil.rmtree(path)
-    else:
-        print('dont know what this path is')
+    elif os.path.exists(path):
+        print('idk know what this path is')
         exit(1)
 
 def rm_rf(*paths):
@@ -87,6 +87,7 @@ def rm_rf(*paths):
 
 def symlink_force(src, dst):
     rm_rf(dst)
+    mkdir_p( os.path.dirname(dst) )
     os.symlink(src, dst)
 
 def run(command, update_env={}):
@@ -242,10 +243,12 @@ try:
         run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed{DOT_EXE} {debug}')
 
         if full_rebuild:
-            print("NOTE: Setup 4coder config files")
-            symlink_force(pjoin(FCODER_KV, "config.4coder"), pjoin(FCODER_USER, "config.4coder"))
-            symlink_force(pjoin(FCODER_KV, "theme-kv.4coder"), pjoin(FCODER_USER, 'themes', "theme-kv.4coder"))
-            symlink_force(pjoin(CODE, "project.4coder"), pjoin(FCODER_STABLE, "project.4coder"))
+            print("NOTE: Setup symlinks, because my life just is complicated like that!")
+            for outdir in [FCODER_USER, FCODER_STABLE]:
+                symlink_force(pjoin(FCODER_KV, "config.4coder"),   pjoin(outdir, "config.4coder"))
+                symlink_force(pjoin(FCODER_KV, "theme-kv.4coder"), pjoin(outdir, 'themes', "theme-kv.4coder"))
+                symlink_force(pjoin(CODE, "project.4coder"),  pjoin(outdir, "project.4coder"))
+                symlink_force(pjoin(CODE, "data", "data.kv"), pjoin(outdir, "data", "data.kv"))
 
 except Exception as e:
     print(f'Error: {e}')

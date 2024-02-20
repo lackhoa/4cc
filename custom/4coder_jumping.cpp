@@ -197,7 +197,8 @@ parse_jump_location(String_Const_u8 line, Jump_Flag flags){
 }
 
 function Parsed_Jump
-parse_jump_from_buffer_line(Application_Links *app, Arena *arena, Buffer_ID buffer, i64 line, Jump_Flag flags){
+parse_jump_from_buffer_line(App *app, Arena *arena, Buffer_ID buffer, i64 line, Jump_Flag flags)
+{
     Parsed_Jump jump = {};
     String_Const_u8 line_str = push_buffer_line(app, arena, buffer, line);
     if (line_str.size > 0){
@@ -209,27 +210,34 @@ parse_jump_from_buffer_line(Application_Links *app, Arena *arena, Buffer_ID buff
 ////////////////////////////////
 
 function b32
-get_jump_buffer(Application_Links *app, Buffer_ID *buffer, Name_Line_Column_Location *location){
-    return(open_file(app, buffer, location->file, false, true));
+get_jump_buffer(App *app, Buffer_ID *buffer, Name_Line_Column_Location *location)
+{
+    b32 result = open_editing_file(app, buffer, location->file, false, true);
+    return result;
 }
 
 function b32
-get_jump_buffer(Application_Links *app, Buffer_ID *buffer, ID_Pos_Jump_Location *location, Access_Flag access){
+get_jump_buffer(App *app, Buffer_ID *buffer, ID_Pos_Jump_Location *location, Access_Flag access)
+{
     *buffer = location->buffer_id;
     return(buffer_exists(app, *buffer));
 }
 
-function b32
-get_jump_buffer(Application_Links *app, Buffer_ID *buffer, ID_Pos_Jump_Location *location){
+inline b32
+get_jump_buffer(App *app, Buffer_ID *buffer, ID_Pos_Jump_Location *location)
+{
     return(get_jump_buffer(app, buffer, location, Access_Always));
 }
 
 function View_ID
-switch_to_existing_view(Application_Links *app, View_ID view, Buffer_ID buffer){
+switch_to_existing_view(App *app, View_ID view, Buffer_ID buffer)
+{
     Buffer_ID current_buffer = view_get_buffer(app, view, Access_Always);
-    if (view != 0 || current_buffer != buffer){
+    if (view != 0 || current_buffer != buffer)
+    {
         View_ID existing_view = get_first_view_with_buffer(app, buffer);
-        if (existing_view != 0){
+        if (existing_view != 0)
+        {
             view = existing_view;
         }
     }

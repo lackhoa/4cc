@@ -34,7 +34,7 @@ struct CLI_Handles{
 typedef i32 System_Path_Code;
 enum{
     SystemPath_CurrentDirectory,
-    SystemPath_Binary,
+    SystemPath_BinaryDirectory,
     SystemPath_UserDirectory,
 };
 

@@ -1,12 +1,12 @@
 function String8 
-kv_search_build_file_from_dir(FApp *app, Arena *arena, String8 start_dir)
+kv_search_build_file_from_dir(Arena *arena, String8 start_dir)
 {
     String8 full_file_path = {};
     for (u32 i = 0; 
          i < ArrayCount(standard_build_filename_array); 
          i += 1)
     {
-        full_file_path = search_up_path(app, arena, start_dir, standard_build_filename_array[i]);
+        full_file_path = search_up_path(arena, start_dir, standard_build_filename_array[i]);
         if (full_file_path.size > 0)
         {
             break;

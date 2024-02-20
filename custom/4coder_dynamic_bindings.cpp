@@ -40,7 +40,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
     }
     
     if (file != 0){
-        String_Const_u8 data = dump_file_handle(scratch, file);
+        String_Const_u8 data = read_entire_file_handle(scratch, file);
         Config *parsed = config_from_text(app, scratch, filename, data);
 		fclose(file);
         

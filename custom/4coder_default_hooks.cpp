@@ -552,13 +552,13 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                     Temp_Memory_Block temp(scratch);
                     String_Const_u8 uniqueifier = {};
                     
-                    String8 filename = string_remove_last_folder(conflict->filename);
+                    String8 filename = path_dirname(conflict->filename);
                     if (filename.size > 0){
                         filename = string_chop(filename, 1);
                         u8 *end = filename.str + filename.size;
                         b32 past_the_end = false;
                         for (i32 j = 0; j < x; ++j){
-                            filename = string_remove_last_folder(filename);
+                            filename = path_dirname(filename);
                             if (j + 1 < x){
                                 filename = string_chop(filename, 1);
                             }
