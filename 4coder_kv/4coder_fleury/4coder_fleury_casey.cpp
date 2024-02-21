@@ -25,7 +25,7 @@ CUSTOM_DOC("The white zone is for loading and unloading only...")
     f32 Temp = PowerWAVControl.channel_volume[0];
 	PowerWAVControl.channel_volume[0] = PowerWAVControl.channel_volume[1];
     PowerWAVControl.channel_volume[1] = Temp;
-	change_active_panel(app);
+	change_active_primary_panel(app);
 }
 
 CUSTOM_COMMAND_SIG(casey_demo_audio_one_shot)

@@ -167,7 +167,8 @@ get_or_open_build_panel(FApp *app)
 */
 
 function void
-set_fancy_compilation_buffer_font(Application_Links *app){
+set_fancy_compilation_buffer_font(App *app)
+{
     Scratch_Block scratch(app);
     Buffer_ID buffer = get_comp_buffer(app);
     Font_Load_Location font = {};
@@ -178,7 +179,7 @@ set_fancy_compilation_buffer_font(Application_Links *app){
 internal void 
 build_in_bottom_view(FApp *app, char *command_args)
 {
-    View_ID view = get_active_view(app, Access_Always);
+    View_ID   view   = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     
     standard_search_and_build(app, global_bottom_view, buffer, command_args);
@@ -187,6 +188,7 @@ build_in_bottom_view(FApp *app, char *command_args)
     block_zero_struct(&prev_location);
     lock_jump_buffer(app, compilation_buffer_name);
     expand_bottom_view(app);
+    view_set_active(app, global_bottom_view);
 }
 
 /*
@@ -205,5 +207,40 @@ CUSTOM_DOC("If the special build panel is open, makes the build panel the active
     }
 }
 */
+
+internal String8 
+kv_search_build_file_from_dir(Arena *arena, String8 start_dir)
+{
+    String8 full_file_path = {};
+    for (u32 i = 0; 
+         i < ArrayCount(standard_build_filename_array); 
+         i += 1)
+    {
+        full_file_path = search_up_path(arena, start_dir, standard_build_filename_array[i]);
+        if (full_file_path.size > 0)
+        {
+            break;
+        }
+    }
+    return full_file_path;
+}
+
+internal void 
+kv_build_normal(FApp *app)
+{
+    build_in_bottom_view(app, "");
+}
+
+internal void 
+kv_build_run_only(FApp *app)
+{
+    build_in_bottom_view(app, "run");
+}
+
+internal void 
+kv_build_full_rebuild(FApp *app)
+{
+    build_in_bottom_view(app, "full");
+}
 
 // BOTTOM

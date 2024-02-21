@@ -665,7 +665,7 @@ CUSTOM_DOC("Removes trailing whitespace from all lines in the current buffer.")
 
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(basic_change_active_panel)
+CUSTOM_COMMAND_SIG(basic_change_active_primary_panel)
 CUSTOM_DOC("Change the currently active panel, moving to the panel with the next highest view_id.  Will not skipe the build panel if it is open.")
 {
     View_ID view = get_active_view(app, Access_Always);
@@ -1713,7 +1713,7 @@ internal void view_buffer_other_panel(FApp *app)
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     i64 pos = view_get_cursor_pos(app, view);
-    change_active_panel(app);
+    change_active_primary_panel(app);
     view = get_active_view(app, Access_Always);
     view_set_buffer(app, view, buffer, 0);
     view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
@@ -2097,7 +2097,7 @@ CUSTOM_DOC("Advances forward through the undo history in the buffer containing t
 CUSTOM_COMMAND_SIG(open_in_other)
 CUSTOM_DOC("Interactively opens a file in the other panel.")
 {
-    change_active_panel_send_command(app, interactive_open_or_new);
+    change_active_primary_panel_send_command(app, interactive_open_or_new);
 }
 
 CUSTOM_COMMAND_SIG(default_file_externally_modified)

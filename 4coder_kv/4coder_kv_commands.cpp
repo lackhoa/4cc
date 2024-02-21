@@ -91,7 +91,7 @@ VIM_COMMAND_SIG(byp_visual_uncomment){
 }
 
 internal void
-vim_goto_definition_other_panel(FApp *app)
+vim_goto_definition_other_panel(App *app)
 {
   vim_push_jump(app, get_active_view(app, Access_ReadVisible));
   view_buffer_other_panel(app);
@@ -741,7 +741,15 @@ kv_list_all_locations(FApp *app)
     }
 }
 
-VIM_COMMAND_SIG(kv_handle_return)
+internal void
+kv_list_all_locations_other_panel(App *app)
+{
+    view_buffer_other_panel(app);
+    kv_list_all_locations(app);
+}
+
+internal void
+kv_handle_return(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -781,18 +789,6 @@ VIM_COMMAND_SIG(open_build_script)
   }
 }
 
-CUSTOM_COMMAND_SIG(c)
-CUSTOM_DOC("change to compilation buffer")
-{
-  switch_to_buffer_named(app, compilation_buffer_name);
-}
-
-CUSTOM_COMMAND_SIG(s)
-CUSTOM_DOC("change to search buffer")
-{
-  switch_to_buffer_named(app, "*search*");
-}
-
 VIM_COMMAND_SIG(vim_select_all)
 {
   vim_visual_char_mode(app);
@@ -811,7 +807,7 @@ CUSTOM_DOC("just a placeholder command so I can test stuff")
 CUSTOM_COMMAND_SIG(init)
 CUSTOM_DOC("configure your editor!")
 {
-  switch_to_buffer_named(app, "~/4ed/code/4coder_kv/4coder_kv.cpp");
+    switch_to_buffer_named(app, "~/4ed/code/4coder_kv/4coder_kv.cpp");
 }
 
 // todo: We don't wanna bind to a buffer, maybe?
@@ -905,6 +901,6 @@ internal void
 close_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_Always);
-    change_active_panel(app);
+    change_active_primary_panel(app);
     toggle_split_panel(app);
 }

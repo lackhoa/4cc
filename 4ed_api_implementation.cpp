@@ -786,52 +786,44 @@ buffer_get_setting(FApp *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i6
 }
 
 api(custom) function b32
-buffer_set_setting(FApp *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value)
+buffer_set_setting(App *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     b32 result = false;
-    if (api_check_buffer(file)){
-        result = true;
-        switch (setting){
-            case BufferSetting_Unimportant:
+    if ( api_check_buffer(file) )
+    {
+        result = false;
+        if (setting & BufferSetting_Unimportant)
+        {
+            result = true;
+            file_set_unimportant(file, (value != 0));
+        }
+        if (setting & BufferSetting_Unkillable)
+        {
+            result = true;
+            file->settings.unkillable = (value != 0);
+        }
+        if (setting & BufferSetting_ReadOnly)
+        {
+            result = true;
+            file->settings.read_only = (value != 0);
+        }
+        if (setting & BufferSetting_RecordsHistory)
+        {
+            result = true;
+            if (value)
             {
-                if (value != 0){
-                    file_set_unimportant(file, true);
+                if ( !history_is_activated(&file->state.history) )
+                {
+                    history_init(app->tctx, models, &file->state.history);
                 }
-                else{
-                    file_set_unimportant(file, false);
-                }
-            }break;
-            
-            case BufferSetting_Unkillable:
+            }
+            else if ( history_is_activated(&file->state.history) )
             {
-                file->settings.unkillable = (value != 0);
-            }break;
+                history_free(app->tctx, &file->state.history);
+            }
             
-            case BufferSetting_ReadOnly:
-            {
-                file->settings.read_only = (value != 0);
-            }break;
-            
-            case BufferSetting_RecordsHistory:
-            {
-                if (value){
-                    if (!history_is_activated(&file->state.history)){
-                        history_init(app->tctx, models, &file->state.history);
-                    }
-                }
-                else{
-                    if (history_is_activated(&file->state.history)){
-                        history_free(app->tctx, &file->state.history);
-                    }
-                }
-            }break;
-            
-            default:
-            {
-                result = 0;
-            }break;
         }
     }
     
@@ -1555,7 +1547,7 @@ view_get_managed_scope(FApp *app, View_ID view_id)
 }
 
 api(custom) function Buffer_Cursor
-buffer_compute_cursor(FApp *app, Buffer_ID buffer, Buffer_Seek seek)
+buffer_compute_cursor(App *app, Buffer_ID buffer, Buffer_Seek seek)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer);

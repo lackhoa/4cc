@@ -385,34 +385,34 @@ struct Buffer_Scroll{
 };
 
 api(custom)
-struct Basic_Scroll{
+struct Basic_Scroll
+{
     Vec2_f32 position;
     Vec2_f32 target;
 };
 
 api(custom)
 typedef i32 Buffer_Seek_Type;
-enum{
+enum
+{
     buffer_seek_pos,
     buffer_seek_line_col,
 };
 
 api(custom)
-struct Buffer_Seek{
+struct Buffer_Seek
+{
     Buffer_Seek_Type type;
-    union{
-        struct{
-            i64 pos;
-        };
-        struct{
-            i64 line;
-            i64 col;
-        };
+    union
+    {
+        struct { i64 pos; };
+        struct { i64 line; i64 col; };
     };
 };
 
 api(custom)
-struct Buffer_Cursor{
+struct Buffer_Cursor
+{
     i64 pos;
     i64 line;
     i64 col;

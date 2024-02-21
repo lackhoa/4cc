@@ -81,53 +81,60 @@ point_stack_read_top(Application_Links *app, Buffer_ID *buffer_out, i64 *pos_out
 ////////////////////////////////
 
 function void
-unlock_jump_buffer(void){
+unlock_jump_buffer(void)
+{
     locked_buffer.size = 0;
 }
 
 function void
-lock_jump_buffer(FApp *app, String8 name)
+lock_jump_buffer(App *app, String8 name)
 {
     if (name.size < sizeof(locked_buffer_space))
     {
         block_copy(locked_buffer_space, name.str, name.size);
         locked_buffer = SCu8(locked_buffer_space, name.size);
         Scratch_Block scratch(app);
-        String_Const_u8 escaped = string_escape(scratch, name);
+        String8 escaped = string_escape(scratch, name);
         LogEventF(log_string(app, M), scratch, 0, 0, system_thread_get_id(),
                   "lock jump buffer [name=\"%.*s\"]", string_expand(escaped));
     }
 }
 
 function void
-lock_jump_buffer(Application_Links *app, char *name, i32 size){
+lock_jump_buffer(App *app, char *name, i32 size)
+{
     lock_jump_buffer(app, SCu8(name, size));
 }
 
 function void
-lock_jump_buffer(Application_Links *app, Buffer_ID buffer_id){
+lock_jump_buffer(App *app, Buffer_ID buffer_id)
+{
     Scratch_Block scratch(app);
-    String_Const_u8 buffer_name = push_buffer_unique_name(app, scratch, buffer_id);
+    String8 buffer_name = push_buffer_unique_name(app, scratch, buffer_id);
     lock_jump_buffer(app, buffer_name);
 }
 
 function Buffer_ID
-get_locked_jump_buffer(Application_Links *app){
+get_locked_jump_buffer(App *app)
+{
     Buffer_ID result = 0;
     if (locked_buffer.size > 0){
         result = get_buffer_by_name(app, locked_buffer, Access_Always);
     }
-    if (result == 0){
+    if (result == 0)
+    {
         unlock_jump_buffer();
     }
     return(result);
 }
 
 function View_ID
-get_view_for_locked_jump_buffer(Application_Links *app){
+get_view_for_locked_jump_buffer(App *app)
+{
     View_ID result = 0;
     Buffer_ID buffer = get_locked_jump_buffer(app);
-    if (buffer != 0){
+    if (buffer != 0)
+    {
         result = get_first_view_with_buffer(app, buffer);
     }
     return(result);
@@ -145,7 +152,8 @@ new_view_settings(Application_Links *app, View_ID view){
 ////////////////////////////////
 
 function void
-view_set_passive(Application_Links *app, View_ID view_id, b32 value){
+view_set_passive(Application_Links *app, View_ID view_id, b32 value)
+{
     Managed_Scope scope = view_get_managed_scope(app, view_id);
     b32 *is_passive = scope_attachment(app, scope, view_is_passive_loc, b32);
     if (is_passive != 0){
@@ -380,7 +388,7 @@ view_buffer_set(Application_Links *app, Buffer_ID *buffers, i64 *positions, i32 
 ////////////////////////////////
 
 function void
-change_active_panel_send_command(App *app, Custom_Command_Function *custom_func)
+change_active_primary_panel_send_command(App *app, Custom_Command_Function *custom_func)
 {
     View_ID view = get_active_view(app, Access_Always);
     view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
@@ -395,14 +403,15 @@ change_active_panel_send_command(App *app, Custom_Command_Function *custom_func)
 }
 
 // CUSTOM_DOC("Change the currently active panel, moving to the panel with the next highest view_id.")
+// NOTE(kv): This is inadequate, I want it to switch to the "last active" primary panel, if switched from a passive one.
 internal void
-change_active_panel(App *app)
+change_active_primary_panel(App *app)
 {
-    change_active_panel_send_command(app, 0);
+    change_active_primary_panel_send_command(app, 0);
 }
 
 internal void
-expand_bottom_view(FApp *app)
+expand_bottom_view(App *app)
 {
     Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
     Face_ID face_id = get_face_id(app, buffer);
@@ -429,7 +438,7 @@ toggle_bottom_view_command(App *app)
         collapse_bottom_view(app);
         if ( view_is_active(app, global_bottom_view) )
         {
-            change_active_panel(app);
+            change_active_primary_panel(app);
         }
     } 
     else
@@ -439,7 +448,7 @@ toggle_bottom_view_command(App *app)
     }
 }
 
-CUSTOM_COMMAND_SIG(change_active_panel_backwards)
+CUSTOM_COMMAND_SIG(change_active_primary_panel_backwards)
 CUSTOM_DOC("Change the currently active panel, moving to the panel with the next lowest view_id.")
 {
     View_ID view = get_active_view(app, Access_Always);

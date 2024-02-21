@@ -14,8 +14,8 @@ setup_mac_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id){
     Bind(keyboard_macro_start_recording , KeyCode_U, KeyCode_Command);
     Bind(keyboard_macro_finish_recording, KeyCode_U, KeyCode_Command, KeyCode_Shift);
     Bind(keyboard_macro_replay,           KeyCode_U, KeyCode_Control);
-    Bind(change_active_panel,           KeyCode_Comma, KeyCode_Command);
-    Bind(change_active_panel_backwards, KeyCode_Comma, KeyCode_Command, KeyCode_Shift);
+    Bind(change_active_primary_panel,           KeyCode_Comma, KeyCode_Command);
+    Bind(change_active_primary_panel_backwards, KeyCode_Comma, KeyCode_Command, KeyCode_Shift);
     Bind(interactive_new,               KeyCode_N, KeyCode_Command);
     Bind(interactive_open_or_new,       KeyCode_O, KeyCode_Command);
     Bind(open_in_other,                 KeyCode_O, KeyCode_Control);

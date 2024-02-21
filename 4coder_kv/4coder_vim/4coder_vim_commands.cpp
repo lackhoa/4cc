@@ -816,17 +816,20 @@ VIM_COMMAND_SIG(vim_open_file_in_quotes)
 }
 */
 
-VIM_COMMAND_SIG(vim_goto_definition){
-	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
-	jump_to_definition_at_cursor(app);
+internal void vim_goto_definition(App *app)
+{
+    vim_push_jump(app, get_active_view(app, Access_ReadVisible));
+    jump_to_definition_at_cursor(app);
 }
-VIM_COMMAND_SIG(vim_next_4coder_jump){
-	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
-	goto_next_jump(app);
+internal void vim_next_4coder_jump(App *app)
+{
+    vim_push_jump(app, get_active_view(app, Access_ReadVisible));
+    goto_next_jump(app);
 }
-VIM_COMMAND_SIG(vim_prev_4coder_jump){
-	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
-	goto_prev_jump(app);
+internal void vim_prev_4coder_jump(App *app)
+{
+    vim_push_jump(app, get_active_view(app, Access_ReadVisible));
+    goto_prev_jump(app);
 }
 VIM_COMMAND_SIG(vim_first_4coder_jump){
 	vim_push_jump(app, get_active_view(app, Access_ReadVisible));

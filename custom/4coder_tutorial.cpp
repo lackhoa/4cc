@@ -217,7 +217,7 @@ tutorial_run_loop(Application_Links *app){
     tutorial.view = view;
     tutorial_maximize(app);
     
-    change_active_panel(app);
+    change_active_primary_panel(app);
     
     for (;;){
         User_Input in = get_next_input(app, EventPropertyGroup_Any, 0);
@@ -242,7 +242,7 @@ tutorial_run_loop(Application_Links *app){
                     {
                         tutorial_maximize(app);
                         tutorial_action(app, tutorial.hover_action);
-                        change_active_panel(app);
+                        change_active_primary_panel(app);
                     }break;
                     
                     default:

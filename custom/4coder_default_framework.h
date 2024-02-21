@@ -37,7 +37,8 @@ struct Name_Line_Column_Location{
     i32 column;
 };
 
-struct Parsed_Jump{
+struct Parsed_Jump
+{
     b32 success;
     Name_Line_Column_Location location;
     i32 colon_position;

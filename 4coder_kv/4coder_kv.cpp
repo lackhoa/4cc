@@ -11,7 +11,6 @@
 #include "4coder_vim/4coder_vim_include.h"
 
 #include "4coder_kv_input.cpp"
-#include "4coder_kv_build.cpp"
 #include "4ed_kv_parser.cpp"
 #include "4coder_kv_fui.cpp"
 #include "kv_lexer.h"
@@ -138,13 +137,12 @@ kv_default_bindings(Mapping *mapping)
     ParentMap(file_id);
 }
 
-inline void 
-create_unimportant_buffer(App *app, String8 name)
+inline Buffer_ID 
+create_special_buffer(App *app, String8 name, Buffer_Create_Flag create_flags, Buffer_Setting_ID buffer_flags)
 {
-    Buffer_ID buffer = create_buffer(app, name,
-                                     BufferCreate_NeverAttachToFile |
-                                     BufferCreate_AlwaysNew);
-    buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
+    Buffer_ID buffer = create_buffer(app, name, create_flags);
+    buffer_set_setting(app, buffer, buffer_flags, true);
+    return buffer;
 }
 
 internal void
@@ -281,7 +279,7 @@ initialize_stylist_fonts(App *app)
     }
 }
 
-VIM_COMMAND_SIG(kv_startup)
+internal void kv_startup(App *app)
 {
     ProfileScope(app, "kv_startup");
     Scratch_Block temp(app);
@@ -306,9 +304,10 @@ VIM_COMMAND_SIG(kv_startup)
     kv_default_bindings(&framework_mapping);
     
     { // NOTE(kv): Create special buffers.
-        create_unimportant_buffer(app, str8lit("*calc*"));
-        create_unimportant_buffer(app, compilation_buffer_name);
-        create_unimportant_buffer(app, str8lit("*render*"));
+        Buffer_Create_Flag create_flags = BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew;
+        create_special_buffer(app, str8lit("*calc*"),       create_flags, BufferSetting_Unimportant);
+        create_special_buffer(app, compilation_buffer_name, create_flags, BufferSetting_Unimportant|BufferSetting_ReadOnly);
+        create_special_buffer(app, str8lit("*render*"),     create_flags, BufferSetting_Unimportant);
     }
   
     startup_panels_and_files(app);
@@ -508,7 +507,7 @@ kv_vim_bindings(App *app)
     BIND(N|MAP,   open_matching_file_cpp_other_panel, M|KeyCode_F12);
     
     /// Panel
-    BIND(N|MAP, change_active_panel,      C|KeyCode_Tab);
+    BIND(N|MAP, change_active_primary_panel,      C|KeyCode_Tab);
     BIND(N|MAP, close_panel,              M|KeyCode_W);
     BIND(N|MAP, toggle_split_panel,       C|KeyCode_W);
     
@@ -523,9 +522,10 @@ kv_vim_bindings(App *app)
     BIND(N|MAP,  kv_build_run_only,           C|M|KeyCode_M);
     BIND(N|MAP,  kv_build_full_rebuild,       S|M|KeyCode_M);
     // Language support
-    BIND(N|MAP,  vim_goto_definition,                 KeyCode_F1);
-    BIND(N|MAP,  vim_goto_definition_other_panel,   M|KeyCode_F1);
-    BIND(N|V|MAP,  kv_list_all_locations,             KeyCode_F2);
+    BIND(N|MAP,  vim_goto_definition,                   KeyCode_F1);
+    BIND(N|MAP,  vim_goto_definition_other_panel,     M|KeyCode_F1);
+    BIND(N|V|MAP,  kv_list_all_locations,               KeyCode_F2);
+    BIND(N|V|MAP,  kv_list_all_locations_other_panel, M|KeyCode_F2);
     //
     BIND(N|MAP,   byp_request_comment,   SUB_G,     KeyCode_ForwardSlash);
     BIND(N|MAP,   byp_request_uncomment, SUB_G,   S|KeyCode_ForwardSlash);
@@ -548,7 +548,7 @@ kv_vim_bindings(App *app)
     
     // NOTE(kv) KV miscellaneous binds
     BIND(N|  MAP,  kv_handle_return,                        KeyCode_Return);
-    BIND(N|  MAP,  if_read_only_goto_position_same_panel, S|KeyCode_Return);
+    // BIND(N|  MAP,  if_read_only_goto_position_same_panel, S|KeyCode_Return);
     //
     BIND(N|  MAP,  write_space,                KeyCode_Space);
     BIND(N|  MAP,  vim_insert_end,             KeyCode_A);

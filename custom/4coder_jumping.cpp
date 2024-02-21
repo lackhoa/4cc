@@ -63,7 +63,8 @@ check_is_note(String_Const_u8 line, u64 colon_pos){
 #pragma clang diagnostic ignored "-Wsign-compare"
 
 function Parsed_Jump
-parse_jump_location(String_Const_u8 line){
+parse_jump_location(String8 line)
+{
     Parsed_Jump jump = {};
     jump.sub_jump_indented = (string_get_character(line, 0) == ' ');
     
@@ -73,12 +74,16 @@ parse_jump_location(String_Const_u8 line){
     
     u64 left_paren_pos = string_find_first(line, '(');
     u64 right_paren_pos = left_paren_pos + string_find_first(string_skip(line, left_paren_pos), ')');
-    for (;!jump.is_ms_style && right_paren_pos < line.size;){
-        if (ms_style_verify(line, left_paren_pos, right_paren_pos)){
+    for (;!jump.is_ms_style && right_paren_pos < line.size;)
+    {
+        if (ms_style_verify(line, left_paren_pos, right_paren_pos))
+        {
             jump.is_ms_style = true;
             jump.colon_position = (i32)(right_paren_pos + string_find_first(string_skip(line, right_paren_pos), ':'));
-            if (jump.colon_position < line.size){
-                if (check_is_note(line, jump.colon_position)){
+            if (jump.colon_position < line.size)
+            {
+                if (check_is_note(line, jump.colon_position))
+                {
                     jump.sub_jump_note = true;
                 }
                 
@@ -409,7 +414,7 @@ seek_jump_(Application_Links *app, b32 skip_repeats, b32 skip_sub_errors, i32 di
             if (get_jump_buffer(app, &buffer, &location)){
                 View_ID target_view = get_active_view(app, Access_Always);
                 if (target_view == view){
-                    change_active_panel(app);
+                    change_active_primary_panel(app);
                     target_view = get_active_view(app, Access_Always);
                 }
                 switch_to_existing_view(app, target_view, buffer);

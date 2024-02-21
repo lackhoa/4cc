@@ -7,7 +7,8 @@
 #if !defined(FCODER_JUMP_STICKY_H)
 #define FCODER_JUMP_STICKY_H
 
-struct Sticky_Jump{
+struct Sticky_Jump
+{
     i64 list_line;
     i64 list_colon_index;
     b32 is_sub_error;
@@ -28,7 +29,8 @@ struct Sticky_Jump_Node{
     Sticky_Jump jump;
 };
 
-struct Sticky_Jump_Array{
+struct Sticky_Jump_Array
+{
     Sticky_Jump *jumps;
     i32 count;
 };

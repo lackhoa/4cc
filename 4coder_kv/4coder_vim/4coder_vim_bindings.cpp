@@ -218,10 +218,10 @@ function void vim_default_bindings_(Application_Links *app, Key_Code leader){
 	VimBind(N|V|MAP, vim_play_macro,                  (Sft|KeyCode_2));
 
 	/// Window Binds (TODO(BYP): Do the rest of these, and do them properly)
-	VimBind(N|MAP, change_active_panel_backwards,     (Ctl|KeyCode_H));
-	VimBind(N|MAP, change_active_panel_backwards,     (Ctl|KeyCode_J));
-	VimBind(N|MAP, change_active_panel,               (Ctl|KeyCode_K));
-	VimBind(N|MAP, change_active_panel,               (Ctl|KeyCode_L));
+	VimBind(N|MAP, change_active_primary_panel_backwards,     (Ctl|KeyCode_H));
+	VimBind(N|MAP, change_active_primary_panel_backwards,     (Ctl|KeyCode_J));
+	VimBind(N|MAP, change_active_primary_panel,               (Ctl|KeyCode_K));
+	VimBind(N|MAP, change_active_primary_panel,               (Ctl|KeyCode_L));
 
 
 #undef I
