@@ -71,7 +71,8 @@ CUSTOM_DOC("Enter Command Mode")
 }
 
 function void
-vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
+vim_generate_hot_directory_file_list(App *app, Lister *lister)
+{
 	Scratch_Block scratch(app, lister->arena);
 
 	Temp_Memory temp = begin_temp(lister->arena);
@@ -98,8 +99,8 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 			 info < one_past_last;
 			 info += 1){
 			if (!HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-			String_Const_u8 filename = push_stringf(lister->arena, "%.*s/",
-														string_expand((**info).filename));
+			String8 filename = push_stringf(lister->arena, "%.*s/",
+                                            string_expand((**info).filename));
 			lister_add_item(lister, lister_prealloced(filename), empty_string_prealloced, filename.str, 0);
 			;
 		}
@@ -108,7 +109,7 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 			 info < one_past_last;
 			 info += 1){
 			if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-			String_Const_u8 filename = push_string_copy(lister->arena, (**info).filename);
+			String8 filename = push_string_copy(lister->arena, (**info).filename);
 			char *is_loaded = "";
 			char *status_flag = "";
 
@@ -119,7 +120,7 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 				List_String_Const_u8 list = {};
 				string_list_push(lister->arena, &list, hot);
 				string_list_push_overlap(lister->arena, &list, '/', (**info).filename);
-				String_Const_u8 full_file_path = string_list_flatten(lister->arena, list);
+				String8 full_file_path = string_list_flatten(lister->arena, list);
 				buffer = get_buffer_by_filename(app, full_file_path, Access_Always);
 				end_temp(path_temp);
 			}
@@ -133,7 +134,7 @@ vim_generate_hot_directory_file_list(Application_Links *app, Lister *lister){
 					case DirtyState_UnsavedChangesAndUnloadedChanges: status_flag = " *!"; break;
 				}
 			}
-			String_Const_u8 status = push_stringf(lister->arena, "%s%s", is_loaded, status_flag);
+			String8 status = push_stringf(lister->arena, "%s%s", is_loaded, status_flag);
 			lister_add_item(lister, lister_prealloced(filename), lister_prealloced(status), filename.str, 0);
 		}
 	}

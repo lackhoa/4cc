@@ -357,10 +357,128 @@ setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
 #undef t
 }
 
-struct Game_Data
+u32 data_current_version = 2;
+u32 data_magic_number = *(u32 *)"kvda";
+
+struct Game_Save_Old
 {
-    i32 the_number;
+    u32 magic_number;
+    u32 version;
+    
+    v3 camera_z;
+    v1 camera_distance;
 };
+
+struct Game_Save
+{
+    u32 magic_number;
+    u32 version;
+    
+    v3 camera_z;
+    v1 camera_distance;
+};
+
+global b32 user_requested_game_save = false;
+
+// @Cleanup move to helper file
+internal String8
+pjoin(Arena *arena, String8 a, String8 b)
+{
+    String8 result = push_stringf(arena, "%.*s/%.*s", string_expand(a), string_expand(b));
+    return result;
+}
+
+internal String8
+pjoin(Arena *arena, String8 a, const char *b)
+{
+    String8 result = push_stringf(arena, "%.*s/%s", string_expand(a), b);
+    return result;
+}
+
+// @Cleanup moveme
+inline b32
+move_file(char const *existing_filename, char const *new_filename)
+{
+    return gb_file_move(existing_filename, new_filename);
+}
+
+inline b32
+move_file(Arena *scratch, String8 existing_filename, String8 new_filename)
+{
+    return gb_file_move(to_c_string(scratch, existing_filename), 
+                        to_c_string(scratch, new_filename));
+}
+
+inline b32
+remove_file(Arena *scratch, String8 filename)
+{
+    return gb_file_remove(to_c_string(scratch, filename));
+}
+
+internal b32
+save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
+{
+    Scratch_Block scratch(app);
+    local_persist b32 has_done_backup = false;
+    String8 backup_dir = pjoin(scratch, save_dir, "backups");
+    
+    b32 ok = true;
+    if (!has_done_backup)
+    {
+        // NOTE: backup game if is_first_write_since_launched
+        time_t rawtime;
+        time(&rawtime);
+        struct tm *timeinfo = localtime(&rawtime);
+        char time_string[256];
+        size_t strftime_result = strftime(time_string, sizeof(time_string), "%d_%m_%Y_%H_%M_%S", timeinfo);
+        if (strftime_result == 0)
+        {
+            print_message(app, "strftime failed... go figure that out!\n");
+            ok = false;
+        }
+        else
+        {
+            String8 backup_path = push_stringf(scratch, "%.*s/data_%s.kv", string_expand(backup_dir), time_string);
+            ok = move_file(scratch, save_path, backup_path);
+           
+            if (ok) has_done_backup = true;
+        }
+        
+        if (ok)
+        {// NOTE: cycle out old backup files
+            File_List backup_files = system_get_file_list(scratch, backup_dir);
+            if (backup_files.count > 100)
+            {
+                u64 oldest_mtime = U64_MAX;
+                String8 file_to_delete = {};
+                File_Info **opl = backup_files.infos + backup_files.count;
+                for (File_Info **backup = backup_files.infos;
+                     backup < opl;
+                     backup++)
+                {
+                    File_Attributes attr = (*backup)->attributes;
+                    if (attr.last_write_time < oldest_mtime)
+                    {
+                        oldest_mtime   = attr.last_write_time;
+                        file_to_delete = pjoin(scratch, backup_dir, (*backup)->filename);
+                    }
+                }
+                b32 delete_ok = remove_file(scratch, file_to_delete);
+                if (delete_ok) printf_message(app, scratch, "INFO: deleted backup file %.*s because it's too old", string_expand(file_to_delete));
+                else           printf_message(app, scratch, "ERROR: failed to delete backup file %.*s", string_expand(file_to_delete));
+            }
+        }
+    }
+    
+    if (ok)
+    {// note: save the file
+        ok = write_entire_file(scratch, save_path, save, sizeof(save));
+        if (!ok) printf_message(app, scratch, "Failed to write to file %.*s", string_expand(save_path));
+    }
+    
+    
+    return ok;
+}
 
 internal void
 game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
@@ -378,23 +496,48 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
     draw_set_offset(app, layout_center);
    
     v1 U = 1e3;  // distance multiplier (@Cleanup push this scale down to the renderer also)
-    local_persist Game_Data game_data;
+  
+    Scratch_Block scratch(app);
+    local_persist Game_Save save = {};
+    
+    // TODO: Save these in the game state!!!
+    String8 binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+    String8 save_dir  = pjoin(scratch, binary_dir, "data");
+    String8 save_path = pjoin(scratch, save_dir, "data.kv");
     
     local_persist b32 inited = false;
     if ( !inited )
     {// NOTE: Initialization
-        // BOOKMARK
-        Scratch_Block scratch(app);
-        // String8 current_dir = push_exe_directory(app, scratch);
-        String8 binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-        // String8 binary_dir = path_dirname(binary_path);
-        // It's not a string, surprisingly!
-        String8 test_data = str8lit("new data for me to write");
-        String8 filename = str8lit("data.kv");
-        String8 filepath = push_stringf(scratch, "%.*s/data/%.*s", string_expand(binary_dir), string_expand(filename));
-        write_entire_file(scratch, filepath, test_data.str, test_data.size);
-        // File_Name_Data file_data = read_entire_file_search_up_path(scratch, hotdir, str8lit("test_data.kv"));
         inited = true;
+        String8 read_string = read_entire_file(scratch, save_path);
+        Game_Save *read = (Game_Save *)read_string.str;
+        if (read->magic_number == data_magic_number)
+        {
+            if (read->version == data_current_version)
+            {
+                save = *read;
+            }
+            else if ( read->version == (data_current_version-1) )
+            {
+                print_message(app, "Game data load: Converting old version to new version!\n");
+                Game_Save_Old *old = (Game_Save_Old *)read;
+                // NOTE(kv): Conversion code!
+                save = *(Game_Save *)old;
+                save.camera_distance = old->camera_distance / U;
+                
+                save.version = data_current_version;
+                // NOTE(kv): Write back the converted file.
+                save_game(app, save_dir, save_path, &save);
+            }
+            else print_message(app, "Game data load: Unknown version\n");
+        }
+        else print_message(app, "Game data load: Wrong magic number!\n");
+    }
+    
+    if (user_requested_game_save)
+    {
+        save_game(app, save_dir, save_path, &save);
+        user_requested_game_save = false;
     }
     
     Camera camera_value = {};
@@ -404,7 +547,7 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         
         Fui_Item_Index camera_input_index;
         // BOOKMARK NOTE: The input combines both z and distance (distance in w)
-        fslider(camera_input, v4{ 0.245445, 0.871441, 0.424672, 6.564896 }, Fui_Options{.update=fui_update_null}, &camera_input_index);
+        fslider(camera_input, v4{ 0.271646, 0.782319, 0.560523, 6.564888 }, Fui_Options{.update=fui_update_null}, &camera_input_index);
         v3 camz = camera_input.xyz;
         v1 cam_distance = U * camera_input.w;
         
@@ -421,8 +564,10 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
             cam_distance = length(camera->world_p) + cam_delta.z;
             
             setup_camera_from_data(camera, camz, cam_distance);
-            
+           
             fui_post_value(camera_input_index, V4(camz, cam_distance / U));
+            save.camera_z = camz;
+            save.camera_distance = cam_distance / U;
         }
     }
 

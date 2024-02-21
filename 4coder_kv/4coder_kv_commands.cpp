@@ -743,29 +743,30 @@ kv_list_all_locations(FApp *app)
 
 VIM_COMMAND_SIG(kv_handle_return)
 {
-  View_ID view = get_active_view(app, Access_ReadVisible);
-  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-  if (buffer)
-  { // writable buffer
-    if ( fui_handle_slider(app, buffer) )
-    {
-      // pass
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+    if (buffer)
+    {// Writable buffer
+        if ( fui_handle_slider(app, buffer) )
+        {
+            // pass
+        }
+        else
+        {
+            save_all_dirty_buffers(app);
+            user_requested_game_save = true;
+        }
     }
     else
     {
-      save_all_dirty_buffers(app);
+        buffer = view_get_buffer(app, view, Access_ReadVisible);
+        if (buffer)
+        {// Readonly buffer
+            vim_push_jump(app, get_active_view(app, Access_ReadVisible));
+            goto_jump_at_cursor(app);
+            lock_jump_buffer(app, buffer);
+        }
     }
-  }
-  else
-  {
-    buffer = view_get_buffer(app, view, Access_ReadVisible);
-    if (buffer)
-    { // readonly buffer
-      vim_push_jump(app, get_active_view(app, Access_ReadVisible));
-      goto_jump_at_cursor(app);
-      lock_jump_buffer(app, buffer);
-    }
-  }
 }
 
 VIM_COMMAND_SIG(open_build_script)
@@ -882,7 +883,7 @@ view_goto_first_search_position(App *app, View_ID view, String8 needle)
 }
 
 internal void
-kv_toggle_split_panel(App *app)
+toggle_split_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     View_ID next_view = get_next_view_looped_primary_panels(app, view, Access_Always, false);
@@ -898,4 +899,12 @@ kv_toggle_split_panel(App *app)
         view_set_buffer(app, new_view, global_other_view_buffer, 0);
         view_set_active(app, view);
     }
+}
+
+internal void 
+close_panel(App *app)
+{
+    View_ID view = get_active_view(app, Access_Always);
+    change_active_panel(app);
+    toggle_split_panel(app);
 }

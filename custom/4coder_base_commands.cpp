@@ -673,13 +673,6 @@ CUSTOM_DOC("Change the currently active panel, moving to the panel with the next
     view_set_active(app, view);
 }
 
-CUSTOM_COMMAND_SIG(close_panel)
-CUSTOM_DOC("Closes the currently active panel if it is not the only panel open.")
-{
-    View_ID view = get_active_view(app, Access_Always);
-    view_close(app, view);
-}
-
 ////////////////////////////////
 
 CUSTOM_COMMAND_SIG(show_scrollbar)

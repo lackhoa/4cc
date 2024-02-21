@@ -383,10 +383,12 @@ internal system_get_file_list_sig()
 }
 
 internal
-system_quick_file_attributes_sig(){
+system_quick_file_attributes_sig()
+{
     WIN32_FILE_ATTRIBUTE_DATA info = {};
     File_Attributes result = {};
-    if (GetFileAttributesEx_utf8String(scratch, filename, GetFileExInfoStandard, &info)){
+    if ( GetFileAttributesEx_utf8String(scratch, filename, GetFileExInfoStandard, &info) )
+    {
         result.size = ((u64)info.nFileSizeHigh << 32LL) | ((u64)info.nFileSizeLow);
         result.last_write_time = ((u64)info.ftLastWriteTime.dwHighDateTime << 32LL) | ((u64)info.ftLastWriteTime.dwLowDateTime);
         result.flags = win32_convert_file_attribute_flags(info.dwFileAttributes);

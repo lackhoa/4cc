@@ -391,7 +391,7 @@ kv_vim_bindings(App *app)
     BIND(N|MAP, kv_handle_g_f,              SUB_G,   KeyCode_F);
     BIND(N|MAP, vim_next_4coder_jump,              M|KeyCode_N);
     BIND(N|MAP, vim_prev_4coder_jump,              M|KeyCode_P);
-    BIND(N|MAP, view_buffer_other_panel,           M|KeyCode_D);
+    BIND(N|MAP, view_buffer_other_panel,           C|KeyCode_D);
     
     /// Mode Binds
     BIND(N|V|MAP, vim_modal_i,                        KeyCode_I);
@@ -508,8 +508,9 @@ kv_vim_bindings(App *app)
     BIND(N|MAP,   open_matching_file_cpp_other_panel, M|KeyCode_F12);
     
     /// Panel
-    BIND(N|MAP, change_active_panel,         C|KeyCode_Tab);
-    BIND(N|MAP, kv_toggle_split_panel,       M|KeyCode_W);
+    BIND(N|MAP, change_active_panel,      C|KeyCode_Tab);
+    BIND(N|MAP, close_panel,              M|KeyCode_W);
+    BIND(N|MAP, toggle_split_panel,       C|KeyCode_W);
     
     // Sub modes
     BIND(N|V|MAP, vim_leader_d, SUB_Leader,       KeyCode_D);

@@ -3992,7 +3992,7 @@ int main(int argc, char **argv){
     // NOTE(allen): Arrange input files and output files
     
     String_Const_u8 path_to_self = string_u8_litexpr(__FILE__);
-    path_to_self = string_remove_last_folder(path_to_self);
+    path_to_self = path_dirname(path_to_self);
     
     String_Const_u8 hand_written_h_name = push_stringf(&ctx->arena,
                                                           "%.*s4coder_lex_gen_hand_written.h",

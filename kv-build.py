@@ -219,7 +219,7 @@ try:
         COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
         SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
-        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"
+        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"  # Look, I tried -O2 and even -O1, it's still slow af
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
         if 0: # in case I wanna debug some f-ing macro
             run(f'clang++ -E {CODE}/4ed_app_target.cpp -o 4ed_app_e.cpp {COMPILE_FLAGS}')
@@ -248,7 +248,7 @@ try:
                 symlink_force(pjoin(FCODER_KV, "config.4coder"),   pjoin(outdir, "config.4coder"))
                 symlink_force(pjoin(FCODER_KV, "theme-kv.4coder"), pjoin(outdir, 'themes', "theme-kv.4coder"))
                 symlink_force(pjoin(CODE, "project.4coder"),  pjoin(outdir, "project.4coder"))
-                symlink_force(pjoin(CODE, "data", "data.kv"), pjoin(outdir, "data", "data.kv"))
+                symlink_force(pjoin(CODE, "data"), pjoin(outdir, "data"))
 
 except Exception as e:
     print(f'Error: {e}')

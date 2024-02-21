@@ -2886,7 +2886,7 @@ make_cursor(void *base, u64 size){
     return(cursor);
 }
 function Cursor
-make_cursor(String_Const_u8 data){
+make_cursor(String8 data){
     return(make_cursor(data.str, data.size));
 }
 function Cursor
@@ -2894,10 +2894,12 @@ make_cursor(Base_Allocator *allocator, u64 size){
     String8 memory = base_allocate(allocator, size);
     return(make_cursor(memory));
 }
-function String_Const_u8
-linalloc_push(Cursor *cursor, u64 size, String_Const_u8 location){
-    String_Const_u8 result = {};
-    if (cursor->pos + size <= cursor->cap){
+function String8
+linalloc_push(Cursor *cursor, u64 size, String_Const_u8 location)
+{
+    String8 result = {};
+    if (cursor->pos + size <= cursor->cap)
+    {
         result.str = cursor->base + cursor->pos;
         result.size = size;
         cursor->pos += size;
@@ -2925,7 +2927,8 @@ linalloc_begin_temp(Cursor *cursor){
     return(temp);
 }
 function void
-linalloc_end_temp(Temp_Memory_Cursor temp){
+linalloc_end_temp(Temp_Memory_Cursor temp)
+{
     temp.cursor->pos = temp.pos;
 }
 function void
@@ -3009,7 +3012,8 @@ linalloc_begin_temp(Arena *arena){
     return(temp);
 }
 function void
-linalloc_end_temp(Temp_Memory_Arena temp){
+linalloc_end_temp(Temp_Memory_Arena temp)
+{
     Base_Allocator *allocator = temp.arena->base_allocator;
     Cursor_Node *cursor_node = temp.arena->cursor_node;
     for (Cursor_Node *prev = 0;
@@ -3039,12 +3043,14 @@ linalloc_wrap_unintialized(String_Const_u8 data){
     return(data.str);
 }
 function void*
-linalloc_wrap_zero(String_Const_u8 data){
+linalloc_wrap_zero(String_Const_u8 data)
+{
     block_zero(data.str, data.size);
     return(data.str);
 }
 function void*
-linalloc_wrap_write(String_Const_u8 data, u64 size, void *src){
+linalloc_wrap_write(String_Const_u8 data, u64 size, void *src)
+{
     block_copy(data.str, src, clamp_top(data.size, size));
     return(data.str);
 }
@@ -3054,21 +3060,28 @@ linalloc_wrap_write(String_Const_u8 data, u64 size, void *src){
 #define pop_array(a,T,c) (linalloc_pop((a), sizeof(T)*(c)))
 #define push_align(a,b) (linalloc_align((a), (b)))
 #define push_align_zero(a,b) (linalloc_wrap_zero(linalloc_align((a), (b))))
-function Temp_Memory
-begin_temp(Cursor *cursor){
+
+internal Temp_Memory
+begin_temp(Cursor *cursor)
+{
     Temp_Memory temp = {.kind=LinearAllocatorKind_Cursor};
     temp.temp_memory_cursor = linalloc_begin_temp(cursor);
     return(temp);
 }
-function Temp_Memory
-begin_temp(Arena *arena){
+
+internal Temp_Memory
+begin_temp(Arena *arena)
+{
     Temp_Memory temp = {.kind=LinearAllocatorKind_Arena};
     temp.temp_memory_arena = linalloc_begin_temp(arena);
     return(temp);
 }
-function void
-end_temp(Temp_Memory temp){
-    switch (temp.kind){
+
+internal void
+end_temp(Temp_Memory temp)
+{
+    switch (temp.kind)
+    {
         case LinearAllocatorKind_Cursor:
         {
             linalloc_end_temp(temp.temp_memory_cursor);
@@ -3421,15 +3434,6 @@ push_data_copy(Arena *arena, String8 data)
     result.str = push_array_write(arena, u8, data.size, data.str);
     result.size = data.size;
     return(result);
-}
-
-internal char *
-to_c_string(Arena *arena, String8 data)
-{
-  char *result = {};
-  result = push_array_write(arena, char, data.size, data.str);
-  push_array_zero(arena, char, 1);
-  return result;
 }
 
 function b32
@@ -5216,6 +5220,7 @@ push_string_copy(Arena *arena, String_Const_char src)
     string.str[string.size] = 0;
     return(string);
 }
+
 function String8
 push_string_copy(Arena *arena, String8 src)
 {
@@ -5226,6 +5231,14 @@ push_string_copy(Arena *arena, String8 src)
     string.str[string.size] = 0;
     return(string);
 }
+
+inline char *
+to_c_string(Arena *arena, String8 string)
+{
+    String8 result = push_string_copy(arena, string);
+    return (char *)result.str;
+}
+
 function String_Const_u16
 push_string_copy(Arena *arena, String_Const_u16 src){
     String_Const_u16 string = {};

@@ -2115,47 +2115,50 @@ read_entire_file_handle(Arena *arena, FILE *file)
 }
 
 function String8
-search_up_path(Arena *scratch, String8 start_path, String8 filename)
+search_up_path(Arena *arena, String8 start_path, String8 filename)
 {
     String8 result = {};
     String8 path = start_path;
     for (;path.size > 0;)
     {
-        Temp_Memory_Block temp(scratch);
         char last_char = string_get_character(path, path.size - 1);
         if (character_is_slash(last_char))
         {
             path = string_chop(path, 1);
         }
-        String8 full_path = push_stringf(scratch, "%.*s/%.*s",
+        Temp_Memory temp = begin_temp(arena);
+        String8 full_path = push_stringf(arena, "%.*s/%.*s",
                                          string_expand(path),
                                          string_expand(filename));
-        if (file_exists(scratch, full_path))
+        if ( file_exists(arena, full_path) )
         {
             result = full_path;
             break;
         }
-        path = path_dirname(path);
+        else
+        {
+            end_temp(temp);
+            path = path_dirname(path);
+        }
     }
     return(result);
 }
 
-internal File_Name_Data
+internal String8
 read_entire_file(Arena *arena, String8 filename)
 {
-    File_Name_Data result = {};
+    String8 result = {};
     FILE *file = open_file(arena, filename, "rb");
     if (file != 0)
     {
-        result.filename = filename;
-        result.data = read_entire_file_handle(arena, file);
+        result = read_entire_file_handle(arena, file);
         fclose(file);
     }
     return(result);
 }
 
 internal b32
-write_entire_file(Arena *scratch, String8 filename, u8 *data, u64 size)
+write_entire_file(Arena *scratch, String8 filename, void *data, u64 size)
 {
     b32 result = false;
     gbFile file_value = {}; gbFile *file = &file_value;
@@ -2176,7 +2179,12 @@ read_entire_file_search_up_path(Arena *arena, String8 path, String8 filename)
     String8 full_path = search_up_path(arena, path, filename);
     if (full_path.size > 0)
     {
-        result = read_entire_file(arena, full_path);
+        String8 data = read_entire_file(arena, full_path);
+        if (data.str) 
+        {
+            result.data = data;
+            result.filename = full_path;
+        }
     }
     return(result);
 }

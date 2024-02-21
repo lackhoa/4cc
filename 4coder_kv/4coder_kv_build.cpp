@@ -1,4 +1,5 @@
-function String8 
+// nono  @Cleanup don't need this file!
+internal String8 
 kv_search_build_file_from_dir(Arena *arena, String8 start_dir)
 {
     String8 full_file_path = {};
@@ -18,17 +19,17 @@ kv_search_build_file_from_dir(Arena *arena, String8 start_dir)
 internal void 
 kv_build_normal(FApp *app)
 {
-  build_in_bottom_view(app, "");
+    build_in_bottom_view(app, "");
 }
 
 internal void 
 kv_build_run_only(FApp *app)
 {
-  build_in_bottom_view(app, "run");
+    build_in_bottom_view(app, "run");
 }
 
 internal void 
 kv_build_full_rebuild(FApp *app)
 {
-  build_in_bottom_view(app, "full");
+    build_in_bottom_view(app, "full");
 }
