@@ -5,7 +5,8 @@
 // TOP
 
 internal void*
-base_reserve__system(void *user_data, u64 size, u64 *size_out, String_Const_u8 location){
+base_reserve__system(void *user_data, u64 size, u64 *size_out, String8 location)
+{
     u64 extra_size = 128;
     u64 increased_size = size + extra_size;
     size = round_up_u64(increased_size, KB(4));
@@ -32,8 +33,10 @@ make_base_allocator_system(void){
 global Base_Allocator base_allocator_system = {};
 
 internal Base_Allocator*
-get_base_allocator_system(void){
-    if (base_allocator_system.reserve == 0){
+get_base_allocator_system(void)
+{
+    if (base_allocator_system.reserve == 0)
+    {
         base_allocator_system = make_base_allocator_system();
     }
     return(&base_allocator_system);

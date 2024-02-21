@@ -7,7 +7,7 @@
 #if !defined(FCODER_FILE_ENUMERATOR_CPP)
 #define FCODER_FILE_ENUMERATOR_CPP
 
-#include "4coder_base_types.h"
+// #include "4coder_base_types.h"
 
 #include <stdio.h>
 #include <stdlib.h>

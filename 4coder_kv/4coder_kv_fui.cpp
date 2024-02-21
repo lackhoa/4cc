@@ -96,7 +96,7 @@ fui_handle_slider(App *app, Buffer_ID buffer)
     
     if (at_slider)
     {
-        X_Block xblock(app);
+        Scratch_Block xblock(app);
        
         Range_i64 slider_value_range = {};
         String8 slider_name;
@@ -204,7 +204,7 @@ fui_tick(App *app, Frame_Info frame_info)
         }
        
         {// NOTE: Printing
-            X_Block x(app);
+            Scratch_Block x(app);
             String8 slider_value = fui_push_slider_value(x, slider->type, slider->value);
             vim_set_bottom_text(slider_value);  // todo Allow customizing this too?
         }

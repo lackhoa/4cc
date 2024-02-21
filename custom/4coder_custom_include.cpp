@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "4coder_base_types.h"
+// #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_table.h"
 #include "4coder_events.h"
@@ -64,7 +64,7 @@
 
 ////////////////////////////////
 
-#include "4coder_base_types.cpp"
+// #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 
 #include "4coder_file.cpp"

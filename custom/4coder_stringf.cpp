@@ -9,26 +9,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-function String_Const_u8
-push_stringfv(Arena *arena, char *format, va_list args){
-    va_list args2;
-    va_copy(args2, args);
-    i32 size = vsnprintf(0, 0, format, args);
-    String_Const_u8 result = string_const_u8_push(arena, size + 1);
-    vsnprintf((char*)result.str, (size_t)result.size, format, args2);
-    result.size -= 1;
-    result.str[result.size] = 0;
-    return(result);
-}
-function String_Const_u8
-push_stringf(Arena *arena, char *format, ...){
-    va_list args;
-    va_start(args, format);
-    String_Const_u8 result = push_stringfv(arena, format, args);
-    va_end(args);
-    return(result);
-}
-
 function void
 string_list_pushfv(Arena *arena, List_String_Const_char *list, char *format, va_list args){
     String_Const_u8 string = push_stringfv(arena, format, args);
@@ -298,11 +278,4 @@ date_time_format(Arena *arena, char *format, Date_Time *date_time){
     return(date_time_format(arena, SCu8(format), date_time));
 }
 
-internal String8
-to_string(Arena *arena, i32 value)
-{
-    return push_stringf(arena, "%d", value);
-}
-
 // BOTTOM
-

@@ -83,7 +83,7 @@ get_next_token_pos(Quick_Parser *p)
 internal b32
 qp_eat_number(Quick_Parser *p, f32 *out)
 {
-    X_Block xblock(p->app);
+    Scratch_Block xblock(p->app);
     
     f32 sign = 1;
     Token *token = qp_eat_token(p);
@@ -158,7 +158,7 @@ qp_eat_char(Quick_Parser *p, u8 chr)
 {
     if ( qp_eat_token(p) )
     {
-        X_Block xblock(p->app);
+        Scratch_Block xblock(p->app);
         String8 string = qp_push_token(p, xblock);
         p->ok = string_equal(string, chr);
     }
@@ -196,7 +196,7 @@ qp_eat_until_char(Quick_Parser *p, String8 chars)
     u32 result = 0;
     while ( !result && qp_eat_token(p) )
     {
-        X_Block xblock(p->app);
+        Scratch_Block xblock(p->app);
         String8 token = qp_push_token(p, xblock);
         if ((token.size == 1) && 
             (result = char_in_string(chars, token.str[0])))

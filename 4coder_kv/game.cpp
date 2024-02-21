@@ -380,41 +380,6 @@ struct Game_Save
 
 global b32 user_requested_game_save = false;
 
-// @Cleanup move to helper file
-internal String8
-pjoin(Arena *arena, String8 a, String8 b)
-{
-    String8 result = push_stringf(arena, "%.*s/%.*s", string_expand(a), string_expand(b));
-    return result;
-}
-
-internal String8
-pjoin(Arena *arena, String8 a, const char *b)
-{
-    String8 result = push_stringf(arena, "%.*s/%s", string_expand(a), b);
-    return result;
-}
-
-// @Cleanup moveme
-inline b32
-move_file(char const *existing_filename, char const *new_filename)
-{
-    return gb_file_move(existing_filename, new_filename);
-}
-
-inline b32
-move_file(Arena *scratch, String8 existing_filename, String8 new_filename)
-{
-    return gb_file_move(to_c_string(scratch, existing_filename), 
-                        to_c_string(scratch, new_filename));
-}
-
-inline b32
-remove_file(Arena *scratch, String8 filename)
-{
-    return gb_file_remove(to_c_string(scratch, filename));
-}
-
 internal b32
 save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
 {
@@ -439,7 +404,7 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
         else
         {
             String8 backup_path = push_stringf(scratch, "%.*s/data_%s.kv", string_expand(backup_dir), time_string);
-            ok = move_file(scratch, save_path, backup_path);
+            ok = move_file(save_path, backup_path);
            
             if (ok) has_done_backup = true;
         }
@@ -464,8 +429,8 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
                     }
                 }
                 b32 delete_ok = remove_file(scratch, file_to_delete);
-                if (delete_ok) printf_message(app, scratch, "INFO: deleted backup file %.*s because it's too old", string_expand(file_to_delete));
-                else           printf_message(app, scratch, "ERROR: failed to delete backup file %.*s", string_expand(file_to_delete));
+                if (delete_ok) printf_message(app, "INFO: deleted backup file %.*s because it's too old", string_expand(file_to_delete));
+                else           printf_message(app, "ERROR: failed to delete backup file %.*s", string_expand(file_to_delete));
             }
         }
     }
@@ -473,7 +438,7 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
     if (ok)
     {// note: save the file
         ok = write_entire_file(scratch, save_path, save, sizeof(save));
-        if (!ok) printf_message(app, scratch, "Failed to write to file %.*s", string_expand(save_path));
+        if (!ok) printf_message(app, "Failed to write to file %.*s", string_expand(save_path));
     }
     
     

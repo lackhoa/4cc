@@ -14,7 +14,7 @@
 
 #define REMOVE_OLD_STRING
 
-#include "4coder_base_types.h"
+// #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_table.h"
 #include "4coder_events.h"
@@ -69,7 +69,7 @@
 
 ////////////////////////////////
 
-#include "4coder_base_types.cpp"
+// #include "4coder_base_types.cpp"
 #include "4ed_fui_user.cpp"
 #include "4coder_layout.cpp"
 #include "4coder_string_match.cpp"
@@ -105,7 +105,6 @@
 
 #include "4ed_log.cpp"
 #include "4ed_coroutine.cpp"
-#include "4ed_mem.cpp"
 #include "4ed_dynamic_variables.cpp"
 #include "4ed_font_set.cpp"
 #include "4ed_translation.cpp"

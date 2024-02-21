@@ -71,7 +71,7 @@ kv_tick(FApp *app, Frame_Info frame_info)
                     {
                         buffer_reopen(app, buffer, 0);
                         String8 filename = push_buffer_filename(app, scratch, buffer);
-                        printf_message(app, scratch, "automatically reloaded file %.*s\n", string_expand(filename));
+                        printf_message(app, "automatically reloaded file %.*s\n", string_expand(filename));
                     }break;
                 }
                 

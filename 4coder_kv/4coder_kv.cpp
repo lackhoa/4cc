@@ -159,7 +159,7 @@ kv_4coder_initialize(App *app)
 internal void
 startup_panels_and_files(App *app)
 {
-    X_Block xblock(app);
+    Scratch_Block xblock(app);
     
 #if KV_INTERNAL
     // @Cleanup @Rename

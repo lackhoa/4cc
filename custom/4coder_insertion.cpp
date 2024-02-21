@@ -54,11 +54,13 @@ insert__flush(Buffer_Insertion *insertion){
 }
 
 function char*
-insert__reserve(Buffer_Insertion *insertion, u64 size){
-    char *space = push_array(insertion->cursor, char, size);
-    if (space == 0){
+insert__reserve(Buffer_Insertion *insertion, u64 size)
+{
+    char *space = push_array_cursor(insertion->cursor, char, size);
+    if (space == 0)
+    {
         insert__flush(insertion);
-        space = push_array(insertion->cursor, char, size);
+        space = push_array_cursor(insertion->cursor, char, size);
     }
     return(space);
 }

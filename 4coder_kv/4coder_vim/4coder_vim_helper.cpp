@@ -38,7 +38,7 @@ function u8 vim_query_user_key(Application_Links *app, String_Const_u8 message){
 	vim_is_querying_user_key = false;
 	vim_state.chord_resolved = true;
 	Scratch_Block scratch(app);
-	printf_message(app, scratch, "User key was '%c' \n", result);
+	printf_message(app, "User key was '%c' \n", result);
 	return result;
 }
 

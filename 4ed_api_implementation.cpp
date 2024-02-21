@@ -2472,30 +2472,31 @@ print_message(FApp *app, String_Const_u8 message)
     }
 }
 
-inline void 
-print_message(FApp *app, char *message) 
+inline void print_message(FApp *app, char *message) 
 {
   print_message(app, SCu8(message));
 }
 
 inline void
-printf_message_inner(App *app, char *format, ...)
+printf_message(App *app, char *format, ...)
 {
     va_list args;
     va_start(args, format);
+    
     Scratch_Block scratch(app);
     String8 string = push_stringfv(scratch, format, args);
     print_message(app, string);
+    
     va_end(args);
 }
 
-// nono: uh-oh, unfinished business?
+/*
 #define printf_message_test(app, format, ...) \
     do{ printf_message_inner(app, format, ##__VA_ARGS__); }while(0)
 
-// nono: we're leaking memory when we push the string into the arena
 #define printf_message(app, arena, str, ...) \
     print_message(app, push_stringf(arena, str, ##__VA_ARGS__))
+*/
 
 api(custom) function b32
 log_string(FApp *app, String_Const_u8 str){

@@ -14,7 +14,7 @@
 
 #include <stdio.h>
 
-#include "4coder_base_types.h"
+// #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_events.h"
 
@@ -40,7 +40,7 @@
 #include "generated/system_api.cpp"
 #include "generated/font_api.cpp"
 
-#include "4coder_base_types.cpp"
+// #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_events.cpp"
 #include "4coder_hash_functions.cpp"
@@ -116,7 +116,6 @@ struct Win32_Input_Chunk{
 #include "4coder_system_allocator.cpp"
 #include "4coder_codepoint_map.cpp"
 
-#include "4ed_mem.cpp"
 #include "4ed_font_set.cpp"
 
 ////////////////////////////////

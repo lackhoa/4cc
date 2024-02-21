@@ -438,7 +438,7 @@ internal void
 open_file_from_current_dir(App *app)
 {
     GET_VIEW_AND_BUFFER;
-    Temp_Block temp(app);
+    Scratch_Block temp(app);
     String8 dirname = push_buffer_dirname(app, temp, buffer);
     set_hot_directory(app, dirname);
     vim_interactive_open_or_new(app);
@@ -803,9 +803,9 @@ CUSTOM_COMMAND_SIG(kv_miscellaneous_debug_command)
 CUSTOM_DOC("just a placeholder command so I can test stuff")
 {
   GET_VIEW_AND_BUFFER;
-  Scratch_Block temp(app);
-  String8 bufname = push_buffer_base_name(app ,temp, buffer);
-  printf_message(app, temp, "buffer name: %.*s\n", string_expand(bufname));
+  Scratch_Block scratch(app);
+  String8 bufname = push_buffer_base_name(app ,scratch, buffer);
+  printf_message(app, "buffer name: %.*s\n", string_expand(bufname));
 }
 
 CUSTOM_COMMAND_SIG(init)

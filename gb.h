@@ -2588,7 +2588,7 @@ EXTERN_C_END
 #define GB_IMPLEMENTATION_DONE
 
 #if defined(__cplusplus)
-extern "C" {
+EXTERN_C_BEGIN
 #endif
 
 
@@ -3937,7 +3937,8 @@ gb_inline void *gb_memset(void *dest, u8 c, isize n) {
 	return dest;
 }
 
-gb_inline i32 gb_memcompare(void const *s1, void const *s2, isize size) {
+gb_inline i32 gb_memcompare(void const *s1, void const *s2, isize size)
+{
 	// TODO(bill): Heavily optimize
 	u8 const *s1p8 = cast(u8 const *)s1;
 	u8 const *s2p8 = cast(u8 const *)s2;
@@ -10822,7 +10823,7 @@ GB_COMPARE_PROC(gb_video_mode_dsc_cmp) {
 
 
 #if defined(__cplusplus)
-}
+EXTERN_C_END
 #endif
 
 #endif // GB_IMPLEMENTATION

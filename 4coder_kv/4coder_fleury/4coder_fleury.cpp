@@ -572,7 +572,7 @@ CUSTOM_DOC("Fleury startup event")
     
     //~ NOTE(rjf): Initialize panels
     {
-        Temp_Block temp(app);
+        Scratch_Block temp(app);
         Buffer_Identifier comp = buffer_identifier(compilation_buffer_name);
         Buffer_ID comp_id = buffer_identifier_to_id(app, comp);
         String8 startup_file       = def_get_config_string(temp, "startup_file1");

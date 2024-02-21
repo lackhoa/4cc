@@ -10,12 +10,12 @@
 
 #define KV_IMPLEMENTATION
 #include "kv.h"
-#include "4coder_base_types.h"
+// #include "4coder_base_types.h"
 #include "4coder_table.h"
 #include "4coder_token.h"
 #include "pcg_basic.h"
 
-#include "4coder_base_types.cpp"
+// #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
 #include "4coder_hash_functions.cpp"

@@ -7,12 +7,13 @@
 #define COMMAND_METADATA_OUT "generated/command_metadata.h"
 #define ID_METADATA_OUT "generated/managed_id_metadata.cpp"
 
+#define KV_IMPLEMENTATION
 #include "kv.h"
-#include "4coder_base_types.h"
+// #include "4coder_base_types.h"
 #include "4coder_token.h"
 #include "generated/lexer_cpp.h"
 
-#include "4coder_base_types.cpp"
+// #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
 
