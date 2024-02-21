@@ -4,7 +4,7 @@
 # NOTE(kv): assumes only Windows and Mac (and clang)
 
 # NOTE: configuration #########################
-DEBUG_MODE = 0
+DEBUG_MODE = 1
 FORCE_FULL_REBUILD = 0
 STOP_DEBUGGING_BEFORE_BUILD = 0
 

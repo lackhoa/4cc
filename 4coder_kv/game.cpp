@@ -357,7 +357,7 @@ setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
 #undef t
 }
 
-u32 data_current_version = 2;
+u32 data_current_version = 3;
 u32 data_magic_number = *(u32 *)"kvda";
 
 struct Game_Save_Old
@@ -376,6 +376,8 @@ struct Game_Save
     
     v3 camera_z;
     v1 camera_distance;
+    
+    v3 bezier_curve[4];
 };
 
 global b32 user_requested_game_save = false;
@@ -437,10 +439,9 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
     
     if (ok)
     {// note: save the file
-        ok = write_entire_file(scratch, save_path, save, sizeof(save));
+        ok = write_entire_file(scratch, save_path, save, sizeof(*save));
         if (!ok) printf_message(app, "Failed to write to file %.*s", string_expand(save_path));
     }
-    
     
     return ok;
 }
@@ -465,7 +466,7 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
     Scratch_Block scratch(app);
     local_persist Game_Save save = {};
     
-    // TODO: Save these in the game state!!!
+    // TODO(kv): Save these in the game state!!!
     String8 binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
     String8 save_dir  = pjoin(scratch, binary_dir, "data");
     String8 save_path = pjoin(scratch, save_dir, "data.kv");
@@ -488,7 +489,6 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
                 Game_Save_Old *old = (Game_Save_Old *)read;
                 // NOTE(kv): Conversion code!
                 save = *(Game_Save *)old;
-                save.camera_distance = old->camera_distance / U;
                 
                 save.version = data_current_version;
                 // NOTE(kv): Write back the converted file.
@@ -511,13 +511,16 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         camera->focal_length = 2000.f;
         
         Fui_Item_Index camera_input_index;
-        // BOOKMARK NOTE: The input combines both z and distance (distance in w)
-        fslider(camera_input, v4{ 0.271646, 0.782319, 0.560523, 6.564888 }, Fui_Options{.update=fui_update_null}, &camera_input_index);
-        v3 camz = camera_input.xyz;
-        v1 cam_distance = U * camera_input.w;
+        // v4 old_value = v4{ 0.271646, 0.782319, 0.560523, 6.564888 };
+        // NOTE: The input combines both z and distance (distance in w)
+        // We're keeping this slider here since we don't know how to control it.
+        fslider(camera_input, v4{ 0.000000, 0.000000, 0.000000, 0.000000 }, Fui_Options{.update=fui_update_null}, &camera_input_index);
+        v3 camz         = save.camera_z;
+        v1 cam_distance = U * save.camera_distance;
         
         setup_camera_from_data(camera, camz, cam_distance);
-       
+      
+        // TODO: are we lagging by one frame, dawg?
         v3 cam_delta = {};
         if ( fui_is_active(camera_input_index) )
         {
@@ -529,8 +532,9 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
             cam_distance = length(camera->world_p) + cam_delta.z;
             
             setup_camera_from_data(camera, camz, cam_distance);
-           
-            fui_post_value(camera_input_index, V4(camz, cam_distance / U));
+          
+            // NOTE: we don't use the fui system anymore
+            // fui_post_value(camera_input_index, V4(camz, cam_distance / U));
             save.camera_z = camz;
             save.camera_distance = cam_distance / U;
         }
@@ -558,29 +562,44 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
     }    
     
     {// NOTE: bezier curve experiment!
+        Fui_Item_Index bezier_input_index;
         // BOOKMARK
-        fslider( c0, v3{ -0.637700, 0.176406, 0.768833 });
-        fslider( c1, v3{ -0.411237, 0.887374, 1.143159 });
-        fslider( c2, v3{ 1.666014, -0.706654, 0.000000 });
-        fslider( c3, v3{ 0.344152, 0.116179, 0.000000 } );
-        
+        fslider(bezier_input, 0.000000, Fui_Options{.update=fui_update_null}, &bezier_input_index);
+       
+        // NOTE: process input
+        if ( fui_is_active(bezier_input_index) )
+        {
+            local_persist i32 active_index = 0;
+#define Down(N)  global_fui_key_states[KeyCode_##N] != 0
+            if (Down(0)) active_index = 0;
+            if (Down(1)) active_index = 1;
+            if (Down(2)) active_index = 2;
+            if (Down(3)) active_index = 3;
+#undef Down
+            
+            v3 direction = fui_direction_from_key_states().xyz;
+            v3 delta = matvmul3(&camera->axes, direction) * dt;
+            save.bezier_curve[active_index] += delta;
+        }
+       
+        // NOTE: Input processing
+        v3 control_points[4];
+        block_copy_array(control_points, save.bezier_curve);
         f32 pos_unit = 500;
-        v3 control_points[] = {c0, c1, c2, c3};
-        for_i32 (index, 0, alen(control_points))
+        for_i32 ( index, 0, alen(control_points) )
         {
             control_points[index] *= pos_unit;
         }
-       
+        
         // NOTE: Draw the control points
         fslider( radius, v1{1.0f} );
         radius *= 10.0f;
-        //
         for_i32 (index, 0, 4)
         {
             v2 screen_p = perspective_project(camera, control_points[index]);
             draw_circle(app, screen_p, radius, gray);
         }
-        
+        // NOTE: draw the actual curve
         draw_cubic_bezier(app, camera, control_points);
     }
      
