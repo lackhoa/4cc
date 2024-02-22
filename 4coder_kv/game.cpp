@@ -302,27 +302,48 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     }
 }
 
-internal v2 
+internal v2
 perspective_project(Camera *camera, v3 point)
 {
     v3 projected = matvmul3(&camera->project, point);
     // NOTE: distance is in z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
-    f32 dz_point_camera = absolute(camera->world_p.z - projected.z);
-    v3 result_v3 = (camera->focal_length / dz_point_camera) * projected;
-    return result_v3.xy;
+    f32 dz_point_camera = camera->world_p.z - projected.z;
+    v1 near_clip = 10;
+    if (dz_point_camera > near_clip)
+    {
+        v3 result = (camera->focal_length / dz_point_camera) * projected;
+        return result.xy;
+    }
+    else
+        return V2All(F32_MAX);
 }
 
 internal void
 draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
 {
-    v4 grayv4  = {.5, .5, .5, 1};
-    u32 gray   = pack_argb(grayv4);
+    u32 gray   = pack_argb(v4{.5,.5,.5,1});
+    u32 yellow = 0xFF777700;
+   
+    fslider(radius_a, 23.380762);
+    fslider(radius_b, 3.923108);
     
+    {// NOTE: Control points
+        for_i32 (index, 1, 3)
+        {
+            v2 screen_p = perspective_project(camera, P[index]);
+            draw_circle(app, screen_p, radius_a, yellow);
+        }
+    }
+    
+    // NOTE: Sample points
     i32 nslices = 16;
-    f32 du = 1.0f / (f32)nslices;
-    for_i32 (sample_index, 1, nslices)
+    f32 inv_nslices = 1.0f / (f32)nslices;
+    for_i32 (sample_index, 0, nslices+1)
     {
-        f32 u = du * (f32)sample_index;
+        f32 t_radius = (f32)sample_index * inv_nslices;
+        f32 radius = lerp(radius_a, t_radius, radius_b);
+        
+        f32 u = inv_nslices * (f32)sample_index;
         f32 U = 1.0f-u;
         v3 world_p = (pow(U,3)*    P[0] + 
                       3*pow(U,2)*u*P[1] +
@@ -330,7 +351,15 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
                       pow(u,3)*    P[3]);
         //
         v2 screen_p = perspective_project(camera, world_p);
-        draw_circle(app, screen_p, 10, gray);
+        
+        v1 draw_radius;
+        {// NOTE: Having to calculate the focal_length/dz twice :<
+            v1 projected_z = dot(camera->axes.z, world_p);
+            v1 dz = camera->world_p.z - projected_z;
+            draw_radius = absolute((camera->focal_length / dz) * radius);
+        }
+        
+        draw_circle(app, screen_p, draw_radius, gray);
     }
 }
 
@@ -346,6 +375,7 @@ setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
         camera->x = noz( v3{camz.z, 0, -camz.x} );  // NOTE: we want y axis to point up in this case
     }
     camera->y = noz( cross(camz, camera->x) );
+    camera->z = camz;
     
 #define t camera->axes.columns
     camera->project =
@@ -357,7 +387,7 @@ setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
 #undef t
 }
 
-u32 data_current_version = 3;
+u32 data_current_version = 4;
 u32 data_magic_number = *(u32 *)"kvda";
 
 struct Game_Save_Old
@@ -367,6 +397,13 @@ struct Game_Save_Old
     
     v3 camera_z;
     v1 camera_distance;
+    
+    v3 bezier_curve[4];
+};
+
+struct Bezier
+{
+    v3 control_points[4];
 };
 
 struct Game_Save
@@ -377,7 +414,7 @@ struct Game_Save
     v3 camera_z;
     v1 camera_distance;
     
-    v3 bezier_curve[4];
+    Bezier bezier_curves[3];
 };
 
 global b32 user_requested_game_save = false;
@@ -533,11 +570,11 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
             
             setup_camera_from_data(camera, camz, cam_distance);
           
-            // NOTE: we don't use the fui system anymore
-            // fui_post_value(camera_input_index, V4(camz, cam_distance / U));
             save.camera_z = camz;
             save.camera_distance = cam_distance / U;
         }
+        DEBUG_VALUE(camera->world_p);
+        DEBUG_VALUE(camera->z);
     }
 
     { // push coordinate system
@@ -559,48 +596,45 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         draw_line(app, O+pO_screen, O+px_screen, line_thickness, pack_argb({.5,  0,  0, 1}));
         draw_line(app, O+pO_screen, O+py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
         draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
-    }    
+    }
     
     {// NOTE: bezier curve experiment!
-        Fui_Item_Index bezier_input_index;
+        Fui_Item_Index input_indices[3] = {};
         // BOOKMARK
-        fslider(bezier_input, 0.000000, Fui_Options{.update=fui_update_null}, &bezier_input_index);
-       
-        // NOTE: process input
-        if ( fui_is_active(bezier_input_index) )
-        {
-            local_persist i32 active_index = 0;
-#define Down(N)  global_fui_key_states[KeyCode_##N] != 0
-            if (Down(0)) active_index = 0;
-            if (Down(1)) active_index = 1;
-            if (Down(2)) active_index = 2;
-            if (Down(3)) active_index = 3;
-#undef Down
-            
-            v3 direction = fui_direction_from_key_states().xyz;
-            v3 delta = matvmul3(&camera->axes, direction) * dt;
-            save.bezier_curve[active_index] += delta;
-        }
-       
-        // NOTE: Input processing
-        v3 control_points[4];
-        block_copy_array(control_points, save.bezier_curve);
-        f32 pos_unit = 500;
-        for_i32 ( index, 0, alen(control_points) )
-        {
-            control_points[index] *= pos_unit;
-        }
+        fslider(_bezier0, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+0);
+        fslider(_bezier1, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+1);
+        fslider(_bezier2, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+2);
         
-        // NOTE: Draw the control points
-        fslider( radius, v1{1.0f} );
-        radius *= 10.0f;
-        for_i32 (index, 0, 4)
+        for_i32 (curve_index, 0, 3)
         {
-            v2 screen_p = perspective_project(camera, control_points[index]);
-            draw_circle(app, screen_p, radius, gray);
+            // NOTE: process input
+            if ( fui_is_active(input_indices[curve_index]) )
+            {
+                local_persist i32 active_cp_index = 0;
+#define Down(N)  global_fui_key_states[KeyCode_##N] != 0
+                if (Down(0)) active_cp_index = 0;
+                if (Down(1)) active_cp_index = 1;
+                if (Down(2)) active_cp_index = 2;
+                if (Down(3)) active_cp_index = 3;
+#undef Down
+                v3 direction = fui_direction_from_key_states().xyz;
+                v3 delta = matvmul3(&camera->axes, direction) * dt;
+                save.bezier_curves[curve_index].control_points[active_cp_index] += delta;
+            }
+            
+            // NOTE: Input processing
+            v3 control_points[4];
+            block_copy_array(control_points, save.bezier_curves[curve_index].control_points);
+            f32 pos_unit = 500;
+            for_i32 ( index, 0, alen(control_points) )
+            {
+                control_points[index] *= pos_unit;
+            }
+            
+            // NOTE: Draw the control points
+            // NOTE: draw the actual curve
+            draw_cubic_bezier(app, camera, control_points);
         }
-        // NOTE: draw the actual curve
-        draw_cubic_bezier(app, camera, control_points);
     }
      
     fslider(software_rendering_slider, 0.0f);

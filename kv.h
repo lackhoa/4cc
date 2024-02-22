@@ -10319,6 +10319,11 @@ to_string(Arena *arena, i32 value)
 
 //////////////////////////////////////////////////
 
+inline v2 V2All(v1 value) { return v2{value,value}; }
+inline v3 V3All(v1 value) { return v3{value,value,value}; }
+inline v4 V4All(v1 value) { return v4{value,value,value,value}; }
+
+
 // IMPORTANT: NO TRESPASS ////////////////////////////////////
 
 // NOTE(kv): do the people including this file a favor and not pollute.

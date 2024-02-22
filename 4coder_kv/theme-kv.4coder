@@ -3,9 +3,10 @@ defcolor_text_default = 0xFF787878;
 defcolor_function     = 0xFF587898;
 defcolor_keyword      = 0xFF998963;
 defcolor_comment      = 0xFF557700;
-defcolor_macro        = 0xFF996666;
+defcolor_macro        = defcolor_base;
 defcolor_non_text     = 0xFF707040;  // NOTE(kv): parens
 defcolor_comment_pop  = { 0xFF2A83a0, 0xFFbb2828, 0xFFbbbb00 };  // todos, notes
+defcolor_type         =  defcolor_base;
 
 defcolor_highlight_junk  = 0xFF3A0000;  // NOTE: error highlight
 defcolor_highlight_white = 0x80003A3A;  // NOTE: search highlight
@@ -43,7 +44,6 @@ defcolor_line_numbers_back     = 0xFF101010;
 defcolor_line_numbers_text     = 0xFF404040;
 
 /// BYP Colors
-defcolor_type                       =  defcolor_base;
 defcolor_primitive                  =  defcolor_base;
 defcolor_control                    =  defcolor_preproc;
 defcolor_struct                     =  defcolor_keyword;
