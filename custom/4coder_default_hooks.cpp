@@ -61,7 +61,8 @@ CUSTOM_DOC("Default command for responding to a try-exit event")
 }
 
 function Implicit_Map_Result
-default_implicit_map(Application_Links *app, String_ID lang, String_ID mode, Input_Event *event){
+default_implicit_map(App *app, String_ID lang, String_ID mode, Input_Event *event)
+{
     Implicit_Map_Result result = {};
     
     View_ID view = get_this_ctx_view(app, Access_Always);

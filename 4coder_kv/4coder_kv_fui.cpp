@@ -142,33 +142,18 @@ fui_handle_slider(App *app, Buffer_ID buffer)
             
             Fui_Slider *slider = &store[slider_index];
             
-            block_zero_array(global_fui_key_states);
-           
             for (;;)
-            {// NOTE: ui loop
-                User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
+            {// NOTE: UI loop
+                User_Input in = get_next_input(app, EventPropertyGroup_AnyKeyboardEvent, EventProperty_Escape);
                 if (in.abort) break; 
                 
-                b32 keydown = (in.event.kind == InputEventKind_KeyStroke);
-                b32 keyup   = (in.event.kind == InputEventKind_KeyRelease);
-                if (keydown || keyup)
+                update_global_key_states(&in.event);
+                
+                if ( global_key_states[KeyCode_Return] )
                 {
-                    Key_Code keycode = in.event.key.code;
-#define Match(CODE) keycode == KeyCode_##CODE
-                    //
-                    if ( Match(Return) && keydown )
-                    {
-                        write_back = true; 
-                        break;
-                    }
-                    else
-                    {
-                        global_fui_key_states[keycode] = keydown;
-                    }
-                    //
-#undef Match
+                    write_back = true; 
+                    break;
                 }
-                else leave_current_input_unhandled(app);
             }
             
             if (write_back)
@@ -177,9 +162,7 @@ fui_handle_slider(App *app, Buffer_ID buffer)
                 buffer_replace_range(app, buffer, slider_value_range, value_string);
             }
             else 
-            {
                 slider->value = slider_value_save;
-            }
             
             result = true;
         }

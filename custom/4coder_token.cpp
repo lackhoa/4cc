@@ -283,7 +283,7 @@ internal Token_Iterator_List
 token_iterator_index(u64 user_id, Token_List *list, i64 index){
     Token_Iterator_List it = {};
     if (list->first != 0){
-        index = clamp(0, index, list->total_count - 1);
+        index = clamp_between(0, index, list->total_count - 1);
         i64 base_index = 0;
         Token_Block *block = 0;
         for (Token_Block *node = list->first;
@@ -320,7 +320,7 @@ token_iterator_pos(u64 user_id, Token_List *list, i64 pos){
         Token_Block *block = list->last;
         Token *token = &block->tokens[block->count - 1];
         i64 size = token->pos + token->size;
-        pos = clamp(0, pos, size);
+        pos = clamp_between(0, pos, size);
         i64 base_index = 0;
         block = 0;
         for (Token_Block *node = list->first;

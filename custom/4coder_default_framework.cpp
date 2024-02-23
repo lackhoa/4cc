@@ -173,7 +173,8 @@ view_get_is_passive(Application_Links *app, View_ID view_id){
 }
 
 function View_ID
-open_footer_panel(Application_Links *app, View_ID view){
+open_footer_panel(App *app, View_ID view)
+{
     View_ID special_view = open_view(app, view, ViewSplit_Bottom);
     new_view_settings(app, special_view);
     Buffer_ID buffer = view_get_buffer(app, special_view, Access_Always);
@@ -185,17 +186,19 @@ open_footer_panel(Application_Links *app, View_ID view){
 }
 
 function void
-close_build_footer_panel(Application_Links *app){
-    if (view_exists(app, build_footer_panel_view_id)){
+close_build_footer_panel(App *app)
+{
+    if ( view_exists(app, build_footer_panel_view_id) )
+    {
         view_close(app, build_footer_panel_view_id);
     }
     build_footer_panel_view_id = 0;
 }
 
 function View_ID
-open_build_footer_panel(FApp *app)
+open_build_footer_panel(App *app)
 {
-    if (!view_exists(app, build_footer_panel_view_id))
+    if ( !view_exists(app, build_footer_panel_view_id) )
     {
         View_ID view = get_active_view(app, Access_Always);
         build_footer_panel_view_id = open_footer_panel(app, view);
@@ -1142,11 +1145,12 @@ default_framework_init(Application_Links *app)
 ////////////////////////////////
 
 function void
-default_input_handler_init(Application_Links *app, Arena *arena){
+default_input_handler_init(App *app, Arena *arena)
+{
     Thread_Context *tctx = get_thread_context(app);
     
     View_ID view = get_this_ctx_view(app, Access_Always);
-    String_Const_u8 name = push_stringf(arena, "view %d", view);
+    String8 name = push_stringf(arena, "view %d", view);
     
     Profile_Global_List *list = get_core_profile_list(app);
     ProfileThreadName(tctx, list, name);

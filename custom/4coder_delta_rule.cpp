@@ -193,7 +193,7 @@ DELTA_RULE_SIG(fixed_time_cubic_delta){
     local_const f32 dt_multiplier = 1.f/duration_in_seconds;
     f32 step = dt*dt_multiplier;
     f32 *t = (f32*)data;
-    *t = clamp(0.f, *t, 1.f);
+    *t = clamp_between(0.f, *t, 1.f);
     f32 prev_t = *t;
     if (is_new_target){
         prev_t = 0.f;
@@ -202,7 +202,7 @@ DELTA_RULE_SIG(fixed_time_cubic_delta){
     else{
         *t += step;
     }
-    *t = clamp(0.f, *t, 1.f);
+    *t = clamp_between(0.f, *t, 1.f);
     Vec2_f32 result = pending;
     if (*t < 1.f){
         f32 prev_x = cubic_reinterpolate(prev_t);

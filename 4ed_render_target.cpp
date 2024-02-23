@@ -298,7 +298,8 @@ draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color
 ////////////////////////////////
 
 internal Vec2_f32
-floor32(Vec2_f32 point){
+floor_v2(Vec2_f32 point)
+{
     point.x = f32_floor32(point.x);
     point.y = f32_floor32(point.y);
     return(point);
@@ -309,7 +310,7 @@ draw_string_inner(Render_Target *target, Face *face, String_Const_u8 string, Vec
                   ARGB_Color color, u32 flags, Vec2_f32 delta){
     f32 total_delta = 0.f;
     if (face != 0){
-        point = floor32(point);
+        point = floor_v2(point);
         
         f32 byte_advance = face->metrics.byte_advance;
         f32 *byte_sub_advances = face->metrics.byte_sub_advances;

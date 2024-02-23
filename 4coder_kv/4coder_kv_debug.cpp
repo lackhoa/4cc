@@ -12,7 +12,7 @@ global b32 DEBUG_draw_hud_p;  // NOTE(kv): don't set this here, it is set via co
 global Debug_Entry *DEBUG_entries;
 
 internal void
-debug_draw_entry(FApp *app, Arena *scratch, Face_ID face_id, Debug_Entry entry, v2 *at)
+DEBUG_draw_entry(FApp *app, Arena *scratch, Face_ID face_id, Debug_Entry entry, v2 *at)
 {
     Face_Metrics face_metrics = get_face_metrics(app, face_id);
     f32 line_height = face_metrics.line_height;
@@ -36,34 +36,48 @@ DEBUG_draw_hud(App *app, Face_ID face_id, Text_Layout_ID text_layout_id, Rect_f3
          entry_index < arrlen(DEBUG_entries);
          entry_index++)
     {
-        debug_draw_entry(app, scratch, face_id, DEBUG_entries[entry_index], &at);
+        DEBUG_draw_entry(app, scratch, face_id, DEBUG_entries[entry_index], &at);
     }
 }
 
 internal void
-DEBUG_text_inner(char *name, rect2 value)
+DEBUG_VALUE_inner(char *name, rect2 value)
 {
   Debug_Entry entry = {.name=name, .value=value.v4_value};
   arrput(DEBUG_entries, entry);
 }
 
 internal void
-DEBUG_text_inner(char *name, i32 value)
+DEBUG_VALUE_inner(char *name, i32 value)
 {
     Debug_Entry entry = {.name=name, .value=v4{.x=(f32)value}};
     arrput(DEBUG_entries, entry);
 }
 
 internal void
-DEBUG_text_inner(char *name, v3 v)
+DEBUG_VALUE_inner(char *name, v1 value)
 {
-  v4 value = castV4(v);
-  Debug_Entry entry = {.name=name, .value=value};
-  arrput(DEBUG_entries, entry);
+    Debug_Entry entry = {.name=name, .value=v4{.x=value}};
+    arrput(DEBUG_entries, entry);
 }
 
-#    define DEBUG_NAME(NAME, VALUE)  DEBUG_text_inner(NAME, VALUE)
-#    define DEBUG_VALUE(VALUE)       DEBUG_text_inner(#VALUE, VALUE)
+internal void
+DEBUG_VALUE_inner(char *name, v2 value)
+{
+    Debug_Entry entry = {.name=name, .value=v4{.x=value.x, .y=value.y}};
+    arrput(DEBUG_entries, entry);
+}
+
+internal void
+DEBUG_VALUE_inner(char *name, v3 v)
+{
+    v4 value = castV4(v);
+    Debug_Entry entry = {.name=name, .value=value};
+    arrput(DEBUG_entries, entry);
+}
+
+#    define DEBUG_NAME(NAME, VALUE)  DEBUG_VALUE_inner(NAME, VALUE)
+#    define DEBUG_VALUE(VALUE)       DEBUG_VALUE_inner(#VALUE, VALUE)
 #    define DEBUG_CLEAR              arrsetlen(DEBUG_entries, 0)
 #else
 #    define DEBUG_NAME(...)
@@ -75,6 +89,6 @@ CUSTOM_COMMAND_SIG(DEBUG_draw_hud_toggle)
 CUSTOM_DOC("toggle debug hud")
 {
 #if KV_INTERNAL
-  DEBUG_draw_hud_p ^= 1;
+    DEBUG_draw_hud_p ^= 1;
 #endif
 }

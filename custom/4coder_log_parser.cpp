@@ -687,7 +687,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             log_filter_set.alter_counter != log_graph.filter_alter_counter){
             log_graph_fill(app, inner, face_id);
         }
-        log_graph.y_scroll = clamp(0.f, y_scroll, log_graph.max_y_scroll);
+        log_graph.y_scroll = clamp_between(0.f, y_scroll, log_graph.max_y_scroll);
         log_graph.selected_event = selected_event;
         
         Mouse_State mouse = get_mouse_state(app);

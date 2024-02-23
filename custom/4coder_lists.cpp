@@ -143,7 +143,7 @@ get_command_from_user(Application_Links *app, String_Const_u8 query, i32 *comman
         if (command_ids != 0){
             j = command_ids[i];
         }
-        j = clamp(0, j, command_one_past_last_id);
+        j = clamp_between(0, j, command_one_past_last_id);
         
         Custom_Command_Function *proc = fcoder_metacmd_table[j].proc;
         String_Const_u8 status = {};

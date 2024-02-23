@@ -51,7 +51,7 @@ file_change_notification_thread_main(void *ptr){
         Mutex_Lock lock(working_set->mutex);
         if (working_set->active_file_count > 0){
             i32 check_count = working_set->active_file_count/16;
-            check_count = clamp(1, check_count, 100);
+            check_count = clamp_between(1, check_count, 100);
             Node *used = &working_set->active_file_sentinel;
             Node *node = working_set->sync_check_iterator;
             if (node == 0 || node == used){

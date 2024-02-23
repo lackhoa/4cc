@@ -75,7 +75,7 @@ function void move_horizontal_lines(Application_Links *app, i32 count){
 	i64 pos = view_get_cursor_pos(app, view);
 	Range_i64 line_range = get_line_range_from_pos(app, buffer, pos);
 	i64 new_pos = view_set_pos_by_character_delta(app, view, pos, count);
-	new_pos = clamp(line_range.min, new_pos, line_range.max);
+	new_pos = clamp_between(line_range.min, new_pos, line_range.max);
 	view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
 }
 

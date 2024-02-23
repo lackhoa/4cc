@@ -24,7 +24,7 @@ BUFFER_HOOK_SIG(kv_new_file)
 internal Tick_Function kv_tick;
 //
 internal void 
-kv_tick(FApp *app, Frame_Info frame_info)
+kv_tick(App *app, Frame_Info frame_info)
 {
     DEBUG_CLEAR;
     

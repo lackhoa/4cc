@@ -437,11 +437,11 @@ layout__reverse_evaluate_panel_split(Panel *panel, i32 position){
         }break;
         case PanelSplitKind_FixedPixels_Min:
         {
-            panel->split.v_i32 = clamp(v0, position, v1) - v0;
+            panel->split.v_i32 = clamp_between(v0, position, v1) - v0;
         }break;
         case PanelSplitKind_FixedPixels_Max:
         {
-            panel->split.v_i32 = v1 - clamp(v0, position, v1);
+            panel->split.v_i32 = v1 - clamp_between(v0, position, v1);
         }break;
     }
 }

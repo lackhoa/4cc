@@ -231,9 +231,10 @@ kv_render_caller(FApp *app, Frame_Info frame_info, View_ID view)
         Rect_f32 prev_clip2 = draw_set_clip(app, region);  // todo I don't even think this is necessary?
         defer(draw_set_clip(app, prev_clip2););
         
-        { // NOTE(kv): draw test render buffer
-            Buffer_ID render_buffer = get_buffer_by_name(app, SCu8("*render*"), AccessFlag_Read);
-            if (render_buffer == buffer)
+        {// NOTE(kv): draw test render buffer
+            // TODO @Cleanup Why not just check the view buffer name?
+            Buffer_ID game_buffer = get_buffer_by_name(app, GAME_BUFFER_NAME, Access_Always);
+            if (game_buffer == buffer)
             {
                 game_update_and_render(app, view, frame_info.animation_dt, region);
                 return;

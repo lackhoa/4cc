@@ -12,6 +12,9 @@
 
 #include "tr_model.cpp"
 
+// NOTE: This is a dummy buffer, so we can use the same commands to switch to the rendered game
+global String8 GAME_BUFFER_NAME = str8lit("*game*");
+
 struct Camera
 {
     v3   world_p;
@@ -306,12 +309,12 @@ internal v2
 perspective_project(Camera *camera, v3 point)
 {
     v3 projected = matvmul3(&camera->project, point);
-    // NOTE: distance is in z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
-    f32 dz_point_camera = camera->world_p.z - projected.z;
+    // NOTE: distance is in camera_z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
+    v1 dz = length(camera->world_p) - projected.z;
     v1 near_clip = 10;
-    if (dz_point_camera > near_clip)
+    if (dz > near_clip)
     {
-        v3 result = (camera->focal_length / dz_point_camera) * projected;
+        v3 result = (camera->focal_length / dz) * projected;
         return result.xy;
     }
     else
@@ -355,7 +358,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
         v1 draw_radius;
         {// NOTE: Having to calculate the focal_length/dz twice :<
             v1 projected_z = dot(camera->axes.z, world_p);
-            v1 dz = camera->world_p.z - projected_z;
+            v1 dz = length(camera->world_p) - projected_z;
             draw_radius = absolute((camera->focal_length / dz) * radius);
         }
         
@@ -387,8 +390,13 @@ setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
 #undef t
 }
 
-u32 data_current_version = 4;
+u32 data_current_version = 5;
 u32 data_magic_number = *(u32 *)"kvda";
+
+struct Bezier
+{
+    v3 control_points[4];
+};
 
 struct Game_Save_Old
 {
@@ -398,12 +406,7 @@ struct Game_Save_Old
     v3 camera_z;
     v1 camera_distance;
     
-    v3 bezier_curve[4];
-};
-
-struct Bezier
-{
-    v3 control_points[4];
+    Bezier bezier_curves[3];
 };
 
 struct Game_Save
@@ -411,10 +414,13 @@ struct Game_Save
     u32 magic_number;
     u32 version;
     
-    v3 camera_z;
+    v3 camera_z;  // @Old
     v1 camera_distance;
     
     Bezier bezier_curves[3];
+    
+    v1 camera_phi;
+    v1 camera_theta;
 };
 
 global b32 user_requested_game_save = false;
@@ -541,38 +547,43 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         save_game(app, save_dir, save_path, &save);
         user_requested_game_save = false;
     }
-    
+   
+    // BOOKMARK
     Camera camera_value = {};
     Camera *camera = &camera_value;
-    {// NOTE: Camera setup
+    {// NOTE: Camera handling
         camera->focal_length = 2000.f;
         
-        Fui_Item_Index camera_input_index;
-        // v4 old_value = v4{ 0.271646, 0.782319, 0.560523, 6.564888 };
         // NOTE: The input combines both z and distance (distance in w)
-        // We're keeping this slider here since we don't know how to control it.
-        fslider(camera_input, v4{ 0.000000, 0.000000, 0.000000, 0.000000 }, Fui_Options{.update=fui_update_null}, &camera_input_index);
-        v3 camz         = save.camera_z;
+        
+        if (view_is_active(app, view) && 
+            global_key_states[KeyCode_Control])
+        {// NOTE: input handling
+            v3 delta = dt * fui_direction_from_key_states().xyz;
+            
+            v1 phi   = save.camera_phi   + 0.1*delta.y;
+            v1 theta = save.camera_theta + 0.1*delta.x;
+            
+            save.camera_phi       = clamp_between(-0.25f, phi, 0.25f);
+            save.camera_theta     = cycle01(theta);
+            save.camera_distance += delta.z;
+            
+            animate_in_n_milliseconds(app, 0);
+            
+            DEBUG_VALUE(save.camera_phi);
+            DEBUG_VALUE(save.camera_theta);
+        }
+        
+        v1 phi   = save.camera_phi   * TAU32;
+        v1 theta = save.camera_theta * TAU32;
+        v3 camz;
+        camz.z = sin(phi);
+        camz.x = cos(phi)*cos(theta);
+        camz.y = cos(phi)*sin(theta);
         v1 cam_distance = U * save.camera_distance;
         
         setup_camera_from_data(camera, camz, cam_distance);
-      
-        // TODO: are we lagging by one frame, dawg?
-        v3 cam_delta = {};
-        if ( fui_is_active(camera_input_index) )
-        {
-            cam_delta = U * dt * fui_direction_from_key_states().xyz;
-            
-            // NOTE: align movement to the camera
-            v3 adjusted_delta = matvmul3(&camera->axes, cam_delta);
-            camz = noz(camera->world_p + adjusted_delta);
-            cam_distance = length(camera->world_p) + cam_delta.z;
-            
-            setup_camera_from_data(camera, camz, cam_distance);
-          
-            save.camera_z = camz;
-            save.camera_distance = cam_distance / U;
-        }
+        
         DEBUG_VALUE(camera->world_p);
         DEBUG_VALUE(camera->z);
     }
@@ -611,7 +622,7 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
             if ( fui_is_active(input_indices[curve_index]) )
             {
                 local_persist i32 active_cp_index = 0;
-#define Down(N)  global_fui_key_states[KeyCode_##N] != 0
+#define Down(N) global_key_states[KeyCode_##N] != 0
                 if (Down(0)) active_cp_index = 0;
                 if (Down(1)) active_cp_index = 1;
                 if (Down(2)) active_cp_index = 2;

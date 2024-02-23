@@ -163,7 +163,7 @@ def_audio_mix_destination(i16 *dst, f32 *src, u32 sample_count){
  u32 opl = sample_count*2;
  for(u32 i = 0; i < opl; i += 1){
   f32 sample = src[i];
-  f32 sat_sample = clamp(-32768.f, sample, 32767.f);
+  f32 sat_sample = clamp_between(-32768.f, sample, 32767.f);
   dst[i] = (i16)sat_sample;
  }
 }

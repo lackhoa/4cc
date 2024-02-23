@@ -10,11 +10,11 @@
 
 #include "4coder_vim/4coder_vim_include.h"
 
-#include "4coder_kv_input.cpp"
 #include "4ed_kv_parser.cpp"
 #include "4coder_kv_fui.cpp"
 #include "kv_lexer.h"
 #include "game.cpp"
+#include "4coder_kv_input.cpp"
 #include "4coder_kv_commands.cpp"
 #include "4coder_kv_hooks.cpp"
 #include "4coder_byp_token.cpp"
@@ -46,28 +46,28 @@
 
 function void kvInitShiftedTable()
 {
-  Base_Allocator *base = get_base_allocator_system();
-  shifted_version_of_characters = make_table_u64_u64(base, 128);
+    Base_Allocator *base = get_base_allocator_system();
+    shifted_version_of_characters = make_table_u64_u64(base, 128);
 #define INSERT(CHAR1, CHAR2) table_insert(&shifted_version_of_characters, CHAR1, CHAR2)
-  {
-    INSERT('a', 'A');
-    INSERT('1', '!');
-    INSERT('2', '@');
-    INSERT('3', '#');
-    INSERT('4', '$');
-    INSERT('5', '%');
-    INSERT('6', '^');
-    INSERT('7', '&');
-    INSERT('8', '*');
-    INSERT('`', '~');
-    INSERT('-', '_');
-    INSERT(',', '<');
-    INSERT('.', '>');
-    INSERT(';', ':');
-    INSERT('=', '+');
-    INSERT('/', '?');
-    INSERT('\\', '|');
-  }
+    {
+        INSERT('a', 'A');
+        INSERT('1', '!');
+        INSERT('2', '@');
+        INSERT('3', '#');
+        INSERT('4', '$');
+        INSERT('5', '%');
+        INSERT('6', '^');
+        INSERT('7', '&');
+        INSERT('8', '*');
+        INSERT('`', '~');
+        INSERT('-', '_');
+        INSERT(',', '<');
+        INSERT('.', '>');
+        INSERT(';', ':');
+        INSERT('=', '+');
+        INSERT('/', '?');
+        INSERT('\\', '|');
+    }
 #undef INSERT
 }
 
@@ -108,7 +108,7 @@ kv_default_bindings(Mapping *mapping)
     String_ID global_id = vars_intern_lit("keys_global");
     String_ID file_id   = vars_intern_lit("keys_file");
     String_ID code_id   = vars_intern_lit("keys_code");
-    
+   
     MappingScope();
     SelectMapping(mapping);
     
@@ -279,7 +279,8 @@ initialize_stylist_fonts(App *app)
     }
 }
 
-internal void kv_startup(App *app)
+internal void 
+kv_startup(App *app)
 {
     ProfileScope(app, "kv_startup");
     Scratch_Block temp(app);
@@ -303,11 +304,11 @@ internal void kv_startup(App *app)
     kv_essential_mapping(&framework_mapping);
     kv_default_bindings(&framework_mapping);
     
-    { // NOTE(kv): Create special buffers.
+    {// NOTE(kv): Create special buffers.
         Buffer_Create_Flag create_flags = BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew;
         create_special_buffer(app, str8lit("*calc*"),       create_flags, BufferSetting_Unimportant);
         create_special_buffer(app, compilation_buffer_name, create_flags, BufferSetting_Unimportant|BufferSetting_ReadOnly);
-        create_special_buffer(app, str8lit("*render*"),     create_flags, BufferSetting_Unimportant);
+        create_special_buffer(app, GAME_BUFFER_NAME,        create_flags, BufferSetting_Unimportant|BufferSetting_ReadOnly);
     }
   
     startup_panels_and_files(app);
@@ -321,45 +322,45 @@ internal void kv_startup(App *app)
 }
 
 function void 
-kvInitQuailTable(Application_Links *app)
+kvInitQuailTable(App *app)
 {
-  arrsetcap(kv_quail_table, 64);
-  
+    arrsetcap(kv_quail_table, 64);
+    
 #define QUAIL_DEFRULE(KEY, VALUE) kv_quail_defrule(app, KEY, VALUE, strlen(KEY)-1, 0, strlen(VALUE))
-  
-  QUAIL_DEFRULE(",,", "_");
-  QUAIL_DEFRULE(",,.", "=>");
-  //
-  QUAIL_DEFRULE(",.", "->");
-  QUAIL_DEFRULE(",..", "<>");
-  //
-  QUAIL_DEFRULE(".,", "<-");
-  //
-  QUAIL_DEFRULE(";;", ":");
-  QUAIL_DEFRULE(";;;", ";;");
-  //
-  QUAIL_DEFRULE("11", "!");
-  QUAIL_DEFRULE("22", "@");
-  QUAIL_DEFRULE("33", "#");
-  QUAIL_DEFRULE("44", "$");
-  QUAIL_DEFRULE("55", "%");
-  QUAIL_DEFRULE("77", "&");
-  QUAIL_DEFRULE("88", "*");
-  kv_quail_defrule(app, "99", "()", 1,0,1);
-  // QUAIL_DEFRULE("00", /*(*/")");  // I wanna type "0"
-  //
-  kv_quail_defrule(app, "[", "[]", 0,0,1);
-  // {
-  kv_quail_defrule(app, "[[", "{}", 1,1,1);
-  QUAIL_DEFRULE("]]", "}");
-  //
-  kv_quail_defrule(app, "''", "\"\"", 1,0,1);
-  QUAIL_DEFRULE("leq", "<=");
-  QUAIL_DEFRULE("geq", ">=");
-  QUAIL_DEFRULE("gtt", ">");
-  QUAIL_DEFRULE("ltt", "<");
-  QUAIL_DEFRULE("neq", "!=");
-  
+    
+    QUAIL_DEFRULE(",,", "_");
+    QUAIL_DEFRULE(",,.", "=>");
+    //
+    QUAIL_DEFRULE(",.", "->");
+    QUAIL_DEFRULE(",..", "<>");
+    //
+    QUAIL_DEFRULE(".,", "<-");
+    //
+    QUAIL_DEFRULE(";;", ":");
+    QUAIL_DEFRULE(";;;", ";;");
+    //
+    QUAIL_DEFRULE("11", "!");
+    QUAIL_DEFRULE("22", "@");
+    QUAIL_DEFRULE("33", "#");
+    QUAIL_DEFRULE("44", "$");
+    QUAIL_DEFRULE("55", "%");
+    QUAIL_DEFRULE("77", "&");
+    QUAIL_DEFRULE("88", "*");
+    kv_quail_defrule(app, "99", "()", 1,0,1);
+    // QUAIL_DEFRULE("00", /*(*/")");  // I wanna type "0"
+    //
+    kv_quail_defrule(app, "[", "[]", 0,0,1);
+    // {
+    kv_quail_defrule(app, "[[", "{}", 1,1,1);
+    QUAIL_DEFRULE("]]", "}");
+    //
+    kv_quail_defrule(app, "''", "\"\"", 1,0,1);
+    QUAIL_DEFRULE("leq", "<=");
+    QUAIL_DEFRULE("geq", ">=");
+    QUAIL_DEFRULE("gtt", ">");
+    QUAIL_DEFRULE("ltt", "<");
+    QUAIL_DEFRULE("neq", "!=");
+    
 #undef QUAIL_DEFRULE
 }
 
@@ -375,13 +376,13 @@ kv_vim_bindings(App *app)
     // todo(kv): tons of ifs :<
 #define BIND(...) if (!VimBind(__VA_ARGS__)) { printf("Keymap conflict at line %d!!!\n", __LINE__); }
     
-    u32 C  = KeyMod_Ctl;
-    u32 S  = KeyMod_Sft;
+    u32 C = KeyMod_Ctl;
+    u32 S = KeyMod_Sft;
     u32 M = OS_MAC ? KeyMod_Cmd : KeyMod_Alt;
     Key_Code leader = KeyCode_BackwardSlash;
     
     BIND(MAP, kv_vim_normal_mode, KeyCode_Escape);
-    BIND(MAP, kv_void_command,    KeyCode_Menu);  // todo(kv) this key inserts some random crap and I still can't turn it off.
+    BIND(MAP, kv_void_command,    KeyCode_Menu);  // NOTE(kv): On Macos, this key inserts some random crap and I still can't turn it off.
     
     /// Rebinds
     BIND(N|MAP, undo,                                KeyCode_U);
@@ -507,9 +508,9 @@ kv_vim_bindings(App *app)
     BIND(N|MAP,   open_matching_file_cpp_other_panel, M|KeyCode_F12);
     
     /// Panel
-    BIND(N|MAP, change_active_primary_panel,      C|KeyCode_Tab);
-    BIND(N|MAP, close_panel,              M|KeyCode_W);
-    BIND(N|MAP, toggle_split_panel,       C|KeyCode_W);
+    BIND(N|MAP, change_active_primary_panel, C|KeyCode_Tab);
+    BIND(N|MAP, close_panel,                 M|KeyCode_W);
+    BIND(N|MAP, toggle_split_panel,          C|KeyCode_W);
     
     // Sub modes
     BIND(N|V|MAP, vim_leader_d, SUB_Leader,       KeyCode_D);
@@ -517,13 +518,9 @@ kv_vim_bindings(App *app)
     BIND(N|V|MAP, vim_leader_D, SUB_Leader,  (S|KeyCode_D));
     BIND(N|V|MAP, vim_leader_C, SUB_Leader,  (S|KeyCode_C));
     
-    // Project keys
-    BIND(N|MAP,  kv_build_normal,               M|KeyCode_M);
-    BIND(N|MAP,  kv_build_run_only,           C|M|KeyCode_M);
-    BIND(N|MAP,  kv_build_full_rebuild,       S|M|KeyCode_M);
     // Language support
-    BIND(N|MAP,  vim_goto_definition,                   KeyCode_F1);
-    BIND(N|MAP,  vim_goto_definition_other_panel,     M|KeyCode_F1);
+    BIND(N|MAP,    vim_goto_definition,                   KeyCode_F1);
+    BIND(N|MAP,    vim_goto_definition_other_panel,     M|KeyCode_F1);
     BIND(N|V|MAP,  kv_list_all_locations,               KeyCode_F2);
     BIND(N|V|MAP,  kv_list_all_locations_other_panel, M|KeyCode_F2);
     //
@@ -562,13 +559,15 @@ kv_vim_bindings(App *app)
     BIND(N|  MAP,  quick_swap_buffer,        M|KeyCode_Comma);
     BIND(N|0|MAP,  kv_do_t,                    KeyCode_T);
     BIND(N|0|MAP,  kv_do_T,                  S|KeyCode_T);
-    // BIND(N|0|MAP,  open_panel_vsplit,        M|KeyCode_V);
     // NOTE(kv): remedy
     BIND(N|0|MAP,  remedy_add_breakpoint,      KeyCode_F9);
     BIND(N|0|MAP,  remedy_start_debugging,     KeyCode_F5);
     BIND(N|0|MAP,  remedy_stop_debugging,    S|KeyCode_F5);
     BIND(N|0|MAP,  remedy_run_to_cursor,     C|KeyCode_F10);
     // NOTE(kv): build
+    BIND(N|MAP,  kv_build_normal,               M|KeyCode_M);
+    BIND(N|MAP,  kv_build_run_only,           C|M|KeyCode_M);
+    BIND(N|MAP,  kv_build_full_rebuild,       S|M|KeyCode_M);
     BIND(N|0|MAP,  open_build_script,             KeyCode_F3);
     BIND(N|0|MAP,  toggle_bottom_view_command,  M|KeyCode_Period);
     BIND(N|0|MAP,  toggle_bottom_view_command,  C|KeyCode_Period);
@@ -606,7 +605,7 @@ kv_custom_layer_init(App *app)
     default_framework_init(app);
     set_all_default_hooks(app);
     
-    // fleury
+    // NOTE: Fleury
     global_frame_arena = make_arena(get_base_allocator_system());
     permanent_arena    = make_arena(get_base_allocator_system());
     
@@ -623,7 +622,7 @@ kv_custom_layer_init(App *app)
     kv_vim_init(app);
     
     set_custom_hook(app, HookID_SaveFile,                kv_file_save);
-    // set_custom_hook(app, HookID_BufferRegion,            byp_buffer_region);
+    // set_custom_hook(app, HookID_BufferRegion,         byp_buffer_region);
     set_custom_hook(app, HookID_RenderCaller,            kv_render_caller);
     set_custom_hook(app, HookID_WholeScreenRenderCaller, vim_draw_whole_screen);
     //

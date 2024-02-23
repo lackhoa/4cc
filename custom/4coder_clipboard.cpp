@@ -401,7 +401,7 @@ CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled by input
         query_user_number(app, &bar);
         
         i32 initial_paste_count = (i32)string_to_integer(bar.string, 10);
-        initial_paste_count = clamp(1, initial_paste_count, clip_count);
+        initial_paste_count = clamp_between(1, initial_paste_count, clip_count);
         end_query_bar(app, &bar, 0);
         
         multi_paste_interactive_up_down(app, initial_paste_count, clip_count);

@@ -8,8 +8,20 @@ inline b32 fui_is_active(Fui_Item_Index index)
 {
     return (index == global_fui_active_item_index);
 }
-//
-global b8 global_fui_key_states[KeyCode_COUNT];
+// TODO @Cleanup @Moveme
+global b8 global_key_states[KeyCode_COUNT];
+
+internal void
+update_global_key_states(Input_Event *event)
+{
+    b32 keydown = (event->kind == InputEventKind_KeyStroke);
+    b32 keyup   = (event->kind == InputEventKind_KeyRelease);
+    if (keydown || keyup)
+    {
+        Key_Code keycode = event->key.code;
+        global_key_states[keycode] = keydown;
+    }
+}
 
 #define X_Fui_Types(X)  \
     X(v1) \
@@ -97,7 +109,7 @@ fui_direction_from_key_states()
 {
     v4 direction = {};
     //
-#define Down(N)  (global_fui_key_states[KeyCode_##N] != 0)
+#define Down(N)  (global_key_states[KeyCode_##N] != 0)
     //
     if (Down(L)) direction.x = +1;
     if (Down(H)) direction.x = -1;

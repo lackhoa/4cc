@@ -200,7 +200,7 @@ calc_col_row(Application_Links *app, Lister *lister)
 	}
 	
 	i32 col_num = i32(dim.x/((max_name_size+7)*max_advance));
-	col_num = clamp(lister_range.min, col_num, lister_range.max);
+	col_num = clamp_between(lister_range.min, col_num, lister_range.max);
 	
 	i32 max_row_num = 1 + lister->filtered.count/col_num;
 	i32 row_num = i32((dim.y*0.5f - 2.f*line_height)/block_height);
@@ -239,7 +239,7 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	
 	i32 col_num = i32(rect_width(region)/(((f64)max_name_size+7)*max_advance));
 	//i32 col_num = i32(rect_width(region)/((max_name_size)*max_advance));
-	col_num = clamp(lister_range.min, col_num, lister_range.max);
+	col_num = clamp_between(lister_range.min, col_num, lister_range.max);
 	
 	i32 max_row_num = 1 + (lister->filtered.count-1)/col_num;
 	i32 row_num;

@@ -191,13 +191,14 @@ get_buffer_next(FApp *app, Buffer_ID buffer_id, Access_Flag access)
 }
 
 api(custom) function Buffer_ID
-get_buffer_by_name(FApp *app, String_Const_u8 name, Access_Flag access)
+get_buffer_by_name(App *app, String8 name, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
     Working_Set *working_set = &models->working_set;
     Editing_File *file = working_set_contains_name(working_set, name);
     Buffer_ID result = 0;
-    if (api_check_buffer(file, access)){
+    if ( api_check_buffer(file, access) )
+    {
         result = file->id;
     }
     return(result);
@@ -378,7 +379,7 @@ buffer_seek_character_class(FApp *app, Buffer_ID buffer, Character_Predicate *pr
             }
             
             i64 size = buffer_size(gap_buffer);
-            start_pos = clamp(-1, start_pos, size);
+            start_pos = clamp_between(-1, start_pos, size);
             Buffer_Chunk_Position pos = buffer_get_chunk_position(chunks, size, start_pos);
             for (;;){
                 i32 past_end = buffer_chunk_position_iterate(chunks, &pos, direction);
@@ -647,12 +648,14 @@ buffer_get_line_count(FApp *app, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) function String_Const_u8
-push_buffer_base_name(FApp *app, Arena *arena, Buffer_ID buffer_id){
+api(custom) function String8
+push_buffer_base_name(App *app, Arena *arena, Buffer_ID buffer_id)
+{
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
-    String_Const_u8 result = {};
-    if (api_check_buffer(file)){
+    String8 result = {};
+    if (api_check_buffer(file))
+    {
         result = push_string_copy(arena, string_from_filename(&file->base_name));
     }
     return(result);
@@ -1320,7 +1323,7 @@ panel_set_split(FApp *app, Panel_ID panel_id, Panel_Split_Kind kind,
                 case PanelSplitKind_Ratio_Max:
                 case PanelSplitKind_Ratio_Min:
                 {
-                    panel->split.v_f32 = clamp(0.f, t, 1.f);
+                    panel->split.v_f32 = clamp_between(0.f, t, 1.f);
                 }break;
                 
                 case PanelSplitKind_FixedPixels_Max:
@@ -1636,7 +1639,7 @@ view_set_buffer_scroll(FApp *app, View_ID view_id, Buffer_Scroll scroll,
         Layout_Item_List line = view_get_line_layout(tctx, models, view,
                                                      scroll.target.line_number);
         scroll.target.pixel_shift.y =
-            clamp(0.f, scroll.target.pixel_shift.y, line.height);
+            clamp_between(0.f, scroll.target.pixel_shift.y, line.height);
         if (rule == SetBufferScroll_SnapCursorIntoView){
             view_set_scroll(tctx, models, view, scroll);
         }

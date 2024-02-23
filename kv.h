@@ -140,7 +140,7 @@ block_copy(void *dst, const void *src, u64 size)
 inline i32
 absoslute(i32 in)
 {
-return ((in >= 0) ? in : -in);
+    return ((in >= 0) ? in : -in);
 }
 
 inline f32
@@ -151,70 +151,54 @@ return result;
 }
 
 inline f32
-squareRoot(f32 x)
+square_root(f32 x)
 {
 #if COMPILER_MSVC
-f32 result = sqrtf(x);
+    f32 result = sqrtf(x);
 #else
-f32 result = __builtin_sqrtf(x);
+    f32 result = __builtin_sqrtf(x);
 #endif
-return result;
-}
-
-inline u32
-roundF32ToU32(f32 Real32)
-{
-#if COMPILER_MSVC
-u32 Result = (u32)roundf(Real32);
-#else
-u32 Result = (u32)__builtin_roundf(Real32);
-#endif
-return(Result);
+    return result;
 }
 
 inline f32
-roundF32(f32 Real32)
+round_f32(f32 Real32)
 {
 #if COMPILER_MSVC
-f32 Result = roundf(Real32);
+    f32 Result = roundf(Real32);
 #else
-f32 Result = __builtin_roundf(Real32);
+    f32 Result = __builtin_roundf(Real32);
 #endif
-return(Result);
+    return(Result);
 }
 
-// todo I don't like this, just do the round myself
-// inline i32
-// roundF32ToI32(f32 Real32)
-// {
-// #if COMPILER_MSVC
-//     i32 Result = (i32)roundf(Real32);
-// #else
-//     i32 Result = (i32)__builtin_roundf(Real32);
-// #endif
-//     return(Result);
-// }
-
-inline i32
-floorF32ToI32(f32 Real32)
+inline f32
+floor_f32(f32 value)
 {
 #if COMPILER_MSVC
-i32 Result = (i32)floorf(Real32);
+    f32 Result = floorf(value);
 #else
-i32 Result = (i32)__builtin_floorf(Real32);
+    f32 Result = __builtin_floorf(value);
 #endif
-return(Result);
+    return(Result);
 }
 
-inline i32
-ceilF32ToI32(f32 Real32)
+inline f32
+ceil_f32(f32 value)
 {
 #if COMPILER_MSVC
-i32 Result = (i32)ceilf(Real32);
+    f32 Result = ceilf(value);
 #else
-i32 Result = (i32)__builtin_ceilf(Real32);
+    f32 Result = __builtin_ceilf(value);
 #endif
-return(Result);
+    return(Result);
+}
+
+inline f32
+cycle01(f32 value)
+{
+    f32 result = value - floor_f32(value);
+    return result;
 }
 
 // NOTE: weird names to avoid name collision (haizz)
@@ -222,54 +206,54 @@ inline f32
 kv_sin(f32 angle)
 {
 #if COMPILER_MSVC
-f32 result = sinf(angle);
+    f32 result = sinf(angle);
 #else
-f32 result = __builtin_sinf(angle);
+    f32 result = __builtin_sinf(angle);
 #endif
-return(result);
+    return(result);
 }
 
 inline f32
 kv_cos(f32 angle)
 {
 #if COMPILER_MSVC
-f32 result = cosf(angle);
+    f32 result = cosf(angle);
 #else
-f32 result = __builtin_cosf(angle);
+    f32 result = __builtin_cosf(angle);
 #endif
-return(result);
+    return(result);
 }
 
 inline f32
 kv_atan2(f32 y, f32 x)
 {
 #if COMPILER_MSVC
-f32 result = atan2f(y, x);
+    f32 result = atan2f(y, x);
 #else
-f32 result = __builtin_atan2f(y, x);
+    f32 result = __builtin_atan2f(y, x);
 #endif
-return(result);
+    return(result);
 }
 
 struct bit_scan_result
 {
-b32 found;
-u32 index;
+    b32 found;
+    u32 index;
 };
 
 inline bit_scan_result
 findLeastSignificantSetBit(u32 mask)
 {
-bit_scan_result result = {};
-
+    bit_scan_result result = {};
+    
 #if COMPILER_MSVC
-result.found = _BitScanForward((unsigned long *)&result.index, mask);
+    result.found = _BitScanForward((unsigned long *)&result.index, mask);
 #elif COMPILER_LLVM
-if (mask != 0)
-{
-    result.found = true;
-    result.index = __builtin_ctz(mask);
-}
+    if (mask != 0)
+    {
+        result.found = true;
+        result.index = __builtin_ctz(mask);
+    }
 #else
     for (u32 index = 0;
          index < 32;
@@ -283,20 +267,19 @@ if (mask != 0)
         }
     }
 #endif
-
-return result;
+    
+    return result;
 }
-
 
 inline f32
 absolute(f32 x)
 {
 #if COMPILER_MSVC
-f32 result = (f32)fabs(x);
+    f32 result = (f32)fabs(x);
 #else
-f32 result = (f32)__builtin_fabs(x);
+    f32 result = (f32)__builtin_fabs(x);
 #endif
-return result;
+    return result;
 }
 
 inline i32
@@ -305,37 +288,37 @@ absolute(i32 x)
 #if COMPILER_MSVC
 #error "unimplemented"
 #else
-i32 result = abs(x);
+    i32 result = abs(x);
 #endif
-return result;
+    return result;
 }
 
 inline u32
 rotateLeft(u32 value, i32 rotateAmount)
 {
 #if COMPILER_MSVC
-u32 result = _rotl(value, rotateAmount);
+    u32 result = _rotl(value, rotateAmount);
 #elif COMPILER_LLVM
-u32 result = __builtin_rotateleft32(value, rotateAmount);
+    u32 result = __builtin_rotateleft32(value, rotateAmount);
 #else
-i32 r = rotateAmount & 31;
-u32 result = (value << r) | (value >> (32 - r));
+    i32 r = rotateAmount & 31;
+    u32 result = (value << r) | (value >> (32 - r));
 #endif
-return result;
+    return result;
 }
 
 inline u32
 rotateRight(u32 value, i32 rotateAmount)
 {
 #if COMPILER_MSVC
-u32 result = _rotr(value, rotateAmount);
+    u32 result = _rotr(value, rotateAmount);
 #elif COMPILER_LLVM
-u32 result = __builtin_rotateright32(value, rotateAmount);
+    u32 result = __builtin_rotateright32(value, rotateAmount);
 #else
-i32 r = rotateAmount & 31;
-u32 result = (value >> r) | (value << (32 - r));
+    i32 r = rotateAmount & 31;
+    u32 result = (value >> r) | (value << (32 - r));
 #endif
-return result;
+    return result;
 }
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -696,8 +679,8 @@ inline void *kv_xmalloc(size_t size) {
 
 /* ;scalar */
 
-#define Pi32 3.14159265359f
-#define Tau32 6.28318530717958647692f
+#define PI32  3.14159265359f
+#define TAU32 6.28318530717958647692f
 
 #define kv_clamp_bot(VAR, VAL)   if (VAR < VAL) VAR = VAL
 #define kv_clamp_top(VAR, VAL)   if (VAR > VAL) VAR = VAL;
@@ -858,7 +841,7 @@ lengthSq(v2 v)
 inline f32
 length(v2 v)
 {
-    f32 result = squareRoot(lengthSq(v));
+    f32 result = square_root(lengthSq(v));
     return result;
 }
 
@@ -911,7 +894,7 @@ noz(v2 v)  // normalize or zero
     if (lsq > squared(0.0001f))
     {
         // prevent the result from getting too big
-        result = v * 1.f / squareRoot(lsq);
+        result = v * 1.f / square_root(lsq);
     }
     return result;
 }
@@ -1114,7 +1097,7 @@ lengthSq(v3 v)
 inline f32
 length(v3 v)
 {
-    f32 result = squareRoot(lengthSq(v));
+    f32 result = square_root(lengthSq(v));
     return result;
 }
 
@@ -1134,7 +1117,7 @@ noz(v3 v)  // normalize or zero
     if (lsq > squared(0.0001f)) 
     {
         // prevent the result from getting too big
-        result = v * 1.f / squareRoot(lsq);
+        result = v * 1.f / square_root(lsq);
     }
     return result;
 }
@@ -1521,9 +1504,9 @@ internal v4
 linearToSrgb(v4 linear)
 {
     v4 result;
-    result.r = squareRoot(linear.r);
-    result.g = squareRoot(linear.g);
-    result.b = squareRoot(linear.b);
+    result.r = square_root(linear.r);
+    result.g = square_root(linear.g);
+    result.b = square_root(linear.b);
     result.a = linear.a;
     return result;
 }
@@ -1532,9 +1515,9 @@ internal u32
 pack_sRGBA(v4 color)
 {
   // linear to srgb
-  color.r = squareRoot(color.r);
-  color.g = squareRoot(color.g);
-  color.b = squareRoot(color.b);
+  color.r = square_root(color.r);
+  color.g = square_root(color.g);
+  color.b = square_root(color.b);
   u32 result = ((u32)(color.a*255.0f + 0.5f) << 24
                 | (u32)(color.b*255.0f + 0.5f) << 16
                 | (u32)(color.g*255.0f + 0.5f) << 8
@@ -1805,9 +1788,9 @@ enum{
 #define function static
 #define api(x)
 
-#define local_const static const
+#define local_const  static const
 #define global_const static const
-#define external extern "C"  // TODO(kv): wtf removeme?
+#define external extern "C"  // TODO(kv): @Cleanup wtf removeme?
 
 #define ArrayCount(a) ((sizeof(a))/(sizeof(*a)))
 
@@ -1904,8 +1887,8 @@ enum{
 #define Min(a,b) (((a)<(b))?(a):(b))
 #define clamp_top(a,b) Min(a,b)
 #define clamp_bot(a,b) Max(a,b)
-#define clamp_(a,x,b) ((a>x)?a:((b<x)?b:x))
-#define clamp(a,x,b) clamp_((a),(x),(b))
+#define clamp_between_(a,x,b) ((a>x) ? a : ((b<x) ? b : x))
+#define clamp_between(a,x,b)  clamp_between_((a),(x),(b))
 
 #define array_initr(a) {(a), ArrayCount(a)}
 
@@ -3003,20 +2986,24 @@ struct Heap{
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
 
+// @Cleanup Don't need these anymore
 function i32
-i32_ceil32(f32 v){
+i32_ceil32(f32 v)
+{
     return(((v)>0)?( (v == (i32)(v))?((i32)(v)):((i32)((v)+1.f)) ):( ((i32)(v)) ));
 }
 
 function i32
-i32_floor32(f32 v){
+i32_floor32(f32 v)
+{
     return(((v)<0)?( (v == (i32)(v))?((i32)(v)):((i32)((v)-1.f)) ):( ((i32)(v)) ));
 }
 
 #pragma clang diagnostic pop
 
 function i32
-i32_round32(f32 v){
+i32_round32(f32 v)
+{
     return(i32_floor32(v + 0.5f));
 }
 
@@ -4382,8 +4369,9 @@ lerp(Range_f32 range, f32 t){
 }
 
 function f32
-clamp_range(Range_f32 range, f32 x){
-    return(clamp(range.min, x, range.max));
+clamp_range(Range_f32 range, f32 x)
+{
+    return(clamp_between(range.min, x, range.max));
 }
 
 ////////////////////////////////
@@ -5309,7 +5297,7 @@ rect_union(Rect_f32 a, Rect_f32 b){
 
 function Rect_f32_Pair
 rect_split_top_bottom__inner(Rect_f32 rect, f32 y){
-    y = clamp(rect.y0, y, rect.y1);
+    y = clamp_between(rect.y0, y, rect.y1);
     Rect_f32_Pair pair = {};
     pair.a = Rf32(rect.x0, rect.y0, rect.x1, y      );
     pair.b = Rf32(rect.x0, y      , rect.x1, rect.y1);
@@ -5318,7 +5306,7 @@ rect_split_top_bottom__inner(Rect_f32 rect, f32 y){
 
 function Rect_f32_Pair
 rect_split_left_right__inner(Rect_f32 rect, f32 x){
-    x = clamp(rect.x0, x, rect.x1);
+    x = clamp_between(rect.x0, x, rect.x1);
     Rect_f32_Pair pair = {};
     pair.a = Rf32(rect.x0, rect.y0, x      , rect.y1);
     pair.b = Rf32(x      , rect.y0, rect.x1, rect.y1);

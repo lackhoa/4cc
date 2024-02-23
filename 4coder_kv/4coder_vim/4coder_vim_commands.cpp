@@ -45,7 +45,7 @@ vim_scoll_buffer_peek_inner(Application_Links *app, f32 ratio){
 	f32 lines_per_page = rect_height(back_rect) / line_height;
 	f32 current_line = entry->nxt_ratio*(f32)total_lines;
 	entry->nxt_ratio = ((f32)current_line + ratio*(f32)lines_per_page) / (f32)total_lines;
-	entry->nxt_ratio = clamp(f32(lines_per_page / (f32)total_lines), entry->nxt_ratio, 1.f);
+	entry->nxt_ratio = clamp_between(f32(lines_per_page / (f32)total_lines), entry->nxt_ratio, 1.f);
 }
 
 CUSTOM_COMMAND_SIG(vim_scoll_buffer_peek_up)

@@ -20,42 +20,46 @@ BUFFER_HOOK_SIG(vim_file_save_hook)
 	return 0;
 }
 
-function void vim_set_file_register(Application_Links *app, Buffer_ID buffer){
-	Scratch_Block scratch(app);
-	String_Const_u8 unique_name = push_buffer_unique_name(app, scratch, buffer);
-	Vim_Register *reg = &vim_registers.file;
-	b32 valid = vim_register_copy(reg, unique_name);
-	if(!valid){ return; }
-	vim_update_registers(app);
+function void vim_set_file_register(App *app, Buffer_ID buffer)
+{
+    Scratch_Block scratch(app);
+    String8 unique_name = push_buffer_unique_name(app, scratch, buffer);
+    Vim_Register *reg = &vim_registers.file;
+    b32 valid = vim_register_copy(reg, unique_name);
+    if(!valid){ return; }
+    vim_update_registers(app);
 }
 
 function void
-vim_view_change_buffer(Application_Links *app, View_ID view_id, Buffer_ID old_buffer_id, Buffer_ID new_buffer_id){
-	vim_set_file_register(app, new_buffer_id);
+vim_view_change_buffer(App *app, View_ID view_id, Buffer_ID old_buffer_id, Buffer_ID new_buffer_id)
+{
+    vim_set_file_register(app, new_buffer_id);
 }
 
 function void
-vim_begin_buffer_inner(Application_Links *app, Buffer_ID buffer_id){
-	Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
-	Vim_Prev_Visual *prev_visual = scope_attachment(app, scope, vim_buffer_prev_visual, Vim_Prev_Visual);
-	prev_visual->cursor_pos = prev_visual->mark_pos = 0;
-
-	i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
-	block_fill_u64(marks, 26*sizeof(i64), max_u64);
-
-	b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
-	*wrap_lines_ptr = false;
+vim_begin_buffer_inner(App *app, Buffer_ID buffer_id)
+{
+    Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
+    Vim_Prev_Visual *prev_visual = scope_attachment(app, scope, vim_buffer_prev_visual, Vim_Prev_Visual);
+    prev_visual->cursor_pos = prev_visual->mark_pos = 0;
+    
+    i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
+    block_fill_u64(marks, 26*sizeof(i64), max_u64);
+    
+    b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
+    *wrap_lines_ptr = false;
 }
 
-BUFFER_HOOK_SIG(vim_begin_buffer){
-	//default_begin_buffer(app, buffer_id);
-	fold_begin_buffer_hook(app, buffer_id);
-	vim_begin_buffer_inner(app, buffer_id);
-	return 0;
+BUFFER_HOOK_SIG(vim_begin_buffer)
+{
+    fold_begin_buffer_hook(app, buffer_id);
+    vim_begin_buffer_inner(app, buffer_id);
+    return 0;
 }
 
 function void
-vim_animate_filebar(Application_Links *app, Frame_Info frame_info){
+vim_animate_filebar(Application_Links *app, Frame_Info frame_info)
+{
 #if VIM_DO_ANIMATE
 	f32 diff = vim_nxt_filebar_offset - vim_cur_filebar_offset;
 	if(fabs(diff) > 1.0f){
@@ -99,7 +103,8 @@ BUFFER_EDIT_RANGE_SIG(vim_buffer_edit_range){
 }
 
 function void
-vim_tick(Application_Links *app, Frame_Info frame_info){
+vim_tick(Application_Links *app, Frame_Info frame_info)
+{
 	code_index_update_tick(app);
 	if(tick_all_fade_ranges(app, frame_info.animation_dt)){
 		animate_in_n_milliseconds(app, 0);

@@ -81,9 +81,8 @@ kv_handle_text_insert(App *app, u8 character)
 }
 
 
-// NOTE(kv): re-appropriated from the vim layer
 function b32
-kv_handle_keyboard_input(App *app, Input_Event *event)
+kv_handle_vim_keyboard_input(App *app, Input_Event *event)
 {
     ProfileScope(app, "kv_handle_keyboard_input");
     
@@ -121,7 +120,7 @@ kv_handle_keyboard_input(App *app, Input_Event *event)
         
         bool handled = false;
         
-        /// Translate the KeyCode
+        // NOTE: Translate the KeyCode
         if (vim_state.chord_resolved) { vim_keystroke_text.size=0; vim_state.chord_resolved=false; }
         foreach(i, event->key.modifiers.count)
         {
@@ -169,20 +168,23 @@ kv_handle_keyboard_input(App *app, Input_Event *event)
         { // global keymap passthrough
             String_ID map_id = vars_intern_lit("keys_global");
             Command_Binding command_binding = map_get_binding_non_recursive(&framework_mapping, map_id, event);
-            if (command_binding.custom) {
+            if (command_binding.custom) 
+            {
                 vim_reset_state();
                 command_binding.custom(app);
                 vim_keystroke_text.size = 0;
-            } else {
+            } 
+            else 
+            {
                 vim_append_keycode(code);
                 vim_state.chord_resolved = bitmask_2;
             }
             handled = true;
         }
         
-        if(was_in_sub_mode){ vim_state.sub_mode = SUB_None; }
+        if (was_in_sub_mode) { vim_state.sub_mode = SUB_None; }
         
-        if(vim_keystroke_text.size >= vim_keystroke_text.cap){ vim_keystroke_text.size = 0; }
+        if (vim_keystroke_text.size >= vim_keystroke_text.cap) { vim_keystroke_text.size = 0; }
         
         return handled;
     }
@@ -192,71 +194,85 @@ kv_handle_keyboard_input(App *app, Input_Event *event)
 CUSTOM_COMMAND_SIG(kv_view_input_handler)
 CUSTOM_DOC("Input consumption loop for view behavior (why is this a command?)")
 {
-	Scratch_Block scratch(app);
-	default_input_handler_init(app, scratch);
-
-	View_ID view = get_this_ctx_view(app, Access_Always);
-	Managed_Scope scope = view_get_managed_scope(app, view);
-
-	for(User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
-        !input.abort;
-        input  = get_next_input(app, EventPropertyGroup_Any, 0))
+    Scratch_Block scratch(app);
+    default_input_handler_init(app, scratch);
+    
+    View_ID view = get_this_ctx_view(app, Access_Always);
+    Managed_Scope scope = view_get_managed_scope(app, view);
+    
+    for (User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
+         !input.abort;
+         input  = get_next_input(app, EventPropertyGroup_Any, 0))
     {
-        if (input.event.kind == InputEventKind_KeyStroke) seconds_since_last_keystroke = 0;
-
+        Temp_Memory_Block temp(scratch);
+        
+        if (input.event.kind == InputEventKind_KeyStroke)
+            seconds_since_last_keystroke = 0;
+        
 #if VIM_USE_BOTTOM_LISTER
-		// Clicking on lister items outside of original view panel is a hack
-		if(vim_lister_view_id != 0 && view != vim_lister_view_id){
-			view_set_active(app, vim_lister_view_id);
-			leave_current_input_unhandled(app);
-			continue;
-		}
+        // Clicking on lister items outside of original view panel is a hack
+        if ((vim_lister_view_id != 0) && 
+            (view != vim_lister_view_id))
+        {
+            view_set_active(app, vim_lister_view_id);
+            leave_current_input_unhandled(app);
+            continue;
+        }
 #endif
-
-		ProfileScopeNamed(app, "before view input", view_input_profile);
-
+       
+        ProfileScopeNamed(app, "before view input", view_input_profile);
+        
         // NOTE(allen): Mouse Suppression
         Event_Property event_properties = get_event_properties(&input.event);
         b32 is_mouse_event = event_properties & EventPropertyGroup_AnyMouseEvent;
-        if(suppressing_mouse && is_mouse_event) {
-          continue;
-        }
-
-        if (!is_mouse_event && input.event.kind != InputEventKind_None)
+        if (!(is_mouse_event && suppressing_mouse))
         {
-        	vim_keystroke_text.size = 0;
-        	vim_cursor_blink = 0;
+            if (!is_mouse_event && (input.event.kind != InputEventKind_None))
+            {
+                vim_keystroke_text.size = 0;
+                vim_cursor_blink = 0;
+            }
+           
+            // NOTE: Update global key state
+            update_global_key_states(&input.event);
+            
+            b32 is_game_view;
+            {// NOTE: It's a "game view" if we're viewing the game buffer.
+                Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+                String8 bufname  = push_buffer_base_name(app, scratch, buffer);
+                is_game_view = string_match(bufname, GAME_BUFFER_NAME);
+            }
+            
+            b32 handled = false;
+            if ( !is_game_view  )
+            {
+                handled = kv_handle_vim_keyboard_input(app, &input.event);
+            }
+           
+            if ( !handled )
+            {
+                // NOTE(allen): Get binding
+                if (implicit_map_function == 0)
+                    implicit_map_function = default_implicit_map;
+                
+                Implicit_Map_Result map_result = implicit_map_function(app, 0, 0, &input.event);
+                if ( map_result.command )
+                {
+                    // NOTE(allen): Run the command and pre/post command stuff
+                    default_pre_command(app, scope);
+                    ProfileCloseNow(view_input_profile);
+                    
+                    {
+                        ProfileScope(app, "map_result_command_profile");
+                        map_result.command(app);
+                    }
+                    
+                    ProfileScope(app, "after view input");
+                    default_post_command(app, scope);
+                }
+                else
+                    leave_current_input_unhandled(app);
+            }
         }
-
-        if ( kv_handle_keyboard_input(app, &input.event) )
-        {
-          continue;
-        }
-
-        // NOTE(allen): Get binding
-        Implicit_Map_Result map_result;
-        {
-          ProfileScope(app, "implicit_map_function");
-          if(implicit_map_function == 0){
-            implicit_map_function = default_implicit_map;
-          }
-          map_result = implicit_map_function(app, 0, 0, &input.event);
-          if(map_result.command == 0){
-            leave_current_input_unhandled(app);
-            continue;
-          }
-        }
-
-        // NOTE(allen): Run the command and pre/post command stuff
-        default_pre_command(app, scope);
-		ProfileCloseNow(view_input_profile);
-
-        {
-          ProfileScope(app, "map_result_command_profile");
-          map_result.command(app);
-        }
-
-		ProfileScope(app, "after view input");
-		default_post_command(app, scope);
-	}
+    }
 }

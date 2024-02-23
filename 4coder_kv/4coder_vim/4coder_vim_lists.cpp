@@ -6,7 +6,7 @@ vim__fill_command_lister(Arena *arena, Lister *lister, i32 *command_ids, i32 com
 
 	for(i32 i=0; i<command_id_count; i++){
 		i32 j = (command_ids ? command_ids[i] : i);
-		j = clamp(0, j, command_one_past_last_id);
+		j = clamp_between(0, j, command_one_past_last_id);
 
 		Custom_Command_Function *proc = fcoder_metacmd_table[j].proc;
 

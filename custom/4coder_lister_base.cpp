@@ -817,7 +817,7 @@ lister__navigate__default(Application_Links *app, View_ID view, Lister *lister, 
         lister->item_index = 0;
     }
     else{
-        lister->item_index = clamp(0, new_index, lister->filtered.count - 1);
+        lister->item_index = clamp_between(0, new_index, lister->filtered.count - 1);
     }
     lister->set_vertical_focus_to_item = true;
     lister_update_selection_values(lister);

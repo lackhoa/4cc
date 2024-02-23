@@ -82,7 +82,8 @@ profile_thread_flush(Thread_Context *tctx, Profile_Global_List *list){
 }
 
 function void
-profile_thread_set_name(Thread_Context *tctx, Profile_Global_List *list, String_Const_u8 name){
+profile_thread_set_name(Thread_Context *tctx, Profile_Global_List *list, String8 name)
+{
     Mutex_Lock lock(list->mutex);
     Profile_Thread* thread = prof__get_thread(list, system_thread_get_id());
     thread->name = name;

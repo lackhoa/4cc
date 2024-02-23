@@ -1269,7 +1269,7 @@ get_line_number_of__whitespace_status_line(Application_Links *app, Buffer_ID buf
             break;
         }
     }
-    line_number = clamp(1, line_number, line_count);
+    line_number = clamp_between(1, line_number, line_count);
     return(line_number);
 }
 

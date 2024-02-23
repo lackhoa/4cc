@@ -599,7 +599,7 @@ buffer_get_last_pos_from_line_number(Gap_Buffer *buffer, i64 line_number){
 internal Buffer_Cursor
 buffer_cursor_from_pos(Gap_Buffer *buffer, i64 pos){
     i64 size = buffer_size(buffer);
-    pos = clamp(0, pos, size);
+    pos = clamp_between(0, pos, size);
     i64 line_index = buffer_get_line_index(buffer, pos);
     
     Buffer_Cursor result = {};
@@ -613,7 +613,7 @@ internal Buffer_Cursor
 buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
     i64 line_index = line - 1;
     i64 line_count = buffer_line_count(buffer);
-    line_index = clamp(0, line_index, line_count - 1);
+    line_index = clamp_between(0, line_index, line_count - 1);
     
     i64 this_start = buffer->line_starts[line_index];
     i64 max_col = (buffer->line_starts[line_index + 1] - this_start);

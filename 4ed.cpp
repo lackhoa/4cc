@@ -652,7 +652,7 @@ App_Step_Sig(app_step){
                         Panel *split = models->resizing_intermediate_panel;
                         Range_i32 limits = layout_get_limiting_range_on_split(layout, split);
                         i32 mouse_position = (split->vertical_split)?(mouse.x):(mouse.y);
-                        mouse_position = clamp(limits.min, mouse_position, limits.max);
+                        mouse_position = clamp_between(limits.min, mouse_position, limits.max);
                         layout_set_split_absolute_position(layout, split, mouse_position);
                     }
                     else{
