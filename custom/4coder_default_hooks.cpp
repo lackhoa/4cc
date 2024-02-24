@@ -495,26 +495,8 @@ default_render_caller(Application_Links *app, Frame_Info frame_info, View_ID vie
 }
 
 function void
-default_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info){
-#if 0
-    Rect_f32 region = global_get_screen_rectangle(app);
-    Vec2_f32 center = rect_center(region);
-    
-    Face_ID face_id = get_face_id(app, 0);
-    Scratch_Block scratch(app);
-    draw_string_oriented(app, face_id, finalize_color(defcolor_text_default, 0),
-                         SCu8("Hello, World!"), center - V2f32(200.f, 300.f),
-                         0, V2f32(0.f, -1.f));
-    draw_string_oriented(app, face_id, finalize_color(defcolor_text_default, 0),
-                         SCu8("Hello, World!"), center - V2f32(240.f, 300.f),
-                         0, V2f32(0.f, 1.f));
-    draw_string_oriented(app, face_id, finalize_color(defcolor_text_default, 0),
-                         SCu8("Hello, World!"), center - V2f32(400.f, 400.f),
-                         0, V2f32(-1.f, 0.f));
-    draw_string_oriented(app, face_id, finalize_color(defcolor_text_default, 0),
-                         SCu8("Hello, World!"), center - V2f32(400.f, -100.f),
-                         0, V2f32(cos_f32(pi_f32*.333f), sin_f32(pi_f32*.333f)));
-#endif
+default_whole_screen_render_caller(App *app, Frame_Info frame_info)
+{
 }
 
 HOOK_SIG(default_view_adjust){

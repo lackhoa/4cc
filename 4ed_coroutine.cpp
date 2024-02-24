@@ -131,7 +131,8 @@ coroutine_create(Coroutine_Group *coroutines, Coroutine_Function *func){
 }
 
 internal Coroutine*
-coroutine_run(Coroutine_Group *sys, Coroutine *other, void *in, void *out){
+coroutine_run(Coroutine_Group *sys, Coroutine *other, void *in, void *out)
+{
     other->in = in;
     other->out = out;
     
@@ -144,7 +145,8 @@ coroutine_run(Coroutine_Group *sys, Coroutine *other, void *in, void *out){
     Assert(me == other->sys->active);
     
     Coroutine *result = other;
-    if (other->state == CoroutineState_Dead){
+    if (other->state == CoroutineState_Dead)
+    {
         coroutine_system_free(sys, other);
         result = 0;
     }
@@ -152,7 +154,8 @@ coroutine_run(Coroutine_Group *sys, Coroutine *other, void *in, void *out){
 }
 
 internal void
-coroutine_yield(Coroutine *me){
+coroutine_yield(Coroutine *me)
+{
     Coroutine *other = me->yield_ctx;
     Assert(other != 0);
     Assert(me->sys == other->sys);

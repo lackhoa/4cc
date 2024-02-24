@@ -161,6 +161,7 @@ square_root(f32 x)
     return result;
 }
 
+// TODO: these are real bad!
 inline f32
 round_f32(f32 Real32)
 {
@@ -2981,8 +2982,6 @@ struct Heap{
 
 #ifdef KV_IMPLEMENTATION
 
-#define C_MATH 1
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
 
@@ -3257,39 +3256,37 @@ block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range
 ////////////////////////////////
 
 function f32
-abs_f32(f32 x){
+abs_f32(f32 x)
+{
     if (x < 0){
         x = -x;
     }
     return(x);
 }
 
-#if C_MATH
 #include <math.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
-
 function f32
-mod_f32(f32 x, i32 m){
+mod_f32(f32 x, i32 m)
+{
     f32 whole;
     f32 frac = modff(x, &whole);
-    f32 r = ((i32)(whole) % m) + frac;
+    f32 r = f32((i32)(whole) % m) + frac;
     return(r);
 }
 
-#pragma clang diagnostic pop
-
-function f32
-sin_f32(f32 x){
-    return(sinf(x));
+// TODO: make these be based on actual turn
+inline f32
+cos_turn(f32 x)
+{
+    return cosf(TAU32 * x);
 }
 
-function f32
-cos_f32(f32 x){
-    return(cosf(x));
+inline f32
+sin_turn(f32 x)
+{
+    return sinf(TAU32 * x);
 }
-#endif
 
 ////////////////////////////////
 
@@ -3335,19 +3332,22 @@ V3i32(i32 x, i32 y, i32 z){
     return(v);
 }
 function Vec4_i32
-V4i32(i32 x, i32 y, i32 z, i32 w){
+V4i32(i32 x, i32 y, i32 z, i32 w)
+{
     Vec4_i32 v = {x, y, z, w};
     return(v);
 }
 
 internal Vec2_f32
-V2f32(f32 x, f32 y){
+V2f32(f32 x, f32 y)
+{
     Vec2_f32 v = {x, y};
     return(v);
 }
 
-internal Vec2_f32
-V2(f32 x, f32 y){
+internal v2
+V2(f32 x, f32 y)
+{
     Vec2_f32 v = {x, y};
     return(v);
 }
@@ -10310,7 +10310,6 @@ to_string(Arena *arena, i32 value)
 inline v2 V2All(v1 value) { return v2{value,value}; }
 inline v3 V3All(v1 value) { return v3{value,value,value}; }
 inline v4 V4All(v1 value) { return v4{value,value,value,value}; }
-
 
 // IMPORTANT: NO TRESPASS ////////////////////////////////////
 

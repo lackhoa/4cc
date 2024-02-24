@@ -68,7 +68,7 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
             rect2 rect = rect2_center_dim(slider_origin, slider_dim);
             v4 color = v4{1,1,1,0.5f};
             if (global_fui_active_item_index)  color.a = 1.0f;
-            draw_rect_outline(app, rect, 2, color);
+            draw_rect_outline(app, rect, 2, pack_argb(color));
         }
         if (global_fui_active_item_index)
         {// NOTE: the slider cursor

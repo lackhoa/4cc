@@ -9,7 +9,8 @@ inline b32 fui_is_active(Fui_Item_Index index)
     return (index == global_fui_active_item_index);
 }
 // TODO @Cleanup @Moveme
-global b8 global_key_states[KeyCode_COUNT];
+global b8 global_key_states            [KeyCode_COUNT];
+global u8 global_game_key_state_changes[KeyCode_COUNT];
 
 internal void
 update_global_key_states(Input_Event *event)
@@ -19,7 +20,8 @@ update_global_key_states(Input_Event *event)
     if (keydown || keyup)
     {
         Key_Code keycode = event->key.code;
-        global_key_states[keycode] = keydown;
+        global_key_states            [keycode] = keydown;
+        global_game_key_state_changes[keycode]++;
     }
 }
 

@@ -2194,12 +2194,13 @@ managed_object_load_data(FApp *app, Managed_Object object, u32 first_index, u32 
 }
 
 api(custom) function User_Input
-get_next_input_raw(FApp *app)
+get_next_input_raw(App *app)
 {
     Thread_Context *tctx = app->tctx;
     Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
     User_Input result = {};
-    if (tctx_info->coroutine != 0){
+    if (tctx_info->coroutine != 0)
+    {
         Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
         Co_Out *out = (Co_Out*)coroutine->out;
         out->request = CoRequest_None;
@@ -2207,7 +2208,8 @@ get_next_input_raw(FApp *app)
         Co_In *in = (Co_In*)coroutine->in;
         result = in->user_input;
     }
-    else{
+    else
+    {
 #define M "ERROR: get_next_input called in a hook that may not make calls to blocking APIs"
         print_message(app, string_u8_litexpr(M));
 #undef M
@@ -3099,10 +3101,10 @@ draw_set_offset(App *app, v2 value)
 }
 
 inline void
-draw_rect_outline(App *app, rect2 rect, f32 thickness, v4 color, f32 roundness=0)
+draw_rect_outline(App *app, rect2 rect, f32 thickness, ARGB_Color color, f32 roundness=0)
 {
   kv_assert(in_between(0.0f, roundness, 50.0f));
-  draw_rectangle_outline(app, rect, roundness, thickness, pack_argb(color));
+  draw_rectangle_outline(app, rect, roundness, thickness, color);
 }
 
 api(custom) function Rect_f32

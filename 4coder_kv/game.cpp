@@ -12,12 +12,20 @@
 
 #include "tr_model.cpp"
 
+global u32 yellow_argb = 0xFF777700;
+global u32 gray_argb   = pack_argb({.5,.5,.5,1});
+global u32 red_argb    = pack_argb({1,0,0,1});
+global u32 green_argb  = pack_argb({0,1,0,1});
+global u32 blue_argb   = pack_argb({0,0,1,1});
+global u32 black_argb  = pack_argb({0,0,0,1});
+global u32 white_argb  = pack_argb({1,1,1,1});
+
 // NOTE: This is a dummy buffer, so we can use the same commands to switch to the rendered game
 global String8 GAME_BUFFER_NAME = str8lit("*game*");
 
 struct Camera
 {
-    v3   world_p;
+    v1 distance;  // NOTE: by its axis z
     union
     {
         m3x3 axes;    // transform to project the object onto the camera axes
@@ -130,12 +138,6 @@ tr_line(Bitmap *bitmap, v2 p0, v2 p1, ARGB_Color color)
     tr_line(bitmap, p0.x, p0.y, p1.x, p1.y, color);
 }
 
-global ARGB_Color red   = pack_argb({1,0,0,1});
-global ARGB_Color green = pack_argb({0,1,0,1});
-global ARGB_Color blue  = pack_argb({0,0,1,1});
-global ARGB_Color black = pack_argb({0,0,0,1});
-global ARGB_Color white = pack_argb({1,1,1,1});
-
 internal void
 tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color) 
 {
@@ -183,9 +185,9 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
     fslider( draw_outline, v1{-0.298632f} );
     if (draw_outline > 0)
     {
-        tr_line(bitmap, (p1), (p2), red); 
-        tr_line(bitmap, (p0), (p2), green); 
-        tr_line(bitmap, (p0), (p1), blue); 
+        tr_line(bitmap, (p1), (p2), red_argb); 
+        tr_line(bitmap, (p0), (p2), green_argb); 
+        tr_line(bitmap, (p0), (p1), blue_argb); 
     }
 }
 
@@ -240,15 +242,15 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     Bitmap *bitmap = &bitmap_value;
    
     // NOTE(kv): clear screen
-    tr_rectangle2i(bitmap, rect2i{.p0={0,0}, .p1=dim}, black);
+    tr_rectangle2i(bitmap, rect2i{.p0={0,0}, .p1=dim}, black_argb);
     
     {// NOTE(kv): outline
         f32 X = (f32)dim.x-1;
         f32 Y = (f32)dim.y-1;
-        tr_line(bitmap, 0,0, X,0, red);
-        tr_line(bitmap, 0,0, 0,Y, red);
-        tr_line(bitmap, X,0, X,Y, red);
-        tr_line(bitmap, 0,Y, X,Y, red);
+        tr_line(bitmap, 0,0, X,0, red_argb);
+        tr_line(bitmap, 0,0, 0,Y, red_argb);
+        tr_line(bitmap, X,0, X,Y, red_argb);
+        tr_line(bitmap, 0,Y, X,Y, red_argb);
     }
    
     b32 draw_mesh = def_get_config_b32(vars_intern_lit("draw_mesh"));
@@ -268,7 +270,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
                 f32 y0 = unilateral(v0.y)*(f32)dim.y;
                 f32 x1 = unilateral(v1.x)*(f32)dim.x;
                 f32 y1 = unilateral(v1.y)*(f32)dim.y;
-                tr_line(bitmap, x0,y0, x1,y1, white);
+                tr_line(bitmap, x0,y0, x1,y1, white_argb);
             } 
         }
     }
@@ -279,9 +281,9 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
         v2 t0[3] = {V2(10, 70),   V2(50, 160),  V2(70, 80)};
         v2 t1[3] = {V2(180, 50),  V2(150, 1),   V2(70, 180)};
         v2 t2[3] = {V2(180, 150), V2(120, 160), V2(130, 180)};
-        tr_triangle(bitmap, t0, red); 
-        tr_triangle(bitmap, t1, white); 
-        tr_triangle(bitmap, t2, green);
+        tr_triangle(bitmap, t0, red_argb); 
+        tr_triangle(bitmap, t1, white_argb); 
+        tr_triangle(bitmap, t2, green_argb);
     }
    
     f32 dim_x = (f32)dim.x;
@@ -300,7 +302,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
             v2 p1 = lerp(beg, t, mid);
             v2 p2 = lerp(mid, t, end);
             v2 pos = lerp(p1, t, p2);
-            bitmap_set(bitmap, (i32)pos.x, (i32)pos.y, white);
+            bitmap_set(bitmap, (i32)pos.x, (i32)pos.y, white_argb);
         }
     }
 }
@@ -310,7 +312,7 @@ perspective_project(Camera *camera, v3 point)
 {
     v3 projected = matvmul3(&camera->project, point);
     // NOTE: distance is in camera_z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
-    v1 dz = length(camera->world_p) - projected.z;
+    v1 dz = camera->distance - projected.z;
     v1 near_clip = 10;
     if (dz > near_clip)
     {
@@ -324,9 +326,6 @@ perspective_project(Camera *camera, v3 point)
 internal void
 draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
 {
-    u32 gray   = pack_argb(v4{.5,.5,.5,1});
-    u32 yellow = 0xFF777700;
-   
     fslider(radius_a, 23.380762);
     fslider(radius_b, 3.923108);
     
@@ -334,7 +333,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
         for_i32 (index, 1, 3)
         {
             v2 screen_p = perspective_project(camera, P[index]);
-            draw_circle(app, screen_p, radius_a, yellow);
+            draw_circle(app, screen_p, radius_a, yellow_argb);
         }
     }
     
@@ -358,11 +357,11 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
         v1 draw_radius;
         {// NOTE: Having to calculate the focal_length/dz twice :<
             v1 projected_z = dot(camera->axes.z, world_p);
-            v1 dz = length(camera->world_p) - projected_z;
+            v1 dz = camera->distance - projected_z;
             draw_radius = absolute((camera->focal_length / dz) * radius);
         }
         
-        draw_circle(app, screen_p, draw_radius, gray);
+        draw_circle(app, screen_p, draw_radius, gray_argb);
     }
 }
 
@@ -370,7 +369,7 @@ internal void
 setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
 {
     // NOTE: "camz" is normalized.
-    camera->world_p = distance * camz;
+    camera->distance = distance;
    
     camera->x = noz( v3{-camz.y, camz.x, 0} );  // NOTE: z axis' projection should point up on the screen
     if (camera->x == v3{})
@@ -489,23 +488,25 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
     return ok;
 }
 
+internal b32
+game_is_key_newly_pressed(Key_Code keycode)
+{
+    return (global_key_states[keycode] &&
+            global_game_key_state_changes[keycode] > 0);
+}
+
 internal void
 game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
 {
-    v4 whitev4 = {1,1,1,1};
-    v4 grayv4  = {0.5,0.5,0.5,1};
-    u32 gray   = pack_argb(grayv4);
-    v4 blackv4 = {0,0,0,1};
-    
-    v2 screen_dim      = rect2_dim(clip);
-    v2 screen_half_dim = 0.5f * screen_dim;
-    v2 layout_center = clip.min + screen_half_dim;
+    v2 clip_dim      = rect2_dim(clip);
+    v2 clip_half_dim = 0.5f * clip_dim;
+    v2 layout_center = clip.min + clip_half_dim;
     
     draw_set_y_up(app);
     draw_set_offset(app, layout_center);
-   
-    v1 U = 1e3;  // distance multiplier (@Cleanup push this scale down to the renderer also)
-  
+    
+    v1 U = 1e3;  // render scale multiplier (@Cleanup push this scale down to the renderer)
+    
     Scratch_Block scratch(app);
     local_persist Game_Save save = {};
     
@@ -547,7 +548,7 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         save_game(app, save_dir, save_path, &save);
         user_requested_game_save = false;
     }
-   
+    
     // BOOKMARK
     Camera camera_value = {};
     Camera *camera = &camera_value;
@@ -574,17 +575,16 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
             DEBUG_VALUE(save.camera_theta);
         }
         
-        v1 phi   = save.camera_phi   * TAU32;
-        v1 theta = save.camera_theta * TAU32;
         v3 camz;
-        camz.z = sin(phi);
-        camz.x = cos(phi)*cos(theta);
-        camz.y = cos(phi)*sin(theta);
+        camz.z = sin_turn(save.camera_phi);
+        v1 cos_phi = cos_turn(save.camera_phi);
+        camz.x = cos_phi*cos_turn(save.camera_theta);
+        camz.y = cos_phi*sin_turn(save.camera_theta);
         v1 cam_distance = U * save.camera_distance;
         
         setup_camera_from_data(camera, camz, cam_distance);
         
-        DEBUG_VALUE(camera->world_p);
+        DEBUG_VALUE(camera->distance);
         DEBUG_VALUE(camera->z);
     }
 
@@ -608,18 +608,37 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         draw_line(app, O+pO_screen, O+py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
         draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
     }
-    
+   
+    const i32 bezier_count = 3;
     {// NOTE: bezier curve experiment!
-        Fui_Item_Index input_indices[3] = {};
-        // BOOKMARK
+        local_persist i32 hot_item    = 0;
+        local_persist b32 is_editing  = false;
+        
+        if ( game_is_key_newly_pressed(KeyCode_E) )
+        {
+            is_editing = !is_editing;
+        }
+        if ( game_is_key_newly_pressed(KeyCode_L) )
+        {
+            hot_item = (hot_item + 1) % bezier_count;
+        }
+        if ( game_is_key_newly_pressed(KeyCode_H) )
+        {
+            hot_item = (hot_item - 1) % bezier_count;
+        }
+#if 0
+        Fui_Item_Index input_indices[bezier_count] = {};
         fslider(_bezier0, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+0);
         fslider(_bezier1, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+1);
         fslider(_bezier2, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+2);
+#endif
         
-        for_i32 (curve_index, 0, 3)
+        // NOTE: Process input
+        v3 direction = fui_direction_from_key_states().xyz;
+        v3 delta = matvmul3(&camera->axes, direction) * dt;
+        for_i32 (curve_index, 0, bezier_count)
         {
-            // NOTE: process input
-            if ( fui_is_active(input_indices[curve_index]) )
+            if (hot_item == curve_index && (delta != v3{}))
             {
                 local_persist i32 active_cp_index = 0;
 #define Down(N) global_key_states[KeyCode_##N] != 0
@@ -628,23 +647,39 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
                 if (Down(2)) active_cp_index = 2;
                 if (Down(3)) active_cp_index = 3;
 #undef Down
-                v3 direction = fui_direction_from_key_states().xyz;
-                v3 delta = matvmul3(&camera->axes, direction) * dt;
                 save.bezier_curves[curve_index].control_points[active_cp_index] += delta;
             }
-            
-            // NOTE: Input processing
+           
             v3 control_points[4];
-            block_copy_array(control_points, save.bezier_curves[curve_index].control_points);
-            f32 pos_unit = 500;
-            for_i32 ( index, 0, alen(control_points) )
             {
-                control_points[index] *= pos_unit;
+                block_copy_array(control_points, save.bezier_curves[curve_index].control_points);
+                f32 pos_unit = 500;
+                for_i32 ( index, 0, alen(control_points) )
+                {
+                    control_points[index] *= pos_unit;
+                }
             }
             
-            // NOTE: Draw the control points
-            // NOTE: draw the actual curve
+            // NOTE: Draw
             draw_cubic_bezier(app, camera, control_points);
+        }
+        
+        {// NOTE: UI situation
+            v1  atY = 0;
+            v1 dimX = 100;
+            v1 dimY = 100;
+            // NOTE: The active item will be highlighted
+            for_i32 (curve_index, 0, bezier_count)
+            {
+                rect2 rect = rect2_min_dim(V2(0, atY), V2(dimX, dimY));
+                u32 color = gray_argb;
+                if (curve_index == hot_item)
+                {
+                    color = (is_editing) ? red_argb : white_argb;
+                }
+                draw_rect_outline(app, rect, 4.0f, color);
+                atY -= dimY;
+            }
         }
     }
      
@@ -682,7 +717,9 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }
-    
+   
     draw_set_y_down(app);
     draw_set_offset(app, v2{});
+    
+    block_zero_array(global_game_key_state_changes);
 }

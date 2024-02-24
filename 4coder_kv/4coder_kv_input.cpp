@@ -191,8 +191,28 @@ kv_handle_vim_keyboard_input(App *app, Input_Event *event)
     else return false;
 }
 
-CUSTOM_COMMAND_SIG(kv_view_input_handler)
-CUSTOM_DOC("Input consumption loop for view behavior (why is this a command?)")
+internal b32 
+kv_handle_game_input_stub(App *app, Input_Event *event)
+{
+    b32 alt_down = false;
+    for_i32 (index,0,event->key.modifiers.count)
+    {
+        if (event->key.modifiers.mods[index] == KeyCode_Alt)
+        {
+            alt_down = true;
+        }
+    }
+    
+    if (alt_down && event->key.code == KeyCode_Q)
+    {
+        exit_4coder(app);
+        return true;
+    }
+    else return false;
+}
+
+internal void
+kv_view_input_handler(App *app)
 {
     Scratch_Block scratch(app);
     default_input_handler_init(app, scratch);
@@ -244,8 +264,14 @@ CUSTOM_DOC("Input consumption loop for view behavior (why is this a command?)")
             }
             
             b32 handled = false;
-            if ( !is_game_view  )
+           
+            if ( is_game_view )
             {
+                // TODO: let's just duplicate the keys that we need.
+                handled = kv_handle_game_input_stub(app, &input.event);
+            }
+            else
+            {// NOTE: the normal text editor
                 handled = kv_handle_vim_keyboard_input(app, &input.event);
             }
            

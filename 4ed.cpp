@@ -332,7 +332,8 @@ App_Init_Sig(app_init){
     }
 }
 
-App_Step_Sig(app_step){
+App_Step_Sig(app_step)
+{
     Models *models = (Models*)base_ptr;
     
     Mutex_Lock file_order_lock(models->working_set.mutex);
@@ -347,7 +348,8 @@ App_Step_Sig(app_step){
     models->input = input;
     
     // NOTE(allen): OS clipboard event handling
-    if (input->clipboard.str != 0){
+    if (input->clipboard.str != 0)
+    {
         co_send_core_event(tctx, models, CoreCode_NewClipboardContents, input->clipboard);
     }
     
@@ -358,7 +360,8 @@ App_Step_Sig(app_step){
     
     // NOTE(allen): update child processes
     f32 dt = input->dt;
-    if (dt > 0){
+    if (dt > 0)
+    {
         Temp_Memory_Block temp(scratch);
         
         Child_Process_Container *child_processes = &models->child_processes;
@@ -370,7 +373,8 @@ App_Step_Sig(app_step){
         
         for (Node *node = child_processes->child_process_active_list.next;
              node != &child_processes->child_process_active_list;
-             node = node->next){
+             node = node->next)
+        {
             Child_Process *child_process = CastFromMember(Child_Process, node, node);
             
             Editing_File *file = child_process->out_file;
@@ -380,22 +384,27 @@ App_Step_Sig(app_step){
             
             u32 amount = 0;
             system_cli_begin_update(cli);
-            if (system_cli_update_step(cli, dest, max, &amount)){
-                if (file != 0 && amount > 0){
+            if (system_cli_update_step(cli, dest, max, &amount))
+            {
+                if (file != 0 && amount > 0)
+                {
                     output_file_append(tctx, models, file, SCu8(dest, amount));
                 }
             }
             
-            if (system_cli_end_update(cli)){
-                if (file != 0){
-                    String_Const_u8 str = push_stringf(scratch, "exited with code %d", cli->exit);
+            if (system_cli_end_update(cli))
+            {
+                if (file != 0)
+                {
+                    String8 str = push_stringf(scratch, "exited with code %d", cli->exit);
                     output_file_append(tctx, models, file, str);
                 }
                 processes_to_free[processes_to_free_count++] = child_process;
                 child_process_set_return_code(models, child_processes, child_process->id, cli->exit);
             }
             
-            if (child_process->cursor_at_end && file != 0){
+            if (child_process->cursor_at_end && file != 0)
+            {
                 file_cursor_to_end(tctx, models, file);
             }
         }
@@ -408,7 +417,8 @@ App_Step_Sig(app_step){
     // NOTE(allen): simulated events
     Input_List input_list = input->events;
     Input_Modifier_Set modifiers = system_get_keyboard_modifiers(scratch);
-    if (input->mouse.press_l){
+    if (input->mouse.press_l)
+    {
         Input_Event event = {};
         event.kind = InputEventKind_MouseButton;
         event.mouse.code = MouseCode_Left;
@@ -416,7 +426,8 @@ App_Step_Sig(app_step){
         event.mouse.modifiers = copy_modifier_set(scratch, &modifiers);
         push_input_event(scratch, &input_list, &event);
     }
-    else if (input->mouse.release_l){
+    else if (input->mouse.release_l)
+    {
         Input_Event event = {};
         event.kind = InputEventKind_MouseButtonRelease;
         event.mouse.code = MouseCode_Left;
@@ -424,7 +435,8 @@ App_Step_Sig(app_step){
         event.mouse.modifiers = copy_modifier_set(scratch, &modifiers);
         push_input_event(scratch, &input_list, &event);
     }
-    if (input->mouse.press_r){
+    if (input->mouse.press_r)
+    {
         Input_Event event = {};
         event.kind = InputEventKind_MouseButton;
         event.mouse.code = MouseCode_Right;
@@ -432,7 +444,8 @@ App_Step_Sig(app_step){
         event.mouse.modifiers = copy_modifier_set(scratch, &modifiers);
         push_input_event(scratch, &input_list, &event);
     }
-    else if (input->mouse.release_r){
+    else if (input->mouse.release_r)
+    {
         Input_Event event = {};
         event.kind = InputEventKind_MouseButtonRelease;
         event.mouse.code = MouseCode_Right;
@@ -440,7 +453,8 @@ App_Step_Sig(app_step){
         event.mouse.modifiers = copy_modifier_set(scratch, &modifiers);
         push_input_event(scratch, &input_list, &event);
     }
-    if (input->mouse.wheel != 0){
+    if (input->mouse.wheel != 0)
+    {
         Input_Event event = {};
         event.kind = InputEventKind_MouseWheel;
         event.mouse_wheel.value = (f32)(input->mouse.wheel);
@@ -448,7 +462,8 @@ App_Step_Sig(app_step){
         event.mouse_wheel.modifiers = copy_modifier_set(scratch, &modifiers);
         push_input_event(scratch, &input_list, &event);
     }
-    if (input->mouse.p != models->prev_p){
+    if (input->mouse.p != models->prev_p)
+    {
         b32 was_in_window = rect_contains_point(Ri32(0, 0, prev_dim.x, prev_dim.y), models->prev_p);
         b32 is_in_window  = rect_contains_point(Ri32(0, 0, current_dim.x, current_dim.y), input->mouse.p);
         if (is_in_window || was_in_window){
@@ -459,7 +474,8 @@ App_Step_Sig(app_step){
             push_input_event(scratch, &input_list, &event);
         }
     }
-    if (models->animated_last_frame){
+    if (models->animated_last_frame)
+    {
         Input_Event event = {};
         event.kind = InputEventKind_Core;
         event.core.code = CoreCode_Animate;
@@ -498,7 +514,8 @@ App_Step_Sig(app_step){
     }
     
     // NOTE(allen): First frame initialization
-    if (input->first_step){
+    if (input->first_step)
+    {
         Temp_Memory_Block temp(scratch);
         
         String_Const_u8_Array filenames = {};
@@ -647,17 +664,17 @@ App_Step_Sig(app_step){
                     match_mouse_code_release(event, MouseCode_Left)){
                     models->state = APP_STATE_EDIT;
                 }
-                else if (event->kind == InputEventKind_MouseMove){
-                    if (input->mouse.l){
+                else if (event->kind == InputEventKind_MouseMove)
+                {
+                    if (input->mouse.l)
+                    {
                         Panel *split = models->resizing_intermediate_panel;
                         Range_i32 limits = layout_get_limiting_range_on_split(layout, split);
                         i32 mouse_position = (split->vertical_split)?(mouse.x):(mouse.y);
                         mouse_position = clamp_between(limits.min, mouse_position, limits.max);
                         layout_set_split_absolute_position(layout, split, mouse_position);
                     }
-                    else{
-                        models->state = APP_STATE_EDIT;
-                    }
+                    else models->state = APP_STATE_EDIT;
                 }
             }break;
         }
@@ -691,18 +708,21 @@ App_Step_Sig(app_step){
     // NOTE(allen): dt
     f32 literal_dt = 0.f;
     u64 now_usecond_stamp = system_now_time();
-    if (!input->first_step){
+    if (!input->first_step)
+    {
         u64 elapsed_useconds = now_usecond_stamp - models->last_render_usecond_stamp;
         literal_dt = (f32)((f64)(elapsed_useconds)/1000000.f);
     }
     models->last_render_usecond_stamp = now_usecond_stamp;
     f32 animation_dt = 0.f;
-    if (models->animated_last_frame){
+    if (models->animated_last_frame)
+    {
         animation_dt = literal_dt;
     }
     
     // NOTE(allen): on the first frame there should be no scrolling
-    if (input->first_step){
+    if (input->first_step)
+    {
         for (Panel *panel = layout_get_first_open_panel(layout);
              panel != 0;
              panel = layout_get_next_open_panel(layout, panel)){
@@ -744,11 +764,12 @@ App_Step_Sig(app_step){
         frame.literal_dt = literal_dt;
         frame.animation_dt = animation_dt;
         
-        Application_Links app = {};
+        App app = {};
         app.tctx = tctx;
         app.cmd_context = models;
         
-        if (models->tick != 0){
+        if (models->tick != 0)
+        {
             models->tick(&app, frame);
         }
         
@@ -758,19 +779,23 @@ App_Step_Sig(app_step){
         Live_Views *live_views = &models->view_set;
         for (Node *node = layout->open_panels.next;
              node != &layout->open_panels;
-             node = node->next){
+             node = node->next)
+        {
             Panel *panel = CastFromMember(Panel, node, node);
             View *view = panel->view;
             View_Context_Node *ctx = view->ctx;
-            if (ctx != 0){
+            if (ctx != 0)
+            {
                 Render_Caller_Function *render_caller = ctx->ctx.render_caller;
-                if (render_caller != 0){
+                if (render_caller != 0)
+                {
                     render_caller(&app, frame, view_get_id(live_views, view));
                 }
             }
         }
         
-        if (models->whole_screen_render_caller != 0){
+        if (models->whole_screen_render_caller != 0)
+        {
             models->whole_screen_render_caller(&app, frame);
         }
         

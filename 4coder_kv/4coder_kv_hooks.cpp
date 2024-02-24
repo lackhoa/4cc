@@ -74,7 +74,6 @@ kv_tick(App *app, Frame_Info frame_info)
                         printf_message(app, "automatically reloaded file %.*s\n", string_expand(filename));
                     }break;
                 }
-                
             }
         }
         if (saved_at_least_one_buffer) 
@@ -92,17 +91,17 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
   
   Scratch_Block scratch(app);
   b32 treat_as_code = false;
-  String_Const_u8 filename = push_buffer_filename(app, scratch, buffer_id);
-  String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
+  String8 filename = push_buffer_filename(app, scratch, buffer_id);
+  String8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
   
   // NOTE(rjf): Treat as code if the config tells us to.
   if(treat_as_code == false)
   {
     if(filename.size > 0)
     {
-      String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
-      String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-      String_Const_u8 ext = string_file_extension(filename);
+      String8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
+      String8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
+      String8 ext = string_file_extension(filename);
       for(i32 i = 0; i < extensions.count; ++i)
       {
         if(string_match(ext, extensions.strings[i]))

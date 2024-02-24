@@ -1528,20 +1528,26 @@ backspace_utf8(String_Const_u8 string){
 ////////////////////////////////
 
 function User_Input
-get_next_input(Application_Links *app, Event_Property use_flags, Event_Property abort_flags){
+get_next_input(App *app, Event_Property use_flags, Event_Property abort_flags)
+{
     User_Input in = {};
-    if (use_flags != 0){
-        for (;;){
+    if (use_flags != 0)
+    {
+        for (;;)
+        {
             in = get_next_input_raw(app);
-            if (in.abort){
+            if (in.abort)
+            {
                 break;
             }
             Event_Property event_flags = get_event_properties(&in.event);
-            if ((event_flags & abort_flags) != 0){
+            if (event_flags & abort_flags)
+            {
                 in.abort = true;
                 break;
             }
-            if ((event_flags & use_flags) != 0){
+            if (event_flags & use_flags)
+            {
                 break;
             }
         }
