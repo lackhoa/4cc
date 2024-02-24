@@ -5,9 +5,11 @@
 // TOP
 
 function b32
-has_modifier(Key_Code *mods, i32 count, Key_Code modifier){
+set_has_modifier(Key_Code *mods, i32 count, Key_Code modifier)
+{
     b32 result = false;
-    for (i32 i = 0; i < count; i += 1){
+    for (i32 i = 0; i < count; i += 1)
+    {
         if (mods[i] == modifier){
             result = true;
             break;
@@ -17,20 +19,24 @@ has_modifier(Key_Code *mods, i32 count, Key_Code modifier){
 }
 
 function b32
-has_modifier(Input_Modifier_Set_Fixed *set, Key_Code modifier){
-    return(has_modifier(set->mods, set->count, modifier));
+set_has_modifier(Input_Modifier_Set_Fixed *set, Key_Code modifier)
+{
+    return(set_has_modifier(set->mods, set->count, modifier));
 }
 
 function b32
-has_modifier(Input_Modifier_Set *set, Key_Code modifier){
-    return(has_modifier(set->mods, set->count, modifier));
+set_has_modifier(Input_Modifier_Set *set, Key_Code modifier)
+{
+    return(set_has_modifier(set->mods, set->count, modifier));
 }
 
 function Input_Modifier_Set
-copy_modifier_set(Arena *arena, Input_Modifier_Set_Fixed *set){
+copy_modifier_set(Arena *arena, Input_Modifier_Set_Fixed *set)
+{
     Input_Modifier_Set result = {};
     result.count = set->count;
-    if (result.count > 0){
+    if (result.count > 0)
+    {
         result.mods = push_array_write(arena, Key_Code, result.count, set->mods);
     }
     return(result);
@@ -44,8 +50,10 @@ copy_modifier_set(Input_Modifier_Set_Fixed *dst, Input_Modifier_Set *set){
 }
 
 function void
-add_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod){
-    if (!has_modifier(set, mod)){
+add_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod)
+{
+    if ( !set_has_modifier(set, mod) )
+    {
         if (set->count < ArrayCountSigned(set->mods)){
             set->mods[set->count] = mod;
             set->count += 1;
@@ -54,7 +62,8 @@ add_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod){
 }
 
 function void
-remove_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod){
+remove_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod)
+{
     i32 count = set->count;
     Key_Code *mods = set->mods;
     for (i32 i = 0; i < count; i += 1){
@@ -68,7 +77,8 @@ remove_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod){
 }
 
 function void
-set_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod, b32 val){
+set_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod, b32 val)
+{
     if (val){
         add_modifier(set, mod);
     }
@@ -78,7 +88,8 @@ set_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod, b32 val){
 }
 
 function Input_Modifier_Set
-copy_modifier_set(Arena *arena, Input_Modifier_Set *set){
+copy_modifier_set(Arena *arena, Input_Modifier_Set *set)
+{
     Input_Modifier_Set result = {};
     result.count = set->count;
     if (result.count > 0){
@@ -88,9 +99,11 @@ copy_modifier_set(Arena *arena, Input_Modifier_Set *set){
 }
 
 function Input_Modifier_Set*
-get_modifiers(Input_Event *event){
+get_modifiers(Input_Event *event)
+{
     Input_Modifier_Set *result = 0;
-    switch (event->kind){
+    switch (event->kind)
+    {
         case InputEventKind_KeyStroke:
         {
             result = &event->key.modifiers;
@@ -112,29 +125,73 @@ get_modifiers(Input_Event *event){
 }
 
 function b32
-has_modifier(Input_Event *event, Key_Code modifier){
+has_modifier(Input_Event *event, Key_Code modifier)
+{
     Input_Modifier_Set *set = get_modifiers(event);
-    return(has_modifier(set, modifier));
+    return(set_has_modifier(set, modifier));
+}
+
+// NOTE(kv): @Hack
+inline Key_Code
+is_modifier_key(Key_Code code)
+{
+    return (code == KeyCode_Control ||
+            code == KeyCode_Shift   ||
+            code == KeyCode_Alt     ||
+            code == KeyCode_Command ||
+            code == KeyCode_Menu);
+}
+
+// NOTE(kv): Totally a @Hack, these flags can be appended to the keycode
+typedef u32 Key_Mod;
+enum
+{
+    KeyMod_Ctl = bit_32,
+    KeyMod_Sft = bit_31,
+    KeyMod_Alt = bit_30,
+    KeyMod_Cmd = bit_29,
+    KeyMod_Mnu = bit_28,
+};
+
+internal Key_Code
+pack_modifiers(Key_Code *mods, u32 count)
+{
+    Key_Mod result = 0;
+    for_u32 (i,0,count)
+    {
+        Key_Code mod = mods[i];
+        if (0){}
+        else if(mod == KeyCode_Control){ result |= KeyMod_Ctl; }
+        else if(mod == KeyCode_Shift)  { result |= KeyMod_Sft; }
+        else if(mod == KeyCode_Alt)    { result |= KeyMod_Alt; }
+        else if(mod == KeyCode_Command){ result |= KeyMod_Cmd; }
+        else if(mod == KeyCode_Menu)   { result |= KeyMod_Mnu; }
+    }
+    return result;
 }
 
 function b32
-is_unmodified_key(Input_Event *event){
+is_unmodified_key(Input_Event *event)
+{
     b32 result = false;
-    if (event->kind == InputEventKind_KeyStroke){
+    if (event->kind == InputEventKind_KeyStroke)
+    {
         Input_Modifier_Set *set = get_modifiers(event);
-        result = (!has_modifier(set, KeyCode_Control) &&
-                  !has_modifier(set, KeyCode_Alt) &&
-                  !has_modifier(set, KeyCode_Shift) &&
-                  !has_modifier(set, KeyCode_Command));
+        result = (!set_has_modifier(set, KeyCode_Control) &&
+                  !set_has_modifier(set, KeyCode_Alt) &&
+                  !set_has_modifier(set, KeyCode_Shift) &&
+                  !set_has_modifier(set, KeyCode_Command));
     }
     return(result);
 }
 
 function b32
-is_modified(Input_Event *event){
+is_modified(Input_Event *event)
+{
     Input_Modifier_Set *mods = get_modifiers(event);
     b32 result = false;
-    if (mods != 0){
+    if (mods != 0)
+    {
         result = (mods->count > 0);
     }
     return(result);

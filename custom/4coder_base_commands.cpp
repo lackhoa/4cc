@@ -945,7 +945,7 @@ isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
         if (match_key_code(&in, KeyCode_Return) ||
             match_key_code(&in, KeyCode_Tab)){
             Input_Modifier_Set *mods = &in.event.key.modifiers;
-            if (has_modifier(mods, KeyCode_Control)){
+            if (set_has_modifier(mods, KeyCode_Control)){
                 bar.string.size = cstring_length(previous_isearch_query);
                 block_copy(bar.string.str, previous_isearch_query, bar.string.size);
             }
@@ -969,7 +969,7 @@ isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
                 bar.string = backspace_utf8(bar.string);
                 string_change = (bar.string.size < old_bar_string_size);
             }
-            else if (has_modifier(&in.event.key.modifiers, KeyCode_Control)){
+            else if (set_has_modifier(&in.event.key.modifiers, KeyCode_Control)){
                 if (bar.string.size > 0){
                     string_change = true;
                     bar.string.size = 0;
@@ -992,7 +992,7 @@ isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
                 do_scan_action = true;
             }
             else if (match_key_code(&in, KeyCode_V) && 
-                     has_modifier(&in, KeyCode_Control))
+                     input_has_modifier(&in, KeyCode_Control))
             {
                 Scratch_Block scratch(app);
                 String8 clipboard_string = push_clipboard_index_inner(scratch, 0, 0);

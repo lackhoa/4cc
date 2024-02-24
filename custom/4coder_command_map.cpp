@@ -179,12 +179,14 @@ mapping_release_map(Mapping *mapping, Command_Map *map){
 ////////////////////////////////
 
 function b32
-map_strict_match(Input_Modifier_Set *binding_mod_set, Input_Modifier_Set *event_mod_set, Key_Code skip_self_mod){
+map_strict_match(Input_Modifier_Set *binding_mod_set, Input_Modifier_Set *event_mod_set, Key_Code skip_self_mod)
+{
     b32 result = true;
     i32 binding_mod_count = binding_mod_set->count;
     Key_Code *binding_mods = binding_mod_set->mods;
     for (i32 i = 0; i < binding_mod_count; i += 1){
-        if (!has_modifier(event_mod_set, binding_mods[i])){
+        if (!set_has_modifier(event_mod_set, binding_mods[i]))
+        {
             result = false;
             break;
         }
@@ -192,7 +194,7 @@ map_strict_match(Input_Modifier_Set *binding_mod_set, Input_Modifier_Set *event_
     i32 mod_count = event_mod_set->count;
     Key_Code *mods = event_mod_set->mods;
     for (i32 i = 0; i < mod_count; i += 1){
-        if (mods[i] != skip_self_mod && !has_modifier(binding_mod_set, mods[i])){
+        if (mods[i] != skip_self_mod && !set_has_modifier(binding_mod_set, mods[i])){
             result = false;
             break;
         }
@@ -206,7 +208,7 @@ map_loose_match(Input_Modifier_Set *binding_mod_set, Input_Modifier_Set *event_m
     i32 binding_mod_count = binding_mod_set->count;
     Key_Code *binding_mods = binding_mod_set->mods;
     for (i32 i = 0; i < binding_mod_count; i += 1){
-        if (!has_modifier(event_mod_set, binding_mods[i])){
+        if (!set_has_modifier(event_mod_set, binding_mods[i])){
             result = false;
             break;
         }

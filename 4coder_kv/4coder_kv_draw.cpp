@@ -145,10 +145,10 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
     b32 is_active_view = (active_view == view);
     
     // todo(kv): maybe this thing sets the clip to the active panel? so it messes with vim command lister?
-    // Rect_f32 region = draw_background_and_margin(app, view, is_active_view);
+    // Rect_f32 clip = draw_background_and_margin(app, view, is_active_view);
     
-    Rect_f32 region = view_get_screen_rect(app, view);
-    Rect_f32 prev_clip = draw_set_clip(app, region);
+    Rect_f32 clip = view_get_screen_rect(app, view);
+    Rect_f32 prev_clip = draw_set_clip(app, clip);
     
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Face_ID face_id = get_face_id(app, buffer);
@@ -159,40 +159,40 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
     Rect_f32 global_rect = global_get_screen_rectangle(app);
     {
         f32 filebar_y = global_rect.y1 - 2.f*line_height - vim_cur_filebar_offset;
-        if(region.y1 >= filebar_y){ region.y1 = filebar_y; }
+        if(clip.y1 >= filebar_y){ clip.y1 = filebar_y; }
     }
     
     // clear
-    draw_rectangle_fcolor(app, region, 0.f, fcolor_id(defcolor_back));
+    draw_rectangle_fcolor(app, clip, 0.f, fcolor_id(defcolor_back));
     
-    region = vim_draw_query_bars(app, region, view, face_id);
+    clip = vim_draw_query_bars(app, clip, view, face_id);
    
-    if ( rect2_dim(region).y > 200 )
+    if ( rect_dim(clip).y > 200 )
     {// Draw file bar
-        Rect_f32_Pair pair = layout_file_bar_on_bot(region, line_height);
+        Rect_f32_Pair pair = layout_file_bar_on_bot(clip, line_height);
         vim_draw_filebar(app, view, buffer, frame_info, face_id, pair.b);
-        region = pair.a;
+        clip = pair.a;
     }
     
     {// Draw borders
-        if(region.x0 > global_rect.x0){
-            Rect_f32_Pair border_pair = rect_split_left_right(region, 2.f);
+        if(clip.x0 > global_rect.x0){
+            Rect_f32_Pair border_pair = rect_split_left_right(clip, 2.f);
             draw_rectangle_fcolor(app, border_pair.a, 0.f, fcolor_id(defcolor_margin));
-            region = border_pair.b;
+            clip = border_pair.b;
         }
-        if(region.x1 < global_rect.x1){
-            Rect_f32_Pair border_pair = rect_split_left_right_neg(region, 2.f);
+        if(clip.x1 < global_rect.x1){
+            Rect_f32_Pair border_pair = rect_split_left_right_neg(clip, 2.f);
             draw_rectangle_fcolor(app, border_pair.b, 0.f, fcolor_id(defcolor_margin));
-            region = border_pair.a;
+            clip = border_pair.a;
         }
-        region.y0 += 3.f;
+        clip.y0 += 3.f;
     }
     
 	if(show_fps_hud)
     {
-        Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
+        Rect_f32_Pair pair = layout_fps_hud_on_bottom(clip, line_height);
         draw_fps_hud(app, frame_info, face_id, pair.max);
-        region = pair.min;
+        clip = pair.min;
         animate_in_n_milliseconds(app, 1000);
 	}
     
@@ -201,9 +201,9 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
     Rect_f32 line_number_rect = {};
     if (show_line_number_margins)
     {
-        Rect_f32_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
+        Rect_f32_Pair pair = layout_line_number_margin(app, buffer, clip, digit_advance);
         line_number_rect = pair.min;
-        region = pair.max;
+        clip = pair.max;
     }
     
 	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
@@ -218,18 +218,18 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
         animate_in_n_milliseconds(app, 0);
     }
 	Buffer_Point buffer_point = scroll.position;
-	Text_Layout_ID text_layout_id = text_layout_create(app, buffer, region, buffer_point);
+	Text_Layout_ID text_layout_id = text_layout_create(app, buffer, clip, buffer_point);
     
     if(show_line_number_margins)
         vim_draw_line_number_margin(app, view, buffer, face_id, text_layout_id, line_number_rect);
     // else
     //   draw_rectangle_fcolor(app, line_number_rect, 0.f, fcolor_id(defcolor_back));
    
-    { // NOTE(kv): kv_render_buffer(app, frame_info, view, face_id, buffer, text_layout_id, region);
+    { // NOTE(kv): kv_render_buffer(app, frame_info, view, face_id, buffer, text_layout_id, clip);
         // NOTE(kv): originally from "byp_render_buffer"
         ProfileScope(app, "render buffer");
-        Rect_f32 prev_clip2 = draw_set_clip(app, region);  // todo I don't even think this is necessary?
-        defer(draw_set_clip(app, prev_clip2););
+        Rect_f32 prev_clip2 = draw_set_clip(app, clip);  // todo I don't even think this is necessary?
+        defer( draw_set_clip(app, prev_clip2); );
         
         // TODO @Cleanup Why not just check the view buffer name?
         u8 scratch_memory[256];
@@ -237,7 +237,7 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
         String8 buffer_name = push_buffer_base_name(app, &scratch, buffer);
         if ( string_match(buffer_name, GAME_BUFFER_NAME) )
         {// NOTE(kv): draw test render buffer
-            game_update_and_render(app, view, frame_info.animation_dt, region);
+            game_update_and_render(app, view, frame_info.animation_dt);
         }
         else
         {
@@ -340,7 +340,7 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
             }
             
             // NOTE(kv): fui
-            fui_draw_slider(app, buffer, region);
+            fui_draw_slider(app, buffer, clip);
         }
     }
     
@@ -348,9 +348,9 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
     if (arrlen(DEBUG_entries) > 0 &&
         DEBUG_draw_hud_p)
     {// my test hud
-        Rect_f32_Pair pair = rect_split_top_bottom_neg(region, 5*line_height);
+        Rect_f32_Pair pair = rect_split_top_bottom_neg(clip, 5*line_height);
 		DEBUG_draw_hud(app, face_id, text_layout_id, pair.max);
-		region = pair.min;
+		clip = pair.min;
     }
 #endif
     

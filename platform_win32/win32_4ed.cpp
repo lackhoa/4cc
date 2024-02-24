@@ -1161,7 +1161,8 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
     LRESULT result = 0;
     Scratch_Block scratch(win32vars.tctx);
     
-    switch (uMsg){
+    switch (uMsg)
+    {
         case WM_MENUCHAR:
         {
             result = (MNC_CLOSE << 16);
@@ -1187,7 +1188,8 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
             Input_Modifier_Set_Fixed *mods = &win32vars.input_chunk.pers.modifiers;
             
             Control_Keys *controls = &win32vars.input_chunk.pers.controls;
-            switch (vk){
+            switch (vk)
+            {
                 case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
                 case VK_MENU:case VK_LMENU:case VK_RMENU:
                 {

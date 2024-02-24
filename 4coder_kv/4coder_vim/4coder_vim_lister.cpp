@@ -30,8 +30,8 @@ vim_lister__backspace(Application_Links *app){
 	Lister *lister = view_get_lister(app, view);
 	if(lister){
 		User_Input input = get_current_input(app);
-		if(has_modifier(&input, KeyCode_Control)){
-			if(has_modifier(&input, KeyCode_Shift)){
+		if(input_has_modifier(&input, KeyCode_Control)){
+			if(input_has_modifier(&input, KeyCode_Shift)){
 				lister->text_field.size = 0;
 			}else{
 				lister->text_field.string = ctrl_backspace_utf8(lister->text_field.string);
@@ -54,8 +54,8 @@ vim_lister_file__backspace(Application_Links *app){
 	Lister *lister = view_get_lister(app, view);
 	if(lister){
 		User_Input input = get_current_input(app);
-		if(has_modifier(&input, KeyCode_Control)){
-			if(has_modifier(&input, KeyCode_Shift)){
+		if(input_has_modifier(&input, KeyCode_Control)){
+			if(input_has_modifier(&input, KeyCode_Shift)){
 				lister->text_field.size = 0;
 				while(!character_is_slash(lister->text_field.str[++lister->text_field.size])){}
 				++lister->text_field.size;
@@ -182,7 +182,7 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
 function Vec2_i32
 calc_col_row(Application_Links *app, Lister *lister)
 {
-	v2 dim = rect2_dim(global_get_screen_rectangle(app));
+	v2 dim = rect_dim(global_get_screen_rectangle(app));
 	Face_ID face_id = get_face_id(app, 0);
 	Face_Metrics metrics = get_face_metrics(app, face_id);
 	f32 line_height = metrics.line_height;
@@ -419,10 +419,10 @@ vim_run_lister(Application_Links *app, Lister *lister){
 		}
 		
 		if(in.event.kind == InputEventKind_KeyStroke){
-			if(in.event.key.code == KeyCode_W && has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
+			if(in.event.key.code == KeyCode_W && input_has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
 				in.event.key.code = KeyCode_Backspace;
 			}
-			if(in.event.key.code == KeyCode_U && has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
+			if(in.event.key.code == KeyCode_U && input_has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
 				in.event.key.code = KeyCode_Backspace;
 				Input_Modifier_Set *set = get_modifiers(&in.event);
 				set->mods[set->count++] = KeyCode_Shift;

@@ -211,8 +211,8 @@ vim_handle_visual_insert_mode(Application_Links *app, Input_Event *event){
 
 	local_persist i32 count=0;
 
-	if(event->kind == InputEventKind_KeyStroke){
-
+	if(event->kind == InputEventKind_KeyStroke)
+    {
 		if(event->key.code == KeyCode_Escape || event->key.code == KeyCode_Return){
 			vim_normal_mode(app);
 			history_group_end(vim_history_group);
@@ -223,10 +223,11 @@ vim_handle_visual_insert_mode(Application_Links *app, Input_Event *event){
 			return true;
 		}
 
-		if(event->key.code == KeyCode_Backspace){
+		if(event->key.code == KeyCode_Backspace)
+        {
 			if(count > 0){ undo(app); count--; }
-			if(has_modifier(event, KeyCode_Control)){
-
+			if(has_modifier(event, KeyCode_Control))
+            {
 				b32 clearing_whitespace = true;
 				while(count > 0){
 					Range_i64 range = get_view_range(app, view);

@@ -1287,7 +1287,7 @@ rect_get_radius(v2 radius)
 }
 
 inline v2
-rect2_dim(rect2 rect)
+rect_dim(rect2 rect)
 {
     return (rect.max - rect.min);
 }
@@ -3345,6 +3345,12 @@ V2f32(f32 x, f32 y)
     return(v);
 }
 
+inline v2
+V2()
+{
+    return v2{};
+}
+
 internal v2
 V2(f32 x, f32 y)
 {
@@ -5253,7 +5259,7 @@ rect2_half_dim(Rect_i32 r){
 }
 function Vec2_f32
 rect2_half_dim(Rect_f32 r){
-    return(rect2_dim(r)*0.5f);
+    return(rect_dim(r)*0.5f);
 }
 
 function Rect_i32

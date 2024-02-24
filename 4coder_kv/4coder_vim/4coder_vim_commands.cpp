@@ -9,7 +9,9 @@ CUSTOM_DOC("Toggles buffer peek")
 	f32 screen_height = rect_height(global_get_screen_rectangle(app));
 	f32 height = Min(0.3f, VIM_LISTER_MAX_RATIO)*screen_height;
 	Input_Event event = get_current_input(app).event;
-	if(event.kind == InputEventKind_KeyStroke && has_modifier(&event, KeyCode_Shift)){
+	if(event.kind == InputEventKind_KeyStroke && 
+       has_modifier(&event, KeyCode_Shift))
+    {
 		height = VIM_LISTER_MAX_RATIO*screen_height;
 	}
 

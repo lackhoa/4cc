@@ -3108,9 +3108,17 @@ draw_rect_outline(App *app, rect2 rect, f32 thickness, ARGB_Color color, f32 rou
 }
 
 api(custom) function Rect_f32
-draw_set_clip(App *app, Rect_f32 new_clip){
+draw_set_clip(App *app, Rect_f32 new_clip)
+{
     Models *models = (Models*)app->cmd_context;
-    return(draw_set_clip(models->target, new_clip));
+    return( draw_set_clip(models->target, new_clip) );
+}
+
+inline rect2
+draw_get_clip(App *app)
+{
+    Models *models = (Models*)app->cmd_context;
+    return models->target->clip_box;
 }
 
 api(custom) function Text_Layout_ID
@@ -3126,7 +3134,7 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
         
         Layout_Function *layout_func = file_get_layout_func(file);
         
-        Vec2_f32 dim = rect2_dim(rect);
+        Vec2_f32 dim = rect_dim(rect);
         
         i64 line_count = buffer_line_count(buffer);
         i64 line_number = buffer_point.line_number;

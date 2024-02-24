@@ -12,6 +12,19 @@ inline b32 fui_is_active(Fui_Item_Index index)
 global b8 global_key_states            [KeyCode_COUNT];
 global u8 global_game_key_state_changes[KeyCode_COUNT];
 
+inline b32
+key_is_down(Key_Code keycode)
+{
+    return global_key_states[keycode];
+}
+
+inline u32
+key_state_changes(Key_Code keycode)
+{
+    return global_game_key_state_changes[keycode];
+}
+
+// TODO(kv): This key tracking is inaccurate at least in the case when you alt+tab out of the app
 internal void
 update_global_key_states(Input_Event *event)
 {
@@ -20,12 +33,16 @@ update_global_key_states(Input_Event *event)
     if (keydown || keyup)
     {
         Key_Code keycode = event->key.code;
-        global_key_states            [keycode] = keydown;
-        global_game_key_state_changes[keycode]++;
+        // NOTE: We have system_get_keyboard_modifiers to track modifier keys already
+        if ( !is_modifier_key(keycode) )
+        {
+            global_key_states            [keycode] = keydown;
+            global_game_key_state_changes[keycode]++;
+        }
     }
 }
 
-#define X_Fui_Types(X)  \
+#define X_Fui_Types(X) \
     X(v1) \
     X(v2) \
     X(v3) \

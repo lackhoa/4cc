@@ -164,10 +164,3 @@ struct Vim_Jump_List{
 	Point_Stack_Slot markers[POINT_STACK_DEPTH + 1];
 	i32 top, bot, index;
 };
-
-
-global_const u32 KeyMod_Ctl = bit_32;
-global_const u32 KeyMod_Sft = bit_31;
-global_const u32 KeyMod_Alt = bit_30;
-global_const u32 KeyMod_Cmd = bit_29;
-global_const u32 KeyMod_Mnu = bit_28;

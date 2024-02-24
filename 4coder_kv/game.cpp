@@ -328,7 +328,8 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
 {
     fslider(radius_a, 23.380762);
     fslider(radius_b, 3.923108);
-    
+   
+    if (0)
     {// NOTE: Control points
         for_i32 (index, 1, 3)
         {
@@ -489,25 +490,47 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
 }
 
 internal b32
-game_is_key_newly_pressed(Key_Code keycode)
+is_key_newly_pressed(Key_Mod active_modifiers, Key_Mod modifiers, Key_Code keycode)
 {
-    return (global_key_states[keycode] &&
-            global_game_key_state_changes[keycode] > 0);
+    if (active_modifiers == modifiers)
+    {
+        return (key_is_down(keycode) &&
+                key_state_changes(keycode) > 0);
+    }
+    else return false;
 }
 
+// TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 internal void
-game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
+game_update_and_render(App *app, View_ID view, v1 dt)
 {
-    v2 clip_dim      = rect2_dim(clip);
+    // NOTE: Setup sane math coordinate system.
+    draw_set_y_up(app);
+    rect2 clip = draw_get_clip(app);
+    v2 clip_dim      = rect_dim(clip);
     v2 clip_half_dim = 0.5f * clip_dim;
     v2 layout_center = clip.min + clip_half_dim;
-    
-    draw_set_y_up(app);
     draw_set_offset(app, layout_center);
+    
+    for_i32 (keycode, 1, KeyCode_COUNT)
+    {// NOTE: Enable animation if any key is down
+        if ( key_is_down(keycode) )
+        {
+            animate_in_n_milliseconds(app, 0);
+            break;
+        }
+    }
+    
+    Scratch_Block scratch(app);
+   
+    Key_Mod active_modifiers;
+    {// NOTE: Input shenanigans
+        Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
+        active_modifiers = pack_modifiers(set.mods, set.count);
+    }
     
     v1 U = 1e3;  // render scale multiplier (@Cleanup push this scale down to the renderer)
     
-    Scratch_Block scratch(app);
     local_persist Game_Save save = {};
     
     // TODO(kv): Save these in the game state!!!
@@ -549,17 +572,14 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         user_requested_game_save = false;
     }
     
-    // BOOKMARK
     Camera camera_value = {};
     Camera *camera = &camera_value;
     {// NOTE: Camera handling
         camera->focal_length = 2000.f;
         
-        // NOTE: The input combines both z and distance (distance in w)
-        
         if (view_is_active(app, view) && 
-            global_key_states[KeyCode_Control])
-        {// NOTE: input handling
+            (active_modifiers & KeyMod_Ctl))
+        {// NOTE: Input handling
             v3 delta = dt * fui_direction_from_key_states().xyz;
             
             v1 phi   = save.camera_phi   + 0.1*delta.y;
@@ -568,8 +588,6 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
             save.camera_phi       = clamp_between(-0.25f, phi, 0.25f);
             save.camera_theta     = cycle01(theta);
             save.camera_distance += delta.z;
-            
-            animate_in_n_milliseconds(app, 0);
             
             DEBUG_VALUE(save.camera_phi);
             DEBUG_VALUE(save.camera_theta);
@@ -587,7 +605,7 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         DEBUG_VALUE(camera->distance);
         DEBUG_VALUE(camera->z);
     }
-
+    
     { // push coordinate system
         v2 pO_screen, px_screen, py_screen, pz_screen;
         {
@@ -609,37 +627,39 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
     }
    
-    const i32 bezier_count = 3;
+    const u32 bezier_count = 3;
     {// NOTE: bezier curve experiment!
-        local_persist i32 hot_item    = 0;
+        local_persist u32 hot_item    = 0;
         local_persist b32 is_editing  = false;
         
-        if ( game_is_key_newly_pressed(KeyCode_E) )
+        if (view_is_active(app, view))
         {
-            is_editing = !is_editing;
-        }
-        if ( game_is_key_newly_pressed(KeyCode_L) )
-        {
-            hot_item = (hot_item + 1) % bezier_count;
-        }
-        if ( game_is_key_newly_pressed(KeyCode_H) )
-        {
-            hot_item = (hot_item - 1) % bezier_count;
-        }
-#if 0
-        Fui_Item_Index input_indices[bezier_count] = {};
-        fslider(_bezier0, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+0);
-        fslider(_bezier1, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+1);
-        fslider(_bezier2, 0.000000, Fui_Options{.update=fui_update_null}, input_indices+2);
-#endif
-        
-        // NOTE: Process input
-        v3 direction = fui_direction_from_key_states().xyz;
-        v3 delta = matvmul3(&camera->axes, direction) * dt;
-        for_i32 (curve_index, 0, bezier_count)
-        {
-            if (hot_item == curve_index && (delta != v3{}))
+            if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_E) )
             {
+                is_editing = !is_editing;
+            }
+            
+            if (!is_editing)
+            {
+                if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_L) )
+                {
+                    hot_item = (hot_item + 1) % bezier_count;
+                }
+                if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_H) )
+                {
+                    if (hot_item == 0) hot_item = bezier_count;
+                    hot_item--;
+                }
+            }
+        }
+        
+        for_u32 (curve_index, 0, bezier_count)
+        {
+            if (is_editing && hot_item == curve_index)
+            {
+                v3 direction = fui_direction_from_key_states().xyz;
+                v3 delta = matvmul3(&camera->axes, direction) * dt;
+                
                 local_persist i32 active_cp_index = 0;
 #define Down(N) global_key_states[KeyCode_##N] != 0
                 if (Down(0)) active_cp_index = 0;
@@ -665,20 +685,19 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         }
         
         {// NOTE: UI situation
-            v1  atY = 0;
-            v1 dimX = 100;
-            v1 dimY = 100;
+            v2 dim = V2(100,100);
+            v2 at  = V2(-clip_half_dim.x, clip_half_dim.y-dim.y);
             // NOTE: The active item will be highlighted
-            for_i32 (curve_index, 0, bezier_count)
+            for_u32 (curve_index, 0, bezier_count)
             {
-                rect2 rect = rect2_min_dim(V2(0, atY), V2(dimX, dimY));
+                rect2 rect = rect2_min_dim(at, dim);
                 u32 color = gray_argb;
                 if (curve_index == hot_item)
                 {
                     color = (is_editing) ? red_argb : white_argb;
                 }
                 draw_rect_outline(app, rect, 4.0f, color);
-                atY -= dimY;
+                at.y -= dim.y;
             }
         }
     }
@@ -717,7 +736,7 @@ game_update_and_render(App *app, View_ID view, v1 dt, rect2 clip)
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }
-   
+    
     draw_set_y_down(app);
     draw_set_offset(app, v2{});
     

@@ -276,7 +276,7 @@ lister__backspace_text_field__file_path(Application_Links *app){
                 User_Input input = get_current_input(app);
                 String8 text_field = lister->text_field.string;
                 String8 new_hot = path_dirname(text_field);
-                b32 is_modified = has_modifier(&input, KeyCode_Control);
+                b32 is_modified = input_has_modifier(&input, KeyCode_Control);
                 b32 whole_word_when_mod = def_get_config_b32(vars_intern_lit("lister_whole_word_backspace_when_modified"));
                 b32 whole_word_backspace = (is_modified == whole_word_when_mod);
                 if (whole_word_backspace){

@@ -109,37 +109,29 @@ kv_handle_vim_keyboard_input(App *app, Input_Event *event)
     {
         ProfileScope(app, "InputEventKind_KeyStroke");
         Key_Code code = event->key.code;
-        if (code == KeyCode_Control ||
-            code == KeyCode_Shift   ||
-            code == KeyCode_Alt     ||
-            code == KeyCode_Command ||
-            code == KeyCode_Menu)
+        if ( is_modifier_key(code) )
         {
             return false;
+        }
+       
+        {
+            Input_Modifier_Set mods = event->key.modifiers;
+            Key_Code modifiers = pack_modifiers(mods.mods, mods.count);
+            code |= modifiers;
         }
         
         bool handled = false;
         
         // NOTE: Translate the KeyCode
         if (vim_state.chord_resolved) { vim_keystroke_text.size=0; vim_state.chord_resolved=false; }
-        foreach(i, event->key.modifiers.count)
-        {
-            Key_Code mod = event->key.modifiers.mods[i];
-            if(0){}
-            else if(mod == KeyCode_Control){ code |= KeyMod_Ctl; }
-            else if(mod == KeyCode_Shift){   code |= KeyMod_Sft; }
-            else if(mod == KeyCode_Alt){     code |= KeyMod_Alt; }
-            else if(mod == KeyCode_Command){ code |= KeyMod_Cmd; }
-            else if(mod == KeyCode_Menu){    code |= KeyMod_Mnu; }
-        }
         
         b32 was_in_sub_mode = (vim_state.sub_mode != SUB_None);
-        u64 function_data=0;
-        if (table_read(vim_maps + vim_state.mode + vim_state.sub_mode*VIM_MODE_COUNT, code, &function_data))
+        u64 function_data = 0;
+        if ( table_read(vim_maps + vim_state.mode + vim_state.sub_mode*VIM_MODE_COUNT, code, &function_data) )
         {
             ProfileScope(app, "execute vim_func from vim_maps");
             Custom_Command_Function *vim_func = (Custom_Command_Function *)IntAsPtr(function_data);
-            if(vim_func)
+            if (vim_func)
             {
                 // Pre command stuff
                 View_ID view = get_active_view(app, Access_ReadVisible);
@@ -149,7 +141,7 @@ kv_handle_vim_keyboard_input(App *app, Input_Event *event)
                 vim_append_keycode(code);
                 vim_state.active_command = vim_func;
                 vim_state.chord_resolved = true;
-                if(vim_func == no_op){ vim_state.chord_resolved = bitmask_2; }
+                if (vim_func == no_op) { vim_state.chord_resolved = bitmask_2; }
                 
                 vim_func(app);
                 
@@ -194,19 +186,23 @@ kv_handle_vim_keyboard_input(App *app, Input_Event *event)
 internal b32 
 kv_handle_game_input_stub(App *app, Input_Event *event)
 {
-    b32 alt_down = false;
-    for_i32 (index,0,event->key.modifiers.count)
+    if (event->kind == InputEventKind_KeyStroke)
     {
-        if (event->key.modifiers.mods[index] == KeyCode_Alt)
+        b32 alt_down = false;
+        for_i32 (index,0,event->key.modifiers.count)
         {
-            alt_down = true;
+            if (event->key.modifiers.mods[index] == KeyCode_Alt)
+            {
+                alt_down = true;
+            }
         }
-    }
-    
-    if (alt_down && event->key.code == KeyCode_Q)
-    {
-        exit_4coder(app);
-        return true;
+        
+        if (alt_down && event->key.code == KeyCode_Q)
+        {
+            exit_4coder(app);
+            return true;
+        }
+        else return false;
     }
     else return false;
 }
@@ -252,7 +248,7 @@ kv_view_input_handler(App *app)
                 vim_keystroke_text.size = 0;
                 vim_cursor_blink = 0;
             }
-           
+            
             // NOTE: Update global key state
             update_global_key_states(&input.event);
             

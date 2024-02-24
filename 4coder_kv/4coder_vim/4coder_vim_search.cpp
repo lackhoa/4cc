@@ -116,8 +116,8 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
 		else if(match_key_code(&in, KeyCode_Backspace))
         {
           u64 old_size = query->size;
-          if(has_modifier(&in.event.key.modifiers, KeyCode_Control)){
-            if(has_modifier(&in.event.key.modifiers, KeyCode_Shift)){
+          if(set_has_modifier(&in.event.key.modifiers, KeyCode_Control)){
+            if(set_has_modifier(&in.event.key.modifiers, KeyCode_Shift)){
               query->string.size = 0;
             }else{
               query->string = ctrl_backspace_utf8(query->string);

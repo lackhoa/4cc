@@ -200,7 +200,8 @@ startup_panels_and_files(App *app)
     view_set_active(app, left_view);
     
 #if KV_INTERNAL
-    view_goto_first_search_position(app, left_view, str8lit("bookmark"));
+    toggle_split_panel(app);
+    // view_goto_first_search_position(app, left_view, str8lit("bookmark"));
 #endif
 }
 

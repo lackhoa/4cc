@@ -1492,11 +1492,13 @@ to_writable(User_Input *in){
 }
 
 function b32
-has_modifier(User_Input *in, Key_Code key_code){
+input_has_modifier(User_Input *in, Key_Code key_code)
+{
     b32 result = false;
     Input_Modifier_Set *mods = get_modifiers(&in->event);
-    if (mods != 0){
-        result = has_modifier(mods, key_code);
+    if (mods != 0)
+    {
+        result = set_has_modifier(mods, key_code);
     }
     return(result);
 }
@@ -2269,10 +2271,12 @@ no_mark_snap_to_cursor(Application_Links *app, View_ID view_id){
 }
 
 function void
-no_mark_snap_to_cursor_if_shift(Application_Links *app, View_ID view_id){
+no_mark_snap_to_cursor_if_shift(App *app, View_ID view_id)
+{
     Scratch_Block scratch(app);
     Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
-    if (has_modifier(&mods, KeyCode_Shift)){
+    if (set_has_modifier(&mods, KeyCode_Shift))
+    {
         no_mark_snap_to_cursor(app, view_id);
     }
 }
@@ -2677,10 +2681,10 @@ inline i64 get_current_char(FApp *app)
 inline Rect_f32 
 get_cursor_rect(Application_Links *app, Text_Layout_ID text_layout_id)
 {
-  View_ID view = get_active_view(app, Access_ReadVisible);
-  i64 cursor_pos = view_get_cursor_pos(app, view);
-  Rect_f32 result = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
-  return result;
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    Rect_f32 result = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
+    return result;
 }
 
 internal b32
