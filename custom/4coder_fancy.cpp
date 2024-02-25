@@ -596,7 +596,8 @@ get_fancy_string_width__inner(Application_Links *app, Face_ID face,
 internal f32
 get_fancy_string_height__inner(Application_Links *app, Face_ID face, Fancy_String *string){
     f32 result = 0.f;
-    if (face != 0){
+    if (face != 0)
+    {
         Face_Metrics metrics = get_face_metrics(app, face);
         result = metrics.line_height;
     }

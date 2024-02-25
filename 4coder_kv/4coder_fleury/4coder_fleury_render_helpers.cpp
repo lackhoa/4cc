@@ -49,11 +49,11 @@ F4_RenderRangeHighlight(Application_Links *app, View_ID view_id, Text_Layout_ID 
 }
 
 function void
-F4_PushTooltip(String_Const_u8 string, ARGB_Color color)
+F4_PushTooltip(String8 string, ARGB_Color color)
 {
-    if(global_tooltip_count < ArrayCountSigned(global_tooltips))
+    if (global_tooltip_count < ArrayCountSigned(global_tooltips))
     {
-        String_Const_u8 string_copy = push_string_copy(&global_frame_arena, string);
+        String8 string_copy = push_string_copy(&global_frame_arena, string);
         global_tooltips[global_tooltip_count].color = color;
         global_tooltips[global_tooltip_count].string = string_copy;
         global_tooltip_count += 1;

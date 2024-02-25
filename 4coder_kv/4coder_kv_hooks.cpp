@@ -29,7 +29,6 @@ kv_tick(App *app, Frame_Info frame_info)
     DEBUG_CLEAR;
     
     // NOTE(kv): F4
-    linalloc_clear(&global_frame_arena);
     F4_Index_Tick(app);
     F4_CLC_Tick(frame_info);
     

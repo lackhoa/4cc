@@ -349,7 +349,7 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
         DEBUG_draw_hud_p)
     {// my test hud
         Rect_f32_Pair pair = rect_split_top_bottom_neg(clip, 5*line_height);
-		DEBUG_draw_hud(app, face_id, text_layout_id, pair.max);
+		DEBUG_draw_hud(app, face_id, pair.max);
 		clip = pair.min;
     }
 #endif

@@ -766,7 +766,6 @@ F4_Layout(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 rang
 function void
 F4_Tick(Application_Links *app, Frame_Info frame_info)
 {
-    linalloc_clear(&global_frame_arena);
     global_tooltip_count = 0;
     
     F4_TickColors(app, frame_info);

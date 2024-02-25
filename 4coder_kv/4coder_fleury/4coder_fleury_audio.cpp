@@ -19,10 +19,10 @@ F4_RequireWAV(Application_Links *app, Audio_Clip *clip, char *filename)
 {
     if(!F4_AudioClipIsValid(*clip) && !F4_AudioClipIsUnloadable(*clip))
     {
-        FILE *file = def_search_normal_fopen(&permanent_arena, filename, "rb");
+        FILE *file = def_search_normal_fopen(&global_permanent_arena, filename, "rb");
         if(file != 0)
         {
-            *clip = audio_clip_from_wav_FILE(&permanent_arena, file);
+            *clip = audio_clip_from_wav_FILE(&global_permanent_arena, file);
             fclose(file);
         }
         else

@@ -762,7 +762,6 @@ kv_handle_return(App *app)
         else
         {
             save_all_dirty_buffers(app);
-            user_requested_game_save = true;
         }
     }
     else

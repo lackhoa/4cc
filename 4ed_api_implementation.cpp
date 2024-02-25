@@ -3103,8 +3103,7 @@ draw_set_offset(App *app, v2 value)
 inline void
 draw_rect_outline(App *app, rect2 rect, f32 thickness, ARGB_Color color, f32 roundness=0)
 {
-  kv_assert(in_between(0.0f, roundness, 50.0f));
-  draw_rectangle_outline(app, rect, roundness, thickness, color);
+    draw_rectangle_outline(app, rect, roundness, thickness, color);
 }
 
 api(custom) function Rect_f32

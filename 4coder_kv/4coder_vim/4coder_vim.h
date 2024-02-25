@@ -88,9 +88,9 @@ vim_set_bottom_text(u32 size, char *str)
 }
 
 function void 
-vim_set_bottom_text(String_Const_u8 msg)
+vim_set_bottom_text(String8 msg)
 {
-    vim_set_bottom_text(string_expand((msg)));
+    vim_set_bottom_text( string_expand(msg) );
 }
 
 function i32 vim_consume_number(){

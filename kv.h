@@ -2415,6 +2415,7 @@ struct String8{
     {
         u64 size;
         u64 len;
+        u64 length;
     };
 };
 typedef String8 String_Const_u8;
@@ -2844,9 +2845,9 @@ struct Arena
 };
 struct Temp_Memory_Arena
 {
-  Arena *arena;
-  Cursor_Node *cursor_node;
-  u64 pos;
+    Arena *arena;
+    Cursor_Node *cursor_node;
+    u64 pos;
 };
 typedef i32 Linear_Allocator_Kind;
 enum{
@@ -6070,6 +6071,8 @@ linalloc_wrap_write(String8 data, u64 size, void *src)
 #define pop_array(a,T,c) (linalloc_pop((a), sizeof(T)*(c)))
 #define push_align(a,b)      (linalloc_align((a), (b)))
 #define push_align_zero(a,b) (linalloc_wrap_zero(linalloc_align((a), (b))))
+#define push_struct(a,T)          push_array(a,T,1)
+#define push_struct_zero(a,T)     push_array_zero(a,T,1)
 
 internal Temp_Memory
 begin_temp(Cursor *cursor)

@@ -8,8 +8,7 @@ static struct
     ARGB_Color color;
 }
 global_tooltips[32] = {};
-static int global_tooltip_count = 0;
-static Arena global_frame_arena;
+global int global_tooltip_count = 0;
 
 static String_Const_u8
 StringStripBorderCharacters(String_Const_u8 string)

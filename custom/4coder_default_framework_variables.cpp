@@ -84,6 +84,8 @@ global View_ID global_bottom_view;
 global b32     global_bottom_view_expanded;
 
 global Arena global_permanent_arena = {};
+global Arena global_frame_arena     = {};
+
 
 global Arena global_config_arena = {};
 

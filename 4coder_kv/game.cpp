@@ -477,9 +477,9 @@ struct Game_Save
     
     v1 camera_phi;
     v1 camera_theta;
+    
+    v3 bezier_surface[4][4];
 };
-
-global b32 user_requested_game_save = false;
 
 internal b32
 save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
@@ -539,7 +539,10 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
     if (ok)
     {// note: save the file
         ok = write_entire_file(scratch, save_path, save, sizeof(*save));
-        if (!ok) printf_message(app, "Failed to write to file %.*s", string_expand(save_path));
+        if (ok)
+            vim_set_bottom_text(str8lit("Saved game state!"));
+        else
+            printf_message(app, "Failed to write to file %.*s", string_expand(save_path));
     }
     
     return ok;
@@ -556,10 +559,104 @@ is_key_newly_pressed(Key_Mod active_modifiers, Key_Mod modifiers, Key_Code keyco
     else return false;
 }
 
+typedef u32 Widget_ID;
+
+struct Widget
+{
+    // Widget_ID id;
+    String8 name;
+    
+    Widget *parent;
+    
+    u32     children_count;
+    Widget *children;
+};
+
+struct Widget_State
+{
+    u32 tree_count;
+    Widget *first_tree;
+    Widget *hot_item;
+};
+
+global const v1 widget_margin = 5.0f;
+
+#if 0
+internal rect2 draw_single_tree(App *app, Widget_State *state, Widget *tree, v2 min);
+
+internal rect2
+draw_tree_and_siblings(App *app, Widget_State *state, Widget *tree, v2 trees_min)
+{
+    Face_ID face = get_face_id(app,0);
+    Face_Metrics face_metrics = get_face_metrics(app, face);
+    
+    v2 max = trees_min;
+    while (tree)
+    {
+        v2 tree_min = V2(trees_min.x,
+                         trees_min.y - face_metrics.line_height);
+        //
+        rect2 rect = draw_single_tree(app, tree, face_metrics.line_height);
+        
+        max.x = macro_max(rect.max.x, max.x);
+        trees_min.y = rect.min.y - widget_margin;
+        
+        tree = tree->next_sibling;
+    }
+    return rect2_min_max(trees_min, max);
+}
+
+internal rect2
+draw_single_tree(App *app, Widget_State *state, Widget *tree, v2 tree_min)
+{
+    Face_ID face = get_face_id(app,0);
+    Face_Metrics face_metrics = get_face_metrics(app, face);
+    
+    Fancy_Line line_value = {}; 
+    Fancy_Line *line = &line_value;
+    push_fancy_string(line, f_white, tree->name);
+   // 
+    v1 name_dim_x = get_fancy_line_width(app, face, line);
+    v1 name_max_y = face_metrics.line_height;
+    // 
+    draw_fancy_line(app, face, fcolor_zero(), line, tree_min);
+    
+    v1 widget_indentation = 20.0f;
+    v2 children_min = V2(tree_min.x + widget_indentation,
+                         tree_min.y);
+    rect2 children = draw_tree_and_siblings(app, state, tree->children, children_min);
+    //
+    v2 max = V2(macro_max(tree_min.x + name_dim_x, children.max.x),
+                name_max_y + widget_margin);
+    //
+    tree_min.y = children.min.y - widget_margin;
+   
+    rect2 tree_bounding_box = rect2_min_max(tree_min, max);
+    if (tree.id == state.hot_item->id)
+    {
+        u32 color = yellow_argb;
+        if (state.editing_item)  color = red_argb;
+        v1 thickness = 2.0f;
+        draw_rect_outline(app, tree_bounding_box, thickness, color);
+    }
+    
+    return tree_bounding_box;
+}
+#endif
+
+struct Game_State
+{
+    Arena permanent_arena;
+    Widget_State widget_state;
+};
+
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 internal void
 game_update_and_render(App *app, View_ID view, v1 dt)
 {
+    local_persist b32 is_initial_frame = true;
+    b32 view_active = view_is_active(app, view);
+    
     // NOTE: Setup sane math coordinate system.
     draw_set_y_up(app);
     rect2 clip = draw_get_clip(app);
@@ -576,8 +673,53 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             break;
         }
     }
+   
+    local_persist Game_State state_value = {};
+    Game_State *state = &state_value;
+    if (is_initial_frame)
+    {
+        state->permanent_arena = make_arena_system();
+    }
+    Arena *permanent_arena = &state->permanent_arena;
     
     Scratch_Block scratch(app);
+    
+#if 0
+    if (is_initial_frame)
+    {
+        // NOTE: surface
+        Widget *surface    = push_struct(permanent_arena,   Widget);
+        Widget *surface_4  = push_array(permanent_arena, 4, Widget);
+        Widget *surface_16 = push_array(permanent_arena,16, Widget);
+        //
+        *surface = {str8lit("surface"),0, 4,surface_4};
+        // 
+        for_u32 (row,0,4)
+        {
+            surface_4[row] = {str8lit("row"),surface, 4,surface_16[4*row]};
+        }
+        // 
+        for_u32 (index,0,16)
+        {
+            surface_16[index] = {str8lit("16"),surface_4[index/4], 0,0};
+        }
+       
+        // NOTE: Bezier curve
+        Widget *curves_root = push_struct(permanent_arena, Widget);
+        Widget *curves      = push_array(permanent_arena, Widget);
+        //
+        *curves_root = {str8lit("curves"),0, 3,curves};
+        //
+        for_u32 (curve_index,0,3)
+        {
+            curves[curve_index] = {str8lit("curve"),curves_root, 4,};
+        }
+        
+        widget_state->tree_count = 2;
+        widget_state->first_tree = surface;
+        widget_state->hot_item   = widget_state->first_tree;
+    }
+#endif
     
     Key_Mod active_modifiers;
     {// NOTE: Input shenanigans
@@ -592,12 +734,11 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     local_persist String8 save_dir  = {};
     local_persist String8 save_path = {};
     
-    local_persist b32 is_initial_frame = true;
     if ( is_initial_frame )
     {// NOTE: Initialization
         String8 binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-        save_dir  = pjoin(scratch, binary_dir, "data");
-        save_path = pjoin(scratch, save_dir, "data.kv");
+        save_dir  = pjoin(&global_permanent_arena, binary_dir, "data");
+        save_path = pjoin(&global_permanent_arena, save_dir, "data.kv");
         
         String8 read_string = read_entire_file(scratch, save_path);
         Game_Save *read = (Game_Save *)read_string.str;
@@ -623,10 +764,9 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         else print_message(app, "Game data load: Wrong magic number!\n");
     }
     
-    if (user_requested_game_save)
+    if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_Return) )
     {
         save_game(app, save_dir, save_path, &save);
-        user_requested_game_save = false;
     }
     
     Camera camera_value = {};
@@ -683,33 +823,33 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         draw_line(app, O+pO_screen, O+py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
         draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
     }
-   
+    
+    local_persist u32 hot_item   = 0;
+    local_persist b32 is_editing = false;
     const u32 bezier_count = 3;
-    {// NOTE: bezier curve experiment!
-        local_persist u32 hot_item    = 0;
-        local_persist b32 is_editing  = false;
-        
-        if (view_is_active(app, view))
+    u32 item_count = bezier_count;
+    
+    if (view_active)
+    {
+        if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_E) )
         {
-            if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_E) )
-            {
-                is_editing = !is_editing;
-            }
-            
-            if (!is_editing)
-            {
-                if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_L) )
-                {
-                    hot_item = (hot_item + 1) % bezier_count;
-                }
-                if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_H) )
-                {
-                    if (hot_item == 0) hot_item = bezier_count;
-                    hot_item--;
-                }
-            }
+            is_editing = !is_editing;
         }
         
+        if (!is_editing)
+        {
+            if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_L) )
+            {
+                hot_item = (hot_item+1) % item_count;
+            }
+            if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_H) )
+            {
+                hot_item = (hot_item==0) ? item_count-1 : hot_item-1;
+            }
+        }
+    }
+    
+    {// NOTE: bezier curve experiment!
         for_u32 (curve_index, 0, bezier_count)
         {
             if (is_editing && hot_item == curve_index)
@@ -736,7 +876,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                     control_points[index] *= pos_unit;
                 }
             }
-          
+            
             if(0)
             {
                 // NOTE: Draw
@@ -762,19 +902,29 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
     }
      
-    {// NOTE: Bezier plane
-        local_persist v3 bezier_surface_control_points[4][4];
+    {// NOTE: Bezier surface
+        local_persist v3 init_control_points[4][4];
         if ( is_initial_frame )
         {
-            for_u32 (iy,0,4)
+            for_u32 (i,0,4)
             {
-                for_u32 (ix,0,4)
+                for_u32 (j,0,4)
                 {
-                    bezier_surface_control_points[iy][ix] = U*0.4f*V3((v1)ix, (v1)iy, 0);
+                    init_control_points[i][j] = U*0.4f*V3((v1)i, (v1)j, 0);
                 }
             }
         }
-        draw_bezier_surface(app, camera, bezier_surface_control_points);
+       
+        v3 control_points[4][4];
+        for_u32(i,0,4)
+        {
+            for_u32 (j,0,4)
+            {
+                control_points[i][j] = (init_control_points[i][j] +
+                                        save.bezier_surface[i][j]);
+            }
+        }
+        draw_bezier_surface(app, camera, control_points);
     }
     
     fslider(software_rendering_slider, 0.0f);
@@ -811,7 +961,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }
-  
+    
     draw_set_y_down(app);
     draw_set_offset(app, v2{});
     

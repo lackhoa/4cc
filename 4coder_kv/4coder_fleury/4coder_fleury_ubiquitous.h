@@ -22,7 +22,6 @@ global Rect_f32 global_mark_rect = {};
 global Rect_f32 global_last_mark_rect = {};
 global b32 global_dark_mode = 1;
 global b32 global_battery_saver = 0;
-global Arena permanent_arena = {};
 
 #define MemorySet                 memset
 #define MemoryCopy                memcpy

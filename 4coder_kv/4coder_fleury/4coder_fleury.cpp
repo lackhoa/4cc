@@ -463,8 +463,6 @@ typedef int socklen_t;
 void fleury_custom_layer_init(Application_Links *app)
 {
     default_framework_init(app);
-    global_frame_arena = make_arena(get_base_allocator_system());
-    permanent_arena = make_arena(get_base_allocator_system());
     
     // NOTE(rjf): Set up hooks.
     {

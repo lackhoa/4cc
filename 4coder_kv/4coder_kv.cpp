@@ -606,10 +606,6 @@ kv_custom_layer_init(App *app)
     default_framework_init(app);
     set_all_default_hooks(app);
     
-    // NOTE: Fleury
-    global_frame_arena = make_arena(get_base_allocator_system());
-    permanent_arena    = make_arena(get_base_allocator_system());
-    
     vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(string_u8_litexpr("*scratch*")), 1.f, 1.f };
     vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(string_u8_litexpr("todo.txt")),  1.f, 1.f };
     vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Title]     = byp_apply_title;

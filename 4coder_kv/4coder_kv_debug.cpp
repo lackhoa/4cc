@@ -12,8 +12,10 @@ global b32 DEBUG_draw_hud_p;  // NOTE(kv): don't set this here, it is set via co
 global Debug_Entry *DEBUG_entries;
 
 internal void
-DEBUG_draw_entry(FApp *app, Arena *scratch, Face_ID face_id, Debug_Entry entry, v2 *at)
+DEBUG_draw_entry(App *app, Face_ID face_id, Debug_Entry entry, v2 *at)
 {
+    Scratch_Block scratch(app);
+    
     Face_Metrics face_metrics = get_face_metrics(app, face_id);
     f32 line_height = face_metrics.line_height;
     
@@ -26,17 +28,16 @@ DEBUG_draw_entry(FApp *app, Arena *scratch, Face_ID face_id, Debug_Entry entry, 
 }
 
 internal void
-DEBUG_draw_hud(App *app, Face_ID face_id, Text_Layout_ID text_layout_id, Rect_f32 rect)
+DEBUG_draw_hud(App *app, Face_ID face_id, Rect_f32 rect)
 {
     draw_rectangle_fcolor(app, rect, 0.f, fcolor_change_alpha(f_black, 0.3f));
     
-    Scratch_Block scratch(app);
     v2 at = rect.p0;
     for (i32 entry_index=0; 
          entry_index < arrlen(DEBUG_entries);
          entry_index++)
     {
-        DEBUG_draw_entry(app, scratch, face_id, DEBUG_entries[entry_index], &at);
+        DEBUG_draw_entry(app, face_id, DEBUG_entries[entry_index], &at);
     }
 }
 
