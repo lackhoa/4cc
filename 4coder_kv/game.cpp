@@ -323,12 +323,20 @@ perspective_project(Camera *camera, v3 point)
         return V2All(F32_MAX);
 }
 
+internal v1
+cubic_bernstein(u32 index, v1 u)
+{
+    v1 factor = (index == 1 || index == 2) ? 3 : 1;
+    v1 result = factor * pow(u,index) * pow(1-u, 3-index);
+    return result;
+}
+
 internal void
 draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
 {
     fslider(radius_a, 23.380762);
     fslider(radius_b, 3.923108);
-   
+    
     if (0)
     {// NOTE: Control points
         for_i32 (index, 1, 3)
@@ -348,10 +356,10 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
         
         f32 u = inv_nslices * (f32)sample_index;
         f32 U = 1.0f-u;
-        v3 world_p = (pow(U,3)*    P[0] + 
-                      3*pow(U,2)*u*P[1] +
-                      3*U*pow(u,2)*P[2] +
-                      pow(u,3)*    P[3]);
+        v3 world_p = (1*cubed(U)*P[0] + 
+                      3*(u)*squared(U)*P[1] +
+                      3*squared(u)*(U)*P[2] +
+                      1*cubed(u)*P[3]);
         //
         v2 screen_p = perspective_project(camera, world_p);
         
@@ -363,6 +371,54 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
         }
         
         draw_circle(app, screen_p, draw_radius, gray_argb);
+    }
+}
+
+internal void
+draw_bezier_surface(App *app, Camera *camera, v3 P[4][4])
+{
+    if (0)
+    {// NOTE: draw control points
+        for_u32 (i,0,4)
+        {
+            for_u32 (j,0,4)
+            {
+                v2 screen_p = perspective_project(camera, P[i][j]);
+                draw_circle(app, screen_p, 6.0f, gray_argb);
+            }
+        }
+    }
+    
+    u32 nslices = 16;
+    f32 inv_nslices = 1.0f / (f32)nslices;
+    for_u32 (u_index, 0, nslices+1)
+    {
+        for_u32 (v_index, 0, nslices+1)
+        {
+            v1 u = inv_nslices * (v1)u_index;
+            v1 v = inv_nslices * (v1)v_index;
+            v3 world_p = {};
+            for_u32 (i,0,4)
+            {
+                for_u32 (j,0,4)
+                {
+                    world_p += (cubic_bernstein(i,u)*
+                                cubic_bernstein(j,v)*
+                                P[i][j]);
+                }
+            }
+            v2 screen_p = perspective_project(camera, world_p);
+           
+            v1 radius = 24.0f;
+            v1 draw_radius;
+            {// NOTE: Having to calculate the focal_length/dz twice :<
+                v1 projected_z = dot(camera->axes.z, world_p);
+                v1 dz = camera->distance - projected_z;
+                draw_radius = absolute((camera->focal_length / dz) * radius);
+            }
+            
+            draw_circle(app, screen_p, draw_radius, gray_argb);
+        }
     }
 }
 
@@ -494,7 +550,7 @@ is_key_newly_pressed(Key_Mod active_modifiers, Key_Mod modifiers, Key_Code keyco
 {
     if (active_modifiers == modifiers)
     {
-        return (key_is_down(keycode) &&
+        return (key_is_down      (keycode) &&
                 key_state_changes(keycode) > 0);
     }
     else return false;
@@ -522,7 +578,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     }
     
     Scratch_Block scratch(app);
-   
+    
     Key_Mod active_modifiers;
     {// NOTE: Input shenanigans
         Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
@@ -533,15 +589,16 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     
     local_persist Game_Save save = {};
     
-    // TODO(kv): Save these in the game state!!!
-    String8 binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-    String8 save_dir  = pjoin(scratch, binary_dir, "data");
-    String8 save_path = pjoin(scratch, save_dir, "data.kv");
+    local_persist String8 save_dir  = {};
+    local_persist String8 save_path = {};
     
-    local_persist b32 inited = false;
-    if ( !inited )
+    local_persist b32 is_initial_frame = true;
+    if ( is_initial_frame )
     {// NOTE: Initialization
-        inited = true;
+        String8 binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+        save_dir  = pjoin(scratch, binary_dir, "data");
+        save_path = pjoin(scratch, save_dir, "data.kv");
+        
         String8 read_string = read_entire_file(scratch, save_path);
         Game_Save *read = (Game_Save *)read_string.str;
         if (read->magic_number == data_magic_number)
@@ -679,9 +736,12 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                     control_points[index] *= pos_unit;
                 }
             }
-            
-            // NOTE: Draw
-            draw_cubic_bezier(app, camera, control_points);
+          
+            if(0)
+            {
+                // NOTE: Draw
+                draw_cubic_bezier(app, camera, control_points);
+            }
         }
         
         {// NOTE: UI situation
@@ -702,6 +762,21 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
     }
      
+    {// NOTE: Bezier plane
+        local_persist v3 bezier_surface_control_points[4][4];
+        if ( is_initial_frame )
+        {
+            for_u32 (iy,0,4)
+            {
+                for_u32 (ix,0,4)
+                {
+                    bezier_surface_control_points[iy][ix] = U*0.4f*V3((v1)ix, (v1)iy, 0);
+                }
+            }
+        }
+        draw_bezier_surface(app, camera, bezier_surface_control_points);
+    }
+    
     fslider(software_rendering_slider, 0.0f);
     if (software_rendering_slider > 0)
     {// NOTE: software rendering experiments
@@ -736,9 +811,10 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }
-    
+  
     draw_set_y_down(app);
     draw_set_offset(app, v2{});
     
     block_zero_array(global_game_key_state_changes);
+    is_initial_frame = false;
 }

@@ -91,6 +91,7 @@ typedef i64      imm;
 
 typedef float    r32;
 typedef float    f32;
+typedef float    v1;
 /* Types: end */
 
 #define for_i32(VAR, INITIAL, FINAL)  for(i32 VAR=INITIAL; VAR<FINAL; VAR++)
@@ -146,8 +147,14 @@ absoslute(i32 in)
 inline f32
 squared(f32 x)
 {
-f32 result = x*x;
-return result;
+    f32 result = x*x;
+    return result;
+}
+
+inline f32 
+cubed(f32 value)
+{
+    return value*value*value;
 }
 
 inline f32
@@ -161,7 +168,7 @@ square_root(f32 x)
     return result;
 }
 
-// TODO: these are real bad!
+// TODO: These are real bad! should only be one simd instruction. Watch hmh 379 (or something)
 inline f32
 round_f32(f32 Real32)
 {
@@ -722,7 +729,6 @@ unlerp_or_zero(f32 a, f32 v, f32 b)
 
 // NOTE: This can't be its own type because C++ doesn't allow us to convert float to v1, because they don't (know how to) programm, at all.
 // They don't even think. Because what good is it to allow conversion from user-defined type to built-in type, but not the revers?
-typedef f32 v1;
 
 /* ;v2 */
 
@@ -1547,10 +1553,10 @@ matvmul3(m3x3 *matrix, v3 v)
 }
 
 internal f32
-pow(f32 input, i32 power)
+pow(f32 input, u32 power)
 {
     f32 result = 1; 
-    for_i32 (index, 0, power)
+    for_u32 (index, 0, power)
     {
         result *= input;
     }
