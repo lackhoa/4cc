@@ -306,10 +306,12 @@ floor_v2(Vec2_f32 point)
 }
 
 internal f32
-draw_string_inner(Render_Target *target, Face *face, String_Const_u8 string, Vec2_f32 point,
-                  ARGB_Color color, u32 flags, Vec2_f32 delta){
+draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
+                  ARGB_Color color, u32 flags, v2 delta)
+{
     f32 total_delta = 0.f;
-    if (face != 0){
+    if (face != 0)
+    {
         point = floor_v2(point);
         
         f32 byte_advance = face->metrics.byte_advance;
@@ -324,10 +326,12 @@ draw_string_inner(Render_Target *target, Face *face, String_Const_u8 string, Vec
         for (u32 i = 0; str < str_end; ++str, ++i){
             translating_fully_process_byte(&tran, *str, i, (i32)string.size, &emits);
             
-            for (TRANSLATION_DECL_EMIT_LOOP(J, emits)){
+            for (TRANSLATION_DECL_EMIT_LOOP(J, emits))
+            {
                 TRANSLATION_DECL_GET_STEP(step, behavior, J, emits);
                 
-                if (behavior.do_codepoint_advance){
+                if (behavior.do_codepoint_advance)
+                {
                     u32 codepoint = step.value;
                     if (color != 0){
                         u32 draw_codepoint = step.value;
@@ -341,7 +345,8 @@ draw_string_inner(Render_Target *target, Face *face, String_Const_u8 string, Vec
                     point += d*delta;
                     total_delta += d;
                 }
-                else if (behavior.do_number_advance){
+                else if (behavior.do_number_advance)
+                {
                     u8 n = (u8)(step.value);
                     if (color != 0){
                         u8 cs[3];

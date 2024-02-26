@@ -2920,11 +2920,13 @@ draw_string_oriented(FApp *app, Face_ID font_id, ARGB_Color color,
     Vec2_f32 result = point;
     Models *models = (Models*)app->cmd_context;
     Face *face = font_set_face_from_id(&models->font_set, font_id);
-    if (models->target == 0){
+    if (models->target == 0)
+    {
         f32 width = font_string_width(models->target, face, str);
         result += delta*width;
     }
-    else{
+    else
+    {
         f32 width = draw_string_inner(models->target, face, str, point, color, flags, delta);
         result += delta*width;
     }

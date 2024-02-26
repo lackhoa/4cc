@@ -44,7 +44,7 @@
 #    include "generated/managed_id_metadata.cpp"  // from Mr. Allen 4th
 #endif
 
-function void kvInitShiftedTable()
+internal void kvInitShiftedTable()
 {
     Base_Allocator *base = get_base_allocator_system();
     shifted_version_of_characters = make_table_u64_u64(base, 128);

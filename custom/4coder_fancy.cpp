@@ -631,16 +631,20 @@ get_fancy_string_text_height__inner(Application_Links *app, Face_ID face, Fancy_
 }
 
 internal Vec2_f32
-draw_fancy_string__inner(Application_Links *app, Face_ID face, FColor fore, Fancy_String *first_string, Vec2_f32 p, u32 flags, Vec2_f32 delta){
+draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *first_string, Vec2_f32 p, u32 flags, Vec2_f32 delta)
+{
     f32 base_line = 0.f;
     for (Fancy_String *string = first_string;
          string != 0;
-         string = string->next){
+         string = string->next)
+    {
         Face_ID use_face = face;
-        if (string->face != 0){
+        if (string->face != 0)
+        {
             use_face = string->face;
         }
-        if (use_face != 0){
+        if (use_face != 0)
+        {
             Face_Metrics metrics = get_face_metrics(app, use_face);
             base_line = Max(base_line, metrics.ascent);
         }
@@ -649,7 +653,8 @@ draw_fancy_string__inner(Application_Links *app, Face_ID face, FColor fore, Fanc
     Vec2_f32 down_delta = V2(-delta.y, delta.x);
     for (Fancy_String *string = first_string;
          string != 0;
-         string = string->next){
+         string = string->next)
+    {
         Face_ID use_face = face;
         if (string->face != 0){
             use_face = string->face;
@@ -658,7 +663,8 @@ draw_fancy_string__inner(Application_Links *app, Face_ID face, FColor fore, Fanc
         if (fcolor_is_valid(string->fore)){
             use_fore = string->fore;
         }
-        if (use_face != 0){
+        if (use_face != 0)
+        {
             ARGB_Color use_argb = fcolor_resolve(use_fore);
             Face_Metrics metrics = get_face_metrics(app, use_face);
             f32 down_shift = (base_line - metrics.ascent);
@@ -666,15 +672,16 @@ draw_fancy_string__inner(Application_Links *app, Face_ID face, FColor fore, Fanc
             Vec2_f32 p_shift = down_shift*down_delta;
             Vec2_f32 p_shifted = p + p_shift;
             
-            if (fcolor_is_valid(use_fore)){
+            if (fcolor_is_valid(use_fore))
+            {
                 Vec2_f32 margin_delta = delta*metrics.normal_advance;
                 p_shifted += margin_delta*string->pre_margin;
                 p_shifted = draw_string_oriented(app, use_face, use_argb, string->value, p_shifted, flags, delta);
                 p_shifted += margin_delta*string->post_margin;
             }
-            else{
-                f32 adv =
-                    (string->pre_margin + string->post_margin)*metrics.normal_advance;
+            else
+            {
+                f32 adv = (string->pre_margin + string->post_margin)*metrics.normal_advance;
                 adv += get_string_advance(app, use_face, string->value);
                 p_shifted += adv*delta;
             }
@@ -788,10 +795,12 @@ draw_fancy_line(Application_Links *app, Face_ID face, FColor fore,
                 Fancy_Line *line, Vec2_f32 p, u32 flags, Vec2_f32 delta){
     Vec2_f32 result = {};
     if (line != 0){
-        if (line->face != 0){
+        if (line->face != 0)
+        {
             face = line->face;
         }
-        if (fcolor_is_valid(line->fore)){
+        if (fcolor_is_valid(line->fore))
+        {
             fore = line->fore;
         }
         result = draw_fancy_string__inner(app, face, fore, line->first, p, flags, delta);
