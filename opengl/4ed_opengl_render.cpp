@@ -113,6 +113,8 @@ gl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 global char *gl__header = R"foo(#version 130
         )foo";
 
+// https://discord.com/channels/239737791225790464/1203068725519982592/1203085787302723735
+// you can use 4, GL_UNSIGNED_BYTE, GL_TRUE for glVertexAttribPointer, and it will do this for you
 global char *gl__vertex_shader =
 R"foo(
    uniform vec2   view_t;
@@ -120,7 +122,7 @@ R"foo(
 
    in vec2 vertex_xy;
    in vec3 vertex_uvw;
-   in uint vertex_color;
+   in vec4 vertex_color;
    in float vertex_half_thickness;
 
    smooth out vec4 fragment_color;
@@ -133,10 +135,7 @@ R"foo(
    {
        vec2 position_xy = view_m * (vertex_xy + view_t);
        gl_Position = vec4(position_xy, 0.0, 1.0);
-       fragment_color.b = (float((vertex_color     )&0xFFu))/255.0;
-       fragment_color.g = (float((vertex_color>> 8u)&0xFFu))/255.0;
-       fragment_color.r = (float((vertex_color>>16u)&0xFFu))/255.0;
-       fragment_color.a = (float((vertex_color>>24u)&0xFFu))/255.0;
+       fragment_color.rgba = vertex_color.bgra;
        uvw = vertex_uvw;
        vec2 center = vertex_uvw.xy;
        vec2 half_dim = abs(vertex_xy - center);
@@ -177,11 +176,11 @@ R"foo(
        float shape_value = 1.0 - smoothstep(-1.0, 0.0, sd);
        shape_value *= has_thickness;
         
-       out_color = vec4(fragment_color.xyz, fragment_color.a*(sample_value + shape_value));
+       out_color = vec4(fragment_color.rgb, fragment_color.a*(sample_value + shape_value));
    }
    )foo";
 
-// TODO(kv): use macro to avoid duplications?
+// NOTE(kv): Untested
 global char *gl__vertex_shader_game =
 R"foo(
     uniform vec2   view_t;
@@ -189,7 +188,7 @@ R"foo(
 
     in vec2 vertex_xy;
     in vec3 vertex_uvw;
-    in uint vertex_color;
+    in vec4 vertex_color;
     in float vertex_half_thickness;
 
     smooth out vec4 fragment_color;
@@ -199,10 +198,7 @@ R"foo(
     {
         vec2 position_xy = view_m * (vertex_xy + view_t);
         gl_Position = vec4(position_xy, 0.0, 1.0);
-        fragment_color.b = (float((vertex_color     )&0xFFu))/255.0;
-        fragment_color.g = (float((vertex_color>> 8u)&0xFFu))/255.0;
-        fragment_color.r = (float((vertex_color>>16u)&0xFFu))/255.0;
-        fragment_color.a = (float((vertex_color>>24u)&0xFFu))/255.0;
+        fragment_color.rgba = vertex_color.bgra;
         uvw = vertex_uvw;
     }
     )foo";
@@ -221,13 +217,13 @@ R"foo(
     }
    )foo";
 
-#define XAttribute(X) \
-    X(xy,    2, GL_FLOAT) \
-    X(uvw,   3, GL_FLOAT) \
-    X(color, 1, GL_UNSIGNED_INT) \
+#define X_VERTEX_ATTRIBUTES(X)    \
+    X(xy,    2, GL_FLOAT)         \
+    X(uvw,   3, GL_FLOAT)         \
+    X(color, 4, GL_UNSIGNED_BYTE) \
     X(half_thickness, 1, GL_FLOAT)
 
-#define XUniform(X) \
+#define X_UNIFORMS(X) \
     X(view_t) \
     X(view_m) \
     X(sampler)
@@ -237,11 +233,11 @@ struct GL_Program
     u32 program;
     
 #define X(N,...) i32 vertex_##N;
-    XAttribute(X)
+    X_VERTEX_ATTRIBUTES(X)
 #undef X
     
 #define X(N) i32 N;
-    XUniform(X)
+    X_UNIFORMS(X)
 #undef X
 };
 
@@ -294,11 +290,11 @@ gl__make_program(char *header, char *vertex, char *fragment)
     result.program = program;
     
 #define X(N,...) result.vertex_##N = glGetAttribLocation(program, "vertex_" #N);
-    XAttribute(X);
+    X_VERTEX_ATTRIBUTES(X);
 #undef X
     
 #define X(N) result.N = glGetUniformLocation(program, #N);
-    XUniform(X);
+    X_UNIFORMS(X);
 #undef X
     
     return(result);
@@ -309,22 +305,24 @@ gl__make_program(char *header, char *vertex, char *fragment)
 
 Texture_ID global_game_texture;
 
+// TODO @Cleanup: Remove this! It makes no goddamn sense!
 internal void
 gl_vertex_attrib_pointer(GLuint index, GLint size, GLenum type, const void *pointer)
 {
     GLsizei stride = sizeof(Render_Vertex);
     if (type == GL_FLOAT)
     {
-        glVertexAttribPointer(index, size, GL_FLOAT, true, stride, pointer);
+        glVertexAttribPointer(index, size, type, GL_TRUE, stride, pointer);
+    }
+    else if (type == GL_UNSIGNED_BYTE)
+    {
+        glVertexAttribPointer(index, size, type, GL_TRUE, stride, pointer);
     }
     else if (type == GL_UNSIGNED_INT)
-    {
+    {// TODO @Cleanup removeme
         glVertexAttribIPointer(index, size, GL_UNSIGNED_INT, stride, pointer);
     }
-    else
-    {
-        invalid_code_path;
-    }
+    else { invalid_code_path; }
 }
 
 internal void
@@ -392,7 +390,7 @@ gl_render(Render_Target *t)
     i32 height = t->height;
     
     glViewport(0, 0, width, height);
-    glScissor(0, 0, width, height);
+    glScissor (0, 0, width, height);
     glClearColor(1.f, 0.f, 1.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
     
@@ -470,12 +468,12 @@ gl_render(Render_Target *t)
         
         // NOTE: glEnableVertexAttribArray
 #define X(N,...) { glEnableVertexAttribArray(program->vertex_##N); }
-        XAttribute(X);
+        X_VERTEX_ATTRIBUTES(X);
 #undef X
         
         // NOTE: tell opengl how to read vertex attributes
 #define X(N,S,T) { gl_vertex_attrib_pointer(program->vertex_##N, S, T, GLOffset(Render_Vertex, N)); }
-        XAttribute(X);
+        X_VERTEX_ATTRIBUTES(X);
 #undef X
         
         // NOTE: Transforms
@@ -497,14 +495,14 @@ gl_render(Render_Target *t)
         
         // NOTE: Disable Vertex Attrib Array
 #define X(N,...) { glDisableVertexAttribArray(program->vertex_##N); }
-        XAttribute(X);
+        X_VERTEX_ATTRIBUTES(X);
 #undef X
        
         if (game_mode)
         {// NOTE: switch back to the normal program
             glUseProgram(gl_program.program);
         }
-    } // for (Render_Group *group = t->group_first;
+    }
     
     glFlush();
 }

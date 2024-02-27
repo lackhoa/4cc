@@ -3,7 +3,7 @@
 #include "4coder_folds.hpp"
 
 function void
-vim_file_save(FApp *app, Buffer_ID buffer_id)
+vim_file_save(App *app, Buffer_ID buffer_id)
 {
     Scratch_Block scratch(app);
     String8 unique_name = push_buffer_unique_name(app, scratch, buffer_id);

@@ -82,7 +82,7 @@ DEBUG_VALUE_inner(char *name, v3 v)
 #    define DEBUG_CLEAR              arrsetlen(DEBUG_entries, 0)
 #else
 #    define DEBUG_NAME(...)
-#    define DEBUG_VALUE
+#    define DEBUG_VALUE(...)
 #    define DEBUG_CLEAR
 #endif
 

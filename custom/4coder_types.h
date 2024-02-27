@@ -11,7 +11,6 @@ struct Application_Links {
     Thread_Context *tctx;
     void *cmd_context;
 };
-typedef Application_Links FApp;
 typedef Application_Links App;
 
 api(custom)

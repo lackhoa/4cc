@@ -17,7 +17,7 @@ CUSTOM_DOC("In response to a new clipboard contents events, saves the new clip o
 ////////////////////////////////
 
 function b32
-clipboard_post_buffer_range(FApp *app, i32 clipboard_index, Buffer_ID buffer, Range_i64 range)
+clipboard_post_buffer_range(App *app, i32 clipboard_index, Buffer_ID buffer, Range_i64 range)
 {
     b32 success = false;
     Scratch_Block scratch(app);
@@ -30,7 +30,7 @@ clipboard_post_buffer_range(FApp *app, i32 clipboard_index, Buffer_ID buffer, Ra
 }
 
 function b32
-clipboard_update_history_from_system(FApp *app, i32 clipboard_id)
+clipboard_update_history_from_system(App *app, i32 clipboard_id)
 {
     Scratch_Block scratch(app);
     b32 result = false;
@@ -416,7 +416,7 @@ clipboard_clear(Application_Links *app, i32 clipboard_id){
     clipboard_clear(clipboard_id);
 }
 function void
-clipboard_post(FApp *app, i32 clipboard_id, String8 string)
+clipboard_post(App *app, i32 clipboard_id, String8 string)
 {
     clipboard_post(clipboard_id, string);
 }
@@ -426,14 +426,14 @@ clipboard_count(Application_Links *app, i32 clipboard_id)
     return(clipboard_count(clipboard_id));
 }
 internal String8
-push_clipboard_index(FApp *app, Arena *arena, i32 clipboard_id, i32 item_index)
+push_clipboard_index(App *app, Arena *arena, i32 clipboard_id, i32 item_index)
 {
     return push_clipboard_index_inner(arena, clipboard_id, item_index);
 }
 #endif
 
 internal void
-clipboard_pop(FApp *app, i32 clipboard_id)
+clipboard_pop(App *app, i32 clipboard_id)
 {// TODO(kv): My code, too lazy (and ignorant) to preserve the API
     // @Experiment Watch out for the system clipboard
     

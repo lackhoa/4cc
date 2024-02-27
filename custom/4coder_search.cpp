@@ -140,7 +140,7 @@ kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String_Const_u8 ne
 }
 
 internal void
-print_string_match_list_to_buffer(FApp *app, Buffer_ID out_buffer_id, String_Match_List matches)
+print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Match_List matches)
 {
     Scratch_Block scratch(app);
     clear_buffer(app, out_buffer_id);
@@ -198,7 +198,7 @@ print_all_matches_all_buffers(Application_Links *app, String8_Array match_patter
 }
 
 internal void
-print_all_matches_all_buffers(FApp *app, String8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id)
+print_all_matches_all_buffers(App *app, String8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id)
 {
     String8_Array array = {&pattern, 1};
     print_all_matches_all_buffers(app, array, must_have_flags, must_not_have_flags, out_buffer_id);
@@ -212,7 +212,7 @@ query_user_list_needle(Application_Links *app, Arena *arena)
 }
 
 internal String_Const_u8_Array
-user_list_definition_array(FApp *app, Arena *arena, String_Const_u8 base_needle)
+user_list_definition_array(App *app, Arena *arena, String_Const_u8 base_needle)
 {
     String_Const_u8_Array result = {};
     if (base_needle.size > 0)
@@ -245,7 +245,7 @@ query_user_list_definition_needle(Application_Links *app, Arena *arena){
 }
 
 internal void
-list_all_locations__generic(FApp *app, String8_Array needle, List_All_Locations_Flag flags)
+list_all_locations__generic(App *app, String8_Array needle, List_All_Locations_Flag flags)
 {
     if (needle.count > 0)
     {
@@ -293,7 +293,7 @@ list_all_locations__generic_identifier(Application_Links *app, List_All_Location
 }
 
 internal void
-list_all_locations__generic_view_range(FApp *app, List_All_Locations_Flag flags){
+list_all_locations__generic_view_range(App *app, List_All_Locations_Flag flags){
     Scratch_Block scratch(app);
     String_Const_u8 needle = push_view_range_string(app, scratch);
     list_all_locations__generic(app, needle, flags);

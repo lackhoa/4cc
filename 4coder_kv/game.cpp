@@ -437,30 +437,6 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
     }
 }
 
-internal void
-setup_camera_from_data(Camera *camera, v3 camz, v1 distance)
-{
-    // NOTE: "camz" is normalized.
-    camera->distance = distance;
-   
-    camera->x = noz( v3{-camz.y, camz.x, 0} );  // NOTE: z axis' projection should point up on the screen
-    if (camera->x == v3{})
-    {// NOTE: Happens when we look STRAIGHT DOWN on the target.
-        camera->x = noz( v3{camz.z, 0, -camz.x} );  // NOTE: we want y axis to point up in this case
-    }
-    camera->y = noz( cross(camz, camera->x) );
-    camera->z = camz;
-    
-#define t camera->axes.columns
-    camera->project =
-    {{
-            {t[0][0], t[1][0], t[2][0]},
-            {t[0][1], t[1][1], t[2][1]},
-            {t[0][2], t[1][2], t[2][2]},
-    }};
-#undef t
-}
-
 u32 data_current_version = 5;
 u32 data_magic_number = *(u32 *)"kvda";
 
@@ -739,10 +715,10 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     }
 #endif
     
-    Key_Mod active_modifiers;
+    Key_Mod active_mods;
     {// NOTE: Input shenanigans
         Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
-        active_modifiers = pack_modifiers(set.mods, set.count);
+        active_mods = pack_modifiers(set.mods, set.count);
     }
     
     v1 U = 1e3;  // render scale multiplier (@Cleanup push this scale down to the renderer)
@@ -782,7 +758,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         else print_message(app, "Game data load: Wrong magic number!\n");
     }
     
-    if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_Return) )
+    if ( is_key_newly_pressed(active_mods, 0, KeyCode_Return) )
     {
         save_game(app, save_dir, save_path, &save);
     }
@@ -792,10 +768,9 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     {// NOTE: Camera handling
         camera->focal_length = 2000.f;
         
-        if (view_is_active(app, view) && 
-            (active_modifiers & KeyMod_Ctl))
+        if (view_active)
         {// NOTE: Input handling
-            v3 delta = dt * fui_direction_from_key_states().xyz;
+            v3 delta = dt * fui_direction_from_key_states(active_mods, KeyMod_Ctl).xyz;
             
             v1 phi   = save.camera_phi   + 0.1*delta.y;
             v1 theta = save.camera_theta + 0.1*delta.x;
@@ -811,11 +786,29 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         v3 camz;
         camz.z = sin_turn(save.camera_phi);
         v1 cos_phi = cos_turn(save.camera_phi);
-        camz.x = cos_phi*cos_turn(save.camera_theta);
-        camz.y = cos_phi*sin_turn(save.camera_theta);
-        v1 cam_distance = U * save.camera_distance;
-        
-        setup_camera_from_data(camera, camz, cam_distance);
+        v2 xy_point = V2(cos_turn(save.camera_theta),
+                         sin_turn(save.camera_theta));
+        camz.xy = cos_phi * xy_point;
+        camera->distance = U * save.camera_distance;
+        {//setup_camera_from_data(camera, camz, distance);
+            // NOTE: "camz" is normalized.
+            camera->x = toV3(perp(xy_point), 0);  // NOTE: z axis' projection should point up on the screen
+            if (camera->x == v3{})
+            {// NOTE: Happens when we look STRAIGHT DOWN on the target.
+                camera->x = noz( v3{camz.z, 0, -camz.x} );  // NOTE: we want y axis to point up in this case
+            }
+            camera->y = noz( cross(camz, camera->x) );
+            camera->z = camz;
+            
+#define t camera->axes.columns
+            camera->project =
+            {{
+                    {t[0][0], t[1][0], t[2][0]},
+                    {t[0][1], t[1][1], t[2][1]},
+                    {t[0][2], t[1][2], t[2][2]},
+                }};
+#undef t
+        }
         
         DEBUG_VALUE(camera->distance);
         DEBUG_VALUE(camera->z);
@@ -846,7 +839,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     
     if (view_active)
     {
-        if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_E) )
+        if ( is_key_newly_pressed(active_mods, 0, KeyCode_E) )
         {
             widget_state->is_editing = !widget_state->is_editing;
         }
@@ -855,7 +848,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         {// NOTE: Change hot item
             Widget *parent = widget_state->hot_item->parent;
             Widget *last_child = parent->children + parent->children_count-1;
-            if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_L) )
+            if ( is_key_newly_pressed(active_mods, 0, KeyCode_L) )
             {
                 widget_state->hot_item++;
                 if (widget_state->hot_item > last_child)
@@ -863,7 +856,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                     widget_state->hot_item = parent->children;
                 }
             }
-            if ( is_key_newly_pressed(active_modifiers, 0, KeyCode_H) )
+            if ( is_key_newly_pressed(active_mods, 0, KeyCode_H) )
             {
                 widget_state->hot_item--;
                 if (widget_state->hot_item < parent->children)
@@ -873,17 +866,16 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             }
         }
     }
-   
+    
     b32 editing_active = view_active && widget_state->is_editing;
     {// NOTE: bezier curve experiment!
         for_u32 (curve_index, 0, bezier_count)
         {
             Bezier *curve = save.bezier_curves + curve_index;
             if (editing_active &&
-                active_modifiers == 0 &&
                 widget_state->hot_item == state->curve_widgets + curve_index)
             {
-                v3 direction = fui_direction_from_key_states().xyz;
+                v3 direction = fui_direction_from_key_states(active_mods,0).xyz;
                 v3 delta = matvmul3(&camera->axes, direction) * dt;
                 
                 local_persist i32 active_cp_index = 0;
@@ -941,7 +933,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                                widget_state->hot_item == state->surface_widget);
         if (editing_surface)
         {// NOTE: pick control points
-            if (is_key_newly_pressed(active_modifiers,0,KeyCode_Tab))
+            if (is_key_newly_pressed(active_mods,0,KeyCode_Tab))
             {
                 active_j++;
                 if (active_j > 3)
@@ -951,7 +943,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                     if (active_i > 3) active_i = 0;
                 }
             }
-            else if (is_key_newly_pressed(active_modifiers,KeyMod_Sft,KeyCode_Tab))
+            else if (is_key_newly_pressed(active_mods,KeyMod_Sft,KeyCode_Tab))
             {
                 active_j--;
                 if (active_j > 3)
@@ -962,12 +954,10 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 }
             }
         }
-            
-        if (editing_surface && 
-            active_modifiers == 0)
+        
+        if (editing_surface)
         {// NOTE: edit direction
-            // @Cleanup We should pass the modifiers to fui_direction....
-            v3 direction = fui_direction_from_key_states().xyz;
+            v3 direction = fui_direction_from_key_states(active_mods, 0).xyz;
             v3 delta = matvmul3(&camera->axes, direction) * dt * U;
             save.bezier_surface[active_i][active_j] += delta;
         }

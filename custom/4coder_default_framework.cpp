@@ -261,7 +261,7 @@ get_prev_view_looped_primary_panels(Application_Links *app, View_ID start_view_i
 }
 
 function View_ID
-get_next_view_after_active(FApp *app, Access_Flag access, b32 vsplit_if_fail)
+get_next_view_after_active(App *app, Access_Flag access, b32 vsplit_if_fail)
 {
     View_ID view = get_active_view(app, access);
     if (view != 0)
@@ -424,7 +424,7 @@ expand_bottom_view(App *app)
 }
 
 internal void
-collapse_bottom_view(FApp *app)
+collapse_bottom_view(App *app)
 {
     Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
     Face_ID face_id = get_face_id(app, buffer);
@@ -486,7 +486,7 @@ CUSTOM_DOC("Create a new panel by horizontally splitting the active panel.")
 // NOTE(allen): Credits to nj/FlyingSolomon for authoring the original version of this helper.
 
 function Buffer_ID
-maybe_create_buffer_and_clear_by_name(FApp *app, String8 name_string, View_ID default_target_view)
+maybe_create_buffer_and_clear_by_name(App *app, String8 name_string, View_ID default_target_view)
 {
     Buffer_ID search_buffer = get_buffer_by_name(app, name_string, Access_Always);
     if (search_buffer != 0)
@@ -1190,7 +1190,7 @@ set_next_rewrite(Application_Links *app, View_ID view, Rewrite_Type rewrite){
 }
 
 function void
-default_pre_command(FApp *app, Managed_Scope scope)
+default_pre_command(App *app, Managed_Scope scope)
 {
     Rewrite_Type *next_rewrite =
         scope_attachment(app, scope, view_next_rewrite_loc, Rewrite_Type);

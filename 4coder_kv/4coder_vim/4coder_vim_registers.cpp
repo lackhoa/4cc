@@ -7,7 +7,7 @@
 #pragma clang diagnostic ignored "-Wsign-compare"
 
 function void
-vim_update_registers(FApp *app)
+vim_update_registers(App *app)
 {
 #if VIM_USE_REIGSTER_BUFFER
 	Buffer_ID buffer = buffer_identifier_to_id(app, buffer_identifier(string_u8_litexpr("*registers*")));
@@ -120,7 +120,7 @@ vim_copy(Application_Links *app, Buffer_ID buffer, Range_i64 range, Vim_Register
 }
 
 function void
-vim_paste_from_register(FApp *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
+vim_paste_from_register(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 {
     if(reg->edit_type == EDIT_Block)
     {

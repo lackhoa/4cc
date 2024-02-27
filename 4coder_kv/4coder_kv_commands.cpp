@@ -318,7 +318,7 @@ VIM_COMMAND_SIG(kv_sexpr_end)
 }
 
 internal void 
-kv_surround_with(FApp *app, char *opener, char *closer)
+kv_surround_with(App *app, char *opener, char *closer)
 {
     GET_VIEW_AND_BUFFER;
     HISTORY_GROUP_SCOPE;
@@ -452,7 +452,7 @@ kv_handle_g_f(App *app)
 }
 
 internal Range_i64
-get_surrounding_file_range(FApp *app)
+get_surrounding_file_range(App *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 curpos = view_get_cursor_pos(app, view);
@@ -485,7 +485,7 @@ get_surrounding_file_range(FApp *app)
 }
 
 internal void
-switch_to_buffer_named(FApp *app, String8 name)
+switch_to_buffer_named(App *app, String8 name)
 {
   View_ID   view = get_active_view(app, Access_ReadVisible);
   Buffer_ID buffer = create_buffer(app, name, 0);
@@ -493,7 +493,7 @@ switch_to_buffer_named(FApp *app, String8 name)
 }
 
 inline void
-switch_to_buffer_named(FApp *app, char *name)
+switch_to_buffer_named(App *app, char *name)
 {
     switch_to_buffer_named(app, SCu8(name));
 }
@@ -557,7 +557,7 @@ VIM_COMMAND_SIG(kv_delete_surrounding_groupers)
 }
 
 function void 
-kv_do_t_internal(FApp *app, b32 shiftp)
+kv_do_t_internal(App *app, b32 shiftp)
 {
   GET_VIEW_AND_BUFFER;
   HISTORY_GROUP_SCOPE;
@@ -617,8 +617,8 @@ CUSTOM_DOC("run the current script")
   GET_VIEW_AND_BUFFER;
   Scratch_Block temp(app);
 
-  String_Const_u8 dir = push_hot_directory(app, temp);
-  String_Const_u8 cmd = push_buffer_filename(app, temp, buffer);
+  String8 dir = push_hot_directory(app, temp);
+  String8 cmd = push_buffer_filename(app, temp, buffer);
   standard_build_exec_command(app, view, dir, cmd);
 }
 
@@ -656,7 +656,7 @@ VIM_COMMAND_SIG(kv_vim_visual_line_mode)
 }
 
 function void
-kv_list_all_locations_from_string(FApp *app, String8 needle_str)
+kv_list_all_locations_from_string(App *app, String8 needle_str)
 {
     Scratch_Block temp(app);
     
@@ -695,7 +695,7 @@ kv_list_all_locations_from_string(FApp *app, String8 needle_str)
 }
 
 internal u8 
-kv_get_current_char(FApp *app)
+kv_get_current_char(App *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 pos = view_get_cursor_pos(app, view);
@@ -704,7 +704,7 @@ kv_get_current_char(FApp *app)
 
 // CUSTOM_DOC("adapted from list_all_locations for fuzzy search, if cursor at identifier then search for that instead")
 internal void 
-kv_list_all_locations(FApp *app)
+kv_list_all_locations(App *app)
 {
     b32 at_identifier = false;
     b32 is_visual = (vim_state.mode == VIM_Visual);
@@ -810,7 +810,7 @@ CUSTOM_DOC("configure your editor!")
 }
 
 // todo: We don't wanna bind to a buffer, maybe?
-internal void kv_system_command(FApp *app, String8 cmd)
+internal void kv_system_command(App *app, String8 cmd)
 {
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
@@ -854,7 +854,7 @@ VIM_COMMAND_SIG(remedy_run_to_cursor)
 }
 
 internal void
-clipboard_pop_command(FApp *app)
+clipboard_pop_command(App *app)
 {
     clipboard_pop(app, 0);
     Scratch_Block scratch(app);
@@ -902,4 +902,13 @@ close_panel(App *app)
     View_ID view = get_active_view(app, Access_Always);
     change_active_primary_panel(app);
     toggle_split_panel(app);
+}
+
+CUSTOM_COMMAND_SIG(set_current_dir_as_hot)
+CUSTOM_DOC("set current dir as hot")
+{
+    GET_VIEW_AND_BUFFER;
+    Scratch_Block scratch(app);
+    String8 dirname = push_buffer_dirname(app, scratch, buffer);
+    set_hot_directory(app, dirname);
 }

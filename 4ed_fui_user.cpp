@@ -124,7 +124,7 @@ fui_get_slider_by_name(String8 name)
 }
 
 internal v4
-fui_direction_from_key_states()
+fui_direction_from_key_states(Key_Mod active_mods, Key_Mod wanted_mods)
 {
     v4 direction = {};
     //
@@ -144,7 +144,7 @@ fui_direction_from_key_states()
 internal FUI_UPDATE_RETURN
 fui_update_linear(FUI_UPDATE_PARAMS)
 {
-    v4 direction = fui_direction_from_key_states();
+    v4 direction = fui_direction_from_key_states(0,0);
     f32 speed = 1.0f;
     // NOTE: Update slider value
     v4 delta = dt * speed * direction;

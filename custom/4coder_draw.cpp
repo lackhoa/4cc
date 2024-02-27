@@ -792,7 +792,7 @@ draw_paren_highlight(Application_Links *app, Buffer_ID buffer, Text_Layout_ID te
 }
 
 function void
-draw_jump_highlights(FApp *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
+draw_jump_highlights(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                      Buffer_ID jump_buffer, FColor line_color)
 {
     if (jump_buffer == 0) return;

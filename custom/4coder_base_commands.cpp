@@ -1708,7 +1708,7 @@ CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the correspo
     }
 }
 
-internal void view_buffer_other_panel(FApp *app)
+internal void view_buffer_other_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);

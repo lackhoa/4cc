@@ -95,7 +95,7 @@ vim_block_copy(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 #pragma clang diagnostic ignored "-Wsign-compare"
 
 function void
-vim_block_paste(FApp *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
+vim_block_paste(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 {
 	i64 cursor_pos = view_get_cursor_pos(app, view);
 

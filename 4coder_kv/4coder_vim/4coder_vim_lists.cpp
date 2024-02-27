@@ -300,7 +300,7 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 }
 
 function Jump_Lister_Result
-vim_get_jump_index_from_user(FApp *app, Marker_List *list,
+vim_get_jump_index_from_user(App *app, Marker_List *list,
                              String8 query)
 {
 	Jump_Lister_Result result = {};

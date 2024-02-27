@@ -5,12 +5,12 @@
 // TOP
 
 static String8
-push_build_directory_at_file(FApp *app, Arena *arena, Buffer_ID buffer)
+push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
 {
-    String_Const_u8 result = {};
-    String_Const_u8 filename = push_buffer_filename(app, arena, buffer);
+    String8 result = {};
+    String8 filename = push_buffer_filename(app, arena, buffer);
     Temp_Memory restore_point = begin_temp(arena);
-    String_Const_u8 base_name = push_buffer_base_name(app, arena, buffer);
+    String8 base_name = push_buffer_base_name(app, arena, buffer);
     b32 is_match = string_match(filename, base_name);
     end_temp(restore_point);
     if ( !is_match )
@@ -60,7 +60,7 @@ global_const Buffer_Identifier standard_build_compilation_buffer_identifier = bu
 global_const u32 standard_build_exec_flags = CLI_OverlapWithConflict|CLI_SendEndSignal;
 
 internal void
-standard_build_exec_command(FApp *app, View_ID view, String8 dir, String8 cmd)
+standard_build_exec_command(App *app, View_ID view, String8 dir, String8 cmd)
 {
     exec_system_command(app, view, standard_build_compilation_buffer_identifier,
                         dir, cmd,
@@ -90,11 +90,12 @@ standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, ch
         // NOTE(allen): Build
         String8 path = path_dirname(full_file_path);
         String8 command = push_stringf(scratch, "\"%.*s/%.*s\" %s",
-                                                  string_expand(path),
-                                                  string_expand(cmd_string),
-                                                  command_args);
+                                       string_expand(path),
+                                       string_expand(cmd_string),
+                                       command_args);
         b32 auto_save = def_get_config_b32(vars_intern_lit("automatically_save_changes_on_build"));
-        if (auto_save){
+        if (auto_save)
+        {
             save_all_dirty_buffers(app);
         }
         standard_build_exec_command(app, view, path, command);
@@ -108,11 +109,11 @@ standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, ch
 // NOTE(allen): This searches first using the active file's directory,
 // then if no build script is found, it searches from 4coders hot directory.
 static void
-standard_search_and_build(FApp *app, View_ID view, Buffer_ID active_buffer, char *command_args)
+standard_search_and_build(App *app, View_ID view, Buffer_ID active_buffer, char *command_args)
 {
     Scratch_Block scratch(app);
     b32 did_build = false;
-    String_Const_u8 build_dir = push_build_directory_at_file(app, scratch, active_buffer);
+    String8 build_dir = push_build_directory_at_file(app, scratch, active_buffer);
     if (build_dir.size > 0)
     {
         did_build = standard_search_and_build_from_dir(app, view, build_dir, command_args);
@@ -125,7 +126,8 @@ standard_search_and_build(FApp *app, View_ID view, Buffer_ID active_buffer, char
             did_build = standard_search_and_build_from_dir(app, view, build_dir, command_args);
         }
     }
-    if (!did_build){
+    if (!did_build)
+    {
         standard_build_exec_command(app, view,
                                     push_hot_directory(app, scratch),
                                     push_fallback_command(scratch));
@@ -143,14 +145,14 @@ CUSTOM_DOC("Looks for a build.bat, build.sh, or makefile in the current and pare
 }
 
 static Buffer_ID
-get_comp_buffer(FApp *app)
+get_comp_buffer(App *app)
 {
     return(get_buffer_by_name(app, compilation_buffer_name, Access_Always));
 }
 
 /*
 internal View_ID
-get_or_open_build_panel(FApp *app)
+get_or_open_build_panel(App *app)
 {
     View_ID view = 0;
     Buffer_ID buffer = get_comp_buffer(app);
@@ -177,10 +179,17 @@ set_fancy_compilation_buffer_font(App *app)
 }
 
 internal void 
-build_in_bottom_view(FApp *app, char *command_args)
+build_in_bottom_view(App *app, char *command_args)
 {
     View_ID   view   = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    
+    {
+        Scratch_Block scratch(app);
+        String8 dirname = push_buffer_dirname(app, scratch, buffer);
+        if (dirname.size)
+            set_hot_directory(app, dirname);
+    }
     
     standard_search_and_build(app, global_bottom_view, buffer, command_args);
     set_fancy_compilation_buffer_font(app);
@@ -226,19 +235,19 @@ kv_search_build_file_from_dir(Arena *arena, String8 start_dir)
 }
 
 internal void 
-kv_build_normal(FApp *app)
+kv_build_normal(App *app)
 {
     build_in_bottom_view(app, "");
 }
 
 internal void 
-kv_build_run_only(FApp *app)
+kv_build_run_only(App *app)
 {
     build_in_bottom_view(app, "run");
 }
 
 internal void 
-kv_build_full_rebuild(FApp *app)
+kv_build_full_rebuild(App *app)
 {
     build_in_bottom_view(app, "full");
 }

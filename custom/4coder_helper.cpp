@@ -1041,7 +1041,7 @@ get_snipe_range(Application_Links *app, Boundary_Function *func, Buffer_ID buffe
 ////////////////////////////////
 
 function String8
-push_buffer_range(FApp *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
+push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
 {
     String_Const_u8 result = {};
     i64 length = range_size(range);
@@ -1059,7 +1059,7 @@ push_buffer_range(FApp *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
 }
 
 internal Range_i64
-get_selected_range(FApp *app)
+get_selected_range(App *app)
 {
     GET_VIEW_AND_BUFFER;
     i64 curpos = view_get_cursor_pos(app, view);
@@ -1068,7 +1068,7 @@ get_selected_range(FApp *app)
 }
 
 internal String8
-push_buffer_selected_range(FApp *app, Arena *arena, Buffer_ID buffer)
+push_buffer_selected_range(App *app, Arena *arena, Buffer_ID buffer)
 {
     Range_i64 range = get_selected_range(app);
     return push_buffer_range(app, arena, buffer, range);
@@ -2596,7 +2596,7 @@ set_buffer_system_command(Application_Links *app, Child_Process_ID process, Buff
 }
 
 function b32
-exec_system_command(FApp *app, View_ID view, Buffer_Identifier buffer_id,
+exec_system_command(App *app, View_ID view, Buffer_Identifier buffer_id,
                     String_Const_u8 path, String_Const_u8 command, Command_Line_Interface_Flag flags)
 {
     b32 result = false;
@@ -2656,21 +2656,21 @@ inline i64 get_pos_column(Application_Links *app, Buffer_ID buffer, i64 pos)
   return column;
 }
 
-inline i64 get_current_column(FApp *app)
+inline i64 get_current_column(App *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 column = get_pos_column(app, buffer, view_get_cursor_pos(app, view));
   return column;
 }
 
-inline i64 get_current_line_number(FApp *app)
+inline i64 get_current_line_number(App *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 line = get_line_number_from_pos(app, buffer, view_get_cursor_pos(app, view));
   return line;
 }
 
-inline i64 get_current_char(FApp *app)
+inline i64 get_current_char(App *app)
 {
   GET_VIEW_AND_BUFFER;
   i64 pos = view_get_cursor_pos(app, view);
