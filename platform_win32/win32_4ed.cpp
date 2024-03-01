@@ -1476,13 +1476,15 @@ global wglGetExtensionsStringEXT_Function *wglGetExtensionsStringEXT = 0;
 global wglSwapIntervalEXT_Function *wglSwapIntervalEXT = 0;
 
 internal b32
-win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect){
+win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect)
+{
     HINSTANCE this_instance = GetModuleHandle(0);
     
     local_persist b32 srgb_support = false;
     local_persist b32 register_success = true;
     local_persist b32 first_call = true;
-    if (first_call){
+    if (first_call)
+    {
         log_os(" GL bootstrapping...\n");
         
         first_call = false;
@@ -1511,17 +1513,19 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
         
         HDC wgldc = GetDC(wglwindow);
         
-        PIXELFORMATDESCRIPTOR format = {};
-        format.nSize = sizeof(format);
-        format.nVersion = 1;
-        format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-        format.iPixelType = PFD_TYPE_RGBA;
-        format.cColorBits = 32;
-        format.cAlphaBits = 8;
-        format.cDepthBits = 24;
-        format.iLayerType = PFD_MAIN_PLANE;
-        i32 suggested_format_index = ChoosePixelFormat(wgldc, &format);
-        if (!SetPixelFormat(wgldc, suggested_format_index, &format)){
+        PIXELFORMATDESCRIPTOR desired_pixel_format = {};
+        desired_pixel_format.nSize = sizeof(desired_pixel_format);
+        desired_pixel_format.nVersion = 1;
+        desired_pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+        desired_pixel_format.iPixelType = PFD_TYPE_RGBA;
+        desired_pixel_format.cColorBits = 32;
+        desired_pixel_format.cAlphaBits = 8;
+        desired_pixel_format.cDepthBits = 24;
+        desired_pixel_format.iLayerType = PFD_MAIN_PLANE;
+        i32 suggested_pixel_format_index = ChoosePixelFormat(wgldc, &desired_pixel_format);
+        // NOTE(kv): idk why we gotta pass "desired_pixel_format" back in again...
+        if (!SetPixelFormat(wgldc, suggested_pixel_format_index, &desired_pixel_format))
+        {
             register_success = false;
             goto fail_register;
         }
@@ -1550,25 +1554,29 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
         LoadWGL(wglChoosePixelFormatARB, load_success);
         LoadWGL(wglGetExtensionsStringEXT, load_success);
         
-        if (!load_success){
+        if (!load_success)
+        {
             register_success = false;
             goto fail_register;
         }
         
         log_os(" checking wgl extensions...\n");
         char *extensions_c = wglGetExtensionsStringEXT();
-        String_Const_u8 extensions = SCu8((u8*)extensions_c);
+        String8 extensions = SCu8((u8*)extensions_c);
         
         {
-            String_Const_u8 s = string_skip_whitespace(extensions);
-            for (;s.size > 0;){
+            String8 s = string_skip_whitespace(extensions);
+            for (;s.size > 0;)
+            {
                 u64 end = string_find_first_whitespace(s);
-                String_Const_u8 m = string_prefix(s, end);
-                if (string_match(m, string_u8_litexpr("WGL_EXT_framebuffer_sRGB")) ||
-                    string_match(m, string_u8_litexpr("WGL_ARB_framebuffer_sRGB"))){
+                String8 m = string_prefix(s, end);
+                if (string_match(m, str8lit("WGL_EXT_framebuffer_sRGB")) ||
+                    string_match(m, str8lit("WGL_ARB_framebuffer_sRGB")))
+                {
                     srgb_support = true;
                 }
-                else if (string_match(m, string_u8_litexpr("WGL_EXT_swap_interval"))){
+                else if (string_match(m, str8lit("WGL_EXT_swap_interval")))
+                {
                     b32 wgl_swap_interval_ext = true;
                     LoadWGL(wglSwapIntervalEXT, wgl_swap_interval_ext);
                     if (!wgl_swap_interval_ext){
@@ -1577,8 +1585,9 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
                 }
                 s = string_skip_whitespace(string_skip(s, end));
             }
+            kv_assert(srgb_support);
         }
-        
+       
         // NOTE(allen): Load gl functions
         log_os(" loading core GL functions...\n");
         
@@ -1614,7 +1623,8 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
     fail_register:;
     
     b32 result = false;
-    if (register_success){
+    if (register_success)
+    {
         // NOTE(allen): Create the graphics window
         log_os(" creating graphics window...\n");
         
@@ -1624,30 +1634,38 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
         
         *wnd_out = 0;
         *context_out = 0;
-        if (wnd != 0){
+        if (wnd != 0)
+        {
             log_os(" setting graphics pixel format...\n");
             
             HDC dc = GetDC(wnd);
             
-            PIXELFORMATDESCRIPTOR format = {};
+            PIXELFORMATDESCRIPTOR pixel_format = {};
             
-            i32 pixel_attrib_list[] = {
-                /* 0*/WGL_DRAW_TO_WINDOW_ARB, TRUE,
-                /* 2*/WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
-                /* 4*/WGL_SUPPORT_OPENGL_ARB, TRUE,
-                /* 6*/WGL_DOUBLE_BUFFER_ARB, false,
-                /* 8*/WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
-                /*10*/WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, GL_TRUE,
-                /*12*/0,
+            i32 pixel_attrib_list[] =
+            {
+                /* 0*/WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+                /* 2*/WGL_ACCELERATION_ARB,   WGL_FULL_ACCELERATION_ARB,
+                /* 4*/WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+                /* 6*/WGL_DOUBLE_BUFFER_ARB,  GL_FALSE,
+                /* 8*/WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB,
+                /*10*/WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, GL_TRUE,  // https://youtu.be/SvlirEF-R-4?t=3208
+                /*12*/WGL_RED_BITS_ARB,   8,
+                /*14*/WGL_GREEN_BITS_ARB, 8,
+                /*16*/WGL_BLUE_BITS_ARB,  8,
+                /*18*/WGL_DEPTH_BITS_ARB, 24,
+                0,
             };
-            if (!srgb_support){
+            if (!srgb_support)
+            {
                 pixel_attrib_list[10] = 0;
             }
             
             i32 suggested_format_index = 0;
             u32 ignore = 0;
             HGLRC context = {};
-            i32 context_attrib_list[] = {
+            i32 context_attrib_list[] = 
+            {
                 /*0*/WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
                 /*2*/WGL_CONTEXT_MINOR_VERSION_ARB, 2,
                 /*4*/WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB
@@ -1659,12 +1677,14 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
                 /*8*/0
             };
 
-            if (!wglChoosePixelFormatARB(dc, pixel_attrib_list, 0, 1, &suggested_format_index, &ignore)){
+            if (!wglChoosePixelFormatARB(dc, pixel_attrib_list, 0, 1, &suggested_format_index, &ignore))
+            {
                 goto fail_window_init;
             }
             
-            DescribePixelFormat(dc, suggested_format_index, sizeof(format), &format);
-            if (!SetPixelFormat(dc, suggested_format_index, &format)){
+            DescribePixelFormat(dc, suggested_format_index, sizeof(pixel_format), &pixel_format);
+            if (!SetPixelFormat(dc, suggested_format_index, &pixel_format))
+            {
                 goto fail_window_init;
             }
             
@@ -1672,7 +1692,8 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
             
             log_os(" creating graphics GL context...\n");
             context = wglCreateContextAttribsARB(dc, 0, context_attrib_list);
-            if (context == 0){
+            if (context == 0)
+            {
                 goto fail_window_init;
             }
             
@@ -1688,14 +1709,16 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
             *context_out = context;
             result = true;
             
-            if (false){
+            if (false)
+            {// NOTE: Unreachable unless you use goto (omg!)
                 fail_window_init:;
                 DWORD error = GetLastError();
                 ReleaseDC(wnd, dc);
                 DestroyWindow(wnd);
                 SetLastError(error);
             }
-            else{
+            else
+            {
                 ReleaseDC(wnd, dc);
             }
         }

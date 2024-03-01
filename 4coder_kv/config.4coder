@@ -80,7 +80,8 @@ startup_file  = "C:/Users/vodan/notes/note.skm";
 game_buffer = "*game*";
 game_file   = "C:/Users/vodan/4ed/code/4coder_kv/game.cpp";
 //
-startup_file1 = game_buffer;
-// other_startup_file1 = game_file;
+startup_file1 = game_file;
+other_startup_file1 = game_file;
 
+dev_disable_double_panels = false;
 DEBUG_draw_hud_p = false;

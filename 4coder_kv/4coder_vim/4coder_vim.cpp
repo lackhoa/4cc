@@ -15,11 +15,17 @@ VIM_REQUEST_SIG(vim_apply_yank){
 	}
 }
 
-VIM_REQUEST_SIG(vim_apply_delete){
+internal VIM_REQUEST_RETURN
+vim_apply_delete(VIM_REQUEST_PARAMS)
+{
+    vim_state.dot_delete_count = range.max - range.min;
 	vim_apply_yank(app, view, buffer, range);
-	if(vim_state.params.edit_type != EDIT_Block && vim_state.params.selected_reg){
+	if (vim_state.params.edit_type != EDIT_Block && 
+        vim_state.params.selected_reg)
+    {
 		Vim_Register *dst = &vim_registers.small_delete;
-		if(vim_state.params.edit_type != EDIT_CharWise){
+		if(vim_state.params.edit_type != EDIT_CharWise)
+        {
 			dst = vim_registers.cycle;
 			vim_push_reg_cycle(app);
 		}
@@ -27,13 +33,15 @@ VIM_REQUEST_SIG(vim_apply_delete){
 		vim_update_registers(app);
 	}
 	buffer_replace_range(app, buffer, range, string_u8_empty);
-	if(vim_state.params.edit_type == EDIT_LineWise){
+	if(vim_state.params.edit_type == EDIT_LineWise)
+    {
 		i64 pos = get_line_side_pos_from_pos(app, buffer, view_get_cursor_pos(app, view), Side_Min);
 		view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 	}
 }
 
-VIM_REQUEST_SIG(vim_apply_change)
+internal VIM_REQUEST_RETURN
+vim_apply_change(VIM_REQUEST_PARAMS)
 {
 	vim_enter_insert_mode(app);
 	vim_apply_delete(app, view, buffer, range);

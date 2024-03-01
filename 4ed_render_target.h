@@ -11,27 +11,34 @@
 
 #pragma once
 
-struct Render_Free_Texture{
+struct Render_Free_Texture
+{
     Render_Free_Texture *next;
     u32 tex_id;
 };
 
 struct Render_Vertex
 {
-    v2  xy;
+    union
+    {
+        v3 xyz;
+        v2 xy;
+    };
     v3  uvw;
     u32 color;
     f32 half_thickness;
 };
 
-struct Render_Vertex_Array_Node{
+struct Render_Vertex_Array_Node
+{
     Render_Vertex_Array_Node *next;
     Render_Vertex *vertices;
     i32 vertex_count;
     i32 vertex_max;
 };
 
-struct Render_Vertex_List{
+struct Render_Vertex_List
+{
     Render_Vertex_Array_Node *first;
     Render_Vertex_Array_Node *last;
     i32 count;
@@ -46,6 +53,8 @@ struct Render_Group
     Rect_f32 clip_box;
     v2 offset;  // NOTE(kv): I wish this could be merged with clip_box, oh well...
     b8 y_is_up;
+    b8 depth_test;
+    b8 linear_alpha_blend;
 };
 
 global const Face_ID FACE_ID_GAME = U32_MAX;
@@ -55,6 +64,8 @@ struct Render_Target
     b8 clip_all;
     b8 y_is_up;
     v2 offset;
+    b8 depth_test;
+    b8 linear_alpha_blend;
     i32 width;
     i32 height;
     Texture_ID bound_texture;  //NOTE(kv): I guess this is to avoid talking to the GPU?

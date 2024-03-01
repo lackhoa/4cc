@@ -86,52 +86,55 @@ CUSTOM_DOC("Vim: Display registers"){
 #endif
 
 
-VIM_COMMAND_SIG(vim_normal_mode){
-  View_ID view = get_active_view(app, Access_ReadVisible);
+internal void
+vim_normal_mode(App *app)
+{
+    View_ID view = get_active_view(app, Access_ReadVisible);
 	if(vim_state.mode == VIM_Insert)
-  {
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    
-    vim_registers.insert.data.size = 0;
-    
-    Scratch_Block scratch(app);
-    
-    History_Record_Index index = vim_state.insert_index;
-    History_Record_Index max_index = buffer_history_get_current_state_index(app, buffer);
-    i64 prev_pos = vim_state.insert_cursor.pos;
-    for(; index <= max_index; index++){
-      Record_Info record = buffer_history_get_record_info(app, buffer, index);
-      if(record.error != RecordError_NoError){ continue; }
-      if(record.kind == RecordKind_Single)
-      {
-        vim_process_insert_record(record, &prev_pos);
-      }
-      else if(record.kind == RecordKind_Group)
-      {
-        foreach(i, record.group_count)
+    {
+        Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+        
+        vim_registers.insert.data.size = 0;
+        
+        Scratch_Block scratch(app);
+        
+        History_Record_Index index = vim_state.insert_index;
+        History_Record_Index max_index = buffer_history_get_current_state_index(app, buffer);
+        i64 prev_pos = vim_state.insert_cursor.pos;
+        for(; index <= max_index; index++)
         {
-          Record_Info sub_record = buffer_history_get_group_sub_record(app, buffer, index, i);
-          if(sub_record.error != RecordError_NoError){ continue; }
-          vim_process_insert_record(sub_record, &prev_pos);
+            Record_Info record = buffer_history_get_record_info(app, buffer, index);
+            if(record.error != RecordError_NoError){ continue; }
+            if(record.kind == RecordKind_Single)
+            {
+                vim_process_insert_record(record, &prev_pos);
+            }
+            else if(record.kind == RecordKind_Group)
+            {
+                foreach(i, record.group_count)
+                {
+                    Record_Info sub_record = buffer_history_get_group_sub_record(app, buffer, index, i);
+                    if(sub_record.error != RecordError_NoError){ continue; }
+                    vim_process_insert_record(sub_record, &prev_pos);
+                }
+            }
         }
-      }
-    }
-    vim_state.prev_params.do_insert = true;
-    vim_registers.insert.flags &= (~REGISTER_Append);
-    vim_registers.insert.flags |= (REGISTER_Set|REGISTER_Updated);
-    vim_update_registers(app);
-    
-    history_group_end(vim_history_group);
-    
+        vim_state.prev_params.do_insert = true;
+        vim_registers.insert.flags &= (~REGISTER_Append);
+        vim_registers.insert.flags |= (REGISTER_Set|REGISTER_Updated);
+        vim_update_registers(app);
+        
+        history_group_end(vim_history_group);
+        
 		/* note(kv): interesting, but I don't need this thanks
 		 const i32 N = Max(0,vim_state.params.number-1);
      foreach(i, N){
 			vim_paste_from_register(app, view, buffer, &vim_registers.insert);
 		}*/
-    move_horizontal_lines(app, -1);
+        move_horizontal_lines(app, -1);
 	}
 	else if(vim_state.mode == VIM_Visual)
-  {
+    {
 		vim_set_prev_visual(app, view);
 	}
 	vim_reset_state();
@@ -305,16 +308,23 @@ VIM_COMMAND_SIG(vim_replace_next_char){
 }
 
 
-VIM_COMMAND_SIG(vim_replace_range_next){
+VIM_COMMAND_SIG(vim_replace_range_next)
+{
 	u8 key = vim_query_user_key(app, string_u8_litexpr("-- RANGE REPLACE NEXT --"));
-	if(key){
+	if(key)
+    {
 		vim_state.params.seek.character = key;
 		vim_make_request(app, REQUEST_Replace);
 	}
 }
 
 VIM_COMMAND_SIG(vim_request_yank){    vim_make_request(app, REQUEST_Yank); }
-VIM_COMMAND_SIG(vim_request_delete){  vim_make_request(app, REQUEST_Delete); }
+
+VIM_COMMAND_SIG(vim_request_delete)
+{
+    vim_make_request(app, REQUEST_Delete);
+}
+
 VIM_COMMAND_SIG(vim_request_change){  vim_make_request(app, REQUEST_Change); }
 VIM_COMMAND_SIG(vim_uppercase){       vim_make_request(app, REQUEST_Upper); }
 VIM_COMMAND_SIG(vim_lowercase){       vim_make_request(app, REQUEST_Lower); }
@@ -614,40 +624,49 @@ function void vim_backspace_char_inner(Application_Links *app, i32 offset)
 VIM_COMMAND_SIG(vim_backspace_char){ vim_backspace_char_inner(app, -1); }
 VIM_COMMAND_SIG(vim_delete_char){    vim_backspace_char_inner(app, 0); }
 
-// NOTE(kv): This function is mega-busted
-VIM_COMMAND_SIG(vim_last_command)
+internal void 
+vim_last_command(App* app)
 {
-	const i32 N = vim_consume_number();
-	Custom_Command_Function *command = vim_state.prev_params.command;
-
-  View_ID view = get_active_view(app, Access_ReadVisible);
-  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-  History_Group history_group = history_group_begin(app, buffer);
-  foreach(_index,N)
-  {
-    vim_state.params = vim_state.prev_params;
-    vim_state.active_command = command;
-    vim_state.number = vim_state.params.number;
-    b32 do_insert = vim_state.params.do_insert;
+    const i32 N = vim_consume_number();
+    Custom_Command_Function *command = vim_state.prev_params.command;
     
-    if((command == vim_paste_before) &&
-       in_range(0, (vim_state.params.selected_reg - vim_registers.cycle), 8))
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    History_Group history_group = history_group_begin(app, buffer);
+#if 0
+    for_i32 (_index,0,N)
     {
-      vim_state.params.selected_reg++;
+        vim_state.params = vim_state.prev_params;
+        vim_state.active_command = command;
+        vim_state.number = vim_state.params.number;
+        b32 do_insert = vim_state.params.do_insert;
+        
+        if((command == vim_paste_before) &&
+           in_range(0, (vim_state.params.selected_reg - vim_registers.cycle), 8))
+        {
+            vim_state.params.selected_reg++;
+        }
+        
+        if (command)
+        {
+            command(app);
+        }
+        
+        if (do_insert)
+        {
+            vim_paste_from_register(app, view, buffer, &vim_registers.insert);
+            vim_state.mode = VIM_Normal;
+        }
     }
-
-    if (command)
-    {
-      command(app);
-    }
-
-    if (do_insert)
-    {
-      vim_paste_from_register(app, view, buffer, &vim_registers.insert);
-      vim_state.mode = VIM_Normal;
-    }
-  }
-  history_group_end(history_group);
+#else
+    
+    // NOTE(kv): My hack
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    Range_i64 range = Ii64(cursor_pos, cursor_pos + vim_state.dot_delete_count);
+    buffer_replace_range(app, buffer, range, vim_registers.insert.data.string);
+    
+#endif
+    history_group_end(history_group);
 }
 
 function b32

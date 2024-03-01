@@ -71,7 +71,6 @@ global Vim_Buffer_Peek_Entry vim_default_peek_list[] = {
 
 global Vim_Buffer_Peek_Entry vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + VIM_ADDITIONAL_PEEK];
 
-
 CUSTOM_ID(attachment, vim_buffer_prev_visual);
 CUSTOM_ID(attachment, vim_buffer_marks);
 CUSTOM_ID(attachment, vim_view_jumps);

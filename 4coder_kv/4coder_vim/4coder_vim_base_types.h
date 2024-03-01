@@ -5,8 +5,10 @@
 #define ArrayDec(a,i) ((i + ArrayCount(a)-1) % ArrayCount(a))
 
 // NOTE(BYP): Used in vim_request_vtable
-#define VIM_REQUEST_SIG(name) void name(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64 range)
-typedef void Vim_Apply_Request(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64 range);
+#define VIM_REQUEST_RETURN void
+#define VIM_REQUEST_PARAMS App *app, View_ID view, Buffer_ID buffer, Range_i64 range
+#define VIM_REQUEST_SIG(name) VIM_REQUEST_RETURN name(VIM_REQUEST_PARAMS)
+typedef VIM_REQUEST_SIG(Vim_Apply_Request);
 
 // NOTE(BYP): Used in vim_text_object_vtable
 #define VIM_TEXT_OBJECT_SIG(name) Range_i64 name(Application_Links *app, Buffer_ID buffer, i64 cursor_pos)
@@ -107,7 +109,8 @@ struct Vim_Params{
 	Custom_Command_Function *command;
 };
 
-struct Vim_State {
+struct Vim_State 
+{
 	Vim_Mode mode;
 	Vim_Sub_Mode sub_mode;
 
@@ -126,6 +129,8 @@ struct Vim_State {
 	Vim_Params params;
 	Vim_Params prev_params;
 	Custom_Command_Function *active_command;
+    
+    u64 dot_delete_count;
 };
 
 union Vim_Registers{

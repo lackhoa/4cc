@@ -127,17 +127,19 @@ internal v4
 fui_direction_from_key_states(Key_Mod active_mods, Key_Mod wanted_mods)
 {
     v4 direction = {};
-    //
+    if (active_mods == wanted_mods)
+    {
 #define Down(N)  (global_key_states[KeyCode_##N] != 0)
-    //
-    if (Down(L)) direction.x = +1;
-    if (Down(H)) direction.x = -1;
-    if (Down(K)) direction.y = +1;
-    if (Down(J)) direction.y = -1;
-    if (Down(O)) direction.z = +1;
-    if (Down(I)) direction.z = -1;
-    //
+        //
+        if (Down(L)) direction.x = +1;
+        if (Down(H)) direction.x = -1;
+        if (Down(K)) direction.y = +1;
+        if (Down(J)) direction.y = -1;
+        if (Down(O)) direction.z = +1;
+        if (Down(I)) direction.z = -1;
+        //
 #undef Down
+    }
     return direction;
 }
 

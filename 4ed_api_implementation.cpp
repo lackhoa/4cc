@@ -2915,7 +2915,7 @@ release_global_frame_mutex(App *app)
 
 api(custom) function Vec2_f32
 draw_string_oriented(App *app, Face_ID font_id, ARGB_Color color,
-                     String_Const_u8 str, Vec2_f32 point, u32 flags, Vec2_f32 delta)
+                     String8 str, v2 point, u32 flags, v2 delta)
 {
     Vec2_f32 result = point;
     Models *models = (Models*)app->cmd_context;
@@ -2965,7 +2965,7 @@ draw_rect(App *app, rect2 rect, Texture_ID texture, ARGB_Color color)
 }
 
 internal void
-draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
+draw_line(App *app, v3 p0, v3 p1, f32 thickness, ARGB_Color color)
 {
     Models *models = (Models*)app->cmd_context;
     f32 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
@@ -2973,8 +2973,12 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
     {
         Render_Target *target = models->target;
         b32 steep = false;
-        f32 x0 = p0.x; f32 y0 = p0.y;
-        f32 x1 = p1.x; f32 y1 = p1.y;
+        v1 x0 = p0.x; 
+        v1 y0 = p0.y;
+        v1 z0 = p0.z;
+        v1 x1 = p1.x; 
+        v1 y1 = p1.y;
+        v1 z1 = p1.z;
         
         if (absolute(x0-x1) < 
             absolute(y0-y1))
@@ -2988,19 +2992,17 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
         {// make it "left to right"
             macro_swap(x0, x1); 
             macro_swap(y0, y1); 
+            macro_swap(z0, z1);
         }
         
-        f32 dx = x1-x0;
-        if (dx > 0.0001f)
+        if ((x1-x0) > 0.0001f)
         {
-            f32 dy = y1 - y0;
-            f32 slope = dy / dx;
+            v1 dy = (y1-y0) / (x1-x0);
+            v1 dz = (z1-z0) / (x1-x0);
              
-            // NOTE: Clipping (todo: What about the upside-down case? The clipbox is gonna be reversed)
-            fslider( clip_slider, v1{0.1f} );
+            // NOTE: Clipping
             f32 x_start = x0;
             f32 x_end   = x1;
-            if (clip_slider > 0)
             {
                 f32 x_bot = (target->clip_box.x0 - target->offset.x);
                 f32 x_top = (target->clip_box.x1 - target->offset.x);
@@ -3019,13 +3021,14 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
                  index <= nsamples; 
                  index++)
             {
-                f32 x = x_start + (f32)index * interval;
-                f32 y = y0 + slope*(x-x0);
+                v1 x = x_start + (v1)index * interval;
+                v1 y = y0 + dy*(x-x0);
+                v1 z = z0 + dz*(x-x0);
                 v2 center = (steep ? 
                              v2{y,x} :
                              v2{x,y});
-                rect2 square = rect2_center_radius(center, v2_all(half_thickness));
-                draw_rect_to_target(target, square, half_thickness, color);
+                rect2 square = rect2_center_radius(center, V2All(half_thickness));
+                draw_rect_to_target(target, square, half_thickness, color, z);
             }
         }
     }
@@ -3033,13 +3036,13 @@ draw_line(App *app, v2 p0, v2 p1, f32 thickness, ARGB_Color color)
 }
 
 internal void
-draw_circle(App *app, v2 center, f32 radius, ARGB_Color color)
+draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 depth=0)
 {
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)
     {
-        rect2 square = rect2_center_radius(center, v2{radius, radius});
-        draw_rect_to_target(models->target, square, radius, color);
+        rect2 square = rect2_center_radius(center, V2(radius, radius));
+        draw_rect_to_target(models->target, square, radius, color, depth);
     }
     else kv_debug_trap;
 }
@@ -3066,40 +3069,28 @@ draw_rectangle_outline(App *app, Rect_f32 rect, f32 roundness, f32 thickness, AR
     else kv_debug_trap;
 }
 
+// TODO: Not sure if I love the abstraction over Render_Target
 internal void
-draw_set_y_up(App *app, b32 value=true)
+draw_set_coordinate_system(App *app, b32 y_is_up, v2 offset, b32 depth_test, b32 linear_alpha_blend)
 {
     Models *models = (Models*)app->cmd_context;
     Render_Target *target = models->target;
-    if (target->y_is_up != value)
+   
+    if (target->y_is_up != y_is_up)
     {
-        target->y_is_up = value;
+        target->y_is_up = y_is_up;
         rect2 new_clip_box = target->clip_box;
-        // NOTE: Fun times with changing coordinates
+        // NOTE: Fun times changing the clip box
         new_clip_box.y0 = (f32)target->height - target->clip_box.y1;
         new_clip_box.y1 = (f32)target->height - target->clip_box.y0;
         target->clip_box = new_clip_box;
-        //
-        draw__begin_new_group(target);
     }
-}
-
-inline void
-draw_set_y_down(App *app)
-{
-    draw_set_y_up(app, false);
-}
-
-internal void
-draw_set_offset(App *app, v2 value)
-{
-    Models *models = (Models*)app->cmd_context;
-    Render_Target *target = models->target;
-    if (target->offset != value)
-    {
-        target->offset = value;
-        draw__begin_new_group(target);
-    }
+    
+    target->offset = offset;
+    target->depth_test = (b8)depth_test;
+    target->linear_alpha_blend = (b8)linear_alpha_blend;
+    
+    draw__begin_new_group(target);
 }
 
 inline void

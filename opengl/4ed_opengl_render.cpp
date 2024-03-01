@@ -7,7 +7,8 @@
  *
  */
 
-// TOP
+// NOTE(kv): ARGB colors flowing through the system are in srgb space,
+// which incurs penalty in shaders, since we wanna blend in linear space.
 
 internal void
 gl__bind_texture(Render_Target *t, Texture_ID tex)
@@ -84,7 +85,7 @@ gl__fill_texture(Texture_Kind texture_kind, Texture_ID texture, Vec3_i32 p, Vec3
         else if (texture_kind == TextureKind_ARGB)
         {
             glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-            pixel_format = GL_BGRA;
+            pixel_format = GL_SRGB8_ALPHA8;  // todo: maybe default to GL_BGRA?
             data_type = GL_UNSIGNED_INT_8_8_8_8_REV;
         }
         else invalid_code_path;
@@ -113,39 +114,50 @@ gl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 global char *gl__header = R"foo(#version 130
         )foo";
 
-// https://discord.com/channels/239737791225790464/1203068725519982592/1203085787302723735
-// you can use 4, GL_UNSIGNED_BYTE, GL_TRUE for glVertexAttribPointer, and it will do this for you
 global char *gl__vertex_shader =
 R"foo(
-   uniform vec2   view_t;
-   uniform mat2x2 view_m;
+    uniform mat4x4 view_m;
+    uniform bool linear_alpha_blend;
 
-   in vec2 vertex_xy;
-   in vec3 vertex_uvw;
-   in vec4 vertex_color;
-   in float vertex_half_thickness;
+    in vec3 vertex_xyz;
+    in vec3 vertex_uvw;
+    in vec4 vertex_color;
+    in float vertex_half_thickness;
 
-   smooth out vec4 fragment_color;
-   smooth out vec3 uvw;
-   smooth out vec2 xy;
-   smooth out vec2 adjusted_half_dim;
-   smooth out float half_thickness;
+    smooth out vec4 fragment_color;
+    smooth out vec3 uvw;
+    smooth out vec2 xy;
+    smooth out vec2 adjusted_half_dim;
+    smooth out float half_thickness;
 
-   void main(void)
-   {
-       vec2 position_xy = view_m * (vertex_xy + view_t);
-       gl_Position = vec4(position_xy, 0.0, 1.0);
-       fragment_color.rgba = vertex_color.bgra;
-       uvw = vertex_uvw;
-       vec2 center = vertex_uvw.xy;
-       vec2 half_dim = abs(vertex_xy - center);
-       adjusted_half_dim = half_dim - vertex_uvw.zz + vec2(0.5, 0.5);
-       half_thickness = vertex_half_thickness;
-       xy = vertex_xy;
-   }
-   )foo";
+    float srgb_to_linear(float x)
+    {
+        float r = 0;
+        if (x <= 0.04045) r = x/12.92;
+        else              r = pow(((x + 0.055)/1.055), 2.4);
+        return(r);
+    }
 
-global char *gl__fragment_shader = 
+    void main(void)
+    {
+        gl_Position = view_m * vec4(vertex_xyz, 1);
+        fragment_color.rgba = vertex_color.bgra;
+        if (linear_alpha_blend)
+        {
+            fragment_color.r = srgb_to_linear(fragment_color.r);
+            fragment_color.g = srgb_to_linear(fragment_color.g);
+            fragment_color.b = srgb_to_linear(fragment_color.b);
+        }
+        uvw = vertex_uvw;
+        vec2 center = vertex_uvw.xy;
+        xy = vertex_xyz.xy;
+        vec2 half_dim = abs(xy - center);
+        adjusted_half_dim = half_dim - vertex_uvw.zz + vec2(0.5, 0.5);
+        half_thickness = vertex_half_thickness;
+    }
+    )foo";
+
+global char *gl__fragment_shader =
 R"foo(
    smooth in vec4 fragment_color;
    smooth in vec3 uvw;
@@ -175,16 +187,15 @@ R"foo(
        sd = abs(sd + half_thickness) - half_thickness;
        float shape_value = 1.0 - smoothstep(-1.0, 0.0, sd);
        shape_value *= has_thickness;
-        
+       
        out_color = vec4(fragment_color.rgb, fragment_color.a*(sample_value + shape_value));
    }
    )foo";
 
-// NOTE(kv): Untested
+// IMPORTANT(kv): Unmaintained
 global char *gl__vertex_shader_game =
 R"foo(
-    uniform vec2   view_t;
-    uniform mat2x2 view_m;
+    uniform mat4x4 view_m;
 
     in vec2 vertex_xy;
     in vec3 vertex_uvw;
@@ -196,8 +207,7 @@ R"foo(
 
     void main(void)
     {
-        vec2 position_xy = view_m * (vertex_xy + view_t);
-        gl_Position = vec4(position_xy, 0.0, 1.0);
+        gl_Position = view_m * vec4(vertex_xy, 0,1);
         fragment_color.rgba = vertex_color.bgra;
         uvw = vertex_uvw;
     }
@@ -218,13 +228,13 @@ R"foo(
    )foo";
 
 #define X_VERTEX_ATTRIBUTES(X)    \
-    X(xy,    2, GL_FLOAT)         \
-    X(uvw,   3, GL_FLOAT)         \
-    X(color, 4, GL_UNSIGNED_BYTE) \
-    X(half_thickness, 1, GL_FLOAT)
+    X(xyz)          \
+    X(uvw)         \
+    X(color)       \
+    X(half_thickness)
 
 #define X_UNIFORMS(X) \
-    X(view_t) \
+    X(linear_alpha_blend) \
     X(view_m) \
     X(sampler)
 
@@ -303,27 +313,7 @@ gl__make_program(char *header, char *vertex, char *fragment)
 #define GLOffsetStruct(p,m) ((void*)(OffsetOfMemberStruct(p,m)))
 #define GLOffset(S,m)       ((void*)(gb_offset_of(S,m)))
 
-Texture_ID global_game_texture;
-
-// TODO @Cleanup: Remove this! It makes no goddamn sense!
-internal void
-gl_vertex_attrib_pointer(GLuint index, GLint size, GLenum type, const void *pointer)
-{
-    GLsizei stride = sizeof(Render_Vertex);
-    if (type == GL_FLOAT)
-    {
-        glVertexAttribPointer(index, size, type, GL_TRUE, stride, pointer);
-    }
-    else if (type == GL_UNSIGNED_BYTE)
-    {
-        glVertexAttribPointer(index, size, type, GL_TRUE, stride, pointer);
-    }
-    else if (type == GL_UNSIGNED_INT)
-    {// TODO @Cleanup removeme
-        glVertexAttribIPointer(index, size, GL_UNSIGNED_INT, stride, pointer);
-    }
-    else { invalid_code_path; }
-}
+global Texture_ID global_game_texture;
 
 internal void
 gl_render(Render_Target *t)
@@ -373,6 +363,10 @@ gl_render(Render_Target *t)
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
+        glEnable(GL_FRAMEBUFFER_SRGB);  // NOTE(kv): Used to not have this, so our blending was "wrong", but actually it was right for some fonts
+       
+        glDepthFunc(GL_LEQUAL);  // NOTE: "equal" because we want things drawn later to be on top, prolly doesn't matter
+        
         ////////////////////////////////
         
         gl_program      = gl__make_program(gl__header, gl__vertex_shader, gl__fragment_shader);
@@ -386,13 +380,11 @@ gl_render(Render_Target *t)
         gl__fill_texture(TextureKind_Mono, Texture_ID{}, V3i32(0, 0, 0), V3i32(2, 2, 1), white_block);
     }
     
-    i32 width  = t->width;
-    i32 height = t->height;
-    
-    glViewport(0, 0, width, height);
-    glScissor (0, 0, width, height);
+    glViewport(0, 0, t->width, t->height);
+    glScissor (0, 0, t->width, t->height);
     glClearColor(1.f, 0.f, 1.f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClearDepth(1.0f);
+    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     
     glBindTexture(GL_TEXTURE_2D, 0);
     t->bound_texture = {};
@@ -405,102 +397,136 @@ gl_render(Render_Target *t)
     }
     t->free_texture_first = 0;
     t->free_texture_last = 0;
-    
+   
+    b8 depth_test = 0;
     for (Render_Group *group = t->group_first;
          group != 0;
          group = group->next)
     {
         i32 vertex_count = group->vertex_list.count;
-        if (vertex_count <= 0) continue;
-        
-        b32 game_mode = (group->face_id == FACE_ID_GAME);
-        GL_Program *program = game_mode ? &gl_program_game : &gl_program;
-        
+        if (vertex_count > 0)
         {
-            Rect_i32 box = Ri32(group->clip_box);
-            GLint   scissor_x = box.x0;
-            GLint   scissor_y = (group->y_is_up?
-                                 box.y0 :
-                                 height - box.y1);
-            GLsizei scissor_w = box.x1 - box.x0;
-            GLsizei scissor_h = box.y1 - box.y0;
-            
-            kv_clamp_bot(scissor_x, 0);
-            kv_clamp_bot(scissor_y, 0);
-            kv_clamp_bot(scissor_w, 0);
-            kv_clamp_bot(scissor_h, 0);
-            
-            glScissor(scissor_x, scissor_y, scissor_w, scissor_h);
-        }
-       
-        if (game_mode)
-        {
-            gl__bind_texture(t, global_game_texture);
-        }
-        else 
-        {
-            Face *face = font_set_face_from_id(font_set, group->face_id);
-            if (face)
+            b32 game_mode = (group->face_id == FACE_ID_GAME);
+            GL_Program *program = game_mode ? &gl_program_game : &gl_program;
+           
+            if ( group->depth_test != depth_test )
             {
-                gl__bind_texture(t, face->texture);
+                depth_test = group->depth_test;
+                if (depth_test)
+                    glEnable (GL_DEPTH_TEST);
+                else
+                    glDisable(GL_DEPTH_TEST);
+            }
+            
+            {
+                Rect_i32 box = Ri32(group->clip_box);
+                GLint   scissor_x = box.x0;
+                GLint   scissor_y = (group->y_is_up?
+                                     box.y0 :
+                                     t->height - box.y1);
+                GLsizei scissor_w = box.x1 - box.x0;
+                GLsizei scissor_h = box.y1 - box.y0;
+                
+                kv_clamp_bot(scissor_x, 0);
+                kv_clamp_bot(scissor_y, 0);
+                kv_clamp_bot(scissor_w, 0);
+                kv_clamp_bot(scissor_h, 0);
+                
+                glScissor(scissor_x, scissor_y, scissor_w, scissor_h);
+            }
+           
+            if (game_mode)
+            {
+                gl__bind_texture(t, global_game_texture);
+            }
+            else 
+            {
+                Face *face = font_set_face_from_id(font_set, group->face_id);
+                if (face)
+                {
+                    gl__bind_texture(t, face->texture);
+                }
+                else
+                {
+                    gl__bind_fallback_texture(t);
+                }
+            }
+            
+            if (group->linear_alpha_blend)
+            {
+                glEnable (GL_FRAMEBUFFER_SRGB);
             }
             else
             {
-                gl__bind_fallback_texture(t);
+                glDisable(GL_FRAMEBUFFER_SRGB);
             }
-        }
-        
-        if (game_mode)
-        {// NOTE(kv): game_mode is the rare case so we'll just temporary swap out the program
-            glUseProgram(gl_program_game.program);
-        }
-        
-        glBufferData(GL_ARRAY_BUFFER, vertex_count*sizeof(Render_Vertex), 0, GL_STREAM_DRAW);
-        i32 cursor = 0;
-        for (Render_Vertex_Array_Node *node = group->vertex_list.first;
-             node != 0;
-             node = node->next)
-        {
-            i32 size = node->vertex_count*sizeof(*node->vertices);
-            glBufferSubData(GL_ARRAY_BUFFER, cursor, size, node->vertices);
-            cursor += size;
-        }
-        
-        // NOTE: glEnableVertexAttribArray
+            
+            if (game_mode)
+            {// NOTE(kv): game_mode is the rare case so we'll just temporary swap out the program
+                glUseProgram(gl_program_game.program);
+            }
+            
+            glBufferData(GL_ARRAY_BUFFER, vertex_count*sizeof(Render_Vertex), 0, GL_STREAM_DRAW);
+            i32 cursor = 0;
+            for (Render_Vertex_Array_Node *node = group->vertex_list.first;
+                 node != 0;
+                 node = node->next)
+            {
+                i32 size = node->vertex_count*sizeof(*node->vertices);
+                glBufferSubData(GL_ARRAY_BUFFER, cursor, size, node->vertices);
+                cursor += size;
+            }
+            
+            // NOTE: glEnableVertexAttribArray
 #define X(N,...) { glEnableVertexAttribArray(program->vertex_##N); }
-        X_VERTEX_ATTRIBUTES(X);
+            X_VERTEX_ATTRIBUTES(X);
 #undef X
-        
-        // NOTE: tell opengl how to read vertex attributes
-#define X(N,S,T) { gl_vertex_attrib_pointer(program->vertex_##N, S, T, GLOffset(Render_Vertex, N)); }
-        X_VERTEX_ATTRIBUTES(X);
-#undef X
-        
-        // NOTE: Transforms
-        // NOTE(kv): Offset to opengl's bilateral normalized space, as well as render group offset
-        glUniform2f(program->view_t, 
-                    group->offset.x - (f32)width/2.f, 
-                    group->offset.y - (f32)height/2.f);
-        f32 view_m_y_sign = ((group->y_is_up) ? +1 : -1);
-        f32 view_m[4] = 
-        {
-            2.f/width, 0.f,
-            0.f, 2.f/height * view_m_y_sign,
-        };
-        glUniformMatrix2fv(program->view_m, 1, GL_FALSE, view_m);
-        glUniform1i(program->sampler, 0);  // NOTE(kv): idk if this has a meaning?
-        
-        // NOTE
-        glDrawArrays(GL_TRIANGLES, 0, vertex_count);
-        
-        // NOTE: Disable Vertex Attrib Array
+            
+            // NOTE: tell opengl how to read vertex attributes
+#define INDEX(N)  program->vertex_##N
+            {
+                GLsizei stride = sizeof(Render_Vertex);
+                glVertexAttribPointer(INDEX(xyz),            3, GL_FLOAT,         GL_TRUE, stride, GLOffset(Render_Vertex, xyz));
+                glVertexAttribPointer(INDEX(uvw),            3, GL_FLOAT,         GL_TRUE, stride, GLOffset(Render_Vertex, uvw));
+                glVertexAttribPointer(INDEX(color),          4, GL_UNSIGNED_BYTE, GL_TRUE, stride, GLOffset(Render_Vertex, color));
+                glVertexAttribPointer(INDEX(half_thickness), 1, GL_FLOAT,         GL_TRUE, stride, GLOffset(Render_Vertex, half_thickness));
+            }
+#undef INDEX
+            
+            {// NOTE: Transforms
+                v1 width  = (v1)t->width;
+                v1 height = (v1)t->height;
+                v1 y_sign = ((group->y_is_up) ? +1 : -1);
+                // NOTE(kv): Scale
+                v1 a = 2.f/width;
+                v1 b = 2.f/height * y_sign;
+                // NOTE(kv): Offset to opengl's bilateral normalized space, as well as render group offset
+                v1 c = a * group->offset.x - 1.0f;
+                v1 d = b * group->offset.y - 1.0f*y_sign;
+                v1 view_m[] = 
+                {
+                    a,0,0,0,
+                    0,b,0,0,
+                    0,0,1,0,
+                    c,d,0,1,
+                };
+                glUniformMatrix4fv(program->view_m, 1, GL_FALSE, view_m);
+                glUniform1i       (program->linear_alpha_blend, group->linear_alpha_blend);
+                glUniform1i       (program->sampler, 0);  // NOTE(kv): idk if this has a meaning?
+            }
+            
+            // NOTE: draw
+            glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+            
+            // NOTE: Disable Vertex Attrib Array
 #define X(N,...) { glDisableVertexAttribArray(program->vertex_##N); }
-        X_VERTEX_ATTRIBUTES(X);
+            X_VERTEX_ATTRIBUTES(X);
 #undef X
-       
-        if (game_mode)
-        {// NOTE: switch back to the normal program
-            glUseProgram(gl_program.program);
+            
+            if (game_mode)
+            {// NOTE: switch back to the normal program
+                glUseProgram(gl_program.program);
+            }
         }
     }
     

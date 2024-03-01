@@ -946,7 +946,7 @@ inline f32 v3::operator[](i32 index)
 }
 
 inline v3
-toV3(v2 xy, f32 z)
+V3(v2 xy, f32 z)
 {
     v3 result;
     result.xy = xy;
@@ -1540,6 +1540,15 @@ union m3x3
         v3 x;
         v3 y;
         v3 z;
+    };
+};
+
+union m4x4
+{
+    v4 columns[4];
+    struct
+    {
+        v4 x,y,z,w;
     };
 };
 
@@ -2554,16 +2563,19 @@ struct String_char{
 };
 struct String_u8
 {
-  union{
-    String_Const_u8 string;
-    struct{
-      u8 *str;
-      u64 size;
+    union
+    {
+        String_Const_u8 string;
+        struct
+        {
+            u8 *str;
+            u64 size;
+        };
     };
-  };
-  u64 cap;
+    u64 cap;
 };
-struct String_u16{
+struct String_u16
+{
   union{
     String_Const_u16 string;
     struct{
@@ -4342,7 +4354,8 @@ lerp(Vec3_f32 a, f32 t, Vec3_f32 b){
 function f32
 unlerp(f32 a, f32 x, f32 b){
     f32 r = x;
-    if (b != a){
+    if (b != a)
+    {
         r = (x - a)/(b - a);
     }
     return(r);
@@ -10325,6 +10338,9 @@ to_string(Arena *arena, i32 value)
 inline v2 V2All(v1 value) { return v2{value,value}; }
 inline v3 V3All(v1 value) { return v3{value,value,value}; }
 inline v4 V4All(v1 value) { return v4{value,value,value,value}; }
+inline v2 V2Zero() { return v2{}; }
+inline v3 V3Zero() { return v3{}; }
+inline v4 V4Zero() { return v4{}; }
 
 // IMPORTANT: NO TRESPASS ////////////////////////////////////
 

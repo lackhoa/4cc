@@ -19,12 +19,14 @@
 internal u32
 ft__load_flags(b32 use_hinting){
     u32 ft_flags = FT_LOAD_RENDER;
-    if (use_hinting){
+    if (use_hinting)
+    {
         // NOTE(inso): FT_LOAD_TARGET_LIGHT does hinting only vertically, which looks nicer imo
         // maybe it could be exposed as an option for hinting, instead of just on/off.
         ft_flags |= (FT_LOAD_FORCE_AUTOHINT | FT_LOAD_TARGET_LIGHT);
     }
-    else{
+    else
+    {
         ft_flags |= (FT_LOAD_NO_AUTOHINT | FT_LOAD_NO_HINTING);
     }
     return(ft_flags);

@@ -27,10 +27,12 @@ draw__begin_new_group(Render_Target *target)
         group = push_array_zero(&target->arena, Render_Group, 1);
         sll_queue_push(target->group_first, target->group_last, group);
     }
-    group->face_id  = target->face_id;
-    group->clip_box = target->clip_box;
-    group->offset   = target->offset;
-    group->y_is_up  = target->y_is_up;
+    group->face_id    = target->face_id;
+    group->clip_box   = target->clip_box;
+    group->offset     = target->offset;
+    group->y_is_up    = target->y_is_up;
+    group->depth_test = target->depth_test;
+    group->linear_alpha_blend = target->linear_alpha_blend;  // todo @Cleanup put the render group options in here
 }
 
 internal Render_Vertex_Array_Node*
@@ -178,24 +180,23 @@ draw_line_to_target(Render_Target *target, v2 p0, v2 p1,
 }
 */
 
-// NOTE(kv): roundness is between 0 and 50, just like in the config file
 internal void
-draw_rect_outline_to_target(Render_Target *target, rect2 rect, f32 roundness, f32 thickness, u32 color)
+draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 thickness, u32 color, v1 depth=0)
 {
     kv_clamp_bot(roundness, epsilon_f32);
     kv_clamp_bot(thickness, 1.f);
     
-    f32 half_thickness = thickness*0.5f;
+    v1 half_thickness = thickness*0.5f;
     
     Render_Vertex vertices[6] = {};
-    vertices[0].xy = V2(rect.x0, rect.y0);
-    vertices[1].xy = V2(rect.x1, rect.y0);
-    vertices[2].xy = V2(rect.x0, rect.y1);
+    vertices[0].xyz = V3(rect.x0, rect.y0, depth);
+    vertices[1].xyz = V3(rect.x1, rect.y0, depth);
+    vertices[2].xyz = V3(rect.x0, rect.y1, depth);
     vertices[3]    = vertices[1];
     vertices[4]    = vertices[2];
-    vertices[5].xy = V2(rect.x1, rect.y1);
+    vertices[5].xyz = V3(rect.x1, rect.y1, depth);
     
-    Vec2_f32 center = rect_center(rect);
+    v2 center = rect_center(rect);
     for (u32 i = 0; i < alen(vertices); i += 1)
     {
         vertices[i].uvw = V3(center.x, center.y, roundness);
@@ -206,11 +207,11 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, f32 roundness, f3
 }
 
 internal void
-draw_rect_to_target(Render_Target *target, rect2 rect, f32 roundness, u32 color)
+draw_rect_to_target(Render_Target *target, rect2 rect, f32 roundness, u32 color, v1 depth=0)
 {
-    Vec2_f32 dim = rect_dim(rect);
+    v2 dim = rect_dim(rect);
     f32 thickness = Max(dim.x, dim.y);
-    draw_rect_outline_to_target(target, rect, roundness, thickness, color);
+    draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
 
 internal void

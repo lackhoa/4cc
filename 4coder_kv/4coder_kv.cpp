@@ -200,7 +200,10 @@ startup_panels_and_files(App *app)
     view_set_active(app, left_view);
     
 #if KV_INTERNAL
-    toggle_split_panel(app);
+    if ( def_get_config_b32(vars_intern_lit("dev_disable_double_panels")) )
+    {
+        toggle_split_panel(app);
+    }
     // view_goto_first_search_position(app, left_view, str8lit("bookmark"));
 #endif
 }

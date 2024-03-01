@@ -208,19 +208,24 @@ VIM_COMMAND_SIG(vim_select_register)
 function void
 vim_process_insert_record(Record_Info record, i64 *prev_pos)
 {
-    String_u8 *text = &vim_registers.insert.data;
+    String_u8 *insert_register = &vim_registers.insert.data;
     if( *prev_pos != record.pos_before_edit )
     {
         *prev_pos = record.pos_before_edit;
-        text->size = 0;
+        insert_register->size = 0;
     }
     *prev_pos -= record.single_string_backward.size;
     *prev_pos += record.single_string_forward.size;
-    if (text->size >= record.single_string_backward.size)
-        text->size -= record.single_string_backward.size;
-    u64 next_size = text->size + record.single_string_forward.size;
-    if(next_size >= text->cap){ vim_realloc_string(text, next_size); }
-    string_append(text, record.single_string_forward);
+    if (insert_register->size >= record.single_string_backward.size)
+    {
+        insert_register->size -= record.single_string_backward.size;
+    }
+    u64 next_size = insert_register->size + record.single_string_forward.size;
+    if (next_size >= insert_register->cap)
+    {
+        vim_realloc_string(insert_register, next_size);
+    }
+    string_append(insert_register, record.single_string_forward);
 }
 
 #pragma clang diagnostic pop

@@ -7,7 +7,7 @@ CUSTOM_DOC("no op for binding keybinds to resolve without side effect")
 {}
 
 // Blocking call
-function u8 vim_query_user_key(Application_Links *app, String_Const_u8 message){
+function u8 vim_query_user_key(App *app, String_Const_u8 message){
 	u8 result = 0;
 	
 	local_persist u8 vim_bot_temp_buffer[256];
@@ -43,7 +43,8 @@ function u8 vim_query_user_key(Application_Links *app, String_Const_u8 message){
 }
 
 
-function void vim_enter_insert_mode(Application_Links *app)
+function void 
+vim_enter_insert_mode(App *app)
 {
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -274,16 +275,21 @@ VIM_COMMAND_SIG(vim_right)
 }
 
 function void
-vim_make_request(Application_Links *app, Vim_Request_Type request){
-	if(vim_state.params.request == request){
+vim_make_request(App *app, Vim_Request_Type request)
+{
+	if (vim_state.params.request == request)
+    {
 		Vim_Motion_Block vim_motion_block(app);
 		vim_state.params.edit_type = EDIT_LineWise;
 		vim_state.params.edit_type = EDIT_LineWise;
 		move_vertical_lines(app, vim_consume_number()-1);
-	}else{
+	}
+    else
+    {
 		vim_state.params.count = vim_consume_number();
 		vim_state.params.request = request;
-		if(vim_state.mode == VIM_Visual){
+		if (vim_state.mode == VIM_Visual)
+        {
 			View_ID view = get_active_view(app, Access_ReadVisible);
 			b32 do_visual_insert = (vim_state.params.edit_type == EDIT_Block && request == REQUEST_Change);
 			vim_set_prev_visual(app, view);
@@ -291,12 +297,13 @@ vim_make_request(Application_Links *app, Vim_Request_Type request){
 			{
 				Vim_Motion_Block vim_motion_block(app, view_get_mark_pos(app, view));
 			}
-			if(do_visual_insert){
+			if(do_visual_insert)
+            {
 				Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 				vim_visual_insert_inner(app, view, buffer);
 			}
 		}
-		else{ vim_state.chord_resolved = false; }
+		else { vim_state.chord_resolved = false; }
 	}
 }
 

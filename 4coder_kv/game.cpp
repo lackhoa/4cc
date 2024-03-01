@@ -12,7 +12,7 @@
 
 #include "tr_model.cpp"
 
-// TODO: @Cleanup: Rename, work on our srgb coloring. (also with the fcolor)
+// TODO: @Cleanup: Rename. (hello with the fcolor)
 global v4  yellow_v4   = {.5, .5, 0, 1.0};
 global u32 yellow_argb = pack_argb(yellow_v4);
 global v4  gray_v4     = {.5,.5,.5,1};
@@ -312,20 +312,22 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     }
 }
 
-internal v2
+internal v3
 perspective_project(Camera *camera, v3 point)
 {
     v3 projected = matvmul3(&camera->project, point);
     // NOTE: distance is in camera_z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
-    v1 dz = camera->distance - projected.z;
+    v1 depth = camera->distance - projected.z;
     v1 near_clip = 10;
-    if (dz > near_clip)
+    v1 far_clip  = 100 * 1E3;
+    if ( in_between(near_clip, depth, far_clip) )
     {
-        v3 result = (camera->focal_length / dz) * projected;
-        return result.xy;
+        v2 xy = (camera->focal_length / depth) * projected.xy;
+        v1 depth_clip = bilateral( unlerp(near_clip,depth,far_clip) );
+        return V3(xy,depth_clip);
     }
     else
-        return V2All(F32_MAX);
+        return V3All(F32_MAX);
 }
 
 internal v1
@@ -346,8 +348,8 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
     {// NOTE: Control points
         for_i32 (index, 1, 3)
         {
-            v2 screen_p = perspective_project(camera, P[index]);
-            draw_circle(app, screen_p, radius_a, yellow_argb);
+            v3 screen_p = perspective_project(camera, P[index]);
+            draw_circle(app, screen_p.xy, radius_a, yellow_argb, screen_p.z);
         }
     }
     
@@ -366,7 +368,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
                       3*squared(u)*(U)*P[2] +
                       1*cubed(u)*P[3]);
         //
-        v2 screen_p = perspective_project(camera, world_p);
+        v3 screen_p = perspective_project(camera, world_p);
         
         v1 draw_radius;
         {// NOTE: Having to calculate the focal_length/dz twice :<
@@ -375,7 +377,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
             draw_radius = absolute((camera->focal_length / dz) * radius);
         }
         
-        draw_circle(app, screen_p, draw_radius, gray_argb);
+        draw_circle(app, screen_p.xy, draw_radius, gray_argb, screen_p.z);
     }
 }
 
@@ -389,8 +391,8 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
         {
             for_u32 (j,0,4)
             {
-                v2 screen_p = perspective_project(camera, P[i][j]);
-                draw_circle(app, screen_p, 6.0f, gray_argb);
+                v3 screen_p = perspective_project(camera, P[i][j]);
+                draw_circle(app, screen_p.xy, 6.0f, gray_argb, screen_p.z);
             }
         }
     }
@@ -412,7 +414,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
                                 P[i][j]);
                 }
             }
-            v2 screen_p = perspective_project(camera, world_p);
+            v3 screen_p = perspective_project(camera, world_p);
             
             v1 radius = 12.0f;
             v1 draw_radius;
@@ -432,7 +434,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
                 }
             }
             v4 color = lerp(gray_v4, lightness, white_v4);
-            draw_circle(app, screen_p, draw_radius, pack_argb(color));
+            draw_circle(app, screen_p.xy, draw_radius, pack_argb(color), screen_p.z);
         }
     }
 }
@@ -661,12 +663,11 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     b32 view_active = view_is_active(app, view);
     
     // NOTE: Setup sane math coordinate system.
-    draw_set_y_up(app);
-    rect2 clip = draw_get_clip(app);
-    v2 clip_dim      = rect_dim(clip);
+    v2 clip_dim = rect_dim( draw_get_clip(app) );
     v2 clip_half_dim = 0.5f * clip_dim;
-    v2 layout_center = clip.min + clip_half_dim;
-    draw_set_offset(app, layout_center);
+    v2 layout_center = clip_half_dim;
+   
+    draw_set_coordinate_system(app, true, layout_center, true, true);
     
     for_i32 (keycode, 1, KeyCode_COUNT)
     {// NOTE: Enable animation if any key is down
@@ -688,7 +689,6 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     
     Scratch_Block scratch(app);
     
-#if 1
     if (is_initial_frame)
     {// TODO: We should make this a parsed data structure, because this is torture!
         u32 WIDGET_COUNT = 4;
@@ -713,7 +713,6 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
         state->curve_widgets = curves;
     }
-#endif
     
     Key_Mod active_mods;
     {// NOTE: Input shenanigans
@@ -792,11 +791,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         camera->distance = U * save.camera_distance;
         {//setup_camera_from_data(camera, camz, distance);
             // NOTE: "camz" is normalized.
-            camera->x = toV3(perp(xy_point), 0);  // NOTE: z axis' projection should point up on the screen
-            if (camera->x == v3{})
-            {// NOTE: Happens when we look STRAIGHT DOWN on the target.
-                camera->x = noz( v3{camz.z, 0, -camz.x} );  // NOTE: we want y axis to point up in this case
-            }
+            camera->x = V3(perp(xy_point), 0);
             camera->y = noz( cross(camz, camera->x) );
             camera->z = camz;
             
@@ -806,7 +801,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                     {t[0][0], t[1][0], t[2][0]},
                     {t[0][1], t[1][1], t[2][1]},
                     {t[0][2], t[1][2], t[2][2]},
-                }};
+            }};
 #undef t
         }
         
@@ -815,7 +810,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     }
     
     { // push coordinate system
-        v2 pO_screen, px_screen, py_screen, pz_screen;
+        v3 pO_screen, px_screen, py_screen, pz_screen;
         {
             v3 pO = v3{0,0,0};
             v3 px = U * v3{1,0,0};
@@ -828,11 +823,10 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             pz_screen = perspective_project(camera, pz);
         }
         
-        v2 O = {};
         f32 line_thickness = 8.0f;
-        draw_line(app, O+pO_screen, O+px_screen, line_thickness, pack_argb({.5,  0,  0, 1}));
-        draw_line(app, O+pO_screen, O+py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
-        draw_line(app, O+pO_screen, O+pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
+        draw_line(app, pO_screen, px_screen, line_thickness, pack_argb({.5,  0,  0, 1}));
+        draw_line(app, pO_screen, py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
+        draw_line(app, pO_screen, pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
     }
     
     const u32 bezier_count = 3;
@@ -1003,14 +997,41 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         tiny_renderer_main(dim.xy, data, &model);
         graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
         
-        v2 position = clip.min + v2{10,10};
+        v2 position = v2{10,10};
         fslider( scale, 0.338275f );
         v2 draw_dim = scale * castV2(dim.x, dim.y);
         draw_textured_rect(app, rect2_min_dim(position, draw_dim));
     }
+   
+    if (1)
+    {// test srgb
+        // background
+        draw_rect(app, rect2_min_dim(V2(0,0), V2(400,400)), 0xff000000);
+        // 50%-blended white
+        draw_rect(app, rect2_min_dim(V2(0,0), V2(200,200)), 0x80ffffff);
+        // midpoint gray in srgb value (which isn't even the correct blending)
+        // draw_rect(app, rect2_min_dim(V2(200,0), V2(200,200)), 0xff808080);
+        // linear blend
+        draw_rect(app, rect2_min_dim(V2(0,200), V2(200,200)), 0xffbababa);
+        
+        //c 10 + 11*16
+        
+        // defcolor_base
+        //draw_rect(app, rect2_min_dim(V2(200,200), V2(200,200)), 0xff777700);
+        
+        // a*x / (1-a)*y
+        // (x^2.2) / (1-a)*(y^2.2))^0.4545
+        
+        // x/(foreground) should be 1, y/(background) should be 0
+        // blended color in linear space is: 0.501961
+        // blended color in srgb space is:   0.731062 -> 186 -> 0xBA
+        // blended color in clip space 
+        
+        // if done wrong: 0.5 -> 0x80
+        //c 0.5*100
+    }
     
-    draw_set_y_down(app);
-    draw_set_offset(app, v2{});
+    draw_set_coordinate_system(app, false, V2Zero(), false, false);
     
     block_zero_array(global_game_key_state_changes);
     is_initial_frame = false;
