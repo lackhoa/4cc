@@ -14,11 +14,10 @@
 
 #define REMOVE_OLD_STRING
 
-// #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_table.h"
-#include "4coder_events.h"
 #include "4coder_types.h"
+#include "4coder_events.h"
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
 #define STATIC_LINK_API

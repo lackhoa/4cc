@@ -96,7 +96,8 @@ struct Vim_Seek_Params{
 	Scan_Direction direction;
 };
 
-struct Vim_Params{
+struct Vim_Params
+{
 	i32 number;
 	i32 count;
 	Vim_Request_Type request;
@@ -109,10 +110,10 @@ struct Vim_Params{
 	Custom_Command_Function *command;
 };
 
-struct Vim_State 
+struct Vim_State
 {
-	Vim_Mode mode;
-	Vim_Sub_Mode sub_mode;
+    Vim_Mode mode;
+    Vim_Sub_Mode sub_mode;
 
 	Arena arena;
 	Heap heap;
@@ -129,7 +130,8 @@ struct Vim_State
 	Vim_Params params;
 	Vim_Params prev_params;
 	Custom_Command_Function *active_command;
-    
+   
+    u32 dot_do_insert;
     u64 dot_delete_count;
 };
 

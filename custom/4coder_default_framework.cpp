@@ -27,7 +27,8 @@ point_stack_push(Application_Links *app, Buffer_ID buffer, i64 pos)
 }
 
 function void
-point_stack_push_view_cursor(Application_Links *app, View_ID view){
+point_stack_push_view_cursor(Application_Links *app, View_ID view)
+{
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     i64 pos = view_get_cursor_pos(app, view);
     point_stack_push(app, buffer, pos);
@@ -732,11 +733,9 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array filename
     String_ID file_map_id = vars_intern_lit("keys_file");
     String_ID code_map_id = vars_intern_lit("keys_code");
     
-    if (dynamic_binding_load_from_file(app, &framework_mapping, bindings_filename)){
+    if (dynamic_binding_load_from_file(app, &framework_mapping, bindings_filename))
+    {
         setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
-    }
-    else{
-        setup_built_in_mapping(app, mapping, &framework_mapping, global_map_id, file_map_id, code_map_id);
     }
     
     // open command line files

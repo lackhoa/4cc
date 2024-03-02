@@ -138,7 +138,7 @@ kv_default_bindings(Mapping *mapping)
 }
 
 inline Buffer_ID 
-create_special_buffer(App *app, String8 name, Buffer_Create_Flag create_flags, Buffer_Setting_ID buffer_flags)
+create_special_buffer(App *app, String name, Buffer_Create_Flag create_flags, Buffer_Setting_ID buffer_flags)
 {
     Buffer_ID buffer = create_buffer(app, name, create_flags);
     buffer_set_setting(app, buffer, buffer_flags, true);
@@ -311,8 +311,8 @@ kv_startup(App *app)
     {// NOTE(kv): Create special buffers.
         Buffer_Create_Flag create_flags = BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew;
         create_special_buffer(app, str8lit("*calc*"),       create_flags, BufferSetting_Unimportant);
-        create_special_buffer(app, compilation_buffer_name, create_flags, BufferSetting_Unimportant|BufferSetting_ReadOnly);
-        create_special_buffer(app, GAME_BUFFER_NAME,        create_flags, BufferSetting_Unimportant|BufferSetting_ReadOnly);
+        create_special_buffer(app, compilation_buffer_name, create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
+        create_special_buffer(app, GAME_BUFFER_NAME,        create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
     }
   
     startup_panels_and_files(app);
@@ -428,7 +428,7 @@ kv_vim_bindings(App *app)
     BIND(N|0|MAP, auto_indent_line_at_cursor,           KeyCode_Tab);
     BIND(0|V|MAP, auto_indent_range,                    KeyCode_Tab);
     BIND(N|V|MAP, vim_lowercase,            SUB_G,      KeyCode_U);
-    BIND(  V|MAP, vim_toggle_case,                      KeyCode_Comma);
+    BIND(  V|MAP, vim_uppercase,                      KeyCode_Comma);
     BIND(N|V|MAP, vim_request_indent,                 S|KeyCode_Period);
     BIND(N|V|MAP, vim_request_outdent,                S|KeyCode_Comma);
     BIND(V|MAP,   vim_replace_range_next,               KeyCode_R);
@@ -444,6 +444,7 @@ kv_vim_bindings(App *app)
     BIND(N|MAP,     vim_backspace_char,              KeyCode_Backspace);
     BIND(I|MAP,     word_complete,                   KeyCode_Tab);
     BIND(I|MAP,     vim_paste_before,              M|KeyCode_V);
+    BIND(I|MAP,     vim_paste_before,              C|KeyCode_V);
     BIND(I|MAP,     kv_newline_and_indent,           KeyCode_Return);
     BIND(N|MAP,     kv_newline_and_indent,         S|KeyCode_K); 
     
@@ -470,6 +471,7 @@ kv_vim_bindings(App *app)
     BIND(N|V|MAP, vim_modal_percent,               (S|KeyCode_5));
     BIND(N|V|MAP, vim_bounce,                      (C|KeyCode_5));
     BIND(N|0|MAP, kv_jump_ultimate,                   KeyCode_F);
+    BIND(N|0|MAP, kv_jump_ultimate_other_panel,     M|KeyCode_F);
     BIND(0|V|MAP, vim_set_seek_char,                  KeyCode_F);
     BIND(N|0|MAP, vim_paragraph_up,                   KeyCode_LeftBracket);
     BIND(N|0|MAP, vim_paragraph_down,                 KeyCode_RightBracket);
@@ -595,11 +597,6 @@ default_custom_layer_init(App *app)
     String_ID global_map_id = vars_intern_lit("keys_global");
     String_ID file_map_id   = vars_intern_lit("keys_file");
     String_ID code_map_id   = vars_intern_lit("keys_code");
-#if OS_MAC
-    setup_mac_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
-#else
-    setup_default_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
-#endif
     setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 }
 

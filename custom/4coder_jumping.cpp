@@ -259,10 +259,12 @@ set_view_to_location(Application_Links *app, View_ID view, Buffer_ID buffer, Buf
 }
 
 function void
-jump_to_location(Application_Links *app, View_ID view, Buffer_ID buffer, i64 pos){
+jump_to_location(App *app, View_ID view, Buffer_ID buffer, i64 pos)
+{
     view_set_active(app, view);
     set_view_to_location(app, view, buffer, seek_pos(pos));
-    if (auto_center_after_jumps){
+    if (auto_center_after_jumps)
+    {
         center_view(app);
     }
 }

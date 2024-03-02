@@ -94,7 +94,7 @@ def run(command, update_env={}):
     if OS_WINDOWS:
         command = f'{HOME}/msvc/setup.bat && {command}'
 
-    print(command)
+    # print(command)
     begin = time.time()
     env = os.environ.copy()
     env.update(update_env)

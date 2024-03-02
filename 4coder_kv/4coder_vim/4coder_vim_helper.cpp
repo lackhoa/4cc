@@ -53,6 +53,7 @@ vim_enter_insert_mode(App *app)
 	vim_state.mode = VIM_Insert;
 	vim_state.insert_index = buffer_history_get_current_state_index(app, buffer);
 	vim_state.insert_cursor = buffer_compute_cursor(app, buffer, seek_pos(view_get_cursor_pos(app, view)));
+    vim_state.dot_do_insert = true;
 }
 
 function void vim_clamp_newline(Application_Links *app, View_ID view, Buffer_ID buffer, i64 cursor_pos){
@@ -145,7 +146,8 @@ VIM_COMMAND_SIG(vim_prev_jump){ vim_dec_jump(app, get_active_view(app, Access_Re
 VIM_COMMAND_SIG(vim_next_jump){ vim_inc_jump(app, get_active_view(app, Access_ReadVisible)); }
 
 
-struct Vim_Motion_Block{
+struct Vim_Motion_Block
+{
 	Application_Links *app;
 	i64 begin_pos, end_pos;
 	i64 clamp_end = -1;
@@ -160,69 +162,79 @@ struct Vim_Motion_Block{
 };
 
 // TODO(BYP): clamp_end is arguably a hack, but the case it approximates is even more of a hack
-Vim_Motion_Block::~Vim_Motion_Block(){
-	View_ID view = get_active_view(app, Access_ReadVisible);
-	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-	Vim_Params *params = &vim_state.params;
-	
-	if(params->edit_type == EDIT_Block){
-		vim_block_edit(app, view, buffer, get_view_range(app, view));
-	}else{
-		end_pos = view_get_cursor_pos(app, view);
-		i64 buffer_size = buffer_get_size(app, buffer);
-		
-		i64 range_begin=begin_pos, range_end=end_pos;
-		if(clamp_end > 0){ range_end = Min(range_end, clamp_end); }
-		if(params->clusivity == VIM_Exclusive){
-			if(begin_pos <= end_pos){ range_end--; }
-			else{ range_begin++; }
-		}
-		Range_i64 range = Ii64(range_begin, range_end);
-		range.max = Min(range.max+1, buffer_size);
-		
-		if(params->edit_type == EDIT_LineWise){
-			range = range_union(get_line_range_from_pos(app, buffer, begin_pos),
-								get_line_range_from_pos(app, buffer, end_pos));
-			if(++range.max >= buffer_size){
-				range.max = buffer_size;
-				range.min = Max(0, range.min-1);
-			}
-			range.max -= (params->request == REQUEST_Change);
-		}
-		
-		vim_request_vtable[params->request](app, view, buffer, range);
-	}
-	
-	if(params->request == REQUEST_Yank || (params->request != REQUEST_None && clamp_end > 0)){
-		Vec2_f32 v0 = view_relative_xy_of_pos(app, view, 0, begin_pos);
-		Vec2_f32 v1 = view_relative_xy_of_pos(app, view, 0, end_pos);
-		vim_nxt_cursor_pos += 2.f*(v1 - v0);
-		view_set_cursor_and_preferred_x(app, view, seek_pos(end_pos = begin_pos));
-	}
+Vim_Motion_Block::~Vim_Motion_Block()
+{
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    Vim_Params *params = &vim_state.params;
 
-	// NOTE(kv): save the params
-	if(params->request != REQUEST_None && vim_state.mode != VIM_Visual)
-  {
-		vim_state.params.command = vim_state.active_command;
-		vim_state.prev_params = vim_state.params;
-	}
+    if(params->edit_type == EDIT_Block)
+    {
+        vim_block_edit(app, view, buffer, get_view_range(app, view));
+    }
+    else
+    {
+        end_pos = view_get_cursor_pos(app, view);
+        i64 buffer_size = buffer_get_size(app, buffer);
 
-	Vim_Seek_Params seek = vim_state.params.seek;
-	vim_state.params = {};
-	vim_state.params.seek = seek;
-	if(vim_state.params.selected_reg){
-		vim_state.params.selected_reg->flags &= (~REGISTER_Append);
-	}
-	vim_default_register();
-	
-	vim_state.sub_mode = SUB_None;
-  // NOTE(kv): This causes the cursor to not move past the last character 
-  // of the line.
-  //
-	// if(vim_state.mode != VIM_Insert && vim_state.mode != VIM_Visual){
-	// 	vim_clamp_newline(app, view, buffer, end_pos);
-	// }
-	if(vim_state.mode == VIM_Visual){ vim_state.params.edit_type = prev_edit; }
+        i64 range_begin=begin_pos, range_end=end_pos;
+        if(clamp_end > 0){ range_end = Min(range_end, clamp_end); }
+        if(params->clusivity == VIM_Exclusive)
+        {
+            if(begin_pos <= end_pos){ range_end--; }
+            else{ range_begin++; }
+        }
+        Range_i64 range = Ii64(range_begin, range_end);
+        range.max = Min(range.max+1, buffer_size);
+        
+        if (params->edit_type == EDIT_LineWise)
+        {
+            range = range_union(get_line_range_from_pos(app, buffer, begin_pos),
+                                get_line_range_from_pos(app, buffer, end_pos));
+            if(++range.max >= buffer_size)
+            {
+                range.max = buffer_size;
+                range.min = Max(0, range.min-1);
+            }
+            range.max -= (params->request == REQUEST_Change);
+        }
+
+        vim_request_vtable[params->request](app, view, buffer, range);
+    }
+    
+    if(params->request == REQUEST_Yank || 
+       (params->request != REQUEST_None && clamp_end > 0))
+    {
+        Vec2_f32 v0 = view_relative_xy_of_pos(app, view, 0, begin_pos);
+        Vec2_f32 v1 = view_relative_xy_of_pos(app, view, 0, end_pos);
+        vim_nxt_cursor_pos += 2.f*(v1 - v0);
+        view_set_cursor_and_preferred_x(app, view, seek_pos(end_pos = begin_pos));
+    }
+    
+    // NOTE(kv): save the params
+    if (params->request != REQUEST_None && 
+        vim_state.mode != VIM_Visual)
+    {
+        Vim_Params *prev_params = &vim_state.prev_params;
+        *prev_params = vim_state.params;
+        prev_params->command = vim_state.active_command;
+        if (params->request == REQUEST_Change)
+        {
+            prev_params->do_insert = true;
+        }
+    }
+    
+    Vim_Seek_Params seek = vim_state.params.seek;
+    vim_state.params = {};
+    vim_state.params.seek = seek;
+    if(vim_state.params.selected_reg)
+    {
+        vim_state.params.selected_reg->flags &= (~REGISTER_Append);
+    }
+    vim_default_register();
+
+    vim_state.sub_mode = SUB_None;
+    if (vim_state.mode == VIM_Visual) { vim_state.params.edit_type = prev_edit; }
 }
 
 function void
@@ -278,33 +290,32 @@ function void
 vim_make_request(App *app, Vim_Request_Type request)
 {
 	if (vim_state.params.request == request)
-    {
-		Vim_Motion_Block vim_motion_block(app);
-		vim_state.params.edit_type = EDIT_LineWise;
-		vim_state.params.edit_type = EDIT_LineWise;
-		move_vertical_lines(app, vim_consume_number()-1);
-	}
+    {// NOTE(kv): This is what happens when you do d-d, or c-c (incomprehensible piece of shit!)
+        Vim_Motion_Block vim_motion_block(app);
+        vim_state.params.edit_type = EDIT_LineWise;
+        move_vertical_lines(app, vim_consume_number()-1);
+    }
     else
     {
-		vim_state.params.count = vim_consume_number();
-		vim_state.params.request = request;
-		if (vim_state.mode == VIM_Visual)
+        vim_state.params.count = vim_consume_number();
+        vim_state.params.request = request;
+        if (vim_state.mode == VIM_Visual)
         {
-			View_ID view = get_active_view(app, Access_ReadVisible);
-			b32 do_visual_insert = (vim_state.params.edit_type == EDIT_Block && request == REQUEST_Change);
-			vim_set_prev_visual(app, view);
-			vim_state.mode = VIM_Normal;
-			{
-				Vim_Motion_Block vim_motion_block(app, view_get_mark_pos(app, view));
-			}
-			if(do_visual_insert)
+            View_ID view = get_active_view(app, Access_ReadVisible);
+            b32 do_visual_insert = (vim_state.params.edit_type == EDIT_Block && request == REQUEST_Change);
+            vim_set_prev_visual(app, view);
+            vim_state.mode = VIM_Normal;
             {
-				Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-				vim_visual_insert_inner(app, view, buffer);
-			}
-		}
-		else { vim_state.chord_resolved = false; }
-	}
+                Vim_Motion_Block vim_motion_block(app, view_get_mark_pos(app, view));
+            }
+            if(do_visual_insert)
+            {
+                Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+                vim_visual_insert_inner(app, view, buffer);
+            }
+        }
+        else { vim_state.chord_resolved = false; }
+    }
 }
 
 function void vim_page_scroll_inner(Application_Links *app, f32 ratio){

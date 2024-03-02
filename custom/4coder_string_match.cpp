@@ -48,7 +48,8 @@ string_match_list_join(String_Match_List *a, String_Match_List *b){
 }
 
 internal void
-string_match_list_filter_flags(String_Match_List *list, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags){
+string_match_list_filter_flags(String_Match_List *list, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags)
+{
     String_Match_List new_list = {};
     if ((must_have_flags & must_not_have_flags) == 0){
         for (String_Match *node = list->first, *next = 0;
@@ -80,7 +81,8 @@ string_match_list_filter_remove_buffer(String_Match_List *list, Buffer_ID buffer
 }
 
 internal void
-string_match_list_filter_remove_buffer_predicate(Application_Links *app, String_Match_List *list, Buffer_Predicate *predicate){
+string_match_list_filter_remove_buffer_predicate(Application_Links *app, String_Match_List *list, Buffer_Predicate *predicate)
+{
     String_Match_List new_list = {};
     for (String_Match *node = list->first, *next = 0;
          node != 0;

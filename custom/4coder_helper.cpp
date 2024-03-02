@@ -20,10 +20,13 @@
 ////////////////////////////////
 
 function i32
-get_command_id(Custom_Command_Function *func){
+get_command_id(Custom_Command_Function *func)
+{
     i32 result = -1;
-    for (i32 i = 0; i < ArrayCountSigned(fcoder_metacmd_table); i += 1){
-        if (func == fcoder_metacmd_table[i].proc){
+    for (i32 i = 0; i < ArrayCountSigned(fcoder_metacmd_table); i += 1)
+    {
+        if (func == fcoder_metacmd_table[i].proc)
+        {
             result = i;
             break;
         }
@@ -743,16 +746,18 @@ boundary_line(Application_Links *app, Buffer_ID buffer, Side side, Scan_Directio
 
 // TODO(allen): these need a little more rewrite
 function void
-seek_string_forward(Application_Links *app, Buffer_ID buffer, i64 pos, i64 end, String_Const_u8 needle, i64 *result){
+seek_string_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle, i64 *result)
+{
     if (end == 0){
         end = (i32)buffer_get_size(app, buffer);
     }
     String_Match match = {};
     match.range.first = pos;
-    for (;;){
-        match = buffer_seek_string(app, buffer, needle, Scan_Forward, (i32)match.range.first);
-        if (HasFlag(match.flags, StringMatch_CaseSensitive) ||
-            match.buffer != buffer || match.range.first >= end) break;
+    for (;;)
+    {
+        match = buffer_seek_string(app, buffer, needle, Scan_Forward, (i32)match.range.first, true);
+        if (match.buffer != buffer || match.range.first >= end)
+            break;
     }
     if (match.range.first < end && match.buffer == buffer){
         *result = match.range.first;
@@ -763,11 +768,13 @@ seek_string_forward(Application_Links *app, Buffer_ID buffer, i64 pos, i64 end, 
 }
 
 function void
-seek_string_backward(Application_Links *app, Buffer_ID buffer, i64 pos, i64 min, String_Const_u8 needle, i64 *result){
+seek_string_backward(App *app, Buffer_ID buffer, i64 pos, i64 min, String8 needle, i64 *result)
+{
     String_Match match = {};
     match.range.first = pos;
-    for (;;){
-        match = buffer_seek_string(app, buffer, needle, Scan_Backward, match.range.first);
+    for (;;)
+    {
+        match = buffer_seek_string(app, buffer, needle, Scan_Backward, match.range.first, true);
         if (HasFlag(match.flags, StringMatch_CaseSensitive) ||
             match.buffer != buffer || match.range.first < min) break;
     }
@@ -780,11 +787,12 @@ seek_string_backward(Application_Links *app, Buffer_ID buffer, i64 pos, i64 min,
 }
 
 function void
-seek_string_insensitive_forward(Application_Links *app, Buffer_ID buffer, i64 pos, i64 end, String_Const_u8 needle, i64 *result){
+seek_string_insensitive_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle, i64 *result)
+{
     if (end == 0){
         end = (i32)buffer_get_size(app, buffer);
     }
-    String_Match match = buffer_seek_string(app, buffer, needle, Scan_Forward, pos);
+    String_Match match = buffer_seek_string(app, buffer, needle, Scan_Forward, pos, false);
     if (match.range.first < end && match.buffer == buffer){
         *result = match.range.first;
     }
@@ -794,8 +802,9 @@ seek_string_insensitive_forward(Application_Links *app, Buffer_ID buffer, i64 po
 }
 
 function void
-seek_string_insensitive_backward(Application_Links *app, Buffer_ID buffer, i64 pos, i64 min, String_Const_u8 needle, i64 *result){
-    String_Match match = buffer_seek_string(app, buffer, needle, Scan_Backward, pos);
+seek_string_insensitive_backward(App *app, Buffer_ID buffer, i64 pos, i64 min, String_Const_u8 needle, i64 *result)
+{
+    String_Match match = buffer_seek_string(app, buffer, needle, Scan_Backward, pos, false);
     if (match.range.first >= min && match.buffer == buffer){
         *result = match.range.first;
     }
@@ -805,8 +814,10 @@ seek_string_insensitive_backward(Application_Links *app, Buffer_ID buffer, i64 p
 }
 
 function void
-seek_string(Application_Links *app, Buffer_ID buffer_id, i64 pos, i64 end, i64 min, String_Const_u8 str, i64 *result, Buffer_Seek_String_Flags flags){
-    switch (flags & 3){
+seek_string(App *app, Buffer_ID buffer_id, i64 pos, i64 end, i64 min, String8 str, i64 *result, Buffer_Seek_String_Flags flags)
+{
+    switch (flags & 3)
+    {
         case 0:
         {
             seek_string_forward(app, buffer_id, pos, end, str, result);
@@ -1173,15 +1184,25 @@ token_it_check_and_get_lexeme(Application_Links *app, Arena *arena, Token_Iterat
 
 ////////////////////////////////
 
-function b32
-buffer_has_name_with_star(Application_Links *app, Buffer_ID buffer){
+internal b32
+buffer_has_name_with_star(App *app, Buffer_ID buffer)
+{
     Scratch_Block scratch(app);
-    String_Const_u8 str = push_buffer_unique_name(app, scratch, buffer);
+    String str = push_buffer_unique_name(app, scratch, buffer);
     return(str.size > 0 && str.str[0] == '*');
 }
 
+internal b32
+buffer_is_skm(App *app, Buffer_ID buffer)
+{
+    Scratch_Block scratch(app);
+    String str = push_buffer_unique_name(app, scratch, buffer);
+    return( string_ends_with(str, str8lit(".skm")) );
+}
+
 function u8
-buffer_get_char(Application_Links *app, Buffer_ID buffer_id, i64 pos){
+buffer_get_char(App *app, Buffer_ID buffer_id, i64 pos)
+{
     i64 buffer_size = buffer_get_size(app, buffer_id);
     u8 result = ' ';
     if (0 <= pos && pos < buffer_size){
@@ -1370,7 +1391,8 @@ history_group_end(History_Group group){
 ////////////////////////////////
 
 function void
-replace_in_range(Application_Links *app, Buffer_ID buffer, Range_i64 range, String_Const_u8 needle, String_Const_u8 string){
+replace_in_range(Application_Links *app, Buffer_ID buffer, Range_i64 range, String_Const_u8 needle, String_Const_u8 string)
+{
     // TODO(allen): rewrite
     History_Group group = history_group_begin(app, buffer);
     i64 pos = range.min - 1;
@@ -1448,7 +1470,8 @@ clear_buffer(Application_Links *app, Buffer_ID buffer){
 ////////////////////////////////
 
 function String_Match_List
-find_all_matches_all_buffers(Application_Links *app, Arena *arena, String_Const_u8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags){
+find_all_matches_all_buffers(App *app, Arena *arena, String_Const_u8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags)
+{
     String_Match_List all_matches = {};
     for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
          buffer != 0;
@@ -1457,13 +1480,16 @@ find_all_matches_all_buffers(Application_Links *app, Arena *arena, String_Const_
         for (i32 i = 0; i < match_patterns.count; i += 1){
             Range_i64 range = buffer_range(app, buffer);
             String_Match_List pattern_matches = buffer_find_all_matches(app, arena, buffer, i, range, match_patterns.vals[i],
-                                                                        &character_predicate_alpha_numeric_underscore_utf8, Scan_Forward);
+                                                                        &character_predicate_alpha_numeric_underscore_utf8, Scan_Forward, false);
             string_match_list_filter_flags(&pattern_matches, must_have_flags, must_not_have_flags);
-            if (pattern_matches.count > 0){
-                if (buffer_matches.count == 0){
+            if (pattern_matches.count > 0)
+            {
+                if (buffer_matches.count == 0)
+                {
                     buffer_matches = pattern_matches;
                 }
-                else{
+                else
+                {
                     buffer_matches = string_match_list_merge_front_to_back(&buffer_matches, &pattern_matches);
                 }
             }

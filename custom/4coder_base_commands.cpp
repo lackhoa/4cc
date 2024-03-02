@@ -302,7 +302,8 @@ move_vertical_pixels(Application_Links *app, View_ID view, f32 pixels){
 }
 
 internal void
-move_vertical_pixels(Application_Links *app, f32 pixels){
+move_vertical_pixels(Application_Links *app, f32 pixels)
+{
     View_ID view = get_active_view(app, Access_ReadVisible);
     move_vertical_pixels(app, view, pixels);
 }

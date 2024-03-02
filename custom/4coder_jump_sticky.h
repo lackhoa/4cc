@@ -46,11 +46,13 @@ enum Jump_Location_Flag{
     JumpFlag_IsSubJump = 0x1,
 };
 
-struct Marker_List{
+struct Marker_List
+{
     Managed_Object jump_array;
     i32 jump_count;
     i32 previous_size;
     Buffer_ID buffer_id;
+    b32 has_jumped;
 };
 
 struct Marker_List_Node{
@@ -60,7 +62,8 @@ struct Marker_List_Node{
     Buffer_ID buffer_id;
 };
 
-struct Locked_Jump_State{
+struct Locked_Jump_State
+{
     View_ID view;
     Marker_List *list;
     i32 list_index;

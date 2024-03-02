@@ -78,37 +78,6 @@ token_array_from_text(App *app, Arena *arena, String8 data)
 }
 
 ////////////////////////////////
-// NOTE(allen): Built in Mapping
-
-function void
-setup_built_in_mapping(App *app, String8 name, Mapping *mapping, i64 global_id, i64 file_id, i64 code_id)
-{
-    Thread_Context *tctx = get_thread_context(app);
-    if (string_match(name, string_u8_litexpr("default")))
-    {
-        mapping_release(tctx, mapping);
-        mapping_init(tctx, mapping);
-        setup_default_mapping(mapping, global_id, file_id, code_id);
-    }
-    else if (string_match(name, string_u8_litexpr("mac-default")))
-    {
-        mapping_release(tctx, mapping);
-        mapping_init(tctx, mapping);
-        setup_mac_mapping(mapping, global_id, file_id, code_id);
-    }
-    else if (string_match(name, string_u8_litexpr("choose")))
-    {
-        mapping_release(tctx, mapping);
-        mapping_init(tctx, mapping);
-#if OS_MAC
-        setup_mac_mapping(mapping, global_id, file_id, code_id);
-#else
-        setup_default_mapping(mapping, global_id, file_id, code_id);
-#endif
-    }
-}
-
-////////////////////////////////
 // NOTE(allen): Errors
 
 function Error_Location

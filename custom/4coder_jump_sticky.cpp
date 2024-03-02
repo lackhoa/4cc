@@ -235,7 +235,8 @@ get_or_make_list_for_buffer(App *app, Heap *heap, Buffer_ID buffer_id)
     if (result != 0){
         i32 buffer_size = (i32)buffer_get_size(app, buffer_id);
         // TODO(allen):  // TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): When buffers get an "edit sequence number" use that instead.
-        if (result->previous_size != buffer_size){
+        if (result->previous_size != buffer_size)
+        {
             delete_marker_list(result);
             result = 0;
         }
@@ -305,11 +306,14 @@ get_jump_from_list(Application_Links *app, Marker_List *list, i32 index, ID_Pos_
 }
 
 internal i64
-get_line_from_list(Application_Links *app, Marker_List *list, i32 index){
+get_line_from_list(App *app, Marker_List *list, i32 index)
+{
     i64 result = 0;
-    if (list != 0){
+    if (list != 0)
+    {
         Sticky_Jump_Stored stored = {};
-        if (get_stored_jump_from_list(app, list, index, &stored)){
+        if ( get_stored_jump_from_list(app, list, index, &stored) )
+        {
             result = stored.list_line;
         }
     }
@@ -417,7 +421,8 @@ CUSTOM_DOC("If the cursor is found to be on a jump location, parses the jump loc
 }
 
 internal void
-goto_jump_in_order(Application_Links *app, Marker_List *list, View_ID jump_view, ID_Pos_Jump_Location location){
+goto_jump_in_order(App *app, Marker_List *list, View_ID jump_view, ID_Pos_Jump_Location location)
+{
     Buffer_ID buffer = {};
     if (get_jump_buffer(app, &buffer, &location))
     {
@@ -448,7 +453,8 @@ goto_next_filtered_jump(App *app, Marker_List *list, View_ID jump_view, i32 list
     
     if (list != 0)
     {
-        for (;list_index >= 0 && list_index < list->jump_count;)
+        while (list_index >= 0 && 
+               list_index < list->jump_count)
         {
             ID_Pos_Jump_Location location = {};
             if ( get_jump_from_list(app, list, list_index, &location) )
@@ -470,6 +476,7 @@ goto_next_filtered_jump(App *app, Marker_List *list, View_ID jump_view, i32 list
                     goto_jump_in_order(app, list, jump_view, location);
                     i64 updated_line = get_line_from_list(app, list, list_index);
                     view_set_cursor_and_preferred_x(app, jump_view, seek_line_col(updated_line, 1));
+                    list->has_jumped = true;
                     break;
                 }
             }
@@ -480,11 +487,12 @@ goto_next_filtered_jump(App *app, Marker_List *list, View_ID jump_view, i32 list
 }
 
 internal Locked_Jump_State
-get_locked_jump_state(Application_Links *app, Heap *heap)
+get_locked_jump_state(App *app, Heap *heap)
 {
     Locked_Jump_State result = {};
     result.view = get_view_for_locked_jump_buffer(app);
-    if (result.view != 0){
+    if (result.view != 0)
+    {
         Buffer_ID buffer = view_get_buffer(app, result.view, Access_Always);
         result.list = get_or_make_list_for_buffer(app, heap, buffer);
         
@@ -496,7 +504,8 @@ get_locked_jump_state(Application_Links *app, Heap *heap)
 }
 
 // CUSTOM_DOC("If a buffer containing jump locations has been locked in, goes to the next jump in the buffer, skipping sub jump locations.")
-internal void goto_next_jump(App *app)
+internal void 
+goto_next_jump(App *app)
 {
     Heap *heap = &global_heap;
     
@@ -505,17 +514,21 @@ internal void goto_next_jump(App *app)
     {
         i64 cursor_position  = view_get_cursor_pos(app, jump_state.view);
         Buffer_Cursor cursor = view_compute_cursor(app, jump_state.view, seek_pos(cursor_position));
-        i64 line = get_line_from_list(app, jump_state.list, jump_state.list_index);
-        if (line <= cursor.line)
+        if (jump_state.list->has_jumped)
         {
-            jump_state.list_index += 1;
+            i64 line = get_line_from_list(app, jump_state.list, jump_state.list_index);
+            if (line <= cursor.line)
+            {
+                jump_state.list_index += 1;
+            }
         }
         goto_next_filtered_jump(app, jump_state.list, jump_state.view, jump_state.list_index, 1, true, true);
     }
 }
 
 // CUSTOM_DOC("If a buffer containing jump locations has been locked in, goes to the previous jump in the buffer, skipping sub jump locations.")
-internal void goto_prev_jump(App *app)
+internal void 
+goto_prev_jump(App *app)
 {
     Heap *heap = &global_heap;
     

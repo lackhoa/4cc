@@ -519,7 +519,9 @@ VIM_TEXT_OBJECT_SIG(vim_scan_object_quotes){
 
 // NOTE(BYP): Default vim behavior for Visual Block on Text Objects is to do nothing.
 // I have chosen to ignore this, since it takes exactly no effort on my part to make it work.
-function void vim_text_object(Application_Links *app){
+function void 
+vim_text_object(Application_Links *app)
+{
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	i64 cursor_pos = view_get_cursor_pos(app, view);
@@ -564,7 +566,8 @@ function void vim_text_object(Application_Links *app){
 		}
 	}
 
-	if(range.min && range.max){
+	if(range.min && range.max)
+    {
 		vim_push_jump(app, view);
 		{
 			Vim_Motion_Block vim_motion_block(app, range.max);
@@ -573,7 +576,9 @@ function void vim_text_object(Application_Links *app){
 			view_set_mark(app, view, seek_pos(range.max));
 		}
 		vim_state.prev_params.clusivity = object_clusivity;
-	}else{
+	}
+    else
+    {
 		vim_reset_state();
 	}
 }

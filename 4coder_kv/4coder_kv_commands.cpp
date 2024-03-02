@@ -422,7 +422,7 @@ character_is_path(char character)
 }
 
 internal void 
-copy_current_filename(App *app)
+yank_current_filename(App *app)
 {
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
@@ -447,41 +447,41 @@ open_file_from_current_dir(App *app)
 internal void 
 kv_handle_g_f(App *app)
 {
-    copy_current_filename(app);
+    yank_current_filename(app);
     open_file_from_current_dir(app);
 }
 
 internal Range_i64
 get_surrounding_file_range(App *app)
 {
-  GET_VIEW_AND_BUFFER;
-  i64 curpos = view_get_cursor_pos(app, view);
-  
-  i64 buffer_size = buffer_get_size(app, buffer);
-  i64 min = curpos;
-  i64 max = curpos;
-  //
-  for (i64 pos=curpos; pos < buffer_size; pos++)
-  {
-    u8 character = buffer_get_char(app, buffer, pos);
-    if (character_is_path(character))
-      max = pos+1;
+    GET_VIEW_AND_BUFFER;
+    i64 curpos = view_get_cursor_pos(app, view);
+    
+    i64 buffer_size = buffer_get_size(app, buffer);
+    i64 min = curpos;
+    i64 max = curpos;
+    //
+    for (i64 pos=curpos; pos < buffer_size; pos++)
+    {
+        u8 character = buffer_get_char(app, buffer, pos);
+        if (character_is_path(character))
+            max = pos+1;
+        else
+            break;
+    }
+    for (i64 pos=curpos; pos >= 0; pos--)
+    {
+        u8 character = buffer_get_char(app, buffer, pos);
+        if (character_is_path(character))
+            min = pos;
+        else
+            break;
+    }
+    
+    if (max > min) 
+        return Range_i64{min, max};
     else
-      break;
-  }
-  for (i64 pos=curpos; pos >= 0; pos--)
-  {
-    u8 character = buffer_get_char(app, buffer, pos);
-    if (character_is_path(character))
-      min = pos;
-    else
-      break;
-  }
-  
-  if (max > min) 
-    return {.min = min, .max = max};
-  else
-    return {};
+        return {};
 }
 
 internal void
@@ -498,48 +498,51 @@ switch_to_buffer_named(App *app, char *name)
     switch_to_buffer_named(app, SCu8(name));
 }
 
+global const String KV_FILE_FILENAME = str8lit("~/notes/file.skm");
 
 // todo: support relative path maybe
-VIM_COMMAND_SIG(kv_jump_ultimate)
+internal void
+kv_jump_ultimate(App *app)
 {
-  GET_VIEW_AND_BUFFER;
-  Scratch_Block temp(app);
-  
-  char *kv_file_filename = "~/notes/file.skm";
-  
-  b32 already_jumped = false;
-  Range_i64 file_range = get_surrounding_file_range(app);
-  if (file_range.max > 0)
-  {
-    String8 path = push_buffer_range(app, temp, buffer, file_range);
-    if ( view_open_file(app, view, path, true) )
+    GET_VIEW_AND_BUFFER;
+    Scratch_Block temp(app);
+    
+    b32 already_jumped = false;
+    Range_i64 file_range = get_surrounding_file_range(app);
+    if (file_range.max > 0)
     {
-      already_jumped = true;
+        String8 path = push_buffer_range(app, temp, buffer, file_range);
+        if ( view_open_file(app, view, path, true) )
+        {
+            already_jumped = true;
+        }
+        else
+        { // todo(kv) debug this path
+            File_Attributes attributes = system_quick_file_attributes(temp, path);
+            if(attributes.flags & FileAttribute_IsDirectory)
+            {
+                set_hot_directory(app, path);  // note: influences vim_interactive_open_or_new
+            }
+        }
     }
-    else
-    { // todo(kv) debug this path
-      File_Attributes attributes = system_quick_file_attributes(temp, path);
-      if(attributes.flags & FileAttribute_IsDirectory)
-      {
-        set_hot_directory(app, path);  // note: influences vim_interactive_open_or_new
-      }
-    }
-  }
- 
-  if (!already_jumped)
-  {
-    String8 buffer_file = push_buffer_filename(app, temp, buffer);
-    b32 already_in_file_file = string_equal( buffer_file, kv_file_filename);
-    if (already_in_file_file)
+    
+    if (!already_jumped)
     {
-      open_file_from_current_dir(app);
+        already_jumped = jump_to_definition_at_cursor(app);
     }
-    else
-    { // NOTE(kv): go to file file
-      copy_current_filename(app);  // In case we wanna paste add the current filename in
-      switch_to_buffer_named(app, SCu8(kv_file_filename));
+    
+    if (!already_jumped)
+    {// NOTE(kv): go to file file
+        yank_current_filename(app);  // In case we wanna paste add the current filename in
+        switch_to_buffer_named(app, KV_FILE_FILENAME);
     }
-  }
+}
+
+internal void
+kv_jump_ultimate_other_panel(App *app)
+{
+    view_buffer_other_panel(app);
+    jump_to_definition_at_cursor(app);
 }
 
 VIM_COMMAND_SIG(kv_delete_surrounding_groupers)
@@ -656,7 +659,7 @@ VIM_COMMAND_SIG(kv_vim_visual_line_mode)
 }
 
 function void
-kv_list_all_locations_from_string(App *app, String8 needle_str)
+kv_list_all_locations_from_string(App *app, String needle_str)
 {
     Scratch_Block temp(app);
     
@@ -685,13 +688,12 @@ kv_list_all_locations_from_string(App *app, String8 needle_str)
         all_matches = string_match_list_join(&all_matches, &buffer_matches);
     }
     
-    Buffer_ID search_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
-    string_match_list_filter_remove_buffer(&all_matches, search_buffer);
-    string_match_list_filter_remove_buffer_predicate(app, &all_matches, buffer_has_name_with_star);
     //
-    print_string_match_list_to_buffer(app, search_buffer, all_matches);
+    Buffer_ID out_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
+    kv_filter_match_list(app, &all_matches, out_buffer);
+    print_string_match_list_to_buffer(app, out_buffer, all_matches);
     
-    lock_jump_buffer(app, search_buffer);
+    lock_jump_buffer(app, out_buffer);
 }
 
 internal u8 
@@ -911,4 +913,16 @@ CUSTOM_DOC("set current dir as hot")
     Scratch_Block scratch(app);
     String8 dirname = push_buffer_dirname(app, scratch, buffer);
     set_hot_directory(app, dirname);
+}
+
+CUSTOM_COMMAND_SIG(scratch)
+CUSTOM_DOC("switch to scratch buffer")
+{
+    switch_to_buffer_named(app, "*scratch*");
+}
+
+CUSTOM_COMMAND_SIG(messages)
+CUSTOM_DOC("switch to messages buffer")
+{
+    switch_to_buffer_named(app, "*messages*");
 }

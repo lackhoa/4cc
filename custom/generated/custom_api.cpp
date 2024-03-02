@@ -1,3 +1,4 @@
+/*
 function void
 custom_api_fill_vtable(API_VTable_custom *vtable){
 vtable->global_set_setting = global_set_setting;
@@ -180,6 +181,7 @@ vtable->buffer_find_all_matches = buffer_find_all_matches;
 vtable->get_core_profile_list = get_core_profile_list;
 vtable->get_custom_layer_boundary_docs = get_custom_layer_boundary_docs;
 }
+*/
 #if defined(DYNAMIC_LINK_API)
 function void
 custom_api_read_vtable(API_VTable_custom *vtable){

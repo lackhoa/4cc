@@ -1,18 +1,15 @@
 /*
   NOTE(kv): OLD Rules for the renderer:
-  - When you push render entries, dimensions are specified in "meter"
+
   - Textures and bitmaps are srgb premultiplied-alpha
   - v4 colors are in linear space, alpha=1 (so pma doesn't matter)
   - Packed colors are rgba in memory order (i.e abgr in u32 register order)
-  pma = pre-multiplied alpha
-
-  NOTE(kv): NEW rules for 3D
-  - Matrices are arrays of column vectors
+  pma = Pre-multiplied alpha
  */
 
 #include "tr_model.cpp"
 
-// TODO: @Cleanup: Rename. (hello with the fcolor)
+// TODO: @Cleanup: Rename. (also with the fcolor)
 global v4  yellow_v4   = {.5, .5, 0, 1.0};
 global u32 yellow_argb = pack_argb(yellow_v4);
 global v4  gray_v4     = {.5,.5,.5,1};
@@ -26,7 +23,7 @@ global v4  white_v4    = {1,1,1,1};
 global u32 white_argb  = pack_argb(white_v4);
 
 // NOTE: This is a dummy buffer, so we can use the same commands to switch to the rendered game
-global String8 GAME_BUFFER_NAME = str8lit("*game*");
+global String GAME_BUFFER_NAME = str8lit("*game*");
 
 struct Camera
 {

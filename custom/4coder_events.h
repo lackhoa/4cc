@@ -2,12 +2,9 @@
  * 4coder event types
  */
 
-// TOP
+#pragma once
 
-#if !defined(FCODER_EVENTS_H)
-#define FCODER_EVENTS_H
-
-typedef void Custom_Command_Function(struct Application_Links *app);
+typedef void Custom_Command_Function(Application_Links *app);
 
 typedef u32 Key_Code;
 typedef u32 Mouse_Code;
@@ -152,6 +149,9 @@ enum{
         EventProperty_CustomFunction,
 };
 
-#endif
+api(custom)
+struct User_Input{
+    Input_Event event;
+    b32 abort;
+};
 
-// BOTTOM

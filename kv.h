@@ -2418,7 +2418,8 @@ struct String_Const_char{
   u64 size;
 };
 
-struct String8{
+struct String
+{
     u8 *str;
     union
     {
@@ -2427,7 +2428,8 @@ struct String8{
         u64 length;
     };
 };
-typedef String8 String_Const_u8;
+typedef String String8;  // @Deprecated
+typedef String String_Const_u8;
 
 struct String_Const_u16{
   u16 *str;
@@ -6504,8 +6506,13 @@ character_is_slash(u32 c){
 }
 
 function b32
-character_is_upper(char c){
+character_is_upper(char c)
+{
     return(('A' <= c) && (c <= 'Z'));
+}
+inline b32 is_uppercase(u8 c)
+{
+    return (('A' <= c) && (c <= 'Z'));
 }
 function b32
 character_is_upper(u8 c){
@@ -6521,13 +6528,17 @@ character_is_upper(u32 c){
 }
 
 function b32
-character_is_lower(char c){
+character_is_lower(char c)
+{
     return(('a' <= c) && (c <= 'z'));
 }
 function b32
 character_is_lower(u8 c){
     return(('a' <= c) && (c <= 'z'));
 }
+inline b32 is_lowercase(u8 c) { return(('a' <= c) && (c <= 'z'));
+}
+
 function b32
 character_is_lower(u16 c){
     return(('a' <= c) && (c <= 'z'));
@@ -7563,6 +7574,13 @@ string_match(String_Const_Any a, String_Const_Any b){
         }
     }
     return(result);
+}
+
+internal b32
+string_ends_with(String string, String test)
+{
+    b32 result = string_match(string_postfix(string, test.size), test);
+    return result;
 }
 
 function b32

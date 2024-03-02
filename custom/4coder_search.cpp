@@ -5,13 +5,13 @@ and list all locations.
 
 // TOP
 
-global_const String8 search_buffer_name = string_u8_litexpr("*search*");
+global const String8 search_buffer_name = str8lit("*search*");
 
 function String8_Array
 kv_string_split_wildcards(Arena *arena, String8 string)
 {
-  String_Const_u8_Array array = {};
-  List_String_Const_u8 list = string_split(arena, string, (u8*)"* ", 2);
+  String8_Array array = {};
+  List_String_Const_u8 list = string_split(arena, string, (u8*)" ", 2);
   array.count   = list.node_count;
   array.strings = push_array(arena, String_Const_u8, array.count);
   i64 index = 0;
@@ -25,9 +25,20 @@ kv_string_split_wildcards(Arena *arena, String8 string)
   return(array);
 }
 
-// todo(kv): We don't handle multiline string! @FuzzyMultiline
+internal b32 
+string_has_uppercase(String string)
+{
+    for_u64 (index,0,string.size)
+    {
+        if ( is_uppercase(string.str[index]) )
+            return true;
+    }
+    return false;
+}
+
+// NOTE(kv): We don't handle multiline string! @FuzzyMultiline
 function i64
-kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String8 needle)
+kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String needle)
 {
     i64 buffer_size = buffer_get_size(app, buffer);
     i64 result = buffer_size;
@@ -39,19 +50,23 @@ kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String8 needle)
     while( pos < buffer_size )
     {
         i64 original_pos = pos;
-        String_Match first_match = buffer_seek_string(app, buffer, splits.strings[0], Scan_Forward, pos);
+        String_Match first_match;
+        {
+            String first_word = splits.strings[0];
+            b32 case_sensitive = string_has_uppercase(first_word);
+            first_match = buffer_seek_string(app, buffer, first_word, Scan_Forward, pos, case_sensitive);
+        }
         if ( !first_match.buffer ) break;
         
         i64 match_start = first_match.range.min;
         i64 line_end    = get_line_end_pos_from_pos(app, buffer, match_start);
         pos = first_match.range.end - 1;
         b32 matched = true;
-        for (i64 index = 1;
-             index < splits.count;
-             index++)
+        for_i64 (index, 1, splits.count)
         {
-            String8 substring = splits.strings[index];
-            String_Match match = buffer_seek_string(app, buffer, substring, Scan_Forward, pos);
+            String word = splits.strings[index];
+            b32 case_sensitive = string_has_uppercase(word);
+            String_Match match = buffer_seek_string(app, buffer, word, Scan_Forward, pos, case_sensitive);
             if ( match.buffer )
             {
                 if ( match.range.max <= line_end )
@@ -66,10 +81,7 @@ kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String8 needle)
                     break;
                 }
             }
-            else
-            {
-                return result;
-            }
+            else return result;
         }
         
         if ( matched )
@@ -84,59 +96,65 @@ kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String8 needle)
     return result;
 }
 
-function i64
+internal i64
 kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
 {
-  i64 result = -1;
-
-  Scratch_Block temp(app);
-  String8_Array splits = kv_string_split_wildcards(temp, needle);
-  if ( !splits.count ) { return result; }
-
-  while( pos > -1 )
-  {
-    i64 original_pos = pos;
-    String_Match first_match = buffer_seek_string(app, buffer, splits.strings[splits.count-1], Scan_Backward, pos);
-    if( !first_match.buffer ) break;
-
-    i64 match_start = first_match.range.max;
-    i64 line_start   = get_line_start_pos_from_pos(app, buffer, match_start);
-    pos = first_match.range.start;
-    b32 matched = true;
-    for (i64 index = splits.count-2;
-         index >= 0;
-         index--)
+    i64 result = -1;
+    
+    Scratch_Block temp(app);
+    String8_Array splits = kv_string_split_wildcards(temp, needle);
+    if ( !splits.count ) { return result; }
+    
+    while( pos > -1 )
     {
-      String_Const_u8 substring = splits.strings[index];
-      String_Match match = buffer_seek_string(app, buffer, substring, Scan_Backward, pos);
-      if ( match.buffer)
-      {
-        if ( match.range.min >= line_start )
+        i64 original_pos = pos;
+        String_Match first_match;
         {
-          pos = match.range.start;
+            String last_word = splits.strings[splits.count-1];
+            b32 case_sensitive = string_has_uppercase(last_word);
+            first_match = buffer_seek_string(app, buffer, last_word, Scan_Backward, pos, case_sensitive);
         }
-        else
+        if( !first_match.buffer ) break;
+        
+        i64 match_start = first_match.range.max;
+        i64 line_start   = get_line_start_pos_from_pos(app, buffer, match_start);
+        pos = first_match.range.start;
+        b32 matched = true;
+        for (i64 index = splits.count-2;
+             index >= 0;
+             index--)
         {
-          pos = get_line_end_pos_from_pos(app, buffer, match.range.start);
-          matched = false;
-          break;
+            String word = splits.strings[index];
+            b32 case_sensitive = string_has_uppercase(word);
+            String_Match match = buffer_seek_string(app, buffer, word, Scan_Backward, pos, case_sensitive);
+            if ( match.buffer)
+            {
+                if ( match.range.min >= line_start )
+                {
+                    pos = match.range.start;
+                }
+                else
+                {
+                    pos = get_line_end_pos_from_pos(app, buffer, match.range.start);
+                    matched = false;
+                    break;
+                }
+            }
+            else
+            {
+                return result;
+            }
         }
-      }
-      else
-      {
-        return result;
-      }
+        if ( matched )
+        {
+            result = pos;
+            break;
+        }
+        
+        assert_defend(pos < original_pos, return result;);
     }
-    if ( matched )
-    {
-      result = pos;
-      break;
-    }
-
-    assert_defend(pos < original_pos, return result;);
-  }
-
-  return result;
+    
+    return result;
 }
 
 internal void
@@ -188,13 +206,20 @@ print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Matc
 }
 
 internal void
-print_all_matches_all_buffers(Application_Links *app, String8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id)
+kv_filter_match_list(App *app, String_Match_List *matches, Buffer_ID out_buffer)
+{
+    string_match_list_filter_remove_buffer(matches, out_buffer);
+    string_match_list_filter_remove_buffer_predicate(app, matches, buffer_has_name_with_star);
+    string_match_list_filter_remove_buffer_predicate(app, matches, buffer_is_skm);
+}
+
+internal void
+print_all_matches_all_buffers(App *app, String8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer)
 {
     Scratch_Block scratch(app);
     String_Match_List matches = find_all_matches_all_buffers(app, scratch, match_patterns, must_have_flags, must_not_have_flags);
-    string_match_list_filter_remove_buffer(&matches, out_buffer_id);
-    string_match_list_filter_remove_buffer_predicate(app, &matches, buffer_has_name_with_star);
-    print_string_match_list_to_buffer(app, out_buffer_id, matches);
+    kv_filter_match_list(app, &matches, out_buffer);
+    print_string_match_list_to_buffer(app, out_buffer, matches);
 }
 
 internal void
@@ -288,7 +313,7 @@ internal void
 list_all_locations__generic_identifier(Application_Links *app, List_All_Locations_Flag flags)
 {
     Scratch_Block scratch(app);
-    String_Const_u8 needle = push_token_or_word_under_active_cursor(app, scratch);
+    String needle = push_token_or_word_under_active_cursor(app, scratch);
     list_all_locations__generic(app, needle, flags);
 }
 
@@ -323,8 +348,8 @@ CUSTOM_DOC("Queries the user for a string and lists all case-insensitive substri
     list_all_locations__generic_query(app, ListAllLocationsFlag_MatchSubstring);
 }
 
-CUSTOM_COMMAND_SIG(list_all_locations_of_identifier)
-CUSTOM_DOC("Reads a token or word under the cursor and lists all exact case-sensitive mathces in all open buffers.")
+internal void 
+list_all_locations_of_identifier(App *app)
 {
     list_all_locations__generic_identifier(app, ListAllLocationsFlag_CaseSensitive);
 }
@@ -401,17 +426,17 @@ get_complete_list_raw(Application_Links *app, Arena *arena, Buffer_ID buffer,
     if (range_size(needle_range) > 0){
         String_Match_List up = buffer_find_all_matches(app, arena, buffer, 0,
                                                        Ii64(0, needle_range.min),
-                                                       needle, pred, Scan_Backward);
+                                                       needle, pred, Scan_Backward, false);
         String_Match_List down = buffer_find_all_matches(app, arena, buffer, 0,
                                                          Ii64(needle_range.max, size),
-                                                         needle, pred, Scan_Forward);
+                                                         needle, pred, Scan_Forward, false);
         string_match_list_filter_flags(&up, complete_must, complete_must_not);
         string_match_list_filter_flags(&down, complete_must, complete_must_not);
         result = string_match_list_merge_nearest(&up, &down, needle_range);
     }
     else{
         result = buffer_find_all_matches(app, arena, buffer, 0,
-                                         Ii64(0, size), needle, pred, Scan_Forward);
+                                         Ii64(0, size), needle, pred, Scan_Forward, false);
         string_match_list_filter_flags(&result, complete_must, complete_must_not);
     }
     

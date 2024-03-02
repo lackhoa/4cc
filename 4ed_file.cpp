@@ -87,7 +87,8 @@ file_can_save(Editing_File *file){
 
 internal void
 file_set_unimportant(Editing_File *file, b32 val){
-    if (val){
+    if (val)
+    {
         file->state.dirty = DirtyState_UpToDate;
     }
     file->settings.unimportant = (b8)(val);

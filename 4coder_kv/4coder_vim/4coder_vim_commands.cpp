@@ -126,11 +126,6 @@ vim_normal_mode(App *app)
         
         history_group_end(vim_history_group);
         
-		/* note(kv): interesting, but I don't need this thanks
-		 const i32 N = Max(0,vim_state.params.number-1);
-     foreach(i, N){
-			vim_paste_from_register(app, view, buffer, &vim_registers.insert);
-		}*/
         move_horizontal_lines(app, -1);
 	}
 	else if(vim_state.mode == VIM_Visual)
@@ -322,6 +317,7 @@ VIM_COMMAND_SIG(vim_request_yank){    vim_make_request(app, REQUEST_Yank); }
 
 VIM_COMMAND_SIG(vim_request_delete)
 {
+    vim_state.dot_do_insert = false;
     vim_make_request(app, REQUEST_Delete);
 }
 
@@ -456,7 +452,8 @@ VIM_COMMAND_SIG(vim_line_up){
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
 }
 
-VIM_COMMAND_SIG(vim_line_down){
+VIM_COMMAND_SIG(vim_line_down)
+{
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	f32 line_height = get_face_metrics(app, get_face_id(app, 0)).line_height;
 	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
@@ -464,22 +461,24 @@ VIM_COMMAND_SIG(vim_line_down){
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
 }
 
-// TODO(BYP): Decide how I want to clamp word deletion in newline cases
-VIM_COMMAND_SIG(vim_forward_word){
-	Vim_Motion_Block vim_motion_block(app);
-	vim_state.params.clusivity = VIM_Exclusive;
-	View_ID view = get_active_view(app, Access_ReadVisible);
-	i64 prev_pos = -1;
-	i64 pos = vim_scan_word(app, view, Scan_Forward, &prev_pos, vim_consume_number());
-	view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
-	if(prev_pos != pos){
-		Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-		i64 line0 = get_line_number_from_pos(app, buffer, prev_pos);
-		i64 line1 = get_line_number_from_pos(app, buffer, pos);
-		if(line0 != line1){
-			vim_motion_block.clamp_end = get_line_side_pos(app, buffer, line0, Side_Max);
-		}
-	}
+VIM_COMMAND_SIG(vim_forward_word)
+{
+    Vim_Motion_Block vim_motion_block(app);
+    vim_state.params.clusivity = VIM_Exclusive;
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    i64 prev_pos = -1;
+    i64 pos = vim_scan_word(app, view, Scan_Forward, &prev_pos, vim_consume_number());
+    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+    if(prev_pos != pos)
+    {
+        Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+        i64 line0 = get_line_number_from_pos(app, buffer, prev_pos);
+        i64 line1 = get_line_number_from_pos(app, buffer, pos);
+        if(line0 != line1)
+        {
+            vim_motion_block.clamp_end = get_line_side_pos(app, buffer, line0, Side_Max);
+        }
+    }
 }
 
 VIM_COMMAND_SIG(vim_backward_word){
@@ -555,12 +554,14 @@ VIM_COMMAND_SIG(vim_bounce){
 	view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-VIM_COMMAND_SIG(vim_modal_percent){
+VIM_COMMAND_SIG(vim_modal_percent)
+{
 	if(vim_state.number){ vim_percent_file(app); }
 	else{ vim_bounce(app); }
 }
 
-VIM_COMMAND_SIG(vim_paste_before)
+internal void
+vim_paste_before(App *app)
 {
     if(!vim_state.params.selected_reg) return;
     
@@ -583,14 +584,13 @@ VIM_COMMAND_SIG(vim_paste_before)
     vim_paste_from_register(app, view, buffer, vim_state.params.selected_reg);
     vim_state.params.command = vim_paste_before;
     
-    // note(kv): I don't understand this part at all
     Vim_Register *prev_reg = vim_state.prev_params.selected_reg;
     vim_state.prev_params              = vim_state.params;
     vim_state.prev_params.selected_reg = prev_reg;
 }
 
 // IMPORTANT(kv): the original function is broken and I'm just hacking it
-function void vim_backspace_char_inner(Application_Links *app, i32 offset)
+function void vim_backspace_char_inner(App *app, i32 offset)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Vim_Register *reg = vim_state.params.selected_reg;
@@ -624,49 +624,49 @@ function void vim_backspace_char_inner(Application_Links *app, i32 offset)
 VIM_COMMAND_SIG(vim_backspace_char){ vim_backspace_char_inner(app, -1); }
 VIM_COMMAND_SIG(vim_delete_char){    vim_backspace_char_inner(app, 0); }
 
-internal void 
+internal void
 vim_last_command(App* app)
 {
-    const i32 N = vim_consume_number();
-    Custom_Command_Function *command = vim_state.prev_params.command;
-    
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    History_Group history_group = history_group_begin(app, buffer);
+    HISTORY_GROUP_SCOPE;
 #if 0
-    for_i32 (_index,0,N)
+    Custom_Command_Function *command = vim_state.prev_params.command;
+    vim_state.params         = vim_state.prev_params;
+    vim_state.active_command = command;
+    vim_state.number         = vim_state.params.number;
+    b32 do_insert = vim_state.prev_params.do_insert;
+    
+    if ((command == vim_paste_before) &&
+        in_range(0, (vim_state.params.selected_reg - vim_registers.cycle), 8))
     {
-        vim_state.params = vim_state.prev_params;
-        vim_state.active_command = command;
-        vim_state.number = vim_state.params.number;
-        b32 do_insert = vim_state.params.do_insert;
-        
-        if((command == vim_paste_before) &&
-           in_range(0, (vim_state.params.selected_reg - vim_registers.cycle), 8))
-        {
-            vim_state.params.selected_reg++;
-        }
-        
-        if (command)
-        {
-            command(app);
-        }
-        
-        if (do_insert)
-        {
-            vim_paste_from_register(app, view, buffer, &vim_registers.insert);
-            vim_state.mode = VIM_Normal;
-        }
+        vim_state.params.selected_reg++;
     }
+    
+    if (command)
+    {
+        command(app);
+    }
+    
+    if (do_insert)
+    {
+        vim_paste_from_register(app, view, buffer, &vim_registers.insert);
+        vim_state.mode = VIM_Normal;
+    }
+    
 #else
     
-    // NOTE(kv): My hack
+    // NOTE(kv): My hax
     i64 cursor_pos = view_get_cursor_pos(app, view);
     Range_i64 range = Ii64(cursor_pos, cursor_pos + vim_state.dot_delete_count);
-    buffer_replace_range(app, buffer, range, vim_registers.insert.data.string);
+    String8 insertion = {};
+    if (vim_state.dot_do_insert)
+    {
+        insertion = vim_registers.insert.data.string;
+    }
+    buffer_replace_range(app, buffer, range, insertion);
     
 #endif
-    history_group_end(history_group);
 }
 
 function b32
@@ -837,12 +837,14 @@ VIM_COMMAND_SIG(vim_open_file_in_quotes)
 }
 */
 
-internal void vim_goto_definition(App *app)
+internal void 
+vim_goto_definition(App *app)
 {
     vim_push_jump(app, get_active_view(app, Access_ReadVisible));
     jump_to_definition_at_cursor(app);
 }
-internal void vim_next_4coder_jump(App *app)
+internal void 
+vim_next_4coder_jump(App *app)
 {
     vim_push_jump(app, get_active_view(app, Access_ReadVisible));
     goto_next_jump(app);

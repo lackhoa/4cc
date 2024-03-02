@@ -570,7 +570,7 @@ LINKAGE Buffer_ID get_buffer_by_filename(Application_Links* app, String_Const_u8
 LINKAGE b32 buffer_read_range(Application_Links* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
 LINKAGE b32 buffer_replace_range(Application_Links* app, Buffer_ID buffer_id, Range_i64 range, String_Const_u8 string);
 LINKAGE b32 buffer_batch_edit(Application_Links* app, Buffer_ID buffer_id, Batch_Edit* batch);
-LINKAGE String_Match buffer_seek_string(Application_Links* app, Buffer_ID buffer, String_Const_u8 needle, Scan_Direction direction, i64 start_pos);
+LINKAGE String_Match buffer_seek_string(Application_Links* app, Buffer_ID buffer, String_Const_u8 needle, Scan_Direction direction, i64 start_pos, b32 case_sensitive);
 LINKAGE String_Match buffer_seek_character_class(Application_Links* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos);
 LINKAGE f32 buffer_line_y_difference(Application_Links* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b);
 LINKAGE Line_Shift_Vertical buffer_line_shift_y(Application_Links* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line, f32 y_shift);
@@ -730,7 +730,7 @@ LINKAGE b32 text_layout_free(Application_Links* app, Text_Layout_ID text_layout_
 LINKAGE void draw_text_layout(Application_Links* app, Text_Layout_ID layout_id, ARGB_Color special_color, ARGB_Color ghost_color);
 LINKAGE void open_color_picker(Application_Links* app, Color_Picker* picker);
 LINKAGE void animate_in_n_milliseconds(Application_Links* app, u32 n);
-LINKAGE String_Match_List buffer_find_all_matches(Application_Links* app, Arena* arena, Buffer_ID buffer, i32 string_id, Range_i64 range, String_Const_u8 needle, Character_Predicate* predicate, Scan_Direction direction);
+LINKAGE String_Match_List buffer_find_all_matches(Application_Links* app, Arena* arena, Buffer_ID buffer, i32 string_id, Range_i64 range, String_Const_u8 needle, Character_Predicate* predicate, Scan_Direction direction, b32 case_sensitive);
 LINKAGE Profile_Global_List* get_core_profile_list(Application_Links* app);
 LINKAGE Doc_Cluster* get_custom_layer_boundary_docs(Application_Links* app, Arena* arena);
 

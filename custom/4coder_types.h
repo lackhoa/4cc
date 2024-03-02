@@ -171,13 +171,13 @@ enum{
 };
 
 api(custom)
-typedef i32 Buffer_Setting_ID;
-enum{
-    BufferSetting_Null,
-    BufferSetting_Unimportant,
-    BufferSetting_ReadOnly,
-    BufferSetting_RecordsHistory,
-    BufferSetting_Unkillable,
+enum Buffer_Setting_ID
+{
+    BufferSetting_Null = 0x0,
+    BufferSetting_Unimportant = 0x1,
+    BufferSetting_ReadOnly = 0x2,
+    BufferSetting_RecordsHistory = 0x4,
+    BufferSetting_Unkillable = 0x8,
 };
 
 api(custom)
@@ -635,12 +635,6 @@ struct Record_Info{
 #endif
 
 api(custom)
-struct User_Input{
-    Input_Event event;
-    b32 abort;
-};
-
-api(custom)
 typedef i32 Hook_ID;
 enum{
     HookID_Tick,
@@ -772,7 +766,8 @@ enum{
 };
 
 api(custom)
-struct String_Match{
+struct String_Match
+{
     String_Match *next;
     Buffer_ID buffer;
     i32 string_id;

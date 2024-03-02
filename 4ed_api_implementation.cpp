@@ -304,43 +304,53 @@ buffer_batch_edit(App *app, Buffer_ID buffer_id, Batch_Edit *batch)
 }
 
 api(custom) function String_Match
-buffer_seek_string(App *app, Buffer_ID buffer, String_Const_u8 needle, Scan_Direction direction, i64 start_pos){
+buffer_seek_string(App *app, Buffer_ID buffer, String8 needle, Scan_Direction direction, i64 start_pos, 
+                   b32 case_sensitive)
+{
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer);
     String_Match result = {};
-    if (api_check_buffer(file)){
-        if (needle.size == 0){
+    if ( api_check_buffer(file) )
+    {
+        if (needle.size == 0)
+        {
             result.flags = StringMatch_CaseSensitive;
             result.range = Ii64(start_pos);
         }
-        else{
+        else
+        {
             Scratch_Block scratch(app);
             Gap_Buffer *gap_buffer = &file->state.buffer;
             i64 size = buffer_size(gap_buffer);
             List_String_Const_u8 chunks = buffer_get_chunks(scratch, gap_buffer);
             Range_i64 range = {};
-            if (direction == Scan_Forward){
+            if (direction == Scan_Forward)
+            {
                 i64 adjusted_pos = start_pos + 1;
                 start_pos = clamp_top(adjusted_pos, size);
                 range = Ii64(adjusted_pos, size);
             }
-            else{
+            else
+            {
                 i64 adjusted_pos = start_pos - 1 + needle.size;
                 start_pos = clamp_bot(0, adjusted_pos);
                 range = Ii64(0, adjusted_pos);
             }
             buffer_chunks_clamp(&chunks, range);
-            if (chunks.first != 0){
+            if (chunks.first != 0)
+            {
                 u64_Array jump_table = string_compute_needle_jump_table(scratch, needle, direction);
                 Character_Predicate dummy = {};
-                String_Match_List list = find_all_matches(scratch, 1,
-                                                          chunks, needle, jump_table, &dummy, direction,
-                                                          range.min, buffer, 0);
-                if (list.count == 1){
+                String_Match_List list = find_matches(scratch, 1,
+                                                      chunks, needle, jump_table, &dummy, direction,
+                                                      range.min, buffer, 0, case_sensitive);
+                if (list.count == 1)
+                {
                     result = *list.first;
                 }
             }
-            else{
+            else
+            {
                 result.range = Ii64(start_pos);
             }
         }
@@ -788,6 +798,7 @@ buffer_get_setting(App *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64
     return(result);
 }
 
+// @Cleanup Oh come on! Why aren't the buffer settings also flags?
 api(custom) function b32
 buffer_set_setting(App *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value)
 {
@@ -3399,25 +3410,30 @@ inline void animate_next_frame(App *app)
 
 api(custom) function String_Match_List
 buffer_find_all_matches(App *app, Arena *arena, Buffer_ID buffer,
-                        i32 string_id, Range_i64 range, String_Const_u8 needle,
-                        Character_Predicate *predicate, Scan_Direction direction){
+                        i32 string_id, Range_i64 range, String8 needle,
+                        Character_Predicate *predicate, Scan_Direction direction, b32 case_sensitive)
+{
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer);
     String_Match_List list = {};
-    if (api_check_buffer(file)){
-        if (needle.size > 0){
+    if (api_check_buffer(file))
+    {
+        if (needle.size > 0)
+        {
             Scratch_Block scratch(app, arena);
             List_String_Const_u8 chunks = buffer_get_chunks(scratch, &file->state.buffer);
             buffer_chunks_clamp(&chunks, range);
-            if (chunks.node_count > 0){
+            if (chunks.node_count > 0)
+            {
                 u64_Array jump_table = string_compute_needle_jump_table(arena, needle, direction);
                 Character_Predicate dummy = {};
-                if (predicate == 0){
+                if (predicate == 0)
+                {
                     predicate = &dummy;
                 }
-                list = find_all_matches(arena, max_i32,
-                                        chunks, needle, jump_table, predicate,
-                                        direction, range.min, buffer, string_id);
+                list = find_matches(arena, max_i32,
+                                    chunks, needle, jump_table, predicate,
+                                    direction, range.min, buffer, string_id, case_sensitive);
             }
         }
     }

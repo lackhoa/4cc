@@ -129,7 +129,6 @@ vim_paste_from_register(App *app, View_ID view, Buffer_ID buffer, Vim_Register *
     }
     
     i64 pos = view_get_cursor_pos(app, view);
-    // if (reg == &vim_registers.system)  @Experiment
     {
         clipboard_update_history_from_system(app, 0);
         
@@ -147,9 +146,12 @@ vim_paste_from_register(App *app, View_ID view, Buffer_ID buffer, Vim_Register *
         }
     }
     buffer_replace_range(app, buffer, Ii64(pos), reg->data.string);
-    view_set_mark(app, view, seek_pos(pos));
-    i64 cursor_pos = pos + ((i32)reg->data.string.size - (vim_state.mode != VIM_Insert));
-    view_set_cursor_and_preferred_x(app, view, seek_pos(cursor_pos));
+    if (0)  // @Experiment(kv)
+    {
+        view_set_mark(app, view, seek_pos(pos));
+        i64 cursor_pos = pos + ((i32)reg->data.string.size - (vim_state.mode != VIM_Insert));
+        view_set_cursor_and_preferred_x(app, view, seek_pos(cursor_pos));
+    }
     
     ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
     buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, reg->data.string.size), argb);
