@@ -1051,10 +1051,10 @@ get_snipe_range(Application_Links *app, Boundary_Function *func, Buffer_ID buffe
 
 ////////////////////////////////
 
-function String8
+function String
 push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
 {
-    String_Const_u8 result = {};
+    String result = {};
     i64 length = range_size(range);
     if (length > 0){
         Temp_Memory restore_point = begin_temp(arena);

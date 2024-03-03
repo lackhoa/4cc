@@ -556,7 +556,6 @@ kv_vim_bindings(App *app)
     BIND(N|  MAP,  write_space,                KeyCode_Space);
     BIND(N|  MAP,  vim_insert_end,             KeyCode_A);
     BIND(  V|MAP,  vim_end_line,               KeyCode_A);
-    BIND(N|0|MAP,  vim_end_line,             M|KeyCode_A);
     BIND(N  |MAP,  vim_select_all,           C|KeyCode_A);
     BIND(N|  MAP,  kv_shift_character,         KeyCode_Comma);
     BIND(N|  MAP,  exit_4coder,              M|KeyCode_Q);
@@ -579,6 +578,7 @@ kv_vim_bindings(App *app)
     BIND(N|0|MAP,  toggle_bottom_view_command,  C|KeyCode_Period);
     //
     BIND(N|0|MAP,  clipboard_pop_command,  S|KeyCode_P);
+    BIND(V|MAP,    quick_align_command,    M|KeyCode_A);
     
 #undef BIND
 }

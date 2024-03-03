@@ -174,40 +174,6 @@ as unhandled, we ensure we get text input events. */
  }
 }
 
-// tags: string; number; query; user
-// example-of: query_user_string; query_user_number
-CUSTOM_COMMAND_SIG(string_repeat)
-CUSTOM_DOC("Example of query_user_string and query_user_number")
-{
- Query_Bar_Group group(app);
- Query_Bar string_bar = {};
- string_bar.prompt = SCu8("String: ");
- u8 string_buffer[KB(1)];
- string_bar.string.str = string_buffer;
- string_bar.string_capacity = sizeof(string_buffer);
- Query_Bar number_bar = {};
- number_bar.prompt = SCu8("Repeat Count: ");
- u8 number_buffer[KB(1)];
- number_bar.string.str = number_buffer;
- number_bar.string_capacity = sizeof(number_buffer);
- 
- if (query_user_string(app, &string_bar)){
-  if (string_bar.string.size > 0){
-   if (query_user_number(app, &number_bar)){
-    if (number_bar.string.size > 0){
-     i32 repeats = (i32)string_to_integer(number_bar.string, 10);
-     repeats = clamp_top(repeats, 1000);
-     Scratch_Block scratch(app);
-     String_Const_u8 msg = push_stringf(scratch, "%.*s\n", string_expand(string_bar.string));
-     for (i32 i = 0; i < repeats; i += 1){
-      print_message(app, msg);
-     }
-    }
-   }
-  }
- }
-}
-
 global Audio_Control the_music_control = {};
 
 CUSTOM_COMMAND_SIG(music_start)

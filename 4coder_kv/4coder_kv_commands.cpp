@@ -507,6 +507,8 @@ kv_jump_ultimate(App *app)
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
     
+    vim_push_jump(app, view);
+    
     b32 already_jumped = false;
     Range_i64 file_range = get_surrounding_file_range(app);
     if (file_range.max > 0)
@@ -648,14 +650,15 @@ VIM_COMMAND_SIG(kv_newline_and_indent)
     auto_indent_line_at_cursor(app);
 }
 
-VIM_COMMAND_SIG(kv_vim_visual_line_mode)
+internal void 
+kv_vim_visual_line_mode(App *app)
 {
     if (vim_state.mode != VIM_Visual)
     {
-		set_mark(app);
-		vim_state.mode = VIM_Visual;
-	}
-	vim_state.params.edit_type = EDIT_LineWise;
+        set_mark(app);
+        vim_state.mode = VIM_Visual;
+    }
+    vim_state.params.edit_type = EDIT_LineWise;
 }
 
 function void
@@ -925,4 +928,69 @@ CUSTOM_COMMAND_SIG(messages)
 CUSTOM_DOC("switch to messages buffer")
 {
     switch_to_buffer_named(app, "*messages*");
+}
+
+internal void
+quick_align_command(App *app)
+{
+    GET_VIEW_AND_BUFFER;
+    HISTORY_GROUP_SCOPE;
+    Range_i64 the_range = view_get_selected_range(app, view);
+    Scratch_Block scratch(app);
+    the_range.min = get_line_start_pos_from_pos(app, buffer, the_range.min);
+    the_range.max = get_line_end_pos_from_pos(app, buffer, the_range.max);
+    String selected = push_buffer_range(app, scratch, buffer, the_range);
+    // NOTE: Figure out the lines
+    struct Line
+    {
+        i64 start;
+        i64 equal_sign_pos;
+    };
+    Line *lines = 0;
+    {
+        i64 pos = 0;
+        while (pos < range_size(the_range))
+        {
+            Line line = {};
+            line.start = pos;
+            line.equal_sign_pos = -1;
+            while (pos < range_size(the_range))
+            {
+                u8 chr = selected.str[pos];
+                if (chr == '=' && 
+                    line.equal_sign_pos == -1)
+                {
+                    line.equal_sign_pos = pos - line.start;
+                }
+                pos++;
+                
+                if (chr == '\n')  break; 
+            }
+            arrpush(lines, line);
+        }
+    }
+    
+    i64 rightmost_equal_sign = 0;
+    // NOTE: find the right-most equal sign
+    for_i64 (index, 0, arrlen(lines))
+    {
+        kv_clamp_bot(rightmost_equal_sign, lines[index].equal_sign_pos);
+    }
+    // NOTE: Then go back and fix up our lines from end to beginning
+    u8 space_buffer[256];
+    block_fill_u8(space_buffer, 256, ' ');
+    for (i64 index=arrlen(lines)-1;
+         index >= 0;
+         index--)
+    {
+        Line *line = lines+index;
+        i64 nspaces = rightmost_equal_sign - line->equal_sign_pos;
+        if (line->equal_sign_pos >= 0 && 
+            nspaces > 0)
+        {
+            String spaces = { space_buffer, (u64)clamp_top(nspaces,256) };
+            i64 pos = the_range.start + line->start + line->equal_sign_pos;
+            buffer_replace_range(app, buffer, Ii64(pos,pos), spaces);
+        }
+    }
 }

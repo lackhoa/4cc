@@ -1,20 +1,20 @@
 #!/usr/bin/env python3 -u
 
-# NOTE(kv): 4ed build script
-# NOTE(kv): assumes only Windows and Mac (and clang)
-
-# NOTE: configuration #########################
-DEBUG_MODE = 1
-FORCE_FULL_REBUILD = 0
-STOP_DEBUGGING_BEFORE_BUILD = 0
-
 import os
 import subprocess
 import sys
 import time
 import shutil
 
+# NOTE(kv): 4ed build script
+# NOTE(kv): assumes only Windows and Mac (and clang)
+
 pjoin = os.path.join
+
+# NOTE: configuration #########################
+DEBUG_MODE = 0 if (len(sys.argv) == 2 and sys.argv[1] == 'release') else 1
+FORCE_FULL_REBUILD = 0
+STOP_DEBUGGING_BEFORE_BUILD = 0
 
 HOME = os.path.expanduser("~")
 FCODER_USER=pjoin(HOME, '4coder')  # NOTE: for debug build
@@ -189,7 +189,7 @@ try:
     os.chdir(f'{OUTDIR}')
     print(f'Workdir: {os.getcwd()}')
 
-    run_only       = (len(sys.argv) > 1 and sys.argv[1] == 'run')
+    run_only       = (len(sys.argv) == 2 and sys.argv[1] == 'run')
     full_rebuild   = True  # NOTE(kv): there are commands not available in release mode
     if DEBUG_MODE and (not FORCE_FULL_REBUILD):
         full_rebuild = (len(sys.argv) > 1 and sys.argv[1] == 'full')

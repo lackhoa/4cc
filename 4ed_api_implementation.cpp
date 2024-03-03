@@ -256,7 +256,7 @@ get_active_edit_behaviors(Models *models, Editing_File *file){
 }
 
 api(custom) function b32
-buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String8 string)
+buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String string)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -1210,6 +1210,16 @@ view_get_mark_pos(App *app, View_ID view_id)
         result = view->mark;
     }
     return(result);
+}
+
+internal Range_i64
+view_get_selected_range(App *app, View_ID view)
+{
+    i64 cursor = view_get_cursor_pos(app, view);
+    i64 mark   = view_get_mark_pos(app, view);
+    Range_i64 range = Ii64(cursor, mark);
+    range.max += 1;
+    return range;
 }
 
 api(custom) function f32
@@ -3316,7 +3326,7 @@ text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
                         }
                     }
                 }
-                soft_assert(found_item);
+                // soft_assert(found_item);
                 
                 Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
                 result.p0 += shift;
