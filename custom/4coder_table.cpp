@@ -393,7 +393,7 @@ table_lookup(Table_Data_u64 *table, String_Const_u8 key){
         result.hash = hash;
         for (;;){
             if (hash == hashes[index]){
-                if (data_match(key, table->keys[index])){
+                if (string_match(key, table->keys[index])){
                     result.index = index;
                     result.found_match = true;
                     result.found_empty_slot = false;
@@ -741,7 +741,7 @@ table_lookup(Table_Data_Data *table, String_Const_u8 key){
         result.hash = hash;
         for (;;){
             if (hash == hashes[index]){
-                if (data_match(key, table->keys[index])){
+                if (string_match(key, table->keys[index])){
                     result.index = index;
                     result.found_match = true;
                     result.found_empty_slot = false;

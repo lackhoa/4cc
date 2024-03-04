@@ -9,17 +9,6 @@
 
 #include "tr_model.cpp"
 
-#if 0
-// sometest
-#if
-// test subject
-#else
-// oh my god
-#endif
-#else
-// sometest
-#endif
-
 // TODO: @Cleanup: Rename. (also with the fcolor)
 global v4  yellow_v4   = {.5, .5, 0, 1.0};
 global u32 yellow_argb = pack_argb(yellow_v4);

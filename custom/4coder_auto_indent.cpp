@@ -417,8 +417,9 @@ CUSTOM_DOC("Audo-indents the entire current buffer.")
     auto_indent_buffer(app, buffer, Ii64(0, buffer_size));
 }
 
-CUSTOM_COMMAND_SIG(auto_indent_line_at_cursor)
-CUSTOM_DOC("Auto-indents the line on which the cursor sits.")
+// CUSTOM_DOC("Auto-indents the line on which the cursor sits.")
+internal void 
+auto_indent_line_at_cursor(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);

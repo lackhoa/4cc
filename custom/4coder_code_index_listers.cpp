@@ -119,6 +119,3 @@ jump_to_definition_at_cursor(App *app)
     }
     return found;
 }
-
-// BOTTOM
-

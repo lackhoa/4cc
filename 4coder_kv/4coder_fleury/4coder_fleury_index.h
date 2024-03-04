@@ -47,7 +47,7 @@ struct F4_Index_Note
     F4_Index_NoteFlags flags;
     Range_i64 range;
     F4_Index_File *file;
-	int file_generation;
+    int file_generation;
 };
 
 struct F4_Index_File

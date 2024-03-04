@@ -85,103 +85,6 @@ CUSTOM_DOC("Toggles battery saving mode.")
     global_battery_saver = !global_battery_saver;
 }
 
-internal void
-F4_GoToDefinition(Application_Links *app, F4_Index_Note *note, b32 same_panel)
-{
-    if(note != 0 && note->file != 0)
-    {
-        View_ID view = get_active_view(app, Access_Always);
-        Rect_f32 region = view_get_buffer_region(app, view);
-        f32 view_height = rect_height(region);
-        Buffer_ID buffer = note->file->buffer;
-        if(!same_panel)
-        {
-            view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
-        }
-        point_stack_push_view_cursor(app, view);
-        view_set_buffer(app, view, buffer, 0);
-        i64 line_number = get_line_number_from_pos(app, buffer, note->range.min);
-        Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-        scroll.position.line_number = line_number;
-        scroll.target.line_number = line_number;
-        scroll.position.pixel_shift.y = scroll.target.pixel_shift.y = -view_height*0.5f;
-        view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
-        view_set_cursor(app, view, seek_pos(note->range.min));
-        view_set_mark(app, view, seek_pos(note->range.min));
-    }
-}
-
-internal F4_Index_Note *
-F4_FindMostIntuitiveNoteInDuplicateChain(F4_Index_Note *note, Buffer_ID cursor_buffer, i64 cursor_pos)
-{
-    F4_Index_Note *result = note;
-    if(note != 0)
-    {
-        F4_Index_Note *best_note_based_on_cursor = 0;
-        for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next)
-        {
-            F4_Index_File *file = candidate->file;
-            if(file != 0)
-            {
-                if(cursor_buffer == file->buffer &&
-                   candidate->range.min <= cursor_pos && cursor_pos <= candidate->range.max)
-                {
-                    if(candidate->next)
-                    {
-                        best_note_based_on_cursor = candidate->next;
-                        break;
-                    }
-                    else
-                    {
-                        best_note_based_on_cursor = note;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        if(best_note_based_on_cursor)
-        {
-            result = best_note_based_on_cursor;
-        }
-        else if(note->flags & F4_Index_NoteFlag_Prototype)
-        {
-            for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next)
-            {
-                if(!(candidate->flags & F4_Index_NoteFlag_Prototype))
-                {
-                    result = candidate;
-                    break;
-                }
-            }
-        }
-    }
-    return result;
-}
-
-CUSTOM_COMMAND_SIG(f4_go_to_definition)
-CUSTOM_DOC("Goes to the definition of the identifier under the cursor.")
-{
-    View_ID view = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Scratch_Block scratch(app);
-    String_Const_u8 string = push_token_or_word_under_active_cursor(app, scratch);
-    F4_Index_Note *note = F4_Index_LookupNote(string);
-    note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
-    F4_GoToDefinition(app, note, 0);
-}
-
-CUSTOM_COMMAND_SIG(f4_go_to_definition_same_panel)
-CUSTOM_DOC("Goes to the definition of the identifier under the cursor in the same panel.")
-{
-    View_ID view = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Scratch_Block scratch(app);
-    String_Const_u8 string = push_token_or_word_under_active_cursor(app, scratch);
-    F4_Index_Note *note = F4_Index_LookupNote(string);
-    note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
-    F4_GoToDefinition(app, note, 1);
-}
 
 internal void
 _F4_PushListerOptionForNote(Application_Links *app, Arena *arena, Lister *lister, F4_Index_Note *note)
@@ -268,17 +171,16 @@ CUSTOM_DOC("List all definitions in the index and jump to the one selected by th
     lister_set_default_handlers(lister);
     
     F4_Index_Lock();
+    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+         buffer != 0;
+         buffer = get_buffer_next(app, buffer, Access_Always))
     {
-        for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-             buffer != 0; buffer = get_buffer_next(app, buffer, Access_Always))
+        F4_Index_File *file = F4_Index_LookupFile(app, buffer);
+        if(file != 0)
         {
-            F4_Index_File *file = F4_Index_LookupFile(app, buffer);
-            if(file != 0)
+            for(F4_Index_Note *note = file->first_note; note; note = note->next_sibling)
             {
-                for(F4_Index_Note *note = file->first_note; note; note = note->next_sibling)
-                {
-                    _F4_PushListerOptionForNote(app, scratch, lister, note);
-                }
+                _F4_PushListerOptionForNote(app, scratch, lister, note);
             }
         }
     }
@@ -286,7 +188,8 @@ CUSTOM_DOC("List all definitions in the index and jump to the one selected by th
     
     Lister_Result l_result = run_lister(app, lister);
     Tiny_Jump result = {};
-    if (!l_result.canceled && l_result.user_data != 0){
+    if (!l_result.canceled && l_result.user_data != 0)
+    {
         block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
     }
     

@@ -93,9 +93,9 @@ VIM_COMMAND_SIG(byp_visual_uncomment){
 internal void
 vim_goto_definition_other_panel(App *app)
 {
-  vim_push_jump(app, get_active_view(app, Access_ReadVisible));
-  view_buffer_other_panel(app);
-  jump_to_definition_at_cursor(app);
+    vim_push_jump(app, get_active_view(app, Access_ReadVisible));
+    view_buffer_other_panel(app);
+    jump_to_definition_at_cursor(app);
 }
 
 VIM_COMMAND_SIG(kv_newline_above)
@@ -556,6 +556,97 @@ switch_to_buffer_named(App *app, char *name)
 
 global const String KV_FILE_FILENAME = str8lit("~/notes/file.skm");
 
+internal b32
+F4_GoToDefinition(App *app, F4_Index_Note *note, b32 same_panel)
+{
+    b32 result = false;
+    if(note != 0 && note->file != 0)
+    {
+        View_ID view = get_active_view(app, Access_Always);
+        Rect_f32 region = view_get_buffer_region(app, view);
+        f32 view_height = rect_height(region);
+        Buffer_ID buffer = note->file->buffer;
+        if(!same_panel)
+        {
+            view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
+        }
+        point_stack_push_view_cursor(app, view);
+        view_set_buffer(app, view, buffer, 0);
+        i64 line_number = get_line_number_from_pos(app, buffer, note->range.min);
+        Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+        scroll.position.line_number = line_number;
+        scroll.target.line_number = line_number;
+        scroll.position.pixel_shift.y = scroll.target.pixel_shift.y = -view_height*0.5f;
+        view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+        view_set_cursor(app, view, seek_pos(note->range.min));
+        view_set_mark(app, view, seek_pos(note->range.min));
+        result = true;
+    }
+    return result;
+}
+
+internal F4_Index_Note *
+F4_FindMostIntuitiveNoteInDuplicateChain(F4_Index_Note *note, Buffer_ID cursor_buffer, i64 cursor_pos)
+{
+    F4_Index_Note *result = note;
+    if(note != 0)
+    {
+        F4_Index_Note *best_note_based_on_cursor = 0;
+        for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next)
+        {
+            F4_Index_File *file = candidate->file;
+            if(file != 0)
+            {
+                if(cursor_buffer == file->buffer &&
+                   candidate->range.min <= cursor_pos && cursor_pos <= candidate->range.max)
+                {
+                    if(candidate->next)
+                    {
+                        best_note_based_on_cursor = candidate->next;
+                        break;
+                    }
+                    else
+                    {
+                        best_note_based_on_cursor = note;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if(best_note_based_on_cursor)
+        {
+            result = best_note_based_on_cursor;
+        }
+        else if(note->flags & F4_Index_NoteFlag_Prototype)
+        {
+            for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next)
+            {
+                if(!(candidate->flags & F4_Index_NoteFlag_Prototype))
+                {
+                    result = candidate;
+                    break;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+// CUSTOM_DOC("Goes to the definition of the identifier under the cursor.")
+internal b32
+f4_goto_definition(App *app)
+{
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    Scratch_Block scratch(app);
+    String string = push_token_or_word_under_active_cursor(app, scratch);
+    F4_Index_Note *note = F4_Index_LookupNote(string);
+    note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
+    b32 jumped = F4_GoToDefinition(app, note, true);
+    return jumped;
+}
+
 // todo: support relative path maybe
 internal void
 kv_jump_ultimate(App *app)
@@ -583,14 +674,18 @@ kv_jump_ultimate(App *app)
             }
         }
     }
+   
+#if 0
+    if (!already_jumped) already_jumped = jump_to_definition_at_cursor(app); 
+#endif
     
     if (!already_jumped)
     {
-        already_jumped = jump_to_definition_at_cursor(app);
+        already_jumped = f4_goto_definition(app);
     }
     
     if (!already_jumped)
-    {// NOTE(kv): go to file file
+    {// NOTE(kv): go to the "file" file
         yank_current_filename(app);  // In case we wanna paste add the current filename in
         switch_to_buffer_named(app, KV_FILE_FILENAME);
     }
@@ -600,7 +695,7 @@ internal void
 kv_jump_ultimate_other_panel(App *app)
 {
     view_buffer_other_panel(app);
-    jump_to_definition_at_cursor(app);
+    kv_jump_ultimate(app);
 }
 
 VIM_COMMAND_SIG(kv_delete_surrounding_groupers)
@@ -698,12 +793,23 @@ CUSTOM_DOC("kv copy dir name")
   clipboard_post(0, dirname);
 }
 
-VIM_COMMAND_SIG(kv_newline_and_indent)
+internal void 
+kv_newline_and_indent(App *app)
 {
     GET_VIEW_AND_BUFFER;
     HISTORY_GROUP_SCOPE;
     write_text(app, str8lit("\n"));
     auto_indent_line_at_cursor(app);
+    {// NOTE: Handling for brace
+        i64 curpos = view_get_cursor_pos(app, view);
+        u8 character = buffer_get_char(app, buffer, curpos);
+        if (character == '}')
+        {
+            write_text(app, str8lit("\n"));
+            move_vertical_lines(app, -1);
+            auto_indent_line_at_cursor(app);
+        }
+    }
 }
 
 internal void 
@@ -800,13 +906,6 @@ kv_list_all_locations(App *app)
             kv_list_all_locations_from_string(app, needle_str); 
         }
     }
-}
-
-internal void
-kv_list_all_locations_other_panel(App *app)
-{
-    view_buffer_other_panel(app);
-    kv_list_all_locations(app);
 }
 
 internal void

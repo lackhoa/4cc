@@ -4,7 +4,6 @@
 
 // TOP
 
-// todo(kv): actually idk if we use this file
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
 #pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
@@ -38,19 +37,21 @@ code_index_get_nest_(Code_Index_Nest_Ptr_Array *array, i64 pos){
 }
 
 function Code_Index_Nest*
-code_index_get_nest(Code_Index_File *file, i64 pos){
-  return(code_index_get_nest_(&file->nest_array, pos));
+code_index_get_nest(Code_Index_File *file, i64 pos)
+{
+    return(code_index_get_nest_(&file->nest_array, pos));
 }
 
 function Code_Index_Note_List*
-code_index__list_from_string(String_Const_u8 string){
-  u64 hash = table_hash_u8(string.str, string.size);
-  Code_Index_Note_List *result = &global_code_index.name_hash[hash % ArrayCount(global_code_index.name_hash)];
-  return(result);
+code_index__list_from_string(String string)
+{
+    u64 hash = table_hash_u8(string.str, string.size);
+    Code_Index_Note_List *result = &global_code_index.name_hash[hash % ArrayCount(global_code_index.name_hash)];
+    return(result);
 }
 
 function Code_Index_Note*
-code_index_note_from_string(String_Const_u8 string)
+code_index_note_from_string(String string)
 {
     Code_Index_Note_List *list = code_index__list_from_string(string);
     Code_Index_Note *result = 0;

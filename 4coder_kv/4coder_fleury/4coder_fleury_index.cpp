@@ -2,25 +2,25 @@
 
 #include "4coder_fleury_lang.cpp"
 
-global F4_Index_State f4_index = {};
+global F4_Index_State global_f4_index = {};
 
 function void
 F4_Index_Initialize(void)
 {
-    f4_index.mutex = system_mutex_make();
-    f4_index.arena = make_arena_system(KB(16));
+    global_f4_index.mutex = system_mutex_make();
+    global_f4_index.arena = make_arena_system(KB(16));
 }
 
 function void
 F4_Index_Lock(void)
 {
-    system_mutex_acquire(f4_index.mutex);
+    system_mutex_acquire(global_f4_index.mutex);
 }
 
 function void
 F4_Index_Unlock(void)
 {
-    system_mutex_release(f4_index.mutex);
+    system_mutex_release(global_f4_index.mutex);
 }
 
 function u64
@@ -35,8 +35,10 @@ function F4_Index_File *
 _F4_Index_LookupFile(App *app, u64 hash, Buffer_ID buffer)
 {
     F4_Index_File *result = 0;
-    u64 slot = hash % ArrayCount(f4_index.file_table);
-    for(F4_Index_File *file = f4_index.file_table[slot]; file; file = file->hash_next)
+    u64 slot = hash % ArrayCount(global_f4_index.file_table);
+    for(F4_Index_File *file = global_f4_index.file_table[slot]; 
+        file; 
+        file = file->hash_next)
     {
         if(file->buffer == buffer)
         {
@@ -58,7 +60,7 @@ F4_Index_LookupOrMakeFile(App *app, Buffer_ID buffer)
 {
     F4_Index_File *result = 0;
     u64 hash = _F4_Index_FileHash(app, buffer);
-    u64 slot = hash % ArrayCount(f4_index.file_table);
+    u64 slot = hash % ArrayCount(global_f4_index.file_table);
     
     // NOTE(rjf): Lookup case.
     {
@@ -71,21 +73,21 @@ F4_Index_LookupOrMakeFile(App *app, Buffer_ID buffer)
     
     // NOTE(rjf): Make case.
     {
-        if(f4_index.free_file)
+        if(global_f4_index.free_file)
         {
-            result = f4_index.free_file;
-            f4_index.free_file = f4_index.free_file->hash_next;
+            result = global_f4_index.free_file;
+            global_f4_index.free_file = global_f4_index.free_file->hash_next;
             memset(result, 0, sizeof(*result));
         }
         else
         {
-            result = push_array_zero(&f4_index.arena, F4_Index_File, 1);
+            result = push_array_zero(&global_f4_index.arena, F4_Index_File, 1);
         }
         
         if(result != 0)
         {
-            result->hash_next = f4_index.file_table[slot];
-            f4_index.file_table[slot] = result;
+            result->hash_next = global_f4_index.file_table[slot];
+            global_f4_index.file_table[slot] = result;
             result->buffer = buffer;
             result->arena = make_arena_system(KB(16));
         }
@@ -102,10 +104,10 @@ F4_Index_EraseFile(App *app, Buffer_ID id)
     F4_Index_File *file = _F4_Index_LookupFile(app, hash, id);
     if(file)
     {
-        u64 slot = hash % ArrayCount(f4_index.file_table);
+        u64 slot = hash % ArrayCount(global_f4_index.file_table);
         {
             F4_Index_File *prev = 0;
-            for(F4_Index_File *hash_file = f4_index.file_table[slot]; hash_file; prev = hash_file, hash_file = hash_file->hash_next)
+            for(F4_Index_File *hash_file = global_f4_index.file_table[slot]; hash_file; prev = hash_file, hash_file = hash_file->hash_next)
             {
                 if(file == hash_file)
                 {
@@ -115,14 +117,14 @@ F4_Index_EraseFile(App *app, Buffer_ID id)
                     }
                     else
                     {
-                        f4_index.file_table[slot] = file->hash_next;
+                        global_f4_index.file_table[slot] = file->hash_next;
                     }
                     break;
                 }
             }
         }
-        file->hash_next = f4_index.free_file;
-        f4_index.free_file = file;
+        file->hash_next = global_f4_index.free_file;
+        global_f4_index.free_file = file;
     }
 }
 
@@ -140,7 +142,7 @@ _F4_Index_FreeNoteTree(F4_Index_Note *note)
     F4_Index_Note *hash_next = note->hash_next;
     
     u64 hash = note->hash;
-    u64 slot = hash % ArrayCount(f4_index.note_table);
+    u64 slot = hash % ArrayCount(global_f4_index.note_table);
     
     if(prev)
     {
@@ -180,7 +182,7 @@ _F4_Index_FreeNoteTree(F4_Index_Note *note)
         
         if(hash_prev == 0)
         {
-            f4_index.note_table[slot] = next ? next : hash_next;
+            global_f4_index.note_table[slot] = next ? next : hash_next;
         }
     }
 }
@@ -202,12 +204,14 @@ F4_Index_ClearFile(F4_Index_File *file)
 }
 
 function F4_Index_Note *
-F4_Index_LookupNote(String8 string, F4_Index_Note *parent)
+F4_Index_LookupNote(String string, F4_Index_Note *parent)
 {
     F4_Index_Note *result = 0;
     u64 hash = table_hash_u8(string.str, string.size);
-    u64 slot = hash % ArrayCount(f4_index.note_table);
-    for(F4_Index_Note *note = f4_index.note_table[slot]; note; note = note->hash_next)
+    u64 slot = hash % ArrayCount(global_f4_index.note_table);
+    for(F4_Index_Note *note = global_f4_index.note_table[slot]; 
+        note; 
+        note = note->hash_next)
     {
         if(note->hash == hash && note->parent == parent)
         {
@@ -222,7 +226,7 @@ F4_Index_LookupNote(String8 string, F4_Index_Note *parent)
 }
 
 function F4_Index_Note *
-F4_Index_LookupNote(String8 string)
+F4_Index_LookupNote(String string)
 {
     return F4_Index_LookupNote(string, 0);
 }
@@ -231,15 +235,15 @@ function F4_Index_Note *
 F4_Index_AllocateNote(void)
 {
     F4_Index_Note *result = 0;
-    if(f4_index.free_note)
+    if(global_f4_index.free_note)
     {
-        result = f4_index.free_note;
-        f4_index.free_note = f4_index.free_note->hash_next;
+        result = global_f4_index.free_note;
+        global_f4_index.free_note = global_f4_index.free_note->hash_next;
         memset(result, 0, sizeof(*result));
     }
     else
     {
-        result = push_array_zero(&f4_index.arena, F4_Index_Note, 1);
+        result = push_array_zero(&global_f4_index.arena, F4_Index_Note, 1);
     }
     return result;
 }
@@ -255,7 +259,7 @@ F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_
     if(file)
     {
         u64 hash = table_hash_u8(string.str, string.size);
-        u64 slot = hash % ArrayCount(f4_index.note_table);
+        u64 slot = hash % ArrayCount(global_f4_index.note_table);
         
         // NOTE(rjf): Push to duplicate chain.
         {
@@ -274,12 +278,12 @@ F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_
             }
             else
             {
-                note->hash_next = f4_index.note_table[slot];
-                if(f4_index.note_table[slot])
+                note->hash_next = global_f4_index.note_table[slot];
+                if(global_f4_index.note_table[slot])
                 {
-                    f4_index.note_table[slot]->hash_prev = note;
+                    global_f4_index.note_table[slot]->hash_prev = note;
                 }
-                f4_index.note_table[slot] = note;
+                global_f4_index.note_table[slot] = note;
                 note->hash_prev = 0;
                 note->prev = 0;
             }
@@ -695,7 +699,7 @@ F4_Index_Tick(App *app)
         Temp_Memory_Block temp(scratch);
         Buffer_ID buffer_id = node->buffer;
         
-        String8 contents = push_whole_buffer(app, scratch, buffer_id);
+        String contents = push_whole_buffer(app, scratch, buffer_id);
         Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
         if (tokens.count > 0)
         {

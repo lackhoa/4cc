@@ -296,7 +296,8 @@ kv_startup(App *app)
     String8 startup_hot_directory = def_get_config_string(temp, vars_intern_lit("startup_hot_directory"));
     set_hot_directory(app, startup_hot_directory);
    
-#if !KV_INTERNAL
+// #if !KV_INTERNAL
+#if 1 //nono
     load_project(app);
 #endif
     
@@ -525,10 +526,9 @@ kv_vim_bindings(App *app)
     BIND(N|V|MAP, vim_leader_C, SUB_Leader,  (S|KeyCode_C));
     
     // Language support
-    BIND(N|MAP,    vim_goto_definition,                   KeyCode_F1);
-    BIND(N|MAP,    vim_goto_definition_other_panel,     M|KeyCode_F1);
-    BIND(N|V|MAP,  kv_list_all_locations,               KeyCode_F2);
-    BIND(N|V|MAP,  kv_list_all_locations_other_panel, M|KeyCode_F2);
+    BIND(N|MAP,    vim_goto_definition,                 KeyCode_F1);
+    BIND(N|MAP,    vim_goto_definition_other_panel,   M|KeyCode_F1);
+    BIND(N|0|MAP,  kv_list_all_locations,               KeyCode_S);
     //
     BIND(N|MAP,   byp_request_comment,   SUB_G,     KeyCode_ForwardSlash);
     BIND(N|MAP,   byp_request_uncomment, SUB_G,   S|KeyCode_ForwardSlash);
@@ -560,7 +560,7 @@ kv_vim_bindings(App *app)
     BIND(N|  MAP,  kv_shift_character,         KeyCode_Comma);
     BIND(N|  MAP,  exit_4coder,              M|KeyCode_Q);
     BIND(N|V|MAP,  vim_command_mode,           KeyCode_Semicolon);
-    BIND(N|  MAP,  kv_reopen_with_confirmation,                     S|KeyCode_U);
+    BIND(N|  MAP,  kv_reopen_with_confirmation,                   S|KeyCode_U);
     BIND(N|  MAP,  quick_swap_buffer,        M|KeyCode_Comma);
     BIND(N|0|MAP,  kv_do_t,                    KeyCode_T);
     BIND(N|0|MAP,  kv_do_T,                  S|KeyCode_T);

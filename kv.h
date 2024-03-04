@@ -6465,7 +6465,8 @@ push_data_copy(Arena *arena, String8 data)
 }
 
 function b32
-data_match(String_Const_u8 a, String_Const_u8 b){
+string_match(String a, String b)
+{
     return(a.size == b.size && block_match(a.str, b.str, a.size));
 }
 
@@ -7506,26 +7507,6 @@ string_match(String_Const_char a, String_Const_char b)
         for (u64 i = 0; i < a.size; i += 1)
         {
             if (a.str[i] != b.str[i]){
-                result = false;
-                break;
-            }
-        }
-    }
-    return(result);
-}
-function b32
-string_match(String8 a, String8 b)
-{
-    b32 result = false;
-    if (a.size == b.size)
-    {
-        result = true;
-        for (u64 i = 0; 
-             i < a.size; 
-             i += 1)
-        {
-            if (a.str[i] != b.str[i])
-            {
                 result = false;
                 break;
             }
