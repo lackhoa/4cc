@@ -600,6 +600,68 @@ default_custom_layer_init(App *app)
     setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 }
 
+internal Tick_Function kv_tick;
+//
+internal void 
+kv_tick(App *app, Frame_Info frame_info)
+{
+    DEBUG_CLEAR;
+    
+    // NOTE(kv): F4
+    F4_Index_Tick(app);
+    F4_CLC_Tick(frame_info);
+    
+    // NOTE(kv): Default tick stuff from the 4th dimension:
+    default_tick(app, frame_info);
+    
+    // NOTE(kv): vim
+    vim_animate_filebar(app, frame_info);
+    vim_animate_cursor(app, frame_info);
+    vim_cursor_blink++;
+    
+    // NOTE(kv): fui update
+    fui_tick(app, frame_info);
+    
+    // NOTE(kv): autosave
+    f32 AUTOSAVE_PERIOD_SECONDS = 5.0f;
+    seconds_since_last_keystroke += frame_info.literal_dt;
+    if (seconds_since_last_keystroke > AUTOSAVE_PERIOD_SECONDS)
+    {
+        seconds_since_last_keystroke = 0;
+        b32 saved_at_least_one_buffer = false;
+        {
+            ProfileScope(app, "save all dirty buffers");
+            Scratch_Block scratch(app);
+            for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
+                 buffer != 0;
+                 buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
+            {
+                switch(buffer_get_dirty_state(app, buffer))
+                {
+                    case DirtyState_UnsavedChanges:
+                    {
+                        saved_at_least_one_buffer = true;
+                        String8 filename = push_buffer_filename(app, scratch, buffer);
+                        buffer_save(app, buffer, filename, 0);
+                    }break;
+                    
+                    case DirtyState_UnloadedChanges:
+                    {
+                        buffer_reopen(app, buffer, 0);
+                        String8 filename = push_buffer_filename(app, scratch, buffer);
+                        printf_message(app, "automatically reloaded file %.*s\n", string_expand(filename));
+                    }break;
+                }
+            }
+        }
+        if (saved_at_least_one_buffer) 
+        {
+            print_message(app, "auto-saved all dirty buffers\n");
+        }
+    }
+    animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));
+}
+
 function void 
 kv_custom_layer_init(App *app)
 {

@@ -169,7 +169,8 @@ inline u8 kv_is_group_closer(u8 c)
   }
 }
 
-void kv_vim_bounce(Application_Links *app)
+internal void 
+kv_vim_bounce(App *app)
 {
   GET_VIEW_AND_BUFFER;
   Vim_Motion_Block vim_motion_block(app);
@@ -178,9 +179,8 @@ void kv_vim_bounce(Application_Links *app)
   view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-// todo(kv): support fallback path that works on characters instead of tokens
 function b32
-kv_find_current_nest(Application_Links *app, Buffer_ID buffer, i64 pos, Range_i64 *out)
+kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos, Range_i64 *out)
 {
   Token *token = kv_token_at_cursor(app);
   if (token == 0) return false;
@@ -250,63 +250,119 @@ VIM_COMMAND_SIG(kv_sexpr_down)
   while ( token_it_inc(&token_it) );
 }
 
-VIM_COMMAND_SIG(kv_sexpr_right)
+internal b32
+if_macro_movement(App *app, Scan_Direction scan_direction)
 {
-  View_ID   view = get_active_view(app, Access_ReadVisible);
-  Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
-  if ( !token_it.tokens ) return;
-  
-  do
-  {
-    Token *token = token_it_read(&token_it);
-    if (token->kind == TokenBaseKind_LiteralString)
+    b32 result = false;
+    GET_VIEW_AND_BUFFER;
+    Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
+    if (token_it.tokens)
     {
-      i64 token_end = token_range(token).end;
-      kv_goto_pos(app, view, token_end);
-      break;
+        Quick_Parser p_value = qp_new(app, buffer, &token_it, scan_direction);
+        Quick_Parser *p = &p_value;
+        u32 nest_level = 0;
+        if ( qp_maybe_string(p, str8lit("#else")) == 0 )
+        {
+            if (scan_direction == Scan_Forward)
+                qp_eat_string(p, str8lit("#if"));
+            else
+                qp_eat_string(p, str8lit("#endif"));
+        }
+        while ( p->ok )
+        {
+            b32 is_if    = qp_test_string(p, str8lit("#if"));
+            b32 is_endif = qp_test_string(p, str8lit("#endif"));
+            b32 is_else  = qp_test_string(p, str8lit("#else"));
+            
+            if (is_if)    nest_level += scan_direction;
+            if (is_endif) nest_level -= scan_direction;
+            
+            if (is_else && nest_level == 0)
+            {
+                break;
+            }
+            if ((is_if || is_endif) &&  (nest_level == u32(-1)))
+            {
+                break;
+            }
+            
+            qp_eat_token(p);
+        }
+        if ( p->ok )
+        {
+            kv_goto_token(app, qp_get_token(p));
+            result = true;
+        }
     }
-    else if (kv_is_group_opener(token))
-    {
-      kv_goto_token(app, token);
-      kv_vim_bounce(app);
-      move_right(app);
-      break;
-    }
-    else if (kv_is_group_closer(token))
-    {
-      kv_goto_token(app, token);
-      move_left(app);
-      break;
-    }
-  } while ( token_it_inc(&token_it) );
+    return result;
 }
 
-VIM_COMMAND_SIG(kv_sexpr_left)
+internal void 
+kv_sexpr_right(App *app)
 {
-    Token_Iterator_Array token_it = kv_token_it_at_cursor(app, -1);
-    Token *token = token_it_read(&token_it);
-    if (!token) return;
-    do
+    View_ID   view = get_active_view(app, Access_ReadVisible);
+    Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
+    if ( token_it.tokens )
     {
-        token = token_it_read(&token_it);
-        if (token->kind == TokenBaseKind_LiteralString)
+        if ( !if_macro_movement(app, Scan_Forward) )
         {
-            kv_goto_token(app, token);
-            break;
+            do
+            {
+                Token *token = token_it_read(&token_it);
+                if (token->kind == TokenBaseKind_LiteralString)
+                {
+                    i64 token_end = token_range(token).end;
+                    kv_goto_pos(app, view, token_end);
+                    break;
+                }
+                else if (kv_is_group_opener(token))
+                {
+                    kv_goto_token(app, token);
+                    kv_vim_bounce(app);
+                    move_right(app);
+                    break;
+                }
+                else if (kv_is_group_closer(token))
+                {
+                    kv_goto_token(app, token);
+                    move_left(app);
+                    break;
+                }
+            } while ( token_it_inc(&token_it) );
         }
-        else if (kv_is_group_opener(token))
+    }
+}
+
+internal void
+kv_sexpr_left(App *app)
+{
+    if ( if_macro_movement(app, Scan_Backward) == 0 )
+    {
+        Token_Iterator_Array token_it = kv_token_it_at_cursor(app, -1);
+        Token *token = token_it_read(&token_it);
+        if (!token) return;
+        do
         {
-            kv_goto_token(app, token);
-            move_right(app);
-            break;
-        }
-        else if (kv_is_group_closer(token))
-        {
-            kv_goto_token(app, token);
-            kv_vim_bounce(app);
-            break;
-        }
-    } while (token_it_dec(&token_it));
+            token = token_it_read(&token_it);
+            if (token->kind == TokenBaseKind_LiteralString)
+            {
+                kv_goto_token(app, token);
+                break;
+            }
+            else if (kv_is_group_opener(token))
+            {
+                kv_goto_token(app, token);
+                move_right(app);
+                break;
+            }
+            else if (kv_is_group_closer(token))
+            {
+                kv_goto_token(app, token);
+                kv_vim_bounce(app);
+                break;
+            }
+        } while (token_it_dec(&token_it));
+    }
 }
 
 VIM_COMMAND_SIG(kv_sexpr_end)
@@ -799,13 +855,10 @@ VIM_COMMAND_SIG(vim_select_all)
   select_all(app);
 }
 
+
 CUSTOM_COMMAND_SIG(kv_miscellaneous_debug_command)
 CUSTOM_DOC("just a placeholder command so I can test stuff")
 {
-  GET_VIEW_AND_BUFFER;
-  Scratch_Block scratch(app);
-  String8 bufname = push_buffer_base_name(app ,scratch, buffer);
-  printf_message(app, "buffer name: %.*s\n", string_expand(bufname));
 }
 
 CUSTOM_COMMAND_SIG(init)

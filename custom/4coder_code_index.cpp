@@ -50,18 +50,21 @@ code_index__list_from_string(String_Const_u8 string){
 }
 
 function Code_Index_Note*
-code_index_note_from_string(String_Const_u8 string){
-  Code_Index_Note_List *list = code_index__list_from_string(string);
-  Code_Index_Note *result = 0;
-  for (Code_Index_Note *node = list->first;
-       node != 0;
-       node = node->next_in_hash){
-    if (string_match(string, node->text)){
-      result = node;
-      break;
+code_index_note_from_string(String_Const_u8 string)
+{
+    Code_Index_Note_List *list = code_index__list_from_string(string);
+    Code_Index_Note *result = 0;
+    for (Code_Index_Note *node = list->first;
+         node != 0;
+         node = node->next_in_hash)
+    {
+        if (string_match(string, node->text))
+        {
+            result = node;
+            break;
+        }
     }
-  }
-  return(result);
+    return(result);
 }
 
 

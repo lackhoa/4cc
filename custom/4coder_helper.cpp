@@ -2521,10 +2521,10 @@ find_nest_side(Application_Links *app, Buffer_ID buffer, i64 pos,
             
             b32 good = false;
             if (scan == Scan_Forward){
-                good = token_it_inc(&it);
+                good = token_it_inc(&it) != 0;
             }
             else{
-                good = token_it_dec(&it);
+                good = token_it_dec(&it) != 0;
             }
             if (!good){
                 break;

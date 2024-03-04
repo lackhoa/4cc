@@ -9,6 +9,17 @@
 
 #include "tr_model.cpp"
 
+#if 0
+// sometest
+#if
+// test subject
+#else
+// oh my god
+#endif
+#else
+// sometest
+#endif
+
 // TODO: @Cleanup: Rename. (also with the fcolor)
 global v4  yellow_v4   = {.5, .5, 0, 1.0};
 global u32 yellow_argb = pack_argb(yellow_v4);
@@ -571,7 +582,6 @@ struct Widget_State
 
 global const v1 widget_margin = 5.0f;
 
-#if 1
 internal rect2 draw_single_widget(App *app, Widget_State *state, Widget *tree, v2 top_left);
 
 internal rect2
@@ -640,7 +650,6 @@ draw_single_widget(App *app, Widget_State *state, Widget *widget, v2 top_left)
     
     return whole_box;
 }
-#endif
 
 struct Game_State
 {

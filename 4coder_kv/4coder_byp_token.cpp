@@ -10,11 +10,12 @@ CUSTOM_ID(colors, defcolor_struct);
 CUSTOM_ID(colors, defcolor_non_text);
 
 function b32
-byp_highlight_token(Token_Base_Kind kind){
-	switch(kind){
+byp_highlight_token(Token_Base_Kind kind)
+{
+	switch(kind)
+    {
 		case TokenBaseKind_Keyword:
-		//case TokenBaseKind_Preprocessor:
-		case TokenBaseKind_Identifier:
+        case TokenBaseKind_Identifier:
 		case byp_TokenKind_Primitive:
 		case byp_TokenKind_ControlFlow:
 		case byp_TokenKind_Struct:
@@ -27,7 +28,8 @@ byp_highlight_token(Token_Base_Kind kind){
 function ARGB_Color
 byp_get_token_color_cpp(Token token){
 	Managed_ID color = defcolor_text_default;
-	switch (token.kind){
+	switch (token.kind)
+    {
 		case TokenBaseKind_Preprocessor:{ color = defcolor_preproc; }break;
 		case TokenBaseKind_Keyword:{ color = defcolor_keyword; }break;
 		case TokenBaseKind_Comment:{ color = defcolor_comment; }break;
@@ -111,17 +113,20 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
 	ARGB_Color back_color     = fcolor_resolve(fcolor_id(defcolor_back));
 	ARGB_Color cursor_tok_color = byp_get_token_color_cpp(*cursor_token);
 
-	if(cursor_token->kind == TokenBaseKind_Identifier){
-		String_Const_u8 lexeme = push_token_lexeme(app, scratch, buffer, cursor_token);
-		Code_Index_Note *note = code_index_note_from_string(lexeme);
+	if (cursor_token->kind == TokenBaseKind_Identifier)
+    {
+        String lexeme = push_token_lexeme(app, scratch, buffer, cursor_token);
+        Code_Index_Note *note = code_index_note_from_string(lexeme);
 
-		if(note != 0){
-			switch(note->note_kind){
-				case CodeIndexNote_Function: cursor_tok_color = function_color; break;
-				case CodeIndexNote_Type:     cursor_tok_color = type_color;     break;
-				case CodeIndexNote_Macro:    cursor_tok_color = macro_color;    break;
-			}
-		}
+        if(note != 0)
+        {
+            switch(note->note_kind)
+            {
+                case CodeIndexNote_Function: cursor_tok_color = function_color; break;
+                case CodeIndexNote_Type:     cursor_tok_color = type_color;     break;
+                case CodeIndexNote_Macro:    cursor_tok_color = macro_color;    break;
+            }
+        }
 	}
 
     ARGB_Color comment_pop_0 = finalize_color(defcolor_comment_pop, 0);

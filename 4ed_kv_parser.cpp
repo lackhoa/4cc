@@ -6,18 +6,14 @@ struct Quick_Parser
     App *app;
     Buffer_ID buffer;
     Token_Iterator_Array tk;
+    Scan_Direction scan_direction;
 };
 
 internal Quick_Parser
-qp_new(App *app, Buffer_ID buffer, Token_Iterator_Array *tk)
+qp_new(App *app, Buffer_ID buffer, Token_Iterator_Array *tk, 
+       Scan_Direction scan_direction=Scan_Forward)
 {
-    Quick_Parser result = 
-    {
-        .ok = true,
-        .app = app,
-        .buffer = buffer,
-        .tk = *tk,
-    };
+    Quick_Parser result = { true, app, buffer, *tk, scan_direction };
     return result;
 }
 
@@ -32,7 +28,7 @@ qp_get_token(Quick_Parser *p)
     return token;
 }
 
-internal String8
+internal String
 qp_push_token(Quick_Parser *p, Arena *arena)
 {
     if (Token *token = qp_get_token(p))
@@ -52,15 +48,18 @@ qp_get_pos(Quick_Parser *p)
     else return 0;
 }
 
-internal Token *
+internal void
 qp_eat_token(Quick_Parser *p)
 {
     if (p->ok)
     {
-        p->ok = token_it_inc(&p->tk);
-        return token_it_read(&p->tk);
+        if (p->scan_direction == Scan_Forward)
+        {
+            p->ok = (token_it_inc(&p->tk) != 0);
+        }
+        else
+            p->ok = (token_it_dec(&p->tk) != 0);
     }
-    else return 0;
 }
 
 // TODO: @hack
@@ -71,7 +70,8 @@ get_next_token_pos(Quick_Parser *p)
     if (p->ok)
     {
         Quick_Parser save = *p;
-        if (Token *token = qp_eat_token(p))
+        qp_eat_token(p);
+        if (Token *token = qp_get_token(p))
         {
             result = token->pos;
         }
@@ -80,18 +80,18 @@ get_next_token_pos(Quick_Parser *p)
     return result;
 }
 
-internal b32
+internal void
 qp_eat_number(Quick_Parser *p, f32 *out)
 {
-    Scratch_Block xblock(p->app);
+    Scratch_Block scratch(p->app);
     
     f32 sign = 1;
-    Token *token = qp_eat_token(p);
+    Token *token = qp_get_token(p);
     if (token)
     {
         if (token->kind == TokenBaseKind_Operator)
         {// NOTE(kv): parse sign
-            String8 string = qp_push_token(p, xblock);
+            String string = qp_push_token(p, scratch);
             if ( string_equal(string, "-") )
             {
                 sign = -1;
@@ -100,8 +100,9 @@ qp_eat_number(Quick_Parser *p, f32 *out)
             {
                 p->ok = false;
             }
-            
-            token = qp_eat_token(p);
+           
+            qp_eat_token(p);
+            token = qp_get_token(p);
         }
     }
    
@@ -116,59 +117,94 @@ qp_eat_number(Quick_Parser *p, f32 *out)
    
     if (p->ok)
     {
-        String8 string = qp_push_token(p, xblock);
-        char *cstring = to_c_string(xblock, string);
+        String8 string = qp_push_token(p, scratch);
+        char *cstring = to_c_string(scratch, string);
         *out = sign * gb_str_to_f32(cstring, 0);
     }
-    
-    return p->ok;
 }
 
 internal b32
-qp_maybe_eat_number(Quick_Parser *p, f32 *out)
+qp_maybe_number(Quick_Parser *p, f32 *out)
 {
-    Token_Iterator_Array tk_save = p->tk;
-    b32 result = qp_eat_number(p, out);
-    if (!result) p->tk = tk_save;
-
-    return result;
+    Quick_Parser save = *p;
+    qp_eat_number(p, out);
+    if (p->ok)
+    {
+        return true;
+    }
+    else
+    {
+        *p = save;
+        return false;
+    }
 }
 
-internal b32
+internal void
 qp_eat_token_kind(Quick_Parser *p, Token_Base_Kind kind)
 {
-    if ( Token *token = qp_eat_token(p) )
+    if (p->ok)
     {
+        Token *token = qp_get_token(p);
         p->ok = (token->kind == kind);
     }
-    return p->ok;
+    qp_eat_token(p);
 }
 
 internal b32
-qp_maybe_eat_token_kind(Quick_Parser *p, Token_Base_Kind kind)
+qp_maybe_token_kind(Quick_Parser *p, Token_Base_Kind kind)
 {
     Quick_Parser p_save = *p;
-    b32 result = qp_eat_token_kind(p, kind);
-    if (!result) *p = p_save;
+    qp_eat_token_kind(p, kind);
+    if (p->ok) 
+        return true;
+    else
+    {
+        *p = p_save;
+        return false;
+    }
+}
+
+internal b32
+qp_test_string(Quick_Parser *p, String string)
+{
+    b32 result = false;
+    if (p->ok)
+    {
+        Scratch_Block scratch(p->app);
+        String token = qp_push_token(p, scratch);
+        result = string_match(token, string);
+    }
     return result;
 }
 
 internal b32
-qp_eat_char(Quick_Parser *p, u8 chr)
+qp_maybe_string(Quick_Parser *p, String string)
 {
-    if ( qp_eat_token(p) )
+    b32 result = qp_test_string(p, string);
+    if (result)
     {
-        Scratch_Block xblock(p->app);
-        String8 string = qp_push_token(p, xblock);
-        p->ok = string_equal(string, chr);
+        qp_eat_token(p);
     }
-    return p->ok;
+    return result;
 }
 
-inline b32
+internal void
+qp_eat_string(Quick_Parser *p, String string)
+{
+    p->ok = qp_maybe_string(p, string);
+}
+
+internal void
+qp_eat_char(Quick_Parser *p, u8 chr)
+{
+    String string = {&chr, 1};
+    qp_eat_string(p, string);
+}
+
+inline void
 qp_eat_comma(Quick_Parser *p)
 {
-    return qp_eat_char(p, ',');
+    qp_eat_char(p, ',');
 }
 
 // NOTE returns index + 1
@@ -191,30 +227,34 @@ char_in_string(String8 chars, char chr)
 
 // NOTE returns index + 1
 internal u32
-qp_eat_until_char(Quick_Parser *p, String8 chars)
+qp_eat_until_char(Quick_Parser *p, String chars)
 {
     u32 result = 0;
-    while ( !result && qp_eat_token(p) )
+    while ( !result && p->ok )
     {
-        Scratch_Block xblock(p->app);
-        String8 token = qp_push_token(p, xblock);
-        if ((token.size == 1) && 
-            (result = char_in_string(chars, token.str[0])))
+        qp_eat_token(p);
+        if (p->ok)
         {
-            // break
-        }
-        // TODO: crappy recursion time!
-        else if ( string_equal(token, '(') )
-        {
-            qp_eat_until_lit(p, ")");
-        }
-        else if ( string_equal(token, '[') )
-        {
-            qp_eat_until_lit(p, "]");
-        }
-        else if ( string_equal(token, '{') )
-        {
-            qp_eat_until_lit(p, "}");
+            Scratch_Block scratch(p->app);
+            String8 token = qp_push_token(p, scratch);
+            if ((token.size == 1) && 
+                (result = char_in_string(chars, token.str[0])))
+            {
+                // break
+            }
+            // TODO: crappy recursion time!
+            else if ( string_equal(token, '(') )
+            {
+                qp_eat_until_lit(p, ")");
+            }
+            else if ( string_equal(token, '[') )
+            {
+                qp_eat_until_lit(p, "]");
+            }
+            else if ( string_equal(token, '{') )
+            {
+                qp_eat_until_lit(p, "}");
+            }
         }
     }
     return result;
