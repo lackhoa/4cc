@@ -27,12 +27,8 @@ draw__begin_new_group(Render_Target *target)
         group = push_array_zero(&target->arena, Render_Group, 1);
         sll_queue_push(target->group_first, target->group_last, group);
     }
-    group->face_id    = target->face_id;
-    group->clip_box   = target->clip_box;
-    group->offset     = target->offset;
-    group->y_is_up    = target->y_is_up;
-    group->depth_test = target->depth_test;
-    group->linear_alpha_blend = target->linear_alpha_blend;  // todo @Cleanup put the render group options in here
+    // NOTE: copy the render config over
+    group->render_config = target->render_config;
 }
 
 internal Render_Vertex_Array_Node*
@@ -150,36 +146,6 @@ end_render_section(Render_Target *target){
 
 ////////////////////////////////
 
-/* NOTE: Doesn't actually work, the shader has to be setup for that.
-internal void
-draw_line_to_target(Render_Target *target, v2 p0, v2 p1, 
-                    f32 roundness, f32 thickness, u32 color)
-{
-  kv_clamp_bot(thickness, 2.0f);
-  f32 half_thickness = 0.5f * thickness;
-  
-  v2 d = noz(p1 - p0);
-  v2 perpendicular = 0.5f * thickness * perp(d);
-  
-  Render_Vertex vertices[6];
-  vertices[0].xy = p0-perpendicular;
-  vertices[1].xy = p0+perpendicular;
-  vertices[2].xy = p1+perpendicular;
-  vertices[3].xy = vertices[1].xy;
-  vertices[4].xy = vertices[2].xy;
-  vertices[5].xy = p1-perpendicular;
-  
-  v2 center = 0.5f * (p1 - p0);
-  for_u32 (i, 0, arlen(vertices))
-  {
-    vertices[i].uvw   = v3{center.x, center.y, roundness};
-    vertices[i].color = color;
-    vertices[i].half_thickness = half_thickness;
-  }
-  draw__write_vertices_in_current_group(target, vertices, arlen(vertices));
-}
-*/
-
 internal void
 draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 thickness, u32 color, v1 depth=0)
 {
@@ -197,10 +163,11 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
     vertices[5].xyz = V3(rect.x1, rect.y1, depth);
     
     v2 center = rect_center(rect);
-    for (u32 i = 0; i < alen(vertices); i += 1)
+    for_u32 (i, 0, alen(vertices))
     {
-        vertices[i].uvw = V3(center.x, center.y, roundness);
-        vertices[i].color = color;
+        vertices[i].center         = center;
+        vertices[i].roundness      = roundness;
+        vertices[i].color          = color;
         vertices[i].half_thickness = half_thickness;
     }
     draw__write_vertices_in_current_group(target, vertices, alen(vertices));
@@ -210,7 +177,7 @@ internal void
 draw_rect_to_target(Render_Target *target, rect2 rect, f32 roundness, u32 color, v1 depth=0)
 {
     v2 dim = rect_dim(rect);
-    f32 thickness = Max(dim.x, dim.y);
+    v1 thickness = Max(dim.x, dim.y);
     draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
 

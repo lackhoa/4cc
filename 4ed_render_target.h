@@ -19,14 +19,18 @@ struct Render_Free_Texture
 
 struct Render_Vertex
 {
-    union
+    union 
     {
         v3 xyz;
         v2 xy;
     };
-    v3  uvw;
+    union 
+    {
+        struct { v2 center; v1 roundness; };
+        v3 uvw;
+    };
     u32 color;
-    f32 half_thickness;
+    v1  half_thickness;
 };
 
 struct Render_Vertex_Array_Node
@@ -44,31 +48,46 @@ struct Render_Vertex_List
     i32 count;
 };
 
+struct Render_Config
+{
+#define RENDER_CONFIG_FIELDS \
+    Face_ID face_id; \
+    Rect_f32 clip_box; \
+    v2 offset; \
+    b8 y_is_up; \
+    b8     is_perspective; \
+    Camera camera; \
+    b8 depth_test; \
+    b8 linear_alpha_blend;
+    
+    RENDER_CONFIG_FIELDS
+};
+
 struct Render_Group
 {
     Render_Group *next;
     Render_Vertex_List vertex_list;
-    // Parameters (new ones inherited from the target)
-    Face_ID face_id;
-    Rect_f32 clip_box;
-    v2 offset;  // NOTE(kv): I wish this could be merged with clip_box, oh well...
-    b8 y_is_up;
-    b8 depth_test;
-    b8 linear_alpha_blend;
+    union
+    {
+        Render_Config render_config;
+        struct { RENDER_CONFIG_FIELDS };
+    };
 };
 
 global const Face_ID FACE_ID_GAME = U32_MAX;
 
 struct Render_Target
 {
+    union
+    {
+        Render_Config render_config;
+        struct { RENDER_CONFIG_FIELDS; };
+    };
+    
     b8 clip_all;
-    b8 y_is_up;
-    v2 offset;
-    b8 depth_test;
-    b8 linear_alpha_blend;
     i32 width;
     i32 height;
-    Texture_ID bound_texture;  //NOTE(kv): I guess this is to avoid talking to the GPU?
+    Texture_ID bound_texture;
     u32 color;
     
     i32 frame_index;
@@ -83,8 +102,6 @@ struct Render_Target
     Render_Group *group_last;
     i32 group_count;
     
-    Face_ID  face_id;
-    Rect_f32 clip_box;
     void *font_set;
     Texture_ID fallback_texture_id;
 };

@@ -5,31 +5,31 @@ global Buffer_ID global_other_view_buffer;
 
 VIM_COMMAND_SIG(kv_shift_character)
 {
-  GET_VIEW_AND_BUFFER;
-  i64 pos = view_get_cursor_pos(app, view);
-
-  u8 current_character = 0;
-  buffer_read_range(app, buffer, Ii64(pos, pos+1), &current_character);
-
-  u64 replacement_char = 0;
-  if (character_is_upper(current_character))
-  {
-    replacement_char = character_to_lower(current_character);
-  }
-  else if (character_is_lower(current_character))
-  {
-    replacement_char = character_to_upper(current_character);
-  }
-  else
-  {
-    table_read(&shifted_version_of_characters, (u64)current_character, &replacement_char);
-  }
-  //
-  if (replacement_char) {
-    buffer_replace_range(app, buffer, Ii64(pos, pos+1), SCu8((u8 *)&replacement_char, 1));
-  }
-
-  move_right(app);
+    GET_VIEW_AND_BUFFER;
+    i64 pos = view_get_cursor_pos(app, view);
+    
+    u8 current_character = 0;
+    buffer_read_range(app, buffer, Ii64(pos, pos+1), &current_character);
+    
+    u64 replacement_char = 0;
+    if (character_is_upper(current_character))
+    {
+        replacement_char = character_to_lower(current_character);
+    }
+    else if (character_is_lower(current_character))
+    {
+        replacement_char = character_to_upper(current_character);
+    }
+    else
+    {
+        table_read(&shifted_version_of_characters, (u64)current_character, &replacement_char);
+    }
+    //
+    if (replacement_char) {
+        buffer_replace_range(app, buffer, Ii64(pos, pos+1), SCu8((u8 *)&replacement_char, 1));
+    }
+    
+    move_right(app);
 }
 
 VIM_REQUEST_SIG(byp_apply_comment){
@@ -378,19 +378,39 @@ kv_surround_with(App *app, char *opener, char *closer)
 {
     GET_VIEW_AND_BUFFER;
     HISTORY_GROUP_SCOPE;
-    
-    i64 min = view_get_cursor_pos(app, view);
-    i64 max = view_get_mark_pos(app, view);
-    if (max < min)
-    {
-        macro_swap(min, max);
-    }
-    max += 1;
-    
-    buffer_replace_range(app, buffer, Ii64(max), SCu8(closer));
-    buffer_replace_range(app, buffer, Ii64(min), SCu8(opener));
+   
+    Range_i64 selected = view_get_selected_range(app, view);
+    buffer_insert_pos(app, buffer, selected.max, SCu8(closer));
+    buffer_insert_pos(app, buffer, selected.min, SCu8(opener));
     
     vim_normal_mode(app);
+}
+
+internal void
+kv_surround_brace_special(App *app)
+{
+    GET_VIEW_AND_BUFFER;
+    HISTORY_GROUP_SCOPE;
+    
+    Range_i64 range;
+    if (vim_state.mode == VIM_Visual)
+    {
+        range = view_get_selected_range(app, view);
+    }
+    else
+    {
+        range = Ii64(view_get_cursor_pos(app, view));
+    }
+    
+    range.min = get_line_start_pos_from_pos(app, buffer, range.min);
+    range.max = get_line_end_pos_from_pos  (app, buffer, range.max);
+    buffer_insert_pos(app, buffer, range.max, /*{*/str8lit("\n}"));
+    buffer_insert_pos(app, buffer, range.min, str8lit("{\n")/*}*/);
+    
+    auto_indent_buffer(app, buffer, Ii64(range.min, range.max+4));
+    
+    if (vim_state.mode == VIM_Visual)
+        vim_normal_mode(app);
 }
 
 CUSTOM_COMMAND_SIG(kv_reopen_with_confirmation)
@@ -436,11 +456,40 @@ CUSTOM_DOC("Like reopen, but asks for confirmation")
 
 VIM_COMMAND_SIG(kv_surround_paren)          {kv_surround_with(app, "(", ")");}
 VIM_COMMAND_SIG(kv_surround_paren_spaced)   {kv_surround_with(app, "( ", " )");}
-VIM_COMMAND_SIG(kv_surround_bracket)        {kv_surround_with(app, "[", "]");}
-VIM_COMMAND_SIG(kv_surround_bracket_spaced) {kv_surround_with(app, "[ ", " ]");}
 VIM_COMMAND_SIG(kv_surround_brace)          {kv_surround_with(app, "{", "}");}
 VIM_COMMAND_SIG(kv_surround_brace_spaced)   {kv_surround_with(app, "{ ", " }");}
 VIM_COMMAND_SIG(kv_surround_double_quote)   {kv_surround_with(app, "\"", "\"");}
+
+internal void
+cmd_closing_bracket_in_visual_mode(App *app)
+{
+    GET_VIEW_AND_BUFFER;
+    b32 decide_to_move_the_cursor = false;
+    b32 visual_line = (vim_state.params.edit_type == EDIT_LineWise);
+    if (visual_line)
+    {
+        decide_to_move_the_cursor = true;
+    }
+    else
+    {
+        Range_i64 selected = get_selected_range(app);
+        i64 line0 = get_line_number_from_pos(app, buffer, selected.min);
+        i64 line1 = get_line_number_from_pos(app, buffer, selected.max);;
+        if (line0 != line1)
+        {
+            decide_to_move_the_cursor = true;
+        }
+    }
+    
+    if (decide_to_move_the_cursor)
+    {
+        vim_paragraph_down(app);
+    }
+    else
+    {
+        kv_surround_with(app, "[", "]");
+    }
+}
 
 VIM_COMMAND_SIG(kv_void_command) { return; }
 
@@ -660,7 +709,7 @@ kv_jump_ultimate(App *app)
     Range_i64 file_range = get_surrounding_file_range(app);
     if (file_range.max > 0)
     {
-        String8 path = push_buffer_range(app, temp, buffer, file_range);
+        String path = push_buffer_range(app, temp, buffer, file_range);
         if ( view_open_file(app, view, path, true) )
         {
             already_jumped = true;
@@ -686,7 +735,7 @@ kv_jump_ultimate(App *app)
     
     if (!already_jumped)
     {// NOTE(kv): go to the "file" file
-        yank_current_filename(app);  // In case we wanna paste add the current filename in
+        // yank_current_filename_(app);  // In case we wanna paste add the current filename in
         switch_to_buffer_named(app, KV_FILE_FILENAME);
     }
 }
@@ -753,7 +802,7 @@ kv_do_t_internal(App *app, b32 shiftp)
       replacement = push_string_const_u8(temp, 1);
       replacement.str[0] = upper;
     }
-    buffer_replace_range(app, buffer, pos, max, replacement);
+    buffer_replace_range(app, buffer, Ii64(pos,max), replacement);
 
     // 3. move
     view_set_cursor_and_preferred_x(app, view, seek_pos(alpha_max));
@@ -791,25 +840,6 @@ CUSTOM_DOC("kv copy dir name")
   Scratch_Block temp(app);
   String8 dirname = push_buffer_dirname(app, temp, buffer);
   clipboard_post(0, dirname);
-}
-
-internal void 
-kv_newline_and_indent(App *app)
-{
-    GET_VIEW_AND_BUFFER;
-    HISTORY_GROUP_SCOPE;
-    write_text(app, str8lit("\n"));
-    auto_indent_line_at_cursor(app);
-    {// NOTE: Handling for brace
-        i64 curpos = view_get_cursor_pos(app, view);
-        u8 character = buffer_get_char(app, buffer, curpos);
-        if (character == '}')
-        {
-            write_text(app, str8lit("\n"));
-            move_vertical_lines(app, -1);
-            auto_indent_line_at_cursor(app);
-        }
-    }
 }
 
 internal void 
@@ -904,34 +934,6 @@ kv_list_all_locations(App *app)
         if (needle_str.size)
         {
             kv_list_all_locations_from_string(app, needle_str); 
-        }
-    }
-}
-
-internal void
-kv_handle_return(App *app)
-{
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    if (buffer)
-    {// Writable buffer
-        if ( fui_handle_slider(app, buffer) )
-        {
-            // pass
-        }
-        else
-        {
-            save_all_dirty_buffers(app);
-        }
-    }
-    else
-    {
-        buffer = view_get_buffer(app, view, Access_ReadVisible);
-        if (buffer)
-        {// Readonly buffer
-            vim_push_jump(app, get_active_view(app, Access_ReadVisible));
-            goto_jump_at_cursor(app);
-            lock_jump_buffer(app, buffer);
         }
     }
 }
@@ -1143,6 +1145,34 @@ quick_align_command(App *app)
             String spaces = { space_buffer, (u64)clamp_top(nspaces,256) };
             i64 pos = the_range.start + line->start + line->equal_sign_pos;
             buffer_replace_range(app, buffer, Ii64(pos,pos), spaces);
+        }
+    }
+}
+
+internal void
+kv_handle_return_normal_mode(App *app)
+{
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+    if (buffer)
+    {// Writable buffer
+        if ( fui_handle_slider(app, buffer) )
+        {
+            // pass
+        }
+        else
+        {
+            save_all_dirty_buffers(app);
+        }
+    }
+    else
+    {
+        buffer = view_get_buffer(app, view, Access_ReadVisible);
+        if (buffer)
+        {// Readonly buffer
+            vim_push_jump(app, get_active_view(app, Access_ReadVisible));
+            goto_jump_at_cursor(app);
+            lock_jump_buffer(app, buffer);
         }
     }
 }

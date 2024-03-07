@@ -329,8 +329,10 @@ view_point_difference(Application_Links *app, View_ID view, Buffer_Point a, Buff
 ////////////////////////////////
 
 function Range_i64
-buffer_range(Application_Links *app, Buffer_ID buffer){
+buffer_range(App *app, Buffer_ID buffer)
+{
     Range_i64 range = {};
+    range.min = 0;
     range.end = buffer_get_size(app, buffer);
     return(range);
 }
@@ -340,6 +342,7 @@ buffer_side(Application_Links *app, Buffer_ID buffer, Side side){
     return(range_side(buffer_range(app, buffer), side));
 }
 
+// NOTE(kv): this was written by Allen, but idk why it doesn't increment the range max
 function Range_i64
 get_view_range(Application_Links *app, View_ID view){
     return(Ii64(view_get_cursor_pos(app, view), view_get_mark_pos(app, view)));
@@ -756,8 +759,8 @@ seek_string_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle
     for (;;)
     {
         match = buffer_seek_string(app, buffer, needle, Scan_Forward, (i32)match.range.first, true);
-        if (match.buffer != buffer || match.range.first >= end)
-            break;
+        if ( HasFlag(match.flags, StringMatch_CaseSensitive) ) break;
+        if (match.buffer != buffer || match.range.first >= end) break;
     }
     if (match.range.first < end && match.buffer == buffer){
         *result = match.range.first;
@@ -775,8 +778,9 @@ seek_string_backward(App *app, Buffer_ID buffer, i64 pos, i64 min, String8 needl
     for (;;)
     {
         match = buffer_seek_string(app, buffer, needle, Scan_Backward, match.range.first, true);
-        if (HasFlag(match.flags, StringMatch_CaseSensitive) ||
-            match.buffer != buffer || match.range.first < min) break;
+        if ( HasFlag(match.flags, StringMatch_CaseSensitive) ) break;
+        if (match.buffer != buffer || match.range.first < min) break;
+        
     }
     if (match.range.first >= min && match.buffer == buffer){
         *result = match.range.first;
@@ -1391,15 +1395,17 @@ history_group_end(History_Group group){
 ////////////////////////////////
 
 function void
-replace_in_range(Application_Links *app, Buffer_ID buffer, Range_i64 range, String_Const_u8 needle, String_Const_u8 string)
+replace_in_range(App *app, Buffer_ID buffer, Range_i64 range, String needle, String string)
 {
     // TODO(allen): rewrite
     History_Group group = history_group_begin(app, buffer);
     i64 pos = range.min - 1;
     i64 new_pos = 0;
+    // bookmark
     seek_string_forward(app, buffer, pos, range.end, needle, &new_pos);
     i64 shift = replace_range_shift(needle.size, string.size);
-    for (; new_pos + (i64)needle.size <= range.end;){
+    for (; new_pos + (i64)needle.size <= range.end;)
+    {
         Range_i64 needle_range = Ii64(new_pos, new_pos + (i32)needle.size);
         buffer_replace_range(app, buffer, needle_range, string);
         range.end += shift;

@@ -289,15 +289,14 @@ kv_startup(App *app)
     ProfileScope(app, "kv_startup");
     Scratch_Block temp(app);
     
-	set_window_title(app, SCu8("4coder kv"));
+    set_window_title(app, str8lit("4coder kv"));
     load_themes_default_folder(app);
     kv_4coder_initialize(app);
     
-    String8 startup_hot_directory = def_get_config_string(temp, vars_intern_lit("startup_hot_directory"));
+    String startup_hot_directory = def_get_config_string(temp, vars_intern_lit("startup_hot_directory"));
     set_hot_directory(app, startup_hot_directory);
    
-// #if !KV_INTERNAL
-#if 1 //nono
+#if !KV_INTERNAL
     load_project(app);
 #endif
     
@@ -474,7 +473,7 @@ kv_vim_bindings(App *app)
     BIND(N|0|MAP, kv_jump_ultimate,                   KeyCode_F);
     BIND(N|0|MAP, kv_jump_ultimate_other_panel,     M|KeyCode_F);
     BIND(0|V|MAP, vim_set_seek_char,                  KeyCode_F);
-    BIND(N|0|MAP, vim_paragraph_up,                   KeyCode_LeftBracket);
+    BIND(N|V|MAP, vim_paragraph_up,                   KeyCode_LeftBracket);
     BIND(N|0|MAP, vim_paragraph_down,                 KeyCode_RightBracket);
     BIND(N|V|MAP, vim_screen_top,                  (S|KeyCode_H));
     BIND(N|V|MAP, vim_screen_bot,                  (S|KeyCode_L));
@@ -542,15 +541,15 @@ kv_vim_bindings(App *app)
     // surround paren
     BIND(V|MAP,   kv_surround_paren,                 KeyCode_0);
     BIND(V|MAP,   kv_surround_paren_spaced,          KeyCode_9);
-    BIND(V|MAP,   kv_surround_bracket,               KeyCode_RightBracket);
-    BIND(V|MAP,   kv_surround_bracket_spaced,        KeyCode_LeftBracket);
+    BIND(V|MAP,   cmd_closing_bracket_in_visual_mode,KeyCode_RightBracket);
     BIND(V|MAP,   kv_surround_brace,               S|KeyCode_RightBracket);
     BIND(V|MAP,   kv_surround_brace_spaced,        S|KeyCode_LeftBracket);
     BIND(V|MAP,   kv_surround_double_quote,          KeyCode_Quote);
+    BIND(N|V,     kv_surround_brace_special,       M|KeyCode_LeftBracket)
     BIND(N|MAP,   kv_delete_surrounding_groupers,  M|KeyCode_RightBracket);
     
     // NOTE(kv) KV miscellaneous binds
-    BIND(N|  MAP,  kv_handle_return,                        KeyCode_Return);
+    BIND(N,  kv_handle_return_normal_mode, KeyCode_Return);
     // BIND(N|  MAP,  if_read_only_goto_position_same_panel, S|KeyCode_Return);
     //
     BIND(N|  MAP,  write_space,                KeyCode_Space);

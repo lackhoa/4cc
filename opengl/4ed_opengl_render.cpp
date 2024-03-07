@@ -130,23 +130,13 @@ R"foo(
     smooth out vec2 adjusted_half_dim;
     smooth out float half_thickness;
 
-    float srgb_to_linear(float x)
-    {
-        float r = 0;
-        if (x <= 0.04045) r = x/12.92;
-        else              r = pow(((x + 0.055)/1.055), 2.4);
-        return(r);
-    }
-
     void main(void)
     {
         gl_Position = view_m * vec4(vertex_xyz, 1);
         fragment_color.rgba = vertex_color.bgra;
         if (linear_alpha_blend)
         {
-            fragment_color.r = srgb_to_linear(fragment_color.r);
-            fragment_color.g = srgb_to_linear(fragment_color.g);
-            fragment_color.b = srgb_to_linear(fragment_color.b);
+            fragment_color.rgb *= (fragment_color.rgb);
         }
         uvw = vertex_uvw;
         vec2 center = vertex_uvw.xy;
@@ -159,37 +149,45 @@ R"foo(
 
 global char *gl__fragment_shader =
 R"foo(
-   smooth in vec4 fragment_color;
-   smooth in vec3 uvw;
-   smooth in vec2 xy;
-   smooth in vec2 adjusted_half_dim;
-   smooth in float half_thickness;
-   uniform sampler2DArray sampler;
-   out vec4 out_color;
+    uniform sampler2DArray sampler;
+    //
+    smooth in vec4 fragment_color;
+    smooth in vec3 uvw;
+    smooth in vec2 xy;
+    smooth in vec2 adjusted_half_dim;
+    smooth in float half_thickness;
+    //
+    out vec4 out_color;
+    
+    float rectangle_sd(vec2 p, vec2 b)
+    {
+        vec2 d = abs(p) - b;
+        return(length(max(d, vec2(0,0))) + 
+               min(max(d.x, d.y), 0.0));
+    }
+    
+    void main(void)
+    {
+        float value;
+        {
+            bool has_thickness = half_thickness > 0.49;
+            if (has_thickness)
+            {
+                vec2 center = uvw.xy;
+                float sd = rectangle_sd(xy - center, adjusted_half_dim);
+                float roundness = uvw.z;
+                sd = sd - roundness;
+                sd = abs(sd + half_thickness) - half_thickness;
+                value = smoothstep(0.0, -1.0, sd);
+            }
+            else
+            {
+                value = texture(sampler, uvw).r;
+            }
+        }
         
-   float rectangle_sd(vec2 p, vec2 b){
-       vec2 d = abs(p) - b;
-       return(length(max(d, vec2(0.0, 0.0))) + min(max(d.x, d.y), 0.0));
-   }
-        
-   void main(void)
-   {
-       float has_thickness = (step(0.49, half_thickness));
-       float does_not_have_thickness = 1.0 - has_thickness;
-       
-       float sample_value = texture(sampler, uvw).r;
-       sample_value *= does_not_have_thickness;
-       
-       vec2 center = uvw.xy;
-       float roundness = uvw.z;
-       float sd = rectangle_sd(xy - center, adjusted_half_dim);
-       sd = sd - roundness;
-       sd = abs(sd + half_thickness) - half_thickness;
-       float shape_value = 1.0 - smoothstep(-1.0, 0.0, sd);
-       shape_value *= has_thickness;
-       
-       out_color = vec4(fragment_color.rgb, fragment_color.a*(sample_value + shape_value));
-   }
+        out_color = vec4(fragment_color.rgb, fragment_color.a*value);
+    }
    )foo";
 
 // IMPORTANT(kv): Unmaintained
@@ -434,7 +432,7 @@ gl_render(Render_Target *t)
                 
                 glScissor(scissor_x, scissor_y, scissor_w, scissor_h);
             }
-           
+          
             if (game_mode)
             {
                 gl__bind_texture(t, global_game_texture);
@@ -452,6 +450,8 @@ gl_render(Render_Target *t)
                 }
             }
             
+            // NOTE(kv): In the editor, rectangles and fonts are mixed together in one Render_Group.
+            // So we can't quite say "enable srgb for fonts"
             if (group->linear_alpha_blend)
             {
                 glEnable (GL_FRAMEBUFFER_SRGB);
@@ -503,14 +503,79 @@ gl_render(Render_Target *t)
                 // NOTE(kv): Offset to opengl's bilateral normalized space, as well as render group offset
                 v1 c = a * group->offset.x - 1.0f;
                 v1 d = b * group->offset.y - 1.0f*y_sign;
-                v1 view_m[] = 
+                m4x4 view_m = 
                 {
-                    a,0,0,0,
-                    0,b,0,0,
-                    0,0,1,0,
-                    c,d,0,1,
+                    {
+                        a,0,0,0,
+                        0,b,0,0,
+                        0,0,1,0,
+                        c,d,0,1,
+                    }
                 };
-                glUniformMatrix4fv(program->view_m, 1, GL_FALSE, view_m);
+               
+                if (group->is_perspective)
+                {
+                    Camera *camera = &group->camera;
+                   
+                    // nono: combine this into one projection matrix
+                    m4x4 camera_project =
+                    {
+                        {
+                            V4(camera->project.x,0),
+                            V4(camera->project.y,0),
+                            V4(camera->project.z,0),
+                            V4(0,0,0,1),
+                        }
+                    };
+                    
+                    m4x4 z_to_depth =
+                    {
+                        {
+                           V4(1,0,0,0),
+                           V4(0,1,0,0),
+                           V4(0,0,-1,0),
+                           V4(0,0,camera->distance,1),
+                        } 
+                    };
+                    
+                    v1 focal = camera->focal_length;
+                    v1 n  = 10.0f;         // NOTE: in depth
+                    v1 f  = 100.0f * 1E3;  // NOTE: in depth
+                    
+                    m4x4 perspective_project =
+                    {
+                        {
+                            focal, 0,     0,            0,
+                            0,     focal, 0,            0,
+                            0,     0,     (-n-f)/(n-f), 1,
+                            0,     0,     2*f*n/(n-f),  0,
+                        },
+                    };
+                    
+                    m4x4 camera_project_and_z_to_depth = (z_to_depth * camera_project);
+                    m4x4 camera_project_and_z_to_depth_and_perspective = perspective_project * camera_project_and_z_to_depth;
+                    view_m = view_m * camera_project_and_z_to_depth_and_perspective;
+                    
+                    if (1)
+                    {// nono: Let's test our stuff
+                        v1 U = 1e3;
+                        v4 O = v4{0,0,0,1};
+                        v4 O1 = camera_project * O;
+                        v4 O2 = z_to_depth * O1;
+                        v4 O3 = perspective_project * O2;
+                        O3 /= O3.w;
+                            
+                        v4 point = U * v4{0,0,1,1};
+                        v4 point1 = camera_project * point;
+                        v4 point2 = z_to_depth * point1;
+                        v4 point3 = perspective_project * point2;
+                        point3 /= point3.w;
+                       
+                        breakhere;
+                    }
+                }
+                
+                glUniformMatrix4fv(program->view_m, 1, GL_FALSE, (v1*)view_m.v);
                 glUniform1i       (program->linear_alpha_blend, group->linear_alpha_blend);
                 glUniform1i       (program->sampler, 0);  // NOTE(kv): idk if this has a meaning?
             }

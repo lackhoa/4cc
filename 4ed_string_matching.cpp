@@ -120,8 +120,12 @@ find_matches_forward(Arena *arena, i32 maximum_output_count,
             c = node->string.str[chunk_pos];
             n = i - j;
             needle_c = needle.str[n];
+#if 0
             if ((c == needle_c) ||
                 (!case_sensitive && (character_to_upper(c) == character_to_upper(needle_c))))
+#else
+            if (character_to_upper(c) == character_to_upper(needle_c))
+#endif
             {
                 if (c != needle_c)
                 {

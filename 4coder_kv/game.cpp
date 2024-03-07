@@ -25,22 +25,6 @@ global u32 white_argb  = pack_argb(white_v4);
 // NOTE: This is a dummy buffer, so we can use the same commands to switch to the rendered game
 global String GAME_BUFFER_NAME = str8lit("*game*");
 
-struct Camera
-{
-    v1 distance;  // NOTE: by its axis z
-    union
-    {
-        m3x3 axes;    // transform to project the object onto the camera axes
-        struct
-        {
-            v3 x;
-            v3 y;
-            v3 z;
-        };
-    };
-    m3x3 project;
-    v1   focal_length;
-};
 
 struct Screen
 {
@@ -310,7 +294,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
 }
 
 internal v3
-perspective_project(Camera *camera, v3 point)
+perspective_project_(Camera *camera, v3 point)
 {
     v3 projected = matvmul3(&camera->project, point);
     // NOTE: distance is in camera_z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
@@ -325,6 +309,16 @@ perspective_project(Camera *camera, v3 point)
     }
     else
         return V3All(F32_MAX);
+}
+
+internal v3
+perspective_project_nono(Camera *camera, v3 point)
+{
+#if 0
+    return perspective_project_(camera, point);
+#else
+    return point;
+#endif
 }
 
 internal v1
@@ -345,7 +339,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
     {// NOTE: Control points
         for_i32 (index, 1, 3)
         {
-            v3 screen_p = perspective_project(camera, P[index]);
+            v3 screen_p = perspective_project_nono(camera, P[index]);
             draw_circle(app, screen_p.xy, radius_a, yellow_argb, screen_p.z);
         }
     }
@@ -365,7 +359,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
                       3*squared(u)*(U)*P[2] +
                       1*cubed(u)*P[3]);
         //
-        v3 screen_p = perspective_project(camera, world_p);
+        v3 screen_p = perspective_project_nono(camera, world_p);
         
         v1 draw_radius;
         {// NOTE: Having to calculate the focal_length/dz twice :<
@@ -388,7 +382,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
         {
             for_u32 (j,0,4)
             {
-                v3 screen_p = perspective_project(camera, P[i][j]);
+                v3 screen_p = perspective_project_nono(camera, P[i][j]);
                 draw_circle(app, screen_p.xy, 6.0f, gray_argb, screen_p.z);
             }
         }
@@ -411,7 +405,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
                                 P[i][j]);
                 }
             }
-            v3 screen_p = perspective_project(camera, world_p);
+            v3 screen_p = perspective_project_nono(camera, world_p);
             
             v1 radius = 12.0f;
             v1 draw_radius;
@@ -649,6 +643,16 @@ struct Game_State
     Widget *curve_widgets;
 };
 
+internal v3
+point_on_sphere(i32 nsegment, v1 radius, i32 itheta, i32 iphi)
+{
+    v1 segment = 1/(v1)nsegment;
+    v1 phi   = segment*(v1)iphi;
+    v1 theta = segment*(v1)itheta;
+    v2 xy = cos_turn(phi) * arm2(theta);
+    return radius * V3(xy, sin_turn(phi));
+}
+
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 // TODO: If there are two panels, this function will be called twice!
 internal void
@@ -657,12 +661,6 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     local_persist b32 is_initial_frame = true;
     b32 view_active = view_is_active(app, view);
     
-    // NOTE: Setup sane math coordinate system.
-    v2 clip_dim = rect_dim( draw_get_clip(app) );
-    v2 clip_half_dim = 0.5f * clip_dim;
-    v2 layout_center = clip_half_dim;
-   
-    draw_set_coordinate_system(app, true, layout_center, true, true);
     
     for_i32 (keycode, 1, KeyCode_COUNT)
     {// NOTE: Enable animation if any key is down
@@ -719,12 +717,12 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     
     local_persist Game_Save save = {};
     
-    local_persist String8 save_dir  = {};
-    local_persist String8 save_path = {};
+    local_persist String save_dir  = {};
+    local_persist String save_path = {};
     
     if ( is_initial_frame )
     {// NOTE: Save data business
-        String8 binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+        String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
         save_dir  = pjoin(&global_permanent_arena, binary_dir, "data");
         save_path = pjoin(&global_permanent_arena, save_dir, "data.kv");
         
@@ -778,15 +776,25 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
         
         v3 camz;
-        camz.z = sin_turn(save.camera_phi);
+        camz.y = sin_turn(save.camera_phi);
         v1 cos_phi = cos_turn(save.camera_phi);
-        v2 xy_point = V2(cos_turn(save.camera_theta),
-                         sin_turn(save.camera_theta));
-        camz.xy = cos_phi * xy_point;
+        v1 z_point = cos_turn(save.camera_theta);
+        v1 x_point = sin_turn(save.camera_theta);
+        camz.z = cos_phi * z_point;
+        camz.x = cos_phi * x_point;
+        
         camera->distance = U * save.camera_distance;
+        
+        //nono
+#if 0
+        z_point = 1.f;
+        x_point = 0.f;
+        camz = V3(0,0,1);
+#endif
+        
         {//setup_camera_from_data(camera, camz, distance);
             // NOTE: "camz" is normalized.
-            camera->x = V3(perp(xy_point), 0);
+            camera->x = v3{z_point, 0, -x_point};
             camera->y = noz( cross(camz, camera->x) );
             camera->z = camz;
             
@@ -803,25 +811,47 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         DEBUG_VALUE(camera->distance);
         DEBUG_VALUE(camera->z);
     }
-    
-    { // push coordinate system
-        v3 pO_screen, px_screen, py_screen, pz_screen;
+  
+    {
+        // NOTE: Setup sane math coordinate system.
+        rect2 clip_box = draw_get_clip(app);
+        v2 clip_dim = rect_dim(clip_box);
+        v2 clip_half_dim = 0.5f * clip_dim;
+        v2 layout_center = clip_box.min + clip_half_dim;
+        Render_Config config = 
         {
-            v3 pO = v3{0,0,0};
-            v3 px = U * v3{1,0,0};
-            v3 py = U * v3{0,1,0};
-            v3 pz = U * v3{0,0,1};
+            .offset             = layout_center,
+            .y_is_up            = true,
+            .is_perspective     = true,
+            .camera             = *camera,
+            .depth_test         = true,
+            .linear_alpha_blend = true,
+        };
+        draw_configure(app, &config);
+    }
+    
+    {// NOTE: Coordinate system
+        v3 pO, px, py, pz;
+        {
+            v3 world_pO = v3{0,0,0};
+            v3 world_px = U * v3{1,0,0};
+            v3 world_py = U * v3{0,1,0};
+            v3 world_pz = U * v3{0,0,1};
             //
-            pO_screen = perspective_project(camera, pO);
-            px_screen = perspective_project(camera, px);
-            py_screen = perspective_project(camera, py);
-            pz_screen = perspective_project(camera, pz);
+            pO = perspective_project_nono(camera, world_pO);
+            px = perspective_project_nono(camera, world_px);
+            py = perspective_project_nono(camera, world_py);
+            pz = perspective_project_nono(camera, world_pz);
         }
         
-        f32 line_thickness = 8.0f;
-        draw_line(app, pO_screen, px_screen, line_thickness, pack_argb({.5,  0,  0, 1}));
-        draw_line(app, pO_screen, py_screen, line_thickness, pack_argb({ 0, .5,  0, 1}));
-        draw_line(app, pO_screen, pz_screen, line_thickness, pack_argb({ 0,  .5, 1, 1}));
+        v1 thickness = 8.0f;
+        draw_line(app, pO, px, thickness, pack_argb({.5,  0,  0, 1}));
+        draw_line(app, pO, py, thickness, pack_argb({ 0, .5,  0, 1}));
+        draw_line(app, pO, pz, thickness, pack_argb({ 0,  .5, 1, 1}));
+        
+        //draw_triangle(app, pO, px, py, gray_argb);
+        draw_triangle(app, pO, py, pz, gray_argb);
+        //draw_triangle(app, pO, pz, px, gray_argb);
     }
     
     const u32 bezier_count = 3;
@@ -895,14 +925,16 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
     }
     
-    
+#if 0
     {// NOTE: Drawing our widgets
         v2 dim = V2(100,100);
         v2 at  = V2(-clip_half_dim.x, clip_half_dim.y-dim.y);
         draw_widget_children(app, widget_state, &widget_state->root, at);
     } 
-     
-    {// NOTE: Bezier surface
+#endif
+    
+    if (0)
+    {// NOTE: Bezier surface experiment
         local_persist v3 init_control_points[4][4];
         if ( is_initial_frame )
         {
@@ -963,70 +995,66 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         draw_bezier_surface(app, camera, control_points, active_i, active_j);
     }
     
-    fslider(software_rendering_slider, 0.0f);
-    if (software_rendering_slider > 0)
-    {// NOTE: software rendering experiments
-        v3i dim = {768, 768, 1};
-        local_persist b32 initial = true;
-        local_persist u32 *data = 0;
-        local_persist Texture_ID game_texture = {};
-        Model model = {};
-        b32 draw_mesh = def_get_config_b32(vars_intern_lit("draw_mesh"));
-        if (initial)
-        {
-            initial = false;
-            if (draw_mesh)
+    {// NOTE: The sphere game!
+        local_persist v1 active_phi   = 0.f;
+        local_persist v1 active_theta = 0.f;
+        
+        i32 nsegment = 16;
+        v1 segment = 1/(v1)nsegment;
+        v1 radius = U;
+#if 1
+        for_i32 (iphi, -nsegment/4, nsegment/4 + 1)
+        {// NOTE: Draw points
+            u32 nloop = nsegment;
+            if (iphi == -nsegment/4 || iphi == nsegment/4)
             {
-                char *filename = "C:/Users/vodan/4ed/4coder-non-source/tiny_renderer/diablo3_pose.obj";
-                model = new_model(filename);
+                nloop = 1;
             }
-            // create game texture
-            game_texture = graphics_get_texture(dim, TextureKind_ARGB);
-            graphics_set_game_texture(game_texture);
-            // allocate memory
-            umm size = 4 * dim.x * dim.y * dim.z;
-            data = (u32 *)malloc(size);
-            block_zero(data, size);
+            for_u32 (itheta, 0, nloop)
+            {
+                v3 world_pos = point_on_sphere(nsegment, radius, itheta, iphi);
+                v3 screen_pos = perspective_project_nono(camera, world_pos);
+                u32 color = gray_argb;
+                draw_circle(app, screen_pos.xy, 8.f, color, screen_pos.z);
+            }
         }
+#endif
         
-        tiny_renderer_main(dim.xy, data, &model);
-        graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
-        
-        v2 position = v2{10,10};
-        fslider( scale, 0.338275f );
-        v2 draw_dim = scale * castV2(dim.x, dim.y);
-        draw_textured_rect(app, rect2_min_dim(position, draw_dim));
-    }
-   
-    if (1)
-    {// test srgb
-        // background
-        draw_rect(app, rect2_min_dim(V2(0,0), V2(400,400)), 0xff000000);
-        // 50%-blended white
-        draw_rect(app, rect2_min_dim(V2(0,0), V2(200,200)), 0x80ffffff);
-        // midpoint gray in srgb value (which isn't even the correct blending)
-        // draw_rect(app, rect2_min_dim(V2(200,0), V2(200,200)), 0xff808080);
-        // linear blend
-        draw_rect(app, rect2_min_dim(V2(0,200), V2(200,200)), 0xffbababa);
-        
-        //c 10 + 11*16
-        
-        // defcolor_base
-        //draw_rect(app, rect2_min_dim(V2(200,200), V2(200,200)), 0xff777700);
-        
-        // a*x / (1-a)*y
-        // (x^2.2) / (1-a)*(y^2.2))^0.4545
-        
-        // x/(foreground) should be 1, y/(background) should be 0
-        // blended color in linear space is: 0.501961
-        // blended color in srgb space is:   0.731062 -> 186 -> 0xBA
-        // blended color in clip space 
-        
-        // if done wrong: 0.5 -> 0x80
-        //c 0.5*100
+#if 1
+        for_i32 (iphi, -nsegment/4, nsegment/4)
+        {// NOTE: Draw quads on the surface of the sphere
+            for_i32 (itheta, 0, nsegment)
+            {
+#define SPHERE(ITHETA, IPHI) perspective_project_nono(camera, point_on_sphere(nsegment, radius, ITHETA, IPHI))
+                //
+                v3 p0 = SPHERE(itheta+0, iphi+0);
+                v3 p1 = SPHERE(itheta+1, iphi+0);
+                v3 p2 = SPHERE(itheta+0, iphi+1);
+                v3 p3 = SPHERE(itheta+1, iphi+1);
+#undef SPHERE
+                {
+                    draw_quad(app, p0, p1, p2, p3, gray_argb);
+                }
+            }
+        }
+        v3 midpoint = perspective_project_nono(camera, U*v3{0,0,1});
+        draw_point(app, midpoint, 8.0f, yellow_argb);
+#endif
     }
     
-    draw_set_coordinate_system(app, false, V2Zero(), false, false);
+    ////////////////////////////////////////////////////////////////////
+    
+    {
+        Render_Config config = 
+        {
+            .offset             = v2{},
+            .y_is_up            = false,
+            .is_perspective     = false,
+            .depth_test         = false,
+            .linear_alpha_blend = false,
+        };
+        draw_configure(app, &config);
+    }
     
     block_zero_array(global_game_key_state_changes);
     is_initial_frame = false;

@@ -96,3 +96,66 @@ template <class t> struct Vec3
 	inline Vec3<t> operator ^(const Vec3<t> &v) const { return Vec3<t>(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x); }
 	Vec3<t> & normalize(t l=1) { *this = (*this)*(l/norm()); return *this; }
 };
+
+    if (1)
+    {// test srgb
+        // background
+        draw_rect(app, rect2_min_dim(V2(0,0), V2(400,400)), 0xff000000);
+        // 50%-blended white
+        draw_rect(app, rect2_min_dim(V2(0,0), V2(200,200)), 0x80ffffff);
+        // midpoint gray in srgb value (which isn't even the correct blending)
+        // draw_rect(app, rect2_min_dim(V2(200,0), V2(200,200)), 0xff808080);
+        // linear blend
+        draw_rect(app, rect2_min_dim(V2(0,200), V2(200,200)), 0xffbababa);
+        
+        //c 10 + 11*16
+        
+        // defcolor_base
+        //draw_rect(app, rect2_min_dim(V2(200,200), V2(200,200)), 0xff777700);
+        
+        // a*x / (1-a)*y
+        // (x^2.2) / (1-a)*(y^2.2))^0.4545
+        
+        // x/(foreground) should be 1, y/(background) should be 0
+        // blended color in linear space is: 0.501961
+        // blended color in srgb space is:   0.731062 -> 186 -> 0xBA
+        // blended color in clip space 
+        
+        // if done wrong: 0.5 -> 0x80
+        //c 0.5*100
+    }
+
+    fslider(software_rendering_slider, 0.0f);
+    if (software_rendering_slider > 0)
+    {// NOTE: software rendering experiments
+        v3i dim = {768, 768, 1};
+        local_persist b32 initial = true;
+        local_persist u32 *data = 0;
+        local_persist Texture_ID game_texture = {};
+        Model model = {};
+        b32 draw_mesh = def_get_config_b32(vars_intern_lit("draw_mesh"));
+        if (initial)
+        {
+            initial = false;
+            if (draw_mesh)
+            {
+                char *filename = "C:/Users/vodan/4ed/4coder-non-source/tiny_renderer/diablo3_pose.obj";
+                model = new_model(filename);
+            }
+            // create game texture
+            game_texture = graphics_get_texture(dim, TextureKind_ARGB);
+            graphics_set_game_texture(game_texture);
+            // allocate memory
+            umm size = 4 * dim.x * dim.y * dim.z;
+            data = (u32 *)malloc(size);
+            block_zero(data, size);
+        }
+        
+        tiny_renderer_main(dim.xy, data, &model);
+        graphics_fill_texture(TextureKind_ARGB, game_texture, v3i{}, dim, data);
+        
+        v2 position = v2{10,10};
+        fslider( scale, 0.338275f );
+        v2 draw_dim = scale * castV2(dim.x, dim.y);
+        draw_textured_rect(app, rect2_min_dim(position, draw_dim));
+    }

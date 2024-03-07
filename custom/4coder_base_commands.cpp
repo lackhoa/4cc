@@ -131,15 +131,6 @@ CUSTOM_DOC("Swaps the position of the cursor and the mark.")
     view_set_mark(app, view, seek_pos(cursor));
 }
 
-CUSTOM_COMMAND_SIG(delete_range)
-CUSTOM_DOC("Deletes the text in the range between the cursor and the mark.")
-{
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    Range_i64 range = get_view_range(app, view);
-    buffer_replace_range(app, buffer, range, string_u8_empty);
-}
-
 function  void
 current_view_boundary_delete(Application_Links *app, Scan_Direction direction, Boundary_Function_List funcs){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
@@ -554,6 +545,7 @@ CUSTOM_DOC("Puts the cursor at the top of the file, and the mark at the bottom o
 
 ////////////////////////////////
 
+// @Cleanup no need for this
 CUSTOM_COMMAND_SIG(To_uppercase)
 CUSTOM_DOC("Converts all ascii text in the range between the cursor and the mark to uppercase.")
 {
@@ -1220,7 +1212,8 @@ CUSTOM_DOC("Queries the user for a needle and string. Replaces all occurences of
     String_Pair pair = query_user_replace_pair(app, scratch);
     for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
          buffer != 0;
-         buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible)){
+         buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
+    {
         Range_i64 range = buffer_range(app, buffer);
         replace_in_range(app, buffer, range, pair.a, pair.b);
     }

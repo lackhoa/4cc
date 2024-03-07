@@ -298,3 +298,22 @@ kv_view_input_handler(App *app)
         }
     }
 }
+
+internal void 
+kv_newline_and_indent(App *app)
+{
+    GET_VIEW_AND_BUFFER;
+    HISTORY_GROUP_SCOPE;
+    write_text(app, str8lit("\n"));
+    
+    i64 curpos = view_get_cursor_pos(app, view);
+    u8 character = buffer_get_char(app, buffer, curpos);
+    if (character == /*{*/'}')
+    {// NOTE: Handling for brace
+        write_text(app, str8lit("\n"));
+        auto_indent_line_at_cursor(app);
+        move_vertical_lines(app, -1);
+    }
+    
+    auto_indent_line_at_cursor(app);
+}

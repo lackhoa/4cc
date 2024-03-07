@@ -261,9 +261,11 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     b32 result = false;
-    if (api_check_buffer(file)){
+    if (api_check_buffer(file))
+    {
         i64 size = buffer_size(&file->state.buffer);
-        if (0 <= range.first && range.first <= range.one_past_last && range.one_past_last <= size){
+        if (0 <= range.first && range.first <= range.one_past_last && range.one_past_last <= size)
+        {
             Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
             edit_single(app->tctx, models, file, range, string, behaviors);
             result = true;
@@ -272,22 +274,22 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
     return(result);
 }
 
-inline void
-buffer_replace_range(App *app, Buffer_ID buffer, i64 min, i64 max, String8 replacement)
-{
-  buffer_replace_range(app, buffer, Ii64(min, max), replacement);
-}
-
 inline void 
-buffer_delete_range(App *app, Buffer_ID buffer, i64 min, i64 max)
+buffer_delete_range(App *app, Buffer_ID buffer, Range_i64 range)
 {
-  buffer_replace_range(app, buffer, Ii64(min, max), string_u8_empty);
+    buffer_replace_range(app, buffer, range, string_u8_empty);
 }
 
 inline void 
 buffer_delete_pos(App *app, Buffer_ID buffer, i64 min)
 {
-  buffer_replace_range(app, buffer, Ii64(min, min+1), string_u8_empty);
+    buffer_replace_range(app, buffer, Ii64(min, min+1), string_u8_empty);
+}
+
+inline void
+buffer_insert_pos(App *app, Buffer_ID buffer, i64 pos, String string)
+{
+    buffer_replace_range(app, buffer, Ii64(pos), string);
 }
 
 api(custom) function b32
@@ -3057,6 +3059,48 @@ draw_line(App *app, v3 p0, v3 p1, f32 thickness, ARGB_Color color)
 }
 
 internal void
+draw_triangle(App *app, v3 p0, v3 p1, v3 p2, ARGB_Color color)
+{
+    Models *models = (Models*)app->cmd_context;
+    if (models->in_render_mode)
+    {
+        Render_Target *target = models->target;
+        Render_Vertex vertices[3] = {};
+        vertices[0].xyz = p0;
+        vertices[1].xyz = p1;
+        vertices[2].xyz = p2;
+      
+        v1 half_thickness;
+        {
+            v1 dimx = absolute(p0.x - p1.x);
+            macro_clamp_bot(dimx, absolute(p1.x - p2.x));
+            macro_clamp_bot(dimx, absolute(p2.x - p0.x));
+            // 
+            v1 dimy = absolute(p0.y - p1.y);
+            macro_clamp_bot(dimy, absolute(p1.y - p2.y));
+            macro_clamp_bot(dimy, absolute(p2.y - p0.y));
+            half_thickness = macro_max(dimx,dimy);
+        }
+        
+        for_u32 (i,0,alen(vertices))
+        {
+            Render_Vertex *vertex = vertices+i;
+            vertices[i].uvw = V3(vertex->xy, 0);
+            vertices[i].color = color;
+            vertices[i].half_thickness = half_thickness;
+        }
+        draw__write_vertices_in_current_group(target, vertices, alen(vertices));
+    }
+}
+
+internal void
+draw_quad(App *app, v3 p0, v3 p1, v3 p2, v3 p3, ARGB_Color color)
+{
+    draw_triangle(app, p0,p1,p2, color);
+    draw_triangle(app, p1,p2,p3, color);
+}
+
+internal void
 draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 depth=0)
 {
     Models *models = (Models*)app->cmd_context;
@@ -3066,6 +3110,12 @@ draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 depth=0)
         draw_rect_to_target(models->target, square, radius, color, depth);
     }
     else kv_debug_trap;
+}
+
+internal void
+draw_point(App *app, v3 center, v1 radius, ARGB_Color color)
+{
+    draw_circle(app, center.xy, radius, color, center.z);
 }
 
 internal void
@@ -3091,15 +3141,16 @@ draw_rectangle_outline(App *app, Rect_f32 rect, f32 roundness, f32 thickness, AR
 }
 
 // TODO: Not sure if I love the abstraction over Render_Target
+// TODO @Cleanup PLEASE tell me you're gonna clean up the transform situation
 internal void
-draw_set_coordinate_system(App *app, b32 y_is_up, v2 offset, b32 depth_test, b32 linear_alpha_blend)
+draw_configure(App *app, Render_Config *config)
 {
     Models *models = (Models*)app->cmd_context;
     Render_Target *target = models->target;
    
-    if (target->y_is_up != y_is_up)
+    if (target->y_is_up != config->y_is_up)
     {
-        target->y_is_up = y_is_up;
+        target->y_is_up = config->y_is_up;
         rect2 new_clip_box = target->clip_box;
         // NOTE: Fun times changing the clip box
         new_clip_box.y0 = (f32)target->height - target->clip_box.y1;
@@ -3107,9 +3158,17 @@ draw_set_coordinate_system(App *app, b32 y_is_up, v2 offset, b32 depth_test, b32
         target->clip_box = new_clip_box;
     }
     
-    target->offset = offset;
-    target->depth_test = (b8)depth_test;
-    target->linear_alpha_blend = (b8)linear_alpha_blend;
+    if (config->face_id == 0)   
+    {
+        config->face_id = target->face_id;
+    }
+    // nono Implement "block_is_zero"
+    if (config->clip_box.min==v2{}&&config->clip_box.max==v2{})
+    {
+        config->clip_box = target->clip_box;
+    }
+    
+    target->render_config = *config;
     
     draw__begin_new_group(target);
 }

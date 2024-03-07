@@ -352,7 +352,7 @@ actual_indent = N; )
 }
 
 internal b32
-auto_indent_buffer(Application_Links *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags, i32 tab_width, i32 indent_width){
+auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags, i32 tab_width, i32 indent_width){
     ProfileScope(app, "auto indent buffer");
     Token_Array token_array = get_token_array_from_buffer(app, buffer);
     Token_Array *tokens = &token_array;
@@ -389,7 +389,8 @@ auto_indent_buffer(Application_Links *app, Buffer_ID buffer, Range_i64 pos, Inde
 }
 
 function void
-auto_indent_buffer(Application_Links *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags){
+auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags)
+{
     i32 indent_width = (i32)def_get_config_u64(app, vars_intern_lit("indent_width"));
     i32 tab_width = (i32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
     tab_width = clamp_bot(1, tab_width);
@@ -402,7 +403,8 @@ auto_indent_buffer(Application_Links *app, Buffer_ID buffer, Range_i64 pos, Inde
 }
 
 function void
-auto_indent_buffer(Application_Links *app, Buffer_ID buffer, Range_i64 pos){
+auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos)
+{
     auto_indent_buffer(app, buffer, pos, 0);
 }
 

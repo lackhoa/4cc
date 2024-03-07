@@ -690,8 +690,11 @@ inline void *kv_xmalloc(size_t size) {
 #define PI32  3.14159265359f
 #define TAU32 6.28318530717958647692f
 
-#define kv_clamp_bot(VAR, VAL)   if (VAR < VAL) VAR = VAL
-#define kv_clamp_top(VAR, VAL)   if (VAR > VAL) VAR = VAL;
+#define macro_clamp_bot(VAR, VAL)   if (VAR < VAL) VAR = VAL
+#define macro_clamp_top(VAR, VAL)   if (VAR > VAL) VAR = VAL;
+// @Deprecated
+#define kv_clamp_bot macro_clamp_bot
+#define kv_clamp_top macro_clamp_top
 
 inline f32
 bilateral(f32 r)
@@ -1546,6 +1549,7 @@ union m3x3
 union m4x4
 {
     v4 columns[4];
+    v1 v[4][4];
     struct
     {
         v4 x,y,z,w;
@@ -10340,6 +10344,64 @@ inline v4 V4All(v1 value) { return v4{value,value,value,value}; }
 inline v2 V2Zero() { return v2{}; }
 inline v3 V3Zero() { return v3{}; }
 inline v4 V4Zero() { return v4{}; }
+
+inline v2 arm2(v1 turn)
+{
+    return v2{cos_turn(turn), sin_turn(turn)};
+}
+
+// TODO: nono Temporary put this here to transition to camera transform!
+struct Camera
+{
+    v1 distance;  // NOTE: by its axis z
+    union
+    {
+        m3x3 axes;    // transform to project the object onto the camera axes
+        struct
+        {
+            v3 x;
+            v3 y;
+            v3 z;
+        };
+    };
+    m3x3 project;
+    v1   focal_length;
+};
+
+internal m4x4
+operator*(m4x4 &A, m4x4 &B)
+{
+    m4x4 R = {};
+    for_i32(r,0,4) // NOTE(casey): Rows (of A)
+    {
+        for_i32(c,0,4) // NOTE(casey): Column (of B)
+        {
+            for_i32(i,0,4) // NOTE(casey): Columns of A, rows of B!
+            {
+                R.v[c][r] += A.v[i][r]*B.v[c][i];
+            }
+        }
+    }
+
+    return(R);
+}
+
+internal v1
+dot(v4 &a, v4 &b)
+{
+    return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
+}
+
+internal v4
+operator*(m4x4 &A, v4 B)
+{
+    v4 result = (B.x*A.columns[0] +
+                 B.y*A.columns[1] +
+                 B.z*A.columns[2] +
+                 B.w*A.columns[3]
+                 );
+    return result;
+}
 
 // IMPORTANT: NO TRESPASS ////////////////////////////////////
 

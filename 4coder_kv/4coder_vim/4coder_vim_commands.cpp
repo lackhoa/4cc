@@ -576,8 +576,8 @@ vim_paste_before(App *app)
     }
     if( vim_state.mode == VIM_Visual )
     {
-        Range_i64 selected = get_view_range(app, view);
-        buffer_delete_range(app, buffer, selected.min, selected.max+1);
+        Range_i64 selected = view_get_selected_range(app, view);
+        buffer_delete_range(app, buffer, selected);
         vim_normal_mode(app);  // NOTE(kv): don't know if this should be here
     }
     // paste
