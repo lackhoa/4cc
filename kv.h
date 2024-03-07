@@ -1537,33 +1537,15 @@ pack_sRGBA(v4 color)
 
 union m3x3
 {
-    v3 columns[3];
-    struct
-    {
-        v3 x;
-        v3 y;
-        v3 z;
-    };
+    v3 rows[3];
 };
 
 union m4x4
 {
-    v4 columns[4];
+    v4 rows[4];
     v1 v[4][4];
-    struct
-    {
-        v4 x,y,z,w;
-    };
 };
 
-internal v3 
-matvmul3(m3x3 *matrix, v3 v)
-{
-    v3 result = (v.x * matrix->columns[0] + 
-                 v.y * matrix->columns[1] + 
-                 v.z * matrix->columns[2]);
-    return result;
-}
 
 internal f32
 pow(f32 input, u32 power)
@@ -10345,26 +10327,34 @@ inline v2 V2Zero() { return v2{}; }
 inline v3 V3Zero() { return v3{}; }
 inline v4 V4Zero() { return v4{}; }
 
+internal v3 
+matvmul3(m3x3 *matrix, v3 v)
+{
+    v3 result = V3(dot(v, matrix->rows[0]),
+                   dot(v, matrix->rows[1]),
+                   dot(v, matrix->rows[2]));
+    return result;
+}
+
 inline v2 arm2(v1 turn)
 {
     return v2{cos_turn(turn), sin_turn(turn)};
 }
 
-// TODO: nono Temporary put this here to transition to camera transform!
+// TODO: @Cleanup Temporary put this here to transition to camera transform!
 struct Camera
 {
     v1 distance;  // NOTE: by its axis z
     union
     {
-        m3x3 axes;    // transform to project the object onto the camera axes
-        struct
-        {
-            v3 x;
-            v3 y;
-            v3 z;
-        };
+        m3x3 axes;
+        struct { v3 px,py,pz; };
     };
-    m3x3 project;
+    union
+    {
+        m3x3 project;
+        struct { v3 ax,ay,az; };
+    };
     v1   focal_length;
 };
 
@@ -10376,9 +10366,9 @@ operator*(m4x4 &A, m4x4 &B)
     {
         for_i32(c,0,4) // NOTE(casey): Column (of B)
         {
-            for_i32(i,0,4) // NOTE(casey): Columns of A, rows of B!
+            for_i32(i,0,4) // NOTE(casey): i = Column of A = Row of B
             {
-                R.v[c][r] += A.v[i][r]*B.v[c][i];
+                R.v[r][c] += A.v[r][i] * B.v[i][c];
             }
         }
     }
@@ -10395,11 +10385,12 @@ dot(v4 &a, v4 &b)
 internal v4
 operator*(m4x4 &A, v4 B)
 {
-    v4 result = (B.x*A.columns[0] +
-                 B.y*A.columns[1] +
-                 B.z*A.columns[2] +
-                 B.w*A.columns[3]
-                 );
+    v4 result = V4(
+                   dot(B, A.rows[0]),
+                   dot(B, A.rows[1]),
+                   dot(B, A.rows[2]),
+                   dot(B, A.rows[3])
+                   );
     return result;
 }
 

@@ -312,7 +312,7 @@ perspective_project_(Camera *camera, v3 point)
 }
 
 internal v3
-perspective_project_nono(Camera *camera, v3 point)
+perspective_project_deprecated(Camera *camera, v3 point)
 {
 #if 0
     return perspective_project_(camera, point);
@@ -339,7 +339,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
     {// NOTE: Control points
         for_i32 (index, 1, 3)
         {
-            v3 screen_p = perspective_project_nono(camera, P[index]);
+            v3 screen_p = perspective_project_deprecated(camera, P[index]);
             draw_circle(app, screen_p.xy, radius_a, yellow_argb, screen_p.z);
         }
     }
@@ -359,11 +359,11 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
                       3*squared(u)*(U)*P[2] +
                       1*cubed(u)*P[3]);
         //
-        v3 screen_p = perspective_project_nono(camera, world_p);
+        v3 screen_p = perspective_project_deprecated(camera, world_p);
         
         v1 draw_radius;
         {// NOTE: Having to calculate the focal_length/dz twice :<
-            v1 projected_z = dot(camera->axes.z, world_p);
+            v1 projected_z = dot(camera->pz, world_p);
             v1 dz = camera->distance - projected_z;
             draw_radius = absolute((camera->focal_length / dz) * radius);
         }
@@ -382,7 +382,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
         {
             for_u32 (j,0,4)
             {
-                v3 screen_p = perspective_project_nono(camera, P[i][j]);
+                v3 screen_p = perspective_project_deprecated(camera, P[i][j]);
                 draw_circle(app, screen_p.xy, 6.0f, gray_argb, screen_p.z);
             }
         }
@@ -405,12 +405,12 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
                                 P[i][j]);
                 }
             }
-            v3 screen_p = perspective_project_nono(camera, world_p);
+            v3 screen_p = perspective_project_deprecated(camera, world_p);
             
             v1 radius = 12.0f;
             v1 draw_radius;
             {// NOTE: calculate draw radius @Slow
-                v1 projected_z = dot(camera->axes.z, world_p);
+                v1 projected_z = dot(camera->pz, world_p);
                 v1 dz = camera->distance - projected_z;
                 draw_radius = absolute((camera->focal_length / dz) * radius);
             }
@@ -785,20 +785,13 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         
         camera->distance = U * save.camera_distance;
         
-        //nono
-#if 0
-        z_point = 1.f;
-        x_point = 0.f;
-        camz = V3(0,0,1);
-#endif
-        
         {//setup_camera_from_data(camera, camz, distance);
             // NOTE: "camz" is normalized.
-            camera->x = v3{z_point, 0, -x_point};
-            camera->y = noz( cross(camz, camera->x) );
-            camera->z = camz;
+            camera->px = v3{z_point, 0, -x_point};
+            camera->py = noz( cross(camz, camera->px) );
+            camera->pz = camz;
             
-#define t camera->axes.columns
+#define t camera->axes.rows
             camera->project =
             {{
                     {t[0][0], t[1][0], t[2][0]},
@@ -809,7 +802,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
         
         DEBUG_VALUE(camera->distance);
-        DEBUG_VALUE(camera->z);
+        DEBUG_VALUE(camera->pz);
     }
   
     {
@@ -838,10 +831,10 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             v3 world_py = U * v3{0,1,0};
             v3 world_pz = U * v3{0,0,1};
             //
-            pO = perspective_project_nono(camera, world_pO);
-            px = perspective_project_nono(camera, world_px);
-            py = perspective_project_nono(camera, world_py);
-            pz = perspective_project_nono(camera, world_pz);
+            pO = perspective_project_deprecated(camera, world_pO);
+            px = perspective_project_deprecated(camera, world_px);
+            py = perspective_project_deprecated(camera, world_py);
+            pz = perspective_project_deprecated(camera, world_pz);
         }
         
         v1 thickness = 8.0f;
@@ -994,7 +987,8 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
         draw_bezier_surface(app, camera, control_points, active_i, active_j);
     }
-    
+   
+    if (0)
     {// NOTE: The sphere game!
         local_persist v1 active_phi   = 0.f;
         local_persist v1 active_theta = 0.f;
@@ -1013,7 +1007,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             for_u32 (itheta, 0, nloop)
             {
                 v3 world_pos = point_on_sphere(nsegment, radius, itheta, iphi);
-                v3 screen_pos = perspective_project_nono(camera, world_pos);
+                v3 screen_pos = perspective_project_deprecated(camera, world_pos);
                 u32 color = gray_argb;
                 draw_circle(app, screen_pos.xy, 8.f, color, screen_pos.z);
             }
@@ -1025,7 +1019,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         {// NOTE: Draw quads on the surface of the sphere
             for_i32 (itheta, 0, nsegment)
             {
-#define SPHERE(ITHETA, IPHI) perspective_project_nono(camera, point_on_sphere(nsegment, radius, ITHETA, IPHI))
+#define SPHERE(ITHETA, IPHI) perspective_project_deprecated(camera, point_on_sphere(nsegment, radius, ITHETA, IPHI))
                 //
                 v3 p0 = SPHERE(itheta+0, iphi+0);
                 v3 p1 = SPHERE(itheta+1, iphi+0);
@@ -1037,7 +1031,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 }
             }
         }
-        v3 midpoint = perspective_project_nono(camera, U*v3{0,0,1});
+        v3 midpoint = perspective_project_deprecated(camera, U*v3{0,0,1});
         draw_point(app, midpoint, 8.0f, yellow_argb);
 #endif
     }

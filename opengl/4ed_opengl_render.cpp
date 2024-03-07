@@ -506,10 +506,10 @@ gl_render(Render_Target *t)
                 m4x4 view_m = 
                 {
                     {
-                        a,0,0,0,
-                        0,b,0,0,
+                        a,0,0,c,
+                        0,b,0,d,
                         0,0,1,0,
-                        c,d,0,1,
+                        0,0,0,1,
                     }
                 };
                
@@ -517,13 +517,12 @@ gl_render(Render_Target *t)
                 {
                     Camera *camera = &group->camera;
                    
-                    // nono: combine this into one projection matrix
                     m4x4 camera_project =
                     {
                         {
-                            V4(camera->project.x,0),
-                            V4(camera->project.y,0),
-                            V4(camera->project.z,0),
+                            V4(camera->px,0),
+                            V4(camera->py,0),
+                            V4(camera->pz,0),
                             V4(0,0,0,1),
                         }
                     };
@@ -533,22 +532,22 @@ gl_render(Render_Target *t)
                         {
                            V4(1,0,0,0),
                            V4(0,1,0,0),
-                           V4(0,0,-1,0),
-                           V4(0,0,camera->distance,1),
+                           V4(0,0,-1,camera->distance),
+                           V4(0,0,0,1),
                         } 
                     };
                     
                     v1 focal = camera->focal_length;
                     v1 n  = 10.0f;         // NOTE: in depth
                     v1 f  = 100.0f * 1E3;  // NOTE: in depth
-                    
+                   
                     m4x4 perspective_project =
                     {
                         {
                             focal, 0,     0,            0,
                             0,     focal, 0,            0,
-                            0,     0,     (-n-f)/(n-f), 1,
-                            0,     0,     2*f*n/(n-f),  0,
+                            0,     0,     (-n-f)/(n-f), 2*f*n/(n-f),
+                            0,     0,     1,            0,
                         },
                     };
                     
@@ -556,8 +555,8 @@ gl_render(Render_Target *t)
                     m4x4 camera_project_and_z_to_depth_and_perspective = perspective_project * camera_project_and_z_to_depth;
                     view_m = view_m * camera_project_and_z_to_depth_and_perspective;
                     
-                    if (1)
-                    {// nono: Let's test our stuff
+                    if (0)
+                    {
                         v1 U = 1e3;
                         v4 O = v4{0,0,0,1};
                         v4 O1 = camera_project * O;
@@ -575,7 +574,7 @@ gl_render(Render_Target *t)
                     }
                 }
                 
-                glUniformMatrix4fv(program->view_m, 1, GL_FALSE, (v1*)view_m.v);
+                glUniformMatrix4fv(program->view_m, 1, GL_TRUE, (v1*)view_m.v);
                 glUniform1i       (program->linear_alpha_blend, group->linear_alpha_blend);
                 glUniform1i       (program->sampler, 0);  // NOTE(kv): idk if this has a meaning?
             }
