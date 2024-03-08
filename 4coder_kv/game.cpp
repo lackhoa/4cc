@@ -12,8 +12,8 @@
 // TODO: @Cleanup: Rename. (also with the fcolor)
 global v4  yellow_v4   = {.5, .5, 0, 1.0};
 global u32 yellow_argb = pack_argb(yellow_v4);
-global v4  gray_v4     = {.5,.5,.5,1};
-global u32 gray_argb   = pack_argb(gray_v4);
+global v4  v4_gray     = {.5,.5,.5,1};
+global u32 argb_gray   = pack_argb(v4_gray);
 global u32 red_argb    = pack_argb({1,0,0,1});
 global u32 green_argb  = pack_argb({0,1,0,1});
 global u32 blue_argb   = pack_argb({0,0,1,1});
@@ -294,31 +294,21 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
 }
 
 internal v3
-perspective_project_(Camera *camera, v3 point)
+perspective_project(Camera *camera, v3 point)
 {
     v3 projected = matvmul3(&camera->project, point);
-    // NOTE: distance is in camera_z, because d_camera_screen is also in z, and the screen_ratio is the ratio between those two distances.
+    // NOTE: Camera distance is in the direction camera Z
     v1 depth = camera->distance - projected.z;
-    v1 near_clip = 10;
-    v1 far_clip  = 100 * 1E3;
-    if ( in_between(near_clip, depth, far_clip) )
+    v1 n = 10;         // NOTE: near clip
+    v1 f = 100 * 1E3;  // NOTE: far clip
+    if ( n <= depth && depth <= f )
     {
         v2 xy = (camera->focal_length / depth) * projected.xy;
-        v1 depth_clip = bilateral( unlerp(near_clip,depth,far_clip) );
-        return V3(xy,depth_clip);
+        v1 z  = (n+f - (2*f*n / depth)) / (f-n);
+        return V3(xy,z);
     }
     else
         return V3All(F32_MAX);
-}
-
-internal v3
-perspective_project_deprecated(Camera *camera, v3 point)
-{
-#if 0
-    return perspective_project_(camera, point);
-#else
-    return point;
-#endif
 }
 
 internal v1
@@ -339,7 +329,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
     {// NOTE: Control points
         for_i32 (index, 1, 3)
         {
-            v3 screen_p = perspective_project_deprecated(camera, P[index]);
+            v3 screen_p = P[index];
             draw_circle(app, screen_p.xy, radius_a, yellow_argb, screen_p.z);
         }
     }
@@ -359,7 +349,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
                       3*squared(u)*(U)*P[2] +
                       1*cubed(u)*P[3]);
         //
-        v3 screen_p = perspective_project_deprecated(camera, world_p);
+        v3 screen_p = perspective_project(camera, world_p);
         
         v1 draw_radius;
         {// NOTE: Having to calculate the focal_length/dz twice :<
@@ -368,7 +358,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
             draw_radius = absolute((camera->focal_length / dz) * radius);
         }
         
-        draw_circle(app, screen_p.xy, draw_radius, gray_argb, screen_p.z);
+        draw_circle(app, screen_p.xy, draw_radius, argb_gray, screen_p.z);
     }
 }
 
@@ -382,8 +372,8 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
         {
             for_u32 (j,0,4)
             {
-                v3 screen_p = perspective_project_deprecated(camera, P[i][j]);
-                draw_circle(app, screen_p.xy, 6.0f, gray_argb, screen_p.z);
+                v3 screen_p = perspective_project(camera, P[i][j]);
+                draw_circle(app, screen_p.xy, 6.0f, argb_gray, screen_p.z);
             }
         }
     }
@@ -405,7 +395,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
                                 P[i][j]);
                 }
             }
-            v3 screen_p = perspective_project_deprecated(camera, world_p);
+            v3 screen_p = perspective_project(camera, world_p);
             
             v1 radius = 12.0f;
             v1 draw_radius;
@@ -424,7 +414,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
                     lightness = 1.0f - quadrance;  // so it's kinda like Lambert's light law
                 }
             }
-            v4 color = lerp(gray_v4, lightness, white_v4);
+            v4 color = lerp(v4_gray, lightness, white_v4);
             draw_circle(app, screen_p.xy, draw_radius, pack_argb(color), screen_p.z);
         }
     }
@@ -609,7 +599,7 @@ draw_single_widget(App *app, Widget_State *state, Widget *widget, v2 top_left)
 #else
     v2 name_dim = V2(50.0f, 50.0f);
     v2 widget_min = V2(top_left.x, top_left.y-name_dim.y);
-    draw_rect(app, rect2_min_dim(widget_min, name_dim), gray_argb);
+    draw_rect(app, rect2_min_dim(widget_min, name_dim), argb_gray);
 #endif
    
     fslider(widget_indentation, v1{10.0f});
@@ -658,9 +648,8 @@ point_on_sphere(i32 nsegment, v1 radius, i32 itheta, i32 iphi)
 internal void
 game_update_and_render(App *app, View_ID view, v1 dt)
 {
-    local_persist b32 is_initial_frame = true;
+    local_persist b32 is_initial_frame = true; //c 7*16+15
     b32 view_active = view_is_active(app, view);
-    
     
     for_i32 (keycode, 1, KeyCode_COUNT)
     {// NOTE: Enable animation if any key is down
@@ -791,6 +780,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             camera->py = noz( cross(camz, camera->px) );
             camera->pz = camz;
             
+#if 0
 #define t camera->axes.rows
             camera->project =
             {{
@@ -799,12 +789,13 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                     {t[0][2], t[1][2], t[2][2]},
             }};
 #undef t
+#endif
         }
         
         DEBUG_VALUE(camera->distance);
         DEBUG_VALUE(camera->pz);
     }
-  
+    
     {
         // NOTE: Setup sane math coordinate system.
         rect2 clip_box = draw_get_clip(app);
@@ -815,7 +806,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         {
             .offset             = layout_center,
             .y_is_up            = true,
-            .is_perspective     = true,
+            .is_perspective     = false,
             .camera             = *camera,
             .depth_test         = true,
             .linear_alpha_blend = true,
@@ -823,7 +814,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         draw_configure(app, &config);
     }
     
-    {// NOTE: Coordinate system
+    {// NOTE: Draw coordinate axes
         v3 pO, px, py, pz;
         {
             v3 world_pO = v3{0,0,0};
@@ -831,10 +822,10 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             v3 world_py = U * v3{0,1,0};
             v3 world_pz = U * v3{0,0,1};
             //
-            pO = perspective_project_deprecated(camera, world_pO);
-            px = perspective_project_deprecated(camera, world_px);
-            py = perspective_project_deprecated(camera, world_py);
-            pz = perspective_project_deprecated(camera, world_pz);
+            pO = perspective_project(camera, world_pO);
+            px = perspective_project(camera, world_px);
+            py = perspective_project(camera, world_py);
+            pz = perspective_project(camera, world_pz);
         }
         
         v1 thickness = 8.0f;
@@ -842,9 +833,9 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         draw_line(app, pO, py, thickness, pack_argb({ 0, .5,  0, 1}));
         draw_line(app, pO, pz, thickness, pack_argb({ 0,  .5, 1, 1}));
         
-        //draw_triangle(app, pO, px, py, gray_argb);
-        draw_triangle(app, pO, py, pz, gray_argb);
-        //draw_triangle(app, pO, pz, px, gray_argb);
+        //draw_triangle(app, pO, px, py, argb_gray);
+        draw_triangle(app, pO, py, pz, argb_gray);
+        //draw_triangle(app, pO, pz, px, argb_gray);
     }
     
     const u32 bezier_count = 3;
@@ -888,7 +879,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 widget_state->hot_item == state->curve_widgets + curve_index)
             {
                 v3 direction = fui_direction_from_key_states(active_mods,0).xyz;
-                v3 delta = matvmul3(&camera->axes, direction) * dt;
+                v3 delta = matvmul3(&camera->project, direction) * dt;
                 
                 local_persist i32 active_cp_index = 0;
 #define Down(N) global_key_states[KeyCode_##N] != 0
@@ -972,7 +963,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         if (editing_surface)
         {// NOTE: edit direction
             v3 direction = fui_direction_from_key_states(active_mods, 0).xyz;
-            v3 delta = matvmul3(&camera->axes, direction) * dt * U;
+            v3 delta = matvmul3(&camera->project, direction) * dt * U;
             save.bezier_surface[active_i][active_j] += delta;
         }
         
@@ -988,7 +979,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         draw_bezier_surface(app, camera, control_points, active_i, active_j);
     }
    
-    if (0)
+    if (1)
     {// NOTE: The sphere game!
         local_persist v1 active_phi   = 0.f;
         local_persist v1 active_theta = 0.f;
@@ -1006,10 +997,10 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             }
             for_u32 (itheta, 0, nloop)
             {
-                v3 world_pos = point_on_sphere(nsegment, radius, itheta, iphi);
-                v3 screen_pos = perspective_project_deprecated(camera, world_pos);
-                u32 color = gray_argb;
-                draw_circle(app, screen_pos.xy, 8.f, color, screen_pos.z);
+                v3 world_pos  = point_on_sphere(nsegment, radius, itheta, iphi);
+                v3 screen_pos = perspective_project(camera, world_pos);
+                u32 color = argb_gray;
+                draw_circle(app, screen_pos, 8.f, color);
             }
         }
 #endif
@@ -1019,7 +1010,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         {// NOTE: Draw quads on the surface of the sphere
             for_i32 (itheta, 0, nsegment)
             {
-#define SPHERE(ITHETA, IPHI) perspective_project_deprecated(camera, point_on_sphere(nsegment, radius, ITHETA, IPHI))
+#define SPHERE(ITHETA, IPHI) perspective_project(camera, point_on_sphere(nsegment, radius, ITHETA, IPHI))
                 //
                 v3 p0 = SPHERE(itheta+0, iphi+0);
                 v3 p1 = SPHERE(itheta+1, iphi+0);
@@ -1027,16 +1018,27 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 v3 p3 = SPHERE(itheta+1, iphi+1);
 #undef SPHERE
                 {
-                    draw_quad(app, p0, p1, p2, p3, gray_argb);
+                    u32 color = pack_argb(v4{.5,.5,.5,.2});
+                    draw_quad(app, p0, p1, p2, p3, color);
                 }
             }
         }
-        v3 midpoint = perspective_project_deprecated(camera, U*v3{0,0,1});
-        draw_point(app, midpoint, 8.0f, yellow_argb);
+        v3 midpoint = perspective_project(camera, U*v3{0,0,1});
+        draw_circle(app, midpoint, 8.0f, yellow_argb);
 #endif
     }
     
+    {
+        local_persist v1 thickness = 50.f;
+        v1 delta = dt * fui_direction_from_key_states(active_mods, 0).x;
+        thickness += 10.f * delta;
+        DEBUG_VALUE(thickness);
+        rect2 rect = rect2_min_dim(V2(0,0), V2(200,200));
+        draw_rectangle_outline(app, rect, 100, thickness, argb_gray);
+    }
+    
     ////////////////////////////////////////////////////////////////////
+    // IMPORTANT: no trespass!
     
     {
         Render_Config config = 

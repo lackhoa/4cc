@@ -10347,13 +10347,8 @@ struct Camera
     v1 distance;  // NOTE: by its axis z
     union
     {
-        m3x3 axes;
-        struct { v3 px,py,pz; };
-    };
-    union
-    {
         m3x3 project;
-        struct { v3 ax,ay,az; };
+        struct{ v3 px,py,pz; };
     };
     v1   focal_length;
 };

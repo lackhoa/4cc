@@ -26,8 +26,8 @@ struct Render_Vertex
     };
     union 
     {
-        struct { v2 center; v1 roundness; };
         v3 uvw;
+        struct { v2 center; v1 roundness; };
     };
     u32 color;
     v1  half_thickness;

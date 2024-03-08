@@ -3069,25 +3069,12 @@ draw_triangle(App *app, v3 p0, v3 p1, v3 p2, ARGB_Color color)
         vertices[0].xyz = p0;
         vertices[1].xyz = p1;
         vertices[2].xyz = p2;
-      
-        v1 half_thickness;
-        {
-            v1 dimx = absolute(p0.x - p1.x);
-            macro_clamp_bot(dimx, absolute(p1.x - p2.x));
-            macro_clamp_bot(dimx, absolute(p2.x - p0.x));
-            // 
-            v1 dimy = absolute(p0.y - p1.y);
-            macro_clamp_bot(dimy, absolute(p1.y - p2.y));
-            macro_clamp_bot(dimy, absolute(p2.y - p0.y));
-            half_thickness = macro_max(dimx,dimy);
-        }
         
         for_u32 (i,0,alen(vertices))
         {
             Render_Vertex *vertex = vertices+i;
-            vertices[i].uvw = V3(vertex->xy, 0);
-            vertices[i].color = color;
-            vertices[i].half_thickness = half_thickness;
+            vertex->uvw   = V3(0,0,0);
+            vertex->color = color;
         }
         draw__write_vertices_in_current_group(target, vertices, alen(vertices));
     }
@@ -3113,7 +3100,7 @@ draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 depth=0)
 }
 
 internal void
-draw_point(App *app, v3 center, v1 radius, ARGB_Color color)
+draw_circle(App *app, v3 center, v1 radius, ARGB_Color color)
 {
     draw_circle(app, center.xy, radius, color, center.z);
 }
@@ -3158,12 +3145,7 @@ draw_configure(App *app, Render_Config *config)
         target->clip_box = new_clip_box;
     }
     
-    if (config->face_id == 0)   
-    {
-        config->face_id = target->face_id;
-    }
-    // nono Implement "block_is_zero"
-    if (config->clip_box.min==v2{}&&config->clip_box.max==v2{})
+    if (config->clip_box.min==v2{} &&  config->clip_box.max==v2{})
     {
         config->clip_box = target->clip_box;
     }

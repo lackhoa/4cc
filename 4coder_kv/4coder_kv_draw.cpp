@@ -144,7 +144,7 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view);
     
-    // todo(kv): maybe this thing sets the clip to the active panel? so it messes with vim command lister?
+    // todo(kv): maybe this sets the clip to the active panel? so it messes with vim command lister?
     // Rect_f32 clip = draw_background_and_margin(app, view, is_active_view);
     
     Rect_f32 clip = view_get_screen_rect(app, view);

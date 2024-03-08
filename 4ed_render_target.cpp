@@ -94,12 +94,12 @@ draw__set_face_id(Render_Target *target, Face_ID face_id)
     if (target->face_id != face_id)
     {
         if (target->face_id != 0)
-        {// NOTE: has existing face_id
+        {// NOTE: Has existing face id
             target->face_id = face_id;
             draw__begin_new_group(target);
         }
         else
-        {// NOTE: No face id set
+        {// NOTE: No current face is set
             target->face_id = face_id;
             for (Render_Group *group = target->group_first;
                  group != 0;
@@ -152,8 +152,6 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
     kv_clamp_bot(roundness, epsilon_f32);
     kv_clamp_bot(thickness, 1.f);
     
-    v1 half_thickness = thickness*0.5f;
-    
     Render_Vertex vertices[6] = {};
     vertices[0].xyz = V3(rect.x0, rect.y0, depth);
     vertices[1].xyz = V3(rect.x1, rect.y0, depth);
@@ -162,13 +160,15 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
     vertices[4]    = vertices[2];
     vertices[5].xyz = V3(rect.x1, rect.y1, depth);
     
-    v2 center = rect_center(rect);
-    for_u32 (i, 0, alen(vertices))
+    v2 center         = rect_center(rect);
+    v1 half_thickness = thickness*0.5f;
+    for_u32 (i,0,alen(vertices))
     {
-        vertices[i].center         = center;
-        vertices[i].roundness      = roundness;
-        vertices[i].color          = color;
-        vertices[i].half_thickness = half_thickness;
+        Render_Vertex *vertex = vertices+i;
+        vertex->center         = center;
+        vertex->roundness      = roundness;
+        vertex->color          = color;
+        vertex->half_thickness = half_thickness;
     }
     draw__write_vertices_in_current_group(target, vertices, alen(vertices));
 }
@@ -193,6 +193,7 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
     {
         glyph_index = 0;
     }
+    // NOTE(kv): I guess this is a mega-texture situation?
     Glyph_Bounds bounds = face->bounds[glyph_index];
     alert_if_false(bounds.w == 0);
     

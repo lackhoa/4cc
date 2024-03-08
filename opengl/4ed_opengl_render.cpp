@@ -10,6 +10,10 @@
 // NOTE(kv): ARGB colors flowing through the system are in srgb space,
 // which incurs penalty in shaders, since we wanna blend in linear space.
 
+// NOTE(kv): fallback texture is a white texture, 
+// and you can get it by setting face_id = 0
+// TODO(kv): Have an actual white texture in here
+
 internal void
 gl__bind_texture(Render_Target *t, Texture_ID tex)
 {
@@ -112,6 +116,10 @@ gl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 }
 
 global char *gl__header = R"foo(#version 130
+#define v1 float
+#define v2 vec2
+#define v3 vec3
+#define v4 vec4
         )foo";
 
 global char *gl__vertex_shader =
@@ -124,7 +132,7 @@ R"foo(
     in vec4 vertex_color;
     in float vertex_half_thickness;
 
-    smooth out vec4 fragment_color;
+    smooth out vec4 color;
     smooth out vec3 uvw;
     smooth out vec2 xy;
     smooth out vec2 adjusted_half_dim;
@@ -133,16 +141,17 @@ R"foo(
     void main(void)
     {
         gl_Position = view_m * vec4(vertex_xyz, 1);
-        fragment_color.rgba = vertex_color.bgra;
+        color.rgba = vertex_color.bgra;
         if (linear_alpha_blend)
         {
-            fragment_color.rgb *= (fragment_color.rgb);
+            color.rgb *= (color.rgb);
         }
         uvw = vertex_uvw;
         vec2 center = vertex_uvw.xy;
         xy = vertex_xyz.xy;
-        vec2 half_dim = abs(xy - center);
-        adjusted_half_dim = half_dim - vertex_uvw.zz + vec2(0.5, 0.5);
+        v2 half_dim = abs(xy - center);
+        v2 roundness = vertex_uvw.zz;
+        adjusted_half_dim = half_dim - roundness + vec2(0.5f,0.5f);
         half_thickness = vertex_half_thickness;
     }
     )foo";
@@ -151,7 +160,7 @@ global char *gl__fragment_shader =
 R"foo(
     uniform sampler2DArray sampler;
     //
-    smooth in vec4 fragment_color;
+    smooth in vec4 color;
     smooth in vec3 uvw;
     smooth in vec2 xy;
     smooth in vec2 adjusted_half_dim;
@@ -186,11 +195,11 @@ R"foo(
             }
         }
         
-        out_color = vec4(fragment_color.rgb, fragment_color.a*value);
+        out_color = vec4(color.rgb, color.a*value);
     }
    )foo";
 
-// IMPORTANT(kv): Unmaintained
+// IMPORTANT(kv): doesn't work!
 global char *gl__vertex_shader_game =
 R"foo(
     uniform mat4x4 view_m;
@@ -211,6 +220,7 @@ R"foo(
     }
     )foo";
 
+// IMPORTANT(kv): doesn't work!
 global char *gl__fragment_shader_game = 
 R"foo(
    smooth in vec4 fragment_color;
@@ -375,7 +385,7 @@ gl_render(Render_Target *t)
         
         t->fallback_texture_id = gl__get_texture(V3i32(2, 2, 1), TextureKind_Mono);
         u8 white_block[] = { 0xFF, 0xFF, 0xFF, 0xFF, };
-        gl__fill_texture(TextureKind_Mono, Texture_ID{}, V3i32(0, 0, 0), V3i32(2, 2, 1), white_block);
+        gl__fill_texture(TextureKind_Mono, Texture_ID{}, V3i32(0,0,0), V3i32(2,2,1), white_block);
     }
     
     glViewport(0, 0, t->width, t->height);
@@ -439,7 +449,12 @@ gl_render(Render_Target *t)
             }
             else 
             {
-                Face *face = font_set_face_from_id(font_set, group->face_id);
+                Face *face = 0;
+                if (group->face_id)
+                {
+                    face = font_set_face_from_id(font_set, group->face_id);
+                }
+                
                 if (face)
                 {
                     gl__bind_texture(t, face->texture);
@@ -512,9 +527,9 @@ gl_render(Render_Target *t)
                         0,0,0,1,
                     }
                 };
-               
+                
                 if (group->is_perspective)
-                {
+                {// NOTE: Someday when we draw lots of triangles, we may need this, but that day is not now!
                     Camera *camera = &group->camera;
                    
                     m4x4 camera_project =
@@ -546,7 +561,7 @@ gl_render(Render_Target *t)
                         {
                             focal, 0,     0,            0,
                             0,     focal, 0,            0,
-                            0,     0,     (-n-f)/(n-f), 2*f*n/(n-f),
+                            0,     0,     (n+f)/(f-n),  -2*f*n/(f-n),
                             0,     0,     1,            0,
                         },
                     };
