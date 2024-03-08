@@ -927,16 +927,10 @@ bilateral(v2 v)
 
 union v3 
 {
-    struct {
-        f32 x, y, z;
-    };
-    struct {
-        f32 r, g, b;
-    };
-    struct {
-        v2 xy;
-        f32 ignored;
-    };
+    struct { v1 x, y, z; };
+    struct { v1 r, g, b; };
+    struct { v2 xy; v1 _z; };
+    struct { v1 _x; v2 yz; };
     f32 E[3];
     f32 v[3];
     
@@ -3350,12 +3344,6 @@ V2f32(f32 x, f32 y)
 {
     Vec2_f32 v = {x, y};
     return(v);
-}
-
-inline v2
-V2()
-{
-    return v2{};
 }
 
 internal v2
@@ -10323,9 +10311,9 @@ to_string(Arena *arena, i32 value)
 inline v2 V2All(v1 value) { return v2{value,value}; }
 inline v3 V3All(v1 value) { return v3{value,value,value}; }
 inline v4 V4All(v1 value) { return v4{value,value,value,value}; }
-inline v2 V2Zero() { return v2{}; }
-inline v3 V3Zero() { return v3{}; }
-inline v4 V4Zero() { return v4{}; }
+inline v2 V2() { return v2{}; }
+inline v3 V3() { return v3{}; }
+inline v4 V4() { return v4{}; }
 
 internal v3 
 matvmul3(m3x3 *matrix, v3 v)
@@ -10336,7 +10324,7 @@ matvmul3(m3x3 *matrix, v3 v)
     return result;
 }
 
-inline v2 arm2(v1 turn)
+inline v2  arm2(v1 turn)
 {
     return v2{cos_turn(turn), sin_turn(turn)};
 }

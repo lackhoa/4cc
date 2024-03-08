@@ -3088,21 +3088,31 @@ draw_quad(App *app, v3 p0, v3 p1, v3 p2, v3 p3, ARGB_Color color)
 }
 
 internal void
-draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 depth=0)
+draw_disk(App *app, v3 center, v1 radius, ARGB_Color color)
 {
     Models *models = (Models*)app->cmd_context;
     if (models->in_render_mode)
     {
-        rect2 square = rect2_center_radius(center, V2(radius, radius));
-        draw_rect_to_target(models->target, square, radius, color, depth);
+        rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
+        draw_rect_to_target(models->target, square, radius, color, center.z);
     }
-    else kv_debug_trap;
 }
 
 internal void
-draw_circle(App *app, v3 center, v1 radius, ARGB_Color color)
+draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
 {
-    draw_circle(app, center.xy, radius, color, center.z);
+    Models *models = (Models*)app->cmd_context;
+    if (models->in_render_mode)
+    {
+        rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
+        draw_rect_outline_to_target(models->target, square, radius, thickness, color, center.z);
+    }
+}
+
+internal void
+draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
+{
+    draw_circle(app, V3(center,0), radius, color, thickness);
 }
 
 internal void
@@ -3113,7 +3123,6 @@ draw_textured_rect(App *app, rect2 rect, ARGB_Color color=0xFFFFFF)
     {
         draw_textured_rect_to_target(models->target, rect, color);
     }
-    else kv_debug_trap;
 }
 
 api(custom) internal void

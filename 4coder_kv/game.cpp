@@ -10,17 +10,17 @@
 #include "tr_model.cpp"
 
 // TODO: @Cleanup: Rename. (also with the fcolor)
-global v4  yellow_v4   = {.5, .5, 0, 1.0};
-global u32 yellow_argb = pack_argb(yellow_v4);
+global v4  v4_yellow   = {.5, .5, 0, 1.0};
+global u32 argb_yellow = pack_argb(v4_yellow);
 global v4  v4_gray     = {.5,.5,.5,1};
 global u32 argb_gray   = pack_argb(v4_gray);
-global u32 red_argb    = pack_argb({1,0,0,1});
-global u32 green_argb  = pack_argb({0,1,0,1});
-global u32 blue_argb   = pack_argb({0,0,1,1});
-global v4  black_v4    = {0,0,0,1};
-global u32 black_argb  = pack_argb(black_v4);
-global v4  white_v4    = {1,1,1,1};
-global u32 white_argb  = pack_argb(white_v4);
+global u32 argb_red    = pack_argb({1,0,0,1});
+global u32 argb_green  = pack_argb({0,1,0,1});
+global u32 argb_blue   = pack_argb({0,0,1,1});
+global v4  v4_black    = {0,0,0,1};
+global u32 argb_black  = pack_argb(v4_black);
+global v4  v4_white    = {1,1,1,1};
+global u32 argb_white  = pack_argb(v4_white);
 
 // NOTE: This is a dummy buffer, so we can use the same commands to switch to the rendered game
 global String GAME_BUFFER_NAME = str8lit("*game*");
@@ -171,9 +171,9 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
     fslider( draw_outline, v1{-0.298632f} );
     if (draw_outline > 0)
     {
-        tr_line(bitmap, (p1), (p2), red_argb); 
-        tr_line(bitmap, (p0), (p2), green_argb); 
-        tr_line(bitmap, (p0), (p1), blue_argb); 
+        tr_line(bitmap, (p1), (p2), argb_red); 
+        tr_line(bitmap, (p0), (p2), argb_green); 
+        tr_line(bitmap, (p0), (p1), argb_blue); 
     }
 }
 
@@ -228,15 +228,15 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     Bitmap *bitmap = &bitmap_value;
    
     // NOTE(kv): clear screen
-    tr_rectangle2i(bitmap, rect2i{.p0={0,0}, .p1=dim}, black_argb);
+    tr_rectangle2i(bitmap, rect2i{.p0={0,0}, .p1=dim}, argb_black);
     
     {// NOTE(kv): outline
         f32 X = (f32)dim.x-1;
         f32 Y = (f32)dim.y-1;
-        tr_line(bitmap, 0,0, X,0, red_argb);
-        tr_line(bitmap, 0,0, 0,Y, red_argb);
-        tr_line(bitmap, X,0, X,Y, red_argb);
-        tr_line(bitmap, 0,Y, X,Y, red_argb);
+        tr_line(bitmap, 0,0, X,0, argb_red);
+        tr_line(bitmap, 0,0, 0,Y, argb_red);
+        tr_line(bitmap, X,0, X,Y, argb_red);
+        tr_line(bitmap, 0,Y, X,Y, argb_red);
     }
    
     b32 draw_mesh = def_get_config_b32(vars_intern_lit("draw_mesh"));
@@ -256,7 +256,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
                 f32 y0 = unilateral(v0.y)*(f32)dim.y;
                 f32 x1 = unilateral(v1.x)*(f32)dim.x;
                 f32 y1 = unilateral(v1.y)*(f32)dim.y;
-                tr_line(bitmap, x0,y0, x1,y1, white_argb);
+                tr_line(bitmap, x0,y0, x1,y1, argb_white);
             } 
         }
     }
@@ -267,9 +267,9 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
         v2 t0[3] = {V2(10, 70),   V2(50, 160),  V2(70, 80)};
         v2 t1[3] = {V2(180, 50),  V2(150, 1),   V2(70, 180)};
         v2 t2[3] = {V2(180, 150), V2(120, 160), V2(130, 180)};
-        tr_triangle(bitmap, t0, red_argb); 
-        tr_triangle(bitmap, t1, white_argb); 
-        tr_triangle(bitmap, t2, green_argb);
+        tr_triangle(bitmap, t0, argb_red); 
+        tr_triangle(bitmap, t1, argb_white); 
+        tr_triangle(bitmap, t2, argb_green);
     }
    
     f32 dim_x = (f32)dim.x;
@@ -288,9 +288,18 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
             v2 p1 = lerp(beg, t, mid);
             v2 p2 = lerp(mid, t, end);
             v2 pos = lerp(p1, t, p2);
-            bitmap_set(bitmap, (i32)pos.x, (i32)pos.y, white_argb);
+            bitmap_set(bitmap, (i32)pos.x, (i32)pos.y, argb_white);
         }
     }
+}
+
+internal v1
+camera_relative_depth(Camera *camera, v3 point)
+{
+    v3 projected = matvmul3(&camera->project, point);
+    // NOTE: Camera distance is in the direction camera Z
+    v1 depth = camera->distance - projected.z;
+    return depth;
 }
 
 internal v3
@@ -330,7 +339,7 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
         for_i32 (index, 1, 3)
         {
             v3 screen_p = P[index];
-            draw_circle(app, screen_p.xy, radius_a, yellow_argb, screen_p.z);
+            draw_circle(app, screen_p.xy, radius_a, argb_yellow, screen_p.z);
         }
     }
     
@@ -353,9 +362,8 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
         
         v1 draw_radius;
         {// NOTE: Having to calculate the focal_length/dz twice :<
-            v1 projected_z = dot(camera->pz, world_p);
-            v1 dz = camera->distance - projected_z;
-            draw_radius = absolute((camera->focal_length / dz) * radius);
+            v1 depth = camera->distance - dot(camera->pz, world_p);
+            draw_radius = absolute((camera->focal_length / depth) * radius);
         }
         
         draw_circle(app, screen_p.xy, draw_radius, argb_gray, screen_p.z);
@@ -414,7 +422,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
                     lightness = 1.0f - quadrance;  // so it's kinda like Lambert's light law
                 }
             }
-            v4 color = lerp(v4_gray, lightness, white_v4);
+            v4 color = lerp(v4_gray, lightness, v4_white);
             draw_circle(app, screen_p.xy, draw_radius, pack_argb(color), screen_p.z);
         }
     }
@@ -615,8 +623,8 @@ draw_single_widget(App *app, Widget_State *state, Widget *widget, v2 top_left)
     rect2 whole_box = rect2_min_max(widget_min, whole_max);
     if (widget == state->hot_item)
     {
-        u32 color = yellow_argb;
-        if (state->is_editing)  color = red_argb;
+        u32 color = argb_yellow;
+        if (state->is_editing)  color = argb_red;
         v1 thickness = 2.0f;
         draw_rect_outline(app, whole_box, thickness, color);
     }
@@ -633,14 +641,20 @@ struct Game_State
     Widget *curve_widgets;
 };
 
-internal v3
-point_on_sphere(i32 nsegment, v1 radius, i32 itheta, i32 iphi)
+inline v3
+point_on_sphere(v1 radius, v1 theta, v1 phi)
 {
-    v1 segment = 1/(v1)nsegment;
-    v1 phi   = segment*(v1)iphi;
-    v1 theta = segment*(v1)itheta;
     v2 xy = cos_turn(phi) * arm2(theta);
     return radius * V3(xy, sin_turn(phi));
+}
+
+internal v3
+point_on_sphere_grid(i32 nsegment, v1 radius, i32 itheta, i32 iphi)
+{
+    v1 segment = 1/(v1)nsegment;
+    v1 theta = segment*(v1)itheta;
+    v1 phi   = segment*(v1)iphi;
+    return point_on_sphere(radius, theta, phi);
 }
 
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
@@ -979,62 +993,85 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         draw_bezier_surface(app, camera, control_points, active_i, active_j);
     }
    
-    if (1)
-    {// NOTE: The sphere game!
+    {// NOTE: The human head: revisited!
         local_persist v1 active_phi   = 0.f;
         local_persist v1 active_theta = 0.f;
         
-        i32 nsegment = 16;
+        i32 nsegment = 32;
         v1 segment = 1/(v1)nsegment;
+        v3 center = V3();
         v1 radius = U;
-#if 1
-        for_i32 (iphi, -nsegment/4, nsegment/4 + 1)
-        {// NOTE: Draw points
-            u32 nloop = nsegment;
-            if (iphi == -nsegment/4 || iphi == nsegment/4)
-            {
-                nloop = 1;
-            }
-            for_u32 (itheta, 0, nloop)
-            {
-                v3 world_pos  = point_on_sphere(nsegment, radius, itheta, iphi);
-                v3 screen_pos = perspective_project(camera, world_pos);
-                u32 color = argb_gray;
-                draw_circle(app, screen_pos, 8.f, color);
-            }
-        }
-#endif
-        
-#if 1
-        for_i32 (iphi, -nsegment/4, nsegment/4)
-        {// NOTE: Draw quads on the surface of the sphere
-            for_i32 (itheta, 0, nsegment)
-            {
-#define SPHERE(ITHETA, IPHI) perspective_project(camera, point_on_sphere(nsegment, radius, ITHETA, IPHI))
-                //
-                v3 p0 = SPHERE(itheta+0, iphi+0);
-                v3 p1 = SPHERE(itheta+1, iphi+0);
-                v3 p2 = SPHERE(itheta+0, iphi+1);
-                v3 p3 = SPHERE(itheta+1, iphi+1);
-#undef SPHERE
+        if(0)
+        {
+            for_i32 (iphi, -nsegment/4, nsegment/4 + 1)
+            {// NOTE: Draw points
+                u32 nloop = nsegment;
+                if (iphi == -nsegment/4 || iphi == nsegment/4)
                 {
-                    u32 color = pack_argb(v4{.5,.5,.5,.2});
-                    draw_quad(app, p0, p1, p2, p3, color);
+                    nloop = 1;
+                }
+                for_u32 (itheta, 0, nloop)
+                {
+                    v3 world_pos  = point_on_sphere_grid(nsegment, radius, itheta, iphi);
+                    v3 screen_pos = perspective_project(camera, world_pos);
+                    u32 color = argb_gray;
+                    draw_disk(app, screen_pos, 8.f, color);
                 }
             }
         }
-        v3 midpoint = perspective_project(camera, U*v3{0,0,1});
-        draw_circle(app, midpoint, 8.0f, yellow_argb);
-#endif
-    }
-    
-    {
-        local_persist v1 thickness = 50.f;
-        v1 delta = dt * fui_direction_from_key_states(active_mods, 0).x;
-        thickness += 10.f * delta;
-        DEBUG_VALUE(thickness);
-        rect2 rect = rect2_min_dim(V2(0,0), V2(200,200));
-        draw_rectangle_outline(app, rect, 100, thickness, argb_gray);
+       
+        if(0)
+        {
+            for_i32 (iphi, -nsegment/4, nsegment/4)
+            {// NOTE: Draw quads on the surface of the sphere
+                for_i32 (itheta, 0, nsegment)
+                {
+#define SPHERE(ITHETA, IPHI) perspective_project(camera, point_on_sphere_grid(nsegment, radius, ITHETA, IPHI))
+                    //
+                    v3 p0 = SPHERE(itheta+0, iphi+0);
+                    v3 p1 = SPHERE(itheta+1, iphi+0);
+                    v3 p2 = SPHERE(itheta+0, iphi+1);
+                    v3 p3 = SPHERE(itheta+1, iphi+1);
+#undef SPHERE
+                    {
+                        u32 color = pack_argb(v4{.5,.5,.5,.2});
+                        draw_quad(app, p0, p1, p2, p3, color);
+                    }
+                }
+            }
+        }
+       
+        {// NOTE: outline
+            u32 color = pack_argb(v4{.5,.5,.5,.2});
+            v3 center_screen = perspective_project(camera, center);
+            v1 depth = camera_relative_depth(camera, center_screen);
+            v1 radius_screen = absolute(camera->focal_length / depth) * radius;
+            draw_circle(app, center_screen, radius_screen, color, 8.f);
+        }
+       
+        {
+            v3 midpoint = perspective_project(camera, U*v3{0,0,1});
+            draw_disk(app, midpoint, 8.0f, argb_yellow);
+        }
+        
+        {// NOTE: A quick cross section
+            // We wanna make a cut normal to the x axis, so x has to be constant
+            local_persist v1 x = 0.75f;
+            x += dt*fui_direction_from_key_states(active_mods, 0).x;
+            v1 yz_radius = square_root(1-squared(x));
+            DEBUG_VALUE(x);
+            for (v1 t=0.0f; 
+                 t <= 1.0f; 
+                 t += (1/32.0f))
+            {
+                //v1 t = segment*(v1)isegment;
+                v3 world_p;
+                world_p.x = x;
+                world_p.yz = yz_radius * arm2(t);
+                v3 screenP = perspective_project(camera, center + radius*world_p);
+                draw_disk(app, screenP, 8.f, argb_blue);
+            }
+        }
     }
     
     ////////////////////////////////////////////////////////////////////

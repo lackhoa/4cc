@@ -194,8 +194,13 @@ R"foo(
                 value = texture(sampler, uvw).r;
             }
         }
-        
-        out_color = vec4(color.rgb, color.a*value);
+      
+        v1 out_alpha = color.a*value;
+        if (out_alpha == 0.0f)
+        {
+           discard;
+        }
+        out_color = vec4(color.rgb, out_alpha);
     }
    )foo";
 

@@ -510,7 +510,8 @@ goto_next_jump(App *app)
     Heap *heap = &global_heap;
     
     Locked_Jump_State jump_state = get_locked_jump_state(app, heap);
-    if (jump_state.view != 0)
+    if (jump_state.view != 0 &&
+        jump_state.list != 0)
     {
         i64 cursor_position  = view_get_cursor_pos(app, jump_state.view);
         Buffer_Cursor cursor = view_compute_cursor(app, jump_state.view, seek_pos(cursor_position));
@@ -518,9 +519,7 @@ goto_next_jump(App *app)
         {
             i64 line = get_line_from_list(app, jump_state.list, jump_state.list_index);
             if (line <= cursor.line)
-            {
                 jump_state.list_index += 1;
-            }
         }
         goto_next_filtered_jump(app, jump_state.list, jump_state.view, jump_state.list_index, 1, true, true);
     }
@@ -533,12 +532,11 @@ goto_prev_jump(App *app)
     Heap *heap = &global_heap;
     
     Locked_Jump_State jump_state = get_locked_jump_state(app, heap);
-    if (jump_state.view != 0)
+    if (jump_state.view != 0 &&
+        jump_state.list != 0)
     {
         if (jump_state.list_index > 0)
-        {
             --jump_state.list_index;
-        }
         goto_next_filtered_jump(app, jump_state.list, jump_state.view, jump_state.list_index, -1, true, true);
     }
 }

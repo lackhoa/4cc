@@ -174,7 +174,7 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
 }
 
 internal void
-draw_rect_to_target(Render_Target *target, rect2 rect, f32 roundness, u32 color, v1 depth=0)
+draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, v1 depth=0)
 {
     v2 dim = rect_dim(rect);
     v1 thickness = Max(dim.x, dim.y);
