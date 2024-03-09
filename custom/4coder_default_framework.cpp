@@ -415,6 +415,25 @@ change_active_primary_panel(App *app)
 }
 
 internal void
+toggle_split_panel(App *app)
+{
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    View_ID next_view = get_next_view_looped_primary_panels(app, view, Access_Always, false);
+    if ( next_view != view )
+    {
+        global_other_view_buffer = view_get_buffer(app, next_view, Access_Always);
+        view_close(app, next_view);
+    }
+    else
+    {
+        View_ID new_view = open_view(app, view, ViewSplit_Right);
+        new_view_settings(app, new_view);
+        view_set_buffer(app, new_view, global_other_view_buffer, 0);
+        view_set_active(app, view);
+    }
+}
+
+internal void
 expand_bottom_view(App *app)
 {
     Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);

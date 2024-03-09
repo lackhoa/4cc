@@ -96,29 +96,30 @@ fui_handle_slider(App *app, Buffer_ID buffer)
     
     if (at_slider)
     {
-        Scratch_Block xblock(app);
+        Scratch_Block scratch(app);
        
         Range_i64 slider_value_range = {};
-        String8 slider_name;
+        String slider_name;
         b32 parser_ok = false;
         {// NOTE(kv): Parsing
             Quick_Parser parser_value = qp_new(app, buffer, &f->tk);
-            Quick_Parser *parser = &parser_value;
-            qp_eat_token_kind(parser, TokenBaseKind_ParentheticalOpen);
-            qp_eat_token_kind(parser, TokenBaseKind_Identifier);
+            Quick_Parser *p = &parser_value;
+            qp_eat_token_kind(p, TokenBaseKind_Identifier);  // "fslider"
+            qp_eat_token_kind(p, TokenBaseKind_ParentheticalOpen);
             // NOTE: Slider name
-            slider_name = qp_push_token(parser, xblock);
+            slider_name = qp_push_token(p, scratch);
+            qp_eat_token_kind(p, TokenBaseKind_Identifier);
             // NOTE: Find the slider value range (so we can write back later)
-            qp_eat_comma(parser);
+            qp_eat_comma(p);
             // NOTE: at value
-            slider_value_range.min = get_next_token_pos(parser);
-            u32 eat_index = qp_eat_until_lit(parser, ",)");
-            slider_value_range.max = qp_get_pos(parser);
+            slider_value_range.min = get_token_pos(p);
+            u32 eat_index = qp_eat_until_char_lit(p, ",)");
+            slider_value_range.max = qp_get_pos(p);
             if (eat_index == 1)
             {
-                qp_eat_until_lit(parser, ")");
+                qp_eat_until_char_lit(p, ")");
             }
-            parser_ok = parser->ok;
+            parser_ok = p->ok;
         }
         
         // NOTE: find slider
@@ -158,7 +159,7 @@ fui_handle_slider(App *app, Buffer_ID buffer)
             
             if (write_back)
             { // NOTE(kv): save the results back
-                String8 value_string = fui_push_slider_value(xblock, slider->type, slider->value);
+                String value_string = fui_push_slider_value(scratch, slider->type, slider->value);
                 buffer_replace_range(app, buffer, slider_value_range, value_string);
             }
             else 
@@ -181,14 +182,14 @@ fui_tick(App *app, Frame_Info frame_info)
      
         if (slider->update != fui_update_null)
         {// NOTE: Update
-            f32 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key.
+            v1 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key.
             v4 new_value = slider->update(slider, dt);
             slider->value.v4 = new_value;
         }
        
         {// NOTE: Printing
-            Scratch_Block x(app);
-            String8 slider_value = fui_push_slider_value(x, slider->type, slider->value);
+            Scratch_Block scratch(app);
+            String slider_value = fui_push_slider_value(scratch, slider->type, slider->value);
             vim_set_bottom_text(slider_value);  // todo Allow customizing this too?
         }
     }

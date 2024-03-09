@@ -12,25 +12,35 @@
 // TODO: @Cleanup: Rename. (also with the fcolor)
 global v4  v4_yellow   = {.5, .5, 0, 1.0};
 global u32 argb_yellow = pack_argb(v4_yellow);
-global v4  v4_gray     = {.5,.5,.5,1};
-global u32 argb_gray   = pack_argb(v4_gray);
-global u32 argb_red    = pack_argb({1,0,0,1});
-global u32 argb_green  = pack_argb({0,1,0,1});
-global u32 argb_blue   = pack_argb({0,0,1,1});
+global u32 argb_red    = pack_argb({.5,0,0,1});
+global u32 argb_green  = pack_argb({0,.5,0,1});
+global u32 argb_blue   = pack_argb({0,.5,1,1});
 global v4  v4_black    = {0,0,0,1};
 global u32 argb_black  = pack_argb(v4_black);
 global v4  v4_white    = {1,1,1,1};
 global u32 argb_white  = pack_argb(v4_white);
+global u32 argb_marble = 0xffA9A6B7;
+
+inline ARGB_Color
+argb_gray(v1 value)
+{
+    return pack_argb(v4{value,value,value,1});
+}
+
+inline v4
+v4_gray(v1 value)
+{
+    return v4{value,value,value,1};
+}
 
 // NOTE: This is a dummy buffer, so we can use the same commands to switch to the rendered game
 global String GAME_BUFFER_NAME = str8lit("*game*");
 
-
 struct Screen
 {
-  v3 center;
-  v3 x_axis;
-  v3 y_axis;
+    v3 center;
+    v3 x_axis;
+    v3 y_axis;
 };
 
 internal void
@@ -329,30 +339,23 @@ cubic_bernstein(u32 index, v1 u)
 }
 
 internal void
-draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
+draw_cubic_bezier(App *app, Camera *camera, v3 P[4], ARGB_Color color)
 {
-    fslider(radius_a, 23.380762);
-    fslider(radius_b, 3.923108);
-    
-    if (0)
-    {// NOTE: Control points
-        for_i32 (index, 1, 3)
-        {
-            v3 screen_p = P[index];
-            draw_circle(app, screen_p.xy, radius_a, argb_yellow, screen_p.z);
-        }
-    }
+    fslider(radius_a, 9.766055);
+    fslider(radius_b, 15.380762);
     
     // NOTE: Sample points
     i32 nslices = 16;
-    f32 inv_nslices = 1.0f / (f32)nslices;
+    v1 inv_nslices = 1.0f / (v1)nslices;
     for_i32 (sample_index, 0, nslices+1)
     {
-        f32 t_radius = (f32)sample_index * inv_nslices;
-        f32 radius = lerp(radius_a, t_radius, radius_b);
+        v1 t_radius = (v1)sample_index * inv_nslices;
+        v1 radius = lerp(radius_a,
+                         4.f*(-t_radius*t_radius + t_radius),
+                         radius_b);
         
-        f32 u = inv_nslices * (f32)sample_index;
-        f32 U = 1.0f-u;
+        v1 u = inv_nslices * (v1)sample_index;
+        v1 U = 1.0f-u;
         v3 world_p = (1*cubed(U)*P[0] + 
                       3*(u)*squared(U)*P[1] +
                       3*squared(u)*(U)*P[2] +
@@ -361,12 +364,12 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4])
         v3 screen_p = perspective_project(camera, world_p);
         
         v1 draw_radius;
-        {// NOTE: Having to calculate the focal_length/dz twice :<
+        {// NOTE: Our fancyness adjusts the disk radius... not sure if I want this?
             v1 depth = camera->distance - dot(camera->pz, world_p);
             draw_radius = absolute((camera->focal_length / depth) * radius);
         }
         
-        draw_circle(app, screen_p.xy, draw_radius, argb_gray, screen_p.z);
+        draw_disk(app, screen_p, draw_radius, color);
     }
 }
 
@@ -381,13 +384,13 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
             for_u32 (j,0,4)
             {
                 v3 screen_p = perspective_project(camera, P[i][j]);
-                draw_circle(app, screen_p.xy, 6.0f, argb_gray, screen_p.z);
+                draw_circle(app, screen_p.xy, 6.0f, argb_gray(.5), screen_p.z);
             }
         }
     }
     
     u32 nslices = 16;
-    f32 inv_nslices = 1.0f / (f32)nslices;
+    v1 inv_nslices = 1.0f / (f32)nslices;
     for_u32 (u_index, 0, nslices+1)
     {
         for_u32 (v_index, 0, nslices+1)
@@ -422,7 +425,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
                     lightness = 1.0f - quadrance;  // so it's kinda like Lambert's light law
                 }
             }
-            v4 color = lerp(v4_gray, lightness, v4_white);
+            v4 color = lerp(v4_gray(.5), lightness, v4_white);
             draw_circle(app, screen_p.xy, draw_radius, pack_argb(color), screen_p.z);
         }
     }
@@ -464,11 +467,11 @@ struct Game_Save
 };
 
 internal b32
-save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
+save_game(App *app, String save_dir, String save_path, Game_Save *save)
 {
     Scratch_Block scratch(app);
     local_persist b32 has_done_backup = false;
-    String8 backup_dir = pjoin(scratch, save_dir, "backups");
+    String backup_dir = pjoin(scratch, save_dir, "backups");
     
     b32 ok = true;
     if (!has_done_backup)
@@ -486,7 +489,7 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
         }
         else
         {
-            String8 backup_path = push_stringf(scratch, "%.*s/data_%s.kv", string_expand(backup_dir), time_string);
+            String backup_path = push_stringf(scratch, "%.*s/data_%s.kv", string_expand(backup_dir), time_string);
             ok = move_file(save_path, backup_path);
            
             if (ok) has_done_backup = true;
@@ -498,7 +501,7 @@ save_game(App *app, String8 save_dir, String8 save_path, Game_Save *save)
             if (backup_files.count > 100)
             {
                 u64 oldest_mtime = U64_MAX;
-                String8 file_to_delete = {};
+                String file_to_delete = {};
                 File_Info **opl = backup_files.infos + backup_files.count;
                 for (File_Info **backup = backup_files.infos;
                      backup < opl;
@@ -546,7 +549,7 @@ typedef u32 Widget_ID;
 struct Widget
 {
     // Widget_ID id;
-    String8 name;
+    String name;
     
     Widget *parent;
     
@@ -607,7 +610,7 @@ draw_single_widget(App *app, Widget_State *state, Widget *widget, v2 top_left)
 #else
     v2 name_dim = V2(50.0f, 50.0f);
     v2 widget_min = V2(top_left.x, top_left.y-name_dim.y);
-    draw_rect(app, rect2_min_dim(widget_min, name_dim), argb_gray);
+    draw_rect(app, rect2_min_dim(widget_min, name_dim), argb_gray(.5));
 #endif
    
     fslider(widget_indentation, v1{10.0f});
@@ -657,6 +660,17 @@ point_on_sphere_grid(i32 nsegment, v1 radius, i32 itheta, i32 iphi)
     return point_on_sphere(radius, theta, phi);
 }
 
+force_inline void
+draw_dense_line(App *app, v3 p0, v3 p1, v3 half_thickness, u32 color)
+{
+    draw_quad(app, 
+              p0-half_thickness,
+              p0+half_thickness,
+              p1-half_thickness,
+              p1+half_thickness,
+              color);
+}
+
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 // TODO: If there are two panels, this function will be called twice!
 internal void
@@ -684,6 +698,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
     Widget_State *widget_state = &state->widget_state;
     
     Scratch_Block scratch(app);
+    u32 paint_color = argb_gray(.3f);
     
     if (is_initial_frame)
     {// TODO: We should make this a parsed data structure, because this is torture!
@@ -716,6 +731,14 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         active_mods = pack_modifiers(set.mods, set.count);
     }
     
+    if (view_active)
+    {
+        if (is_key_newly_pressed(active_mods, KeyMod_Ctl, KeyCode_Tab))
+        {
+            change_active_primary_panel(app);
+        }
+    }
+    
     v1 U = 1e3;  // render scale multiplier (@Cleanup push this scale down to the renderer)
     
     local_persist Game_Save save = {};
@@ -729,7 +752,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         save_dir  = pjoin(&global_permanent_arena, binary_dir, "data");
         save_path = pjoin(&global_permanent_arena, save_dir, "data.kv");
         
-        String8 read_string = read_entire_file(scratch, save_path);
+        String read_string = read_entire_file(scratch, save_path);
         Game_Save *read = (Game_Save *)read_string.str;
         if (read->magic_number == data_magic_number)
         {
@@ -795,27 +818,36 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             camera->pz = camz;
             
 #if 0
-#define t camera->axes.rows
+#define T camera->axes.rows
             camera->project =
             {{
-                    {t[0][0], t[1][0], t[2][0]},
-                    {t[0][1], t[1][1], t[2][1]},
-                    {t[0][2], t[1][2], t[2][2]},
+                    {T[0][0], T[1][0], T[2][0]},
+                    {T[0][1], T[1][1], T[2][1]},
+                    {T[0][2], T[1][2], T[2][2]},
             }};
-#undef t
+#undef T
 #endif
         }
         
         DEBUG_VALUE(camera->distance);
         DEBUG_VALUE(camera->pz);
     }
-    
+   
+    Render_Config old_render_config;
+    {
+        Models *models = (Models*)app->cmd_context;
+        old_render_config = models->target->render_config;
+    }
+    v2 clip_radius;
     {
         // NOTE: Setup sane math coordinate system.
         rect2 clip_box = draw_get_clip(app);
+        {// NOTE: draw background
+            draw_rect(app, clip_box, argb_marble);
+        }
         v2 clip_dim = rect_dim(clip_box);
-        v2 clip_half_dim = 0.5f * clip_dim;
-        v2 layout_center = clip_box.min + clip_half_dim;
+        clip_radius = 0.5f * clip_dim;
+        v2 layout_center = clip_box.min + clip_radius;
         Render_Config config = 
         {
             .offset             = layout_center,
@@ -827,7 +859,8 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         };
         draw_configure(app, &config);
     }
-    
+   
+    if(0)
     {// NOTE: Draw coordinate axes
         v3 pO, px, py, pz;
         {
@@ -843,13 +876,11 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
         
         v1 thickness = 8.0f;
-        draw_line(app, pO, px, thickness, pack_argb({.5,  0,  0, 1}));
-        draw_line(app, pO, py, thickness, pack_argb({ 0, .5,  0, 1}));
-        draw_line(app, pO, pz, thickness, pack_argb({ 0,  .5, 1, 1}));
+        draw_line(app, pO, px, thickness, argb_red);
+        draw_line(app, pO, py, thickness, argb_green);
+        draw_line(app, pO, pz, thickness, argb_blue);
         
-        //draw_triangle(app, pO, px, py, argb_gray);
-        draw_triangle(app, pO, py, pz, argb_gray);
-        //draw_triangle(app, pO, pz, px, argb_gray);
+        draw_triangle(app, pO, py, pz, argb_gray(.3));
     }
     
     const u32 bezier_count = 3;
@@ -918,7 +949,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             if(0)
             {
                 // NOTE: Draw
-                draw_cubic_bezier(app, camera, control_points);
+                draw_cubic_bezier(app, camera, control_points, paint_color);
             }
         }
     }
@@ -992,14 +1023,16 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         }
         draw_bezier_surface(app, camera, control_points, active_i, active_j);
     }
-   
+    
     {// NOTE: The human head: revisited!
+#define PROJ(v)       perspective_project(camera, radius*(v))
+#define PROJV3(x,y,z)  PROJ(V3(x,y,z))
+        
         local_persist v1 active_phi   = 0.f;
         local_persist v1 active_theta = 0.f;
         
         i32 nsegment = 32;
         v1 segment = 1/(v1)nsegment;
-        v3 center = V3();
         v1 radius = U;
         if(0)
         {
@@ -1014,12 +1047,12 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 {
                     v3 world_pos  = point_on_sphere_grid(nsegment, radius, itheta, iphi);
                     v3 screen_pos = perspective_project(camera, world_pos);
-                    u32 color = argb_gray;
+                    u32 color = argb_gray(.5);
                     draw_disk(app, screen_pos, 8.f, color);
                 }
             }
         }
-       
+        
         if(0)
         {
             for_i32 (iphi, -nsegment/4, nsegment/4)
@@ -1040,54 +1073,146 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 }
             }
         }
-       
+        
         {// NOTE: outline
             u32 color = pack_argb(v4{.5,.5,.5,.2});
-            v3 center_screen = perspective_project(camera, center);
+            v3 center_screen = perspective_project(camera, V3());
             v1 depth = camera_relative_depth(camera, center_screen);
             v1 radius_screen = absolute(camera->focal_length / depth) * radius;
             draw_circle(app, center_screen, radius_screen, color, 8.f);
         }
        
-        {
+        {// note: active point
             v3 midpoint = perspective_project(camera, U*v3{0,0,1});
-            draw_disk(app, midpoint, 8.0f, argb_yellow);
+            draw_disk(app, midpoint, 8.0f, argb_gray(.3));
         }
         
-        {// NOTE: A quick cross section
+        local_persist v1 sideX = 0.75f;
+        {// NOTE: The side cross section
             // We wanna make a cut normal to the x axis, so x has to be constant
-            local_persist v1 x = 0.75f;
-            x += dt*fui_direction_from_key_states(active_mods, 0).x;
-            v1 yz_radius = square_root(1-squared(x));
-            DEBUG_VALUE(x);
-            for (v1 t=0.0f; 
-                 t <= 1.0f; 
-                 t += (1/32.0f))
+            if(view_active)
             {
-                //v1 t = segment*(v1)isegment;
+                //sideX += dt*fui_direction_from_key_states(active_mods, 0).x;
+            }
+            v1 yz_radius = square_root(1-squared(sideX));
+            DEBUG_VALUE(sideX);
+            for (v1 t=0.0f; 
+                 t < 1.0f; 
+                 t += (1/128.0f))
+            {
                 v3 world_p;
-                world_p.x = x;
+                world_p.x = sideX;
                 world_p.yz = yz_radius * arm2(t);
-                v3 screenP = perspective_project(camera, center + radius*world_p);
-                draw_disk(app, screenP, 8.f, argb_blue);
+                v3 screenP = perspective_project(camera, radius*world_p);
+                draw_disk(app, screenP, 4.f, paint_color);
+            }
+            
+            // note: z=0 line
+            draw_line(app, PROJV3(sideX,yz_radius,0), PROJV3(sideX,-yz_radius,0), 8.f, paint_color);
+            // note: y=0 line
+            //draw_line(app, PROJV3(x,0,yz_radius), PROJV3(sideX,0,-yz_radius), 8.f, argb_gray(.3));
+            // note: Filling in the cross-section disk
+            for (v1 y=-yz_radius;
+                 y <= yz_radius;
+                 y += (yz_radius / 4.0f))
+            {
+                v1 z = square_root(1-squared(sideX)-squared(y));
+                v3 half_thickness = V3(0,4.f,0);
+                v3 p0 = PROJV3(sideX,y,-z);
+                v3 p1 = PROJV3(sideX,y,+z);
+                draw_dense_line(app,p0,p1,half_thickness,paint_color);
             }
         }
+        
+        // NOTE: the hairline
+        v1 hairY = .5f;
+        v3 hairline_pos = PROJV3(0,hairY,square_root(1-squared(hairY)));
+        draw_disk(app, hairline_pos, 8.f, paint_color);
+        
+        // NOTE: The nose line
+        v1 noseY = -hairY;
+        v3 nose_pos = PROJV3(0.f,noseY,1.f);
+        draw_disk(app, nose_pos, 8.f, paint_color);
+       
+        // NOTE: The chin
+        v1 chinY = -2*hairY;
+        v1 chin_rx = 0.15f;
+        v3 chin_right = V3(+chin_rx,chinY,1.f);
+        {
+            v3 chin_left = chin_right;
+            chin_left.x = -chin_rx;
+            v3 chin_middle = V3(0,chinY-0.05f,1.0f);
+            v3 P[4] =
+            {
+                radius*chin_left,
+                radius*chin_middle,
+                radius*chin_middle,
+                radius*chin_right,
+            };
+            draw_cubic_bezier(app, camera, P, paint_color);
+        }
+        
+        // NOTE: Cheek line
+        v3 cheek_lower = PROJV3(0.3f,
+                                noseY,
+                                1.0f);
+        v3 cheek_upper = PROJV3(sideX,
+                                noseY / 2.f,
+                                0.8f);
+        draw_dense_line(app,cheek_lower,cheek_upper,V3(4.f,0,0),paint_color);
+       
+        // NOTE: The line that connects the lower cheek and the chin
+        draw_dense_line(app,PROJ(chin_right),cheek_lower,V3(2.f,0,0),paint_color);
+       
+        v1 mouthY = lerp(chinY, 0.5f, noseY);
+        v1 mouth_rx = .5f * chin_rx;
+        // NOTE: The mouth line
+        {
+            v3 mouth_left  = V3(-mouth_rx,mouthY,1.f);
+            v3 mouth_right = mouth_left;
+            mouth_right.x = +mouth_rx;
+            v3 P[4] =
+            {
+                radius*(mouth_left),
+                radius*(mouth_left  + V3(0,0.05f,0)),
+                radius*(mouth_right + V3(0,0.05f,0)),
+                radius*(mouth_right),
+            };
+            draw_cubic_bezier(app, camera, P, paint_color);
+        }
+        
+        v3 lower_jaw = V3(sideX, mouthY, 0.2f);
+        {
+            v3 P[4] =
+            {
+                radius*chin_right,
+                radius*chin_right,
+                radius*lower_jaw,
+                radius*lower_jaw,
+            };
+            draw_cubic_bezier(app, camera, P, paint_color);
+        }
+        
+        v3 ear_center = V3(sideX, -0.1f, 0.f);
+        {
+            v3 P[4] =
+            {
+                radius*lower_jaw,
+                radius*lower_jaw,
+                radius*ear_center,
+                radius*ear_center,
+            };
+            draw_cubic_bezier(app, camera, P, paint_color);
+        }
+        
+#undef PROJ
+#undef PROJV3
     }
     
     ////////////////////////////////////////////////////////////////////
     // IMPORTANT: no trespass!
     
-    {
-        Render_Config config = 
-        {
-            .offset             = v2{},
-            .y_is_up            = false,
-            .is_perspective     = false,
-            .depth_test         = false,
-            .linear_alpha_blend = false,
-        };
-        draw_configure(app, &config);
-    }
+    draw_configure(app, &old_render_config);
     
     block_zero_array(global_game_key_state_changes);
     is_initial_frame = false;

@@ -2988,7 +2988,7 @@ draw_rect(App *app, rect2 rect, Texture_ID texture, ARGB_Color color)
 }
 
 internal void
-draw_line(App *app, v3 p0, v3 p1, f32 thickness, ARGB_Color color)
+draw_line(App *app, v3 p0, v3 p1, v1 thickness, ARGB_Color color)
 {
     Models *models = (Models*)app->cmd_context;
     f32 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
@@ -3143,7 +3143,7 @@ draw_configure(App *app, Render_Config *config)
 {
     Models *models = (Models*)app->cmd_context;
     Render_Target *target = models->target;
-   
+    
     if (target->y_is_up != config->y_is_up)
     {
         target->y_is_up = config->y_is_up;

@@ -58,24 +58,20 @@ qp_eat_token(Quick_Parser *p)
             p->ok = (token_it_inc(&p->tk) != 0);
         }
         else
+        {
             p->ok = (token_it_dec(&p->tk) != 0);
+        }
     }
 }
 
-// TODO: @hack
 internal i64
-get_next_token_pos(Quick_Parser *p)
+get_token_pos(Quick_Parser *p)
 {
     i64 result = 0;
     if (p->ok)
     {
-        Quick_Parser save = *p;
-        qp_eat_token(p);
-        if (Token *token = qp_get_token(p))
-        {
-            result = token->pos;
-        }
-        *p = save;
+        Token *token = qp_get_token(p);
+        result = token->pos;
     }
     return result;
 }
@@ -223,7 +219,7 @@ char_in_string(String8 chars, char chr)
     return result;
 }
 
-#define qp_eat_until_lit(p, cstring) qp_eat_until_char(p, str8lit(cstring));
+#define qp_eat_until_char_lit(p, cstring) qp_eat_until_char(p, str8lit(cstring));
 
 // NOTE returns index + 1
 internal u32
@@ -245,15 +241,15 @@ qp_eat_until_char(Quick_Parser *p, String chars)
             // TODO: crappy recursion time!
             else if ( string_equal(token, '(') )
             {
-                qp_eat_until_lit(p, ")");
+                qp_eat_until_char_lit(p, ")");
             }
             else if ( string_equal(token, '[') )
             {
-                qp_eat_until_lit(p, "]");
+                qp_eat_until_char_lit(p, "]");
             }
             else if ( string_equal(token, '{') )
             {
-                qp_eat_until_lit(p, "}");
+                qp_eat_until_char_lit(p, "}");
             }
         }
     }

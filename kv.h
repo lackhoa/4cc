@@ -99,6 +99,8 @@ typedef float    v1;
 #define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
 
+#define force_inline gb_inline
+
 /* Intrinsics */
 
 inline void

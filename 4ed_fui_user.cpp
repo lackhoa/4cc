@@ -89,8 +89,8 @@ struct Fui_Options
 
 struct Fui_Slider
 {
-    String8 id;
-    String8 name;
+    String id;
+    String name;
     Fui_Type  type;
     Fui_Value value;
     union
@@ -110,7 +110,7 @@ global Fui_Slider *global_fui_store;
 
 // TODO(kv): @Incomplete, need to search by filename as well.
 internal Fui_Slider *
-fui_get_slider_by_name(String8 name)
+fui_get_slider_by_name(String name)
 {
     Fui_Slider *&store = global_fui_store;
    
@@ -155,10 +155,12 @@ fui_update_linear(FUI_UPDATE_PARAMS)
 
 internal FUI_UPDATE_RETURN 
 fui_update_null(FUI_UPDATE_PARAMS)
-{ return slider->value; }
+{ 
+    return slider->value; 
+}
 
 internal Fui_Item_Index
-fui_get_item_index(String8 id, Fui_Type type, Fui_Value init_value, Fui_Options options)
+fui_get_item_index(String id, Fui_Type type, Fui_Value init_value, Fui_Options options)
 {
     Fui_Slider *&store = global_fui_store;
     if ( arrlen(store) == 0 )
@@ -173,7 +175,7 @@ fui_get_item_index(String8 id, Fui_Type type, Fui_Value init_value, Fui_Options 
          item_index < arrlen(store); 
          item_index++)
     {
-        String8 item_id = store[item_index].id;
+        String item_id = store[item_index].id;
         if ( id.str == item_id.str )
             break;
     }
@@ -192,7 +194,7 @@ fui_get_item_index(String8 id, Fui_Type type, Fui_Value init_value, Fui_Options 
         while ( id.str[separator_index] != '|' ) { separator_index--; }
         
         u64 len = separator_index+1;
-        slider.name = String8{
+        slider.name = String{
             .str = id.str + len,
             .len = id.len - len,
         };
@@ -203,11 +205,9 @@ fui_get_item_index(String8 id, Fui_Type type, Fui_Value init_value, Fui_Options 
 }
 
 internal Fui_Value
-fui_user_main(String8 id, Fui_Type type, Fui_Value init_value, 
-              Fui_Options options, Fui_Item_Index *index_out)
+fui_user_main(String id, Fui_Type type, Fui_Value init_value, Fui_Options options)
 {
     Fui_Item_Index item_index = fui_get_item_index(id, type, init_value, options);
-    if (index_out) *index_out = item_index;
     
     Fui_Slider *slider = &global_fui_store[item_index];
     Fui_Value result = slider->value;
@@ -215,15 +215,14 @@ fui_user_main(String8 id, Fui_Type type, Fui_Value init_value,
 }
 
 // NOTE: We define overloads to avoid having to specify the type as a separate argument 
-// TODO: (This might be the wrong decision?),
-// as well as receive the appropriate values.
+// as well as receive the appropriate values as output.
 #define X(T) \
 \
-internal T fui_user_type(String8 id, T init_value_T, Fui_Options options={}, Fui_Item_Index *index=0) \
+internal T fui_user_type(String id, T init_value_T, Fui_Options options={}) \
 { \
     Fui_Type  type = Fui_Type_##T; \
     Fui_Value init_value = { .T = init_value_T }; \
-    Fui_Value value = fui_user_main(id, type, init_value, options, index); \
+    Fui_Value value = fui_user_main(id, type, init_value, options); \
     return value.T; \
 }
 //

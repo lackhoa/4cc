@@ -147,6 +147,7 @@ typedef Implicit_Map_Result Implicit_Map_Function(Application_Links *app,
                                                   Input_Event *event);
 
 global Implicit_Map_Function *implicit_map_function = 0;
+global Buffer_ID global_other_view_buffer;
 
 // BOTTOM
 
