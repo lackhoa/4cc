@@ -84,4 +84,4 @@ startup_file1       = game_buffer;
 other_startup_file1 = game_file;
 
 dev_disable_double_panels = false;
-DEBUG_draw_hud_p = false;
+DEBUG_draw_hud_p = true;

@@ -306,16 +306,16 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
 internal v1
 camera_relative_depth(Camera *camera, v3 point)
 {
-    v3 projected = matvmul3(&camera->project, point);
+    v1 projected_z = dot(camera->pz, point) - camera->pivot.z;
     // NOTE: Camera distance is in the direction camera Z
-    v1 depth = camera->distance - projected.z;
+    v1 depth = camera->distance - projected_z;
     return depth;
 }
 
 internal v3
 perspective_project(Camera *camera, v3 point)
 {
-    v3 projected = matvmul3(&camera->project, point);
+    v3 projected = matvmul3(&camera->project, point) - camera->pivot;
     // NOTE: Camera distance is in the direction camera Z
     v1 depth = camera->distance - projected.z;
     v1 n = 10;         // NOTE: near clip
@@ -339,12 +339,11 @@ cubic_bernstein(u32 index, v1 u)
 }
 
 internal void
-draw_cubic_bezier(App *app, Camera *camera, v3 P[4], ARGB_Color color)
+draw_sampled_bezier(App *app, Camera *camera, v3 P[4], ARGB_Color color)
 {
     fslider(radius_a, 9.766055);
     fslider(radius_b, 15.380762);
     
-    // NOTE: Sample points
     i32 nslices = 16;
     v1 inv_nslices = 1.0f / (v1)nslices;
     for_i32 (sample_index, 0, nslices+1)
@@ -365,11 +364,42 @@ draw_cubic_bezier(App *app, Camera *camera, v3 P[4], ARGB_Color color)
         
         v1 draw_radius;
         {// NOTE: Our fancyness adjusts the disk radius... not sure if I want this?
-            v1 depth = camera->distance - dot(camera->pz, world_p);
+            v1 depth = camera_relative_depth(camera, world_p);
             draw_radius = absolute((camera->focal_length / depth) * radius);
         }
         
         draw_disk(app, screen_p, draw_radius, color);
+    }
+}
+
+internal void
+draw_double_bezier(App *app, Camera *camera, v3 P[4], v3 Q[4], ARGB_Color color)
+{
+    i32 nslices = 16;
+    v1 inv_nslices = 1.0f / (v1)nslices;
+    v3 previous_screenP;
+    v3 previous_screenQ;
+    for_i32 (sample_index, 0, nslices+1)
+    {
+        v1 u = inv_nslices * (v1)sample_index;
+        v1 U = 1.0f-u;
+        v3 worldP = (1*cubed(U)*P[0] + 
+                     3*(u)*squared(U)*P[1] +
+                     3*squared(u)*(U)*P[2] +
+                     1*cubed(u)*P[3]);
+        v3 worldQ = (1*cubed(U)*Q[0] + 
+                     3*(u)*squared(U)*Q[1] +
+                     3*squared(u)*(U)*Q[2] +
+                     1*cubed(u)*Q[3]);
+        //
+        v3 screenP = perspective_project(camera, worldP);
+        v3 screenQ = perspective_project(camera, worldQ);
+        if (sample_index != 0)
+        {
+            draw_quad(app, previous_screenP, previous_screenQ, screenP, screenQ, color);
+        }
+        previous_screenP = screenP;
+        previous_screenQ = screenQ;
     }
 }
 
@@ -411,7 +441,7 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
             v1 radius = 12.0f;
             v1 draw_radius;
             {// NOTE: calculate draw radius @Slow
-                v1 projected_z = dot(camera->pz, world_p);
+                v1 projected_z = camera_relative_depth(camera, world_p);
                 v1 dz = camera->distance - projected_z;
                 draw_radius = absolute((camera->focal_length / dz) * radius);
             }
@@ -431,23 +461,28 @@ draw_bezier_surface(App *app, Camera *camera, v3 P[4][4],
     }
 }
 
-u32 data_current_version = 5;
-u32 data_magic_number = *(u32 *)"kvda";
-
 struct Bezier
 {
     v3 control_points[4];
 };
+
+global const u32 data_current_version = 6;
+global const u32 data_magic_number = *(u32 *)"kvda";
 
 struct Game_Save_Old
 {
     u32 magic_number;
     u32 version;
     
-    v3 camera_z;
+    v3 camera_z;  // @Old
     v1 camera_distance;
     
     Bezier bezier_curves[3];
+    
+    v1 camera_phi;
+    v1 camera_theta;
+    
+    v3 bezier_surface[4][4];
 };
 
 struct Game_Save
@@ -464,6 +499,8 @@ struct Game_Save
     v1 camera_theta;
     
     v3 bezier_surface[4][4];
+    
+    v3 camera_pivot;
 };
 
 internal b32
@@ -787,18 +824,21 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         camera->focal_length = 2000.f;
         
         if (view_active)
-        {// NOTE: Input handling
-            v3 delta = dt * fui_direction_from_key_states(active_mods, KeyMod_Ctl).xyz;
+        {// NOTE: Camera rotation
+            v3 delta_pivot = U * dt * fui_direction_from_key_states(active_mods, KeyMod_Alt).xyz;
+            v3 delta_angle = dt * fui_direction_from_key_states(active_mods, KeyMod_Ctl).xyz;
             
-            v1 phi   = save.camera_phi   + 0.1*delta.y;
-            v1 theta = save.camera_theta + 0.1*delta.x;
+            save.camera_pivot += delta_pivot;
+            
+            v1 phi   = save.camera_phi   + 0.1*delta_angle.y;
+            v1 theta = save.camera_theta + 0.1*delta_angle.x;
             
             save.camera_phi       = clamp_between(-0.25f, phi, 0.25f);
             save.camera_theta     = cycle01(theta);
-            save.camera_distance += delta.z;
+            save.camera_distance += delta_angle.z;
             
-            DEBUG_VALUE(save.camera_phi);
-            DEBUG_VALUE(save.camera_theta);
+            //DEBUG_VALUE(save.camera_phi);
+            //DEBUG_VALUE(save.camera_theta);
         }
         
         v3 camz;
@@ -811,26 +851,14 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         
         camera->distance = U * save.camera_distance;
         
-        {//setup_camera_from_data(camera, camz, distance);
-            // NOTE: "camz" is normalized.
-            camera->px = v3{z_point, 0, -x_point};
-            camera->py = noz( cross(camz, camera->px) );
-            camera->pz = camz;
-            
-#if 0
-#define T camera->axes.rows
-            camera->project =
-            {{
-                    {T[0][0], T[1][0], T[2][0]},
-                    {T[0][1], T[1][1], T[2][1]},
-                    {T[0][2], T[1][2], T[2][2]},
-            }};
-#undef T
-#endif
-        }
+        camera->px = v3{z_point, 0, -x_point};
+        camera->py = noz( cross(camz, camera->px) );
+        camera->pz = camz;
+        camera->pivot = save.camera_pivot;
         
-        DEBUG_VALUE(camera->distance);
-        DEBUG_VALUE(camera->pz);
+        //DEBUG_VALUE(camera->distance);
+        //DEBUG_VALUE(camera->pz);
+        DEBUG_VALUE(camera->pivot);
     }
    
     Render_Config old_render_config;
@@ -949,7 +977,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             if(0)
             {
                 // NOTE: Draw
-                draw_cubic_bezier(app, camera, control_points, paint_color);
+                draw_sampled_bezier(app, camera, control_points, paint_color);
             }
         }
     }
@@ -1135,13 +1163,14 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         draw_disk(app, nose_pos, 8.f, paint_color);
        
         // NOTE: The chin
-        v1 chinY = -2*hairY;
+        v1 chinY = -1.f;
         v1 chin_rx = 0.15f;
         v3 chin_right = V3(+chin_rx,chinY,1.f);
+        v3 chin_middle = V3(0,chinY-0.05f,1.0f);
         {
             v3 chin_left = chin_right;
             chin_left.x = -chin_rx;
-            v3 chin_middle = V3(0,chinY-0.05f,1.0f);
+            v3 chinT = V3(0,0.02f,0);
             v3 P[4] =
             {
                 radius*chin_left,
@@ -1149,7 +1178,14 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 radius*chin_middle,
                 radius*chin_right,
             };
-            draw_cubic_bezier(app, camera, P, paint_color);
+            v3 Q[4] =
+            {
+                radius*chin_left,
+                radius*(chin_middle+chinT),
+                radius*(chin_middle+chinT),
+                radius*chin_right,
+            };
+            draw_double_bezier(app, camera, P,Q, paint_color);
         }
         
         // NOTE: Cheek line
@@ -1166,19 +1202,27 @@ game_update_and_render(App *app, View_ID view, v1 dt)
        
         v1 mouthY = lerp(chinY, 0.5f, noseY);
         v1 mouth_rx = .5f * chin_rx;
-        // NOTE: The mouth line
-        {
+        {// NOTE: The mouth line
             v3 mouth_left  = V3(-mouth_rx,mouthY,1.f);
             v3 mouth_right = mouth_left;
             mouth_right.x = +mouth_rx;
+            v3 frownY0 = V3(0,0.05f,0);
+            v3 frownY1 = V3(0,0.03f,0);
             v3 P[4] =
             {
                 radius*(mouth_left),
-                radius*(mouth_left  + V3(0,0.05f,0)),
-                radius*(mouth_right + V3(0,0.05f,0)),
+                radius*(mouth_left  + frownY0),
+                radius*(mouth_right + frownY0),
                 radius*(mouth_right),
             };
-            draw_cubic_bezier(app, camera, P, paint_color);
+            v3 Q[4] =
+            {
+                radius*(mouth_left),
+                radius*(mouth_left  + frownY1),
+                radius*(mouth_right + frownY1),
+                radius*(mouth_right),
+            };
+            draw_double_bezier(app, camera, P,Q, paint_color);
         }
         
         v3 lower_jaw = V3(sideX, mouthY, 0.2f);
@@ -1190,7 +1234,7 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 radius*lower_jaw,
                 radius*lower_jaw,
             };
-            draw_cubic_bezier(app, camera, P, paint_color);
+            draw_sampled_bezier(app, camera, P, paint_color);
         }
         
         v3 ear_center = V3(sideX, -0.1f, 0.f);
@@ -1202,7 +1246,28 @@ game_update_and_render(App *app, View_ID view, v1 dt)
                 radius*ear_center,
                 radius*ear_center,
             };
-            draw_cubic_bezier(app, camera, P, paint_color);
+            draw_sampled_bezier(app, camera, P, paint_color);
+        }
+        
+        {
+            v3 chin_center = V3(0,chin_middle.y,1);
+            v3 adams_apple = V3(0,chin_middle.y,0.5f); // NOTE: just the location
+            v3 P[] =
+            {
+                radius*chin_center,
+                radius*chin_center,
+                radius*adams_apple,
+                radius*adams_apple,
+            };
+            v3 dy = v3{ .y=(0.02f) };
+            v3 Q[] =
+            {
+                radius*(chin_center-dy),
+                radius*(chin_center-dy),
+                radius*(adams_apple-dy),
+                radius*(adams_apple-dy),
+            };
+            draw_double_bezier(app, camera, P,Q, paint_color);
         }
         
 #undef PROJ

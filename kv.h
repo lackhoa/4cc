@@ -103,13 +103,13 @@ typedef float    v1;
 
 /* Intrinsics */
 
-inline void
+force_inline void
 block_zero(void *mem, u64 size)
 {
     gb_zero_size(mem, size);
 }
 
-inline void
+force_inline void
 block_fill_ones(void *mem, u64 size)
 {
     gb_memset(mem, 0xff, size);
@@ -140,26 +140,26 @@ block_copy(void *dst, const void *src, u64 size)
 #endif
 }
 
-inline i32
+force_inline i32
 absoslute(i32 in)
 {
     return ((in >= 0) ? in : -in);
 }
 
-inline f32
+force_inline v1
 squared(f32 x)
 {
     f32 result = x*x;
     return result;
 }
 
-inline f32 
+force_inline v1 
 cubed(f32 value)
 {
     return value*value*value;
 }
 
-inline f32
+force_inline v1
 square_root(f32 x)
 {
 #if COMPILER_MSVC
@@ -170,8 +170,8 @@ square_root(f32 x)
     return result;
 }
 
-// TODO: These are real bad! should only be one simd instruction. Watch hmh 379 (or something)
-inline f32
+// TODO: These are real bad! should only be one simd instruction. Watch hmh 379 for details.
+force_inline v1
 round_f32(f32 Real32)
 {
 #if COMPILER_MSVC
@@ -182,7 +182,8 @@ round_f32(f32 Real32)
     return(Result);
 }
 
-inline f32
+// TODO @Cleanup force_inline all these functions
+force_inline f32
 floor_f32(f32 value)
 {
 #if COMPILER_MSVC
@@ -945,7 +946,7 @@ inline f32 v3::operator[](i32 index)
 }
 
 inline v3
-V3(v2 xy, f32 z)
+V3(v2 xy, v1 z)
 {
     v3 result;
     result.xy = xy;
@@ -10334,13 +10335,14 @@ inline v2  arm2(v1 turn)
 // TODO: @Cleanup Temporary put this here to transition to camera transform!
 struct Camera
 {
-    v1 distance;  // NOTE: by its axis z
+    v1 distance;  // NOTE: direction is its z
     union
     {
-        m3x3 project;
+        m3x3 project;  // NOTE: remember: this is a row matrix
         struct{ v3 px,py,pz; };
     };
-    v1   focal_length;
+    v1 focal_length;
+    v3 pivot;
 };
 
 internal m4x4
