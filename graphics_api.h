@@ -1,3 +1,4 @@
+#pragma once
 // NOTE(kv): this file used to be generated
 
 #define graphics_get_texture_return  Texture_ID

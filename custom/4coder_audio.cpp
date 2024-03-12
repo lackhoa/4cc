@@ -12,14 +12,6 @@
 #include <intrin.h>
 #endif
 
-function u32
-AtomicAddU32AndReturnOriginal(u32 volatile *Value, u32 Addend)
-{
- // NOTE(casey): Returns the original value _prior_ to adding
- u32 Result = _InterlockedExchangeAdd((long volatile*)Value, (long)Addend);
- return(Result);
-}
-
 function void
 def_audio_begin_ticket_mutex(Audio_System *Crunky)
 {

@@ -175,20 +175,22 @@ models_init(void){
     return(models);
 }
 
-internal void
-app_load_vtables(API_VTable_system *vtable_system, API_VTable_font *vtable_font, API_VTable_graphics *vtable_graphics){
-    system_api_read_vtable(vtable_system);
-    font_api_read_vtable(vtable_font);
-    graphics_api_read_vtable(vtable_graphics);
-}
-
 internal Log_Function*
-app_get_logger(void){
+app_get_logger(void)
+{
     log_init();
     return(log_string);
 }
 
-App_Read_Command_Line_Sig(app_read_command_line){
+internal void *
+app_read_command_line(Thread_Context *tctx,
+                      String_Const_u8 current_directory,
+                      Plat_Settings *plat_settings,
+                      char ***files,   
+                      i32 **file_count,
+                      i32 argc,
+                      char **argv)
+{
     Models *models = models_init();
     App_Settings *settings = &models->settings;
     block_zero_struct(settings);
@@ -200,10 +202,12 @@ App_Read_Command_Line_Sig(app_read_command_line){
     return(models);
 }
 
-// todo(kv): move this somewhere good better
-extern "C" void custom_layer_init(Application_Links *app);
+// TODO(kv): move this somewhere better
+extern "C" void custom_layer_init(App *app);
 
-App_Init_Sig(app_init){
+internal void 
+app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String_Const_u8 current_directory)
+{
     Models *models = (Models*)base_ptr;
     models->keep_playing = true;
     models->hard_exit = false;
@@ -215,10 +219,6 @@ App_Init_Sig(app_init){
     
     managed_ids_init(tctx->allocator, &models->managed_id_set);
    
-    API_VTable_system system_vtable = {};
-    system_api_fill_vtable(&system_vtable);
-    custom_init_apis(&system_vtable);
-    
     // NOTE(allen): coroutines
     coroutine_system_init(&models->coroutines);
     
@@ -332,7 +332,8 @@ App_Init_Sig(app_init){
     }
 }
 
-App_Step_Sig(app_step)
+internal Application_Step_Result 
+app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Application_Step_Input *input)
 {
     Models *models = (Models*)base_ptr;
     
@@ -884,18 +885,6 @@ App_Step_Sig(app_step)
     
     // end-of-app_step
     return(app_result);
-}
-
-extern "C" App_Get_Functions_Sig(app_get_functions){
-    App_Functions result = {};
-    
-    result.load_vtables = app_load_vtables;
-    result.get_logger = app_get_logger;
-    result.read_command_line = app_read_command_line;
-    result.init = app_init;
-    result.step = app_step;
-    
-    return(result);
 }
 
 // BOTTOM

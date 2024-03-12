@@ -10,9 +10,13 @@
 #define system_load_file_sig() b32 system_load_file(Plat_Handle handle, char* buffer, u32 size)
 #define system_load_close_sig() b32 system_load_close(Plat_Handle handle)
 #define system_save_file_sig() File_Attributes system_save_file(Arena* scratch, char* filename, String_Const_u8 data)
-#define system_load_library_sig() b32 system_load_library(Arena* scratch, String_Const_u8 filename, System_Library* out)
+#define SYSTEM_LOAD_LIBRARY_RETURN b32
+#define SYSTEM_LOAD_LIBRARY_PARAMS Arena* scratch, String filename, System_Library* out
+#define system_load_library_sig() SYSTEM_LOAD_LIBRARY_PARAMS system_load_library(SYSTEM_LOAD_LIBRARY_RETURN)
 #define system_release_library_sig() b32 system_release_library(System_Library handle)
-#define system_get_proc_sig() Void_Func* system_get_proc(System_Library handle, char* proc_name)
+#define SYSTEM_GET_PROC_RETURN Void_Func*
+#define SYSTEM_GET_PROC_PARAMS System_Library handle, char* proc_name
+#define system_get_proc_sig() SYSTEM_GET_PROC_RETURN* system_get_proc(SYSTEM_GET_PROC_PARAMS)
 #define system_now_time_sig() u64 system_now_time(void)
 #define system_now_date_time_universal_sig() Date_Time system_now_date_time_universal(void)
 #define system_local_date_time_from_universal_sig() Date_Time system_local_date_time_from_universal(Date_Time* date_time)

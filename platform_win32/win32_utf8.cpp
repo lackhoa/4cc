@@ -9,8 +9,7 @@
 
 // TOP
 
-#if !defined(FRED_WIN32_UTF8_CPP)
-#define FRED_WIN32_UTF8_CPP
+#pragma once
 
 internal HANDLE
 CreateFile_utf8(Arena *scratch, u8 *name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES security, DWORD creation, DWORD flags, HANDLE template_file){
@@ -156,7 +155,8 @@ SetWindowText_utf8(Arena *scratch, HWND window, u8 *string){
 }
 
 internal BOOL
-GetFileAttributesEx_utf8String(Arena *scratch, String8 file_name, GET_FILEEX_INFO_LEVELS info_level_id, LPVOID file_info){
+GetFileAttributesEx_utf8String(Arena *scratch, String8 file_name, GET_FILEEX_INFO_LEVELS info_level_id, LPVOID file_info)
+{
     Temp_Memory temp = begin_temp(scratch);
     String_u16 string_16 = string_u16_from_string_u8(scratch, file_name, StringFill_NullTerminate);
     BOOL result = GetFileAttributesExW((LPWSTR)string_16.str, info_level_id, file_info);
@@ -165,15 +165,14 @@ GetFileAttributesEx_utf8String(Arena *scratch, String8 file_name, GET_FILEEX_INF
 }
 
 function HMODULE
-LoadLibrary_utf8String(Arena *scratch, String_Const_u8 name){
+LoadLibrary_utf8String(Arena *scratch, String name)
+{
     Temp_Memory temp = begin_temp(scratch);
     String_u16 string_16 = string_u16_from_string_u8(scratch, name, StringFill_NullTerminate);
     HMODULE result = LoadLibraryW((LPWSTR)string_16.str);
     end_temp(temp);
     return(result);
 }
-
-#endif
 
 // BOTTOM
 

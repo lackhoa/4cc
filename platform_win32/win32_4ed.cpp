@@ -14,7 +14,6 @@
 
 #include <stdio.h>
 
-// #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_events.h"
 
@@ -57,6 +56,8 @@
 
 #include "win32_utf8.h"
 #include "win32_gl.h"
+
+#include "4ed_app_target.cpp"
 
 ////////////////////////////////
 
@@ -113,10 +114,10 @@ struct Win32_Input_Chunk{
 #define DLL "dll"
 
 #include "4coder_hash_functions.cpp"
-#include "4coder_system_allocator.cpp"
-#include "4coder_codepoint_map.cpp"
+//#include "4coder_system_allocator.cpp"
+//#include "4coder_codepoint_map.cpp"
 
-#include "4ed_font_set.cpp"
+//#include "4ed_font_set.cpp"
 
 ////////////////////////////////
 
@@ -279,11 +280,13 @@ handle_type_ptr(void *ptr){
 
 ////////////////////////////////
 
-internal
-system_load_library_sig(){
+internal SYSTEM_LOAD_LIBRARY_RETURN
+system_load_library(SYSTEM_LOAD_LIBRARY_PARAMS)
+{
     HMODULE lib = LoadLibrary_utf8String(scratch, filename);
     b32 result = false;
-    if (lib != 0){
+    if (lib != 0)
+    {
         result = true;
         *out = handle_type(lib);
     }
@@ -296,8 +299,9 @@ system_release_library_sig(){
     return(FreeLibrary(lib));
 }
 
-internal
-system_get_proc_sig(){
+internal SYSTEM_GET_PROC_RETURN
+system_get_proc(SYSTEM_GET_PROC_PARAMS)
+{
     HMODULE lib = (HMODULE)handle_type(handle);
     return((Void_Func*)(GetProcAddress(lib, proc_name)));
 }
@@ -1737,7 +1741,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     // NOTE(allen): someone get my shit togeth :(er for me
     
     for (i32 i = 0; i < argc; i += 1){
-        String_Const_u8 arg = SCu8(argv[i]);
+        String arg = SCu8(argv[i]);
         printf("arg[%d]: %.*s\n", i, string_expand(arg));
         if (string_match(arg, str8_lit("-L"))){
             log_os_enabled = true;
@@ -1804,6 +1808,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     // NOTE(allen): load core
     log_os("Loading 4ed core...\n");
     
+#if 0
     System_Library core_library = {};
     App_Functions app = {};
     {
@@ -1813,34 +1818,38 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         List_String_Const_u8 search_list = {};
         def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
         
-        String_Const_u8 core_path =
-            def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.dll"));
+        String core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.dll"));
         
         log_os(" path to core: '%.*s'\n", string_expand(core_path));
         
-        if (system_load_library(scratch, core_path, &core_library)){
+        if (system_load_library(scratch, core_path, &core_library))
+        {
             get_funcs = (App_Get_Functions*)system_get_proc(core_library, "app_get_functions");
-            if (get_funcs != 0){
+            if (get_funcs != 0)
+            {
                 app = get_funcs();
             }
-            else{
+            else
+            {
                 char msg[] = "Failed to get application code from '4ed_app.dll'.";
                 system_error_box(msg);
             }
         }
-        else{
+        else
+        {
             char msg[] = "Could not load '4ed_app.dll'. This file should be in the same directory as the main '4ed' executable.";
             system_error_box(msg);
         }
     }
     
     log_os(" core loaded\n");
+#endif
     
     // NOTE(allen): send system vtable to core
-    log_os("Linking vtables...\n");
+    //log_os("Linking vtables...\n");
     
-    app.load_vtables(&system_vtable, &font_vtable, &graphics_vtable);
-    win32vars.log_string = app.get_logger();
+    //app_load_vtables(&system_vtable, &font_vtable, &graphics_vtable);
+    win32vars.log_string = app_get_logger();
     
     // NOTE(allen): init & command line parameters
     log_os("Parsing command line...\n");
@@ -1849,11 +1858,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     void *base_ptr = 0;
     {
         Scratch_Block scratch(win32vars.tctx);
-        String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
+        String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
         string_mod_replace_character(curdir, '\\', '/');
         char **files = 0;
         i32 *file_count = 0;
-        base_ptr = app.read_command_line(win32vars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
+        base_ptr = app_read_command_line(win32vars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
         {
             i32 end = *file_count;
             i32 i = 0, j = 0;
@@ -1870,7 +1879,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     // NOTE(allen): setup user directory override
     log_os("User directory override: '%s'\n", plat_settings.user_directory);
     
-    if (plat_settings.user_directory != 0){
+    if (plat_settings.user_directory != 0)
+    {
         w32_override_user_directory = SCu8((u8*)plat_settings.user_directory);
     }
     
@@ -1972,9 +1982,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     log_os("Initializing 4ed core...\n");
     {
         Scratch_Block scratch(win32vars.tctx);
-        String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
+        String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
         string_mod_replace_character(curdir, '\\', '/');
-        app.init(win32vars.tctx, &render_target, base_ptr, curdir);
+        app_init(win32vars.tctx, &render_target, base_ptr, curdir);
     }
     
     //
@@ -2154,7 +2164,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         
         
         // NOTE(allen): Application Core Update
-        Application_Step_Result result = app.step(win32vars.tctx, &render_target, base_ptr, &input);
+        Application_Step_Result result = app_step(win32vars.tctx, &render_target, base_ptr, &input);
         
         // NOTE(allen): Finish the Loop
         if (result.perform_kill){

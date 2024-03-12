@@ -7,14 +7,12 @@
  *
  */
 
-// TOP
-
-#if !defined(FRED_H)
-#define FRED_H
+#pragma once
 
 #define MAX_VIEWS 16
 
-struct Plat_Settings{
+struct Plat_Settings
+{
     char *custom_dll;
     b8 custom_dll_is_strict;
     b8 fullscreen_window;
@@ -32,34 +30,13 @@ struct Plat_Settings{
     char *user_directory;
 };
 
-#define App_Read_Command_Line_Sig(name) \
-void *name(Thread_Context *tctx,\
-String_Const_u8 current_directory,\
-Plat_Settings *plat_settings,\
-char ***files,   \
-i32 **file_count,\
-i32 argc,        \
-char **argv)
-
-typedef App_Read_Command_Line_Sig(App_Read_Command_Line);
-
-function _Get_Version_Type custom_get_version;
-function _Init_APIs_Type   custom_init_apis;
-/*
-struct Custom_API{
-    _Get_Version_Type *get_version;
-    _Init_APIs_Type *init_apis;
-};
-*/
-
-#define App_Init_Sig(name)  \
-  void name(Thread_Context *tctx, Render_Target *target, void *base_ptr, String_Const_u8 current_directory)
-
-typedef App_Init_Sig(App_Init);
+//function _Get_Version_Type custom_get_version;
+//function _Init_APIs_Type   custom_init_apis;
 
 #include "4ed_cursor_codes.h"
 
-struct Application_Step_Result{
+struct Application_Step_Result
+{
     Application_Mouse_Cursor mouse_cursor_type;
     b32 lctrl_lalt_is_altgr;
     b32 perform_kill;
@@ -68,7 +45,8 @@ struct Application_Step_Result{
     char *title_string;
 };
 
-struct Application_Step_Input{
+struct Application_Step_Input
+{
     b32 first_step;
     f32 dt;
     Mouse_State mouse;
@@ -77,32 +55,5 @@ struct Application_Step_Input{
     b32 trying_to_kill;
 };
 
-#define App_Step_Sig(name) Application_Step_Result \
-name(Thread_Context *tctx,                 \
-Render_Target *target,                \
-void *base_ptr,                       \
-Application_Step_Input *input)
-
-typedef App_Step_Sig(App_Step);
-
 typedef b32 Log_Function(String_Const_u8 str);
 typedef Log_Function *App_Get_Logger(void);
-typedef void App_Load_VTables(API_VTable_system *vtable_system,
-                              API_VTable_font *vtable_font,
-                              API_VTable_graphics *vtable_graphics);
-
-struct App_Functions{
-    App_Load_VTables *load_vtables;
-    App_Get_Logger *get_logger;
-    App_Read_Command_Line *read_command_line;
-    App_Init *init;
-    App_Step *step;
-};
-
-#define App_Get_Functions_Sig(name) App_Functions name()
-typedef App_Get_Functions_Sig(App_Get_Functions);
-
-#endif
-
-// BOTTOM
-

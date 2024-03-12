@@ -213,7 +213,7 @@ try:
         if full_rebuild:  # do some generation business in the custom layer
             autogen()
 
-        print(f'Producing 4ed_app{DOT_DLL}')
+        # print(f'Producing 4ed_app{DOT_DLL}')
         INCLUDES=f'-I{CODE} -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/4coder_kv/libs'
         #
         COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
@@ -221,11 +221,11 @@ try:
         #
         OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"  # Look, I tried -O2 and even -O1, it's still slow af
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
-        if 0: # in case I wanna debug some f-ing macro
+        if 0: # in case I wanna debug some macro
             run(f'clang++ -E {CODE}/4ed_app_target.cpp -o 4ed_app_e.cpp {COMPILE_FLAGS}')
-        run(f'ccache clang++ -c {CODE}/4ed_app_target.cpp -o 4ed_app.o {COMPILE_FLAGS}')
+        # run(f'ccache clang++ -c {CODE}/4ed_app_target.cpp -o 4ed_app.o {COMPILE_FLAGS}')
         #
-        run(f'clang++ -shared 4ed_app.o -o 4ed_app{DOT_DLL} -Wl,-export:app_get_functions {debug}')
+        # run(f'clang++ -shared 4ed_app.o -o 4ed_app{DOT_DLL} -Wl,-export:app_get_functions {debug}')
 
         print('Producing 4ed')
         if OS_WINDOWS:

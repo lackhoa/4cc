@@ -259,7 +259,8 @@ system_save_file(Arena* scratch, char* file_name, String_Const_u8 data){
 }
 
 internal b32
-system_load_library(Arena* scratch, String_Const_u8 file_name, System_Library* out){
+system_load_library(Arena* scratch, String file_name, System_Library* out)
+{
     LINUX_FN_DEBUG("%.*s", (int)file_name.size, file_name.str);
     void* library = dlopen((const char*)file_name.str, RTLD_LAZY);
     if (library != NULL) {

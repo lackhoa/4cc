@@ -1163,29 +1163,19 @@ game_update_and_render(App *app, View_ID view, v1 dt)
         draw_disk(app, nose_pos, 8.f, paint_color);
        
         // NOTE: The chin
+        // NOTE: Edge Convention: (outer comes first, inner comes second), outer is always primary
         v1 chinY = -1.f;
         v1 chin_rx = 0.15f;
-        v3 chin_right = V3(+chin_rx,chinY,1.f);
+        v3 chin_right  = V3(+chin_rx,chinY,1.f);
         v3 chin_middle = V3(0,chinY-0.05f,1.0f);
         {
             v3 chin_left = chin_right;
             chin_left.x = -chin_rx;
             v3 chinT = V3(0,0.02f,0);
-            v3 P[4] =
-            {
-                radius*chin_left,
-                radius*chin_middle,
-                radius*chin_middle,
-                radius*chin_right,
-            };
-            v3 Q[4] =
-            {
-                radius*chin_left,
-                radius*(chin_middle+chinT),
-                radius*(chin_middle+chinT),
-                radius*chin_right,
-            };
-            draw_double_bezier(app, camera, P,Q, paint_color);
+            v3 mid0 = PROJ(chin_middle);
+            v3 mid1 = PROJ(chin_middle+chinT);
+            draw_triangle(app, PROJ(chin_right), mid0, mid1, paint_color);
+            draw_triangle(app, PROJ(chin_left),  mid0, mid1, paint_color);
         }
         
         // NOTE: Cheek line
@@ -1262,10 +1252,10 @@ game_update_and_render(App *app, View_ID view, v1 dt)
             v3 dy = v3{ .y=(0.02f) };
             v3 Q[] =
             {
-                radius*(chin_center-dy),
-                radius*(chin_center-dy),
-                radius*(adams_apple-dy),
-                radius*(adams_apple-dy),
+                radius*(chin_center+dy),
+                radius*(chin_center+dy),
+                radius*(adams_apple+dy),
+                radius*(adams_apple+dy),
             };
             draw_double_bezier(app, camera, P,Q, paint_color);
         }

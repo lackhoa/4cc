@@ -103,6 +103,14 @@ typedef float    v1;
 
 /* Intrinsics */
 
+force_inline u32
+AtomicAddU32AndReturnOriginal(u32 volatile *Value, u32 Addend)
+{
+    // NOTE(casey): Returns the original value _prior_ to adding
+    u32 Result = _InterlockedExchangeAdd((long volatile*)Value, (long)Addend);
+    return(Result);
+}
+
 force_inline void
 block_zero(void *mem, u64 size)
 {

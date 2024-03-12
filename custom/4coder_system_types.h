@@ -40,7 +40,7 @@ enum{
 
 struct Memory_Annotation_Node{
     Memory_Annotation_Node *next;
-    String_Const_u8 location;
+    String location;
     void *address;
     u64 size;
 };
