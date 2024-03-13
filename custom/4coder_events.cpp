@@ -1,8 +1,6 @@
-/*
- * 4coder event helpers
- */
+#pragma once
 
-// TOP
+#include "4coder_events.h"
 
 function b32
 set_has_modifier(Key_Code *mods, i32 count, Key_Code modifier)
@@ -132,7 +130,7 @@ has_modifier(Input_Event *event, Key_Code modifier)
 }
 
 // NOTE(kv): @Hack
-inline Key_Code
+internal Key_Code
 is_modifier_key(Key_Code code)
 {
     return (code == KeyCode_Control ||
@@ -141,17 +139,6 @@ is_modifier_key(Key_Code code)
             code == KeyCode_Command ||
             code == KeyCode_Menu);
 }
-
-// NOTE(kv): Totally a @Hack, these flags can be appended to the keycode
-typedef u32 Key_Mod;
-enum
-{
-    KeyMod_Ctl = bit_32,
-    KeyMod_Sft = bit_31,
-    KeyMod_Alt = bit_30,
-    KeyMod_Cmd = bit_29,
-    KeyMod_Mnu = bit_28,
-};
 
 internal Key_Code
 pack_modifiers(Key_Code *mods, u32 count)
@@ -405,11 +392,13 @@ copy_input_event(Arena *arena, Input_Event *event){
 
 ////////////////////////////////
 
-function String_Const_u8
-stringize_keyboard_event(Arena *arena, Input_Event *event){
+function String
+stringize_keyboard_event(Arena *arena, Input_Event *event)
+{
     List_String_Const_u8 list = {};
     
-    switch (event->kind){
+    switch (event->kind)
+    {
         case InputEventKind_TextInsert:
         {
             string_list_push(arena, &list, string_u8_litexpr("t"));
@@ -445,7 +434,8 @@ stringize_keyboard_event(Arena *arena, Input_Event *event){
 }
 
 function Input_Event
-parse_keyboard_event(Arena *arena, String_Const_u8 text){
+parse_keyboard_event(Arena *arena, String text)
+{
     Input_Event result = {};
     u64 pos = 0;
     Range_i64 range = {};
@@ -459,13 +449,14 @@ parse_keyboard_event(Arena *arena, String_Const_u8 text){
         for (; pos + 1 < text.size; pos += 2){
             if (character_is_base16(text.str[pos]) &&
                 character_is_base16(text.str[pos + 1])){
-                String_Const_u8 byte_str = {text.str + pos, 2};
+                String byte_str = {text.str + pos, 2};
                 result.text.string.str[result.text.string.size] = (u8)string_to_integer(byte_str, 16);
                 result.text.string.size += 1;
             }
         }
     }
-    else if (pos < text.size && text.str[pos] == 'k'){
+    else if (pos < text.size && text.str[pos] == 'k')
+    {
         pos += 1;
         result.kind = InputEventKind_KeyStroke;
         
@@ -490,7 +481,8 @@ parse_keyboard_event(Arena *arena, String_Const_u8 text){
             
             if (pos < text.size && text.str[pos] == 'm'){
                 pos += 1;
-                if (pos < text.size && text.str[pos] == '{'){
+                if (pos < text.size && text.str[pos] == '{'/*}*/)
+                {
                     pos += 1;
                     
                     Input_Modifier_Set_Fixed mods = {};
@@ -517,5 +509,3 @@ parse_keyboard_event(Arena *arena, String_Const_u8 text){
     
     return(result);
 }
-
-// BOTTOM

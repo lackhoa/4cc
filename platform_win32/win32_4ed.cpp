@@ -275,8 +275,8 @@ handle_type_ptr(void *ptr){
 ////////////////////////////////
 
 #include "win32_4ed_functions.cpp"
-#include "mmeapi.h"
-#include "win32_audio.cpp"
+//#include "mmeapi.h"
+//#include "win32_audio.cpp"
 
 ////////////////////////////////
 
@@ -293,8 +293,9 @@ system_load_library(SYSTEM_LOAD_LIBRARY_PARAMS)
     return(result);
 }
 
-internal
-system_release_library_sig(){
+internal SYSTEM_RELEASE_LIBRARY_RETURN
+system_release_library(SYSTEM_RELEASE_LIBRARY_PARAMS)
+{
     HMODULE lib = (HMODULE)handle_type(handle);
     return(FreeLibrary(lib));
 }
@@ -1763,7 +1764,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     win32vars.tctx = &_tctx;
     
     log_os("Filling API v-tables...\n");
-    
     API_VTable_system system_vtable = {};
     system_api_fill_vtable(&system_vtable);
     
@@ -1921,8 +1921,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     win32_resize(window_rect.right - window_rect.left, window_rect.bottom - window_rect.top);
     
     // NOTE(allen): Audio Init
-    log_os("Initializing audio...\n");
-    win32vars.audio_thread_id = win32_audio_init();
+    //log_os("Initializing audio...\n");
+    //win32vars.audio_thread_id = win32_audio_init();
     
     // NOTE(allen): Misc Init
     log_os("Initializing clipboard listener...\n");

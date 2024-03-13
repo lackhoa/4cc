@@ -28,7 +28,8 @@ def_search_list_add_system_path(Arena *arena, List_String_Const_u8 *list, System
 // NOTE(allen): Search List Functions
 
 function String_Const_u8
-def_search_get_full_path(Arena *arena, List_String_Const_u8 *list, String_Const_u8 relative){
+def_search_get_full_path(Arena *arena, List_String_Const_u8 *list, String_Const_u8 relative)
+{
     String_Const_u8 result = {};
     
     Temp_Memory temp = begin_temp(arena);

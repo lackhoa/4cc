@@ -174,6 +174,7 @@ as unhandled, we ensure we get text input events. */
  }
 }
 
+#if 0
 global Audio_Control the_music_control = {};
 
 CUSTOM_COMMAND_SIG(music_start)
@@ -228,6 +229,7 @@ CUSTOM_DOC("Play the hit sound effect")
   index += 1;
  }
 }
+#endif
 
 
 // BOTTOM

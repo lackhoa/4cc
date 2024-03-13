@@ -1,14 +1,3 @@
-/*
- * Mr. 4th Dimention - Allen Webster
- *
- * 12.12.2014
- *
- * Application layer for project codename "4ed"
- *
- */
-
-// TOP
-
 internal void
 init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings, i32 argc, char **argv){
     char *arg = 0;
@@ -205,8 +194,12 @@ app_read_command_line(Thread_Context *tctx,
 // TODO(kv): move this somewhere better
 extern "C" void custom_layer_init(App *app);
 
+global Game_API global_game_api = {};
+global String GAME_CODE_PATH = str8lit("game.dll");
+global Game_State *game_state_pointer;
+
 internal void 
-app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String_Const_u8 current_directory)
+app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String current_directory)
 {
     Models *models = (Models*)base_ptr;
     models->keep_playing = true;
@@ -269,7 +262,8 @@ app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String_Con
         description.font.filename = full_path;
         description.parameters.pt_size = 12;
         Face *new_face = font_set_new_face(&models->font_set, &description);
-        if (new_face == 0){
+        if (new_face == 0)
+        {
             system_error_box("Could not load the required fallback font");
         }
         models->global_face_id = new_face->id;
@@ -324,11 +318,35 @@ app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String_Con
     
     models->begin_buffer = begin_buffer_func;
     
-    // NOTE(allen): setup first panel
-    {
+    {// NOTE(allen): setup first panel
         Panel *panel = layout_initialize(arena, &models->layout);
         View *new_view = live_set_alloc_view(&models->lifetime_allocator, &models->view_set, panel);
         view_init(tctx, models, new_view, models->scratch_buffer, models->view_event_handler);
+    }
+    
+    {// NOTE(kv): Load dynamc game code
+        Scratch_Block scratch(tctx, arena);
+        
+        System_Library library = {};
+        if ( system_load_library(scratch, GAME_CODE_PATH, &library) )
+        {
+            // NOTE: Loading game code
+            auto game_api_export = (game_api_export_type *)system_get_proc(library, "game_api_export");
+            game_api_export(&global_game_api);
+            
+#if 0
+            // NOTE: API export
+            Ed_API ed_api;
+#define X(N)  ed_api.N = N;
+            //
+            X_ED_API_FUNCTIONS(X)
+            //
+#undef X
+#endif
+            Arena bootstrap_arena = make_arena_system();
+            game_state_pointer = global_game_api.game_init(&bootstrap_arena, &app);
+        }
+        else system_error_box("Could not load game code");
     }
 }
 

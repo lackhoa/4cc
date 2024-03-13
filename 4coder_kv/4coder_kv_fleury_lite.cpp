@@ -112,7 +112,7 @@ F4_RenderLite(Application_Links *app, Frame_Info frame_info, View_ID view_id)
                 color = inactive_bg_color;
             }
         }
-        draw_rectangle(app, region, 0.f, color);
+        draw_rect(app, region, 0.f, color);
         draw_margin(app, view_rect, region, color);
     }
     

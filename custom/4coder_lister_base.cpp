@@ -323,8 +323,8 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
         
         u64 lister_roundness_100 = def_get_config_u64(app, vars_intern_lit("lister_roundness"));
         f32 roundness = block_height*cast(f32)lister_roundness_100*0.01f;
-        draw_rectangle_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
-        draw_rectangle_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
+        draw_rect_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
+        draw_rect_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
         
         Fancy_Line line = {};
         push_fancy_string(scratch, &line, fcolor_id(defcolor_text_default), node->string);

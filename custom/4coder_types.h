@@ -1,24 +1,80 @@
-#if !defined(FCODER_TYPES_H)
-#define FCODER_TYPES_H
+#pragma once
 
-api(custom)
-struct Thread_Context_Extra_Info{
-    void *coroutine;
-    void *async_thread;
-};
-api(custom)
-struct Application_Links {
+struct Texture_ID { u32 v; };  // NOTE(kv): just changing to learn the API
+
+struct Application_Links 
+{
     Thread_Context *tctx;
     void *cmd_context;
 };
 typedef Application_Links App;
 
-api(custom)
-typedef b32 _Get_Version_Type(i32 maj, i32 min, i32 patch);
-api(custom)
-typedef void _Init_APIs_Type(struct API_VTable_system *system_vtable);
+api(custom) function Thread_Context*
+get_thread_context(App *app){
+    return(app->tctx);
+}
 
-////////////////////////////////
+api(custom)
+typedef i32 View_ID;
+
+api(custom)
+typedef i32 Buffer_ID;
+
+api(custom)
+typedef u32 File_Attribute_Flag;
+enum{
+    FileAttribute_IsDirectory = 1,
+};
+
+api(custom)
+struct File_Attributes{
+    u64 size;
+    u64 last_write_time;
+    File_Attribute_Flag flags;
+};
+
+api(custom)
+struct File_Info{
+    File_Info *next;
+    String filename;
+    File_Attributes attributes;
+};
+
+api(custom)
+struct File_List{
+    File_Info **infos;
+    u32 count;
+};
+
+typedef i32 System_Path_Code;
+enum
+{
+    SystemPath_CurrentDirectory,
+    SystemPath_BinaryDirectory,
+    SystemPath_UserDirectory,
+};
+
+api(custom)
+struct Face_Metrics{
+    f32 text_height;
+    f32 line_height;
+    f32 ascent;
+    f32 descent;
+    f32 line_skip;
+    
+    f32 underline_yoff1;
+    f32 underline_yoff2;
+    
+    f32 max_advance;
+    f32 space_advance;
+    f32 decimal_digit_advance;
+    f32 hex_digit_advance;
+    f32 byte_advance;
+    f32 byte_sub_advances[3];
+    f32 normal_lowercase_advance;
+    f32 normal_uppercase_advance;
+    f32 normal_advance;
+};
 
 api(custom)
 typedef u16 ID_Color;
@@ -38,70 +94,66 @@ union FColor{
 };
 
 api(custom)
+typedef u64 Managed_ID;
+
+#if defined(CUSTOM_COMMAND_SIG) || defined(CUSTOM_UI_COMMAND_SIG) || defined(CUSTOM_DOC) || defined(CUSTOM_COMMAND)
+#error Please do not define CUSTOM_COMMAND_SIG, CUSTOM_DOC, CUSTOM_UI_COMMAND_SIG, or CUSTOM_COMMAND
+#endif
+
+#if defined(META_PASS)
+#define CUSTOM_COMMAND_SIG(name)    CUSTOM_COMMAND(name, __FILE__, __LINE__, Normal)
+#define CUSTOM_UI_COMMAND_SIG(name) CUSTOM_COMMAND(name, __FILE__, __LINE__, UI)
+#define CUSTOM_DOC(str)             CUSTOM_DOC(str)
+#define CUSTOM_ID(group, name)      CUSTOM_ID(group, name)
+#else
+#define CUSTOM_COMMAND_SIG(name)    void name(struct Application_Links *app)
+#define CUSTOM_UI_COMMAND_SIG(name) void name(struct Application_Links *app)
+#define CUSTOM_DOC(str)
+#define CUSTOM_ID(group, name) global Managed_ID name;
+#endif
+
+
+api(custom)
+typedef u32 Face_ID;
+
+// NOTE: This is a dummy buffer, so we can use the same commands to switch to the rendered game
+global String GAME_BUFFER_NAME = str8lit("*game*");
+
+// bookmark
+#if !AD_IS_COMPILING_GAME
+
+#include "4coder_table.h"
+
+api(custom)
+struct Codepoint_Index_Map{
+    b32 has_zero_index;
+    u16 zero_index;
+    u16 max_index;
+    Table_u32_u16 table;
+};
+
+api(custom)
+struct Thread_Context_Extra_Info{
+    void *coroutine;
+    void *async_thread;
+};
+
+////////////////////////////////
+
+api(custom)
 struct Theme_Color{
     ID_Color tag;
     ARGB_Color color;
 };
 
 api(custom)
-struct Color_Array{
-    ARGB_Color *vals;
-    i32 count;
-};
-
-api(custom)
-struct Color_Table{
-    Color_Array *arrays;
-    i32 count;
-};
-
-api(custom)
 struct Color_Picker{
-    String_Const_u8 title;
+    String title;
     ARGB_Color *dest;
     b32 *finished;
 };
 
 ////////////////////////////////
-
-api(custom)
-typedef u32 Face_ID;
-
-struct Texture_ID { u32 v; };  // NOTE(kv): just changing to learn the API
-
-api(custom)
-struct Fancy_String{
-    Fancy_String *next;
-    String_Const_u8 value;
-    Face_ID face;
-    FColor fore;
-    f32 pre_margin;
-    f32 post_margin;
-};
-
-api(custom)
-struct Fancy_Line{
-    Fancy_Line *next;
-    Face_ID face;
-    FColor fore;
-    Fancy_String *first;
-    Fancy_String *last;
-};
-
-api(custom)
-struct Fancy_Block{
-    Fancy_Line *first;
-    Fancy_Line *last;
-    i32 line_count;
-};
-
-////////////////////////////////
-
-api(custom)
-typedef i32 Buffer_ID;
-
-api(custom)
-typedef i32 View_ID;
 
 api(custom)
 typedef i32 Panel_ID;
@@ -338,32 +390,6 @@ struct Parser_String_And_Type{
 };
 
 api(custom)
-typedef u32 File_Attribute_Flag;
-enum{
-    FileAttribute_IsDirectory = 1,
-};
-
-api(custom)
-struct File_Attributes{
-    u64 size;
-    u64 last_write_time;
-    File_Attribute_Flag flags;
-};
-
-api(custom)
-struct File_Info{
-    File_Info *next;
-    String_Const_u8 filename;
-    File_Attributes attributes;
-};
-
-api(custom)
-struct File_List{
-    File_Info **infos;
-    u32 count;
-};
-
-api(custom)
 struct Buffer_Identifier{
     char *name;
     i32 name_len;
@@ -450,9 +476,6 @@ enum{
 };
 
 api(custom)
-typedef u64 Managed_ID;
-
-api(custom)
 typedef u64 Managed_Scope;
 api(custom)
 typedef u64 Managed_Object;
@@ -522,36 +545,6 @@ struct Face_Description{
 };
 
 api(custom)
-struct Face_Metrics{
-    f32 text_height;
-    f32 line_height;
-    f32 ascent;
-    f32 descent;
-    f32 line_skip;
-    
-    f32 underline_yoff1;
-    f32 underline_yoff2;
-    
-    f32 max_advance;
-    f32 space_advance;
-    f32 decimal_digit_advance;
-    f32 hex_digit_advance;
-    f32 byte_advance;
-    f32 byte_sub_advances[3];
-    f32 normal_lowercase_advance;
-    f32 normal_uppercase_advance;
-    f32 normal_advance;
-};
-
-api(custom)
-struct Codepoint_Index_Map{
-    b32 has_zero_index;
-    u16 zero_index;
-    u16 max_index;
-    Table_u32_u16 table;
-};
-
-api(custom)
 struct Face_Advance_Map{
     Codepoint_Index_Map codepoint_to_index;
     f32 *advance;
@@ -617,22 +610,6 @@ struct Record_Info{
         };
     };
 };
-
-#if defined(CUSTOM_COMMAND_SIG) || defined(CUSTOM_UI_COMMAND_SIG) || defined(CUSTOM_DOC) || defined(CUSTOM_COMMAND)
-#error Please do not define CUSTOM_COMMAND_SIG, CUSTOM_DOC, CUSTOM_UI_COMMAND_SIG, or CUSTOM_COMMAND
-#endif
-
-#if !defined(META_PASS)
-#define CUSTOM_COMMAND_SIG(name) void name(struct Application_Links *app)
-#define CUSTOM_UI_COMMAND_SIG(name) void name(struct Application_Links *app)
-#define CUSTOM_DOC(str)
-#define CUSTOM_ID(group, name) global Managed_ID name;
-#else
-#define CUSTOM_COMMAND_SIG(name) CUSTOM_COMMAND(name, __FILE__, __LINE__, Normal)
-#define CUSTOM_UI_COMMAND_SIG(name) CUSTOM_COMMAND(name, __FILE__, __LINE__, UI)
-#define CUSTOM_DOC(str) CUSTOM_DOC(str)
-#define CUSTOM_ID(group, name) CUSTOM_ID(group, name)
-#endif
 
 api(custom)
 typedef i32 Hook_ID;
@@ -797,4 +774,4 @@ struct Process_State{
 typedef void Audio_Mix_Sources_Function(void *ctx, f32 *buffer, u32 sample_count);
 typedef void Audio_Mix_Destination_Function(i16 *dst, f32 *src, u32 sample_count);
 
-#endif
+#endif //!AD_IS_COMPILING_GAME

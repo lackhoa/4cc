@@ -31,13 +31,6 @@ struct CLI_Handles{
     i32 exit;
 };
 
-typedef i32 System_Path_Code;
-enum{
-    SystemPath_CurrentDirectory,
-    SystemPath_BinaryDirectory,
-    SystemPath_UserDirectory,
-};
-
 struct Memory_Annotation_Node{
     Memory_Annotation_Node *next;
     String location;

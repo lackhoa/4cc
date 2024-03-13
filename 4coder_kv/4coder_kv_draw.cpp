@@ -136,7 +136,11 @@ kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
   }
 }
 
+global b32 game_already_rendered_this_frame;
+
+
 function Render_Caller_Function kv_render_caller;
+//
 function void
 kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
 {
@@ -163,7 +167,7 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
     }
     
     // clear
-    draw_rectangle_fcolor(app, clip, 0.f, fcolor_id(defcolor_back));
+    draw_rect_fcolor(app, clip, 0.f, fcolor_id(defcolor_back));
     
     clip = vim_draw_query_bars(app, clip, view, face_id);
    
@@ -177,12 +181,12 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
     {// Draw borders
         if(clip.x0 > global_rect.x0){
             Rect_f32_Pair border_pair = rect_split_left_right(clip, 2.f);
-            draw_rectangle_fcolor(app, border_pair.a, 0.f, fcolor_id(defcolor_margin));
+            draw_rect_fcolor(app, border_pair.a, 0.f, fcolor_id(defcolor_margin));
             clip = border_pair.b;
         }
         if(clip.x1 < global_rect.x1){
             Rect_f32_Pair border_pair = rect_split_left_right_neg(clip, 2.f);
-            draw_rectangle_fcolor(app, border_pair.b, 0.f, fcolor_id(defcolor_margin));
+            draw_rect_fcolor(app, border_pair.b, 0.f, fcolor_id(defcolor_margin));
             clip = border_pair.a;
         }
         clip.y0 += 3.f;
@@ -221,23 +225,35 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
 	Text_Layout_ID text_layout_id = text_layout_create(app, buffer, clip, buffer_point);
     
     if(show_line_number_margins)
+    {
         vim_draw_line_number_margin(app, view, buffer, face_id, text_layout_id, line_number_rect);
-    // else
-    //   draw_rectangle_fcolor(app, line_number_rect, 0.f, fcolor_id(defcolor_back));
+    }
    
-    { // NOTE(kv): kv_render_buffer(app, frame_info, view, face_id, buffer, text_layout_id, clip);
+    {// NOTE(kv): kv_render_buffer(app, frame_info, view, face_id, buffer, text_layout_id, clip);
         // NOTE(kv): originally from "byp_render_buffer"
         ProfileScope(app, "render buffer");
         Rect_f32 prev_clip2 = draw_set_clip(app, clip);  // todo I don't even think this is necessary?
         defer( draw_set_clip(app, prev_clip2); );
         
-        // TODO @Cleanup Why not just check the view buffer name?
         u8 scratch_memory[256];
         Arena scratch = make_static_arena(scratch_memory, 256);
-        String8 buffer_name = push_buffer_base_name(app, &scratch, buffer);
+        String buffer_name = push_buffer_base_name(app, &scratch, buffer);
+        local_persist Arena game_permanent_arena = make_arena_system();
         if ( string_match(buffer_name, GAME_BUFFER_NAME) )
         {// NOTE(kv): draw test render buffer
-            game_update_and_render(app, view, frame_info.animation_dt);
+            if ( !game_already_rendered_this_frame )
+            {
+                Input_Modifier_Set set = system_get_keyboard_modifiers(&scratch);
+                Game_Input input = 
+                {
+                    pack_modifiers(set.mods, set.count),
+                    global_game_key_states,
+                    global_game_key_state_changes,
+                };
+                global_game_api.game_update_and_render(game_state_pointer, app, view, frame_info.animation_dt, input);
+                block_zero_array(global_game_key_state_changes);
+                game_already_rendered_this_frame = true;
+            }
         }
         else
         {

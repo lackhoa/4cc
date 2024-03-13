@@ -13,7 +13,6 @@
 #include "4ed_kv_parser.cpp"
 #include "4coder_kv_fui.cpp"
 #include "kv_lexer.h"
-#include "game.cpp"
 #include "4coder_kv_input.cpp"
 #include "4coder_kv_commands.cpp"
 #include "4coder_kv_hooks.cpp"
@@ -300,7 +299,7 @@ kv_startup(App *app)
     load_project(app);
 #endif
     
-    def_audio_init();
+    //def_audio_init();
     
     def_enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
     clear_all_layouts(app);
@@ -514,9 +513,9 @@ kv_vim_bindings(App *app)
     BIND(N|MAP,   open_matching_file_cpp_other_panel, M|KeyCode_F12);
     
     /// Panel
-    BIND(N|MAP, change_active_primary_panel, C|KeyCode_Tab);
-    BIND(N|MAP, close_panel,                 M|KeyCode_W);
-    BIND(N|MAP, toggle_split_panel,          C|KeyCode_W);
+    BIND(N|V|I, change_active_primary_panel, C|KeyCode_Tab);
+    BIND(N,     close_panel,                 M|KeyCode_W);
+    BIND(N,     toggle_split_panel,          C|KeyCode_W);
     
     // Sub modes
     BIND(N|V|MAP, vim_leader_d, SUB_Leader,       KeyCode_D);
@@ -618,8 +617,9 @@ kv_tick(App *app, Frame_Info frame_info)
     vim_animate_cursor(app, frame_info);
     vim_cursor_blink++;
     
-    // NOTE(kv): fui update
     fui_tick(app, frame_info);
+    
+    game_already_rendered_this_frame = false;
     
     // NOTE(kv): autosave
     f32 AUTOSAVE_PERIOD_SECONDS = 5.0f;
@@ -655,7 +655,7 @@ kv_tick(App *app, Frame_Info frame_info)
         }
         if (saved_at_least_one_buffer) 
         {
-            print_message(app, "auto-saved all dirty buffers\n");
+            print_message(app, strlit("auto-saved all dirty buffers\n"));
         }
     }
     animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));

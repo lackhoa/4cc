@@ -250,7 +250,7 @@ kv_view_input_handler(App *app)
             }
             
             // NOTE: Update global key state
-            update_global_key_states(&input.event);
+            update_game_key_states(&input.event);
             
             b32 is_game_view;
             {// NOTE: It's a "game view" if we're viewing the game buffer.

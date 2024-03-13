@@ -221,7 +221,7 @@ function void fold_draw(Application_Links *app, Buffer_ID buffer, Text_Layout_ID
 		if(range_size(y) > 0.f){
 			Range_f32 x = rect_range_x(region);
 			x.max *= fold->cur_active;
-			draw_rectangle_fcolor(app, Rf32(x, y), 0.f, fcolor_id(defcolor_highlight));
+			draw_rect_fcolor(app, Rf32(x, y), 0.f, fcolor_id(defcolor_highlight));
 		}
 	}
 }

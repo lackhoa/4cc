@@ -1,13 +1,4 @@
-/*
- * Mr. 4th Dimention - Allen Webster
- *
- * ??.??.????
- *
- * Implementation of the API functions.
- *
- */
-
-// TOP
+#include "4coder_game_shared.h"
 
 function void
 output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String_Const_u8 value){
@@ -98,11 +89,6 @@ api(custom) function Rect_f32
 global_get_screen_rectangle(App *app){
     Models *models = (Models*)app->cmd_context;
     return(Rf32(V2(0, 0), V2(layout_get_root_size(&models->layout))));
-}
-
-api(custom) function Thread_Context*
-get_thread_context(App *app){
-    return(app->tctx);
 }
 
 api(custom) function Child_Process_ID
@@ -2002,7 +1988,8 @@ managed_scope_allocator(App *app, Managed_Scope scope)
 }
 
 api(custom) function u64
-managed_id_group_highest_id(App *app, String_Const_u8 group){
+managed_id_group_highest_id(App *app, String group)
+{
     Models *models = (Models*)app->cmd_context;
     Managed_ID_Set *set = &models->managed_id_set;
     return(managed_ids_group_highest_id(set, group));
@@ -2481,8 +2468,8 @@ clear_all_query_bars(App *app, View_ID view_id){
     }
 }
 
-api(custom) function void
-print_message(App *app, String_Const_u8 message)
+api(custom) function print_message_return
+print_message(print_message_params)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = models->message_buffer;
@@ -2492,34 +2479,8 @@ print_message(App *app, String_Const_u8 message)
     }
 }
 
-inline void print_message(App *app, char *message) 
-{
-  print_message(app, SCu8(message));
-}
-
-inline void
-printf_message(App *app, char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    
-    Scratch_Block scratch(app);
-    String8 string = push_stringfv(scratch, format, args);
-    print_message(app, string);
-    
-    va_end(args);
-}
-
-/*
-#define printf_message_test(app, format, ...) \
-    do{ printf_message_inner(app, format, ##__VA_ARGS__); }while(0)
-
-#define printf_message(app, arena, str, ...) \
-    print_message(app, push_stringf(arena, str, ##__VA_ARGS__))
-*/
-
 api(custom) function b32
-log_string(App *app, String_Const_u8 str){
+log_string(App *app, String str){
     return(log_string(str));
 }
 
@@ -2555,7 +2516,8 @@ buffer_history_get_max_record_index(App *app, Buffer_ID buffer_id){
 }
 
 function void
-buffer_history__fill_record_info(Record *record, Record_Info *out){
+buffer_history__fill_record_info(Record *record, Record_Info *out)
+{
     out->kind = record->kind;
     out->pos_before_edit = record->pos_before_edit;
     out->edit_number = record->edit_number;
@@ -2750,7 +2712,8 @@ get_face_description(App *app, Face_ID face_id)
 }
 
 api(custom) function Face_Metrics
-get_face_metrics(App *app, Face_ID face_id){
+get_face_metrics(App *app, Face_ID face_id)
+{
     Models *models = (Models*)app->cmd_context;
     Face_Metrics result = {};
     if (face_id != 0){
@@ -2936,7 +2899,7 @@ release_global_frame_mutex(App *app)
 
 ////////////////////////////////
 
-api(custom) function Vec2_f32
+api(custom) function v2
 draw_string_oriented(App *app, Face_ID font_id, ARGB_Color color,
                      String8 str, v2 point, u32 flags, v2 delta)
 {
@@ -2957,162 +2920,11 @@ draw_string_oriented(App *app, Face_ID font_id, ARGB_Color color,
 }
 
 api(custom) function f32
-get_string_advance(App *app, Face_ID font_id, String8 str)
+get_string_advance(App *app, Face_ID font_id, String str)
 {
     Models *models = (Models*)app->cmd_context;
     Face *face = font_set_face_from_id(&models->font_set, font_id);
     return(font_string_width(models->target, face, str));
-}
-
-api(custom) function void
-draw_rectangle(App *app, Rect_f32 rect, f32 roundness, ARGB_Color color)
-{
-    Models *models = (Models*)app->cmd_context;
-    if (models->in_render_mode)
-    {
-        draw_rect_to_target(models->target, rect, roundness, color);
-    }
-    else kv_debug_trap;
-}
-
-inline void
-draw_rect(App *app, rect2 rect, ARGB_Color color)
-{
-  draw_rectangle(app, rect, 0, color);
-}
-
-inline void
-draw_rect(App *app, rect2 rect, Texture_ID texture, ARGB_Color color)
-{
-    draw_rectangle(app, rect, 0, color);
-}
-
-internal void
-draw_line(App *app, v3 p0, v3 p1, v1 thickness, ARGB_Color color)
-{
-    Models *models = (Models*)app->cmd_context;
-    f32 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
-    if (models->in_render_mode)
-    {
-        Render_Target *target = models->target;
-        b32 steep = false;
-        v1 x0 = p0.x; 
-        v1 y0 = p0.y;
-        v1 z0 = p0.z;
-        v1 x1 = p1.x; 
-        v1 y1 = p1.y;
-        v1 z1 = p1.z;
-        
-        if (absolute(x0-x1) < 
-            absolute(y0-y1))
-        {// if the line is steep, we transpose the image 
-            macro_swap(x0, y0);
-            macro_swap(x1, y1);
-            steep = true;
-        }
-        
-        if (x0 > x1)
-        {// make it "left to right"
-            macro_swap(x0, x1); 
-            macro_swap(y0, y1); 
-            macro_swap(z0, z1);
-        }
-        
-        if ((x1-x0) > 0.0001f)
-        {
-            v1 dy = (y1-y0) / (x1-x0);
-            v1 dz = (z1-z0) / (x1-x0);
-             
-            // NOTE: Clipping
-            f32 x_start = x0;
-            f32 x_end   = x1;
-            {
-                f32 x_bot = (target->clip_box.x0 - target->offset.x);
-                f32 x_top = (target->clip_box.x1 - target->offset.x);
-                if (steep)
-                {
-                    x_bot = (target->clip_box.y0 - target->offset.y);
-                    x_top = (target->clip_box.y1 - target->offset.y);
-                }
-                kv_clamp_bot(x_start, x_bot);
-                kv_clamp_top(x_end,   x_top);
-            }
-            
-            i32 nsamples = 16;
-            f32 interval = (x_end - x_start) / (f32)nsamples;
-            for (i32 index = 0; 
-                 index <= nsamples; 
-                 index++)
-            {
-                v1 x = x_start + (v1)index * interval;
-                v1 y = y0 + dy*(x-x0);
-                v1 z = z0 + dz*(x-x0);
-                v2 center = (steep ? 
-                             v2{y,x} :
-                             v2{x,y});
-                rect2 square = rect2_center_radius(center, V2All(half_thickness));
-                draw_rect_to_target(target, square, half_thickness, color, z);
-            }
-        }
-    }
-    else kv_debug_trap;
-}
-
-internal void
-draw_triangle(App *app, v3 p0, v3 p1, v3 p2, ARGB_Color color)
-{
-    Models *models = (Models*)app->cmd_context;
-    if (models->in_render_mode)
-    {
-        Render_Target *target = models->target;
-        Render_Vertex vertices[3] = {};
-        vertices[0].xyz = p0;
-        vertices[1].xyz = p1;
-        vertices[2].xyz = p2;
-        
-        for_u32 (i,0,alen(vertices))
-        {
-            Render_Vertex *vertex = vertices+i;
-            vertex->uvw   = V3(0,0,0);
-            vertex->color = color;
-        }
-        draw__write_vertices_in_current_group(target, vertices, alen(vertices));
-    }
-}
-
-internal void
-draw_quad(App *app, v3 p0, v3 p1, v3 p2, v3 p3, ARGB_Color color)
-{
-    draw_triangle(app, p0,p1,p2, color);
-    draw_triangle(app, p1,p2,p3, color);
-}
-
-internal void
-draw_disk(App *app, v3 center, v1 radius, ARGB_Color color)
-{
-    Models *models = (Models*)app->cmd_context;
-    if (models->in_render_mode)
-    {
-        rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
-        draw_rect_to_target(models->target, square, radius, color, center.z);
-    }
-}
-
-internal void
-draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
-{
-    Models *models = (Models*)app->cmd_context;
-    if (models->in_render_mode)
-    {
-        rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
-        draw_rect_outline_to_target(models->target, square, radius, thickness, color, center.z);
-    }
-}
-
-internal void
-draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
-{
-    draw_circle(app, V3(center,0), radius, color, thickness);
 }
 
 internal void
@@ -3125,63 +2937,11 @@ draw_textured_rect(App *app, rect2 rect, ARGB_Color color=0xFFFFFF)
     }
 }
 
-api(custom) internal void
-draw_rectangle_outline(App *app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color)
-{
-    Models *models = (Models*)app->cmd_context;
-    if (models->in_render_mode)
-    {
-        draw_rect_outline_to_target(models->target, rect, roundness, thickness, color);
-    }
-    else kv_debug_trap;
-}
-
-// TODO: Not sure if I love the abstraction over Render_Target
-// TODO @Cleanup PLEASE tell me you're gonna clean up the transform situation
-internal void
-draw_configure(App *app, Render_Config *config)
-{
-    Models *models = (Models*)app->cmd_context;
-    Render_Target *target = models->target;
-    
-    if (target->y_is_up != config->y_is_up)
-    {
-        target->y_is_up = config->y_is_up;
-        rect2 new_clip_box = target->clip_box;
-        // NOTE: Fun times changing the clip box
-        new_clip_box.y0 = (f32)target->height - target->clip_box.y1;
-        new_clip_box.y1 = (f32)target->height - target->clip_box.y0;
-        target->clip_box = new_clip_box;
-    }
-    
-    if (config->clip_box.min==v2{} &&  config->clip_box.max==v2{})
-    {
-        config->clip_box = target->clip_box;
-    }
-    
-    target->render_config = *config;
-    
-    draw__begin_new_group(target);
-}
-
-inline void
-draw_rect_outline(App *app, rect2 rect, f32 thickness, ARGB_Color color, f32 roundness=0)
-{
-    draw_rectangle_outline(app, rect, roundness, thickness, color);
-}
-
 api(custom) function Rect_f32
 draw_set_clip(App *app, Rect_f32 new_clip)
 {
     Models *models = (Models*)app->cmd_context;
     return( draw_set_clip(models->target, new_clip) );
-}
-
-inline rect2
-draw_get_clip(App *app)
-{
-    Models *models = (Models*)app->cmd_context;
-    return models->target->clip_box;
 }
 
 api(custom) function Text_Layout_ID
@@ -3451,7 +3211,7 @@ open_color_picker(App *app, Color_Picker *picker)
     system_open_color_picker(picker);
 }
 
-api(custom) function void
+api(custom) void
 animate_in_n_milliseconds(App *app, u32 n)
 {
     Models *models = (Models*)app->cmd_context;
@@ -3463,14 +3223,9 @@ animate_in_n_milliseconds(App *app, u32 n)
     }
 }
 
-inline void animate_next_frame(App *app)
-{
-    animate_in_n_milliseconds(app, 0);
-}
-
 api(custom) function String_Match_List
 buffer_find_all_matches(App *app, Arena *arena, Buffer_ID buffer,
-                        i32 string_id, Range_i64 range, String8 needle,
+                        i32 string_id, Range_i64 range, String needle,
                         Character_Predicate *predicate, Scan_Direction direction, b32 case_sensitive)
 {
     Models *models = (Models*)app->cmd_context;

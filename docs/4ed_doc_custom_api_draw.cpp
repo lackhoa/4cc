@@ -69,7 +69,7 @@ doc_custom_api__draw(Arena *arena, API_Definition *api_def, Doc_Cluster *cluster
     
     ////////////////////////////////
     
-    if (begin_doc_call(arena, cluster, api_def, "draw_rectangle", &func)){
+    if (begin_doc_call(arena, cluster, api_def, "draw_rect", &func)){
         doc_function_brief(arena, &func, "Directly render a rectangle");
         
         // params
@@ -92,7 +92,7 @@ doc_custom_api__draw(Arena *arena, API_Definition *api_def, Doc_Cluster *cluster
     
     ////////////////////////////////
     
-    if (begin_doc_call(arena, cluster, api_def, "draw_rectangle_outline", &func)){
+    if (begin_doc_call(arena, cluster, api_def, "draw_rect_outline", &func)){
         doc_function_brief(arena, &func, "Directly render a rectangle outline");
         
         // params

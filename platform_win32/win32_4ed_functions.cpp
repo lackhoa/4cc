@@ -317,7 +317,8 @@ win32_u64_from_filetime(FILETIME time){
 }
 
 internal File_Attributes
-win32_file_attributes_from_HANDLE(HANDLE file){
+win32_file_attributes_from_HANDLE(HANDLE file)
+{
     BY_HANDLE_FILE_INFORMATION info = {};
     GetFileInformationByHandle(file, &info);
     File_Attributes result = {};
@@ -327,10 +328,11 @@ win32_file_attributes_from_HANDLE(HANDLE file){
     return(result);
 }
 
-internal system_get_file_list_sig()
+DLL_EXPORT system_get_file_list_return 
+system_get_file_list(system_get_file_list_params)
 {
     File_List result = {};
-    String_Const_u8 search_pattern = {};
+    String search_pattern = {};
     if (character_is_slash(string_get_character(directory, directory.size - 1))){
         search_pattern = push_stringf(arena, "%.*s*", string_expand(directory));
     }
@@ -340,15 +342,18 @@ internal system_get_file_list_sig()
     
     WIN32_FIND_DATAW find_data = {};
     HANDLE search = FindFirstFile_utf8(arena, search_pattern.str, &find_data);
-    if (search != INVALID_HANDLE_VALUE){
+    if (search != INVALID_HANDLE_VALUE)
+    {
         File_Info *first = 0;
         File_Info *last = 0;
         i32 count = 0;
         
-        for (;;){
+        for (;;)
+        {
             String_Const_u16 filename_utf16 = SCu16(find_data.cFileName);
             if (!(string_match(filename_utf16, string_u16_litexpr(L".")) ||
-                  string_match(filename_utf16, string_u16_litexpr(L"..")))){
+                  string_match(filename_utf16, string_u16_litexpr(L".."))))
+            {
                 String_Const_u8 filename = string_u8_from_string_u16(arena, filename_utf16,
                                                                       StringFill_NullTerminate).string;
                 
@@ -362,7 +367,8 @@ internal system_get_file_list_sig()
                 info->attributes.last_write_time = win32_u64_from_filetime(find_data.ftLastWriteTime);
                 info->attributes.flags = win32_convert_file_attribute_flags(find_data.dwFileAttributes);
             }
-            if (!FindNextFileW(search, &find_data)){
+            if (!FindNextFileW(search, &find_data))
+            {
                 break;
             }
         }
@@ -373,7 +379,8 @@ internal system_get_file_list_sig()
         i32 counter = 0;
         for (File_Info *node = first;
              node != 0;
-             node = node->next){
+             node = node->next)
+        {
             result.infos[counter] = node;
             counter += 1;
         }

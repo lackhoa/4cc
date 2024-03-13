@@ -75,21 +75,15 @@ CUSTOM_ID(attachment, vim_buffer_prev_visual);
 CUSTOM_ID(attachment, vim_buffer_marks);
 CUSTOM_ID(attachment, vim_view_jumps);
 
-internal void 
-vim_reset_bottom_text(){ vim_bot_text.size=0; }
+internal void vim_reset_bottom_text() { vim_bot_text.size=0; }
 
-internal void 
-vim_set_bottom_text(u32 size, char *str)
-{
-    u32 copy_size = clamp_top(size, arlen(vim_bot_buffer));
-    block_copy(vim_bot_buffer, str, copy_size);
-    vim_bot_text.size = copy_size;
-}
 
 function void 
-vim_set_bottom_text(String8 msg)
+vim_set_bottom_text(String msg)
 {
-    vim_set_bottom_text( string_expand(msg) );
+    u32 copy_size = clamp_top(msg.size, alen(vim_bot_buffer));
+    block_copy(vim_bot_buffer, msg.str, copy_size);
+    vim_bot_text.size = copy_size;
 }
 
 function i32 vim_consume_number(){

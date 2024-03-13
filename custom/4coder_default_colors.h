@@ -2,10 +2,7 @@
 * Default color slots
 */
 
-// TOP
-
-#if !defined(FCODER_DEFAULT_COLORS_H)
-#define FCODER_DEFAULT_COLORS_H
+#pragma once
 
 CUSTOM_ID(colors, defcolor_bar);
 CUSTOM_ID(colors, defcolor_base);
@@ -46,6 +43,18 @@ CUSTOM_ID(colors, defcolor_text_cycle);
 CUSTOM_ID(colors, defcolor_line_numbers_back);
 CUSTOM_ID(colors, defcolor_line_numbers_text);
 
+api(custom)
+struct Color_Array{
+    ARGB_Color *vals;
+    i32 count;
+};
+
+api(custom)
+struct Color_Table{
+    Color_Array *arrays;
+    i32 count;
+};
+
 struct Color_Table_Node{
     Color_Table_Node *next;
     String_Const_u8 name;
@@ -63,8 +72,3 @@ global Color_Table default_color_table = {};
 
 global Arena global_theme_arena = {};
 global Color_Table_List global_theme_list = {};
-
-#endif
-
-// BOTTOM
-

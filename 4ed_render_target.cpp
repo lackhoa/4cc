@@ -10,7 +10,9 @@
  *
  */
 
-// TOP
+#pragma once
+
+#include "4ed_render_target.h"
 
 internal void
 draw__begin_new_group(Render_Target *target)
@@ -111,40 +113,56 @@ draw__set_face_id(Render_Target *target, Face_ID face_id)
     }
 }
 
-////////////////////////////////
-
-internal Rect_f32
-draw_set_clip(Render_Target *target, Rect_f32 clip_box){
-    Rect_f32 result = target->clip_box;
-    if (target->clip_box != clip_box){
-        target->clip_box = clip_box;
-        draw__begin_new_group(target);
+// TODO: Not sure if I love the abstraction over Render_Target
+// TODO @Cleanup PLEASE tell me you're gonna clean up the transform situation
+internal void
+draw_configure(App *app, Render_Config *config)
+{
+    Render_Target *target = draw_get_target(app);
+    if (target->y_is_up != config->y_is_up)
+    {
+        target->y_is_up = config->y_is_up;
+        rect2 new_clip_box = target->clip_box;
+        // NOTE: Fun times changing the clip box
+        new_clip_box.y0 = (f32)target->height - target->clip_box.y1;
+        new_clip_box.y1 = (f32)target->height - target->clip_box.y0;
+        target->clip_box = new_clip_box;
     }
-    return(result);
+    
+    if (config->clip_box.min==v2{} &&  config->clip_box.max==v2{})
+    {
+        config->clip_box = target->clip_box;
+    }
+    
+    target->render_config = *config;
+    
+    draw__begin_new_group(target);
 }
 
-internal void
-begin_frame(Render_Target *target, void *font_set){
-    linalloc_clear(&target->arena);
-    target->group_first = 0;
-    target->group_last = 0;
-    target->face_id = 0;
-    target->clip_box = Rf32(0, 0, (f32)target->width, (f32)target->height);
-    target->font_set = font_set;
+internal draw_triangle_return
+draw_triangle(draw_triangle_params)
+{
+    Render_Target *target = draw_get_target(app);
+    Render_Vertex vertices[3] = {};
+    vertices[0].xyz = p0;
+    vertices[1].xyz = p1;
+    vertices[2].xyz = p2;
+    
+    for_u32 (i,0,alen(vertices))
+    {
+        Render_Vertex *vertex = vertices+i;
+        vertex->uvw   = V3(0,0,0);
+        vertex->color = color;
+    }
+    draw__write_vertices_in_current_group(target, vertices, alen(vertices));
 }
 
-internal void
-begin_render_section(Render_Target *target, i32 frame_index, f32 literal_dt, f32 animation_dt){
-    target->frame_index = frame_index;
-    target->literal_dt = literal_dt;
-    target->animation_dt = animation_dt;
+force_inline void
+draw_quad(App *app, v3 p0, v3 p1, v3 p2, v3 p3, ARGB_Color color)
+{
+    draw_triangle(app, p0,p1,p2, color);
+    draw_triangle(app, p1,p2,p3, color);
 }
-
-internal void
-end_render_section(Render_Target *target){
-}
-
-////////////////////////////////
 
 internal void
 draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 thickness, u32 color, v1 depth=0)
@@ -173,6 +191,26 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
     draw__write_vertices_in_current_group(target, vertices, alen(vertices));
 }
 
+api(custom) internal draw_rect_outline_return
+draw_rect_outline(draw_rect_outline_params)
+{
+    draw_rect_outline_to_target(draw_get_target(app), rect, roundness, thickness, color, depth);
+}
+
+
+force_inline void
+draw_rect_outline2(App *app, rect2 rect, v1 thickness, ARGB_Color color)
+{
+    draw_rect_outline(app, rect, 0, thickness, color, 0);
+}
+
+force_inline void
+draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
+{
+    rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
+    draw_rect_outline(app, square, radius, thickness, color, 0);
+}
+
 internal void
 draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, v1 depth=0)
 {
@@ -180,6 +218,157 @@ draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, 
     v1 thickness = Max(dim.x, dim.y);
     draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
+
+force_inline void
+draw_rect(App *app, rect2 rect, v1 roundness, ARGB_Color color, v1 depth)
+{
+    v2 dim = rect_dim(rect);
+    v1 thickness = Max(dim.x, dim.y);
+    draw_rect_outline(app, rect, roundness, thickness, color, depth);
+}
+
+force_inline void
+draw_rect2(App *app, rect2 rect, ARGB_Color color)
+{
+    draw_rect(app, rect, 0, color, 0);
+}
+
+force_inline void
+draw_disk(App *app, v3 center, v1 radius, ARGB_Color color)
+{
+    rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
+    draw_rect(app, square, radius, color, center.z);
+}
+
+internal void
+draw_line(App *app, v3 p0, v3 p1, v1 thickness, ARGB_Color color)
+{
+    f32 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
+    //Models *models = (Models*)app->cmd_context;
+    //if (models->in_render_mode)
+    {
+        Render_Target *target = draw_get_target(app);
+        b32 steep = false;
+        v1 x0 = p0.x; 
+        v1 y0 = p0.y;
+        v1 z0 = p0.z;
+        v1 x1 = p1.x; 
+        v1 y1 = p1.y;
+        v1 z1 = p1.z;
+        
+        if (absolute(x0-x1) < 
+            absolute(y0-y1))
+        {// if the line is steep, we transpose the image 
+            macro_swap(x0, y0);
+            macro_swap(x1, y1);
+            steep = true;
+        }
+        
+        if (x0 > x1)
+        {// make it "left to right"
+            macro_swap(x0, x1); 
+            macro_swap(y0, y1); 
+            macro_swap(z0, z1);
+        }
+        
+        if ((x1-x0) > 0.0001f)
+        {
+            v1 dy = (y1-y0) / (x1-x0);
+            v1 dz = (z1-z0) / (x1-x0);
+             
+            // NOTE: Clipping
+            f32 x_start = x0;
+            f32 x_end   = x1;
+            {
+                f32 x_bot = (target->clip_box.x0 - target->offset.x);
+                f32 x_top = (target->clip_box.x1 - target->offset.x);
+                if (steep)
+                {
+                    x_bot = (target->clip_box.y0 - target->offset.y);
+                    x_top = (target->clip_box.y1 - target->offset.y);
+                }
+                kv_clamp_bot(x_start, x_bot);
+                kv_clamp_top(x_end,   x_top);
+            }
+            
+            i32 nsamples = 16;
+            f32 interval = (x_end - x_start) / (f32)nsamples;
+            for (i32 index = 0; 
+                 index <= nsamples; 
+                 index++)
+            {
+                v1 x = x_start + (v1)index * interval;
+                v1 y = y0 + dy*(x-x0);
+                v1 z = z0 + dz*(x-x0);
+                v2 center = (steep ? 
+                             v2{y,x} :
+                             v2{x,y});
+                rect2 square = rect2_center_radius(center, V2All(half_thickness));
+                draw_rect_to_target(target, square, half_thickness, color, z);
+            }
+        }
+    }
+}
+
+force_inline void
+draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
+{
+    draw_circle(app, V3(center,0), radius, color, thickness);
+}
+
+force_inline rect2
+draw_get_clip(App *app)
+{
+    Render_Target *target = draw_get_target(app);
+    return target->clip_box;
+}
+
+
+////////////////////////////////
+#if !AD_IS_COMPILING_GAME
+
+internal draw_get_target_return
+draw_get_target(draw_get_target_params)
+{
+    Models *models = (Models*)app->cmd_context;
+    return models->target;
+}
+
+internal Rect_f32
+draw_set_clip(Render_Target *target, Rect_f32 clip_box)
+{
+    Rect_f32 result = target->clip_box;
+    if (target->clip_box != clip_box)
+    {
+        target->clip_box = clip_box;
+        draw__begin_new_group(target);
+    }
+    return(result);
+}
+
+internal void
+begin_frame(Render_Target *target, void *font_set)
+{
+    linalloc_clear(&target->arena);
+    target->group_first = 0;
+    target->group_last = 0;
+    target->face_id = 0;
+    target->clip_box = Rf32(0, 0, (f32)target->width, (f32)target->height);
+    target->font_set = font_set;
+}
+
+internal void
+begin_render_section(Render_Target *target, i32 frame_index, f32 literal_dt, f32 animation_dt){
+    target->frame_index = frame_index;
+    target->literal_dt = literal_dt;
+    target->animation_dt = animation_dt;
+}
+
+internal void
+end_render_section(Render_Target *target){
+}
+
+////////////////////////////////
 
 internal void
 draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
@@ -365,7 +554,7 @@ draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 colo
 }
 
 internal f32
-font_string_width(Render_Target *target, Face *face, String_Const_u8 str){
+font_string_width(Render_Target *target, Face *face, String str){
     return(draw_string_inner(target, face, str, V2(0, 0), 0, 0, V2(0, 0)));
 }
 
@@ -374,5 +563,4 @@ font_string_width(Render_Target *target, Face *face, u8 *str){
     return(draw_string_inner(target, face, SCu8(str), V2(0, 0), 0, 0, V2(0, 0)));
 }
 
-// BOTTOM
-
+#endif // AD_IS_COMPILING_GAME

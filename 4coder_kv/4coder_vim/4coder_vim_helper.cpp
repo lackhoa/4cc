@@ -34,7 +34,7 @@ function u8 vim_query_user_key(App *app, String_Const_u8 message){
 		}
 	}
 	
-	vim_set_bottom_text(i32(size), (char *)vim_bot_temp_buffer);
+	vim_set_bottom_text(make_data(vim_bot_temp_buffer, size));
 	vim_is_querying_user_key = false;
 	vim_state.chord_resolved = true;
 	Scratch_Block scratch(app);

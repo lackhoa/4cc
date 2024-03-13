@@ -331,7 +331,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
         
         FColor color = fcolor_id(defcolor_text_default);
         if (rect_contains_point(box, m_p)){
-            draw_rectangle_fcolor(app, box, 0.f, fcolor_id(defcolor_margin));
+            draw_rect_fcolor(app, box, 0.f, fcolor_id(defcolor_margin));
             color = fcolor_id(defcolor_pop1);
             insp->hover_node = node->parent;
         }
@@ -349,7 +349,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
     
     Rect_f32 time_slice_box = side_by_side.min;
     time_slice_box = rect_inner(time_slice_box, 3.f);
-    draw_rectangle_outline_fcolor(app, time_slice_box, 0.f, 3.f, f_white);
+    draw_rect_outline2(app, time_slice_box, 3.f, fcolor_resolve(f_white));
     time_slice_box = rect_inner(time_slice_box, 3.f);
     
     if (node->closed){
@@ -375,7 +375,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             
             Rect_f32 box = Rf32(x, child_y);
             ARGB_Color argb = finalize_color(colors, cycle_counter);
-            draw_rectangle(app, box, 0.f, argb);
+            draw_rect2(app, box, argb);
             cycle_counter += 1;
             
             if (rect_contains_point(box, m_p)){
@@ -455,14 +455,15 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             
             Rect_f32 box = Rf32(x, y);
             FColor margin = fcolor_id(defcolor_margin);
-            if (rect_contains_point(box, m_p)){
+            if (rect_contains_point(box, m_p))
+            {
                 insp->full_name_hovered = child_name;
                 insp->unique_counter_hovered = child->unique_counter;
                 insp->location_jump_hovered = profile_node_location(child);
                 insp->hover_node = child;
                 margin = fcolor_id(defcolor_margin_hover);
             }
-            draw_rectangle_outline_fcolor(app, box, 6.f, 3.f, margin);
+            draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin), 0);
             
             y_pos = y.max;
             if (y_pos >= info_box.y1){
@@ -549,7 +550,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             tab_state.x_half_padding = x_half_padding;
             tab_state.m_p = m_p;
             
-            draw_rectangle_fcolor(app, tabs_body.min, 0.f, fcolor_id(defcolor_margin_hover));
+            draw_rect_fcolor(app, tabs_body.min, 0.f, fcolor_id(defcolor_margin_hover));
             
             if (inspect->tab_id == ProfileInspectTab_None){
                 inspect->tab_id = ProfileInspectTab_Threads;
@@ -635,7 +636,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                         inspect->hover_thread = thread;
                         margin = fcolor_id(defcolor_margin_hover);
                     }
-                    draw_rectangle_outline_fcolor(app, box, 6.f, 3.f, margin);
+                    draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin), 0);
                     
                     y_pos = y.max;
                     if (y_pos >= tabs_body.max.y1){
@@ -686,7 +687,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                         inspect->hover_slot = node;
                         margin = fcolor_id(defcolor_margin_hover);
                     }
-                    draw_rectangle_outline_fcolor(app, box, 6.f, 3.f, margin);
+                    draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin),0);
                     
                     y_pos = y.max;
                     if (y_pos >= tabs_body.max.y1){
@@ -719,7 +720,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                         inspect->location_jump_hovered = node->location;
                         margin = fcolor_id(defcolor_margin_hover);
                     }
-                    draw_rectangle_outline_fcolor(app, box, 6.f, 3.f, margin);
+                    draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin),0);
                     
                     y_pos = y.max;
                     if (y_pos >= tabs_body.max.y1){

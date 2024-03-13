@@ -1910,16 +1910,6 @@ open_editing_file(App *app, Buffer_ID *buffer_out, String8 filename, b32 backgro
     return(result);
 }
 
-// NOTE(kv): Just fopen, but let's keep this so we can switch it out later.
-internal FILE *
-open_file(Arena *scratch, String8 name, char *mode)
-{
-    Temp_Memory_Block temp(scratch);
-    String8 name_copy = push_string_copy(scratch, name);
-    FILE *file = fopen((char*)name_copy.str, mode);
-    return(file);
-}
-
 function b32
 view_open_file(App *app, View_ID view, String8 filename, b32 never_new)
 {
@@ -2136,25 +2126,6 @@ file_exists_and_is_folder(Arena *scratch, String8 filename)
 }
 
 function String8
-read_entire_file_handle(Arena *arena, FILE *file)
-{
-    String8 result = {};
-    if (file != 0)
-    {
-        fseek(file, 0, SEEK_END);
-        u64 size = ftell(file);
-        char *mem = push_array(arena, char, size);
-        if (mem != 0)
-        {
-            fseek(file, 0, SEEK_SET);
-            fread(mem, 1, (size_t)size, file);
-            result = make_data(mem, size);
-        }
-    }
-    return(result);
-}
-
-function String8
 search_up_path(Arena *arena, String8 start_path, String8 filename)
 {
     String8 result = {};
@@ -2184,36 +2155,8 @@ search_up_path(Arena *arena, String8 start_path, String8 filename)
     return(result);
 }
 
-internal String8
-read_entire_file(Arena *arena, String8 filename)
-{
-    String8 result = {};
-    FILE *file = open_file(arena, filename, "rb");
-    if (file != 0)
-    {
-        result = read_entire_file_handle(arena, file);
-        fclose(file);
-    }
-    return(result);
-}
-
-internal b32
-write_entire_file(Arena *scratch, String8 filename, void *data, u64 size)
-{
-    b32 result = false;
-    gbFile file_value = {}; gbFile *file = &file_value;
-    char *filename_c = to_c_string(scratch, filename);
-    gbFileError err = gb_file_open_mode(file, gbFileMode_Write, filename_c);
-    if (err == gbFileError_None)
-    {
-        result = gb_file_write(file, data, size);
-    }
-    gb_file_close(file);
-    return result;
-}
-
 function File_Name_Data
-read_entire_file_search_up_path(Arena *arena, String8 path, String8 filename)
+read_entire_file_search_up_path(Arena *arena, String path, String filename)
 {
     File_Name_Data result = {};
     String8 full_path = search_up_path(arena, path, filename);

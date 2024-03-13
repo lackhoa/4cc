@@ -31,7 +31,7 @@
 #include "4coder_token.h"
 
 #include "4coder_variables.h"
-#include "4coder_audio.h"
+//#include "4coder_audio.h"
 #include "4coder_profile.h"
 #include "4coder_async_tasks.h"
 #include "4coder_string_match.h"
@@ -59,7 +59,7 @@
 #include "4coder_combined_write_commands.h"
 #include "4coder_log_parser.h"
 #include "4coder_profile_inspect.h"
-#include "4coder_tutorial.h"
+//#include "4coder_tutorial.h"
 #include "4coder_search_list.h"
 
 ////////////////////////////////
@@ -129,7 +129,7 @@
 #include "4coder_docs.cpp"
 */
 #include "4coder_variables.cpp"
-#include "4coder_audio.cpp"
+//#include "4coder_audio.cpp"
 //#include "4coder_search_list.cpp"
 
 #include "4coder_examples.cpp"

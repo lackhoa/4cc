@@ -197,7 +197,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
             {
                 Rect_f32 cur_tok_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
                 cur_tok_rect = Rf32_xy_wh(V2(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
-                draw_rectangle(app, cur_tok_rect, 5.f, cursor_tok_color);
+                draw_rect(app, cur_tok_rect, 5.f, cursor_tok_color, 0);
             }
         }
         
@@ -226,5 +226,5 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
         if (!token_it_inc_non_whitespace(&it))
             break;
     }
-    if (do_cursor_tok_highlight) { draw_rectangle(app, cursor_tok_rect, 5.f, cursor_tok_color); }
+    if (do_cursor_tok_highlight) { draw_rect(app, cursor_tok_rect, 5.f, cursor_tok_color, 0); }
 }

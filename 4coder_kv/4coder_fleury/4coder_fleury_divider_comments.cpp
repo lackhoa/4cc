@@ -136,7 +136,7 @@ F4_RenderDividerComments(Application_Links *app, Buffer_ID buffer, View_ID view,
                             10000,
                             comment_first_char_rect.y0,
                         };
-                        draw_rectangle(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)));
+                        draw_rect(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)));
                     }
                     
                     // NOTE(rjf): Weak dividers.
@@ -153,7 +153,7 @@ F4_RenderDividerComments(Application_Links *app, Buffer_ID buffer, View_ID view,
                         
                         for(int i = 0; i < 1000; i += 1)
                         {
-                            draw_rectangle(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)));
+                            draw_rect(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)));
                             rect.x0 += dash_size*1.5f;
                             rect.x1 += dash_size*1.5f;
                         }

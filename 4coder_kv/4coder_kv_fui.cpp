@@ -1,3 +1,8 @@
+global b8 global_game_key_states       [KeyCode_COUNT];
+global u8 global_game_key_state_changes[KeyCode_COUNT];
+
+global Fui_Item_Index global_fui_active_item_index;
+
 struct FUI
 {
     App *app;
@@ -68,7 +73,7 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
             rect2 rect = rect2_center_dim(slider_origin, slider_dim);
             v4 color = v4{1,1,1,0.5f};
             if (global_fui_active_item_index)  color.a = 1.0f;
-            draw_rect_outline(app, rect, 2, pack_argb(color));
+            draw_rect_outline2(app, rect, 2, pack_argb(color));
         }
         if (global_fui_active_item_index)
         {// NOTE: the slider cursor
@@ -77,9 +82,42 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
             v.y = -v.y;  // NOTE: invert y to fit math coordinates
             v2 center = slider_origin + hadamard(v, slider_radius);
             rect2 rect = rect2_center_radius(center, v2{5,5});
-            draw_rect(app, rect, pack_argb(v4{0,0.5f,0,1}));
+            draw_rect2(app, rect, pack_argb(v4{0,0.5f,0,1}));
         }
     }
+}
+
+// TODO(kv): This key tracking is inaccurate at least in the case when you alt+tab out of the app
+internal void
+update_game_key_states(Input_Event *event)
+{
+    b32 keydown = (event->kind == InputEventKind_KeyStroke);
+    b32 keyup   = (event->kind == InputEventKind_KeyRelease);
+    if (keydown || keyup)
+    {
+        Key_Code keycode = event->key.code;
+        // NOTE: We have system_get_keyboard_modifiers to track modifier keys already
+        if ( !is_modifier_key(keycode) )
+        {
+            global_game_key_states       [keycode] = keydown;
+            global_game_key_state_changes[keycode]++;
+        }
+    }
+}
+
+// TODO(kv): @Incomplete, need to search by filename as well.
+internal Fui_Slider *
+fui_get_slider_by_name(String name)
+{
+    Fui_Slider *&store = global_fui_store;
+    
+    for_i32 ( index, 0, arrlen(store) )
+    {
+        if ( string_equal(name, store[index].name) )
+        return &store[index];
+    }
+    
+    return 0;
 }
 
 internal b32
@@ -100,7 +138,7 @@ fui_handle_slider(App *app, Buffer_ID buffer)
        
         Range_i64 slider_value_range = {};
         String slider_name;
-        b32 parser_ok = false;
+        b32 parse_ok = false;
         {// NOTE(kv): Parsing
             Quick_Parser parser_value = qp_new(app, buffer, &f->tk);
             Quick_Parser *p = &parser_value;
@@ -119,12 +157,12 @@ fui_handle_slider(App *app, Buffer_ID buffer)
             {
                 qp_eat_until_char_lit(p, ")");
             }
-            parser_ok = p->ok;
+            parse_ok = p->ok;
         }
         
         // NOTE: find slider
         i32 slider_index = 0;
-        if (parser_ok)
+        if (parse_ok)
         {
             Fui_Slider *slider = fui_get_slider_by_name(slider_name);
             if (slider)
@@ -148,9 +186,9 @@ fui_handle_slider(App *app, Buffer_ID buffer)
                 User_Input in = get_next_input(app, EventPropertyGroup_AnyKeyboardEvent, EventProperty_Escape);
                 if (in.abort) break; 
                 
-                update_global_key_states(&in.event);
+                update_game_key_states(&in.event);
                 
-                if ( global_key_states[KeyCode_Return] )
+                if ( global_game_key_states[KeyCode_Return] )
                 {
                     write_back = true; 
                     break;
@@ -177,18 +215,23 @@ fui_tick(App *app, Frame_Info frame_info)
 {
     if (global_fui_active_item_index)
     {
+        Scratch_Block scratch(app);
+        
         animate_next_frame(app);
         Fui_Slider *slider = &global_fui_store[global_fui_active_item_index];
      
-        if (slider->update != fui_update_null)
         {// NOTE: Update
             v1 dt = frame_info.animation_dt;  // NOTE(kv): using actual literal_dt would trigger a big jump when the user initially presses a key.
-            v4 new_value = slider->update(slider, dt);
-            slider->value.v4 = new_value;
+            // TODO(kv) active_mods is wrong... I'm very unhappy with fui
+            Game_Input input = { .key_states = global_game_key_states, };
+            Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
+            v4 direction = fui_direction_from_key_states(pack_modifiers(set.mods, set.count),global_game_key_states,0);
+            // NOTE: Update slider value
+            v4 delta = dt * direction;
+            slider->value.v4 += delta;
         }
        
         {// NOTE: Printing
-            Scratch_Block scratch(app);
             String slider_value = fui_push_slider_value(scratch, slider->type, slider->value);
             vim_set_bottom_text(slider_value);  // todo Allow customizing this too?
         }

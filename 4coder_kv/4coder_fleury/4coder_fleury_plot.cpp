@@ -35,7 +35,7 @@ Plot2DBegin(Plot2DInfo *plot)
     plot->last_clip = draw_set_clip(plot->app, region);
     f32 region_width = region.x1 - region.x0;
     f32 region_height = region.y1 - region.y0;
-    draw_rectangle(plot->app, region, 4.f, fcolor_resolve(defcolor_back));
+    draw_rect(plot->app, region, 4.f, fcolor_resolve(defcolor_back), 0);
     
     // NOTE(rjf): Draw grid lines.
     if(plot->mode != Plot2DMode_Histogram)
@@ -72,7 +72,7 @@ Plot2DBegin(Plot2DInfo *plot)
                     line_rect.y1 = region.y1;
                 }
                 
-                draw_rectangle(plot->app, line_rect, 1.f, grid_line_color);
+                draw_rect(plot->app, line_rect, 1.f, grid_line_color, 0);
                 
                 // NOTE(rjf): Draw number label.
                 {
@@ -103,7 +103,7 @@ Plot2DBegin(Plot2DInfo *plot)
                     line_rect.y1 = line_rect.y0+1;
                 }
                 
-                draw_rectangle(plot->app, line_rect, 1.f, grid_line_color);
+                draw_rect(plot->app, line_rect, 1.f, grid_line_color, 0);
                 
                 // NOTE(rjf): Draw number label.
                 {
@@ -152,7 +152,7 @@ Plot2DPoints(Plot2DInfo *plot, i32 style_flags,
                 };
                 
                 // TODO(rjf): Real line drawing.
-                draw_rectangle(plot->app, point, 2.f, function_color);
+                draw_rect(plot->app, point, 2.f, function_color, 0);
             }
             
             if(style_flags & Plot2DStyleFlags_Points)
@@ -165,7 +165,7 @@ Plot2DPoints(Plot2DInfo *plot, i32 style_flags,
                     region.y0 + point_y + 4,
                 };
                 
-                draw_rectangle(plot->app, point, 6.f, function_color);
+                draw_rect(plot->app, point, 6.f, function_color, 0);
             }
         }
     }
@@ -217,12 +217,12 @@ Plot2DEnd(Plot2DInfo *plot)
                 bin_rect.x1 = bin_rect.x0 + bin_screen_width;
                 bin_rect.y0 = bin_rect.y1 = plot->region.y1;
                 bin_rect.y0 -= ((float)plot->bins[bin_index] / cast(f32)total_data) * (plot->region.y1 - plot->region.y0);
-                draw_rectangle(plot->app, bin_rect, 4.f, color);
+                draw_rect(plot->app, bin_rect, 4.f, color, 0);
             }
         }
     }
   
-    draw_rectangle_outline(plot->app, plot->region, 4.f, 3.f, fcolor_resolve(defcolor_margin_active));
+    draw_rect_outline(plot->app, plot->region, 4.f, 3.f, fcolor_resolve(defcolor_margin_active), 0);
   
     draw_set_clip(plot->app, plot->last_clip);
 }

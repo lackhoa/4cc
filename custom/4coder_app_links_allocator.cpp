@@ -2,8 +2,9 @@
  * 4coder app links base allocator
  */
 
-// TOP
+#pragma once
 
+// TODO cleanup: wtf is this file?
 Scratch_Block::Scratch_Block(Application_Links *app){
     Thread_Context *t = this->tctx = get_thread_context(app);
     this->arena = tctx_reserve(t);
@@ -27,6 +28,7 @@ Scratch_Block::Scratch_Block(Application_Links *app, Arena *a1, Arena *a2, Arena
     this->arena = tctx_reserve(t, a1, a2, a3);
     this->temp = begin_temp(this->arena);
 }
+
 
 // BOTTOM
 

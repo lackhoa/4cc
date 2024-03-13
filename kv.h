@@ -48,7 +48,9 @@
 
 
 
-#define DLL_EXPORT extern "C" __attribute__((visibility("default")))
+#define DLL_EXPORT GB_DLL_EXPORT
+#define DLL_IMPORT GB_DLL_IMPORT
+
 #define EXTERN_C_BEGIN extern "C" {
 #define EXTERN_C_END   }
 
@@ -477,138 +479,6 @@ inline i32 safeTruncateToInt32(u64 value)
 #define DUMP(...) DUMP_NO_NEWLINE(__VA_ARGS__, "\n")
 // DUMP(a,b) -> DUMP_N(2,a,b)(a,b) -> DUMP_2()
 
-inline void
-zeroSize(void *base, size_t size)
-{
-    u8 *ptr = (u8 *) base;
-    while(size--)
-        *ptr++ = 0;
-}
-
-#define zeroStruct(base, type) zeroSize(base, sizeof(type));
-#define zeroOut(base) zeroSize(base, sizeof(base))
-
-struct kv_Arena
-{
-  u8     *base;
-  size_t  used;
-  size_t  cap;
-
-  // support backward push
-  size_t original_cap;
-
-  i32 temp_count;
-};
-
-inline kv_Arena
-newArena(void *base, size_t cap)
-{
-    kv_Arena arena = {};
-    arena.cap          = cap;
-    arena.base         = (u8 *)base;
-    arena.original_cap = cap;
-    return arena;
-}
-
-inline size_t
-getArenaFree(kv_Arena &arena)
-{
-    size_t out = arena.cap - arena.used;
-    return out;
-}
-
-inline void *
-pushSize(kv_Arena &arena, size_t size, b32 zero = false)
-{
-  void *out = arena.base + arena.used;
-  arena.used += size;
-  kv_assert(arena.used <= arena.cap);
-  if (zero) zeroSize(out, size);
-  return(out);
-}
-
-inline void *
-pushSizeBackward(kv_Arena &arena, size_t size)
-{
-  arena.cap -= size;
-  kv_assert(arena.used <= arena.cap);
-  void *out = arena.base + arena.cap;
-  return(out);
-}
-
-// NOTE: Apparently ##__VA_ARGS__ is the thing
-#define pushStruct(arena, type, ...)    (type *) pushSize(arena, sizeof(type), ##__VA_ARGS__)
-#define pushStructBackward(arena, type) (type *) pushSizeBackward(arena, sizeof(type))
-#define pushArray(arena, count, type)   (type *) pushSize(arena, (count)*sizeof(type))
-#define allocate(arena, x, ...) x = (mytypeof(x)) pushSize(arena, sizeof(*x), ##__VA_ARGS__)
-#define allocateArray(arena, count, x, ...) x = (mytypeof(x)) pushSize(arena, (count)*sizeof(*x), ##__VA_ARGS__)
-
-#define pushItems_1(array, index, item) array[index] = item;
-#define pushItems_2(array, index, item, ...) array[index] = item; pushItems_1(array, index+1, ##__VA_ARGS__);
-#define pushItems_3(array, index, item, ...) array[index] = item; pushItems_2(array, index+1, ##__VA_ARGS__);
-#define pushItems_N(N, ...) CONCATENATE(pushItems_, N)
-
-#define pushItems(arena, array, item, ...)     \
-  array = (mytypeof(item) *) pushArray(arena, PP_NARG(item, ##__VA_ARGS__), mytypeof(item)); \
-  pushItems_N(PP_NARG(item, ##__VA_ARGS__), ##__VA_ARGS__)(array, 0, item, ##__VA_ARGS__)
-
-#define pushItemsAs(...) \
-  auto pushItems(##__VA_ARGS__)
-
-inline kv_Arena
-subArena(kv_Arena &parent, size_t size)
-{
-  u8 *base = (u8 *)pushSize(parent, size);
-  kv_Arena result = newArena(base, size);
-  return result;
-}
-
-inline kv_Arena
-subArenaWithRemainingMemory(kv_Arena &parent)
-{
-    kv_Arena result = {};
-    auto size = parent.cap - parent.used;
-    result.base = (u8 *)pushSize(parent, size);
-    result.cap  = size;
-    return result;
-}
-
-struct TempMemoryMarker
-{
-    kv_Arena  &arena;
-    size_t  original_used;
-};
-
-
-inline TempMemoryMarker
-beginTemporaryMemory(kv_Arena &arena)
-{
-  TempMemoryMarker out = {arena, arena.used};
-  arena.temp_count++;
-  return out;
-}
-
-inline void
-endTemporaryMemory(TempMemoryMarker temp)
-{
-  temp.arena.temp_count--;
-  assert_defend(temp.arena.used >= temp.original_used, 
-                   printf("Memory leak detected!\n"));
-  temp.arena.used = temp.original_used;
-}
-
-inline void
-commitTemporaryMemory(TempMemoryMarker temp)
-{
-  temp.arena.temp_count--;
-}
-
-inline void
-checkArena(kv_Arena *arena)
-{
-    kv_assert(arena->temp_count == 0);
-}
-
 #if COMPILER_MSVC
 #    define mytypeof decltype
 #else
@@ -619,34 +489,16 @@ checkArena(kv_Arena *arena)
 /* #define copyStructNoCast(arena, src) copySize(arena, src, sizeof(*(src))) */
 #define pushCopyArray(arena, count, src) (mytypeof(src)) pushCopySize(arena, (src), count*sizeof(*(src)))
 
-inline u8 *getNext(kv_Arena &buffer)
-{
-  return (buffer.base + buffer.used);
-}
-
-// todo #cleanup same as "inArena"?
-inline b32
-belongsToArena(kv_Arena *arena, u8 *memory)
-{
-  return ((memory >= arena->base) && (memory < arena->base + arena->cap));
-}
-
 #define macro_min(a, b) ((a < b) ? a : b)
 #define macro_max(a, b) ((a < b) ? b : a)
 #define minimum  macro_min // @ Deprecated
 #define maximum  macro_max // @ Deprecated
 
-// Metaprogramming tags
-#define forward_declare(FILE_NAME)
-#define function_typedef(FILE_NAME)
+#define kv_function_typedef(N) typedef N##_return N##_type(N##_params);
+#define kv_function_declare(N) N##_return N(N##_params);
+#define kv_function_pointer(N) global N##_type *N;
 
 /* MARK: End of String */
-
-inline b32
-inArena(kv_Arena &arena, void *p)
-{
-  return ((u64)p >= (u64)arena.base && (u64)p < (u64)arena.base+arena.cap);
-}
 
 inline b32
 checkFlag(u32 flags, u32 flag)
@@ -671,12 +523,6 @@ unsetFlag(u32 *flags, u32 flag)
     a = b; \
     b = temp; \
 }
-
-#define llPush(arena, member, list)            \
-  mytypeof(list) new_list = pushStruct(arena, mytypeof(*list)); \
-  new_list->head          = member;             \
-  new_list->tail          = list;               \
-  list                    = new_list;
 
 #define EAT_TYPE(POINTER, TYPE) (TYPE *)(POINTER += sizeof(TYPE), POINTER - sizeof(TYPE))
 
@@ -1492,7 +1338,6 @@ union v3i{
 /* todo: Old names */
 #define kvXmalloc    kv_xmalloc
 #define kvAssert     kv_assert
-typedef kv_Arena     KvArena;
 /* Old names > */
 
 #define v2_expand(v) v.x, v.y
@@ -2930,23 +2775,6 @@ struct Thread_Context{
   void *user_data;
 };
 
-struct Scratch_Block {
-  Thread_Context *tctx;
-  Arena *arena;
-  Temp_Memory temp;
-  
-  Scratch_Block(struct Thread_Context *tctx);
-  Scratch_Block(struct Thread_Context *tctx, Arena *a1);
-  Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2);
-  Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2, Arena *a3);
-  Scratch_Block(struct Application_Links *app);
-  Scratch_Block(struct Application_Links *app, Arena *a1);
-  Scratch_Block(struct Application_Links *app, Arena *a1, Arena *a2);
-  Scratch_Block(struct Application_Links *app, Arena *a1, Arena *a2, Arena *a3);
-  ~Scratch_Block();
-  operator Arena*();
-  void restore(void);
-};
 
 struct Temp_Memory_Block{
   Temp_Memory temp;
@@ -5789,6 +5617,7 @@ SCany(String_Const_u32 str){
 #define string_litexpr(s) SCchar((s), sizeof(s) - 1)
 #define string_u8_litexpr(s) SCu8((u8*)(s), (u64)(sizeof(s) - 1))
 #define str8lit string_u8_litexpr
+#define strlit  string_u8_litexpr
 #define string_u16_litexpr(s) SCu16((u16*)(s), (u64)(sizeof(s)/2 - 1))
 
 #define string_expand(s) (i32)(s).size, (char*)(s).str
@@ -5962,6 +5791,16 @@ arena__new_node(Arena *arena, u64 min_size, String8 location)
     sll_stack_push(arena->cursor_node, cursor_node);
     return(cursor_node);
 }
+force_inline u64
+get_arena_used(Arena *arena)
+{
+    Cursor_Node *cursor_node = arena->cursor_node;
+    if (cursor_node)
+    {
+        return cursor_node->cursor.pos;
+    }
+    else return 0;
+}
 function String8
 linalloc_push(Arena *arena, u64 size, String8 location)
 {
@@ -6073,6 +5912,7 @@ linalloc_wrap_write(String8 data, u64 size, void *src)
 #define push_align_zero(a,b) (linalloc_wrap_zero(linalloc_align((a), (b))))
 #define push_struct(a,T)          push_array(a,T,1)
 #define push_struct_zero(a,T)     push_array_zero(a,T,1)
+//todo #define push_copy(a,v) do{ auto ptr = push_struct(a,mytypeof(v)); *ptr = v; } while(0)
 
 internal Temp_Memory
 begin_temp(Cursor *cursor)
@@ -8682,6 +8522,49 @@ string_list_flatten(Arena *arena, List_String_Const_u32 string){
     return(string_list_flatten(arena, string, 0, SCu32(), 0, StringFill_NoTerminate));
 }
 
+function String
+push_stringfv(Arena *arena, char *format, va_list args)
+{
+    va_list args2;
+    va_copy(args2, args);
+    i32 size = vsnprintf(0, 0, format, args);
+    String result = string_const_u8_push(arena, size + 1);
+    vsnprintf((char*)result.str, (size_t)result.size, format, args2);
+    result.size -= 1;
+    result.str[result.size] = 0;
+    return(result);
+}
+function void
+string_list_pushfv(Arena *arena, List_String_Const_char *list, char *format, va_list args){
+    String string = push_stringfv(arena, format, args);
+    if (arena->alignment < sizeof(u64)){
+        push_align(arena, sizeof(u64));
+    }
+    string_list_push(arena, list, SCchar(string));
+}
+function void
+string_list_pushf(Arena *arena, List_String_Const_char *list, char *format, ...){
+    va_list args;
+    va_start(args, format);
+    string_list_pushfv(arena, list, format, args);
+    va_end(args);
+}
+function void
+string_list_pushfv(Arena *arena, List_String_Const_u8 *list, char *format, va_list args){
+    String_Const_u8 string = push_stringfv(arena, format, args);
+    if (arena->alignment < sizeof(u64)){
+        push_align(arena, sizeof(u64));
+    }
+    string_list_push(arena, list, string);
+}
+function void
+string_list_pushf(Arena *arena, List_String_Const_u8 *list, char *format, ...){
+    va_list args;
+    va_start(args, format);
+    string_list_pushfv(arena, list, format, args);
+    va_end(args);
+}
+
 function List_String_Const_char
 string_split(Arena *arena, String_Const_char string, char *split_characters, i32 split_character_count){
     List_String_Const_char list = {};
@@ -10183,6 +10066,24 @@ date_time_from_time_stamp(u64 time_stamp){
     return(result);
 }
 
+struct Scratch_Block {
+    Thread_Context *tctx;
+    Arena *arena;
+    Temp_Memory temp;
+    
+    Scratch_Block(struct Thread_Context *tctx);
+    Scratch_Block(struct Thread_Context *tctx, Arena *a1);
+    Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2);
+    Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2, Arena *a3);
+    Scratch_Block(struct Application_Links *app);
+    Scratch_Block(struct Application_Links *app, Arena *a1);
+    Scratch_Block(struct Application_Links *app, Arena *a1, Arena *a2);
+    Scratch_Block(struct Application_Links *app, Arena *a1, Arena *a2, Arena *a3);
+    ~Scratch_Block();
+    operator Arena*();
+    void restore(void);
+};
+
 Scratch_Block::Scratch_Block(Thread_Context *t){
     this->tctx = t;
     this->arena = tctx_reserve(t);
@@ -10272,18 +10173,6 @@ move_file(String8 existing_filename, String8 new_filename)
                         to_c_string(&arena, new_filename));
 }
 
-function String_Const_u8
-push_stringfv(Arena *arena, char *format, va_list args)
-{
-    va_list args2;
-    va_copy(args2, args);
-    i32 size = vsnprintf(0, 0, format, args);
-    String_Const_u8 result = string_const_u8_push(arena, size + 1);
-    vsnprintf((char*)result.str, (size_t)result.size, format, args2);
-    result.size -= 1;
-    result.str[result.size] = 0;
-    return(result);
-}
 function String8
 push_stringf(Arena *arena, char *format, ...)
 {
@@ -10387,6 +10276,63 @@ operator*(m4x4 &A, v4 B)
                    dot(B, A.rows[3])
                    );
     return result;
+}
+
+// NOTE(kv): Just fopen, but let's keep this so we can switch it out later.
+internal FILE *
+open_file(Arena *scratch, String name, char *mode)
+{
+    Temp_Memory_Block temp(scratch);
+    String name_copy = push_string_copy(scratch, name);
+    FILE *file = fopen((char*)name_copy.str, mode);
+    return(file);
+}
+
+internal b32
+write_entire_file(Arena *scratch, String8 filename, void *data, u64 size)
+{
+    b32 result = false;
+    gbFile file_value = {}; gbFile *file = &file_value;
+    char *filename_c = to_c_string(scratch, filename);
+    gbFileError err = gb_file_open_mode(file, gbFileMode_Write, filename_c);
+    if (err == gbFileError_None)
+    {
+        result = gb_file_write(file, data, size);
+    }
+    gb_file_close(file);
+    return result;
+}
+
+function String
+read_entire_file_handle(Arena *arena, FILE *file)
+{
+    String8 result = {};
+    if (file != 0)
+    {
+        fseek(file, 0, SEEK_END);
+        u64 size = ftell(file);
+        char *mem = push_array(arena, char, size);
+        if (mem != 0)
+        {
+            fseek(file, 0, SEEK_SET);
+            fread(mem, 1, (size_t)size, file);
+            result = make_data(mem, size);
+        }
+    }
+    return(result);
+}
+
+internal String
+read_entire_file(Arena *arena, String filename)
+{
+    String result = {};
+    FILE *file = open_file(arena, filename, "rb");
+    if (file != 0)
+    {
+        result = read_entire_file_handle(arena, file);
+        fclose(file);
+    }
+    return(result);
 }
 
 // IMPORTANT: NO TRESPASS ////////////////////////////////////

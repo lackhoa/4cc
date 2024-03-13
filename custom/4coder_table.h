@@ -2,10 +2,7 @@
  * 4coder tables
  */
 
-// TOP
-
-#if !defined(FCODER_TABLES_H)
-#define FCODER_TABLES_H
+#pragma once
 
 struct Table_Lookup{
     u64 hash;
@@ -66,7 +63,3 @@ struct Table_Data_Data{
     u32 used_count;
     u32 dirty_count;
 };
-
-#endif
-
-// BOTTOM

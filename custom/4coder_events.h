@@ -4,9 +4,10 @@
 
 #pragma once
 
-typedef void Custom_Command_Function(Application_Links *app);
+#include "4coder_types.h"
 
-typedef u32 Key_Code;
+typedef void Custom_Command_Function(App *app);
+
 typedef u32 Mouse_Code;
 typedef u32 Core_Code;
 #include "generated/4coder_event_codes.h"
@@ -27,17 +28,32 @@ enum{
     InputEventKind_COUNT,
 };
 
+// NOTE(kv): Totally a @Hack, these flags can be appended to the keycode
+typedef u32 Key_Mod;
+enum
+{
+    KeyMod_Ctl = bit_32,
+    KeyMod_Sft = bit_31,
+    KeyMod_Alt = bit_30,
+    KeyMod_Cmd = bit_29,
+    KeyMod_Mnu = bit_28,
+};
+
 typedef u32 Key_Flags;
 enum{
     KeyFlag_IsDeadKey = (1 << 0),
 };
 
 global_const i32 Input_MaxModifierCount = 8;
+typedef u32 Key_Code;
 
-struct Input_Modifier_Set{
+// TODO @Cleanup Please, this does not need to exist!
+struct Input_Modifier_Set
+{
     Key_Code *mods;
     i32 count;
 };
+
 
 struct Input_Modifier_Set_Fixed{
     Key_Code mods[Input_MaxModifierCount];
@@ -49,7 +65,7 @@ struct Input_Event{
     b32 virtual_event;
     union{
         struct{
-            String_Const_u8 string;
+            String string;
             
             // used internally
             Input_Event *next_text;
@@ -154,4 +170,3 @@ struct User_Input{
     Input_Event event;
     b32 abort;
 };
-

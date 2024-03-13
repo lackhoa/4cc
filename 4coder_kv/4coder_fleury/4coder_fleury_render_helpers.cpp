@@ -18,8 +18,8 @@ F4_DrawTooltipRect(Application_Links *app, Rect_f32 rect)
     border_color &= 0x00ffffff;
     border_color |= 0xd0000000;
     
-    draw_rectangle(app, rect, 4.f, background_color);
-    draw_rectangle_outline(app, rect, 4.f, 3.f, border_color);
+    draw_rect(app, rect, 4.f, background_color);
+    draw_rect_outline(app, rect, 4.f, 3.f, border_color);
 }
 
 function void
@@ -45,7 +45,7 @@ F4_RenderRangeHighlight(Application_Links *app, View_ID view_id, Text_Layout_ID 
             total_range_rect.y1 += 1.f;
         }
     }
-    draw_rectangle(app, total_range_rect, 4.f, color);
+    draw_rect(app, total_range_rect, 4.f, color);
 }
 
 function void

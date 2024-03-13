@@ -2,7 +2,9 @@
 * Default color slots
 */
 
-// TOP
+#pragma once
+
+#include "4coder_default_colors.h"
 
 function Color_Array
 finalize_color_array(Color_Table table, u64 id)
@@ -72,7 +74,8 @@ make_colors(Arena *arena, ARGB_Color c1, ARGB_Color c2, ARGB_Color c3){
 }
 
 function Color_Array
-make_colors(Arena *arena, ARGB_Color c1, ARGB_Color c2, ARGB_Color c3, ARGB_Color c4){
+make_colors(Arena *arena, ARGB_Color c1, ARGB_Color c2, ARGB_Color c3, ARGB_Color c4)
+{
     Color_Array result = {};
     result.count = 4;
     result.vals = push_array(arena, ARGB_Color, 4);
@@ -84,15 +87,68 @@ make_colors(Arena *arena, ARGB_Color c1, ARGB_Color c2, ARGB_Color c3, ARGB_Colo
 }
 
 function Color_Array
-make_colors(Arena *arena, ARGB_Color *colors, i32 count){
+make_colors(Arena *arena, ARGB_Color *colors, i32 count)
+{
     Color_Array result = {};
     result.count = count;
     result.vals = push_array_write(arena, ARGB_Color, count, colors);
     return(result);
 }
 
+
+////////////////////////////////
+
+function void
+set_active_color(Color_Table *table)
+{
+    if (table != 0)
+    {
+        active_color_table = *table;
+    }
+}
+
+// TODO(allen): Need to make this nicer.
+function void
+set_single_active_color(u64 id, ARGB_Color color)
+{
+    active_color_table.arrays[id] = make_colors(&global_theme_arena, color);
+}
+
+function void
+save_theme(Color_Table table, String name)
+{
+    Color_Table_Node *node = push_array(&global_theme_arena, Color_Table_Node, 1);
+    sll_queue_push(global_theme_list.first, global_theme_list.last, node);
+    global_theme_list.count += 1;
+    node->name = push_string_copy(&global_theme_arena, name);
+    node->table = table;
+}
+
+////////////////////////////////
+
+function Color_Table*
+get_color_table_by_name(String name)
+{
+    Color_Table *result = 0;
+    for (Color_Table_Node *node = global_theme_list.first;
+         node != 0;
+         node = node->next)
+    {
+        if (string_match(node->name, name))
+        {
+            result = &node->table;
+            break;
+        }
+    }
+    return(result);
+}
+
+////////////////////////////////////////
+
+#if !AD_IS_COMPILING_GAME
 function Color_Table
-make_color_table(Application_Links *app, Arena *arena){
+make_color_table(App *app, Arena *arena)
+{
     Managed_ID highest_color_id = managed_id_group_highest_id(app, string_u8_litexpr("colors"));
     Color_Table result = {};
     result.count = (u32)(clamp_top(highest_color_id + 1, max_u32));
@@ -107,8 +163,10 @@ make_color_table(Application_Links *app, Arena *arena){
 }
 
 function void
-set_default_color_scheme(Application_Links *app){
-    if (global_theme_arena.base_allocator == 0){
+set_default_color_scheme(App *app)
+{
+    if (global_theme_arena.base_allocator == 0)
+    {
         global_theme_arena = make_arena_system();
     }
     
@@ -158,45 +216,4 @@ set_default_color_scheme(Application_Links *app){
     
     active_color_table = default_color_table;
 }
-
-////////////////////////////////
-
-function void
-set_active_color(Color_Table *table){
-    if (table != 0){
-        active_color_table = *table;
-    }
-}
-
-// TODO(allen): Need to make this nicer.
-function void
-set_single_active_color(u64 id, ARGB_Color color){
-    active_color_table.arrays[id] = make_colors(&global_theme_arena, color);
-}
-
-function void
-save_theme(Color_Table table, String_Const_u8 name){
-    Color_Table_Node *node = push_array(&global_theme_arena, Color_Table_Node, 1);
-    sll_queue_push(global_theme_list.first, global_theme_list.last, node);
-    global_theme_list.count += 1;
-    node->name = push_string_copy(&global_theme_arena, name);
-    node->table = table;
-}
-
-////////////////////////////////
-
-function Color_Table*
-get_color_table_by_name(String_Const_u8 name){
-    Color_Table *result = 0;
-    for (Color_Table_Node *node = global_theme_list.first;
-         node != 0;
-         node = node->next){
-        if (string_match(node->name, name)){
-            result = &node->table;
-            break;
-        }
-    }
-    return(result);
-}
-
-// BOTTOM
+#endif

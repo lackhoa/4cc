@@ -62,41 +62,33 @@ draw_string(Application_Links *app, Face_ID font_id, String_Const_u8 string, Vec
 }
 
 function Vec2_f32
-draw_string(Application_Links *app, Face_ID font_id, String_Const_u8 string, Vec2_f32 p, FColor color){
+draw_string(Application_Links *app, Face_ID font_id, String_Const_u8 string, Vec2_f32 p, FColor color)
+{
     ARGB_Color argb = fcolor_resolve(color);
     return(draw_string(app, font_id, string, p, argb));
 }
 
 function void
-draw_rectangle_fcolor(Application_Links *app, Rect_f32 rect, f32 roundness, FColor color){
-    ARGB_Color argb = fcolor_resolve(color);
-    draw_rectangle(app, rect, roundness, argb);
+draw_margin(App *app, Rect_f32 outer, Rect_f32 inner, ARGB_Color color)
+{
+    draw_rect2(app, Rf32(outer.x0, outer.y0, outer.x1, inner.y0), color);
+    draw_rect2(app, Rf32(outer.x0, inner.y1, outer.x1, outer.y1), color);
+    draw_rect2(app, Rf32(outer.x0, inner.y0, inner.x0, inner.y1), color);
+    draw_rect2(app, Rf32(inner.x1, inner.y0, outer.x1, inner.y1), color);
 }
 
 function void
-draw_rectangle_outline_fcolor(Application_Links *app, Rect_f32 rect, f32 roundness, f32 thickness, FColor color){
-    ARGB_Color argb = fcolor_resolve(color);
-    draw_rectangle_outline(app, rect, roundness, thickness, argb);
-}
-
-function void
-draw_margin(Application_Links *app, Rect_f32 outer, Rect_f32 inner, ARGB_Color color){
-    draw_rectangle(app, Rf32(outer.x0, outer.y0, outer.x1, inner.y0), 0.f, color);
-    draw_rectangle(app, Rf32(outer.x0, inner.y1, outer.x1, outer.y1), 0.f, color);
-    draw_rectangle(app, Rf32(outer.x0, inner.y0, inner.x0, inner.y1), 0.f, color);
-    draw_rectangle(app, Rf32(inner.x1, inner.y0, outer.x1, inner.y1), 0.f, color);
-}
-
-function void
-draw_margin(Application_Links *app, Rect_f32 outer, Rect_f32 inner, FColor color){
+draw_margin(App *app, Rect_f32 outer, Rect_f32 inner, FColor color)
+{
     ARGB_Color argb = fcolor_resolve(color);
     draw_margin(app, outer, inner, argb);
 }
 
 function void
-draw_character_block(Application_Links *app, Text_Layout_ID layout, i64 pos, f32 roundness, ARGB_Color color){
+draw_character_block(App *app, Text_Layout_ID layout, i64 pos, f32 roundness, ARGB_Color color)
+{
     Rect_f32 rect = text_layout_character_on_screen(app, layout, pos);
-    draw_rectangle(app, rect, roundness, color);
+    draw_rect(app, rect, roundness, color, 0);
 }
 
 function void
@@ -123,8 +115,9 @@ draw_character_block(Application_Links *app, Text_Layout_ID layout, Range_i64 ra
                     joinable = true;
                 }
                 
-                if (!joinable){
-                    draw_rectangle(app, Rf32(x, y), roundness, color);
+                if (!joinable)
+                {
+                    draw_rect(app, Rf32(x, y), roundness, color, 0);
                     y = new_y;
                     x = new_x;
                 }
@@ -133,7 +126,7 @@ draw_character_block(Application_Links *app, Text_Layout_ID layout, Range_i64 ra
                 }
             }
         }
-        draw_rectangle(app, Rf32(x, y), roundness, color);
+        draw_rect(app, Rf32(x, y), roundness, color, 0);
     }
 }
 
@@ -144,9 +137,10 @@ draw_character_block(Application_Links *app, Text_Layout_ID layout, Range_i64 ra
 }
 
 function void
-draw_character_wire_frame(Application_Links *app, Text_Layout_ID layout, i64 pos, f32 roundness, f32 thickness, ARGB_Color color){
+draw_character_wire_frame(App *app, Text_Layout_ID layout, i64 pos, f32 roundness, f32 thickness, ARGB_Color color)
+{
     Rect_f32 rect = text_layout_character_on_screen(app, layout, pos);
-    draw_rectangle_outline(app, rect, roundness, thickness, color);
+    draw_rect_outline(app, rect, roundness, thickness, color, 0);
 }
 
 function void
@@ -163,10 +157,11 @@ draw_character_wire_frame(Application_Links *app, Text_Layout_ID layout, Range_i
 }
 
 function void
-draw_character_i_bar(Application_Links *app, Text_Layout_ID layout, i64 pos, ARGB_Color color){
+draw_character_i_bar(Application_Links *app, Text_Layout_ID layout, i64 pos, ARGB_Color color)
+{
     Rect_f32 rect = text_layout_character_on_screen(app, layout, pos);
     rect.x1 = rect.x0 + 1.f;
-    draw_rectangle(app, rect, 0.f, color);
+    draw_rect2(app, rect, color);
 }
 
 function void
@@ -183,7 +178,7 @@ draw_line_highlight(Application_Links *app, Text_Layout_ID layout, Range_i64 lin
     if (range_size(y) > 0.f)
     {
         Rect_f32 region = text_layout_region(app, layout);
-        draw_rectangle(app, Rf32(rect_range_x(region), y), 0.f, color);
+        draw_rect2(app, Rf32(rect_range_x(region), y), color);
     }
 }
 
@@ -265,7 +260,7 @@ function Rect_f32
 draw_background_and_margin(Application_Links *app, View_ID view, ARGB_Color margin, ARGB_Color back, f32 width){
     Rect_f32 view_rect = view_get_screen_rect(app, view);
     Rect_f32 inner = rect_inner(view_rect, width);
-    draw_rectangle(app, inner, 0.f, back);
+    draw_rect2(app, inner, back);
     if (width > 0.f){
         draw_margin(app, view_rect, inner, margin);
     }
@@ -314,7 +309,7 @@ function void
 draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect_f32 bar){
     Scratch_Block scratch(app);
     
-    draw_rectangle_fcolor(app, bar, 0.f, fcolor_id(defcolor_bar));
+    draw_rect_fcolor(app, bar, 0.f, fcolor_id(defcolor_bar));
     
     FColor base_color = fcolor_id(defcolor_base);
     FColor pop2_color = fcolor_id(defcolor_pop2);
@@ -385,7 +380,7 @@ draw_line_number_margin(Application_Links *app, View_ID view_id, Buffer_ID buffe
     FColor line_color = fcolor_id(defcolor_line_numbers_text);
     
     Rect_f32 prev_clip = draw_set_clip(app, margin);
-    draw_rectangle_fcolor(app, margin, 0.f, fcolor_id(defcolor_line_numbers_back));
+    draw_rect_fcolor(app, margin, 0.f, fcolor_id(defcolor_line_numbers_back));
     
     Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     i64 line_count = buffer_get_line_count(app, buffer);
@@ -465,8 +460,8 @@ draw_fps_hud(Application_Links *app, Frame_Info frame_info, Face_ID face_id, Rec
     history_animation_dt[wrapped_index] = frame_info.animation_dt;
     history_frame_index[wrapped_index]  = frame_info.index;
     
-    draw_rectangle_fcolor(app, rect, 0.f, f_black);
-    draw_rectangle_outline_fcolor(app, rect, 0.f, 1.f, f_white);
+    draw_rect_fcolor(app, rect, 0.f, f_black);
+    draw_rect_outline(app, rect, 0.f, 1.f, fcolor_resolve(f_white), 0);
     
     Vec2_f32 p = rect.p0;
     
@@ -933,7 +928,7 @@ draw_tool_tip(Application_Links *app, Face_ID face, Fancy_Block *block,
         box.x1 = f32_round32(box.x1);
         box.y1 = f32_round32(box.y1);
         Rect_f32 prev_clip = draw_set_clip(app, box);
-        draw_rectangle_fcolor(app, box, 6.f, back_color);
+        draw_rect_fcolor(app, box, 6.f, back_color);
         draw_fancy_block(app, face, fcolor_zero(), block,
                          box.p0 + V2(x_half_padding, 1.f));
         draw_set_clip(app, prev_clip);
@@ -955,7 +950,7 @@ draw_drop_down(Application_Links *app, Face_ID face, Fancy_Block *block,
         box.x1 = f32_round32(box.x1);
         box.y1 = f32_round32(box.y1);
         Rect_f32 prev_clip = draw_set_clip(app, box);
-        draw_rectangle_fcolor(app, box, 0.f, back_color);
+        draw_rect_fcolor(app, box, 0.f, back_color);
         draw_margin(app, box, rect_inner(box, 1.f), outline_color);
         draw_fancy_block(app, face, fcolor_zero(), block,
                          box.p0 + V2(x_half_padding, 2.f));
@@ -972,9 +967,9 @@ draw_button(Application_Links *app, Rect_f32 rect, Vec2_f32 mouse_p, Face_ID fac
     }
     
     UI_Highlight_Level highlight = hovered?UIHighlight_Active:UIHighlight_None;
-    draw_rectangle_fcolor(app, rect, 3.f, get_item_margin_color(highlight));
+    draw_rect_fcolor(app, rect, 3.f, get_item_margin_color(highlight));
     rect = rect_inner(rect, 3.f);
-    draw_rectangle_fcolor(app, rect, 3.f, get_item_margin_color(highlight, 1));
+    draw_rect_fcolor(app, rect, 3.f, get_item_margin_color(highlight, 1));
     
     Scratch_Block scratch(app);
     Fancy_String *fancy = push_fancy_string(scratch, 0, face, fcolor_id(defcolor_text_default), text);
@@ -984,6 +979,3 @@ draw_button(Application_Links *app, Rect_f32 rect, Vec2_f32 mouse_p, Face_ID fac
     
     return(hovered);
 }
-
-// BOTTOM
-

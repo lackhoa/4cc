@@ -213,34 +213,29 @@ try:
         if full_rebuild:  # do some generation business in the custom layer
             autogen()
 
-        # print(f'Producing 4ed_app{DOT_DLL}')
         INCLUDES=f'-I{CODE} -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/4coder_kv/libs'
         #
         COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
         SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
-        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"  # Look, I tried -O2 and even -O1, it's still slow af
+        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"  # NOTE: Tried -O2 and even -O1, it's still slow af
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
-        if 0: # in case I wanna debug some macro
-            run(f'clang++ -E {CODE}/4ed_app_target.cpp -o 4ed_app_e.cpp {COMPILE_FLAGS}')
-        # run(f'ccache clang++ -c {CODE}/4ed_app_target.cpp -o 4ed_app.o {COMPILE_FLAGS}')
-        #
-        # run(f'clang++ -shared 4ed_app.o -o 4ed_app{DOT_DLL} -Wl,-export:app_get_functions {debug}')
 
         print('Producing 4ed')
         if OS_WINDOWS:
             PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
+            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/freetype.lib -luser32.lib -lwinmm.lib -lgdi32.lib -lopengl32.lib -lcomdlg32.lib -luserenv.lib {NON_SOURCE}/res/icon.res"
         else:
             PLATFORM_CPP =  f"{CODE}/platform_mac/mac_4ed.mm"
+            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
          #
         run(f'ccache clang++ {COMPILE_FLAGS} -I{CODE}/platform_all -c {PLATFORM_CPP} -o 4ed.o')
         #
-        if OS_WINDOWS:
-            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/freetype.lib -luser32.lib -lwinmm.lib -lgdi32.lib -lopengl32.lib -lcomdlg32.lib -luserenv.lib {NON_SOURCE}/res/icon.res"
-        else:
-            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
-        #
         run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed{DOT_EXE} {debug}')
+
+        print(f'Producing game{DOT_DLL}')
+        DOT_LIB=".lib"
+        run(f'clang++ -shared {CODE}/game.cpp 4ed{DOT_LIB} -o game{DOT_DLL} {COMPILE_FLAGS} -Wl,-export:game_api_export {debug}')
 
         if full_rebuild:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")

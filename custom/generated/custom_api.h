@@ -1,5 +1,7 @@
 #pragma once
 
+#include "4coder_game_shared.h"
+
 #define custom_global_set_setting_sig() b32 custom_global_set_setting(Application_Links* app, Global_Setting_ID setting, i64 value)
 #define custom_global_get_screen_rectangle_sig() Rect_f32 custom_global_get_screen_rectangle(Application_Links* app)
 #define custom_get_thread_context_sig() Thread_Context* custom_get_thread_context(Application_Links* app)
@@ -161,8 +163,8 @@
 #define custom_release_global_frame_mutex_sig() void custom_release_global_frame_mutex(Application_Links* app)
 #define custom_draw_string_oriented_sig() Vec2_f32 custom_draw_string_oriented(Application_Links* app, Face_ID font_id, ARGB_Color color, String_Const_u8 str, Vec2_f32 point, u32 flags, Vec2_f32 delta)
 #define custom_get_string_advance_sig() f32 custom_get_string_advance(Application_Links* app, Face_ID font_id, String_Const_u8 str)
-#define custom_draw_rectangle_sig() void custom_draw_rectangle(Application_Links* app, Rect_f32 rect, f32 roundness, ARGB_Color color)
-#define custom_draw_rectangle_outline_sig() void custom_draw_rectangle_outline(Application_Links* app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color)
+#define custom_draw_rect_sig() void custom_draw_rect(Application_Links* app, Rect_f32 rect, f32 roundness, ARGB_Color color)
+#define custom_draw_rect_outline_sig() void custom_draw_rect_outline(Application_Links* app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color)
 #define custom_draw_set_clip_sig() Rect_f32 custom_draw_set_clip(Application_Links* app, Rect_f32 new_clip)
 #define custom_text_layout_create_sig() Text_Layout_ID custom_text_layout_create(Application_Links* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point)
 #define custom_text_layout_region_sig() Rect_f32 custom_text_layout_region(Application_Links* app, Text_Layout_ID text_layout_id)
@@ -340,8 +342,8 @@ typedef void custom_acquire_global_frame_mutex_type(Application_Links* app);
 typedef void custom_release_global_frame_mutex_type(Application_Links* app);
 typedef Vec2_f32 custom_draw_string_oriented_type(Application_Links* app, Face_ID font_id, ARGB_Color color, String_Const_u8 str, Vec2_f32 point, u32 flags, Vec2_f32 delta);
 typedef f32 custom_get_string_advance_type(Application_Links* app, Face_ID font_id, String_Const_u8 str);
-typedef void custom_draw_rectangle_type(Application_Links* app, Rect_f32 rect, f32 roundness, ARGB_Color color);
-typedef void custom_draw_rectangle_outline_type(Application_Links* app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color);
+typedef void custom_draw_rect_type(Application_Links* app, Rect_f32 rect, f32 roundness, ARGB_Color color);
+typedef void custom_draw_rect_outline_type(Application_Links* app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color);
 typedef Rect_f32 custom_draw_set_clip_type(Application_Links* app, Rect_f32 new_clip);
 typedef Text_Layout_ID custom_text_layout_create_type(Application_Links* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point);
 typedef Rect_f32 custom_text_layout_region_type(Application_Links* app, Text_Layout_ID text_layout_id);
@@ -520,8 +522,8 @@ custom_acquire_global_frame_mutex_type *acquire_global_frame_mutex;
 custom_release_global_frame_mutex_type *release_global_frame_mutex;
 custom_draw_string_oriented_type *draw_string_oriented;
 custom_get_string_advance_type *get_string_advance;
-custom_draw_rectangle_type *draw_rectangle;
-custom_draw_rectangle_outline_type *draw_rectangle_outline;
+custom_draw_rect_type *draw_rect;
+custom_draw_rect_outline_type *draw_rect_outline;
 custom_draw_set_clip_type *draw_set_clip;
 custom_text_layout_create_type *text_layout_create;
 custom_text_layout_region_type *text_layout_region;
@@ -715,8 +717,8 @@ LINKAGE void acquire_global_frame_mutex(Application_Links* app);
 LINKAGE void release_global_frame_mutex(Application_Links* app);
 LINKAGE Vec2_f32 draw_string_oriented(Application_Links* app, Face_ID font_id, ARGB_Color color, String_Const_u8 str, Vec2_f32 point, u32 flags, Vec2_f32 delta);
 LINKAGE f32 get_string_advance(Application_Links* app, Face_ID font_id, String_Const_u8 str);
-LINKAGE void draw_rectangle(Application_Links* app, Rect_f32 rect, f32 roundness, ARGB_Color color);
-LINKAGE void draw_rectangle_outline(Application_Links* app, Rect_f32 rect, f32 roundness, f32 thickness, ARGB_Color color);
+//LINKAGE void draw_rect(Application_Links* app, Rect_f32 rect, f32 roundness, ARGB_Color color);
+LINKAGE void draw_rect_outline(draw_rect_outline_params);
 LINKAGE Rect_f32 draw_set_clip(Application_Links* app, Rect_f32 new_clip);
 LINKAGE Text_Layout_ID text_layout_create(Application_Links* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point);
 LINKAGE Rect_f32 text_layout_region(Application_Links* app, Text_Layout_ID text_layout_id);
@@ -903,8 +905,8 @@ global custom_acquire_global_frame_mutex_type *acquire_global_frame_mutex = 0;
 global custom_release_global_frame_mutex_type *release_global_frame_mutex = 0;
 global custom_draw_string_oriented_type *draw_string_oriented = 0;
 global custom_get_string_advance_type *get_string_advance = 0;
-global custom_draw_rectangle_type *draw_rectangle = 0;
-global custom_draw_rectangle_outline_type *draw_rectangle_outline = 0;
+global custom_draw_rect_type *draw_rect = 0;
+global custom_draw_rect_outline_type *draw_rect_outline = 0;
 global custom_draw_set_clip_type *draw_set_clip = 0;
 global custom_text_layout_create_type *text_layout_create = 0;
 global custom_text_layout_region_type *text_layout_region = 0;

@@ -317,7 +317,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
         ARGB_Color color = fcolor_resolve(fcolor_id(fleury_color_inactive_pane_overlay));
         if(F4_ARGBIsValid(color))
         {
-            draw_rectangle(app, view_rect, 0.f, color);
+            draw_rect(app, view_rect, 0.f, color);
         }
     }
     
@@ -345,7 +345,7 @@ F4_DrawFileBar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_I
 {
     Scratch_Block scratch(app);
     
-    draw_rectangle_fcolor(app, bar, 0.f, fcolor_id(defcolor_bar));
+    draw_rect_fcolor(app, bar, 0.f, fcolor_id(defcolor_bar));
     
     FColor base_color = fcolor_id(defcolor_base);
     FColor pop2_color = fcolor_id(defcolor_pop2);
@@ -413,7 +413,7 @@ F4_DrawFileBar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_I
         ARGB_Color progress_bar_color = fcolor_resolve(fcolor_id(fleury_color_file_progress_bar));
         if(F4_ARGBIsValid(progress_bar_color))
         {
-            draw_rectangle(app, progress_bar_rect, 0, progress_bar_color);
+            draw_rect(app, progress_bar_rect, 0, progress_bar_color);
         }
     }
 }
@@ -452,7 +452,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
                 color = inactive_bg_color;
             }
         }
-        draw_rectangle(app, region, 0.f, color);
+        draw_rect(app, region, 0.f, color);
         draw_margin(app, view_rect, region, color);
     }
     

@@ -1,8 +1,33 @@
-/*
-* Fancy string - immediate mode renderer for colored strings
-*/
+#pragma once
 
-// TOP
+#include "4coder_default_colors.cpp"
+#include "4ed_render_target.cpp"
+
+api(custom)
+struct Fancy_String{
+    Fancy_String *next;
+    String value;
+    Face_ID face;
+    FColor fore;
+    f32 pre_margin;
+    f32 post_margin;
+};
+
+api(custom)
+struct Fancy_Line{
+    Fancy_Line *next;
+    Face_ID face;
+    FColor fore;
+    Fancy_String *first;
+    Fancy_String *last;
+};
+
+api(custom)
+struct Fancy_Block{
+    Fancy_Line *first;
+    Fancy_Line *last;
+    i32 line_count;
+};
 
 internal FColor
 fcolor_argb(ARGB_Color color)
@@ -69,6 +94,13 @@ fcolor_resolve(FColor color)
     else result = color.argb;
     
     return(result);
+}
+
+function void
+draw_rect_fcolor(App *app, rect2 rect, v1 roundness, FColor color)
+{
+    ARGB_Color argb = fcolor_resolve(color);
+    draw_rect(app, rect, roundness, argb, 0);
 }
 
 inline ARGB_Color
@@ -414,7 +446,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, String_Const_u8 value,
 internal Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                         f32 pre_margin, f32 post_margin,
-                        String_Const_u8 value, u32 max){
+                        String value, u32 max){
     if (value.size <= max){
       char *format = "%.*s";
         return(push_fancy_stringf(arena, line, face, fore, pre_margin, post_margin,
@@ -575,15 +607,18 @@ push_fancy_line(Arena *arena, Fancy_Block *block){
 
 internal f32
 get_fancy_string_width__inner(Application_Links *app, Face_ID face,
-                              Fancy_String *string){
+                              Fancy_String *string)
+{
     f32 result = 0.f;
     for (;string != 0;
-         string = string->next){
+         string = string->next)
+    {
         Face_ID use_face = face;
         if (string->face != 0){
             use_face = string->face;
         }
-        if (use_face != 0){
+        if (use_face != 0)
+        {
             result += get_string_advance(app, use_face, string->value);
             Face_Metrics metrics = get_face_metrics(app, use_face);
             f32 normal_advance = metrics.normal_advance;
@@ -869,7 +904,8 @@ draw_fancy_line(Application_Links *app, Face_ID face, FColor fore,
 
 internal void
 draw_fancy_block(Application_Links *app, Face_ID face, FColor fore,
-                 Fancy_Block *block, Vec2_f32 p){
+                 Fancy_Block *block, Vec2_f32 p)
+{
     draw_fancy_block(app, face, fore, block, p, 0, V2(1.f, 0.f));
 }
 
@@ -887,6 +923,3 @@ global FColor f_blue       = fcolor_argb(0.0f, 0.0f, 1.0f, 1.0f);
 global FColor f_yellow     = fcolor_argb(1.0f, 1.0f, 0.0f, 1.0f);
 global FColor f_pink       = fcolor_argb(1.0f, 0.0f, 1.0f, 1.0f);
 global FColor f_cyan       = fcolor_argb(0.0f, 1.0f, 1.0f, 1.0f);
-
-// BOTTOM
-

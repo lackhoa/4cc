@@ -1,15 +1,6 @@
-/*
- * Mr. 4th Dimention - Allen Webster
- *
- * 10.11.2017
- *
- * Render target type definition
- *
- */
-
-// TOP
-
 #pragma once
+
+#include "4coder_types.h"
 
 struct Render_Free_Texture
 {

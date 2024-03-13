@@ -293,7 +293,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
             
             Color_Array colors = finalize_color_array(fleury_color_brace_line);
             if (colors.count >= 1 && F4_ARGBIsValid(colors.vals[0])) {
-                draw_rectangle(app, line_rect, 0.5f, 
+                draw_rect(app, line_rect, 0.5f, 
                                colors.vals[(ranges.count - i - 1) % colors.count]);
             }
         }

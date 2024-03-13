@@ -10,11 +10,12 @@
 
 global char *lnx_override_user_directory = 0;
 
-internal String_Const_u8
-system_get_path(Arena* arena, System_Path_Code path_code){
-    String_Const_u8 result = {};
-    
-    switch (path_code){
+internal String
+system_get_path(Arena* arena, System_Path_Code path_code)
+{
+    String result = {};
+    switch (path_code)
+    {
         case SystemPath_CurrentDirectory: {
             // glibc extension: getcwd allocates its own memory if passed NULL
             char *working_dir = getcwd(NULL, 0);

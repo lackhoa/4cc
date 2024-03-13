@@ -6,39 +6,7 @@
 
 #pragma once
 
-#include <stdarg.h>
 #include <stdio.h>
-
-function void
-string_list_pushfv(Arena *arena, List_String_Const_char *list, char *format, va_list args){
-    String_Const_u8 string = push_stringfv(arena, format, args);
-    if (arena->alignment < sizeof(u64)){
-        push_align(arena, sizeof(u64));
-    }
-    string_list_push(arena, list, SCchar(string));
-}
-function void
-string_list_pushf(Arena *arena, List_String_Const_char *list, char *format, ...){
-    va_list args;
-    va_start(args, format);
-    string_list_pushfv(arena, list, format, args);
-    va_end(args);
-}
-function void
-string_list_pushfv(Arena *arena, List_String_Const_u8 *list, char *format, va_list args){
-    String_Const_u8 string = push_stringfv(arena, format, args);
-    if (arena->alignment < sizeof(u64)){
-        push_align(arena, sizeof(u64));
-    }
-    string_list_push(arena, list, string);
-}
-function void
-string_list_pushf(Arena *arena, List_String_Const_u8 *list, char *format, ...){
-    va_list args;
-    va_start(args, format);
-    string_list_pushfv(arena, list, format, args);
-    va_end(args);
-}
 
 ////////////////////////////////
 

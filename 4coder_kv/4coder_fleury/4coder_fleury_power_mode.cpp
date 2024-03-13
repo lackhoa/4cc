@@ -334,7 +334,7 @@ F4_PowerMode_RenderBuffer(Application_Links *app, View_ID view, Face_ID face, Fr
                 ARGB_Color color = power_mode.particles[i].color;
                 color &= 0x00ffffff;
                 color |= ((u32)(power_mode.particles[i].alpha * 60.f)) << 24;
-                draw_rectangle(app, rect, roundness, color);
+                draw_rect(app, rect, roundness, color);
                 if(power_mode.particles[i].string.size > 0)
                 {
                     draw_string(app, face, power_mode.particles[i].string, rect.p0, color);
@@ -359,7 +359,7 @@ F4_PowerMode_RenderWholeScreen(Application_Links *app, Frame_Info frame_info)
         Rect_f32 glow_rect = rect;
         for(int i = 0; i < 15; i += 1)
         {
-            draw_rectangle_outline(app, glow_rect, 0.f, 15.f - (f32)i, color);
+            draw_rect_outline(app, glow_rect, 0.f, 15.f - (f32)i, color);
         }
     }
     

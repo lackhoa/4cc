@@ -68,11 +68,9 @@
 
 ////////////////////////////////
 
-// #include "4coder_base_types.cpp"
 #include "4coder_layout.cpp"
 #include "4coder_string_match.cpp"
 #include "4coder_stringf.cpp"
-//#include "4coder_events.cpp"
 #include "4ed_fui_user.cpp"
 #include "4coder_system_helpers.cpp"
 #include "4coder_app_links_allocator.cpp"
@@ -122,8 +120,8 @@
 #include "4ed_text_layout.cpp"
 #include "4ed_api_implementation.cpp"
 
-#include "4coder_kv.cpp"
-
 #include "4ed.cpp"
+
+#include "4coder_kv.cpp"
 
 // BOTTOM

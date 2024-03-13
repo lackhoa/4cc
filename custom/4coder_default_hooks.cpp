@@ -4,6 +4,7 @@
 
 // TOP
 
+#if 0
 CUSTOM_COMMAND_SIG(default_startup)
 CUSTOM_DOC("Default command for responding to a startup event")
 {
@@ -21,9 +22,9 @@ CUSTOM_DOC("Default command for responding to a startup event")
             load_project(app);
         }
     }
-    
+   
     {
-        def_audio_init();
+        //def_audio_init();
     }
     
     {
@@ -31,6 +32,7 @@ CUSTOM_DOC("Default command for responding to a startup event")
         clear_all_layouts(app);
     }
 }
+#endif
 
 CUSTOM_COMMAND_SIG(default_try_exit)
 CUSTOM_DOC("Default command for responding to a try-exit event")

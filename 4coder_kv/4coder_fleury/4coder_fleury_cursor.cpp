@@ -47,10 +47,10 @@ C4_RenderCursorSymbolThingy(Application_Links *app, Rect_f32 rect,
         start_side.y0 = start_top.y0;
         start_side.y1 = start_bottom.y1;
         
-        draw_rectangle(app, start_top, roundness, color);
-        draw_rectangle(app, start_side, roundness, color);
+        draw_rect(app, start_top, roundness, color);
+        draw_rect(app, start_side, roundness, color);
         
-        // draw_rectangle(app, start_bottom, start_color);
+        // draw_rect(app, start_bottom, start_color);
     }
     else if(type == cursor_close_range)
 	{
@@ -73,8 +73,8 @@ C4_RenderCursorSymbolThingy(Application_Links *app, Rect_f32 rect,
 		end_bottom.y1 = end_p.y + line_height;
 		end_bottom.y0 = end_bottom.y1 - thickness;
 		
-		draw_rectangle(app, end_bottom, roundness, color);
-		draw_rectangle(app, end_side, roundness, color);
+		draw_rect(app, end_bottom, roundness, color);
+		draw_rect(app, end_side, roundness, color);
     }
     else if(type == cursor_insert)
 	{
@@ -84,7 +84,7 @@ C4_RenderCursorSymbolThingy(Application_Links *app, Rect_f32 rect,
 		side.y0 = rect.y0;
 		side.y1 = rect.y1;
         
-		draw_rectangle(app, side, roundness, color);
+		draw_rect(app, side, roundness, color);
 	}
 }
 
@@ -340,8 +340,8 @@ F4_Cursor_RenderNotepadStyle(Application_Links *app, View_ID view_id, b32 is_act
             {
                 DoTheCursorInterpolation(app, frame_info, &global_cursor_rect, &global_last_cursor_rect, rect);
             }
-            draw_rectangle(app, global_cursor_rect, roundness, ghost_color);
-            draw_rectangle(app, rect, roundness, cursor_color);
+            draw_rect(app, global_cursor_rect, roundness, ghost_color);
+            draw_rect(app, rect, roundness, cursor_color);
         }
     }
 }
@@ -366,7 +366,7 @@ F4_HighlightCursorMarkRange(Application_Links *app, View_ID view_id)
         upper_bound_y = global_last_cursor_rect.y1;
     }
     
-    draw_rectangle(app, Rf32(view_rect.x0, lower_bound_y, view_rect.x0 + 4, upper_bound_y), 3.f,
+    draw_rect(app, Rf32(view_rect.x0, lower_bound_y, view_rect.x0 + 4, upper_bound_y), 3.f,
                    fcolor_resolve(fcolor_change_alpha(fcolor_id(defcolor_comment), 0.5f)));
     draw_set_clip(app, clip);
 }

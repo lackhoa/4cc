@@ -308,7 +308,7 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	Rect_f32 back_rect = region;
 	back_rect.y0 = y_base;
 	back_rect.y1 = y_base + rect_height(region);
-	draw_rectangle_fcolor(app, back_rect, 0.f, fcolor_id(defcolor_back));
+	draw_rect_fcolor(app, back_rect, 0.f, fcolor_id(defcolor_back));
 	
 	Fancy_Block block = {};
 	for(i32 i=first_index; i<count; i++){
@@ -344,8 +344,8 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 		
 		u64 lister_roundness_100 = def_get_config_u64(app, vars_intern_lit("lister_roundness"));
 		f32 roundness = block_height*lister_roundness_100*0.01f;
-		draw_rectangle_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
-		draw_rectangle_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
+		draw_rect_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
+		draw_rect_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
 		
 		Fancy_Line line = {};
 		push_fancy_string(scratch, &line, fcolor_id(defcolor_text_default), node->string);
@@ -362,7 +362,7 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	
 	if(lister->visible_count != 0){
 		Rect_f32 rect = Rect_f32{region.x0, region.y1 - 4.f, region.x1, region.y1};
-		draw_rectangle_fcolor(app, rect, 0.f, get_item_margin_color(UIHighlight_Active));
+		draw_rect_fcolor(app, rect, 0.f, get_item_margin_color(UIHighlight_Active));
 	}
 	
 	draw_set_clip(app, prev_clip);

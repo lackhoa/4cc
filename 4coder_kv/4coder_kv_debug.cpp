@@ -1,7 +1,9 @@
-// NOTE(kv): it is really annoying to have different command sets for debug and release build,
-//           so let's have the same commands for both.
+#pragma once
 
 #if KV_INTERNAL
+
+#include "4coder_fancy.cpp"
+
 struct Debug_Entry
 {
   char *name;
@@ -30,7 +32,7 @@ DEBUG_draw_entry(App *app, Face_ID face_id, Debug_Entry entry, v2 *at)
 internal void
 DEBUG_draw_hud(App *app, Face_ID face_id, Rect_f32 rect)
 {
-    draw_rectangle_fcolor(app, rect, 0.f, fcolor_change_alpha(f_black, 0.3f));
+    draw_rect_fcolor(app, rect, 0.f, fcolor_change_alpha(f_black, 0.3f));
     
     v2 at = rect.p0;
     for (i32 entry_index=0; 
@@ -86,6 +88,8 @@ DEBUG_VALUE_inner(char *name, v3 v)
 #    define DEBUG_CLEAR
 #endif
 
+// NOTE(kv): It's annoying to have different command sets for different builds,
+//           so let's have the same commands for both.
 CUSTOM_COMMAND_SIG(DEBUG_draw_hud_toggle)
 CUSTOM_DOC("toggle debug hud")
 {

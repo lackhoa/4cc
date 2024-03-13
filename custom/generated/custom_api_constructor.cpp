@@ -930,14 +930,14 @@ api_param(arena, call, "Face_ID", "font_id");
 api_param(arena, call, "String_Const_u8", "str");
 }
 {
-API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("draw_rectangle"), string_u8_litexpr("void"), string_u8_litexpr(""));
+API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("draw_rect"), string_u8_litexpr("void"), string_u8_litexpr(""));
 api_param(arena, call, "Application_Links*", "app");
 api_param(arena, call, "Rect_f32", "rect");
 api_param(arena, call, "f32", "roundness");
 api_param(arena, call, "ARGB_Color", "color");
 }
 {
-API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("draw_rectangle_outline"), string_u8_litexpr("void"), string_u8_litexpr(""));
+API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("draw_rect_outline"), string_u8_litexpr("void"), string_u8_litexpr(""));
 api_param(arena, call, "Application_Links*", "app");
 api_param(arena, call, "Rect_f32", "rect");
 api_param(arena, call, "f32", "roundness");

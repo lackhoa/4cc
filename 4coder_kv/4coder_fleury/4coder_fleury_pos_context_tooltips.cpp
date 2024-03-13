@@ -71,7 +71,7 @@ _F4_PosContext_RenderDefinitionTokens(Application_Links *app, Face_ID face,
             {
                 if(do_render)
                 {
-                    draw_rectangle(app, Rf32(start_pos.x, start_pos.y + metrics.line_height,
+                    draw_rect(app, Rf32(start_pos.x, start_pos.y + metrics.line_height,
                                              text_position.x, start_pos.y + metrics.line_height + 2.f),
                                    1.f, color);
                 }
