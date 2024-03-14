@@ -7952,7 +7952,7 @@ gb_inline b32 gb_file_copy(char const *existing_filename, char const *new_filena
 	return result;
 }
 
-gb_inline b32 gb_file_move(char const *existing_filename, char const *new_filename) {
+b32 gb_file_move(char const *existing_filename, char const *new_filename) {
 	wchar_t *w_old = NULL;
 	wchar_t *w_new = NULL;
 	gbAllocator a = gb_heap_allocator();
@@ -7966,6 +7966,7 @@ gb_inline b32 gb_file_move(char const *existing_filename, char const *new_filena
 	if (w_new != NULL) {
 		result = MoveFileW(w_old, w_new);
 	}
+    DWORD error = GetLastError();
 	gb_free(a, w_new);
 	gb_free(a, w_old);
 	return result;
@@ -8020,7 +8021,7 @@ gb_inline b32 gb_file_copy(char const *existing_filename, char const *new_filena
 #endif
 }
 
-gb_inline b32 gb_file_move(char const *existing_filename, char const *new_filename) {
+b32 gb_file_move(char const *existing_filename, char const *new_filename) {
 	if (link(existing_filename, new_filename) == 0) {
 		return unlink(existing_filename) != -1;
 	}

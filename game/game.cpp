@@ -20,8 +20,21 @@
   pma = Pre-multiplied alpha
  */
 
+global v4  v4_yellow   = {.5, .5, 0, 1.0};
+global u32 argb_yellow = pack_argb(v4_yellow);
+global u32 argb_red    = pack_argb({.5,0,0,1});
+global u32 argb_green  = pack_argb({0,.5,0,1});
+global u32 argb_blue   = pack_argb({0,.5,1,1});
+global v4  v4_black    = {0,0,0,1};
+global u32 argb_black  = pack_argb(v4_black);
+global v4  v4_white    = {1,1,1,1};
+global u32 argb_white  = pack_argb(v4_white);
+global u32 argb_marble = 0xff616066; // Original 0xffA9A6B7, which is too bright!
+
 global const u32 data_current_version = 6;
 global const u32 data_magic_number = *(u32 *)"kvda";
+
+global const v1 widget_margin = 5.0f;
 
 #define X(N) internal N##_return N(N##_params);
     // note: forawrd declare
@@ -113,18 +126,6 @@ struct Game_Save_Old
 
 typedef u32 Widget_ID;
 
-
-// TODO: @Cleanup: Also with the fcolor
-global v4  v4_yellow   = {.5, .5, 0, 1.0};
-global u32 argb_yellow = pack_argb(v4_yellow);
-global u32 argb_red    = pack_argb({.5,0,0,1});
-global u32 argb_green  = pack_argb({0,.5,0,1});
-global u32 argb_blue   = pack_argb({0,.5,1,1});
-global v4  v4_black    = {0,0,0,1};
-global u32 argb_black  = pack_argb(v4_black);
-global v4  v4_white    = {1,1,1,1};
-global u32 argb_white  = pack_argb(v4_white);
-global u32 argb_marble = 0xff616066; // Original 0xffA9A6B7, which is too bright!
 
 force_inline ARGB_Color
 argb_gray(v1 value)
@@ -349,7 +350,7 @@ save_game(App *app, Game_State *state)
                         file_to_delete = pjoin(scratch, backup_dir, (*backup)->filename);
                     }
                 }
-                b32 delete_ok = remove_file(scratch, file_to_delete);
+                b32 delete_ok = remove_file(file_to_delete);
                 if (delete_ok) printf_message(app, "INFO: deleted backup file %.*s because it's too old", string_expand(file_to_delete));
                 else           printf_message(app, "ERROR: failed to delete backup file %.*s", string_expand(file_to_delete));
             }
@@ -378,8 +379,6 @@ is_key_newly_pressed(Game_Input input, Key_Mod modifiers, Key_Code keycode)
     }
     else return false;
 }
-
-global const v1 widget_margin = 5.0f;
 
 internal rect2 draw_single_widget(App *app, Widget_State *state, Widget *tree, v2 top_left);
 
@@ -569,9 +568,7 @@ direction_from_input(Game_Input input, Key_Mod wanted_mods)
 game_update_and_render_return
 game_update_and_render(game_update_and_render_params)
 {
-    b32 view_active = view_is_active(app, view);
-    
-    if (view_active)
+    if (input.view_active)
     {// NOTE: Enable animation if ANY key is down
         for_i32 (keycode, 1, KeyCode_COUNT)
         {
@@ -587,9 +584,9 @@ game_update_and_render(game_update_and_render_params)
     Widget_State *widget_state = &state->widget_state;
     
     Scratch_Block scratch(app);
-    u32 paint_color = argb_gray(.3f);
+    u32 paint_color = argb_gray(.2f);
     
-    if (view_active)
+    if (input.view_active)
     {
         if ( is_key_newly_pressed(input, KeyMod_Ctl, KeyCode_Tab) )
         {
@@ -610,7 +607,7 @@ game_update_and_render(game_update_and_render_params)
     {// NOTE: Camera handling
         camera->focal_length = 2000.f;
         
-        if (view_active)
+        if (input.view_active)
         {// NOTE: Camera rotation
             v3 delta_pivot = U * dt * direction_from_input(input, KeyMod_Alt).xyz;
             v3 delta_angle = dt * direction_from_input(input, KeyMod_Ctl).xyz;
@@ -691,7 +688,7 @@ game_update_and_render(game_update_and_render_params)
     
     const u32 bezier_count = 3;
     
-    if (view_active)
+    if (input.view_active)
     {
         if ( is_key_newly_pressed(input, 0, KeyCode_E) )
         {
@@ -721,7 +718,7 @@ game_update_and_render(game_update_and_render_params)
         }
     }
     
-    b32 editing_active = view_active && widget_state->is_editing;
+    b32 editing_active = input.view_active && widget_state->is_editing;
     {// NOTE: bezier curve experiment!
         for_u32 (curve_index, 0, bezier_count)
         {

@@ -50,9 +50,8 @@
     X(draw_get_target) \
     X(print_message)   \
     X(system_get_file_list) \
-    X(vim_set_bottom_text) \
     X(system_get_path) \
-    X(view_is_active) \
+    X(vim_set_bottom_text) \
     X(animate_in_n_milliseconds) \
     X(change_active_primary_panel) \
     X(get_face_metrics) \
@@ -103,6 +102,7 @@ struct Game_Input
     Key_Mod active_mods;
     b8     *key_states;
     u8     *key_state_changes;
+    b32     view_active;
 };
 
 #define game_init_params Arena *bootstrap_arena, App *app

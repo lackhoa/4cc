@@ -195,8 +195,91 @@ app_read_command_line(Thread_Context *tctx,
 extern "C" void custom_layer_init(App *app);
 
 global Game_API global_game_api = {};
-global String GAME_CODE_PATH = str8lit("game.dll");
+global String GAME_DLL_PATH;
 global Game_State *game_state_pointer;
+struct Current_Game_DLL { u64 mtime; u32 temp_index; };
+global Current_Game_DLL current_game_dll;
+
+internal u64
+file_mtime(String filename)
+{
+    u8 buffer[256];
+    // nono: this allocation is very yikes!
+    Arena arena = make_arena_system();
+    File_Attributes attr = system_quick_file_attributes(&arena, filename);
+    return attr.last_write_time;
+}
+
+internal b32
+load_newest_game_code(App *app)
+{// NOTE(kv): Load dynamc game code
+    Scratch_Block scratch(app);
+    
+    u64 mtime1 = file_mtime(GAME_DLL_PATH);
+  
+    String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+    String GAME2_DLL = pjoin(scratch, binary_dir, "game2.dll");
+    String GAME3_DLL = pjoin(scratch, binary_dir, "game3.dll");
+   
+    u32 new_index = 0;
+    u64 new_mtime = 0;
+    b32 ok = true;
+    b32 init_call = (current_game_dll.mtime == 0);
+    if (init_call)
+    {
+        u64 mtime2 = file_mtime(GAME2_DLL);
+        u64 mtime3 = file_mtime(GAME3_DLL);
+        new_index = 1;
+        new_mtime = mtime1;
+        if (new_mtime < mtime2)
+        {
+            new_index = 2;
+            new_mtime = mtime2;
+        }
+        if (new_mtime < mtime3)
+        {
+            new_index = 3;
+            new_mtime = mtime3;
+        }
+        ok = new_mtime > 0;
+    }
+    else if (current_game_dll.mtime < mtime1)
+    {// NOTE: Load new game code produced by our build script
+       new_index = 1;
+    }
+    
+    if (ok && new_index != 0)
+    {
+        // NOTE: ping-pong temp DLL
+        u32 temp_index = new_index;
+        if (new_index == 1)
+        {
+            temp_index = 2;
+            if (current_game_dll.temp_index == 2) temp_index = 3;
+        }
+        String temp_path = (temp_index == 2) ? GAME2_DLL : GAME3_DLL;
+        if (new_index == 1)
+        {
+            remove_file(temp_path);
+            ok = move_file(GAME_DLL_PATH, temp_path);
+        }
+       
+        System_Library library = {};
+        if (ok)
+            ok = system_load_library(scratch, temp_path, &library);
+        
+        if (ok)
+        {
+            auto game_api_export = (game_api_export_type *)system_get_proc(library, "game_api_export");
+            game_api_export(&global_game_api);
+            Arena bootstrap_arena = make_arena_system();
+            game_state_pointer = global_game_api.game_init(&bootstrap_arena, app);
+            current_game_dll = { new_mtime, temp_index };
+        }
+    }
+    
+    return ok;
+}
 
 internal void 
 app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String current_directory)
@@ -324,29 +407,11 @@ app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String cur
         view_init(tctx, models, new_view, models->scratch_buffer, models->view_event_handler);
     }
     
-    {// NOTE(kv): Load dynamc game code
-        Scratch_Block scratch(tctx, arena);
-        
-        System_Library library = {};
-        if ( system_load_library(scratch, GAME_CODE_PATH, &library) )
-        {
-            // NOTE: Loading game code
-            auto game_api_export = (game_api_export_type *)system_get_proc(library, "game_api_export");
-            game_api_export(&global_game_api);
-            
-#if 0
-            // NOTE: API export
-            Ed_API ed_api;
-#define X(N)  ed_api.N = N;
-            //
-            X_ED_API_FUNCTIONS(X)
-            //
-#undef X
-#endif
-            Arena bootstrap_arena = make_arena_system();
-            game_state_pointer = global_game_api.game_init(&bootstrap_arena, &app);
-        }
-        else system_error_box("Could not load game code");
+    String binary_dir = system_get_path(arena, SystemPath_BinaryDirectory);
+    GAME_DLL_PATH = pjoin(arena, binary_dir, "game.dll");
+    if ( !load_newest_game_code(&app) )
+    {
+        system_error_box("Failed to load game code on startup");
     }
 }
 

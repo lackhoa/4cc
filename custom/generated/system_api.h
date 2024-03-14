@@ -69,7 +69,7 @@ typedef String_Const_u8 system_get_canonical_type(Arena* arena, String_Const_u8 
 #define system_get_file_list_return File_List
 #define system_get_file_list_params Arena* arena, String directory
 typedef system_get_file_list_return system_get_file_list_type(system_get_file_list_params);
-typedef File_Attributes system_quick_file_attributes_type(Arena* scratch, String_Const_u8 filename);
+typedef File_Attributes system_quick_file_attributes_type(Arena* scratch, String filename);
 typedef b32 system_load_handle_type(Arena* scratch, char* filename, Plat_Handle* out);
 typedef File_Attributes system_load_attributes_type(Plat_Handle handle);
 typedef b32 system_load_file_type(Plat_Handle handle, char* buffer, u32 size);

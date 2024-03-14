@@ -1,5 +1,6 @@
 #!/usr/bin/env python3 -u
 
+
 import os
 import subprocess
 import sys
@@ -190,7 +191,8 @@ try:
     print(f'Workdir: {os.getcwd()}')
 
     run_only       = (len(sys.argv) == 2 and sys.argv[1] == 'run')
-    full_rebuild   = True  # NOTE(kv): there are commands not available in release mode
+    hotload_game   = (len(sys.argv) == 2 and sys.argv[1] == 'game')
+    full_rebuild   = True
     if DEBUG_MODE and (not FORCE_FULL_REBUILD):
         full_rebuild = (len(sys.argv) > 1 and sys.argv[1] == 'full')
 
@@ -207,7 +209,7 @@ try:
         if OS_WINDOWS and STOP_DEBUGGING_BEFORE_BUILD:
             run(f"{remedybg} stop-debugging")
 
-        # NOTE(kv): cleanup (todo: arrange our build output directory so we don't have to do manual cleaning crap)
+        # NOTE(kv): cleanup build dir (TODO: arrange our build output directory so we don't have to do manual cleaning crap)
         delete_all_pdb_files(OUTDIR)
 
         if full_rebuild:  # do some generation business in the custom layer
@@ -221,21 +223,22 @@ try:
         OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"  # NOTE: Tried -O2 and even -O1, it's still slow af
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
 
-        print('Producing 4ed')
-        if OS_WINDOWS:
-            PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
-            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/freetype.lib -luser32.lib -lwinmm.lib -lgdi32.lib -lopengl32.lib -lcomdlg32.lib -luserenv.lib {NON_SOURCE}/res/icon.res"
-        else:
-            PLATFORM_CPP =  f"{CODE}/platform_mac/mac_4ed.mm"
-            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
-         #
-        run(f'ccache clang++ {COMPILE_FLAGS} -I{CODE}/platform_all -c {PLATFORM_CPP} -o 4ed.o')
-        #
-        run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed{DOT_EXE} {debug}')
+        if not hotload_game:
+            print('Producing 4ed')
+            if OS_WINDOWS:
+                PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
+                LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/freetype.lib -luser32.lib -lwinmm.lib -lgdi32.lib -lopengl32.lib -lcomdlg32.lib -luserenv.lib {NON_SOURCE}/res/icon.res"
+            else:
+                PLATFORM_CPP =  f"{CODE}/platform_mac/mac_4ed.mm"
+                LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
+             #
+            run(f'ccache clang++ -c {PLATFORM_CPP} -o 4ed.o -I{CODE}/platform_all {COMPILE_FLAGS}')
+            #
+            run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed{DOT_EXE} {debug}')
 
         print(f'Producing game{DOT_DLL}')
         DOT_LIB=".lib"
-        run(f'clang++ -shared {CODE}/game.cpp 4ed{DOT_LIB} -o game{DOT_DLL} {COMPILE_FLAGS} -Wl,-export:game_api_export {debug}')
+        run(f'clang++ -shared {pjoin(CODE, "game", "game.cpp")} 4ed{DOT_LIB} -o game{DOT_DLL} {COMPILE_FLAGS} -Wl,-export:game_api_export {debug}')
 
         if full_rebuild:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")

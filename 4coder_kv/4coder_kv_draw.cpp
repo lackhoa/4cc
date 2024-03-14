@@ -235,20 +235,24 @@ kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
         Rect_f32 prev_clip2 = draw_set_clip(app, clip);  // todo I don't even think this is necessary?
         defer( draw_set_clip(app, prev_clip2); );
         
-        u8 scratch_memory[256];
-        Arena scratch = make_static_arena(scratch_memory, 256);
-        String buffer_name = push_buffer_base_name(app, &scratch, buffer);
+        Scratch_Block scratch(app);
+        String buffer_name = push_buffer_base_name(app, scratch, buffer);
         local_persist Arena game_permanent_arena = make_arena_system();
         if ( string_match(buffer_name, GAME_BUFFER_NAME) )
         {// NOTE(kv): draw test render buffer
             if ( !game_already_rendered_this_frame )
             {
-                Input_Modifier_Set set = system_get_keyboard_modifiers(&scratch);
+                if ( !load_newest_game_code(app) )
+                {
+                    // TODO error report
+                }
+                Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
                 Game_Input input = 
                 {
                     pack_modifiers(set.mods, set.count),
                     global_game_key_states,
                     global_game_key_state_changes,
+                    view_is_active(app, view),
                 };
                 global_game_api.game_update_and_render(game_state_pointer, app, view, frame_info.animation_dt, input);
                 block_zero_array(global_game_key_state_changes);

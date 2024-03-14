@@ -141,8 +141,8 @@ internal String8 get_home_directory(Arena *arena)
   else return {};
 }
 
-internal
-system_get_path_sig()
+internal system_get_path_return
+system_get_path(system_get_path_params)
 {
     String8 result = {};
     switch (path_code)

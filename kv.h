@@ -10153,24 +10153,28 @@ make_static_arena(u8 *buffer, u64 size)
 }
 
 inline b32
-move_file(char const *existing_filename, char const *new_filename)
+move_file(char const *from_filename, char const *to_filename)
 {
-    return gb_file_move(existing_filename, new_filename);
+    return gb_file_move(from_filename, to_filename);
 }
 
 inline b32
-remove_file(Arena *scratch, String8 filename)
-{
-    return gb_file_remove(to_c_string(scratch, filename));
-}
-
-inline b32
-move_file(String8 existing_filename, String8 new_filename)
+move_file(String from_filename, String to_filename)
 {
     u8 buffer[512];
     Arena arena = make_static_arena(buffer, 512);
-    return gb_file_move(to_c_string(&arena, existing_filename), 
-                        to_c_string(&arena, new_filename));
+    char *from = to_c_string(&arena, from_filename);
+    char *to = to_c_string(&arena, to_filename);
+    return gb_file_move(from, to);
+}
+
+inline b32
+remove_file(String filename)
+{
+    u8 buffer[512];
+    Arena arena = make_static_arena(buffer, 512);
+    char *filenamec = to_c_string(&arena, filename);
+    return gb_file_remove(filenamec);
 }
 
 function String8
@@ -10183,18 +10187,23 @@ push_stringf(Arena *arena, char *format, ...)
     return(result);
 }
 
-// @Cleanup move to helper file
+#if OS_WINDOWS
+#define OS_SLASH '\\'
+#else
+#define SLASH '/'
+#endif
+
 internal String8
 pjoin(Arena *arena, String8 a, String8 b)
 {
-    String8 result = push_stringf(arena, "%.*s/%.*s", string_expand(a), string_expand(b));
+    String8 result = push_stringf(arena, "%.*s%c%.*s", string_expand(a), OS_SLASH, string_expand(b));
     return result;
 }
 
 internal String8
 pjoin(Arena *arena, String8 a, const char *b)
 {
-    String8 result = push_stringf(arena, "%.*s/%s", string_expand(a), b);
+    String8 result = push_stringf(arena, "%.*s%c%s", string_expand(a), OS_SLASH, b);
     return result;
 }
 
