@@ -600,9 +600,10 @@ default_custom_layer_init(App *app)
 
 internal Tick_Function kv_tick;
 //
-internal void 
+internal void
 kv_tick(App *app, Frame_Info frame_info)
 {
+    Scratch_Block scratch(app);
     DEBUG_CLEAR;
     
     // NOTE(kv): F4
@@ -620,45 +621,68 @@ kv_tick(App *app, Frame_Info frame_info)
     fui_tick(app, frame_info);
     
     game_already_rendered_this_frame = false;
-    
-    // NOTE(kv): autosave
-    f32 AUTOSAVE_PERIOD_SECONDS = 5.0f;
-    seconds_since_last_keystroke += frame_info.literal_dt;
-    if (seconds_since_last_keystroke > AUTOSAVE_PERIOD_SECONDS)
-    {
-        seconds_since_last_keystroke = 0;
-        b32 saved_at_least_one_buffer = false;
+   
+    {// NOTE: build step
+        Buffer_ID bottom_buffer = view_get_buffer(app, global_bottom_view, Access_Always);
+        Child_Process_ID procid = buffer_get_attached_child_process(app, bottom_buffer);
+        Process_State state = child_process_get_state(app, procid);
+        local_persist b32 is_building = false;
+        if (state.updating)
         {
-            ProfileScope(app, "save all dirty buffers");
-            Scratch_Block scratch(app);
-            for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
-                 buffer != 0;
-                 buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
+            is_building = true;
+        }
+        else if (is_building)
+        {
+            is_building = false;
+            if (state.return_code == 0)
             {
-                switch(buffer_get_dirty_state(app, buffer))
-                {
-                    case DirtyState_UnsavedChanges:
-                    {
-                        saved_at_least_one_buffer = true;
-                        String8 filename = push_buffer_filename(app, scratch, buffer);
-                        buffer_save(app, buffer, filename, 0);
-                    }break;
-                    
-                    case DirtyState_UnloadedChanges:
-                    {
-                        buffer_reopen(app, buffer, 0);
-                        String8 filename = push_buffer_filename(app, scratch, buffer);
-                        printf_message(app, "automatically reloaded file %.*s\n", string_expand(filename));
-                    }break;
-                }
+                vim_set_bottom_text(strlit("Build successful!"));
+            }
+            else
+            {
+                vim_set_bottom_text(strlit("Build failed!"));
             }
         }
-        if (saved_at_least_one_buffer) 
-        {
-            print_message(app, strlit("auto-saved all dirty buffers\n"));
-        }
     }
-    animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));
+    
+    {// NOTE(kv): autosave
+        v1 AUTOSAVE_PERIOD_SECONDS = 5.0f;
+        seconds_since_last_keystroke += frame_info.literal_dt;
+        if (seconds_since_last_keystroke > AUTOSAVE_PERIOD_SECONDS)
+        {
+            seconds_since_last_keystroke = 0;
+            b32 saved_at_least_one_buffer = false;
+            {
+                ProfileScope(app, "save all dirty buffers");
+                for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
+                     buffer != 0;
+                     buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
+                {
+                    switch(buffer_get_dirty_state(app, buffer))
+                    {
+                        case DirtyState_UnsavedChanges:
+                        {
+                            saved_at_least_one_buffer = true;
+                            String8 filename = push_buffer_filename(app, scratch, buffer);
+                            buffer_save(app, buffer, filename, 0);
+                        }break;
+                        
+                        case DirtyState_UnloadedChanges:
+                        {
+                            buffer_reopen(app, buffer, 0);
+                            String8 filename = push_buffer_filename(app, scratch, buffer);
+                            printf_message(app, "automatically reloaded file %.*s\n", string_expand(filename));
+                        }break;
+                    }
+                }
+            }
+            if (saved_at_least_one_buffer) 
+            {
+                vim_set_bottom_text(strlit("auto-saved all dirty buffers\n"));
+            }
+        }
+        animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));
+    }
 }
 
 function void 

@@ -20,7 +20,7 @@ push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
     return(result);
 }
 
-global String_Const_u8 standard_build_filename_array[] = 
+global String standard_build_filename_array[] = 
 {
     str8_lit("kv-build.py"),
     str8_lit("build.py"),
@@ -32,7 +32,7 @@ global String_Const_u8 standard_build_filename_array[] =
 #endif
 };
 
-global String_Const_u8 standard_build_cmd_string_array[] = 
+global String standard_build_cmd_string_array[] = 
 {
   str8_lit("kv-build.py"),
   str8_lit("build.py"),
@@ -44,20 +44,20 @@ global String_Const_u8 standard_build_cmd_string_array[] =
 #endif
 };
 
-internal String_Const_u8
+internal String
 push_fallback_command(Arena *arena, String_Const_u8 filename){
     return(push_stringf(arena, "echo could not find %.*s", string_expand(filename)));
 }
 
-internal String_Const_u8
+internal String
 push_fallback_command(Arena *arena){
     return(push_fallback_command(arena, standard_build_filename_array[0]));
 }
 
-global_const String8 compilation_buffer_name = str8_lit("*compilation*");
-global_const Buffer_Identifier standard_build_compilation_buffer_identifier = buffer_identifier(compilation_buffer_name);
+global const String compilation_buffer_name = str8_lit("*compilation*");
+global const Buffer_Identifier standard_build_compilation_buffer_identifier = buffer_identifier(compilation_buffer_name);
 
-global_const u32 standard_build_exec_flags = CLI_OverlapWithConflict|CLI_SendEndSignal;
+global const u32 standard_build_exec_flags = CLI_OverlapWithConflict|CLI_SendEndSignal;
 
 internal void
 standard_build_exec_command(App *app, View_ID view, String8 dir, String8 cmd)
@@ -67,7 +67,7 @@ standard_build_exec_command(App *app, View_ID view, String8 dir, String8 cmd)
                         standard_build_exec_flags);
 }
 
-function b32
+internal b32
 standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, char *command_args)
 {
     Scratch_Block scratch(app);
@@ -99,8 +99,7 @@ standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, ch
             save_all_dirty_buffers(app);
         }
         standard_build_exec_command(app, view, path, command);
-        print_message(app, push_stringf(scratch, "Building with: %.*s\n",
-                                           string_expand(full_file_path)));
+        vim_set_bottom_text(push_stringf(scratch, "Building with: %.*s\n", string_expand(full_file_path)));
     }
     
     return(result);
@@ -134,6 +133,7 @@ standard_search_and_build(App *app, View_ID view, Buffer_ID active_buffer, char 
     }
 }
 
+#if 0
 CUSTOM_COMMAND_SIG(build_search)
 CUSTOM_DOC("Looks for a build.bat, build.sh, or makefile in the current and parent directories.  Runs the first that it finds and prints the output to *compilation*.")
 {
@@ -143,6 +143,7 @@ CUSTOM_DOC("Looks for a build.bat, build.sh, or makefile in the current and pare
     block_zero_struct(&prev_location);
     lock_jump_buffer(app, compilation_buffer_name);
 }
+#endif
 
 static Buffer_ID
 get_comp_buffer(App *app)
@@ -196,34 +197,15 @@ build_in_bottom_view(App *app, char *command_args)
     
     block_zero_struct(&prev_location);
     lock_jump_buffer(app, compilation_buffer_name);
-    expand_bottom_view(app);
-    view_set_active(app, global_bottom_view);
+    //expand_bottom_view(app);
+    //view_set_active(app, global_bottom_view);
 }
 
-/*
-CUSTOM_COMMAND_SIG(close_build_panel)
-CUSTOM_DOC("If the special build panel is open, closes it.")
+internal String
+kv_search_build_file_from_dir(Arena *arena, String start_dir)
 {
-    close_build_footer_panel(app);
-}
-
-CUSTOM_COMMAND_SIG(change_to_build_panel)
-CUSTOM_DOC("If the special build panel is open, makes the build panel the active panel.")
-{
-    View_ID view = get_or_open_build_panel(app);
-    if (view != 0){
-        view_set_active(app, view);
-    }
-}
-*/
-
-internal String8 
-kv_search_build_file_from_dir(Arena *arena, String8 start_dir)
-{
-    String8 full_file_path = {};
-    for (u32 i = 0; 
-         i < ArrayCount(standard_build_filename_array); 
-         i += 1)
+    String full_file_path = {};
+    for_u32( i,0,alen(standard_build_filename_array) )
     {
         full_file_path = search_up_path(arena, start_dir, standard_build_filename_array[i]);
         if (full_file_path.size > 0)
@@ -251,5 +233,3 @@ kv_build_full_rebuild(App *app)
 {
     build_in_bottom_view(app, "full");
 }
-
-// BOTTOM

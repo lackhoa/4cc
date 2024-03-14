@@ -129,16 +129,16 @@ global String8 w32_override_user_directory = {};
 
 internal String8 get_home_directory(Arena *arena)
 {
-  HANDLE current_process_token = GetCurrentProcessToken();
-  DWORD size = 0;
-  GetUserProfileDirectoryW(current_process_token, 0, &size);
-  u16 *buffer_u16 = push_array(arena, u16, size);
-  if (GetUserProfileDirectoryW(current_process_token, (WCHAR*)buffer_u16, &size))
-  {
-    String8 result = string_u8_from_string_u16(arena, SCu16(buffer_u16, size), StringFill_NullTerminate).string;
-    return result;
-  }
-  else return {};
+    HANDLE current_process_token = GetCurrentProcessToken();
+    DWORD size = 0;
+    GetUserProfileDirectoryW(current_process_token, 0, &size);
+    u16 *buffer_u16 = push_array(arena, u16, size);
+    if (GetUserProfileDirectoryW(current_process_token, (WCHAR*)buffer_u16, &size))
+    {
+        String8 result = string_u8_from_string_u16(arena, SCu16(buffer_u16, size), StringFill_NullTerminate).string;
+        return result;
+    }
+    else return {};
 }
 
 internal system_get_path_return

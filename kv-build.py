@@ -14,7 +14,7 @@ pjoin = os.path.join
 
 # NOTE: configuration #########################
 DEBUG_MODE = 0 if (len(sys.argv) == 2 and sys.argv[1] == 'release') else 1
-FORCE_FULL_REBUILD = 0
+FORCE_FULL_REBUILD = 1
 STOP_DEBUGGING_BEFORE_BUILD = 0
 
 HOME = os.path.expanduser("~")

@@ -480,7 +480,7 @@ app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Applicatio
             {
                 if (file != 0)
                 {
-                    String8 str = push_stringf(scratch, "exited with code %d", cli->exit);
+                    String str = push_stringf(scratch, "exited with code %d", cli->exit);
                     output_file_append(tctx, models, file, str);
                 }
                 processes_to_free[processes_to_free_count++] = child_process;

@@ -39,7 +39,7 @@ push_month_name(Arena *arena, List_String_Const_u8 *list, u8 mon){
 // mon
 function void
 push_month_abrev(Arena *arena, List_String_Const_u8 *list, u8 mon){
-    string_list_push(arena, list, month_abrev_name[mon%12]);
+    string_list_push(arena, list, String{month_full_name[mon%12].str,3});
 }
 
 // d
@@ -55,7 +55,7 @@ push_day_num_zeroes(Arena *arena, List_String_Const_u8 *list, u8 day){
 // day
 function void
 push_day_ord(Arena *arena, List_String_Const_u8 *list, u8 day){
-    string_list_push(arena, list, ordinal_numeric_name[day%100]);
+    string_list_pushf(arena, list, "%d", day);
 }
 
 // h24

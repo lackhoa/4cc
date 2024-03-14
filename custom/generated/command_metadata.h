@@ -2,7 +2,7 @@
 #define command_id(c) (fcoder_metacmd_ID_##c)
 #define command_metadata(c) (&fcoder_metacmd_table[command_id(c)])
 #define command_metadata_by_id(id) (&fcoder_metacmd_table[id])
-#define command_one_past_last_id 276
+#define command_one_past_last_id 275
 #if defined(CUSTOM_COMMAND_SIG)
 #define PROC_LINKS(x,y) x
 #else
@@ -18,7 +18,6 @@ CUSTOM_COMMAND_SIG(backspace_alpha_numeric_boundary);
 CUSTOM_COMMAND_SIG(backspace_char);
 CUSTOM_COMMAND_SIG(basic_change_active_primary_panel);
 CUSTOM_COMMAND_SIG(begin_clipboard_collection_mode);
-CUSTOM_COMMAND_SIG(build_search);
 CUSTOM_COMMAND_SIG(byp_reset_face_size);
 CUSTOM_COMMAND_SIG(center_view);
 CUSTOM_COMMAND_SIG(change_active_primary_panel_backwards);
@@ -297,8 +296,8 @@ char *source_name;
 i32 source_name_len;
 i32 line_number;
 };
-static Command_Metadata fcoder_metacmd_table[276] = {
-{ PROC_LINKS(DEBUG_draw_hud_toggle, 0), false, "DEBUG_draw_hud_toggle", 21, "toggle debug hud", 16, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_debug.cpp", 53, 89 },
+static Command_Metadata fcoder_metacmd_table[275] = {
+{ PROC_LINKS(DEBUG_draw_hud_toggle, 0), false, "DEBUG_draw_hud_toggle", 21, "toggle debug hud", 16, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_debug.cpp", 53, 93 },
 { PROC_LINKS(To_uppercase, 0), false, "To_uppercase", 12, "Converts all ascii text in the range between the cursor and the mark to uppercase.", 82, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 549 },
 { PROC_LINKS(allow_mouse, 0), false, "allow_mouse", 11, "Shows the mouse and causes all mouse input to be processed normally.", 68, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 593 },
 { PROC_LINKS(auto_indent_range, 0), false, "auto_indent_range", 17, "Auto-indents the range between the cursor and the mark.", 55, "C:\\Users\\vodan\\4ed/code/custom/4coder_auto_indent.cpp", 53, 433 },
@@ -307,7 +306,6 @@ static Command_Metadata fcoder_metacmd_table[276] = {
 { PROC_LINKS(backspace_char, 0), false, "backspace_char", 14, "Deletes the character to the left of the cursor.", 48, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 96 },
 { PROC_LINKS(basic_change_active_primary_panel, 0), false, "basic_change_active_primary_panel", 33, "Change the currently active panel, moving to the panel with the next highest view_id.  Will not skipe the build panel if it is open.", 132, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 661 },
 { PROC_LINKS(begin_clipboard_collection_mode, 0), true, "begin_clipboard_collection_mode", 31, "Allows the user to copy multiple strings from other applications before switching to 4coder and pasting them all.", 113, "C:\\Users\\vodan\\4ed/code/custom/4coder_clipboard.cpp", 51, 74 },
-{ PROC_LINKS(build_search, 0), false, "build_search", 12, "Looks for a build.bat, build.sh, or makefile in the current and parent directories.  Runs the first that it finds and prints the output to *compilation*.", 153, "C:\\Users\\vodan\\4ed/code/custom/4coder_build_commands.cpp", 56, 137 },
 { PROC_LINKS(byp_reset_face_size, 0), false, "byp_reset_face_size", 19, "Resets face size to default", 27, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 118 },
 { PROC_LINKS(center_view, 0), false, "center_view", 11, "Centers the view vertically on the line on which the cursor sits.", 65, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 188 },
 { PROC_LINKS(change_active_primary_panel_backwards, 0), false, "change_active_primary_panel_backwards", 37, "Change the currently active panel, moving to the panel with the next lowest view_id.", 84, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 474 },
@@ -349,8 +347,8 @@ static Command_Metadata fcoder_metacmd_table[276] = {
 { PROC_LINKS(fold_range, 0), false, "fold_range", 10, "Folds cursor mark range", 23, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_folds.hpp", 61, 161 },
 { PROC_LINKS(fold_toggle_cursor, 0), false, "fold_toggle_cursor", 18, "Toggles fold at cursor", 22, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_folds.hpp", 61, 153 },
 { PROC_LINKS(go_to_user_directory, 0), false, "go_to_user_directory", 20, "Go to the 4coder user directory", 31, "C:\\Users\\vodan\\4ed/code/custom/4coder_config.cpp", 48, 1724 },
-{ PROC_LINKS(goto_beginning_of_file, 0), false, "goto_beginning_of_file", 22, "Sets the cursor to the beginning of the file.", 45, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2398 },
-{ PROC_LINKS(goto_end_of_file, 0), false, "goto_end_of_file", 16, "Sets the cursor to the end of the file.", 39, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2406 },
+{ PROC_LINKS(goto_beginning_of_file, 0), false, "goto_beginning_of_file", 22, "Sets the cursor to the beginning of the file.", 45, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2341 },
+{ PROC_LINKS(goto_end_of_file, 0), false, "goto_end_of_file", 16, "Sets the cursor to the end of the file.", 39, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2349 },
 { PROC_LINKS(goto_first_jump, 0), false, "goto_first_jump", 15, "If a buffer containing jump locations has been locked in, goes to the first jump in the buffer.", 95, "C:\\Users\\vodan\\4ed/code/custom/4coder_jump_sticky.cpp", 53, 575 },
 { PROC_LINKS(goto_first_jump_same_panel_sticky, 0), false, "goto_first_jump_same_panel_sticky", 33, "If a buffer containing jump locations has been locked in, goes to the first jump in the buffer and views the buffer in the panel where the jump list was.", 153, "C:\\Users\\vodan\\4ed/code/custom/4coder_jump_sticky.cpp", 53, 592 },
 { PROC_LINKS(goto_jump_at_cursor_same_panel, 0), false, "goto_jump_at_cursor_same_panel", 30, "If the cursor is found to be on a jump location, parses the jump location and brings up the file and position in this view, losing the compilation output or jump list.", 167, "C:\\Users\\vodan\\4ed/code/custom/4coder_jump_sticky.cpp", 53, 398 },
@@ -457,7 +455,7 @@ static Command_Metadata fcoder_metacmd_table[276] = {
 { PROC_LINKS(profile_clear, 0), false, "profile_clear", 13, "Clear all profiling information from 4coder's self profiler.", 60, "C:\\Users\\vodan\\4ed/code/custom/4coder_profile_commands.cpp", 58, 17 },
 { PROC_LINKS(profile_disable, 0), false, "profile_disable", 15, "Prevent 4coder's self profiler from gathering new profiling information.", 72, "C:\\Users\\vodan\\4ed/code/custom/4coder_profile_commands.cpp", 58, 10 },
 { PROC_LINKS(profile_enable, 0), false, "profile_enable", 14, "Allow 4coder's self profiler to gather new profiling information.", 65, "C:\\Users\\vodan\\4ed/code/custom/4coder_profile_commands.cpp", 58, 3 },
-{ PROC_LINKS(profile_inspect, 0), true, "profile_inspect", 15, "Inspect all currently collected profiling information in 4coder's self profiler.", 80, "C:\\Users\\vodan\\4ed/code/custom/4coder_profile_inspect.cpp", 57, 891 },
+{ PROC_LINKS(profile_inspect, 0), true, "profile_inspect", 15, "Inspect all currently collected profiling information in 4coder's self profiler.", 80, "C:\\Users\\vodan\\4ed/code/custom/4coder_profile_inspect.cpp", 57, 892 },
 { PROC_LINKS(project_command_F1, 0), false, "project_command_F1", 18, "Run the command with index 1", 28, "C:\\Users\\vodan\\4ed/code/custom/4coder_project_commands.cpp", 58, 1113 },
 { PROC_LINKS(project_command_F10, 0), false, "project_command_F10", 19, "Run the command with index 10", 29, "C:\\Users\\vodan\\4ed/code/custom/4coder_project_commands.cpp", 58, 1167 },
 { PROC_LINKS(project_command_F11, 0), false, "project_command_F11", 19, "Run the command with index 11", 29, "C:\\Users\\vodan\\4ed/code/custom/4coder_project_commands.cpp", 58, 1173 },
@@ -499,10 +497,10 @@ static Command_Metadata fcoder_metacmd_table[276] = {
 { PROC_LINKS(scratch, 0), false, "scratch", 7, "switch to scratch buffer", 24, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 1056 },
 { PROC_LINKS(search, 0), false, "search", 6, "Begins an incremental search down through the current buffer for a user specified string.", 89, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1122 },
 { PROC_LINKS(search_identifier, 0), false, "search_identifier", 17, "Begins an incremental search down through the current buffer for the word or token under the cursor.", 100, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1134 },
-{ PROC_LINKS(seek_beginning_of_line, 0), false, "seek_beginning_of_line", 22, "Seeks the cursor to the beginning of the visual line.", 53, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2386 },
-{ PROC_LINKS(seek_beginning_of_textual_line, 0), false, "seek_beginning_of_textual_line", 30, "Seeks the cursor to the beginning of the line across all text.", 62, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2374 },
-{ PROC_LINKS(seek_end_of_line, 0), false, "seek_end_of_line", 16, "Seeks the cursor to the end of the visual line.", 47, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2392 },
-{ PROC_LINKS(seek_end_of_textual_line, 0), false, "seek_end_of_textual_line", 24, "Seeks the cursor to the end of the line across all text.", 56, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2380 },
+{ PROC_LINKS(seek_beginning_of_line, 0), false, "seek_beginning_of_line", 22, "Seeks the cursor to the beginning of the visual line.", 53, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2329 },
+{ PROC_LINKS(seek_beginning_of_textual_line, 0), false, "seek_beginning_of_textual_line", 30, "Seeks the cursor to the beginning of the line across all text.", 62, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2317 },
+{ PROC_LINKS(seek_end_of_line, 0), false, "seek_end_of_line", 16, "Seeks the cursor to the end of the visual line.", 47, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2335 },
+{ PROC_LINKS(seek_end_of_textual_line, 0), false, "seek_end_of_textual_line", 24, "Seeks the cursor to the end of the line across all text.", 56, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2323 },
 { PROC_LINKS(select_all, 0), false, "select_all", 10, "Puts the cursor at the top of the file, and the mark at the bottom of the file.", 79, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 535 },
 { PROC_LINKS(select_next_scope_absolute, 0), false, "select_next_scope_absolute", 26, "Finds the first scope started by '{' after the cursor and puts the cursor and mark on the '{' and '}'.", 102, "C:\\Users\\vodan\\4ed/code/custom/4coder_scope_commands.cpp", 56, 57 },
 { PROC_LINKS(select_next_scope_after_current, 0), false, "select_next_scope_after_current", 31, "If a scope is selected, find first scope that starts after the selected scope. Otherwise find the first scope that starts after the cursor.", 139, "C:\\Users\\vodan\\4ed/code/custom/4coder_scope_commands.cpp", 56, 66 },
@@ -584,271 +582,270 @@ static i32 fcoder_metacmd_ID_backspace_alpha_numeric_boundary = 5;
 static i32 fcoder_metacmd_ID_backspace_char = 6;
 static i32 fcoder_metacmd_ID_basic_change_active_primary_panel = 7;
 static i32 fcoder_metacmd_ID_begin_clipboard_collection_mode = 8;
-static i32 fcoder_metacmd_ID_build_search = 9;
-static i32 fcoder_metacmd_ID_byp_reset_face_size = 10;
-static i32 fcoder_metacmd_ID_center_view = 11;
-static i32 fcoder_metacmd_ID_change_active_primary_panel_backwards = 12;
-static i32 fcoder_metacmd_ID_clean_all_lines = 13;
-static i32 fcoder_metacmd_ID_clean_trailing_whitespace = 14;
-static i32 fcoder_metacmd_ID_clear_all_themes = 15;
-static i32 fcoder_metacmd_ID_clear_clipboard = 16;
-static i32 fcoder_metacmd_ID_click_set_cursor = 17;
-static i32 fcoder_metacmd_ID_click_set_cursor_and_mark = 18;
-static i32 fcoder_metacmd_ID_click_set_cursor_if_lbutton = 19;
-static i32 fcoder_metacmd_ID_click_set_mark = 20;
-static i32 fcoder_metacmd_ID_clipboard_record_clip = 21;
-static i32 fcoder_metacmd_ID_close_all_code = 22;
-static i32 fcoder_metacmd_ID_command_lister = 23;
-static i32 fcoder_metacmd_ID_comment_line = 24;
-static i32 fcoder_metacmd_ID_comment_line_toggle = 25;
-static i32 fcoder_metacmd_ID_copy = 26;
-static i32 fcoder_metacmd_ID_cursor_mark_swap = 27;
-static i32 fcoder_metacmd_ID_cut = 28;
-static i32 fcoder_metacmd_ID_decrease_face_size = 29;
-static i32 fcoder_metacmd_ID_default_file_externally_modified = 30;
-static i32 fcoder_metacmd_ID_default_try_exit = 31;
-static i32 fcoder_metacmd_ID_default_view_input_handler = 32;
-static i32 fcoder_metacmd_ID_delete_alpha_numeric_boundary = 33;
-static i32 fcoder_metacmd_ID_delete_char = 34;
-static i32 fcoder_metacmd_ID_delete_current_scope = 35;
-static i32 fcoder_metacmd_ID_delete_file_query = 36;
-static i32 fcoder_metacmd_ID_delete_line = 37;
-static i32 fcoder_metacmd_ID_dir = 38;
-static i32 fcoder_metacmd_ID_display_key_codes = 39;
-static i32 fcoder_metacmd_ID_display_text_input = 40;
-static i32 fcoder_metacmd_ID_double_backspace = 41;
-static i32 fcoder_metacmd_ID_duplicate_line = 42;
-static i32 fcoder_metacmd_ID_execute_any_cli = 43;
-static i32 fcoder_metacmd_ID_execute_previous_cli = 44;
-static i32 fcoder_metacmd_ID_exit_4coder = 45;
-static i32 fcoder_metacmd_ID_fold_clear = 46;
-static i32 fcoder_metacmd_ID_fold_pop_cursor = 47;
-static i32 fcoder_metacmd_ID_fold_range = 48;
-static i32 fcoder_metacmd_ID_fold_toggle_cursor = 49;
-static i32 fcoder_metacmd_ID_go_to_user_directory = 50;
-static i32 fcoder_metacmd_ID_goto_beginning_of_file = 51;
-static i32 fcoder_metacmd_ID_goto_end_of_file = 52;
-static i32 fcoder_metacmd_ID_goto_first_jump = 53;
-static i32 fcoder_metacmd_ID_goto_first_jump_same_panel_sticky = 54;
-static i32 fcoder_metacmd_ID_goto_jump_at_cursor_same_panel = 55;
-static i32 fcoder_metacmd_ID_goto_line = 56;
-static i32 fcoder_metacmd_ID_goto_next_jump_no_skips = 57;
-static i32 fcoder_metacmd_ID_goto_prev_jump_no_skips = 58;
-static i32 fcoder_metacmd_ID_hide_filebar = 59;
-static i32 fcoder_metacmd_ID_hide_scrollbar = 60;
-static i32 fcoder_metacmd_ID_if0_off = 61;
-static i32 fcoder_metacmd_ID_increase_face_size = 62;
-static i32 fcoder_metacmd_ID_init = 63;
-static i32 fcoder_metacmd_ID_interactive_kill_buffer = 64;
-static i32 fcoder_metacmd_ID_interactive_new = 65;
-static i32 fcoder_metacmd_ID_interactive_open = 66;
-static i32 fcoder_metacmd_ID_interactive_open_or_new = 67;
-static i32 fcoder_metacmd_ID_interactive_switch_buffer = 68;
-static i32 fcoder_metacmd_ID_jump_to_last_point = 69;
-static i32 fcoder_metacmd_ID_keyboard_macro_finish_recording = 70;
-static i32 fcoder_metacmd_ID_keyboard_macro_replay = 71;
-static i32 fcoder_metacmd_ID_keyboard_macro_start_recording = 72;
-static i32 fcoder_metacmd_ID_kill_buffer = 73;
-static i32 fcoder_metacmd_ID_kv_miscellaneous_debug_command = 74;
-static i32 fcoder_metacmd_ID_kv_open_note_file = 75;
-static i32 fcoder_metacmd_ID_kv_profile_disable_and_inspect = 76;
-static i32 fcoder_metacmd_ID_kv_reopen_with_confirmation = 77;
-static i32 fcoder_metacmd_ID_kv_run = 78;
-static i32 fcoder_metacmd_ID_left_adjust_view = 79;
-static i32 fcoder_metacmd_ID_list_all_functions_all_buffers = 80;
-static i32 fcoder_metacmd_ID_list_all_functions_all_buffers_lister = 81;
-static i32 fcoder_metacmd_ID_list_all_functions_current_buffer = 82;
-static i32 fcoder_metacmd_ID_list_all_functions_current_buffer_lister = 83;
-static i32 fcoder_metacmd_ID_list_all_locations = 84;
-static i32 fcoder_metacmd_ID_list_all_locations_case_insensitive = 85;
-static i32 fcoder_metacmd_ID_list_all_locations_of_identifier_case_insensitive = 86;
-static i32 fcoder_metacmd_ID_list_all_locations_of_selection = 87;
-static i32 fcoder_metacmd_ID_list_all_locations_of_selection_case_insensitive = 88;
-static i32 fcoder_metacmd_ID_list_all_locations_of_type_definition = 89;
-static i32 fcoder_metacmd_ID_list_all_locations_of_type_definition_of_identifier = 90;
-static i32 fcoder_metacmd_ID_list_all_substring_locations = 91;
-static i32 fcoder_metacmd_ID_list_all_substring_locations_case_insensitive = 92;
-static i32 fcoder_metacmd_ID_load_project = 93;
-static i32 fcoder_metacmd_ID_load_project_current_dir = 94;
-static i32 fcoder_metacmd_ID_load_theme_current_buffer = 95;
-static i32 fcoder_metacmd_ID_load_themes_default_folder = 96;
-static i32 fcoder_metacmd_ID_load_themes_hot_directory = 97;
-static i32 fcoder_metacmd_ID_make_directory_query = 98;
-static i32 fcoder_metacmd_ID_messages = 99;
-static i32 fcoder_metacmd_ID_miblo_decrement_basic = 100;
-static i32 fcoder_metacmd_ID_miblo_decrement_time_stamp = 101;
-static i32 fcoder_metacmd_ID_miblo_decrement_time_stamp_minute = 102;
-static i32 fcoder_metacmd_ID_miblo_increment_basic = 103;
-static i32 fcoder_metacmd_ID_miblo_increment_time_stamp = 104;
-static i32 fcoder_metacmd_ID_miblo_increment_time_stamp_minute = 105;
-static i32 fcoder_metacmd_ID_mouse_wheel_change_face_size = 106;
-static i32 fcoder_metacmd_ID_mouse_wheel_scroll = 107;
-static i32 fcoder_metacmd_ID_move_down = 108;
-static i32 fcoder_metacmd_ID_move_down_10 = 109;
-static i32 fcoder_metacmd_ID_move_down_textual = 110;
-static i32 fcoder_metacmd_ID_move_down_to_blank_line = 111;
-static i32 fcoder_metacmd_ID_move_down_to_blank_line_end = 112;
-static i32 fcoder_metacmd_ID_move_down_to_blank_line_skip_whitespace = 113;
-static i32 fcoder_metacmd_ID_move_left = 114;
-static i32 fcoder_metacmd_ID_move_left_alpha_numeric_boundary = 115;
-static i32 fcoder_metacmd_ID_move_left_alpha_numeric_or_camel_boundary = 116;
-static i32 fcoder_metacmd_ID_move_left_token_boundary = 117;
-static i32 fcoder_metacmd_ID_move_left_whitespace_boundary = 118;
-static i32 fcoder_metacmd_ID_move_left_whitespace_or_token_boundary = 119;
-static i32 fcoder_metacmd_ID_move_line_down = 120;
-static i32 fcoder_metacmd_ID_move_line_up = 121;
-static i32 fcoder_metacmd_ID_move_right = 122;
-static i32 fcoder_metacmd_ID_move_right_alpha_numeric_boundary = 123;
-static i32 fcoder_metacmd_ID_move_right_alpha_numeric_or_camel_boundary = 124;
-static i32 fcoder_metacmd_ID_move_right_token_boundary = 125;
-static i32 fcoder_metacmd_ID_move_right_whitespace_boundary = 126;
-static i32 fcoder_metacmd_ID_move_right_whitespace_or_token_boundary = 127;
-static i32 fcoder_metacmd_ID_move_up = 128;
-static i32 fcoder_metacmd_ID_move_up_10 = 129;
-static i32 fcoder_metacmd_ID_move_up_to_blank_line = 130;
-static i32 fcoder_metacmd_ID_move_up_to_blank_line_end = 131;
-static i32 fcoder_metacmd_ID_move_up_to_blank_line_skip_whitespace = 132;
-static i32 fcoder_metacmd_ID_multi_paste = 133;
-static i32 fcoder_metacmd_ID_multi_paste_interactive = 134;
-static i32 fcoder_metacmd_ID_multi_paste_interactive_quick = 135;
-static i32 fcoder_metacmd_ID_no_op = 136;
-static i32 fcoder_metacmd_ID_open_all_code = 137;
-static i32 fcoder_metacmd_ID_open_all_code_recursive = 138;
-static i32 fcoder_metacmd_ID_open_file_in_quotes = 139;
-static i32 fcoder_metacmd_ID_open_in_other = 140;
-static i32 fcoder_metacmd_ID_open_long_braces = 141;
-static i32 fcoder_metacmd_ID_open_long_braces_break = 142;
-static i32 fcoder_metacmd_ID_open_long_braces_semicolon = 143;
-static i32 fcoder_metacmd_ID_open_matching_file_cpp = 144;
-static i32 fcoder_metacmd_ID_open_matching_file_cpp_other_panel = 145;
-static i32 fcoder_metacmd_ID_open_panel_hsplit = 146;
-static i32 fcoder_metacmd_ID_open_panel_vsplit = 147;
-static i32 fcoder_metacmd_ID_page_down = 148;
-static i32 fcoder_metacmd_ID_page_up = 149;
-static i32 fcoder_metacmd_ID_paste = 150;
-static i32 fcoder_metacmd_ID_paste_and_indent = 151;
-static i32 fcoder_metacmd_ID_paste_next = 152;
-static i32 fcoder_metacmd_ID_paste_next_and_indent = 153;
-static i32 fcoder_metacmd_ID_place_in_scope = 154;
-static i32 fcoder_metacmd_ID_play_with_a_counter = 155;
-static i32 fcoder_metacmd_ID_profile_clear = 156;
-static i32 fcoder_metacmd_ID_profile_disable = 157;
-static i32 fcoder_metacmd_ID_profile_enable = 158;
-static i32 fcoder_metacmd_ID_profile_inspect = 159;
-static i32 fcoder_metacmd_ID_project_command_F1 = 160;
-static i32 fcoder_metacmd_ID_project_command_F10 = 161;
-static i32 fcoder_metacmd_ID_project_command_F11 = 162;
-static i32 fcoder_metacmd_ID_project_command_F12 = 163;
-static i32 fcoder_metacmd_ID_project_command_F13 = 164;
-static i32 fcoder_metacmd_ID_project_command_F14 = 165;
-static i32 fcoder_metacmd_ID_project_command_F15 = 166;
-static i32 fcoder_metacmd_ID_project_command_F16 = 167;
-static i32 fcoder_metacmd_ID_project_command_F2 = 168;
-static i32 fcoder_metacmd_ID_project_command_F3 = 169;
-static i32 fcoder_metacmd_ID_project_command_F4 = 170;
-static i32 fcoder_metacmd_ID_project_command_F5 = 171;
-static i32 fcoder_metacmd_ID_project_command_F6 = 172;
-static i32 fcoder_metacmd_ID_project_command_F7 = 173;
-static i32 fcoder_metacmd_ID_project_command_F8 = 174;
-static i32 fcoder_metacmd_ID_project_command_F9 = 175;
-static i32 fcoder_metacmd_ID_project_command_lister = 176;
-static i32 fcoder_metacmd_ID_project_fkey_command = 177;
-static i32 fcoder_metacmd_ID_project_go_to_root_directory = 178;
-static i32 fcoder_metacmd_ID_project_reprint = 179;
-static i32 fcoder_metacmd_ID_query_replace = 180;
-static i32 fcoder_metacmd_ID_query_replace_identifier = 181;
-static i32 fcoder_metacmd_ID_query_replace_selection = 182;
-static i32 fcoder_metacmd_ID_quick_swap_buffer = 183;
-static i32 fcoder_metacmd_ID_redo = 184;
-static i32 fcoder_metacmd_ID_redo_all_buffers = 185;
-static i32 fcoder_metacmd_ID_reg = 186;
-static i32 fcoder_metacmd_ID_rename_file_query = 187;
-static i32 fcoder_metacmd_ID_reopen = 188;
-static i32 fcoder_metacmd_ID_replace_in_all_buffers = 189;
-static i32 fcoder_metacmd_ID_replace_in_buffer = 190;
-static i32 fcoder_metacmd_ID_replace_in_range = 191;
-static i32 fcoder_metacmd_ID_reverse_search = 192;
-static i32 fcoder_metacmd_ID_reverse_search_identifier = 193;
-static i32 fcoder_metacmd_ID_right_adjust_view = 194;
-static i32 fcoder_metacmd_ID_save = 195;
-static i32 fcoder_metacmd_ID_save_all_dirty_buffers = 196;
-static i32 fcoder_metacmd_ID_save_to_query = 197;
-static i32 fcoder_metacmd_ID_scratch = 198;
-static i32 fcoder_metacmd_ID_search = 199;
-static i32 fcoder_metacmd_ID_search_identifier = 200;
-static i32 fcoder_metacmd_ID_seek_beginning_of_line = 201;
-static i32 fcoder_metacmd_ID_seek_beginning_of_textual_line = 202;
-static i32 fcoder_metacmd_ID_seek_end_of_line = 203;
-static i32 fcoder_metacmd_ID_seek_end_of_textual_line = 204;
-static i32 fcoder_metacmd_ID_select_all = 205;
-static i32 fcoder_metacmd_ID_select_next_scope_absolute = 206;
-static i32 fcoder_metacmd_ID_select_next_scope_after_current = 207;
-static i32 fcoder_metacmd_ID_select_prev_scope_absolute = 208;
-static i32 fcoder_metacmd_ID_select_prev_top_most_scope = 209;
-static i32 fcoder_metacmd_ID_select_surrounding_scope = 210;
-static i32 fcoder_metacmd_ID_select_surrounding_scope_maximal = 211;
-static i32 fcoder_metacmd_ID_set_current_dir_as_hot = 212;
-static i32 fcoder_metacmd_ID_set_eol_mode_from_contents = 213;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_binary = 214;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_crlf = 215;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_lf = 216;
-static i32 fcoder_metacmd_ID_set_face_size = 217;
-static i32 fcoder_metacmd_ID_set_face_size_this_buffer = 218;
-static i32 fcoder_metacmd_ID_set_mark = 219;
-static i32 fcoder_metacmd_ID_set_mode_to_notepad_like = 220;
-static i32 fcoder_metacmd_ID_set_mode_to_original = 221;
-static i32 fcoder_metacmd_ID_setup_build_bat = 222;
-static i32 fcoder_metacmd_ID_setup_build_bat_and_sh = 223;
-static i32 fcoder_metacmd_ID_setup_build_sh = 224;
-static i32 fcoder_metacmd_ID_setup_new_project = 225;
-static i32 fcoder_metacmd_ID_show_filebar = 226;
-static i32 fcoder_metacmd_ID_show_scrollbar = 227;
-static i32 fcoder_metacmd_ID_show_the_log_graph = 228;
-static i32 fcoder_metacmd_ID_snipe_backward_whitespace_or_token_boundary = 229;
-static i32 fcoder_metacmd_ID_snipe_forward_whitespace_or_token_boundary = 230;
-static i32 fcoder_metacmd_ID_snippet_lister = 231;
-static i32 fcoder_metacmd_ID_suppress_mouse = 232;
-static i32 fcoder_metacmd_ID_swap_panels = 233;
-static i32 fcoder_metacmd_ID_theme_lister = 234;
-static i32 fcoder_metacmd_ID_to_lowercase = 235;
-static i32 fcoder_metacmd_ID_toggle_filebar = 236;
-static i32 fcoder_metacmd_ID_toggle_fps_meter = 237;
-static i32 fcoder_metacmd_ID_toggle_fullscreen = 238;
-static i32 fcoder_metacmd_ID_toggle_highlight_enclosing_scopes = 239;
-static i32 fcoder_metacmd_ID_toggle_highlight_line_at_cursor = 240;
-static i32 fcoder_metacmd_ID_toggle_line_numbers = 241;
-static i32 fcoder_metacmd_ID_toggle_line_wrap = 242;
-static i32 fcoder_metacmd_ID_toggle_mouse = 243;
-static i32 fcoder_metacmd_ID_toggle_paren_matching_helper = 244;
-static i32 fcoder_metacmd_ID_toggle_show_whitespace = 245;
-static i32 fcoder_metacmd_ID_toggle_virtual_whitespace = 246;
-static i32 fcoder_metacmd_ID_uncomment_line = 247;
-static i32 fcoder_metacmd_ID_undo = 248;
-static i32 fcoder_metacmd_ID_undo_all_buffers = 249;
-static i32 fcoder_metacmd_ID_view_jump_list_with_lister = 250;
-static i32 fcoder_metacmd_ID_vim_command_mode = 251;
-static i32 fcoder_metacmd_ID_vim_dec_buffer_peek = 252;
-static i32 fcoder_metacmd_ID_vim_inc_buffer_peek = 253;
-static i32 fcoder_metacmd_ID_vim_interactive_open_or_new = 254;
-static i32 fcoder_metacmd_ID_vim_jump_lister = 255;
-static i32 fcoder_metacmd_ID_vim_list_all_functions_current_buffer_lister = 256;
-static i32 fcoder_metacmd_ID_vim_proj_cmd_lister = 257;
-static i32 fcoder_metacmd_ID_vim_scoll_buffer_peek_down = 258;
-static i32 fcoder_metacmd_ID_vim_scoll_buffer_peek_up = 259;
-static i32 fcoder_metacmd_ID_vim_switch_lister = 260;
-static i32 fcoder_metacmd_ID_vim_theme_lister = 261;
-static i32 fcoder_metacmd_ID_vim_toggle_relative_line_num = 262;
-static i32 fcoder_metacmd_ID_vim_toggle_show_buffer_peek = 263;
-static i32 fcoder_metacmd_ID_vim_try_exit = 264;
-static i32 fcoder_metacmd_ID_word_complete = 265;
-static i32 fcoder_metacmd_ID_word_complete_drop_down = 266;
-static i32 fcoder_metacmd_ID_write_block = 267;
-static i32 fcoder_metacmd_ID_write_hack = 268;
-static i32 fcoder_metacmd_ID_write_note = 269;
-static i32 fcoder_metacmd_ID_write_space = 270;
-static i32 fcoder_metacmd_ID_write_text_and_auto_indent = 271;
-static i32 fcoder_metacmd_ID_write_text_input = 272;
-static i32 fcoder_metacmd_ID_write_todo = 273;
-static i32 fcoder_metacmd_ID_write_underscore = 274;
-static i32 fcoder_metacmd_ID_write_zero_struct = 275;
+static i32 fcoder_metacmd_ID_byp_reset_face_size = 9;
+static i32 fcoder_metacmd_ID_center_view = 10;
+static i32 fcoder_metacmd_ID_change_active_primary_panel_backwards = 11;
+static i32 fcoder_metacmd_ID_clean_all_lines = 12;
+static i32 fcoder_metacmd_ID_clean_trailing_whitespace = 13;
+static i32 fcoder_metacmd_ID_clear_all_themes = 14;
+static i32 fcoder_metacmd_ID_clear_clipboard = 15;
+static i32 fcoder_metacmd_ID_click_set_cursor = 16;
+static i32 fcoder_metacmd_ID_click_set_cursor_and_mark = 17;
+static i32 fcoder_metacmd_ID_click_set_cursor_if_lbutton = 18;
+static i32 fcoder_metacmd_ID_click_set_mark = 19;
+static i32 fcoder_metacmd_ID_clipboard_record_clip = 20;
+static i32 fcoder_metacmd_ID_close_all_code = 21;
+static i32 fcoder_metacmd_ID_command_lister = 22;
+static i32 fcoder_metacmd_ID_comment_line = 23;
+static i32 fcoder_metacmd_ID_comment_line_toggle = 24;
+static i32 fcoder_metacmd_ID_copy = 25;
+static i32 fcoder_metacmd_ID_cursor_mark_swap = 26;
+static i32 fcoder_metacmd_ID_cut = 27;
+static i32 fcoder_metacmd_ID_decrease_face_size = 28;
+static i32 fcoder_metacmd_ID_default_file_externally_modified = 29;
+static i32 fcoder_metacmd_ID_default_try_exit = 30;
+static i32 fcoder_metacmd_ID_default_view_input_handler = 31;
+static i32 fcoder_metacmd_ID_delete_alpha_numeric_boundary = 32;
+static i32 fcoder_metacmd_ID_delete_char = 33;
+static i32 fcoder_metacmd_ID_delete_current_scope = 34;
+static i32 fcoder_metacmd_ID_delete_file_query = 35;
+static i32 fcoder_metacmd_ID_delete_line = 36;
+static i32 fcoder_metacmd_ID_dir = 37;
+static i32 fcoder_metacmd_ID_display_key_codes = 38;
+static i32 fcoder_metacmd_ID_display_text_input = 39;
+static i32 fcoder_metacmd_ID_double_backspace = 40;
+static i32 fcoder_metacmd_ID_duplicate_line = 41;
+static i32 fcoder_metacmd_ID_execute_any_cli = 42;
+static i32 fcoder_metacmd_ID_execute_previous_cli = 43;
+static i32 fcoder_metacmd_ID_exit_4coder = 44;
+static i32 fcoder_metacmd_ID_fold_clear = 45;
+static i32 fcoder_metacmd_ID_fold_pop_cursor = 46;
+static i32 fcoder_metacmd_ID_fold_range = 47;
+static i32 fcoder_metacmd_ID_fold_toggle_cursor = 48;
+static i32 fcoder_metacmd_ID_go_to_user_directory = 49;
+static i32 fcoder_metacmd_ID_goto_beginning_of_file = 50;
+static i32 fcoder_metacmd_ID_goto_end_of_file = 51;
+static i32 fcoder_metacmd_ID_goto_first_jump = 52;
+static i32 fcoder_metacmd_ID_goto_first_jump_same_panel_sticky = 53;
+static i32 fcoder_metacmd_ID_goto_jump_at_cursor_same_panel = 54;
+static i32 fcoder_metacmd_ID_goto_line = 55;
+static i32 fcoder_metacmd_ID_goto_next_jump_no_skips = 56;
+static i32 fcoder_metacmd_ID_goto_prev_jump_no_skips = 57;
+static i32 fcoder_metacmd_ID_hide_filebar = 58;
+static i32 fcoder_metacmd_ID_hide_scrollbar = 59;
+static i32 fcoder_metacmd_ID_if0_off = 60;
+static i32 fcoder_metacmd_ID_increase_face_size = 61;
+static i32 fcoder_metacmd_ID_init = 62;
+static i32 fcoder_metacmd_ID_interactive_kill_buffer = 63;
+static i32 fcoder_metacmd_ID_interactive_new = 64;
+static i32 fcoder_metacmd_ID_interactive_open = 65;
+static i32 fcoder_metacmd_ID_interactive_open_or_new = 66;
+static i32 fcoder_metacmd_ID_interactive_switch_buffer = 67;
+static i32 fcoder_metacmd_ID_jump_to_last_point = 68;
+static i32 fcoder_metacmd_ID_keyboard_macro_finish_recording = 69;
+static i32 fcoder_metacmd_ID_keyboard_macro_replay = 70;
+static i32 fcoder_metacmd_ID_keyboard_macro_start_recording = 71;
+static i32 fcoder_metacmd_ID_kill_buffer = 72;
+static i32 fcoder_metacmd_ID_kv_miscellaneous_debug_command = 73;
+static i32 fcoder_metacmd_ID_kv_open_note_file = 74;
+static i32 fcoder_metacmd_ID_kv_profile_disable_and_inspect = 75;
+static i32 fcoder_metacmd_ID_kv_reopen_with_confirmation = 76;
+static i32 fcoder_metacmd_ID_kv_run = 77;
+static i32 fcoder_metacmd_ID_left_adjust_view = 78;
+static i32 fcoder_metacmd_ID_list_all_functions_all_buffers = 79;
+static i32 fcoder_metacmd_ID_list_all_functions_all_buffers_lister = 80;
+static i32 fcoder_metacmd_ID_list_all_functions_current_buffer = 81;
+static i32 fcoder_metacmd_ID_list_all_functions_current_buffer_lister = 82;
+static i32 fcoder_metacmd_ID_list_all_locations = 83;
+static i32 fcoder_metacmd_ID_list_all_locations_case_insensitive = 84;
+static i32 fcoder_metacmd_ID_list_all_locations_of_identifier_case_insensitive = 85;
+static i32 fcoder_metacmd_ID_list_all_locations_of_selection = 86;
+static i32 fcoder_metacmd_ID_list_all_locations_of_selection_case_insensitive = 87;
+static i32 fcoder_metacmd_ID_list_all_locations_of_type_definition = 88;
+static i32 fcoder_metacmd_ID_list_all_locations_of_type_definition_of_identifier = 89;
+static i32 fcoder_metacmd_ID_list_all_substring_locations = 90;
+static i32 fcoder_metacmd_ID_list_all_substring_locations_case_insensitive = 91;
+static i32 fcoder_metacmd_ID_load_project = 92;
+static i32 fcoder_metacmd_ID_load_project_current_dir = 93;
+static i32 fcoder_metacmd_ID_load_theme_current_buffer = 94;
+static i32 fcoder_metacmd_ID_load_themes_default_folder = 95;
+static i32 fcoder_metacmd_ID_load_themes_hot_directory = 96;
+static i32 fcoder_metacmd_ID_make_directory_query = 97;
+static i32 fcoder_metacmd_ID_messages = 98;
+static i32 fcoder_metacmd_ID_miblo_decrement_basic = 99;
+static i32 fcoder_metacmd_ID_miblo_decrement_time_stamp = 100;
+static i32 fcoder_metacmd_ID_miblo_decrement_time_stamp_minute = 101;
+static i32 fcoder_metacmd_ID_miblo_increment_basic = 102;
+static i32 fcoder_metacmd_ID_miblo_increment_time_stamp = 103;
+static i32 fcoder_metacmd_ID_miblo_increment_time_stamp_minute = 104;
+static i32 fcoder_metacmd_ID_mouse_wheel_change_face_size = 105;
+static i32 fcoder_metacmd_ID_mouse_wheel_scroll = 106;
+static i32 fcoder_metacmd_ID_move_down = 107;
+static i32 fcoder_metacmd_ID_move_down_10 = 108;
+static i32 fcoder_metacmd_ID_move_down_textual = 109;
+static i32 fcoder_metacmd_ID_move_down_to_blank_line = 110;
+static i32 fcoder_metacmd_ID_move_down_to_blank_line_end = 111;
+static i32 fcoder_metacmd_ID_move_down_to_blank_line_skip_whitespace = 112;
+static i32 fcoder_metacmd_ID_move_left = 113;
+static i32 fcoder_metacmd_ID_move_left_alpha_numeric_boundary = 114;
+static i32 fcoder_metacmd_ID_move_left_alpha_numeric_or_camel_boundary = 115;
+static i32 fcoder_metacmd_ID_move_left_token_boundary = 116;
+static i32 fcoder_metacmd_ID_move_left_whitespace_boundary = 117;
+static i32 fcoder_metacmd_ID_move_left_whitespace_or_token_boundary = 118;
+static i32 fcoder_metacmd_ID_move_line_down = 119;
+static i32 fcoder_metacmd_ID_move_line_up = 120;
+static i32 fcoder_metacmd_ID_move_right = 121;
+static i32 fcoder_metacmd_ID_move_right_alpha_numeric_boundary = 122;
+static i32 fcoder_metacmd_ID_move_right_alpha_numeric_or_camel_boundary = 123;
+static i32 fcoder_metacmd_ID_move_right_token_boundary = 124;
+static i32 fcoder_metacmd_ID_move_right_whitespace_boundary = 125;
+static i32 fcoder_metacmd_ID_move_right_whitespace_or_token_boundary = 126;
+static i32 fcoder_metacmd_ID_move_up = 127;
+static i32 fcoder_metacmd_ID_move_up_10 = 128;
+static i32 fcoder_metacmd_ID_move_up_to_blank_line = 129;
+static i32 fcoder_metacmd_ID_move_up_to_blank_line_end = 130;
+static i32 fcoder_metacmd_ID_move_up_to_blank_line_skip_whitespace = 131;
+static i32 fcoder_metacmd_ID_multi_paste = 132;
+static i32 fcoder_metacmd_ID_multi_paste_interactive = 133;
+static i32 fcoder_metacmd_ID_multi_paste_interactive_quick = 134;
+static i32 fcoder_metacmd_ID_no_op = 135;
+static i32 fcoder_metacmd_ID_open_all_code = 136;
+static i32 fcoder_metacmd_ID_open_all_code_recursive = 137;
+static i32 fcoder_metacmd_ID_open_file_in_quotes = 138;
+static i32 fcoder_metacmd_ID_open_in_other = 139;
+static i32 fcoder_metacmd_ID_open_long_braces = 140;
+static i32 fcoder_metacmd_ID_open_long_braces_break = 141;
+static i32 fcoder_metacmd_ID_open_long_braces_semicolon = 142;
+static i32 fcoder_metacmd_ID_open_matching_file_cpp = 143;
+static i32 fcoder_metacmd_ID_open_matching_file_cpp_other_panel = 144;
+static i32 fcoder_metacmd_ID_open_panel_hsplit = 145;
+static i32 fcoder_metacmd_ID_open_panel_vsplit = 146;
+static i32 fcoder_metacmd_ID_page_down = 147;
+static i32 fcoder_metacmd_ID_page_up = 148;
+static i32 fcoder_metacmd_ID_paste = 149;
+static i32 fcoder_metacmd_ID_paste_and_indent = 150;
+static i32 fcoder_metacmd_ID_paste_next = 151;
+static i32 fcoder_metacmd_ID_paste_next_and_indent = 152;
+static i32 fcoder_metacmd_ID_place_in_scope = 153;
+static i32 fcoder_metacmd_ID_play_with_a_counter = 154;
+static i32 fcoder_metacmd_ID_profile_clear = 155;
+static i32 fcoder_metacmd_ID_profile_disable = 156;
+static i32 fcoder_metacmd_ID_profile_enable = 157;
+static i32 fcoder_metacmd_ID_profile_inspect = 158;
+static i32 fcoder_metacmd_ID_project_command_F1 = 159;
+static i32 fcoder_metacmd_ID_project_command_F10 = 160;
+static i32 fcoder_metacmd_ID_project_command_F11 = 161;
+static i32 fcoder_metacmd_ID_project_command_F12 = 162;
+static i32 fcoder_metacmd_ID_project_command_F13 = 163;
+static i32 fcoder_metacmd_ID_project_command_F14 = 164;
+static i32 fcoder_metacmd_ID_project_command_F15 = 165;
+static i32 fcoder_metacmd_ID_project_command_F16 = 166;
+static i32 fcoder_metacmd_ID_project_command_F2 = 167;
+static i32 fcoder_metacmd_ID_project_command_F3 = 168;
+static i32 fcoder_metacmd_ID_project_command_F4 = 169;
+static i32 fcoder_metacmd_ID_project_command_F5 = 170;
+static i32 fcoder_metacmd_ID_project_command_F6 = 171;
+static i32 fcoder_metacmd_ID_project_command_F7 = 172;
+static i32 fcoder_metacmd_ID_project_command_F8 = 173;
+static i32 fcoder_metacmd_ID_project_command_F9 = 174;
+static i32 fcoder_metacmd_ID_project_command_lister = 175;
+static i32 fcoder_metacmd_ID_project_fkey_command = 176;
+static i32 fcoder_metacmd_ID_project_go_to_root_directory = 177;
+static i32 fcoder_metacmd_ID_project_reprint = 178;
+static i32 fcoder_metacmd_ID_query_replace = 179;
+static i32 fcoder_metacmd_ID_query_replace_identifier = 180;
+static i32 fcoder_metacmd_ID_query_replace_selection = 181;
+static i32 fcoder_metacmd_ID_quick_swap_buffer = 182;
+static i32 fcoder_metacmd_ID_redo = 183;
+static i32 fcoder_metacmd_ID_redo_all_buffers = 184;
+static i32 fcoder_metacmd_ID_reg = 185;
+static i32 fcoder_metacmd_ID_rename_file_query = 186;
+static i32 fcoder_metacmd_ID_reopen = 187;
+static i32 fcoder_metacmd_ID_replace_in_all_buffers = 188;
+static i32 fcoder_metacmd_ID_replace_in_buffer = 189;
+static i32 fcoder_metacmd_ID_replace_in_range = 190;
+static i32 fcoder_metacmd_ID_reverse_search = 191;
+static i32 fcoder_metacmd_ID_reverse_search_identifier = 192;
+static i32 fcoder_metacmd_ID_right_adjust_view = 193;
+static i32 fcoder_metacmd_ID_save = 194;
+static i32 fcoder_metacmd_ID_save_all_dirty_buffers = 195;
+static i32 fcoder_metacmd_ID_save_to_query = 196;
+static i32 fcoder_metacmd_ID_scratch = 197;
+static i32 fcoder_metacmd_ID_search = 198;
+static i32 fcoder_metacmd_ID_search_identifier = 199;
+static i32 fcoder_metacmd_ID_seek_beginning_of_line = 200;
+static i32 fcoder_metacmd_ID_seek_beginning_of_textual_line = 201;
+static i32 fcoder_metacmd_ID_seek_end_of_line = 202;
+static i32 fcoder_metacmd_ID_seek_end_of_textual_line = 203;
+static i32 fcoder_metacmd_ID_select_all = 204;
+static i32 fcoder_metacmd_ID_select_next_scope_absolute = 205;
+static i32 fcoder_metacmd_ID_select_next_scope_after_current = 206;
+static i32 fcoder_metacmd_ID_select_prev_scope_absolute = 207;
+static i32 fcoder_metacmd_ID_select_prev_top_most_scope = 208;
+static i32 fcoder_metacmd_ID_select_surrounding_scope = 209;
+static i32 fcoder_metacmd_ID_select_surrounding_scope_maximal = 210;
+static i32 fcoder_metacmd_ID_set_current_dir_as_hot = 211;
+static i32 fcoder_metacmd_ID_set_eol_mode_from_contents = 212;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_binary = 213;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_crlf = 214;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_lf = 215;
+static i32 fcoder_metacmd_ID_set_face_size = 216;
+static i32 fcoder_metacmd_ID_set_face_size_this_buffer = 217;
+static i32 fcoder_metacmd_ID_set_mark = 218;
+static i32 fcoder_metacmd_ID_set_mode_to_notepad_like = 219;
+static i32 fcoder_metacmd_ID_set_mode_to_original = 220;
+static i32 fcoder_metacmd_ID_setup_build_bat = 221;
+static i32 fcoder_metacmd_ID_setup_build_bat_and_sh = 222;
+static i32 fcoder_metacmd_ID_setup_build_sh = 223;
+static i32 fcoder_metacmd_ID_setup_new_project = 224;
+static i32 fcoder_metacmd_ID_show_filebar = 225;
+static i32 fcoder_metacmd_ID_show_scrollbar = 226;
+static i32 fcoder_metacmd_ID_show_the_log_graph = 227;
+static i32 fcoder_metacmd_ID_snipe_backward_whitespace_or_token_boundary = 228;
+static i32 fcoder_metacmd_ID_snipe_forward_whitespace_or_token_boundary = 229;
+static i32 fcoder_metacmd_ID_snippet_lister = 230;
+static i32 fcoder_metacmd_ID_suppress_mouse = 231;
+static i32 fcoder_metacmd_ID_swap_panels = 232;
+static i32 fcoder_metacmd_ID_theme_lister = 233;
+static i32 fcoder_metacmd_ID_to_lowercase = 234;
+static i32 fcoder_metacmd_ID_toggle_filebar = 235;
+static i32 fcoder_metacmd_ID_toggle_fps_meter = 236;
+static i32 fcoder_metacmd_ID_toggle_fullscreen = 237;
+static i32 fcoder_metacmd_ID_toggle_highlight_enclosing_scopes = 238;
+static i32 fcoder_metacmd_ID_toggle_highlight_line_at_cursor = 239;
+static i32 fcoder_metacmd_ID_toggle_line_numbers = 240;
+static i32 fcoder_metacmd_ID_toggle_line_wrap = 241;
+static i32 fcoder_metacmd_ID_toggle_mouse = 242;
+static i32 fcoder_metacmd_ID_toggle_paren_matching_helper = 243;
+static i32 fcoder_metacmd_ID_toggle_show_whitespace = 244;
+static i32 fcoder_metacmd_ID_toggle_virtual_whitespace = 245;
+static i32 fcoder_metacmd_ID_uncomment_line = 246;
+static i32 fcoder_metacmd_ID_undo = 247;
+static i32 fcoder_metacmd_ID_undo_all_buffers = 248;
+static i32 fcoder_metacmd_ID_view_jump_list_with_lister = 249;
+static i32 fcoder_metacmd_ID_vim_command_mode = 250;
+static i32 fcoder_metacmd_ID_vim_dec_buffer_peek = 251;
+static i32 fcoder_metacmd_ID_vim_inc_buffer_peek = 252;
+static i32 fcoder_metacmd_ID_vim_interactive_open_or_new = 253;
+static i32 fcoder_metacmd_ID_vim_jump_lister = 254;
+static i32 fcoder_metacmd_ID_vim_list_all_functions_current_buffer_lister = 255;
+static i32 fcoder_metacmd_ID_vim_proj_cmd_lister = 256;
+static i32 fcoder_metacmd_ID_vim_scoll_buffer_peek_down = 257;
+static i32 fcoder_metacmd_ID_vim_scoll_buffer_peek_up = 258;
+static i32 fcoder_metacmd_ID_vim_switch_lister = 259;
+static i32 fcoder_metacmd_ID_vim_theme_lister = 260;
+static i32 fcoder_metacmd_ID_vim_toggle_relative_line_num = 261;
+static i32 fcoder_metacmd_ID_vim_toggle_show_buffer_peek = 262;
+static i32 fcoder_metacmd_ID_vim_try_exit = 263;
+static i32 fcoder_metacmd_ID_word_complete = 264;
+static i32 fcoder_metacmd_ID_word_complete_drop_down = 265;
+static i32 fcoder_metacmd_ID_write_block = 266;
+static i32 fcoder_metacmd_ID_write_hack = 267;
+static i32 fcoder_metacmd_ID_write_note = 268;
+static i32 fcoder_metacmd_ID_write_space = 269;
+static i32 fcoder_metacmd_ID_write_text_and_auto_indent = 270;
+static i32 fcoder_metacmd_ID_write_text_input = 271;
+static i32 fcoder_metacmd_ID_write_todo = 272;
+static i32 fcoder_metacmd_ID_write_underscore = 273;
+static i32 fcoder_metacmd_ID_write_zero_struct = 274;
 #endif

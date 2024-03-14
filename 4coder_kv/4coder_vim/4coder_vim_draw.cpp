@@ -454,10 +454,10 @@ vim_draw_whole_screen(Application_Links *app, Frame_Info frame_info){
 	
 	Vec2_f32 bot_left = {region.x0 + 4.f, region.y1 - 1.5f*line_height};
 	String_Const_u8 bot_string = vim_get_bot_string();
-	
-	if(vim_use_bottom_cursor){
-		Vec2_f32 p = draw_string(app, face_id, vim_bot_text.string, bot_left, finalize_color(defcolor_text_default, 0));
+	if(vim_use_bottom_cursor)
     {
+		Vec2_f32 p = draw_string(app, face_id, vim_bot_text.string, bot_left, finalize_color(defcolor_text_default, 0));
+        {
 			p.x -= 0.37f*(p.x - bot_left.x)/cast(f32)vim_bot_text.size;
 			draw_string(app, face_id, string_u8_litexpr("|"), p, finalize_color(defcolor_text_default, 0));
 		}

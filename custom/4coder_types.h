@@ -762,7 +762,7 @@ struct String_Match_List{
 api(custom)
 struct Process_State{
     b32 valid;
-    b32 is_updating;
+    b32 updating;
     i64 return_code;
 };
 

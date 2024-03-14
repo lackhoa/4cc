@@ -85,13 +85,15 @@ child_process_free(Child_Process_Container *container, Child_Process_ID id){
 }
 
 internal b32
-child_process_set_return_code(Models *models, Child_Process_Container *container, Child_Process_ID id, i64 val){
+child_process_set_return_code(Models *models, Child_Process_Container *container, Child_Process_ID id, i64 val)
+{
     table_insert(&container->id_to_return_code_table, id, val);
     return(true);
 }
 
 internal b32
-child_process_lookup_return_code(Child_Process_Container *container, Child_Process_ID id, i64 *out){
+child_process_lookup_return_code(Child_Process_Container *container, Child_Process_ID id, i64 *out)
+{
     b32 result = false;
     Table_Lookup lookup = table_lookup(&container->id_to_return_code_table, id);
     if (lookup.found_match){
@@ -104,13 +106,15 @@ child_process_lookup_return_code(Child_Process_Container *container, Child_Proce
 ////////////////////////////////
 
 internal b32
-child_process_call(Thread_Context *tctx, Models *models, String_Const_u8 path, String_Const_u8 command, Child_Process_ID *id_out){
+child_process_call(Thread_Context *tctx, Models *models, String path, String command, Child_Process_ID *id_out)
+{
     b32 result = false;
     Scratch_Block scratch(tctx);
-    String_Const_u8 path_n = push_string_copy(scratch, path);
-    String_Const_u8 command_n = push_string_copy(scratch, command);
+    String path_n    = push_string_copy(scratch, path);
+    String command_n = push_string_copy(scratch, command);
     CLI_Handles cli_handles = {};
-    if (system_cli_call(scratch, (char*)path_n.str, (char*)command_n.str, &cli_handles)){
+    if (system_cli_call(scratch, (char*)path_n.str, (char*)command_n.str, &cli_handles))
+    {
         Child_Process_And_ID new_process = child_process_alloc_new(models, &models->child_processes);
         *id_out = new_process.id;
         new_process.process->cli = cli_handles;
@@ -147,14 +151,17 @@ child_process_set_target_buffer(Models *models, Child_Process *child_process, Ed
 }
 
 internal Process_State
-child_process_get_state(Child_Process_Container *child_processes, Child_Process_ID child_process_id){
-    child_process_from_id(child_processes, child_process_id);
+child_process_get_state(Child_Process_Container *procs, Child_Process_ID procid)
+{
+    Child_Process *proc = child_process_from_id(procs, procid);
     Process_State result = {};
-    if (child_processes != 0){
-        result.valid = true;
-        result.is_updating = true;
+    if (proc != 0)
+    {
+        result.valid    = true;
+        result.updating = true;
     }
-    else if (child_process_lookup_return_code(child_processes, child_process_id, &result.return_code)){
+    else if (child_process_lookup_return_code(procs, procid, &result.return_code))
+    {
         result.valid = true;
     }
     return(result);

@@ -411,9 +411,9 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
                 char *clip_ascii_ptr = (char*)GlobalLock(clip_data);
                 if (clip_ascii_ptr != 0)
                 {
-                    String_Const_char clip_ascii = SCchar(clip_ascii_ptr);
+                    String clip_ascii = SCu8(clip_ascii_ptr);
                     got_result = true;
-                    result = string_u8_from_string_char(arena, clip_ascii, StringFill_NullTerminate).string;
+                    result = push_string_copy(arena, clip_ascii);
                 }
                 GlobalUnlock(clip_data);
             }
@@ -521,22 +521,23 @@ system_get_clipboard_catch_all_sig(){
 //
 
 internal
-system_cli_call_sig(){
+system_cli_call_sig()
+{
     Assert(sizeof(Plat_Handle) >= sizeof(HANDLE));
     
     char cmd[] = "c:\\windows\\system32\\cmd.exe";
     char *env_variables = 0;
     
     Temp_Memory temp = begin_temp(scratch);
-    String_Const_u8 s = push_stringf(scratch, "/C %s", script);
+    String cmd_arg = push_stringf(scratch, "/C %s", script);
     
     b32 success = false;
     
-    *(HANDLE*)&cli_out->proc = INVALID_HANDLE_VALUE;
-    *(HANDLE*)&cli_out->out_read = INVALID_HANDLE_VALUE;
+    *(HANDLE*)&cli_out->proc      = INVALID_HANDLE_VALUE;
+    *(HANDLE*)&cli_out->out_read  = INVALID_HANDLE_VALUE;
     *(HANDLE*)&cli_out->out_write = INVALID_HANDLE_VALUE;
-    *(HANDLE*)&cli_out->in_read = INVALID_HANDLE_VALUE;
-    *(HANDLE*)&cli_out->in_write = INVALID_HANDLE_VALUE;
+    *(HANDLE*)&cli_out->in_read   = INVALID_HANDLE_VALUE;
+    *(HANDLE*)&cli_out->in_write  = INVALID_HANDLE_VALUE;
     
     SECURITY_ATTRIBUTES security_atrb = {};
     security_atrb.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -544,42 +545,48 @@ system_cli_call_sig(){
     
     HANDLE out_read = INVALID_HANDLE_VALUE;
     HANDLE out_write = INVALID_HANDLE_VALUE;
-    if (CreatePipe(&out_read, &out_write, &security_atrb, 0)){
-        if (SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0)){
+    if ( CreatePipe(&out_read, &out_write, &security_atrb, 0) )
+    {
+        if ( SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0) )
+        {
             STARTUPINFOW startup = {};
             startup.cb = sizeof(STARTUPINFO);
             startup.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
             
             HANDLE in_read = CreateFileA("nul", GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, &security_atrb, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
             
-            startup.hStdInput = in_read;
-            startup.hStdOutput = out_write;
-            startup.hStdError = out_write;
+            startup.hStdInput   = in_read;
+            startup.hStdOutput  = out_write;
+            startup.hStdError   = out_write;
             startup.wShowWindow = SW_HIDE;
             
             PROCESS_INFORMATION info = {};
-            if (CreateProcess_utf8(scratch, (u8*)cmd, s.str, 0, 0, TRUE, 0, env_variables, (u8*)path, &startup, &info)){
+            if (CreateProcess_utf8(scratch, (u8*)cmd, cmd_arg.str, 0, 0, TRUE, 0, env_variables, (u8*)path, &startup, &info))
+            {
                 success = true;
                 CloseHandle(info.hThread);
-                *(HANDLE*)&cli_out->proc = info.hProcess;
-                *(HANDLE*)&cli_out->out_read = out_read;
+                *(HANDLE*)&cli_out->proc      = info.hProcess;
+                *(HANDLE*)&cli_out->out_read  = out_read;
                 *(HANDLE*)&cli_out->out_write = out_write;
                 
                 ++win32vars.running_cli;
             }
-            else{
+            else
+            {
                 CloseHandle(out_read);
                 CloseHandle(out_write);
                 CloseHandle(in_read);
             }
         }
-        else{
+        else
+        {
             // TODO(allen): failed SetHandleInformation
             CloseHandle(out_read);
             CloseHandle(out_write);
         }
     }
-    else{
+    else
+    {
         // TODO(allen): failed CreatePipe
     }
     
@@ -1273,7 +1280,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
             }
             if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
                 String_Const_u16 str_16 = SCu16(&c, 1);
-                String_Const_u8 str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16).string;
+                String_Const_u8 str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16, StringFill_NullTerminate).string;
                 Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
                 event->kind = InputEventKind_TextInsert;
                 event->text.string = str_8;
@@ -1310,7 +1317,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
                 }
                 if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
                     String_Const_u32 str_32 = SCu32(&c, 1);
-                    String_Const_u8 str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32).string;
+                    String_Const_u8 str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32, StringFill_NullTerminate).string;
                     Input_Event event = {};
                     event.kind = InputEventKind_TextInsert;
                     event.text.string = str_8;

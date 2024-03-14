@@ -755,7 +755,8 @@ parse_file(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Chara
 }
 
 static void
-parse_files_by_pattern(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Character *pattern, b32 recursive){
+parse_files_by_pattern(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Character *pattern, b32 recursive)
+{
     Cross_Platform_File_List list = get_file_list(arena, pattern, filter_all);
     for (i32 i = 0; i < list.count; ++i){
         Cross_Platform_File_Info *info = &list.info[i];
@@ -763,7 +764,7 @@ parse_files_by_pattern(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Fi
         String_Const_Any info_name = SCany(info->name, info->len);
         Temp_Memory temp = begin_temp(arena);
         String_Const_u8 info_name_ascii = string_u8_from_any(arena, info_name);
-        b32 is_generated = string_match(info_name_ascii, string_u8_litexpr("4coder_generated"));
+        b32 is_generated = string_match(info_name_ascii, strlit("4coder_generated"));
         end_temp(temp);
         
         if (info->is_folder && is_generated){

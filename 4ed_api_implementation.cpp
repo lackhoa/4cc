@@ -92,17 +92,20 @@ global_get_screen_rectangle(App *app){
 }
 
 api(custom) function Child_Process_ID
-create_child_process(App *app, String_Const_u8 path, String_Const_u8 command){
+create_child_process(App *app, String path, String command)
+{
     Models *models = (Models*)app->cmd_context;
     Child_Process_ID result = 0;
-    if (!child_process_call(app->tctx, models, path, command, &result)){
+    if ( !child_process_call(app->tctx, models, path, command, &result) )
+    {
         result = 0;
     }
     return(result);
 }
 
 api(custom) function b32
-child_process_set_target_buffer(App *app, Child_Process_ID child_process_id, Buffer_ID buffer_id, Child_Process_Set_Target_Flags flags){
+child_process_set_target_buffer(App *app, Child_Process_ID child_process_id, Buffer_ID buffer_id, Child_Process_Set_Target_Flags flags)
+{
     Models *models = (Models*)app->cmd_context;
     Child_Process *child_process = child_process_from_id(&models->child_processes, child_process_id);
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -118,7 +121,8 @@ buffer_get_attached_child_process(App *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     Child_Process_ID result = 0;
-    if (api_check_buffer(file)){
+    if (api_check_buffer(file))
+    {
         result = file->state.attached_child_process;
     }
     return(result);

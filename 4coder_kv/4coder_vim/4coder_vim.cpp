@@ -346,18 +346,23 @@ function String_Const_u8 vim_get_bot_string(){
 
 	if(vim_is_querying_user_key){ return result; }
 
-	switch(vim_state.mode){
+#if 0
+	switch(vim_state.mode)
+    {
 		case VIM_Insert:        result = string_u8_litexpr("-- INSERT --"); break;
 		case VIM_Replace:       result = string_u8_litexpr("-- REPLACE --"); break;
 		case VIM_Visual_Insert: result = string_u8_litexpr("-- VISUAL INSERT --"); break;
-		case VIM_Visual:{
-			switch(vim_state.params.edit_type){
+		case VIM_Visual:
+        {
+			switch(vim_state.params.edit_type)
+            {
 				case EDIT_CharWise: result = string_u8_litexpr("-- VISUAL --");       break;
 				case EDIT_LineWise: result = string_u8_litexpr("-- VISUAL LINE --");  break;
 				case EDIT_Block:    result = string_u8_litexpr("-- VISUAL BLOCK --"); break;
 			}
 		} break;
 	}
+#endif
 
 	if(vim_state.macro_char){
 		local_persist u8 macro_string_buffer[] = "-- RECORDING   --";

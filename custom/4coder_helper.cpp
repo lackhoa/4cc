@@ -2125,11 +2125,11 @@ file_exists_and_is_folder(Arena *scratch, String8 filename)
     return(attributes.last_write_time > 0 && HasFlag(attributes.flags, FileAttribute_IsDirectory));
 }
 
-function String8
-search_up_path(Arena *arena, String8 start_path, String8 filename)
+function String
+search_up_path(Arena *arena, String start_path, String filename)
 {
-    String8 result = {};
-    String8 path = start_path;
+    String result = {};
+    String path = start_path;
     for (;path.size > 0;)
     {
         char last_char = string_get_character(path, path.size - 1);
@@ -2138,9 +2138,9 @@ search_up_path(Arena *arena, String8 start_path, String8 filename)
             path = string_chop(path, 1);
         }
         Temp_Memory temp = begin_temp(arena);
-        String8 full_path = push_stringf(arena, "%.*s/%.*s",
-                                         string_expand(path),
-                                         string_expand(filename));
+        String full_path = push_stringf(arena, "%.*s/%.*s",
+                                        string_expand(path),
+                                        string_expand(filename));
         if ( file_exists(arena, full_path) )
         {
             result = full_path;
@@ -2570,18 +2570,22 @@ set_buffer_system_command(Application_Links *app, Child_Process_ID process, Buff
     return(result);
 }
 
-function b32
+internal b32
 exec_system_command(App *app, View_ID view, Buffer_Identifier buffer_id,
-                    String_Const_u8 path, String_Const_u8 command, Command_Line_Interface_Flag flags)
+                    String path, String command, Command_Line_Interface_Flag flags)
 {
     b32 result = false;
     Child_Process_ID child_process_id = create_child_process(app, path, command);
-    if (child_process_id != 0){
+    if (child_process_id != 0)
+    {
         result = true;
         Buffer_ID buffer_attach_id = buffer_identifier_to_id_create_out_buffer(app, buffer_id);
-        if (buffer_attach_id != 0){
-            if (set_buffer_system_command(app, child_process_id, buffer_attach_id, flags)){
-                if (view != 0){
+        if (buffer_attach_id != 0)
+        {
+            if ( set_buffer_system_command(app, child_process_id, buffer_attach_id, flags) )
+            {
+                if (view != 0)
+                {
                     view_set_buffer(app, view, buffer_attach_id, 0);
                     view_set_cursor(app, view, seek_pos(0));
                 }
@@ -2595,24 +2599,6 @@ exec_system_command(App *app, View_ID view, Buffer_Identifier buffer_id,
 
 ////////////////////////////////
 
-#if 0
-function f32
-font_get_glyph_advance(Face_Advance_Map *map, Face_Metrics *metrics, u32 codepoint, f32 tab_width){
-    return(font_get_glyph_advance(map, metrics, codepoint, tab_width));
-}
-function f32
-font_get_max_glyph_advance_range(Face_Advance_Map *map, Face_Metrics *metrics,
-                                 u32 codepoint_first, u32 codepoint_last, f32 tab_width){
-    return(font_get_max_glyph_advance_range(map, metrics, codepoint_first, codepoint_last, tab_width));
-}
-function f32
-font_get_average_glyph_advance_range(Face_Advance_Map *map, Face_Metrics *metrics,
-                                     u32 codepoint_first, u32 codepoint_last, f32 tab_width){
-    return(font_get_average_glyph_advance_range(map, metrics, codepoint_first, codepoint_last, tab_width));
-}
-#endif
-
-////////////////////////////////
 // NOTE(allen): Layout Invalidate
 
 function void
