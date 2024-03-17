@@ -62,6 +62,7 @@
 #define GL_DYNAMIC_COPY                   0x88EA
 #define GL_FRAGMENT_SHADER                0x8B30
 #define GL_VERTEX_SHADER                  0x8B31
+#define GL_GEOMETRY_SHADER                0x8DD9
 #define GL_DELETE_STATUS                  0x8B80
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_LINK_STATUS                    0x8B82
@@ -125,6 +126,7 @@
 #define GL_DEBUG_SEVERITY_HIGH            0x9146
 #define GL_DEBUG_SEVERITY_MEDIUM          0x9147
 #define GL_DEBUG_SEVERITY_LOW             0x9148
+#define GL_UNIFORM_BUFFER                 0x8A11
 
 #define GL_TEXTURE_3D                     0x806F
 #define GL_TEXTURE_2D_ARRAY               0x8C1A
@@ -207,6 +209,7 @@
 #define GL_RG32I                          0x823B
 #define GL_RG32UI                         0x823C
 
+#define GL_RED_INTEGER                    0x8D94
 #define GL_RGBA32UI                       0x8D70
 #define GL_RGB32UI                        0x8D71
 #define GL_RGBA16UI                       0x8D76
@@ -246,10 +249,16 @@
 #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
 
 #define GL_DEBUG_OUTPUT                   0x92E0
+#define GL_CONTEXT_FLAGS                  0x821E
+#define GL_CONTEXT_FLAG_DEBUG_BIT         0x00000002
 
 ////////////////////////////////
 
 #define GL_FRAMEBUFFER_UNDEFINED          0x8219
+#define GL_INVALID_ENUM                   0x0500
+#define GL_INVALID_VALUE                  0x0501
+#define GL_INVALID_OPERATION              0x0502
+#define GL_OUT_OF_MEMORY                  0x0505
 
 #define GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT 0x8CD6
 #define GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT 0x8CD7
@@ -265,6 +274,12 @@ typedef char GLchar;
 typedef short GLshort;
 typedef signed char GLbyte;
 typedef unsigned short GLushort;
+#if 0
+// highlight me please!
+typedef GLuint;
+typedef GLint;
+typedef GLenum;
+#endif
 
 #if !OS_LINUX
 typedef ptrdiff_t GLsizeiptr;

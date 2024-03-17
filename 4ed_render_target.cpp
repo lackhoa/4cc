@@ -14,103 +14,174 @@
 
 #include "4ed_render_target.h"
 
-internal void
-draw__begin_new_group(Render_Target *target)
+inline Render_Entry *
+new_render_entry(Render_Target *target, Render_Entry_Type type)
 {
-    Render_Group *group = 0;
-    Render_Group *last = target->group_last;
-    if (last &&
-        (last->vertex_list.count == 0))
-    {// NOTE(kv): Use existing empty group
-        group = last;
-    }
-    else
-    {
-        group = push_array_zero(&target->arena, Render_Group, 1);
-        sll_queue_push(target->group_first, target->group_last, group);
-    }
-    // NOTE: copy the render config over
-    group->render_config = target->render_config;
+ Render_Group *group = target->group_last;
+ if (!render_group_is_game(group))
+ {
+  kv_assert(group->entry_count == 0);
+ }
+ if (group)
+ {
+  Render_Entry *entry = push_struct_zero(&target->arena, Render_Entry);
+  entry->type = type;
+  sll_queue_push(group->entry_first, group->entry_last, entry);
+  group->entry_count++;
+  return entry;
+ }
+ else { return 0; }
+}
+
+internal void
+draw__new_group(Render_Target *target, Render_Config *config)
+{
+ Render_Group *group = 0;
+ Render_Group *last = target->group_last;
+ group = push_struct_zero(&target->arena, Render_Group);
+ sll_queue_push(target->group_first, target->group_last, group);
+ target->group_count++;
+ 
+ if (config)
+ {
+  group->config = *config;
+ }
+ group->face_id = target->face_id;
+ 
+ new_render_entry(target, Render_Poly);
+}
+
+internal void
+draw__maybe_new_group(Render_Target *target, Render_Config *config)
+{
+ Render_Group *last = target->group_last;
+ if (last &&
+     !render_group_is_game(last) && 
+     last->entry_first->poly.vertex_list.count == 0 &&
+     config == 0)
+ {
+  //pass
+ }
+ else
+ {
+  draw__new_group(target, config);
+ }
 }
 
 internal Render_Vertex_Array_Node*
 draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i32 size){
     Render_Vertex_Array_Node *node = push_array_zero(arena, Render_Vertex_Array_Node, 1);
     sll_queue_push(list->first, list->last, node);
-    node->vertices = push_array(arena, Render_Vertex, size);
-    node->vertex_max = size;
-    return(node);
+ node->vertices = push_array(arena, Render_Vertex, size);
+ node->vertex_max = size;
+ return(node);
 }
 
+enum Vertex_Type {
+ Vertex_Poly,
+ Vertex_Overlay,
+};
+
 internal void
-draw__write_vertices_in_current_group(Render_Target *target, Render_Vertex *vertices, i32 count)
+draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i32 count,
+                    Vertex_Type type=Vertex_Poly)
 {
-    if (count > 0)
-    {
-        Render_Group *group = target->group_last;
-        if (group == 0)
-        {
-            draw__begin_new_group(target);
-            group = target->group_last;
-        }
-        
-        Render_Vertex_List *list = &group->vertex_list;
-        
-        Render_Vertex_Array_Node *last = list->last;
-        
-        Render_Vertex *tail_vertex = 0;
-        i32 tail_count = 0;
-        if (last != 0)
-        {
-            tail_vertex = last->vertices + last->vertex_count;
-            tail_count = last->vertex_max - last->vertex_count;
-        }
-        
-        i32 base_vertex_max = 64;
-        i32 transfer_count = clamp_top(count, tail_count);
-        if (transfer_count > 0)
-        {
-            block_copy_dynamic_array(tail_vertex, vertices, transfer_count);
-            last->vertex_count += transfer_count;
-            list->count += transfer_count;
-            base_vertex_max = last->vertex_max;
-        }
-        
-        i32 count_left_over = count - transfer_count;
-        if (count_left_over > 0)
-        {
-            Render_Vertex *vertices_left_over = vertices + transfer_count;
-            
-            i32 next_node_size = (base_vertex_max + count_left_over)*2;
-            Render_Vertex_Array_Node *memory = draw__extend_group_vertex_memory(&target->arena, list, next_node_size);
-            block_copy_dynamic_array(memory->vertices, vertices_left_over, count_left_over);
-            memory->vertex_count += count_left_over;
-            list->count += count_left_over;
-        }
-    }
+ if (count > 0)
+ {
+  Render_Group *group = target->group_last;
+  if (group == 0)
+  {
+   draw__new_group(target, 0);
+   group = target->group_last;
+  }
+  
+  Render_Vertex_List *list;
+  {
+   Render_Entry *entry0 = group->entry_last;
+   if (entry0 == 0 || entry0->type != Render_Poly)
+   {
+    entry0 = new_render_entry(target, Render_Poly);
+   }
+   
+   Render_Entry_Poly *entry = &entry0->poly;
+   
+   switch(type )
+   {
+    case Vertex_Poly:    { list = &entry->vertex_list; }break;
+    case Vertex_Overlay:   { list = &entry->vertex_list_overlay; }break;
+    invalid_default_case;
+   }
+  }
+  
+  Render_Vertex_Array_Node *last = list->last;
+  
+  Render_Vertex *tail_vertex = 0;
+  i32 tail_count = 0;
+  if (last != 0)
+  {
+   tail_vertex = last->vertices + last->vertex_count;
+   tail_count = last->vertex_max - last->vertex_count;
+  }
+  
+  i32 base_vertex_max = 64;
+  i32 transfer_count = clamp_max(count, tail_count);
+  if (transfer_count > 0)
+  {
+   block_copy_count(tail_vertex, vertices, transfer_count);
+   last->vertex_count += transfer_count;
+   list->count += transfer_count;
+   base_vertex_max = last->vertex_max;
+  }
+  
+  i32 count_left_over = count - transfer_count;
+  if (count_left_over > 0)
+  {
+   Render_Vertex *vertices_left_over = vertices + transfer_count;
+   
+   i32 next_node_size = (base_vertex_max + count_left_over)*2;
+   Render_Vertex_Array_Node *memory = draw__extend_group_vertex_memory(&target->arena, list, next_node_size);
+   block_copy_count(memory->vertices, vertices_left_over, count_left_over);
+   memory->vertex_count += count_left_over;
+   list->count += count_left_over;
+  }
+ }
+}
+
+inline void
+push_object_transform_to_target(Render_Target *target, mat4 *transform)
+{
+ Render_Entry *entry = new_render_entry(target, Render_Object_Transform);
+ entry->object_transform = *transform ;
+}
+
+force_inline Render_Config *
+target_last_config(Render_Target *target)
+{
+ if (target->group_last) {return &target->group_last->config;}
+ else {return 0;}
 }
 
 internal void
 draw__set_face_id(Render_Target *target, Face_ID face_id)
 {
-    if (target->face_id != face_id)
-    {
-        if (target->face_id != 0)
-        {// NOTE: Has existing face id
-            target->face_id = face_id;
-            draw__begin_new_group(target);
-        }
-        else
-        {// NOTE: No current face is set
-            target->face_id = face_id;
-            for (Render_Group *group = target->group_first;
-                 group != 0;
-                 group = group->next)
-            {
-                group->face_id = face_id;
-            }
-        }
-    }
+ if (target->face_id != face_id)
+ {
+  if (target->face_id != 0)
+  {// NOTE: Has existing face id
+   target->face_id = face_id;
+   draw__new_group(target, target_last_config(target));
+  }
+  else
+  {// NOTE: No current face is set
+   target->face_id = face_id;
+   for (Render_Group *group = target->group_first;
+        group != 0;
+        group = group->next)
+   {
+    group->face_id = face_id;
+   }
+  }
+ }
 }
 
 // TODO: Not sure if I love the abstraction over Render_Target
@@ -118,77 +189,56 @@ draw__set_face_id(Render_Target *target, Face_ID face_id)
 internal void
 draw_configure(App *app, Render_Config *config)
 {
-    Render_Target *target = draw_get_target(app);
-    if (target->y_is_up != config->y_is_up)
-    {
-        target->y_is_up = config->y_is_up;
-        rect2 new_clip_box = target->clip_box;
-        // NOTE: Fun times changing the clip box
-        new_clip_box.y0 = (f32)target->height - target->clip_box.y1;
-        new_clip_box.y1 = (f32)target->height - target->clip_box.y0;
-        target->clip_box = new_clip_box;
-    }
-    
-    if (config->clip_box.min==v2{} &&  config->clip_box.max==v2{})
-    {
-        config->clip_box = target->clip_box;
-    }
-    
-    target->render_config = *config;
-    
-    draw__begin_new_group(target);
-}
-
-internal draw_triangle_return
-draw_triangle(draw_triangle_params)
-{
-    Render_Target *target = draw_get_target(app);
-    Render_Vertex vertices[3] = {};
-    vertices[0].xyz = p0;
-    vertices[1].xyz = p1;
-    vertices[2].xyz = p2;
-    
-    for_u32 (i,0,alen(vertices))
-    {
-        Render_Vertex *vertex = vertices+i;
-        vertex->uvw   = V3(0,0,0);
-        vertex->color = color;
-    }
-    draw__write_vertices_in_current_group(target, vertices, alen(vertices));
-}
-
-force_inline void
-draw_quad(App *app, v3 p0, v3 p1, v3 p2, v3 p3, ARGB_Color color)
-{
-    draw_triangle(app, p0,p1,p2, color);
-    draw_triangle(app, p1,p2,p3, color);
+ Render_Target *target = draw_get_target(app);
+ if (target->group_last)
+ {
+  Render_Group *group = target->group_last;
+  
+  if (config->clip_box.min==v2{} && config->clip_box.max==v2{})
+  {
+   if (group->y_is_up == config->y_is_up)
+   {
+    config->clip_box = group->clip_box;
+   }
+   else
+   {
+    // NOTE: Fun times changing the clip box
+    rect2 new_clip_box = group->clip_box;
+    new_clip_box.y0 = (v1)target->height - group->clip_box.y1;
+    new_clip_box.y1 = (v1)target->height - group->clip_box.y0;
+    config->clip_box = new_clip_box;
+   }
+  }
+ }
+ 
+ draw__new_group(target, config);
 }
 
 internal void
-draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 thickness, u32 color, v1 depth=0)
+draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 thickness, u32 color,
+                            v1 depth=0, Vertex_Type type=Vertex_Poly, v1 depth_offset=0.f)
 {
-    kv_clamp_bot(roundness, epsilon_f32);
-    kv_clamp_bot(thickness, 1.f);
-    
-    Render_Vertex vertices[6] = {};
-    vertices[0].xyz = V3(rect.x0, rect.y0, depth);
-    vertices[1].xyz = V3(rect.x1, rect.y0, depth);
-    vertices[2].xyz = V3(rect.x0, rect.y1, depth);
-    vertices[3]    = vertices[1];
-    vertices[4]    = vertices[2];
-    vertices[5].xyz = V3(rect.x1, rect.y1, depth);
-    
-    v2 center         = rect_center(rect);
-    v1 half_thickness = thickness*0.5f;
-    for_u32 (i,0,alen(vertices))
-    {
-        Render_Vertex *vertex = vertices+i;
-        vertex->center         = center;
-        vertex->roundness      = roundness;
-        vertex->color          = color;
-        vertex->half_thickness = half_thickness;
-    }
-    draw__write_vertices_in_current_group(target, vertices, alen(vertices));
+ Render_Vertex vertices[6] = {};
+ vertices[0].pos = vec3(rect.x0, rect.y0, depth);
+ vertices[1].pos = vec3(rect.x1, rect.y0, depth);
+ vertices[2].pos = vec3(rect.x0, rect.y1, depth);
+ vertices[3]     = vertices[1];
+ vertices[4]     = vertices[2];
+ vertices[5].pos = vec3(rect.x1, rect.y1, depth);
+ 
+ v2 center         = rect_center(rect);
+ v1 half_thickness = thickness*0.5f;
+ 
+ for_u32 ( index, 0, alen(vertices) )
+ {
+  Render_Vertex *vertex = vertices+index;
+  vertex->center         = center;
+  vertex->roundness      = roundness;
+  vertex->color          = color;
+  vertex->half_thickness = half_thickness;
+  vertex->depth_offset   = depth_offset;
+ }
+ draw__push_vertices(target, vertices, alen(vertices), type);
 }
 
 api(custom) internal draw_rect_outline_return
@@ -207,14 +257,14 @@ draw_rect_outline2(App *app, rect2 rect, v1 thickness, ARGB_Color color)
 force_inline void
 draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
 {
-    rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
-    draw_rect_outline(app, square, radius, thickness, color, 0);
+    rect2 square = rect2_center_radius(center.xy, vec2(radius, radius));
+    draw_rect_outline(app, square, radius, thickness, color, center.z);
 }
 
 internal void
 draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, v1 depth=0)
 {
-    v2 dim = rect_dim(rect);
+    v2 dim = rect2_dim(rect);
     v1 thickness = Max(dim.x, dim.y);
     draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
@@ -222,7 +272,7 @@ draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, 
 force_inline void
 draw_rect(App *app, rect2 rect, v1 roundness, ARGB_Color color, v1 depth)
 {
-    v2 dim = rect_dim(rect);
+    v2 dim = rect2_dim(rect);
     v1 thickness = Max(dim.x, dim.y);
     draw_rect_outline(app, rect, roundness, thickness, color, depth);
 }
@@ -234,95 +284,31 @@ draw_rect2(App *app, rect2 rect, ARGB_Color color)
 }
 
 force_inline void
-draw_disk(App *app, v3 center, v1 radius, ARGB_Color color)
+ed_draw_disk(App *app, v3 center, v1 radius, ARGB_Color color)
 {
-    rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
+    rect2 square = rect2_center_radius(center.xy, vec2(radius, radius));
     draw_rect(app, square, radius, color, center.z);
-}
-
-internal void
-draw_line(App *app, v3 p0, v3 p1, v1 thickness, ARGB_Color color)
-{
-    f32 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
-    //Models *models = (Models*)app->cmd_context;
-    //if (models->in_render_mode)
-    {
-        Render_Target *target = draw_get_target(app);
-        b32 steep = false;
-        v1 x0 = p0.x; 
-        v1 y0 = p0.y;
-        v1 z0 = p0.z;
-        v1 x1 = p1.x; 
-        v1 y1 = p1.y;
-        v1 z1 = p1.z;
-        
-        if (absolute(x0-x1) < 
-            absolute(y0-y1))
-        {// if the line is steep, we transpose the image 
-            macro_swap(x0, y0);
-            macro_swap(x1, y1);
-            steep = true;
-        }
-        
-        if (x0 > x1)
-        {// make it "left to right"
-            macro_swap(x0, x1); 
-            macro_swap(y0, y1); 
-            macro_swap(z0, z1);
-        }
-        
-        if ((x1-x0) > 0.0001f)
-        {
-            v1 dy = (y1-y0) / (x1-x0);
-            v1 dz = (z1-z0) / (x1-x0);
-             
-            // NOTE: Clipping
-            f32 x_start = x0;
-            f32 x_end   = x1;
-            {
-                f32 x_bot = (target->clip_box.x0 - target->offset.x);
-                f32 x_top = (target->clip_box.x1 - target->offset.x);
-                if (steep)
-                {
-                    x_bot = (target->clip_box.y0 - target->offset.y);
-                    x_top = (target->clip_box.y1 - target->offset.y);
-                }
-                kv_clamp_bot(x_start, x_bot);
-                kv_clamp_top(x_end,   x_top);
-            }
-            
-            i32 nsamples = 16;
-            f32 interval = (x_end - x_start) / (f32)nsamples;
-            for (i32 index = 0; 
-                 index <= nsamples; 
-                 index++)
-            {
-                v1 x = x_start + (v1)index * interval;
-                v1 y = y0 + dy*(x-x0);
-                v1 z = z0 + dz*(x-x0);
-                v2 center = (steep ? 
-                             v2{y,x} :
-                             v2{x,y});
-                rect2 square = rect2_center_radius(center, V2All(half_thickness));
-                draw_rect_to_target(target, square, half_thickness, color, z);
-            }
-        }
-    }
 }
 
 force_inline void
 draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
 {
-    draw_circle(app, V3(center,0), radius, color, thickness);
+    draw_circle(app, vec3(center,0), radius, color, thickness);
 }
 
 force_inline rect2
 draw_get_clip(App *app)
 {
-    Render_Target *target = draw_get_target(app);
-    return target->clip_box;
+ Render_Target *target = draw_get_target(app);
+ if (target->group_last)
+ {
+  return target->group_last->clip_box;
+ }
+ else
+ {
+  return {};
+ }
 }
-
 
 ////////////////////////////////
 #if !AD_IS_COMPILING_GAME
@@ -334,38 +320,44 @@ draw_get_target(draw_get_target_params)
     return models->target;
 }
 
-internal Rect_f32
-draw_set_clip(Render_Target *target, Rect_f32 clip_box)
+internal rect2
+draw_set_clip(Render_Target *target, rect2 clip_box)
 {
-    Rect_f32 result = target->clip_box;
-    if (target->clip_box != clip_box)
-    {
-        target->clip_box = clip_box;
-        draw__begin_new_group(target);
-    }
-    return(result);
+ rect2 prev_clip;
+ Render_Group *group = target->group_last;
+ if (group)
+ {
+  if (group->clip_box != clip_box)
+  {
+   Render_Config config = group->config;
+   prev_clip = config.clip_box;
+   config.clip_box = clip_box;
+   draw__maybe_new_group(target, &config);
+  }
+ }
+ else
+ {
+  Render_Config config = {};
+  draw__maybe_new_group(target, &config);
+  prev_clip = {};
+ }
+ return(prev_clip);
 }
 
 internal void
 begin_frame(Render_Target *target, void *font_set)
 {
-    linalloc_clear(&target->arena);
-    target->group_first = 0;
-    target->group_last = 0;
-    target->face_id = 0;
-    target->clip_box = Rf32(0, 0, (f32)target->width, (f32)target->height);
-    target->font_set = font_set;
-}
-
-internal void
-begin_render_section(Render_Target *target, i32 frame_index, f32 literal_dt, f32 animation_dt){
-    target->frame_index = frame_index;
-    target->literal_dt = literal_dt;
-    target->animation_dt = animation_dt;
-}
-
-internal void
-end_render_section(Render_Target *target){
+ arena_free_all(&target->arena);
+ target->group_first = 0;
+ target->group_last  = 0;
+ target->face_id     = 0;
+ target->font_set = font_set;
+ 
+ Render_Config config = 
+ {
+  .clip_box = rect2{0, 0, (v1)target->width, (v1)target->height}
+ };
+ draw__new_group(target, &config);
 }
 
 ////////////////////////////////
@@ -384,17 +376,17 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
     }
     // NOTE(kv): I guess this is a mega-texture situation?
     Glyph_Bounds bounds = face->bounds[glyph_index];
-    alert_if_false(bounds.w == 0);
+    kv_assert(bounds.w == 0);
     
     Render_Vertex vertices[6] = {};
     
     Rect_f32 uv = bounds.uv;
-    vertices[0].uvw = V3(uv.x0, uv.y0, bounds.w);
-    vertices[1].uvw = V3(uv.x1, uv.y0, bounds.w);
-    vertices[2].uvw = V3(uv.x0, uv.y1, bounds.w);
-    vertices[5].uvw = V3(uv.x1, uv.y1, bounds.w);
+    vertices[0].uvw = vec3(uv.x0, uv.y0, bounds.w);
+    vertices[1].uvw = vec3(uv.x1, uv.y0, bounds.w);
+    vertices[2].uvw = vec3(uv.x0, uv.y1, bounds.w);
+    vertices[5].uvw = vec3(uv.x1, uv.y1, bounds.w);
     
-    Vec2_f32 y_axis = V2(-x_axis.y, x_axis.x);
+    Vec2_f32 y_axis = vec2(-x_axis.y, x_axis.x);
     Vec2_f32 x_min = bounds.xy_off.x0*x_axis;
     Vec2_f32 x_max = bounds.xy_off.x1*x_axis;
     Vec2_f32 y_min = bounds.xy_off.y0*y_axis;
@@ -414,43 +406,7 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
         vertices[i].half_thickness = 0.f;
     }
     
-    draw__write_vertices_in_current_group(target, vertices, alen(vertices));
-}
-
-internal void
-draw_textured_rect_to_target(Render_Target *target, rect2 rect, ARGB_Color color)
-{
-    // NOTE(kv): We still don't know what a group is, so for now let's juts monkey around with the FaceID for now
-    Face_ID old_face_id = target->face_id;
-    draw__set_face_id(target, FACE_ID_GAME);
-    
-    Render_Vertex vertices[6] = {};
-    
-    vertices[0].uvw = V3(0, 0, 0);
-    vertices[1].uvw = V3(1, 0, 0);
-    vertices[2].uvw = V3(0, 1, 0);
-    vertices[5].uvw = V3(1, 1, 0);
-   
-    auto &min = rect.min;
-    auto &max = rect.max;
-    vertices[0].xy = min;
-    vertices[1].xy = v2{max.x, min.y};
-    vertices[2].xy = v2{min.x, max.y};
-    vertices[5].xy = max;
-    
-    for_u32(i, 0, alen(vertices))
-    {
-        vertices[i].color = color;
-        vertices[i].half_thickness = 0.f;
-    }
-    
-    vertices[3]    = vertices[1];
-    vertices[4]    = vertices[2];
-    
-    draw__write_vertices_in_current_group(target, vertices, alen(vertices));
-    
-    // NOTE(kv): Revert back to the "normal" rendering (maybe wonky, but seems like it works).
-    draw__set_face_id(target, old_face_id);
+    draw__push_vertices(target, vertices, alen(vertices));
 }
 
 ////////////////////////////////
@@ -540,7 +496,7 @@ draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
 
 internal f32
 draw_string(Render_Target *target, Face *face, String_Const_u8 string, Vec2_f32 point, u32 color){
-    return(draw_string_inner(target, face, string, point, color, 0, V2(1.f, 0.f)));
+    return(draw_string_inner(target, face, string, point, color, 0, vec2(1.f, 0.f)));
 }
 
 internal f32
@@ -550,17 +506,17 @@ draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 colo
 
 internal f32
 draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color){
-    return(draw_string_inner(target, face, SCu8(str), point, color, 0, V2(1.f, 0.f)));
+    return(draw_string_inner(target, face, SCu8(str), point, color, 0, vec2(1.f, 0.f)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, String str){
-    return(draw_string_inner(target, face, str, V2(0, 0), 0, 0, V2(0, 0)));
+    return(draw_string_inner(target, face, str, vec2(0, 0), 0, 0, vec2(0, 0)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, u8 *str){
-    return(draw_string_inner(target, face, SCu8(str), V2(0, 0), 0, 0, V2(0, 0)));
+    return(draw_string_inner(target, face, SCu8(str), vec2(0, 0), 0, 0, vec2(0, 0)));
 }
 
 #endif // AD_IS_COMPILING_GAME

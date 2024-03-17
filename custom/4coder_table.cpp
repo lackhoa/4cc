@@ -24,7 +24,7 @@ internal Table_u64_u64
 make_table_u64_u64__inner(Base_Allocator *allocator, u32 slot_count, String_Const_u8 location){
     Table_u64_u64 table = {};
     table.allocator = allocator;
-    slot_count = clamp_bot(8, slot_count);
+    slot_count = clamp_min(8, slot_count);
     String_Const_u8 mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
@@ -36,7 +36,7 @@ make_table_u64_u64__inner(Base_Allocator *allocator, u32 slot_count, String_Cons
     return(table);
 }
 
-#define make_table_u64_u64(a,s) make_table_u64_u64__inner((a),(s),filename_line_number_lit_u8)
+#define make_table_u64_u64(a,s) make_table_u64_u64__inner((a),(s),filename_linum)
 
 internal void
 table_free(Table_u64_u64 *table){
@@ -194,7 +194,7 @@ internal Table_u32_u16
 make_table_u32_u16__inner(Base_Allocator *allocator, u32 slot_count, String_Const_u8 location){
     Table_u32_u16 table = {};
     table.allocator = allocator;
-    slot_count = clamp_bot(8, slot_count);
+    slot_count = clamp_min(8, slot_count);
     String_Const_u8 mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
@@ -206,7 +206,7 @@ make_table_u32_u16__inner(Base_Allocator *allocator, u32 slot_count, String_Cons
     return(table);
 }
 
-#define make_table_u32_u16(a,s) make_table_u32_u16__inner((a),(s),filename_line_number_lit_u8)
+#define make_table_u32_u16(a,s) make_table_u32_u16__inner((a),(s),filename_linum)
 
 internal void
 table_free(Table_u32_u16 *table){
@@ -358,7 +358,7 @@ make_table_Data_u64__inner(Base_Allocator *allocator, u32 slot_count, String8 lo
 {
     Table_Data_u64 table = {};
     table.allocator = allocator;
-    slot_count = clamp_bot(8, slot_count);
+    slot_count = clamp_min(8, slot_count);
     String_Const_u8 mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.hashes) + sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
@@ -371,7 +371,7 @@ make_table_Data_u64__inner(Base_Allocator *allocator, u32 slot_count, String8 lo
     return(table);
 }
 
-#define make_table_Data_u64(a,s) make_table_Data_u64__inner((a),(s),filename_line_number_lit_u8)
+#define make_table_Data_u64(a,s) make_table_Data_u64__inner((a),(s),filename_linum)
 
 internal void
 table_free(Table_Data_u64 *table){
@@ -537,7 +537,7 @@ internal Table_u64_Data
 make_table_u64_Data__inner(Base_Allocator *allocator, u32 slot_count, String_Const_u8 location){
     Table_u64_Data table = {};
     table.allocator = allocator;
-    slot_count = clamp_bot(8, slot_count);
+    slot_count = clamp_min(8, slot_count);
     String_Const_u8 mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
@@ -549,7 +549,7 @@ make_table_u64_Data__inner(Base_Allocator *allocator, u32 slot_count, String_Con
     return(table);
 }
 
-#define make_table_u64_Data(a,s) make_table_u64_Data__inner((a),(s),filename_line_number_lit_u8)
+#define make_table_u64_Data(a,s) make_table_u64_Data__inner((a),(s),filename_linum)
 
 internal void
 table_free(Table_u64_Data *table){
@@ -706,7 +706,7 @@ internal Table_Data_Data
 make_table_Data_Data__inner(Base_Allocator *allocator, u32 slot_count, String_Const_u8 location){
     Table_Data_Data table = {};
     table.allocator = allocator;
-    slot_count = clamp_bot(8, slot_count);
+    slot_count = clamp_min(8, slot_count);
     String_Const_u8 mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.hashes) + sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
@@ -719,7 +719,7 @@ make_table_Data_Data__inner(Base_Allocator *allocator, u32 slot_count, String_Co
     return(table);
 }
 
-#define make_table_Data_Data(a,s) make_table_Data_Data__inner((a),(s),filename_line_number_lit_u8)
+#define make_table_Data_Data(a,s) make_table_Data_Data__inner((a),(s),filename_linum)
 
 internal void
 table_free(Table_Data_Data *table){

@@ -122,10 +122,10 @@ date_time_format(Arena *arena, List_String_Const_u8 *list, String_Const_u8 forma
     u8 *ptr = format.str;
     u8 *end = format.str + format.size;
     for (;ptr < end;){
-        if (character_is_alpha_numeric(*ptr)){
+        if (character_is_alnum(*ptr)){
             u8 *start = ptr;
             for (;ptr < end; ptr += 1){
-                if (!character_is_alpha_numeric(*ptr)){
+                if (!character_is_alnum(*ptr)){
                     break;
                 }
             }
@@ -222,7 +222,7 @@ date_time_format(Arena *arena, List_String_Const_u8 *list, String_Const_u8 forma
         else{
             u8 *start = ptr;
             for (;ptr < end; ptr += 1){
-                if (character_is_alpha_numeric(*ptr)){
+                if (character_is_alnum(*ptr)){
                     break;
                 }
             }

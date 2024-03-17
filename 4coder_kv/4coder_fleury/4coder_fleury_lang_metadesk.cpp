@@ -101,7 +101,7 @@ internal F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
         {
             Token token = { i, 1, TokenBaseKind_Identifier, 0 };
             for(i64 j = i+1; j < (i64)state->string.size && 
-                (character_is_alpha_numeric(state->string.str[j]) ||
+                (character_is_alnum(state->string.str[j]) ||
                  state->string.str[j] == '_');
                 j += 1, token.size += 1);
             token_list_push(arena, list, &token);
@@ -124,7 +124,7 @@ internal F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
         {
             Token token = { i, 1, TokenBaseKind_LiteralFloat, 0 };
             for(i64 j = i+1; j < (i64)state->string.size && 
-                (character_is_alpha_numeric(state->string.str[j]) ||
+                (character_is_alnum(state->string.str[j]) ||
                  state->string.str[j] == '_' ||
                  state->string.str[j] == '.');
                 j += 1, token.size += 1);
@@ -213,7 +213,7 @@ internal F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
             Token token = { i, 1, TokenBaseKind_Identifier, 0 };
             token.sub_kind = F4_MD_TokenSubKind_Tag;
             for(i64 j = i+1; j < (i64)state->string.size && 
-                (character_is_alpha_numeric(state->string.str[j]) ||
+                (character_is_alnum(state->string.str[j]) ||
                  state->string.str[j] == '_');
                 j += 1, token.size += 1);
             token_list_push(arena, list, &token);

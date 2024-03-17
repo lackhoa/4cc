@@ -187,12 +187,12 @@ vars_u64_from_var(App *app, Variable_Handle var)
         String8 string_hex = string_skip(string, 2);
         if ( string_is_integer(string_hex, 0x10) )
         {
-            result = string_to_integer(string_hex, 0x10);
+            result = string_to_u64(string_hex, 0x10);
         }
     }
     else if (string_is_integer(string, 10))
     {
-        result = string_to_integer(string, 10);
+        result = string_to_u64(string, 10);
     }
     
     return(result);
@@ -368,7 +368,7 @@ vars_print_indented(App *app, Variable_Handle var, i32 indent)
     String8 var_val = vars_string_from_var(scratch, var);
     
     String8 line = push_stringf(scratch, "%.*s%.*s: \"%.*s\"\n",
-                                clamp_top(indent, (i32)sizeof(spaces)), spaces,
+                                clamp_max(indent, (i32)sizeof(spaces)), spaces,
                                 string_expand(var_key),
                                 string_expand(var_val));
     print_message(app, line);

@@ -122,42 +122,42 @@ vim_copy(Application_Links *app, Buffer_ID buffer, Range_i64 range, Vim_Register
 function void
 vim_paste_from_register(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 {
-    if(reg->edit_type == EDIT_Block)
+ if(reg->edit_type == EDIT_Block)
+ {
+  vim_block_paste(app, view, buffer, reg);
+ }
+ else
+ {
+  i64 pos = view_get_cursor_pos(app, view);
+  {
+   clipboard_update_history_from_system(app, 0);
+   
+   i32 count = clipboard_count(0);
+   if (count > 0)
+   {
+    Managed_Scope scope = view_get_managed_scope(app, view);
+    i32 *paste_index = scope_attachment(app, scope, view_paste_index_loc, i32);
+    if(paste_index)
     {
-        vim_block_paste(app, view, buffer, reg);
-        return;
+     Scratch_Block scratch(app);
+     vim_register_copy(reg, push_clipboard_index(app, scratch, 0, *paste_index=0));
+     vim_update_registers(app);
     }
-    
-    i64 pos = view_get_cursor_pos(app, view);
-    {
-        clipboard_update_history_from_system(app, 0);
-        
-        i32 count = clipboard_count(0);
-        if (count > 0)
-        {
-            Managed_Scope scope = view_get_managed_scope(app, view);
-            i32 *paste_index = scope_attachment(app, scope, view_paste_index_loc, i32);
-            if(paste_index)
-            {
-                Scratch_Block scratch(app);
-                vim_register_copy(reg, push_clipboard_index(app, scratch, 0, *paste_index=0));
-                vim_update_registers(app);
-            }
-        }
-    }
-    buffer_replace_range(app, buffer, Ii64(pos), reg->data.string);
-    if (0)  // @Experiment(kv)
-    {
-        view_set_mark(app, view, seek_pos(pos));
-        i64 cursor_pos = pos + ((i32)reg->data.string.size - (vim_state.mode != VIM_Insert));
-        view_set_cursor_and_preferred_x(app, view, seek_pos(cursor_pos));
-    }
-    
-    ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
-    buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, reg->data.string.size), argb);
-    
-    vim_state.prev_params.selected_reg = vim_state.params.selected_reg;
-    vim_default_register();
+   }
+  }
+  String reg_string = reg->data.string;
+  buffer_replace_range(app, buffer, Ii64(pos), reg_string);
+  vim_register_copy(&vim_registers.insert, reg_string);
+  vim_state.dot_do_insert = true;
+  
+  auto_indent_buffer(app, buffer, Ii64(pos, pos+reg_string.size));
+  
+  ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
+  buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, reg_string.size), argb);
+  
+  vim_state.prev_params.selected_reg = vim_state.params.selected_reg;
+  vim_default_register();
+ }
 }
 
 /* @Nouse
@@ -227,7 +227,7 @@ vim_process_insert_record(Record_Info record, i64 *prev_pos)
     {
         vim_realloc_string(insert_register, next_size);
     }
-    string_append(insert_register, record.single_string_forward);
+    string_concat(insert_register, record.single_string_forward);
 }
 
 #pragma clang diagnostic pop

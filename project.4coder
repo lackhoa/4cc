@@ -2,15 +2,16 @@ version(2);
 project_name = "AutoDraw";
 
 patterns = {
-    "*.c",
-    "*.cpp",
-    "*.h",
-    "*.m",
-    "*.mm",
-    "*.bat",
-    "*.sh",
-    "*.4coder",
-    "*.txt",
+ "*.c",
+ "*.cpp",
+ "*.h",
+ "*.m",
+ "*.mm",
+ "*.bat",
+ "*.sh",
+ "*.4coder",
+ "*.txt",
+ "*.glsl",
 };
 blacklist_patterns = {
     ".*",

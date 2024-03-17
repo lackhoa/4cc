@@ -73,10 +73,10 @@ up this command and we get a chance to modify the bar again. */
    break;
   }
   
-  if (match_key_code(&in.event, KeyCode_Up)){
+  if (match_key_code(&in.event, Key_Code_Up)){
    counter += 1;
   }
-  else if (match_key_code(&in.event, KeyCode_Down)){
+  else if (match_key_code(&in.event, Key_Code_Down)){
    counter -= 1;
   }
   else{
@@ -98,12 +98,12 @@ isn't happening, so command bindings don't trigger unless you trigger them yours
  
  Query_Bar_Group group(app);
  Query_Bar bar = {};
- bar.prompt = SCu8("KeyCode = ");
+ bar.prompt = SCu8("Key_Code = ");
  if (!start_query_bar(app, &bar, 0)){
   return;
  }
  
- Key_Code code = 0;
+ Key_Code code = (Key_Code)0;
  b32 is_dead_key = false;
  
  for (;;){
@@ -112,7 +112,7 @@ isn't happening, so command bindings don't trigger unless you trigger them yours
    bar.string = SCu8("...");
   }
   else{
-   bar.string = push_stringf(scratch, "KeyCode_%s (%d)%s", key_code_name[code], code,
+   bar.string = push_stringf(scratch, "Key_Code_%s (%d)%s", key_code_name[code], code,
                              is_dead_key?" dead-key":"");
   }
   User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
@@ -161,7 +161,7 @@ isn't happening, so command bindings don't trigger unless you trigger them yours
   
   String_Const_u8 in_string = to_writable(&in);
   if (in_string.size > 0){
-   size = clamp_top(in_string.size, sizeof(buffer));
+   size = clamp_max(in_string.size, sizeof(buffer));
    block_copy(buffer, in_string.str, size);
    bar.string = SCu8(buffer, size);
   }

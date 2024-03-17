@@ -1,32 +1,39 @@
-#pragma once
+// NOTE(kv): This is more of a primitive UI that I can always use.
+// There's no reason to leave it out of stable (we're not shipping user facing code).
 
-#if KV_INTERNAL
+#pragma once
 
 #include "4coder_fancy.cpp"
 
-struct Debug_Entry
-{
-  char *name;
-  v4    value;
-};
-
-global b32 DEBUG_draw_hud_p;  // NOTE(kv): don't set this here, it is set via config
 global Debug_Entry *DEBUG_entries;
+global b32 DEBUG_draw_hud_p = true;
+
+internal DEBUG_send_entry_return
+DEBUG_send_entry(DEBUG_send_entry_params)
+{
+ arrput(DEBUG_entries, entry);
+}
 
 internal void
 DEBUG_draw_entry(App *app, Face_ID face_id, Debug_Entry entry, v2 *at)
 {
-    Scratch_Block scratch(app);
-    
-    Face_Metrics face_metrics = get_face_metrics(app, face_id);
-    f32 line_height = face_metrics.line_height;
-    
-    Fancy_Line line = {};
-    push_fancy_stringf(scratch, &line, f_pink, "%s: ", entry.name);
-    push_fancy_stringf(scratch, &line, f_white, "[%.2f, %.2f, %.2f, %.2f]", v4_expand(entry.value));
-    
-    draw_fancy_line(app, face_id, fcolor_zero(), &line, *at);
-    at->y += line_height;
+ Scratch_Block scratch(app);
+ 
+ Face_Metrics face_metrics = get_face_metrics(app, face_id);
+ v1 line_height = face_metrics.line_height;
+ 
+ FColor color = f_yellow;
+ if (entry.color != 0) { color.argb = entry.color; }
+ 
+ Fancy_Line line = {};
+ char *scope = entry.scope;
+ char *scope_delim = "/";
+ if (scope == 0) { scope = ""; scope_delim = ""; }
+ push_fancy_stringf(scratch, &line, color, "%s%s%s: ", scope, scope_delim, entry.name);
+ push_fancy_stringf(scratch, &line, f_white, "[%g, %g, %g, %g]", v4_expand(entry.value));
+ 
+ draw_fancy_line(app, face_id, fcolor_zero(), &line, *at);
+ at->y += line_height;
 }
 
 internal void
@@ -43,57 +50,10 @@ DEBUG_draw_hud(App *app, Face_ID face_id, Rect_f32 rect)
     }
 }
 
-internal void
-DEBUG_VALUE_inner(char *name, rect2 value)
-{
-  Debug_Entry entry = {.name=name, .value=value.v4_value};
-  arrput(DEBUG_entries, entry);
-}
-
-internal void
-DEBUG_VALUE_inner(char *name, i32 value)
-{
-    Debug_Entry entry = {.name=name, .value=v4{.x=(f32)value}};
-    arrput(DEBUG_entries, entry);
-}
-
-internal void
-DEBUG_VALUE_inner(char *name, v1 value)
-{
-    Debug_Entry entry = {.name=name, .value=v4{.x=value}};
-    arrput(DEBUG_entries, entry);
-}
-
-internal void
-DEBUG_VALUE_inner(char *name, v2 value)
-{
-    Debug_Entry entry = {.name=name, .value=v4{.x=value.x, .y=value.y}};
-    arrput(DEBUG_entries, entry);
-}
-
-internal void
-DEBUG_VALUE_inner(char *name, v3 v)
-{
-    v4 value = castV4(v);
-    Debug_Entry entry = {.name=name, .value=value};
-    arrput(DEBUG_entries, entry);
-}
-
-#    define DEBUG_NAME(NAME, VALUE)  DEBUG_VALUE_inner(NAME, VALUE)
-#    define DEBUG_VALUE(VALUE)       DEBUG_VALUE_inner(#VALUE, VALUE)
-#    define DEBUG_CLEAR              arrsetlen(DEBUG_entries, 0)
-#else
-#    define DEBUG_NAME(...)
-#    define DEBUG_VALUE(...)
-#    define DEBUG_CLEAR
-#endif
-
 // NOTE(kv): It's annoying to have different command sets for different builds,
 //           so let's have the same commands for both.
 CUSTOM_COMMAND_SIG(DEBUG_draw_hud_toggle)
 CUSTOM_DOC("toggle debug hud")
 {
-#if KV_INTERNAL
     DEBUG_draw_hud_p ^= 1;
-#endif
 }

@@ -106,13 +106,13 @@ VIM_COMMAND_SIG(kv_newline_above)
   vim_normal_mode(app);
 }
 
-VIM_COMMAND_SIG(kv_newline_below)
+internal void kv_newline_below(App *app)
 {
-  GET_VIEW_AND_BUFFER;
-  HISTORY_GROUP_SCOPE;
-  vim_newline_below(app);
-  vim_up(app);
-  vim_normal_mode(app);
+    GET_VIEW_AND_BUFFER;
+    HISTORY_GROUP_SCOPE;
+    vim_newline_below(app);
+    vim_up(app);
+    vim_normal_mode(app);
 }
 
 CUSTOM_COMMAND_SIG(byp_reset_face_size)
@@ -178,62 +178,61 @@ kv_vim_bounce(App *app)
   view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-function b32
+internal b32
 kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos, Range_i64 *out)
 {
-  Token *token = kv_token_at_cursor(app);
-  if (token == 0) return false;
-
+ Token_Array tokens = get_token_array_from_buffer(app, buffer);
+ if (Token *token = token_from_pos(&tokens, pos))
+ {
   if (token->kind == TokenBaseKind_LiteralString)
   {
-    *out = token_range(token);
-    return true;
+   Range_i64 range = token_range(token);
+   *out = range;
+   return true;
   }
   else
   {
-    u8 current_char = buffer_get_char(app, buffer, pos);
-    if ( kv_is_group_opener(current_char) )
-      pos++;
-    
-    Find_Nest_Flag flags = FindNest_Scope | FindNest_Paren | FindNest_Balanced;
-    Range_i64 range = {};
-    if (find_nest_side(app, buffer, pos-1, flags,
-                       Scan_Backward, NestDelim_Open, &range.start) &&
-        find_nest_side(app, buffer, pos, flags|FindNest_EndOfToken,
-                       Scan_Forward, NestDelim_Close, &range.end))
-    {
-      *out = range;
-      return true;
-    }
-    else
-    {
-      return false;
-    }
+   u8 current_char = buffer_get_char(app, buffer, pos);
+   if ( kv_is_group_opener(current_char) ) { pos++; }
+   
+   Find_Nest_Flag flags = FindNest_Scope | FindNest_Paren | FindNest_Balanced;
+   Range_i64 range = {};
+   if (find_nest_side(app, buffer, pos-1, flags,
+                      Scan_Backward, NestDelim_Open, &range.start) &&
+       find_nest_side(app, buffer, pos, flags|FindNest_EndOfToken,
+                      Scan_Forward, NestDelim_Close, &range.end))
+   {
+    *out = range;
+    return true;
+   }
+   else { return false; }
   }
+ }
+ else { return false; }
 }
 
-VIM_COMMAND_SIG(kv_sexpr_up)
+internal void kv_sexpr_up(App *app)
 {
-  GET_VIEW_AND_BUFFER;
-  vim_push_jump(app, view);
-  Vim_Motion_Block vim_motion_block(app);
-
-  i64 pos = view_correct_cursor(app, view);
-  if ( kv_is_group_opener(buffer_get_char(app, buffer, pos)) ) 
-  {
-    pos--;
-  }
-
-  Range_i64 range = {pos, pos};
-  kv_find_current_nest(app, buffer, pos, &range);
-  kv_goto_pos(app, view, range.start);
+    GET_VIEW_AND_BUFFER;
+    vim_push_jump(app, view);
+    Vim_Motion_Block vim_motion_block(app);
+    
+    i64 pos = view_correct_cursor(app, view);
+    if ( kv_is_group_opener(buffer_get_char(app, buffer, pos)) ) 
+    {
+        pos--;
+    }
+    
+    Range_i64 range = {pos, pos};
+    kv_find_current_nest(app, buffer, pos, &range);
+    kv_goto_pos(app, view, range.start);
 }
 
 VIM_COMMAND_SIG(kv_sexpr_down)
 {
   View_ID   view = get_active_view(app, Access_ReadVisible);
   vim_push_jump(app, view);
-  Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
+  Token_Iterator_Array token_it = token_it_at_cursor(app);
   if ( !token_it.tokens ) return;
   
   do
@@ -250,37 +249,49 @@ VIM_COMMAND_SIG(kv_sexpr_down)
 }
 
 internal b32
-if_macro_movement(App *app, Scan_Direction scan_direction)
+if_preprocessor_movement(App *app, Scan_Direction scan_direction)
 {
     b32 result = false;
     GET_VIEW_AND_BUFFER;
-    Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
+    Token_Iterator_Array token_it = token_it_at_cursor(app);
     if (token_it.tokens)
     {
         Quick_Parser p_value = qp_new(app, buffer, &token_it, scan_direction);
         Quick_Parser *p = &p_value;
-        u32 nest_level = 0;
-        if ( qp_maybe_string(p, str8lit("#else")) == 0 )
+        i32 nest_level = 0;
+        if (!qp_maybe_preprocessor(p, str8lit("else")) &&
+            !qp_maybe_preprocessor(p, str8lit("elif")))
         {
             if (scan_direction == Scan_Forward)
-                qp_eat_string(p, str8lit("#if"));
+                qp_eat_preprocessor(p, str8lit("if"));
             else
-                qp_eat_string(p, str8lit("#endif"));
+                qp_eat_preprocessor(p, str8lit("endif"));
         }
         while ( p->ok )
         {
-            b32 is_if    = qp_test_string(p, str8lit("#if"));
-            b32 is_endif = qp_test_string(p, str8lit("#endif"));
-            b32 is_else  = qp_test_string(p, str8lit("#else"));
+            b32 is_ifs = (qp_test_preprocessor(p, str8lit("if")) ||
+                          qp_test_preprocessor(p, str8lit("ifdef")) ||
+                          qp_test_preprocessor(p, str8lit("ifdef")));
             
-            if (is_if)    nest_level += scan_direction;
-            if (is_endif) nest_level -= scan_direction;
+            b32 is_endif = qp_test_preprocessor(p, str8lit("endif"));
             
-            if (is_else && nest_level == 0)
+            b32 is_el  = (qp_test_preprocessor(p, str8lit("else")) ||
+                          qp_test_preprocessor(p, str8lit("elif")));
+            
+            if (is_ifs)
+            {
+                nest_level += scan_direction;
+            }
+            if (is_endif)
+            {
+                nest_level -= scan_direction;
+            }
+            
+            if (is_el && nest_level == 0)
             {
                 break;
             }
-            if ((is_if || is_endif) &&  (nest_level == u32(-1)))
+            if ((is_ifs || is_endif) &&  (nest_level == -1))
             {
                 break;
             }
@@ -299,11 +310,12 @@ if_macro_movement(App *app, Scan_Direction scan_direction)
 internal void 
 kv_sexpr_right(App *app)
 {
-    View_ID   view = get_active_view(app, Access_ReadVisible);
-    Token_Iterator_Array token_it = kv_token_it_at_cursor(app);
+    Token_Iterator_Array token_it = token_it_at_cursor(app);
     if ( token_it.tokens )
     {
-        if ( !if_macro_movement(app, Scan_Forward) )
+        View_ID view = get_active_view(app, Access_ReadVisible);
+        vim_push_jump(app, view);
+        if ( !if_preprocessor_movement(app, Scan_Forward) )
         {
             do
             {
@@ -335,32 +347,36 @@ kv_sexpr_right(App *app)
 internal void
 kv_sexpr_left(App *app)
 {
-    if ( if_macro_movement(app, Scan_Backward) == 0 )
+    if ( if_preprocessor_movement(app, Scan_Backward) == 0 )
     {
-        Token_Iterator_Array token_it = kv_token_it_at_cursor(app, -1);
+        Token_Iterator_Array token_it = token_it_at_cursor_delta(app, -1);
         Token *token = token_it_read(&token_it);
-        if (!token) return;
-        do
+        if (token)
         {
-            token = token_it_read(&token_it);
-            if (token->kind == TokenBaseKind_LiteralString)
+            View_ID view = get_active_view(app, Access_ReadVisible);
+            vim_push_jump(app, view);
+            do
             {
-                kv_goto_token(app, token);
-                break;
-            }
-            else if (kv_is_group_opener(token))
-            {
-                kv_goto_token(app, token);
-                move_right(app);
-                break;
-            }
-            else if (kv_is_group_closer(token))
-            {
-                kv_goto_token(app, token);
-                kv_vim_bounce(app);
-                break;
-            }
-        } while (token_it_dec(&token_it));
+                token = token_it_read(&token_it);
+                if (token->kind == TokenBaseKind_LiteralString)
+                {
+                    kv_goto_token(app, token);
+                    break;
+                }
+                else if (kv_is_group_opener(token))
+                {
+                    kv_goto_token(app, token);
+                    move_right(app);
+                    break;
+                }
+                else if (kv_is_group_closer(token))
+                {
+                    kv_goto_token(app, token);
+                    kv_vim_bounce(app);
+                    break;
+                }
+            } while (token_it_dec(&token_it));
+        }
     }
 }
 
@@ -428,7 +444,7 @@ CUSTOM_DOC("Like reopen, but asks for confirmation")
         }
         else{
           switch (in.event.key.code){
-            case KeyCode_Y:
+            case Key_Code_Y:
             {
               View_ID view = get_active_view(app, Access_ReadVisible);
               Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -436,11 +452,11 @@ CUSTOM_DOC("Like reopen, but asks for confirmation")
               cancelled = true;
             }break;
                         
-            case KeyCode_Shift:
-            case KeyCode_Control:
-            case KeyCode_Alt:
-            case KeyCode_Command:
-            case KeyCode_CapsLock:
+            case Key_Code_Shift:
+            case Key_Code_Control:
+            case Key_Code_Alt:
+            case Key_Code_Command:
+            case Key_Code_CapsLock:
             {}break;
                         
             default:
@@ -469,6 +485,7 @@ cmd_closing_bracket_in_visual_mode(App *app)
     {
         decide_to_move_the_cursor = true;
     }
+#if 0
     else
     {
         Range_i64 selected = get_selected_range(app);
@@ -479,6 +496,7 @@ cmd_closing_bracket_in_visual_mode(App *app)
             decide_to_move_the_cursor = true;
         }
     }
+#endif
     
     if (decide_to_move_the_cursor)
     {
@@ -521,21 +539,21 @@ character_is_path(char character)
     case '/': case '~': case '.': case '\\':  case '-': case ':':
       return true;
     default:
-      return character_is_alpha_numeric(character);
+      return character_is_alnum(character);
   }
 }
 
 internal void 
 yank_current_filename(App *app)
 {
-    GET_VIEW_AND_BUFFER;
-    Scratch_Block temp(app);
-    String8 filename = push_buffer_filename(app, temp, buffer);
-    if (filename.size)
-    {
-        string_mod_replace_character(filename, '\\', '/');
-        clipboard_post(0, filename);
-    }
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block temp(app);
+ String8 filename = push_buffer_filename(app, temp, buffer);
+ if (filename.size)
+ {
+  string_mod_replace_character(filename, '\\', '/');
+  clipboard_post(0, filename);
+ }
 }
 
 internal void 
@@ -545,92 +563,45 @@ open_file_from_current_dir(App *app)
     Scratch_Block temp(app);
     String8 dirname = push_buffer_dirname(app, temp, buffer);
     set_hot_directory(app, dirname);
-    vim_interactive_open_or_new(app);
+ vim_interactive_open_or_new(app);
 }
 
 internal void 
 kv_handle_g_f(App *app)
 {
-    yank_current_filename(app);
-    open_file_from_current_dir(app);
+ open_file_from_current_dir(app);
 }
 
-internal Range_i64
-get_surrounding_file_range(App *app)
-{
-    GET_VIEW_AND_BUFFER;
-    i64 curpos = view_get_cursor_pos(app, view);
-    
-    i64 buffer_size = buffer_get_size(app, buffer);
-    i64 min = curpos;
-    i64 max = curpos;
-    //
-    for (i64 pos=curpos; pos < buffer_size; pos++)
-    {
-        u8 character = buffer_get_char(app, buffer, pos);
-        if (character_is_path(character))
-            max = pos+1;
-        else
-            break;
-    }
-    for (i64 pos=curpos; pos >= 0; pos--)
-    {
-        u8 character = buffer_get_char(app, buffer, pos);
-        if (character_is_path(character))
-            min = pos;
-        else
-            break;
-    }
-    
-    if (max > min) 
-        return Range_i64{min, max};
-    else
-        return {};
-}
-
-internal void
-switch_to_buffer_named(App *app, String8 name)
-{
-  View_ID   view = get_active_view(app, Access_ReadVisible);
-  Buffer_ID buffer = create_buffer(app, name, 0);
-  view_set_buffer(app, view, buffer, 0);
-}
-
-inline void
-switch_to_buffer_named(App *app, char *name)
-{
-    switch_to_buffer_named(app, SCu8(name));
-}
 
 global const String KV_FILE_FILENAME = str8lit("~/notes/file.skm");
 
 internal b32
 F4_GoToDefinition(App *app, F4_Index_Note *note, b32 same_panel)
 {
-    b32 result = false;
-    if(note != 0 && note->file != 0)
-    {
-        View_ID view = get_active_view(app, Access_Always);
-        Rect_f32 region = view_get_buffer_region(app, view);
-        f32 view_height = rect_height(region);
-        Buffer_ID buffer = note->file->buffer;
-        if(!same_panel)
-        {
-            view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
-        }
-        point_stack_push_view_cursor(app, view);
-        view_set_buffer(app, view, buffer, 0);
-        i64 line_number = get_line_number_from_pos(app, buffer, note->range.min);
-        Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-        scroll.position.line_number = line_number;
-        scroll.target.line_number = line_number;
-        scroll.position.pixel_shift.y = scroll.target.pixel_shift.y = -view_height*0.5f;
-        view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
-        view_set_cursor(app, view, seek_pos(note->range.min));
-        view_set_mark(app, view, seek_pos(note->range.min));
-        result = true;
-    }
-    return result;
+ b32 result = false;
+ if(note != 0 && note->file != 0)
+ {
+  View_ID view = get_active_view(app, Access_Always);
+  Rect_f32 region = view_get_buffer_region(app, view);
+  f32 view_height = rect_height(region);
+  Buffer_ID buffer = note->file->buffer;
+  if(!same_panel)
+  {
+   view = get_other_primary_view(app, view, Access_Always, true);
+  }
+  point_stack_push_view_cursor(app, view);
+  view_set_buffer(app, view, buffer, 0);
+  i64 line_number = get_line_number_from_pos(app, buffer, note->range.min);
+  Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+  scroll.position.line_number = line_number;
+  scroll.target.line_number = line_number;
+  scroll.position.pixel_shift.y = scroll.target.pixel_shift.y = -view_height*0.5f;
+  view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+  view_set_cursor(app, view, seek_pos(note->range.min));
+  view_set_mark(app, view, seek_pos(note->range.min));
+  result = true;
+ }
+ return result;
 }
 
 internal F4_Index_Note *
@@ -676,67 +647,101 @@ F4_FindMostIntuitiveNoteInDuplicateChain(F4_Index_Note *note, Buffer_ID cursor_b
                     break;
                 }
             }
-        }
-    }
-    return result;
+  }
+ }
+ return result;
 }
 
 // CUSTOM_DOC("Goes to the definition of the identifier under the cursor.")
 internal b32
 f4_goto_definition(App *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Scratch_Block scratch(app);
-    String string = push_token_or_word_under_active_cursor(app, scratch);
-    F4_Index_Note *note = F4_Index_LookupNote(string);
-    note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
-    b32 jumped = F4_GoToDefinition(app, note, true);
-    return jumped;
+ View_ID view = get_active_view(app, Access_Always);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ Scratch_Block scratch(app);
+ String string = push_token_or_word_under_active_cursor(app, scratch);
+ F4_Index_Note *note = F4_Index_LookupNote(string);
+ note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
+ b32 jumped = F4_GoToDefinition(app, note, true);
+ return jumped;
 }
 
-// todo: support relative path maybe
+internal b32
+character_is_tag(char c)
+{
+ return (c == '@' || character_is_alnum(c));
+}
+
+internal b32
+goto_comment_identifier(App *app)
+{
+ b32 jumped = false;
+ String_Match match = {};
+ {
+  Scratch_Block scratch(app);
+  String tag;
+  {
+   GET_VIEW_AND_BUFFER;
+   Range_i64 range = get_surrounding_characters(app, character_is_tag);
+   tag = push_buffer_range(app, scratch, buffer, range);
+  }
+  if (tag.size >= 2 && starts_with(tag, strlit("@")))
+  {
+   String identifier = string_skip(tag, 1);
+   String_u8 needle = string_u8_push(scratch, identifier.size+1);
+   string_concat_character(&needle, ';');
+   string_concat(&needle, identifier);
+   for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+        buffer != 0;
+        buffer = get_buffer_next(app, buffer, Access_Always))
+   {
+    match = buffer_seek_string(app, buffer, needle.string, Scan_Forward, /*start pos*/0, /*case sensitive*/true);
+    if (match.buffer)  {  break;  }
+   }
+   
+   if (match.buffer)
+   {
+    View_ID view = get_active_view(app, Access_Always);
+    view_set_buffer(app, view, match.buffer, 0);
+    view_set_cursor(app, view, seek_pos(match.range.min));
+    jumped = true;
+   }
+  }
+ }
+ 
+ return jumped;
+}
+
 internal void
 kv_jump_ultimate(App *app)
 {
-    GET_VIEW_AND_BUFFER;
-    Scratch_Block temp(app);
-    
-    vim_push_jump(app, view);
-    
-    b32 already_jumped = false;
-    Range_i64 file_range = get_surrounding_file_range(app);
-    if (file_range.max > 0)
-    {
-        String path = push_buffer_range(app, temp, buffer, file_range);
-        if ( view_open_file(app, view, path, true) )
-        {
-            already_jumped = true;
-        }
-        else
-        { // todo(kv) debug this path
-            File_Attributes attributes = system_quick_file_attributes(temp, path);
-            if(attributes.flags & FileAttribute_IsDirectory)
-            {
-                set_hot_directory(app, path);  // note: influences vim_interactive_open_or_new
-            }
-        }
-    }
-   
-#if 0
-    if (!already_jumped) already_jumped = jump_to_definition_at_cursor(app); 
-#endif
-    
-    if (!already_jumped)
-    {
-        already_jumped = f4_goto_definition(app);
-    }
-    
-    if (!already_jumped)
-    {// NOTE(kv): go to the "file" file
-        // yank_current_filename_(app);  // In case we wanna paste add the current filename in
-        switch_to_buffer_named(app, KV_FILE_FILENAME);
-    }
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block temp(app);
+ 
+ vim_push_jump(app, view);
+ 
+ b32 jumped = false;
+ 
+ {
+  Range_i64 file_range = get_surrounding_characters(app, character_is_path);
+  if (file_range.max > 0)
+  {
+   String path = push_buffer_range(app, temp, buffer, file_range);
+   if ( view_open_file(app, view, path, true) )
+   {
+    jumped = true;
+   }
+  }
+ }
+ 
+ jumped = jumped || f4_goto_definition(app);
+ jumped = jumped || goto_comment_identifier(app);
+ 
+ if (!jumped)
+ {// NOTE(kv): go to the "file" file
+  // yank_current_filename_(app);  // In case we wanna paste add the current filename in
+  view_set_buffer_named(app, KV_FILE_FILENAME);
+ }
 }
 
 internal void
@@ -786,7 +791,7 @@ kv_do_t_internal(App *app, b32 shiftp)
     Scratch_Block temp(app);
     i64 max = 0;
     String_Const_u8 replacement = {};
-    i64 alpha_max = scan_any_boundary(app, boundary_alpha_numeric, buffer, Scan_Forward, pos);
+    i64 alpha_max = scan_any_boundary(app, boundary_alnum, buffer, Scan_Forward, pos);
     if (shiftp)
     {
       max = alpha_max;
@@ -829,7 +834,19 @@ CUSTOM_DOC("run the current script")
 CUSTOM_COMMAND_SIG(kv_open_note_file)
 CUSTOM_DOC("switch to my note file")
 {
-  switch_to_buffer_named(app, "~/notes/note.skm");
+ view_set_buffer_named(app, strlit("~/notes/note.skm"));
+}
+
+CUSTOM_COMMAND_SIG(game)
+CUSTOM_DOC("switch to game panel")
+{
+ view_set_buffer_named(app, GAME_BUFFER_NAMES[0]);
+}
+
+CUSTOM_COMMAND_SIG(file)
+CUSTOM_DOC("kv copy file name")
+{
+ yank_current_filename(app);
 }
 
 CUSTOM_COMMAND_SIG(dir)
@@ -844,97 +861,97 @@ CUSTOM_DOC("kv copy dir name")
 internal void 
 kv_vim_visual_line_mode(App *app)
 {
-    if (vim_state.mode != VIM_Visual)
-    {
-        set_mark(app);
-        vim_state.mode = VIM_Visual;
-    }
-    vim_state.params.edit_type = EDIT_LineWise;
+ if (vim_state.mode != VIM_Visual)
+ {
+  set_mark(app);
+ }
+ vim_state.mode = VIM_Visual;
+ vim_state.params.edit_type = EDIT_LineWise;
 }
 
 function void
-kv_list_all_locations_from_string(App *app, String needle_str)
+kv_list_all_locations_from_string(App *app, String needle)
 {
-    Scratch_Block temp(app);
-    
-    String_Match_List all_matches = {};
-    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-         buffer != 0;
-         buffer = get_buffer_next(app, buffer, Access_Always))
+ Scratch_Block temp(app);
+ 
+ String_Match_List all_matches = {};
+ for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+      buffer != 0;
+      buffer = get_buffer_next(app, buffer, Access_Always))
+ {
+  String_Match_List buffer_matches = {};
+  Range_i64 range = buffer_range(app, buffer);
+  {
+   for (i64 pos = 0; 
+        pos < range.end;)
+   {
+    i64 original_pos = pos;
+    pos = kv_fuzzy_search_forward(app, buffer, pos, needle);
+    if (pos < range.end)
     {
-        String_Match_List buffer_matches = {};
-        Range_i64 range = buffer_range(app, buffer);
-        {
-            for (i64 pos = 0; 
-                 pos < range.end;)
-            {
-                i64 original_pos = pos;
-                pos = kv_fuzzy_search_forward(app, buffer, pos, needle_str);
-                if (pos < range.end)
-                {
-                    // note(kv): just a dummy range, not sure if it's even used
-                    Range_i64 range2 = {pos, pos+1};
-                    string_match_list_push(temp, &buffer_matches, buffer, 0, 0, range2);
-                }
-                assert_defend(pos > original_pos, break;);
-            }
-        }
-        all_matches = string_match_list_join(&all_matches, &buffer_matches);
+     // note(kv): just a dummy range, not sure if it's even used
+     Range_i64 range2 = {pos, pos+1};
+     string_match_list_push(temp, &buffer_matches, buffer, 0, 0, range2);
     }
-    
-    //
-    Buffer_ID out_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
-    kv_filter_match_list(app, &all_matches, out_buffer);
-    print_string_match_list_to_buffer(app, out_buffer, all_matches);
-    
-    lock_jump_buffer(app, out_buffer);
+    assert_defend(pos > original_pos, break;);
+   }
+  }
+  all_matches = string_match_list_join(&all_matches, &buffer_matches);
+ }
+ 
+ //
+ Buffer_ID out_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
+ kv_filter_match_list(app, &all_matches, out_buffer);
+ print_string_match_list_to_buffer(app, out_buffer, all_matches);
+ 
+ lock_jump_buffer(app, out_buffer);
 }
 
 internal u8 
 kv_get_current_char(App *app)
 {
-  GET_VIEW_AND_BUFFER;
-  i64 pos = view_get_cursor_pos(app, view);
-  return buffer_get_char(app, buffer, pos);
+ GET_VIEW_AND_BUFFER;
+ i64 pos = view_get_cursor_pos(app, view);
+ return buffer_get_char(app, buffer, pos);
 }
 
 // CUSTOM_DOC("adapted from list_all_locations for fuzzy search, if cursor at identifier then search for that instead")
 internal void 
 kv_list_all_locations(App *app)
 {
-    b32 at_identifier = false;
-    b32 is_visual = (vim_state.mode == VIM_Visual);
-    
-    if (!is_visual)
-    {
-        if ( character_is_alpha_numeric(kv_get_current_char(app)) )
-        {
-            at_identifier = true;
-            list_all_locations_of_identifier(app);
-        }
-    }
-   
-    if ( !at_identifier )
-    {
-        String8 needle_str = {};
-        Scratch_Block temp(app);
-        if (is_visual)
-        {
-            GET_VIEW_AND_BUFFER;
-            needle_str = push_buffer_selected_range(app, temp, buffer);
-            vim_normal_mode(app);
-        }
-        else
-        {
-            u8 *space = push_array(temp, u8, KB(1));
-            needle_str = get_query_string(app, "List Locations For: ", space, KB(1));
-        }
-        
-        if (needle_str.size)
-        {
-            kv_list_all_locations_from_string(app, needle_str); 
-        }
-    }
+ b32 at_identifier = false;
+ b32 is_visual = (vim_state.mode == VIM_Visual);
+ 
+ if (!is_visual)
+ {
+  if ( character_is_alnum(kv_get_current_char(app)) )
+  {
+   at_identifier = true;
+   list_all_locations_of_identifier(app);
+  }
+ }
+ 
+ if ( !at_identifier )
+ {
+  String needle_str = {};
+  Scratch_Block temp(app);
+  if (is_visual)
+  {// note select range
+   GET_VIEW_AND_BUFFER;
+   needle_str = push_buffer_selected_range(app, temp, buffer);
+   vim_normal_mode(app);
+  }
+  else
+  {// note prompt
+   u8 *space = push_array(temp, u8, KB(1));
+   needle_str = get_query_string(app, "List Locations For: ", space, KB(1));
+  }
+  
+  if (needle_str.size)
+  {
+   kv_list_all_locations_from_string(app, needle_str); 
+  }
+ }
 }
 
 VIM_COMMAND_SIG(open_build_script)
@@ -964,7 +981,7 @@ CUSTOM_DOC("just a placeholder command so I can test stuff")
 CUSTOM_COMMAND_SIG(init)
 CUSTOM_DOC("configure your editor!")
 {
-    switch_to_buffer_named(app, "~/4ed/code/4coder_kv/4coder_kv.cpp");
+    view_set_buffer_named(app, strlit("~/4ed/code/4coder_kv/4coder_kv.cpp"));
 }
 
 // todo: We don't wanna bind to a buffer, maybe?
@@ -1040,7 +1057,7 @@ internal void
 close_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_Always);
-    change_active_primary_panel(app);
+    change_active_primary_view(app);
     toggle_split_panel(app);
 }
 
@@ -1056,13 +1073,13 @@ CUSTOM_DOC("set current dir as hot")
 CUSTOM_COMMAND_SIG(scratch)
 CUSTOM_DOC("switch to scratch buffer")
 {
-    switch_to_buffer_named(app, "*scratch*");
+    view_set_buffer_named(app, strlit("~/notes/scratch.skm"));
 }
 
 CUSTOM_COMMAND_SIG(messages)
 CUSTOM_DOC("switch to messages buffer")
 {
-    switch_to_buffer_named(app, "*messages*");
+    view_set_buffer_named(app, strlit("*messages*"));
 }
 
 internal void
@@ -1109,7 +1126,7 @@ quick_align_command(App *app)
     // NOTE: find the right-most equal sign
     for_i64 (index, 0, arrlen(lines))
     {
-        kv_clamp_bot(rightmost_equal_sign, lines[index].equal_sign_pos);
+        macro_clamp_min(rightmost_equal_sign, lines[index].equal_sign_pos);
     }
     // NOTE: Then go back and fix up our lines from end to beginning
     u8 space_buffer[256];
@@ -1123,37 +1140,105 @@ quick_align_command(App *app)
         if (line->equal_sign_pos >= 0 && 
             nspaces > 0)
         {
-            String spaces = { space_buffer, (u64)clamp_top(nspaces,256) };
+            String spaces = { space_buffer, (u64)clamp_max(nspaces,256) };
             i64 pos = the_range.start + line->start + line->equal_sign_pos;
             buffer_replace_range(app, buffer, Ii64(pos,pos), spaces);
         }
     }
 }
 
+internal b32
+maybe_handle_fui(App *app, Buffer_ID buffer)
+{
+ load_latest_game_code(app, 0);
+ Game_API *game = &global_game_code;
+ if ( game->is_valid )
+ {
+  global_game_dll_lock = true;
+  Scratch_Block scratch(app);
+  String filename = push_buffer_filename(app, scratch, buffer);
+  i64 line_number = get_current_line_number(app);
+  b32 handled = game->fui_handle_slider(app, buffer, filename, line_number);
+  global_game_dll_lock = false;
+  return handled;
+ }
+ else { return false; }
+}
+
 internal void
 kv_handle_return_normal_mode(App *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    if (buffer)
-    {// Writable buffer
-        if ( fui_handle_slider(app, buffer) )
-        {
-            // pass
-        }
-        else
-        {
-            save_all_dirty_buffers(app);
-        }
-    }
-    else
-    {
-        buffer = view_get_buffer(app, view, Access_ReadVisible);
-        if (buffer)
-        {// Readonly buffer
-            vim_push_jump(app, get_active_view(app, Access_ReadVisible));
-            goto_jump_at_cursor(app);
-            lock_jump_buffer(app, buffer);
-        }
-    }
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ if (buffer)
+ {// Writable buffer
+  if ( maybe_handle_fui(app, buffer) )
+  {
+   // pass
+  }
+  else
+  {
+   save_all_dirty_buffers(app);
+  }
+ }
+ else
+ {
+  buffer = view_get_buffer(app, view, Access_ReadVisible);
+  if (buffer)
+  {// Readonly buffer
+   vim_push_jump(app, get_active_view(app, Access_ReadVisible));
+   goto_jump_at_cursor(app);
+   lock_jump_buffer(app, buffer);
+  }
+ }
 }
+
+#if 0
+jump are_we_in_debug_build();
+#endif
+//
+CUSTOM_COMMAND_SIG(are_we_in_debug_build)
+CUSTOM_DOC("")
+{
+#if KV_INTERNAL
+ vim_set_bottom_text_lit("yes, we are in DEBUG build!");
+#else
+ vim_set_bottom_text_lit("no, we are in RELEASE build!");
+#endif
+}
+
+internal void
+handle_tab_normal_mode(App *app)
+{
+ change_active_primary_view(app);
+#if 0
+ if ( global_game_on_readonly )
+ {
+  change_active_primary_view(app);
+ }
+ else
+ {
+  auto_indent_line_at_cursor(app);
+ }
+#endif
+}
+
+internal void
+handle_space_command(App *app)
+{
+ if (global_game_on_readonly)
+ {
+  i32 viewport_id = get_active_game_viewport_id(app);
+  global_game_code.game_last_preset(global_game_state, viewport_id);
+ }
+ else if ( get_active_game_viewport_id(app) )
+ {
+  turn_game_on();
+ }
+ else
+ {
+  write_space_command(app);
+ }
+}
+
+//~EOF

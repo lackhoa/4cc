@@ -133,7 +133,7 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
         }    
     }
     
-    fslider( draw_outline, v1{-0.298632f} );
+    fuivar( draw_outline, v1{-0.298632f} );
     if (draw_outline > 0)
     {
         tr_line(bitmap, (p1), (p2), argb_red); 
@@ -166,17 +166,17 @@ tr_triangle(Bitmap *bitmap, v2 *p, ARGB_Color color)
     v2i bboxmax = {0,0}; 
     for_i32 (i,0,3)
     { 
-        bboxmin.x = clamp_bot(macro_min(bboxmin.x, (i32)p[i].x), 0);
-        bboxmin.y = clamp_bot(macro_min(bboxmin.y, (i32)p[i].y), 0);
+        bboxmin.x = clamp_min(macro_min(bboxmin.x, (i32)p[i].x), 0);
+        bboxmin.y = clamp_min(macro_min(bboxmin.y, (i32)p[i].y), 0);
         
-        bboxmax.x = clamp_top(macro_max(bboxmax.x, (i32)p[i].x+1), max.x);
-        bboxmax.y = clamp_top(macro_max(bboxmax.y, (i32)p[i].y+1), max.y);
+        bboxmax.x = clamp_max(macro_max(bboxmax.x, (i32)p[i].x+1), max.x);
+        bboxmax.y = clamp_max(macro_max(bboxmax.y, (i32)p[i].y+1), max.y);
     } 
     for_i32 (x, bboxmin.x, bboxmax.x)
     { 
         for_i32 (y, bboxmin.y, bboxmax.y)
         {
-            v3 bc_screen  = barycentric(p, castV2(x,y));
+            v3 bc_screen  = barycentric(p, castvec2(x,y));
             if (bc_screen.x >= 0 && 
                 bc_screen.y >= 0 && 
                 bc_screen.z >= 0)
@@ -213,7 +213,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     {
         v2 beg = v2{0,0};
         v2 mid = v2{0, dim_y-1};
-        v2 end = V2(dim_x-1, dim_y-1);
+        v2 end = vec2(dim_x-1, dim_y-1);
         v1 step = {1.0f / dim_x};  // NOTE: I don't know what I'm doing!
         for (f32 t = 0;
              t <= 1.0f;

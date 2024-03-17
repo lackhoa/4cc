@@ -294,7 +294,7 @@ prj_v1_sanitize_string(Arena *arena, String8 string){
         
         for (u64 i = 0; i < string.size; i += 1, in += 1, out += 1){
             u8 c = *in;
-            if (!character_is_alpha_numeric(c)){
+            if (!character_is_alnum(c)){
                 c = '_';
             }
             *out = c;

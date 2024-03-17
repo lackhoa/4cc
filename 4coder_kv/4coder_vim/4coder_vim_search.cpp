@@ -66,7 +66,7 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
 	view_get_camera_bounds(app, view, &old_margin, &old_push_in);
 
 	Vec2_f32 margin = old_margin;
-	margin.y = clamp_bot(200.f, margin.y);
+	margin.y = clamp_min(200.f, margin.y);
 	view_set_camera_bounds(app, view, margin, old_push_in);
 
 	Scan_Direction direction = start_direction;
@@ -76,26 +76,26 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
 	vim_use_bottom_cursor = true;
 	String_Const_u8 prefix = (start_direction == Scan_Forward ? string_u8_litexpr("/") : string_u8_litexpr("?"));
 	vim_set_bottom_text(prefix);
-	u8 *dest = vim_bot_text.str + vim_bot_text.size;
+	u8 *dest = vim_bottom_text.str + vim_bottom_text.size;
 	u64 after_size;
-	after_size = vim_bot_text.size;
+	after_size = vim_bottom_text.size;
 
 	Vim_Register *reg = &vim_registers.search;
 	if(reg->data.size < 256){ vim_realloc_string(&reg->data, 0); }
 	reg->data.size = 0;
 	String_u8 *query = &reg->data;
 
-	f32 prev_offset = vim_nxt_filebar_offset;
+	f32 prev_offset = vim_nxt_lister_offset;
 
 	i64 match_size = 0;
 	User_Input in = {};
 	for(;;)
     {
-		if(vim_nxt_filebar_offset == 0.f){ vim_nxt_filebar_offset = 0.1f; }
+		if(vim_nxt_lister_offset == 0.f){ vim_nxt_lister_offset = 0.1f; }
 		animate_in_n_milliseconds(app, 0);
 		vim_set_bottom_text(prefix);
 		block_copy(dest, query->str, query->size);
-		vim_bot_text.size = after_size + query->size;
+		vim_bottom_text.size = after_size + query->size;
 
 		in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
 		if(in.abort){ query->size = 0; break; }
@@ -103,21 +103,21 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
 		String_Const_u8 string = to_writable(&in);
 
 		b32 string_change = false;
-		if(match_key_code(&in, KeyCode_Return))
+		if(match_key_code(&in, Key_Code_Return))
         {
           reg->flags |= (REGISTER_Set|REGISTER_Updated);
           break;
 		}
 		else if(string.str && string.size)
         {
-			string_append(query, string);
+			string_concat(query, string);
 			string_change = true;
 		}
-		else if(match_key_code(&in, KeyCode_Backspace))
+		else if(match_key_code(&in, Key_Code_Backspace))
         {
           u64 old_size = query->size;
-          if(set_has_modifier(&in.event.key.modifiers, KeyCode_Control)){
-            if(set_has_modifier(&in.event.key.modifiers, KeyCode_Shift)){
+          if(set_has_modifier(&in.event.key.modifiers, Key_Code_Control)){
+            if(set_has_modifier(&in.event.key.modifiers, Key_Code_Shift)){
               query->string.size = 0;
             }else{
               query->string = ctrl_backspace_utf8(query->string);
@@ -153,7 +153,7 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
             }
           }
 
-          if( in_range(0, new_pos, buffer_size) )
+          if( in_range_exclude_last(0, new_pos, buffer_size) )
           {
             view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
             isearch__update_highlight(app, view, Ii64_size(new_pos, match_size));
@@ -165,7 +165,7 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
 
 	vim_reset_bottom_text();
 	vim_use_bottom_cursor = false;
-	vim_nxt_filebar_offset = prev_offset;
+	vim_nxt_lister_offset = prev_offset;
 	view_set_camera_bounds(app, view, old_margin, old_push_in);
 }
 
@@ -188,7 +188,7 @@ VIM_COMMAND_SIG(vim_search_identifier){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	i64 pos = view_get_cursor_pos(app, view);
-	Range_i64 range = enclose_pos_alpha_numeric_underscore(app, buffer, pos);
+	Range_i64 range = enclose_pos_alnum_underscore(app, buffer, pos);
 	vim_state.params.selected_reg = &vim_registers.search;
 	vim_request_vtable[REQUEST_Yank](app, view, buffer, range);
 	vim_default_register();

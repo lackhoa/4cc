@@ -1,618 +1,904 @@
-/*
- * Mr. 4th Dimention - Allen Webster
- *
- * 10.11.2017
- *
- * OpenGL render implementation
- *
- */
+global GLuint DEFAULT_FRAMEBUFFER = 0;
 
-// NOTE(kv): ARGB colors flowing through the system are in srgb space,
-// which incurs penalty in shaders, since we wanna blend in linear space.
+global GLint uniform_view_transform         = 0;
+global GLint uniform_camera_axes            = 1;
+global GLint uniform_unused                 = 2;
+global GLint uniform_object_transform       = 3;
+global GLint uniform_meter_to_pixel         = 4;
+global GLint uniform_overlay                = 5;
+global GLint uniform_should_write_prim_id   = 6;
 
-// NOTE(kv): fallback texture is a white texture, 
-// and you can get it by setting face_id = 0
-// TODO(kv): Have an actual white texture in here
+//~Vertex attributes
+// TODO: @Speed Still a hodge-podge of old vertex attributes.
+// TODO: Do we even want "depth_offset" as an attribute?
 
-internal void
-gl__bind_texture(Render_Target *t, Texture_ID tex)
-{
-    if (t->bound_texture.v == tex.v) return;
-    
-    glBindTexture(GL_TEXTURE_2D_ARRAY, tex.v);
-    t->bound_texture = tex;
+global i32 VATTR_COUNT;
+
+#define X_VERTEX_ATTRIBUTES(X) \
+X(pos,           0) \
+X(uvw,           1) \
+X(color,         2) \
+X(half_thickness,3) \
+X(depth_offset,  4) \
+X(prim_id,       5) \
+
+#define X(name, location) global GLint vattr_##name = location;
+X_VERTEX_ATTRIBUTES(X)
+#undef X
+//~
+
+inline void
+ogl__check_error()
+{// NOTE(kv): Don't need this anymore if debug output works, this is just for sanity
+#if !SHIP_MODE
+    GLuint error = glGetError();
+    kv_assert(error == GL_NO_ERROR);
+#endif
 }
 
-internal void
-gl__bind_fallback_texture(Render_Target *t)
+force_inline b32
+ogl__index_valid(GLuint index)
 {
-    if (t->bound_texture.v) return;
-    
-    Assert(t->fallback_texture_id.v != 0);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, t->fallback_texture_id.v);
-    t->bound_texture = t->fallback_texture_id;
+ return index != (GLuint)-1;
 }
 
-internal Texture_ID
-gl__get_texture(Vec3_i32 dim, Texture_Kind texture_kind)
+inline void
+ogl__clamp_to_edge()
 {
-    Texture_ID tex = {};
-    glGenTextures(1, &tex.v);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, tex.v);
-    
-    GLint internal_format;
-    GLenum pixel_format = 0;
-    GLenum data_type = 0;
-    if (texture_kind == TextureKind_Mono)
-    {
-        internal_format = GL_R8;
-        pixel_format = GL_RED;
-        data_type = GL_UNSIGNED_BYTE;
-    }
-    else if (texture_kind == TextureKind_ARGB)
-    {
-        internal_format = GL_RGBA8;
-        pixel_format = GL_BGRA;
-        data_type = GL_UNSIGNED_INT_8_8_8_8_REV;
-    }
-    else invalid_code_path;
-    //
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internal_format, v3_expand(dim), 0, pixel_format, data_type, 0);
-    
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, 0);
-    return(tex);
+ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
+inline void
+ogl__filter_nearest()
+{
+ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+}
+
+internal GLuint
+ogl__gen_ed_texture(v3i dim, Texture_Kind texture_kind)
+{
+ GLuint tex = {};
+ glGenTextures(1, &tex);
+ glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
+ 
+ GLint internal_format = 0;
+ GLenum submit_format = 0;
+ GLenum submit_type = GL_UNSIGNED_BYTE;
+ if (texture_kind == TextureKind_Mono)
+ {
+  internal_format = GL_R8;
+  submit_format   = GL_RED;
+ }
+ else if (texture_kind == TextureKind_ARGB)
+ {
+  internal_format = GL_RGBA8;
+  submit_format   = GL_BGRA;//NOTE: this is how it's stored in memory, GL_UNSIGNED_BYTE basically says "read the value byte-by-byte in memory order"
+ }
+ else { invalid_code_path; }
+ //
+ glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internal_format, v3_expand(dim), 0, submit_format, submit_type, 0);
+ 
+ glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+ glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+ glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+ glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+ glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, 0);
+ return(tex);
 }
 
 internal b32
-gl__fill_texture(Texture_Kind texture_kind, Texture_ID texture, Vec3_i32 p, Vec3_i32 dim, void *data)
+ogl__fill_texture(Texture_Kind texture_kind, u32 texture, Vec3_i32 p, Vec3_i32 dim, void *data)
 {
-    b32 result = false;
-    if (texture.v != 0)
-    {
-        glBindTexture(GL_TEXTURE_2D_ARRAY, texture.v);
-    }
-    
-    GLenum pixel_format;
-    GLenum data_type;
-    if (dim.x > 0 && dim.y > 0 && dim.z > 0)
-    {
-        if (texture_kind == TextureKind_Mono)
-        {
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            pixel_format = GL_RED;
-            data_type = GL_UNSIGNED_BYTE;
-        }
-        else if (texture_kind == TextureKind_ARGB)
-        {
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-            pixel_format = GL_SRGB8_ALPHA8;  // todo: maybe default to GL_BGRA?
-            data_type = GL_UNSIGNED_INT_8_8_8_8_REV;
-        }
-        else invalid_code_path;
-        
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, v3_expand(p), v3_expand(dim), pixel_format, data_type, data);
-        result = true;
-    }
-    
-    return(result);
+ b32 result = false;
+ if (texture != 0 &&
+     (dim.x > 0 && dim.y > 0 && dim.z > 0))
+ {
+  glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
+  GLenum submit_format = 0;
+  GLenum submit_type   = 0;
+  if (texture_kind == TextureKind_Mono)
+  {
+   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+   submit_format = GL_RED;
+   submit_type   = GL_UNSIGNED_BYTE;
+  }
+  else if (texture_kind == TextureKind_ARGB)
+  {
+   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+   submit_format = GL_BGRA;
+   submit_type   = GL_UNSIGNED_BYTE;
+  }
+  else { invalid_code_path; }
+  
+  glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, v3_expand(p), v3_expand(dim), submit_format, submit_type, data);
+  result = true;
+ }
+ 
+ return(result);
 }
 
 internal void
-gl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const char *message, const void *userParam)
+ogl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, 
+                    const char *message, const void *userParam)
 {
-    switch (id)
-    {
-        case 131218:
-        {
-            // NOTE(allen): performance warning, do nothing.
-        }break;
-        
-        invalid_default_case;
-    }
+ //Severity: GL_DEBUG_SEVERITY_HIGH, GL_DEBUG_SEVERITY_MEDIUM, GL_DEBUG_SEVERITY_LOW
+ switch (id)
+ {
+#if 0
+  case 131218:
+  {
+   // NOTE(allen): performance warning, do nothing.
+  }break;
+#endif
+  
+  invalid_default_case;
+ }
 }
 
-global char *gl__header = R"foo(#version 130
+global char *ogl_shared_header = 
+R"foo(
 #define v1 float
 #define v2 vec2
 #define v3 vec3
 #define v4 vec4
-        )foo";
+#define i32 int
+#define b32 int
+#define u32 uint
 
-global char *gl__vertex_shader =
+layout(location=0) uniform mat4 uniform_view_transform;
+layout(location=1) uniform mat3 uniform_camera_axes;
+layout(location=2) uniform v1   uniform_unused;
+layout(location=3) uniform mat4 uniform_object_transform;
+layout(location=4) uniform v1   uniform_meter_to_pixel;
+layout(location=5) uniform b32  uniform_overlay;
+layout(location=6) uniform b32  uniform_should_write_prim_id;
+)foo";
+
+//-NOTE: ;editor_shaders
+global char *ed_vertex_shader =
 R"foo(
-    uniform mat4x4 view_m;
-    uniform bool linear_alpha_blend;
+layout(location=0) in v2 vertex_pos;
+layout(location=1) in v3 vertex_uvw;
+layout(location=2) in v4 vertex_color;
+layout(location=3) in v1 vertex_half_thickness;
 
-    in vec3 vertex_xyz;
-    in vec3 vertex_uvw;
-    in vec4 vertex_color;
-    in float vertex_half_thickness;
+out v4 color;
+out v3 uvw;
+out v2 xy;
+out v2 adjusted_half_dim;
+out v1 half_thickness;
 
-    smooth out vec4 color;
-    smooth out vec3 uvw;
-    smooth out vec2 xy;
-    smooth out vec2 adjusted_half_dim;
-    smooth out float half_thickness;
-
-    void main(void)
-    {
-        gl_Position = view_m * vec4(vertex_xyz, 1);
-        color.rgba = vertex_color.bgra;
-        if (linear_alpha_blend)
-        {
-            color.rgb *= (color.rgb);
-        }
-        uvw = vertex_uvw;
-        vec2 center = vertex_uvw.xy;
-        xy = vertex_xyz.xy;
-        v2 half_dim = abs(xy - center);
-        v2 roundness = vertex_uvw.zz;
-        adjusted_half_dim = half_dim - roundness + vec2(0.5f,0.5f);
-        half_thickness = vertex_half_thickness;
-    }
-    )foo";
-
-global char *gl__fragment_shader =
-R"foo(
-    uniform sampler2DArray sampler;
-    //
-    smooth in vec4 color;
-    smooth in vec3 uvw;
-    smooth in vec2 xy;
-    smooth in vec2 adjusted_half_dim;
-    smooth in float half_thickness;
-    //
-    out vec4 out_color;
-    
-    float rectangle_sd(vec2 p, vec2 b)
-    {
-        vec2 d = abs(p) - b;
-        return(length(max(d, vec2(0,0))) + 
-               min(max(d.x, d.y), 0.0));
-    }
-    
-    void main(void)
-    {
-        float value;
-        {
-            bool has_thickness = half_thickness > 0.49;
-            if (has_thickness)
-            {
-                vec2 center = uvw.xy;
-                float sd = rectangle_sd(xy - center, adjusted_half_dim);
-                float roundness = uvw.z;
-                sd = sd - roundness;
-                sd = abs(sd + half_thickness) - half_thickness;
-                value = smoothstep(0.0, -1.0, sd);
-            }
-            else
-            {
-                value = texture(sampler, uvw).r;
-            }
-        }
-      
-        v1 out_alpha = color.a*value;
-        if (out_alpha == 0.0f)
-        {
-           discard;
-        }
-        out_color = vec4(color.rgb, out_alpha);
-    }
-   )foo";
-
-// IMPORTANT(kv): doesn't work!
-global char *gl__vertex_shader_game =
-R"foo(
-    uniform mat4x4 view_m;
-
-    in vec2 vertex_xy;
-    in vec3 vertex_uvw;
-    in vec4 vertex_color;
-    in float vertex_half_thickness;
-
-    smooth out vec4 fragment_color;
-    smooth out vec3 uvw;
-
-    void main(void)
-    {
-        gl_Position = view_m * vec4(vertex_xy, 0,1);
-        fragment_color.rgba = vertex_color.bgra;
-        uvw = vertex_uvw;
-    }
-    )foo";
-
-// IMPORTANT(kv): doesn't work!
-global char *gl__fragment_shader_game = 
-R"foo(
-   smooth in vec4 fragment_color;
-   smooth in vec3 uvw;
-   uniform sampler2DArray sampler;
-   out vec4 out_color;
-        
-   void main(void)
-   {
-        vec4 sample_value_v4 = texture(sampler, uvw);
-        out_color = fragment_color * sample_value_v4;
-    }
-   )foo";
-
-#define X_VERTEX_ATTRIBUTES(X)    \
-    X(xyz)          \
-    X(uvw)         \
-    X(color)       \
-    X(half_thickness)
-
-#define X_UNIFORMS(X) \
-    X(linear_alpha_blend) \
-    X(view_m) \
-    X(sampler)
-
-struct GL_Program
+void main(void)
 {
-    u32 program;
+    gl_Position = uniform_view_transform * vec4(vertex_pos, 1, 1);
+    color.rgba = vertex_color.bgra;
+
+    uvw = vertex_uvw;
+    vec2 center = vertex_uvw.xy;
+    xy = vertex_pos;
+    v2 half_dim = abs(xy - center);
+    v2 roundness = vertex_uvw.zz;
+    adjusted_half_dim = half_dim - roundness + vec2(0.5f,0.5f);
+    half_thickness = vertex_half_thickness;
+}
+)foo";
+
+global char *ed_fragment_shader =
+R"foo(
+layout(binding=0) uniform sampler2DArray sampler;
+//
+smooth in vec4 color;
+smooth in vec3 uvw;
+smooth in vec2 xy;
+smooth in vec2 adjusted_half_dim;
+smooth in float half_thickness;
+//
+out vec4 out_color;
+
+// NOTE: negative = inside, positive = outside
+v1 rectangle_sd(v2 p, v2 b)
+{
+    vec2 d = abs(p) - b;
+    return(length(max(d, vec2(0,0))) + 
+           min(max(d.x, d.y), 0.0));
+}
     
-#define X(N,...) i32 vertex_##N;
-    X_VERTEX_ATTRIBUTES(X)
-#undef X
-    
-#define X(N) i32 N;
-    X_UNIFORMS(X)
-#undef X
+void main(void)
+{
+    v1 value;
+    {
+        bool has_thickness = half_thickness > 0.49;
+        if (has_thickness)
+        {
+            vec2 center = uvw.xy;
+            float sd = rectangle_sd(xy - center, adjusted_half_dim);
+            float roundness = uvw.z;
+            sd = sd - roundness;
+            sd = abs(sd + half_thickness) - half_thickness;
+            value = smoothstep(0.0, -1.0, sd);
+        }
+        else
+        {
+            value = texture(sampler, uvw).r;
+        }
+    }
+    v1 out_alpha = color.a*value;
+    out_color = vec4(color.rgb, out_alpha);
+}
+)foo";
+
+enum OGL_Program_Type
+{
+ OGL_First_Pass  = 1,
+ OGL_Second_Pass = 2,
+ OGL_Editor      = 3,
+ OGL_CSG         = 4,
 };
 
-internal GL_Program
-gl__make_program(char *header, char *vertex, char *fragment)
+enum OGL_Program_Flag
 {
-    if (header == 0)
-    {
-        header = "";
-    }
+ OGL_Overlay            = 0x1,
+ OGL_Write_Primitive_ID = 0x2,
+};
+typedef u32 OGL_Program_Flags;
+
+internal u32
+ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
+{
+ // const GLubyte *version_confirm = glGetString(GL_VERSION);
+ b32 is_game       = type != OGL_Editor;
+ b32 is_first_pass = type == OGL_First_Pass;
+ 
+ GLuint vertex_shader   = glCreateShader(GL_VERTEX_SHADER);
+ GLuint geometry_shader = 0;
+ if (is_first_pass) { geometry_shader = glCreateShader(GL_GEOMETRY_SHADER); }
+ GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+ {
+  Arena arena_value = make_arena_malloc();
+  Arena *arena = &arena_value;
+  
+  char *header = ogl_shared_header;
+  char defines[256];
+  sprintf(defines, R"foo(
+#define IS_FIRST_PASS %d
+#define IS_SECOND_PASS %d
+#define ACTUALLY_RENDERING %d)foo",
+          is_first_pass,
+          (type == OGL_Second_Pass),
+          !(flags & OGL_Write_Primitive_ID));
+  char *version_str = "#version 460\n";
     
-    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    GLchar *vertex_source_array[] = { header, vertex };
-    glShaderSource(vertex_shader, arlen(vertex_source_array), vertex_source_array, 0);
-    glCompileShader(vertex_shader);
-    
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    GLchar *fragment_source_array[] = { header, fragment };
-    glShaderSource(fragment_shader, arlen(fragment_source_array), fragment_source_array, 0);
-    glCompileShader(fragment_shader);
-    
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-    glLinkProgram(program);
-    glValidateProgram(program);
-   
-    // NOTE(kv): validation
-    GLint success = false;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success)
-    {
-        GLsizei ignore = 0;
-        char vertex_errors[KB(4)];
-        char fragment_errors[KB(4)];
-        char program_errors[KB(4)];
-        glGetShaderInfoLog(vertex_shader, sizeof(vertex_errors), &ignore, vertex_errors);
-        glGetShaderInfoLog(fragment_shader, sizeof(fragment_errors), &ignore, fragment_errors);
-        glGetProgramInfoLog(program, sizeof(program_errors), &ignore, program_errors);
 #if SHIP_MODE
-        os_popup_error("Error", "Shader compilation failed.");
+# define SHADER_DIR "C:/Users/vodan/4coder/opengl/"
+#else
+# define SHADER_DIR "C:/Users/vodan/4ed/code/opengl/"
 #endif
-        InvalidPath;
-    }
-    
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-    
-    GL_Program result = {};
-    result.program = program;
-    
-#define X(N,...) result.vertex_##N = glGetAttribLocation(program, "vertex_" #N);
-    X_VERTEX_ATTRIBUTES(X);
-#undef X
-    
-#define X(N) result.N = glGetUniformLocation(program, #N);
-    X_UNIFORMS(X);
-#undef X
-    
-    return(result);
+  {
+   char *vertex;
+   //
+   if (is_game) { vertex = read_entire_file_cstring(arena, strlit(SHADER_DIR "vertex_shader.glsl")); }
+   else         { vertex = ed_vertex_shader; }
+   GLchar *array[] = { version_str, defines, header, vertex };
+   glShaderSource(vertex_shader, arlen(array), array, 0);
+   glCompileShader(vertex_shader);
+  }
+  
+  if (is_first_pass)
+  {
+   char *geometry = read_entire_file_cstring(arena, strlit(SHADER_DIR "geometry_shader.glsl"));
+   GLchar *array[] = { version_str, defines, header, geometry };
+   glShaderSource(geometry_shader, arlen(array), array, 0);
+   glCompileShader(geometry_shader);
+  } 
+  
+  {
+   char *fragment;
+   if (is_game) { fragment = read_entire_file_cstring(arena, strlit(SHADER_DIR "fragment_shader.glsl")); }
+   else         { fragment = ed_fragment_shader; }
+   GLchar *array[] = { version_str, defines, header, fragment };
+   glShaderSource(fragment_shader, arlen(array), array, 0);
+   glCompileShader(fragment_shader);
+  }
+#undef SHADER_DIR
+ }
+ 
+ GLuint program = glCreateProgram();
+ {
+  glAttachShader(program, vertex_shader);
+  if (is_first_pass)
+  {
+   glAttachShader(program, geometry_shader);
+  }
+  glAttachShader(program, fragment_shader);
+  glLinkProgram(program);
+  glValidateProgram(program);
+ }
+ 
+ {// NOTE(kv): Validation
+  GLint success = false;
+  glGetProgramiv(program, GL_LINK_STATUS, &success);
+  if ( !success )
+  {
+   GLsizei ignore = 0;
+   char vertex_errors  [KB(4)];
+   char geometry_errors[KB(4)];
+   char fragment_errors[KB(4)];
+   char program_errors [KB(4)];
+   glGetShaderInfoLog(vertex_shader, sizeof(vertex_errors), &ignore, vertex_errors);
+   if (is_first_pass)
+   {
+    glGetShaderInfoLog(geometry_shader, sizeof(geometry_errors), &ignore, geometry_errors);
+   }
+   glGetShaderInfoLog(fragment_shader, sizeof(fragment_errors), &ignore, fragment_errors);
+   glGetProgramInfoLog(program, sizeof(program_errors), &ignore, program_errors);
+#if SHIP_MODE
+   os_popup_error("Error", "Shader compilation failed.");
+#endif
+   InvalidPath;
+  }
+ }
+ 
+ glDeleteShader(vertex_shader);
+ glDeleteShader(geometry_shader);
+ glDeleteShader(fragment_shader);
+ 
+ return(program);
 }
 
 #define GLOffsetStruct(p,m) ((void*)(OffsetOfMemberStruct(p,m)))
 #define GLOffset(S,m)       ((void*)(gb_offset_of(S,m)))
 
-global Texture_ID global_game_texture;
+internal b32
+ogl__is_uniform_active(GLuint program, char *name)
+{
+ return (glGetUniformLocation(program, name) != -1);
+}
+
+global u32 ogl_program_2;
+global u32 ogl_program_csg;
+global u32 ogl_program_editor;
+
+internal v1 * ogl_cast_mat4(mat4 *matrix) { return cast(v1*)matrix; }
+internal v1 * ogl_cast_mat3(mat3 *matrix) { return cast(v1*)matrix; }
 
 internal void
-gl_render(Render_Target *t)
+ogl__vertex_attributes()
 {
-    Font_Set *font_set = (Font_Set*)t->font_set;
-    
-    local_persist b32 first_opengl_call = true;
-    local_persist u32 attribute_buffer = 0;
-    local_persist GL_Program gl_program      = {};
-    local_persist GL_Program gl_program_game = {};
-    
-    if (first_opengl_call)
-    {
-        first_opengl_call = false;
-        
-#if !SHIP_MODE
-        glEnable(GL_DEBUG_OUTPUT);
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        if (glDebugMessageControl)
-        {
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, 0, false);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, 0, false);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, 0, true);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, 0, true);
-        }
-        
-        if (glDebugMessageCallback)
-        {
-            glDebugMessageCallback(gl__error_callback, 0);
-        }
-#endif
-        
-        ////////////////////////////////
-        
-        GLuint dummy_vao = 0;
-        glGenVertexArrays(1, &dummy_vao);
-        glBindVertexArray(dummy_vao);
-        
-        ////////////////////////////////
-        
-        glGenBuffers(1, &attribute_buffer);
-        glBindBuffer(GL_ARRAY_BUFFER, attribute_buffer);
-        
-        ////////////////////////////////
-        
-        glEnable(GL_SCISSOR_TEST);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        
-        glEnable(GL_FRAMEBUFFER_SRGB);  // NOTE(kv): Used to not have this, so our blending was "wrong", but actually it was right for some fonts
-       
-        glDepthFunc(GL_LEQUAL);  // NOTE: "equal" because we want things drawn later to be on top, prolly doesn't matter
-        
-        ////////////////////////////////
-        
-        gl_program      = gl__make_program(gl__header, gl__vertex_shader, gl__fragment_shader);
-        gl_program_game = gl__make_program(gl__header, gl__vertex_shader_game, gl__fragment_shader_game);
-        glUseProgram(gl_program.program);
-        
-        ////////////////////////////////
-        
-        t->fallback_texture_id = gl__get_texture(V3i32(2, 2, 1), TextureKind_Mono);
-        u8 white_block[] = { 0xFF, 0xFF, 0xFF, 0xFF, };
-        gl__fill_texture(TextureKind_Mono, Texture_ID{}, V3i32(0,0,0), V3i32(2,2,1), white_block);
-    }
-    
-    glViewport(0, 0, t->width, t->height);
-    glScissor (0, 0, t->width, t->height);
-    glClearColor(1.f, 0.f, 1.f, 1.f);
-    glClearDepth(1.0f);
-    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    
-    glBindTexture(GL_TEXTURE_2D, 0);
-    t->bound_texture = {};
-    
-    for (Render_Free_Texture *free_texture = t->free_texture_first;
-         free_texture != 0;
-         free_texture = free_texture->next)
-    {
-        glDeleteTextures(1, &free_texture->tex_id);
-    }
-    t->free_texture_first = 0;
-    t->free_texture_last = 0;
+ for_i32 (attr,0,VATTR_COUNT) { glEnableVertexAttribArray(attr); }
+ 
+ {// NOTE: Tell opengl how to read vertex attributes
+#define OFFSET(name)  GLOffset(Render_Vertex, name)
+  GLsizei stride = sizeof(Render_Vertex);
+  glVertexAttribPointer(vattr_pos,            3, GL_FLOAT, GL_FALSE, stride, OFFSET(pos));
+  glVertexAttribPointer(vattr_uvw,            3, GL_FLOAT, GL_FALSE, stride, OFFSET(uvw));
+  glVertexAttribPointer(vattr_color, 4, GL_UNSIGNED_BYTE, GL_TRUE,  stride, OFFSET(color));
+  glVertexAttribPointer(vattr_half_thickness, 1, GL_FLOAT, GL_FALSE, stride, OFFSET(half_thickness));
+  glVertexAttribPointer(vattr_depth_offset,   1, GL_FLOAT, GL_FALSE, stride, OFFSET(depth_offset));
+  glVertexAttribIPointer(vattr_prim_id, 4, GL_UNSIGNED_BYTE, stride, OFFSET(prim_id));
+#undef OFFSET
+ }
+}
+
+internal void
+ogl__begin_program(Render_Target *target, Render_Group *group,
+                   v2 render_dim, OGL_Program_Type type,
+                   mat4 *object_transform, OGL_Program_Flags flags=0)
+{
+ GLuint program;
+ switch(type)
+ {
+  case OGL_Second_Pass: { program = ogl_program_2; }      break;
+  case OGL_CSG:         { program = ogl_program_csg; }    break;
+  case OGL_Editor:      { program = ogl_program_editor; } break;
+  invalid_default_case;
+ }
+ 
+ glUseProgram(program);
+ 
+ {// NOTE: Uniforms
+  mat4 screen_transform;
+  {
+   // :viewport_alignment The center of the game viewport lines up with the center of the opengl viewport
+   v1 sx = 2.f*group->meter_to_pixel/render_dim.x;
+   v1 sy = 2.f*group->meter_to_pixel/render_dim.y;
+   screen_transform = mat4_scales(sx,sy,1.f);
+  }
+  
+  {
+   mat4 view_transform = screen_transform*group->view_transform;  //NOTE: this view transform is different from the camera view transform, which is confusing?
    
-    b8 depth_test = 0;
-    for (Render_Group *group = t->group_first;
-         group != 0;
-         group = group->next)
-    {
-        i32 vertex_count = group->vertex_list.count;
-        if (vertex_count > 0)
-        {
-            b32 game_mode = (group->face_id == FACE_ID_GAME);
-            GL_Program *program = game_mode ? &gl_program_game : &gl_program;
-           
-            if ( group->depth_test != depth_test )
-            {
-                depth_test = group->depth_test;
-                if (depth_test)
-                    glEnable (GL_DEPTH_TEST);
-                else
-                    glDisable(GL_DEPTH_TEST);
-            }
-            
-            {
-                Rect_i32 box = Ri32(group->clip_box);
-                GLint   scissor_x = box.x0;
-                GLint   scissor_y = (group->y_is_up?
-                                     box.y0 :
-                                     t->height - box.y1);
-                GLsizei scissor_w = box.x1 - box.x0;
-                GLsizei scissor_h = box.y1 - box.y0;
-                
-                kv_clamp_bot(scissor_x, 0);
-                kv_clamp_bot(scissor_y, 0);
-                kv_clamp_bot(scissor_w, 0);
-                kv_clamp_bot(scissor_h, 0);
-                
-                glScissor(scissor_x, scissor_y, scissor_w, scissor_h);
-            }
-          
-            if (game_mode)
-            {
-                gl__bind_texture(t, global_game_texture);
-            }
-            else 
-            {
-                Face *face = 0;
-                if (group->face_id)
-                {
-                    face = font_set_face_from_id(font_set, group->face_id);
-                }
-                
-                if (face)
-                {
-                    gl__bind_texture(t, face->texture);
-                }
-                else
-                {
-                    gl__bind_fallback_texture(t);
-                }
-            }
-            
-            // NOTE(kv): In the editor, rectangles and fonts are mixed together in one Render_Group.
-            // So we can't quite say "enable srgb for fonts"
-            if (group->linear_alpha_blend)
-            {
-                glEnable (GL_FRAMEBUFFER_SRGB);
-            }
-            else
-            {
-                glDisable(GL_FRAMEBUFFER_SRGB);
-            }
-            
-            if (game_mode)
-            {// NOTE(kv): game_mode is the rare case so we'll just temporary swap out the program
-                glUseProgram(gl_program_game.program);
-            }
-            
-            glBufferData(GL_ARRAY_BUFFER, vertex_count*sizeof(Render_Vertex), 0, GL_STREAM_DRAW);
-            i32 cursor = 0;
-            for (Render_Vertex_Array_Node *node = group->vertex_list.first;
-                 node != 0;
-                 node = node->next)
-            {
-                i32 size = node->vertex_count*sizeof(*node->vertices);
-                glBufferSubData(GL_ARRAY_BUFFER, cursor, size, node->vertices);
-                cursor += size;
-            }
-            
-            // NOTE: glEnableVertexAttribArray
-#define X(N,...) { glEnableVertexAttribArray(program->vertex_##N); }
-            X_VERTEX_ATTRIBUTES(X);
+   if (ogl__is_uniform_active(program, "uniform_view_transform"))
+   {
+    glUniformMatrix4fv(uniform_view_transform, 1, GL_TRUE, ogl_cast_mat4(&view_transform));
+   }
+  }
+  
+  {
+   if (ogl__is_uniform_active(program, "uniform_csg_texture"))
+   {
+    glUniform1i(/* csg_texture_binding*/0, GL_TEXTURE0);
+   }
+   
+   if (ogl__is_uniform_active(program, "uniform_camera_axes"))
+   {
+    mat3 camera_axes = to_mat3(group->camera_transform.forward);
+    glUniformMatrix3fv(uniform_camera_axes, 1, GL_TRUE, ogl_cast_mat3(&camera_axes));
+   }
+   
+   if (ogl__is_uniform_active(program, "uniform_object_transform"))
+   {
+    glUniformMatrix4fv(uniform_object_transform, 1, GL_TRUE, ogl_cast_mat4(object_transform));
+   }
+   
+   if (ogl__is_uniform_active(program, "uniform_meter_to_pixel"))
+   {
+    glUniform1f(uniform_meter_to_pixel, group->meter_to_pixel);
+   }
+   
+   if (ogl__is_uniform_active(program, "uniform_overlay"))
+   {
+    glUniform1i(uniform_overlay, flags & OGL_Overlay);
+   }
+   
+   if (ogl__is_uniform_active(program, "uniform_should_write_prim_id"))
+   {
+    b32 is_main_viewport = (group->viewport_id == 1);
+    glUniform1i(uniform_should_write_prim_id, is_main_viewport);
+   }
+  }
+ }
+ 
+ ogl__vertex_attributes();
+}
+
+
+internal void
+ogl__begin_program_editor(Render_Target *target, Render_Group *group)
+{
+ glUseProgram(ogl_program_editor);
+ 
+ {// NOTE: Uniforms
+  mat4 screen_transform;
+  {
+   v1 y_sign = (group->y_is_up) ? +1 : -1;
+   v2 dst_dim = vec2(v1(target->width), v1(target->height));
+   // NOTE(kv): Scale to normalized device coordinate
+   v1 a = 2.f/dst_dim.x;
+   v1 b = 2.f/dst_dim.y * y_sign;
+   v1 c = -1.0f;
+   v1 d = -1.0f*y_sign;
+   
+   screen_transform = {{
+     a,0,0,c,
+     0,b,0,d,
+     0,0,1,0,
+     0,0,0,1,
+    }};
+  }
+  
+  glUniformMatrix4fv(uniform_view_transform, 1, GL_TRUE, ogl_cast_mat4(&screen_transform));
+ }
+ 
+ ogl__vertex_attributes();
+}
+
+internal void
+ogl__end_program()
+{
+ // NOTE: Disable Vertex Attrib Array
+ for_i32(location,0,VATTR_COUNT)
+ {
+  glDisableVertexAttribArray(location);
+ }
+}
+
+internal void
+ogl__send_buffer_data(Render_Vertex_List *list)
+{
+ glBufferData(GL_ARRAY_BUFFER, list->count*sizeof(Render_Vertex), 0, GL_STREAM_DRAW);
+ i32 cursor = 0;
+ for (Render_Vertex_Array_Node *node = list->first;
+      node != 0;
+      node = node->next)
+ {
+  i32 size = node->vertex_count*sizeof(*node->vertices);
+  glBufferSubData(GL_ARRAY_BUFFER, cursor, size, node->vertices);
+  cursor += size;
+ }
+}
+
+// NOTE: Because this call is God-awful
+internal void
+glTexImage2D_wrapper(GLint internal_format, 
+                     GLsizei width, GLsizei height,
+                     GLenum submit_format, GLenum submit_type,
+                     const void * data)
+{
+ glTexImage2D(GL_TEXTURE_2D,
+              /*level*/ 0,
+              internal_format,  // note: I want the GPU to do conversion for me
+              width,height,
+              /*dummy border*/0,
+              submit_format, submit_type,
+              data);
+}
+
+internal void
+ogl_render(Render_Target *target)
+{
+ //@HardCoded Allow one 1080p screen
+ const i32 MAX_PANEL_DIMX = 1920;
+ const i32 MAX_PANEL_DIMY = 1080;
+ 
+ local_persist GLuint game_framebuffer;
+ // NOTE: We use a different framebuffer because the default one doesn't let us attach any texture.
+ local_persist GLuint color0_texture;
+ local_persist GLuint depth_texture;
+ local_persist GLuint csg_texture;
+ 
+ local_persist GLuint prim_id_framebuffer;
+ local_persist GLuint prim_id_texture;
+ 
+ local_persist b32 first_opengl_call = true;
+ if (first_opengl_call)
+ {
+  first_opengl_call = false;
+  
+#define X(...) VATTR_COUNT++;
+  X_VERTEX_ATTRIBUTES(X)
 #undef X
-            
-            // NOTE: tell opengl how to read vertex attributes
-#define INDEX(N)  program->vertex_##N
-            {
-                GLsizei stride = sizeof(Render_Vertex);
-                glVertexAttribPointer(INDEX(xyz),            3, GL_FLOAT,         GL_TRUE, stride, GLOffset(Render_Vertex, xyz));
-                glVertexAttribPointer(INDEX(uvw),            3, GL_FLOAT,         GL_TRUE, stride, GLOffset(Render_Vertex, uvw));
-                glVertexAttribPointer(INDEX(color),          4, GL_UNSIGNED_BYTE, GL_TRUE, stride, GLOffset(Render_Vertex, color));
-                glVertexAttribPointer(INDEX(half_thickness), 1, GL_FLOAT,         GL_TRUE, stride, GLOffset(Render_Vertex, half_thickness));
-            }
-#undef INDEX
-            
-            {// NOTE: Transforms
-                v1 width  = (v1)t->width;
-                v1 height = (v1)t->height;
-                v1 y_sign = ((group->y_is_up) ? +1 : -1);
-                // NOTE(kv): Scale
-                v1 a = 2.f/width;
-                v1 b = 2.f/height * y_sign;
-                // NOTE(kv): Offset to opengl's bilateral normalized space, as well as render group offset
-                v1 c = a * group->offset.x - 1.0f;
-                v1 d = b * group->offset.y - 1.0f*y_sign;
-                m4x4 view_m = 
-                {
-                    {
-                        a,0,0,c,
-                        0,b,0,d,
-                        0,0,1,0,
-                        0,0,0,1,
-                    }
-                };
-                
-                if (group->is_perspective)
-                {// NOTE: Someday when we draw lots of triangles, we may need this, but that day is not now!
-                    Camera *camera = &group->camera;
-                   
-                    m4x4 camera_project =
-                    {
-                        {
-                            V4(camera->px,0),
-                            V4(camera->py,0),
-                            V4(camera->pz,0),
-                            V4(0,0,0,1),
-                        }
-                    };
-                    
-                    m4x4 z_to_depth =
-                    {
-                        {
-                           V4(1,0,0,0),
-                           V4(0,1,0,0),
-                           V4(0,0,-1,camera->distance),
-                           V4(0,0,0,1),
-                        } 
-                    };
-                    
-                    v1 focal = camera->focal_length;
-                    v1 n  = 10.0f;         // NOTE: in depth
-                    v1 f  = 100.0f * 1E3;  // NOTE: in depth
-                   
-                    m4x4 perspective_project =
-                    {
-                        {
-                            focal, 0,     0,            0,
-                            0,     focal, 0,            0,
-                            0,     0,     (n+f)/(f-n),  -2*f*n/(f-n),
-                            0,     0,     1,            0,
-                        },
-                    };
-                    
-                    m4x4 camera_project_and_z_to_depth = (z_to_depth * camera_project);
-                    m4x4 camera_project_and_z_to_depth_and_perspective = perspective_project * camera_project_and_z_to_depth;
-                    view_m = view_m * camera_project_and_z_to_depth_and_perspective;
-                    
-                    if (0)
-                    {
-                        v1 U = 1e3;
-                        v4 O = v4{0,0,0,1};
-                        v4 O1 = camera_project * O;
-                        v4 O2 = z_to_depth * O1;
-                        v4 O3 = perspective_project * O2;
-                        O3 /= O3.w;
-                            
-                        v4 point = U * v4{0,0,1,1};
-                        v4 point1 = camera_project * point;
-                        v4 point2 = z_to_depth * point1;
-                        v4 point3 = perspective_project * point2;
-                        point3 /= point3.w;
-                       
-                        breakhere;
-                    }
-                }
-                
-                glUniformMatrix4fv(program->view_m, 1, GL_TRUE, (v1*)view_m.v);
-                glUniform1i       (program->linear_alpha_blend, group->linear_alpha_blend);
-                glUniform1i       (program->sampler, 0);  // NOTE(kv): idk if this has a meaning?
-            }
-            
-            // NOTE: draw
-            glDrawArrays(GL_TRIANGLES, 0, vertex_count);
-            
-            // NOTE: Disable Vertex Attrib Array
-#define X(N,...) { glDisableVertexAttribArray(program->vertex_##N); }
-            X_VERTEX_ATTRIBUTES(X);
-#undef X
-            
-            if (game_mode)
-            {// NOTE: switch back to the normal program
-                glUseProgram(gl_program.program);
-            }
-        }
+  
+  {
+#if !SHIP_MODE
+   {
+    i32 context_flags = 0;
+    glGetIntegerv(GL_CONTEXT_FLAGS, &context_flags);
+    kv_assert(context_flags & GL_CONTEXT_FLAG_DEBUG_BIT);
+   }
+   glEnable(GL_DEBUG_OUTPUT);
+   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+   if(1)
+   {
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, 0, true);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, 0, true);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, 0, true);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, 0, true);
+   }
+   glDebugMessageCallback(ogl__error_callback, 0);
+#endif
+  }
+  
+  GLuint dummy_vao = 0;
+  glGenVertexArrays(1, &dummy_vao);
+  glBindVertexArray(dummy_vao);
+  
+  // TODO(kv): What is this? Remove?
+  local_persist u32 attribute_buffer = 0;
+  glGenBuffers(1, &attribute_buffer);
+  glBindBuffer(GL_ARRAY_BUFFER, attribute_buffer);
+  
+  glEnable(GL_MULTISAMPLE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  
+  glDepthFunc(GL_LEQUAL);  // NOTE: "equal" because we want things drawn later to be on top, prolly doesn't matter
+  glClearDepth(1.0f);
+  
+  ogl_program_2      = ogl__create_program(OGL_Second_Pass, 0);
+  ogl_program_csg    = ogl__create_program(OGL_CSG, 0);
+  ogl_program_editor = ogl__create_program(OGL_Editor, 0);
+  
+  target->fallback_texture_id = ogl__gen_ed_texture(vec3i(2,2,1), TextureKind_Mono);
+  u8 white_block[] = { 0xFF, 0xFF, 0xFF, 0xFF };
+  ogl__fill_texture(TextureKind_Mono, GLuint{}, vec3i(0,0,0), vec3i(2,2,1), white_block);
+  
+  {//NOTE: game frame buffer
+   i32 W = MAX_PANEL_DIMX;
+   i32 H = MAX_PANEL_DIMY;
+   
+   glGenFramebuffers(1, &game_framebuffer);
+   glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
+   
+   GLenum texture_target = GL_TEXTURE_2D_MULTISAMPLE;
+   GLsizei num_samples = 4;  //@Tweak: I literally don't see any difference between 4x and 8x
+   {//-Game texture
+    glGenTextures(1, &color0_texture);
+    glBindTexture(texture_target, color0_texture);
+    
+    glTexImage2DMultisample(texture_target, num_samples, GL_SRGB8_ALPHA8, W,H, GL_FALSE);
+    ogl__clamp_to_edge();
+    ogl__filter_nearest();
+    
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture_target, color0_texture, /*level*/0);
+   }
+   
+#if 0
+   {//-Primitive ID texture
+    glGenTextures(1, &prim_id_texture);
+    glBindTexture(texture_target, prim_id_texture);
+    
+    glTexImage2DMultisample(texture_target, num_samples, GL_R16UI, W,H, GL_FALSE);
+    ogl__clamp_to_edge();
+    ogl__filter_nearest();
+    
+    glFramebufferTexture2D(GL_FRAMEBUFFER/*dummy*/, GL_COLOR_ATTACHMENT1, texture_target, prim_id_texture, /*level*/0);
+   }
+#endif
+   
+   {//-Depth texture: Because we can't use the default one for some reason
+    glGenTextures(1, &depth_texture);
+    glBindTexture(texture_target, depth_texture);
+    ogl__clamp_to_edge();
+    ogl__filter_nearest();
+    glTexImage2DMultisample(texture_target/*dummy*/, num_samples, GL_DEPTH_COMPONENT24, W,H, GL_FALSE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER/*dummy param*/, GL_DEPTH_ATTACHMENT, texture_target, depth_texture, /*level*/0);
+   }
+   
+   {
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    kv_assert(status == GL_FRAMEBUFFER_COMPLETE);
+   }
+   
+   glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
+  }
+  
+  {
+   i32 W = MAX_PANEL_DIMX;
+   i32 H = MAX_PANEL_DIMY;
+   glGenFramebuffers(1, &prim_id_framebuffer);
+   glBindFramebuffer(GL_FRAMEBUFFER, prim_id_framebuffer);
+   
+   GLenum texture_target = GL_TEXTURE_2D;
+   glGenTextures(1, &prim_id_texture);
+   glBindTexture(texture_target, prim_id_texture);
+   glTexImage2D_wrapper(GL_R16UI, W,H, GL_RED_INTEGER, GL_UNSIGNED_SHORT, 0);
+   ogl__clamp_to_edge();
+   ogl__filter_nearest();
+   
+   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture_target, prim_id_texture, /*level*/0);
+   
+   glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
+  }
+  
+  {// ;csg_texture_gen  @csg_texture_fill
+   glGenTextures(1, &csg_texture);
+   glBindTexture(GL_TEXTURE_2D, csg_texture);
+   // NOTE: I want the GPU to do conversion for me when it blits
+   glTexImage2D_wrapper(GL_RGBA8,
+                        MAX_PANEL_DIMX, MAX_PANEL_DIMY,
+                        GL_BGRA, GL_UNSIGNED_BYTE, 0);
+   ogl__clamp_to_edge();
+   ogl__filter_nearest();
+  }
+ }
+ 
+ {
+  glBindFramebuffer(GL_FRAMEBUFFER, DEFAULT_FRAMEBUFFER);
+  glViewport(0, 0, target->width, target->height);
+#if KV_INTERNAL  // NOTE: Irritating clear in debug mode only
+  glClearColor(.2f,0.f,.2f,1.f);
+#else
+  glClearColor(0.f,0.f,0.f,1.f);
+#endif
+  glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+ }
+ 
+ glBindTexture(GL_TEXTURE_2D, 0);
+ target->texture_bound_at_unit0 = {};
+ 
+ for (Render_Free_Texture *free_texture = target->free_texture_first;
+      free_texture != 0;
+      free_texture = free_texture->next)
+ {
+  glDeleteTextures(1, &free_texture->tex_id);
+ }
+ target->free_texture_first = 0;
+ target->free_texture_last = 0;
+ 
+ Font_Set *font_set = (Font_Set*)target->font_set;
+ for (Render_Group *group = target->group_first;
+      group != 0;
+      group = group->next)
+ {//NOTE: Each render group corresponds to one view/panel (for the game at least)
+  if (render_group_is_game(group) || 
+      (group->entry_first->poly.vertex_list.count > 0))
+  {
+   i32 dstx, dsty;
+   i32 dst_dimx, dst_dimy;
+   v2 dst_dim;
+   {// NOTE: get render dimensions
+    rect2i box = Ri32(group->clip_box);
+    dstx = box.x0;
+    dsty = (group->y_is_up ? (box.y0) : (target->height - box.y1));
+    dst_dim = cast_vec2(rect2i_dim(box));
+     
+    {// NOTE: Handle scale down (TODO: Should've just let the game change the render surface, that would save us the trouble of computing render location at both places)
+     for_i32(it,0,group->scale_down_pow2)
+     {
+      dst_dim *= 0.5f;
+     }
+     
+     // @dim_round_down
+     dst_dimx = cast(i32)dst_dim.x;
+     dst_dimy = cast(i32)dst_dim.y;
     }
     
-    glFlush();
+    macro_clamp_min(dstx, 0);     macro_clamp_min(dsty, 0);
+    macro_clamp_min(dst_dimx, 0); macro_clamp_min(dst_dimy, 0);
+   }
+   
+   if ( render_group_is_game(group) )
+   {//~NOTE: Render for the game!
+    b32 is_main_viewport = (group->viewport_id == 1);
+     
+    glEnable(GL_FRAMEBUFFER_SRGB);
+    glEnable(GL_DEPTH_TEST);
+    glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(0,0, dst_dimx,dst_dimy);
+    glViewport(0, 0, dst_dimx,dst_dimy);
+    
+    {//NOTE: Clears
+     {
+      glDrawBuffer( GL_COLOR_ATTACHMENT0 );
+      v4 bg_color = argb_unpack(group->background);
+      glClearColor( v4_expand(bg_color) );
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+     }
+     
+#if 0
+     if (is_main_viewport)
+     {
+      glDrawBuffer( GL_COLOR_ATTACHMENT1 );
+      glClearColor(0,0,0,0);
+      glClear(GL_COLOR_BUFFER_BIT);
+      
+      GLenum draw_buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+      glDrawBuffers( alen(draw_buffers), draw_buffers );
+     }
+#endif
+    }
+    
+    //
+    mat4 *current_object_transform = &mat4_identity;
+    
+    for(Render_Entry *entry0 = group->entry_first;
+        entry0; 
+        entry0 = entry0->next)
+    {
+     if (entry0->type == Render_Poly)
+     {
+      Render_Entry_Poly *entry = &entry0->poly;
+      {//-NOTE: Second pass
+       Render_Vertex_List *list = &entry->vertex_list;
+       if (list->count)
+       {
+        ogl__begin_program(target, group, dst_dim, OGL_Second_Pass, current_object_transform, 0);
+        
+        ogl__send_buffer_data(list);
+        glDrawArrays(GL_TRIANGLES, 0, list->count);
+        
+        ogl__end_program();
+       }
+      }
+      {//-NOTE: viz
+       Render_Vertex_List *list = &entry->vertex_list_overlay;
+       if (list->count > 0)
+       {
+        ogl__begin_program(target, group, dst_dim, OGL_Second_Pass, current_object_transform, OGL_Overlay);
+        ogl__send_buffer_data(list);
+        glDrawArrays(GL_TRIANGLES, 0, list->count);
+        ogl__end_program();
+       }
+      }
+     }
+     else if (entry0->type == Render_Object_Transform)
+     {
+      current_object_transform = &entry0->object_transform;
+     }
+     else if (entry0->type != Render_Null) { todo_incomplete; }
+    }
+    
+#if 0
+    {//-NOTE: ;csg_experimentation
+     //NOTE: render-spanning triangles
+     
+     {// NOTE: Update the buffer @csg_texture_gen
+      GLenum texture_target = GL_TEXTURE_2D;
+      glBindTexture(texture_target, csg_texture);
+      glBindTexture(GL_TEXTURE_2D, csg_texture);
+      // NOTE: see handmade_opengl.cpp > OpenGLDisplayBitmap, it does what we're doing here
+      glTexImage2D_wrapper(GL_RGBA8,
+                           dst_dimx,dst_dimy,
+                           GL_BGRA, GL_UNSIGNED_BYTE,
+                           global_csg_buffers[group->game_viewport_id-1]);
+     }
+     
+     glBindTextureUnit(0, csg_texture);
+     ogl__begin_program(target, group, dst_dim, OGL_CSG, &mat4_identity, 0);
+     
+     Render_Vertex A = {.pos=vert4(-1,-1,0), .uv=vec2(0,0)};
+     Render_Vertex B = {.pos=vert4(-1,+1,0), .uv=vec2(0,1)};
+     Render_Vertex C = {.pos=vert4(+1,-1,0), .uv=vec2(1,0)};
+     Render_Vertex D = {.pos=vert4(+1,+1,0), .uv=vec2(1,1)};
+     Render_Vertex vertices[6] = { A,B,C, B,C,D, };
+     i32 count = alen(vertices);
+     glBufferData(GL_ARRAY_BUFFER, count*sizeof(Render_Vertex), vertices, GL_STREAM_DRAW);
+     
+     glDrawArrays(GL_TRIANGLES, 0, count);
+     glBindTextureUnit(0, target->texture_bound_at_unit0); //note: Set it back for Mr. Editor
+     
+     ogl__end_program();
+    }
+#endif
+    
+    {// NOTE: Blit game_texture -> default framebuffer :game_blit
+     glBindFramebuffer(GL_READ_FRAMEBUFFER, game_framebuffer);
+     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, DEFAULT_FRAMEBUFFER);
+     glDisable(GL_SCISSOR_TEST); // NOTE: damn, this is global state
+     glBlitFramebuffer(0,0, dst_dimx,dst_dimy,
+                       dstx,dsty, dstx+dst_dimx, dsty+dst_dimy,
+                       GL_COLOR_BUFFER_BIT, GL_NEAREST);
+     
+#if 0
+     {// NOTE: readback 
+      u16 data[W*H] = {};
+      glBindFramebuffer(GL_READ_FRAMEBUFFER, readback_framebuffer);
+      glReadBuffer(GL_COLOR_ATTACHMENT0);
+      // https://www.khronos.org/opengl/wiki/Framebuffer#Read_color_buffer
+      // The read buffer is part of the framebuffer's state
+      glReadPixels(0,0,W,H, GL_RED, GL_UNSIGNED_SHORT, data);
+      breakhere;
+     }
+#endif
+     
+     glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
+    }
+   }
+   else
+   {//-NOTE: Editor
+    kv_assert(group->entry_first->type == Render_Poly);
+    Render_Entry_Poly *entry = &group->entry_first->poly;
+    
+    {
+     Face *face = 0;
+     if (group->face_id)
+     {
+      face = font_set_face_from_id(font_set, group->face_id);
+     }
+     if (face) 
+     {
+      GLuint tex = face->texture;
+      if (target->texture_bound_at_unit0 != tex)
+      {
+       glBindTextureUnit(0,tex);
+       target->texture_bound_at_unit0 = tex;
+      }
+     }
+     else if (!target->texture_bound_at_unit0)
+     {
+      Assert(target->fallback_texture_id != 0);
+      glBindTextureUnit(0, target->fallback_texture_id);
+      target->texture_bound_at_unit0 = target->fallback_texture_id;
+     }
+    }
+    
+    glViewport(0, 0, target->width, target->height);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(dstx, dsty, dst_dimx, dst_dimy);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_FRAMEBUFFER_SRGB); 
+    
+    ogl__begin_program_editor(target, group);
+    Render_Vertex_List *list = &entry->vertex_list;
+    ogl__send_buffer_data(list);
+    glDrawArrays(GL_TRIANGLES, 0, list->count);
+    ogl__end_program();
+    
+    glDisable(GL_SCISSOR_TEST);
+   }
+  }
+ }
 }

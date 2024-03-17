@@ -70,8 +70,8 @@ doc_default_bindings(Arena *arena, i32 map_count, Mapping *mapping_array, char *
             }
             
             u32 counts[] = {
-                KeyCode_COUNT,
-                KeyCode_COUNT,
+                Key_Code_COUNT,
+                Key_Code_COUNT,
                 MouseCode_COUNT,
                 MouseCode_COUNT,
                 1,

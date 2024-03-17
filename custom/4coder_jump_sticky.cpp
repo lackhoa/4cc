@@ -386,7 +386,7 @@ goto_jump_at_cursor(App *app)
         {
             if (get_jump_buffer(app, &buffer, &location))
             {
-                change_active_primary_panel(app);
+                change_active_primary_view(app);
                 View_ID target_view = get_active_view(app, Access_Always);
                 switch_to_existing_view(app, target_view, buffer);
                 jump_to_location(app, target_view, buffer, location);
@@ -395,6 +395,7 @@ goto_jump_at_cursor(App *app)
     }
 }
 
+/*
 CUSTOM_COMMAND_SIG(goto_jump_at_cursor_same_panel)
 CUSTOM_DOC("If the cursor is found to be on a jump location, parses the jump location and brings up the file and position in this view, losing the compilation output or jump list.")
 {
@@ -419,6 +420,7 @@ CUSTOM_DOC("If the cursor is found to be on a jump location, parses the jump loc
         }
     }
 }
+*/
 
 internal void
 goto_jump_in_order(App *app, Marker_List *list, View_ID jump_view, ID_Pos_Jump_Location location)
@@ -429,7 +431,7 @@ goto_jump_in_order(App *app, Marker_List *list, View_ID jump_view, ID_Pos_Jump_L
         View_ID target_view = get_active_view(app, Access_Always);
         if (target_view == jump_view)
         {
-            change_active_primary_panel(app);
+            change_active_primary_view(app);
             target_view = get_active_view(app, Access_Always);
         }
         switch_to_existing_view(app, target_view, buffer);

@@ -116,7 +116,7 @@ mapping_init(Thread_Context *tctx, Mapping *mapping){
 
 function void
 mapping_release(Thread_Context *tctx, Mapping *mapping){
-    linalloc_clear(&mapping->node_arena);
+    arena_free_all(&mapping->node_arena);
     table_free(&mapping->id_to_map);
 }
 
@@ -173,7 +173,7 @@ mapping_release_map(Mapping *mapping, Command_Map *map){
         mapping->free_lists = map->list_first;
     }
     table_free(&map->event_code_to_binding_list);
-    linalloc_clear(&map->node_arena);
+    arena_free_all(&map->node_arena);
 }
 
 ////////////////////////////////
@@ -393,7 +393,7 @@ map_trigger_as_event(Command_Trigger *trigger){
         case InputEventKind_KeyStroke:
         case InputEventKind_KeyRelease:
         {
-            result.key.code = trigger->sub_code;
+            result.key.code = (Key_Code)trigger->sub_code;
             result.key.modifiers = trigger->mods;
         }break;
         
@@ -742,7 +742,7 @@ map_set_binding_lv(Mapping *mapping, Command_Map *map,
         if (v <= 0){
             break;
         }
-        mods.mods[mods.count] = v;
+        mods.mods[mods.count] = (Key_Code)v;
         mods.count += 1;
     }
     return(map_set_binding(mapping, map, binding, code1, code2, &mods));

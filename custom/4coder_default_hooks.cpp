@@ -38,7 +38,7 @@ CUSTOM_COMMAND_SIG(default_try_exit)
 CUSTOM_DOC("Default command for responding to a try-exit event")
 {
     User_Input input = get_current_input(app);
-    if (match_core_code(&input, CoreCode_TryExit)){
+    if ( match_core_code(&input, CoreCode_TryExit) ){
         b32 do_exit = true;
         if (!allow_immediate_close_without_checking_for_changes){
             b32 has_unsaved_changes = false;
@@ -161,7 +161,7 @@ code_index_update_tick(Application_Links *app){
 function void
 default_tick(Application_Links *app, Frame_Info frame_info)
 {
-    linalloc_clear(&global_frame_arena);
+    arena_free_all(&global_frame_arena);
     
     ////////////////////////////////
     // NOTE(allen): Update code index
@@ -203,7 +203,7 @@ default_buffer_region(Application_Links *app, View_ID view_id, Rect_f32 region){
     b64 showing_file_bar = false;
     if (view_get_setting(app, view_id, ViewSetting_ShowFileBar, &showing_file_bar) &&
         showing_file_bar){
-        Rect_f32_Pair pair = layout_file_bar_on_top(region, line_height);
+        rect2_Pair pair = layout_file_bar_on_top(region, line_height);
         region = pair.max;
     }
     
@@ -213,21 +213,21 @@ default_buffer_region(Application_Links *app, View_ID view_id, Rect_f32 region){
         Query_Bar_Ptr_Array query_bars = {};
         query_bars.ptrs = space;
         if (get_active_query_bars(app, view_id, ArrayCount(space), &query_bars)){
-            Rect_f32_Pair pair = layout_query_bar_on_top(region, line_height, query_bars.count);
+            rect2_Pair pair = layout_query_bar_on_top(region, line_height, query_bars.count);
             region = pair.max;
         }
     }
     
     // NOTE(allen): FPS hud
     if (show_fps_hud){
-        Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
+        rect2_Pair pair = layout_fps_hud_on_bottom(region, line_height);
         region = pair.min;
     }
     
     // NOTE(allen): line numbers
     b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
     if (show_line_number_margins){
-        Rect_f32_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
+        rect2_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
         region = pair.max;
     }
     
@@ -400,7 +400,7 @@ default_draw_query_bars(Application_Links *app, Rect_f32 region, View_ID view_id
     query_bars.ptrs = space;
     if (get_active_query_bars(app, view_id, ArrayCount(space), &query_bars)){
         for (i32 i = 0; i < query_bars.count; i += 1){
-            Rect_f32_Pair pair = layout_query_bar_on_top(region, line_height, 1);
+            rect2_Pair pair = layout_query_bar_on_top(region, line_height, 1);
             draw_query_bar(app, query_bars.ptrs[i], face_id, pair.min);
             region = pair.max;
         }
@@ -409,7 +409,9 @@ default_draw_query_bars(Application_Links *app, Rect_f32 region, View_ID view_id
 }
 
 function void
-default_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_id){
+default_render_caller(App *app, Frame_Info frame_info, View_ID view_id)
+{
+#if 0
     ProfileScope(app, "default render caller");
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view_id);
@@ -426,7 +428,7 @@ default_render_caller(Application_Links *app, Frame_Info frame_info, View_ID vie
     // NOTE(allen): file bar
     b64 showing_file_bar = false;
     if (view_get_setting(app, view_id, ViewSetting_ShowFileBar, &showing_file_bar) && showing_file_bar){
-        Rect_f32_Pair pair = layout_file_bar_on_top(region, line_height);
+        rect2_Pair pair = layout_file_bar_on_top(region, line_height);
         draw_file_bar(app, view_id, buffer, face_id, pair.min);
         region = pair.max;
     }
@@ -448,7 +450,7 @@ default_render_caller(Application_Links *app, Frame_Info frame_info, View_ID vie
     
     // NOTE(allen): FPS hud
     if (show_fps_hud){
-        Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
+        rect2_Pair pair = layout_fps_hud_on_bottom(region, line_height);
         draw_fps_hud(app, frame_info, face_id, pair.max);
         region = pair.min;
         animate_in_n_milliseconds(app, 1000);
@@ -458,7 +460,7 @@ default_render_caller(Application_Links *app, Frame_Info frame_info, View_ID vie
     b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
     Rect_f32 line_number_rect = {};
     if (show_line_number_margins){
-        Rect_f32_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
+        rect2_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
         line_number_rect = pair.min;
         region = pair.max;
     }
@@ -477,6 +479,7 @@ default_render_caller(Application_Links *app, Frame_Info frame_info, View_ID vie
     
     text_layout_free(app, text_layout_id);
     draw_set_clip(app, prev_clip);
+#endif
 }
 
 function void
@@ -512,7 +515,7 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                 Buffer_Name_Conflict_Entry *conflict = &conflicts[conflict_index];
                 
                 u64 size = conflict->base_name.size;
-                size = clamp_top(size, conflict->unique_name_capacity);
+                size = clamp_max(size, conflict->unique_name_capacity);
                 conflict->unique_name_len_in_out = size;
                 block_copy(conflict->unique_name_in_out, conflict->base_name.str, size);
                 
@@ -552,9 +555,9 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                     String_u8 builder = Su8(conflict->unique_name_in_out,
                                             conflict->unique_name_len_in_out,
                                             conflict->unique_name_capacity);
-                    string_append(&builder, string_u8_litexpr(" <"));
-                    string_append(&builder, uniqueifier);
-                    string_append(&builder, string_u8_litexpr(">"));
+                    string_concat(&builder, string_u8_litexpr(" <"));
+                    string_concat(&builder, uniqueifier);
+                    string_concat(&builder, string_u8_litexpr(">"));
                     conflict->unique_name_len_in_out = builder.size;
                 }
             }
@@ -636,7 +639,7 @@ parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
         release_global_frame_mutex(app);
     }
     else{
-        linalloc_clear(&arena);
+        arena_free_all(&arena);
     }
 }
 

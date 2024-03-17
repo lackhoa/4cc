@@ -172,7 +172,7 @@ struct Linux_Vars {
     Linux_Input_Chunk input;
     int xkb_event;
     int xkb_group; // active keyboard layout (0-3)
-    KeyCode prev_filtered_key;
+    Key_Code prev_filtered_key;
     
     Key_Mode key_mode;
     
@@ -1009,62 +1009,62 @@ struct SymCode {
 internal void
 linux_keycode_init_common(Display* dpy, Key_Code* keycode_lookup_table, SymCode* sym_table, SymCode* p, size_t sym_table_size){
     
-    *p++ = { XK_space, KeyCode_Space };
-    *p++ = { XK_Tab, KeyCode_Tab };
-    *p++ = { XK_Escape, KeyCode_Escape };
-    *p++ = { XK_Pause, KeyCode_Pause };
-    *p++ = { XK_Up, KeyCode_Up };
-    *p++ = { XK_Down, KeyCode_Down };
-    *p++ = { XK_Left, KeyCode_Left };
-    *p++ = { XK_Right, KeyCode_Right };
-    *p++ = { XK_BackSpace, KeyCode_Backspace };
-    *p++ = { XK_Return, KeyCode_Return };
-    *p++ = { XK_Delete, KeyCode_Delete };
-    *p++ = { XK_Insert, KeyCode_Insert };
-    *p++ = { XK_Home, KeyCode_Home };
-    *p++ = { XK_End, KeyCode_End };
-    *p++ = { XK_Page_Up, KeyCode_PageUp };
-    *p++ = { XK_Page_Down, KeyCode_PageDown };
-    *p++ = { XK_Caps_Lock, KeyCode_CapsLock };
-    *p++ = { XK_Num_Lock, KeyCode_NumLock };
-    *p++ = { XK_Scroll_Lock, KeyCode_ScrollLock };
-    *p++ = { XK_Menu, KeyCode_Menu };
-    *p++ = { XK_Shift_L, KeyCode_Shift };
-    *p++ = { XK_Shift_R, KeyCode_Shift };
-    *p++ = { XK_Control_L, KeyCode_Control };
-    *p++ = { XK_Control_R, KeyCode_Control };
-    *p++ = { XK_Alt_L, KeyCode_Alt };
-    *p++ = { XK_Alt_R, KeyCode_Alt };
-    *p++ = { XK_Super_L, KeyCode_Command };
-    *p++ = { XK_Super_R, KeyCode_Command };
+    *p++ = { XK_space, Key_Code_Space };
+    *p++ = { XK_Tab, Key_Code_Tab };
+    *p++ = { XK_Escape, Key_Code_Escape };
+    *p++ = { XK_Pause, Key_Code_Pause };
+    *p++ = { XK_Up, Key_Code_Up };
+    *p++ = { XK_Down, Key_Code_Down };
+    *p++ = { XK_Left, Key_Code_Left };
+    *p++ = { XK_Right, Key_Code_Right };
+    *p++ = { XK_BackSpace, Key_Code_Backspace };
+    *p++ = { XK_Return, Key_Code_Return };
+    *p++ = { XK_Delete, Key_Code_Delete };
+    *p++ = { XK_Insert, Key_Code_Insert };
+    *p++ = { XK_Home, Key_Code_Home };
+    *p++ = { XK_End, Key_Code_End };
+    *p++ = { XK_Page_Up, Key_Code_PageUp };
+    *p++ = { XK_Page_Down, Key_Code_PageDown };
+    *p++ = { XK_Caps_Lock, Key_Code_CapsLock };
+    *p++ = { XK_Num_Lock, Key_Code_NumLock };
+    *p++ = { XK_Scroll_Lock, Key_Code_ScrollLock };
+    *p++ = { XK_Menu, Key_Code_Menu };
+    *p++ = { XK_Shift_L, Key_Code_Shift };
+    *p++ = { XK_Shift_R, Key_Code_Shift };
+    *p++ = { XK_Control_L, Key_Code_Control };
+    *p++ = { XK_Control_R, Key_Code_Control };
+    *p++ = { XK_Alt_L, Key_Code_Alt };
+    *p++ = { XK_Alt_R, Key_Code_Alt };
+    *p++ = { XK_Super_L, Key_Code_Command };
+    *p++ = { XK_Super_R, Key_Code_Command };
     
-    for (Key_Code k = KeyCode_F1; k <= KeyCode_F24; ++k){
-        *p++ = { XK_F1 + (k - KeyCode_F1), k };
+    for (Key_Code k = Key_Code_F1; k <= Key_Code_F24; ++k){
+        *p++ = { XK_F1 + (k - Key_Code_F1), k };
     }
     
-    for (Key_Code k = KeyCode_NumPad0; k <= KeyCode_NumPad9; ++k){
-        *p++ = { XK_KP_0 + (k - KeyCode_NumPad0), k };
+    for (Key_Code k = Key_Code_NumPad0; k <= Key_Code_NumPad9; ++k){
+        *p++ = { XK_KP_0 + (k - Key_Code_NumPad0), k };
     }
     
-    *p++ = { XK_KP_Multiply, KeyCode_NumPadStar };
-    *p++ = { XK_KP_Add, KeyCode_NumPadPlus };
-    *p++ = { XK_KP_Subtract, KeyCode_NumPadMinus };
-    *p++ = { XK_KP_Decimal, KeyCode_NumPadDot };
-    *p++ = { XK_KP_Delete, KeyCode_NumPadDot }; // seems to take precedence over Decimal...
-    *p++ = { XK_KP_Divide, KeyCode_NumPadSlash };
-    *p++ = { XK_KP_Enter, KeyCode_Return }; // NumPadEnter?
+    *p++ = { XK_KP_Multiply, Key_Code_NumPadStar };
+    *p++ = { XK_KP_Add, Key_Code_NumPadPlus };
+    *p++ = { XK_KP_Subtract, Key_Code_NumPadMinus };
+    *p++ = { XK_KP_Decimal, Key_Code_NumPadDot };
+    *p++ = { XK_KP_Delete, Key_Code_NumPadDot }; // seems to take precedence over Decimal...
+    *p++ = { XK_KP_Divide, Key_Code_NumPadSlash };
+    *p++ = { XK_KP_Enter, Key_Code_Return }; // NumPadEnter?
     
     const int table_size = p - sym_table;
     Assert(table_size < sym_table_size);
     
-    Key_Code next_extra = KeyCode_Ex1;
-    const Key_Code max_extra = KeyCode_Ex29;
+    Key_Code next_extra = Key_Code_Ex1;
+    const Key_Code max_extra = Key_Code_Ex29;
     
-    for(int i = XkbMinLegalKeyCode; i <= XkbMaxLegalKeyCode; ++i) {
+    for(int i = XkbMinLegalKey_Code; i <= XkbMaxLegalKey_Code; ++i) {
         KeySym sym = NoSymbol;
         
         // lookup key in current layout with no modifiers held (0)
-        if(!XkbTranslateKeyCode(linuxvars.xkb, i, XkbBuildCoreState(0, linuxvars.xkb_group), NULL, &sym)) {
+        if(!XkbTranslateKey_Code(linuxvars.xkb, i, XkbBuildCoreState(0, linuxvars.xkb_group), NULL, &sym)) {
             continue;
         }
         
@@ -1084,7 +1084,7 @@ linux_keycode_init_common(Display* dpy, Key_Code* keycode_lookup_table, SymCode*
         // nothing found - try with shift held (needed for e.g. belgian numbers to bind).
         KeySym shift_sym = NoSymbol;
         
-        if(!XkbTranslateKeyCode(linuxvars.xkb, i, XkbBuildCoreState(ShiftMask, linuxvars.xkb_group), NULL, &shift_sym)) {
+        if(!XkbTranslateKey_Code(linuxvars.xkb, i, XkbBuildCoreState(ShiftMask, linuxvars.xkb_group), NULL, &shift_sym)) {
             continue;
         }
         
@@ -1110,28 +1110,28 @@ linux_keycode_init_language(Display* dpy, Key_Code* keycode_lookup_table){
     SymCode* p = sym_table;
     
     for(unsigned int i = 0; i < 26; ++i) {
-        *p++ = { XK_a + i, KeyCode_A + i};
+        *p++ = { XK_a + i, Key_Code_A + i};
     }
     
     for(unsigned int i = 0; i < 26; ++i) {
-        *p++ = { XK_A + i, KeyCode_A + i};
+        *p++ = { XK_A + i, Key_Code_A + i};
     }
     
     for(unsigned int i = 0; i <= 9; ++i) {
-        *p++ = { XK_0 + i, KeyCode_0 + i};
+        *p++ = { XK_0 + i, Key_Code_0 + i};
     }
     
-    *p++ = { XK_grave, KeyCode_Tick };
-    *p++ = { XK_minus, KeyCode_Minus };
-    *p++ = { XK_equal, KeyCode_Equal };
-    *p++ = { XK_bracketleft, KeyCode_LeftBracket };
-    *p++ = { XK_bracketright, KeyCode_RightBracket };
-    *p++ = { XK_semicolon, KeyCode_Semicolon };
-    *p++ = { XK_apostrophe, KeyCode_Quote };
-    *p++ = { XK_comma, KeyCode_Comma };
-    *p++ = { XK_period, KeyCode_Period };
-    *p++ = { XK_slash, KeyCode_ForwardSlash };
-    *p++ = { XK_backslash, KeyCode_BackwardSlash };
+    *p++ = { XK_grave, Key_Code_Tick };
+    *p++ = { XK_minus, Key_Code_Minus };
+    *p++ = { XK_equal, Key_Code_Equal };
+    *p++ = { XK_bracketleft, Key_Code_LeftBracket };
+    *p++ = { XK_bracketright, Key_Code_RightBracket };
+    *p++ = { XK_semicolon, Key_Code_Semicolon };
+    *p++ = { XK_apostrophe, Key_Code_Quote };
+    *p++ = { XK_comma, Key_Code_Comma };
+    *p++ = { XK_period, Key_Code_Period };
+    *p++ = { XK_slash, Key_Code_ForwardSlash };
+    *p++ = { XK_backslash, Key_Code_BackwardSlash };
     
     linux_keycode_init_common(dpy, keycode_lookup_table, sym_table, p, ArrayCount(sym_table));
 }
@@ -1143,8 +1143,8 @@ linux_keycode_init_physical(Display* dpy, Key_Code* keycode_lookup_table){
     SymCode sym_table[100];
     linux_keycode_init_common(dpy, keycode_lookup_table, sym_table, sym_table, ArrayCount(sym_table));
     
-    // Find these keys by physical position, and map to QWERTY KeyCodes
-#define K(k) glue(KeyCode_, k)
+    // Find these keys by physical position, and map to QWERTY Key_Codes
+#define K(k) glue(Key_Code_, k)
     static const u8 positional_keys[] = {
         K(1), K(2), K(3), K(4), K(5), K(6), K(7), K(8), K(9), K(0), K(Minus), K(Equal),
         K(Q), K(W), K(E), K(R), K(T), K(Y), K(U), K(I), K(O), K(P), K(LeftBracket), K(RightBracket),
@@ -1159,7 +1159,7 @@ linux_keycode_init_physical(Display* dpy, Key_Code* keycode_lookup_table){
     static const int ncols = 12;
     static const int nrows = 4;
     
-    for(int i = XkbMinLegalKeyCode; i <= XkbMaxLegalKeyCode; ++i) {
+    for(int i = XkbMinLegalKey_Code; i <= XkbMaxLegalKey_Code; ++i) {
         const char* name = linuxvars.xkb->names->keys[i].name;
         
         // alphanumeric keys
@@ -1179,20 +1179,20 @@ linux_keycode_init_physical(Display* dpy, Key_Code* keycode_lookup_table){
             
             // don't overwrite - for e.g. laptops with numpad keys embedded in the normal ones, toggling with numlock
             if(keycode_lookup_table[i] == 0) {
-                keycode_lookup_table[i] = KeyCode_NumPad0 + name[2] - '0';
+                keycode_lookup_table[i] = Key_Code_NumPad0 + name[2] - '0';
             }
         }
         
         // a few special cases:
         
         else if(memcmp(name, "TLDE", XkbKeyNameLength) == 0) {
-            keycode_lookup_table[i] = KeyCode_Tick;
+            keycode_lookup_table[i] = Key_Code_Tick;
         } else if(memcmp(name, "BKSL", XkbKeyNameLength) == 0) {
-            keycode_lookup_table[i] = KeyCode_BackwardSlash;
+            keycode_lookup_table[i] = Key_Code_BackwardSlash;
         } else if(memcmp(name, "LSGT", XkbKeyNameLength) == 0) {
             // UK extra key between left shift and Z
-            // it prints \ and | with shift. KeyCode_Backslash will be where UK # is.
-            keycode_lookup_table[i] = KeyCode_Ex0;
+            // it prints \ and | with shift. Key_Code_Backslash will be where UK # is.
+            keycode_lookup_table[i] = Key_Code_Ex0;
         }
     }
 }
@@ -1377,25 +1377,25 @@ linux_filter_text(Arena* arena, u8* buf, int len) {
     return SCu8(result, outp - result);
 }
 
-internal KeyCode
-linux_numlock_convert(KeyCode in){
-    static const KeyCode lookup[] = {
-        KeyCode_Insert,
-        KeyCode_End,
-        KeyCode_Down,
-        KeyCode_PageDown,
-        KeyCode_Left,
+internal Key_Code
+linux_numlock_convert(Key_Code in){
+    static const Key_Code lookup[] = {
+        Key_Code_Insert,
+        Key_Code_End,
+        Key_Code_Down,
+        Key_Code_PageDown,
+        Key_Code_Left,
         0,
-        KeyCode_Right,
-        KeyCode_Home,
-        KeyCode_Up,
-        KeyCode_PageUp,
+        Key_Code_Right,
+        Key_Code_Home,
+        Key_Code_Up,
+        Key_Code_PageUp,
         0, 0, 0,
-        KeyCode_Delete,
+        Key_Code_Delete,
     };
     
-    if(in >= KeyCode_NumPad0 && in <= KeyCode_NumPadDot) {
-        KeyCode ret = lookup[in - KeyCode_NumPad0];
+    if(in >= Key_Code_NumPad0 && in <= Key_Code_NumPadDot) {
+        Key_Code ret = lookup[in - Key_Code_NumPad0];
         if(ret != 0) {
             return ret;
         }
@@ -1430,10 +1430,10 @@ linux_handle_x11_events() {
                 Input_Modifier_Set_Fixed* mods = &linuxvars.input.pers.modifiers;
                 
                 int state = event.xkey.state;
-                set_modifier(mods, KeyCode_Shift, state & ShiftMask);
-                set_modifier(mods, KeyCode_Control, state & ControlMask);
-                set_modifier(mods, KeyCode_CapsLock, state & LockMask);
-                set_modifier(mods, KeyCode_Alt, state & Mod1Mask);
+                set_modifier(mods, Key_Code_Shift, state & ShiftMask);
+                set_modifier(mods, Key_Code_Control, state & ControlMask);
+                set_modifier(mods, Key_Code_CapsLock, state & LockMask);
+                set_modifier(mods, Key_Code_Alt, state & Mod1Mask);
                 
                 event.xkey.state &= ~(ControlMask);
                 
@@ -1449,11 +1449,11 @@ linux_handle_x11_events() {
                 }
                 
                 if (keysym == XK_ISO_Left_Tab){
-                    add_modifier(mods, KeyCode_Shift);
+                    add_modifier(mods, Key_Code_Shift);
                 }
                 
                 Key_Code key;
-                if(linuxvars.key_mode == KeyMode_Physical) {
+                if(linuxvars.key_mode == Key_Mode_Physical) {
                     key = keycode_lookup_table_physical[(u8)event.xkey.keycode];
                 } else {
                     key = keycode_lookup_table_language[(u8)event.xkey.keycode];
@@ -1518,13 +1518,13 @@ linux_handle_x11_events() {
                 Input_Modifier_Set_Fixed* mods = &linuxvars.input.pers.modifiers;
                 
                 int state = event.xkey.state;
-                set_modifier(mods, KeyCode_Shift, state & ShiftMask);
-                set_modifier(mods, KeyCode_Control, state & ControlMask);
-                set_modifier(mods, KeyCode_CapsLock, state & LockMask);
-                set_modifier(mods, KeyCode_Alt, state & Mod1Mask);
+                set_modifier(mods, Key_Code_Shift, state & ShiftMask);
+                set_modifier(mods, Key_Code_Control, state & ControlMask);
+                set_modifier(mods, Key_Code_CapsLock, state & LockMask);
+                set_modifier(mods, Key_Code_Alt, state & Mod1Mask);
                 
                 Key_Code key;
-                if(linuxvars.key_mode == KeyMode_Physical) {
+                if(linuxvars.key_mode == Key_Mode_Physical) {
                     key = keycode_lookup_table_physical[(u8)event.xkey.keycode];
                 } else {
                     key = keycode_lookup_table_language[(u8)event.xkey.keycode];

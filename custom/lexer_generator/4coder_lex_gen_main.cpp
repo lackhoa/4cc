@@ -907,7 +907,7 @@ smi_input_set_union(Arena *arena, Input_Set a, Input_Set b){
     Input_Set result = {};
     if (a.count > 0 || b.count > 0){
         result.inputs = push_array_zero(arena, u16, a.count + b.count);
-        block_copy_dynamic_array(result.inputs, a.inputs, a.count);
+        block_copy_count(result.inputs, a.inputs, a.count);
         result.count = a.count;
         for (i32 i = 0; i < b.count; i += 1){
             b32 is_duplicate = false;
@@ -2661,7 +2661,7 @@ opt_condition_is_eof_only(Transition_Case condition){
 internal Keyword_Layout
 opt_key_layout(Arena *arena, Keyword_Set keywords, i32 slot_count, u64 seed){
     Keyword_Layout layout = {};
-    slot_count = clamp_bot(keywords.count + 1, slot_count);
+    slot_count = clamp_min(keywords.count + 1, slot_count);
     layout.seed = seed;
     layout.hashes = push_array_zero(arena, u64, slot_count);
     layout.contributed_error = push_array_zero(arena, u64, slot_count);

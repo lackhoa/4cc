@@ -61,15 +61,15 @@ function void
 vim_animate_filebar(Application_Links *app, Frame_Info frame_info)
 {
 #if VIM_DO_ANIMATE
-	f32 diff = vim_nxt_filebar_offset - vim_cur_filebar_offset;
+	f32 diff = vim_nxt_lister_offset - vim_cur_lister_offset;
 	if(fabs(diff) > 1.0f){
-		vim_cur_filebar_offset += diff*frame_info.animation_dt*25.0f;
+		vim_cur_lister_offset += diff*frame_info.animation_dt*25.0f;
 		animate_in_n_milliseconds(app, 0);
 	}else{
-		vim_cur_filebar_offset = vim_nxt_filebar_offset;
+		vim_cur_lister_offset = vim_nxt_lister_offset;
 	}
 #else
-	vim_cur_filebar_offset = vim_nxt_filebar_offset;
+	vim_cur_lister_offset = vim_nxt_lister_offset;
 #endif
 }
 
@@ -129,36 +129,42 @@ CUSTOM_COMMAND_SIG(vim_try_exit)
 CUSTOM_DOC("Vim command for responding to a try-exit event")
 {
 	User_Input input = get_current_input(app);
-	if(!match_core_code(&input, CoreCode_TryExit)) return;
-  
+	if( match_core_code(&input, CoreCode_TryExit) )
+ {
   b32 do_exit = true;
+  
+#if !KV_INTERNAL
   b32 user_confirmed = false;
   View_ID view = get_active_view(app, Access_Always);
   if(!allow_immediate_close_without_checking_for_changes)
   {
-    b32 has_unsaved_changes = false;
-    for(Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-				buffer;
-				buffer = get_buffer_next(app, buffer, Access_Always))
-    {
-      Dirty_State dirty = buffer_get_dirty_state(app, buffer);
-      if(HasFlag(dirty, DirtyState_UnsavedChanges)){
-        has_unsaved_changes = true;
-        break;
-      }
+   b32 has_unsaved_changes = false;
+   for(Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+       buffer;
+       buffer = get_buffer_next(app, buffer, Access_Always))
+   {
+    Dirty_State dirty = buffer_get_dirty_state(app, buffer);
+    if( HasFlag(dirty, DirtyState_UnsavedChanges) ){
+     has_unsaved_changes = true;
+     break;
     }
-    if(has_unsaved_changes)
-    {
-      do_exit = vim_do_4coder_close_user_check(app, view);
-      user_confirmed = true;
-    }
+   }
+   if(has_unsaved_changes)
+   {
+    do_exit = vim_do_4coder_close_user_check(app, view);
+    user_confirmed = true;
+   }
   }
   
   if (!user_confirmed)
-    do_exit = vim_4coder_close_are_you_sure_check(app, view);
+  {
+   do_exit = vim_4coder_close_are_you_sure_check(app, view);
+  }
+#endif
   
   if(do_exit)
   {
-    hard_exit(app);
+   hard_exit(app);
   }
+ }
 }

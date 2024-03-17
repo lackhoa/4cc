@@ -610,6 +610,7 @@ extern "C++" {
 #define gb_global        static // Global variables
 #define gb_internal      static // Internal linkage
 #define gb_local_persist static // Local Persisting variables
+#define internal static
 #endif
 
 
@@ -1470,8 +1471,8 @@ Advantages:
 Disadvantages:
 
     * In the C version of these functions, many return the new string. i.e.
-          str = gb_string_appendc(str, "another string");
-      This could be changed to gb_string_appendc(&str, "another string"); but I'm still not sure.
+          str = gb_string_concatc(str, "another string");
+      This could be changed to gb_string_concatc(&str, "another string"); but I'm still not sure.
 
 	* This is incompatible with "gb_string.h" strings
 */
@@ -1482,8 +1483,8 @@ Disadvantages:
 int main(int argc, char **argv) {
 	gbString str = gb_string_make("Hello");
 	gbString other_str = gb_string_make_length(", ", 2);
-	str = gb_string_append(str, other_str);
-	str = gb_string_appendc(str, "world!");
+	str = gb_string_concat(str, other_str);
+	str = gb_string_concatc(str, "world!");
 
 	gb_printf("%s\n", str); // Hello, world!
 
@@ -1531,11 +1532,11 @@ GB_DEF isize    gb_string_length         (gbString const str);
 GB_DEF isize    gb_string_capacity       (gbString const str);
 GB_DEF isize    gb_string_available_space(gbString const str);
 GB_DEF void     gb_string_clear          (gbString str);
-GB_DEF gbString gb_string_append         (gbString str, gbString const other);
-GB_DEF gbString gb_string_append_length  (gbString str, void const *other, isize num_bytes);
-GB_DEF gbString gb_string_appendc        (gbString str, char const *other);
-GB_DEF gbString gb_string_append_rune    (gbString str, Rune r);
-GB_DEF gbString gb_string_append_fmt     (gbString str, char const *fmt, ...);
+GB_DEF gbString gb_string_concat         (gbString str, gbString const other);
+GB_DEF gbString gb_string_concat_length  (gbString str, void const *other, isize num_bytes);
+GB_DEF gbString gb_string_concatc        (gbString str, char const *other);
+GB_DEF gbString gb_string_concat_rune    (gbString str, Rune r);
+GB_DEF gbString gb_string_concat_fmt     (gbString str, char const *fmt, ...);
 GB_DEF gbString gb_string_set            (gbString str, char const *cstr);
 GB_DEF gbString gb_string_make_space_for (gbString str, isize add_len);
 GB_DEF isize    gb_string_allocation_size(gbString const str);
@@ -2106,7 +2107,7 @@ typedef void *gbDllHandle;
 typedef void (*gbDllProc)(void);
 
 GB_DEF gbDllHandle gb_dll_load        (char const *filepath);
-GB_DEF void        gb_dll_unload      (gbDllHandle dll);
+GB_DEF b32         gb_dll_unload      (gbDllHandle dll);
 GB_DEF gbDllProc   gb_dll_proc_address(gbDllHandle dll, char const *proc_name);
 
 
@@ -3661,7 +3662,7 @@ gb_inline void gb_zero_size(void *ptr, isize size) { gb_memset(ptr, 0, size); }
 #pragma intrinsic(__movsb)
 #endif
 
-gb_inline void *gb_memcopy(void *dest, void const *source, isize n) {
+internal void *gb_memcopy(void *dest, void const *source, isize n) {
 #if defined(_MSC_VER)
 	if (dest == NULL) {
 		return NULL;
@@ -3821,7 +3822,7 @@ gb_inline void *gb_memcopy(void *dest, void const *source, isize n) {
 	return dest;
 }
 
-gb_inline void *gb_memmove(void *dest, void const *source, isize n) {
+internal void *gb_memmove(void *dest, void const *source, isize n) {
 	u8 *d = cast(u8 *)dest;
 	u8 const *s = cast(u8 const *)source;
 
@@ -3868,7 +3869,7 @@ gb_inline void *gb_memmove(void *dest, void const *source, isize n) {
 	return dest;
 }
 
-gb_inline void *gb_memset(void *dest, u8 c, isize n) {
+internal void *gb_memset(void *dest, u8 c, isize n) {
 	u8 *s = cast(u8 *)dest;
 	isize k;
 	u32 c32 = ((u32)-1)/255 * c;
@@ -6068,7 +6069,7 @@ gb_inline i32 gb_hex_digit_to_int(char c) {
 
 
 
-gb_inline void gb_str_to_lower(char *str) {
+inline void gb_str_to_lower(char *str) {
 	if (!str) return;
 	while (*str) {
 		*str = gb_char_to_lower(*str);
@@ -6076,7 +6077,7 @@ gb_inline void gb_str_to_lower(char *str) {
 	}
 }
 
-gb_inline void gb_str_to_upper(char *str) {
+inline void gb_str_to_upper(char *str) {
 	if (!str) return;
 	while (*str) {
 		*str = gb_char_to_upper(*str);
@@ -6085,7 +6086,7 @@ gb_inline void gb_str_to_upper(char *str) {
 }
 
 
-gb_inline isize gb_strlen(char const *str) {
+inline isize gb_strlen(char const *str) {
 	char const *begin = str;
 	isize const *w;
 	if (str == NULL)  {
@@ -6107,7 +6108,7 @@ gb_inline isize gb_strlen(char const *str) {
 	return str - begin;
 }
 
-gb_inline isize gb_strnlen(char const *str, isize max_len) {
+inline isize gb_strnlen(char const *str, isize max_len) {
 	char const *end = cast(char const *)gb_memchr(str, 0, max_len);
 	if (end) {
 		return end - str;
@@ -6115,7 +6116,7 @@ gb_inline isize gb_strnlen(char const *str, isize max_len) {
 	return max_len;
 }
 
-gb_inline isize gb_utf8_strlen(u8 const *str) {
+inline isize gb_utf8_strlen(u8 const *str) {
 	isize count = 0;
 	for (; *str; count++) {
 		u8 c = *str;
@@ -6131,7 +6132,7 @@ gb_inline isize gb_utf8_strlen(u8 const *str) {
 	return count;
 }
 
-gb_inline isize gb_utf8_strnlen(u8 const *str, isize max_len) {
+inline isize gb_utf8_strnlen(u8 const *str, isize max_len) {
 	isize count = 0;
 	for (; *str && max_len > 0; count++) {
 		u8 c = *str;
@@ -6149,14 +6150,14 @@ gb_inline isize gb_utf8_strnlen(u8 const *str, isize max_len) {
 }
 
 
-gb_inline i32 gb_strcmp(char const *s1, char const *s2) {
+inline i32 gb_strcmp(char const *s1, char const *s2) {
 	while (*s1 && (*s1 == *s2)) {
 		s1++, s2++;
 	}
 	return *(u8 *)s1 - *(u8 *)s2;
 }
 
-gb_inline char *gb_strcpy(char *dest, char const *source) {
+inline char *gb_strcpy(char *dest, char const *source) {
 	GB_ASSERT_NOT_NULL(dest);
 	if (source) {
 		char *str = dest;
@@ -6166,7 +6167,7 @@ gb_inline char *gb_strcpy(char *dest, char const *source) {
 }
 
 
-gb_inline char *gb_strncpy(char *dest, char const *source, isize len) {
+inline char *gb_strncpy(char *dest, char const *source, isize len) {
 	GB_ASSERT_NOT_NULL(dest);
 	if (source) {
 		char *str = dest;
@@ -6182,7 +6183,7 @@ gb_inline char *gb_strncpy(char *dest, char const *source, isize len) {
 	return dest;
 }
 
-gb_inline isize gb_strlcpy(char *dest, char const *source, isize len) {
+inline isize gb_strlcpy(char *dest, char const *source, isize len) {
 	isize result = 0;
 	GB_ASSERT_NOT_NULL(dest);
 	if (source) {
@@ -6202,7 +6203,7 @@ gb_inline isize gb_strlcpy(char *dest, char const *source, isize len) {
 	return result;
 }
 
-gb_inline char *gb_strrev(char *str) {
+inline char *gb_strrev(char *str) {
 	isize len = gb_strlen(str);
 	char *a = str + 0;
 	char *b = str + len-1;
@@ -6217,7 +6218,7 @@ gb_inline char *gb_strrev(char *str) {
 
 
 
-gb_inline i32 gb_strncmp(char const *s1, char const *s2, isize len) {
+inline i32 gb_strncmp(char const *s1, char const *s2, isize len) {
 	for (; len > 0;
 	     s1++, s2++, len--) {
 		if (*s1 != *s2) {
@@ -6596,9 +6597,9 @@ gb_inline isize gb_string_available_space(gbString const str) {
 
 gb_inline void gb_string_clear(gbString str) { gb__set_string_length(str, 0); str[0] = '\0'; }
 
-gb_inline gbString gb_string_append(gbString str, gbString const other) { return gb_string_append_length(str, other, gb_string_length(other)); }
+gb_inline gbString gb_string_concat(gbString str, gbString const other) { return gb_string_concat_length(str, other, gb_string_length(other)); }
 
-gbString gb_string_append_length(gbString str, void const *other, isize other_len) {
+gbString gb_string_concat_length(gbString str, void const *other, isize other_len) {
 	if (other_len > 0) {
 		isize curr_len = gb_string_length(str);
 
@@ -6614,27 +6615,27 @@ gbString gb_string_append_length(gbString str, void const *other, isize other_le
 	return str;
 }
 
-gb_inline gbString gb_string_appendc(gbString str, char const *other) {
-	return gb_string_append_length(str, other, gb_strlen(other));
+gb_inline gbString gb_string_concatc(gbString str, char const *other) {
+	return gb_string_concat_length(str, other, gb_strlen(other));
 }
 
-gbString gb_string_append_rune(gbString str, Rune r) {
+gbString gb_string_concat_rune(gbString str, Rune r) {
 	if (r >= 0) {
 		u8 buf[8] = {0};
 		isize len = gb_utf8_encode_rune(buf, r);
-		return gb_string_append_length(str, buf, len);
+		return gb_string_concat_length(str, buf, len);
 	}
 	return str;
 }
 
-gbString gb_string_append_fmt(gbString str, char const *fmt, ...) {
+gbString gb_string_concat_fmt(gbString str, char const *fmt, ...) {
 	isize res;
 	char buf[4096] = {0};
 	va_list va;
 	va_start(va, fmt);
 	res = gb_snprintf_va(buf, gb_count_of(buf)-1, fmt, va)-1;
 	va_end(va);
-	return gb_string_append_length(str, buf, res);
+	return gb_string_concat_length(str, buf, res);
 }
 
 
@@ -7933,7 +7934,7 @@ gbFileTime gb_file_last_write_time(char const *filepath) {
 }
 
 
-gb_inline b32 gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
+inline b32 gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
 	wchar_t *w_old = NULL;
 	wchar_t *w_new = NULL;
 	gbAllocator a = gb_heap_allocator();
@@ -7947,6 +7948,10 @@ gb_inline b32 gb_file_copy(char const *existing_filename, char const *new_filena
 	if (w_new != NULL) {
 		result = CopyFileW(w_old, w_new, fail_if_exists);
 	}
+ if (!result)
+ {
+  DWORD last_error = GetLastError();
+ }
 	gb_free(a, w_new);
 	gb_free(a, w_old);
 	return result;
@@ -8001,7 +8006,7 @@ gbFileTime gb_file_last_write_time(char const *filepath) {
 }
 
 
-gb_inline b32 gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
+inline b32 gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
 #if defined(GB_SYSTEM_OSX)
 	return copyfile(existing_filename, new_filename, NULL, COPYFILE_DATA) == 0;
 #else
@@ -8663,7 +8668,7 @@ gb_no_inline isize gb_snprintf_va(char *text, isize max_len, char const *fmt, va
 gbDllHandle gb_dll_load(char const *filepath) {
 	return cast(gbDllHandle)LoadLibraryA(filepath);
 }
-gb_inline void      gb_dll_unload      (gbDllHandle dll)                        { FreeLibrary(cast(HMODULE)dll); }
+gb_inline b32       gb_dll_unload      (gbDllHandle dll)                        { return FreeLibrary(cast(HMODULE)dll); }
 gb_inline gbDllProc gb_dll_proc_address(gbDllHandle dll, char const *proc_name) { return cast(gbDllProc)GetProcAddress(cast(HMODULE)dll, proc_name); }
 
 #else // POSIX
@@ -8673,7 +8678,7 @@ gbDllHandle gb_dll_load(char const *filepath) {
 	return cast(gbDllHandle)dlopen(filepath, RTLD_LAZY|RTLD_GLOBAL);
 }
 
-gb_inline void      gb_dll_unload      (gbDllHandle dll)                        { dlclose(dll); }
+gb_inline b32       gb_dll_unload      (gbDllHandle dll)                        { return !dlclose(dll); }
 gb_inline gbDllProc gb_dll_proc_address(gbDllHandle dll, char const *proc_name) { return cast(gbDllProc)dlsym(dll, proc_name); }
 
 #endif

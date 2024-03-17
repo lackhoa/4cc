@@ -56,21 +56,21 @@ VIM_TEXT_OBJECT_SIG(byp_object_camel)
 	i64 s = line_range.min;
 	u8 *line_text = push_buffer_range(app, scratch, buffer, line_range).str;
 	u8 c = line_text[cursor_pos-s];
-	if(!character_is_alpha_numeric(c)){ return {}; }
+	if(!character_is_alnum(c)){ return {}; }
 	cursor_pos += line_text[cursor_pos-s] == '_';
 	range.min = range.max = cursor_pos;
 
 	b32 valid=false;
 	for(; range.min>0; range.min--){
 		c = line_text[range.min-s];
-		if(!character_is_alpha_numeric(c) || c == '_'){ valid = true; break; }
+		if(!character_is_alnum(c) || c == '_'){ valid = true; break; }
 	}
 	if(!valid){ return {}; }
 
 	valid=false;
 	for(; range.max>0; range.max++){
 		c = line_text[range.max-s];
-		if(!character_is_alpha_numeric(c) || c == '_'){ valid = true; break; }
+		if(!character_is_alnum(c) || c == '_'){ valid = true; break; }
 	}
 	if(!valid){ return {}; }
 

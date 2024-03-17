@@ -69,7 +69,7 @@ peek_count += 1;\
     
 #undef PushPeek
     
-    f32 peek_height = (f32)((view_rect.y1 - view_rect.y0) * (0.5f + 0.4f*(f32)(clamp_top(peek_count / 4, 1)))) / (f32)peek_count;
+    f32 peek_height = (f32)((view_rect.y1 - view_rect.y0) * (0.5f + 0.4f*(f32)(clamp_max(peek_count / 4, 1)))) / (f32)peek_count;
     Rect_f32 rect = {};
     {
         rect.x0 = view_rect.x0;

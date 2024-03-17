@@ -14,7 +14,7 @@ ctrl_backspace_utf8(String_Const_u8 string){
 	for(; i>0; --i){
 		if(!clearing_whitespace &&
 		   (string.str[i] <= 0x7F || string.str[i] >= 0xC0) &&
-		   (string.str[i] == '_' || !character_is_alpha_numeric(string.str[i])))
+		   (string.str[i] == '_' || !character_is_alnum(string.str[i])))
 		{
 			i++;
 			break;
@@ -30,8 +30,8 @@ vim_lister__backspace(Application_Links *app){
 	Lister *lister = view_get_lister(app, view);
 	if(lister){
 		User_Input input = get_current_input(app);
-		if(input_has_modifier(&input, KeyCode_Control)){
-			if(input_has_modifier(&input, KeyCode_Shift)){
+		if(input_has_modifier(&input, Key_Code_Control)){
+			if(input_has_modifier(&input, Key_Code_Shift)){
 				lister->text_field.size = 0;
 			}else{
 				lister->text_field.string = ctrl_backspace_utf8(lister->text_field.string);
@@ -54,8 +54,8 @@ vim_lister_file__backspace(Application_Links *app){
 	Lister *lister = view_get_lister(app, view);
 	if(lister){
 		User_Input input = get_current_input(app);
-		if(input_has_modifier(&input, KeyCode_Control)){
-			if(input_has_modifier(&input, KeyCode_Shift)){
+		if(input_has_modifier(&input, Key_Code_Control)){
+			if(input_has_modifier(&input, Key_Code_Shift)){
 				lister->text_field.size = 0;
 				while(!character_is_slash(lister->text_field.str[++lister->text_field.size])){}
 				++lister->text_field.size;
@@ -170,7 +170,7 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
 	if(rect_contains_point(region, m_p)){
 		f32 y = m_p.y - region.y0 + lister->scroll.position.y;
 		i32 index = i32(m_p.x/block_width) + col_num*i32(y/block_height);
-		if(in_range(0, index, lister->filtered.count)){
+		if(in_range_exclude_last(0, index, lister->filtered.count)){
 			return lister->filtered.node_ptrs[index]->user_data;
 		}
 	}
@@ -182,7 +182,7 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
 function Vec2_i32
 calc_col_row(Application_Links *app, Lister *lister)
 {
-	v2 dim = rect_dim(global_get_screen_rectangle(app));
+	v2 dim = rect2_dim(global_get_screen_rectangle(app));
 	Face_ID face_id = get_face_id(app, 0);
 	Face_Metrics metrics = get_face_metrics(app, face_id);
 	f32 line_height = metrics.line_height;
@@ -209,58 +209,62 @@ calc_col_row(Application_Links *app, Lister *lister)
 	return Vec2_i32{col_num, row_num};
 }
 
+#define SCREW_THIS_JUST_KISS 1
 // TODO(BYP): Be more rigorous here. I'm sure there are off-by-1's and other incorrect assumptions
 function void
-vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
-	Scratch_Block scratch(app);
+vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
+{
+    Scratch_Block scratch(app);
+    
+    Lister *lister = view_get_lister(app, view);
+    if (lister == 0) { return; }
+    
+    rect2 clip      = hax_get_main_monitor_rectangle(app);
+    rect2 prev_clip = draw_set_clip(app, clip);
+    
+    Face_ID face_id = get_face_id(app, 0);
+    Face_Metrics metrics = get_face_metrics(app, face_id);
+    f32 line_height = metrics.line_height;
+    f32 max_advance = metrics.max_advance;
+    f32 block_height = vim_lister_get_block_height(line_height);
+    f32 max_lister_height = rect_height(clip)*VIM_LISTER_MAX_RATIO - 2.f*line_height;
 	
-	Lister *lister = view_get_lister(app, view);
-	if(lister == 0){ return; }
+    u64 max_name_size = 0;
+    Range_i32 lister_range = Ii32(VIM_LISTER_RANGE);
+    const i32 N = Min(lister_range.max*i32(block_height/max_lister_height), lister->filtered.count);
+    foreach(i,N)
+    {
+        if(lister->filtered.node_ptrs[i]->string.size > max_name_size){
+            max_name_size = lister->filtered.node_ptrs[i]->string.size;
+        }
+    }
 	
-	// Set up region for drawing
-	Rect_f32 region = global_get_screen_rectangle(app);
-	Rect_f32 prev_clip = draw_set_clip(app, region);
+    i32 col_num = i32(rect_width(clip)/(((f64)max_name_size+7)*max_advance));
+    //i32 col_num = i32(rect_width(clip)/((max_name_size)*max_advance));
+    col_num = clamp_between(lister_range.min, col_num, lister_range.max);
 	
-	Face_ID face_id = get_face_id(app, 0);
-	Face_Metrics metrics = get_face_metrics(app, face_id);
-	f32 line_height = metrics.line_height;
-	f32 max_advance = metrics.max_advance;
-	f32 block_height = vim_lister_get_block_height(line_height);
-	f32 max_lister_height = rect_height(region)*VIM_LISTER_MAX_RATIO - 2.f*line_height;
-	
-	u64 max_name_size = 0;
-	Range_i32 lister_range = Ii32(VIM_LISTER_RANGE);
-	const i32 N = Min(lister_range.max*i32(block_height/max_lister_height), lister->filtered.count);
-	foreach(i,N){
-		if(lister->filtered.node_ptrs[i]->string.size > max_name_size){
-			max_name_size = lister->filtered.node_ptrs[i]->string.size;
-		}
-	}
-	
-	i32 col_num = i32(rect_width(region)/(((f64)max_name_size+7)*max_advance));
-	//i32 col_num = i32(rect_width(region)/((max_name_size)*max_advance));
-	col_num = clamp_between(lister_range.min, col_num, lister_range.max);
-	
-	i32 max_row_num = 1 + (lister->filtered.count-1)/col_num;
-	i32 row_num;
-	if(lister->filtered.count == 0){ row_num = 0; }
-	else{ row_num = Min(i32(max_lister_height/block_height), max_row_num); }
-	
-	lister->visible_count = Min(col_num*row_num, lister->filtered.count);
+    i32 max_row_num = 1 + (lister->filtered.count-1)/col_num;
+    i32 row_num;
+    if (lister->filtered.count == 0) { row_num = 0; }
+    else { row_num = Min(i32(max_lister_height/block_height), max_row_num); }
+    
+    lister->visible_count = Min(col_num*row_num, lister->filtered.count);
 	
 	// TODO(BYP) check exactly why row_num+2. Had to update when changing block_height
-	region = rect_split_top_bottom_neg(region, (f32)(row_num+2)*block_height).b;
-	region = rect_split_top_bottom_neg(region, 2.f*line_height).a;
-	vim_nxt_filebar_offset = (f32)row_num*block_height + 0.1f;
+#if SCREW_THIS_JUST_KISS
+    clip = rect_split_top_bottom_neg(clip, (f32)(row_num+2)*block_height).b;
+    clip = rect_split_top_bottom_neg(clip, 2.f*line_height).a;
+#endif
+	vim_nxt_lister_offset = (f32)row_num*block_height + 0.1f;
 	// non-zero so when lister displays no results, it still displays the cursor
 	
-	// Render the view
+	// NOTE(kv): Render the view (a single panel, other than the lister)
 	Render_Caller_Function *render_caller = (Render_Caller_Function *)get_custom_hook(app, HookID_RenderCaller);
 	render_caller(app, frame_info, view);
-	draw_set_clip(app, region);
+	draw_set_clip(app, clip);
 	
 	Mouse_State mouse = get_mouse_state(app);
-	Vec2_f32 m_p = V2(mouse.p);
+	Vec2_f32 m_p = vec2(mouse.p);
 	
 	// NOTE(allen): auto scroll to the item if the flag is set.
 	f32 scroll_y = lister->scroll.position.y;
@@ -268,13 +272,13 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	if(lister->set_vertical_focus_to_item){
 		lister->set_vertical_focus_to_item = false;
 		Range_f32 item_y = If32_size(((f32)lister->item_index/col_num)*block_height, block_height);
-		f32 view_h = rect_height(region);
+		f32 view_h = rect_height(clip);
 		Range_f32 view_y = If32_size(scroll_y, view_h);
 		if(view_y.min > item_y.min || item_y.max > view_y.max){
 			f32 item_center = (item_y.min + item_y.max)*0.5f;
 			f32 view_center = (view_y.min + view_y.max)*0.5f;
 			f32 margin = view_h*.3f;
-			margin = clamp_top(margin, block_height*3.f);
+			margin = clamp_max(margin, block_height*3.f);
 			if(item_center < view_center){
 				lister->scroll.target.y = item_y.min - margin;
 			}
@@ -287,8 +291,8 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	
 	// NOTE(allen): clamp scroll target and position; smooth scroll rule
 	i32 count = lister->filtered.count;
-	//Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, (count/col_num)*block_height));
-	Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, ((f32)(count/col_num - 1)*block_height)));
+	//Range_f32 scroll_range = If32(0.f, clamp_min(0.f, (count/col_num)*block_height));
+	Range_f32 scroll_range = If32(0.f, clamp_min(0.f, ((f32)(count/col_num - 1)*block_height)));
 	lister->scroll.target.y = clamp_range(scroll_range, lister->scroll.target.y);
 	lister->scroll.target.x = 0.f;
 	
@@ -302,21 +306,24 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	scroll_y = lister->scroll.position.y;
 	i32 first_index = (i32)(col_num*scroll_y/(block_height));
 	
-	f32 x_base = region.x0;
-	f32 y_base = region.y1 - vim_cur_filebar_offset;
-	f32 block_width = rect_width(region)/col_num;
-	Rect_f32 back_rect = region;
-	back_rect.y0 = y_base;
-	back_rect.y1 = y_base + rect_height(region);
+	f32 x_base = clip.x0;
+	f32 y_base = clip.y1 - vim_cur_lister_offset;
+	f32 block_width = rect_width(clip)/col_num;
+	Rect_f32 back_rect = clip;
+#if SCREW_THIS_JUST_KISS
+    back_rect.y0 = y_base;
+    back_rect.y1 = y_base + rect_height(clip);
+#endif
 	draw_rect_fcolor(app, back_rect, 0.f, fcolor_id(defcolor_back));
 	
 	Fancy_Block block = {};
-	for(i32 i=first_index; i<count; i++){
-		Lister_Node *node = lister->filtered.node_ptrs[i];
+	for (i32 i=first_index; i<count; i++)
+    {// NOTE(kv): Drawing lister items
+        Lister_Node *node = lister->filtered.node_ptrs[i];
 		
 		f32 x0 = x_base + block_width*((i-first_index) % col_num);
 		f32 y0 = y_base + block_height*((i-first_index) / col_num);
-		if(y0 > region.y1){ break; }
+		if(y0 > clip.y1){ break; }
 		Rect_f32 item_rect = Rf32(x0, y0, x0+block_width, y0+block_height);
 		Rect_f32 item_inner = rect_inner(item_rect, 3.f);
 		
@@ -344,25 +351,26 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 		
 		u64 lister_roundness_100 = def_get_config_u64(app, vars_intern_lit("lister_roundness"));
 		f32 roundness = block_height*lister_roundness_100*0.01f;
-		draw_rect_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
-		draw_rect_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
+        draw_rect_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
+        draw_rect_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
 		
-		Fancy_Line line = {};
-		push_fancy_string(scratch, &line, fcolor_id(defcolor_text_default), node->string);
-		push_fancy_stringf(scratch, &line, " ");
-		u64 index = string_find_last(node->status, '\n');
-		push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), string_prefix(node->status, index));
+        Fancy_Line line = {};
+        push_fancy_string(scratch, &line, fcolor_id(defcolor_text_default), node->string);
+        push_fancy_stringf(scratch, &line, " ");
+        u64 index = string_find_last(node->status, '\n');
+        push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), string_prefix(node->status, index));
 		
-		Vec2_f32 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
-		draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
-	}
-	f32 x_padding = metrics.normal_advance;
-	f32 x_half_padding = x_padding*0.5f;
-	draw_drop_down(app, face_id, &block, m_p, region, x_padding, x_half_padding, fcolor_id(defcolor_margin_hover), fcolor_id(defcolor_back));
+        Vec2_f32 p = item_inner.p0 + vec2(3.f, (block_height - line_height)*0.5f);
+        draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
+    }
+    f32 x_padding = metrics.normal_advance;
+    f32 x_half_padding = x_padding*0.5f;
+    draw_drop_down(app, face_id, &block, m_p, clip, x_padding, x_half_padding, fcolor_id(defcolor_margin_hover), fcolor_id(defcolor_back));
 	
-	if(lister->visible_count != 0){
-		Rect_f32 rect = Rect_f32{region.x0, region.y1 - 4.f, region.x1, region.y1};
-		draw_rect_fcolor(app, rect, 0.f, get_item_margin_color(UIHighlight_Active));
+	if (lister->visible_count != 0)
+    {
+        Rect_f32 rect = Rect_f32{clip.x0, clip.y1 - 4.f, clip.x1, clip.y1};
+        draw_rect_fcolor(app, rect, 0.f, get_item_margin_color(UIHighlight_Active));
 	}
 	
 	draw_set_clip(app, prev_clip);
@@ -373,97 +381,101 @@ function void vim_change_lister_view_back(Application_Links *app){
 	vim_lister_view_id = 0;
 }
 
+global b32 vim_lister_running;
+
 function Lister_Result
-vim_run_lister(Application_Links *app, Lister *lister){
-	Lister_Result ret;
-	View_ID view = get_this_ctx_view(app, Access_Always);
-	vim_lister_view_id = view;
+vim_run_lister(App *app, Lister *lister)
+{
+    vim_lister_running = true;
+    Lister_Result ret;
+    View_ID view = get_this_ctx_view(app, Access_Always);
+    vim_lister_view_id = view;
 #if VIM_USE_BOTTOM_LISTER
-	Scratch_Block scratch(app);
-	lister->filter_restore_point = begin_temp(lister->arena);
-	lister_update_filtered_list(app, lister);
+    Scratch_Block scratch(app);
+    lister->filter_restore_point = begin_temp(lister->arena);
+    lister_update_filtered_list(app, lister);
+
+    vim_use_bottom_cursor = true;
+    bool do_invalidate = true;
+    vim_show_buffer_peek = false;
 	
-	vim_use_bottom_cursor = true;
-	bool do_invalidate = true;
-	vim_show_buffer_peek = false;
-	
-	View_Context ctx = view_current_context(app, view);
-	
-	ctx.render_caller = vim_lister_render;
-	ctx.hides_buffer = false;
-	View_Context_Block ctx_block(app, view, &ctx);
+    View_Context ctx = view_current_context(app, view);
+
+    ctx.render_caller = vim_lister_render;
+    ctx.hides_buffer = false;
+    View_Context_Block ctx_block(app, view, &ctx);
 	
 	u8 *dest;
-	dest = vim_bot_text.str + vim_bot_text.size;
+	dest = vim_bottom_text.str + vim_bottom_text.size;
 	u64 base_size, after_size;
-	base_size = after_size = vim_bot_text.size;
+    base_size = after_size = vim_bottom_text.size;
 	
 	User_Input in = {};
 	for(;;){
-		Vec2_i32 col_row = calc_col_row(app, lister);
-		i32 col_num = col_row.x;
-		i32 visible_count = col_row.x*col_row.y;
-		block_copy(dest, lister->text_field.str, lister->text_field.size);
-		vim_bot_text.size = after_size + lister->text_field.size;
-		animate_in_n_milliseconds(app, 0);
+        Vec2_i32 col_row = calc_col_row(app, lister);
+        i32 col_num = col_row.x;
+        i32 visible_count = col_row.x*col_row.y;
+        block_copy(dest, lister->text_field.str, lister->text_field.size);
+        vim_bottom_text.size = after_size + lister->text_field.size;
+        animate_in_n_milliseconds(app, 0);
 		
-		Lister_Activation_Code result = ListerActivation_Continue;
-		b32 handled = true;
+        Lister_Activation_Code result = ListerActivation_Continue;
+        b32 handled = true;
 		
-		in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
-		if(in.abort){
-			block_zero_struct(&lister->out);
-			lister->out.canceled = true;
-			vim_reset_bottom_text();
-			break;
-		}
+        in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
+        if(in.abort){
+            block_zero_struct(&lister->out);
+            lister->out.canceled = true;
+            vim_reset_bottom_text();
+            break;
+        }
 		
-		if(in.event.kind == InputEventKind_KeyStroke){
-			if(in.event.key.code == KeyCode_W && input_has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
-				in.event.key.code = KeyCode_Backspace;
-			}
-			if(in.event.key.code == KeyCode_U && input_has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
-				in.event.key.code = KeyCode_Backspace;
-				Input_Modifier_Set *set = get_modifiers(&in.event);
-				set->mods[set->count++] = KeyCode_Shift;
-			}
-		}
+        if(in.event.kind == InputEventKind_KeyStroke){
+            if(in.event.key.code == Key_Code_W && input_has_modifier(&in, Key_Code_Control) && lister->handlers.backspace){
+                in.event.key.code = Key_Code_Backspace;
+            }
+            if(in.event.key.code == Key_Code_U && input_has_modifier(&in, Key_Code_Control) && lister->handlers.backspace){
+                in.event.key.code = Key_Code_Backspace;
+                Input_Modifier_Set *set = get_modifiers(&in.event);
+                set->mods[set->count++] = Key_Code_Shift;
+            }
+        }
 		
-		switch(in.event.kind){
+        switch(in.event.kind){
 			
-			case InputEventKind_TextInsert:{
-				vim_cursor_blink = 0;
-				if(lister->handlers.write_character != 0){
-					result = lister->handlers.write_character(app);
-				}
-			} break;
+            case InputEventKind_TextInsert:{
+                vim_cursor_blink = 0;
+                if(lister->handlers.write_character != 0){
+                    result = lister->handlers.write_character(app);
+                }
+            } break;
 			
-			case InputEventKind_KeyStroke:{
-				vim_cursor_blink = 0;
+            case InputEventKind_KeyStroke:{
+                vim_cursor_blink = 0;
 				
-				switch(in.event.key.code){
+                switch(in.event.key.code){
 					
-					case KeyCode_Tab:{
-						i32 delta = (has_modifier(&in.event, KeyCode_Shift) ? -1 : 1);
-						if(lister->handlers.navigate != 0){
-							lister->handlers.navigate(app, view, lister, delta);
-						}else if(lister->handlers.key_stroke != 0){
-							result = lister->handlers.key_stroke(app);
-						}else{ handled = false; }
-					} break;
+                    case Key_Code_Tab:{
+                        i32 delta = (has_modifier(&in.event, Key_Code_Shift) ? -1 : 1);
+                        if(lister->handlers.navigate != 0){
+                            lister->handlers.navigate(app, view, lister, delta);
+                        }else if(lister->handlers.key_stroke != 0){
+                            result = lister->handlers.key_stroke(app);
+                        }else{ handled = false; }
+                    } break;
 					
-					case KeyCode_Return:{
+					case Key_Code_Return:{
 						void *user_data = 0;
-						if(in_range(0, lister->raw_item_index, lister->options.count)){
+						if(in_range_exclude_last(0, lister->raw_item_index, lister->options.count)){
 							user_data = lister_get_user_data(lister, lister->raw_item_index);
 							block_copy(dest, lister->highlighted_node->string.str, lister->highlighted_node->string.size);
-							vim_bot_text.size = base_size + lister->highlighted_node->string.size;
+							vim_bottom_text.size = base_size + lister->highlighted_node->string.size;
 						}
 						lister_activate(app, lister, user_data, false);
 						result = ListerActivation_Finished;
 					} break;
 					
-					case KeyCode_Backspace:{
+					case Key_Code_Backspace:{
 						if(lister->handlers.backspace != 0){
 							lister->handlers.backspace(app);
 						}else if(lister->handlers.key_stroke != 0){
@@ -471,31 +483,31 @@ vim_run_lister(Application_Links *app, Lister *lister){
 						}else{ handled = false; }
 					} break;
 					
-					case KeyCode_Down:
-					case KeyCode_Up:{
+					case Key_Code_Down:
+					case Key_Code_Up:{
 						if(lister->handlers.navigate != 0){
-							i32 delta = (in.event.key.code == KeyCode_Up ? -1 : 1);
+							i32 delta = (in.event.key.code == Key_Code_Up ? -1 : 1);
 							lister->handlers.navigate(app, view, lister, delta*col_num);
 						}else if(lister->handlers.key_stroke != 0){
 							result = lister->handlers.key_stroke(app);
 						}else{ handled = false; }
 					} break;
 					
-					case KeyCode_Right:
-					case KeyCode_Left:{
-						i32 delta = (in.event.key.code == KeyCode_Left ? -1 : 1);
+					case Key_Code_Right:
+					case Key_Code_Left:{
+						i32 delta = (in.event.key.code == Key_Code_Left ? -1 : 1);
 						if(lister->handlers.navigate != 0){
 							lister->handlers.navigate(app, view, lister, delta);
 						}else if(lister->handlers.key_stroke != 0){
 							result = lister->handlers.key_stroke(app);
 						}else{ handled = false; }
-					} break;
+                    } break;
 					
-					case KeyCode_PageDown:
-					case KeyCode_PageUp:{
-						if(lister->handlers.navigate != 0){
-							i32 delta = (in.event.key.code == KeyCode_PageUp ? -1 : 1);
-							lister->handlers.navigate(app, view, lister, delta*visible_count);
+                    case Key_Code_PageDown:
+                    case Key_Code_PageUp:{
+                        if(lister->handlers.navigate != 0){
+                            i32 delta = (in.event.key.code == Key_Code_PageUp ? -1 : 1);
+                            lister->handlers.navigate(app, view, lister, delta*visible_count);
 						}else if(lister->handlers.key_stroke != 0){
 							result = lister->handlers.key_stroke(app);
 						}else{ handled = false; }
@@ -529,7 +541,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
 		
 		// NOTE: This is a bit of a hack to make clicking the lister not change views
 		Mouse_State mouse_state = get_mouse_state(app);
-		Vec2_f32 mouse_pos = V2(mouse_state.p);
+		Vec2_f32 mouse_pos = vec2(mouse_state.p);
 		if(mouse_state.press_l){
 			void *clicked = vim_lister_user_data_at_p(app, view, lister, mouse_pos, col_num);
 			if(clicked){
@@ -540,37 +552,39 @@ vim_run_lister(Application_Links *app, Lister *lister){
 			}
 		}
 		
-		if(result == ListerActivation_ContinueAndRefresh){
-			lister_call_refresh_handler(app, lister);
-		}
-		else if(result == ListerActivation_Finished){ break; }
+        if(result == ListerActivation_ContinueAndRefresh){
+            lister_call_refresh_handler(app, lister);
+        }
+        else if(result == ListerActivation_Finished){ break; }
 		
-		if(handled){ continue; }
-		Fallback_Dispatch_Result disp_result = fallback_command_dispatch(app, lister->mapping, lister->map, &in);
-		if(disp_result.code == FallbackDispatch_DelayedUICall){
-			call_after_ctx_shutdown(app, view, disp_result.func);
-			break;
-		}
-		if(disp_result.code == FallbackDispatch_Unhandled){ leave_current_input_unhandled(app); }
-		else{ lister_call_refresh_handler(app, lister); }
-	}
-	
-	vim_use_bottom_cursor = false;
-	vim_nxt_filebar_offset = 0.f;
-	if(do_invalidate){ vim_lister_view_id = 0; }
-	
-	if(!in.abort){
-		String_Const_u8 command_name = string_substring(vim_bot_text.string, Ii64(base_size,vim_bot_text.size));
-		vim_register_copy(&vim_registers.command, command_name);
-		vim_update_registers(app);
-	}
-	
-	ret = lister->out;
+        if(handled){ continue; }
+        Fallback_Dispatch_Result disp_result = fallback_command_dispatch(app, lister->mapping, lister->map, &in);
+        if(disp_result.code == FallbackDispatch_DelayedUICall){
+            call_after_ctx_shutdown(app, view, disp_result.func);
+            break;
+        }
+        if(disp_result.code == FallbackDispatch_Unhandled){ leave_current_input_unhandled(app); }
+        else{ lister_call_refresh_handler(app, lister); }
+    }
+
+    vim_use_bottom_cursor = false;
+    vim_nxt_lister_offset = 0.f;
+    if(do_invalidate){ vim_lister_view_id = 0; }
+
+    if(!in.abort)
+    {
+        String command_name = string_substring(vim_bottom_text.string, Ii64(base_size,vim_bottom_text.size));
+        vim_register_copy(&vim_registers.command, command_name);
+        vim_update_registers(app);
+    }
+
+    ret = lister->out;
 #else
-	ret = run_lister(app, lister);
+    ret = run_lister(app, lister);
 #endif
-	vim_lister_view_id = 0;
-	return ret;
+    vim_lister_view_id = 0;
+    vim_lister_running = false;
+    return ret;
 }
 
 

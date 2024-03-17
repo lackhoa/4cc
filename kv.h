@@ -97,6 +97,7 @@ typedef float    v1;
 /* Types: end */
 
 #define for_i32(VAR, INITIAL, FINAL)  for(i32 VAR=INITIAL; VAR<FINAL; VAR++)
+#define for_i32_test(VAR, INITIAL, FINAL, TEST)  for(i32 VAR=INITIAL; VAR<FINAL && TEST; VAR++)
 #define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
@@ -127,27 +128,10 @@ block_fill_ones(void *mem, u64 size)
 
 
 // todo: Do we really need overlap handling?
-internal void
+force_inline void
 block_copy(void *dst, const void *src, u64 size)
 {
-#if 1
-    gb_memmove(dst, src, size);
-#else  // NOTE: old code
-    u8 *d = (u8*)dst;
-    u8 *s = (u8*)src;
-    if (d < s)
-    {
-        u8 *e = d + size;
-        for (; d < e; d += 1, s += 1) *d = *s;
-    }
-    else if (d > s)
-    {
-        u8 *e = d;
-        d += size - 1;
-        s += size - 1;
-        for (; d >= e; d -= 1, s -= 1) *d = *s;
-    }
-#endif
+ gb_memmove(dst, src, size);
 }
 
 force_inline i32
@@ -164,7 +148,7 @@ squared(f32 x)
 }
 
 force_inline v1 
-cubed(f32 value)
+cubed(v1 value)
 {
     return value*value*value;
 }
@@ -182,7 +166,7 @@ square_root(f32 x)
 
 // TODO: These are real bad! should only be one simd instruction. Watch hmh 379 for details.
 force_inline v1
-round_f32(f32 Real32)
+roundv1(f32 Real32)
 {
 #if COMPILER_MSVC
     f32 Result = roundf(Real32);
@@ -192,9 +176,15 @@ round_f32(f32 Real32)
     return(Result);
 }
 
+force_inline i32
+i32_roundv1(v1 value)
+{
+ return i32(value+0.5f);
+}
+
 // TODO @Cleanup force_inline all these functions
 force_inline f32
-floor_f32(f32 value)
+floorv1(f32 value)
 {
 #if COMPILER_MSVC
     f32 Result = floorf(value);
@@ -205,7 +195,7 @@ floor_f32(f32 value)
 }
 
 inline f32
-ceil_f32(f32 value)
+ceilv1(f32 value)
 {
 #if COMPILER_MSVC
     f32 Result = ceilf(value);
@@ -215,11 +205,18 @@ ceil_f32(f32 value)
     return(Result);
 }
 
-inline f32
-cycle01(f32 value)
+force_inline v1
+cycle01(v1 value)
 {
-    f32 result = value - floor_f32(value);
-    return result;
+ v1 result = value - floorv1(value);
+ return result;
+}
+
+force_inline v1
+cycle01_positive(v1 value)
+{
+ v1 result = value - v1(i32(value));
+ return result;
 }
 
 // NOTE: weird names to avoid name collision (haizz)
@@ -292,18 +289,17 @@ findLeastSignificantSetBit(u32 mask)
     return result;
 }
 
-inline f32
-absolute(f32 x)
+force_inline v1
+absolute(v1 x)
 {
 #if COMPILER_MSVC
-    f32 result = (f32)fabs(x);
+ f32 result = (f32)fabs(x);
 #else
-    f32 result = (f32)__builtin_fabs(x);
+ f32 result = (f32)__builtin_fabs(x);
 #endif
-    return result;
+ return result;
 }
-
-inline i32
+force_inline i32
 absolute(i32 x)
 {
 #if COMPILER_MSVC
@@ -398,6 +394,8 @@ typedef intptr_t  iptr;
 #define megaBytes(value) (kiloBytes(value)*1024LL)
 #define gigaBytes(value) (megaBytes(value)*1024LL)
 #define teraBytes(value) (gigaBytes(value)*1024LL)
+global v1 millimeter = 0.001f;
+global v1 centimeter = 0.01f;
 
 #if COMPILER_MSVC
 #  define kv_fail __debugbreak()
@@ -405,10 +403,7 @@ typedef intptr_t  iptr;
 #  define kv_fail __builtin_trap()
 #endif
 
-#define kv_assert(claim) do{if (!(claim)) { kv_fail; }} while(0)
-
-#define invalid_code_path   kv_fail
-#define nono                kv_fail  // ignore_nono
+#define kv_fail_if(claim) do{if (!(claim)) { kv_fail; }} while(0)
 
 #if KV_INTERNAL
 #    define fail_in_debug  kv_fail
@@ -416,25 +411,25 @@ typedef intptr_t  iptr;
 #    define fail_in_debug
 #endif
 
+#define invalid_code_path   kv_fail
+
 #define todo_test_me        fail_in_debug
 #define todo_testme         fail_in_debug
 #define todo_untested       fail_in_debug
-#define todo_error_report   fail_in_debug
-#define todo_incomplete     fail_in_debug
 #define kv_debug_trap       fail_in_debug
+#define todo_incomplete     fail_in_debug
+#define todo_error_report
 
-#define invalid_default_case default: { kv_fail; };
-#define breakhere       do{ int x = 5; (void)x; }while(0)
+#define invalid_default_case default: { invalid_code_path; };
+#define breakhere       do{ int please_break = 5; (void)please_break; }while(0)
 
 #if KV_INTERNAL
-#    define soft_assert                  kv_assert
-#    define assert_defend(CLAIM, DEFEND) kv_assert(CLAIM)
+#    define kv_assert                    kv_fail_if
+#    define assert_defend(CLAIM, DEFEND) kv_fail_if(CLAIM)
 #else
-#    define soft_assert(CLAIM)
+#    define kv_assert(CLAIM)
 #    define assert_defend(CLAIM, DEFEND)   if (!(CLAIM))  { DEFEND; }
 #endif
-
-#define alert_if_false soft_assert
 
 #if KV_SLOW
 #    define slow_assert kv_assert
@@ -494,11 +489,16 @@ inline i32 safeTruncateToInt32(u64 value)
 #define minimum  macro_min // @ Deprecated
 #define maximum  macro_max // @ Deprecated
 
-#define kv_function_typedef(N) typedef N##_return N##_type(N##_params);
-#define kv_function_declare(N) N##_return N(N##_params);
-#define kv_function_pointer(N) global N##_type *N;
+#define kv_function_typedef(N) typedef N##_return N##_type(N##_params)
+#define kv_function_declare(N) N##_return N(N##_params)
+#define kv_function_pointer(N) N##_type *N
 
 /* MARK: End of String */
+
+force_inline v1 min(v1 a, v1 b)       { return macro_min(a,b); }
+force_inline v1 min(v1 a, v1 b, v1 c) { return macro_min(macro_min(a,b),c); }
+force_inline v1 max(v1 a, v1 b)       { return macro_max(a,b); }
+force_inline v1 max(v1 a, v1 b, v1 c) { return macro_max(macro_max(a,b),c); }
 
 inline b32
 checkFlag(u32 flags, u32 flag)
@@ -515,14 +515,16 @@ setFlag(u32 *flags, u32 flag)
 inline void
 unsetFlag(u32 *flags, u32 flag)
 {
-  *flags &= ~flag;
+ *flags &= ~flag;
 }
 
 #define macro_swap(a, b) { \
-    auto temp = a; \
-    a = b; \
-    b = temp; \
+auto temp = a; \
+a = b; \
+b = temp; \
 }
+
+#define swap_minmax(a,b) if (a > b) { macro_swap(a,b); }
 
 #define EAT_TYPE(POINTER, TYPE) (TYPE *)(POINTER += sizeof(TYPE), POINTER - sizeof(TYPE))
 
@@ -536,9 +538,9 @@ inline void *kv_xmalloc(size_t size) {
 }
 
 #define breakable_block for (i32 __kv_breakable_block__=0; __kv_breakable_block__ == 0; __kv_breakable_block__++)
-#define in_range(bot,mid,top) ((bot) <= (mid) && (mid) < (top))
-#define in_between(bot,mid,top) ((bot) <= (mid) && (mid) <= (top))
-#define in_range_inclusive in_between
+// TODO @cleanup I don't like these functions: rename to in_range_exclude_last and in_range_inclusive
+#define in_range_exclude_last(bot,mid,top) ((bot) <= (mid) && (mid) < (top))
+#define in_range_inclusive(bot,mid,top) ((bot) <= (mid) && (mid) <= (top))
 
 /* ;math */
 
@@ -547,43 +549,36 @@ inline void *kv_xmalloc(size_t size) {
 #define PI32  3.14159265359f
 #define TAU32 6.28318530717958647692f
 
-#define macro_clamp_bot(VAR, VAL)   if (VAR < VAL) VAR = VAL
-#define macro_clamp_top(VAR, VAL)   if (VAR > VAL) VAR = VAL;
-// @Deprecated
-#define kv_clamp_bot macro_clamp_bot
-#define kv_clamp_top macro_clamp_top
+#define macro_clamp(min,var,max)    if (var < min) { var = min; } else if (var > max) { var = max; }
+#define macro_clamp_min(VAR, VAL)   if (VAR < VAL) VAR = VAL
+#define macro_clamp_max(VAR, VAL)   if (VAR > VAL) VAR = VAL
+#define macro_clamp01(var)          macro_clamp(0.f,var,1.f)
+#define macro_clamp01i(var)         macro_clamp(0,var,1)
 
-inline f32
+force_inline f32
 bilateral(f32 r)
 {
     return (r * 2.0f) - 1.0f;
 }
 
-inline f32
-unilateral(f32 r)
+force_inline v1
+unilateral(v1 r)
 {
     return (r * 0.5f) + 0.5f;
 }
 
-inline i32
-unilateral(i32 r)
+force_inline v1
+lerp(v1 a, v1 t, v1 b)
 {
-    return (r + 1) / 2;
-}
-
-inline f32
-lerp(f32 a, f32 t, f32 b)
-{
-    f32 result;
-    result = a + t*(b - a);
+    v1 result = a + t*(b - a);
     return result;
 }
 
-inline f32
-unlerp_or_zero(f32 a, f32 v, f32 b)
+inline v1
+unlerp_or_zero(v1 a, v1 v, v1 b)
 {
-  f32 range = (b - a);
-  f32 result = (range != 0.0f) ? ((v - a) / range) : 0.0f;
+  v1 range = (b - a);
+  v1 result = (range != 0.0f) ? ((v - a) / range) : 0.0f;
   return result;
 }
 
@@ -594,14 +589,22 @@ unlerp_or_zero(f32 a, f32 v, f32 b)
 
 union v2
 {
-    struct 
-    {
-        f32 x;
-        f32 y;
-    };
-    f32 E[2];
-    f32 v[2];
+ struct 
+ {
+  v1 x;
+  v1 y;
+ };
+ v1 E[2];
+ v1 v[2];
+ 
+ v1 operator[](i32);
 };
+
+force_inline v1
+v2::operator[](i32 index)
+{
+ return v[index];
+}
 
 inline v2 v2_all(f32 input)
 {
@@ -616,7 +619,7 @@ operator==(v2 u, v2 v)
     return result;
 }
 
-inline b32
+force_inline b32
 operator!=(v2 u, v2 v)
 {
     b32 result;
@@ -624,13 +627,19 @@ operator!=(v2 u, v2 v)
     return result;
 }
 
-inline v2
+force_inline v2
 operator+(v2 u, v2 v)
 {
     v2 result;
     result.x = u.x + v.x;
     result.y = u.y + v.y;
     return result;
+}
+
+force_inline v1
+lerp(v2 ab, v1 t)
+{
+ return lerp(ab[0], t, ab[1]);
 }
 
 
@@ -643,39 +652,41 @@ operator-(v2 u, v2 v)
     return result;
 }
 
-inline v2
+force_inline v2
 operator-=(v2 &v, v2 u)
 {
     v = v - u;
     return v;
 }
 
-inline v2
+force_inline v2
 operator-(v2 v)
 {
     v2 result;
-    result.x = -v.x;
-    result.y = -v.y;
-    return result;
+ result.x = -v.x;
+ result.y = -v.y;
+ return result;
 }
 
 inline v2
-operator*(f32 c, v2 v)
+operator*(v1 c, v2 v)
 {
-    v2 result;
-    result.x = c * v.x;
-    result.y = c * v.y;
-    return result;
+ v2 result;
+ result.x = c * v.x;
+ result.y = c * v.y;
+ return result;
 }
 
 inline v2
-operator*(v2 v, f32 c)
+operator*(v2 v, v1 c)
 {
-    v2 result = c*v;
-    return result;
+ v2 result;
+ result.x = c * v.x;
+ result.y = c * v.y;
+ return result;
 }
 
-inline v2 &
+force_inline v2 &
 operator*=(v2 &v, f32 c)
 {
     v = c * v;
@@ -698,17 +709,17 @@ dot(v2 v, v2 u)
     return result;
 }
 
-inline f32
-lengthSq(v2 v)
+inline v1
+lensq(v2 v)
 {
     f32 result = squared(v.x) + squared(v.y);
     return result;
 }
 
 inline f32
-length(v2 v)
+lengthof(v2 v)
 {
-    f32 result = square_root(lengthSq(v));
+    f32 result = square_root(lensq(v));
     return result;
 }
 
@@ -716,19 +727,19 @@ inline f32
 projectLen(v2 onto, v2 v)
 {
     f32 innerProd = dot(onto, v);
-    f32 result = (innerProd / length(onto));
+    f32 result = (innerProd / lengthof(onto));
     return result;
 }
 
 inline v2
-project(v2 onto, v2 v)
+project_on(v2 onto, v2 v)
 {
     f32 innerProd = dot(onto, v);
-    v2 result = (innerProd / lengthSq(onto)) * onto;
+    v2 result = (innerProd / lensq(onto)) * onto;
     return result;
 }
 
-inline v2
+force_inline v2
 hadamard(v2 v, v2 u)
 {
     v2 result;
@@ -737,76 +748,63 @@ hadamard(v2 v, v2 u)
     return result;
 }
 
-inline v2
-normalize(v2 v)
-{
-    v2 result;
-    f32 len = length(v);
-    if (len == 0)
-    {
-        result = v2{};
-    }
-    else
-    {
-        result = v * (1.0f / len);
-    }
-    return result;
-}
-
-inline v2
+internal v2
 noz(v2 v)  // normalize or zero
 {
-    f32 lsq = lengthSq(v);
-    v2 result = {};
-    if (lsq > squared(0.0001f))
-    {
-        // prevent the result from getting too big
-        result = v * 1.f / square_root(lsq);
-    }
-    return result;
+ v1 lsq = lensq(v);
+ v2 result = {};
+ if (lsq > 1e-8)
+ {
+  result = v * 1.f / square_root(lsq);
+ }
+ return result;
 }
 
-inline v2
-perp(v2 v)
-{
-    v2 result = v2{-v.y, v.x};
-    return result;
-}
+force_inline v2 perp(v2 v) { return v2{-v.y, v.x}; }
 
-inline v2
-bilateral(v2 v)
-{
-    v2 result = {bilateral(v.x), bilateral(v.y)};
-    return result;
-}
+force_inline v2 bilateral(v2 v)  { return v2{bilateral(v.x), bilateral(v.y)}; }
 
 // ;v3
 
 union v3 
 {
     struct { v1 x, y, z; };
-    struct { v1 r, g, b; };
-    struct { v2 xy; v1 _z; };
-    struct { v1 _x; v2 yz; };
-    f32 E[3];
-    f32 v[3];
-    
-    f32 operator[](i32);
+ struct { v1 r, g, b; };
+ struct { v2 xy; v1 _z; };
+ struct { v1 _x; v2 yz; };
+ v1 E[3];
+ v1 v[3];
+ 
+ force_inline v1 &operator[](i32 index) {return v[index];}
 };
 
-inline f32 v3::operator[](i32 index)
+force_inline v3 
+max(v3 u, v3 v) 
 {
-    return v[index];
+ return (v3
+         {max(u.x,v.x),
+          max(u.y,v.y),
+          max(u.z,v.z)});
 }
 
 inline v3
-V3(v2 xy, v1 z)
+absolute(v3 v)
 {
-    v3 result;
-    result.xy = xy;
-    result.z = z;
-    return result;
+ for_i32(index,0,3){ v[index] = absolute(v[index]); };
+ return v;
 }
+
+force_inline v3
+vec3(v2 xy, v1 z)
+{
+ v3 result;
+ result.xy = xy;
+ result.z = z;
+ return result;
+}
+
+force_inline v3 yzx(v3 v) { return v3{v.y, v.z, v.x}; }
+force_inline v3 zxy(v3 v) { return v3{v.z, v.x, v.y}; }
 
 inline v3
 operator-(v3 u, v3 v)
@@ -879,7 +877,7 @@ operator-=(v3 &v, v3 u)
     return v;
 }
 
-inline v3
+force_inline v3
 operator-(v3 v)
 {
     v3 result;
@@ -889,31 +887,30 @@ operator-(v3 v)
     return result;
 }
 
-inline v3
-operator*(f32 c, v3 v)
+force_inline v3
+operator*(v1 c, v3 v)
 {
-    v3 result;
-    result.x = c * v.x;
-    result.y = c * v.y;
-    result.z = c * v.z;
-    return result;
+ v.x *= c;
+ v.y *= c;
+ v.z *= c;
+ return v;
 }
 
-inline v3
+force_inline v3
 operator*(v3 v, f32 c)
 {
-    v3 result = c*v;
-    return result;
+ v3 result = c*v;
+ return result;
 }
 
-inline v3 &
+force_inline v3 &
 operator*=(v3 &v, f32 c)
 {
     v = c * v;
     return v;
 }
 
-inline v3
+force_inline v3
 operator/(v3 v, f32 c)
 {
     v3 result;
@@ -933,61 +930,60 @@ dot(v3 v, v3 u)
 inline v3
 cross(v3 v, v3 u)
 {
-  return v3{v.y*u.z - v.z*u.y,
-            v.z*u.x - v.x*u.z,
-            v.x*u.y - v.y*u.x};
+ return v3{v.y*u.z - v.z*u.y,
+  v.z*u.x - v.x*u.z,
+  v.x*u.y - v.y*u.x};
+}
+
+
+// todo: pick better name for this thing?
+inline v1
+cross2d(v2 u, v2 v)
+{
+    return u.x*v.y - u.y*v.x;
 }
 
 inline v3
 hadamard(v3 v, v3 u)
 {
-    v3 result;
-    result.x = v.x*u.x;
-    result.y = v.y*u.y;
-    result.z = v.z*u.z;
+ v3 result;
+ result.x = v.x*u.x;
+ result.y = v.y*u.y;
+ result.z = v.z*u.z;
+ return result;
+}
+force_inline v3 
+operator*(v3 u, v3 v)
+{
+ return hadamard(u,v);
+}
+force_inline v3 
+operator/(v3 u, v3 v)
+{
+ return v3{u.x/v.x,
+           u.y/v.y,
+           u.z/v.z};
+}
+
+inline v1
+lensq(v3 v)
+{
+    v1 result = squared(v.x) + squared(v.y) + squared(v.z);
     return result;
 }
 
-inline f32
-lengthSq(v3 v)
+inline v1
+lengthof(v3 v)
 {
-    f32 result = squared(v.x) + squared(v.y) + squared(v.z);
-    return result;
-}
-
-inline f32
-length(v3 v)
-{
-    f32 result = square_root(lengthSq(v));
-    return result;
-}
-
-inline v3
-normalize(v3 v)
-{
-    f32 len = length(v);
-    v3 result = v * (1.f / len);
-    return result;
-}
-
-inline v3
-noz(v3 v)  // normalize or zero
-{
-    f32 lsq = lengthSq(v);
-    v3 result = {};
-    if (lsq > squared(0.0001f)) 
-    {
-        // prevent the result from getting too big
-        result = v * 1.f / square_root(lsq);
-    }
+    v1 result = square_root(lensq(v));
     return result;
 }
 
 inline v3
-project(v3 onto, v3 v)
+project_on(v3 onto, v3 v)
 {
-    f32 innerProd = dot(onto, v);
-    v3 result = (innerProd / lengthSq(onto)) * onto;
+    v1 innerProd = dot(onto, v);
+    v3 result = (innerProd / lensq(onto)) * onto;
     return result;
 }
 
@@ -1005,33 +1001,70 @@ bilateral(v3 v)
 
 union v4 
 {
-  struct {
-    f32 x, y, z, w;
-  };
-  struct {
-    f32 r, g, b, a;
-  };
-  struct{
-    f32 h;
-    f32 s;
-    f32 l;
-    f32 __a;
-  };
-  struct {
-    v3 rgb;
-    f32 a_ignored;
-  };
-  struct {
-    v3 xyz;
-    v1 xyz_w;
-  };
-  struct {
-    v2 xy;
-    v2 yz_ignored;
-  };
-  f32 E[4];
-  f32 v[4];
+  struct { v1 x, y, z, w; };
+  struct { v1 r, g, b, a; };
+  struct { v1 h; v1 s; v1 l; v1 __a; };
+  struct { v3 rgb; f32 a_ignored; };
+  struct { v3 xyz; v1 xyz_w; };
+  struct { v1 x_yzw; v3 yzw; };
+  struct { v2 xy; v2 zw; };
+  v1 E[4];
+  v1 v[4];
+ 
+ v1 &operator[](i32);
 };
+
+
+force_inline v3
+vec3(f32 x, f32 y, f32 z)
+{
+ v3 v = {x, y, z};
+ return(v);
+}
+force_inline v4
+vec4(v1 x, v1 y, v1 z, v1 w)
+{
+ return v4{x, y, z, w};
+}
+force_inline v4
+vert4(v1 x, v1 y, v1 z)
+{
+ return v4{x, y, z, 1.f};
+}
+force_inline v4
+vec4_symmetric(v1 x, v1 y)
+{
+ return v4{x,y,y,x};
+}
+force_inline v4
+vec4_symmetric(v2 xy)
+{
+ return vec4_symmetric(xy.x,xy.y);
+}
+force_inline v4
+vec4(v3 xyz, v1 w)
+{
+ v4 v = {.xyz=xyz, .xyz_w=w};
+ return v;
+}
+force_inline v4
+cast_vec4(v3 xyz)
+{
+ v4 v = {.xyz=xyz};
+ return v;
+}
+
+force_inline v1 &
+v4::operator[](i32 index)
+{
+ return v[index];
+}
+
+force_inline v3
+operator /(v1 n, v3 d)
+{
+ return vec3(n/d.x, n/d.y, n/d.z);
+}
 
 typedef v4 Vec4_f32;
 
@@ -1070,16 +1103,38 @@ operator*=(v4 &v, f32 c)
 inline v4
 operator+(v4 u, v4 v)
 {
-    v4 result = {u.x + v.x, u.y + v.y, u.z + v.z, u.w + v.w};
-    return result;
+ v4 result = {u.x + v.x, u.y + v.y, u.z + v.z, u.w + v.w};
+ return result;
+}
+
+inline v4
+operator-(v4 v)
+{
+ v4 result = {-v.x, -v.y, -v.z, -v.w};
+ return result;
 }
 
 inline v4
 operator-(v4 u, v4 v)
 {
-    v4 result = {u.x - v.x, u.y - v.y, u.z - v.z, u.w - v.w};
-    return result;
+ v4 result = {u.x - v.x, u.y - v.y, u.z - v.z, u.w - v.w};
+ return result;
 }
+
+force_inline b32 
+almost_equal(v1 a, v1 b, v1 epsilon=1e-6)
+{
+ return absolute(a - b) < epsilon;
+}
+
+force_inline b32 
+almost_equal(v3 a, v3 b)
+{
+ v3 d = a - b;
+ for_i32(i,0,3) { if ( !almost_equal(a[i],b[i]) ) { return false; } }
+ return true;
+}
+
 
 inline v4
 lerp(v4 a, f32 t, v4 b)
@@ -1089,11 +1144,10 @@ lerp(v4 a, f32 t, v4 b)
     return result;
 }
 
-inline v3 &
+force_inline void
 operator+=(v3 &v, v3 u)
 {
     v = u + v;
-    return v;
 }
 
 inline v2 &
@@ -1106,9 +1160,45 @@ operator+=(v2 &v, v2 u)
 inline v4 &
 operator+=(v4 &v, v4 u)
 {
-    v = u + v;
-    return v;
+ v = u + v;
+ return v;
 }
+
+inline v3
+noz(v3 v)  // normalize or zero
+{
+ v1 lsq = lensq(v);
+ v3 result = {};
+ if (lsq > 1e-8) 
+ {
+  // prevent the result from getting too big
+  result = v * 1.f / square_root(lsq);
+ }
+ return result;
+}
+
+inline v1 
+lensq(v4 v)
+{
+ return (v.x*v.x +
+         v.y*v.y +
+         v.z*v.z +
+         v.w*v.w);
+}
+
+inline v4
+noz(v4 v)
+{
+ v1 lsq = lensq(v);
+ v4 result = {};
+ if (lsq > squared(0.0001f)) 
+ {
+  // prevent the result from getting too big
+  result = (1.f / square_root(lsq))*v;
+ }
+ return result;
+}
+
 
 // ;rect2
 
@@ -1147,7 +1237,7 @@ rect_get_radius(v2 radius)
 }
 
 inline v2
-rect_dim(rect2 rect)
+rect2_dim(rect2 rect)
 {
     return (rect.max - rect.min);
 }
@@ -1155,7 +1245,8 @@ rect_dim(rect2 rect)
 inline rect2
 rect2_center_radius(v2 center, v2 radius)
 {
-    kv_assert((radius.x >= 0) && (radius.y >= 0));
+    macro_clamp_min(radius.x,0);
+    macro_clamp_min(radius.y,0);
     rect2 result;
     result.min = center - radius;
     result.max = center + radius;
@@ -1187,8 +1278,8 @@ inline rect2
 intersect(rect2 a, rect2 b)
 {
     rect2 result;
-    result.min.x = maximum(a.min.x, b.min.x);
-    result.min.y = maximum(a.min.y, b.min.y);
+    result.min.x = macro_max(a.min.x, b.min.x);
+    result.min.y = macro_max(a.min.y, b.min.y);
     result.max.x = minimum(a.max.x, b.max.x);
     result.max.y = minimum(a.max.y, b.max.y);
     return result;
@@ -1316,6 +1407,8 @@ getBarycentricCoordinate(Rect3 rect, v3 pos)
     return result;
 }
 
+typedef i32 v1i;
+
 // ;v2i ;v3i
 
 union v2i{
@@ -1324,25 +1417,74 @@ union v2i{
     i32 y;
   };
   i32 v[2];
+ 
+ i32 operator[](i32);
 };
+force_inline i32
+v2i::operator[](i32 index)
+{
+ return v[index];
+}
+
+force_inline v2
+vec2(v2i v){
+ return {(f32)v.x, (f32)v.y};
+}
 
 union v3i{
-  struct{ i32 x, y, z; };
-  struct{ i32 r, g, b; };
-  struct{
-    v2i xy;
-  };
-  i32 v[3];
+ struct{ i32 x,y,z; };
+ struct{ i32 r,g,b; };
+ struct{ v2i xy; };
+ i32 v[3];
+ 
+ i32 operator[](i32);
 };
+force_inline i32
+v3i::operator[](i32 index)
+{
+ return v[index];
+}
+
+force_inline v3i
+operator-(v3i v)
+{
+ v.x = -v.x;
+ v.y = -v.y;
+ v.z = -v.z;
+ return v;
+}
+
+union v4i{
+ struct{ i32 x,y,z,w; };
+ struct{ i32 r,g,b,a; };
+ i32 v[4];
+ 
+ i32 operator[](i32);
+};
+force_inline i32
+v4i::operator[](i32 index)
+{
+ return v[index];
+}
 
 /* todo: Old names */
 #define kvXmalloc    kv_xmalloc
 #define kvAssert     kv_assert
 /* Old names > */
 
+// TODO: Deprecate these
 #define v2_expand(v) v.x, v.y
 #define v3_expand(v) v.x, v.y, v.z
 #define v4_expand(v) v.x, v.y, v.z, v.w
+
+#define array_expand(v) v, alen(v)
+#define expand2(v)   v[0], v[1]
+#define expand3(v)   v[0], v[1], v[2]
+#define expand4(v)   v[0], v[1], v[2], v[3]
+//
+#define repeat2(v)   v,v
+#define repeat3(v)   v,v,v
+#define repeat4(v)   v,v,v,v
 
 // X macros //////////////////////////////////
 #define XTypedef(N,R,P) typedef R N##_type P;
@@ -1385,26 +1527,62 @@ pack_sRGBA(v4 color)
   return result;
 }
 
-union m3x3
+union mat3
 {
-    v3 rows[3];
+ v3 rows[3];
+ v1 e[3][3];
 };
 
-union m4x4
+union mat4
 {
-    v4 rows[4];
-    v1 v[4][4];
+ v4 rows[4];
+ v1 e[4][4];
+ v1* operator[](i32 i);
 };
 
-
-internal f32
-pow(f32 input, u32 power)
+force_inline v1
+get_xscale(mat4 const&mat)
 {
-    f32 result = 1; 
-    for_u32 (index, 0, power)
-    {
-        result *= input;
-    }
+ return lengthof(mat.rows[0].xyz);
+}
+
+global mat3 mat3_identity = {{
+  1,0,0,
+  0,1,0,
+  0,0,1,
+ }};
+
+global mat4 mat4_identity = {{
+  1,0,0,0,
+  0,1,0,0,
+  0,0,1,0,
+  0,0,0,1,
+ }};
+
+force_inline b32 
+almost_equal(mat4 const&a, mat4 const&b)
+{
+ for_i32(i,0,4)
+ {
+  for_i32(j,0,4)
+  {
+   if ( !almost_equal(a.e[i][j], b.e[i][j]) ) { return false; }
+  }
+ }
+ return true;
+}
+
+force_inline v1 *
+mat4::operator[](i32 i)
+{
+ return e[i];
+}
+
+internal v1
+v1_pow_u32(v1 input, u32 power)
+{
+    v1 result = 1; 
+    for_u32 (index, 0, power) { result *= input; }
     return result;
 }
 
@@ -1737,8 +1915,8 @@ enum{
 
 #define Max(a,b) (((a)>(b))?(a):(b))
 #define Min(a,b) (((a)<(b))?(a):(b))
-#define clamp_top(a,b) Min(a,b)
-#define clamp_bot(a,b) Max(a,b)
+#define clamp_max(a,b) Min(a,b)
+#define clamp_min(a,b) Max(a,b)
 #define clamp_between_(a,x,b) ((a>x) ? a : ((b<x) ? b : x))
 #define clamp_between(a,x,b)  clamp_between_((a),(x),(b))
 
@@ -1776,18 +1954,18 @@ global_const f64 epsilon_f64 = 1.11022302462515650e-16;
 #define clamp_signed_to_i16(x) (i16)(clamp((i64)i16_min, (i64)(x), (i64)i16_max))
 #define clamp_signed_to_i32(x) (i32)(clamp((i64)i32_min, (i64)(x), (i64)i32_max))
 #define clamp_signed_to_i64(x) (i64)(clamp((i64)i64_min, (i64)(x), (i64)i64_max))
-#define clamp_unsigned_to_i8(x) (i8)(clamp_top((u64)(x), (u64)i8_max))
-#define clamp_unsigned_to_i16(x) (i16)(clamp_top((u64)(x), (u64)i16_max))
-#define clamp_unsigned_to_i32(x) (i32)(clamp_top((u64)(x), (u64)i32_max))
-#define clamp_unsigned_to_i64(x) (i64)(clamp_top((u64)(x), (u64)i64_max))
-#define clamp_signed_to_u8(x) (u8)(clamp_top((u64)clamp_bot(0, (i64)(x)), (u64)u8_max))
-#define clamp_signed_to_u16(x) (u16)(clamp_top((u64)clamp_bot(0, (i64)(x)), (u64)u16_max))
-#define clamp_signed_to_u32(x) (u32)(clamp_top((u64)clamp_bot(0, (i64)(x)), (u64)u32_max))
-#define clamp_signed_to_u64(x) (u64)(clamp_top((u64)clamp_bot(0, (i64)(x)), (u64)u64_max))
-#define clamp_unsigned_to_u8(x) (u8)(clamp_top((u64)(x), (u64)u8_max))
-#define clamp_unsigned_to_u16(x) (u16)(clamp_top((u64)(x), (u64)u16_max))
-#define clamp_unsigned_to_u32(x) (u32)(clamp_top((u64)(x), (u64)u32_max))
-#define clamp_unsigned_to_u64(x) (u64)(clamp_top((u64)(x), (u64)u64_max))
+#define clamp_unsigned_to_i8(x) (i8)(clamp_max((u64)(x), (u64)i8_max))
+#define clamp_unsigned_to_i16(x) (i16)(clamp_max((u64)(x), (u64)i16_max))
+#define clamp_unsigned_to_i32(x) (i32)(clamp_max((u64)(x), (u64)i32_max))
+#define clamp_unsigned_to_i64(x) (i64)(clamp_max((u64)(x), (u64)i64_max))
+#define clamp_signed_to_u8(x) (u8)(clamp_max((u64)clamp_min(0, (i64)(x)), (u64)u8_max))
+#define clamp_signed_to_u16(x) (u16)(clamp_max((u64)clamp_min(0, (i64)(x)), (u64)u16_max))
+#define clamp_signed_to_u32(x) (u32)(clamp_max((u64)clamp_min(0, (i64)(x)), (u64)u32_max))
+#define clamp_signed_to_u64(x) (u64)(clamp_max((u64)clamp_min(0, (i64)(x)), (u64)u64_max))
+#define clamp_unsigned_to_u8(x) (u8)(clamp_max((u64)(x), (u64)u8_max))
+#define clamp_unsigned_to_u16(x) (u16)(clamp_max((u64)(x), (u64)u16_max))
+#define clamp_unsigned_to_u32(x) (u32)(clamp_max((u64)(x), (u64)u32_max))
+#define clamp_unsigned_to_u64(x) (u64)(clamp_max((u64)(x), (u64)u64_max))
 
 #define line_number_as_string stringify(__LINE__)
 #define filename_line_number __FILE__ ":" line_number_as_string ":"
@@ -1964,11 +2142,12 @@ union SNode{
 #define sll_queue_push_(f,l,n) sll_queue_push_multiple_(f,l,n,n)
 #define sll_queue_pop_(f,l) if (f==l) { f=l=0; } else { f=f->next; }
 
-#define sll_stack_push(h,n) (sll_stack_push_((h),(n)))
+#define sll_stack_push(head,new_item) (sll_stack_push_((head),(new_item)))
 #define sll_stack_pop(h) (sll_stack_pop_((h)))
 #define sll_queue_push_multiple(f,l,ff,ll) Stmnt( sll_queue_push_multiple_((f),(l),(ff),(ll)) )
 // NOTE(kv): pretty sure "queue_push" means "push_last"
-#define sll_queue_push(f,l,n) Stmnt( sll_queue_push_((f),(l),(n)) )
+#define sll_queue_push(first,last,new_item) \
+Stmnt( sll_queue_push_((first),(last),(new_item)) )
 #define sll_queue_pop(f,l) Stmnt( sll_queue_pop_((f),(l)) )
 
 #define zdll_push_back_NP_(f,l,n,next,prev) ((f==0)?(n->next=n->prev=0,f=l=n):(n->prev=l,n->next=0,l->next=n,l=n))
@@ -2036,20 +2215,21 @@ union Range_u64{
     u64 one_past_last;
   };
 };
-union Range_f32{
+union Range_f32 {
   struct{
     f32 min;
     f32 max;
   };
   struct{
-    f32 start;
-    f32 end;
-  };
-  struct{
-    f32 first;
-    f32 one_past_last;
-  };
+  f32 start;
+  f32 end;
+ };
+ struct{
+  f32 first;
+  f32 one_past_last;
+ };
 };
+typedef Range_f32 range2;
 
 struct Range_i32_Array{
   Range_i32 *ranges;
@@ -2089,7 +2269,7 @@ union rect2i {
 typedef rect2i Rect_i32;
 typedef rect2 Rect_f32;
 
-union Rect_f32_Pair{
+union rect2_Pair{
   struct{
     Rect_f32 a;
     Rect_f32 b;
@@ -2104,6 +2284,7 @@ union Rect_f32_Pair{
 };
 
 typedef u32 ARGB_Color;
+typedef u32 argb;
 
 ////////////////////////////////
 
@@ -2305,25 +2486,25 @@ struct List_String_Const_Any{
 struct String_char{
   union{
     String_Const_char string;
-    struct{
-      char *str;
-      u64 size;
-    };
+  struct{
+   char *str;
+   u64 size;
   };
-  u64 cap;
+ };
+ u64 cap;
 };
 struct String_u8
 {
-    union
-    {
-        String_Const_u8 string;
-        struct
-        {
-            u8 *str;
-            u64 size;
-        };
-    };
-    u64 cap;
+ union
+ {
+  String_Const_u8 string;
+  struct
+  {
+   u8 *str;
+   u64 size;
+  };
+ };
+ u64 cap;
 };
 struct String_u16
 {
@@ -2774,7 +2955,7 @@ make_data(void *memory, u64 size)
 
 #define make_data_struct(s) make_data((s), sizeof(*(s)))
 
-global_const String_Const_u8 zero_data = {};
+//global_const String zero_data = {};
 
 #define data_initr(m,s) {(u8*)(m), (s)}
 #define data_initr_struct(s) {(u8*)(s), sizeof(*(s))}
@@ -2792,22 +2973,18 @@ block_fill_ones(String8 data){
     block_fill_ones(data.str, data.size);
 }
 
-function b32
-block_match(void *a, void *b, u64 size){
-    b32 result = true;
-    for (u8 *pa = (u8*)a, *pb = (u8*)b, *ea = pa + size; pa < ea; pa += 1, pb += 1){
-        if (*pa != *pb){
-            result = false;
-            break;
-        }
-    }
-    return(result);
-}
-inline i32
+force_inline i32
 block_compare(void *a, void *b, u64 size)
 {
     return gb_memcompare(a, b, size);
 }
+
+force_inline b32
+block_match(void *a, void *b, u64 size)
+{
+    return (block_compare(a,b,size) == 0);
+}
+
 inline void
 block_fill_u8(void *dst, u64 size, u8 val)
 {
@@ -2847,7 +3024,7 @@ block_fill_u64(void *a, u64 size, u64 val)
 
 #define block_copy_struct(d,s) block_copy((d), (s), sizeof(*(d)))
 #define block_copy_array(d,s)  block_copy((d), (s), sizeof(d))
-#define block_copy_dynamic_array(d,s,c) block_copy((d), (s), sizeof(*(d))*(c))
+#define block_copy_count(d,s,c) block_copy((d), (s), sizeof(*(d))*(c))
 
 #define block_match_struct(a,b) block_match((a), (b), sizeof(*(a)))
 #define block_match_array(a,b) block_match((a), (b), sizeof(a))
@@ -2888,15 +3065,13 @@ block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range
 
 #define block_copy_array_shift(d,s,r,h) block_copy_array_shift__inner((d),(s),sizeof(*(d)),(r),(h))
 
-////////////////////////////////
-
 function f32
 abs_f32(f32 x)
 {
-    if (x < 0){
-        x = -x;
-    }
-    return(x);
+ if (x < 0){
+  x = -x;
+ }
+ return(x);
 }
 
 #include <math.h>
@@ -2904,120 +3079,85 @@ abs_f32(f32 x)
 function f32
 mod_f32(f32 x, i32 m)
 {
-    f32 whole;
-    f32 frac = modff(x, &whole);
-    f32 r = f32((i32)(whole) % m) + frac;
-    return(r);
+ f32 whole;
+ f32 frac = modff(x, &whole);
+ f32 r = f32((i32)(whole) % m) + frac;
+ return(r);
 }
 
+//~ NOTE(kv): Trig functions
+
 // TODO: make these be based on actual turn
-inline f32
-cos_turn(f32 x)
+force_inline v1
+cosine(v1 x)
 {
     return cosf(TAU32 * x);
 }
 
-inline f32
-sin_turn(f32 x)
+force_inline f32
+sine(v1 x)
 {
     return sinf(TAU32 * x);
 }
 
+force_inline v1
+arctan2(v1 y, v1 x)
+{
+ return atan2f(y,x) / TAU32;
+}
+
+force_inline v1
+arcsin(v1 between_zero_and_one)
+{
+ return asinf(between_zero_and_one) / TAU32;
+}
+
+force_inline v1
+arccos(v1 between_minus_one_and_one)
+{
+ return acosf(between_minus_one_and_one) / TAU32;
+}
+
 ////////////////////////////////
 
-function Vec2_i32
-V2i(i32 x, i32 y)
+force_inline v2i vec2i(i32 x, i32 y) { return {x, y}; }
+force_inline v3i vec3i(i32 x, i32 y, i32 z) { return {x, y, z}; }
+force_inline v4i vec4i(i32 x, i32 y, i32 z, i32 w) { return {x, y, z, w}; }
+force_inline v4i vec4i() { return {}; }
+
+force_inline v2
+vec2(v1 x, v1 y)
 {
-    Vec2_i32 v = {x, y};
-    return(v);
-}
-function Vec3_i32
-V3i32(i32 x, i32 y, i32 z){
-    Vec3_i32 v = {x, y, z};
-    return(v);
+ v2 v = {x, y};
+ return(v);
 }
 
-internal Vec2_f32
-V2f32(f32 x, f32 y)
+force_inline v2
+cast_vec2(i32 x, i32 y)
 {
-    Vec2_f32 v = {x, y};
-    return(v);
+ v2 v = {(v1)x, (v1)y};
+ return(v);
+}
+//
+force_inline v2
+cast_vec2(v2i v)
+{
+ v2 result = {(v1)v.x, (v1)v.y};
+ return(result);
 }
 
-internal v2
-V2(f32 x, f32 y)
+force_inline v2i
+vec2i(v2i o)
 {
-    Vec2_f32 v = {x, y};
-    return(v);
+    return(vec2i((i32)o.x, (i32)o.y));
+}
+force_inline v3
+vec3(v3i o)
+{
+    return(vec3((f32)o.x, (f32)o.y, (f32)o.z));
 }
 
-internal Vec2_f32
-castV2(i32 x, i32 y){
-    Vec2_f32 v = {(f32)x, (f32)y};
-    return(v);
-}
-
-internal v2
-castV2(v2i v){
-    return {(f32)v.x, (f32)v.y};
-}
-
-internal Vec3_f32
-V3(f32 x, f32 y, f32 z)
-{
-    Vec3_f32 v = {x, y, z};
-    return(v);
-}
-function Vec4_f32
-V4(f32 x, f32 y, f32 z, f32 w)
-{
-    Vec4_f32 v = {x, y, z, w};
-    return(v);
-}
-internal v4
-V4(v3 xyz, v1 w)
-{
-    v4 v = {.xyz=xyz, .xyz_w=w};
-    return v;
-}
-internal v4
-castV4(v3 xyz)
-{
-    v4 v = {.xyz=xyz};
-    return v;
-}
-
-function Vec2_i32
-V2i(Vec2_f32 o)
-{
-    return(V2i((i32)o.x, (i32)o.y));
-}
-function Vec3_i32
-V3i32(Vec3_i32 o){
-    return(V3i32((i32)o.x, (i32)o.y, (i32)o.z));
-}
-function Vec3_i32
-V3i32(Vec3_f32 o){
-    return(V3i32((i32)o.x, (i32)o.y, (i32)o.z));
-}
-function Vec2_f32
-V2(Vec2_i32 o){
-    return(V2((f32)o.x, (f32)o.y));
-}
-function Vec2_f32
-V2(Vec2_f32 o){
-    return(V2((f32)o.x, (f32)o.y));
-}
-function Vec3_f32
-V3(Vec3_i32 o){
-    return(V3((f32)o.x, (f32)o.y, (f32)o.z));
-}
-function Vec3_f32
-V3(Vec3_f32 o){
-    return(V3((f32)o.x, (f32)o.y, (f32)o.z));
-}
-
-function Vec2_i32
+force_inline Vec2_i32
 operator+(Vec2_i32 a, Vec2_i32 b){
     a.x += b.x;
     a.y += b.y;
@@ -3030,7 +3170,7 @@ operator+(Vec3_i32 a, Vec3_i32 b){
     a.z += b.z;
     return(a);
 }
-function Vec2_i32&
+force_inline Vec2_i32&
 operator+=(Vec2_i32 &a, Vec2_i32 b){
     a.x += b.x;
     a.y += b.y;
@@ -3147,14 +3287,14 @@ operator/=(Vec3_i32 &v, i32 s){
     v.z /= s;
     return(v);
 }
-function Vec2_f32&
-operator/=(Vec2_f32 &v, f32 s){
+function v2&
+operator/=(v2 &v, f32 s){
     v.x /= s;
     v.y /= s;
     return(v);
 }
-function Vec3_f32&
-operator/=(Vec3_f32 &v, f32 s){
+function v3&
+operator/=(v3 &v, f32 s){
     v.x /= s;
     v.y /= s;
     v.z /= s;
@@ -3236,47 +3376,62 @@ lerp(f32 t, Range_f32 x){
     return(x.min + (x.max - x.min)*t);
 }
 
+#if 0
 function i32
 lerp(i32 a, f32 t, i32 b){
     return((i32)(lerp((f32)a, t, (f32)b)));
 }
+#endif
 
 function Vec2_f32
 lerp(Vec2_f32 a, f32 t, Vec2_f32 b){
     return(a + (b-a)*t);
 }
 
-function Vec3_f32
-lerp(Vec3_f32 a, f32 t, Vec3_f32 b){
+force_inline v3
+lerp(v3 a, v1 t, v3 b){
     return(a + (b-a)*t);
 }
 
-function f32
-unlerp(f32 a, f32 x, f32 b){
-    f32 r = x;
-    if (b != a)
-    {
-        r = (x - a)/(b - a);
-    }
-    return(r);
+force_inline v1
+unlerp(v1 a, v1 x, v1 b)
+{
+ v1 r = 0.f;
+ if (b != a)
+ {
+  r = (x - a)/(b - a);
+ }
+ return(r);
 }
 
-function f32
-unlerp(u64 a, u64 x, u64 b){
-    f32 r = 0.f;
-    if (b <= x){
-        r = 1.f;
-    }
-    else if (a < x){
-        u64 n = x - a;
-        u64 d = b - a;
-        r = (f32)(((f64)n)/((f64)d));
-    }
-    return(r);
+force_inline v1
+clamp01(v1 v)
+{
+ macro_clamp01(v);
+ return v;
+}
+
+force_inline v1
+unlerp01(v1 a, v1 v, v1 b)
+{
+ return clamp01( unlerp(a,v,b) );
+}
+
+internal v1
+smoothstep(v1 a, v1 x, v1 b)
+{
+ if (a != b)
+ {
+  v1 t = clamp01((x - a) / (b - a));
+  return t*t*(3.0 - (2.0*t));
+ }
+ else if (x > a) { return 1.f; }
+ else { return 0.f; }
 }
 
 function Range_f32
-unlerp(f32 a, Range_f32 x, f32 b){
+unlerp(f32 a, Range_f32 x, f32 b)
+{
     x.min = unlerp(a, x.min, b);
     x.max = unlerp(a, x.max, b);
     return(x);
@@ -3322,10 +3477,10 @@ operator!=(Rect_f32 a, Rect_f32 b){
 
 ////////////////////////////////
 
-function Vec4_f32
-unpack_argb(ARGB_Color color)
+function v4
+argb_unpack(ARGB_Color color)
 {
-    Vec4_f32 result;
+    v4 result;
     result.a = ((color >> 24) & 0xFF)/255.f;
     result.r = ((color >> 16) & 0xFF)/255.f;
     result.g = ((color >> 8)  & 0xFF)/255.f;
@@ -3334,7 +3489,7 @@ unpack_argb(ARGB_Color color)
 }
 
 function ARGB_Color
-pack_argb(v4 color)
+argb_pack(v4 color)
 {
     ARGB_Color result =
         ((u8)(color.a*255) << 24) |
@@ -3347,12 +3502,13 @@ pack_argb(v4 color)
 function ARGB_Color
 color_blend(ARGB_Color a, f32 t, ARGB_Color b)
 {
-    Vec4_f32 av = unpack_argb(a);
-    Vec4_f32 bv = unpack_argb(b);
+    Vec4_f32 av = argb_unpack(a);
+    Vec4_f32 bv = argb_unpack(b);
     Vec4_f32 v = lerp(av, t, bv);
-    return(pack_argb(v));
+    return(argb_pack(v));
 }
 
+#if 0
 function Vec4_f32
 rgba_to_hsla(Vec4_f32 rgba)
 {
@@ -3413,28 +3569,29 @@ rgba_to_hsla(Vec4_f32 rgba)
 function Vec4_f32
 hsla_to_rgba(Vec4_f32 hsla)
 {
-    if (hsla.h >= 1.f){
-        hsla.h = 0.f;
-    }
-    f32 C = (1.f - abs_f32(2*hsla.z - 1.f))*hsla.y;
-    f32 X = C*(1.f-abs_f32(mod_f32(hsla.x*6.f, 2)-1.f));
-    f32 m = hsla.z - C*.5f;
-    i32 H = i32_floor32(hsla.x*6.f);
-    Vec4_f32 rgba = {};
-    rgba.a = hsla.a;
-    switch (H){
-        case 0: rgba.r = C; rgba.g = X; rgba.b = 0; break;
-        case 1: rgba.r = X; rgba.g = C; rgba.b = 0; break;
-        case 2: rgba.r = 0; rgba.g = C; rgba.b = X; break;
-        case 3: rgba.r = 0; rgba.g = X; rgba.b = C; break;
-        case 4: rgba.r = X; rgba.g = 0; rgba.b = C; break;
-        case 5: rgba.r = C; rgba.g = 0; rgba.b = X; break;
-    }
-    rgba.r += m;
-    rgba.g += m;
-    rgba.b += m;
-    return(rgba);
+ if (hsla.h >= 1.f){
+  hsla.h = 0.f;
+ }
+ f32 C = (1.f - abs_f32(2*hsla.z - 1.f))*hsla.y;
+ f32 X = C*(1.f-abs_f32(mod_f32(hsla.x*6.f, 2)-1.f));
+ f32 m = hsla.z - C*.5f;
+ i32 H = i32_floor32(hsla.x*6.f);
+ Vec4_f32 rgba = {};
+ rgba.a = hsla.a;
+ switch (H){
+  case 0: rgba.r = C; rgba.g = X; rgba.b = 0; break;
+  case 1: rgba.r = X; rgba.g = C; rgba.b = 0; break;
+  case 2: rgba.r = 0; rgba.g = C; rgba.b = X; break;
+  case 3: rgba.r = 0; rgba.g = X; rgba.b = C; break;
+  case 4: rgba.r = X; rgba.g = 0; rgba.b = C; break;
+  case 5: rgba.r = C; rgba.g = 0; rgba.b = X; break;
+ }
+ rgba.r += m;
+ rgba.g += m;
+ rgba.b += m;
+ return(rgba);
 }
+#endif
 
 ////////////////////////////////
 
@@ -3766,50 +3923,50 @@ range_contains(Range_f32 a, f32 p){
 function i32
 range_size(Range_i32 a){
     i32 size = a.max - a.min;
-    size = clamp_bot(0, size);
+    size = clamp_min(0, size);
     return(size);
 }
 function i64
 range_size(Range_i64 a){
     i64 size = a.max - a.min;
-    size = clamp_bot(0, size);
+    size = clamp_min(0, size);
     return(size);
 }
 function u64
 range_size(Range_u64 a){
     u64 size = a.max - a.min;
-    size = clamp_bot(0, size);
+    size = clamp_min(0, size);
     return(size);
 }
 function f32
 range_size(Range_f32 a){
     f32 size = a.max - a.min;
-    size = clamp_bot(0, size);
+    size = clamp_min(0, size);
     return(size);
 }
 
 function i32
 range_size_inclusive(Range_i32 a){
     i32 size = a.max - a.min + 1;
-    size = clamp_bot(0, size);
+    size = clamp_min(0, size);
     return(size);
 }
 function i64
 range_size_inclusive(Range_i64 a){
     i64 size = a.max - a.min + 1;
-    size = clamp_bot(0, size);
+    size = clamp_min(0, size);
     return(size);
 }
 function u64
 range_size_inclusive(Range_u64 a){
     u64 size = a.max - a.min + 1;
-    size = clamp_bot(0, size);
+    size = clamp_min(0, size);
     return(size);
 }
 function f32
 range_size_inclusive(Range_f32 a){
     f32 size = a.max - a.min + 1;
-    size = clamp_bot(0, size);
+    size = clamp_min(0, size);
     return(size);
 }
 
@@ -3833,25 +3990,25 @@ rectify(Range_f32 a){
 function Range_i32
 range_clamp_size(Range_i32 a, i32 max_size){
     i32 max = a.min + max_size;
-    a.max = clamp_top(a.max, max);
+    a.max = clamp_max(a.max, max);
     return(a);
 }
 function Range_i64
 range_clamp_size(Range_i64 a, i64 max_size){
     i64 max = a.min + max_size;
-    a.max = clamp_top(a.max, max);
+    a.max = clamp_max(a.max, max);
     return(a);
 }
 function Range_u64
 range_clamp_size(Range_u64 a, u64 max_size){
     u64 max = a.min + max_size;
-    a.max = clamp_top(a.max, max);
+    a.max = clamp_max(a.max, max);
     return(a);
 }
 function Range_f32
 range_clamp_size(Range_f32 a, f32 max_size){
     f32 max = a.min + max_size;
-    a.max = clamp_top(a.max, max);
+    a.max = clamp_max(a.max, max);
     return(a);
 }
 
@@ -3944,6 +4101,7 @@ range_distance(Range_f32 a, Range_f32 b){
 
 ////////////////////////////////
 
+#if 1
 function i32
 replace_range_shift(i32 replace_length, i32 insert_length){
     return(insert_length - replace_length);
@@ -3980,6 +4138,7 @@ function i64
 replace_range_shift(Range_i64 range, u64 insert_length){
     return((i64)insert_length - (range.end - range.start));
 }
+#endif
 
 ////////////////////////////////
 
@@ -4089,7 +4248,7 @@ rect_inner(Rect_f32 r, f32 m){
 }
 
 function Vec2_i32
-rect2i_get_dim(Rect_i32 r)
+rect2i_dim(Rect_i32 r)
 {
     Vec2_i32 v = {r.x1 - r.x0, r.y1 - r.y0};
     return(v);
@@ -4175,11 +4334,11 @@ rect_overlap(Rect_f32 a, Rect_f32 b){
 
 function Vec2_i32
 rect2_half_dim(Rect_i32 r){
-    return(rect2i_get_dim(r)/2);
+    return(rect2i_dim(r)/2);
 }
 function Vec2_f32
 rect2_half_dim(Rect_f32 r){
-    return(rect_dim(r)*0.5f);
+    return(rect2_dim(r)*0.5f);
 }
 
 function Rect_i32
@@ -4221,50 +4380,50 @@ rect_union(Rect_f32 a, Rect_f32 b){
 
 ////////////////////////////////
 
-function Rect_f32_Pair
+function rect2_Pair
 rect_split_top_bottom__inner(Rect_f32 rect, f32 y){
     y = clamp_between(rect.y0, y, rect.y1);
-    Rect_f32_Pair pair = {};
+    rect2_Pair pair = {};
     pair.a = Rf32(rect.x0, rect.y0, rect.x1, y      );
     pair.b = Rf32(rect.x0, y      , rect.x1, rect.y1);
     return(pair);
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 rect_split_left_right__inner(Rect_f32 rect, f32 x){
     x = clamp_between(rect.x0, x, rect.x1);
-    Rect_f32_Pair pair = {};
+    rect2_Pair pair = {};
     pair.a = Rf32(rect.x0, rect.y0, x      , rect.y1);
     pair.b = Rf32(x      , rect.y0, rect.x1, rect.y1);
     return(pair);
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 rect_split_top_bottom(Rect_f32 rect, f32 y){
     return(rect_split_top_bottom__inner(rect, rect.y0 + y));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 rect_split_left_right(Rect_f32 rect, f32 x){
     return(rect_split_left_right__inner(rect, rect.x0 + x));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 rect_split_top_bottom_neg(Rect_f32 rect, f32 y){
     return(rect_split_top_bottom__inner(rect, rect.y1 - y));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 rect_split_left_right_neg(Rect_f32 rect, f32 x){
     return(rect_split_left_right__inner(rect, rect.x1 - x));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 rect_split_top_bottom_lerp(Rect_f32 rect, f32 t){
     return(rect_split_top_bottom__inner(rect, lerp(rect.y0, t, rect.y1)));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 rect_split_left_right_lerp(Rect_f32 rect, f32 t){
     return(rect_split_left_right__inner(rect, lerp(rect.x0, t, rect.x1)));
 }
@@ -4303,13 +4462,13 @@ flip_side(Side side){
 
 ////////////////////////////////
 
-function u64
+force_inline u64
 cstring_length(char *str){
     u64 length = 0;
     for (;str[length] != 0; length += 1);
     return(length);
 }
-function u64
+force_inline u64
 cstring_length(u8 *str){
     u64 length = 0;
     for (;str[length] != 0; length += 1);
@@ -4460,7 +4619,7 @@ SCchar(char *str, u64 size){
     String_Const_char string = {str, size};
     return(string);
 }
-function String_Const_u8
+force_inline String
 SCu8(u8 *str, u64 size){
     String_Const_u8 string = {str, size};
     return(string);
@@ -4493,7 +4652,7 @@ SCchar(void){
     String_Const_char string = {};
     return(string);
 }
-function String_Const_u8
+force_inline String_Const_u8
 SCu8(void){
     String_Const_u8 string = {};
     return(string);
@@ -4513,7 +4672,7 @@ function String_Const_char
 SCchar(char *str, char *one_past_last){
     return(SCchar(str, (u64)(one_past_last - str)));
 }
-function String_Const_u8
+force_inline String_Const_u8
 SCu8(u8 *str, u8 *one_past_last){
     return(SCu8(str, (u64)(one_past_last - str)));
 }
@@ -4528,10 +4687,10 @@ SCchar(char *str){
     String_Const_char string = {str, size};
     return(string);
 }
-function String_Const_u8
+force_inline String_Const_u8
 SCu8(u8 *str){
     u64 size = cstring_length(str);
-    String_Const_u8 string = {str, size};
+    String string = {str, size};
     return(string);
 }
 function String_Const_u16
@@ -4568,20 +4727,20 @@ function String_Const_char
 SCchar(String_Const_u8 str){
     return(SCchar((char*)str.str, str.size));
 }
-function String_Const_u8
+force_inline String_Const_u8
 SCu8(String_Const_char str){
     return(SCu8((u8*)str.str, str.size));
 }
 
-function String_Const_u8
+force_inline String_Const_u8
 SCu8(char *str, u64 length){
     return(SCu8((u8*)str, length));
 }
-function String_Const_u8
+force_inline String_Const_u8
 SCu8(char *first, char *one_past_last){
     return(SCu8((u8*)first, (u8*)one_past_last));
 }
-function String_Const_u8
+force_inline String_Const_u8
 SCu8(char *str){
     return(SCu8((u8*)str));
 }
@@ -4643,7 +4802,7 @@ SCany(String_Const_u32 str){
 function String_Const_char string_empty = {"", 0};
 function String_Const_u8 string_u8_empty = {(u8*)"", 0};
 
-#define filename_line_number_lit_u8 string_u8_litexpr(filename_line_number)
+#define filename_linum strlit(filename_line_number)
 
 ////////////////////////////////
 
@@ -4667,7 +4826,8 @@ make_base_allocator(Base_Allocator_Reserve_Signature *func_reserve,
                     Base_Allocator_Uncommit_Signature *func_uncommit,
                     Base_Allocator_Free_Signature *func_free,
                     Base_Allocator_Set_Access_Signature *func_set_access,
-                    void *user_data){
+                    void *user_data)
+{
     if (func_reserve == 0){
         func_reserve = base_reserve__noop;
     }
@@ -4708,9 +4868,9 @@ base_free(Base_Allocator *allocator, void *ptr){
     }
 }
 
-#define base_allocate(a,s)      base_allocate__inner((a), (s), filename_line_number_lit_u8)
+#define base_allocate(a,s)      base_allocate__inner((a), (s), filename_linum)
 #define base_array_loc(a,T,c,l) (T*)(base_allocate__inner((a), sizeof(T)*(c), (l)).str)
-#define base_array(a,T,c)       base_array_loc(a,T,c, filename_line_number_lit_u8)
+#define base_array(a,T,c)       base_array_loc(a,T,c, filename_linum)
 
 ////////////////////////////////
 
@@ -4758,7 +4918,7 @@ linalloc_align(Cursor *cursor, u64 alignment)
 {
     u64 pos = round_up_u64(cursor->pos, alignment);
     u64 new_size = pos - cursor->pos;
-    return linalloc_bump(cursor, new_size, filename_line_number_lit_u8);
+    return linalloc_bump(cursor, new_size, filename_linum);
 }
 internal Temp_Memory_Cursor
 linalloc_begin_temp(Cursor *cursor)
@@ -4803,7 +4963,7 @@ make_cursor_node_from_memory(void *memory, u64 size)
 function Cursor_Node*
 arena__new_node(Arena *arena, u64 min_size, String8 location)
 {
-    min_size = clamp_bot(min_size, arena->chunk_size);
+    min_size = clamp_min(min_size, arena->chunk_size);
     String8 memory = base_allocate__inner(arena->base_allocator, min_size + sizeof(Cursor_Node), location);
     Cursor_Node *cursor_node = make_cursor_node_from_memory(memory.str, memory.size);
     sll_stack_push(arena->cursor_node, cursor_node);
@@ -4813,33 +4973,33 @@ force_inline u64
 get_arena_used(Arena *arena)
 {
     Cursor_Node *cursor_node = arena->cursor_node;
-    if (cursor_node)
-    {
-        return cursor_node->cursor.pos;
-    }
-    else return 0;
+ if (cursor_node)
+ {
+  return cursor_node->cursor.pos;
+ }
+ else return 0;
 }
 function String8
 linalloc_push(Arena *arena, u64 size, String8 location)
 {
-    String8 result = {};
-    if (size > 0)
-    {
-        Cursor_Node *cursor_node = arena->cursor_node;
-        if (cursor_node == 0)
-        {
-            cursor_node = arena__new_node(arena, size, location);
-        }
-        result = linalloc_bump(&cursor_node->cursor, size, location);
-        if (result.str == 0)
-        {
-            cursor_node = arena__new_node(arena, size, location);
-            result = linalloc_bump(&cursor_node->cursor, size, location);
-        }
-        String8 alignment_data = linalloc_align(&cursor_node->cursor, arena->alignment);
-        result.size += alignment_data.size;
-    }
-    return(result);
+ String8 result = {};
+ if (size > 0)
+ {
+  Cursor_Node *cursor_node = arena->cursor_node;
+  if (cursor_node == 0)
+  {
+   cursor_node = arena__new_node(arena, size, location);
+  }
+  result = linalloc_bump(&cursor_node->cursor, size, location);
+  if (result.str == 0)
+  {
+   cursor_node = arena__new_node(arena, size, location);
+   result = linalloc_bump(&cursor_node->cursor, size, location);
+  }
+  String8 alignment_data = linalloc_align(&cursor_node->cursor, arena->alignment);
+  result.size += alignment_data.size;
+ }
+ return(result);
 }
 function void
 linalloc_pop(Arena *arena, u64 size)
@@ -4873,38 +5033,51 @@ linalloc_align(Arena *arena, u64 alignment){
 }
 function Temp_Memory_Arena
 linalloc_begin_temp(Arena *arena){
-    Cursor_Node *cursor_node = arena->cursor_node;
-    Temp_Memory_Arena temp = {arena, cursor_node,
-        cursor_node == 0?0:cursor_node->cursor.pos};
-    return(temp);
+ Cursor_Node *cursor_node = arena->cursor_node;
+ Temp_Memory_Arena temp = {arena, cursor_node,
+  cursor_node == 0?0:cursor_node->cursor.pos};
+ return(temp);
 }
 function void
-linalloc_end_temp(Temp_Memory_Arena temp)
+temp_arena_end(Temp_Memory_Arena temp)
 {
-    Base_Allocator *allocator = temp.arena->base_allocator;
-    Cursor_Node *cursor_node = temp.arena->cursor_node;
-    for (Cursor_Node *prev = 0;
-         cursor_node != temp.cursor_node && cursor_node != 0;
-         cursor_node = prev){
-        prev = cursor_node->prev;
-        base_free(allocator, cursor_node);
-    }
-    temp.arena->cursor_node = cursor_node;
-    if (cursor_node != 0){
-        if (temp.pos > 0){
-            cursor_node->cursor.pos = temp.pos;
-        }
-        else{
-            temp.arena->cursor_node = cursor_node->prev;
-            base_free(allocator, cursor_node);
-        }
-    }
+ Base_Allocator *allocator = temp.arena->base_allocator;
+ Cursor_Node *cursor_node = temp.arena->cursor_node;
+ for (Cursor_Node *prev = 0;
+      cursor_node != temp.cursor_node && cursor_node != 0;
+      cursor_node = prev)
+ {
+  prev = cursor_node->prev;
+  base_free(allocator, cursor_node);
+ }
+ temp.arena->cursor_node = cursor_node;
+ if (cursor_node != 0)
+ {
+  if (temp.pos > 0)
+  {
+   cursor_node->cursor.pos = temp.pos;
+  }
+  else
+  {
+   temp.arena->cursor_node = cursor_node->prev;
+   base_free(allocator, cursor_node);
+  }
+ }
 }
+
 function void
-linalloc_clear(Arena *arena){
-    Temp_Memory_Arena temp = {arena, 0, 0};
-    linalloc_end_temp(temp);
+arena_free_all(Arena *arena)
+{
+ Temp_Memory_Arena temp = {arena, 0, 0};
+ temp_arena_end(temp);
 }
+
+function void
+arena_clear(Arena *arena)
+{//TODO(kv): currently only works with single-cursor-node arenas
+ arena->cursor_node->cursor.pos = 0;
+}
+
 function void*
 linalloc_wrap_unintialized(String8 data){
     return(data.str);
@@ -4918,13 +5091,13 @@ linalloc_wrap_zero(String8 data)
 function void*
 linalloc_wrap_write(String8 data, u64 size, void *src)
 {
-    block_copy(data.str, src, clamp_top(data.size, size));
+    block_copy(data.str, src, clamp_max(data.size, size));
     return(data.str);
 }
-#define push_array(a,T,c)         ((T*)linalloc_wrap_unintialized(linalloc_push((a), sizeof(T)*(c), filename_line_number_lit_u8)))
-#define push_array_zero(a,T,c)    ((T*)linalloc_wrap_zero        (linalloc_push((a), sizeof(T)*(c), filename_line_number_lit_u8)))
-#define push_array_write(a,T,c,s) ((T*)linalloc_wrap_write       (linalloc_push((a), sizeof(T)*(c), filename_line_number_lit_u8), sizeof(T)*(c), (s)))
-#define push_array_cursor(a,T,c)  ((T*)linalloc_wrap_unintialized(linalloc_bump((a), sizeof(T)*(c), filename_line_number_lit_u8)))
+#define push_array(a,T,c)         ((T*)linalloc_wrap_unintialized(linalloc_push((a), sizeof(T)*(c), filename_linum)))
+#define push_array_zero(a,T,c)    ((T*)linalloc_wrap_zero        (linalloc_push((a), sizeof(T)*(c), filename_linum)))
+#define push_array_write(a,T,c,s) ((T*)linalloc_wrap_write       (linalloc_push((a), sizeof(T)*(c), filename_linum), sizeof(T)*(c), (s)))
+#define push_array_cursor(a,T,c)  ((T*)linalloc_wrap_unintialized(linalloc_bump((a), sizeof(T)*(c), filename_linum)))
 #define pop_array(a,T,c) (linalloc_pop((a), sizeof(T)*(c)))
 #define push_align(a,b)      (linalloc_align((a), (b)))
 #define push_align_zero(a,b) (linalloc_wrap_zero(linalloc_align((a), (b))))
@@ -4959,7 +5132,7 @@ end_temp(Temp_Memory temp)
         }break;
         case LinearAllocatorKind_Arena:
         {
-            linalloc_end_temp(temp.temp_memory_arena);
+            temp_arena_end(temp.temp_memory_arena);
         }break;
     }
 }
@@ -4984,14 +5157,14 @@ thread_ctx_release(Thread_Context *tctx){
     for (Arena_Node *node = tctx->free_arenas;
          node != 0;
          node = node->next){
-        linalloc_clear(&node->arena);
+        arena_free_all(&node->arena);
     }
     for (Arena_Node *node = tctx->used_first;
          node != 0;
          node = node->next){
-        linalloc_clear(&node->arena);
+        arena_free_all(&node->arena);
     }
-    linalloc_clear(&tctx->node_arena);
+    arena_free_all(&tctx->node_arena);
     block_zero_struct(tctx);
 }
 
@@ -5087,7 +5260,7 @@ tctx_release(Thread_Context *tctx, Arena *arena){
     if (node->ref_counter == 0){
         // TODO(allen): make a version of clear that keeps memory allocated from the sytem level
         // but still resets to zero.
-        linalloc_clear(&node->arena);
+        arena_free_all(&node->arena);
         zdll_remove(tctx->used_first, tctx->used_last, node);
         sll_stack_push(tctx->free_arenas, node);
     }
@@ -5154,7 +5327,7 @@ heap_get_base_allocator(Heap *heap){
 function void
 heap_free_all(Heap *heap){
     if (heap->arena == &heap->arena_){
-        linalloc_clear(heap->arena);
+        arena_free_all(heap->arena);
     }
     block_zero_struct(heap);
 }
@@ -5220,7 +5393,7 @@ heap_allocate(Heap *heap, u64 size){
         }
         
         if (first_try){
-            u64 extension_size = clamp_bot(KB(64), size*2);
+            u64 extension_size = clamp_min(KB(64), size*2);
             heap__extend_automatic(heap, extension_size);
             first_try = false;
         }
@@ -5307,11 +5480,18 @@ push_data_copy(Arena *arena, String8 data)
     return(result);
 }
 
-function b32
+force_inline b32
 string_match(String a, String b)
 {
-    return(a.size == b.size && block_match(a.str, b.str, a.size));
+ return(a.size == b.size && block_match(a.str, b.str, a.size));
 }
+force_inline b32
+string_match(char *a, char *b)
+{
+ return gb_strcmp(a,b) == 0;
+}
+
+#define string_match_lit(a,b)  string_match(a,strlit(b))
 
 ////////////////////////////////
 
@@ -5560,19 +5740,19 @@ character_is_alpha(u32 c){
 }
 
 function b32
-character_is_alpha_numeric(char c){
+character_is_alnum(char c){
     return((('a' <= c) && (c <= 'z')) || (('A' <= c) && (c <= 'Z')) || (('0' <= c) && (c <= '9')) || c == '_');
 }
 function b32
-character_is_alpha_numeric(u8 c){
+character_is_alnum(u8 c){
     return((('a' <= c) && (c <= 'z')) || (('A' <= c) && (c <= 'Z')) || (('0' <= c) && (c <= '9')) || c == '_');
 }
 function b32
-character_is_alpha_numeric(u16 c){
+character_is_alnum(u16 c){
     return((('a' <= c) && (c <= 'z')) || (('A' <= c) && (c <= 'Z')) || (('0' <= c) && (c <= '9')) || c == '_');
 }
 function b32
-character_is_alpha_numeric(u32 c){
+character_is_alnum(u32 c){
     return((('a' <= c) && (c <= 'z')) || (('A' <= c) && (c <= 'Z')) || (('0' <= c) && (c <= '9')) || c == '_');
 }
 
@@ -5591,15 +5771,15 @@ character_is_alpha_unicode(u32 c){
 }
 
 function b32
-character_is_alpha_numeric_unicode(u8 c){
+character_is_alnum_unicode(u8 c){
     return((('a' <= c) && (c <= 'z')) || (('A' <= c) && (c <= 'Z')) || (('0' <= c) && (c <= '9')) || c == '_' || c >= 128);
 }
 function b32
-character_is_alpha_numeric_unicode(u16 c){
+character_is_alnum_unicode(u16 c){
     return((('a' <= c) && (c <= 'z')) || (('A' <= c) && (c <= 'Z')) || (('0' <= c) && (c <= '9')) || c == '_' || c >= 128);
 }
 function b32
-character_is_alpha_numeric_unicode(u32 c){
+character_is_alnum_unicode(u32 c){
     return((('a' <= c) && (c <= 'z')) || (('A' <= c) && (c <= 'Z')) || (('0' <= c) && (c <= '9')) || c == '_' || c >= 128);
 }
 
@@ -5630,41 +5810,35 @@ string_get_character(String_Const_u16 str, u64 i){
 
 function String_Const_char
 string_prefix(String_Const_char str, u64 size){
-    size = clamp_top(size, str.size);
+    size = clamp_max(size, str.size);
     str.size = size;
     return(str);
 }
 function String_Const_u8
 string_prefix(String_Const_u8 str, u64 size){
-    size = clamp_top(size, str.size);
+    size = clamp_max(size, str.size);
     str.size = size;
     return(str);
 }
+
+internal b32
+starts_with(String str, String prefix)
+{
+    return string_match(string_prefix(str, prefix.size), prefix);
+}
+#define starts_with_lit(string,prefix) starts_with(string, strlit(prefix))
+
 function String_Const_u16
 string_prefix(String_Const_u16 str, u64 size){
-    size = clamp_top(size, str.size);
+    size = clamp_max(size, str.size);
     str.size = size;
     return(str);
 }
 
 
-function String_Const_char
-string_postfix(String_Const_char str, u64 size){
-    size = clamp_top(size, str.size);
-    str.str += (str.size - size);
-    str.size = size;
-    return(str);
-}
-function String_Const_u8
-string_postfix(String_Const_u8 str, u64 size){
-    size = clamp_top(size, str.size);
-    str.str += (str.size - size);
-    str.size = size;
-    return(str);
-}
-function String_Const_u16
-string_postfix(String_Const_u16 str, u64 size){
-    size = clamp_top(size, str.size);
+function String
+string_postfix(String str, u64 size){
+    size = clamp_max(size, str.size);
     str.str += (str.size - size);
     str.size = size;
     return(str);
@@ -5672,48 +5846,31 @@ string_postfix(String_Const_u16 str, u64 size){
 
 function String_Const_char
 string_skip(String_Const_char str, u64 n){
-    n = clamp_top(n, str.size);
+    n = clamp_max(n, str.size);
     str.str += n;;
     str.size -= n;
     return(str);
 }
-function String_Const_u8
-string_skip(String_Const_u8 str, u64 n){
-    n = clamp_top(n, str.size);
-    str.str += n;;
-    str.size -= n;
-    return(str);
-}
-function String_Const_u16
-string_skip(String_Const_u16 str, u64 n){
-    n = clamp_top(n, str.size);
+function String
+string_skip(String str, u64 n){
+    n = clamp_max(n, str.size);
     str.str += n;;
     str.size -= n;
     return(str);
 }
 
 
-function String_Const_char
-string_chop(String_Const_char str, u64 n)
+function String
+string_chop(String str, u64 n)
 {
-    n = clamp_top(n, str.size);
-    str.size -= n;
-    return(str);
-}
-function String_Const_u8
-string_chop(String_Const_u8 str, u64 n)
-{
-    n = clamp_top(n, str.size);
+    n = clamp_max(n, str.size);
     str.size -= n;
     return(str);
 }
 
-function String_Const_char
-string_substring(String_Const_char str, Range_i64 range){
-    return(SCchar(str.str + range.min, str.str + range.max));
-}
-function String_Const_u8
-string_substring(String_Const_u8 str, Range_i64 range){
+function String
+string_substring(String str, Range_i64 range)
+{
     return(SCu8(str.str + range.min, str.str + range.max));
 }
 
@@ -5767,7 +5924,7 @@ string_find_first_non_whitespace(String_Const_u8 str){
     return(i);
 }
 function i64
-string_find_last_non_whitespace(String_Const_u8 str){
+string_find_last_non_whitespace(String str){
     i64 size = (i64)str.size;
     i64 i = size - 1;
     for (;i >= 0 && character_is_whitespace(str.str[i]); i -= 1);
@@ -5775,13 +5932,13 @@ string_find_last_non_whitespace(String_Const_u8 str){
 }
 
 function u64
-string_find_first_slash(String_Const_u8 str){
+string_find_first_slash(String str){
     u64 i = 0;
     for (;i < str.size && !character_is_slash(str.str[i]); i += 1);
     return(i);
 }
 function i64
-string_find_last_slash(String_Const_u8 str){
+string_find_last_slash(String str){
     i64 size = (i64)str.size;
     i64 i = size - 1;
     for (;i >= 0 && !character_is_slash(str.str[i]); i -= 1);
@@ -5804,39 +5961,39 @@ path_dirname(String8 str)
 }
 
 function b32
-string_looks_like_drive_letter(String_Const_u8 string){
-    b32 result = false;
-    if (string.size == 3 &&
-        character_is_alpha(string.str[0]) &&
-        string.str[1] == ':' &&
-        character_is_slash(string.str[2])){
-        result = true;
-    }
-    return(result);
+string_looks_like_drive_letter(String string)
+{
+ b32 result = false;
+ if (string.size == 3 &&
+     character_is_alpha(string.str[0]) &&
+     string.str[1] == ':' &&
+     character_is_slash(string.str[2])){
+  result = true;
+ }
+ return(result);
 }
 
-function String_Const_u8
-string_remove_front_of_path(String_Const_u8 str){
-    i64 slash_pos = string_find_last_slash(str);
-    if (slash_pos < 0){
-        str.size = 0;
-    }
-    else{
-        str.size = slash_pos + 1;
-    }
-    return(str);
+function String
+string_remove_front_of_path(String str)
+{
+ i64 slash_pos = string_find_last_slash(str);
+ if (slash_pos < 0) { str.size = 0; }
+ else               { str.size = slash_pos + 1; }
+ return(str);
 }
 
-function String_Const_u8
-string_front_of_path(String_Const_u8 str){
-    i64 slash_pos = string_find_last_slash(str);
-    if (slash_pos >= 0){
-        str = string_skip(str, slash_pos + 1);
-    }
-    return(str);
+function String
+string_front_of_path(String str)
+{
+ i64 slash_pos = string_find_last_slash(str);
+ if (slash_pos >= 0)
+ {
+  str = string_skip(str, slash_pos + 1);
+ }
+ return(str);
 }
 
-function String_Const_u8
+function String
 string_remove_front_folder_of_path(String_Const_u8 str){
     i64 slash_pos = string_find_last_slash(string_chop(str, 1));
     if (slash_pos < 0){
@@ -6085,76 +6242,76 @@ string_mod_lower(String_Const_u8 str){
 
 function void
 string_mod_replace_character(String_Const_u8 str, u8 o, u8 n){
-    for (u64 i = 0; i < str.size; i += 1){
-        u8 c = str.str[i];
-        str.str[i] = (c == o)?(n):(c);
-    }
+ for (u64 i = 0; i < str.size; i += 1){
+  u8 c = str.str[i];
+  str.str[i] = (c == o)?(n):(c);
+ }
 }
 
 function b32
-string_append(String_char *dst, String_Const_char src){
+string_concat(String_char *dst, String_Const_char src){
     b32 result = false;
     u64 available = dst->cap - dst->size;
     if (src.size <= available){
         result = true;
     }
-    u64 copy_size = clamp_top(src.size, available);
+    u64 copy_size = clamp_max(src.size, available);
     block_copy(dst->str + dst->size, src.str, copy_size);
     dst->size += copy_size;
     return(result);
 }
 function b32
-string_append(String_u8 *dst, String_Const_u8 src){
+string_concat(String_u8 *dst, String_Const_u8 src){
     b32 result = false;
     u64 available = dst->cap - dst->size;
     if (src.size <= available){
         result = true;
     }
-    u64 copy_size = clamp_top(src.size, available);
+    u64 copy_size = clamp_max(src.size, available);
     block_copy(dst->str + dst->size, src.str, copy_size);
     dst->size += copy_size;
     return(result);
 }
 function b32
-string_append(String_u16 *dst, String_Const_u16 src){
+string_concat(String_u16 *dst, String_Const_u16 src){
     b32 result = false;
     u64 available = dst->cap - dst->size;
     if (src.size <= available){
         result = true;
     }
-    u64 copy_size = clamp_top(src.size, available);
+    u64 copy_size = clamp_max(src.size, available);
     block_copy(dst->str + dst->size, src.str, copy_size);
     dst->size += copy_size;
     return(result);
 }
 function b32
-string_append(String_u32 *dst, String_Const_u32 src){
+string_concat(String_u32 *dst, String_Const_u32 src){
     b32 result = false;
     u64 available = dst->cap - dst->size;
     if (src.size <= available){
         result = true;
     }
-    u64 copy_size = clamp_top(src.size, available);
+    u64 copy_size = clamp_max(src.size, available);
     block_copy(dst->str + dst->size, src.str, copy_size);
     dst->size += copy_size;
     return(result);
 }
 
 function b32
-string_append_character(String_char *dst, char c){
-    return(string_append(dst, SCchar(&c, 1)));
+string_concat_character(String_char *dst, char c){
+    return(string_concat(dst, SCchar(&c, 1)));
 }
 function b32
-string_append_character(String_u8 *dst, u8 c){
-    return(string_append(dst, SCu8(&c, 1)));
+string_concat_character(String_u8 *dst, u8 c){
+    return(string_concat(dst, SCu8(&c, 1)));
 }
 function b32
-string_append_character(String_u16 *dst, u16 c){
-    return(string_append(dst, SCu16(&c, 1)));
+string_concat_character(String_u16 *dst, u16 c){
+    return(string_concat(dst, SCu16(&c, 1)));
 }
 function b32
-string_append_character(String_u32 *dst, u32 c){
-    return(string_append(dst, SCu32(&c, 1)));
+string_concat_character(String_u32 *dst, u32 c){
+    return(string_concat(dst, SCu32(&c, 1)));
 }
 
 function b32
@@ -6288,7 +6445,7 @@ push_string_copy(Arena *arena, String_Const_char src)
     String_Const_char string = {};
     string.str  = push_array(arena, char, src.size + 1);
     string.size = src.size;
-    block_copy_dynamic_array(string.str, src.str, src.size);
+    block_copy_count(string.str, src.str, src.size);
     string.str[string.size] = 0;
     return(string);
 }
@@ -6299,7 +6456,7 @@ push_string_copy(Arena *arena, String8 src)
     String_Const_u8 string = {};
     string.str = push_array(arena, u8, src.size + 1);
     string.size = src.size;
-    block_copy_dynamic_array(string.str, src.str, src.size);
+    block_copy_count(string.str, src.str, src.size);
     string.str[string.size] = 0;
     return(string);
 }
@@ -6316,7 +6473,7 @@ push_string_copy(Arena *arena, String_Const_u16 src){
     String_Const_u16 string = {};
     string.str = push_array(arena, u16, src.size + 1);
     string.size = src.size;
-    block_copy_dynamic_array(string.str, src.str, src.size);
+    block_copy_count(string.str, src.str, src.size);
     string.str[string.size] = 0;
     return(string);
 }
@@ -6325,7 +6482,7 @@ push_string_copy(Arena *arena, String_Const_u32 src){
     String_Const_u32 string = {};
     string.str = push_array(arena, u32, src.size + 1);
     string.size = src.size;
-    block_copy_dynamic_array(string.str, src.str, src.size);
+    block_copy_count(string.str, src.str, src.size);
     string.str[string.size] = 0;
     return(string);
 }
@@ -6423,20 +6580,20 @@ string_list_flatten(Arena *arena, List_String_Const_u8 list, String_u8_Mod_Funct
     u64 separator_size = separator.size*(list.node_count + before_first + after_last - 1);
     String_u8 string = string_u8_push(arena, list.total_size + separator_size + term_padding);
     if (before_first){
-        string_append(&string, separator);
+        string_concat(&string, separator);
     }
     for (Node_String_Const_u8 *node = list.first;
          node != 0;
          node = node->next){
-        block_copy_dynamic_array(string.str + string.size, node->string.str, node->string.size);
+        block_copy_count(string.str + string.size, node->string.str, node->string.size);
         if (mod != 0){
             mod(SCu8(string.str + string.size, node->string.size));
         }
         string.size += node->string.size;
-        string_append(&string, separator);
+        string_concat(&string, separator);
     }
     if (after_last){
-        string_append(&string, separator);
+        string_concat(&string, separator);
     }
     if (term_padding == 1){
         string_null_terminate(&string);
@@ -7008,7 +7165,7 @@ string_interpret_escapes(Arena *arena, String_Const_char string){
     String_char result = Schar(space, 0, string.size);
     for (;;){
         u64 back_slash_pos = string_find_first(string, '\\');
-        string_append(&result, string_prefix(string, back_slash_pos));
+        string_concat(&result, string_prefix(string, back_slash_pos));
         string = string_skip(string, back_slash_pos + 1);
         if (string.size == 0){
             break;
@@ -7016,34 +7173,34 @@ string_interpret_escapes(Arena *arena, String_Const_char string){
         switch (string.str[0]){
             case '\\':
             {
-                string_append_character(&result, '\\');
+                string_concat_character(&result, '\\');
             }break;
             
             case 'n':
             {
-                string_append_character(&result, '\n');
+                string_concat_character(&result, '\n');
             }break;
             
             case 't':
             {
-                string_append_character(&result, '\t');
+                string_concat_character(&result, '\t');
             }break;
             
             case '"':
             {
-                string_append_character(&result, '\"');
+                string_concat_character(&result, '\"');
             }break;
             
             case '0':
             {
-                string_append_character(&result, '\0');
+                string_concat_character(&result, '\0');
             }break;
             
             default:
             {
                 char c[2] = {'\\'};
                 c[1] = string.str[0];
-                string_append(&result, SCchar(c, 2));
+                string_concat(&result, SCchar(c, 2));
             }break;
         }
         string = string_skip(string, 1);
@@ -7159,7 +7316,7 @@ string_is_integer(String_Const_u8 string, u32 radix){
 }
 
 function u64
-string_to_integer(String8 string, u32 radix)
+string_to_u64(String8 string, u32 radix)
 {
     u64 x = 0;
     if (radix <= 16)
@@ -7180,10 +7337,12 @@ string_to_integer(String8 string, u32 radix)
     return(x);
 }
 
+#if 0
 function u64
 string_to_integer(String_Const_char string, u32 radix){
     return(string_to_integer(SCu8((u8*)string.str, string.size), radix));
 }
+#endif
 
 ////////////////////////////////
 
@@ -7272,7 +7431,7 @@ Scratch_Block::~Scratch_Block(){
     tctx_release(this->tctx, this->arena);
 }
 
-Scratch_Block::operator Arena*(){
+force_inline Scratch_Block::operator Arena*(){
     return(this->arena);
 }
 
@@ -7301,9 +7460,10 @@ Temp_Memory_Block::restore(void){
 ///////////////////////////////////
 
 internal void*
-base_reserve__malloc(void *user_data, u64 size, u64 *size_out, String_Const_u8 location){
-    *size_out = size;
-    return(malloc((size_t)size));
+base_reserve__malloc(void *user_data, u64 size, u64 *size_out, String location)
+{
+ *size_out = size;
+ return(malloc((size_t)size));
 }
 
 internal void
@@ -7335,22 +7495,33 @@ make_arena_malloc(u64 chunk_size, u64 align){
 
 internal Arena
 make_arena_malloc(u64 chunk_size){
-    return(make_arena_malloc(chunk_size, 8));
+ return(make_arena_malloc(chunk_size, 8));
 }
 
 internal Arena
 make_arena_malloc(void){
-    return(make_arena_malloc(KB(16), 8));
+ return(make_arena_malloc(KB(16), 8));
 }
 
 // IMPORTANT(kv): This is for my use only, it can't grow so don't pass it around
 internal Arena
-make_static_arena(u8 *buffer, u64 size)
+make_static_arena(u8 *memory, u64 size)
 {
-    Arena result = {};
-    result.cursor_node = make_cursor_node_from_memory(buffer, size);
-    result.alignment   = 8;
-    return result;
+ local_persist Base_Allocator noop_allocator = make_base_allocator(0,0,0,0,0,0);
+ 
+ Arena result = {};
+ result.cursor_node    = make_cursor_node_from_memory(memory, size);
+ result.alignment      = 8;
+ result.base_allocator = &noop_allocator;
+ return result;
+}
+
+internal Arena
+make_sub_arena(Arena *arena, usize size)
+{
+ u8 *memory = push_array(arena, u8, size);
+ Arena result = make_static_arena(memory, size);
+ return result;
 }
 
 inline b32
@@ -7369,6 +7540,16 @@ move_file(String from_filename, String to_filename)
     return gb_file_move(from, to);
 }
 
+inline b32 
+copy_file(String from_filename, String to_filename, b32 fail_if_exists)
+{
+ u8 buffer[512];
+ Arena arena = make_static_arena(buffer, 512);
+ char *from = to_c_string(&arena, from_filename);
+ char *to = to_c_string(&arena, to_filename);
+ return gb_file_copy(from, to, fail_if_exists);
+}
+
 inline b32
 remove_file(String filename)
 {
@@ -7383,7 +7564,7 @@ push_stringf(Arena *arena, char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    String_Const_u8 result = push_stringfv(arena, format, args);
+    String result = push_stringfv(arena, format, args);
     va_end(args);
     return(result);
 }
@@ -7411,81 +7592,400 @@ pjoin(Arena *arena, String8 a, const char *b)
 inline String8
 to_string(Arena *arena, i32 value)
 {
-    return push_stringf(arena, "%d", value);
+ return push_stringf(arena, "%d", value);
 }
 
 #endif  // KV_IMPLEMENTATION
 
 //////////////////////////////////////////////////
 
-inline v2 V2All(v1 value) { return v2{value,value}; }
-inline v3 V3All(v1 value) { return v3{value,value,value}; }
-inline v4 V4All(v1 value) { return v4{value,value,value,value}; }
-inline v2 V2() { return v2{}; }
-inline v3 V3() { return v3{}; }
-inline v4 V4() { return v4{}; }
+force_inline v2 vec2(v1 value) { return v2{repeat2(value)}; }
+force_inline v3 vec3(v1 value) { return v3{repeat3(value)}; }
+force_inline v4 vec4(v1 value) { return v4{repeat4(value)}; }
+force_inline v2 vec2() { return v2{}; }
+force_inline v3 vec3() { return v3{}; }
+force_inline v4 vec4() { return v4{}; }
+
+inline v1
+dot(v4 const v, v4 const u)
+{
+ v1 result = v.x*u.x + v.y*u.y + v.z*u.z + v.w*u.w;
+ return result;
+}
 
 internal v3 
-matvmul3(m3x3 *matrix, v3 v)
+matvmul3(mat3 const&matrix, v3 v)
 {
-    v3 result = V3(dot(v, matrix->rows[0]),
-                   dot(v, matrix->rows[1]),
-                   dot(v, matrix->rows[2]));
+    v1 row0 = dot(v, matrix.rows[0]);
+    v1 row1 = dot(v, matrix.rows[1]);
+    v1 row2 = dot(v, matrix.rows[2]);
+    v3 result = vec3(row0, row1, row2);
     return result;
 }
 
-inline v2  arm2(v1 turn)
+internal mat3
+operator*(mat3 const&A, mat3 const&B)
 {
-    return v2{cos_turn(turn), sin_turn(turn)};
+ mat3 R = {};
+ for_i32(r,0,3) // NOTE(casey): Rows (of A)
+ {
+  for_i32(c,0,3) // NOTE(casey): Column (of B)
+  {
+   for_i32(i,0,3) // NOTE(casey): i = Column of A = Row of B
+   {
+    R.e[r][c] += A.e[r][i] * B.e[i][c];
+   }
+  }
+ }
+ return(R);
 }
 
-// TODO: @Cleanup Temporary put this here to transition to camera transform!
-struct Camera
+// NOTE: Everyone should get fired, for writing compilers that do stupid shit.
+internal v4
+operator*(mat4 const&matrix, v4 v)
 {
-    v1 distance;  // NOTE: direction is its z
-    union
-    {
-        m3x3 project;  // NOTE: remember: this is a row matrix
-        struct{ v3 px,py,pz; };
-    };
-    v1 focal_length;
-    v3 pivot;
+ v4 result = {};
+ for_i32(r,0,4)
+ {
+  for_i32(i,0,4)
+  {
+   result.v[r] += matrix.e[r][i] * v.v[i];
+  }
+ }
+ return result;
+}
+
+internal mat4
+mat4mul(mat4 const*A, mat4 const*B)
+{
+ mat4 R = {};
+ for_i32(r,0,4) // NOTE(casey): Rows (of A)
+ {
+  for_i32(c,0,4) // NOTE(casey): Column (of B)
+  {
+   for_i32(i,0,4) // NOTE(casey): i = Column of A = Row of B
+   {
+    R.e[r][c] += A->e[r][i] * B->e[i][c];
+   }
+  }
+ }
+ return(R);
+}
+
+//NOTE: This actually allows us to "pass by value"
+// And clang actually does the right optimization in debug, which is refreshing.
+force_inline mat4
+operator*(mat4 const&A, mat4 const&B)
+{
+ return mat4mul(&A,&B);
+}
+
+inline mat3
+to_mat3(mat4 const&m)
+{
+ mat3 result;
+ for_i32(index,0,3)
+ {
+  result.rows[index] = m.rows[index].xyz;
+ }
+ return result;
+}
+
+force_inline v3
+mat4vert(mat4 const&A, v3 v)
+{
+ v4 Av = A * vec4(v,1.f);
+ return Av.xyz / Av.w;
+}
+force_inline v3
+mat4vert_no_div(mat4 const&A, v3 v)
+{
+ v4 Av = A * vec4(v, 1.f);
+ return Av.xyz;
+}
+// IMPORTANT IMPORTANT IMPORTANT: I am a bad person! But there's no way around it!
+force_inline v3
+operator*(mat4 const&A, v3 v)
+{
+return mat4vert_no_div(A,v);
+}
+
+force_inline v3
+mat4vec(mat4 const&A, v3 v)
+{
+ v4 result = A * vec4(v,0.f);
+ return result.xyz;
+}
+
+struct mat4i
+{
+ union { mat4 forward; mat4 m; };
+ union { mat4 inverse; mat4 inv; };
+ force_inline operator mat4&() { return forward; }  // @ClangSafe
 };
+global mat4i mat4i_identity = {mat4_identity, mat4_identity};
 
-internal m4x4
-operator*(m4x4 &A, m4x4 &B)
+internal mat4i
+inverse(mat4i in)
 {
-    m4x4 R = {};
-    for_i32(r,0,4) // NOTE(casey): Rows (of A)
-    {
-        for_i32(c,0,4) // NOTE(casey): Column (of B)
-        {
-            for_i32(i,0,4) // NOTE(casey): i = Column of A = Row of B
-            {
-                R.v[r][c] += A.v[r][i] * B.v[i][c];
-            }
-        }
-    }
-
-    return(R);
+ return mat4i{in.inverse, in.forward};
 }
 
-internal v1
-dot(v4 &a, v4 &b)
+internal mat4
+mat4_scales(v1 sx, v1 sy, v1 sz)
 {
-    return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
+ mat4 result = {{
+   sx,0,0,0,
+   0,sy,0,0,
+   0,0,sz,0,
+   0,0,0,1,
+  }};
+ return result;
+}
+
+force_inline mat4
+mat4_scales(v3 scales)
+{
+ return mat4_scales(v3_expand(scales));
+}
+
+force_inline mat4
+mat4_scale(v1 s)
+{
+ return mat4_scales(vec3(s));
+}
+
+force_inline mat4i
+mat4i_scales(v3 s)
+{
+ mat4i result;
+ result.forward = mat4_scales(s);
+ result.inverse = mat4_scales(1.f/s.x, 1.f/s.y, 1.f/s.z);
+ return result;
+}
+
+force_inline mat4i
+mat4i_scales(v1 sx, v1 sy, v1 sz)
+{
+ return mat4i_scales(vec3(sx,sy,sz));
+}
+
+force_inline mat4i
+mat4i_scale(v1 s)
+{
+ mat4i result;
+ result.forward = mat4_scale(s);
+ result.inverse = mat4_scale(1.f/s);
+ return result;
+}
+
+internal mat4 
+transpose(mat4 mat)
+{
+ for_i32(r,0,4) { 
+  for_i32(c,0,r) {
+   macro_swap(mat.e[r][c], mat.e[c][r]);
+  }
+ }
+ return mat;
+}
+
+internal mat3
+transpose(mat3 mat)
+{
+ for_i32(r,0,3) {
+  for_i32(c,0,r) {
+   macro_swap(mat.e[r][c], mat.e[c][r]);
+  }
+ }
+ return mat;
+}
+
+internal mat4i
+mat4_columns(v3 x, v3 y, v3 z)
+{
+ mat4i result;
+ 
+ mat4 &inverse = result.inverse;
+ inverse.rows[0] = vec4(x,0);
+ inverse.rows[1] = vec4(y,0);
+ inverse.rows[2] = vec4(z,0);
+ inverse.rows[3] = vec4(0,0,0,1);
+ 
+ result.forward = transpose(inverse);
+ 
+ return result;
 }
 
 internal v4
-operator*(m4x4 &A, v4 B)
+get_column(mat4 const&m, i32 index)
 {
-    v4 result = V4(
-                   dot(B, A.rows[0]),
-                   dot(B, A.rows[1]),
-                   dot(B, A.rows[2]),
-                   dot(B, A.rows[3])
-                   );
-    return result;
+ v4 result;
+ for_i32(i,0,4)
+ {
+  result[i] = m.e[i][index];
+ }
+ return result;
+}
+
+force_inline v3
+get_translation(mat4 const&mat)
+{
+ return get_column(mat, 3).xyz;
+}
+
+force_inline mat3
+mat3_scale(v1 s)
+{
+ mat3 result = {{
+   s,0,0,
+   0,s,0,
+   0,0,s,
+  }};
+ return result;
+}
+
+force_inline v3
+operator*(mat3 const&m, v3 v)
+{
+ return matvmul3(m,v);
+}
+
+internal mat4
+to_mat4(mat3 mat, v3 translation=vec3())
+{
+ mat4 result;
+ for_i32(index,0,3)
+ {
+  result.rows[index] = vec4(mat.rows[index], translation[index]);
+ }
+ result.rows[3] = vec4(0,0,0,1);
+ return result;
+}
+
+struct TRS
+{
+ v3   translation;
+ mat3 rotation;
+ v1   scale;
+};
+
+internal mat3
+operator*(v1 s, mat3 mat)
+{
+ for_i32(r,0,3)
+ {
+  for_i32(c,0,3)
+  {
+   mat.e[r][c] *= s;
+  }
+ }
+ return mat;
+}
+
+internal mat3
+get_rotation(mat4 const&transform)
+{
+ v1 scale = get_xscale(transform);
+ return (1.f/scale)*to_mat3(transform);
+}
+
+internal TRS
+trs_decompose(mat4 const&transform)
+{
+ v1 scale = get_xscale(transform);
+ TRS out;
+ out.translation = get_translation(transform);
+ out.rotation    = (1.f/scale) * to_mat3(transform);
+ out.scale       = scale;
+ return out;
+}
+
+internal mat4
+mat4_translate(v3 vector)
+{
+ mat4 result = {{
+   1,0,0,vector.x,
+   0,1,0,vector.y,
+   0,0,1,vector.z,
+   0,0,0,1,
+  }};
+ return result;
+}
+
+force_inline mat4i
+mat4i_translate(v3 vector)
+{
+ mat4i result;
+ result.forward = mat4_translate(vector);
+ result.inverse = mat4_translate(-vector);
+ return result;
+}
+
+force_inline mat4i
+mat4i_rotate(mat3 rot)
+{
+ mat4i result;
+ result.forward = to_mat4(rot);
+ result.inverse = to_mat4(transpose(rot));
+ return result;
+}
+
+//NOTE: Compose transformations
+force_inline mat4i
+operator*(mat4i const& A, mat4i const& B)
+{
+ mat4i result;
+ result.forward = A.forward * B.forward;
+ result.inverse = B.inverse * A.inverse;
+ return result;
+}
+
+internal mat4
+rotateX(v1 turn)
+{
+ v1 c = cosine(turn);
+ v1 s = sine  (turn);
+ mat4 result = {{
+   1, 0, 0, 0, 
+   0, c,-s, 0,
+   0, s, c, 0,
+   0, 0, 0, 1,
+  }};
+ return result;
+}
+
+internal mat4
+rotateY(v1 turn)
+{
+ v1 c = cosine(turn);
+ v1 s = sine  (turn);
+ mat4 result = {{
+   +c, 0, s, 0, 
+   +0, 1, 0, 0,
+   -s, 0, c, 0,
+   +0, 0, 0, 1,
+  }};
+ return result;
+}
+
+internal mat4
+rotateZ(v1 turn)
+{
+ v1 c = cosine(turn);
+ v1 s = sine  (turn);
+ mat4 result = {{
+   c, -s, 0, 0, 
+   s, c, 0, 0,
+   0, 0, 1, 0,
+   0, 0, 0, 1,
+  }};
+ return result;
+}
+
+force_inline v2 arm2(v1 turn)
+{
+ return v2{cosine(turn), sine(turn)};
 }
 
 // NOTE(kv): Just fopen, but let's keep this so we can switch it out later.
@@ -7516,34 +8016,129 @@ write_entire_file(Arena *scratch, String8 filename, void *data, u64 size)
 function String
 read_entire_file_handle(Arena *arena, FILE *file)
 {
-    String8 result = {};
-    if (file != 0)
-    {
-        fseek(file, 0, SEEK_END);
-        u64 size = ftell(file);
-        char *mem = push_array(arena, char, size);
-        if (mem != 0)
-        {
-            fseek(file, 0, SEEK_SET);
-            fread(mem, 1, (size_t)size, file);
-            result = make_data(mem, size);
-        }
-    }
-    return(result);
+ String result = {};
+ if (file != 0)
+ {
+  fseek(file, 0, SEEK_END);
+  u64 size = ftell(file);
+  char *mem = push_array(arena, char, size+1);
+  if (mem != 0)
+  {
+   fseek(file, 0, SEEK_SET);
+   fread(mem, 1, (size_t)size, file);
+   result = make_data(mem, size);
+   mem[size] = 0;// NOTE: null-termination
+  }
+ }
+ return(result);
 }
 
 internal String
 read_entire_file(Arena *arena, String filename)
 {
-    String result = {};
-    FILE *file = open_file(arena, filename, "rb");
-    if (file != 0)
-    {
-        result = read_entire_file_handle(arena, file);
-        fclose(file);
-    }
-    return(result);
+ String result = {};
+ FILE *file = open_file(arena, filename, "rb");
+ if (file != 0)
+ {
+  result = read_entire_file_handle(arena, file);
+  fclose(file);
+ }
+ return(result);
 }
+
+force_inline char *
+read_entire_file_cstring(Arena *arena, String filename)
+{// NOTE: Files are null-terminated so we're fine
+ String result = read_entire_file(arena, filename);
+ return (char *)result.str;
+}
+
+force_inline v3 vec3x(v1 x) { return v3{.x=x}; }
+force_inline v3 vec3y(v1 y) { return v3{.y=y}; }
+force_inline v3 vec3z(v1 z) { return v3{.z=z}; }
+force_inline v3 setx(v3 v, v1 x) { v.x=x; return v; }
+force_inline v3 sety(v3 v, v1 y) { v.y=y; return v; }
+force_inline v3 setz(v3 v, v1 z) { v.z=z; return v; }
+force_inline v3 addx(v3 v, v1 x) { v.x+=x; return v; }
+force_inline v3 addy(v3 v, v1 y) { v.y+=y; return v; }
+force_inline v3 addz(v3 v, v1 z) { v.z+=z; return v; }
+force_inline v3 zeroX(v3 value) { return v3{.yz=value.yz}; };
+
+inline v1 srgb_to_linear1(v1 x)
+{
+    v1 r = ((x <= 0.04045) ? 
+            x/12.92 : 
+            pow((x + 0.055)/1.055, 2.4));
+    return(r);
+}
+
+inline v1 linear_to_srgb1(v1 x)
+{
+    v1 r = ((x <= 0.0031308) ? 
+            x*12.92 : 
+            pow(x, 1/2.4)*1.055 - 0.055);
+    return(r);
+}
+
+force_inline v3 
+clamp01(v3 v)
+{
+ for_i32(i,0,3)
+ {
+  macro_clamp01(v.v[i]);
+ }
+ return v;
+}
+
+#define scale_in_block(variable, multiplier) \
+variable *= multiplier; \
+defer(variable /= multiplier)
+
+#define set_in_block(variable, value) \
+auto CONCATENATE(old_value, __LINE__) = variable; variable = value; defer(variable = CONCATENATE(old_value,__LINE__);)
+
+force_inline v1
+i2f6(i32 integer)
+{
+ return v1(integer) / 6.f;
+}
+force_inline v4
+i2f6(v4i vi)
+{
+ v4 result;
+ for_i32(index,0,4) { result[index] = v1(vi[index]) / 6.f; }
+ return result;
+}
+
+force_inline v1
+step(v1 edge, v1 x)
+{
+ return (x < edge) ? 0.f : 1.f;
+}
+
+force_inline v3
+step(v3 edge, v3 v)
+{
+ return vec3(step(edge.x, v.x),
+             step(edge.y, v.y),
+             step(edge.z, v.z));
+}
+
+force_inline v1
+signof(v1 x)
+{
+ return (x == 0.f ? 0.f :
+         x > 0.f  ? 1.f :
+         -1.f);
+}
+force_inline v3
+signof(v3 v)
+{
+ return vec3(signof(v.x),
+             signof(v.y),
+             signof(v.z));
+}
+
 
 // IMPORTANT: NO TRESPASS ////////////////////////////////////
 

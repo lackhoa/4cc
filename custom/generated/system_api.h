@@ -193,9 +193,9 @@ system_set_destination_mixer_type *set_destination_mixer;
 #    endif
 
 LINKAGE void system_error_box(char* msg);
-DLL_EXPORT String system_get_path(Arena* arena, System_Path_Code path_code);
+LINKAGE String system_get_path(Arena* arena, System_Path_Code path_code);
 LINKAGE String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name);
-DLL_EXPORT File_List system_get_file_list(Arena* arena, String_Const_u8 directory);
+LINKAGE File_List system_get_file_list(Arena* arena, String_Const_u8 directory);
 LINKAGE File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 filename);
 LINKAGE b32 system_load_handle(Arena* scratch, char* filename, Plat_Handle* out);
 LINKAGE File_Attributes system_load_attributes(Plat_Handle handle);

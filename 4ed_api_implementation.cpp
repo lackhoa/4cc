@@ -85,10 +85,11 @@ global_set_setting(App *app, Global_Setting_ID setting, i64 value){
     return(result);
 }
 
-api(custom) function Rect_f32
-global_get_screen_rectangle(App *app){
+api(custom) function rect2
+global_get_screen_rectangle(App *app)
+{
     Models *models = (Models*)app->cmd_context;
-    return(Rf32(V2(0, 0), V2(layout_get_root_size(&models->layout))));
+    return(Rf32(vec2(0, 0), vec2(layout_get_root_size(&models->layout))));
 }
 
 api(custom) function Child_Process_ID
@@ -245,23 +246,26 @@ get_active_edit_behaviors(Models *models, Editing_File *file){
     return(behaviors);
 }
 
+//internal void vim_set_dot_delete_count(u64 count);
+
 api(custom) function b32
 buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String string)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file))
-    {
-        i64 size = buffer_size(&file->state.buffer);
-        if (0 <= range.first && range.first <= range.one_past_last && range.one_past_last <= size)
-        {
-            Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
-            edit_single(app->tctx, models, file, range, string, behaviors);
-            result = true;
-        }
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if (api_check_buffer(file) &&
+     (range.first <= range.one_past_last))
+ {
+  i64 size = buffer_size(&file->state.buffer);
+  macro_clamp_min(range.first, 0);
+  macro_clamp_max(range.one_past_last, size);
+  Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
+  edit_single(app->tctx, models, file, range, string, behaviors);
+  result = true;
+  //vim_set_dot_delete_count(range.max-range.min); NOTE: there are other buffers beside file buffers, so we can't do this
+ }
+ return(result);
 }
 
 inline void 
@@ -319,13 +323,13 @@ buffer_seek_string(App *app, Buffer_ID buffer, String8 needle, Scan_Direction di
             if (direction == Scan_Forward)
             {
                 i64 adjusted_pos = start_pos + 1;
-                start_pos = clamp_top(adjusted_pos, size);
+                start_pos = clamp_max(adjusted_pos, size);
                 range = Ii64(adjusted_pos, size);
             }
             else
             {
                 i64 adjusted_pos = start_pos - 1 + needle.size;
-                start_pos = clamp_bot(0, adjusted_pos);
+                start_pos = clamp_min(0, adjusted_pos);
                 range = Ii64(0, adjusted_pos);
             }
             buffer_chunks_clamp(&chunks, range);
@@ -351,7 +355,8 @@ buffer_seek_string(App *app, Buffer_ID buffer, String8 needle, Scan_Direction di
 }
 
 api(custom) function String_Match
-buffer_seek_character_class(App *app, Buffer_ID buffer, Character_Predicate *predicate, Scan_Direction direction, i64 start_pos){
+buffer_seek_character_class(App *app, Buffer_ID buffer, Character_Predicate *predicate, Scan_Direction direction, i64 start_pos)
+{
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer);
     String_Match result = {};
@@ -393,7 +398,7 @@ buffer_seek_character_class(App *app, Buffer_ID buffer, Character_Predicate *pre
                     break;
                 }
                 u8 v = chunks.vals[pos.chunk_index].str[pos.chunk_pos];
-                if (character_predicate_check_character(*predicate, v)){
+                if (character_predicate_check(*predicate, v)){
                     result.buffer = buffer;
                     result.range = Ii64(pos.real_pos, pos.real_pos + 1);
                     break;
@@ -674,16 +679,17 @@ push_buffer_unique_name(App *app, Arena *out, Buffer_ID buffer_id){
     return(result);
 }
 
-api(custom) function String_Const_u8
+api(custom) function String
 push_buffer_filename(App *app, Arena *arena, Buffer_ID buffer_id)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    String_Const_u8 result = {};
-    if (api_check_buffer(file)){
-        result = push_string_copy(arena, string_from_filename(&file->canon));
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ String result = {};
+ if (api_check_buffer(file))
+ {
+  result = push_string_copy(arena, string_from_filename(&file->canon));
+ }
+ return(result);
 }
 
 inline String8
@@ -1155,14 +1161,19 @@ get_active_view(App *app, Access_Flag access)
     return(result);
 }
 
+internal Buffer_ID
+get_active_buffer(App *app)
+{
+    View_ID active_view = get_active_view(app, Access_Always);
+    return view_get_buffer(app, active_view, Access_Always);
+}
+
 api(custom) function b32
-view_exists(App *app, View_ID view_id){
+view_exists(App *app, View_ID view_id)
+{
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
-    b32 result = false;
-    if (api_check_view(view)){
-        result = true;
-    }
+    b32 result = api_check_view(view);
     return(result);
 }
 
@@ -1266,7 +1277,8 @@ panel_get_view(App *app, Panel_ID panel_id, Access_Flag access){
     Models *models = (Models*)app->cmd_context;
     Panel *panel = imp_get_panel(models, panel_id);
     View_ID result = 0;
-    if (api_check_panel(panel)){
+    if ( api_check_panel(panel) )
+    {
         if (panel->kind == PanelKind_Final){
             View *view = panel->view;
             if (api_check_view(view, access)){
@@ -1304,14 +1316,17 @@ panel_is_leaf(App *app, Panel_ID panel_id){
 }
 
 api(custom) function b32
-panel_split(App *app, Panel_ID panel_id, Dimension split_dim){
+panel_split(App *app, Panel_ID panel_id, Dimension split_dim)
+{
     Models *models = (Models*)app->cmd_context;
     Layout *layout = &models->layout;
     b32 result = false;
     Panel *panel = imp_get_panel(models, panel_id);
-    if (api_check_panel(panel)){
+    if ( api_check_panel(panel) )
+    {
         Panel *new_panel = 0;
-        if (layout_split_panel(layout, panel, (split_dim == Dimension_X), &new_panel)){
+        if (layout_split_panel(layout, panel, (split_dim == Dimension_X), &new_panel))
+        {
             Live_Views *view_set = &models->view_set;
             View *new_view = live_set_alloc_view(&models->lifetime_allocator, view_set, new_panel);
             view_init(app->tctx, models, new_view, models->scratch_buffer,
@@ -1455,17 +1470,23 @@ view_get_buffer_scroll(App *app, View_ID view_id){
     return(result);
 }
 
+i32 get_buffer_game_viewport_id(App *app, Buffer_ID buffer);
+b32 turn_game_on();
+
 api(custom) function b32
 view_set_active(App *app, View_ID view_id)
 {
-    Models *models = (Models*)app->cmd_context;
-    View *view = imp_get_view(models, view_id);
-    b32 result = false;
-    if (api_check_view(view)){
-        models->layout.active_panel = view->panel;
-        result = true;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ b32 result = false;
+ if ( api_check_view(view) )
+ {
+  models->layout.active_panel = view->panel;
+  result = true;
+  
+  Buffer_ID buffer = view_get_buffer(app, view_id, Access_Always);
+ }
+ return(result);
 }
 
 api(custom) function b32
@@ -1593,10 +1614,10 @@ view_set_camera_bounds(App *app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push
     b32 result = false;
     if (api_check_view(view)){
         result = true;
-        margin.x = clamp_bot(0.f, margin.x);
-        margin.y = clamp_bot(0.f, margin.y);
-        push_in_multiplier.x = clamp_bot(1.5f, push_in_multiplier.x);
-        push_in_multiplier.y = clamp_bot(1.5f, push_in_multiplier.y);
+        margin.x = clamp_min(0.f, margin.x);
+        margin.y = clamp_min(0.f, margin.y);
+        push_in_multiplier.x = clamp_min(1.5f, push_in_multiplier.x);
+        push_in_multiplier.y = clamp_min(1.5f, push_in_multiplier.y);
         view->cursor_margin = margin;
         view->cursor_push_in_multiplier = push_in_multiplier;
     }
@@ -1648,7 +1669,7 @@ view_set_buffer_scroll(App *app, View_ID view_id, Buffer_Scroll scroll,
         scroll.target = view_normalize_buffer_point(tctx, models, view, scroll.target);
         scroll.target.pixel_shift.x = f32_round32(scroll.target.pixel_shift.x);
         scroll.target.pixel_shift.y = f32_round32(scroll.target.pixel_shift.y);
-        scroll.target.pixel_shift.x = clamp_bot(0.f, scroll.target.pixel_shift.x);
+        scroll.target.pixel_shift.x = clamp_min(0.f, scroll.target.pixel_shift.x);
         Layout_Item_List line = view_get_line_layout(tctx, models, view,
                                                      scroll.target.line_number);
         scroll.target.pixel_shift.y =
@@ -2472,7 +2493,7 @@ clear_all_query_bars(App *app, View_ID view_id){
     }
 }
 
-api(custom) function print_message_return
+api(custom) internal print_message_return
 print_message(print_message_params)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2862,7 +2883,7 @@ set_window_title(App *app, String8 title)
     Models *models = (Models*)app->cmd_context;
     models->has_new_title = true;
     u64 cap_before_null = (u64)(models->title_capacity - 1);
-    u64 copy_size = clamp_top(title.size, cap_before_null);
+    u64 copy_size = clamp_max(title.size, cap_before_null);
     block_copy(models->title_space, title.str, copy_size);
     models->title_space[copy_size] = 0;
 }
@@ -2931,16 +2952,6 @@ get_string_advance(App *app, Face_ID font_id, String str)
     return(font_string_width(models->target, face, str));
 }
 
-internal void
-draw_textured_rect(App *app, rect2 rect, ARGB_Color color=0xFFFFFF)
-{
-    Models *models = (Models*)app->cmd_context;
-    if (models->in_render_mode)
-    {
-        draw_textured_rect_to_target(models->target, rect, color);
-    }
-}
-
 api(custom) function Rect_f32
 draw_set_clip(App *app, Rect_f32 new_clip)
 {
@@ -2961,7 +2972,7 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
         
         Layout_Function *layout_func = file_get_layout_func(file);
         
-        Vec2_f32 dim = rect_dim(rect);
+        Vec2_f32 dim = rect2_dim(rect);
         
         i64 line_count = buffer_line_count(buffer);
         i64 line_number = buffer_point.line_number;
@@ -3140,9 +3151,9 @@ text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
                         }
                     }
                 }
-                // soft_assert(found_item);
+                // kv_assert(found_item);
                 
-                Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
+                Vec2_f32 shift = vec2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
                 result.p0 += shift;
                 result.p1 += shift;
             }
@@ -3156,8 +3167,8 @@ paint_text_color(App *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color
     Models *models = (Models*)app->cmd_context;
     Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
     if (layout != 0){
-        range.min = clamp_bot(layout->visible_range.min, range.min);
-        range.max = clamp_top(range.max, layout->visible_range.max);
+        range.min = clamp_min(layout->visible_range.min, range.min);
+        range.max = clamp_max(range.max, layout->visible_range.max);
         range.min -= layout->visible_range.min;
         range.max -= layout->visible_range.min;
         ARGB_Color *color_ptr = layout->item_colors + range.min;
@@ -3173,18 +3184,18 @@ paint_text_color_blend(App *app, Text_Layout_ID layout_id, Range_i64 range, ARGB
     Models *models = (Models*)app->cmd_context;
     Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
     if (layout != 0){
-        range.min = clamp_bot(layout->visible_range.min, range.min);
-        range.max = clamp_top(range.max, layout->visible_range.max);
+        range.min = clamp_min(layout->visible_range.min, range.min);
+        range.max = clamp_max(range.max, layout->visible_range.max);
         range.min -= layout->visible_range.min;
         range.max -= layout->visible_range.min;
-        Vec4_f32 color_v4f32 = unpack_argb(color);
+        Vec4_f32 color_v4f32 = argb_unpack(color);
         Vec4_f32 color_pm_v4f32 = color_v4f32*blend;
         f32 neg_blend = 1.f - blend;
         ARGB_Color *color_ptr = layout->item_colors + range.min;
         for (i64 i = range.min; i < range.max; i += 1, color_ptr += 1){
-            Vec4_f32 color_ptr_v4f32 = unpack_argb(*color_ptr);
+            Vec4_f32 color_ptr_v4f32 = argb_unpack(*color_ptr);
             Vec4_f32 blended_v4f32 = color_ptr_v4f32*neg_blend + color_pm_v4f32;
-            *color_ptr = pack_argb(blended_v4f32);
+            *color_ptr = argb_pack(blended_v4f32);
         }
     }
 }

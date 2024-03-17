@@ -61,7 +61,7 @@ internal void
 font_set__free_face_slot(Font_Set *set, Font_Face_Slot *slot){
     if (slot->arena.base_allocator != 0){
         table_free(&slot->face->advance_map.codepoint_to_index.table);
-        linalloc_clear(&slot->arena);
+        arena_free_all(&slot->arena);
     }
     block_zero_struct(slot);
     sll_stack_push(set->free_face_slots, slot);
@@ -89,7 +89,7 @@ font_set_new_face(Font_Set *set, Face_Description *description){
         table_insert(&set->id_to_slot_table, new_id, (u64)slot);
     }
     else{
-        linalloc_clear(&arena);
+        arena_free_all(&arena);
     }
     return(face);
 }
@@ -153,7 +153,7 @@ font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
         Arena arena = make_arena_system();
         Face *face = font_make_face(&arena, description, set->scale_factor);
         if (face != 0){
-            linalloc_clear(&slot->arena);
+            arena_free_all(&slot->arena);
             slot->arena = arena;
             slot->face = face;
             face->version_number = version_number + 1;
@@ -161,7 +161,7 @@ font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
             result = true;
         }
         else{
-            linalloc_clear(&arena);
+            arena_free_all(&arena);
         }
     }
     return(result);

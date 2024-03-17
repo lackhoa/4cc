@@ -1,6 +1,5 @@
 #!/usr/bin/env python3 -u
 
-
 import os
 import subprocess
 import sys
@@ -14,15 +13,19 @@ pjoin = os.path.join
 
 # NOTE: configuration #########################
 DEBUG_MODE = 0 if (len(sys.argv) == 2 and sys.argv[1] == 'release') else 1
-FORCE_FULL_REBUILD = 1
+KV_SLOW = 0
+SHIP_MODE = 1-DEBUG_MODE
+FORCE_FULL_REBUILD = 0
 STOP_DEBUGGING_BEFORE_BUILD = 0
+GAME_OPTIMIZATION = "-O0"  # ;game_optimization
+EDITOR_OPTIMIZATION = "-O0" if DEBUG_MODE else "-O3"  # NOTE: Tried -O2 and even -O1, it's still slow af
 
 HOME = os.path.expanduser("~")
-FCODER_USER=pjoin(HOME, '4coder')  # NOTE: for debug build
+OUT_DEBUG=pjoin(HOME, '4coder')  # NOTE: for debug build
 FCODER_ROOT=pjoin(HOME, '4ed')
 CODE=pjoin(FCODER_ROOT, "code")
 NON_SOURCE=pjoin(FCODER_ROOT, "4coder-non-source")
-FCODER_KV = pjoin(CODE, '4coder_kv')
+CODE_KV = pjoin(CODE, '4coder_kv')
 OS_WINDOWS = int(os.name== "nt")
 OS_MAC = int(not OS_WINDOWS)
 
@@ -48,6 +51,7 @@ WARNINGS_ARRAY = [
     "-Wno-missing-braces",  # todo(kv): removeme
     "-Wno-unused-parameter",
     "-Wno-unused-function",
+    "-Wno-backslash-newline-escape",
 ]
 WARNINGS = ' '.join(WARNINGS_ARRAY)
 
@@ -93,9 +97,10 @@ def symlink_force(src, dst):
 
 def run(command, update_env={}):
     if OS_WINDOWS:
-        command = f'{HOME}/msvc/setup.bat && {command}'
+        pass  # Just install Visual Studio, no need to setup env anymore
+        #command = f'{HOME}/msvc/setup.bat && {command}'
 
-    # print(command)
+    print(command)
     begin = time.time()
     env = os.environ.copy()
     env.update(update_env)
@@ -156,22 +161,22 @@ def autogen():
         # print(f"BUILD_DIR: {os.getcwd()}")
         INCLUDES=f'-I{CUSTOM} -I{CODE}'
         OPTIMIZATION='-O0'
-        SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={DEBUG_MODE}'
+        SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={KV_SLOW}'
         arch="-m64"
-        opts=f"{WARNINGS} {SYMBOLS} {debug} {INCLUDES} {OPTIMIZATION} -g"
+        opts=f"{WARNINGS} {SYMBOLS} {debug_flag} {INCLUDES} {OPTIMIZATION}"
         preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
     
         print('Lexer: Generate (one-time thing)')
         LEXER_GEN = pjoin(BUILD_DIR, f"lexer_gen{DOT_EXE}")
-        run(f'clang++ {pjoin(FCODER_KV, '4coder_kv_skm_lexer_gen.cpp')} {arch} {opts} {debug} {WARNINGS} -std=c++11 {OPTIMIZATION} -o {LEXER_GEN}')
+        run(f'clang++ {pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp')} {arch} {opts} {debug_flag} {WARNINGS} -std=c++11 {OPTIMIZATION} -o {LEXER_GEN}')
         #
         print('running lexer generator')
-        mkdir_p(f'{FCODER_KV}/generated')
-        run(f'{LEXER_GEN} {FCODER_KV}/generated')
+        mkdir_p(f'{CODE_KV}/generated')
+        run(f'{LEXER_GEN} {CODE_KV}/generated')
     
         meta_macros="-DMETA_PASS"
         print('preproc_file: Generate')
-        run(f'clang++ -I{CUSTOM} {meta_macros} {arch} {opts} {debug} -std=c++11 "{FCODER_KV}/4coder_kv.cpp" -E -o {preproc_file}')
+        run(f'clang++ -I{CUSTOM} {meta_macros} {arch} {opts} {debug_flag} -std=c++11 "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
         #
         print('Meta-generator: Compile & Link')
         run(f'ccache clang++ -c "{CUSTOM}/4coder_metadata_generator.cpp" -I"{CUSTOM}" {opts} -std=c++11 -o "{BUILD_DIR}/metadata_generator.o"')
@@ -184,8 +189,7 @@ def autogen():
 script_begin = time.time()
 
 try:
-    FCODER_STABLE = pjoin(HOME, "4coder_stable")
-    OUTDIR = FCODER_USER if DEBUG_MODE else FCODER_STABLE
+    OUTDIR = OUT_DEBUG
 
     os.chdir(f'{OUTDIR}')
     print(f'Workdir: {os.getcwd()}')
@@ -197,20 +201,21 @@ try:
         full_rebuild = (len(sys.argv) > 1 and sys.argv[1] == 'full')
 
     arch = "-m64"
-    debug="-g" if DEBUG_MODE else ""
+    debug_flag="-g" if DEBUG_MODE else ""
 
     if run_only:
         if OS_WINDOWS:
             run(f"{remedybg} start-debugging")
         else:
-            run(pjoin(FCODER_USER, f'4ed{DOT_EXE}'))
+            run(pjoin(OUT_DEBUG, f'4ed{DOT_EXE}'))
     else:
         # NOTE(kv): remedy stop debugging
         if OS_WINDOWS and STOP_DEBUGGING_BEFORE_BUILD:
             run(f"{remedybg} stop-debugging")
 
-        # NOTE(kv): cleanup build dir (TODO: arrange our build output directory so we don't have to do manual cleaning crap)
-        delete_all_pdb_files(OUTDIR)
+        if not hotload_game:
+            # NOTE(kv): cleanup build dir (TODO: arrange our build output directory so we don't have to do manual cleaning crap)
+            delete_all_pdb_files(OUTDIR)
 
         if full_rebuild:  # do some generation business in the custom layer
             autogen()
@@ -218,33 +223,52 @@ try:
         INCLUDES=f'-I{CODE} -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/4coder_kv/libs'
         #
         COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
-        SYMBOLS=f"-DKV_SLOW=1 -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
+        SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
-        OPTIMIZATION_LEVEL="-O0" if DEBUG_MODE else "-O3"  # NOTE: Tried -O2 and even -O1, it's still slow af
-        COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {OPTIMIZATION_LEVEL} {debug} -m64 -std=c++11"
+        COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {EDITOR_OPTIMIZATION} {debug_flag} -m64 -std=c++14"
 
+        # NOTE: shipping shaders
+        if SHIP_MODE:
+            OPENGL_OUTDIR = pjoin(OUTDIR, "opengl")
+            mkdir_p(OPENGL_OUTDIR)
+            for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
+                shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
+
+        BINARY_NAME = "4ed" if DEBUG_MODE else "4ed_stable"
         if not hotload_game:
             print('Producing 4ed')
             if OS_WINDOWS:
                 PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
-                LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/freetype.lib -luser32.lib -lwinmm.lib -lgdi32.lib -lopengl32.lib -lcomdlg32.lib -luserenv.lib {NON_SOURCE}/res/icon.res"
+                # ;linked_libraries
+                # OpenCSG_LIB = f"{CODE}/OpenCSG-1.6.0/lib/{"OpenCSGd.lib" if DEBUG_MODE else "OpenCSG.lib"}"
+                WINDOWS_LIBS = "-luser32.lib -lwinmm.lib -lgdi32.lib -lcomdlg32.lib -luserenv.lib"
+                FREETYPE_LIB = f"{NON_SOURCE}/foreign/x64/freetype.lib"
+                LINKED_LIBS=f"{FREETYPE_LIB} {WINDOWS_LIBS} -lopengl32.lib {NON_SOURCE}/res/icon.res"
             else:
-                PLATFORM_CPP =  f"{CODE}/platform_mac/mac_4ed.mm"
+                PLATFORM_CPP = f"{CODE}/platform_mac/mac_4ed.mm"
                 LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
-             #
-            run(f'ccache clang++ -c {PLATFORM_CPP} -o 4ed.o -I{CODE}/platform_all {COMPILE_FLAGS}')
             #
-            run(f'clang++ {LINKED_LIBS} 4ed.o -o 4ed{DOT_EXE} {debug}')
+            # NOTE: static_dbg equals "MTd (multi-threaded debug)"
+            # NOTE Add "-fms-runtime-lib=static_dbg" to call with debug crt
+            run(f'ccache clang++ -c {PLATFORM_CPP} -o {BINARY_NAME}.o -I{CODE}/platform_all {COMPILE_FLAGS}')
+            # NOTE: clang uses the non-debug CRT and then fails when linking with something that uses the debug CRT: https://stackoverflow.com/questions/41850296/link-dynamic-c-runtime-with-clang-windows
+            USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
+            run(f'clang++ {LINKED_LIBS} {BINARY_NAME}.o -o {BINARY_NAME}{DOT_EXE} {debug_flag}')
 
-        print(f'Producing game{DOT_DLL}')
-        DOT_LIB=".lib"
-        run(f'clang++ -shared {pjoin(CODE, "game", "game.cpp")} 4ed{DOT_LIB} -o game{DOT_DLL} {COMPILE_FLAGS} -Wl,-export:game_api_export {debug}')
+        try:
+            with open("game_dll.lock", "w") as file:
+                file.write("this is a lock file\n")
+            print(f'Producing game{DOT_DLL}')
+            DOT_LIB=".lib"
+            run(f'clang++ -shared {pjoin(CODE, "game", "game_main.cpp")} -o game{DOT_DLL} {COMPILE_FLAGS} {GAME_OPTIMIZATION} -Wl,-export:game_api_export')
+        finally:
+            os.remove("game_dll.lock")
 
         if full_rebuild:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")
-            for outdir in [FCODER_USER, FCODER_STABLE]:
-                symlink_force(pjoin(FCODER_KV, "config.4coder"),   pjoin(outdir, "config.4coder"))
-                symlink_force(pjoin(FCODER_KV, "theme-kv.4coder"), pjoin(outdir, 'themes', "theme-kv.4coder"))
+            for outdir in [OUT_DEBUG]:
+                symlink_force(pjoin(CODE_KV, "config.4coder"),   pjoin(outdir, "config.4coder"))
+                symlink_force(pjoin(CODE_KV, "theme-kv.4coder"), pjoin(outdir, 'themes', "theme-kv.4coder"))
                 symlink_force(pjoin(CODE, "project.4coder"),  pjoin(outdir, "project.4coder"))
                 symlink_force(pjoin(CODE, "data"), pjoin(outdir, "data"))
 

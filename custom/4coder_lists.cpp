@@ -79,6 +79,7 @@ generate_all_buffers_list(Application_Links *app, Lister *lister){
     }
 }
 
+#if 1
 function Buffer_ID
 get_buffer_from_user(Application_Links *app, String_Const_u8 query){
     Lister_Handlers handlers = lister_get_default_handlers();
@@ -95,6 +96,7 @@ function Buffer_ID
 get_buffer_from_user(Application_Links *app, char *query){
     return(get_buffer_from_user(app, SCu8(query)));
 }
+#endif
 
 ////////////////////////////////
 
@@ -127,8 +129,10 @@ command_lister_status_bindings(Mapping *mapping, Command_Map_ID map_id){
     return(result);
 }
 
+#if 1
 function Custom_Command_Function*
-get_command_from_user(Application_Links *app, String_Const_u8 query, i32 *command_ids, i32 command_id_count, Command_Lister_Status_Rule *status_rule){
+get_command_from_user(App *app, String query, i32 *command_ids, i32 command_id_count, Command_Lister_Status_Rule *status_rule)
+{
     if (command_ids == 0){
         command_id_count = command_one_past_last_id;
     }
@@ -198,11 +202,14 @@ function Custom_Command_Function*
 get_command_from_user(Application_Links *app, char *query, Command_Lister_Status_Rule *status_rule){
     return(get_command_from_user(app, SCu8(query), 0, 0, status_rule));
 }
+#endif
 
 ////////////////////////////////
 
+#if 1
 function Color_Table*
-get_color_table_from_user(Application_Links *app, String_Const_u8 query, Color_Table_List *color_table_list){
+get_color_table_from_user(App *app, String query, Color_Table_List *color_table_list)
+{
     if (color_table_list == 0){
         color_table_list = &global_theme_list;
     }
@@ -235,6 +242,7 @@ function Color_Table*
 get_color_table_from_user(Application_Links *app){
     return(get_color_table_from_user(app, string_u8_litexpr("Theme:"), 0));
 }
+#endif
 
 ////////////////////////////////
 
@@ -276,7 +284,7 @@ lister__backspace_text_field__file_path(Application_Links *app){
                 User_Input input = get_current_input(app);
                 String8 text_field = lister->text_field.string;
                 String8 new_hot = path_dirname(text_field);
-                b32 is_modified = input_has_modifier(&input, KeyCode_Control);
+                b32 is_modified = input_has_modifier(&input, Key_Code_Control);
                 b32 whole_word_when_mod = def_get_config_b32(vars_intern_lit("lister_whole_word_backspace_when_modified"));
                 b32 whole_word_backspace = (is_modified == whole_word_when_mod);
                 if (whole_word_backspace){
@@ -379,8 +387,10 @@ struct File_Name_Result{
     String_Const_u8 path_in_text_field;
 };
 
+#if 1
 function File_Name_Result
-get_filename_from_user(Application_Links *app, Arena *arena, String_Const_u8 query, View_ID view){
+get_filename_from_user(App *app, Arena *arena, String query, View_ID view)
+{
     Lister_Handlers handlers = lister_get_default_handlers();
     handlers.refresh = generate_hot_directory_file_list;
     handlers.write_character = lister__write_character__file_path;
@@ -420,6 +430,7 @@ function File_Name_Result
 get_filename_from_user(Application_Links *app, Arena *arena, char *query, View_ID view){
     return(get_filename_from_user(app, arena, SCu8(query), view));
 }
+#endif
 
 ////////////////////////////////
 
@@ -434,9 +445,9 @@ function b32
 do_buffer_kill_user_check(Application_Links *app, Buffer_ID buffer, View_ID view){
     Scratch_Block scratch(app);
     Lister_Choice_List list = {};
-    lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
-    lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
-    lister_choice(scratch, &list, "(S)ave", "", KeyCode_S, SureToKill_Save);
+    lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
+    lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
+    lister_choice(scratch, &list, "(S)ave", "", Key_Code_S, SureToKill_Save);
     
     Lister_Choice *choice = get_choice_from_user(app, "There are unsaved changes, close anyway?", list);
     
@@ -475,10 +486,10 @@ function b32
 do_4coder_close_user_check(Application_Links *app, View_ID view){
     Scratch_Block scratch(app);
     Lister_Choice_List list = {};
-    lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
-    lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
+    lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
+    lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
     lister_choice(scratch, &list, "(S)ave all and close", "",
-                  KeyCode_S, SureToKill_Save);
+                  Key_Code_S, SureToKill_Save);
     
 #define M "There are one or more buffers with unsave changes, close anyway?"
     Lister_Choice *choice = get_choice_from_user(app, M, list);
@@ -542,8 +553,8 @@ function b32
 query_create_folder(Application_Links *app, String_Const_u8 folder_name){
     Scratch_Block scratch(app);
     Lister_Choice_List list = {};
-    lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
-    lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
+    lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
+    lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
     
     String_Const_u8 message = push_stringf(scratch, "Create the folder %.*s?", string_expand(folder_name));
     Lister_Choice *choice = get_choice_from_user(app, message, list);

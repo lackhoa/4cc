@@ -177,7 +177,7 @@ code_index_set_file(Buffer_ID buffer, Arena arena, Code_Index_File *index){
     table_read(&global_code_index.buffer_to_index_file, lookup, &val);
     storage = (Code_Index_File_Storage*)IntAsPtr(val);
     code_index__clear_file(storage->file);
-    linalloc_clear(&storage->arena);
+    arena_free_all(&storage->arena);
   }
   else{
     storage = code_index__alloc_storage();
@@ -199,7 +199,7 @@ code_index_erase_file(Buffer_ID buffer){
     
     code_index__clear_file(storage->file);
     
-    linalloc_clear(&storage->arena);
+    arena_free_all(&storage->arena);
     table_erase(&global_code_index.buffer_to_index_file, lookup);
     code_index__free_storage(storage);
   }
@@ -953,7 +953,7 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
   Face_Advance_Map advance_map = get_face_advance_map(app, face);
   Face_Metrics metrics = get_face_metrics(app, face);
   f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
-  tab_width = clamp_bot(1, tab_width);
+  tab_width = clamp_min(1, tab_width);
   LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
   
   u64 vw_indent = def_get_config_u64(app, vars_intern_lit("virtual_whitespace_regular_indent"));

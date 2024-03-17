@@ -69,8 +69,8 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
                         if (i + 1 < argc){
                             plat_settings->set_window_size = true;
                             
-                            i32 w = (i32)string_to_integer(SCu8(argv[i]), 10);
-                            i32 h = (i32)string_to_integer(SCu8(argv[i + 1]), 10);
+                            i32 w = (i32)string_to_u64(SCu8(argv[i]), 10);
+                            i32 h = (i32)string_to_u64(SCu8(argv[i + 1]), 10);
                             if (w > 0){
                                 plat_settings->window_w = w;
                             }
@@ -94,15 +94,12 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
                     {
                         if (i + 1 < argc){
                             plat_settings->set_window_pos = true;
+                            // NOTE(kv): Doesn't handle negative values here yet
+                            i32 x = (i32)gb_str_to_i64(argv[i],   0, 10);
+                            i32 y = (i32)gb_str_to_i64(argv[i+1], 0, 10);
                             
-                            i32 x = (i32)string_to_integer(SCu8(argv[i]), 10);
-                            i32 y = (i32)string_to_integer(SCu8(argv[i + 1]), 10);
-                            if (x > 0){
-                                plat_settings->window_x = x;
-                            }
-                            if (y > 0){
-                                plat_settings->window_y = y;
-                            }
+                            plat_settings->window_x = x;
+                            plat_settings->window_y = y;
                             
                             ++i;
                         }
@@ -119,7 +116,7 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
                     case CLAct_FontSize:
                     {
                         if (i < argc){
-                            settings->font_size = (i32)string_to_integer(SCu8(argv[i]), 10);
+                            settings->font_size = (i32)string_to_u64(SCu8(argv[i]), 10);
                         }
                         action = CLAct_Nothing;
                     }break;
@@ -194,91 +191,13 @@ app_read_command_line(Thread_Context *tctx,
 // TODO(kv): move this somewhere better
 extern "C" void custom_layer_init(App *app);
 
-global Game_API global_game_api = {};
-global String GAME_DLL_PATH;
-global Game_State *game_state_pointer;
-struct Current_Game_DLL { u64 mtime; u32 temp_index; };
-global Current_Game_DLL current_game_dll;
-
 internal u64
 file_mtime(String filename)
 {
-    u8 buffer[256];
-    // nono: this allocation is very yikes!
+    // TODO: this allocation is very yikes!
     Arena arena = make_arena_system();
     File_Attributes attr = system_quick_file_attributes(&arena, filename);
     return attr.last_write_time;
-}
-
-internal b32
-load_newest_game_code(App *app)
-{// NOTE(kv): Load dynamc game code
-    Scratch_Block scratch(app);
-    
-    u64 mtime1 = file_mtime(GAME_DLL_PATH);
-  
-    String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-    String GAME2_DLL = pjoin(scratch, binary_dir, "game2.dll");
-    String GAME3_DLL = pjoin(scratch, binary_dir, "game3.dll");
-   
-    u32 new_index = 0;
-    u64 new_mtime = 0;
-    b32 ok = true;
-    b32 init_call = (current_game_dll.mtime == 0);
-    if (init_call)
-    {
-        u64 mtime2 = file_mtime(GAME2_DLL);
-        u64 mtime3 = file_mtime(GAME3_DLL);
-        new_index = 1;
-        new_mtime = mtime1;
-        if (new_mtime < mtime2)
-        {
-            new_index = 2;
-            new_mtime = mtime2;
-        }
-        if (new_mtime < mtime3)
-        {
-            new_index = 3;
-            new_mtime = mtime3;
-        }
-        ok = new_mtime > 0;
-    }
-    else if (current_game_dll.mtime < mtime1)
-    {// NOTE: Load new game code produced by our build script
-       new_index = 1;
-    }
-    
-    if (ok && new_index != 0)
-    {
-        // NOTE: ping-pong temp DLL
-        u32 temp_index = new_index;
-        if (new_index == 1)
-        {
-            temp_index = 2;
-            if (current_game_dll.temp_index == 2) temp_index = 3;
-        }
-        String temp_path = (temp_index == 2) ? GAME2_DLL : GAME3_DLL;
-        if (new_index == 1)
-        {
-            remove_file(temp_path);
-            ok = move_file(GAME_DLL_PATH, temp_path);
-        }
-       
-        System_Library library = {};
-        if (ok)
-            ok = system_load_library(scratch, temp_path, &library);
-        
-        if (ok)
-        {
-            auto game_api_export = (game_api_export_type *)system_get_proc(library, "game_api_export");
-            game_api_export(&global_game_api);
-            Arena bootstrap_arena = make_arena_system();
-            game_state_pointer = global_game_api.game_init(&bootstrap_arena, app);
-            current_game_dll = { new_mtime, temp_index };
-        }
-    }
-    
-    return ok;
 }
 
 internal void 
@@ -406,13 +325,6 @@ app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String cur
         View *new_view = live_set_alloc_view(&models->lifetime_allocator, &models->view_set, panel);
         view_init(tctx, models, new_view, models->scratch_buffer, models->view_event_handler);
     }
-    
-    String binary_dir = system_get_path(arena, SystemPath_BinaryDirectory);
-    GAME_DLL_PATH = pjoin(arena, binary_dir, "game.dll");
-    if ( !load_newest_game_code(&app) )
-    {
-        system_error_box("Failed to load game code on startup");
-    }
 }
 
 internal Application_Step_Result 
@@ -439,7 +351,7 @@ app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Applicatio
     
     // NOTE(allen): reorganizing panels on screen
     Vec2_i32 prev_dim = layout_get_root_size(&models->layout);
-    Vec2_i32 current_dim = V2i(target->width, target->height);
+    Vec2_i32 current_dim = vec2i(target->width, target->height);
     layout_set_root_size(&models->layout, current_dim);
     
     // NOTE(allen): update child processes
@@ -773,7 +685,7 @@ app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Applicatio
         }
     }
     
-    linalloc_clear(&models->virtual_event_arena);
+    arena_free_all(&models->virtual_event_arena);
     models->free_virtual_event = 0;
     models->first_virtual_event = 0;
     models->last_virtual_event = 0;
@@ -857,7 +769,6 @@ app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Applicatio
             models->tick(&app, frame);
         }
         
-        begin_render_section(target, models->frame_counter, literal_dt, animation_dt);
         models->in_render_mode = true;
         
         Live_Views *live_views = &models->view_set;
@@ -884,7 +795,6 @@ app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Applicatio
         }
         
         models->in_render_mode = false;
-        end_render_section(target);
     }
     
     // TODO(allen): This is dumb. Let's rethink view cleanup strategy.
@@ -969,6 +879,3 @@ app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Applicatio
     // end-of-app_step
     return(app_result);
 }
-
-// BOTTOM
-

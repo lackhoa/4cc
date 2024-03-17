@@ -22,7 +22,7 @@ child_process_container_init(Base_Allocator *allocator, Child_Process_Container 
 
 internal void
 child_process_container_release(Child_Process_Container *container, Models *models){
-    linalloc_clear(&container->arena);
+    arena_free_all(&container->arena);
     table_free(&container->id_to_ptr_table);
     block_zero_struct(container);
 }

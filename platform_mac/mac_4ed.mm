@@ -379,127 +379,127 @@ global Key_Code keycode_lookup_table[255] = {};
 
 function void
 mac_keycode_init(void){
-    keycode_lookup_table[kVK_ANSI_A] = KeyCode_A;
-    keycode_lookup_table[kVK_ANSI_B] = KeyCode_B;
-    keycode_lookup_table[kVK_ANSI_C] = KeyCode_C;
-    keycode_lookup_table[kVK_ANSI_D] = KeyCode_D;
-    keycode_lookup_table[kVK_ANSI_E] = KeyCode_E;
-    keycode_lookup_table[kVK_ANSI_F] = KeyCode_F;
-    keycode_lookup_table[kVK_ANSI_G] = KeyCode_G;
-    keycode_lookup_table[kVK_ANSI_H] = KeyCode_H;
-    keycode_lookup_table[kVK_ANSI_I] = KeyCode_I;
-    keycode_lookup_table[kVK_ANSI_J] = KeyCode_J;
-    keycode_lookup_table[kVK_ANSI_K] = KeyCode_K;
-    keycode_lookup_table[kVK_ANSI_L] = KeyCode_L;
-    keycode_lookup_table[kVK_ANSI_M] = KeyCode_M;
-    keycode_lookup_table[kVK_ANSI_N] = KeyCode_N;
-    keycode_lookup_table[kVK_ANSI_O] = KeyCode_O;
-    keycode_lookup_table[kVK_ANSI_P] = KeyCode_P;
-    keycode_lookup_table[kVK_ANSI_Q] = KeyCode_Q;
-    keycode_lookup_table[kVK_ANSI_R] = KeyCode_R;
-    keycode_lookup_table[kVK_ANSI_S] = KeyCode_S;
-    keycode_lookup_table[kVK_ANSI_T] = KeyCode_T;
-    keycode_lookup_table[kVK_ANSI_U] = KeyCode_U;
-    keycode_lookup_table[kVK_ANSI_V] = KeyCode_V;
-    keycode_lookup_table[kVK_ANSI_W] = KeyCode_W;
-    keycode_lookup_table[kVK_ANSI_X] = KeyCode_X;
-    keycode_lookup_table[kVK_ANSI_Y] = KeyCode_Y;
-    keycode_lookup_table[kVK_ANSI_Z] = KeyCode_Z;
+    keycode_lookup_table[kVK_ANSI_A] = Key_Code_A;
+    keycode_lookup_table[kVK_ANSI_B] = Key_Code_B;
+    keycode_lookup_table[kVK_ANSI_C] = Key_Code_C;
+    keycode_lookup_table[kVK_ANSI_D] = Key_Code_D;
+    keycode_lookup_table[kVK_ANSI_E] = Key_Code_E;
+    keycode_lookup_table[kVK_ANSI_F] = Key_Code_F;
+    keycode_lookup_table[kVK_ANSI_G] = Key_Code_G;
+    keycode_lookup_table[kVK_ANSI_H] = Key_Code_H;
+    keycode_lookup_table[kVK_ANSI_I] = Key_Code_I;
+    keycode_lookup_table[kVK_ANSI_J] = Key_Code_J;
+    keycode_lookup_table[kVK_ANSI_K] = Key_Code_K;
+    keycode_lookup_table[kVK_ANSI_L] = Key_Code_L;
+    keycode_lookup_table[kVK_ANSI_M] = Key_Code_M;
+    keycode_lookup_table[kVK_ANSI_N] = Key_Code_N;
+    keycode_lookup_table[kVK_ANSI_O] = Key_Code_O;
+    keycode_lookup_table[kVK_ANSI_P] = Key_Code_P;
+    keycode_lookup_table[kVK_ANSI_Q] = Key_Code_Q;
+    keycode_lookup_table[kVK_ANSI_R] = Key_Code_R;
+    keycode_lookup_table[kVK_ANSI_S] = Key_Code_S;
+    keycode_lookup_table[kVK_ANSI_T] = Key_Code_T;
+    keycode_lookup_table[kVK_ANSI_U] = Key_Code_U;
+    keycode_lookup_table[kVK_ANSI_V] = Key_Code_V;
+    keycode_lookup_table[kVK_ANSI_W] = Key_Code_W;
+    keycode_lookup_table[kVK_ANSI_X] = Key_Code_X;
+    keycode_lookup_table[kVK_ANSI_Y] = Key_Code_Y;
+    keycode_lookup_table[kVK_ANSI_Z] = Key_Code_Z;
 
-    keycode_lookup_table[kVK_ANSI_0] = KeyCode_0;
-    keycode_lookup_table[kVK_ANSI_1] = KeyCode_1;
-    keycode_lookup_table[kVK_ANSI_2] = KeyCode_2;
-    keycode_lookup_table[kVK_ANSI_3] = KeyCode_3;
-    keycode_lookup_table[kVK_ANSI_4] = KeyCode_4;
-    keycode_lookup_table[kVK_ANSI_5] = KeyCode_5;
-    keycode_lookup_table[kVK_ANSI_6] = KeyCode_6;
-    keycode_lookup_table[kVK_ANSI_7] = KeyCode_7;
-    keycode_lookup_table[kVK_ANSI_8] = KeyCode_8;
-    keycode_lookup_table[kVK_ANSI_9] = KeyCode_9;
+    keycode_lookup_table[kVK_ANSI_0] = Key_Code_0;
+    keycode_lookup_table[kVK_ANSI_1] = Key_Code_1;
+    keycode_lookup_table[kVK_ANSI_2] = Key_Code_2;
+    keycode_lookup_table[kVK_ANSI_3] = Key_Code_3;
+    keycode_lookup_table[kVK_ANSI_4] = Key_Code_4;
+    keycode_lookup_table[kVK_ANSI_5] = Key_Code_5;
+    keycode_lookup_table[kVK_ANSI_6] = Key_Code_6;
+    keycode_lookup_table[kVK_ANSI_7] = Key_Code_7;
+    keycode_lookup_table[kVK_ANSI_8] = Key_Code_8;
+    keycode_lookup_table[kVK_ANSI_9] = Key_Code_9;
 
-    keycode_lookup_table[kVK_Space] = KeyCode_Space;
-    keycode_lookup_table[kVK_ANSI_Grave] = KeyCode_Tick;
-    keycode_lookup_table[kVK_ANSI_Minus] = KeyCode_Minus;
-    keycode_lookup_table[kVK_ANSI_Equal] = KeyCode_Equal;
-    keycode_lookup_table[kVK_ANSI_LeftBracket] = KeyCode_LeftBracket;
-    keycode_lookup_table[kVK_ANSI_RightBracket] = KeyCode_RightBracket;
-    keycode_lookup_table[kVK_ANSI_Semicolon] = KeyCode_Semicolon;
-    keycode_lookup_table[kVK_ANSI_Quote] = KeyCode_Quote;
-    keycode_lookup_table[kVK_ANSI_Comma] = KeyCode_Comma;
-    keycode_lookup_table[kVK_ANSI_Period] = KeyCode_Period;
-    keycode_lookup_table[kVK_ANSI_Slash] = KeyCode_ForwardSlash;
-    keycode_lookup_table[kVK_ANSI_Backslash] = KeyCode_BackwardSlash;
+    keycode_lookup_table[kVK_Space] = Key_Code_Space;
+    keycode_lookup_table[kVK_ANSI_Grave] = Key_Code_Tick;
+    keycode_lookup_table[kVK_ANSI_Minus] = Key_Code_Minus;
+    keycode_lookup_table[kVK_ANSI_Equal] = Key_Code_Equal;
+    keycode_lookup_table[kVK_ANSI_LeftBracket] = Key_Code_LeftBracket;
+    keycode_lookup_table[kVK_ANSI_RightBracket] = Key_Code_RightBracket;
+    keycode_lookup_table[kVK_ANSI_Semicolon] = Key_Code_Semicolon;
+    keycode_lookup_table[kVK_ANSI_Quote] = Key_Code_Quote;
+    keycode_lookup_table[kVK_ANSI_Comma] = Key_Code_Comma;
+    keycode_lookup_table[kVK_ANSI_Period] = Key_Code_Period;
+    keycode_lookup_table[kVK_ANSI_Slash] = Key_Code_ForwardSlash;
+    keycode_lookup_table[kVK_ANSI_Backslash] = Key_Code_BackwardSlash;
 
-    keycode_lookup_table[kVK_Tab] = KeyCode_Tab;
+    keycode_lookup_table[kVK_Tab] = Key_Code_Tab;
     // NOTE(yuval): No Pause key on macOS!
-    keycode_lookup_table[kVK_Escape] = KeyCode_Escape;
+    keycode_lookup_table[kVK_Escape] = Key_Code_Escape;
 
-    keycode_lookup_table[kVK_UpArrow] = KeyCode_Up;
-    keycode_lookup_table[kVK_DownArrow] = KeyCode_Down;
-    keycode_lookup_table[kVK_LeftArrow] = KeyCode_Left;
-    keycode_lookup_table[kVK_RightArrow] = KeyCode_Right;
+    keycode_lookup_table[kVK_UpArrow] = Key_Code_Up;
+    keycode_lookup_table[kVK_DownArrow] = Key_Code_Down;
+    keycode_lookup_table[kVK_LeftArrow] = Key_Code_Left;
+    keycode_lookup_table[kVK_RightArrow] = Key_Code_Right;
 
-    keycode_lookup_table[kVK_Delete] = KeyCode_Backspace;
-    keycode_lookup_table[kVK_Return] = KeyCode_Return;
+    keycode_lookup_table[kVK_Delete] = Key_Code_Backspace;
+    keycode_lookup_table[kVK_Return] = Key_Code_Return;
 
-    keycode_lookup_table[kVK_ForwardDelete] = KeyCode_Delete;
-    //keycode_lookup_table[] = KeyCode_Insert; // TODO(yuval): Figure how to get keyDown events for the insert key
-    keycode_lookup_table[kVK_Home] = KeyCode_Home;
-    keycode_lookup_table[kVK_End] = KeyCode_End;
-    keycode_lookup_table[kVK_PageUp] = KeyCode_PageUp;
-    keycode_lookup_table[kVK_PageDown] = KeyCode_PageDown;
+    keycode_lookup_table[kVK_ForwardDelete] = Key_Code_Delete;
+    //keycode_lookup_table[] = Key_Code_Insert; // TODO(yuval): Figure how to get keyDown events for the insert key
+    keycode_lookup_table[kVK_Home] = Key_Code_Home;
+    keycode_lookup_table[kVK_End] = Key_Code_End;
+    keycode_lookup_table[kVK_PageUp] = Key_Code_PageUp;
+    keycode_lookup_table[kVK_PageDown] = Key_Code_PageDown;
 
-    keycode_lookup_table[kVK_CapsLock] = KeyCode_CapsLock;
-    keycode_lookup_table[kVK_ANSI_KeypadClear] = KeyCode_NumLock;
+    keycode_lookup_table[kVK_CapsLock] = Key_Code_CapsLock;
+    keycode_lookup_table[kVK_ANSI_KeypadClear] = Key_Code_NumLock;
     // NOTE(yuval): No Scroll Lock key on macOS!
-    keycode_lookup_table[kVK_Menu] = KeyCode_Menu;
+    keycode_lookup_table[kVK_Menu] = Key_Code_Menu;
 
-    keycode_lookup_table[kVK_Shift] = KeyCode_Shift;
-    keycode_lookup_table[kVK_RightShift] = KeyCode_Shift;
+    keycode_lookup_table[kVK_Shift] = Key_Code_Shift;
+    keycode_lookup_table[kVK_RightShift] = Key_Code_Shift;
 
-    keycode_lookup_table[kVK_Control] = KeyCode_Control;
-    keycode_lookup_table[kVK_RightControl] = KeyCode_Control;
+    keycode_lookup_table[kVK_Control] = Key_Code_Control;
+    keycode_lookup_table[kVK_RightControl] = Key_Code_Control;
 
-    keycode_lookup_table[kVK_Option] = KeyCode_Alt;
-    keycode_lookup_table[kVK_RightOption] = KeyCode_Alt;
+    keycode_lookup_table[kVK_Option] = Key_Code_Alt;
+    keycode_lookup_table[kVK_RightOption] = Key_Code_Alt;
 
-    keycode_lookup_table[kVK_Command] = KeyCode_Command;
-    keycode_lookup_table[kVK_RightCommand] = KeyCode_Command; // NOTE(yuval): Right Command
+    keycode_lookup_table[kVK_Command] = Key_Code_Command;
+    keycode_lookup_table[kVK_RightCommand] = Key_Code_Command; // NOTE(yuval): Right Command
 
-    keycode_lookup_table[kVK_F1] = KeyCode_F1;
-    keycode_lookup_table[kVK_F2] = KeyCode_F2;
-    keycode_lookup_table[kVK_F3] = KeyCode_F3;
-    keycode_lookup_table[kVK_F4] = KeyCode_F4;
-    keycode_lookup_table[kVK_F5] = KeyCode_F5;
-    keycode_lookup_table[kVK_F6] = KeyCode_F6;
-    keycode_lookup_table[kVK_F7] = KeyCode_F7;
-    keycode_lookup_table[kVK_F8] = KeyCode_F8;
-    keycode_lookup_table[kVK_F9] = KeyCode_F9;
+    keycode_lookup_table[kVK_F1] = Key_Code_F1;
+    keycode_lookup_table[kVK_F2] = Key_Code_F2;
+    keycode_lookup_table[kVK_F3] = Key_Code_F3;
+    keycode_lookup_table[kVK_F4] = Key_Code_F4;
+    keycode_lookup_table[kVK_F5] = Key_Code_F5;
+    keycode_lookup_table[kVK_F6] = Key_Code_F6;
+    keycode_lookup_table[kVK_F7] = Key_Code_F7;
+    keycode_lookup_table[kVK_F8] = Key_Code_F8;
+    keycode_lookup_table[kVK_F9] = Key_Code_F9;
 
-    keycode_lookup_table[kVK_F10] = KeyCode_F10;
-    keycode_lookup_table[kVK_F11] = KeyCode_F11;
-    keycode_lookup_table[kVK_F12] = KeyCode_F12;
-    keycode_lookup_table[kVK_F13] = KeyCode_F13;
-    keycode_lookup_table[kVK_F14] = KeyCode_F14;
-    keycode_lookup_table[kVK_F15] = KeyCode_F15;
-    keycode_lookup_table[kVK_F16] = KeyCode_F16;
+    keycode_lookup_table[kVK_F10] = Key_Code_F10;
+    keycode_lookup_table[kVK_F11] = Key_Code_F11;
+    keycode_lookup_table[kVK_F12] = Key_Code_F12;
+    keycode_lookup_table[kVK_F13] = Key_Code_F13;
+    keycode_lookup_table[kVK_F14] = Key_Code_F14;
+    keycode_lookup_table[kVK_F15] = Key_Code_F15;
+    keycode_lookup_table[kVK_F16] = Key_Code_F16;
 
-    keycode_lookup_table[kVK_ANSI_Keypad0] = KeyCode_NumPad0;
-    keycode_lookup_table[kVK_ANSI_Keypad1] = KeyCode_NumPad1;
-    keycode_lookup_table[kVK_ANSI_Keypad2] = KeyCode_NumPad2;
-    keycode_lookup_table[kVK_ANSI_Keypad3] = KeyCode_NumPad3;
-    keycode_lookup_table[kVK_ANSI_Keypad4] = KeyCode_NumPad4;
-    keycode_lookup_table[kVK_ANSI_Keypad5] = KeyCode_NumPad5;
-    keycode_lookup_table[kVK_ANSI_Keypad6] = KeyCode_NumPad6;
-    keycode_lookup_table[kVK_ANSI_Keypad7] = KeyCode_NumPad7;
-    keycode_lookup_table[kVK_ANSI_Keypad8] = KeyCode_NumPad8;
-    keycode_lookup_table[kVK_ANSI_Keypad9] = KeyCode_NumPad9;
+    keycode_lookup_table[kVK_ANSI_Keypad0] = Key_Code_NumPad0;
+    keycode_lookup_table[kVK_ANSI_Keypad1] = Key_Code_NumPad1;
+    keycode_lookup_table[kVK_ANSI_Keypad2] = Key_Code_NumPad2;
+    keycode_lookup_table[kVK_ANSI_Keypad3] = Key_Code_NumPad3;
+    keycode_lookup_table[kVK_ANSI_Keypad4] = Key_Code_NumPad4;
+    keycode_lookup_table[kVK_ANSI_Keypad5] = Key_Code_NumPad5;
+    keycode_lookup_table[kVK_ANSI_Keypad6] = Key_Code_NumPad6;
+    keycode_lookup_table[kVK_ANSI_Keypad7] = Key_Code_NumPad7;
+    keycode_lookup_table[kVK_ANSI_Keypad8] = Key_Code_NumPad8;
+    keycode_lookup_table[kVK_ANSI_Keypad9] = Key_Code_NumPad9;
 
-    keycode_lookup_table[kVK_ANSI_KeypadMultiply] = KeyCode_NumPadStar;
-    keycode_lookup_table[kVK_ANSI_KeypadPlus] = KeyCode_NumPadPlus;
-    keycode_lookup_table[kVK_ANSI_KeypadMinus] = KeyCode_NumPadMinus;
-    keycode_lookup_table[kVK_ANSI_KeypadDecimal] = KeyCode_NumPadDot;
-    keycode_lookup_table[kVK_ANSI_KeypadDivide] = KeyCode_NumPadSlash;
+    keycode_lookup_table[kVK_ANSI_KeypadMultiply] = Key_Code_NumPadStar;
+    keycode_lookup_table[kVK_ANSI_KeypadPlus] = Key_Code_NumPadPlus;
+    keycode_lookup_table[kVK_ANSI_KeypadMinus] = Key_Code_NumPadMinus;
+    keycode_lookup_table[kVK_ANSI_KeypadDecimal] = Key_Code_NumPadDot;
+    keycode_lookup_table[kVK_ANSI_KeypadDivide] = Key_Code_NumPadSlash;
 }
 
 ////////////////////////////////
@@ -1183,10 +1183,10 @@ Input_Event *event = push_input_event(&mac_vars.frame_arena, &mac_vars.input_chu
         b8 shift = (controls->r_shift || controls->l_shift);
         b8 command = (controls->r_command || controls->l_command);
 
-        set_modifier(mods, KeyCode_Control, ctrl);
-        set_modifier(mods, KeyCode_Alt, alt);
-        set_modifier(mods, KeyCode_Shift, shift);
-        set_modifier(mods, KeyCode_Command, command);
+        set_modifier(mods, Key_Code_Control, ctrl);
+        set_modifier(mods, Key_Code_Alt, alt);
+        set_modifier(mods, Key_Code_Shift, shift);
+        set_modifier(mods, Key_Code_Command, command);
     }
 
     // NOTE(yuval): Process KeyStroke / KeyRelease event

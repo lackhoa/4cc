@@ -58,9 +58,6 @@ global b32 auto_center_after_jumps = AUTO_CENTER_AFTER_JUMPS;
 global u8 locked_buffer_space[256];
 global String_Const_u8 locked_buffer = {};
 
-// @Cleanup This seems duplicate with my global_bottom_view
-global View_ID build_footer_panel_view_id = 0;
-
 global u8 out_buffer_space[1024];
 global u8 command_space[1024];
 global char hot_directory_space[1024];

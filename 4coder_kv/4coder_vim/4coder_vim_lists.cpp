@@ -32,42 +32,43 @@ vim__fill_command_lister(Arena *arena, Lister *lister, i32 *command_ids, i32 com
 }
 
 function Custom_Command_Function*
-vim_get_command_from_user(Application_Links *app, i32 *command_ids, i32 command_id_count, Command_Lister_Status_Rule *status_rule){
-
-	Scratch_Block scratch(app);
-	Lister_Block lister(app, scratch);
-	vim_lister_set_default_handlers(lister);
-	lister_set_query(lister, string_u8_litexpr("Command:"));
-	vim__fill_command_lister(scratch, lister, command_ids, command_id_count, status_rule);
-
+vim_get_command_from_user(App *app, i32 *command_ids, i32 command_id_count, Command_Lister_Status_Rule *status_rule)
+{
+    Scratch_Block scratch(app);
+    Lister_Block lister(app, scratch);
+    vim_lister_set_default_handlers(lister);
+    lister_set_query(lister, string_u8_litexpr("Command:"));
+    vim__fill_command_lister(scratch, lister, command_ids, command_id_count, status_rule);
+    
 #if VIM_USE_BOTTOM_LISTER
-	vim_reset_bottom_text();
-	string_append(&vim_bot_text, string_u8_litexpr(":"));
+    vim_reset_bottom_text();
+    string_concat(&vim_bottom_text, string_u8_litexpr(":"));
 #endif
-	Lister_Result l_result = vim_run_lister(app, lister);
-
-	return (l_result.canceled ? 0 : (Custom_Command_Function *)l_result.user_data);
+    Lister_Result l_result = vim_run_lister(app, lister);
+    
+    return (l_result.canceled ? 0 : (Custom_Command_Function *)l_result.user_data);
 }
 
-CUSTOM_UI_COMMAND_SIG(vim_command_mode)
-CUSTOM_DOC("Enter Command Mode")
+//CUSTOM_DOC("Enter Command Mode")
+internal void 
+vim_command_mode(App *app)
 {
-	View_ID view = get_this_ctx_view(app, Access_Always);
-	if(view == 0){ return; }
-
-	Buffer_ID buffer = view_get_buffer(app, view, Access_Visible);
-	Managed_Scope buffer_scope = buffer_get_managed_scope(app, buffer);
-	Command_Map_ID *map = scope_attachment(app, buffer_scope, buffer_map_id, Command_Map_ID);
-	Command_Lister_Status_Rule rule =
-      (map ?
-       command_lister_status_bindings(&framework_mapping, *map) :
-       command_lister_status_descriptions());
-
-	Custom_Command_Function *func = vim_get_command_from_user(app, 0, 0, &rule);
-	if(func)
-  {
-		view_enqueue_command_function(app, view, func);
-	}
+    View_ID view = get_this_ctx_view(app, Access_Always);
+    if(view == 0){ return; }
+    
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Visible);
+    Managed_Scope buffer_scope = buffer_get_managed_scope(app, buffer);
+    Command_Map_ID *map = scope_attachment(app, buffer_scope, buffer_map_id, Command_Map_ID);
+    Command_Lister_Status_Rule rule =
+    (map ?
+     command_lister_status_bindings(&framework_mapping, *map) :
+     command_lister_status_descriptions());
+    
+    Custom_Command_Function *func = vim_get_command_from_user(app, 0, 0, &rule);
+    if(func)
+    {
+        view_enqueue_command_function(app, view, func);
+    }
 }
 
 function void
@@ -167,8 +168,8 @@ function b32
 vim_query_create_folder(Application_Links *app, String_Const_u8 folder_name){
 	Scratch_Block scratch(app);
     Lister_Choice_List list = {};
-    lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
-    lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
+    lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
+    lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
 
     String_Const_u8 message = push_stringf(scratch, "Create the folder %.*s?", string_expand(folder_name));
     Lister_Choice *choice = vim_get_choice_from_user(app, message, list);
@@ -263,7 +264,7 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 	}
 
 #if VIM_USE_BOTTOM_LISTER
-	string_append(&vim_bot_text, string_u8_litexpr("Theme:"));
+	string_concat(&vim_bottom_text, string_u8_litexpr("Theme:"));
 #endif
 	Lister_Result l_result = vim_run_lister(app, lister);
 
@@ -286,7 +287,7 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 	Scratch_Block scratch(app);
 #if VIM_USE_BOTTOM_LISTER
 	vim_reset_bottom_text();
-	string_append(&vim_bot_text, string_u8_litexpr("Switch:"));
+	string_concat(&vim_bottom_text, string_u8_litexpr("Switch:"));
 #endif
 	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, string_u8_litexpr("Switch:"), handlers);
 	Buffer_ID buffer = 0;
@@ -371,7 +372,7 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 	lister_set_handlers(lister, &handlers);
 
 	vim_reset_bottom_text();
-	string_append(&vim_bot_text, string_u8_litexpr("Command:"));
+	string_concat(&vim_bottom_text, string_u8_litexpr("Command:"));
 
 	Variable_Handle cmd_list_var = vars_read_key(prj_var, vars_intern_lit("commands"));
 	String_ID os_id = vars_intern_lit(OS_NAME);
@@ -409,7 +410,7 @@ vim_jump_navigate(Application_Links *app, View_ID view, Lister *lister, i32 inde
 	Managed_Scope scope = view_get_managed_scope(app, view);
 	Vim_Jump_List *jump_list = scope_attachment(app, scope, vim_view_jumps, Vim_Jump_List);
 	i32 index = i32(PtrAsInt(lister_get_user_data(lister, lister->raw_item_index)));
-	if(!in_range(0, index, ArrayCount(jump_list->markers))){ return; }
+	if(!in_range_exclude_last(0, index, ArrayCount(jump_list->markers))){ return; }
 	Point_Stack_Slot *slot = &jump_list->markers[index];
 	view_set_buffer(app, view, slot->buffer, SetBuffer_KeepOriginalGUI);
 	view_set_cursor_and_preferred_x(app, view, seek_pos(slot->object));
@@ -453,9 +454,9 @@ function b32
 vim_do_buffer_close_user_check(Application_Links *app, Buffer_ID buffer, View_ID view){
     Scratch_Block scratch(app);
     Lister_Choice_List list = {};
-    lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
-    lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
-    lister_choice(scratch, &list, "(S)ave", "", KeyCode_S, SureToKill_Save);
+    lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
+    lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
+    lister_choice(scratch, &list, "(S)ave", "", Key_Code_S, SureToKill_Save);
 
     Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr("There are unsaved changes, close anyway?"), list);
 
@@ -501,9 +502,9 @@ function b32
 vim_do_4coder_close_user_check(Application_Links *app, View_ID view){
 	Scratch_Block scratch(app);
 	Lister_Choice_List list = {};
-	lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
-	lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
-	lister_choice(scratch, &list, "(S)ave all and close", "", KeyCode_S, SureToKill_Save);
+	lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
+	lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
+	lister_choice(scratch, &list, "(S)ave all and close", "", Key_Code_S, SureToKill_Save);
 
 #define M "There are one or more buffers with unsave changes, close anyway?"
 	Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr(M), list);
@@ -535,8 +536,8 @@ vim_4coder_close_are_you_sure_check(Application_Links *app, View_ID view)
 {
 	Scratch_Block scratch(app);
 	Lister_Choice_List list = {};
-	lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);
-	lister_choice(scratch, &list, "(Y)es" , "", KeyCode_Y, SureToKill_Yes);
+	lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
+	lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
 
 #define M "Are you sure you want to close?"
 	Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr(M), list);
@@ -559,9 +560,9 @@ vim_reload_external_changes_lister(Application_Links *app, Buffer_ID buffer){
 	String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer);
 
 	if(buffer_name.size == 0){ return; }
-	lister_choice(scratch, &list, buffer_name, "", KeyCode_Q, u64(0));
-	lister_choice(scratch, &list, "(L)oad external changes"  , "", KeyCode_L, u64(1));
-	lister_choice(scratch, &list, "(K)eep current buffer" , "", KeyCode_K, u64(0));
+	lister_choice(scratch, &list, buffer_name, "", Key_Code_Q, u64(0));
+	lister_choice(scratch, &list, "(L)oad external changes"  , "", Key_Code_L, u64(1));
+	lister_choice(scratch, &list, "(K)eep current buffer" , "", Key_Code_K, u64(0));
 
 #define M "External changes have been detected. Reload buffer from file?"
 	Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr(M), list);
@@ -575,7 +576,7 @@ vim_reload_external_changes_lister(Application_Links *app, Buffer_ID buffer){
 // NOTE(BYP): This hook isn't officially supported by core (it will false positive) it was just fun to write
 CUSTOM_COMMAND_SIG(vim_file_externally_modified){
 	User_Input input = get_current_input(app);
-	if(match_core_code(&input, CoreCode_FileExternallyModified)){
+	if( match_core_code(&input, CoreCode_FileExternallyModified) ){
 		print_message(app, input.event.core.string);
 		vim_reload_external_changes_lister(app, input.event.core.id);
 	}

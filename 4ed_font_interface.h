@@ -46,7 +46,7 @@ struct Face{
     Glyph_Bounds white;
     
     Texture_Kind texture_kind;
-    Texture_ID texture;
+    u32 texture;
     Vec3_f32 texture_dim;
 };
 

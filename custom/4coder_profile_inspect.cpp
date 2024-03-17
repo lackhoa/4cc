@@ -273,6 +273,22 @@ profile_qsort_nodes(Profile_Node **nodes, i32 first, i32 one_past_last){
     }
 }
 
+#if 1
+function f32
+unlerp_u64(u64 a, u64 x, u64 b){
+ f32 r = 0.f;
+ if (b <= x){
+  r = 1.f;
+ }
+ else if (a < x){
+  u64 n = x - a;
+  u64 d = b - a;
+  r = (f32)(((f64)n)/((f64)d));
+ }
+ return(r);
+}
+#endif
+
 function void
 profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
                   Profile_Node *node, Rect_f32 rect,
@@ -301,7 +317,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
     if (thread_name.size > 0){
         Fancy_String *fstr =
             push_fancy_string(scratch, 0, fcolor_id(defcolor_pop1), thread_name);
-        Vec2_f32 p = V2(x_pos, y.min + 1.f);
+        Vec2_f32 p = vec2(x_pos, y.min + 1.f);
         draw_fancy_string(app, face_id, fcolor_zero(), fstr, p);
         f32 w = get_fancy_string_width(app, face_id, fstr);
         nav_bar_w = Max(nav_bar_w, w);
@@ -312,7 +328,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
     if (name.size > 0){
         Fancy_String *fstr =
             push_fancy_string(scratch, 0, fcolor_id(defcolor_text_default), name);
-        Vec2_f32 p = V2(x_pos, y.min + 1.f);
+        Vec2_f32 p = vec2(x_pos, y.min + 1.f);
         draw_fancy_string(app, face_id, fcolor_zero(), fstr, p);
         f32 w = get_fancy_string_width(app, face_id, fstr);
         nav_bar_w = Max(nav_bar_w, w);
@@ -336,7 +352,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             insp->hover_node = node->parent;
         }
         
-        Vec2_f32 p = V2(box.x0 + x_half_padding,
+        Vec2_f32 p = vec2(box.x0 + x_half_padding,
                            (box.y0 + box.y1 - line_height)*0.5f);
         draw_fancy_string(app, face_id, color, fstr, p);
         
@@ -345,7 +361,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
     
     Range_u64 top_time = node->time;
     
-    Rect_f32_Pair side_by_side = rect_split_left_right_lerp(Rf32(x, y), 0.5f);
+    rect2_Pair side_by_side = rect_split_left_right_lerp(Rf32(x, y), 0.5f);
     
     Rect_f32 time_slice_box = side_by_side.min;
     time_slice_box = rect_inner(time_slice_box, 3.f);
@@ -368,8 +384,8 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             
             Range_u64 child_time = child->time;
             Range_f32 child_y = {};
-            child_y.min = unlerp(top_time.min, child_time.min, top_time.max);
-            child_y.max = unlerp(top_time.min, child_time.max, top_time.max);
+            child_y.min = unlerp_u64(top_time.min, child_time.min, top_time.max);
+            child_y.max = unlerp_u64(top_time.min, child_time.max, top_time.max);
             child_y.min = lerp(y.min, child_y.min, y.max);
             child_y.max = lerp(y.min, child_y.max, y.max);
             
@@ -393,7 +409,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
                 push_fancy_stringf(scratch, &line, fcolor_id(defcolor_text_default),
                                    0.5f, 0.f, "#%4llu", child->unique_counter);
                 
-                Vec2_f32 p = V2(x.min + x_half_padding,
+                Vec2_f32 p = vec2(x.min + x_half_padding,
                                    child_y.min);
                 draw_fancy_line(app, face_id, fcolor_zero(),
                                 &line, p);
@@ -418,7 +434,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             push_fancy_stringf(scratch, &list, fcolor_id(defcolor_text_default),
                                "time: %11.9f", duration);
             draw_fancy_line(app, face_id, fcolor_zero(),
-                            &list, V2(x_pos, y_pos + 1.f));
+                            &list, vec2(x_pos, y_pos + 1.f));
             y_pos += line_height + 2.f;
         }
         
@@ -449,7 +465,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             push_fancy_stringf(scratch, &line, fcolor_id(defcolor_pop2),
                                0.5f, 0.f, "%6.4f", child_duration);
             
-            Vec2_f32 p = V2(x.min + x_half_padding,
+            Vec2_f32 p = vec2(x.min + x_half_padding,
                                (y.min + y.max - line_height)*0.5f);
             draw_fancy_line(app, face_id, fcolor_id(defcolor_pop1), &line, p);
             
@@ -513,7 +529,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     f32 x_half_padding = x_padding*0.5f;
     
     Mouse_State mouse = get_mouse_state(app);
-    Vec2_f32 m_p = V2(mouse.p);
+    Vec2_f32 m_p = vec2(mouse.p);
     
     Profile_Inspection *inspect = &global_profile_inspection;
     
@@ -522,12 +538,12 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                                                string_u8_litexpr("no profile data"));
         f32 width = get_fancy_string_width(app, face_id, fstr);
         Vec2_f32 view_center = (region.p0 + region.p1)*0.5f;
-        Vec2_f32 half_dim = V2(width, line_height)*0.5f;
+        Vec2_f32 half_dim = vec2(width, line_height)*0.5f;
         Vec2_f32 p = view_center - half_dim;
         draw_fancy_string(app, face_id, fcolor_zero(), fstr, p);
     }
     else{
-        Rect_f32_Pair tabs_body = rect_split_top_bottom(region, line_height + 2.f);
+        rect2_Pair tabs_body = rect_split_top_bottom(region, line_height + 2.f);
         Range_f32 tabs_y = rect_range_y(tabs_body.min);
         
         inspect->tab_id_hovered = ProfileInspectTab_None;
@@ -544,7 +560,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             f32 x = region.x0;
             
             Tab_State tab_state = {};
-            tab_state.p = V2(x, y);
+            tab_state.p = vec2(x, y);
             tab_state.tabs_y = tabs_y;
             tab_state.face_id = face_id;
             tab_state.x_half_padding = x_half_padding;
@@ -626,7 +642,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                                        "active time %11.9f",
                                        active_time);
                     
-                    Vec2_f32 p = V2(x.min + x_half_padding,
+                    Vec2_f32 p = vec2(x.min + x_half_padding,
                                        (y.min + y.max - line_height)*0.5f);
                     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
                     
@@ -673,7 +689,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_keyword),
                                        "hit # %5d", node->hit_count);
                     
-                    Vec2_f32 p = V2(x.min + x_half_padding,
+                    Vec2_f32 p = vec2(x.min + x_half_padding,
                                        (y.min + y.max - line_height)*0.5f);
                     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
                     
@@ -710,7 +726,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                     push_fancy_string(scratch, &list, fcolor_id(defcolor_pop2),
                                       node->message);
                     
-                    Vec2_f32 p = V2(x.min + x_half_padding,
+                    Vec2_f32 p = vec2(x.min + x_half_padding,
                                        (y.min + y.max - line_height)*0.5f);
                     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
                     
@@ -788,7 +804,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop1), "%.*s",
                                        string_expand(node->location));
                     
-                    Vec2_f32 p = V2(x.min + x_half_padding,
+                    Vec2_f32 p = vec2(x.min + x_half_padding,
                                        (y.min + y.max - line_height)*0.5f);
                     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
                     
@@ -865,10 +881,10 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 function void
 profile_inspect__left_click(Application_Links *app, View_ID view,
                             Profile_Inspection *insp, Input_Event *event){
-    if (has_modifier(event, KeyCode_Shift)){
+    if (has_modifier(event, Key_Code_Shift)){
         if (insp->location_jump_hovered.size != 0){
             View_ID target_view = view;
-            target_view = get_next_view_looped_primary_panels(app, target_view, Access_Always, true);
+            target_view = get_other_primary_view(app, target_view, Access_Always, true);
             String_Const_u8 location = insp->location_jump_hovered;
             jump_to_location(app, target_view, location);
         }

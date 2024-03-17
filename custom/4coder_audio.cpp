@@ -117,7 +117,7 @@ def_audio_mix_sources(void *ctx, f32 *mix_buffer, u32 sample_count){
    
    // NOTE(casey): Determine how many samples are left to play in this
    // sound (possible none)
-   u32 SamplesToMix = clamp_top((clip->sample_count - clip->at_sample_index), sample_count);
+   u32 SamplesToMix = clamp_max((clip->sample_count - clip->at_sample_index), sample_count);
    clip->at_sample_index += SamplesToMix;
    
    // NOTE(casey): Load the volume out of the control if there is one,

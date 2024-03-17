@@ -238,7 +238,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
             Face_Metrics face_metrics = get_face_metrics(app, face_id);
             f32 digit_advance = face_metrics.decimal_digit_advance;
             
-            Rect_f32_Pair pair = layout_line_number_margin(app, buffer, rect, digit_advance);
+            rect2_Pair pair = layout_line_number_margin(app, buffer, rect, digit_advance);
             line_number_rect = pair.min;
             line_number_rect.x1 += 4;
         }

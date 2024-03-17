@@ -47,9 +47,9 @@ F4_LegoFromUserInput(User_Input in)
     F4_Lego *lego = 0;
     Input_Event event = in.event;
     if(event.kind == InputEventKind_KeyStroke &&
-       event.key.code >= KeyCode_F1 && event.key.code <= KeyCode_F24)
+       event.key.code >= Key_Code_F1 && event.key.code <= Key_Code_F24)
     {
-        int index = event.key.code - KeyCode_F1;
+        int index = event.key.code - Key_Code_F1;
         index = index % 4;
         lego = F4_LegoFromIndex(index);
     }
@@ -142,7 +142,7 @@ F4_Lego_StoreClickedToken(Application_Links *app, F4_Lego *lego)
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Mouse_State mouse = get_mouse_state(app);
-    i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
+    i64 pos = view_pos_from_xy(app, view, vec2(mouse.p));
     Token *token = get_token_from_pos(app, buffer, pos);
     if(token != 0)
     {

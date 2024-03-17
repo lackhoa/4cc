@@ -5,7 +5,8 @@
 // TOP @alksdjfasldkfjasdlfkj
 
 function void
-draw_text_layout_default(Application_Links *app, Text_Layout_ID layout_id){
+draw_text_layout_default(App *app, Text_Layout_ID layout_id)
+{
     ARGB_Color special_color = finalize_color(defcolor_special_character, 0);
     ARGB_Color ghost_color   = finalize_color(defcolor_ghost_character, 0);
     draw_text_layout(app, layout_id, special_color, ghost_color);
@@ -58,7 +59,7 @@ get_panel_margin_color(i32 level){
 
 function Vec2_f32
 draw_string(Application_Links *app, Face_ID font_id, String_Const_u8 string, Vec2_f32 p, ARGB_Color color){
-    return(draw_string_oriented(app, font_id, color, string, p, 0, V2(1.f, 0.f)));
+    return(draw_string_oriented(app, font_id, color, string, p, 0, vec2(1.f, 0.f)));
 }
 
 function Vec2_f32
@@ -217,33 +218,33 @@ paint_text_color_pos(Application_Links *app, Text_Layout_ID layout, i64 pos, FCo
 
 ////////////////////////////////
 
-function Rect_f32_Pair
+function rect2_Pair
 layout_file_bar_on_top(Rect_f32 rect, f32 line_height){
     return(rect_split_top_bottom(rect, line_height + 2.f));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 layout_file_bar_on_bot(Rect_f32 rect, f32 line_height){
     return(rect_split_top_bottom_neg(rect, line_height + 2.f));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 layout_query_bar_on_top(Rect_f32 rect, f32 line_height, i32 bar_count){
     return(rect_split_top_bottom(rect, (line_height + 2.f)*cast(f32)bar_count));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 layout_query_bar_on_bot(Rect_f32 rect, f32 line_height, i32 bar_count){
     return(rect_split_top_bottom_neg(rect, (line_height + 2.f)*cast(f32)bar_count));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 layout_line_number_margin(Rect_f32 rect, f32 digit_advance, i64 digit_count){
     f32 margin_width = (f32)digit_count*digit_advance + 2.f;
     return(rect_split_left_right(rect, margin_width));
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 layout_line_number_margin(Application_Links *app, Buffer_ID buffer, Rect_f32 rect, f32 digit_advance){
     i64 line_count = buffer_get_line_count(app, buffer);
     i64 line_count_digit_count = digit_count_from_integer(line_count, 10);
@@ -251,59 +252,28 @@ layout_line_number_margin(Application_Links *app, Buffer_ID buffer, Rect_f32 rec
 }
 
 global_const i32 fps_history_depth = 10;
-function Rect_f32_Pair
+function rect2_Pair
 layout_fps_hud_on_bottom(Rect_f32 rect, f32 line_height){
     return(rect_split_top_bottom_neg(rect, line_height*fps_history_depth));
 }
 
+//- Margin
 function Rect_f32
-draw_background_and_margin(Application_Links *app, View_ID view, ARGB_Color margin, ARGB_Color back, f32 width){
-    Rect_f32 view_rect = view_get_screen_rect(app, view);
-    Rect_f32 inner = rect_inner(view_rect, width);
-    draw_rect2(app, inner, back);
-    if (width > 0.f){
-        draw_margin(app, view_rect, inner, margin);
-    }
-    return(inner);
-}
-
-function Rect_f32
-draw_background_and_margin(Application_Links *app, View_ID view, ARGB_Color margin, ARGB_Color back){
-    return(draw_background_and_margin(app, view, margin, back, 3.f));
-}
-
-function Rect_f32
-draw_background_and_margin(Application_Links *app, View_ID view, FColor margin, FColor back, f32 width){
-    ARGB_Color margin_argb = fcolor_resolve(margin);
-    ARGB_Color back_argb = fcolor_resolve(back);
-    return(draw_background_and_margin(app, view, margin_argb, back_argb, width));
-}
-
-function Rect_f32
-draw_background_and_margin(Application_Links *app, View_ID view, FColor margin, FColor back){
-    ARGB_Color margin_argb = fcolor_resolve(margin);
-    ARGB_Color back_argb = fcolor_resolve(back);
-    return(draw_background_and_margin(app, view, margin_argb, back_argb, 3.f));
-}
-
-function Rect_f32
-draw_background_and_margin(Application_Links *app, View_ID view, b32 is_active_view, f32 width){
-    FColor margin_color = get_panel_margin_color(is_active_view?UIHighlight_Active:UIHighlight_None);
-    return(draw_background_and_margin(app, view, margin_color, fcolor_id(defcolor_back), width));
-}
-
-function Rect_f32
-draw_background_and_margin(Application_Links *app, View_ID view, b32 is_active_view){
-    FColor margin_color = get_panel_margin_color(is_active_view?UIHighlight_Active:UIHighlight_None);
-    return(draw_background_and_margin(app, view, margin_color, fcolor_id(defcolor_back), 3.f));
-}
-
-function Rect_f32
-draw_background_and_margin(Application_Links *app, View_ID view){
+draw_background_and_margin(App *app, View_ID view)
+{
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view);
-    return(draw_background_and_margin(app, view, is_active_view));
+    ARGB_Color margin_color = fcolor_resolve(get_panel_margin_color(is_active_view ? UIHighlight_Active : UIHighlight_None));
+    ARGB_Color back_color   = fcolor_resolve(fcolor_id(defcolor_back));
+    
+    rect2 view_rect = view_get_screen_rect(app, view);
+    v1 margin = 3.f;
+    rect2 inner = rect_inner(view_rect, margin);
+    draw_rect2(app, inner, back_color);
+    draw_margin(app, view_rect, inner, margin_color);
+    return(inner);
 }
+//-
 
 function void
 draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect_f32 bar){
@@ -347,18 +317,18 @@ draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID
         Dirty_State dirty = buffer_get_dirty_state(app, buffer);
         String_u8 str = Su8(space, 0, 3);
         if (dirty != 0){
-            string_append(&str, string_u8_litexpr(" "));
+            string_concat(&str, string_u8_litexpr(" "));
         }
         if (HasFlag(dirty, DirtyState_UnsavedChanges)){
-            string_append(&str, string_u8_litexpr("*"));
+            string_concat(&str, string_u8_litexpr("*"));
         }
         if (HasFlag(dirty, DirtyState_UnloadedChanges)){
-            string_append(&str, string_u8_litexpr("!"));
+            string_concat(&str, string_u8_litexpr("!"));
         }
         push_fancy_string(scratch, &list, pop2_color, str.string);
     }
     
-    Vec2_f32 p = bar.p0 + V2(2.f, 2.f);
+    Vec2_f32 p = bar.p0 + vec2(2.f, 2.f);
     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
 }
 
@@ -368,7 +338,7 @@ draw_query_bar(Application_Links *app, Query_Bar *query_bar, Face_ID face_id, Re
     Fancy_Line list = {};
     push_fancy_string(scratch, &list, fcolor_id(defcolor_pop1)        , query_bar->prompt);
     push_fancy_string(scratch, &list, fcolor_id(defcolor_text_default), query_bar->string);
-    Vec2_f32 p = bar.p0 + V2(2.f, 2.f);
+    Vec2_f32 p = bar.p0 + vec2(2.f, 2.f);
     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
 }
 
@@ -416,7 +386,7 @@ draw_line_number_margin(Application_Links *app, View_ID view_id, Buffer_ID buffe
     for (;line_number < one_past_last_line_number &&
          line_number < line_count;){
         Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, line_number);
-        Vec2_f32 p = V2(margin.x0, line_y.min);
+        Vec2_f32 p = vec2(margin.x0, line_y.min);
         
         fill_fancy_string(&fstring, 0, line_color, 0, 0, digit_string);
         draw_fancy_string(app, face_id, fcolor_zero(), &fstring, p);
@@ -707,8 +677,8 @@ draw_enclosures(Application_Links *app, Text_Layout_ID text_layout_id, Buffer_ID
                 Range_i64 inner_range = ranges.ranges[i - 1];
                 Range_i64 lines = get_line_range_from_pos_range(app, buffer, range);
                 Range_i64 inner_lines = get_line_range_from_pos_range(app, buffer, inner_range);
-                inner_lines.min = clamp_bot(lines.min, inner_lines.min);
-                inner_lines.max = clamp_top(inner_lines.max, lines.max);
+                inner_lines.min = clamp_min(lines.min, inner_lines.min);
+                inner_lines.max = clamp_max(inner_lines.max, lines.max);
                 inner_lines.min -= 1;
                 inner_lines.max += 1;
                 if (lines.min <= inner_lines.min){
@@ -898,10 +868,10 @@ draw_notepad_style_cursor_highlight(Application_Links *app, View_ID view_id,
 
 function Rect_f32
 get_contained_box_near_point(Rect_f32 container, Vec2_f32 p, Vec2_f32 box_dims){
-    Vec2_f32 container_dims = rect_dim(container);
-    box_dims.x = clamp_top(box_dims.x, container_dims.x);
-    box_dims.y = clamp_top(box_dims.y, container_dims.y);
-    Vec2_f32 q = p + V2(-20.f, 22.f);
+    Vec2_f32 container_dims = rect2_dim(container);
+    box_dims.x = clamp_max(box_dims.x, container_dims.x);
+    box_dims.y = clamp_max(box_dims.y, container_dims.y);
+    Vec2_f32 q = p + vec2(-20.f, 22.f);
     if (q.x + box_dims.x > container.x1){
         q.x = container.x1 - box_dims.x;
     }
@@ -921,7 +891,7 @@ draw_tool_tip(Application_Links *app, Face_ID face, Fancy_Block *block,
     Rect_f32 box = Rf32(p, p);
     if (block->line_count > 0){
         Vec2_f32 dims = get_fancy_block_dim(app, face, block);
-        dims += V2(x_padding, 2.f);
+        dims += vec2(x_padding, 2.f);
         box = get_contained_box_near_point(region, p, dims);
         box.x0 = f32_round32(box.x0);
         box.y0 = f32_round32(box.y0);
@@ -930,7 +900,7 @@ draw_tool_tip(Application_Links *app, Face_ID face, Fancy_Block *block,
         Rect_f32 prev_clip = draw_set_clip(app, box);
         draw_rect_fcolor(app, box, 6.f, back_color);
         draw_fancy_block(app, face, fcolor_zero(), block,
-                         box.p0 + V2(x_half_padding, 1.f));
+                         box.p0 + vec2(x_half_padding, 1.f));
         draw_set_clip(app, prev_clip);
     }
     return(box);
@@ -943,7 +913,7 @@ draw_drop_down(Application_Links *app, Face_ID face, Fancy_Block *block,
     Rect_f32 box = Rf32(p, p);
     if (block->line_count > 0){
         Vec2_f32 dims = get_fancy_block_dim(app, face, block);
-        dims += V2(x_padding, 4.f);
+        dims += vec2(x_padding, 4.f);
         box = get_contained_box_near_point(region, p, dims);
         box.x0 = f32_round32(box.x0);
         box.y0 = f32_round32(box.y0);
@@ -953,7 +923,7 @@ draw_drop_down(Application_Links *app, Face_ID face, Fancy_Block *block,
         draw_rect_fcolor(app, box, 0.f, back_color);
         draw_margin(app, box, rect_inner(box, 1.f), outline_color);
         draw_fancy_block(app, face, fcolor_zero(), block,
-                         box.p0 + V2(x_half_padding, 2.f));
+                         box.p0 + vec2(x_half_padding, 2.f));
         draw_set_clip(app, prev_clip);
     }
     return(box);

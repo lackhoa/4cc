@@ -184,6 +184,40 @@ qp_maybe_string(Quick_Parser *p, String string)
     return result;
 }
 
+internal b32
+qp_test_preprocessor(Quick_Parser *p, String string)
+{
+    b32 result = false;
+    Token *token = qp_get_token(p);
+    if (p->ok && token->kind == TokenBaseKind_Preprocessor)
+    {
+        Scratch_Block scratch(p->app);
+        String token_str = qp_push_token(p, scratch);
+        token_str.str++; token_str.size--;  // skip the pound
+        token_str = string_skip_whitespace(token_str);
+        while (*token_str.str == ' ') { token_str.str++; }
+        result = string_match(token_str, string);
+    }
+    return result;
+}
+
+internal b32
+qp_maybe_preprocessor(Quick_Parser *p, String string)
+{
+    b32 result = qp_test_preprocessor(p, string);
+    if ( result )
+    {
+        qp_eat_token(p);
+    }
+    return result;
+}
+
+internal void
+qp_eat_preprocessor(Quick_Parser *p, String string)
+{
+    p->ok = qp_maybe_preprocessor(p, string);
+}
+
 internal void
 qp_eat_string(Quick_Parser *p, String string)
 {
@@ -204,54 +238,62 @@ qp_eat_comma(Quick_Parser *p)
 }
 
 // NOTE returns index + 1
-internal u32
+internal i32
 char_in_string(String8 chars, char chr)
 {
-    u32 result = 0;
-    for_u32 (index, 0, (u32)chars.size)
-    {
-        if (chars.str[index] == chr)
-        {
-            result = index + 1;
-            break;
-        }
-    }
-    return result;
+ i32 result = 0;
+ for_u32 (index, 0, (u32)chars.size)
+ {
+  if (chars.str[index] == chr)
+  {
+   result = index + 1;
+   break;
+  }
+ }
+ return result;
 }
-
-#define qp_eat_until_char_lit(p, cstring) qp_eat_until_char(p, str8lit(cstring));
 
 // NOTE returns index + 1
-internal u32
-qp_eat_until_char(Quick_Parser *p, String chars)
+internal i32
+qp_eat_until_char(Quick_Parser *p, String chars, 
+                  i32 recursion_security)
 {
-    u32 result = 0;
-    while ( !result && p->ok )
+ recursion_security -= 1;
+ if (recursion_security < 0) { return 0; }
+ else
+ {
+  i32 result = 0;
+  while ( !result && p->ok )
+  {
+   Scratch_Block scratch(p->app);
+   String token = qp_push_token(p, scratch);
+   if (token.size == 1)
+   {
+    char character = token.str[0];
+    if ((result = char_in_string(chars, character)))
     {
-        qp_eat_token(p);
-        if (p->ok)
-        {
-            Scratch_Block scratch(p->app);
-            String8 token = qp_push_token(p, scratch);
-            if ((token.size == 1) && 
-                (result = char_in_string(chars, token.str[0])))
-            {
-                // break
-            }
-            // TODO: crappy recursion time!
-            else if ( string_equal(token, '(') )
-            {
-                qp_eat_until_char_lit(p, ")");
-            }
-            else if ( string_equal(token, '[') )
-            {
-                qp_eat_until_char_lit(p, "]");
-            }
-            else if ( string_equal(token, '{') )
-            {
-                qp_eat_until_char_lit(p, "}");
-            }
-        }
+     // break
     }
-    return result;
+    else
+    {
+     qp_eat_token(p);
+     
+     char *matching = 0;
+     if (character == '(') { matching = ")"; }
+     if (character == '[') { matching = "]"; }
+     if (character == '{') { matching = "}"; }
+     if (matching)
+     {
+      qp_eat_until_char(p, SCu8(matching), recursion_security);
+      qp_eat_token(p);
+     }
+    }
+   }
+   else { qp_eat_token(p); }
+  }
+  return result;
+ }
 }
+
+#define qp_eat_until_char_lit(p, cstring) \
+qp_eat_until_char(p, str8lit(cstring), 64);

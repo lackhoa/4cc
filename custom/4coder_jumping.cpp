@@ -106,11 +106,11 @@ parse_jump_location(String8 line)
                             if (comma_pos < line_number.size){
                                 String_Const_u8 column_number = string_skip(line_number, comma_pos + 1);
                                 line_number = string_prefix(line_number, comma_pos);
-                                jump.location.line = (i32)string_to_integer(line_number, 10);
-                                jump.location.column = (i32)string_to_integer(column_number, 10);
+                                jump.location.line = (i32)string_to_u64(line_number, 10);
+                                jump.location.column = (i32)string_to_u64(column_number, 10);
                             }
                             else{
-                                jump.location.line = (i32)string_to_integer(line_number, 10);
+                                jump.location.line = (i32)string_to_u64(line_number, 10);
                                 jump.location.column = 0;
                             }
                             jump.location.file = file;
@@ -154,8 +154,8 @@ parse_jump_location(String8 line)
             
             if (file_name.size > 0 && line_number.size > 0 && column_number.size > 0){
                 jump.location.file = file_name;
-                jump.location.line = (i32)string_to_integer(line_number, 10);
-                jump.location.column = (i32)string_to_integer(column_number, 10);
+                jump.location.line = (i32)string_to_u64(line_number, 10);
+                jump.location.column = (i32)string_to_u64(column_number, 10);
                 jump.colon_position = (i32)(colon_pos3 + whitespace_length);
                 jump.success = true;
             }
@@ -172,7 +172,7 @@ parse_jump_location(String8 line)
                 if (string_is_integer(line_number, 10)){
                     if (file_name.size > 0 && line_number.size > 0){
                         jump.location.file = file_name;
-                        jump.location.line = (i32)string_to_integer(line_number, 10);
+                        jump.location.line = (i32)string_to_u64(line_number, 10);
                         jump.location.column = 0;
                         jump.colon_position = (i32)(colon_pos3 + whitespace_length);
                         jump.success = true;
@@ -329,7 +329,7 @@ seek_next_jump_in_buffer(Application_Links *app, Arena *arena,
         }
     }
     if (jump.success){
-        *line_out = clamp_bot(line, 0);
+        *line_out = clamp_min(line, 0);
     }
     return(jump);
 }
@@ -416,7 +416,7 @@ seek_jump_(Application_Links *app, b32 skip_repeats, b32 skip_sub_errors, i32 di
             if (get_jump_buffer(app, &buffer, &location)){
                 View_ID target_view = get_active_view(app, Access_Always);
                 if (target_view == view){
-                    change_active_primary_panel(app);
+                    change_active_primary_view(app);
                     target_view = get_active_view(app, Access_Always);
                 }
                 switch_to_existing_view(app, target_view, buffer);

@@ -145,7 +145,7 @@ get_view_for_locked_jump_buffer(App *app)
 
 // TODO(allen): re-evaluate the setup of this.
 function void
-new_view_settings(Application_Links *app, View_ID view){
+new_view_settings(App *app, View_ID view){
     b32 use_file_bars = def_get_config_b32(vars_intern_lit("use_file_bars"));
     view_set_setting(app, view, ViewSetting_ShowFileBar, use_file_bars);
 }
@@ -153,7 +153,7 @@ new_view_settings(Application_Links *app, View_ID view){
 ////////////////////////////////
 
 function void
-view_set_passive(Application_Links *app, View_ID view_id, b32 value)
+view_set_passive(App *app, View_ID view_id, b32 value)
 {
     Managed_Scope scope = view_get_managed_scope(app, view_id);
     b32 *is_passive = scope_attachment(app, scope, view_is_passive_loc, b32);
@@ -163,7 +163,8 @@ view_set_passive(Application_Links *app, View_ID view_id, b32 value)
 }
 
 function b32
-view_get_is_passive(Application_Links *app, View_ID view_id){
+view_is_passive(App *app, View_ID view_id)
+{
     Managed_Scope scope = view_get_managed_scope(app, view_id);
     b32 *is_passive = scope_attachment(app, scope, view_is_passive_loc, b32);
     b32 result = false;
@@ -173,94 +174,67 @@ view_get_is_passive(Application_Links *app, View_ID view_id){
     return(result);
 }
 
-function View_ID
-open_footer_panel(App *app, View_ID view)
-{
-    View_ID special_view = open_view(app, view, ViewSplit_Bottom);
-    new_view_settings(app, special_view);
-    Buffer_ID buffer = view_get_buffer(app, special_view, Access_Always);
-    Face_ID face_id = get_face_id(app, buffer);
-    Face_Metrics metrics = get_face_metrics(app, face_id);
-    view_set_split_pixel_size(app, special_view, (i32)(metrics.line_height*14.f));
-    view_set_passive(app, special_view, true);
-    return(special_view);
-}
 
-function void
-close_build_footer_panel(App *app)
+internal i32
+hax_guess_which_monitor_the_view_is_in(App *app, View_ID view)
 {
-    if ( view_exists(app, build_footer_panel_view_id) )
-    {
-        view_close(app, build_footer_panel_view_id);
-    }
-    build_footer_panel_view_id = 0;
-}
-
-function View_ID
-open_build_footer_panel(App *app)
-{
-    if ( !view_exists(app, build_footer_panel_view_id) )
-    {
-        View_ID view = get_active_view(app, Access_Always);
-        build_footer_panel_view_id = open_footer_panel(app, view);
-        view_set_active(app, view);
-    }
-    return build_footer_panel_view_id;
-}
-
-internal b32
-is_there_another_primary_panels(App *app, View_ID start_view)
-{
-    View_ID view = start_view;
-    do
-    {
-        view = get_next_view_looped_all_panels(app, start_view, Access_Always);
-        if (!view_get_is_passive(app, view))
-            break;
-    }
-    while (view != start_view);
-    
-    b32 result = (view == start_view);
-    return result;
+    rect2 clip = view_get_screen_rect(app, view);
+    if ( in_range_inclusive(0, clip.x0, 1500) )
+        return 1;
+    else 
+        return 2;
 }
 
 internal View_ID
-get_next_view_looped_primary_panels(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
+get_other_primary_view(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
 {
-    View_ID view_id = start_view;
+    i32 current_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
+    View_ID view = start_view;
     do
     {
-        view_id = get_next_view_looped_all_panels(app, view_id, access);
-        if (!view_get_is_passive(app, view_id))
+        view = get_next_view_looped_all_panels(app, view, access);
+        if (!view_is_passive(app, view) && 
+            hax_guess_which_monitor_the_view_is_in(app, view) == current_monitor)
         {
             break;
         }
-    } 
-    while(view_id != start_view);
+    } while(view != start_view);
    
-    // note(kv): vsplit path
-    if (view_id == start_view &&
-        vsplit_if_fail)
-    {
-        view_id = open_view(app, start_view, ViewSplit_Right);
-        new_view_settings(app, view_id);
+    if (view == start_view && vsplit_if_fail)
+    {// NOTE(kv): vsplit
+        view = open_view(app, start_view, ViewSplit_Right);
+        new_view_settings(app, view);
     }
     
-    return(view_id);
+    return(view);
 }
 
+internal b32
+is_view_to_the_right(App *app, View_ID view)
+{
+    v1 this_x0 = view_get_screen_rect(app, view).x0;
+    View_ID other_view = get_other_primary_view(app, view, Access_Always, false);
+    if (other_view)
+    {
+        v1 other_x0 = view_get_screen_rect(app, other_view).x0;
+        return (other_x0 < this_x0);
+    }
+    return false;
+}
 function View_ID
-get_prev_view_looped_primary_panels(Application_Links *app, View_ID start_view_id, Access_Flag access){
+get_prev_view_looped_primary_panels(App *app, View_ID start_view_id, Access_Flag access)
+{
     View_ID view_id = start_view_id;
     do{
         view_id = get_prev_view_looped_all_panels(app, view_id, access);
-        if (!view_get_is_passive(app, view_id)){
+        if (!view_is_passive(app, view_id)){
             break;
         }
     }while(view_id != start_view_id);
     return(view_id);
 }
 
+#if 0
 function View_ID
 get_next_view_after_active(App *app, Access_Flag access, b32 vsplit_if_fail)
 {
@@ -271,6 +245,7 @@ get_next_view_after_active(App *app, Access_Flag access, b32 vsplit_if_fail)
     }
     return(view);
 }
+#endif
 
 ////////////////////////////////
 
@@ -339,9 +314,10 @@ ui_fallback_command_dispatch(Application_Links *app, View_ID view, User_Input *i
 ////////////////////////////////
 
 function void
-view_buffer_set(Application_Links *app, Buffer_ID *buffers, i64 *positions, i32 count)
+view_buffer_set(App *app, Buffer_ID *buffers, i64 *positions, i32 count)
 {
-    if (count > 0){
+    if (count > 0)
+    {
         Scratch_Block scratch(app);
         
         struct View_Node{
@@ -351,9 +327,9 @@ view_buffer_set(Application_Links *app, Buffer_ID *buffers, i64 *positions, i32 
         
         View_ID active_view_id = get_active_view(app, Access_Always);
         View_ID first_view_id = active_view_id;
-        if (view_get_is_passive(app, active_view_id))
+        if (view_is_passive(app, active_view_id))
         {
-            first_view_id = get_next_view_looped_primary_panels(app, active_view_id, Access_Always, false);
+            first_view_id = get_other_primary_view(app, active_view_id, Access_Always, false);
         }
         
         View_ID view_id = first_view_id;
@@ -366,8 +342,9 @@ view_buffer_set(Application_Links *app, Buffer_ID *buffers, i64 *positions, i32 
         primary_view_last->next = 0;
         primary_view_last->view_id = view_id;
         available_view_count += 1;
-        for (;;){
-            view_id = get_next_view_looped_primary_panels(app, view_id, Access_Always, false);
+        for (;;)
+        {
+            view_id = get_other_primary_view(app, view_id, Access_Always, false);
             if (view_id == first_view_id){
                 break;
             }
@@ -379,7 +356,7 @@ view_buffer_set(Application_Links *app, Buffer_ID *buffers, i64 *positions, i32 
             available_view_count += 1;
         }
         
-        i32 buffer_set_count = clamp_top(count, available_view_count);
+        i32 buffer_set_count = clamp_max(count, available_view_count);
         View_Node *node = primary_view_first;
         for (i32 i = 0; i < buffer_set_count; i += 1, node = node->next){
             if (view_set_buffer(app, node->view_id, buffers[i], 0)){
@@ -392,33 +369,54 @@ view_buffer_set(Application_Links *app, Buffer_ID *buffers, i64 *positions, i32 
 ////////////////////////////////
 
 function void
-change_active_primary_panel_send_command(App *app, Custom_Command_Function *custom_func)
+change_active_primary_view_send_command(App *app, Custom_Command_Function *custom_func)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    view = get_next_view_looped_primary_panels(app, view, Access_Always, true);
-    if (view != 0)
+ View_ID view = get_active_view(app, Access_Always);
+ view = get_other_primary_view(app, view, Access_Always, true);
+ if (view != 0)
+ {
+  view_set_active(app, view);
+ }
+ if (custom_func != 0)
+ {
+  view_enqueue_command_function(app, view, custom_func);
+ }
+}
+
+// TODO(kv): @Incomplete I want it to switch to the "last active" primary panel, if switched from a passive one.
+internal void
+change_active_primary_view(App *app)
+{
+ change_active_primary_view_send_command(app, 0);
+}
+
+internal void
+change_active_monitor(App *app)
+{
+    View_ID start_view = get_active_view(app, Access_Always);
+    i32 start_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
+    View_ID view = start_view;
+    do 
+    {
+        view = get_next_view_looped_all_panels(app, view, Access_Always);
+        if (!view_is_passive(app, view) &&
+            hax_guess_which_monitor_the_view_is_in(app, view) != start_monitor)
+        {
+            break;
+        }
+    } while (view != start_view);
+        
+    if (view != start_view)
     {
         view_set_active(app, view);
     }
-    if (custom_func != 0)
-    {
-        view_enqueue_command_function(app, view, custom_func);
-    }
-}
-
-// CUSTOM_DOC("Change the currently active panel, moving to the panel with the next highest view_id.")
-// NOTE(kv): This is inadequate, I want it to switch to the "last active" primary panel, if switched from a passive one.
-internal void
-change_active_primary_panel(App *app)
-{
-    change_active_primary_panel_send_command(app, 0);
 }
 
 internal void
 toggle_split_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
-    View_ID next_view = get_next_view_looped_primary_panels(app, view, Access_Always, false);
+    View_ID next_view = get_other_primary_view(app, view, Access_Always, false);
     if ( next_view != view )
     {
         global_other_view_buffer = view_get_buffer(app, next_view, Access_Always);
@@ -461,7 +459,7 @@ toggle_bottom_view_command(App *app)
         collapse_bottom_view(app);
         if ( view_is_active(app, global_bottom_view) )
         {
-            change_active_primary_panel(app);
+            change_active_primary_view(app);
         }
     } 
     else
@@ -471,18 +469,9 @@ toggle_bottom_view_command(App *app)
     }
 }
 
-CUSTOM_COMMAND_SIG(change_active_primary_panel_backwards)
-CUSTOM_DOC("Change the currently active panel, moving to the panel with the next lowest view_id.")
-{
-    View_ID view = get_active_view(app, Access_Always);
-    view = get_prev_view_looped_primary_panels(app, view, Access_Always);
-    if (view != 0){
-        view_set_active(app, view);
-    }
-}
-
-CUSTOM_COMMAND_SIG(open_panel_vsplit)
+internal void open_panel_vsplit(App *app);
 CUSTOM_DOC("Create a new panel by vertically splitting the active panel.")
+CUSTOM_COMMAND_SIG(open_panel_vsplit)
 {
     View_ID view = get_active_view(app, Access_Always);
     View_ID new_view = open_view(app, view, ViewSplit_Right);
@@ -491,8 +480,9 @@ CUSTOM_DOC("Create a new panel by vertically splitting the active panel.")
     view_set_buffer(app, new_view, buffer, 0);
 }
 
-CUSTOM_COMMAND_SIG(open_panel_hsplit)
+internal void open_panel_hsplit(App *app);
 CUSTOM_DOC("Create a new panel by horizontally splitting the active panel.")
+CUSTOM_COMMAND_SIG(open_panel_hsplit)
 {
     View_ID view = get_active_view(app, Access_Always);
     View_ID new_view = open_view(app, view, ViewSplit_Bottom);
@@ -681,7 +671,7 @@ CUSTOM_DOC("Clear the theme list")
         global_theme_arena = make_arena_system();
     }
     else{
-        linalloc_clear(&global_theme_arena);
+        arena_free_all(&global_theme_arena);
     }
     
     block_zero_struct(&global_theme_list);
@@ -689,6 +679,8 @@ CUSTOM_DOC("Clear the theme list")
 }
 
 ////////////////////////////////
+
+internal void write_text_input(App *app);
 
 function void
 setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id){
@@ -700,7 +692,7 @@ setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_i
     BindCore(default_try_exit, CoreCode_TryExit);
     BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
     BindMouseWheel(mouse_wheel_scroll);
-    BindMouseWheel(mouse_wheel_change_face_size, KeyCode_Control);
+    BindMouseWheel(mouse_wheel_change_face_size, Key_Code_Control);
     
     SelectMap(file_id);
     ParentMap(global_id);
@@ -1027,7 +1019,7 @@ paint_fade_ranges(Application_Links *app, Text_Layout_ID layout, Buffer_ID buffe
 function void
 clipboard_init_empty(Clipboard *clipboard, u32 history_depth)
 {
-    history_depth = clamp_bot(1, history_depth);
+    history_depth = clamp_min(1, history_depth);
     heap_init(&clipboard->heap, &clipboard->arena);
     clipboard->clip_index = 0;
     clipboard->clip_capacity = history_depth;
@@ -1045,7 +1037,7 @@ clipboard_init(Base_Allocator *allocator, u32 history_depth, Clipboard *clipboar
 function void
 clipboard_clear(Clipboard *clipboard)
 {
-    linalloc_clear(&clipboard->arena);
+    arena_free_all(&clipboard->arena);
     clipboard_init_empty(clipboard, clipboard->clip_capacity);
 }
 
@@ -1078,7 +1070,7 @@ function u32
 clipboard_count(Clipboard *clipboard)
 {
     u32 result = clipboard->clip_index;
-    result = clamp_top(result, clipboard->clip_capacity);
+    result = clamp_max(result, clipboard->clip_capacity);
     return(result);
 }
 
@@ -1253,6 +1245,4 @@ default_post_command(Application_Links *app, Managed_Scope scope)
         }
     }
 }
-
-// BOTTOM
 

@@ -52,7 +52,7 @@ log_parse__event(Log_Parse *parse,
     parse->event_count += 1;
     new_event->src_filename = log_parse__string_code(parse, filename, LogParse_ExternalString);
     new_event->event_name = log_parse__string_code(parse, event_name, LogParse_ExternalString);
-    new_event->line_number = string_to_integer(line_number, 10);
+    new_event->line_number = string_to_u64(line_number, 10);
     new_event->event_number = parse->event_count;
     return(new_event);
 }
@@ -92,10 +92,10 @@ log_parse__tag(Log_Parse *parse, Log_Event *event, String_Const_u8 tag_name, Str
             }
             if (string_match(string_prefix(tag_value, 2), string_u8_litexpr("0x"))){
                 tag_value = string_skip(tag_value, 2);
-                new_tag->value.value_s = (i64)string_to_integer(tag_value, 16);
+                new_tag->value.value_s = (i64)string_to_u64(tag_value, 16);
             }
             else{
-                new_tag->value.value_s = (i64)string_to_integer(tag_value, 10);
+                new_tag->value.value_s = (i64)string_to_u64(tag_value, 10);
             }
             if (is_negative){
                 new_tag->value.value_s = -new_tag->value.value_s;
@@ -447,7 +447,7 @@ log_graph_fill(Application_Links *app, Rect_f32 layout_region, Face_ID face_id){
         log_graph.tab = LogTab_Filters;
         
         f32 details_h = rect_height(layout_region)*.22f;
-        details_h = clamp_top(details_h, 250.f);
+        details_h = clamp_max(details_h, 250.f);
         
         Rect_f32 details_region = Rf32(layout_region.x0, layout_region.y0,
                                        layout_region.x1, layout_region.y0 + details_h);
@@ -625,7 +625,7 @@ log_graph_fill(Application_Links *app, Rect_f32 layout_region, Face_ID face_id){
                 y_cursor += box_h;
             }
             
-            log_graph.max_y_scroll = clamp_bot(line_height, y_bottom - rect_height(event_list_region)*0.5f);
+            log_graph.max_y_scroll = clamp_min(line_height, y_bottom - rect_height(event_list_region)*0.5f);
         }
     }
 }
@@ -636,7 +636,7 @@ log_parse_fill(Application_Links *app, Buffer_ID buffer){
         log_arena = make_arena_system();
     }
     
-    linalloc_clear(&log_arena);
+    arena_free_all(&log_arena);
     block_zero_struct(&log_graph);
     log_filter_set_init(&log_filter_set);
     log_filter_set_init(&log_preview_set);
@@ -691,7 +691,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
         log_graph.selected_event = selected_event;
         
         Mouse_State mouse = get_mouse_state(app);
-        Vec2_f32 m_p = V2(mouse.p) - inner.p0;
+        Vec2_f32 m_p = vec2(mouse.p) - inner.p0;
         
         Face_Metrics metrics = get_face_metrics(app, log_graph.face_id);
         f32 line_height = metrics.line_height;
@@ -744,7 +744,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             }
             
             
-            Vec2_f32 p = V2(box_inner.x0 + 3.f,
+            Vec2_f32 p = vec2(box_inner.x0 + 3.f,
                                (f32_round32((box_inner.y0 + box_inner.y1 - line_height)*0.5f)));
             draw_fancy_line(app, log_graph.face_id, fcolor_zero(), &line, p);
         }
@@ -781,7 +781,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                             }break;
                         }
                         
-                        Vec2_f32 p = V2(x_cursor, y_cursor);
+                        Vec2_f32 p = vec2(x_cursor, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id,
                                                          &line);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
@@ -831,7 +831,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                             push_fancy_stringf(scratch, &line, f_white, "]");
                         }
                         
-                        Vec2_f32 p = V2(box_inner.x0 + 3.f, y_cursor);
+                        Vec2_f32 p = vec2(box_inner.x0 + 3.f, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id,
                                                          &line);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
@@ -863,9 +863,9 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                     push_fancy_stringf(scratch, &line, f_white, "%.*s:", string_expand(filename));
                     push_fancy_stringf(scratch, &line, f_pink, "%llu", view_event->line_number);
                     
-                    Vec2_f32 right_p = V2(box_inner.x1 - 3.f, y_cursor);
+                    Vec2_f32 right_p = vec2(box_inner.x1 - 3.f, y_cursor);
                     f32 width = get_fancy_line_width(app, log_graph.face_id, &line);
-                    Vec2_f32 p = V2(right_p.x - width, right_p.y);
+                    Vec2_f32 p = vec2(right_p.x - width, right_p.y);
                     draw_fancy_line(app, log_graph.face_id, fcolor_zero(), &line, p);
                 }
                 
@@ -879,9 +879,9 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                         Fancy_Line line = {};
                         log_graph_render__tag(scratch, &line, &log_parse, tag);
                         
-                        Vec2_f32 right_p = V2(box_inner.x1 - 3.f, y_cursor);
+                        Vec2_f32 right_p = vec2(box_inner.x1 - 3.f, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id, &line);
-                        Vec2_f32 p = V2(right_p.x - width, right_p.y);
+                        Vec2_f32 p = vec2(right_p.x - width, right_p.y);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
                                         &line, p);
                         
@@ -943,7 +943,7 @@ log_graph__get_box_at_point(Log_Graph *graph, Vec2_f32 p){
 internal Log_Graph_Box*
 log_graph__get_box_at_mouse_point(Application_Links *app, Log_Graph *graph){
     Mouse_State mouse = get_mouse_state(app);
-    Vec2_f32 m_p = V2(mouse.p) - graph->layout_region.p0;
+    Vec2_f32 m_p = vec2(mouse.p) - graph->layout_region.p0;
     return(log_graph__get_box_at_point(graph, m_p));
 }
 
@@ -972,7 +972,7 @@ log_graph__click_jump_to_event_source(App *app, Vec2_f32 m_p)
             Log_Event *event = box_node->event;
             log_graph.selected_event = event;
             
-            View_ID target_view = get_next_view_looped_primary_panels(app, log_view, Access_ReadVisible, true);
+            View_ID target_view = get_other_primary_view(app, log_view, Access_ReadVisible, true);
             if (target_view != 0){
                 String8 filename = log_parse__get_string(&log_parse, event->src_filename);
                 Buffer_ID target_buffer = get_buffer_by_filename(app, filename, Access_Always);
@@ -1010,7 +1010,7 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
     View_Context_Block ctx_block(app, view, &ctx);
     
     for (;;){
-        User_Input in = get_next_input(app, EventPropertyGroup_AnyUserInput, KeyCode_Escape);
+        User_Input in = get_next_input(app, EventPropertyGroup_AnyUserInput, Key_Code_Escape);
         if (in.abort){
             view = 0;
             break;
@@ -1021,12 +1021,12 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
             case InputEventKind_KeyStroke:
             {
                 switch (in.event.key.code){
-                    case KeyCode_PageUp:
+                    case Key_Code_PageUp:
                     {
                         log_graph.y_scroll -= get_page_jump(app, view);
                     }break;
                     
-                    case KeyCode_PageDown:
+                    case Key_Code_PageDown:
                     {
                         log_graph.y_scroll += get_page_jump(app, view);
                     }break;
@@ -1040,7 +1040,7 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
             
             case InputEventKind_MouseButton:
             {
-                Vec2_f32 m_p = V2(in.event.mouse.p) - log_graph.layout_region.p0;
+                Vec2_f32 m_p = vec2(in.event.mouse.p) - log_graph.layout_region.p0;
                 switch (in.event.mouse.code){
                     case MouseCode_Left:
                     {

@@ -84,12 +84,19 @@ kv_token_at_cursor(Application_Links *app, i64 delta=0)
 }
 
 internal Token_Iterator_Array
-kv_token_it_at_cursor(Application_Links *app, i64 delta=0)
+token_it_at_cursor_delta(App *app, i64 delta)
 {
   GET_VIEW_AND_BUFFER;
   Token_Array tokens = get_token_array_from_buffer(app, buffer);
   i64 pos = view_get_cursor_pos(app, view) + delta;
   return token_iterator_pos(0, &tokens, pos);
+}
+
+// NOTE: This is an API function
+internal Token_Iterator_Array
+token_it_at_cursor(App *app)
+{
+ return token_it_at_cursor_delta(app, 0);
 }
 
 ////////////////////////////////
@@ -158,7 +165,7 @@ character_predicate_from_character(u8 character){
     return(predicate);
 }
 
-#define character_predicate_check_character(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
+#define character_predicate_check(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
 
 function Character_Predicate
 character_predicate_or(Character_Predicate *a, Character_Predicate *b){
@@ -212,7 +219,7 @@ buffer_seek_character_class_change__inner(Application_Links *app, Buffer_ID buff
 }
 
 function i64
-buffer_seek_character_class_change_1_0(Application_Links *app, Buffer_ID buffer, Character_Predicate *predicate, Scan_Direction direction, i64 start_pos){
+buffer_seek_character_class_change_1_0(App *app, Buffer_ID buffer, Character_Predicate *predicate, Scan_Direction direction, i64 start_pos){
     Character_Predicate negative = character_predicate_not(predicate);
     return(buffer_seek_character_class_change__inner(app, buffer, predicate, &negative, direction, start_pos));
 }
@@ -242,7 +249,7 @@ view_move_buffer_point(Application_Links *app, View_ID view, Buffer_Point buffer
     delta += buffer_point.pixel_shift;
     Line_Shift_Vertical shift = view_line_shift_y(app, view, buffer_point.line_number, delta.y);
     buffer_point.line_number = shift.line;
-    buffer_point.pixel_shift = V2(delta.x, delta.y - shift.y_delta);
+    buffer_point.pixel_shift = vec2(delta.x, delta.y - shift.y_delta);
     return(buffer_point);
 }
 
@@ -414,8 +421,9 @@ get_line_start(Application_Links *app, Buffer_ID buffer, i64 line_number){
     return(get_line_side(app, buffer, line_number, Side_Min));
 }
 function i64
-get_line_start_pos(Application_Links *app, Buffer_ID buffer, i64 line_number){
-    return(get_line_side_pos(app, buffer, line_number, Side_Min));
+get_line_start_pos(Application_Links *app, Buffer_ID buffer, i64 line_number)
+{
+ return(get_line_side_pos(app, buffer, line_number, Side_Min));
 }
 
 // NOTE(allen): The position returned has the index of the terminating LF.
@@ -464,7 +472,7 @@ make_range_from_cursors(Range_Cursor range){
 }
 
 function i64
-get_line_side_pos_from_pos(Application_Links *app, Buffer_ID buffer, i64 pos, Side side){
+get_line_side_pos_from_pos(App *app, Buffer_ID buffer, i64 pos, Side side){
     i64 line_number = get_line_number_from_pos(app, buffer, pos);
     return(get_line_side_pos(app, buffer, line_number, side));
 }
@@ -486,7 +494,8 @@ get_first_token_from_line(Application_Links *app, Buffer_ID buffer, Token_Array 
 ////////////////////////////////
 
 function i64
-scan_any_boundary(Application_Links *app, Boundary_Function *func, Buffer_ID buffer, Scan_Direction direction, i64 pos){
+scan_any_boundary(App *app, Boundary_Function *func, Buffer_ID buffer, Scan_Direction direction, i64 pos)
+{
     i64 a = func(app, buffer, Side_Min, direction, pos);
     i64 b = func(app, buffer, Side_Max, direction, pos);
     i64 result = 0;
@@ -499,14 +508,16 @@ scan_any_boundary(Application_Links *app, Boundary_Function *func, Buffer_ID buf
     return(result);
 }
 
-function i64
-scan(Application_Links *app, Boundary_Function *func, Buffer_ID buffer, Scan_Direction direction, i64 pos){
-    Side side = (direction == Scan_Forward)?(Side_Max):(Side_Min);
-    return(func(app, buffer, side, direction, pos));
+internal i64
+scan(App *app, Boundary_Function *func, Buffer_ID buffer, Scan_Direction direction, i64 pos)
+{
+    Side side = (direction == Scan_Forward) ? (Side_Max) : (Side_Min);
+    return (func(app, buffer, side, direction, pos));
 }
 
 function i64
-scan(Application_Links *app, Boundary_Function_List funcs, Buffer_ID buffer, Scan_Direction direction, i64 start_pos){
+scan_list(App *app, Boundary_Function_List funcs, Buffer_ID buffer, Scan_Direction direction, i64 start_pos)
+{
     i64 result = 0;
     if (direction == Scan_Forward){
         i64 size = buffer_get_size(app, buffer);
@@ -561,7 +572,8 @@ push_boundary_list__inner(Arena *arena, ...){
 #define push_boundary_list(a,...) push_boundary_list__inner((a), __VA_ARGS__, 0)
 
 function i64
-boundary_predicate(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos, Character_Predicate *predicate){
+boundary_predicate(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos, Character_Predicate *predicate)
+{
     i64 result = 0;
     switch (side){
         case Side_Min:
@@ -604,49 +616,47 @@ boundary_base16(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direct
 }
 
 function i64
-boundary_alpha_numeric(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
-    return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alpha_numeric));
+boundary_alnum(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos)
+{
+    return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alnum));
 }
 
 function i64
-boundary_alpha_numeric_unicode(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
-    return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alpha_numeric_utf8));
+boundary_alnum_unicode(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
+    return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alnum_utf8));
 }
 
 function i64
-boundary_alpha_numeric_underscore(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
-    return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alpha_numeric_underscore));
+boundary_alnum_underscore(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
+    return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alnum_underscore));
 }
 
 function i64
-boundary_alpha_numeric_underscore_utf8(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
-    return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alpha_numeric_underscore_utf8));
+boundary_alnum_underscore_utf8(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
+    return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alnum_underscore_utf8));
 }
 
 function i64
-boundary_alpha_numeric_camel(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
-    i64 an_pos = boundary_alpha_numeric(app, buffer, side, direction, pos);
+boundary_alnum_camel(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos)
+{
+    i64 an_pos = boundary_alnum(app, buffer, side, direction, pos);
     String_Match m = buffer_seek_character_class(app, buffer, &character_predicate_uppercase, direction, pos);
     i64 cap_pos = m.range.min;
-    if (side == Side_Max){
-        i64 an_left_pos = boundary_alpha_numeric(app, buffer, flip_side(side), flip_direction(direction), an_pos);
-        if (cap_pos == an_left_pos){
+    if (side == Side_Max)
+    {
+        i64 an_left_pos = boundary_alnum(app, buffer, flip_side(side), flip_direction(direction), an_pos);
+        if (cap_pos == an_left_pos)
+        {
             m = buffer_seek_character_class(app, buffer, &character_predicate_uppercase, direction, cap_pos);
             cap_pos = m.range.min;
         }
     }
-    i64 result = 0;
-    if (direction == Scan_Backward){
-        result = Max(an_pos, cap_pos);
-    }
-    else{
-        result = Min(an_pos, cap_pos);
-    }
-    return(result);
+    if (direction == Scan_Backward) { return Max(an_pos, cap_pos); }
+    else                            { return Min(an_pos, cap_pos); }
 }
 
 function i64
-boundary_inside_quotes(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
+boundary_inside_quotes(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
     function Character_Predicate predicate = {};
     function b32 first_call = true;
     if (first_call){
@@ -955,60 +965,51 @@ enclose_pos_base10_colon(Application_Links *app, Buffer_ID buffer, i64 pos){
 }
 
 function Range_i64
-enclose_alpha_numeric(Application_Links *app, Buffer_ID buffer, Range_i64 range){
-    return(enclose_boundary(app, buffer, range, boundary_alpha_numeric));
+enclose_alnum(Application_Links *app, Buffer_ID buffer, Range_i64 range){
+    return(enclose_boundary(app, buffer, range, boundary_alnum));
 }
 function Range_i64
-enclose_pos_alpha_numeric(Application_Links *app, Buffer_ID buffer, i64 pos){
-    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alpha_numeric));
-}
-
-function Range_i64
-enclose_alpha_numeric_unicode(Application_Links *app, Buffer_ID buffer, Range_i64 range){
-    return(enclose_boundary(app, buffer, range, boundary_alpha_numeric_unicode));
-}
-function Range_i64
-enclose_pos_alpha_numeric_unicode(Application_Links *app, Buffer_ID buffer, i64 pos){
-    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alpha_numeric_unicode));
+enclose_pos_alnum(Application_Links *app, Buffer_ID buffer, i64 pos){
+    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alnum));
 }
 
 function Range_i64
-enclose_alpha_numeric_underscore(Application_Links *app, Buffer_ID buffer, Range_i64 range){
-    return(enclose_boundary(app, buffer, range, boundary_alpha_numeric_underscore));
+enclose_alnum_unicode(Application_Links *app, Buffer_ID buffer, Range_i64 range){
+    return(enclose_boundary(app, buffer, range, boundary_alnum_unicode));
 }
 function Range_i64
-enclose_pos_alpha_numeric_underscore(Application_Links *app, Buffer_ID buffer, i64 pos){
-    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alpha_numeric_underscore));
+enclose_pos_alnum_unicode(Application_Links *app, Buffer_ID buffer, i64 pos){
+    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alnum_unicode));
+}
+
+function Range_i64
+enclose_alnum_underscore(Application_Links *app, Buffer_ID buffer, Range_i64 range){
+    return(enclose_boundary(app, buffer, range, boundary_alnum_underscore));
 }
 function Range_i64
-right_enclose_alpha_numeric_underscore(Application_Links *app, Buffer_ID buffer,
+enclose_pos_alnum_underscore(Application_Links *app, Buffer_ID buffer, i64 pos){
+    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alnum_underscore));
+}
+function Range_i64
+right_enclose_alnum_underscore(Application_Links *app, Buffer_ID buffer,
                                        Range_i64 range){
-    return(right_enclose_boundary(app, buffer, range, boundary_alpha_numeric_underscore));
+    return(right_enclose_boundary(app, buffer, range, boundary_alnum_underscore));
 }
 
 function Range_i64
-enclose_alpha_numeric_underscore_utf8(Application_Links *app, Buffer_ID buffer, Range_i64 range){
-    return(enclose_boundary(app, buffer, range, boundary_alpha_numeric_underscore_utf8));
+enclose_alnum_underscore_utf8(Application_Links *app, Buffer_ID buffer, Range_i64 range){
+    return(enclose_boundary(app, buffer, range, boundary_alnum_underscore_utf8));
 }
 function Range_i64
-enclose_pos_alpha_numeric_underscore_utf8(Application_Links *app, Buffer_ID buffer, i64 pos){
-    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alpha_numeric_underscore_utf8));
+enclose_pos_alnum_underscore_utf8(Application_Links *app, Buffer_ID buffer, i64 pos){
+    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alnum_underscore_utf8));
 }
 function Range_i64
-right_enclose_alpha_numeric_underscore_utf8(Application_Links *app, Buffer_ID buffer,
+right_enclose_alnum_underscore_utf8(Application_Links *app, Buffer_ID buffer,
                                             Range_i64 range){
-    return(right_enclose_boundary(app, buffer, range, boundary_alpha_numeric_underscore_utf8));
+    return(right_enclose_boundary(app, buffer, range, boundary_alnum_underscore_utf8));
 }
 
-
-function Range_i64
-enclose_alpha_numeric_camel(Application_Links *app, Buffer_ID buffer, Range_i64 range){
-    return(enclose_boundary(app, buffer, range, boundary_alpha_numeric_camel));
-}
-function Range_i64
-enclose_pos_alpha_numeric_camel(Application_Links *app, Buffer_ID buffer, i64 pos){
-    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alpha_numeric_camel));
-}
 
 function Range_i64
 enclose_pos_inside_quotes(Application_Links *app, Buffer_ID buffer, i64 pos){
@@ -1025,33 +1026,6 @@ enclose_pos_whole_lines(Application_Links *app, Buffer_ID buffer, i64 pos){
 }
 
 ////////////////////////////////
-
-function Range_i64
-get_snipe_range(Application_Links *app, Boundary_Function_List funcs, Buffer_ID buffer, i64 pos, Scan_Direction direction){
-    Range_i64 result = {};
-    i64 buffer_size = buffer_get_size(app, buffer);
-    i64 pos0 = pos;
-    i64 pos1 = scan(app, funcs, buffer, direction, pos0);
-    if (0 <= pos1 && pos1 <= buffer_size){
-        i64 pos2 = scan(app, funcs, buffer, flip_direction(direction), pos1);
-        if (0 <= pos2 && pos2 <= buffer_size){
-            if (direction == Scan_Backward){
-                pos2 = clamp_bot(pos2, pos0);
-            }
-            else{
-                pos2 = clamp_top(pos2, pos0);
-            }
-            result = Ii64(pos1, pos2);
-        }
-    }
-    return(result);
-}
-
-function Range_i64
-get_snipe_range(Application_Links *app, Boundary_Function *func, Buffer_ID buffer, i64 pos, Scan_Direction direction){
-    Scratch_Block scratch(app);
-    return(get_snipe_range(app, push_boundary_list(scratch, func), buffer, pos, direction));
-}
 
 ////////////////////////////////
 
@@ -1089,7 +1063,7 @@ push_buffer_selected_range(App *app, Arena *arena, Buffer_ID buffer)
     return push_buffer_range(app, arena, buffer, range);
 }
 
-function String8
+function String
 push_token_lexeme(App *app, Arena *arena, Buffer_ID buffer, Token *token){
     return(push_buffer_range(app, arena, buffer, Ii64(token)));
 }
@@ -1208,8 +1182,9 @@ function u8
 buffer_get_char(App *app, Buffer_ID buffer_id, i64 pos)
 {
     i64 buffer_size = buffer_get_size(app, buffer_id);
-    u8 result = ' ';
-    if (0 <= pos && pos < buffer_size){
+    u8 result = 0;
+    if (0 <= pos && pos < buffer_size)
+    {
         buffer_read_range(app, buffer_id, Ii64(pos, pos + 1), &result);
     }
     return(result);
@@ -1253,7 +1228,7 @@ function i64
 get_pos_past_lead_whitespace(Application_Links *app, Buffer_ID buffer, i64 pos){
     i64 line_number = get_line_number_from_pos(app, buffer, pos);
     i64 result = get_pos_past_lead_whitespace_from_line_number(app, buffer, line_number);
-    result = clamp_bot(pos, result);
+    result = clamp_min(pos, result);
     return(result);
 }
 
@@ -1335,41 +1310,48 @@ get_pos_of_blank_line_grouped(Application_Links *app, Buffer_ID buffer, Scan_Dir
 }
 
 function Indent_Info
-get_indent_info_range(Application_Links *app, Buffer_ID buffer, Range_i64 range, i32 tab_width){
-    Scratch_Block scratch(app);
-    String_Const_u8 s = push_buffer_range(app, scratch, buffer, range);
-    
-    Indent_Info info = {};
-    info.first_char_pos = range.end;
-    info.is_blank = true;
-    info.all_space = true;
-    
-    for (u64 i = 0; i < s.size; i += 1){
-        u8 c = s.str[i];
-        if (!character_is_whitespace(c)){
-            info.is_blank = false;
-            info.all_space = false;
-            info.first_char_pos = range.start + (i64)i;
-            break;
-        }
-        if (c == ' '){
-            info.indent_pos += 1;
-        }
-        else{
-            info.all_space = false;
-        }
-        if (c == '\t'){
-            info.indent_pos += tab_width;
-        }
-    }
-    
-    return(info);
+get_indent_info_range(App *app, Buffer_ID buffer, Range_i64 range, i32 tab_width)
+{
+ Scratch_Block scratch(app);
+ String s = push_buffer_range(app, scratch, buffer, range);
+ 
+ Indent_Info info = {};
+ info.first_char_pos = range.end;
+ info.is_blank = true;
+ info.all_space = true;
+ 
+ for (u64 i = 0; i < s.size; i += 1)
+ {
+  u8 c = s.str[i];
+  if ( !character_is_whitespace(c) )
+  {
+   info.is_blank = false;
+   info.all_space = false;
+   info.first_char_pos = range.start + (i64)i;
+   break;
+  }
+  if (c == ' ')
+  {
+   info.indent_pos += 1;
+  }
+  else
+  {
+   info.all_space = false;
+  }
+  if (c == '\t')
+  {
+   info.indent_pos += tab_width;
+  }
+ }
+ 
+ return(info);
 }
 
 function Indent_Info
-get_indent_info_line_number_and_start(Application_Links *app, Buffer_ID buffer, i64 line_number, i64 line_start, i32 tab_width){
-    i64 end = get_line_side_pos(app, buffer, line_number, Side_Max);
-    return(get_indent_info_range(app, buffer, Ii64(line_start, end), tab_width));
+get_indent_info_line_number_and_start(App *app, Buffer_ID buffer, i64 line_number, i64 line_start, i32 tab_width)
+{
+ i64 end = get_line_side_pos(app, buffer, line_number, Side_Max);
+ return(get_indent_info_range(app, buffer, Ii64(line_start, end), tab_width));
 }
 
 ////////////////////////////////
@@ -1486,7 +1468,7 @@ find_all_matches_all_buffers(App *app, Arena *arena, String_Const_u8_Array match
         for (i32 i = 0; i < match_patterns.count; i += 1){
             Range_i64 range = buffer_range(app, buffer);
             String_Match_List pattern_matches = buffer_find_all_matches(app, arena, buffer, i, range, match_patterns.vals[i],
-                                                                        &character_predicate_alpha_numeric_underscore_utf8, Scan_Forward, false);
+                                                                        &character_predicate_alnum_underscore_utf8, Scan_Forward, false);
             string_match_list_filter_flags(&pattern_matches, must_have_flags, must_not_have_flags);
             if (pattern_matches.count > 0)
             {
@@ -1541,7 +1523,7 @@ match_key_code(User_Input *in, Key_Code key_code){
 }
 
 function b32
-match_core_code(User_Input *in, Key_Code core_code){
+match_core_code(User_Input *in, Core_Code core_code){
     return(match_core_code(&in->event, core_code));
 }
 
@@ -1613,7 +1595,7 @@ query_user_general(Application_Links *app, Query_Bar *bar, b32 force_number, Str
     
     if (init_string.size > 0){
         String_u8 string = Su8(bar->string.str, bar->string.size, bar->string_capacity);
-        string_append(&string, init_string);
+        string_concat(&string, init_string);
         bar->string.size = string.string.size;
     }
     
@@ -1647,16 +1629,16 @@ query_user_general(Application_Links *app, Query_Bar *bar, b32 force_number, Str
         }
         
         if (in.event.kind == InputEventKind_KeyStroke &&
-            (in.event.key.code == KeyCode_Return || in.event.key.code == KeyCode_Tab)){
+            (in.event.key.code == Key_Code_Return || in.event.key.code == Key_Code_Tab)){
             break;
         }
         else if (in.event.kind == InputEventKind_KeyStroke &&
-                 in.event.key.code == KeyCode_Backspace){
+                 in.event.key.code == Key_Code_Backspace){
             bar->string = backspace_utf8(bar->string);
         }
         else if (good_insert){
             String_u8 string = Su8(bar->string.str, bar->string.size, bar->string_capacity);
-            string_append(&string, insert_string);
+            string_concat(&string, insert_string);
             bar->string.size = string.string.size;
         }
         else{
@@ -1844,25 +1826,27 @@ get_view_line_height(Application_Links *app, View_ID view){
     return(metrics.line_height);
 }
 
-function View_ID
-open_view(Application_Links *app, View_ID view_location, View_Split_Position position){
+internal View_ID
+open_view(App *app, View_ID view_location, View_Split_Position position)
+{
     View_ID result = 0;
-    if (view_location != 0 && view_exists(app, view_location)){
+    if ( view_exists(app, view_location) )
+    {
         Panel_ID panel_id = view_get_panel(app, view_location);
-        if (panel_id != 0){
-            Dimension split = (position == ViewSplit_Left ||
-                               position == ViewSplit_Right)?Dimension_X:Dimension_Y;
-            Side side = (position == ViewSplit_Left ||
-                         position == ViewSplit_Top)?Side_Min:Side_Max;
-            if (panel_split(app, panel_id, split)){
+        if (panel_id != 0)
+        {
+            Dimension split = ((position == ViewSplit_Left ||
+                                position == ViewSplit_Right) ?
+                               Dimension_X :
+                               Dimension_Y);
+            Side side = ((position == ViewSplit_Left || 
+                          position == ViewSplit_Top) ?
+                         Side_Min :
+                         Side_Max);
+            if ( panel_split(app, panel_id, split) )
+            {
                 Panel_ID new_panel_id = panel_get_child(app, panel_id, side);
-                if (new_panel_id != 0){
-                    View_ID new_view_id = panel_get_view(app, new_panel_id,
-                                                         Access_Always);
-                    if (new_view_id != 0){
-                        result = new_view_id;
-                    }
-                }
+                result = panel_get_view(app, new_panel_id, Access_Always);
             }
         }
     }
@@ -1870,7 +1854,8 @@ open_view(Application_Links *app, View_ID view_location, View_Split_Position pos
 }
 
 function View_ID
-get_first_view_with_buffer(Application_Links *app, Buffer_ID buffer_id){
+get_first_view_with_buffer(App *app, Buffer_ID buffer_id)
+{
     View_ID result = {};
     if (buffer_id != 0){
         for (View_ID test = get_view_next(app, 0, Access_Always);
@@ -2022,9 +2007,11 @@ get_buffer_next_looped(Application_Links *app, Buffer_ID buffer, Access_Flag acc
 ////////////////////////////////
 
 function View_ID
-get_next_view_looped_all_panels(Application_Links *app, View_ID view_id, Access_Flag access){
+get_next_view_looped_all_panels(App *app, View_ID view_id, Access_Flag access)
+{
     view_id = get_view_next(app, view_id, access);
-    if (view_id == 0){
+    if (view_id == 0)
+    {
         view_id = get_view_next(app, 0, access);
     }
     return(view_id);
@@ -2079,27 +2066,76 @@ get_token_from_pos(Application_Links *app, Token_Array *array, u64 pos){
 
 function Token*
 get_token_from_pos(Application_Links *app, Buffer_ID buffer, u64 pos){
-    Token_Array array = get_token_array_from_buffer(app, buffer);
-    return(get_token_from_pos(app, &array, pos));
+ Token_Array array = get_token_array_from_buffer(app, buffer);
+ return(get_token_from_pos(app, &array, pos));
 }
 
-function String_Const_u8
-push_token_or_word_under_pos(Application_Links *app, Arena *arena, Buffer_ID buffer, u64 pos){
-    String_Const_u8 result = {};
-    Token *token = get_token_from_pos(app, buffer, pos);
-    if (token != 0 && token->size > 0 && token->kind != TokenBaseKind_Whitespace){
-        Range_i64 range = Ii64(token);
-        result = push_buffer_range(app, arena, buffer, range);
-    }
-    return(result);
+typedef b32 KV_Character_Predicate(char c);
+
+internal Range_i64
+get_surrounding_characters(App *app, KV_Character_Predicate predicate)
+{
+ GET_VIEW_AND_BUFFER;
+ i64 curpos = view_get_cursor_pos(app, view);
+ 
+ i64 buffer_size = buffer_get_size(app, buffer);
+ i64 min = curpos;
+ i64 max = curpos;
+ //
+ for (i64 pos=curpos; pos < buffer_size; pos++)
+ {
+  u8 character = buffer_get_char(app, buffer, pos);
+  if (predicate(character))
+   max = pos+1;
+  else
+   break;
+ }
+ for (i64 pos=curpos; pos >= 0; pos--)
+ {
+  u8 character = buffer_get_char(app, buffer, pos);
+  if (predicate(character))
+   min = pos;
+  else
+   break;
+ }
+ 
+ if (max > min) 
+  return Range_i64{min, max};
+ else
+  return {};
+}
+
+function String
+push_token_or_word_under_pos(App *app, Arena *arena, Buffer_ID buffer, u64 pos)
+{
+ String result = {};
+ Token *token = get_token_from_pos(app, buffer, pos);
+ Range_i64 range;
+ if (token != 0 && 
+     token->size > 0 && 
+     token->kind != TokenBaseKind_Whitespace &&
+     token->kind != TokenBaseKind_Comment)
+ {
+  range = Ii64(token);
+ }
+ else
+ {
+  range = get_surrounding_characters(app, character_is_alnum);
+ }
+ 
+ result = push_buffer_range(app, arena, buffer, range);
+ 
+ return(result);
 }
 
 function String8
-push_token_or_word_under_active_cursor(Application_Links *app, Arena *arena){
-    View_ID view = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    i64 pos = view_get_cursor_pos(app, view);
-    return(push_token_or_word_under_pos(app, arena, buffer, pos));
+push_token_or_word_under_active_cursor(App *app, Arena *arena)
+{
+ View_ID view = get_active_view(app, Access_Always);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ i64 pos = view_get_cursor_pos(app, view);
+ String result = push_token_or_word_under_pos(app, arena, buffer, pos);
+ return result;
 }
 
 ////////////////////////////////
@@ -2250,7 +2286,7 @@ no_mark_snap_to_cursor_if_shift(App *app, View_ID view_id)
 {
     Scratch_Block scratch(app);
     Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
-    if (set_has_modifier(&mods, KeyCode_Shift))
+    if (set_has_modifier(&mods, Key_Code_Shift))
     {
         no_mark_snap_to_cursor(app, view_id);
     }
@@ -2303,15 +2339,16 @@ seek_pos_of_textual_line(Application_Links *app, Side side){
 }
 
 function void
-seek_pos_of_visual_line(Application_Links *app, Side side){
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    i64 pos = view_get_cursor_pos(app, view);
-    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
-    Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, pos);
-    p.x = (side == Side_Min)?(0.f):(max_f32);
-    i64 new_pos = view_pos_at_relative_xy(app, view, cursor.line, p);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
-    no_mark_snap_to_cursor_if_shift(app, view);
+seek_pos_of_visual_line(Application_Links *app, Side side)
+{
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ i64 pos = view_get_cursor_pos(app, view);
+ Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+ v2 p = view_relative_xy_of_pos(app, view, cursor.line, pos);
+ p.x = (side == Side_Min)?(0.f):(max_f32);
+ i64 new_pos = view_pos_at_relative_xy(app, view, cursor.line, p);
+ view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
+ no_mark_snap_to_cursor_if_shift(app, view);
 }
 
 CUSTOM_COMMAND_SIG(seek_beginning_of_textual_line)
@@ -2326,14 +2363,14 @@ CUSTOM_DOC("Seeks the cursor to the end of the line across all text.")
     seek_pos_of_textual_line(app, Side_Max);
 }
 
-CUSTOM_COMMAND_SIG(seek_beginning_of_line)
-CUSTOM_DOC("Seeks the cursor to the beginning of the visual line.")
+internal void 
+seek_beginning_of_line(App *app)
 {
     seek_pos_of_visual_line(app, Side_Min);
 }
 
-CUSTOM_COMMAND_SIG(seek_end_of_line)
-CUSTOM_DOC("Seeks the cursor to the end of the visual line.")
+internal void 
+seek_end_of_line(App *app)
 {
     seek_pos_of_visual_line(app, Side_Max);
 }
@@ -2529,7 +2566,7 @@ select_scope(Application_Links *app, View_ID view, Range_i64 range){
 function Line_Ending_Kind
 guess_line_ending_kind_from_buffer(Application_Links *app, Buffer_ID buffer){
     u64 size = buffer_get_size(app, buffer);
-    size = clamp_top(size, KB(8));
+    size = clamp_max(size, KB(8));
     Scratch_Block scratch(app);
     String_Const_u8 string = push_buffer_range(app, scratch, buffer, Ii64(0, size));
     return(string_guess_line_ending_kind(string));
@@ -2654,3 +2691,74 @@ view_is_active(App *app, View_ID view)
     View_ID active_view = get_active_view(app, Access_Always);
     return (active_view == view);
 }
+
+function b32
+kv_find_nest_side_paren(App *app, Token_Array *tokens, i64 pos,
+                        Scan_Direction scan, Nest_Delimiter_Kind delim,
+                        i64 *out)
+{
+  if (!(tokens && tokens->count)) return false;
+
+  Range_i64 range = {};
+  b32 nest_found = false;
+  {// b32 result = find_nest_side(app, buffer, pos, flags, scan, delim, &range);
+    Token_Iterator_Array it = token_iterator_pos(0, tokens, pos);
+    i32 level = 0;
+    for (;;)
+    {
+      Token *token = token_it_read(&it);
+      Nest_Delimiter_Kind token_delim_kind = NestDelim_None;
+      //
+      if (token->kind == TokenBaseKind_ParentheticalOpen)
+      {
+        token_delim_kind = NestDelim_Open;
+      }
+      else if (token->kind == TokenBaseKind_ParentheticalClose)
+      {
+        token_delim_kind = NestDelim_Close;
+      }
+            
+      if (level == 0 && token_delim_kind == delim)
+      {
+        range = Ii64_size(token->pos, token->size);
+        nest_found = true;
+        break;
+      }
+      else
+      {
+        if (token_delim_kind != NestDelim_None)
+        {
+          if (token_delim_kind == delim) { level--; }
+          else                           { level++; }
+        }
+            
+        if (scan == Scan_Forward)
+        {
+          if (!token_it_inc(&it))
+          {
+            break;
+          }
+        }
+        else
+        {
+          if (!token_it_dec(&it))
+          {
+            break;
+          }
+        }
+      }
+    }
+  }
+  if (nest_found)
+  {
+    if (delim == NestDelim_Close) { *out = range.end;   }
+    else                          { *out = range.start; }
+  }
+  return(nest_found);
+}
+
+inline void animate_next_frame(App *app)
+{
+    animate_in_n_milliseconds(app, 0);
+}
+

@@ -42,7 +42,7 @@ copy_modifier_set(Arena *arena, Input_Modifier_Set_Fixed *set)
 
 function void
 copy_modifier_set(Input_Modifier_Set_Fixed *dst, Input_Modifier_Set *set){
-    i32 count = clamp_top(set->count, ArrayCountSigned(dst->mods));
+    i32 count = clamp_max(set->count, ArrayCountSigned(dst->mods));
     dst->count = count;
     block_copy(dst->mods, set->mods, count*sizeof(*set->mods));
 }
@@ -129,32 +129,21 @@ has_modifier(Input_Event *event, Key_Code modifier)
     return(set_has_modifier(set, modifier));
 }
 
-// NOTE(kv): @Hack
-internal Key_Code
-is_modifier_key(Key_Code code)
-{
-    return (code == KeyCode_Control ||
-            code == KeyCode_Shift   ||
-            code == KeyCode_Alt     ||
-            code == KeyCode_Command ||
-            code == KeyCode_Menu);
-}
-
-internal Key_Code
+internal Key_Mods
 pack_modifiers(Key_Code *mods, u32 count)
 {
-    Key_Mod result = 0;
-    for_u32 (i,0,count)
-    {
-        Key_Code mod = mods[i];
-        if (0){}
-        else if(mod == KeyCode_Control){ result |= KeyMod_Ctl; }
-        else if(mod == KeyCode_Shift)  { result |= KeyMod_Sft; }
-        else if(mod == KeyCode_Alt)    { result |= KeyMod_Alt; }
-        else if(mod == KeyCode_Command){ result |= KeyMod_Cmd; }
-        else if(mod == KeyCode_Menu)   { result |= KeyMod_Mnu; }
-    }
-    return result;
+ Key_Mod result = (Key_Mod)0;
+ for_u32 (i,0,count)
+ {
+  Key_Code mod = mods[i];
+  if (0){}
+  else if(mod == Key_Code_Control){ result = (Key_Mod)((u32)result|Key_Mod_Ctl); }
+  else if(mod == Key_Code_Shift)  { result = (Key_Mod)((u32)result|Key_Mod_Sft); }
+  else if(mod == Key_Code_Alt)    { result = (Key_Mod)((u32)result|Key_Mod_Alt); }
+  else if(mod == Key_Code_Command){ result = (Key_Mod)((u32)result|Key_Mod_Cmd); }
+  else if(mod == Key_Code_Menu)   { result = (Key_Mod)((u32)result|Key_Mod_Mnu); }
+ }
+ return result;
 }
 
 function b32
@@ -164,10 +153,10 @@ is_unmodified_key(Input_Event *event)
     if (event->kind == InputEventKind_KeyStroke)
     {
         Input_Modifier_Set *set = get_modifiers(event);
-        result = (!set_has_modifier(set, KeyCode_Control) &&
-                  !set_has_modifier(set, KeyCode_Alt) &&
-                  !set_has_modifier(set, KeyCode_Shift) &&
-                  !set_has_modifier(set, KeyCode_Command));
+        result = (!set_has_modifier(set, Key_Code_Control) &&
+                  !set_has_modifier(set, Key_Code_Alt) &&
+                  !set_has_modifier(set, Key_Code_Shift) &&
+                  !set_has_modifier(set, Key_Code_Command));
     }
     return(result);
 }
@@ -246,7 +235,7 @@ get_event_properties(Input_Event *event){
         
         case InputEventKind_KeyStroke:
         {
-            if (event->key.code == KeyCode_Escape){
+            if (event->key.code == Key_Code_Escape){
                 flags |= EventProperty_Escape;
             }
             flags |= EventProperty_AnyKey;
@@ -450,7 +439,7 @@ parse_keyboard_event(Arena *arena, String text)
             if (character_is_base16(text.str[pos]) &&
                 character_is_base16(text.str[pos + 1])){
                 String byte_str = {text.str + pos, 2};
-                result.text.string.str[result.text.string.size] = (u8)string_to_integer(byte_str, 16);
+                result.text.string.str[result.text.string.size] = (u8)string_to_u64(byte_str, 16);
                 result.text.string.size += 1;
             }
         }
@@ -468,8 +457,8 @@ parse_keyboard_event(Arena *arena, String text)
             result.kind = InputEventKind_None;
         }
         else{
-            String_Const_u8 code_str = string_substring(text, range);
-            result.key.code = (u32)string_to_integer(code_str, 16);
+            String code_str = string_substring(text, range);
+            result.key.code = (Key_Code)string_to_u64(code_str, 16);
             
             for (;pos < text.size && character_is_whitespace(text.str[pos]); pos += 1);
             
@@ -497,7 +486,7 @@ parse_keyboard_event(Arena *arena, String text)
                         }
                         
                         code_str = string_substring(text, range);
-                        mods.mods[mods.count] = (u32)string_to_integer(code_str, 16);
+                        mods.mods[mods.count] = (Key_Code)string_to_u64(code_str, 16);
                         mods.count += 1;
                     }
                     

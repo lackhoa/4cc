@@ -57,7 +57,7 @@ hot_directory_fixup(Hot_Directory *hot_directory){
 internal void
 hot_directory_set(Hot_Directory *hot_directory, String_Const_u8 str)
 {
-    linalloc_clear(&hot_directory->arena);
+    arena_free_all(&hot_directory->arena);
     hot_directory->string    = push_string_copy(&hot_directory->arena, str);
     hot_directory->canonical = system_get_canonical(&hot_directory->arena, str);
     hot_directory->file_list = system_get_file_list(&hot_directory->arena, hot_directory->canonical);

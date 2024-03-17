@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 
+#include "4coder_game_shared.h"
 #include "4coder_version.h"
 #include "4coder_events.h"
 
@@ -39,7 +40,6 @@
 #include "generated/system_api.cpp"
 #include "generated/font_api.cpp"
 
-// #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_events.cpp"
 #include "4coder_hash_functions.cpp"
@@ -225,7 +225,7 @@ system_error_box(char *msg){
 
 internal String_Const_u8
 win32_get_error_string(void){
-    String_Const_u8 result = {};
+    String result = {};
     DWORD error = GetLastError();
     char *str = 0;
     char *str_ptr = (char*)&str;
@@ -491,7 +491,7 @@ system_post_clipboard_sig()
     }
     else
     {
-        linalloc_clear(arena);
+        arena_free_all(arena);
     }
     win32vars.clip_post.str = push_array(arena, u8, str.size + 1);
     if (win32vars.clip_post.str != 0)
@@ -686,24 +686,19 @@ os_popup_error(char *title, char *message){
 #include "opengl/4ed_opengl_defines.h"
 #define GL_FUNC(N,R,P) typedef R (CALL_CONVENTION N##_Function)P; N##_Function *N = 0;
 #include "opengl/4ed_opengl_funcs.h"
+//#include "opengl/opencsg_test.cpp"
 #include "opengl/4ed_opengl_render.cpp"
 
 internal graphics_get_texture_return 
 graphics_get_texture(graphics_get_texture_params)
 {
-    return(gl__get_texture(dim, texture_kind));
+    return(ogl__gen_ed_texture(dim, texture_kind));
 }
 
 internal graphics_fill_texture_return
 graphics_fill_texture(graphics_fill_texture_params)
 {
-    return(gl__fill_texture(texture_kind, texture, p, dim, data));
-}
-
-internal graphics_set_game_texture_return
-graphics_set_game_texture(graphics_set_game_texture_params)
-{
-    global_game_texture = texture;
+    return(ogl__fill_texture(texture_kind, texture, p, dim, data));
 }
 
 internal
@@ -720,101 +715,101 @@ global Key_Code keycode_lookup_table[255];
 internal void
 win32_keycode_init(void){
     for (u32 i = 'A'; i <= 'Z'; i += 1){
-        keycode_lookup_table[i] = KeyCode_A + i - 'A';
+        keycode_lookup_table[i] = (Key_Code)((u32)Key_Code_A + i - 'A');
     }
     for (u32 i = '0'; i <= '9'; i += 1){
-        keycode_lookup_table[i] = KeyCode_0 + i - '0';
+        keycode_lookup_table[i] = (Key_Code)((u32)Key_Code_0 + i - '0');
     }
     
-    keycode_lookup_table[VK_SPACE] = KeyCode_Space;
-    keycode_lookup_table[VK_OEM_3] = KeyCode_Tick;
-    keycode_lookup_table[VK_OEM_MINUS] = KeyCode_Minus;
-    keycode_lookup_table[VK_OEM_PLUS] = KeyCode_Equal;
-    keycode_lookup_table[VK_OEM_4] = KeyCode_LeftBracket;
-    keycode_lookup_table[VK_OEM_6] = KeyCode_RightBracket;
-    keycode_lookup_table[VK_OEM_1] = KeyCode_Semicolon;
-    keycode_lookup_table[VK_OEM_7] = KeyCode_Quote;
-    keycode_lookup_table[VK_OEM_COMMA] = KeyCode_Comma;
-    keycode_lookup_table[VK_OEM_PERIOD] = KeyCode_Period;
-    keycode_lookup_table[VK_OEM_2] = KeyCode_ForwardSlash;
-    keycode_lookup_table[VK_OEM_5] = KeyCode_BackwardSlash;
+    keycode_lookup_table[VK_SPACE] = Key_Code_Space;
+    keycode_lookup_table[VK_OEM_3] = Key_Code_Tick;
+    keycode_lookup_table[VK_OEM_MINUS] = Key_Code_Minus;
+    keycode_lookup_table[VK_OEM_PLUS] = Key_Code_Equal;
+    keycode_lookup_table[VK_OEM_4] = Key_Code_LeftBracket;
+    keycode_lookup_table[VK_OEM_6] = Key_Code_RightBracket;
+    keycode_lookup_table[VK_OEM_1] = Key_Code_Semicolon;
+    keycode_lookup_table[VK_OEM_7] = Key_Code_Quote;
+    keycode_lookup_table[VK_OEM_COMMA] = Key_Code_Comma;
+    keycode_lookup_table[VK_OEM_PERIOD] = Key_Code_Period;
+    keycode_lookup_table[VK_OEM_2] = Key_Code_ForwardSlash;
+    keycode_lookup_table[VK_OEM_5] = Key_Code_BackwardSlash;
     
-    keycode_lookup_table[VK_TAB] = KeyCode_Tab;
-    keycode_lookup_table[VK_PAUSE] = KeyCode_Pause;
-    keycode_lookup_table[VK_ESCAPE] = KeyCode_Escape;
+    keycode_lookup_table[VK_TAB] = Key_Code_Tab;
+    keycode_lookup_table[VK_PAUSE] = Key_Code_Pause;
+    keycode_lookup_table[VK_ESCAPE] = Key_Code_Escape;
     
-    keycode_lookup_table[VK_UP] = KeyCode_Up;
-    keycode_lookup_table[VK_DOWN] = KeyCode_Down;
-    keycode_lookup_table[VK_LEFT] = KeyCode_Left;
-    keycode_lookup_table[VK_RIGHT] = KeyCode_Right;
+    keycode_lookup_table[VK_UP] = Key_Code_Up;
+    keycode_lookup_table[VK_DOWN] = Key_Code_Down;
+    keycode_lookup_table[VK_LEFT] = Key_Code_Left;
+    keycode_lookup_table[VK_RIGHT] = Key_Code_Right;
     
-    keycode_lookup_table[VK_BACK] = KeyCode_Backspace;
-    keycode_lookup_table[VK_RETURN] = KeyCode_Return;
+    keycode_lookup_table[VK_BACK] = Key_Code_Backspace;
+    keycode_lookup_table[VK_RETURN] = Key_Code_Return;
     
-    keycode_lookup_table[VK_DELETE] = KeyCode_Delete;
-    keycode_lookup_table[VK_INSERT] = KeyCode_Insert;
-    keycode_lookup_table[VK_HOME] = KeyCode_Home;
-    keycode_lookup_table[VK_END] = KeyCode_End;
-    keycode_lookup_table[VK_PRIOR] = KeyCode_PageUp;
-    keycode_lookup_table[VK_NEXT] = KeyCode_PageDown;
+    keycode_lookup_table[VK_DELETE] = Key_Code_Delete;
+    keycode_lookup_table[VK_INSERT] = Key_Code_Insert;
+    keycode_lookup_table[VK_HOME] = Key_Code_Home;
+    keycode_lookup_table[VK_END] = Key_Code_End;
+    keycode_lookup_table[VK_PRIOR] = Key_Code_PageUp;
+    keycode_lookup_table[VK_NEXT] = Key_Code_PageDown;
     
-    keycode_lookup_table[VK_CAPITAL] = KeyCode_CapsLock;
-    keycode_lookup_table[VK_NUMLOCK] = KeyCode_NumLock;
-    keycode_lookup_table[VK_SCROLL] = KeyCode_ScrollLock;
-    keycode_lookup_table[VK_APPS] = KeyCode_Menu;
+    keycode_lookup_table[VK_CAPITAL] = Key_Code_CapsLock;
+    keycode_lookup_table[VK_NUMLOCK] = Key_Code_NumLock;
+    keycode_lookup_table[VK_SCROLL] = Key_Code_ScrollLock;
+    keycode_lookup_table[VK_APPS] = Key_Code_Menu;
     
-    keycode_lookup_table[VK_SHIFT] = KeyCode_Shift;
-    keycode_lookup_table[VK_LSHIFT] = KeyCode_Shift;
-    keycode_lookup_table[VK_RSHIFT] = KeyCode_Shift;
+    keycode_lookup_table[VK_SHIFT] = Key_Code_Shift;
+    keycode_lookup_table[VK_LSHIFT] = Key_Code_Shift;
+    keycode_lookup_table[VK_RSHIFT] = Key_Code_Shift;
     
-    keycode_lookup_table[VK_CONTROL] = KeyCode_Control;
-    keycode_lookup_table[VK_LCONTROL] = KeyCode_Control;
-    keycode_lookup_table[VK_RCONTROL] = KeyCode_Control;
+    keycode_lookup_table[VK_CONTROL] = Key_Code_Control;
+    keycode_lookup_table[VK_LCONTROL] = Key_Code_Control;
+    keycode_lookup_table[VK_RCONTROL] = Key_Code_Control;
     
-    keycode_lookup_table[VK_MENU] = KeyCode_Alt;
-    keycode_lookup_table[VK_LMENU] = KeyCode_Alt;
-    keycode_lookup_table[VK_RMENU] = KeyCode_Alt;
+    keycode_lookup_table[VK_MENU] = Key_Code_Alt;
+    keycode_lookup_table[VK_LMENU] = Key_Code_Alt;
+    keycode_lookup_table[VK_RMENU] = Key_Code_Alt;
     
-    keycode_lookup_table[VK_F1] = KeyCode_F1;
-    keycode_lookup_table[VK_F2] = KeyCode_F2;
-    keycode_lookup_table[VK_F3] = KeyCode_F3;
-    keycode_lookup_table[VK_F4] = KeyCode_F4;
-    keycode_lookup_table[VK_F5] = KeyCode_F5;
-    keycode_lookup_table[VK_F6] = KeyCode_F6;
-    keycode_lookup_table[VK_F7] = KeyCode_F7;
-    keycode_lookup_table[VK_F8] = KeyCode_F8;
+    keycode_lookup_table[VK_F1] = Key_Code_F1;
+    keycode_lookup_table[VK_F2] = Key_Code_F2;
+    keycode_lookup_table[VK_F3] = Key_Code_F3;
+    keycode_lookup_table[VK_F4] = Key_Code_F4;
+    keycode_lookup_table[VK_F5] = Key_Code_F5;
+    keycode_lookup_table[VK_F6] = Key_Code_F6;
+    keycode_lookup_table[VK_F7] = Key_Code_F7;
+    keycode_lookup_table[VK_F8] = Key_Code_F8;
     
-    keycode_lookup_table[VK_F9] = KeyCode_F9;
-    keycode_lookup_table[VK_F10] = KeyCode_F10;
-    keycode_lookup_table[VK_F11] = KeyCode_F11;
-    keycode_lookup_table[VK_F12] = KeyCode_F12;
-    keycode_lookup_table[VK_F13] = KeyCode_F13;
-    keycode_lookup_table[VK_F14] = KeyCode_F14;
-    keycode_lookup_table[VK_F15] = KeyCode_F15;
-    keycode_lookup_table[VK_F16] = KeyCode_F16;
+    keycode_lookup_table[VK_F9] = Key_Code_F9;
+    keycode_lookup_table[VK_F10] = Key_Code_F10;
+    keycode_lookup_table[VK_F11] = Key_Code_F11;
+    keycode_lookup_table[VK_F12] = Key_Code_F12;
+    keycode_lookup_table[VK_F13] = Key_Code_F13;
+    keycode_lookup_table[VK_F14] = Key_Code_F14;
+    keycode_lookup_table[VK_F15] = Key_Code_F15;
+    keycode_lookup_table[VK_F16] = Key_Code_F16;
     
-    keycode_lookup_table[VK_F17] = KeyCode_F17;
-    keycode_lookup_table[VK_F18] = KeyCode_F18;
-    keycode_lookup_table[VK_F19] = KeyCode_F19;
-    keycode_lookup_table[VK_F20] = KeyCode_F20;
-    keycode_lookup_table[VK_F21] = KeyCode_F21;
-    keycode_lookup_table[VK_F22] = KeyCode_F22;
-    keycode_lookup_table[VK_F23] = KeyCode_F23;
-    keycode_lookup_table[VK_F24] = KeyCode_F24;
+    keycode_lookup_table[VK_F17] = Key_Code_F17;
+    keycode_lookup_table[VK_F18] = Key_Code_F18;
+    keycode_lookup_table[VK_F19] = Key_Code_F19;
+    keycode_lookup_table[VK_F20] = Key_Code_F20;
+    keycode_lookup_table[VK_F21] = Key_Code_F21;
+    keycode_lookup_table[VK_F22] = Key_Code_F22;
+    keycode_lookup_table[VK_F23] = Key_Code_F23;
+    keycode_lookup_table[VK_F24] = Key_Code_F24;
     
-    keycode_lookup_table[VK_NUMPAD0] = KeyCode_NumPad0;
-    keycode_lookup_table[VK_NUMPAD1] = KeyCode_NumPad1;
-    keycode_lookup_table[VK_NUMPAD2] = KeyCode_NumPad2;
-    keycode_lookup_table[VK_NUMPAD3] = KeyCode_NumPad3;
-    keycode_lookup_table[VK_NUMPAD4] = KeyCode_NumPad4;
-    keycode_lookup_table[VK_NUMPAD5] = KeyCode_NumPad5;
-    keycode_lookup_table[VK_NUMPAD6] = KeyCode_NumPad6;
-    keycode_lookup_table[VK_NUMPAD7] = KeyCode_NumPad7;
-    keycode_lookup_table[VK_NUMPAD8] = KeyCode_NumPad8;
-    keycode_lookup_table[VK_NUMPAD9] = KeyCode_NumPad9;
+    keycode_lookup_table[VK_NUMPAD0] = Key_Code_NumPad0;
+    keycode_lookup_table[VK_NUMPAD1] = Key_Code_NumPad1;
+    keycode_lookup_table[VK_NUMPAD2] = Key_Code_NumPad2;
+    keycode_lookup_table[VK_NUMPAD3] = Key_Code_NumPad3;
+    keycode_lookup_table[VK_NUMPAD4] = Key_Code_NumPad4;
+    keycode_lookup_table[VK_NUMPAD5] = Key_Code_NumPad5;
+    keycode_lookup_table[VK_NUMPAD6] = Key_Code_NumPad6;
+    keycode_lookup_table[VK_NUMPAD7] = Key_Code_NumPad7;
+    keycode_lookup_table[VK_NUMPAD8] = Key_Code_NumPad8;
+    keycode_lookup_table[VK_NUMPAD9] = Key_Code_NumPad9;
     
     for (i32 i = 0xDF; i < 0xFF; i += 1){
-        keycode_lookup_table[i] = KeyCode_Ex0 + 1;
+        keycode_lookup_table[i] = (Key_Code)((u32)Key_Code_Ex0 + 1);
     }
 }
 
@@ -853,10 +848,13 @@ keycode_physical_translaion_is_wrong(u64 vk){
 }
 
 internal void
-win32_resize(i32 width, i32 height){
-    if (width > 0 && height > 0){
-        render_target.width = width;
-        render_target.height = height;
+win32_resize_render_target(i32 width, i32 height)
+{
+    if (width > 0 && height > 0)
+    {
+        Render_Target *t = &render_target;
+        t->width  = width;
+        t->height = height;
     }
 }
 
@@ -893,7 +891,7 @@ win32_alloc_object(Win32_Object_Kind kind){
     }
     if (result == 0){
         i32 count = 512;
-        Win32_Object *objects = (Win32_Object*)system_memory_allocate(count*sizeof(Win32_Object), filename_line_number_lit_u8);
+        Win32_Object *objects = (Win32_Object*)system_memory_allocate(count*sizeof(Win32_Object), filename_linum);
         objects[0].node.prev = &win32vars.free_win32_objects;
         win32vars.free_win32_objects.next = &objects[0].node;
         for (i32 i = 1; i < count; i += 1){
@@ -1169,7 +1167,8 @@ system_condition_variable_free_sig(){
 ////////////////////////////////
 
 internal LRESULT CALL_CONVENTION
-win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
+win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
     LRESULT result = 0;
     Scratch_Block scratch(win32vars.tctx);
     
@@ -1191,7 +1190,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
             
             u64 vk = wParam;
             
-            if (win32vars.key_mode == KeyMode_Physical &&
+            if (win32vars.key_mode == Key_Mode_Physical &&
                 !keycode_physical_translaion_is_wrong(vk)){
                 UINT scan_code = ((lParam >> 16) & bitmask_8);
                 vk = MapVirtualKeyEx(scan_code, MAPVK_VSC_TO_VK_EX, win32vars.kl_universal);
@@ -1234,12 +1233,12 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
                 ctrl = false;
                 alt = false;
             }
-            set_modifier(mods, KeyCode_Control, ctrl);
-            set_modifier(mods, KeyCode_Alt, alt);
+            set_modifier(mods, Key_Code_Control, ctrl);
+            set_modifier(mods, Key_Code_Alt, alt);
             
             {
                 b8 shift = ((GetKeyState(VK_SHIFT) & bit_16) != 0);
-                set_modifier(mods, KeyCode_Shift, shift);
+                set_modifier(mods, Key_Code_Shift, shift);
             }
             
             Key_Code key = keycode_lookup_table[(u8)vk];
@@ -1329,7 +1328,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
         
         case WM_MOUSEMOVE:
         {
-            v2i new_m = V2i(LOWORD(lParam), HIWORD(lParam));
+            v2i new_m = vec2i(LOWORD(lParam), HIWORD(lParam));
             if (new_m != win32vars.input_chunk.pers.mouse){
                 win32vars.input_chunk.pers.mouse = new_m;
                 win32vars.got_useful_event = true;
@@ -1399,7 +1398,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
             i32 new_width = LOWORD(lParam);
             i32 new_height = HIWORD(lParam);
             
-            win32_resize(new_width, new_height);
+            win32_resize_render_target(new_width, new_height);
         }break;
         
         case WM_DISPLAYCHANGE:
@@ -1457,6 +1456,20 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
             win32vars.got_useful_event = true;
         }break;
         
+#if 0 //NOTE: doesn't work because idk
+        case WM_GETMINMAXINFO:
+        {
+            MINMAXINFO* maxInfo = (MINMAXINFO*)lParam;
+            // NOTE: min
+            maxInfo->ptMaxPosition.x = GetSystemMetrics(SM_XVIRTUALSCREEN);
+            maxInfo->ptMaxPosition.y = GetSystemMetrics(SM_YVIRTUALSCREEN);
+            // NOTE: dim
+            maxInfo->ptMaxSize.x = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+            maxInfo->ptMaxSize.y = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+            breakhere;
+        }break;
+#endif
+        
         default:
         {
             result = DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -1482,267 +1495,273 @@ typedef BOOL  (CALL_CONVENTION wglChoosePixelFormatARB_Function)(HDC,i32*,f32*,u
 typedef char* (CALL_CONVENTION wglGetExtensionsStringEXT_Function)();
 typedef VOID  (CALL_CONVENTION wglSwapIntervalEXT_Function)(i32);
 
-global wglCreateContextAttribsARB_Function *wglCreateContextAttribsARB = 0;
-global wglChoosePixelFormatARB_Function *wglChoosePixelFormatARB = 0;
-global wglGetExtensionsStringEXT_Function *wglGetExtensionsStringEXT = 0;
+global wglCreateContextAttribsARB_Function *wglCreateContextAttribsARB;
+global wglChoosePixelFormatARB_Function *wglChoosePixelFormatARB;
+global wglGetExtensionsStringEXT_Function *wglGetExtensionsStringEXT;
 global wglSwapIntervalEXT_Function *wglSwapIntervalEXT = 0;
 
 internal b32
 win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect)
 {
-    HINSTANCE this_instance = GetModuleHandle(0);
-    
-    local_persist b32 srgb_support = false;
-    local_persist b32 register_success = true;
-    local_persist b32 first_call = true;
-    if (first_call)
-    {
-        log_os(" GL bootstrapping...\n");
-        
-        first_call = false;
-        
-        // NOTE(allen): Create the GL bootstrap window
-        log_os(" registering bootstrap class...\n");
-        WNDCLASSW wglclass = {};
-        wglclass.lpfnWndProc = DefWindowProcW;
-        wglclass.hInstance = this_instance;
-        wglclass.lpszClassName = L"wgl-loader";
-        if (RegisterClassW(&wglclass) == 0){
-            register_success = false;
-            goto fail_register;
-        }
-        
-        log_os(" creating bootstrap window...\n");
-        HWND wglwindow = CreateWindowW(wglclass.lpszClassName, L"", 0, 0, 0, 0, 0,
-                                       0, 0, this_instance, 0);
-        if (wglwindow == 0){
-            register_success = false;
-            goto fail_register;
-        }
-        
-        // NOTE(allen): Create the GL bootstrap context
-        log_os(" setting bootstrap pixel format...\n");
-        
-        HDC wgldc = GetDC(wglwindow);
-        
-        PIXELFORMATDESCRIPTOR desired_pixel_format = {};
-        desired_pixel_format.nSize = sizeof(desired_pixel_format);
-        desired_pixel_format.nVersion = 1;
-        desired_pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-        desired_pixel_format.iPixelType = PFD_TYPE_RGBA;
-        desired_pixel_format.cColorBits = 32;
-        desired_pixel_format.cAlphaBits = 8;
-        desired_pixel_format.cDepthBits = 24;
-        desired_pixel_format.iLayerType = PFD_MAIN_PLANE;
-        i32 suggested_pixel_format_index = ChoosePixelFormat(wgldc, &desired_pixel_format);
-        // NOTE(kv): idk why we gotta pass "desired_pixel_format" back in again...
-        if (!SetPixelFormat(wgldc, suggested_pixel_format_index, &desired_pixel_format))
-        {
-            register_success = false;
-            goto fail_register;
-        }
-        
-        log_os(" creating bootstrap GL context...\n");
-        HGLRC wglcontext = wglCreateContext(wgldc);
-        if (wglcontext == 0){
-            register_success = false;
-            goto fail_register;
-        }
-        
-        log_os(" making bootstrap GL context current...\n");
-        if (!wglMakeCurrent(wgldc, wglcontext)){
-            register_success = false;
-            goto fail_register;
-        }
-        
-        // NOTE(allen): Load wgl extensions
-        log_os(" loading wgl extensions...\n");
-        
+ HINSTANCE this_instance = GetModuleHandle(0);
+ 
+ local_persist b32 srgb_support = false;
+ local_persist b32 register_success = true;
+ local_persist b32 first_call = true;
+ if (first_call)
+ {
+  log_os(" GL bootstrapping...\n");
+  
+  first_call = false;
+  
+  // NOTE(allen): Create the GL bootstrap window
+  log_os(" registering bootstrap class...\n");
+  WNDCLASSW wglclass = {};
+  wglclass.lpfnWndProc = DefWindowProcW;
+  wglclass.hInstance = this_instance;
+  wglclass.lpszClassName = L"wgl-loader";
+  if (RegisterClassW(&wglclass) == 0){
+   register_success = false;
+   goto fail_register;
+  }
+  
+  log_os(" creating bootstrap window...\n");
+  HWND wglwindow = CreateWindowW(wglclass.lpszClassName, L"", 0, 0, 0, 0, 0,
+                                 0, 0, this_instance, 0);
+  if (wglwindow == 0){
+   register_success = false;
+   goto fail_register;
+  }
+  
+  // NOTE(allen): Create the GL bootstrap context
+  log_os(" setting bootstrap pixel format...\n");
+  
+  HDC wgldc = GetDC(wglwindow);
+  
+  PIXELFORMATDESCRIPTOR desired_pixel_format = {};
+  desired_pixel_format.nSize = sizeof(desired_pixel_format);
+  desired_pixel_format.nVersion = 1;
+  desired_pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+  desired_pixel_format.iPixelType = PFD_TYPE_RGBA;
+  desired_pixel_format.cColorBits = 32;
+  desired_pixel_format.cAlphaBits = 8;
+  desired_pixel_format.cDepthBits = 24;
+  desired_pixel_format.iLayerType = PFD_MAIN_PLANE;
+  i32 suggested_pixel_format_index = ChoosePixelFormat(wgldc, &desired_pixel_format);
+  // NOTE(kv): idk why we gotta pass "desired_pixel_format" back in again...
+  if (!SetPixelFormat(wgldc, suggested_pixel_format_index, &desired_pixel_format))
+  {
+   register_success = false;
+   goto fail_register;
+  }
+  
+  log_os(" creating bootstrap GL context...\n");
+  HGLRC wglcontext = wglCreateContext(wgldc);
+  if (wglcontext == 0){
+   register_success = false;
+   goto fail_register;
+  }
+  log_os(" making bootstrap GL context current...\n");
+  if (!wglMakeCurrent(wgldc, wglcontext)){
+   register_success = false;
+   goto fail_register;
+  }
+  
+  // NOTE(allen): Load wgl extensions
+  log_os(" loading wgl extensions...\n");
+  
 #define LoadWGL(f,l) Stmnt((f) = (f##_Function*)wglGetProcAddress(#f); \
 (l) = (l) && win32_wgl_good((Void_Func*)(f));)
-        
-        b32 load_success = true;
-        LoadWGL(wglCreateContextAttribsARB, load_success);
-        LoadWGL(wglChoosePixelFormatARB, load_success);
-        LoadWGL(wglGetExtensionsStringEXT, load_success);
-        
-        if (!load_success)
-        {
-            register_success = false;
-            goto fail_register;
-        }
-        
-        log_os(" checking wgl extensions...\n");
-        char *extensions_c = wglGetExtensionsStringEXT();
-        String8 extensions = SCu8((u8*)extensions_c);
-        
-        {
-            String8 s = string_skip_whitespace(extensions);
-            for (;s.size > 0;)
-            {
-                u64 end = string_find_first_whitespace(s);
-                String8 m = string_prefix(s, end);
-                if (string_match(m, str8lit("WGL_EXT_framebuffer_sRGB")) ||
-                    string_match(m, str8lit("WGL_ARB_framebuffer_sRGB")))
-                {
-                    srgb_support = true;
-                }
-                else if (string_match(m, str8lit("WGL_EXT_swap_interval")))
-                {
-                    b32 wgl_swap_interval_ext = true;
-                    LoadWGL(wglSwapIntervalEXT, wgl_swap_interval_ext);
-                    if (!wgl_swap_interval_ext){
-                        wglSwapIntervalEXT = 0;
-                    }
-                }
-                s = string_skip_whitespace(string_skip(s, end));
-            }
-            kv_assert(srgb_support);
-        }
-       
-        // NOTE(allen): Load gl functions
-        log_os(" loading core GL functions...\n");
-        
+  
+  b32 load_success = true;
+  LoadWGL(wglCreateContextAttribsARB, load_success);
+  LoadWGL(wglChoosePixelFormatARB, load_success);
+  LoadWGL(wglGetExtensionsStringEXT, load_success);
+  
+  if (!load_success)
+  {
+   register_success = false;
+   goto fail_register;
+  }
+  
+  log_os(" checking wgl extensions...\n");
+  char *extensions_c = wglGetExtensionsStringEXT();
+  String8 extensions = SCu8((u8*)extensions_c);
+  
+  {
+   String8 s = string_skip_whitespace(extensions);
+   for (;s.size > 0;)
+   {
+    u64 end = string_find_first_whitespace(s);
+    String8 m = string_prefix(s, end);
+    if (string_match(m, str8lit("WGL_EXT_framebuffer_sRGB")) ||
+        string_match(m, str8lit("WGL_ARB_framebuffer_sRGB")))
+    {
+     srgb_support = true;
+    }
+    else if (string_match(m, str8lit("WGL_EXT_swap_interval")))
+    {
+     b32 wgl_swap_interval_ext = true;
+     LoadWGL(wglSwapIntervalEXT, wgl_swap_interval_ext);
+     if (!wgl_swap_interval_ext){
+      wglSwapIntervalEXT = 0;
+     }
+    }
+    s = string_skip_whitespace(string_skip(s, end));
+   }
+   kv_assert(srgb_support);
+  }
+  
+  // NOTE(allen): Load gl functions
+  log_os(" loading core GL functions...\n");
+  
 #define GL_FUNC(f,R,P) LoadWGL(f,load_success);
 #include "opengl/4ed_opengl_funcs.h"
-        
-        if (!load_success){
-            register_success = false;
-            goto fail_register;
-        }
-        
-        // NOTE(allen): Cleanup the GL bootstrap resources
-        log_os(" cleaning up boostrap resources...\n");
-        
-        ReleaseDC(wglwindow, wgldc);
-        DestroyWindow(wglwindow);
-        wglDeleteContext(wglcontext);
-        
-        // NOTE(allen): Register the graphics window class
-        log_os(" registering graphics class...\n");
-        
-        WNDCLASSW wndclass = {};
-        wndclass.style = CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
-        wndclass.lpfnWndProc = win32_proc;
-        wndclass.hIcon = LoadIconW(GetModuleHandle(0), L"main");
-        wndclass.hInstance = this_instance;
-        wndclass.lpszClassName = L"GRAPHICS-WINDOW-NAME";
-        if (RegisterClassW(&wndclass) == 0){
-            register_success = false;
-            goto fail_register;
-        }
-    }
-    fail_register:;
-    
-    b32 result = false;
-    if (register_success)
-    {
-        // NOTE(allen): Create the graphics window
-        log_os(" creating graphics window...\n");
-        
-        HWND wnd = CreateWindowExW(0, L"GRAPHICS-WINDOW-NAME", L"GRAPHICS", style,
-                                   CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
-                                   0, 0, this_instance, 0);
-        
-        *wnd_out = 0;
-        *context_out = 0;
-        if (wnd != 0)
-        {
-            log_os(" setting graphics pixel format...\n");
-            
-            HDC dc = GetDC(wnd);
-            
-            PIXELFORMATDESCRIPTOR pixel_format = {};
-            
-            i32 pixel_attrib_list[] =
-            {
-                /* 0*/WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-                /* 2*/WGL_ACCELERATION_ARB,   WGL_FULL_ACCELERATION_ARB,
-                /* 4*/WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-                /* 6*/WGL_DOUBLE_BUFFER_ARB,  GL_FALSE,
-                /* 8*/WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB,
-                /*10*/WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, GL_TRUE,  // https://youtu.be/SvlirEF-R-4?t=3208
-                /*12*/WGL_RED_BITS_ARB,   8,
-                /*14*/WGL_GREEN_BITS_ARB, 8,
-                /*16*/WGL_BLUE_BITS_ARB,  8,
-                /*18*/WGL_DEPTH_BITS_ARB, 24,
-                0,
-            };
-            if (!srgb_support)
-            {
-                pixel_attrib_list[10] = 0;
-            }
-            
-            i32 suggested_format_index = 0;
-            u32 ignore = 0;
-            HGLRC context = {};
-            i32 context_attrib_list[] = 
-            {
-                /*0*/WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-                /*2*/WGL_CONTEXT_MINOR_VERSION_ARB, 2,
-                /*4*/WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB
-#if GL_DEBUG_MODE
-                |WGL_CONTEXT_DEBUG_BIT_ARB
+  
+  if (!load_success){
+   register_success = false;
+   goto fail_register;
+  }
+  
+  // NOTE(allen): Cleanup the GL bootstrap resources
+  log_os(" cleaning up boostrap resources...\n");
+  
+  ReleaseDC(wglwindow, wgldc);
+  DestroyWindow(wglwindow);
+  wglDeleteContext(wglcontext);
+  
+  // NOTE(allen): Register the graphics window class
+  log_os(" registering graphics class...\n");
+  
+  WNDCLASSW wndclass = {};
+  wndclass.style = CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
+  wndclass.lpfnWndProc = win32_proc;
+  wndclass.hIcon = LoadIconW(GetModuleHandle(0), L"main");
+  wndclass.hInstance = this_instance;
+  wndclass.lpszClassName = L"GRAPHICS-WINDOW-NAME";
+  if (RegisterClassW(&wndclass) == 0){
+   register_success = false;
+   goto fail_register;
+  }
+ }
+ fail_register:;
+ 
+ b32 result = false;
+ if (register_success)
+ {
+  // NOTE(allen): Create the graphics window
+  log_os(" creating graphics window...\n");
+  
+  HWND wnd = CreateWindowExW(0, L"GRAPHICS-WINDOW-NAME", L"GRAPHICS", style,
+                             CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
+                             0, 0, this_instance, 0);
+  
+  *wnd_out = 0;
+  *context_out = 0;
+  if (wnd != 0)
+  {
+   log_os(" setting graphics pixel format...\n");
+   
+   HDC dc = GetDC(wnd);
+   
+   PIXELFORMATDESCRIPTOR pixel_format = {};
+   
+   i32 pixel_attrib_list[] =
+   {
+    /* 0*/WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+    /* 2*/WGL_ACCELERATION_ARB,   WGL_FULL_ACCELERATION_ARB,
+    /* 4*/WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+    /* 6*/WGL_DOUBLE_BUFFER_ARB,  GL_FALSE,
+    /* 8*/WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB,
+    /*10*/WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, GL_TRUE,  // https://youtu.be/SvlirEF-R-4?t=3208
+    /*12*/WGL_RED_BITS_ARB,   8,
+    /*14*/WGL_GREEN_BITS_ARB, 8,
+    /*16*/WGL_BLUE_BITS_ARB,  8,
+    /*18*/WGL_DEPTH_BITS_ARB, 24,
+    0,
+   };
+   if (!srgb_support)
+   {
+    pixel_attrib_list[10] = 0;
+   }
+   
+   i32 suggested_format_index = 0;
+   u32 ignore = 0;
+   HGLRC context = {};
+   i32 context_attrib_list[] = 
+   {
+    /*0*/WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
+    /*2*/WGL_CONTEXT_MINOR_VERSION_ARB, 6,
+    /*4*/WGL_CONTEXT_FLAGS_ARB,
+#if SHIP_MODE
+    0,
+#else
+    WGL_CONTEXT_DEBUG_BIT_ARB,
 #endif
-                ,
-                /*6*/WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-                /*8*/0
-            };
-
-            if (!wglChoosePixelFormatARB(dc, pixel_attrib_list, 0, 1, &suggested_format_index, &ignore))
-            {
-                goto fail_window_init;
-            }
-            
-            DescribePixelFormat(dc, suggested_format_index, sizeof(pixel_format), &pixel_format);
-            if (!SetPixelFormat(dc, suggested_format_index, &pixel_format))
-            {
-                goto fail_window_init;
-            }
-            
-            log_os(" setting graphics attributes...\n");
-            
-            log_os(" creating graphics GL context...\n");
-            context = wglCreateContextAttribsARB(dc, 0, context_attrib_list);
-            if (context == 0)
-            {
-                goto fail_window_init;
-            }
-            
-            log_os(" making graphics GL context current...\n");
-            wglMakeCurrent(dc, context);
-            
-            
-            if (wglSwapIntervalEXT != 0){
-                log_os(" setting swap interval...\n");
-                wglSwapIntervalEXT(1);
-            }
-            *wnd_out = wnd;
-            *context_out = context;
-            result = true;
-            
-            if (false)
-            {// NOTE: Unreachable unless you use goto (omg!)
-                fail_window_init:;
-                DWORD error = GetLastError();
-                ReleaseDC(wnd, dc);
-                DestroyWindow(wnd);
-                SetLastError(error);
-            }
-            else
-            {
-                ReleaseDC(wnd, dc);
-            }
-        }
-    }
-    
-    return(result);
+    /*6*/WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+    /*8*/0
+   };
+   
+   if (!wglChoosePixelFormatARB(dc, pixel_attrib_list, 0, 1, &suggested_format_index, &ignore))
+   {
+    goto fail_window_init;
+   }
+   
+   DescribePixelFormat(dc, suggested_format_index, sizeof(pixel_format), &pixel_format);
+   if (!SetPixelFormat(dc, suggested_format_index, &pixel_format))
+   {
+    goto fail_window_init;
+   }
+   
+   log_os(" setting graphics attributes...\n");
+   
+   log_os(" creating graphics GL context...\n");
+   context = wglCreateContextAttribsARB(dc, 0, context_attrib_list);
+   if (context == 0)
+   {
+    goto fail_window_init;
+   }
+   
+   log_os(" making graphics GL context current...\n");
+   wglMakeCurrent(dc, context);
+   
+   if (wglSwapIntervalEXT != 0){
+    log_os(" setting swap interval...\n");
+    wglSwapIntervalEXT(1);
+   }
+   *wnd_out = wnd;
+   *context_out = context;
+   result = true;
+   
+   if (false)
+   {// NOTE: Unreachable unless you use goto (omg!)
+    fail_window_init:;
+    DWORD error = GetLastError();
+    ReleaseDC(wnd, dc);
+    DestroyWindow(wnd);
+    SetLastError(error);
+   }
+   else
+   {
+    ReleaseDC(wnd, dc);
+   }
+  }
+  
+  if(0)
+  {
+   const GLubyte *version = glGetString(GL_VERSION);
+   breakhere;
+  }
+ }
+ 
+ return(result);
 }
 
 ////////////////////////////////
 
 int CALL_CONVENTION
-WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow){
+WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
     i32 argc = __argc;
     char **argv = __argv;
     
@@ -1815,43 +1834,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     // NOTE(allen): load core
     log_os("Loading 4ed core...\n");
     
-#if 0
-    System_Library core_library = {};
-    App_Functions app = {};
-    {
-        App_Get_Functions *get_funcs = 0;
-        Scratch_Block scratch(win32vars.tctx);
-        
-        List_String_Const_u8 search_list = {};
-        def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
-        
-        String core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.dll"));
-        
-        log_os(" path to core: '%.*s'\n", string_expand(core_path));
-        
-        if (system_load_library(scratch, core_path, &core_library))
-        {
-            get_funcs = (App_Get_Functions*)system_get_proc(core_library, "app_get_functions");
-            if (get_funcs != 0)
-            {
-                app = get_funcs();
-            }
-            else
-            {
-                char msg[] = "Failed to get application code from '4ed_app.dll'.";
-                system_error_box(msg);
-            }
-        }
-        else
-        {
-            char msg[] = "Could not load '4ed_app.dll'. This file should be in the same directory as the main '4ed' executable.";
-            system_error_box(msg);
-        }
-    }
-    
-    log_os(" core loaded\n");
-#endif
-    
     // NOTE(allen): send system vtable to core
     //log_os("Linking vtables...\n");
     
@@ -1898,8 +1880,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     
     log_os(" getting initial settings...\n");
     RECT window_rect = {};
-    if (plat_settings.set_window_size){
-        window_rect.right = plat_settings.window_w;
+    if (plat_settings.set_window_size)
+    {
+        // NOTE(kv): setting negative position for window_rect doesn't work
+        window_rect.right  = plat_settings.window_w;
         window_rect.bottom = plat_settings.window_h;
     }
     else{
@@ -1908,7 +1892,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     }
     AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, false);
     i32 window_style = WS_OVERLAPPEDWINDOW;
-    if (!plat_settings.fullscreen_window && plat_settings.maximize_window){
+    if (plat_settings.maximize_window &&
+        !plat_settings.fullscreen_window)
+    {
         window_style |= WS_MAXIMIZE;
     }
     log_os(" windowed dimensions: %ld, %ld\n"
@@ -1918,14 +1904,30 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
            ((window_style & WS_MAXIMIZE) != 0));
     
     HGLRC window_opengl_context = 0;
-    if (!win32_gl_create_window(&win32vars.window_handle, &window_opengl_context, window_style, window_rect)){
+    if (!win32_gl_create_window(&win32vars.window_handle, &window_opengl_context, window_style, window_rect))
+    {
         exit(1);
+    }
+ 
+    i32 window_width = window_rect.right - window_rect.left;
+    i32 window_height = window_rect.bottom - window_rect.top;
+    if (plat_settings.set_window_pos)
+    {
+        BOOL ok = SetWindowPos(win32vars.window_handle,
+                               0,
+                               /*x*/plat_settings.window_x,
+                               /*y*/plat_settings.window_y,
+                               /*width */window_width,
+                               /*height*/window_height,
+                               /*uFlags*/0
+                               );    
+        kv_assert(ok);
     }
     
     log_os(" window created successfully\n");
     
     GetClientRect(win32vars.window_handle, &window_rect);
-    win32_resize(window_rect.right - window_rect.left, window_rect.bottom - window_rect.top);
+    win32_resize_render_target(window_width, window_height);
     
     // NOTE(allen): Audio Init
     //log_os("Initializing audio...\n");
@@ -1939,24 +1941,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     }
     win32vars.clip_wakeup_timer = system_wake_up_timer_create();
     win32vars.clipboard_sequence = 0;
-    // win32vars.next_clipboard_is_self = 0;
-#if 0
-    if (win32vars.clipboard_sequence == 0){
-        Scratch_Block scratch(win32vars.tctx);
-        win32_post_clipboard(scratch, "", 0);
-        win32vars.clipboard_sequence = GetClipboardSequenceNumber();
-        win32vars.next_clipboard_is_self = 0;
-        if (win32vars.clipboard_sequence == 0){
-            log_os(" failure\n");
-        }
-        else{
-            log_os(" got first sequence number\n");
-        }
-    }
-    else{
-        log_os(" no initial sequence number\n");
-    }
-#endif
     
     log_os("Setting up keyboard layout...\n");
     win32vars.kl_universal = LoadKeyboardLayoutW(L"00000409", 0);
@@ -2017,8 +2001,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     
     u64 timer_start = system_now_time();
     MSG msg;
-    for (;keep_running;){
-        linalloc_clear(&win32vars.frame_arena);
+    for (;keep_running;)
+    {
+        arena_free_all(&win32vars.frame_arena);
         block_zero_struct(&win32vars.input_chunk.trans);
         win32vars.active_key_stroke = 0;
         win32vars.active_text_input = 0;
@@ -2120,7 +2105,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         if (GetCursorPos(&mouse_point) &&
             ScreenToClient(win32vars.window_handle, &mouse_point)){
             Rect_i32 screen = Ri32(0, 0, render_target.width, render_target.height);
-            v2i mp = V2i(mouse_point.x, mouse_point.y);
+            v2i mp = vec2i(mouse_point.x, mouse_point.y);
             win32vars.input_chunk.trans.out_of_window = (!rect_contains_point(screen, mp));
             win32vars.input_chunk.pers.mouse = mp;
         }
@@ -2185,8 +2170,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         }
         
         // NOTE(allen): Switch to New Title
-        if (result.has_new_title){
-            SetWindowText_utf8(scratch, win32vars.window_handle, (u8*)result.title_string);
+        if (result.has_new_title)
+        {
+            SetWindowTextA(win32vars.window_handle, cast(char*)result.title_string);
         }
         
         // NOTE(allen): Switch to New Cursor
@@ -2219,7 +2205,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         
         // NOTE(allen): render
         HDC hdc = GetDC(win32vars.window_handle);
-        gl_render(&render_target);
+        ogl_render(&render_target);
         SwapBuffers(hdc);
         ReleaseDC(win32vars.window_handle, hdc);
         
@@ -2238,7 +2224,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         }
         
         // NOTE(allen): sleep a bit to cool off :)
-		    system_release_global_frame_mutex(win32vars.tctx);
+        system_release_global_frame_mutex(win32vars.tctx);
         
         u64 timer_end = system_now_time();
         u64 end_target = timer_start + frame_useconds;
@@ -2261,13 +2247,3 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 }
 
 #include "win32_utf8.cpp"
-
-#if 0
-// NOTE(allen): In case I want to switch back to a console application at some point.
-int main(int argc, char **argv){
-    HINSTANCE hInstance = GetModuleHandle(0);
-}
-#endif
-
-// BOTTOM
-

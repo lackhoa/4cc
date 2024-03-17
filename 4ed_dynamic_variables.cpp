@@ -228,7 +228,7 @@ lifetime__free_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Key *key, Li
         for (Lifetime_Key_Ref_Node *node = object->key_node_first;
              node != 0;
              node = node->next){
-            i32 one_past_last = clamp_top(ArrayCount(node->keys), object->key_count - key_i);
+            i32 one_past_last = clamp_max(ArrayCount(node->keys), object->key_count - key_i);
             for (i32 j = 0; j < one_past_last; j += 1){
                 if (node->keys[j] == key){
                     delete_point_node = node;
@@ -320,7 +320,7 @@ lifetime__object_free_all_keys(Lifetime_Allocator *lifetime_allocator, Lifetime_
     for (Lifetime_Key_Ref_Node *node = lifetime_object->key_node_first;
          node != 0;
          node = node->next){
-        i32 one_past_last = clamp_top(ArrayCount(node->keys), lifetime_object->key_count - key_i);
+        i32 one_past_last = clamp_max(ArrayCount(node->keys), lifetime_object->key_count - key_i);
         for (i32 i = 0; i < one_past_last; i += 1){
             lifetime__free_key(lifetime_allocator, node->keys[i], lifetime_object);
         }
@@ -339,7 +339,7 @@ lifetime__object_clear_all_keys(Lifetime_Allocator *lifetime_allocator, Lifetime
     for (Lifetime_Key_Ref_Node *node = lifetime_object->key_node_first;
          node != 0;
          node = node->next){
-        i32 one_past_last = clamp_top(ArrayCount(node->keys), lifetime_object->key_count - key_i);
+        i32 one_past_last = clamp_max(ArrayCount(node->keys), lifetime_object->key_count - key_i);
         Lifetime_Key **key_ptr = node->keys;
         for (i32 i = 0; i < one_past_last; i += 1, key_ptr += 1){
             dynamic_workspace_clear_contents(&(*key_ptr)->dynamic_workspace);
@@ -433,7 +433,7 @@ lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, 
     u64 new_memory_size = sizeof(Lifetime_Object*)*count;
     String_Const_u8 new_memory = base_allocate(lifetime_allocator->allocator, new_memory_size);
     new_key->members = (Lifetime_Object**)new_memory.str;
-    block_copy_dynamic_array(new_key->members, object_ptr_array, count);
+    block_copy_count(new_key->members, object_ptr_array, count);
     new_key->count = count;
     dynamic_workspace_init(lifetime_allocator,
                            DynamicWorkspace_Intersected, new_key,

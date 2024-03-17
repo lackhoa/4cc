@@ -46,14 +46,14 @@ global Character_Predicate character_predicate_alpha = { {
         0,   0,   0,   0,   0,   0,   0,   0, 
     } };
 
-global Character_Predicate character_predicate_alpha_numeric = { {
+global Character_Predicate character_predicate_alnum = { {
         0,   0,   0,   0,   0,   0, 255,   3, 
         254, 255, 255,   7, 254, 255, 255,   7, 
         0,   0,   0,   0,   0,   0,   0,   0, 
         0,   0,   0,   0,   0,   0,   0,   0, 
     } };
 
-global Character_Predicate character_predicate_alpha_numeric_underscore = { {
+global Character_Predicate character_predicate_alnum_underscore = { {
         0,   0,   0,   0,   0,   0, 255,   3, 
         254, 255, 255, 135, 254, 255, 255,   7, 
         0,   0,   0,   0,   0,   0,   0,   0, 
@@ -109,14 +109,14 @@ global Character_Predicate character_predicate_utf8_byte = { {
         255, 255, 255, 255, 255, 255, 255, 255, 
     } };
 
-global Character_Predicate character_predicate_alpha_numeric_utf8 = { {
+global Character_Predicate character_predicate_alnum_utf8 = { {
         0,   0,   0,   0,   0,   0, 255,   3, 
         254, 255, 255,   7, 254, 255, 255,   7, 
         255, 255, 255, 255, 255, 255, 255, 255, 
         255, 255, 255, 255, 255, 255, 255, 255, 
     } };
 
-global Character_Predicate character_predicate_alpha_numeric_underscore_utf8 = { {
+global Character_Predicate character_predicate_alnum_underscore_utf8 = { {
         0,   0,   0,   0,   0,   0, 255,   3, 
         254, 255, 255, 135, 254, 255, 255,   7, 
         255, 255, 255, 255, 255, 255, 255, 255, 
@@ -137,11 +137,12 @@ struct Boundary_Function_List{
 
 typedef Range_i64 Enclose_Function(Application_Links *app, Buffer_ID buffer, Range_i64 range);
 
-struct Indent_Info{
-    i64 first_char_pos;
-    i32 indent_pos;
-    b32 is_blank;
-    b32 all_space;
+struct Indent_Info
+{
+ i64 first_char_pos;
+ i32 indent_pos;
+ b32 is_blank;
+ b32 all_space;
 };
 
 ////////////////////////////////

@@ -27,7 +27,7 @@ history__to_node(Node *sentinel, i32 index){
 internal void
 history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table *lookup, Record *record){
     if (lookup->records == 0 || lookup->count == lookup->max){
-        i32 new_max = clamp_bot(1024, lookup->max*2);
+        i32 new_max = clamp_min(1024, lookup->max*2);
         String_Const_u8 new_memory = base_allocate(allocator, sizeof(Record*)*new_max);
         Record **new_records = (Record**)new_memory.str;
         block_copy(new_records, lookup->records, sizeof(*new_records)*lookup->count);
@@ -122,7 +122,7 @@ global_history_get_edit_number(Global_History *global_history){
 internal void
 global_history_adjust_edit_grouping_counter(Global_History *global_history, i32 adjustment){
     i32 original = global_history->edit_grouping_counter;
-    global_history->edit_grouping_counter = clamp_bot(0, global_history->edit_grouping_counter + adjustment);
+    global_history->edit_grouping_counter = clamp_min(0, global_history->edit_grouping_counter + adjustment);
     if (global_history->edit_grouping_counter == 0 && original > 0){
         global_history->edit_number_counter += 1;
     }
@@ -148,7 +148,7 @@ history_is_activated(History *history){
 internal void
 history_free(Thread_Context *tctx, History *history){
     if (history->activated){
-        linalloc_clear(&history->arena);
+        arena_free_all(&history->arena);
         heap_free_all(&history->heap);
         block_zero_struct(history);
     }

@@ -36,48 +36,48 @@ kv_quail_defrule(App *app, char *key, char *insert,
 function b32
 kv_handle_text_insert(App *app, u8 character)
 {
-    assert_defend(arrlen(kv_quail_keystroke_buffer) < 1024, 
-                  {
-                      print_message(app, SCu8("ERROR: 'kv_quail_keystroke_buffer' grown too big!"));
-                      return false;
-                  });
-    
-    GET_VIEW_AND_BUFFER;
-    
-    char* &keybuf = kv_quail_keystroke_buffer;
-    b32 substituted = false;
-    arrput(keybuf, character);
-    
-    // loop to find a match in quail table
-    for (i32 quail_index=0;
-         ( quail_index < arrlen(kv_quail_table) ) && ( !substituted );
-         quail_index++)
-    {
-        KvQuailEntry entry = kv_quail_table[quail_index];
-        i32 keylen = strlen(entry.key);
-        
-        char *keys = keybuf + arrlen(keybuf) - keylen;
-        substituted = ( strncmp(keys, entry.key, keylen) == 0 );
-        if (substituted)
-        {
-            // NOTE(kv): Edit buffer content
-            i64 pos = view_get_cursor_pos(app, view);
-            
-            Range_i64 range = { pos-entry.delete_before, pos + entry.delete_after };
-            buffer_replace_range(app, buffer, range, SCu8(entry.insert));
-            
-            // NOTE(kv): move cursor
-            move_horizontal_lines(app, entry.cursor_index);
-           
-            // NOTE: @Hack to indent the line open brace.
-            if ( strncmp(keys, "[[", 2) == 0 )
-            {
-                auto_indent_line_at_cursor(app);
-            }
-        }
-    }
-    
-    return substituted;
+ assert_defend(arrlen(kv_quail_keystroke_buffer) < 1024, 
+               {
+                print_message(app, SCu8("ERROR: 'kv_quail_keystroke_buffer' grown too big!"));
+                return false;
+               });
+ 
+ GET_VIEW_AND_BUFFER;
+ 
+ char* &keybuf = kv_quail_keystroke_buffer;
+ b32 substituted = false;
+ arrput(keybuf, character);
+ 
+ // loop to find a match in quail table
+ for (i32 quail_index=0;
+      ( quail_index < arrlen(kv_quail_table) ) && ( !substituted );
+      quail_index++)
+ {
+  KvQuailEntry entry = kv_quail_table[quail_index];
+  i32 keylen = strlen(entry.key);
+  
+  char *keys = keybuf + arrlen(keybuf) - keylen;
+  substituted = ( strncmp(keys, entry.key, keylen) == 0 );
+  if (substituted)
+  {
+   // NOTE(kv): Edit buffer content
+   i64 pos = view_get_cursor_pos(app, view);
+   
+   Range_i64 range = { pos-entry.delete_before, pos + entry.delete_after };
+   buffer_replace_range(app, buffer, range, SCu8(entry.insert));
+   
+   // NOTE(kv): move cursor
+   move_horizontal_lines(app, entry.cursor_index);
+   
+   // NOTE: @Hack to indent the line open brace.
+   if (strncmp(keys, "[[", 2) == 0)
+   {
+    auto_indent_line_at_cursor(app);
+   }
+  }
+ }
+ 
+ return substituted;
 }
 
 
@@ -116,13 +116,13 @@ kv_handle_vim_keyboard_input(App *app, Input_Event *event)
        
         {
             Input_Modifier_Set mods = event->key.modifiers;
-            Key_Code modifiers = pack_modifiers(mods.mods, mods.count);
-            code |= modifiers;
+            Key_Code modifiers = cast(Key_Code)pack_modifiers(mods.mods, mods.count);
+            code = (Key_Code)(code|modifiers);
         }
         
         bool handled = false;
         
-        // NOTE: Translate the KeyCode
+        // NOTE: Translate the Key_Code
         if (vim_state.chord_resolved) { vim_keystroke_text.size=0; vim_state.chord_resolved=false; }
         
         b32 was_in_sub_mode = (vim_state.sub_mode != SUB_None);
@@ -183,120 +183,115 @@ kv_handle_vim_keyboard_input(App *app, Input_Event *event)
     else return false;
 }
 
-internal b32 
-kv_handle_game_input_stub(App *app, Input_Event *event)
+// TODO(kv): This key tracking is inaccurate at least in the case when you alt+tab out of the app
+internal void
+update_game_key_states(Input_Event *event)
 {
-    if (event->kind == InputEventKind_KeyStroke)
-    {
-        b32 alt_down = false;
-        for_i32 (index,0,event->key.modifiers.count)
-        {
-            if (event->key.modifiers.mods[index] == KeyCode_Alt)
-            {
-                alt_down = true;
-            }
-        }
-        
-        if (alt_down && event->key.code == KeyCode_Q)
-        {
-            exit_4coder(app);
-            return true;
-        }
-        else return false;
-    }
-    else return false;
+ b32 keydown = (event->kind == InputEventKind_KeyStroke);
+ b32 keyup   = (event->kind == InputEventKind_KeyRelease);
+ if (keydown || keyup)
+ {
+  Key_Code keycode = event->key.code;
+  // NOTE: We have system_get_keyboard_modifiers to track modifier keys already
+  if ( !is_modifier_key(keycode) )
+  {
+   global_game_key_states       [keycode] = keydown;
+   global_game_key_state_changes[keycode]++;
+  }
+ }
 }
 
 internal void
 kv_view_input_handler(App *app)
 {
-    Scratch_Block scratch(app);
-    default_input_handler_init(app, scratch);
-    
-    View_ID view = get_this_ctx_view(app, Access_Always);
-    Managed_Scope scope = view_get_managed_scope(app, view);
-    
-    for (User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
-         !input.abort;
-         input  = get_next_input(app, EventPropertyGroup_Any, 0))
-    {
-        Temp_Memory_Block temp(scratch);
-        
-        if (input.event.kind == InputEventKind_KeyStroke)
-            seconds_since_last_keystroke = 0;
-        
+ Scratch_Block scratch(app);
+ default_input_handler_init(app, scratch);
+ 
+ View_ID view = get_this_ctx_view(app, Access_Always);
+ Managed_Scope scope = view_get_managed_scope(app, view);
+ 
+ for (User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
+      !input.abort;
+      input  = get_next_input(app, EventPropertyGroup_Any, 0))
+ {
+  Temp_Memory_Block temp(scratch);
+  
+  if (input.event.kind == InputEventKind_KeyStroke)
+   seconds_since_last_keystroke = 0;
+  
 #if VIM_USE_BOTTOM_LISTER
-        // Clicking on lister items outside of original view panel is a hack
-        if ((vim_lister_view_id != 0) && 
-            (view != vim_lister_view_id))
-        {
-            view_set_active(app, vim_lister_view_id);
-            leave_current_input_unhandled(app);
-            continue;
-        }
+  // Clicking on lister items outside of original view panel is a hack
+  if ((vim_lister_view_id != 0) && 
+      (view != vim_lister_view_id))
+  {
+   view_set_active(app, vim_lister_view_id);
+   leave_current_input_unhandled(app);
+   continue;
+  }
 #endif
-       
-        ProfileScopeNamed(app, "before view input", view_input_profile);
-        
-        // NOTE(allen): Mouse Suppression
-        Event_Property event_properties = get_event_properties(&input.event);
-        b32 is_mouse_event = event_properties & EventPropertyGroup_AnyMouseEvent;
-        if (!(is_mouse_event && suppressing_mouse))
-        {
-            if (!is_mouse_event && (input.event.kind != InputEventKind_None))
-            {
-                vim_keystroke_text.size = 0;
-                vim_cursor_blink = 0;
-            }
-            
-            // NOTE: Update global key state
-            update_game_key_states(&input.event);
-            
-            b32 is_game_view;
-            {// NOTE: It's a "game view" if we're viewing the game buffer.
-                Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-                String8 bufname  = push_buffer_base_name(app, scratch, buffer);
-                is_game_view = string_match(bufname, GAME_BUFFER_NAME);
-            }
-            
-            b32 handled = false;
-           
-            if ( is_game_view )
-            {
-                // TODO: let's just duplicate the keys that we need.
-                handled = kv_handle_game_input_stub(app, &input.event);
-            }
-            else
-            {// NOTE: the normal text editor
-                handled = kv_handle_vim_keyboard_input(app, &input.event);
-            }
-           
-            if ( !handled )
-            {
-                // NOTE(allen): Get binding
-                if (implicit_map_function == 0)
-                    implicit_map_function = default_implicit_map;
-                
-                Implicit_Map_Result map_result = implicit_map_function(app, 0, 0, &input.event);
-                if ( map_result.command )
-                {
-                    // NOTE(allen): Run the command and pre/post command stuff
-                    default_pre_command(app, scope);
-                    ProfileCloseNow(view_input_profile);
-                    
-                    {
-                        ProfileScope(app, "map_result_command_profile");
-                        map_result.command(app);
-                    }
-                    
-                    ProfileScope(app, "after view input");
-                    default_post_command(app, scope);
-                }
-                else
-                    leave_current_input_unhandled(app);
-            }
-        }
+  
+  ProfileScopeNamed(app, "before view input", view_input_profile);
+  
+  // NOTE(allen): Mouse Suppression
+  Event_Property event_properties = get_event_properties(&input.event);
+  b32 is_mouse_event = event_properties & EventPropertyGroup_AnyMouseEvent;
+  if (!(is_mouse_event && suppressing_mouse))
+  {
+   if (!is_mouse_event && (input.event.kind != InputEventKind_None))
+   {
+    vim_keystroke_text.size = 0;
+    vim_cursor_blink = 0;
+   }
+   
+   update_game_key_states(&input.event);
+   
+   b32 is_game_buffer;
+   {
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    is_game_buffer = get_buffer_game_viewport_id(app, buffer);
+   }
+   
+   b32 handled = false;
+   
+   if ( is_game_buffer )
+   {// NOTE: We fallback to the text editor for certain keys
+    if (game_code_valid())
+    {
+     handled = global_game_code.is_key_handled_by_game(app, &input.event);
     }
+   }
+   
+   if (!handled)
+   {// NOTE: The normal text editor
+    handled = kv_handle_vim_keyboard_input(app, &input.event);
+   }
+   
+   if ( !handled )
+   {
+    // NOTE(allen): Get binding
+    if (implicit_map_function == 0)
+     implicit_map_function = default_implicit_map;
+    
+    Implicit_Map_Result map_result = implicit_map_function(app, 0, 0, &input.event);
+    if ( map_result.command )
+    {
+     // NOTE(allen): Run the command and pre/post command stuff
+     default_pre_command(app, scope);
+     ProfileCloseNow(view_input_profile);
+     
+     {
+      ProfileScope(app, "map_result_command_profile");
+      map_result.command(app);
+     }
+     
+     ProfileScope(app, "after view input");
+     default_post_command(app, scope);
+    }
+    else
+     leave_current_input_unhandled(app);
+   }
+  }
+ }
 }
 
 internal void 
@@ -304,13 +299,13 @@ kv_newline_and_indent(App *app)
 {
     GET_VIEW_AND_BUFFER;
     HISTORY_GROUP_SCOPE;
-    write_text(app, str8lit("\n"));
+    write_text(app, str8lit("\n"), true);
     
     i64 curpos = view_get_cursor_pos(app, view);
     u8 character = buffer_get_char(app, buffer, curpos);
     if (character == /*{*/'}')
     {// NOTE: Handling for brace
-        write_text(app, str8lit("\n"));
+        write_text(app, str8lit("\n"), true);
         auto_indent_line_at_cursor(app);
         move_vertical_lines(app, -1);
     }

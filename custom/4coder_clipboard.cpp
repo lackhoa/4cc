@@ -45,70 +45,6 @@ clipboard_update_history_from_system(App *app, i32 clipboard_id)
 
 global List_String_Const_u8 clipboard_collection_list = {};
 
-function void
-clipboard_collection_render(Application_Links *app, Frame_Info frame_info, View_ID view){
-    Scratch_Block scratch(app);
-    Rect_f32 region = draw_background_and_margin(app, view);
-    Vec2_f32 mid_p = (region.p1 + region.p0)*0.5f;
-    
-    Fancy_Block message = {};
-    Fancy_Line *line = push_fancy_line(scratch, &message);
-    push_fancy_string(scratch, line, fcolor_id(defcolor_pop2),
-                      string_u8_litexpr("Collecting all clipboard events "));
-    push_fancy_string(scratch, line, fcolor_id(defcolor_pop1),
-                      string_u8_litexpr("press [escape] to stop"));
-    
-    for (Node_String_Const_u8 *node = clipboard_collection_list.first;
-         node != 0;
-         node = node->next){
-        line = push_fancy_line(scratch, &message);
-        push_fancy_string(scratch, line, fcolor_id(defcolor_text_default), node->string);
-    }
-    
-    Face_ID face_id = get_face_id(app, 0);
-    Vec2_f32 dim = get_fancy_block_dim(app, face_id, &message);
-    Vec2_f32 half_dim = dim*0.5f;
-    draw_fancy_block(app, face_id, fcolor_zero(), &message, mid_p - half_dim);
-}
-
-CUSTOM_UI_COMMAND_SIG(begin_clipboard_collection_mode)
-CUSTOM_DOC("Allows the user to copy multiple strings from other applications before switching to 4coder and pasting them all.")
-{
-    local_persist b32 in_clipboard_collection_mode = false;
-    if (!in_clipboard_collection_mode){
-        in_clipboard_collection_mode = true;
-        system_set_clipboard_catch_all(true);
-        
-        Scratch_Block scratch(app);
-        block_zero_struct(&clipboard_collection_list);
-        
-        View_ID view = get_this_ctx_view(app, Access_Always);
-        View_Context ctx = view_current_context(app, view);
-        ctx.render_caller = clipboard_collection_render;
-        ctx.hides_buffer = true;
-        View_Context_Block ctx_block(app, view, &ctx);
-        
-        for (;;){
-            User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
-            if (in.abort){
-                break;
-            }
-            if (in.event.kind == InputEventKind_KeyStroke && in.event.key.code == KeyCode_Escape){
-                break;
-            }
-            if (in.event.kind == InputEventKind_Core &&
-                in.event.core.code == CoreCode_NewClipboardContents){
-                String_Const_u8 stable_clip = clipboard_post_internal_only(0, in.event.core.string);
-                string_list_push(scratch, &clipboard_collection_list, stable_clip);
-            }
-        }
-        
-        block_zero_struct(&clipboard_collection_list);
-        
-        system_set_clipboard_catch_all(false);
-        in_clipboard_collection_mode = false;
-    }
-}
 
 CUSTOM_COMMAND_SIG(copy)
 CUSTOM_DOC("Copy the text in the range from the cursor to the mark onto the clipboard.")
@@ -210,26 +146,6 @@ CUSTOM_DOC("If the previous command was paste or paste_next, replaces the paste 
             }
         }
     }
-}
-
-CUSTOM_COMMAND_SIG(paste_and_indent)
-CUSTOM_DOC("Paste from the top of clipboard and run auto-indent on the newly pasted text.")
-{
-    paste(app);
-    auto_indent_range(app);
-}
-
-CUSTOM_COMMAND_SIG(paste_next_and_indent)
-CUSTOM_DOC("Paste the next item on the clipboard and run auto-indent on the newly pasted text.")
-{
-    paste_next(app);
-    auto_indent_range(app);
-}
-
-CUSTOM_COMMAND_SIG(clear_clipboard)
-CUSTOM_DOC("Clears the history of the clipboard")
-{
-    clipboard_clear(0);
 }
 
 ////////////////////////////////
@@ -347,23 +263,23 @@ multi_paste_interactive_up_down(Application_Links *app, i32 paste_count, i32 cli
         if (in.abort) break;
         
         b32 did_modify = false;
-        if (match_key_code(&in, KeyCode_Up)){
+        if (match_key_code(&in, Key_Code_Up)){
             if (paste_count > 1){
                 --paste_count;
                 did_modify = true;
             }
         }
-        else if (match_key_code(&in, KeyCode_Down)){
+        else if (match_key_code(&in, Key_Code_Down)){
             if (paste_count < clip_count){
                 ++paste_count;
                 did_modify = true;
             }
         }
-        else if (match_key_code(&in, KeyCode_R)){
+        else if (match_key_code(&in, Key_Code_R)){
             old_to_new = !old_to_new;
             did_modify = true;
         }
-        else if (match_key_code(&in, KeyCode_Return)){
+        else if (match_key_code(&in, Key_Code_Return)){
             break;
         }
         
@@ -400,7 +316,7 @@ CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled by input
         bar.string_capacity = sizeof(string_space);
         query_user_number(app, &bar);
         
-        i32 initial_paste_count = (i32)string_to_integer(bar.string, 10);
+        i32 initial_paste_count = (i32)string_to_u64(bar.string, 10);
         initial_paste_count = clamp_between(1, initial_paste_count, clip_count);
         end_query_bar(app, &bar, 0);
         

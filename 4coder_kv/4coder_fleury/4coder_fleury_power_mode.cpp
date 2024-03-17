@@ -368,6 +368,6 @@ F4_PowerMode_RenderWholeScreen(Application_Links *app, Frame_Info frame_info)
         Face_ID face_id = get_face_id(app, 0);
         String_Const_u8 string = push_stringf(scratch, "CPM: %.2f", F4_PowerMode_ActiveCharactersPerMinute());
         f32 advance = get_string_advance(app, face_id, string);
-        draw_string(app, face_id, string, V2(rect.x1 - advance, rect.y0), 0xffffffff);
+        draw_string(app, face_id, string, vec2(rect.x1 - advance, rect.y0), 0xffffffff);
     }
 }

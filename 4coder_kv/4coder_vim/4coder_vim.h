@@ -15,10 +15,9 @@ global Vim_Text_Object vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + VIM_ADDITI
 
 global Vim_Global_Mark vim_global_marks[26];
 
-global u8 vim_bot_buffer[256];
-global String_u8 vim_bot_text = Su8(vim_bot_buffer, 0, ArrayCount(vim_bot_buffer));
+global u8        vim_bottom_buffer[256];
+global String_u8 vim_bottom_text = Su8(vim_bottom_buffer, 0, ArrayCount(vim_bottom_buffer));
 global bool vim_is_querying_user_key;
-global bool vim_is_selecting_register;
 
 global u8 vim_keystroke_buffer[64];
 global u64 vim_pre_keystroke_size;
@@ -43,13 +42,28 @@ global Vec2_f32 vim_cur_cursor_pos;
 
 global View_ID vim_lister_view_id;
 
-global f32 vim_nxt_filebar_offset;
-global f32 vim_cur_filebar_offset;
-function Rect_f32 vim_get_bottom_rect(Application_Links *app){
-	Rect_f32 result = global_get_screen_rectangle(app);
-	result.y1 -= 2.f*get_face_metrics(app, get_face_id(app, 0)).line_height;
-	result.y0 = result.y1 - vim_cur_filebar_offset;
-	return result;
+global v1 vim_nxt_lister_offset;
+global v1 vim_cur_lister_offset;
+
+internal rect2
+hax_get_main_monitor_rectangle(App *app)
+{
+    rect2 result = global_get_screen_rectangle(app);
+    v2 dim = rect2_dim(result);
+    if ( dim.x > 1920 )
+    {
+        dim.x -= 1920;
+        result.x0 += 1920;
+    }
+    return result;
+}
+
+function rect2 vim_get_bottom_rect(App *app)
+{
+    rect2 result = hax_get_main_monitor_rectangle(app);
+    result.y1 -= 2.f*get_face_metrics(app, get_face_id(app, 0)).line_height;
+    result.y0 = result.y1 - vim_cur_lister_offset;
+    return result;
 }
 
 struct Vim_Buffer_Peek_Entry{
@@ -75,15 +89,14 @@ CUSTOM_ID(attachment, vim_buffer_prev_visual);
 CUSTOM_ID(attachment, vim_buffer_marks);
 CUSTOM_ID(attachment, vim_view_jumps);
 
-internal void vim_reset_bottom_text() { vim_bot_text.size=0; }
-
+internal void vim_reset_bottom_text() { vim_bottom_text.size=0; }
 
 function void 
 vim_set_bottom_text(String msg)
 {
-    u32 copy_size = clamp_top(msg.size, alen(vim_bot_buffer));
-    block_copy(vim_bot_buffer, msg.str, copy_size);
-    vim_bot_text.size = copy_size;
+    u32 copy_size = clamp_max(msg.size, alen(vim_bottom_buffer));
+    block_copy(vim_bottom_buffer, msg.str, copy_size);
+    vim_bottom_text.size = copy_size;
 }
 
 function i32 vim_consume_number(){
@@ -125,7 +138,8 @@ vim_realloc_string(String_u8 *src, u64 size){
 }
 
 function b32
-vim_register_copy(Vim_Register *dst, String_Const_u8 src){
+vim_register_copy(Vim_Register *dst, String_Const_u8 src)
+{
 	b32 valid = true;
 	if(src.size >= dst->data.cap){ valid = vim_realloc_string(&dst->data, src.size); }
 	if(!valid){ return false; }
@@ -158,10 +172,10 @@ vim_get_register_char(Vim_Register *reg){
 	else if(reg == &r->command){      result = ':'; }
 	else if(reg == &r->file){         result = '%'; }
 	else if(reg == &r->expression){   result = '='; }
-	else if(in_range(r->named, reg, r->named + ArrayCount(r->named))){
+	else if(in_range_exclude_last(r->named, reg, r->named + ArrayCount(r->named))){
 		result = u8(i32('a') + i32(reg - r->named));
 	}
-	else if(in_range(r->digit, reg, r->digit + ArrayCount(r->digit))){
+	else if(in_range_exclude_last(r->digit, reg, r->digit + ArrayCount(r->digit))){
 		result = u8(i32('0') + i32(reg - r->digit));
 	}
 	return result;

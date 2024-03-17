@@ -11,7 +11,7 @@ panel_space_from_screen_space(Vec2_f32 p, Vec2_f32 file_region_p0){
 
 function Vec2_f32
 get_mouse_position_in_panel_space(Mouse_State mouse, Vec2_f32 file_region_p0){
-    return(panel_space_from_screen_space(V2(mouse.p), file_region_p0));
+    return(panel_space_from_screen_space(vec2(mouse.p), file_region_p0));
 }
 
 function Vec2_f32
@@ -31,7 +31,7 @@ lister_get_block_height(f32 line_height){
     return(line_height*2);
 }
 
-function Rect_f32_Pair
+function rect2_Pair
 lister_get_top_level_layout(Rect_f32 rect, f32 text_field_height){
     return(rect_split_top_bottom(rect, text_field_height));
 }
@@ -108,11 +108,11 @@ Lister_Block::operator Lister *(){
 function void
 lister_set_string(String_Const_u8 string, String_u8 *target){
     target->size = 0;
-    string_append(target, string);
+    string_concat(target, string);
 }
 function void
 lister_append_string(String_Const_u8 string, String_u8 *target){
-    string_append(target, string);
+    string_concat(target, string);
 }
 
 function void
@@ -175,6 +175,7 @@ lister_zero_scroll(Lister *lister){
     block_zero_struct(&lister->scroll);
 }
 
+#if 1
 function void
 lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     Scratch_Block scratch(app);
@@ -199,28 +200,28 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     b32 hide_file_bar_in_ui = def_get_config_b32(vars_intern_lit("hide_file_bar_in_ui"));
     if (view_get_setting(app, view, ViewSetting_ShowFileBar, &showing_file_bar) &&
         showing_file_bar && !hide_file_bar_in_ui){
-        Rect_f32_Pair pair = layout_file_bar_on_top(region, line_height);
+        rect2_Pair pair = layout_file_bar_on_top(region, line_height);
         Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
         draw_file_bar(app, view, buffer, face_id, pair.min);
         region = pair.max;
     }
     
     Mouse_State mouse = get_mouse_state(app);
-    Vec2_f32 m_p = V2(mouse.p);
+    v2 m_p = vec2(mouse.p);
     
     lister->visible_count = (i32)((rect_height(region)/block_height)) - 3;
-    lister->visible_count = clamp_bot(1, lister->visible_count);
+    lister->visible_count = clamp_min(1, lister->visible_count);
     
     Rect_f32 text_field_rect = {};
     Rect_f32 list_rect = {};
     {
-        Rect_f32_Pair pair = lister_get_top_level_layout(region, text_field_height);
+        rect2_Pair pair = lister_get_top_level_layout(region, text_field_height);
         text_field_rect = pair.min;
         list_rect = pair.max;
     }
     
     {
-        Vec2_f32 p = V2(text_field_rect.x0 + 3.f, text_field_rect.y0);
+        Vec2_f32 p = vec2(text_field_rect.x0 + 3.f, text_field_rect.y0);
         Fancy_Line text_field = {};
         push_fancy_string(scratch, &text_field, fcolor_id(defcolor_pop1),
                           lister->query.string);
@@ -262,7 +263,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             f32 item_center = (item_y.min + item_y.max)*0.5f;
             f32 view_center = (view_y.min + view_y.max)*0.5f;
             f32 margin = view_h*.3f;
-            margin = clamp_top(margin, block_height*3.f);
+            margin = clamp_max(margin, block_height*3.f);
             if (item_center < view_center){
                 lister->scroll.target.y = item_y.min - margin;
             }
@@ -275,7 +276,7 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     
     // NOTE(allen): clamp scroll target and position; smooth scroll rule
     i32 count = lister->filtered.count;
-    Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, cast(f32)count*block_height - block_height));
+    Range_f32 scroll_range = If32(0.f, clamp_min(0.f, cast(f32)count*block_height - block_height));
     lister->scroll.target.y = clamp_range(scroll_range, lister->scroll.target.y);
     lister->scroll.target.x = 0.f;
     
@@ -331,12 +332,13 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
         push_fancy_stringf(scratch, &line, " ");
         push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), node->status);
         
-        Vec2_f32 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
+        Vec2_f32 p = item_inner.p0 + vec2(3.f, (block_height - line_height)*0.5f);
         draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
     }
     
     draw_set_clip(app, prev_clip);
 }
+#endif
 
 function void*
 lister_get_user_data(Lister *lister, i32 index){
@@ -485,11 +487,11 @@ lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, Vec2
     b32 hide_file_bar_in_ui = def_get_config_b32(vars_intern_lit("hide_file_bar_in_ui"));
     if (view_get_setting(app, view, ViewSetting_ShowFileBar, &showing_file_bar) &&
         showing_file_bar && hide_file_bar_in_ui){
-        Rect_f32_Pair pair = layout_file_bar_on_top(region, line_height);
+        rect2_Pair pair = layout_file_bar_on_top(region, line_height);
         region = pair.max;
     }
     
-    Rect_f32_Pair pair = lister_get_top_level_layout(region, text_field_height);
+    rect2_Pair pair = lister_get_top_level_layout(region, text_field_height);
     Rect_f32 list_rect = pair.max;
     
     void *result = 0;
@@ -505,6 +507,7 @@ lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, Vec2
     return(result);
 }
 
+#if 1
 function Lister_Result
 run_lister(Application_Links *app, Lister *lister){
     lister->filter_restore_point = begin_temp(lister->arena);
@@ -537,8 +540,8 @@ run_lister(Application_Links *app, Lister *lister){
             case InputEventKind_KeyStroke:
             {
                 switch (in.event.key.code){
-                    case KeyCode_Return:
-                    case KeyCode_Tab:
+                    case Key_Code_Return:
+                    case Key_Code_Tab:
                     {
                         void *user_data = 0;
                         if (0 <= lister->raw_item_index &&
@@ -549,7 +552,7 @@ run_lister(Application_Links *app, Lister *lister){
                         result = ListerActivation_Finished;
                     }break;
                     
-                    case KeyCode_Backspace:
+                    case Key_Code_Backspace:
                     {
                         if (lister->handlers.backspace != 0){
                             lister->handlers.backspace(app);
@@ -562,7 +565,7 @@ run_lister(Application_Links *app, Lister *lister){
                         }
                     }break;
                     
-                    case KeyCode_Up:
+                    case Key_Code_Up:
                     {
                         if (lister->handlers.navigate != 0){
                             lister->handlers.navigate(app, view, lister, -1);
@@ -575,7 +578,7 @@ run_lister(Application_Links *app, Lister *lister){
                         }
                     }break;
                     
-                    case KeyCode_Down:
+                    case Key_Code_Down:
                     {
                         if (lister->handlers.navigate != 0){
                             lister->handlers.navigate(app, view, lister, 1);
@@ -588,7 +591,7 @@ run_lister(Application_Links *app, Lister *lister){
                         }
                     }break;
                     
-                    case KeyCode_PageUp:
+                    case Key_Code_PageUp:
                     {
                         if (lister->handlers.navigate != 0){
                             lister->handlers.navigate(app, view, lister,
@@ -602,7 +605,7 @@ run_lister(Application_Links *app, Lister *lister){
                         }
                     }break;
                     
-                    case KeyCode_PageDown:
+                    case Key_Code_PageDown:
                     {
                         if (lister->handlers.navigate != 0){
                             lister->handlers.navigate(app, view, lister,
@@ -633,7 +636,7 @@ run_lister(Application_Links *app, Lister *lister){
                 switch (in.event.mouse.code){
                     case MouseCode_Left:
                     {
-                        Vec2_f32 p = V2(in.event.mouse.p);
+                        v2 p = vec2(in.event.mouse.p);
                         void *clicked = lister_user_data_at_p(app, view, lister, p);
                         lister->hot_user_data = clicked;
                     }break;
@@ -651,7 +654,7 @@ run_lister(Application_Links *app, Lister *lister){
                     case MouseCode_Left:
                     {
                         if (lister->hot_user_data != 0){
-                            Vec2_f32 p = V2(in.event.mouse.p);
+                            v2 p = vec2(in.event.mouse.p);
                             void *clicked = lister_user_data_at_p(app, view, lister, p);
                             if (lister->hot_user_data == clicked){
                                 lister_activate(app, lister, clicked, true);
@@ -726,6 +729,7 @@ run_lister(Application_Links *app, Lister *lister){
     
     return(lister->out);
 }
+#endif
 
 function Lister_Prealloced_String
 lister_prealloced(String_Const_u8 string){
@@ -840,8 +844,10 @@ lister_set_default_handlers(Lister *lister){
 
 ////////////////////////////////
 
+#if 1
 function Lister_Result
-run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String_Const_u8 query, Lister_Handlers handlers){
+run_lister_with_refresh_handler(App *app, Arena *arena, String query, Lister_Handlers handlers)
+{
     Lister_Result result = {};
     if (handlers.refresh != 0){
         Lister_Block lister(app, arena);
@@ -875,6 +881,7 @@ function Lister_Result
 run_lister_with_refresh_handler(Application_Links *app, char *query, Lister_Handlers handlers){
     return(run_lister_with_refresh_handler(app, SCu8(query), handlers));
 }
+#endif
 
 ////////////////////////////////
 
@@ -960,6 +967,7 @@ lister__key_stroke__choice_list(Application_Links *app){
     return(result);
 }
 
+#if 1
 function Lister_Choice*
 get_choice_from_user(Application_Links *app, String_Const_u8 query,
                      Lister_Choice_List list){
@@ -991,6 +999,7 @@ function Lister_Choice*
 get_choice_from_user(Application_Links *app, char *query, Lister_Choice_List list){
     return(get_choice_from_user(app, SCu8(query), list));
 }
+#endif
 
 // BOTTOM
 

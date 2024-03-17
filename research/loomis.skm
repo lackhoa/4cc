@@ -1,0 +1,24 @@
+[Ok so how big is "the ball"
+ [according to gvaat:
+  https://gvaat.com/blog/how-to-draw-the-head-using-the-loomis-method-a-step-by-step-guide/
+  theta = pi/4, so it follows that we need noseY-browY to be sin(pi/4) = sqrt(2)
+  radius is supposed to be 1, which means the relationship between browY-noseY and the radius is
+  browY-noseY / sqrt(2) = radius / 1
+  browY-noseY = sqrt(2)*radius
+  radius = (browY-noseY) / sqrt(2)
+  ]
+ ]
+
+[We do have a recommended "cutoff plane", 
+ [The center of the small circle is the same as that of the big circle]
+ [The radius of the small circle is the same as the y division, which is 1/sqrt(2)]
+ ]
+
+[@done Chin, nose y]
+[@done head-neck junction z]
+[@maybe Jaw z]
+[@maybe Ear z]
+[Cranium
+ [@done The head back z]]
+[todo Ear size in z]
+[trapezius_head @approved yz]

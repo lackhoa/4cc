@@ -78,7 +78,7 @@ add_code(Arena *arena, Event_Code_List *list, String_Const_u8 name){
 function Event_Code_List
 make_key_list(Arena *arena){
     Event_Code_List list = {};
-    list.code_prefix = string_u8_litexpr("KeyCode");
+    list.code_prefix = string_u8_litexpr("Key_Code");
     list.name_table = string_u8_litexpr("key_code_name");
     for (u32 i = 'A'; i <= 'Z'; i += 1){
         u8 c = (u8)i;

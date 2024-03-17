@@ -104,8 +104,8 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
         token_string = push_token_lexeme(app, scratch, buffer, cursor_token);
         cursor_tok_rect = text_layout_character_on_screen(app, text_layout_id, cursor_token->pos);
         f32 tok_rect_dimx = f32(cursor_token->size) * rect_width(cursor_tok_rect);
-        tok_rect_dim = V2(tok_rect_dimx, 2.f);
-        cursor_tok_rect = Rf32_xy_wh(V2(cursor_tok_rect.x0, cursor_tok_rect.y1 - 2.f), tok_rect_dim);
+        tok_rect_dim = vec2(tok_rect_dimx, 2.f);
+        cursor_tok_rect = Rf32_xy_wh(vec2(cursor_tok_rect.x0, cursor_tok_rect.y1 - 2.f), tok_rect_dim);
 	}
 
 	ARGB_Color function_color = fcolor_resolve(fcolor_id(defcolor_function));
@@ -154,7 +154,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
                         for(; j<token->size; j++)
                         {
                             if( character_is_whitespace   (tail.str[j]) || 
-                               !character_is_alpha_numeric(tail.str[j]) )
+                               !character_is_alnum(tail.str[j]) )
                             {
                                 break;
                             }
@@ -177,7 +177,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
             {str8lit("note"), comment_pop_0},
             {str8lit("todo"), comment_pop_1},
             {str8lit("important"), comment_pop_2},
-            {str8lit("nono"),      comment_pop_2},  // ignore_nono
+            {str8lit("no""no"),      comment_pop_2},
             {str8lit("bookmark"),  comment_pop_2}
         };
         draw_comment_highlights(app, buffer, text_layout_id, &token_array, pairs, ArrayCount(pairs));
@@ -196,7 +196,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
             if (string_match(lexeme, token_string))
             {
                 Rect_f32 cur_tok_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
-                cur_tok_rect = Rf32_xy_wh(V2(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
+                cur_tok_rect = Rf32_xy_wh(vec2(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
                 draw_rect(app, cur_tok_rect, 5.f, cursor_tok_color, 0);
             }
         }

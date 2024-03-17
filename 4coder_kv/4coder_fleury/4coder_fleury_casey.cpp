@@ -25,7 +25,7 @@ CUSTOM_DOC("The white zone is for loading and unloading only...")
     f32 Temp = PowerWAVControl.channel_volume[0];
 	PowerWAVControl.channel_volume[0] = PowerWAVControl.channel_volume[1];
     PowerWAVControl.channel_volume[1] = Temp;
-	change_active_primary_panel(app);
+	change_active_primary_view(app);
 }
 
 CUSTOM_COMMAND_SIG(casey_demo_audio_one_shot)
@@ -109,11 +109,11 @@ CUSTOM_DOC("Deletes everything from the cursor to the end of the line.")
 	}
     
     i32 size = (i32)buffer_get_size(app, buffer);
-    range.end = clamp_top(range.end, size);
+    range.end = clamp_max(range.end, size);
     if (range_size(range) == 0 ||
         buffer_get_char(app, buffer, range.end - 1) != '\n'){
         range.start -= 1;
-        range.first = clamp_bot(0, range.first);
+        range.first = clamp_min(0, range.first);
     }
     buffer_replace_range(app, buffer, range, string_u8_litexpr(""));
 }

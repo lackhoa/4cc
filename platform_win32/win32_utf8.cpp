@@ -145,6 +145,7 @@ MessageBox_utf8(Arena *scratch, HWND owner, u8 *text, u8 *caption, UINT type){
     return(result);
 }
 
+#if 0
 internal BOOL
 SetWindowText_utf8(Arena *scratch, HWND window, u8 *string){
     Temp_Memory temp = begin_temp(scratch);
@@ -153,6 +154,7 @@ SetWindowText_utf8(Arena *scratch, HWND window, u8 *string){
     end_temp(temp);
     return(result);
 }
+#endif
 
 internal BOOL
 GetFileAttributesEx_utf8String(Arena *scratch, String8 file_name, GET_FILEEX_INFO_LEVELS info_level_id, LPVOID file_info)

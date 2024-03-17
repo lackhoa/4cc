@@ -107,7 +107,7 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
         for (Lifetime_Key_Ref_Node *key_node = file_lifetime_object->key_node_first;
              key_node != 0;
              key_node = key_node->next){
-            i32 count = clamp_top(lifetime_key_reference_per_node, key_count - key_index);
+            i32 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
             for (i32 i = 0; i < count; i += 1){
                 Lifetime_Key *key = key_node->keys[i];
                 total_marker_count += key->dynamic_workspace.total_marker_count;
@@ -149,7 +149,7 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
         for (Lifetime_Key_Ref_Node *key_node = file_lifetime_object->key_node_first;
              key_node != 0;
              key_node = key_node->next){
-            i32 count = clamp_top(lifetime_key_reference_per_node, key_count - key_index);
+            i32 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
             for (i32 i = 0; i < count; i += 1){
                 Lifetime_Key *key = key_node->keys[i];
                 edit_fix_markers__write_workspace_markers(&key->dynamic_workspace, file_id, cursors, r_cursors, &cursor_count, &r_cursor_count);
@@ -199,7 +199,7 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
         for (Lifetime_Key_Ref_Node *key_node = file_lifetime_object->key_node_first;
              key_node != 0;
              key_node = key_node->next){
-            i32 count = clamp_top(lifetime_key_reference_per_node, key_count - key_index);
+            i32 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
             for (i32 i = 0; i < count; i += 1){
                 Lifetime_Key *key = key_node->keys[i];
                 edit_fix_markers__read_workspace_markers(&key->dynamic_workspace, file_id, cursors, r_cursors, &cursor_count, &r_cursor_count);
@@ -375,7 +375,7 @@ edit_merge_history_range(Thread_Context *tctx, Models *models, Editing_File *fil
     History *history = &file->state.history;
     if (history_is_activated(history)){
         i32 max_index = history_get_record_count(history);
-        first_index = clamp_bot(1, first_index);
+        first_index = clamp_min(1, first_index);
         if (first_index <= last_index && last_index <= max_index){
             if (first_index < last_index){
                 i32 current_index = file->state.current_record_index;

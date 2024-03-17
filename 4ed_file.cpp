@@ -114,7 +114,7 @@ file_clear_dirty_flags(Editing_File *file){
 internal void
 filename_terminate(Editing_File_Name *name){
     u64 size = name->name_size;
-    size = clamp_top(size, sizeof(name->name_space) - 1);
+    size = clamp_max(size, sizeof(name->name_space) - 1);
     name->name_space[size] = 0;
     name->name_size = size;
 }
@@ -254,7 +254,7 @@ file_free(Thread_Context *tctx, Models *models, Editing_File *file){
     
     history_free(tctx, &file->state.history);
     
-    linalloc_clear(&file->state.cached_layouts_arena);
+    arena_free_all(&file->state.cached_layouts_arena);
     table_free(&file->state.line_layout_table);
 }
 
@@ -326,7 +326,7 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
 
 internal void
 file_clear_layout_cache(Editing_File *file){
-    linalloc_clear(&file->state.cached_layouts_arena);
+    arena_free_all(&file->state.cached_layouts_arena);
     table_clear(&file->state.line_layout_table);
 }
 
@@ -463,8 +463,8 @@ file_normalize_buffer_point(Thread_Context *tctx, Models *models, Editing_File *
     Line_Shift_Vertical shift = file_line_shift_y(tctx, models, file, layout_func, width, face, point.line_number, point.pixel_shift.y);
     point.line_number = shift.line;
     point.pixel_shift.y -= shift.y_delta;
-    point.pixel_shift.x = clamp_bot(0.f, point.pixel_shift.x);
-    point.pixel_shift.y = clamp_bot(0.f, point.pixel_shift.y);
+    point.pixel_shift.x = clamp_min(0.f, point.pixel_shift.x);
+    point.pixel_shift.y = clamp_min(0.f, point.pixel_shift.y);
     return(point);
 }
 

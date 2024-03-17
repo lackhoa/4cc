@@ -11,8 +11,8 @@ function u8 vim_query_user_key(App *app, String_Const_u8 message){
 	u8 result = 0;
 	
 	local_persist u8 vim_bot_temp_buffer[256];
-	u64 size = vim_bot_text.size;
-	block_copy(vim_bot_temp_buffer, vim_bot_text.str, size);
+	u64 size = vim_bottom_text.size;
+	block_copy(vim_bot_temp_buffer, vim_bottom_text.str, size);
 	vim_set_bottom_text(message);
 	vim_is_querying_user_key = true;
 	vim_state.chord_resolved = false;
@@ -22,7 +22,7 @@ function u8 vim_query_user_key(App *app, String_Const_u8 message){
 		if(in.abort){ vim_state.params.request = REQUEST_None; break; }
 		if(in.event.kind == InputEventKind_TextInsert){
 			result = in.event.text.string.str[0];
-			string_append_character(&vim_keystroke_text, result);
+			string_concat_character(&vim_keystroke_text, result);
 			break;
 		}
 		else if(in.event.kind == InputEventKind_KeyStroke){
@@ -286,10 +286,10 @@ VIM_COMMAND_SIG(vim_right)
   move_horizontal_lines(app, vim_consume_number());
 }
 
-function void
+internal void
 vim_make_request(App *app, Vim_Request_Type request)
 {
-	if (vim_state.params.request == request)
+    if (vim_state.params.request == request)
     {// NOTE(kv): This is what happens when you do d-d, or c-c (incomprehensible piece of shit!)
         Vim_Motion_Block vim_motion_block(app);
         vim_state.params.edit_type = EDIT_LineWise;
@@ -318,7 +318,9 @@ vim_make_request(App *app, Vim_Request_Type request)
     }
 }
 
-function void vim_page_scroll_inner(Application_Links *app, f32 ratio){
+internal void 
+vim_page_scroll_inner(App *app, f32 ratio)
+{
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	// vim_push_jump(app, view);  @modified(kv)
 	
@@ -326,6 +328,6 @@ function void vim_page_scroll_inner(Application_Links *app, f32 ratio){
 	move_vertical_pixels(app, scroll_pixels);
 	
 	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-	scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, scroll_pixels));
+	scroll.target = view_move_buffer_point(app, view, scroll.target, vec2(0.f, scroll_pixels));
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
 }

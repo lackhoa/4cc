@@ -9,8 +9,8 @@
 
 typedef i32 Key_Mode;
 enum{
-    KeyMode_LanguageArranged,
-    KeyMode_Physical,
+    Key_Mode_LanguageArranged,
+    Key_Mode_Physical,
 };
 
 struct Plat_Handle{

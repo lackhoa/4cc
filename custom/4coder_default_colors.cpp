@@ -151,7 +151,7 @@ make_color_table(App *app, Arena *arena)
 {
     Managed_ID highest_color_id = managed_id_group_highest_id(app, string_u8_litexpr("colors"));
     Color_Table result = {};
-    result.count = (u32)(clamp_top(highest_color_id + 1, max_u32));
+    result.count = (u32)(clamp_max(highest_color_id + 1, max_u32));
     result.arrays = push_array(arena, Color_Array, result.count);
     u32 *dummy = push_array(arena, u32, 1);
     *dummy = 0xFF990099;

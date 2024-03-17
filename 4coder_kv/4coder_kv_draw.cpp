@@ -1,67 +1,5 @@
-function b32
-kv_find_nest_side_paren(App *app, Token_Array *tokens, i64 pos,
-                        Scan_Direction scan, Nest_Delimiter_Kind delim,
-                        i64 *out)
-{
-  if (!(tokens && tokens->count)) return false;
-
-  Range_i64 range = {};
-  b32 nest_found = false;
-  {// b32 result = find_nest_side(app, buffer, pos, flags, scan, delim, &range);
-    Token_Iterator_Array it = token_iterator_pos(0, tokens, pos);
-    i32 level = 0;
-    for (;;)
-    {
-      Token *token = token_it_read(&it);
-      Nest_Delimiter_Kind token_delim_kind = NestDelim_None;
-      //
-      if (token->kind == TokenBaseKind_ParentheticalOpen)
-      {
-        token_delim_kind = NestDelim_Open;
-      }
-      else if (token->kind == TokenBaseKind_ParentheticalClose)
-      {
-        token_delim_kind = NestDelim_Close;
-      }
-            
-      if (level == 0 && token_delim_kind == delim)
-      {
-        range = Ii64_size(token->pos, token->size);
-        nest_found = true;
-        break;
-      }
-      else
-      {
-        if (token_delim_kind != NestDelim_None)
-        {
-          if (token_delim_kind == delim) { level--; }
-          else                           { level++; }
-        }
-            
-        if (scan == Scan_Forward)
-        {
-          if (!token_it_inc(&it))
-          {
-            break;
-          }
-        }
-        else
-        {
-          if (!token_it_dec(&it))
-          {
-            break;
-          }
-        }
-      }
-    }
-  }
-  if (nest_found)
-  {
-    if (delim == NestDelim_Close) { *out = range.end;   }
-    else                          { *out = range.start; }
-  }
-  return(nest_found);
-}
+global String8 strong_divider_comment_signifier = SCu8("//~");
+global String8 weak_divider_comment_signifier   = SCu8("//-");
 
 // NOTE(kv): Patch because the original one doesn't terminate early (and buggy!)
 function void
@@ -136,244 +74,285 @@ kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
   }
 }
 
-global b32 game_already_rendered_this_frame;
-
+function void
+F4_RenderDividerComments(App *app, Buffer_ID buffer, View_ID view,
+                         Text_Layout_ID text_layout_id)
+{
+    if(!def_get_config_b32(vars_intern_lit("f4_disable_divider_comments")))
+    {
+        ProfileScope(app, "[F4] Divider Comments");
+        
+        Token_Array token_array = get_token_array_from_buffer(app, buffer);
+        Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+        Scratch_Block scratch(app);
+        
+        if(token_array.tokens != 0)
+        {
+            i64 first_index = token_index_from_pos(&token_array, visible_range.first);
+            Token_Iterator_Array it = token_iterator_index(0, &token_array, first_index);
+            
+            Token *token = 0;
+            for(;;)
+            {
+                token = token_it_read(&it);
+                
+                if(token->pos >= visible_range.one_past_last || !token || !token_it_inc_non_whitespace(&it))
+                {
+                    break;
+                }
+                
+                if(token->kind == TokenBaseKind_Comment)
+                {
+                    Rect_f32 comment_first_char_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
+                    Rect_f32 comment_last_char_rect = text_layout_character_on_screen(app, text_layout_id, token->pos+token->size-1);
+                    String token_string = push_buffer_range(app, scratch, buffer, Ii64(token));
+                    String signifier_substring = string_substring(token_string, Ii64(0, 3));
+                    f32 roundness = 4.f;
+                    
+                    // NOTE(rjf): Strong dividers.
+                    if(string_match(signifier_substring, strong_divider_comment_signifier))
+                    {
+                        Rect_f32 rect =
+                        {
+                            comment_first_char_rect.x0,
+                            comment_first_char_rect.y0-2,
+                            10000,
+                            comment_first_char_rect.y0,
+                        };
+                        draw_rect(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)), 0);
+                    }
+                    
+                    // NOTE(rjf): Weak dividers.
+                    else if(string_match(signifier_substring, weak_divider_comment_signifier))
+                    {
+                        f32 dash_size = 8;
+                        Rect_f32 rect =
+                        {
+                            comment_last_char_rect.x1,
+                            (comment_last_char_rect.y0 + comment_last_char_rect.y1)/2 - 1,
+                            comment_last_char_rect.x1 + dash_size,
+                            (comment_last_char_rect.y0 + comment_last_char_rect.y1)/2 + 1,
+                        };
+                        
+                        for(int i = 0; i < 1000; i += 1)
+                        {
+                            draw_rect(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)), 0);
+                            rect.x0 += dash_size*1.5f;
+                            rect.x1 += dash_size*1.5f;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 function Render_Caller_Function kv_render_caller;
 //
 function void
-kv_render_caller(App *app, Frame_Info frame_info, View_ID view)
+kv_render_caller(App *app, Frame_Info frame, View_ID view)
 {
-    ProfileScope(app, "render caller");
-    View_ID active_view = get_active_view(app, Access_Always);
-    b32 is_active_view = (active_view == view);
-    
-    // todo(kv): maybe this sets the clip to the active panel? so it messes with vim command lister?
-    // Rect_f32 clip = draw_background_and_margin(app, view, is_active_view);
-    
-    Rect_f32 clip = view_get_screen_rect(app, view);
-    Rect_f32 prev_clip = draw_set_clip(app, clip);
-    
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Face_ID face_id = get_face_id(app, buffer);
-    Face_Metrics face_metrics = get_face_metrics(app, face_id);
-    f32 line_height = face_metrics.line_height;
-    f32 digit_advance = face_metrics.decimal_digit_advance;
-    
-    Rect_f32 global_rect = global_get_screen_rectangle(app);
-    {
-        f32 filebar_y = global_rect.y1 - 2.f*line_height - vim_cur_filebar_offset;
-        if(clip.y1 >= filebar_y){ clip.y1 = filebar_y; }
-    }
-    
-    // clear
-    draw_rect_fcolor(app, clip, 0.f, fcolor_id(defcolor_back));
-    
-    clip = vim_draw_query_bars(app, clip, view, face_id);
+ ProfileScope(app, "render caller");
+ b32 view_active = view_is_active(app, view);
+ i32 monitor = hax_guess_which_monitor_the_view_is_in(app, view);
+ 
+ rect2 clip      = view_get_screen_rect(app, view);
+ rect2 prev_clip = draw_set_clip(app, clip);
+ 
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ Face_ID face_id = get_face_id(app, buffer);
+ Face_Metrics face_metrics = get_face_metrics(app, face_id);
+ v1 line_height = face_metrics.line_height;
+ v1 digit_advance = face_metrics.decimal_digit_advance;
+ 
+ // NOTE(kv): This is for the filebar?
+ 
+ if (vim_lister_running)
+ {// NOTE(kv): Watch out for the vim bottom lister!
+  clip.y1 -= 2.f*line_height;  // NOTE(kv): if you don't do this the filebar is gonna eat into the bottom lister.
+  clip.y1 -= clamp_min(vim_cur_lister_offset,0);
+ }
+ 
+ {// NOTE: Clear
+  draw_rect_fcolor(app, clip, 0.f, fcolor_id(defcolor_back));
+ }
+ 
+ clip = vim_draw_query_bars(app, clip, view, face_id);
+ 
+ if ( view != global_bottom_view )
+ {// Draw file bar
+  rect2_Pair pair = layout_file_bar_on_bot(clip, line_height);
+  vim_draw_filebar(app, view, buffer, frame, face_id, pair.b);
+  clip = pair.a;
+ }
+ 
+ if ( view_active )
+ {// Draw borders
+  rect2 global_rect = global_get_screen_rectangle(app);
+  FColor border_color = fcolor_id(defcolor_margin);
+  if(clip.x0 > global_rect.x0)
+  {
+   rect2_Pair border_pair = rect_split_left_right(clip, 2.f);
+   draw_rect_fcolor(app, border_pair.a, 0.f, border_color);
+   clip = border_pair.b;
+  }
+  if(clip.x1 < global_rect.x1)
+  {
+   rect2_Pair border_pair = rect_split_left_right_neg(clip, 2.f);
+   draw_rect_fcolor(app, border_pair.b, 0.f, border_color);
+   clip = border_pair.a;
+  }
+  clip.y0 += 3.f;
+ }
+ 
+ if (show_fps_hud && view_active)
+ {
+  rect2_Pair pair = layout_fps_hud_on_bottom(clip, line_height);
+  draw_fps_hud(app, frame, face_id, pair.max);
+  clip = pair.min;
+  animate_in_n_milliseconds(app, 1000);
+ }
+ 
+ // NOTE(allen): layout line numbers
+ b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
+ rect2 line_number_rect = {};
+ if (show_line_number_margins)
+ {
+  rect2_Pair pair = layout_line_number_margin(app, buffer, clip, digit_advance);
+  line_number_rect = pair.min;
+  clip = pair.max;
+ }
+ 
+ Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+ Buffer_Point_Delta_Result delta = delta_apply(app, view, frame.animation_dt, scroll);
+ if(!block_match_struct(&scroll.position, &delta.point))
+ {
+  block_copy_struct(&scroll.position, &delta.point);
+  view_set_buffer_scroll(app, view, scroll, SetBufferScroll_NoCursorChange);
+ }
+ if(delta.still_animating)
+ {
+  animate_in_n_milliseconds(app, 0);
+ }
+ Buffer_Point buffer_point = scroll.position;
+ Text_Layout_ID text_layout_id = text_layout_create(app, buffer, clip, buffer_point);
+ 
+ if(show_line_number_margins)
+ {
+  vim_draw_line_number_margin(app, view, buffer, face_id, text_layout_id, line_number_rect);
+ }
+ {// NOTE(kv): kv_render_buffer(app, frame, view, face_id, buffer, text_layout_id, clip);
+  // NOTE(kv): originally from "byp_render_buffer"
+  ProfileScope(app, "render buffer");
+  rect2 prev_clip2 = draw_set_clip(app, clip);  // todo I don't even think this is necessary?
+  defer( draw_set_clip(app, prev_clip2); );
+  
+  Scratch_Block scratch(app);
+  if ( i32 viewport = get_buffer_game_viewport_id(app, buffer))
+  {
+   render_game(app, viewport, frame);
+  }
+  else
+  {
+   Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
    
-    if ( rect_dim(clip).y > 200 )
-    {// Draw file bar
-        Rect_f32_Pair pair = layout_file_bar_on_bot(clip, line_height);
-        vim_draw_filebar(app, view, buffer, frame_info, face_id, pair.b);
-        clip = pair.a;
-    }
-    
-    {// Draw borders
-        if(clip.x0 > global_rect.x0){
-            Rect_f32_Pair border_pair = rect_split_left_right(clip, 2.f);
-            draw_rect_fcolor(app, border_pair.a, 0.f, fcolor_id(defcolor_margin));
-            clip = border_pair.b;
-        }
-        if(clip.x1 < global_rect.x1){
-            Rect_f32_Pair border_pair = rect_split_left_right_neg(clip, 2.f);
-            draw_rect_fcolor(app, border_pair.b, 0.f, fcolor_id(defcolor_margin));
-            clip = border_pair.a;
-        }
-        clip.y0 += 3.f;
-    }
-    
-	if(show_fps_hud)
-    {
-        Rect_f32_Pair pair = layout_fps_hud_on_bottom(clip, line_height);
-        draw_fps_hud(app, frame_info, face_id, pair.max);
-        clip = pair.min;
-        animate_in_n_milliseconds(app, 1000);
-	}
-    
-    // NOTE(allen): layout line numbers
-	b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
-    Rect_f32 line_number_rect = {};
-    if (show_line_number_margins)
-    {
-        Rect_f32_Pair pair = layout_line_number_margin(app, buffer, clip, digit_advance);
-        line_number_rect = pair.min;
-        clip = pair.max;
-    }
-    
-	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-	Buffer_Point_Delta_Result delta = delta_apply(app, view, frame_info.animation_dt, scroll);
-	if(!block_match_struct(&scroll.position, &delta.point))
-    {
-        block_copy_struct(&scroll.position, &delta.point);
-        view_set_buffer_scroll(app, view, scroll, SetBufferScroll_NoCursorChange);
-	}
-	if(delta.still_animating)
-    {
-        animate_in_n_milliseconds(app, 0);
-    }
-	Buffer_Point buffer_point = scroll.position;
-	Text_Layout_ID text_layout_id = text_layout_create(app, buffer, clip, buffer_point);
-    
-    if(show_line_number_margins)
-    {
-        vim_draw_line_number_margin(app, view, buffer, face_id, text_layout_id, line_number_rect);
-    }
+   u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));
+   f32 cursor_roundness = face_metrics.normal_advance*(f32)cursor_roundness_100*0.01f;
+   f32 mark_thickness = (f32)def_get_config_u64(app, vars_intern_lit("mark_thickness"));
    
-    {// NOTE(kv): kv_render_buffer(app, frame_info, view, face_id, buffer, text_layout_id, clip);
-        // NOTE(kv): originally from "byp_render_buffer"
-        ProfileScope(app, "render buffer");
-        Rect_f32 prev_clip2 = draw_set_clip(app, clip);  // todo I don't even think this is necessary?
-        defer( draw_set_clip(app, prev_clip2); );
-        
-        Scratch_Block scratch(app);
-        String buffer_name = push_buffer_base_name(app, scratch, buffer);
-        local_persist Arena game_permanent_arena = make_arena_system();
-        if ( string_match(buffer_name, GAME_BUFFER_NAME) )
-        {// NOTE(kv): draw test render buffer
-            if ( !game_already_rendered_this_frame )
-            {
-                if ( !load_newest_game_code(app) )
-                {
-                    // TODO error report
-                }
-                Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
-                Game_Input input = 
-                {
-                    pack_modifiers(set.mods, set.count),
-                    global_game_key_states,
-                    global_game_key_state_changes,
-                    view_is_active(app, view),
-                };
-                global_game_api.game_update_and_render(game_state_pointer, app, view, frame_info.animation_dt, input);
-                block_zero_array(global_game_key_state_changes);
-                game_already_rendered_this_frame = true;
-            }
-        }
-        else
-        {
-            Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
-            
-            u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));
-            f32 cursor_roundness = face_metrics.normal_advance*(f32)cursor_roundness_100*0.01f;
-            f32 mark_thickness = (f32)def_get_config_u64(app, vars_intern_lit("mark_thickness"));
-            
-            i64 cursor_pos = view_correct_cursor(app, view);
-            view_correct_mark(app, view);
-            
-            b32 use_scope_highlight = def_get_config_b32(vars_intern_lit("use_scope_highlight"));
-            if(use_scope_highlight)
-            {
-                Color_Array colors = finalize_color_array(defcolor_back_cycle);
-                draw_scope_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
-            }
-            
-            b32 highlight_line_at_cursor = def_get_config_b32(vars_intern_lit("highlight_line_at_cursor"));
-            if(highlight_line_at_cursor && is_active_view){
-                i64 line_number = get_line_number_from_pos(app, buffer, cursor_pos);
-                draw_line_highlight(app, text_layout_id, line_number, fcolor_id(defcolor_highlight_cursor_line));
-            }
-            
-            Token_Array token_array = get_token_array_from_buffer(app, buffer);
-            if(token_array.tokens)
-            {
-                byp_draw_token_colors(app, view, buffer, text_layout_id);
-            }
-            else
-            {
-                paint_text_color_fcolor(app, text_layout_id, visible_range, fcolor_id(defcolor_text_default));
-            }
-            
-            {// Error, jump (search) highlightss
-                Buffer_ID comp_buffer = get_buffer_by_name(app, compilation_buffer_name, Access_Always);
-                draw_jump_highlights(app, buffer, text_layout_id, comp_buffer, fcolor_id(defcolor_highlight_junk));
-                // TODO(BYP): Draw error messsage annotations
-                Buffer_ID jump_buffer = get_locked_jump_buffer(app);
-                if (jump_buffer != comp_buffer)
-                {
-                    draw_jump_highlights(app, buffer, text_layout_id, jump_buffer, fcolor_id(defcolor_highlight_white));
-                }
-            }
-            
-            { // draw paren highlight
-                b32 is_skm = false;
-                {
-                    F4_Language *language = F4_LanguageFromBuffer(app, buffer);
-                    F4_Language *skm_lang = F4_LanguageFromString(SCu8("skm"));
-                    is_skm = (language == skm_lang);
-                }
-                Color_Array colors = finalize_color_array(defcolor_text_cycle);
-                if (is_skm)
-                    kv_draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
-                else
-                    draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
-            }
-            
-            b64 show_whitespace = false;
-            view_get_setting(app, view, ViewSetting_ShowWhitespace, &show_whitespace);
-            if(show_whitespace)
-            {
-                if(token_array.tokens == 0)
-                {
-                    draw_whitespace_highlight(app, buffer, text_layout_id, cursor_roundness);
-                }
-                else
-                {
-                    draw_whitespace_highlight(app, text_layout_id, &token_array, cursor_roundness);
-                }
-            }
-            
-            if(is_active_view && vim_state.mode == VIM_Visual)
-            {
-                vim_draw_visual_mode(app, view, buffer, face_id, text_layout_id);
-            }
-            
-            fold_draw(app, buffer, text_layout_id);
-            
-            vim_draw_search_highlight(app, view, buffer, text_layout_id, cursor_roundness);
-            
-            vim_draw_cursor(app, view, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness);
-            
-            paint_fade_ranges(app, text_layout_id, buffer);
-            
-            draw_text_layout_default(app, text_layout_id);  // NOTE: this highlights the @Notes
-            
-            vim_draw_after_text(app, view, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness);
-            
-            Buffer_ID calc_buffer_id = get_buffer_by_name(app, SCu8("*calc*"), AccessFlag_Read);
-            if(calc_buffer_id == buffer)
-            { // NOTE(rjf): Interpret the calc buffer as calc code.
-                F4_CLC_RenderBuffer(app, buffer, view, text_layout_id);
-            }
-            else
-            { // NOTE(rjf): Draw calc comments.
-                F4_CLC_RenderComments(app, buffer, view, text_layout_id);
-            }
-            
-            // NOTE(kv): fui
-            fui_draw_slider(app, buffer, clip);
-        }
+   i64 cursor_pos = view_correct_cursor(app, view);
+   view_correct_mark(app, view);
+   
+   b32 use_scope_highlight = def_get_config_b32(vars_intern_lit("use_scope_highlight"));
+   if(use_scope_highlight)
+   {
+    Color_Array colors = finalize_color_array(defcolor_back_cycle);
+    draw_scope_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
+   }
+   
+   b32 highlight_line_at_cursor = def_get_config_b32(vars_intern_lit("highlight_line_at_cursor"));
+   if(highlight_line_at_cursor && view_active){
+    i64 line_number = get_line_number_from_pos(app, buffer, cursor_pos);
+    draw_line_highlight(app, text_layout_id, line_number, fcolor_id(defcolor_highlight_cursor_line));
+   }
+   
+   Token_Array token_array = get_token_array_from_buffer(app, buffer);
+   if(token_array.tokens)
+   {
+    byp_draw_token_colors(app, view, buffer, text_layout_id);
+   }
+   else
+   {
+    paint_text_color_fcolor(app, text_layout_id, visible_range, fcolor_id(defcolor_text_default));
+   }
+   
+   {// Error, jump (search) highlightss
+    Buffer_ID comp_buffer = get_buffer_by_name(app, compilation_buffer_name, Access_Always);
+    draw_jump_highlights(app, buffer, text_layout_id, comp_buffer, fcolor_id(defcolor_highlight_junk));
+    // TODO(BYP): Draw error messsage annotations
+    Buffer_ID jump_buffer = get_locked_jump_buffer(app);
+    if (jump_buffer != comp_buffer)
+    {
+     draw_jump_highlights(app, buffer, text_layout_id, jump_buffer, fcolor_id(defcolor_highlight_white));
     }
-    
-#if KV_INTERNAL
-    if (arrlen(DEBUG_entries) > 0 &&
-        DEBUG_draw_hud_p)
-    {// my test hud
-        Rect_f32_Pair pair = rect_split_top_bottom_neg(clip, 5*line_height);
-		DEBUG_draw_hud(app, face_id, pair.max);
-		clip = pair.min;
+   }
+   
+   { // draw paren highlight
+    b32 is_skm = false;
+    {
+     F4_Language *language = F4_LanguageFromBuffer(app, buffer);
+     F4_Language *skm_lang = F4_LanguageFromString(SCu8("skm"));
+     is_skm = (language == skm_lang);
     }
-#endif
-    
-    text_layout_free(app, text_layout_id);
-    draw_set_clip(app, prev_clip);
+    Color_Array colors = finalize_color_array(defcolor_text_cycle);
+    if (is_skm)
+     kv_draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
+    else
+     draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
+   }
+   
+   b64 show_whitespace = false;
+   view_get_setting(app, view, ViewSetting_ShowWhitespace, &show_whitespace);
+   if(show_whitespace)
+   {
+    if(token_array.tokens == 0)
+     draw_whitespace_highlight(app, buffer, text_layout_id, cursor_roundness);
+    else
+     draw_whitespace_highlight(app, text_layout_id, &token_array, cursor_roundness);
+   }
+   
+   if(view_active && vim_state.mode == VIM_Visual)
+   {
+    vim_draw_visual_mode(app, view, buffer, face_id, text_layout_id);
+   }
+   
+   fold_draw(app, buffer, text_layout_id);
+   
+   vim_draw_search_highlight(app, view, buffer, text_layout_id, cursor_roundness);
+   
+   vim_draw_cursor(app, view, view_active, buffer, text_layout_id, cursor_roundness, mark_thickness);
+   
+   paint_fade_ranges(app, text_layout_id, buffer);
+   
+   draw_text_layout_default(app, text_layout_id);  // NOTE: this highlights the @Notes
+   
+   Buffer_ID calc_buffer_id = get_buffer_by_name(app, SCu8("*calc*"), AccessFlag_Read);
+   if(calc_buffer_id == buffer)
+   { // NOTE(rjf): Interpret the calc buffer as calc code.
+    F4_CLC_RenderBuffer(app, buffer, view, text_layout_id);
+   }
+   else
+   { // NOTE(rjf): Draw calc comments.
+    F4_CLC_RenderComments(app, buffer, view, text_layout_id);
+   }
+   
+   // NOTE(kv): fui
+   fui_draw_slider(app, buffer, clip);
+   
+   F4_RenderDividerComments(app, buffer, view, text_layout_id);
+  }
+ }
+ 
+ text_layout_free(app, text_layout_id);
+ draw_set_clip(app, prev_clip);
 }

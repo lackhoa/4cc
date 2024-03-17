@@ -63,7 +63,7 @@ string_compute_needle_jump_table(Arena *arena, String_Const_u8 needle, Scan_Dire
     return(string_compute_needle_jump_table(arena, prefix_table));
 }
 
-#define character_predicate_check_character(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
+#define character_predicate_check(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
 
 internal String_Match_List
 find_matches_forward(Arena *arena, i32 maximum_output_count,
@@ -154,7 +154,7 @@ find_matches_forward(Arena *arena, i32 maximum_output_count,
                     if (node != 0)
                     {
                         u8 next_c = node->string.str[chunk_pos];
-                        if (character_predicate_check_character(*predicate, next_c))
+                        if (character_predicate_check(*predicate, next_c))
                         {
                             AddFlag(flags, StringMatch_RightSideSloppy);
                         }
@@ -170,7 +170,7 @@ find_matches_forward(Arena *arena, i32 maximum_output_count,
                         break;
                     }
                     jump = jump_table.vals[n + 1];
-                    current_l = character_predicate_check_character(*predicate, needle.str[jump - 1]);
+                    current_l = character_predicate_check(*predicate, needle.str[jump - 1]);
                     j += jump;
                 }
             }
@@ -179,7 +179,7 @@ find_matches_forward(Arena *arena, i32 maximum_output_count,
                 jump = jump_table.vals[n];
                 if (jump == 0)
                 {
-                    current_l = character_predicate_check_character(*predicate, c);
+                    current_l = character_predicate_check(*predicate, c);
                     
                     jump_back_code = 1;
                     goto iterate_forward;
@@ -190,7 +190,7 @@ find_matches_forward(Arena *arena, i32 maximum_output_count,
                 else
                 {
                     u8 prev_c = needle.str[jump - 1];
-                    current_l = character_predicate_check_character(*predicate, prev_c);
+                    current_l = character_predicate_check(*predicate, prev_c);
                     j += jump;
                 }
             }
@@ -283,7 +283,7 @@ find_matches_backward(Arena *arena, i32 maximum_output_count,
                     }
                     if (node != 0){
                         u8 next_c = node->string.str[chunk_pos];
-                        if (character_predicate_check_character(*predicate, next_c)){
+                        if (character_predicate_check(*predicate, next_c)){
                             AddFlag(flags, StringMatch_LeftSideSloppy);
                         }
                     }
@@ -298,7 +298,7 @@ find_matches_backward(Arena *arena, i32 maximum_output_count,
                     jump = jump_table.vals[n + 1];
                     u64 m = needle.size - jump;
                     u8 needle_m = needle.str[m];
-                    current_r = character_predicate_check_character(*predicate, needle_m);
+                    current_r = character_predicate_check(*predicate, needle_m);
                     j -= jump;
                 }
                 
@@ -306,7 +306,7 @@ find_matches_backward(Arena *arena, i32 maximum_output_count,
             else{
                 jump = jump_table.vals[n];
                 if (jump == 0){
-                    current_r = character_predicate_check_character(*predicate, c);
+                    current_r = character_predicate_check(*predicate, c);
                     
                     jump_back_code = 1;
                     goto iterate_backward;
@@ -317,7 +317,7 @@ find_matches_backward(Arena *arena, i32 maximum_output_count,
                 else{
                     u64 m = needle.size - jump;
                     u8 needle_m = needle.str[m];
-                    current_r = character_predicate_check_character(*predicate, needle_m);
+                    current_r = character_predicate_check(*predicate, needle_m);
                     j -= jump;
                 }
             }

@@ -6,11 +6,11 @@
 
 function Key_Code
 dynamic_binding_key_code_from_string(String_Const_u8 key_string){
-    Key_Code result = 0;
-    for (i32 i = 1; i < KeyCode_COUNT; i += 1){
+    Key_Code result = (Key_Code)0;
+    for (i32 i = 1; i < Key_Code_COUNT; i += 1){
         String_Const_u8 str = SCu8(key_code_name[i]);
         if (string_match(str, key_string)){
-            result = i;
+            result = (Key_Code)i;
             break;
         }
     }
@@ -102,7 +102,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                                 
                                 // NOTE(rjf): Find mods.
                                 i32 mod_count = 0;
-                                Key_Code mods[ArrayCount(mod_string)] = {0};
+                                Key_Code mods[ArrayCount(mod_string)] = {(Key_Code)0};
                                 for (u32 i = 0; i < ArrayCount(mod_string); i += 1){
                                     if (mod_string[i].str){
                                         mods[mod_count] = dynamic_binding_key_code_from_string(mod_string[i]);

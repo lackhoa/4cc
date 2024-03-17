@@ -219,7 +219,7 @@ prj_stringize_project(Application_Links *app, Arena *arena, Variable_Handle proj
     
     // NOTE(allen): Header Stuff
     u64 version = vars_u64_from_var(app, vars_read_key(project, version_id));
-    version = clamp_bot(2, version);
+    version = clamp_min(2, version);
     string_list_pushf(arena, out, "version(%llu);\n", version);
     
     String8 project_name = vars_string_from_var(scratch, vars_read_key(project, project_name_id));
@@ -896,7 +896,7 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
                     case 0:
                     case 1:
                     {
-                        prj_var = prj_v1_to_v2(app, project_root, config);
+                        invalid_code_path;
                     }break;
                     default:
                     {
@@ -1008,15 +1008,15 @@ CUSTOM_DOC("Run an 'fkey command' configured in a project.4coder file.  Determin
     b32 got_ind = false;
     i32 ind = 0;
     if (input.event.kind == InputEventKind_KeyStroke){
-        if (KeyCode_F1 <= input.event.key.code && input.event.key.code <= KeyCode_F16){
-            ind = (input.event.key.code - KeyCode_F1);
+        if (Key_Code_F1 <= input.event.key.code && input.event.key.code <= Key_Code_F16){
+            ind = (input.event.key.code - Key_Code_F1);
             got_ind = true;
         }
-        else if (KeyCode_1 <= input.event.key.code && input.event.key.code <= KeyCode_9){
+        else if (Key_Code_1 <= input.event.key.code && input.event.key.code <= Key_Code_9){
             ind = (input.event.key.code - '1');
             got_ind = true;
         }
-        else if (input.event.key.code == KeyCode_0){
+        else if (input.event.key.code == Key_Code_0){
             ind = 9;
             got_ind = true;
         }
@@ -1037,6 +1037,7 @@ CUSTOM_DOC("Changes 4coder's hot directory to the root directory of the currentl
     }
 }
 
+#if 0
 CUSTOM_COMMAND_SIG(setup_new_project)
 CUSTOM_DOC("Queries the user for several configuration options and initializes a new 4coder project with build scripts for every OS.")
 {
@@ -1061,6 +1062,7 @@ CUSTOM_DOC("Queries the user for several configuration options and initializes a
 {
     prj_setup_scripts(app, PrjSetupScriptFlag_Bat|PrjSetupScriptFlag_Sh);
 }
+#endif
 
 CUSTOM_COMMAND_SIG(project_command_lister)
 CUSTOM_DOC("Open a lister of all commands in the currently loaded project.")

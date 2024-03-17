@@ -17,7 +17,7 @@ return(reflex);
 function Rect_f32
 layout_reflex_get_rect(Application_Links *app, Layout_Reflex *reflex, i64 pos, b32 *unresolved_dependence){
 Rect_f32 rect = {};
-pos = clamp_bot(0, pos);
+pos = clamp_min(0, pos);
 if (range_contains(reflex->list->input_index_range, pos)){
 if (range_contains(reflex->list->manifested_index_range, pos)){
 rect = layout_box_of_pos(*reflex->list, pos);
@@ -159,7 +159,7 @@ result.metrics = metrics;
 result.tab_width = tab_width;
 result.line_to_text_shift = text_height - line_height;
 
-result.blank_dim = V2(metrics->space_advance, text_height);
+result.blank_dim = vec2(metrics->space_advance, text_height);
 
 result.line_y = line_height;
 result.text_y = text_height;
@@ -189,7 +189,7 @@ codepoint = ' ';
 }
 vars->p.x = f32_ceil32(vars->p.x);
 f32 next_x = vars->p.x + advance;
-layout_write(arena, list, face, index, codepoint, flags, Rf32(vars->p, V2(next_x, vars->text_y)), vars->line_y);
+layout_write(arena, list, face, index, codepoint, flags, Rf32(vars->p, vec2(next_x, vars->text_y)), vars->line_y);
 vars->p.x = next_x;
 }
 
@@ -230,15 +230,15 @@ lr_tb_write_byte_with_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32
     f32 text_y = vars->text_y;
     
     Layout_Item_Flag flags = LayoutItemFlag_Special_Character;
-    layout_write(arena, list, face, index, '\\', flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+    layout_write(arena, list, face, index, '\\', flags, Rf32(p, vec2(next_x, text_y)), vars->line_y);
     p.x = next_x;
     
     flags = LayoutItemFlag_Ghost_Character;
     next_x += metrics->byte_sub_advances[1];
-    layout_write(arena, list, face, index, integer_symbols[hi], flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+    layout_write(arena, list, face, index, integer_symbols[hi], flags, Rf32(p, vec2(next_x, text_y)), vars->line_y);
     p.x = next_x;
     next_x += metrics->byte_sub_advances[2];
-    layout_write(arena, list, face, index, integer_symbols[lo], flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+    layout_write(arena, list, face, index, integer_symbols[lo], flags, Rf32(p, vec2(next_x, text_y)), vars->line_y);
     
     vars->p.x = final_next_x;
 }
@@ -292,7 +292,7 @@ vars->p.x += advance;
 
 function void
 lr_tb_align_rightward(LefRig_TopBot_Layout_Vars *vars, f32 align_x){
-vars->p.x = clamp_bot(align_x, vars->p.x);
+vars->p.x = clamp_min(align_x, vars->p.x);
 }
 
 ////////////////////////////////
@@ -308,10 +308,10 @@ layout_unwrapped_small_blank_lines(Application_Links *app, Arena *arena, Buffer_
     Face_Advance_Map advance_map = get_face_advance_map(app, face);
     Face_Metrics metrics = get_face_metrics(app, face);
     f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
-    tab_width = clamp_bot(1, tab_width);
+    tab_width = clamp_min(1, tab_width);
     LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
     
-    pos_vars.blank_dim = V2(metrics.space_advance, metrics.text_height*0.5f);
+    pos_vars.blank_dim = vec2(metrics.space_advance, metrics.text_height*0.5f);
     
     if (text.size == 0){
         lr_tb_write_blank(&pos_vars, face, arena, &list, range.start);
@@ -404,7 +404,7 @@ String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
 f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
-tab_width = clamp_bot(1, tab_width);
+tab_width = clamp_min(1, tab_width);
 LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
 
 if (text.size == 0){
@@ -479,7 +479,7 @@ String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
 f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
-tab_width = clamp_bot(1, tab_width);
+tab_width = clamp_min(1, tab_width);
 LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
 
 if (text.size == 0){
@@ -559,7 +559,7 @@ String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
 f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
-tab_width = clamp_bot(1, tab_width);
+tab_width = clamp_min(1, tab_width);
 LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
 
 if (text.size == 0){

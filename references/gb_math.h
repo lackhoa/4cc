@@ -5,9 +5,9 @@
 Version History:
 	0.07f - Fix constants
 	0.07e - Fixed a warning
-	0.07d - Fix mat4_inverse
+	0.07d - Fix mat4ierse
 	0.07c - Add gb_random01
-	0.07b - Fix mat4_inverse
+	0.07b - Fix mat4ierse
 	0.07a - Fix Mat2
 	0.07  - Better Mat4 procedures
 	0.06h - Ignore silly warnings
@@ -389,7 +389,7 @@ GB_MATH_DEF void gb_float44_identity(float m[4][4]);
 GB_MATH_DEF void  gb_mat4_transpose  (gbMat4 *m);
 GB_MATH_DEF void  gb_mat4_mul        (gbMat4 *out, gbMat4 *m1, gbMat4 *m2);
 GB_MATH_DEF void  gb_mat4_mul_vec4   (gbVec4 *out, gbMat4 *m, gbVec4 in);
-GB_MATH_DEF void  gb_mat4_inverse    (gbMat4 *out, gbMat4 *in);
+GB_MATH_DEF void  gb_mat4ierse    (gbMat4 *out, gbMat4 *in);
 
 GB_MATH_DEF gbMat4 *gb_mat4_v(gbVec4 m[4]);
 GB_MATH_DEF gbMat4 *gb_mat4_f(float m[4][4]);
@@ -1523,7 +1523,7 @@ void gb_float44_mul_vec4(gbVec4 *out, float m[4][4], gbVec4 v) {
 	out->w = m[0][3]*v.x + m[1][3]*v.y + m[2][3]*v.z + m[3][3]*v.w;
 }
 
-void gb_mat4_inverse(gbMat4 *out, gbMat4 *in) {
+void gb_mat4ierse(gbMat4 *out, gbMat4 *in) {
 	gbFloat4 *o = gb_float44_m(out);
 	gbFloat4 *m = gb_float44_m(in);
 

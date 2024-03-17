@@ -12,7 +12,7 @@
 #include "4coder_fleury_recent_files.cpp"
 
 function void
-F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
+F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
                 Buffer_ID buffer, Text_Layout_ID text_layout_id,
                 Rect_f32 rect, Frame_Info frame_info)
 {
@@ -323,7 +323,7 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     
     // NOTE(rjf): Render code peek.
     {
-        if(!view_get_is_passive(app, view_id) &&
+        if(!view_is_passive(app, view_id) &&
            !is_active_view)
         {
             F4_CodePeek_Render(app, view_id, face_id, buffer, frame_info);
@@ -383,13 +383,13 @@ F4_DrawFileBar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_I
         Dirty_State dirty = buffer_get_dirty_state(app, buffer);
         String_u8 str = Su8(space, 0, 3);
         if (dirty != 0){
-            string_append(&str, string_u8_litexpr(" "));
+            string_concat(&str, string_u8_litexpr(" "));
         }
         if (HasFlag(dirty, DirtyState_UnsavedChanges)){
-            string_append(&str, string_u8_litexpr("*"));
+            string_concat(&str, string_u8_litexpr("*"));
         }
         if (HasFlag(dirty, DirtyState_UnloadedChanges)){
-            string_append(&str, string_u8_litexpr("!"));
+            string_concat(&str, string_u8_litexpr("!"));
         }
         push_fancy_string(scratch, &list, pop2_color, str.string);
     }
@@ -479,7 +479,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     b64 showing_file_bar = false;
     if(view_get_setting(app, view_id, ViewSetting_ShowFileBar, &showing_file_bar) && showing_file_bar)
     {
-        Rect_f32_Pair pair = layout_file_bar_on_top(region, line_height);
+        rect2_Pair pair = layout_file_bar_on_top(region, line_height);
         F4_DrawFileBar(app, view_id, buffer, face_id, pair.min);
         region = pair.max;
     }
@@ -507,7 +507,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
         {
             for (i32 i = 0; i < query_bars.count; i += 1)
             {
-                Rect_f32_Pair pair = layout_query_bar_on_top(region, line_height, 1);
+                rect2_Pair pair = layout_query_bar_on_top(region, line_height, 1);
                 draw_query_bar(app, query_bars.ptrs[i], face_id, pair.min);
                 region = pair.max;
             }
@@ -517,7 +517,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     // NOTE(allen): FPS hud
     if(show_fps_hud)
     {
-        Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
+        rect2_Pair pair = layout_fps_hud_on_bottom(region, line_height);
         draw_fps_hud(app, frame_info, face_id, pair.max);
         region = pair.min;
         animate_in_n_milliseconds(app, 1000);
@@ -527,7 +527,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     Rect_f32 line_number_rect = {};
     if(def_get_config_b32(vars_intern_lit("show_line_number_margins")))
     {
-        Rect_f32_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
+        rect2_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
         line_number_rect = pair.min;
         line_number_rect.x1 += 4;
         region = pair.max;
@@ -686,7 +686,7 @@ F4_LayoutInner(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64
     Face_Advance_Map advance_map = get_face_advance_map(app, face);
     Face_Metrics metrics = get_face_metrics(app, face);
     f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
-    tab_width = clamp_bot(1, tab_width);
+    tab_width = clamp_min(1, tab_width);
     LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
     
     if (text.size == 0){

@@ -43,12 +43,12 @@ fcolor_argb(ARGB_Color color)
 internal FColor
 fcolor_argb(v4 color)
 {
-    return(fcolor_argb(pack_argb(color)));
+    return(fcolor_argb(argb_pack(color)));
 }
 internal FColor
 fcolor_argb(f32 r, f32 g, f32 b, f32 a)
 {
-    return(fcolor_argb(pack_argb(V4(r, g, b, a))));
+    return(fcolor_argb(argb_pack(vec4(r, g, b, a))));
 }
 
 internal FColor
@@ -69,10 +69,10 @@ fcolor_id(Managed_ID id, u32 sub_index){
 internal ARGB_Color
 argb_color_blend(ARGB_Color a, f32 at, ARGB_Color b, f32 bt)
 {
-    Vec4_f32 av = unpack_argb(a);
-    Vec4_f32 bv = unpack_argb(b);
+    Vec4_f32 av = argb_unpack(a);
+    Vec4_f32 bv = argb_unpack(b);
     Vec4_f32 value = at*av + bt*bv;
-    return(pack_argb(value));
+    return(argb_pack(value));
 }
 internal ARGB_Color
 argb_color_blend(ARGB_Color a, f32 t, ARGB_Color b)
@@ -112,9 +112,9 @@ fcolor_resolve(Managed_ID color_id)
 internal FColor
 fcolor_change_alpha(FColor color, f32 alpha)
 {
-    Vec4_f32 v = unpack_argb(fcolor_resolve(color));
+    Vec4_f32 v = argb_unpack(fcolor_resolve(color));
     v.a = alpha;
-    return(fcolor_argb(pack_argb(v)));
+    return(fcolor_argb(argb_pack(v)));
 }
 internal FColor
 fcolor_blend(FColor a, f32 at, FColor b, f32 bt){
@@ -685,7 +685,7 @@ draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *firs
         }
     }
     
-    Vec2_f32 down_delta = V2(-delta.y, delta.x);
+    Vec2_f32 down_delta = vec2(-delta.y, delta.x);
     for (Fancy_String *string = first_string;
          string != 0;
          string = string->next)
@@ -703,7 +703,7 @@ draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *firs
             ARGB_Color use_argb = fcolor_resolve(use_fore);
             Face_Metrics metrics = get_face_metrics(app, use_face);
             f32 down_shift = (base_line - metrics.ascent);
-            down_shift = clamp_bot(0.f, down_shift);
+            down_shift = clamp_min(0.f, down_shift);
             Vec2_f32 p_shift = down_shift*down_delta;
             Vec2_f32 p_shifted = p + p_shift;
             
@@ -761,7 +761,7 @@ internal Vec2_f32
 get_fancy_string_dim(Application_Links *app, Face_ID face, Fancy_String *string){
     Fancy_String *next = string->next;
     string->next = 0;
-    Vec2_f32 result = V2(get_fancy_string_width__inner(app, face, string),
+    Vec2_f32 result = vec2(get_fancy_string_width__inner(app, face, string),
                             get_fancy_string_height__inner(app, face, string));
     string->next = next;
     return(result);
@@ -820,7 +820,7 @@ get_fancy_line_dim(Application_Links *app, Face_ID face, Fancy_Line *line){
         if (line->face != 0){
             face = line->face;
         }
-        result = V2(get_fancy_string_width__inner(app, face, line->first), get_fancy_string_height__inner(app, face, line->first));
+        result = vec2(get_fancy_string_width__inner(app, face, line->first), get_fancy_string_height__inner(app, face, line->first));
     }
     return(result);
 }
@@ -888,25 +888,25 @@ draw_fancy_block(Application_Links *app, Face_ID face, FColor fore,
 internal Vec2_f32
 draw_fancy_string(Application_Links *app, Face_ID face, FColor fore,
                   Fancy_String *string, Vec2_f32 p){
-    return(draw_fancy_string(app, face, fore, string, p, 0, V2(1.f, 0.f)));
+    return(draw_fancy_string(app, face, fore, string, p, 0, vec2(1.f, 0.f)));
 }
 
 internal Vec2_f32
 draw_fancy_string(Application_Links *app, Fancy_String *string, Vec2_f32 p){
-    return(draw_fancy_string(app, 0, fcolor_zero(), string, p, 0, V2(1.f, 0.f)));
+    return(draw_fancy_string(app, 0, fcolor_zero(), string, p, 0, vec2(1.f, 0.f)));
 }
 
 internal Vec2_f32
 draw_fancy_line(Application_Links *app, Face_ID face, FColor fore,
                 Fancy_Line *line, Vec2_f32 p){
-    return(draw_fancy_line(app, face, fore, line, p, 0, V2(1.f, 0.f)));
+    return(draw_fancy_line(app, face, fore, line, p, 0, vec2(1.f, 0.f)));
 }
 
 internal void
 draw_fancy_block(Application_Links *app, Face_ID face, FColor fore,
                  Fancy_Block *block, Vec2_f32 p)
 {
-    draw_fancy_block(app, face, fore, block, p, 0, V2(1.f, 0.f));
+    draw_fancy_block(app, face, fore, block, p, 0, vec2(1.f, 0.f));
 }
 
 ////////////////////////////////

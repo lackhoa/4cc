@@ -1,7 +1,5 @@
 #pragma once
 
-struct Texture_ID { u32 v; };  // NOTE(kv): just changing to learn the API
-
 struct Application_Links 
 {
     Thread_Context *tctx;
@@ -106,8 +104,8 @@ typedef u64 Managed_ID;
 #define CUSTOM_DOC(str)             CUSTOM_DOC(str)
 #define CUSTOM_ID(group, name)      CUSTOM_ID(group, name)
 #else
-#define CUSTOM_COMMAND_SIG(name)    void name(struct Application_Links *app)
-#define CUSTOM_UI_COMMAND_SIG(name) void name(struct Application_Links *app)
+#define CUSTOM_COMMAND_SIG(name)    void name(App *app)
+#define CUSTOM_UI_COMMAND_SIG(name) void name(App *app)
 #define CUSTOM_DOC(str)
 #define CUSTOM_ID(group, name) global Managed_ID name;
 #endif
@@ -116,8 +114,33 @@ typedef u64 Managed_ID;
 api(custom)
 typedef u32 Face_ID;
 
-// NOTE: This is a dummy buffer, so we can use the same commands to switch to the rendered game
-global String GAME_BUFFER_NAME = str8lit("*game*");
+// NOTE: Dummy buffers so we can use the same commands to switch to the rendered game
+#define GAME_BUFFER_COUNT 3
+global String GAME_BUFFER_NAMES[GAME_BUFFER_COUNT] =
+{
+    strlit("*game*"),
+    strlit("*game2*"),
+    strlit("*game3*"),
+};
+#if 0
+jump GAME_BUFFER_NAMES;
+#endif
+
+api(custom)
+struct Mouse_State{
+ b8 l;
+ b8 r;
+ b8 press_l;
+ b8 press_r;
+ b8 release_l;
+ b8 release_r;
+ b8 out_of_window;
+ i32 wheel;
+ union {
+  v2i p;
+  struct{ i32 x; i32 y; };
+ };
+};
 
 // bookmark
 #if !AD_IS_COMPILING_GAME
@@ -362,25 +385,6 @@ enum{
 
 api(custom)
 typedef u8 Key_Modifier;
-
-api(custom)
-struct Mouse_State{
-    b8 l;
-    b8 r;
-    b8 press_l;
-    b8 press_r;
-    b8 release_l;
-    b8 release_r;
-    b8 out_of_window;
-    i32 wheel;
-    union{
-        struct{
-            i32 x;
-            i32 y;
-        };
-        Vec2_i32 p;
-    };
-};
 
 api(custom)
 struct Parser_String_And_Type{

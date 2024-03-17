@@ -1,0 +1,235 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 14.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      8644,        227]
+NotebookOptionsPosition[      7054,        191]
+NotebookOutlinePosition[      7495,        208]
+CellTagsIndexPosition[      7452,        205]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[
+ RowBox[{"Needs", "[", "\"\<CCompilerDriver`\>\"", "]"}]], "Input",
+ CellChangeTimes->{{3.9247937072304354`*^9, 3.924793708695284*^9}, {
+  3.92479384053821*^9, 3.9247938685409927`*^9}},
+ CellLabel->"In[2]:=",ExpressionUUID->"c3fce280-d0a7-5a48-96ca-63ac56bd2042"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "CCompilers", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"CCompilers\\\\\\\"\\\"}]\\) appears \
+in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
+RowBox[{\\\"\\\\\\\"CCompilerDriver`\\\\\\\"\\\", \\\",\\\", \
+\\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \\!\
+\\(\\*RowBox[{\\\"\\\\\\\"CCompilerDriver`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 2, 1, 31038339556563435725, "Local", 
+   "CCompilerDriver`CCompilers"},
+  "MessageTemplate2"]], "Message", "MSG",
+ CellChangeTimes->{3.9247938702191563`*^9},
+ CellLabel->
+  "During evaluation of \
+In[2]:=",ExpressionUUID->"ae24575a-fd3a-8249-8af3-9809944db0c1"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"CCompilers", "[", "]"}]], "Input",
+ CellChangeTimes->{{3.9247938893026485`*^9, 3.924793889305641*^9}},
+ CellLabel->"In[3]:=",ExpressionUUID->"1d78a61a-1ed0-3947-bdfd-2c00c39f94be"],
+
+Cell[BoxData[
+ RowBox[{"{", "}"}]], "Output",
+ CellChangeTimes->{3.9247938898072376`*^9},
+ CellLabel->"Out[3]=",ExpressionUUID->"15886f1d-a5d7-a943-a7c3-bec68e831cab"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"CCompilers", "[", "Full", "]"}]], "Input",
+ CellChangeTimes->{{3.924793896480955*^9, 3.924793896480955*^9}},
+ CellLabel->"In[4]:=",ExpressionUUID->"b3867cac-2943-0a4f-9c3b-6d21da217e59"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"\<\"Name\"\>", "\[Rule]", "\<\"Visual Studio\"\>"}], ",", 
+     RowBox[{"\<\"Compiler\"\>", "\[Rule]", 
+      "CCompilerDriver`VisualStudioCompiler`VisualStudioCompiler"}], ",", 
+     RowBox[{"\<\"CompilerInstallation\"\>", "\[Rule]", "None"}], ",", 
+     RowBox[{"\<\"CompilerName\"\>", "\[Rule]", "Automatic"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"\<\"Name\"\>", "\[Rule]", "\<\"MinGW-w64\"\>"}], ",", 
+     RowBox[{"\<\"Compiler\"\>", "\[Rule]", 
+      "CCompilerDriver`MinGWCompiler`MinGWCompiler"}], ",", 
+     RowBox[{"\<\"CompilerInstallation\"\>", "\[Rule]", "None"}], ",", 
+     RowBox[{"\<\"CompilerName\"\>", "\[Rule]", "Automatic"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"\<\"Name\"\>", "\[Rule]", "\<\"Intel Compiler\"\>"}], ",", 
+     RowBox[{"\<\"Compiler\"\>", "\[Rule]", 
+      "CCompilerDriver`IntelCompiler`IntelCompiler"}], ",", 
+     RowBox[{"\<\"CompilerInstallation\"\>", "\[Rule]", "None"}], ",", 
+     RowBox[{"\<\"CompilerName\"\>", "\[Rule]", "Automatic"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"\<\"Name\"\>", "\[Rule]", "\<\"Generic C Compiler\"\>"}], ",", 
+     RowBox[{"\<\"Compiler\"\>", "\[Rule]", 
+      "CCompilerDriver`GenericCCompiler`GenericCCompiler"}], ",", 
+     RowBox[{"\<\"CompilerInstallation\"\>", "\[Rule]", "None"}], ",", 
+     RowBox[{"\<\"CompilerName\"\>", "\[Rule]", "Automatic"}]}], "}"}]}], 
+  "}"}]], "Output",
+ CellChangeTimes->{3.9247938971784515`*^9},
+ CellLabel->"Out[4]=",ExpressionUUID->"7e32629d-35d6-6646-b858-e246f52265ce"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"getEdgesFromPolygons", "=", 
+   RowBox[{"Compile", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"{", 
+       RowBox[{"f", ",", "_Integer", ",", "1"}], "}"}], "}"}], ",", 
+     RowBox[{"Table", "[", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{
+         RowBox[{"Min", "[", 
+          RowBox[{
+           RowBox[{"Compile`GetElement", "[", 
+            RowBox[{"f", ",", "i"}], "]"}], ",", 
+           RowBox[{"Compile`GetElement", "[", 
+            RowBox[{"f", ",", 
+             RowBox[{"Mod", "[", 
+              RowBox[{
+               RowBox[{"i", "+", "1"}], ",", 
+               RowBox[{"Length", "[", "f", "]"}], ",", "1"}], "]"}]}], 
+            "]"}]}], "]"}], ",", 
+         RowBox[{"Max", "[", 
+          RowBox[{
+           RowBox[{"Compile`GetElement", "[", 
+            RowBox[{"f", ",", "i"}], "]"}], ",", 
+           RowBox[{"Compile`GetElement", "[", 
+            RowBox[{"f", ",", 
+             RowBox[{"Mod", "[", 
+              RowBox[{
+               RowBox[{"i", "+", "1"}], ",", 
+               RowBox[{"Length", "[", "f", "]"}], ",", "1"}], "]"}]}], 
+            "]"}]}], "]"}]}], "}"}], ",", 
+       RowBox[{"{", 
+        RowBox[{"i", ",", "1", ",", 
+         RowBox[{"Length", "[", "f", "]"}]}], "}"}]}], "]"}], ",", 
+     RowBox[{"CompilationTarget", "->", "\"\<C\>\""}], ",", 
+     RowBox[{"RuntimeAttributes", "->", 
+      RowBox[{"{", "Listable", "}"}]}], ",", 
+     RowBox[{"Parallelization", "->", "True"}], ",", 
+     RowBox[{"RuntimeOptions", "->", "\"\<Speed\>\""}]}], "]"}]}], 
+  ";"}]], "Input",
+ CellChangeTimes->{{3.924793907966444*^9, 3.9247939175191517`*^9}},
+ CellLabel->"In[5]:=",ExpressionUUID->"7980cda9-2d72-454a-b289-276143e709c9"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "CreateLibrary", "nocomp", 
+   "\"A C compiler cannot be found on your system. Please consult the \
+documentation to learn how to set up suitable compilers.\"", 2, 5, 2, 
+   31038339556563435725, "Local", "CCompilerDriver`CreateLibrary"},
+  "MessageTemplate2"]], "Message", "MSG",
+ CellChangeTimes->{3.9247939111406574`*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"b6bceda6-4832-6c4e-bcaf-216cf0f8c9ee"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Compile", "nogen", 
+   "\"A library could not be generated from the compiled function.\"", 2, 5, 
+   3, 31038339556563435725, "Local"},
+  "MessageTemplate"]], "Message", "MSG",
+ CellChangeTimes->{3.924793911190527*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"5420dd3f-9ac1-114b-8db4-688e8ba13a2b"]
+}, Open  ]],
+
+Cell[BoxData[
+ RowBox[{"Needs", "[", "\"\<CCompilerDriver`GenericCCompiler`\>\"", 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.924793965081375*^9, 3.9247939650827007`*^9}},
+ CellLabel->"In[6]:=",ExpressionUUID->"d785e78f-65f0-b54d-96d8-9be83d2ffe05"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"CCompilers", "[", "]"}]], "Input",
+ CellLabel->"In[7]:=",ExpressionUUID->"f66aac62-dea1-5943-9279-b8bc66600098"],
+
+Cell[BoxData[
+ RowBox[{"{", "}"}]], "Output",
+ CellChangeTimes->{3.924793975608656*^9},
+ CellLabel->"Out[7]=",ExpressionUUID->"8df9f357-89f8-a641-8f58-87f19ba2dd97"]
+}, Open  ]]
+},
+WindowSize->{1440, 777.75},
+WindowMargins->{{-6, Automatic}, {Automatic, -6}},
+Magnification:>1.5 Inherited,
+FrontEndVersion->"14.0 for Microsoft Windows (64-bit) (December 12, 2023)",
+StyleDefinitions->"ReverseColor.nb",
+ExpressionUUID->"dab9dcf9-133b-df4c-8b10-ba5fccde1572"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 277, 4, 42, "Input",ExpressionUUID->"c3fce280-d0a7-5a48-96ca-63ac56bd2042"],
+Cell[860, 28, 705, 14, 69, "Message",ExpressionUUID->"ae24575a-fd3a-8249-8af3-9809944db0c1"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[1602, 47, 204, 3, 42, "Input",ExpressionUUID->"1d78a61a-1ed0-3947-bdfd-2c00c39f94be"],
+Cell[1809, 52, 167, 3, 48, "Output",ExpressionUUID->"15886f1d-a5d7-a943-a7c3-bec68e831cab"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[2013, 60, 210, 3, 42, "Input",ExpressionUUID->"b3867cac-2943-0a4f-9c3b-6d21da217e59"],
+Cell[2226, 65, 1636, 33, 192, "Output",ExpressionUUID->"7e32629d-35d6-6646-b858-e246f52265ce"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[3899, 103, 1729, 44, 157, "Input",ExpressionUUID->"7980cda9-2d72-454a-b289-276143e709c9"],
+Cell[5631, 149, 459, 10, 41, "Message",ExpressionUUID->"b6bceda6-4832-6c4e-bcaf-216cf0f8c9ee"],
+Cell[6093, 161, 354, 9, 41, "Message",ExpressionUUID->"5420dd3f-9ac1-114b-8db4-688e8ba13a2b"]
+}, Open  ]],
+Cell[6462, 173, 247, 4, 42, "Input",ExpressionUUID->"d785e78f-65f0-b54d-96d8-9be83d2ffe05"],
+Cell[CellGroupData[{
+Cell[6734, 181, 136, 2, 42, "Input",ExpressionUUID->"f66aac62-dea1-5943-9279-b8bc66600098"],
+Cell[6873, 185, 165, 3, 65, "Output",ExpressionUUID->"8df9f357-89f8-a641-8f58-87f19ba2dd97"]
+}, Open  ]]
+}
+]
+*)
+

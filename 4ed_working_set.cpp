@@ -288,7 +288,7 @@ file_bind_filename(Working_Set *working_set, Editing_File *file, String_Const_u8
     Assert(file->unique_name.name_size == 0);
     Assert(file->canon.name_size == 0);
     u64 size = canon_filename.size;
-    size = clamp_top(size, sizeof(file->canon.name_space) - 1);
+    size = clamp_max(size, sizeof(file->canon.name_space) - 1);
     file->canon.name_size = size;
     block_copy(file->canon.name_space, canon_filename.str, size);
     filename_terminate(&file->canon);
@@ -323,7 +323,7 @@ buffer_name_has_conflict(Working_Set *working_set, String_Const_u8 base_name){
 internal void
 buffer_resolve_name_low_level(Arena *scratch, Working_Set *working_set, Editing_File_Name *name, String_Const_u8 base_name){
     u64 size = base_name.size;
-    size = clamp_top(size, sizeof(name->name_space));
+    size = clamp_max(size, sizeof(name->name_space));
     block_copy(name->name_space, base_name.str, size);
     String_u8 string = Su8(name->name_space, size, sizeof(name->name_space));
     u64 original_size = string.size;
@@ -335,9 +335,9 @@ buffer_resolve_name_low_level(Arena *scratch, Working_Set *working_set, Editing_
             string.size = original_size;
             Temp_Memory temp = begin_temp(scratch);
             String_Const_u8 int_str = string_from_integer(scratch, file_x, 10);
-            string_append(&string, string_u8_litexpr(" ("));
-            string_append(&string, int_str);
-            string_append(&string, string_u8_litexpr(")"));
+            string_concat(&string, string_u8_litexpr(" ("));
+            string_concat(&string, int_str);
+            string_concat(&string, string_u8_litexpr(")"));
             end_temp(temp);
         }
     }
@@ -354,7 +354,7 @@ buffer_bind_name_low_level(Arena *scratch, Working_Set *working_set, Editing_Fil
     
     {
         u64 size = base_name.size;
-        size = clamp_top(size, sizeof(file->base_name.name_space));
+        size = clamp_max(size, sizeof(file->base_name.name_space));
         block_copy(file->base_name.name_space, base_name.str, size);
         file->base_name.name_size = size;
     }

@@ -37,12 +37,12 @@ profile_clear(Profile_Global_List *list){
     for (Arena_Node *node = list->first_arena;
          node != 0;
          node = node->next){
-        linalloc_clear(&node->arena);
+        arena_free_all(&node->arena);
     }
     list->first_arena = 0;
     list->last_arena = 0;
     
-    linalloc_clear(&list->node_arena);
+    arena_free_all(&list->node_arena);
     list->first_thread = 0;
     list->last_thread = 0;
     list->thread_count = 0;
@@ -73,7 +73,7 @@ profile_thread_flush(Thread_Context *tctx, Profile_Global_List *list){
             }
         }
         else{
-            linalloc_clear(&tctx->prof_arena);
+            arena_free_all(&tctx->prof_arena);
         }
         tctx->prof_record_count = 0;
         tctx->prof_first = 0;

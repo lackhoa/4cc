@@ -231,7 +231,7 @@ config_parser_get_int(Config_Parser *p)
     if ( string_match(string_prefix(str, 2), string_u8_litexpr("0x")) )
     {
         config_integer.is_signed = false;
-        config_integer.uinteger = (u32)(string_to_integer(string_skip(str, 2), 16));
+        config_integer.uinteger = (u32)(string_to_u64(string_skip(str, 2), 16));
     }
     else
     {
@@ -241,7 +241,7 @@ config_parser_get_int(Config_Parser *p)
             str = string_skip(str, 1);
         }
         config_integer.is_signed = true;
-        config_integer.integer = (i32)(string_to_integer(str, 10));
+        config_integer.integer = (i32)(string_to_u64(str, 10));
         if (is_negative)
         {
             config_integer.integer *= -1;
@@ -1114,7 +1114,7 @@ config_placed_string_var(Config *config, String_Const_u8 var_name, i32 subscript
     b32 success = (result.success && result.type == Config_RValue_Type_String);
     if (success){
         u64 size = result.string.size;
-        size = clamp_top(size, space_size);
+        size = clamp_max(size, space_size);
         block_copy(space, result.string.str, size);
         *var_out = SCu8(space, size);
     }
@@ -1216,7 +1216,7 @@ config_compound_placed_string_member(Config *config, Config_Compound *compound,
     b32 success = (result.success && result.type == Config_RValue_Type_String);
     if (success){
         u64 size = result.string.size;
-        size = clamp_top(size, space_size);
+        size = clamp_max(size, space_size);
         block_copy(space, result.string.str, size);
         *var_out = SCu8(space, size);
     }
@@ -1292,7 +1292,7 @@ typed_placed_string_array_iteration_step(Config *config, Config_Compound *compou
     b32 success = (result.step == Iteration_Good);
     if (success){
         u64 size = result.get.string.size;
-        size = clamp_top(size, space_size);
+        size = clamp_max(size, space_size);
         block_copy(space, result.get.string.str, size);
         *var_out = SCu8(space, size);
     }
@@ -1524,7 +1524,7 @@ function void
 load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_font_size, b32 override_hinting){
     Scratch_Block scratch(app, out_arena);
     
-    linalloc_clear(out_arena);
+    arena_free_all(out_arena);
     
     Config *parsed = 0;
     FILE *file = def_search_normal_fopen(scratch, "config.4coder", "rb");
@@ -1616,10 +1616,10 @@ load_config_and_apply(Application_Links *app, Arena *out_arena, i32 override_fon
     
     b32 bind_by_physical_key = def_get_config_b32(vars_intern_lit("bind_by_physical_key"));
     if (bind_by_physical_key){
-        system_set_key_mode(KeyMode_Physical);
+        system_set_key_mode(Key_Mode_Physical);
     }
     else{
-        system_set_key_mode(KeyMode_LanguageArranged);
+        system_set_key_mode(Key_Mode_LanguageArranged);
     }
 }
 

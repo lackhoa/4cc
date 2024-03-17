@@ -112,8 +112,8 @@ struct Bad_Rect_Pack{
 internal void
 ft__bad_rect_pack_init(Bad_Rect_Pack *pack, Vec2_i32 max_dim){
     pack->max_dim = max_dim;
-    pack->dim = V3i32(0, 0, 1);
-    pack->p = V3i32(0, 0, 0);
+    pack->dim = vec3i(0, 0, 1);
+    pack->p = vec3i(0, 0, 0);
     pack->current_line_h = 0;
 }
 
@@ -145,7 +145,7 @@ ft__bad_rect_pack_next(Bad_Rect_Pack *pack, Vec2_i32 dim){
             result = pack->p;
             pack->p.x += dim.x;
             pack->current_line_h = Max(pack->current_line_h, dim.y);
-            pack->dim.x = clamp_bot(pack->dim.x, pack->p.x);
+            pack->dim.x = clamp_min(pack->dim.x, pack->p.x);
         }
     }
     return(result);
@@ -198,7 +198,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         met->descent     = f32_floor32((f32)ft_face->size->metrics.descender/64.f);
         met->text_height = f32_ceil32((f32)ft_face->size->metrics.height/64.f);
         met->line_skip   = met->text_height - (met->ascent - met->descent);
-        met->line_skip   = clamp_bot(1.f, met->line_skip);
+        met->line_skip   = clamp_min(1.f, met->line_skip);
         met->line_height = met->text_height + met->line_skip;
         
         {
@@ -207,7 +207,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
             f32 relative_thickness = real_over_notional*ft_face->underline_thickness;
             
             f32 center    = f32_floor32(met->ascent + relative_center);
-            f32 thickness = clamp_bot(1.f, relative_thickness);
+            f32 thickness = clamp_min(1.f, relative_thickness);
             
             met->underline_yoff1 = center - thickness*0.5f;
             met->underline_yoff2 = center + thickness*0.5f;
@@ -235,7 +235,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
             error = FT_Load_Glyph(ft_face, i, load_flags);
             if (error == 0){
                 FT_GlyphSlot ft_glyph = ft_face->glyph;
-                Vec2_i32 dim = V2i(ft_glyph->bitmap.width, ft_glyph->bitmap.rows);
+                Vec2_i32 dim = vec2i(ft_glyph->bitmap.width, ft_glyph->bitmap.rows);
                 bitmap->dim = dim;
                 bitmap->data = push_array(arena, u8, dim.x*dim.y);
                 
@@ -297,11 +297,11 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         };
         
         Bitmap white = {};
-        white.dim = V2i(4, 4);
+        white.dim = vec2i(4, 4);
         white.data = white_data;
         
         Bad_Rect_Pack pack = {};
-        ft__bad_rect_pack_init(&pack, V2i(1024, 1024));
+        ft__bad_rect_pack_init(&pack, vec2i(1024, 1024));
         ft__glyph_bounds_store_uv_raw(ft__bad_rect_pack_next(&pack, white.dim), white.dim, &face->white);
         for (u16 i = 0; i < index_count; i += 1){
             Vec2_i32 dim = glyph_bitmaps[i].dim;
@@ -310,16 +310,16 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         ft__bad_rect_store_finish(&pack);
         
         Texture_Kind texture_kind = TextureKind_Mono;
-        Texture_ID texture = graphics_get_texture(pack.dim, texture_kind);
+        u32 texture = graphics_get_texture(pack.dim, texture_kind);
         face->texture_kind = texture_kind;
         face->texture = texture;
         
-        Vec3_f32 texture_dim = V3(pack.dim);
+        v3 texture_dim = vec3(pack.dim);
         face->texture_dim = texture_dim;
         
         {
-            Vec3_i32 p = V3i32((i32)face->white.uv.x0, (i32)face->white.uv.y0, (i32)face->white.w);
-            Vec3_i32 dim = V3i32(white.dim.x, white.dim.y, 1);
+            Vec3_i32 p = vec3i((i32)face->white.uv.x0, (i32)face->white.uv.y0, (i32)face->white.w);
+            Vec3_i32 dim = vec3i(white.dim.x, white.dim.y, 1);
             graphics_fill_texture(texture_kind, texture, p, dim, white.data);
             face->white.uv.x1 = (face->white.uv.x0 + face->white.uv.x1)/texture_dim.x;
             face->white.uv.y1 = (face->white.uv.y0 + face->white.uv.y1)/texture_dim.y;
@@ -329,8 +329,8 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         }
         
         for (u16 i = 0; i < index_count; i += 1){
-            Vec3_i32 p = V3i32((i32)face->bounds[i].uv.x0, (i32)face->bounds[i].uv.y0, (i32)face->bounds[i].w);
-            Vec3_i32 dim = V3i32(glyph_bitmaps[i].dim.x, glyph_bitmaps[i].dim.y, 1);
+            Vec3_i32 p = vec3i((i32)face->bounds[i].uv.x0, (i32)face->bounds[i].uv.y0, (i32)face->bounds[i].w);
+            Vec3_i32 dim = vec3i(glyph_bitmaps[i].dim.x, glyph_bitmaps[i].dim.y, 1);
             graphics_fill_texture(texture_kind, texture, p, dim, glyph_bitmaps[i].data);
             face->bounds[i].uv.x1 = (face->bounds[i].uv.x0 + face->bounds[i].uv.x1)/texture_dim.x;
             face->bounds[i].uv.y1 = (face->bounds[i].uv.y0 + face->bounds[i].uv.y1)/texture_dim.y;

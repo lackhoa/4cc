@@ -34,8 +34,8 @@ token_fill_memory_from_list(Token *dst, Token_List *list, i64 count){
     for (Token_Block *node = list->first;
          node != 0 && count > 0;
          node = node->next){
-        i64 write_count = clamp_top(node->count, count);
-        block_copy_dynamic_array(ptr, node->tokens, write_count);
+        i64 write_count = clamp_max(node->count, count);
+        block_copy_count(ptr, node->tokens, write_count);
         ptr += write_count;
         count -= write_count;
     }
@@ -144,8 +144,9 @@ token_iterator_index(u64 user_id, Token_Array *tokens, i64 token_index){
 }
 
 internal Token_Iterator_Array
-token_iterator(u64 user_id, Token *tokens, i64 count, Token *token){
-    return(token_iterator_index(user_id, tokens, count, (i64)(token - tokens)));
+token_iterator(u64 user_id, Token *tokens, i64 count, Token *token)
+{
+ return(token_iterator_index(user_id, tokens, count, (i64)(token - tokens)));
 }
 
 internal Token_Iterator_Array
@@ -175,7 +176,7 @@ token_iterator_pos(u64 user_id, Token_Array *tokens, i64 pos){
     return(token_iterator_index(user_id, tokens->tokens, tokens->count, index));
 }
 
-internal Token*
+internal Token *
 token_it_read(Token_Iterator_Array *it)
 {
     Token *result = 0;

@@ -7,8 +7,6 @@
  *
  */
 
-// TOP
-
 internal b32
 system_file_can_be_made(Arena *scratch, u8 *filename){
     HANDLE file = CreateFile_utf8(scratch, filename, FILE_APPEND_DATA, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
@@ -41,10 +39,11 @@ global Memory_Annotation_Tracker memory_tracker = {};
 global CRITICAL_SECTION memory_tracker_mutex;
 
 internal void*
-win32_memory_allocate_extended(void *base, u64 size, String_Const_u8 location){
+win32_memory_allocate_extended(void *base, u64 size, String location)
+{
     u64 adjusted_size = size + 64;
     void *result = VirtualAlloc(base, (SIZE_T)adjusted_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-    Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)result;
+   Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)result;
     EnterCriticalSection(&memory_tracker_mutex);
     zdll_push_back(memory_tracker.first, memory_tracker.last, node);
     memory_tracker.count += 1;
@@ -328,7 +327,7 @@ win32_file_attributes_from_HANDLE(HANDLE file)
     return(result);
 }
 
-DLL_EXPORT system_get_file_list_return 
+internal system_get_file_list_return 
 system_get_file_list(system_get_file_list_params)
 {
     File_List result = {};

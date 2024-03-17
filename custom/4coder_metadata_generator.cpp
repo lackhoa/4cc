@@ -545,12 +545,13 @@ parse_command_kind(String_Const_u8 kind){
 }
 
 static b32
-parse_documented_command(Arena *arena, Meta_Command_Entry_Arrays *arrays, Reader *reader){
-    String_Const_u8 name = {};
-    String_Const_u8 kind = {};
-    String_Const_u8 file_name = {};
-    String_Const_u8 line_number = {};
-    String_Const_u8 doc = {};
+parse_documented_command(Arena *arena, Meta_Command_Entry_Arrays *arrays, Reader *reader)
+{
+    String name = {};
+    String kind = {};
+    String file_name = {};
+    String line_number = {};
+    String doc = {};
     
     // Getting the command's name
     i64 start_pos = 0;
@@ -631,7 +632,7 @@ parse_documented_command(Arena *arena, Meta_Command_Entry_Arrays *arrays, Reader
     new_entry->kind = parse_command_kind(kind);
     new_entry->name = name;
     new_entry->source_name = source_name.str;
-    new_entry->line_number = (i32)string_to_integer(line_number, 10);
+    new_entry->line_number = (i32)string_to_u64(line_number, 10);
     new_entry->docstring.doc = doc;
     sll_queue_push(arrays->first_doc_string, arrays->last_doc_string, new_entry);
     arrays->doc_string_count += 1;

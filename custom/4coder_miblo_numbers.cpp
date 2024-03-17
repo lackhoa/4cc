@@ -19,7 +19,7 @@ get_numeric_at_cursor(Application_Links *app, Buffer_ID buffer, i64 pos, Miblo_N
         String_Const_u8 str = push_buffer_range(app, scratch, buffer, range);
         if (str.size > 0){
             info->range = range;
-            info->x = string_to_integer(str, 10);
+            info->x = string_to_u64(str, 10);
             result = true;
         }
     }
@@ -126,9 +126,9 @@ timestamp_to_string(Arena *arena, Miblo_Timestamp t){
     if (t.hour > 0){
         string_list_pushf(arena, &list, "%d:", t.hour);
     }
-    i32 minute = clamp_bot(0, t.minute);
+    i32 minute = clamp_min(0, t.minute);
     string_list_pushf(arena, &list, "%02d:", minute);
-    i32 second = clamp_bot(0, t.second);
+    i32 second = clamp_min(0, t.second);
     string_list_pushf(arena, &list, "%02d", second);
     String_Const_u8 str = string_list_flatten(arena, list);
     return(str);
@@ -175,14 +175,14 @@ get_timestamp_at_cursor(Application_Links *app, Buffer_ID buffer, i64 pos, Miblo
                 
                 if (count_colons == 2){
                     String_Const_u8 hour_str = string_substring(string, number[0]);
-                    t.hour = (i32)string_to_integer(hour_str, 10);
+                    t.hour = (i32)string_to_u64(hour_str, 10);
                     
                     if (range_size(number[1]) == 2){
                         String_Const_u8 minute_str = string_substring(string, number[1]);
-                        t.minute = (i32)string_to_integer(minute_str, 10);
+                        t.minute = (i32)string_to_u64(minute_str, 10);
                         if (range_size(number[2]) == 2){
                             String_Const_u8 second_str = string_substring(string, number[2]);
-                            t.second = (i32)string_to_integer(second_str, 10);
+                            t.second = (i32)string_to_u64(second_str, 10);
                             success = true;
                         }
                     }
@@ -190,11 +190,11 @@ get_timestamp_at_cursor(Application_Links *app, Buffer_ID buffer, i64 pos, Miblo
                 else{
                     if (range_size(number[0]) == 2 || range_size(number[0]) == 1){
                         String_Const_u8 minute_str = string_substring(string, number[0]);
-                        t.minute = (i32)string_to_integer(minute_str, 10);
+                        t.minute = (i32)string_to_u64(minute_str, 10);
                         
                         if (range_size(number[1]) == 2){
                             String_Const_u8 second_str = string_substring(string, number[1]);
-                            t.second = (i32)string_to_integer(second_str, 10);
+                            t.second = (i32)string_to_u64(second_str, 10);
                             success = true;
                         }
                     }

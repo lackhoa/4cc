@@ -198,7 +198,7 @@ F4_Index_ClearFile(F4_Index_File *file)
         {
             _F4_Index_FreeNoteTree(note);
         }
-        linalloc_clear(&file->arena);
+        arena_free_all(&file->arena);
         file->first_note = file->last_note = 0;
     }
 }

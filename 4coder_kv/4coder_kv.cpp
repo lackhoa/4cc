@@ -11,7 +11,7 @@
 #include "4coder_vim/4coder_vim_include.h"
 
 #include "4ed_kv_parser.cpp"
-#include "4coder_kv_fui.cpp"
+#include "4ed_fui.cpp"
 #include "kv_lexer.h"
 #include "4coder_kv_input.cpp"
 #include "4coder_kv_commands.cpp"
@@ -20,7 +20,6 @@
 #include "4coder_kv_draw.cpp"
 #include "4coder_kv_vim_stuff.cpp"
 #include "4coder_kv_lang_list.h"
-
 
 // NOTE: Custom layer swapping for testing and trying out.
 // NOTE: Please enable only one layer, or else it explodes!
@@ -45,28 +44,29 @@
 
 internal void kvInitShiftedTable()
 {
-    Base_Allocator *base = get_base_allocator_system();
-    shifted_version_of_characters = make_table_u64_u64(base, 128);
+ Base_Allocator *base = get_base_allocator_system();
+ shifted_version_of_characters = make_table_u64_u64(base, 32);
+ 
 #define INSERT(CHAR1, CHAR2) table_insert(&shifted_version_of_characters, CHAR1, CHAR2)
-    {
-        INSERT('a', 'A');
-        INSERT('1', '!');
-        INSERT('2', '@');
-        INSERT('3', '#');
-        INSERT('4', '$');
-        INSERT('5', '%');
-        INSERT('6', '^');
-        INSERT('7', '&');
-        INSERT('8', '*');
-        INSERT('`', '~');
-        INSERT('-', '_');
-        INSERT(',', '<');
-        INSERT('.', '>');
-        INSERT(';', ':');
-        INSERT('=', '+');
-        INSERT('/', '?');
-        INSERT('\\', '|');
-    }
+ {
+  INSERT('a', 'A');
+  INSERT('1', '!');
+  INSERT('2', '@');
+  INSERT('3', '#');
+  INSERT('4', '$');
+  INSERT('5', '%');
+  INSERT('6', '^');
+  INSERT('7', '&');
+  INSERT('8', '*');
+  INSERT('`', '~');
+  INSERT('-', '_');
+  INSERT(',', '<');
+  INSERT('.', '>');
+  INSERT(';', ':');
+  INSERT('=', '+');
+  INSERT('/', '?');
+  INSERT('\\', '|');
+ }
 #undef INSERT
 }
 
@@ -85,7 +85,7 @@ kv_essential_mapping(Mapping *mapping)
     BindCore(vim_try_exit, CoreCode_TryExit);
     BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
     BindMouseWheel(mouse_wheel_scroll);
-    BindMouseWheel(mouse_wheel_change_face_size, KeyCode_Control);
+    BindMouseWheel(mouse_wheel_change_face_size, Key_Code_Control);
     // BindCore(vim_file_externally_modified, CoreCode_FileExternallyModified);  NOTE(kv): cool idea but there are auto-generated files that we don't care about
     
     SelectMap(file_id);
@@ -113,24 +113,24 @@ kv_default_bindings(Mapping *mapping)
     
     SelectMap(global_id);
     
-    Bind(toggle_fullscreen,   KeyCode_F11);
-    Bind(increase_face_size,  KeyCode_Equal, KeyCode_Control);
-    Bind(decrease_face_size,  KeyCode_Minus, KeyCode_Control);
-    Bind(byp_reset_face_size, KeyCode_0, KeyCode_Control);
-    Bind(exit_4coder,         KeyCode_Q, KeyCode_Control);
-    Bind(exit_4coder,         KeyCode_Q, KeyCode_Command);
+    Bind(toggle_fullscreen,   Key_Code_F11);
+    Bind(increase_face_size,  Key_Code_Equal, Key_Code_Control);
+    Bind(decrease_face_size,  Key_Code_Minus, Key_Code_Control);
+    Bind(byp_reset_face_size, Key_Code_0, Key_Code_Control);
+    Bind(exit_4coder,         Key_Code_Q, Key_Code_Control);
+    Bind(exit_4coder,         Key_Code_Q, Key_Code_Command);
     
     SelectMap(file_id);
     ParentMap(global_id);
     
-    Bind(delete_char,        KeyCode_Delete);
-    Bind(backspace_char,     KeyCode_Backspace);
-    Bind(move_up,            KeyCode_Up);
-    Bind(move_down,          KeyCode_Down);
-    Bind(move_left,          KeyCode_Left);
-    Bind(move_right,         KeyCode_Right);
-    Bind(seek_end_of_line,   KeyCode_End);
-    Bind(right_adjust_view,  KeyCode_Home);
+    Bind(delete_char,        Key_Code_Delete);
+    Bind(backspace_char,     Key_Code_Backspace);
+    Bind(move_up,            Key_Code_Up);
+    Bind(move_down,          Key_Code_Down);
+    Bind(move_left,          Key_Code_Left);
+    Bind(move_right,         Key_Code_Right);
+    Bind(seek_end_of_line,   Key_Code_End);
+    Bind(right_adjust_view,  Key_Code_Home);
     
     SelectMap(code_id);
     ParentMap(file_id);
@@ -156,54 +156,83 @@ kv_4coder_initialize(App *app)
 internal void
 startup_panels_and_files(App *app)
 {
-    Scratch_Block xblock(app);
-    
+ Scratch_Block scratch(app);
+ 
+#define FILE_VAR "startup_file"
+ String file1 = def_get_config_string(scratch, FILE_VAR "1");
+ String file2 = def_get_config_string(scratch, FILE_VAR "2");
+ String file3 = def_get_config_string(scratch, FILE_VAR "3");
+ String file4 = def_get_config_string(scratch, FILE_VAR "4");
+#undef FILE_VAR
+ 
 #if KV_INTERNAL
-    // @Cleanup @Rename
-    String8 startup_file = def_get_config_string(xblock, "startup_file1");
-    String8 other_startup_file = def_get_config_string(xblock, "other_startup_file1");
-#else
-    String8 startup_file = def_get_config_string(xblock, "startup_file");
-    String8 other_startup_file = def_get_config_string(xblock, "other_startup_file");
-#endif
+ if ( def_get_config_b32(vars_intern_lit("dev_single_panel")) )
+ {
+  View_ID view4 = get_active_view(app, Access_Always);
+  Buffer_ID buffer4 = create_buffer(app, file4, 0);
+  view_set_buffer(app, view4, buffer4, 0);
+ }
+ else if ( def_get_config_b32(vars_intern_lit("dev_double_panel")) )
+ {
+  View_ID view3 = get_active_view(app, Access_Always);
+  Buffer_ID buffer3 = create_buffer(app, file3, 0);
+  view_set_buffer(app, view3, buffer3, 0);
   
-    // NOTE: left (actually top-left)
-    View_ID left_view = get_active_view(app, Access_Always);
-    Buffer_ID left_buffer = create_buffer(app, startup_file, 0);
-    view_set_buffer(app, left_view, left_buffer, 0);
-    
-    // NOTE(kv): Bottom view
-    Buffer_Identifier comp = buffer_identifier(compilation_buffer_name);
-    Buffer_ID comp_id = buffer_identifier_to_id(app, comp);
-    View_ID bottom_view = 0;
-    {
-        bottom_view = open_view(app, left_view, ViewSplit_Bottom);
-        new_view_settings(app, bottom_view);
-        Buffer_ID buffer = view_get_buffer(app, bottom_view, Access_Always);
-        Face_ID face_id = get_face_id(app, buffer);
-        Face_Metrics metrics = get_face_metrics(app, face_id);
-        view_set_split_pixel_size(app, bottom_view, (i32)(metrics.line_height*4.f));
-        view_set_passive(app, bottom_view, true);
-        global_bottom_view = bottom_view;
-        view_set_buffer(app, bottom_view, comp_id, 0);
-    }
-    
-    // NOTE: right (actually top-right)
-    view_set_active(app, left_view);
-    open_panel_vsplit(app);
-    //
-    View_ID right_view = get_active_view(app, Access_Always);
-    Buffer_ID right_buffer = create_buffer(app, other_startup_file, 0);
-    view_set_buffer(app, right_view, right_buffer, 0);
-    
-    view_set_active(app, left_view);
-    
-#if KV_INTERNAL
-    if ( def_get_config_b32(vars_intern_lit("dev_disable_double_panels")) )
-    {
-        toggle_split_panel(app);
-    }
-    // view_goto_first_search_position(app, left_view, str8lit("bookmark"));
+  open_panel_vsplit(app);
+  View_ID view4 = get_active_view(app, Access_Always);
+  Buffer_ID buffer4 = create_buffer(app, file4, 0);
+  view_set_buffer(app, view4, buffer4, 0);
+ }
+#else
+ {
+  View_ID view1 = get_active_view(app, Access_Always);
+  {// NOTE: 1
+   Buffer_ID buffer1 = create_buffer(app, file1, 0);
+   view_set_buffer(app, view1, buffer1, 0);
+  }
+  
+  View_ID view3;
+  {// NOTE: 3
+   view_set_active(app, view1);
+   open_panel_vsplit(app);
+   view3 = get_active_view(app, Access_Always);
+   Buffer_ID buffer3 = create_buffer(app, file3, 0);
+   view_set_buffer(app, view3, buffer3, 0);
+  }
+  
+  // NOTE(kv): Bottom view
+  Buffer_Identifier comp = buffer_identifier(compilation_buffer_name);
+  Buffer_ID comp_id = buffer_identifier_to_id(app, comp);
+  View_ID bottom_view = 0;
+  {
+   bottom_view = open_view(app, view3, ViewSplit_Bottom);
+   new_view_settings(app, bottom_view);
+   Buffer_ID buffer = view_get_buffer(app, bottom_view, Access_Always);
+   Face_ID face_id = get_face_id(app, buffer);
+   Face_Metrics metrics = get_face_metrics(app, face_id);
+   view_set_split_pixel_size(app, bottom_view, (i32)(metrics.line_height*4.f));
+   view_set_passive(app, bottom_view, true);
+   global_bottom_view = bottom_view;
+   view_set_buffer(app, bottom_view, comp_id, 0);
+  }
+  
+  {// NOTE: 2
+   view_set_active(app, view1);
+   open_panel_vsplit(app);
+   View_ID view2     = get_active_view(app, Access_Always);
+   Buffer_ID buffer2 = create_buffer(app, file2, 0);
+   view_set_buffer(app, view2, buffer2, 0);
+  }
+  
+  {// NOTE: 4
+   view_set_active(app, view3);
+   open_panel_vsplit(app);
+   View_ID view4    = get_active_view(app, Access_Always);
+   Buffer_ID buffer4 = create_buffer(app, file4, 0);
+   view_set_buffer(app, view4, buffer4, 0);
+   view_set_active(app, view4);
+  }
+ }
 #endif
 }
 
@@ -301,7 +330,6 @@ kv_startup(App *app)
     
     //def_audio_init();
     
-    def_enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
     clear_all_layouts(app);
     
     kv_essential_mapping(&framework_mapping);
@@ -311,16 +339,18 @@ kv_startup(App *app)
         Buffer_Create_Flag create_flags = BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew;
         create_special_buffer(app, str8lit("*calc*"),       create_flags, BufferSetting_Unimportant);
         create_special_buffer(app, compilation_buffer_name, create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
-        create_special_buffer(app, GAME_BUFFER_NAME,        create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
+        for_i32 (index,0,GAME_BUFFER_COUNT)
+        {
+            create_special_buffer(app, GAME_BUFFER_NAMES[index], create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
+        }
     }
   
     startup_panels_and_files(app);
     
     initialize_stylist_fonts(app);
     
-    // NOTE(kv): debug system startup
 #if KV_INTERNAL
-    DEBUG_draw_hud_p = def_get_config_b32(vars_intern_lit("DEBUG_draw_hud_p"));
+    global_game_on_readonly = true;
 #endif
 }
 
@@ -371,213 +401,219 @@ kvInitQuailTable(App *app)
 function void 
 kv_vim_bindings(App *app)
 {
-    u32 N = bit_1;
-    u32 I = bit_2;
-    u32 V = bit_3;
-    u32 MAP = 0;
-    
-    // todo(kv): tons of ifs :<
+ u32 N = bit_1;
+ u32 I = bit_2;
+ u32 V = bit_3;
+ u32 MAP = 0;
+ 
+ // todo(kv): tons of ifs :<
 #define BIND(...) if (!VimBind(__VA_ARGS__)) { printf("Keymap conflict at line %d!!!\n", __LINE__); }
-    
-    u32 C = KeyMod_Ctl;
-    u32 S = KeyMod_Sft;
-    u32 M = OS_MAC ? KeyMod_Cmd : KeyMod_Alt;
-    Key_Code leader = KeyCode_BackwardSlash;
-    
-    BIND(MAP, kv_vim_normal_mode, KeyCode_Escape);
-    BIND(MAP, kv_void_command,    KeyCode_Menu);  // NOTE(kv): On Macos, this key inserts some random crap and I still can't turn it off.
-    
-    /// Rebinds
-    BIND(N|MAP, undo,                                KeyCode_U);
-    BIND(N|MAP, redo,                              C|KeyCode_R);
-    BIND(N|MAP, kv_open_note_file,          SUB_G,   KeyCode_N);
-    BIND(N|MAP, kv_handle_g_f,              SUB_G,   KeyCode_F);
-    BIND(N|MAP, vim_next_4coder_jump,              M|KeyCode_N);
-    BIND(N|MAP, vim_prev_4coder_jump,              M|KeyCode_P);
-    BIND(N|MAP, view_buffer_other_panel,           C|KeyCode_D);
-    
-    /// Mode Binds
-    BIND(N|V|MAP, vim_modal_i,                        KeyCode_I);
-    BIND(N|0|MAP, goto_line,                       (S|KeyCode_Semicolon));
-    // BIND(N|MAP,   vim_insert_begin,                (S|KeyCode_I));
-    BIND(N|MAP,   vim_replace_mode,                (S|KeyCode_R));
-    BIND(N|0|MAP, vim_visual_mode,                    KeyCode_V);
-    BIND(0|V|MAP, kv_vim_visual_line_mode,            KeyCode_V);
-    BIND(N|V|MAP, vim_visual_mode,                  S|KeyCode_V);
-    BIND(N|V|MAP, vim_visual_mode,                  C|KeyCode_V);
-    BIND(N|0|MAP, vim_prev_visual,          SUB_G,    KeyCode_V);
-    BIND(N|0|MAP, vim_switch_lister,        SUB_G,    KeyCode_B);
-    BIND(N|0|MAP, vim_newline_below,                  KeyCode_O);
-    BIND(N|0|MAP, vim_newline_above,                S|KeyCode_O);
-    BIND(N|0|MAP, kv_newline_above,                 C|KeyCode_K);
-    BIND(N|0|MAP, kv_newline_below,                 C|KeyCode_J);
-    
-    /// Sub Mode Binds
-    BIND(N|V|MAP, vim_submode_g,                        KeyCode_G);
-    BIND(N|V|MAP, vim_submode_z,                        KeyCode_Z);
-    BIND(N|V|MAP, vim_submode_leader,                   leader);
-    
-    /// Request Binds
-    BIND(N|V|MAP, vim_request_yank,                     KeyCode_Y);
-    BIND(N|V|MAP, vim_request_delete,                   KeyCode_D);
-    BIND(N|V|MAP, vim_request_change,                   KeyCode_C);
-    BIND(N|V|MAP, vim_delete_end,                     S|KeyCode_D);
-    BIND(N|V|MAP, vim_change_end,                     S|KeyCode_C);
-    BIND(N|V|MAP, vim_yank_end,                       S|KeyCode_Y);
-    BIND(N|0|MAP, auto_indent_line_at_cursor,           KeyCode_Tab);
-    BIND(0|V|MAP, auto_indent_range,                    KeyCode_Tab);
-    BIND(N|V|MAP, vim_lowercase,            SUB_G,      KeyCode_U);
-    BIND(  V|MAP, vim_uppercase,                      KeyCode_Comma);
-    BIND(N|V|MAP, vim_request_indent,                 S|KeyCode_Period);
-    BIND(N|V|MAP, vim_request_outdent,                S|KeyCode_Comma);
-    BIND(V|MAP,   vim_replace_range_next,               KeyCode_R);
-    
-    /// Edit Binds
-    BIND(N|V|MAP,   vim_paste_before,                KeyCode_P);
-    BIND(N|MAP,     vim_delete_char,                 KeyCode_X);
-    BIND(N|MAP,     kill_buffer,                   S|KeyCode_X);
-    BIND(N|MAP,     vim_replace_next_char,           KeyCode_R);
-    BIND(N|V|MAP,   vim_combine_line,             (S|KeyCode_J));
-    BIND(N|V|MAP,   vim_combine_line,      SUB_G, (S|KeyCode_J));
-    BIND(N|MAP,     vim_last_command,                KeyCode_Period);
-    BIND(N|MAP,     vim_backspace_char,              KeyCode_Backspace);
-    BIND(I|MAP,     word_complete,                   KeyCode_Tab);
-    BIND(I|MAP,     vim_paste_before,              M|KeyCode_V);
-    BIND(I|MAP,     vim_paste_before,              C|KeyCode_V);
-    BIND(I|MAP,     kv_newline_and_indent,           KeyCode_Return);
-    BIND(N|MAP,     kv_newline_and_indent,         S|KeyCode_K); 
-    
-    /// Movement Binds
-    BIND(N|V|MAP, vim_left,                           KeyCode_H);
-    BIND(N|V|MAP, vim_down,                           KeyCode_J);
-    BIND(N|V|MAP, vim_up,                             KeyCode_K);
-    BIND(N|V|MAP, vim_right,                          KeyCode_L);
-    BIND(N|V|MAP, vim_end_line,                    (S|KeyCode_4));
-    BIND(N|V|MAP, vim_begin_line,                   M|KeyCode_I);
-    BIND(0|V|MAP, vim_begin_line,                     KeyCode_I);
-    BIND(N|V|MAP, vim_forward_WORD,                (S|KeyCode_W));
-    BIND(N|V|MAP, vim_backward_WORD,               (S|KeyCode_B));
-    BIND(N|V|MAP, vim_forward_end,                    KeyCode_E);
-    BIND(N|V|MAP, vim_forward_END,                 (S|KeyCode_E));
-    BIND(N|0|MAP, vim_modal_0,                        KeyCode_0);
-    
-    BIND(N|V|MAP, vim_forward_word,  KeyCode_W);
-    BIND(N|V|MAP, vim_backward_word, KeyCode_B);
-    
-    BIND(N|V|MAP, vim_file_top,             SUB_G,     KeyCode_G);
-    BIND(N|V|MAP, vim_goto_line,                   (S|KeyCode_G));
-    BIND(N|V|MAP, vim_goto_column,                 (S|KeyCode_BackwardSlash));
-    BIND(N|V|MAP, vim_modal_percent,               (S|KeyCode_5));
-    BIND(N|V|MAP, vim_bounce,                      (C|KeyCode_5));
-    BIND(N|0|MAP, kv_jump_ultimate,                   KeyCode_F);
-    BIND(N|0|MAP, kv_jump_ultimate_other_panel,     M|KeyCode_F);
-    BIND(0|V|MAP, vim_set_seek_char,                  KeyCode_F);
-    BIND(N|V|MAP, vim_paragraph_up,                   KeyCode_LeftBracket);
-    BIND(N|0|MAP, vim_paragraph_down,                 KeyCode_RightBracket);
-    BIND(N|V|MAP, vim_screen_top,                  (S|KeyCode_H));
-    BIND(N|V|MAP, vim_screen_bot,                  (S|KeyCode_L));
-    BIND(N|V|MAP, vim_screen_mid,                  (S|KeyCode_M));
-    BIND(V|MAP,   cursor_mark_swap,                   KeyCode_O);
-    BIND(V|MAP,   vim_block_swap,                  (S|KeyCode_O));
-    
-    BIND(N|MAP, vim_search_identifier,           (C|S|KeyCode_8));
-    BIND(N|MAP, vim_search_identifier,             (S|KeyCode_8));
-    BIND(N|MAP, vim_clear_search,          SUB_Leader,KeyCode_Space);
-    BIND(N|MAP, vim_start_search_forward,             KeyCode_ForwardSlash);
-    BIND(N|MAP, vim_start_search_backward,         (S|KeyCode_ForwardSlash));
-    BIND(N|MAP, vim_to_next_pattern,                  KeyCode_N);
-    BIND(N|MAP, vim_to_prev_pattern,               (S|KeyCode_N));
-    // BIND(N|MAP, vim_in_next_pattern,        SUB_G,    KeyCode_N);
-    // BIND(N|MAP, vim_in_prev_pattern,        SUB_G, (S|KeyCode_N));
-    
-    BIND(N|MAP, vim_prev_jump,                     (C|KeyCode_O));
-    BIND(N|MAP, vim_next_jump,                     (C|KeyCode_I));
-    
-    /// Screen Adjust Binds
-    BIND(N|V|MAP, vim_half_page_up,                 (C|KeyCode_B));
-    BIND(N|V|MAP, vim_half_page_down,               (C|KeyCode_F));
-    BIND(N|V|MAP, vim_line_down,               (C|S|KeyCode_Y));
-    BIND(N|V|MAP, vim_line_down,                     (C|KeyCode_Y));
-    BIND(N|V|MAP, vim_line_up,                 (C|S|KeyCode_E));
-    BIND(N|V|MAP, vim_line_up,                       (C|KeyCode_E));
-    BIND(N|V|MAP, vim_scroll_screen_top,         SUB_Z,   KeyCode_T);
-    BIND(N|V|MAP, vim_scroll_screen_mid,         SUB_Z,   KeyCode_Z);
-    BIND(N|V|MAP, vim_scroll_screen_bot,         SUB_Z,   KeyCode_B);
-    
-    /// Miscellaneous Binds
-    BIND(N|V|MAP, vim_set_mark,                         KeyCode_M);
-    BIND(N|0|MAP, vim_goto_mark,                        KeyCode_Quote);
-    BIND(N|V|MAP, vim_toggle_macro,                   S|KeyCode_Q);
-    BIND(N|V|MAP, vim_play_macro,                     S|KeyCode_2);
-    BIND(N|MAP,   open_matching_file_cpp,               KeyCode_F12);
-    BIND(N|MAP,   open_matching_file_cpp_other_panel, M|KeyCode_F12);
-    
-    /// Panel
-    BIND(N|V|I, change_active_primary_panel, C|KeyCode_Tab);
-    BIND(N,     close_panel,                 M|KeyCode_W);
-    BIND(N,     toggle_split_panel,          C|KeyCode_W);
-    
-    // Sub modes
-    BIND(N|V|MAP, vim_leader_d, SUB_Leader,       KeyCode_D);
-    BIND(N|V|MAP, vim_leader_c, SUB_Leader,       KeyCode_C);
-    BIND(N|V|MAP, vim_leader_D, SUB_Leader,  (S|KeyCode_D));
-    BIND(N|V|MAP, vim_leader_C, SUB_Leader,  (S|KeyCode_C));
-    
-    // Language support
-    BIND(N|MAP,    vim_goto_definition,                 KeyCode_F1);
-    BIND(N|MAP,    vim_goto_definition_other_panel,   M|KeyCode_F1);
-    BIND(N|0|MAP,  kv_list_all_locations,               KeyCode_S);
-    //
-    BIND(N|MAP,   byp_request_comment,   SUB_G,     KeyCode_ForwardSlash);
-    BIND(N|MAP,   byp_request_uncomment, SUB_G,   S|KeyCode_ForwardSlash);
-    // sexpr movement
-    BIND(N|V|MAP,   kv_sexpr_up,     M|KeyCode_K);
-    BIND(N|V|MAP,   kv_sexpr_down,   M|KeyCode_J);
-    BIND(N|V|MAP,   kv_sexpr_right,  M|KeyCode_L);
-    BIND(N|V|MAP,   kv_sexpr_left,   M|KeyCode_H);
-    BIND(N|V|MAP,   kv_sexpr_end,    M|KeyCode_Semicolon);
-    BIND(N|MAP,     kv_sexpr_select_whole, KeyCode_Q);
-    // surround paren
-    BIND(V|MAP,   kv_surround_paren,                 KeyCode_0);
-    BIND(V|MAP,   kv_surround_paren_spaced,          KeyCode_9);
-    BIND(V|MAP,   cmd_closing_bracket_in_visual_mode,KeyCode_RightBracket);
-    BIND(V|MAP,   kv_surround_brace,               S|KeyCode_RightBracket);
-    BIND(V|MAP,   kv_surround_brace_spaced,        S|KeyCode_LeftBracket);
-    BIND(V|MAP,   kv_surround_double_quote,          KeyCode_Quote);
-    BIND(N|V,     kv_surround_brace_special,       M|KeyCode_LeftBracket)
-    BIND(N|MAP,   kv_delete_surrounding_groupers,  M|KeyCode_RightBracket);
-    
-    // NOTE(kv) KV miscellaneous binds
-    BIND(N,  kv_handle_return_normal_mode, KeyCode_Return);
-    // BIND(N|  MAP,  if_read_only_goto_position_same_panel, S|KeyCode_Return);
-    //
-    BIND(N|  MAP,  write_space,                KeyCode_Space);
-    BIND(N|  MAP,  vim_insert_end,             KeyCode_A);
-    BIND(  V|MAP,  vim_end_line,               KeyCode_A);
-    BIND(N  |MAP,  vim_select_all,           C|KeyCode_A);
-    BIND(N|  MAP,  kv_shift_character,         KeyCode_Comma);
-    BIND(N|  MAP,  exit_4coder,              M|KeyCode_Q);
-    BIND(N|V|MAP,  vim_command_mode,           KeyCode_Semicolon);
-    BIND(N|  MAP,  kv_reopen_with_confirmation,                   S|KeyCode_U);
-    BIND(N|  MAP,  quick_swap_buffer,        M|KeyCode_Comma);
-    BIND(N|0|MAP,  kv_do_t,                    KeyCode_T);
-    BIND(N|0|MAP,  kv_do_T,                  S|KeyCode_T);
-    // NOTE(kv): remedy
-    BIND(N|0|MAP,  remedy_add_breakpoint,      KeyCode_F9);
-    BIND(N|0|MAP,  remedy_start_debugging,     KeyCode_F5);
-    BIND(N|0|MAP,  remedy_stop_debugging,    S|KeyCode_F5);
-    BIND(N|0|MAP,  remedy_run_to_cursor,     C|KeyCode_F10);
-    // NOTE(kv): build
-    BIND(N|MAP,  kv_build_normal,               M|KeyCode_M);
-    BIND(N|MAP,  kv_build_run_only,           C|M|KeyCode_M);
-    BIND(N|MAP,  kv_build_full_rebuild,       S|M|KeyCode_M);
-    BIND(N|0|MAP,  open_build_script,             KeyCode_F3);
-    BIND(N|0|MAP,  toggle_bottom_view_command,  M|KeyCode_Period);
-    BIND(N|0|MAP,  toggle_bottom_view_command,  C|KeyCode_Period);
-    //
-    BIND(N|0|MAP,  clipboard_pop_command,  S|KeyCode_P);
-    BIND(V|MAP,    quick_align_command,    M|KeyCode_A);
-    
+ 
+ u32 C = Key_Mod_Ctl;
+ u32 S = Key_Mod_Sft;
+ u32 M = OS_MAC ? Key_Mod_Cmd : Key_Mod_Alt;
+ Key_Code leader = Key_Code_BackwardSlash;
+ 
+ BIND(MAP, kv_vim_normal_mode, Key_Code_Escape);
+ BIND(MAP, kv_void_command,    Key_Code_Menu);  // NOTE(kv): On Macos, this key inserts some random crap and I still can't turn it off.
+ 
+ 
+ //-NOTE: SUB_G
+ BIND(N|MAP, kv_open_note_file,   SUB_G,   Key_Code_N);
+ BIND(N|MAP, toggle_indicators,   SUB_G,   Key_Code_I);
+ BIND(N|MAP, kv_handle_g_f,       SUB_G,   Key_Code_F);
+ BIND(N|MAP, toggle_the_game,     SUB_G,   Key_Code_O);
+ BIND(N|MAP, toggle_game_auxiliary_viewports,  SUB_G, S|Key_Code_O);
+ BIND(N|V|MAP, vim_file_top,      SUB_G,   Key_Code_G);
+ BIND(N|0|MAP, vim_switch_lister, SUB_G,   Key_Code_B);
+ 
+ BIND(N|MAP, undo,                                Key_Code_U);
+ BIND(N|MAP, redo,                              C|Key_Code_R);
+ BIND(N|MAP, vim_next_4coder_jump,              M|Key_Code_N);
+ BIND(N|MAP, vim_prev_4coder_jump,              M|Key_Code_P);
+ BIND(N|MAP, view_buffer_other_panel,           C|Key_Code_D);
+ 
+ /// Mode Binds
+ BIND(N|V|MAP, vim_modal_i,                        Key_Code_I);
+ BIND(N|0|MAP, goto_line,                       (S|Key_Code_Semicolon));
+ // BIND(N|MAP,   vim_insert_begin,                (S|Key_Code_I));
+ BIND(N|MAP,   vim_replace_mode,                (S|Key_Code_R));
+ BIND(N|0|MAP, vim_visual_mode,                    Key_Code_V);
+ BIND(0|V|MAP, kv_vim_visual_line_mode,            Key_Code_V);
+ BIND(N|V|MAP, vim_visual_mode,                  S|Key_Code_V);
+ BIND(N|V|MAP, vim_visual_mode,                  C|Key_Code_V);
+ BIND(N|0|MAP, vim_newline_below,                  Key_Code_O);
+ BIND(N|0|MAP, vim_newline_above,                S|Key_Code_O);
+ BIND(N|0|MAP, kv_newline_above,                 C|Key_Code_K);
+ BIND(N|0|MAP, kv_newline_below,                 C|Key_Code_J);
+ 
+ /// Sub Mode Binds
+ BIND(N|V|MAP, vim_submode_g,       Key_Code_G);
+ BIND(N|V|MAP, vim_submode_z,       Key_Code_Z);
+ BIND(N|V|MAP, vim_submode_leader,  leader);
+ 
+ BIND(N|MAP,   vim_last_command,             Key_Code_Period);
+ BIND(N|V|MAP, vim_request_yank,             Key_Code_Y);
+ BIND(N|V|MAP, vim_request_delete,           Key_Code_D);
+ BIND(N|V|MAP, vim_request_change,           Key_Code_C);
+ BIND(N|V|MAP, vim_delete_end,             S|Key_Code_D);
+ BIND(N|V|MAP, vim_change_end,             S|Key_Code_C);
+ BIND(N|V|MAP, vim_yank_end,               S|Key_Code_Y);
+ BIND(N|0|MAP, handle_tab_normal_mode,       Key_Code_Tab);
+ BIND(0|V|MAP, auto_indent_range,            Key_Code_Tab);
+ BIND(  V|MAP, vim_uppercase,                Key_Code_Comma);
+ BIND(N|V|MAP, vim_request_indent,         S|Key_Code_Period);
+ BIND(N|V|MAP, vim_request_outdent,        S|Key_Code_Comma);
+ BIND(N|MAP,   vim_replace_next_char,        Key_Code_R);
+ BIND(V|MAP,   vim_replace_range_next,       Key_Code_R);
+ 
+ /// Edit Binds
+ BIND(N|V|MAP,   vim_paste_before,         Key_Code_P);
+ BIND(N|MAP,     vim_delete_char,          Key_Code_X);
+ BIND(N|MAP,     kill_buffer,            S|Key_Code_X);
+ BIND(N|V|MAP,   vim_combine_line,      (S|Key_Code_J));
+ BIND(N|MAP,     vim_backspace_char,       Key_Code_Backspace);
+ BIND(I|MAP,     word_complete,            Key_Code_Tab);
+ BIND(I|MAP,     vim_paste_before,       M|Key_Code_V);
+ BIND(I|MAP,     vim_paste_before,       C|Key_Code_V);
+ BIND(I|MAP,     kv_newline_and_indent,    Key_Code_Return);
+ BIND(N|MAP,     kv_newline_and_indent,  S|Key_Code_K); 
+ 
+ /// Movement Binds
+ BIND(N|V|MAP, vim_left,                Key_Code_H);
+ BIND(N|V|MAP, vim_down,                Key_Code_J);
+ BIND(N|V|MAP, vim_up,                  Key_Code_K);
+ BIND(N|V|MAP, vim_right,               Key_Code_L);
+ BIND(N|V|MAP, vim_end_line,         (S|Key_Code_4));
+ BIND(N|V|MAP, vim_begin_line,        M|Key_Code_I);
+ BIND(0|V|MAP, vim_begin_line,          Key_Code_I);
+ BIND(N|V|MAP, vim_w_cmd,               Key_Code_W);
+ BIND(N|V|MAP, vim_b_cmd,               Key_Code_B);
+ BIND(N|V|MAP, vim_forward_WORD,     (S|Key_Code_W));
+ BIND(N|V|MAP, vim_backward_WORD,    (S|Key_Code_B));
+ BIND(N|V|MAP, vim_forward_end,         Key_Code_E);
+ BIND(N|V|MAP, vim_forward_END,      (S|Key_Code_E));
+ 
+ for(i32 code = cast(i32)Key_Code_0;
+     code <= cast(i32)Key_Code_9;
+     code++)
+ {
+  BIND(N|MAP, command_game_set_preset, cast(Key_Code)code);
+ }
+ //
+ 
+ BIND(N|V|MAP, vim_goto_line,                   (S|Key_Code_G));
+ BIND(N|V|MAP, vim_goto_column,                 (S|Key_Code_BackwardSlash));
+ BIND(N|V|MAP, vim_modal_percent,               (S|Key_Code_5));
+ BIND(N|V|MAP, vim_bounce,                      (C|Key_Code_5));
+ BIND(N|0|MAP, kv_jump_ultimate,                   Key_Code_F);
+ BIND(N|0|MAP, kv_jump_ultimate_other_panel,     M|Key_Code_F);
+ BIND(0|V|MAP, vim_set_seek_char,                  Key_Code_F);
+ //BIND(N|V|MAP, vim_paragraph_up,                   Key_Code_LeftBracket);
+ //BIND(N|0|MAP, vim_paragraph_down,                 Key_Code_RightBracket);
+ BIND(N|V|MAP, vim_half_page_up,                   Key_Code_LeftBracket);
+ BIND(N|0|MAP, vim_half_page_down,                 Key_Code_RightBracket);
+ BIND(N|V|MAP, vim_screen_top,                  (S|Key_Code_H));
+ BIND(N|V|MAP, vim_screen_bot,                  (S|Key_Code_L));
+ BIND(N|V|MAP, vim_screen_mid,                  (S|Key_Code_M));
+ BIND(V|MAP,   cursor_mark_swap,                   Key_Code_O);
+ BIND(V|MAP,   vim_block_swap,                  (S|Key_Code_O));
+ 
+ BIND(N|MAP, vim_search_identifier,           (C|S|Key_Code_8));
+ BIND(N|MAP, vim_search_identifier,             (S|Key_Code_8));
+ BIND(N|MAP, vim_clear_search,          SUB_Leader,Key_Code_Space);
+ BIND(N|MAP, vim_start_search_forward,             Key_Code_ForwardSlash);
+ BIND(N|MAP, vim_start_search_backward,         (S|Key_Code_ForwardSlash));
+ BIND(N|MAP, vim_to_next_pattern,                  Key_Code_N);
+ BIND(N|MAP, vim_to_prev_pattern,               (S|Key_Code_N));
+ 
+ BIND(N|MAP, vim_prev_jump,                     (C|Key_Code_O));
+ BIND(N|MAP, vim_next_jump,                     (C|Key_Code_I));
+ 
+ /// Screen Adjust Binds
+ BIND(N|V|MAP, vim_half_page_up,                 (C|Key_Code_B));
+ BIND(N|V|MAP, vim_half_page_down,               (C|Key_Code_F));
+ BIND(N|V|MAP, vim_line_down,               (C|S|Key_Code_Y));
+ BIND(N|V|MAP, vim_line_down,                     (C|Key_Code_Y));
+ BIND(N|V|MAP, vim_line_up,                 (C|S|Key_Code_E));
+ BIND(N|V|MAP, vim_line_up,                       (C|Key_Code_E));
+ BIND(N|V|MAP, vim_scroll_screen_top,         SUB_Z,   Key_Code_T);
+ BIND(N|V|MAP, vim_scroll_screen_mid,         SUB_Z,   Key_Code_Z);
+ BIND(N|V|MAP, vim_scroll_screen_bot,         SUB_Z,   Key_Code_B);
+ 
+ /// Miscellaneous Binds
+ BIND(N|V|MAP, vim_set_mark,                         Key_Code_M);
+ BIND(N|0|MAP, vim_goto_mark,                        Key_Code_Quote);
+ BIND(N|V|MAP, vim_toggle_macro,                   S|Key_Code_Q);
+ BIND(N|V|MAP, vim_play_macro,                     S|Key_Code_2);
+ BIND(N|MAP,   open_matching_file_cpp,               Key_Code_F12);
+ BIND(N|MAP,   open_matching_file_cpp_other_panel, M|Key_Code_F12);
+ 
+ /// Panel
+ BIND(N|V|I, change_active_primary_view,   C|Key_Code_Tab);
+ BIND(N|V|I, change_active_monitor,      C|S|Key_Code_Tab);
+ BIND(N,     close_panel,                  M|Key_Code_W);
+ BIND(N,     toggle_split_panel,           C|Key_Code_W);
+ 
+ // Sub modes
+ BIND(N|V|MAP, vim_leader_d, SUB_Leader,       Key_Code_D);
+ BIND(N|V|MAP, vim_leader_c, SUB_Leader,       Key_Code_C);
+ BIND(N|V|MAP, vim_leader_D, SUB_Leader,  (S|Key_Code_D));
+ BIND(N|V|MAP, vim_leader_C, SUB_Leader,  (S|Key_Code_C));
+ 
+ // Language support
+ BIND(N|MAP,    vim_goto_definition,                 Key_Code_F1);
+ BIND(N|MAP,    vim_goto_definition_other_panel,   M|Key_Code_F1);
+ BIND(N|0|MAP,  kv_list_all_locations,               Key_Code_S);
+ //
+ // sexpr movement
+ BIND(N|V|MAP,   kv_sexpr_up,     M|Key_Code_K);
+ BIND(N|V|MAP,   kv_sexpr_down,   M|Key_Code_J);
+ BIND(N|V|MAP,   kv_sexpr_right,  M|Key_Code_L);
+ BIND(N|V|MAP,   kv_sexpr_left,   M|Key_Code_H);
+ BIND(N|V|MAP,   kv_sexpr_end,    M|Key_Code_Semicolon);
+ BIND(N|MAP,     kv_sexpr_select_whole, Key_Code_Q);
+ // surround paren
+ BIND(V|MAP,   kv_surround_paren,                 Key_Code_0);
+ BIND(V|MAP,   kv_surround_paren_spaced,          Key_Code_9);
+ BIND(V|MAP,   cmd_closing_bracket_in_visual_mode,Key_Code_RightBracket);
+ BIND(V|MAP,   kv_surround_brace,               S|Key_Code_RightBracket);
+ BIND(V|MAP,   kv_surround_brace_spaced,        S|Key_Code_LeftBracket);
+ BIND(V|MAP,   kv_surround_double_quote,          Key_Code_Quote);
+ BIND(N|V,     kv_surround_brace_special,       M|Key_Code_LeftBracket)
+ BIND(N|MAP,   kv_delete_surrounding_groupers,  M|Key_Code_RightBracket);
+ 
+ // NOTE(kv) KV miscellaneous binds
+ BIND(N,  kv_handle_return_normal_mode, Key_Code_Return);
+ // BIND(N|  MAP,  if_read_only_goto_position_same_panel, S|Key_Code_Return);
+ //
+ BIND(N|  MAP,  handle_space_command,       Key_Code_Space);
+ BIND(N|  MAP,  vim_insert_end,             Key_Code_A);
+ BIND(  V|MAP,  vim_end_line,               Key_Code_A);
+ BIND(N  |MAP,  vim_select_all,           C|Key_Code_A);
+ BIND(N|  MAP,  kv_shift_character,         Key_Code_Comma);
+ BIND(N|  MAP,  exit_4coder,              M|Key_Code_Q);
+ BIND(N|V|MAP,  vim_command_mode,           Key_Code_Semicolon);
+ BIND(N|  MAP,  kv_reopen_with_confirmation,                   S|Key_Code_U);
+ BIND(N|  MAP,  quick_swap_buffer,        M|Key_Code_Comma);
+ BIND(N|0|MAP,  kv_do_t,                    Key_Code_T);
+ BIND(N|0|MAP,  kv_do_T,                  S|Key_Code_T);
+ // NOTE(kv): remedy
+ BIND(N|0|MAP,  remedy_add_breakpoint,      Key_Code_F9);
+ BIND(N|0|MAP,  remedy_start_debugging,     Key_Code_F5);
+ BIND(N|0|MAP,  remedy_stop_debugging,    S|Key_Code_F5);
+ BIND(N|0|MAP,  remedy_run_to_cursor,     C|Key_Code_F10);
+ // NOTE(kv): build
+ BIND(N|MAP,  kv_build_normal,               M|Key_Code_M);
+ BIND(N|MAP,  kv_build_run_only,           C|M|Key_Code_M);
+ BIND(N|MAP,  kv_build_full_rebuild,       S|M|Key_Code_M);
+ BIND(N|0|MAP,  open_build_script,             Key_Code_F3);
+ BIND(N|0|MAP,  toggle_bottom_view_command,  M|Key_Code_Period);
+ BIND(N|0|MAP,  toggle_bottom_view_command,  C|Key_Code_Period);
+ //
+ BIND(N|0|MAP,  clipboard_pop_command,  S|Key_Code_P);
+ BIND(V|MAP,    quick_align_command,    M|Key_Code_A);
+ 
 #undef BIND
 }
 
@@ -601,88 +637,89 @@ default_custom_layer_init(App *app)
 internal Tick_Function kv_tick;
 //
 internal void
-kv_tick(App *app, Frame_Info frame_info)
+kv_tick(App *app, Frame_Info frame)
 {
-    Scratch_Block scratch(app);
-    DEBUG_CLEAR;
-    
-    // NOTE(kv): F4
-    F4_Index_Tick(app);
-    F4_CLC_Tick(frame_info);
-    
-    // NOTE(kv): Default tick stuff from the 4th dimension:
-    default_tick(app, frame_info);
-    
-    // NOTE(kv): vim
-    vim_animate_filebar(app, frame_info);
-    vim_animate_cursor(app, frame_info);
-    vim_cursor_blink++;
-    
-    fui_tick(app, frame_info);
-    
-    game_already_rendered_this_frame = false;
-   
-    {// NOTE: build step
-        Buffer_ID bottom_buffer = view_get_buffer(app, global_bottom_view, Access_Always);
-        Child_Process_ID procid = buffer_get_attached_child_process(app, bottom_buffer);
-        Process_State state = child_process_get_state(app, procid);
-        local_persist b32 is_building = false;
-        if (state.updating)
-        {
-            is_building = true;
-        }
-        else if (is_building)
-        {
-            is_building = false;
-            if (state.return_code == 0)
-            {
-                vim_set_bottom_text(strlit("Build successful!"));
-            }
-            else
-            {
-                vim_set_bottom_text(strlit("Build failed!"));
-            }
-        }
+ Scratch_Block scratch(app);
+ arrsetlen(DEBUG_entries, 0);
+ 
+ // NOTE(kv): F4
+ F4_Index_Tick(app);
+ F4_CLC_Tick(frame);
+ 
+ // NOTE(kv): Default tick stuff from the 4th dimension:
+ default_tick(app, frame);
+ 
+ // NOTE(kv): vim
+ vim_animate_filebar(app, frame);
+ vim_animate_cursor(app, frame);
+ vim_cursor_blink++;
+ 
+ fui_tick(app, frame);
+ 
+ {// NOTE: build step
+  Buffer_ID bottom_buffer = view_get_buffer(app, global_bottom_view, Access_Always);
+  Child_Process_ID procid = buffer_get_attached_child_process(app, bottom_buffer);
+  Process_State state = child_process_get_state(app, procid);
+  local_persist b32 is_building = false;
+  if (state.updating)
+  {
+   is_building = true;
+  }
+  else if (is_building)
+  {
+   is_building = false;
+   if (state.return_code == 0)
+   {
+    vim_set_bottom_text(strlit("Build successful!"));
+   }
+   else
+   {
+    vim_set_bottom_text(strlit("Build failed!"));
+   }
+  }
+ }
+ 
+ {// NOTE(kv): autosave
+  v1 AUTOSAVE_PERIOD_SECONDS = 5.0f;
+  seconds_since_last_keystroke += frame.literal_dt;
+  if (seconds_since_last_keystroke > AUTOSAVE_PERIOD_SECONDS)
+  {
+   seconds_since_last_keystroke = 0;
+   b32 saved_at_least_one_buffer = false;
+   {
+    ProfileScope(app, "save all dirty buffers");
+    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
+         buffer != 0;
+         buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
+    {
+     switch(buffer_get_dirty_state(app, buffer))
+     {
+      case DirtyState_UnsavedChanges:
+      {
+       saved_at_least_one_buffer = true;
+       String filename = push_buffer_filename(app, scratch, buffer);
+       buffer_save(app, buffer, filename, 0);
+      }break;
+      
+      case DirtyState_UnloadedChanges:
+      {
+       buffer_reopen(app, buffer, 0);
+       String filename = push_buffer_filename(app, scratch, buffer);
+       printf_message(app, "automatically reloaded file %.*s\n", string_expand(filename));
+      }break;
+     }
     }
-    
-    {// NOTE(kv): autosave
-        v1 AUTOSAVE_PERIOD_SECONDS = 5.0f;
-        seconds_since_last_keystroke += frame_info.literal_dt;
-        if (seconds_since_last_keystroke > AUTOSAVE_PERIOD_SECONDS)
-        {
-            seconds_since_last_keystroke = 0;
-            b32 saved_at_least_one_buffer = false;
-            {
-                ProfileScope(app, "save all dirty buffers");
-                for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
-                     buffer != 0;
-                     buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
-                {
-                    switch(buffer_get_dirty_state(app, buffer))
-                    {
-                        case DirtyState_UnsavedChanges:
-                        {
-                            saved_at_least_one_buffer = true;
-                            String8 filename = push_buffer_filename(app, scratch, buffer);
-                            buffer_save(app, buffer, filename, 0);
-                        }break;
-                        
-                        case DirtyState_UnloadedChanges:
-                        {
-                            buffer_reopen(app, buffer, 0);
-                            String8 filename = push_buffer_filename(app, scratch, buffer);
-                            printf_message(app, "automatically reloaded file %.*s\n", string_expand(filename));
-                        }break;
-                    }
-                }
-            }
-            if (saved_at_least_one_buffer) 
-            {
-                vim_set_bottom_text(strlit("auto-saved all dirty buffers\n"));
-            }
-        }
-        animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));
-    }
+   }
+   if (saved_at_least_one_buffer) 
+   {
+    vim_set_bottom_text(strlit("auto-saved all dirty buffers\n"));
+   }
+  }
+  animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));
+ }
+ 
+ // TODO: We only update on "tick", which means that the game won't be updated if there's no animation?
+ maybe_update_game(app, frame);
 }
 
 function void 
@@ -704,7 +741,6 @@ kv_custom_layer_init(App *app)
     kv_vim_init(app);
     
     set_custom_hook(app, HookID_SaveFile,                kv_file_save);
-    // set_custom_hook(app, HookID_BufferRegion,         byp_buffer_region);
     set_custom_hook(app, HookID_RenderCaller,            kv_render_caller);
     set_custom_hook(app, HookID_WholeScreenRenderCaller, vim_draw_whole_screen);
     //
@@ -730,10 +766,21 @@ kv_custom_layer_init(App *app)
     F4_Index_Initialize();
     // NOTE(rjf): Register languages.
     F4_RegisterLanguages();
+    
+    {// NOTE: Game stuff
+        Scratch_Block scratch(app);
+        // Export ed_api
+#define X(N) const_ed_api.N = N;
+        X_ED_API_FUNCTIONS(X)
+#undef X
+        String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+        GAME_DLL_PATH = pjoin(&global_permanent_arena, binary_dir, "game.dll");
+        b32 loaded;
+    }
 }
 
 extern "C" void
-custom_layer_init(Application_Links *app)
+custom_layer_init(App *app)
 {
 #if USE_LAYER_kv
     kv_custom_layer_init(app);

@@ -366,7 +366,7 @@ buffer_starts__ensure_max_size(Gap_Buffer *buffer, i64 max_size){
         i64 new_max = round_up_i64(max_size*2, KB(1));
         String_Const_u8 memory = base_allocate(buffer->allocator, sizeof(*buffer->line_starts)*new_max);
         i64 *new_line_starts = (i64*)memory.str;
-        block_copy_dynamic_array(new_line_starts, buffer->line_starts, buffer->line_start_count);
+        block_copy_count(new_line_starts, buffer->line_starts, buffer->line_start_count);
         buffer->line_start_max = new_max;
         base_free(buffer->allocator, buffer->line_starts);
         buffer->line_starts = new_line_starts;
@@ -410,7 +410,7 @@ buffer_get_line_index(Gap_Buffer *buffer, i64 pos){
         i64 start = 0;
         i64 one_past_last = buffer->line_start_count - 1;
         i64 *array = buffer->line_starts;
-        pos = clamp_bot(0, pos);
+        pos = clamp_min(0, pos);
         for (;;){
             i = (start + one_past_last) >> 1;
             if (array[i] < pos){
@@ -620,7 +620,7 @@ buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
     if (line_index + 1 == line_count){
         max_col += 1;
     }
-    max_col = clamp_bot(1, max_col);
+    max_col = clamp_min(1, max_col);
     
     if (col < 0){
         if (-col > max_col){
@@ -634,7 +634,7 @@ buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
         col = 1;
     }
     else{
-        col = clamp_top(col, max_col);
+        col = clamp_max(col, max_col);
     }
     Assert(col > 0);
     i64 adjusted_pos = col - 1;

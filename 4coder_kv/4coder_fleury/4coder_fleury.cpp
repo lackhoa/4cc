@@ -300,11 +300,11 @@
 // - f4_delete_token_boundary: Implements the equivalent of your VS-style
 //   Ctrl+Delete.
 //
-// - f4_backspace_alpha_numeric_or_camel_boundary: Does backspace, but restricts
+// - f4_backspace_alnum_or_camel_boundary: Does backspace, but restricts
 //   it to camel-case and alphanumeric boundaries. Kind of like Ctrl+Backspace
 //   except with different groupings.
 //
-// - f4_delete_alpha_numeric_or_camel_boundary: Same as above, just does it forward.
+// - f4_delete_alnum_or_camel_boundary: Same as above, just does it forward.
 //
 // - f4_home_first_non_whitespace: Implements VS-style Home key, where it first
 //   goes to the first non-whitespace character on the line, then all the way to

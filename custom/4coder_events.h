@@ -29,14 +29,15 @@ enum{
 };
 
 // NOTE(kv): Totally a @Hack, these flags can be appended to the keycode
-typedef u32 Key_Mod;
-enum
+typedef u32 Key_Mods;
+enum Key_Mod
 {
-    KeyMod_Ctl = bit_32,
-    KeyMod_Sft = bit_31,
-    KeyMod_Alt = bit_30,
-    KeyMod_Cmd = bit_29,
-    KeyMod_Mnu = bit_28,
+    Key_Mod_NULL = 0,
+    Key_Mod_Ctl = bit_31,
+    Key_Mod_Sft = bit_30,
+    Key_Mod_Alt = bit_29,
+    Key_Mod_Cmd = bit_28,
+    Key_Mod_Mnu = bit_27,
 };
 
 typedef u32 Key_Flags;
@@ -45,7 +46,7 @@ enum{
 };
 
 global_const i32 Input_MaxModifierCount = 8;
-typedef u32 Key_Code;
+//typedef u32 Key_Code;
 
 // TODO @Cleanup Please, this does not need to exist!
 struct Input_Modifier_Set
@@ -170,3 +171,15 @@ struct User_Input{
     Input_Event event;
     b32 abort;
 };
+
+// NOTE(kv): @Hack
+inline b32
+is_modifier_key(Key_Code code)
+{
+ return (code == Key_Code_Control ||
+         code == Key_Code_Shift   ||
+         code == Key_Code_Alt     ||
+         code == Key_Code_Command ||
+         code == Key_Code_Menu);
+}
+

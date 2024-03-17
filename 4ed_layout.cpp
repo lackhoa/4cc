@@ -70,11 +70,11 @@ layout__evaluate_split(Panel_Split split, i32 v0, i32 v1){
         }break;
         case PanelSplitKind_FixedPixels_Min:
         {
-            v = clamp_top(v0 + split.v_i32, v1);
+            v = clamp_max(v0 + split.v_i32, v1);
         }break;
         case PanelSplitKind_FixedPixels_Max:
         {
-            v = clamp_bot(v0, v1 - split.v_i32);
+            v = clamp_min(v0, v1 - split.v_i32);
         }break;
     }
     return(v);
@@ -159,7 +159,8 @@ layout_get_active_panel(Layout *layout){
 }
 
 internal b32
-layout_split_panel(Layout *layout, Panel *panel, b32 vertical_split, Panel **new_panel_out){
+layout_split_panel(Layout *layout, Panel *panel, b32 vertical_split, Panel **new_panel_out)
+{
     b32 result = false;
     if (layout->open_panel_count < layout->open_panel_max_count){
         Panel *min_panel = layout__alloc_panel(layout);
@@ -484,10 +485,13 @@ panel_get_id(Layout *layout, Panel *panel){
 ////////////////////////////////
 
 internal Panel*
-imp_get_panel(Models *models, Panel_ID panel_id){
+imp_get_panel(Models *models, Panel_ID panel_id)
+{
     Layout *layout = &models->layout;
     Panel *panel = layout->panel_first + panel_id - 1;
-    if (!(layout->panel_first <= panel && panel < layout->panel_one_past_last)){
+    if (!(layout->panel_first <= panel && 
+          panel < layout->panel_one_past_last))
+    {
         panel = 0;
     }
     return(panel);

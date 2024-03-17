@@ -31,69 +31,69 @@ string_has_uppercase(String string)
     for_u64 (index,0,string.size)
     {
         if ( is_uppercase(string.str[index]) )
-            return true;
-    }
-    return false;
+   return true;
+ }
+ return false;
 }
 
 // NOTE(kv): We don't handle multiline string! @FuzzyMultiline
 function i64
 kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String needle)
 {
-    i64 buffer_size = buffer_get_size(app, buffer);
-    i64 result = buffer_size;
-    
-    Scratch_Block temp(app);
-    String8_Array splits = kv_string_split_wildcards(temp, needle);
-    if ( !splits.count ) { return result; }
-    
-    while( pos < buffer_size )
+ i64 buffer_size = buffer_get_size(app, buffer);
+ i64 result = buffer_size;
+ 
+ Scratch_Block temp(app);
+ String8_Array splits = kv_string_split_wildcards(temp, needle);
+ if ( !splits.count ) { return result; }
+ 
+ while( pos < buffer_size )
+ {
+  i64 original_pos = pos;
+  String_Match first_match;
+  {
+   String first_word = splits.strings[0];
+   b32 case_sensitive = string_has_uppercase(first_word);
+   first_match = buffer_seek_string(app, buffer, first_word, Scan_Forward, pos, case_sensitive);
+  }
+  if ( !first_match.buffer ) break;
+  
+  i64 match_start = first_match.range.min;
+  i64 line_end    = get_line_end_pos_from_pos(app, buffer, match_start);
+  pos = first_match.range.end - 1;
+  b32 matched = true;
+  for_i64 (index, 1, splits.count)
+  {
+   String word = splits.strings[index];
+   b32 case_sensitive = string_has_uppercase(word);
+   String_Match match = buffer_seek_string(app, buffer, word, Scan_Forward, pos, case_sensitive);
+   if ( match.buffer )
+   {
+    if ( match.range.max <= line_end )
     {
-        i64 original_pos = pos;
-        String_Match first_match;
-        {
-            String first_word = splits.strings[0];
-            b32 case_sensitive = string_has_uppercase(first_word);
-            first_match = buffer_seek_string(app, buffer, first_word, Scan_Forward, pos, case_sensitive);
-        }
-        if ( !first_match.buffer ) break;
-        
-        i64 match_start = first_match.range.min;
-        i64 line_end    = get_line_end_pos_from_pos(app, buffer, match_start);
-        pos = first_match.range.end - 1;
-        b32 matched = true;
-        for_i64 (index, 1, splits.count)
-        {
-            String word = splits.strings[index];
-            b32 case_sensitive = string_has_uppercase(word);
-            String_Match match = buffer_seek_string(app, buffer, word, Scan_Forward, pos, case_sensitive);
-            if ( match.buffer )
-            {
-                if ( match.range.max <= line_end )
-                {
-                    pos = match.range.end - 1;
-                }
-                else
-                {
-                    // This breaks for @FuzzyMultiline
-                    pos = get_line_start_pos_from_pos(app, buffer, match.range.start) - 1;
-                    matched = false;
-                    break;
-                }
-            }
-            else return result;
-        }
-        
-        if ( matched )
-        {
-            result = match_start;
-            break;
-        }
-        
-        assert_defend(pos > original_pos, return buffer_size;);
+     pos = match.range.end - 1;
     }
-    
-    return result;
+    else
+    {
+     // This breaks for @FuzzyMultiline
+     pos = get_line_start_pos_from_pos(app, buffer, match.range.start) - 1;
+     matched = false;
+     break;
+    }
+   }
+   else return result;
+  }
+  
+  if ( matched )
+  {
+   result = match_start;
+   break;
+  }
+  
+  assert_defend(pos > original_pos, return buffer_size;);
+ }
+ 
+ return result;
 }
 
 internal i64
@@ -354,47 +354,13 @@ list_all_locations_of_identifier(App *app)
     list_all_locations__generic_identifier(app, ListAllLocationsFlag_CaseSensitive);
 }
 
-CUSTOM_COMMAND_SIG(list_all_locations_of_identifier_case_insensitive)
-CUSTOM_DOC("Reads a token or word under the cursor and lists all exact case-insensitive mathces in all open buffers.")
-{
-    list_all_locations__generic_identifier(app, ListAllLocationsFlag_CaseSensitive|ListAllLocationsFlag_MatchSubstring);
-}
-
-CUSTOM_COMMAND_SIG(list_all_locations_of_selection)
-CUSTOM_DOC("Reads the string in the selected range and lists all exact case-sensitive mathces in all open buffers.")
-{
-    list_all_locations__generic_view_range(app, ListAllLocationsFlag_CaseSensitive);
-}
-
-CUSTOM_COMMAND_SIG(list_all_locations_of_selection_case_insensitive)
-CUSTOM_DOC("Reads the string in the selected range and lists all exact case-insensitive mathces in all open buffers.")
-{
-    list_all_locations__generic_view_range(app, 0);
-}
-
-CUSTOM_COMMAND_SIG(list_all_locations_of_type_definition)
-CUSTOM_DOC("Queries user for string, lists all locations of strings that appear to define a type whose name matches the input string.")
-{
-    Scratch_Block scratch(app);
-    String_Const_u8_Array array = query_user_list_definition_needle(app, scratch);
-    list_all_locations__generic(app, array, ListAllLocationsFlag_CaseSensitive|ListAllLocationsFlag_MatchSubstring);
-}
-
-CUSTOM_COMMAND_SIG(list_all_locations_of_type_definition_of_identifier)
-CUSTOM_DOC("Reads a token or word under the cursor and lists all locations of strings that appear to define a type whose name matches it.")
-{
-    Scratch_Block scratch(app);
-    String_Const_u8 base_needle = push_token_or_word_under_active_cursor(app, scratch);
-    String_Const_u8_Array array = user_list_definition_array(app, scratch, base_needle);
-    list_all_locations__generic(app, array, ListAllLocationsFlag_CaseSensitive|ListAllLocationsFlag_MatchSubstring);
-}
-
 internal Range_i64
-get_word_complete_needle_range(Application_Links *app, Buffer_ID buffer, i64 pos){
+get_word_complete_needle_range(App *app, Buffer_ID buffer, i64 pos)
+{
     Range_i64 needle_range = {};
     needle_range.max = pos;
-    needle_range.min = scan(app, boundary_alpha_numeric_underscore_utf8, buffer, Scan_Backward, pos);
-    i64 e = scan(app, boundary_alpha_numeric_underscore_utf8, buffer, Scan_Forward, needle_range.min);
+    needle_range.min = scan(app, boundary_alnum_underscore_utf8, buffer, Scan_Backward, pos);
+    i64 e = scan(app, boundary_alnum_underscore_utf8, buffer, Scan_Forward, needle_range.min);
     if (pos > e){
         needle_range = Ii64(pos);
     }
@@ -419,7 +385,7 @@ internal String_Match_List
 get_complete_list_raw(Application_Links *app, Arena *arena, Buffer_ID buffer,
                       Range_i64 needle_range, String_Const_u8 needle){
     local_persist Character_Predicate *pred =
-        &character_predicate_alpha_numeric_underscore_utf8;
+        &character_predicate_alnum_underscore_utf8;
     
     String_Match_List result = {};
     i64 size = buffer_get_size(app, buffer);
@@ -441,7 +407,7 @@ get_complete_list_raw(Application_Links *app, Arena *arena, Buffer_ID buffer,
     }
     
     string_match_list_enclose_all(app, result,
-                                  right_enclose_alpha_numeric_underscore_utf8);
+                                  right_enclose_alnum_underscore_utf8);
     return(result);
 }
 
@@ -758,34 +724,34 @@ get_word_complete_from_user_drop_down(Application_Links *app){
                 case InputEventKind_KeyStroke:
                 {
                     switch (in.event.key.code){
-                        case KeyCode_Return:
+                        case Key_Code_Return:
                         {
                             result.text = menu.options[0];
                             result.range = range;
                             keep_looping_menu = false;
                         }break;
                         
-                        case KeyCode_Tab:
+                        case Key_Code_Tab:
                         {
                             word_complete_menu_next(&menu);
                         }break;
                         
-                        case KeyCode_F1:
-                        case KeyCode_F2:
-                        case KeyCode_F3:
-                        case KeyCode_F4:
-                        case KeyCode_F5:
-                        case KeyCode_F6:
-                        case KeyCode_F7:
-                        case KeyCode_F8:
+                        case Key_Code_F1:
+                        case Key_Code_F2:
+                        case Key_Code_F3:
+                        case Key_Code_F4:
+                        case Key_Code_F5:
+                        case Key_Code_F6:
+                        case Key_Code_F7:
+                        case Key_Code_F8:
                         {
-                            i32 index = (in.event.key.code - KeyCode_F1);
+                            i32 index = (in.event.key.code - Key_Code_F1);
                             result.text = menu.options[index];
                             result.range = range;
                             keep_looping_menu = false;
                         }break;
                         
-                        case KeyCode_Backspace:
+                        case Key_Code_Backspace:
                         {
                             backspace_char(app);
                             pos = view_get_cursor_pos(app, view);

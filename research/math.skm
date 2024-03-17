@@ -1,0 +1,260 @@
+cubic_bezier_sample
+
+The samples of a bezier curve can be written as a weighted sum of points (Pi)
+{
+ bezier[P,t] = Sum[i=0->3, B[i,t]*Pi]
+ (B is the Bernstein polynomial, Bi are the terms of that polynomial (Bernstein Basis polynomial),
+  For degree 3,
+  B0[t] = 1*(t^0)*(1-t)^3
+  B1[t] = 3*(t^1)*(1-t)^2
+  B2[t] = 3*(t^2)*(1-t)^1
+  B3[t] = 1*(t^3)*(1-t)^0
+  )
+ 
+ }
+
+[So a linear transformation of a bezier sample is this
+ [T[bezier[P,t]]
+  = T[sum[i, Bi[t]*Pi]]
+  = sum[i, T[Bi[t]*Pi]]
+  = sum[i, Bi(t)*T[P]]
+  = bezier[T[P],t]   (T[P] is the transformation of the control points)
+  ]
+ so we can just transform the control points -> done
+ 
+ [Better proof: Look, guys, let MP be a matrix whose columns are the Pi's
+  So it's just this matrix
+  t -> MP * some_matrix * (1,t,t^2,t^3)
+  So obviously, a linear transformation T of the curve is just another matrix multiplication
+  t -> T[ MP * some_matrix * (1,t,t^2,t^3) ]
+  = t -> T * MP * some_matrix * (1,t,t^2,t^3)
+  
+  ]
+ ]
+
+[Suppose T was a translation instead
+ T[bezier[P,t]]
+ = T[sum[i, B[i,t]*Pi]] 
+ = sum[i, B[i,t]*Pi] + V
+ 
+ On the other hand,
+ bezier[P + V,t]    (P+V is an array)
+ = sum[i, B[i,t]*(P[i]+V)]
+ = sum[i, B[i,t]*P[i] + B[i,t]*V]
+ = sum[i, B[i,t]*P[i]] + sum[i, B[i,t]*V]
+ 
+ If we want translation to work with bezier sampling, then this has to be true
+ <> V = sum[i, B[i,t]*V]
+ <> V = sum[i, B[i,t]]*V
+ <> sum[i, B[i,u]] = 1      (which is true by definition!)
+ ]
+
+[You can't make conic sections out of these curves
+ 
+ A point (x,y) on a quadratic bezier curve is parameterized by:
+ x = at^2 + bt + c
+ y = dt^t + et + f
+ which can be viewed as a linear system (if you view t^2 and t as independent variables)
+ x-c = at^2 + bt
+ y-f = dt^t + et
+ 
+ [Solving for the variables "t" and "t^2" as if they were  in the linear system of equations
+  then relating the two variables gives
+  
+  -c^2 d^2 + b c d e - a c e^2 - b^2 d f + 2 a c d f + a b e f - a^2 f^2 
+  (2 c d^2 - b d e + a e^2 - 2 a d f) x
+  (b^2 d - 2 a c d - a b e + 2 a^2 f) y 
+  A=(-d^2)  x^2 
+  B=(2 a d) x*y 
+  C=(-a^2)  y^2
+  
+  We have B^2 - 4AC = 0, somehow... and idk why but that proves it
+  [The explanation is at https://en.wikipedia.org/wiki/Discriminant, under "Conic Sections"]
+  [Norman Wildberger why quadratic Bezier curves are conics https://youtu.be/P9XYzST6SZU?list=PLzdiPTrEWyz4rKFN541wFKvKPSg5Ea6XB&t=1031]
+  ]
+ ]
+
+[@Notation
+ (x,y,z) is a point in Euclidean 3-space
+ [x,y,z] is a point in projective 2-space (aka the "projective plane")
+ 
+ If P=(x,y,z), then there is a natural mapping
+ [P] = [(x,y,z)] = [x,y,z]   (so long as P is not (0,0,0))
+ 
+ [@Realization If something is right at your eye, then you cannot see it]
+
+ [A Euclidean point in the projective space are "normal" points 
+  (as opposed to the points at infinity, i.e those with z=0)]
+ ]
+
+[What is a bezier curve?
+ It is a list of control points
+ We can also view it as a function: t -> bezier[P,t]
+ [@Definition A rational Bezier curve is a function:
+  t -> [bezier[P,t]]
+  ]
+ ]
+
+[Assume Pi is a point in Euclidean 3D-Space, with z != 0
+ let wi be the z-coordinate of Pi, so
+ Pi = (wi*Qi[0], wi*Qi[1], 1) = wi*(Qi[0], Qi[1], 1) = wi*P'
+ 
+ The rational Bernstein-Bezier curve can be written as
+ ]
+
+[We could spit out a bunch of 3D points in the software renderer -> That's it, no need to do any projection
+ [I'm still not sure how to render these Bezier curves, actually]
+ [I do know that each sample point is conceptually a 3D sphere,
+  [I'm not gonna draw that double-bezier thing guys, it's way too hard to specify,
+   and only makes sense in one dimension]
+  [Also the sphere looks just fine, in fact it looks BEAUTIFUL! I have no complaints]]]]
+
+[So rational Bezier curves are just weighted control points
+ 
+ rational_bezier[P,t] = Sum[i=0->3, Wi*B[i,t]*Pi]
+ 
+ Suppose the Pi are 2-dimensional points, f.ex
+ 
+ rational_bezier[P,t] = Sum[i=0->3, Wi*B[i,t]* List[(0,0), (1,1), (2,2)][i] ]
+ 
+ Well we can view these 2D points as projections of 3D points
+ 
+ rational_bezier[P,t] = Projection[ Sum[i=0->3, Wi*B[i,t]* List[(0,0,1), (1,1,1), (2,2,1)][i] ] ]
+ (NOTE Perspective projection is just that: a divide, (2,2) is a projection of (2,2,1))
+ rational_bezier[P,t] = Sum[i=0->3, 
+       B[i,t]* List[(0,0,w0), 
+                    (w1,w1,w1),
+                    (2*w2,2*w2,w2)][i] ]
+ rational_bezier[P,t] = bezier[List[(0,0,w0), (w1,w1,w1), (2*w2,2*w2,w2)], t]
+ 
+ ]
+
+[IMPORTANT I think there is absolutely no downside to 3D bezier curves
+ We can just view the camera as a matrix, and compose that with the bezier matrix
+ Then the result is just one big fun matrix -> done!
+ [Only obstacle is that our projection currently isn't a matrix, and it's time to fix that!]
+ [Ken Joy was right: just transform the control points,
+  Perspective transformation in 3D is just a matrix in 4D,
+  And matrices commutes with the Bezier process]
+ [NOTE Look, all this means that we can just let the do the GPU do the divide for us]
+ ]
+
+[So suppose I have this parabola right here
+ quadraticBezier[t] := (1-t)^2*p0 + 2*(1-t)*t*p1 + t^2*p2
+ quadraticBezier'[t] /. t->0
+ quadraticBezier'[t] /. t->1
+ [NOTE BOO! The derivative at t->1 does not care about the middle control point]
+ 
+ cubicBezier[t_] := (1-t)^3*p0 + 3*(1-t)^2*t*p1 + 3*(1-t)*t^2*p2 + t^3*p3
+ cubicBezier'[t] /. t->0 = -3 p0 + 3 p1
+ cubicBezier'[t] /. t->1 = -3 p2 + 3 p3
+ [NOTE This is the reason why we love cubic bezier curves!]
+ ]
+
+[Bezier curve forming parabola
+ https://stackoverflow.com/questions/22237780/how-to-model-quadratic-equation-using-a-bezier-curve-calculate-control-point
+ For a Bezier curve to form a parabola, the second derivative must be constant
+ 
+ Simplify[cubicBezier''[t]]
+ -6 (-p2 + p1 (2 - 3 t) + p0 (-1 + t) + 3 p2 t - p3 t)
+ 
+ [NOTE This is the special sauce:
+  p0 - 3 p1 = p3 - 3 p2
+  or
+  p0-p3 = 3(p1-p2)
+  [So the line through the endpoints have the same direction as the line through the interpolating control poitns]
+  ]
+ 
+ -6 (-p2 + p1 2 + (p0 t - 3 p1 t) - p0  + (3 p2 t - p3 t))
+ ok, in order for this expression to be constant, (p0 t - 3 p1 t)+(3 p2 t - p3 t) must be constant for all t
+ What does that mean? That means the derivative of that expression must be 0 (that means the THIRD derivative of the bezier function is 0)
+ 
+ Simplify[cubicBezier'''[t]]
+ -6 (p0 - 3 p1 + 3 p2 - p3)
+ Which is exactly the same as the stackoverflow answer
+ ]
+
+[Let's talk about Rotation
+ rotateX = {{1, 0,  0},
+            {0, cx,-sx},
+            {0, sx, cx}}
+ rotateY = {{cy, 0, sy},
+            {0, 1, 0},
+            {-sy, 0, cy}}
+ 
+ [Our rotation is like this
+  theta = y rotation
+  phi   = x rotation
+  
+  Actually this is the INVERSE of the rotation matrix
+  [
+   rotx = {ct, 0, -st}
+   rotz = {cp st, sp, cp ct}
+   roty = Cross[rotz,rotx]
+   inverse = {rotx, roty, rotz}
+   Matrix_Form[Transpose[inverse]]
+   
+   [The matrix should be this: which is surprisingly similar to rotateY.rotateX
+    {{ct, -sp st,  cp st},
+     {0,   cp,     sp},
+     {-st,-ct sp,  cp ct}}
+    [the only difference is, we go UP when phi increases, so sp is negated]]
+   ]
+  ]
+ ]
+
+[todo Head rotation: What if we applied theta rotation first, then phi?
+ [We investigate an object by walking around it, 
+  I don't move around the object vertical circle, I move my eyes around a horizontal circle
+  [Why? Because you can always move side-to-side,
+   but you can't always move up (it's too tall!)]
+  [Anyway, circles aren't really great ways to model neck movement]
+  [RIt's funny: rolling your head doesn't increase visibility in anyway!!!]]
+ [That said, I still have to try this out!]]
+
+[
+ tau = 2 Pi;
+ cos[turn_] := Cos[tau turn];
+ sin[turn_] := Sin[tau turn];
+ rotateX[phi_] := {{1, 0, 0},
+                   {0, cos[phi], -sin[phi]},
+                   {0, sin[phi], cos[phi]}};
+ rotateY[theta_] := {{+cos[theta], 0, sin[theta]},
+                     {+0, 1, 0},
+                     {-sin[theta], 0, cos[theta]}};
+ rotateZ[roll_] := {{cos[roll], -sin[roll], 0},
+                    {sin[roll], cos[roll], 0},
+                    {0,0,1}};
+ rotateTPR[theta_, phi_] := rotateY[theta] . rotateX[-phi];
+ rotateTPR[theta, phi] // TraditionalForm
+ ]
+
+[
+ plotAxes = Table[Arrow[{ReplacePart[{0,0,0}, {i -> -range}], ReplacePart[{0,0,0}, {i -> range}]}],
+                  {i,3}];
+ drawArrow[point_] := Arrow[{{0,0,0}, point}];
+ 
+ Manipulate[
+            z = Normalize[{a,b,c}];
+            If[z[[1]] > 0.9, 
+               x = Normalize[Cross[{0,0,1},z]], 
+               x = Normalize[Cross[{0,1,0},z]]];
+            y = Cross[z,x];
+            inverse = {x,y,z};
+            forward = Transpose[inverse];
+            sample[turn_] := forward.rotateZ[turn].{0,1,0};
+            samples = Table[Point[sample[turn]], {turn, 0, 1, 1.0/16}];
+            Graphics3D[{Red,plotAxes[[1]], Green,plotAxes[[2]], Blue,plotAxes[[3]],
+                        Red,drawArrow[inverse[[1]]], Green,drawArrow[inverse[[2]]], Blue,drawArrow[inverse[[3]]],
+                        PointSize[Large],Red,Point[sample[turn]],
+                        PointSize[Medium], Black, samples}],
+            {{a,1},0,1},
+            {b,0,1},
+            {c,0,1},
+            {turn,0,1}
+            ]
+ ]
+
+[todo Let's tune the coordinate systems to our likings]
+
+//~EOF
