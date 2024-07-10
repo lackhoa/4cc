@@ -6,7 +6,7 @@
  global b32 global_code_peek_open = 0;
 
 function void
-F4_CodePeek_Render(Application_Links *app, View_ID view_id, Face_ID face_id,
+F4_CodePeek_Render(App *app, View_ID view_id, Face_ID face_id,
                    Buffer_ID buffer, Frame_Info frame_info)
 {
     Scratch_Block scratch(app);
@@ -22,7 +22,7 @@ F4_CodePeek_Render(Application_Links *app, View_ID view_id, Face_ID face_id,
     struct Peek
     {
         Peek *next;
-        String_Const_u8 string;
+        String string;
         Code_Index_Note *note;
     };
     
@@ -52,7 +52,7 @@ peek_count += 1;\
     // NOTE(rjf): Push identifiers left around in *peek*.
     {
         Token_Array token_array = get_token_array_from_buffer(app, peek_buf);
-        Token_Iterator_Array it = token_iterator_pos(0, &token_array, 0);
+        Token_Iterator_Array it = token_it_at_pos(0, &token_array, 0);
         for(;token_it_inc_non_whitespace(&it);)
         {
             Token *token = token_it_read(&it);
@@ -135,7 +135,7 @@ CUSTOM_COMMAND_SIG(f4_code_peek_yank)
 CUSTOM_DOC("Yanks the current cursor identifier into the *peek* buffer.")
 {
     Scratch_Block scratch(app);
-    String_Const_u8 string = push_token_or_word_under_active_cursor(app, scratch);
+    String string = push_token_or_word_under_active_cursor(app, scratch);
     Code_Index_Note *note = code_index_note_from_string(string);
     Buffer_ID buffer = get_buffer_by_name(app, string_u8_litexpr("*peek*"), Access_Read | Access_Write);
     if(buffer != 0 && note != 0)

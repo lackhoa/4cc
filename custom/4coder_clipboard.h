@@ -10,7 +10,7 @@
 struct Clipboard{
     Arena arena;
     Heap heap;
-    String_Const_u8 *clips;
+    String *clips;
     u32 clip_index;  // NOTE(kv): Thoght it was the clipboard size, I've seen a failure case when this is zero? vERY Weird.
     u32 clip_capacity;
 };

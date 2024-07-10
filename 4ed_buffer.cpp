@@ -14,19 +14,19 @@
 //
 
 internal void
-write_cursor_with_index(Cursor_With_Index *positions, i32 *count, i64 pos){
+write_cursor_with_index(Cursor_With_Index *positions, i1 *count, i64 pos){
     positions[*count].index = *count;
     positions[*count].pos = pos;
     ++(*count);
 }
 
 internal void
-buffer_quick_sort_cursors(Cursor_With_Index *positions, i32 first, i32 one_past_last){
+buffer_quick_sort_cursors(Cursor_With_Index *positions, i1 first, i1 one_past_last){
     if (first + 1 < one_past_last){
-        i32 pivot = one_past_last - 1;
+        i1 pivot = one_past_last - 1;
         i64 pivot_pos = positions[pivot].pos;
-        i32 j = first;
-        for (i32 i = first; i < pivot; i += 1){
+        i1 j = first;
+        for (i1 i = first; i < pivot; i += 1){
             i64 pos = positions[i].pos;
             if (pos < pivot_pos){
                 Swap(Cursor_With_Index, positions[j], positions[i]);
@@ -40,16 +40,16 @@ buffer_quick_sort_cursors(Cursor_With_Index *positions, i32 first, i32 one_past_
 }
 
 internal void
-buffer_sort_cursors(Cursor_With_Index *positions, i32 count){
+buffer_sort_cursors(Cursor_With_Index *positions, i1 count){
     if (count > 0){
         buffer_quick_sort_cursors(positions, 0, count);
     }
 }
 
 internal void
-buffer_unsort_cursors(Cursor_With_Index *positions, i32 count){
+buffer_unsort_cursors(Cursor_With_Index *positions, i1 count){
     if (count > 0){
-        i32 i = 0;
+        i1 i = 0;
         for (;;){
             if (positions[i].index == i){
                 i += 1;
@@ -58,7 +58,7 @@ buffer_unsort_cursors(Cursor_With_Index *positions, i32 count){
                 }
             }
             else{
-                i32 j = positions[i].index;
+                i1 j = positions[i].index;
                 Swap(Cursor_With_Index, positions[i], positions[j]);
             }
         }
@@ -67,12 +67,12 @@ buffer_unsort_cursors(Cursor_With_Index *positions, i32 count){
 
 #if 0
 function void
-buffer_sort_batch(Edit *batch, i32 first, i32 one_past_last){
+buffer_sort_batch(Edit *batch, i1 first, i1 one_past_last){
     if (first + 1 < one_past_last){
-        i32 pivot = one_past_last - 1;
+        i1 pivot = one_past_last - 1;
         i64 pivot_pos = batch[pivot].range.first;
-        i32 j = first;
-        for (i32 i = first; i < pivot; i += 1){
+        i1 j = first;
+        for (i1 i = first; i < pivot; i += 1){
             i64 pos = batch[i].range.first;
             if (pos < pivot_pos){
                 Swap(Edit, batch[j], batch[i]);
@@ -86,11 +86,11 @@ buffer_sort_batch(Edit *batch, i32 first, i32 one_past_last){
 }
 
 function Edit_Array
-buffer_batch_array_from_linked_list(Arena *arena, Batch_Edit *batch, i32 count){
+buffer_batch_array_from_linked_list(Arena *arena, Batch_Edit *batch, i1 count){
     Edit_Array result = {};
     result.count = count;
     result.vals = push_array(arena, Edit, count);
-    i32 counter = 0;
+    i1 counter = 0;
     for (Batch_Edit *node = batch;
          counter < count && node != 0;
          node = node->next){
@@ -101,7 +101,7 @@ buffer_batch_array_from_linked_list(Arena *arena, Batch_Edit *batch, i32 count){
 }
 
 function Edit_Array
-buffer_sort_batch(Arena *arena, Batch_Edit *batch, i32 count){
+buffer_sort_batch(Arena *arena, Batch_Edit *batch, i1 count){
     Edit_Array result = buffer_batch_array_from_linked_list(arena, batch, count);
     buffer_sort_batch(result.vals, 0, result.count);
     return(result);
@@ -109,7 +109,7 @@ buffer_sort_batch(Arena *arena, Batch_Edit *batch, i32 count){
 #endif
 
 internal void
-buffer_update_cursors_lean_l(Cursor_With_Index *sorted_positions, i32 count,
+buffer_update_cursors_lean_l(Cursor_With_Index *sorted_positions, i1 count,
                              Batch_Edit *batch){
     Cursor_With_Index *pos = sorted_positions;
     Cursor_With_Index *end_pos = sorted_positions + count;
@@ -140,7 +140,7 @@ buffer_update_cursors_lean_l(Cursor_With_Index *sorted_positions, i32 count,
 }
 
 internal void
-buffer_update_cursors_lean_r(Cursor_With_Index *sorted_positions, i32 count,
+buffer_update_cursors_lean_r(Cursor_With_Index *sorted_positions, i1 count,
                              Batch_Edit *batch){
     Cursor_With_Index *pos = sorted_positions;
     Cursor_With_Index *end_pos = sorted_positions + count;
@@ -194,7 +194,7 @@ buffer_init(Gap_Buffer *buffer, u8 *data, u64 size, Base_Allocator *allocator){
     buffer->allocator = allocator;
     
     u64 capacity = round_up_u64(size*2, KB(4));
-    String_Const_u8 memory = base_allocate(allocator, capacity);
+    String memory = base_allocate(allocator, capacity);
     buffer->data = (u8*)memory.str;
     buffer->size1 = size/2;
     buffer->gap_size = capacity - size;
@@ -206,7 +206,7 @@ buffer_init(Gap_Buffer *buffer, u8 *data, u64 size, Base_Allocator *allocator){
 }
 
 internal b32
-buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String_Const_u8 text, i64 shift_amount){
+buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String text, i64 shift_amount){
     i64 size = buffer_size(buffer);
     Assert(0 <= range.start);
     Assert(range.start <= range.end);
@@ -215,7 +215,7 @@ buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String_Const_u8 text, 
     if (shift_amount + size > buffer->max){
         i64 new_max = round_up_i64(2*(shift_amount + size), KB(4));
         i64 new_gap_size = new_max - size;
-        String_Const_u8 new_memory_data = base_allocate(buffer->allocator, new_max);
+        String new_memory_data = base_allocate(buffer->allocator, new_max);
         u8 *new_memory = (u8*)new_memory_data.str;
         block_copy(new_memory, buffer->data, buffer->size1);
         block_copy(new_memory + buffer->size1 + new_gap_size, buffer->data + buffer->size1 + buffer->gap_size,
@@ -260,9 +260,9 @@ buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String_Const_u8 text, 
 
 ////////////////////////////////
 
-internal List_String_Const_u8
+internal List_String
 buffer_get_chunks(Arena *arena, Gap_Buffer *buffer){
-    List_String_Const_u8 list = {};
+    List_String list = {};
     if (buffer->size1 > 0){
         string_list_push(arena, &list, SCu8(buffer->data, buffer->size1));
     }
@@ -274,10 +274,10 @@ buffer_get_chunks(Arena *arena, Gap_Buffer *buffer){
 }
 
 internal void
-buffer_chunks_clamp(List_String_Const_u8 *chunks, Range_i64 range){
+buffer_chunks_clamp(List_String *chunks, Range_i64 range){
     i64 p = 0;
-    List_String_Const_u8 list = {};
-    for (Node_String_Const_u8 *node = chunks->first, *next = 0;
+    List_String list = {};
+    for (Node_String *node = chunks->first, *next = 0;
          node != 0;
          node = next){
         next = node->next;
@@ -285,7 +285,7 @@ buffer_chunks_clamp(List_String_Const_u8 *chunks, Range_i64 range){
         if (range_overlap(range, node_range)){
             i64 first = Max(node_range.first, range.first) - node_range.first;
             i64 one_past_last = Min(node_range.one_past_last, range.one_past_last) - node_range.first;
-            String_Const_u8 s = string_prefix(node->string, one_past_last);
+            String s = string_prefix(node->string, one_past_last);
             node->string = string_skip(s, first);
             sll_queue_push(list.first, list.last, node);
             list.total_size += node->string.size;
@@ -296,22 +296,22 @@ buffer_chunks_clamp(List_String_Const_u8 *chunks, Range_i64 range){
     *chunks = list;
 }
 
-internal String_Const_u8
+internal String
 buffer_stringify(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
-    List_String_Const_u8 list = buffer_get_chunks(arena, buffer);
+    List_String list = buffer_get_chunks(arena, buffer);
     buffer_chunks_clamp(&list, range);
     return(string_list_flatten(arena, list, StringFill_NullTerminate));
 }
 
-internal String_Const_u8
+internal String
 buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
-    List_String_Const_u8 list = buffer_get_chunks(arena, buffer);
+    List_String list = buffer_get_chunks(arena, buffer);
     buffer_chunks_clamp(&list, range);
     u64 cap = list.total_size*2;
     u8 *memory = push_array(arena, u8, cap);
     u8 *memory_opl = memory + cap;
     u8 *ptr = memory;
-    for (Node_String_Const_u8 *node = list.first;
+    for (Node_String *node = list.first;
          node != 0;
          node = node->next){
         u8 *byte = node->string.str;
@@ -338,11 +338,11 @@ buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
 internal i64
 buffer_count_newlines(Arena *scratch, Gap_Buffer *buffer, i64 start, i64 end){
     Temp_Memory temp = begin_temp(scratch);
-    List_String_Const_u8 list = buffer_get_chunks(scratch, buffer);
+    List_String list = buffer_get_chunks(scratch, buffer);
     buffer_chunks_clamp(&list, Ii64(start, end));
     
     i64 count = 0;
-    for (Node_String_Const_u8 *node = list.first;
+    for (Node_String *node = list.first;
          node != 0;
          node = node->next){
         u8 *byte = node->string.str;
@@ -364,7 +364,7 @@ internal void
 buffer_starts__ensure_max_size(Gap_Buffer *buffer, i64 max_size){
     if (max_size > buffer->line_start_max){
         i64 new_max = round_up_i64(max_size*2, KB(1));
-        String_Const_u8 memory = base_allocate(buffer->allocator, sizeof(*buffer->line_starts)*new_max);
+        String memory = base_allocate(buffer->allocator, sizeof(*buffer->line_starts)*new_max);
         i64 *new_line_starts = (i64*)memory.str;
         block_copy_count(new_line_starts, buffer->line_starts, buffer->line_start_count);
         buffer->line_start_max = new_max;
@@ -383,11 +383,11 @@ buffer_measure_starts__write(Gap_Buffer *buffer, i64 pos){
 internal void
 buffer_measure_starts(Arena *scratch, Gap_Buffer *buffer){
     Temp_Memory temp = begin_temp(scratch);
-    List_String_Const_u8 list = buffer_get_chunks(scratch, buffer);
+    List_String list = buffer_get_chunks(scratch, buffer);
     buffer->line_start_count = 0;
     buffer_measure_starts__write(buffer, 0);
     i64 index = 0;
-    for (Node_String_Const_u8 *node = list.first;
+    for (Node_String *node = list.first;
          node != 0;
          node = node->next){
         u8 *byte = node->string.str;
@@ -446,7 +446,7 @@ push_line_move(Arena *arena, Line_Move *moves, i64 new_line_first,
 
 Line_Move*
 push_line_move(Arena *arena, Line_Move *moves, i64 new_line_first,
-               String_Const_u8 string, i64 text_base){
+               String string, i64 text_base){
     Line_Move *move = push_array(arena, Line_Move, 1);
     move->next = moves;
     move->kind = LineMove_MeasureString;
@@ -457,7 +457,7 @@ push_line_move(Arena *arena, Line_Move *moves, i64 new_line_first,
 }
 
 function i64
-count_lines(String_Const_u8 string){
+count_lines(String string){
     i64 result = 0;
     for (u64 i = 0; i < string.size; i += 1){
         if (string.str[i] == '\n'){
@@ -468,7 +468,7 @@ count_lines(String_Const_u8 string){
 }
 
 function void
-fill_line_starts(i64 *lines_starts, String_Const_u8 string, i64 text_base){
+fill_line_starts(i64 *lines_starts, String string, i64 text_base){
     i64 *ptr = lines_starts;
     for (u64 i = 0; i < string.size; i += 1){
         if (string.str[i] == '\n'){
@@ -648,36 +648,36 @@ buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
     return(result);
 }
 
-internal String_Const_u8
+internal String
 buffer_invert_edit_shift(Arena *arena, Gap_Buffer *buffer, Edit edit, Edit *inv, i64 shift_amount){
-    String_Const_u8 string = buffer_stringify(arena, buffer, edit.range);
+    String string = buffer_stringify(arena, buffer, edit.range);
     inv->text = string;
     inv->range = Ii64(edit.range.start + shift_amount, edit.range.start + edit.text.size + shift_amount);
     return(string);
 }
 
 internal Buffer_Chunk_Position
-buffer_get_chunk_position(String_Const_u8_Array chunks, i64 buffer_size, i64 real_pos){
+buffer_get_chunk_position(String_Array chunks, i64 buffer_size, i64 real_pos){
     Buffer_Chunk_Position pos = {};
     pos.real_pos = real_pos;
     pos.chunk_pos = real_pos;
     if (pos.real_pos != buffer_size){
         for (;(i64)(chunks.vals[pos.chunk_index].size) <= pos.chunk_pos;){
             Assert(pos.chunk_index < chunks.count);
-            pos.chunk_pos -= (i32)chunks.vals[pos.chunk_index].size;
+            pos.chunk_pos -= (i1)chunks.vals[pos.chunk_index].size;
             pos.chunk_index += 1;
         }
     }
     else{
         pos.chunk_index = chunks.count - 1;
-        pos.chunk_pos = (i32)chunks.vals[pos.chunk_index].size;
+        pos.chunk_pos = (i1)chunks.vals[pos.chunk_index].size;
     }
     return(pos);
 }
 
-internal i32
-buffer_chunk_position_iterate(String_Const_u8_Array chunks, Buffer_Chunk_Position *pos, Scan_Direction direction){
-    i32 past_end = 0;
+internal i1
+buffer_chunk_position_iterate(String_Array chunks, Buffer_Chunk_Position *pos, Scan_Direction direction){
+    i1 past_end = 0;
     pos->real_pos += direction;
     pos->chunk_pos += direction;
     if (pos->chunk_pos < 0){
@@ -686,7 +686,7 @@ buffer_chunk_position_iterate(String_Const_u8_Array chunks, Buffer_Chunk_Positio
         }
         else{
             pos->chunk_index -= 1;
-            pos->chunk_pos = (i32)chunks.vals[pos->chunk_index].size - 1;
+            pos->chunk_pos = (i1)chunks.vals[pos->chunk_index].size - 1;
         }
     }
     else if (pos->chunk_pos >= (i64)(chunks.vals[pos->chunk_index].size)){

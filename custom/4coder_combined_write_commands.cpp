@@ -5,35 +5,35 @@
 // TOP
 
 function void
-write_string(Application_Links *app, View_ID view, Buffer_ID buffer, String_Const_u8 string){
+write_string(App *app, View_ID view, Buffer_ID buffer, String string){
     i64 pos = view_get_cursor_pos(app, view);
     buffer_replace_range(app, buffer, Ii64(pos), string);
     view_set_cursor_and_preferred_x(app, view, seek_pos(pos + string.size));
 }
 
 function void
-write_string(Application_Links *app, String_Const_u8 string){
+write_string(App *app, String string){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
     write_string(app, view, buffer, string);
 }
 
 function void
-write_named_comment_string(Application_Links *app, char *type_string){
+write_named_comment_string(App *app, char *type_string){
     Scratch_Block scratch(app);
-    String_Const_u8 name = def_get_config_string(scratch, vars_intern_lit("user_name"));
-    String_Const_u8 str = {};
+    String name = def_get_config_string(scratch, vars_intern_lit("user_name"));
+    String str = {};
     if (name.size > 0){
-        str = push_stringf(scratch, "// %s(%.*s): ", type_string, string_expand(name));
+        str = push_stringfz(scratch, "// %s(%.*s): ", type_string, string_expand(name));
     }
     else{
-        str = push_stringf(scratch, "// %s: ", type_string);
+        str = push_stringfz(scratch, "// %s: ", type_string);
     }
     write_string(app, str);
 }
 
 function void
-long_braces(Application_Links *app, char *text, i32 size){
+long_braces(App *app, char *text, i1 size){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
     i64 pos = view_get_cursor_pos(app, view);
@@ -47,7 +47,7 @@ CUSTOM_COMMAND_SIG(open_long_braces)
 CUSTOM_DOC("At the cursor, insert a '{' and '}' separated by a blank line.")
 {
     char text[] = "{\n\n}";
-    i32 size = sizeof(text) - 1;
+    i1 size = sizeof(text) - 1;
     long_braces(app, text, size);
 }
 
@@ -55,7 +55,7 @@ CUSTOM_COMMAND_SIG(open_long_braces_semicolon)
 CUSTOM_DOC("At the cursor, insert a '{' and '};' separated by a blank line.")
 {
     char text[] = "{\n\n};";
-    i32 size = sizeof(text) - 1;
+    i1 size = sizeof(text) - 1;
     long_braces(app, text, size);
 }
 
@@ -63,7 +63,7 @@ CUSTOM_COMMAND_SIG(open_long_braces_break)
 CUSTOM_DOC("At the cursor, insert a '{' and '}break;' separated by a blank line.")
 {
     char text[] = "{\n\n}break;";
-    i32 size = sizeof(text) - 1;
+    i1 size = sizeof(text) - 1;
     long_braces(app, text, size);
 }
 
@@ -104,14 +104,14 @@ CUSTOM_DOC("At the cursor, insert a ' = {};'.")
 }
 
 function i64
-get_start_of_line_at_cursor(Application_Links *app, View_ID view, Buffer_ID buffer){
+get_start_of_line_at_cursor(App *app, View_ID view, Buffer_ID buffer){
     i64 pos = view_get_cursor_pos(app, view);
     i64 line = get_line_number_from_pos(app, buffer, pos);
     return(get_pos_past_lead_whitespace_from_line_number(app, buffer, line));
 }
 
 function b32
-c_line_comment_starts_at_position(Application_Links *app, Buffer_ID buffer, i64 pos){
+c_line_comment_starts_at_position(App *app, Buffer_ID buffer, i64 pos){
     b32 alread_has_comment = false;
     u8 check_buffer[2];
     if (buffer_read_range(app, buffer, Ii64(pos, pos + 2), check_buffer)){
@@ -142,7 +142,7 @@ CUSTOM_DOC("If present, delete '//' at the beginning of the line after leading w
     i64 pos = get_start_of_line_at_cursor(app, view, buffer);
     b32 alread_has_comment = c_line_comment_starts_at_position(app, buffer, pos);
     if (alread_has_comment){
-        buffer_replace_range(app, buffer, Ii64(pos, pos + 2), string_u8_empty);
+        buffer_replace_range(app, buffer, Ii64(pos, pos + 2), empty_string);
     }
 }
 
@@ -154,7 +154,7 @@ CUSTOM_DOC("Turns uncommented lines into commented lines and vice versa for comm
     i64 pos = get_start_of_line_at_cursor(app, view, buffer);
     b32 alread_has_comment = c_line_comment_starts_at_position(app, buffer, pos);
     if (alread_has_comment){
-        buffer_replace_range(app, buffer, Ii64(pos, pos + 2), string_u8_empty);
+        buffer_replace_range(app, buffer, Ii64(pos, pos + 2), empty_string);
     }
     else{
         buffer_replace_range(app, buffer, Ii64(pos), string_u8_litexpr("//"));
@@ -186,7 +186,7 @@ static Snippet default_snippets[] = {
     
     // for 4coder development
     {"4command", "CUSTOM_COMMAND_SIG()\nCUSTOM_DOC()\n{\n\n}\n", 19, 32},
-    {"4app", "Application_Links *app", 22, 22},
+    {"4app", "App *app", 22, 22},
     
 #if defined(SNIPPET_EXPANSION)
 #include SNIPPET_EXPANSION
@@ -194,10 +194,10 @@ static Snippet default_snippets[] = {
 };
 
 function void
-write_snippet(Application_Links *app, View_ID view, Buffer_ID buffer,
+write_snippet(App *app, View_ID view, Buffer_ID buffer,
               i64 pos, Snippet *snippet){
     if (snippet != 0){
-        String_Const_u8 snippet_text = SCu8(snippet->text);
+        String snippet_text = SCu8(snippet->text);
         buffer_replace_range(app, buffer, Ii64(pos), snippet_text);
         i64 new_cursor = pos + snippet->cursor_offset;
         view_set_cursor_and_preferred_x(app, view, seek_pos(new_cursor));
@@ -208,15 +208,15 @@ write_snippet(Application_Links *app, View_ID view, Buffer_ID buffer,
 }
 
 function Snippet*
-get_snippet_from_user(Application_Links *app, Snippet *snippets, i32 snippet_count,
-                      String_Const_u8 query){
+get_snippet_from_user(App *app, Snippet *snippets, i1 snippet_count,
+                      String query){
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, query);
     lister_set_default_handlers(lister);
     
     Snippet *snippet = snippets;
-    for (i32 i = 0; i < snippet_count; i += 1, snippet += 1){
+    for (i1 i = 0; i < snippet_count; i += 1, snippet += 1){
         lister_add_item(lister, SCu8(snippet->name), SCu8(snippet->text), snippet, 0);
     }
     Lister_Result l_result = run_lister(app, lister);
@@ -229,7 +229,7 @@ get_snippet_from_user(Application_Links *app, Snippet *snippets, i32 snippet_cou
 
 
 function Snippet*
-get_snippet_from_user(Application_Links *app, Snippet *snippets, i32 snippet_count,
+get_snippet_from_user(App *app, Snippet *snippets, i1 snippet_count,
                       char *query){
     return(get_snippet_from_user(app, snippets, snippet_count, SCu8(query)));
 }

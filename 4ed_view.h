@@ -24,7 +24,7 @@ struct Co_In{
     };
 };
 
-typedef i32 Co_Request;
+typedef i1 Co_Request;
 enum{
     CoRequest_None = 0,
     CoRequest_NewFontFace = 1,
@@ -89,8 +89,8 @@ struct View{
 struct Live_Views{
     View *views;
     View free_sentinel;
-    i32 count;
-    i32 max;
+    i1 count;
+    i1 max;
 };
 
 #endif

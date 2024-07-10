@@ -17,11 +17,11 @@ CUSTOM_DOC("In response to a new clipboard contents events, saves the new clip o
 ////////////////////////////////
 
 function b32
-clipboard_post_buffer_range(App *app, i32 clipboard_index, Buffer_ID buffer, Range_i64 range)
+clipboard_post_buffer_range(App *app, i1 clipboard_index, Buffer_ID buffer, Range_i64 range)
 {
     b32 success = false;
     Scratch_Block scratch(app);
-    String_Const_u8 string = push_buffer_range(app, scratch, buffer, range);
+    String string = push_buffer_range(app, scratch, buffer, range);
     if (string.size > 0){
         clipboard_post(clipboard_index, string);
         success = true;
@@ -30,7 +30,7 @@ clipboard_post_buffer_range(App *app, i32 clipboard_index, Buffer_ID buffer, Ran
 }
 
 function b32
-clipboard_update_history_from_system(App *app, i32 clipboard_id)
+clipboard_update_history_from_system(App *app, i1 clipboard_id)
 {
     Scratch_Block scratch(app);
     b32 result = false;
@@ -43,7 +43,7 @@ clipboard_update_history_from_system(App *app, i32 clipboard_id)
     return(result);
 }
 
-global List_String_Const_u8 clipboard_collection_list = {};
+global List_String clipboard_collection_list = {};
 
 
 CUSTOM_COMMAND_SIG(copy)
@@ -62,7 +62,7 @@ CUSTOM_DOC("Cut the text in the range from the cursor to the mark onto the clipb
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
     Range_i64 range = get_view_range(app, view);
     if (clipboard_post_buffer_range(app, 0, buffer, range)){
-        buffer_replace_range(app, buffer, range, string_u8_empty);
+        buffer_replace_range(app, buffer, range, empty_string);
     }
 }
 
@@ -70,7 +70,7 @@ CUSTOM_COMMAND_SIG(paste)
 CUSTOM_DOC("At the cursor, insert the text at the top of the clipboard.")
 {
     clipboard_update_history_from_system(app, 0);
-    i32 count = clipboard_count(0);
+    i1 count = clipboard_count(0);
     if (count > 0)
     {
         View_ID view = get_active_view(app, Access_ReadWriteVisible);
@@ -79,7 +79,7 @@ CUSTOM_DOC("At the cursor, insert the text at the top of the clipboard.")
         set_next_rewrite(app, view, Rewrite_Paste);
         
         Managed_Scope scope = view_get_managed_scope(app, view);
-        i32 *paste_index = scope_attachment(app, scope, view_paste_index_loc, i32);
+        i1 *paste_index = scope_attachment(app, scope, view_paste_index_loc, i1);
         if (paste_index != 0)
         {
             *paste_index = 0;
@@ -94,7 +94,7 @@ CUSTOM_DOC("At the cursor, insert the text at the top of the clipboard.")
                 i64 pos = view_get_cursor_pos(app, view);
                 buffer_replace_range(app, buffer, Ii64(pos), string);
                 view_set_mark(app, view, seek_pos(pos));
-                view_set_cursor_and_preferred_x(app, view, seek_pos(pos + (i32)string.size));
+                view_set_cursor_and_preferred_x(app, view, seek_pos(pos + (i1)string.size));
                 
                 ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
                 buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, string.size), argb);
@@ -110,7 +110,7 @@ CUSTOM_DOC("If the previous command was paste or paste_next, replaces the paste 
     
     b32 new_clip = clipboard_update_history_from_system(app, 0);
     
-    i32 count = clipboard_count(0);
+    i1 count = clipboard_count(0);
     if (count > 0)
     {
         View_ID view = get_active_view(app, Access_ReadWriteVisible);
@@ -124,11 +124,11 @@ CUSTOM_DOC("If the previous command was paste or paste_next, replaces the paste 
                 
                 set_next_rewrite(app, view, Rewrite_Paste);
                 
-                i32 *paste_index_ptr = scope_attachment(app, scope, view_paste_index_loc, i32);
-                i32 paste_index = (*paste_index_ptr) + 1;
+                i1 *paste_index_ptr = scope_attachment(app, scope, view_paste_index_loc, i1);
+                i1 paste_index = (*paste_index_ptr) + 1;
                 *paste_index_ptr = paste_index;
                 
-                String_Const_u8 string = push_clipboard_index_inner(scratch, 0, paste_index);
+                String string = push_clipboard_index_inner(scratch, 0, paste_index);
                 
                 Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
                 
@@ -155,7 +155,7 @@ CUSTOM_DOC("Paste multiple entries from the clipboard at once")
 {
     Scratch_Block scratch(app);
     
-    i32 count = clipboard_count(0);
+    i1 count = clipboard_count(0);
     if (count > 0)
     {
         View_ID view = get_active_view(app, Access_ReadWriteVisible);
@@ -167,13 +167,13 @@ CUSTOM_DOC("Paste multiple entries from the clipboard at once")
             if (*rewrite == Rewrite_Paste){
                 Rewrite_Type *next_rewrite = scope_attachment(app, scope, view_next_rewrite_loc, Rewrite_Type);
                 *next_rewrite = Rewrite_Paste;
-                i32 *paste_index_ptr = scope_attachment(app, scope, view_paste_index_loc, i32);
-                i32 paste_index = (*paste_index_ptr) + 1;
+                i1 *paste_index_ptr = scope_attachment(app, scope, view_paste_index_loc, i1);
+                i1 paste_index = (*paste_index_ptr) + 1;
                 *paste_index_ptr = paste_index;
                 
-                String_Const_u8 string = push_clipboard_index_inner(scratch, 0, paste_index);
+                String string = push_clipboard_index_inner(scratch, 0, paste_index);
                 
-                String_Const_u8 insert_string = push_stringf(scratch, "\n%.*s", string_expand(string));
+                String insert_string = push_stringfz(scratch, "\n%.*s", string_expand(string));
                 
                 Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
                 Range_i64 range = get_view_range(app, view);
@@ -192,7 +192,7 @@ CUSTOM_DOC("Paste multiple entries from the clipboard at once")
 }
 
 function Range_i64
-multi_paste_range(Application_Links *app, View_ID view, Range_i64 range, i32 paste_count, b32 old_to_new){
+multi_paste_range(App *app, View_ID view, Range_i64 range, i1 paste_count, b32 old_to_new){
     Scratch_Block scratch(app);
     
     Range_i64 finish_range = range;
@@ -200,7 +200,7 @@ multi_paste_range(Application_Links *app, View_ID view, Range_i64 range, i32 pas
         Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
         if (buffer != 0){
             i64 total_size = 0;
-            for (i32 paste_index = 0; paste_index < paste_count; ++paste_index){
+            for (i1 paste_index = 0; paste_index < paste_count; ++paste_index){
                 Temp_Memory temp = begin_temp(scratch);
                 String8 string = push_clipboard_index_inner(scratch, 0, paste_index);
                 total_size += string.size + 1;
@@ -208,28 +208,28 @@ multi_paste_range(Application_Links *app, View_ID view, Range_i64 range, i32 pas
             }
             total_size -= 1;
             
-            i32 first = paste_count - 1;
-            i32 one_past_last = -1;
-            i32 step = -1;
+            i1 first = paste_count - 1;
+            i1 one_past_last = -1;
+            i1 step = -1;
             if (!old_to_new){
                 first = 0;
                 one_past_last = paste_count;
                 step = 1;
             }
             
-            List_String_Const_u8 list = {};
+            List_String list = {};
             
-            for (i32 paste_index = first; paste_index != one_past_last; paste_index += step){
+            for (i1 paste_index = first; paste_index != one_past_last; paste_index += step){
                 if (paste_index != first){
                     string_list_push(scratch, &list, SCu8("\n", 1));
                 }
-                String_Const_u8 string = push_clipboard_index_inner(scratch, 0, paste_index);
+                String string = push_clipboard_index_inner(scratch, 0, paste_index);
                 if (string.size > 0){
                     string_list_push(scratch, &list, string);
                 }
             }
             
-            String_Const_u8 flattened = string_list_flatten(scratch, list);
+            String flattened = string_list_flatten(scratch, list);
             
             buffer_replace_range(app, buffer, range, flattened);
             i64 pos = range.min;
@@ -246,7 +246,7 @@ multi_paste_range(Application_Links *app, View_ID view, Range_i64 range, i32 pas
 }
 
 function void
-multi_paste_interactive_up_down(Application_Links *app, i32 paste_count, i32 clip_count){
+multi_paste_interactive_up_down(App *app, i1 paste_count, i1 clip_count){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     i64 pos = view_get_cursor_pos(app, view);
     b32 old_to_new = true;
@@ -297,7 +297,7 @@ multi_paste_interactive_up_down(Application_Links *app, i32 paste_count, i32 cli
 CUSTOM_COMMAND_SIG(multi_paste_interactive)
 CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled with arrow keys")
 {
-    i32 clip_count = clipboard_count(0);
+    i1 clip_count = clipboard_count(0);
     if (clip_count > 0){
         multi_paste_interactive_up_down(app, 1, clip_count);
     }
@@ -306,7 +306,7 @@ CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled with arr
 CUSTOM_COMMAND_SIG(multi_paste_interactive_quick)
 CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled by inputing the number of lines to paste")
 {
-    i32 clip_count = clipboard_count(0);
+    i1 clip_count = clipboard_count(0);
     if (clip_count > 0){
         u8 string_space[256];
         Query_Bar_Group group(app);
@@ -316,7 +316,7 @@ CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled by input
         bar.string_capacity = sizeof(string_space);
         query_user_number(app, &bar);
         
-        i32 initial_paste_count = (i32)string_to_u64(bar.string, 10);
+        i1 initial_paste_count = (i1)string_to_u64(bar.string, 10);
         initial_paste_count = clamp_between(1, initial_paste_count, clip_count);
         end_query_bar(app, &bar, 0);
         
@@ -328,28 +328,28 @@ CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled by input
 
 #if FCODER_TRANSITION_TO < 4001004
 function void
-clipboard_clear(Application_Links *app, i32 clipboard_id){
+clipboard_clear(App *app, i1 clipboard_id){
     clipboard_clear(clipboard_id);
 }
 function void
-clipboard_post(App *app, i32 clipboard_id, String8 string)
+clipboard_post(App *app, i1 clipboard_id, String8 string)
 {
     clipboard_post(clipboard_id, string);
 }
-function i32
-clipboard_count(Application_Links *app, i32 clipboard_id)
+function i1
+clipboard_count(App *app, i1 clipboard_id)
 {
     return(clipboard_count(clipboard_id));
 }
 internal String8
-push_clipboard_index(App *app, Arena *arena, i32 clipboard_id, i32 item_index)
+push_clipboard_index(App *app, Arena *arena, i1 clipboard_id, i1 item_index)
 {
     return push_clipboard_index_inner(arena, clipboard_id, item_index);
 }
 #endif
 
 internal void
-clipboard_pop(App *app, i32 clipboard_id)
+clipboard_pop(App *app, i1 clipboard_id)
 {// TODO(kv): My code, too lazy (and ignorant) to preserve the API
     // @Experiment Watch out for the system clipboard
     

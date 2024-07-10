@@ -57,7 +57,7 @@ F4_LegoFromUserInput(User_Input in)
 }
 
 function void
-F4_Lego_BufferPlace(Application_Links *app, View_ID view, Buffer_ID buffer, i64 pos, F4_Lego *lego)
+F4_Lego_BufferPlace(App *app, View_ID view, Buffer_ID buffer, i64 pos, F4_Lego *lego)
 {
     switch(lego->kind)
     {
@@ -65,7 +65,7 @@ F4_Lego_BufferPlace(Application_Links *app, View_ID view, Buffer_ID buffer, i64 
         {
             buffer_replace_range(app, buffer, Ii64(pos, pos), lego->string);
             view_set_mark(app, view, seek_pos(pos));
-            view_set_cursor_and_preferred_x(app, view, seek_pos(pos + (i32)lego->string.size));
+            view_set_cursor_and_preferred_x(app, view, seek_pos(pos + (i1)lego->string.size));
             
             F4_PushFlash(app, buffer, Ii64(pos, pos+lego->string.size), fcolor_resolve(fcolor_id(fleury_color_lego_splat)), 0.8f);
         }break;
@@ -136,13 +136,13 @@ CUSTOM_DOC("Will store the selected range into the lego determined by the associ
 }
 
 function void
-F4_Lego_StoreClickedToken(Application_Links *app, F4_Lego *lego)
+F4_Lego_StoreClickedToken(App *app, F4_Lego *lego)
 {
     Scratch_Block scratch(app);
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Mouse_State mouse = get_mouse_state(app);
-    i64 pos = view_pos_from_xy(app, view, vec2(mouse.p));
+    i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
     Token *token = get_token_from_pos(app, buffer, pos);
     if(token != 0)
     {

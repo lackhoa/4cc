@@ -5,7 +5,7 @@
 
 
 // todo(kv): we don't support case sensitive search, cause don't need it.
-function i64 vim_pattern_inner_v(Application_Links *app, Buffer_Seek_String_Flags seek_flags)
+function i64 vim_pattern_inner_v(App *app, Buffer_Seek_String_Flags seek_flags)
 {
 	String_u8 *pattern = &vim_registers.search.data;
 	if(pattern->size == 0){ return -1; }
@@ -24,7 +24,7 @@ function i64 vim_pattern_inner_v(Application_Links *app, Buffer_Seek_String_Flag
 }
 
 /* NOTE(kv): don't know what this does
-function void vim_in_pattern_inner(Application_Links *app, Buffer_Seek_String_Flags seek_flags){
+function void vim_in_pattern_inner(App *app, Buffer_Seek_String_Flags seek_flags){
 	String_u8 *pattern = &vim_registers.search.data;
 	i64 new_pos = vim_pattern_inner_v(app, seek_flags);
 	View_ID view = get_active_view(app, Access_ReadVisible);
@@ -39,7 +39,7 @@ function void vim_in_pattern_inner(Application_Links *app, Buffer_Seek_String_Fl
 */
 
 function void
-vim_to_pattern_inner(Application_Links *app, Buffer_Seek_String_Flags seek_flags)
+vim_to_pattern_inner(App *app, Buffer_Seek_String_Flags seek_flags)
 {
   View_ID view = get_active_view(app, Access_ReadVisible);
   Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -54,7 +54,7 @@ vim_to_pattern_inner(Application_Links *app, Buffer_Seek_String_Flags seek_flags
 }
 
 function void
-vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
+vim_start_search_inner(App *app, Scan_Direction start_direction){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	if(!buffer_exists(app, buffer)){ return; }
@@ -74,7 +74,7 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
 
 	/// TODO(BYP): Need a better system to have multiple types of these drawing
 	vim_use_bottom_cursor = true;
-	String_Const_u8 prefix = (start_direction == Scan_Forward ? string_u8_litexpr("/") : string_u8_litexpr("?"));
+	String prefix = (start_direction == Scan_Forward ? string_u8_litexpr("/") : string_u8_litexpr("?"));
 	vim_set_bottom_text(prefix);
 	u8 *dest = vim_bottom_text.str + vim_bottom_text.size;
 	u64 after_size;
@@ -100,7 +100,7 @@ vim_start_search_inner(Application_Links *app, Scan_Direction start_direction){
 		in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
 		if(in.abort){ query->size = 0; break; }
 
-		String_Const_u8 string = to_writable(&in);
+		String string = to_writable(&in);
 
 		b32 string_change = false;
 		if(match_key_code(&in, Key_Code_Return))

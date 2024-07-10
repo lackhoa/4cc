@@ -111,7 +111,7 @@ struct Token_Iterator_List{
     i64 total_count;
 };
 
-typedef i32 Token_Iterator_Kind;
+typedef i1 Token_Iterator_Kind;
 enum{
     TokenIterator_Array,
     TokenIterator_List,

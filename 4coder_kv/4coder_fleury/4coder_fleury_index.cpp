@@ -326,7 +326,7 @@ F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_
         // NOTE(rjf): Fill out data.
         {
             note->hash = hash;
-            note->string = push_string_copy(&file->arena, string);
+            note->string = push_string_copyz(&file->arena, string);
             note->kind = note_kind;
             note->flags = note_flags;
             note->range = range;
@@ -354,7 +354,7 @@ _F4_Index_Parse(App *app, F4_Index_File *file, String8 string, Token_Array token
         .file=file,
         .string=string,
         .tokens=tokens,
-        .it=token_iterator_pos(0, &ctx.tokens, 0),
+        .it=token_it_at_pos(0, &ctx.tokens, 0),
     };
     if(language != 0)
     {

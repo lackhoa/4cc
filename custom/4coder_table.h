@@ -36,7 +36,7 @@ struct Table_Data_u64{
     Base_Allocator *allocator;
     void *memory;
     u64 *hashes;
-    String_Const_u8 *keys;
+    String *keys;
     u64 *vals;
     u32 slot_count;
     u32 used_count;
@@ -47,7 +47,7 @@ struct Table_u64_Data{
     Base_Allocator *allocator;
     void *memory;
     u64 *keys;
-    String_Const_u8 *vals;
+    String *vals;
     u32 slot_count;
     u32 used_count;
     u32 dirty_count;
@@ -57,8 +57,8 @@ struct Table_Data_Data{
     Base_Allocator *allocator;
     void *memory;
     u64 *hashes;
-    String_Const_u8 *keys;
-    String_Const_u8 *vals;
+    String *keys;
+    String *vals;
     u32 slot_count;
     u32 used_count;
     u32 dirty_count;

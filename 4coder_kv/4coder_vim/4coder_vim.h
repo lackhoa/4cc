@@ -2,7 +2,6 @@
 
 #include "4coder_vim_base_types.h"
 #include "4coder_vimrc.h"
-#include "kv.h"
 
 global Vim_State vim_state;
 global Table_u64_u64 vim_maps[VIM_MODE_COUNT*VIM_SUBMODE_COUNT];
@@ -72,7 +71,7 @@ struct Vim_Buffer_Peek_Entry{
 };
 
 global b32 vim_show_buffer_peek;
-global i32 vim_buffer_peek_index;
+global i1 vim_buffer_peek_index;
 
 
 global Vim_Buffer_Peek_Entry vim_default_peek_list[] = {
@@ -99,8 +98,8 @@ vim_set_bottom_text(String msg)
     vim_bottom_text.size = copy_size;
 }
 
-function i32 vim_consume_number(){
-	i32 result = Max(1, vim_state.number)*Max(1, vim_state.params.count);
+function i1 vim_consume_number(){
+	i1 result = Max(1, vim_state.number)*Max(1, vim_state.params.count);
 	vim_state.params.number = vim_state.number;
 	vim_state.number = 0;
 	return result;
@@ -128,7 +127,7 @@ function void vim_reset_state(){
 
 function b32
 vim_realloc_string(String_u8 *src, u64 size){
-	String_Const_u8 new_data = base_allocate(&vim_state.alloc, VIM_GROW_RATE(size));
+	String new_data = base_allocate(&vim_state.alloc, VIM_GROW_RATE(size));
 	if(new_data.size == 0){ return false; }
 	block_copy(new_data.str, src->str, src->size);
 	base_free(&vim_state.alloc, src->str);
@@ -138,7 +137,7 @@ vim_realloc_string(String_u8 *src, u64 size){
 }
 
 function b32
-vim_register_copy(Vim_Register *dst, String_Const_u8 src)
+vim_register_copy(Vim_Register *dst, String src)
 {
 	b32 valid = true;
 	if(src.size >= dst->data.cap){ valid = vim_realloc_string(&dst->data, src.size); }
@@ -173,11 +172,11 @@ vim_get_register_char(Vim_Register *reg){
 	else if(reg == &r->file){         result = '%'; }
 	else if(reg == &r->expression){   result = '='; }
 	else if(in_range_exclude_last(r->named, reg, r->named + ArrayCount(r->named))){
-		result = u8(i32('a') + i32(reg - r->named));
+		result = u8(i1('a') + i1(reg - r->named));
 	}
 	else if(in_range_exclude_last(r->digit, reg, r->digit + ArrayCount(r->digit))){
-		result = u8(i32('0') + i32(reg - r->digit));
+		result = u8(i1('0') + i1(reg - r->digit));
 	}
 	return result;
 }
-function void vim_update_registers(Application_Links *app);
+function void vim_update_registers(App *app);

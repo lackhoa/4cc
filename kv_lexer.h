@@ -1,29 +1,30 @@
-// Tiny Lexer ////////////////////////////////////////////////
-// For ad-hoc parsing of weird file formats.
-// TODO: Implement "maybe_eat" variants by default?
-// TODO: Perhaps we should be stashing one more token by default? i.e "peek" is free.
+
+//~Tiny Lexer for parsing of ad-hoc file formats.
 
 // NOTE(kv): assume that the stream is nil-terminated.
+// TODO: Implement "maybe_eat" variants by default?
+// TODO: Perhaps we should stash one more token by default? i.e "peek" is free.
+
 struct Lexer
 {
-    b32 ok;
-    // NOTE(kv): "at" never goes past the nil-terminator (so we can always deref it).
-    // NOTE(kv): "at" never point at a space character(?)
-    char *at;
-    b32 newline_encountered;
-    
-    i64 int_value;
-    f64 float_value;
-    
-    char *string_value;
-    u32 string_len;
-    u32 string_buffer_size;
+ b32 ok;
+ // NOTE(kv): "at" never goes past the nil-terminator (so we can always deref it).
+ // NOTE(kv): "at" never point at a space character(?)
+ char *at;
+ b32 newline_encountered;
+ 
+ i64 int_value;
+ f64 float_value;
+ 
+ char *string_value;
+ u32 string_len;
+ u32 string_buffer_size;
 };
 
 internal void
 eat_all_spaces(Lexer *lex)
 {
-    while ( gb_char_is_space(*lex->at) )
+    while( gb_char_is_space(*lex->at) )
     {
         if (*lex->at == '\n')  lex->newline_encountered = true;
         ++lex->at;
@@ -43,7 +44,7 @@ new_lexer(char *at, char *string_buffer, u32 string_buffer_size)
 
 // NOTE(kv): also eats the sign.
 internal void
-eat_integer(Lexer *lex)
+kv_eat_integer(Lexer *lex)
 {
     char *end = 0;
     i64 value = gb_str_to_i64(lex->at, &end, 0);
@@ -57,7 +58,7 @@ eat_integer(Lexer *lex)
 
 // NOTE(kv): also eats the sign.
 internal void
-eat_float(Lexer *lex)
+kv_eat_float(Lexer *lex)
 {
     char *end = 0;
     f64 value = gb_str_to_f64(lex->at, &end);
@@ -70,7 +71,7 @@ eat_float(Lexer *lex)
 }
 
 internal void
-eat_character(Lexer *lex, char character)
+kv_eat_character(Lexer *lex, char character)
 {
     lex->ok = (*lex->at == character);
     if ( lex->ok )
@@ -81,20 +82,20 @@ eat_character(Lexer *lex, char character)
 }
 
 internal b32
-maybe_eat_character(Lexer *lex, char character)
+kv_maybe_eat_character(Lexer *lex, char character)
 {
-    if (*lex->at == character)
-    {
-        ++lex->at;
-        eat_all_spaces(lex);
-        return true;
-    }
-    else return false;
+ if (*lex->at == character)
+ {
+  ++lex->at;
+  eat_all_spaces(lex);
+  return true;
+ }
+ else { return false; }
 }
 
 // TODO dunno This should be just a "save" version of eat_string
 internal b32
-maybe_eat_string(Lexer *lex, char *string)
+kv_maybe_eat_string(Lexer *lex, char *string)
 {
     char *at_save = lex->at;
     char *string_cursor = string;
@@ -120,7 +121,7 @@ maybe_eat_string(Lexer *lex, char *string)
 }
 
 internal void
-eat_line(Lexer *lex)
+kv_eat_line(Lexer *lex)
 {
     if (*lex->at)
     {

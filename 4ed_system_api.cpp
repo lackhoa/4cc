@@ -21,27 +21,27 @@ define_api(Arena *arena){
     }
     
     {
-        API_Call *call = api_call(arena, api, "get_path", "String_Const_u8");
+        API_Call *call = api_call(arena, api, "get_path", "String");
         api_param(arena, call, "Arena*", "arena");
         api_param(arena, call, "System_Path_Code", "path_code");
     }
     
     {
-        API_Call *call = api_call(arena, api, "get_canonical", "String_Const_u8");
+        API_Call *call = api_call(arena, api, "get_canonical", "String");
         api_param(arena, call, "Arena*", "arena");
-        api_param(arena, call, "String_Const_u8", "name");
+        api_param(arena, call, "String", "name");
     }
     
     {
         API_Call *call = api_call(arena, api, "get_file_list", "File_List");
         api_param(arena, call, "Arena*", "arena");
-        api_param(arena, call, "String_Const_u8", "directory");
+        api_param(arena, call, "String", "directory");
     }
     
     {
         API_Call *call = api_call(arena, api, "quick_file_attributes", "File_Attributes");
         api_param(arena, call, "Arena*", "scratch");
-        api_param(arena, call, "String_Const_u8", "file_name");
+        api_param(arena, call, "String", "file_name");
     }
     
     {
@@ -72,13 +72,13 @@ define_api(Arena *arena){
         API_Call *call = api_call(arena, api, "save_file", "File_Attributes");
         api_param(arena, call, "Arena*", "scratch");
         api_param(arena, call, "char*", "file_name");
-        api_param(arena, call, "String_Const_u8", "data");
+        api_param(arena, call, "String", "data");
     }
     
     {
         API_Call *call = api_call(arena, api, "load_library", "b32");
         api_param(arena, call, "Arena*", "scratch");
-        api_param(arena, call, "String_Const_u8", "file_name");
+        api_param(arena, call, "String", "file_name");
         api_param(arena, call, "System_Library*", "out");
     }
     
@@ -137,14 +137,14 @@ define_api(Arena *arena){
     }
     
     {
-        API_Call *call = api_call(arena, api, "get_clipboard", "String_Const_u8");
+        API_Call *call = api_call(arena, api, "get_clipboard", "String");
         api_param(arena, call, "Arena*", "arena");
-        api_param(arena, call, "i32", "index");
+        api_param(arena, call, "i1", "index");
     }
     {
         API_Call *call = api_call(arena, api, "post_clipboard", "void");
-        api_param(arena, call, "String_Const_u8", "str");
-        api_param(arena, call, "i32", "index");
+        api_param(arena, call, "String", "str");
+        api_param(arena, call, "i1", "index");
     }
     
     {
@@ -207,7 +207,7 @@ define_api(Arena *arena){
     }
     
     {
-        api_call(arena, api, "thread_get_id", "i32");
+        api_call(arena, api, "thread_get_id", "i1");
     }
     
     {
@@ -263,7 +263,7 @@ define_api(Arena *arena){
     {
         API_Call *call = api_call(arena, api, "memory_allocate", "void*");
         api_param(arena, call, "u64", "size");
-        api_param(arena, call, "String_Const_u8", "location");
+        api_param(arena, call, "String", "location");
     }
     
     {
@@ -286,7 +286,7 @@ define_api(Arena *arena){
     
     {
         API_Call *call = api_call(arena, api, "show_mouse_cursor", "void");
-        api_param(arena, call, "i32", "show");
+        api_param(arena, call, "i1", "show");
     }
     
     {

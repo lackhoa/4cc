@@ -21,7 +21,7 @@ layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
                  block = block->next){
                 i64 count = block->item_count;
                 Layout_Item *item = block->items;
-                for (i32 i = 0; i < count; i += 1, item += 1){
+                for (i1 i = 0; i < count; i += 1, item += 1){
                     if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
                         continue;
                     }
@@ -59,7 +59,7 @@ layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
                      block = block->next){
                     i64 count = block->item_count;
                     Layout_Item *item = block->items;
-                    for (i32 i = 0; i < count; i += 1, item += 1){
+                    for (i1 i = 0; i < count; i += 1, item += 1){
                         if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
                             continue;
                         }
@@ -88,7 +88,7 @@ layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
                      block = block->next){
                     i64 count = block->item_count;
                     Layout_Item *item = block->items;
-                    for (i32 i = 0; i < count; i += 1, item += 1){
+                    for (i1 i = 0; i < count; i += 1, item += 1){
                         if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
                             continue;
                         }
@@ -127,7 +127,7 @@ layout_get_first_with_index(Layout_Item_List list, i64 index){
          block = block->next){
         i64 count = block->item_count;
         Layout_Item *item = block->items;
-        for (i32 i = 0; i < count; i += 1, item += 1){
+        for (i1 i = 0; i < count; i += 1, item += 1){
             if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
                 continue;
             }

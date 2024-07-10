@@ -5,14 +5,14 @@
 // TOP
 
 function void
-point_stack_push(Application_Links *app, Buffer_ID buffer, i64 pos)
+point_stack_push(App *app, Buffer_ID buffer, i64 pos)
 {
     Managed_Object object = alloc_buffer_markers_on_buffer(app, buffer, 1, 0);
     Marker *marker = (Marker*)managed_object_get_pointer(app, object);
     marker->pos = pos;
     marker->lean_right = false;
     
-    i32 next_top = (point_stack.top + 1)%ArrayCount(point_stack.markers);
+    i1 next_top = (point_stack.top + 1)%ArrayCount(point_stack.markers);
     if (next_top == point_stack.bot){
         Point_Stack_Slot *slot = &point_stack.markers[point_stack.bot];
         managed_object_free(app, slot->object);
@@ -27,7 +27,7 @@ point_stack_push(Application_Links *app, Buffer_ID buffer, i64 pos)
 }
 
 function void
-point_stack_push_view_cursor(Application_Links *app, View_ID view)
+point_stack_push_view_cursor(App *app, View_ID view)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     i64 pos = view_get_cursor_pos(app, view);
@@ -35,7 +35,7 @@ point_stack_push_view_cursor(Application_Links *app, View_ID view)
 }
 
 function b32
-point_stack_pop(Application_Links *app){
+point_stack_pop(App *app){
     b32 result = false;
     if (point_stack.top != point_stack.bot){
         result = true;
@@ -53,11 +53,11 @@ point_stack_pop(Application_Links *app){
 }
 
 function b32
-point_stack_read_top(Application_Links *app, Buffer_ID *buffer_out, i64 *pos_out){
+point_stack_read_top(App *app, Buffer_ID *buffer_out, i64 *pos_out){
     b32 result = false;
     if (point_stack.top != point_stack.bot){
         result = true;
-        i32 prev_top = point_stack.top;
+        i1 prev_top = point_stack.top;
         if (prev_top > 0){
             prev_top -= 1;
         }
@@ -102,7 +102,7 @@ lock_jump_buffer(App *app, String8 name)
 }
 
 function void
-lock_jump_buffer(App *app, char *name, i32 size)
+lock_jump_buffer(App *app, char *name, i1 size)
 {
     lock_jump_buffer(app, SCu8(name, size));
 }
@@ -175,7 +175,7 @@ view_is_passive(App *app, View_ID view_id)
 }
 
 
-internal i32
+internal i1
 hax_guess_which_monitor_the_view_is_in(App *app, View_ID view)
 {
     rect2 clip = view_get_screen_rect(app, view);
@@ -188,7 +188,7 @@ hax_guess_which_monitor_the_view_is_in(App *app, View_ID view)
 internal View_ID
 get_other_primary_view(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
 {
-    i32 current_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
+    i1 current_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
     View_ID view = start_view;
     do
     {
@@ -250,12 +250,12 @@ get_next_view_after_active(App *app, Access_Flag access, b32 vsplit_if_fail)
 ////////////////////////////////
 
 function void
-call_after_ctx_shutdown(Application_Links *app, View_ID view, Custom_Command_Function *func){
+call_after_ctx_shutdown(App *app, View_ID view, Custom_Command_Function *func){
     view_enqueue_command_function(app, view, func);
 }
 
 function Fallback_Dispatch_Result
-fallback_command_dispatch(Application_Links *app, Mapping *mapping, Command_Map *map,
+fallback_command_dispatch(App *app, Mapping *mapping, Command_Map *map,
                           User_Input *in){
     Fallback_Dispatch_Result result = {};
     if (mapping != 0 && map != 0){
@@ -282,7 +282,7 @@ fallback_command_dispatch(Application_Links *app, Mapping *mapping, Command_Map 
 }
 
 function b32
-ui_fallback_command_dispatch(Application_Links *app, View_ID view,
+ui_fallback_command_dispatch(App *app, View_ID view,
                              Mapping *mapping, Command_Map *map, User_Input *in){
     b32 result = false;
     Fallback_Dispatch_Result disp_result =
@@ -298,7 +298,7 @@ ui_fallback_command_dispatch(Application_Links *app, View_ID view,
 }
 
 function b32
-ui_fallback_command_dispatch(Application_Links *app, View_ID view, User_Input *in){
+ui_fallback_command_dispatch(App *app, View_ID view, User_Input *in){
     b32 result = false;
     View_Context ctx = view_current_context(app, view);
     if (ctx.mapping != 0){
@@ -314,7 +314,7 @@ ui_fallback_command_dispatch(Application_Links *app, View_ID view, User_Input *i
 ////////////////////////////////
 
 function void
-view_buffer_set(App *app, Buffer_ID *buffers, i64 *positions, i32 count)
+view_buffer_set(App *app, Buffer_ID *buffers, i64 *positions, i1 count)
 {
     if (count > 0)
     {
@@ -336,7 +336,7 @@ view_buffer_set(App *app, Buffer_ID *buffers, i64 *positions, i32 count)
         
         View_Node *primary_view_first = 0;
         View_Node *primary_view_last = 0;
-        i32 available_view_count = 0;
+        i1 available_view_count = 0;
         
         primary_view_first = primary_view_last = push_array(scratch, View_Node, 1);
         primary_view_last->next = 0;
@@ -356,9 +356,9 @@ view_buffer_set(App *app, Buffer_ID *buffers, i64 *positions, i32 count)
             available_view_count += 1;
         }
         
-        i32 buffer_set_count = clamp_max(count, available_view_count);
+        i1 buffer_set_count = clamp_max(count, available_view_count);
         View_Node *node = primary_view_first;
-        for (i32 i = 0; i < buffer_set_count; i += 1, node = node->next){
+        for (i1 i = 0; i < buffer_set_count; i += 1, node = node->next){
             if (view_set_buffer(app, node->view_id, buffers[i], 0)){
                 view_set_cursor_and_preferred_x(app, node->view_id, seek_pos(positions[i]));
             }
@@ -394,7 +394,7 @@ internal void
 change_active_monitor(App *app)
 {
     View_ID start_view = get_active_view(app, Access_Always);
-    i32 start_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
+    i1 start_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
     View_ID view = start_view;
     do 
     {
@@ -437,7 +437,7 @@ expand_bottom_view(App *app)
     Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
     Face_ID face_id = get_face_id(app, buffer);
     Face_Metrics metrics = get_face_metrics(app, face_id);
-    view_set_split_pixel_size(app, global_bottom_view, (i32)(metrics.line_height*24.f));
+    view_set_split_pixel_size(app, global_bottom_view, (i1)(metrics.line_height*24.f));
     global_bottom_view_expanded = true;
 }
 
@@ -447,7 +447,7 @@ collapse_bottom_view(App *app)
     Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
     Face_ID face_id = get_face_id(app, buffer);
     Face_Metrics metrics = get_face_metrics(app, face_id);
-    view_set_split_pixel_size(app, global_bottom_view, (i32)(metrics.line_height*4.f));
+    view_set_split_pixel_size(app, global_bottom_view, (i1)(metrics.line_height*4.f));
     global_bottom_view_expanded = false;
 }
 
@@ -535,7 +535,7 @@ maybe_create_buffer_and_clear_by_name(App *app, String8 name_string, View_ID def
 ////////////////////////////////
 
 function void
-save_all_dirty_buffers_with_postfix(Application_Links *app, String_Const_u8 postfix){
+save_all_dirty_buffers_with_postfix(App *app, String postfix){
     ProfileScope(app, "save all dirty buffers");
     Scratch_Block scratch(app);
     for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
@@ -556,7 +556,7 @@ save_all_dirty_buffers_with_postfix(Application_Links *app, String_Const_u8 post
 CUSTOM_COMMAND_SIG(save_all_dirty_buffers)
 CUSTOM_DOC("Saves all buffers marked dirty (showing the '*' indicator).")
 {
-    String_Const_u8 empty = {};
+    String empty = {};
     save_all_dirty_buffers_with_postfix(app, empty);
 }
 
@@ -637,7 +637,7 @@ CUSTOM_DOC("Toggle fullscreen mode on or off.  The change(s) do not take effect 
 CUSTOM_COMMAND_SIG(load_themes_default_folder)
 CUSTOM_DOC("Loads all the theme files in the default theme folder.")
 {
-    String_Const_u8 fcoder_extension = string_u8_litexpr(".4coder");
+    String fcoder_extension = string_u8_litexpr(".4coder");
     save_all_dirty_buffers_with_postfix(app, fcoder_extension);
     
     Scratch_Block scratch(app);
@@ -648,7 +648,7 @@ CUSTOM_DOC("Loads all the theme files in the default theme folder.")
          node != 0;
          node = node->next){
         String8 folder_path = node->string;
-        String8 themes_path = push_stringf(scratch, "%.*sthemes", string_expand(folder_path));
+        String8 themes_path = push_stringfz(scratch, "%.*sthemes", string_expand(folder_path));
         load_folder_of_themes_into_live_set(app, themes_path);
     }
 }
@@ -656,11 +656,11 @@ CUSTOM_DOC("Loads all the theme files in the default theme folder.")
 CUSTOM_COMMAND_SIG(load_themes_hot_directory)
 CUSTOM_DOC("Loads all the theme files in the current hot directory.")
 {
-    String_Const_u8 fcoder_extension = string_u8_litexpr(".4coder");
+    String fcoder_extension = string_u8_litexpr(".4coder");
     save_all_dirty_buffers_with_postfix(app, fcoder_extension);
     
     Scratch_Block scratch(app);
-    String_Const_u8 path = push_hot_directory(app, scratch);
+    String path = push_hot_directory(app, scratch);
     load_folder_of_themes_into_live_set(app, path);
 }
 
@@ -708,7 +708,7 @@ setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_i
 }
 
 function void
-default_4coder_initialize(Application_Links *app, String_Const_u8_Array filenames, i32 override_font_size, b32 override_hinting)
+default_4coder_initialize(App *app, String_Array filenames, i1 override_font_size, b32 override_hinting)
 {
 #define M \
 "Welcome to " VERSION "\n" \
@@ -729,8 +729,8 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array filename
     
     load_config_and_apply(app, &global_config_arena, override_font_size, override_hinting);
     
-    String_Const_u8 bindings_filename = string_u8_litexpr("bindings.4coder");
-    String_Const_u8 mapping = def_get_config_string(scratch, vars_intern_lit("mapping"));
+    String bindings_filename = string_u8_litexpr("bindings.4coder");
+    String mapping = def_get_config_string(scratch, vars_intern_lit("mapping"));
     
     if (string_match(mapping, string_u8_litexpr("mac-default"))){
         bindings_filename = string_u8_litexpr("mac-bindings.4coder");
@@ -750,11 +750,11 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array filename
     }
     
     // open command line files
-    String_Const_u8 hot_directory = push_hot_directory(app, scratch);
-    for (i32 i = 0; i < filenames.count; i += 1){
+    String hot_directory = push_hot_directory(app, scratch);
+    for (i1 i = 0; i < filenames.count; i += 1){
         Temp_Memory_Block temp(scratch);
-        String_Const_u8 input_name = filenames.vals[i];
-        String_Const_u8 full_name = push_stringf(scratch, "%.*s/%.*s",
+        String input_name = filenames.vals[i];
+        String full_name = push_stringfz(scratch, "%.*s/%.*s",
                                                     string_expand(hot_directory),
                                                     string_expand(input_name));
         Buffer_ID new_buffer = create_buffer(app, full_name, BufferCreate_NeverNew|BufferCreate_MustAttachToFile);
@@ -765,13 +765,13 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array filename
 }
 
 function void
-default_4coder_initialize(Application_Links *app, i32 override_font_size, b32 override_hinting){
-    String_Const_u8_Array filenames = {};
+default_4coder_initialize(App *app, i1 override_font_size, b32 override_hinting){
+    String_Array filenames = {};
     default_4coder_initialize(app, filenames, override_font_size, override_hinting);
 }
 
 function void
-default_4coder_initialize(Application_Links *app, String_Const_u8_Array filenames){
+default_4coder_initialize(App *app, String_Array filenames){
     Face_Description description = get_face_description(app, 0);
     default_4coder_initialize(app, filenames,
                               description.parameters.pt_size,
@@ -779,14 +779,14 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array filename
 }
 
 function void
-default_4coder_initialize(Application_Links *app){
+default_4coder_initialize(App *app){
     Face_Description command_line_description = get_face_description(app, 0);
-    String_Const_u8_Array filenames = {};
+    String_Array filenames = {};
     default_4coder_initialize(app, filenames, command_line_description.parameters.pt_size, command_line_description.parameters.hinting);
 }
 
 function void
-default_4coder_side_by_side_panels(Application_Links *app,
+default_4coder_side_by_side_panels(App *app,
                                    Buffer_Identifier left, Buffer_Identifier right){
     Buffer_ID left_id = buffer_identifier_to_id(app, left);
     Buffer_ID right_id = buffer_identifier_to_id(app, right);
@@ -806,9 +806,9 @@ default_4coder_side_by_side_panels(Application_Links *app,
 }
 
 function void
-default_4coder_side_by_side_panels(Application_Links *app,
+default_4coder_side_by_side_panels(App *app,
                                    Buffer_Identifier left, Buffer_Identifier right,
-                                   String_Const_u8_Array filenames){
+                                   String_Array filenames){
     if (filenames.count > 0){
         left = buffer_identifier(filenames.vals[0]);
         if (filenames.count > 1){
@@ -819,20 +819,20 @@ default_4coder_side_by_side_panels(Application_Links *app,
 }
 
 function void
-default_4coder_side_by_side_panels(Application_Links *app, String_Const_u8_Array filenames){
+default_4coder_side_by_side_panels(App *app, String_Array filenames){
     Buffer_Identifier left = buffer_identifier(string_u8_litexpr("*scratch*"));
     Buffer_Identifier right = buffer_identifier(string_u8_litexpr("*messages*"));
     default_4coder_side_by_side_panels(app, left, right, filenames);
 }
 
 function void
-default_4coder_side_by_side_panels(Application_Links *app){
-    String_Const_u8_Array filenames = {};
+default_4coder_side_by_side_panels(App *app){
+    String_Array filenames = {};
     default_4coder_side_by_side_panels(app, filenames);
 }
 
 function void
-default_4coder_one_panel(Application_Links *app, Buffer_Identifier buffer){
+default_4coder_one_panel(App *app, Buffer_Identifier buffer){
     Buffer_ID id = buffer_identifier_to_id(app, buffer);
     View_ID view = get_active_view(app, Access_Always);
     new_view_settings(app, view);
@@ -840,7 +840,7 @@ default_4coder_one_panel(Application_Links *app, Buffer_Identifier buffer){
 }
 
 function void
-default_4coder_one_panel(Application_Links *app, String_Const_u8_Array filenames){
+default_4coder_one_panel(App *app, String_Array filenames){
     Buffer_Identifier buffer = buffer_identifier(string_u8_litexpr("*messages*"));
     if (filenames.count > 0){
         buffer = buffer_identifier(filenames.vals[0]);
@@ -849,8 +849,8 @@ default_4coder_one_panel(Application_Links *app, String_Const_u8_Array filenames
 }
 
 function void
-default_4coder_one_panel(Application_Links *app){
-    String_Const_u8_Array filenames = {};
+default_4coder_one_panel(App *app){
+    String_Array filenames = {};
     default_4coder_one_panel(app, filenames);
 }
 
@@ -946,7 +946,7 @@ free_fade_range(Fade_Range *range){
 }
 
 function Fade_Range*
-buffer_post_fade(Application_Links *app, Buffer_ID buffer_id, f32 seconds, Range_i64 range, ARGB_Color color){
+buffer_post_fade(App *app, Buffer_ID buffer_id, f32 seconds, Range_i64 range, ARGB_Color color){
     Fade_Range *fade_range = alloc_fade_range();
     sll_queue_push(buffer_fade_ranges.first, buffer_fade_ranges.last, fade_range);
     buffer_fade_ranges.count += 1;
@@ -976,7 +976,7 @@ buffer_shift_fade_ranges(Buffer_ID buffer_id, i64 shift_after_p, i64 shift_amoun
 }
 
 function b32
-tick_all_fade_ranges(Application_Links *app, f32 t){
+tick_all_fade_ranges(App *app, f32 t){
     Fade_Range **prev_next = &buffer_fade_ranges.first;
     for (Fade_Range *node = buffer_fade_ranges.first, *next = 0;
          node != 0;
@@ -1000,7 +1000,7 @@ tick_all_fade_ranges(Application_Links *app, f32 t){
 }
 
 function void
-paint_fade_ranges(Application_Links *app, Text_Layout_ID layout, Buffer_ID buffer){
+paint_fade_ranges(App *app, Text_Layout_ID layout, Buffer_ID buffer){
     for (Fade_Range *node = buffer_fade_ranges.first;
          node != 0;
          node = node->next){
@@ -1023,12 +1023,12 @@ clipboard_init_empty(Clipboard *clipboard, u32 history_depth)
     heap_init(&clipboard->heap, &clipboard->arena);
     clipboard->clip_index = 0;
     clipboard->clip_capacity = history_depth;
-    clipboard->clips = push_array_zero(&clipboard->arena, String_Const_u8, history_depth);
+    clipboard->clips = push_array_zero(&clipboard->arena, String, history_depth);
 }
 
 function void
 clipboard_init(Base_Allocator *allocator, u32 history_depth, Clipboard *clipboard_out){
-    u64 memsize = sizeof(String_Const_u8)*history_depth;
+    u64 memsize = sizeof(String)*history_depth;
     memsize = round_up_u64(memsize, KB(4));
     clipboard_out->arena = make_arena(allocator, memsize, 8);
     clipboard_init_empty(clipboard_out, history_depth);
@@ -1082,48 +1082,48 @@ get_clipboard_index(Clipboard *clipboard, u32 item_index)
     
     item_index = item_index % top;
     // NOTE(kv): item_index is BACKWARD from the array index
-    i32 array_index = ((clipboard->clip_index - 1) - item_index) % top;
+    i1 array_index = ((clipboard->clip_index - 1) - item_index) % top;
     result = clipboard->clips[array_index];
     
     return(result);
 }
 
 function String8
-push_clipboard_index_inner(Arena *arena, Clipboard *clipboard, i32 item_index)
+push_clipboard_index_inner(Arena *arena, Clipboard *clipboard, i1 item_index)
 {
     String8 result = get_clipboard_index(clipboard, item_index);
-    result = push_string_copy(arena, result);
+    result = push_string_copyz(arena, result);
     return(result);
 }
 
 ////////////////////////////////
 
 function void
-clipboard_clear(i32 clipboard_id){
+clipboard_clear(i1 clipboard_id){
     clipboard_clear(&global_clipboard0);
 }
 
-function String_Const_u8
-clipboard_post_internal_only(i32 clipboard_id, String_Const_u8 string)
+function String
+clipboard_post_internal_only(i1 clipboard_id, String string)
 {
     return(clipboard_post_internal_only(&global_clipboard0, string));
 }
 
 function void
-clipboard_post(i32 clipboard_id, String8 string)
+clipboard_post(i1 clipboard_id, String8 string)
 {
     clipboard_post_internal_only(clipboard_id, string);
     system_post_clipboard(string, clipboard_id);
 }
 
-function i32
-clipboard_count(i32 clipboard_id)
+function i1
+clipboard_count(i1 clipboard_id)
 {
     return(clipboard_count(&global_clipboard0));
 }
 
 function String8
-push_clipboard_index_inner(Arena *arena, i32 clipboard_id, i32 item_index)
+push_clipboard_index_inner(Arena *arena, i1 clipboard_id, i1 item_index)
 {
     return(push_clipboard_index_inner(arena, &global_clipboard0, item_index));
 }
@@ -1132,10 +1132,10 @@ push_clipboard_index_inner(Arena *arena, i32 clipboard_id, i32 item_index)
 ////////////////////////////////
 
 function void
-initialize_managed_id_metadata(Application_Links *app);
+initialize_managed_id_metadata(App *app);
 
 function void
-default_framework_init(Application_Links *app)
+default_framework_init(App *app)
 {
     Thread_Context *tctx = get_thread_context(app);
     async_task_handler_init(app, &global_async_system);
@@ -1161,7 +1161,7 @@ default_input_handler_init(App *app, Arena *arena)
     Thread_Context *tctx = get_thread_context(app);
     
     View_ID view = get_this_ctx_view(app, Access_Always);
-    String8 name = push_stringf(arena, "view %d", view);
+    String8 name = push_stringfz(arena, "view %d", view);
     
     Profile_Global_List *list = get_core_profile_list(app);
     ProfileThreadName(tctx, list, name);
@@ -1173,7 +1173,7 @@ default_input_handler_init(App *app, Arena *arena)
 }
 
 function Command_Map_ID
-default_get_map_id(Application_Links *app, View_ID view){
+default_get_map_id(App *app, View_ID view){
     Command_Map_ID result = 0;
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Managed_Scope buffer_scope = buffer_get_managed_scope(app, buffer);
@@ -1191,7 +1191,7 @@ default_get_map_id(Application_Links *app, View_ID view){
 }
 
 function void
-set_next_rewrite(Application_Links *app, View_ID view, Rewrite_Type rewrite){
+set_next_rewrite(App *app, View_ID view, Rewrite_Type rewrite){
     Managed_Scope scope = view_get_managed_scope(app, view);
     Rewrite_Type *next_rewrite = scope_attachment(app, scope, view_next_rewrite_loc, Rewrite_Type);
     if (next_rewrite != 0){
@@ -1221,7 +1221,7 @@ default_pre_command(App *app, Managed_Scope scope)
 }
 
 function void
-default_post_command(Application_Links *app, Managed_Scope scope)
+default_post_command(App *app, Managed_Scope scope)
 {
     Rewrite_Type *next_rewrite = scope_attachment(app, scope, view_next_rewrite_loc, Rewrite_Type);
     if (next_rewrite != 0){

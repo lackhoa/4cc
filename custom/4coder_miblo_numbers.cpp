@@ -11,12 +11,12 @@ struct Miblo_Number_Info{
 };
 
 static b32
-get_numeric_at_cursor(Application_Links *app, Buffer_ID buffer, i64 pos, Miblo_Number_Info *info){
+get_numeric_at_cursor(App *app, Buffer_ID buffer, i64 pos, Miblo_Number_Info *info){
     b32 result = false;
     Range_i64 range = enclose_pos_base10(app, buffer, pos);
     if (range_size(range) > 0){
         Scratch_Block scratch(app);
-        String_Const_u8 str = push_buffer_range(app, scratch, buffer, range);
+        String str = push_buffer_range(app, scratch, buffer, range);
         if (str.size > 0){
             info->range = range;
             info->x = string_to_u64(str, 10);
@@ -35,7 +35,7 @@ CUSTOM_DOC("Increment an integer under the cursor by one.")
     Miblo_Number_Info number = {};
     if (get_numeric_at_cursor(app, buffer, pos, &number)){
         Scratch_Block scratch(app);
-        String_Const_u8 str = push_stringf(scratch, "%d", number.x + 1);
+        String str = push_stringfz(scratch, "%d", number.x + 1);
         buffer_replace_range(app, buffer, number.range, str);
         view_set_cursor_and_preferred_x(app, view, seek_pos(number.range.start + str.size - 1));
     }
@@ -50,7 +50,7 @@ CUSTOM_DOC("Decrement an integer under the cursor by one.")
     Miblo_Number_Info number = {};
     if (get_numeric_at_cursor(app, buffer, pos, &number)){
         Scratch_Block scratch(app);
-        String_Const_u8 str = push_stringf(scratch, "%d", number.x - 1);
+        String str = push_stringfz(scratch, "%d", number.x - 1);
         buffer_replace_range(app, buffer, number.range, str);
         view_set_cursor_and_preferred_x(app, view, seek_pos(number.range.start + str.size - 1));
     }
@@ -60,9 +60,9 @@ CUSTOM_DOC("Decrement an integer under the cursor by one.")
 // (h+:)?m?m:ss
 
 struct Miblo_Timestamp{
-    i32 second;
-    i32 minute;
-    i32 hour;
+    i1 second;
+    i1 minute;
+    i1 hour;
 };
 static Miblo_Timestamp null_miblo_timestamp = {};
 
@@ -73,7 +73,7 @@ enum{
 };
 
 static Miblo_Timestamp
-increment_timestamp(Miblo_Timestamp t, i32 type, i32 amt){
+increment_timestamp(Miblo_Timestamp t, i1 type, i1 amt){
     Miblo_Timestamp r = t;
     switch (type){
         case MIBLO_SECOND: /* CASE second */
@@ -83,7 +83,7 @@ increment_timestamp(Miblo_Timestamp t, i32 type, i32 amt){
         // 2. What is thrown away by (1) store in amt, divide by 60, round down even when negative.
         amt = 0;
         if (r.second < 0){
-            i32 pos_second = -r.second;
+            i1 pos_second = -r.second;
             amt = -((pos_second + 59)/60);
             r.second = 60 - (pos_second % 60);
         }
@@ -99,7 +99,7 @@ increment_timestamp(Miblo_Timestamp t, i32 type, i32 amt){
         // 2. What is thrown away by (1) store in amt, divide by 60, round down even when negative.
         amt = 0;
         if (r.minute < 0){
-            i32 pos_minute = -r.minute;
+            i1 pos_minute = -r.minute;
             amt = -((pos_minute + 59)/60);
             r.minute = 60 - (pos_minute % 60);
         }
@@ -120,17 +120,17 @@ increment_timestamp(Miblo_Timestamp t, i32 type, i32 amt){
     return(r);
 }
 
-static String_Const_u8
+static String
 timestamp_to_string(Arena *arena, Miblo_Timestamp t){
-    List_String_Const_u8 list = {};
+    List_String list = {};
     if (t.hour > 0){
         string_list_pushf(arena, &list, "%d:", t.hour);
     }
-    i32 minute = clamp_min(0, t.minute);
+    i1 minute = clamp_min(0, t.minute);
     string_list_pushf(arena, &list, "%02d:", minute);
-    i32 second = clamp_min(0, t.second);
+    i1 second = clamp_min(0, t.second);
     string_list_pushf(arena, &list, "%02d", second);
-    String_Const_u8 str = string_list_flatten(arena, list);
+    String str = string_list_flatten(arena, list);
     return(str);
 }
 
@@ -140,16 +140,16 @@ struct Miblo_Timestamp_Info{
 };
 
 static b32
-get_timestamp_at_cursor(Application_Links *app, Buffer_ID buffer, i64 pos, Miblo_Timestamp_Info *info){
+get_timestamp_at_cursor(App *app, Buffer_ID buffer, i64 pos, Miblo_Timestamp_Info *info){
     b32 result = false;
     
     Scratch_Block scratch(app);
     
     Range_i64 time_stamp_range = enclose_pos_base10_colon(app, buffer, pos);
     if (range_size(time_stamp_range) > 0){
-        String_Const_u8 string = push_buffer_range(app, scratch, buffer, time_stamp_range);
+        String string = push_buffer_range(app, scratch, buffer, time_stamp_range);
         if (string.size > 0){
-            i32 count_colons = 0;
+            i1 count_colons = 0;
             for (u64 i = 0; i < string.size; ++i){
                 if (string.str[i] == ':'){
                     count_colons += 1;
@@ -162,7 +162,7 @@ get_timestamp_at_cursor(Application_Links *app, Buffer_ID buffer, i64 pos, Miblo
                 b32 success = false;
                 
                 Range_i64 number[3];
-                i32 k = 0;
+                i1 k = 0;
                 number[0].min = 0;
                 for (i64 i = 0; i < (i64)string.size; i += 1){
                     if (string.str[i] == ':'){
@@ -174,27 +174,27 @@ get_timestamp_at_cursor(Application_Links *app, Buffer_ID buffer, i64 pos, Miblo
                 number[k].max = (i64)string.size;
                 
                 if (count_colons == 2){
-                    String_Const_u8 hour_str = string_substring(string, number[0]);
-                    t.hour = (i32)string_to_u64(hour_str, 10);
+                    String hour_str = string_substring(string, number[0]);
+                    t.hour = (i1)string_to_u64(hour_str, 10);
                     
                     if (range_size(number[1]) == 2){
-                        String_Const_u8 minute_str = string_substring(string, number[1]);
-                        t.minute = (i32)string_to_u64(minute_str, 10);
+                        String minute_str = string_substring(string, number[1]);
+                        t.minute = (i1)string_to_u64(minute_str, 10);
                         if (range_size(number[2]) == 2){
-                            String_Const_u8 second_str = string_substring(string, number[2]);
-                            t.second = (i32)string_to_u64(second_str, 10);
+                            String second_str = string_substring(string, number[2]);
+                            t.second = (i1)string_to_u64(second_str, 10);
                             success = true;
                         }
                     }
                 }
                 else{
                     if (range_size(number[0]) == 2 || range_size(number[0]) == 1){
-                        String_Const_u8 minute_str = string_substring(string, number[0]);
-                        t.minute = (i32)string_to_u64(minute_str, 10);
+                        String minute_str = string_substring(string, number[0]);
+                        t.minute = (i1)string_to_u64(minute_str, 10);
                         
                         if (range_size(number[1]) == 2){
-                            String_Const_u8 second_str = string_substring(string, number[1]);
-                            t.second = (i32)string_to_u64(second_str, 10);
+                            String second_str = string_substring(string, number[1]);
+                            t.second = (i1)string_to_u64(second_str, 10);
                             success = true;
                         }
                     }
@@ -213,7 +213,7 @@ get_timestamp_at_cursor(Application_Links *app, Buffer_ID buffer, i64 pos, Miblo
 }
 
 static void
-miblo_time_stamp_alter(Application_Links *app, i32 unit_type, i32 amt){
+miblo_time_stamp_alter(App *app, i1 unit_type, i1 amt){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
     i64 pos = view_get_cursor_pos(app, view);
@@ -222,7 +222,7 @@ miblo_time_stamp_alter(Application_Links *app, i32 unit_type, i32 amt){
     if (get_timestamp_at_cursor(app, buffer, pos, &timestamp)){
         Scratch_Block scratch(app);
         Miblo_Timestamp inc_timestamp = increment_timestamp(timestamp.time, unit_type, amt);
-        String_Const_u8 str = timestamp_to_string(scratch, inc_timestamp);
+        String str = timestamp_to_string(scratch, inc_timestamp);
         buffer_replace_range(app, buffer, timestamp.range, str);
         view_set_cursor_and_preferred_x(app, view, seek_pos(timestamp.range.start + str.size - 1));
     }

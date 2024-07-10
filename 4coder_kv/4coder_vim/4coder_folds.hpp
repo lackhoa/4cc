@@ -38,14 +38,14 @@ struct Fold_List{
 
 
 // NOTE(BYP): Recomputes the layout without modifying Dirty_State or History_Record_Index
-function void fold_invalidate_buffer(Application_Links *app, Buffer_ID buffer){
+function void fold_invalidate_buffer(App *app, Buffer_ID buffer){
 	Dirty_State prev_state = buffer_get_dirty_state(app, buffer);
-	buffer_replace_range(app, buffer, Ii64(0,0), string_u8_empty);
+	buffer_replace_range(app, buffer, Ii64(0,0), empty_string);
 	undo(app);
 	buffer_set_dirty_state(app, buffer, prev_state);
 }
 
-function void fold_toggle(Application_Links *app, View_ID view, Buffer_ID buffer, i64 pos){
+function void fold_toggle(App *app, View_ID view, Buffer_ID buffer, i64 pos){
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 	Fold_List *fold_list = scope_attachment(app, scope, buffer_folds, Fold_List);
 	if(fold_list == 0){ return; }
@@ -66,14 +66,14 @@ function void fold_toggle(Application_Links *app, View_ID view, Buffer_ID buffer
 	}
 }
 
-function void fold_push(Application_Links *app, Buffer_ID buffer, Range_i64 range){
+function void fold_push(App *app, Buffer_ID buffer, Range_i64 range){
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 	Fold_List *fold_list = scope_attachment(app, scope, buffer_folds, Fold_List);
 	if(fold_list == 0){ return; }
 	if(fold_list->fold_count+1 == fold_list->fold_cap){
 		Base_Allocator *allocator = managed_scope_allocator(app, scope);
 		fold_list->fold_cap = i32(1.5*fold_list->fold_cap);
-		String_Const_u8 new_data = base_allocate(allocator, fold_list->fold_cap);
+		String new_data = base_allocate(allocator, fold_list->fold_cap);
 		if(new_data.size == 0){ return; }
 		block_copy(new_data.str, fold_list->folds, fold_list->fold_count*sizeof(Fold_Params));
 		base_free(allocator, fold_list->folds);
@@ -106,7 +106,7 @@ function void fold_push(Application_Links *app, Buffer_ID buffer, Range_i64 rang
 	}
 }
 
-function void fold_pop_inner(Application_Links *app, Buffer_ID buffer, Fold_List *fold_list, i32 index){
+function void fold_pop_inner(App *app, Buffer_ID buffer, Fold_List *fold_list, i32 index){
 	Fold_Params *fold = fold_list->folds + index;
 	u64 size = (fold_list->fold_count - index - 1)*sizeof(Fold_Params);
 	block_copy(fold, fold+1, size);
@@ -114,7 +114,7 @@ function void fold_pop_inner(Application_Links *app, Buffer_ID buffer, Fold_List
 	fold_invalidate_buffer(app, buffer);
 }
 
-function void fold_pop(Application_Links *app, Buffer_ID buffer, i64 pos){
+function void fold_pop(App *app, Buffer_ID buffer, i64 pos){
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 	Fold_List *fold_list = scope_attachment(app, scope, buffer_folds, Fold_List);
 	if(fold_list == 0){ return; }
@@ -167,7 +167,7 @@ CUSTOM_DOC("Folds cursor mark range")
 }
 
 // NOTE(BYP): Call after buffer text has been colored
-function void fold_draw(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id){
+function void fold_draw(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id){
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 	Fold_List *fold_list = scope_attachment(app, scope, buffer_folds, Fold_List);
 	if(fold_list == 0){ return; }
@@ -226,7 +226,7 @@ function void fold_draw(Application_Links *app, Buffer_ID buffer, Text_Layout_ID
 	}
 }
 
-function Layout_Item_List fold_items(Application_Links *app, Buffer_ID buffer, Layout_Item_List list){
+function Layout_Item_List fold_items(App *app, Buffer_ID buffer, Layout_Item_List list){
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 	Fold_List *fold_list_ = scope_attachment(app, scope, buffer_folds, Fold_List);
 	if(fold_list_ == 0){ return list; }
@@ -264,7 +264,7 @@ function Layout_Item_List fold_items(Application_Links *app, Buffer_ID buffer, L
 	return list;
 }
 
-function void fold_tick(Application_Links *app, Frame_Info frame_info){
+function void fold_tick(App *app, Frame_Info frame_info){
 #if FOLD_ANIMATE
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -286,18 +286,18 @@ function void fold_tick(Application_Links *app, Frame_Info frame_info){
 #endif
 }
 
-function void fold_begin_buffer_inner(Application_Links *app, Buffer_ID buffer_id){
+function void fold_begin_buffer_inner(App *app, Buffer_ID buffer_id){
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
 	Base_Allocator *allocator = managed_scope_allocator(app, scope);
 	Fold_List *fold_list = scope_attachment(app, scope, buffer_folds, Fold_List);
 	if(fold_list == 0){ return; }
-	String_Const_u8 fold_data = base_allocate(allocator, 10*sizeof(Fold_Params));
+	String fold_data = base_allocate(allocator, 10*sizeof(Fold_Params));
 	fold_list->folds = (Fold_Params *)fold_data.str;
 	fold_list->fold_cap = 10;
 	fold_list->fold_count = 0;
 }
 
-function void fold_buffer_edit_range_inner(Application_Links *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range){
+function void fold_buffer_edit_range_inner(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range){
 	Range_i64 old_range = Ii64(old_cursor_range.min.pos, old_cursor_range.max.pos);
 	i64 text_shift = replace_range_shift(old_range, range_size(new_range));
 
@@ -338,17 +338,17 @@ function void fold_buffer_edit_range_inner(Application_Links *app, Buffer_ID buf
 	}
 }
 
-function Layout_Item_List fold_layout_virt_indent_index_generic(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+function Layout_Item_List fold_layout_virt_indent_index_generic(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 	return fold_items(app, buffer, layout_virt_indent_index_generic(app, arena, buffer, range, face, width));
 }
-function Layout_Item_List fold_layout_virt_indent_literal_generic(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+function Layout_Item_List fold_layout_virt_indent_literal_generic(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 	return fold_items(app, buffer, layout_virt_indent_literal_generic(app, arena, buffer, range, face, width));
 }
-function Layout_Item_List fold_layout_generic(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+function Layout_Item_List fold_layout_generic(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 	return fold_items(app, buffer, layout_generic(app, arena, buffer, range, face, width));
 }
 
-function void fold_set_layouts(Application_Links *app, Buffer_ID buffer_id, b32 use_lexer, b32 treat_as_code){
+function void fold_set_layouts(App *app, Buffer_ID buffer_id, b32 use_lexer, b32 treat_as_code){
 	if(use_lexer){
 		buffer_set_layout(app, buffer_id, fold_layout_virt_indent_index_generic);
 	}else{
@@ -370,9 +370,9 @@ BUFFER_HOOK_SIG(fold_begin_buffer_hook){
 	b32 treat_as_code = false;
 	String8 filename = push_buffer_filename(app, scratch, buffer_id);
 	if (filename.size > 0){
-		String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
-		String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-		String_Const_u8 ext = string_file_extension(filename);
+		String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
+		String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
+		String ext = string_file_extension(filename);
 		for (i32 i = 0; i < extensions.count; ++i){
 			if (string_match(ext, extensions.strings[i])){
 				if (string_match(ext, string_u8_litexpr("cpp")) ||
@@ -407,7 +407,7 @@ BUFFER_HOOK_SIG(fold_begin_buffer_hook){
 		use_lexer = true;
 	}
 
-	String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
+	String buffer_name = push_buffer_base_name(app, scratch, buffer_id);
 	if (buffer_name.size > 0 && buffer_name.str[0] == '*' && buffer_name.str[buffer_name.size - 1] == '*'){
 		wrap_lines = def_get_config_b32(vars_intern_lit("enable_output_wrapping"));
 	}

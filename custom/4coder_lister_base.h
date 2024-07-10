@@ -7,43 +7,43 @@
 #if !defined(FCODER_LISTER_BASE_H)
 #define FCODER_LISTER_BASE_H
 
-typedef i32 Lister_Activation_Code;
+typedef i1 Lister_Activation_Code;
 enum{
     ListerActivation_Finished = 0,
     ListerActivation_Continue = 1,
     ListerActivation_ContinueAndRefresh = 2,
 };
 
-typedef void Lister_Regenerate_List_Function_Type(Application_Links *app, struct Lister *lister);
+typedef void Lister_Regenerate_List_Function_Type(App *app, struct Lister *lister);
 
 struct Lister_Node{
     Lister_Node *next;
     Lister_Node *prev;
-    String_Const_u8 string;
+    String string;
     union{
-        String_Const_u8 status;
-        i32 index;
+        String status;
+        i1 index;
     };
     void *user_data;
-    i32 raw_index;
+    i1 raw_index;
 };
 
 struct Lister_Node_List{
     Lister_Node *first;
     Lister_Node *last;
-    i32 count;
+    i1 count;
 };
 
 struct Lister_Node_Ptr_Array{
     Lister_Node **node_ptrs;
-    i32 count;
+    i1 count;
 };
 
-typedef Lister_Activation_Code Lister_Write_Character_Function(Application_Links *app);
-typedef Lister_Activation_Code Lister_Key_Stroke_Function(Application_Links *app);
-typedef void Lister_Navigate_Function(Application_Links *app,
+typedef Lister_Activation_Code Lister_Write_Character_Function(App *app);
+typedef Lister_Activation_Code Lister_Key_Stroke_Function(App *app);
+typedef void Lister_Navigate_Function(App *app,
                                       View_ID view, struct Lister *lister,
-                                      i32 index_delta);
+                                      i1 index_delta);
 
 struct Lister_Handlers{
     Lister_Regenerate_List_Function_Type *refresh;
@@ -56,7 +56,7 @@ struct Lister_Handlers{
 struct Lister_Result{
     b32 canceled;
     b32 activated_by_click;
-    String_Const_u8 text_field;
+    String text_field;
     void *user_data;
 };
 
@@ -83,11 +83,11 @@ struct Lister{
     b32 set_vertical_focus_to_item;
     Lister_Node *highlighted_node;
     void *hot_user_data;
-    i32 item_index;
-    i32 raw_item_index;
+    i1 item_index;
+    i1 raw_item_index;
     
     Basic_Scroll scroll;
-    i32 visible_count;
+    i1 visible_count;
     
     Lister_Result out;
 };
@@ -98,15 +98,15 @@ struct Lister_Prev_Current{
 };
 
 struct Lister_Block{
-    Application_Links *app;
+    App *app;
     Lister_Prev_Current lister;
-    Lister_Block(Application_Links *app, Arena *arena);
+    Lister_Block(App *app, Arena *arena);
     ~Lister_Block();
     operator Lister *();
 };
 
 struct Lister_Prealloced_String{
-    String_Const_u8 string;
+    String string;
 };
 
 struct Lister_Filtered{
@@ -119,8 +119,8 @@ struct Lister_Filtered{
 
 struct Lister_Choice{
     Lister_Choice *next;
-    String_Const_u8 string;
-    String_Const_u8 status;
+    String string;
+    String status;
     Key_Code key_code;
     union{
         u64 user_data;

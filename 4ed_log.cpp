@@ -18,12 +18,12 @@ log_init(void){
 }
 
 internal b32
-log_string(String_Const_u8 str){
+log_string(String str){
     b32 result = false;
-    i32 thread_id = system_thread_get_id();
+    i1 thread_id = system_thread_get_id();
     if (global_log.disabled_thread_id != thread_id){
         system_mutex_acquire(global_log.mutex);
-        string_list_push(&global_log.arena, &global_log.list, push_string_copy(&global_log.arena, str));
+        string_list_push(&global_log.arena, &global_log.list, push_string_copyz(&global_log.arena, str));
         system_mutex_release(global_log.mutex);
         result = true;
     }
@@ -31,7 +31,7 @@ log_string(String_Const_u8 str){
 }
 
 internal void
-output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String_Const_u8 value);
+output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value);
 
 internal b32
 log_flush(Thread_Context *tctx, Models *models){
@@ -41,7 +41,7 @@ log_flush(Thread_Context *tctx, Models *models){
     global_log.disabled_thread_id = system_thread_get_id();
     
     if (global_log.list.total_size > 0){
-        String_Const_u8 text = string_list_flatten(&global_log.arena, global_log.list);
+        String text = string_list_flatten(&global_log.arena, global_log.list);
         output_file_append(tctx, models, models->log_buffer, text);
         result = true;
     }

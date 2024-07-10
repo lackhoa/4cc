@@ -1,46 +1,47 @@
 // NOTE: Input
 in Fragment_Data
 {
-#if IS_FIRST_PASS || IS_SECOND_PASS
- 
-#if ACTUALLY_RENDERING
+#if WRITE_PRIM_ID
+ u32 prim_id;
+#else
+#    if IS_FIRST_PASS || IS_SECOND_PASS
  v4 color;
-#else
- flat u32 prim_id;
-#endif
- 
-#else
+#    else
+ flat v4 color;
  v3 uvw;
+#    endif
 #endif
 } fs_in;
 
 #if !(IS_FIRST_PASS || IS_SECOND_PASS)
-layout(binding=0) uniform sampler2D csg_texture;
+layout(binding=0) uniform sampler2D image_texture;  // ;image_texture_binding
 #endif
 
 // NOTE: Ouput
-#if ACTUALLY_RENDERING
-layout(location=0) out vec4 out_color;
-#else
+#if WRITE_PRIM_ID
 layout(location=0) out u32  out_prim_id;
+#else
+layout(location=0) out V4 out_color;
 #endif
 
 void main(void)
 {
 #if IS_FIRST_PASS || IS_SECOND_PASS
  
-# if ACTUALLY_RENDERING
- //NOTE: Alpha testing I don't think we even use alpha
- if (fs_in.color.a == 0.0f) { discard; } // NOTE(kv): alpha testing
- out_color   = fs_in.color;
-# else
+#    if WRITE_PRIM_ID
+ //NOTE: Alpha testing: I don't think we even use alpha
+ //if (fs_in.color.a == 0.0f) { discard; } // NOTE(kv): alpha testing
  out_prim_id = fs_in.prim_id;
-# endif
+#    else
+ out_color   = fs_in.color;
+#    endif
  
 #else
- // NOTE: csg rendering
- gl_FragDepth = 0.999f;
- out_color = texture(csg_texture, fs_in.uvw.xy);
- 
+ // NOTE: blit image
+#    if WRITE_PRIM_ID
+ out_prim_id = fs_in.prim_id;
+#    else
+ out_color = fs_in.color * texture(image_texture, fs_in.uvw.xy);
+#    endif
 #endif
 }

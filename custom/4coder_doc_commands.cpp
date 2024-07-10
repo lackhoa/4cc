@@ -12,10 +12,10 @@
 function Doc_Cluster*
 doc_commands(Arena *arena){
     Doc_Cluster *cluster = new_doc_cluster(arena, "Commands", "commands");
-    for (i32 i = 0; i < ArrayCount(fcoder_metacmd_table); i += 1){
-        String_Const_u8 cmd_name = SCu8(fcoder_metacmd_table[i].name,
+    for (i1 i = 0; i < ArrayCount(fcoder_metacmd_table); i += 1){
+        String cmd_name = SCu8(fcoder_metacmd_table[i].name,
                                         fcoder_metacmd_table[i].name_len);
-        String_Const_u8 title = push_u8_stringf(arena, "Command %.*s", string_expand(cmd_name));
+        String title = push_u8_stringf(arena, "Command %.*s", string_expand(cmd_name));
         Doc_Page *page = new_doc_page(arena, cluster, (char*)title.str, (char*)cmd_name.str);
         Doc_Block *block = new_doc_block(arena, page, "brief");
         doc_text(arena, block, fcoder_metacmd_table[i].description);
@@ -24,11 +24,11 @@ doc_commands(Arena *arena){
 }
 
 function Doc_Cluster*
-doc_default_bindings(Arena *arena, i32 map_count, Mapping *mapping_array, char **page_titles, char **page_names,
+doc_default_bindings(Arena *arena, i1 map_count, Mapping *mapping_array, char **page_titles, char **page_names,
                      i64 global_id, i64 file_id, i64 code_id){
     Doc_Cluster *cluster = new_doc_cluster(arena, "Bindings", "bindings");
     
-    for (i32 i = 0; i < map_count; i += 1){
+    for (i1 i = 0; i < map_count; i += 1){
         Mapping *mapping = &mapping_array[i];
         Doc_Page *page = new_doc_page(arena, cluster, page_titles[i], page_names[i]);
         for (Command_Map *map = mapping->first_map;
@@ -59,7 +59,7 @@ doc_default_bindings(Arena *arena, i32 map_count, Mapping *mapping_array, char *
             
             Bind_Node *first = 0;
             Bind_Node *last = 0;
-            i32 node_count = 0;
+            i1 node_count = 0;
             
             if (map->text_input_command.name != 0){
                 Bind_Node *node = push_array_zero(arena, Bind_Node, 1);
@@ -138,10 +138,10 @@ doc_default_bindings(Arena *arena, i32 map_count, Mapping *mapping_array, char *
                 }
             }
             
-            Vec2_i32 table_dims = V2i32(2, node_count);
+            Vec2_i1 table_dims = V2i1(2, node_count);
             Doc_Content_List *vals = push_array_zero(arena, Doc_Content_List, table_dims.x*table_dims.y);
             Bind_Node *bnode = first;
-            for (i32 y = 0; y < table_dims.y; y += 1, bnode = bnode->next){
+            for (i1 y = 0; y < table_dims.y; y += 1, bnode = bnode->next){
                 Doc_Content_List *line = &vals[y*table_dims.x];
                 doc_text(arena, &line[0], "[");
                 if (bnode->j != max_u32){
@@ -151,7 +151,7 @@ doc_default_bindings(Arena *arena, i32 map_count, Mapping *mapping_array, char *
                     }
                     
                     Input_Modifier_Set *mods = &bnode->mods;
-                    for (i32 k = 0; k < mods->count; k += 1){
+                    for (i1 k = 0; k < mods->count; k += 1){
                         doc_text(arena, &line[0], key_code_name[mods->mods[k]]);
                     }
                 }

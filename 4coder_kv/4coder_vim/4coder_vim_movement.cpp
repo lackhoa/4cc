@@ -35,7 +35,7 @@ vim_end_line(App *app)
 	view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
 }
 
-function void vim_scroll_inner(Application_Links *app, f32 ratio){
+function void vim_scroll_inner(App *app, f32 ratio){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	// vim_push_jump(app, view);  @modified(kv): this is just moving the screen, so why jump?
 	Vim_Motion_Block vim_motion_block(app);
@@ -100,7 +100,7 @@ VIM_COMMAND_SIG(vim_percent_file){
 }
 
 
-function void vim_screen_inner(Application_Links *app, f32 ratio, i32 offset){
+function void vim_screen_inner(App *app, f32 ratio, i32 offset){
 	Vim_Motion_Block vim_motion_block(app);
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -132,7 +132,7 @@ function void init_vim_boundaries()
 }
 
 function i64
-vim_boundary_word(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
+vim_boundary_word(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
 	return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_alnum_underscore_utf8));
 }
 
@@ -143,7 +143,7 @@ vim_boundary_non_word(App *app, Buffer_ID buffer, Side side, Scan_Direction dire
 }
 
 function i64
-boundary_whitespace(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
+boundary_whitespace(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
 	return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_whitespace));
 }
 
@@ -212,7 +212,7 @@ vim_word_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos)
     return pos;
 }
 
-function i64 vim_WORD_boundary(Application_Links *app, Buffer_ID buffer, Scan_Direction direction, i64 pos){
+function i64 vim_WORD_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos){
 	if(direction == Scan_Forward){
 		pos = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_non_whitespace, direction, pos);
 		pos = buffer_seek_character_class_change_0_1(app, buffer, &character_predicate_non_whitespace, direction, pos);
@@ -225,7 +225,7 @@ function i64 vim_WORD_boundary(Application_Links *app, Buffer_ID buffer, Scan_Di
 }
 
 // TODO(BYP): Once backwards is finished, adjust word/WORD text objects
-function i64 vim_end_boundary(Application_Links *app, Buffer_ID buffer, Scan_Direction direction, i64 pos){
+function i64 vim_end_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos){
 	i64 prev_pos = pos;
 	Scratch_Block scratch(app);
 	u8 c = buffer_get_char(app, buffer, pos);
@@ -313,7 +313,7 @@ vim_scan_WORD(App *app, View_ID view, Scan_Direction direction, i64 *prev_pos=0,
 	return cursor_pos;
 }
 
-function i64 vim_scan_end(Application_Links *app, View_ID view, Scan_Direction direction, const i32 N=1){
+function i64 vim_scan_end(App *app, View_ID view, Scan_Direction direction, const i32 N=1){
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	i64 cursor_pos = view_get_cursor_pos(app, view);
 	foreach(i,N){
@@ -322,7 +322,7 @@ function i64 vim_scan_end(Application_Links *app, View_ID view, Scan_Direction d
 	return cursor_pos;
 }
 
-function i64 vim_scan_END(Application_Links *app, View_ID view, Scan_Direction direction, const i32 N=1){
+function i64 vim_scan_END(App *app, View_ID view, Scan_Direction direction, const i32 N=1){
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	i64 cursor_pos = view_get_cursor_pos(app, view);
 	foreach(i,N){
@@ -331,7 +331,7 @@ function i64 vim_scan_END(Application_Links *app, View_ID view, Scan_Direction d
 	return cursor_pos;
 }
 
-function b32 vim_seek_char_inner(Application_Links *app, Scan_Direction Scan){
+function b32 vim_seek_char_inner(App *app, Scan_Direction Scan){
 	Vim_Seek_Params seek = vim_state.params.seek;
 	if(seek.character == 0){ return false; }
 	i32 direction = Scan*seek.direction;
@@ -349,7 +349,7 @@ function b32 vim_seek_char_inner(Application_Links *app, Scan_Direction Scan){
 	return true;
 }
 
-function void vim_seek_char(Application_Links *app){
+function void vim_seek_char(App *app){
 	Vim_Motion_Block vim_motion_block(app);
 	b32 valid = true;
 	const i32 N = vim_consume_number();
@@ -419,7 +419,8 @@ u8 vim_corresponding_bounce(u8 c){
 	return 0;
 }
 
-function i64 vim_bounce_pair(Application_Links *app, Buffer_ID buffer, i64 pos, u8 first){
+function i64 vim_bounce_pair(App *app, Buffer_ID buffer, i64 pos, u8 first)
+{
 	i32 direction = vim_bounce_direction(first);
 	u8 track, close = vim_corresponding_bounce(first);
 	i64 max_pos = buffer_get_size(app, buffer);
@@ -436,14 +437,17 @@ function i64 vim_bounce_pair(Application_Links *app, Buffer_ID buffer, i64 pos, 
 	return pos;
 }
 
-function i64 vim_scan_bounce(Application_Links *app, Buffer_ID buffer, i64 cursor_pos, Scan_Direction direction){
+function i64 
+vim_scan_bounce(App *app, Buffer_ID buffer, i64 cursor_pos, Scan_Direction direction)
+{
 	i64 max_pos = buffer_get_size(app, buffer);
 	u8 c = buffer_get_char(app, buffer, cursor_pos);
 	i64 pos = cursor_pos - (c == '\n' || c == '\r');
 	u8 track;
-	while(!vim_character_can_bounce(track = buffer_get_char(app, buffer, pos))){
+	while( !vim_character_can_bounce(track = buffer_get_char(app, buffer, pos)) )
+ {
 		pos += direction;
-		if(pos <= 0 || max_pos <= pos){ return cursor_pos; }
+		if(pos <= 0 || max_pos <= pos) { return cursor_pos; }
 	}
 
 	return vim_bounce_pair(app, buffer, pos, track);
@@ -561,7 +565,7 @@ VIM_TEXT_OBJECT_SIG(vim_scan_object_quotes){
 // NOTE(BYP): Default vim behavior for Visual Block on Text Objects is to do nothing.
 // I have chosen to ignore this, since it takes exactly no effort on my part to make it work.
 function void 
-vim_text_object(Application_Links *app)
+vim_text_object(App *app)
 {
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);

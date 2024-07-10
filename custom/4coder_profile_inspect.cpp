@@ -6,7 +6,7 @@
 
 function Profile_Slot*
 profile_parse_get_slot(Arena *arena, Profile_Inspection *insp,
-                       String_Const_u8 loc, String_Const_u8 name){
+                       String loc, String name){
     Profile_Slot *result = 0;
     for (Profile_Slot *node = insp->first_slot;
          node != 0;
@@ -28,8 +28,8 @@ profile_parse_get_slot(Arena *arena, Profile_Inspection *insp,
 }
 
 function void
-profile_parse_error(Arena *arena, Profile_Inspection *insp, String_Const_u8 message,
-                    String_Const_u8 location){
+profile_parse_error(Arena *arena, Profile_Inspection *insp, String message,
+                    String location){
     Profile_Error *error = push_array(arena, Profile_Error, 1);
     sll_queue_push(insp->first_error, insp->last_error, error);
     insp->error_count += 1;
@@ -53,8 +53,8 @@ profile_parse_record(Arena *arena, Profile_Inspection *insp,
         node->parent = parent;
         node->thread = parent->thread;
         
-        String_Const_u8 location = record->location;
-        String_Const_u8 name = record->name;
+        String location = record->location;
+        String name = record->name;
         
         node->time.min = record->time;
         node->time.max = max_u64;
@@ -77,7 +77,7 @@ profile_parse_record(Arena *arena, Profile_Inspection *insp,
             }
             else{
 #define M "Node '%.*s' closed by parent ending (or higher priority sibling starting)"
-                String_Const_u8 str = push_stringf(arena, M, string_expand(name));
+                String str = push_stringfz(arena, M, string_expand(name));
                 profile_parse_error(arena, insp, str, location);
 #undef M
                 if (parent->id != 0){
@@ -134,7 +134,7 @@ profile_parse(Arena *arena, Profile_Global_List *src){
     result.threads = push_array_zero(arena, Profile_Inspection_Thread,
                                      result.thread_count);
     
-    i32 counter = 0;
+    i1 counter = 0;
     Profile_Inspection_Thread *insp_thread = result.threads;
     for (Profile_Thread *node = src->first_thread;
          node != 0;
@@ -172,8 +172,8 @@ struct Tab_State{
 };
 
 function void
-profile_draw_tab(Application_Links *app, Tab_State *state, Profile_Inspection *insp,
-                 String_Const_u8 string, Profile_Inspection_Tab tab_id){
+profile_draw_tab(App *app, Tab_State *state, Profile_Inspection *insp,
+                 String string, Profile_Inspection_Tab tab_id){
     Scratch_Block scratch(app);
     
     state->p.x += state->x_half_padding;
@@ -225,27 +225,27 @@ profile_select_node(Profile_Inspection *inspect, Profile_Node *node){
     inspect->selected_node = node;
 }
 
-function String_Const_u8
+function String
 profile_node_thread_name(Profile_Node *node){
-    String_Const_u8 result = {};
+    String result = {};
     if (node->thread != 0){
         result = node->thread->name;
     }
     return(result);
 }
 
-function String_Const_u8
+function String
 profile_node_name(Profile_Node *node){
-    String_Const_u8 result = string_u8_litexpr("*root*");
+    String result = string_u8_litexpr("*root*");
     if (node->slot != 0){
         result = node->slot->name;
     }
     return(result);
 }
 
-function String_Const_u8
+function String
 profile_node_location(Profile_Node *node){
-    String_Const_u8 result = {};
+    String result = {};
     if (node->slot != 0){
         result = node->slot->location;
     }
@@ -253,13 +253,13 @@ profile_node_location(Profile_Node *node){
 }
 
 function void
-profile_qsort_nodes(Profile_Node **nodes, i32 first, i32 one_past_last){
+profile_qsort_nodes(Profile_Node **nodes, i1 first, i1 one_past_last){
     if (first + 1 < one_past_last){
-        i32 pivot_index = one_past_last - 1;
+        i1 pivot_index = one_past_last - 1;
         Profile_Node *pivot = nodes[pivot_index];
         u64 pivot_time = range_size(pivot->time);
-        i32 j = first;
-        for (i32 i = first; i < one_past_last; i += 1){
+        i1 j = first;
+        for (i1 i = first; i < one_past_last; i += 1){
             Profile_Node *node = nodes[i];
             u64 node_time = range_size(node->time);
             if (node_time > pivot_time){
@@ -290,7 +290,7 @@ unlerp_u64(u64 a, u64 x, u64 b){
 #endif
 
 function void
-profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
+profile_draw_node(App *app, View_ID view, Face_ID face_id,
                   Profile_Node *node, Rect_f32 rect,
                   Profile_Inspection *insp, Vec2_f32 m_p){
     Range_f32 x = rect_range_x(rect);
@@ -313,22 +313,22 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
     Range_f32 nav_bar_y = {};
     nav_bar_y.min = y.min;
     
-    String_Const_u8 thread_name = profile_node_thread_name(node);
+    String thread_name = profile_node_thread_name(node);
     if (thread_name.size > 0){
         Fancy_String *fstr =
             push_fancy_string(scratch, 0, fcolor_id(defcolor_pop1), thread_name);
-        Vec2_f32 p = vec2(x_pos, y.min + 1.f);
+        Vec2_f32 p = V2(x_pos, y.min + 1.f);
         draw_fancy_string(app, face_id, fcolor_zero(), fstr, p);
         f32 w = get_fancy_string_width(app, face_id, fstr);
         nav_bar_w = Max(nav_bar_w, w);
     }
     y.min += line_height + 2.f;
     
-    String_Const_u8 name = profile_node_name(node);
+    String name = profile_node_name(node);
     if (name.size > 0){
         Fancy_String *fstr =
             push_fancy_string(scratch, 0, fcolor_id(defcolor_text_default), name);
-        Vec2_f32 p = vec2(x_pos, y.min + 1.f);
+        Vec2_f32 p = V2(x_pos, y.min + 1.f);
         draw_fancy_string(app, face_id, fcolor_zero(), fstr, p);
         f32 w = get_fancy_string_width(app, face_id, fstr);
         nav_bar_w = Max(nav_bar_w, w);
@@ -352,7 +352,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             insp->hover_node = node->parent;
         }
         
-        Vec2_f32 p = vec2(box.x0 + x_half_padding,
+        Vec2_f32 p = V2(box.x0 + x_half_padding,
                            (box.y0 + box.y1 - line_height)*0.5f);
         draw_fancy_string(app, face_id, color, fstr, p);
         
@@ -374,7 +374,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
         x = rect_range_x(time_slice_box);
         y = rect_range_y(time_slice_box);
         
-        i32 cycle_counter = 0;
+        i1 cycle_counter = 0;
         for (Profile_Node *child = node->first_child;
              child != 0;
              child = child->next){
@@ -402,14 +402,14 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             }
             
             if (range_size(child_y) >= line_height){
-                String_Const_u8 child_name = profile_node_name(child);
+                String child_name = profile_node_name(child);
                 Fancy_Line line = {};
                 push_fancy_string(scratch, &line, fcolor_id(defcolor_pop1),
                                   child_name);
                 push_fancy_stringf(scratch, &line, fcolor_id(defcolor_text_default),
                                    0.5f, 0.f, "#%4llu", child->unique_counter);
                 
-                Vec2_f32 p = vec2(x.min + x_half_padding,
+                Vec2_f32 p = V2(x.min + x_half_padding,
                                    child_y.min);
                 draw_fancy_line(app, face_id, fcolor_zero(),
                                 &line, p);
@@ -434,13 +434,13 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             push_fancy_stringf(scratch, &list, fcolor_id(defcolor_text_default),
                                "time: %11.9f", duration);
             draw_fancy_line(app, face_id, fcolor_zero(),
-                            &list, vec2(x_pos, y_pos + 1.f));
+                            &list, V2(x_pos, y_pos + 1.f));
             y_pos += line_height + 2.f;
         }
         
-        i32 child_count = node->child_count;
+        i1 child_count = node->child_count;
         Profile_Node **children_array = push_array(scratch, Profile_Node*, child_count);
-        i32 counter = 0;
+        i1 counter = 0;
         for (Profile_Node *child = node->first_child;
              child != 0;
              child = child->next){
@@ -451,13 +451,13 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
         profile_qsort_nodes(children_array, 0, child_count);
         
         Profile_Node **child_ptr = children_array;
-        for (i32 i = 0; i < child_count; i += 1, child_ptr += 1){
+        for (i1 i = 0; i < child_count; i += 1, child_ptr += 1){
             Profile_Node *child = *child_ptr;
             y = If32_size(y_pos, block_height);
             
             f32 child_duration = ((f32)range_size(child->time))/1000000.f;
             
-            String_Const_u8 child_name = profile_node_name(child);
+            String child_name = profile_node_name(child);
             Fancy_Line line = {};
             push_fancy_string_trunc(scratch, &line, child_name, 20);
             push_fancy_stringf(scratch, &line, fcolor_id(defcolor_text_default), 0.5f, 0.f,
@@ -465,7 +465,7 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
             push_fancy_stringf(scratch, &line, fcolor_id(defcolor_pop2),
                                0.5f, 0.f, "%6.4f", child_duration);
             
-            Vec2_f32 p = vec2(x.min + x_half_padding,
+            Vec2_f32 p = V2(x.min + x_half_padding,
                                (y.min + y.max - line_height)*0.5f);
             draw_fancy_line(app, face_id, fcolor_id(defcolor_pop1), &line, p);
             
@@ -490,13 +490,13 @@ profile_draw_node(Application_Links *app, View_ID view, Face_ID face_id,
 }
 
 function void
-profile_memory_sort_by_count(Memory_Bucket **buckets, i32 first, i32 one_past_last){
+profile_memory_sort_by_count(Memory_Bucket **buckets, i1 first, i1 one_past_last){
     if (first + 1 < one_past_last){
-        i32 pivot = one_past_last - 1;
-        i32 pivot_key = buckets[pivot]->annotation.count;
-        i32 j = first;
-        for (i32 i = first; i < pivot; i += 1){
-            i32 key = buckets[i]->annotation.count;
+        i1 pivot = one_past_last - 1;
+        i1 pivot_key = buckets[pivot]->annotation.count;
+        i1 j = first;
+        for (i1 i = first; i < pivot; i += 1){
+            i1 key = buckets[i]->annotation.count;
             if (key <= pivot_key){
                 Swap(Memory_Bucket*, buckets[j], buckets[i]);
                 j += 1;
@@ -513,7 +513,7 @@ profile_memory_sort_by_count(Memory_Bucket **buckets, i32 first, i32 one_past_la
 #pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 function void
-profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
+profile_render(App *app, Frame_Info frame_info, View_ID view){
     Scratch_Block scratch(app);
     
     Rect_f32 region = draw_background_and_margin(app, view);
@@ -529,7 +529,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     f32 x_half_padding = x_padding*0.5f;
     
     Mouse_State mouse = get_mouse_state(app);
-    Vec2_f32 m_p = vec2(mouse.p);
+    Vec2_f32 m_p = V2(mouse.p);
     
     Profile_Inspection *inspect = &global_profile_inspection;
     
@@ -538,7 +538,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                                                string_u8_litexpr("no profile data"));
         f32 width = get_fancy_string_width(app, face_id, fstr);
         Vec2_f32 view_center = (region.p0 + region.p1)*0.5f;
-        Vec2_f32 half_dim = vec2(width, line_height)*0.5f;
+        Vec2_f32 half_dim = V2(width, line_height)*0.5f;
         Vec2_f32 p = view_center - half_dim;
         draw_fancy_string(app, face_id, fcolor_zero(), fstr, p);
     }
@@ -560,7 +560,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             f32 x = region.x0;
             
             Tab_State tab_state = {};
-            tab_state.p = vec2(x, y);
+            tab_state.p = V2(x, y);
             tab_state.tabs_y = tabs_y;
             tab_state.face_id = face_id;
             tab_state.x_half_padding = x_half_padding;
@@ -593,21 +593,21 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                              ProfileInspectTab_Memory);
             
             if (inspect->tab_id == ProfileInspectTab_Selection){
-                String_Const_u8 string = {};
+                String string = {};
                 if (inspect->selected_thread != 0){
-                    String_Const_u8 name = inspect->selected_thread->name;
-                    string = push_stringf(scratch, "%.*s (%d)",
+                    String name = inspect->selected_thread->name;
+                    string = push_stringfz(scratch, "%.*s (%d)",
                                              string_expand(name),
                                              inspect->selected_thread->thread_id);
                 }
                 else if (inspect->selected_slot != 0){
-                    String_Const_u8 name = inspect->selected_slot->name;
-                    string = push_stringf(scratch, "block %.*s",
+                    String name = inspect->selected_slot->name;
+                    string = push_stringfz(scratch, "block %.*s",
                                              string_expand(name));
                 }
                 else if (inspect->selected_node != 0){
-                    String_Const_u8 name = profile_node_name(inspect->selected_node);
-                    string = push_stringf(scratch, "node %.*s",
+                    String name = profile_node_name(inspect->selected_node);
+                    string = push_stringfz(scratch, "node %.*s",
                                              string_expand(name));
                 }
                 else{
@@ -626,9 +626,9 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             {
                 Range_f32 x = rect_range_x(tabs_body.max);
                 f32 y_pos = tabs_body.max.y0;
-                i32 count = inspect->thread_count;
+                i1 count = inspect->thread_count;
                 Profile_Inspection_Thread *thread = inspect->threads;
-                for (i32 i = 0; i < count; i += 1, thread += 1){
+                for (i1 i = 0; i < count; i += 1, thread += 1){
                     Range_f32 y = If32_size(y_pos, block_height);
                     
                     Fancy_Line list = {};
@@ -642,7 +642,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                                        "active time %11.9f",
                                        active_time);
                     
-                    Vec2_f32 p = vec2(x.min + x_half_padding,
+                    Vec2_f32 p = V2(x.min + x_half_padding,
                                        (y.min + y.max - line_height)*0.5f);
                     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
                     
@@ -689,7 +689,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_keyword),
                                        "hit # %5d", node->hit_count);
                     
-                    Vec2_f32 p = vec2(x.min + x_half_padding,
+                    Vec2_f32 p = V2(x.min + x_half_padding,
                                        (y.min + y.max - line_height)*0.5f);
                     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
                     
@@ -726,7 +726,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                     push_fancy_string(scratch, &list, fcolor_id(defcolor_pop2),
                                       node->message);
                     
-                    Vec2_f32 p = vec2(x.min + x_half_padding,
+                    Vec2_f32 p = V2(x.min + x_half_padding,
                                        (y.min + y.max - line_height)*0.5f);
                     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
                     
@@ -756,14 +756,14 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                 
                 Memory_Bucket *first_bucket = 0;
                 Memory_Bucket *last_bucket = 0;
-                i32 bucket_count = 0;
+                i1 bucket_count = 0;
                 Table_Data_u64 table = make_table_Data_u64(allocator, 100);
                 
                 for (Memory_Annotation_Node *node = annotation.first, *next = 0;
                      node != 0;
                      node = next){
                     next = node->next;
-                    String_Const_u8 key = make_data(node->location.str, node->location.size);
+                    String key = make_data(node->location.str, node->location.size);
                     Table_Lookup lookup = table_lookup(&table, key);
                     Memory_Bucket *bucket = 0;
                     if (lookup.found_match){
@@ -784,7 +784,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                 }
                 
                 Memory_Bucket **buckets = push_array(scratch, Memory_Bucket*, bucket_count);
-                i32 counter = 0;
+                i1 counter = 0;
                 for (Memory_Bucket *node = first_bucket;
                      node != 0;
                      node = node->next){
@@ -794,7 +794,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                 
                 profile_memory_sort_by_count(buckets, 0, bucket_count);
                 
-                for (i32 i = bucket_count - 1; i >= 0; i -= 1){
+                for (i1 i = bucket_count - 1; i >= 0; i -= 1){
                     Memory_Bucket *node = buckets[i];
                     Range_f32 y = If32_size(y_pos, block_height);
                     
@@ -804,7 +804,7 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop1), "%.*s",
                                        string_expand(node->location));
                     
-                    Vec2_f32 p = vec2(x.min + x_half_padding,
+                    Vec2_f32 p = V2(x.min + x_half_padding,
                                        (y.min + y.max - line_height)*0.5f);
                     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
                     
@@ -879,13 +879,13 @@ profile_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 #pragma clang diagnostic pop
 
 function void
-profile_inspect__left_click(Application_Links *app, View_ID view,
+profile_inspect__left_click(App *app, View_ID view,
                             Profile_Inspection *insp, Input_Event *event){
     if (has_modifier(event, Key_Code_Shift)){
         if (insp->location_jump_hovered.size != 0){
             View_ID target_view = view;
             target_view = get_other_primary_view(app, target_view, Access_Always, true);
-            String_Const_u8 location = insp->location_jump_hovered;
+            String location = insp->location_jump_hovered;
             jump_to_location(app, target_view, location);
         }
     }

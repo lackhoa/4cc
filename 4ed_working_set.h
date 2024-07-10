@@ -24,7 +24,7 @@ struct Working_Set{
     
     Node active_file_sentinel;
     Node touch_order_sentinel;
-    i32 active_file_count;
+    i1 active_file_count;
     
     Table_u64_u64 id_to_ptr_table;
     Table_Data_u64 canon_table;

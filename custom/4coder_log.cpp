@@ -12,9 +12,9 @@
 #if !defined(FCODER_LOG_CPP)
 #define FCODER_LOG_CPP
 
-internal String_Const_u8
-log_event(Arena *arena, String_Const_u8 event_name, String_Const_u8 src_name, i32 line_number, i32 buffer, i32 view, i32 thread_id){
-    List_String_Const_u8 list = {};
+internal String
+log_event(Arena *arena, String event_name, String src_name, i1 line_number, i1 buffer, i1 view, i1 thread_id){
+    List_String list = {};
     string_list_pushf(arena, &list, "%.*s:%d: %.*s",
                       string_expand(src_name), line_number, string_expand(event_name));
     if (thread_id != 0){
@@ -32,7 +32,7 @@ log_event(Arena *arena, String_Const_u8 event_name, String_Const_u8 src_name, i3
 
 #define LogEventStr(log_call, arena, B, V, T, E) \
 Stmnt(Temp_Memory temp_LOG = begin_temp(arena); \
-String_Const_u8 M = log_event(arena, E, \
+String M = log_event(arena, E, \
 string_u8_litexpr(__FILE__), \
 __LINE__, (B), (V), (T));    \
 log_call; \
@@ -43,7 +43,7 @@ LogEventStr(log_call, arena, (B), (V), (T), string_u8_litexpr(Elit))
 
 #define LogEventF(log_call, arena, B, V, T, Ef, ...) \
 Stmnt(Temp_Memory temp_LOG_F = begin_temp(arena); \
-String_Const_u8 E = push_stringf(arena, Ef, __VA_ARGS__); \
+String E = push_stringfz(arena, Ef, __VA_ARGS__); \
 LogEventStr(log_call, arena, B, V, T, E); \
 end_temp(temp_LOG_F); )
 

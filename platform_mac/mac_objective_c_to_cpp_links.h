@@ -4,20 +4,20 @@
 #define MAC_OBJECTIVE_C_TO_CPP_LINKS_H
 
 // In C++ layer
-external String_Const_u8
+extern "C" String
 mac_SCu8(u8* str, u64 size);
 
-external String_Const_u8
-mac_push_string_copy(Arena *arena, String_Const_u8 src);
+extern "C" String
+mac_push_string_copy(Arena *arena, String src);
 
-external void
+extern "C" void
 mac_init();
 
 // In Objective-C layer
-external String_Const_u8
-mac_standardize_path(Arena* arena, String_Const_u8 path);
+extern "C" String
+mac_standardize_path(Arena* arena, String path);
 
-external i32
+extern "C" i1
 mac_get_binary_path(void* buffer, u32 size);
 
 #endif

@@ -21,16 +21,16 @@ vs_out.half_thickness = uniform_meter_to_pixel*vattr_half_thickness;
  v1 radius = vattr_uvw.z;
  v3 camx = uniform_camera_axes[0];
  v3 camy = uniform_camera_axes[1];
- radius_clip = (viewT * vec4(radius*(camx+camy), 0.f)).xy;
+ radius_clip = (viewT * V4(radius*(camx+camy), 0.f)).xy;
 }
 #endif
 
 {
  // ref: How to read from multisample framebufer https://www.khronos.org/opengl/wiki/GL_EXT_framebuffer_multisample
- const i32 W = 1920;
- const i32 H = 1080;
+ const i1 W = 1920;
+ const i1 H = 1080;
  {
-  v2i mouse = {0,0};
+  i2 mouse = {0,0};
   glBindFramebuffer(GL_READ_FRAMEBUFFER, game_framebuffer);
   glReadBuffer(GL_COLOR_ATTACHMENT1);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, readback_framebuffer);

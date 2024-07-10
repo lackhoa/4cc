@@ -10,15 +10,15 @@
 struct Code_Index_Nest_List{
     struct Code_Index_Nest *first;
     struct Code_Index_Nest *last;
-    i32 count;
+    i1 count;
 };
 
 struct Code_Index_Nest_Ptr_Array{
     struct Code_Index_Nest **ptrs;
-    i32 count;
+    i1 count;
 };
 
-typedef i32 Code_Index_Nest_Kind;
+typedef i1 Code_Index_Nest_Kind;
 enum{
     CodeIndexNest_Scope,
     CodeIndexNest_Paren,
@@ -53,7 +53,7 @@ struct Code_Index_Note{
     Code_Index_Note *next;
     Code_Index_Note_Kind note_kind;
     Range_i64 pos;
-    String_Const_u8 text;
+    String text;
     struct Code_Index_File *file;
     Code_Index_Nest *parent;
     
@@ -64,12 +64,12 @@ struct Code_Index_Note{
 struct Code_Index_Note_List{
     Code_Index_Note *first;
     Code_Index_Note *last;
-    i32 count;
+    i1 count;
 };
 
 struct Code_Index_Note_Ptr_Array{
     Code_Index_Note **ptrs;
-    i32 count;
+    i1 count;
 };
 
 struct Code_Index_File{
@@ -94,27 +94,27 @@ struct Code_Index{
     Code_Index_File_Storage *free_storage;
     Code_Index_File_Storage *storage_first;
     Code_Index_File_Storage *storage_last;
-    i32 storage_count;
+    i1 storage_count;
     
     Code_Index_Note_List name_hash[4099];
 };
 
 ////////////////////////////////
 
-typedef void Generic_Parse_Comment_Function(Application_Links *app, Arena *arena, Code_Index_File *index,
-                                            Token *token, String_Const_u8 contents);
+typedef void Generic_Parse_Comment_Function(App *app, Arena *arena, Code_Index_File *index,
+                                            Token *token, String contents);
 
 struct Generic_Parse_State{
-    Application_Links *app;
+    App *app;
     Arena *arena;
-    String_Const_u8 contents;
+    String contents;
     Token_Iterator_Array it;
     Generic_Parse_Comment_Function *handle_comment;
     u8 *prev_line_start;
     b32 finished;
     
-    i32 scope_counter;
-    i32 paren_counter;
+    i1 scope_counter;
+    i1 paren_counter;
     b32 in_preprocessor;
     b32 in_statement;
     

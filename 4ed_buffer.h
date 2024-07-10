@@ -14,7 +14,7 @@
 
 struct Cursor_With_Index{
     i64 pos;
-    i32 index;
+    i1 index;
 };
 
 struct Gap_Buffer{
@@ -41,7 +41,7 @@ struct Buffer_Chunk_Position{
     i64 chunk_index;
 };
 
-typedef i32 Line_Move_Kind;
+typedef i1 Line_Move_Kind;
 enum{
     LineMove_ShiftOldValues,
     LineMove_MeasureString,
@@ -57,7 +57,7 @@ struct Line_Move{
             i64 text_shift;
         };
         struct{
-            String_Const_u8 string;
+            String string;
             i64 text_base;
         };
     };

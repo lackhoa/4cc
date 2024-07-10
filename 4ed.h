@@ -17,10 +17,10 @@ struct Plat_Settings
     b8 custom_dll_is_strict;
     b8 fullscreen_window;
     
-    i32 window_w;
-    i32 window_h;
-    i32 window_x;
-    i32 window_y;
+    i1 window_w;
+    i1 window_h;
+    i1 window_x;
+    i1 window_y;
     b8 set_window_pos;
     b8 set_window_size;
     b8 maximize_window;
@@ -47,13 +47,14 @@ struct Application_Step_Result
 
 struct Application_Step_Input
 {
-    b32 first_step;
-    f32 dt;
-    Mouse_State mouse;
-    Input_List events;
-    String_Const_u8 clipboard;
-    b32 trying_to_kill;
+ b32 first_step;
+ Mouse_State mouse;
+ Input_List events;
+ String clipboard;
+ b32 trying_to_kill;
+ v1  work_seconds;
+ u32 work_cycles;
 };
 
-typedef b32 Log_Function(String_Const_u8 str);
+typedef b32 Log_Function(String str);
 typedef Log_Function *App_Get_Logger(void);

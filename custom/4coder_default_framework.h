@@ -21,8 +21,8 @@ enum{
 
 struct ID_Line_Column_Jump_Location{
     Buffer_ID buffer_id;
-    i32 line;
-    i32 column;
+    i1 line;
+    i1 column;
 };
 typedef ID_Line_Column_Jump_Location ID_Based_Jump_Location;
 
@@ -32,16 +32,16 @@ struct ID_Pos_Jump_Location{
 };
 
 struct Name_Line_Column_Location{
-    String_Const_u8 file;
-    i32 line;
-    i32 column;
+    String file;
+    i1 line;
+    i1 column;
 };
 
 struct Parsed_Jump
 {
     b32 success;
     Name_Line_Column_Location location;
-    i32 colon_position;
+    i1 colon_position;
     b32 is_sub_jump;
     b32 sub_jump_indented;
     b32 sub_jump_note;
@@ -51,7 +51,7 @@ struct Parsed_Jump
 
 struct ID_Pos_Jump_Location_Array{
     struct ID_Pos_Jump_Location *jumps;
-    i32 count;
+    i1 count;
 };
 
 ////////////////////////////////
@@ -65,13 +65,13 @@ struct Point_Stack_Slot{
 
 struct Point_Stack{
     Point_Stack_Slot markers[POINT_STACK_DEPTH + 1];
-    i32 top;
-    i32 bot;
+    i1 top;
+    i1 bot;
 };
 
 ////////////////////////////////
 
-typedef i32 Fallback_Dispatch_Result_Code;
+typedef i1 Fallback_Dispatch_Result_Code;
 enum{
     FallbackDispatch_Unhandled,
     FallbackDispatch_DidCall,
@@ -85,15 +85,15 @@ struct Fallback_Dispatch_Result{
 
 ////////////////////////////////
 
-typedef void View_Render_Hook(Application_Links *app, View_ID view, Frame_Info frame_info, Rect_f32 inner);
+typedef void View_Render_Hook(App *app, View_ID view, Frame_Info frame_info, Rect_f32 inner);
 
 ////////////////////////////////
 
 function b32
-do_buffer_kill_user_check(Application_Links *app, Buffer_ID buffer, View_ID view);
+do_buffer_kill_user_check(App *app, Buffer_ID buffer, View_ID view);
 
 function b32
-do_4coder_close_user_check(Application_Links *app, View_ID view);
+do_4coder_close_user_check(App *app, View_ID view);
 
 ////////////////////////////////
 
@@ -122,14 +122,14 @@ struct Fade_Range{
     b32 negate_fade_direction;
     Range_i64 range;
     
-    void (*finish_call)(Application_Links *app, struct Fade_Range *range);
+    void (*finish_call)(App *app, struct Fade_Range *range);
     void *opaque[4];
 };
 
 struct Fade_Range_List{
     Fade_Range *first;
     Fade_Range *last;
-    i32 count;
+    i1 count;
 };
 
 #endif
@@ -141,7 +141,7 @@ struct Implicit_Map_Result{
     Custom_Command_Function *command;
 };
 
-typedef Implicit_Map_Result Implicit_Map_Function(Application_Links *app,
+typedef Implicit_Map_Result Implicit_Map_Function(App *app,
                                                   String_ID buffer_language,
                                                   String_ID global_mode,
                                                   Input_Event *event);

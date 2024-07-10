@@ -2,9 +2,9 @@ struct KvQuailEntry
 {
   char *key;
   char *insert;
-  i32   delete_before;
-  i32   delete_after;
-  i32   cursor_index;
+  i1   delete_before;
+  i1   delete_after;
+  i1   cursor_index;
 };
 
 global KvQuailEntry *kv_quail_table;
@@ -14,11 +14,11 @@ global char         *kv_quail_keystroke_buffer;
 // order to for the quail rule to work.
 function void
 kv_quail_defrule(App *app, char *key, char *insert,
-                 i32 delete_before, i32 delete_after, i32 cursor_index)
+                 i1 delete_before, i1 delete_after, i1 cursor_index)
 {
-  i32 entry_index = arrlen(kv_quail_table);
+  i1 entry_index = arrlen(kv_quail_table);
   // note: we keep the table sorted by key length, largest first, for overlapping keys.
-  for (i32 table_index=0;
+  for (i1 table_index=0;
        table_index < arrlen(kv_quail_table);
        table_index++)
   {
@@ -49,12 +49,12 @@ kv_handle_text_insert(App *app, u8 character)
  arrput(keybuf, character);
  
  // loop to find a match in quail table
- for (i32 quail_index=0;
+ for (i1 quail_index=0;
       ( quail_index < arrlen(kv_quail_table) ) && ( !substituted );
       quail_index++)
  {
   KvQuailEntry entry = kv_quail_table[quail_index];
-  i32 keylen = strlen(entry.key);
+  i1 keylen = strlen(entry.key);
   
   char *keys = keybuf + arrlen(keybuf) - keylen;
   substituted = ( strncmp(keys, entry.key, keylen) == 0 );

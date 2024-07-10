@@ -14,13 +14,13 @@ struct Profile_Node_Ptr{
 
 struct Profile_Slot{
     Profile_Slot *next;
-    String_Const_u8 location;
-    String_Const_u8 name;
+    String location;
+    String name;
     
     u64 total_time;
     b32 corrupted_time;
     
-    i32 hit_count;
+    i1 hit_count;
     Profile_Node_Ptr *first_hit;
     Profile_Node_Ptr *last_hit;
 };
@@ -36,25 +36,25 @@ struct Profile_Node{
     
     Profile_Node *first_child;
     Profile_Node *last_child;
-    i32 child_count;
+    i1 child_count;
     
     b32 closed;
 };
 
 struct Profile_Inspection_Thread{
-    i32 thread_id;
-    String_Const_u8 name;
+    i1 thread_id;
+    String name;
     Profile_Node root;
     u64 active_time;
 };
 
 struct Profile_Error{
     Profile_Error *next;
-    String_Const_u8 message;
-    String_Const_u8 location;
+    String message;
+    String location;
 };
 
-typedef i32 Profile_Inspection_Tab;
+typedef i1 Profile_Inspection_Tab;
 enum{
     ProfileInspectTab_None,
     ProfileInspectTab_Threads,
@@ -70,9 +70,9 @@ struct Profile_Inspection{
     Profile_Error *first_error;
     Profile_Error *last_error;
     Profile_Inspection_Thread *threads;
-    i32 slot_count;
-    i32 thread_count;
-    i32 error_count;
+    i1 slot_count;
+    i1 thread_count;
+    i1 error_count;
     
     Profile_Inspection_Tab tab_id;
     Profile_Inspection_Thread *selected_thread;
@@ -80,9 +80,9 @@ struct Profile_Inspection{
     Profile_Node *selected_node;
     
     Profile_Inspection_Tab tab_id_hovered;
-    String_Const_u8 full_name_hovered;
+    String full_name_hovered;
     u64 unique_counter_hovered;
-    String_Const_u8 location_jump_hovered;
+    String location_jump_hovered;
     Profile_Inspection_Thread *hover_thread;
     Profile_Slot *hover_slot;
     Profile_Node *hover_node;
@@ -93,7 +93,7 @@ global Profile_Inspection global_profile_inspection = {};
 struct Memory_Bucket{
     Memory_Bucket *next;
     Memory_Annotation annotation;
-    String_Const_u8 location;
+    String location;
     u64 total_memory;
 };
 

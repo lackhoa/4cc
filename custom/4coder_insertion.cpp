@@ -5,7 +5,7 @@
 // TOP
 
 function Buffer_Insertion
-begin_buffer_insertion_at(Application_Links *app, Buffer_ID buffer_id, i64 at){
+begin_buffer_insertion_at(App *app, Buffer_ID buffer_id, i64 at){
     Buffer_Insertion result = {};
     result.app = app;
     result.buffer = buffer_id;
@@ -14,7 +14,7 @@ begin_buffer_insertion_at(Application_Links *app, Buffer_ID buffer_id, i64 at){
 }
 
 function Buffer_Insertion
-begin_buffer_insertion_at_buffered(Application_Links *app, Buffer_ID buffer_id, i64 at, Cursor *cursor){
+begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, Cursor *cursor){
     Buffer_Insertion result = begin_buffer_insertion_at(app, buffer_id, at);
     result.buffering = true;
     result.cursor = cursor;
@@ -23,14 +23,14 @@ begin_buffer_insertion_at_buffered(Application_Links *app, Buffer_ID buffer_id, 
 }
 
 function Buffer_Insertion
-begin_buffer_insertion_at_buffered(Application_Links *app, Buffer_ID buffer_id, i64 at, Arena *buffer_memory, u64 buffer_memory_size){
+begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, Arena *buffer_memory, u64 buffer_memory_size){
     Cursor *cursor = push_array(buffer_memory, Cursor, 1);
     *cursor = make_cursor(push_array(buffer_memory, u8, buffer_memory_size), buffer_memory_size);
     return(begin_buffer_insertion_at_buffered(app, buffer_id, at, cursor));
 }
 
 function Buffer_Insertion
-begin_buffer_insertion(Application_Links *app){
+begin_buffer_insertion(App *app){
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     i64 cursor_pos = view_get_cursor_pos(app, view);
@@ -39,7 +39,7 @@ begin_buffer_insertion(Application_Links *app){
 }
 
 function void
-insert_string__no_buffering(Buffer_Insertion *insertion, String_Const_u8 string){
+insert_string__no_buffering(Buffer_Insertion *insertion, String string){
     buffer_replace_range(insertion->app, insertion->buffer, Ii64(insertion->at), string);
     insertion->at += string.size;
 }
@@ -48,7 +48,7 @@ function void
 insert__flush(Buffer_Insertion *insertion){
     Cursor *cursor = insertion->cursor;
     u64 pos = insertion->temp.temp_memory_cursor.pos;
-    String_Const_u8 string = SCu8(cursor->base + pos, cursor->pos - pos);
+    String string = SCu8(cursor->base + pos, cursor->pos - pos);
     insert_string__no_buffering(insertion, string);
     end_temp(insertion->temp);
 }
@@ -73,7 +73,7 @@ end_buffer_insertion(Buffer_Insertion *insertion){
 }
 
 function void
-insert_string(Buffer_Insertion *insertion, String_Const_u8 string){
+insert_string(Buffer_Insertion *insertion, String string){
     if (!insertion->buffering){
         insert_string__no_buffering(insertion, string);
     }
@@ -93,7 +93,7 @@ insertf(Buffer_Insertion *insertion, char *format, ...){
     Scratch_Block scratch(insertion->app);
     va_list args;
     va_start(args, format);
-    String_Const_u8 string = push_stringfv(scratch, format, args);
+    String string = push_stringfv(scratch, format, args, true);
     va_end(args);
     insert_string(insertion, string);
     return(string.size);
@@ -105,7 +105,7 @@ insertc(Buffer_Insertion *insertion, char C){
 }
 
 function b32
-insert_line_from_buffer(Buffer_Insertion *insertion, Buffer_ID buffer_id, i32 line, i32 truncate_at){
+insert_line_from_buffer(Buffer_Insertion *insertion, Buffer_ID buffer_id, i1 line, i1 truncate_at){
     b32 success = is_valid_line(insertion->app, buffer_id, line);
     if (success){
         Scratch_Block scratch(insertion->app);
@@ -115,7 +115,7 @@ insert_line_from_buffer(Buffer_Insertion *insertion, Buffer_ID buffer_id, i32 li
 }
 
 function b32
-insert_line_from_buffer(Buffer_Insertion *insertion, Buffer_ID buffer_id, i32 line){
+insert_line_from_buffer(Buffer_Insertion *insertion, Buffer_ID buffer_id, i1 line){
     return(insert_line_from_buffer(insertion, buffer_id, line, 0));
 }
 

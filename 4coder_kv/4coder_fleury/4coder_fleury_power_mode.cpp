@@ -75,7 +75,7 @@ F4_PowerMode_ActiveCharactersPerMinute(void)
 internal void
 F4_PowerMode_CharacterPressed(void)
 {
-    u64 now = system_now_time();
+    u64 now = system_time_usecond();
     
     if(power_mode.keypress_history_count > 0)
     {
@@ -106,7 +106,7 @@ F4_PowerMode_CharacterPressed(void)
 
 internal Particle *
 F4_PowerMode_Particle(f32 x, f32 y, f32 velocity_x, f32 velocity_y, f32 decay_rate, ARGB_Color color,
-                      f32 roundness, f32 scale, String_Const_u8 str)
+                      f32 roundness, f32 scale, String str)
 {
     Particle *result = 0;
     if(power_mode.particle_count < ArrayCountSigned(power_mode.particles))
@@ -128,7 +128,7 @@ F4_PowerMode_Particle(f32 x, f32 y, f32 velocity_x, f32 velocity_y, f32 decay_ra
 }
 
 internal Vec2_f32
-F4_PowerMode_CameraOffsetFromView(Application_Links *app, View_ID view)
+F4_PowerMode_CameraOffsetFromView(App *app, View_ID view)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
     Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
@@ -145,7 +145,7 @@ F4_PowerMode_CameraOffsetFromView(Application_Links *app, View_ID view)
 }
 
 internal void
-F4_PowerMode_Spawn(Application_Links *app, View_ID view, u8 character)
+F4_PowerMode_Spawn(App *app, View_ID view, u8 character)
 {
     if(F4_PowerMode_IsEnabled())
     {
@@ -153,7 +153,7 @@ F4_PowerMode_Spawn(Application_Links *app, View_ID view, u8 character)
         
         for(int i = 0; i < 60; ++i)
         {
-            String_Const_u8 string = {};
+            String string = {};
             ARGB_Color color = 0xffffffff;
             f32 decay_rate = 1.f;
             f32 scale = RandomF32(0.5f, 6.f);
@@ -207,7 +207,7 @@ F4_PowerMode_Spawn(Application_Links *app, View_ID view, u8 character)
 }
 
 internal void
-F4_PowerMode_Tick(Application_Links *app, Frame_Info frame_info)
+F4_PowerMode_Tick(App *app, Frame_Info frame_info)
 {
     // NOTE(rjf): Load keystroke sounds.
     if(power_mode.enabled && power_mode.allowed)
@@ -288,7 +288,7 @@ F4_PowerMode_Tick(Application_Links *app, Frame_Info frame_info)
 }
 
 internal void
-F4_PowerMode_RenderBuffer(Application_Links *app, View_ID view, Face_ID face, Frame_Info frame_info)
+F4_PowerMode_RenderBuffer(App *app, View_ID view, Face_ID face, Frame_Info frame_info)
 {
     ProfileScope(app, "[Fleury] Power Mode");
     
@@ -347,7 +347,7 @@ F4_PowerMode_RenderBuffer(Application_Links *app, View_ID view, Face_ID face, Fr
 }
 
 internal void
-F4_PowerMode_RenderWholeScreen(Application_Links *app, Frame_Info frame_info)
+F4_PowerMode_RenderWholeScreen(App *app, Frame_Info frame_info)
 {
     Scratch_Block scratch(app);
     Rect_f32 rect = global_get_screen_rectangle(app);
@@ -366,8 +366,8 @@ F4_PowerMode_RenderWholeScreen(Application_Links *app, Frame_Info frame_info)
     if(power_mode.allowed)
     {
         Face_ID face_id = get_face_id(app, 0);
-        String_Const_u8 string = push_stringf(scratch, "CPM: %.2f", F4_PowerMode_ActiveCharactersPerMinute());
+        String string = push_stringfz(scratch, "CPM: %.2f", F4_PowerMode_ActiveCharactersPerMinute());
         f32 advance = get_string_advance(app, face_id, string);
-        draw_string(app, face_id, string, vec2(rect.x1 - advance, rect.y0), 0xffffffff);
+        draw_string(app, face_id, string, V2(rect.x1 - advance, rect.y0), 0xffffffff);
     }
 }

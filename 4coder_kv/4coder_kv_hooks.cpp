@@ -8,7 +8,7 @@ BUFFER_HOOK_SIG(kv_file_save)
 BUFFER_HOOK_SIG(kv_new_file)
 {
 	Scratch_Block scratch(app);
-	String_Const_u8 filename = push_buffer_base_name(app, scratch, buffer_id);
+	String filename = push_buffer_base_name(app, scratch, buffer_id);
 	if(string_match(string_postfix(filename, 4), string_u8_litexpr(".bat"))){
 		Buffer_Insertion insert = begin_buffer_insertion_at_buffered(app, buffer_id, 0, scratch, KB(16));
 		insertf(&insert, "@echo off" "\n");
@@ -40,7 +40,7 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
       String8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
       String8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
       String8 ext = string_file_extension(filename);
-      for(i32 i = 0; i < extensions.count; ++i)
+      for(i1 i = 0; i < extensions.count; ++i)
       {
         if(string_match(ext, extensions.strings[i]))
         {

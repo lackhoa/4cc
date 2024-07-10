@@ -5,7 +5,7 @@
 // TOP
 
 function void
-select_next_scope_after_pos(Application_Links *app, View_ID view, Buffer_ID buffer,
+select_next_scope_after_pos(App *app, View_ID view, Buffer_ID buffer,
                             i64 pos){
     Find_Nest_Flag flags = FindNest_Scope;
     Range_i64 range = {};
@@ -19,7 +19,7 @@ select_next_scope_after_pos(Application_Links *app, View_ID view, Buffer_ID buff
 }
 
 function b32
-range_is_scope_selection(Application_Links *app, Buffer_ID buffer, Range_i64 range){
+range_is_scope_selection(App *app, Buffer_ID buffer, Range_i64 range){
     return (buffer_get_char(app, buffer, range.min) == '{' &&
             buffer_get_char(app, buffer, range.max - 1) == '}');
 }
@@ -117,8 +117,8 @@ CUSTOM_DOC("Deletes the braces surrounding the currently selected scope.  Leaves
     
     Range_i64 range = get_view_range(app, view);
     if (range_is_scope_selection(app, buffer, range)){
-        i32 top_len = 1;
-        i32 bot_len = 1;
+        i1 top_len = 1;
+        i1 bot_len = 1;
         if (buffer_get_char(app, buffer, range.min - 1) == '\n'){
             top_len = 2;
         }
@@ -133,7 +133,7 @@ CUSTOM_DOC("Deletes the braces surrounding the currently selected scope.  Leaves
         batch_first.edit.range = Ii64(range.min + 1 - top_len, range.min + 1);
         batch_first.next = &batch_last;
         batch_last.edit.text = SCu8();
-        batch_last.edit.range = Ii64((i32)(range.max - 1), (i32)(range.max - 1 + bot_len));
+        batch_last.edit.range = Ii64((i1)(range.max - 1), (i1)(range.max - 1 + bot_len));
         
         buffer_batch_edit(app, buffer, &batch_first);
     }

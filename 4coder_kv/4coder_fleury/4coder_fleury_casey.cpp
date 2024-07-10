@@ -108,7 +108,7 @@ CUSTOM_DOC("Deletes everything from the cursor to the end of the line.")
 		range.start = pos + 1;
 	}
     
-    i32 size = (i32)buffer_get_size(app, buffer);
+    i1 size = (i1)buffer_get_size(app, buffer);
     range.end = clamp_max(range.end, size);
     if (range_size(range) == 0 ||
         buffer_get_char(app, buffer, range.end - 1) != '\n'){
@@ -138,8 +138,8 @@ CUSTOM_DOC("Jumps to the most likely thing you'd want to see for the identifier 
 BUFFER_HOOK_SIG(casey_new_file)
 {
 	Scratch_Block scratch(app);
-	String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
-    String_Const_u8 header_text = push_stringf(scratch,
+	String file_name = push_buffer_file_name(app, scratch, buffer_id);
+    String header_text = push_stringfz(scratch,
                                                "/* ========================================================================\n"
                                                "   %cFile: %.*s $\n"
                                                "   %cDate: $\n"

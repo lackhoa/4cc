@@ -5,7 +5,7 @@
 // TOP
 
 internal Batch_Edit*
-make_batch_from_indentations(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i32 tab_width){
+make_batch_from_indentations(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i1 tab_width){
     i64 *shifted_indentations = indentations - lines.first;
     
     Batch_Edit *batch_first = 0;
@@ -54,7 +54,7 @@ make_batch_from_indentations(Application_Links *app, Arena *arena, Buffer_ID buf
 }
 
 internal void
-set_line_indents(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i32 tab_width){
+set_line_indents(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i1 tab_width){
     Batch_Edit *batch = make_batch_from_indentations(app, arena, buffer, lines, indentations, flags, tab_width);
     if (batch != 0){
         buffer_batch_edit(app, buffer, batch);
@@ -71,8 +71,8 @@ find_anchor_token(App *app, Buffer_ID buffer, Token_Array *tokens, i64 invalid_l
  {
   result = tokens->tokens;
   i64 invalid_pos = get_line_start_pos(app, buffer, invalid_line);
-  i32 scope_counter = 0;
-  i32 paren_counter = 0;
+  i1 scope_counter = 0;
+  i1 paren_counter = 0;
   Token *token = tokens->tokens;
   for (;;token += 1)
   {
@@ -158,7 +158,7 @@ indent__unfinished_statement(Token *token, Nest *current_nest){
 }
 
 function void
-line_indent_cache_update(App *app, Buffer_ID buffer, i32 tab_width, Indent_Line_Cache *line_cache)
+line_indent_cache_update(App *app, Buffer_ID buffer, i1 tab_width, Indent_Line_Cache *line_cache)
 {
  if (line_cache->line_number_for_cached_indent != line_cache->where_token_starts)
  {
@@ -172,7 +172,7 @@ line_indent_cache_update(App *app, Buffer_ID buffer, i32 tab_width, Indent_Line_
 
 internal i64*
 get_indentation_array(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines,
-                      Indent_Flag flags, i32 tab_width, i32 indent_width)
+                      Indent_Flag flags, i1 tab_width, i1 indent_width)
 {
  ProfileScope(app, "get indentation array");
  i64 count = lines.max - lines.min + 1;
@@ -382,7 +382,7 @@ actual_indent = N; )
 
 internal b32
 auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, 
-                   Indent_Flag flags, i32 tab_width, i32 indent_width)
+                   Indent_Flag flags, i1 tab_width, i1 indent_width)
 {
  ProfileScope(app, "auto indent buffer");
  Token_Array token_array = get_token_array_from_buffer(app, buffer);
@@ -397,7 +397,7 @@ auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos,
   Range_i64 line_numbers = {};
   if (HasFlag(flags, Indent_FullTokens))
   {
-   i32 safety_counter = 0;
+   i1 safety_counter = 0;
    for (;;)
    {
     Range_i64 expanded = enclose_tokens(app, buffer, pos);
@@ -429,8 +429,8 @@ auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos,
 function void
 auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags)
 {
-    i32 indent_width = (i32)def_get_config_u64(app, vars_intern_lit("indent_width"));
-    i32 tab_width = (i32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
+    i1 indent_width = (i1)def_get_config_u64(app, vars_intern_lit("indent_width"));
+    i1 tab_width = (i1)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
     tab_width = clamp_min(1, tab_width);
     AddFlag(flags, Indent_FullTokens);
     b32 indent_with_tabs = def_get_config_b32(vars_intern_lit("indent_with_tabs"));
@@ -452,12 +452,14 @@ auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos)
 internal void 
 auto_indent_line_at_cursor(App *app)
 {
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    i64 pos = view_get_cursor_pos(app, view);
-    auto_indent_buffer(app, buffer, Ii64(pos));
-    move_past_lead_whitespace(app, view, buffer);
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ i64 pos = view_get_cursor_pos(app, view);
+ auto_indent_buffer(app, buffer, Ii64(pos));
+ move_past_lead_whitespace(app, view, buffer);
 }
+
+internal void vim_normal_mode(App *app);
 
 internal void 
 auto_indent_range(App *app)
@@ -467,6 +469,7 @@ auto_indent_range(App *app)
  Range_i64 range = get_view_range(app, view);
  auto_indent_buffer(app, buffer, range);
  move_past_lead_whitespace(app, view, buffer);
+ vim_normal_mode(app);
 }
 
 CUSTOM_COMMAND_SIG(write_text_and_auto_indent)
@@ -474,7 +477,7 @@ CUSTOM_DOC("Inserts text and auto-indents the line on which the cursor sits if a
 {
     ProfileScope(app, "write and auto indent");
     User_Input in = get_current_input(app);
-    String_Const_u8 insert = to_writable(&in);
+    String insert = to_writable(&in);
     if (insert.str != 0 && insert.size > 0){
         b32 do_auto_indent = false;
         for (u64 i = 0; !do_auto_indent && i < insert.size; i += 1){

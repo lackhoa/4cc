@@ -8,11 +8,11 @@
 #define FCODER_DRAW_H
 
 struct Comment_Highlight_Pair{
-    String_Const_u8 needle;
+    String needle;
      ARGB_Color color;
 };
 
-typedef i32 Range_Highlight_Kind;
+typedef i1 Range_Highlight_Kind;
 enum{
     RangeHighlightKind_LineHighlight,
     RangeHighlightKind_CharacterHighlight,

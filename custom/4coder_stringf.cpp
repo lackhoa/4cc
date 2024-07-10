@@ -12,75 +12,75 @@
 
 // yyyy
 function void
-push_year_full(Arena *arena, List_String_Const_u8 *list, u32 year){
+push_year_full(Arena *arena, List_String *list, u32 year){
     string_list_pushf(arena, list, "%u", year);
 }
 // yy
 function void
-push_year_abrev(Arena *arena, List_String_Const_u8 *list, u32 year){
+push_year_abrev(Arena *arena, List_String *list, u32 year){
     string_list_pushf(arena, list, "%u", year % 100);
 }
 
 // m
 function void
-push_month_num(Arena *arena, List_String_Const_u8 *list, u8 mon){
+push_month_num(Arena *arena, List_String *list, u8 mon){
     string_list_pushf(arena, list, "%u", mon + 1);
 }
 // mm
 function void
-push_month_num_zeros(Arena *arena, List_String_Const_u8 *list, u8 mon){
+push_month_num_zeros(Arena *arena, List_String *list, u8 mon){
     string_list_pushf(arena, list, "%02u", mon + 1);
 }
 // month
 function void
-push_month_name(Arena *arena, List_String_Const_u8 *list, u8 mon){
+push_month_name(Arena *arena, List_String *list, u8 mon){
     string_list_push(arena, list, month_full_name[mon%12]);
 }
 // mon
 function void
-push_month_abrev(Arena *arena, List_String_Const_u8 *list, u8 mon){
+push_month_abrev(Arena *arena, List_String *list, u8 mon){
     string_list_push(arena, list, String{month_full_name[mon%12].str,3});
 }
 
 // d
 function void
-push_day_num(Arena *arena, List_String_Const_u8 *list, u8 day){
+push_day_num(Arena *arena, List_String *list, u8 day){
     string_list_pushf(arena, list, "%u", day + 1);
 }
 // dd
 function void
-push_day_num_zeroes(Arena *arena, List_String_Const_u8 *list, u8 day){
+push_day_num_zeroes(Arena *arena, List_String *list, u8 day){
     string_list_pushf(arena, list, "%02u", day + 1);
 }
 // day
 function void
-push_day_ord(Arena *arena, List_String_Const_u8 *list, u8 day){
+push_day_ord(Arena *arena, List_String *list, u8 day){
     string_list_pushf(arena, list, "%d", day);
 }
 
 // h24
 function void
-push_hour_24(Arena *arena, List_String_Const_u8 *list, u8 hour){
+push_hour_24(Arena *arena, List_String *list, u8 hour){
     string_list_pushf(arena, list, "%u", hour);
 }
 // hh24
 function void
-push_hour_24_zeroes(Arena *arena, List_String_Const_u8 *list, u8 hour){
+push_hour_24_zeroes(Arena *arena, List_String *list, u8 hour){
     string_list_pushf(arena, list, "%02u", hour);
 }
 // h
 function void
-push_hour_12(Arena *arena, List_String_Const_u8 *list, u8 hour){
+push_hour_12(Arena *arena, List_String *list, u8 hour){
     string_list_pushf(arena, list, "%u", hour%12);
 }
 // hh
 function void
-push_hour_12_zeroes(Arena *arena, List_String_Const_u8 *list, u8 hour){
+push_hour_12_zeroes(Arena *arena, List_String *list, u8 hour){
     string_list_pushf(arena, list, "%02u", hour%12);
 }
 // ampm
 function void
-push_hour_am_pm(Arena *arena, List_String_Const_u8 *list, u8 hour){
+push_hour_am_pm(Arena *arena, List_String *list, u8 hour){
     if (hour >= 12){
         string_list_push(arena, list, string_u8_litexpr("pm"));
     }
@@ -91,34 +91,34 @@ push_hour_am_pm(Arena *arena, List_String_Const_u8 *list, u8 hour){
 
 // mi
 function void
-push_minute(Arena *arena, List_String_Const_u8 *list, u8 min){
+push_minute(Arena *arena, List_String *list, u8 min){
     string_list_pushf(arena, list, "%u", min);
 }
 // mimi
 function void
-push_minute_zeroes(Arena *arena, List_String_Const_u8 *list, u8 min){
+push_minute_zeroes(Arena *arena, List_String *list, u8 min){
     string_list_pushf(arena, list, "%02u", min);
 }
 
 // s
 function void
-push_second(Arena *arena, List_String_Const_u8 *list, u8 sec){
+push_second(Arena *arena, List_String *list, u8 sec){
     string_list_pushf(arena, list, "%u", sec);
 }
 // ss
 function void
-push_second_zeroes(Arena *arena, List_String_Const_u8 *list, u8 sec){
+push_second_zeroes(Arena *arena, List_String *list, u8 sec){
     string_list_pushf(arena, list, "%02u", sec);
 }
 
 // ms
 function void
-push_millisecond_zeroes(Arena *arena, List_String_Const_u8 *list, u16 msec){
+push_millisecond_zeroes(Arena *arena, List_String *list, u16 msec){
     string_list_pushf(arena, list, "%03u", msec);
 }
 
 function void
-date_time_format(Arena *arena, List_String_Const_u8 *list, String_Const_u8 format, Date_Time *date_time){
+date_time_format(Arena *arena, List_String *list, String format, Date_Time *date_time){
     u8 *ptr = format.str;
     u8 *end = format.str + format.size;
     for (;ptr < end;){
@@ -130,7 +130,7 @@ date_time_format(Arena *arena, List_String_Const_u8 *list, String_Const_u8 forma
                 }
             }
             
-            String_Const_u8 field = SCu8(start, ptr);
+            String field = SCu8(start, ptr);
             for (; field.size > 0;){
                 if (string_match(string_prefix(field, 5), string_u8_litexpr("month"))){
                     field = string_skip(field, 5);
@@ -231,17 +231,17 @@ date_time_format(Arena *arena, List_String_Const_u8 *list, String_Const_u8 forma
     }
 }
 function void
-date_time_format(Arena *arena, List_String_Const_u8 *list, char *format, Date_Time *date_time){
+date_time_format(Arena *arena, List_String *list, char *format, Date_Time *date_time){
     date_time_format(arena, list, SCu8(format), date_time);
 }
 
-function String_Const_u8
-date_time_format(Arena *arena, String_Const_u8 format, Date_Time *date_time){
-    List_String_Const_u8 list = {};
+function String
+date_time_format(Arena *arena, String format, Date_Time *date_time){
+    List_String list = {};
     date_time_format(arena, &list, format, date_time);
     return(string_list_flatten(arena, list));
 }
-function String_Const_u8
+function String
 date_time_format(Arena *arena, char *format, Date_Time *date_time){
     return(date_time_format(arena, SCu8(format), date_time));
 }

@@ -7,13 +7,11 @@
 #define COMMAND_METADATA_OUT "generated/command_metadata.h"
 #define ID_METADATA_OUT "generated/managed_id_metadata.cpp"
 
-#define KV_IMPLEMENTATION
 #include "kv.h"
-// #include "4coder_base_types.h"
+#include "4ed_base.h"
 #include "4coder_token.h"
 #include "generated/lexer_cpp.h"
 
-// #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
 
@@ -43,7 +41,7 @@ struct Line_Column_Coordinates{
 struct Reader{
     Arena *error_arena;
     u8 *source_name;
-    String_Const_u8 text;
+    String text;
     Token_Array tokens;
     Token *ptr;
 };
@@ -53,7 +51,7 @@ struct Temp_Read{
     Token *pos;
 };
 
-typedef i32 Meta_Command_Entry_Kind;
+typedef i1 Meta_Command_Entry_Kind;
 enum{
     MetaCommandEntryKind_ERROR,
     MetaCommandEntryKind_Normal,
@@ -63,40 +61,40 @@ enum{
 struct Meta_Command_Entry{
     Meta_Command_Entry *next;
     Meta_Command_Entry_Kind kind;
-    String_Const_u8 name;
+    String name;
     u8 *source_name;
     i64 line_number;
     union{
         struct{
-            String_Const_u8 doc;
+            String doc;
         } docstring;
     };
 };
 
 struct Meta_ID_Entry{
     Meta_ID_Entry *next;
-    String_Const_u8 group_name;
-    String_Const_u8 id_name;
+    String group_name;
+    String id_name;
 };
 
 struct Meta_Command_Entry_Arrays{
     Meta_Command_Entry *first_doc_string;
     Meta_Command_Entry *last_doc_string;
-    i32 doc_string_count;
+    i1 doc_string_count;
     
     Meta_Command_Entry *first_ui;
     Meta_Command_Entry *last_ui;
-    i32 ui_count;
+    i1 ui_count;
     
     Meta_ID_Entry *first_id;
     Meta_ID_Entry *last_id;
-    i32 id_count;
+    i1 id_count;
 };
 
 ///////////////////////////////
 
 static Line_Column_Coordinates
-line_column_coordinates(String_Const_u8 text, i64 pos){
+line_column_coordinates(String text, i64 pos){
     if (pos < 0){
         pos = 0;
     }
@@ -122,13 +120,13 @@ line_column_coordinates(String_Const_u8 text, i64 pos){
 }
 
 static i64
-line_number(String_Const_u8 text, i64 pos){
+line_number(String text, i64 pos){
     Line_Column_Coordinates coords = line_column_coordinates(text, pos);
     return(coords.line);
 }
 
 static void
-error(u8 *source_name, String_Const_u8 text, i64 pos, u8 *msg){
+error(u8 *source_name, String text, i64 pos, u8 *msg){
     Line_Column_Coordinates coords = line_column_coordinates(text, pos);
     fprintf(stdout, "%s:%" FMTi64 ":%" FMTi64 ": %s\n",
             source_name, coords.line, coords.column, msg);
@@ -138,7 +136,7 @@ error(u8 *source_name, String_Const_u8 text, i64 pos, u8 *msg){
 ///////////////////////////////
 
 static Reader
-make_reader(Arena *error_arena, Token_Array array, u8 *source_name, String_Const_u8 text){
+make_reader(Arena *error_arena, Token_Array array, u8 *source_name, String text){
     Reader reader = {};
     reader.error_arena = error_arena;
     reader.tokens = array;
@@ -256,20 +254,20 @@ end_temp_read(Temp_Read temp){
 
 ///////////////////////////////
 
-static String_Const_u8
-token_str(String_Const_u8  text, Token token){
-    String_Const_u8 str = string_prefix(string_skip(text, token.pos), token.size);
+static String
+token_str(String  text, Token token){
+    String str = string_prefix(string_skip(text, token.pos), token.size);
     return(str);
 }
 
 ///////////////////////////////
 
-static i32
-quick_sort_part(Meta_Command_Entry **entries, i32 first, i32 one_past_last){
-    i32 pivot = one_past_last - 1;
-    String_Const_u8 pivot_key = entries[pivot]->name;
-    i32 j = first;
-    for (i32 i = first; i < pivot; ++i){
+static i1
+quick_sort_part(Meta_Command_Entry **entries, i1 first, i1 one_past_last){
+    i1 pivot = one_past_last - 1;
+    String pivot_key = entries[pivot]->name;
+    i1 j = first;
+    for (i1 i = first; i < pivot; ++i){
         if (string_compare(entries[i]->name, pivot_key) < 0){
             Swap(Meta_Command_Entry*, entries[i], entries[j]);
             ++j;
@@ -280,19 +278,19 @@ quick_sort_part(Meta_Command_Entry **entries, i32 first, i32 one_past_last){
 }
 
 static void
-quick_sort(Meta_Command_Entry **entries, i32 first, i32 one_past_last){
+quick_sort(Meta_Command_Entry **entries, i1 first, i1 one_past_last){
     if (first + 1 < one_past_last){
-        i32 pivot = quick_sort_part(entries, first, one_past_last);
+        i1 pivot = quick_sort_part(entries, first, one_past_last);
         quick_sort(entries, first, pivot);
         quick_sort(entries, pivot + 1, one_past_last);
     }
 }
 
 static Meta_Command_Entry**
-get_sorted_meta_commands(Arena *arena, Meta_Command_Entry *first, i32 count){
+get_sorted_meta_commands(Arena *arena, Meta_Command_Entry *first, i1 count){
     Meta_Command_Entry **entries = push_array(arena, Meta_Command_Entry*, count);
     
-    i32 i = 0;
+    i1 i = 0;
     for (Meta_Command_Entry *entry = first;
          entry != 0;
          entry = entry->next, ++i){
@@ -308,7 +306,7 @@ get_sorted_meta_commands(Arena *arena, Meta_Command_Entry *first, i32 count){
 ///////////////////////////////
 
 static b32
-has_duplicate_entry(Meta_Command_Entry *first, String_Const_u8 name){
+has_duplicate_entry(Meta_Command_Entry *first, String name){
     b32 has_duplicate = false;
     for (Meta_Command_Entry *entry = first;
          entry != 0;
@@ -323,12 +321,12 @@ has_duplicate_entry(Meta_Command_Entry *first, String_Const_u8 name){
 ///////////////////////////////
 
 static b32
-require_key_identifier(Reader *reader, String_Const_u8 string, i64 *opt_pos_out){
+require_key_identifier(Reader *reader, String string, i64 *opt_pos_out){
     b32 success = false;
     
     Token token = get_token(reader);
     if (token.kind == TokenBaseKind_Identifier){
-        String_Const_u8 lexeme = token_str(reader->text, token);
+        String lexeme = token_str(reader->text, token);
         if (string_match(lexeme, string)){
             success = true;
             if (opt_pos_out != 0){
@@ -339,7 +337,7 @@ require_key_identifier(Reader *reader, String_Const_u8 string, i64 *opt_pos_out)
     
     if (!success){
         Temp_Memory temp = begin_temp(reader->error_arena);
-        String_Const_u8 error_string = push_stringf(reader->error_arena, "expected to find '%.*s'",
+        String error_string = push_stringfz(reader->error_arena, "expected to find '%.*s'",
                                                        string.size, string.str);
         error(reader, token.pos, error_string.str);
         end_temp(temp);
@@ -354,7 +352,7 @@ require_key_identifier(Reader *reader, char *str, i64 *opt_pos_out){
 }
 
 static b32
-require_key_identifier(Reader *reader, String_Const_u8 string){
+require_key_identifier(Reader *reader, String string){
     return(require_key_identifier(reader, string, 0));
 }
 
@@ -454,12 +452,12 @@ require_define(Reader *reader){
 }
 
 static b32
-extract_identifier(Reader *reader, String_Const_u8 *str_out, i64 *opt_pos_out){
+extract_identifier(Reader *reader, String *str_out, i64 *opt_pos_out){
     b32 success = false;
     
     Token token = get_token(reader);
     if (token.kind == TokenBaseKind_Identifier){
-        String_Const_u8 lexeme = token_str(reader->text, token);
+        String lexeme = token_str(reader->text, token);
         *str_out = lexeme;
         success = true;
         if (opt_pos_out != 0){
@@ -475,17 +473,17 @@ extract_identifier(Reader *reader, String_Const_u8 *str_out, i64 *opt_pos_out){
 }
 
 static b32
-extract_identifier(Reader *reader, String_Const_u8 *str_out){
+extract_identifier(Reader *reader, String *str_out){
     return(extract_identifier(reader, str_out, 0));
 }
 
 static b32
-extract_integer(Reader *reader, String_Const_u8 *str_out, i64 *opt_pos_out){
+extract_integer(Reader *reader, String *str_out, i64 *opt_pos_out){
     b32 success = false;
     
     Token token = get_token(reader);
     if (token.kind == TokenBaseKind_LiteralInteger){
-        String_Const_u8 lexeme = token_str(reader->text, token);
+        String lexeme = token_str(reader->text, token);
         *str_out = lexeme;
         success = true;
         if (opt_pos_out != 0){
@@ -502,17 +500,17 @@ extract_integer(Reader *reader, String_Const_u8 *str_out, i64 *opt_pos_out){
 
 
 static b32
-extract_integer(Reader *reader, String_Const_u8 *str_out){
+extract_integer(Reader *reader, String *str_out){
     return(extract_integer(reader, str_out, 0));
 }
 
 static b32
-extract_string(Reader *reader, String_Const_u8 *str_out, i64 *opt_pos_out){
+extract_string(Reader *reader, String *str_out, i64 *opt_pos_out){
     b32 success = false;
     
     Token token = get_token(reader);
     if (token.kind == TokenBaseKind_LiteralString){
-        String_Const_u8 lexeme = token_str(reader->text, token);
+        String lexeme = token_str(reader->text, token);
         *str_out = lexeme;
         success = true;
         if (opt_pos_out != 0){
@@ -528,12 +526,12 @@ extract_string(Reader *reader, String_Const_u8 *str_out, i64 *opt_pos_out){
 }
 
 static b32
-extract_string(Reader *reader, String_Const_u8 *str_out){
+extract_string(Reader *reader, String *str_out){
     return(extract_string(reader, str_out, 0));
 }
 
 function Meta_Command_Entry_Kind
-parse_command_kind(String_Const_u8 kind){
+parse_command_kind(String kind){
     Meta_Command_Entry_Kind result = MetaCommandEntryKind_ERROR;
     if (string_match(kind, string_u8_litexpr("Normal"))){
         result = MetaCommandEntryKind_Normal;
@@ -625,14 +623,14 @@ parse_documented_command(Arena *arena, Meta_Command_Entry_Arrays *arrays, Reader
     
     doc = string_chop(string_skip(doc, 1), 1);
     
-    String_Const_u8 file_name_unquoted = string_chop(string_skip(file_name, 1), 1);
-    String_Const_u8 source_name = string_interpret_escapes(arena, file_name_unquoted);
+    String file_name_unquoted = string_chop(string_skip(file_name, 1), 1);
+    String source_name = string_interpret_escapes(arena, file_name_unquoted);
     
     Meta_Command_Entry *new_entry = push_array(arena, Meta_Command_Entry, 1);
     new_entry->kind = parse_command_kind(kind);
     new_entry->name = name;
     new_entry->source_name = source_name.str;
-    new_entry->line_number = (i32)string_to_u64(line_number, 10);
+    new_entry->line_number = (i1)string_to_u64(line_number, 10);
     new_entry->docstring.doc = doc;
     sll_queue_push(arrays->first_doc_string, arrays->last_doc_string, new_entry);
     arrays->doc_string_count += 1;
@@ -642,8 +640,8 @@ parse_documented_command(Arena *arena, Meta_Command_Entry_Arrays *arrays, Reader
 
 static b32
 parse_custom_id(Arena *arena, Meta_Command_Entry_Arrays *arrays, Reader *reader){
-    String_Const_u8 group = {};
-    String_Const_u8 id = {};
+    String group = {};
+    String id = {};
     
     i64 start_pos = 0;
     if (!require_key_identifier(reader, "CUSTOM_ID", &start_pos)){
@@ -682,7 +680,7 @@ parse_custom_id(Arena *arena, Meta_Command_Entry_Arrays *arrays, Reader *reader)
 ///////////////////////////////
 
 static void
-parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_name, String_Const_u8 text){
+parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_name, String text){
     Token_List token_list = lex_full_input_cpp(arena, text);
     Token_Array array = token_array_from_list(arena, &token_list);
     
@@ -694,15 +692,15 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
         
         if (token.kind == TokenBaseKind_Identifier){
             if (!HasFlag(token.flags, TokenBaseFlag_PreprocessorBody)){
-                String_Const_u8 lexeme = token_str(text, token);
+                String lexeme = token_str(text, token);
                 if (string_match(lexeme, string_u8_litexpr("CUSTOM_DOC"))){
                     Temp_Read temp_read = begin_temp_read(reader);
                 
                 b32 found_start_pos = false;
-                for (i32 R = 0; R < 12; ++R){
+                for (i1 R = 0; R < 12; ++R){
                     Token p_token = prev_token(reader);
                     if (p_token.kind == TokenBaseKind_Identifier){
-                        String_Const_u8 p_lexeme = token_str(text, p_token);
+                        String p_lexeme = token_str(text, p_token);
                         if (string_match(p_lexeme, string_u8_litexpr("CUSTOM_COMMAND"))){
                             found_start_pos = true;
                             break;
@@ -739,7 +737,7 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
 }
 
 static void
-parse_file(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Character *name_, i32 len){
+parse_file(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Character *name_, i1 len){
     char *name = unencode(arena, name_, len);
     if (name == 0){
         if (sizeof(*name_) == 2){
@@ -751,7 +749,7 @@ parse_file(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Chara
         return;
     }
     
-    String_Const_u8 text = file_dump(arena, name);
+    String text = file_dump(arena, name);
     parse_text(arena, entry_arrays, (u8*)name, text);
 }
 
@@ -759,12 +757,12 @@ static void
 parse_files_by_pattern(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Character *pattern, b32 recursive)
 {
     Cross_Platform_File_List list = get_file_list(arena, pattern, filter_all);
-    for (i32 i = 0; i < list.count; ++i){
+    for (i1 i = 0; i < list.count; ++i){
         Cross_Platform_File_Info *info = &list.info[i];
         
         String_Const_Any info_name = SCany(info->name, info->len);
         Temp_Memory temp = begin_temp(arena);
-        String_Const_u8 info_name_ascii = string_u8_from_any(arena, info_name);
+        String info_name_ascii = string_u8_from_any(arena, info_name);
         b32 is_generated = string_match(info_name_ascii, strlit("4coder_generated"));
         end_temp(temp);
         
@@ -775,7 +773,7 @@ parse_files_by_pattern(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Fi
             continue;
         }
         
-        i32 full_name_len = list.path_length + 1 + info->len;
+        i1 full_name_len = list.path_length + 1 + info->len;
         if (info->is_folder){
             full_name_len += 2;
         }
@@ -826,22 +824,22 @@ main(int argc, char **argv){
     Arena arena_ = make_arena_malloc(MB(1), 8);
     Arena *arena = &arena_;
     
-    String_Const_u8 out_directory = SCu8(argv[2]);
+    String out_directory = SCu8(argv[2]);
     
-    i32 start_i = 2;
+    i1 start_i = 2;
     if (recursive){
         start_i = 3;
     }
     
     printf("metadata_generator ");
-    for (i32 i = start_i; i < argc; i += 1){
+    for (i1 i = start_i; i < argc; i += 1){
         printf("%s ", argv[i]);
     }
     printf("\n");
     fflush(stdout);
     
     Meta_Command_Entry_Arrays entry_arrays = {};
-    for (i32 i = start_i; i < argc; ++i){
+    for (i1 i = start_i; i < argc; ++i){
         Filename_Character *pattern_name = encode(arena, argv[i]);
         parse_files_by_pattern(arena, &entry_arrays, pattern_name, recursive);
     }
@@ -855,13 +853,13 @@ main(int argc, char **argv){
     
     out_directory = string_skip_chop_whitespace(out_directory);
     
-    String_Const_u8 cmd_out_name = push_stringf(arena, "%.*s/%s",
+    String cmd_out_name = push_stringfz(arena, "%.*s/%s",
                                                         string_expand(out_directory),
                                                         COMMAND_METADATA_OUT);
     FILE *cmd_out = fopen((char*)cmd_out_name.str, "wb");
     
     if (cmd_out != 0){
-        i32 entry_count = entry_arrays.doc_string_count;
+        i1 entry_count = entry_arrays.doc_string_count;
         Meta_Command_Entry **entries = get_sorted_meta_commands(arena, entry_arrays.first_doc_string, entry_count);
         
         fprintf(cmd_out, "#if !defined(META_PASS)\n");
@@ -876,7 +874,7 @@ main(int argc, char **argv){
         fprintf(cmd_out, "#endif\n");
         
         fprintf(cmd_out, "#if defined(CUSTOM_COMMAND_SIG)\n");
-        for (i32 i = 0; i < entry_count; ++i){
+        for (i1 i = 0; i < entry_count; ++i){
             Meta_Command_Entry *entry = entries[i];
             fprintf(cmd_out, "CUSTOM_COMMAND_SIG(%.*s);\n", string_expand(entry->name));
         }
@@ -887,24 +885,24 @@ main(int argc, char **argv){
                 "PROC_LINKS(Custom_Command_Function, void) *proc;\n"
                 "b32 is_ui;\n"
                 "char *name;\n"
-                "i32 name_len;\n"
+                "i1 name_len;\n"
                 "char *description;\n"
-                "i32 description_len;\n"
+                "i1 description_len;\n"
                 "char *source_name;\n"
-                "i32 source_name_len;\n"
-                "i32 line_number;\n"
+                "i1 source_name_len;\n"
+                "i1 line_number;\n"
                 "};\n");
         
         fprintf(cmd_out,
                 "static Command_Metadata fcoder_metacmd_table[%d] = {\n",
                 entry_arrays.doc_string_count);
-        for (i32 i = 0; i < entry_count; ++i){
+        for (i1 i = 0; i < entry_count; ++i){
             Meta_Command_Entry *entry = entries[i];
             
             Temp_Memory temp = begin_temp(arena);
             
-            String_Const_u8 source_name = SCu8(entry->source_name);
-            String_Const_u8 printable = string_replace(arena, source_name,
+            String source_name = SCu8(entry->source_name);
+            String printable = string_replace(arena, source_name,
                                                        SCu8("\\"), SCu8("\\\\"),
                                                        StringFill_NullTerminate);
             
@@ -919,20 +917,20 @@ main(int argc, char **argv){
                     string_expand(entry->name),
                     is_ui,
                     string_expand(entry->name),
-                    (i32)entry->name.size,
+                    (i1)entry->name.size,
                     string_expand(entry->docstring.doc),
-                    (i32)entry->docstring.doc.size,
+                    (i1)entry->docstring.doc.size,
                     printable.str,
-                    (i32)source_name.size,
+                    (i1)source_name.size,
                     entry->line_number);
             end_temp(temp);
         }
         fprintf(cmd_out, "};\n");
         
-        i32 id = 0;
-        for (i32 i = 0; i < entry_count; ++i){
+        i1 id = 0;
+        for (i1 i = 0; i < entry_count; ++i){
             Meta_Command_Entry *entry = entries[i];
-            fprintf(cmd_out, "static i32 fcoder_metacmd_ID_%.*s = %d;\n", string_expand(entry->name), id);
+            fprintf(cmd_out, "static i1 fcoder_metacmd_ID_%.*s = %d;\n", string_expand(entry->name), id);
             ++id;
         }
         
@@ -944,14 +942,14 @@ main(int argc, char **argv){
         fprintf(stdout, "fatal error: could not open output file %.*s\n", string_expand(cmd_out_name));
     }
     
-    String_Const_u8 id_out_name = push_stringf(arena, "%.*s/%s",
+    String id_out_name = push_stringfz(arena, "%.*s/%s",
                                                   string_expand(out_directory),
                                                   ID_METADATA_OUT);
     FILE *id_out = fopen((char*)id_out_name.str, "wb");
     
     if (id_out != 0){
         fprintf(id_out, "function void\n");
-        fprintf(id_out, "initialize_managed_id_metadata(Application_Links *app){\n");
+        fprintf(id_out, "initialize_managed_id_metadata(App *app){\n");
         
         for (Meta_ID_Entry *node = entry_arrays.first_id;
              node != 0;

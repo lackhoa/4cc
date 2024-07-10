@@ -4,7 +4,7 @@ global Color_Table cached_color_table = {};
 
 // TODO(BYP): Check for way to get highest color sub_id instead of hard-coding 14
 function Color_Table
-byp_init_color_table(Application_Links *app){
+byp_init_color_table(App *app){
 	Color_Table result = make_color_table(app, &global_permanent_arena);
 	foreach(i, result.count){
 		result.arrays[i].vals = push_array(&global_permanent_arena, u32, 14);

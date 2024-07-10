@@ -6,8 +6,8 @@
 #pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
 
 // TODO(BYP): Clean this up a bit more
-function String_Const_u8
-ctrl_backspace_utf8(String_Const_u8 string){
+function String
+ctrl_backspace_utf8(String string){
 	if(string.size <= 0){ return string; }
 	b32 clearing_whitespace = true;
 	u64 i = string.size-2;
@@ -25,7 +25,7 @@ ctrl_backspace_utf8(String_Const_u8 string){
 }
 
 function void
-vim_lister__backspace(Application_Links *app){
+vim_lister__backspace(App *app){
 	View_ID view = get_this_ctx_view(app, Access_Always);
 	Lister *lister = view_get_lister(app, view);
 	if(lister){
@@ -49,7 +49,7 @@ vim_lister__backspace(Application_Links *app){
 
 
 function void
-vim_lister_file__backspace(Application_Links *app){
+vim_lister_file__backspace(App *app){
 	View_ID view = get_this_ctx_view(app, Access_Always);
 	Lister *lister = view_get_lister(app, view);
 	if(lister){
@@ -65,7 +65,7 @@ vim_lister_file__backspace(Application_Links *app){
 				lister_call_refresh_handler(app, lister);
 				lister->text_field = temp;
 			}else{
-				String_Const_u8 string = lister->text_field.string;
+				String string = lister->text_field.string;
 				if(character_is_slash(string.str[string.size-1])){
 					string.size--;
 					i64 slash_index = string_find_last_slash(string);
@@ -85,8 +85,8 @@ vim_lister_file__backspace(Application_Links *app){
 			lister->text_field.string = backspace_utf8(lister->text_field.string);
 		}
 		
-		String_Const_u8 text_field = lister->text_field.string;
-		String_Const_u8 new_key = string_front_of_path(text_field);
+		String text_field = lister->text_field.string;
+		String new_key = path_filename(text_field);
 		lister_set_key(lister, new_key);
 		
 		lister->item_index = 0;
@@ -97,13 +97,13 @@ vim_lister_file__backspace(Application_Links *app){
 
 
 function Lister_Activation_Code
-vim_lister__write_character__file_path(Application_Links *app){
+vim_lister__write_character__file_path(App *app){
 	Lister_Activation_Code result = ListerActivation_Continue;
 	View_ID view = get_this_ctx_view(app, Access_Always);
 	Lister *lister = view_get_lister(app, view);
 	if(lister != 0){
 		User_Input in = get_current_input(app);
-		String_Const_u8 string = to_writable(&in);
+		String string = to_writable(&in);
 		if(string.str != 0 && string.size > 0){
 			lister_append_text_field(lister, string);
 			if(character_is_slash(string.str[0])){
@@ -111,7 +111,7 @@ vim_lister__write_character__file_path(Application_Links *app){
                 result = ListerActivation_Finished;
 			}
 			else{
-				String_Const_u8 front_name = string_front_of_path(lister->text_field.string);
+				String front_name = path_filename(lister->text_field.string);
 				lister_set_key(lister, front_name);
 			}
 			lister->item_index = 0;
@@ -136,13 +136,13 @@ vim_convert_lister_result_to_filename_result(Lister_Result l_result){
 	if(l_result.canceled){ return result; }
 	result.clicked = l_result.activated_by_click;
 	if(l_result.user_data != 0){
-		String_Const_u8 name = SCu8((u8*)l_result.user_data);
+		String name = SCu8((u8*)l_result.user_data);
 		result.filename_activated = name;
 		result.is_folder = character_is_slash(string_get_character(name, name.size - 1));
 	}
-	result.filename_in_text_field = string_front_of_path(l_result.text_field);
+	result.filename_in_text_field = path_filename(l_result.text_field);
 	
-	String_Const_u8 path = {};
+	String path = {};
 	if(l_result.user_data && result.filename_in_text_field.size && l_result.text_field.size > 0){
 		result.filename_in_text_field = string_front_folder_of_path(l_result.text_field);
 		path = string_remove_front_folder_of_path(l_result.text_field);
@@ -161,7 +161,7 @@ vim_convert_lister_result_to_filename_result(Lister_Result l_result){
 function f32 vim_lister_get_block_height(f32 line_height){ return 1.5f*line_height; }
 
 function void*
-vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, Vec2_f32 m_p, i32 col_num){
+vim_lister_user_data_at_p(App *app, View_ID view, Lister *lister, Vec2_f32 m_p, i32 col_num){
 	Rect_f32 region = vim_get_bottom_rect(app);
 	f32 line_height = get_face_metrics(app, get_face_id(app, 0)).line_height;
 	f32 block_height = vim_lister_get_block_height(line_height);
@@ -180,7 +180,7 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
 
 
 function Vec2_i32
-calc_col_row(Application_Links *app, Lister *lister)
+calc_col_row(App *app, Lister *lister)
 {
 	v2 dim = rect2_dim(global_get_screen_rectangle(app));
 	Face_ID face_id = get_face_id(app, 0);
@@ -264,7 +264,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
 	draw_set_clip(app, clip);
 	
 	Mouse_State mouse = get_mouse_state(app);
-	Vec2_f32 m_p = vec2(mouse.p);
+	Vec2_f32 m_p = V2(mouse.p);
 	
 	// NOTE(allen): auto scroll to the item if the flag is set.
 	f32 scroll_y = lister->scroll.position.y;
@@ -360,7 +360,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
         u64 index = string_find_last(node->status, '\n');
         push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), string_prefix(node->status, index));
 		
-        Vec2_f32 p = item_inner.p0 + vec2(3.f, (block_height - line_height)*0.5f);
+        Vec2_f32 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
         draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
     }
     f32 x_padding = metrics.normal_advance;
@@ -376,7 +376,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
 	draw_set_clip(app, prev_clip);
 }
 
-function void vim_change_lister_view_back(Application_Links *app){
+function void vim_change_lister_view_back(App *app){
 	view_set_active(app, vim_lister_view_id);
 	vim_lister_view_id = 0;
 }
@@ -541,7 +541,7 @@ vim_run_lister(App *app, Lister *lister)
 		
 		// NOTE: This is a bit of a hack to make clicking the lister not change views
 		Mouse_State mouse_state = get_mouse_state(app);
-		Vec2_f32 mouse_pos = vec2(mouse_state.p);
+		Vec2_f32 mouse_pos = V2(mouse_state.p);
 		if(mouse_state.press_l){
 			void *clicked = vim_lister_user_data_at_p(app, view, lister, mouse_pos, col_num);
 			if(clicked){
@@ -589,7 +589,7 @@ vim_run_lister(App *app, Lister *lister)
 
 
 function Lister_Result
-vim_run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String_Const_u8 query, Lister_Handlers handlers){
+vim_run_lister_with_refresh_handler(App *app, Arena *arena, String query, Lister_Handlers handlers){
 	Lister_Result result = {};
 	if(handlers.refresh != 0){
 		Lister_Block lister(app, arena);
@@ -600,7 +600,7 @@ vim_run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String
 	}
 	else{
 #define M "ERROR: No refresh handler specified for lister (query_string = \"%.*s\")\n"
-		print_message(app, push_stringf(arena, M, string_expand(query)));
+		print_message(app, push_stringfz(arena, M, string_expand(query)));
 #undef M
 		result.canceled = true;
 	}
@@ -608,7 +608,7 @@ vim_run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String
 }
 
 function File_Name_Result
-vim_get_filename_from_user(Application_Links *app, Arena *arena, String_Const_u8 query, View_ID view){
+vim_get_filename_from_user(App *app, Arena *arena, String query, View_ID view){
 	Lister_Handlers handlers = lister_get_default_handlers();
 	handlers.refresh = generate_hot_directory_file_list;
 	handlers.write_character = vim_lister__write_character__file_path;

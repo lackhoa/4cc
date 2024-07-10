@@ -4,14 +4,14 @@
 #include "4coder_vim_registers.cpp"
 
 function Rect_f32
-vim_get_rel_block_rect(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64 range, i64 line){
+vim_get_rel_block_rect(App *app, View_ID view, Buffer_ID buffer, Range_i64 range, i64 line){
 	Vec2_f32 p0 = view_relative_xy_of_pos(app, view, line, range.min);
 	Vec2_f32 p1 = view_relative_xy_of_pos(app, view, line, range.max);
 	return Rf32(Min(p0.x, p1.x), Min(p0.y, p1.y), Max(p0.x, p1.x), Max(p0.y, p1.y));
 }
 
 function Rect_f32
-vim_get_abs_block_rect(Application_Links *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id, Range_i64 range){
+vim_get_abs_block_rect(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id, Range_i64 range){
 	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
 
 	i64 rel_pos = range.min;
@@ -44,11 +44,11 @@ vim_get_abs_block_rect(Application_Links *app, View_ID view, Buffer_ID buffer, T
 }
 
 function void
-vim_block_copy(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64 range, Vim_Register *reg){
+vim_block_copy(App *app, View_ID view, Buffer_ID buffer, Range_i64 range, Vim_Register *reg){
 	if(reg->flags & REGISTER_ReadOnly){
 		vim_state.chord_resolved = bitmask_2;
 		Scratch_Block scratch(app);
-		vim_set_bottom_text(push_stringf(scratch, "Register %c is Read Only", vim_get_register_char(reg)));
+		vim_set_bottom_text(push_stringfz(scratch, "Register %c is Read Only", vim_get_register_char(reg)));
 		return;
 	}
 	reg->edit_type = EDIT_Block;
@@ -63,8 +63,8 @@ vim_block_copy(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 
 	u64 size = 0;
 	for(i64 i=line_max; i>=line_min; i--){
-		Vec2_f32 min_point = block_rect.p0 + vec2(0, line_advance*cast(f32)(i-line_min));
-		Vec2_f32 max_point = min_point + vec2(wid,0);
+		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*cast(f32)(i-line_min));
+		Vec2_f32 max_point = min_point + V2(wid,0);
 		i64 min_pos = view_pos_at_relative_xy(app, view, line_min, min_point);
 		i64 max_pos = view_pos_at_relative_xy(app, view, line_min, max_point)+1;
 		size += (max_pos - min_pos) + 1;
@@ -77,8 +77,8 @@ vim_block_copy(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 
 	reg->data.size = 0;
 	for(i64 i=line_max; i>=line_min; i--){
-		Vec2_f32 min_point = block_rect.p0 + vec2(0, line_advance*cast(f32)(i-line_min));
-		Vec2_f32 max_point = min_point + vec2(wid,0);
+		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*cast(f32)(i-line_min));
+		Vec2_f32 max_point = min_point + V2(wid,0);
 		i64 min_pos = view_pos_at_relative_xy(app, view, line_min, min_point);
 		i64 max_pos = view_pos_at_relative_xy(app, view, line_min, max_point)+1;
 
@@ -116,7 +116,7 @@ vim_block_paste(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 	Range_i64 substring = {};
 	substring.max = -1;
 	for(i64 i=line_max; i>=line_min; i--){
-		Vec2_f32 point = block_rect.p0 + vec2(wid, line_advance*cast(f32)(i-line_min));
+		Vec2_f32 point = block_rect.p0 + V2(wid, line_advance*cast(f32)(i-line_min));
 		i64 pos = view_pos_at_relative_xy(app, view, line_min, point);
 
 		b32 valid=true;
@@ -142,7 +142,7 @@ vim_block_paste(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 #pragma clang diagnostic pop
 
 function void
-vim_block_edit(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64 range){
+vim_block_edit(App *app, View_ID view, Buffer_ID buffer, Range_i64 range){
 	Vim_Params *params = &vim_state.params;
 	if(params->request == REQUEST_Yank ||
 	   params->request == REQUEST_Change ||
@@ -168,8 +168,8 @@ vim_block_edit(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 
 	for(i64 i=line_max; i>=line_min; i--){
 		if(line_is_valid_and_blank(app, buffer, i)){ continue; }
-		Vec2_f32 min_point = block_rect.p0 + vec2(0, line_advance*cast(f32)(i-line_min));
-		Vec2_f32 max_point = min_point + vec2(wid,0);
+		Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*cast(f32)(i-line_min));
+		Vec2_f32 max_point = min_point + V2(wid,0);
 		i64 min_pos = view_pos_at_relative_xy(app, view, line_min, min_point);
 		i64 max_pos = view_pos_at_relative_xy(app, view, line_min, max_point);
 
@@ -186,7 +186,7 @@ vim_block_edit(Application_Links *app, View_ID view, Buffer_ID buffer, Range_i64
 }
 
 function void
-vim_visual_insert_char(Application_Links *app, View_ID view, Buffer_ID buffer, u8 character){
+vim_visual_insert_char(App *app, View_ID view, Buffer_ID buffer, u8 character){
 	History_Group group = history_group_begin(app, buffer);
 
 	Range_i64 range = get_view_range(app, view);
@@ -200,7 +200,7 @@ vim_visual_insert_char(Application_Links *app, View_ID view, Buffer_ID buffer, u
 
 	for(i64 i=line_max; i>=line_min; i--){
 		if(line_is_valid_and_blank(app, buffer, i) && i != line_min && i != line_max){ continue; }
-		Vec2_f32 point = block_rect.p0 + vec2(x_off, line_advance*cast(f32)(i-line_min));
+		Vec2_f32 point = block_rect.p0 + V2(x_off, line_advance*cast(f32)(i-line_min));
 		i64 pos = view_pos_at_relative_xy(app, view, line_min, point);
 		buffer_replace_range(app, buffer, Ii64(pos + vim_visual_insert_after), SCu8(&character,1));
 	}
@@ -208,8 +208,8 @@ vim_visual_insert_char(Application_Links *app, View_ID view, Buffer_ID buffer, u
 	i64 cursor_pos = view_get_cursor_pos(app, view);
 	i64 mark_pos = view_get_mark_pos(app, view);
 
-	Vec2_f32 top_point = block_rect.p0 + vec2(x_off, 0.f);
-	Vec2_f32 bot_point = block_rect.p0 + vec2(x_off, rect_height(block_rect));
+	Vec2_f32 top_point = block_rect.p0 + V2(x_off, 0.f);
+	Vec2_f32 bot_point = block_rect.p0 + V2(x_off, rect_height(block_rect));
 	i64 top_pos = view_pos_at_relative_xy(app, view, line_min, top_point);
 	i64 bot_pos = view_pos_at_relative_xy(app, view, line_min, bot_point);
 

@@ -21,7 +21,7 @@ function b32 vim_map_set_binding(u32 mode, u32 sub_mode, void *func, u64 key)
     }
     else 
     {
-        for (i32 mode_index=0; mode_index < 3; mode_index++) {
+        for (i1 mode_index=0; mode_index < 3; mode_index++) {
             if (mode & (1 << mode_index)) {
                 Table_u64_u64 *table = vim_maps + mode_index + sub_mode*VIM_MODE_COUNT;
                 no_conflict = !table_erase(table, key);

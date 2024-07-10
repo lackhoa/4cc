@@ -165,15 +165,15 @@ token_iterator(u64 user_id, Token_Array *tokens){
 }
 
 internal Token_Iterator_Array
-token_iterator_pos(u64 user_id, Token *tokens, i64 count, i64 pos){
+token_it_at_pos(u64 user_id, Token *tokens, i64 count, i64 pos){
     i64 index = token_index_from_pos(tokens, count, pos);
-    return(token_iterator_index(user_id, tokens, count, index));
+ return(token_iterator_index(user_id, tokens, count, index));
 }
 
 internal Token_Iterator_Array
-token_iterator_pos(u64 user_id, Token_Array *tokens, i64 pos){
-    i64 index = token_index_from_pos(tokens->tokens, tokens->count, pos);
-    return(token_iterator_index(user_id, tokens->tokens, tokens->count, index));
+token_it_at_pos(u64 user_id, Token_Array *tokens, i64 pos){
+ i64 index = token_index_from_pos(tokens->tokens, tokens->count, pos);
+ return(token_iterator_index(user_id, tokens->tokens, tokens->count, index));
 }
 
 internal Token *
@@ -318,7 +318,7 @@ token_iterator(u64 user_id, Token_List *list){
 }
 
 internal Token_Iterator_List
-token_iterator_pos(u64 user_id, Token_List *list, i64 pos){
+token_it_at_pos(u64 user_id, Token_List *list, i64 pos){
     Token_Iterator_List it = {};
     if (list->first != 0){
         Token_Block *block = list->last;
@@ -631,7 +631,7 @@ token_drop_eof(Token_List *list){
 
 internal i64
 token_relex_first(Token_Array *tokens, i64 edit_range_first, i64 backup_repeats){
-    Token_Iterator_Array it = token_iterator_pos(0, tokens, edit_range_first);
+    Token_Iterator_Array it = token_it_at_pos(0, tokens, edit_range_first);
     b32 good_status = true;
     for (i64 i = 0; i < backup_repeats && good_status; i += 1){
         good_status = token_it_dec(&it) != 0;
@@ -652,7 +652,7 @@ token_relex_first(Token_Array *tokens, i64 edit_range_first, i64 backup_repeats)
 
 internal i64
 token_relex_resync(Token_Array *tokens, i64 edit_range_first, i64 look_ahead_repeats){
-    Token_Iterator_Array it = token_iterator_pos(0, tokens, edit_range_first);
+    Token_Iterator_Array it = token_it_at_pos(0, tokens, edit_range_first);
     b32 good_status = true;
     for (i64 i = 0; (i < look_ahead_repeats) && good_status; i += 1){
         good_status = token_it_inc(&it) != 0;

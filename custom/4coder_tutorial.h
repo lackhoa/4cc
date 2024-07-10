@@ -7,7 +7,7 @@
 #if !defined(FCODER_TUTORIAL_H)
 #define FCODER_TUTORIAL_H
 
-typedef i32 Tutorial_Action;
+typedef i1 Tutorial_Action;
 enum{
     TutorialAction_None,
     TutorialAction_Minimize,
@@ -23,7 +23,7 @@ struct Tutorial_Slide{
     Fancy_Line short_details;
 };
 
-typedef Tutorial_Slide Tutorial_Slide_Function(Application_Links *app, Arena *arena);
+typedef Tutorial_Slide Tutorial_Slide_Function(App *app, Arena *arena);
 
 struct Tutorial_State{
     b32 in_tutorial;
@@ -33,9 +33,9 @@ struct Tutorial_State{
     Tutorial_Action hover_action;
     Tutorial_Action depressed_action;
     
-    i32 slide_index;
+    i1 slide_index;
     Tutorial_Slide_Function **slide_func_ptrs;
-    i32 slide_count;
+    i1 slide_count;
 };
 
 #endif

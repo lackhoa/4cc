@@ -68,7 +68,7 @@ byp_get_token_color_cpp(Token token){
 }
 
 function void
-byp_draw_cpp_token_colors(Application_Links *app, Text_Layout_ID text_layout_id, Token_Array *array){
+byp_draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *array){
 	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
 	i64 first_index = token_index_from_pos(array, visible_range.first);
 	Token_Iterator_Array it = token_iterator_index(0, array, first_index);
@@ -104,8 +104,8 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
         token_string = push_token_lexeme(app, scratch, buffer, cursor_token);
         cursor_tok_rect = text_layout_character_on_screen(app, text_layout_id, cursor_token->pos);
         f32 tok_rect_dimx = f32(cursor_token->size) * rect_width(cursor_tok_rect);
-        tok_rect_dim = vec2(tok_rect_dimx, 2.f);
-        cursor_tok_rect = Rf32_xy_wh(vec2(cursor_tok_rect.x0, cursor_tok_rect.y1 - 2.f), tok_rect_dim);
+        tok_rect_dim = V2(tok_rect_dimx, 2.f);
+        cursor_tok_rect = Rf32_xy_wh(V2(cursor_tok_rect.x0, cursor_tok_rect.y1 - 2.f), tok_rect_dim);
 	}
 
 	ARGB_Color function_color = fcolor_resolve(fcolor_id(defcolor_function));
@@ -150,7 +150,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
                     if(tail.str[i] == '@')
                     {
                         Range_i64 annot_range = Ii64(i);
-                        i32 j=i+1;
+                        i1 j=i+1;
                         for(; j<token->size; j++)
                         {
                             if( character_is_whitespace   (tail.str[j]) || 
@@ -183,7 +183,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
         draw_comment_highlights(app, buffer, text_layout_id, &token_array, pairs, ArrayCount(pairs));
     }
     
-    it = token_iterator_pos(0, &token_array, Max(0, visible_range.first-1));
+    it = token_it_at_pos(0, &token_array, Max(0, visible_range.first-1));
     for (;;)
     {
         Token *token = token_it_read(&it);
@@ -196,7 +196,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
             if (string_match(lexeme, token_string))
             {
                 Rect_f32 cur_tok_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
-                cur_tok_rect = Rf32_xy_wh(vec2(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
+                cur_tok_rect = Rf32_xy_wh(V2(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
                 draw_rect(app, cur_tok_rect, 5.f, cursor_tok_color, 0);
             }
         }

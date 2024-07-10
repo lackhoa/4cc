@@ -484,7 +484,7 @@ internal F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
     F4_Language_PosContextData *last = 0;
     
     Token_Array tokens = get_token_array_from_buffer(app, buffer);
-    Token_Iterator_Array it = token_iterator_pos(0, &tokens, pos);
+    Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
     
     // NOTE(rjf): Search for left parentheses (function call or macro invocation).
     {

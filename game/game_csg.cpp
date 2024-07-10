@@ -6,14 +6,14 @@ csg_push_tree(CSG_Type type)
 {
  CSG_Tree *tree = push_struct_zero(viewport_frame_arena, CSG_Tree);
  tree->type = type;
- //tree->symx = global_painter.symx;
+ //tree->symx = painter.symx;
  {
   CSG_Group *c = global_csg_group;
   sll_queue_push(c->first, c->last, tree);
   c->count++;
  }
  
- tree->negated = global_painter.csg_negated;
+ tree->negated = painter.csg_negated;
  
  return tree;
 }
@@ -22,7 +22,7 @@ force_inline v1
 get_object_scale()
 {
  // @object_uniform_scale
- return get_xscale(object_transform);
+ return get_xscale(painter.object_transform);
 }
 
 internal CSG_Tree *
@@ -49,7 +49,7 @@ internal void
 csg_plane(v3 n, v1 d)
 {
  csg_plane_inner(n, d);
- if (global_painter.symx)
+ if (painter.symx)
  {
   csg_plane_inner(negateX(n), d);
  }
@@ -128,7 +128,7 @@ internal v1
 sd_box(v3 center, v3 dim, v3 pos)
 {
  v3 q = absolute(pos-center) - dim;
- return (lengthof(max(q,vec3())) +
+ return (lengthof(max(q,V3())) +
          macro_min(sd_intersect(q.x,sd_intersect(q.y,q.z)), 0.f));
 }
 #endif

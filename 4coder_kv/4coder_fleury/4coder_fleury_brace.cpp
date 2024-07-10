@@ -4,8 +4,8 @@
 //~ NOTE(rjf): Brace highlight
 
 function void
-F4_Brace_RenderHighlight(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
-                         i64 pos, ARGB_Color *colors, i32 color_count)
+F4_Brace_RenderHighlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
+                         i64 pos, ARGB_Color *colors, i1 color_count)
 {
     if(!def_get_config_b32(vars_intern_lit("f4_disable_brace_highlight")))
     {
@@ -13,7 +13,7 @@ F4_Brace_RenderHighlight(Application_Links *app, Buffer_ID buffer, Text_Layout_I
         Token_Array token_array = get_token_array_from_buffer(app, buffer);
         if (token_array.tokens != 0)
         {
-            Token_Iterator_Array it = token_iterator_pos(0, &token_array, pos);
+            Token_Iterator_Array it = token_it_at_pos(0, &token_array, pos);
             Token *token = token_it_read(&it);
             if(token != 0 && token->kind == TokenBaseKind_ScopeOpen)
             {
@@ -42,7 +42,7 @@ F4_Brace_RenderHighlight(Application_Links *app, Buffer_ID buffer, Text_Layout_I
 //~ NOTE(rjf): Closing-brace Annotation
 
 function void
-F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
+F4_Brace_RenderCloseBraceAnnotation(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                                     i64 pos)
 {
     if(!def_get_config_b32(vars_intern_lit("f4_disable_close_brace_annotation")))
@@ -55,7 +55,7 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
         
         if(token_array.tokens != 0)
         {
-            Token_Iterator_Array it = token_iterator_pos(0, &token_array, pos);
+            Token_Iterator_Array it = token_it_at_pos(0, &token_array, pos);
             Token *token = token_it_read(&it);
             
             if(token != 0 && token->kind == TokenBaseKind_ScopeOpen)
@@ -76,7 +76,7 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
         Scratch_Block scratch(app);
         Range_i64_Array ranges = get_enclosure_ranges(app, scratch, buffer, pos, RangeHighlightKind_CharacterHighlight);
         
-        for (i32 i = ranges.count - 1; i >= 0; i -= 1)
+        for (i1 i = ranges.count - 1; i >= 0; i -= 1)
         {
             Range_i64 range = ranges.ranges[i];
             
@@ -103,7 +103,7 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
             // NOTE(rjf): Find token set before this scope begins.
             Token *start_token = 0;
             {
-                Token_Iterator_Array it = token_iterator_pos(0, &token_array, range.start-1);
+                Token_Iterator_Array it = token_it_at_pos(0, &token_array, range.start-1);
                 int paren_nest = 0;
                 
                 for(;;)
@@ -156,7 +156,7 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
                     color = colors.vals[(ranges.count - i - 1) % colors.count];
                 }
                 
-                String_Const_u8 start_line = push_buffer_line(app, scratch, buffer,
+                String start_line = push_buffer_line(app, scratch, buffer,
                                                               get_line_number_from_pos(app, buffer, start_token->pos));
                 
                 u64 first_non_whitespace_offset = 0;
@@ -189,7 +189,7 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
 //~ NOTE(rjf): Brace lines
 
 static void
-F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
+F4_Brace_RenderLines(App *app, Buffer_ID buffer, View_ID view,
                      Text_Layout_ID text_layout_id, i64 pos)
 {
     if(!def_get_config_b32(vars_intern_lit("f4_disable_brace_lines")))
@@ -202,7 +202,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
         
         if (token_array.tokens != 0)
         {
-            Token_Iterator_Array it = token_iterator_pos(0, &token_array, pos);
+            Token_Iterator_Array it = token_it_at_pos(0, &token_array, pos);
             Token *token = token_it_read(&it);
             if(token != 0 && token->kind == TokenBaseKind_ScopeOpen)
             {
@@ -250,7 +250,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
         
         u64 vw_indent = def_get_config_u64(app, vars_intern_lit("virtual_whitespace_regular_indent"));
         
-        for (i32 i = ranges.count - 1; i >= 0; i -= 1)
+        for (i1 i = ranges.count - 1; i >= 0; i -= 1)
         {
             Range_i64 range = ranges.ranges[i];
             
@@ -263,7 +263,7 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
             }
             else
             {
-                String_Const_u8 line = push_buffer_line(app, scratch, buffer, get_line_number_from_pos(app, buffer, range.end));
+                String line = push_buffer_line(app, scratch, buffer, get_line_number_from_pos(app, buffer, range.end));
                 for(u64 char_idx = 0; char_idx < line.size; char_idx += 1)
                 {
                     if(!character_is_whitespace(line.str[char_idx]))

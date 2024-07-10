@@ -16,7 +16,7 @@ struct View_Context_Block{
     App *app;
     View_ID view;
     
-    View_Context_Block(Application_Links *app, View_ID view, View_Context *ctx);
+    View_Context_Block(App *app, View_ID view, View_Context *ctx);
     ~View_Context_Block();
 };
 
@@ -123,7 +123,7 @@ global Character_Predicate character_predicate_alnum_underscore_utf8 = { {
         255, 255, 255, 255, 255, 255, 255, 255, 
     } };
 
-typedef i64 Boundary_Function(Application_Links *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos);
+typedef i64 Boundary_Function(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos);
 
 struct Boundary_Function_Node{
     Boundary_Function_Node *next;
@@ -135,7 +135,7 @@ struct Boundary_Function_List{
     i32 count;
 };
 
-typedef Range_i64 Enclose_Function(Application_Links *app, Buffer_ID buffer, Range_i64 range);
+typedef Range_i64 Enclose_Function(App *app, Buffer_ID buffer, Range_i64 range);
 
 struct Indent_Info
 {
@@ -155,7 +155,7 @@ struct Sort_Pair_i32{
 ////////////////////////////////
 
 struct History_Group{
-    Application_Links *app;
+    App *app;
     Buffer_ID buffer;
     History_Record_Index first;
 };

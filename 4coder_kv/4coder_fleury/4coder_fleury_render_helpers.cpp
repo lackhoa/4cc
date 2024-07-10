@@ -7,7 +7,7 @@
 global F4_Flash f4_flashes[64];
 
 function void
-F4_DrawTooltipRect(Application_Links *app, Rect_f32 rect)
+F4_DrawTooltipRect(App *app, Rect_f32 rect)
 {
     ARGB_Color background_color = fcolor_resolve(fcolor_id(defcolor_back));
     ARGB_Color border_color = fcolor_resolve(fcolor_id(defcolor_margin_active));
@@ -23,7 +23,7 @@ F4_DrawTooltipRect(Application_Links *app, Rect_f32 rect)
 }
 
 function void
-F4_RenderRangeHighlight(Application_Links *app, View_ID view_id, Text_Layout_ID text_layout_id,
+F4_RenderRangeHighlight(App *app, View_ID view_id, Text_Layout_ID text_layout_id,
                         Range_i64 range, F4_RangeHighlightKind kind, ARGB_Color color)
 {
     Rect_f32 range_start_rect = text_layout_character_on_screen(app, text_layout_id, range.start);
@@ -61,7 +61,7 @@ F4_PushTooltip(String8 string, ARGB_Color color)
 }
 
 function void
-F4_PushFlash(Application_Links *app, Buffer_ID buffer, Range_i64 range, ARGB_Color color, f32 decay_rate)
+F4_PushFlash(App *app, Buffer_ID buffer, Range_i64 range, ARGB_Color color, f32 decay_rate)
 {
     F4_Flash *flash = 0;
     for(int i = 0; i < ArrayCountSigned(f4_flashes); i += 1)
@@ -84,7 +84,7 @@ F4_PushFlash(Application_Links *app, Buffer_ID buffer, Range_i64 range, ARGB_Col
 }
 
 function void
-F4_UpdateFlashes(Application_Links *app, Frame_Info frame)
+F4_UpdateFlashes(App *app, Frame_Info frame)
 {
     for(u32 i = 0; i < ArrayCount(f4_flashes); i += 1)
     {
@@ -102,7 +102,7 @@ F4_UpdateFlashes(Application_Links *app, Frame_Info frame)
 }
 
 function void
-F4_RenderFlashes(Application_Links *app, View_ID view, Text_Layout_ID text_layout)
+F4_RenderFlashes(App *app, View_ID view, Text_Layout_ID text_layout)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     for(u32 i = 0; i < ArrayCount(f4_flashes); i += 1)

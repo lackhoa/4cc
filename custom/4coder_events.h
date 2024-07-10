@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "4coder_types.h"
-
 typedef void Custom_Command_Function(App *app);
 
 typedef u32 Mouse_Code;
@@ -97,11 +95,11 @@ struct Input_Event{
         struct{
             Core_Code code;
             union{
-                String_Const_u8 string;
+                String string;
                 i32 id;
                 struct{
-                    String_Const_u8_Array flag_strings;
-                    String_Const_u8_Array filenames;
+                    String_Array flag_strings;
+                    String_Array filenames;
                 };
             };
         } core;

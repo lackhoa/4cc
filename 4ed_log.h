@@ -15,8 +15,8 @@
 struct Log{
     System_Mutex mutex;
     Arena arena;
-    List_String_Const_u8 list;
-    volatile i32 disabled_thread_id;
+    List_String list;
+    volatile i1 disabled_thread_id;
     b32 stdout_log_enabled;
 };
 

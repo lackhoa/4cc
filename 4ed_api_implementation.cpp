@@ -1,7 +1,7 @@
 #include "4coder_game_shared.h"
 
 function void
-output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String_Const_u8 value){
+output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value){
     i64 end = buffer_size(&file->state.buffer);
     Edit_Behaviors behaviors = {};
     behaviors.pos_before_edit = end;
@@ -88,20 +88,20 @@ global_set_setting(App *app, Global_Setting_ID setting, i64 value){
 api(custom) function rect2
 global_get_screen_rectangle(App *app)
 {
-    Models *models = (Models*)app->cmd_context;
-    return(Rf32(vec2(0, 0), vec2(layout_get_root_size(&models->layout))));
+ Models *models = (Models*)app->cmd_context;
+ return(Rf32(V2(0, 0), V2(layout_get_root_size(&models->layout))));
 }
 
 api(custom) function Child_Process_ID
 create_child_process(App *app, String path, String command)
 {
-    Models *models = (Models*)app->cmd_context;
-    Child_Process_ID result = 0;
-    if ( !child_process_call(app->tctx, models, path, command, &result) )
-    {
-        result = 0;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Child_Process_ID result = 0;
+ if ( !child_process_call(app->tctx, models, path, command, &result) )
+ {
+  result = 0;
+ }
+ return(result);
 }
 
 api(custom) function b32
@@ -196,7 +196,7 @@ get_buffer_by_name(App *app, String8 name, Access_Flag access)
 }
 
 api(custom) function Buffer_ID
-get_buffer_by_filename(App *app, String_Const_u8 filename, Access_Flag access)
+get_buffer_by_filename(App *app, String filename, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File_Name canon = {};
@@ -222,7 +222,7 @@ buffer_read_range(App *app, Buffer_ID buffer_id, Range_i64 range, u8 *out)
         i64 size = buffer_size(&file->state.buffer);
         if (0 <= range.min && range.min <= range.max && range.max <= size){
             Scratch_Block scratch(app);
-            String_Const_u8 string = buffer_stringify(scratch, &file->state.buffer, range);
+            String string = buffer_stringify(scratch, &file->state.buffer, range);
             block_copy(out, string.str, string.size);
             result = true;
         }
@@ -271,13 +271,13 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
 inline void 
 buffer_delete_range(App *app, Buffer_ID buffer, Range_i64 range)
 {
-    buffer_replace_range(app, buffer, range, string_u8_empty);
+    buffer_replace_range(app, buffer, range, empty_string);
 }
 
 inline void 
 buffer_delete_pos(App *app, Buffer_ID buffer, i64 min)
 {
-    buffer_replace_range(app, buffer, Ii64(min, min+1), string_u8_empty);
+    buffer_replace_range(app, buffer, Ii64(min, min+1), empty_string);
 }
 
 inline void
@@ -318,7 +318,7 @@ buffer_seek_string(App *app, Buffer_ID buffer, String8 needle, Scan_Direction di
             Scratch_Block scratch(app);
             Gap_Buffer *gap_buffer = &file->state.buffer;
             i64 size = buffer_size(gap_buffer);
-            List_String_Const_u8 chunks = buffer_get_chunks(scratch, gap_buffer);
+            List_String chunks = buffer_get_chunks(scratch, gap_buffer);
             Range_i64 range = {};
             if (direction == Scan_Forward)
             {
@@ -363,7 +363,7 @@ buffer_seek_character_class(App *app, Buffer_ID buffer, Character_Predicate *pre
     if (api_check_buffer(file)){
         Scratch_Block scratch(app);
         Gap_Buffer *gap_buffer = &file->state.buffer;
-        List_String_Const_u8 chunks_list = buffer_get_chunks(scratch, gap_buffer);
+        List_String chunks_list = buffer_get_chunks(scratch, gap_buffer);
         
         if (chunks_list.node_count > 0){
             // TODO(allen): If you are reading this comment, then I haven't revisited this to tighten it up yet.
@@ -376,9 +376,9 @@ buffer_seek_character_class(App *app, Buffer_ID buffer, Character_Predicate *pre
             // really tedious stuff.  Anyway, this is all just to say, cleaning this up would be really nice, but
             // there are almost certainly lower hanging fruit with higher payoffs elsewhere... unless need to change
             // this anyway or whatever.
-            String_Const_u8 chunk_mem[3] = {};
-            String_Const_u8_Array chunks = {.strings=chunk_mem};
-            for (Node_String_Const_u8 *node = chunks_list.first;
+            String chunk_mem[3] = {};
+            String_Array chunks = {.strings=chunk_mem};
+            for (Node_String *node = chunks_list.first;
                  node != 0;
                  node = node->next){
                 chunks.vals[chunks.count] = node->string;
@@ -663,18 +663,18 @@ push_buffer_base_name(App *app, Arena *arena, Buffer_ID buffer_id)
     String8 result = {};
     if (api_check_buffer(file))
     {
-        result = push_string_copy(arena, string_from_filename(&file->base_name));
+        result = push_string_copyz(arena, string_from_filename(&file->base_name));
     }
     return(result);
 }
 
-api(custom) function String_Const_u8
+api(custom) function String
 push_buffer_unique_name(App *app, Arena *out, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
-    String_Const_u8 result = {};
+    String result = {};
     if (api_check_buffer(file)){
-        result = push_string_copy(out, string_from_filename(&file->unique_name));
+        result = push_string_copyz(out, string_from_filename(&file->unique_name));
     }
     return(result);
 }
@@ -687,7 +687,7 @@ push_buffer_filename(App *app, Arena *arena, Buffer_ID buffer_id)
  String result = {};
  if (api_check_buffer(file))
  {
-  result = push_string_copy(arena, string_from_filename(&file->canon));
+  result = push_string_copyz(arena, string_from_filename(&file->canon));
  }
  return(result);
 }
@@ -868,7 +868,7 @@ buffer_send_end_signal(App *app, Buffer_ID buffer_id)
 }
 
 api(custom) function Buffer_ID
-create_buffer(App *app, String_Const_u8 filename, Buffer_Create_Flag flags)
+create_buffer(App *app, String filename, Buffer_Create_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *new_file = create_file(app->tctx, models, filename, flags);
@@ -880,7 +880,7 @@ create_buffer(App *app, String_Const_u8 filename, Buffer_Create_Flag flags)
 }
 
 api(custom) function b32
-buffer_save(App *app, Buffer_ID buffer_id, String_Const_u8 filename, Buffer_Save_Flag flags)
+buffer_save(App *app, Buffer_ID buffer_id, String filename, Buffer_Save_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
@@ -897,7 +897,7 @@ buffer_save(App *app, Buffer_ID buffer_id, String_Const_u8 filename, Buffer_Save
         if (!skip_save){
             Thread_Context *tctx = app->tctx;
             Scratch_Block scratch(tctx);
-            String_Const_u8 name = push_string_copy(scratch, filename);
+            String name = push_string_copyz(scratch, filename);
             save_file_to_name(tctx, models, file, name.str);
             result = true;
         }
@@ -1357,7 +1357,7 @@ panel_set_split(App *app, Panel_ID panel_id, Panel_Split_Kind kind,
                 case PanelSplitKind_FixedPixels_Max:
                 case PanelSplitKind_FixedPixels_Min:
                 {
-                    panel->split.v_i32 = i32_round32(t);
+                    panel->split.v_i32 = i32_roundv1(t);
                 }break;
                 
                 default:
@@ -1479,12 +1479,10 @@ view_set_active(App *app, View_ID view_id)
  Models *models = (Models*)app->cmd_context;
  View *view = imp_get_view(models, view_id);
  b32 result = false;
- if ( api_check_view(view) )
+ if( api_check_view(view) )
  {
   models->layout.active_panel = view->panel;
   result = true;
-  
-  Buffer_ID buffer = view_get_buffer(app, view_id, Access_Always);
  }
  return(result);
 }
@@ -1667,8 +1665,8 @@ view_set_buffer_scroll(App *app, View_ID view_id, Buffer_Scroll scroll,
         Thread_Context *tctx = app->tctx;
         scroll.position = view_normalize_buffer_point(tctx, models, view, scroll.position);
         scroll.target = view_normalize_buffer_point(tctx, models, view, scroll.target);
-        scroll.target.pixel_shift.x = f32_round32(scroll.target.pixel_shift.x);
-        scroll.target.pixel_shift.y = f32_round32(scroll.target.pixel_shift.y);
+        scroll.target.pixel_shift.x = roundv1(scroll.target.pixel_shift.x);
+        scroll.target.pixel_shift.y = roundv1(scroll.target.pixel_shift.y);
         scroll.target.pixel_shift.x = clamp_min(0.f, scroll.target.pixel_shift.x);
         Layout_Item_List line = view_get_line_layout(tctx, models, view,
                                                      scroll.target.line_number);
@@ -1792,12 +1790,12 @@ view_current_context(App *app, View_ID view_id){
     return(result);
 }
 
-api(custom) function String_Const_u8
+api(custom) function String
 view_current_context_hook_memory(App *app, View_ID view_id,
                                  Hook_ID hook_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
-    String_Const_u8 result = {};
+    String result = {};
     if (api_check_view(view)){
         View_Context_Node *ctx = view_current_context_node(view);
         if (ctx != 0){
@@ -2021,7 +2019,7 @@ managed_id_group_highest_id(App *app, String group)
 }
 
 api(custom) function Managed_ID
-managed_id_declare(App *app, String_Const_u8 group, String_Const_u8 name)
+managed_id_declare(App *app, String group, String name)
 {
     Models *models = (Models*)app->cmd_context;
     Managed_ID_Set *set = &models->managed_id_set;
@@ -2029,7 +2027,7 @@ managed_id_declare(App *app, String_Const_u8 group, String_Const_u8 name)
 }
 
 api(custom) function Managed_ID
-managed_id_get(App *app, String_Const_u8 group, String_Const_u8 name){
+managed_id_get(App *app, String group, String name){
     Models *models = (Models*)app->cmd_context;
     Managed_ID_Set *set = &models->managed_id_set;
     return(managed_ids_get(set, group, name));
@@ -2042,7 +2040,7 @@ managed_scope_get_attachment(App *app, Managed_Scope scope, Managed_ID id, u64 s
     void *result = 0;
     if (workspace != 0){
         Dynamic_Variable_Block *var_block = &workspace->var_block;
-        String_Const_u8 data = dynamic_variable_get(var_block, id, size);
+        String data = dynamic_variable_get(var_block, id, size);
         if (data.size >= size){
             result = data.str;
         }
@@ -2852,7 +2850,7 @@ push_hot_directory(App *app, Arena *arena)
     Models *models = (Models*)app->cmd_context;
     Hot_Directory *hot = &models->hot_directory;
     hot_directory_clean_end(hot);
-    return push_string_copy(arena, hot->canonical);
+    return push_string_copyz(arena, hot->canonical);
 }
 
 api(custom) function void
@@ -3153,7 +3151,7 @@ text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
                 }
                 // kv_assert(found_item);
                 
-                Vec2_f32 shift = vec2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
+                Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
                 result.p0 += shift;
                 result.p1 += shift;
             }
@@ -3251,7 +3249,7 @@ buffer_find_all_matches(App *app, Arena *arena, Buffer_ID buffer,
         if (needle.size > 0)
         {
             Scratch_Block scratch(app, arena);
-            List_String_Const_u8 chunks = buffer_get_chunks(scratch, &file->state.buffer);
+            List_String chunks = buffer_get_chunks(scratch, &file->state.buffer);
             buffer_chunks_clamp(&chunks, range);
             if (chunks.node_count > 0)
             {

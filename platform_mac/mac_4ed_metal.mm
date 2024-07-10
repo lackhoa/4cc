@@ -64,8 +64,8 @@ global_const u32 metal__invalid_texture_slot_locator = (u32)-1;
 @interface Metal_Renderer : NSObject<MTKViewDelegate>
 - (nonnull instancetype)initWithMetalKitView:(nonnull MTKView*)mtkView target:(Render_Target*)target;
 
-- (u32)get_texture_of_dim:(Vec3_i32)dim kind:(Texture_Kind)kind;
-// - (b32)fill_texture:(u32)texture kind:(Texture_Kind)kind pos:(Vec3_i32)p dim:(Vec3_i32)dim data:(void*)data;
+- (u32)get_texture_of_dim:(Vec3_i1)dim kind:(Texture_Kind)kind;
+// - (b32)fill_texture:(u32)texture kind:(Texture_Kind)kind pos:(Vec3_i1)p dim:(Vec3_i1)dim data:(void*)data;
 - (void)bind_texture:(u32)handle encoder:(id<MTLRenderCommandEncoder>)render_encoder;
 - (Metal_Texture_Slot*)get_texture_slot_at_locator:(Metal_Texture_Slot_Locator)locator;
 - (Metal_Texture_Slot*)get_texture_slot_at_handle:(u32)handle;
@@ -182,7 +182,7 @@ metal__make_buffer(u32 size, id<MTLDevice> device){
     result->size = size;
     
     // NOTE(yuval): Set the last_reuse_time to the current time
-    result->last_reuse_time = system_now_time();
+    result->last_reuse_time = system_time_usecond();
     
     return result;
 }
@@ -205,7 +205,7 @@ metal__make_buffer(u32 size, id<MTLDevice> device){
 
 // NOTE(kv): rewritten from the awful objective-c method nonsense
 internal b32 
-metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3_i32 pos, Vec3_i32 dim, void *data)
+metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3_i1 pos, Vec3_i1 dim, void *data)
 {
   b32 result = false;
   
@@ -310,16 +310,16 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
     
     // NOTE(yuval): Initialize buffer caching
     dll_init_sentinel(&_buffer_cache);
-    _last_buffer_cache_purge_time = system_now_time();
+    _last_buffer_cache_purge_time = system_time_usecond();
     
     // NOTE(yuval): Initialize the texture slot list
     block_zero_struct(&_texture_slots);
     
     // NOTE(yuval): Create the fallback texture
-    _target->fallback_texture_id = [self get_texture_of_dim:V3i32(2, 2, 1)
+    _target->fallback_texture_id = [self get_texture_of_dim:V3i1(2, 2, 1)
             kind:TextureKind_Mono];
     u8 white_block[] = {0xFF, 0xFF, 0xFF, 0xFF};
-    metal_fill_texture(self, _target->fallback_texture_id, TextureKind_Mono, V3i32(0, 0, 0), V3i32(2, 2, 1), white_block);
+    metal_fill_texture(self, _target->fallback_texture_id, TextureKind_Mono, V3i1(0, 0, 0), V3i1(2, 2, 1), white_block);
     
     // NOTE(yuval): Create a capture scope for gpu frame capture
     _capture_scope = [[MTLCaptureManager sharedCaptureManager]
@@ -340,8 +340,8 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
     
     // HACK(yuval): This is the best way I found to force valid width and height without drawing on the next draw cycle (1 frame delay).
     CGSize drawable_size = [view drawableSize];
-    i32 width = (i32)Min(_target->width, drawable_size.width);
-    i32 height = (i32)Min(_target->height, drawable_size.height);
+    i1 width = (i1)Min(_target->width, drawable_size.width);
+    i1 height = (i1)Min(_target->height, drawable_size.height);
     
     Font_Set *font_set = (Font_Set*)_target->font_set;
     
@@ -390,7 +390,7 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
         };
         
         // NOTE(yuval): Calculate required vertex buffer size
-        i32 all_vertex_count = 0;
+        i1 all_vertex_count = 0;
         for (Render_Group *group = _target->group_first;
              group;
              group = group->next){
@@ -418,7 +418,7 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
              group = group->next){
             // NOTE(yuval): Set scissor rect
             {
-                Rect_i32 box = Ri32(group->clip_box);
+                Rect_i1 box = Ri1(group->clip_box);
                 
                 NSUInteger x0 = (NSUInteger)Min(Max(0, box.x0), width - 1);
                 NSUInteger x1 = (NSUInteger)Min(Max(0, box.x1), width);
@@ -434,7 +434,7 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
                 [render_encoder setScissorRect:scissor_rect];
             }
             
-            i32 vertex_count = group->vertex_list.vertex_count;
+            i1 vertex_count = group->vertex_list.vertex_count;
             if (vertex_count > 0){
                 // NOTE(yuval): Bind a texture
                 {
@@ -458,7 +458,7 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
                     for (Render_Vertex_Array_Node *node = group->vertex_list.first;
                          node;
                          node = node->next){
-                        i32 size = node->vertex_count * sizeof(*node->vertices);
+                        i1 size = node->vertex_count * sizeof(*node->vertices);
                         memcpy(cursor, node->vertices, size);
                         cursor += size;
                     }
@@ -500,7 +500,7 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
 #endif
 }
 
-- (u32)get_texture_of_dim:(Vec3_i32)dim kind:(Texture_Kind)kind{
+- (u32)get_texture_of_dim:(Vec3_i1)dim kind:(Texture_Kind)kind{
     u32 handle = metal__invalid_texture_slot_locator;
     
     // NOTE(yuval): Check for a free texture slot and allocate another slot bucket if no free slot has been found
@@ -588,7 +588,7 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
 - (Metal_Buffer*)get_reusable_buffer_with_size:(NSUInteger)size{
     // NOTE(yuval): This routine is a modified version of Dear ImGui's MetalContext::dequeueReusableBufferOfLength in imgui_impl_metal.mm
     
-    u64 now = system_now_time();
+    u64 now = system_time_usecond();
     
     // NOTE(yuval): Purge old buffers that haven't been useful for a while
     if ((now - _last_buffer_cache_purge_time) > 1000000){

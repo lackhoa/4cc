@@ -14,53 +14,53 @@
 
 struct API_Param{
     API_Param *next;
-    String_Const_u8 type_name;
-    String_Const_u8 name;
+    String type_name;
+    String name;
 };
 
 struct API_Param_List{
     API_Param *first;
     API_Param *last;
-    i32 count;
+    i1 count;
 };
 
 struct API_Call{
     API_Call *next;
-    String_Const_u8 name;
-    String_Const_u8 return_type;
-    String_Const_u8 location_string;
+    String name;
+    String return_type;
+    String location_string;
     API_Param_List params;
 };
 
-typedef i32 API_Type_Structure_Kind;
+typedef i1 API_Type_Structure_Kind;
 enum{
     APITypeStructureKind_Struct,
     APITypeStructureKind_Union,
 };
 struct API_Type_Structure{
     API_Type_Structure_Kind kind;
-    List_String_Const_u8 member_names;
-    String_Const_u8 definition_string;
+    List_String member_names;
+    String definition_string;
 };
 
 struct API_Enum_Value{
     API_Enum_Value *next;
-    String_Const_u8 name;
-    String_Const_u8 val;
+    String name;
+    String val;
 };
 struct API_Type_Enum{
-    String_Const_u8 type_name;
+    String type_name;
     API_Enum_Value *first_val;
     API_Enum_Value *last_val;
-    i32 val_count;
+    i1 val_count;
 };
 
 struct API_Type_Typedef{
-    String_Const_u8 name;
-    String_Const_u8 definition_text;
+    String name;
+    String definition_text;
 };
 
-typedef i32 API_Type_Kind;
+typedef i1 API_Type_Kind;
 enum{
     APITypeKind_Structure,
     APITypeKind_Enum,
@@ -69,8 +69,8 @@ enum{
 struct API_Type{
     API_Type *next;
     API_Type_Kind kind;
-    String_Const_u8 name;
-    String_Const_u8 location_string;
+    String name;
+    String location_string;
     union{
         API_Type_Structure struct_type;
         API_Type_Enum enum_type;
@@ -83,19 +83,19 @@ struct API_Definition{
     
     API_Call *first_call;
     API_Call *last_call;
-    i32 call_count;
+    i1 call_count;
     
     API_Type *first_type;
     API_Type *last_type;
-    i32 type_count;
+    i1 type_count;
     
-    String_Const_u8 name;
+    String name;
 };
 
 struct API_Definition_List{
     API_Definition *first;
     API_Definition *last;
-    i32 count;
+    i1 count;
 };
 
 typedef u32 API_Generation_Flag;

@@ -22,7 +22,7 @@
  *            If that's the case, then you only need to call CS_render_caller at the end of that function. Like this:
  *
  *            static void
- *            MyRenderCaller(Application_Links *app, Frame_Info frame_info, View_ID view_id)
+ *            MyRenderCaller(App *app, Frame_Info frame_info, View_ID view_id)
  *            {
  *                ... // your code goes here
  *                CS_render_caller(app, frame_info, view_id);
@@ -680,12 +680,12 @@ int main(int argc, char *argv[]) {
 
 #define CS_log_sts_error(app) CS_log_sts_error_(app, __FILE__, __LINE__)
 static void 
-CS_log_sts_error_(Application_Links *app, char *fname, u32 line)
+CS_log_sts_error_(App *app, char *fname, u32 line)
 {
     (void) fname;
     (void) line;
     const char *error_z = sts_net_get_last_error();
-    String_Const_u8 error = {0};
+    String error = {0};
     error.str = (u8 *)error_z;
     error.size = strlen(error_z);
     log_string(app, error);
@@ -702,7 +702,7 @@ typedef struct CS_State
 
 global CS_State global_CS_state;
 
-static void CS_start(Application_Links *app)
+static void CS_start(App *app)
 {
     for (int i = 0; i < STS_NET_SET_SOCKETS; ++i)
     {
@@ -745,7 +745,7 @@ CUSTOM_DOC("Toggle command server.")
 }
 
 static void
-CS_update(Application_Links *app)
+CS_update(App *app)
 {
     int socket_set_change_count = sts_net_check_socket_set(&global_CS_state.set, 0.0);
     if(socket_set_change_count > 0 && global_CS_state.server.ready)
@@ -779,7 +779,7 @@ CS_update(Application_Links *app)
         {
             int byte_count;
             
-            String_Const_u8 request_text = {0};
+            String request_text = {0};
             
             u32 max_message_len = 256;
             request_text.str = push_array(scratch, u8, max_message_len+1);
@@ -800,12 +800,12 @@ CS_update(Application_Links *app)
             } 
             else 
             {
-                String_Const_u8 command = {0};
+                String command = {0};
                 Name_Line_Column_Location location = {0};
                 {
-                    String_Const_u8 row_s = {0};
-                    String_Const_u8 col_s = {0};
-                    String_Const_u8 *strings[] = {&command, &location.file, &row_s, &col_s};
+                    String row_s = {0};
+                    String col_s = {0};
+                    String *strings[] = {&command, &location.file, &row_s, &col_s};
                     
                     u8 *cur = request_text.str;
                     u8 *end = request_text.str + request_text.size;
@@ -813,7 +813,7 @@ CS_update(Application_Links *app)
                     u32 i_string = 0;
                     while(cur < end)
                     {
-                        String_Const_u8 *target_s = strings[i_string];
+                        String *target_s = strings[i_string];
                         target_s->str = cur;
                         
                         while(cur < end)
@@ -833,11 +833,11 @@ CS_update(Application_Links *app)
                     
                     if(string_is_integer(row_s, 10))
                     {
-                        location.line = (i32)string_to_integer(row_s, 10);
+                        location.line = (i1)string_to_integer(row_s, 10);
                     }
                     if(string_to_integer(col_s, 10))
                     {
-                        location.column = (i32)string_to_integer(col_s, 10);
+                        location.column = (i1)string_to_integer(col_s, 10);
                     }
                 }
                 
@@ -861,7 +861,7 @@ CS_update(Application_Links *app)
                 }
                 else
                 {
-                    String_Const_u8 error = push_stringf(scratch, "Unknown command %.*s\n", string_expand(command));
+                    String error = push_stringfz(scratch, "Unknown command %.*s\n", string_expand(command));
                     log_string(app, error);
                 }
                 
@@ -879,7 +879,7 @@ CS_update(Application_Links *app)
 #include <sys/stat.h>
 
 static void
-CS_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_id)
+CS_render_caller(App *app, Frame_Info frame_info, View_ID view_id)
 {
 #ifdef COMMAND_SERVER_AUTO_LAUNCH_IF_FILE_PRESENT
     if(!global_CS_state.autostart_has_been_checked)

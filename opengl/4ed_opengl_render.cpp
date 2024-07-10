@@ -1,12 +1,11 @@
 global GLuint DEFAULT_FRAMEBUFFER = 0;
 
-global GLint uniform_view_transform         = 0;
-global GLint uniform_camera_axes            = 1;
-global GLint uniform_unused                 = 2;
-global GLint uniform_object_transform       = 3;
-global GLint uniform_meter_to_pixel         = 4;
-global GLint uniform_overlay                = 5;
-global GLint uniform_should_write_prim_id   = 6;
+global GLint uniform_view_transform      = 0;
+global GLint uniform_camera_axes         = 1;
+global GLint uniform_unused              = 2;
+global GLint uniform_object_transform    = 3;
+global GLint uniform_meter_to_pixel      = 4;
+global GLint uniform_overlay             = 5;
 
 //~Vertex attributes
 // TODO: @Speed Still a hodge-podge of old vertex attributes.
@@ -25,6 +24,29 @@ X(prim_id,       5) \
 #define X(name, location) global GLint vattr_##name = location;
 X_VERTEX_ATTRIBUTES(X)
 #undef X
+
+//~
+
+struct Loaded_Image
+{
+ char  *filename;
+ i2     dim;
+ GLuint texture;
+};
+//
+global Loaded_Image *loaded_images;
+global i32 image_load_failure_count;
+
+internal Image_Load_Info
+get_image_load_info(void) 
+{
+ return Image_Load_Info
+ {
+  i32(arrlen(loaded_images)),
+  image_load_failure_count,
+ };
+}
+
 //~
 
 inline void
@@ -57,7 +79,7 @@ ogl__filter_nearest()
 }
 
 internal GLuint
-ogl__gen_ed_texture(v3i dim, Texture_Kind texture_kind)
+ogl__gen_ed_texture(i3 dim, Texture_Kind texture_kind)
 {
  GLuint tex = {};
  glGenTextures(1, &tex);
@@ -140,12 +162,15 @@ ogl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsi
 global char *ogl_shared_header = 
 R"foo(
 #define v1 float
-#define v2 vec2
-#define v3 vec3
-#define v4 vec4
+#define v2 V2
+#define v3 V3
+#define v4 V4
 #define i32 int
 #define b32 int
 #define u32 uint
+#define V2 vec2
+#define V3 vec3
+#define V4 vec4
 
 layout(location=0) uniform mat4 uniform_view_transform;
 layout(location=1) uniform mat3 uniform_camera_axes;
@@ -153,7 +178,6 @@ layout(location=2) uniform v1   uniform_unused;
 layout(location=3) uniform mat4 uniform_object_transform;
 layout(location=4) uniform v1   uniform_meter_to_pixel;
 layout(location=5) uniform b32  uniform_overlay;
-layout(location=6) uniform b32  uniform_should_write_prim_id;
 )foo";
 
 //-NOTE: ;editor_shaders
@@ -172,15 +196,15 @@ out v1 half_thickness;
 
 void main(void)
 {
-    gl_Position = uniform_view_transform * vec4(vertex_pos, 1, 1);
+    gl_Position = uniform_view_transform * V4(vertex_pos, 1, 1);
     color.rgba = vertex_color.bgra;
 
     uvw = vertex_uvw;
-    vec2 center = vertex_uvw.xy;
+    V2 center = vertex_uvw.xy;
     xy = vertex_pos;
     v2 half_dim = abs(xy - center);
     v2 roundness = vertex_uvw.zz;
-    adjusted_half_dim = half_dim - roundness + vec2(0.5f,0.5f);
+    adjusted_half_dim = half_dim - roundness + V2(0.5f,0.5f);
     half_thickness = vertex_half_thickness;
 }
 )foo";
@@ -189,19 +213,19 @@ global char *ed_fragment_shader =
 R"foo(
 layout(binding=0) uniform sampler2DArray sampler;
 //
-smooth in vec4 color;
-smooth in vec3 uvw;
-smooth in vec2 xy;
-smooth in vec2 adjusted_half_dim;
+smooth in V4 color;
+smooth in V3 uvw;
+smooth in V2 xy;
+smooth in V2 adjusted_half_dim;
 smooth in float half_thickness;
 //
-out vec4 out_color;
+out V4 out_color;
 
 // NOTE: negative = inside, positive = outside
 v1 rectangle_sd(v2 p, v2 b)
 {
-    vec2 d = abs(p) - b;
-    return(length(max(d, vec2(0,0))) + 
+    V2 d = abs(p) - b;
+    return(length(max(d, V2(0,0))) + 
            min(max(d.x, d.y), 0.0));
 }
     
@@ -212,7 +236,7 @@ void main(void)
         bool has_thickness = half_thickness > 0.49;
         if (has_thickness)
         {
-            vec2 center = uvw.xy;
+            V2 center = uvw.xy;
             float sd = rectangle_sd(xy - center, adjusted_half_dim);
             float roundness = uvw.z;
             sd = sd - roundness;
@@ -225,7 +249,7 @@ void main(void)
         }
     }
     v1 out_alpha = color.a*value;
-    out_color = vec4(color.rgb, out_alpha);
+    out_color = V4(color.rgb, out_alpha);
 }
 )foo";
 
@@ -234,7 +258,7 @@ enum OGL_Program_Type
  OGL_First_Pass  = 1,
  OGL_Second_Pass = 2,
  OGL_Editor      = 3,
- OGL_CSG         = 4,
+ OGL_Image       = 4,
 };
 
 enum OGL_Program_Flag
@@ -261,13 +285,14 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
   
   char *header = ogl_shared_header;
   char defines[256];
-  sprintf(defines, R"foo(
-#define IS_FIRST_PASS %d
-#define IS_SECOND_PASS %d
-#define ACTUALLY_RENDERING %d)foo",
-          is_first_pass,
-          (type == OGL_Second_Pass),
-          !(flags & OGL_Write_Primitive_ID));
+  snprintf(defines,
+           alen(defines),
+           "#define IS_FIRST_PASS %d\n"
+           "#define IS_SECOND_PASS %d\n"
+           "#define WRITE_PRIM_ID %d\n",
+           is_first_pass,
+           (type == OGL_Second_Pass),
+           (flags & OGL_Write_Primitive_ID));
   char *version_str = "#version 460\n";
     
 #if SHIP_MODE
@@ -356,12 +381,26 @@ ogl__is_uniform_active(GLuint program, char *name)
  return (glGetUniformLocation(program, name) != -1);
 }
 
+// NOTE: Would it be better to just have one program?
+// Yeah but I wanna have a tiny primitive id framebuffer.
+// Which can't be done in OpenGL (not even mentioning MSAA).
 global u32 ogl_program_2;
-global u32 ogl_program_csg;
+global u32 ogl_program_2_prim_id;
+global u32 ogl_program_image;
+global u32 ogl_program_image_prim_id;
 global u32 ogl_program_editor;
 
 internal v1 * ogl_cast_mat4(mat4 *matrix) { return cast(v1*)matrix; }
 internal v1 * ogl_cast_mat3(mat3 *matrix) { return cast(v1*)matrix; }
+
+struct OGL_Program_State
+{
+ Render_Group *group;
+ //mat4 *object_transform;
+ mat3 camera_axes;
+ //mat4 *view_transform;
+ b32 is_overlay;
+};
 
 internal void
 ogl__vertex_attributes()
@@ -376,83 +415,53 @@ ogl__vertex_attributes()
   glVertexAttribPointer(vattr_color, 4, GL_UNSIGNED_BYTE, GL_TRUE,  stride, OFFSET(color));
   glVertexAttribPointer(vattr_half_thickness, 1, GL_FLOAT, GL_FALSE, stride, OFFSET(half_thickness));
   glVertexAttribPointer(vattr_depth_offset,   1, GL_FLOAT, GL_FALSE, stride, OFFSET(depth_offset));
-  glVertexAttribIPointer(vattr_prim_id, 4, GL_UNSIGNED_BYTE, stride, OFFSET(prim_id));
+  glVertexAttribIPointer(vattr_prim_id, 1, GL_UNSIGNED_INT, stride, OFFSET(prim_id));
 #undef OFFSET
  }
 }
 
 internal void
-ogl__begin_program(Render_Target *target, Render_Group *group,
-                   v2 render_dim, OGL_Program_Type type,
-                   mat4 *object_transform, OGL_Program_Flags flags=0)
+ogl__uniform_mat4(GLint uniform, mat4 *mat)
 {
- GLuint program;
- switch(type)
- {
-  case OGL_Second_Pass: { program = ogl_program_2; }      break;
-  case OGL_CSG:         { program = ogl_program_csg; }    break;
-  case OGL_Editor:      { program = ogl_program_editor; } break;
-  invalid_default_case;
- }
- 
+ glUniformMatrix4fv(uniform, 1, GL_TRUE, ogl_cast_mat4(mat));
+}
+
+// @Ugh The only reason why this function exist is because
+// every time you switch program, you gotta send it uniforms...
+internal void
+ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *view_transform)
+{
  glUseProgram(program);
+ Render_Group *group = s->group;
  
  {// NOTE: Uniforms
-  mat4 screen_transform;
-  {
-   // :viewport_alignment The center of the game viewport lines up with the center of the opengl viewport
-   v1 sx = 2.f*group->meter_to_pixel/render_dim.x;
-   v1 sy = 2.f*group->meter_to_pixel/render_dim.y;
-   screen_transform = mat4_scales(sx,sy,1.f);
+#define is_active(uniform)  ogl__is_uniform_active(program, #uniform)
+  if( is_active(uniform_view_transform) ) {
+   ogl__uniform_mat4(uniform_view_transform, view_transform);
   }
-  
+  if (program == ogl_program_image)
   {
-   mat4 view_transform = screen_transform*group->view_transform;  //NOTE: this view transform is different from the camera view transform, which is confusing?
-   
-   if (ogl__is_uniform_active(program, "uniform_view_transform"))
-   {
-    glUniformMatrix4fv(uniform_view_transform, 1, GL_TRUE, ogl_cast_mat4(&view_transform));
+   GLint image_texture_binding = 0;
+   if ( is_active(image_texture_binding) ) {
+    glUniform1i(image_texture_binding, GL_TEXTURE0);
    }
   }
-  
-  {
-   if (ogl__is_uniform_active(program, "uniform_csg_texture"))
-   {
-    glUniform1i(/* csg_texture_binding*/0, GL_TEXTURE0);
-   }
-   
-   if (ogl__is_uniform_active(program, "uniform_camera_axes"))
-   {
-    mat3 camera_axes = to_mat3(group->camera_transform.forward);
-    glUniformMatrix3fv(uniform_camera_axes, 1, GL_TRUE, ogl_cast_mat3(&camera_axes));
-   }
-   
-   if (ogl__is_uniform_active(program, "uniform_object_transform"))
-   {
-    glUniformMatrix4fv(uniform_object_transform, 1, GL_TRUE, ogl_cast_mat4(object_transform));
-   }
-   
-   if (ogl__is_uniform_active(program, "uniform_meter_to_pixel"))
-   {
-    glUniform1f(uniform_meter_to_pixel, group->meter_to_pixel);
-   }
-   
-   if (ogl__is_uniform_active(program, "uniform_overlay"))
-   {
-    glUniform1i(uniform_overlay, flags & OGL_Overlay);
-   }
-   
-   if (ogl__is_uniform_active(program, "uniform_should_write_prim_id"))
-   {
-    b32 is_main_viewport = (group->viewport_id == 1);
-    glUniform1i(uniform_should_write_prim_id, is_main_viewport);
-   }
+  if( is_active(uniform_camera_axes) ) {
+   glUniformMatrix3fv(uniform_camera_axes, 1, GL_TRUE, ogl_cast_mat3(&s->camera_axes));
+  }
+  if( is_active(uniform_object_transform) ) {
+   //glUniformMatrix4fv(uniform_object_transform, 1, GL_TRUE, ogl_cast_mat4(s->object_transform));
+  }
+  if( is_active(uniform_meter_to_pixel) ) {
+   glUniform1f(uniform_meter_to_pixel, group->meter_to_pixel);
+  }
+  if( is_active(uniform_overlay) ) {
+   glUniform1i(uniform_overlay, false);
   }
  }
  
  ogl__vertex_attributes();
 }
-
 
 internal void
 ogl__begin_program_editor(Render_Target *target, Render_Group *group)
@@ -463,7 +472,7 @@ ogl__begin_program_editor(Render_Target *target, Render_Group *group)
   mat4 screen_transform;
   {
    v1 y_sign = (group->y_is_up) ? +1 : -1;
-   v2 dst_dim = vec2(v1(target->width), v1(target->height));
+   v2 dst_dim = V2(v1(target->width), v1(target->height));
    // NOTE(kv): Scale to normalized device coordinate
    v1 a = 2.f/dst_dim.x;
    v1 b = 2.f/dst_dim.y * y_sign;
@@ -509,24 +518,201 @@ ogl__send_buffer_data(Render_Vertex_List *list)
  }
 }
 
-// NOTE: Because this call is God-awful
+// NOTE: Originally used glTexImage2D, which was awful because of the unnecessary submission parameters.
+// glTexStorage2D is less verbose, so idk.
+// IMPORTANT: you CANNOT call glTexImage2D after calling glTexStorage2D
+// https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexStorage2D.xhtml
 internal void
-glTexImage2D_wrapper(GLint internal_format, 
-                     GLsizei width, GLsizei height,
-                     GLenum submit_format, GLenum submit_type,
-                     const void * data)
+glTexStorage2D_wrapper(GLint internal_format, GLsizei width, GLsizei height)
 {
- glTexImage2D(GL_TEXTURE_2D,
-              /*level*/ 0,
-              internal_format,  // note: I want the GPU to do conversion for me
-              width,height,
-              /*dummy border*/0,
-              submit_format, submit_type,
-              data);
+ // TODO: we can switch to glTextureStorage2D
+ glTexStorage2D(GL_TEXTURE_2D, /*level*/1, internal_format, width, height);
+ // NOTE: Some texture voodoo that may or may not be needed
+ ogl__clamp_to_edge();
+ ogl__filter_nearest();
 }
 
 internal void
-ogl_render(Render_Target *target)
+glTexImage2D_wrapper(GLint internal_format, GLsizei width, GLsizei height,
+                     GLenum submission_format, GLenum type,
+                     const void * data)
+{
+ glTexImage2D(GL_TEXTURE_2D, /*level*/0, internal_format, width, height,
+              /*border*/0, submission_format, type, data);
+}
+
+inline void
+assert_framebuffer_status()
+{
+ GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+ kv_assert(status == GL_FRAMEBUFFER_COMPLETE);
+} 
+
+global GLuint prim_id_framebuffer;
+
+internal u32
+ogl_read_primitive_id(Render_Target *target, i2 mousep)
+{// NOTE: We have to read after rendering, because reading while you're rendering 
+ // causes flicker, idk why because it shouldn't change the draw order.
+ // also probably bad for perforamnce
+ 
+ u32 current_prim_id = 0;
+ 
+ for (Render_Group *group = target->group_first;
+      group;
+      group = group->next)
+ {//NOTE: searching for main viewport (stupid!)
+  if (group->viewport_id == 1)
+  {
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, prim_id_framebuffer);
+   glReadBuffer(GL_COLOR_ATTACHMENT0);
+   rect2i box = Ri32(group->clip_box);
+   glReadPixels(0,0,
+                1,1,
+                GL_RED_INTEGER, GL_UNSIGNED_INT,
+                &current_prim_id);
+   glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
+   break;
+  }
+ }
+ 
+ return current_prim_id;
+}
+
+internal void
+ogl__stream_draw(Render_Vertex_List *list)
+{
+ if (list->count)
+ {
+  ogl__send_buffer_data(list);
+  glDrawArrays(GL_TRIANGLES, 0, list->count);
+ }
+}
+
+internal void
+ogl__stream_draw(Render_Vertex *vertices, i32 count)
+{
+ if (count)
+ {
+  glBufferData(GL_ARRAY_BUFFER, count*sizeof(Render_Vertex), vertices, GL_STREAM_DRAW);
+  glDrawArrays(GL_TRIANGLES, 0, count);
+ }
+}
+
+
+internal void
+ogl__render_entries(Render_Group *group)
+{
+ for (Render_Entry *entry = group->entry_first;
+      entry; 
+      entry = entry->next)
+ {
+  if (entry->type == RET_Poly)
+  {
+   {// normal stuff
+    ogl__stream_draw(&entry->poly.vertex_list);
+   }
+   {// overlay
+    glUniform1i(uniform_overlay, true);
+    ogl__stream_draw(&entry->poly.vertex_list_overlay);
+    glUniform1i(uniform_overlay, false);
+   }
+  }
+  else if (entry->type == RET_Object_Transform)
+  {
+   ogl__uniform_mat4(uniform_object_transform, &entry->object_transform);
+  }
+ }
+}
+
+internal void
+ogl__render_images(Render_Group *group, b32 render_primitive_id)
+{
+ mat4 *current_object_transform = &mat4_identity;
+ // @Speed We only have at most a few images on the screen at a time.
+ // sifting through all the entries might not be efficient.
+ for(Render_Entry *entry0 = group->entry_first;
+     entry0; 
+     entry0 = entry0->next)
+ {
+  if (entry0->type == RET_Image)
+  {
+   Render_Entry_Image *entry = entry0->image;
+   b32 bound_texture = false;
+   i2 dim = {};
+   for_i32(image_index, 0, arrlen(loaded_images))
+   {
+    Loaded_Image *loaded_image = &loaded_images[image_index];
+    if ( string_match(loaded_image->filename, entry->filename) )
+    {
+     glBindTextureUnit(0, loaded_image->texture);
+     bound_texture = true;
+     dim = loaded_image->dim;
+     break;
+    }
+   }
+   
+   if (bound_texture == false)
+   {// NOTE: Image not loaded yet
+    u8 *data = 0;
+    {
+     int ncomp = 3;
+     data = stbi_load(entry->filename, &dim.x,&dim.y, 0,ncomp);
+    }
+    if (data)
+    {
+     char *filename = (char*)malloc(strlen(entry->filename)+1);  // NOTE: no free, I don't care where these strings are
+     strcpy(filename, entry->filename);
+     
+     Loaded_Image new_image = { .filename=filename, .dim=dim };
+     glGenTextures(1, &new_image.texture);
+     glBindTexture(GL_TEXTURE_2D, new_image.texture);
+     bound_texture = true;
+     glTexStorage2D_wrapper(GL_RGB8, dim.x, dim.y);
+     glTextureSubImage2D(new_image.texture,
+                         /*level*/0,
+                         /*offset*/0,0,
+                         dim.x, dim.y,
+                         GL_RGB, GL_UNSIGNED_BYTE,
+                         data);
+     free(data);  // NOTE: multiple sources saying this alright
+     arrpush(loaded_images, new_image);
+     kv_assert(arrlen(loaded_images) < 128);
+    }
+   }
+   
+   if (bound_texture)
+   {
+    ogl__uniform_mat4(uniform_object_transform, current_object_transform);
+    
+    v1 hw_ratio = v1(dim.y) / v1(dim.x);
+    v3 x = entry->x;
+    v3 y = hw_ratio*lengthof(x)*entry->y_info;
+    v3 a = entry->o-x-y;
+    v3 b = a + 2.f*x;
+    v3 c = b + 2.f*y;
+    v3 d = c - 2.f*x;
+    Render_Vertex A = { .pos=a, .uv=V2(0,0) };
+    Render_Vertex B = { .pos=b, .uv=V2(1,0) };
+    Render_Vertex C = { .pos=c, .uv=V2(1,1) };
+    Render_Vertex D = { .pos=d, .uv=V2(0,1) };
+    Render_Vertex vertices[6] = { A,B,C, A,C,D };
+    for_i32(index,0,alen(vertices)) {
+     vertices[index].color   = entry->color; 
+     vertices[index].prim_id = entry->prim_id; 
+    }
+    ogl__stream_draw(vertices, alen(vertices));
+   }
+  } 
+  else if (entry0->type == RET_Object_Transform)
+  {
+   current_object_transform = &entry0->object_transform;
+  }
+ }
+}
+
+internal void
+ogl_render(Render_Target *target, i2 mousep)
 {
  //@HardCoded Allow one 1080p screen
  const i32 MAX_PANEL_DIMX = 1920;
@@ -536,10 +722,9 @@ ogl_render(Render_Target *target)
  // NOTE: We use a different framebuffer because the default one doesn't let us attach any texture.
  local_persist GLuint color0_texture;
  local_persist GLuint depth_texture;
- local_persist GLuint csg_texture;
  
- local_persist GLuint prim_id_framebuffer;
  local_persist GLuint prim_id_texture;
+ local_persist GLuint prim_id_depth_texture;
  
  local_persist b32 first_opengl_call = true;
  if (first_opengl_call)
@@ -586,13 +771,15 @@ ogl_render(Render_Target *target)
   glDepthFunc(GL_LEQUAL);  // NOTE: "equal" because we want things drawn later to be on top, prolly doesn't matter
   glClearDepth(1.0f);
   
-  ogl_program_2      = ogl__create_program(OGL_Second_Pass, 0);
-  ogl_program_csg    = ogl__create_program(OGL_CSG, 0);
-  ogl_program_editor = ogl__create_program(OGL_Editor, 0);
+  ogl_program_2             = ogl__create_program(OGL_Second_Pass, 0);
+  ogl_program_2_prim_id     = ogl__create_program(OGL_Second_Pass, OGL_Write_Primitive_ID);
+  ogl_program_image         = ogl__create_program(OGL_Image, 0);
+  ogl_program_image_prim_id = ogl__create_program(OGL_Image, OGL_Write_Primitive_ID);
+  ogl_program_editor        = ogl__create_program(OGL_Editor, 0);
   
-  target->fallback_texture_id = ogl__gen_ed_texture(vec3i(2,2,1), TextureKind_Mono);
+  target->fallback_texture_id = ogl__gen_ed_texture(I3(2,2,1), TextureKind_Mono);
   u8 white_block[] = { 0xFF, 0xFF, 0xFF, 0xFF };
-  ogl__fill_texture(TextureKind_Mono, GLuint{}, vec3i(0,0,0), vec3i(2,2,1), white_block);
+  ogl__fill_texture(TextureKind_Mono, GLuint{}, I3(0,0,0), I3(2,2,1), white_block);
   
   {//NOTE: game frame buffer
    i32 W = MAX_PANEL_DIMX;
@@ -614,19 +801,6 @@ ogl_render(Render_Target *target)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture_target, color0_texture, /*level*/0);
    }
    
-#if 0
-   {//-Primitive ID texture
-    glGenTextures(1, &prim_id_texture);
-    glBindTexture(texture_target, prim_id_texture);
-    
-    glTexImage2DMultisample(texture_target, num_samples, GL_R16UI, W,H, GL_FALSE);
-    ogl__clamp_to_edge();
-    ogl__filter_nearest();
-    
-    glFramebufferTexture2D(GL_FRAMEBUFFER/*dummy*/, GL_COLOR_ATTACHMENT1, texture_target, prim_id_texture, /*level*/0);
-   }
-#endif
-   
    {//-Depth texture: Because we can't use the default one for some reason
     glGenTextures(1, &depth_texture);
     glBindTexture(texture_target, depth_texture);
@@ -636,53 +810,57 @@ ogl_render(Render_Target *target)
     glFramebufferTexture2D(GL_FRAMEBUFFER/*dummy param*/, GL_DEPTH_ATTACHMENT, texture_target, depth_texture, /*level*/0);
    }
    
-   {
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    kv_assert(status == GL_FRAMEBUFFER_COMPLETE);
-   }
+   assert_framebuffer_status();
    
    glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
   }
   
-  {
-   i32 W = MAX_PANEL_DIMX;
-   i32 H = MAX_PANEL_DIMY;
+  {//NOTE: ;init_prim_id_framebuffer
+   i32 W = 1;
+   i32 H = 1;
    glGenFramebuffers(1, &prim_id_framebuffer);
    glBindFramebuffer(GL_FRAMEBUFFER, prim_id_framebuffer);
    
    GLenum texture_target = GL_TEXTURE_2D;
-   glGenTextures(1, &prim_id_texture);
-   glBindTexture(texture_target, prim_id_texture);
-   glTexImage2D_wrapper(GL_R16UI, W,H, GL_RED_INTEGER, GL_UNSIGNED_SHORT, 0);
-   ogl__clamp_to_edge();
-   ogl__filter_nearest();
+   {
+    glGenTextures(1, &prim_id_texture);
+    glBindTexture(texture_target, prim_id_texture);
+    glTexStorage2D_wrapper(GL_R32UI, W,H);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture_target, prim_id_texture, /*level*/0);
+   }
    
-   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture_target, prim_id_texture, /*level*/0);
+   {//-NOTE: Depth texture
+    glGenTextures(1, &prim_id_depth_texture);
+    glBindTexture(texture_target, prim_id_depth_texture);
+    ogl__clamp_to_edge();
+    ogl__filter_nearest();
+    glTexStorage2D_wrapper(GL_DEPTH_COMPONENT24, W,H);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, texture_target, prim_id_depth_texture, /*level*/0);
+   }
+   
+   assert_framebuffer_status();
    
    glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
   }
-  
-  {// ;csg_texture_gen  @csg_texture_fill
-   glGenTextures(1, &csg_texture);
-   glBindTexture(GL_TEXTURE_2D, csg_texture);
-   // NOTE: I want the GPU to do conversion for me when it blits
-   glTexImage2D_wrapper(GL_RGBA8,
-                        MAX_PANEL_DIMX, MAX_PANEL_DIMY,
-                        GL_BGRA, GL_UNSIGNED_BYTE, 0);
-   ogl__clamp_to_edge();
-   ogl__filter_nearest();
-  }
  }
  
- {
+ {// NOTE: Clear default buffer
   glBindFramebuffer(GL_FRAMEBUFFER, DEFAULT_FRAMEBUFFER);
-  glViewport(0, 0, target->width, target->height);
 #if KV_INTERNAL  // NOTE: Irritating clear in debug mode only
   glClearColor(.2f,0.f,.2f,1.f);
 #else
   glClearColor(0.f,0.f,0.f,1.f);
 #endif
+  glClear(GL_COLOR_BUFFER_BIT);
+ }
+ 
+ {// NOTE: Clear primitive id buffer
+  // IMPORTANT: For some fucking reason, you just can't clear this before you clear the default framebuffer.
+  // If you do that, texture lookup *magically* breaks
+  glBindFramebuffer(GL_FRAMEBUFFER, prim_id_framebuffer);
+  glClearColor(0,0,0,0);
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+  glBindFramebuffer(GL_FRAMEBUFFER, DEFAULT_FRAMEBUFFER);
  }
  
  glBindTexture(GL_TEXTURE_2D, 0);
@@ -711,8 +889,12 @@ ogl_render(Render_Target *target)
    {// NOTE: get render dimensions
     rect2i box = Ri32(group->clip_box);
     dstx = box.x0;
-    dsty = (group->y_is_up ? (box.y0) : (target->height - box.y1));
-    dst_dim = cast_vec2(rect2i_dim(box));
+    dsty = box.y0; 
+    if (!group->y_is_up)
+    { 
+     dsty = target->height - box.y1;
+    };  // NOTE; For editor
+    dst_dim = V2(rect2i_dim(box));
      
     {// NOTE: Handle scale down (TODO: Should've just let the game change the render surface, that would save us the trouble of computing render location at both places)
      for_i32(it,0,group->scale_down_pow2)
@@ -729,110 +911,96 @@ ogl_render(Render_Target *target)
     macro_clamp_min(dst_dimx, 0); macro_clamp_min(dst_dimy, 0);
    }
    
-   if ( render_group_is_game(group) )
+   if( render_group_is_game(group) )
    {//~NOTE: Render for the game!
-    b32 is_main_viewport = (group->viewport_id == 1);
-     
+    v2 view_mousep = V2(mousep)-cast_V2(dstx,dsty);
+    b32 mouse_in_view = (view_mousep.x >= v1(dstx) &&
+                         view_mousep.y >= v1(dsty) &&
+                         view_mousep.x < dst_dim.x &&
+                         view_mousep.y < dst_dim.y);
+    b32 should_draw_prim_id = (group->viewport_id == 1) && mouse_in_view;
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
     glEnable(GL_FRAMEBUFFER_SRGB);
     glEnable(GL_DEPTH_TEST);
-    glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
     glEnable(GL_SCISSOR_TEST);
     glScissor(0,0, dst_dimx,dst_dimy);
     glViewport(0, 0, dst_dimx,dst_dimy);
     
     {//NOTE: Clears
-     {
-      glDrawBuffer( GL_COLOR_ATTACHMENT0 );
-      v4 bg_color = argb_unpack(group->background);
-      glClearColor( v4_expand(bg_color) );
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-     }
-     
-#if 0
-     if (is_main_viewport)
-     {
-      glDrawBuffer( GL_COLOR_ATTACHMENT1 );
-      glClearColor(0,0,0,0);
-      glClear(GL_COLOR_BUFFER_BIT);
-      
-      GLenum draw_buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-      glDrawBuffers( alen(draw_buffers), draw_buffers );
-     }
-#endif
+     v4 bg_color = argb_unpack(group->background);
+     glClearColor( v4_expand(bg_color) );
+     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
     
     //
-    mat4 *current_object_transform = &mat4_identity;
-    
-    for(Render_Entry *entry0 = group->entry_first;
-        entry0; 
-        entry0 = entry0->next)
+    mat4 object_transform = mat4_identity;
+    mat4 view_transform;
+    OGL_Program_State state_value = {.group = group};
+    auto state = &state_value;
+    //state->object_transform = &object_transform;
     {
-     if (entry0->type == Render_Poly)
+     state->camera_axes = to_mat3(group->camera_transform.forward);
      {
-      Render_Entry_Poly *entry = &entry0->poly;
-      {//-NOTE: Second pass
-       Render_Vertex_List *list = &entry->vertex_list;
-       if (list->count)
-       {
-        ogl__begin_program(target, group, dst_dim, OGL_Second_Pass, current_object_transform, 0);
-        
-        ogl__send_buffer_data(list);
-        glDrawArrays(GL_TRIANGLES, 0, list->count);
-        
-        ogl__end_program();
-       }
+      mat4 screen_transform;
+      {
+       // :viewport_alignment The center of the game viewport lines up with the center of the opengl viewport
+       v1 sx = 2.f*group->meter_to_pixel/dst_dim.x;
+       v1 sy = 2.f*group->meter_to_pixel/dst_dim.y;
+       screen_transform = mat4_scales(sx,sy,1.f);
       }
-      {//-NOTE: viz
-       Render_Vertex_List *list = &entry->vertex_list_overlay;
-       if (list->count > 0)
-       {
-        ogl__begin_program(target, group, dst_dim, OGL_Second_Pass, current_object_transform, OGL_Overlay);
-        ogl__send_buffer_data(list);
-        glDrawArrays(GL_TRIANGLES, 0, list->count);
-        ogl__end_program();
-       }
-      }
+      
+      view_transform = screen_transform*group->view_transform;  //NOTE: this view transform is different from the camera view transform, which is confusing?
      }
-     else if (entry0->type == Render_Object_Transform)
-     {
-      current_object_transform = &entry0->object_transform;
-     }
-     else if (entry0->type != Render_Null) { todo_incomplete; }
+    }
+    mat4 view_transform_offsetted_by_mousep;
+    if (should_draw_prim_id)
+    {
+     //NOTE: We have to translate in NDC space
+     mat4 translation = mat4_translate( -V3((2.f*view_mousep) / dst_dim, 0.f) );
+     view_transform_offsetted_by_mousep = translation*view_transform;
     }
     
-#if 0
-    {//-NOTE: ;csg_experimentation
-     //NOTE: render-spanning triangles
-     
-     {// NOTE: Update the buffer @csg_texture_gen
-      GLenum texture_target = GL_TEXTURE_2D;
-      glBindTexture(texture_target, csg_texture);
-      glBindTexture(GL_TEXTURE_2D, csg_texture);
-      // NOTE: see handmade_opengl.cpp > OpenGLDisplayBitmap, it does what we're doing here
-      glTexImage2D_wrapper(GL_RGBA8,
-                           dst_dimx,dst_dimy,
-                           GL_BGRA, GL_UNSIGNED_BYTE,
-                           global_csg_buffers[group->game_viewport_id-1]);
+    {// NOTE: second pass
+     {// NOTE: second pass
+      ogl__begin_program(state, ogl_program_2, &view_transform);
+      ogl__render_entries(group);
+      ogl__end_program();
      }
      
-     glBindTextureUnit(0, csg_texture);
-     ogl__begin_program(target, group, dst_dim, OGL_CSG, &mat4_identity, 0);
-     
-     Render_Vertex A = {.pos=vert4(-1,-1,0), .uv=vec2(0,0)};
-     Render_Vertex B = {.pos=vert4(-1,+1,0), .uv=vec2(0,1)};
-     Render_Vertex C = {.pos=vert4(+1,-1,0), .uv=vec2(1,0)};
-     Render_Vertex D = {.pos=vert4(+1,+1,0), .uv=vec2(1,1)};
-     Render_Vertex vertices[6] = { A,B,C, B,C,D, };
-     i32 count = alen(vertices);
-     glBufferData(GL_ARRAY_BUFFER, count*sizeof(Render_Vertex), vertices, GL_STREAM_DRAW);
-     
-     glDrawArrays(GL_TRIANGLES, 0, count);
-     glBindTextureUnit(0, target->texture_bound_at_unit0); //note: Set it back for Mr. Editor
-     
-     ogl__end_program();
+     {// NOTE: (prim id)
+      glBindFramebuffer(GL_FRAMEBUFFER, prim_id_framebuffer);
+      glDisable(GL_FRAMEBUFFER_SRGB); 
+      ogl__begin_program(state, ogl_program_2_prim_id,
+                         &view_transform_offsetted_by_mousep);
+      ogl__render_entries(group);
+      ogl__end_program();
+      glEnable(GL_FRAMEBUFFER_SRGB); 
+      glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
+     }
     }
-#endif
+    
+    {//-NOTE: Render @ReferenceImage
+     {// NOTE: actually rendering
+      ogl__begin_program(state, ogl_program_image, &view_transform);
+      ogl__render_images(group, false);
+      ogl__end_program();
+     }
+     
+     if (should_draw_prim_id)
+     {// NOTE: prim id
+      glBindFramebuffer(GL_FRAMEBUFFER, prim_id_framebuffer);
+      glDisable(GL_FRAMEBUFFER_SRGB); 
+      ogl__begin_program(state, ogl_program_image_prim_id,
+                         &view_transform_offsetted_by_mousep);
+      ogl__render_images(group, true);
+      ogl__end_program();
+      glEnable(GL_FRAMEBUFFER_SRGB); 
+      glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
+     }
+     
+     glBindTextureUnit(0, target->texture_bound_at_unit0); //NOTE: Set it back for Mr. Editor
+    }
     
     {// NOTE: Blit game_texture -> default framebuffer :game_blit
      glBindFramebuffer(GL_READ_FRAMEBUFFER, game_framebuffer);
@@ -842,24 +1010,12 @@ ogl_render(Render_Target *target)
                        dstx,dsty, dstx+dst_dimx, dsty+dst_dimy,
                        GL_COLOR_BUFFER_BIT, GL_NEAREST);
      
-#if 0
-     {// NOTE: readback 
-      u16 data[W*H] = {};
-      glBindFramebuffer(GL_READ_FRAMEBUFFER, readback_framebuffer);
-      glReadBuffer(GL_COLOR_ATTACHMENT0);
-      // https://www.khronos.org/opengl/wiki/Framebuffer#Read_color_buffer
-      // The read buffer is part of the framebuffer's state
-      glReadPixels(0,0,W,H, GL_RED, GL_UNSIGNED_SHORT, data);
-      breakhere;
-     }
-#endif
-     
      glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
     }
    }
    else
    {//-NOTE: Editor
-    kv_assert(group->entry_first->type == Render_Poly);
+    kv_assert(group->entry_first->type == RET_Poly);
     Render_Entry_Poly *entry = &group->entry_first->poly;
     
     {
@@ -902,3 +1058,5 @@ ogl_render(Render_Target *target)
   }
  }
 }
+
+//~

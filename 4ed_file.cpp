@@ -121,7 +121,7 @@ filename_terminate(Editing_File_Name *name){
 
 ////////////////////////////////
 
-// TODO(allen): filename should be String_Const_u8
+// TODO(allen): filename should be String
 internal b32
 save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *filename){
     b32 result = false;
@@ -135,7 +135,7 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
     
     if (filename != 0){
         if (models->save_file != 0){
-            Application_Links app = {};
+            App app = {};
             app.tctx = tctx;
             app.cmd_context = models;
             models->save_file(&app, file->id);
@@ -146,14 +146,14 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
         Scratch_Block scratch(tctx);
         
         if (!using_actual_filename){
-            String_Const_u8 s_filename = SCu8(filename);
-            String_Const_u8 canonical_filename = system_get_canonical(scratch, s_filename);
+            String s_filename = SCu8(filename);
+            String canonical_filename = system_get_canonical(scratch, s_filename);
             if (string_match(canonical_filename, string_from_filename(&file->canon))){
                 using_actual_filename = true;
             }
         }
         
-        String_Const_u8 saveable_string = buffer_stringify(scratch, buffer, Ii64(0, buffer_size(buffer)));
+        String saveable_string = buffer_stringify(scratch, buffer, Ii64(0, buffer_size(buffer)));
         
         File_Attributes new_attributes = system_save_file(scratch, (char*)filename, saveable_string);
         if (new_attributes.last_write_time > 0 &&
@@ -194,7 +194,7 @@ file_get_layout_func(Editing_File *file){
 }
 
 internal void
-file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String_Const_u8 val, File_Attributes attributes){
+file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String val, File_Attributes attributes){
     Scratch_Block scratch(tctx);
     
     Base_Allocator *allocator = tctx->allocator;
@@ -222,7 +222,7 @@ file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file
     
     {
         Temp_Memory temp = begin_temp(scratch);
-        String_Const_u8 name = SCu8(file->unique_name.name_space, file->unique_name.name_size);
+        String name = SCu8(file->unique_name.name_space, file->unique_name.name_size);
         name = string_escape(scratch, name);
         LogEventF(log_string(M), scratch, file->id, 0, system_thread_get_id(),
                   "init file [lwt=0x%llx] [name=\"%.*s\"]",
@@ -233,7 +233,7 @@ file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file
     ////////////////////////////////
     
     if (models->begin_buffer != 0){
-        Application_Links app = {};
+        App app = {};
         app.tctx = tctx;
         app.cmd_context = models;
         models->begin_buffer(&app, file->id);
@@ -260,7 +260,7 @@ file_free(Thread_Context *tctx, Models *models, Editing_File *file){
 
 ////////////////////////////////
 
-internal i32
+internal i1
 file_get_current_record_index(Editing_File *file){
     return(file->state.current_record_index);
 }
@@ -295,7 +295,7 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
         key.width = width;
         key.line_number = line_number;
         
-        String_Const_u8 key_data = make_data_struct(&key);
+        String key_data = make_data_struct(&key);
         
         Layout_Item_List *list = 0;
         
@@ -309,7 +309,7 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
             list = push_array(&file->state.cached_layouts_arena, Layout_Item_List, 1);
             Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, line_number);
             
-            Application_Links app = {};
+            App app = {};
             app.tctx = tctx;
             app.cmd_context = models;
             *list = layout_func(&app, &file->state.cached_layouts_arena,

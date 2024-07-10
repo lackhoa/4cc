@@ -14,7 +14,7 @@ internal game_set_preset_return
 game_set_preset(game_set_preset_params)
 {
  if (viewport_id <= 0) { viewport_id = 1; }
- i32 viewport_index = viewport_id - 1;
+ i1 viewport_index = viewport_id - 1;
  Viewport *viewport = &state->viewports[viewport_index];
  viewport->last_preset = viewport->preset;
  viewport->preset      = preset;
@@ -24,7 +24,7 @@ internal game_last_preset_return
 game_last_preset(game_last_preset_params)
 {
  if (viewport_id <= 0) { viewport_id = 1; }
- i32 viewport_index = viewport_id - 1;
+ i1 viewport_index = viewport_id - 1;
  Viewport *viewport = &state->viewports[viewport_index];
  macro_swap(viewport->preset, viewport->last_preset);
 }

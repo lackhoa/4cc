@@ -113,7 +113,7 @@ parse_buffer_to_jump_array(App *app, Arena *arena, Buffer_ID buffer)
 }
 
 internal void
-init_marker_list(Application_Links *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
+init_marker_list(App *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
     Scratch_Block scratch(app);
     
     Sticky_Jump_Array jumps = parse_buffer_to_jump_array(app, scratch, buffer);
@@ -253,7 +253,7 @@ get_or_make_list_for_buffer(App *app, Heap *heap, Buffer_ID buffer_id)
 }
 
 internal b32
-get_stored_jump_from_list(Application_Links *app, Marker_List *list, i32 index,
+get_stored_jump_from_list(App *app, Marker_List *list, i32 index,
                           Sticky_Jump_Stored *stored_out){
     Sticky_Jump_Stored stored = {};
     if (list != 0){
@@ -266,7 +266,7 @@ get_stored_jump_from_list(Application_Links *app, Marker_List *list, i32 index,
 }
 
 internal Sticky_Jump_Stored*
-get_all_stored_jumps_from_list(Application_Links *app, Arena *arena, Marker_List *list){
+get_all_stored_jumps_from_list(App *app, Arena *arena, Marker_List *list){
     Sticky_Jump_Stored *stored = 0;
     if (list != 0){
         Temp_Memory restore_point = begin_temp(arena);
@@ -282,7 +282,7 @@ get_all_stored_jumps_from_list(Application_Links *app, Arena *arena, Marker_List
 }
 
 internal b32
-get_jump_from_list(Application_Links *app, Marker_List *list, i32 index, ID_Pos_Jump_Location *location){
+get_jump_from_list(App *app, Marker_List *list, i32 index, ID_Pos_Jump_Location *location){
     b32 result = false;
     Sticky_Jump_Stored stored = {};
     if (get_stored_jump_from_list(app, list, index, &stored)){
@@ -336,7 +336,7 @@ get_is_sub_error_from_list(App *app, Marker_List *list, i32 index)
 }
 
 internal i32
-get_index_nearest_from_list(Application_Links *app, Marker_List *list, i64 line){
+get_index_nearest_from_list(App *app, Marker_List *list, i64 line){
     i32 result = -1;
     if (list != 0){
         Scratch_Block scratch(app);
@@ -349,7 +349,7 @@ get_index_nearest_from_list(Application_Links *app, Marker_List *list, i64 line)
 }
 
 internal i32
-get_index_exact_from_list(Application_Links *app, Marker_List *list, i64 line){
+get_index_exact_from_list(App *app, Marker_List *list, i64 line){
     i32 result = -1;
     if (list != 0){
         Scratch_Block scratch(app);

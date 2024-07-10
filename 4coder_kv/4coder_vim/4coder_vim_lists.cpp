@@ -1,18 +1,18 @@
 #include "4coder_vim_lister.cpp"
 
 function void
-vim__fill_command_lister(Arena *arena, Lister *lister, i32 *command_ids, i32 command_id_count, Command_Lister_Status_Rule *status_rule){
+vim__fill_command_lister(Arena *arena, Lister *lister, i1 *command_ids, i1 command_id_count, Command_Lister_Status_Rule *status_rule){
 	if(command_ids == 0){ command_id_count = command_one_past_last_id; }
 
-	for(i32 i=0; i<command_id_count; i++){
-		i32 j = (command_ids ? command_ids[i] : i);
+	for(i1 i=0; i<command_id_count; i++){
+		i1 j = (command_ids ? command_ids[i] : i);
 		j = clamp_between(0, j, command_one_past_last_id);
 
 		Custom_Command_Function *proc = fcoder_metacmd_table[j].proc;
 
 		Command_Trigger_List triggers = map_get_triggers_recursive(arena, status_rule->mapping, status_rule->map_id, proc);
 
-		List_String_Const_u8 list = {};
+		List_String list = {};
 		if(triggers.first == 0){
 			string_list_push(arena, &list, string_u8_litexpr(""));
 		}
@@ -23,16 +23,16 @@ vim__fill_command_lister(Arena *arena, Lister *lister, i32 *command_ids, i32 com
 			}
 		}
 
-		String_Const_u8 key_bind = string_list_flatten(arena, list);
-		String_Const_u8 description = SCu8(fcoder_metacmd_table[j].description);
-		String_Const_u8 status = push_stringf(arena, "%.*s\n%.*s", string_expand(key_bind), string_expand(description));
+		String key_bind = string_list_flatten(arena, list);
+		String description = SCu8(fcoder_metacmd_table[j].description);
+		String status = push_stringfz(arena, "%.*s\n%.*s", string_expand(key_bind), string_expand(description));
 
 		lister_add_item(lister, SCu8(fcoder_metacmd_table[j].name), status, (void*)proc, 0);
 	}
 }
 
 function Custom_Command_Function*
-vim_get_command_from_user(App *app, i32 *command_ids, i32 command_id_count, Command_Lister_Status_Rule *status_rule)
+vim_get_command_from_user(App *app, i1 *command_ids, i1 command_id_count, Command_Lister_Status_Rule *status_rule)
 {
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
@@ -77,12 +77,12 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 	Scratch_Block scratch(app, lister->arena);
 
 	Temp_Memory temp = begin_temp(lister->arena);
-	String_Const_u8 hot = push_hot_directory(app, lister->arena);
+	String hot = push_hot_directory(app, lister->arena);
 	if (!character_is_slash(string_get_character(hot, hot.size - 1))){
-		hot = push_stringf(lister->arena, "%.*s/", string_expand(hot));
+		hot = push_stringfz(lister->arena, "%.*s/", string_expand(hot));
 	}
 	lister_set_text_field(lister, hot);
-	lister_set_key(lister, string_front_of_path(hot));
+	lister_set_key(lister, path_filename(hot));
 
 	File_List file_list = system_get_file_list(scratch, hot);
 	end_temp(temp);
@@ -94,13 +94,12 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 	hot = push_hot_directory(app, lister->arena);
 	push_align(lister->arena, 8);
 	if (hot.str != 0){
-		String_Const_u8 empty_string = string_u8_litexpr("");
 		Lister_Prealloced_String empty_string_prealloced = lister_prealloced(empty_string);
 		for (File_Info **info = file_list.infos;
 			 info < one_past_last;
 			 info += 1){
 			if (!HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-			String8 filename = push_stringf(lister->arena, "%.*s/",
+			String8 filename = push_stringfz(lister->arena, "%.*s/",
                                             string_expand((**info).filename));
 			lister_add_item(lister, lister_prealloced(filename), empty_string_prealloced, filename.str, 0);
 			;
@@ -110,7 +109,7 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 			 info < one_past_last;
 			 info += 1){
 			if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-			String8 filename = push_string_copy(lister->arena, (**info).filename);
+			String8 filename = push_string_copyz(lister->arena, (**info).filename);
 			char *is_loaded = "";
 			char *status_flag = "";
 
@@ -118,7 +117,7 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 
 			{
 				Temp_Memory path_temp = begin_temp(lister->arena);
-				List_String_Const_u8 list = {};
+				List_String list = {};
 				string_list_push(lister->arena, &list, hot);
 				string_list_push_overlap(lister->arena, &list, '/', (**info).filename);
 				String8 full_file_path = string_list_flatten(lister->arena, list);
@@ -135,14 +134,14 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 					case DirtyState_UnsavedChangesAndUnloadedChanges: status_flag = " *!"; break;
 				}
 			}
-			String8 status = push_stringf(lister->arena, "%s%s", is_loaded, status_flag);
+			String8 status = push_stringfz(lister->arena, "%s%s", is_loaded, status_flag);
 			lister_add_item(lister, lister_prealloced(filename), lister_prealloced(status), filename.str, 0);
 		}
 	}
 }
 
 function Lister_Choice*
-vim_get_choice_from_user(Application_Links *app, String_Const_u8 query, Lister_Choice_List list){
+vim_get_choice_from_user(App *app, String query, Lister_Choice_List list){
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     for(Lister_Choice *choice = list.first; choice; choice = choice->next){
@@ -165,13 +164,13 @@ vim_get_choice_from_user(Application_Links *app, String_Const_u8 query, Lister_C
 }
 
 function b32
-vim_query_create_folder(Application_Links *app, String_Const_u8 folder_name){
+vim_query_create_folder(App *app, String folder_name){
 	Scratch_Block scratch(app);
     Lister_Choice_List list = {};
     lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
     lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
 
-    String_Const_u8 message = push_stringf(scratch, "Create the folder %.*s?", string_expand(folder_name));
+    String message = push_stringfz(scratch, "Create the folder %.*s?", string_expand(folder_name));
     Lister_Choice *choice = vim_get_choice_from_user(app, message, list);
 
 	b32 did_create_folder = false;
@@ -180,13 +179,13 @@ vim_query_create_folder(Application_Links *app, String_Const_u8 folder_name){
             case SureToCreateFolder_No:{} break;
 
             case SureToCreateFolder_Yes:{
-				String_Const_u8 hot = push_hot_directory(app, scratch);
-                String_Const_u8 fixed_folder_name = push_string_copy(scratch, folder_name);
+				String hot = push_hot_directory(app, scratch);
+                String fixed_folder_name = push_string_copyz(scratch, folder_name);
                 foreach(i, fixed_folder_name.size){
 					if(fixed_folder_name.str[i] == '/'){ fixed_folder_name.str[i] = '\\'; }
 				}
                 if(fixed_folder_name.size > 0){
-                    String_Const_u8 cmd = push_stringf(scratch, "mkdir %.*s", string_expand(fixed_folder_name));
+                    String cmd = push_stringfz(scratch, "mkdir %.*s", string_expand(fixed_folder_name));
                     exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
                     did_create_folder = true;
 				}
@@ -207,12 +206,12 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
 		File_Name_Result result = vim_get_filename_from_user(app, scratch, SCu8("Open/New:"), view);
 		if(result.canceled || result.path_in_text_field.str == 0){ break; }
 
-		String_Const_u8 filename = result.filename_activated;
+		String filename = result.filename_activated;
 		if(filename.size == 0){ filename = result.filename_in_text_field; }
 
-		String_Const_u8 path = result.path_in_text_field;
-		String_Const_u8 full_filename =
-			push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(filename));
+		String path = result.path_in_text_field;
+		String full_filename =
+			push_stringfz(scratch, "%.*s/%.*s", string_expand(path), string_expand(filename));
 
 		if(result.is_folder){
 			set_hot_directory(app, full_filename);
@@ -314,12 +313,12 @@ vim_get_jump_index_from_user(App *app, Marker_List *list,
 
 		Buffer_ID list_buffer = list->buffer_id;
 
-		i32 option_count = list->jump_count;
+		i1 option_count = list->jump_count;
 		Managed_Object stored_jumps = list->jump_array;
-		for (i32 i = 0; i < option_count; i += 1){
+		for (i1 i = 0; i < option_count; i += 1){
 			Sticky_Jump_Stored stored = {};
 			managed_object_load_data(app, stored_jumps, i, 1, &stored);
-			String_Const_u8 line = push_buffer_line(app, scratch, list_buffer,
+			String line = push_buffer_line(app, scratch, list_buffer,
 													stored.list_line);
 			lister_add_item(lister, line, SCu8(), IntAsPtr(i), 0);
 		}
@@ -327,7 +326,7 @@ vim_get_jump_index_from_user(App *app, Marker_List *list,
 		Lister_Result l_result = vim_run_lister(app, lister);
 		if (!l_result.canceled){
 			result.success = true;
-			result.index = (i32)PtrAsInt(l_result.user_data);
+			result.index = (i1)PtrAsInt(l_result.user_data);
         }
     }
 
@@ -335,7 +334,7 @@ vim_get_jump_index_from_user(App *app, Marker_List *list,
 }
 
 function Jump_Lister_Result
-vim_get_jump_index_from_user(Application_Links *app, Marker_List *list, char *query)
+vim_get_jump_index_from_user(App *app, Marker_List *list, char *query)
 {
 	return(vim_get_jump_index_from_user(app, list, SCu8(query)));
 }
@@ -377,7 +376,7 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 	Variable_Handle cmd_list_var = vars_read_key(prj_var, vars_intern_lit("commands"));
 	String_ID os_id = vars_intern_lit(OS_NAME);
 
-	i32 i=1;
+	i1 i=1;
 	for(Variable_Handle cmd=vars_first_child(cmd_list_var); !vars_is_nil(cmd); cmd=vars_next_sibling(cmd), i++){
 		Variable_Handle os_cmd = vars_read_key(cmd, os_id);
 		if(!vars_is_nil(os_cmd)){
@@ -403,13 +402,13 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 }
 
 function void 
-vim_jump_navigate(Application_Links *app, View_ID view, Lister *lister, i32 index_delta)
+vim_jump_navigate(App *app, View_ID view, Lister *lister, i1 index_delta)
 {
 	lister__navigate__default(app, view, lister, index_delta);
 
 	Managed_Scope scope = view_get_managed_scope(app, view);
 	Vim_Jump_List *jump_list = scope_attachment(app, scope, vim_view_jumps, Vim_Jump_List);
-	i32 index = i32(PtrAsInt(lister_get_user_data(lister, lister->raw_item_index)));
+	i1 index = i1(PtrAsInt(lister_get_user_data(lister, lister->raw_item_index)));
 	if(!in_range_exclude_last(0, index, ArrayCount(jump_list->markers))){ return; }
 	Point_Stack_Slot *slot = &jump_list->markers[index];
 	view_set_buffer(app, view, slot->buffer, SetBuffer_KeepOriginalGUI);
@@ -429,29 +428,29 @@ CUSTOM_DOC("Opens an interactive lists of the views jumps")
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Managed_Scope scope = view_get_managed_scope(app, view);
 	Vim_Jump_List *jump_list = scope_attachment(app, scope, vim_view_jumps, Vim_Jump_List);
-	for(i32 i=jump_list->index; i != jump_list->bot; i=ArrayDec(jump_list->markers, i)){
+	for(i1 i=jump_list->index; i != jump_list->bot; i=ArrayDec(jump_list->markers, i)){
 		Point_Stack_Slot *slot = jump_list->markers + i;
 		i64 line = get_line_number_from_pos(app, slot->buffer, i64(slot->object));
 
-		String_Const_u8 line_text = push_buffer_line(app, scratch, slot->buffer, line);
+		String line_text = push_buffer_line(app, scratch, slot->buffer, line);
 		b32 blank = true;
 		foreach(j, line_text.size){
 			if(!character_is_whitespace(line_text.str[j])){ blank = false; break; }
 		}
 		if(blank){ line_text = string_u8_litexpr("*blank*"); }
 		line_text.size = Min(line_text.size, 20);
-		String_Const_u8 unique_name = push_buffer_unique_name(app, scratch, slot->buffer);
-		String_Const_u8 text = push_stringf(scratch, "[%.*s]:(%d)", string_expand(unique_name), line);
+		String unique_name = push_buffer_unique_name(app, scratch, slot->buffer);
+		String text = push_stringfz(scratch, "[%.*s]:(%d)", string_expand(unique_name), line);
 		lister_add_item(lister, text, line_text, IntAsPtr(i), 0);
 	}
 	Lister_Result l_result = vim_run_lister(app, lister);
-	i32 index = (!l_result.canceled ? i32(PtrAsInt(l_result.user_data)) : jump_list->index);
+	i1 index = (!l_result.canceled ? i1(PtrAsInt(l_result.user_data)) : jump_list->index);
 	vim_set_jump(app, view, jump_list, index);
 }
 
 
 function b32
-vim_do_buffer_close_user_check(Application_Links *app, Buffer_ID buffer, View_ID view){
+vim_do_buffer_close_user_check(App *app, Buffer_ID buffer, View_ID view){
     Scratch_Block scratch(app);
     Lister_Choice_List list = {};
     lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
@@ -468,12 +467,12 @@ vim_do_buffer_close_user_check(Application_Links *app, Buffer_ID buffer, View_ID
             case SureToKill_Yes:{ do_kill = true; } break;
 
             case SureToKill_Save:{
-                String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+                String filename = push_buffer_filename(app, scratch, buffer);
                 if(buffer_save(app, buffer, filename, BufferSave_IgnoreDirtyFlag)){
                     do_kill = true;
                 }else{
 #define M "Did not close '%.*s' because it did not successfully save."
-                    String_Const_u8 str = push_stringf(scratch, M, string_expand(filename));
+                    String str = push_stringfz(scratch, M, string_expand(filename));
 #undef M
                     print_message(app, str);
                 }
@@ -485,7 +484,7 @@ vim_do_buffer_close_user_check(Application_Links *app, Buffer_ID buffer, View_ID
 }
 
 function Buffer_Kill_Result
-vim_try_buffer_kill(Application_Links *app){
+vim_try_buffer_kill(App *app){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	Buffer_Kill_Flag flags = 0;
@@ -499,7 +498,7 @@ vim_try_buffer_kill(Application_Links *app){
 }
 
 function b32
-vim_do_4coder_close_user_check(Application_Links *app, View_ID view){
+vim_do_4coder_close_user_check(App *app, View_ID view){
 	Scratch_Block scratch(app);
 	Lister_Choice_List list = {};
 	lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
@@ -532,7 +531,7 @@ vim_do_4coder_close_user_check(Application_Links *app, View_ID view){
 }
 
 internal b32
-vim_4coder_close_are_you_sure_check(Application_Links *app, View_ID view)
+vim_4coder_close_are_you_sure_check(App *app, View_ID view)
 {
 	Scratch_Block scratch(app);
 	Lister_Choice_List list = {};
@@ -554,10 +553,10 @@ vim_4coder_close_are_you_sure_check(Application_Links *app, View_ID view)
 }
 
 function void
-vim_reload_external_changes_lister(Application_Links *app, Buffer_ID buffer){
+vim_reload_external_changes_lister(App *app, Buffer_ID buffer){
 	Scratch_Block scratch(app);
 	Lister_Choice_List list = {};
-	String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer);
+	String buffer_name = push_buffer_base_name(app, scratch, buffer);
 
 	if(buffer_name.size == 0){ return; }
 	lister_choice(scratch, &list, buffer_name, "", Key_Code_Q, u64(0));

@@ -268,78 +268,78 @@ GB_MATH_DEF float  gb_half_to_float(gbHalf value);
 GB_MATH_DEF gbHalf gb_float_to_half(float value);
 
 
-GB_MATH_DEF gbVec2 gb_vec2_zero(void);
-GB_MATH_DEF gbVec2 gb_vec2     (float x, float y);
-GB_MATH_DEF gbVec2 gb_vec2v    (float x[2]);
+GB_MATH_DEF gbVec2 gb_V2_zero(void);
+GB_MATH_DEF gbVec2 gb_V2     (float x, float y);
+GB_MATH_DEF gbVec2 gb_V2v    (float x[2]);
 
-GB_MATH_DEF gbVec3 gb_vec3_zero(void);
-GB_MATH_DEF gbVec3 gb_vec3     (float x, float y, float z);
-GB_MATH_DEF gbVec3 gb_vec3v    (float x[3]);
+GB_MATH_DEF gbVec3 gb_V3_zero(void);
+GB_MATH_DEF gbVec3 gb_V3     (float x, float y, float z);
+GB_MATH_DEF gbVec3 gb_V3v    (float x[3]);
 
-GB_MATH_DEF gbVec4 gb_vec4_zero(void);
-GB_MATH_DEF gbVec4 gb_vec4     (float x, float y, float z, float w);
-GB_MATH_DEF gbVec4 gb_vec4v    (float x[4]);
+GB_MATH_DEF gbVec4 gb_V4_zero(void);
+GB_MATH_DEF gbVec4 gb_V4     (float x, float y, float z, float w);
+GB_MATH_DEF gbVec4 gb_V4v    (float x[4]);
 
 
-GB_MATH_DEF void gb_vec2_add(gbVec2 *d, gbVec2 v0, gbVec2 v1);
-GB_MATH_DEF void gb_vec2_sub(gbVec2 *d, gbVec2 v0, gbVec2 v1);
-GB_MATH_DEF void gb_vec2_mul(gbVec2 *d, gbVec2 v,  float s);
-GB_MATH_DEF void gb_vec2_div(gbVec2 *d, gbVec2 v,  float s);
+GB_MATH_DEF void gb_V2_add(gbVec2 *d, gbVec2 v0, gbVec2 v1);
+GB_MATH_DEF void gb_V2_sub(gbVec2 *d, gbVec2 v0, gbVec2 v1);
+GB_MATH_DEF void gb_V2_mul(gbVec2 *d, gbVec2 v,  float s);
+GB_MATH_DEF void gb_V2_div(gbVec2 *d, gbVec2 v,  float s);
 
-GB_MATH_DEF void gb_vec3_add(gbVec3 *d, gbVec3 v0, gbVec3 v1);
-GB_MATH_DEF void gb_vec3_sub(gbVec3 *d, gbVec3 v0, gbVec3 v1);
-GB_MATH_DEF void gb_vec3_mul(gbVec3 *d, gbVec3 v,  float s);
-GB_MATH_DEF void gb_vec3_div(gbVec3 *d, gbVec3 v,  float s);
+GB_MATH_DEF void gb_V3_add(gbVec3 *d, gbVec3 v0, gbVec3 v1);
+GB_MATH_DEF void gb_V3_sub(gbVec3 *d, gbVec3 v0, gbVec3 v1);
+GB_MATH_DEF void gb_V3_mul(gbVec3 *d, gbVec3 v,  float s);
+GB_MATH_DEF void gb_V3_div(gbVec3 *d, gbVec3 v,  float s);
 
-GB_MATH_DEF void gb_vec4_add(gbVec4 *d, gbVec4 v0, gbVec4 v1);
-GB_MATH_DEF void gb_vec4_sub(gbVec4 *d, gbVec4 v0, gbVec4 v1);
-GB_MATH_DEF void gb_vec4_mul(gbVec4 *d, gbVec4 v,  float s);
-GB_MATH_DEF void gb_vec4_div(gbVec4 *d, gbVec4 v,  float s);
+GB_MATH_DEF void gb_V4_add(gbVec4 *d, gbVec4 v0, gbVec4 v1);
+GB_MATH_DEF void gb_V4_sub(gbVec4 *d, gbVec4 v0, gbVec4 v1);
+GB_MATH_DEF void gb_V4_mul(gbVec4 *d, gbVec4 v,  float s);
+GB_MATH_DEF void gb_V4_div(gbVec4 *d, gbVec4 v,  float s);
 
-GB_MATH_DEF void gb_vec2_addeq(gbVec2 *d, gbVec2 v);
-GB_MATH_DEF void gb_vec2_subeq(gbVec2 *d, gbVec2 v);
-GB_MATH_DEF void gb_vec2_muleq(gbVec2 *d, float s);
-GB_MATH_DEF void gb_vec2_diveq(gbVec2 *d, float s);
+GB_MATH_DEF void gb_V2_addeq(gbVec2 *d, gbVec2 v);
+GB_MATH_DEF void gb_V2_subeq(gbVec2 *d, gbVec2 v);
+GB_MATH_DEF void gb_V2_muleq(gbVec2 *d, float s);
+GB_MATH_DEF void gb_V2_diveq(gbVec2 *d, float s);
 
-GB_MATH_DEF void gb_vec3_addeq(gbVec3 *d, gbVec3 v);
-GB_MATH_DEF void gb_vec3_subeq(gbVec3 *d, gbVec3 v);
-GB_MATH_DEF void gb_vec3_muleq(gbVec3 *d, float s);
-GB_MATH_DEF void gb_vec3_diveq(gbVec3 *d, float s);
+GB_MATH_DEF void gb_V3_addeq(gbVec3 *d, gbVec3 v);
+GB_MATH_DEF void gb_V3_subeq(gbVec3 *d, gbVec3 v);
+GB_MATH_DEF void gb_V3_muleq(gbVec3 *d, float s);
+GB_MATH_DEF void gb_V3_diveq(gbVec3 *d, float s);
 
-GB_MATH_DEF void gb_vec4_addeq(gbVec4 *d, gbVec4 v);
-GB_MATH_DEF void gb_vec4_subeq(gbVec4 *d, gbVec4 v);
-GB_MATH_DEF void gb_vec4_muleq(gbVec4 *d, float s);
-GB_MATH_DEF void gb_vec4_diveq(gbVec4 *d, float s);
+GB_MATH_DEF void gb_V4_addeq(gbVec4 *d, gbVec4 v);
+GB_MATH_DEF void gb_V4_subeq(gbVec4 *d, gbVec4 v);
+GB_MATH_DEF void gb_V4_muleq(gbVec4 *d, float s);
+GB_MATH_DEF void gb_V4_diveq(gbVec4 *d, float s);
 
-GB_MATH_DEF float gb_vec2_dot(gbVec2 v0, gbVec2 v1);
-GB_MATH_DEF float gb_vec3_dot(gbVec3 v0, gbVec3 v1);
-GB_MATH_DEF float gb_vec4_dot(gbVec4 v0, gbVec4 v1);
+GB_MATH_DEF float gb_V2_dot(gbVec2 v0, gbVec2 v1);
+GB_MATH_DEF float gb_V3_dot(gbVec3 v0, gbVec3 v1);
+GB_MATH_DEF float gb_V4_dot(gbVec4 v0, gbVec4 v1);
 
-GB_MATH_DEF void gb_vec2_cross(float *d, gbVec2 v0, gbVec2 v1);
-GB_MATH_DEF void gb_vec3_cross(gbVec3 *d, gbVec3 v0, gbVec3 v1);
+GB_MATH_DEF void gb_V2_cross(float *d, gbVec2 v0, gbVec2 v1);
+GB_MATH_DEF void gb_V3_cross(gbVec3 *d, gbVec3 v0, gbVec3 v1);
 
-GB_MATH_DEF float gb_vec2_mag2(gbVec2 v);
-GB_MATH_DEF float gb_vec3_mag2(gbVec3 v);
-GB_MATH_DEF float gb_vec4_mag2(gbVec4 v);
+GB_MATH_DEF float gb_V2_mag2(gbVec2 v);
+GB_MATH_DEF float gb_V3_mag2(gbVec3 v);
+GB_MATH_DEF float gb_V4_mag2(gbVec4 v);
 
-GB_MATH_DEF float gb_vec2_mag(gbVec2 v);
-GB_MATH_DEF float gb_vec3_mag(gbVec3 v);
-GB_MATH_DEF float gb_vec4_mag(gbVec4 v);
+GB_MATH_DEF float gb_V2_mag(gbVec2 v);
+GB_MATH_DEF float gb_V3_mag(gbVec3 v);
+GB_MATH_DEF float gb_V4_mag(gbVec4 v);
 
-GB_MATH_DEF void gb_vec2_norm(gbVec2 *d, gbVec2 v);
-GB_MATH_DEF void gb_vec3_norm(gbVec3 *d, gbVec3 v);
-GB_MATH_DEF void gb_vec4_norm(gbVec4 *d, gbVec4 v);
+GB_MATH_DEF void gb_V2_norm(gbVec2 *d, gbVec2 v);
+GB_MATH_DEF void gb_V3_norm(gbVec3 *d, gbVec3 v);
+GB_MATH_DEF void gb_V4_norm(gbVec4 *d, gbVec4 v);
 
-GB_MATH_DEF void gb_vec2_norm0(gbVec2 *d, gbVec2 v);
-GB_MATH_DEF void gb_vec3_norm0(gbVec3 *d, gbVec3 v);
-GB_MATH_DEF void gb_vec4_norm0(gbVec4 *d, gbVec4 v);
+GB_MATH_DEF void gb_V2_norm0(gbVec2 *d, gbVec2 v);
+GB_MATH_DEF void gb_V3_norm0(gbVec3 *d, gbVec3 v);
+GB_MATH_DEF void gb_V4_norm0(gbVec4 *d, gbVec4 v);
 
-GB_MATH_DEF void gb_vec2_reflect(gbVec2 *d, gbVec2 i, gbVec2 n);
-GB_MATH_DEF void gb_vec3_reflect(gbVec3 *d, gbVec3 i, gbVec3 n);
-GB_MATH_DEF void gb_vec2_refract(gbVec2 *d, gbVec2 i, gbVec2 n, float eta);
-GB_MATH_DEF void gb_vec3_refract(gbVec3 *d, gbVec3 i, gbVec3 n, float eta);
+GB_MATH_DEF void gb_V2_reflect(gbVec2 *d, gbVec2 i, gbVec2 n);
+GB_MATH_DEF void gb_V3_reflect(gbVec3 *d, gbVec3 i, gbVec3 n);
+GB_MATH_DEF void gb_V2_refract(gbVec2 *d, gbVec2 i, gbVec2 n, float eta);
+GB_MATH_DEF void gb_V3_refract(gbVec3 *d, gbVec3 i, gbVec3 n, float eta);
 
-GB_MATH_DEF float gb_vec2_aspect_ratio(gbVec2 v);
+GB_MATH_DEF float gb_V2_aspect_ratio(gbVec2 v);
 
 
 GB_MATH_DEF void gb_mat2_identity   (gbMat2 *m);
@@ -347,7 +347,7 @@ GB_MATH_DEF void gb_float22_identity(float m[2][2]);
 
 GB_MATH_DEF void  gb_mat2_transpose  (gbMat2 *m);
 GB_MATH_DEF void  gb_mat2_mul        (gbMat2 *out, gbMat2 *m1, gbMat2 *m2);
-GB_MATH_DEF void  gb_mat2_mul_vec2   (gbVec2 *out, gbMat2 *m, gbVec2 in);
+GB_MATH_DEF void  gb_mat2_mul_V2   (gbVec2 *out, gbMat2 *m, gbVec2 in);
 GB_MATH_DEF void  gb_mat2_inverse    (gbMat2 *out, gbMat2 *in);
 GB_MATH_DEF float gb_mat2_determinate(gbMat2 *m);
 
@@ -359,7 +359,7 @@ GB_MATH_DEF gbFloat2 *gb_float22_4(float m[4]);
 
 GB_MATH_DEF void gb_float22_transpose(float (*vec)[2]);
 GB_MATH_DEF void gb_float22_mul      (float (*out)[2], float (*mat1)[2], float (*mat2)[2]);
-GB_MATH_DEF void gb_float22_mul_vec2 (gbVec2 *out, float m[2][2], gbVec2 in);
+GB_MATH_DEF void gb_float22_mul_V2 (gbVec2 *out, float m[2][2], gbVec2 in);
 
 
 GB_MATH_DEF void gb_mat3_identity   (gbMat3 *m);
@@ -367,7 +367,7 @@ GB_MATH_DEF void gb_float33_identity(float m[3][3]);
 
 GB_MATH_DEF void  gb_mat3_transpose  (gbMat3 *m);
 GB_MATH_DEF void  gb_mat3_mul        (gbMat3 *out, gbMat3 *m1, gbMat3 *m2);
-GB_MATH_DEF void  gb_mat3_mul_vec3   (gbVec3 *out, gbMat3 *m, gbVec3 in);
+GB_MATH_DEF void  gb_mat3_mul_V3   (gbVec3 *out, gbMat3 *m, gbVec3 in);
 GB_MATH_DEF void  gb_mat3_inverse    (gbMat3 *out, gbMat3 *in);
 GB_MATH_DEF float gb_mat3_determinate(gbMat3 *m);
 
@@ -381,14 +381,14 @@ GB_MATH_DEF gbFloat3 *gb_float33_9(float m[9]);
 
 GB_MATH_DEF void gb_float33_transpose(float (*vec)[3]);
 GB_MATH_DEF void gb_float33_mul      (float (*out)[3], float (*mat1)[3], float (*mat2)[3]);
-GB_MATH_DEF void gb_float33_mul_vec3 (gbVec3 *out, float m[3][3], gbVec3 in);
+GB_MATH_DEF void gb_float33_mul_V3 (gbVec3 *out, float m[3][3], gbVec3 in);
 
 GB_MATH_DEF void gb_mat4_identity   (gbMat4 *m);
 GB_MATH_DEF void gb_float44_identity(float m[4][4]);
 
 GB_MATH_DEF void  gb_mat4_transpose  (gbMat4 *m);
 GB_MATH_DEF void  gb_mat4_mul        (gbMat4 *out, gbMat4 *m1, gbMat4 *m2);
-GB_MATH_DEF void  gb_mat4_mul_vec4   (gbVec4 *out, gbMat4 *m, gbVec4 in);
+GB_MATH_DEF void  gb_mat4_mul_V4   (gbVec4 *out, gbMat4 *m, gbVec4 in);
 GB_MATH_DEF void  gb_mat4ierse    (gbMat4 *out, gbMat4 *in);
 
 GB_MATH_DEF gbMat4 *gb_mat4_v(gbVec4 m[4]);
@@ -400,7 +400,7 @@ GB_MATH_DEF gbFloat4 *gb_float44_16(float m[16]);
 
 GB_MATH_DEF void gb_float44_transpose(float (*vec)[4]);
 GB_MATH_DEF void gb_float44_mul      (float (*out)[4], float (*mat1)[4], float (*mat2)[4]);
-GB_MATH_DEF void gb_float44_mul_vec4 (gbVec4 *out, float m[4][4], gbVec4 in);
+GB_MATH_DEF void gb_float44_mul_V4 (gbVec4 *out, float m[4][4], gbVec4 in);
 
 
 GB_MATH_DEF void gb_mat4_translate           (gbMat4 *out, gbVec3 v);
@@ -458,7 +458,7 @@ GB_MATH_DEF float gb_quat_yaw  (gbQuat q);
 GB_MATH_DEF float gb_quat_roll (gbQuat q);
 
 /* NOTE(bill): Rotate v by q */
-GB_MATH_DEF void gb_quat_rotate_vec3(gbVec3 *d, gbQuat q, gbVec3 v);
+GB_MATH_DEF void gb_quat_rotate_V3(gbVec3 *d, gbQuat q, gbVec3 v);
 GB_MATH_DEF void gb_mat4_from_quat  (gbMat4 *out, gbQuat q);
 GB_MATH_DEF void gb_quat_from_mat4  (gbQuat *out, gbMat4 *m);
 
@@ -470,9 +470,9 @@ GB_MATH_DEF float gb_unlerp       (float t, float a, float b);
 GB_MATH_DEF float gb_smooth_step  (float a, float b, float t);
 GB_MATH_DEF float gb_smoother_step(float a, float b, float t);
 
-GB_MATH_DEF void gb_vec2_lerp(gbVec2 *d, gbVec2 a, gbVec2 b, float t);
-GB_MATH_DEF void gb_vec3_lerp(gbVec3 *d, gbVec3 a, gbVec3 b, float t);
-GB_MATH_DEF void gb_vec4_lerp(gbVec4 *d, gbVec4 a, gbVec4 b, float t);
+GB_MATH_DEF void gb_V2_lerp(gbVec2 *d, gbVec2 a, gbVec2 b, float t);
+GB_MATH_DEF void gb_V3_lerp(gbVec3 *d, gbVec3 a, gbVec3 b, float t);
+GB_MATH_DEF void gb_V4_lerp(gbVec4 *d, gbVec4 a, gbVec4 b, float t);
 
 GB_MATH_DEF void gb_quat_lerp (gbQuat *d, gbQuat a, gbQuat b, float t);
 GB_MATH_DEF void gb_quat_nlerp(gbQuat *d, gbQuat a, gbQuat b, float t);
@@ -491,7 +491,7 @@ GB_MATH_DEF gbRect3 gb_rect3(gbVec3 pos, gbVec3 dim);
 GB_MATH_DEF gbRect3 gb_rect3v(float v[6]);
 
 GB_MATH_DEF int gb_rect2_contains           (gbRect2 a, float x, float y);
-GB_MATH_DEF int gb_rect2_contains_vec2      (gbRect2 a, gbVec2 p);
+GB_MATH_DEF int gb_rect2_contains_V2      (gbRect2 a, gbVec2 p);
 GB_MATH_DEF int gb_rect2_intersects         (gbRect2 a, gbRect2 b);
 GB_MATH_DEF int gb_rect2_intersection_result(gbRect2 a, gbRect2 b, gbRect2 *intersection);
 
@@ -524,10 +524,10 @@ inline bool operator!=(gbVec2 a, gbVec2 b) { return !operator==(a, b); }
 inline gbVec2 operator+(gbVec2 a) { return a; }
 inline gbVec2 operator-(gbVec2 a) { gbVec2 r = {-a.x, -a.y}; return r; }
 
-inline gbVec2 operator+(gbVec2 a, gbVec2 b) { gbVec2 r; gb_vec2_add(&r, a, b); return r; }
-inline gbVec2 operator-(gbVec2 a, gbVec2 b) { gbVec2 r; gb_vec2_sub(&r, a, b); return r; }
+inline gbVec2 operator+(gbVec2 a, gbVec2 b) { gbVec2 r; gb_V2_add(&r, a, b); return r; }
+inline gbVec2 operator-(gbVec2 a, gbVec2 b) { gbVec2 r; gb_V2_sub(&r, a, b); return r; }
 
-inline gbVec2 operator*(gbVec2 a, float scalar) { gbVec2 r; gb_vec2_mul(&r, a, scalar); return r; }
+inline gbVec2 operator*(gbVec2 a, float scalar) { gbVec2 r; gb_V2_mul(&r, a, scalar); return r; }
 inline gbVec2 operator*(float scalar, gbVec2 a) { return operator*(a, scalar); }
 
 inline gbVec2 operator/(gbVec2 a, float scalar) { return operator*(a, 1.0f/scalar); }
@@ -548,10 +548,10 @@ inline bool operator!=(gbVec3 a, gbVec3 b) { return !operator==(a, b); }
 inline gbVec3 operator+(gbVec3 a) { return a; }
 inline gbVec3 operator-(gbVec3 a) { gbVec3 r = {-a.x, -a.y, -a.z}; return r; }
 
-inline gbVec3 operator+(gbVec3 a, gbVec3 b) { gbVec3 r; gb_vec3_add(&r, a, b); return r; }
-inline gbVec3 operator-(gbVec3 a, gbVec3 b) { gbVec3 r; gb_vec3_sub(&r, a, b); return r; }
+inline gbVec3 operator+(gbVec3 a, gbVec3 b) { gbVec3 r; gb_V3_add(&r, a, b); return r; }
+inline gbVec3 operator-(gbVec3 a, gbVec3 b) { gbVec3 r; gb_V3_sub(&r, a, b); return r; }
 
-inline gbVec3 operator*(gbVec3 a, float scalar) { gbVec3 r; gb_vec3_mul(&r, a, scalar); return r; }
+inline gbVec3 operator*(gbVec3 a, float scalar) { gbVec3 r; gb_V3_mul(&r, a, scalar); return r; }
 inline gbVec3 operator*(float scalar, gbVec3 a) { return operator*(a, scalar); }
 
 inline gbVec3 operator/(gbVec3 a, float scalar) { return operator*(a, 1.0f/scalar); }
@@ -572,10 +572,10 @@ inline bool operator!=(gbVec4 a, gbVec4 b) { return !operator==(a, b); }
 inline gbVec4 operator+(gbVec4 a) { return a; }
 inline gbVec4 operator-(gbVec4 a) { gbVec4 r = {-a.x, -a.y, -a.z, -a.w}; return r; }
 
-inline gbVec4 operator+(gbVec4 a, gbVec4 b) { gbVec4 r; gb_vec4_add(&r, a, b); return r; }
-inline gbVec4 operator-(gbVec4 a, gbVec4 b) { gbVec4 r; gb_vec4_sub(&r, a, b); return r; }
+inline gbVec4 operator+(gbVec4 a, gbVec4 b) { gbVec4 r; gb_V4_add(&r, a, b); return r; }
+inline gbVec4 operator-(gbVec4 a, gbVec4 b) { gbVec4 r; gb_V4_sub(&r, a, b); return r; }
 
-inline gbVec4 operator*(gbVec4 a, float scalar) { gbVec4 r; gb_vec4_mul(&r, a, scalar); return r; }
+inline gbVec4 operator*(gbVec4 a, float scalar) { gbVec4 r; gb_V4_mul(&r, a, scalar); return r; }
 inline gbVec4 operator*(float scalar, gbVec4 a) { return operator*(a, scalar); }
 
 inline gbVec4 operator/(gbVec4 a, float scalar) { return operator*(a, 1.0f/scalar); }
@@ -611,7 +611,7 @@ inline gbMat2 operator-(gbMat2 const &a, gbMat2 const &b) {
 }
 
 inline gbMat2 operator*(gbMat2 const &a, gbMat2 const &b) { gbMat2 r; gb_mat2_mul(&r, (gbMat2 *)&a, (gbMat2 *)&b); return r; }
-inline gbVec2 operator*(gbMat2 const &a, gbVec2 v) { gbVec2 r; gb_mat2_mul_vec2(&r, (gbMat2 *)&a, v); return r; }
+inline gbVec2 operator*(gbMat2 const &a, gbVec2 v) { gbVec2 r; gb_mat2_mul_V2(&r, (gbMat2 *)&a, v); return r; }
 inline gbMat2 operator*(gbMat2 const &a, float scalar) {
 	gbMat2 r = {0};
 	int i;
@@ -648,7 +648,7 @@ inline gbMat3 operator-(gbMat3 const &a, gbMat3 const &b) {
 }
 
 inline gbMat3 operator*(gbMat3 const &a, gbMat3 const &b) { gbMat3 r; gb_mat3_mul(&r, (gbMat3 *)&a, (gbMat3 *)&b); return r; }
-inline gbVec3 operator*(gbMat3 const &a, gbVec3 v) { gbVec3 r; gb_mat3_mul_vec3(&r, (gbMat3 *)&a, v); return r; } inline gbMat3 operator*(gbMat3 const &a, float scalar) {
+inline gbVec3 operator*(gbMat3 const &a, gbVec3 v) { gbVec3 r; gb_mat3_mul_V3(&r, (gbMat3 *)&a, v); return r; } inline gbMat3 operator*(gbMat3 const &a, float scalar) {
 	gbMat3 r = {0};
 	int i;
 	for (i = 0; i < 3*3; i++) r.e[i] = a.e[i] * scalar;
@@ -684,7 +684,7 @@ inline gbMat4 operator-(gbMat4 const &a, gbMat4 const &b) {
 }
 
 inline gbMat4 operator*(gbMat4 const &a, gbMat4 const &b) { gbMat4 r; gb_mat4_mul(&r, (gbMat4 *)&a, (gbMat4 *)&b); return r; }
-inline gbVec4 operator*(gbMat4 const &a, gbVec4 v) { gbVec4 r; gb_mat4_mul_vec4(&r, (gbMat4 *)&a, v); return r; }
+inline gbVec4 operator*(gbMat4 const &a, gbVec4 v) { gbVec4 r; gb_mat4_mul_V4(&r, (gbMat4 *)&a, v); return r; }
 inline gbMat4 operator*(gbMat4 const &a, float scalar) {
 	gbMat4 r = {0};
 	int i;
@@ -723,7 +723,7 @@ inline gbQuat &operator*=(gbQuat &a, float b) { gb_quat_muleqf(&a, b); return a;
 inline gbQuat &operator/=(gbQuat &a, float b) { gb_quat_diveqf(&a, b); return a; }
 
 /* Rotate v by a */
-inline gbVec3 operator*(gbQuat q, gbVec3 v) { gbVec3 r; gb_quat_rotate_vec3(&r, q, v); return r; }
+inline gbVec3 operator*(gbQuat q, gbVec3 v) { gbVec3 r; gb_quat_rotate_V3(&r, q, v); return r; }
 
 #endif
 
@@ -1156,49 +1156,49 @@ gbHalf gb_float_to_half(float value) {
 	a->w = b.w op c.w post;
 
 
-gbVec2 gb_vec2_zero(void)        { gbVec2 v = {0, 0};                return v; }
-gbVec2 gb_vec2(float x, float y) { gbVec2 v; v.x = x;    v.y = y;    return v; }
-gbVec2 gb_vec2v(float x[2])      { gbVec2 v; v.x = x[0]; v.y = x[1]; return v; }
+gbVec2 gb_V2_zero(void)        { gbVec2 v = {0, 0};                return v; }
+gbVec2 gb_V2(float x, float y) { gbVec2 v; v.x = x;    v.y = y;    return v; }
+gbVec2 gb_V2v(float x[2])      { gbVec2 v; v.x = x[0]; v.y = x[1]; return v; }
 
-gbVec3 gb_vec3_zero(void)                 { gbVec3 v = {0, 0, 0};                         return v; }
-gbVec3 gb_vec3(float x, float y, float z) { gbVec3 v; v.x = x; v.y = y; v.z = z;          return v; }
-gbVec3 gb_vec3v(float x[3])               { gbVec3 v; v.x = x[0]; v.y = x[1]; v.z = x[2]; return v; }
+gbVec3 gb_V3_zero(void)                 { gbVec3 v = {0, 0, 0};                         return v; }
+gbVec3 gb_V3(float x, float y, float z) { gbVec3 v; v.x = x; v.y = y; v.z = z;          return v; }
+gbVec3 gb_V3v(float x[3])               { gbVec3 v; v.x = x[0]; v.y = x[1]; v.z = x[2]; return v; }
 
-gbVec4 gb_vec4_zero(void)                          { gbVec4 v = {0, 0, 0, 0};                                  return v; }
-gbVec4 gb_vec4(float x, float y, float z, float w) { gbVec4 v; v.x = x; v.y = y; v.z = z; v.w = w;             return v; }
-gbVec4 gb_vec4v(float x[4])                        { gbVec4 v; v.x = x[0]; v.y = x[1]; v.z = x[2]; v.w = x[3]; return v; }
-
-
-void gb_vec2_add(gbVec2 *d, gbVec2 v0, gbVec2 v1) { GB_VEC2_3OP(d,v0,+,v1,+0); }
-void gb_vec2_sub(gbVec2 *d, gbVec2 v0, gbVec2 v1) { GB_VEC2_3OP(d,v0,-,v1,+0); }
-void gb_vec2_mul(gbVec2 *d, gbVec2 v,  float s)   { GB_VEC2_2OP(d,v,* s);      }
-void gb_vec2_div(gbVec2 *d, gbVec2 v,  float s)   { GB_VEC2_2OP(d,v,/ s);      }
-
-void gb_vec3_add(gbVec3 *d, gbVec3 v0, gbVec3 v1) { GB_VEC3_3OP(d,v0,+,v1,+0); }
-void gb_vec3_sub(gbVec3 *d, gbVec3 v0, gbVec3 v1) { GB_VEC3_3OP(d,v0,-,v1,+0); }
-void gb_vec3_mul(gbVec3 *d, gbVec3 v,  float s)   { GB_VEC3_2OP(d,v,* s);      }
-void gb_vec3_div(gbVec3 *d, gbVec3 v,  float s)   { GB_VEC3_2OP(d,v,/ s);      }
-
-void gb_vec4_add(gbVec4 *d, gbVec4 v0, gbVec4 v1) { GB_VEC4_3OP(d,v0,+,v1,+0); }
-void gb_vec4_sub(gbVec4 *d, gbVec4 v0, gbVec4 v1) { GB_VEC4_3OP(d,v0,-,v1,+0); }
-void gb_vec4_mul(gbVec4 *d, gbVec4 v,  float s)   { GB_VEC4_2OP(d,v,* s);      }
-void gb_vec4_div(gbVec4 *d, gbVec4 v,  float s)   { GB_VEC4_2OP(d,v,/ s);      }
+gbVec4 gb_V4_zero(void)                          { gbVec4 v = {0, 0, 0, 0};                                  return v; }
+gbVec4 gb_V4(float x, float y, float z, float w) { gbVec4 v; v.x = x; v.y = y; v.z = z; v.w = w;             return v; }
+gbVec4 gb_V4v(float x[4])                        { gbVec4 v; v.x = x[0]; v.y = x[1]; v.z = x[2]; v.w = x[3]; return v; }
 
 
-void gb_vec2_addeq(gbVec2 *d, gbVec2 v) { GB_VEC2_3OP(d,(*d),+,v,+0); }
-void gb_vec2_subeq(gbVec2 *d, gbVec2 v) { GB_VEC2_3OP(d,(*d),-,v,+0); }
-void gb_vec2_muleq(gbVec2 *d, float s)  { GB_VEC2_2OP(d,(*d),* s);    }
-void gb_vec2_diveq(gbVec2 *d, float s)  { GB_VEC2_2OP(d,(*d),/ s);    }
+void gb_V2_add(gbVec2 *d, gbVec2 v0, gbVec2 v1) { GB_VEC2_3OP(d,v0,+,v1,+0); }
+void gb_V2_sub(gbVec2 *d, gbVec2 v0, gbVec2 v1) { GB_VEC2_3OP(d,v0,-,v1,+0); }
+void gb_V2_mul(gbVec2 *d, gbVec2 v,  float s)   { GB_VEC2_2OP(d,v,* s);      }
+void gb_V2_div(gbVec2 *d, gbVec2 v,  float s)   { GB_VEC2_2OP(d,v,/ s);      }
 
-void gb_vec3_addeq(gbVec3 *d, gbVec3 v) { GB_VEC3_3OP(d,(*d),+,v,+0); }
-void gb_vec3_subeq(gbVec3 *d, gbVec3 v) { GB_VEC3_3OP(d,(*d),-,v,+0); }
-void gb_vec3_muleq(gbVec3 *d, float s)  { GB_VEC3_2OP(d,(*d),* s);    }
-void gb_vec3_diveq(gbVec3 *d, float s)  { GB_VEC3_2OP(d,(*d),/ s);    }
+void gb_V3_add(gbVec3 *d, gbVec3 v0, gbVec3 v1) { GB_VEC3_3OP(d,v0,+,v1,+0); }
+void gb_V3_sub(gbVec3 *d, gbVec3 v0, gbVec3 v1) { GB_VEC3_3OP(d,v0,-,v1,+0); }
+void gb_V3_mul(gbVec3 *d, gbVec3 v,  float s)   { GB_VEC3_2OP(d,v,* s);      }
+void gb_V3_div(gbVec3 *d, gbVec3 v,  float s)   { GB_VEC3_2OP(d,v,/ s);      }
 
-void gb_vec4_addeq(gbVec4 *d, gbVec4 v) { GB_VEC4_3OP(d,(*d),+,v,+0); }
-void gb_vec4_subeq(gbVec4 *d, gbVec4 v) { GB_VEC4_3OP(d,(*d),-,v,+0); }
-void gb_vec4_muleq(gbVec4 *d, float s)  { GB_VEC4_2OP(d,(*d),* s);    }
-void gb_vec4_diveq(gbVec4 *d, float s)  { GB_VEC4_2OP(d,(*d),/ s);    }
+void gb_V4_add(gbVec4 *d, gbVec4 v0, gbVec4 v1) { GB_VEC4_3OP(d,v0,+,v1,+0); }
+void gb_V4_sub(gbVec4 *d, gbVec4 v0, gbVec4 v1) { GB_VEC4_3OP(d,v0,-,v1,+0); }
+void gb_V4_mul(gbVec4 *d, gbVec4 v,  float s)   { GB_VEC4_2OP(d,v,* s);      }
+void gb_V4_div(gbVec4 *d, gbVec4 v,  float s)   { GB_VEC4_2OP(d,v,/ s);      }
+
+
+void gb_V2_addeq(gbVec2 *d, gbVec2 v) { GB_VEC2_3OP(d,(*d),+,v,+0); }
+void gb_V2_subeq(gbVec2 *d, gbVec2 v) { GB_VEC2_3OP(d,(*d),-,v,+0); }
+void gb_V2_muleq(gbVec2 *d, float s)  { GB_VEC2_2OP(d,(*d),* s);    }
+void gb_V2_diveq(gbVec2 *d, float s)  { GB_VEC2_2OP(d,(*d),/ s);    }
+
+void gb_V3_addeq(gbVec3 *d, gbVec3 v) { GB_VEC3_3OP(d,(*d),+,v,+0); }
+void gb_V3_subeq(gbVec3 *d, gbVec3 v) { GB_VEC3_3OP(d,(*d),-,v,+0); }
+void gb_V3_muleq(gbVec3 *d, float s)  { GB_VEC3_2OP(d,(*d),* s);    }
+void gb_V3_diveq(gbVec3 *d, float s)  { GB_VEC3_2OP(d,(*d),/ s);    }
+
+void gb_V4_addeq(gbVec4 *d, gbVec4 v) { GB_VEC4_3OP(d,(*d),+,v,+0); }
+void gb_V4_subeq(gbVec4 *d, gbVec4 v) { GB_VEC4_3OP(d,(*d),-,v,+0); }
+void gb_V4_muleq(gbVec4 *d, float s)  { GB_VEC4_2OP(d,(*d),* s);    }
+void gb_V4_diveq(gbVec4 *d, float s)  { GB_VEC4_2OP(d,(*d),/ s);    }
 
 
 #undef GB_VEC2_2OP
@@ -1211,101 +1211,101 @@ void gb_vec4_diveq(gbVec4 *d, float s)  { GB_VEC4_2OP(d,(*d),/ s);    }
 
 
 
-float gb_vec2_dot(gbVec2 v0, gbVec2 v1) { return v0.x*v1.x + v0.y*v1.y; }
-float gb_vec3_dot(gbVec3 v0, gbVec3 v1) { return v0.x*v1.x + v0.y*v1.y + v0.z*v1.z; }
-float gb_vec4_dot(gbVec4 v0, gbVec4 v1) { return v0.x*v1.x + v0.y*v1.y + v0.z*v1.z + v0.w*v1.w; }
+float gb_V2_dot(gbVec2 v0, gbVec2 v1) { return v0.x*v1.x + v0.y*v1.y; }
+float gb_V3_dot(gbVec3 v0, gbVec3 v1) { return v0.x*v1.x + v0.y*v1.y + v0.z*v1.z; }
+float gb_V4_dot(gbVec4 v0, gbVec4 v1) { return v0.x*v1.x + v0.y*v1.y + v0.z*v1.z + v0.w*v1.w; }
 
-void gb_vec2_cross(float *d, gbVec2 v0, gbVec2 v1) { *d = v0.x*v1.y - v1.x*v0.y; }
-void gb_vec3_cross(gbVec3 *d, gbVec3 v0, gbVec3 v1)  { d->x = v0.y*v1.z - v0.z*v1.y;
+void gb_V2_cross(float *d, gbVec2 v0, gbVec2 v1) { *d = v0.x*v1.y - v1.x*v0.y; }
+void gb_V3_cross(gbVec3 *d, gbVec3 v0, gbVec3 v1)  { d->x = v0.y*v1.z - v0.z*v1.y;
 	                                          d->y = v0.z*v1.x - v0.x*v1.z;
 	                                          d->z = v0.x*v1.y - v0.y*v1.x; }
 
-float gb_vec2_mag2(gbVec2 v) { return gb_vec2_dot(v, v); }
-float gb_vec3_mag2(gbVec3 v) { return gb_vec3_dot(v, v); }
-float gb_vec4_mag2(gbVec4 v) { return gb_vec4_dot(v, v); }
+float gb_V2_mag2(gbVec2 v) { return gb_V2_dot(v, v); }
+float gb_V3_mag2(gbVec3 v) { return gb_V3_dot(v, v); }
+float gb_V4_mag2(gbVec4 v) { return gb_V4_dot(v, v); }
 
 /* TODO(bill): Create custom sqrt function */
-float gb_vec2_mag(gbVec2 v) { return gb_sqrt(gb_vec2_dot(v, v)); }
-float gb_vec3_mag(gbVec3 v) { return gb_sqrt(gb_vec3_dot(v, v)); }
-float gb_vec4_mag(gbVec4 v) { return gb_sqrt(gb_vec4_dot(v, v)); }
+float gb_V2_mag(gbVec2 v) { return gb_sqrt(gb_V2_dot(v, v)); }
+float gb_V3_mag(gbVec3 v) { return gb_sqrt(gb_V3_dot(v, v)); }
+float gb_V4_mag(gbVec4 v) { return gb_sqrt(gb_V4_dot(v, v)); }
 
-void gb_vec2_norm(gbVec2 *d, gbVec2 v) {
-	float inv_mag = gb_rsqrt(gb_vec2_dot(v, v));
-	gb_vec2_mul(d, v, inv_mag);
+void gb_V2_norm(gbVec2 *d, gbVec2 v) {
+	float inv_mag = gb_rsqrt(gb_V2_dot(v, v));
+	gb_V2_mul(d, v, inv_mag);
 }
-void gb_vec3_norm(gbVec3 *d, gbVec3 v) {
-	float mag = gb_vec3_mag(v);
-	gb_vec3_div(d, v, mag);
+void gb_V3_norm(gbVec3 *d, gbVec3 v) {
+	float mag = gb_V3_mag(v);
+	gb_V3_div(d, v, mag);
 }
-void gb_vec4_norm(gbVec4 *d, gbVec4 v) {
-	float mag = gb_vec4_mag(v);
-	gb_vec4_div(d, v, mag);
+void gb_V4_norm(gbVec4 *d, gbVec4 v) {
+	float mag = gb_V4_mag(v);
+	gb_V4_div(d, v, mag);
 }
 
-void gb_vec2_norm0(gbVec2 *d, gbVec2 v) {
-	float mag = gb_vec2_mag(v);
+void gb_V2_norm0(gbVec2 *d, gbVec2 v) {
+	float mag = gb_V2_mag(v);
 	if (mag > 0)
-		gb_vec2_div(d, v, mag);
+		gb_V2_div(d, v, mag);
 	else
-		*d = gb_vec2_zero();
+		*d = gb_V2_zero();
 }
-void gb_vec3_norm0(gbVec3 *d, gbVec3 v) {
-	float mag = gb_vec3_mag(v);
+void gb_V3_norm0(gbVec3 *d, gbVec3 v) {
+	float mag = gb_V3_mag(v);
 	if (mag > 0)
-		gb_vec3_div(d, v, mag);
+		gb_V3_div(d, v, mag);
 	else
-		*d = gb_vec3_zero();
+		*d = gb_V3_zero();
 }
-void gb_vec4_norm0(gbVec4 *d, gbVec4 v) {
-	float mag = gb_vec4_mag(v);
+void gb_V4_norm0(gbVec4 *d, gbVec4 v) {
+	float mag = gb_V4_mag(v);
 	if (mag > 0)
-		gb_vec4_div(d, v, mag);
+		gb_V4_div(d, v, mag);
 	else
-		*d = gb_vec4_zero();
+		*d = gb_V4_zero();
 }
 
 
-void gb_vec2_reflect(gbVec2 *d, gbVec2 i, gbVec2 n) {
+void gb_V2_reflect(gbVec2 *d, gbVec2 i, gbVec2 n) {
 	gbVec2 b = n;
-	gb_vec2_muleq(&b, 2.0f*gb_vec2_dot(n, i));
-	gb_vec2_sub(d, i, b);
+	gb_V2_muleq(&b, 2.0f*gb_V2_dot(n, i));
+	gb_V2_sub(d, i, b);
 }
 
-void gb_vec3_reflect(gbVec3 *d, gbVec3 i, gbVec3 n) {
+void gb_V3_reflect(gbVec3 *d, gbVec3 i, gbVec3 n) {
 	gbVec3 b = n;
-	gb_vec3_muleq(&b, 2.0f*gb_vec3_dot(n, i));
-	gb_vec3_sub(d, i, b);
+	gb_V3_muleq(&b, 2.0f*gb_V3_dot(n, i));
+	gb_V3_sub(d, i, b);
 }
 
-void gb_vec2_refract(gbVec2 *d, gbVec2 i, gbVec2 n, float eta) {
+void gb_V2_refract(gbVec2 *d, gbVec2 i, gbVec2 n, float eta) {
 	gbVec2 a, b;
 	float dv, k;
 
-	dv = gb_vec2_dot(n, i);
+	dv = gb_V2_dot(n, i);
 	k = 1.0f - eta*eta * (1.0f - dv*dv);
-	gb_vec2_mul(&a, i, eta);
-	gb_vec2_mul(&b, n, eta*dv*gb_sqrt(k));
-	gb_vec2_sub(d, a, b);
-	gb_vec2_muleq(d, (float)(k >= 0.0f));
+	gb_V2_mul(&a, i, eta);
+	gb_V2_mul(&b, n, eta*dv*gb_sqrt(k));
+	gb_V2_sub(d, a, b);
+	gb_V2_muleq(d, (float)(k >= 0.0f));
 }
 
-void gb_vec3_refract(gbVec3 *d, gbVec3 i, gbVec3 n, float eta) {
+void gb_V3_refract(gbVec3 *d, gbVec3 i, gbVec3 n, float eta) {
 	gbVec3 a, b;
 	float dv, k;
 
-	dv = gb_vec3_dot(n, i);
+	dv = gb_V3_dot(n, i);
 	k = 1.0f - eta*eta * (1.0f - dv*dv);
-	gb_vec3_mul(&a, i, eta);
-	gb_vec3_mul(&b, n, eta*dv*gb_sqrt(k));
-	gb_vec3_sub(d, a, b);
-	gb_vec3_muleq(d, (float)(k >= 0.0f));
+	gb_V3_mul(&a, i, eta);
+	gb_V3_mul(&b, n, eta*dv*gb_sqrt(k));
+	gb_V3_sub(d, a, b);
+	gb_V3_muleq(d, (float)(k >= 0.0f));
 }
 
 
 
 
 
-float gb_vec2_aspect_ratio(gbVec2 v) { return (v.y < 0.0001f) ? 0.0f : v.x/v.y; }
+float gb_V2_aspect_ratio(gbVec2 v) { return (v.y < 0.0001f) ? 0.0f : v.x/v.y; }
 
 
 
@@ -1320,7 +1320,7 @@ void gb_float22_identity(float m[2][2]) {
 	m[1][0] = 0; m[1][1] = 1;
 }
 
-void gb_mat2_mul_vec2(gbVec2 *out, gbMat2 *m, gbVec2 in) { gb_float22_mul_vec2(out, gb_float22_m(m), in); }
+void gb_mat2_mul_V2(gbVec2 *out, gbMat2 *m, gbVec2 in) { gb_float22_mul_V2(out, gb_float22_m(m), in); }
 
 gbMat2 *gb_mat2_v(gbVec2 m[2])   { return (gbMat2 *)m; }
 gbMat2 *gb_mat2_f(float m[2][2]) { return (gbMat2 *)m; }
@@ -1355,7 +1355,7 @@ void gb_float22_mul(float (*out)[2], float (*mat1)[2], float (*mat2)[2]) {
 	}
 }
 
-void gb_float22_mul_vec2(gbVec2 *out, float m[2][2], gbVec2 v) {
+void gb_float22_mul_V2(gbVec2 *out, float m[2][2], gbVec2 v) {
 	out->x = m[0][0]*v.x + m[1][0]*v.y;
 	out->y = m[0][1]*v.x + m[1][1]*v.y;
 }
@@ -1392,7 +1392,7 @@ void gb_float33_identity(float m[3][3]) {
 	m[2][0] = 0; m[2][1] = 0; m[2][2] = 1;
 }
 
-void gb_mat3_mul_vec3(gbVec3 *out, gbMat3 *m, gbVec3 in) { gb_float33_mul_vec3(out, gb_float33_m(m), in); }
+void gb_mat3_mul_V3(gbVec3 *out, gbMat3 *m, gbVec3 in) { gb_float33_mul_V3(out, gb_float33_m(m), in); }
 
 gbMat3 *gb_mat3_v(gbVec3 m[3])   { return (gbMat3 *)m; }
 gbMat3 *gb_mat3_f(float m[3][3]) { return (gbMat3 *)m; }
@@ -1426,7 +1426,7 @@ void gb_float33_mul(float (*out)[3], float (*mat1)[3], float (*mat2)[3]) {
 	}
 }
 
-void gb_float33_mul_vec3(gbVec3 *out, float m[3][3], gbVec3 v) {
+void gb_float33_mul_V3(gbVec3 *out, float m[3][3], gbVec3 v) {
 	out->x = m[0][0]*v.x + m[1][0]*v.y + m[2][0]*v.z;
 	out->y = m[0][1]*v.x + m[1][1]*v.y + m[2][1]*v.z;
 	out->z = m[0][2]*v.x + m[1][2]*v.y + m[2][2]*v.z;
@@ -1480,8 +1480,8 @@ void gb_float44_identity(float m[4][4]) {
 	m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 1;
 }
 
-void gb_mat4_mul_vec4(gbVec4 *out, gbMat4 *m, gbVec4 in) {
-	gb_float44_mul_vec4(out, gb_float44_m(m), in);
+void gb_mat4_mul_V4(gbVec4 *out, gbMat4 *m, gbVec4 in) {
+	gb_float44_mul_V4(out, gb_float44_m(m), in);
 }
 
 gbMat4 *gb_mat4_v(gbVec4 m[4])   { return (gbMat4 *)m; }
@@ -1516,7 +1516,7 @@ void gb_float44_mul(float (*out)[4], float (*mat1)[4], float (*mat2)[4]) {
 	}
 }
 
-void gb_float44_mul_vec4(gbVec4 *out, float m[4][4], gbVec4 v) {
+void gb_float44_mul_V4(gbVec4 *out, float m[4][4], gbVec4 v) {
 	out->x = m[0][0]*v.x + m[1][0]*v.y + m[2][0]*v.z + m[3][0]*v.w;
 	out->y = m[0][1]*v.x + m[1][1]*v.y + m[2][1]*v.z + m[3][1]*v.w;
 	out->z = m[0][2]*v.x + m[1][2]*v.y + m[2][2]*v.z + m[3][2]*v.w;
@@ -1612,8 +1612,8 @@ void gb_mat4_rotate(gbMat4 *out, gbVec3 v, float angle_radians) {
 	c = gb_cos(angle_radians);
 	s = gb_sin(angle_radians);
 
-	gb_vec3_norm(&axis, v);
-	gb_vec3_mul(&t, axis, 1.0f-c);
+	gb_V3_norm(&axis, v);
+	gb_V3_mul(&t, axis, 1.0f-c);
 
 	gb_mat4_identity(out);
 	rot = gb_float44_m(out);
@@ -1709,13 +1709,13 @@ void gb_mat4_look_at(gbMat4 *out, gbVec3 eye, gbVec3 centre, gbVec3 up) {
 	gbVec3 f, s, u;
 	gbFloat4 *m;
 
-	gb_vec3_sub(&f, centre, eye);
-	gb_vec3_norm(&f, f);
+	gb_V3_sub(&f, centre, eye);
+	gb_V3_norm(&f, f);
 
-	gb_vec3_cross(&s, f, up);
-	gb_vec3_norm(&s, s);
+	gb_V3_cross(&s, f, up);
+	gb_V3_norm(&s, s);
 
-	gb_vec3_cross(&u, s, f);
+	gb_V3_cross(&u, s, f);
 
 	gb_mat4_identity(out);
 	m = gb_float44_m(out);
@@ -1732,9 +1732,9 @@ void gb_mat4_look_at(gbMat4 *out, gbVec3 eye, gbVec3 centre, gbVec3 up) {
 	m[1][2] = -f.y;
 	m[2][2] = -f.z;
 
-	m[3][0] = -gb_vec3_dot(s, eye);
-	m[3][1] = -gb_vec3_dot(u, eye);
-	m[3][2] = +gb_vec3_dot(f, eye);
+	m[3][0] = -gb_V3_dot(s, eye);
+	m[3][1] = -gb_V3_dot(u, eye);
+	m[3][2] = +gb_V3_dot(f, eye);
 }
 
 
@@ -1753,8 +1753,8 @@ gbQuat gb_quatv(float e[4]) { gbQuat q; q.x = e[0]; q.y = e[1]; q.z = e[2]; q.w 
 
 gbQuat gb_quat_axis_angle(gbVec3 axis, float angle_radians) {
 	gbQuat q;
-	gb_vec3_norm(&q.xyz, axis);
-	gb_vec3_muleq(&q.xyz, gb_sin(0.5f*angle_radians));
+	gb_V3_norm(&q.xyz, axis);
+	gb_V3_muleq(&q.xyz, gb_sin(0.5f*angle_radians));
 	q.w = gb_cos(0.5f*angle_radians);
 	return q;
 }
@@ -1762,9 +1762,9 @@ gbQuat gb_quat_axis_angle(gbVec3 axis, float angle_radians) {
 gbQuat gb_quat_euler_angles(float pitch, float yaw, float roll) {
 	/* TODO(bill): Do without multiplication, i.e. make it faster */
 	gbQuat q, p, y, r;
-	p = gb_quat_axis_angle(gb_vec3(1, 0, 0), pitch);
-	y = gb_quat_axis_angle(gb_vec3(0, 1, 0), yaw);
-	r = gb_quat_axis_angle(gb_vec3(0, 0, 1), roll);
+	p = gb_quat_axis_angle(gb_V3(1, 0, 0), pitch);
+	y = gb_quat_axis_angle(gb_V3(0, 1, 0), yaw);
+	r = gb_quat_axis_angle(gb_V3(0, 0, 1), roll);
 
 	gb_quat_mul(&q, y, p);
 	gb_quat_muleq(&q, r);
@@ -1775,8 +1775,8 @@ gbQuat gb_quat_euler_angles(float pitch, float yaw, float roll) {
 gbQuat gb_quat_identity(void) { gbQuat q = {0, 0, 0, 1}; return q; }
 
 
-void gb_quat_add(gbQuat *d, gbQuat q0, gbQuat q1) { gb_vec4_add(&d->xyzw, q0.xyzw, q1.xyzw); }
-void gb_quat_sub(gbQuat *d, gbQuat q0, gbQuat q1) { gb_vec4_sub(&d->xyzw, q0.xyzw, q1.xyzw); }
+void gb_quat_add(gbQuat *d, gbQuat q0, gbQuat q1) { gb_V4_add(&d->xyzw, q0.xyzw, q1.xyzw); }
+void gb_quat_sub(gbQuat *d, gbQuat q0, gbQuat q1) { gb_V4_sub(&d->xyzw, q0.xyzw, q1.xyzw); }
 
 void gb_quat_mul(gbQuat *d, gbQuat q0, gbQuat q1) {
 	d->x = q0.w * q1.x + q0.x * q1.w + q0.y * q1.z - q0.z * q1.y;
@@ -1787,30 +1787,30 @@ void gb_quat_mul(gbQuat *d, gbQuat q0, gbQuat q1) {
 
 void gb_quat_div(gbQuat *d, gbQuat q0, gbQuat q1){ gbQuat iq1; gb_quat_inverse(&iq1, q1); gb_quat_mul(d, q0, iq1); }
 
-void gb_quat_mulf(gbQuat *d, gbQuat q0, float s) { gb_vec4_mul(&d->xyzw, q0.xyzw, s); }
-void gb_quat_divf(gbQuat *d, gbQuat q0, float s) { gb_vec4_div(&d->xyzw, q0.xyzw, s); }
+void gb_quat_mulf(gbQuat *d, gbQuat q0, float s) { gb_V4_mul(&d->xyzw, q0.xyzw, s); }
+void gb_quat_divf(gbQuat *d, gbQuat q0, float s) { gb_V4_div(&d->xyzw, q0.xyzw, s); }
 
 
-void gb_quat_addeq(gbQuat *d, gbQuat q) { gb_vec4_addeq(&d->xyzw, q.xyzw); }
-void gb_quat_subeq(gbQuat *d, gbQuat q) { gb_vec4_subeq(&d->xyzw, q.xyzw); }
+void gb_quat_addeq(gbQuat *d, gbQuat q) { gb_V4_addeq(&d->xyzw, q.xyzw); }
+void gb_quat_subeq(gbQuat *d, gbQuat q) { gb_V4_subeq(&d->xyzw, q.xyzw); }
 void gb_quat_muleq(gbQuat *d, gbQuat q) { gb_quat_mul(d, *d, q); }
 void gb_quat_diveq(gbQuat *d, gbQuat q) { gb_quat_div(d, *d, q); }
 
 
-void gb_quat_muleqf(gbQuat *d, float s) { gb_vec4_muleq(&d->xyzw, s); }
-void gb_quat_diveqf(gbQuat *d, float s) { gb_vec4_diveq(&d->xyzw, s); }
+void gb_quat_muleqf(gbQuat *d, float s) { gb_V4_muleq(&d->xyzw, s); }
+void gb_quat_diveqf(gbQuat *d, float s) { gb_V4_diveq(&d->xyzw, s); }
 
-float gb_quat_dot(gbQuat q0, gbQuat q1) { float r = gb_vec3_dot(q0.xyz, q1.xyz) + q0.w*q1.w; return r; }
+float gb_quat_dot(gbQuat q0, gbQuat q1) { float r = gb_V3_dot(q0.xyz, q1.xyz) + q0.w*q1.w; return r; }
 float gb_quat_mag(gbQuat q)           { float r = gb_sqrt(gb_quat_dot(q, q)); return r; }
 
 void gb_quat_norm(gbQuat *d, gbQuat q)    { gb_quat_divf(d, q, gb_quat_mag(q)); }
-void gb_quat_conj(gbQuat *d, gbQuat q)    { d->xyz = gb_vec3(-q.x, -q.y, -q.z); d->w = q.w; }
+void gb_quat_conj(gbQuat *d, gbQuat q)    { d->xyz = gb_V3(-q.x, -q.y, -q.z); d->w = q.w; }
 void gb_quat_inverse(gbQuat *d, gbQuat q) { gb_quat_conj(d, q); gb_quat_diveqf(d, gb_quat_dot(q, q)); }
 
 
 void gb_quat_axis(gbVec3 *axis, gbQuat q) {
 	gbQuat n; gb_quat_norm(&n, q);
-	gb_vec3_div(axis, n.xyz, gb_sin(gb_arccos(q.w)));
+	gb_V3_div(axis, n.xyz, gb_sin(gb_arccos(q.w)));
 }
 
 float gb_quat_angle(gbQuat q) {
@@ -1825,19 +1825,19 @@ float gb_quat_roll(gbQuat q)  { return gb_arctan2(2.0f*q.x*q.y + q.z*q.w, q.x*q.
 float gb_quat_pitch(gbQuat q) { return gb_arctan2(2.0f*q.y*q.z + q.w*q.x, q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z); }
 float gb_quat_yaw(gbQuat q)   { return gb_arcsin(-2.0f*(q.x*q.z - q.w*q.y)); }
 
-void gb_quat_rotate_vec3(gbVec3 *d, gbQuat q, gbVec3 v) {
+void gb_quat_rotate_V3(gbVec3 *d, gbQuat q, gbVec3 v) {
 	/* gbVec3 t = 2.0f * cross(q.xyz, v);
 	 * *d = q.w*t + v + cross(q.xyz, t);
 	 */
 	gbVec3 t, p;
-	gb_vec3_cross(&t, q.xyz, v);
-	gb_vec3_muleq(&t, 2.0f);
+	gb_V3_cross(&t, q.xyz, v);
+	gb_V3_muleq(&t, 2.0f);
 
-	gb_vec3_cross(&p, q.xyz, t);
+	gb_V3_cross(&p, q.xyz, t);
 
-	gb_vec3_mul(d, t, q.w);
-	gb_vec3_addeq(d, v);
-	gb_vec3_addeq(d, p);
+	gb_V3_mul(d, t, q.w);
+	gb_V3_addeq(d, v);
+	gb_V3_addeq(d, p);
 }
 
 
@@ -1949,13 +1949,13 @@ float gb_smoother_step(float a, float b, float t) { float x = (t - a)/(b - a); r
 	gb_vec##N##_sub(&db, b, a); \
 	gb_vec##N##_muleq(&db, t); \
 	gb_vec##N##_add(d, a, db)
-void gb_vec2_lerp(gbVec2 *d, gbVec2 a, gbVec2 b, float t) { GB_VEC_LERPN(2, d, a, b, t); }
-void gb_vec3_lerp(gbVec3 *d, gbVec3 a, gbVec3 b, float t) { GB_VEC_LERPN(3, d, a, b, t); }
-void gb_vec4_lerp(gbVec4 *d, gbVec4 a, gbVec4 b, float t) { GB_VEC_LERPN(4, d, a, b, t); }
+void gb_V2_lerp(gbVec2 *d, gbVec2 a, gbVec2 b, float t) { GB_VEC_LERPN(2, d, a, b, t); }
+void gb_V3_lerp(gbVec3 *d, gbVec3 a, gbVec3 b, float t) { GB_VEC_LERPN(3, d, a, b, t); }
+void gb_V4_lerp(gbVec4 *d, gbVec4 a, gbVec4 b, float t) { GB_VEC_LERPN(4, d, a, b, t); }
 
 #undef GB_VEC_LERPN
 
-void gb_quat_lerp(gbQuat *d, gbQuat a, gbQuat b, float t)  { gb_vec4_lerp(&d->xyzw, a.xyzw, b.xyzw, t); }
+void gb_quat_lerp(gbQuat *d, gbQuat a, gbQuat b, float t)  { gb_V4_lerp(&d->xyzw, a.xyzw, b.xyzw, t); }
 void gb_quat_nlerp(gbQuat *d, gbQuat a, gbQuat b, float t) { gb_quat_lerp(d, a, b, t); gb_quat_norm(d, *d); }
 
 void gb_quat_slerp(gbQuat *d, gbQuat a, gbQuat b, float t) {
@@ -2031,8 +2031,8 @@ gbRect2 gb_rect2(gbVec2 pos, gbVec2 dim) {
 
 gbRect2 gb_rect2v(float v[4]) {
 	gbRect2 r;
-	r.pos = gb_vec2v(&v[0]);
-	r.dim = gb_vec2v(&v[2]);
+	r.pos = gb_V2v(&v[0]);
+	r.dim = gb_V2v(&v[2]);
 	return r;
 }
 
@@ -2045,8 +2045,8 @@ gbRect3 gb_rect3(gbVec3 pos, gbVec3 dim) {
 
 gbRect3 gb_rect3v(float v[6]) {
 	gbRect3 r;
-	r.pos = gb_vec3v(&v[0]);
-	r.dim = gb_vec3v(&v[3]);
+	r.pos = gb_V3v(&v[0]);
+	r.dim = gb_V3v(&v[3]);
 	return r;
 }
 
@@ -2060,7 +2060,7 @@ int gb_rect2_contains(gbRect2 a, float x, float y) {
 	return result;
 }
 
-int gb_rect2_contains_vec2(gbRect2 a, gbVec2 p) { return gb_rect2_contains(a, p.x, p.y); }
+int gb_rect2_contains_V2(gbRect2 a, gbVec2 p) { return gb_rect2_contains(a, p.x, p.y); }
 
 int gb_rect2_intersects(gbRect2 a, gbRect2 b) {
 	gbRect2 r = {0};
@@ -2084,7 +2084,7 @@ int gb_rect2_intersection_result(gbRect2 a, gbRect2 b, gbRect2 *intersection) {
 	float y1 = gb_min(a_max_y, b_max_y);
 
 	if ((x0 < x1) && (y0 < y1)) {
-		gbRect2 r = gb_rect2(gb_vec2(x0, y0), gb_vec2(x1-x0, y1-y0));
+		gbRect2 r = gb_rect2(gb_V2(x0, y0), gb_V2(x1-x0, y1-y0));
 		*intersection = r;
 		return 1;
 	} else {

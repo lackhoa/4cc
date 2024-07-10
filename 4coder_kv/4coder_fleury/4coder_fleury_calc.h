@@ -6,13 +6,13 @@
 #include "4coder_fleury_ubiquitous.h"
 
 function void F4_CLC_Tick(Frame_Info frame_info);
-function void F4_CLC_RenderCode(Application_Links *app, Buffer_ID buffer,
+function void F4_CLC_RenderCode(App *app, Buffer_ID buffer,
                                 View_ID view, Text_Layout_ID text_layout_id,
                                 Arena *arena, char *code_buffer,
                                 i64 start_char_offset);
-function void F4_CLC_RenderBuffer(Application_Links *app, Buffer_ID buffer, View_ID view,
+function void F4_CLC_RenderBuffer(App *app, Buffer_ID buffer, View_ID view,
                                   Text_Layout_ID text_layout_id);
-function void F4_CLC_RenderComments(Application_Links *app, Buffer_ID buffer, View_ID view,
+function void F4_CLC_RenderComments(App *app, Buffer_ID buffer, View_ID view,
                                     Text_Layout_ID text_layout_id);
 
 #endif // FCODER_FLEURY_CALC_H

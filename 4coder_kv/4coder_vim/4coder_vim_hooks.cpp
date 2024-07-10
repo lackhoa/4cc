@@ -9,7 +9,7 @@ vim_file_save(App *app, Buffer_ID buffer_id)
     String8 unique_name = push_buffer_unique_name(app, scratch, buffer_id);
     i64 line_count = buffer_get_line_count(app, buffer_id);
     i64 bytes = buffer_get_size(app, buffer_id);
-    String8 msg = push_stringf(scratch, "\"%.*s\"  %dL, %dC written", string_expand(unique_name), line_count, bytes);
+    String8 msg = push_stringfz(scratch, "\"%.*s\"  %dL, %dC written", string_expand(unique_name), line_count, bytes);
     vim_set_bottom_text(msg);
 }
 
@@ -58,7 +58,7 @@ BUFFER_HOOK_SIG(vim_begin_buffer)
 }
 
 function void
-vim_animate_filebar(Application_Links *app, Frame_Info frame_info)
+vim_animate_filebar(App *app, Frame_Info frame_info)
 {
 #if VIM_DO_ANIMATE
 	f32 diff = vim_nxt_lister_offset - vim_cur_lister_offset;
@@ -75,7 +75,7 @@ vim_animate_filebar(Application_Links *app, Frame_Info frame_info)
 
 
 function void
-vim_animate_cursor(Application_Links *app, Frame_Info frame_info){
+vim_animate_cursor(App *app, Frame_Info frame_info){
 #if VIM_DO_ANIMATE
 	Vec2_f32 diff = vim_nxt_cursor_pos - vim_cur_cursor_pos;
 	if(fabs(diff.x) > 1.f){
@@ -103,7 +103,7 @@ BUFFER_EDIT_RANGE_SIG(vim_buffer_edit_range){
 }
 
 function void
-vim_tick(Application_Links *app, Frame_Info frame_info)
+vim_tick(App *app, Frame_Info frame_info)
 {
 	code_index_update_tick(app);
 	if(tick_all_fade_ranges(app, frame_info.animation_dt)){

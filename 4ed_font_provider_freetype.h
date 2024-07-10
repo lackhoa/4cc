@@ -19,7 +19,7 @@ struct FT_Codepoint_Index_Pair{
 
 struct FT_Codepoint_Index_Pair_Array{
     FT_Codepoint_Index_Pair *vals;
-    i32 count;
+    i1 count;
 };
 
 #endif

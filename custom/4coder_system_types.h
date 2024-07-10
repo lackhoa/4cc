@@ -7,7 +7,7 @@
 #if !defined(FCODER_SYSTEM_TYPES_H)
 #define FCODER_SYSTEM_TYPES_H
 
-typedef i32 Key_Mode;
+typedef i1 Key_Mode;
 enum{
     Key_Mode_LanguageArranged,
     Key_Mode_Physical,
@@ -28,7 +28,7 @@ struct CLI_Handles{
     Plat_Handle in_read;
     Plat_Handle in_write;
     u32 scratch_space[4];
-    i32 exit;
+    i1 exit;
 };
 
 struct Memory_Annotation_Node{
@@ -41,7 +41,7 @@ struct Memory_Annotation_Node{
 struct Memory_Annotation{
     Memory_Annotation_Node *first;
     Memory_Annotation_Node *last;
-    i32 count;
+    i1 count;
 };
 
 struct Mutex_Lock{

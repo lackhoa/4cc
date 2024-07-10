@@ -47,7 +47,7 @@ main(int argc, char **argv){
     API_Definition_List remote_list = {};
     
     {
-        i32 i = 1;
+        i1 i = 1;
         for (;i < argc; i += 1){
             char *file_name = argv[i];
             if (string_match(SCu8(file_name), string_u8_litexpr(":"))){
@@ -59,7 +59,7 @@ main(int argc, char **argv){
                 printf("error: could not open input file: '%s'\n", file_name);
                 continue;
             }
-            String_Const_u8 text = data_from_file(&arena, file);
+            String text = data_from_file(&arena, file);
             fclose(file);
             if (text.size > 0){
                 api_parse_source_add_to_list(&arena, SCu8(file_name), text, &master_list);
@@ -72,7 +72,7 @@ main(int argc, char **argv){
                 printf("error: could not open input file: '%s'\n", file_name);
                 continue;
             }
-            String_Const_u8 text = data_from_file(&arena, file);
+            String text = data_from_file(&arena, file);
             fclose(file);
             if (text.size > 0){
                 api_parse_source_add_to_list(&arena, SCu8(file_name), text, &remote_list);
@@ -90,9 +90,9 @@ main(int argc, char **argv){
         exit(1);
     }
     
-    List_String_Const_u8 errors = {};
+    List_String errors = {};
     api_list_check(&arena, &master_list, &remote_list, APICheck_ReportAll, &errors);
-    String_Const_u8 string = string_list_flatten(&arena, errors, StringFill_NullTerminate);
+    String string = string_list_flatten(&arena, errors, StringFill_NullTerminate);
     printf("%.*s", string_expand(string));
     if (string.size > 0){
         exit(1);

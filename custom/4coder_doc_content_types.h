@@ -89,9 +89,9 @@ enum{
 };
 struct Doc_Content{
     Doc_Content *next;
-    String_Const_u8 text;
-    String_Const_u8 page_link;
-    String_Const_u8 block_link;
+    String text;
+    String page_link;
+    String block_link;
     Doc_Content_Emphasis emphasis;
 };
 struct Doc_Content_List{
@@ -114,7 +114,7 @@ global char *doc_language_name[] = {
 };
 struct Doc_Code_Sample{
     Doc_Code_Sample *next;
-    String_Const_u8 contents;
+    String contents;
     Doc_Code_Language language;
 };
 struct Doc_Code_Sample_List{
@@ -147,7 +147,7 @@ struct Doc_Block{
     
     struct Doc_Page *owner;
     
-    String_Const_u8 name;
+    String name;
     
     Doc_Paragraph *first_par;
     Doc_Paragraph *last_par;
@@ -170,8 +170,8 @@ struct Doc_Page{
     
     struct Doc_Cluster *owner;
     
-    String_Const_u8 title;
-    String_Const_u8 name;
+    String title;
+    String name;
     
     Doc_Block *first_block;
     Doc_Block *last_block;
@@ -182,12 +182,12 @@ struct Doc_Page{
 
 struct Doc_Log{
     Doc_Log *next;
-    String_Const_u8 content;
+    String content;
 };
 
 struct Doc_Cluster{
-    String_Const_u8 title;
-    String_Const_u8 name;
+    String title;
+    String name;
     Doc_Date gen_date;
     
     Doc_Page *first_page;

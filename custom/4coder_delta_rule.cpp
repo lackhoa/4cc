@@ -10,19 +10,19 @@ delta_ctx_size(u64 base_size){
 }
 
 function Delta_Context_Header*
-delta_ctx_get_header(String_Const_u8 delta_ctx){
+delta_ctx_get_header(String delta_ctx){
     return((Delta_Context_Header*)delta_ctx.str);
 }
 
 function void*
-delta_ctx_get_user_data(String_Const_u8 delta_ctx){
+delta_ctx_get_user_data(String delta_ctx){
     Delta_Context_Header *ctx = (Delta_Context_Header*)delta_ctx.str;
     return(ctx + 1);
 }
 
 function Buffer_Point_Delta_Result
-delta_apply(Application_Links *app, View_ID view,
-            Delta_Rule_Function *func, String_Const_u8 delta_ctx,
+delta_apply(App *app, View_ID view,
+            Delta_Rule_Function *func, String delta_ctx,
             f32 dt, Buffer_Point position, Buffer_Point target){
     Buffer_Point_Delta_Result result = {};
     Vec2_f32 pending = view_point_difference(app, view, target, position);
@@ -53,34 +53,34 @@ delta_apply(Application_Links *app, View_ID view,
 }
 
 function Buffer_Point_Delta_Result
-delta_apply(Application_Links *app, View_ID view,
-            Delta_Rule_Function *func, String_Const_u8 delta_ctx,
+delta_apply(App *app, View_ID view,
+            Delta_Rule_Function *func, String delta_ctx,
             f32 dt, Buffer_Scroll scroll){
     return(delta_apply(app, view, func, delta_ctx,
                        dt, scroll.position, scroll.target));
 }
 
 function Buffer_Point_Delta_Result
-delta_apply(Application_Links *app, View_ID view,
+delta_apply(App *app, View_ID view,
             f32 dt, Buffer_Point position, Buffer_Point target){
     View_Context ctx = view_current_context(app, view);
-    String_Const_u8 delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
+    String delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
     return(delta_apply(app, view, ctx.delta_rule, delta_ctx,
                        dt, position, target));
 }
 
 function Buffer_Point_Delta_Result
-delta_apply(Application_Links *app, View_ID view,
+delta_apply(App *app, View_ID view,
             f32 dt, Buffer_Scroll scroll){
     View_Context ctx = view_current_context(app, view);
-    String_Const_u8 delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
+    String delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
     return(delta_apply(app, view, ctx.delta_rule, delta_ctx,
                        dt, scroll.position, scroll.target));
 }
 
 function Vec2_f32_Delta_Result
-delta_apply(Application_Links *app, View_ID view,
-            Delta_Rule_Function *func, String_Const_u8 delta_ctx,
+delta_apply(App *app, View_ID view,
+            Delta_Rule_Function *func, String delta_ctx,
             f32 dt, Vec2_f32 position, Vec2_f32 target){
     Vec2_f32_Delta_Result result = {};
     Vec2_f32 pending = target - position;
@@ -111,27 +111,27 @@ delta_apply(Application_Links *app, View_ID view,
 }
 
 function Vec2_f32_Delta_Result
-delta_apply(Application_Links *app, View_ID view,
-            Delta_Rule_Function *func, String_Const_u8 delta_ctx,
+delta_apply(App *app, View_ID view,
+            Delta_Rule_Function *func, String delta_ctx,
             f32 dt, Basic_Scroll scroll){
     return(delta_apply(app, view, func, delta_ctx,
                        dt, scroll.position, scroll.target));
 }
 
 function Vec2_f32_Delta_Result
-delta_apply(Application_Links *app, View_ID view,
+delta_apply(App *app, View_ID view,
             f32 dt, Vec2_f32 position, Vec2_f32 target){
     View_Context ctx = view_current_context(app, view);
-    String_Const_u8 delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
+    String delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
     return(delta_apply(app, view, ctx.delta_rule, delta_ctx,
                        dt, position, target));
 }
 
 function Vec2_f32_Delta_Result
-delta_apply(Application_Links *app, View_ID view,
+delta_apply(App *app, View_ID view,
             f32 dt, Basic_Scroll scroll){
     View_Context ctx = view_current_context(app, view);
-    String_Const_u8 delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
+    String delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
     return(delta_apply(app, view, ctx.delta_rule, delta_ctx,
                        dt, scroll.position, scroll.target));
 }
@@ -172,8 +172,8 @@ DELTA_RULE_SIG(original_delta){
     }
     Smooth_Step step_x = smooth_camera_step(pending.x, velocity->x, 80.f, 1.f/2.f);
     Smooth_Step step_y = smooth_camera_step(pending.y, velocity->y, 80.f, 1.f/2.f);
-    *velocity = vec2(step_x.v, step_y.v);
-    return(vec2(step_x.p, step_y.p));
+    *velocity = V2(step_x.v, step_y.v);
+    return(V2(step_x.p, step_y.p));
 }
 global_const u64 original_delta_memory_size = sizeof(Vec2_f32);
 

@@ -123,7 +123,7 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
 }
 
 function void
-code_index_update_tick(Application_Links *app){
+code_index_update_tick(App *app){
     Scratch_Block scratch(app);
     for (Buffer_Modified_Node *node = global_buffer_modified_set.first;
          node != 0;
@@ -131,7 +131,7 @@ code_index_update_tick(Application_Links *app){
         Temp_Memory_Block temp(scratch);
         Buffer_ID buffer_id = node->buffer;
         
-        String_Const_u8 contents = push_whole_buffer(app, scratch, buffer_id);
+        String contents = push_whole_buffer(app, scratch, buffer_id);
         Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
         if (tokens.count == 0){
             continue;
@@ -159,7 +159,7 @@ code_index_update_tick(Application_Links *app){
 }
 
 function void
-default_tick(Application_Links *app, Frame_Info frame_info)
+default_tick(App *app, Frame_Info frame_info)
 {
     arena_free_all(&global_frame_arena);
     
@@ -189,7 +189,7 @@ default_tick(Application_Links *app, Frame_Info frame_info)
 }
 
 function Rect_f32
-default_buffer_region(Application_Links *app, View_ID view_id, Rect_f32 region){
+default_buffer_region(App *app, View_ID view_id, Rect_f32 region){
     Buffer_ID buffer = view_get_buffer(app, view_id, Access_Always);
     Face_ID face_id = get_face_id(app, buffer);
     Face_Metrics metrics = get_face_metrics(app, face_id);
@@ -235,7 +235,7 @@ default_buffer_region(Application_Links *app, View_ID view_id, Rect_f32 region){
 }
 
 function void
-recursive_nest_highlight(Application_Links *app, Text_Layout_ID layout_id, Range_i64 range,
+recursive_nest_highlight(App *app, Text_Layout_ID layout_id, Range_i64 range,
                          Code_Index_Nest_Ptr_Array *array, i32 counter){
     Code_Index_Nest **ptr = array->ptrs;
     Code_Index_Nest **ptr_end = ptr + array->count;
@@ -267,13 +267,13 @@ recursive_nest_highlight(Application_Links *app, Text_Layout_ID layout_id, Range
 }
 
 function void
-recursive_nest_highlight(Application_Links *app, Text_Layout_ID layout_id, Range_i64 range,
+recursive_nest_highlight(App *app, Text_Layout_ID layout_id, Range_i64 range,
                          Code_Index_File *file){
     recursive_nest_highlight(app, layout_id, range, &file->nest_array, 0);
 }
 
 function void
-default_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
+default_render_buffer(App *app, View_ID view_id, Face_ID face_id,
                       Buffer_ID buffer, Text_Layout_ID text_layout_id,
                       Rect_f32 rect){
     ProfileScope(app, "render buffer");
@@ -391,7 +391,7 @@ default_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
 }
 
 function Rect_f32
-default_draw_query_bars(Application_Links *app, Rect_f32 region, View_ID view_id, Face_ID face_id){
+default_draw_query_bars(App *app, Rect_f32 region, View_ID view_id, Face_ID face_id){
     Face_Metrics face_metrics = get_face_metrics(app, face_id);
     f32 line_height = face_metrics.line_height;
     
@@ -521,7 +521,7 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                 
                 if (conflict->filename.str != 0){
                     Temp_Memory_Block temp(scratch);
-                    String_Const_u8 uniqueifier = {};
+                    String uniqueifier = {};
                     
                     String8 filename = path_dirname(conflict->filename);
                     if (filename.size > 0){
@@ -544,12 +544,12 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                         
                         uniqueifier = SCu8(start, end);
                         if (past_the_end){
-                            uniqueifier = push_stringf(scratch, "%.*s~%d",
+                            uniqueifier = push_stringfz(scratch, "%.*s~%d",
                                                           string_expand(uniqueifier), i);
                         }
                     }
                     else{
-                        uniqueifier = push_stringf(scratch, "%d", i);
+                        uniqueifier = push_stringfz(scratch, "%d", i);
                     }
                     
                     String_u8 builder = Su8(conflict->unique_name_in_out,
@@ -567,7 +567,7 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
             for (i32 i = 0; i < unresolved_count; ++i){
                 i32 conflict_index = unresolved[i];
                 Buffer_Name_Conflict_Entry *conflict = &conflicts[conflict_index];
-                String_Const_u8 conflict_name = SCu8(conflict->unique_name_in_out,
+                String conflict_name = SCu8(conflict->unique_name_in_out,
                                                      conflict->unique_name_len_in_out);
                 
                 b32 hit_conflict = false;
@@ -578,7 +578,7 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                         i32 conflict_j_index = unresolved[j];
                         Buffer_Name_Conflict_Entry *conflict_j = &conflicts[conflict_j_index];
                         
-                        String_Const_u8 conflict_name_j = SCu8(conflict_j->unique_name_in_out,
+                        String conflict_name_j = SCu8(conflict_j->unique_name_in_out,
                                                                conflict_j->unique_name_len_in_out);
                         
                         if (string_match(conflict_name, conflict_name_j)){
@@ -607,8 +607,8 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
 
 function void
 parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
-                   String_Const_u8 contents, Token_Array *tokens, i32 limit_factor){
-    Application_Links *app = actx->app;
+                   String contents, Token_Array *tokens, i32 limit_factor){
+    App *app = actx->app;
     ProfileBlock(app, "async parse");
     
     Arena arena = make_arena_system(KB(16));
@@ -645,11 +645,11 @@ parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
 
 function void
 do_full_lex_async__inner(Async_Context *actx, Buffer_ID buffer_id){
-    Application_Links *app = actx->app;
+    App *app = actx->app;
     ProfileScope(app, "async lex");
     Scratch_Block scratch(app);
     
-    String_Const_u8 contents = {};
+    String contents = {};
     {
         ProfileBlock(app, "async lex contents (before mutex)");
         acquire_global_frame_mutex(app);
@@ -698,7 +698,7 @@ do_full_lex_async__inner(Async_Context *actx, Buffer_ID buffer_id){
 }
 
 function void
-do_full_lex_async(Async_Context *actx, String_Const_u8 data){
+do_full_lex_async(Async_Context *actx, String data){
     if (data.size == sizeof(Buffer_ID)){
         Buffer_ID buffer = *(Buffer_ID*)data.str;
         do_full_lex_async__inner(actx, buffer);
@@ -711,11 +711,11 @@ BUFFER_HOOK_SIG(default_begin_buffer){
     Scratch_Block scratch(app);
     
     b32 treat_as_code = false;
-    String_Const_u8 filename = push_buffer_filename(app, scratch, buffer_id);
+    String filename = push_buffer_filename(app, scratch, buffer_id);
     if (filename.size > 0){
-        String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
-        String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-        String_Const_u8 ext = string_file_extension(filename);
+        String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
+        String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
+        String ext = string_file_extension(filename);
         for (i32 i = 0; i < extensions.count; ++i){
             if (string_match(ext, extensions.strings[i])){
                 
@@ -804,7 +804,7 @@ BUFFER_HOOK_SIG(default_begin_buffer){
         use_lexer = true;
     }
     
-    String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
+    String buffer_name = push_buffer_base_name(app, scratch, buffer_id);
     if (buffer_name.size > 0 && buffer_name.str[0] == '*' && buffer_name.str[buffer_name.size - 1] == '*'){
         wrap_lines = def_get_config_b32(vars_intern_lit("enable_output_wrapping"));
     }
@@ -838,12 +838,12 @@ BUFFER_HOOK_SIG(default_begin_buffer){
 
 BUFFER_HOOK_SIG(default_new_file){
     Scratch_Block scratch(app);
-    String_Const_u8 filename = push_buffer_base_name(app, scratch, buffer_id);
+    String filename = push_buffer_base_name(app, scratch, buffer_id);
     if (!string_match(string_postfix(filename, 2), string_u8_litexpr(".h"))) {
         return(0);
     }
     
-    List_String_Const_u8 guard_list = {};
+    List_String guard_list = {};
     for (u64 i = 0; i < filename.size; ++i){
         u8 c[2] = {};
         u64 c_size = 1;
@@ -862,14 +862,14 @@ BUFFER_HOOK_SIG(default_new_file){
         else{
             c[0] = '_';
         }
-        String_Const_u8 part = push_string_copy(scratch, SCu8(c, c_size));
+        String part = push_string_copyz(scratch, SCu8(c, c_size));
         string_list_push(scratch, &guard_list, part);
     }
-    String_Const_u8 guard = string_list_flatten(scratch, guard_list);
+    String guard = string_list_flatten(scratch, guard_list);
     
     Date_Time date_time = system_now_date_time_universal();
     date_time = system_local_date_time_from_universal(&date_time);
-    String_Const_u8 date_string = date_time_format(scratch, "month day yyyy h:mimi ampm", &date_time);
+    String date_string = date_time_format(scratch, "month day yyyy h:mimi ampm", &date_time);
     
     Buffer_Insertion insert = begin_buffer_insertion_at_buffered(app, buffer_id, 0, scratch, KB(16));
     insertf(&insert,
@@ -968,7 +968,7 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
             Token *token_resync = ptr->tokens + token_index_resync_guess;
             
             Range_i64 relex_range = Ii64(token_first->pos, token_resync->pos + token_resync->size + text_shift);
-            String_Const_u8 partial_text = push_buffer_range(app, scratch, buffer_id, relex_range);
+            String partial_text = push_buffer_range(app, scratch, buffer_id, relex_range);
             
             Token_List relex_list = lex_full_input_cpp(scratch, partial_text);
             if (relex_range.one_past_last < buffer_get_size(app, buffer_id)){
@@ -1043,7 +1043,7 @@ BUFFER_HOOK_SIG(default_end_buffer){
 }
 
 function void
-default_view_change_buffer(Application_Links *app, View_ID view_id,
+default_view_change_buffer(App *app, View_ID view_id,
                            Buffer_ID old_buffer_id, Buffer_ID new_buffer_id){
     Managed_Scope scope = view_get_managed_scope(app, view_id);
     Buffer_ID *prev_buffer_id = scope_attachment(app, scope, view_previous_buffer, Buffer_ID);
@@ -1053,7 +1053,7 @@ default_view_change_buffer(Application_Links *app, View_ID view_id,
 }
 
 internal void
-set_all_default_hooks(Application_Links *app){
+set_all_default_hooks(App *app){
     set_custom_hook(app, HookID_BufferViewerUpdate, default_view_adjust);
     
     set_custom_hook(app, HookID_ViewEventHandler, default_view_input_handler);

@@ -48,7 +48,7 @@ draw__new_group(Render_Target *target, Render_Config *config)
  }
  group->face_id = target->face_id;
  
- new_render_entry(target, Render_Poly);
+ new_render_entry(target, RET_Poly);
 }
 
 internal void
@@ -69,23 +69,17 @@ draw__maybe_new_group(Render_Target *target, Render_Config *config)
 }
 
 internal Render_Vertex_Array_Node*
-draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i32 size){
-    Render_Vertex_Array_Node *node = push_array_zero(arena, Render_Vertex_Array_Node, 1);
-    sll_queue_push(list->first, list->last, node);
+draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i1 size){
+ Render_Vertex_Array_Node *node = push_array_zero(arena, Render_Vertex_Array_Node, 1);
+ sll_queue_push(list->first, list->last, node);
  node->vertices = push_array(arena, Render_Vertex, size);
  node->vertex_max = size;
  return(node);
 }
 
-enum Vertex_Type {
- Vertex_Poly,
- Vertex_Overlay,
-};
-
-internal void
-draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i32 count,
-                    Vertex_Type type=Vertex_Poly)
-{
+internal draw__push_vertices_return
+draw__push_vertices(draw__push_vertices_params)
+{// TODO @speed This function is sus, what is the true cost of this thing?
  if (count > 0)
  {
   Render_Group *group = target->group_last;
@@ -98,17 +92,17 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i32 count,
   Render_Vertex_List *list;
   {
    Render_Entry *entry0 = group->entry_last;
-   if (entry0 == 0 || entry0->type != Render_Poly)
+   if (entry0 == 0 || entry0->type != RET_Poly)
    {
-    entry0 = new_render_entry(target, Render_Poly);
+    entry0 = new_render_entry(target, RET_Poly);
    }
    
    Render_Entry_Poly *entry = &entry0->poly;
    
-   switch(type )
+   switch(type)
    {
-    case Vertex_Poly:    { list = &entry->vertex_list; }break;
-    case Vertex_Overlay:   { list = &entry->vertex_list_overlay; }break;
+    case Vertex_Poly:    { list = &entry->vertex_list; }        break;
+    case Vertex_Overlay: { list = &entry->vertex_list_overlay; }break;
     invalid_default_case;
    }
   }
@@ -116,15 +110,15 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i32 count,
   Render_Vertex_Array_Node *last = list->last;
   
   Render_Vertex *tail_vertex = 0;
-  i32 tail_count = 0;
+  i1 tail_count = 0;
   if (last != 0)
   {
    tail_vertex = last->vertices + last->vertex_count;
    tail_count = last->vertex_max - last->vertex_count;
   }
   
-  i32 base_vertex_max = 64;
-  i32 transfer_count = clamp_max(count, tail_count);
+  i1 base_vertex_max = 64;
+  i1 transfer_count = clamp_max(count, tail_count);
   if (transfer_count > 0)
   {
    block_copy_count(tail_vertex, vertices, transfer_count);
@@ -133,12 +127,12 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i32 count,
    base_vertex_max = last->vertex_max;
   }
   
-  i32 count_left_over = count - transfer_count;
+  i1 count_left_over = count - transfer_count;
   if (count_left_over > 0)
   {
    Render_Vertex *vertices_left_over = vertices + transfer_count;
    
-   i32 next_node_size = (base_vertex_max + count_left_over)*2;
+   i1 next_node_size = (base_vertex_max + count_left_over)*2;
    Render_Vertex_Array_Node *memory = draw__extend_group_vertex_memory(&target->arena, list, next_node_size);
    block_copy_count(memory->vertices, vertices_left_over, count_left_over);
    memory->vertex_count += count_left_over;
@@ -147,18 +141,11 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i32 count,
  }
 }
 
-inline void
-push_object_transform_to_target(Render_Target *target, mat4 *transform)
+inline push_object_transform_to_target_return
+push_object_transform_to_target(push_object_transform_to_target_params)
 {
- Render_Entry *entry = new_render_entry(target, Render_Object_Transform);
- entry->object_transform = *transform ;
-}
-
-force_inline Render_Config *
-target_last_config(Render_Target *target)
-{
- if (target->group_last) {return &target->group_last->config;}
- else {return 0;}
+ Render_Entry *entry = new_render_entry(target, RET_Object_Transform);
+ entry->object_transform = *transform;
 }
 
 internal void
@@ -185,11 +172,9 @@ draw__set_face_id(Render_Target *target, Face_ID face_id)
 }
 
 // TODO: Not sure if I love the abstraction over Render_Target
-// TODO @Cleanup PLEASE tell me you're gonna clean up the transform situation
-internal void
-draw_configure(App *app, Render_Config *config)
+internal draw_configure_return
+draw_configure(draw_configure_params)
 {
- Render_Target *target = draw_get_target(app);
  if (target->group_last)
  {
   Render_Group *group = target->group_last;
@@ -219,12 +204,12 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
                             v1 depth=0, Vertex_Type type=Vertex_Poly, v1 depth_offset=0.f)
 {
  Render_Vertex vertices[6] = {};
- vertices[0].pos = vec3(rect.x0, rect.y0, depth);
- vertices[1].pos = vec3(rect.x1, rect.y0, depth);
- vertices[2].pos = vec3(rect.x0, rect.y1, depth);
+ vertices[0].pos = V3(rect.x0, rect.y0, depth);
+ vertices[1].pos = V3(rect.x1, rect.y0, depth);
+ vertices[2].pos = V3(rect.x0, rect.y1, depth);
  vertices[3]     = vertices[1];
  vertices[4]     = vertices[2];
- vertices[5].pos = vec3(rect.x1, rect.y1, depth);
+ vertices[5].pos = V3(rect.x1, rect.y1, depth);
  
  v2 center         = rect_center(rect);
  v1 half_thickness = thickness*0.5f;
@@ -257,7 +242,7 @@ draw_rect_outline2(App *app, rect2 rect, v1 thickness, ARGB_Color color)
 force_inline void
 draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
 {
-    rect2 square = rect2_center_radius(center.xy, vec2(radius, radius));
+    rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
     draw_rect_outline(app, square, radius, thickness, color, center.z);
 }
 
@@ -286,38 +271,30 @@ draw_rect2(App *app, rect2 rect, ARGB_Color color)
 force_inline void
 ed_draw_disk(App *app, v3 center, v1 radius, ARGB_Color color)
 {
-    rect2 square = rect2_center_radius(center.xy, vec2(radius, radius));
+    rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
     draw_rect(app, square, radius, color, center.z);
 }
 
 force_inline void
 draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
 {
-    draw_circle(app, vec3(center,0), radius, color, thickness);
+ draw_circle(app, V3(center,0), radius, color, thickness);
 }
 
-force_inline rect2
-draw_get_clip(App *app)
+inline push_image_return
+push_image(push_image_params)
 {
- Render_Target *target = draw_get_target(app);
- if (target->group_last)
- {
-  return target->group_last->clip_box;
- }
- else
- {
-  return {};
- }
+ Render_Entry *entry = new_render_entry(target, RET_Image);
+ entry->image = push_struct(&target->arena, Render_Entry_Image);
+ *entry->image = {filename, o,x,y, color, prim_id};
 }
 
-////////////////////////////////
-#if !AD_IS_COMPILING_GAME
-
-internal draw_get_target_return
+//~
+inline draw_get_target_return
 draw_get_target(draw_get_target_params)
 {
-    Models *models = (Models*)app->cmd_context;
-    return models->target;
+ Models *models = (Models*)app->cmd_context;
+ return models->target;
 }
 
 internal rect2
@@ -381,12 +358,12 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
     Render_Vertex vertices[6] = {};
     
     Rect_f32 uv = bounds.uv;
-    vertices[0].uvw = vec3(uv.x0, uv.y0, bounds.w);
-    vertices[1].uvw = vec3(uv.x1, uv.y0, bounds.w);
-    vertices[2].uvw = vec3(uv.x0, uv.y1, bounds.w);
-    vertices[5].uvw = vec3(uv.x1, uv.y1, bounds.w);
+    vertices[0].uvw = V3(uv.x0, uv.y0, bounds.w);
+    vertices[1].uvw = V3(uv.x1, uv.y0, bounds.w);
+    vertices[2].uvw = V3(uv.x0, uv.y1, bounds.w);
+    vertices[5].uvw = V3(uv.x1, uv.y1, bounds.w);
     
-    Vec2_f32 y_axis = vec2(-x_axis.y, x_axis.x);
+    Vec2_f32 y_axis = V2(-x_axis.y, x_axis.x);
     Vec2_f32 x_min = bounds.xy_off.x0*x_axis;
     Vec2_f32 x_max = bounds.xy_off.x1*x_axis;
     Vec2_f32 y_min = bounds.xy_off.y0*y_axis;
@@ -406,7 +383,7 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
         vertices[i].half_thickness = 0.f;
     }
     
-    draw__push_vertices(target, vertices, alen(vertices));
+    draw__push_vertices(target, vertices, alen(vertices), Vertex_Poly);
 }
 
 ////////////////////////////////
@@ -414,8 +391,8 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
 internal Vec2_f32
 floor_v2(Vec2_f32 point)
 {
-    point.x = f32_floor32(point.x);
-    point.y = f32_floor32(point.y);
+    point.x = floorv1(point.x);
+    point.y = floorv1(point.y);
     return(point);
 }
 
@@ -438,7 +415,7 @@ draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
         Translation_Emits emits = {};
         
         for (u32 i = 0; str < str_end; ++str, ++i){
-            translating_fully_process_byte(&tran, *str, i, (i32)string.size, &emits);
+            translating_fully_process_byte(&tran, *str, i, (i1)string.size, &emits);
             
             for (TRANSLATION_DECL_EMIT_LOOP(J, emits))
             {
@@ -495,8 +472,8 @@ draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
 }
 
 internal f32
-draw_string(Render_Target *target, Face *face, String_Const_u8 string, Vec2_f32 point, u32 color){
-    return(draw_string_inner(target, face, string, point, color, 0, vec2(1.f, 0.f)));
+draw_string(Render_Target *target, Face *face, String string, Vec2_f32 point, u32 color){
+    return(draw_string_inner(target, face, string, point, color, 0, V2(1.f, 0.f)));
 }
 
 internal f32
@@ -506,17 +483,15 @@ draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 colo
 
 internal f32
 draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color){
-    return(draw_string_inner(target, face, SCu8(str), point, color, 0, vec2(1.f, 0.f)));
+    return(draw_string_inner(target, face, SCu8(str), point, color, 0, V2(1.f, 0.f)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, String str){
-    return(draw_string_inner(target, face, str, vec2(0, 0), 0, 0, vec2(0, 0)));
+    return(draw_string_inner(target, face, str, V2(0, 0), 0, 0, V2(0, 0)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, u8 *str){
-    return(draw_string_inner(target, face, SCu8(str), vec2(0, 0), 0, 0, vec2(0, 0)));
+    return(draw_string_inner(target, face, SCu8(str), V2(0, 0), 0, 0, V2(0, 0)));
 }
-
-#endif // AD_IS_COMPILING_GAME

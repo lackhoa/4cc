@@ -26,7 +26,7 @@ global Unix_Vars unixvars;
 
 internal
 Sys_Get_Current_Path_Sig(system_get_current_path){
-    i32 result = 0;
+    i1 result = 0;
     char *d = getcwd(out, capacity);
     if (d == out){
         result = strlen(out);
@@ -134,8 +134,8 @@ Sys_Set_File_List_Sig(system_set_file_list){
             *canon_directory_size_out = length;
         }
         
-        i32 character_count = 0;
-        i32 file_count = 0;
+        i1 character_count = 0;
+        i1 file_count = 0;
         for (struct dirent *entry = readdir(d);
              entry != 0;
              entry = readdir(d)){
@@ -144,12 +144,12 @@ Sys_Set_File_List_Sig(system_set_file_list){
                 continue;
             }
             ++file_count;
-            i32 size = 0;
+            i1 size = 0;
             for (; fname[size]; ++size);
             character_count += size + 1;
         }
         
-        i32 required_size = character_count + file_count * sizeof(File_Info);
+        i1 required_size = character_count + file_count * sizeof(File_Info);
         if (file_list->block_size < required_size){
             system_memory_free(file_list->block, file_list->block_size);
             file_list->block = system_memory_allocate(required_size);
@@ -170,7 +170,7 @@ Sys_Set_File_List_Sig(system_set_file_list){
                     continue;
                 }
                 char *cursor_start = cursor;
-                i32 length = copy_fast_unsafe_cc(cursor_start, fname);
+                i1 length = copy_fast_unsafe_cc(cursor_start, fname);
                 cursor += length;
                 
                 if (entry->d_type == DT_LNK){
@@ -262,7 +262,7 @@ Sys_Get_Canonical_Sig(system_get_canonical){
     }
 #endif
     
-    u32 length = (i32)(write_p - path);
+    u32 length = (i1)(write_p - path);
     buffer[length] = 0;
     return(length);
 }
@@ -273,13 +273,13 @@ Sys_Load_Handle_Sig(system_load_handle){
     
     FD_CHECK();
     
-    i32 fd = open(filename, O_RDONLY);
+    i1 fd = open(filename, O_RDONLY);
     if (fd == -1 || fd == 0){
         //LOGF("upable to open file descriptor for %s\n", filename);
     }
     else{
         //LOGF("file descriptor (%d) == file %s\n", fd, filename);
-        *(i32*)handle_out = fd;
+        *(i1*)handle_out = fd;
         result = true;
     }
     
@@ -290,14 +290,14 @@ internal
 Sys_Load_Size_Sig(system_load_size){
     u32 result = 0;
     
-    i32 fd = *(i32*)&handle;
+    i1 fd = *(i1*)&handle;
     struct stat st = {};
     
     if (fstat(fd, &st) == -1){
         //LOGF("unable to stat a file\n");
     }
     else{
-        //LOGF("file descriptor (%d) has size %d\n", fd, (i32)st.st_size);
+        //LOGF("file descriptor (%d) has size %d\n", fd, (i1)st.st_size);
         result = st.st_size;
     }
     
@@ -306,7 +306,7 @@ Sys_Load_Size_Sig(system_load_size){
 
 internal
 Sys_Load_File_Sig(system_load_file){
-    i32 fd = *(i32*)&handle;
+    i1 fd = *(i1*)&handle;
     
     do{
         ssize_t n = read(fd, buffer, size);
@@ -329,7 +329,7 @@ internal
 Sys_Load_Close_Sig(system_load_close){
     b32 result = true;
     
-    i32 fd = *(i32*)&handle;
+    i1 fd = *(i1*)&handle;
     if (close(fd) == -1){
         //LOGF("error closing file descriptor (%d)\n", fd);
         result = false;
@@ -345,7 +345,7 @@ Sys_Load_Close_Sig(system_load_close){
 
 internal
 Sys_Save_File_Sig(system_save_file){
-    i32 fd = open(filename, O_WRONLY|O_TRUNC|O_CREAT, 00640);
+    i1 fd = open(filename, O_WRONLY|O_TRUNC|O_CREAT, 00640);
     
     //LOGF("%s %d\n", filename, size);
     if (fd < 0){

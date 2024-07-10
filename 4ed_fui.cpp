@@ -1,5 +1,3 @@
-#include "4coder_kv/4ed_kv_game.cpp"
-
 internal String
 get_identifier_at_cursor(Arena *arena, App *app, Buffer_ID buffer)
 {
@@ -19,13 +17,12 @@ fui_tick(App *app, Frame_Info frame_info)
  Game_API *game = &global_game_code;
  if (game->is_valid)
  {
-  Fui_Slider *slider = game->fui_get_active_slider();
-  if ( slider )
+  if ( game->fui_is_active() )
   {
    animate_next_frame(app);
    Scratch_Block scratch(app);
    {// NOTE: Printing
-    String value_string = game->fui_push_slider_value(scratch, slider, String{});
+    String value_string = game->fui_push_active_slider_value(scratch);
     vim_set_bottom_text(value_string);
    }
   }
@@ -38,7 +35,7 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
  Game_API *game = &global_game_code;
  if ( game->is_valid )
  {
-  if ( game->fui_at_slider_p(app, buffer) )
+  if ( game->fui_at_slider_p(app, buffer, 0) )
   {
    v2 slider_radius = v2{50,50};
    v2 slider_dim    = 2 * slider_radius;
@@ -46,7 +43,7 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
    {// NOTE: the whole slider outline
     rect2 rect = rect2_center_dim(slider_origin, slider_dim);
     v4 color = v4{1,1,1,0.5f};
-    if ( game->fui_get_active_slider() )  
+    if ( game->fui_is_active() )  
      color.a = 1.0f;
     draw_rect_outline2(app, rect, 2, argb_pack(color));
    }
@@ -80,3 +77,5 @@ fui_editor_ui_loop(fui_editor_ui_loop_params)
  }
  return writeback;
 }
+
+//~

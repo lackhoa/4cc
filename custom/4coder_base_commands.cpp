@@ -28,7 +28,7 @@ write_text(App *app, String insert, b32 move_cursor)
    if (record.error == RecordError_NoError && record.kind == RecordKind_Single)
    {
     String string = record.single_string_forward;
-    i32 last_end = (i32)(record.single_first + string.size);
+    i1 last_end = (i1)(record.single_first + string.size);
     if (last_end == pos && string.size > 0){
      char c = string.str[string.size - 1];
      if (c != '\n')
@@ -90,7 +90,7 @@ CUSTOM_DOC("Deletes the character to the right of the cursor.")
             Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(start));
             i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
             i64 end = view_pos_from_relative_character(app, view, cursor.line, character + 1);
-            buffer_replace_range(app, buffer, Ii64(start, end), string_u8_empty);
+            buffer_replace_range(app, buffer, Ii64(start, end), empty_string);
         }
     }
 }
@@ -107,7 +107,7 @@ CUSTOM_DOC("Deletes the character to the left of the cursor.")
             Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(end));
             i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
             i64 start = view_pos_from_relative_character(app, view, cursor.line, character - 1);
-            if (buffer_replace_range(app, buffer, Ii64(start, end), string_u8_empty)){
+            if (buffer_replace_range(app, buffer, Ii64(start, end), empty_string)){
                 view_set_cursor_and_preferred_x(app, view, seek_pos(start));
             }
         }
@@ -156,32 +156,54 @@ CUSTOM_DOC("Sets the left size of the view near the x position of the cursor.")
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     i64 pos = view_get_cursor_pos(app, view);
-    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
-    Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, pos);
-    Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-    scroll.target.pixel_shift.x = clamp_min(0.f, p.x - 30.f);
-    view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
-    no_mark_snap_to_cursor(app, view);
+ Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+ Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, pos);
+ Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+ scroll.target.pixel_shift.x = clamp_min(0.f, p.x - 30.f);
+ view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+ no_mark_snap_to_cursor(app, view);
 }
 
+
+internal void
+view_set_buffer_named(App *app, View_ID view, String8 name)
+{
+ Buffer_ID buffer = create_buffer(app, name, 0);
+ view_set_buffer(app, view, buffer, 0);
+}
+//
+internal void
+set_buffer_named(App *app, String8 name)
+{
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ view_set_buffer_named(app, view, name);
+}
+
+#if 0
+jump click_set_cursor_and_mark();
+#endif
 CUSTOM_COMMAND_SIG(click_set_cursor_and_mark)
 CUSTOM_DOC("Sets the cursor position and mark to the mouse position.")
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Mouse_State mouse = get_mouse_state(app);
-    i64 pos = view_pos_from_xy(app, view, vec2(mouse.p));
-    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
-    view_set_mark(app, view, seek_pos(pos));
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Render_Target *target = draw_get_target(app);
+ Mouse_State mouse = get_mouse_state(app);
+ i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
+ view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ view_set_mark(app, view, seek_pos(pos));
 }
 
+#if 0
+jump click_set_cursor();
+#endif
 CUSTOM_COMMAND_SIG(click_set_cursor)
 CUSTOM_DOC("Sets the cursor position to the mouse position.")
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Mouse_State mouse = get_mouse_state(app);
-    i64 pos = view_pos_from_xy(app, view, vec2(mouse.p));
-    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
-    no_mark_snap_to_cursor(app, view);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Mouse_State mouse = get_mouse_state(app);
+ i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
+ view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ no_mark_snap_to_cursor(app, view);
 }
 
 CUSTOM_COMMAND_SIG(click_set_cursor_if_lbutton)
@@ -190,7 +212,7 @@ CUSTOM_DOC("If the mouse left button is pressed, sets the cursor position to the
     View_ID view = get_active_view(app, Access_ReadVisible);
     Mouse_State mouse = get_mouse_state(app);
     if (mouse.l){
-        i64 pos = view_pos_from_xy(app, view, vec2(mouse.p));
+        i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
         view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
     }
     no_mark_snap_to_cursor(app, view);
@@ -202,7 +224,7 @@ CUSTOM_DOC("Sets the mark position to the mouse position.")
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Mouse_State mouse = get_mouse_state(app);
-    i64 pos = view_pos_from_xy(app, view, vec2(mouse.p));
+    i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
     view_set_mark(app, view, seek_pos(pos));
     no_mark_snap_to_cursor(app, view);
 }
@@ -214,7 +236,7 @@ CUSTOM_DOC("Reads the scroll wheel value from the mouse state and scrolls accord
     Mouse_State mouse = get_mouse_state(app);
     if (mouse.wheel != 0){
         Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-        scroll.target = view_move_buffer_point(app, view, scroll.target, vec2(0.f, (f32)mouse.wheel));
+        scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, (f32)mouse.wheel));
         view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
     }
     if (mouse.l){
@@ -225,7 +247,7 @@ CUSTOM_DOC("Reads the scroll wheel value from the mouse state and scrolls accord
 ////////////////////////////////
 
 internal void
-move_vertical_pixels(Application_Links *app, View_ID view, f32 pixels){
+move_vertical_pixels(App *app, View_ID view, f32 pixels){
     ProfileScope(app, "move vertical pixels");
     i64 pos = view_get_cursor_pos(app, view);
     Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
@@ -244,14 +266,14 @@ move_vertical_pixels(Application_Links *app, View_ID view, f32 pixels){
 }
 
 internal void
-move_vertical_pixels(Application_Links *app, f32 pixels)
+move_vertical_pixels(App *app, f32 pixels)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     move_vertical_pixels(app, view, pixels);
 }
 
 internal void
-move_vertical_lines(Application_Links *app, View_ID view, i64 lines){
+move_vertical_lines(App *app, View_ID view, i64 lines){
     if (lines > 0){
         for (i64 i = 0; i < lines; i += 1){
             move_vertical_pixels(app, 1.f);
@@ -265,13 +287,13 @@ move_vertical_lines(Application_Links *app, View_ID view, i64 lines){
 }
 
 internal void
-move_vertical_lines(Application_Links *app, i64 lines){
+move_vertical_lines(App *app, i64 lines){
     View_ID view = get_active_view(app, Access_ReadVisible);
     move_vertical_lines(app, view, lines);
 }
 
 internal f32
-get_page_jump(Application_Links *app, View_ID view){
+get_page_jump(App *app, View_ID view){
     Rect_f32 region = view_get_buffer_region(app, view);
     return(rect_height(region)*.9f);
 }
@@ -327,7 +349,7 @@ CUSTOM_DOC("Scrolls the view down one view height and moves the cursor down one 
 }
 
 internal void
-seek_blank_line(Application_Links *app, Scan_Direction direction, Position_Within_Line position){
+seek_blank_line(App *app, Scan_Direction direction, Position_Within_Line position){
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
     i64 pos = view_get_cursor_pos(app, view);
@@ -406,7 +428,7 @@ CUSTOM_DOC("Puts the cursor at the top of the file, and the mark at the bottom o
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    i32 buffer_size = (i32)buffer_get_size(app, buffer);
+    i1 buffer_size = (i1)buffer_get_size(app, buffer);
     view_set_cursor_and_preferred_x(app, view, seek_pos(0));
     view_set_mark(app, view, seek_pos(buffer_size));
     no_mark_snap_to_cursor(app, view);
@@ -414,14 +436,14 @@ CUSTOM_DOC("Puts the cursor at the top of the file, and the mark at the bottom o
 
 ////////////////////////////////
 
-typedef i32 Clean_All_Lines_Mode;
+typedef i1 Clean_All_Lines_Mode;
 enum{
     CleanAllLinesMode_RemoveBlankLines,
     CleanAllLinesMode_LeaveBlankLines,
 };
 
 function void
-clean_all_lines_buffer(Application_Links *app, Buffer_ID buffer, Clean_All_Lines_Mode mode){
+clean_all_lines_buffer(App *app, Buffer_ID buffer, Clean_All_Lines_Mode mode){
     ProfileScope(app, "clean all lines");
     Scratch_Block scratch(app);
     Batch_Edit *batch_first = 0;
@@ -445,7 +467,7 @@ clean_all_lines_buffer(Application_Links *app, Buffer_ID buffer, Clean_All_Lines
             has_tail_whitespace = character_is_whitespace(prev);
         }
         if (has_tail_whitespace){
-            String_Const_u8 line = push_buffer_range(app, scratch, buffer,
+            String line = push_buffer_range(app, scratch, buffer,
                                                      Ii64(line_start, line_end));
             if (line.size > 0){
                 i64 end_offset = line.size;
@@ -632,7 +654,7 @@ CUSTOM_COMMAND_SIG(mouse_wheel_change_face_size)
 CUSTOM_DOC("Reads the state of the mouse wheel and uses it to either increase or decrease the face size.")
 {
     local_persist u64 next_resize_time = 0;
-    u64 now = system_now_time();
+    u64 now = system_time_usecond();
     if (now >= next_resize_time){
         next_resize_time = now + 50*1000;
         Mouse_State mouse = get_mouse_state(app);
@@ -693,7 +715,7 @@ CUSTOM_DOC("Queries the user for a number, and jumps the cursor to the correspon
     bar.string = SCu8(string_space, (u64)0);
     bar.string_capacity = sizeof(string_space);
     if (query_user_number(app, &bar)){
-        i32 line_number = (i32)string_to_u64(bar.string, 10);
+        i1 line_number = (i1)string_to_u64(bar.string, 10);
         View_ID view = get_active_view(app, Access_ReadVisible);
         view_set_cursor_and_preferred_x(app, view, seek_line_col(line_number, 0));
     }
@@ -715,14 +737,14 @@ CUSTOM_COMMAND_SIG(search);
 CUSTOM_COMMAND_SIG(reverse_search);
 
 function void
-isearch__update_highlight(Application_Links *app, View_ID view, Range_i64 range){
+isearch__update_highlight(App *app, View_ID view, Range_i64 range){
     view_set_highlight_range(app, view, range);
     view_set_cursor_and_preferred_x(app, view, seek_pos(range.start));
 }
 
 function void
-isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
-        String_Const_u8 query_init){
+isearch(App *app, Scan_Direction start_scan, i64 first_pos,
+        String query_init){
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
     if (!buffer_exists(app, buffer)){
@@ -752,8 +774,8 @@ isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
     bar.string = SCu8(bar_string_space, query_init.size);
     block_copy(bar.string.str, query_init.str, query_init.size);
     
-    String_Const_u8 isearch_str = string_u8_litexpr("I-Search: ");
-    String_Const_u8 rsearch_str = string_u8_litexpr("Reverse-I-Search: ");
+    String isearch_str = string_u8_litexpr("I-Search: ");
+    String rsearch_str = string_u8_litexpr("Reverse-I-Search: ");
     
     u64 match_size = bar.string.size;
     
@@ -776,7 +798,7 @@ isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
             break;
         }
         
-        String_Const_u8 string = to_writable(&in);
+        String string = to_writable(&in);
         
         b32 string_change = false;
         if (match_key_code(&in, Key_Code_Return) ||
@@ -939,27 +961,27 @@ isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos,
 }
 
 function void
-isearch(Application_Links *app, Scan_Direction start_scan, String_Const_u8 query_init){
+isearch(App *app, Scan_Direction start_scan, String query_init){
     View_ID view = get_active_view(app, Access_ReadVisible);
     i64 pos = view_get_cursor_pos(app, view);;
     isearch(app, start_scan, pos, query_init);
 }
 
 function void
-isearch(Application_Links *app, Scan_Direction start_scan){
+isearch(App *app, Scan_Direction start_scan){
     View_ID view = get_active_view(app, Access_ReadVisible);
     i64 pos = view_get_cursor_pos(app, view);;
     isearch(app, start_scan, pos, SCu8());
 }
 
 function void
-isearch_identifier(Application_Links *app, Scan_Direction scan){
+isearch_identifier(App *app, Scan_Direction scan){
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer_id = view_get_buffer(app, view, Access_ReadVisible);
     i64 pos = view_get_cursor_pos(app, view);
     Scratch_Block scratch(app);
     Range_i64 range = enclose_pos_alnum_underscore(app, buffer_id, pos);
-    String_Const_u8 query = push_buffer_range(app, scratch, buffer_id, range);
+    String query = push_buffer_range(app, scratch, buffer_id, range);
     isearch(app, scan, range.first, query);
 }
 
@@ -989,12 +1011,12 @@ CUSTOM_DOC("Begins an incremental search up through the current buffer for the w
 
 struct String_Pair{
     b32 valid;
-    String_Const_u8 a;
-    String_Const_u8 b;
+    String a;
+    String b;
 };
 
 internal String_Pair
-query_user_replace_pair(Application_Links *app, Arena *arena){
+query_user_replace_pair(App *app, Arena *arena){
     Query_Bar *replace = push_array(arena, Query_Bar, 1);
     u8 *replace_space = push_array(arena, u8, KB(1));
     replace->prompt = string_u8_litexpr("Replace: ");
@@ -1019,7 +1041,7 @@ query_user_replace_pair(Application_Links *app, Arena *arena){
 // NOTE(allen): This is a bit of a hacky setup because of Query_Bar lifetimes.  This must be
 // called as the last operation of a command.
 internal void
-replace_in_range_query_user(Application_Links *app, Buffer_ID buffer, Range_i64 range){
+replace_in_range_query_user(App *app, Buffer_ID buffer, Range_i64 range){
     Scratch_Block scratch(app);
     Query_Bar_Group group(app);
     String_Pair pair = query_user_replace_pair(app, scratch);
@@ -1066,7 +1088,7 @@ CUSTOM_DOC("Queries the user for a needle and string. Replaces all occurences of
 }
 
 function void
-query_replace_base(Application_Links *app, View_ID view, Buffer_ID buffer_id, i64 pos, String_Const_u8 r, String_Const_u8 w){
+query_replace_base(App *app, View_ID view, Buffer_ID buffer_id, i64 pos, String r, String w){
     i64 new_pos = 0;
     seek_string_forward(app, buffer_id, pos - 1, 0, r, &new_pos);
     
@@ -1106,7 +1128,7 @@ query_replace_base(Application_Links *app, View_ID view, Buffer_ID buffer_id, i6
 }
 
 function void
-query_replace_parameter(Application_Links *app, String_Const_u8 replace_str, i64 start_pos, b32 add_replace_query_bar){
+query_replace_parameter(App *app, String replace_str, i64 start_pos, b32 add_replace_query_bar){
     Query_Bar_Group group(app);
     Query_Bar replace = {};
     replace.prompt = string_u8_litexpr("Replace: ");
@@ -1123,8 +1145,8 @@ query_replace_parameter(Application_Links *app, String_Const_u8 replace_str, i64
     with.string_capacity = sizeof(with_space);
     
     if (query_user_string(app, &with)){
-        String_Const_u8 r = replace.string;
-        String_Const_u8 w = with.string;
+        String r = replace.string;
+        String w = with.string;
         
         View_ID view = get_active_view(app, Access_ReadVisible);
         Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -1168,7 +1190,7 @@ CUSTOM_DOC("Queries the user for a string, and incrementally replace every occur
         Scratch_Block scratch(app);
         i64 pos = view_get_cursor_pos(app, view);
         Range_i64 range = enclose_pos_alnum_underscore(app, buffer, pos);
-        String_Const_u8 replace = push_buffer_range(app, scratch, buffer, range);
+        String replace = push_buffer_range(app, scratch, buffer, range);
         if (replace.size != 0){
             query_replace_parameter(app, replace, range.min, true);
         }
@@ -1183,7 +1205,7 @@ CUSTOM_DOC("Queries the user for a string, and incrementally replace every occur
     if (buffer != 0){
         Scratch_Block scratch(app);
         Range_i64 range = get_view_range(app, view);
-        String_Const_u8 replace = push_buffer_range(app, scratch, buffer, range);
+        String replace = push_buffer_range(app, scratch, buffer, range);
         if (replace.size != 0){
             query_replace_parameter(app, replace, range.min, true);
         }
@@ -1222,11 +1244,11 @@ CUSTOM_DOC("Read from the top of the point stack and jump there; if already ther
 ////////////////////////////////
 
 function void
-delete_file_base(App *app, String_Const_u8 filename, Buffer_ID buffer_id)
+delete_file_base(App *app, String filename, Buffer_ID buffer_id)
 {
     String8 path = path_dirname(filename);
     Scratch_Block scratch(app);
-    List_String_Const_u8 list = {};
+    List_String list = {};
 #if OS_WINDOWS
     string_list_push_u8_lit(scratch, &list, "del ");
 #elif OS_LINUX || OS_MAC
@@ -1235,7 +1257,7 @@ delete_file_base(App *app, String_Const_u8 filename, Buffer_ID buffer_id)
 #   error no delete file command for this platform
 #endif
     string_list_pushf(scratch, &list, "\"%.*s\"", string_expand(filename));
-    String_Const_u8 cmd = string_list_flatten(scratch, list, StringFill_NullTerminate);
+    String cmd = string_list_flatten(scratch, list, StringFill_NullTerminate);
     exec_system_command(app, 0, buffer_identifier(0), path, cmd, 0);
     buffer_kill(app, buffer_id, BufferKill_AlwaysKill);
 }
@@ -1250,7 +1272,7 @@ CUSTOM_DOC("Deletes the file of the current buffer if 4coder has the appropriate
     if (filename.size > 0){
         Query_Bar_Group group(app);
         Query_Bar bar = {};
-        bar.prompt = push_stringf(scratch, "Delete '%.*s' (Y)es, (n)o", string_expand(filename));
+        bar.prompt = push_stringfz(scratch, "Delete '%.*s' (Y)es, (n)o", string_expand(filename));
         if (start_query_bar(app, &bar, 0) != 0){
             b32 cancelled = false;
             for (;!cancelled;){
@@ -1292,20 +1314,20 @@ CUSTOM_DOC("Queries the user for a file name and saves the contents of the curre
     
     Scratch_Block scratch(app);
     Query_Bar_Group group(app);
-    String_Const_u8 buffer_name = push_buffer_unique_name(app, scratch, buffer);
+    String buffer_name = push_buffer_unique_name(app, scratch, buffer);
     
     // Query the user
     u8 name_space[4096];
     Query_Bar bar = {};
-    bar.prompt = push_stringf(scratch, "Save '%.*s' to: ", string_expand(buffer_name));
+    bar.prompt = push_stringfz(scratch, "Save '%.*s' to: ", string_expand(buffer_name));
     bar.string = SCu8(name_space, (u64)0);
     bar.string_capacity = sizeof(name_space);
     if (query_user_string(app, &bar)){
         if (bar.string.size != 0){
-            List_String_Const_u8 new_filename_list = {};
+            List_String new_filename_list = {};
             string_list_push(scratch, &new_filename_list, push_hot_directory(app, scratch));
             string_list_push(scratch, &new_filename_list, bar.string);
-            String_Const_u8 new_filename = string_list_flatten(scratch, new_filename_list);
+            String new_filename = string_list_flatten(scratch, new_filename_list);
             if (buffer_save(app, buffer, new_filename, BufferSave_IgnoreDirtyFlag)){
                 Buffer_ID new_buffer = create_buffer(app, new_filename, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
                 if (new_buffer != 0 && new_buffer != buffer){
@@ -1325,22 +1347,22 @@ CUSTOM_DOC("Queries the user for a new name and renames the file of the current 
     
     Scratch_Block scratch(app);
     
-    String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+    String filename = push_buffer_filename(app, scratch, buffer);
     if (filename.size > 0){
         // Query the user
         Query_Bar_Group group(app);
-        String_Const_u8 front = string_front_of_path(filename);
+        String front = path_filename(filename);
         u8 name_space[4096];
         Query_Bar bar = {};
-        bar.prompt = push_stringf(scratch, "Rename '%.*s' to: ", string_expand(front));
+        bar.prompt = push_stringfz(scratch, "Rename '%.*s' to: ", string_expand(front));
         bar.string = SCu8(name_space, (u64)0);
         bar.string_capacity = sizeof(name_space);
         if (query_user_string(app, &bar) && bar.string.size != 0){
             // TODO(allen): There should be a way to say, "detach a buffer's file" and "attach this file to a buffer"
-            List_String_Const_u8 new_filename_list = {};
+            List_String new_filename_list = {};
             string_list_push(scratch, &new_filename_list, string_remove_front_of_path(filename));
             string_list_push(scratch, &new_filename_list, bar.string);
-            String_Const_u8 new_filename = string_list_flatten(scratch, new_filename_list, StringFill_NullTerminate);
+            String new_filename = string_list_flatten(scratch, new_filename_list, StringFill_NullTerminate);
             if (buffer_save(app, buffer, new_filename, BufferSave_IgnoreDirtyFlag)){
                 Buffer_ID new_buffer = create_buffer(app, new_filename, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
                 if (new_buffer != 0 && new_buffer != buffer){
@@ -1357,27 +1379,27 @@ CUSTOM_DOC("Queries the user for a name and creates a new directory with the giv
 {
     Scratch_Block scratch(app);
     
-    String_Const_u8 hot = push_hot_directory(app, scratch);
+    String hot = push_hot_directory(app, scratch);
     
     // Query the user
     Query_Bar_Group group(app);
     u8 name_space[4096];
     Query_Bar bar = {};
-    bar.prompt = push_stringf(scratch, "Make directory at '%.*s': ", string_expand(hot));
+    bar.prompt = push_stringfz(scratch, "Make directory at '%.*s': ", string_expand(hot));
     bar.string = SCu8(name_space, (u64)0);
     bar.string_capacity = sizeof(name_space);
     
     if (!query_user_string(app, &bar)) return;
     if (bar.string.size == 0) return;
     
-    String_Const_u8 cmd = push_stringf(scratch, "mkdir %.*s", string_expand(bar.string));
+    String cmd = push_stringfz(scratch, "mkdir %.*s", string_expand(bar.string));
     exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
 }
 
 ////////////////////////////////
 
 internal void
-current_view_move_line(Application_Links *app, Scan_Direction direction){
+current_view_move_line(App *app, Scan_Direction direction){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
     i64 pos = view_get_cursor_pos(app, view);
@@ -1406,8 +1428,8 @@ CUSTOM_DOC("Create a copy of the line on which the cursor sits.")
     i64 pos = view_get_cursor_pos(app, view);
     i64 line = get_line_number_from_pos(app, buffer, pos);
     Scratch_Block scratch(app);
-    String_Const_u8 s = push_buffer_line(app, scratch, buffer, line);
-    s = push_stringf(scratch, "%.*s\n", string_expand(s));
+    String s = push_buffer_line(app, scratch, buffer, line);
+    s = push_stringfz(scratch, "%.*s\n", string_expand(s));
     pos = get_line_side_pos(app, buffer, line, Side_Min);
     buffer_replace_range(app, buffer, Ii64(pos), s);
 }
@@ -1421,7 +1443,7 @@ CUSTOM_DOC("Delete the line the on which the cursor sits.")
     i64 line = get_line_number_from_pos(app, buffer, pos);
     Range_i64 range = get_line_pos_range(app, buffer, line);
     range.end += 1;
-    i32 size = (i32)buffer_get_size(app, buffer);
+    i1 size = (i1)buffer_get_size(app, buffer);
     range.end = clamp_max(range.end, size);
     if (range_size(range) == 0 ||
         buffer_get_char(app, buffer, range.end - 1) != '\n'){
@@ -1456,7 +1478,7 @@ CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to op
             path = string_chop(path, 1);
         }
         
-        String8 new_filename = push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
+        String8 new_filename = push_stringfz(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
         
         view = get_other_primary_view(app, view, Access_Always, true);
         if (view != 0){
@@ -1468,16 +1490,16 @@ CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to op
 }
 
 function b32
-get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffer_out)
+get_cpp_matching_file(App *app, Buffer_ID buffer, Buffer_ID *buffer_out)
 {
     b32 result = false;
     Scratch_Block scratch(app);
-    String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+    String filename = push_buffer_filename(app, scratch, buffer);
     if (filename.size > 0)
     {
-        String_Const_u8 extension = string_file_extension(filename);
-        String_Const_u8 new_extensions[2] = {};
-        i32 new_extensions_count = 0;
+        String extension = string_file_extension(filename);
+        String new_extensions[2] = {};
+        i1 new_extensions_count = 0;
         if (string_match(extension, string_u8_litexpr("cpp")) || string_match(extension, string_u8_litexpr("cc"))){
             new_extensions[0] = string_u8_litexpr("h");
             new_extensions[1] = string_u8_litexpr("hpp");
@@ -1497,11 +1519,11 @@ get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffe
             new_extensions_count = 1;
         }
         
-        String_Const_u8 file_without_extension = string_file_without_extension(filename);
-        for (i32 i = 0; i < new_extensions_count; i += 1){
+        String file_without_extension = string_file_without_extension(filename);
+        for (i1 i = 0; i < new_extensions_count; i += 1){
             Temp_Memory temp = begin_temp(scratch);
             String8 new_extension = new_extensions[i];
-            String8 new_filename = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
+            String8 new_filename = push_stringfz(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
             if (open_editing_file(app, buffer_out, new_filename, false, true)){
                 result = true;
                 break;
@@ -1510,7 +1532,7 @@ get_cpp_matching_file(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffe
         }
         
         if (!result && new_extensions_count > 0){
-            String8 new_filename = push_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
+            String8 new_filename = push_stringfz(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
             if (open_editing_file(app, buffer_out, new_filename, false, false)){
                 result = true;
             }
@@ -1613,7 +1635,7 @@ CUSTOM_DOC("Saves the current buffer.")
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
     Scratch_Block scratch(app);
-    String_Const_u8 filename = push_buffer_filename(app, scratch, buffer);
+    String filename = push_buffer_filename(app, scratch, buffer);
     buffer_save(app, buffer, filename, 0);
 }
 
@@ -1628,19 +1650,19 @@ CUSTOM_DOC("Reopen the current buffer from the hard drive.")
 ////////////////////////////////
 
 internal i64
-record_get_new_cursor_position_undo(Application_Links *app, Buffer_ID buffer_id, History_Record_Index index, Record_Info record){
+record_get_new_cursor_position_undo(App *app, Buffer_ID buffer_id, History_Record_Index index, Record_Info record){
     i64 new_edit_position = record.pos_before_edit;
 #if 0
     switch (record.kind){
         default:
         case RecordKind_Single:
         {
-            new_edit_position = (i32)(record.single_first + record.single_string_backward.size);
+            new_edit_position = (i1)(record.single_first + record.single_string_backward.size);
         }break;
         case RecordKind_Group:
         {
             Record_Info sub_record = buffer_history_get_group_sub_record(app, buffer_id, index, 0);
-            new_edit_position = (i32)(sub_record.single_first + sub_record.single_string_backward.size);
+            new_edit_position = (i1)(sub_record.single_first + sub_record.single_string_backward.size);
         }break;
     }
 #endif
@@ -1648,7 +1670,7 @@ record_get_new_cursor_position_undo(Application_Links *app, Buffer_ID buffer_id,
 }
 
 internal i64
-record_get_new_cursor_position_undo(Application_Links *app, Buffer_ID buffer_id, History_Record_Index index){
+record_get_new_cursor_position_undo(App *app, Buffer_ID buffer_id, History_Record_Index index){
     Record_Info record = buffer_history_get_record_info(app, buffer_id, index);
     return(record_get_new_cursor_position_undo(app, buffer_id, index, record));
 }
@@ -1670,17 +1692,17 @@ record_get_new_cursor_position_redo(App *app, Buffer_ID buffer_id, History_Recor
             new_edit_position = sub_record.single_first + sub_record.single_string_forward.size;
         }break;
     }
-    return((i32)(new_edit_position));
+    return((i1)(new_edit_position));
 }
 
 internal i64
-record_get_new_cursor_position_redo(Application_Links *app, Buffer_ID buffer_id, History_Record_Index index){
+record_get_new_cursor_position_redo(App *app, Buffer_ID buffer_id, History_Record_Index index){
     Record_Info record = buffer_history_get_record_info(app, buffer_id, index);
     return(record_get_new_cursor_position_redo(app, buffer_id, index, record));
 }
 
 function void
-undo__fade_finish(Application_Links *app, Fade_Range *range){
+undo__fade_finish(App *app, Fade_Range *range){
     Buffer_ID buffer = range->buffer_id;
     History_Record_Index current = buffer_history_get_current_state_index(app, buffer);
     if (current > 0){
@@ -1689,7 +1711,7 @@ undo__fade_finish(Application_Links *app, Fade_Range *range){
 }
 
 function void
-undo__flush_fades(Application_Links *app, Buffer_ID buffer){
+undo__flush_fades(App *app, Buffer_ID buffer){
     Fade_Range **prev_next = &buffer_fade_ranges.first;
     for (Fade_Range *node = buffer_fade_ranges.first, *next = 0;
          node != 0;
@@ -1796,10 +1818,10 @@ CUSTOM_COMMAND_SIG(undo_all_buffers)
 CUSTOM_DOC("Advances backward through the undo history in the buffer containing the most recent regular edit.")
 {
     Scratch_Block scratch(app);
-    i32 highest_edit_number = -1;
+    i1 highest_edit_number = -1;
     Buffer_ID first_buffer_match = 0;
     Buffer_ID last_buffer_match = 0;
-    i32 match_count = 0;
+    i1 match_count = 0;
     
     {
         for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
@@ -1868,10 +1890,10 @@ CUSTOM_DOC("Advances forward through the undo history in the buffer containing t
 {
     Scratch_Block scratch(app);
     
-    i32 lowest_edit_number = 0x7FFFFFFF;
+    i1 lowest_edit_number = 0x7FFFFFFF;
     Buffer_ID first_buffer_match = 0;
     Buffer_ID last_buffer_match = 0;
-    i32 match_count = 0;
+    i1 match_count = 0;
     
     {
         for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
@@ -1947,23 +1969,9 @@ CUSTOM_DOC("Notes the external modification of attached files by printing a mess
     if (match_core_code(&input, CoreCode_FileExternallyModified)){
         Scratch_Block scratch(app);
         Buffer_ID buffer_id = input.event.core.id;
-        String_Const_u8 name = push_buffer_unique_name(app, scratch, buffer_id);
-        String_Const_u8 str = push_stringf(scratch, "Modified externally: %s\n", name.str);
+        String name = push_buffer_unique_name(app, scratch, buffer_id);
+        String str = push_stringfz(scratch, "Modified externally: %s\n", name.str);
         print_message(app, str);
     }
 }
 #endif
-
-internal void
-view_set_buffer_named(App *app, View_ID view, String8 name)
-{
-    Buffer_ID buffer = create_buffer(app, name, 0);
-    view_set_buffer(app, view, buffer, 0);
-}
-
-internal void
-view_set_buffer_named(App *app, String8 name)
-{
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    view_set_buffer_named(app, view, name);
-}

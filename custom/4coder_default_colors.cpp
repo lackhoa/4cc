@@ -13,7 +13,7 @@ finalize_color_array(Color_Table table, u64 id)
 }
 
 function ARGB_Color
-finalize_color(Color_Array array, i32 sub_index)
+finalize_color(Color_Array array, i1 sub_index)
 {
     ARGB_Color result = 0xFFFFFFFF;
     if (array.count > 0)
@@ -24,7 +24,7 @@ finalize_color(Color_Array array, i32 sub_index)
 }
 
 function ARGB_Color
-finalize_color(Color_Table color_table, u64 id, i32 sub_index)
+finalize_color(Color_Table color_table, u64 id, i1 sub_index)
 {
     Color_Array array = finalize_color_array(color_table, id);
     return(finalize_color(array, sub_index));
@@ -37,7 +37,7 @@ finalize_color_array(u64 id)
 }
 
 function ARGB_Color
-finalize_color(u64 id, i32 sub_index){
+finalize_color(u64 id, i1 sub_index){
 	return(finalize_color(active_color_table, id, sub_index));
 }
 
@@ -87,7 +87,7 @@ make_colors(Arena *arena, ARGB_Color c1, ARGB_Color c2, ARGB_Color c3, ARGB_Colo
 }
 
 function Color_Array
-make_colors(Arena *arena, ARGB_Color *colors, i32 count)
+make_colors(Arena *arena, ARGB_Color *colors, i1 count)
 {
     Color_Array result = {};
     result.count = count;
@@ -120,7 +120,7 @@ save_theme(Color_Table table, String name)
     Color_Table_Node *node = push_array(&global_theme_arena, Color_Table_Node, 1);
     sll_queue_push(global_theme_list.first, global_theme_list.last, node);
     global_theme_list.count += 1;
-    node->name = push_string_copy(&global_theme_arena, name);
+    node->name = push_string_copyz(&global_theme_arena, name);
     node->table = table;
 }
 
@@ -155,7 +155,7 @@ make_color_table(App *app, Arena *arena)
     result.arrays = push_array(arena, Color_Array, result.count);
     u32 *dummy = push_array(arena, u32, 1);
     *dummy = 0xFF990099;
-    for (i32 i = 0; i < result.count; i += 1){
+    for (i1 i = 0; i < result.count; i += 1){
         result.arrays[i].vals = dummy;
         result.arrays[i].count = 1;
     }

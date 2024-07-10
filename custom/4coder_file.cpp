@@ -11,9 +11,9 @@
 
 #include <stdio.h>
 
-function String_Const_u8
+function String
 data_from_file(Arena *arena, FILE *file){
-    String_Const_u8 result = {};
+    String result = {};
     if (file != 0){
         fseek(file, 0, SEEK_END);
         result.size = ftell(file);

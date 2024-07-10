@@ -35,7 +35,7 @@ CUSTOM_DOC("Switch the keybindings to mode 3.")
 }
 
 function Implicit_Map_Result
-F4_ImplicitMap(Application_Links *app, String_ID lang, String_ID mode, Input_Event *event)
+F4_ImplicitMap(App *app, String_ID lang, String_ID mode, Input_Event *event)
 {
     Implicit_Map_Result result = {};
     

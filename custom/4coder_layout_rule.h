@@ -34,13 +34,13 @@ struct Layout_Reflex{
     Face_ID face;
 };
 
-typedef i32 Layout_Wrap_Kind;
+typedef i1 Layout_Wrap_Kind;
 enum{
     Layout_Unwrapped,
     Layout_Wrapped,
 };
 
-typedef i32 Layout_Virtual_Indent;
+typedef i1 Layout_Virtual_Indent;
 enum{
     LayoutVirtualIndent_Off,
     LayoutVirtualIndent_On,

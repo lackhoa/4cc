@@ -190,7 +190,7 @@ get_defines_from_flags(Arena *arena, u32 flags){
 "-wd4611 -wd4189 -WX -GR- -EHa- -nologo -FC"
 
 #define CL_LIBS_COMMON \
-"user32.lib winmm.lib gdi32.lib opengl32.lib comdlg32.lib userenv.lib "
+"user32.lib winmm.lib gdi1.lib opengl32.lib comdlg32.lib userenv.lib "
 #define CL_LIBS_X64 CL_LIBS_COMMON FOREIGN_WIN "\\x64\\freetype.lib"
 #define CL_LIBS_X86 CL_LIBS_COMMON FOREIGN_WIN "\\x86\\freetype.lib"
 
@@ -616,7 +616,7 @@ get_4coder_dist_name(Arena *arena, u32 platform, char *tier, u32 arch){
 }
 
 function void
-package_for_arch(Arena *arena, u32 arch, char *cdir, char *build_dir, char *pack_dir, i32 tier, char *tier_name,  char *current_dist_tier, u32 flags, char** dist_files, i32 dist_file_count){
+package_for_arch(Arena *arena, u32 arch, char *cdir, char *build_dir, char *pack_dir, i1 tier, char *tier_name,  char *current_dist_tier, u32 flags, char** dist_files, i1 dist_file_count){
     char *arch_name  = arch_names[arch];
     char *parent_dir = fm_str(arena, current_dist_tier, "_", arch_name);
     char *dir        = fm_str(arena, parent_dir, SLASH "4coder");
@@ -643,7 +643,7 @@ package_for_arch(Arena *arena, u32 arch, char *cdir, char *build_dir, char *pack
         dist_file_count -= 1;
     }
     
-    for (i32 j = 0; j < dist_file_count; j += 1){
+    for (i1 j = 0; j < dist_file_count; j += 1){
         fm_copy_all(dist_files[j], dir);
     }
     
@@ -705,7 +705,7 @@ int main(int argc, char **argv)
     Arena arena = fm_init_system(DetailLevel_FileOperations);
     
     char cdir[256];
-    i32 n = fm_get_current_directory(cdir, sizeof(cdir));
+    i1 n = fm_get_current_directory(cdir, sizeof(cdir));
     Assert(n < sizeof(cdir));
     
     u32 flags = SUPER;

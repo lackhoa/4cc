@@ -7,7 +7,7 @@
 
 //~ NOTE(rjf): Code Peek
 
-function void F4_CodePeek_Render(Application_Links *app, View_ID view_id, Face_ID face_id,
+function void F4_CodePeek_Render(App *app, View_ID view_id, Face_ID face_id,
                                  Buffer_ID buffer, Frame_Info frame_info);
 
 #endif // FCODER_FLEURY_CODE_PEEK_H

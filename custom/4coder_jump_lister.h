@@ -7,7 +7,7 @@
 #if !defined(FCODER_JUMP_LISTER_H)
 #define FCODER_JUMP_LISTER_H
 
-typedef i32 Jump_Lister_Activation_Rule;
+typedef i1 Jump_Lister_Activation_Rule;
 enum{
     JumpListerActivation_OpenInUIView = 0,
     JumpListerActivation_OpenInTargetViewKeepUI = 1,
@@ -24,7 +24,7 @@ struct Jump_Lister_Parameters{
 
 struct Jump_Lister_Result{
     b32 success;
-    i32 index;
+    i1 index;
 };
 
 #endif

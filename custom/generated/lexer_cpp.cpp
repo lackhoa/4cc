@@ -11,14 +11,14 @@ lexeme_hash(u64 seed, u8 *ptr, u64 size){
 }
 
 internal Lexeme_Table_Lookup
-lexeme_table_lookup(u64 *hash_array, String_Const_u8 *key_array, 
-                    Lexeme_Table_Value *value_array, i32 slot_count, u64 seed,
+lexeme_table_lookup(u64 *hash_array, String *key_array, 
+                    Lexeme_Table_Value *value_array, i1 slot_count, u64 seed,
                     u8 *ptr, u64 size){
     Lexeme_Table_Lookup result = {};
     u64 hash = lexeme_hash(seed, ptr, size);
     u64 comparison_hash = hash | 1;
-    i32 first_index = (hash % slot_count);
-    i32 index = first_index;
+    i1 first_index = (hash % slot_count);
+    i1 index = first_index;
     for (;;){
         if (hash_array[index] == comparison_hash){
             if (string_match(SCu8(ptr, size), key_array[index])){
@@ -142,7 +142,7 @@ u8 cpp_main_keys_key_array_114[] = {0x73,0x68,0x6f,0x72,0x74,};
 u8 cpp_main_keys_key_array_115[] = {0x65,0x6e,0x75,0x6d,};
 u8 cpp_main_keys_key_array_116[] = {0x75,0x73,0x69,0x6e,0x67,};
 u8 cpp_main_keys_key_array_119[] = {0x65,0x78,0x70,0x6c,0x69,0x63,0x69,0x74,};
-String_Const_u8 cpp_main_keys_key_array[121] = {
+String cpp_main_keys_key_array[121] = {
 {cpp_main_keys_key_array_0, 6},
 {0, 0},
 {cpp_main_keys_key_array_2, 8},
@@ -388,7 +388,7 @@ Lexeme_Table_Value cpp_main_keys_value_array[121] = {
 {4, TokenCppKind_Explicit},
 {0, 0},
 };
-i32 cpp_main_keys_slot_count = 121;
+i1 cpp_main_keys_slot_count = 121;
 u64 cpp_main_keys_seed = 0x953a12ac17c41417;
 u64 cpp_pp_directives_hash_array[25] = {
 0xfe56e8c4074028a1,0x0000000000000000,0xc3c57ac6cdcc8e13,0x0000000000000000,
@@ -414,7 +414,7 @@ u8 cpp_pp_directives_key_array_20[] = {0x69,0x66,};
 u8 cpp_pp_directives_key_array_22[] = {0x65,0x6e,0x64,0x69,0x66,};
 u8 cpp_pp_directives_key_array_23[] = {0x75,0x6e,0x64,0x65,0x66,};
 u8 cpp_pp_directives_key_array_24[] = {0x69,0x66,0x6e,0x64,0x65,0x66,};
-String_Const_u8 cpp_pp_directives_key_array[25] = {
+String cpp_pp_directives_key_array[25] = {
 {cpp_pp_directives_key_array_0, 6},
 {0, 0},
 {cpp_pp_directives_key_array_2, 4},
@@ -468,13 +468,13 @@ Lexeme_Table_Value cpp_pp_directives_value_array[25] = {
 {5, TokenCppKind_PPUndef},
 {5, TokenCppKind_PPIfNDef},
 };
-i32 cpp_pp_directives_slot_count = 25;
+i1 cpp_pp_directives_slot_count = 25;
 u64 cpp_pp_directives_seed = 0xbeb48380ba8b083c;
 u64 cpp_pp_keys_hash_array[2] = {
 0x1ed4e97587163439,0x0000000000000000,
 };
 u8 cpp_pp_keys_key_array_0[] = {0x64,0x65,0x66,0x69,0x6e,0x65,0x64,};
-String_Const_u8 cpp_pp_keys_key_array[2] = {
+String cpp_pp_keys_key_array[2] = {
 {cpp_pp_keys_key_array_0, 7},
 {0, 0},
 };
@@ -482,7 +482,7 @@ Lexeme_Table_Value cpp_pp_keys_value_array[2] = {
 {4, TokenCppKind_PPDefined},
 {0, 0},
 };
-i32 cpp_pp_keys_slot_count = 2;
+i1 cpp_pp_keys_slot_count = 2;
 u64 cpp_pp_keys_seed = 0x93cbef5c9f9a0846;
 struct Lex_State_Cpp{
 u32 flags_ZF0;
@@ -496,7 +496,7 @@ u8 *ptr;
 u8 *opl_ptr;
 };
 internal void
-lex_full_input_cpp_init(Lex_State_Cpp *state_ptr, String_Const_u8 input){
+lex_full_input_cpp_init(Lex_State_Cpp *state_ptr, String input){
 state_ptr->flags_ZF0 = 0;
 state_ptr->flags_KF0 = 0;
 state_ptr->flags_KB0 = 0;
@@ -5173,7 +5173,7 @@ block_copy_struct(state_ptr, &state);
 return(result);
 }
 internal Token_List
-lex_full_input_cpp(Arena *arena, String_Const_u8 input){
+lex_full_input_cpp(Arena *arena, String input){
 Lex_State_Cpp state = {};
 lex_full_input_cpp_init(&state, input);
 Token_List list = {};

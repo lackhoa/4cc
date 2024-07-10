@@ -21,27 +21,27 @@
 
 struct Event_Code{
     Event_Code *next;
-    String_Const_u8 name;
+    String name;
 };
 
 struct Event_Code_List{
     Event_Code *first;
     Event_Code *last;
-    i32 count;
+    i1 count;
     
-    String_Const_u8 code_prefix;
-    String_Const_u8 name_table;
+    String code_prefix;
+    String name_table;
 };
 
 ////////////////////////////////
 
 function void
 generate_codes(Arena *scratch, Event_Code_List *list, FILE *out){
-    String_Const_u8 code_prefix = list->code_prefix;
-    String_Const_u8 name_table = list->name_table;
+    String code_prefix = list->code_prefix;
+    String name_table = list->name_table;
     
     fprintf(out, "enum{\n");
-    i32 counter = 1;
+    i1 counter = 1;
     for (Event_Code *code = list->first;
          code != 0;
          code = code->next){
@@ -67,7 +67,7 @@ generate_codes(Arena *scratch, Event_Code_List *list, FILE *out){
 ////////////////////////////////
 
 function Event_Code*
-add_code(Arena *arena, Event_Code_List *list, String_Const_u8 name){
+add_code(Arena *arena, Event_Code_List *list, String name){
     Event_Code *code = push_array(arena, Event_Code, 1);
     sll_queue_push(list->first, list->last, code);
     list->count;
@@ -134,7 +134,7 @@ make_key_list(Arena *arena){
     add_code(arena, &list, string_u8_litexpr("NumPadMinus"));
     add_code(arena, &list, string_u8_litexpr("NumPadDot"));
     add_code(arena, &list, string_u8_litexpr("NumPadSlash"));
-    for (i32 i = 0; i < 30; i += 1){
+    for (i1 i = 0; i < 30; i += 1){
         add_code(arena, &list, push_u8_stringf(arena, "Ex%d", i));
     }
     return(list);
@@ -176,9 +176,9 @@ main(void){
     Event_Code_List mouse_list = make_mouse_list(&arena);
     Event_Code_List core_list = make_core_list(&arena);
     
-    String_Const_u8 path_to_self = string_u8_litexpr(__FILE__);
+    String path_to_self = string_u8_litexpr(__FILE__);
     path_to_self = string_remove_last_folder(path_to_self);
-    String_Const_u8 file_name =
+    String file_name =
         push_u8_stringf(&arena, "%.*scustom/generated/4coder_event_codes.h",
                         string_expand(path_to_self));
     

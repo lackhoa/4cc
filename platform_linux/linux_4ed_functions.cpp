@@ -63,8 +63,8 @@ system_get_path(Arena* arena, System_Path_Code path_code)
     return(result);
 }
 
-internal String_Const_u8
-system_get_canonical(Arena* arena, String_Const_u8 name){
+internal String
+system_get_canonical(Arena* arena, String name){
     
     // first remove redundant ../, //, ./ parts
     
@@ -119,7 +119,7 @@ system_get_canonical(Arena* arena, String_Const_u8 name){
 }
 
 internal File_List
-system_get_file_list(Arena* arena, String_Const_u8 directory){
+system_get_file_list(Arena* arena, String directory){
     //LINUX_FN_DEBUG("%.*s", (int)directory.size, directory.str);
     File_List result = {};
     
@@ -181,7 +181,7 @@ system_get_file_list(Arena* arena, String_Const_u8 directory){
 }
 
 internal File_Attributes
-system_quick_file_attributes(Arena* scratch, String_Const_u8 file_name){
+system_quick_file_attributes(Arena* scratch, String file_name){
     //LINUX_FN_DEBUG("%.*s", (int)file_name.size, file_name.str);
     Temp_Memory_Block temp(scratch);
     file_name = push_string_copy(scratch, file_name);
@@ -234,7 +234,7 @@ system_load_close(Plat_Handle handle){
 }
 
 internal File_Attributes
-system_save_file(Arena* scratch, char* file_name, String_Const_u8 data){
+system_save_file(Arena* scratch, char* file_name, String data){
     LINUX_FN_DEBUG("%s", file_name);
     File_Attributes result = {};
     
@@ -284,7 +284,7 @@ system_get_proc(System_Library handle, char* proc_name){
 }
 
 internal u64
-system_now_time(void){
+system_time_usecond(void){
     //LINUX_FN_DEBUG();
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
@@ -582,7 +582,7 @@ system_thread_free(System_Thread thread){
     linux_free_object(object);
 }
 
-internal i32
+internal i1
 system_thread_get_id(void){
     pid_t id = syscall(__NR_gettid);
     //LINUX_FN_DEBUG("%d", id);
@@ -685,7 +685,7 @@ system_condition_variable_free(System_Condition_Variable cv){
 #define MEMORY_PREFIX_SIZE 64
 
 internal void*
-system_memory_allocate(u64 size, String_Const_u8 location){
+system_memory_allocate(u64 size, String location){
     
     static_assert(MEMORY_PREFIX_SIZE >= sizeof(Memory_Annotation_Node), "MEMORY_PREFIX_SIZE is not enough to contain Memory_Annotation_Node");
     u64 adjusted_size = size + MEMORY_PREFIX_SIZE;
@@ -767,7 +767,7 @@ system_memory_annotation(Arena* arena){
 }
 
 internal void
-system_show_mouse_cursor(i32 show){
+system_show_mouse_cursor(i1 show){
     LINUX_FN_DEBUG("%d", show);
     
     linuxvars.cursor_show = show;

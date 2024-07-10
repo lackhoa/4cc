@@ -13,7 +13,7 @@ CUSTOM_DOC("when bound to keystroke, ensures the event falls through to text ins
 }
 
 internal void
-F4_Search(Application_Links *app, Scan_Direction dir)
+F4_Search(App *app, Scan_Direction dir)
 {
     Scratch_Block scratch(app);
     View_ID view = get_active_view(app, Access_Read);
@@ -24,7 +24,7 @@ F4_Search(Application_Links *app, Scan_Direction dir)
         i64 mark = view_get_mark_pos(app, view);
         i64 cursor_line = get_line_number_from_pos(app, buffer, cursor);
         i64 mark_line = get_line_number_from_pos(app, buffer, mark);
-        String_Const_u8 query_init = (fcoder_mode != FCoderMode_NotepadLike || cursor == mark || cursor_line != mark_line) ? SCu8() : push_buffer_range(app, scratch, buffer, Ii64(cursor, mark));
+        String query_init = (fcoder_mode != FCoderMode_NotepadLike || cursor == mark || cursor_line != mark_line) ? SCu8() : push_buffer_range(app, scratch, buffer, Ii64(cursor, mark));
         isearch(app, dir, cursor, query_init);
     }
 }
@@ -47,7 +47,7 @@ CUSTOM_DOC("Inserts whatever text was used to trigger this command.")
     write_text_input(app);
     F4_PowerMode_CharacterPressed();
     User_Input in = get_current_input(app);
-    String_Const_u8 insert = to_writable(&in);
+    String insert = to_writable(&in);
     F4_PowerMode_Spawn(app, get_active_view(app, Access_ReadWriteVisible), insert.str ? insert.str[0] : 0);
 }
 
@@ -57,7 +57,7 @@ CUSTOM_DOC("Inserts text and auto-indents the line on which the cursor sits if a
     write_text_and_auto_indent(app);
     F4_PowerMode_CharacterPressed();
     User_Input in = get_current_input(app);
-    String_Const_u8 insert = to_writable(&in);
+    String insert = to_writable(&in);
     F4_PowerMode_Spawn(app, get_active_view(app, Access_ReadWriteVisible), insert.str ? insert.str[0] : 0);
 }
 
@@ -87,7 +87,7 @@ CUSTOM_DOC("Toggles battery saving mode.")
 
 
 internal void
-_F4_PushListerOptionForNote(Application_Links *app, Arena *arena, Lister *lister, F4_Index_Note *note)
+_F4_PushListerOptionForNote(App *app, Arena *arena, Lister *lister, F4_Index_Note *note)
 {
     if(note && note->file)
     {
@@ -98,21 +98,21 @@ _F4_PushListerOptionForNote(Application_Links *app, Arena *arena, Lister *lister
         jump->buffer = buffer;
         jump->pos = note->range.first;
         
-        String_Const_u8 buffer_name = push_buffer_unique_name(app, arena, buffer);
-        String_Const_u8 name = push_stringf(arena, "[%.*s] %.*s", string_expand(buffer_name), string_expand(note->string));
-        String_Const_u8 sort = S8Lit("");
+        String buffer_name = push_buffer_unique_name(app, arena, buffer);
+        String name = push_stringfz(arena, "[%.*s] %.*s", string_expand(buffer_name), string_expand(note->string));
+        String sort = S8Lit("");
         switch(note->kind)
         {
             case F4_Index_NoteKind_Type:
             {
-                sort = push_stringf(arena, "type [%s] [%s]",
+                sort = push_stringfz(arena, "type [%s] [%s]",
                                     note->flags & F4_Index_NoteFlag_Prototype ? "prototype" : "def",
                                     note->flags & F4_Index_NoteFlag_SumType ? "sum" : "product");
             }break;
             
             case F4_Index_NoteKind_Function:
             {
-                sort = push_stringf(arena, "function [%s]", note->flags & F4_Index_NoteFlag_Prototype ? "prototype" : "def");
+                sort = push_stringfz(arena, "function [%s]", note->flags & F4_Index_NoteFlag_Prototype ? "prototype" : "def");
             }break;
             
             case F4_Index_NoteKind_Macro:
@@ -142,7 +142,7 @@ _F4_PushListerOptionForNote(Application_Links *app, Arena *arena, Lister *lister
 }
 
 internal void
-F4_JumpToLocation(Application_Links *app, View_ID view, Buffer_ID buffer, i64 pos)
+F4_JumpToLocation(App *app, View_ID view, Buffer_ID buffer, i64 pos)
 {
     // NOTE(rjf): This function was ripped from 4coder's jump_to_location. It was copied
     // and modified so that jumping to a location didn't cause a selection in notepad-like
@@ -252,7 +252,7 @@ CUSTOM_DOC("Moves the cursor between the open/close brace/paren/bracket of the c
     {
         Token_Array tokens = get_token_array_from_buffer(app, buffer);
         
-        Token_Iterator_Array it = token_iterator_pos(0, &tokens, pos);
+        Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
         Token *token = token_it_read(&it);
         if(token)
         {
@@ -308,7 +308,7 @@ CUSTOM_DOC("Open a project by navigating to the project file.")
         File_Name_Result result = get_file_name_from_user(app, scratch, "Open Project:", view);
         if (result.canceled) break;
         
-        String_Const_u8 file_name = result.file_name_activated;
+        String file_name = result.file_name_activated;
         if (file_name.size == 0)
         {
             file_name = result.file_name_in_text_field;
@@ -316,7 +316,7 @@ CUSTOM_DOC("Open a project by navigating to the project file.")
         if (file_name.size == 0) break;
         
         String8 path = result.path_in_text_field;
-        String8 full_file_name = push_stringf(scratch, "%.*s/%.*s",
+        String8 full_file_name = push_stringfz(scratch, "%.*s/%.*s",
                                                       string_expand(path), string_expand(file_name));
         
         if (result.is_folder)
@@ -364,11 +364,11 @@ CUSTOM_DOC("Sets up a blank 4coder project provided some user folder.")
         path_bar.string_capacity = sizeof(project_folder_absolute);
         if(query_user_string(app, &path_bar))
         {
-            String8 full_file_name = push_stringf(scratch, "%.*s/",
+            String8 full_file_name = push_stringfz(scratch, "%.*s/",
                                                           string_expand(path_bar.string));
             set_hot_directory(app, full_file_name);
             
-            String8 project_file_path = push_stringf(scratch, "%.*s/project.4coder", string_expand(path_bar.string));
+            String8 project_file_path = push_stringfz(scratch, "%.*s/project.4coder", string_expand(path_bar.string));
             FILE *file = fopen((char *)project_file_path.str, "wb");
             if(file)
             {
@@ -453,7 +453,7 @@ CUSTOM_DOC("Sets up a blank 4coder project provided some user folder.")
 }
 
 function i64
-F4_Boundary_TokenAndWhitespace(Application_Links *app, Buffer_ID buffer, 
+F4_Boundary_TokenAndWhitespace(App *app, Buffer_ID buffer, 
                                Side side, Scan_Direction direction, i64 pos)
 {
     i64 result = boundary_non_whitespace(app, buffer, side, direction, pos);
@@ -466,7 +466,7 @@ F4_Boundary_TokenAndWhitespace(Application_Links *app, Buffer_ID buffer,
                 result = buffer_size;
                 if(tokens.count > 0)
                 {
-                    Token_Iterator_Array it = token_iterator_pos(0, &tokens, pos);
+                    Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
                     Token *token = token_it_read(&it);
                     
                     if(token == 0)
@@ -521,7 +521,7 @@ F4_Boundary_TokenAndWhitespace(Application_Links *app, Buffer_ID buffer,
             {
                 result = 0;
                 if (tokens.count > 0){
-                    Token_Iterator_Array it = token_iterator_pos(0, &tokens, pos);
+                    Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
                     Token *token = token_it_read(&it);
                     
                     Token_Iterator_Array it2 = it;
@@ -568,7 +568,7 @@ F4_Boundary_TokenAndWhitespace(Application_Links *app, Buffer_ID buffer,
 
 // TODO(rjf): Replace with the final one from Jack's layer.
 function i64
-F4_Boundary_CursorTokenOrBlankLine_TEST(Application_Links *app, Buffer_ID buffer, 
+F4_Boundary_CursorTokenOrBlankLine_TEST(App *app, Buffer_ID buffer, 
                                         Side side, Scan_Direction direction, i64 pos)
 {
     Scratch_Block scratch(app);
@@ -581,10 +581,10 @@ F4_Boundary_CursorTokenOrBlankLine_TEST(Application_Links *app, Buffer_ID buffer
     View_ID view = get_active_view(app, Access_Always);
     i64 active_cursor_pos = view_get_cursor_pos(app, view);
     Token_Array tokens = get_token_array_from_buffer(app, buffer);
-    Token_Iterator_Array active_cursor_it = token_iterator_pos(0, &tokens, active_cursor_pos);
+    Token_Iterator_Array active_cursor_it = token_it_at_pos(0, &tokens, active_cursor_pos);
     Token *active_cursor_token = token_it_read(&active_cursor_it);
     
-    String_Const_u8 cursor_string = push_buffer_range(app, scratch, buffer, Ii64(active_cursor_token));
+    String cursor_string = push_buffer_range(app, scratch, buffer, Ii64(active_cursor_token));
     i64 cursor_offset = pos - active_cursor_token->pos;
     
     // NOTE(jack): If the cursor token is not an identifier, we will move to empty lines
@@ -599,7 +599,7 @@ F4_Boundary_CursorTokenOrBlankLine_TEST(Application_Links *app, Buffer_ID buffer
             // NOTE(jack): Reset result to prevent token movement to escape to blank line movement
             // when you are on the first/last token in the outermost scope.
             result = pos;
-            Token_Iterator_Array it = token_iterator_pos(0, &tokens, pos);
+            Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
             
             for (;;)
             {
@@ -627,7 +627,7 @@ F4_Boundary_CursorTokenOrBlankLine_TEST(Application_Links *app, Buffer_ID buffer
                 if (!done) 
                 {
                     Token *token = token_it_read(&it);
-                    String_Const_u8 token_string = push_buffer_range(app, scratch, buffer, Ii64(token));
+                    String token_string = push_buffer_range(app, scratch, buffer, Ii64(token));
                     if (string_match(cursor_string, token_string)) {
                         result = token->pos + cursor_offset;
                         break;
@@ -659,10 +659,10 @@ CUSTOM_DOC("Moves the cursor to the next occurrence of the token that the cursor
 }
 
 function void
-F4_ReIndentLine(Application_Links *app, Buffer_ID buffer, i64 line, i64 indent_delta)
+F4_ReIndentLine(App *app, Buffer_ID buffer, i64 line, i64 indent_delta)
 {
     Scratch_Block scratch(app);
-    String_Const_u8 line_string = push_buffer_line(app, scratch, buffer, line);
+    String line_string = push_buffer_line(app, scratch, buffer, line);
     i64 line_start_pos = get_line_start_pos(app, buffer, line);
     
     Range_i64 line_indent_range = Ii64(0, 0);
@@ -699,7 +699,7 @@ F4_ReIndentLine(Application_Links *app, Buffer_ID buffer, i64 line, i64 indent_d
         i64 indent_level = spaces_at_beginning / spaces_per_indent_level + tabs_at_beginning;
         i64 new_indent_level = indent_level + indent_delta;
         
-        String_Const_u8 indent_string = indent_with_tabs ? S8Lit("\t") : push_stringf(scratch, "%.*s", Min(indent_width, 16),
+        String indent_string = indent_with_tabs ? S8Lit("\t") : push_stringfz(scratch, "%.*s", Min(indent_width, 16),
                                                                                       "                ");
         buffer_replace_range(app, buffer, indent_range, S8Lit(""));
         for(i64 i = 0; i < new_indent_level; i += 1)
@@ -711,7 +711,7 @@ F4_ReIndentLine(Application_Links *app, Buffer_ID buffer, i64 line, i64 indent_d
 }
 
 internal void
-F4_ReIndentLineRange(Application_Links *app, Buffer_ID buffer, Range_i64 range, i64 indent_delta)
+F4_ReIndentLineRange(App *app, Buffer_ID buffer, Range_i64 range, i64 indent_delta)
 {
     for(i64 i = range.min; i <= range.max; i += 1)
     {
@@ -720,7 +720,7 @@ F4_ReIndentLineRange(Application_Links *app, Buffer_ID buffer, Range_i64 range, 
 }
 
 internal Range_i64
-F4_LineRangeFromPosRange(Application_Links *app, Buffer_ID buffer, Range_i64 pos_range)
+F4_LineRangeFromPosRange(App *app, Buffer_ID buffer, Range_i64 pos_range)
 {
     Range_i64 lines_range =
         Ii64(get_line_number_from_pos(app, buffer, pos_range.min),
@@ -729,7 +729,7 @@ F4_LineRangeFromPosRange(Application_Links *app, Buffer_ID buffer, Range_i64 pos
 }
 
 internal Range_i64
-F4_PosRangeFromLineRange(Application_Links *app, Buffer_ID buffer, Range_i64 line_range)
+F4_PosRangeFromLineRange(App *app, Buffer_ID buffer, Range_i64 line_range)
 {
     if(line_range.min > line_range.max)
     {
@@ -744,7 +744,7 @@ F4_PosRangeFromLineRange(Application_Links *app, Buffer_ID buffer, Range_i64 lin
 }
 
 internal void
-F4_ReIndentPosRange(Application_Links *app, Buffer_ID buffer, Range_i64 range, i64 indent_delta)
+F4_ReIndentPosRange(App *app, Buffer_ID buffer, Range_i64 range, i64 indent_delta)
 {
     F4_ReIndentLineRange(app, buffer,
                          F4_LineRangeFromPosRange(app, buffer, range),
@@ -752,7 +752,7 @@ F4_ReIndentPosRange(Application_Links *app, Buffer_ID buffer, Range_i64 range, i
 }
 
 internal void
-F4_AdjustCursorAndMarkForIndentation(Application_Links *app, View_ID view, i64 original_cursor, i64 original_mark, Range_i64 original_line_range)
+F4_AdjustCursorAndMarkForIndentation(App *app, View_ID view, i64 original_cursor, i64 original_mark, Range_i64 original_line_range)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_Read);
     Scratch_Block scratch(app);
@@ -760,7 +760,7 @@ F4_AdjustCursorAndMarkForIndentation(Application_Links *app, View_ID view, i64 o
     {
         i64 start_pos = get_line_start_pos(app, buffer, original_line_range.min);
         i64 new_pos = start_pos;
-        String_Const_u8 line = push_buffer_line(app, scratch, buffer, original_line_range.min);
+        String line = push_buffer_line(app, scratch, buffer, original_line_range.min);
         for(u64 i = 0; i < line.size; i += 1)
         {
             if(!character_is_whitespace(line.str[i]))
@@ -825,7 +825,7 @@ CUSTOM_DOC("Tries to autocomplete the word currently being typed, and inserts in
             ProfileScope(app, "[F4] Word Complete Apply");
             
             word_complete_iter_next(it);
-            String_Const_u8 str = word_complete_iter_read(it);
+            String str = word_complete_iter_read(it);
             
             buffer_replace_range(app, buffer, range, str);
             
@@ -869,7 +869,7 @@ CUSTOM_DOC("Unindent the selected range.")
 }
 
 function void
-F4_GenerateHotDirectoryFileList_Project(Application_Links *app, Lister *lister)
+F4_GenerateHotDirectoryFileList_Project(App *app, Lister *lister)
 {
 #if 0
     Scratch_Block scratch(app, lister->arena);
@@ -878,12 +878,12 @@ F4_GenerateHotDirectoryFileList_Project(Application_Links *app, Lister *lister)
     Project_File_Pattern_Array blacklist = current_project.blacklist_pattern_array;
     
     Temp_Memory temp = begin_temp(lister->arena);
-    String_Const_u8 hot = push_hot_directory(app, lister->arena);
+    String hot = push_hot_directory(app, lister->arena);
     if (!character_is_slash(string_get_character(hot, hot.size - 1))){
         hot = push_u8_stringf(lister->arena, "%.*s/", string_expand(hot));
     }
     lister_set_text_field(lister, hot);
-    lister_set_key(lister, string_front_of_path(hot));
+    lister_set_key(lister, path_filename(hot));
     
     File_List file_list = system_get_file_list(scratch, hot);
     end_temp(temp);
@@ -896,14 +896,14 @@ F4_GenerateHotDirectoryFileList_Project(Application_Links *app, Lister *lister)
     push_align(lister->arena, 8);
     if(hot.str != 0)
     {
-        String_Const_u8 empty_string = string_u8_litexpr("");
+        String empty_string = string_u8_litexpr("");
         Lister_Prealloced_String empty_string_prealloced = lister_prealloced(empty_string);
         
         // NOTE(rjf): Add all directories.
         for (File_Info **info = file_list.infos; info < one_past_last; info += 1)
         {
             if (!HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-            String_Const_u8 file_name = push_u8_stringf(lister->arena, "%.*s/",
+            String file_name = push_u8_stringf(lister->arena, "%.*s/",
                                                         string_expand((**info).file_name));
             lister_add_item(lister, lister_prealloced(file_name), empty_string_prealloced, file_name.str, 0);
         }
@@ -913,7 +913,7 @@ F4_GenerateHotDirectoryFileList_Project(Application_Links *app, Lister *lister)
              info < one_past_last;
              info += 1){
             if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-            String_Const_u8 file_name = push_string_copy(lister->arena, (**info).file_name);
+            String file_name = push_string_copy(lister->arena, (**info).file_name);
             
             if(match_in_pattern_array(file_name, whitelist) &&
                !match_in_pattern_array(file_name, blacklist))
@@ -925,10 +925,10 @@ F4_GenerateHotDirectoryFileList_Project(Application_Links *app, Lister *lister)
                 
                 {
                     Temp_Memory path_temp = begin_temp(lister->arena);
-                    List_String_Const_u8 list = {};
+                    List_String list = {};
                     string_list_push(lister->arena, &list, hot);
                     string_list_push_overlap(lister->arena, &list, '/', (**info).file_name);
-                    String_Const_u8 full_file_path = string_list_flatten(lister->arena, list);
+                    String full_file_path = string_list_flatten(lister->arena, list);
                     buffer = get_buffer_by_file_name(app, full_file_path, Access_Always);
                     end_temp(path_temp);
                 }
@@ -942,7 +942,7 @@ F4_GenerateHotDirectoryFileList_Project(Application_Links *app, Lister *lister)
                         case DirtyState_UnsavedChangesAndUnloadedChanges: status_flag = " *!"; break;
                     }
                 }
-                String_Const_u8 status = push_u8_stringf(lister->arena, "%s%s", is_loaded, status_flag);
+                String status = push_u8_stringf(lister->arena, "%s%s", is_loaded, status_flag);
                 lister_add_item(lister, lister_prealloced(file_name), lister_prealloced(status), file_name.str, 0);
             }
         }
@@ -951,7 +951,7 @@ F4_GenerateHotDirectoryFileList_Project(Application_Links *app, Lister *lister)
 }
 
 function File_Name_Result
-F4_GetFileNameFromUser_Project(Application_Links *app, Arena *arena, String_Const_u8 query, View_ID view)
+F4_GetFileNameFromUser_Project(App *app, Arena *arena, String query, View_ID view)
 {
     Lister_Handlers handlers = lister_get_default_handlers();
     handlers.refresh = F4_GenerateHotDirectoryFileList_Project;
@@ -965,13 +965,13 @@ F4_GetFileNameFromUser_Project(Application_Links *app, Arena *arena, String_Cons
     if (!l_result.canceled){
         result.clicked = l_result.activated_by_click;
         if (l_result.user_data != 0){
-            String_Const_u8 name = SCu8((u8*)l_result.user_data);
+            String name = SCu8((u8*)l_result.user_data);
             result.file_name_activated = name;
             result.is_folder = character_is_slash(string_get_character(name, name.size - 1));
         }
-        result.file_name_in_text_field = string_front_of_path(l_result.text_field);
+        result.file_name_in_text_field = path_filename(l_result.text_field);
         
-        String_Const_u8 path = {};
+        String path = {};
         if (l_result.user_data == 0 && result.file_name_in_text_field.size == 0 && l_result.text_field.size > 0){
             result.file_name_in_text_field = string_front_folder_of_path(l_result.text_field);
             path = string_remove_front_folder_of_path(l_result.text_field);
@@ -998,14 +998,14 @@ CUSTOM_DOC("Interactively open a file out of the file system, filtered to files 
         File_Name_Result result = F4_GetFileNameFromUser_Project(app, scratch, S8Lit("Open (File In Project):"), view);
         if (result.canceled) break;
         
-        String_Const_u8 file_name = result.file_name_activated;
+        String file_name = result.file_name_activated;
         if (file_name.size == 0){
             file_name = result.file_name_in_text_field;
         }
         if (file_name.size == 0) break;
         
-        String_Const_u8 path = result.path_in_text_field;
-        String8 full_file_name = push_stringf(scratch, "%.*s/%.*s",
+        String path = result.path_in_text_field;
+        String8 full_file_name = push_stringfz(scratch, "%.*s/%.*s",
                                               string_expand(path), string_expand(file_name));
         
         if(result.is_folder)
@@ -1044,7 +1044,7 @@ CUSTOM_DOC("Interactively open a file out of the file system, filtered to files 
 }
 
 internal void
-F4_SetLineCommentedOnLine(Application_Links *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
+F4_SetLineCommentedOnLine(App *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
 {
     i64 cursor = *cursor_p;
     i64 mark = *mark_p;
@@ -1069,7 +1069,7 @@ F4_SetLineCommentedOnLine(Application_Links *app, Buffer_ID buffer, i64 *cursor_
         {
             if(already_has_comment)
             {
-                buffer_replace_range(app, buffer, Ii64(line_start, line_start + 2), string_u8_empty);
+                buffer_replace_range(app, buffer, Ii64(line_start, line_start + 2), empty_string);
                 cursor = mark -= 2;
             }
         }
@@ -1080,7 +1080,7 @@ F4_SetLineCommentedOnLine(Application_Links *app, Buffer_ID buffer, i64 *cursor_
 }
 
 internal void
-F4_SetBlockCommentedOnRange(Application_Links *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
+F4_SetBlockCommentedOnRange(App *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
 {
     Scratch_Block scratch(app);
     
@@ -1097,8 +1097,8 @@ F4_SetBlockCommentedOnRange(Application_Links *app, Buffer_ID buffer, i64 *curso
     }
     else if(range.max - range.min >= 2)
     {
-        String_Const_u8 opener = push_buffer_range(app, scratch, buffer, Ii64(range.min, range.min+2));
-        String_Const_u8 closer = push_buffer_range(app, scratch, buffer, Ii64(range.max-2, range.max));
+        String opener = push_buffer_range(app, scratch, buffer, Ii64(range.min, range.min+2));
+        String closer = push_buffer_range(app, scratch, buffer, Ii64(range.max-2, range.max));
         if(string_match(opener, S8Lit("/*")) &&
            string_match(closer, S8Lit("*/")))
         {
@@ -1114,7 +1114,7 @@ F4_SetBlockCommentedOnRange(Application_Links *app, Buffer_ID buffer, i64 *curso
 }
 
 function b32
-F4_CBlockCommentStartsAtPosition(Application_Links *app, Buffer_ID buffer, i64 pos)
+F4_CBlockCommentStartsAtPosition(App *app, Buffer_ID buffer, i64 pos)
 {
     b32 alread_has_comment = false;
     u8 check_buffer[2];
@@ -1129,7 +1129,7 @@ F4_CBlockCommentStartsAtPosition(Application_Links *app, Buffer_ID buffer, i64 p
 }
 
 internal void
-F4_SetCommentedOnRange(Application_Links *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
+F4_SetCommentedOnRange(App *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
 {
     Scratch_Block scratch(app);
     
@@ -1267,14 +1267,14 @@ CUSTOM_DOC("Performs VS-style uncommenting on the selected range.")
 struct F4_LOCInfo
 {
     F4_LOCInfo *next;
-    String_Const_u8 name;
+    String name;
     i64 lines;
     i64 whitespace_only_lines;
     i64 open_brace_only_lines;
 };
 
 function F4_LOCInfo *
-F4_LOCInfoFromBuffer(Application_Links *app, Arena *arena, Buffer_ID buffer)
+F4_LOCInfoFromBuffer(App *app, Arena *arena, Buffer_ID buffer)
 {
     F4_LOCInfo *first = 0;
     F4_LOCInfo *last = 0;
@@ -1288,7 +1288,7 @@ F4_LOCInfoFromBuffer(Application_Links *app, Arena *arena, Buffer_ID buffer)
     for(i64 line_idx = 0; line_idx < line_count; line_idx += 1)
     {
         Scratch_Block scratch(app, arena);
-        String_Const_u8 line = push_buffer_line(app, scratch, buffer, line_idx);
+        String line = push_buffer_line(app, scratch, buffer, line_idx);
         if(line.size != 0 && line.str[line.size-1] == '\r')
         {
             line.size -= 1;
@@ -1428,7 +1428,7 @@ CUSTOM_DOC("Counts the lines of code in the current buffer, breaks it down by se
                 spaces = 0;
             }
             
-            String_Const_u8 string = push_stringf(scratch2,
+            String string = push_stringfz(scratch2,
                                                   ">>> %.*s%.*s: %6i lines; %6i whitespace; %6i open braces; %6i significant\n",
                                                   chrs, info->name.str,
                                                   spaces, "                                            ",
@@ -1451,7 +1451,7 @@ CUSTOM_DOC("Opens the active panel's file in an actively-running RemedyBG instan
     i64 pos = view_get_cursor_pos(app, view);
     i64 line = get_line_number_from_pos(app, buffer, pos);
     String8 hot_directory = push_hot_directory(app, scratch);
-    Child_Process_ID child_id = create_child_process(app, hot_directory, push_stringf(scratch, "remedybg.exe open-file %.*s %i", string_expand(buffer_name), (int)line));
+    Child_Process_ID child_id = create_child_process(app, hot_directory, push_stringfz(scratch, "remedybg.exe open-file %.*s %i", string_expand(buffer_name), (int)line));
     (void)child_id;
 }
 

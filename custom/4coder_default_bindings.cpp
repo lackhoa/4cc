@@ -14,7 +14,7 @@
 #endif
 
 void
-custom_layer_init(Application_Links *app){
+custom_layer_init(App *app){
     Thread_Context *tctx = get_thread_context(app);
     
     // NOTE(allen): setup for default framework

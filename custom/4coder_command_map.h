@@ -46,7 +46,7 @@ struct Command_Binding_List{
     Command_Binding_List *next;
     SNode *first;
     SNode *last;
-    i32 count;
+    i1 count;
 };
 
 struct Command_Map{
@@ -79,7 +79,7 @@ struct Mapping{
     Command_Binding_List *free_lists;
 };
 
-typedef i32 Binding_Match_Rule;
+typedef i1 Binding_Match_Rule;
 enum{
     BindingMatchRule_Strict,
     BindingMatchRule_Loose,

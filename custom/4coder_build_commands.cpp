@@ -15,7 +15,7 @@ push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
     end_temp(restore_point);
     if ( !is_match )
     {
-        result = push_string_copy(arena, path_dirname(filename));
+        result = push_string_copyz(arena, path_dirname(filename));
     }
     return(result);
 }
@@ -45,8 +45,8 @@ global String standard_build_cmd_string_array[] =
 };
 
 internal String
-push_fallback_command(Arena *arena, String_Const_u8 filename){
-    return(push_stringf(arena, "echo could not find %.*s", string_expand(filename)));
+push_fallback_command(Arena *arena, String filename){
+    return(push_stringfz(arena, "echo could not find %.*s", string_expand(filename)));
 }
 
 internal String
@@ -89,7 +89,7 @@ standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, ch
     {
         // NOTE(allen): Build
         String8 path = path_dirname(full_file_path);
-        String8 command = push_stringf(scratch, "\"%.*s/%.*s\" %s",
+        String8 command = push_stringfz(scratch, "\"%.*s/%.*s\" %s",
                                        string_expand(path),
                                        string_expand(cmd_string),
                                        command_args);
@@ -99,38 +99,38 @@ standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, ch
             save_all_dirty_buffers(app);
         }
         standard_build_exec_command(app, view, path, command);
-        vim_set_bottom_text(push_stringf(scratch, "Building with: %.*s\n", string_expand(full_file_path)));
+        vim_set_bottom_text(push_stringfz(scratch, "Building with: %.*s\n", string_expand(full_file_path)));
     }
-    
-    return(result);
+ 
+ return(result);
 }
 
 // NOTE(allen): This searches first using the active file's directory,
 // then if no build script is found, it searches from 4coders hot directory.
-static void
+internal void
 standard_search_and_build(App *app, View_ID view, Buffer_ID active_buffer, char *command_args)
 {
-    Scratch_Block scratch(app);
-    b32 did_build = false;
-    String8 build_dir = push_build_directory_at_file(app, scratch, active_buffer);
-    if (build_dir.size > 0)
-    {
-        did_build = standard_search_and_build_from_dir(app, view, build_dir, command_args);
-    }
-    if (!did_build)
-    {
-        build_dir = push_hot_directory(app, scratch);
-        if (build_dir.size > 0)
-        {
-            did_build = standard_search_and_build_from_dir(app, view, build_dir, command_args);
-        }
-    }
-    if (!did_build)
-    {
-        standard_build_exec_command(app, view,
-                                    push_hot_directory(app, scratch),
-                                    push_fallback_command(scratch));
-    }
+ Scratch_Block scratch(app);
+ b32 did_build = false;
+ String8 build_dir = push_build_directory_at_file(app, scratch, active_buffer);
+ if (build_dir.size > 0)
+ {
+  did_build = standard_search_and_build_from_dir(app, view, build_dir, command_args);
+ }
+ if (!did_build)
+ {
+  build_dir = push_hot_directory(app, scratch);
+  if (build_dir.size > 0)
+  {
+   did_build = standard_search_and_build_from_dir(app, view, build_dir, command_args);
+  }
+ }
+ if (!did_build)
+ {
+  standard_build_exec_command(app, view,
+                              push_hot_directory(app, scratch),
+                              push_fallback_command(scratch));
+ }
 }
 
 #if 0
@@ -173,32 +173,29 @@ function void
 set_fancy_compilation_buffer_font(App *app)
 {
     Scratch_Block scratch(app);
-    Buffer_ID buffer = get_comp_buffer(app);
-    Font_Load_Location font = {};
-    font.filename = def_search_normal_full_path(scratch, str8_lit("fonts/Inconsolata-Regular.ttf"));
-    set_buffer_face_by_font_load_location(app, buffer, &font);
+ Buffer_ID buffer = get_comp_buffer(app);
+ Font_Load_Location font = {};
+ font.filename = def_search_normal_full_path(scratch, str8_lit("fonts/Inconsolata-Regular.ttf"));
+ set_buffer_face_by_font_load_location(app, buffer, &font);
 }
 
 internal void 
 build_in_bottom_view(App *app, char *command_args)
 {
-    View_ID   view   = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    
-    {
-        Scratch_Block scratch(app);
-        String8 dirname = push_buffer_dirname(app, scratch, buffer);
-        if (dirname.size)
-            set_hot_directory(app, dirname);
-    }
-    
-    standard_search_and_build(app, global_bottom_view, buffer, command_args);
-    set_fancy_compilation_buffer_font(app);
-    
-    block_zero_struct(&prev_location);
-    lock_jump_buffer(app, compilation_buffer_name);
-    //expand_bottom_view(app);
-    //view_set_active(app, global_bottom_view);
+ View_ID   view   = get_active_view(app, Access_Always);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ 
+ {
+  Scratch_Block scratch(app);
+  String8 dirname = push_buffer_dirname(app, scratch, buffer);
+  if (dirname.size) { set_hot_directory(app, dirname); }
+ }
+ 
+ standard_search_and_build(app, global_bottom_view, buffer, command_args);
+ set_fancy_compilation_buffer_font(app);
+ 
+ block_zero_struct(&prev_location);
+ lock_jump_buffer(app, compilation_buffer_name);
 }
 
 internal String
@@ -211,25 +208,32 @@ kv_search_build_file_from_dir(Arena *arena, String start_dir)
         if (full_file_path.size > 0)
         {
             break;
-        }
-    }
-    return full_file_path;
+  }
+ }
+ return full_file_path;
 }
 
 internal void 
 kv_build_normal(App *app)
 {
-    build_in_bottom_view(app, "");
+ GET_VIEW_AND_BUFFER;
+ 
+ // NOTE: ;build_filename_hack
+ Scratch_Block scratch(app);
+ String filename = push_buffer_filename(app, scratch, buffer);
+ String arg = push_stringfz(scratch, "--file %.*s", string_expand(filename));
+ 
+ build_in_bottom_view(app, (char *)arg.str);
 }
 
-internal void 
+internal void
 kv_build_run_only(App *app)
 {
-    build_in_bottom_view(app, "run");
+ build_in_bottom_view(app, "--action run");
 }
 
 internal void 
 kv_build_full_rebuild(App *app)
 {
-    build_in_bottom_view(app, "full");
+ build_in_bottom_view(app, "--full");
 }

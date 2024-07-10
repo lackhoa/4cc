@@ -18,9 +18,9 @@ global Code_Index global_code_index = {};
 function Code_Index_Nest*
 code_index_get_nest_(Code_Index_Nest_Ptr_Array *array, i64 pos){
   Code_Index_Nest *result = 0;
-  i32 count = array->count;
+  i1 count = array->count;
   Code_Index_Nest **nest_ptrs = array->ptrs;
-  for (i32 i = 0; i < count; i += 1){
+  for (i1 i = 0; i < count; i += 1){
     Code_Index_Nest *nest = nest_ptrs[i];
     if (nest->open.max <= pos && pos <= nest->close.min){
       Code_Index_Nest *sub_nest = code_index_get_nest_(&nest->nest_array, pos);
@@ -111,7 +111,7 @@ code_index_nest_ptr_array_from_list(Arena *arena, Code_Index_Nest_List *list){
   Code_Index_Nest_Ptr_Array array = {};
   array.ptrs = push_array_zero(arena, Code_Index_Nest*, list->count);
   array.count = list->count;
-  i32 counter = 0;
+  i1 counter = 0;
   for (Code_Index_Nest *node = list->first;
        node != 0;
        node = node->next){
@@ -126,7 +126,7 @@ code_index_note_ptr_array_from_list(Arena *arena, Code_Index_Note_List *list){
   Code_Index_Note_Ptr_Array array = {};
   array.ptrs = push_array_zero(arena, Code_Index_Note*, list->count);
   array.count = list->count;
-  i32 counter = 0;
+  i1 counter = 0;
   for (Code_Index_Note *node = list->first;
        node != 0;
        node = node->next){
@@ -232,9 +232,9 @@ index_shift(i64 *ptr, Range_i64 old_range, u64 new_size){
 function void
 code_index_shift(Code_Index_Nest_Ptr_Array *array,
                  Range_i64 old_range, u64 new_size){
-  i32 count = array->count;
+  i1 count = array->count;
   Code_Index_Nest **nest_ptr = array->ptrs;
-  for (i32 i = 0; i < count; i += 1, nest_ptr += 1){
+  for (i1 i = 0; i < count; i += 1, nest_ptr += 1){
     Code_Index_Nest *nest = *nest_ptr;
     index_shift(&nest->open.min, old_range, new_size);
     index_shift(&nest->open.max, old_range, new_size);
@@ -293,7 +293,7 @@ generic_parse_skip_soft_tokens(Code_Index_File *index, Generic_Parse_State *stat
 }
 
 function void
-generic_parse_init(Application_Links *app, Arena *arena, String_Const_u8 contents, Token_Array *tokens, Generic_Parse_Comment_Function *handle_comment, Generic_Parse_State *state){
+generic_parse_init(App *app, Arena *arena, String contents, Token_Array *tokens, Generic_Parse_Comment_Function *handle_comment, Generic_Parse_State *state){
   state->app = app;
   state->arena = arena;
   state->contents = contents;
@@ -341,7 +341,7 @@ index_new_note(Code_Index_File *index, Generic_Parse_State *state, Range_i64 ran
   index->note_list.count += 1;
   result->note_kind = kind;
   result->pos = range;
-  result->text = push_string_copy(state->arena, string_substring(state->contents, range));
+  result->text = push_string_copyz(state->arena, string_substring(state->contents, range));
   result->file = index;
   result->parent = parent;
   return(result);
@@ -396,7 +396,7 @@ cpp_parse_type_def(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
       break;
     }
     else if (token->kind == TokenBaseKind_Keyword){
-      String_Const_u8 lexeme = string_substring(state->contents, Ii64(token));
+      String lexeme = string_substring(state->contents, Ii64(token));
       if (string_match(lexeme, string_u8_litexpr("struct")) ||
           string_match(lexeme, string_u8_litexpr("union")) ||
           string_match(lexeme, string_u8_litexpr("enum"))){
@@ -422,7 +422,7 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
   Token *reset_point = peek;
   if (peek != 0 && peek->sub_kind == TokenCppKind_ParenOp){
     b32 at_paren_close = false;
-    i32 paren_nest_level = 0;
+    i1 paren_nest_level = 0;
     for (; peek != 0;){
       generic_parse_inc(state);
       generic_parse_skip_soft_tokens(index, state);
@@ -751,7 +751,7 @@ generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state){
 }
 
 function b32
-generic_parse_full_input_breaks(Code_Index_File *index, Generic_Parse_State *state, i32 limit){
+generic_parse_full_input_breaks(Code_Index_File *index, Generic_Parse_State *state, i1 limit){
   b32 result = false;
   
   i64 first_index = token_it_index(&state->it);
@@ -820,12 +820,12 @@ generic_parse_full_input_breaks(Code_Index_File *index, Generic_Parse_State *sta
 // NOTE(allen): Not sure
 
 function void
-default_comment_index(Application_Links *app, Arena *arena, Code_Index_File *index, Token *token, String_Const_u8 contents){
+default_comment_index(App *app, Arena *arena, Code_Index_File *index, Token *token, String contents){
   
 }
 
 function void
-generic_parse_init(Application_Links *app, Arena *arena, String_Const_u8 contents, Token_Array *tokens, Generic_Parse_State *state){
+generic_parse_init(App *app, Arena *arena, String contents, Token_Array *tokens, Generic_Parse_State *state){
   generic_parse_init(app, arena, contents, tokens, default_comment_index, state);
 }
 
@@ -836,7 +836,7 @@ generic_parse_init(Application_Links *app, Arena *arena, String_Const_u8 content
 function Token_Pair
 layout_token_pair(Token_Array *tokens, i64 pos){
   Token_Pair result = {};
-  Token_Iterator_Array it = token_iterator_pos(0, tokens, pos);
+  Token_Iterator_Array it = token_it_at_pos(0, tokens, pos);
   Token *b = token_it_read(&it);
   if (b != 0){
     if (b->kind == TokenBaseKind_Whitespace){
@@ -856,7 +856,7 @@ layout_token_pair(Token_Array *tokens, i64 pos){
 }
 
 function f32
-layout_index_x_shift(Application_Links *app, Layout_Reflex *reflex, Code_Index_Nest *nest, i64 pos, f32 regular_indent, b32 *unresolved_dependence){
+layout_index_x_shift(App *app, Layout_Reflex *reflex, Code_Index_Nest *nest, i64 pos, f32 regular_indent, b32 *unresolved_dependence){
   f32 result = 0.f;
   if (nest != 0){
     switch (nest->kind){
@@ -890,13 +890,13 @@ layout_index_x_shift(Application_Links *app, Layout_Reflex *reflex, Code_Index_N
 }
 
 function f32
-layout_index_x_shift(Application_Links *app, Layout_Reflex *reflex, Code_Index_Nest *nest, i64 pos, f32 regular_indent){
+layout_index_x_shift(App *app, Layout_Reflex *reflex, Code_Index_Nest *nest, i64 pos, f32 regular_indent){
   b32 ignore;
   return(layout_index_x_shift(app, reflex, nest, pos, regular_indent, &ignore));
 }
 
 function f32
-layout_index_x_shift(Application_Links *app, Layout_Reflex *reflex, Code_Index_File *file, i64 pos, f32 regular_indent, b32 *unresolved_dependence){
+layout_index_x_shift(App *app, Layout_Reflex *reflex, Code_Index_File *file, i64 pos, f32 regular_indent, b32 *unresolved_dependence){
   f32 indent = 0;
   Code_Index_Nest *nest = code_index_get_nest(file, pos);
   if (nest != 0){
@@ -906,7 +906,7 @@ layout_index_x_shift(Application_Links *app, Layout_Reflex *reflex, Code_Index_F
 }
 
 function f32
-layout_index_x_shift(Application_Links *app, Layout_Reflex *reflex, Code_Index_File *file, i64 pos, f32 regular_indent){
+layout_index_x_shift(App *app, Layout_Reflex *reflex, Code_Index_File *file, i64 pos, f32 regular_indent){
   b32 ignore;
   return(layout_index_x_shift(app, reflex, file, pos, regular_indent, &ignore));
 }
@@ -928,9 +928,9 @@ layout_index__emit_chunk(LefRig_TopBot_Layout_Vars *pos_vars, Face_ID face, Aren
   }
 }
 
-function i32
+function i1
 layout_token_score_wrap_token(Token_Pair *pair, Token_Cpp_Kind kind){
-  i32 result = 0;
+  i1 result = 0;
   if (pair->a.sub_kind != kind && pair->b.sub_kind == kind){
     result -= 1;
   }
@@ -941,14 +941,14 @@ layout_token_score_wrap_token(Token_Pair *pair, Token_Cpp_Kind kind){
 }
 
 function Layout_Item_List
-layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Code_Index_File *file, Layout_Wrap_Kind kind){
+layout_index__inner(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Code_Index_File *file, Layout_Wrap_Kind kind){
   Scratch_Block scratch(app, arena);
   
   Token_Array tokens = get_token_array_from_buffer(app, buffer);
   Token_Array *tokens_ptr = &tokens;
   
   Layout_Item_List list = get_empty_item_list(range);
-  String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+  String text = push_buffer_range(app, scratch, buffer, range);
   
   Face_Advance_Map advance_map = get_face_advance_map(app, face);
   Face_Metrics metrics = get_face_metrics(app, face);
@@ -975,8 +975,8 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
     
     u8 *pending_wrap_ptr = ptr;
     f32 pending_wrap_x = 0.f;
-    i32 pending_wrap_paren_nest_count = 0;
-    i32 pending_wrap_token_score = 0;
+    i1 pending_wrap_paren_nest_count = 0;
+    i1 pending_wrap_token_score = 0;
     f32 pending_wrap_accumulated_w = 0.f;
     
     start:
@@ -1036,7 +1036,7 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
       
       // NOTE(allen): measure this word
       newline_layout_consume_default(&newline_vars);
-      String_Const_u8 word = SCu8(word_ptr, ptr);
+      String word = SCu8(word_ptr, ptr);
       u8 *word_end = ptr;
       {
         f32 word_advance = 0.f;
@@ -1085,7 +1085,7 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
           new_wrap_x = max_f32;
         }
         
-        i32 new_wrap_paren_nest_count = 0;
+        i1 new_wrap_paren_nest_count = 0;
         for (Code_Index_Nest *nest = new_wrap_nest;
              nest != 0;
              nest = nest->parent){
@@ -1098,7 +1098,7 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
         
         // TODO(allen): pull out the token scoring part and make it replacable for other
         // language's token based wrap scoring needs.
-        i32 token_score = 0;
+        i1 token_score = 0;
         if (new_wrap_token_pair.a.kind == TokenBaseKind_Keyword){
           if (new_wrap_token_pair.b.kind == TokenBaseKind_ParentheticalOpen ||
               new_wrap_token_pair.b.kind == TokenBaseKind_Keyword){
@@ -1120,7 +1120,7 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
         token_score += layout_token_score_wrap_token(&new_wrap_token_pair, TokenCppKind_Colon);
         token_score += layout_token_score_wrap_token(&new_wrap_token_pair, TokenCppKind_Semicolon);
         
-        i32 new_wrap_token_score = token_score;
+        i1 new_wrap_token_score = token_score;
         
         b32 new_wrap_ptr_is_better = false;
         if (first_of_the_line){
@@ -1199,7 +1199,7 @@ layout_index__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Rang
 }
 
 function Layout_Item_List
-layout_virt_indent_index(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Wrap_Kind kind){
+layout_virt_indent_index(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Wrap_Kind kind){
   Layout_Item_List result = {};
   
   b32 enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
@@ -1222,17 +1222,17 @@ layout_virt_indent_index(Application_Links *app, Arena *arena, Buffer_ID buffer,
 }
 
 function Layout_Item_List
-layout_virt_indent_index_unwrapped(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_virt_indent_index_unwrapped(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
   return(layout_virt_indent_index(app, arena, buffer, range, face, width, Layout_Unwrapped));
 }
 
 function Layout_Item_List
-layout_virt_indent_index_wrapped(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_virt_indent_index_wrapped(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
   return(layout_virt_indent_index(app, arena, buffer, range, face, width, Layout_Wrapped));
 }
 
 function Layout_Item_List
-layout_virt_indent_index_generic(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_virt_indent_index_generic(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
   Managed_Scope scope = buffer_get_managed_scope(app, buffer);
   b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
   b32 wrap_lines = (wrap_lines_ptr != 0 && *wrap_lines_ptr);

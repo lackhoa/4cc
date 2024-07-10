@@ -18,7 +18,7 @@ struct Prj_V1_File_Load_Path{
 
 struct Prj_V1_File_Load_Path_Array{
     Prj_V1_File_Load_Path *paths;
-    i32 count;
+    i1 count;
 };
 
 struct Prj_V1_Command{
@@ -32,7 +32,7 @@ struct Prj_V1_Command{
 
 struct Prj_V1_Command_Array{
     Prj_V1_Command *commands;
-    i32 count;
+    i1 count;
 };
 
 struct Prj_V1{
@@ -46,7 +46,7 @@ struct Prj_V1{
     Prj_V1_File_Load_Path_Array load_path_array;
     Prj_V1_Command_Array command_array;
     
-    i32 fkey_commands[16];
+    i1 fkey_commands[16];
 };
 
 enum Prj_V1_OS_Match_Level{
@@ -59,7 +59,7 @@ enum Prj_V1_OS_Match_Level{
 ////////////////////////////////
 // NOTE(allen): Project v0-v1 -> v2 Function
 
-function Variable_Handle prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed);
+function Variable_Handle prj_v1_to_v2(App *app, String8 dir, Config *parsed);
 
 
 #endif //4CODER_PRJ_V1_H

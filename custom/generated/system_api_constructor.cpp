@@ -6,24 +6,24 @@ API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("error_
 api_param(arena, call, "char*", "msg");
 }
 {
-API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("get_path"), string_u8_litexpr("String_Const_u8"), string_u8_litexpr(""));
+API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("get_path"), string_u8_litexpr("String"), string_u8_litexpr(""));
 api_param(arena, call, "Arena*", "arena");
 api_param(arena, call, "System_Path_Code", "path_code");
 }
 {
-API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("get_canonical"), string_u8_litexpr("String_Const_u8"), string_u8_litexpr(""));
+API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("get_canonical"), string_u8_litexpr("String"), string_u8_litexpr(""));
 api_param(arena, call, "Arena*", "arena");
-api_param(arena, call, "String_Const_u8", "name");
+api_param(arena, call, "String", "name");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("get_file_list"), string_u8_litexpr("File_List"), string_u8_litexpr(""));
 api_param(arena, call, "Arena*", "arena");
-api_param(arena, call, "String_Const_u8", "directory");
+api_param(arena, call, "String", "directory");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("quick_file_attributes"), string_u8_litexpr("File_Attributes"), string_u8_litexpr(""));
 api_param(arena, call, "Arena*", "scratch");
-api_param(arena, call, "String_Const_u8", "file_name");
+api_param(arena, call, "String", "file_name");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("load_handle"), string_u8_litexpr("b32"), string_u8_litexpr(""));
@@ -49,12 +49,12 @@ api_param(arena, call, "Plat_Handle", "handle");
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("save_file"), string_u8_litexpr("File_Attributes"), string_u8_litexpr(""));
 api_param(arena, call, "Arena*", "scratch");
 api_param(arena, call, "char*", "file_name");
-api_param(arena, call, "String_Const_u8", "data");
+api_param(arena, call, "String", "data");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("load_library"), string_u8_litexpr("b32"), string_u8_litexpr(""));
 api_param(arena, call, "Arena*", "scratch");
-api_param(arena, call, "String_Const_u8", "file_name");
+api_param(arena, call, "String", "file_name");
 api_param(arena, call, "System_Library*", "out");
 }
 {
@@ -104,14 +104,14 @@ API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("sleep"
 api_param(arena, call, "u64", "microseconds");
 }
 {
-API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("get_clipboard"), string_u8_litexpr("String_Const_u8"), string_u8_litexpr(""));
+API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("get_clipboard"), string_u8_litexpr("String"), string_u8_litexpr(""));
 api_param(arena, call, "Arena*", "arena");
-api_param(arena, call, "i32", "index");
+api_param(arena, call, "i1", "index");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("post_clipboard"), string_u8_litexpr("void"), string_u8_litexpr(""));
-api_param(arena, call, "String_Const_u8", "str");
-api_param(arena, call, "i32", "index");
+api_param(arena, call, "String", "str");
+api_param(arena, call, "i1", "index");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("set_clipboard_catch_all"), string_u8_litexpr("void"), string_u8_litexpr(""));
@@ -165,7 +165,7 @@ API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("thread
 api_param(arena, call, "System_Thread", "thread");
 }
 {
-API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("thread_get_id"), string_u8_litexpr("i32"), string_u8_litexpr(""));
+API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("thread_get_id"), string_u8_litexpr("i1"), string_u8_litexpr(""));
 (void)call;
 }
 {
@@ -212,7 +212,7 @@ api_param(arena, call, "System_Condition_Variable", "cv");
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("memory_allocate"), string_u8_litexpr("void*"), string_u8_litexpr(""));
 api_param(arena, call, "u64", "size");
-api_param(arena, call, "String_Const_u8", "location");
+api_param(arena, call, "String", "location");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("memory_set_protection"), string_u8_litexpr("b32"), string_u8_litexpr(""));
@@ -231,7 +231,7 @@ api_param(arena, call, "Arena*", "arena");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("show_mouse_cursor"), string_u8_litexpr("void"), string_u8_litexpr(""));
-api_param(arena, call, "i32", "show");
+api_param(arena, call, "i1", "show");
 }
 {
 API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("set_fullscreen"), string_u8_litexpr("b32"), string_u8_litexpr(""));

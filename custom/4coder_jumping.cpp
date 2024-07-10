@@ -5,21 +5,21 @@
 // TOP
 
 function b32
-ms_style_verify(String_Const_u8 line, u64 left_paren_pos, u64 right_paren_pos){
-    i32 result = false;
-    String_Const_u8 line_part = string_skip(line, right_paren_pos);
+ms_style_verify(String line, u64 left_paren_pos, u64 right_paren_pos){
+    i1 result = false;
+    String line_part = string_skip(line, right_paren_pos);
     if (string_match(string_prefix(line_part, 4), string_u8_litexpr(") : ")) ||
         string_match(string_prefix(line_part, 3), string_u8_litexpr("): "))){
         result = true;
     }
     if (result){
-        String_Const_u8 number = string_skip(string_prefix(line, right_paren_pos), left_paren_pos + 1);
+        String number = string_skip(string_prefix(line, right_paren_pos), left_paren_pos + 1);
         if (!string_is_integer(number, 10)){
             result = false;
             u64 comma_pos = string_find_first(number, ',');
             if (comma_pos < number.size){
-                String_Const_u8 sub_number0 = string_prefix(number, comma_pos);
-                String_Const_u8 sub_number1 = string_skip(number, comma_pos + 1);
+                String sub_number0 = string_prefix(number, comma_pos);
+                String sub_number1 = string_skip(number, comma_pos + 1);
                 if (string_is_integer(sub_number0, 10) && string_is_integer(sub_number1, 10)){
                     result = true;
                 }
@@ -30,10 +30,10 @@ ms_style_verify(String_Const_u8 line, u64 left_paren_pos, u64 right_paren_pos){
 }
 
 function u64
-try_skip_rust_arrow(String_Const_u8 line){
+try_skip_rust_arrow(String line){
     u64 pos = 0;
     if (string_match(string_prefix(line, 3), string_u8_litexpr("-->"))){
-        String_Const_u8 sub = string_skip(line, 3);
+        String sub = string_skip(line, 3);
         sub = string_skip_chop_whitespace(sub);
         pos = (u64)(sub.str - line.str);
     }
@@ -41,7 +41,7 @@ try_skip_rust_arrow(String_Const_u8 line){
 }
 
 function b32
-check_is_note(String_Const_u8 line, u64 colon_pos){
+check_is_note(String line, u64 colon_pos){
     b32 is_note = false;
     u64 note_pos = colon_pos + string_find_first(string_skip(line, colon_pos), string_u8_litexpr("note"));
     if (note_pos < line.size){
@@ -68,7 +68,7 @@ parse_jump_location(String8 line)
     Parsed_Jump jump = {};
     jump.sub_jump_indented = (string_get_character(line, 0) == ' ');
     
-    String_Const_u8 reduced_line = string_skip_chop_whitespace(line);
+    String reduced_line = string_skip_chop_whitespace(line);
     u64 whitespace_length = (u64)(reduced_line.str - line.str);
     line = reduced_line;
     
@@ -79,7 +79,7 @@ parse_jump_location(String8 line)
         if (ms_style_verify(line, left_paren_pos, right_paren_pos))
         {
             jump.is_ms_style = true;
-            jump.colon_position = (i32)(right_paren_pos + string_find_first(string_skip(line, right_paren_pos), ':'));
+            jump.colon_position = (i1)(right_paren_pos + string_find_first(string_skip(line, right_paren_pos), ':'));
             if (jump.colon_position < line.size)
             {
                 if (check_is_note(line, jump.colon_position))
@@ -87,34 +87,34 @@ parse_jump_location(String8 line)
                     jump.sub_jump_note = true;
                 }
                 
-                String_Const_u8 location_str = string_prefix(line, jump.colon_position);
+                String location_str = string_prefix(line, jump.colon_position);
                 location_str = string_skip_chop_whitespace(location_str);
                 
-                i32 close_pos = (i32)right_paren_pos;
-                i32 open_pos = (i32)left_paren_pos;
+                i1 close_pos = (i1)right_paren_pos;
+                i1 open_pos = (i1)left_paren_pos;
                 
                 if (0 < open_pos && open_pos < location_str.size){
-                    String_Const_u8 file = SCu8(location_str.str, open_pos);
+                    String file = SCu8(location_str.str, open_pos);
                     file = string_skip_chop_whitespace(file);
                     
                     if (file.size > 0){
-                        String_Const_u8 line_number = string_skip(string_prefix(location_str, close_pos), open_pos + 1);
+                        String line_number = string_skip(string_prefix(location_str, close_pos), open_pos + 1);
                         line_number = string_skip_chop_whitespace(line_number);
                         
                         if (line_number.size > 0){
                             u64 comma_pos = string_find_first(line_number, ',');
                             if (comma_pos < line_number.size){
-                                String_Const_u8 column_number = string_skip(line_number, comma_pos + 1);
+                                String column_number = string_skip(line_number, comma_pos + 1);
                                 line_number = string_prefix(line_number, comma_pos);
-                                jump.location.line = (i32)string_to_u64(line_number, 10);
-                                jump.location.column = (i32)string_to_u64(column_number, 10);
+                                jump.location.line = (i1)string_to_u64(line_number, 10);
+                                jump.location.column = (i1)string_to_u64(column_number, 10);
                             }
                             else{
-                                jump.location.line = (i32)string_to_u64(line_number, 10);
+                                jump.location.line = (i1)string_to_u64(line_number, 10);
                                 jump.location.column = 0;
                             }
                             jump.location.file = file;
-                            jump.colon_position = jump.colon_position + (i32)whitespace_length;
+                            jump.colon_position = jump.colon_position + (i1)whitespace_length;
                             jump.success = true;
                         }
                     }
@@ -128,7 +128,7 @@ parse_jump_location(String8 line)
     }
     
     if (!jump.is_ms_style){
-        i32 start = (i32)try_skip_rust_arrow(line);
+        i1 start = (i1)try_skip_rust_arrow(line);
         if (start != 0){
             jump.has_rust_arrow = true;
         }
@@ -148,15 +148,15 @@ parse_jump_location(String8 line)
                 jump.sub_jump_note = true;
             }
             
-            String_Const_u8 file_name = string_skip(string_prefix(line, colon_pos1), start);
-            String_Const_u8 line_number = string_skip(string_prefix(line, colon_pos2), colon_pos1 + 1);
-            String_Const_u8 column_number = string_skip(string_prefix(line, colon_pos3), colon_pos2 + 1);
+            String file_name = string_skip(string_prefix(line, colon_pos1), start);
+            String line_number = string_skip(string_prefix(line, colon_pos2), colon_pos1 + 1);
+            String column_number = string_skip(string_prefix(line, colon_pos3), colon_pos2 + 1);
             
             if (file_name.size > 0 && line_number.size > 0 && column_number.size > 0){
                 jump.location.file = file_name;
-                jump.location.line = (i32)string_to_u64(line_number, 10);
-                jump.location.column = (i32)string_to_u64(column_number, 10);
-                jump.colon_position = (i32)(colon_pos3 + whitespace_length);
+                jump.location.line = (i1)string_to_u64(line_number, 10);
+                jump.location.column = (i1)string_to_u64(column_number, 10);
+                jump.colon_position = (i1)(colon_pos3 + whitespace_length);
                 jump.success = true;
             }
         }
@@ -166,15 +166,15 @@ parse_jump_location(String8 line)
                     jump.sub_jump_note = true;
                 }
                 
-                String_Const_u8 file_name = string_prefix(line, colon_pos1);
-                String_Const_u8 line_number = string_skip(string_prefix(line, colon_pos2), colon_pos1 + 1);
+                String file_name = string_prefix(line, colon_pos1);
+                String line_number = string_skip(string_prefix(line, colon_pos2), colon_pos1 + 1);
                 
                 if (string_is_integer(line_number, 10)){
                     if (file_name.size > 0 && line_number.size > 0){
                         jump.location.file = file_name;
-                        jump.location.line = (i32)string_to_u64(line_number, 10);
+                        jump.location.line = (i1)string_to_u64(line_number, 10);
                         jump.location.column = 0;
-                        jump.colon_position = (i32)(colon_pos3 + whitespace_length);
+                        jump.colon_position = (i1)(colon_pos3 + whitespace_length);
                         jump.success = true;
                     }
                 }
@@ -193,7 +193,7 @@ parse_jump_location(String8 line)
 #pragma clang diagnostic pop
 
 function Parsed_Jump
-parse_jump_location(String_Const_u8 line, Jump_Flag flags){
+parse_jump_location(String line, Jump_Flag flags){
     Parsed_Jump jump = parse_jump_location(line);
     if (HasFlag(flags, JumpFlag_SkipSubs) && jump.is_sub_jump){
         block_zero_struct(&jump);
@@ -205,7 +205,7 @@ function Parsed_Jump
 parse_jump_from_buffer_line(App *app, Arena *arena, Buffer_ID buffer, i64 line, Jump_Flag flags)
 {
     Parsed_Jump jump = {};
-    String_Const_u8 line_str = push_buffer_line(app, arena, buffer, line);
+    String line_str = push_buffer_line(app, arena, buffer, line);
     if (line_str.size > 0){
         jump = parse_jump_location(line_str, flags);
     }
@@ -250,7 +250,7 @@ switch_to_existing_view(App *app, View_ID view, Buffer_ID buffer)
 }
 
 function void
-set_view_to_location(Application_Links *app, View_ID view, Buffer_ID buffer, Buffer_Seek seek){
+set_view_to_location(App *app, View_ID view, Buffer_ID buffer, Buffer_Seek seek){
     Buffer_ID current_buffer = view_get_buffer(app, view, Access_Always);
     if (current_buffer != buffer){
         view_set_buffer(app, view, buffer, 0);
@@ -270,7 +270,7 @@ jump_to_location(App *app, View_ID view, Buffer_ID buffer, i64 pos)
 }
 
 function void
-jump_to_location(Application_Links *app, View_ID view, Buffer_ID buffer,
+jump_to_location(App *app, View_ID view, Buffer_ID buffer,
                  Name_Line_Column_Location location){
     view_set_active(app, view);
     set_view_to_location(app, view, buffer, seek_line_col(location.line, location.column));
@@ -280,7 +280,7 @@ jump_to_location(Application_Links *app, View_ID view, Buffer_ID buffer,
 }
 
 function void
-jump_to_location(Application_Links *app, View_ID view,
+jump_to_location(App *app, View_ID view,
                  Name_Line_Column_Location location){
     Buffer_ID buffer = 0;
     if (get_jump_buffer(app, &buffer, &location)){
@@ -289,7 +289,7 @@ jump_to_location(Application_Links *app, View_ID view,
 }
 
 function void
-jump_to_location(Application_Links *app, View_ID view, Buffer_ID buffer, ID_Pos_Jump_Location location){
+jump_to_location(App *app, View_ID view, Buffer_ID buffer, ID_Pos_Jump_Location location){
     view_set_active(app, view);
     set_view_to_location(app, view, buffer, seek_pos(location.pos));
     if (auto_center_after_jumps){
@@ -298,7 +298,7 @@ jump_to_location(Application_Links *app, View_ID view, Buffer_ID buffer, ID_Pos_
 }
 
 function void
-jump_to_location(Application_Links *app, View_ID view, String_Const_u8 location){
+jump_to_location(App *app, View_ID view, String location){
     Parsed_Jump jump = parse_jump_location(location);
     if (jump.success){
         jump_to_location(app, view, jump.location);
@@ -309,7 +309,7 @@ jump_to_location(Application_Links *app, View_ID view, String_Const_u8 location)
 
 // TODO(allen): rewrite
 static Parsed_Jump
-seek_next_jump_in_buffer(Application_Links *app, Arena *arena,
+seek_next_jump_in_buffer(App *app, Arena *arena,
                          Buffer_ID buffer, i64 first_line, Jump_Flag flags, Scan_Direction direction,
                          i64 *line_out){
     Assert(direction == 1 || direction == -1);
@@ -317,7 +317,7 @@ seek_next_jump_in_buffer(Application_Links *app, Arena *arena,
     i64 line = first_line;
     for (;;){
         if (is_valid_line(app, buffer, line)){
-            String_Const_u8 line_str = push_buffer_line(app, arena, buffer, line);
+            String line_str = push_buffer_line(app, arena, buffer, line);
             jump = parse_jump_location(line_str, flags);
             if (jump.success){
                 break;
@@ -335,7 +335,7 @@ seek_next_jump_in_buffer(Application_Links *app, Arena *arena,
 }
 
 static ID_Line_Column_Jump_Location
-convert_name_based_to_id_based(Application_Links *app, Name_Line_Column_Location loc){
+convert_name_based_to_id_based(App *app, Name_Line_Column_Location loc){
     ID_Line_Column_Jump_Location result = {};
     Buffer_ID buffer = get_buffer_by_name(app, loc.file, Access_Always);
     if (buffer != 0){
@@ -347,7 +347,7 @@ convert_name_based_to_id_based(Application_Links *app, Name_Line_Column_Location
 }
 
 static Parsed_Jump
-seek_next_jump_in_view(Application_Links *app, Arena *arena, View_ID view, i32 skip_sub_errors, Scan_Direction direction, i64 *line_out){
+seek_next_jump_in_view(App *app, Arena *arena, View_ID view, i1 skip_sub_errors, Scan_Direction direction, i64 *line_out){
     i64 cursor_position = view_get_cursor_pos(app, view);
     Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(cursor_position));
     i64 line = cursor.line;
@@ -370,7 +370,7 @@ skip_this_jump(ID_Line_Column_Jump_Location prev, ID_Line_Column_Jump_Location j
 
 #if 0
 static b32
-advance_cursor_in_jump_view(Application_Links *app, View_ID view, b32 skip_repeats, b32 skip_sub_error, Scan_Direction direction, Name_Line_Column_Location *location_out){
+advance_cursor_in_jump_view(App *app, View_ID view, b32 skip_repeats, b32 skip_sub_error, Scan_Direction direction, Name_Line_Column_Location *location_out){
     b32 result = true;
     
     Name_Line_Column_Location location = {};
@@ -405,7 +405,7 @@ advance_cursor_in_jump_view(Application_Links *app, View_ID view, b32 skip_repea
 }
 
 static b32
-seek_jump_(Application_Links *app, b32 skip_repeats, b32 skip_sub_errors, i32 direction){
+seek_jump_(App *app, b32 skip_repeats, b32 skip_sub_errors, i1 direction){
     b32 result = false;
     
     View_ID view = get_view_for_locked_jump_buffer(app);

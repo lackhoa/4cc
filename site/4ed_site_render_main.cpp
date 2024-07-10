@@ -158,12 +158,12 @@ render_doc_page_to_html__code(Arena *scratch, Doc_Code_Sample_List *code, FILE *
 }
 
 function void
-render_doc_page_to_html__table(Arena *scratch, Vec2_i32 dim, Doc_Content_List *vals, FILE *out){
+render_doc_page_to_html__table(Arena *scratch, Vec2_i1 dim, Doc_Content_List *vals, FILE *out){
     fprintf(out, "<table class=\"normal\">");
-    for (i32 y = 0; y < dim.y; y += 1){
+    for (i1 y = 0; y < dim.y; y += 1){
         fprintf(out, "<tr>");
         Doc_Content_List *line = &vals[y*dim.x];
-        for (i32 x = 0; x < dim.x; x += 1){
+        for (i1 x = 0; x < dim.x; x += 1){
             Doc_Content_List *cont = &line[x];
             fprintf(out, "<td>");
             render_doc_page_to_html__content_list(scratch, cont, out);
@@ -250,9 +250,9 @@ render_doc_page_to_html(Arena *scratch, Doc_Page *page, FILE *file){
 }
 
 function void
-render_doc_page_to_html(Arena *scratch, Doc_Page *page, String_Const_u8 docs_root){
+render_doc_page_to_html(Arena *scratch, Doc_Page *page, String docs_root){
     Temp_Memory_Block temp(scratch);
-    String_Const_u8 file_name = push_u8_stringf(scratch, "%.*s%.*s.html",
+    String file_name = push_u8_stringf(scratch, "%.*s%.*s.html",
                                                 string_expand(docs_root),
                                                 string_expand(page->name));
     
@@ -267,13 +267,13 @@ render_doc_page_to_html(Arena *scratch, Doc_Page *page, String_Const_u8 docs_roo
 }
 
 function void
-sort_doc_page_array(Doc_Page **ptrs, i32 first, i32 one_past_last){
+sort_doc_page_array(Doc_Page **ptrs, i1 first, i1 one_past_last){
     if (first + 1 < one_past_last){
-        i32 pivot_index = one_past_last - 1;
-        String_Const_u8 pivot_name = ptrs[pivot_index]->name;
-        i32 j = first;
-        for (i32 i = first; i < pivot_index; i += 1){
-            String_Const_u8 name = ptrs[i]->name;
+        i1 pivot_index = one_past_last - 1;
+        String pivot_name = ptrs[pivot_index]->name;
+        i1 j = first;
+        for (i1 i = first; i < pivot_index; i += 1){
+            String name = ptrs[i]->name;
             if (string_compare(name, pivot_name) < 0){
                 Swap(Doc_Page*, ptrs[j], ptrs[i]);
                 j += 1;
@@ -320,7 +320,7 @@ render_doc_cluster_to_html(Arena *scratch, Doc_Cluster *cluster,
         fprintf(file_index, html_header, string_expand(cluster->title));
         
         Doc_Page **ptrs = push_array(scratch, Doc_Page*, cluster->page_count);
-        i32 counter = 0;
+        i1 counter = 0;
         for (Doc_Page *node = cluster->first_page;
              node != 0;
              node = node->next){
@@ -347,7 +347,7 @@ render_doc_cluster_to_html(Arena *scratch, Doc_Cluster *cluster,
             fprintf(file_index, "<div class=\"normal\">");
             
             fprintf(file_index, "<ul class=\"docs_menu\" id=\"docs_menu\">\n");
-            for (i32 i = 0; i < counter; i += 1){
+            for (i1 i = 0; i < counter; i += 1){
                 Doc_Page *node = ptrs[i];
                 fprintf(file_index, "<li><a href=\"#%.*s\">%.*s</a></li>",
                         string_expand(node->name),
@@ -361,7 +361,7 @@ render_doc_cluster_to_html(Arena *scratch, Doc_Cluster *cluster,
         
         // NOTE(rjf): API pages.
         {
-            for (i32 i = 0; i < counter; i += 1){
+            for (i1 i = 0; i < counter; i += 1){
                 Doc_Page *node = ptrs[i];
                 fprintf(file_index, "<div id=\"%.*s\" class=\"api_page_preview hidden\">\n",
                         string_expand(node->name));
@@ -380,13 +380,13 @@ render_doc_cluster_to_html(Arena *scratch, Doc_Cluster *cluster,
 }
 
 function void
-render_doc_cluster_to_html(Arena *scratch, Doc_Cluster *cluster, String_Const_u8 docs_root){
+render_doc_cluster_to_html(Arena *scratch, Doc_Cluster *cluster, String docs_root){
     Temp_Memory_Block temp(scratch);
-    String_Const_u8 file_name = push_u8_stringf(scratch, "%.*s%.*s.html",
+    String file_name = push_u8_stringf(scratch, "%.*s%.*s.html",
                                                 string_expand(docs_root),
                                                 string_expand(cluster->name));
     
-    String_Const_u8 indx_name = push_u8_stringf(scratch, "%.*s%.*s_index.html",
+    String indx_name = push_u8_stringf(scratch, "%.*s%.*s_index.html",
                                                 string_expand(docs_root),
                                                 string_expand(cluster->name));
     
@@ -417,15 +417,15 @@ int main(){
     thread_ctx_init(&tctx_, ThreadKind_Main, get_allocator_malloc(), get_allocator_malloc());
     Thread_Context *tctx = &tctx_;
     
-    String_Const_u8 self = string_u8_litexpr(__FILE__);
+    String self = string_u8_litexpr(__FILE__);
     u64 code_pos = string_find_first(self, string_u8_litexpr("code"));
-    String_Const_u8 root = string_prefix(self, code_pos + 5);
-    String_Const_u8 outside_root = string_prefix(self, code_pos);
-    String_Const_u8 build_root = push_u8_stringf(&arena, "%.*sbuild/",
+    String root = string_prefix(self, code_pos + 5);
+    String outside_root = string_prefix(self, code_pos);
+    String build_root = push_u8_stringf(&arena, "%.*sbuild/",
                                                  string_expand(outside_root));
-    String_Const_u8 site_root = push_u8_stringf(&arena, "%.*ssite/",
+    String site_root = push_u8_stringf(&arena, "%.*ssite/",
                                                 string_expand(build_root));
-    String_Const_u8 docs_root = push_u8_stringf(&arena, "%.*sdocs/",
+    String docs_root = push_u8_stringf(&arena, "%.*sdocs/",
                                                 string_expand(site_root));
     
     (void)root;
@@ -434,7 +434,7 @@ int main(){
     i64 file_id = 2;
     i64 code_id = 3;
     
-    local_const i32 map_count = 2;
+    local_const i1 map_count = 2;
     Mapping mapping_array[map_count] = {};
     char *page_tiles[map_count] = {};
     char *page_names[map_count] = {};
@@ -457,7 +457,7 @@ int main(){
                              global_id, file_id, code_id),
     };
     
-    for (i32 i = 0; i < ArrayCount(cluster_array); i += 1){
+    for (i1 i = 0; i < ArrayCount(cluster_array); i += 1){
         Doc_Cluster *cluster = cluster_array[i];
         for (Doc_Page *node = cluster->first_page;
              node != 0;

@@ -4,7 +4,7 @@ global String8 weak_divider_comment_signifier   = SCu8("//-");
 // NOTE(kv): Patch because the original one doesn't terminate early (and buggy!)
 function void
 kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
-                        i64 pos, ARGB_Color *colors, i32 color_count)
+                        i64 pos, ARGB_Color *colors, i1 color_count)
 {
   if (!(colors && color_count)) return;
 
@@ -12,7 +12,7 @@ kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
   if (!(tokens.tokens && tokens.count)) return;
 
   {// Nudge the cursor in case we're near parentheses.
-    Token_Iterator_Array it = token_iterator_pos(0, &tokens, pos);
+    Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
     Token *token = token_it_read(&it);
     if (token && (token->kind == TokenBaseKind_ParentheticalOpen))
     {
@@ -35,7 +35,7 @@ kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
     Range_i64_Array ranges = {};
 
     {// get_enclosure_ranges(app, scratch, buffer, pos);
-      i32 max = 16;
+      i1 max = 16;
       ranges.ranges = push_array(scratch, Range_i64, max);
       while ((ranges.count < max) && (pos >= 1))
       {
@@ -62,11 +62,11 @@ kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
     }
 
     // Draw those parens!
-    i32 color_index = 0;
-    for (i32 range_i = ranges.count-1; range_i >= 0; range_i--)
+    i1 color_index = 0;
+    for (i1 range_i = ranges.count-1; range_i >= 0; range_i--)
     {
       Range_i64 range = ranges.ranges[range_i];
-      i32 fore_index = color_index % color_count;
+      i1 fore_index = color_index % color_count;
       paint_text_color_pos(app, text_layout_id, range.min, colors[fore_index]);
       paint_text_color_pos(app, text_layout_id, range.max - 1, colors[fore_index]);
       color_index += 1;
@@ -154,7 +154,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
 {
  ProfileScope(app, "render caller");
  b32 view_active = view_is_active(app, view);
- i32 monitor = hax_guess_which_monitor_the_view_is_in(app, view);
+ i1 monitor = hax_guess_which_monitor_the_view_is_in(app, view);
  
  rect2 clip      = view_get_screen_rect(app, view);
  rect2 prev_clip = draw_set_clip(app, clip);
@@ -248,7 +248,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
   defer( draw_set_clip(app, prev_clip2); );
   
   Scratch_Block scratch(app);
-  if ( i32 viewport = get_buffer_game_viewport_id(app, buffer))
+  if ( i1 viewport = get_buffer_game_viewport_id(app, buffer))
   {
    render_game(app, viewport, frame);
   }

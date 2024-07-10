@@ -9,9 +9,6 @@
 
 // TOP
 
-#define KV_IMPLEMENTATION
-#include "kv.h"
-
 #define REMOVE_OLD_STRING
 
 #include "4coder_version.h"
@@ -72,7 +69,6 @@
 #include "4coder_string_match.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_system_helpers.cpp"
-#include "4coder_app_links_allocator.cpp"
 #include "4coder_system_allocator.cpp"
 #include "4coder_profile.cpp"
 #include "4coder_profile_static_enable.cpp"
@@ -121,6 +117,14 @@
 
 #include "4ed.cpp"
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_PSD
+#define STBI_NO_TGA
+#define STBI_NO_GIF
+#define STBI_NO_HDR
+#define STBI_NO_PIC
+#define STBI_NO_PNM
+#include "stb_image.h"
 #include "4coder_kv.cpp"
 
 // BOTTOM

@@ -56,7 +56,7 @@ struct Coroutine_Group{
 
 ////////////////////////////////
 
-typedef i32 Coroutine_Pass_Control;
+typedef i1 Coroutine_Pass_Control;
 enum{
     CoroutinePassControl_ExitMe,
     CoroutinePassControl_BlockMe,

@@ -1,7 +1,7 @@
 struct Model
 {
     v3   *vertices;
-    i32 **faces;
+    i1 **faces;
 };
 
 internal Model
@@ -24,7 +24,7 @@ new_model(const char *filepath)
         if ( maybe_eat_string(lex, "v ") )
         {// NOTE(kv): Vertex
             v3 vertex;
-            for_i32 (i,0,3)
+            for_i1 (i,0,3)
             {
                 eat_float(lex);
                 vertex.v[i] = lex->float_value;
@@ -33,12 +33,12 @@ new_model(const char *filepath)
         }
         else if ( maybe_eat_string(lex, "f ") )
         {// NOTE(kv): Face
-            i32 *face = 0;
+            i1 *face = 0;
             lex->newline_encountered = false;
             while ( lex->ok && !lexer_newline_encountered(lex) )
             {// NOTE(kv): Parse vertex indexes;
                 eat_integer(lex);
-                i32 idx = lex->int_value;
+                i1 idx = lex->int_value;
                 eat_character(lex, '/');
                 eat_integer(lex);
                 eat_character(lex, '/');

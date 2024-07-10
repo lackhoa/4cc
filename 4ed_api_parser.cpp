@@ -42,7 +42,7 @@ api_parse__match(Token_Iterator *it, Token_Cpp_Kind sub_kind){
 }
 
 function b32
-api_parse__match_identifier(Token_Iterator *it, String_Const_u8 source, String_Const_u8 *lexeme){
+api_parse__match_identifier(Token_Iterator *it, String source, String *lexeme){
     b32 match = false;
     Token *token = token_it_read(it);
     if (token->kind == TokenBaseKind_Identifier ||
@@ -56,7 +56,7 @@ api_parse__match_identifier(Token_Iterator *it, String_Const_u8 source, String_C
 }
 
 function b32
-api_parse__match_identifier(Token_Iterator *it, String_Const_u8 source, char *lexeme){
+api_parse__match_identifier(Token_Iterator *it, String source, char *lexeme){
     b32 match = false;
     Token *token = token_it_read(it);
     if ((token->kind == TokenBaseKind_Identifier ||
@@ -69,10 +69,10 @@ api_parse__match_identifier(Token_Iterator *it, String_Const_u8 source, char *le
     return(match);
 }
 
-function String_Const_u8
-api_parse__type_name_with_stars(Arena *arena, String_Const_u8 type, i32 star_counter){
+function String
+api_parse__type_name_with_stars(Arena *arena, String type, i1 star_counter){
     if (star_counter > 0){
-        i32 type_full_size = (i32)(type.size) + star_counter;
+        i1 type_full_size = (i1)(type.size) + star_counter;
         u8 *type_buffer = push_array(arena, u8, type_full_size + 1);
         block_copy(type_buffer, type.str, type.size);
         block_fill_u8(type_buffer + type.size, star_counter, (u8)'*');
@@ -83,7 +83,7 @@ api_parse__type_name_with_stars(Arena *arena, String_Const_u8 type, i32 star_cou
 }
 
 function void
-api_parse_add_param(Arena *arena, API_Param_List *list, String_Const_u8 type, i32 star_counter, String_Const_u8 name){
+api_parse_add_param(Arena *arena, API_Param_List *list, String type, i1 star_counter, String name){
     type = api_parse__type_name_with_stars(arena, type, star_counter);
     API_Param *param = push_array(arena, API_Param, 1);
     sll_queue_push(list->first, list->last, param);
@@ -94,9 +94,9 @@ api_parse_add_param(Arena *arena, API_Param_List *list, String_Const_u8 type, i3
 
 function void
 api_parse_add_function(Arena *arena, API_Definition_List *list,
-                       String_Const_u8 api_name, String_Const_u8 func_name,
-                       String_Const_u8 type, i32 star_counter, API_Param_List param_list,
-                       String_Const_u8 location){
+                       String api_name, String func_name,
+                       String type, i1 star_counter, API_Param_List param_list,
+                       String location){
     API_Definition *api = api_get_api(arena, list, api_name);
     type = api_parse__type_name_with_stars(arena, type, star_counter);
     API_Call *call = api_call_with_location(arena, api, func_name, type, location);
@@ -105,17 +105,17 @@ api_parse_add_function(Arena *arena, API_Definition_List *list,
 
 function void
 api_parse_add_structure(Arena *arena, API_Definition_List *list,
-                        String_Const_u8 api_name, API_Type_Structure_Kind kind,
-                        String_Const_u8 name, List_String_Const_u8 member_list,
-                        String_Const_u8 definition, String_Const_u8 location){
+                        String api_name, API_Type_Structure_Kind kind,
+                        String name, List_String member_list,
+                        String definition, String location){
     API_Definition *api = api_get_api(arena, list, api_name);
        api_type_structure_with_location(arena, api, kind, name, member_list, definition, location);
 }
 
-function String_Const_u8
-api_parse_location(Arena *arena, String_Const_u8 source_name, String_Const_u8 source, u8 *pos){
-    i32 line_number = 1;
-    i32 col_number = 1;
+function String
+api_parse_location(Arena *arena, String source_name, String source, u8 *pos){
+    i1 line_number = 1;
+    i1 col_number = 1;
     if (source.str <= pos && pos < source.str + source.size){
         for (u8 *ptr = source.str;;){
             if (ptr == pos){
@@ -131,15 +131,15 @@ api_parse_location(Arena *arena, String_Const_u8 source_name, String_Const_u8 so
             ptr += 1;
         }
     }
-    return(push_stringf(arena, "%.*s:%d:%d:", string_expand(source_name), line_number, col_number));
+    return(push_stringfz(arena, "%.*s:%d:%d:", string_expand(source_name), line_number, col_number));
 }
 
 function b32
-api_parse_source__function(Arena *arena, String_Const_u8 source_name, String_Const_u8 source, Token_Iterator *token_it, String_Const_u8 api_name, API_Definition_List *list){
+api_parse_source__function(Arena *arena, String source_name, String source, Token_Iterator *token_it, String api_name, API_Definition_List *list){
     b32 result = false;
-    String_Const_u8 ret_type = {};
-    i32 ret_type_star_counter = 0;
-    String_Const_u8 func_name = {};
+    String ret_type = {};
+    i1 ret_type_star_counter = 0;
+    String func_name = {};
     API_Param_List param_list = {};
     if (api_parse__match_identifier(token_it, source, &ret_type)){
         for (;api_parse__match(token_it, TokenCppKind_Star);){
@@ -153,9 +153,9 @@ api_parse_source__function(Arena *arena, String_Const_u8 source_name, String_Con
                 }
                 else{
                     for (;;){
-                        String_Const_u8 type = {};
-                        i32 star_counter = 0;
-                        String_Const_u8 name = {};
+                        String type = {};
+                        i1 star_counter = 0;
+                        String name = {};
                         if (api_parse__match_identifier(token_it, source, &type)){
                             for (;api_parse__match(token_it, TokenCppKind_Star);){
                                 star_counter += 1;
@@ -190,15 +190,15 @@ api_parse_source__function(Arena *arena, String_Const_u8 source_name, String_Con
         }
     }
     if (result){
-        String_Const_u8 location = api_parse_location(arena, source_name, source, func_name.str);
+        String location = api_parse_location(arena, source_name, source, func_name.str);
         api_parse_add_function(arena, list, api_name, func_name, ret_type, ret_type_star_counter, param_list, location);
     }
     return(result);
 }
 
-function String_Const_u8
-api_parse__restringize_token_range(Arena *arena, String_Const_u8 source, Token *token, Token *token_end){
-    List_String_Const_u8 list = {};
+function String
+api_parse__restringize_token_range(Arena *arena, String source, Token *token, Token *token_end){
+    List_String list = {};
     for (Token *t = token; t < token_end; t += 1){
         if (t->kind == TokenBaseKind_Comment){
             continue;
@@ -208,17 +208,17 @@ api_parse__restringize_token_range(Arena *arena, String_Const_u8 source, Token *
             continue;
         }
         
-        String_Const_u8 str = string_substring(source, Ii64(t));
+        String str = string_substring(source, Ii64(t));
         string_list_push(arena, &list, str);
     }
     return(string_list_flatten(arena, list));
 }
 
 function b32
-api_parse_source__structure(Arena *arena, String_Const_u8 source_name, String_Const_u8 source, API_Type_Structure_Kind kind, Token_Iterator *token_it, String_Const_u8 api_name, API_Definition_List *list){
+api_parse_source__structure(Arena *arena, String source_name, String source, API_Type_Structure_Kind kind, Token_Iterator *token_it, String api_name, API_Definition_List *list){
     b32 result = false;
-    String_Const_u8 name = {};
-    List_String_Const_u8 member_list = {};
+    String name = {};
+    List_String member_list = {};
     Token *token = api_parse__token_pos(token_it);
     (void)token;
     if (api_parse__match_identifier(token_it, source, &name)){
@@ -228,7 +228,7 @@ api_parse_source__structure(Arena *arena, String_Const_u8 source_name, String_Co
         else if (api_parse__match(token_it, TokenCppKind_BraceOp)){
                 b32 member_list_success = false;
             for (;;){
-                String_Const_u8 member_name = {};
+                String member_name = {};
                 if (api_parse__match(token_it, TokenCppKind_BraceCl)){
                     member_list_success = true;
                     break;
@@ -257,26 +257,26 @@ api_parse_source__structure(Arena *arena, String_Const_u8 source_name, String_Co
         Token *token_end = api_parse__token_pos(token_it);
         (void)token_end;
         // TODO(allen): 
-        String_Const_u8 definition = {};
-        String_Const_u8 location = api_parse_location(arena, source_name, source, name.str);
+        String definition = {};
+        String location = api_parse_location(arena, source_name, source, name.str);
         api_parse_add_structure(arena, list, api_name, kind, name, member_list, definition, location);
     }
     return(result);
 }
 
 function b32
-api_parse_source__struct(Arena *arena, String_Const_u8 source_name, String_Const_u8 source, Token_Iterator *token_it, String_Const_u8 api_name, API_Definition_List *list){
+api_parse_source__struct(Arena *arena, String source_name, String source, Token_Iterator *token_it, String api_name, API_Definition_List *list){
     return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Struct, token_it, api_name, list));
 }
 
 function b32
-api_parse_source__union(Arena *arena, String_Const_u8 source_name, String_Const_u8 source, Token_Iterator *token_it, String_Const_u8 api_name, API_Definition_List *list){
+api_parse_source__union(Arena *arena, String source_name, String source, Token_Iterator *token_it, String api_name, API_Definition_List *list){
     return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Union, token_it, api_name, list));
 }
 
 #if 0 // NOTE(kv): this is the meta generator, which we don't use
 function void
-api_parse_source_add_to_list(Arena *arena, String_Const_u8 source_name, String_Const_u8 source, API_Definition_List *list){
+api_parse_source_add_to_list(Arena *arena, String source_name, String source, API_Definition_List *list){
     Token_List token_list = lex_full_input_cpp(arena, source);
     Token_Iterator token_it = token_iterator(token_iterator(0, &token_list));
     
@@ -287,7 +287,7 @@ api_parse_source_add_to_list(Arena *arena, String_Const_u8 source_name, String_C
         }
         
         if (api_parse__match_identifier(&token_it, source, "api")){
-            String_Const_u8 api_name = {};
+            String api_name = {};
             if (api_parse__match(&token_it, TokenCppKind_ParenOp)){
                 if (api_parse__match_identifier(&token_it, source, &api_name)){
                     if (api_parse__match(&token_it, TokenCppKind_ParenCl)){
@@ -313,7 +313,7 @@ api_parse_source_add_to_list(Arena *arena, String_Const_u8 source_name, String_C
 }
 
 function API_Definition_List
-api_parse_source(Arena *arena, String_Const_u8 source_name, String_Const_u8 source){
+api_parse_source(Arena *arena, String source_name, String source){
     API_Definition_List list = {};
     api_parse_source_add_to_list(arena, source_name, source, &list);
     return(list);

@@ -11,8 +11,8 @@
 #include "4coder_vim/4coder_vim_include.h"
 
 #include "4ed_kv_parser.cpp"
+#include "4ed_kv_game_.cpp"
 #include "4ed_fui.cpp"
-#include "kv_lexer.h"
 #include "4coder_kv_input.cpp"
 #include "4coder_kv_commands.cpp"
 #include "4coder_kv_hooks.cpp"
@@ -91,10 +91,10 @@ kv_essential_mapping(Mapping *mapping)
     SelectMap(file_id);
     ParentMap(global_id);
     BindTextInput(write_text_input);
-    BindMouse(click_set_cursor_and_mark, MouseCode_Left);
-    BindMouseRelease(click_set_cursor, MouseCode_Left);
-    BindCore(click_set_cursor_and_mark, CoreCode_ClickActivateView);
-    BindMouseMove(click_set_cursor_if_lbutton);
+    BindMouse       (kv_handle_left_click, MouseCode_Left);
+    //BindMouseRelease(click_set_cursor,          MouseCode_Left);
+    BindCore        (click_set_cursor_and_mark, CoreCode_ClickActivateView);
+    BindMouseMove   (click_set_cursor_if_lbutton);
     
     SelectMap(code_id);
     ParentMap(file_id);
@@ -249,7 +249,7 @@ initialize_stylist_fonts(App *app)
     {
         Face_Description desc = {};
         {
-            desc.font.filename =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+            desc.font.filename =  push_stringfz(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = 18;
             desc.parameters.bold = 0;
             desc.parameters.italic = 0;
@@ -270,7 +270,7 @@ initialize_stylist_fonts(App *app)
     {
         Face_Description desc = {};
         {
-            desc.font.filename =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+            desc.font.filename =  push_stringfz(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = 10;
             desc.parameters.bold = 1;
             desc.parameters.italic = 1;
@@ -293,7 +293,7 @@ initialize_stylist_fonts(App *app)
         
         Face_Description desc = {};
         {
-            desc.font.filename =  push_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
+            desc.font.filename =  push_stringfz(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
             desc.parameters.pt_size = normal_code_desc.parameters.pt_size - 1;
             desc.parameters.bold = 1;
             desc.parameters.italic = 1;
@@ -362,25 +362,11 @@ kvInitQuailTable(App *app)
 #define QUAIL_DEFRULE(KEY, VALUE) kv_quail_defrule(app, KEY, VALUE, strlen(KEY)-1, 0, strlen(VALUE))
     
     QUAIL_DEFRULE(",,", "_");
-    QUAIL_DEFRULE(",,.", "=>");
     //
     QUAIL_DEFRULE(",.", "->");
     QUAIL_DEFRULE(",..", "<>");
     //
-    QUAIL_DEFRULE(".,", "<-");
-    //
-    QUAIL_DEFRULE(";;", ":");
-    QUAIL_DEFRULE(";;;", ";;");
-    //
-    QUAIL_DEFRULE("11", "!");
-    QUAIL_DEFRULE("22", "@");
-    QUAIL_DEFRULE("33", "#");
-    QUAIL_DEFRULE("44", "$");
-    QUAIL_DEFRULE("55", "%");
-    QUAIL_DEFRULE("77", "&");
-    QUAIL_DEFRULE("88", "*");
     kv_quail_defrule(app, "99", "()", 1,0,1);
-    // QUAIL_DEFRULE("00", /*(*/")");  // I wanna type "0"
     //
     kv_quail_defrule(app, "[", "[]", 0,0,1);
     // {
@@ -390,8 +376,6 @@ kvInitQuailTable(App *app)
     kv_quail_defrule(app, "''", "\"\"", 1,0,1);
     QUAIL_DEFRULE("leq", "<=");
     QUAIL_DEFRULE("geq", ">=");
-    QUAIL_DEFRULE("gtt", ">");
-    QUAIL_DEFRULE("ltt", "<");
     QUAIL_DEFRULE("neq", "!=");
     
 #undef QUAIL_DEFRULE

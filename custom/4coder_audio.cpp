@@ -186,7 +186,7 @@ struct riff_header
 #endif
 
 function Audio_Clip
-audio_clip_from_wav_data(String_Const_u8 data){
+audio_clip_from_wav_data(String data){
  Audio_Clip Result = {};
  
  if (data.size >= 4 && *(u32 *)data.str == *(u32 *)"RIFF"){
@@ -250,7 +250,7 @@ audio_clip_from_wav_data(String_Const_u8 data){
 
 function Audio_Clip
 audio_clip_from_wav_FILE(Arena *arena, FILE *file){
- String_Const_u8 data = data_from_file(arena, file);
+ String data = data_from_file(arena, file);
  Audio_Clip result = audio_clip_from_wav_data(data);
  return(result);
 }

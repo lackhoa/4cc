@@ -19,7 +19,7 @@ enum Cursor_Type
 };
 
 function void
-C4_RenderCursorSymbolThingy(Application_Links *app, Rect_f32 rect,
+C4_RenderCursorSymbolThingy(App *app, Rect_f32 rect,
                             f32 roundness, f32 thickness,
                             ARGB_Color color, Cursor_Type type)
 {
@@ -89,7 +89,7 @@ C4_RenderCursorSymbolThingy(Application_Links *app, Rect_f32 rect,
 }
 
 function void
-DoTheCursorInterpolation(Application_Links *app, Frame_Info frame_info,
+DoTheCursorInterpolation(App *app, Frame_Info frame_info,
                          Rect_f32 *rect, Rect_f32 *last_rect, Rect_f32 target)
 {
     *last_rect = *rect;
@@ -140,7 +140,7 @@ DoTheCursorInterpolation(Application_Links *app, Frame_Info frame_info,
 }
 
 function void
-F4_Cursor_RenderEmacsStyle(Application_Links *app, View_ID view_id, b32 is_active_view,
+F4_Cursor_RenderEmacsStyle(App *app, View_ID view_id, b32 is_active_view,
                            Buffer_ID buffer, Text_Layout_ID text_layout_id,
                            f32 roundness, f32 outline_thickness, Frame_Info frame_info)
 {
@@ -281,7 +281,7 @@ F4_Cursor_RenderEmacsStyle(Application_Links *app, View_ID view_id, b32 is_activ
 }
 
 internal b32
-F4_Cursor_DrawHighlightRange(Application_Links *app, View_ID view_id,
+F4_Cursor_DrawHighlightRange(App *app, View_ID view_id,
                              Buffer_ID buffer, Text_Layout_ID text_layout_id,
                              f32 roundness)
 {
@@ -307,7 +307,7 @@ F4_Cursor_DrawHighlightRange(Application_Links *app, View_ID view_id,
 }
 
 function void
-F4_Cursor_RenderNotepadStyle(Application_Links *app, View_ID view_id, b32 is_active_view,
+F4_Cursor_RenderNotepadStyle(App *app, View_ID view_id, b32 is_active_view,
                              Buffer_ID buffer, Text_Layout_ID text_layout_id,
                              f32 roundness, f32 outline_thickness, Frame_Info frame_info)
 {
@@ -347,7 +347,7 @@ F4_Cursor_RenderNotepadStyle(Application_Links *app, View_ID view_id, b32 is_act
 }
 
 static void
-F4_HighlightCursorMarkRange(Application_Links *app, View_ID view_id)
+F4_HighlightCursorMarkRange(App *app, View_ID view_id)
 {
     Rect_f32 view_rect = view_get_screen_rect(app, view_id);
     Rect_f32 clip = draw_set_clip(app, view_rect);
@@ -376,7 +376,7 @@ F4_HighlightCursorMarkRange(Application_Links *app, View_ID view_id)
 
 #if 0
 function void
-F4_RenderMarkAnnotation(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
+F4_RenderMarkAnnotation(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                         View_ID view_id, b32 is_active_view)
 {
     i64 pos = view_get_mark_pos(app, view_id);
@@ -394,7 +394,7 @@ F4_RenderMarkAnnotation(Application_Links *app, Buffer_ID buffer, Text_Layout_ID
         
         if(token_array.tokens != 0)
         {
-            Token_Iterator_Array it = token_iterator_pos(0, &token_array, pos);
+            Token_Iterator_Array it = token_it_at_pos(0, &token_array, pos);
             
             int max = 5;
             int count = 0;
@@ -415,7 +415,7 @@ F4_RenderMarkAnnotation(Application_Links *app, Buffer_ID buffer, Text_Layout_ID
         // NOTE(rjf): Draw.
         if(start_token)
         {
-            String_Const_u8 start_line = push_buffer_line(app, scratch, buffer,
+            String start_line = push_buffer_line(app, scratch, buffer,
                                                           get_line_number_from_pos(app, buffer, start_token->pos));
             
             u64 first_non_whitespace_offset = 0;

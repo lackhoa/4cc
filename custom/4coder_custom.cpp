@@ -5,7 +5,7 @@
 // TOP
 
 function b32
-custom_get_version(i32 maj, i32 min, i32 patch){
+custom_get_version(i1 maj, i1 min, i1 patch){
     return(maj == MAJOR && min == MINOR && patch == PATCH);
 }
 

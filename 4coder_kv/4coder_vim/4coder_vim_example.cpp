@@ -38,16 +38,16 @@ VIM_TEXT_OBJECT_SIG(EXAMPLE_object_camel){
 	return range;
 }
 
-function void EXAMPLE_make_vim_request(Application_Links *app, EXAMPLE_Vim_Request request){
+function void EXAMPLE_make_vim_request(App *app, EXAMPLE_Vim_Request request){
 	vim_make_request(app, Vim_Request_Type(VIM_REQUEST_COUNT + request));
 }
 
 VIM_REQUEST_SIG(EXAMPLE_apply_title){
 	Scratch_Block scratch(app);
-	String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+	String text = push_buffer_range(app, scratch, buffer, range);
 	u8 prev = buffer_get_char(app, buffer, range.min-1);
-	for(i32 i=0; i<text.size; i++){
-		text.str[i] += u8(i32('A' - 'a')*((!character_is_alpha(prev) || prev == '_') &&
+	for(i1 i=0; i<text.size; i++){
+		text.str[i] += u8(i1('A' - 'a')*((!character_is_alpha(prev) || prev == '_') &&
 										  character_is_lower(text.str[i])));
 		prev = text.str[i];
 	}
@@ -57,8 +57,8 @@ VIM_REQUEST_SIG(EXAMPLE_apply_title){
 
 VIM_REQUEST_SIG(EXAMPLE_apply_rot13){
 	Scratch_Block scratch(app);
-	String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
-	for(i32 i=0; i<text.size; i++){
+	String text = push_buffer_range(app, scratch, buffer, range);
+	for(i1 i=0; i<text.size; i++){
 		if(0){}
 		else if(character_is_lower(text.str[i])){
 			text.str[i] = (text.str[i] + 13) - 26*(text.str[i] > ('z'-13));

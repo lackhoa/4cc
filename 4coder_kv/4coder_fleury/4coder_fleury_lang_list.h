@@ -14,7 +14,7 @@ F4_RegisterLanguages(void)
 {
     // NOTE(rjf): C/C++
     {
-        String_Const_u8 extensions[] =
+        String extensions[] =
         {
             S8Lit("cpp"), S8Lit("cc"), S8Lit("c"), S8Lit("cxx"),
             S8Lit("C"), S8Lit("h"), S8Lit("hpp"),
@@ -44,7 +44,7 @@ F4_RegisterLanguages(void)
 
     // NOTE(rjf): Metadesk
     {
-        String_Const_u8 extensions[] =
+        String extensions[] =
         {
             // TODO(rjf): Maybe find a config-driven way to specify these? "mc" was sort of
             // introduced ad-hoc...

@@ -10,7 +10,7 @@ struct F4_RecentFiles_ViewState
 };
 
 function void
-F4_RecentFiles_RefreshView(Application_Links *app, View_ID view)
+F4_RecentFiles_RefreshView(App *app, View_ID view)
 {
     Buffer_ID buffer = view_get_buffer(app, view, AccessFlag_Read);
     if(buffer)
@@ -53,7 +53,7 @@ F4_RecentFiles_RefreshView(Application_Links *app, View_ID view)
 }
 
 internal void
-F4_RecentFiles_Render(Application_Links *app, View_ID view, Face_ID face)
+F4_RecentFiles_Render(App *app, View_ID view, Face_ID face)
 {
 #if 1
     Scratch_Block scratch(app);
@@ -69,7 +69,7 @@ F4_RecentFiles_Render(Application_Links *app, View_ID view, Face_ID face)
         for(int i = 0; i < state->recent_buffer_count; i += 1)
         {
             Buffer_ID buffer = state->recent_buffers[i];
-            String_Const_u8 string = push_buffer_unique_name(app, scratch, buffer);
+            String string = push_buffer_unique_name(app, scratch, buffer);
             draw_string(app, face, string, p, 0xffffffff);
             p.y += metrics.line_height;
         }
@@ -94,7 +94,7 @@ CUSTOM_DOC("Lists the recent files used in the current panel.")
         for(int i = 1; i < state->recent_buffer_count; i += 1)
         {
             Buffer_ID buffer = state->recent_buffers[i];
-            String_Const_u8 buffer_name = push_buffer_unique_name(app, scratch, buffer);
+            String buffer_name = push_buffer_unique_name(app, scratch, buffer);
             Buffer_ID *buf = push_array(scratch, Buffer_ID, 1);
             *buf = buffer;
             lister_add_item(lister, buffer_name, S8Lit(""), buf, 0);

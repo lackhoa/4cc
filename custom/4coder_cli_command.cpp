@@ -7,9 +7,9 @@
 CUSTOM_COMMAND_SIG(execute_previous_cli)
 CUSTOM_DOC("If the command execute_any_cli has already been used, this will execute a CLI reusing the most recent buffer name and command.")
 {
-    String_Const_u8 out_buffer = SCu8(out_buffer_space);
-    String_Const_u8 cmd = SCu8(command_space);
-    String_Const_u8 hot_directory = SCu8(hot_directory_space);
+    String out_buffer = SCu8(out_buffer_space);
+    String cmd = SCu8(command_space);
+    String hot_directory = SCu8(hot_directory_space);
     
     if (out_buffer.size > 0 && cmd.size > 0 && hot_directory.size > 0){
         View_ID view = get_active_view(app, Access_Always);
@@ -40,7 +40,7 @@ CUSTOM_DOC("Queries for an output buffer name and system command, runs the syste
     bar_cmd.string.size = clamp_max(bar_cmd.string.size, sizeof(command_space) - 1);
     command_space[bar_cmd.string.size] = 0;
     
-    String_Const_u8 hot = push_hot_directory(app, scratch);
+    String hot = push_hot_directory(app, scratch);
     {
         u64 size = clamp_max(hot.size, sizeof(hot_directory_space));
         block_copy(hot_directory_space, hot.str, size);

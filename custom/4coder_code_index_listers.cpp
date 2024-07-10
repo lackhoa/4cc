@@ -33,7 +33,7 @@ CUSTOM_DOC("List all definitions in the code index and jump to one chosen by the
                 jump->buffer = buffer;
                 jump->pos = note->pos.first;
                 
-                String_Const_u8 sort = {};
+                String sort = {};
                 switch (note->note_kind){
                     case CodeIndexNote_Type:
                     {

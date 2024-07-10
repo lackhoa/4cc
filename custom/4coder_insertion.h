@@ -8,7 +8,7 @@
 #define FRED_INSERTION_H
 
 struct Buffer_Insertion{
-    Application_Links *app;
+    App *app;
     Buffer_ID buffer;
     i64 at;
     b32 buffering;

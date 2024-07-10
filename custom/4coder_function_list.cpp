@@ -12,15 +12,15 @@
 // NOTE(allen|b4.1.0): This routine assumes C++ sub_kinds in the tokens of the buffer.
 
 function Get_Positions_Results
-get_function_positions(Application_Links *app, Buffer_ID buffer, i64 first_token_index, Function_Positions *positions_array, i64 positions_max){
+get_function_positions(App *app, Buffer_ID buffer, i64 first_token_index, Function_Positions *positions_array, i64 positions_max){
     Get_Positions_Results result = {};
     
     Token_Array array = get_token_array_from_buffer(app, buffer);
     if (array.tokens != 0){
         Token_Iterator_Array it = token_iterator_index(buffer, &array, first_token_index);
         
-        i32 nest_level = 0;
-        i32 paren_nest_level = 0;
+        i1 nest_level = 0;
+        i1 paren_nest_level = 0;
         
         Token_Iterator_Array first_paren_it = {};
         i64 first_paren_index = 0;
@@ -147,12 +147,12 @@ get_function_positions(Application_Links *app, Buffer_ID buffer, i64 first_token
 }
 
 function void
-print_positions_buffered(Application_Links *app, Buffer_Insertion *out, Buffer_ID buffer, Function_Positions *positions_array, i64 positions_count){
+print_positions_buffered(App *app, Buffer_Insertion *out, Buffer_ID buffer, Function_Positions *positions_array, i64 positions_count){
     Scratch_Block scratch(app);
     
-    String_Const_u8 buffer_name = push_buffer_unique_name(app, scratch, buffer);
+    String buffer_name = push_buffer_unique_name(app, scratch, buffer);
     
-    for (i32 i = 0; i < positions_count; ++i){
+    for (i1 i = 0; i < positions_count; ++i){
         Function_Positions *positions = &positions_array[i];
         
         i64 start_index = positions->sig_start_index;
@@ -184,7 +184,7 @@ print_positions_buffered(Application_Links *app, Buffer_Insertion *out, Buffer_I
                     }
                     
                     Temp_Memory token_temp = begin_temp(scratch);
-                    String_Const_u8 lexeme = push_token_lexeme(app, scratch, buffer, token);
+                    String lexeme = push_token_lexeme(app, scratch, buffer, token);
                     insert_string(out, lexeme);
                     end_temp(token_temp);
                     
@@ -205,9 +205,9 @@ print_positions_buffered(Application_Links *app, Buffer_Insertion *out, Buffer_I
 }
 
 function void
-list_all_functions(Application_Links *app, Buffer_ID optional_target_buffer){
+list_all_functions(App *app, Buffer_ID optional_target_buffer){
     // TODO(allen): Use create or switch to buffer and clear here?
-    String_Const_u8 decls_name = string_u8_litexpr("*decls*");
+    String decls_name = string_u8_litexpr("*decls*");
     Buffer_ID decls_buffer = get_buffer_by_name(app, decls_name, Access_Always);
     if (!buffer_exists(app, decls_buffer)){
         decls_buffer = create_buffer(app, decls_name, BufferCreate_AlwaysNew);
@@ -223,7 +223,7 @@ list_all_functions(Application_Links *app, Buffer_ID optional_target_buffer){
     Scratch_Block scratch(app);
     
     // TODO(allen): rewrite get_function_positions to allocate on arena
-    i32 positions_max = KB(4)/sizeof(Function_Positions);
+    i1 positions_max = KB(4)/sizeof(Function_Positions);
     Function_Positions *positions_array = push_array(scratch, Function_Positions, positions_max);
     
     Cursor insertion_cursor = make_cursor(push_array(scratch, u8, KB(256)), KB(256));

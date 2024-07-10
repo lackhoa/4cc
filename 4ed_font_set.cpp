@@ -149,7 +149,7 @@ font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
     b32 result = false;
     Font_Face_Slot *slot = font_set__get_face_slot(set, id);
     if (slot != 0){
-        i32 version_number = slot->face->version_number;
+        i1 version_number = slot->face->version_number;
         Arena arena = make_arena_system();
         Face *face = font_make_face(&arena, description, set->scale_factor);
         if (face != 0){

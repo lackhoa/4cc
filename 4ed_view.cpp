@@ -83,9 +83,9 @@ view_get_access_flags(View *view){
     return(result);
 }
 
-internal i32
+internal i1
 view_get_index(Live_Views *live_set, View *view){
-    return((i32)(view - live_set->views));
+    return((i1)(view - live_set->views));
 }
 
 internal View_ID
@@ -147,8 +147,8 @@ view_get_buffer_rect(Thread_Context *tctx, Models *models, View *view){
     Rect_f32 region = Rf32(view->panel->rect_full);
     if (models->buffer_region != 0){
         Rect_f32 rect = region;
-        Rect_f32 sub_region = Rf32(vec2(0, 0), rect2_dim(rect));
-        Application_Links app = {};
+        Rect_f32 sub_region = Rf32(V2(0, 0), rect2_dim(rect));
+        App app = {};
         app.tctx = tctx;
         app.cmd_context = models;
         sub_region = models->buffer_region(&app, view_get_id(&models->view_set, view), sub_region);
@@ -273,7 +273,7 @@ view_move_buffer_point(Thread_Context *tctx, Models *models, View *view,
     delta += buffer_point.pixel_shift;
     Line_Shift_Vertical shift = view_line_shift_y(tctx, models, view, buffer_point.line_number, delta.y);
     buffer_point.line_number = shift.line;
-    buffer_point.pixel_shift = vec2(delta.x, delta.y - shift.y_delta);
+    buffer_point.pixel_shift = V2(delta.x, delta.y - shift.y_delta);
     return(buffer_point);
 }
 
@@ -354,7 +354,7 @@ view_move_view_to_cursor(Thread_Context *tctx, Models *models, View *view, Buffe
     margin.x = clamp_max(margin.x, lim_dim.x);
     margin.y = clamp_max(margin.y, lim_dim.y);
     
-    Vec2_f32 push_in_lim_dim = hadamard(lim_dim, vec2(1.f/line_height, 1.f/normal_advance)) - margin;
+    Vec2_f32 push_in_lim_dim = hadamard(lim_dim, V2(1.f/line_height, 1.f/normal_advance)) - margin;
 	push_in_lim_dim.x = clamp_min(0.f, push_in_lim_dim.x);
 	push_in_lim_dim.y = clamp_min(0.f, push_in_lim_dim.y);
     push_in.x = clamp_max(push_in.x, push_in_lim_dim.x);
@@ -375,10 +375,10 @@ view_move_view_to_cursor(Thread_Context *tctx, Models *models, View *view, Buffe
     }
     scroll->target.pixel_shift += target_p_relative;
     scroll->target = view_normalize_buffer_point(tctx, models, view, scroll->target);
-    scroll->target.pixel_shift.x = f32_round32(scroll->target.pixel_shift.x);
-    scroll->target.pixel_shift.y = f32_round32(scroll->target.pixel_shift.y);
+    scroll->target.pixel_shift.x = roundv1(scroll->target.pixel_shift.x);
+    scroll->target.pixel_shift.y = roundv1(scroll->target.pixel_shift.y);
     
-    return(target_p_relative != vec2(0.f, 0.f));
+    return(target_p_relative != V2(0.f, 0.f));
 }
 
 internal b32
@@ -463,7 +463,7 @@ view_set_file(Thread_Context *tctx, Models *models, View *view, Editing_File *fi
     Editing_File *old_file = view->file;
     
     if (models->view_change_buffer != 0){
-        Application_Links app = {};
+        App app = {};
         app.tctx = tctx;
         app.cmd_context = models;
         models->view_change_buffer(&app, view_get_id(&models->view_set, view),
@@ -584,7 +584,7 @@ view_event_context_base__inner(Coroutine *coroutine){
     Models *models = in->models;
     Custom_Command_Function *event_context_base = in->event_context_base;
     Assert(event_context_base != 0);
-    Application_Links app = {};
+    App app = {};
     app.tctx = coroutine->tctx;
     app.cmd_context = models;
     event_context_base(&app);
@@ -603,8 +603,8 @@ view_init(Thread_Context *tctx, Models *models, View *view, Editing_File *initia
     first_ctx.delta_rule_memory_size = models->delta_rule_memory_size;
     view_push_context(view, &first_ctx);
     
-    view->cursor_margin = vec2(0.f, 0.f);
-    view->cursor_push_in_multiplier = vec2(1.5f, 1.5f);
+    view->cursor_margin = V2(0.f, 0.f);
+    view->cursor_push_in_multiplier = V2(1.5f, 1.5f);
     
     view->co = coroutine_create(&models->coroutines, view_event_context_base__inner);
     view->co->user_data = view;
@@ -664,7 +664,7 @@ co_full_abort(Thread_Context *tctx, Models *models, View *view){
         co  = co_run(tctx, models, co, &in, &view->co_out);
     }
     if (co != 0){
-        Application_Links app = {};
+        App app = {};
         app.tctx = tctx;
         app.cmd_context = models;
 #define M "SERIOUS ERROR: full stack abort did not complete"
@@ -697,7 +697,7 @@ co_send_event(Thread_Context *tctx, Models *models, View *view, Input_Event *eve
 }
 
 function b32
-co_send_core_event(Thread_Context *tctx, Models *models, View *view, Core_Code code, String_Const_u8 string){
+co_send_core_event(Thread_Context *tctx, Models *models, View *view, Core_Code code, String string){
     Input_Event event = {};
     event.kind = InputEventKind_Core;
     event.core.code = code;
@@ -727,7 +727,7 @@ co_send_event(Thread_Context *tctx, Models *models, Input_Event *event){
 }
 
 function b32
-co_send_core_event(Thread_Context *tctx, Models *models, Core_Code code, String_Const_u8 string){
+co_send_core_event(Thread_Context *tctx, Models *models, Core_Code code, String string){
     Panel *active_panel = models->layout.active_panel;
     View *view = active_panel->view;
     return(co_send_core_event(tctx, models, view, code, string));
@@ -751,7 +751,7 @@ function void
 view_quit_ui(Thread_Context *tctx, Models *models, View *view){
     for (u32 j = 0;; j += 1){
         if (j == 100){
-            Application_Links app = {};
+            App app = {};
             app.tctx = tctx;
             app.cmd_context = models;
 #define M "SERIOUS ERROR: view quit ui did not complete"

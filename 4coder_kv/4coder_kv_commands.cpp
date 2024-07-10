@@ -56,7 +56,7 @@ VIM_REQUEST_SIG(byp_apply_uncomment){
 		i64 line_start = get_pos_past_lead_whitespace_from_line_number(app, buffer, l);
 		b32 has_comment = c_line_comment_starts_at_position(app, buffer, line_start);
 		if(has_comment){
-			buffer_replace_range(app, buffer, Ii64_size(line_start,2), string_u8_empty);
+			buffer_replace_range(app, buffer, Ii64_size(line_start,2), empty_string);
 		}
 	}
 }
@@ -121,24 +121,18 @@ CUSTOM_DOC("Resets face size to default")
   GET_VIEW_AND_BUFFER;
   Face_ID face_id = get_face_id(app, buffer);
   Face_Description description = get_face_description(app, face_id);
-  description.parameters.pt_size = (i32)def_get_config_u64(app, vars_intern_lit("default_font_size"));
+  description.parameters.pt_size = (i1)def_get_config_u64(app, vars_intern_lit("default_font_size"));
   try_modify_face(app, face_id, &description);
 }
 
-CUSTOM_COMMAND_SIG(kv_profile_disable_and_inspect)
-CUSTOM_DOC("disable and inspect profile")
-{
-  profile_disable(app);
-  profile_inspect(app);
- }
 
-inline b32 kv_is_group_opener(Token *token)
+force_inline b32 kv_is_group_opener(Token *token)
 {
   return (token->kind == TokenBaseKind_ParentheticalOpen ||
           token->kind == TokenBaseKind_ScopeOpen);
 }
 
-inline b32 kv_is_group_closer(Token *token)
+force_inline b32 kv_is_group_closer(Token *token)
 {
   return (token->kind == TokenBaseKind_ParentheticalClose ||
           token->kind == TokenBaseKind_ScopeClose);
@@ -168,7 +162,7 @@ inline u8 kv_is_group_closer(u8 c)
   }
 }
 
-internal void 
+internal void
 kv_vim_bounce(App *app)
 {
   GET_VIEW_AND_BUFFER;
@@ -242,142 +236,159 @@ VIM_COMMAND_SIG(kv_sexpr_down)
     {
       kv_goto_token(app, token);
       move_right(app);
-      break;
-    }
+   break;
   }
-  while ( token_it_inc(&token_it) );
+ }
+ while ( token_it_inc(&token_it) );
 }
 
 internal b32
 if_preprocessor_movement(App *app, Scan_Direction scan_direction)
 {
-    b32 result = false;
-    GET_VIEW_AND_BUFFER;
-    Token_Iterator_Array token_it = token_it_at_cursor(app);
-    if (token_it.tokens)
-    {
-        Quick_Parser p_value = qp_new(app, buffer, &token_it, scan_direction);
-        Quick_Parser *p = &p_value;
-        i32 nest_level = 0;
-        if (!qp_maybe_preprocessor(p, str8lit("else")) &&
-            !qp_maybe_preprocessor(p, str8lit("elif")))
-        {
-            if (scan_direction == Scan_Forward)
-                qp_eat_preprocessor(p, str8lit("if"));
-            else
-                qp_eat_preprocessor(p, str8lit("endif"));
-        }
-        while ( p->ok )
-        {
-            b32 is_ifs = (qp_test_preprocessor(p, str8lit("if")) ||
-                          qp_test_preprocessor(p, str8lit("ifdef")) ||
-                          qp_test_preprocessor(p, str8lit("ifdef")));
-            
-            b32 is_endif = qp_test_preprocessor(p, str8lit("endif"));
-            
-            b32 is_el  = (qp_test_preprocessor(p, str8lit("else")) ||
-                          qp_test_preprocessor(p, str8lit("elif")));
-            
-            if (is_ifs)
-            {
-                nest_level += scan_direction;
-            }
-            if (is_endif)
-            {
-                nest_level -= scan_direction;
-            }
-            
-            if (is_el && nest_level == 0)
-            {
-                break;
-            }
-            if ((is_ifs || is_endif) &&  (nest_level == -1))
-            {
-                break;
-            }
-            
-            qp_eat_token(p);
-        }
-        if ( p->ok )
-        {
-            kv_goto_token(app, qp_get_token(p));
-            result = true;
-        }
-    }
-    return result;
+ b32 result = false;
+ GET_VIEW_AND_BUFFER;
+ Token_Iterator_Array token_it = token_it_at_cursor(app);
+ if (token_it.tokens)
+ {
+  Quick_Parser p_value = qp_new(app, buffer, &token_it, scan_direction);
+  Quick_Parser *p = &p_value;
+  i1 nest_level = 0;
+  if (!qp_maybe_preprocessor(p, str8lit("else")) &&
+      !qp_maybe_preprocessor(p, str8lit("elif")))
+  {
+   if (scan_direction == Scan_Forward)
+   {
+    p->ok = (qp_maybe_preprocessor(p, str8lit("if")) ||
+             qp_maybe_preprocessor(p, str8lit("ifdef")) ||
+             qp_maybe_preprocessor(p, str8lit("ifndef")));
+   }
+   else
+   {
+    qp_eat_preprocessor(p, str8lit("endif"));
+   }
+  }
+  while ( p->ok )
+  {
+   b32 is_ifs = (qp_test_preprocessor(p, str8lit("if")) ||
+                 qp_test_preprocessor(p, str8lit("ifdef")) ||
+                 qp_test_preprocessor(p, str8lit("ifndef")));
+   
+   b32 is_endif = qp_test_preprocessor(p, str8lit("endif"));
+   
+   b32 is_el  = (qp_test_preprocessor(p, str8lit("else")) ||
+                 qp_test_preprocessor(p, str8lit("elif")));
+   
+   if (is_ifs)
+   {
+    nest_level += scan_direction;
+   }
+   if (is_endif)
+   {
+    nest_level -= scan_direction;
+   }
+   
+   if (is_el && nest_level == 0)
+   {
+    break;
+   }
+   if ((is_ifs || is_endif) &&  (nest_level == -1))
+   {
+    break;
+   }
+   
+   qp_eat_token(p);
+  }
+  if ( p->ok )
+  {
+   kv_goto_token(app, qp_get_token(p));
+   result = true;
+  }
+ }
+ return result;
 }
 
 internal void 
 kv_sexpr_right(App *app)
 {
-    Token_Iterator_Array token_it = token_it_at_cursor(app);
-    if ( token_it.tokens )
-    {
-        View_ID view = get_active_view(app, Access_ReadVisible);
-        vim_push_jump(app, view);
-        if ( !if_preprocessor_movement(app, Scan_Forward) )
-        {
-            do
-            {
-                Token *token = token_it_read(&token_it);
-                if (token->kind == TokenBaseKind_LiteralString)
-                {
-                    i64 token_end = token_range(token).end;
-                    kv_goto_pos(app, view, token_end);
-                    break;
-                }
-                else if (kv_is_group_opener(token))
-                {
-                    kv_goto_token(app, token);
-                    kv_vim_bounce(app);
-                    move_right(app);
-                    break;
-                }
-                else if (kv_is_group_closer(token))
-                {
-                    kv_goto_token(app, token);
-                    move_left(app);
-                    break;
-                }
-            } while ( token_it_inc(&token_it) );
-        }
+ Token_Iterator_Array token_it = token_it_at_cursor(app);
+ if ( token_it.tokens )
+ {
+  View_ID view = get_active_view(app, Access_ReadVisible);
+  vim_push_jump(app, view);
+  if ( !if_preprocessor_movement(app, Scan_Forward) )
+  {
+   i32 nest = 0;
+   do
+   {
+    Token *token = token_it_read(&token_it);
+    if (token->kind == TokenBaseKind_LiteralString)
+    {// NOTE: goto end of string
+     if (nest == 0)
+     {
+      i64 token_end = token_range(token).end;
+      kv_goto_pos(app, view, token_end);
+      break;
+     }
     }
+    else if( kv_is_group_opener(token) )
+    {
+     nest += 1;
+    }
+    else if( kv_is_group_closer(token) )
+    {
+     nest -= 1;
+     if (nest <= 0)
+     {
+      kv_goto_token(app, token);
+      if (nest == 0) { move_right(app); }
+      break;
+     }
+    }
+   } while ( token_it_inc(&token_it) );
+  }
+ }
 }
 
 internal void
 kv_sexpr_left(App *app)
 {
-    if ( if_preprocessor_movement(app, Scan_Backward) == 0 )
+ if ( if_preprocessor_movement(app, Scan_Backward) == 0 )
+ {
+  Token_Iterator_Array token_it = token_it_at_cursor_delta(app, -1);
+  Token *token = token_it_read(&token_it);
+  if (token)
+  {
+   View_ID view = get_active_view(app, Access_ReadVisible);
+   vim_push_jump(app, view);
+   i32 nest = 0;
+   do
+   {
+    token = token_it_read(&token_it);
+    if (token->kind == TokenBaseKind_LiteralString)
     {
-        Token_Iterator_Array token_it = token_it_at_cursor_delta(app, -1);
-        Token *token = token_it_read(&token_it);
-        if (token)
-        {
-            View_ID view = get_active_view(app, Access_ReadVisible);
-            vim_push_jump(app, view);
-            do
-            {
-                token = token_it_read(&token_it);
-                if (token->kind == TokenBaseKind_LiteralString)
-                {
-                    kv_goto_token(app, token);
-                    break;
-                }
-                else if (kv_is_group_opener(token))
-                {
-                    kv_goto_token(app, token);
-                    move_right(app);
-                    break;
-                }
-                else if (kv_is_group_closer(token))
-                {
-                    kv_goto_token(app, token);
-                    kv_vim_bounce(app);
-                    break;
-                }
-            } while (token_it_dec(&token_it));
-        }
+     if (nest == 0)
+     {
+      kv_goto_token(app, token);
+      break;
+     }
     }
+    else if (kv_is_group_opener(token))
+    {
+     nest -= 1;
+     if (nest <= 0)
+     {
+      kv_goto_token(app, token);
+      if (nest < 0) { move_right(app); }
+      break;
+     }
+    }
+    else if (kv_is_group_closer(token))
+    {
+     nest += 1;
+    }
+   } while ( token_it_dec(&token_it) );
+  }
+ }
 }
 
 VIM_COMMAND_SIG(kv_sexpr_end)
@@ -740,7 +751,7 @@ kv_jump_ultimate(App *app)
  if (!jumped)
  {// NOTE(kv): go to the "file" file
   // yank_current_filename_(app);  // In case we wanna paste add the current filename in
-  view_set_buffer_named(app, KV_FILE_FILENAME);
+  set_buffer_named(app, KV_FILE_FILENAME);
  }
 }
 
@@ -790,7 +801,7 @@ kv_do_t_internal(App *app, b32 shiftp)
     // 2. upcase character/word
     Scratch_Block temp(app);
     i64 max = 0;
-    String_Const_u8 replacement = {};
+    String replacement = {};
     i64 alpha_max = scan_any_boundary(app, boundary_alnum, buffer, Scan_Forward, pos);
     if (shiftp)
     {
@@ -834,13 +845,13 @@ CUSTOM_DOC("run the current script")
 CUSTOM_COMMAND_SIG(kv_open_note_file)
 CUSTOM_DOC("switch to my note file")
 {
- view_set_buffer_named(app, strlit("~/notes/note.skm"));
+ set_buffer_named(app, strlit("~/notes/note.skm"));
 }
 
 CUSTOM_COMMAND_SIG(game)
 CUSTOM_DOC("switch to game panel")
 {
- view_set_buffer_named(app, GAME_BUFFER_NAMES[0]);
+ set_buffer_named(app, GAME_BUFFER_NAMES[0]);
 }
 
 CUSTOM_COMMAND_SIG(file)
@@ -981,7 +992,7 @@ CUSTOM_DOC("just a placeholder command so I can test stuff")
 CUSTOM_COMMAND_SIG(init)
 CUSTOM_DOC("configure your editor!")
 {
-    view_set_buffer_named(app, strlit("~/4ed/code/4coder_kv/4coder_kv.cpp"));
+    set_buffer_named(app, strlit("~/4ed/code/4coder_kv/4coder_kv.cpp"));
 }
 
 // todo: We don't wanna bind to a buffer, maybe?
@@ -1000,7 +1011,7 @@ VIM_COMMAND_SIG(remedy_add_breakpoint)
     Scratch_Block temp(app);
     String8 filename = push_buffer_filename(app, temp, buffer);
     i64 linum = get_current_line_number(app);
-    String8 cmd = push_stringf(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
+    String8 cmd = push_stringfz(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
                                string_expand(filename), linum);
     kv_system_command(app, cmd);
 }
@@ -1023,7 +1034,7 @@ VIM_COMMAND_SIG(remedy_run_to_cursor)
     Scratch_Block temp(app);
     String8 filename = push_buffer_filename(app, temp, buffer);
     i64 linum = get_current_line_number(app);
-    String8 cmd = push_stringf(temp, "remedybg.exe run-to-cursor %.*s %lld",
+    String8 cmd = push_stringfz(temp, "remedybg.exe run-to-cursor %.*s %lld",
                                string_expand(filename), linum);
     kv_system_command(app, cmd);
 }
@@ -1037,7 +1048,7 @@ clipboard_pop_command(App *app)
    
     // NOTE(kv): hack to make vim paste this thing (don't understand it)
     // Managed_Scope scope = view_get_managed_scope(app, view);
-    // i32 *paste_index_ptr = scope_attachment(app, scope, view_paste_index_loc, i32);
+    // i1 *paste_index_ptr = scope_attachment(app, scope, view_paste_index_loc, i1);
     // *paste_index_ptr = 0;
    
     // NOTE(kv): print it
@@ -1073,13 +1084,13 @@ CUSTOM_DOC("set current dir as hot")
 CUSTOM_COMMAND_SIG(scratch)
 CUSTOM_DOC("switch to scratch buffer")
 {
-    view_set_buffer_named(app, strlit("~/notes/scratch.skm"));
+    set_buffer_named(app, strlit("~/notes/scratch.skm"));
 }
 
 CUSTOM_COMMAND_SIG(messages)
 CUSTOM_DOC("switch to messages buffer")
 {
-    view_set_buffer_named(app, strlit("*messages*"));
+    set_buffer_named(app, strlit("*messages*"));
 }
 
 internal void
@@ -1142,27 +1153,34 @@ quick_align_command(App *app)
         {
             String spaces = { space_buffer, (u64)clamp_max(nspaces,256) };
             i64 pos = the_range.start + line->start + line->equal_sign_pos;
-            buffer_replace_range(app, buffer, Ii64(pos,pos), spaces);
-        }
-    }
+   buffer_replace_range(app, buffer, Ii64(pos,pos), spaces);
+  }
+ }
 }
 
 internal b32
 maybe_handle_fui(App *app, Buffer_ID buffer)
 {
- load_latest_game_code(app, 0);
- Game_API *game = &global_game_code;
- if ( game->is_valid )
+ b32 result = false;
+ if (global_game_on_readonly)
  {
-  global_game_dll_lock = true;
-  Scratch_Block scratch(app);
-  String filename = push_buffer_filename(app, scratch, buffer);
-  i64 line_number = get_current_line_number(app);
-  b32 handled = game->fui_handle_slider(app, buffer, filename, line_number);
-  global_game_dll_lock = false;
-  return handled;
+  // NOTE: When the tick doesn't run, we don't load the game code.
+  // so we update the game code here so that it doesn't reach in the wrong part slider.
+  // TODO: I still the handling is very wonky, idk what else to do.
+  load_latest_game_code(app, 0);
+  
+  Game_API *game = &global_game_code;
+  if ( game->is_valid )
+  {
+   global_game_dll_lock = true;
+   Scratch_Block scratch(app);
+   String filename = push_buffer_filename(app, scratch, buffer);
+   i64 line_number = get_current_line_number(app);
+   result = game->fui_handle_slider(app, buffer, filename, line_number);
+   global_game_dll_lock = false;
+  }
  }
- else { return false; }
+ return result;
 }
 
 internal void
@@ -1210,7 +1228,6 @@ CUSTOM_DOC("")
 internal void
 handle_tab_normal_mode(App *app)
 {
- change_active_primary_view(app);
 #if 0
  if ( global_game_on_readonly )
  {
@@ -1220,6 +1237,8 @@ handle_tab_normal_mode(App *app)
  {
   auto_indent_line_at_cursor(app);
  }
+#else
+ change_active_primary_view(app);
 #endif
 }
 
@@ -1228,7 +1247,7 @@ handle_space_command(App *app)
 {
  if (global_game_on_readonly)
  {
-  i32 viewport_id = get_active_game_viewport_id(app);
+  i1 viewport_id = get_active_game_viewport_id(app);
   global_game_code.game_last_preset(global_game_state, viewport_id);
  }
  else if ( get_active_game_viewport_id(app) )
@@ -1240,5 +1259,47 @@ handle_space_command(App *app)
   write_space_command(app);
  }
 }
+
+internal void
+switch_to_mouse_panel(App *app)
+{
+ i2 mouse = get_mouse_state(app).p;
+ for (View_ID view = get_view_next(app, 0, Access_Always);
+      view != 0;
+      view = get_view_next(app, view, Access_Always))
+ {
+  //@mouse_panel_code
+  rect2 rect = view_get_screen_rect(app, view);
+  if ( rect_contains_point(rect, V2(mouse)) )
+  {
+   view_set_active(app, view);
+   break;
+  }
+ }
+}
+
+internal void
+kv_handle_left_click(App *app)
+{
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Render_Target *target = draw_get_target(app);
+ Mouse_State mouse = get_mouse_state(app);
+ u32 current_prim_id = target->current_prim_id;
+ if( current_prim_id && !(current_prim_id & bit_31))
+ {// NOTE: Jump to primitive
+  if( !is_view_to_the_right(app, view) )
+  {//NOTE: switch to the right view
+   view = get_other_primary_view(app, view, Access_Always, true);
+  }
+  view_set_buffer_named(app, view, strlit("game.cpp"));
+  view_set_cursor(app, view, seek_line_col(current_prim_id, 0));
+ }
+ else
+ {
+  click_set_cursor_and_mark(app);
+  switch_to_mouse_panel(app);
+ }
+}
+
 
 //~EOF

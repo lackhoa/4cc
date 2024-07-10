@@ -38,7 +38,7 @@ main(int argc, char **argv){
     }
     
     API_Definition_List list = {};
-    for (i32 i = 1; i < argc; i += 1){
+    for (i1 i = 1; i < argc; i += 1){
         char *file_name = argv[i];
         FILE *file = fopen(file_name, "rb");
         if (file == 0){
@@ -46,7 +46,7 @@ main(int argc, char **argv){
             continue;
         }
         
-        String_Const_u8 text = data_from_file(&arena, file);
+        String text = data_from_file(&arena, file);
         fclose(file);
         
         if (text.size > 0){

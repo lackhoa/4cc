@@ -2,40 +2,48 @@
 
 struct Quick_Parser
 {
-    b32 ok;
-    App *app;
-    Buffer_ID buffer;
-    Token_Iterator_Array tk;
-    Scan_Direction scan_direction;
+ Arena arena;
+ b32 ok;
+ 
+ App *app;
+ Buffer_ID buffer;
+ Token_Iterator_Array tk;
+ Scan_Direction scan_direction;
 };
 
 internal Quick_Parser
 qp_new(App *app, Buffer_ID buffer, Token_Iterator_Array *tk, 
        Scan_Direction scan_direction=Scan_Forward)
 {
-    Quick_Parser result = { true, app, buffer, *tk, scan_direction };
-    return result;
+ Quick_Parser result = {  };
+ result.arena=make_arena_malloc();
+ result.ok=true;
+ result.app=app;
+ result.buffer=buffer;
+ result.tk=*tk;
+ result.scan_direction=scan_direction;
+ return result;
 }
 
 internal Token *
 qp_get_token(Quick_Parser *p)
 {
-    Token *token = 0;
-    if (p->ok)
-    {
-        token = token_it_read(&p->tk);
-    }
-    return token;
+ Token *token = 0;
+ if (p->ok)
+ {
+  token = token_it_read(&p->tk);
+ }
+ return token;
 }
 
 internal String
 qp_push_token(Quick_Parser *p, Arena *arena)
 {
-    if (Token *token = qp_get_token(p))
-    {
-        return push_token_lexeme(p->app, arena, p->buffer, token);
-    }
-    return {};
+ if (Token *token = qp_get_token(p))
+ {
+  return push_token_lexeme(p->app, arena, p->buffer, token);
+ }
+ else return {};
 }
 
 internal i64
@@ -44,95 +52,93 @@ qp_get_pos(Quick_Parser *p)
     if (Token *token = qp_get_token(p))
     {
         return token->pos;
-    }
-    else return 0;
+ }
+ else return 0;
 }
 
 internal void
 qp_eat_token(Quick_Parser *p)
 {
-    if (p->ok)
-    {
-        if (p->scan_direction == Scan_Forward)
-        {
-            p->ok = (token_it_inc(&p->tk) != 0);
-        }
-        else
-        {
-            p->ok = (token_it_dec(&p->tk) != 0);
-        }
-    }
+ if (p->ok)
+ {
+  if (p->scan_direction == Scan_Forward)
+  {
+   p->ok = (token_it_inc(&p->tk) != 0);
+  }
+  else
+  {
+   p->ok = (token_it_dec(&p->tk) != 0);
+  }
+ }
 }
 
 internal i64
 get_token_pos(Quick_Parser *p)
 {
-    i64 result = 0;
-    if (p->ok)
-    {
-        Token *token = qp_get_token(p);
-        result = token->pos;
-    }
-    return result;
+ i64 result = 0;
+ if (p->ok)
+ {
+  Token *token = qp_get_token(p);
+  result = token->pos;
+ }
+ return result;
 }
 
+// NOTE: both float and int, for convenience
 internal void
 qp_eat_number(Quick_Parser *p, f32 *out)
 {
-    Scratch_Block scratch(p->app);
-    
-    f32 sign = 1;
-    Token *token = qp_get_token(p);
-    if (token)
-    {
-        if (token->kind == TokenBaseKind_Operator)
-        {// NOTE(kv): parse sign
-            String string = qp_push_token(p, scratch);
-            if ( string_equal(string, "-") )
-            {
-                sign = -1;
-            }
-            else if (!string_equal(string, "+"))
-            {
-                p->ok = false;
-            }
-           
-            qp_eat_token(p);
-            token = qp_get_token(p);
-        }
-    }
+ Scratch_Block scratch(&p->arena);
+ 
+ f32 sign = 1;
+ Token *token = qp_get_token(p);
+ if (token)
+ {
+  if (token->kind == TokenBaseKind_Operator)
+  {// NOTE(kv): parse sign
+   String string = qp_push_token(p, scratch);
+   if ( string_match_lit(string, "-") )
+   {
+    sign = -1;
+   }
+   else if (!string_match_lit(string, "+"))
+   {
+    p->ok = false;
+   }
    
-    if (p->ok)
-    {
-        if (token->kind != TokenBaseKind_LiteralFloat &&
-            token->kind != TokenBaseKind_LiteralInteger )
-        {
-            p->ok = false;
-        }
-    }
-   
-    if (p->ok)
-    {
-        String8 string = qp_push_token(p, scratch);
-        char *cstring = to_c_string(scratch, string);
-        *out = sign * gb_str_to_f32(cstring, 0);
-    }
+   qp_eat_token(p);
+   token = qp_get_token(p);
+  }
+ }
+ 
+ if (p->ok)
+ {
+  if (token->kind != TokenBaseKind_LiteralFloat &&
+      token->kind != TokenBaseKind_LiteralInteger )
+  {
+   p->ok = false;
+  }
+ }
+ 
+ if (p->ok)
+ {
+  String8 string = qp_push_token(p, scratch);
+  char *cstring = to_c_string(scratch, string);
+  *out = sign * gb_str_to_f32(cstring, 0);
+ }
 }
 
 internal b32
 qp_maybe_number(Quick_Parser *p, f32 *out)
 {
-    Quick_Parser save = *p;
-    qp_eat_number(p, out);
-    if (p->ok)
-    {
-        return true;
-    }
-    else
-    {
-        *p = save;
-        return false;
-    }
+ Quick_Parser save = *p;
+ qp_eat_number(p, out);
+ if (p->ok) { return true; }
+ else
+ {
+  *p = save;
+  return false;
+ }
 }
 
 internal void
@@ -154,34 +160,34 @@ qp_maybe_token_kind(Quick_Parser *p, Token_Base_Kind kind)
     if (p->ok) 
         return true;
     else
-    {
-        *p = p_save;
-        return false;
-    }
+ {
+  *p = p_save;
+  return false;
+ }
 }
 
 internal b32
 qp_test_string(Quick_Parser *p, String string)
 {
-    b32 result = false;
-    if (p->ok)
-    {
-        Scratch_Block scratch(p->app);
-        String token = qp_push_token(p, scratch);
-        result = string_match(token, string);
-    }
-    return result;
+ b32 result = false;
+ if (p->ok)
+ {
+  Scratch_Block scratch(&p->arena);
+  String token = qp_push_token(p, scratch);
+  result = string_match(token, string);
+ }
+ return result;
 }
 
 internal b32
 qp_maybe_string(Quick_Parser *p, String string)
 {
-    b32 result = qp_test_string(p, string);
-    if (result)
-    {
-        qp_eat_token(p);
-    }
-    return result;
+ b32 result = qp_test_string(p, string);
+ if (result)
+ {
+  qp_eat_token(p);
+ }
+ return result;
 }
 
 internal b32
@@ -191,7 +197,7 @@ qp_test_preprocessor(Quick_Parser *p, String string)
     Token *token = qp_get_token(p);
     if (p->ok && token->kind == TokenBaseKind_Preprocessor)
     {
-        Scratch_Block scratch(p->app);
+        Scratch_Block scratch(&p->arena);
         String token_str = qp_push_token(p, scratch);
         token_str.str++; token_str.size--;  // skip the pound
         token_str = string_skip_whitespace(token_str);
@@ -212,36 +218,30 @@ qp_maybe_preprocessor(Quick_Parser *p, String string)
     return result;
 }
 
-internal void
+force_inline void
 qp_eat_preprocessor(Quick_Parser *p, String string)
 {
-    p->ok = qp_maybe_preprocessor(p, string);
+ p->ok = qp_maybe_preprocessor(p, string);
 }
 
-internal void
+force_inline void
 qp_eat_string(Quick_Parser *p, String string)
 {
-    p->ok = qp_maybe_string(p, string);
+ p->ok = qp_maybe_string(p, string);
 }
 
-internal void
+force_inline void
 qp_eat_char(Quick_Parser *p, u8 chr)
 {
-    String string = {&chr, 1};
-    qp_eat_string(p, string);
-}
-
-inline void
-qp_eat_comma(Quick_Parser *p)
-{
-    qp_eat_char(p, ',');
+ String string = {&chr, 1};
+ qp_eat_string(p, string);
 }
 
 // NOTE returns index + 1
-internal i32
+internal i1
 char_in_string(String8 chars, char chr)
 {
- i32 result = 0;
+ i1 result = 0;
  for_u32 (index, 0, (u32)chars.size)
  {
   if (chars.str[index] == chr)
@@ -254,23 +254,24 @@ char_in_string(String8 chars, char chr)
 }
 
 // NOTE returns index + 1
-internal i32
+internal i1
 qp_eat_until_char(Quick_Parser *p, String chars, 
-                  i32 recursion_security)
+                  i1 max_recursion)
 {
- recursion_security -= 1;
- if (recursion_security < 0) { return 0; }
+ max_recursion -= 1;
+ if (max_recursion < 0) { return 0; }
  else
  {
-  i32 result = 0;
+  i1 result = 0;
   while ( !result && p->ok )
   {
-   Scratch_Block scratch(p->app);
+   Scratch_Block scratch(&p->arena);
    String token = qp_push_token(p, scratch);
    if (token.size == 1)
    {
     char character = token.str[0];
-    if ((result = char_in_string(chars, character)))
+    result = char_in_string(chars, character);
+    if (result)
     {
      // break
     }
@@ -284,7 +285,7 @@ qp_eat_until_char(Quick_Parser *p, String chars,
      if (character == '{') { matching = "}"; }
      if (matching)
      {
-      qp_eat_until_char(p, SCu8(matching), recursion_security);
+      qp_eat_until_char(p, SCu8(matching), max_recursion);
       qp_eat_token(p);
      }
     }

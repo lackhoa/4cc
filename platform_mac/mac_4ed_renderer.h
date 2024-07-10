@@ -12,10 +12,10 @@ struct Mac_Renderer;
 #define mac_render_sig(name) void name(Mac_Renderer *renderer, Render_Target *target)
 typedef mac_render_sig(mac_render_type);
 
-#define mac_get_texture_sig(name) u32 name(Mac_Renderer *renderer, Vec3_i32 dim, Texture_Kind texture_kind)
+#define mac_get_texture_sig(name) u32 name(Mac_Renderer *renderer, Vec3_i1 dim, Texture_Kind texture_kind)
 typedef mac_get_texture_sig(mac_get_texture_type);
 
-#define mac_fill_texture_sig(name) b32 name(Mac_Renderer *renderer, Texture_Kind texture_kind, u32 texture, Vec3_i32 p, Vec3_i32 dim, void* data)
+#define mac_fill_texture_sig(name) b32 name(Mac_Renderer *renderer, Texture_Kind texture_kind, u32 texture, Vec3_i1 p, Vec3_i1 dim, void* data)
 typedef mac_fill_texture_sig(mac_fill_texture_type);
 
 struct Mac_Renderer{

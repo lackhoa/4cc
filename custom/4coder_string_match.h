@@ -12,7 +12,7 @@
 #if !defined(FCODER_STRING_MATCH_H)
 #define FCODER_STRING_MATCH_H
 
-typedef b32 Buffer_Predicate(Application_Links *app, Buffer_ID buffer);
+typedef b32 Buffer_Predicate(App *app, Buffer_ID buffer);
 
 #endif
 

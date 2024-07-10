@@ -460,7 +460,7 @@ typedef int socklen_t;
 
 //~ NOTE(rjf): @f4_custom_layer_initialization
 
-void fleury_custom_layer_init(Application_Links *app)
+void fleury_custom_layer_init(App *app)
 {
     default_framework_init(app);
     
@@ -482,7 +482,7 @@ void fleury_custom_layer_init(Application_Links *app)
     {
         Thread_Context *tctx = get_thread_context(app);
         mapping_init(tctx, &framework_mapping);
-        String_Const_u8 bindings_file = string_u8_litexpr("bindings.4coder");
+        String bindings_file = string_u8_litexpr("bindings.4coder");
         F4_SetAbsolutelyNecessaryBindings(&framework_mapping);
         if(!dynamic_binding_load_from_file(app, &framework_mapping, bindings_file))
         {
@@ -519,7 +519,7 @@ CUSTOM_DOC("Fleury startup event")
     }
     
     //~ NOTE(rjf): Default 4coder initialization.
-    String_Const_u8_Array file_names = input.event.core.file_names;
+    String_Array file_names = input.event.core.file_names;
     load_themes_default_folder(app);
     default_4coder_initialize(app, file_names);
     
@@ -591,7 +591,7 @@ CUSTOM_DOC("Fleury startup event")
             Buffer_ID buffer = view_get_buffer(app, compilation_view, Access_Always);
             Face_ID face_id = get_face_id(app, buffer);
             Face_Metrics metrics = get_face_metrics(app, face_id);
-            view_set_split_pixel_size(app, compilation_view, (i32)(metrics.line_height*4.f));
+            view_set_split_pixel_size(app, compilation_view, (i1)(metrics.line_height*4.f));
             view_set_passive(app, compilation_view, true);
             global_bottom_view = compilation_view;
             view_set_buffer(app, compilation_view, comp_id, 0);
@@ -631,7 +631,7 @@ CUSTOM_DOC("Fleury startup event")
     //~ NOTE(rjf): Initialize stylish fonts.
     {
         Scratch_Block scratch(app);
-        String_Const_u8 bin_path = system_get_path(scratch, SystemPath_BinaryDirectory);
+        String bin_path = system_get_path(scratch, SystemPath_BinaryDirectory);
         
         // NOTE(rjf): Fallback font.
         Face_ID face_that_should_totally_be_there = get_face_id(app, 0);
@@ -640,7 +640,7 @@ CUSTOM_DOC("Fleury startup event")
         {
             Face_Description desc = {};
             {
-                desc.font.file_name =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+                desc.font.file_name =  push_stringfz(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = 18;
                 desc.parameters.bold = 0;
                 desc.parameters.italic = 0;
@@ -661,7 +661,7 @@ CUSTOM_DOC("Fleury startup event")
         {
             Face_Description desc = {};
             {
-                desc.font.file_name =  push_stringf(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+                desc.font.file_name =  push_stringfz(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = 10;
                 desc.parameters.bold = 1;
                 desc.parameters.italic = 1;
@@ -684,7 +684,7 @@ CUSTOM_DOC("Fleury startup event")
             
             Face_Description desc = {};
             {
-                desc.font.file_name =  push_stringf(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
+                desc.font.file_name =  push_stringfz(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
                 desc.parameters.pt_size = normal_code_desc.parameters.pt_size - 1;
                 desc.parameters.bold = 1;
                 desc.parameters.italic = 1;

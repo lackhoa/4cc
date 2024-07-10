@@ -65,7 +65,7 @@ table_hash_u64(u64 *v, u64 size){
     return(hash);
 }
 static u64
-table_hash(void *v, i32 it_size, u64 size){
+table_hash(void *v, i1 it_size, u64 size){
     u64 hash = 0;
     switch (it_size){
         case 1:

@@ -5,10 +5,10 @@
 // TOP
 
 function Key_Code
-dynamic_binding_key_code_from_string(String_Const_u8 key_string){
+dynamic_binding_key_code_from_string(String key_string){
     Key_Code result = (Key_Code)0;
-    for (i32 i = 1; i < Key_Code_COUNT; i += 1){
-        String_Const_u8 str = SCu8(key_code_name[i]);
+    for (i1 i = 1; i < Key_Code_COUNT; i += 1){
+        String str = SCu8(key_code_name[i]);
         if (string_match(str, key_string)){
             result = (Key_Code)i;
             break;
@@ -18,18 +18,18 @@ dynamic_binding_key_code_from_string(String_Const_u8 key_string){
 }
 
 function b32
-dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_Const_u8 filename){
+dynamic_binding_load_from_file(App *app, Mapping *mapping, String filename){
     b32 result = false;
     
     Scratch_Block scratch(app);
     
-    String_Const_u8 filename_copied = push_string_copy(scratch, filename);
+    String filename_copied = push_string_copyz(scratch, filename);
     String8List search_list = {};
     def_search_normal_load_list(scratch, &search_list);
-    String_Const_u8 full_path = def_search_get_full_path(scratch, &search_list, filename_copied);
+    String full_path = def_search_get_full_path(scratch, &search_list, filename_copied);
     
     {
-        String8 message = push_stringf(scratch, "loading bindings: %.*s\n",
+        String8 message = push_stringfz(scratch, "loading bindings: %.*s\n",
                                        string_expand(full_path));
         print_message(app, message);
     }
@@ -40,7 +40,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
     }
     
     if (file != 0){
-        String_Const_u8 data = read_entire_file_handle(scratch, file);
+        String data = read_entire_file_handle(scratch, file);
         Config *parsed = config_from_text(app, scratch, filename, data);
 		fclose(file);
         
@@ -60,7 +60,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                 if (l != 0 && l->index == 0){
                     Config_Get_Result rvalue = config_evaluate_rvalue(parsed, assignment, assignment->r);
                     if (rvalue.type == Config_RValue_Type_Compound){
-                        String_Const_u8 map_name = l->identifier;
+                        String map_name = l->identifier;
                         String_ID map_name_id = vars_intern(map_name);
                         
                         SelectMap(map_name_id);
@@ -71,9 +71,9 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                         Config_Get_Result_List list = typed_compound_array_reference_list(scratch, parsed, compound);
                         for (Config_Get_Result_Node *node = list.first; node != 0; node = node->next){
                             Config_Compound *src = node->result.compound;
-                            String_Const_u8 cmd_string = {};
-                            String_Const_u8 key_string = {};
-                            String_Const_u8 mod_string[9] = {};
+                            String cmd_string = {};
+                            String key_string = {};
+                            String mod_string[9] = {};
                             
                             if (!config_compound_string_member(parsed, src, "cmd", 0, &cmd_string)){
                                 config_push_error(scratch, parsed, node->result.pos, "Command string is required in binding");
@@ -86,7 +86,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                             }
                             
                             for (u32 mod_idx = 0; mod_idx < ArrayCount(mod_string); mod_idx += 1){
-                                String_Const_u8 str = push_stringf(scratch, "mod_%i", mod_idx);
+                                String str = push_stringfz(scratch, "mod_%i", mod_idx);
                                 if (config_compound_string_member(parsed, src, str, 2 + mod_idx, &mod_string[mod_idx])){
                                     // NOTE(rjf): No-Op
                                 }
@@ -101,7 +101,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                                 Key_Code keycode = dynamic_binding_key_code_from_string(key_string);
                                 
                                 // NOTE(rjf): Find mods.
-                                i32 mod_count = 0;
+                                i1 mod_count = 0;
                                 Key_Code mods[ArrayCount(mod_string)] = {(Key_Code)0};
                                 for (u32 i = 0; i < ArrayCount(mod_string); i += 1){
                                     if (mod_string[i].str){
@@ -128,7 +128,7 @@ dynamic_binding_load_from_file(Application_Links *app, Mapping *mapping, String_
                         
                         
                         if (parsed->errors.first != 0){
-                            String_Const_u8 error_text = config_stringize_errors(app, scratch, parsed);
+                            String error_text = config_stringize_errors(app, scratch, parsed);
                             print_message(app, error_text);
                         }
                     }

@@ -72,7 +72,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
     // NOTE(allen): Line highlight
     {
         b32 highlight_line_at_cursor = def_get_config_b32(vars_intern_lit("highlight_line_at_cursor"));
-        String_Const_u8 name = compilation_buffer_name;
+        String name = compilation_buffer_name;
         Buffer_ID compilation_buffer = get_buffer_by_name(app, name, Access_Always);
         if(highlight_line_at_cursor && (is_active_view || buffer == compilation_buffer))
         {
@@ -88,7 +88,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
         b32 use_jump_highlight = def_get_config_b32(vars_intern_lit("use_jump_highlight"));
         if (use_error_highlight || use_jump_highlight){
             // NOTE(allen): Error highlight
-            String_Const_u8 name = compilation_buffer_name;
+            String name = compilation_buffer_name;
             Buffer_ID compilation_buffer = get_buffer_by_name(app, name, Access_Always);
             if (use_error_highlight){
                 draw_jump_highlights(app, buffer, text_layout_id, compilation_buffer,
@@ -108,7 +108,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
     
     // NOTE(rjf): Error annotations
     {
-        String_Const_u8 name = compilation_buffer_name;
+        String name = compilation_buffer_name;
         Buffer_ID compilation_buffer = get_buffer_by_name(app, name, Access_Always);
         F4_RenderErrorAnnotations(app, buffer, text_layout_id, compilation_buffer);
     }
@@ -122,10 +122,10 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
         Buffer_ID active_cursor_buffer = view_get_buffer(app, active_view, Access_Always);
         i64 active_cursor_pos = view_get_cursor_pos(app, active_view);
         Token_Array active_cursor_buffer_tokens = get_token_array_from_buffer(app, active_cursor_buffer);
-        Token_Iterator_Array active_cursor_it = token_iterator_pos(0, &active_cursor_buffer_tokens, active_cursor_pos);
+        Token_Iterator_Array active_cursor_it = token_it_at_pos(0, &active_cursor_buffer_tokens, active_cursor_pos);
         Token *active_cursor_token = token_it_read(&active_cursor_it);
         
-        String_Const_u8 active_cursor_string = string_u8_litexpr("");
+        String active_cursor_string = string_u8_litexpr("");
         if(active_cursor_token)
         {
             active_cursor_string = push_buffer_range(app, scratch, active_cursor_buffer, Ii64(active_cursor_token));
@@ -145,7 +145,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
                 if (token->kind == TokenBaseKind_Identifier)
                 {
                     Range_i64 token_range = Ii64(token);
-                    String_Const_u8 token_string = push_buffer_range(app, scratch, buffer, token_range);
+                    String token_string = push_buffer_range(app, scratch, buffer, token_range);
                     
                     // NOTE(jack) If this is the buffers cursor token, highlight it with an Underline
                     if (range_contains(token_range, view_get_cursor_pos(app, view_id)))
@@ -177,7 +177,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
     {
         ProfileScope(app, "[Fleury] Token Highlight");
         
-        Token_Iterator_Array it = token_iterator_pos(0, &token_array, cursor_pos);
+        Token_Iterator_Array it = token_it_at_pos(0, &token_array, cursor_pos);
         Token *token = token_it_read(&it);
         if(token && token->kind == TokenBaseKind_Identifier)
         {
@@ -289,7 +289,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
             
             for(int i = 0; i < global_tooltip_count; ++i)
             {
-                String_Const_u8 string = global_tooltips[i].string;
+                String string = global_tooltips[i].string;
                 tooltip_rect.x1 = tooltip_rect.x0;
                 tooltip_rect.x1 += get_string_advance(app, tooltip_face_id, string) + 4;
                 
@@ -341,7 +341,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
 //~ NOTE(rjf): Render hook
 
 function void
-F4_DrawFileBar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect_f32 bar)
+F4_DrawFileBar(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect_f32 bar)
 {
     Scratch_Block scratch(app);
     
@@ -354,7 +354,7 @@ F4_DrawFileBar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_I
     Buffer_Cursor cursor = view_compute_cursor(app, view_id, seek_pos(cursor_position));
     
     Fancy_Line list = {};
-    String_Const_u8 unique_name = push_buffer_unique_name(app, scratch, buffer);
+    String unique_name = push_buffer_unique_name(app, scratch, buffer);
     push_fancy_string(scratch, &list, base_color, unique_name);
     push_fancy_stringf(scratch, &list, base_color, " - Row: %3.lld Col: %3.lld -", cursor.line, cursor.col);
     
@@ -419,7 +419,7 @@ F4_DrawFileBar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_I
 }
 
 function void
-F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
+F4_Render(App *app, Frame_Info frame_info, View_ID view_id)
 {
     F4_RecentFiles_RefreshView(app, view_id);
     
@@ -434,7 +434,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     Rect_f32 region = rect_inner(view_rect, margin_size);
     
     Buffer_ID buffer = view_get_buffer(app, view_id, Access_Always);
-    String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer);
+    String buffer_name = push_buffer_base_name(app, scratch, buffer);
     
     //~ NOTE(rjf): Draw background.
     {
@@ -505,7 +505,7 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
         query_bars.ptrs = space;
         if (get_active_query_bars(app, view_id, ArrayCount(space), &query_bars))
         {
-            for (i32 i = 0; i < query_bars.count; i += 1)
+            for (i1 i = 0; i < query_bars.count; i += 1)
             {
                 rect2_Pair pair = layout_query_bar_on_top(region, line_height, 1);
                 draw_query_bar(app, query_bars.ptrs[i], face_id, pair.min);
@@ -567,18 +567,18 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
     
     Scratch_Block scratch(app);
     b32 treat_as_code = false;
-    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
-    String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
+    String file_name = push_buffer_file_name(app, scratch, buffer_id);
+    String buffer_name = push_buffer_base_name(app, scratch, buffer_id);
     
     // NOTE(rjf): Treat as code if the config tells us to.
     if(treat_as_code == false)
     {
         if(file_name.size > 0)
         {
-            String_Const_u8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
-            String_Const_u8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-            String_Const_u8 ext = string_file_extension(file_name);
-            for(i32 i = 0; i < extensions.count; ++i)
+            String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
+            String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
+            String ext = string_file_extension(file_name);
+            for(i1 i = 0; i < extensions.count; ++i)
             {
                 if(string_match(ext, extensions.strings[i]))
                 {
@@ -676,12 +676,12 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
 //~ NOTE(rjf): Layout
 
 function Layout_Item_List
-F4_LayoutInner(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Virtual_Indent virt_indent)
+F4_LayoutInner(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Virtual_Indent virt_indent)
 {
     Layout_Item_List list = get_empty_item_list(range);
     
     Scratch_Block scratch(app);
-    String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+    String text = push_buffer_range(app, scratch, buffer, range);
     
     Face_Advance_Map advance_map = get_face_advance_map(app, face);
     Face_Metrics metrics = get_face_metrics(app, face);
@@ -756,7 +756,7 @@ F4_LayoutInner(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64
 }
 
 function Layout_Item_List
-F4_Layout(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width)
+F4_Layout(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width)
 {
     return(F4_LayoutInner(app, arena, buffer, range, face, width, LayoutVirtualIndent_Off));
 }
@@ -764,7 +764,7 @@ F4_Layout(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 rang
 //~ NOTE(rjf): Tick
 
 function void
-F4_Tick(Application_Links *app, Frame_Info frame_info)
+F4_Tick(App *app, Frame_Info frame_info)
 {
     global_tooltip_count = 0;
     
@@ -781,7 +781,7 @@ F4_Tick(Application_Links *app, Frame_Info frame_info)
 //~ NOTE(rjf): Whole Screen Render Hook
 
 function void
-F4_WholeScreenRender(Application_Links *app, Frame_Info frame_info)
+F4_WholeScreenRender(App *app, Frame_Info frame_info)
 {
     F4_PowerMode_RenderWholeScreen(app, frame_info);
 }

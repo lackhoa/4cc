@@ -10,8 +10,8 @@ static struct
 global_tooltips[32] = {};
 global int global_tooltip_count = 0;
 
-static String_Const_u8
-StringStripBorderCharacters(String_Const_u8 string)
+static String
+StringStripBorderCharacters(String string)
 {
     string.str += 1;
     string.size -= 2;

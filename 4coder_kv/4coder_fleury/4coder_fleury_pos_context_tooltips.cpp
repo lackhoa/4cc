@@ -5,8 +5,8 @@
 #include "4coder_fleury_render_helpers.cpp"
 
 internal Vec2_f32
-_F4_PosContext_RenderDefinitionTokens(Application_Links *app, Face_ID face,
-                                      String_Const_u8 backing_string,
+_F4_PosContext_RenderDefinitionTokens(App *app, Face_ID face,
+                                      String backing_string,
                                       Token_Array tokens, b32 do_render,
                                       int highlight_arg, Vec2_f32 text_position,
                                       f32 max_x)
@@ -15,7 +15,7 @@ _F4_PosContext_RenderDefinitionTokens(Application_Links *app, Face_ID face,
     Vec2_f32 starting_text_pos = text_position;
     Face_Metrics metrics = get_face_metrics(app, face);
     
-    Token_Iterator_Array it = token_iterator_pos(0, &tokens, 0);
+    Token_Iterator_Array it = token_it_at_pos(0, &tokens, 0);
     b32 found_first_open_paren = 0;
     for(int arg_idx = 0;;)
     {
@@ -31,7 +31,7 @@ _F4_PosContext_RenderDefinitionTokens(Application_Links *app, Face_ID face,
             ARGB_Color color = finalize_color(defcolor_text_default, 0);
             if(token->kind == TokenBaseKind_StatementClose)
             {
-                String_Const_u8 str = string_substring(backing_string, Ii64(token));
+                String str = string_substring(backing_string, Ii64(token));
                 if(string_match(str, S8Lit(",")))
                 {
                     arg_idx += 1;
@@ -54,7 +54,7 @@ _F4_PosContext_RenderDefinitionTokens(Application_Links *app, Face_ID face,
             }
             
             Vec2_f32 start_pos = text_position;
-            String_Const_u8 token_string = string_substring(backing_string,
+            String token_string = string_substring(backing_string,
                                                             Ii64(token->pos, token->pos+token->size));
             f32 string_advance = get_string_advance(app, face, token_string);
             if(text_position.x + string_advance >= max_x)
@@ -87,7 +87,7 @@ _F4_PosContext_RenderDefinitionTokens(Application_Links *app, Face_ID face,
 }
 
 internal void
-F4_PosContext_Render(Application_Links *app, View_ID view, Buffer_ID buffer,
+F4_PosContext_Render(App *app, View_ID view, Buffer_ID buffer,
                      Text_Layout_ID text_layout_id, i64 pos)
 {
     if(def_get_config_b32(vars_intern_lit("f4_disable_poscontext")))
@@ -146,7 +146,7 @@ F4_PosContext_Render(Application_Links *app, View_ID view, Buffer_ID buffer,
                     Range_i64 definition_range = note->range;
                     {
                         Token_Array defbuffer_tokens = get_token_array_from_buffer(app, note->file->buffer);
-                        Token_Iterator_Array it = token_iterator_pos(0, &defbuffer_tokens, note->range.min);
+                        Token_Iterator_Array it = token_it_at_pos(0, &defbuffer_tokens, note->range.min);
                         int paren_nest = 0;
                         for(;token_it_inc_all(&it);)
                         {
@@ -170,7 +170,7 @@ F4_PosContext_Render(Application_Links *app, View_ID view, Buffer_ID buffer,
                         }
                     }
                     
-                    String_Const_u8 definition_string = push_buffer_range(app, scratch, note->file->buffer, definition_range);
+                    String definition_string = push_buffer_range(app, scratch, note->file->buffer, definition_range);
                     Token_Array definition_tokens = token_array_from_text(app, scratch, definition_string);
                     
                     // NOTE(rjf): Calculate needed size for this tooltip.
@@ -229,7 +229,7 @@ F4_PosContext_Render(Application_Links *app, View_ID view, Buffer_ID buffer,
                     {
                         
                         Range_i64 member_range = member->range;
-                        Token_Iterator_Array it = token_iterator_pos(0, &defbuffer_tokens, member->range.min);
+                        Token_Iterator_Array it = token_it_at_pos(0, &defbuffer_tokens, member->range.min);
                         for(;;)
                         {
                             Token *token = token_it_read(&it);
@@ -248,7 +248,7 @@ F4_PosContext_Render(Application_Links *app, View_ID view, Buffer_ID buffer,
                             }
                         }
                         
-                        String_Const_u8 member_string = push_buffer_range(app, scratch, note->file->buffer, member_range);
+                        String member_string = push_buffer_range(app, scratch, note->file->buffer, member_range);
                         
                         Vec2_f32 needed_size = { get_string_advance(app, face, member_string), 0, };
                         Rect_f32 draw_rect =

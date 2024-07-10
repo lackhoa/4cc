@@ -10,7 +10,7 @@ struct F4_Index_ParseCtx;
 typedef F4_LANGUAGE_INDEXFILE(F4_Language_IndexFile);
 
 //~ NOTE(rjf): Initializes lexer state.
-#define F4_LANGUAGE_LEXINIT(name) void name(void *state_ptr, String_Const_u8 contents)
+#define F4_LANGUAGE_LEXINIT(name) void name(void *state_ptr, String contents)
 typedef F4_LANGUAGE_LEXINIT(F4_Language_LexInit);
 
 //~ NOTE(rjf): Lexes an entire file to produce tokens for the language (with breaks).
@@ -30,14 +30,14 @@ struct F4_Language_PosContextData
     int argument_index;
 };
 
-#define F4_LANGUAGE_POSCONTEXT(name) F4_Language_PosContextData * name(Application_Links *app, Arena *arena, Buffer_ID buffer, i64 pos)
+#define F4_LANGUAGE_POSCONTEXT(name) F4_Language_PosContextData * name(App *app, Arena *arena, Buffer_ID buffer, i64 pos)
 typedef F4_LANGUAGE_POSCONTEXT(F4_Language_PosContext);
 
 //~ NOTE(rjf): Does language-specific coloring for a buffer, for special-case syntax
 // highlighting and stuff. Most syntax highlighting is handled through token-base-kinds
 // and index lookups, but sometimes it's useful to be able to override colors by
 // language-specific token sub-kinds and flags, so that's what this hook is for.
-#define F4_LANGUAGE_HIGHLIGHT(name) void name(Application_Links *app, Text_Layout_ID text_layout_id, Token_Array *array, Color_Table color_table)
+#define F4_LANGUAGE_HIGHLIGHT(name) void name(App *app, Text_Layout_ID text_layout_id, Token_Array *array, Color_Table color_table)
 typedef F4_LANGUAGE_HIGHLIGHT(F4_Language_Highlight);
 
 //~
@@ -46,7 +46,7 @@ struct F4_Language
 {
     F4_Language *next;
     u64 hash;
-    String_Const_u8 name;
+    String name;
     u64 lex_state_size;
     F4_Language_IndexFile            *IndexFile;
     F4_Language_LexInit              *LexInit;

@@ -3,10 +3,10 @@
 VIM_REQUEST_SIG(byp_apply_title)
 {
 	Scratch_Block scratch(app);
-	String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+	String text = push_buffer_range(app, scratch, buffer, range);
 	u8 prev = buffer_get_char(app, buffer, range.min-1);
 	foreach(i, text.size){
-		text.str[i] += u8(i32('A' - 'a')*((!character_is_alpha(prev) || prev == '_') &&
+		text.str[i] += u8(i1('A' - 'a')*((!character_is_alpha(prev) || prev == '_') &&
 										  character_is_lower(text.str[i])));
 		prev = text.str[i];
 	}
@@ -82,7 +82,7 @@ VIM_TEXT_OBJECT_SIG(byp_object_camel)
 }
 
 inline void
-kv_vim_init(Application_Links *app)
+kv_vim_init(App *app)
 {
   vim_init(app);
 }

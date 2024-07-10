@@ -1,57 +1,88 @@
 #pragma once
 
-struct Application_Links 
+struct App 
 {
-    Thread_Context *tctx;
-    void *cmd_context;
+ Thread_Context *tctx;
+ void *cmd_context;
 };
-typedef Application_Links App;
+typedef App Application_Links;  // NOTE: has to be here for the 4coder meta-generator.
+
+api(custom)
+typedef i1 View_ID;
+
+api(custom)
+typedef i1 Buffer_ID;
+
+
+api(custom)
+typedef u32 Face_ID;
+
+api(custom)
+struct Mouse_State{
+ b8 l;
+ b8 r;
+ b8 press_l;
+ b8 press_r;
+ b8 release_l;
+ b8 release_r;
+ b8 out_of_window;
+ i1 wheel;
+ union {
+  i2 p;
+  struct{ i1 x; i1 y; };
+ };
+};
 
 api(custom) function Thread_Context*
 get_thread_context(App *app){
-    return(app->tctx);
+ return(app->tctx);
 }
-
-api(custom)
-typedef i32 View_ID;
-
-api(custom)
-typedef i32 Buffer_ID;
 
 api(custom)
 typedef u32 File_Attribute_Flag;
 enum{
-    FileAttribute_IsDirectory = 1,
+ FileAttribute_IsDirectory = 1,
 };
 
 api(custom)
 struct File_Attributes{
-    u64 size;
-    u64 last_write_time;
-    File_Attribute_Flag flags;
+ u64 size;
+ u64 last_write_time;
+ File_Attribute_Flag flags;
 };
 
 api(custom)
 struct File_Info{
-    File_Info *next;
-    String filename;
-    File_Attributes attributes;
+ File_Info *next;
+ String filename;
+ File_Attributes attributes;
 };
 
 api(custom)
 struct File_List{
-    File_Info **infos;
-    u32 count;
+ File_Info **infos;
+ u32 count;
 };
 
-typedef i32 System_Path_Code;
+typedef i1 System_Path_Code;
 enum
 {
-    SystemPath_CurrentDirectory,
-    SystemPath_BinaryDirectory,
-    SystemPath_UserDirectory,
+ SystemPath_CurrentDirectory,
+ SystemPath_BinaryDirectory,
+ SystemPath_UserDirectory,
 };
 
+api(custom)
+struct Frame_Info{
+ i1 index;
+ v1 literal_dt;
+ v1 animation_dt;
+ u32 work_cycles;
+ v1  work_seconds;
+};
+
+
+#if !AD_IS_COMPILING_GAME
 api(custom)
 struct Face_Metrics{
     f32 text_height;
@@ -110,10 +141,6 @@ typedef u64 Managed_ID;
 #define CUSTOM_ID(group, name) global Managed_ID name;
 #endif
 
-
-api(custom)
-typedef u32 Face_ID;
-
 // NOTE: Dummy buffers so we can use the same commands to switch to the rendered game
 #define GAME_BUFFER_COUNT 3
 global String GAME_BUFFER_NAMES[GAME_BUFFER_COUNT] =
@@ -125,25 +152,6 @@ global String GAME_BUFFER_NAMES[GAME_BUFFER_COUNT] =
 #if 0
 jump GAME_BUFFER_NAMES;
 #endif
-
-api(custom)
-struct Mouse_State{
- b8 l;
- b8 r;
- b8 press_l;
- b8 press_r;
- b8 release_l;
- b8 release_r;
- b8 out_of_window;
- i32 wheel;
- union {
-  v2i p;
-  struct{ i32 x; i32 y; };
- };
-};
-
-// bookmark
-#if !AD_IS_COMPILING_GAME
 
 #include "4coder_table.h"
 
@@ -179,7 +187,7 @@ struct Color_Picker{
 ////////////////////////////////
 
 api(custom)
-typedef i32 Panel_ID;
+typedef i1 Panel_ID;
 
 api(custom)
 typedef u32 Text_Layout_ID;
@@ -188,7 +196,7 @@ api(custom)
 typedef u32 Child_Process_ID;
 
 api(custom)
-typedef i32 UI_Highlight_Level;
+typedef i1 UI_Highlight_Level;
 enum{
     UIHighlight_None,
     UIHighlight_Hover,
@@ -198,7 +206,7 @@ enum{
 api(custom)
 struct Buffer_Point{
     i64 line_number;
-    Vec2_f32 pixel_shift;
+    v2 pixel_shift;
 };
 
 api(custom)
@@ -231,7 +239,7 @@ enum{
 };
 
 api(custom)
-typedef i32 Wrap_Indicator_Mode;
+typedef i1 Wrap_Indicator_Mode;
 enum{
     WrapIndicator_Hide,
     WrapIndicator_Show_After_Line,
@@ -239,7 +247,7 @@ enum{
 };
 
 api(custom)
-typedef i32 Global_Setting_ID;
+typedef i1 Global_Setting_ID;
 enum{
     GlobalSetting_Null,
     GlobalSetting_LAltLCtrlIsAltGr,
@@ -257,18 +265,11 @@ enum Buffer_Setting_ID
 
 api(custom)
 struct Character_Predicate{
-    u8 b[32];
+ u8 b[32];
 };
 
 api(custom)
-struct Frame_Info{
-    i32 index;
-    f32 literal_dt;
-    f32 animation_dt;
-};
-
-api(custom)
-typedef i32 View_Setting_ID;
+typedef i1 View_Setting_ID;
 enum{
     ViewSetting_Null,
     ViewSetting_ShowWhitespace,
@@ -320,13 +321,6 @@ enum{
     BufferReopenResult_Failed = 1,
 };
 
-api(custom)
-typedef u32 Access_Flag;
-enum{
-    Access_Write = 0x1,
-    Access_Read = 0x2,
-    Access_Visible = 0x4,
-};
 enum{
     Access_Always = 0,
     Access_ReadWrite = Access_Write|Access_Read,
@@ -335,7 +329,7 @@ enum{
 };
 
 api(custom)
-typedef i32 Dirty_State;
+typedef i1 Dirty_State;
 enum{
     DirtyState_UpToDate = 0,
     DirtyState_UnsavedChanges = 1,
@@ -359,14 +353,14 @@ enum{
 };
 
 api(custom)
-typedef i32 Mouse_Cursor_Show_Type;
+typedef i1 Mouse_Cursor_Show_Type;
 enum{
     MouseCursorShow_Never,
     MouseCursorShow_Always,
 };
 
 api(custom)
-typedef i32 View_Split_Position;
+typedef i1 View_Split_Position;
 enum{
     ViewSplit_Top,
     ViewSplit_Bottom,
@@ -375,7 +369,7 @@ enum{
 };
 
 api(custom)
-typedef i32 Panel_Split_Kind;
+typedef i1 Panel_Split_Kind;
 enum{
     PanelSplitKind_Ratio_Min = 0,
     PanelSplitKind_Ratio_Max = 1,
@@ -396,12 +390,12 @@ struct Parser_String_And_Type{
 api(custom)
 struct Buffer_Identifier{
     char *name;
-    i32 name_len;
+    i1 name_len;
     Buffer_ID id;
 };
 
 api(custom)
-typedef i32 Set_Buffer_Scroll_Rule;
+typedef i1 Set_Buffer_Scroll_Rule;
 enum{
     SetBufferScroll_NoCursorChange,
     SetBufferScroll_SnapCursorIntoView,
@@ -421,7 +415,7 @@ struct Basic_Scroll
 };
 
 api(custom)
-typedef i32 Buffer_Seek_Type;
+typedef i1 Buffer_Seek_Type;
 enum
 {
     buffer_seek_pos,
@@ -470,7 +464,7 @@ struct Marker{
 };
 
 api(custom)
-typedef i32 Managed_Object_Type;
+typedef i1 Managed_Object_Type;
 enum{
     ManagedObjectType_Error = 0,
     ManagedObjectType_Memory = 1,
@@ -499,30 +493,30 @@ enum{
 
 api(custom)
 struct Query_Bar{
-    String_Const_u8 prompt;
-    String_Const_u8 string;
+    String prompt;
+    String string;
     u64 string_capacity;
 };
 
 api(custom)
 struct Query_Bar_Ptr_Array{
     Query_Bar **ptrs;
-    i32 count;
+    i1 count;
 };
 
 api(custom)
 struct Query_Bar_Group{
-    Application_Links *app;
+    App *app;
     View_ID view;
     
-    Query_Bar_Group(Application_Links *app);
-    Query_Bar_Group(Application_Links *app, View_ID view);
+    Query_Bar_Group(App *app);
+    Query_Bar_Group(App *app, View_ID view);
     ~Query_Bar_Group();
 };
 
 api(custom)
 struct Font_Load_Location{
-    String_Const_u8 filename;
+    String filename;
 };
 
 api(custom)
@@ -557,7 +551,7 @@ struct Face_Advance_Map{
 
 api(custom)
 struct Edit{
-    String_Const_u8 text;
+    String text;
     Range_i64 range;
 };
 
@@ -568,14 +562,14 @@ struct Batch_Edit{
 };
 
 api(custom)
-typedef i32 Record_Kind;
+typedef i1 Record_Kind;
 enum{
     RecordKind_Single,
     RecordKind_Group,
 };
 
 api(custom)
-typedef i32 Record_Error;
+typedef i1 Record_Error;
 enum{
     RecordError_NoError,
     RecordError_InvalidBuffer,
@@ -595,28 +589,28 @@ enum{
 };
 
 api(custom)
-typedef i32 History_Record_Index;
+typedef i1 History_Record_Index;
 
 api(custom)
 struct Record_Info{
     Record_Error error;
     Record_Kind kind;
     i64 pos_before_edit;
-    i32 edit_number;
+    i1 edit_number;
     union{
         struct{
-            String_Const_u8 single_string_forward;
-            String_Const_u8 single_string_backward;
+            String single_string_forward;
+            String single_string_backward;
             i64 single_first;
         };
         struct{
-            i32 group_count;
+            i1 group_count;
         };
     };
 };
 
 api(custom)
-typedef i32 Hook_ID;
+typedef i1 Hook_ID;
 enum{
     HookID_Tick,
     HookID_RenderCaller,
@@ -636,54 +630,54 @@ enum{
 };
 
 api(custom)
-typedef i32 Hook_Function(Application_Links *app);
-#define HOOK_SIG(name) i32 name(Application_Links *app)
+typedef i1 Hook_Function(App *app);
+#define HOOK_SIG(name) i1 name(App *app)
 
 api(custom)
 struct Buffer_Name_Conflict_Entry{
     Buffer_ID buffer_id;
-    String_Const_u8 filename;
-    String_Const_u8 base_name;
+    String filename;
+    String base_name;
     u8 *unique_name_in_out;
     u64 unique_name_len_in_out;
     u64 unique_name_capacity;
 };
 
 api(custom)
-typedef void Buffer_Name_Resolver_Function(Application_Links *app, Buffer_Name_Conflict_Entry *conflicts, i32 conflict_count);
-#define BUFFER_NAME_RESOLVER_SIG(n) void n(Application_Links *app, Buffer_Name_Conflict_Entry *conflicts, i32 conflict_count)
+typedef void Buffer_Name_Resolver_Function(App *app, Buffer_Name_Conflict_Entry *conflicts, i1 conflict_count);
+#define BUFFER_NAME_RESOLVER_SIG(n) void n(App *app, Buffer_Name_Conflict_Entry *conflicts, i1 conflict_count)
 
 api(custom)
-typedef i32 Buffer_Hook_Function(Application_Links *app, Buffer_ID buffer_id);
-#define BUFFER_HOOK_SIG(name) i32 name(Application_Links *app, Buffer_ID buffer_id)
+typedef i1 Buffer_Hook_Function(App *app, Buffer_ID buffer_id);
+#define BUFFER_HOOK_SIG(name) i1 name(App *app, Buffer_ID buffer_id)
 
 api(custom)
-typedef i32 Buffer_Edit_Range_Function(Application_Links *app, Buffer_ID buffer_id,
+typedef i1 Buffer_Edit_Range_Function(App *app, Buffer_ID buffer_id,
                                        Range_i64 new_range, Range_Cursor old_range);
-#define BUFFER_EDIT_RANGE_SIG(name) i32 name(Application_Links *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range)
+#define BUFFER_EDIT_RANGE_SIG(name) i1 name(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range)
 
 api(custom)
 typedef Vec2_f32 Delta_Rule_Function(Vec2_f32 pending, b32 is_new_target, f32 dt, void *data);
 #define DELTA_RULE_SIG(name) Vec2_f32 name(Vec2_f32 pending, b32 is_new_target, f32 dt, void *data)
 
 api(custom)
-typedef Rect_f32 Buffer_Region_Function(Application_Links *app, View_ID view_id, Rect_f32 region);
+typedef Rect_f32 Buffer_Region_Function(App *app, View_ID view_id, Rect_f32 region);
 
 api(custom)
-typedef void New_Clipboard_Contents_Function(Application_Links *app, String_Const_u8 contents);
-#define NEW_CLIPBOARD_CONTENTS_SIG(name) void name(Application_Links *app, String_Const_u8 contents)
+typedef void New_Clipboard_Contents_Function(App *app, String contents);
+#define NEW_CLIPBOARD_CONTENTS_SIG(name) void name(App *app, String contents)
 
 api(custom)
-typedef void Tick_Function(Application_Links *app, Frame_Info frame_info);
+typedef void Tick_Function(App *app, Frame_Info frame_info);
 
 api(custom)
-typedef void Render_Caller_Function(Application_Links *app, Frame_Info frame_info, View_ID view);
+typedef void Render_Caller_Function(App *app, Frame_Info frame_info, View_ID view);
 
 api(custom)
-typedef void Whole_Screen_Render_Caller_Function(Application_Links *app, Frame_Info frame_info);
+typedef void Whole_Screen_Render_Caller_Function(App *app, Frame_Info frame_info);
 
 api(custom)
-typedef void View_Change_Buffer_Function(Application_Links *app, View_ID view_id,
+typedef void View_Change_Buffer_Function(App *app, View_ID view_id,
                                          Buffer_ID old_buffer_id, Buffer_ID new_buffer_id);
 
 api(custom)
@@ -717,7 +711,7 @@ struct Layout_Item_List{
     Layout_Item_Block *last;
     i64 item_count;
     i64 character_count;
-    i32 node_count;
+    i1 node_count;
     f32 height;
     f32 bottom_padding;
     Range_i64 input_index_range;
@@ -725,7 +719,7 @@ struct Layout_Item_List{
 };
 
 api(custom)
-typedef Layout_Item_List Layout_Function(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width);
+typedef Layout_Item_List Layout_Function(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width);
 
 api(custom)
 struct View_Context{
@@ -751,7 +745,7 @@ struct String_Match
 {
     String_Match *next;
     Buffer_ID buffer;
-    i32 string_id;
+    i1 string_id;
     String_Match_Flag flags;
     Range_i64 range;
 };
@@ -760,7 +754,7 @@ api(custom)
 struct String_Match_List{
     String_Match *first;
     String_Match *last;
-    i32 count;
+    i1 count;
 };
 
 api(custom)
@@ -777,5 +771,7 @@ struct Process_State{
 // channel_count = 2
 typedef void Audio_Mix_Sources_Function(void *ctx, f32 *buffer, u32 sample_count);
 typedef void Audio_Mix_Destination_Function(i16 *dst, f32 *src, u32 sample_count);
+#endif
 
-#endif //!AD_IS_COMPILING_GAME
+
+//~

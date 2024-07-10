@@ -36,10 +36,10 @@ global F4_SyntaxOptions f4_syntax_opts[] =
     { S8Lit("Types Only"),     F4_SyntaxFlag_Types },
     { S8Lit("Externals Only"), F4_SyntaxFlag_Functions | F4_SyntaxFlag_Macros | F4_SyntaxFlag_Types | F4_SyntaxFlag_Constants },
 };
-global i32 f4_active_syntax_opt_idx = 0;
+global i1 f4_active_syntax_opt_idx = 0;
 
 internal void
-F4_TickColors(Application_Links *app, Frame_Info frame_info)
+F4_TickColors(App *app, Frame_Info frame_info)
 {
     F4_SyntaxOptions opts = f4_syntax_opts[f4_active_syntax_opt_idx];
     for(u32 i = 0; i < sizeof(F4_SyntaxFlags)*8; i += 1)
@@ -121,7 +121,7 @@ F4_ARGBFromID(Color_Table table, Managed_ID id)
 }
 
 internal ARGB_Color
-F4_GetColor(Application_Links *app, ColorCtx ctx)
+F4_GetColor(App *app, ColorCtx ctx)
 {
     Color_Table table = active_color_table;
     ARGB_Color default_color = F4_ARGBFromID(table, defcolor_text_default);
@@ -139,7 +139,7 @@ F4_GetColor(Application_Links *app, ColorCtx ctx)
         {
             case TokenBaseKind_Identifier:
             {
-                String_Const_u8 string = push_buffer_range(app, scratch, ctx.buffer, Ii64(ctx.token.pos, ctx.token.pos + ctx.token.size));
+                String string = push_buffer_range(app, scratch, ctx.buffer, Ii64(ctx.token.pos, ctx.token.pos + ctx.token.size));
                 F4_Index_Note *note = F4_Index_LookupNote(string);
                 if(note)
                 {
@@ -260,7 +260,7 @@ F4_GetColor(Application_Links *app, ColorCtx ctx)
 }
 
 static void
-F4_SyntaxHighlight(Application_Links *app, Text_Layout_ID text_layout_id, Token_Array *array)
+F4_SyntaxHighlight(App *app, Text_Layout_ID text_layout_id, Token_Array *array)
 {
     Color_Table table = active_color_table;
     Buffer_ID buffer = text_layout_get_buffer(app, text_layout_id);
@@ -285,7 +285,7 @@ F4_SyntaxHighlight(Application_Links *app, Text_Layout_ID text_layout_id, Token_
             if(token->kind == TokenBaseKind_Comment)
             {
                 Scratch_Block scratch(app);
-                String_Const_u8 string = push_buffer_range(app, scratch, buffer, Ii64(token->pos, token->pos + token->size));
+                String string = push_buffer_range(app, scratch, buffer, Ii64(token->pos, token->pos + token->size));
                 for(u64 i = 0; i < string.size; i += 1)
                 {
                     if(string.str[i] == '@')

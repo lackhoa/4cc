@@ -13,7 +13,7 @@ F4_RegisterLanguages(void)
 {
     // NOTE(rjf): C/C++
     {
-        String_Const_u8 extensions[] =
+        String extensions[] =
         {
             S8Lit("cpp"), S8Lit("cc"), S8Lit("c"), S8Lit("cxx"),
             S8Lit("C"), S8Lit("h"), S8Lit("hpp"),

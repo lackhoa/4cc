@@ -43,7 +43,7 @@ build_language_model(void)
     ////
     
     u8 *text_chars = 0;
-    for (i32 character=0; character < 128; character++) {
+    for (i1 character=0; character < 128; character++) {
       switch (character) {
         case 0:
         case '(': case '[': case '{':

@@ -18,7 +18,7 @@ make_doc_function(Arena *arena, Doc_Cluster *cluster, API_Call *call){
     result.sig = new_doc_block(arena, result.page, "Signature");
     new_doc_block_jump(arena, result.page, result.sig);
     
-    String_Const_u8 opener = push_stringf(arena, "%.*s\n%.*s(",
+    String opener = push_stringfz(arena, "%.*s\n%.*s(",
                                              string_expand(call->return_type),
                                              string_expand(call->name));
     
@@ -27,9 +27,9 @@ make_doc_function(Arena *arena, Doc_Cluster *cluster, API_Call *call){
     for (u64 i = 0; i < indent_size; i += 1){
         buffer[i] = ' ';
     }
-    String_Const_u8 indent = SCu8(buffer, indent_size);
+    String indent = SCu8(buffer, indent_size);
     
-    List_String_Const_u8 list = {};
+    List_String list = {};
     string_list_push(arena, &list, opener);
     for (API_Param *node = call->params.first;
          node != 0;
@@ -44,7 +44,7 @@ make_doc_function(Arena *arena, Doc_Cluster *cluster, API_Call *call){
     }
     string_list_push(arena, &list, string_u8_litexpr(");"));
     
-    String_Const_u8 contents = string_list_flatten(arena, list);
+    String contents = string_list_flatten(arena, list);
     new_doc_par_single_code(arena, result.sig, contents, DocCodeLanguage_Cpp);
     
     return(result);
@@ -80,7 +80,7 @@ doc_function_begin_params(Arena *arena, Doc_Function *func){
 
 function void
 doc_function_param(Arena *arena, Doc_Function *func, char *name){
-    String_Const_u8 name_str = SCu8(name);
+    String name_str = SCu8(name);
     
     API_Call *call = func->call;
     API_Param *param = 0;
@@ -162,7 +162,7 @@ doc_api_check_full_coverage(Arena *arena, Doc_Cluster *cluster, API_Definition *
     for (API_Call *call = api_def->first_call;
          call != 0;
          call = call->next){
-        String_Const_u8 name = call->name;
+        String name = call->name;
         Doc_Page *page = doc_get_page(cluster, name);
         if (page == 0){
             doc_errorf(arena, cluster, "missing documentation for %.*s", string_expand(name));

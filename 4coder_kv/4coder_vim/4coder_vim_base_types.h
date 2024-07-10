@@ -1,6 +1,6 @@
 #pragma once
 
-#define foreach(i,N) for(i32 i=0; i<N; i++)
+#define foreach(i,N) for(i1 i=0; i<N; i++)
 #define ArrayInc(a,i) ((i+1) % ArrayCount(a))
 #define ArrayDec(a,i) ((i + ArrayCount(a)-1) % ArrayCount(a))
 
@@ -11,11 +11,11 @@
 typedef VIM_REQUEST_SIG(Vim_Apply_Request);
 
 // NOTE(BYP): Used in vim_text_object_vtable
-#define VIM_TEXT_OBJECT_SIG(name) Range_i64 name(Application_Links *app, Buffer_ID buffer, i64 cursor_pos)
-typedef Range_i64 Vim_Text_Object_Func(Application_Links *app, Buffer_ID buffer, i64 cursor_pos);
+#define VIM_TEXT_OBJECT_SIG(name) Range_i64 name(App *app, Buffer_ID buffer, i64 cursor_pos)
+typedef Range_i64 Vim_Text_Object_Func(App *app, Buffer_ID buffer, i64 cursor_pos);
 
 // NOTE: Same as CUSTOM_COMMAND_SIG but won't clutter command lister
-#define VIM_COMMAND_SIG(name) function void name(Application_Links *app)
+#define VIM_COMMAND_SIG(name) function void name(App *app)
 
 struct Vim_Text_Object{
 	u8 character;
@@ -98,8 +98,8 @@ struct Vim_Seek_Params{
 
 struct Vim_Params
 {
-	i32 number;
-	i32 count;
+	i1 number;
+	i1 count;
 	Vim_Request_Type request;
 	Vim_Edit_Type edit_type;
 	Vim_Clusivity clusivity;
@@ -126,7 +126,7 @@ struct Vim_State
 	Buffer_Cursor insert_cursor;
 	History_Record_Index insert_index;
 
-	i32 number;
+	i1 number;
 	Vim_Params params;
 	Vim_Params prev_params;
 	Custom_Command_Function *active_command;
@@ -169,5 +169,5 @@ struct Vim_Global_Mark{
 
 struct Vim_Jump_List{
 	Point_Stack_Slot markers[POINT_STACK_DEPTH + 1];
-	i32 top, bot, index;
+	i1 top, bot, index;
 };

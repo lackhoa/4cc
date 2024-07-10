@@ -40,7 +40,7 @@ prj_v1_parse_os_match(String8 str, String8 this_os_str){
 }
 
 function Prj_V1*
-prj_v1_parse_from_config(Application_Links *app, Arena *arena, String8 dir, Config *parsed){
+prj_v1_parse_from_config(App *app, Arena *arena, String8 dir, Config *parsed){
     Prj_V1 *project = push_array_zero(arena, Prj_V1, 1);
     
     // Set new project directory
@@ -70,7 +70,7 @@ prj_v1_parse_from_config(Application_Links *app, Arena *arena, String8 dir, Conf
             b32 found_match = false;
             Config_Compound *best_paths = 0;
             
-            for (i32 i = 0;; ++i){
+            for (i1 i = 0;; ++i){
                 Config_Iteration_Step_Result result = typed_array_iteration_step(parsed, compound, Config_RValue_Type_Compound, i);
                 if (result.step == Iteration_Skip){
                     continue;
@@ -174,7 +174,7 @@ prj_v1_parse_from_config(Application_Links *app, Arena *arena, String8 dir, Conf
                 }
                 
                 can_emit_command = false;
-                for (i32 j = 0;; ++j){
+                for (i1 j = 0;; ++j){
                     Config_Iteration_Step_Result result = typed_array_iteration_step(parsed, cmd_set, Config_RValue_Type_Compound, j);
                     if (result.step == Iteration_Skip){
                         continue;
@@ -230,13 +230,13 @@ prj_v1_parse_from_config(Application_Links *app, Arena *arena, String8 dir, Conf
     
     // fkey_command
     {
-        for (i32 i = 1; i <= 16; ++i){
+        for (i1 i = 1; i <= 16; ++i){
             String8 name = {};
-            i32 index = -1;
+            i1 index = -1;
             if (config_string_var(parsed, "fkey_command", i, &name)){
-                i32 count = project->command_array.count;
+                i1 count = project->command_array.count;
                 Prj_V1_Command *command_ptr = project->command_array.commands;
-                for (i32 j = 0; j < count; ++j, ++command_ptr){
+                for (i1 j = 0; j < count; ++j, ++command_ptr){
                     if (string_match(command_ptr->name, name)){
                         index = j;
                         break;
@@ -307,7 +307,7 @@ prj_v1_sanitize_string(Arena *arena, String8 string){
 }
 
 function Variable_Handle
-prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed)
+prj_v1_to_v2(App *app, String8 dir, Config *parsed)
 {
     Scratch_Block scratch(app);
     
@@ -339,7 +339,7 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed)
     Variable_Handle proj_var = vars_new_variable(vars_get_root(), project_id, vars_intern(parsed->filename));
     
     if (parsed->version != 0){
-        String8 version_str = push_stringf(scratch, "%d", *parsed->version);
+        String8 version_str = push_stringfz(scratch, "%d", *parsed->version);
         vars_new_variable(proj_var, version_id, vars_intern(version_str));
     }
     
@@ -360,12 +360,12 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed)
     for (; pattern_var < opl; pattern_var += 1){
         Variable_Handle patterns = vars_new_variable(proj_var, pattern_var->id);
         
-        i32 i = 0;
+        i1 i = 0;
         for (Prj_Pattern_Node *node = pattern_var->list.first;
              node != 0;
              node = node->next, i += 1){
             String8 pattern_string = prj_v1_join_pattern_string(scratch, node->pattern.absolutes);
-            String_ID key = vars_intern(push_stringf(scratch, "%d", i));
+            String_ID key = vars_intern(push_stringfz(scratch, "%d", i));
             String_ID pattern_id = vars_intern(pattern_string);
             vars_new_variable(patterns, key, pattern_id);
         }
@@ -375,10 +375,10 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed)
     {
         Variable_Handle load_paths = vars_new_variable(proj_var, load_paths_id);
         Variable_Handle os_var = vars_new_variable(load_paths, os_id);
-        i32 count = project->load_path_array.count;
+        i1 count = project->load_path_array.count;
         Prj_V1_File_Load_Path *load_path = project->load_path_array.paths;
-        for (i32 i = 0; i < count; i += 1, load_path += 1){
-            String_ID key = vars_intern(push_stringf(scratch, "%d", i));
+        for (i1 i = 0; i < count; i += 1, load_path += 1){
+            String_ID key = vars_intern(push_stringfz(scratch, "%d", i));
             Variable_Handle path_var = vars_new_variable(os_var, key);
             vars_new_variable(path_var, path_id, vars_intern(load_path->path));
             vars_new_variable(path_var, recursive_id, load_path->recursive?true_id:false_id);
@@ -389,9 +389,9 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed)
     // NOTE(allen): Commands
     {
         Variable_Handle cmd_list_var = vars_new_variable(proj_var, commands_id);
-        i32 count = project->command_array.count;
+        i1 count = project->command_array.count;
         Prj_V1_Command *cmd = project->command_array.commands;
-        for (i32 i = 0; i < count; i += 1, cmd += 1){
+        for (i1 i = 0; i < count; i += 1, cmd += 1){
             String8 cmd_name = prj_v1_sanitize_string(scratch, cmd->name);
             Variable_Handle cmd_var = vars_new_variable(cmd_list_var, vars_intern(cmd_name));
             vars_new_variable(cmd_var, os_id, vars_intern(cmd->cmd));
@@ -405,13 +405,13 @@ prj_v1_to_v2(Application_Links *app, String8 dir, Config *parsed)
     // NOTE(allen): FKey Commands
     {
         Variable_Handle fkeys_var = vars_new_variable(proj_var, fkey_command_id);
-        for (i32 i = 0; i < 16; i += 1){
-            i32 cmd_index = project->fkey_commands[i];
+        for (i1 i = 0; i < 16; i += 1){
+            i1 cmd_index = project->fkey_commands[i];
             if (0 <= cmd_index && cmd_index < project->command_array.count){
                 Prj_V1_Command *cmd = project->command_array.commands + cmd_index;
                 if (cmd->name.size > 0){
                     String8 cmd_name = prj_v1_sanitize_string(scratch, cmd->name);
-                    String_ID key = vars_intern(push_stringf(scratch, "F%d", i + 1));
+                    String_ID key = vars_intern(push_stringfz(scratch, "F%d", i + 1));
                     String_ID val = vars_intern(cmd_name);
                     vars_new_variable(fkeys_var, key, val);
                 }

@@ -1,0 +1,1118 @@
+{
+  "displayTimeUnit": "ms",
+  "traceEvents": [
+    {
+      "args": {
+        "Command Line": "/MP1 -DHANDMADE_INTERNAL=1 -DHANDMADE_SLOW=1 -DHANDMADE_WIN32=1 -Od -MTd -nologo -fp:fast -fp:except- -Gm- -GR- -EHa- -Zo -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4127 -FC -Z7 -I..\\iaca-win64\\ ..\\handmade\\code\\handmade.cpp -Fmhandmade.map -LD /link -incremental:no -opt:ref -PDB:handmade_8826.pdb -EXPORT:GameGetSoundSamples -EXPORT:GameUpdateAndRender -EXPORT:DEBUGGameFrameEnd",
+        "Env Var: INCLUDE": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\ucrt;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\shared;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\um;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\winrt;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\cppwinrt",
+        "Env Var: Path": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\bin\\10.0.22621.0\\x64;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\ucrt;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\Windows\\System32\\OpenSSH\\;C:\\Program Files\\Git\\cmd;C:\\Program Files\\dotnet\\;C:\\Program Files\\Wolfram Research\\WolframScript\\;C:\\D\\dmd2\\windows\\bin64;C:\\D\\dmd2\\windows\\bin;C:\\Users\\vodan\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\;C:\\Users\\vodan\\AppData\\Local\\Programs\\Python\\Python312\\;C:\\Users\\vodan\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Program Files\\LLVM\\bin;C:\\Users\\vodan\\ccache;C:\\Users\\vodan\\remedybg;C:\\Program Files\\CMake\\bin;C:\\Program Files (x86)\\GnuWin32\\bin;C:\\Users\\vodan\\kv_utilities;",
+        "File Input": "C:\\Users\\vodan\\handmade\\code\\handmade.cpp",
+        "File Output": "C:\\Users\\vodan\\build\\handmade.obj",
+        "Tool Path": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64\\cl.exe",
+        "Tool Version": "19.38.33134.0",
+        "Working Directory": "C:\\Users\\vodan\\build"
+      },
+      "name": "CL Invocation 1",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975552533
+    },
+    {
+      "name": "FrontEndPass",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975560410
+    },
+    {
+      "name": "C1DLL",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975562242
+    },
+    {
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade.cpp",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975567220
+    },
+    {
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975578995
+    },
+    {
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_platform.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975579100
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\intrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975580707
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\vcruntime.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975580919
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\sal.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975581062
+    },
+    {
+      "dur": 194,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\concurrencysal.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975582857
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975583061
+    },
+    {
+      "dur": 258,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\vadefs.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975583117
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975583570
+    },
+    {
+      "dur": 866,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\intrin0.inl.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975583637
+    },
+    {
+      "dur": 246,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\setjmp.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975584562
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\immintrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975584877
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\wmmintrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975585082
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\nmmintrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975585179
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\smmintrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975585290
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\tmmintrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975585421
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\pmmintrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975585526
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\emmintrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975585634
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\xmmintrin.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975585802
+    },
+    {
+      "dur": 166,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\mmintrin.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975585996
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\ucrt\\malloc.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975586612
+    },
+    {
+      "dur": 1210,
+      "name": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\ucrt\\corecrt.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975586723
+    },
+    {
+      "dur": 413,
+      "name": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\ucrt\\corecrt_malloc.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975587998
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975588816
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975589419
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975590561
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975590642
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975590747
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975591034
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975591170
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975591221
+    },
+    {
+      "dur": 30600,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\zmmintrin.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975595494
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975626362
+    },
+    {
+      "dur": 874,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\ammintrin.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975626457
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975631026
+    },
+    {
+      "dur": 147,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\stdint.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975631104
+    },
+    {
+      "dur": 147,
+      "name": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\ucrt\\stddef.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975631312
+    },
+    {
+      "dur": 78,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\limits.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975631518
+    },
+    {
+      "dur": 352,
+      "name": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\ucrt\\float.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975631653
+    },
+    {
+      "dur": 2145,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_debug_interface.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975634210
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975636644
+    },
+    {
+      "dur": 116,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_config.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975636713
+    },
+    {
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_shared.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975636886
+    },
+    {
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_intrinsics.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975637041
+    },
+    {
+      "name": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\ucrt\\math.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975637134
+    },
+    {
+      "dur": 3411,
+      "name": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Include\\10.0.22621.0\\ucrt\\corecrt_math.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975637210
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975640633
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975641306
+    },
+    {
+      "dur": 10266,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_math.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975641370
+    },
+    {
+      "dur": 1758,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_memory.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975651719
+    },
+    {
+      "dur": 6241,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_simd.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975653543
+    },
+    {
+      "dur": 64,
+      "name": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\include\\stdarg.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975659854
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975663292
+    },
+    {
+      "dur": 3706,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_random.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975663404
+    },
+    {
+      "dur": 364,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_file_formats.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975667213
+    },
+    {
+      "dur": 177,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_cutscene.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975667644
+    },
+    {
+      "dur": 170,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_world.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975667889
+    },
+    {
+      "dur": 561,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_brain.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975668120
+    },
+    {
+      "dur": 246,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_render.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975668746
+    },
+    {
+      "dur": 538,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_render_group.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975669054
+    },
+    {
+      "dur": 366,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_lighting.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975669655
+    },
+    {
+      "dur": 1043,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_entity.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975670082
+    },
+    {
+      "dur": 159,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_sim_region.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975671188
+    },
+    {
+      "dur": 261,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_world_mode.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975671406
+    },
+    {
+      "dur": 139,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_particles.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975671728
+    },
+    {
+      "dur": 1647,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_asset.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975672006
+    },
+    {
+      "dur": 109,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_audio.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975673718
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975673988
+    },
+    {
+      "dur": 987,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_sort.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975674050
+    },
+    {
+      "dur": 10831,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_render_group.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975675104
+    },
+    {
+      "dur": 10485,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_lighting.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975686030
+    },
+    {
+      "dur": 5783,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_asset.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975696600
+    },
+    {
+      "dur": 2949,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_audio.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975702456
+    },
+    {
+      "dur": 2060,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_world.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975705473
+    },
+    {
+      "dur": 1495,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_particles.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975707601
+    },
+    {
+      "dur": 9531,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_sim_region.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975709160
+    },
+    {
+      "dur": 3307,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_brain.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975718794
+    },
+    {
+      "dur": 6912,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_entity.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975722173
+    },
+    {
+      "dur": 8276,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_world_mode.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975729209
+    },
+    {
+      "dur": 2126,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_cutscene.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975737584
+    },
+    {
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_debug.cpp",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975745413
+    },
+    {
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_debug.h",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975745619
+    },
+    {
+      "dur": 177,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_debug_ui.h",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975746344
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975746804
+    },
+    {
+      "dur": 4345,
+      "name": "C:\\Users\\vodan\\handmade\\code\\handmade_debug_ui.cpp",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975746868
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975764672
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975764684
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975769839
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975770201
+    },
+    {
+      "name": "BackEndPass",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975770402
+    },
+    {
+      "name": "C2DLL",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975772996
+    },
+    {
+      "name": "CodeGeneration",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975775257
+    },
+    {
+      "dur": 25851,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975775794
+    },
+    {
+      "dur": 926,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 1,
+      "ts": 640975776042
+    },
+    {
+      "dur": 692,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975776240
+    },
+    {
+      "dur": 25086,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 3,
+      "ts": 640975776470
+    },
+    {
+      "dur": 36,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 4,
+      "ts": 640975776599
+    },
+    {
+      "dur": 37,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 5,
+      "ts": 640975776635
+    },
+    {
+      "dur": 24782,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 4,
+      "ts": 640975776760
+    },
+    {
+      "dur": 26687,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 5,
+      "ts": 640975776764
+    },
+    {
+      "dur": 0,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975776934
+    },
+    {
+      "dur": 25249,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 1,
+      "ts": 640975777147
+    },
+    {
+      "dur": 24351,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975777154
+    },
+    {
+      "dur": 0,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975801508
+    },
+    {
+      "dur": 179,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975801627
+    },
+    {
+      "dur": 1,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975801746
+    },
+    {
+      "dur": 328,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975801872
+    },
+    {
+      "dur": 429,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975801876
+    },
+    {
+      "dur": 112,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 3,
+      "ts": 640975801992
+    },
+    {
+      "dur": 89,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 4,
+      "ts": 640975802008
+    },
+    {
+      "dur": 0,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 4,
+      "ts": 640975802098
+    },
+    {
+      "dur": 0,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 3,
+      "ts": 640975802189
+    },
+    {
+      "dur": 3401,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975802965
+    },
+    {
+      "dur": 726,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 1,
+      "ts": 640975802974
+    },
+    {
+      "dur": 555,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975802977
+    },
+    {
+      "dur": 487,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 3,
+      "ts": 640975802980
+    },
+    {
+      "dur": 474,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 4,
+      "ts": 640975802983
+    },
+    {
+      "dur": 0,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 5,
+      "ts": 640975803452
+    },
+    {
+      "dur": 106,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975803657
+    },
+    {
+      "dur": 611,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 1,
+      "ts": 640975805823
+    },
+    {
+      "dur": 443,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975805908
+    },
+    {
+      "dur": 452,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 3,
+      "ts": 640975805949
+    },
+    {
+      "dur": 422,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 4,
+      "ts": 640975805989
+    },
+    {
+      "dur": 375,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 5,
+      "ts": 640975806024
+    },
+    {
+      "dur": 0,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 2,
+      "ts": 640975806354
+    },
+    {
+      "dur": 15,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975806511
+    },
+    {
+      "dur": 16,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975806551
+    },
+    {
+      "dur": 16,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975806590
+    },
+    {
+      "dur": 17,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975806648
+    },
+    {
+      "dur": 58,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975806689
+    },
+    {
+      "dur": 13,
+      "name": "CodeGenerationThread",
+      "ph": "X",
+      "pid": 0,
+      "tid": 1,
+      "ts": 640975806732
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975806824
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975806825
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975819266
+    },
+    {
+      "args": {
+        "Command Line": "/link /errorreport:prompt /out:handmade.dll /nologo /debug /map:handmade.map /dll /implib:handmade.lib -incremental:no -opt:ref -PDB:handmade_8826.pdb -EXPORT:GameGetSoundSamples -EXPORT:GameUpdateAndRender -EXPORT:DEBUGGameFrameEnd handmade.obj",
+        "Env Var: LIB": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\lib\\x64;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Lib\\10.0.22621.0\\ucrt\\x64;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Lib\\10.0.22621.0\\um\\x64",
+        "Env Var: Path": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\bin\\10.0.22621.0\\x64;C:\\Users\\vodan\\msvc\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\ucrt;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\Windows\\System32\\OpenSSH\\;C:\\Program Files\\Git\\cmd;C:\\Program Files\\dotnet\\;C:\\Program Files\\Wolfram Research\\WolframScript\\;C:\\D\\dmd2\\windows\\bin64;C:\\D\\dmd2\\windows\\bin;C:\\Users\\vodan\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\;C:\\Users\\vodan\\AppData\\Local\\Programs\\Python\\Python312\\;C:\\Users\\vodan\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Program Files\\LLVM\\bin;C:\\Users\\vodan\\ccache;C:\\Users\\vodan\\remedybg;C:\\Program Files\\CMake\\bin;C:\\Program Files (x86)\\GnuWin32\\bin;C:\\Users\\vodan\\kv_utilities;",
+        "Env Var: TMP": "C:\\Users\\vodan\\AppData\\Local\\Temp",
+        "File Input #0": "C:\\Users\\vodan\\build\\handmade.obj",
+        "File Input #1": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\lib\\x64\\LIBCMTD.lib",
+        "File Input #2": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\lib\\x64\\OLDNAMES.lib",
+        "File Input #3": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Lib\\10.0.22621.0\\um\\x64\\kernel32.lib",
+        "File Input #4": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\lib\\x64\\libvcruntimed.lib",
+        "File Input #5": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Lib\\10.0.22621.0\\ucrt\\x64\\libucrtd.lib",
+        "File Input #6": "C:\\Users\\vodan\\msvc\\Windows Kits\\10\\Lib\\10.0.22621.0\\um\\x64\\uuid.lib",
+        "File Output #0": "C:\\Users\\vodan\\build\\handmade.lib",
+        "File Output #1": "C:\\Users\\vodan\\build\\handmade.exp",
+        "File Output #2": "C:\\Users\\vodan\\build\\handmade.dll",
+        "Tool Path": "C:\\Users\\vodan\\msvc\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64\\link.exe",
+        "Tool Version": "14.38.33134.0",
+        "Working Directory": "C:\\Users\\vodan\\build"
+      },
+      "name": "Link Invocation 1",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975828909
+    },
+    {
+      "name": "Pass1",
+      "ph": "B",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975838177
+    },
+    {
+      "dur": 776,
+      "name": "OptRef",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975936591
+    },
+    {
+      "dur": 7585,
+      "name": "OptICF",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975937369
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975945667
+    },
+    {
+      "dur": 59959,
+      "name": "Pass2",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640975945668
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640976034034
+    },
+    {
+      "ph": "E",
+      "pid": 0,
+      "tid": 0,
+      "ts": 640976045941
+    }
+  ]
+}

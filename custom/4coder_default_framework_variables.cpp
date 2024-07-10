@@ -56,7 +56,7 @@ global char *default_extensions[] = {
 #endif
 global b32 auto_center_after_jumps = AUTO_CENTER_AFTER_JUMPS;
 global u8 locked_buffer_space[256];
-global String_Const_u8 locked_buffer = {};
+global String locked_buffer = {};
 
 global u8 out_buffer_space[1024];
 global u8 command_space[1024];
@@ -73,7 +73,7 @@ enum{
     FCoderMode_Original = 0,
     FCoderMode_NotepadLike = 1,
 };
-global i32 fcoder_mode = FCoderMode_Original;
+global i1 fcoder_mode = FCoderMode_Original;
 
 global ID_Pos_Jump_Location prev_location = {};
 

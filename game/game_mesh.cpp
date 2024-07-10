@@ -1,9 +1,9 @@
 struct Mesh
 {
  v3 *vertices;
- i32 vertex_count;
- v3i *triangles;
- i32 triangle_count;
+ i1 vertex_count;
+ i3 *triangles;
+ i1 triangle_count;
 };
 
 struct Clip_Result
@@ -13,7 +13,7 @@ struct Clip_Result
 };
 
 global v1 F32_INVALID  = F32_MAX;
-global v3 VEC3_INVALID = vec3(F32_INVALID);
+global v3 VEC3_INVALID = V3(F32_INVALID);
 
 internal v3
 plane_segment_intersect(v3 n, v1 d, v3 p0, v3 p1)
@@ -21,7 +21,7 @@ plane_segment_intersect(v3 n, v1 d, v3 p0, v3 p1)
  // start from p0, end at p1
  v3 result = VEC3_INVALID;
  v3 pd = p1-p0;
- if ( !almost_equal(pd, vec3()) )
+ if ( !almost_equal(pd, V3()) )
  {
   v1 denom = dot(n, pd);
   if (!almost_equal(denom, 0.f))
@@ -134,8 +134,8 @@ intersect_triangle(v3 n, v1 d, v3 p[3])
   plane_segment_intersect(n,d, p[1], p[2]),
  };
  
- i32 fill_slot = 0;
- for_i32(index,0,3)
+ i1 fill_slot = 0;
+ for_i1(index,0,3)
  {
   if (intersections[index] != VEC3_INVALID &&
       fill_slot < 2)
@@ -149,13 +149,13 @@ intersect_triangle(v3 n, v1 d, v3 p[3])
 
 internal Mesh
 new_mesh(Arena *arena, 
-         v3 *in_vertices, i32 vertex_count, 
-         v3i *in_triangles, i32 triangle_count)
+         v3 *in_vertices, i1 vertex_count, 
+         i3 *in_triangles, i1 triangle_count)
 {
  Mesh result = { 
   .vertices    =push_array(arena, v3, vertex_count), 
   .vertex_count=vertex_count, 
-  .triangles     =push_array(arena, v3i, triangle_count),
+  .triangles     =push_array(arena, i3, triangle_count),
   .triangle_count=triangle_count,
  };
  
@@ -171,15 +171,15 @@ transformed_mesh(Arena *arena, mat4 const&mat, Mesh const&mesh)
  Mesh result = mesh;
  result.vertices = push_array(arena, v3, mesh.vertex_count);
  block_copy_count(result.vertices, mesh.vertices, mesh.vertex_count);
- for_i32(vertex_index,0,mesh.vertex_count)
+ for_i1(vertex_index,0,mesh.vertex_count)
  {
   result.vertices[vertex_index] = mat4vert_no_div(mat, mesh.vertices[vertex_index]);
  }
  return result;
 }
 
-inline i32
-get_box_vertice_index(v3i a)
+inline i1
+get_box_vertice_index(i3 a)
 {
  u32 x = (a.x == 1) ? 1 : 0;
  u32 y = (a.y == 1) ? 1 : 0;
@@ -187,23 +187,23 @@ get_box_vertice_index(v3i a)
  return( (x << 2) | (y << 1) | (z << 0) );
 }
 
-typedef v3i *Triangle_Sbuf;
+typedef i3 *Triangle_Sbuf;
 
 inline void
-add_box_face(Triangle_Sbuf *triangles, v3i a, v3i b, v3i c, v3i d)
+add_box_face(Triangle_Sbuf *triangles, i3 a, i3 b, i3 c, i3 d)
 {
- i32 A = get_box_vertice_index(a);
- i32 B = get_box_vertice_index(b);
- i32 C = get_box_vertice_index(c);
- i32 D = get_box_vertice_index(d);
- arrpush(*triangles, vec3i(A,B,C));
- arrpush(*triangles, vec3i(A,C,D));
+ i1 A = get_box_vertice_index(a);
+ i1 B = get_box_vertice_index(b);
+ i1 C = get_box_vertice_index(c);
+ i1 D = get_box_vertice_index(d);
+ arrpush(*triangles, I3(A,B,C));
+ arrpush(*triangles, I3(A,C,D));
 }
 
 internal void
-add_box_opposite_faces(Triangle_Sbuf *triangles, v3i x, v3i y, v3i z)
+add_box_opposite_faces(Triangle_Sbuf *triangles, i3 x, i3 y, i3 z)
 {
- v3i O = z;
+ i3 O = z;
  add_box_face(triangles, O-x-y, O+x-y, O+x+y, O-x+y);
  O = -z;
  add_box_face(triangles, O-x+y, O+x+y, O+x-y, O-x-y);
@@ -216,20 +216,20 @@ make_meshes(Arena *arena)
 {
  arena_clear(arena);
  {// NOTE: box
-  const i32 vertex_count = 8;
+  const i1 vertex_count = 8;
   v3 vertices[vertex_count];
   for_u32(index,0,vertex_count)
   {//NOTE: vertices
    v1 x = ((index >> 2) & 1) ? 1.f : -1.f;
    v1 y = ((index >> 1) & 1) ? 1.f : -1.f;
    v1 z = ((index >> 0) & 1) ? 1.f : -1.f;
-   vertices[index] = vec3(x,y,z);
+   vertices[index] = V3(x,y,z);
   }
   
   Triangle_Sbuf triangles = 0;
-  v3i x = vec3i(1,0,0);
-  v3i y = vec3i(0,1,0);
-  v3i z = vec3i(0,0,1);
+  i3 x = I3(1,0,0);
+  i3 y = I3(0,1,0);
+  i3 z = I3(0,0,1);
   add_box_opposite_faces(&triangles, x,y,z);
   add_box_opposite_faces(&triangles, y,z,x);
   add_box_opposite_faces(&triangles, z,x,y);
@@ -242,8 +242,8 @@ make_meshes(Arena *arena)
 internal b32
 triangle_valid(v3 triangle[3])
 {
- return !(triangle[0] == vec3() && 
-          triangle[1] == vec3());
+ return !(triangle[0] == V3() && 
+          triangle[1] == V3());
 }
 
 //~ EOF

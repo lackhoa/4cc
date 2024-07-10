@@ -25,14 +25,14 @@ system_file_can_be_made(Arena *scratch, u8 *filename){
 struct Memory_Annotation_Tracker_Node{
     Memory_Annotation_Tracker_Node *next;
     Memory_Annotation_Tracker_Node *prev;
-    String_Const_u8 location;
+    String location;
     u64 size;
 };
 
 struct Memory_Annotation_Tracker{
     Memory_Annotation_Tracker_Node *first;
     Memory_Annotation_Tracker_Node *last;
-    i32 count;
+ i1 count;
 };
 
 global Memory_Annotation_Tracker memory_tracker = {};
@@ -41,16 +41,16 @@ global CRITICAL_SECTION memory_tracker_mutex;
 internal void*
 win32_memory_allocate_extended(void *base, u64 size, String location)
 {
-    u64 adjusted_size = size + 64;
-    void *result = VirtualAlloc(base, (SIZE_T)adjusted_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-   Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)result;
-    EnterCriticalSection(&memory_tracker_mutex);
-    zdll_push_back(memory_tracker.first, memory_tracker.last, node);
-    memory_tracker.count += 1;
-    LeaveCriticalSection(&memory_tracker_mutex);
-    node->location = location;
-    node->size = size;
-    return(node + 1);
+ u64 adjusted_size = size + 64;
+ void *result = VirtualAlloc(base, (SIZE_T)adjusted_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+ Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)result;
+ EnterCriticalSection(&memory_tracker_mutex);
+ zdll_push_back(memory_tracker.first, memory_tracker.last, node);
+ memory_tracker.count += 1;
+ LeaveCriticalSection(&memory_tracker_mutex);
+ node->location = location;
+ node->size = size;
+ return(node + 1);
 }
 
 internal void
@@ -160,15 +160,15 @@ system_get_path(system_get_path_params)
             if (!has_stashed_4ed_path)
             {
                 has_stashed_4ed_path = true;
-                local_const i32 binary_path_capacity = KB(32);
+                local_const i1 binary_path_capacity = KB(32);
                 u8 *memory = (u8*)system_memory_allocate(binary_path_capacity, string_u8_litexpr(filename_line_number));
-                i32 size = GetModuleFileName_utf8(arena, 0, memory, binary_path_capacity);
+                i1 size = GetModuleFileName_utf8(arena, 0, memory, binary_path_capacity);
                 Assert(size <= binary_path_capacity - 1);
                 win32vars.binary_path = SCu8(memory, size);
                 win32vars.binary_path = path_dirname(win32vars.binary_path);
                 win32vars.binary_path.str[win32vars.binary_path.size] = 0;
             }
-            result = push_string_copy(arena, win32vars.binary_path);
+            result = push_string_copyz(arena, win32vars.binary_path);
         }break;
 
         case SystemPath_UserDirectory:
@@ -178,7 +178,7 @@ system_get_path(system_get_path_params)
             String8 home = get_home_directory(arena);
             if (home.str)
             {
-              result = push_stringf(arena, "%.*s\\4coder\\", string_expand(home));
+              result = push_stringfz(arena, "%.*s\\4coder\\", string_expand(home));
             }
           }
           else result = w32_override_user_directory;
@@ -191,8 +191,8 @@ system_get_path(system_get_path_params)
 // Files
 //
 
-internal String_Const_u8
-win32_remove_unc_prefix_characters(String_Const_u8 path){
+internal String
+win32_remove_unc_prefix_characters(String path){
     if (string_match(string_prefix(path, 7), string_u8_litexpr("\\\\?\\UNC"))){
 #if 0
         // TODO(allen): Why no just do
@@ -222,12 +222,12 @@ expand_tilde(Arena *arena, String8 path)
   if (char0 == '~' && (char1 == '/' || char1 == '\\'))
   {
     String8 home = get_home_directory(arena);
-    result = push_stringf(arena, "%.*s\\%.*s", string_expand(home), (i32)path.size-2, path.str+2);
+    result = push_stringfz(arena, "%.*s\\%.*s", string_expand(home), (i1)path.size-2, path.str+2);
   }
   return result;
 }
 
-// String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name)
+// String system_get_canonical(Arena* arena, String name)
 internal system_get_canonical_sig()
 {
   String8 result = {};
@@ -267,7 +267,7 @@ internal system_get_canonical_sig()
     }
     else{
       String8 path = string_remove_front_of_path(name);
-      String8 front = string_front_of_path(name);
+      String8 front = path_filename(name);
       
       u8 *c_path = push_array(arena, u8, path.size + 1);
       block_copy(c_path, path.str, path.size);
@@ -333,10 +333,10 @@ system_get_file_list(system_get_file_list_params)
     File_List result = {};
     String search_pattern = {};
     if (character_is_slash(string_get_character(directory, directory.size - 1))){
-        search_pattern = push_stringf(arena, "%.*s*", string_expand(directory));
+        search_pattern = push_stringfz(arena, "%.*s*", string_expand(directory));
     }
     else{
-        search_pattern = push_stringf(arena, "%.*s\\*", string_expand(directory));
+        search_pattern = push_stringfz(arena, "%.*s\\*", string_expand(directory));
     }
     
     WIN32_FIND_DATAW find_data = {};
@@ -345,7 +345,7 @@ system_get_file_list(system_get_file_list_params)
     {
         File_Info *first = 0;
         File_Info *last = 0;
-        i32 count = 0;
+        i1 count = 0;
         
         for (;;)
         {
@@ -353,7 +353,7 @@ system_get_file_list(system_get_file_list_params)
             if (!(string_match(filename_utf16, string_u16_litexpr(L".")) ||
                   string_match(filename_utf16, string_u16_litexpr(L".."))))
             {
-                String_Const_u8 filename = string_u8_from_string_u16(arena, filename_utf16,
+                String filename = string_u8_from_string_u16(arena, filename_utf16,
                                                                       StringFill_NullTerminate).string;
                 
                 File_Info *info = push_array(arena, File_Info, 1);
@@ -375,7 +375,7 @@ system_get_file_list(system_get_file_list_params)
         result.infos = push_array(arena, File_Info*, count);
         result.count = count;
         
-        i32 counter = 0;
+        i1 counter = 0;
         for (File_Info *node = first;
              node != 0;
              node = node->next)

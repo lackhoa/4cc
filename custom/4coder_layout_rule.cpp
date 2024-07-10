@@ -15,7 +15,7 @@ return(reflex);
 }
 
 function Rect_f32
-layout_reflex_get_rect(Application_Links *app, Layout_Reflex *reflex, i64 pos, b32 *unresolved_dependence){
+layout_reflex_get_rect(App *app, Layout_Reflex *reflex, i64 pos, b32 *unresolved_dependence){
 Rect_f32 rect = {};
 pos = clamp_min(0, pos);
 if (range_contains(reflex->list->input_index_range, pos)){
@@ -159,7 +159,7 @@ result.metrics = metrics;
 result.tab_width = tab_width;
 result.line_to_text_shift = text_height - line_height;
 
-result.blank_dim = vec2(metrics->space_advance, text_height);
+result.blank_dim = V2(metrics->space_advance, text_height);
 
 result.line_y = line_height;
 result.text_y = text_height;
@@ -187,9 +187,9 @@ lr_tb_write_with_advance_with_flags(LefRig_TopBot_Layout_Vars *vars, Face_ID fac
 if (codepoint == '\t'){
 codepoint = ' ';
 }
-vars->p.x = f32_ceil32(vars->p.x);
+vars->p.x = ceilv1(vars->p.x);
 f32 next_x = vars->p.x + advance;
-layout_write(arena, list, face, index, codepoint, flags, Rf32(vars->p, vec2(next_x, vars->text_y)), vars->line_y);
+layout_write(arena, list, face, index, codepoint, flags, Rf32(vars->p, V2(next_x, vars->text_y)), vars->line_y);
 vars->p.x = next_x;
 }
 
@@ -225,20 +225,20 @@ lr_tb_write_byte_with_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32
     u32 hi = ((u32)byte >> 4)&0xF;
     
     Vec2_f32 p = vars->p;
-    p.x = f32_ceil32(p.x);
+    p.x = ceilv1(p.x);
     f32 next_x = p.x + metrics->byte_sub_advances[0];
     f32 text_y = vars->text_y;
     
     Layout_Item_Flag flags = LayoutItemFlag_Special_Character;
-    layout_write(arena, list, face, index, '\\', flags, Rf32(p, vec2(next_x, text_y)), vars->line_y);
+    layout_write(arena, list, face, index, '\\', flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
     p.x = next_x;
     
     flags = LayoutItemFlag_Ghost_Character;
     next_x += metrics->byte_sub_advances[1];
-    layout_write(arena, list, face, index, integer_symbols[hi], flags, Rf32(p, vec2(next_x, text_y)), vars->line_y);
+    layout_write(arena, list, face, index, integer_symbols[hi], flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
     p.x = next_x;
     next_x += metrics->byte_sub_advances[2];
-    layout_write(arena, list, face, index, integer_symbols[lo], flags, Rf32(p, vec2(next_x, text_y)), vars->line_y);
+    layout_write(arena, list, face, index, integer_symbols[lo], flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
     
     vars->p.x = final_next_x;
 }
@@ -298,12 +298,12 @@ vars->p.x = clamp_min(align_x, vars->p.x);
 ////////////////////////////////
 
 function Layout_Item_List
-layout_unwrapped_small_blank_lines(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width)
+layout_unwrapped_small_blank_lines(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width)
 {
     Layout_Item_List list = get_empty_item_list(range);
     
     Scratch_Block scratch(app);
-    String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+    String text = push_buffer_range(app, scratch, buffer, range);
     
     Face_Advance_Map advance_map = get_face_advance_map(app, face);
     Face_Metrics metrics = get_face_metrics(app, face);
@@ -311,7 +311,7 @@ layout_unwrapped_small_blank_lines(Application_Links *app, Arena *arena, Buffer_
     tab_width = clamp_min(1, tab_width);
     LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
     
-    pos_vars.blank_dim = vec2(metrics.space_advance, metrics.text_height*0.5f);
+    pos_vars.blank_dim = V2(metrics.space_advance, metrics.text_height*0.5f);
     
     if (text.size == 0){
         lr_tb_write_blank(&pos_vars, face, arena, &list, range.start);
@@ -394,12 +394,12 @@ layout_unwrapped_small_blank_lines(Application_Links *app, Arena *arena, Buffer_
 }
 
 function Layout_Item_List
-layout_wrap_anywhere(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_wrap_anywhere(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 Scratch_Block scratch(app);
 
 Layout_Item_List list = get_empty_item_list(range);
 
-String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+String text = push_buffer_range(app, scratch, buffer, range);
 
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
@@ -470,11 +470,11 @@ return(list);
 }
 
 function Layout_Item_List
-layout_unwrapped__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Virtual_Indent virt_indent){
+layout_unwrapped__inner(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Virtual_Indent virt_indent){
 Layout_Item_List list = get_empty_item_list(range);
 
 Scratch_Block scratch(app);
-String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+String text = push_buffer_range(app, scratch, buffer, range);
 
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
@@ -549,12 +549,12 @@ return(list);
 }
 
 function Layout_Item_List
-layout_wrap_whitespace__inner(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Virtual_Indent virt_indent){
+layout_wrap_whitespace__inner(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Virtual_Indent virt_indent){
 Scratch_Block scratch(app);
 
 Layout_Item_List list = get_empty_item_list(range);
 
-String_Const_u8 text = push_buffer_range(app, scratch, buffer, range);
+String text = push_buffer_range(app, scratch, buffer, range);
 
 Face_Advance_Map advance_map = get_face_advance_map(app, face);
 Face_Metrics metrics = get_face_metrics(app, face);
@@ -589,7 +589,7 @@ break;
 {
 newline_layout_consume_default(&newline_vars);
 
-String_Const_u8 word = SCu8(word_ptr, ptr);
+String word = SCu8(word_ptr, ptr);
 u8 *word_end = ptr;
 
 if (!first_of_the_line){
@@ -696,17 +696,17 @@ return(list);
 }
 
 function Layout_Item_List
-layout_unwrapped(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 return(layout_unwrapped__inner(app, arena, buffer, range, face, width, LayoutVirtualIndent_Off));
 }
 
 function Layout_Item_List
-layout_wrap_whitespace(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_wrap_whitespace(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 return(layout_wrap_whitespace__inner(app, arena, buffer, range, face, width, LayoutVirtualIndent_Off));
 }
 
 function Layout_Item_List
-layout_basic(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Wrap_Kind kind){
+layout_basic(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Wrap_Kind kind){
 Layout_Item_List result = {};
 switch (kind){
 case Layout_Unwrapped:
@@ -722,7 +722,7 @@ return(result);
 }
 
 function Layout_Item_List
-layout_generic(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_generic(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
 b32 wrap_lines = (wrap_lines_ptr != 0 && *wrap_lines_ptr);
@@ -730,17 +730,17 @@ return(layout_basic(app, arena, buffer, range, face, width, wrap_lines?Layout_Wr
 }
 
 function Layout_Item_List
-layout_virt_indent_literal_unwrapped(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_virt_indent_literal_unwrapped(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 return(layout_unwrapped__inner(app, arena, buffer, range, face, width, LayoutVirtualIndent_On));
 }
 
 function Layout_Item_List
-layout_virt_indent_literal_wrapped(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_virt_indent_literal_wrapped(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 return(layout_wrap_whitespace__inner(app, arena, buffer, range, face, width, LayoutVirtualIndent_On));
 }
 
 function Layout_Item_List
-layout_virt_indent_literal(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Wrap_Kind kind){
+layout_virt_indent_literal(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Wrap_Kind kind){
 Layout_Item_List result = {};
 switch (kind){
 case Layout_Unwrapped:
@@ -756,7 +756,7 @@ return(result);
 }
 
 function Layout_Item_List
-layout_virt_indent_literal_generic(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
+layout_virt_indent_literal_generic(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width){
 Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
 b32 wrap_lines = (wrap_lines_ptr != 0 && *wrap_lines_ptr);

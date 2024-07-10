@@ -5,29 +5,30 @@ layout(location=3) in v1  vattr_half_thickness;
 layout(location=4) in v1  vattr_depth_offset;
 layout(location=5) in u32 vattr_prim_id;
 
-out Fragment_Data {
-#if IS_FIRST_PASS || IS_SECOND_PASS
- 
-# if ACTUALLY_RENDERING
- v4 color;
-# else
+out Fragment_Data
+{
+#if WRITE_PRIM_ID
  u32 prim_id;
-# endif
- 
 #else
+#    if IS_FIRST_PASS || IS_SECOND_PASS
+ v4 color;
+#    else
+ flat v4 color;
  v3 uvw;
+#    endif
 #endif
 } vs_out;
 
 void main(void)
 {
-#if IS_FIRST_PASS || IS_SECOND_PASS
- v4 world_pos = vec4(vattr_pos, 1.0);
+ v4 world_pos = V4(vattr_pos, 1.0);
  world_pos    = uniform_object_transform*world_pos;
- mat4 viewT = uniform_view_transform;
  
+ mat4 viewT = uniform_view_transform;
+ gl_Position = viewT * world_pos;
+ 
+#if IS_FIRST_PASS || IS_SECOND_PASS
  {
-  gl_Position = viewT * world_pos;
   if (uniform_overlay)
   {
    gl_Position.z = -gl_Position.w;  //NOTE: z=-1 IS the near-clip plane, so the shader really is the right place to do this.
@@ -42,15 +43,20 @@ void main(void)
   }
  }
  
-# if ACTUALLY_RENDERING
- vs_out.color.rgba = vattr_color.bgra;
-# else
+#    if WRITE_PRIM_ID
  vs_out.prim_id    = vattr_prim_id;
-# endif
+#    else
+ vs_out.color.rgba = vattr_color.bgra;
+#    endif
  
 #else
- // NOTE: The csg software-rendering case
- gl_Position = vec4(vattr_pos, 1);
- vs_out.uvw = vattr_uvw;
+ // NOTE: Blit image
+ gl_Position.z = -gl_Position.w+1e-3;  // NOTE: overlay, but we want indicators to shine through
+#    if WRITE_PRIM_ID
+ vs_out.prim_id = vattr_prim_id;
+#    else
+ vs_out.uvw        = vattr_uvw;
+ vs_out.color.rgba = vattr_color.bgra;
+#    endif
 #endif
 }

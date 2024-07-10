@@ -11,11 +11,11 @@ function String8_Array
 kv_string_split_wildcards(Arena *arena, String8 string)
 {
   String8_Array array = {};
-  List_String_Const_u8 list = string_split(arena, string, (u8*)" ", 2);
+  List_String list = string_split(arena, string, (u8*)" ", 2);
   array.count   = list.node_count;
-  array.strings = push_array(arena, String_Const_u8, array.count);
+  array.strings = push_array(arena, String, array.count);
   i64 index = 0;
-  for (Node_String_Const_u8 *node = list.first;
+  for (Node_String *node = list.first;
        node;
        node = node->next)
   {
@@ -97,7 +97,7 @@ kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String needle)
 }
 
 internal i64
-kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle)
+kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String needle)
 {
     i64 result = -1;
     
@@ -167,7 +167,7 @@ print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Matc
     buffer_set_setting(app, out_buffer_id, BufferSetting_RecordsHistory, false);
     
     Temp_Memory buffer_name_restore_point = begin_temp(scratch);
-    String_Const_u8 current_filename = {};
+    String current_filename = {};
     Buffer_ID current_buffer = 0;
     
     if (matches.first != 0){
@@ -189,8 +189,8 @@ print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Matc
                 
                 Buffer_Cursor cursor = buffer_compute_cursor(app, current_buffer, seek_pos(node->range.first));
                 Temp_Memory line_temp = begin_temp(scratch);
-                String_Const_u8 full_line_str = push_buffer_line(app, scratch, current_buffer, cursor.line);
-                String_Const_u8 line_str = string_skip_chop_whitespace(full_line_str);
+                String full_line_str = push_buffer_line(app, scratch, current_buffer, cursor.line);
+                String line_str = string_skip_chop_whitespace(full_line_str);
                 insertf(&out, "%.*s:%d:%d: %.*s\n",
                         string_expand(current_filename), cursor.line, cursor.col,
                         string_expand(line_str));
@@ -229,43 +229,43 @@ print_all_matches_all_buffers(App *app, String8 pattern, String_Match_Flag must_
     print_all_matches_all_buffers(app, array, must_have_flags, must_not_have_flags, out_buffer_id);
 }
 
-internal String_Const_u8
-query_user_list_needle(Application_Links *app, Arena *arena)
+internal String
+query_user_list_needle(App *app, Arena *arena)
 {
     u8 *space = push_array(arena, u8, KB(1));
     return(get_query_string(app, "List Locations For: ", space, KB(1)));
 }
 
-internal String_Const_u8_Array
-user_list_definition_array(App *app, Arena *arena, String_Const_u8 base_needle)
+internal String_Array
+user_list_definition_array(App *app, Arena *arena, String base_needle)
 {
-    String_Const_u8_Array result = {};
+    String_Array result = {};
     if (base_needle.size > 0)
     {
         result.count = 12;
-        result.vals = push_array(arena, String_Const_u8, result.count);
-        i32 i = 0;
-        result.vals[i++] = (push_stringf(arena, "struct %.*s{"  , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "struct %.*s\n{", string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "struct %.*s\r\n{", string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "struct %.*s {" , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "union %.*s{"   , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "union %.*s\n{" , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "union %.*s\r\n{" , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "union %.*s {"  , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "enum %.*s{"    , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "enum %.*s\n{"  , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "enum %.*s\r\n{"  , string_expand(base_needle)));
-        result.vals[i++] = (push_stringf(arena, "enum %.*s {"   , string_expand(base_needle)));
+        result.vals = push_array(arena, String, result.count);
+        i1 i = 0;
+        result.vals[i++] = (push_stringfz(arena, "struct %.*s{"  , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "struct %.*s\n{", string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "struct %.*s\r\n{", string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "struct %.*s {" , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "union %.*s{"   , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "union %.*s\n{" , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "union %.*s\r\n{" , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "union %.*s {"  , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "enum %.*s{"    , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "enum %.*s\n{"  , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "enum %.*s\r\n{"  , string_expand(base_needle)));
+        result.vals[i++] = (push_stringfz(arena, "enum %.*s {"   , string_expand(base_needle)));
         Assert(i == result.count);
     }
     return(result);
 }
 
-internal String_Const_u8_Array
-query_user_list_definition_needle(Application_Links *app, Arena *arena){
+internal String_Array
+query_user_list_definition_needle(App *app, Arena *arena){
     u8 *space = push_array(arena, u8, KB(1));
-    String_Const_u8 base_needle = get_query_string(app, "List Definitions For: ", space, KB(1));
+    String base_needle = get_query_string(app, "List Definitions For: ", space, KB(1));
     return(user_list_definition_array(app, arena, base_needle));
 }
 
@@ -293,24 +293,24 @@ list_all_locations__generic(App *app, String8_Array needle, List_All_Locations_F
 }
 
 internal void
-list_all_locations__generic(Application_Links *app, String_Const_u8 needle, List_All_Locations_Flag flags)
+list_all_locations__generic(App *app, String needle, List_All_Locations_Flag flags)
 {
     if (needle.size != 0){
-        String_Const_u8_Array array = {&needle, 1};
+        String_Array array = {&needle, 1};
         list_all_locations__generic(app, array, flags);
     }
 }
 
 internal void
-list_all_locations__generic_query(Application_Links *app, List_All_Locations_Flag flags){
+list_all_locations__generic_query(App *app, List_All_Locations_Flag flags){
     Scratch_Block scratch(app);
     u8 *space = push_array(scratch, u8, KB(1));
-    String_Const_u8 needle = get_query_string(app, "List Locations For: ", space, KB(1));
+    String needle = get_query_string(app, "List Locations For: ", space, KB(1));
     list_all_locations__generic(app, needle, flags);
 }
 
 internal void
-list_all_locations__generic_identifier(Application_Links *app, List_All_Locations_Flag flags)
+list_all_locations__generic_identifier(App *app, List_All_Locations_Flag flags)
 {
     Scratch_Block scratch(app);
     String needle = push_token_or_word_under_active_cursor(app, scratch);
@@ -320,7 +320,7 @@ list_all_locations__generic_identifier(Application_Links *app, List_All_Location
 internal void
 list_all_locations__generic_view_range(App *app, List_All_Locations_Flag flags){
     Scratch_Block scratch(app);
-    String_Const_u8 needle = push_view_range_string(app, scratch);
+    String needle = push_view_range_string(app, scratch);
     list_all_locations__generic(app, needle, flags);
 }
 
@@ -368,7 +368,7 @@ get_word_complete_needle_range(App *app, Buffer_ID buffer, i64 pos)
 }
 
 internal void
-string_match_list_enclose_all(Application_Links *app, String_Match_List list,
+string_match_list_enclose_all(App *app, String_Match_List list,
                               Enclose_Function *enclose){
     for (String_Match *node = list.first;
          node != 0;
@@ -382,8 +382,8 @@ global String_Match_Flag complete_must = (StringMatch_CaseSensitive|
 global String_Match_Flag complete_must_not = StringMatch_LeftSideSloppy;
 
 internal String_Match_List
-get_complete_list_raw(Application_Links *app, Arena *arena, Buffer_ID buffer,
-                      Range_i64 needle_range, String_Const_u8 needle){
+get_complete_list_raw(App *app, Arena *arena, Buffer_ID buffer,
+                      Range_i64 needle_range, String needle){
     local_persist Character_Predicate *pred =
         &character_predicate_alnum_underscore_utf8;
     
@@ -412,16 +412,16 @@ get_complete_list_raw(Application_Links *app, Arena *arena, Buffer_ID buffer,
 }
 
 function void
-word_complete_list_extend_from_raw(Application_Links *app, Arena *arena, String_Match_List *matches, List_String_Const_u8 *list, Table_Data_u64 *used_table){
+word_complete_list_extend_from_raw(App *app, Arena *arena, String_Match_List *matches, List_String *list, Table_Data_u64 *used_table){
     ProfileScope(app, "word complete list extend from raw");
     Scratch_Block scratch(app);
     for (String_Match *node = matches->first;
          node != 0;
          node = node->next){
-        String_Const_u8 s = push_buffer_range(app, scratch, node->buffer, node->range);
+        String s = push_buffer_range(app, scratch, node->buffer, node->range);
         Table_Lookup lookup = table_lookup(used_table, s);
         if (!lookup.found_match){
-            String_Const_u8 data = push_data_copy(arena, s);
+            String data = push_data_copy(arena, s);
             table_insert(used_table, data, 1);
             string_list_push(arena, list, data);
         }
@@ -429,8 +429,8 @@ word_complete_list_extend_from_raw(Application_Links *app, Arena *arena, String_
 }
 
 function void
-word_complete_iter_init__inner(Buffer_ID buffer, String_Const_u8 needle, Range_i64 range, Word_Complete_Iterator *iter){
-    Application_Links *app = iter->app;
+word_complete_iter_init__inner(Buffer_ID buffer, String needle, Range_i64 range, Word_Complete_Iterator *iter){
+    App *app = iter->app;
     Arena *arena = iter->arena;
     
     Base_Allocator *allocator = get_base_allocator_system();
@@ -444,7 +444,7 @@ word_complete_iter_init__inner(Buffer_ID buffer, String_Const_u8 needle, Range_i
     iter->arena = arena;
     
     iter->arena_restore = begin_temp(arena);
-    iter->needle = push_string_copy(arena, needle);
+    iter->needle = push_string_copyz(arena, needle);
     iter->first_buffer = buffer;
     iter->current_buffer = buffer;
     
@@ -460,25 +460,25 @@ word_complete_iter_init__inner(Buffer_ID buffer, String_Const_u8 needle, Range_i
 function void
 word_complete_iter_init(Buffer_ID buffer, Range_i64 range, Word_Complete_Iterator *iter){
     if (iter->app != 0 && iter->arena != 0){
-        Application_Links *app = iter->app;
+        App *app = iter->app;
         Arena *arena = iter->arena;
         Scratch_Block scratch(app, arena);
-        String_Const_u8 needle = push_buffer_range(app, scratch, buffer, range);
+        String needle = push_buffer_range(app, scratch, buffer, range);
         word_complete_iter_init__inner(buffer, needle, range, iter); 
     }
 }
 
 function void
-word_complete_iter_init(Buffer_ID first_buffer, String_Const_u8 needle, Word_Complete_Iterator *iter){
+word_complete_iter_init(Buffer_ID first_buffer, String needle, Word_Complete_Iterator *iter){
     if (iter->app != 0 && iter->arena != 0){
         word_complete_iter_init__inner(first_buffer, needle, Ii64(), iter);
     }
 }
 
 function void
-word_complete_iter_init(String_Const_u8 needle, Word_Complete_Iterator *iter){
+word_complete_iter_init(String needle, Word_Complete_Iterator *iter){
     if (iter->app != 0 && iter->arena != 0){
-        Application_Links *app = iter->app;
+        App *app = iter->app;
         Buffer_ID first_buffer = get_buffer_next(app, 0, Access_Read);
         word_complete_iter_init__inner(first_buffer, needle, Ii64(), iter);
     }
@@ -507,7 +507,7 @@ word_complete_iter_next(Word_Complete_Iterator *it){
             break;
         }
         
-        Application_Links *app = it->app;
+        App *app = it->app;
         Buffer_ID next = get_buffer_next_looped(app, it->current_buffer, Access_Read);
         if (next == it->first_buffer){
             break;
@@ -523,9 +523,9 @@ word_complete_iter_next(Word_Complete_Iterator *it){
     }
 }
 
-function String_Const_u8
+function String
 word_complete_iter_read(Word_Complete_Iterator *it){
-    String_Const_u8 result = {};
+    String result = {};
     if (it->node == 0){
         result = it->needle;
     }
@@ -542,7 +542,7 @@ word_complete_iter_is_at_base_slot(Word_Complete_Iterator *it){
 }
 
 function Word_Complete_Iterator*
-word_complete_get_shared_iter(Application_Links *app){
+word_complete_get_shared_iter(App *app){
     local_persist Arena completion_arena = {};
     local_persist Word_Complete_Iterator it = {};
     local_persist b32 first_call = true;
@@ -593,7 +593,7 @@ CUSTOM_DOC("Iteratively tries completing the word to the left of the cursor with
             ProfileBlock(app, "word complete apply");
             
             word_complete_iter_next(it);
-            String_Const_u8 str = word_complete_iter_read(it);
+            String str = word_complete_iter_read(it);
             
             buffer_replace_range(app, buffer, range, str);
             
@@ -613,7 +613,7 @@ make_word_complete_menu(Render_Caller_Function *prev_render_caller, Word_Complet
 
 function void
 word_complete_menu_next(Word_Complete_Menu *menu){
-    i32 count = 0;
+    i1 count = 0;
     for (u32 i = 0; i < ArrayCount(menu->options); i += 1){
         word_complete_iter_next(menu->it);
         if (word_complete_iter_is_at_base_slot(menu->it)){
@@ -628,7 +628,7 @@ word_complete_menu_next(Word_Complete_Menu *menu){
 }
 
 function void
-word_complete_menu_render(Application_Links *app, Frame_Info frame_info, View_ID view){
+word_complete_menu_render(App *app, Frame_Info frame_info, View_ID view){
     Managed_Scope scope = view_get_managed_scope(app, view);
     Word_Complete_Menu **menu_ptr = scope_attachment(app, scope, view_word_complete_menu, Word_Complete_Menu*);
     Word_Complete_Menu *menu = *menu_ptr;
@@ -642,7 +642,7 @@ word_complete_menu_render(Application_Links *app, Frame_Info frame_info, View_ID
         Scratch_Block scratch(app);
         
         Fancy_Block block = {};
-        for (i32 i = 0; i < menu->count; i += 1){
+        for (i1 i = 0; i < menu->count; i += 1){
             if (menu->options[i].size > 0){
                 Fancy_Line *line = push_fancy_line(scratch, &block, face);
                 push_fancy_stringf(scratch, line, fcolor_id(defcolor_pop1), "F%d:", i + 1);
@@ -669,7 +669,7 @@ word_complete_menu_render(Application_Links *app, Frame_Info frame_info, View_ID
 }
 
 function Edit
-get_word_complete_from_user_drop_down(Application_Links *app){
+get_word_complete_from_user_drop_down(App *app){
     View_ID view = get_this_ctx_view(app, Access_Always);
     View_Context ctx = view_current_context(app, view);
     Render_Caller_Function *prev_render_caller = ctx.render_caller;
@@ -745,7 +745,7 @@ get_word_complete_from_user_drop_down(Application_Links *app){
                         case Key_Code_F7:
                         case Key_Code_F8:
                         {
-                            i32 index = (in.event.key.code - Key_Code_F1);
+                            i1 index = (in.event.key.code - Key_Code_F1);
                             result.text = menu.options[index];
                             result.range = range;
                             keep_looping_menu = false;

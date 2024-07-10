@@ -21,9 +21,9 @@ managed_ids_init(Base_Allocator *allocator, Managed_ID_Set *set){
 }
 
 internal Managed_ID
-managed_ids_group_highest_id(Managed_ID_Set *set, String_Const_u8 group_name){
+managed_ids_group_highest_id(Managed_ID_Set *set, String group_name){
     Managed_ID result = 0;
-    String_Const_u8 data = make_data(group_name.str, group_name.size);
+    String data = make_data(group_name.str, group_name.size);
     Table_Lookup lookup = table_lookup(&set->name_to_group_table, data);
     if (lookup.found_match){
         u64 val = 0;
@@ -35,10 +35,10 @@ managed_ids_group_highest_id(Managed_ID_Set *set, String_Const_u8 group_name){
 }
 
 internal Managed_ID
-managed_ids_declare(Managed_ID_Set *set, String_Const_u8 group_name, String_Const_u8 name){
+managed_ids_declare(Managed_ID_Set *set, String group_name, String name){
     Managed_ID_Group *group = 0;
     {
-        String_Const_u8 data = make_data(group_name.str, group_name.size);
+        String data = make_data(group_name.str, group_name.size);
         Table_Lookup lookup = table_lookup(&set->name_to_group_table, data);
         if (lookup.found_match){
             u64 val = 0;
@@ -55,7 +55,7 @@ managed_ids_declare(Managed_ID_Set *set, String_Const_u8 group_name, String_Cons
     }
     Managed_ID result = 0;
     {
-        String_Const_u8 data = make_data(name.str, name.size);
+        String data = make_data(name.str, name.size);
         Table_Lookup lookup = table_lookup(&group->name_to_id_table, data);
         if (lookup.found_match){
             table_read(&group->name_to_id_table, lookup, &result);
@@ -71,10 +71,10 @@ managed_ids_declare(Managed_ID_Set *set, String_Const_u8 group_name, String_Cons
 }
 
 function Managed_ID
-managed_ids_get(Managed_ID_Set *set, String_Const_u8 group_name, String_Const_u8 name){
+managed_ids_get(Managed_ID_Set *set, String group_name, String name){
     Managed_ID_Group *group = 0;
     {
-        String_Const_u8 data = make_data(group_name.str, group_name.size);
+        String data = make_data(group_name.str, group_name.size);
         Table_Lookup lookup = table_lookup(&set->name_to_group_table, data);
         if (lookup.found_match){
             u64 val = 0;
@@ -84,7 +84,7 @@ managed_ids_get(Managed_ID_Set *set, String_Const_u8 group_name, String_Const_u8
     }
     Managed_ID result = 0;
     if (group != 0){
-        String_Const_u8 data = make_data(name.str, name.size);
+        String data = make_data(name.str, name.size);
         Table_Lookup lookup = table_lookup(&group->name_to_id_table, data);
         if (lookup.found_match){
             table_read(&group->name_to_id_table, lookup, &result);
@@ -101,9 +101,9 @@ dynamic_variable_block_init(Base_Allocator *allocator, Dynamic_Variable_Block *b
     block->id_to_data_table = make_table_u64_Data(allocator, 20);
 }
 
-internal String_Const_u8
+internal String
 dynamic_variable_get(Dynamic_Variable_Block *block, Managed_ID id, u64 size){
-    String_Const_u8 result = {};
+    String result = {};
     Table_Lookup lookup = table_lookup(&block->id_to_data_table, id);
     if (lookup.found_match){
         table_read(&block->id_to_data_table, lookup, &result);
@@ -136,7 +136,7 @@ lifetime_allocator_init(Base_Allocator *base_allocator, Lifetime_Allocator *life
 ////////////////////////////////
 
 internal void
-dynamic_workspace_init(Lifetime_Allocator *lifetime_allocator, i32 user_type, void *user_back_ptr, Dynamic_Workspace *workspace){
+dynamic_workspace_init(Lifetime_Allocator *lifetime_allocator, i1 user_type, void *user_back_ptr, Dynamic_Workspace *workspace){
     block_zero_struct(workspace);
     heap_init(&workspace->heap, lifetime_allocator->allocator);
     workspace->heap_wrapper = base_allocator_on_heap(&workspace->heap);
@@ -199,12 +199,12 @@ dynamic_workspace_get_pointer(Dynamic_Workspace *workspace, u32 id){
 
 ////////////////////////////////
 
-internal String_Const_u8
-lifetime__key_as_data(Lifetime_Object **members, i32 count){
+internal String
+lifetime__key_as_data(Lifetime_Object **members, i1 count){
     return(make_data(members, sizeof(*members)*count));
 }
 
-internal String_Const_u8
+internal String
 lifetime__key_as_data(Lifetime_Key *key){
     return(lifetime__key_as_data(key->members, key->count));
 }
@@ -215,21 +215,21 @@ lifetime__free_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Key *key, Li
     dynamic_workspace_free(lifetime_allocator, &key->dynamic_workspace);
     
     // Remove From Objects
-    i32 count = key->count;
+    i1 count = key->count;
     Lifetime_Object **object_ptr = key->members;
-    for (i32 i = 0; i < count; i += 1, object_ptr += 1){
+    for (i1 i = 0; i < count; i += 1, object_ptr += 1){
         if (*object_ptr == skip_object) continue;
         
         Lifetime_Key_Ref_Node *delete_point_node = 0;
-        i32 delete_point_i = 0;
+        i1 delete_point_i = 0;
         
-        i32 key_i = 0;
+        i1 key_i = 0;
         Lifetime_Object *object = *object_ptr;
         for (Lifetime_Key_Ref_Node *node = object->key_node_first;
              node != 0;
              node = node->next){
-            i32 one_past_last = clamp_max(ArrayCount(node->keys), object->key_count - key_i);
-            for (i32 j = 0; j < one_past_last; j += 1){
+            i1 one_past_last = clamp_max(ArrayCount(node->keys), object->key_count - key_i);
+            for (i1 j = 0; j < one_past_last; j += 1){
                 if (node->keys[j] == key){
                     delete_point_node = node;
                     delete_point_i = j;
@@ -254,7 +254,7 @@ lifetime__free_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Key *key, Li
     }
     
     // Free
-    String_Const_u8 key_data = lifetime__key_as_data(key);
+    String key_data = lifetime__key_as_data(key);
     table_erase(&lifetime_allocator->key_table, key_data);
     table_erase(&lifetime_allocator->key_check_table, (u64)PtrAsInt(key));
     base_free(lifetime_allocator->allocator, key->members);
@@ -282,7 +282,7 @@ lifetime__object_add_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Object
         insert_on_new_node = true;
     }
     else{
-        i32 next_insert_slot = object->key_count%ArrayCount(last_node->keys);
+        i1 next_insert_slot = object->key_count%ArrayCount(last_node->keys);
         if (next_insert_slot != 0){
             last_node->keys[next_insert_slot] = key;
             object->key_count += 1;
@@ -301,7 +301,7 @@ lifetime__object_add_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Object
 }
 
 internal Lifetime_Object*
-lifetime_alloc_object(Lifetime_Allocator *lifetime_allocator, i32 user_type, void *user_back_ptr){
+lifetime_alloc_object(Lifetime_Allocator *lifetime_allocator, i1 user_type, void *user_back_ptr){
     Lifetime_Object *object = lifetime_allocator->free_objects;
     if (object == 0){
         object = push_array(&lifetime_allocator->node_arena, Lifetime_Object, 1);
@@ -316,12 +316,12 @@ lifetime_alloc_object(Lifetime_Allocator *lifetime_allocator, i32 user_type, voi
 
 internal void
 lifetime__object_free_all_keys(Lifetime_Allocator *lifetime_allocator, Lifetime_Object *lifetime_object){
-    i32 key_i = 0;
+    i1 key_i = 0;
     for (Lifetime_Key_Ref_Node *node = lifetime_object->key_node_first;
          node != 0;
          node = node->next){
-        i32 one_past_last = clamp_max(ArrayCount(node->keys), lifetime_object->key_count - key_i);
-        for (i32 i = 0; i < one_past_last; i += 1){
+        i1 one_past_last = clamp_max(ArrayCount(node->keys), lifetime_object->key_count - key_i);
+        for (i1 i = 0; i < one_past_last; i += 1){
             lifetime__free_key(lifetime_allocator, node->keys[i], lifetime_object);
         }
         key_i += one_past_last;
@@ -335,13 +335,13 @@ lifetime__object_free_all_keys(Lifetime_Allocator *lifetime_allocator, Lifetime_
 
 internal void
 lifetime__object_clear_all_keys(Lifetime_Allocator *lifetime_allocator, Lifetime_Object *lifetime_object){
-    i32 key_i = 0;
+    i1 key_i = 0;
     for (Lifetime_Key_Ref_Node *node = lifetime_object->key_node_first;
          node != 0;
          node = node->next){
-        i32 one_past_last = clamp_max(ArrayCount(node->keys), lifetime_object->key_count - key_i);
+        i1 one_past_last = clamp_max(ArrayCount(node->keys), lifetime_object->key_count - key_i);
         Lifetime_Key **key_ptr = node->keys;
-        for (i32 i = 0; i < one_past_last; i += 1, key_ptr += 1){
+        for (i1 i = 0; i < one_past_last; i += 1, key_ptr += 1){
             dynamic_workspace_clear_contents(&(*key_ptr)->dynamic_workspace);
         }
         key_i += one_past_last;
@@ -361,12 +361,12 @@ lifetime_object_reset(Lifetime_Allocator *lifetime_allocator, Lifetime_Object *l
     dynamic_workspace_clear_contents(&lifetime_object->workspace);
 }
 
-internal i32
-lifetime_sort_object_set__part(Lifetime_Object **ptr_array, i32 first, i32 one_past_last){
-    i32 pivot_index = one_past_last - 1;
+internal i1
+lifetime_sort_object_set__part(Lifetime_Object **ptr_array, i1 first, i1 one_past_last){
+    i1 pivot_index = one_past_last - 1;
     Lifetime_Object *pivot = ptr_array[pivot_index];
-    i32 j = first;
-    for (i32 i = first; i < pivot_index; i += 1){
+    i1 j = first;
+    for (i1 i = first; i < pivot_index; i += 1){
         Lifetime_Object *object = ptr_array[i];
         if (object < pivot){
             Swap(Lifetime_Object*, ptr_array[i], ptr_array[j]);
@@ -378,32 +378,32 @@ lifetime_sort_object_set__part(Lifetime_Object **ptr_array, i32 first, i32 one_p
 }
 
 internal void
-lifetime_sort_object_set__quick(Lifetime_Object **ptr_array, i32 first, i32 one_past_last){
+lifetime_sort_object_set__quick(Lifetime_Object **ptr_array, i1 first, i1 one_past_last){
     if (first + 1 < one_past_last){
-        i32 pivot = lifetime_sort_object_set__part(ptr_array, first, one_past_last);
+        i1 pivot = lifetime_sort_object_set__part(ptr_array, first, one_past_last);
         lifetime_sort_object_set__quick(ptr_array, first, pivot);
         lifetime_sort_object_set__quick(ptr_array, pivot + 1, one_past_last);
     }
 }
 
-internal i32
-lifetime_sort_and_dedup_object_set(Lifetime_Object **ptr_array, i32 count){
+internal i1
+lifetime_sort_and_dedup_object_set(Lifetime_Object **ptr_array, i1 count){
     lifetime_sort_object_set__quick(ptr_array, 0, count);
     Lifetime_Object **ptr_write = ptr_array + 1;
     Lifetime_Object **ptr_read  = ptr_array + 1;
-    for (i32 i = 1; i < count; i += 1, ptr_read += 1){
+    for (i1 i = 1; i < count; i += 1, ptr_read += 1){
         if (ptr_read[-1] < ptr_read[0]){
             *ptr_write = *ptr_read;
             ptr_write += 1;
         }
     }
-    return((i32)(ptr_write - ptr_array));
+    return((i1)(ptr_write - ptr_array));
 }
 
 internal Lifetime_Key*
-lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Object **object_ptr_array, i32 count){
+lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Object **object_ptr_array, i1 count){
     {
-        String_Const_u8 key_data = lifetime__key_as_data(object_ptr_array, count);
+        String key_data = lifetime__key_as_data(object_ptr_array, count);
         Table_Lookup lookup = table_lookup(&lifetime_allocator->key_table, key_data);
         if (lookup.found_match){
             u64 val = 0;
@@ -424,14 +424,14 @@ lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, 
     
     // Add to Objects
     Lifetime_Object **object_ptr = object_ptr_array;
-    for (i32 i = 0; i < count; i += 1, object_ptr += 1){
+    for (i1 i = 0; i < count; i += 1, object_ptr += 1){
         Lifetime_Object *object = *object_ptr;
         lifetime__object_add_key(lifetime_allocator, object, new_key);
     }
     
     // Initialize
     u64 new_memory_size = sizeof(Lifetime_Object*)*count;
-    String_Const_u8 new_memory = base_allocate(lifetime_allocator->allocator, new_memory_size);
+    String new_memory = base_allocate(lifetime_allocator->allocator, new_memory_size);
     new_key->members = (Lifetime_Object**)new_memory.str;
     block_copy_count(new_key->members, object_ptr_array, count);
     new_key->count = count;
@@ -440,7 +440,7 @@ lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, 
                            &new_key->dynamic_workspace);
     
     {
-        String_Const_u8 key_data = lifetime__key_as_data(new_key);
+        String key_data = lifetime__key_as_data(new_key);
         u64 new_key_val = (u64)PtrAsInt(new_key);
         table_insert(&lifetime_allocator->key_table, key_data, new_key_val);
         table_insert(&lifetime_allocator->key_check_table, new_key_val, new_key_val);
@@ -474,9 +474,9 @@ get_dynamic_object_memory_ptr(Managed_Object_Standard_Header *header){
 }
 
 internal Managed_Object
-managed_object_alloc_managed_memory(Dynamic_Workspace *workspace, i32 item_size, i32 count, void **ptr_out){
-    i32 size = item_size*count;
-    String_Const_u8 new_memory = base_allocate(&workspace->heap_wrapper, sizeof(Managed_Memory_Header) + size);
+managed_object_alloc_managed_memory(Dynamic_Workspace *workspace, i1 item_size, i1 count, void **ptr_out){
+    i1 size = item_size*count;
+    String new_memory = base_allocate(&workspace->heap_wrapper, sizeof(Managed_Memory_Header) + size);
     void *ptr = new_memory.str;
     Managed_Memory_Header *header = (Managed_Memory_Header*)ptr;
     header->std_header.type = ManagedObjectType_Memory;
@@ -490,9 +490,9 @@ managed_object_alloc_managed_memory(Dynamic_Workspace *workspace, i32 item_size,
 }
 
 internal Managed_Object
-managed_object_alloc_buffer_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id, i32 count, Marker **markers_out){
-    i32 size = count*sizeof(Marker);
-    String_Const_u8 new_memory = base_allocate(&workspace->heap_wrapper, size + sizeof(Managed_Buffer_Markers_Header));
+managed_object_alloc_buffer_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id, i1 count, Marker **markers_out){
+    i1 size = count*sizeof(Marker);
+    String new_memory = base_allocate(&workspace->heap_wrapper, size + sizeof(Managed_Buffer_Markers_Header));
     void *ptr = new_memory.str;
     Managed_Buffer_Markers_Header *header = (Managed_Buffer_Markers_Header*)ptr;
     header->std_header.type = ManagedObjectType_Markers;

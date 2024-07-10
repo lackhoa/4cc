@@ -1,23 +1,23 @@
 global char* keycode_lut[2*Key_Code_COUNT];
 
 function void init_keycode_lut(){
-    for(i32 i=0; i<2*Key_Code_COUNT; i++){
+    for(i1 i=0; i<2*Key_Code_COUNT; i++){
         keycode_lut[i] = "";
     }
-    i32 shift = Key_Code_COUNT;
+    i1 shift = Key_Code_COUNT;
     char *lowercase_alpha = "a\0b\0c\0d\0e\0f\0g\0h\0i\0j\0k\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0w\0x\0y\0z";
-    for(i32 i='a'; i<='z'; i++){
-        i32 index = i-'a';
+    for(i1 i='a'; i<='z'; i++){
+        i1 index = i-'a';
         keycode_lut[Key_Code_A+index+shift] = key_code_name[Key_Code_A+index];
         keycode_lut[Key_Code_A+index] = lowercase_alpha + 2*index;
     }
     char *shift_digit = ")\0!\0@\0#\0$\0%\0^\0&\0*\0(";
-    for(i32 i=0; i<=9; i++){
+    for(i1 i=0; i<=9; i++){
         keycode_lut[Key_Code_0+i] = key_code_name[Key_Code_0+i];
         keycode_lut[Key_Code_0+i+shift] = shift_digit + 2*i;;
     }
     char *function_keys = "F1\0F2\0F3\0F4\0F5\0F6\0F7\0F8\0F9\0F10\0F11\0F12";
-    for(i32 i=0; i<12; i++){
+    for(i1 i=0; i<12; i++){
         keycode_lut[Key_Code_F1+i] = keycode_lut[Key_Code_F1+i+shift] = function_keys + (3*i + (i>9)*(i-9));
     }
     

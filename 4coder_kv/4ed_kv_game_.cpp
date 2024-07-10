@@ -12,10 +12,8 @@ global Ed_API const_ed_api;
 global b32 global_game_dll_lock;
 global b32 global_game_enabled = true;  // NOTE: Prevent crash
 global b32 global_game_on_readonly;
-global b32 global_auxiliary_viewports_on = true;
+global b32 global_auxiliary_viewports_on;
 global b32 global_debug_camera_on;
-
-void view_set_buffer_named(App *app, String8 name);
 
 internal b32 
 turn_game_on() 
@@ -32,7 +30,10 @@ turn_game_on()
  }
 }
 
-force_inline void turn_game_off() { global_game_on_readonly = false; }
+force_inline void turn_game_off()
+{
+ global_game_on_readonly = false;
+}
 
 internal void
 toggle_the_game(App *app)
@@ -43,13 +44,11 @@ toggle_the_game(App *app)
  if (global_game_on_readonly)
  {
   View_ID view = get_active_view(app, Access_Always);
-  View_ID game_view = view;
   if ( is_view_to_the_right(app, view) )
   {// NOTE: switch to the left
-   View_ID other_view = get_other_primary_view(app, view, Access_Always, true);
-   game_view = other_view;
+   view = get_other_primary_view(app, view, Access_Always, true);
   }
-  view_set_buffer_named(app, game_view, GAME_BUFFER_NAMES[0]);
+  view_set_buffer_named(app, view, GAME_BUFFER_NAMES[0]);
  }
 }
 
@@ -106,21 +105,17 @@ CUSTOM_DOC("")
  global_debug_camera_on = !global_debug_camera_on;
 }
 
-global u32 *global_csg_buffers[GAME_VIEWPORT_COUNT];
-
 internal void
 init_game(App *app)
 {
- Arena bootstrap_arena = make_arena_system();
- {
-  i32 W = 1920;
-  i32 H = 1080;
-  for_i32(index,0,4)
-  {
-   global_csg_buffers[index] = push_array(&bootstrap_arena, u32, W*H);
-  }
- }
+ u64 memsize = MB(256);
+ // IMPORTANT: ;game_bootstrap_arena_zero_initialized
+ u8 *game_memory = cast(u8 *)system_memory_allocate(memsize, strlit("game memory"));
+ Arena bootstrap_arena = make_static_arena(game_memory, memsize);
  global_game_state = global_game_code.game_init(&bootstrap_arena, &const_ed_api, app);
+ 
+ //@ReferenceImages
+ stbi_set_flip_vertically_on_load(true);
 }
 
 // TODO: The "delete old file" operation sometimes fail on us, 
@@ -128,81 +123,85 @@ init_game(App *app)
 internal b32
 load_latest_game_code(App *app, b32 *out_loaded)
 {// NOTE(kv): Load dynamc game code
- Scratch_Block scratch(app);
- b32 loaded = false;
- b32 ok = true;
- 
- if ( !global_game_dll_lock )
+ if (global_game_on_readonly)
  {
-  u64 mtime1 = file_mtime(GAME_DLL_PATH);
-  if (( ok = mtime1 != 0 ))
+  Scratch_Block scratch(app);
+  b32 loaded = false;
+  b32 ok = true;
+  
+  if ( !global_game_dll_lock )
   {
-   String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-   b32 lock_file_exists = file_mtime( pjoin(scratch, binary_dir, "game_dll.lock") ) > 0;
-   if (!lock_file_exists)
+   u64 mtime1 = file_mtime(GAME_DLL_PATH);
+   if (( ok = mtime1 != 0 ))
    {
+    String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+    b32 lock_file_exists = file_mtime( pjoin(scratch, binary_dir, "game_dll.lock") ) > 0;
+    if (!lock_file_exists)
+    {
 #if KV_INTERNAL
 # define TEMP_DLL_PREFIX "dev_"
 #else
 # define TEMP_DLL_PREFIX ""
 #endif
-    String GAME2_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game2.dll");
-    String GAME3_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game3.dll");
+     String GAME2_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game2.dll");
+     String GAME3_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game3.dll");
 #undef TEMP_DLL_PREFIX
-    
-    b32 never_loaded_before = (current_game_dll.mtime == 0);
-    if (never_loaded_before || 
-        (current_game_dll.mtime < mtime1))
-    {// NOTE: We have new game code
-     // NOTE(kv): Ping-pong temp DLL, to avoid hickups
-     u32 temp_index = 2;
-     if (current_game_dll.temp_index == 2) { temp_index = 3; }
      
-     String temp_path = (temp_index == 2) ? GAME2_DLL : GAME3_DLL;
-     local_persist gbDllHandle library = {};
-     
-     if (( ok = copy_file(GAME_DLL_PATH, temp_path, false) ))
-     {
-      // NOTE(kv): We want to still display old game DLL for as long as possible, until load has succeeded.
-      // So we can compare results better and avoid nasty black screens.
-      gbDllHandle new_library = gb_dll_load( to_c_string(scratch, temp_path) );
-      if (( ok = new_library != 0 ))
+     b32 never_loaded_before = (current_game_dll.mtime == 0);
+     if (never_loaded_before || 
+         (current_game_dll.mtime < mtime1))
+     {// NOTE: We have new game code
+      // NOTE(kv): Ping-pong temp DLL, to avoid hickups
+      u32 temp_index = 2;
+      if (current_game_dll.temp_index == 2) { temp_index = 3; }
+      
+      String temp_path = (temp_index == 2) ? GAME2_DLL : GAME3_DLL;
+      local_persist gbDllHandle library = {};
+      
+      if (( ok = copy_file(GAME_DLL_PATH, temp_path, false) ))
       {
-       if (library)
+       // NOTE(kv): We want to still display old game DLL for as long as possible, until load has succeeded.
+       // So we can compare results better and avoid nasty black screens.
+       gbDllHandle new_library = gb_dll_load( to_c_string(scratch, temp_path) );
+       if (( ok = new_library != 0 ))
        {
-        ok = gb_dll_unload(library);
-        if (!ok) { vim_set_bottom_text_lit("failed to unload old dll"); }
-       }
-       
-       if (ok)
-       {
-        library = new_library;
-        
-        auto game_api_export = ((game_api_export_type *) gb_dll_proc_address(library, "game_api_export"));
-        game_api_export(&global_game_code);
-        if ( never_loaded_before )
+        if (library)
         {
-         init_game(app);
-        }
-        else
-        {// NOTE: "game_reload" is itself reloaded
-         global_game_code.game_reload(global_game_state, &const_ed_api);
+         ok = gb_dll_unload(library);
+         if (!ok) { vim_set_bottom_text_lit("failed to unload old dll"); }
         }
         
-        current_game_dll = { mtime1, temp_index };
-        loaded = true;
+        if (ok)
+        {
+         library = new_library;
+         
+         auto game_api_export = ((game_api_export_type *) gb_dll_proc_address(library, "game_api_export"));
+         game_api_export(&global_game_code);
+         if ( never_loaded_before )
+         {
+          init_game(app);
+         }
+         else
+         {// NOTE: "game_reload" is itself reloaded
+          global_game_code.game_reload(global_game_state, &const_ed_api);
+         }
+         
+         current_game_dll = { mtime1, temp_index };
+         loaded = true;
+        }
        }
+       else { vim_set_bottom_text_lit("failed to load dll"); }
       }
-      else { vim_set_bottom_text_lit("failed to load dll"); }
+      else { vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
      }
-     else { vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
     }
    }
   }
+  
+  if (out_loaded) {*out_loaded = loaded;}
+  return ok;
  }
- 
- if (out_loaded) {*out_loaded = loaded;}
- return ok;
+ else {return false;}
 }
 
 internal i32
@@ -227,6 +226,7 @@ get_active_game_viewport_id(App *app)
  return get_buffer_game_viewport_id(app, buffer);
 }
 
+internal Image_Load_Info get_image_load_info(void);
 
 internal void
 maybe_update_game(App *app, Frame_Info frame)
@@ -248,11 +248,12 @@ maybe_update_game(App *app, Frame_Info frame)
     pack_modifiers(set.mods, set.count),
     global_game_key_states,
     global_game_key_state_changes,
-    frame.animation_dt,
-    frame.literal_dt,
+    frame,
     global_debug_camera_on,
+    get_mouse_state(app),
    };
-   b32 should_animate_next_frame = game->game_update(global_game_state, app, active_viewport_id, input);
+   Image_Load_Info image_load_info = get_image_load_info();
+   b32 should_animate_next_frame = game->game_update(global_game_state, app, active_viewport_id, input, image_load_info);
    if (should_animate_next_frame) { animate_next_frame(app); }
    
    block_zero_array(global_game_key_state_changes);
@@ -271,8 +272,7 @@ render_game(App *app, i32 viewport, Frame_Info frame)
   {
    b32 should_animate_next_frame = game->game_viewport_update(global_game_state, viewport, frame.animation_dt);
    if (should_animate_next_frame) { animate_next_frame(app); }
-   game->game_render(global_game_state, app, viewport, get_mouse_state(app),
-                     global_csg_buffers[viewport-1]);
+   game->game_render(global_game_state, app, viewport, get_mouse_state(app));
   }
  }
 }
@@ -304,4 +304,4 @@ command_game_last_preset(App *app)
  }
 }
 
-//~
+//~ NOTE: EOF

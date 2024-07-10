@@ -12,9 +12,10 @@
 
 #include <stdio.h>
 
-#define FPS 60
-#define frame_useconds (Million(1) / FPS)
-#define frame_nseconds (Billion(1) / FPS)
+global_const i1 FPS            = 60;
+global_const v1 frame_seconds  = (1.f / v1(FPS));
+global_const v1 frame_useconds = 1e6 * frame_seconds;
+global_const v1 frame_nseconds = 1e9 * frame_seconds;
 #define SLASH '/'
 #define DLL "so"
 
@@ -136,7 +137,7 @@ struct Linux_Input_Chunk_Transient {
 };
 
 struct Linux_Input_Chunk_Persistent {
-    Vec2_i32 mouse;
+    Vec2_i1 mouse;
     Input_Modifier_Set_Fixed modifiers;
     b8 mouse_l;
     b8 mouse_r;
@@ -151,7 +152,7 @@ struct Linux_Input_Chunk {
 struct Linux_Memory_Tracker_Node {
     Linux_Memory_Tracker_Node* prev;
     Linux_Memory_Tracker_Node* next;
-    String_Const_u8 location;
+    String location;
     u64 size;
 };
 
@@ -183,8 +184,8 @@ struct Linux_Vars {
     XCursor xcursors[APP_MOUSE_CURSOR_COUNT];
     Application_Mouse_Cursor cursor;
     XCursor hidden_cursor;
-    i32 cursor_show;
-    i32 prev_cursor_show;
+    i1 cursor_show;
+    i1 prev_cursor_show;
     
     Node free_linux_objects;
     Node timer_objects;
@@ -196,7 +197,7 @@ struct Linux_Vars {
     int memory_tracker_count;
     
     Arena clipboard_arena;
-    String_Const_u8 clipboard_contents;
+    String clipboard_contents;
     b32 received_new_clipboard;
     b32 clipboard_catch_all;
     
@@ -230,7 +231,7 @@ global Render_Target render_target;
 
 // Defererencing an epoll_event's .data.ptr will always give one of these event types.
 
-typedef i32 Epoll_Kind;
+typedef i1 Epoll_Kind;
 enum {
     EPOLL_STEP_TIMER,
     EPOLL_X11,
@@ -251,7 +252,7 @@ internal Epoll_Kind epoll_tag_cli_pipe = EPOLL_CLI_PIPE;
 
 ////////////////////////////
 
-typedef i32 Linux_Object_Kind;
+typedef i1 Linux_Object_Kind;
 enum {
     LinuxObjectKind_ERROR = 0,
     LinuxObjectKind_Timer = 1,
@@ -297,7 +298,7 @@ linux_alloc_object(Linux_Object_Kind kind){
     }
     
     if (result == NULL) {
-        i32 count = 512;
+        i1 count = 512;
         
         Linux_Object* objects = (Linux_Object*)system_memory_allocate(
                                                                       sizeof(Linux_Object) * count,
@@ -306,7 +307,7 @@ linux_alloc_object(Linux_Object_Kind kind){
         
         objects[0].node.prev = &linuxvars.free_linux_objects;
         linuxvars.free_linux_objects.next = &objects[0].node;
-        for (i32 i = 1; i < count; ++i) {
+        for (i1 i = 1; i < count; ++i) {
             objects[i - 1].node.next = &objects[i].node;
             objects[i].node.prev = &objects[i - 1].node;
         }
@@ -343,13 +344,13 @@ linux_compare_file_infos(File_Info** a, File_Info** b) {
         return a_hidden - b_hidden;
     }
     
-    // push_stringf seems to null terminate
+    // push_stringfz seems to null terminate
     return strcoll((char*)(*a)->file_name.str, (char*)(*b)->file_name.str);
 }
 
 internal int
 linux_system_get_file_list_filter(const struct dirent *dirent) {
-    String_Const_u8 file_name = SCu8((u8*)dirent->d_name);
+    String file_name = SCu8((u8*)dirent->d_name);
     if (string_match(file_name, string_u8_litexpr("."))) {
         return 0;
     }
@@ -382,7 +383,7 @@ linux_file_attributes_from_struct_stat(struct stat* file_stat) {
 
 internal void
 linux_schedule_step(){
-    u64 now  = system_now_time();
+    u64 now  = system_time_usecond();
     u64 diff = (now - linuxvars.last_step_time);
     
     struct itimerspec its = {};
@@ -510,7 +511,7 @@ linux_get_xsettings_dpi(Display* dpy, int screen){
         switch (h->type){
             case XSettingsTypeInt: {
                 if (strncmp(h->name, "Xft/DPI", h->name_len) == 0){
-                    dpi = *(i32*)p;
+                    dpi = *(i1*)p;
                     if (dpi != -1) dpi /= 1024;
                 }
                 p += 4;
@@ -594,11 +595,11 @@ internal Face*
 font_make_face(Arena* arena, Face_Description* description, f32 scale_factor) {
     
     Face_Description local_description = *description;
-    String_Const_u8* name = &local_description.font.file_name;
+    String* name = &local_description.font.file_name;
     
     // if description->font.file_name is a relative path, prepend the font directory.
     if(string_get_character(*name, 0) != '/') {
-        String_Const_u8 binary = system_get_path(arena, SystemPath_BinaryDirectory);
+        String binary = system_get_path(arena, SystemPath_BinaryDirectory);
         *name = push_u8_stringf(arena, "%.*sfonts/%.*s", string_expand(binary), string_expand(*name));
     }
     
@@ -916,7 +917,7 @@ linux_x11_init(int argc, char** argv, Plat_Settings* settings) {
     b32 found_style = false;
     
     if (!XGetIMValues(linuxvars.xim, XNQueryInputStyle, &styles, NULL) && styles){
-        for (i32 i = 0; i < styles->count_styles; ++i){
+        for (i1 i = 0; i < styles->count_styles; ++i){
             XIMStyle style = styles->supported_styles[i];
             if (style == style_want) {
                 found_style = true;
@@ -1288,7 +1289,7 @@ linux_clipboard_send(XSelectionRequestEvent* req) {
     XSendEvent(req->display, req->requestor, True, 0, (XEvent*)&rsp);
 }
 
-internal String_Const_u8
+internal String
 linux_clipboard_recv(Arena *arena){
     Atom type;
     int fmt;
@@ -1304,7 +1305,7 @@ linux_clipboard_recv(Arena *arena){
                                     &type, &fmt, &nitems,
                                     &bytes_left, &data);
     
-    String_Const_u8 clip = {};
+    String clip = {};
     if(result == Success && fmt == 8){
         clip= push_string_copy(arena, SCu8(data, nitems));
         XFree(data);
@@ -1324,7 +1325,7 @@ linux_clipboard_recv(XSelectionEvent* ev) {
     }
     
     Scratch_Block scratch(&linuxvars.tctx);
-    String_Const_u8 clip = linux_clipboard_recv(scratch);
+    String clip = linux_clipboard_recv(scratch);
     if (clip.size > 0){
         linalloc_clear(&linuxvars.clipboard_arena);
         linuxvars.clipboard_contents = push_string_copy(&linuxvars.clipboard_arena, clip);
@@ -1340,7 +1341,7 @@ system_get_clipboard_sig(){
 }
 
 internal void
-system_post_clipboard(String_Const_u8 str, i32 index){
+system_post_clipboard(String str, i1 index){
     // TODO(inso): index?
     //LINUX_FN_DEBUG("%.*s", string_expand(str));
     linalloc_clear(&linuxvars.clipboard_arena);
@@ -1359,7 +1360,7 @@ system_get_clipboard_catch_all(void){
     return linuxvars.clipboard_catch_all;
 }
 
-internal String_Const_u8
+internal String
 linux_filter_text(Arena* arena, u8* buf, int len) {
     u8* const result = push_array(arena, u8, len);
     u8* outp = result;
@@ -1498,7 +1499,7 @@ linux_handle_x11_events() {
                 
                 Input_Event* text_event = NULL;
                 if(status == XLookupChars || status == XLookupBoth) {
-                    String_Const_u8 str = linux_filter_text(&linuxvars.frame_arena, buf, len);
+                    String str = linux_filter_text(&linuxvars.frame_arena, buf, len);
                     if(str.size) {
                         // printf(" push txt %d\n", key);
                         text_event = push_input_event(&linuxvars.frame_arena, &linuxvars.input.trans.event_list);
@@ -1618,8 +1619,8 @@ linux_handle_x11_events() {
             } break;
             
             case ConfigureNotify: {
-                i32 w = event.xconfigure.width;
-                i32 h = event.xconfigure.height;
+                i1 w = event.xconfigure.width;
+                i1 h = event.xconfigure.height;
                 
                 if (w != render_target.width || h != render_target.height){
                     should_step = true;
@@ -1747,8 +1748,8 @@ int
 main(int argc, char **argv){
     // NOTE(allen): fucking bullshit. someone get my shit togeth :(er
     
-    for (i32 i = 0; i < argc; i += 1){
-        String_Const_u8 arg = SCu8(argv[i]);
+    for (i1 i = 0; i < argc; i += 1){
+        String arg = SCu8(argv[i]);
         if (string_match(arg, str8_lit("-L"))){
             log_os_enabled = true;
         }
@@ -1802,10 +1803,10 @@ main(int argc, char **argv){
     {
         App_Get_Functions *get_funcs = 0;
         Scratch_Block scratch(&linuxvars.tctx);
-        List_String_Const_u8 search_list = {};
+        List_String search_list = {};
         def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
         
-        String_Const_u8 core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.so"));
+        String core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.so"));
         if (system_load_library(scratch, core_path, &core_library)){
             get_funcs = (App_Get_Functions*)system_get_proc(core_library, "app_get_functions");
             if (get_funcs != 0){
@@ -1833,15 +1834,15 @@ main(int argc, char **argv){
     void *base_ptr = 0;
     {
         Scratch_Block scratch(&linuxvars.tctx);
-        String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
+        String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
         
         char **files = 0;
-        i32 *file_count = 0;
+        i1 *file_count = 0;
         base_ptr = app.read_command_line(&linuxvars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
         /* TODO(inso): what is this doing?
         {
-            i32 end = *file_count;
-            i32 i = 0, j = 0;
+            i1 end = *file_count;
+            i1 i = 0, j = 0;
             for (; i < end; ++i){
                 if (system_file_can_be_made(scratch, (u8*)files[i])){
                     files[j] = files[i];
@@ -1867,12 +1868,12 @@ main(int argc, char **argv){
         char custom_fail_init_apis[] = "Failed to load custom code due to missing 'init_apis' symbol.  Try rebuilding with buildsuper";
         
         Scratch_Block scratch(&linuxvars.tctx);
-        String_Const_u8 default_file_name = string_u8_litexpr("custom_4coder.so");
-        List_String_Const_u8 search_list = {};
+        String default_file_name = string_u8_litexpr("custom_4coder.so");
+        List_String search_list = {};
         def_search_list_add_system_path(scratch, &search_list, SystemPath_UserDirectory);
         def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
-        String_Const_u8 custom_file_names[2] = {};
-        i32 custom_file_count = 1;
+        String custom_file_names[2] = {};
+        i1 custom_file_count = 1;
         if (plat_settings.custom_dll != 0){
             custom_file_names[0] = SCu8(plat_settings.custom_dll);
             if (!plat_settings.custom_dll_is_strict){
@@ -1883,8 +1884,8 @@ main(int argc, char **argv){
         else{
             custom_file_names[0] = default_file_name;
         }
-        String_Const_u8 custom_file_name = {};
-        for (i32 i = 0; i < custom_file_count; i += 1){
+        String custom_file_name = {};
+        for (i1 i = 0; i < custom_file_count; i += 1){
             custom_file_name = def_search_get_full_path(scratch, &search_list, custom_file_names[i]);
             if (custom_file_name.size > 0){
                 break;
@@ -1923,7 +1924,7 @@ main(int argc, char **argv){
     // app init
     {
         Scratch_Block scratch(&linuxvars.tctx);
-        String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
+        String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
         app.init(&linuxvars.tctx, &render_target, base_ptr, curdir, custom);
     }
     
@@ -1932,7 +1933,7 @@ main(int argc, char **argv){
     
     linux_schedule_step();
     b32 first_step = true;
-    u64 timer_start = system_now_time();
+    u64 timer_start = system_time_usecond();
     
     for (;;) {
         
@@ -1959,7 +1960,7 @@ main(int argc, char **argv){
             continue;
         }
         
-        linuxvars.last_step_time = system_now_time();
+        linuxvars.last_step_time = system_time_usecond();
         
         // NOTE(allen): Frame Clipboard Input
         // Request clipboard contents from X11 on first step, or every step if they don't have XFixes notification ability.

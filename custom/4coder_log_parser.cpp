@@ -13,10 +13,10 @@
 #pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 internal u64
-log_parse__string_code(Log_Parse *parse, String_Const_u8 string, Log_String_Source string_source){
+log_parse__string_code(Log_Parse *parse, String string, Log_String_Source string_source){
     u64 result = 0;
     if (string.size > 0){
-        String_Const_u8 data = make_data(string.str, string.size);
+        String data = make_data(string.str, string.size);
         Table_Lookup lookup = table_lookup(&parse->string_to_id_table, data);
         if (lookup.found_match){
             table_read(&parse->string_to_id_table, lookup, &result);
@@ -34,10 +34,10 @@ log_parse__string_code(Log_Parse *parse, String_Const_u8 string, Log_String_Sour
     return(result);
 }
 
-internal String_Const_u8
+internal String
 log_parse__get_string(Log_Parse *parse, u64 code){
     Table_Lookup lookup = table_lookup(&parse->id_to_string_table, code);
-    String_Const_u8 result = {};
+    String result = {};
     if (lookup.found_match){
         table_read(&parse->id_to_string_table, lookup, &result);
     }
@@ -46,7 +46,7 @@ log_parse__get_string(Log_Parse *parse, u64 code){
 
 internal Log_Event*
 log_parse__event(Log_Parse *parse,
-                 String_Const_u8 filename, String_Const_u8 line_number, String_Const_u8 event_name){
+                 String filename, String line_number, String event_name){
     Log_Event *new_event = push_array(parse->arena, Log_Event, 1);
     sll_queue_push(parse->first_event, parse->last_event, new_event);
     parse->event_count += 1;
@@ -58,7 +58,7 @@ log_parse__event(Log_Parse *parse,
 }
 
 internal Log_Tag*
-log_parse__tag(Log_Parse *parse, Log_Event *event, String_Const_u8 tag_name, String_Const_u8 tag_value){
+log_parse__tag(Log_Parse *parse, Log_Event *event, String tag_name, String tag_value){
     Log_Tag *new_tag = push_array(parse->arena, Log_Tag, 1);
     sll_queue_push(event->first_tag, event->last_tag, new_tag);
     event->tag_count += 1;
@@ -78,7 +78,7 @@ log_parse__tag(Log_Parse *parse, Log_Event *event, String_Const_u8 tag_name, Str
                 if (tag_value.str[tag_value.size - 1] == '"'){
                     tag_value = string_chop(tag_value, 1);
                 }
-                String_Const_u8 escape = string_interpret_escapes(parse->arena, tag_value);
+                String escape = string_interpret_escapes(parse->arena, tag_value);
                 new_tag->value.kind = LogTagKind_String;
                 new_tag->value.value = log_parse__string_code(parse, escape, LogParse_PreAllocatedString);
             }
@@ -122,7 +122,7 @@ internal Log_Event_List*
 log_parse__get_or_make_list_tag_value(Log_Parse *parse, Log_Tag *tag){
     Log_Event_List *result = 0;
     Log_Tag_Name_Value key = {tag->name, tag->value};
-    String_Const_u8 data_key = make_data_struct(&key);
+    String data_key = make_data_struct(&key);
     Table_Lookup lookup = table_lookup(&parse->tag_value_to_event_list_table, data_key);
     if (lookup.found_match){
         u64 val = 0;
@@ -166,7 +166,7 @@ log_parse__get_or_make_list_tag_name(Log_Parse *parse, Log_Tag *tag){
 }
 
 internal Log_Parse
-make_log_parse(Arena *arena, String_Const_u8 source){
+make_log_parse(Arena *arena, String source){
     Log_Parse parse = {};
     parse.arena = arena;
     parse.string_id_counter = 1;
@@ -175,15 +175,15 @@ make_log_parse(Arena *arena, String_Const_u8 source){
     
     for (;source.size > 0;){
         u64 end_of_line = string_find_first(source, '\n');
-        String_Const_u8 line = string_prefix(source, end_of_line);
+        String line = string_prefix(source, end_of_line);
         line = string_skip_chop_whitespace(line);
         source = string_skip(source, end_of_line + 1);
         
-        String_Const_u8 src_filename = {};
-        String_Const_u8 src_line_number = {};
+        String src_filename = {};
+        String src_line_number = {};
         b32 got_source_position = false;
         
-        String_Const_u8 whole_line = line;
+        String whole_line = line;
         
         {
             u64 colon1 = string_find_first(line, ':');
@@ -218,7 +218,7 @@ make_log_parse(Arena *arena, String_Const_u8 source){
         
         if (got_source_position){
             u64 bracket_open = string_find_first(line, '[');
-            String_Const_u8 event_name = string_prefix(line, bracket_open);
+            String event_name = string_prefix(line, bracket_open);
             event_name = string_skip_chop_whitespace(event_name);
             line = string_skip(line, bracket_open + 1);
             
@@ -227,14 +227,14 @@ make_log_parse(Arena *arena, String_Const_u8 source){
             
             for (;line.size > 0;){
                 u64 bracket_close = string_find_first(line, ']');
-                String_Const_u8 tag = string_prefix(line, bracket_close);
+                String tag = string_prefix(line, bracket_close);
                 line = string_skip(line, bracket_close + 1);
                 bracket_open = string_find_first(line, '[');
                 line = string_skip(line, bracket_open + 1);
                 
                 u64 equal_sign = string_find_first(tag, '=');
-                String_Const_u8 tag_name = string_prefix(tag, equal_sign);
-                String_Const_u8 tag_contents = string_skip(tag, equal_sign + 1);
+                String tag_name = string_prefix(tag, equal_sign);
+                String tag_contents = string_skip(tag, equal_sign + 1);
                 
                 log_parse__tag(&parse, event, tag_name, tag_contents);
             }
@@ -432,7 +432,7 @@ log_filter_set__free_filter(Log_Filter_Set *set, Log_Filter *filter){
 }
 
 internal void
-log_graph_fill(Application_Links *app, Rect_f32 layout_region, Face_ID face_id){
+log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
     if (log_parse.arena != 0){
         if (log_graph.holding_temp){
             end_temp(log_graph.temp);
@@ -579,8 +579,8 @@ log_graph_fill(Application_Links *app, Rect_f32 layout_region, Face_ID face_id){
         
         Face_Metrics metrics = get_face_metrics(app, face_id);
         f32 line_height = metrics.line_height;
-        f32 box_h = f32_floor32(line_height*1.5f);
-        f32 box_w = f32_floor32(rect_width(event_list_region)/cast(f32)log_graph.bucket_count);
+        f32 box_h = floorv1(line_height*1.5f);
+        f32 box_w = floorv1(rect_width(event_list_region)/cast(f32)log_graph.bucket_count);
         f32 y_cursor = event_list_region.y0 - layout_region.y0;
         
         if (log_graph.bucket_count > 0){
@@ -631,7 +631,7 @@ log_graph_fill(Application_Links *app, Rect_f32 layout_region, Face_ID face_id){
 }
 
 internal void
-log_parse_fill(Application_Links *app, Buffer_ID buffer){
+log_parse_fill(App *app, Buffer_ID buffer){
     if (log_arena.base_allocator == 0){
         log_arena = make_arena_system();
     }
@@ -641,14 +641,14 @@ log_parse_fill(Application_Links *app, Buffer_ID buffer){
     log_filter_set_init(&log_filter_set);
     log_filter_set_init(&log_preview_set);
     
-    String_Const_u8 log_text = push_whole_buffer(app, &log_arena, buffer);
+    String log_text = push_whole_buffer(app, &log_arena, buffer);
     log_parse = make_log_parse(&log_arena, log_text);
 }
 
 internal void
 log_graph_render__tag(Arena *arena, Fancy_Line *line,
                       Log_Parse *log, Log_Tag *tag){
-    String_Const_u8 tag_name = log_parse__get_string(log, tag->name);
+    String tag_name = log_parse__get_string(log, tag->name);
     push_fancy_stringf(arena, line, f_white, "[");
     push_fancy_string(arena, line, f_green, tag_name);
     push_fancy_stringf(arena, line, f_white, "=");
@@ -656,14 +656,14 @@ log_graph_render__tag(Arena *arena, Fancy_Line *line,
         push_fancy_stringf(arena, line, f_pink, "0x%llx", tag->value.value_s);
     }
     else if (tag->value.kind == LogTagKind_String){
-        String_Const_u8 value = log_parse__get_string(log, tag->value.value);
+        String value = log_parse__get_string(log, tag->value.value);
         push_fancy_string(arena, line, f_pink, value);
     }
     push_fancy_stringf(arena, line, f_white, "]");
 }
 
 internal void
-log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
+log_graph_render(App *app, Frame_Info frame_info, View_ID view){
     if (log_parse.arena != 0){
         ////////////////////////////////
         View_ID active_view = get_active_view(app, Access_Always);
@@ -691,7 +691,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
         log_graph.selected_event = selected_event;
         
         Mouse_State mouse = get_mouse_state(app);
-        Vec2_f32 m_p = vec2(mouse.p) - inner.p0;
+        Vec2_f32 m_p = V2(mouse.p) - inner.p0;
         
         Face_Metrics metrics = get_face_metrics(app, log_graph.face_id);
         f32 line_height = metrics.line_height;
@@ -725,7 +725,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             
             Log_Event *event = box_node->event;
             
-            String_Const_u8 event_name = log_parse__get_string(&log_parse, event->event_name);
+            String event_name = log_parse__get_string(&log_parse, event->event_name);
             Fancy_Line line = {};
             push_fancy_string(scratch, &line, f_white, event_name);
             
@@ -744,8 +744,8 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
             }
             
             
-            Vec2_f32 p = vec2(box_inner.x0 + 3.f,
-                               (f32_round32((box_inner.y0 + box_inner.y1 - line_height)*0.5f)));
+            Vec2_f32 p = V2(box_inner.x0 + 3.f,
+                               (roundv1((box_inner.y0 + box_inner.y1 - line_height)*0.5f)));
             draw_fancy_line(app, log_graph.face_id, fcolor_zero(), &line, p);
         }
         
@@ -781,7 +781,7 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                             }break;
                         }
                         
-                        Vec2_f32 p = vec2(x_cursor, y_cursor);
+                        Vec2_f32 p = V2(x_cursor, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id,
                                                          &line);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
@@ -812,26 +812,26 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                         
                         if (filter->kind == LogFilter_TagValue){
                             push_fancy_stringf(scratch, &line, f_white, "val  [");
-                            String_Const_u8 tag_name = log_parse__get_string(&log_parse, filter->tag_name_code);
+                            String tag_name = log_parse__get_string(&log_parse, filter->tag_name_code);
                             push_fancy_stringf(scratch, &line, f_green, "%.*s", string_expand(tag_name));
                             push_fancy_stringf(scratch, &line, f_white, "=");
                             if (filter->tag_value.kind == LogTagKind_Integer){
                                 push_fancy_stringf(scratch, &line, f_pink, "0x%llx", filter->tag_value.value_s);
                             }
                             else if (filter->tag_value.kind == LogTagKind_String){
-                                String_Const_u8 value = log_parse__get_string(&log_parse, filter->tag_value.value);
+                                String value = log_parse__get_string(&log_parse, filter->tag_value.value);
                                 push_fancy_stringf(scratch, &line, f_pink, "%.*s", string_expand(value));
                             }
                             push_fancy_stringf(scratch, &line, f_white, "]");
                         }
                         else{
                             push_fancy_stringf(scratch, &line, f_white, "name [");
-                            String_Const_u8 tag_name = log_parse__get_string(&log_parse, filter->tag_name_code);
+                            String tag_name = log_parse__get_string(&log_parse, filter->tag_name_code);
                             push_fancy_stringf(scratch, &line, f_green, "%.*s", string_expand(tag_name));
                             push_fancy_stringf(scratch, &line, f_white, "]");
                         }
                         
-                        Vec2_f32 p = vec2(box_inner.x0 + 3.f, y_cursor);
+                        Vec2_f32 p = V2(box_inner.x0 + 3.f, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id,
                                                          &line);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
@@ -858,14 +858,14 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                 
                 {
                     Fancy_Line line = {};
-                    String_Const_u8 filename = log_parse__get_string(&log_parse, view_event->src_filename);
+                    String filename = log_parse__get_string(&log_parse, view_event->src_filename);
                     push_fancy_stringf(scratch, &line, f_green, "[%d]  ", view_event->event_number);
                     push_fancy_stringf(scratch, &line, f_white, "%.*s:", string_expand(filename));
                     push_fancy_stringf(scratch, &line, f_pink, "%llu", view_event->line_number);
                     
-                    Vec2_f32 right_p = vec2(box_inner.x1 - 3.f, y_cursor);
+                    Vec2_f32 right_p = V2(box_inner.x1 - 3.f, y_cursor);
                     f32 width = get_fancy_line_width(app, log_graph.face_id, &line);
-                    Vec2_f32 p = vec2(right_p.x - width, right_p.y);
+                    Vec2_f32 p = V2(right_p.x - width, right_p.y);
                     draw_fancy_line(app, log_graph.face_id, fcolor_zero(), &line, p);
                 }
                 
@@ -879,9 +879,9 @@ log_graph_render(Application_Links *app, Frame_Info frame_info, View_ID view){
                         Fancy_Line line = {};
                         log_graph_render__tag(scratch, &line, &log_parse, tag);
                         
-                        Vec2_f32 right_p = vec2(box_inner.x1 - 3.f, y_cursor);
+                        Vec2_f32 right_p = V2(box_inner.x1 - 3.f, y_cursor);
                         f32 width = get_fancy_line_width(app, log_graph.face_id, &line);
-                        Vec2_f32 p = vec2(right_p.x - width, right_p.y);
+                        Vec2_f32 p = V2(right_p.x - width, right_p.y);
                         draw_fancy_line(app, log_graph.face_id, fcolor_zero(),
                                         &line, p);
                         
@@ -941,14 +941,14 @@ log_graph__get_box_at_point(Log_Graph *graph, Vec2_f32 p){
 }
 
 internal Log_Graph_Box*
-log_graph__get_box_at_mouse_point(Application_Links *app, Log_Graph *graph){
+log_graph__get_box_at_mouse_point(App *app, Log_Graph *graph){
     Mouse_State mouse = get_mouse_state(app);
-    Vec2_f32 m_p = vec2(mouse.p) - graph->layout_region.p0;
+    Vec2_f32 m_p = V2(mouse.p) - graph->layout_region.p0;
     return(log_graph__get_box_at_point(graph, m_p));
 }
 
 function void
-log_graph__click_select_event(Application_Links *app, Vec2_f32 m_p)
+log_graph__click_select_event(App *app, Vec2_f32 m_p)
 {
     if (log_view != 0 && log_graph.holding_temp){
         Log_Graph_Box *box_node = log_graph__get_box_at_point(&log_graph, m_p);
@@ -1040,7 +1040,7 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
             
             case InputEventKind_MouseButton:
             {
-                Vec2_f32 m_p = vec2(in.event.mouse.p) - log_graph.layout_region.p0;
+                Vec2_f32 m_p = V2(in.event.mouse.p) - log_graph.layout_region.p0;
                 switch (in.event.mouse.code){
                     case MouseCode_Left:
                     {
@@ -1062,7 +1062,7 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
             case InputEventKind_MouseWheel:
             {
                 f32 value = in.event.mouse_wheel.value;
-                log_graph.y_scroll += f32_round32(value);
+                log_graph.y_scroll += roundv1(value);
             }break;
             
             default:

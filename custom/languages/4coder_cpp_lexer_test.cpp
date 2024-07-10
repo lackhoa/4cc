@@ -432,26 +432,26 @@ R"bar(foo
 #include <time.h>
 
 internal void
-print_token_list(Token_List *list, String_Const_u8 text){
+print_token_list(Token_List *list, String text){
     for (Token_Block *block = list->first;
          block != 0;
          block = block->next){
-        i32 count = block->count;
+        i1 count = block->count;
         Token *token = block->tokens;
-        for (i32 i = 0; i < count; i += 1, token += 1){
+        for (i1 i = 0; i < count; i += 1, token += 1){
             printf("[%5llu, %5llu) %20s / %20s : 0x%04x / 0x%04x\n",
                    token->pos, token->pos + token->size,
                    token_base_kind_names[token->kind],
                    token_cpp_kind_names[token->sub_kind],
                    token->flags, token->sub_flags);
-            printf("\t:%.*s:\n", (i32)token->size, text.str + token->pos);
+            printf("\t:%.*s:\n", (i1)token->size, text.str + token->pos);
         }
     }
 }
 
-internal String_Const_u8
+internal String
 file_read_all(Arena *arena, FILE *file){
-    String_Const_u8 result = {};
+    String result = {};
     fseek(file, 0, SEEK_END);
     result.size = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -465,11 +465,11 @@ int main(void){
     Arena arena_ = make_arena_malloc();
     Arena *arena = &arena_;
     
-    String_Const_u8 path_to_self = string_u8_litexpr(__FILE__);
+    String path_to_self = string_u8_litexpr(__FILE__);
     path_to_self = string_remove_last_folder(path_to_self);
-    String_Const_u8 path_to_src = string_remove_last_folder(path_to_self);
+    String path_to_src = string_remove_last_folder(path_to_self);
     
-    String_Const_u8 test_file_name = push_u8_stringf(arena, "%.*s/languages/4coder_lexer_cpp_test.cpp",
+    String test_file_name = push_u8_stringf(arena, "%.*s/languages/4coder_lexer_cpp_test.cpp",
                                                      string_expand(path_to_src));
     
     FILE *test_file = fopen((char*)test_file_name.str, "rb");
@@ -477,13 +477,13 @@ int main(void){
         printf("error: count not open test file %s\n", test_file_name.str);
         exit(1);
     }
-    String_Const_u8 text = file_read_all(arena, test_file);
+    String text = file_read_all(arena, test_file);
     fclose(test_file);
     
     Token_List list = lex_full_input_cpp(arena, text);
     print_token_list(&list, text);
     
-    for (i32 i = 0; i < KB(4); i += 1){
+    for (i1 i = 0; i < KB(4); i += 1){
         fprintf(stdout, "\n");
     }
     fflush(stdout);

@@ -1,20 +1,17 @@
-#define KV_IMPLEMENTATION
 #include "kv.h"
-#include <array> // @std
 #define AD_IS_COMPILING_GAME 1
-#define ED_API_USER_SIDE 1
+#define ED_API_USER 1
+#define ED_API_USER_STORE_GLOBAL 1
+#define AD_COMPILING_FRAMEWORK 1
 #include "4coder_game_shared.h"
-#include "game_fui.cpp"
+#include "4ed_kv_parser.cpp"
 #include "game.h"
-#include "4coder_fancy.cpp"
-#include "4coder_app_links_allocator.cpp"
-#include "game_config.cpp"
-#include "game_mesh.cpp"
-#include "game_draw.cpp"
-#include "game_colors.cpp"
-#include "game_anime.cpp"
+#include "game_fui.cpp"
 #include "game_api.cpp"
-#include "4ed_render_target.cpp"
+
+#define STB_C_LEXER_IMPLEMENTATION
+#include "stb_c_lexer.h"
+#include "game_parser.cpp"
 
 /*
   IMPORTANT Rule for the renderer
@@ -28,10 +25,8 @@
   - v4 colors are in linear space, alpha=1 (so pma doesn't matter)
  */
 
-global const u32 data_current_version = 7;
-global const u32 data_magic_number = *(u32 *)"kvda";
-
-global const v1 widget_margin = 5.0f;
+global_const u32 data_current_version = 7;
+global_const u32 data_magic_number = *(u32 *)"kvda";
 
 #define X(N) internal N##_return N(N##_params);
 // Note: forward declare
@@ -41,19 +36,11 @@ X_GAME_API_FUNCTIONS(X)
 
 
 internal b32
-is_key_newly_pressed(Game_Input *input, Key_Mods modifiers, Key_Code keycode)
+just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=Key_Mod_NULL)
 {
  return ((input->key_states       [keycode])     &&
          (input->key_state_changes[keycode] > 0) &&
          (input->active_mods == modifiers));
-}
-
-internal b32
-is_key_newly_pressed_no_mod(Game_Input *input, Key_Code keycode)
-{
- return ((input->key_states       [keycode])     &&
-         (input->key_state_changes[keycode] > 0) &&
-         (input->active_mods == Key_Mod_NULL));
 }
 
 force_inline b32
@@ -97,64 +84,6 @@ key_direction(Game_Input *input, Key_Mods wanted_mods, b32 new_keypress)
  return key_direction_v4(input, wanted_mods, new_keypress).xyz;
 }
 
-internal mat4i
-mat4i_rotate_tpr(v1 theta, v1 phi, v1 roll, v3 pivot)
-{// NOTE: Roll around z, then rotate around x, then rotate around y
- // NOTE Weird, in the inverse, we want to the roll_inv *last*
- // and so we endup doing the roll *first* in the forward direction.
- 
- phi  *= -1.f;  // NOTE: But the rotation axes are "mirrored" since we want camera control to be intuitive
- roll *= -1.f;
- 
- mat4i rotate;
- {
-  v1 ct = cosine(theta);
-  v1 st = sine  (theta);
-  v1 cp = cosine(phi);
-  v1 sp = sine  (phi);
-  rotate.inverse = {{
-    ct,     0,  -st,    0,
-    sp*st, cp,   ct*sp, 0,
-    cp*st, -sp,  cp*ct,  0,
-    0,0,0,1,}};
- }
- 
- rotate.inverse = rotateZ(-roll)*rotate.inverse;
- rotate.forward = transpose(rotate.inverse);
- 
- mat4i translate = mat4i_translate(-pivot);
- 
- mat4i result;
- result.forward = translate.inv * rotate     * translate;
- result.inverse = translate.inv * rotate.inv * translate;
- 
- return result;
-}
-
-internal v3
-tpr_point(v1 theta, v1 phi)
-{
- return mat4i_rotate_tpr(theta,phi,0,vec3()) * vec3(0,0,1);
-}
-
-internal void
-setup_camera(Camera *camera, Camera_Data *data)
-{
- *camera = {};
- 
- camera->near_clip    = 1*centimeter;
- camera->far_clip     = 10.f;
- camera->focal_length = 0.6169f;
- 
- // TODO We can just block copy here
-#define X(type,name)   camera->name = data->name;
- CAMERA_DATA_FIELDS(X)
-#undef X
- 
- camera->transform = (mat4i_translate(data->pan) *
-                      mat4i_rotate_tpr(data->theta, data->phi, data->roll, vec3()) *
-                      mat4i_translate(vec3z(data->distance)));
-}
 
 DLL_EXPORT game_api_export_return 
 game_api_export(game_api_export_params)
@@ -220,11 +149,9 @@ current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.1f, MIN_SPEED
   ANIMATE(pan.z,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
 #undef ANIMATE
   
-  current->roll  = saved->roll;
+  current->roll  = saved->roll;    // @Hack
+  saved->pivot   = current->pivot; // @Hack
  }
- 
- saved  ->UNUSED_FIELD = {};
- current->UNUSED_FIELD = {};
  
  return animation_ended;
 }
@@ -254,256 +181,65 @@ round_to_multiple_of(v1 value, v1 n)
  return result;
 }
 
-
-force_inline Line_Params
-line_color(Painter *p, argb color)
+internal b32
+deserialize_state(Game_Save *save, String input)
 {
- Line_Params result = p->line_params;
- result.color = color;
- return result;
-}
-
-force_inline Bezier
-reverse(Bezier B)
-{
- return {B[3], B[2], B[1], B[0]};
-}
-
-force_inline v3
-reflect_origin(v3 origin, v3 point)
-{
- return origin-(point-origin);
-}
-
-internal argb
-hsv_to_argb(v1 h, v1 s, v1 v)
-{
- return argb_pack(srgb_to_linear(hsv_to_srgb(h,s,v)));
-}
-
-force_inline void
-profile_visible(Painter *p, Line_Params *params, v1 edge1)
-{
- if (p->profile_score > edge1) { params->visibility = 1.f; }
- else { params->visibility = 0.f; }
-}
-force_inline Line_Params
-profile_visible(Painter *p, v1 edge1)
-{
- Line_Params params = p->line_params;
- profile_visible(p, &params, edge1);
- return params;
-}
-
-internal i32
-get_frame_index(i32 nframes, v1 t)
-{
- v1 interval = 1.f / v1(nframes);
- i32 frame = i32(t / interval);
- // NOTE: nframes = nintervals, when t=1.0, frame=ninterval-1
- macro_clamp_max(frame, nframes-1);
- return(frame);
-}
-
-//~
-struct Keyframe
-{
- i16 nframes;
- i16 value;
-};
-
-struct Animation
-{
- Keyframe keyframes[64];  // TODO: Need a dynamic allocation scheme here, if we'll be using one of these for each attribute
- i32 keyframe_count;
- i32 total_frames;
- b32 looping;
-};
-
-internal void
-add_keyframe(Animation *ani, i32 nframes, i32 value)
-{
- if ((nframes > 0) &&
-     (ani->keyframe_count < alen(ani->keyframes)))
+ char string_store[64];
+ STB_Parser parser = new_parser(input, string_store, alen(string_store));
+ STB_Parser *p = &parser;
+ 
+ eat_id(p, "version");
+ save->version = eat_int(p);
+ eat_id(p, "cameras");
+ 
+ Camera_Data cameras[GAME_VIEWPORT_COUNT];
+ for_i32(cam_index,0,GAME_VIEWPORT_COUNT)
  {
-  ani->keyframes[ani->keyframe_count++] = Keyframe
-  {
-   .nframes = i16(nframes),
-   .value = i16(value),
-  };
-  ani->total_frames += nframes;
- }
-}
-
-force_inline void 
-add_keyframe(Animation *ani, v2i args)
-{
- add_keyframe(ani, args[0], args[1]);
-}
-
-inline void
-begin_animation(Animation *ani, b32 looping)
-{
- ani->keyframe_count = 0;
- ani->total_frames   = 0;
- ani->looping        = looping;
-}
-
-inline void
-end_animation(Animation *ani) { }
-
-internal v1
-get_animation_value(Animation *ani, v1 global_t)
-{
- if (ani->keyframe_count > 0 && 
-     ani->total_frames > 0)
- {
-  // NOTE: Let's animate on two's to start
-  i32 frame_requested = (i32)(global_t * Animation_FPS);
-  if (ani->looping)
-  {
-   frame_requested %= ani->total_frames;
+  Camera_Data *cam = &save->camera[cam_index];
+  eat_char(p, '{');
+  eat_id(p, "distance");       cam->distance       = eat_float(p);
+  eat_id(p, "phi");            cam->phi            = eat_float(p);
+  eat_id(p, "theta");          cam->theta          = eat_float(p);
+  eat_id(p, "distance_level"); cam->distance_level = eat_int(p);
+  eat_id(p, "roll");           cam->roll           = eat_float(p);
+  eat_id(p, "pan");            cam->pan            = eat_v3(p);
+  if( maybe_id(p, "pivot") ) {
+   cam->pivot= eat_v3(p);
+  } else {
+   cam->pivot = {};
   }
   
-  i32 frame_index_sofar = ani->keyframes[0].nframes;
-  i32 keyframe_index = 1;
-  for (;
-       keyframe_index < ani->keyframe_count &&
-       (frame_requested > frame_index_sofar);
-       keyframe_index++)
-  {
-   frame_index_sofar += ani->keyframes[keyframe_index].nframes;
-  }
-  // NOTE: linger on last frame if out of frames
-  v1 result = cast(v1)(ani->keyframes[keyframe_index-1].value);
-  return result;
- }
- else { return 0.f; }
-}
-
-//~NOTE: Old animation
-struct Frame_Group
-{
- v4 values;
- v1 weight;
- v1 begin_time;
-};
-
-struct Animation_Old
-{
- Frame_Group groups[16];
- i32 group_count;
-};
-
-internal void
-add_frame_group(Animation_Old *ani, v1 weight, v4 values)
-{
- if (ani->group_count < alen(ani->groups))
- {
-  auto &v = values;
-  ani->groups[ani->group_count++] = Frame_Group
-  {
-   .values = vec4(macro_control_points(v[0],v[1],v[2],v[3])),
-   .weight = weight,
-  };
- }
-}
-internal void 
-begin_animation(Animation_Old *ani)
-{
- ani->group_count = 0;
-}
-
-internal void
-end_animation(Animation_Old *ani)
-{
- v1 total_weight = 0.f;
- for_i32(group_index, 0, ani->group_count)
- {
-  total_weight += ani->groups[group_index].weight;
+  eat_char(p, '}');
  }
  
- v1 begin_time = 0.f;
- for_i32(group_index, 0, ani->group_count)
- {
-  Frame_Group *group = &ani->groups[group_index];
-  group->begin_time = begin_time;
-  
-  begin_time += group->weight / total_weight;
+#if 0
+ if (p->ok)
+ {// NOTE: test
+  make_temp_arena(arena);
+  String test_path = strlit("C:/Users/vodan/4ed/code/data/text_test.kv");
+  String serialization = serialize_state(arena, save);
+  write_entire_file(test_path, serialization);
  }
+#endif
  
- if (ani->group_count < alen(ani->groups))
- {
-  ani->groups[ani->group_count++] = Frame_Group { .begin_time = 1.f, };
- }
- else  { todo_error_report; }
+ return p->ok;
 }
 
-internal v1
-get_animation_value(Animation_Old *ani, v1 global_t)
-{
- macro_clamp01(global_t);
- Frame_Group *group = 0;
- v1 end_time;
- i32 group_index = 1;
- for(;
-     group_index < ani->group_count && group == 0;
-     group_index++)
- {
-  Frame_Group *test_group = &ani->groups[group_index];
-  if (test_group->begin_time >= global_t)
-  {
-   group    = &ani->groups[group_index-1];
-   end_time = ani->groups[group_index].begin_time;
-  }
- }
- 
- if (group)
- {
-  v1 result;
-  v1 local_t = unlerp(group->begin_time, global_t, end_time);
-  auto &values = group->values;
-  if      (local_t < 0.25f) { result = values[0]; }
-  else if (local_t < 0.50f) { result = values[1]; }
-  else if (local_t < 0.75f) { result = values[2]; }
-  else                      { result = values[3]; }
-  return result;
- }
- else { return 69.f; }
-}
+
 //~
 
 // NOTE
-#include "game_utils.cpp"
-#include "game_csg.cpp"
-// NOTE: You can't nest "optimize on" inside of "optimize off", 
-// but we don't wanna optimize this file anyway, so it's whatever
-#pragma clang optimize off
-#include "game.cpp"
-#include "game_physics.cpp"
-#pragma clang optimize on
+#include "game_ed.cpp"
+#include "game_colors.cpp"
+#include "ad_debug.h"
+#include "framework_driver_shared.h"
+#include "game_config.cpp"
 
 internal game_render_return
 game_render(game_render_params)
 {//;switch_game_or_physics
- if( fbool(1) )
- {
-  render_movie(state, app, viewport_id, mouse, csg_buffer);
- }
- else
- {
-  render_physics(state, app, viewport_id, mouse, csg_buffer);
- }
-}
-
-internal void
-update_fui_stores(Game_State *state)
-{
- fui_stores       = state->fui_store;
- fui_stores_count = alen(state->fui_store);
- //NOTE: Filename pointer changes every time you reload the DLL!
- Fui_Store *stores = state->fui_store;
- stores[0].filename = GAME_CPP_FILENAME;
+ Render_Target *target = draw_get_target(app);
+ render_movie(state, app, target, viewport_id, mouse); 
 }
 
 internal game_init_return
@@ -513,123 +249,179 @@ game_init(game_init_params)
 #define X(N) N = ed_api->N;
  X_ED_API_FUNCTIONS(X)
 #undef X
+ 
+ //@game_bootstrap_arena_zero_initialized
  Game_State *state = push_struct(bootstrap_arena, Game_State);
  state->permanent_arena = *bootstrap_arena;
  Arena *arena = &state->permanent_arena;
  
- {// NOTE: Save/Load business
+ {// NOTE: Save/Load business load_game
   Scratch_Block scratch(app);
   String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
   state->save_dir  = pjoin(arena, binary_dir, "data");
-  state->save_path = pjoin(arena, state->save_dir, "data.kv");
+  state->save_path_text = pjoin(arena, state->save_dir, "text.kv");
   
-  String read_string = read_entire_file(scratch, state->save_path);
-  if (read_string.len)
-  {
-   Game_Save *read = (Game_Save *)read_string.str;
-   if (read->magic_number == data_magic_number)
+  {// NOTE: Load text
+   String read_string = read_entire_file(scratch, state->save_path_text);
+   if( read_string.len )
    {
-    if (read->version == data_current_version)
-    {
-     state->save = *read;
-    }
-    else if ( read->version == (data_current_version-1) )
-    {
-     print_message(app, strlit("Game data load: Converting old version to new version!\n"));
-     Game_Save_Old *old = (Game_Save_Old *)read;
-     {// NOTE(kv): Conversion code!
-      //state->save = *(Game_Save *)old;
-     }
-    }
-    else {print_message(app, strlit("Game data load: Unknown version\n"));}
+    if ( !deserialize_state(&state->save, read_string) )
+    { print_message(app, strlit("Game load: deserialization!\n")); }
    }
-   else  {print_message(app, strlit("Game data load: Wrong magic number!\n"));}
+   else {print_message(app, strlit("Game load: can't read the file!\n"));}
   }
-  else {print_message(app, strlit("Game data load: can't load the file!\n"));}
   
   // NOTE: No matter what, init the save data
   state->save.magic_number = data_magic_number;
   state->save.version      = data_current_version;
  }
  
- {// NOTE: Fui sliders init (Not reloaded so can't change slider count on the fly)
-  // NOTE: Zero element is invalid
-  i32 store_index = 0;
-  {
-   i32 count = 4096;
-   state->fui_store[store_index] = {
-    .sliders  = push_array(arena, Fui_Slider, count),
-    .count    = count,
-   };
-  }
-  update_fui_stores(state);
- }
- 
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {//;frame_arena_init
   usize frame_arena_size = KB(32);
-  state->viewports[viewport_index].frame_arena = make_sub_arena(arena, frame_arena_size);
+  state->viewports[viewport_index].frame_arena = sub_arena_static(arena, frame_arena_size);
  }
  
- {//NOTE: Making primitive meshes!
-  state->mesh_arena = make_sub_arena(arena, KB(8));
-  make_meshes(&state->mesh_arena);
- }
+ state->line_cap  = 8192;
+ state->line_map = push_array(arena, Line_Map_Entry, state->line_cap);
+ state->new_slider_store = sub_arena_static(arena, KB(32), 1);
+ 
+ state->curve_count = 1;
+ 
+ //- NOTE: Do things you *would* do every reload (clear arena, etc.)
+ game_reload(state, ed_api);
  
  return state;
 }
 
 internal game_reload_return
 game_reload(game_reload_params)
-{
+{// Game_State
  // API import
 #define X(N) N = ed_api->N;
  X_ED_API_FUNCTIONS(X)
 #undef X
  
- {
-  //TODO: @Speed Maybe iterating and setting "inited" flag is faster?
-  for_i32(store_index,0,alen(state->fui_store))
-  {
-   Fui_Store *store = &state->fui_store[store_index];
-   block_zero(store->sliders, sizeof(Fui_Slider)*store->count);
-  }
-  update_fui_stores(state);
+ {//NOTE: Entirely BS
+#define X(T)  fui_type_sizes[Fui_Type_##T] = sizeof(T);
+  X_Fui_Types(X)
+#undef X
  }
  
+ selected_obj_id = state->selected_obj_id;
+ 
+ {//NOTE: fui situation
+  line_map         = state->line_map;
+  new_slider_store = &state->new_slider_store;
+  block_zero(line_map, state->line_cap*sizeof(Line_Map_Entry));
+  static_arena_clear(new_slider_store);
+ }
+ 
+#if 0
  {// NOTE: re-make meshes
   make_meshes(&state->mesh_arena);
+ }
+#endif
+ 
+ {//-NOTE: Mocking editor code
+  state->vertex_count = 4;
+  Vertex_Data *v = state->vertices;
+  // v[0] is unused
+  v[1].pos = V3(1,0,0);
+  v[2].pos = V3(2,0,0);
+  v[3].pos = V3(3,0,0);
  }
 }
 
 #include "time.h"
+
+global Printer serializer;
+
+internal String
+time_format(char *buf, i32 bufsize, char *format)
+{
+ String result = {};
+ time_t rawtime;
+ time(&rawtime);
+ struct tm *timeinfo = localtime(&rawtime);
+ size_t strftime_result = strftime(buf, bufsize, format, timeinfo);
+ if (strftime_result != 0)
+ {
+  result = SCu8(buf);
+ }
+ return result;
+}
+
+internal String
+serialize_state(Arena *parent_arena, Game_Save *save)
+{
+#define print(...)            push_stringf(serializer, ##__VA_ARGS__)
+ // NOTE: lovely MSVC doesn't pass __VA_ARGS__ correctly between macros
+#define println(FORMAT, ...)  push_stringf(serializer, FORMAT "\n", ##__VA_ARGS__)
+#define brace_block           println("{"); defer( println("}"); );
+ 
+ usize MAX_SAVE_SIZE = KB(16);  // Wastes @Memory
+ Arena arena_value = sub_arena_static(parent_arena, MAX_SAVE_SIZE, 1);
+ Arena *arena = &arena_value;
+ serializer.arena = arena_value;
+ 
+ {// NOTE: preamble
+  println( "// autodraw data file (DO NOT EDIT)" );
+  {
+   char buf[64];
+   String timestamp = time_format(buf, alen(buf), "%d.%m.%Y %H:%M:%S");
+   println("// Written at %.*s", string_expand(timestamp));
+  }
+  println("version %u", save->version);
+ }
+ 
+ println("cameras");
+ for_i32(camera_index, 0, GAME_VIEWPORT_COUNT)
+ {
+  brace_block;
+  Camera_Data *cam = &save->camera[camera_index];
+  println("distance %f", cam->distance);
+  println("phi %f",   cam->phi);
+  println("theta %f", cam->theta);
+  println("distance_level %d", cam->distance_level);
+  println("roll %f", cam->roll);
+  println("pan %f %f %f",   expand3(cam->pan));
+  println("pivot %f %f %f", expand3(cam->pivot));
+ }
+ 
+ String result;
+ Cursor cursor = arena->cursor_node->cursor;
+ result.str  = cursor.base;
+ result.size = cursor.pos;
+ return result;
+#undef print
+#undef println
+}
+
 internal b32
 save_game(App *app, Game_State *state)
-{
+{// NOTE: save and backup logic
  Scratch_Block scratch(app);
- String backup_dir = pjoin(scratch, state->save_dir, "backups");
- char *save_path_cstr = to_c_string(scratch, state->save_path);
+ char *save_path_text_cstr = to_c_string(scratch, state->save_path_text);
  
  b32 ok = true;
  if (!state->has_done_backup &&
-     gb_file_exists(save_path_cstr))
+     gb_file_exists(save_path_text_cstr))
  {
+  String backup_dir = pjoin(scratch, state->save_dir, "backups");
   // NOTE: Backup game if is_first_write_since_launched
-  time_t rawtime;
-  time(&rawtime);
-  struct tm *timeinfo = localtime(&rawtime);
-  char time_string[256];
-  size_t strftime_result = strftime(time_string, sizeof(time_string), "%d_%m_%Y_%H_%M_%S", timeinfo);
-  if (strftime_result == 0)
+  char buf[64];
+  String time_string = time_format(buf, alen(buf), "%d_%m_%Y_%H_%M_%S");
+  if (time_string.len == 0)
   {
    print_message(app, str8lit("strftime failed... go figure that out!\n"));
    ok = false;
   }
   else
   {
-   String backup_path = push_stringf(scratch, "%.*s/data_%s.kv", string_expand(backup_dir), time_string);
-   ok = move_file(state->save_path, backup_path);
-   if (ok) state->has_done_backup = true;
+   String backup_path = push_stringfz(scratch, "%.*s/data_%.*s.kv", string_expand(backup_dir), string_expand(time_string));
+   ok = move_file(state->save_path_text, backup_path);
+   if (ok) { state->has_done_backup = true; }
   }
   
   if (ok)
@@ -660,11 +452,10 @@ save_game(App *app, Game_State *state)
  
  if (ok)
  {// NOTE: save the file
-  ok = write_entire_file(scratch, state->save_path, &state->save, sizeof(state->save));
-  if (ok)
-   vim_set_bottom_text(str8lit("Saved game state!"));
-  else
-   printf_message(app, "Failed to write to file %.*s", string_expand(state->save_path));
+  String text = serialize_state(scratch, &state->save);
+  ok = write_entire_file(state->save_path_text, text.str, text.size);
+  if (ok) {vim_set_bottom_text(str8lit("Saved game state!"));}
+  else    {printf_message(app, "Failed to write to file %.*s", string_expand(state->save_path_text));}
  }
  
  return ok;
@@ -681,12 +472,38 @@ game_update(game_update_params)
  
  Game_Input *input = &input_value;
  
+ {
+  Render_Target *render_target = draw_get_target(app);
+  u32 hot_prim_id = render_target->current_prim_id;
+  if(input->mouse.press_l)
+  {
+   if ( prim_id_is_obj(hot_prim_id) )
+   {
+    state->selected_obj_id = hot_prim_id;
+    Primitive_Type type = prim_id_type(state->selected_obj_id);
+    i32 selected_index = index_from_prim_id(hot_prim_id);
+    if ( type == Prim_Vertex )
+    {
+     state->previous_vertex = state->vertices[selected_index];
+    }
+    else if (type == Prim_Curve)
+    {
+     state->previous_curve = state->curves[selected_index];
+    }
+   }
+  }
+  {
+   i32 selected_index = index_from_prim_id(state->selected_obj_id);
+   //DEBUG_VALUE(selected_index);
+  }
+ } 
+ 
  b32 should_animate_next_frame = false;
  kv_assert(active_viewport_id <= GAME_VIEWPORT_COUNT);
  i32 update_viewport_index = update_viewport_id - 1;
  Viewport *update_viewport = &state->viewports[update_viewport_index];
  
- v1 dt = input->dt;
+ v1 dt = input->frame.animation_dt;
  {
   state->time += dt;
   if (state->time >= 1000.0f) { state->time -= 1000.0f; }
@@ -702,7 +519,7 @@ game_update(game_update_params)
  Scratch_Block scratch(app);
  
  Game_Save *save = &state->save;
- if ( is_key_newly_pressed_no_mod(input, Key_Code_Return) )
+ if ( just_pressed(input, Key_Code_Return) )
  {
   save_game(app, state);
  }
@@ -717,15 +534,19 @@ game_update(game_update_params)
  {// NOTE: Camera update
   Camera_Data *save_camera = &save->camera[update_viewport_index];
   
-  if (is_key_newly_pressed_no_mod(input, Key_Code_X))
-  {
+  if ( just_pressed(input, Key_Code_X) ) {
    save_camera->theta *= -1.f;
+  } else if ( just_pressed(input, Key_Code_Z) ) {
+   save_camera->theta = .5f - save_camera->theta;
   }
   
   v3 ctrl_direction = key_direction(input, Key_Mod_Ctl, true);
-  if (ctrl_direction == vec3() && game_active)
+  if (ctrl_direction == V3())
   {
-   ctrl_direction = key_direction(input, 0, true);
+   if (game_active && !state->selected_obj_id)
+   {// NOTE: Don't move the camera when you are selecting an object @UpdateSelectedObjects
+    ctrl_direction = key_direction(input, 0, true);
+   }
   }
   
   {// NOTE: Zoom levels
@@ -745,16 +566,23 @@ game_update(game_update_params)
   }
   
   {// NOTE: pan
-   v1 distance = camera->distance;
-   if (distance == 0) { distance = 0.5f; }
-   v1 step = CAMERA_PAN_STEP_PER_DISTANCE * distance;  // distance = .92m -> 3*pivot_step
-   v3 pan = save_camera->pan / step;
-   
-   v2 delta_pan = key_direction(input, Key_Mod_Alt, true).xy;
-   pan += (delta_pan.x * camera->x.xyz + 
-           delta_pan.y * camera->y.xyz);
-   
-   save_camera->pan = step*pan;
+   if( just_pressed(input, Key_Code_0, Key_Mod_Alt) )
+   {
+    save_camera->pan = {};
+   }
+   else
+   {
+    v1 distance = camera->distance;
+    if (distance == 0) { distance = 0.5f; }
+    v1 step = CAMERA_PAN_STEP_PER_DISTANCE * distance;  // distance = .92m -> 3*pivot_step
+    v3 pan = save_camera->pan / step;
+    
+    v2 delta_pan = key_direction(input, Key_Mod_Alt, true).xy;
+    pan += (delta_pan.x * camera->x.xyz + 
+            delta_pan.y * camera->y.xyz);
+    
+    save_camera->pan = step*pan;
+   }
   }
   
   {
@@ -772,63 +600,60 @@ game_update(game_update_params)
    macro_clamp(-0.25f, save_camera->phi, 0.25f);
   }
   
-  {// NOTE: roll
-   i32 roll_direction = 0.f;
-   if ( is_key_down(input, Key_Mod_Sft, Key_Code_Period) ) {roll_direction = +1;}
-   if ( is_key_down(input, Key_Mod_Sft, Key_Code_Comma) )  {roll_direction = -1;}
-   save_camera->roll += 0.1f * (v1)roll_direction * dt;
-  }
-  
   if ( is_key_down(input, Key_Mod_Sft, Key_Code_0) ) { save_camera->roll  = {}; }
  }
  
  if (game_hot)
  {
-  if ( is_key_newly_pressed_no_mod(input, Key_Code_Space) )
+  if( just_pressed(input, Key_Code_Space) )
   {
    game_last_preset(state, update_viewport_id);
   }
  }
  
  if ( fui_is_active() )
- {// NOTE: Update Fui slider
-  if (is_key_newly_pressed_no_mod(input, Key_Code_Tab))
+ {// NOTE: ;UpdateFuislider
+  if (just_pressed(input, Key_Code_Tab))
   {
    b32 &zw = fui_v4_zw_active;
    zw = !zw;
   }
   
   Fui_Slider *slider = fui_active_slider;
-  if (slider->type == Fui_Type_i32 || 
-      slider->type == Fui_Type_v2i ||
-      slider->type == Fui_Type_v3i ||
-      slider->type == Fui_Type_v4i)
+  if (slider->type == Fui_Type_i1 || 
+      slider->type == Fui_Type_i2 ||
+      slider->type == Fui_Type_i3 ||
+      slider->type == Fui_Type_i4)
   {
-   v4i *value = &slider->value.v4i;
+   i4 value;
+   block_copy(&value, slider+1, slider_value_size(slider));
    v4 direction = key_direction_v4(input, 0, true);
    for_i32(index,0,4)
    {
-    value->v[index] += i32(direction[index]);
+    value.v[index] += i32(direction[index]);
    }
    
    if (slider->flags & Fui_Flag_Clamp_01)
    {
     for_i32(index,0,4)
     {
-     macro_clamp01i(value->v[index])
+     macro_clamp01i(value.v[index])
     }
    }
+   
+   block_copy(slider+1, &value, slider_value_size(slider));
   }
   else
   {
-   v4 *value = &slider->value.v4;
+   v4 value;
+   block_copy(&value, slider+1, slider_value_size(slider));
    
-   b32 j_pressed = is_key_newly_pressed_no_mod(input, Key_Code_J);
-   b32 k_pressed = is_key_newly_pressed_no_mod(input, Key_Code_K);
+   b32 j_pressed = just_pressed(input, Key_Code_J);
+   b32 k_pressed = just_pressed(input, Key_Code_K);
    if (slider->type == Fui_Type_v1 && (j_pressed || k_pressed))
    {
-    if (j_pressed) { value->x = 0.f; }
-    if (k_pressed) { value->x = 1.f; }
+    if (j_pressed) { value.x = 0.f; }
+    if (k_pressed) { value.x = 1.f; }
    }
    else
    {
@@ -842,32 +667,34 @@ game_update(game_update_params)
      direction.xy = {};
     }
     if (slider->flags & Fui_Flag_Camera_Aligned)
-    {// NOTE(kv): I don't know what would happens with w, but we don't care rn
-     direction = noz( camera->forward * direction );
+    {
+     direction = noz( camera->forward*direction );
     }
     v1 delta_scale = slider->delta_scale;
     if (delta_scale == 0) { delta_scale = 0.2f; }
     v4 delta = delta_scale * dt * direction;
     if (shifted) { delta *= 10.f; }
-    *value += delta;
+    value += delta;
     
-    if (slider->flags & Fui_Flag_Clamp_X)  {value->x = 0;}
-    if (slider->flags & Fui_Flag_Clamp_Y)  {value->y = 0;}
-    if (slider->flags & Fui_Flag_Clamp_Z)  {value->z = 0;}
+    if (slider->flags & Fui_Flag_Clamp_X)  {value.x = 0;}
+    if (slider->flags & Fui_Flag_Clamp_Y)  {value.y = 0;}
+    if (slider->flags & Fui_Flag_Clamp_Z)  {value.z = 0;}
     
     if (slider->flags & Fui_Flag_NOZ)
     {
-     value->xyz = noz(value->xyz);
+     value.xyz = noz(value.xyz);
     }
     
     if (slider->flags & Fui_Flag_Clamp_01)
     {
      for_i32(index,0,4)
      {
-      macro_clamp01(value->v[index])
+      macro_clamp01(value.v[index])
      }
     }
    }
+   
+   block_copy(slider+1, &value, slider_value_size(slider));
   }
  }
  
@@ -875,7 +702,7 @@ game_update(game_update_params)
   Camera_Data *cam = &update_viewport->camera;
   if (input->debug_camera_on)
   {
-   DEBUG_NAME("camera(theta,phi,distance)", vec3(cam->theta, cam->phi, camera->distance));
+   DEBUG_NAME("camera(theta,phi,distance)", V3(cam->theta, cam->phi, camera->distance));
    DEBUG_NAME("camera(pan)", cam->pan);
   }
  }
@@ -890,15 +717,85 @@ game_update(game_update_params)
    else { viewport->last_preset = 0; }
   }
   
-  //;frame_arena_clear (@speed We're re-allocating memory every frame, no good)
-  arena_clear(&viewport->frame_arena);
+  static_arena_clear(&viewport->frame_arena);
  }
  
- update_game_config();
+ movie_update(state);
+ 
+ if ( game_hot )
+ {// ;UpdateSelectedObjects
+  Primitive_Type selected_type = prim_id_type(state->selected_obj_id);
+  if ( selected_type )
+  {
+   b32 escape_pressed = just_pressed(input, Key_Code_Escape);
+   b32 return_pressed = just_pressed(input, Key_Code_Return);
+   i32 selected_index = index_from_prim_id(state->selected_obj_id);
+   if( selected_type == Prim_Vertex )
+   {
+    Vertex_Data *vertex = &state->vertices[selected_index];
+    if( escape_pressed )
+    {// NOTE: Cancelling
+     *vertex = state->previous_vertex;
+     state->selected_obj_id = 0;
+    }
+    else if( return_pressed )
+    {// NOTE: Committing
+     state->selected_obj_id = 0;
+    }
+    else
+    {
+     v3 direction = key_direction(input, 0, false);
+     direction.z = 0.f;
+     direction = noz( mat4vec(camera->forward, direction) );
+     v1 delta_scale = 0.2f;
+     v3 delta = delta_scale * dt * direction;
+     vertex->pos += delta;
+    }
+   }
+   else if( selected_type == Prim_Curve )
+   {// NOTE: curve update
+    Bezier_Data *curve = &state->curves[selected_index];
+    if ( escape_pressed )
+    {
+     *curve = state->previous_curve;
+     state->selected_obj_id = 0;
+    }
+    else if (return_pressed)
+    {
+     state->selected_obj_id = 0;
+    }
+    else
+    {
+     // todo @incomplete
+     i1 direction = i1( key_direction(input, 0, true).x );
+     v1 delta = i2f6(direction);
+     if (delta != 0)
+     {
+      for_i32(index, 0, 4)
+      {
+       curve->radii[index] += delta;
+      }
+     }
+     DEBUG_VALUE(curve->radii);
+    }
+   }
+  }
+ }
+ 
+ if (debug_frame_time_on)
+ {
+  DEBUG_NAME("work cycles", input->frame.work_cycles);
+  DEBUG_NAME("work ms", input->frame.work_seconds * 1e3f);
+ }
+ 
+ if (0)  // nono We have support fbool in other files!
+ {
+  DEBUG_VALUE(image_load_info.image_count);
+  DEBUG_VALUE(image_load_info.failure_count);
+ }
  
  return should_animate_next_frame;
 }
-
 
 #undef WARN_DELTA
 #undef viz_block

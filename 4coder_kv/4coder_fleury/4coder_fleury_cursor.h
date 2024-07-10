@@ -5,11 +5,11 @@
 
 #include "4coder_fleury_ubiquitous.h"
 
-function void F4_Cursor_RenderEmacsStyle(Application_Links *app, View_ID view_id, b32 is_active_view,
+function void F4_Cursor_RenderEmacsStyle(App *app, View_ID view_id, b32 is_active_view,
                                          Buffer_ID buffer, Text_Layout_ID text_layout_id,
                                          f32 roundness, f32 outline_thickness, Frame_Info frame_info);
 
-function void F4_Cursor_RenderNotepadStyle(Application_Links *app, View_ID view_id, b32 is_active_view,
+function void F4_Cursor_RenderNotepadStyle(App *app, View_ID view_id, b32 is_active_view,
                                            Buffer_ID buffer, Text_Layout_ID text_layout_id,
                                            f32 roundness, f32 outline_thickness, Frame_Info frame_info);
 

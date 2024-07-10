@@ -9,9 +9,9 @@
 // TOP
 
 internal Node*
-history__to_node(Node *sentinel, i32 index){
+history__to_node(Node *sentinel, i1 index){
     Node *result = 0;
-    i32 counter = 0;
+    i1 counter = 0;
     Node *it = sentinel;
     do{
         if (counter == index){
@@ -27,8 +27,8 @@ history__to_node(Node *sentinel, i32 index){
 internal void
 history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table *lookup, Record *record){
     if (lookup->records == 0 || lookup->count == lookup->max){
-        i32 new_max = clamp_min(1024, lookup->max*2);
-        String_Const_u8 new_memory = base_allocate(allocator, sizeof(Record*)*new_max);
+        i1 new_max = clamp_min(1024, lookup->max*2);
+        String new_memory = base_allocate(allocator, sizeof(Record*)*new_max);
         Record **new_records = (Record**)new_memory.str;
         block_copy(new_records, lookup->records, sizeof(*new_records)*lookup->count);
         if (lookup->records != 0){
@@ -43,18 +43,18 @@ history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table
 }
 
 internal void
-history__shrink_array(Record_Ptr_Lookup_Table *lookup, i32 new_count){
+history__shrink_array(Record_Ptr_Lookup_Table *lookup, i1 new_count){
     Assert(0 <= new_count && new_count <= lookup->count);
     lookup->count = new_count;
 }
 
 internal void
-history__merge_record_ptr_range_to_one_ptr(Record_Ptr_Lookup_Table *lookup, i32 first_one_based, i32 last_one_based, Record *record){
-    i32 first = first_one_based - 1;
-    i32 one_past_last = last_one_based;
+history__merge_record_ptr_range_to_one_ptr(Record_Ptr_Lookup_Table *lookup, i1 first_one_based, i1 last_one_based, Record *record){
+    i1 first = first_one_based - 1;
+    i1 one_past_last = last_one_based;
     Assert(0 <= first && first <= one_past_last && one_past_last <= lookup->count);
     if (first < one_past_last){
-        i32 shift = 1 + first - one_past_last;
+        i1 shift = 1 + first - one_past_last;
         block_copy(lookup->records + one_past_last + shift, lookup->records + one_past_last, lookup->count - one_past_last);
         lookup->count += shift;
     }
@@ -62,7 +62,7 @@ history__merge_record_ptr_range_to_one_ptr(Record_Ptr_Lookup_Table *lookup, i32 
 }
 
 internal Node*
-history__to_node(History *history, i32 index){
+history__to_node(History *history, i1 index){
     Node *result = 0;
     if (index == 0){
         result = &history->records;
@@ -82,14 +82,14 @@ history__allocate_record(History *history){
     Node *sentinel = &history->free_records;
     Node *new_node = sentinel->next;
     if (new_node == sentinel){
-        i32 new_record_count = 1024;
-        String_Const_u8 new_memory = base_allocate(&history->heap_wrapper, sizeof(Record)*new_record_count);
+        i1 new_record_count = 1024;
+        String new_memory = base_allocate(&history->heap_wrapper, sizeof(Record)*new_record_count);
         void *memory = new_memory.str;
         
         Record *new_record = (Record*)memory;
         sentinel->next = &new_record->node;
         new_record->node.prev = sentinel;
-        for (i32 i = 1; i < new_record_count; i += 1, new_record += 1){
+        for (i1 i = 1; i < new_record_count; i += 1, new_record += 1){
             new_record[0].node.next = &new_record[1].node;
             new_record[1].node.prev = &new_record[0].node;
         }
@@ -110,9 +110,9 @@ global_history_init(Global_History *global_history){
     global_history->edit_grouping_counter = 0;
 }
 
-internal i32
+internal i1
 global_history_get_edit_number(Global_History *global_history){
-    i32 result = global_history->edit_number_counter;
+    i1 result = global_history->edit_number_counter;
     if (global_history->edit_grouping_counter == 0){
         global_history->edit_number_counter += 1;
     }
@@ -120,8 +120,8 @@ global_history_get_edit_number(Global_History *global_history){
 }
 
 internal void
-global_history_adjust_edit_grouping_counter(Global_History *global_history, i32 adjustment){
-    i32 original = global_history->edit_grouping_counter;
+global_history_adjust_edit_grouping_counter(Global_History *global_history, i1 adjustment){
+    i1 original = global_history->edit_grouping_counter;
     global_history->edit_grouping_counter = clamp_min(0, global_history->edit_grouping_counter + adjustment);
     if (global_history->edit_grouping_counter == 0 && original > 0){
         global_history->edit_number_counter += 1;
@@ -154,9 +154,9 @@ history_free(Thread_Context *tctx, History *history){
     }
 }
 
-internal i32
+internal i1
 history_get_record_count(History *history){
-    i32 result = 0;
+    i1 result = 0;
     if (history->activated){
         result = history->record_count;
     }
@@ -164,7 +164,7 @@ history_get_record_count(History *history){
 }
 
 internal Record*
-history_get_record(History *history, i32 index){
+history_get_record(History *history, i1 index){
     Record *result = 0;
     if (history->activated){
         Node *node = history__to_node(history, index);
@@ -176,7 +176,7 @@ history_get_record(History *history, i32 index){
 }
 
 internal Record*
-history_get_sub_record(Record *record, i32 sub_index_one_based){
+history_get_sub_record(Record *record, i1 sub_index_one_based){
     Record *result = 0;
     if (record->kind == RecordKind_Group){
         if (0 < sub_index_one_based && sub_index_one_based <= record->group.count){
@@ -214,7 +214,7 @@ history__free_single_node(History *history, Node *node){
 }
 
 internal void
-history__free_nodes(History *history, i32 first_index, Node *first_node, Node *last_node){
+history__free_nodes(History *history, i1 first_index, Node *first_node, Node *last_node){
     if (first_node == last_node){
         history__free_single_node(history, first_node);
     }
@@ -261,7 +261,7 @@ history_record_edit(Global_History *global_history, History *history, Gap_Buffer
         
         new_record->kind = RecordKind_Single;
         
-        new_record->single.forward_text = push_string_copy(&history->arena, edit.text);
+        new_record->single.forward_text = push_string_copyz(&history->arena, edit.text);
         new_record->single.backward_text = buffer_stringify(&history->arena, buffer, edit.range);
         new_record->single.first = edit.range.first;
         
@@ -270,7 +270,7 @@ history_record_edit(Global_History *global_history, History *history, Gap_Buffer
 }
 
 internal void
-history_dump_records_after_index(History *history, i32 index){
+history_dump_records_after_index(History *history, i1 index){
     if (history->activated){
         Assert(history->record_lookup.count == history->record_count);
         
@@ -318,26 +318,26 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
             
             Temp_Memory temp = begin_temp(scratch);
             
-            String_Const_u8 merged_forward = {};
-            String_Const_u8 merged_backward = {};
+            String merged_forward = {};
+            String merged_backward = {};
             
             i64 merged_first = 0;
             if (left->single.first + (i64)left->single.forward_text.size == right->single.first){
                 do_merge = true;
-                merged_forward = push_stringf(scratch, "%.*s%.*s",
+                merged_forward = push_stringfz(scratch, "%.*s%.*s",
                                                  string_expand(left->single.forward_text),
                                                  string_expand(right->single.forward_text));
-                merged_backward = push_stringf(scratch, "%.*s%.*s",
+                merged_backward = push_stringfz(scratch, "%.*s%.*s",
                                                   string_expand(left->single.backward_text),
                                                   string_expand(right->single.backward_text));
                 merged_first = left->single.first;
             }
             else if (right->single.first + (i64)right->single.backward_text.size == left->single.first){
                 do_merge = true;
-                merged_forward = push_stringf(scratch, "%.*s%.*s",
+                merged_forward = push_stringfz(scratch, "%.*s%.*s",
                                                  string_expand(right->single.forward_text),
                                                  string_expand(left->single.forward_text));
-                merged_backward = push_stringf(scratch, "%.*s%.*s",
+                merged_backward = push_stringfz(scratch, "%.*s%.*s",
                                                   string_expand(right->single.backward_text),
                                                   string_expand(left->single.backward_text));
                 merged_first = right->single.first;
@@ -351,8 +351,8 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
                 
                 left->edit_number = right->edit_number;
                 left->single.first = merged_first;
-                left->single.forward_text  = push_string_copy(&history->arena, merged_forward);
-                left->single.backward_text = push_string_copy(&history->arena, merged_backward);
+                left->single.forward_text  = push_string_copyz(&history->arena, merged_forward);
+                left->single.backward_text = push_string_copyz(&history->arena, merged_backward);
                 
                 history__free_single_node(history, &right->node);
                 record->group.count -= 1;
@@ -367,7 +367,7 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
 }
 
 internal void
-history_merge_records(Arena *scratch, History *history, i32 first_index, i32 last_index){
+history_merge_records(Arena *scratch, History *history, i1 first_index, i1 last_index){
     if (history->activated){
         Assert(history->record_lookup.count == history->record_count);
         Assert(first_index < last_index);
@@ -397,7 +397,7 @@ history_merge_records(Arena *scratch, History *history, i32 first_index, i32 las
         Node *new_sentinel = &new_record->group.children;
         dll_init_sentinel(new_sentinel);
         
-        i32 count = 0;
+        i1 count = 0;
         for (Node *node = first_node, *next = 0;
              node != 0;
              node = next){

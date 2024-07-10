@@ -7,7 +7,7 @@
 global F4_Language_State f4_langs = {};
 
 internal F4_Language *
-F4_LanguageFromString(String_Const_u8 name)
+F4_LanguageFromString(String name)
 {
     F4_Language *result = 0;
     if(f4_langs.initialized)
@@ -29,7 +29,7 @@ F4_LanguageFromString(String_Const_u8 name)
 #define F4_RegisterLanguage(name, IndexFile, LexInit, LexFullInput, PosContext, Highlight, lex_state_type) _F4_RegisterLanguage(name, IndexFile, (F4_Language_LexInit *)LexInit, (F4_Language_LexFullInput *)LexFullInput, (F4_Language_PosContext *)PosContext, (F4_Language_Highlight *)Highlight, sizeof(lex_state_type))
 
 internal void
-_F4_RegisterLanguage(String_Const_u8 name,
+_F4_RegisterLanguage(String name,
                      F4_Language_IndexFile          *IndexFile,
                      F4_Language_LexInit            *LexInit,
                      F4_Language_LexFullInput       *LexFullInput,
@@ -61,7 +61,7 @@ _F4_RegisterLanguage(String_Const_u8 name,
         language->next = f4_langs.language_table[slot];
         f4_langs.language_table[slot] = language;
         language->hash = hash;
-        language->name = push_string_copy(&f4_langs.arena, name);
+        language->name = push_string_copyz(&f4_langs.arena, name);
         language->lex_state_size     = lex_state_size;
         language->IndexFile          = IndexFile;
         language->LexInit            = LexInit;
@@ -72,7 +72,7 @@ _F4_RegisterLanguage(String_Const_u8 name,
 }
 
 internal F4_Language *
-F4_LanguageFromBuffer(Application_Links *app, Buffer_ID buffer)
+F4_LanguageFromBuffer(App *app, Buffer_ID buffer)
 {
     F4_Language *language = 0;
     Scratch_Block scratch(app);
@@ -113,7 +113,7 @@ internal void
 F4_Language_PosContext_PushData_Call(Arena *arena,
                                      F4_Language_PosContextData **first_ptr,
                                      F4_Language_PosContextData **last_ptr,
-                                     String_Const_u8 string, int param_idx)
+                                     String string, int param_idx)
 {
     F4_Language_PosContext_PushData(arena, first_ptr, last_ptr, F4_Index_LookupNote(string, 0), 0, param_idx);
 }
@@ -122,13 +122,13 @@ internal void
 F4_Language_PosContext_PushData_Dot(Arena *arena,
                                     F4_Language_PosContextData **first_ptr,
                                     F4_Language_PosContextData **last_ptr,
-                                    String_Const_u8 string, Token *query)
+                                    String string, Token *query)
 {
     F4_Language_PosContext_PushData(arena, first_ptr, last_ptr, F4_Index_LookupNote(string, 0), query, 0);
 }
 
 internal Token_List
-F4_Language_LexFullInput_NoBreaks(Application_Links *app, F4_Language *language, Arena *arena, String_Const_u8 text)
+F4_Language_LexFullInput_NoBreaks(App *app, F4_Language *language, Arena *arena, String text)
 {
     Token_List list = {};
     if(language != 0)

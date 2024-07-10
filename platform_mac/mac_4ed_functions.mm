@@ -8,7 +8,7 @@
 
 function
 system_get_path_sig(){
-    String_Const_u8 result = {};
+    String result = {};
 
     switch (path_code){
         case SystemPath_CurrentDirectory:
@@ -33,7 +33,7 @@ system_get_path_sig(){
                 u8 *memory = (u8*)system_memory_allocate(binary_path_capacity, file_name_line_number_lit_u8);
 
                 pid_t pid = getpid();
-                i32 size = proc_pidpath(pid, memory, binary_path_capacity);
+                i1 size = proc_pidpath(pid, memory, binary_path_capacity);
                 Assert(size < binary_path_capacity);
 
                 mac_vars.binary_path = SCu8(memory, size);
@@ -64,9 +64,9 @@ system_get_canonical_sig(){
         [[NSString alloc] initWithBytes:name.str length:name.size encoding:NSUTF8StringEncoding];
 
     NSString *standardized_path_ns_str = [path_ns_str stringByStandardizingPath];
-    String_Const_u8 standardized_path = SCu8((u8*)[standardized_path_ns_str UTF8String],[standardized_path_ns_str lengthOfBytesUsingEncoding:NSUTF8StringEncoding]);
+    String standardized_path = SCu8((u8*)[standardized_path_ns_str UTF8String],[standardized_path_ns_str lengthOfBytesUsingEncoding:NSUTF8StringEncoding]);
 
-    String_Const_u8 result = push_string_copy(arena, standardized_path);
+    String result = push_string_copy(arena, standardized_path);
 
     [path_ns_str release];
 
@@ -102,7 +102,7 @@ mac_file_attributes_from_path(char *path) {
 }
 
 function inline File_Attributes
-mac_file_attributes_from_fd(i32 fd) {
+mac_file_attributes_from_fd(i1 fd) {
     File_Attributes result = {};
 
     struct stat file_stat;
@@ -125,13 +125,13 @@ system_get_file_list_sig(){
     if (dir){
         File_Info* first = 0;
         File_Info* last = 0;
-        i32 count = 0;
+        i1 count = 0;
 
         for (struct dirent *entry = readdir(dir);
              entry;
              entry = readdir(dir)){
             char *c_file_name = entry->d_name;
-            String_Const_u8 file_name = SCu8(c_file_name);
+            String file_name = SCu8(c_file_name);
 
             if (string_match(file_name, string_u8_litexpr(".")) || string_match(file_name, string_u8_litexpr(".."))){
                 continue;
@@ -181,7 +181,7 @@ system_get_file_list_sig(){
         result.infos = push_array(arena, File_Info*, count);
         result.count = count;
 
-        i32 index = 0;
+        i1 index = 0;
         for (File_Info *node = first;
              node != 0;
              node = node->next){
@@ -209,14 +209,14 @@ system_quick_file_attributes_sig(){
 }
 
 function inline Plat_Handle
-mac_to_plat_handle(i32 fd){
+mac_to_plat_handle(i1 fd){
     Plat_Handle result = *(Plat_Handle*)(&fd);
     return(result);
 }
 
-function inline i32
+function inline i1
 mac_to_fd(Plat_Handle handle){
-    i32 result = *(i32*)(&handle);
+    i1 result = *(i1*)(&handle);
     return(result);
 }
 
@@ -224,7 +224,7 @@ function
 system_load_handle_sig(){
     b32 result = false;
 
-    i32 fd = open(file_name, O_RDONLY);
+    i1 fd = open(file_name, O_RDONLY);
     if ((fd != -1) && (fd != 0)) {
         *out = mac_to_plat_handle(fd);
         result = true;
@@ -235,7 +235,7 @@ system_load_handle_sig(){
 
 function
 system_load_attributes_sig(){
-    i32 fd = mac_to_fd(handle);
+    i1 fd = mac_to_fd(handle);
     File_Attributes result = mac_file_attributes_from_fd(fd);
 
     return(result);
@@ -243,7 +243,7 @@ system_load_attributes_sig(){
 
 function
 system_load_file_sig(){
-    i32 fd = mac_to_fd(handle);
+    i1 fd = mac_to_fd(handle);
 
     do{
         ssize_t bytes_read = read(fd, buffer, size);
@@ -266,7 +266,7 @@ function
 system_load_close_sig(){
     b32 result = true;
 
-    i32 fd = mac_to_fd(handle);
+    i1 fd = mac_to_fd(handle);
     if (close(fd) == -1){
         // NOTE(yuval): An error occured while close the file descriptor
         result = false;
@@ -279,7 +279,7 @@ function
 system_save_file_sig(){
     File_Attributes result = {};
 
-    i32 fd = open(file_name, O_WRONLY | O_TRUNC | O_CREAT, 00640);
+    i1 fd = open(file_name, O_WRONLY | O_TRUNC | O_CREAT, 00640);
     if (fd != -1) {
         do{
             ssize_t bytes_written = write(fd, data.str, data.size);
@@ -349,7 +349,7 @@ system_load_library_sig(){
 function
 system_release_library_sig(){
     void *lib = mac_to_dl_handle(handle);
-    i32 rc = dlclose(lib);
+    i1 rc = dlclose(lib);
 
     b32 result = (rc == 0);
     return(result);
@@ -366,7 +366,7 @@ system_get_proc_sig(){
 ////////////////////////////////
 
 function
-system_now_time_sig(){
+system_time_usecond_sig(){
     u64 now = mach_absolute_time();
 
     // NOTE(yuval): Now time nanoseconds conversion
@@ -682,7 +682,7 @@ system_thread_free_sig(){
 function
 system_thread_get_id_sig(){
     pthread_t id = pthread_self();
-    i32 result = *(i32*)(&id);
+    i1 result = *(i1*)(&id);
     return(result);
 }
 
@@ -776,14 +776,14 @@ system_condition_variable_free_sig(){
 struct Memory_Annotation_Tracker_Node{
     Memory_Annotation_Tracker_Node *next;
     Memory_Annotation_Tracker_Node *prev;
-    String_Const_u8 location;
+    String location;
     u64 size;
 };
 
 struct Memory_Annotation_Tracker{
     Memory_Annotation_Tracker_Node *first;
     Memory_Annotation_Tracker_Node *last;
-    i32 count;
+    i1 count;
 };
 
 global Memory_Annotation_Tracker memory_tracker = {};
@@ -792,7 +792,7 @@ global pthread_mutex_t memory_tracker_mutex;
 global_const u64 ALLOCATION_SIZE_ADJUSTMENT = 64;
 
 function void*
-mac_memory_allocate_extended(void *base, u64 size, String_Const_u8 location){
+mac_memory_allocate_extended(void *base, u64 size, String location){
     u64 adjusted_size = size + ALLOCATION_SIZE_ADJUSTMENT;
     void *memory = mmap(base, adjusted_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     Assert(memory != MAP_FAILED);

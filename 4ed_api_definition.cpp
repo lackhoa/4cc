@@ -17,7 +17,7 @@ begin_api(Arena *arena, char *name){
 }
 
 function API_Call*
-api_call_with_location(Arena *arena, API_Definition *api, String_Const_u8 name, String_Const_u8 type, String_Const_u8 location){
+api_call_with_location(Arena *arena, API_Definition *api, String name, String type, String location){
     API_Call *call = push_array_zero(arena, API_Call, 1);
     sll_queue_push(api->first_call, api->last_call, call);
     api->call_count += 1;
@@ -33,7 +33,7 @@ api_call_with_location(Arena *arena, API_Definition *api, char *name, char *type
 }
 
 function API_Type*
-api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, String_Const_u8 name, List_String_Const_u8 member_list, String_Const_u8 definition, String_Const_u8 location){
+api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, String name, List_String member_list, String definition, String location){
     API_Type *type = push_array_zero(arena, API_Type, 1);
     sll_queue_push(api->first_type, api->last_type, type);
     api->type_count += 1;
@@ -47,7 +47,7 @@ api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Str
 }
 
 function API_Type*
-api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, char *name, List_String_Const_u8 member_list, char *definition, char *location)
+api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, char *name, List_String member_list, char *definition, char *location)
 {
     return(api_type_structure_with_location(arena, api, kind, SCu8(name), member_list, SCu8(definition), SCu8(location)));
 }
@@ -71,7 +71,7 @@ api_set_param_list(API_Call *call, API_Param_List list){
 }
 
 function API_Definition*
-api_get_api(API_Definition_List *list, String_Const_u8 name){
+api_get_api(API_Definition_List *list, String name){
     API_Definition *result = 0;
     for (API_Definition *node = list->first;
          node != 0;
@@ -85,7 +85,7 @@ api_get_api(API_Definition_List *list, String_Const_u8 name){
 }
 
 function API_Definition*
-api_get_api(Arena *arena, API_Definition_List *list, String_Const_u8 name){
+api_get_api(Arena *arena, API_Definition_List *list, String name){
     API_Definition *result = api_get_api(list, name);
     if (result == 0){
         result = push_array_zero(arena, API_Definition, 1);
@@ -97,7 +97,7 @@ api_get_api(Arena *arena, API_Definition_List *list, String_Const_u8 name){
 }
 
 function API_Call*
-api_get_call(API_Definition *api, String_Const_u8 name){
+api_get_call(API_Definition *api, String name){
     API_Call *result = 0;
     for (API_Call *call = api->first_call;
          call != 0;
@@ -130,7 +130,7 @@ api_call_match_sigs(API_Call *a, API_Call *b){
 }
 
 function API_Type*
-api_get_type(API_Definition *api, String_Const_u8 name){
+api_get_type(API_Definition *api, String name){
     API_Type *result = 0;
     for (API_Type *type = api->first_type;
          type != 0;
@@ -192,14 +192,14 @@ api_type_match(API_Type *a, API_Type *b){
 #include <stdio.h>
 #include "4coder_stringf.cpp"
 
-function String_Const_u8
-api_get_callable_name(Arena *arena, String_Const_u8 api_name, String_Const_u8 name, API_Generation_Flag flags){
-    String_Const_u8 result = {};
+function String
+api_get_callable_name(Arena *arena, String api_name, String name, API_Generation_Flag flags){
+    String result = {};
     if (HasFlag(flags, APIGeneration_NoAPINameOnCallables)){
-        result = push_stringf(arena, "%.*s", string_expand(name));
+        result = push_stringfz(arena, "%.*s", string_expand(name));
     }
     else{
-        result = push_stringf(arena, "%.*s_%.*s",
+        result = push_stringfz(arena, "%.*s_%.*s",
                                  string_expand(api_name),
                                  string_expand(name));
     }
@@ -307,7 +307,7 @@ generate_header(Arena *scratch, API_Definition *api, API_Generation_Flag flags, 
     for (API_Call *call = api->first_call;
          call != 0;
          call = call->next){
-        String_Const_u8 callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
+        String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
         fprintf(out, "internal %.*s %.*s(",
                 string_expand(call->return_type),
                 string_expand(callable_name));
@@ -333,7 +333,7 @@ generate_header(Arena *scratch, API_Definition *api, API_Generation_Flag flags, 
     for (API_Call *call = api->first_call;
          call != 0;
          call = call->next){
-        String_Const_u8 callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
+        String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
         fprintf(out, "global %.*s_%.*s_type *%.*s = 0;\n",
                 string_expand(api->name),
                 string_expand(call->name),
@@ -352,7 +352,7 @@ generate_cpp(Arena *scratch, API_Definition *api, API_Generation_Flag flags, FIL
     for (API_Call *call = api->first_call;
          call != 0;
          call = call->next){
-        String_Const_u8 callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
+        String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
         fprintf(out, "vtable->%.*s = %.*s;\n",
                 string_expand(call->name),
                 string_expand(callable_name));
@@ -367,7 +367,7 @@ generate_cpp(Arena *scratch, API_Definition *api, API_Generation_Flag flags, FIL
     for (API_Call *call = api->first_call;
          call != 0;
          call = call->next){
-        String_Const_u8 callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
+        String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
         fprintf(out, "%.*s = vtable->%.*s;\n",
                 string_expand(callable_name),
                 string_expand(call->name));
@@ -425,12 +425,12 @@ api_definition_generate_api_includes(Arena *arena, API_Definition *api, Generate
     String8 path_to_self = string_u8_litexpr(__FILE__);
     path_to_self = path_dirname(path_to_self);
     
-    String_Const_u8 fname_ml = {};
-    String_Const_u8 fname_h = {};
-    String_Const_u8 fname_cpp = {};
-    String_Const_u8 fname_con = {};
+    String fname_ml = {};
+    String fname_h = {};
+    String fname_cpp = {};
+    String fname_con = {};
     
-    String_Const_u8 root = {};
+    String root = {};
     switch (group){
         case GeneratedGroup_Core:
         {
@@ -442,22 +442,22 @@ api_definition_generate_api_includes(Arena *arena, API_Definition *api, Generate
         }break;
     }
     
-    fname_ml = push_stringf(arena, "%.*s%.*s%.*s_api_master_list.h",
+    fname_ml = push_stringfz(arena, "%.*s%.*s%.*s_api_master_list.h",
                                string_expand(path_to_self),
                                string_expand(root),
                                string_expand(api->name));
     
-    fname_h = push_stringf(arena, "%.*s%.*s%.*s_api.h",
+    fname_h = push_stringfz(arena, "%.*s%.*s%.*s_api.h",
                               string_expand(path_to_self),
                               string_expand(root),
                               string_expand(api->name));
     
-    fname_cpp = push_stringf(arena, "%.*s%.*s%.*s_api.cpp",
+    fname_cpp = push_stringfz(arena, "%.*s%.*s%.*s_api.cpp",
                                 string_expand(path_to_self),
                                 string_expand(root),
                                 string_expand(api->name));
     
-    fname_con = push_stringf(arena, "%.*s%.*s%.*s_api_constructor.cpp",
+    fname_con = push_stringfz(arena, "%.*s%.*s%.*s_api_constructor.cpp",
                                 string_expand(path_to_self),
                                 string_expand(root),
                                 string_expand(api->name));
@@ -511,7 +511,7 @@ api_definition_generate_api_includes(Arena *arena, API_Definition *api, Generate
 ////////////////////////////////
 
 function void
-api_definition_error(Arena *arena, List_String_Const_u8 *list,
+api_definition_error(Arena *arena, List_String *list,
                      char *e1, API_Call *c1, char *e2, API_Call *c2){
     Assert(e1 != 0);
     Assert(c1 != 0);
@@ -533,19 +533,19 @@ api_definition_error(Arena *arena, List_String_Const_u8 *list,
 }
 
 function void
-api_definition_error(Arena *arena, List_String_Const_u8 *list,
+api_definition_error(Arena *arena, List_String *list,
                      char *e1, API_Call *c1, char *e2){
     api_definition_error(arena, list, e1, c1, e2, 0);
 }
 
 function void
-api_definition_error(Arena *arena, List_String_Const_u8 *list,
+api_definition_error(Arena *arena, List_String *list,
                      char *e1, API_Call *c1){
     api_definition_error(arena, list, e1, c1, 0, 0);
 }
 
 function void
-api_definition_error(Arena *arena, List_String_Const_u8 *list,
+api_definition_error(Arena *arena, List_String *list,
                      char *e1, API_Definition *api1, char *e2){
     Assert(e1 != 0);
     Assert(api1 != 0);
@@ -558,13 +558,13 @@ api_definition_error(Arena *arena, List_String_Const_u8 *list,
 }
 
 function void
-api_definition_error(Arena *arena, List_String_Const_u8 *list,
+api_definition_error(Arena *arena, List_String *list,
                      char *e1, API_Definition *api1){
     api_definition_error(arena, list, e1, api1, 0);
 }
 
 function void
-api_definition_check(Arena *arena, API_Definition *correct, API_Definition *remote, API_Check_Flag flags, List_String_Const_u8 *error_list){
+api_definition_check(Arena *arena, API_Definition *correct, API_Definition *remote, API_Check_Flag flags, List_String *error_list){
     b32 report_missing = HasFlag(flags, APICheck_ReportMissingAPI);
     b32 report_extra = HasFlag(flags, APICheck_ReportExtraAPI);
     b32 report_mismatch = HasFlag(flags, APICheck_ReportMismatchAPI);
@@ -603,7 +603,7 @@ api_definition_check(Arena *arena, API_Definition *correct, API_Definition *remo
 }
 
 function void
-api_list_check(Arena *arena, API_Definition_List *correct, API_Definition_List *remote, API_Check_Flag flags, List_String_Const_u8 *error_list){
+api_list_check(Arena *arena, API_Definition_List *correct, API_Definition_List *remote, API_Check_Flag flags, List_String *error_list){
     b32 report_missing = HasFlag(flags, APICheck_ReportMissingAPI);
     b32 report_extra = HasFlag(flags, APICheck_ReportExtraAPI);
     

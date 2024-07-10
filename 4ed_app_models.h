@@ -172,7 +172,7 @@ struct Consumption_Record{
 };
 
 struct File_Init{
-    String_Const_u8 name;
+    String name;
     Editing_File **ptr;
     b32 read_only;
 };

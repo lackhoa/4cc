@@ -20,137 +20,6 @@
  return result.xyz;
 }
 
-if (0)
-{
- v3 A = vec3(nose_root.x,nose_tip.y,nose_root.z);
- v3 B = nose_tip;
- v3 C = nose_root;
- 
- v2 a = perspective_project(p, A).xy;
- v2 b = perspective_project(p, B).xy;
- v2 c = perspective_project(p, C).xy;
- 
- v2 ab = (b-a);
- v2 ac = (c-a);
- 
- //DEBUG_VALUE(ab);
- //DEBUG_VALUE(ac);
- 
- profile_score = absolute(cross2d(ab, ac));
- {
-  v3 D = vec3(nose_wing.x, nose_tip.y,nose_root.z);
-  v2 d = perspective_project(p, D).xy;
-  v2 ad = (d-a);
-  v1 calibration_term = absolute(cross2d(ad, ac));
-  profile_score /= calibration_term;
- }
- 
- DEBUG_VALUE(profile_score);
-}
-
-{// NOTE: The new procedural hair experiment
- // NOTE: Assume that L is the side that curves more
- symx_off;
- 
- v3 root  = fvert(0.2531, -0.0059, 0.8966);
- v3 tip   = fvert(0.0865, -0.2857, 1.0268);
- v3 droot = fvert(0.0766, -0.1442, 0.0722);
- v3 dtip  = fvert(0.1043, 0.0618, 0.1511);
- v3 rootL = root+fvert(-0.0075, 0.0108, -0.0237);
- v3 rootR = root+fvert(-0.0730, 0.0104, 0.0309);
- v3 tip_distance = fvert(0,0,0);
- Bezier edgeL = make_bezier(p, rootL, droot, dtip, tip+tip_distance);
- Bezier edgeR = make_bezier(p, rootR, droot, dtip, tip);
- draw_bezier(p,edgeL);
- draw_bezier(p,edgeR);
- double_bezier_poly(p,edgeL,edgeR);
- 
- v3 offset = fvert(-0.0062, -0.0051, -0.0196);
- v3 tip_offset = fvert(0.0173, 0.0803, -0.0328);
- Bezier edgeL1 = make_bezier(p,
-                             rootL,
-                             offset+droot,
-                             offset+dtip,
-                             offset+tip+tip_offset+tip_distance);
- v1 dfudge = 0.6f;
- Bezier edgeR1 = make_bezier(p,
-                             offset+rootR+0.5f*(rootR-root),//@Hack
-                             offset+dfudge*droot,// NOTE: The side that doesn't curve, should curve less
-                             offset+dfudge*dtip,
-                             offset+tip+tip_offset);
- draw_bezier(p,edgeL1);
- draw_bezier(p,edgeR1);
- double_bezier_poly(p,edgeL1,edgeR1);
-}
-//-
-Hair middle_left = {
- .droot = fvert(0.1271, -0.1522, 0.0778),
- .dtip  = fvert(-0.1361, 0.0063, 0.1545),
- .tip   = fvert(0.0874, -0.2555, 0.9991),
- .full  = fbool(-0.0102),
-};
-Hair middle_right = {//middle right
- .droot = fvert(-0.1518, -0.0471, 0.1518),
- .dtip  = fvert(-0.1305, -0.0232, 0.1063),
- .full  = fbool(0),
-};
-middle_right.tip = middle_left.tip;
-
-Hair left_left = {//left left
- .droot = fvert(0.1391, -0.1127, 0.0776),
- .dtip  = fvert(0.2082, 0.1134, -0.0030),
- .tip   = fvert(0.1110, -0.2267, 0.9960),
- .full  = fbool(-0.0117),
-};
-Hair left_right = {//left right
- .droot = fvert(0.0950, -0.1389, 0.1265),
- .dtip  = fvert(0.0894, 0.1403, -0.0511),
- .full  = fbool(-0.0000),
-};
-left_right.tip = left_left.tip;
-
-Hair right_left = {// right left
- .droot = fvert(-0.1348, -0.1039, 0.1672),
- .dtip  = fvert(-0.0318, 0.0114, 0.0477),
- .tip   = fvert(-0.0270, -0.2459, 1.0039),
- .full  = false,
-};
-Hair right_right = {// right right
- .droot = fvert(-0.1305, -0.1190, 0.1578),
- .dtip  = fvert(-0.2647, 0.0863, 0.0775),
- .full  = fbool(-0.0051),
-};
-right_right.tip = right_left.tip;
-
-struct Hair {
- v3  droot;
- v3  dtip;
- v3  tip;
- b32 full;
- b32 cut;  // NOTE: pun not intended, at least originally
- Bezier line;
-};
-
-//-
-//NOTE Animation of the head using 8th's instead of 6th's
-if(use_8)
-{
- if(fbool(1))
- {// NOTE: right tilt
-  fkeyframe(4, 0);   // rest
-  fkeyframe(1, 1);  // anticipation
-  fkeyframe(8, -8); // rest
- }
- 
- if(fbool(1))
- {// NOTE: left tilt
-  fkeyframe(1, -10); // anticipation
-  fkeyframe(1, -9);  // movement
-  fkeyframe(1, 6);  // movement
- }
- 
- fkeyframe(8, 8);// rest
-}
 //-
 force_inline rect2 
 draw_widget_children(App *app, Widget_State *state, Widget *parent, v2 top_left)
@@ -171,22 +40,22 @@ draw_single_widget(App *app, Widget_State *state, Widget *widget, v2 top_left)
  Fancy_Line *line = &line_value;
  push_fancy_string(scratch, line, f_white, widget->name);
  // 
- v2 name_dim = vec2(get_fancy_line_width(app, face, line),
+ v2 name_dim = V2(get_fancy_line_width(app, face, line),
                     face_metrics.line_height);
  // 
  draw_fancy_line(app, face, fcolor_zero(), line, widget_min);
 #else
- v2 name_dim = vec2(50.0f, 50.0f);
- v2 widget_min = vec2(top_left.x, top_left.y-name_dim.y);
+ v2 name_dim = V2(50.0f, 50.0f);
+ v2 widget_min = V2(top_left.x, top_left.y-name_dim.y);
  draw_rect2(app, rect2_min_dim(widget_min, name_dim), argb_gray(.5));
 #endif
  
  auto widget_indentation = 10.0f;
- v2 children_top_left = vec2(widget_min.x + widget_indentation,
+ v2 children_top_left = V2(widget_min.x + widget_indentation,
                              widget_min.y);
  rect2 children = draw_widget_children(app, state, widget, children_top_left);
  //
- v2 whole_max = vec2(macro_max(widget_min.x + name_dim.x, children.max.x),
+ v2 whole_max = V2(macro_max(widget_min.x + name_dim.x, children.max.x),
                      widget_min.y + name_dim.y + widget_margin);
  //
  widget_min.y = children.min.y - widget_margin;
@@ -262,11 +131,11 @@ struct Anime_Command
  {
   struct
   {
-   i32 offset;
+   i1 offset;
    v4 data;
-   i32 data_size;     
+   i1 data_size;     
   };
-  i32 nframes;
+  i1 nframes;
  };
 };
 //-
@@ -274,13 +143,13 @@ struct Anime_Command
 #if 0
  v1 blink_period = fval(0.4f);
  v1 tblink0 = animation_time / blink_period;
- b32 should_blink = ((i32)tblink0 % 4 == 0 ||
-                     (i32)tblink0 % 4 == 1);
+ b32 should_blink = ((i1)tblink0 % 4 == 0 ||
+                     (i1)tblink0 % 4 == 1);
  v1 tblink = cycle01_positive(tblink0);
  
  v1 tclose = shot->tblink;
  {
-  const i32 nframes = 6;
+  const i1 nframes = 6;
   v1 tclose_middle = fval(0.203905f);
   v1 tclose_keys[nframes] = { 0.f, tclose_middle, 1.f, 1.f, tclose_middle, 0.f };
   tclose = tclose_keys[ get_frame_index(nframes, tblink) ];
@@ -368,7 +237,7 @@ internal v3
 perspective_project(Painter *p, v3 worldP)
 {
  Camera *camera = p->camera;
- v4 result = &camera->inverse * vec4(worldP, 1.f);
+ v4 result = &camera->inverse * V4(worldP, 1.f);
  
  if (1)
  {
@@ -415,7 +284,7 @@ perspective_project(Painter *p, v3 worldP)
  v3 rd_inv = 1.f / rd;
  
  v3 tminv, tmaxv;
- for_i32(index,0,3)
+ for_i1(index,0,3)
  {
   tminv[index] = (-ro[index] -R[index]) * rd_inv[index];
   tmaxv[index] = (-ro[index] +R[index]) * rd_inv[index];
@@ -639,14 +508,14 @@ hit_test(v3 rd, CSG_Tree *tree, v1 lower_bound /*@tmin_exclusive*/)
    case CSG_Box:
    {// ;csg_primitive_box ; see also csg_box and @aabb_hit_test
     // Reference reindeer: https://www.shadertoy.com/view/tl23Rm
-    v3 ro = mat4vert_no_div(tree->to_aabb, vec3());
+    v3 ro = mat4vert_no_div(tree->to_aabb, V3());
     v3 &R = tree->box_radius;
     set_in_block(rd, mat4vec(tree->to_aabb, rd));
     
     // TODO: no idea what this does...
     v3 t1,t2;
     {
-     v3 m = signof(rd) / max(absolute(rd), vec3(1e-8));
+     v3 m = signof(rd) / max(absolute(rd), V3(1e-8));
      v3 n = m*ro;
      v3 k = absolute(m)*R;
      t1 = -n - k;
@@ -680,8 +549,8 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
  v1 default_fvert_delta_scale = 0.1f;
  argb ball_color = argb_blue;
  
- i32 W = clamp_between(0, cast(i32)(dst_dim.x), 1920);  // @dim_round_down
- i32 H = clamp_between(0, cast(i32)(dst_dim.y), 1080);
+ i1 W = clamp_between(0, cast(i1)(dst_dim.x), 1920);  // @dim_round_down
+ i1 H = clamp_between(0, cast(i1)(dst_dim.y), 1080);
  
  //NOTE: Clear the framebuffer
  block_zero( csg_buffer, W*H*sizeof(argb) );
@@ -716,20 +585,20 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
  v4 main_color = argb_unpack(argb_silver);
  
  //~IMPORTANT: Danger zone! Mega loop!
- for_i32(py,0,H)
+ for_i1(py,0,H)
  {
-  for_i32(px,0,W)
+  for_i1(px,0,W)
   {
    v3 rd;
    {//note compute rd
     v1 filmx = pixel_to_meter*(v1(px) - 0.5f*v1(W) + 0.5f);
     v1 filmy = pixel_to_meter*(v1(py) - 0.5f*v1(H) + 0.5f);
-    v3 pixel_camera_space = vec3(filmx, filmy, -focal_length);
+    v3 pixel_camera_space = V3(filmx, filmy, -focal_length);
     rd = noz(pixel_camera_space);
    }
    
    v1 time = 0.f;
-   v3 hit_normal = vec3();
+   v3 hit_normal = V3();
    v1 tmin = group->near_clip;
    {// note: compute hit time
     CSG_Tree *tree = csg_tree;
@@ -755,7 +624,7 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
      else
      {//NOTE: Primitive
       b32 hit_exiting = false;
-      v1 hit_normal = vec3();
+      v1 hit_normal = V3();
       
       Hit_Type hit_status;
       {//note: compute hit status
@@ -1015,7 +884,7 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
 {// NOTE: good-old dottted lines, holy cow!
  v4 main_color_v4 = argb_unpack(params->color);
  
- i32 nslices;
+ i1 nslices;
  {//~NOTE: pre-pass
   // NOTE: Working in 2D is no good, because we don't take into account that samples are moving in 3D, 
   // so they might be traveling longer distances due to the depth, 
@@ -1023,10 +892,10 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
   const mat4 &transform = objectT.forward;
   v1 the_length = 0.f;
   {
-   i32 pre_nslices = 8;
+   i1 pre_nslices = 8;
    v1 inv_nslices = 1.0f / (v1)pre_nslices;
    v3 last_sample_transformed;
-   for (i32 sample_index=0;
+   for (i1 sample_index=0;
         sample_index < pre_nslices+1;
         sample_index++)
    {
@@ -1043,11 +912,11 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
 #if 0
   //NOTE: depending on the radius is quite dumb
   v1 max_radius = 0.f;
-  for_i32(index,0,4) 
+  for_i1(index,0,4) 
   {//NOTE: Approximating maximum radius (after transformation)
    // TODO: This number is just pure garbage
    v1 radius = params->radii[index];
-   v4 control_point_transformed = view_objectT*vec4(P[index],1.f);
+   v4 control_point_transformed = view_objectT*V4(P[index],1.f);
    radius *= (camera->focal_length / control_point_transformed.w);
    
    macro_clamp_min(max_radius, radius);
@@ -1057,13 +926,13 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
   {
    v1 slice_density = 1.f;
    // NOTE: length / radius is actually unit-independent
-   nslices = i32_roundv1( slice_density * the_length / max_radius );
+   nslices = i1_roundv1( slice_density * the_length / max_radius );
   }
   else { nslices = 0; }
 #else
   //NOTE: applying perspective to this value is just stupid: just model it Llike usual, dude!
   v1 max_radius = 0.f;
-  for_i32(index,0,4) 
+  for_i1(index,0,4) 
   {//NOTE: We rely on maximum radius, because there are cases where the user supplies radius 0, to fade the line out
    v1 radius = params->radii[index];
    macro_clamp_min(max_radius, radius);
@@ -1073,13 +942,13 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
   {
    v1 slice_density = 1.25f;
    // NOTE: length / radius is actually unit-independent
-   nslices = i32_roundv1( slice_density * the_length / max_radius );
+   nslices = i1_roundv1( slice_density * the_length / max_radius );
   }
   else { nslices = 0; }
 #endif
   
   macro_clamp_min(nslices, 16);
-  i32 MAX_NSLICES = 256;
+  i1 MAX_NSLICES = 256;
   if (nslices > 2*MAX_NSLICES)
   {
    DEBUG_VALUE(nslices);
@@ -1095,7 +964,7 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
  if (params->flags & Line_Overlay) { vertex_type = Vertex_Overlay; }
  
  argb color = argb_pack(main_color_v4);
- for (i32 sample_index=0;
+ for (i1 sample_index=0;
       sample_index < nslices+1;
       sample_index++)
  {
@@ -1109,22 +978,157 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
 
 #if 0
 internal void
-fill_parallel(Painter *p, v3 a[], i32 acount, v3 b[], i32 bcount, argb color=0)
+fill_parallel(Painter *p, v3 a[], i1 acount, v3 b[], i1 bcount, argb color=0)
 {
  if (acount > bcount) { macro_swap(a,b); macro_swap(acount,bcount); }
  
- for_i32(index,0,acount-1)
+ for_i1(index,0,acount-1)
  {
   fill4(p, a[index], b[index], b[index+1], a[index+1]);
  }
  
  if (bcount > acount)
  {
-  i32 last = acount-1;
+  i1 last = acount-1;
   fill_fan(p, a[last], b+last, bcount-last);
  }
 }
 #endif
+
+{// ;upper_arm_csg
+ Temp_Memory_Block temp(arena);
+ v3 radii = fval3(0.146f, 1.f, 0.1544f);
+ 
+ CSG_Tree *tree = csg_box(V3(), radii);
+ 
+ Mesh mesh = transformed_mesh(arena, mat4_scales(radii), the_box_mesh);
+ {
+  v3 n = funit(V3(-0.9647f, 0.f, 0.2632f));
+  v1 d = fval(0.142f);
+  
+  for_i1(triangle_index,0,mesh.triangle_count)
+  {
+   i3 tri = mesh.triangles[triangle_index];
+   v3 triangle[3] = {
+    mesh.vertices[tri[0]],
+    mesh.vertices[tri[1]],
+    mesh.vertices[tri[2]] 
+   };
+   {// NOTE: clipping triangle
+    Clip_Result clipped = clip_triangle(triangle,n,d);
+    if ( triangle_valid(clipped.a) )
+    {
+     fill3(&painter, clipped.a);
+     if ( triangle_valid(clipped.b) )
+     {
+      fill3(&painter, clipped.b);
+     }
+    }
+   }
+   {// NOTE: Draw out intersections
+    std_array<v3,2> intersections = intersect_triangle(n,d,triangle);
+    for_i1(index, 0, 2)
+    {
+     if (intersections[index] != VEC3_INVALID)
+     {
+      indicate0(intersections[index]);
+     }
+    }
+   }
+  }
+ }
+}
+
+#if 0
+{// NOTE: load binary path
+ String read_string = read_entire_file(scratch, state->save_path);
+ if (read_string.len)
+ {
+  Game_Save *read = (Game_Save *)read_string.str;
+  if (read->magic_number == data_magic_number)
+  {
+   if (read->version == data_current_version)
+   {
+    state->save = *read;
+   }
+   else if ( read->version == (data_current_version-1) )
+   {
+    print_message(app, strlit("Game data load: Converting old version to new version!\n"));
+    Game_Save_Old *old = (Game_Save_Old *)read;
+    {// NOTE(kv): Conversion code!
+     //state->save = *(Game_Save *)old;
+    }
+   }
+   else {print_message(app, strlit("Game data load: Unknown version\n"));}
+  }
+  else  {print_message(app, strlit("Game data load: Wrong magic number!\n"));}
+ }
+ else {print_message(app, strlit("Game data load: can't load the file!\n"));}
+}
+#endif
+
+{//~NOTE: Rendering for the new editor
+ //TODO: Store the object transform in the game state
+ push_object_transform(&headT);
+ for_i32(index, 1, state->vertex_count)
+ {//-NOTE: Render all the vertices
+  indicate_vertex("name", prim_id_from_vertex_index(index),
+                  state->vertices[index].pos, 0);
+ }
+ 
+ push_object_transform(&torsoT);//TODO: we're just hacking it!
+ for_i32(curve_index, 1, state->curve_count)
+ {
+  Bezier_Data *curve = &state->curves[curve_index];
+  g_draw_prim_id = prim_id_from_curve_index(curve_index);
+  drawf(curve->bezier, curve->radii);
+ }
+}
+
+#if 0
+internal void
+draw_meshf(Mesh const&mesh)
+{
+ for_i32(triangle_index,0,mesh.triangle_count)
+ {
+  i3 triangle = mesh.triangles[triangle_index];
+  fill3f(mesh.vertices[triangle[0]],
+         mesh.vertices[triangle[1]],
+         mesh.vertices[triangle[2]]);
+ }
+}
+#endif
+
+struct CSG_Tree;
+
+//NOTE: Kinda like a list of primitives for now?
+struct CSG_Group
+{
+ CSG_Tree *first;
+ CSG_Tree *last;
+ i1 count;
+};
+
+struct CSG_Tree
+{
+ CSG_Tree *next;
+ CSG_Type type;
+ 
+ b32 negated;
+ //b32 symx;
+ 
+ union
+ {
+  struct { CSG_Tree *l; CSG_Tree *r; };
+  struct { v3 center; v1 radius; };  // sphere
+  struct { v3 n; v1 d; };            // plane
+  // box: @speed This thing is way too big
+  struct { 
+   mat4  to_aabb;
+   v3    box_radius; 
+  };
+ };
+};
 
 
 //~eof

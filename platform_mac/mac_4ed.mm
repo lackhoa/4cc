@@ -5,7 +5,6 @@
 #define FPS 60
 #define frame_useconds (1000000 / FPS)
 
-#define KV_IMPLEMENTATION
 #include "kv.h"
 #include "4coder_base_types.h"
 #include "4coder_version.h"
@@ -101,11 +100,11 @@ struct Mac_Input_Chunk_Transient{
     b8 mouse_r_release;
     b8 out_of_window;
     b8 trying_to_kill;
-    i32 mouse_wheel;
+    i1 mouse_wheel;
 };
 
 struct Mac_Input_Chunk_Persistent{
-    Vec2_i32 mouse;
+    Vec2_i1 mouse;
     Control_Keys controls;
     Input_Modifier_Set_Fixed modifiers;
     b8 mouse_l;
@@ -148,7 +147,7 @@ struct Mac_Input_Chunk{
 
 ////////////////////////////////
 
-typedef i32 Mac_Object_Kind;
+typedef i1 Mac_Object_Kind;
 enum{
     MacObjectKind_ERROR = 0,
     MacObjectKind_Timer = 1,
@@ -176,7 +175,7 @@ struct Mac_Object{
 };
 
 struct Mac_Vars {
-    i32 width, height;
+    i1 width, height;
 
     Thread_Context *tctx;
 
@@ -192,21 +191,21 @@ struct Mac_Vars {
     b8 do_toggle;
     b32 send_exit_signal;
 
-    i32 cursor_show;
-    i32 prev_cursor_show;
+    i1 cursor_show;
+    i1 prev_cursor_show;
     NSCursor *cursor_ibeam;
     NSCursor *cursor_arrow;
     NSCursor *cursor_leftright;
     NSCursor *cursor_updown;
 
-    String_Const_u8 binary_path;
+    String binary_path;
 
     u32 clipboard_change_count;
     b32 next_clipboard_is_self;
     b32 clip_catch_all;
 
     Arena clip_post_arena;
-    String_Const_u8 clip_post;
+    String clip_post;
 
     NSWindow *window;
     FCoder_View *view;
@@ -218,7 +217,7 @@ struct Mac_Vars {
 
     u64 timer_start;
     b32 step_requested;
-    i32 running_cli;
+    i1 running_cli;
 
     Node free_mac_objects;
     Node timer_objects;
@@ -254,7 +253,7 @@ mac_alloc_object(Mac_Object_Kind kind){
     }
 
     if (!result){
-        i32 count = 512;
+        i1 count = 512;
         Mac_Object *objects = (Mac_Object*)system_memory_allocate(count * sizeof(Mac_Object), file_name_line_number_lit_u8);
 
         // NOTE(yuval): Link the first node of the dll to the sentinel
@@ -262,7 +261,7 @@ mac_alloc_object(Mac_Object_Kind kind){
         mac_vars.free_mac_objects.next = &objects[0].node;
 
         // NOTE(yuval): Link all dll nodes to each other
-        for (i32 chain_index = 1; chain_index < count; chain_index += 1){
+        for (i1 chain_index = 1; chain_index < count; chain_index += 1){
             objects[chain_index - 1].node.next = &objects[chain_index].node;
             objects[chain_index].node.prev = &objects[chain_index - 1].node;
         }
@@ -354,9 +353,9 @@ mac_profile(char *name, u64 begin, u64 end){
     printf("%s Time: %fs\n", name, ((end - begin) / 1000000.0f));
 }
 
-#define MacProfileScope(name) for (u64 glue(_i_, __LINE__) = 0, glue(_begin_, __LINE__) = system_now_time();\
+#define MacProfileScope(name) for (u64 glue(_i_, __LINE__) = 0, glue(_begin_, __LINE__) = system_time_usecond();\
 glue(_i_, __LINE__) == 0;\
-glue(_i_, __LINE__) = 1, mac_profile(name, glue(_begin_, __LINE__), system_now_time()))
+glue(_i_, __LINE__) = 1, mac_profile(name, glue(_begin_, __LINE__), system_time_usecond()))
 #else
 # define mac_profile(...)
 # define MacProfileScope(...)
@@ -519,17 +518,17 @@ mac_resize(float width, float height){
         NSSize coord_size = NSMakeSize(width, height);
         NSSize backing_size = [mac_vars.view convertSizeToBacking:coord_size];
 
-        mac_vars.width = (i32)backing_size.width;
-        mac_vars.height = (i32)backing_size.height;
+        mac_vars.width = (i1)backing_size.width;
+        mac_vars.height = (i1)backing_size.height;
 
-        target.width = (i32)backing_size.width;
-        target.height = (i32)backing_size.height;
+        target.width = (i1)backing_size.width;
+        target.height = (i1)backing_size.height;
 #else
-        mac_vars.width = (i32)width;
-        mac_vars.height = (i32)height;
+        mac_vars.width = (i1)width;
+        mac_vars.height = (i1)height;
 
-        target.width = (i32)width;
-        target.height = (i32)height;
+        target.width = (i1)width;
+        target.height = (i1)height;
 #endif
     }
 
@@ -553,7 +552,7 @@ mac_get_clipboard_change_count(void){
 }
 
 internal void
-mac_post_clipboard(Arena *scratch, char *text, i32 len){
+mac_post_clipboard(Arena *scratch, char *text, i1 len){
     NSPasteboard *board = [NSPasteboard generalPasteboard];
 
     NSString *utf8_type = @"public.utf8-plain-text";
@@ -575,7 +574,7 @@ mac_post_clipboard(Arena *scratch, char *text, i32 len){
 
 internal
 system_get_clipboard_sig(){
-    String_Const_u8 result = {};
+    String result = {};
     u32 change_count = mac_get_clipboard_change_count();
     if (change_count != mac_vars.clipboard_change_count){
         if (mac_vars.next_clipboard_is_self){
@@ -796,7 +795,7 @@ mac_toggle_fullscreen(void){
         // NOTE(yuval): Post new clipboard content
         MacProfileScope("Post Clipboard"){
             if (mac_vars.clip_post.size > 0){
-                mac_post_clipboard(scratch, (char*)mac_vars.clip_post.str, (i32)mac_vars.clip_post.size);
+                mac_post_clipboard(scratch, (char*)mac_vars.clip_post.str, (i1)mac_vars.clip_post.size);
             }
         }
 
@@ -878,7 +877,7 @@ mac_toggle_fullscreen(void){
         MacProfileScope("Cool Down"){
             system_mutex_release(mac_vars.global_frame_mutex);
             {
-                u64 timer_end = system_now_time();
+                u64 timer_end = system_time_usecond();
                 u64 end_target = (mac_vars.timer_start + frame_useconds);
 
                 if (timer_end < end_target){
@@ -888,14 +887,14 @@ mac_toggle_fullscreen(void){
                     }
 
                     // NOTE(yuval): Iterate through the rest of the time that's left using a regular for loop to make sure that we hit the end target
-                    u64 now = system_now_time();
+                    u64 now = system_time_usecond();
                     while (now < end_target){
-                        now = system_now_time();
+                        now = system_time_usecond();
                     }
                 }
 
                 prev_timer_start = mac_vars.timer_start;
-                mac_vars.timer_start = system_now_time();
+                mac_vars.timer_start = system_time_usecond();
             }
             system_mutex_acquire(mac_vars.global_frame_mutex);
         }
@@ -1045,7 +1044,7 @@ Input_Event *event = push_input_event(&mac_vars.frame_arena, &mac_vars.input_chu
 	u16 *utf16 = push_array(scratch, u16, len);
 	[text getCharacters:utf16 range:NSMakeRange(0, len)];
 	String_Const_u16 str_16 = SCu16(utf16, len);
-	String_Const_u8 str_8 = string_u8_from_string_u16(&mac_vars.frame_arena, str_16).string;
+	String str_8 = string_u8_from_string_u16(&mac_vars.frame_arena, str_16).string;
 	for (i64 i = 0; i < str_8.size; i += 1){
 	  if (str_8.str[i] == '\r'){
 		  str_8.str[i] = '\n';
@@ -1108,7 +1107,7 @@ Input_Event *event = push_input_event(&mac_vars.frame_arena, &mac_vars.input_chu
 - (void)scrollWheel:(NSEvent *)event{
     f32 dy = event.scrollingDeltaY;
     if ([event hasPreciseScrollingDeltas]){
-        mac_vars.input_chunk.trans.mouse_wheel = (i32)(-dy);
+        mac_vars.input_chunk.trans.mouse_wheel = (i1)(-dy);
     }
     else{
         if (dy > 0){
@@ -1231,11 +1230,11 @@ Input_Event *event = push_input_event(&mac_vars.frame_arena, &mac_vars.input_chu
     NSPoint location = [event locationInWindow];
     NSPoint backing_location = [self convertPointToBacking:location];
 
-    Vec2_i32 new_m = V2i32(backing_location.x, mac_vars.height - backing_location.y);
+    Vec2_i1 new_m = V2i1(backing_location.x, mac_vars.height - backing_location.y);
     if (new_m != mac_vars.input_chunk.pers.mouse){
         mac_vars.input_chunk.pers.mouse = new_m;
 
-        Rect_i32 screen = Ri32(0, 0, target.width, target.height);
+        Rect_i1 screen = Ri1(0, 0, target.width, target.height);
         mac_vars.input_chunk.trans.out_of_window = !rect_contains_point(screen, new_m);
 
     }
@@ -1305,7 +1304,7 @@ main(int arg_count, char **args){
             String8List search_list = {};
             def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);
 
-            String_Const_u8 core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.so"));
+            String core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.so"));
             if (system_load_library(scratch, core_path, &core_library)){
                 get_funcs = (App_Get_Functions*)system_get_proc(core_library, "app_get_functions");
                 if (get_funcs != 0){
@@ -1331,14 +1330,14 @@ main(int arg_count, char **args){
         mac_vars.base_ptr = 0;
         {
             Scratch_Block scratch(mac_vars.tctx);
-            String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
+            String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
             curdir = string_mod_replace_character(curdir, '\\', '/');
             char **files = 0;
-            i32 *file_count = 0;
+            i1 *file_count = 0;
             mac_vars.base_ptr = app.read_command_line(mac_vars.tctx, curdir, &plat_settings, &files, &file_count, arg_count, args);
             {
-                i32 end = *file_count;
-                i32 i = 0, j = 0;
+                i1 end = *file_count;
+                i1 i = 0, j = 0;
                 for (; i < end; ++i){
                     if (mac_file_can_be_made((u8*)files[i])){
                         files[j] = files[i];
@@ -1354,8 +1353,8 @@ main(int arg_count, char **args){
         //
 
         // NOTE(yuval): Create Window & Window Delegate
-        i32 w;
-        i32 h;
+        i1 w;
+        i1 h;
         if (plat_settings.set_window_size){
             w = plat_settings.window_w;
             h = plat_settings.window_h;
@@ -1443,7 +1442,7 @@ main(int arg_count, char **args){
 
         {
             Scratch_Block scratch(mac_vars.tctx);
-            String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
+            String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
             curdir = string_mod_replace_character(curdir, '\\', '/');
             app.init(mac_vars.tctx, &target, mac_vars.base_ptr, curdir);
         }
@@ -1462,7 +1461,7 @@ main(int arg_count, char **args){
 
         mac_vars.global_frame_mutex = system_mutex_make();
 
-        mac_vars.timer_start = system_now_time();
+        mac_vars.timer_start = system_time_usecond();
 
         // NOTE(yuval): Start the app's run loop
         [NSApp run];

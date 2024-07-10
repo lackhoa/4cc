@@ -4,7 +4,7 @@
 #include "4coder_fleury/4coder_fleury_lang_list.h"
 
 function void
-F4_TickLite(Application_Links *app, Frame_Info frame_info)
+F4_TickLite(App *app, Frame_Info frame_info)
 {
     F4_CLC_Tick(frame_info);
     // NOTE(rjf): Default tick stuff from the 4th dimension:
@@ -12,7 +12,7 @@ F4_TickLite(Application_Links *app, Frame_Info frame_info)
 }
 
 function void
-F4_RenderBufferLite(Application_Links *app, View_ID view_id, Face_ID face_id,
+F4_RenderBufferLite(App *app, View_ID view_id, Face_ID face_id,
                     Buffer_ID buffer, Text_Layout_ID text_layout_id,
                     Rect_f32 rect, Frame_Info frame_info)
 {
@@ -79,7 +79,7 @@ F4_RenderBufferLite(Application_Links *app, View_ID view_id, Face_ID face_id,
 
 // NOTE(kv): this doesn't do anything interesting regarding the plot
 function void
-F4_RenderLite(Application_Links *app, Frame_Info frame_info, View_ID view_id)
+F4_RenderLite(App *app, Frame_Info frame_info, View_ID view_id)
 {
     F4_RecentFiles_RefreshView(app, view_id);
     
@@ -94,7 +94,7 @@ F4_RenderLite(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     Rect_f32 region = rect_inner(view_rect, margin_size);
     
     Buffer_ID buffer = view_get_buffer(app, view_id, Access_Always);
-    String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer);
+    String buffer_name = push_buffer_base_name(app, scratch, buffer);
     
     //~ NOTE(rjf): Draw background.
     {
@@ -170,7 +170,7 @@ F4_RenderLite(Application_Links *app, Frame_Info frame_info, View_ID view_id)
 }
 
 function void 
-fleury_lite_custom_layer_init(Application_Links *app)
+fleury_lite_custom_layer_init(App *app)
 {
     default_framework_init(app);
     

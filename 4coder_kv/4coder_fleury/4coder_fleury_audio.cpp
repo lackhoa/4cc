@@ -15,7 +15,7 @@ F4_AudioClipIsUnloadable(Audio_Clip clip)
 }
 
 function void
-F4_RequireWAV(Application_Links *app, Audio_Clip *clip, char *filename)
+F4_RequireWAV(App *app, Audio_Clip *clip, char *filename)
 {
     if(!F4_AudioClipIsValid(*clip) && !F4_AudioClipIsUnloadable(*clip))
     {

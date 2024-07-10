@@ -3,10 +3,10 @@
 #include "4coder_events.h"
 
 function b32
-set_has_modifier(Key_Code *mods, i32 count, Key_Code modifier)
+set_has_modifier(Key_Code *mods, i1 count, Key_Code modifier)
 {
     b32 result = false;
-    for (i32 i = 0; i < count; i += 1)
+    for (i1 i = 0; i < count; i += 1)
     {
         if (mods[i] == modifier){
             result = true;
@@ -42,7 +42,7 @@ copy_modifier_set(Arena *arena, Input_Modifier_Set_Fixed *set)
 
 function void
 copy_modifier_set(Input_Modifier_Set_Fixed *dst, Input_Modifier_Set *set){
-    i32 count = clamp_max(set->count, ArrayCountSigned(dst->mods));
+    i1 count = clamp_max(set->count, ArrayCountSigned(dst->mods));
     dst->count = count;
     block_copy(dst->mods, set->mods, count*sizeof(*set->mods));
 }
@@ -62,11 +62,11 @@ add_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod)
 function void
 remove_modifier(Input_Modifier_Set_Fixed *set, Key_Code mod)
 {
-    i32 count = set->count;
+    i1 count = set->count;
     Key_Code *mods = set->mods;
-    for (i32 i = 0; i < count; i += 1){
+    for (i1 i = 0; i < count; i += 1){
         if (mods[i] == mod){
-            i32 new_count = count - 1;
+            i1 new_count = count - 1;
             mods[i] = mods[new_count];
             set->count = new_count;
             break;
@@ -129,22 +129,6 @@ has_modifier(Input_Event *event, Key_Code modifier)
     return(set_has_modifier(set, modifier));
 }
 
-internal Key_Mods
-pack_modifiers(Key_Code *mods, u32 count)
-{
- Key_Mod result = (Key_Mod)0;
- for_u32 (i,0,count)
- {
-  Key_Code mod = mods[i];
-  if (0){}
-  else if(mod == Key_Code_Control){ result = (Key_Mod)((u32)result|Key_Mod_Ctl); }
-  else if(mod == Key_Code_Shift)  { result = (Key_Mod)((u32)result|Key_Mod_Sft); }
-  else if(mod == Key_Code_Alt)    { result = (Key_Mod)((u32)result|Key_Mod_Alt); }
-  else if(mod == Key_Code_Command){ result = (Key_Mod)((u32)result|Key_Mod_Cmd); }
-  else if(mod == Key_Code_Menu)   { result = (Key_Mod)((u32)result|Key_Mod_Mnu); }
- }
- return result;
-}
 
 function b32
 is_unmodified_key(Input_Event *event)
@@ -194,9 +178,9 @@ event_next_text_event(Input_Event *event){
     return(result);
 }
 
-function String_Const_u8
+function String
 to_writable(Input_Event *event){
-    String_Const_u8 result = {};
+    String result = {};
     if (event->kind == InputEventKind_TextInsert){
         result = event->text.string;
     }
@@ -334,7 +318,7 @@ copy_input_event(Arena *arena, Input_Event *event){
     switch (result.kind){
         case InputEventKind_TextInsert:
         {
-            result.text.string = push_string_copy(arena, event->text.string);
+            result.text.string = push_string_copyz(arena, event->text.string);
         }break;
         
         case InputEventKind_KeyStroke:
@@ -371,7 +355,7 @@ copy_input_event(Arena *arena, Input_Event *event){
                 case CoreCode_FileExternallyModified:
                 case CoreCode_NewClipboardContents:
                 {
-                    result.core.string = push_string_copy(arena, event->core.string);
+                    result.core.string = push_string_copyz(arena, event->core.string);
                 }break;
             }
         }break;
@@ -384,7 +368,7 @@ copy_input_event(Arena *arena, Input_Event *event){
 function String
 stringize_keyboard_event(Arena *arena, Input_Event *event)
 {
-    List_String_Const_u8 list = {};
+    List_String list = {};
     
     switch (event->kind)
     {
@@ -394,7 +378,7 @@ stringize_keyboard_event(Arena *arena, Input_Event *event)
             u64 size = event->text.string.size;
             u8 *ptr = event->text.string.str;
             for (u64 i = 0; i < size; i += 1, ptr += 1){
-                string_list_pushf(arena, &list, "%02X", (i32)(*ptr));
+                string_list_pushf(arena, &list, "%02X", (i1)(*ptr));
             }
             string_list_push(arena, &list, string_u8_litexpr("\n"));
         }break;
@@ -406,11 +390,11 @@ stringize_keyboard_event(Arena *arena, Input_Event *event)
             if (event->kind == InputEventKind_KeyRelease){
                 string_list_push(arena, &list, string_u8_litexpr("^"));
             }
-            i32 count = event->key.modifiers.count;
+            i1 count = event->key.modifiers.count;
             if (count > 0){
                 Key_Code *m = event->key.modifiers.mods;
                 string_list_push(arena, &list, string_u8_litexpr("m{"));
-                for (i32 i = 0; i < count; i += 1, m += 1){
+                for (i1 i = 0; i < count; i += 1, m += 1){
                     string_list_pushf(arena, &list, "%X ", *m);
                 }
                 string_list_push(arena, &list, string_u8_litexpr("}"));

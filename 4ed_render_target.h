@@ -1,14 +1,17 @@
 #pragma once
 
-#include "4coder_types.h"
-
 struct Render_Free_Texture
 {
  Render_Free_Texture *next;
  u32 tex_id;
 };
 
-typedef i32 Object_ID;
+typedef i1 Object_ID;
+
+enum Vertex_Type {
+ Vertex_Poly,
+ Vertex_Overlay,
+};
 
 struct Render_Vertex
 {
@@ -28,21 +31,21 @@ struct Render_Vertex_Array_Node
 {
     Render_Vertex_Array_Node *next;
     Render_Vertex *vertices;
-    i32 vertex_count;
-    i32 vertex_max;
+    i1 vertex_count;
+    i1 vertex_max;
 };
 
 struct Render_Vertex_List
 {
  Render_Vertex_Array_Node *first;
  Render_Vertex_Array_Node *last;
- i32 count;
+ i1 count;
 };
 
 struct Render_Config
 {
 #define RENDER_CONFIG_FIELDS \
-i32      viewport_id;\
+i1      viewport_id;\
 rect2    clip_box;       \
 b32      y_is_up;        \
 argb     background;     \
@@ -52,16 +55,17 @@ v1       meter_to_pixel; \
 v1       focal_length;   \
 v1       near_clip;      \
 v1       far_clip;       \
-i32      scale_down_pow2;\
+i1      scale_down_pow2;\
  
  RENDER_CONFIG_FIELDS
 };
 
 enum Render_Entry_Type
 {
- Render_Null,
- Render_Poly,
- Render_Object_Transform,
+ RET_Null,
+ RET_Poly,
+ RET_Object_Transform,
+ RET_Image,
 };
 
 enum CSG_Type
@@ -76,56 +80,33 @@ enum CSG_Type
  CSG_Box       = 130,
 };
 
-struct CSG_Tree;
-
-//NOTE: Kinda like a list of primitives for now?
-struct CSG_Group
-{
- CSG_Tree *first;
- CSG_Tree *last;
- i32 count;
-};
-
-struct CSG_Tree
-{
- CSG_Tree *next;
- CSG_Type type;
- 
- b32 negated;
- //b32 symx;
- 
- union
- {
-  struct { CSG_Tree *l; CSG_Tree *r; };
-  struct { v3 center; v1 radius; };  // sphere
-  struct { v3 n; v1 d; };            // plane
-  // box: @speed This thing is way too big
-  struct { 
-   mat4  to_aabb;
-   v3    box_radius; 
-  };
- };
-};
-
 //NOTE: We bin vertices like this because they may require different programs, uniforms, etc.
 struct Render_Entry_Poly
 {
  Render_Vertex_List vertex_list;
  Render_Vertex_List vertex_list_overlay;
- CSG_Tree           csg;
+};
+
+struct Render_Entry_Image
+{
+ char *filename;
+ //mat4 *object_transform;
+ v3 o, x, y_info;  // "y_info" encodes both direction and scale
+ argb  color;
+ u32 prim_id;
 };
 
 //
-typedef mat4 Render_Entry_Object_Transform;
-
 struct Render_Entry
 {
  Render_Entry *next;
  
  Render_Entry_Type type;
- union {
-  Render_Entry_Poly poly;
-  Render_Entry_Object_Transform object_transform;
+ union
+ {
+  Render_Entry_Poly   poly;
+  Render_Entry_Image *image;
+  mat4                object_transform;  // NOTE: @speed we could just stick a pointer in here?
  };
 };
 
@@ -133,7 +114,7 @@ struct Render_Group
 {
  Render_Group *next;
  
- i32 entry_count;
+ i1 entry_count;
  Render_Entry *entry_first;
  Render_Entry *entry_last;
  
@@ -152,8 +133,8 @@ force_inline b32 render_group_is_game(Render_Group *group)
 
 struct Render_Target
 {
- i32 width;
- i32 height;
+ i1 width;
+ i1 height;
  u32 texture_bound_at_unit0;
  Face_ID  face_id;
  
@@ -163,12 +144,51 @@ struct Render_Target
  Arena arena;
  Render_Group *group_first;
  Render_Group *group_last;
- i32 group_count;
+ i1 group_count;
  
  void *font_set;
  u32 fallback_texture_id;
+ 
+ u32 current_prim_id;
 };
+
+force_inline Render_Config *
+target_last_config(Render_Target *target)
+{
+ if (target->group_last) {return &target->group_last->config;}
+ else {return 0;}
+}
+force_inline rect2
+draw_get_clip(Render_Target *target)
+{
+ if (target->group_last)
+ {
+  return target->group_last->clip_box;
+ }
+ else
+ {
+  return {};
+ }
+}
 
 #define draw_get_target_return Render_Target *
 #define draw_get_target_params App *app
 ED_API_FUNCTION(draw_get_target);
+
+#define draw__push_vertices_return void
+#define draw__push_vertices_params Render_Target *target, Render_Vertex *vertices, i1 count, Vertex_Type type
+ED_API_FUNCTION(draw__push_vertices);
+
+#define push_image_return void
+#define push_image_params Render_Target *target, char *filename, v3 o, v3 x, v3 y, argb color, u32 prim_id
+ED_API_FUNCTION(push_image);
+
+#define push_object_transform_to_target_return void
+#define push_object_transform_to_target_params Render_Target *target, mat4 const*transform
+ED_API_FUNCTION(push_object_transform_to_target);
+
+#define draw_configure_return void
+#define draw_configure_params Render_Target *target, Render_Config *config
+ED_API_FUNCTION(draw_configure);
+
+//~

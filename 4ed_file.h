@@ -12,7 +12,7 @@
 #if !defined(FRED_FILE_H)
 #define FRED_FILE_H
 
-typedef i32 Edit_Pos_Set_Type;
+typedef i1 Edit_Pos_Set_Type;
 enum{
     EditPos_None,
     EditPos_CursorSet,
@@ -37,12 +37,12 @@ struct Editing_File_Settings{
 
 struct Line_Layout_Key{
     Face_ID face_id;
-    i32 face_version_number;
+    i1 face_version_number;
     f32 width;
     i64 line_number;
 };
 
-typedef i32 File_Save_State;
+typedef i1 File_Save_State;
 enum{
     FileSaveState_Normal,
     FileSaveState_SavedWaitingForNotification,
@@ -52,14 +52,14 @@ struct Editing_File_State{
     Gap_Buffer buffer;
     
     History history;
-    i32 current_record_index;
+    i1 current_record_index;
     
     Dirty_State dirty;
     File_Save_State save_state;
     
     File_Edit_Positions edit_pos_most_recent;
     File_Edit_Positions edit_pos_stack[16];
-    i32 edit_pos_stack_top;
+    i1 edit_pos_stack_top;
     
     Child_Process_ID attached_child_process;
     

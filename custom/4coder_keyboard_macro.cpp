@@ -5,12 +5,12 @@
 // TOP
 
 function Buffer_ID
-get_keyboard_log_buffer(Application_Links *app){
+get_keyboard_log_buffer(App *app){
     return(get_buffer_by_name(app, string_u8_litexpr("*keyboard*"), Access_Always));
 }
 
 function void
-keyboard_macro_play_single_line(Application_Links *app, String_Const_u8 macro_line){
+keyboard_macro_play_single_line(App *app, String macro_line){
     Scratch_Block scratch(app);
     Input_Event event = parse_keyboard_event(scratch, macro_line);
     if (event.kind != InputEventKind_None){
@@ -19,19 +19,19 @@ keyboard_macro_play_single_line(Application_Links *app, String_Const_u8 macro_li
 }
 
 function void
-keyboard_macro_play(Application_Links *app, String_Const_u8 macro){
+keyboard_macro_play(App *app, String macro){
     Scratch_Block scratch(app);
-    List_String_Const_u8 lines = string_split(scratch, macro, (u8*)"\n", 1);
-    for (Node_String_Const_u8 *node = lines.first;
+    List_String lines = string_split(scratch, macro, (u8*)"\n", 1);
+    for (Node_String *node = lines.first;
          node != 0;
          node = node->next){
-        String_Const_u8 line = string_skip_chop_whitespace(node->string);
+        String line = string_skip_chop_whitespace(node->string);
         keyboard_macro_play_single_line(app, line);
     }
 }
 
 function b32
-get_current_input_is_virtual(Application_Links *app){
+get_current_input_is_virtual(App *app){
     User_Input input = get_current_input(app);
     return(input.event.virtual_event);
 }
@@ -68,7 +68,7 @@ CUSTOM_DOC("Stop macro recording, do nothing if macro recording is not already s
     
 #if 0
     Scratch_Block scratch(app);
-    String_Const_u8 macro = push_buffer_range(app, scratch, buffer, global_keyboard_macro_range);
+    String macro = push_buffer_range(app, scratch, buffer, global_keyboard_macro_range);
     print_message(app, string_u8_litexpr("recorded:\n"));
     print_message(app, macro);
 #endif
@@ -84,7 +84,7 @@ CUSTOM_DOC("Replay the most recently recorded keyboard macro")
     
     Buffer_ID buffer = get_keyboard_log_buffer(app);
     Scratch_Block scratch(app);
-    String_Const_u8 macro = push_buffer_range(app, scratch, buffer, global_keyboard_macro_range);
+    String macro = push_buffer_range(app, scratch, buffer, global_keyboard_macro_range);
     keyboard_macro_play(app, macro);
 }
 

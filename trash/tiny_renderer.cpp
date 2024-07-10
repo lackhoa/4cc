@@ -1,12 +1,12 @@
 internal void
-bitmap_set(Bitmap *bitmap, i32 x, i32 y, u32 color)
+bitmap_set(Bitmap *bitmap, i1 x, i1 y, u32 color)
 {
     y = bitmap->dim.y-1 - y; // inverting y
     
     if (in_range(0, y, bitmap->dim.y) &&
         in_range(0, x, bitmap->dim.x))
     {
-        i32 index = y * bitmap->dim.x + x;
+        i1 index = y * bitmap->dim.x + x;
         bitmap->data[index] = color;
     }
 }
@@ -20,10 +20,10 @@ get_bitmap_size(Bitmap *bitmap)
 internal void
 tr_rectangle2i(Bitmap *bitmap, rect2i rect, ARGB_Color color)
 {
-    v2i dim = rect2i_get_dim(rect);
-    for_i32 (y, rect.min.x, dim.y)
+    i2 dim = rect2i_get_dim(rect);
+    for_i1 (y, rect.min.x, dim.y)
     {
-        for_i32 (x, rect.min.x, dim.x)
+        for_i1 (x, rect.min.x, dim.x)
         {
             bitmap_set(bitmap, x, y, color);
         }
@@ -32,7 +32,7 @@ tr_rectangle2i(Bitmap *bitmap, rect2i rect, ARGB_Color color)
 
 internal void 
 tr_linei(Bitmap *bitmap, 
-         i32 x0, i32 y0, i32 x1, i32 y1,
+         i1 x0, i1 y0, i1 x1, i1 y1,
          ARGB_Color color)
 {
     bool steep = false; 
@@ -50,13 +50,13 @@ tr_linei(Bitmap *bitmap,
         macro_swap(y0, y1); 
     }
     
-    i32 dx = x1-x0;
-    i32 dy = y1-y0;
-    i32 derror = absolute(dy) * 2; 
-    i32 error = 0;
-    i32 y = y0; 
+    i1 dx = x1-x0;
+    i1 dy = y1-y0;
+    i1 derror = absolute(dy) * 2; 
+    i1 error = 0;
+    i1 y = y0; 
     
-    for (i32 x=x0;
+    for (i1 x=x0;
          x <= x1; 
          x++)
     { 
@@ -80,7 +80,7 @@ tr_line(Bitmap *bitmap,
         f32 x0, f32 y0, f32 x1, f32 y1,
         ARGB_Color color)
 {
-    return tr_linei(bitmap, (i32)x0, (i32)y0, (i32)x1, (i32)y1, color);
+    return tr_linei(bitmap, (i1)x0, (i1)y0, (i1)x1, (i1)y1, color);
 }
 
 inline void
@@ -100,7 +100,7 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
     f32 dy01 = p1.y - p0.y;
     if (dy01 < 0.0001f) return;
     
-    for_i32 (y, (i32)p0.y, (i32)p1.y+1)
+    for_i1 (y, (i1)p0.y, (i1)p1.y+1)
     {
         f32 dy0 = (f32)y - p0.y;
         f32 alpha = dy0 / dy02;
@@ -108,7 +108,7 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
         f32 Ax = lerp(p0.x, alpha, p2.x);
         f32 Bx = lerp(p0.x, beta,  p1.x);
         if (Ax > Bx)  macro_swap(Ax, Bx);
-        for_i32 (x, (i32)Ax, (i32)Bx+1 )
+        for_i1 (x, (i1)Ax, (i1)Bx+1 )
         { 
             bitmap_set(bitmap, x, y, color);
         } 
@@ -117,7 +117,7 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
     f32 dy12 = p2.y - p1.y;
     if (dy12 > 0.0001f)
     {
-        for_i32 (y, (i32)p1.y, (i32)p2.y+1)
+        for_i1 (y, (i1)p1.y, (i1)p2.y+1)
         { 
             f32 dy0 = (f32)y - p0.y;
             f32 dy1 = (f32)y - p1.y;
@@ -126,7 +126,7 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
             f32 Ax = lerp(p0.x, alpha, p2.x);
             f32 Bx = lerp(p1.x, beta,  p2.x);
             if (Ax > Bx) macro_swap(Ax, Bx); 
-            for_i32 (x, (i32)Ax, (i32)Bx+1)
+            for_i1 (x, (i1)Ax, (i1)Bx+1)
             { 
                 bitmap_set(bitmap, x, y, color);
             } 
@@ -161,22 +161,22 @@ internal v3 barycentric(v2 *p, v2 P)
 internal void 
 tr_triangle(Bitmap *bitmap, v2 *p, ARGB_Color color)
 { 
-    v2i max = bitmap->dim;
-    v2i bboxmin = max; 
-    v2i bboxmax = {0,0}; 
-    for_i32 (i,0,3)
+    i2 max = bitmap->dim;
+    i2 bboxmin = max; 
+    i2 bboxmax = {0,0}; 
+    for_i1 (i,0,3)
     { 
-        bboxmin.x = clamp_min(macro_min(bboxmin.x, (i32)p[i].x), 0);
-        bboxmin.y = clamp_min(macro_min(bboxmin.y, (i32)p[i].y), 0);
+        bboxmin.x = clamp_min(macro_min(bboxmin.x, (i1)p[i].x), 0);
+        bboxmin.y = clamp_min(macro_min(bboxmin.y, (i1)p[i].y), 0);
         
-        bboxmax.x = clamp_max(macro_max(bboxmax.x, (i32)p[i].x+1), max.x);
-        bboxmax.y = clamp_max(macro_max(bboxmax.y, (i32)p[i].y+1), max.y);
+        bboxmax.x = clamp_max(macro_max(bboxmax.x, (i1)p[i].x+1), max.x);
+        bboxmax.y = clamp_max(macro_max(bboxmax.y, (i1)p[i].y+1), max.y);
     } 
-    for_i32 (x, bboxmin.x, bboxmax.x)
+    for_i1 (x, bboxmin.x, bboxmax.x)
     { 
-        for_i32 (y, bboxmin.y, bboxmax.y)
+        for_i1 (y, bboxmin.y, bboxmax.y)
         {
-            v3 bc_screen  = barycentric(p, castvec2(x,y));
+            v3 bc_screen  = barycentric(p, castV2(x,y));
             if (bc_screen.x >= 0 && 
                 bc_screen.y >= 0 && 
                 bc_screen.z >= 0)
@@ -189,7 +189,7 @@ tr_triangle(Bitmap *bitmap, v2 *p, ARGB_Color color)
 
 
 internal void
-tiny_renderer_main(v2i dim, u32 *data, Model *model)
+tiny_renderer_main(i2 dim, u32 *data, Model *model)
 {
     Bitmap bitmap_value = {.data=data, .dim=dim, .pitch=4*dim.x};
     Bitmap *bitmap = &bitmap_value;
@@ -213,7 +213,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
     {
         v2 beg = v2{0,0};
         v2 mid = v2{0, dim_y-1};
-        v2 end = vec2(dim_x-1, dim_y-1);
+        v2 end = V2(dim_x-1, dim_y-1);
         v1 step = {1.0f / dim_x};  // NOTE: I don't know what I'm doing!
         for (f32 t = 0;
              t <= 1.0f;
@@ -222,7 +222,7 @@ tiny_renderer_main(v2i dim, u32 *data, Model *model)
             v2 p1 = lerp(beg, t, mid);
             v2 p2 = lerp(mid, t, end);
             v2 pos = lerp(p1, t, p2);
-            bitmap_set(bitmap, (i32)pos.x, (i32)pos.y, argb_white);
+            bitmap_set(bitmap, (i1)pos.x, (i1)pos.y, argb_white);
         }
     }
 }

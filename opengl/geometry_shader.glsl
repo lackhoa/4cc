@@ -25,8 +25,8 @@ void main()
   v2 r   = radius_clip[0];
   v4 center = gl_in[0].gl_Position;
   
-  v2 gs_out_values[4] = {vec2(-1,-1), vec2(+1,-1), vec2(-1,+1), vec2(+1,+1)};
-  for(i32 index = 0; 
+  v2 gs_out_values[4] = {V2(-1,-1), V2(+1,-1), V2(-1,+1), V2(+1,+1)};
+  for(i1 index = 0; 
       index < 4;
       index++)
   {

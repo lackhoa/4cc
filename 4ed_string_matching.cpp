@@ -10,9 +10,9 @@
 // TOP
 
 internal u64_Array
-string_compute_prefix_table(Arena *arena, String_Const_u8 string, Scan_Direction direction){
+string_compute_prefix_table(Arena *arena, String string, Scan_Direction direction){
     u64_Array array = {};
-    array.count = (i32)(string.size);
+    array.count = (i1)(string.size);
     array.vals = push_array(arena, u64, array.count);
     
     u8 *str = string.str;
@@ -58,7 +58,7 @@ string_compute_needle_jump_table(Arena *arena, u64_Array longest_prefixes){
 }
 
 internal u64_Array
-string_compute_needle_jump_table(Arena *arena, String_Const_u8 needle, Scan_Direction direction){
+string_compute_needle_jump_table(Arena *arena, String needle, Scan_Direction direction){
     u64_Array prefix_table = string_compute_prefix_table(arena, needle, direction);
     return(string_compute_needle_jump_table(arena, prefix_table));
 }
@@ -66,10 +66,10 @@ string_compute_needle_jump_table(Arena *arena, String_Const_u8 needle, Scan_Dire
 #define character_predicate_check(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
 
 internal String_Match_List
-find_matches_forward(Arena *arena, i32 maximum_output_count,
-                     List_String_Const_u8 chunks, String8 needle,
+find_matches_forward(Arena *arena, i1 maximum_output_count,
+                     List_String chunks, String8 needle,
                      u64_Array jump_table, Character_Predicate *predicate,
-                     u64 base_index, Buffer_ID buffer, i32 string_id, 
+                     u64 base_index, Buffer_ID buffer, i1 string_id, 
                      b32 case_sensitive)
 {
     String_Match_List list = {};
@@ -82,10 +82,10 @@ find_matches_forward(Arena *arena, i32 maximum_output_count,
         i64 last_insensitive = -1;
         i64 last_boundary = -1;
         
-        Node_String_Const_u8 *node = chunks.first;
+        Node_String *node = chunks.first;
         i64 chunk_pos = 0;
         
-        i32 jump_back_code = 0;
+        i1 jump_back_code = 0;
         
         u8 c = 0;
         u64 n = 0;
@@ -201,10 +201,10 @@ find_matches_forward(Arena *arena, i32 maximum_output_count,
 }
 
 internal String_Match_List
-find_matches_backward(Arena *arena, i32 maximum_output_count,
-                      List_String_Const_u8 chunks, String_Const_u8 needle,
+find_matches_backward(Arena *arena, i1 maximum_output_count,
+                      List_String chunks, String needle,
                       u64_Array jump_table, Character_Predicate *predicate,
-                      u64 base_index, Buffer_ID buffer, i32 string_id,
+                      u64 base_index, Buffer_ID buffer, i1 string_id,
                       b32 case_sensitive)
 {
     String_Match_List list = {};
@@ -221,10 +221,10 @@ find_matches_backward(Arena *arena, i32 maximum_output_count,
         i64 last_insensitive = size;
         i64 last_boundary = size;
         
-        Node_String_Const_u8 *node = chunks.first;
+        Node_String *node = chunks.first;
         i64 chunk_pos = node->string.size - 1;
         
-        i32 jump_back_code = 0;
+        i1 jump_back_code = 0;
         
         u8 c = 0;
         u64 n = 0;
@@ -330,11 +330,11 @@ find_matches_backward(Arena *arena, i32 maximum_output_count,
 }
 
 internal String_Match_List
-find_matches(Arena *arena, i32 maximum_output_count,
-             List_String_Const_u8 chunks, String needle,
+find_matches(Arena *arena, i1 maximum_output_count,
+             List_String chunks, String needle,
              u64_Array jump_table, Character_Predicate *predicate,
              Scan_Direction direction,
-             u64 base_index, Buffer_ID buffer, i32 string_id, 
+             u64 base_index, Buffer_ID buffer, i1 string_id, 
              b32 case_sensitive)
 {
     String_Match_List list = {};

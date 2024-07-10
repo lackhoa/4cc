@@ -19,8 +19,8 @@
 
 // System commands
 static char SF_CMD[4096];
-static i32 error_state = 0;
-static i32 prev_error = 0;
+static i1 error_state = 0;
+static i1 prev_error = 0;
 
 #if defined(FM_PRINT_COMMANDS)
 #define SYSTEMF_PRINTF(...) printf(__VA_ARGS__);
@@ -29,7 +29,7 @@ static i32 prev_error = 0;
 #endif
 
 // #define systemf(...) do{                                   \
-// i32 n = snprintf(SF_CMD, sizeof(SF_CMD), __VA_ARGS__);     \
+// i1 n = snprintf(SF_CMD, sizeof(SF_CMD), __VA_ARGS__);     \
 // Assert(n < sizeof(SF_CMD));                                \
 // SYSTEMF_PRINTF("%s\n", SF_CMD);                            \
 // prev_error = system(SF_CMD);                               \
@@ -37,7 +37,7 @@ static i32 prev_error = 0;
 // }while(0)
 
 #define systemf(...) do{                                   \
-i32 n = snprintf(SF_CMD, sizeof(SF_CMD), __VA_ARGS__);     \
+i1 n = snprintf(SF_CMD, sizeof(SF_CMD), __VA_ARGS__);     \
 Assert(n < sizeof(SF_CMD));                                \
 SYSTEMF_PRINTF("systemf dry-run: %s\n", SF_CMD);                            \
 }while(0)
@@ -50,9 +50,9 @@ enum{
     DetailLevel_FileOperations = 1,
     DetailLevel_Everything = 2,
 };
-global i32 detail_level = 0;
+global i1 detail_level = 0;
 
-internal Arena fm_init_system(i32 detail_level);
+internal Arena fm_init_system(i1 detail_level);
 
 // Timing
 internal u64 fm_get_time();
@@ -87,7 +87,7 @@ internal char **fm_prepare_list_internal(Arena *arena, char **l1, ...);
 internal char **fm_list_one_item(Arena *arena, char *item);
 
 // File System Navigation
-internal i32  fm_get_current_directory(char *buffer, i32 max);
+internal i1  fm_get_current_directory(char *buffer, i1 max);
 
 struct Temp_Dir{
     char dir[512];
@@ -103,7 +103,7 @@ struct Build_Line{
     char build_optionsB[BUILD_LINE_MAX];
     char *build_options;
     char *build_options_prev;
-    i32 build_max;
+    i1 build_max;
 };
 
 internal void fm_init_build_line(Build_Line *line);
@@ -209,7 +209,7 @@ typedef long  LONG;
 typedef i64  LONGLONG;
 typedef char*    LPTSTR;
 typedef const char*    LPCTSTR;
-typedef i32  BOOL;
+typedef i1  BOOL;
 typedef void*    LPSECURITY_ATTRIBUTES;
 
 typedef union    _LARGE_INTEGER {
@@ -283,7 +283,7 @@ extern "C"{
 global u64 perf_frequency;
 
 internal Arena
-fm_init_system(i32 det){
+fm_init_system(i1 det){
     detail_level = det;
     LARGE_INTEGER lint;
     if (QueryPerformanceFrequency(&lint)){
@@ -316,9 +316,9 @@ fm_get_time(){
     return(time);
 }
 
-internal i32
-fm_get_current_directory(char *buffer, i32 max){
-    i32 result = GetCurrentDirectoryA(max, buffer);
+internal i1
+fm_get_current_directory(char *buffer, i1 max){
+    i1 result = GetCurrentDirectoryA(max, buffer);
     return(result);
 }
 
@@ -347,7 +347,7 @@ fm_execute_in_dir(char *dir, char *str, char *args){
 internal void
 fm_slash_fix(char *path){
     if (path != 0){
-        for (i32 i = 0; path[i]; ++i){
+        for (i1 i = 0; path[i]; ++i){
             if (path[i] == '/') path[i] = '\\';
         }
     }
@@ -454,7 +454,7 @@ internal Temp_Dir
 fm_pushdir(char *dir){
     Temp_Dir temp;
     char *result = getcwd(temp.dir, sizeof(temp.dir));
-    i32 chresult = chdir(dir);
+    i1 chresult = chdir(dir);
     if (result == 0 || chresult != 0){
         printf("trying pushdir %s\n", dir);
         Assert(result != 0);
@@ -469,7 +469,7 @@ fm_popdir(Temp_Dir temp){
 }
 
 internal Arena
-fm_init_system(i32 det){
+fm_init_system(i1 det){
     detail_level = det;
     return(fm__init_memory());
 }
@@ -483,9 +483,9 @@ fm_get_time(){
     return(result);
 }
 
-internal i32
-fm_get_current_directory(char *buffer, i32 max){
-    i32 result = 0;
+internal i1
+fm_get_current_directory(char *buffer, i1 max){
+    i1 result = 0;
     char *d = getcwd(buffer, max);
     if (d == buffer){
         result = strlen(buffer);
@@ -600,19 +600,19 @@ fm_copy_folder(Arena *arena, char *src_dir, char *dst_dir, char *src_folder){
 }
 
 // List Helpers
-internal i32
+internal i1
 listsize(void *p, u64 item_size){
     u64 zero = 0;
     u8 *ptr = (u8*)p;
     for (;memcmp(ptr, &zero, (size_t)item_size) != 0; ptr += item_size);
-    i32 size = (i32)(ptr - (u8*)p);
+    i1 size = (i1)(ptr - (u8*)p);
     return(size);
 }
 
 internal void*
-fm__prepare(Arena *arena, i32 item_size, void *i1, va_list list){
+fm__prepare(Arena *arena, i1 item_size, void *i1, va_list list){
     List_String_Const_char out_list = {};
-    i32 size = listsize(i1, item_size);
+    i1 size = listsize(i1, item_size);
     string_list_push(arena, &out_list, SCchar((char*)i1, size));
     void *ln = va_arg(list, void*);
     for (;ln != 0;){
@@ -628,7 +628,7 @@ fm__prepare(Arena *arena, i32 item_size, void *i1, va_list list){
 
 internal char*
 fm_basic_string_internal(Arena *arena, char *s1, ...){
-    i32 item_size = sizeof(*s1);
+    i1 item_size = sizeof(*s1);
     va_list list;
     va_start(list, s1);
     char *result = (char*)fm__prepare(arena, item_size, s1, list);
@@ -638,7 +638,7 @@ fm_basic_string_internal(Arena *arena, char *s1, ...){
 
 internal char*
 fm_prepare_string_internal(Arena *arena, char *s1, ...){
-    i32 item_size = sizeof(*s1);
+    i1 item_size = sizeof(*s1);
     va_list list;
     va_start(list, s1);
     char *result = (char*)fm__prepare(arena, item_size, s1, list);
@@ -649,7 +649,7 @@ fm_prepare_string_internal(Arena *arena, char *s1, ...){
 
 internal char**
 fm_prepare_list_internal(Arena *arena, char **p1, ...){
-    i32 item_size = sizeof(*p1);
+    i1 item_size = sizeof(*p1);
     va_list list;
     va_start(list, p1);
     char **result = (char**)fm__prepare(arena, item_size, p1, list);

@@ -1,15 +1,15 @@
 #pragma once
 
 #define system_error_box_sig() void system_error_box(char* msg)
-#define system_get_path_sig() String_Const_u8 system_get_path(Arena* arena, System_Path_Code path_code)
-#define system_get_canonical_sig() String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name)
-//#define system_get_file_list_sig() File_List system_get_file_list(Arena* arena, String_Const_u8 directory)
-#define system_quick_file_attributes_sig() File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 filename)
+#define system_get_path_sig() String system_get_path(Arena* arena, System_Path_Code path_code)
+#define system_get_canonical_sig() String system_get_canonical(Arena* arena, String name)
+//#define system_get_file_list_sig() File_List system_get_file_list(Arena* arena, String directory)
+#define system_quick_file_attributes_sig() File_Attributes system_quick_file_attributes(Arena* scratch, String filename)
 #define system_load_handle_sig() b32 system_load_handle(Arena* scratch, char* filename, Plat_Handle* out)
 #define system_load_attributes_sig() File_Attributes system_load_attributes(Plat_Handle handle)
 #define system_load_file_sig() b32 system_load_file(Plat_Handle handle, char* buffer, u32 size)
 #define system_load_close_sig() b32 system_load_close(Plat_Handle handle)
-#define system_save_file_sig() File_Attributes system_save_file(Arena* scratch, char* filename, String_Const_u8 data)
+#define system_save_file_sig() File_Attributes system_save_file(Arena* scratch, char* filename, String data)
 #define SYSTEM_LOAD_LIBRARY_RETURN b32
 #define SYSTEM_LOAD_LIBRARY_PARAMS Arena* scratch, String filename, System_Library* out
 #define system_load_library_sig() SYSTEM_LOAD_LIBRARY_PARAMS system_load_library(SYSTEM_LOAD_LIBRARY_RETURN)
@@ -19,7 +19,7 @@
 #define SYSTEM_GET_PROC_RETURN Void_Func*
 #define SYSTEM_GET_PROC_PARAMS System_Library handle, char* proc_name
 #define system_get_proc_sig() SYSTEM_GET_PROC_RETURN* system_get_proc(SYSTEM_GET_PROC_PARAMS)
-#define system_now_time_sig() u64 system_now_time(void)
+#define system_time_usecond_sig() u64 system_time_usecond(void)
 #define system_now_date_time_universal_sig() Date_Time system_now_date_time_universal(void)
 #define system_local_date_time_from_universal_sig() Date_Time system_local_date_time_from_universal(Date_Time* date_time)
 #define system_universal_date_time_from_local_sig() Date_Time system_universal_date_time_from_local(Date_Time* date_time)
@@ -28,8 +28,8 @@
 #define system_wake_up_timer_set_sig() void system_wake_up_timer_set(Plat_Handle handle, u32 time_milliseconds)
 #define system_signal_step_sig() void system_signal_step(u32 code)
 #define system_sleep_sig() void system_sleep(u64 microseconds)
-#define system_get_clipboard_sig() String_Const_u8 system_get_clipboard(Arena* arena, i32 index)
-#define system_post_clipboard_sig() void system_post_clipboard(String_Const_u8 str, i32 index)
+#define system_get_clipboard_sig() String system_get_clipboard(Arena* arena, i1 index)
+#define system_post_clipboard_sig() void system_post_clipboard(String str, i1 index)
 #define system_set_clipboard_catch_all_sig() void system_set_clipboard_catch_all(b32 enabled)
 #define system_get_clipboard_catch_all_sig() b32 system_get_clipboard_catch_all(void)
 #define system_cli_call_sig() b32 system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out)
@@ -41,7 +41,7 @@
 #define system_thread_launch_sig() System_Thread system_thread_launch(Thread_Function* proc, void* ptr)
 #define system_thread_join_sig() void system_thread_join(System_Thread thread)
 #define system_thread_free_sig() void system_thread_free(System_Thread thread)
-#define system_thread_get_id_sig() i32 system_thread_get_id(void)
+#define system_thread_get_id_sig() i1 system_thread_get_id(void)
 #define system_acquire_global_frame_mutex_sig() void system_acquire_global_frame_mutex(Thread_Context* tctx)
 #define system_release_global_frame_mutex_sig() void system_release_global_frame_mutex(Thread_Context* tctx)
 #define system_mutex_make_sig() System_Mutex system_mutex_make(void)
@@ -52,11 +52,11 @@
 #define system_condition_variable_wait_sig() void system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex)
 #define system_condition_variable_signal_sig() void system_condition_variable_signal(System_Condition_Variable cv)
 #define system_condition_variable_free_sig() void system_condition_variable_free(System_Condition_Variable cv)
-#define system_memory_allocate_sig() void* system_memory_allocate(u64 size, String_Const_u8 location)
+#define system_memory_allocate_sig() void* system_memory_allocate(u64 size, String location)
 #define system_memory_set_protection_sig() b32 system_memory_set_protection(void* ptr, u64 size, u32 flags)
 #define system_memory_free_sig() void system_memory_free(void* ptr, u64 size)
 #define system_memory_annotation_sig() Memory_Annotation system_memory_annotation(Arena* arena)
-#define system_show_mouse_cursor_sig() void system_show_mouse_cursor(i32 show)
+#define system_show_mouse_cursor_sig() void system_show_mouse_cursor(i1 show)
 #define system_set_fullscreen_sig() b32 system_set_fullscreen(b32 full_screen)
 #define system_is_fullscreen_sig() b32 system_is_fullscreen(void)
 #define system_get_keyboard_modifiers_sig() Input_Modifier_Set system_get_keyboard_modifiers(Arena* arena)
@@ -64,8 +64,8 @@
 #define system_set_source_mixer_sig() void system_set_source_mixer(void* ctx, Audio_Mix_Sources_Function* mix_func)
 #define system_set_destination_mixer_sig() void system_set_destination_mixer(Audio_Mix_Destination_Function* mix_func)
 typedef void system_error_box_type(char* msg);
-typedef String_Const_u8 system_get_path_type(Arena* arena, System_Path_Code path_code);
-typedef String_Const_u8 system_get_canonical_type(Arena* arena, String_Const_u8 name);
+typedef String system_get_path_type(Arena* arena, System_Path_Code path_code);
+typedef String system_get_canonical_type(Arena* arena, String name);
 #define system_get_file_list_return File_List
 #define system_get_file_list_params Arena* arena, String directory
 typedef system_get_file_list_return system_get_file_list_type(system_get_file_list_params);
@@ -74,11 +74,11 @@ typedef b32 system_load_handle_type(Arena* scratch, char* filename, Plat_Handle*
 typedef File_Attributes system_load_attributes_type(Plat_Handle handle);
 typedef b32 system_load_file_type(Plat_Handle handle, char* buffer, u32 size);
 typedef b32 system_load_close_type(Plat_Handle handle);
-typedef File_Attributes system_save_file_type(Arena* scratch, char* filename, String_Const_u8 data);
-typedef b32 system_load_library_type(Arena* scratch, String_Const_u8 filename, System_Library* out);
+typedef File_Attributes system_save_file_type(Arena* scratch, char* filename, String data);
+typedef b32 system_load_library_type(Arena* scratch, String filename, System_Library* out);
 typedef b32 system_release_library_type(System_Library handle);
 typedef Void_Func* system_get_proc_type(System_Library handle, char* proc_name);
-typedef u64 system_now_time_type(void);
+typedef u64 system_time_usecond_type(void);
 typedef Date_Time system_now_date_time_universal_type(void);
 typedef Date_Time system_local_date_time_from_universal_type(Date_Time* date_time);
 typedef Date_Time system_universal_date_time_from_local_type(Date_Time* date_time);
@@ -87,8 +87,8 @@ typedef void system_wake_up_timer_release_type(Plat_Handle handle);
 typedef void system_wake_up_timer_set_type(Plat_Handle handle, u32 time_milliseconds);
 typedef void system_signal_step_type(u32 code);
 typedef void system_sleep_type(u64 microseconds);
-typedef String_Const_u8 system_get_clipboard_type(Arena* arena, i32 index);
-typedef void system_post_clipboard_type(String_Const_u8 str, i32 index);
+typedef String system_get_clipboard_type(Arena* arena, i1 index);
+typedef void system_post_clipboard_type(String str, i1 index);
 typedef void system_set_clipboard_catch_all_type(b32 enabled);
 typedef b32 system_get_clipboard_catch_all_type(void);
 typedef b32 system_cli_call_type(Arena* scratch, char* path, char* script, CLI_Handles* cli_out);
@@ -100,7 +100,7 @@ typedef f32 system_get_screen_scale_factor_type(void);
 typedef System_Thread system_thread_launch_type(Thread_Function* proc, void* ptr);
 typedef void system_thread_join_type(System_Thread thread);
 typedef void system_thread_free_type(System_Thread thread);
-typedef i32 system_thread_get_id_type(void);
+typedef i1 system_thread_get_id_type(void);
 typedef void system_acquire_global_frame_mutex_type(Thread_Context* tctx);
 typedef void system_release_global_frame_mutex_type(Thread_Context* tctx);
 typedef System_Mutex system_mutex_make_type(void);
@@ -111,11 +111,11 @@ typedef System_Condition_Variable system_condition_variable_make_type(void);
 typedef void system_condition_variable_wait_type(System_Condition_Variable cv, System_Mutex mutex);
 typedef void system_condition_variable_signal_type(System_Condition_Variable cv);
 typedef void system_condition_variable_free_type(System_Condition_Variable cv);
-typedef void* system_memory_allocate_type(u64 size, String_Const_u8 location);
+typedef void* system_memory_allocate_type(u64 size, String location);
 typedef b32 system_memory_set_protection_type(void* ptr, u64 size, u32 flags);
 typedef void system_memory_free_type(void* ptr, u64 size);
 typedef Memory_Annotation system_memory_annotation_type(Arena* arena);
-typedef void system_show_mouse_cursor_type(i32 show);
+typedef void system_show_mouse_cursor_type(i1 show);
 typedef b32 system_set_fullscreen_type(b32 full_screen);
 typedef b32 system_is_fullscreen_type(void);
 typedef Input_Modifier_Set system_get_keyboard_modifiers_type(Arena* arena);
@@ -136,7 +136,7 @@ system_save_file_type *save_file;
 system_load_library_type *load_library;
 system_release_library_type *release_library;
 system_get_proc_type *get_proc;
-system_now_time_type *now_time;
+system_time_usecond_type *now_time;
 system_now_date_time_universal_type *now_date_time_universal;
 system_local_date_time_from_universal_type *local_date_time_from_universal;
 system_universal_date_time_from_local_type *universal_date_time_from_local;
@@ -194,18 +194,18 @@ system_set_destination_mixer_type *set_destination_mixer;
 
 LINKAGE void system_error_box(char* msg);
 LINKAGE String system_get_path(Arena* arena, System_Path_Code path_code);
-LINKAGE String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name);
-LINKAGE File_List system_get_file_list(Arena* arena, String_Const_u8 directory);
-LINKAGE File_Attributes system_quick_file_attributes(Arena* scratch, String_Const_u8 filename);
+LINKAGE String system_get_canonical(Arena* arena, String name);
+LINKAGE File_List system_get_file_list(Arena* arena, String directory);
+LINKAGE File_Attributes system_quick_file_attributes(Arena* scratch, String filename);
 LINKAGE b32 system_load_handle(Arena* scratch, char* filename, Plat_Handle* out);
 LINKAGE File_Attributes system_load_attributes(Plat_Handle handle);
 LINKAGE b32 system_load_file(Plat_Handle handle, char* buffer, u32 size);
 LINKAGE b32 system_load_close(Plat_Handle handle);
-LINKAGE File_Attributes system_save_file(Arena* scratch, char* filename, String_Const_u8 data);
-LINKAGE b32 system_load_library(Arena* scratch, String_Const_u8 filename, System_Library* out);
+LINKAGE File_Attributes system_save_file(Arena* scratch, char* filename, String data);
+LINKAGE b32 system_load_library(Arena* scratch, String filename, System_Library* out);
 LINKAGE b32 system_release_library(System_Library handle);
 LINKAGE Void_Func* system_get_proc(System_Library handle, char* proc_name);
-LINKAGE u64 system_now_time(void);
+LINKAGE u64 system_time_usecond(void);
 LINKAGE Date_Time system_now_date_time_universal(void);
 LINKAGE Date_Time system_local_date_time_from_universal(Date_Time* date_time);
 LINKAGE Date_Time system_universal_date_time_from_local(Date_Time* date_time);
@@ -214,8 +214,8 @@ LINKAGE void system_wake_up_timer_release(Plat_Handle handle);
 LINKAGE void system_wake_up_timer_set(Plat_Handle handle, u32 time_milliseconds);
 LINKAGE void system_signal_step(u32 code);
 LINKAGE void system_sleep(u64 microseconds);
-LINKAGE String_Const_u8 system_get_clipboard(Arena* arena, i32 index);
-LINKAGE void system_post_clipboard(String_Const_u8 str, i32 index);
+LINKAGE String system_get_clipboard(Arena* arena, i1 index);
+LINKAGE void system_post_clipboard(String str, i1 index);
 LINKAGE void system_set_clipboard_catch_all(b32 enabled);
 LINKAGE b32 system_get_clipboard_catch_all(void);
 LINKAGE b32 system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out);
@@ -227,7 +227,7 @@ LINKAGE f32 system_get_screen_scale_factor(void);
 LINKAGE System_Thread system_thread_launch(Thread_Function* proc, void* ptr);
 LINKAGE void system_thread_join(System_Thread thread);
 LINKAGE void system_thread_free(System_Thread thread);
-LINKAGE i32 system_thread_get_id(void);
+LINKAGE i1 system_thread_get_id(void);
 LINKAGE void system_acquire_global_frame_mutex(Thread_Context* tctx);
 LINKAGE void system_release_global_frame_mutex(Thread_Context* tctx);
 LINKAGE System_Mutex system_mutex_make(void);
@@ -238,11 +238,11 @@ LINKAGE System_Condition_Variable system_condition_variable_make(void);
 LINKAGE void system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex);
 LINKAGE void system_condition_variable_signal(System_Condition_Variable cv);
 LINKAGE void system_condition_variable_free(System_Condition_Variable cv);
-LINKAGE void* system_memory_allocate(u64 size, String_Const_u8 location);
+LINKAGE void* system_memory_allocate(u64 size, String location);
 LINKAGE b32 system_memory_set_protection(void* ptr, u64 size, u32 flags);
 LINKAGE void system_memory_free(void* ptr, u64 size);
 LINKAGE Memory_Annotation system_memory_annotation(Arena* arena);
-LINKAGE void system_show_mouse_cursor(i32 show);
+LINKAGE void system_show_mouse_cursor(i1 show);
 LINKAGE b32 system_set_fullscreen(b32 full_screen);
 LINKAGE b32 system_is_fullscreen(void);
 LINKAGE Input_Modifier_Set system_get_keyboard_modifiers(Arena* arena);
@@ -268,7 +268,7 @@ global system_save_file_type *system_save_file = 0;
 //global system_load_library_type *system_load_library = 0;
 global system_release_library_type *system_release_library = 0;
 global system_get_proc_type *system_get_proc = 0;
-global system_now_time_type *system_now_time = 0;
+global system_time_usecond_type *system_time_usecond = 0;
 global system_now_date_time_universal_type *system_now_date_time_universal = 0;
 global system_local_date_time_from_universal_type *system_local_date_time_from_universal = 0;
 global system_universal_date_time_from_local_type *system_universal_date_time_from_local = 0;

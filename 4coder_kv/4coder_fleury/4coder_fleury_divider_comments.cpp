@@ -14,7 +14,7 @@ _F4_Boundary_DividerComment(App *app, Buffer_ID buffer,
     Token_Array tokens = get_token_array_from_buffer(app, buffer);
     if(tokens.tokens != 0)
     {
-        Token_Iterator_Array it = token_iterator_pos(0, &tokens, pos);
+        Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
         switch(direction)
         {
             case Scan_Forward:
@@ -28,7 +28,7 @@ _F4_Boundary_DividerComment(App *app, Buffer_ID buffer,
                     }
                     if(token->kind == TokenBaseKind_Comment)
                     {
-                        String_Const_u8 str = push_buffer_range(app, scratch, buffer, Ii64(token));
+                        String str = push_buffer_range(app, scratch, buffer, Ii64(token));
                         if(str.size >= signifier.size &&
                            string_match(string_substring(str, Ii64(0, signifier.size)), signifier))
                         {
@@ -50,7 +50,7 @@ _F4_Boundary_DividerComment(App *app, Buffer_ID buffer,
                     }
                     if(token->kind == TokenBaseKind_Comment)
                     {
-                        String_Const_u8 str = push_buffer_range(app, scratch, buffer, Ii64(token));
+                        String str = push_buffer_range(app, scratch, buffer, Ii64(token));
                         if(str.size >= signifier.size &&
                            string_match(string_substring(str, Ii64(0, signifier.size)), signifier))
                         {

@@ -12,8 +12,8 @@
 
 struct Error_Location
 {
-    i32 line_number;
-    i32 column_number;
+    i1 line_number;
+    i1 column_number;
 };
 
 struct Config_Error
@@ -29,7 +29,7 @@ struct Config_Error_List
 {
     Config_Error *first;
     Config_Error *last;
-    i32 count;
+    i1 count;
 };
 
 struct Config_Parser
@@ -48,10 +48,10 @@ struct Config_Parser
 struct Config_LValue
 {
     String8 identifier;
-    i32 index;
+    i1 index;
 };
 
-typedef i32 Config_RValue_Type;
+typedef i1 Config_RValue_Type;
 enum
 {
     Config_RValue_Type_Null,
@@ -69,7 +69,7 @@ struct Config_Compound
 {
     struct Config_Compound_Element *first;
     struct Config_Compound_Element *last;
-    i32 count;
+    i1 count;
 };
 
 struct Config_RValue
@@ -79,7 +79,7 @@ struct Config_RValue
     {
         Config_LValue *lvalue;
         b32 boolean;
-        i32 integer;
+        i1 integer;
         u32 uinteger;
         String8 string;
         char character;
@@ -92,12 +92,12 @@ struct Config_Integer
     b32 is_signed;
     union
     {
-        i32 integer;
+        i1 integer;
         u32 uinteger;
     };
 };
 
-typedef i32 Config_Layout_Type;
+typedef i1 Config_Layout_Type;
 enum
 {
     ConfigLayoutType_Unset,
@@ -112,7 +112,7 @@ struct Config_Layout
     union
     {
         String8 identifier;
-        i32 integer;
+        i1 integer;
     };
 };
 
@@ -139,10 +139,10 @@ struct Config_Assignment
 
 struct Config
 {
-    i32 *version;
+    i1 *version;
     Config_Assignment *first;
     Config_Assignment *last;
-    i32 count;
+    i1 count;
     
     Config_Error_List errors;
     
@@ -153,7 +153,7 @@ struct Config
 ////////////////////////////////
 // NOTE(allen): Config Iteration
 
-typedef i32 Iteration_Step_Result;
+typedef i1 Iteration_Step_Result;
 enum
 {
     Iteration_Good = 0,
@@ -169,9 +169,9 @@ struct Config_Get_Result
     union
     {
         b32 boolean;
-        i32 integer;
+        i1 integer;
         u32 uinteger;
-        String_Const_u8 string;
+        String string;
         char character;
         Config_Compound *compound;
     };
@@ -194,7 +194,7 @@ struct Config_Get_Result_List
 {
     Config_Get_Result_Node *first;
     Config_Get_Result_Node *last;
-    i32 count;
+    i1 count;
 };
 
 ////////////////////////////////
@@ -216,19 +216,19 @@ function u8*  def_config_parser_get_pos(Config_Parser *ctx);
 function b32 def_config_parser_recognize_base_kind(Config_Parser *ctx, Token_Base_Kind kind);
 function b32 def_config_parser_recognize_cpp_kind(Config_Parser *ctx, Token_Cpp_Kind kind);
 function b32 def_config_parser_recognize_boolean(Config_Parser *ctx);
-function b32 def_config_parser_recognize_text(Config_Parser *ctx, String_Const_u8 text);
+function b32 def_config_parser_recognize_text(Config_Parser *ctx, String text);
 
 function b32 def_config_parser_match_cpp_kind(Config_Parser *ctx, Token_Cpp_Kind kind);
-function b32 def_config_parser_match_text(Config_Parser *ctx, String_Const_u8 text);
+function b32 def_config_parser_match_text(Config_Parser *ctx, String text);
 
-function String_Const_u8 def_config_parser_get_lexeme(Config_Parser *ctx);
+function String def_config_parser_get_lexeme(Config_Parser *ctx);
 function Config_Integer  def_config_parser_get_int(Config_Parser *ctx);
 function b32             def_config_parser_get_boolean(Config_Parser *ctx);
 
 function void def_config_parser_recover(Config_Parser *ctx);
 
 function Config*                  def_config_parser_top       (Config_Parser *ctx);
-function i32*                     def_config_parser_version   (Config_Parser *ctx);
+function i1*                     def_config_parser_version   (Config_Parser *ctx);
 function Config_Assignment*       def_config_parser_assignment(Config_Parser *ctx);
 function Config_LValue*           def_config_parser_lvalue    (Config_Parser *ctx);
 function Config_RValue*           def_config_parser_rvalue    (Config_Parser *ctx);

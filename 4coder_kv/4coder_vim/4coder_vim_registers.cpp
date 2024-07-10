@@ -21,7 +21,7 @@ vim_update_registers(App *app)
 	Batch_Edit head = {};
 	Batch_Edit *last = &head;
 
-	String_Const_u8 top_text = string_u8_litexpr("Vim Registers\n-+-----------");
+	String top_text = string_u8_litexpr("Vim Registers\n-+-----------");
 
 	head.edit.range = Ii64(0, top_text.size);
 	head.edit.text = top_text;
@@ -56,7 +56,7 @@ vim_update_registers(App *app)
 		}
 	}
 	last->next = 0;
-	String_Const_u8 blank_string = SCu8(push_array(scratch, u8, total_size+1), total_size+1);
+	String blank_string = SCu8(push_array(scratch, u8, total_size+1), total_size+1);
 	blank_string.str[total_size] = ' ';
 	buffer_replace_range(app, buffer, Ii64(0, buffer_size), blank_string);
 	buffer_batch_edit(app, buffer, &head);
@@ -64,16 +64,16 @@ vim_update_registers(App *app)
 }
 
 #if 0
-function void vim_eval_register(Application_Links *app, Vim_Register *reg){
+function void vim_eval_register(App *app, Vim_Register *reg){
 	reg->data.str[reg->data.size] = 0;
 	Scratch_Block scratch(app);
-	vim_register_copy(reg, push_stringf(scratch, "%g", EXPR_ParseString(scratch, (char *)reg->data.str)));
+	vim_register_copy(reg, push_stringfz(scratch, "%g", EXPR_ParseString(scratch, (char *)reg->data.str)));
 }
 #endif
 
-function void vim_push_reg_cycle(Application_Links *app){
+function void vim_push_reg_cycle(App *app){
 	Scratch_Block scratch(app);
-	for(i32 i=ArrayCount(vim_registers.cycle)-1; i>0; i--){
+	for(i1 i=ArrayCount(vim_registers.cycle)-1; i>0; i--){
 		if(vim_registers.cycle[i-1].flags & REGISTER_Set){
 			vim_register_copy(&vim_registers.cycle[i], &vim_registers.cycle[i-1]);
 		}
@@ -81,13 +81,13 @@ function void vim_push_reg_cycle(Application_Links *app){
 }
 
 function void
-vim_copy(Application_Links *app, Buffer_ID buffer, Range_i64 range, Vim_Register *reg)
+vim_copy(App *app, Buffer_ID buffer, Range_i64 range, Vim_Register *reg)
 {
     if(reg->flags & REGISTER_ReadOnly)
     {
         vim_state.chord_resolved = bitmask_2;
         Scratch_Block scratch(app);
-        vim_set_bottom_text(push_stringf(scratch, "Register %c is Read Only", vim_get_register_char(reg)));
+        vim_set_bottom_text(push_stringfz(scratch, "Register %c is Read Only", vim_get_register_char(reg)));
         return;
     }
 
@@ -132,11 +132,11 @@ vim_paste_from_register(App *app, View_ID view, Buffer_ID buffer, Vim_Register *
   {
    clipboard_update_history_from_system(app, 0);
    
-   i32 count = clipboard_count(0);
+   i1 count = clipboard_count(0);
    if (count > 0)
    {
     Managed_Scope scope = view_get_managed_scope(app, view);
-    i32 *paste_index = scope_attachment(app, scope, view_paste_index_loc, i32);
+    i1 *paste_index = scope_attachment(app, scope, view_paste_index_loc, i1);
     if(paste_index)
     {
      Scratch_Block scratch(app);

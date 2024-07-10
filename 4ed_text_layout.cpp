@@ -100,7 +100,7 @@ text_layout_render(Thread_Context *tctx, Models *models, Text_Layout *layout,
         Face *face = file_get_face(models, file);
         f32 width = rect_width(layout->rect);
         
-        Vec2_f32 delta = vec2(1.f, 0.f);
+        Vec2_f32 delta = V2(1.f, 0.f);
         
         Vec2_f32 shift_p = layout->rect.p0 - layout->point.pixel_shift;
         i64 first_index = layout->visible_range.first;
@@ -121,7 +121,7 @@ text_layout_render(Thread_Context *tctx, Models *models, Text_Layout *layout,
                 Layout_Item *item = block->items;
                 i64 count = block->item_count;
                 ARGB_Color *item_colors = layout->item_colors;
-                for (i32 i = 0; i < count; i += 1, item += 1)
+                for (i1 i = 0; i < count; i += 1, item += 1)
                 {
                     if (item->codepoint != 0)
                     {

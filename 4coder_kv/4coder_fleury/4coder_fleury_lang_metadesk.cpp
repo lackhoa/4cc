@@ -5,7 +5,7 @@
 
 struct F4_MD_LexerState
 {
-    String_Const_u8 string;
+    String string;
     u8 *at;
     u8 *one_past_last;
 };

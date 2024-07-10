@@ -16,19 +16,19 @@ Plot2DBegin(Plot2DInfo *plot)
         if(plot->title.str)
         {
             Face_Metrics metrics = get_face_metrics(plot->app, plot->title_face);
-            v2 pos = vec2(region.x0, region.y0 - metrics.line_height);
+            v2 pos = V2(region.x0, region.y0 - metrics.line_height);
             draw_string(plot->app, plot->title_face, plot->title, pos, comment_color);
         }
         
         if(plot->x_axis.str)
         {
-            draw_string(plot->app, plot->label_face, plot->x_axis, vec2(region.x0, region.y1), comment_color);
+            draw_string(plot->app, plot->label_face, plot->x_axis, V2(region.x0, region.y1), comment_color);
         }
         
         if(plot->y_axis.str)
         {
             draw_string_oriented(plot->app, plot->label_face, comment_color, plot->y_axis,
-                                 vec2(region.x0 - 10, region.y0 + 5), 0, vec2(0.f, 1.f));
+                                 V2(region.x0 - 10, region.y0 + 5), 0, V2(0.f, 1.f));
         }
     }
     
@@ -79,9 +79,9 @@ Plot2DBegin(Plot2DInfo *plot)
                     float nearest_y_tick = (plot_view.y1 + plot_view.y0) / 2;
                     nearest_y_tick -= fmodf(nearest_y_tick, tick_increment_y);
                     
-                    String_Const_u8 str = push_stringf(scratch, "%.*f", tick_increment_y >= 1 ? 0 : 3, x);
+                    String str = push_stringfz(scratch, "%.*f", tick_increment_y >= 1 ? 0 : 3, x);
                     draw_string(plot->app, plot->label_face, str,
-                                vec2(line_rect.x0,
+                                V2(line_rect.x0,
                                    region.y0 + region_height -
                                    region_height * (nearest_y_tick - plot_view.y0) / (plot_view.y1 - plot_view.y0)),
                                 grid_line_color);
@@ -110,9 +110,9 @@ Plot2DBegin(Plot2DInfo *plot)
                     float nearest_x_tick = (plot_view.x1 + plot_view.x0) / 2;
                     nearest_x_tick -= fmodf(nearest_x_tick, tick_increment_x);
                     
-                    String_Const_u8 str = push_stringf(scratch, "%.*f", tick_increment_y >= 1 ? 0 : 3, y);
+                    String str = push_stringfz(scratch, "%.*f", tick_increment_y >= 1 ? 0 : 3, y);
                     draw_string(plot->app, plot->label_face, str,
-                                vec2(region.x0 + region_width * (nearest_x_tick - plot_view.x0) / (plot_view.x1 - plot_view.x0),
+                                V2(region.x0 + region_width * (nearest_x_tick - plot_view.x0) / (plot_view.x1 - plot_view.x0),
                                    line_rect.y0),
                                 grid_line_color);
                 }
@@ -122,7 +122,7 @@ Plot2DBegin(Plot2DInfo *plot)
 }
 
 function void
-Plot2DPoints(Plot2DInfo *plot, i32 style_flags,
+Plot2DPoints(Plot2DInfo *plot, i1 style_flags,
              float *x_data, float *y_data, int data_count)
 {
     Rect_f32 region = plot->region;

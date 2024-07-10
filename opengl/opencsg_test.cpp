@@ -18,19 +18,19 @@ CSG_Primitive::CSG_Primitive(OpenCSG::Operation op, u32 convexity)
 struct Test_Painter
 {
  Render_Vertex *base;
- i32 count;
+ i1 count;
 };
 
 internal void
 test_draw_quad(Test_Painter *p, v3 Av, v3 Bv, v3 Cv, v3 Dv)
 {// NOTE: vertices are given counter-clock-wise
  argb color = 0xff666666;
- Render_Vertex A = {.pos=vec4(Av,1.f), .color=color};
- Render_Vertex B = {.pos=vec4(Bv,1.f), .color=color};
- Render_Vertex C = {.pos=vec4(Cv,1.f), .color=color};
- Render_Vertex D = {.pos=vec4(Dv,1.f), .color=color};
+ Render_Vertex A = {.pos=V4(Av,1.f), .color=color};
+ Render_Vertex B = {.pos=V4(Bv,1.f), .color=color};
+ Render_Vertex C = {.pos=V4(Cv,1.f), .color=color};
+ Render_Vertex D = {.pos=V4(Dv,1.f), .color=color};
  Render_Vertex vertices[6] = { A,B,C, A,C,D, };
- i32 count = alen(vertices);
+ i1 count = alen(vertices);
  glBufferData(GL_ARRAY_BUFFER, count*sizeof(Render_Vertex), vertices, GL_STREAM_DRAW);
  glDrawArrays(GL_TRIANGLES, 0, count);
 }
@@ -46,10 +46,10 @@ test_draw_opposite_faces(Test_Painter *p, v3 o, v3 x, v3 y, v3 z)
 
 void CSG_Primitive::render()
 {
- v3 o = vec3();
- v3 x = vec3x(1.f);
- v3 y = vec3y(1.f);
- v3 z = vec3z(1.f);
+ v3 o = V3();
+ v3 x = V3x(1.f);
+ v3 y = V3y(1.f);
+ v3 z = V3z(1.f);
  
  Test_Painter painter; Test_Painter *p = &painter;
  test_draw_opposite_faces(p, o,x,y,z);

@@ -19,7 +19,7 @@ GL_FUNC(glActiveTexture, void, (GLenum texture))
 #endif
 
 GL_FUNC(glUniformBlockBinding, void, (GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding));
-GL_FUNC(glGetActiveUniform, void, (	GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name));
+GL_FUNC(glGetActiveUniform, void, (	GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *NAME));
 
 GL_FUNC(glGenBuffers, void, (GLsizei n, GLuint *buffers))
 GL_FUNC(glBindBuffer, void, (GLenum target, GLuint buffer))
@@ -82,10 +82,34 @@ GL_FUNC(glFramebufferTexture3D, void, (GLenum target, GLenum attachment, GLenum 
 GL_FUNC(glBlitFramebuffer, void, (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter))
 
 GL_FUNC(glTexImage2DMultisample, void, (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations))
+
+
+GL_FUNC(glTexStorage2D, void, (GLenum target,
+                               GLsizei levels,
+                               GLenum internalformat,
+                               GLsizei width,
+                               GLsizei height))
+
+GL_FUNC(glTextureStorage2D, void, (GLuint texture,
+                                   GLsizei levels,
+                                   GLenum internalformat,
+                                           GLsizei width,
+                                           GLsizei height))
+
 GL_FUNC(glClearTexImage, void, (GLuint texture, GLint level, GLenum format, GLenum type, const void * data))
+GL_FUNC(glClearBufferuiv, void, (	GLenum buffer, GLint drawbuffer, const GLuint * value))
 GL_FUNC(glBindTextureUnit, void, (GLuint unit, GLuint texture))
 GL_FUNC(glDrawBuffers, void, (GLsizei n, const GLenum *bufs))
 GL_FUNC(glCopyImageSubData, void, (GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth))
+GL_FUNC(glTextureSubImage2D, void, (GLuint texture,
+                                    GLint level,
+                                    GLint xoffset,
+                                    GLint yoffset,
+                                    GLsizei width,
+                                    GLsizei height,
+                                    GLenum format,
+                                    GLenum type,
+                                    const void *pixels));
 
 #undef GL_FUNC
 

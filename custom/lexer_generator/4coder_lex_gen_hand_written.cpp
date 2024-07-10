@@ -11,14 +11,14 @@ lexeme_hash(u64 seed, u8 *ptr, u64 size){
 }
 
 internal Lexeme_Table_Lookup
-lexeme_table_lookup(u64 *hash_array, String_Const_u8 *key_array, 
-                    Lexeme_Table_Value *value_array, i32 slot_count, u64 seed,
+lexeme_table_lookup(u64 *hash_array, String *key_array, 
+                    Lexeme_Table_Value *value_array, i1 slot_count, u64 seed,
                     u8 *ptr, u64 size){
     Lexeme_Table_Lookup result = {};
     u64 hash = lexeme_hash(seed, ptr, size);
     u64 comparison_hash = hash | 1;
-    i32 first_index = (hash % slot_count);
-    i32 index = first_index;
+    i1 first_index = (hash % slot_count);
+    i1 index = first_index;
     for (;;){
         if (hash_array[index] == comparison_hash){
             if (string_match(SCu8(ptr, size), key_array[index])){

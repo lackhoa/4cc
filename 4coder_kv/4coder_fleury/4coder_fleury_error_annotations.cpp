@@ -5,7 +5,7 @@
 #include "4coder_fleury_render_helpers.h"
 
 function void
-F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
+F4_RenderErrorAnnotations(App *app, Buffer_ID buffer,
                           Text_Layout_ID text_layout_id,
                           Buffer_ID jump_buffer)
 {
@@ -50,7 +50,7 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
         }
         
         // NOTE(rjf): Get buffer markers (locations where jumps point at).
-        i32 buffer_marker_count = 0;
+        i1 buffer_marker_count = 0;
         Marker *buffer_markers = 0;
         {
             ProfileScope(app, "[Fleury] Error Annotations (Load Managed Object Data)");
@@ -61,7 +61,7 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
         
         i64 last_line = -1;
         
-        for(i32 i = 0; i < buffer_marker_count; i += 1)
+        for(i1 i = 0; i < buffer_marker_count; i += 1)
         {
             ProfileScope(app, "[Fleury] Error Annotations (Buffer Loop)");
             
@@ -72,7 +72,7 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
             {
                 ProfileScope(app, "[Fleury] Error Annotations (Jump Line)");
                 
-                String_Const_u8 jump_line = push_buffer_line(app, scratch, jump_buffer, jump_line_number);
+                String jump_line = push_buffer_line(app, scratch, jump_buffer, jump_line_number);
                 
                 // NOTE(rjf): Remove file part of jump line.
                 {

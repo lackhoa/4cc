@@ -14,25 +14,25 @@ enum{
 };
 
 struct Word_Complete_Iterator{
-    Application_Links *app;
+    App *app;
     Arena *arena;
     
     Temp_Memory arena_restore;
     Buffer_ID first_buffer;
     Buffer_ID current_buffer;
     b32 scan_all_buffers;
-    String_Const_u8 needle;
+    String needle;
     
-    List_String_Const_u8 list;
-    Node_String_Const_u8 *node;
+    List_String list;
+    Node_String *node;
     Table_Data_u64 already_used_table;
 };
 
 struct Word_Complete_Menu{
     Render_Caller_Function *prev_render_caller;
     Word_Complete_Iterator *it;
-    String_Const_u8 options[8];
-    i32 count;
+    String options[8];
+    i1 count;
 };
 
 #endif

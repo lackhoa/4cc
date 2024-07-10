@@ -25,7 +25,7 @@ doc_date_now(void){
 ////////////////////////////////
 
 function Doc_Content*
-doc_content_push(Arena *arena, Doc_Content_List *list, String_Const_u8 text, Doc_Content_Emphasis emphasis){
+doc_content_push(Arena *arena, Doc_Content_List *list, String text, Doc_Content_Emphasis emphasis){
     Doc_Content *content = push_array_zero(arena, Doc_Content, 1);
     sll_queue_push(list->first, list->last, content);
     list->total_size += text.size;
@@ -36,12 +36,12 @@ doc_content_push(Arena *arena, Doc_Content_List *list, String_Const_u8 text, Doc
 }
 
 function Doc_Content*
-doc_content_push(Arena *arena, Doc_Content_List *list, String_Const_u8 text){
+doc_content_push(Arena *arena, Doc_Content_List *list, String text){
     return(doc_content_push(arena, list, text, DocContentEmphasis_Normal));
 }
 
 function void
-doc_code_list_push(Arena *arena, Doc_Code_Sample_List *list, String_Const_u8 contents, Doc_Code_Language language){
+doc_code_list_push(Arena *arena, Doc_Code_Sample_List *list, String contents, Doc_Code_Language language){
     Doc_Code_Sample *sample = push_array_zero(arena, Doc_Code_Sample, 1);
     sll_queue_push(list->first, list->last, sample);
     list->count += 1;
@@ -82,7 +82,7 @@ new_doc_page(Arena *arena, Doc_Cluster *cluster, char *title, char *name){
 
 function Doc_Page*
 new_doc_page_normal_title(Arena *arena, Doc_Cluster *cluster, char *title, char *name){
-    String_Const_u8 full_title = push_stringf(arena, "%s - %.*s", title, string_expand(cluster->title));
+    String full_title = push_stringfz(arena, "%s - %.*s", title, string_expand(cluster->title));
     return(new_doc_page(arena, cluster, (char*)full_title.str, name));
 }
 
@@ -92,8 +92,8 @@ new_doc_page_function(Arena *arena, Doc_Cluster *cluster, char *name){
 }
 
 function Doc_Page*
-new_doc_page_function(Arena *arena, Doc_Cluster *cluster, String_Const_u8 name){
-    name = push_string_copy(arena, name);
+new_doc_page_function(Arena *arena, Doc_Cluster *cluster, String name){
+    name = push_string_copyz(arena, name);
     char *c_name = (char*)name.str;
     return(new_doc_page_function(arena, cluster, c_name));
 }
@@ -125,7 +125,7 @@ new_doc_par(Arena *arena, Doc_Block *block){
 }
 
 function void
-new_doc_par_single_code(Arena *arena, Doc_Block *block, String_Const_u8 contents, Doc_Code_Language language){
+new_doc_par_single_code(Arena *arena, Doc_Block *block, String contents, Doc_Code_Language language){
     Doc_Paragraph *paragraph = new_doc_par(arena, block);
     paragraph->kind = DocParagraphKind_Code;
     doc_code_list_push(arena, &paragraph->code, contents, language);
@@ -141,7 +141,7 @@ new_doc_par_table(Arena *arena, Doc_Block *block){
 ////////////////////////////////
 
 function void
-doc_log(Arena *arena, Doc_Cluster *cluster, String_Const_u8 string){
+doc_log(Arena *arena, Doc_Cluster *cluster, String string){
     Doc_Log *log = push_array_zero(arena, Doc_Log, 1);
     sll_queue_push(cluster->first_log, cluster->last_log, log);
     log->content = string;
@@ -154,7 +154,7 @@ doc_log(Arena *arena, Doc_Cluster *cluster, char *str){
 
 function void
 doc_logfv(Arena *arena, Doc_Cluster *cluster, char *format, va_list args){
-    String_Const_u8 str = push_stringfv(arena, format, args);
+    String str = push_stringfv(arena, format, args, true);
     doc_log(arena, cluster, str);
 }
 
@@ -207,7 +207,7 @@ doc_paragraph(Arena *arena, Doc_Block *block){
 ////////////////////////////////
 
 function Doc_Page*
-doc_get_page(Doc_Cluster *cluster, String_Const_u8 name){
+doc_get_page(Doc_Cluster *cluster, String name){
     Doc_Page *result = 0;
     for (Doc_Page *page = cluster->first_page;
          page != 0;

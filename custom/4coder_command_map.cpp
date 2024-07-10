@@ -182,18 +182,18 @@ function b32
 map_strict_match(Input_Modifier_Set *binding_mod_set, Input_Modifier_Set *event_mod_set, Key_Code skip_self_mod)
 {
     b32 result = true;
-    i32 binding_mod_count = binding_mod_set->count;
+    i1 binding_mod_count = binding_mod_set->count;
     Key_Code *binding_mods = binding_mod_set->mods;
-    for (i32 i = 0; i < binding_mod_count; i += 1){
+    for (i1 i = 0; i < binding_mod_count; i += 1){
         if (!set_has_modifier(event_mod_set, binding_mods[i]))
         {
             result = false;
             break;
         }
     }
-    i32 mod_count = event_mod_set->count;
+    i1 mod_count = event_mod_set->count;
     Key_Code *mods = event_mod_set->mods;
-    for (i32 i = 0; i < mod_count; i += 1){
+    for (i1 i = 0; i < mod_count; i += 1){
         if (mods[i] != skip_self_mod && !set_has_modifier(binding_mod_set, mods[i])){
             result = false;
             break;
@@ -205,9 +205,9 @@ map_strict_match(Input_Modifier_Set *binding_mod_set, Input_Modifier_Set *event_
 function b32
 map_loose_match(Input_Modifier_Set *binding_mod_set, Input_Modifier_Set *event_mod_set){
     b32 result = true;
-    i32 binding_mod_count = binding_mod_set->count;
+    i1 binding_mod_count = binding_mod_set->count;
     Key_Code *binding_mods = binding_mod_set->mods;
-    for (i32 i = 0; i < binding_mod_count; i += 1){
+    for (i1 i = 0; i < binding_mod_count; i += 1){
         if (!set_has_modifier(event_mod_set, binding_mods[i])){
             result = false;
             break;
@@ -328,7 +328,7 @@ map_get_binding_non_recursive(Command_Map *map, Input_Event *event){
 function Command_Binding
 map_get_binding_recursive(Mapping *mapping, Command_Map *map, Input_Event *event, Binding_Match_Rule rule){
     Command_Binding result = {};
-    for (i32 safety_counter = 0;
+    for (i1 safety_counter = 0;
          map != 0 && safety_counter < 40;
          safety_counter += 1){
         result = map_get_binding_non_recursive(map, event, rule);
@@ -469,7 +469,7 @@ function Command_Trigger_List
 map_get_triggers_recursive(Arena *arena, Mapping *mapping, Command_Map *map, Command_Binding binding){
     Command_Trigger_List result = {};
     if (mapping != 0){
-        for (i32 safety_counter = 0;
+        for (i1 safety_counter = 0;
              map != 0 && safety_counter < 40;
              safety_counter += 1){
             Command_Trigger_List list = map_get_triggers_non_recursive(mapping, map, binding);
@@ -659,19 +659,19 @@ map_set_binding_text_input(Mapping *mapping, Command_Map_ID map_id, Command_Bind
 ////////////////////////////////
 
 function void
-command_trigger_stringize_mods(Arena *arena, List_String_Const_u8 *list, Input_Modifier_Set *modifiers){
+command_trigger_stringize_mods(Arena *arena, List_String *list, Input_Modifier_Set *modifiers){
     if (modifiers->count > 0){
         string_list_push(arena, list, string_u8_litexpr(" holding:"));
-        i32 count = modifiers->count;
+        i1 count = modifiers->count;
         Key_Code *mods = modifiers->mods;
-        for (i32 i = 0; i < count; i += 1){
+        for (i1 i = 0; i < count; i += 1){
             string_list_pushf(arena, list, " %s", ArraySafe(key_code_name, mods[i]));
         }
     }
 }
 
 function void
-command_trigger_stringize(Arena *arena, List_String_Const_u8 *list, Command_Trigger *trigger){
+command_trigger_stringize(Arena *arena, List_String *list, Command_Trigger *trigger){
     string_list_push(arena, list, string_u8_litexpr("<"));
     switch (trigger->kind){
         case InputEventKind_TextInsert:
@@ -681,7 +681,7 @@ command_trigger_stringize(Arena *arena, List_String_Const_u8 *list, Command_Trig
         
         case InputEventKind_KeyStroke:
         {
-            String_Const_u8 key_name = SCu8(ArraySafe(key_code_name, trigger->sub_code));
+            String key_name = SCu8(ArraySafe(key_code_name, trigger->sub_code));
             string_list_push(arena, list, key_name);
             command_trigger_stringize_mods(arena, list, &trigger->mods);
         }break;
@@ -738,7 +738,7 @@ map_set_binding_lv(Mapping *mapping, Command_Map *map,
     Key_Code mods_array[Input_MaxModifierCount];
     mods.mods = mods_array;
     for (;mods.count < ArrayCount(mods_array);){
-        i32 v = va_arg(args, i32);
+        i1 v = va_arg(args, i1);
         if (v <= 0){
             break;
         }

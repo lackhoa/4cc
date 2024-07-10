@@ -41,7 +41,7 @@ call end_query_bar on the same bar, or the group's destructor runs, the bar stru
 needs to remain in memory. The easy way to accomplish this is to just let the bar be
 on the commands stack frame. */
  
- i32 counter = 0;
+ i1 counter = 0;
  
  Query_Bar_Group group(app);
  Query_Bar dumb_bar = {};
@@ -63,7 +63,7 @@ on the commands stack frame. */
 string we put in the bar now will be shown and remain in the bar until an event wakes
 up this command and we get a chance to modify the bar again. */
   Scratch_Block scratch(app);
-  bar.string = push_stringf(scratch, "%d", counter);
+  bar.string = push_stringfz(scratch, "%d", counter);
   if (counter >= 10){
    end_query_bar(app, &dumb_bar, 0);
   }
@@ -112,7 +112,7 @@ isn't happening, so command bindings don't trigger unless you trigger them yours
    bar.string = SCu8("...");
   }
   else{
-   bar.string = push_stringf(scratch, "Key_Code_%s (%d)%s", key_code_name[code], code,
+   bar.string = push_stringfz(scratch, "Key_Code_%s (%d)%s", key_code_name[code], code,
                              is_dead_key?" dead-key":"");
   }
   User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
@@ -159,7 +159,7 @@ isn't happening, so command bindings don't trigger unless you trigger them yours
    break;
   }
   
-  String_Const_u8 in_string = to_writable(&in);
+  String in_string = to_writable(&in);
   if (in_string.size > 0){
    size = clamp_max(in_string.size, sizeof(buffer));
    block_copy(buffer, in_string.str, size);

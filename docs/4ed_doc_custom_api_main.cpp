@@ -38,10 +38,10 @@
 int main(void){
     Arena arena = make_arena_malloc();
     
-    String_Const_u8 me = string_u8_litexpr(__FILE__);
-    String_Const_u8 docs_folder = string_remove_last_folder(me);
-    String_Const_u8 root = string_remove_last_folder(docs_folder);
-    String_Const_u8 file_name = push_u8_stringf(&arena, "%.*scustom/generated/custom_api_master_list.h",
+    String me = string_u8_litexpr(__FILE__);
+    String docs_folder = string_remove_last_folder(me);
+    String root = string_remove_last_folder(docs_folder);
+    String file_name = push_u8_stringf(&arena, "%.*scustom/generated/custom_api_master_list.h",
                                                 string_expand(root));
     
     FILE *file = fopen((char*)file_name.str, "rb");
@@ -51,7 +51,7 @@ int main(void){
     }
     
     printf("documenting %s\n", file_name.str);
-    String_Const_u8 text = data_from_file(&arena, file);
+    String text = data_from_file(&arena, file);
     fclose(file);
     
     API_Definition_List def_list = {};

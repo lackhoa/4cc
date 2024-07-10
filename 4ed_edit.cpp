@@ -27,7 +27,7 @@ post_edit_call_hook(Thread_Context *tctx, Models *models, Editing_File *file,
                     Range_i64 new_range, Range_Cursor old_cursor_range){
     // NOTE(allen): edit range hook
     if (models->buffer_edit_range != 0){
-        Application_Links app = {};
+        App app = {};
         app.tctx = tctx;
         app.cmd_context = models;
         models->buffer_edit_range(&app, file->id, new_range, old_cursor_range);
@@ -37,15 +37,15 @@ post_edit_call_hook(Thread_Context *tctx, Models *models, Editing_File *file,
 function void
 edit_fix_markers__write_workspace_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id,
                                           Cursor_With_Index *cursors, Cursor_With_Index *r_cursors,
-                                          i32 *cursor_count, i32 *r_cursor_count){
+                                          i1 *cursor_count, i1 *r_cursor_count){
     for (Managed_Buffer_Markers_Header *node = workspace->buffer_markers_list.first;
          node != 0;
          node = node->next){
         if (node->buffer_id != buffer_id) continue;
         Marker *markers = (Marker*)(node + 1);
         Assert(sizeof(*markers) == node->std_header.item_size);
-        i32 count = node->std_header.count;
-        for (i32 i = 0; i < count; i += 1){
+        i1 count = node->std_header.count;
+        for (i1 i = 0; i < count; i += 1){
             if (markers[i].lean_right){
                 write_cursor_with_index(r_cursors, r_cursor_count, markers[i].pos);
             }
@@ -58,15 +58,15 @@ edit_fix_markers__write_workspace_markers(Dynamic_Workspace *workspace, Buffer_I
 
 function void
 edit_fix_markers__read_workspace_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id,
-                                         Cursor_With_Index *cursors, Cursor_With_Index *r_cursors, i32 *cursor_count, i32 *r_cursor_count){
+                                         Cursor_With_Index *cursors, Cursor_With_Index *r_cursors, i1 *cursor_count, i1 *r_cursor_count){
     for (Managed_Buffer_Markers_Header *node = workspace->buffer_markers_list.first;
          node != 0;
          node = node->next){
         if (node->buffer_id != buffer_id) continue;
         Marker *markers = (Marker*)(node + 1);
         Assert(sizeof(*markers) == node->std_header.item_size);
-        i32 count = node->std_header.count;
-        for (i32 i = 0; i < count; i += 1){
+        i1 count = node->std_header.count;
+        for (i1 i = 0; i < count; i += 1){
             if (markers[i].lean_right){
                 markers[i].pos = r_cursors[(*r_cursor_count)++].pos;
             }
@@ -78,15 +78,15 @@ edit_fix_markers__read_workspace_markers(Dynamic_Workspace *workspace, Buffer_ID
 }
 
 function f32
-edit_fix_markers__compute_scroll_y(i32 line_height, f32 old_y_val, f32 new_y_val_aligned){
+edit_fix_markers__compute_scroll_y(i1 line_height, f32 old_y_val, f32 new_y_val_aligned){
     f32 y_offset = mod_f32(old_y_val, line_height);
     f32 y_position = new_y_val_aligned + y_offset;
     return(y_position);
 }
 
-function i32
-edit_fix_markers__compute_scroll_y(i32 line_height, i32 old_y_val, f32 new_y_val_aligned){
-    return((i32)edit_fix_markers__compute_scroll_y(line_height, (f32)old_y_val, new_y_val_aligned));
+function i1
+edit_fix_markers__compute_scroll_y(i1 line_height, i1 old_y_val, f32 new_y_val_aligned){
+    return((i1)edit_fix_markers__compute_scroll_y(line_height, (f32)old_y_val, new_y_val_aligned));
 }
 
 function void
@@ -97,18 +97,18 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
     Buffer_ID file_id = file->id;
     Assert(file_lifetime_object != 0);
     
-    i32 cursor_max = layout_get_open_panel_count(layout)*4;
-    i32 total_marker_count = 0;
+    i1 cursor_max = layout_get_open_panel_count(layout)*4;
+    i1 total_marker_count = 0;
     {
         total_marker_count += file_lifetime_object->workspace.total_marker_count;
         
-        i32 key_count = file_lifetime_object->key_count;
-        i32 key_index = 0;
+        i1 key_count = file_lifetime_object->key_count;
+        i1 key_index = 0;
         for (Lifetime_Key_Ref_Node *key_node = file_lifetime_object->key_node_first;
              key_node != 0;
              key_node = key_node->next){
-            i32 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
-            for (i32 i = 0; i < count; i += 1){
+            i1 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
+            for (i1 i = 0; i < count; i += 1){
                 Lifetime_Key *key = key_node->keys[i];
                 total_marker_count += key->dynamic_workspace.total_marker_count;
             }
@@ -121,8 +121,8 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
     
     Cursor_With_Index *cursors = push_array(scratch, Cursor_With_Index, cursor_max);
     Cursor_With_Index *r_cursors = push_array(scratch, Cursor_With_Index, cursor_max);
-    i32 cursor_count = 0;
-    i32 r_cursor_count = 0;
+    i1 cursor_count = 0;
+    i1 r_cursor_count = 0;
     Assert(cursors != 0);
     Assert(r_cursors != 0);
     
@@ -132,8 +132,8 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
         View *view = panel->view;
         if (view->file == file){
             File_Edit_Positions edit_pos = view_get_edit_pos(view);
-            write_cursor_with_index(cursors, &cursor_count, (i32)edit_pos.cursor_pos);
-            write_cursor_with_index(cursors, &cursor_count, (i32)view->mark);
+            write_cursor_with_index(cursors, &cursor_count, (i1)edit_pos.cursor_pos);
+            write_cursor_with_index(cursors, &cursor_count, (i1)view->mark);
             Buffer_Cursor pos_cursor = file_compute_cursor(file, seek_line_col(edit_pos.scroll.position.line_number, 1));
             Buffer_Cursor targ_cursor = file_compute_cursor(file, seek_line_col(edit_pos.scroll.target.line_number, 1));
             write_cursor_with_index(cursors, &cursor_count, pos_cursor.pos);
@@ -144,13 +144,13 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
     edit_fix_markers__write_workspace_markers(&file_lifetime_object->workspace, file_id, cursors, r_cursors, &cursor_count, &r_cursor_count);
     
     {
-        i32 key_count = file_lifetime_object->key_count;
-        i32 key_index = 0;
+        i1 key_count = file_lifetime_object->key_count;
+        i1 key_index = 0;
         for (Lifetime_Key_Ref_Node *key_node = file_lifetime_object->key_node_first;
              key_node != 0;
              key_node = key_node->next){
-            i32 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
-            for (i32 i = 0; i < count; i += 1){
+            i1 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
+            for (i1 i = 0; i < count; i += 1){
                 Lifetime_Key *key = key_node->keys[i];
                 edit_fix_markers__write_workspace_markers(&key->dynamic_workspace, file_id, cursors, r_cursors, &cursor_count, &r_cursor_count);
             }
@@ -194,13 +194,13 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
         
         edit_fix_markers__read_workspace_markers(&file_lifetime_object->workspace, file_id, cursors, r_cursors, &cursor_count, &r_cursor_count);
         
-        i32 key_count = file_lifetime_object->key_count;
-        i32 key_index = 0;
+        i1 key_count = file_lifetime_object->key_count;
+        i1 key_index = 0;
         for (Lifetime_Key_Ref_Node *key_node = file_lifetime_object->key_node_first;
              key_node != 0;
              key_node = key_node->next){
-            i32 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
-            for (i32 i = 0; i < count; i += 1){
+            i1 count = clamp_max(lifetime_key_reference_per_node, key_count - key_index);
+            for (i1 i = 0; i < count; i += 1){
                 Lifetime_Key *key = key_node->keys[i];
                 edit_fix_markers__read_workspace_markers(&key->dynamic_workspace, file_id, cursors, r_cursors, &cursor_count, &r_cursor_count);
             }
@@ -212,7 +212,7 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
 function void
 file_end_file(Thread_Context *tctx, Models *models, Editing_File *file){
     if (models->end_buffer != 0){
-        Application_Links app = {};
+        App app = {};
         app.tctx = tctx;
         app.cmd_context = models;
         models->end_buffer(&app, file->id);
@@ -223,7 +223,7 @@ file_end_file(Thread_Context *tctx, Models *models, Editing_File *file){
 }
 
 function void
-edit__apply(Thread_Context *tctx, Models *models, Editing_File *file, Range_i64 range, String_Const_u8 string, Edit_Behaviors behaviors){
+edit__apply(Thread_Context *tctx, Models *models, Editing_File *file, Range_i64 range, String string, Edit_Behaviors behaviors){
     Edit edit = {};
     edit.text = string;
     edit.range = range;
@@ -251,7 +251,7 @@ edit__apply(Thread_Context *tctx, Models *models, Editing_File *file, Range_i64 
 
 function void
 edit_single(Thread_Context *tctx, Models *models, Editing_File *file,
-            Range_i64 range, String_Const_u8 string, Edit_Behaviors behaviors){
+            Range_i64 range, String string, Edit_Behaviors behaviors){
     Range_Cursor cursor_range = {};
     cursor_range.min = file_compute_cursor(file, seek_pos(range.min));
     cursor_range.max = file_compute_cursor(file, seek_pos(range.max));
@@ -279,7 +279,7 @@ edit__apply_record_forward(Thread_Context *tctx, Models *models, Editing_File *f
     switch (record->kind){
         case RecordKind_Single:
         {
-            String_Const_u8 str = record->single.forward_text;
+            String str = record->single.forward_text;
             Range_i64 range = Ii64(record->single.first, record->single.first + record->single.backward_text.size);
             edit_single(tctx, models, file, range, str, behaviors_prototype);
         }break;
@@ -310,7 +310,7 @@ edit__apply_record_backward(Thread_Context *tctx, Models *models, Editing_File *
     switch (record->kind){
         case RecordKind_Single:
         {
-            String_Const_u8 str = record->single.backward_text;
+            String str = record->single.backward_text;
             Range_i64 range = Ii64(record->single.first, record->single.first + record->single.forward_text.size);
             edit_single(tctx, models, file, range, str, behaviors_prototype);
         }break;
@@ -334,12 +334,12 @@ edit__apply_record_backward(Thread_Context *tctx, Models *models, Editing_File *
 }
 
 function void
-edit_change_current_history_state(Thread_Context *tctx, Models *models, Editing_File *file, i32 target_index){
+edit_change_current_history_state(Thread_Context *tctx, Models *models, Editing_File *file, i1 target_index){
     History *history = &file->state.history;
     if (history->activated && file->state.current_record_index != target_index){
         Assert(0 <= target_index && target_index <= history->record_count);
         
-        i32 current = file->state.current_record_index;
+        i1 current = file->state.current_record_index;
         Record *record = history_get_record(history, current);
         Assert(record != 0);
         Record *dummy_record = history_get_dummy_record(history);
@@ -374,11 +374,11 @@ edit_merge_history_range(Thread_Context *tctx, Models *models, Editing_File *fil
     b32 result = false;
     History *history = &file->state.history;
     if (history_is_activated(history)){
-        i32 max_index = history_get_record_count(history);
+        i1 max_index = history_get_record_count(history);
         first_index = clamp_min(1, first_index);
         if (first_index <= last_index && last_index <= max_index){
             if (first_index < last_index){
-                i32 current_index = file->state.current_record_index;
+                i1 current_index = file->state.current_record_index;
                 if (first_index <= current_index && current_index < last_index){
                     u32 in_range_handler = (flags & bitmask_2);
                     switch (in_range_handler){
@@ -471,7 +471,7 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
             for (Batch_Edit *edit = batch;
                  edit != 0;
                  edit = edit->next){
-                String_Const_u8 insert_string = edit->edit.text;
+                String insert_string = edit->edit.text;
                 
                 Range_i64 edit_range = edit->edit.range;
                 edit_range.first += shift;
@@ -580,7 +580,7 @@ create_file(Thread_Context *tctx, Models *models, String8 filename, Buffer_Creat
                         if (has_canon_name){
                             file_bind_filename(working_set, file, string_from_filename(&canon));
                         }
-                        String_Const_u8 front = string_front_of_path(filename);
+                        String front = path_filename(filename);
                         buffer_bind_name(tctx, models, scratch, working_set, file, front);
                         File_Attributes attributes = {};
                         file_create_from_string(tctx, models, file, SCu8(""), attributes);
@@ -591,22 +591,22 @@ create_file(Thread_Context *tctx, Models *models, String8 filename, Buffer_Creat
             else{
                 File_Attributes attributes = system_load_attributes(handle);
                 b32 in_heap_mem = false;
-                char *buffer = push_array(scratch, char, (i32)attributes.size);
+                char *buffer = push_array(scratch, char, (i1)attributes.size);
                 
                 if (buffer == 0){
-                    buffer = heap_array(heap, char, (i32)attributes.size);
+                    buffer = heap_array(heap, char, (i1)attributes.size);
                     Assert(buffer != 0);
                     in_heap_mem = true;
                 }
                 
-                if (system_load_file(handle, buffer, (i32)attributes.size)){
+                if (system_load_file(handle, buffer, (i1)attributes.size)){
                     system_load_close(handle);
                     file = working_set_allocate_file(working_set, &models->lifetime_allocator);
                     if (file != 0){
                         file_bind_filename(working_set, file, string_from_filename(&canon));
-                        String_Const_u8 front = string_front_of_path(filename);
+                        String front = path_filename(filename);
                         buffer_bind_name(tctx, models, scratch, working_set, file, front);
-                        file_create_from_string(tctx, models, file, SCu8(buffer, (i32)attributes.size), attributes);
+                        file_create_from_string(tctx, models, file, SCu8(buffer, (i1)attributes.size), attributes);
                         result = file;
                     }
                 }
@@ -642,7 +642,7 @@ create_file(Thread_Context *tctx, Models *models, String8 filename, Buffer_Creat
             !HasFlag(flags, BufferCreate_SuppressNewFileHook) &&
             models->new_file != 0)
         {
-            Application_Links app = {};
+            App app = {};
             app.tctx = tctx;
             app.cmd_context = models;
             models->new_file(&app, file->id);

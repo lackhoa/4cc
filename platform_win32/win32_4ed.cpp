@@ -9,8 +9,8 @@
 
 // TOP
 
-#define KV_IMPLEMENTATION
 #include "kv.h"
+#include "4ed_base.h"
 
 #include <stdio.h>
 
@@ -62,7 +62,9 @@
 ////////////////////////////////
 
 #define FPS 60
-#define frame_useconds (1000000 / FPS)
+global_const v1 frame_seconds  = (1.f / v1(FPS));
+global_const v1 frame_useconds = 1e6 * frame_seconds;
+global_const v1 frame_nseconds = 1e9 * frame_seconds;
 
 global b32 log_os_enabled = false;
 #define log_os(...) \
@@ -70,8 +72,8 @@ Stmnt( if (log_os_enabled){ fprintf(stdout, __VA_ARGS__); fflush(stdout); } )
 
 //////////////////////////////
 
-internal String_Const_u8 win32_get_error_string(void);
-internal void win32_output_error_string(String_Const_u8 string);
+internal String win32_get_error_string(void);
+internal void win32_output_error_string(String string);
 
 //////////////////////////////
 
@@ -172,7 +174,7 @@ struct Win32_Vars{
     i32 cursor_show;
     i32 prev_cursor_show;
     
-    String_Const_u8 binary_path;
+    String binary_path;
     
     b8 clip_catch_all;
     // b8 next_clipboard_is_self;
@@ -180,7 +182,7 @@ struct Win32_Vars{
     Plat_Handle clip_wakeup_timer;
     
     Arena clip_post_arena;
-    String_Const_u8 clip_post;
+    String clip_post;
     
     HWND window_handle;
     f32 screen_scale_factor;
@@ -223,7 +225,7 @@ system_error_box(char *msg){
 
 ////////////////////////////////
 
-internal String_Const_u8
+internal String
 win32_get_error_string(void){
     String result = {};
     DWORD error = GetLastError();
@@ -238,7 +240,7 @@ win32_get_error_string(void){
 }
 
 internal void
-win32_output_error_string(String_Const_u8 error_string){
+win32_output_error_string(String error_string){
     system_error_box((char*)error_string.str);
 }
 
@@ -413,7 +415,7 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
                 {
                     String clip_ascii = SCu8(clip_ascii_ptr);
                     got_result = true;
-                    result = push_string_copy(arena, clip_ascii);
+                    result = push_string_copyz(arena, clip_ascii);
                 }
                 GlobalUnlock(clip_data);
             }
@@ -513,13 +515,14 @@ system_set_clipboard_catch_all_sig(){
 
 internal
 system_get_clipboard_catch_all_sig(){
-    return(win32vars.clip_catch_all);
+ return(win32vars.clip_catch_all);
 }
 
 //
 // Command Line Exectuion
 //
 
+// ;win32_system_cli_call
 internal
 system_cli_call_sig()
 {
@@ -529,7 +532,7 @@ system_cli_call_sig()
     char *env_variables = 0;
     
     Temp_Memory temp = begin_temp(scratch);
-    String cmd_arg = push_stringf(scratch, "/C %s", script);
+    String cmd_arg = push_stringfz(scratch, "/C %s", script);
     
     b32 success = false;
     
@@ -675,8 +678,8 @@ system_cli_end_update_sig(){
 
 function void
 os_popup_error(char *title, char *message){
-    MessageBoxA(0, title, message, MB_OK);
-    ExitProcess(1);
+ MessageBoxA(0, title, message, MB_OK);
+ ExitProcess(1);
 }
 
 #include "4ed_font_provider_freetype.h"
@@ -686,7 +689,6 @@ os_popup_error(char *title, char *message){
 #include "opengl/4ed_opengl_defines.h"
 #define GL_FUNC(N,R,P) typedef R (CALL_CONVENTION N##_Function)P; N##_Function *N = 0;
 #include "opengl/4ed_opengl_funcs.h"
-//#include "opengl/opencsg_test.cpp"
 #include "opengl/4ed_opengl_render.cpp"
 
 internal graphics_get_texture_return 
@@ -877,36 +879,39 @@ Win32SetCursorFromUpdate(Application_Mouse_Cursor cursor){
         }break;
         
         case APP_MOUSE_CURSOR_UPDOWN:
-        {
-            SetCursor(win32vars.cursor_updown);
-        }break;
-    }
+  {
+   SetCursor(win32vars.cursor_updown);
+  }break;
+ }
 }
 
 internal Win32_Object*
-win32_alloc_object(Win32_Object_Kind kind){
-    Win32_Object *result = 0;
-    if (win32vars.free_win32_objects.next != &win32vars.free_win32_objects){
-        result = CastFromMember(Win32_Object, node, win32vars.free_win32_objects.next);
-    }
-    if (result == 0){
-        i32 count = 512;
-        Win32_Object *objects = (Win32_Object*)system_memory_allocate(count*sizeof(Win32_Object), filename_linum);
-        objects[0].node.prev = &win32vars.free_win32_objects;
-        win32vars.free_win32_objects.next = &objects[0].node;
-        for (i32 i = 1; i < count; i += 1){
-            objects[i - 1].node.next = &objects[i].node;
-            objects[i].node.prev = &objects[i - 1].node;
-        }
-        objects[count - 1].node.next = &win32vars.free_win32_objects;
-        win32vars.free_win32_objects.prev = &objects[count - 1].node;
-        result = CastFromMember(Win32_Object, node, win32vars.free_win32_objects.next);
-    }
-    Assert(result != 0);
-    dll_remove(&result->node);
-    block_zero_struct(result);
-    result->kind = kind;
-    return(result);
+win32_alloc_object(Win32_Object_Kind kind)
+{
+ Win32_Object *result = 0;
+ if (win32vars.free_win32_objects.next != &win32vars.free_win32_objects)
+ {
+  result = CastFromMember(Win32_Object, node, win32vars.free_win32_objects.next);
+ }
+ if (result == 0)
+ {
+  i32 count = 512;
+  Win32_Object *objects = (Win32_Object*)system_memory_allocate(count*sizeof(Win32_Object), filename_linum);
+  objects[0].node.prev = &win32vars.free_win32_objects;
+  win32vars.free_win32_objects.next = &objects[0].node;
+  for (i32 i = 1; i < count; i += 1){
+   objects[i - 1].node.next = &objects[i].node;
+   objects[i].node.prev = &objects[i - 1].node;
+  }
+  objects[count - 1].node.next = &win32vars.free_win32_objects;
+  win32vars.free_win32_objects.prev = &objects[count - 1].node;
+  result = CastFromMember(Win32_Object, node, win32vars.free_win32_objects.next);
+ }
+ Assert(result != 0);
+ dll_remove(&result->node);
+ block_zero_struct(result);
+ result->kind = kind;
+ return(result);
 }
 
 internal void
@@ -920,7 +925,7 @@ win32_free_object(Win32_Object *object){
 ////////////////////////////////
 
 internal
-system_now_time_sig(){
+system_time_usecond_sig(){
     u64 result = 0;
     LARGE_INTEGER t;
     if (QueryPerformanceCounter(&t)){
@@ -1279,7 +1284,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
                 String_Const_u16 str_16 = SCu16(&c, 1);
-                String_Const_u8 str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16, StringFill_NullTerminate).string;
+                String str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16, StringFill_NullTerminate).string;
                 Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
                 event->kind = InputEventKind_TextInsert;
                 event->text.string = str_8;
@@ -1316,7 +1321,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 }
                 if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
                     String_Const_u32 str_32 = SCu32(&c, 1);
-                    String_Const_u8 str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32, StringFill_NullTerminate).string;
+                    String str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32, StringFill_NullTerminate).string;
                     Input_Event event = {};
                     event.kind = InputEventKind_TextInsert;
                     event.text.string = str_8;
@@ -1328,7 +1333,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         
         case WM_MOUSEMOVE:
         {
-            v2i new_m = vec2i(LOWORD(lParam), HIWORD(lParam));
+            i2 new_m = I2(LOWORD(lParam), HIWORD(lParam));
             if (new_m != win32vars.input_chunk.pers.mouse){
                 win32vars.input_chunk.pers.mouse = new_m;
                 win32vars.got_useful_event = true;
@@ -1762,488 +1767,503 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
 int CALL_CONVENTION
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    i32 argc = __argc;
-    char **argv = __argv;
-    
-    // NOTE(allen): someone get my shit togeth :(er for me
-    
-    for (i32 i = 0; i < argc; i += 1){
-        String arg = SCu8(argv[i]);
-        printf("arg[%d]: %.*s\n", i, string_expand(arg));
-        if (string_match(arg, str8_lit("-L"))){
-            log_os_enabled = true;
-        }
-    }
-    
-    log_os("Logging startup...\n");
-    
-    log_os("Initializing thread context...\n");
-    
-    // NOTE(allen): This thing
-    InitializeCriticalSection(&memory_tracker_mutex);
-    
-    // NOTE(allen): context setup
-    Thread_Context _tctx = {};
-    thread_ctx_init(&_tctx, ThreadKind_Main, get_base_allocator_system(), get_base_allocator_system());
-    
-    block_zero_struct(&win32vars);
-    win32vars.tctx = &_tctx;
-    
-    log_os("Filling API v-tables...\n");
-    API_VTable_system system_vtable = {};
-    system_api_fill_vtable(&system_vtable);
-    
-    API_VTable_graphics graphics_vtable = {};
-    graphics_api_fill_vtable(&graphics_vtable);
-    
-    API_VTable_font font_vtable = {};
-    font_api_fill_vtable(&font_vtable);
-    
-    log_os("Setting up memory management...\n");
-    
-    // NOTE(allen): memory
-    win32vars.frame_arena = make_arena_system();
-    // TODO(allen): *arena;
-    render_target.arena = make_arena_system(KB(256));
-    
-    win32vars.cursor_show = MouseCursorShow_Always;
-    win32vars.prev_cursor_show = MouseCursorShow_Always;
-    
-    log_os("Setting up threading primitives...\n");
-    
-    dll_init_sentinel(&win32vars.free_win32_objects);
-    dll_init_sentinel(&win32vars.timer_objects);
-    
-    InitializeCriticalSection(&win32vars.thread_launch_mutex);
-    InitializeConditionVariable(&win32vars.thread_launch_cv);
-    
-    log_os("Setting up DPI awareness...\n");
-    
-    SetProcessDPIAware();
-    
-    {
-        HDC dc = GetDC(0);
-        i32 x_dpi = GetDeviceCaps(dc, LOGPIXELSX);
-        i32 y_dpi = GetDeviceCaps(dc, LOGPIXELSY);
-        i32 max_dpi = maximum(x_dpi, y_dpi);
-        win32vars.screen_scale_factor = ((f32)max_dpi)/96.f;
-        ReleaseDC(0, dc);
-        log_os(" detected dpi %f\n", win32vars.screen_scale_factor);
-    }
-    
-    // NOTE(allen): load core
-    log_os("Loading 4ed core...\n");
-    
-    // NOTE(allen): send system vtable to core
-    //log_os("Linking vtables...\n");
-    
-    //app_load_vtables(&system_vtable, &font_vtable, &graphics_vtable);
-    win32vars.log_string = app_get_logger();
-    
-    // NOTE(allen): init & command line parameters
-    log_os("Parsing command line...\n");
-    
-    Plat_Settings plat_settings = {};
-    void *base_ptr = 0;
-    {
-        Scratch_Block scratch(win32vars.tctx);
-        String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
-        string_mod_replace_character(curdir, '\\', '/');
-        char **files = 0;
-        i32 *file_count = 0;
-        base_ptr = app_read_command_line(win32vars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
-        {
-            i32 end = *file_count;
-            i32 i = 0, j = 0;
-            for (; i < end; ++i){
-                if (system_file_can_be_made(scratch, (u8*)files[i])){
-                    files[j] = files[i];
-                    ++j;
-                }
-            }
-            *file_count = j;
-        }
-    }
-    
-    // NOTE(allen): setup user directory override
-    log_os("User directory override: '%s'\n", plat_settings.user_directory);
-    
-    if (plat_settings.user_directory != 0)
-    {
-        w32_override_user_directory = SCu8((u8*)plat_settings.user_directory);
-    }
-    
-    log_os(" loaded successfully\n");
-    
-    // NOTE(allen): Window Init
-    log_os("Initializing graphical window...\n");
-    
-    log_os(" getting initial settings...\n");
-    RECT window_rect = {};
-    if (plat_settings.set_window_size)
-    {
-        // NOTE(kv): setting negative position for window_rect doesn't work
-        window_rect.right  = plat_settings.window_w;
-        window_rect.bottom = plat_settings.window_h;
-    }
-    else{
-        window_rect.right = 800;
-        window_rect.bottom = 600;
-    }
-    AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, false);
-    i32 window_style = WS_OVERLAPPEDWINDOW;
-    if (plat_settings.maximize_window &&
-        !plat_settings.fullscreen_window)
-    {
-        window_style |= WS_MAXIMIZE;
-    }
-    log_os(" windowed dimensions: %ld, %ld\n"
-           " initially maximized: %d",
-           window_rect.right - window_rect.left,
-           window_rect.bottom - window_rect.top,
-           ((window_style & WS_MAXIMIZE) != 0));
-    
-    HGLRC window_opengl_context = 0;
-    if (!win32_gl_create_window(&win32vars.window_handle, &window_opengl_context, window_style, window_rect))
-    {
-        exit(1);
-    }
+ i32 argc = __argc;
+ char **argv = __argv;
  
-    i32 window_width = window_rect.right - window_rect.left;
-    i32 window_height = window_rect.bottom - window_rect.top;
-    if (plat_settings.set_window_pos)
-    {
-        BOOL ok = SetWindowPos(win32vars.window_handle,
-                               0,
-                               /*x*/plat_settings.window_x,
-                               /*y*/plat_settings.window_y,
-                               /*width */window_width,
-                               /*height*/window_height,
-                               /*uFlags*/0
-                               );    
-        kv_assert(ok);
+ // NOTE(allen): someone get my shit togeth :(er for me
+ 
+ for (i32 i = 0; i < argc; i += 1){
+  String arg = SCu8(argv[i]);
+  printf("arg[%d]: %.*s\n", i, string_expand(arg));
+  if (string_match(arg, str8_lit("-L"))){
+   log_os_enabled = true;
+  }
+ }
+ 
+ log_os("Logging startup...\n");
+ 
+ log_os("Initializing thread context...\n");
+ 
+ // NOTE(allen): This thing
+ InitializeCriticalSection(&memory_tracker_mutex);
+ 
+ // NOTE(allen): context setup
+ Thread_Context _tctx = {};
+ thread_ctx_init(&_tctx, ThreadKind_Main, get_base_allocator_system(), get_base_allocator_system());
+ 
+ block_zero_struct(&win32vars);
+ win32vars.tctx = &_tctx;
+ 
+ log_os("Filling API v-tables...\n");
+ API_VTable_system system_vtable = {};
+ system_api_fill_vtable(&system_vtable);
+ 
+ API_VTable_graphics graphics_vtable = {};
+ graphics_api_fill_vtable(&graphics_vtable);
+ 
+ API_VTable_font font_vtable = {};
+ font_api_fill_vtable(&font_vtable);
+ 
+ log_os("Setting up memory management...\n");
+ 
+ // NOTE(allen): memory
+ win32vars.frame_arena = make_arena_system();
+ // TODO(allen): *arena;
+ render_target.arena = make_arena_system(KB(256));
+ 
+ win32vars.cursor_show = MouseCursorShow_Always;
+ win32vars.prev_cursor_show = MouseCursorShow_Always;
+ 
+ log_os("Setting up threading primitives...\n");
+ 
+ dll_init_sentinel(&win32vars.free_win32_objects);
+ dll_init_sentinel(&win32vars.timer_objects);
+ 
+ InitializeCriticalSection(&win32vars.thread_launch_mutex);
+ InitializeConditionVariable(&win32vars.thread_launch_cv);
+ 
+ log_os("Setting up DPI awareness...\n");
+ 
+ SetProcessDPIAware();
+ 
+ {
+  HDC dc = GetDC(0);
+  i32 x_dpi = GetDeviceCaps(dc, LOGPIXELSX);
+  i32 y_dpi = GetDeviceCaps(dc, LOGPIXELSY);
+  i32 max_dpi = maximum(x_dpi, y_dpi);
+  win32vars.screen_scale_factor = ((f32)max_dpi)/96.f;
+  ReleaseDC(0, dc);
+  log_os(" detected dpi %f\n", win32vars.screen_scale_factor);
+ }
+ 
+ // NOTE(allen): load core
+ log_os("Loading 4ed core...\n");
+ 
+ // NOTE(allen): send system vtable to core
+ //log_os("Linking vtables...\n");
+ 
+ //app_load_vtables(&system_vtable, &font_vtable, &graphics_vtable);
+ win32vars.log_string = app_get_logger();
+ 
+ // NOTE(allen): init & command line parameters
+ log_os("Parsing command line...\n");
+ 
+ Plat_Settings plat_settings = {};
+ void *base_ptr = 0;
+ {
+  Scratch_Block scratch(win32vars.tctx);
+  String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
+  string_mod_replace_character(curdir, '\\', '/');
+  char **files = 0;
+  i32 *file_count = 0;
+  base_ptr = app_read_command_line(win32vars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
+  {
+   i32 end = *file_count;
+   i32 i = 0, j = 0;
+   for (; i < end; ++i){
+    if (system_file_can_be_made(scratch, (u8*)files[i])){
+     files[j] = files[i];
+     ++j;
     }
-    
-    log_os(" window created successfully\n");
-    
-    GetClientRect(win32vars.window_handle, &window_rect);
-    win32_resize_render_target(window_width, window_height);
-    
-    // NOTE(allen): Audio Init
-    //log_os("Initializing audio...\n");
-    //win32vars.audio_thread_id = win32_audio_init();
-    
-    // NOTE(allen): Misc Init
-    log_os("Initializing clipboard listener...\n");
-    if (!AddClipboardFormatListener(win32vars.window_handle)){
-        String_Const_u8 error_string = win32_get_error_string();
-        win32_output_error_string(error_string);
-    }
-    win32vars.clip_wakeup_timer = system_wake_up_timer_create();
-    win32vars.clipboard_sequence = 0;
-    
-    log_os("Setting up keyboard layout...\n");
-    win32vars.kl_universal = LoadKeyboardLayoutW(L"00000409", 0);
-    win32_keycode_init();
-    
-    log_os("Loading cursors...\n");
-    win32vars.cursor_ibeam = LoadCursor(NULL, IDC_IBEAM);
-    win32vars.cursor_arrow = LoadCursor(NULL, IDC_ARROW);
-    win32vars.cursor_leftright = LoadCursor(NULL, IDC_SIZEWE);
-    win32vars.cursor_updown = LoadCursor(NULL, IDC_SIZENS);
-    
-    log_os("Initializing performance counter...\n");
-    LARGE_INTEGER f;
-    if (QueryPerformanceFrequency(&f)){
-        win32vars.usecond_per_count = 1000000.f/(f32)f.QuadPart;
+   }
+   *file_count = j;
+  }
+ }
+ 
+ // NOTE(allen): setup user directory override
+ log_os("User directory override: '%s'\n", plat_settings.user_directory);
+ 
+ if (plat_settings.user_directory != 0)
+ {
+  w32_override_user_directory = SCu8((u8*)plat_settings.user_directory);
+ }
+ 
+ log_os(" loaded successfully\n");
+ 
+ // NOTE(allen): Window Init
+ log_os("Initializing graphical window...\n");
+ 
+ log_os(" getting initial settings...\n");
+ RECT window_rect = {};
+ if (plat_settings.set_window_size)
+ {
+  // NOTE(kv): setting negative position for window_rect doesn't work
+  window_rect.right  = plat_settings.window_w;
+  window_rect.bottom = plat_settings.window_h;
+ }
+ else{
+  window_rect.right = 800;
+  window_rect.bottom = 600;
+ }
+ AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, false);
+ i32 window_style = WS_OVERLAPPEDWINDOW;
+ if (plat_settings.maximize_window &&
+     !plat_settings.fullscreen_window)
+ {
+  window_style |= WS_MAXIMIZE;
+ }
+ log_os(" windowed dimensions: %ld, %ld\n"
+        " initially maximized: %d",
+        window_rect.right - window_rect.left,
+        window_rect.bottom - window_rect.top,
+        ((window_style & WS_MAXIMIZE) != 0));
+ 
+ HGLRC window_opengl_context = 0;
+ if (!win32_gl_create_window(&win32vars.window_handle, &window_opengl_context, window_style, window_rect))
+ {
+  exit(1);
+ }
+ 
+ i32 window_width = window_rect.right - window_rect.left;
+ i32 window_height = window_rect.bottom - window_rect.top;
+ if (plat_settings.set_window_pos)
+ {
+  BOOL ok = SetWindowPos(win32vars.window_handle,
+                         0,
+                         /*x*/plat_settings.window_x,
+                         /*y*/plat_settings.window_y,
+                         /*width */window_width,
+                         /*height*/window_height,
+                         /*uFlags*/0
+                         );    
+  kv_assert(ok);
+ }
+ 
+ log_os(" window created successfully\n");
+ 
+ GetClientRect(win32vars.window_handle, &window_rect);
+ win32_resize_render_target(window_width, window_height);
+ 
+ // NOTE(allen): Audio Init
+ //log_os("Initializing audio...\n");
+ //win32vars.audio_thread_id = win32_audio_init();
+ 
+ // NOTE(allen): Misc Init
+ log_os("Initializing clipboard listener...\n");
+ if (!AddClipboardFormatListener(win32vars.window_handle)){
+  String error_string = win32_get_error_string();
+  win32_output_error_string(error_string);
+ }
+ win32vars.clip_wakeup_timer = system_wake_up_timer_create();
+ win32vars.clipboard_sequence = 0;
+ 
+ log_os("Setting up keyboard layout...\n");
+ win32vars.kl_universal = LoadKeyboardLayoutW(L"00000409", 0);
+ win32_keycode_init();
+ 
+ log_os("Loading cursors...\n");
+ win32vars.cursor_ibeam = LoadCursor(NULL, IDC_IBEAM);
+ win32vars.cursor_arrow = LoadCursor(NULL, IDC_ARROW);
+ win32vars.cursor_leftright = LoadCursor(NULL, IDC_SIZEWE);
+ win32vars.cursor_updown = LoadCursor(NULL, IDC_SIZENS);
+ 
+ log_os("Initializing performance counter...\n");
+ LARGE_INTEGER f;
+ if (QueryPerformanceFrequency(&f)){
+  win32vars.usecond_per_count = 1000000.f/(f32)f.QuadPart;
+ }
+ else{
+  // NOTE(allen): Just guess.
+  win32vars.usecond_per_count = 1.f;
+  log_os(" load failed, guessing usecond_per_count = 1\n");
+ }
+ if (win32vars.usecond_per_count <= 0.f){
+  win32vars.usecond_per_count = 1.f;
+ }
+ 
+ //
+ // App init
+ //
+ 
+ log_os("Initializing 4ed core...\n");
+ {
+  Scratch_Block scratch(win32vars.tctx);
+  String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
+  string_mod_replace_character(curdir, '\\', '/');
+  app_init(win32vars.tctx, &render_target, base_ptr, curdir);
+ }
+ 
+ //
+ // Main loop
+ //
+ 
+ log_os("Starting main loop...\n");
+ 
+ b32 keep_running = true;
+ win32vars.first = true;
+ timeBeginPeriod(1);
+ 
+ if (plat_settings.fullscreen_window){
+  win32_toggle_fullscreen();
+ }
+ 
+ SetForegroundWindow(win32vars.window_handle);
+ SetActiveWindow(win32vars.window_handle);
+ ShowWindow(win32vars.window_handle, SW_SHOW);
+ 
+ win32vars.global_frame_mutex = system_mutex_make();
+ system_acquire_global_frame_mutex(win32vars.tctx);
+ 
+ u64 frame_time_start = system_time_usecond();
+ u64 frame_cycle_start = gb_rdtsc();
+ v1 work_seconds = 0.f;
+ u32 work_cycles;
+ MSG msg;
+ for (;keep_running;)
+ {
+  arena_free_all(&win32vars.frame_arena);
+  block_zero_struct(&win32vars.input_chunk.trans);
+  win32vars.active_key_stroke = 0;
+  win32vars.active_text_input = 0;
+  
+  // TODO(allen): Find a good way to wait on a pipe
+  // without interfering with the reading process.
+  // NOTE(allen): Looks like we can ReadFile with a
+  // size of zero in an IOCP for this effect.
+  if (!win32vars.first){
+   if (win32vars.running_cli == 0){
+    win32vars.got_useful_event = false;
+   }
+   
+   // NOTE(allen): while we're doing this (and possibly sleeping)
+   // we can let async processes get there time in.
+			system_release_global_frame_mutex(win32vars.tctx);
+   
+   b32 get_more_messages = true;
+   do{
+    if (win32vars.got_useful_event == 0){
+     get_more_messages = GetMessage(&msg, 0, 0, 0);
     }
     else{
-        // NOTE(allen): Just guess.
-        win32vars.usecond_per_count = 1.f;
-        log_os(" load failed, guessing usecond_per_count = 1\n");
-    }
-    if (win32vars.usecond_per_count <= 0.f){
-        win32vars.usecond_per_count = 1.f;
+     get_more_messages = PeekMessage(&msg, 0, 0, 0, 1);
     }
     
-    //
-    // App init
-    //
-    
-    log_os("Initializing 4ed core...\n");
-    {
-        Scratch_Block scratch(win32vars.tctx);
-        String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
-        string_mod_replace_character(curdir, '\\', '/');
-        app_init(win32vars.tctx, &render_target, base_ptr, curdir);
-    }
-    
-    //
-    // Main loop
-    //
-    
-    log_os("Starting main loop...\n");
-    
-    b32 keep_running = true;
-    win32vars.first = true;
-    timeBeginPeriod(1);
-    
-    if (plat_settings.fullscreen_window){
-        win32_toggle_fullscreen();
-    }
-    
-    SetForegroundWindow(win32vars.window_handle);
-    SetActiveWindow(win32vars.window_handle);
-    ShowWindow(win32vars.window_handle, SW_SHOW);
-    
-    win32vars.global_frame_mutex = system_mutex_make();
-    system_acquire_global_frame_mutex(win32vars.tctx);
-    
-    u64 timer_start = system_now_time();
-    MSG msg;
-    for (;keep_running;)
-    {
-        arena_free_all(&win32vars.frame_arena);
-        block_zero_struct(&win32vars.input_chunk.trans);
-        win32vars.active_key_stroke = 0;
-        win32vars.active_text_input = 0;
+    if (get_more_messages){
+     if (msg.message == WM_QUIT){
+      keep_running = false;
+     }
+     else{
+      b32 treat_normally = true;
+      if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN){
+       switch (msg.wParam){
+        case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
+        case VK_MENU:case VK_LMENU:case VK_RMENU:
+        case VK_SHIFT:case VK_LSHIFT:case VK_RSHIFT:break;
         
-        // TODO(allen): Find a good way to wait on a pipe
-        // without interfering with the reading process.
-        // NOTE(allen): Looks like we can ReadFile with a
-        // size of zero in an IOCP for this effect.
-        if (!win32vars.first){
-            if (win32vars.running_cli == 0){
-                win32vars.got_useful_event = false;
-            }
-            
-            // NOTE(allen): while we're doing this (and possibly sleeping)
-            // we can let async processes get there time in.
-			system_release_global_frame_mutex(win32vars.tctx);
-            
-            b32 get_more_messages = true;
-            do{
-                if (win32vars.got_useful_event == 0){
-                    get_more_messages = GetMessage(&msg, 0, 0, 0);
-                }
-                else{
-                    get_more_messages = PeekMessage(&msg, 0, 0, 0, 1);
-                }
-                
-                if (get_more_messages){
-                    if (msg.message == WM_QUIT){
-                        keep_running = false;
-                    }
-                    else{
-                        b32 treat_normally = true;
-                        if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN){
-                            switch (msg.wParam){
-                                case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
-                                case VK_MENU:case VK_LMENU:case VK_RMENU:
-                                case VK_SHIFT:case VK_LSHIFT:case VK_RSHIFT:break;
-                                
-                                default: treat_normally = false; break;
-                            }
-                        }
-                        
-                        if (treat_normally){
-                            TranslateMessage(&msg);
-                            DispatchMessage(&msg);
-                        }
-                        else{
-                            Control_Keys *controls = &win32vars.input_chunk.pers.controls;
-                            
-                            b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
-                            b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
-                            
-                            if (win32vars.lctrl_lalt_is_altgr){
-                                if (controls->l_alt && controls->l_ctrl){
-                                    ctrl = 0;
-                                    alt = 0;
-                                }
-                            }
-                            
-                            BYTE ctrl_state = 0, alt_state = 0;
-                            BYTE state[256];
-                            if (ctrl || alt){
-                                GetKeyboardState(state);
-                                if (ctrl){
-                                    ctrl_state = state[VK_CONTROL];
-                                    state[VK_CONTROL] = 0;
-                                }
-                                if (alt){
-                                    alt_state = state[VK_MENU];
-                                    state[VK_MENU] = 0;
-                                }
-                                SetKeyboardState(state);
-                                
-                                TranslateMessage(&msg);
-                                DispatchMessage(&msg);
-                                
-                                if (ctrl){
-                                    state[VK_CONTROL] = ctrl_state;
-                                }
-                                if (alt){
-                                    state[VK_MENU] = alt_state;
-                                }
-                                SetKeyboardState(state);
-                            }
-                            else{
-                                TranslateMessage(&msg);
-                                DispatchMessage(&msg);
-                            }
-                        }
-                    }
-                }
-            }while (get_more_messages);
-            
+        default: treat_normally = false; break;
+       }
+      }
+      
+      if (treat_normally){
+       TranslateMessage(&msg);
+       DispatchMessage(&msg);
+      }
+      else{
+       Control_Keys *controls = &win32vars.input_chunk.pers.controls;
+       
+       b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
+       b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
+       
+       if (win32vars.lctrl_lalt_is_altgr){
+        if (controls->l_alt && controls->l_ctrl){
+         ctrl = 0;
+         alt = 0;
+        }
+       }
+       
+       BYTE ctrl_state = 0, alt_state = 0;
+       BYTE state[256];
+       if (ctrl || alt){
+        GetKeyboardState(state);
+        if (ctrl){
+         ctrl_state = state[VK_CONTROL];
+         state[VK_CONTROL] = 0;
+        }
+        if (alt){
+         alt_state = state[VK_MENU];
+         state[VK_MENU] = 0;
+        }
+        SetKeyboardState(state);
+        
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+        
+        if (ctrl){
+         state[VK_CONTROL] = ctrl_state;
+        }
+        if (alt){
+         state[VK_MENU] = alt_state;
+        }
+        SetKeyboardState(state);
+       }
+       else{
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+       }
+      }
+     }
+    }
+   }while (get_more_messages);
+   
 			system_acquire_global_frame_mutex(win32vars.tctx);
-        }
-        
-        // NOTE(allen): Mouse Out of Window Detection
-        POINT mouse_point;
-        if (GetCursorPos(&mouse_point) &&
-            ScreenToClient(win32vars.window_handle, &mouse_point)){
-            Rect_i32 screen = Ri32(0, 0, render_target.width, render_target.height);
-            v2i mp = vec2i(mouse_point.x, mouse_point.y);
-            win32vars.input_chunk.trans.out_of_window = (!rect_contains_point(screen, mp));
-            win32vars.input_chunk.pers.mouse = mp;
-        }
-        else{
-            win32vars.input_chunk.trans.out_of_window = true;
-        }
-        
-        // NOTE(allen): Prepare the Frame Input
-        
-        // TODO(allen): CROSS REFERENCE WITH LINUX SPECIAL CODE "TIC898989"
-        Win32_Input_Chunk input_chunk = win32vars.input_chunk;
-        
-        Scratch_Block scratch(win32vars.tctx);
-        Application_Step_Input input = {};
-        
-        input.first_step = win32vars.first;
-        input.dt = frame_useconds/1000000.f;
-        input.events = input_chunk.trans.event_list;
-        
-        input.mouse.out_of_window = input_chunk.trans.out_of_window;
-        
-        input.mouse.l = input_chunk.pers.mouse_l;
-        input.mouse.press_l = input_chunk.trans.mouse_l_press;
-        input.mouse.release_l = input_chunk.trans.mouse_l_release;
-        
-        input.mouse.r = input_chunk.pers.mouse_r;
-        input.mouse.press_r = input_chunk.trans.mouse_r_press;
-        input.mouse.release_r = input_chunk.trans.mouse_r_release;
-        
-        input.mouse.wheel = input_chunk.trans.mouse_wheel;
-        input.mouse.p = input_chunk.pers.mouse;
-        
-        input.trying_to_kill = input_chunk.trans.trying_to_kill;
-        
-        // TODO(allen): Not really appropriate to round trip this all the way to the OS layer, redo this system.
-        // NOTE(allen): Ask the Core About Exiting if We Have an Exit Signal
-        if (win32vars.send_exit_signal){
-            input.trying_to_kill = true;
-            win32vars.send_exit_signal = false;
-        }
-        
-        // NOTE(allen): Frame Clipboard Input
-        if (win32vars.clip_catch_all){
-            input.clipboard = system_get_clipboard(scratch, 0);
-        }
-        
-        win32vars.clip_post.size = 0;
-        
-        
-        // NOTE(allen): Application Core Update
-        Application_Step_Result result = app_step(win32vars.tctx, &render_target, base_ptr, &input);
-        
-        // NOTE(allen): Finish the Loop
-        if (result.perform_kill){
-            keep_running = false;
-        }
-        
-        // NOTE(allen): Post New Clipboard Content
-        if (win32vars.clip_post.size > 0)
-        {
-            win32_post_clipboard(scratch, (char*)win32vars.clip_post.str, (i32)win32vars.clip_post.size);
-        }
-        
-        // NOTE(allen): Switch to New Title
-        if (result.has_new_title)
-        {
-            SetWindowTextA(win32vars.window_handle, cast(char*)result.title_string);
-        }
-        
-        // NOTE(allen): Switch to New Cursor
-        Win32SetCursorFromUpdate(result.mouse_cursor_type);
-        if (win32vars.cursor_show != win32vars.prev_cursor_show){
-            win32vars.prev_cursor_show = win32vars.cursor_show;
-            switch (win32vars.cursor_show){
-                case MouseCursorShow_Never:
-                {
-                    i32 counter = 0;
-                    do{
-                        counter = ShowCursor(false);
-                    }while(counter >= 0);
-                }break;
-                
-                case MouseCursorShow_Always:
-                {
-                    i32 counter = 0;
-                    do{
-                        counter = ShowCursor(true);
-                    }while(counter <= 0);
-                }break;
-                
-                // TODO(allen): MouseCursorShow_HideWhenStill
-            }
-        }
-        
-        // NOTE(allen): update lctrl_lalt_is_altgr status
-        win32vars.lctrl_lalt_is_altgr = (b8)result.lctrl_lalt_is_altgr;
-        
-        // NOTE(allen): render
-        HDC hdc = GetDC(win32vars.window_handle);
-        ogl_render(&render_target);
-        SwapBuffers(hdc);
-        ReleaseDC(win32vars.window_handle, hdc);
-        
-        // NOTE(allen): toggle full screen
-        if (win32vars.do_toggle){
-            win32_toggle_fullscreen();
-            win32vars.do_toggle = false;
-        }
-        
-        // NOTE(allen): schedule another step if needed
-        if (result.animating){
-            system_schedule_step(0);
-        }
-        else if (win32vars.clip_catch_all){
-            system_wake_up_timer_set(win32vars.clip_wakeup_timer, 250);
-        }
-        
-        // NOTE(allen): sleep a bit to cool off :)
-        system_release_global_frame_mutex(win32vars.tctx);
-        
-        u64 timer_end = system_now_time();
-        u64 end_target = timer_start + frame_useconds;
-        
-        for (;timer_end < end_target;){
-            DWORD samount = (DWORD)((end_target - timer_end)/1000);
-            if (samount > 0){
-                Sleep(samount);
-            }
-            timer_end = system_now_time();
-        }
-        timer_start = system_now_time();
-        
-        system_acquire_global_frame_mutex(win32vars.tctx);
-        
-        win32vars.first = false;
-    }
+  }
+  
+  // NOTE(allen): Mouse Out of Window Detection
+  POINT mouse_point;
+  if (GetCursorPos(&mouse_point) &&
+      ScreenToClient(win32vars.window_handle, &mouse_point)){
+   Rect_i32 screen = Ri32(0, 0, render_target.width, render_target.height);
+   i2 mp = I2(mouse_point.x, mouse_point.y);
+   win32vars.input_chunk.trans.out_of_window = (!rect_contains_point(screen, mp));
+   win32vars.input_chunk.pers.mouse = mp;
+  }
+  else{
+   win32vars.input_chunk.trans.out_of_window = true;
+  }
+  
+  // NOTE(allen): Prepare the Frame Input
+  
+  // TODO(allen): CROSS REFERENCE WITH LINUX SPECIAL CODE "TIC898989"
+  Win32_Input_Chunk input_chunk = win32vars.input_chunk;
+  
+  Scratch_Block scratch(win32vars.tctx);
+  Application_Step_Input input = {};
+  
+  input.first_step = win32vars.first;
+  input.events = input_chunk.trans.event_list;
+  
+  input.mouse.out_of_window = input_chunk.trans.out_of_window;
+  
+  input.mouse.l = input_chunk.pers.mouse_l;
+  input.mouse.press_l = input_chunk.trans.mouse_l_press;
+  input.mouse.release_l = input_chunk.trans.mouse_l_release;
+  
+  input.mouse.r = input_chunk.pers.mouse_r;
+  input.mouse.press_r = input_chunk.trans.mouse_r_press;
+  input.mouse.release_r = input_chunk.trans.mouse_r_release;
+  
+  input.mouse.wheel = input_chunk.trans.mouse_wheel;
+  input.mouse.p = input_chunk.pers.mouse;
+  
+  input.trying_to_kill = input_chunk.trans.trying_to_kill;
+  
+  // TODO(allen): Not really appropriate to round trip this all the way to the OS layer, redo this system.
+  // NOTE(allen): Ask the Core About Exiting if We Have an Exit Signal
+  if (win32vars.send_exit_signal){
+   input.trying_to_kill = true;
+   win32vars.send_exit_signal = false;
+  }
+  
+  // NOTE(allen): Frame Clipboard Input
+  if (win32vars.clip_catch_all){
+   input.clipboard = system_get_clipboard(scratch, 0);
+  }
+  
+  input.work_cycles  = work_cycles;
+  input.work_seconds = work_seconds;
+  
+  win32vars.clip_post.size = 0;
+  
+  // NOTE(allen): Application Core Update
+  Application_Step_Result result = app_step(win32vars.tctx, &render_target, base_ptr, &input);
+  
+  // NOTE(allen): Finish the Loop
+  if (result.perform_kill){
+   keep_running = false;
+  }
+  
+  // NOTE(allen): Post New Clipboard Content
+  if (win32vars.clip_post.size > 0)
+  {
+   win32_post_clipboard(scratch, (char*)win32vars.clip_post.str, (i32)win32vars.clip_post.size);
+  }
+  
+  // NOTE(allen): Switch to New Title
+  if (result.has_new_title)
+  {
+   SetWindowTextA(win32vars.window_handle, cast(char*)result.title_string);
+  }
+  
+  // NOTE(allen): Switch to New Cursor
+  Win32SetCursorFromUpdate(result.mouse_cursor_type);
+  if (win32vars.cursor_show != win32vars.prev_cursor_show){
+   win32vars.prev_cursor_show = win32vars.cursor_show;
+   switch (win32vars.cursor_show){
+    case MouseCursorShow_Never:
+    {
+     i32 counter = 0;
+     do{
+      counter = ShowCursor(false);
+     }while(counter >= 0);
+    }break;
     
-    return(0);
+    case MouseCursorShow_Always:
+    {
+     i32 counter = 0;
+     do{
+      counter = ShowCursor(true);
+     }while(counter <= 0);
+    }break;
+    
+    // TODO(allen): MouseCursorShow_HideWhenStill
+   }
+  }
+  
+  // NOTE(allen): update lctrl_lalt_is_altgr status
+  win32vars.lctrl_lalt_is_altgr = (b8)result.lctrl_lalt_is_altgr;
+  
+  {// NOTE(allen): render
+   i2 mousep = input.mouse.p;
+   mousep.y = render_target.height - mousep.y;
+   HDC hdc = GetDC(win32vars.window_handle);
+   ogl_render(&render_target, mousep);
+   SwapBuffers(hdc);
+   ReleaseDC(win32vars.window_handle, hdc);
+   
+   render_target.current_prim_id = ogl_read_primitive_id(&render_target, mousep);
+  }
+  
+  // NOTE(allen): toggle full screen
+  if (win32vars.do_toggle){
+   win32_toggle_fullscreen();
+   win32vars.do_toggle = false;
+  }
+  
+  // NOTE(allen): schedule another step if needed
+  if (result.animating){
+   system_schedule_step(0);
+  }
+  else if (win32vars.clip_catch_all){
+   system_wake_up_timer_set(win32vars.clip_wakeup_timer, 250);
+  }
+  
+  work_cycles = u32(gb_rdtsc() - frame_cycle_start);
+  
+  {// NOTE(allen): sleep a bit to cool off :)
+   system_release_global_frame_mutex(win32vars.tctx);
+   
+   u64 current_time = system_time_usecond();
+   u64 end_target = frame_time_start + u64(frame_useconds+0.5f);
+   work_seconds = v1(f64(current_time - frame_time_start) / 1e6);
+   
+   while (current_time < end_target)
+   {
+    DWORD samount = (DWORD)((end_target - current_time)/1000);
+    if (samount > 0){
+     Sleep(samount);
+    }
+    current_time = system_time_usecond();
+   }
+  }
+  frame_time_start  = system_time_usecond();
+  frame_cycle_start = gb_rdtsc();
+  
+  system_acquire_global_frame_mutex(win32vars.tctx);
+  
+  win32vars.first = false;
+ }
+ 
+ return(0);
 }
 
 #include "win32_utf8.cpp"

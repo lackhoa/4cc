@@ -32,7 +32,7 @@ vim_apply_delete(VIM_REQUEST_PARAMS)
   vim_register_copy(dst, vim_state.params.selected_reg);
   vim_update_registers(app);
  }
- buffer_replace_range(app, buffer, range, string_u8_empty);
+ buffer_replace_range(app, buffer, range, empty_string);
  if(vim_state.params.edit_type == EDIT_LineWise)
  {
   i64 pos = get_line_side_pos_from_pos(app, buffer, view_get_cursor_pos(app, view), Side_Min);
@@ -49,7 +49,7 @@ vim_apply_change(VIM_REQUEST_PARAMS)
 
 VIM_REQUEST_SIG(vim_apply_upper){
 	Scratch_Block scratch(app);
-	String_Const_u8 string = push_buffer_range(app, scratch, buffer, range);
+	String string = push_buffer_range(app, scratch, buffer, range);
 	string = string_mod_upper(string);
 	buffer_replace_range(app, buffer, range, string);
 	buffer_post_fade(app, buffer, 0.667f, range, fcolor_resolve(fcolor_id(defcolor_paste)));
@@ -57,7 +57,7 @@ VIM_REQUEST_SIG(vim_apply_upper){
 
 VIM_REQUEST_SIG(vim_apply_lower){
 	Scratch_Block scratch(app);
-	String_Const_u8 string = push_buffer_range(app, scratch, buffer, range);
+	String string = push_buffer_range(app, scratch, buffer, range);
 	string = string_mod_lower(string);
 	buffer_replace_range(app, buffer, range, string);
 	buffer_post_fade(app, buffer, 0.667f, range, fcolor_resolve(fcolor_id(defcolor_paste)));
@@ -65,7 +65,7 @@ VIM_REQUEST_SIG(vim_apply_lower){
 
 VIM_REQUEST_SIG(vim_apply_replace){
 	Scratch_Block scratch(app);
-	String_Const_u8 string = push_buffer_range(app, scratch, buffer, range);
+	String string = push_buffer_range(app, scratch, buffer, range);
 	foreach(i, range_size(range)){
 		if(string.str[i] != '\n'){ string.str[i] = vim_state.params.seek.character; }
 	}
@@ -104,7 +104,7 @@ VIM_REQUEST_SIG(vim_apply_outdent){
         break;
     }
 		Range_i64 indent_range = Ii64(pos, end);
-		buffer_replace_range(app, buffer, indent_range, string_u8_empty);
+		buffer_replace_range(app, buffer, indent_range, empty_string);
 	}
 	history_group_end(history_group);
 }
@@ -117,7 +117,7 @@ VIM_REQUEST_SIG(vim_apply_auto_indent){
 
 VIM_REQUEST_SIG(vim_apply_toggle_case){
 	Scratch_Block scratch(app);
-	String_Const_u8 string = push_buffer_range(app, scratch, buffer, range);
+	String string = push_buffer_range(app, scratch, buffer, range);
 	foreach(i, string.size){
 		string.str[i] = character_toggle_case(string.str[i]);
 	}
@@ -130,7 +130,7 @@ VIM_REQUEST_SIG(vim_apply_fold){
 }
 
 function void
-vim_init(Application_Links *app){
+vim_init(App *app){
 	init_keycode_lut();
 	init_vim_boundaries();
 	vim_reset_bottom_text();
@@ -197,9 +197,9 @@ vim_init(Application_Links *app){
 		Assert(vim_buffer_peek_list[i].buffer_id.name != 0);
 	}
 
-	vim_register_copy(&vim_registers.small_delete, string_u8_empty);
-	vim_register_copy(&vim_registers.insert, string_u8_empty);
-	for(i32 i=i32(vim_registers.digit - vim_registers.r); i<ArrayCount(vim_registers.r); i++){
+	vim_register_copy(&vim_registers.small_delete, empty_string);
+	vim_register_copy(&vim_registers.insert, empty_string);
+	for(i1 i=i1(vim_registers.digit - vim_registers.r); i<ArrayCount(vim_registers.r); i++){
 		vim_registers.r[i].flags |= REGISTER_ReadOnly;
 	}
 
@@ -213,11 +213,11 @@ vim_init(Application_Links *app){
 // TODO(BYP): Paste/registers and tab-completion (very unlikely with current implementation)
 // If it's a pressing feature switch to the more standard (less responsive) implementation
 function b32
-vim_handle_visual_insert_mode(Application_Links *app, Input_Event *event){
+vim_handle_visual_insert_mode(App *app, Input_Event *event){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 
-	local_persist i32 count=0;
+	local_persist i1 count=0;
 
 	if(event->kind == InputEventKind_KeyStroke)
     {
@@ -243,7 +243,7 @@ vim_handle_visual_insert_mode(Application_Links *app, Input_Event *event){
 					Rect_f32 block_rect = vim_get_rel_block_rect(app, view, buffer, range, line_min);
 
 					f32 x_off = (f32)vim_visual_insert_after*rect_width(block_rect);
-					Vec2_f32 point = block_rect.p0 + vec2(x_off, 0.f);
+					Vec2_f32 point = block_rect.p0 + V2(x_off, 0.f);
 					i64 pos = view_pos_at_relative_xy(app, view, line_min, point) + vim_visual_insert_after;
 
 					u8 c = buffer_get_char(app, buffer, pos-1);
@@ -274,7 +274,7 @@ vim_handle_visual_insert_mode(Application_Links *app, Input_Event *event){
 }
 
 function b32
-vim_handle_replace_mode(Application_Links *app, Input_Event *event){
+vim_handle_replace_mode(App *app, Input_Event *event){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	if(event->kind == InputEventKind_KeyStroke){
@@ -328,7 +328,7 @@ function void vim_append_keycode(Key_Code code){
 		if(code & Key_Mod_Alt){ string_concat_character(&vim_keystroke_text, 'M'); }
 		string_concat_character(&vim_keystroke_text, '-');
 	}
-	i32 index = (code & bitmask_8) + ((code & Key_Mod_Sft) != 0)*Key_Code_COUNT;
+	i1 index = (code & bitmask_8) + ((code & Key_Mod_Sft) != 0)*Key_Code_COUNT;
 	string_concat(&vim_keystroke_text, SCu8(keycode_lut[index]));
 	if(has_mod){
 		string_concat_character(&vim_keystroke_text, '>');
@@ -336,7 +336,7 @@ function void vim_append_keycode(Key_Code code){
 #else
 	if(code & Key_Mod_Ctl){ string_concat_character(&vim_keystroke_text, '^'); }
 	if(code & Key_Mod_Alt){ string_concat_character(&vim_keystroke_text, '~'); }
-	i32 index = (code & bitmask_8) + ((code & Key_Mod_Sft) != 0)*Key_Code_COUNT;
+	i1 index = (code & bitmask_8) + ((code & Key_Mod_Sft) != 0)*Key_Code_COUNT;
 	string_concat(&vim_keystroke_text, SCu8(keycode_lut[index]));
 #endif
 }

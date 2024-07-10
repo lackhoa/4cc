@@ -1,276 +1,149 @@
 #include "game_fui.h"
-#include "4ed_kv_parser.cpp"
 
 global b32 fui_v4_zw_active;
+global_extern u32 slider_cycle_counter;
 
-#define X_Fui_Types(X) \
-X(v1) \
-X(v2) \
-X(v3) \
-X(v4) \
-X(i32) \
-X(v2i) \
-X(v3i) \
-X(v4i) \
+global i32 fui_type_sizes[Fui_Type_Count];
 
-union Fui_Value
+force_inline i32
+slider_value_size(Fui_Slider *slider)
 {
-#define X(T)   T T;
-    X_Fui_Types(X);
-#undef X
-};
+ return(fui_type_sizes[slider->type]);
+}
 
-enum Fui_Type
-{
-#define X(T)   Fui_Type_##T,
-    X_Fui_Types(X)
-#undef X
-};
-
-typedef u32 Fui_Flags;
-enum Fui_Flag
-{// NOTE: These are total hacks, man!
- Fui_Flag_NULL            = 0x0,
- Fui_Flag_Camera_Aligned  = 0x1,
- Fui_Flag_NOZ             = 0x2,
- Fui_Flag_Clamp_X         = 0x4,
- Fui_Flag_Clamp_Y         = 0x8,
- Fui_Flag_Clamp_Z         = 0x10,
- Fui_Flag_Clamp_01        = 0x20,
- Fui_Flag_Inited          = 1 << 31,
-};
-
-struct Fui_Options
-{
-#define FUI_OPTIONS(X)  \
-Fui_Flags flags; \
-v1  delta_scale;    \
- 
- FUI_OPTIONS(X);
-};
-
-struct Fui_Slider
-{
- Fui_Value value;  // 16
- 
- Fui_Type  type;   // 1
- union
- {
-  Fui_Options options;  // 5
-  struct { FUI_OPTIONS(X); };
- };
-};
-
-struct Fui_Other_Slider
-{
- Fui_Slider slider;
- char *filename;
- i32 line_number;
-};
-
-struct Fui_Store
-{
- char *filename;
- Fui_Slider *sliders;
- i32 count;
-};
-global Fui_Store *fui_stores;
-global Fui_Other_Slider fui_other_sliders[64];
-global i32 fui_other_slider_count;
-global i32 fui_stores_count;  //NOTE: number of stores, not number of sliders in the store
+// todo: Put these in a struct
 global Fui_Slider *fui_active_slider;
+global String      fui_active_slider_string;
 
-force_inline b32
-fui_is_active()
+
+PACK_BEGIN
+struct Line_Map_Entry
+{
+ u16 linum;
+ u16 offset;  // NOTE: We only have 65k of data?
+}
+PACK_END
+//
+static_assert(sizeof(Line_Map_Entry) == 4, "size check");
+//
+global Line_Map_Entry *line_map;
+global Arena *new_slider_store;
+
+internal fui_is_active_return
+fui_is_active(fui_is_active_params)
 {
  return fui_active_slider != 0;
 }
 
-inline b32 
-filename_match(char *a0, char *b0)
-{
- String a = string_front_of_path(SCu8(a0));
- String b = string_front_of_path(SCu8(b0));
- return string_match(a,b);
-}
-
+//~
 //@GetSlider
-internal Fui_Slider *
-fui_get_other_slider(char *filename, i32 line_number)
+internal void *
+fui_user_main(Fui_Type type, void *init_value,
+              i32 line_number, Fui_Options options)
 {
- auto &sliders = fui_other_sliders;
- for_i32(index,0,fui_other_slider_count)
- {
-  Fui_Other_Slider *slider = &sliders[index];
-  if (filename_match(slider->filename, filename) && 
-      line_number == slider->line_number)
-  {
-   return &slider->slider;
-  }
- }
- return {};
-}
-
-//@GetSlider
-internal Fui_Slider *
-fui_get_slider(char *filename, i32 line_number)
-{
- Fui_Store *store = 0;
- for_i32(index,0,fui_stores_count)
- {//NOTE: Get the store
-  if (filename_match(fui_stores[index].filename, filename))
-  {
-   store = &fui_stores[index];
-   break;
-  }
- }
+ void *result = 0;
+ u64 cycle_start = gb_rdtsc();
  
- if (store)
+ u8 *store_base = get_arena_base(new_slider_store);
+ u16 offset = line_map[line_number].offset;
+ Fui_Slider *slider;
+ if( offset != 0 )
  {
-  if (line_number < store->count)
-  {
-   return &store->sliders[line_number];
-  }
-  else return {};
- }
- else 
- {
-  return fui_get_other_slider(filename, line_number);
- }
-}
-
-//@GetSlider
-internal Fui_Value
-fui_user_main(Fui_Type type, Fui_Value init_value, 
-              char *filename, i32 line_number,
-              Fui_Options options)
-{
- Fui_Store *store = 0;
- for_i32 (index,0,fui_stores_count)
- {//NOTE: Get the store
-  if (fui_stores[index].filename == filename)
-  {
-   store = &fui_stores[index];
-   break;
-  }
- }
- 
- if (store)
- {
-  if (line_number < store->count)
-  {
-   Fui_Slider *slider = &store->sliders[line_number];
-   if (!(slider->flags & Fui_Flag_Inited))
-   {// NOTE: init slider value
-    Fui_Slider new_slider =
-    {
-     .value   = init_value,
-     .type    = type, 
-     .options = options,
-    };
-    new_slider.flags |= Fui_Flag_Inited;
-    *slider = new_slider;
-   }
-   return slider->value;
-  }
-  else { return {}; }
+  slider = cast(Fui_Slider *)(store_base + offset);
+  result = slider+1;
  }
  else
- {
-  Fui_Slider *slider = fui_get_other_slider(filename, line_number);
-  if (slider == 0)
-  {
-   if (fui_other_slider_count < alen(fui_other_sliders))
-   {
-    Fui_Other_Slider *new_slider = &fui_other_sliders[fui_other_slider_count++];
-    *new_slider = {
-     .slider = {
-      .value   = init_value,
-      .type    = type, 
-      .options = options,
-     },
-     .filename    = filename,
-     .line_number = line_number,
-    };
-    slider = &new_slider->slider;
-   }
-  }
-  if (slider) { return slider->value; }
-  else { return{}; }
+ {//note: not found
+  i32 value_size = fui_type_sizes[type];
+  slider = cast(Fui_Slider *)(push_size(new_slider_store, sizeof(Fui_Slider)+value_size));
+  line_map[line_number].offset = cast(u16)(cast(u8 *)(slider) - store_base);
+  *slider = Fui_Slider{
+   .type    = type, 
+   .options = options,
+  };
+  result = slider+1;
+  block_copy(result, init_value, value_size);
  }
+ 
+ u64 cycle_end = gb_rdtsc();
+ slider_cycle_counter += u32(cycle_end-cycle_start);
+ return result;
 }
 
 #if 0
-jump fui_user_type();
+jump fval();
 #endif
 // NOTE: We define overloads to avoid having to specify the type as a separate argument 
 // as well as receive the appropriate values as output.
 #define X(T) \
-\
-inline T \
-fui_user_type(T init_value_T, char *filename, u32 line_number, Fui_Options options={}) \
+T \
+fval(T init_value_T, Fui_Options options, i32 line) \
 { \
-    Fui_Type  type = Fui_Type_##T; \
-    Fui_Value init_val = { .T = init_value_T }; \
-    Fui_Value value = fui_user_main(type, init_val, filename, line_number, options); \
-    return value.T; \
+Fui_Type  type = Fui_Type_##T; \
+void *value = fui_user_main(type, cast(void*)(&init_value_T), line, options); \
+return *(cast(T *)value); \
 }
 //
 X_Fui_Types(X)
 //
 #undef X
 
-internal fui_get_active_slider_return
-fui_get_active_slider(fui_get_active_slider_params)
+inline b32 
+filename_match(char *a0, char *b0)
 {
-    return fui_active_slider;
+ String a = path_filename(SCu8(a0));
+ String b = path_filename(SCu8(b0));
+ return string_match(a,b);
 }
 
-internal fui_set_active_slider_return
-fui_set_active_slider(fui_set_active_slider_params)
+//@GetSlider
+internal Fui_Slider *
+fui_get_slider_external(char *filename, i32 line_number)
 {
-    fui_active_slider = slider;
-}
-
-#define fval(value, ...) \
-fui_user_type(value, __FILE_NAME__, __LINE__, ##__VA_ARGS__)
-//-
-#define fval2(x,y,...)      fval(vec2(x,y),     ##__VA_ARGS__)
-#define fval3(x,y,z,...)    fval(vec3(x,y,z),   ##__VA_ARGS__)
-#define fval4(x,y,z,w,...)  fval(vec4(x,y,z,w), ##__VA_ARGS__)
-#define fvali               fval
-//NOTE: "c"=convert, "i"=integer, meaning convert integer to floats
-#define fci(...)            i2f6(fval(__VA_ARGS__))
-#define fval2i(x,y)         fval(vec2i(x,y))
-#define fval3i(x,y,z)       fval(vec3i(x,y,z))
-#define fval4i(x,y,z,w)     fval(vec4i(x,y,z,w))
-#define fbool(value)        fval(value, Fui_Options{.flags = Fui_Flag_Clamp_01})
-#define fval01(x)           clamp01(fval(x))
-//-
-
-global Fui_Value global_fui_saved_value;
-
-internal fui_save_value_return
-fui_save_value(fui_save_value_params)
-{
-    global_fui_saved_value = slider->value;
-}
-
-internal fui_save_value_return
-fui_restore_value(fui_save_value_params)
-{
- slider->value = global_fui_saved_value;
-}
-
-internal i32
-fui_is_single_component_slider(String at_string)
-{
- i32 component_plus_one = 0;
- if (string_match_lit(at_string, "fvertx")) { component_plus_one = 1; }
- if (string_match_lit(at_string, "fverty")) { component_plus_one = 2; }
- if (string_match_lit(at_string, "fvertz")) { component_plus_one = 3; }
+ Fui_Slider *slider = 0;
+ u16 offset = line_map[line_number].offset;
+ if (offset != 0)
+ {
+  u8 *store_base = get_arena_base(new_slider_store);
+  slider = cast(Fui_Slider *)(store_base + offset);
+ }
  
- return component_plus_one;
+ return slider;
+}
+
+
+internal Fui_Slider *
+fui_get_active_slider(void)
+{
+ return fui_active_slider;
+}
+
+internal void
+fui_set_active_slider(Fui_Slider *slider, String string)
+{
+ fui_active_slider        = slider;
+ fui_active_slider_string = string;
+}
+
+//
+
+global const i32 MAX_SLIDER_VALUE_SIZE = 32;
+global u8 global_fui_saved_value[MAX_SLIDER_VALUE_SIZE];//TODO: why is this a global?
+
+internal void
+fui_save_value(Fui_Slider *slider)
+{
+ void *value = slider+1;
+ i32 size = fui_type_sizes[slider->type];
+ block_copy(global_fui_saved_value, value, size);
+}
+
+internal void
+fui_restore_value(Fui_Slider *slider)
+{
+ void *value = slider+1;
+ i32 size = fui_type_sizes[slider->type];
+ block_copy(value, global_fui_saved_value, size);
 }
 
 internal b32
@@ -279,6 +152,14 @@ fui_is_wrapped_slider(String at_string)
  return (starts_with_lit(at_string, "fui")    ||
          string_match_lit(at_string, "fval")  ||
          string_match_lit(at_string, "fvert") ||
+         string_match_lit(at_string, "fvertx") ||
+         string_match_lit(at_string, "fverty") ||
+         string_match_lit(at_string, "fvertz") ||
+         string_match_lit(at_string, "fvec") ||
+         string_match_lit(at_string, "fvecx") ||
+         string_match_lit(at_string, "fvecy") ||
+         string_match_lit(at_string, "fvecz") ||
+         string_match_lit(at_string, "fcam") ||
          string_match_lit(at_string, "funit") ||
          string_match_lit(at_string, "fci") ||
          false);
@@ -300,7 +181,9 @@ fui_string_is_slider(String at_string)
 internal String
 push_float_trimmed(Arena *arena, v1 value)
 {
- String result = push_stringf(arena, "%.4ff", value);
+ u8 buf[64];
+ Arena temp = make_static_arena(buf, sizeof(buf), 1);
+ String result = push_stringf(&temp, "%.4ff", value);
  // NOTE: trim trailing zeros
  while (result.len > 0)
  {
@@ -308,114 +191,157 @@ push_float_trimmed(Arena *arena, v1 value)
   else { break; }
  }
  result.str[result.len-1] = 'f';
+ push_data_copy(arena, result);
  return result;
 }
 
-internal fui_push_slider_value_return
-fui_push_slider_value(fui_push_slider_value_params)
+//-NOTE: Printiong-
+inline void
+fui_begin_struct(Printer *p, char *name)
 {
- String result = {};
- Fui_Value value = slider->value;
- if (i32 component_plus_one = fui_is_single_component_slider(at_string))
+ push_stringf(&p->arena, "(%s{ ", name);
+}
+//
+inline void
+fui_end_struct(Printer *p)
+{
+ push_stringf(&p->arena, "})");
+}
+
+internal void
+fui_print_value(Printer *p, Fui_Type type, void *value0, b32 wrapped);
+
+internal void
+fui_print_fieldf(Printer *p, Fui_Type type, char *name, void *value)
+{
+ push_stringf(*p, ".%s=", name);
+ fui_print_value(p,type,value,/*wrapped*/true);
+ push_stringf(*p, ", ");
+}
+
+#define fui_print_field(printer, type, value_pointer, name)\
+fui_print_fieldf(\
+printer,\
+Fui_Type_##type,\
+#name,\
+&value_pointer->name)
+
+internal void
+fui_print_value(Printer *p, Fui_Type type, void *value0, b32 wrapped)
+{
+ switch(type)
  {
-  result = push_float_trimmed(arena, value.v3[component_plus_one-1]);
- }
- else
- {
-  b32 is_wrapped = fui_is_wrapped_slider(at_string);
-  
-  switch (slider->type)
+  case Fui_Type_v1:
+  case Fui_Type_v2:
+  case Fui_Type_v3:
+  case Fui_Type_v4:
   {
-   case Fui_Type_v1:
-   {// NOTE: Add an extra "f" for readback
-    result = push_float_trimmed(arena, value.v1);
-   }break;
-   case Fui_Type_v2:
+   v1 *values = cast(v1*)value0;
+   i32 count = fui_type_sizes[type] / 4;
+   if (count == 1)
    {
-    v2 v = value.v2;
-    const i32 count = 2;
-    String s[count];
-    for_i32(index,0,count) { s[index] = push_float_trimmed(arena, v[index]); }
-    result = push_stringf(arena, "vec2(%.*s, %.*s)", string_expand(s[0]), string_expand(s[1]));
-   }break;
-   case Fui_Type_v3:
-   {
-    v3 v = value.v3;
-    const i32 count = 3;
-    String s[count];
-    for_i32(index,0,count) { s[index] = push_float_trimmed(arena, v[index]); }
-    result = push_stringf(arena, "vec3(%.*s, %.*s, %.*s)", string_expand(s[0]), string_expand(s[1]), string_expand(s[2]));
-   }break;
-   case Fui_Type_v4:
-   {
-    v4 v = value.v4;
-    const i32 count = 4;
-    String s[count];
-    for_i32(index,0,count) { s[index] = push_float_trimmed(arena, v[index]); }
-    result = push_stringf(arena, "vec4(%.*s, %.*s, %.*s, %.*s)", string_expand(s[0]), string_expand(s[1]), string_expand(s[2]), string_expand(s[3]));
-   }break;
-   
-   case Fui_Type_i32:
-   {
-    i32 v = value.i32;
-    result = push_stringf(arena, "%d", v);
-   }break;
-   case Fui_Type_v2i:
-   {
-    v2i v = value.v2i;
-    result = push_stringf(arena, "vec2i(%d,%d)", v[0], v[1]);
-   }break;
-   case Fui_Type_v3i:
-   {
-    v3i v = value.v3i;
-    result = push_stringf(arena, "vec3i(%d,%d,%d)", v[0], v[1], v[2]);
-   }break;
-   case Fui_Type_v4i:
-   {
-    v4i v = value.v4i;
-    result = push_stringf(arena, "vec4i(%d,%d,%d,%d)", v[0], v[1], v[2], v[3]);
-   }break;
-   invalid_default_case;
-  }
-  
-  if (is_wrapped == false)
-  {
-   switch (slider->type)
-   {
-    case Fui_Type_v2:
-    case Fui_Type_v3:
-    case Fui_Type_v4:
-    {
-     result = string_substring(result, Ii64(5, result.size-1));
-    }break;
-    
-    case Fui_Type_v2i:
-    case Fui_Type_v3i:
-    case Fui_Type_v4i:
-    {
-     result = string_substring(result, Ii64(6, result.size-1));
-    }break;
+    push_float_trimmed(*p, *values);
    }
-  }
+   else
+   {
+    if (wrapped) { push_stringf(*p, "V%d(", count); }
+    for_i32(index,0,count)
+    {
+     if (index != 0) { push_stringf(*p, ", "); }
+     push_float_trimmed(*p, values[index]);
+    }
+    if (wrapped) { push_stringf(*p, ")"); }
+   }
+  }break;
+  
+  case Fui_Type_i1:
+  {
+   i32 v = *(i1*)value0;
+   push_stringf(*p, "%d", v);
+  }break;
+  case Fui_Type_i2:
+  case Fui_Type_i3:
+  case Fui_Type_i4:
+  {
+   i1 *v = (i1*)value0;
+   i32 count = fui_type_sizes[type] / 4;
+   const i32 max_count = 4;
+   
+   if (wrapped) { push_stringf(*p, "I%d(", count); }
+   for_i32(index,0,count)
+   {
+    if (index != 0) { push_stringf(*p, ","); }
+    push_stringf(*p, "%d", v[index]);
+   }
+   if (wrapped) { push_stringf(*p, ")"); }
+  }break;
+  
+  case Fui_Type_Planar_Bezier:
+  {
+   Planar_Bezier *value = (Planar_Bezier *)value0;
+   
+   fui_begin_struct(p, "Planar_Bezier");
+   fui_print_field(p, v2, value, d0);
+   fui_print_field(p, v2, value, d3);
+   fui_print_field(p, v3, value, unit_y);
+   fui_end_struct(p);
+  }break;
  }
+}
+
+//-
+
+internal String
+fui_push_slider_value(Arena *arena, Fui_Slider *slider)
+{
+ String at_string = fui_active_slider_string;
+ void *value0 = slider+1;
  
+ b32 wrapped = fui_is_wrapped_slider(at_string);
+ Fui_Type type = slider->type;
+ i32 cap = 128;
+ Printer printer = make_printer(arena, cap);
+ fui_print_value(&printer, type, value0, wrapped);
+ String result = end_printer(&printer);
  return result;
 }
+
+#define fui_push_active_slider_value_return String
+#define fui_push_active_slider_value_params Arena *arena
+
+internal fui_push_active_slider_value_return
+fui_push_active_slider_value(fui_push_active_slider_value_params)
+{
+ String result = {};
+ if (fui_active_slider)
+ {
+  result = fui_push_slider_value(arena, fui_active_slider);
+ }
+ return result;
+}
+
 
 internal fui_at_slider_p_return
 fui_at_slider_p(fui_at_slider_p_params)
 {
- Token_Iterator_Array tk_value = token_it_at_cursor(app); 
- Token_Iterator_Array *tk = &tk_value;
- if ( tk->tokens )
+ i64 result = 0;
+ Scratch_Block scratch(app);
+ i64 max_pos = 0;
+ Token_Iterator_Array it_value = get_token_it_on_current_line(app, buffer, &max_pos);
+ Token_Iterator_Array *it = &it_value;
+ 
+ Token *token = token_it_read(it);
+ while(result == 0 &&
+       token       &&
+       token->pos < max_pos)
  {
-  Token *token = tk->ptr;
-  Scratch_Block scratch(app);
   String at_string = push_token_lexeme(app, scratch, buffer, token);
-  
-  return fui_string_is_slider(at_string);
- } 
- else { return false; }
+  if ( fui_string_is_slider(at_string) ) { result = token->pos; }
+  else { token = token_it_inc(it); }
+ }
+ 
+ if (it_out) { *it_out = it_value; }
+ return result;
 }
 
 internal fui_handle_slider_return
@@ -423,20 +349,20 @@ fui_handle_slider(fui_handle_slider_params)
 {
  b32 result = false;
  
- b32 at_slider = fui_at_slider_p(app, buffer);
+ Token_Iterator_Array tk_value; 
+ i64 slider_pos = fui_at_slider_p(app, buffer, &tk_value);
  String at_string = {};
- if (at_slider)
+ if (slider_pos)
  {
   Scratch_Block scratch(app);
   
   Range_i64 slider_value_range = {};
   char *filename_c = to_c_string(scratch, filename);
-  Fui_Slider *slider = fui_get_slider(filename_c, line_number);
+  Fui_Slider *slider = fui_get_slider_external(filename_c, line_number);
   if (slider)
   {
    b32 parse_ok = false;
    {// NOTE(kv): Parsing
-    Token_Iterator_Array tk_value = token_it_at_cursor(app); 
     Token_Iterator_Array *tk = &tk_value;
     Quick_Parser parser_value = qp_new(app, buffer, tk);
     Quick_Parser *p = &parser_value;
@@ -447,14 +373,13 @@ fui_handle_slider(fui_handle_slider_params)
     slider_value_range.min = get_token_pos(p);
     {
      i32 component_count = 1;
-     if (!(fui_is_wrapped_slider(at_string) || 
-           fui_is_single_component_slider(at_string)))
+     if (!(fui_is_wrapped_slider(at_string)))
      {
       switch(slider->type)
       {
-       case Fui_Type_v2: case Fui_Type_v2i: { component_count = 2; }break;
-       case Fui_Type_v3: case Fui_Type_v3i: { component_count = 3; }break;
-       case Fui_Type_v4: case Fui_Type_v4i: { component_count = 4; }break;
+       case Fui_Type_v2: case Fui_Type_i2: { component_count = 2; }break;
+       case Fui_Type_v3: case Fui_Type_i3: { component_count = 3; }break;
+       case Fui_Type_v4: case Fui_Type_i4: { component_count = 4; }break;
        default: { component_count = 1; }break;
       }
      }
@@ -480,13 +405,13 @@ fui_handle_slider(fui_handle_slider_params)
    if (parse_ok)
    {
     fui_save_value(slider);
-    fui_set_active_slider(slider);
+    fui_set_active_slider(slider, at_string);
     //NOTE
     b32 writeback = fui_editor_ui_loop(app);
     
     if (writeback)
     {// NOTE(kv): save the results
-     String value_string = fui_push_slider_value(scratch, slider, at_string);
+     String value_string = fui_push_slider_value(scratch, slider);
      buffer_replace_range(app, buffer, slider_value_range, value_string);
     }
     else 
@@ -495,37 +420,11 @@ fui_handle_slider(fui_handle_slider_params)
     }
     
     result = true;
-    fui_set_active_slider(0);
+    fui_set_active_slider(0,String{});
     fui_v4_zw_active = false;
    }
   }
  }
  return result;
 }
-
-force_inline Fui_Options
-fopts(u32 flags, v1 delta_scale)
-{
- return Fui_Options{.flags=flags, .delta_scale = delta_scale};
-}
-
-force_inline Fui_Options
-fopts_add_flags(Fui_Options options, u32 flags)
-{
- options.flags |= flags;
- return options;
-}
-
-force_inline Fui_Options
-fopts_add_delta_scale(Fui_Options options, v1 delta_scale)
-{
- if(options.delta_scale == 0.f)
- {
-  options.delta_scale = delta_scale;
- }
- return options;
-}
-
-force_inline Fui_Options fopts_maybe(u32 flags) { return {.flags=flags}; }
-force_inline Fui_Options fopts_maybe(Fui_Options options) { return options; }
-force_inline Fui_Options fopts_maybe() { return {}; }
+//~

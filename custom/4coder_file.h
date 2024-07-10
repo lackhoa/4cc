@@ -299,10 +299,10 @@ static b32
 match_pattern(Filename_Character *name, Filename_Character *pattern){
     b32 match = false;
     if (sizeof(*name) == 1){
-        String_Const_u8 name_str = SCu8(name);
-        String_Const_u8 pattern_str = SCu8(pattern);
-        List_String_Const_u8 list = {};
-        Node_String_Const_u8 node = { NULL, name_str };
+        String name_str = SCu8(name);
+        String pattern_str = SCu8(pattern);
+        List_String list = {};
+        Node_String node = { NULL, name_str };
         string_list_push(&list, &node);
         match = string_wildcard_match(list, pattern_str, StringMatch_Exact);
     }
@@ -467,9 +467,9 @@ get_file_list(Arena *arena, Filename_Character *pattern, File_Filter *filter){
 # error metdata generator not supported on this platform
 #endif
 
-static String_Const_u8
+static String
 file_dump(Arena *arena, char *name){
-    String_Const_u8 text = {};
+    String text = {};
     FILE *file = fopen(name, "rb");
     if (file != 0){
         fseek(file, 0, SEEK_END);

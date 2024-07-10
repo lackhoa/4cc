@@ -5,7 +5,7 @@
 // TOP
 
 function Doc_Page*
-get_doc_page_from_user(Application_Links *app, Doc_Cluster *doc, String_Const_u8 query){
+get_doc_page_from_user(App *app, Doc_Cluster *doc, String query){
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, query);
@@ -25,12 +25,12 @@ get_doc_page_from_user(Application_Links *app, Doc_Cluster *doc, String_Const_u8
 }
 
 function Doc_Page*
-get_doc_page_from_user(Application_Links *app, Doc_Cluster *doc, char *query){
+get_doc_page_from_user(App *app, Doc_Cluster *doc, char *query){
     return(get_doc_page_from_user(app, doc, SCu8(query)));
 }
 
 function void
-render_doc_page__content(Application_Links *app, Buffer_Insertion *insert, Doc_Content_List *list){
+render_doc_page__content(App *app, Buffer_Insertion *insert, Doc_Content_List *list){
     for (Doc_Content *content = list->first;
          content != 0;
          content = content->next){
@@ -72,7 +72,7 @@ render_doc_page__content(Application_Links *app, Buffer_Insertion *insert, Doc_C
 }
 
 function void
-render_doc_page__code(Application_Links *app, Buffer_Insertion *insert, Doc_Code_Sample_List *code){
+render_doc_page__code(App *app, Buffer_Insertion *insert, Doc_Code_Sample_List *code){
     for (Doc_Code_Sample *sample = code->first;
          sample != 0;
          sample = sample->next){
@@ -92,11 +92,11 @@ render_doc_page__code(Application_Links *app, Buffer_Insertion *insert, Doc_Code
 }
 
 function void
-render_doc_page__table(Application_Links *app, Buffer_Insertion *insert, Vec2_i32 dim, Doc_Content_List *vals){
+render_doc_page__table(App *app, Buffer_Insertion *insert, Vec2_i1 dim, Doc_Content_List *vals){
     // TODO(allen): align better or something
     Doc_Content_List *val = vals;
-    for (i32 y = 0; y < dim.y; y += 1){
-        for (i32 x = 0; x < dim.x; x += 1){
+    for (i1 y = 0; y < dim.y; y += 1){
+        for (i1 x = 0; x < dim.x; x += 1){
             render_doc_page__content(app, insert, val);
             insertf(insert, "; ");
             val += 1;
@@ -106,10 +106,10 @@ render_doc_page__table(Application_Links *app, Buffer_Insertion *insert, Vec2_i3
 }
 
 function Buffer_ID
-render_doc_page(Application_Links *app, Doc_Page *page){
+render_doc_page(App *app, Doc_Page *page){
     Scratch_Block scratch(app);
     
-    String_Const_u8 doc_buffer_name = push_u8_stringf(scratch, "*doc: %.*s*",
+    String doc_buffer_name = push_u8_stringf(scratch, "*doc: %.*s*",
                                                       string_expand(page->name));
     
     Buffer_Create_Flag flags = BufferCreate_NeverAttachToFile;

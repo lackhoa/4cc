@@ -12,7 +12,7 @@
 #if !defined(FRED_CURSOR_CODES_H)
 #define FRED_CURSOR_CODES_H
 
-typedef i32 Application_Mouse_Cursor;
+typedef i1 Application_Mouse_Cursor;
 enum{
     APP_MOUSE_CURSOR_DEFAULT,
     APP_MOUSE_CURSOR_ARROW,

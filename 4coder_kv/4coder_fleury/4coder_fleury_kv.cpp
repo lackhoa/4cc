@@ -9,7 +9,7 @@
 // there's a bug in try_create_new_face that crashes the program if a font is
 // not found. This function is only necessary until that is fixed.
 function b32
-IsFileReadable(String_Const_u8 path)
+IsFileReadable(String path)
 {
     b32 result = 0;
     FILE *file = fopen((char *)path.str, "r");
@@ -31,18 +31,18 @@ function DELTA_RULE_SIG(F4_DeltaRule_lite)
     }
     Smooth_Step step_x = smooth_camera_step(pending.x, velocity->x, 80.f, 1.f/4.f);
     Smooth_Step step_y = smooth_camera_step(pending.y, velocity->y, 80.f, 1.f/4.f);
-    *velocity = vec2(step_x.v, step_y.v);
-    return(vec2(step_x.p, step_y.p));
+    *velocity = V2(step_x.v, step_y.v);
+    return(V2(step_x.p, step_y.p));
 }
 
 function void
 F4_DoFullLex_ASYNC_Inner(Async_Context *actx, Buffer_ID buffer_id)
 {
-    Application_Links *app = actx->app;
+    App *app = actx->app;
     ProfileScope(app, "[F4] Async Lex");
     Scratch_Block scratch(app);
     
-    String_Const_u8 contents = {};
+    String contents = {};
     {
         ProfileBlock(app, "[F4] Async Lex Contents (before mutex)");
         acquire_global_frame_mutex(app);
@@ -51,7 +51,7 @@ F4_DoFullLex_ASYNC_Inner(Async_Context *actx, Buffer_ID buffer_id)
         release_global_frame_mutex(app);
     }
     
-    i32 limit_factor = 10000;
+    i1 limit_factor = 10000;
     
     Token_List list = {};
     b32 canceled = false;
@@ -107,7 +107,7 @@ F4_DoFullLex_ASYNC_Inner(Async_Context *actx, Buffer_ID buffer_id)
 }
 
 function void
-F4_DoFullLex_ASYNC(Async_Context *actx, String_Const_u8 data)
+F4_DoFullLex_ASYNC(Async_Context *actx, String data)
 {
     if(data.size == sizeof(Buffer_ID))
     {
@@ -171,7 +171,7 @@ function BUFFER_EDIT_RANGE_SIG(F4_BufferEditRange)
             Token *token_resync = ptr->tokens + token_index_resync_guess;
             
             Range_i64 relex_range = Ii64(token_first->pos, token_resync->pos + token_resync->size + text_shift);
-            String_Const_u8 partial_text = push_buffer_range(app, scratch, buffer_id, relex_range);
+            String partial_text = push_buffer_range(app, scratch, buffer_id, relex_range);
             
             //~ NOTE(rjf): Lex
             F4_Language *language = F4_LanguageFromBuffer(app, buffer_id);

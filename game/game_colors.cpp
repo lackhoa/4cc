@@ -8,7 +8,7 @@ hue2rgb(v1 hue)
  macro_clamp(0,r,1);
  macro_clamp(0,g,1);
  macro_clamp(0,b,1);
- v3 rgb = vec3(r,g,b); //combine components
+ v3 rgb = V3(r,g,b); //combine components
  return rgb;
 }
 
@@ -49,12 +49,18 @@ srgb_to_linear(argb input)
 force_inline v4
 srgb_to_linear(v3 input)
 {
- return srgb_to_linear( vec4(input,1.0f) );
+ return srgb_to_linear( V4(input,1.0f) );
 }
 force_inline v4
 srgb_to_linear(v1 r, v1 g, v1 b)
 {
- return srgb_to_linear( vec4(r,g,b,1.0f) );
+ return srgb_to_linear( V4(r,g,b,1.0f) );
+}
+
+internal argb
+hsv_to_argb(v1 h, v1 s, v1 v)
+{
+ return argb_pack(srgb_to_linear(hsv_to_srgb(h,s,v)));
 }
 
 inline argb 
@@ -75,14 +81,15 @@ argb_lightness(argb color, v1 lightness)
  return argb_pack(result);
 }
 // NOTE: We now have the honor of converting colors to linear
-global argb argb_yellow = srgb_to_linear(0xFF777700);
-global argb argb_red    = argb_pack(srgb_to_linear(hsv_to_srgb(vec3(0.f, 0.5739f, 0.4987f))));
-global argb argb_green  = argb_pack({0,.5,0,1});
-global argb argb_blue   = srgb_to_linear(0xFF586890);
-global argb argb_black  = 0xff000000;
-global v4  v4_white    = {1,1,1,1};
-global argb argb_white  = 0xffffffff;
+global argb argb_yellow      = srgb_to_linear(0xFF777700);
+global argb argb_dim_red     = srgb_to_linear(0xFF886666);
+global argb argb_red         = argb_pack(srgb_to_linear(hsv_to_srgb(V3(0.f, 0.5739f, 0.4987f))));
+global argb argb_green       = argb_pack({0,.5,0,1});
+global argb argb_blue        = srgb_to_linear(0xFF586890);
+global argb argb_black       = 0xff000000;
+global v4  v4_white          = {1,1,1,1};
+global argb argb_white       = 0xffffffff;
 global argb argb_marble_srgb = 0xFFacaeb5;
-global argb argb_marble = srgb_to_linear(argb_marble_srgb);
-global argb argb_silver = argb_lightness(argb_marble, 0.8723f);
-global argb argb_dark_blue = srgb_to_linear(0xFF282c38);
+global argb argb_marble      = srgb_to_linear(argb_marble_srgb);
+global argb argb_silver      = argb_lightness(argb_marble, 0.8723f);
+global argb argb_dark_blue   = srgb_to_linear(0xFF282c38);

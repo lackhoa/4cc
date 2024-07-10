@@ -9,8 +9,8 @@
 #pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 function Jump_Lister_Result
-get_jump_index_from_user(Application_Links *app, Marker_List *list,
-                         String_Const_u8 query){
+get_jump_index_from_user(App *app, Marker_List *list,
+                         String query){
     Jump_Lister_Result result = {};
     if (list != 0){
         Scratch_Block scratch(app);
@@ -20,12 +20,12 @@ get_jump_index_from_user(Application_Links *app, Marker_List *list,
         
         Buffer_ID list_buffer = list->buffer_id;
         
-        i32 option_count = list->jump_count;
+        i1 option_count = list->jump_count;
         Managed_Object stored_jumps = list->jump_array;
-        for (i32 i = 0; i < option_count; i += 1){
+        for (i1 i = 0; i < option_count; i += 1){
             Sticky_Jump_Stored stored = {};
             managed_object_load_data(app, stored_jumps, i, 1, &stored);
-            String_Const_u8 line = push_buffer_line(app, scratch, list_buffer,
+            String line = push_buffer_line(app, scratch, list_buffer,
                                                     stored.list_line);
             lister_add_item(lister, line, SCu8(), IntAsPtr(i), 0);
         }
@@ -33,7 +33,7 @@ get_jump_index_from_user(Application_Links *app, Marker_List *list,
         Lister_Result l_result = run_lister(app, lister);
         if (!l_result.canceled){
             result.success = true;
-            result.index = (i32)PtrAsInt(l_result.user_data);
+            result.index = (i1)PtrAsInt(l_result.user_data);
         }
     }
     
@@ -43,12 +43,12 @@ get_jump_index_from_user(Application_Links *app, Marker_List *list,
 #pragma clang diagnostic pop
 
 function Jump_Lister_Result
-get_jump_index_from_user(Application_Links *app, Marker_List *list, char *query){
+get_jump_index_from_user(App *app, Marker_List *list, char *query){
     return(get_jump_index_from_user(app, list, SCu8(query)));
 }
 
 function void
-jump_to_jump_lister_result(Application_Links *app, View_ID view,
+jump_to_jump_lister_result(App *app, View_ID view,
                            Marker_List *list, Jump_Lister_Result *jump){
     if (jump->success){
         ID_Pos_Jump_Location location = {};

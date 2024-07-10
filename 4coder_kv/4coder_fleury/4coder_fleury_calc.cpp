@@ -303,7 +303,7 @@ CalcType(SourceCodeReference,   "source code reference")
 
 enum CalcNodeType
 {
-#define CalcNodeType(name, precedence) CalcNodeType_##name,
+#define CalcNodeType(NAME, precedence) CalcNodeType_##NAME,
     CalcNodeType_LIST
 #undef CalcNodeType
 };
@@ -322,7 +322,7 @@ CalcOperatorPrecedence(CalcNodeType type)
 
 enum CalcType
 {
-#define CalcType(name, str) CalcType_##name,
+#define CalcType(NAME, str) CalcType_##NAME,
     CalcType_LIST
 #undef CalcType
 };
@@ -360,7 +360,7 @@ struct CalcNode
     CalcNode *next;
     CalcToken token;
     int num_params;
-    String_Const_u8 error_string;
+    String error_string;
     char *at_source;
 };
 
@@ -382,7 +382,7 @@ ErrorCalcNode(Arena *arena, char *format, ...)
     node->type = CalcNodeType_Error;
     va_list args;
     va_start(args, format);
-    node->error_string = push_stringfv(arena, format, args);
+    node->error_string = push_stringfv(arena, format, args, true);
     va_end(args);
     return node;
 }
@@ -736,9 +736,9 @@ struct CalcInterpretGraph
     CalcInterpretGraph *next;
     CalcNode *parent_call;
     Plot2DMode mode;
-    String_Const_u8 plot_title;
-    String_Const_u8 x_axis;
-    String_Const_u8 y_axis;
+    String plot_title;
+    String x_axis;
+    String y_axis;
     int num_function_samples;
     Rect_f32 plot_view;
     int num_bins;
@@ -750,7 +750,7 @@ struct CalcInterpretGraph
     };
     float *y_data;
     int data_count;
-    i32 style_flags;
+    i1 style_flags;
 };
 
 typedef struct CalcValue CalcValue;
@@ -760,7 +760,7 @@ struct CalcValue
     {
         struct
         {
-            String_Const_u8 as_string;
+            String as_string;
         };
         
         struct
@@ -771,7 +771,7 @@ struct CalcValue
         
         struct
         {
-            String_Const_u8 as_error;
+            String as_error;
         };
         
         struct
@@ -799,7 +799,7 @@ typedef struct CalcSymbolKey CalcSymbolKey;
 struct CalcSymbolKey
 {
     char *string;
-    i32 string_length;
+    i1 string_length;
     b32 deleted;
 };
 
@@ -835,7 +835,7 @@ CalcValueF64(double num)
 }
 
 static CalcValue
-CalcValueError(String_Const_u8 string)
+CalcValueError(String string)
 {
     CalcValue val = {};
     val.type = CalcType_Error;
@@ -844,7 +844,7 @@ CalcValueError(String_Const_u8 string)
 }
 
 static CalcValue
-CalcValueString(String_Const_u8 string)
+CalcValueString(String string)
 {
     CalcValue val = {};
     val.type = CalcType_String;
@@ -864,7 +864,7 @@ CalcValueSourceCodeReference(i64 token_position)
 typedef struct CalcInterpretContext CalcInterpretContext;
 struct CalcInterpretContext
 {
-    Application_Links *app;
+    App *app;
     Buffer_ID buffer;
     Text_Layout_ID text_layout_id;
     Arena *arena;
@@ -874,9 +874,9 @@ struct CalcInterpretContext
     // NOTE(rjf): Plot data.
     struct
     {
-        String_Const_u8 plot_title;
-        String_Const_u8 x_axis;
-        String_Const_u8 y_axis;
+        String plot_title;
+        String x_axis;
+        String y_axis;
         Rect_f32 plot_view;
         int num_function_samples;
         int num_bins;
@@ -1113,14 +1113,14 @@ CalcSymbolTableRemove(CalcSymbolTable *table, char *string, int length)
 }
 
 static void
-GetDataFromSourceCode(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
+GetDataFromSourceCode(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                       i64 start_pos, Arena *arena, float **data_ptr, int *data_count_ptr)
 {
     Token_Array token_array = get_token_array_from_buffer(app, buffer);
     
     if(token_array.tokens != 0)
     {
-        Token_Iterator_Array it = token_iterator_pos(0, &token_array, start_pos);
+        Token_Iterator_Array it = token_it_at_pos(0, &token_array, start_pos);
         Token *token = 0;
         
         b32 found = 0;
@@ -1436,7 +1436,7 @@ CALC_BUILT_IN_FUNCTION(CalcTime)
 static void
 GenerateLinePlotData(CalcInterpretContext *context, CalcNode *expression,
                      CalcNode *input_variable, float **x_data, float **y_data,
-                     int *data_count, i32 *style_flags_ptr)
+                     int *data_count, i1 *style_flags_ptr)
 {
     CalcInterpretResult expression_result = InterpretCalcExpression(context, expression);
     
@@ -1445,7 +1445,7 @@ GenerateLinePlotData(CalcInterpretContext *context, CalcNode *expression,
     *data_count = 0;
     *style_flags_ptr = 0;
     
-    i32 style_flags = 0;
+    i1 style_flags = 0;
     
     //~ NOTE(rjf): Plotting scripting arrays.
     if(expression_result.value.type == CalcType_Array)
@@ -1721,7 +1721,7 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
             
             if(param_count < functions[i].required_parameter_count)
             {
-                String_Const_u8 error_string = push_stringf(context->arena, "%s expects at least %i parameters.",
+                String error_string = push_stringfz(context->arena, "%s expects at least %i parameters.",
                                                             functions[i].name, functions[i].required_parameter_count);
                 result.value = CalcValueError(error_string);
                 correct_call = 0;
@@ -1734,7 +1734,7 @@ CallCalcBuiltInFunction(CalcInterpretContext *context, CalcNode *root)
                     if(param_results[j].value.type != functions[i].parameter_types[j])
                     {
                         correct_call = 0;
-                        String_Const_u8 error_string = push_stringf(context->arena, "'%s' expects a '%s' for parameter %i.",
+                        String error_string = push_stringfz(context->arena, "'%s' expects a '%s' for parameter %i.",
                                                                     functions[i].name, CalcTypeName(functions[i].parameter_types[j]),
                                                                     j+1);
                         result.value = CalcValueError(error_string);
@@ -2118,7 +2118,7 @@ InterpretCalcExpression(CalcInterpretContext *context, CalcNode *root)
                 result.value = CalcSymbolTableLookup(context->symbol_table, root->token.string, root->token.string_length);
                 if(result.value.type == CalcType_Error)
                 {
-                    result.value = CalcValueError(push_stringf(context->arena, "'%.*s' is not declared.", root->token.string_length, root->token.string));
+                    result.value = CalcValueError(push_stringfz(context->arena, "'%.*s' is not declared.", root->token.string_length, root->token.string));
                 }
                 
                 break;
@@ -2143,7 +2143,7 @@ InterpretCalcExpression(CalcInterpretContext *context, CalcNode *root)
                     
                     if(token->kind == TokenBaseKind_Identifier)
                     {
-                        String_Const_u8 token_string;
+                        String token_string;
                         {
                             Range_i64 token_range =
                             {
@@ -2269,7 +2269,7 @@ InterpretCalcCode(CalcInterpretContext *context, CalcNode *root)
 }
 
 static CalcInterpretContext
-CalcInterpretContextInit(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
+CalcInterpretContextInit(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                          Arena *arena, CalcSymbolTable *symbol_table, f32 current_time)
 {
     CalcInterpretContext context = {};
@@ -2354,7 +2354,7 @@ F4_CLC_RenderCode(App *app, Buffer_ID buffer,
         {
             // NOTE(rjf): Draw result, if there's one.
             {
-                String_Const_u8 result_string = {};
+                String result_string = {};
                 
                 switch(result.value.type)
                 {
@@ -2362,22 +2362,22 @@ F4_CLC_RenderCode(App *app, Buffer_ID buffer,
                     {
                         if(expr == 0 || !result.value.as_error.size)
                         {
-                            result_string = push_stringf(arena, "(error: Parse failure.)");
+                            result_string = push_stringfz(arena, "(error: Parse failure.)");
                         }
                         else
                         {
-                            result_string = push_stringf(arena, "(error: %.*s)", string_expand(result.value.as_error));
+                            result_string = push_stringfz(arena, "(error: %.*s)", string_expand(result.value.as_error));
                         }
                         break;
                     }
                     case CalcType_Number:
                     {
-                        result_string = push_stringf(arena, "= %f", result.value.as_f64);
+                        result_string = push_stringfz(arena, "= %f", result.value.as_f64);
                         break;
                     }
                     case CalcType_String:
                     {
-                        result_string = push_stringf(arena, "= %.*s", string_expand(result.value.as_string));
+                        result_string = push_stringfz(arena, "= %.*s", string_expand(result.value.as_string));
                         break;
                     }
                     default: break;
@@ -2438,18 +2438,18 @@ F4_CLC_RenderCode(App *app, Buffer_ID buffer,
 }
 
 function void
-F4_CLC_RenderBuffer(Application_Links *app, Buffer_ID buffer, View_ID view,
+F4_CLC_RenderBuffer(App *app, Buffer_ID buffer, View_ID view,
                     Text_Layout_ID text_layout_id)
 {
     Scratch_Block scratch(app);
     Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
-    String_Const_u8 code_string = push_whole_buffer(app, scratch, buffer);
+    String code_string = push_whole_buffer(app, scratch, buffer);
     F4_CLC_RenderCode(app, buffer, view, text_layout_id, scratch,
                       (char *)code_string.str, visible_range.start);
 }
 
 function void
-F4_CLC_RenderComments(Application_Links *app, Buffer_ID buffer, View_ID view,
+F4_CLC_RenderComments(App *app, Buffer_ID buffer, View_ID view,
                       Text_Layout_ID text_layout_id)
 {
     if(def_get_config_b32(vars_intern_lit("f4_disable_calc_comments")))

@@ -39,7 +39,7 @@ struct Managed_Arena_Header{
     Arena arena;
 };
 
-global_const i32 managed_header_type_sizes[ManagedObjectType_COUNT] = {
+global_const i1 managed_header_type_sizes[ManagedObjectType_COUNT] = {
     0,
     sizeof(Managed_Memory_Header),
     sizeof(Managed_Buffer_Markers_Header),
@@ -49,13 +49,13 @@ global_const i32 managed_header_type_sizes[ManagedObjectType_COUNT] = {
 struct Managed_Buffer_Markers_Header_List{
     Managed_Buffer_Markers_Header *first;
     Managed_Buffer_Markers_Header *last;
-    i32 count;
+    i1 count;
 };
 
 struct Managed_Arena_Header_List{
     Managed_Arena_Header *first;
     Managed_Arena_Header *last;
-    i32 count;
+    i1 count;
 };
 
 ////////////////////////////////
@@ -85,16 +85,16 @@ struct Dynamic_Workspace{
     u32 object_id_counter;
     u32 visual_id_counter;
     u32 scope_id;
-    i32 user_type;
+    i1 user_type;
     void *user_back_ptr;
     Managed_Buffer_Markers_Header_List buffer_markers_list;
     Managed_Arena_Header_List arena_list;
-    i32 total_marker_count;
+    i1 total_marker_count;
 };
 
 ////////////////////////////////
 
-global_const i32 lifetime_key_reference_per_node = 32;
+global_const i1 lifetime_key_reference_per_node = 32;
 
 struct Lifetime_Key_Ref_Node{
     Lifetime_Key_Ref_Node *next;
@@ -107,7 +107,7 @@ union Lifetime_Object{
     struct{
         Lifetime_Key_Ref_Node *key_node_first;
         Lifetime_Key_Ref_Node *key_node_last;
-        i32 key_count;
+        i1 key_count;
         Dynamic_Workspace workspace;
     };
 };
@@ -120,7 +120,7 @@ struct Lifetime_Key{
         };
         struct{
             Lifetime_Object **members;
-            i32 count;
+            i1 count;
             Dynamic_Workspace dynamic_workspace;
         };
     };

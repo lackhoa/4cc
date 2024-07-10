@@ -10,14 +10,14 @@
 function Prj_Pattern_List
 prj_pattern_list_from_extension_array(Arena *arena, String8Array list){
     Prj_Pattern_List result = {};
-    for (i32 i = 0;
+    for (i1 i = 0;
          i < list.count;
          ++i){
         Prj_Pattern_Node *node = push_array(arena, Prj_Pattern_Node, 1);
         sll_queue_push(result.first, result.last, node);
         result.count += 1;
         
-        String8 str = push_stringf(arena, "*.%.*s", string_expand(list.vals[i]));
+        String8 str = push_stringfz(arena, "*.%.*s", string_expand(list.vals[i]));
         node->pattern.absolutes = string_split_wildcards(arena, str);
     }
     return(result);
@@ -61,15 +61,15 @@ prj_match_in_pattern_list(String8 string, Prj_Pattern_List list){
 }
 
 function void
-prj_close_files_with_ext(Application_Links *app, String8Array extension_array){
+prj_close_files_with_ext(App *app, String8Array extension_array){
     Scratch_Block scratch(app);
     
-    i32 buffers_to_close_max = Thousand(100);
+    i1 buffers_to_close_max = Thousand(100);
     Buffer_ID *buffers_to_close = push_array(scratch, Buffer_ID, buffers_to_close_max);
     
     b32 do_repeat = false;
     do{
-        i32 buffers_to_close_count = 0;
+        i1 buffers_to_close_count = 0;
         do_repeat = false;
         
         for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
@@ -83,7 +83,7 @@ prj_close_files_with_ext(Application_Links *app, String8Array extension_array){
                 is_match = false;
                 if (filename.size > 0){
                     String8 extension = string_file_extension(filename);
-                    for (i32 i = 0; i < extension_array.count; ++i){
+                    for (i1 i = 0; i < extension_array.count; ++i){
                         if (string_match(extension, extension_array.strings[i])){
                             is_match = true;
                             break;
@@ -102,14 +102,14 @@ prj_close_files_with_ext(Application_Links *app, String8Array extension_array){
             }
         }
         
-        for (i32 i = 0; i < buffers_to_close_count; ++i){
+        for (i1 i = 0; i < buffers_to_close_count; ++i){
             buffer_kill(app, buffers_to_close[i], BufferKill_AlwaysKill);
         }
     }while(do_repeat);
 }
 
 function void
-prj_open_files_pattern_filter__rec(Application_Links *app, String8 path, Prj_Pattern_List whitelist, Prj_Pattern_List blacklist, Prj_Open_File_Flags flags){
+prj_open_files_pattern_filter__rec(App *app, String8 path, Prj_Pattern_List whitelist, Prj_Pattern_List blacklist, Prj_Open_File_Flags flags){
     Scratch_Block scratch(app);
     
     ProfileScopeNamed(app, "get file list", profile_get_file_list);
@@ -126,7 +126,7 @@ prj_open_files_pattern_filter__rec(Application_Links *app, String8 path, Prj_Pat
             if (prj_match_in_pattern_list(filename, blacklist)){
                 continue;
             }
-            String8 new_path = push_stringf(scratch, "%.*s%.*s/", string_expand(path), string_expand(filename));
+            String8 new_path = push_stringfz(scratch, "%.*s%.*s/", string_expand(path), string_expand(filename));
             prj_open_files_pattern_filter__rec(app, new_path, whitelist, blacklist, flags);
         }
         else{
@@ -136,30 +136,30 @@ prj_open_files_pattern_filter__rec(Application_Links *app, String8 path, Prj_Pat
             if (prj_match_in_pattern_list(filename, blacklist)){
                 continue;
             }
-            String8 full_path = push_stringf(scratch, "%.*s%.*s", string_expand(path), string_expand(filename));
+            String8 full_path = push_stringfz(scratch, "%.*s%.*s", string_expand(path), string_expand(filename));
             create_buffer(app, full_path, 0);
         }
     }
 }
 
 function void
-prj_open_files_pattern_filter(Application_Links *app, String8 dir, Prj_Pattern_List whitelist, Prj_Pattern_List blacklist, Prj_Open_File_Flags flags){
+prj_open_files_pattern_filter(App *app, String8 dir, Prj_Pattern_List whitelist, Prj_Pattern_List blacklist, Prj_Open_File_Flags flags){
     ProfileScope(app, "open all files in directory pattern");
     Scratch_Block scratch(app);
     String8 directory = dir;
     if (!character_is_slash(string_get_character(directory, directory.size - 1))){
-        directory = push_stringf(scratch, "%.*s/", string_expand(dir));
+        directory = push_stringfz(scratch, "%.*s/", string_expand(dir));
     }
     prj_open_files_pattern_filter__rec(app, directory, whitelist, blacklist, flags);
 }
 
 function void
-prj_open_all_files_with_ext_in_hot(Application_Links *app, String8Array array, Prj_Open_File_Flags flags){
+prj_open_all_files_with_ext_in_hot(App *app, String8Array array, Prj_Open_File_Flags flags){
     Scratch_Block scratch(app);
     String8 hot = push_hot_directory(app, scratch);
     String8 directory = hot;
     if (!character_is_slash(string_get_character(hot, hot.size - 1))){
-        directory = push_stringf(scratch, "%.*s/", string_expand(hot));
+        directory = push_stringfz(scratch, "%.*s/", string_expand(hot));
     }
     Prj_Pattern_List whitelist = prj_pattern_list_from_extension_array(scratch, array);
     Prj_Pattern_List blacklist = prj_get_standard_blacklist(scratch);
@@ -170,7 +170,7 @@ prj_open_all_files_with_ext_in_hot(Application_Links *app, String8Array array, P
 // NOTE(allen): Project Files
 
 function void
-prj_stringize__string_list(Application_Links *app, Arena *arena, String8 name, Variable_Handle list, String8List *out){
+prj_stringize__string_list(App *app, Arena *arena, String8 name, Variable_Handle list, String8List *out){
     Scratch_Block scratch(app, arena);
     string_list_pushf(arena, out, "%.*s = {\n", string_expand(name));
     for (Vars_Children(child, list)){
@@ -184,7 +184,7 @@ prj_stringize__string_list(Application_Links *app, Arena *arena, String8 name, V
 }
 
 function void
-prj_stringize_project(Application_Links *app, Arena *arena, Variable_Handle project, String8List *out){
+prj_stringize_project(App *app, Arena *arena, Variable_Handle project, String8List *out){
     Scratch_Block scratch(app, arena);
     
     // NOTE(allen): String IDs
@@ -208,9 +208,9 @@ prj_stringize_project(Application_Links *app, Arena *arena, Variable_Handle proj
     String_ID fkey_command_override_id = vars_intern_lit("fkey_command_override");
     
     String8 os_strings[] = { str8_lit("win"), str8_lit("linux"), str8_lit("mac"), };
-    local_const i32 os_string_count = ArrayCount(os_strings);
+    local_const i1 os_string_count = ArrayCount(os_strings);
     String_ID os_string_ids[os_string_count];
-    for (i32 i = 0; i < os_string_count; i += 1){
+    for (i1 i = 0; i < os_string_count; i += 1){
         os_string_ids[i] = vars_intern(os_strings[i]);
     }
     
@@ -249,7 +249,7 @@ prj_stringize_project(Application_Links *app, Arena *arena, Variable_Handle proj
     Variable_Handle load_paths = vars_read_key(project, load_paths_id);
     if (!vars_is_nil(load_paths)){
         string_list_push(arena, out, str8_lit("load_paths = {\n"));
-        for (i32 i = 0; i < os_string_count; i += 1){
+        for (i1 i = 0; i < os_string_count; i += 1){
             Variable_Handle os_paths = vars_read_key(load_paths, os_string_ids[i]);
             if (!vars_is_nil(os_paths)){
                 String8 os_string = os_strings[i];
@@ -285,7 +285,7 @@ prj_stringize_project(Application_Links *app, Arena *arena, Variable_Handle proj
             String8 command_name = vars_key_from_var(scratch, command);
             string_list_pushf(arena, out, ".%.*s = {\n", string_expand(command_name));
             
-            for (i32 i = 0; i < os_string_count; i += 1){
+            for (i1 i = 0; i < os_string_count; i += 1){
                 Variable_Handle os_cmd_var = vars_read_key(command, os_string_ids[i]);
                 if (!vars_is_nil(os_cmd_var)){
                     // TODO(allen): escape os_cmd_string
@@ -354,21 +354,21 @@ prj_file_is_setup(App *app, String8 script_path, String8 script_file)
     Prj_Setup_Status result = {};
     {
         Scratch_Block scratch(app);
-        String8 bat_path = push_stringf(scratch, "%.*s/%.*s.bat",
+        String8 bat_path = push_stringfz(scratch, "%.*s/%.*s.bat",
                                         string_expand(script_path),
                                         string_expand(script_file));
         result.bat_exists = file_exists(scratch, bat_path);
     }
     {
         Scratch_Block scratch(app);
-        String8 sh_path = push_stringf(scratch, "%.*s/%.*s.sh",
+        String8 sh_path = push_stringfz(scratch, "%.*s/%.*s.sh",
                                           string_expand(script_path),
                                           string_expand(script_file));
         result.sh_exists = file_exists(scratch, sh_path);
     }
     {
         Scratch_Block scratch(app);
-        String8 project_path = push_stringf(scratch, "%.*s/project.4coder",
+        String8 project_path = push_stringfz(scratch, "%.*s/project.4coder",
                                                string_expand(script_path));
         result.sh_exists = file_exists(scratch, project_path);
     }
@@ -384,26 +384,26 @@ prj_generate_bat(Arena *scratch, String8 opts, String8 compiler, String8 script_
     
     Temp_Memory temp = begin_temp(scratch);
     
-    String8 cf = push_string_copy(scratch, code_file);
-    String8 od = push_string_copy(scratch, output_dir);
-    String8 bf = push_string_copy(scratch, binary_file);
+    String8 cf = push_string_copyz(scratch, code_file);
+    String8 od = push_string_copyz(scratch, output_dir);
+    String8 bf = push_string_copyz(scratch, binary_file);
     
     string_mod_replace_character(cf, '/', '\\');
     string_mod_replace_character(od, '/', '\\');
     string_mod_replace_character(bf, '/', '\\');
     
-    String8 filename = push_stringf(scratch, "%.*s/%.*s.bat",
+    String8 filename = push_stringfz(scratch, "%.*s/%.*s.bat",
                                         string_expand(script_path),
                                         string_expand(script_file));
     
     FILE *bat_script = fopen((char*)filename.str, "wb");
     if (bat_script != 0){
         fprintf(bat_script, "@echo off\n\n");
-        fprintf(bat_script, "set opts=%.*s\n", (i32)opts.size, opts.str);
+        fprintf(bat_script, "set opts=%.*s\n", (i1)opts.size, opts.str);
         fprintf(bat_script, "set code=%%cd%%\n");
-        fprintf(bat_script, "pushd %.*s\n", (i32)od.size, od.str);
+        fprintf(bat_script, "pushd %.*s\n", (i1)od.size, od.str);
         fprintf(bat_script, "%.*s %%opts%% %%code%%\\%.*s -Fe%.*s\n",
-                (i32)compiler.size, compiler.str, (i32)cf.size, cf.str, (i32)bf.size, bf.str);
+                (i1)compiler.size, compiler.str, (i1)cf.size, cf.str, (i1)bf.size, bf.str);
         fprintf(bat_script, "popd\n");
         fclose(bat_script);
         success = true;
@@ -424,7 +424,7 @@ prj_generate_sh(Arena *scratch, String8 opts, String8 compiler, String8 script_p
     String8 od = output_dir;
     String8 bf = binary_file;
     
-    String8 filename = push_stringf(scratch, "%.*s/%.*s.sh",
+    String8 filename = push_stringfz(scratch, "%.*s/%.*s.sh",
                                         string_expand(script_path),
                                         string_expand(script_file));
     
@@ -459,7 +459,7 @@ prj_generate_project(Arena *scratch, String8 script_path, String8 script_file, S
     String8 bf_win = string_replace(scratch, bf,
                                     string_u8_litexpr("/"), string_u8_litexpr("\\"));
     
-    String8 filename = push_stringf(scratch, "%.*s/project.4coder", string_expand(script_path));
+    String8 filename = push_stringfz(scratch, "%.*s/project.4coder", string_expand(script_path));
     
     FILE *out = fopen((char*)filename.str, "wb");
     if (out != 0){
@@ -514,7 +514,7 @@ prj_generate_project(Arena *scratch, String8 script_path, String8 script_file, S
 }
 
 function void
-prj_setup_scripts(Application_Links *app, Prj_Setup_Script_Flags flags){
+prj_setup_scripts(App *app, Prj_Setup_Script_Flags flags){
     Scratch_Block scratch(app);
     String8 script_path = push_hot_directory(app, scratch);
     
@@ -539,7 +539,7 @@ prj_setup_scripts(Application_Links *app, Prj_Setup_Script_Flags flags){
         // Query the User for Key File Names
         
         b32 finished_queries = false;
-        local_const i32 text_field_cap = 1024;
+        local_const i1 text_field_cap = 1024;
         
         String8 script_file = {};
         String8 code_file = {};
@@ -669,7 +669,7 @@ prj_setup_scripts(Application_Links *app, Prj_Setup_Script_Flags flags){
 // NOTE(allen): Project Operations
 
 function void
-prj_exec_command(Application_Links *app, Variable_Handle cmd_var)
+prj_exec_command(App *app, Variable_Handle cmd_var)
 {
     Scratch_Block scratch(app);
     
@@ -734,7 +734,7 @@ prj_exec_command(Application_Links *app, Variable_Handle cmd_var)
 }
 
 function Variable_Handle
-prj_command_from_name(Application_Links *app, String8 cmd_name){
+prj_command_from_name(App *app, String8 cmd_name){
     Scratch_Block scratch(app);
     // TODO(allen): fallback for multiple stages of reading
     Variable_Handle cmd_list = def_get_config_var(vars_intern_lit("commands"));
@@ -743,17 +743,17 @@ prj_command_from_name(Application_Links *app, String8 cmd_name){
 }
 
 function void
-prj_exec_command_name(Application_Links *app, String8 cmd_name){
+prj_exec_command_name(App *app, String8 cmd_name){
     Scratch_Block scratch(app);
     Variable_Handle cmd = prj_command_from_name(app, cmd_name);
     prj_exec_command(app, cmd);
 }
 
 function void
-prj_exec_command_fkey_index(Application_Links *app, i32 fkey_index){
+prj_exec_command_fkey_index(App *app, i1 fkey_index){
     // setup fkey string
     Scratch_Block scratch(app);
-    String8 fkey_index_str = push_stringf(scratch, "F%d", fkey_index + 1);
+    String8 fkey_index_str = push_stringfz(scratch, "F%d", fkey_index + 1);
     String_ID fkey_index_id = vars_intern(fkey_index_str);
     
     // get command variable
@@ -764,7 +764,7 @@ prj_exec_command_fkey_index(Application_Links *app, i32 fkey_index){
         Variable_Handle fkey_override = 
             def_get_config_var(vars_intern_lit("fkey_command_override"));
         if (!vars_is_nil(fkey_override)){
-            String_Const_u8 name = def_get_config_string(scratch, vars_intern_lit("user_name"));
+            String name = def_get_config_string(scratch, vars_intern_lit("user_name"));
             String_ID user_name_id = vars_intern(name);
             Variable_Handle user_var = vars_read_key(fkey_override, user_name_id);
             cmd_name_var = vars_read_key(user_var, fkey_index_id);
@@ -795,7 +795,7 @@ prj_path_from_project(Arena *arena, Variable_Handle project){
 }
 
 function Variable_Handle
-prj_cmd_from_user(Application_Links *app, Variable_Handle prj_var, String8 query){
+prj_cmd_from_user(App *app, Variable_Handle prj_var, String8 query){
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, query);
@@ -886,7 +886,7 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
             config = config_parse(app, scratch, dump.filename, dump.data, array);
             if (config != 0)
             {
-                i32 version = 0;
+                i1 version = 0;
                 if (config->version != 0)
                 {
                     version = *config->version;
@@ -985,7 +985,7 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
     if (proj_name_id != 0)
     {
         String8 proj_name = vars_push_string(scratch, proj_name_id);
-        String8 title = push_stringf(scratch, "4coder project: %.*s", string_expand(proj_name));
+        String8 title = push_stringfz(scratch, "4coder project: %.*s", string_expand(proj_name));
         set_window_title(app, title);
     }
 }
@@ -1006,7 +1006,7 @@ CUSTOM_DOC("Run an 'fkey command' configured in a project.4coder file.  Determin
     ProfileScope(app, "project fkey command");
     User_Input input = get_current_input(app);
     b32 got_ind = false;
-    i32 ind = 0;
+    i1 ind = 0;
     if (input.event.kind == InputEventKind_KeyStroke){
         if (Key_Code_F1 <= input.event.key.code && input.event.key.code <= Key_Code_F16){
             ind = (input.event.key.code - Key_Code_F1);
@@ -1081,8 +1081,8 @@ CUSTOM_DOC("Prints the current project to the file it was loaded from; prints in
     if (!vars_is_nil(prj_var)){
         Scratch_Block scratch(app);
         String8 prj_full_path = prj_full_file_path_from_project(scratch, prj_var);
-        prj_full_path = push_string_copy(scratch, prj_full_path);
-        String8 message = push_stringf(scratch, "Reprinting project file: %.*s\n", string_expand(prj_full_path));
+        prj_full_path = push_string_copyz(scratch, prj_full_path);
+        String8 message = push_stringfz(scratch, "Reprinting project file: %.*s\n", string_expand(prj_full_path));
         print_message(app, message);
         
         String8List prj_string = {};

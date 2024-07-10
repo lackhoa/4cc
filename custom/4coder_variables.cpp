@@ -355,7 +355,7 @@ vars_clear_keys(Variable_Handle var)
 }
 
 function void
-vars_print_indented(App *app, Variable_Handle var, i32 indent)
+vars_print_indented(App *app, Variable_Handle var, i1 indent)
 {
     Scratch_Block scratch(app);
     local_persist char spaces[] =
@@ -367,13 +367,13 @@ vars_print_indented(App *app, Variable_Handle var, i32 indent)
     String8 var_key = vars_key_from_var(scratch, var);
     String8 var_val = vars_string_from_var(scratch, var);
     
-    String8 line = push_stringf(scratch, "%.*s%.*s: \"%.*s\"\n",
-                                clamp_max(indent, (i32)sizeof(spaces)), spaces,
+    String8 line = push_stringfz(scratch, "%.*s%.*s: \"%.*s\"\n",
+                                clamp_max(indent, (i1)sizeof(spaces)), spaces,
                                 string_expand(var_key),
                                 string_expand(var_val));
     print_message(app, line);
     
-    i32 sub_indent = indent + 1;
+    i1 sub_indent = indent + 1;
     for (Variable_Handle sub = vars_first_child(var);
          !vars_is_nil(sub);
          sub = vars_next_sibling(sub)){
