@@ -551,14 +551,14 @@ assert_framebuffer_status()
 global GLuint prim_id_framebuffer;
 
 internal u32
-ogl_read_primitive_id(Render_Target *target, i2 mousep)
+ogl_read_primitive_id()
 {// NOTE: We have to read after rendering, because reading while you're rendering 
  // causes flicker, idk why because it shouldn't change the draw order.
  // also probably bad for perforamnce
  
- u32 current_prim_id = 0;
+ u32 result = 0;
  
- for (Render_Group *group = target->group_first;
+ for (Render_Group *group = render_state.group_first;
       group;
       group = group->next)
  {//NOTE: searching for main viewport (stupid!)
@@ -570,13 +570,13 @@ ogl_read_primitive_id(Render_Target *target, i2 mousep)
    glReadPixels(0,0,
                 1,1,
                 GL_RED_INTEGER, GL_UNSIGNED_INT,
-                &current_prim_id);
+                &result);
    glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
    break;
   }
  }
  
- return current_prim_id;
+ return result;
 }
 
 internal void
@@ -712,9 +712,9 @@ ogl__render_images(Render_Group *group, b32 render_primitive_id)
 }
 
 internal void
-ogl_render(Render_Target *target, i2 mousep)
+ogl_render(i2 mousep_ydown, i32 window_id)
 {
- //@HardCoded Allow one 1080p screen
+ //@HardCoded Allow one 1080p panel maximum
  const i32 MAX_PANEL_DIMX = 1920;
  const i32 MAX_PANEL_DIMY = 1080;
  
@@ -777,7 +777,7 @@ ogl_render(Render_Target *target, i2 mousep)
   ogl_program_image_prim_id = ogl__create_program(OGL_Image, OGL_Write_Primitive_ID);
   ogl_program_editor        = ogl__create_program(OGL_Editor, 0);
   
-  target->fallback_texture_id = ogl__gen_ed_texture(I3(2,2,1), TextureKind_Mono);
+  render_state.fallback_texture_id = ogl__gen_ed_texture(I3(2,2,1), TextureKind_Mono);
   u8 white_block[] = { 0xFF, 0xFF, 0xFF, 0xFF };
   ogl__fill_texture(TextureKind_Mono, GLuint{}, I3(0,0,0), I3(2,2,1), white_block);
   
@@ -854,6 +854,7 @@ ogl_render(Render_Target *target, i2 mousep)
   glClear(GL_COLOR_BUFFER_BIT);
  }
  
+ if (window_id == 0)
  {// NOTE: Clear primitive id buffer
   // IMPORTANT: For some fucking reason, you just can't clear this before you clear the default framebuffer.
   // If you do that, texture lookup *magically* breaks
@@ -864,24 +865,27 @@ ogl_render(Render_Target *target, i2 mousep)
  }
  
  glBindTexture(GL_TEXTURE_2D, 0);
- target->texture_bound_at_unit0 = {};
+ render_state.texture_bound_at_unit0 = {};
  
- for (Render_Free_Texture *free_texture = target->free_texture_first;
+ for (Render_Free_Texture *free_texture = render_state.free_texture_first;
       free_texture != 0;
       free_texture = free_texture->next)
  {
   glDeleteTextures(1, &free_texture->tex_id);
  }
- target->free_texture_first = 0;
- target->free_texture_last = 0;
+ render_state.free_texture_first = 0;
+ render_state.free_texture_last = 0;
  
- Font_Set *font_set = (Font_Set*)target->font_set;
- for (Render_Group *group = target->group_first;
+ Font_Set *font_set = (Font_Set*)render_state.font_set;
+ for (Render_Group *group = render_state.group_first;
       group != 0;
       group = group->next)
  {//NOTE: Each render group corresponds to one view/panel (for the game at least)
-  if (render_group_is_game(group) || 
-      (group->entry_first->poly.vertex_list.count > 0))
+  Render_Target *target = get_render_target(group);
+  b32 is_game = render_group_is_game(group);
+  b32 has_poly = (group->entry_first->poly.vertex_list.count > 0);
+  if (target->window_id == window_id &&
+      (is_game || has_poly))
   {
    i32 dstx, dsty;
    i32 dst_dimx, dst_dimy;
@@ -895,7 +899,7 @@ ogl_render(Render_Target *target, i2 mousep)
      dsty = target->height - box.y1;
     };  // NOTE; For editor
     dst_dim = V2(rect2i_dim(box));
-     
+    
     {// NOTE: Handle scale down (TODO: Should've just let the game change the render surface, that would save us the trouble of computing render location at both places)
      for_i32(it,0,group->scale_down_pow2)
      {
@@ -913,12 +917,20 @@ ogl_render(Render_Target *target, i2 mousep)
    
    if( render_group_is_game(group) )
    {//~NOTE: Render for the game!
-    v2 view_mousep = V2(mousep)-cast_V2(dstx,dsty);
-    b32 mouse_in_view = (view_mousep.x >= v1(dstx) &&
-                         view_mousep.y >= v1(dsty) &&
-                         view_mousep.x < dst_dim.x &&
-                         view_mousep.y < dst_dim.y);
-    b32 should_draw_prim_id = (group->viewport_id == 1) && mouse_in_view;
+    b32 should_draw_prim_id = false;
+    v2 view_mousep = {};
+    if (group->viewport_id == 1 &&
+        window_id == 0)
+    {
+     i2 mousep = I2(mousep_ydown.x,
+                    target->height - mousep_ydown.y);
+     view_mousep = V2(mousep)-cast_V2(dstx,dsty);
+     b32 mouse_in_view = (view_mousep.x >= v1(dstx) &&
+                          view_mousep.y >= v1(dsty) &&
+                          view_mousep.x < dst_dim.x &&
+                          view_mousep.y < dst_dim.y);
+     should_draw_prim_id = mouse_in_view;
+    }
     
     glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
     glEnable(GL_FRAMEBUFFER_SRGB);
@@ -962,15 +974,17 @@ ogl_render(Render_Target *target, i2 mousep)
     }
     
     {// NOTE: second pass
-     {// NOTE: second pass
+     {// NOTE: main rendering
       ogl__begin_program(state, ogl_program_2, &view_transform);
       ogl__render_entries(group);
       ogl__end_program();
      }
      
+     if (should_draw_prim_id)
      {// NOTE: (prim id)
       glBindFramebuffer(GL_FRAMEBUFFER, prim_id_framebuffer);
-      glDisable(GL_FRAMEBUFFER_SRGB); 
+      // TODO(kv): Am I dumb? Why modifying this state when it's always the same for this framebuffer?
+      glDisable(GL_FRAMEBUFFER_SRGB);
       ogl__begin_program(state, ogl_program_2_prim_id,
                          &view_transform_offsetted_by_mousep);
       ogl__render_entries(group);
@@ -981,7 +995,7 @@ ogl_render(Render_Target *target, i2 mousep)
     }
     
     {//-NOTE: Render @ReferenceImage
-     {// NOTE: actually rendering
+     {// NOTE: Actually rendering
       ogl__begin_program(state, ogl_program_image, &view_transform);
       ogl__render_images(group, false);
       ogl__end_program();
@@ -999,7 +1013,7 @@ ogl_render(Render_Target *target, i2 mousep)
       glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
      }
      
-     glBindTextureUnit(0, target->texture_bound_at_unit0); //NOTE: Set it back for Mr. Editor
+     glBindTextureUnit(0, render_state.texture_bound_at_unit0); //NOTE: Set it back for Mr. Editor
     }
     
     {// NOTE: Blit game_texture -> default framebuffer :game_blit
@@ -1007,7 +1021,7 @@ ogl_render(Render_Target *target, i2 mousep)
      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, DEFAULT_FRAMEBUFFER);
      glDisable(GL_SCISSOR_TEST); // NOTE: damn, this is global state
      glBlitFramebuffer(0,0, dst_dimx,dst_dimy,
-                       dstx,dsty, dstx+dst_dimx, dsty+dst_dimy,
+                       dstx,dsty, dstx+dst_dimx,dsty+dst_dimy,
                        GL_COLOR_BUFFER_BIT, GL_NEAREST);
      
      glBindFramebuffer(GL_FRAMEBUFFER,DEFAULT_FRAMEBUFFER);
@@ -1027,17 +1041,17 @@ ogl_render(Render_Target *target, i2 mousep)
      if (face) 
      {
       GLuint tex = face->texture;
-      if (target->texture_bound_at_unit0 != tex)
+      if (render_state.texture_bound_at_unit0 != tex)
       {
        glBindTextureUnit(0,tex);
-       target->texture_bound_at_unit0 = tex;
+       render_state.texture_bound_at_unit0 = tex;
       }
      }
-     else if (!target->texture_bound_at_unit0)
+     else if (!render_state.texture_bound_at_unit0)
      {
-      Assert(target->fallback_texture_id != 0);
-      glBindTextureUnit(0, target->fallback_texture_id);
-      target->texture_bound_at_unit0 = target->fallback_texture_id;
+      Assert(render_state.fallback_texture_id != 0);
+      glBindTextureUnit(0, render_state.fallback_texture_id);
+      render_state.texture_bound_at_unit0 = render_state.fallback_texture_id;
      }
     }
     
@@ -1059,4 +1073,4 @@ ogl_render(Render_Target *target, i2 mousep)
  }
 }
 
-//~
+//~ EOF

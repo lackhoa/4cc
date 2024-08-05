@@ -29,32 +29,54 @@ game_last_preset(game_last_preset_params)
  macro_swap(viewport->preset, viewport->last_preset);
 }
 
-internal b32 
-is_key_handled_by_game(is_key_handled_by_game_params)
+internal b32
+is_event_handled_by_game(is_event_handled_by_game_params)
 {
+ b32 result = false;
  if (event->kind == InputEventKind_KeyStroke)
  {
-  Key_Mods mods = pack_modifiers(event->key.modifiers.mods, event->key.modifiers.count);
+  Key_Mods mods = pack_modifiers(event->key.modifiers.mods,
+                                 event->key.modifiers.count);
   Key_Code code = event->key.code;
-  //
 #define MATCH(CODE) (mods == 0 && code == Key_Code_##CODE)
 #define MATCH_MOD(MOD, CODE)  \
 ( (mods == Key_Mod_##MOD) && (code == Key_Code_##CODE) )
-  //
-  if (MATCH_MOD(Alt, Q) ||
-      MATCH_MOD(Ctl, Tab)   || MATCH_MOD(Ctl, W) ||
-      MATCH_MOD(Alt, Comma) || MATCH_MOD(Alt, Period) ||
-      MATCH(Tab) ||
-      MATCH(Semicolon) ||
-      (mods == (Key_Mod_Ctl|Key_Mod_Sft) && code == Key_Code_Tab) ||
-      (mods == 0 && (Key_Code_0 <= code) && (code <= Key_Code_9)) ||
-      false)
+  if (game_hot)
   {
-   return false;
+   result = !(MATCH(Tab) ||
+              MATCH(Semicolon) ||
+              MATCH_MOD(Alt, Q) ||
+              MATCH_MOD(Ctl, Tab)   || MATCH_MOD(Ctl, W) ||
+              MATCH_MOD(Alt, Comma) || MATCH_MOD(Alt, Period) ||
+              //(mods == (Key_Mod_Ctl|Key_Mod_Sft) && code == Key_Code_Tab) ||
+              (mods == 0 && (Key_Code_0 <= code) && (code <= Key_Code_9)) ||
+              false);
   }
-  else { return true; }
+  else
+  {// NOTE: control when game is NOT hot (i.e game view not active)
+   result = (MATCH(Space) ||
+             MATCH(Q));
+  }
 #undef MATCH_MOD
 #undef MATCH
  }
- else { return false; }
+ else if (event->kind == InputEventKind_MouseButton)
+ {
+  View_ID view = get_active_view(app,0);
+  u32 hot_prim = get_hot_prim_id();
+  if( hot_prim && !(hot_prim & bit_31) )
+  {// NOTE: Jump to primitive
+   if( !is_view_to_the_right(app, view) )
+   {//NOTE: switch to the right view
+    view = get_other_primary_view(app, view, Access_Always, true);
+   }
+   view_set_buffer_named(app, view, GAME_FILE_NAME);
+   view_set_cursor(app, view, seek_line_col(hot_prim, 0));
+   result = true;
+  }
+ }
+ 
+ return result;
 }
+
+//~

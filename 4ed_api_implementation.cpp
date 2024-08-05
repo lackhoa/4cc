@@ -48,11 +48,12 @@ api_check_buffer(Editing_File *file){
 
 function b32
 api_check_buffer(Editing_File *file, Access_Flag access){
-    return(api_check_buffer(file) && access_test(file_get_access_flags(file), access));
+ return(api_check_buffer(file) && access_test(file_get_access_flags(file), access));
 }
 
 function b32
-api_check_view(View *view){
+api_check_view(View *view)
+{
     return(view != 0 && view->in_use);
 }
 
@@ -1138,16 +1139,16 @@ get_this_ctx_view(App *app, Access_Flag access)
     View_ID result = 0;
     if (tctx_info->coroutine != 0){
         Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
-        View *view = (View*)coroutine->user_data;
-        if (view != 0){
-            result = view_get_id(&models->view_set, view);
-        }
-    }
-    return(result);
+  View *view = (View*)coroutine->user_data;
+  if (view != 0){
+   result = view_get_id(&models->view_set, view);
+  }
+ }
+ return(result);
 }
 
-api(custom) function View_ID
-get_active_view(App *app, Access_Flag access)
+api(custom) function get_active_view_return
+get_active_view(get_active_view_params)
 {
     Models *models = (Models*)app->cmd_context;
     Panel *panel = layout_get_active_panel(&models->layout);
@@ -1242,21 +1243,22 @@ view_set_preferred_x(App *app, View_ID view_id, f32 x){
     View *view = imp_get_view(models, view_id);
     b32 result = false;
     if (api_check_view(view)){
-        view->preferred_x = x;
-        result = true;
-    }
-    return(result);
+  view->preferred_x = x;
+  result = true;
+ }
+ return(result);
 }
 
 api(custom) function Rect_f32
-view_get_screen_rect(App *app, View_ID view_id){
-    Models *models = (Models*)app->cmd_context;
-    Rect_f32 result = {};
-    View *view = imp_get_view(models, view_id);
-    if (api_check_view(view)){
-        result = Rf32(view->panel->rect_full);
-    }
-    return(result);
+view_get_screen_rect(App *app, View_ID view_id)
+{
+ Models *models = (Models*)app->cmd_context;
+ Rect_f32 result = {};
+ View *view = imp_get_view(models, view_id);
+ if (api_check_view(view)){
+  result = Rf32(view->panel->rect_full);
+ }
+ return(result);
 }
 
 api(custom) function Panel_ID
@@ -1628,16 +1630,16 @@ view_get_camera_bounds(App *app, View_ID view_id, Vec2_f32 *margin, Vec2_f32 *pu
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
     b32 result = false;
-    if (api_check_view(view)){
-        result = true;
-        *margin = view->cursor_margin;
-        *push_in_multiplier = view->cursor_push_in_multiplier;
-    }
-    return(result);
+ if (api_check_view(view)){
+  result = true;
+  *margin = view->cursor_margin;
+  *push_in_multiplier = view->cursor_push_in_multiplier;
+ }
+ return(result);
 }
 
-api(custom) function b32
-view_set_cursor(App *app, View_ID view_id, Buffer_Seek seek)
+api(custom) function view_set_cursor_return
+view_set_cursor(view_set_cursor_params)
 {
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -3200,19 +3202,19 @@ paint_text_color_blend(App *app, Text_Layout_ID layout_id, Range_i64 range, ARGB
 
 api(custom) function b32
 text_layout_free(App *app, Text_Layout_ID text_layout_id){
-    Models *models = (Models*)app->cmd_context;
-    return(text_layout_erase(app->tctx, models, &models->text_layouts, text_layout_id));
+ Models *models = (Models*)app->cmd_context;
+ return(text_layout_erase(app->tctx, models, &models->text_layouts, text_layout_id));
 }
 
 api(custom) function void
 draw_text_layout(App *app, Text_Layout_ID layout_id, ARGB_Color special_color, ARGB_Color ghost_color)
 {
-    Models *models = (Models*)app->cmd_context;
-    Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
-    if (layout != 0 && models->target != 0)
-    {
-        text_layout_render(app->tctx, models, layout, special_color, ghost_color);
-    }
+ Models *models = (Models*)app->cmd_context;
+ Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
+ if (layout != 0)
+ {
+  text_layout_render(app->tctx, models, layout, special_color, ghost_color);
+ }
 }
 
 api(custom) function void

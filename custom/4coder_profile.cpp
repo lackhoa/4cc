@@ -23,7 +23,7 @@ prof__get_thread(Profile_Global_List *list, i1 thread_id){
         }
     }
     if (result == 0){
-        result = push_array_zero(&list->node_arena, Profile_Thread, 1);
+        result = push_array(&list->node_arena, Profile_Thread, 1, true);
         sll_queue_push(list->first_thread, list->last_thread, result);
         list->thread_count += 1;
         result->thread_id = thread_id;

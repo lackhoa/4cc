@@ -23,7 +23,7 @@ log_parse__string_code(Log_Parse *parse, String string, Log_String_Source string
         }
         else{
             if (string_source == LogParse_ExternalString){
-                data = push_data_copy(parse->arena, data);
+                data = push_string_copy(parse->arena, data);
             }
             result = parse->string_id_counter;
             parse->string_id_counter += 1;
@@ -131,7 +131,7 @@ log_parse__get_or_make_list_tag_value(Log_Parse *parse, Log_Tag *tag){
     }
     else{
         result = push_array_zero(parse->arena, Log_Event_List, 1);
-        table_insert(&parse->tag_value_to_event_list_table, push_data_copy(parse->arena, data_key),
+        table_insert(&parse->tag_value_to_event_list_table, push_string_copy(parse->arena, data_key),
                      (u64)PtrAsInt(result));
     }
     return(result);

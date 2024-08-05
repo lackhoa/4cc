@@ -253,11 +253,11 @@ kv_view_input_handler(App *app)
    
    b32 handled = false;
    
-   if ( is_game_buffer )
-   {// NOTE: We fallback to the text editor for certain keys
-    if (game_code_valid())
+   if ( game_code_valid() )
+   {
+    if(global_game_on_readonly)
     {
-     handled = global_game_code.is_key_handled_by_game(app, &input.event);
+     handled = global_game_code.is_event_handled_by_game(app, &input.event, is_game_buffer);
     }
    }
    

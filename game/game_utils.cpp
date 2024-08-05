@@ -1,13 +1,20 @@
-global v1 default_fvert_delta_scale = 0.1f;
-#define fvert(value, ...) \
-fval( (value), fopts_add_delta_scale(fopts_add_flags(fopts_maybe(__VA_ARGS__), Fui_Flag_Camera_Aligned), default_fvert_delta_scale) )
+internal v3
+fvert_function(v3 init_value, Fui_Options opts, i32 line=__builtin_LINE())
+{
+ opts = fopts_add_flags(opts, Slider_Vertex);
+ v3 result = fval(init_value, opts, line);
+ return result;
+}
+
+#define fvert(value, ...)   fvert_function( (value), fopts(__VA_ARGS__) )
 
 //-NOTE: Annotations
 #define fvertx(value)    V3x(fval(value))
 #define fverty(value)    V3y(fval(value))
 #define fvertz(value)    V3z(fval(value))
 
-#define fvec  fvert
+#define fvec(value, ...) \
+fval( (value), fopts_add_flags(fopts(__VA_ARGS__), Slider_Vector) )
 #define fvecx(value)      V3x(fval(value))
 #define fvecy(value)      V3y(fval(value))
 #define fvecz(value)      V3z(fval(value))
@@ -15,7 +22,7 @@ fval( (value), fopts_add_delta_scale(fopts_add_flags(fopts_maybe(__VA_ARGS__), F
 #define fdir fvec  // NOTE: Not influenced by scale.
 //- End annotation
 #define fvert3(x,y,z,...) fvert(V3(x,y,z), __VA_ARGS__)
-#define funit(value)      fvert(value, Fui_Flag_Camera_Aligned|Fui_Flag_NOZ)
+#define funit(value)      fvert(value, Slider_Camera_Aligned|Slider_NOZ)
 
 #define fkeyframe(nframes, value)  add_keyframe(ani, fval2i(nframes, value))
 #define fhsv(h,s,v) argb_pack(srgb_to_linear(hsv_to_srgb(fval3(h,s,v))))
@@ -27,46 +34,13 @@ scale_in_block(painter.line_radius_unit, multiplier)
 #define line_radius_medium    scale_in_block(painter.line_radius_unit, 0.5f)
 #define line_color_lightness(scale)  set_in_block(painter.line_params.color, argb_lightness(painter.line_params.color, scale))
 
-internal void
-indicate_vertex(char *vertex_name, v3 pos, i32 level,
-                u32 prim_id = __builtin_LINE())
-{
- Painter *p = &painter;
- painter.draw_prim_id = prim_id;
- b32 mouse_near;
- v1 radius = 3*millimeter;
- {//NOTE: above
-  mat4 object_to_view = p->view_transform * get_object_transform();
-  v3 vertex_viewp = mat4vert(object_to_view, pos);
-  v2 delta = painter.mouse_viewp - vertex_viewp.xy;
-  mouse_near = (absolute(delta.x) < 1*centimeter && 
-                absolute(delta.y) < 1*centimeter);
- }
- 
- b32 mouse_on_top = (prim_id == get_hot_prim_id());
- 
- b32 should_draw = ((painter.viz_level >= level) || mouse_near);
- if (should_draw)
- {//NOTE: Draw
-  symx_off;
-  v1 depth_offset = painter.line_depth_offset - 1*centimeter;
-  u32 flags = 0;
-  if (level == 0) { flags = Poly_Overlay; }
-  draw_disk(pos, radius, argb_yellow, depth_offset, flags, prim_id);
- }
- 
- if ( mouse_on_top )
- {// NOTE: debug
-  DEBUG_NAME(vertex_name, prim_id);
- }
-}
-#define indicate_level(vertex,level)     indicate_vertex(#vertex, vertex, level)
-#define indicate(vertex)                 indicate_level(vertex,9000)
-#define indicate0(vertex)                indicate_level(vertex,0)
+#define indicate_level(vertex,level,...) indicate_vertex(#vertex, vertex, level,__VA_ARGS__)
+#define indicate(vertex,...)             indicate_level(vertex,9000,__VA_ARGS__)
+#define indicate0(vertex,...)            indicate_level(vertex,0,__VA_ARGS__)
 
-global_const Fui_Flag clampx = Fui_Flag_Clamp_X;
-global_const Fui_Flag clampy = Fui_Flag_Clamp_Y;
-global_const Fui_Flag clampz = Fui_Flag_Clamp_Z;
+global_const Slider clampx = Slider_Clamp_X;
+global_const Slider clampy = Slider_Clamp_Y;
+global_const Slider clampz = Slider_Clamp_Z;
 
 inline void
 circular_arc_helper(mat4 const&transform, v3 dst[4], v2 src[4])
@@ -134,16 +108,6 @@ get_eye_min_distance(v3 center, v1 radius, Bezier line)
  return result;
 }
 
-internal Bez
-operator*(mat4 transform, Bez bezier)
-{
- Bez result;
- for_i32(index,0,4)
- {
-  result[index] = transform*bezier[index];
- }
- return result;
-}
 internal v3
 perspective_project_non_hyperbolic(Camera *camera, v3 worldP)
 {
@@ -162,38 +126,6 @@ lp_alignment_threshold(v1 threshold)
  return result;
 }
 
-inline v3
-camera_object_position()
-{
- v3 result = get_object_transform().inv * camera_world_position(painter.camera);
- return result;
-}
-
-//-
-inline v3
-get_view_vector()
-{
- return painter.view_vector_stack[painter.view_vector_count-1];
-}
-
-internal void
-push_view_vector(v3 object_center)
-{
- auto &p = painter;
- v3 camera_obj = camera_object_position();
- v3 view_vector = noz(camera_obj - object_center);
- p.view_vector_stack[p.view_vector_count++] = view_vector;
- kv_assert(p.view_vector_count < alen(p.view_vector_stack));
-}
-
-inline void
-pop_view_vector()
-{
- auto &p = painter;
- p.view_vector_count--;
- kv_assert(p.view_vector_count > 0);
-}
-
 internal void
 debug_view_vector(i1 linum=__builtin_LINE())
 {
@@ -204,7 +136,6 @@ debug_view_vector(i1 linum=__builtin_LINE())
  indicate_vertex("view_center", object_center, 0, linum);
  DEBUG_VALUE(view_vector);
 }
-//-
 
 struct v3_pair {
  union{v3 u; v3 a;};
@@ -233,74 +164,27 @@ plane_transform(mat4 const&mat, v3 n, v1 d)
  return V4(n1,d1);
 }
 
-//~ begin
+//~
 
-internal void
-set_object_transform(mat4i const&transform)
-{
- Painter *p = &painter;
- p->obj_to_camera = invert(p->camera->transform) * transform;
- push_object_transform_to_target(p->target, &transform.m);
-}
-
-internal void
-push_object_transform(mat4i const&child_to_parent)
-{
- Painter *p = &painter;
- mat4i &parent = get_object_transform();
- mat4i new_transform = parent * child_to_parent;
- p->transform_stack[p->transform_count++] = new_transform;
- kv_assert(p->transform_count <= alen(p->transform_stack));
- set_object_transform(new_transform);
-}
-//
-internal void
-pop_object_transform()
-{
- Painter *p = &painter;
- p->transform_count--;
- kv_assert(p->transform_count > 0);
- mat4i &parent = get_object_transform();
- set_object_transform( parent );
-}
-
-#define transform_block(transform) \
-push_object_transform(transform); \
-defer( pop_object_transform(); );
-
-#define object_block(transform, center) \
-push_object(transform, center); \
+#define object_block(...) \
+push_object(__VA_ARGS__); \
 defer( pop_object(); );
-
-internal void
-push_object(mat4i const&child_to_parent, v3 object_center)
-{
- push_object_transform(child_to_parent);
- push_view_vector(object_center);
-}
-//
-internal void
-pop_object()
-{
- pop_object_transform();
- pop_view_vector();
-}
 
 internal mat4i &
 get_parent_transform()
 {
- auto &p = painter;
- kv_assert(p.transform_count > 1);
- return   p.transform_stack[p.transform_count-2] ;
+ auto &stack = painter.object_stack;
+ i1 index = stack[stack.count-2];
+ return painter.object_list[index].transform;
 }
 
 internal mat4
 from_parent()
 {
- return   get_object_transform().inverse * get_parent_transform() ;
+ return get_object_transform().inverse * get_parent_transform();
 }
 
-//~ end
+//~
 
 internal v3
 bezier_deriv_div3(Bezier bezier, v1 t)
@@ -390,6 +274,8 @@ reflect_origin(v3 origin, v3 point)
  return origin-(point-origin);
 }
 
+inline Line_Params lp() { return painter.line_params; }
+
 inline Line_Params
 lp(i4 radii)
 {
@@ -399,7 +285,7 @@ lp(i4 radii)
 }
 
 inline Line_Params
-lp(v1 alignment_threshold, i4 radii)
+lp(v1 alignment_threshold, i4 radii={})
 {
  Line_Params result = painter.line_params;
  result.alignment_threshold = alignment_threshold;
@@ -432,5 +318,12 @@ inline b32 camera_is_back() {
  v3 camz = get_camz();
  return(almost_equal(camz.z, -1.f, 1e-2f));
 }
+
+#define test_speed_block(NAME, ITERATIONS, CODE) \
+u64 cy_begin = ad_rdtsc(); \
+for_i32(it,0,ITERATIONS) { CODE } \
+u64 cy_end   = ad_rdtsc(); \
+v1 NAME = v1(f64(cy_end-cy_begin) / f64(ITERATIONS)); \
+DEBUG_VALUE(NAME) ;
 
 //~ EOF;

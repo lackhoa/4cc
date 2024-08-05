@@ -12,6 +12,7 @@ patterns = {
  "*.4coder",
  "*.txt",
  "*.glsl",
+ "*.py",
 };
 blacklist_patterns = {
     ".*",

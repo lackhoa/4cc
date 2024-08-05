@@ -145,20 +145,21 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
                 i = argc;
                 mode = CLMode_App;
             }break;
-        }
-    }
+  }
+ }
 }
 
 ////////////////////////////////
 
 internal Models*
-models_init(void){
-    Arena arena = make_arena_system();
-    Models *models = push_array_zero(&arena, Models, 1);
-    models->arena_ = arena;
-    models->arena = &models->arena_;
-    heap_init(&models->heap, get_base_allocator_system());
-    return(models);
+models_init(void)
+{
+ Arena arena = make_arena_system();
+ Models *models = push_array_zero(&arena, Models, 1);
+ models->arena_ = arena;
+ models->arena = &models->arena_;
+ heap_init(&models->heap, get_base_allocator_system());
+ return(models);
 }
 
 internal Log_Function*
@@ -200,7 +201,7 @@ file_mtime(String filename)
 }
 
 internal void 
-app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String current_directory)
+app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
 {
     Models *models = (Models*)base_ptr;
     models->keep_playing = true;
@@ -327,7 +328,7 @@ app_init(Thread_Context *tctx, Render_Target *target, void *base_ptr, String cur
 }
 
 internal Application_Step_Result 
-app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Application_Step_Input *input)
+app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
 {
  Models *models = (Models*)base_ptr;
  
@@ -338,8 +339,8 @@ app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Applicatio
  models->animate_next_frame = false;
  
  // NOTE(allen): per-frame update of models state
- begin_frame(target, &models->font_set);
- models->target = target;
+ begin_frame(&models->font_set);
+ models->target = get_render_target(0);
  models->input = input;
  
  // NOTE(allen): OS clipboard event handling
@@ -350,7 +351,8 @@ app_step(Thread_Context *tctx, Render_Target *target, void *base_ptr, Applicatio
  
  // NOTE(allen): reorganizing panels on screen
  Vec2_i32 prev_dim = layout_get_root_size(&models->layout);
- Vec2_i32 current_dim = I2(target->width, target->height);
+ Render_Target *render_target = get_render_target(0);
+ Vec2_i32 current_dim = I2(render_target->width, render_target->height);
  layout_set_root_size(&models->layout, current_dim);
  
  // NOTE(allen): update child processes

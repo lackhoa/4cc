@@ -895,7 +895,6 @@ VIM_COMMAND_SIG(vim_open_file_in_quotes)
 		}
 	}
 }
-*/
 
 internal void 
 vim_goto_definition(App *app)
@@ -903,6 +902,7 @@ vim_goto_definition(App *app)
     vim_push_jump(app, get_active_view(app, Access_ReadVisible));
     jump_to_definition_at_cursor(app);
 }
+*/
 internal void 
 vim_next_4coder_jump(App *app)
 {

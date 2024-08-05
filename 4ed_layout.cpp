@@ -326,20 +326,22 @@ internal void
 layout_set_margin(Layout *layout, i32 margin){
     if (layout->margin != margin){
         layout->margin = margin;
-        layout__set_panel_rectangle(layout, layout->root, Ri32(0, 0, layout->full_dim.x, layout->full_dim.y));
-        layout_propogate_sizes_down_from_node(layout, layout->root);
-        layout->panel_state_dirty = true;
-    }
+  layout__set_panel_rectangle(layout, layout->root, Ri32(0, 0, layout->full_dim.x, layout->full_dim.y));
+  layout_propogate_sizes_down_from_node(layout, layout->root);
+  layout->panel_state_dirty = true;
+ }
 }
 
 internal void
-layout_set_root_size(Layout *layout, Vec2_i32 dim){
-    if (layout->full_dim != dim){
-        layout->full_dim = dim;
-        layout__set_panel_rectangle(layout, layout->root, Ri32(0, 0, dim.x, dim.y));
-        layout_propogate_sizes_down_from_node(layout, layout->root);
-        layout->panel_state_dirty = true;
-    }
+layout_set_root_size(Layout *layout, i2 dim)
+{
+ if (layout->full_dim != dim)
+ {
+  layout->full_dim = dim;
+  layout__set_panel_rectangle(layout, layout->root, Ri32(0, 0, dim.x, dim.y));
+  layout_propogate_sizes_down_from_node(layout, layout->root);
+  layout->panel_state_dirty = true;
+ }
 }
 
 internal Vec2_i32

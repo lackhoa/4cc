@@ -11,6 +11,7 @@
 
 #define REMOVE_OLD_STRING
 
+#include "4ed_base.h"
 #include "4coder_version.h"
 #include "4coder_table.h"
 #include "4coder_types.h"
@@ -78,12 +79,6 @@
 #include "4coder_buffer_seek_constructors.cpp"
 #include "4coder_command_map.cpp"
 #include "4coder_codepoint_map.cpp"
-
-//#include "generated/custom_api.cpp"
-//#define DYNAMIC_LINK_API
-//#include "generated/system_api.cpp"
-//#define DYNAMIC_LINK_API
-//#include "generated/font_api.cpp"
 
 #include "4coder_token.cpp"
 #include "generated/lexer_cpp.cpp"

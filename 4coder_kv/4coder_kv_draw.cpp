@@ -248,9 +248,10 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
   defer( draw_set_clip(app, prev_clip2); );
   
   Scratch_Block scratch(app);
-  if ( i1 viewport = get_buffer_game_viewport_id(app, buffer))
+  if ( i1 viewport = get_buffer_game_viewport_id(app, buffer) )
   {
-   render_game(app, viewport, frame);
+   Render_Target *target = get_view_render_target(app, view);
+   render_game(app, target, viewport, frame);
   }
   else
   {

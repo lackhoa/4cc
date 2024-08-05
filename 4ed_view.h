@@ -51,39 +51,41 @@ struct Query_Set{
 };
 
 struct View_Context_Node{
-    View_Context_Node *next;
-    Temp_Memory pop_me;
-    View_Context ctx;
-    void *delta_rule_memory;
+ View_Context_Node *next;
+ Temp_Memory pop_me;
+ View_Context ctx;
+ void *delta_rule_memory;
 };
 
 struct View{
-    View *next;
-    View *prev;
-    struct Panel *panel;
-    b32 in_use;
-    
-    Editing_File *file;
-    Lifetime_Object *lifetime_object;
-    
-    File_Edit_Positions edit_pos_;
-    i64 mark;
-    f32 preferred_x;
-    Vec2_f32 cursor_margin;
-    Vec2_f32 cursor_push_in_multiplier;
-    
-    b8 new_scroll_target;
-    b8 hide_scrollbar;
-    b8 hide_file_bar;
-    b8 show_whitespace;
-    
-    Coroutine *co;
-    Co_Out co_out;
-    
-    Arena node_arena;
-    View_Context_Node *ctx;
-    
-    Query_Set query_set;
+ View *next;
+ View *prev;
+ 
+ i32 window_id;
+ struct Panel *panel;
+ b32 in_use;
+ 
+ Editing_File *file;
+ Lifetime_Object *lifetime_object;
+ 
+ File_Edit_Positions edit_pos_;
+ i64 mark;
+ f32 preferred_x;
+ Vec2_f32 cursor_margin;
+ Vec2_f32 cursor_push_in_multiplier;
+ 
+ b8 new_scroll_target;
+ b8 hide_scrollbar;
+ b8 hide_file_bar;
+ b8 show_whitespace;
+ 
+ Coroutine *co;
+ Co_Out co_out;
+ 
+ Arena node_arena;
+ View_Context_Node *ctx;
+ 
+ Query_Set query_set;
 };
 
 struct Live_Views{

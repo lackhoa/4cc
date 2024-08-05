@@ -262,7 +262,7 @@ maybe_update_game(App *app, Frame_Info frame)
 }
 
 internal void
-render_game(App *app, i32 viewport, Frame_Info frame)
+render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame)
 {
  if (global_game_on_readonly &&
      (viewport == MAIN_VIEWPORT_ID || global_auxiliary_viewports_on))
@@ -272,7 +272,15 @@ render_game(App *app, i32 viewport, Frame_Info frame)
   {
    b32 should_animate_next_frame = game->game_viewport_update(global_game_state, viewport, frame.animation_dt);
    if (should_animate_next_frame) { animate_next_frame(app); }
-   game->game_render(global_game_state, app, viewport, get_mouse_state(app));
+   Render_Config old_render_config;
+   {
+    Render_Config *old_render_configp = target_last_config();
+    if (old_render_configp) { old_render_config = *old_render_configp; }
+    else { old_render_config = {}; }
+   }
+   game->game_render(global_game_state, app, target, viewport,
+                     get_mouse_state(app));
+   draw_configure(target, &old_render_config);
   }
  }
 }

@@ -1,63 +1,150 @@
-global const v1 Animation_FPS = 12.f;
+global_const v1 Animation_FPS = 12.f;
+
+// TODO: If we store pose data in floating points,
+// why not store the sliders in floating points too?
+// Then you wouldn't have to monkey around with data updates
+// every time you change how it is updated.
+// We can do that later when we need to upgrade our control methods.
+
+// NOTE: Name,Denom
+#define X_Pose_Fields(X) \
+X(thead_theta, 6) \
+X(thead_phi  , 6)  \
+X(thead_roll , 6)  \
+X(tblink     , 6)  \
+X(teye_theta , 6)  \
+X(teye_phi   , 6)  \
+X(tarm_bend  , 18)  \
+X(tarm_abduct, 36)  \
+
+// NOTE: Screw it, let's switch to using floats
+// There might not even be a @speed concern
+struct Pose
+{
+#if 0
+ union {
+  i3 thead_rotation;
+  i2 thead_theta_phi;
+  struct { i1 thead_theta; i1 thead_phi; i1 thead_roll; };
+ };
+ 
+ i1 tblink;
+ i1 teye_theta;
+ i1 teye_phi;
+ 
+ i1 tarm_bend;
+ i1 tarm_abduct;
+#endif
+ 
+#define X(NAME,DENOM_ignore)   v1 NAME;
+ X_Pose_Fields(X);
+#undef X
+};
+
+//NOTE: Thank you C++, this could have just been simple.
+enum Pose_Field_Enum{
+#define X(NAME,DENOM_ignore)  PF_Enum_##NAME,
+ X_Pose_Fields(X)
+#undef X
+};
+
+//NOTE: Metadata about pose fields
+struct Pose_Field_Info{
+ i1 offset;
+ v1 denom;
+};
+//
+#if 0
+jump pose_field_info;
+#endif
+//
+global_const Pose_Field_Info pose_field_info[] = {
+#define X(NAME,DENOM) \
+Pose_Field_Info{ \
+.offset = i1(gb_offset_of(Pose, NAME)), \
+.denom  = DENOM, \
+},
+ //
+ X_Pose_Fields(X)
+ //
+#undef X
+};
 
 struct Movie_Shot
 {
- Arena *arena;
+ v1 animation_time;
+ //Arena *arena;
  
  b32 ready;
  i1 current_frame;
  i1 requested_frame;
  
- //-NOTE: The data
- union {
-  i3 head_rotation;
-  i2 head_theta_phi;
-  struct { i1 head_theta; i1 head_phi; i1 head_roll; };
- };
- i1 tblink;
- i1 eye_theta;
- i1 eye_phi;
+ Pose *updated_pose;
+ Pose out_pose;
 };
 
+// NOTE: Reroute destination so that updates don't do anything.
+global Pose dummy_pose;
+
 internal void
-shot_rest_function(Movie_Shot *shot, i1 nframes)
+arest_function(Movie_Shot *shot, i1 nframes)
 {
  shot->current_frame += nframes;
- if (shot->requested_frame < shot->current_frame)
- {
+ if (shot->requested_frame < shot->current_frame) {
   shot->ready = true;
+  shot->updated_pose = &dummy_pose;
  }
 }
 
-#define shot_rest(NFRAMES) shot_rest_function(shot, NFRAMES)
+internal void
+aset_func_float(Movie_Shot *shot, Pose_Field_Enum field, v1 value)
+{
+ u8 *pose = cast(u8*)(shot->updated_pose);
+ u8 *dst  = pose + pose_field_info[field].offset;
+ block_copy(dst, &value, sizeof(value));
+}
 
-#define shot_set(FIELD, VALUE) if (!shot->ready) { shot->FIELD = VALUE; }
+internal void
+aset_func_int(Movie_Shot *shot, Pose_Field_Enum field, i1 value_int)
+{
+ v1 value = i2f(value_int, pose_field_info[field].denom);
+ aset_func_float(shot, field, value);
+}
 
-#define shot_add(FIELD, VALUE) if (!shot->ready) { shot->FIELD = shot->FIELD + VALUE; }
+#define arest(NFRAMES)     arest_function(shot, NFRAMES)
+//TODO(kv): The indirections still make me grumpy.
+//#define aset(FIELD, VALUE) shot->updated_pose->FIELD  = i2f(VALUE, pose_field_denoms[pf]);
+#define aset(FIELD, VALUE)   aset_func_int(shot, PF_Enum_##FIELD, VALUE)
+#define asetf(FIELD, VALUE)  aset_func_float(shot, PF_Enum_##FIELD, VALUE)
 
 #define shot_function_return void
 #define shot_function_params Movie_Shot *shot
 //
 typedef shot_function_return Shot_Function(shot_function_params);
 
+//NOTE(kv): We don't zero the pose data,
+// so we can play animations on top of each other.
 internal void
-shot__init(Movie_Shot *shot, i1 requested_frame)
+shot__init(Movie_Shot *shot, i1 requested_frame, Pose *updated_pose)
 {
- *shot = {};
+ shot->ready           = false;
+ shot->current_frame   = 0;
  shot->requested_frame = requested_frame;
+ shot->updated_pose    = updated_pose;
 }
 
 internal void
-shot_go(Movie_Shot *shot, Shot_Function shot_function, v1 animation_time)
+shot_go(Movie_Shot *shot, Shot_Function shot_function)
 {
- i1 requested_frame = i1(Animation_FPS * animation_time);
- shot__init(shot, requested_frame);
+ //NOTE: animation_time has to be filled in
+ i1 requested_frame = i1(Animation_FPS * shot->animation_time);
+ shot__init(shot, requested_frame, &dummy_pose);
  
- // NOTE: prepass
+ // NOTE: Prepass
  shot_function(shot);
  
  i1 frame_count = shot->current_frame;
- shot__init(shot, requested_frame);
+ shot__init(shot, requested_frame, &shot->out_pose);
  if (frame_count > 0)
  {
   // NOTE: looping by default

@@ -1,3 +1,5 @@
+#pragma once
+
 internal v3 
 hue2rgb(v1 hue)
 {
@@ -85,6 +87,7 @@ global argb argb_yellow      = srgb_to_linear(0xFF777700);
 global argb argb_dim_red     = srgb_to_linear(0xFF886666);
 global argb argb_red         = argb_pack(srgb_to_linear(hsv_to_srgb(V3(0.f, 0.5739f, 0.4987f))));
 global argb argb_green       = argb_pack({0,.5,0,1});
+global argb argb_dark_green  = srgb_to_linear(0xff006400);
 global argb argb_blue        = srgb_to_linear(0xFF586890);
 global argb argb_black       = 0xff000000;
 global v4  v4_white          = {1,1,1,1};
@@ -93,3 +96,5 @@ global argb argb_marble_srgb = 0xFFacaeb5;
 global argb argb_marble      = srgb_to_linear(argb_marble_srgb);
 global argb argb_silver      = argb_lightness(argb_marble, 0.8723f);
 global argb argb_dark_blue   = srgb_to_linear(0xFF282c38);
+
+//~ eof

@@ -89,14 +89,6 @@ VIM_COMMAND_SIG(byp_visual_uncomment){
 	}
 }
 
-internal void
-vim_goto_definition_other_panel(App *app)
-{
-    vim_push_jump(app, get_active_view(app, Access_ReadVisible));
-    view_buffer_other_panel(app);
-    jump_to_definition_at_cursor(app);
-}
-
 VIM_COMMAND_SIG(kv_newline_above)
 {
   GET_VIEW_AND_BUFFER;
@@ -696,9 +688,14 @@ goto_comment_identifier(App *app)
    Range_i64 range = get_surrounding_characters(app, character_is_tag);
    tag = push_buffer_range(app, scratch, buffer, range);
   }
-  if (tag.size >= 2 && starts_with(tag, strlit("@")))
+  if (tag.size >= 2)
   {
-   String identifier = string_skip(tag, 1);
+   String identifier = tag;
+   if( starts_with(tag, strlit("@")) )
+   {
+    identifier = string_skip(tag, 1);
+   }
+   
    String_u8 needle = string_u8_push(scratch, identifier.size+1);
    string_concat_character(&needle, ';');
    string_concat(&needle, identifier);
@@ -1245,19 +1242,16 @@ handle_tab_normal_mode(App *app)
 internal void
 handle_space_command(App *app)
 {
+#if 0
  if (global_game_on_readonly)
  {
   i1 viewport_id = get_active_game_viewport_id(app);
   global_game_code.game_last_preset(global_game_state, viewport_id);
  }
- else if ( get_active_game_viewport_id(app) )
- {
-  turn_game_on();
- }
+ //else if ( get_active_game_viewport_id(app) ) { turn_game_on(); }
  else
- {
+#endif
   write_space_command(app);
- }
 }
 
 internal void
@@ -1281,24 +1275,8 @@ switch_to_mouse_panel(App *app)
 internal void
 kv_handle_left_click(App *app)
 {
- View_ID view = get_active_view(app, Access_ReadVisible);
- Render_Target *target = draw_get_target(app);
- Mouse_State mouse = get_mouse_state(app);
- u32 current_prim_id = target->current_prim_id;
- if( current_prim_id && !(current_prim_id & bit_31))
- {// NOTE: Jump to primitive
-  if( !is_view_to_the_right(app, view) )
-  {//NOTE: switch to the right view
-   view = get_other_primary_view(app, view, Access_Always, true);
-  }
-  view_set_buffer_named(app, view, strlit("game.cpp"));
-  view_set_cursor(app, view, seek_line_col(current_prim_id, 0));
- }
- else
- {
-  click_set_cursor_and_mark(app);
-  switch_to_mouse_panel(app);
- }
+ click_set_cursor_and_mark(app);
+ switch_to_mouse_panel(app);
 }
 
 

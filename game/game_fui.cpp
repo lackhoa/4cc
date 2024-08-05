@@ -1,33 +1,44 @@
 #include "game_fui.h"
 
 global b32 fui_v4_zw_active;
-global_extern u32 slider_cycle_counter;
 
-global i32 fui_type_sizes[Fui_Type_Count];
+global u32 slider_cycle_counter;
 
 force_inline i32
 slider_value_size(Fui_Slider *slider)
 {
- return(fui_type_sizes[slider->type]);
+ return(type_sizes[slider->type]);
 }
 
 // todo: Put these in a struct
 global Fui_Slider *fui_active_slider;
 global String      fui_active_slider_string;
 
-
 PACK_BEGIN
 struct Line_Map_Entry
 {
  u16 linum;
- u16 offset;  // NOTE: We only have 65k of data?
+ u16 offset;  // NOTE: We only have 65k of data, but can expand by enforcing alignment.
 }
 PACK_END
 //
 static_assert(sizeof(Line_Map_Entry) == 4, "size check");
-//
 global Line_Map_Entry *line_map;
-global Arena *new_slider_store;
+global Arena *slider_store;
+
+//-The Slow Path
+
+PACK_BEGIN
+struct Slow_Line_Map_Entry
+{
+ String file;
+ u16 linum;
+ u16 offset;
+}
+PACK_END;
+
+global Slow_Line_Map slow_line_map;
+global Arena *slow_slider_store;
 
 internal fui_is_active_return
 fui_is_active(fui_is_active_params)
@@ -38,25 +49,37 @@ fui_is_active(fui_is_active_params)
 //~
 //@GetSlider
 internal void *
-fui_user_main(Fui_Type type, void *init_value,
-              i32 line_number, Fui_Options options)
+fast_fval_inner(Basic_Type type, void *init_value,
+                i32 linum, Fui_Options options)
 {
  void *result = 0;
  u64 cycle_start = gb_rdtsc();
  
- u8 *store_base = get_arena_base(new_slider_store);
- u16 offset = line_map[line_number].offset;
+ u8 *store_base = get_arena_base(slider_store);
+ u16 offset = line_map[linum].offset;
  Fui_Slider *slider;
+ // @fui_ensure_nonzero_offset
  if( offset != 0 )
  {
   slider = cast(Fui_Slider *)(store_base + offset);
   result = slider+1;
  }
  else
- {//note: not found
-  i32 value_size = fui_type_sizes[type];
-  slider = cast(Fui_Slider *)(push_size(new_slider_store, sizeof(Fui_Slider)+value_size));
-  line_map[line_number].offset = cast(u16)(cast(u8 *)(slider) - store_base);
+ {//NOTE: Not found -> add new slider to the store
+  i32 value_size = type_sizes[type];
+  slider = cast(Fui_Slider *)(push_array(slider_store, u8, sizeof(Fui_Slider)+value_size));
+  line_map[linum].offset = cast(u16)(cast(u8 *)(slider) - store_base);
+  
+  b32 is_vertex = (options.flags & Slider_Vertex);
+  b32 is_vector = (options.flags & Slider_Vector);
+  if (is_vertex || is_vector)
+  {
+   options.flags |= Slider_Camera_Aligned;
+   if(options.delta_scale == 0.f) {
+    options.delta_scale = default_fvert_delta_scale;
+   }
+  }
+  
   *slider = Fui_Slider{
    .type    = type, 
    .options = options,
@@ -70,42 +93,144 @@ fui_user_main(Fui_Type type, void *init_value,
  return result;
 }
 
+//@GetSlider
+internal void *
+slow_fval_inner(Basic_Type type, void *init_value,
+                const char *file_c, i32 linum,
+                Fui_Options options)
+{
+ void *result = 0;
+ u64 cycle_start = gb_rdtsc();
+ auto &map   = slow_line_map;
+ auto &store = slow_slider_store;
+ u16 offset = 0;
+ 
+ String file = SCu8(file_c);
+ for_i32(index,0,map.count)
+ {
+  // NOTE: In the init call, we put a string pointer in the linemap,
+  // in later calls, we pass in the same pointer -> match -> win.
+  Slow_Line_Map_Entry entry = map.map[index];
+  if (entry.file  == file &&
+      entry.linum == linum)
+  {
+   offset = entry.offset;
+   break;
+  }
+ }
+ 
+ u8 *store_base = get_arena_base(store);
+ Fui_Slider *slider;
+ if( offset != 0 )  // @fui_ensure_nonzero_offset
+ {
+  slider = cast(Fui_Slider *)(store_base + offset);
+  result = slider+1;
+ }
+ else
+ {//NOTE: Not found
+  i32 value_size = type_sizes[type];
+  u8 *slider_u8 = push_array(store, u8, sizeof(Fui_Slider)+value_size);
+  map.map[map.count++] = Slow_Line_Map_Entry{
+   .file   = file,
+   .linum  = cast(u16)(linum),
+   .offset = cast(u16)(slider_u8 - store_base),
+  };
+  kv_assert(map.count < map.cap);
+  
+  slider = cast(Fui_Slider *)slider_u8;
+  *slider = Fui_Slider{
+   .type    = type, 
+   .options = options,
+  };
+  
+  result = slider+1;
+  block_copy(result, init_value, value_size);
+ }
+ 
+ u64 cycle_end = gb_rdtsc();
+ slider_cycle_counter += u32(cycle_end-cycle_start);
+ return result;
+}
+
+//-
 #if 0
-jump fval();
+jump fast_fval();
+jump slow_fval();
 #endif
 // NOTE: We define overloads to avoid having to specify the type as a separate argument 
 // as well as receive the appropriate values as output.
+// NOTE: The fast path
 #define X(T) \
 T \
-fval(T init_value_T, Fui_Options options, i32 line) \
+fast_fval(T init_value_T, Fui_Options options, i32 line) \
 { \
-Fui_Type  type = Fui_Type_##T; \
-void *value = fui_user_main(type, cast(void*)(&init_value_T), line, options); \
+auto type = Type_##T; \
+void *value = fast_fval_inner(type, cast(void*)(&init_value_T), line, options); \
 return *(cast(T *)value); \
 }
 //
-X_Fui_Types(X)
+X_Types(X)
 //
 #undef X
 
+// NOTE: The slow path (NOTE: there's a weird compiler error if we don't specify the default params here?)
+#define X(T) \
+T \
+slow_fval(T init_value_T, Fui_Options options, \
+const char *file=__builtin_FILE(), i32 line=__builtin_LINE()) \
+{ \
+auto type = Type_##T; \
+void *value = slow_fval_inner(type, cast(void*)(&init_value_T), file, line, options); \
+return *(cast(T *)value); \
+}
+//
+X_Types(X)
+//
+#undef X
+//-
+
 inline b32 
-filename_match(char *a0, char *b0)
+filename_match(String a0, String b0)
 {
- String a = path_filename(SCu8(a0));
- String b = path_filename(SCu8(b0));
+ String a = path_filename(a0);
+ String b = path_filename(b0);
  return string_match(a,b);
 }
 
 //@GetSlider
 internal Fui_Slider *
-fui_get_slider_external(char *filename, i32 line_number)
+fui_get_slider_external(String file, i32 linum)
 {
  Fui_Slider *slider = 0;
- u16 offset = line_map[line_number].offset;
- if (offset != 0)
+ if ( filename_match(file, GAME_FILE_NAME) )
  {
-  u8 *store_base = get_arena_base(new_slider_store);
-  slider = cast(Fui_Slider *)(store_base + offset);
+  u16 offset = line_map[linum].offset;
+  if (offset != 0)
+  {
+   u8 *store_base = get_arena_base(slider_store);
+   slider = cast(Fui_Slider *)(store_base + offset);
+  }
+ }
+ else
+ {
+  auto &map = slow_line_map;
+  u16 offset = 0;
+  for_i32(index,0,map.count)
+  {
+   Slow_Line_Map_Entry entry = map.map[index];
+   if (filename_match(entry.file, file) &&
+       entry.linum == linum)
+   {
+    offset = entry.offset;
+    break;
+   }
+  }
+  
+  if (offset != 0)
+  {
+   u8 *store_base = get_arena_base(slow_slider_store);
+   slider = cast(Fui_Slider *)(store_base + offset);
+  }
  }
  
  return slider;
@@ -128,13 +253,13 @@ fui_set_active_slider(Fui_Slider *slider, String string)
 //
 
 global const i32 MAX_SLIDER_VALUE_SIZE = 32;
-global u8 global_fui_saved_value[MAX_SLIDER_VALUE_SIZE];//TODO: why is this a global?
+global u8 global_fui_saved_value[MAX_SLIDER_VALUE_SIZE];  //TODO: why is this a global?
 
 internal void
 fui_save_value(Fui_Slider *slider)
 {
  void *value = slider+1;
- i32 size = fui_type_sizes[slider->type];
+ i32 size = slider_value_size(slider);
  block_copy(global_fui_saved_value, value, size);
 }
 
@@ -142,7 +267,7 @@ internal void
 fui_restore_value(Fui_Slider *slider)
 {
  void *value = slider+1;
- i32 size = fui_type_sizes[slider->type];
+ i32 size = slider_value_size(slider);
  block_copy(value, global_fui_saved_value, size);
 }
 
@@ -178,117 +303,6 @@ fui_string_is_slider(String at_string)
          false);
 }
 
-internal String
-push_float_trimmed(Arena *arena, v1 value)
-{
- u8 buf[64];
- Arena temp = make_static_arena(buf, sizeof(buf), 1);
- String result = push_stringf(&temp, "%.4ff", value);
- // NOTE: trim trailing zeros
- while (result.len > 0)
- {
-  if (result.str[result.len-2] == '0') { result.len -= 1; }
-  else { break; }
- }
- result.str[result.len-1] = 'f';
- push_data_copy(arena, result);
- return result;
-}
-
-//-NOTE: Printiong-
-inline void
-fui_begin_struct(Printer *p, char *name)
-{
- push_stringf(&p->arena, "(%s{ ", name);
-}
-//
-inline void
-fui_end_struct(Printer *p)
-{
- push_stringf(&p->arena, "})");
-}
-
-internal void
-fui_print_value(Printer *p, Fui_Type type, void *value0, b32 wrapped);
-
-internal void
-fui_print_fieldf(Printer *p, Fui_Type type, char *name, void *value)
-{
- push_stringf(*p, ".%s=", name);
- fui_print_value(p,type,value,/*wrapped*/true);
- push_stringf(*p, ", ");
-}
-
-#define fui_print_field(printer, type, value_pointer, name)\
-fui_print_fieldf(\
-printer,\
-Fui_Type_##type,\
-#name,\
-&value_pointer->name)
-
-internal void
-fui_print_value(Printer *p, Fui_Type type, void *value0, b32 wrapped)
-{
- switch(type)
- {
-  case Fui_Type_v1:
-  case Fui_Type_v2:
-  case Fui_Type_v3:
-  case Fui_Type_v4:
-  {
-   v1 *values = cast(v1*)value0;
-   i32 count = fui_type_sizes[type] / 4;
-   if (count == 1)
-   {
-    push_float_trimmed(*p, *values);
-   }
-   else
-   {
-    if (wrapped) { push_stringf(*p, "V%d(", count); }
-    for_i32(index,0,count)
-    {
-     if (index != 0) { push_stringf(*p, ", "); }
-     push_float_trimmed(*p, values[index]);
-    }
-    if (wrapped) { push_stringf(*p, ")"); }
-   }
-  }break;
-  
-  case Fui_Type_i1:
-  {
-   i32 v = *(i1*)value0;
-   push_stringf(*p, "%d", v);
-  }break;
-  case Fui_Type_i2:
-  case Fui_Type_i3:
-  case Fui_Type_i4:
-  {
-   i1 *v = (i1*)value0;
-   i32 count = fui_type_sizes[type] / 4;
-   const i32 max_count = 4;
-   
-   if (wrapped) { push_stringf(*p, "I%d(", count); }
-   for_i32(index,0,count)
-   {
-    if (index != 0) { push_stringf(*p, ","); }
-    push_stringf(*p, "%d", v[index]);
-   }
-   if (wrapped) { push_stringf(*p, ")"); }
-  }break;
-  
-  case Fui_Type_Planar_Bezier:
-  {
-   Planar_Bezier *value = (Planar_Bezier *)value0;
-   
-   fui_begin_struct(p, "Planar_Bezier");
-   fui_print_field(p, v2, value, d0);
-   fui_print_field(p, v2, value, d3);
-   fui_print_field(p, v3, value, unit_y);
-   fui_end_struct(p);
-  }break;
- }
-}
-
 //-
 
 internal String
@@ -298,10 +312,10 @@ fui_push_slider_value(Arena *arena, Fui_Slider *slider)
  void *value0 = slider+1;
  
  b32 wrapped = fui_is_wrapped_slider(at_string);
- Fui_Type type = slider->type;
+ Basic_Type type = slider->type;
  i32 cap = 128;
  Printer printer = make_printer(arena, cap);
- fui_print_value(&printer, type, value0, wrapped);
+ print_code(printer, type, value0, wrapped);
  String result = end_printer(&printer);
  return result;
 }
@@ -357,8 +371,7 @@ fui_handle_slider(fui_handle_slider_params)
   Scratch_Block scratch(app);
   
   Range_i64 slider_value_range = {};
-  char *filename_c = to_c_string(scratch, filename);
-  Fui_Slider *slider = fui_get_slider_external(filename_c, line_number);
+  Fui_Slider *slider = fui_get_slider_external(filename, line_number);
   if (slider)
   {
    b32 parse_ok = false;
@@ -377,9 +390,9 @@ fui_handle_slider(fui_handle_slider_params)
      {
       switch(slider->type)
       {
-       case Fui_Type_v2: case Fui_Type_i2: { component_count = 2; }break;
-       case Fui_Type_v3: case Fui_Type_i3: { component_count = 3; }break;
-       case Fui_Type_v4: case Fui_Type_i4: { component_count = 4; }break;
+       case Type_v2: case Type_i2: { component_count = 2; }break;
+       case Type_v3: case Type_i3: { component_count = 3; }break;
+       case Type_v4: case Type_i4: { component_count = 4; }break;
        default: { component_count = 1; }break;
       }
      }
@@ -427,4 +440,5 @@ fui_handle_slider(fui_handle_slider_params)
  }
  return result;
 }
+
 //~

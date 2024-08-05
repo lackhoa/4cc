@@ -1,5 +1,5 @@
+#pragma once
 
-#if 1
 function i32
 replace_range_shift(i32 replace_length, i32 insert_length){
  return(insert_length - replace_length);
@@ -36,7 +36,6 @@ function i64
 replace_range_shift(Range_i64 range, u64 insert_length){
  return((i64)insert_length - (range.end - range.start));
 }
-#endif
 
 //~
 
@@ -725,6 +724,18 @@ Su8(u8 *str){
  u64 size = cstring_length(str);
  String_u8 string = {str, size, size + 1};
  return(string);
+}
+function u64
+cstring_length(u16 *str){
+ u64 length = 0;
+ for (;str[length] != 0; length += 1);
+ return(length);
+}
+function u64
+cstring_length(u32 *str){
+ u64 length = 0;
+ for (;str[length] != 0; length += 1);
+ return(length);
 }
 function String_u16
 Su16(u16 *str){

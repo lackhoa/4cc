@@ -225,7 +225,6 @@ struct Linux_Vars {
 };
 
 global Linux_Vars linuxvars;
-global Render_Target render_target;
 
 ////////////////////////////
 

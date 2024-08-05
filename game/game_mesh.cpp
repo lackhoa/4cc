@@ -121,8 +121,6 @@ clip_triangle(v3 p_in[3], v3 n, v1 d)
  return result;
 }
 
-#define std_array std::array
-
 internal std_array<v3,2>
 intersect_triangle(v3 n, v1 d, v3 p[3])
 {
@@ -173,7 +171,7 @@ transformed_mesh(Arena *arena, mat4 const&mat, Mesh const&mesh)
  block_copy_count(result.vertices, mesh.vertices, mesh.vertex_count);
  for_i1(vertex_index,0,mesh.vertex_count)
  {
-  result.vertices[vertex_index] = mat4vert_no_div(mat, mesh.vertices[vertex_index]);
+  result.vertices[vertex_index] = mat4vert(mat, mesh.vertices[vertex_index]);
  }
  return result;
 }

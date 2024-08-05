@@ -583,109 +583,109 @@ F4_Index_SkipOpTokens(F4_Index_ParseCtx *ctx)
         }
         else if(token->kind != TokenBaseKind_Operator && paren_nest == 0)
         {
-            break;
-        }
-        F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
-    }
+   break;
+  }
+  F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
+ }
 }
 
 function b32
 F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...)
 {
-    b32 parsed = 1;
-    
-    F4_Index_ParseCtx ctx_restore = *ctx;
-    F4_Index_TokenSkipFlags flags = F4_Index_TokenSkipFlag_SkipWhitespace;
-    
-    va_list args;
-    va_start(args, fmt);
-    for(int i = 0; fmt[i];)
+ b32 parsed = 1;
+ 
+ F4_Index_ParseCtx ctx_restore = *ctx;
+ F4_Index_TokenSkipFlags flags = F4_Index_TokenSkipFlag_SkipWhitespace;
+ 
+ va_list args;
+ va_start(args, fmt);
+ for(int i = 0; fmt[i];)
+ {
+  if(fmt[i] == '%')
+  {
+   switch(fmt[i+1])
+   {
+    case 't':
     {
-        if(fmt[i] == '%')
-        {
-            switch(fmt[i+1])
-            {
-                case 't':
-                {
-                    char *cstring = va_arg(args, char *);
-                    String8 string = SCu8((u8 *)cstring, cstring_length(cstring));
-                    parsed = parsed && F4_Index_RequireToken(ctx, string, flags);
-                }break;
-                
-                case 'k':
-                {
-                    Token_Base_Kind kind = (Token_Base_Kind)va_arg(args, int);
-                    Token **output_token = va_arg(args, Token **);
-                    parsed = parsed && F4_Index_RequireTokenKind(ctx, kind, output_token, flags);
-                }break;
-                
-                case 'b':
-                {
-                    i16 kind = (i16)va_arg(args, int);
-                    Token **output_token = va_arg(args, Token **);
-                    parsed = parsed && F4_Index_RequireTokenSubKind(ctx, kind, output_token, flags);
-                }break;
-                
-                case 'n':
-                {
-                    F4_Index_NoteKind kind = (F4_Index_NoteKind)va_arg(args, int);
-                    F4_Index_Note **output_note = va_arg(args, F4_Index_Note **);
-                    Token *token = 0;
-                    parsed = parsed && F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &token, flags);
-                    parsed = parsed && !!token;
-                    if (parsed)
-                    {
-                        String8 token_string = F4_Index_StringFromToken(ctx, token);
-                        F4_Index_Note *note = F4_Index_LookupNote(token_string, 0);
-                        b32 kind_match = 0;
-                        for(F4_Index_Note *n = note; n; n = n->next)
-                        {
-                            if(n->kind == kind)
-                            {
-                                kind_match = 1;
-                                note = n;
-                                break;
-                            }
-                        }
-                        if (note && kind_match)
-                        {
-                            *output_note = note;
-                            parsed = 1;
-                        }
-                        else
-                        {
-                            parsed = 0;
-                        }
-                    }
-                }break;
-                
-                case 's':
-                {
-                    F4_Index_SkipSoftTokens(ctx, 0);
-                }break;
-                
-                case 'o':
-                {
-                    F4_Index_SkipOpTokens(ctx);
-                }break;
-                
-                default: break;
-            }
-            i += 1;
-        }
-        else
-        {
-            i += 1;
-        }
-    }
+     char *cstring = va_arg(args, char *);
+     String8 string = SCu8((u8 *)cstring, cstring_length(cstring));
+     parsed = parsed && F4_Index_RequireToken(ctx, string, flags);
+    }break;
     
-    va_end(args);
-    
-    if(parsed == 0)
+    case 'k':
     {
-        *ctx = ctx_restore;
-    }
-    return parsed;
+     Token_Base_Kind kind = (Token_Base_Kind)va_arg(args, int);
+     Token **output_token = va_arg(args, Token **);
+     parsed = parsed && F4_Index_RequireTokenKind(ctx, kind, output_token, flags);
+    }break;
+    
+    case 'b':
+    {
+     i16 kind = (i16)va_arg(args, int);
+     Token **output_token = va_arg(args, Token **);
+     parsed = parsed && F4_Index_RequireTokenSubKind(ctx, kind, output_token, flags);
+    }break;
+    
+    case 'n':
+    {
+     F4_Index_NoteKind kind = (F4_Index_NoteKind)va_arg(args, int);
+     F4_Index_Note **output_note = va_arg(args, F4_Index_Note **);
+     Token *token = 0;
+     parsed = parsed && F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &token, flags);
+     parsed = parsed && !!token;
+     if (parsed)
+     {
+      String8 token_string = F4_Index_StringFromToken(ctx, token);
+      F4_Index_Note *note = F4_Index_LookupNote(token_string, 0);
+      b32 kind_match = 0;
+      for(F4_Index_Note *n = note; n; n = n->next)
+      {
+       if(n->kind == kind)
+       {
+        kind_match = 1;
+        note = n;
+        break;
+       }
+      }
+      if (note && kind_match)
+      {
+       *output_note = note;
+       parsed = 1;
+      }
+      else
+      {
+       parsed = 0;
+      }
+     }
+    }break;
+    
+    case 's':
+    {
+     F4_Index_SkipSoftTokens(ctx, 0);
+    }break;
+    
+    case 'o':
+    {
+     F4_Index_SkipOpTokens(ctx);
+    }break;
+    
+    default: break;
+   }
+   i += 1;
+  }
+  else
+  {
+   i += 1;
+  }
+ }
+ 
+ va_end(args);
+ 
+ if(parsed == 0)
+ {
+  *ctx = ctx_restore;
+ }
+ return parsed;
 }
 
 function void

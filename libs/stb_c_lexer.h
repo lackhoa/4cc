@@ -79,11 +79,11 @@
 //  if both STB_C_LEX_SHIFTS & STB_C_LEX_ARITHEQ:
 //                      "<<=" CLEX_shleq    ">>=" CLEX_shreq
 
-#define STB_C_LEX_PARSE_SUFFIXES    N   // letters after numbers are parsed as part of those numbers, and must be in suffix list below
+#define STB_C_LEX_PARSE_SUFFIXES    Y   // letters after numbers are parsed as part of those numbers, and must be in suffix list below
 #define STB_C_LEX_DECIMAL_SUFFIXES  ""  // decimal integer suffixes e.g. "uUlL" -- these are returned as-is in string storage
 #define STB_C_LEX_HEX_SUFFIXES      ""  // e.g. "uUlL"
 #define STB_C_LEX_OCTAL_SUFFIXES    ""  // e.g. "uUlL"
-#define STB_C_LEX_FLOAT_SUFFIXES    ""  //
+#define STB_C_LEX_FLOAT_SUFFIXES    "f" //
 
 #define STB_C_LEX_0_IS_EOF             N  // if Y, ends parsing at '\0'; if N, returns '\0' as token
 #define STB_C_LEX_INTEGERS_AS_DOUBLES  N  // parses integers as doubles so they can be larger than 'int', but only if STB_C_LEX_STDLIB==N
@@ -336,7 +336,7 @@ static const char *stb__strchr(const char *str, int ch)
 static int stb__clex_parse_suffixes(stb_lexer *lexer, long tokenid, char *start, char *cur, const char *suffixes)
 {
 #ifdef STB__clex_parse_suffixes
- lexer->string = lexer->string_storage;
+ lexer->string_value = lexer->string_storage;
  lexer->string_len = 0;
  
  while ((*cur >= 'a' && *cur <= 'z') || (*cur >= 'A' && *cur <= 'Z')) {
@@ -344,7 +344,7 @@ static int stb__clex_parse_suffixes(stb_lexer *lexer, long tokenid, char *start,
    return stb__clex_token(lexer, CLEX_parse_error, start, cur);
   if (lexer->string_len+1 >= lexer->string_storage_len)
    return stb__clex_token(lexer, CLEX_parse_error, start, cur);
-  lexer->string[lexer->string_len++] = *cur++;
+  lexer->string_value[lexer->string_len++] = *cur++;
  }
 #else
  //  suffixes = suffixes; // attempt to suppress warnings

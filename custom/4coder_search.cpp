@@ -421,7 +421,7 @@ word_complete_list_extend_from_raw(App *app, Arena *arena, String_Match_List *ma
         String s = push_buffer_range(app, scratch, node->buffer, node->range);
         Table_Lookup lookup = table_lookup(used_table, s);
         if (!lookup.found_match){
-            String data = push_data_copy(arena, s);
+            String data = push_string_copy(arena, s);
             table_insert(used_table, data, 1);
             string_list_push(arena, list, data);
         }

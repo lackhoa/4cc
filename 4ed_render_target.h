@@ -1,5 +1,7 @@
 #pragma once
 
+#define WINDOW_COUNT 2
+
 struct Render_Free_Texture
 {
  Render_Free_Texture *next;
@@ -45,17 +47,17 @@ struct Render_Vertex_List
 struct Render_Config
 {
 #define RENDER_CONFIG_FIELDS \
-i1      viewport_id;\
-rect2    clip_box;       \
-b32      y_is_up;        \
-argb     background;     \
-mat4     view_transform; \
-mat4i    camera_transform; \
-v1       meter_to_pixel; \
-v1       focal_length;   \
-v1       near_clip;      \
-v1       far_clip;       \
-i1      scale_down_pow2;\
+i1      viewport_id;      \
+rect2   clip_box;         \
+b32     y_is_up;          \
+argb    background;       \
+mat4    view_transform;   \
+mat4i   camera_transform; \
+v1      meter_to_pixel;   \
+v1      focal_length;     \
+v1      near_clip;        \
+v1      far_clip;         \
+i1      scale_down_pow2;  \
  
  RENDER_CONFIG_FIELDS
 };
@@ -106,12 +108,13 @@ struct Render_Entry
  {
   Render_Entry_Poly   poly;
   Render_Entry_Image *image;
-  mat4                object_transform;  // NOTE: @speed we could just stick a pointer in here?
+  mat4                object_transform;
  };
 };
 
 struct Render_Group
 {
+ i32 window_id;
  Render_Group *next;
  
  i1 entry_count;
@@ -126,15 +129,26 @@ struct Render_Group
  };
 };
 
-force_inline b32 render_group_is_game(Render_Group *group)
+force_inline b32
+render_group_is_game(Render_Group *group)
 {
  return group->viewport_id != 0;
 }
 
+
+// NOTE(kv): Render targets correspond to windows,
+// since we have multiple windows now.
 struct Render_Target
 {
+ i1 window_id;
  i1 width;
  i1 height;
+};
+//
+struct Render_State
+{
+ Render_Target targets[WINDOW_COUNT];
+ 
  u32 texture_bound_at_unit0;
  Face_ID  face_id;
  
@@ -148,47 +162,21 @@ struct Render_Target
  
  void *font_set;
  u32 fallback_texture_id;
- 
- u32 current_prim_id;
 };
-
-force_inline Render_Config *
-target_last_config(Render_Target *target)
-{
- if (target->group_last) {return &target->group_last->config;}
- else {return 0;}
-}
-force_inline rect2
-draw_get_clip(Render_Target *target)
-{
- if (target->group_last)
- {
-  return target->group_last->clip_box;
- }
- else
- {
-  return {};
- }
-}
 
 #define draw_get_target_return Render_Target *
 #define draw_get_target_params App *app
-ED_API_FUNCTION(draw_get_target);
 
 #define draw__push_vertices_return void
 #define draw__push_vertices_params Render_Target *target, Render_Vertex *vertices, i1 count, Vertex_Type type
-ED_API_FUNCTION(draw__push_vertices);
 
 #define push_image_return void
 #define push_image_params Render_Target *target, char *filename, v3 o, v3 x, v3 y, argb color, u32 prim_id
-ED_API_FUNCTION(push_image);
 
 #define push_object_transform_to_target_return void
 #define push_object_transform_to_target_params Render_Target *target, mat4 const*transform
-ED_API_FUNCTION(push_object_transform_to_target);
 
 #define draw_configure_return void
 #define draw_configure_params Render_Target *target, Render_Config *config
-ED_API_FUNCTION(draw_configure);
 
 //~

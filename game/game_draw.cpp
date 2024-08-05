@@ -1,17 +1,8 @@
 //~NOTE: Absolutely abhorrent macros so we can get some reasonable UX
-#define linum_param     i32 linum = __builtin_LINE()
-#define set_linum       if (linum!=0) { painter.draw_prim_id = linum; }
 //~
 
 global u32 bs_cycle_counter;
 
-#define symx_off set_in_block(painter.symx, false)
-#define symx_on  set_in_block(painter.symx, true)
-#define viz_block_inner(color) \
-set_in_block(painter.line_params, viz_line_params(color));
-
-#define viz_block viz_block_inner(0)
-#define viz_block_color viz_block_inner
 
 
 struct Patch
@@ -54,16 +45,6 @@ get_vline(Patch const&pat, v1 v)
  return result;
 }
 
-force_inline b32 
-is_poly_enabled()
-{
- return (painter.painting_disabled == false);
-}
-
-force_inline b32 is_line_enabled()
-{
- return painter.painting_disabled == false;
-}
 
 internal mat4
 camera_view_matrix(Camera *camera, b32 orthographic)
@@ -110,17 +91,6 @@ camera_view_matrix(Camera *camera, b32 orthographic)
 }
 
 internal void
-draw_disk(v3 center, v1 radius,
-          argb color, v1 depth_offset, Poly_Flags flags, linum_param)
-{
- if ( is_poly_enabled() )
- {
-  set_linum;
-  draw_disk_inner(center, radius, color, depth_offset, flags);
- }
-}
-
-internal void
 fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
 {
  i32 nslices = BEZIER_POLY_NSLICE;
@@ -141,19 +111,6 @@ fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
   previous_worldP = worldP;
   previous_worldQ = worldQ;
  }
-}
-
-force_inline v3 
-negateX(v3 vert) 
-{
- return V3(-vert.x, vert.y, vert.z);
-}
-
-force_inline Bezier 
-negateX(Bezier line) 
-{
- for_i32(i,0,4) { line[i].x = -line[i].x; }
- return line;
 }
 
 internal void
@@ -179,73 +136,6 @@ bezier_poly3_inner(v3 A, v3 P[4],
   previous_worldP = worldP;
   previous_color  = color;
  }
-}
-
-inline v3
-camera_world_position(Camera *camera)
-{
- v3 result = mat4vert(camera->forward, V3());  //camera->distance * camera->z.xyz + camera->pan;
- return result;
-}
-
-internal v1
-get_curve_view_alignment(const v3 P[4])
-{
- TIMED_BLOCK(bs_cycle_counter);
- Painter *p = &painter;
- v3 A = P[0];
- v3 B = P[1];
- v3 C = P[2];
- v3 D = P[3];
- v3 normal = noz( cross(B-A, D-A) );  // NOTE: the normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
- v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
- v3 camera_obj = (get_object_transform().inv * camera_world_position(p->camera));  // TODO @speed
- v3 view_vector = noz(camera_obj - centroid);
- v1 visibility = absolute( dot(normal,view_vector) );
- return visibility;
-}
-
-// ;draw_bezier_painter
-internal b32
-draw(const v3 P0[4], Line_Params params, linum_param)
-{
- BEGIN_TIMED;
- set_linum;
- Painter *p = &painter;
- b32 ok = is_line_enabled();
- if (ok && (params.alignment_threshold > 0.f) && (!painter.is_viz))
- {
-  ok = get_curve_view_alignment(P0) > params.alignment_threshold;
- }
- 
- if (ok)
- {
-  b32 symx = p->symx && !(params.flags & Line_No_SymX);
-  
-  const i32 npoints = 4;
-  v3 points[npoints];
-  block_copy_array(points,P0);
-  
-  // NOTE: reflect
-  v3 reflects[npoints];
-  if (symx) { for_i32 (ipoint,0,npoints) { reflects[ipoint] = negateX(points[ipoint]); } }
-  
-  // NOTE: Processing parameters
-  if (p->disable_radii || (params.radii == v4{})) {
-   params.radii = p->line_params.radii;
-  }
-  if (params.nslice_per_meter <= 0.f) { params.nslice_per_meter = DEFAULT_NSLICE_PER_METER; }
-  params.radii *= p->line_radius_unit;
-  
-  END_TIMED(bs_cycle_counter);
-  draw_bezier_inner(points, &params);
-  if (symx) {
-   draw_bezier_inner(reflects, &params);
-  }
- }
- else { END_TIMED(bs_cycle_counter); }
- 
- return ok;
 }
 
 #define macro_control_points(p0,d0, d3,p3)  p0,p0+d0, p3+d3,p3
@@ -279,9 +169,9 @@ bez(v3 p0, v3 d0, v3 d3, v3 p3)
  return bez_raw(p0,p1,p2,p3);
 }
 
-// NOTE: parabola
+// NOTE: Parabola @deprecated since it's length adjusted
 internal Bezier
-bez(v3 p0, v3 d, v3 p3)
+bez_parabola_len(v3 p0, v3 d, v3 p3)
 {// NOTE: Next-gen parabola: length-dependent
  TIMED_BLOCK(bs_cycle_counter);
  v1 length = lengthof(p3-p0);
@@ -291,11 +181,15 @@ bez(v3 p0, v3 d, v3 p3)
  return bez_raw(p0,p1,p2,p3);
 }
 
-// NOTE: Line
-force_inline Bezier
-bez(v3 a, v3 b)
+// NOTE: Parabola (no length dependence)
+internal Bezier
+bez(v3 p0, v3 d, v3 p3)
 {
- return bez(a,V3(),V3(),b);
+ TIMED_BLOCK(bs_cycle_counter);
+ v3 q = 0.5f*(p0 + p3) + d;
+ v3 p1 = (p0 + 2.f*q) / 3.f;
+ v3 p2 = (2.f*q + p3) / 3.f;
+ return bez_raw(p0,p1,p2,p3);
 }
 
 // NOTE: Planar curve with unit vector guide
@@ -334,26 +228,8 @@ bez(v3 p0, Planar_Bezier data, v3 p3)
 }
 
 // NOTE: Planar curve (with v3 control point)
-internal Bezier
-bez(v3 p0, v3 d0, v2 d3, v3 p3)
-{
- TIMED_BLOCK(bs_cycle_counter);
- v3 w, p1;
- {
-  v3 u = p3 - p0;
-  p1 = (2.f*p0 + p3)/3.f + d0;
-  w = noz( cross(u,d0) );
- }
- v3 p2;
- {
-  v3 u = p3-p1;
-  v3 v = cross(w, u);  // NOTE: u and v has the same magnitude
-  p2 = 0.5f*(p1+p3) + (d3.x*u + d3.y*v);
- }
- return bez_raw(p0, p1, p2, p3);
-}
-
-// NOTE: Planar curve (with v3 control point) (length adjusted, which is wasteful, and for no reason?)
+// NOTE: Control point is length adjusted, which is wasteful.
+//       the shape of the curve is independent on the length, but so what?
 force_inline Bezier
 bezd_len(v3 p0, v3 d0, v2 d3, v3 p3)
 {
@@ -379,15 +255,14 @@ bezd_old(v3 p0, v3 d0, v2 d3, v3 p3)
  return bez_raw(p0, p1, p2, p3);
 }
 
-
+// NOTE: No length adjustment, non-planar
 internal Bezier 
 bez_c2(Bez const&ref, v3 d3, v3 p3)
 {
  TIMED_BLOCK(bs_cycle_counter);
  v3 p0 = ref.e[3];
- v1 len = lengthof(p3-p0);
  v3 p1 = p0 + (ref.e[3] - ref.e[2]);
- v3 p2 = 0.5f*(p3+p1) + len*d3;
+ v3 p2 = 0.5f*(p3+p1) + d3;
  return bez_raw(p0,p1,p2,p3);
 }
 
@@ -404,34 +279,6 @@ radii_c2(v4 ref, v2 d_p3)
  return V4(p0,p1,p2,p3);
 }
 
-//NOTE: radii in fractions
-force_inline void
-draw(Bezier b, v4 radii, linum_param)
-{
- Line_Params params = painter.line_params;
- params.radii = radii;
- draw(b, params, linum);
-}
-//NOTE radii in sixths
-force_inline void
-draw(Bezier b, i4 radii, linum_param)
-{
- Line_Params params = painter.line_params;
- params.radii = i2f6(radii);
- draw(b, params, linum);
-}
-// NOTE: omit params
-force_inline void
-draw(Bezier b, linum_param)
-{
- draw(b, painter.line_params, linum);
-}
-// NOTE: straight line
-force_inline void
-draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_param)
-{
- draw(bez(a,b), params, linum);
-}
 
 force_inline void
 draw_line(v3 a, v3 b, Line_Params in_params, linum_param)
@@ -505,9 +352,10 @@ fill3(v3 a, v3 b, v3 c,
   if (bc == 0) { bc = p->fill_color; }
   if (cc == 0) { cc = p->fill_color; }
   
-  fill3_inner(expand3(points), ac,bc,cc, p->fill_depth_offset, p->is_viz);
+  Poly_Flags flags = (p->viz_level) ? 1 : 0;
+  fill3_inner(expand3(points), ac,bc,cc, p->fill_depth_offset, flags);
   if (symx) {
-   fill3_inner(expand3(reflects), ac,bc,cc, p->fill_depth_offset, p->is_viz);
+   fill3_inner(expand3(reflects), ac,bc,cc, p->fill_depth_offset, flags);
   }
  }
 }
@@ -574,7 +422,7 @@ fill(v3 A, Bezier &bezier,
   // NOTE: Reflect
   
   // TODO: Something fishy with this flag vs painter logic
-  if (p->is_viz) { flags |= Poly_Viz; }
+  if (p->viz_level) { flags |= Poly_Viz; }
   
   bezier_poly3_inner(points[0], points+1, c0,c1,c2, p->fill_depth_offset, flags);
   if (symx) 
@@ -603,9 +451,9 @@ fill_dbez_inner(const v3 P[4], const v3 Q[4], argb color)
   v3 reflects[npoints];
   if (symx) { for_i32 (ipoint,0,npoints) { reflects[ipoint] = negateX(points[ipoint]); } }
   
-  fill_bezier_inner_2(points, points+4, color, p->fill_depth_offset, p->is_viz);
+  fill_bezier_inner_2(points, points+4, color, p->fill_depth_offset, p->viz_level);
   if (symx) { 
-   fill_bezier_inner_2(reflects, reflects+4, color, p->fill_depth_offset, p->is_viz);
+   fill_bezier_inner_2(reflects, reflects+4, color, p->fill_depth_offset, p->viz_level);
   }
  }
 }
@@ -643,7 +491,7 @@ fill_patch(const v3 P[4][4], argb color=0)
 {
  auto p = &painter;
  if (color == 0) { color = p->fill_color; }
- fill_patch_inner(P, color, p->fill_depth_offset, p->is_viz);
+ fill_patch_inner(P, color, p->fill_depth_offset, p->viz_level);
 }
 
 internal void
@@ -776,8 +624,5 @@ draw_image(char *filename, v3 o, v3 x, v3 y, v1 alpha=1.f, v3 color={1,1,1},
  argb argb_color = argb_pack( V4(color,alpha) );
  push_image(painter.target, filename,o,x,y,argb_color, linum);
 }
-
-#undef linum_param
-#undef set_linum
 
 //~EOF

@@ -90,59 +90,59 @@ text_layout_erase(Thread_Context *tctx, Models *models, Text_Layout_Container *c
 ////////////////////////////////
 
 internal void
-text_layout_render(Thread_Context *tctx, Models *models, Text_Layout *layout,
+text_layout_render(Thread_Context *tctx, Models *models,
+                   Text_Layout *layout,
                    ARGB_Color special_color, ARGB_Color ghost_color)
 {
-    Editing_File *file = imp_get_file(models, layout->buffer_id);
-    if (file != 0)
+ Editing_File *file = imp_get_file(models, layout->buffer_id);
+ if (file != 0)
+ {
+  Face *face = file_get_face(models, file);
+  f32 width = rect_width(layout->rect);
+  
+  Vec2_f32 delta = V2(1.f, 0.f);
+  
+  Vec2_f32 shift_p = layout->rect.p0 - layout->point.pixel_shift;
+  i64 first_index = layout->visible_range.first;
+  i64 line_number = layout->visible_line_number_range.min;
+  i64 line_number_last = layout->visible_line_number_range.max;
+  Layout_Function *layout_func = layout->layout_func;
+  for (;
+       line_number <= line_number_last; 
+       line_number += 1)
+  {
+   Layout_Item_List line = file_get_line_layout(tctx, models, file,
+                                                layout_func, width, face,
+                                                line_number);
+   for (Layout_Item_Block *block = line.first;
+        block != 0;
+        block = block->next)
+   {
+    Layout_Item *item = block->items;
+    i64 count = block->item_count;
+    ARGB_Color *item_colors = layout->item_colors;
+    for (i1 i = 0; i < count; i += 1, item += 1)
     {
-        Render_Target *target = models->target;
-        Face *face = file_get_face(models, file);
-        f32 width = rect_width(layout->rect);
-        
-        Vec2_f32 delta = V2(1.f, 0.f);
-        
-        Vec2_f32 shift_p = layout->rect.p0 - layout->point.pixel_shift;
-        i64 first_index = layout->visible_range.first;
-        i64 line_number = layout->visible_line_number_range.min;
-        i64 line_number_last = layout->visible_line_number_range.max;
-        Layout_Function *layout_func = layout->layout_func;
-        for (;
-             line_number <= line_number_last; 
-             line_number += 1)
-        {
-            Layout_Item_List line = file_get_line_layout(tctx, models, file,
-                                                         layout_func, width, face,
-                                                         line_number);
-            for (Layout_Item_Block *block = line.first;
-                 block != 0;
-                 block = block->next)
-            {
-                Layout_Item *item = block->items;
-                i64 count = block->item_count;
-                ARGB_Color *item_colors = layout->item_colors;
-                for (i1 i = 0; i < count; i += 1, item += 1)
-                {
-                    if (item->codepoint != 0)
-                    {
-                        ARGB_Color color = 0;
-                        if (HasFlag(item->flags, LayoutItemFlag_Special_Character)){
-                            color = special_color;
-                        }
-                        else if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
-                            color = ghost_color;
-                        }
-                        else{
-                            color = item_colors[item->index - first_index];
-                        }
-                        Vec2_f32 p = item->rect.p0 + shift_p;
-                        draw_font_glyph(target, face, item->codepoint, p, color, GlyphFlag_None, delta);
-                    }
-                }
-            }
-            shift_p.y += line.height;
-        }
+     if (item->codepoint != 0)
+     {
+      ARGB_Color color = 0;
+      if (HasFlag(item->flags, LayoutItemFlag_Special_Character)){
+       color = special_color;
+      }
+      else if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
+       color = ghost_color;
+      }
+      else{
+       color = item_colors[item->index - first_index];
+      }
+      Vec2_f32 p = item->rect.p0 + shift_p;
+      draw_font_glyph(get_render_target(0), face, item->codepoint, p, color, GlyphFlag_None, delta);
+     }
     }
+   }
+   shift_p.y += line.height;
+  }
+ }
 }
 
 // BOTTOM

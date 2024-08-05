@@ -78,10 +78,13 @@ startup_hot_directory = "~/4ed/code";
 game_buffer = "*game*";
 game_file   = "C:/Users/vodan/4ed/code/game/game.cpp";
 //
-startup_file1 = "*game2*";
-startup_file2 = "*game3*";
-startup_file3 = game_buffer;
-startup_file4 = game_file;
+//startup_file1 = "*game2*";
+//startup_file2 = "*game3*";
+//startup_file3 = game_buffer;
+//startup_file4 = game_file;
+
+startup_file1 = game_buffer;
+startup_file2 = game_file;
 
 DEBUG_draw_hud_p = true;
 dev_double_panel = true;

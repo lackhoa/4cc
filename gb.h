@@ -260,7 +260,7 @@ EXTERN_C_BEGIN
 
 
 
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 #if defined(GB_SYSTEM_WINDOWS)
 	#if !defined(GB_NO_WINDOWS_H)
 		#define NOMINMAX            1
@@ -752,7 +752,7 @@ GB_DEF void gb_assert_handler(char const *prefix, char const *condition, char co
 
 
 
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 ////////////////////////////////////////////////////////////////
 //
 // Memory
@@ -814,7 +814,7 @@ GB_DEF void const *gb_memrchr   (void const *data, u8 byte_value, isize size);
 #endif
 
 
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 
 GB_DEF u64  gb_rdtsc       (void);
 GB_DEF f64  gb_time_now    (void); // NOTE(bill): This is only for relative time e.g. game loops
@@ -920,21 +920,6 @@ GB_DEF void gb_mutex_destroy (gbMutex *m);
 GB_DEF void gb_mutex_lock    (gbMutex *m);
 GB_DEF b32  gb_mutex_try_lock(gbMutex *m);
 GB_DEF void gb_mutex_unlock  (gbMutex *m);
-
-// NOTE(bill): If you wanted a Scoped Mutex in C++, why not use the defer() construct?
-// No need for a silly wrapper class and it's clear!
-#if 0
-gbMutex m = {0};
-gb_mutex_init(&m);
-{
-	gb_mutex_lock(&m);
-	defer (gb_mutex_unlock(&m));
-
-	// Do whatever as the mutex is now scoped based!
-}
-#endif
-
-
 
 #define GB_THREAD_PROC(name) isize name(struct gbThread *thread)
 typedef GB_THREAD_PROC(gbThreadProc);
@@ -1086,7 +1071,7 @@ typedef enum gbAllocatorFlag {
 #define GB_DEFAULT_ALLOCATOR_FLAGS (gbAllocatorFlag_ClearToZero)
 #endif
 
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 GB_DEF void *gb_alloc_align (gbAllocator a, isize size, isize alignment);
 GB_DEF void *gb_alloc       (gbAllocator a, isize size);
 GB_DEF void  gb_free        (gbAllocator a, void *ptr);
@@ -1594,7 +1579,7 @@ EXTERN_C_END
 EXTERN_C_BEGIN
 #endif
 
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 GB_ALLOCATOR_PROC(gb_heap_allocator_proc) {
 	void *ptr = NULL;
 	gb_unused(allocator_data);
@@ -1679,7 +1664,7 @@ GB_ALLOCATOR_PROC(gb_heap_allocator_proc) {
 #define GB__HIGHS       (GB__ONES * (U8_MAX/2+1))
 #define GB__HAS_ZERO(x) ((x)-GB__ONES & ~(x) & GB__HIGHS)
 
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 b32 gb_is_power_of_two(isize x) {
 	if (x <= 0)
 		return false;
@@ -1991,7 +1976,7 @@ gb_inline void *gb_default_resize_align(gbAllocator a, void *old_memory, isize o
 
 
 
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 ////////////////////////////////////////////////////////////////
 //
 // Time
@@ -2131,7 +2116,7 @@ gb_inline void gb_sleep_ms(u32 ms) {
 
 
 
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 gb_inline char gb_char_to_lower(char c) {
 	if (c >= 'A' && c <= 'Z')
 		return 'a' + (c - 'A');

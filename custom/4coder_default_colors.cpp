@@ -145,7 +145,7 @@ get_color_table_by_name(String name)
 
 ////////////////////////////////////////
 
-#if !AD_IS_COMPILING_GAME
+#if !AD_IS_GAME
 function Color_Table
 make_color_table(App *app, Arena *arena)
 {

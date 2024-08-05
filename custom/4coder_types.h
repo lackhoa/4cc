@@ -81,8 +81,33 @@ struct Frame_Info{
  v1  work_seconds;
 };
 
+enum{
+ Access_Always = 0,
+ Access_ReadWrite = Access_Write|Access_Read,
+ Access_ReadVisible = Access_Read|Access_Visible,
+ Access_ReadWriteVisible = Access_Write|Access_Read|Access_Visible,
+};
 
-#if !AD_IS_COMPILING_GAME
+api(custom)
+typedef i1 Buffer_Seek_Type;
+enum
+{
+ buffer_seek_pos,
+ buffer_seek_line_col,
+};
+
+api(custom)
+struct Buffer_Seek
+{
+ Buffer_Seek_Type type;
+ union
+ {
+  struct { i64 pos; };
+  struct { i64 line; i64 col; };
+ };
+};
+
+#if !AD_IS_GAME
 api(custom)
 struct Face_Metrics{
     f32 text_height;
@@ -321,13 +346,6 @@ enum{
     BufferReopenResult_Failed = 1,
 };
 
-enum{
-    Access_Always = 0,
-    Access_ReadWrite = Access_Write|Access_Read,
-    Access_ReadVisible = Access_Read|Access_Visible,
-    Access_ReadWriteVisible = Access_Write|Access_Read|Access_Visible,
-};
-
 api(custom)
 typedef i1 Dirty_State;
 enum{
@@ -412,25 +430,6 @@ struct Basic_Scroll
 {
     Vec2_f32 position;
     Vec2_f32 target;
-};
-
-api(custom)
-typedef i1 Buffer_Seek_Type;
-enum
-{
-    buffer_seek_pos,
-    buffer_seek_line_col,
-};
-
-api(custom)
-struct Buffer_Seek
-{
-    Buffer_Seek_Type type;
-    union
-    {
-        struct { i64 pos; };
-        struct { i64 line; i64 col; };
-    };
 };
 
 api(custom)

@@ -165,25 +165,21 @@ startup_panels_and_files(App *app)
  String file4 = def_get_config_string(scratch, FILE_VAR "4");
 #undef FILE_VAR
  
+ b32 dev_single_panel = false;
 #if KV_INTERNAL
  if ( def_get_config_b32(vars_intern_lit("dev_single_panel")) )
  {
-  View_ID view4 = get_active_view(app, Access_Always);
-  Buffer_ID buffer4 = create_buffer(app, file4, 0);
-  view_set_buffer(app, view4, buffer4, 0);
+  dev_single_panel = true;
  }
- else if ( def_get_config_b32(vars_intern_lit("dev_double_panel")) )
+#endif
+ 
+ if ( dev_single_panel )
  {
-  View_ID view3 = get_active_view(app, Access_Always);
-  Buffer_ID buffer3 = create_buffer(app, file3, 0);
-  view_set_buffer(app, view3, buffer3, 0);
-  
-  open_panel_vsplit(app);
   View_ID view4 = get_active_view(app, Access_Always);
   Buffer_ID buffer4 = create_buffer(app, file4, 0);
   view_set_buffer(app, view4, buffer4, 0);
  }
-#else
+ else
  {
   View_ID view1 = get_active_view(app, Access_Always);
   {// NOTE: 1
@@ -191,21 +187,12 @@ startup_panels_and_files(App *app)
    view_set_buffer(app, view1, buffer1, 0);
   }
   
-  View_ID view3;
-  {// NOTE: 3
-   view_set_active(app, view1);
-   open_panel_vsplit(app);
-   view3 = get_active_view(app, Access_Always);
-   Buffer_ID buffer3 = create_buffer(app, file3, 0);
-   view_set_buffer(app, view3, buffer3, 0);
-  }
-  
   // NOTE(kv): Bottom view
   Buffer_Identifier comp = buffer_identifier(compilation_buffer_name);
   Buffer_ID comp_id = buffer_identifier_to_id(app, comp);
   View_ID bottom_view = 0;
   {
-   bottom_view = open_view(app, view3, ViewSplit_Bottom);
+   bottom_view = open_view(app, view1, ViewSplit_Bottom);
    new_view_settings(app, bottom_view);
    Buffer_ID buffer = view_get_buffer(app, bottom_view, Access_Always);
    Face_ID face_id = get_face_id(app, buffer);
@@ -223,17 +210,7 @@ startup_panels_and_files(App *app)
    Buffer_ID buffer2 = create_buffer(app, file2, 0);
    view_set_buffer(app, view2, buffer2, 0);
   }
-  
-  {// NOTE: 4
-   view_set_active(app, view3);
-   open_panel_vsplit(app);
-   View_ID view4    = get_active_view(app, Access_Always);
-   Buffer_ID buffer4 = create_buffer(app, file4, 0);
-   view_set_buffer(app, view4, buffer4, 0);
-   view_set_active(app, view4);
-  }
  }
-#endif
 }
 
 internal void
@@ -348,36 +325,38 @@ kv_startup(App *app)
     startup_panels_and_files(app);
     
     initialize_stylist_fonts(app);
-    
+ 
 #if KV_INTERNAL
-    global_game_on_readonly = true;
+ global_game_on_readonly = true;
 #endif
 }
 
 function void 
 kvInitQuailTable(App *app)
 {
-    arrsetcap(kv_quail_table, 64);
-    
+ arrsetcap(kv_quail_table, 64);
+ 
 #define QUAIL_DEFRULE(KEY, VALUE) kv_quail_defrule(app, KEY, VALUE, strlen(KEY)-1, 0, strlen(VALUE))
-    
-    QUAIL_DEFRULE(",,", "_");
-    //
-    QUAIL_DEFRULE(",.", "->");
-    QUAIL_DEFRULE(",..", "<>");
-    //
-    kv_quail_defrule(app, "99", "()", 1,0,1);
-    //
-    kv_quail_defrule(app, "[", "[]", 0,0,1);
-    // {
-    kv_quail_defrule(app, "[[", "{}", 1,1,1);
-    QUAIL_DEFRULE("]]", "}");
-    //
-    kv_quail_defrule(app, "''", "\"\"", 1,0,1);
-    QUAIL_DEFRULE("leq", "<=");
-    QUAIL_DEFRULE("geq", ">=");
-    QUAIL_DEFRULE("neq", "!=");
-    
+ 
+ QUAIL_DEFRULE(",,", "_");
+ kv_quail_defrule(app, ",,,", "__", 1,0,2);
+ 
+ //
+ QUAIL_DEFRULE(",.", "->");
+ kv_quail_defrule(app, ",.,", "<>", 2,0,1);
+ //
+ kv_quail_defrule(app, "99", "()", 1,0,1);
+ //
+ kv_quail_defrule(app, "[", "[]", 0,0,1);
+ // {
+ kv_quail_defrule(app, "[[", "{}", 1,1,1);
+ QUAIL_DEFRULE("]]", "}");
+ //
+ kv_quail_defrule(app, "''", "\"\"", 1,0,1);
+ QUAIL_DEFRULE("leq", "<=");
+ QUAIL_DEFRULE("geq", ">=");
+ QUAIL_DEFRULE("neq", "!=");
+ 
 #undef QUAIL_DEFRULE
 }
 
@@ -546,8 +525,6 @@ kv_vim_bindings(App *app)
  BIND(N|V|MAP, vim_leader_C, SUB_Leader,  (S|Key_Code_C));
  
  // Language support
- BIND(N|MAP,    vim_goto_definition,                 Key_Code_F1);
- BIND(N|MAP,    vim_goto_definition_other_panel,   M|Key_Code_F1);
  BIND(N|0|MAP,  kv_list_all_locations,               Key_Code_S);
  //
  // sexpr movement

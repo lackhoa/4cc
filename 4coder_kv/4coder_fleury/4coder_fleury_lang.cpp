@@ -19,14 +19,16 @@ F4_LanguageFromString(String name)
             if(l->hash == hash && string_match(l->name, name))
             {
                 result = l;
-                break;
-            }
-        }
-    }
-    return result;
+    break;
+   }
+  }
+ }
+ return result;
 }
 
-#define F4_RegisterLanguage(name, IndexFile, LexInit, LexFullInput, PosContext, Highlight, lex_state_type) _F4_RegisterLanguage(name, IndexFile, (F4_Language_LexInit *)LexInit, (F4_Language_LexFullInput *)LexFullInput, (F4_Language_PosContext *)PosContext, (F4_Language_Highlight *)Highlight, sizeof(lex_state_type))
+#define F4_RegisterLanguage(name, IndexFile, LexInit, LexFullInput, PosContext, Highlight, lex_state_type) \
+_F4_RegisterLanguage(name, IndexFile, (F4_Language_LexInit *)LexInit, (F4_Language_LexFullInput *)LexFullInput, \
+(F4_Language_PosContext *)PosContext, (F4_Language_Highlight *)Highlight, sizeof(lex_state_type))
 
 internal void
 _F4_RegisterLanguage(String name,

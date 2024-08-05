@@ -134,15 +134,16 @@ struct Models{
     Panel *prev_mouse_panel;
     b32 animated_last_frame;
     u64 last_render_usecond_stamp;
-    
-    // Event Context
-    Application_Step_Input *input;
-    i64 current_input_sequence_number;
-    User_Input current_input;
-    b8 current_input_unhandled;
-    
-    b8 in_render_mode;
-    Render_Target *target;
+ 
+ // Event Context
+ Application_Step_Input *input;
+ i64 current_input_sequence_number;
+ User_Input current_input;
+ b8 current_input_unhandled;
+ 
+ b8 in_render_mode;
+ 
+ Render_Target *target;
 };
 
 ////////////////////////////////

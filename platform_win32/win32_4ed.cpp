@@ -51,6 +51,7 @@
 #undef function
 #define UNICODE
 #include <Windows.h>
+#include <windowsx.h>  // NOTE(kv): needed to get mouse location
 #include "timeapi.h"
 #define function static
 
@@ -141,79 +142,81 @@ struct Win32_Object{
         } timer;
         struct{
             HANDLE thread;
-            Thread_Function *proc;
-            void *ptr;
-        } thread;
-        CRITICAL_SECTION mutex;
-        CONDITION_VARIABLE cv;
-    };
+   Thread_Function *proc;
+   void *ptr;
+  } thread;
+  CRITICAL_SECTION mutex;
+  CONDITION_VARIABLE cv;
+ };
 };
 
-struct Win32_Vars{
-    Thread_Context *tctx;
-    
-    Arena frame_arena;
-    Input_Event *active_key_stroke;
-    Input_Event *active_text_input;
-    Win32_Input_Chunk input_chunk;
-    b8 lctrl_lalt_is_altgr;
-    b8 got_useful_event;
-    
-    Key_Mode key_mode;
-    HKL kl_universal;
-    
-    b8 full_screen;
-    b8 do_toggle;
-    WINDOWPLACEMENT bordered_win_pos;
-    b32 send_exit_signal;
-    
-    HCURSOR cursor_ibeam;
-    HCURSOR cursor_arrow;
-    HCURSOR cursor_leftright;
-    HCURSOR cursor_updown;
-    i32 cursor_show;
-    i32 prev_cursor_show;
-    
-    String binary_path;
-    
-    b8 clip_catch_all;
-    // b8 next_clipboard_is_self;
-    DWORD clipboard_sequence;
-    Plat_Handle clip_wakeup_timer;
-    
-    Arena clip_post_arena;
-    String clip_post;
-    
-    HWND window_handle;
-    f32 screen_scale_factor;
-    
-    DWORD audio_thread_id;
-    
-    void *volatile audio_mix_ctx;
-    Audio_Mix_Sources_Function *volatile audio_mix_sources;
-    Audio_Mix_Destination_Function *volatile audio_mix_destination;
-    
-    f64 usecond_per_count;
-    b32 first;
-    i32 running_cli;
-    
-    Node free_win32_objects;
-    Node timer_objects;
-    UINT_PTR timer_counter;
-    
-    CRITICAL_SECTION thread_launch_mutex;
-    CONDITION_VARIABLE thread_launch_cv;
-    b32 waiting_for_launch;
-    
-    System_Mutex global_frame_mutex;
-    
-    Log_Function *log_string;
+struct Win32_Vars
+{
+ Thread_Context *tctx;
+ 
+ Arena frame_arena;
+ Input_Event *active_key_stroke;
+ Input_Event *active_text_input;
+ Win32_Input_Chunk input_chunk;
+ b8 lctrl_lalt_is_altgr;
+ b8 got_useful_event;
+ 
+ Key_Mode key_mode;
+ HKL kl_universal;
+ 
+ b8 full_screen;
+ b8 do_toggle;
+ WINDOWPLACEMENT bordered_win_pos;
+ b32 send_exit_signal;
+ 
+ HCURSOR cursor_ibeam;
+ HCURSOR cursor_arrow;
+ HCURSOR cursor_leftright;
+ HCURSOR cursor_updown;
+ i32 cursor_show;
+ i32 prev_cursor_show;
+ 
+ String binary_path;
+ 
+ b8 clip_catch_all;
+ // b8 next_clipboard_is_self;
+ DWORD clipboard_sequence;
+ Plat_Handle clip_wakeup_timer;
+ 
+ Arena clip_post_arena;
+ String clip_post;
+ 
+ HWND window_handle[WINDOW_COUNT];
+ HDC device_contexts[WINDOW_COUNT];  // NOTE(kv): We don't have too many windows, so just keep the DC.
+ HGLRC opengl_context;
+ f32 screen_scale_factor;
+ 
+ DWORD audio_thread_id;
+ 
+ void *volatile audio_mix_ctx;
+ Audio_Mix_Sources_Function *volatile audio_mix_sources;
+ Audio_Mix_Destination_Function *volatile audio_mix_destination;
+ 
+ f64 usecond_per_count;
+ b32 first;
+ i32 running_cli;
+ 
+ Node free_win32_objects;
+ Node timer_objects;
+ UINT_PTR timer_counter;
+ 
+ CRITICAL_SECTION thread_launch_mutex;
+ CONDITION_VARIABLE thread_launch_cv;
+ b32 waiting_for_launch;
+ 
+ System_Mutex global_frame_mutex;
+ 
+ Log_Function *log_string;
 };
 
 ////////////////////////////////
 
 global Win32_Vars win32vars;
-global Render_Target render_target;
 
 ////////////////////////////////
 
@@ -305,22 +308,23 @@ system_release_library(SYSTEM_RELEASE_LIBRARY_PARAMS)
 internal SYSTEM_GET_PROC_RETURN
 system_get_proc(SYSTEM_GET_PROC_PARAMS)
 {
-    HMODULE lib = (HMODULE)handle_type(handle);
-    return((Void_Func*)(GetProcAddress(lib, proc_name)));
+ HMODULE lib = (HMODULE)handle_type(handle);
+ return((Void_Func*)(GetProcAddress(lib, proc_name)));
 }
 
 ////////////////////////////////
 
 internal void
-system_schedule_step(u32 code){
-    PostMessage(win32vars.window_handle, WM_4coder_ANIMATE, code, 0);
+system_schedule_step(u32 code)
+{
+    PostMessage(win32vars.window_handle[0], WM_4coder_ANIMATE, code, 0);
 }
 
 ////////////////////////////////
 
 internal void
 win32_toggle_fullscreen(){
-    HWND win = win32vars.window_handle;
+    HWND win = win32vars.window_handle[0];
     DWORD style = GetWindowLongW(win, GWL_STYLE);
     b32 is_full = ((style & WS_OVERLAPPEDWINDOW) == 0);
     if (!is_full){
@@ -389,7 +393,7 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
     
     String8 result = {};
     
-    if (OpenClipboard(win32vars.window_handle))
+    if (OpenClipboard(win32vars.window_handle[0]))
     {
         b32 got_result = false;
         if (!got_result)
@@ -429,7 +433,7 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
 internal void
 win32_post_clipboard(Arena *scratch, char *text, i32 len)
 {
-    if ( OpenClipboard(win32vars.window_handle) )
+    if ( OpenClipboard(win32vars.window_handle[0]) )
     {
         if (!EmptyClipboard())
         {
@@ -808,56 +812,56 @@ win32_keycode_init(void){
     keycode_lookup_table[VK_NUMPAD6] = Key_Code_NumPad6;
     keycode_lookup_table[VK_NUMPAD7] = Key_Code_NumPad7;
     keycode_lookup_table[VK_NUMPAD8] = Key_Code_NumPad8;
-    keycode_lookup_table[VK_NUMPAD9] = Key_Code_NumPad9;
-    
-    for (i32 i = 0xDF; i < 0xFF; i += 1){
-        keycode_lookup_table[i] = (Key_Code)((u32)Key_Code_Ex0 + 1);
-    }
+ keycode_lookup_table[VK_NUMPAD9] = Key_Code_NumPad9;
+ 
+ for (i32 i = 0xDF; i < 0xFF; i += 1){
+  keycode_lookup_table[i] = (Key_Code)((u32)Key_Code_Ex0 + 1);
+ }
 }
 
 internal b32
-keycode_physical_translaion_is_wrong(u64 vk){
-    b32 result = false;
-    switch (vk){
-        case VK_UP: case VK_DOWN: case VK_LEFT: case VK_RIGHT:
-        case VK_DELETE:
-        case VK_INSERT:
-        case VK_HOME:
-        case VK_END:
-        case VK_PRIOR:
-        case VK_NEXT:
-        case VK_NUMPAD0:
-        case VK_NUMPAD1:
-        case VK_NUMPAD2:
-        case VK_NUMPAD3:
-        case VK_NUMPAD4:
-        case VK_NUMPAD5:
-        case VK_NUMPAD6:
-        case VK_NUMPAD7:
-        case VK_NUMPAD8:
-        case VK_NUMPAD9:
-        case VK_MULTIPLY:
-        case VK_ADD     :
-        case VK_SUBTRACT:
-        case VK_DECIMAL :
-        case VK_DIVIDE  :
-        {
-            result = true;
-        }break;
-        
-    }
-    return(result);
+keycode_physical_translaion_is_wrong(u64 vk)
+{
+ b32 result = false;
+ switch (vk){
+  case VK_UP: case VK_DOWN: case VK_LEFT: case VK_RIGHT:
+  case VK_DELETE:
+  case VK_INSERT:
+  case VK_HOME:
+  case VK_END:
+  case VK_PRIOR:
+  case VK_NEXT:
+  case VK_NUMPAD0:
+  case VK_NUMPAD1:
+  case VK_NUMPAD2:
+  case VK_NUMPAD3:
+  case VK_NUMPAD4:
+  case VK_NUMPAD5:
+  case VK_NUMPAD6:
+  case VK_NUMPAD7:
+  case VK_NUMPAD8:
+  case VK_NUMPAD9:
+  case VK_MULTIPLY:
+  case VK_ADD     :
+  case VK_SUBTRACT:
+  case VK_DECIMAL :
+  case VK_DIVIDE  :
+  {
+   result = true;
+  }break;
+  
+ }
+ return(result);
 }
 
 internal void
-win32_resize_render_target(i32 width, i32 height)
+win32_resize_render_target(Render_Target *target, i32 width, i32 height)
 {
-    if (width > 0 && height > 0)
-    {
-        Render_Target *t = &render_target;
-        t->width  = width;
-        t->height = height;
-    }
+ if (width > 0 && height > 0)
+ {
+  target->width  = width;
+  target->height = height;
+ }
 }
 
 internal void
@@ -1005,7 +1009,7 @@ internal
 system_wake_up_timer_release_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(handle);
     if (object->kind == Win32ObjectKind_Timer){
-        KillTimer(win32vars.window_handle, object->timer.id);
+        KillTimer(win32vars.window_handle[0], object->timer.id);
         win32_free_object(object);
     }
 }
@@ -1014,7 +1018,7 @@ internal
 system_wake_up_timer_set_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(handle);
     if (object->kind == Win32ObjectKind_Timer){
-        object->timer.id = SetTimer(win32vars.window_handle, object->timer.id, time_milliseconds, 0);
+        object->timer.id = SetTimer(win32vars.window_handle[0], object->timer.id, time_milliseconds, 0);
     }
 }
 
@@ -1163,325 +1167,331 @@ system_condition_variable_signal_sig(){
 
 internal
 system_condition_variable_free_sig(){
-    Win32_Object *object = (Win32_Object*)handle_type_ptr(cv);
-    if (object->kind == Win32ObjectKind_CV){
-        win32_free_object(object);
-    }
+ Win32_Object *object = (Win32_Object*)handle_type_ptr(cv);
+ if (object->kind == Win32ObjectKind_CV){
+  win32_free_object(object);
+ }
 }
 
 ////////////////////////////////
 
-internal LRESULT CALL_CONVENTION
+
+
+// NOTE: This is WndProc
+internal LRESULT CALLBACK
 win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    LRESULT result = 0;
-    Scratch_Block scratch(win32vars.tctx);
-    
-    switch (uMsg)
+ LRESULT result = 0;
+ Scratch_Block scratch(win32vars.tctx);
+ 
+ i32 window_index = 0;
+ for_i32(index,0,WINDOW_COUNT)
+ {
+  if (hwnd == win32vars.window_handle[index])
+  {
+   window_index = index;
+   break;
+  }
+ }
+ b32 is_main_window =   window_index == 0;
+ 
+ switch (uMsg)
+ {
+  case WM_MENUCHAR:
+  {
+   result = (MNC_CLOSE << 16);
+  }break;
+  
+  case WM_SYSKEYDOWN:
+  case WM_SYSKEYUP:
+  case WM_KEYDOWN:
+  case WM_KEYUP:
+  {
+   b8 release = HasFlag(lParam, bit_32);
+   b8 down = !release;
+   b8 is_right = HasFlag(lParam, bit_25);
+   
+   u64 vk = wParam;
+   
+   if (win32vars.key_mode == Key_Mode_Physical &&
+       !keycode_physical_translaion_is_wrong(vk)){
+    UINT scan_code = ((lParam >> 16) & bitmask_8);
+    vk = MapVirtualKeyEx(scan_code, MAPVK_VSC_TO_VK_EX, win32vars.kl_universal);
+   }
+   
+   Input_Modifier_Set_Fixed *mods = &win32vars.input_chunk.pers.modifiers;
+   
+   Control_Keys *controls = &win32vars.input_chunk.pers.controls;
+   switch (vk)
+   {
+    case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
+    case VK_MENU:case VK_LMENU:case VK_RMENU:
     {
-        case WM_MENUCHAR:
-        {
-            result = (MNC_CLOSE << 16);
-        }break;
-        
-        case WM_SYSKEYDOWN:
-        case WM_SYSKEYUP:
-        case WM_KEYDOWN:
-        case WM_KEYUP:
-        {
-            b8 release = HasFlag(lParam, bit_32);
-            b8 down = !release;
-            b8 is_right = HasFlag(lParam, bit_25);
-            
-            u64 vk = wParam;
-            
-            if (win32vars.key_mode == Key_Mode_Physical &&
-                !keycode_physical_translaion_is_wrong(vk)){
-                UINT scan_code = ((lParam >> 16) & bitmask_8);
-                vk = MapVirtualKeyEx(scan_code, MAPVK_VSC_TO_VK_EX, win32vars.kl_universal);
-            }
-            
-            Input_Modifier_Set_Fixed *mods = &win32vars.input_chunk.pers.modifiers;
-            
-            Control_Keys *controls = &win32vars.input_chunk.pers.controls;
-            switch (vk)
-            {
-                case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
-                case VK_MENU:case VK_LMENU:case VK_RMENU:
-                {
-                    switch (vk){
-                        case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
-                        {
-                            if (is_right){
-                                controls->r_ctrl = down;
-                            }
-                            else{
-                                controls->l_ctrl = down;
-                            }
-                        }break;
-                        case VK_MENU:case VK_LMENU:case VK_RMENU:
-                        {
-                            if (is_right){
-                                controls->r_alt = down;
-                            }
-                            else{
-                                controls->l_alt = down;
-                            }
-                        }break;
-                    }
-                }break;
-            }
+     switch (vk){
+      case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
+      {
+       if (is_right){
+        controls->r_ctrl = down;
+       }
+       else{
+        controls->l_ctrl = down;
+       }
+      }break;
+      case VK_MENU:case VK_LMENU:case VK_RMENU:
+      {
+       if (is_right){
+        controls->r_alt = down;
+       }
+       else{
+        controls->l_alt = down;
+       }
+      }break;
+     }
+    }break;
+   }
 			
-            b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
-            b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
-            if (win32vars.lctrl_lalt_is_altgr && controls->l_alt && controls->l_ctrl){
-                ctrl = false;
-                alt = false;
-            }
-            set_modifier(mods, Key_Code_Control, ctrl);
-            set_modifier(mods, Key_Code_Alt, alt);
-            
-            {
-                b8 shift = ((GetKeyState(VK_SHIFT) & bit_16) != 0);
-                set_modifier(mods, Key_Code_Shift, shift);
-            }
-            
-            Key_Code key = keycode_lookup_table[(u8)vk];
-            if (down){
-                if (key != 0){
-                    add_modifier(mods, key);
-                    
-                    Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
-                    event->kind = InputEventKind_KeyStroke;
-                    event->key.code = key;
-                    event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
-                    win32vars.active_key_stroke = event;
-                    
-                    win32vars.got_useful_event = true;
-                }
-            }
-            else{
-                win32vars.active_key_stroke = 0;
-                win32vars.active_text_input = 0;
-                win32vars.got_useful_event = true;
-                
-                if (key != 0){
-                    Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
-                    event->kind = InputEventKind_KeyRelease;
-                    event->key.code = key;
-                    event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
-                    
-                    remove_modifier(mods, key);
-                }
-            }
-        }break;
-        
-        case WM_CHAR:
-        {
-            u16 c = wParam & bitmask_16;
-            if (c == '\r'){
-                c = '\n';
-            }
-            if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
-                String_Const_u16 str_16 = SCu16(&c, 1);
-                String str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16, StringFill_NullTerminate).string;
-                Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
-                event->kind = InputEventKind_TextInsert;
-                event->text.string = str_8;
-                event->text.next_text = 0;
-                event->text.blocked = false;
-                if (win32vars.active_text_input != 0){
-                    win32vars.active_text_input->text.next_text = event;
-                }
-                else if (win32vars.active_key_stroke != 0){
-                    win32vars.active_key_stroke->key.first_dependent_text = event;
-                }
-                win32vars.active_text_input = event;
-                
-                win32vars.got_useful_event = true;
-            }
-        }break;
-        
-        case WM_DEADCHAR:
-        {
-            if (win32vars.active_key_stroke != 0){
-                AddFlag(win32vars.active_key_stroke->key.flags, KeyFlag_IsDeadKey);
-            }
-        }break;
-        
-        case WM_UNICHAR:
-        {
-            if (wParam == UNICODE_NOCHAR){
-                result = true;
-            }
-            else{
-                u32 c = (u32)wParam;
-                if (c == '\r'){
-                    c= '\n';
-                }
-                if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
-                    String_Const_u32 str_32 = SCu32(&c, 1);
-                    String str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32, StringFill_NullTerminate).string;
-                    Input_Event event = {};
-                    event.kind = InputEventKind_TextInsert;
-                    event.text.string = str_8;
-                    push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list, &event);
-                    win32vars.got_useful_event = true;
-                }
-            }
-        }break;
-        
-        case WM_MOUSEMOVE:
-        {
-            i2 new_m = I2(LOWORD(lParam), HIWORD(lParam));
-            if (new_m != win32vars.input_chunk.pers.mouse){
-                win32vars.input_chunk.pers.mouse = new_m;
-                win32vars.got_useful_event = true;
-            }
-        }break;
-        
-        case WM_MOUSEWHEEL:
-        {
-            win32vars.got_useful_event = true;
-            i32 rotation = GET_WHEEL_DELTA_WPARAM(wParam);
-            if (rotation > 0){
-                win32vars.input_chunk.trans.mouse_wheel = -100;
-            }
-            else{
-                win32vars.input_chunk.trans.mouse_wheel =  100;
-            }
-        }break;
-        
-        case WM_LBUTTONDOWN:
-        {
-            SetCapture(hwnd);
-            win32vars.got_useful_event = true;
-            win32vars.input_chunk.trans.mouse_l_press = true;
-            win32vars.input_chunk.pers.mouse_l = true;
-        }break;
-        
-        case WM_RBUTTONDOWN:
-        {
-            SetCapture(hwnd);
-            win32vars.got_useful_event = true;
-            win32vars.input_chunk.trans.mouse_r_press = true;
-            win32vars.input_chunk.pers.mouse_r = true;
-        }break;
-        
-        case WM_LBUTTONUP:
-        {
-            ReleaseCapture();
-            win32vars.got_useful_event = true;
-            win32vars.input_chunk.trans.mouse_l_release = true;
-            win32vars.input_chunk.pers.mouse_l = false;
-        }break;
-        
-        case WM_RBUTTONUP:
-        {
-            ReleaseCapture();
-            win32vars.got_useful_event = true;
-            win32vars.input_chunk.trans.mouse_r_release = true;
-            win32vars.input_chunk.pers.mouse_r = false;
-        }break;
-        
-        case WM_KILLFOCUS:
-        case WM_SETFOCUS:
-        {
-            ReleaseCapture();
-            win32vars.got_useful_event = true;
-            win32vars.input_chunk.pers.mouse_l = false;
-            win32vars.input_chunk.pers.mouse_r = false;
-            block_zero_struct(&win32vars.input_chunk.pers.controls);
-            block_zero_struct(&win32vars.input_chunk.pers.modifiers);
-            win32vars.active_key_stroke = 0;
-            win32vars.active_text_input = 0;
-        }break;
-        
-        case WM_SIZE:
-        {
-            win32vars.got_useful_event = true;
-            i32 new_width = LOWORD(lParam);
-            i32 new_height = HIWORD(lParam);
-            
-            win32_resize_render_target(new_width, new_height);
-        }break;
-        
-        case WM_DISPLAYCHANGE:
-        {
-            win32vars.got_useful_event = true;
-            
-            LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
-            if (!(style & WS_OVERLAPPEDWINDOW)){
-                MONITORINFO monitor_info = {.cbSize=sizeof(MONITORINFO)};
-                if(GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &monitor_info))
-                {
-                    SetWindowPos(hwnd, HWND_TOP,
-                                 monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
-                                 monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
-                                 monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
-                                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
-                }
-            }
-        }break;
-        
-        case WM_PAINT:
-        {
-            win32vars.got_useful_event = true;
-            PAINTSTRUCT ps;
-            BeginPaint(hwnd, &ps);
-            // NOTE(allen): Do nothing?
-            EndPaint(hwnd, &ps);
-        }break;
-        
-        case WM_CLIPBOARDUPDATE:
-        {
-            if (win32vars.clip_catch_all){
-                win32vars.got_useful_event = true;
-                LogEventLit(win32vars.log_string(M), scratch, 0, 0, system_thread_get_id(),
-                            "new clipboard contents");
-            }
-        }break;
-        
-        case WM_CLOSE:
-        case WM_DESTROY:
-        {
-            win32vars.got_useful_event = true;
-            win32vars.input_chunk.trans.trying_to_kill = true;
-        }break;
-        
-        case WM_TIMER:
-        {
-            UINT_PTR timer_id = (UINT_PTR)wParam;
-            KillTimer(win32vars.window_handle, timer_id);
-            win32vars.got_useful_event = true;
-        }break;
-        
-        case WM_4coder_ANIMATE:
-        {
-            win32vars.got_useful_event = true;
-        }break;
-        
-#if 0 //NOTE: doesn't work because idk
-        case WM_GETMINMAXINFO:
-        {
-            MINMAXINFO* maxInfo = (MINMAXINFO*)lParam;
-            // NOTE: min
-            maxInfo->ptMaxPosition.x = GetSystemMetrics(SM_XVIRTUALSCREEN);
-            maxInfo->ptMaxPosition.y = GetSystemMetrics(SM_YVIRTUALSCREEN);
-            // NOTE: dim
-            maxInfo->ptMaxSize.x = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-            maxInfo->ptMaxSize.y = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-            breakhere;
-        }break;
-#endif
-        
-        default:
-        {
-            result = DefWindowProc(hwnd, uMsg, wParam, lParam);
-        }break;
+   b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
+   b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
+   if (win32vars.lctrl_lalt_is_altgr && controls->l_alt && controls->l_ctrl){
+    ctrl = false;
+    alt = false;
+   }
+   set_modifier(mods, Key_Code_Control, ctrl);
+   set_modifier(mods, Key_Code_Alt, alt);
+   
+   {
+    b8 shift = ((GetKeyState(VK_SHIFT) & bit_16) != 0);
+    set_modifier(mods, Key_Code_Shift, shift);
+   }
+   
+   Key_Code key = keycode_lookup_table[(u8)vk];
+   if (down){
+    if (key != 0){
+     add_modifier(mods, key);
+     
+     Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
+     event->kind = InputEventKind_KeyStroke;
+     event->key.code = key;
+     event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
+     win32vars.active_key_stroke = event;
+     
+     win32vars.got_useful_event = true;
     }
+   }
+   else{
+    win32vars.active_key_stroke = 0;
+    win32vars.active_text_input = 0;
+    win32vars.got_useful_event = true;
     
-    return(result);
+    if (key != 0){
+     Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
+     event->kind = InputEventKind_KeyRelease;
+     event->key.code = key;
+     event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
+     
+     remove_modifier(mods, key);
+    }
+   }
+  }break;
+  
+  case WM_CHAR:
+  {
+   u16 c = wParam & bitmask_16;
+   if (c == '\r'){
+    c = '\n';
+   }
+   if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
+    String_Const_u16 str_16 = SCu16(&c, 1);
+    String str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16, StringFill_NullTerminate).string;
+    Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
+    event->kind = InputEventKind_TextInsert;
+    event->text.string = str_8;
+    event->text.next_text = 0;
+    event->text.blocked = false;
+    if (win32vars.active_text_input != 0){
+     win32vars.active_text_input->text.next_text = event;
+    }
+    else if (win32vars.active_key_stroke != 0){
+     win32vars.active_key_stroke->key.first_dependent_text = event;
+    }
+    win32vars.active_text_input = event;
+    
+    win32vars.got_useful_event = true;
+   }
+  }break;
+  
+  case WM_DEADCHAR:
+  {
+   if (win32vars.active_key_stroke != 0){
+    AddFlag(win32vars.active_key_stroke->key.flags, KeyFlag_IsDeadKey);
+   }
+  }break;
+  
+  case WM_UNICHAR:
+  {
+   if (wParam == UNICODE_NOCHAR){
+    result = true;
+   }
+   else{
+    u32 c = (u32)wParam;
+    if (c == '\r'){
+     c= '\n';
+    }
+    if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
+     String_Const_u32 str_32 = SCu32(&c, 1);
+     String str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32, StringFill_NullTerminate).string;
+     Input_Event event = {};
+     event.kind = InputEventKind_TextInsert;
+     event.text.string = str_8;
+     push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list, &event);
+     win32vars.got_useful_event = true;
+    }
+   }
+  }break;
+  
+  case WM_MOUSEMOVE:
+  {
+   if (is_main_window)//todo(kv) cheese
+   {
+    i2 new_mousep = I2(GET_X_LPARAM(lParam),
+                       GET_Y_LPARAM(lParam));
+    if (new_mousep != win32vars.input_chunk.pers.mouse)
+    {
+     win32vars.input_chunk.pers.mouse = new_mousep;
+     win32vars.got_useful_event = true;
+    }
+   }
+  }break;
+  
+  case WM_MOUSEWHEEL:
+  {
+   win32vars.got_useful_event = true;
+   i32 rotation = GET_WHEEL_DELTA_WPARAM(wParam);
+   if (rotation > 0){
+    win32vars.input_chunk.trans.mouse_wheel = -100;
+   }
+   else{
+    win32vars.input_chunk.trans.mouse_wheel =  100;
+   }
+  }break;
+  
+  case WM_LBUTTONDOWN:
+  {
+   SetCapture(hwnd);
+   win32vars.got_useful_event = true;
+   win32vars.input_chunk.trans.mouse_l_press = true;
+   win32vars.input_chunk.pers.mouse_l = true;
+  }break;
+  
+  case WM_RBUTTONDOWN:
+  {
+   SetCapture(hwnd);
+   win32vars.got_useful_event = true;
+   win32vars.input_chunk.trans.mouse_r_press = true;
+   win32vars.input_chunk.pers.mouse_r = true;
+  }break;
+  
+  case WM_LBUTTONUP:
+  {
+   ReleaseCapture();
+   win32vars.got_useful_event = true;
+   win32vars.input_chunk.trans.mouse_l_release = true;
+   win32vars.input_chunk.pers.mouse_l = false;
+  }break;
+  
+  case WM_RBUTTONUP:
+  {
+   ReleaseCapture();
+   win32vars.got_useful_event = true;
+   win32vars.input_chunk.trans.mouse_r_release = true;
+   win32vars.input_chunk.pers.mouse_r = false;
+  }break;
+  
+  case WM_KILLFOCUS:
+  case WM_SETFOCUS:
+  {
+   ReleaseCapture();
+   win32vars.got_useful_event = true;
+   win32vars.input_chunk.pers.mouse_l = false;
+   win32vars.input_chunk.pers.mouse_r = false;
+   block_zero_struct(&win32vars.input_chunk.pers.controls);
+   block_zero_struct(&win32vars.input_chunk.pers.modifiers);
+   win32vars.active_key_stroke = 0;
+   win32vars.active_text_input = 0;
+  }break;
+  
+  case WM_SIZE:
+  {
+   win32vars.got_useful_event = true;
+   i32 new_width  = LOWORD(lParam);
+   i32 new_height = HIWORD(lParam);
+   
+   Render_Target *render_target = get_render_target(window_index);
+   win32_resize_render_target(render_target, new_width, new_height);
+  }break;
+  
+  case WM_DISPLAYCHANGE:
+  {
+   win32vars.got_useful_event = true;
+   
+   LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
+   if (!(style & WS_OVERLAPPEDWINDOW)){
+    MONITORINFO monitor_info = {.cbSize=sizeof(MONITORINFO)};
+    if(GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &monitor_info))
+    {
+     SetWindowPos(hwnd, HWND_TOP,
+                  monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
+                  monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+                  monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+                  SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+    }
+   }
+  }break;
+  
+  case WM_PAINT:
+  {
+   win32vars.got_useful_event = true;
+   PAINTSTRUCT ps;
+   BeginPaint(hwnd, &ps);
+   // NOTE(allen): Do nothing?
+   EndPaint(hwnd, &ps);
+  }break;
+  
+  case WM_CLIPBOARDUPDATE:
+  {
+   if (win32vars.clip_catch_all){
+    win32vars.got_useful_event = true;
+    LogEventLit(win32vars.log_string(M), scratch, 0, 0, system_thread_get_id(),
+                "new clipboard contents");
+   }
+  }break;
+  
+  case WM_CLOSE:
+  case WM_DESTROY:
+  {
+   win32vars.got_useful_event = true;
+   win32vars.input_chunk.trans.trying_to_kill = true;
+  }break;
+  
+  case WM_TIMER:
+  {
+   UINT_PTR timer_id = (UINT_PTR)wParam;
+   KillTimer(win32vars.window_handle[0], timer_id);
+   win32vars.got_useful_event = true;
+  }break;
+  
+  case WM_4coder_ANIMATE:
+  {
+   win32vars.got_useful_event = true;
+  }break;
+  
+  default:
+  {
+   result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+  }break;
+ }
+ 
+ return(result);
 }
 
 ////////////////////////////////
@@ -1506,71 +1516,54 @@ global wglGetExtensionsStringEXT_Function *wglGetExtensionsStringEXT;
 global wglSwapIntervalEXT_Function *wglSwapIntervalEXT = 0;
 
 internal b32
-win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect)
+win32_gl_create_windows(DWORD style, RECT rect)
 {
+ b32 ok;
  HINSTANCE this_instance = GetModuleHandle(0);
  
- local_persist b32 srgb_support = false;
- local_persist b32 register_success = true;
- local_persist b32 first_call = true;
- if (first_call)
  {
   log_os(" GL bootstrapping...\n");
-  
-  first_call = false;
-  
   // NOTE(allen): Create the GL bootstrap window
   log_os(" registering bootstrap class...\n");
   WNDCLASSW wglclass = {};
   wglclass.lpfnWndProc = DefWindowProcW;
   wglclass.hInstance = this_instance;
   wglclass.lpszClassName = L"wgl-loader";
-  if (RegisterClassW(&wglclass) == 0){
-   register_success = false;
-   goto fail_register;
-  }
+  ok = RegisterClassW(&wglclass);
+  kv_assert(ok);
   
   log_os(" creating bootstrap window...\n");
   HWND wglwindow = CreateWindowW(wglclass.lpszClassName, L"", 0, 0, 0, 0, 0,
                                  0, 0, this_instance, 0);
-  if (wglwindow == 0){
-   register_success = false;
-   goto fail_register;
-  }
+  kv_assert(wglwindow);
   
   // NOTE(allen): Create the GL bootstrap context
   log_os(" setting bootstrap pixel format...\n");
-  
   HDC wgldc = GetDC(wglwindow);
-  
-  PIXELFORMATDESCRIPTOR desired_pixel_format = {};
-  desired_pixel_format.nSize = sizeof(desired_pixel_format);
-  desired_pixel_format.nVersion = 1;
-  desired_pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-  desired_pixel_format.iPixelType = PFD_TYPE_RGBA;
-  desired_pixel_format.cColorBits = 32;
-  desired_pixel_format.cAlphaBits = 8;
-  desired_pixel_format.cDepthBits = 24;
-  desired_pixel_format.iLayerType = PFD_MAIN_PLANE;
-  i32 suggested_pixel_format_index = ChoosePixelFormat(wgldc, &desired_pixel_format);
-  // NOTE(kv): idk why we gotta pass "desired_pixel_format" back in again...
-  if (!SetPixelFormat(wgldc, suggested_pixel_format_index, &desired_pixel_format))
   {
-   register_success = false;
-   goto fail_register;
+   PIXELFORMATDESCRIPTOR desired_pixel_format =
+   {
+    .nSize = sizeof(desired_pixel_format),
+    .nVersion = 1,
+    .dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER,
+    .iPixelType = PFD_TYPE_RGBA,
+    .cColorBits = 32,
+    .cAlphaBits = 8,
+    .cDepthBits = 24,
+    .iLayerType = PFD_MAIN_PLANE,
+   };
+   i32 suggested_pixel_format_index = ChoosePixelFormat(wgldc, &desired_pixel_format);
+   // NOTE(kv): idk why we gotta pass "desired_pixel_format" back in again...
+   ok = SetPixelFormat(wgldc, suggested_pixel_format_index, &desired_pixel_format);
+   kv_assert(ok);
   }
   
   log_os(" creating bootstrap GL context...\n");
   HGLRC wglcontext = wglCreateContext(wgldc);
-  if (wglcontext == 0){
-   register_success = false;
-   goto fail_register;
-  }
+  kv_assert(wglcontext);
   log_os(" making bootstrap GL context current...\n");
-  if (!wglMakeCurrent(wgldc, wglcontext)){
-   register_success = false;
-   goto fail_register;
-  }
+  ok = wglMakeCurrent(wgldc, wglcontext);
+  kv_assert(ok);
   
   // NOTE(allen): Load wgl extensions
   log_os(" loading wgl extensions...\n");
@@ -1578,23 +1571,18 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
 #define LoadWGL(f,l) Stmnt((f) = (f##_Function*)wglGetProcAddress(#f); \
 (l) = (l) && win32_wgl_good((Void_Func*)(f));)
   
-  b32 load_success = true;
-  LoadWGL(wglCreateContextAttribsARB, load_success);
-  LoadWGL(wglChoosePixelFormatARB, load_success);
-  LoadWGL(wglGetExtensionsStringEXT, load_success);
-  
-  if (!load_success)
-  {
-   register_success = false;
-   goto fail_register;
-  }
-  
-  log_os(" checking wgl extensions...\n");
-  char *extensions_c = wglGetExtensionsStringEXT();
-  String8 extensions = SCu8((u8*)extensions_c);
+  LoadWGL(wglCreateContextAttribsARB, ok);
+  LoadWGL(wglChoosePixelFormatARB,    ok);
+  LoadWGL(wglGetExtensionsStringEXT,  ok);
+  kv_assert(ok);
   
   {
+   log_os(" checking wgl extensions...\n");
+   char *extensions_c = wglGetExtensionsStringEXT();
+   String8 extensions = SCu8((u8*)extensions_c);
+   
    String8 s = string_skip_whitespace(extensions);
+   b32 srgb_support = false;
    for (;s.size > 0;)
    {
     u64 end = string_find_first_whitespace(s);
@@ -1620,13 +1608,10 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
   // NOTE(allen): Load gl functions
   log_os(" loading core GL functions...\n");
   
-#define GL_FUNC(f,R,P) LoadWGL(f,load_success);
+#define GL_FUNC(f,R,P) LoadWGL(f,ok);
 #include "opengl/4ed_opengl_funcs.h"
   
-  if (!load_success){
-   register_success = false;
-   goto fail_register;
-  }
+  kv_assert(ok);
   
   // NOTE(allen): Cleanup the GL bootstrap resources
   log_os(" cleaning up boostrap resources...\n");
@@ -1634,122 +1619,98 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
   ReleaseDC(wglwindow, wgldc);
   DestroyWindow(wglwindow);
   wglDeleteContext(wglcontext);
-  
-  // NOTE(allen): Register the graphics window class
-  log_os(" registering graphics class...\n");
-  
-  WNDCLASSW wndclass = {};
-  wndclass.style = CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
-  wndclass.lpfnWndProc = win32_proc;
-  wndclass.hIcon = LoadIconW(GetModuleHandle(0), L"main");
-  wndclass.hInstance = this_instance;
-  wndclass.lpszClassName = L"GRAPHICS-WINDOW-NAME";
-  if (RegisterClassW(&wndclass) == 0){
-   register_success = false;
-   goto fail_register;
-  }
  }
- fail_register:;
  
- b32 result = false;
- if (register_success)
+ // NOTE(allen): Register the graphics window class
+ log_os(" registering graphics class...\n");
+ 
+ WNDCLASSW wndclass = {};
+ wndclass.style = CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
+ wndclass.lpfnWndProc = win32_proc;
+ wndclass.hIcon = LoadIconW(GetModuleHandle(0), L"main");
+ wndclass.hInstance = this_instance;
+ wndclass.lpszClassName = L"GRAPHICS-WINDOW-NAME";
+ ok = RegisterClassW(&wndclass) != 0;
+ 
+ if (ok)
  {
-  // NOTE(allen): Create the graphics window
-  log_os(" creating graphics window...\n");
+  HGLRC &opengl_context = win32vars.opengl_context;
+  PIXELFORMATDESCRIPTOR pixel_format = {};
+  i32 suggested_format_index = 0;
+  for_i32(window_index, 0, WINDOW_COUNT)
+  {// NOTE(allen): Create the windows
+   log_os(" creating graphics window...\n");
+   
+   HWND wnd = CreateWindowExW(0, L"GRAPHICS-WINDOW-NAME", L"GRAPHICS", style,
+                              CW_USEDEFAULT, CW_USEDEFAULT,
+                              rect.right - rect.left, rect.bottom - rect.top,
+                              0, 0, this_instance, 0);
+   if (wnd != 0)
+   {
+    HDC &dc = win32vars.device_contexts[window_index];
+    dc = GetDC(wnd);
+    if (suggested_format_index == 0)
+    {// NOTE(kv): Figure out the pixel format
+     log_os(" setting graphics pixel format...\n");
+     
+     i32 pixel_attrib_list[] =
+     {
+      /* 0*/WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+      /* 2*/WGL_ACCELERATION_ARB,   WGL_FULL_ACCELERATION_ARB,
+      /* 4*/WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+      /* 6*/WGL_DOUBLE_BUFFER_ARB,  GL_FALSE,
+      /* 8*/WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB,
+      /*10*/WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, GL_TRUE,  // https://youtu.be/SvlirEF-R-4?t=3208
+      /*12*/WGL_RED_BITS_ARB,   8,
+      /*14*/WGL_GREEN_BITS_ARB, 8,
+      /*16*/WGL_BLUE_BITS_ARB,  8,
+      /*18*/WGL_DEPTH_BITS_ARB, 24,
+      0,
+     };
+     
+     u32 ignore = 0;
+     ok = wglChoosePixelFormatARB(dc, pixel_attrib_list, 0, 1, &suggested_format_index, &ignore);
+     kv_assert(ok);
+     
+     ok = DescribePixelFormat(dc, suggested_format_index, sizeof(pixel_format), &pixel_format);
+     kv_assert(ok);
+    }
+    
+    // NOTE: Always set pixel format, same for all windows
+    ok = SetPixelFormat(dc, suggested_format_index, &pixel_format);
+    kv_assert(ok);
+    
+    // NOTE Now create modern OpenGL context,
+    // can do it after pixel format is set
+    if (opengl_context == 0)
+    {
+     log_os(" creating graphics GL context...\n");
+     i32 debug_bit = (SHIP_MODE) ? 0 : WGL_CONTEXT_DEBUG_BIT_ARB;
+     i32 context_attrib_list[] = 
+     {
+      /*0*/WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
+      /*2*/WGL_CONTEXT_MINOR_VERSION_ARB, 6,
+      /*4*/WGL_CONTEXT_FLAGS_ARB,         debug_bit,
+      /*6*/WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+      /*8*/0
+     };
+     
+     opengl_context = wglCreateContextAttribsARB(dc, 0, context_attrib_list);
+     kv_assert(opengl_context);
+    }
+    
+    log_os(" making graphics GL context current...\n");
+    ok = wglMakeCurrent(dc, opengl_context);
+    kv_assert(ok);
+    
+    win32vars.window_handle[window_index] = wnd;
+   }
+  }
   
-  HWND wnd = CreateWindowExW(0, L"GRAPHICS-WINDOW-NAME", L"GRAPHICS", style,
-                             CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
-                             0, 0, this_instance, 0);
-  
-  *wnd_out = 0;
-  *context_out = 0;
-  if (wnd != 0)
+  if (wglSwapIntervalEXT != 0)
   {
-   log_os(" setting graphics pixel format...\n");
-   
-   HDC dc = GetDC(wnd);
-   
-   PIXELFORMATDESCRIPTOR pixel_format = {};
-   
-   i32 pixel_attrib_list[] =
-   {
-    /* 0*/WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-    /* 2*/WGL_ACCELERATION_ARB,   WGL_FULL_ACCELERATION_ARB,
-    /* 4*/WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-    /* 6*/WGL_DOUBLE_BUFFER_ARB,  GL_FALSE,
-    /* 8*/WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB,
-    /*10*/WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, GL_TRUE,  // https://youtu.be/SvlirEF-R-4?t=3208
-    /*12*/WGL_RED_BITS_ARB,   8,
-    /*14*/WGL_GREEN_BITS_ARB, 8,
-    /*16*/WGL_BLUE_BITS_ARB,  8,
-    /*18*/WGL_DEPTH_BITS_ARB, 24,
-    0,
-   };
-   if (!srgb_support)
-   {
-    pixel_attrib_list[10] = 0;
-   }
-   
-   i32 suggested_format_index = 0;
-   u32 ignore = 0;
-   HGLRC context = {};
-   i32 context_attrib_list[] = 
-   {
-    /*0*/WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
-    /*2*/WGL_CONTEXT_MINOR_VERSION_ARB, 6,
-    /*4*/WGL_CONTEXT_FLAGS_ARB,
-#if SHIP_MODE
-    0,
-#else
-    WGL_CONTEXT_DEBUG_BIT_ARB,
-#endif
-    /*6*/WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-    /*8*/0
-   };
-   
-   if (!wglChoosePixelFormatARB(dc, pixel_attrib_list, 0, 1, &suggested_format_index, &ignore))
-   {
-    goto fail_window_init;
-   }
-   
-   DescribePixelFormat(dc, suggested_format_index, sizeof(pixel_format), &pixel_format);
-   if (!SetPixelFormat(dc, suggested_format_index, &pixel_format))
-   {
-    goto fail_window_init;
-   }
-   
-   log_os(" setting graphics attributes...\n");
-   
-   log_os(" creating graphics GL context...\n");
-   context = wglCreateContextAttribsARB(dc, 0, context_attrib_list);
-   if (context == 0)
-   {
-    goto fail_window_init;
-   }
-   
-   log_os(" making graphics GL context current...\n");
-   wglMakeCurrent(dc, context);
-   
-   if (wglSwapIntervalEXT != 0){
-    log_os(" setting swap interval...\n");
-    wglSwapIntervalEXT(1);
-   }
-   *wnd_out = wnd;
-   *context_out = context;
-   result = true;
-   
-   if (false)
-   {// NOTE: Unreachable unless you use goto (omg!)
-    fail_window_init:;
-    DWORD error = GetLastError();
-    ReleaseDC(wnd, dc);
-    DestroyWindow(wnd);
-    SetLastError(error);
-   }
-   else
-   {
-    ReleaseDC(wnd, dc);
-   }
+   log_os(" setting swap interval...\n");
+   wglSwapIntervalEXT(1);
   }
   
   if(0)
@@ -1759,10 +1720,18 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
   }
  }
  
- return(result);
+ return(ok);
 }
 
 ////////////////////////////////
+
+global u32 hot_prim_id;
+
+internal get_hot_prim_id_return
+get_hot_prim_id(get_hot_prim_id_params)
+{
+ return hot_prim_id;
+}
 
 int CALL_CONVENTION
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -1784,7 +1753,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  log_os("Initializing thread context...\n");
  
- // NOTE(allen): This thing
  InitializeCriticalSection(&memory_tracker_mutex);
  
  // NOTE(allen): context setup
@@ -1809,7 +1777,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  // NOTE(allen): memory
  win32vars.frame_arena = make_arena_system();
  // TODO(allen): *arena;
- render_target.arena = make_arena_system(KB(256));
+ render_state.arena = make_arena_system(KB(256));
  
  win32vars.cursor_show = MouseCursorShow_Always;
  win32vars.prev_cursor_show = MouseCursorShow_Always;
@@ -1839,10 +1807,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  // NOTE(allen): load core
  log_os("Loading 4ed core...\n");
  
- // NOTE(allen): send system vtable to core
- //log_os("Linking vtables...\n");
- 
- //app_load_vtables(&system_vtable, &font_vtable, &graphics_vtable);
  win32vars.log_string = app_get_logger();
  
  // NOTE(allen): init & command line parameters
@@ -1886,12 +1850,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  log_os(" getting initial settings...\n");
  RECT window_rect = {};
  if (plat_settings.set_window_size)
- {
-  // NOTE(kv): setting negative position for window_rect doesn't work
+ {// NOTE(kv): setting negative position for window_rect doesn't work
   window_rect.right  = plat_settings.window_w;
   window_rect.bottom = plat_settings.window_h;
- }
- else{
+ } else {
   window_rect.right = 800;
   window_rect.bottom = 600;
  }
@@ -1908,8 +1870,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         window_rect.bottom - window_rect.top,
         ((window_style & WS_MAXIMIZE) != 0));
  
- HGLRC window_opengl_context = 0;
- if (!win32_gl_create_window(&win32vars.window_handle, &window_opengl_context, window_style, window_rect))
+ // important
+ if ( !win32_gl_create_windows(window_style, window_rect) )
  {
   exit(1);
  }
@@ -1918,7 +1880,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  i32 window_height = window_rect.bottom - window_rect.top;
  if (plat_settings.set_window_pos)
  {
-  BOOL ok = SetWindowPos(win32vars.window_handle,
+  BOOL ok = SetWindowPos(win32vars.window_handle[0],
                          0,
                          /*x*/plat_settings.window_x,
                          /*y*/plat_settings.window_y,
@@ -1931,8 +1893,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  log_os(" window created successfully\n");
  
- GetClientRect(win32vars.window_handle, &window_rect);
- win32_resize_render_target(window_width, window_height);
+ //GetClientRect(win32vars.window_handle[0], &window_rect);
+ //win32_resize_render_target(window_width, window_height);
  
  // NOTE(allen): Audio Init
  //log_os("Initializing audio...\n");
@@ -1940,7 +1902,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  // NOTE(allen): Misc Init
  log_os("Initializing clipboard listener...\n");
- if (!AddClipboardFormatListener(win32vars.window_handle)){
+ if (!AddClipboardFormatListener(win32vars.window_handle[0])){
   String error_string = win32_get_error_string();
   win32_output_error_string(error_string);
  }
@@ -1980,7 +1942,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   Scratch_Block scratch(win32vars.tctx);
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
   string_mod_replace_character(curdir, '\\', '/');
-  app_init(win32vars.tctx, &render_target, base_ptr, curdir);
+  app_init(win32vars.tctx, base_ptr, curdir);
  }
  
  //
@@ -1997,9 +1959,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32_toggle_fullscreen();
  }
  
- SetForegroundWindow(win32vars.window_handle);
- SetActiveWindow(win32vars.window_handle);
- ShowWindow(win32vars.window_handle, SW_SHOW);
+ for_i32(index,0,WINDOW_COUNT)
+ {
+  ShowWindow(win32vars.window_handle[index], SW_SHOW);
+ }
+ SetForegroundWindow(win32vars.window_handle[0]);
+ SetActiveWindow(win32vars.window_handle[0]);
  
  win32vars.global_frame_mutex = system_mutex_make();
  system_acquire_global_frame_mutex(win32vars.tctx);
@@ -2108,23 +2073,27 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			system_acquire_global_frame_mutex(win32vars.tctx);
   }
   
-  // NOTE(allen): Mouse Out of Window Detection
-  POINT mouse_point;
-  if (GetCursorPos(&mouse_point) &&
-      ScreenToClient(win32vars.window_handle, &mouse_point)){
-   Rect_i32 screen = Ri32(0, 0, render_target.width, render_target.height);
-   i2 mp = I2(mouse_point.x, mouse_point.y);
-   win32vars.input_chunk.trans.out_of_window = (!rect_contains_point(screen, mp));
-   win32vars.input_chunk.pers.mouse = mp;
-  }
-  else{
-   win32vars.input_chunk.trans.out_of_window = true;
+  {
+   POINT mouse_point;
+   if (GetCursorPos(&mouse_point) &&
+       ScreenToClient(win32vars.window_handle[0], &mouse_point))
+   {// NOTE(kv): Mouse situation
+    Render_Target *render_target = get_render_target(0);
+    Rect_i32 screen = Ri32(0,0, render_target->width,render_target->height);
+    i2 mp = I2(mouse_point.x, mouse_point.y);
+    win32vars.input_chunk.trans.out_of_window = !rect_contains_point(screen, mp);
+    win32vars.input_chunk.pers.mouse = mp;
+   }
+   else
+   {// NOTE(allen): Mouse Out of Window Detection
+    win32vars.input_chunk.trans.out_of_window = true;
+   }
   }
   
   // NOTE(allen): Prepare the Frame Input
   
   // TODO(allen): CROSS REFERENCE WITH LINUX SPECIAL CODE "TIC898989"
-  Win32_Input_Chunk input_chunk = win32vars.input_chunk;
+  Win32_Input_Chunk &input_chunk = win32vars.input_chunk;
   
   Scratch_Block scratch(win32vars.tctx);
   Application_Step_Input input = {};
@@ -2134,16 +2103,16 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   input.mouse.out_of_window = input_chunk.trans.out_of_window;
   
-  input.mouse.l = input_chunk.pers.mouse_l;
-  input.mouse.press_l = input_chunk.trans.mouse_l_press;
+  input.mouse.l         = input_chunk.pers.mouse_l;
+  input.mouse.press_l   = input_chunk.trans.mouse_l_press;
   input.mouse.release_l = input_chunk.trans.mouse_l_release;
   
-  input.mouse.r = input_chunk.pers.mouse_r;
-  input.mouse.press_r = input_chunk.trans.mouse_r_press;
+  input.mouse.r         = input_chunk.pers.mouse_r;
+  input.mouse.press_r   = input_chunk.trans.mouse_r_press;
   input.mouse.release_r = input_chunk.trans.mouse_r_release;
   
   input.mouse.wheel = input_chunk.trans.mouse_wheel;
-  input.mouse.p = input_chunk.pers.mouse;
+  input.mouse.p     = input_chunk.pers.mouse;
   
   input.trying_to_kill = input_chunk.trans.trying_to_kill;
   
@@ -2165,7 +2134,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32vars.clip_post.size = 0;
   
   // NOTE(allen): Application Core Update
-  Application_Step_Result result = app_step(win32vars.tctx, &render_target, base_ptr, &input);
+  Application_Step_Result result = app_step(win32vars.tctx, base_ptr, &input);
   
   // NOTE(allen): Finish the Loop
   if (result.perform_kill){
@@ -2181,7 +2150,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   // NOTE(allen): Switch to New Title
   if (result.has_new_title)
   {
-   SetWindowTextA(win32vars.window_handle, cast(char*)result.title_string);
+   SetWindowTextA(win32vars.window_handle[0], cast(char*)result.title_string);
   }
   
   // NOTE(allen): Switch to New Cursor
@@ -2213,14 +2182,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32vars.lctrl_lalt_is_altgr = (b8)result.lctrl_lalt_is_altgr;
   
   {// NOTE(allen): render
-   i2 mousep = input.mouse.p;
-   mousep.y = render_target.height - mousep.y;
-   HDC hdc = GetDC(win32vars.window_handle);
-   ogl_render(&render_target, mousep);
-   SwapBuffers(hdc);
-   ReleaseDC(win32vars.window_handle, hdc);
+   for_i32(window_index, 0, WINDOW_COUNT)
+   {
+    // Activate OpenGL context for device context where we'll be drawing
+    b32 ok = wglMakeCurrent(win32vars.device_contexts[window_index],
+                            win32vars.opengl_context);
+    kv_assert(ok);
+    ogl_render(input.mouse.p, window_index);
+   }
    
-   render_target.current_prim_id = ogl_read_primitive_id(&render_target, mousep);
+   for_i32(window_index, 0, WINDOW_COUNT)
+   {
+    SwapBuffers( win32vars.device_contexts[window_index] );
+   }
+   
+   hot_prim_id = ogl_read_primitive_id();
   }
   
   // NOTE(allen): toggle full screen

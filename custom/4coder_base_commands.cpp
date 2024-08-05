@@ -165,8 +165,8 @@ CUSTOM_DOC("Sets the left size of the view near the x position of the cursor.")
 }
 
 
-internal void
-view_set_buffer_named(App *app, View_ID view, String8 name)
+internal view_set_buffer_named_return
+view_set_buffer_named(view_set_buffer_named_params)
 {
  Buffer_ID buffer = create_buffer(app, name, 0);
  view_set_buffer(app, view, buffer, 0);

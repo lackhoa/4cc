@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "4coder_fancy.cpp"
-
 global Debug_Entry *DEBUG_entries;
 global b32 DEBUG_draw_hud_p = true;
 

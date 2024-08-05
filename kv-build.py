@@ -6,8 +6,13 @@ TRACE_COMPILE_TIME     = 0
 DISABLE_GAME_DEBUG_INFO     = 0  # NOTE(kv): Not worth disabling with MSVC
 if TRACE_COMPILE_TIME:
     DISABLE_GAME_DEBUG_INFO = 1
-MSVC_FRAMEWORK_OPTIMIZATION = "-O2"
-MSVC_GAME_OPTIMIZATION = "-Od"  # -Ob2 helps a bit, but isn't worth the slow compile time
+FORCE_INLINE_ON = 1
+FRAMEWORK_OPTIMIZE_ON = 0
+if FRAMEWORK_OPTIMIZE_ON:
+    MSVC_FRAMEWORK_OPTIMIZATION = f"-O2"
+else:
+    MSVC_FRAMEWORK_OPTIMIZATION = f"-Od {"-Ob1" if FORCE_INLINE_ON else ""}"
+MSVC_GAME_OPTIMIZATION = "-Od"  # NOTE: -Ob2 helps a bit, but isn't worth the slow compile time
 AD_PROFILE = 1
 KV_SLOW = 0
 STOP_DEBUGGING_BEFORE_BUILD = 0
@@ -25,17 +30,14 @@ parser.add_argument('-a', '--action', type=str, default="build")
 parser.add_argument('--file', type=str, default="")
 parser.add_argument('--full', action="store_true")
 parser.add_argument('--release', action="store_true")
+#
 args = parser.parse_args()
 run_only         = args.action == 'run'
 hotload_game     = "game.cpp" in args.file  # @build_filename_hack
 
-# NOTE(kv): 4ed build script
-# NOTE(kv): assumes only Windows and Mac (and clang)
-
 pjoin = os.path.join
 
-
-DEBUG_MODE = not args.release
+DEBUG_MODE = 0 if args.release else 1
 EDITOR_OPTIMIZATION = "-O0" if DEBUG_MODE else "-O3"  # NOTE: Tried -O2 and even -O1, it's still slow af
 SHIP_MODE = 1-DEBUG_MODE
 
@@ -144,12 +146,6 @@ def run(command, update_env={}):
 
     return process
 
-def mtime(path):
-    try:
-        return os.path.getmtime(path)
-    except:
-        return 0
-
 class pushd: # pylint: disable=invalid-name
     __slots__ = ('_pushstack',)
 
@@ -241,7 +237,7 @@ try:
         INCLUDES=f'-I{CODE}/libs -I{CODE} -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/4coder_kv/libs'
         #
         COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
-        SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DAD_PROFILE={AD_PROFILE} -DKV_INTERNAL=1 -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
+        SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DAD_PROFILE={AD_PROFILE} -DKV_INTERNAL={DEBUG_MODE} -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
         #
         COMPILE_FLAGS=f"{WARNINGS} {INCLUDES} {SYMBOLS} {EDITOR_OPTIMIZATION} {debug_flag} -m64 {CPP_VERSION}"
 

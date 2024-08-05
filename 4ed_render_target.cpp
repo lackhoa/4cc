@@ -14,17 +14,51 @@
 
 #include "4ed_render_target.h"
 
-inline Render_Entry *
-new_render_entry(Render_Target *target, Render_Entry_Type type)
+global Render_State render_state;
+
+inline Render_Config *
+target_last_config()
 {
- Render_Group *group = target->group_last;
- if (!render_group_is_game(group))
+ auto &state = render_state;
+ if (state.group_last) { return &state.group_last->config; }
+ else { return 0; }
+}
+
+inline draw_get_clip_return
+draw_get_clip(draw_get_clip_params)
+{
+ auto &state = render_state;
+ if (state.group_last)
+ {
+  return state.group_last->clip_box;
+ }
+ else { return {}; }
+}
+
+inline Render_Target *
+get_render_target(i32 window_id)
+{
+ return &render_state.targets[window_id];
+}
+//
+inline Render_Target *
+get_render_target(Render_Group *group)
+{
+ return &render_state.targets[group->window_id];
+}
+
+inline Render_Entry *
+new_render_entry(Render_Entry_Type type)
+{
+ auto &state = render_state;
+ Render_Group *group = state.group_last;
+ if ( !render_group_is_game(group) )
  {
   kv_assert(group->entry_count == 0);
  }
  if (group)
  {
-  Render_Entry *entry = push_struct_zero(&target->arena, Render_Entry);
+  Render_Entry *entry = push_struct(&state.arena, Render_Entry, true);
   entry->type = type;
   sll_queue_push(group->entry_first, group->entry_last, entry);
   group->entry_count++;
@@ -36,25 +70,22 @@ new_render_entry(Render_Target *target, Render_Entry_Type type)
 internal void
 draw__new_group(Render_Target *target, Render_Config *config)
 {
- Render_Group *group = 0;
- Render_Group *last = target->group_last;
- group = push_struct_zero(&target->arena, Render_Group);
- sll_queue_push(target->group_first, target->group_last, group);
- target->group_count++;
+ auto &state = render_state;
+ Render_Group *group = push_struct(&state.arena, Render_Group, true);
+ sll_queue_push(state.group_first, state.group_last, group);
+ state.group_count++;
  
- if (config)
- {
-  group->config = *config;
- }
- group->face_id = target->face_id;
+ if (config) { group->config = *config; }
+ group->face_id = state.face_id;
+ group->window_id = target->window_id;
  
- new_render_entry(target, RET_Poly);
+ new_render_entry(RET_Poly);
 }
 
 internal void
 draw__maybe_new_group(Render_Target *target, Render_Config *config)
 {
- Render_Group *last = target->group_last;
+ Render_Group *last = render_state.group_last;
  if (last &&
      !render_group_is_game(last) && 
      last->entry_first->poly.vertex_list.count == 0 &&
@@ -80,13 +111,15 @@ draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i1 size
 internal draw__push_vertices_return
 draw__push_vertices(draw__push_vertices_params)
 {// TODO @speed This function is sus, what is the true cost of this thing?
+ auto &state = render_state;
  if (count > 0)
  {
-  Render_Group *group = target->group_last;
-  if (group == 0)
+  Render_Group *group = state.group_last;
+  if (group == 0 ||
+      group->window_id != target->window_id)
   {
    draw__new_group(target, 0);
-   group = target->group_last;
+   group = state.group_last;
   }
   
   Render_Vertex_List *list;
@@ -94,7 +127,7 @@ draw__push_vertices(draw__push_vertices_params)
    Render_Entry *entry0 = group->entry_last;
    if (entry0 == 0 || entry0->type != RET_Poly)
    {
-    entry0 = new_render_entry(target, RET_Poly);
+    entry0 = new_render_entry(RET_Poly);
    }
    
    Render_Entry_Poly *entry = &entry0->poly;
@@ -113,8 +146,8 @@ draw__push_vertices(draw__push_vertices_params)
   i1 tail_count = 0;
   if (last != 0)
   {
-   tail_vertex = last->vertices + last->vertex_count;
-   tail_count = last->vertex_max - last->vertex_count;
+   tail_vertex = last->vertices   + last->vertex_count;
+   tail_count  = last->vertex_max - last->vertex_count;
   }
   
   i1 base_vertex_max = 64;
@@ -127,16 +160,16 @@ draw__push_vertices(draw__push_vertices_params)
    base_vertex_max = last->vertex_max;
   }
   
-  i1 count_left_over = count - transfer_count;
-  if (count_left_over > 0)
+  i1 count_leftover = count - transfer_count;
+  if (count_leftover > 0)
   {
-   Render_Vertex *vertices_left_over = vertices + transfer_count;
+   Render_Vertex *vertices_leftover = vertices + transfer_count;
    
-   i1 next_node_size = (base_vertex_max + count_left_over)*2;
-   Render_Vertex_Array_Node *memory = draw__extend_group_vertex_memory(&target->arena, list, next_node_size);
-   block_copy_count(memory->vertices, vertices_left_over, count_left_over);
-   memory->vertex_count += count_left_over;
-   list->count += count_left_over;
+   i1 next_node_size = (base_vertex_max + count_leftover)*2;  // TODO @memory Currently we are wasting this node's memory, which is totally unnecessary!
+   Render_Vertex_Array_Node *memory = draw__extend_group_vertex_memory(&state.arena, list, next_node_size);
+   block_copy_count(memory->vertices, vertices_leftover, count_leftover);
+   memory->vertex_count += count_leftover;
+   list->count += count_leftover;
   }
  }
 }
@@ -144,24 +177,25 @@ draw__push_vertices(draw__push_vertices_params)
 inline push_object_transform_to_target_return
 push_object_transform_to_target(push_object_transform_to_target_params)
 {
- Render_Entry *entry = new_render_entry(target, RET_Object_Transform);
+ Render_Entry *entry = new_render_entry(RET_Object_Transform);
  entry->object_transform = *transform;
 }
 
 internal void
-draw__set_face_id(Render_Target *target, Face_ID face_id)
+draw__set_face_id(Face_ID face_id)
 {
- if (target->face_id != face_id)
+ auto &state = render_state;
+ if (state.face_id != face_id)
  {
-  if (target->face_id != 0)
+  if (state.face_id != 0)
   {// NOTE: Has existing face id
-   target->face_id = face_id;
-   draw__new_group(target, target_last_config(target));
+   state.face_id = face_id;
+   draw__new_group( get_render_target(0), target_last_config() );
   }
   else
   {// NOTE: No current face is set
-   target->face_id = face_id;
-   for (Render_Group *group = target->group_first;
+   state.face_id = face_id;
+   for (Render_Group *group = state.group_first;
         group != 0;
         group = group->next)
    {
@@ -171,15 +205,17 @@ draw__set_face_id(Render_Target *target, Face_ID face_id)
  }
 }
 
-// TODO: Not sure if I love the abstraction over Render_Target
+// TODO(kv): Not sure if I love the abstraction over Render_Target
 internal draw_configure_return
 draw_configure(draw_configure_params)
 {
- if (target->group_last)
+ auto &state = render_state;
+ if (state.group_last)
  {
-  Render_Group *group = target->group_last;
+  Render_Group *group = state.group_last;
   
-  if (config->clip_box.min==v2{} && config->clip_box.max==v2{})
+  if (config->clip_box.min==v2{} &&
+      config->clip_box.max==v2{})
   {
    if (group->y_is_up == config->y_is_up)
    {
@@ -226,10 +262,18 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
  draw__push_vertices(target, vertices, alen(vertices), type);
 }
 
+internal Render_Target *
+draw_get_target(App *app)
+{
+ Models *models = (Models *)app->cmd_context;
+ return models->target;
+}
+
 api(custom) internal draw_rect_outline_return
 draw_rect_outline(draw_rect_outline_params)
 {
-    draw_rect_outline_to_target(draw_get_target(app), rect, roundness, thickness, color, depth);
+ Render_Target *target = draw_get_target(app);
+ draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
 
 
@@ -284,24 +328,17 @@ draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
 inline push_image_return
 push_image(push_image_params)
 {
- Render_Entry *entry = new_render_entry(target, RET_Image);
- entry->image = push_struct(&target->arena, Render_Entry_Image);
+ Render_Entry *entry = new_render_entry(RET_Image);
+ entry->image = push_struct(&render_state.arena, Render_Entry_Image);
  *entry->image = {filename, o,x,y, color, prim_id};
 }
 
 //~
-inline draw_get_target_return
-draw_get_target(draw_get_target_params)
-{
- Models *models = (Models*)app->cmd_context;
- return models->target;
-}
-
 internal rect2
 draw_set_clip(Render_Target *target, rect2 clip_box)
 {
  rect2 prev_clip;
- Render_Group *group = target->group_last;
+ Render_Group *group = render_state.group_last;
  if (group)
  {
   if (group->clip_box != clip_box)
@@ -322,19 +359,24 @@ draw_set_clip(Render_Target *target, rect2 clip_box)
 }
 
 internal void
-begin_frame(Render_Target *target, void *font_set)
+begin_frame(void *font_set)
 {
- arena_free_all(&target->arena);
- target->group_first = 0;
- target->group_last  = 0;
- target->face_id     = 0;
- target->font_set = font_set;
+ auto &state = render_state;
+ arena_free_all(&render_state.arena);
+ state.group_first = 0;
+ state.group_last  = 0;
+ state.face_id     = 0;
+ state.font_set = font_set;
  
- Render_Config config = 
+ for_i32(window_index,0,WINDOW_COUNT)
  {
-  .clip_box = rect2{0, 0, (v1)target->width, (v1)target->height}
- };
- draw__new_group(target, &config);
+  Render_Target *target = &state.targets[window_index];
+  Render_Config config =
+  {
+   .clip_box = rect2{0, 0, (v1)target->width, (v1)target->height}
+  };
+  draw__new_group(target, &config);
+ }
 }
 
 ////////////////////////////////
@@ -343,7 +385,7 @@ internal void
 draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
                 ARGB_Color color, Glyph_Flag flags, Vec2_f32 x_axis)
 {
-    draw__set_face_id(target, face->id);
+    draw__set_face_id(face->id);
     
     u16 glyph_index = 0;
     if (!codepoint_index_map_read(&face->advance_map.codepoint_to_index,
@@ -488,10 +530,12 @@ draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 colo
 
 internal f32
 font_string_width(Render_Target *target, Face *face, String str){
-    return(draw_string_inner(target, face, str, V2(0, 0), 0, 0, V2(0, 0)));
+ return(draw_string_inner(target, face, str, V2(0, 0), 0, 0, V2(0, 0)));
 }
 
 internal f32
 font_string_width(Render_Target *target, Face *face, u8 *str){
-    return(draw_string_inner(target, face, SCu8(str), V2(0, 0), 0, 0, V2(0, 0)));
+ return(draw_string_inner(target, face, SCu8(str), V2(0, 0), 0, 0, V2(0, 0)));
 }
+
+//~

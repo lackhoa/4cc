@@ -9,18 +9,19 @@
 // mostly because it's not clear if a function call is a pointer or not, it's just bad.
 #if ED_API_USER
 #    if ED_API_USER_STORE_GLOBAL  // NOTE: store function pointers here
-#        define ED_API_FUNCTION(N) \
+#        define ED_FUNCTION(N) \
 kv_function_typedef(N); kv_function_pointer(N);
 #    else // NOTE: don't store function pointers in this TU
-#        define ED_API_FUNCTION(N) \
+#        define ED_FUNCTION(N) \
 kv_function_typedef(N); extern kv_function_pointer(N);
 #    endif
 //
 #    undef ED_API_USER
 #else  // NOTE: implementer
-#    define ED_API_FUNCTION(N)  kv_function_declare(N);
+#    define ED_FUNCTION(N)  kv_function_declare(N);
 #endif
 
+#include "kv.h"
 #include "4coder_types.h"
 #include "4ed_render_target.h"
 #include "game/fui_ed_api.h"
@@ -28,7 +29,7 @@ kv_function_typedef(N); extern kv_function_pointer(N);
 #include "4coder_token.h"
 #include "4coder_events.h"
 
-//NOTE: 4ed API
+//~NOTE: 4ed API
 
 #define draw_rect_outline_return void
 #define draw_rect_outline_params App *app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth
@@ -86,27 +87,35 @@ kv_function_typedef(N); extern kv_function_pointer(N);
 //
 #define get_token_it_on_current_line_return Token_Iterator_Array
 #define get_token_it_on_current_line_params App *app, Buffer_ID buffer, i64 *line_end_pos
+//
+#define draw_get_clip_return rect2
+#define draw_get_clip_params void
+//
+#define get_hot_prim_id_return u32
+#define get_hot_prim_id_params void
+//
+#define get_active_view_return View_ID
+#define get_active_view_params App *app, Access_Flag access
+//
+#define is_view_to_the_right_return b32
+#define is_view_to_the_right_params App *app, View_ID view
+//
+#define get_other_primary_view_return View_ID
+#define get_other_primary_view_params App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail
+//
+#define view_set_buffer_named_return void
+#define view_set_buffer_named_params App *app, View_ID view, String8 name
+//
+#define view_set_cursor_return b32
+#define view_set_cursor_params App *app, View_ID view_id, Buffer_Seek seek
+//
+#define seek_line_col_return Buffer_Seek
+#define seek_line_col_params i64 line, i64 col
 
 //-
 
-// TODO: explain why we have this "do it twice" situation...
-ED_API_FUNCTION(vim_set_bottom_text);
-ED_API_FUNCTION(change_active_primary_view);
-ED_API_FUNCTION(get_string_advance);
-ED_API_FUNCTION(draw_string_oriented);
-ED_API_FUNCTION(system_get_file_list);
-ED_API_FUNCTION(system_get_path);
-ED_API_FUNCTION(token_it_read);
-ED_API_FUNCTION(push_token_lexeme);
-ED_API_FUNCTION(token_it_inc);
-ED_API_FUNCTION(token_it_dec);
-ED_API_FUNCTION(get_next_input);
-ED_API_FUNCTION(buffer_replace_range);
-ED_API_FUNCTION(token_it_at_cursor);
-ED_API_FUNCTION(fui_editor_ui_loop);
-ED_API_FUNCTION(get_token_it_on_current_line);
-
-// TODO @Cleanup We can remove stuff from here, if we're intelligent about it
+// NOTE(kv): Whenever you wanna add a new editor API function,
+// #define the function signature, then add it here
 #define X_ED_API_FUNCTIONS(X) \
 X(draw_get_target) \
 X(print_message)   \
@@ -130,6 +139,18 @@ X(push_image) \
 X(push_object_transform_to_target) \
 X(draw_configure) \
 X(get_token_it_on_current_line) \
+X(draw_get_clip) \
+X(get_hot_prim_id) \
+X(get_active_view) \
+X(is_view_to_the_right) \
+X(get_other_primary_view) \
+X(view_set_buffer_named) \
+X(view_set_cursor) \
+X(seek_line_col) \
+
+#define X(N)  ED_FUNCTION(N)
+    X_ED_API_FUNCTIONS(X)
+#undef X
 
 #define X(N) kv_function_typedef(N);
     X_ED_API_FUNCTIONS(X)
@@ -138,9 +159,102 @@ X(get_token_it_on_current_line) \
 struct Ed_API
 {
 #define X(N) kv_function_pointer(N);
-    X_ED_API_FUNCTIONS(X)
+ X_ED_API_FUNCTIONS(X)
 #undef X
 };
+
+//~
+
+//TODO: clean this garbage pile up, please!
+inline void
+DEBUG_VALUE_inner(char *scope, char *name, rect2 value, argb color=0)
+{
+ Debug_Entry entry = {};
+ entry.scope=scope;
+ entry.name =name;
+ entry.value=value.v4_value;
+ entry.color=color;
+ DEBUG_send_entry(entry);
+}
+
+inline void
+DEBUG_VALUE_inner(char *scope, char *name, i1 value, argb color=0)
+{
+ Debug_Entry entry = {};
+ entry.scope=scope;
+ entry.name =name;
+ entry.value.x=(f32)value;
+ entry.color=color;
+ DEBUG_send_entry(entry);
+}
+
+inline void
+DEBUG_VALUE_inner(char *scope, char *name, u32 value, argb color=0)
+{
+ Debug_Entry entry = {};
+ entry.scope=scope;
+ entry.name=name;
+ entry.value.x=(f32)value;
+ entry.color=color;
+ DEBUG_send_entry(entry);
+}
+
+inline void
+DEBUG_VALUE_inner(char *scope, char *name, i2 value, argb color=0)
+{
+ Debug_Entry entry = {};
+ entry.scope=scope;
+ entry.name=name;
+ entry.value.xy=V2(value);
+ entry.color=color;
+ DEBUG_send_entry(entry);
+}
+
+inline void
+DEBUG_VALUE_inner(char *scope, char *name, v1 value, argb color=0)
+{
+ Debug_Entry entry = {};
+ entry.scope=scope;
+ entry.name=name;
+ entry.value.x=value;
+ entry.color=color;
+ DEBUG_send_entry(entry);
+}
+
+inline void
+DEBUG_VALUE_inner(char *scope, char *name, v2 value, argb color=0)
+{
+ Debug_Entry entry = {};
+ entry.scope=scope;
+ entry.name=name;
+ entry.value.xy=value;
+ entry.color=color;
+ DEBUG_send_entry(entry);
+}
+
+inline void
+DEBUG_VALUE_inner(char *scope, char *name, v3 v, argb color=0)
+{
+ v4 value = cast_V4(v);
+ Debug_Entry entry = {};
+ entry.scope=scope;
+ entry.name=name;
+ entry.value=value;
+ entry.color=color;
+ DEBUG_send_entry(entry);
+}
+
+inline void
+DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0)
+{
+ Debug_Entry entry = {};
+ entry.scope=scope;
+ entry.name=name;
+ entry.value=v;
+ entry.color=color;
+ DEBUG_send_entry(entry);
+}
+
 
 //~ NOTE: Game
 
@@ -161,7 +275,8 @@ struct Image_Load_Info
 };
 
 global_const i32 GAME_VIEWPORT_COUNT = 3;
-global i1 MAIN_VIEWPORT_ID = 1;
+global_const i32 MAIN_VIEWPORT_ID    = 1;
+global_const String GAME_FILE_NAME = strlit("game.cpp");
 
 //-NOTE: game API functions
 #define game_reload_params struct Game_State *state, Ed_API *ed_api
@@ -174,7 +289,7 @@ global i1 MAIN_VIEWPORT_ID = 1;
 #define game_update_params Game_State *state, App *app, i1 active_viewport_id, Game_Input input_value, Image_Load_Info image_load_info
 //
 #define game_render_return void
-#define game_render_params Game_State *state, App *app, i1 viewport_id, Mouse_State mouse
+#define game_render_params Game_State *state, App *app, Render_Target *target, i1 viewport_id, Mouse_State mouse
 //
 #define game_viewport_update_return b32
 #define game_viewport_update_params Game_State *state, i1 viewport_id, v1 dt
@@ -191,8 +306,8 @@ global i1 MAIN_VIEWPORT_ID = 1;
 #define game_last_preset_return void
 #define game_last_preset_params Game_State *state, i1 viewport_id
 //
-#define is_key_handled_by_game_return  b32
-#define is_key_handled_by_game_params  App *app, Input_Event *event
+#define is_event_handled_by_game_return  b32
+#define is_event_handled_by_game_params  App *app, Input_Event *event, b32 game_hot
 //-Game API function
 
 #define X_GAME_API_FUNCTIONS(X) \
@@ -209,7 +324,7 @@ X(set_indicator_level)      \
 X(get_indicator_level)      \
 X(game_set_preset)          \
 X(game_last_preset)         \
-X(is_key_handled_by_game) \
+X(is_event_handled_by_game) \
 
 #define X(N) kv_function_typedef(N);
     X_GAME_API_FUNCTIONS(X);
@@ -229,9 +344,7 @@ typedef game_api_export_return game_api_export_type(game_api_export_params);
 
 //~
 
-ED_API_FUNCTION(print_message)
-
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 inline void
 printf_message(App *app, char *format, ...)
 {
@@ -264,7 +377,7 @@ pack_modifiers(Key_Code *mods, u32 count)
 }
 
 //-
-#if !AD_COMPILING_DRIVER
+#if !AD_IS_DRIVER
 inline Scratch_Block::Scratch_Block(App *app){
  Thread_Context *t = this->tctx = get_thread_context(app);
  this->arena = tctx_reserve(t);
@@ -289,6 +402,10 @@ inline Scratch_Block::Scratch_Block(App *app, Arena *a1, Arena *a2, Arena *a3){
  this->temp = begin_temp(this->arena);
 }
 #endif
+//-
+
+
+
 //-
 
 #define vim_set_bottom_text_lit(msg) vim_set_bottom_text(strlit(msg))

@@ -178,48 +178,48 @@ view_is_passive(App *app, View_ID view_id)
 internal i1
 hax_guess_which_monitor_the_view_is_in(App *app, View_ID view)
 {
-    rect2 clip = view_get_screen_rect(app, view);
-    if ( in_range_inclusive(0, clip.x0, 1500) )
-        return 1;
-    else 
-        return 2;
+ rect2 clip = view_get_screen_rect(app, view);
+ if ( in_range_inclusive(0, clip.x0, 1500) )
+  return 1;
+ else 
+  return 2;
 }
 
-internal View_ID
-get_other_primary_view(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
+internal get_other_primary_view_return
+get_other_primary_view(get_other_primary_view_params)
 {
-    i1 current_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
-    View_ID view = start_view;
-    do
-    {
-        view = get_next_view_looped_all_panels(app, view, access);
-        if (!view_is_passive(app, view) && 
-            hax_guess_which_monitor_the_view_is_in(app, view) == current_monitor)
-        {
-            break;
-        }
-    } while(view != start_view);
-   
-    if (view == start_view && vsplit_if_fail)
-    {// NOTE(kv): vsplit
-        view = open_view(app, start_view, ViewSplit_Right);
-        new_view_settings(app, view);
-    }
-    
-    return(view);
+ i1 current_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
+ View_ID view = start_view;
+ do
+ {
+  view = get_next_view_looped_all_panels(app, view, access);
+  if (!view_is_passive(app, view) && 
+      hax_guess_which_monitor_the_view_is_in(app, view) == current_monitor)
+  {
+   break;
+  }
+ } while(view != start_view);
+ 
+ if (view == start_view && vsplit_if_fail)
+ {// NOTE(kv): vsplit
+  view = open_view(app, start_view, ViewSplit_Right);
+  new_view_settings(app, view);
+ }
+ 
+ return(view);
 }
 
-internal b32
-is_view_to_the_right(App *app, View_ID view)
+internal is_view_to_the_right_return
+is_view_to_the_right(is_view_to_the_right_params)
 {
-    v1 this_x0 = view_get_screen_rect(app, view).x0;
-    View_ID other_view = get_other_primary_view(app, view, Access_Always, false);
-    if (other_view)
-    {
-        v1 other_x0 = view_get_screen_rect(app, other_view).x0;
-        return (other_x0 < this_x0);
-    }
-    return false;
+ b32 result = false;
+ v1 this_x0 = view_get_screen_rect(app, view).x0;
+ View_ID other_view = get_other_primary_view(app, view, Access_Always, false);
+ if (other_view) {
+  v1 other_x0 = view_get_screen_rect(app, other_view).x0;
+  result = (other_x0 < this_x0);
+ }
+ return result;
 }
 function View_ID
 get_prev_view_looped_primary_panels(App *app, View_ID start_view_id, Access_Flag access)
@@ -233,19 +233,6 @@ get_prev_view_looped_primary_panels(App *app, View_ID start_view_id, Access_Flag
     }while(view_id != start_view_id);
     return(view_id);
 }
-
-#if 0
-function View_ID
-get_next_view_after_active(App *app, Access_Flag access, b32 vsplit_if_fail)
-{
-    View_ID view = get_active_view(app, access);
-    if (view != 0)
-    {
-        view = get_next_view_looped_primary_panels(app, view, access, vsplit_if_fail);
-    }
-    return(view);
-}
-#endif
 
 ////////////////////////////////
 

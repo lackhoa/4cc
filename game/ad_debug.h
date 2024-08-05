@@ -1,6 +1,6 @@
 #pragma once
 
-#if AD_COMPILING_DRIVER
+#if AD_IS_DRIVER
 u64 ad_rdtsc(void);
 
 #else  // NOTE: Framework

@@ -74,13 +74,13 @@ free_all_queries(Query_Set *set){
 
 internal Access_Flag
 view_get_access_flags(View *view){
-    Access_Flag result = file_get_access_flags(view->file);
-    View_Context_Node *node = view->ctx;
-    b32 hides_buffer = (node != 0 && node->ctx.hides_buffer);
-    if (hides_buffer){
-        RemFlag(result, Access_Visible);
-    }
-    return(result);
+ Access_Flag result = file_get_access_flags(view->file);
+ View_Context_Node *node = view->ctx;
+ b32 hides_buffer = (node != 0 && node->ctx.hides_buffer);
+ if (hides_buffer){
+  RemFlag(result, Access_Visible);
+ }
+ return(result);
 }
 
 internal i1
@@ -837,14 +837,30 @@ imp_get_view(Models *models, View_ID view_id){
     Live_Views *view_set = &models->view_set;
     View *view = 0;
     view_id -= 1;
-    if (0 <= view_id && view_id < view_set->max){
-        view = view_set->views + view_id;
-        if (!view->in_use){
-            view = 0;
-        }
-    }
-    return(view);
+ if (0 <= view_id && view_id < view_set->max){
+  view = view_set->views + view_id;
+  if (!view->in_use){
+   view = 0;
+  }
+ }
+ return(view);
 }
+
+function b32 api_check_view(View *view);
+
+internal Render_Target *
+get_view_render_target(App *app, View_ID view_id)
+{
+ Render_Target *result = 0;
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ if ( api_check_view(view) )
+ {
+  result = get_render_target(view->window_id);
+ }
+ return result;
+}
+
 
 // BOTTOM
 

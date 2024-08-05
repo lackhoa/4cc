@@ -30,7 +30,7 @@ csg_sphere(v3 center, v1 radius)
 {
  v1 object_scale = get_object_scale();
  CSG_Tree *tree = csg_push_tree(CSG_Sphere);
- tree->center =  mat4vert_no_div(raycast_transform, center);
+ tree->center =  mat4vert(raycast_transform, center);
  tree->radius = object_scale * radius;
  
  return tree;

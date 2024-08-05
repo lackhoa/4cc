@@ -297,7 +297,7 @@ get_event_properties(Input_Event *event){
 
 function Input_Event*
 push_input_event(Arena *arena, Input_List *list){
-    Input_Event_Node *node = push_array_zero(arena, Input_Event_Node, 1);
+    Input_Event_Node *node = push_array(arena, Input_Event_Node, 1, true);
     sll_queue_push(list->first, list->last, node);
     list->count += 1;
     return(&node->event);

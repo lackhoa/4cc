@@ -211,7 +211,7 @@ typedef u32 Widget_ID;
 }
 
 {// bookmark: The eye experiment
- viz_block;
+ hl_block;
  v2 A0 = fval2(-0.1f, 0.f);
  v2 B0 = fval2(0.15f, 0.08f);
  v1 At = A0.x; v1 Ap = A0.y;
@@ -267,7 +267,7 @@ perspective_project(Painter *p, v3 worldP)
  v3 centroid = (line[0]+line[1]+line[2]) / 3.f;
  v3 P = centroid+normal;
  {
-  viz_block;
+  hl_block;
   draw(p, bez1(centroid,P));
  }
  v3 camP = perspective_project_non_hyperbolic(p->camera, to_world*P);
@@ -508,7 +508,7 @@ hit_test(v3 rd, CSG_Tree *tree, v1 lower_bound /*@tmin_exclusive*/)
    case CSG_Box:
    {// ;csg_primitive_box ; see also csg_box and @aabb_hit_test
     // Reference reindeer: https://www.shadertoy.com/view/tl23Rm
-    v3 ro = mat4vert_no_div(tree->to_aabb, V3());
+    v3 ro = mat4vert(tree->to_aabb, V3());
     v3 &R = tree->box_radius;
     set_in_block(rd, mat4vec(tree->to_aabb, rd));
     

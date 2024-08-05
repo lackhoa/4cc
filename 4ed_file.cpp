@@ -314,7 +314,7 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
             app.cmd_context = models;
             *list = layout_func(&app, &file->state.cached_layouts_arena,
                                 file->id, line_range, face->id, width);
-            key_data = push_data_copy(&file->state.cached_layouts_arena, key_data);
+            key_data = push_string_copy(&file->state.cached_layouts_arena, key_data);
             table_insert(&file->state.line_layout_table, key_data, (u64)PtrAsInt(list));
         }
         block_copy_struct(&result, list);
