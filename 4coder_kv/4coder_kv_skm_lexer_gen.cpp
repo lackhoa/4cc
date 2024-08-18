@@ -23,11 +23,11 @@ build_language_model(void)
     // skm Operators
     Operator_Set *main_ops = sm_begin_op_set();
     //
-    sm_select_base_kind(TokenBaseKind_ParentheticalOpen);
+    sm_select_base_kind(TokenBaseKind_ParenOpen);
     sm_op("(");
     sm_op("[");
     sm_op("{");
-    sm_select_base_kind(TokenBaseKind_ParentheticalClose);
+    sm_select_base_kind(TokenBaseKind_ParenClose);
     sm_op(")");
     sm_op("]");
     sm_op("}");

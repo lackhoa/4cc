@@ -248,17 +248,15 @@ kv_view_input_handler(App *app)
    b32 is_game_buffer;
    {
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    is_game_buffer = get_buffer_game_viewport_id(app, buffer);
+    is_game_buffer = buffer_viewport_id(app, buffer);
    }
    
    b32 handled = false;
    
-   if ( game_code_valid() )
+   auto game = get_game_code();
+   if ( game )
    {
-    if(global_game_on_readonly)
-    {
-     handled = global_game_code.is_event_handled_by_game(app, &input.event, is_game_buffer);
-    }
+    handled = game->is_event_handled_by_game(app, &input.event, is_game_buffer);
    }
    
    if (!handled)

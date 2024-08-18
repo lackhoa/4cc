@@ -87,10 +87,10 @@ build_language_model(void){
     sm_op("{");
     sm_select_base_kind(TokenBaseKind_ScopeClose);
     sm_op("}");
-    sm_select_base_kind(TokenBaseKind_ParentheticalOpen);
+    sm_select_base_kind(TokenBaseKind_ParenOpen);
     sm_op("(");
     sm_op("[");
-    sm_select_base_kind(TokenBaseKind_ParentheticalClose);
+    sm_select_base_kind(TokenBaseKind_ParenClose);
     sm_op(")");
     sm_op("]");
     sm_select_base_kind(TokenBaseKind_StatementClose);
@@ -147,15 +147,15 @@ build_language_model(void){
     sm_char_name('>', "Right");
     sm_op("<<=");
     sm_op(">>=");
-    
-    sm_select_base_kind(TokenBaseKind_StatementClose);
-    sm_op(",");
-    
-    // CPP Preprocess Operators
-    Operator_Set *pp_ops = sm_begin_op_set();
-    
-    sm_op("#", "PPStringify");
-    sm_op("##", "PPConcat");
+ 
+ sm_select_base_kind(TokenBaseKind_StatementClose);
+ sm_op(",");
+ 
+ // CPP Preprocess Operators
+ Operator_Set *pp_ops = sm_begin_op_set();
+ 
+ sm_op("#", "PPStringify");
+ sm_op("##", "PPConcat");
     
     // CPP Keywords
     Keyword_Set *main_keys = sm_begin_key_set("main_keys");

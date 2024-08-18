@@ -14,7 +14,7 @@ begin_buffer_insertion_at(App *app, Buffer_ID buffer_id, i64 at){
 }
 
 function Buffer_Insertion
-begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, Cursor *cursor){
+begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, Memory_Cursor *cursor){
     Buffer_Insertion result = begin_buffer_insertion_at(app, buffer_id, at);
     result.buffering = true;
     result.cursor = cursor;
@@ -24,7 +24,7 @@ begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, Cursor
 
 function Buffer_Insertion
 begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, Arena *buffer_memory, u64 buffer_memory_size){
-    Cursor *cursor = push_array(buffer_memory, Cursor, 1);
+    Memory_Cursor *cursor = push_array(buffer_memory, Memory_Cursor, 1);
     *cursor = make_cursor(push_array(buffer_memory, u8, buffer_memory_size), buffer_memory_size);
     return(begin_buffer_insertion_at_buffered(app, buffer_id, at, cursor));
 }
@@ -46,7 +46,7 @@ insert_string__no_buffering(Buffer_Insertion *insertion, String string){
 
 function void
 insert__flush(Buffer_Insertion *insertion){
-    Cursor *cursor = insertion->cursor;
+    Memory_Cursor *cursor = insertion->cursor;
     u64 pos = insertion->temp.temp_memory_cursor.pos;
     String string = SCu8(cursor->base + pos, cursor->pos - pos);
     insert_string__no_buffering(insertion, string);

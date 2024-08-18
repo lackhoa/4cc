@@ -257,7 +257,7 @@ CUSTOM_DOC("Moves the cursor between the open/close brace/paren/bracket of the c
         if(token)
         {
             if(token->kind == TokenBaseKind_ScopeOpen ||
-               token->kind == TokenBaseKind_ParentheticalOpen)
+               token->kind == TokenBaseKind_ParenOpen)
             {
                 pos += 1;
                 goto end;
@@ -269,7 +269,7 @@ CUSTOM_DOC("Moves the cursor between the open/close brace/paren/bracket of the c
         if(token)
         {
             if(token->kind == TokenBaseKind_ScopeClose ||
-               token->kind == TokenBaseKind_ParentheticalClose)
+               token->kind == TokenBaseKind_ParenClose)
             {
                 pos -= 1;
                 goto end;

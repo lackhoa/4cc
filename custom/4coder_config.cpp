@@ -1524,7 +1524,7 @@ function void
 load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 override_hinting){
     Scratch_Block scratch(app, out_arena);
     
-    arena_free_all(out_arena);
+    arena_clear(out_arena);
     
     Config *parsed = 0;
     FILE *file = def_search_normal_fopen(scratch, "config.4coder", "rb");

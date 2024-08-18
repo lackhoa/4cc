@@ -868,7 +868,7 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
     // NOTE(allen): Load the project file from the hot directory, as advertised
     String8 project_path = push_hot_directory(app, scratch);
     File_Name_Data dump = read_entire_file_search_up_path(scratch, project_path, str8lit("project.4coder"));
-    String8 project_root = path_dirname(dump.filename);
+    String8 project_root = path_dirname(dump.name);
     
     if (dump.data.str == 0)
     {
@@ -883,7 +883,7 @@ CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to lo
         Token_Array array = token_array_from_text(app, scratch, dump.data);
         if (array.tokens != 0)
         {
-            config = config_parse(app, scratch, dump.filename, dump.data, array);
+            config = config_parse(app, scratch, dump.name, dump.data, array);
             if (config != 0)
             {
                 i1 version = 0;

@@ -1,15 +1,3 @@
-internal get_indicator_level_return
-get_indicator_level(get_indicator_level_params)
-{
- return state->indicator_level;
-}
-
-internal set_indicator_level_return
-set_indicator_level(set_indicator_level_params)
-{
- state->indicator_level = level;
-}
-
 internal game_set_preset_return
 game_set_preset(game_set_preset_params)
 {
@@ -29,7 +17,7 @@ game_last_preset(game_last_preset_params)
  macro_swap(viewport->preset, viewport->last_preset);
 }
 
-internal b32
+internal is_event_handled_by_game_return
 is_event_handled_by_game(is_event_handled_by_game_params)
 {
  b32 result = false;
@@ -62,16 +50,10 @@ is_event_handled_by_game(is_event_handled_by_game_params)
  }
  else if (event->kind == InputEventKind_MouseButton)
  {
-  View_ID view = get_active_view(app,0);
+  //NOTE: We're supposed to detect if the mouse is within the game view,
+  // and handle if we're inside, but I'm too lazy ;>
   u32 hot_prim = get_hot_prim_id();
-  if( hot_prim && !(hot_prim & bit_31) )
-  {// NOTE: Jump to primitive
-   if( !is_view_to_the_right(app, view) )
-   {//NOTE: switch to the right view
-    view = get_other_primary_view(app, view, Access_Always, true);
-   }
-   view_set_buffer_named(app, view, GAME_FILE_NAME);
-   view_set_cursor(app, view, seek_line_col(hot_prim, 0));
+  if( hot_prim ) {
    result = true;
   }
  }

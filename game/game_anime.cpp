@@ -61,7 +61,7 @@ jump pose_field_info;
 global_const Pose_Field_Info pose_field_info[] = {
 #define X(NAME,DENOM) \
 Pose_Field_Info{ \
-.offset = i1(gb_offset_of(Pose, NAME)), \
+.offset = i1(offsetof(Pose, NAME)), \
 .denom  = DENOM, \
 },
  //

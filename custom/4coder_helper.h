@@ -7,32 +7,28 @@
 #if !defined(FCODER_HELPER_H)
 #define FCODER_HELPER_H
 
-struct File_Name_Data{
-    String8 filename;
-    String8 data;
-};
-
 struct View_Context_Block{
     App *app;
     View_ID view;
     
-    View_Context_Block(App *app, View_ID view, View_Context *ctx);
-    ~View_Context_Block();
+ View_Context_Block(App *app, View_ID view, View_Context *ctx);
+ ~View_Context_Block();
 };
 
 ////////////////////////////////
 
 typedef i32 Position_Within_Line;
 enum{
-    PositionWithinLine_Start,
-    PositionWithinLine_SkipLeadingWhitespace,
-    PositionWithinLine_End,
+ PositionWithinLine_Start,
+ PositionWithinLine_SkipLeadingWhitespace,
+ PositionWithinLine_End,
 };
 
 typedef u32 Buffer_Seek_String_Flags;
 enum{
-    BufferSeekString_Backward = 1,
-    BufferSeekString_CaseInsensitive = 2,
+ BufferSeekString_Backward        = bit_1,
+ BufferSeekString_CaseInsensitive = bit_2,
+ BufferSeekString_Identifier      = bit_3,
 };
 
 ////////////////////////////////

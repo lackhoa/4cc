@@ -12,7 +12,7 @@ struct Buffer_Insertion{
     Buffer_ID buffer;
     i64 at;
     b32 buffering;
-    Cursor *cursor;
+    Memory_Cursor *cursor;
     Temp_Memory temp;
 };
 

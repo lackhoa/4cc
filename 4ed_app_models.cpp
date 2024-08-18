@@ -10,17 +10,17 @@
 // TOP
 
 function void
-models_push_view_command_function(Models *models, View_ID view_id, Custom_Command_Function *custom_func){
-    Model_View_Command_Function *node = models->free_view_cmd_funcs;
-    if (node == 0){
-        node = push_array(models->arena, Model_View_Command_Function, 1);
-    }
-    else{
-        sll_stack_pop(models->free_view_cmd_funcs);
-    }
-    sll_queue_push(models->first_view_cmd_func, models->last_view_cmd_func, node);
-    node->view_id = view_id;
-    node->custom_func = custom_func;
+models_push_view_command_function(Models *models, View_ID view_id, Custom_Command_Function *custom_func)
+{
+ Model_View_Command_Function *node = models->free_view_cmd_funcs;
+ if (node == 0) {
+  node = push_array(models->arena, Model_View_Command_Function, 1);
+ } else {
+  sll_stack_pop(models->free_view_cmd_funcs);
+ }
+ sll_queue_push(models->first_view_cmd_func, models->last_view_cmd_func, node);
+ node->view_id = view_id;
+ node->custom_func = custom_func;
 }
 
 function Model_View_Command_Function

@@ -589,7 +589,7 @@ system_get_clipboard_sig(){
                 if (data != nil){
                     u32 copy_length = data.length;
                     if (copy_length > 0){
-                        result = string_const_u8_push(arena, copy_length);
+                        result = push_data(arena, copy_length);
                         [data getBytes:result.str length:result.size];
                     }
                 }

@@ -4,23 +4,53 @@
 #include "4coder_vim_lister.cpp"
 
 
-// todo(kv): we don't support case sensitive search, cause don't need it.
-function i64 vim_pattern_inner_v(App *app, Buffer_Seek_String_Flags seek_flags)
+// TODO(kv): We don't support case sensitive search
+function i64
+vim_pattern_inner_v(App *app, Buffer_Seek_String_Flags seek_flags)
 {
-	String_u8 *pattern = &vim_registers.search.data;
-	if(pattern->size == 0){ return -1; }
-
-	View_ID view = get_active_view(app, Access_ReadVisible);
-	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-	i64 pos = view_get_cursor_pos(app, view);
-    if (seek_flags & BufferSeekString_Backward)
+ i64 result = -1;
+	String_u8 *pattern0 = &vim_registers.search.data;
+ b32 backward = seek_flags & BufferSeekString_Backward;
+	if(pattern0->size != 0)
+ {
+  String pattern = pattern0->string;
+  View_ID view = get_active_view(app, Access_ReadVisible);
+  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+  i64 pos = view_get_cursor_pos(app, view);
+  if (seek_flags & BufferSeekString_Identifier)
+  {// NOTE(kv): Identifier search
+   Scratch_Block scratch(app);
+   Token_Iterator_Array tk = token_it_at_cursor(app);
+   while(true)
+   {
+    Token *token = (backward ?
+                    tkarr_dec(&tk) :
+                    tkarr_inc(&tk));
+    if (token)
     {
-      return kv_fuzzy_search_backward(app, buffer, pos, pattern->string);
+     if (token->kind == TokenBaseKind_Identifier)
+     {
+      String token_string = push_token_lexeme(app, scratch, buffer, token);
+      if ( string_match(pattern, token_string) )
+      {
+       result = token->pos;
+       break;
+      }
+     }
     }
-    else
-    {
-      return kv_fuzzy_search_forward(app, buffer, pos, pattern->string);
-    }
+    else { break; }
+   }
+  }
+  else
+  {// NOTE(kv): fuzzy string search
+   if (backward) {
+    result = kv_fuzzy_search_backward(app, buffer, pos, pattern);
+   } else {
+    result = kv_fuzzy_search_forward(app, buffer, pos, pattern);
+   }
+  }
+ }
+ return result;
 }
 
 /* NOTE(kv): don't know what this does
@@ -39,22 +69,29 @@ function void vim_in_pattern_inner(App *app, Buffer_Seek_String_Flags seek_flags
 */
 
 function void
-vim_to_pattern_inner(App *app, Buffer_Seek_String_Flags seek_flags)
+vim_to_pattern_inner(App *app, b32 backward)
 {
-  View_ID view = get_active_view(app, Access_ReadVisible);
-  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-  i64 buffer_size = buffer_get_size(app, buffer);
-  i64 new_pos = vim_pattern_inner_v(app, seek_flags);
-  if(new_pos > 0 && new_pos != buffer_size){
-    vim_push_jump(app, view);
-    Vim_Motion_Block vim_motion_block(app);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
-  }
-  vim_scroll_screen_mid(app);  // @modified(kv): hack so that we don't obscure the cursor
+ Buffer_Seek_String_Flags seek_flags = 0;
+ if (backward) { seek_flags |= BufferSeekString_Backward; }
+ if (vim_state.identifier_search_mode) { seek_flags |= BufferSeekString_Identifier; }
+ 
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ i64 buffer_size = buffer_get_size(app, buffer);
+ i64 new_pos = vim_pattern_inner_v(app, seek_flags);
+ if(new_pos > 0 && new_pos != buffer_size)
+ {
+  vim_push_jump(app, view);
+  Vim_Motion_Block vim_motion_block(app);
+  view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
+ }
+ vim_scroll_screen_mid(app);  // kv: If we don't scroll, the cursor will be lost
 }
 
 function void
-vim_start_search_inner(App *app, Scan_Direction start_direction){
+vim_start_search_inner(App *app, Scan_Direction start_direction)
+{
+ vim_state.identifier_search_mode = false;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	if(!buffer_exists(app, buffer)){ return; }
@@ -175,16 +212,18 @@ VIM_COMMAND_SIG(vim_clear_search){
 	vim_update_registers(app);
 }
 
-VIM_COMMAND_SIG(vim_start_search_forward){  vim_start_search_inner(app, Scan_Forward); }
+VIM_COMMAND_SIG(vim_start_search_forward) { vim_start_search_inner(app, Scan_Forward);  }
 VIM_COMMAND_SIG(vim_start_search_backward){ vim_start_search_inner(app, Scan_Backward); }
 
-VIM_COMMAND_SIG(vim_to_next_pattern){ vim_to_pattern_inner(app, 0); }
-VIM_COMMAND_SIG(vim_to_prev_pattern){ vim_to_pattern_inner(app, BufferSeekString_Backward); }
+VIM_COMMAND_SIG(vim_to_next_pattern){ vim_to_pattern_inner(app, false); }
+VIM_COMMAND_SIG(vim_to_prev_pattern){ vim_to_pattern_inner(app, true); }
 
 // VIM_COMMAND_SIG(vim_in_next_pattern){ vim_in_pattern_inner(app, 0); }
 // VIM_COMMAND_SIG(vim_in_prev_pattern){ vim_in_pattern_inner(app, BufferSeekString_Backward); }
 
-VIM_COMMAND_SIG(vim_search_identifier){
+VIM_COMMAND_SIG(vim_search_identifier)
+{
+ vim_state.identifier_search_mode = true;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	i64 pos = view_get_cursor_pos(app, view);
@@ -193,3 +232,5 @@ VIM_COMMAND_SIG(vim_search_identifier){
 	vim_request_vtable[REQUEST_Yank](app, view, buffer, range);
 	vim_default_register();
 }
+
+//~

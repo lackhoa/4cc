@@ -40,8 +40,8 @@ byp_get_token_color_cpp(Token token){
 		case TokenBaseKind_Operator:
 		case TokenBaseKind_ScopeOpen:
 		case TokenBaseKind_ScopeClose:
-		case TokenBaseKind_ParentheticalOpen:
-		case TokenBaseKind_ParentheticalClose:
+		case TokenBaseKind_ParenOpen:
+		case TokenBaseKind_ParenClose:
 		case TokenBaseKind_StatementClose:{ color = defcolor_non_text; } break;
 
 		case byp_TokenKind_ControlFlow:{ color = defcolor_control; }break;
@@ -73,11 +73,11 @@ byp_draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *
 	i64 first_index = token_index_from_pos(array, visible_range.first);
 	Token_Iterator_Array it = token_iterator_index(0, array, first_index);
 	for(;;){
-		Token *token = token_it_read(&it);
+		Token *token = tkarr_read(&it);
 		if(token->pos >= visible_range.one_past_last){ break; }
 		ARGB_Color argb = byp_get_token_color_cpp(*token);
 		paint_text_color(app, text_layout_id, Ii64_size(token->pos, token->size), argb);
-		if(!token_it_inc_all(&it)){ break; }
+		if(!tkarr_inc_all(&it)){ break; }
 	}
 }
 
@@ -92,7 +92,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
 
     i64 cursor_index = token_index_from_pos(&token_array, view_get_cursor_pos(app, view));
     Token_Iterator_Array it = token_iterator_index(0, token_array.tokens, token_array.count, cursor_index);
-    Token *cursor_token = token_it_read(&it);
+    Token *cursor_token = tkarr_read(&it);
     b32 do_cursor_tok_highlight = byp_highlight_token(cursor_token->kind);
 
     String token_string = {};
@@ -140,7 +140,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
 		Token_Iterator_Array comment_it = token_iterator_index(buffer, &token_array, first_index);
 		for(;;)
         {
-            Token *token = token_it_read(&comment_it);
+            Token *token = tkarr_read(&comment_it);
             if(token->pos >= visible_range.max){ break; }
             String tail = {};
             if(token_it_check_and_get_lexeme(app, scratch, &comment_it, TokenBaseKind_Comment, &tail))
@@ -168,7 +168,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
                     }
                 }
             }
-            if (!token_it_inc_non_whitespace(&comment_it)){ break; }
+            if (!tkarr_inc_non_whitespace(&comment_it)){ break; }
         }
     }
     
@@ -183,10 +183,10 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
         draw_comment_highlights(app, buffer, text_layout_id, &token_array, pairs, ArrayCount(pairs));
     }
     
-    it = token_it_at_pos(0, &token_array, Max(0, visible_range.first-1));
+    it = tkarr_at_pos(0, &token_array, Max(0, visible_range.first-1));
     for (;;)
     {
-        Token *token = token_it_read(&it);
+        Token *token = tkarr_read(&it);
         if (token->pos > visible_range.max)
             break;
         
@@ -223,7 +223,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
         }
         if (color) paint_text_color(app, text_layout_id, Ii64_size(token->pos, token->size), color);
         
-        if (!token_it_inc_non_whitespace(&it))
+        if (!tkarr_inc_non_whitespace(&it))
             break;
     }
     if (do_cursor_tok_highlight) { draw_rect(app, cursor_tok_rect, 5.f, cursor_tok_color, 0); }

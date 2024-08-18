@@ -551,8 +551,8 @@ typedef i1 b32; // NOTE(bill): Prefer this!!!
 #define gb_count_of(x) ((gb_size_of(x)/gb_size_of(0[x])) / ((isize)(!(gb_size_of(x) % gb_size_of(0[x])))))
 #endif
 
-#ifndef gb_offset_of
-#define gb_offset_of(Type, element) ((isize)&(((Type *)0)->element))
+#ifndef offsetof
+#define offsetof(Type, element) ((isize)&(((Type *)0)->element))
 #endif
 
 #if defined(__cplusplus)
@@ -563,13 +563,13 @@ typedef i1 b32; // NOTE(bill): Prefer this!!!
 extern "C++" {
 		// NOTE(bill): Fucking Templates!
 		template <typename T> struct gbAlignment_Trick { char c; T member; };
-		#define gb_align_of(Type) gb_offset_of(gbAlignment_Trick<Type>, member)
+		#define gb_align_of(Type) offsetof(gbAlignment_Trick<Type>, member)
 }
 	#endif
 #endif
 #else
 	#ifndef gb_align_of
-	#define gb_align_of(Type) gb_offset_of(struct { char c; Type member; }, member)
+	#define gb_align_of(Type) offsetof(struct { char c; Type member; }, member)
 	#endif
 #endif
 

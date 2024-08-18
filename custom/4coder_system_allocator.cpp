@@ -27,7 +27,7 @@ base_free__system(void *user_data, void *ptr){
 
 internal Base_Allocator
 make_base_allocator_system(void){
-    return(make_base_allocator(base_reserve__system, 0, 0, base_free__system, 0, 0));
+    return(make_base_allocator_generic(base_reserve__system, 0, 0, base_free__system, 0, 0));
 }
 
 global Base_Allocator base_allocator_system = {};
@@ -35,7 +35,7 @@ global Base_Allocator base_allocator_system = {};
 internal Base_Allocator*
 get_base_allocator_system(void)
 {
-    if (base_allocator_system.reserve == 0)
+    if (base_allocator_system.type == 0)
     {
         base_allocator_system = make_base_allocator_system();
     }

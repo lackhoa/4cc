@@ -1120,7 +1120,7 @@ GetDataFromSourceCode(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
     
     if(token_array.tokens != 0)
     {
-        Token_Iterator_Array it = token_it_at_pos(0, &token_array, start_pos);
+        Token_Iterator_Array it = tkarr_at_pos(0, &token_array, start_pos);
         Token *token = 0;
         
         b32 found = 0;
@@ -1128,9 +1128,9 @@ GetDataFromSourceCode(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
         // NOTE(rjf): Find scope open (opening brace of initializer).
         for(;;)
         {
-            token = token_it_read(&it);
+            token = tkarr_read(&it);
             if(token->pos >= start_pos + 30 || !token ||
-               !token_it_inc_non_whitespace(&it))
+               !tkarr_inc_non_whitespace(&it))
             {
                 found = 0;
                 break;
@@ -1163,8 +1163,8 @@ GetDataFromSourceCode(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
             float *data;
             for(;;)
             {
-                token = token_it_read(&it);
-                if(!token || !token_it_inc_non_whitespace(&it))
+                token = tkarr_read(&it);
+                if(!token || !tkarr_inc_non_whitespace(&it))
                 {
                     goto end_read_data;
                 }
@@ -2134,9 +2134,9 @@ InterpretCalcExpression(CalcInterpretContext *context, CalcNode *root)
                 
                 for(;;)
                 {
-                    token = token_it_read(&it);
+                    token = tkarr_read(&it);
                     
-                    if(token->pos >= visible_range.one_past_last + 4096 || !token || !token_it_inc_non_whitespace(&it))
+                    if(token->pos >= visible_range.one_past_last + 4096 || !token || !tkarr_inc_non_whitespace(&it))
                     {
                         break;
                     }
@@ -2471,9 +2471,9 @@ F4_CLC_RenderComments(App *app, Buffer_ID buffer, View_ID view,
         Token *token = 0;
         for(;;)
         {
-            token = token_it_read(&it);
+            token = tkarr_read(&it);
             
-            if(token->pos >= visible_range.one_past_last || !token || !token_it_inc_non_whitespace(&it))
+            if(token->pos >= visible_range.one_past_last || !token || !tkarr_inc_non_whitespace(&it))
             {
                 break;
             }

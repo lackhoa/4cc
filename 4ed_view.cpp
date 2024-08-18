@@ -526,56 +526,58 @@ view_current_context(View *view){
     View_Context_Node *node = view->ctx;
     if (node != 0){
         block_copy_struct(&ctx, &node->ctx);
-    }
-    return(ctx);
+ }
+ return(ctx);
 }
 
 ////////////////////////////////
 
 internal Coroutine*
-co_handle_request(Thread_Context *tctx, Models *models, Coroutine *co, Co_Out *out){
-    Coroutine *result = 0;
-    switch (out->request){
-        case CoRequest_NewFontFace:
-        {
-            Face_Description *description = out->face_description;
-            Face *face = font_set_new_face(&models->font_set, description);
-            Co_In in = {};
-            in.face_id = (face != 0)?face->id:0;
-            result = coroutine_run(&models->coroutines, co, &in, out);
-        }break;
-        
-        case CoRequest_ModifyFace:
-        {
-            Face_Description *description = out->face_description;
-            Face_ID face_id = out->face_id;
-            Co_In in = {};
-            in.success = font_set_modify_face(&models->font_set, face_id, description);
-            result = coroutine_run(&models->coroutines, co, &in, out);
-        }break;
-        
-        case CoRequest_AcquireGlobalFrameMutex:
-        {
-            system_acquire_global_frame_mutex(tctx);
-            result = coroutine_run(&models->coroutines, co, 0, out);
-        }break;
-        
-        case CoRequest_ReleaseGlobalFrameMutex:
-        {
-            system_release_global_frame_mutex(tctx);
-            result = coroutine_run(&models->coroutines, co, 0, out);
-        }break;
-    }
-    return(result);
+co_handle_request(Thread_Context *tctx, Models *models, Coroutine *co, Co_Out *out)
+{
+ Coroutine *result = 0;
+ switch (out->request){
+  case CoRequest_NewFontFace:
+  {
+   Face_Description *description = out->face_description;
+   Face *face = font_set_new_face(&models->font_set, description);
+   Co_In in = {};
+   in.face_id = (face != 0)?face->id:0;
+   result = coroutine_run(&models->coroutines, co, &in, out);
+  }break;
+  
+  case CoRequest_ModifyFace:
+  {
+   Face_Description *description = out->face_description;
+   Face_ID face_id = out->face_id;
+   Co_In in = {};
+   in.success = font_set_modify_face(&models->font_set, face_id, description);
+   result = coroutine_run(&models->coroutines, co, &in, out);
+  }break;
+  
+  case CoRequest_AcquireGlobalFrameMutex:
+  {
+   system_acquire_global_frame_mutex(tctx);
+   result = coroutine_run(&models->coroutines, co, 0, out);
+  }break;
+  
+  case CoRequest_ReleaseGlobalFrameMutex:
+  {
+   system_release_global_frame_mutex(tctx);
+   result = coroutine_run(&models->coroutines, co, 0, out);
+  }break;
+ }
+ return(result);
 }
 
 internal Coroutine*
-co_run(Thread_Context *tctx, Models *models, Coroutine *co, Co_In *in, Co_Out *out){
-    Coroutine *result = coroutine_run(&models->coroutines, co, in, out);
-    for (;result != 0 && out->request != CoRequest_None;){
-        result = co_handle_request(tctx, models, result, out);
-    }
-    return(result);
+co_run(Thread_Context *tctx, Models *models, Coroutine *co, Co_In *in, Co_Out *out)
+{
+ Coroutine *result = coroutine_run(&models->coroutines, co, in, out);
+ for (;result != 0 && out->request != CoRequest_None;) {
+  result = co_handle_request(tctx, models, result, out);
+ }
+ return(result);
 }
 
 internal void
@@ -670,30 +672,33 @@ co_full_abort(Thread_Context *tctx, Models *models, View *view){
 #define M "SERIOUS ERROR: full stack abort did not complete"
         print_message(&app, string_u8_litexpr(M));
 #undef M
-    }
-    view->co = 0;
-    init_query_set(&view->query_set);
+ }
+ view->co = 0;
+ init_query_set(&view->query_set);
 }
 
 function b32
-co_send_event(Thread_Context *tctx, Models *models, View *view, Input_Event *event){
-    b32 event_was_handled = false;
-    
-    {
-        models->current_input_unhandled = false;
-        Co_In in = {};
-        in.user_input.event = *event;
-        in.user_input.abort = false;
-        begin_handling_input(models, &in.user_input);
-        view->co = co_run(tctx, models, view->co, &in, &view->co_out);
-        view_check_co_exited(models, view);
-        if (!(event->kind == InputEventKind_Core && event->core.code == CoreCode_Animate)){
-            models->animate_next_frame = true;
-        }
-        event_was_handled = !models->current_input_unhandled;
-    }
-    
-    return(event_was_handled);
+co_send_event(Thread_Context *tctx, Models *models, View *view, Input_Event *event)
+{
+ b32 event_was_handled = false;
+ 
+ {
+  models->current_input_unhandled = false;
+  Co_In in = {};
+  in.user_input.event = *event;
+  in.user_input.abort = false;
+  begin_handling_input(models, &in.user_input);
+  view->co = co_run(tctx, models, view->co, &in, &view->co_out);
+  view_check_co_exited(models, view);
+  if (!(event->kind == InputEventKind_Core &&
+        event->core.code == CoreCode_Animate))
+  {
+   models->animate_next_frame = true;
+  }
+  event_was_handled = !models->current_input_unhandled;
+ }
+ 
+ return(event_was_handled);
 }
 
 function b32

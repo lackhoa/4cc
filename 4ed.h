@@ -54,6 +54,7 @@ struct Application_Step_Input
  b32 trying_to_kill;
  v1  work_seconds;
  u32 work_cycles;
+ u32 hot_prim_id;
 };
 
 typedef b32 Log_Function(String str);

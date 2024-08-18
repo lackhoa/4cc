@@ -79,6 +79,7 @@ struct Frame_Info{
  v1 animation_dt;
  u32 work_cycles;
  v1  work_seconds;
+ u32 hot_prim_id;
 };
 
 enum{

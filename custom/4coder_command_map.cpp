@@ -116,7 +116,7 @@ mapping_init(Thread_Context *tctx, Mapping *mapping){
 
 function void
 mapping_release(Thread_Context *tctx, Mapping *mapping){
-    arena_free_all(&mapping->node_arena);
+    arena_clear(&mapping->node_arena);
     table_free(&mapping->id_to_map);
 }
 
@@ -173,7 +173,7 @@ mapping_release_map(Mapping *mapping, Command_Map *map){
         mapping->free_lists = map->list_first;
     }
     table_free(&map->event_code_to_binding_list);
-    arena_free_all(&map->node_arena);
+    arena_clear(&map->node_arena);
 }
 
 ////////////////////////////////
@@ -462,30 +462,34 @@ map_get_triggers_non_recursive(Mapping *mapping, Command_Map *map, Command_Bindi
 
 function Command_Trigger_List
 map_get_triggers_non_recursive(Command_Map *map, Command_Binding binding){
-    return(map_get_triggers_non_recursive(0, map, binding));
+ return(map_get_triggers_non_recursive(0, map, binding));
 }
 
 function Command_Trigger_List
-map_get_triggers_recursive(Arena *arena, Mapping *mapping, Command_Map *map, Command_Binding binding){
-    Command_Trigger_List result = {};
-    if (mapping != 0){
-        for (i1 safety_counter = 0;
-             map != 0 && safety_counter < 40;
-             safety_counter += 1){
-            Command_Trigger_List list = map_get_triggers_non_recursive(mapping, map, binding);
-            
-            for (Command_Trigger *node = list.first, *next = 0;
-                 node != 0;
-                 node = next){
-                next = node->next;
-                Command_Trigger *nnode = push_array_write(arena, Command_Trigger, 1, node);
-                sll_queue_push(result.first, result.last, nnode);
-            }
-            
-            map = mapping_get_map(mapping, map->parent);
-        }
-    }
-    return(result);
+map_get_triggers_recursive(Arena *arena, Mapping *mapping, Command_Map *map, Command_Binding binding)
+{
+ Command_Trigger_List result = {};
+ if (mapping != 0)
+ {
+  for (i1 safety_counter = 0;
+       map != 0 && safety_counter < 40;
+       safety_counter += 1)
+  {
+   Command_Trigger_List list = map_get_triggers_non_recursive(mapping, map, binding);
+   
+   for (Command_Trigger *node = list.first, *next = 0;
+        node != 0;
+        node = next)
+   {
+    next = node->next;
+    Command_Trigger *nnode = push_array_write(arena, Command_Trigger, 1, node);
+    sll_queue_push(result.first, result.last, nnode);
+   }
+   
+   map = mapping_get_map(mapping, map->parent);
+  }
+ }
+ return(result);
 }
 
 function Command_Binding_List*

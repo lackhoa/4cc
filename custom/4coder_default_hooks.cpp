@@ -161,7 +161,7 @@ code_index_update_tick(App *app){
 function void
 default_tick(App *app, Frame_Info frame_info)
 {
-    arena_free_all(&global_frame_arena);
+    arena_clear(&global_frame_arena);
     
     ////////////////////////////////
     // NOTE(allen): Update code index
@@ -639,7 +639,7 @@ parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
         release_global_frame_mutex(app);
     }
     else{
-        arena_free_all(&arena);
+        arena_clear(&arena);
     }
 }
 

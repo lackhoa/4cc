@@ -740,23 +740,24 @@ lister_prealloced(String string){
 
 function void
 lister_begin_new_item_set(App *app, Lister *lister){
-    end_temp(lister->restore_all_point);
-    block_zero_struct(&lister->options);
-    block_zero_struct(&lister->filtered);
+ end_temp(lister->restore_all_point);
+ block_zero_struct(&lister->options);
+ block_zero_struct(&lister->filtered);
 }
 
 function void*
-lister_add_item(Lister *lister, Lister_Prealloced_String string, Lister_Prealloced_String status, void *user_data, u64 extra_space){
-    void *base_memory = push_array(lister->arena, u8, sizeof(Lister_Node) + extra_space);
-    Lister_Node *node = (Lister_Node*)base_memory;
-    node->string = string.string;
-    node->status = status.string;
-    node->user_data = user_data;
-    node->raw_index = lister->options.count;
-    zdll_push_back(lister->options.first, lister->options.last, node);
-    lister->options.count += 1;
-    void *result = (node + 1);
-    return(result);
+lister_add_item(Lister *lister, Lister_Prealloced_String string, Lister_Prealloced_String status, void *user_data, u64 extra_space)
+{
+ void *base_memory = push_array(lister->arena, u8, sizeof(Lister_Node) + extra_space);
+ Lister_Node *node = (Lister_Node*)base_memory;
+ node->string = string.string;
+ node->status = status.string;
+ node->user_data = user_data;
+ node->raw_index = lister->options.count;
+ zdll_push_back(lister->options.first, lister->options.last, node);
+ lister->options.count += 1;
+ void *result = (node + 1);
+ return(result);
 }
 
 function void*
@@ -961,45 +962,44 @@ lister__key_stroke__choice_list(App *app){
             if (did_shortcut_key){
                 lister_activate(app, lister, user_data, false);
                 result = ListerActivation_Finished;
-            }
-        }
-    }
-    return(result);
-}
-
-#if 1
-function Lister_Choice*
-get_choice_from_user(App *app, String query,
-                     Lister_Choice_List list){
-    Scratch_Block scratch(app);
-    Lister_Block lister(app, scratch);
-    for (Lister_Choice *choice = list.first;
-         choice != 0;
-         choice = choice->next){
-        u64 code_size = sizeof(choice->key_code);
-        void *extra = lister_add_item(lister, choice->string, choice->status,
-                                      choice, code_size);
-        block_copy(extra, &choice->key_code, code_size);
-    }
-    lister_set_query(lister, query);
-    Lister_Handlers handlers = {};
-    handlers.navigate        = lister__navigate__default;
-    handlers.key_stroke      = lister__key_stroke__choice_list;
-    lister_set_handlers(lister, &handlers);
-    
-    Lister_Result l_result = run_lister(app, lister);
-    Lister_Choice *result = 0;
-    if (!l_result.canceled){
-        result = (Lister_Choice*)l_result.user_data;
-    }
-    return(result);
+   }
+  }
+ }
+ return(result);
 }
 
 function Lister_Choice*
-get_choice_from_user(App *app, char *query, Lister_Choice_List list){
+get_choice_from_user(App *app, String query, Lister_Choice_List list)
+{
+ Scratch_Block scratch(app);
+ Lister_Block lister(app, scratch);
+ for (Lister_Choice *choice = list.first;
+      choice != 0;
+      choice = choice->next){
+  u64 code_size = sizeof(choice->key_code);
+  void *extra = lister_add_item(lister, choice->string, choice->status,
+                                choice, code_size);
+  block_copy(extra, &choice->key_code, code_size);
+ }
+ lister_set_query(lister, query);
+ Lister_Handlers handlers = {};
+ handlers.navigate        = lister__navigate__default;
+ handlers.key_stroke      = lister__key_stroke__choice_list;
+ lister_set_handlers(lister, &handlers);
+ 
+ Lister_Result l_result = run_lister(app, lister);
+ Lister_Choice *result = 0;
+ if (!l_result.canceled){
+  result = (Lister_Choice*)l_result.user_data;
+ }
+ return(result);
+}
+//
+function Lister_Choice*
+get_choice_from_user(App *app, char *query, Lister_Choice_List list)
+{
     return(get_choice_from_user(app, SCu8(query), list));
 }
-#endif
 
 // BOTTOM
 

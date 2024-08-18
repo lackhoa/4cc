@@ -197,8 +197,8 @@ F4_GetColor(App *app, ColorCtx ctx)
             
             case TokenBaseKind_ScopeOpen:
             case TokenBaseKind_ScopeClose:
-            case TokenBaseKind_ParentheticalOpen:
-            case TokenBaseKind_ParentheticalClose:
+            case TokenBaseKind_ParenOpen:
+            case TokenBaseKind_ParenClose:
             case TokenBaseKind_StatementClose:
             {
                 color = F4_ARGBFromID(table, fleury_color_syntax_crap);

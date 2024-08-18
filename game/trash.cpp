@@ -1072,7 +1072,7 @@ fill_parallel(Painter *p, v3 a[], i1 acount, v3 b[], i1 bcount, argb color=0)
  push_object_transform(&headT);
  for_i32(index, 1, state->vertex_count)
  {//-NOTE: Render all the vertices
-  indicate_vertex("name", prim_id_from_vertex_index(index),
+  indicate_vertex("name", vertex_prim_id(index),
                   state->vertices[index].pos, 0);
  }
  
@@ -1080,7 +1080,7 @@ fill_parallel(Painter *p, v3 a[], i1 acount, v3 b[], i1 bcount, argb color=0)
  for_i32(curve_index, 1, state->curve_count)
  {
   Bezier_Data *curve = &state->curves[curve_index];
-  g_draw_prim_id = prim_id_from_curve_index(curve_index);
+  g_draw_prim_id = curve_prim_id(curve_index);
   drawf(curve->bezier, curve->radii);
  }
 }

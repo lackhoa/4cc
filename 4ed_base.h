@@ -1309,14 +1309,6 @@ string_find_first(String str, u8 c){
  return(string_find_first(str, 0, c));
 }
 
-function i64
-string_find_last(String str, u8 c){
- i64 size = (i64)str.size;
- i64 i = size - 1;
- for (;i >= 0 && c != str.str[i]; i -= 1);
- return(i);
-}
-
 function b32
 string_looks_like_drive_letter(String string)
 {
@@ -1358,20 +1350,6 @@ string_front_folder_of_path(String str){
   str = string_skip(str, slash_pos + 1);
  }
  return(str);
-}
-
-function String
-string_file_extension(String string){
- return(string_skip(string, string_find_last(string, '.') + 1));
-}
-
-function String
-string_file_without_extension(String string){
- i64 pos = string_find_last(string, '.');
- if (pos > 0){
-  string = string_prefix(string, pos);
- }
- return(string);
 }
 
 function String
@@ -1749,14 +1727,14 @@ string_const_any_push(Arena *arena, u64 size, String_Encoding encoding){
  String_Const_Any string = {};
  switch (encoding){
   case StringEncoding_ASCII: string.s_char = string_const_char_push(arena, size); break;
-  case StringEncoding_UTF8:  string.s_u8   = string_const_u8_push  (arena, size); break;
+  case StringEncoding_UTF8:  string.s_u8   = push_data  (arena, size); break;
   case StringEncoding_UTF16: string.s_u16  = string_const_u16_push (arena, size); break;
   case StringEncoding_UTF32: string.s_u32  = string_const_u32_push (arena, size); break;
  }
  return(string);
 }
 
-#define push_string_const_u8 string_const_u8_push
+#define push_string_const_u8 push_data
 #define push_string_const_u16 string_const_u16_push
 #define push_string_const_u32 string_const_u32_push
 #define push_string_const_u64 string_const_u64_push
@@ -2455,7 +2433,8 @@ string_escape(Arena *arena, String string){
 }
 
 function String_Const_char
-string_interpret_escapes(Arena *arena, String_Const_char string){
+string_interpret_escapes(Arena *arena, String_Const_char string)
+{
  char *space = push_array(arena, char, string.size + 1);
  String_char result = Schar(space, 0, string.size);
  for (;;){

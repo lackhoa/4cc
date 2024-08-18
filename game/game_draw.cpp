@@ -93,7 +93,7 @@ camera_view_matrix(Camera *camera, b32 orthographic)
 internal void
 fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
 {
- i32 nslices = BEZIER_POLY_NSLICE;
+ i32 nslices = bezier_poly_nslice;
  v1 inv_nslices = 1.0f / (v1)nslices;
  v3 previous_worldP;
  v3 previous_worldQ;
@@ -118,7 +118,7 @@ bezier_poly3_inner(v3 A, v3 P[4],
                    argb c0, argb c1, argb c2, 
                    v1 depth_offset, b32 viz)
 {
- i32 nslices = BEZIER_POLY_NSLICE;
+ i32 nslices = bezier_poly_nslice;
  v1 inv_nslices = 1.f / (v1)nslices;
  v4 color1 = argb_unpack(c1);
  v4 color2 = argb_unpack(c2);

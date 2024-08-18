@@ -51,7 +51,7 @@ int main(void){
     }
     
     printf("documenting %s\n", file_name.str);
-    String text = data_from_file(&arena, file);
+    String text = read_entire_file_handle(&arena, file);
     fclose(file);
     
     API_Definition_List def_list = {};

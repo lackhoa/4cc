@@ -6530,7 +6530,7 @@ typedef GB_COMPARE_PROC(gbCompareProc);
 
 // Producure pointers
 // NOTE(bill): The offset parameter specifies the offset in the structure
-// e.g. gb_i1_cmp(gb_offset_of(Thing, value))
+// e.g. gb_i1_cmp(offsetof(Thing, value))
 // Use 0 if it's just the type instead.
 
 GB_DEF GB_COMPARE_PROC_PTR(gb_i16_cmp  (isize offset));

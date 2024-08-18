@@ -16,7 +16,7 @@ patterns = {
 };
 blacklist_patterns = {
     ".*",
-    "command_metadata.h",
+    //"command_metadata.h",
     "*.skm",
     "kv_trash*",
 };

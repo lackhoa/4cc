@@ -629,6 +629,12 @@ VIM_COMMAND_SIG(vim_modal_percent)
 	else{ vim_bounce(app); }
 }
 
+inline void 
+buffer_delete_range(App *app, Buffer_ID buffer, Range_i64 range)
+{
+ buffer_replace_range(app, buffer, range, empty_string);
+}
+
 internal void
 vim_paste_before(App *app)
 {

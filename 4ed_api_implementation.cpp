@@ -1,15 +1,34 @@
+/*
+NOTE(kv): description of this file
+1. 4ed_api_parser_main.cpp parses this file to extract out the api info,
+ it used to be the "custom" api but now we use the "ed" api,
+ however we still have to support the "custom" api because we forward-declare the functions.
+ because we don't have introspection
+
+2. This file is included at the end of the 4coder layer,
+ then it can use everything
+
+3. Does it have to be a single file?
+ No but I just don't wanna parse too many files, man!
+ More files = more bugs, plus it's slower because the parser isn't incremental.
+
+4. Can't you just copy-paste the header here to make it leaner?
+ Sure, I don't see why not...
+*/
+
 #include "4coder_game_shared.h"
 
 function void
 output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value){
-    i64 end = buffer_size(&file->state.buffer);
-    Edit_Behaviors behaviors = {};
-    behaviors.pos_before_edit = end;
-    edit_single(tctx, models, file, Ii64(end), value, behaviors);
+ i64 end = buffer_size(&file->state.buffer);
+ Edit_Behaviors behaviors = {};
+ behaviors.pos_before_edit = end;
+ edit_single(tctx, models, file, Ii64(end), value, behaviors);
 }
 
 function void
-file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file){
+file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file)
+{
     Assert(file != 0);
     i64 pos = buffer_size(&file->state.buffer);
     Layout *layout = &models->layout;
@@ -207,28 +226,28 @@ get_buffer_by_filename(App *app, String filename, Access_Flag access)
         Working_Set *working_set = &models->working_set;
         Editing_File *file = working_set_contains_canon(working_set, string_from_filename(&canon));
         if (api_check_buffer(file, access)){
-            result = file->id;
-        }
-    }
-    return(result);
+   result = file->id;
+  }
+ }
+ return(result);
 }
 
 api(custom) function b32
 buffer_read_range(App *app, Buffer_ID buffer_id, Range_i64 range, u8 *out)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file)){
-        i64 size = buffer_size(&file->state.buffer);
-        if (0 <= range.min && range.min <= range.max && range.max <= size){
-            Scratch_Block scratch(app);
-            String string = buffer_stringify(scratch, &file->state.buffer, range);
-            block_copy(out, string.str, string.size);
-            result = true;
-        }
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if (api_check_buffer(file)){
+  i64 size = buffer_size(&file->state.buffer);
+  if (0 <= range.min && range.min <= range.max && range.max <= size){
+   Scratch_Block scratch(app);
+   String string = buffer_stringify(scratch, &file->state.buffer, range);
+   block_copy(out, string.str, string.size);
+   result = true;
+  }
+ }
+ return(result);
 }
 
 function Edit_Behaviors
@@ -240,16 +259,14 @@ get_active_edit_behaviors(Models *models, Editing_File *file){
     Edit_Behaviors behaviors = {};
     if (view->file == file){
         behaviors.pos_before_edit = view->edit_pos_.cursor_pos;
-    }
-    else{
-        behaviors.pos_before_edit = -1;
-    }
-    return(behaviors);
+ }
+ else{
+  behaviors.pos_before_edit = -1;
+ }
+ return(behaviors);
 }
 
-//internal void vim_set_dot_delete_count(u64 count);
-
-api(custom) function b32
+api(custom ed) function b32
 buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String string)
 {
  Models *models = (Models*)app->cmd_context;
@@ -267,24 +284,6 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
   //vim_set_dot_delete_count(range.max-range.min); NOTE: there are other buffers beside file buffers, so we can't do this
  }
  return(result);
-}
-
-inline void 
-buffer_delete_range(App *app, Buffer_ID buffer, Range_i64 range)
-{
-    buffer_replace_range(app, buffer, range, empty_string);
-}
-
-inline void 
-buffer_delete_pos(App *app, Buffer_ID buffer, i64 min)
-{
-    buffer_replace_range(app, buffer, Ii64(min, min+1), empty_string);
-}
-
-inline void
-buffer_insert_pos(App *app, Buffer_ID buffer, i64 pos, String string)
-{
-    buffer_replace_range(app, buffer, Ii64(pos), string);
 }
 
 api(custom) function b32
@@ -691,13 +690,6 @@ push_buffer_filename(App *app, Arena *arena, Buffer_ID buffer_id)
   result = push_string_copyz(arena, string_from_filename(&file->canon));
  }
  return(result);
-}
-
-inline String8
-push_buffer_dirname(App *app, Arena *arena, Buffer_ID buffer)
-{
-  String8 filename = push_buffer_filename(app, arena, buffer);
-  return path_dirname(filename);
 }
 
 api(custom) function Dirty_State
@@ -1107,38 +1099,38 @@ get_view_next(App *app, View_ID view_id, Access_Flag access)
         view = get_view_next__inner(layout, view);
     }
     View_ID result = 0;
-    if (view != 0){
-        result = view_get_id(&models->view_set, view);
-    }
-    return(result);
+ if (view != 0){
+  result = view_get_id(&models->view_set, view);
+ }
+ return(result);
 }
 
 api(custom) function View_ID
 get_view_prev(App *app, View_ID view_id, Access_Flag access)
 {
-    Models *models = (Models*)app->cmd_context;
-    Layout *layout = &models->layout;
-    View *view = imp_get_view(models, view_id);
-    view = get_view_prev__inner(layout, view);
-    for (;view != 0 && !access_test(view_get_access_flags(view), access);){
-        view = get_view_prev__inner(layout, view);
-    }
-    View_ID result = 0;
-    if (view != 0){
-        result = view_get_id(&models->view_set, view);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Layout *layout = &models->layout;
+ View *view = imp_get_view(models, view_id);
+ view = get_view_prev__inner(layout, view);
+ for (;view != 0 && !access_test(view_get_access_flags(view), access);){
+  view = get_view_prev__inner(layout, view);
+ }
+ View_ID result = 0;
+ if (view != 0){
+  result = view_get_id(&models->view_set, view);
+ }
+ return(result);
 }
 
 api(custom) function View_ID
 get_this_ctx_view(App *app, Access_Flag access)
 {
-    Models *models = (Models*)app->cmd_context;
-    Thread_Context *tctx = app->tctx;
-    Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
-    View_ID result = 0;
-    if (tctx_info->coroutine != 0){
-        Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
+ Models *models = (Models*)app->cmd_context;
+ Thread_Context *tctx = app->tctx;
+ Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
+ View_ID result = 0;
+ if (tctx_info->coroutine != 0){
+  Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
   View *view = (View*)coroutine->user_data;
   if (view != 0){
    result = view_get_id(&models->view_set, view);
@@ -1147,8 +1139,8 @@ get_this_ctx_view(App *app, Access_Flag access)
  return(result);
 }
 
-api(custom) function get_active_view_return
-get_active_view(get_active_view_params)
+api(custom ed) function View_ID
+get_active_view(App *app, Access_Flag access)
 {
     Models *models = (Models*)app->cmd_context;
     Panel *panel = layout_get_active_panel(&models->layout);
@@ -1160,13 +1152,6 @@ get_active_view(get_active_view_params)
         result = view_get_id(&models->view_set, view);
     }
     return(result);
-}
-
-internal Buffer_ID
-get_active_buffer(App *app)
-{
-    View_ID active_view = get_active_view(app, Access_Always);
-    return view_get_buffer(app, active_view, Access_Always);
 }
 
 api(custom) function b32
@@ -1214,16 +1199,6 @@ view_get_mark_pos(App *app, View_ID view_id)
         result = view->mark;
     }
     return(result);
-}
-
-internal Range_i64
-view_get_selected_range(App *app, View_ID view)
-{
-    i64 cursor = view_get_cursor_pos(app, view);
-    i64 mark   = view_get_mark_pos(app, view);
-    Range_i64 range = Ii64(cursor, mark);
-    range.max += 1;
-    return range;
 }
 
 api(custom) function f32
@@ -1359,7 +1334,7 @@ panel_set_split(App *app, Panel_ID panel_id, Panel_Split_Kind kind,
                 case PanelSplitKind_FixedPixels_Max:
                 case PanelSplitKind_FixedPixels_Min:
                 {
-                    panel->split.v_i32 = i32_roundv1(t);
+                    panel->split.v_i32 = round_to_integer(t);
                 }break;
                 
                 default:
@@ -1472,7 +1447,7 @@ view_get_buffer_scroll(App *app, View_ID view_id){
     return(result);
 }
 
-i32 get_buffer_game_viewport_id(App *app, Buffer_ID buffer);
+i32 buffer_viewport_id(App *app, Buffer_ID buffer);
 b32 turn_game_on();
 
 api(custom) function b32
@@ -1492,14 +1467,14 @@ view_set_active(App *app, View_ID view_id)
 api(custom) function b32
 view_enqueue_command_function(App *app, View_ID view_id, Custom_Command_Function *custom_func)
 {
-    Models *models = (Models*)app->cmd_context;
-    View *view = imp_get_view(models, view_id);
-    b32 result = false;
-    if (api_check_view(view)){
-        models_push_view_command_function(models, view_id, custom_func);
-        result = true;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ b32 result = false;
+ if (api_check_view(view)){
+  models_push_view_command_function(models, view_id, custom_func);
+  result = true;
+ }
+ return(result);
 }
 
 api(custom) function b32
@@ -1638,8 +1613,9 @@ view_get_camera_bounds(App *app, View_ID view_id, Vec2_f32 *margin, Vec2_f32 *pu
  return(result);
 }
 
-api(custom) function view_set_cursor_return
-view_set_cursor(view_set_cursor_params)
+// NOTE(kv): patient zero of the ed api experiment
+api(custom ed) function b32
+view_set_cursor(App *app, View_ID view_id, Buffer_Seek seek)
 {
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -2275,12 +2251,13 @@ set_current_input(App *app, User_Input *input)
 
 api(custom) function void
 leave_current_input_unhandled(App *app){
-    Models *models = (Models*)app->cmd_context;
-    models->current_input_unhandled = true;
+ Models *models = (Models*)app->cmd_context;
+ models->current_input_unhandled = true;
 }
 
 api(custom) function void
-set_custom_hook(App *app, Hook_ID hook_id, Void_Func *func_ptr){
+set_custom_hook_func(App *app, Hook_ID hook_id, Void_Func *func_ptr)
+{
     Models *models = (Models*)app->cmd_context;
     switch (hook_id){
         case HookID_BufferViewerUpdate:
@@ -2486,15 +2463,15 @@ end_query_bar(App *app, Query_Bar *bar, u32 flags)
 
 api(custom) function void
 clear_all_query_bars(App *app, View_ID view_id){
-    Models *models = (Models*)app->cmd_context;
-    View *view = imp_get_view(models, view_id);
-    if (api_check_view(view)){
-        free_all_queries(&view->query_set);
-    }
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ if (api_check_view(view)){
+  free_all_queries(&view->query_set);
+ }
 }
 
-api(custom) internal print_message_return
-print_message(print_message_params)
+api(custom ed) function void
+print_message(App *app, String message)
 {
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = models->message_buffer;
@@ -2924,7 +2901,7 @@ release_global_frame_mutex(App *app)
 
 ////////////////////////////////
 
-api(custom) function v2
+api(custom ed) function v2
 draw_string_oriented(App *app, Face_ID font_id, ARGB_Color color,
                      String8 str, v2 point, u32 flags, v2 delta)
 {
@@ -2944,7 +2921,7 @@ draw_string_oriented(App *app, Face_ID font_id, ARGB_Color color,
     return(result);
 }
 
-api(custom) function f32
+api(custom ed) function f32
 get_string_advance(App *app, Face_ID font_id, String str)
 {
     Models *models = (Models*)app->cmd_context;
@@ -3226,7 +3203,7 @@ open_color_picker(App *app, Color_Picker *picker)
     system_open_color_picker(picker);
 }
 
-api(custom) void
+api(custom) function void
 animate_in_n_milliseconds(App *app, u32 n)
 {
     Models *models = (Models*)app->cmd_context;
@@ -3262,28 +3239,360 @@ buffer_find_all_matches(App *app, Arena *arena, Buffer_ID buffer,
                     predicate = &dummy;
                 }
                 list = find_matches(arena, max_i32,
-                                    chunks, needle, jump_table, predicate,
-                                    direction, range.min, buffer, string_id, case_sensitive);
-            }
-        }
-    }
-    return(list);
+                        chunks, needle, jump_table, predicate,
+                        direction, range.min, buffer, string_id, case_sensitive);
+   }
+  }
+ }
+ return(list);
 }
 
-////////////////////////////////
+
+
+//-
 
 api(custom) function Profile_Global_List*
 get_core_profile_list(App *app)
 {
-    Models *models = (Models*)app->cmd_context;
-    return(&models->profile_list);
+ Models *models = (Models*)app->cmd_context;
+ return(&models->profile_list);
 }
 
+/*
 api(custom) function Doc_Cluster*
 get_custom_layer_boundary_docs(App *app, Arena *arena)
 {
     API_Definition *api_def = custom_api_construct(arena);
     return(doc_custom_api(arena, api_def));
 }
+*/
 
-// BOTTOM
+//-
+
+api(ed) function View_ID
+get_other_primary_view(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
+{
+ i1 current_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
+ View_ID view = start_view;
+ do
+ {
+  view = get_next_view_looped_all_panels(app, view, access);
+  if (!view_is_passive(app, view) && 
+      hax_guess_which_monitor_the_view_is_in(app, view) == current_monitor)
+  {
+   break;
+  }
+ } while(view != start_view);
+ 
+ if (view == start_view && vsplit_if_fail)
+ {// NOTE(kv): vsplit
+  view = open_view(app, start_view, ViewSplit_Right);
+  new_view_settings(app, view);
+ }
+ 
+ return(view);
+}
+
+api(ed) function b32
+is_view_to_the_right(App *app, View_ID view)
+{
+ b32 result = false;
+ v1 this_x0 = view_get_screen_rect(app, view).x0;
+ View_ID other_view = get_other_primary_view(app, view, Access_Always, false);
+ if (other_view) {
+  v1 other_x0 = view_get_screen_rect(app, other_view).x0;
+  result = (other_x0 < this_x0);
+ }
+ return result;
+}
+
+api(ed) function void
+DEBUG_send_entry(Debug_Entry entry)
+{
+ arrput(DEBUG_entries, entry);
+}
+
+api(ed) function Render_Target *
+draw_get_target(App *app)
+{
+ Models *models = (Models *)app->cmd_context;
+ return models->target;
+}
+
+api(ed) function void 
+vim_set_bottom_text(String msg)
+{
+ u32 copy_size = clamp_max(msg.size, alen(vim_bottom_buffer));
+ block_copy(vim_bottom_buffer, msg.str, copy_size);
+ vim_bottom_text.size = copy_size;
+}
+
+// TODO(kv): @Incomplete I want it to switch to the "last active" primary panel, if switched from a passive one.
+api(ed) function void
+change_active_primary_view(App *app)
+{
+ change_active_primary_view_send_command(app, 0);
+}
+
+api(ed) function String
+push_token_lexeme(App *app, Arena *arena, Buffer_ID buffer, Token *token){
+ return(push_buffer_range(app, arena, buffer, Ii64(token)));
+}
+
+api(ed) function User_Input
+get_next_input(App *app, Event_Property use_flags, Event_Property abort_flags)
+{
+ User_Input in = {};
+ if (use_flags != 0)
+ {
+  for (;;)
+  {
+   in = get_next_input_raw(app);
+   if (in.abort)
+   {
+    break;
+   }
+   Event_Property event_flags = get_event_properties(&in.event);
+   if (event_flags & abort_flags)
+   {
+    in.abort = true;
+    break;
+   }
+   if (event_flags & use_flags)
+   {
+    break;
+   }
+  }
+ }
+ return(in);
+}
+
+api(ed) function void
+draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i1 count, Vertex_Type type)
+{// TODO @speed This function is sus, what is the true cost of this thing?
+ auto &state = render_state;
+ if (count > 0)
+ {
+  Render_Group *group = state.group_last;
+  if (group == 0 ||
+      group->window_id != target->window_id)
+  {
+   draw__new_group(target, 0);
+   group = state.group_last;
+  }
+  
+  Render_Vertex_List *list;
+  {
+   Render_Entry *entry0 = group->entry_last;
+   if (entry0 == 0 || entry0->type != RET_Poly)
+   {
+    entry0 = new_render_entry(RET_Poly);
+   }
+   
+   Render_Entry_Poly *entry = &entry0->poly;
+   
+   switch(type)
+   {
+    case Vertex_Poly:    { list = &entry->vertex_list; }        break;
+    case Vertex_Overlay: { list = &entry->vertex_list_overlay; }break;
+    invalid_default_case;
+   }
+  }
+  
+  Render_Vertex_Array_Node *last = list->last;
+  
+  Render_Vertex *tail_vertex = 0;
+  i1 tail_count = 0;
+  if (last != 0)
+  {
+   tail_vertex = last->vertices   + last->vertex_count;
+   tail_count  = last->vertex_max - last->vertex_count;
+  }
+  
+  i1 base_vertex_max = 64;
+  i1 transfer_count = clamp_max(count, tail_count);
+  if (transfer_count > 0)
+  {
+   block_copy_count(tail_vertex, vertices, transfer_count);
+   last->vertex_count += transfer_count;
+   list->count += transfer_count;
+   base_vertex_max = last->vertex_max;
+  }
+  
+  i1 count_leftover = count - transfer_count;
+  if (count_leftover > 0)
+  {
+   Render_Vertex *vertices_leftover = vertices + transfer_count;
+   
+   i1 next_node_size = (base_vertex_max + count_leftover)*2;  // TODO @memory Currently we are wasting this node's memory, which is totally unnecessary!
+   Render_Vertex_Array_Node *memory = draw__extend_group_vertex_memory(&state.arena, list, next_node_size);
+   block_copy_count(memory->vertices, vertices_leftover, count_leftover);
+   memory->vertex_count += count_leftover;
+   list->count += count_leftover;
+  }
+ }
+}
+
+//TODO(kv): Our parser doesn't support "const" yet!
+api(ed) function void
+push_object_transform_to_target(Render_Target *target, mat4 *transform)
+{
+ Render_Entry *entry = new_render_entry(RET_Object_Transform);
+ entry->object_transform = *transform;
+}
+
+api(ed) function Token_Iterator_Array
+get_token_it_on_current_line(App *app, Buffer_ID buffer, i64 *line_end_pos)
+{
+ i64 line_number = get_current_line_number(app);
+ Token_Iterator_Array result = get_token_it_for_line(app, buffer, line_number);
+ i64 max_pos = get_line_end_pos(app, buffer, line_number);
+ *line_end_pos = max_pos;
+ return result;
+}
+
+api(ed) function b32
+fui_editor_ui_loop(App *app)
+{
+ b32 writeback;
+ for (;;)
+ {// NOTE: UI loop
+  User_Input in = get_next_input(app, EventPropertyGroup_AnyKeyboardEvent, EventProperty_Escape);
+  if (in.abort)
+  {
+   writeback = false;
+   break;
+  }
+  else
+  {
+   update_game_key_states(&in.event);
+   if ( global_game_key_states[Key_Code_Return] )
+   {
+    writeback = true; 
+    break;
+   }
+  }
+ }
+ return writeback;
+}
+
+api(ed) function void
+view_set_buffer_named(App *app, View_ID view, String8 name)
+{
+ Buffer_ID buffer = create_buffer(app, name, 0);
+ view_set_buffer(app, view, buffer, 0);
+}
+
+api(ed) function Buffer_Seek
+seek_line_col(i64 line, i64 col)
+{
+ Buffer_Seek result;
+ result.type = buffer_seek_line_col;
+ result.line = line;
+ result.col = col;
+ return(result);
+}
+
+api(ed) function void
+push_image(Render_Target *target, char *filename, v3 o, v3 x, v3 y, argb color, u32 prim_id)
+{
+ Render_Entry *entry = new_render_entry(RET_Image);
+ entry->image = push_struct(&render_state.arena, Render_Entry_Image);
+ *entry->image = {filename, o,x,y, color, prim_id};
+}
+
+// TODO(kv) Axe this from the API, just pass it in bro!
+api(ed) function rect2
+draw_get_clip(void)
+{
+ auto &state = render_state;
+ if (state.group_last)
+ {
+  return state.group_last->clip_box;
+ }
+ else { return {}; }
+}
+
+// TODO(kv): Not sure if I love the abstraction over Render_Target
+api(ed) function void
+draw_configure(Render_Target *target, Render_Config *config)
+{
+ auto &state = render_state;
+ if (state.group_last)
+ {
+  Render_Group *group = state.group_last;
+  
+  if (config->clip_box.min==v2{} &&
+      config->clip_box.max==v2{})
+  {
+   if (group->y_is_up == config->y_is_up)
+   {
+    config->clip_box = group->clip_box;
+   }
+   else
+   {
+    // NOTE: Fun times changing the clip box
+    rect2 new_clip_box = group->clip_box;
+    new_clip_box.y0 = (v1)target->height - group->clip_box.y1;
+    new_clip_box.y1 = (v1)target->height - group->clip_box.y0;
+    config->clip_box = new_clip_box;
+   }
+  }
+ }
+ 
+ draw__new_group(target, config);
+}
+
+function b32
+view_contains_mouse(App *app, View_ID view)
+{
+ v2 mouse = V2(get_mouse_state(app).p);
+ rect2 rect = view_get_screen_rect(app, view);
+ return rect_contains_point(rect, mouse);
+}
+
+function View_ID
+mouse_view_id(App *app)
+{
+ View_ID result = 0;
+ for (View_ID view = get_view_next(app, 0, 0);
+      view != 0;
+      view = get_view_next(app, view, 0))
+ {
+  if ( view_contains_mouse(app, view) )
+  {
+   result = view;
+   break;
+  }
+ }
+ return result;
+}
+
+api(ed) function void
+switch_to_mouse_panel(App *app)
+{
+ //@mouse_panel_code
+ View_ID view = mouse_view_id(app);
+ view_set_active(app, view);
+}
+
+api(ed) function i1
+mouse_viewport_id(App *app)
+{
+ View_ID view = mouse_view_id(app);
+ return view_viewport_id(app, view);
+}
+
+api(ed) function b32
+get_confirmation_from_user(App *app, String query)
+{
+ Scratch_Block scratch(app);
+ Lister_Choice_List list = {};
+ lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, 1);
+ lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, 2);
+ Lister_Choice *choice = vim_get_choice_from_user(app, query, list);
+ b32 confirmed = choice && choice->user_data == 2;
+ return confirmed;
+}
+
+//-BOTTOM

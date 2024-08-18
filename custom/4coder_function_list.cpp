@@ -35,7 +35,7 @@ get_function_positions(App *app, Buffer_ID buffer, i64 first_token_index, Functi
         first_paren_position = 0;
         last_paren_index = 0;
         for (;;){
-            Token *token = token_it_read(&it);
+            Token *token = tkarr_read(&it);
             if (!HasFlag(token->flags, TokenBaseFlag_PreprocessorBody)){
                 switch (token->sub_kind){
                     case TokenCppKind_BraceOp:
@@ -54,14 +54,14 @@ get_function_positions(App *app, Buffer_ID buffer, i64 first_token_index, Functi
                     {
                         if (nest_level == 0){
                             first_paren_it = it;
-                            first_paren_index = token_it_index(&it);
+                            first_paren_index = tkarr_index(&it);
                             first_paren_position = token->pos;
                             goto paren_mode1;
                         }
                     }break;
                 }
             }
-            if (!token_it_inc(&it)){
+            if (!tkarr_inc(&it)){
                 goto end;
             }
         }
@@ -70,25 +70,25 @@ get_function_positions(App *app, Buffer_ID buffer, i64 first_token_index, Functi
         paren_mode1:
         paren_nest_level = 0;
         for (;;){
-            Token *token = token_it_read(&it);
+            Token *token = tkarr_read(&it);
             if (!HasFlag(token->flags, TokenBaseFlag_PreprocessorBody)){
                 switch (token->sub_kind){
                     case TokenCppKind_ParenOp:
-                    {
-                        ++paren_nest_level;
-                    }break;
-                    
-                    case TokenCppKind_ParenCl:
-                    {
-                        --paren_nest_level;
-                        if (paren_nest_level == 0){
-                            last_paren_index = token_it_index(&it);
+     {
+      ++paren_nest_level;
+     }break;
+     
+     case TokenCppKind_ParenCl:
+     {
+      --paren_nest_level;
+      if (paren_nest_level == 0){
+       last_paren_index = tkarr_index(&it);
                             goto paren_mode2;
                         }
                     }break;
                 }
             }
-            if (!token_it_inc(&it)){
+            if (!tkarr_inc(&it)){
                 goto end;
             }
         }
@@ -100,20 +100,20 @@ get_function_positions(App *app, Buffer_ID buffer, i64 first_token_index, Functi
             it = first_paren_it;
             i64 signature_start_index = 0;
             for (;;){
-                Token *token = token_it_read(&it);
+                Token *token = tkarr_read(&it);
                 if (HasFlag(token->flags, TokenBaseFlag_PreprocessorBody) ||
                     token->sub_kind == TokenCppKind_BraceCl ||
                     token->sub_kind == TokenCppKind_Semicolon ||
                     token->sub_kind == TokenCppKind_ParenCl){
-                    if (!token_it_inc(&it)){
+                    if (!tkarr_inc(&it)){
                         signature_start_index = first_paren_index;
                     }
                     else{
-                        signature_start_index = token_it_index(&it);
+                        signature_start_index = tkarr_index(&it);
                     }
                     goto paren_mode2_done;
                 }
-                if (!token_it_dec(&it)){
+                if (!tkarr_dec(&it)){
                     break;
                 }
             }
@@ -133,7 +133,7 @@ get_function_positions(App *app, Buffer_ID buffer, i64 first_token_index, Functi
             
             it = restore_point;
             if (result.positions_count >= positions_max){
-                result.next_token_index = token_it_index(&it);
+                result.next_token_index = tkarr_index(&it);
                 result.still_looping = true;
                 goto end;
             }
@@ -169,7 +169,7 @@ print_positions_buffered(App *app, Buffer_Insertion *out, Buffer_ID buffer, Func
             Token prev_token = {};
             Token_Iterator_Array it = token_iterator_index(buffer, &array, start_index);
             for (;;){
-                Token *token = token_it_read(&it);
+                Token *token = tkarr_read(&it);
                 if (!HasFlag(token->flags, TokenBaseFlag_PreprocessorBody) &&
                     token->kind != TokenBaseKind_Comment &&
                     token->kind != TokenBaseKind_Whitespace){
@@ -190,10 +190,10 @@ print_positions_buffered(App *app, Buffer_Insertion *out, Buffer_ID buffer, Func
                     
                     prev_token = *token;
                 }
-                if (!token_it_inc(&it)){
+                if (!tkarr_inc(&it)){
                     break;
                 }
-                i64 index = token_it_index(&it);
+                i64 index = tkarr_index(&it);
                 if (index > end_index){
                     break;
                 }
@@ -226,7 +226,7 @@ list_all_functions(App *app, Buffer_ID optional_target_buffer){
     i1 positions_max = KB(4)/sizeof(Function_Positions);
     Function_Positions *positions_array = push_array(scratch, Function_Positions, positions_max);
     
-    Cursor insertion_cursor = make_cursor(push_array(scratch, u8, KB(256)), KB(256));
+    Memory_Cursor insertion_cursor = make_cursor(push_array(scratch, u8, KB(256)), KB(256));
     Buffer_Insertion out = begin_buffer_insertion_at_buffered(app, decls_buffer, 0, &insertion_cursor);
     
     for (Buffer_ID buffer_it = get_buffer_next(app, 0, Access_Always);

@@ -45,7 +45,7 @@ log_flush(Thread_Context *tctx, Models *models){
         output_file_append(tctx, models, models->log_buffer, text);
         result = true;
     }
-    arena_free_all(&global_log.arena);
+    arena_clear(&global_log.arena);
     block_zero_struct(&global_log.list);
     
     global_log.disabled_thread_id = 0;

@@ -532,14 +532,14 @@ draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *arra
     i64 first_index = token_index_from_pos(array, visible_range.first);
     Token_Iterator_Array it = token_iterator_index(0, array, first_index);
     for (;;){
-        Token *token = token_it_read(&it);
+        Token *token = tkarr_read(&it);
         if (token->pos >= visible_range.one_past_last){
             break;
         }
         FColor color = get_token_color_cpp(*token);
         ARGB_Color argb = fcolor_resolve(color);
         paint_text_color(app, text_layout_id, Ii64_size(token->pos, token->size), argb);
-        if (!token_it_inc_all(&it)){
+        if (!tkarr_inc_all(&it)){
             break;
         }
     }
@@ -551,7 +551,7 @@ draw_whitespace_highlight(App *app, Text_Layout_ID text_layout_id, Token_Array *
     i64 first_index = token_index_from_pos(array, visible_range.first);
     Token_Iterator_Array it = token_iterator_index(0, array, first_index);
     for (;;){
-        Token *token = token_it_read(&it);
+        Token *token = tkarr_read(&it);
         if (token->pos >= visible_range.one_past_last){
             break;
         }
@@ -560,7 +560,7 @@ draw_whitespace_highlight(App *app, Text_Layout_ID text_layout_id, Token_Array *
             draw_character_block(app, text_layout_id, range, roundness,
                                  fcolor_id(defcolor_highlight_white));
         }
-        if (!token_it_inc_all(&it)){
+        if (!tkarr_inc_all(&it)){
             break;
         }
     }
@@ -601,7 +601,7 @@ draw_comment_highlights(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
     for (;;)
     {
         Temp_Memory_Block temp(scratch);
-        Token *token = token_it_read(&it);
+        Token *token = tkarr_read(&it);
         if (token->pos >= visible_range.one_past_last)
         {
             break;
@@ -634,7 +634,7 @@ draw_comment_highlights(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
                 }
             }
         }
-        if ( !token_it_inc_non_whitespace(&it) )
+        if ( !tkarr_inc_non_whitespace(&it) )
             break;
     }
 }
@@ -737,15 +737,15 @@ draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                      i64 pos, ARGB_Color *colors, i32 color_count){
     Token_Array token_array = get_token_array_from_buffer(app, buffer);
     if (token_array.tokens != 0){
-        Token_Iterator_Array it = token_it_at_pos(0, &token_array, pos);
-        Token *token = token_it_read(&it);
-        if (token != 0 && token->kind == TokenBaseKind_ParentheticalOpen){
+        Token_Iterator_Array it = tkarr_at_pos(0, &token_array, pos);
+        Token *token = tkarr_read(&it);
+        if (token != 0 && token->kind == TokenBaseKind_ParenOpen){
             pos = token->pos + token->size;
         }
         else{
-            if (token_it_dec_all(&it)){
-                token = token_it_read(&it);
-                if (token->kind == TokenBaseKind_ParentheticalClose &&
+            if (tkarr_dec_all(&it)){
+                token = tkarr_read(&it);
+                if (token->kind == TokenBaseKind_ParenClose &&
                     pos == token->pos + token->size){
                     pos = token->pos;
                 }

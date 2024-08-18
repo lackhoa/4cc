@@ -9,8 +9,9 @@
 
 // TOP
 
-#if !defined(FRED_API_DEFINITION_H)
-#define FRED_API_DEFINITION_H
+#pragma once
+
+#include "4ed_base.h"
 
 struct API_Param{
     API_Param *next;
@@ -112,8 +113,6 @@ enum{
 enum{
     APICheck_ReportAll = APICheck_ReportMissingAPI|APICheck_ReportExtraAPI|APICheck_ReportMismatchAPI,
 };
-
-#endif
 
 // BOTTOM
 

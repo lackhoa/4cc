@@ -44,7 +44,7 @@ global View_ID vim_lister_view_id;
 global v1 vim_nxt_lister_offset;
 global v1 vim_cur_lister_offset;
 
-internal rect2
+function rect2
 hax_get_main_monitor_rectangle(App *app)
 {
     rect2 result = global_get_screen_rectangle(app);
@@ -90,14 +90,6 @@ CUSTOM_ID(attachment, vim_view_jumps);
 
 internal void vim_reset_bottom_text() { vim_bottom_text.size=0; }
 
-function void 
-vim_set_bottom_text(String msg)
-{
-    u32 copy_size = clamp_max(msg.size, alen(vim_bottom_buffer));
-    block_copy(vim_bottom_buffer, msg.str, copy_size);
-    vim_bottom_text.size = copy_size;
-}
-
 function i1 vim_consume_number(){
 	i1 result = Max(1, vim_state.number)*Max(1, vim_state.params.count);
 	vim_state.params.number = vim_state.number;
@@ -120,14 +112,14 @@ function void vim_reset_state(){
 	vim_default_register();
 }
 
-/// If you _really_ want to change dynamic register allocation, go for it
+/// byp: If you _really_ want to change dynamic register allocation, go for it
 #ifndef VIM_GROW_RATE
 #define VIM_GROW_RATE(S) (Max(u64(128), u64(2*(S))))
 #endif
 
 function b32
 vim_realloc_string(String_u8 *src, u64 size){
-	String new_data = base_allocate(&vim_state.alloc, VIM_GROW_RATE(size));
+	String new_data = base_allocate2(&vim_state.alloc, VIM_GROW_RATE(size));
 	if(new_data.size == 0){ return false; }
 	block_copy(new_data.str, src->str, src->size);
 	base_free(&vim_state.alloc, src->str);

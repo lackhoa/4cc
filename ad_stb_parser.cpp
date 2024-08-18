@@ -1,21 +1,26 @@
 //-NOTE: A C-style language Parser
 
+// NOTE kv: This file doesn't have include guards, but I don't need to
+// include the header file separately so it doesn't matter.
+#define STB_C_LEXER_IMPLEMENTATION
+#include "stb_c_lexer.h"
+
 struct STB_Parser
 {
- b32 ok_;  // IMPORTANT: Don't set me!
+ b32 ok_;
  stb_lex_location fail_location;
  
  //-NOTE Embracing member functions
  force_inline b32 ok() { return ok_; };
  
  void set_ok(b32 value)
- {
+ {// NOTE kv: Since we don't setting the value to true (I'm open for a better name)
   if (ok_)
   {
    ok_ = value;
-   if (value == false)
+   if (ok_ == false)
    {// NOTE: Report failure location
-    const char *where = this->where_firstchar;
+    const char *where = this->stb.where_firstchar;
     stb_c_lexer_get_location(&this->stb, where, &fail_location);
    }
   }
@@ -33,30 +38,10 @@ struct STB_Parser
  union
  {
   stb_lexer stb;
-  struct  // @copypasta (todo: top-tier programming right here)
-  {
-   // lexer variables
-   char *input_stream;
-   char *eof;
-   char *parse_point;
-   char *string_storage;
-   int   string_storage_len;
-   
-   // lexer parse location for error messages
-   char *where_firstchar;
-   char *where_lastchar;
-   
-   // lexer token variables
-   long token;
-   double float_value;
-   long   int_value;
-   char *string_value;
-   int   string_len;
-  };
  };
 };
 
-internal void
+function void
 eat_token(STB_Parser *p)
 {
  if (p->ok())
@@ -67,7 +52,7 @@ eat_token(STB_Parser *p)
  }
 }
 
-internal STB_Parser
+function STB_Parser
 new_parser(String input, Arena *string_arena, i1 string_store_count)
 {
  STB_Parser result = {.ok_ = true, .string_arena=string_arena,};
@@ -78,27 +63,27 @@ new_parser(String input, Arena *string_arena, i1 string_store_count)
  char *string_store = push_array(string_arena, char, string_store_count);
  stb_c_lexer_init(lexer, input_start, input_end,
                   string_store, string_store_count);
- result.string_value = result.string_storage;
+ result.stb.string_value = result.stb.string_storage;
  eat_token(&result);
  
  return result;
 }
 
-internal b32
+function b32
 test_id(STB_Parser *p, String id)
 {
  b32 result = false;
  if (p->ok())
  {
-  if (p->token == CLEX_id)
+  if (p->stb.token == CLEX_id)
   {
-   result = string_match(SCu8(p->string_value), id);
+   result = string_match(SCu8(p->stb.string_value), id);
   }
  }
  return result;
 }
 
-internal b32
+function b32
 maybe_id(STB_Parser *p, String id)
 {
  b32 result = test_id(p, id);
@@ -106,37 +91,42 @@ maybe_id(STB_Parser *p, String id)
  return result;
 }
 //
-force_inline b32 maybe_id(STB_Parser *p, char *id)
+force_inline b32
+maybe_id(STB_Parser *p, char *id)
 { 
  return maybe_id(p, SCu8(id));
 }
 
-force_inline void
-eat_id(STB_Parser *p, String id)
+force_inline String
+eat_id(STB_Parser *p, String id={})
 {
- p->set_ok(maybe_id(p, id));
+ String result = {};
+ if (id == String{})
+ {
+  p->set_ok(p->stb.token == CLEX_id);
+  result = push_string(p->string_arena, p->stb.string_value);
+  eat_token(p);
+ }
+ else
+ {
+  p->set_ok(maybe_id(p, id));
+ }
+ return result;
 }
 //
 force_inline void
 eat_id(STB_Parser *p, char *id) {
  eat_id(p, SCu8(id));
 }
+//
+force_inline String eat_String(STB_Parser *p) { return eat_id(p); }
 
-// TODO: could have called this "eat_id"
-internal String
-eat_String(STB_Parser *p)
-{
- String result = {};
- p->set_ok(p->token == CLEX_id);
- result = push_string_copy(p->string_arena, p->string_value);
- eat_token(p);
- return result;
-}
+
 
 inline void
 eat_char(STB_Parser *p, char c)
 {
- p->set_ok(p->token == c); 
+ p->set_ok(p->stb.token == c); 
  eat_token(p);
 }
 
@@ -144,7 +134,7 @@ force_inline b32
 maybe_char(STB_Parser *p, char c)
 {
  b32 result = false;
- if (p->token == c)
+ if (p->stb.token == c)
  {
   eat_token(p);
   result = true;
@@ -152,7 +142,7 @@ maybe_char(STB_Parser *p, char c)
  return result;
 }
 
-internal i1
+function i1
 eat_i1(STB_Parser *p)
 {
  i1 result = 0;
@@ -164,18 +154,50 @@ eat_i1(STB_Parser *p)
   maybe_char(p, '+');
  }
  
- if (p->token == CLEX_intlit)
+ if (p->stb.token == CLEX_intlit)
  {
-  result = sign*p->int_value;
+  result = sign*p->stb.int_value;
   eat_token(p);
  }
  
  return result;
 }
-// NOTE: Fancy experiment
-internal auto &eat_b32 = eat_i1;
+// NOTE: Fancy "auto" usage
+function auto &eat_b32 = eat_i1;
 
-internal v1
+inline void
+eat_integer_vector(STB_Parser *p, i1 *result, i1 count)
+{
+ for_i32(index,0,count) {
+  result[index] = eat_i1(p);
+ }
+}
+
+force_inline i2
+eat_i2(STB_Parser *p)
+{
+ i2 result;
+ eat_integer_vector(p, result.e, 2);
+ return result;
+}
+//
+force_inline i3
+eat_i3(STB_Parser *p)
+{
+ i3 result;
+ eat_integer_vector(p, result.e, 3);
+ return result;
+}
+//
+force_inline i4
+eat_i4(STB_Parser *p)
+{
+ i4 result;
+ eat_integer_vector(p, result.e, 4);
+ return result;
+}
+
+function v1
 eat_v1(STB_Parser *p)
 {
  v1 result = 0.f;
@@ -187,9 +209,9 @@ eat_v1(STB_Parser *p)
   maybe_char(p, '+');
  }
  
- if (p->token == CLEX_floatlit)
+ if (p->stb.token == CLEX_floatlit)
  {
-  result = sign*v1(p->float_value);
+  result = sign*v1(p->stb.float_value);
   eat_token(p);
  }
  
@@ -202,6 +224,14 @@ eat_vector(STB_Parser *p, v1 *result, i1 count)
  for_i32(index,0,count) {
   result[index] = eat_v1(p);
  }
+}
+//
+force_inline v2
+eat_v2(STB_Parser *p)
+{
+ v2 result;
+ eat_vector(p, result.e, 2);
+ return result;
 }
 //
 force_inline v3
@@ -218,6 +248,22 @@ eat_v4(STB_Parser *p)
  v4 result;
  eat_vector(p, result.e, 4);
  return result;
+}
+
+function void
+eat_data_basic_type(STB_Parser *p, Basic_Type type, u8 *pointer)
+{
+ switch(type)
+ {
+#define X(T)   case Basic_Type_##T: \
+{ \
+T value = eat_##T(p); \
+block_copy(pointer, &value, get_basic_type_size(type)); \
+} break;
+  //
+  X_Basic_Types(X)
+#undef X
+ }
 }
 
 //~ EOF

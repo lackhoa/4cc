@@ -88,10 +88,10 @@ build_language_model(void)
     sm_op("{");
     sm_select_base_kind(TokenBaseKind_ScopeClose);
     sm_op("}");
-    sm_select_base_kind(TokenBaseKind_ParentheticalOpen);
+    sm_select_base_kind(TokenBaseKind_ParenOpen);
     sm_op("(");
     sm_op("[");
-    sm_select_base_kind(TokenBaseKind_ParentheticalClose);
+    sm_select_base_kind(TokenBaseKind_ParenClose);
     sm_op(")");
     sm_op("]");
     sm_select_base_kind(TokenBaseKind_StatementClose);

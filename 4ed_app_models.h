@@ -80,15 +80,15 @@ struct Models{
     Buffer_Hook_Function *new_file;
     Buffer_Hook_Function *save_file;
     Buffer_Edit_Range_Function *buffer_edit_range;
-    Buffer_Region_Function *buffer_region;
-    Layout_Function *layout_func;
-    View_Change_Buffer_Function *view_change_buffer;
-    
-    Color_Table color_table_;
-    
-    Model_View_Command_Function *free_view_cmd_funcs;
-    Model_View_Command_Function *first_view_cmd_func;
-    Model_View_Command_Function *last_view_cmd_func;
+ Buffer_Region_Function *buffer_region;
+ Layout_Function *layout_func;
+ View_Change_Buffer_Function *view_change_buffer;
+ 
+ Color_Table color_table_;
+ 
+ Model_View_Command_Function *free_view_cmd_funcs;
+ Model_View_Command_Function *first_view_cmd_func;
+ Model_View_Command_Function *last_view_cmd_func;
     
     Arena virtual_event_arena;
     Model_Input_Event_Node *free_virtual_event;

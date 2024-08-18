@@ -5,15 +5,19 @@
 #define ED_API_USER_STORE_GLOBAL 1
 #define AD_IS_DRIVER 0
 #include "4coder_game_shared.h"
+#define ED_PARSER_BUFFER 1
 #include "4ed_kv_parser.cpp"
+
 #include "framework_driver_shared.h"
+#include "framework_driver_shared.meta.h"
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 #include "game_api.cpp"
 
-#define STB_C_LEXER_IMPLEMENTATION
-#include "stb_c_lexer.h"
-#include "game_parser.cpp"
+#include "ad_stb_parser.cpp"
+#define DYNAMIC_LINK_API
+#include "custom/generated/ed_api.cpp"
+#include "game_modeler.cpp"
 
 /*
   IMPORTANT Rule for the renderer
@@ -27,17 +31,20 @@
   - v4 colors are in linear space, alpha=1 (so pma doesn't matter)
  */
 
-global_const u32 data_current_version = 7;
-global_const u32 data_magic_number = *(u32 *)"kvda";
+enum Data_Version
+{
+ Data_Version_Init = 7,
+};
+global_const u32 data_current_version = Data_Version_Init;
 
-#define X(N) internal N##_return N(N##_params);
+#define X(N) function N##_return N(N##_params);
 // Note: forward declare
 X_GAME_API_FUNCTIONS(X)
 //
 #undef X
 
 
-internal b32
+function b32
 just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=Key_Mod_NULL)
 {
  return ((input->key_states       [keycode])     &&
@@ -52,13 +59,13 @@ is_key_down(Game_Input *input, Key_Mods modifiers, Key_Code keycode)
          (input->active_mods == modifiers));
 }
 
-internal v4
+function v4
 key_direction_v4(Game_Input *input, Key_Mods wanted_mods, b32 new_keypress, b32 *optional_shift=0)
 {
  v4 direction = {};
  b32 match_exactly = (input->active_mods == wanted_mods);
  b32 match_with_shift = optional_shift && (input->active_mods == (wanted_mods|Key_Mod_Sft));
-  
+ 
  if (match_exactly || match_with_shift)
  {
 #define Hit(N) \
@@ -113,7 +120,7 @@ camera_data_equal(Camera_Data *a, Camera_Data *b)
  return block_match(a, b, sizeof(Camera_Data));
 }
 
-internal v1
+function v1
 animate_value(v1 start, v1 end, v1 dt, v1 difference_multiplier, v1 min_speed)
 {
  macro_clamp_min(min_speed, 0.f);
@@ -129,10 +136,9 @@ animate_value(v1 start, v1 end, v1 dt, v1 difference_multiplier, v1 min_speed)
 global v1 CAMERA_DISTANCE_STEP         = 5.f  *centimeter;
 global v1 CAMERA_PAN_STEP_PER_DISTANCE = 3.75f*centimeter;
 
-internal b32
+function b32
 animate_camera(Camera_Data *current, Camera_Data *saved, v1 dt)
 {
- current->distance_level = saved->distance_level;//@distance_level_nonsense
  b32 animation_ended = camera_data_equal(current, saved);
  if ( animation_ended )
  {
@@ -158,17 +164,17 @@ current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.1f, MIN_SPEED
  return animation_ended;
 }
 
-// TODO: We really should merge this with game_update, come on why are there two calls instead of one?
-internal game_viewport_update_return
+// TODO: Merge this with game_update, come on why are there two calls instead of one?
+function game_viewport_update_return
 game_viewport_update(game_viewport_update_params)
 {
  b32 should_animate_next_frame = false;
  i32 viewport_index = get_viewport_index(viewport_id);
  Viewport *viewport = &state->viewports[viewport_index];
  {// NOTE: camera animtion
-  Camera_Data *saved   = &viewport->target_camera;
+  Camera_Data *target  = &viewport->target_camera;
   Camera_Data *current = &viewport->camera;
-  b32 animation_ended = animate_camera(current, saved, dt);
+  b32 animation_ended = animate_camera(current, target, dt);
   if ( !animation_ended ) { should_animate_next_frame = true; }
  }
  
@@ -182,177 +188,245 @@ round_to_multiple_of(v1 value, v1 n)
  return result;
 }
 
-internal b32
-load_state(Game_State *state, String input)
+function void
+clear_modeler_data(Modeler &m)
 {
- Arena *load_arena = &state->load_arena;
- static_arena_clear(load_arena);
- STB_Parser parser = new_parser(input, load_arena, 128);
- STB_Parser *p = &parser;
- 
- {
-#define eat_brace_begin  eat_char(p, '{')
-#define eat_brace_end    eat_char(p, '}')
-#define eat_brace_block  eat_brace_begin; defer( eat_brace_end; )
-  eat_id(p, "version");
-  game_save_version = eat_i1(p);
-  {
-   eat_id(p, "cameras");
-   {
-    eat_brace_block;
-    Camera_Data cameras[GAME_VIEWPORT_COUNT];
-    for_i32(cam_index,0,GAME_VIEWPORT_COUNT)
-    {
-     Camera_Data *cam = &state->viewports[cam_index].target_camera;
-     eat_brace_block;
-#define X(TYPE,NAME)  eat_id(p, #NAME); cam->NAME = eat_##TYPE(p);
-     X_Camera_Data(X)
-#undef X 
-    }
-   }
-  }
-  {
-   eat_id(p, "references_full_alpha");
-   state->references_full_alpha = eat_i1(p);
-  }
-  {
-   Modeler &modeler = state->modeler;
-   {//-NOTE Vertices
-    eat_id(p, "vertices");
-    eat_brace_begin;
-    kv_array<Vertex_Data> &vertices = modeler.vertices;
-    while(p->ok())
-    {
-     if ( maybe_char(p, '}') ) {
-      break;
-     }
-     Vertex_Data &v = vertices.push2();
-     v = {};
-     {
-      eat_brace_begin;
-#if 0  //TODO: some day we'll have to switch to a full meta program, some day!
-      auto &meta = vertex_data_meta;
-      for_i32(ifield, 0, meta.field_count)
-      {
-       eat_id(p, meta.field_names[ifield]);
-       eat_type(p, (u8*)(v)+meta.field_offsets[ifield]);
-      }
-#endif
-#define X(TYPE,NAME)  eat_id(p,#NAME);  v.NAME = eat_##TYPE(p);
-      X_Vertex_Data(X);
-#undef X
-      eat_brace_end;
-     }
-    }
-   }
-   
-   {//-NOTE Beziers
-    eat_id(p, "beziers");
-    eat_brace_begin;
-    kv_array<Bezier_Data> &beziers = modeler.beziers;
-    while(p->ok())
-    {
-     if ( maybe_char(p, '}') ) {
-      break;
-     }
-     Bezier_Data &b = beziers.push2();
-     b = {};
-     {
-      eat_brace_begin;
-#define X(TYPE,NAME)   eat_id(p,#NAME);  b.NAME = eat_##TYPE(p);
-      X_Bezier_Data(X);
-#undef X
-      eat_brace_end;
-     }
-    }
-   }
-  }
-#undef eat_brace_begin
-#undef eat_brace_end
-#undef eat_brace_block
- }
- 
-#if 0
- if (p->ok)
- {// NOTE: test
-  make_temp_arena(arena);
-  String test_path = strlit("C:/Users/vodan/4ed/code/data/text_test.kv");
-  String serialization = serialize_state(arena, save);
-  write_entire_file(test_path, serialization);
- }
-#endif
- 
- return p->ok();
+ m.vertices.count = 1;
+ m.curves.count   = 1;
 }
 
+function void
+serialize_type(Printer &p, Type_Info &info, void *void_pointer)
+{
+#define newline   print(p, "\n")
+ print(p, "{"); newline;
+ u8 *pointer = cast(u8 *)void_pointer;
+ for_i1(member_index, 0, info.members.count)
+ {
+  Struct_Member &member = info.members[member_index];
+  p << member.name << " ";
+  u8 *member_pointer = pointer+member.offset;
+  if (member.type->Basic_Type) {
+   print_data_basic_type(p, member.type->Basic_Type, member_pointer);
+  } else {
+   serialize_type(p, *member.type, member_pointer);
+  }
+  newline;
+ }
+ print(p, "}"); newline
+#undef newline
+}
+
+function void
+deserialize_type(STB_Parser *p, Type_Info &info, void *void_pointer)
+{
+ u8 *pointer = cast(u8 *)void_pointer;
+ block_zero(pointer, info.size);
+ for_i1(member_index, 0, info.members.count)
+ {
+  Struct_Member &member = info.members[member_index];
+  eat_id(p, member.name);
+  u8 *member_pointer = pointer+member.offset;
+  if (member.type->Basic_Type) {
+   eat_data_basic_type(p, member.type->Basic_Type, member_pointer);
+  } else {
+   deserialize_type(p, *member.type, member_pointer);
+  }
+ }
+}
+
+function b32
+game_load(Game_State *state, App *app, String filename,
+          b32 ask_confirmation=true)
+{// IMPORTANT: This function overwrites edit history.
+ b32 ok = true;
+ Scratch_Block scratch(app);
+ 
+ if (ask_confirmation) {
+  // TODO(kv): Well, I wish confirmation dialog would be *this* easy
+  // ok = get_confirmation_from_user(app, strlit("Really reload game? (Will overwrite edit history)"));
+ }
+ 
+ String read_string = {};
+ if (ok)
+ {
+  read_string = read_entire_file(scratch, filename);
+  ok = read_string.len > 0;
+  if ( !ok ) {
+   print_message(app, strlit("Game load: can't read the file!\n"));
+  }
+ }
+ 
+ if( ok )
+ {// NOTE: Deserialize
+  Arena *load_arena = &state->data_load_arena;
+  arena_clear(load_arena);
+  STB_Parser parser = new_parser(read_string, load_arena, 128);
+  STB_Parser *p = &parser;
+  
+  {
+#define brace_begin  eat_char(p, '{')
+#define brace_end    eat_char(p, '}')
+#define brace_block  brace_begin; defer( brace_end; )
+   eat_id(p, "version");
+   game_save_version = eat_i1(p);
+   {
+    eat_id(p, "cameras");
+    {
+     brace_block;
+     Camera_Data cameras[GAME_VIEWPORT_COUNT];
+     for_i32(cam_index,0,GAME_VIEWPORT_COUNT)
+     {
+      Camera_Data *cam = &state->viewports[cam_index].target_camera;
+      brace_block;
+#define X(TYPE,NAME)  eat_id(p, #NAME); cam->NAME = eat_##TYPE(p);
+      X_Camera_Data(X)
+#undef X 
+     }
+    }
+   }
+   {
+    eat_id(p, "references_full_alpha");
+    state->references_full_alpha = eat_i1(p);
+   }
+   {
+    Modeler &m = state->modeler;
+    clear_modeler_data(m);
+    
+    {//-NOTE Vertices
+     eat_id(p, "vertices");
+     brace_begin;
+     while(p->ok())
+     {
+      if ( maybe_char(p, '}') ) {
+       break;
+      }
+      Vertex_Data &v = m.vertices.push2();
+      {
+       brace_begin;
+       //#define X(TYPE,NAME)  eat_id(p,#NAME); v.NAME = eat_##TYPE(p);
+       //       X_Vertex_Data(X);
+       //#undef X
+       deserialize_type(p, Vertex_Data_Type_Info, &v);
+       brace_end;
+      }
+     }
+    }
+    
+    {//-NOTE Beziers
+     eat_id(p, "beziers");
+     brace_begin;
+     while(p->ok())
+     {
+      if ( maybe_char(p, '}') ) {
+       break;
+      }
+      Bezier_Data &b = m.curves.push2();
+      b = {};
+      {
+       brace_begin;
+#define X(TYPE,NAME)   eat_id(p,#NAME);  b.NAME = eat_##TYPE(p);
+       X_Bezier_Data(X);
+#undef X
+       brace_end;
+      }
+     }
+    }
+   }
+#undef brace_begin
+#undef brace_end
+#undef brace_block
+  }
+  
+#if 0
+  if (p->ok)
+  {// NOTE: test
+   make_temp_arena(arena);
+   String test_path = strlit("C:/Users/vodan/4ed/code/data/text_test.kv");
+   String serialization = serialize_state(arena, save);
+   write_entire_file(test_path, serialization);
+  }
+#endif
+  
+  ok = p->ok();
+  if (!ok) {
+   print_message(app, strlit("Game load: deserialization failed!\n"));
+  }
+ }
+ 
+ if (!ok) { state->load_failed = true; }
+ if (ok) { clear_edit_history(state->modeler.history); }
+ 
+ return ok;
+}
 
 //~
 
-internal game_render_return
+function game_render_return
 game_render(game_render_params)
 {//;switch_game_or_physics
  slider_cycle_counter = 0;
  render_movie(state, app, target, viewport_id, mouse); 
 }
 
-internal game_init_return
+function game_init_return
 game_init(game_init_params)
-{
- // API import
-#define X(N) N = ed_api->N;
- X_ED_API_FUNCTIONS(X)
-#undef X
+{// API import
+ ed_api_read_vtable(ed_api);
  
  //@game_bootstrap_arena_zero_initialized
  Game_State *state = push_struct(bootstrap_arena, Game_State);
+ state->malloc_base_allocator = malloc_base_allocator;  // NOTE: Stupid: can't use global vars on reloaded code!
  state->permanent_arena = *bootstrap_arena;
  Arena *arena = &state->permanent_arena;
+ state->dll_arena = make_arena(&state->malloc_base_allocator, MB(1));
  
- {//-Modeler
+ {//-;init_modeler
   auto &m = state->modeler;
   m.permanent_arena = &state->permanent_arena;
-  init(m.vertices, m.permanent_arena, 4096);
-  init(m.beziers,   m.permanent_arena, 128);
-  m.vertices.count = 1;
-  m.beziers.count   = 1;
+  init_static(m.vertices, m.permanent_arena, 4096);
+  init_static(m.curves,   m.permanent_arena, 512);
+  {
+   init_dynamic(m.active_objects, 0, 16);
+   //m.active_objects.flags = Container_Unique;  Bleh! Can't do this!
+  }
+  {// NOTE: Modeler_Edit_History
+   auto &h = m.history;
+   h.arena = make_arena(&state->malloc_base_allocator);
+   h.inited = true;
+   clear_edit_history(m.history);
+  }
+  
+  clear_modeler_data(m);
  }
  
  {// NOTE: Save/Load business load_game
   Scratch_Block scratch(app);
   String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-  state->save_dir  = pjoin(arena, binary_dir, "data");
-  state->save_path_text = pjoin(arena, state->save_dir, "text.kv");
+  state->save_dir         = pjoin(arena, binary_dir, "data");
+  state->backup_dir       = pjoin(arena, state->save_dir, "backups");
+  state->autosave_path    = pjoin(arena, state->save_dir, "text.kv");
+  state->manual_save_path = pjoin(arena, state->save_dir, "manual.kv");
   
   {// NOTE: Load state
-   state->load_arena = sub_arena_static(&state->permanent_arena, KB(32));
-   String read_string = read_entire_file(scratch, state->save_path_text);
-   if( read_string.len )
-   {
-    if ( !load_state(state, read_string) )
-    {
-     print_message(app, strlit("Game load: load failed!\n"));
-     state->load_failed = true;
-    }
-   }
-   else {print_message(app, strlit("Game load: can't read the file!\n"));}
+   state->data_load_arena = make_arena(&state->malloc_base_allocator);
+   game_load(state, app, state->autosave_path, false);
   }
  }
  
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {//;frame_arena_init
-  usize frame_arena_size = KB(32);
-  state->viewports[viewport_index].frame_arena = sub_arena_static(arena, frame_arena_size);
+  state->viewports[viewport_index].render_arena = 
+   make_arena(&state->malloc_base_allocator);
  }
  
  {
-  state->line_cap = 8192;
-  state->line_map = push_array(arena, Line_Map_Entry, state->line_cap);
-  state->slider_store = sub_arena_static(arena, KB(32), /*alignment*/1);
+  state->line_cap     = 8192;
+  state->line_map     = push_array(arena, Line_Map_Entry, state->line_cap);
  }
  
  {
   i32 cap = 128;
-  state->slow_slider_store = sub_arena_static(arena, KB(1),  /*alignment*/1);
   state->slow_line_map = {
    .cap = cap,
    .map = push_array(arena, Slow_Line_Map_Entry, cap)
@@ -360,33 +434,36 @@ game_init(game_init_params)
  }
  
  default_fvert_delta_scale = 0.1f;
-  
+ 
  //-IMPORTANT: Reload is a part of init
- game_reload(state, ed_api);
+ game_reload(state, ed_api, true);
  
  return state;
 }
 
-internal game_reload_return
+function game_reload_return
 game_reload(game_reload_params)
 {// Game_State
  // API import
-#define X(N) N = ed_api->N;
- X_ED_API_FUNCTIONS(X)
-#undef X
+ ed_api_read_vtable(ed_api);
+ 
+ if (!first_time)
+ {// NOTE: clear dll memory
+  end_temp(state->dll_temp_memory);
+ }
  
  {//NOTE: ;FUI_reload
+  dll_arena = &state->dll_arena;
+  state->dll_temp_memory = begin_temp(dll_arena);
+  push_struct(dll_arena, u8);// @fui_ensure_nonzero_offset
+  
   line_map     =  state->line_map;
-  slider_store = &state->slider_store;
   block_zero(line_map, state->line_cap*sizeof(Line_Map_Entry));
-  static_arena_clear(slider_store);
-  push_struct(slider_store, u8);// @fui_ensure_nonzero_offset
   //-
   slow_line_map     =  state->slow_line_map;
-  slow_slider_store = &state->slow_slider_store;
+  //slow_slider_store = &state->slow_slider_store;
   slow_line_map.count = 0;
-  static_arena_clear(slow_slider_store);
-  push_struct(slow_slider_store, u8);// @fui_ensure_nonzero_offset
+  //push_struct(slow_slider_store, u8);// @fui_ensure_nonzero_offset
  }
  
  {//-NOTE: Modeling data
@@ -396,7 +473,7 @@ game_reload(game_reload_params)
 
 #include "time.h"
 
-internal String
+function String
 time_format(char *buf, i32 bufsize, char *format)
 {
  String result = {};
@@ -417,36 +494,36 @@ get_target_camera(Game_State *state, i32 index)
  return &state->viewports[index].target_camera;
 }
 
-internal String
-save_state(Arena *parent_arena, Game_State *state)
+function String
+serialize(Arena *arena, Game_State *state)
 {
  // NOTE: lovely MSVC doesn't pass __VA_ARGS__ correctly between macros
  //TODO: Cleanup this macro hell
 #define indent                print_nspaces(p, indentation)
-#define println(FORMAT, ...)  push_stringf(p, FORMAT "\n", ##__VA_ARGS__); indent
-#define newline               push_string(p, "\n"); indent
-#define brace_begin           indentation+=1; println("{")
-#define brace_end             indentation-=1; seek_back(p); println("}")
+ //#define println(VALUE, ...)   print(p, VALUE "\n", ##__VA_ARGS__); indent
+#define newline               print(p, "\n"); indent
+#define brace_begin           indentation+=1; print(p, "{"); newline;
+#define brace_end             indentation-=1; print(p, "}"); newline;
 #define brace_block           brace_begin; defer(brace_end);
 #define macro_print_field(STRUCT, TYPE, NAME) \
-print(p, #NAME " "); print_data(p, Type_##TYPE, &STRUCT.NAME); newline
+print(p, #NAME " "); print_data_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newline
  
  const i32 MAX_SAVE_SIZE = KB(16);  // Wastes @Memory
- Printer p = make_printer(parent_arena, MAX_SAVE_SIZE);
+ Printer p = make_printer(arena, MAX_SAVE_SIZE);
  
  i32 indentation = 0;
  {// NOTE: Content
   {// NOTE: preamble
-   println( "// autodraw data file (DO NOT EDIT)" );
+   print(p, "// autodraw data file (DO NOT EDIT)" ); newline;
    {
     char buf[64];
     String timestamp = time_format(buf, alen(buf), "%d.%m.%Y %H:%M:%S");
-    println("// Written at %.*s", string_expand(timestamp));
+    printn2(p, "// Written at ", timestamp); newline;
    }
-   println("version %u", data_current_version);
+   printn2(p, "version ", data_current_version); newline;
   }
   {
-   println("cameras");
+   print(p, "cameras"); newline;
    {
     brace_block;
     for_i32(camera_index, 0, GAME_VIEWPORT_COUNT)
@@ -460,37 +537,38 @@ print(p, #NAME " "); print_data(p, Type_##TYPE, &STRUCT.NAME); newline
    }
   }
   newline;
-  println("references_full_alpha %d", state->references_full_alpha);
+  printn2(p, "references_full_alpha ", state->references_full_alpha); newline;
   newline;
   {// NOTE: Modeler data
    Modeler &modeler = state->modeler;
    {//NOTE vertices
-    kv_array<Vertex_Data> &vertices = modeler.vertices;
-    println("vertices");
+    arrayof<Vertex_Data> &vertices = modeler.vertices;
+    print(p, "vertices"); newline;
     {
      brace_block;
      for_i32(vi,1,vertices.count)
      {
-      brace_begin;
       auto &v = vertices[vi];
-#define X(TYPE,NAME)  macro_print_field(v, TYPE, NAME);
-      X_Vertex_Data(X);
-#undef X
-      brace_end;
+      /*
+      #define X(TYPE,NAME)  macro_print_field(v, TYPE, NAME);
+            X_Vertex_Data(X);
+      #undef X
+      */
+      serialize_type(p, Vertex_Data_Type_Info, &v);
      }
     }
     newline;
    }
    
    {//NOTE beziers
-    kv_array<Bezier_Data> &beziers = modeler.beziers;
-    println("beziers");
+    arrayof<Bezier_Data> &curves = modeler.curves;
+    print(p, "beziers"); newline;
     {
      brace_block;
-     for_i32(bi,1,beziers.count)
+     for_i32(bi,1,curves.count)
      {
       brace_begin;
-      auto &b = beziers[bi];
+      auto &b = curves[bi];
 #define X(TYPE,NAME)  macro_print_field(b, TYPE, NAME);
       X_Bezier_Data(X);
 #undef X
@@ -501,14 +579,13 @@ print(p, #NAME " "); print_data(p, Type_##TYPE, &STRUCT.NAME); newline
    }
   }
   newline;
-  println("//~EOF");
+  print(p, "//~EOF"); newline;
  }
  
- String result = end_printer(&p);
+ String result = printer_get_string(p);
  return result;
  
 #undef indent
-#undef println
 #undef brace_begin
 #undef brace_end
 #undef brace_block
@@ -516,18 +593,19 @@ print(p, #NAME " "); print_data(p, Type_##TYPE, &STRUCT.NAME); newline
 #undef macro_print_field
 }
 
-internal b32
-game_save(App *app, Game_State *state)
+function b32
+game_save(Game_State *state, App *app, b32 is_manual)
 {// NOTE: save and backup logic
  Scratch_Block scratch(app);
- char *save_path_text_cstr = to_c_string(scratch, state->save_path_text);
+ String path = (is_manual ? state->manual_save_path :
+                state->autosave_path);
+ char *pathz = to_c_string(scratch, path);
+ String backup_dir = state->backup_dir;
  
  b32 ok = true;
  if (!state->has_done_backup &&
-     gb_file_exists(save_path_text_cstr))
- {//-NOTE: backup situation
-  String backup_dir = pjoin(scratch, state->save_dir, "backups");
-  // NOTE: Backup game if is_first_write_since_launched
+     gb_file_exists(pathz))
+ {//-NOTE: Backup situation
   char buf[64];
   String time_string = time_format(buf, alen(buf), "%d_%m_%Y_%H_%M_%S");
   if (time_string.len == 0)
@@ -537,15 +615,21 @@ game_save(App *app, Game_State *state)
   }
   else
   {
-   String backup_path = push_stringfz(scratch, "%.*s/data_%.*s.kv", string_expand(backup_dir), string_expand(time_string));
-   ok = copy_file(state->save_path_text, backup_path, true);
-   if (ok) { state->has_done_backup = true; }
+   const char *filename_base = is_manual ? "manual" : "auto";
+   String backup_path = push_stringfz(scratch, "%.*s/%s_%.*s.kv",
+                                      string_expand(backup_dir),
+                                      filename_base,
+                                      string_expand(time_string));
+   ok = copy_file(path, backup_path, true);
+   state->has_done_backup = ok;
   }
   
   if (ok)
   {// NOTE: cycle out old backup files
+   // TODO: Maybe treat manual backups differently? idk man!
    File_List backup_files = system_get_file_list(scratch, backup_dir);
-   if (backup_files.count > 100)
+   u32 max_backup = 128;
+   if (backup_files.count > max_backup)
    {
     u64 oldest_mtime = U64_MAX;
     String file_to_delete = {};
@@ -570,10 +654,10 @@ game_save(App *app, Game_State *state)
  
  if (ok)
  {//-NOTE: Save the file
-  String text = save_state(scratch, state);
-  ok = write_entire_file(state->save_path_text, text.str, text.size);
+  String text = serialize(scratch, state);
+  ok = write_entire_file(path, text.str, text.size);
   if (ok) {vim_set_bottom_text(str8lit("Saved game state!"));}
-  else    {printf_message(app, "Failed to write to file %.*s", string_expand(state->save_path_text));}
+  else    {printf_message(app, "Failed to write to %.*s", string_expand(path));}
  }
  
  if (!ok) { state->save_failed = true; }
@@ -581,42 +665,98 @@ game_save(App *app, Game_State *state)
  return ok;
 }
 
+// NOTE(kv): Can you believe we used to have complicated crap like "distance_level"?
+// There is no "distance_level", fool! There's only distance!
+inline v1
+update_camera_distance(v1 distance, i1 delta_level)
+{
+ const v1 mult = 1.3f;
+ distance *= integer_power(mult, delta_level);
+ return distance;
+}
+
+
+global arrayof<String> command_queue;
+
+function game_send_command_return
+game_send_command(game_send_command_params)
+{
+ state->command_queue.push(command_name);
+}
+
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
-internal game_update_return
+function game_update_return
 game_update(game_update_params)
 {
  auto &modeler = state->modeler;
  b32 game_active = active_viewport_id != 0;
  b32 game_hot = (game_active != 0 || fui_is_active());
  
+ b32 should_animate_next_frame = false;
+ if (game_hot) {
+  should_animate_next_frame = true;
+ }
+ 
  i32 update_viewport_id = (active_viewport_id ? active_viewport_id : 1);
  
  Game_Input *input = &input_value;
+ hot_prim_id = input->frame.hot_prim_id;
  
- {
-  Render_Target *render_target = draw_get_target(app);
-  if(input->mouse.press_l)
+ if( input->mouse.press_l )
+ {// NOTE: Left click handling
+  u32 hot_prim = get_hot_prim_id();
+  if (hot_prim)
   {
-   u32 hot_prim = get_hot_prim_id();
    if ( prim_id_is_obj(hot_prim) )
+   {// NOTE: Drawn by data -> change selected obj id
+    auto &m = modeler;
+    m.selected_obj_id = hot_prim;
+    m.change_uncommitted = false;
+    switch_to_mouse_panel(app);
+   }
+   else
    {
-    modeler.selected_obj_id = hot_prim;
-    Primitive_Type type = prim_id_type(hot_prim);
-    i32 selected_index = index_from_prim_id(hot_prim);
-    if ( type == Prim_Vertex ) {
-     modeler.previous_vertex = modeler.vertices[selected_index];
-    } else if (type == Prim_Curve) {
-     modeler.previous_curve  = modeler.beziers[selected_index];
+    // NOTE: Drawn by code -> jump to code
+    // NOTE: Don't switch to the game panel, because the cursor should be in the code panel.
+    View_ID view = get_active_view(app,0);
+    if( !is_view_to_the_right(app, view) )
+    {//NOTE: Switch to the right view
+     view = get_other_primary_view(app, view, Access_Always, true);
+    }
+    view_set_buffer_named(app, view, GAME_FILE_NAME);
+    view_set_cursor(app, view, seek_line_col(hot_prim, 0));
+   }
+  }
+ }
+ 
+ {// todo put this in the camera update logic
+  {
+   i1 wheel = signof(input->mouse.wheel);  // NOTE(kv): We have WEIRD +/-100 mouse wheel values, dunno whawt that means.
+   if (wheel)
+   {
+    i1 viewport_id = mouse_viewport_id(app);
+    if (viewport_id)
+    {
+     i1 viewport_index = viewport_id-1;
+     Viewport &viewport = state->viewports[viewport_index];
+     v1 &distance = viewport.target_camera.distance;
+     distance = update_camera_distance(distance, wheel);
     }
    }
   }
+  
   {
-   i32 selected_index = index_from_prim_id(selected_object_id());
-   //DEBUG_VALUE(selected_index);
+   auto &cam = state->viewports[0].target_camera;
+   //DEBUG_VALUE(cam.distance);
+  }
+  
+  if(0)
+  {
+   i32 selected_index = prim_id_to_index(selected_object_id());
+   DEBUG_VALUE(selected_index);
   }
  } 
  
- b32 should_animate_next_frame = false;
  kv_assert(active_viewport_id <= GAME_VIEWPORT_COUNT);
  i32 update_viewport_index = update_viewport_id - 1;
  Viewport *update_viewport = &state->viewports[update_viewport_index];
@@ -627,18 +767,13 @@ game_update(game_update_params)
   if (state->time >= 1000.0f) { state->time -= 1000.0f; }
  }
  
- if (game_hot)
- {
-  should_animate_next_frame = true;
- }
- 
  Arena *permanent_arena = &state->permanent_arena;
  
  Scratch_Block scratch(app);
  
  if( just_pressed(input, Key_Code_Return) )
- {//NOTE: This is how I want it to work
-  game_save(app, state);
+ {//TODO: Just trigger autosave every 10s or so, and remove this
+  game_save(state, app, false);
  }
  
  Camera camera_value = {};
@@ -647,77 +782,71 @@ game_update(game_update_params)
   setup_camera(camera, &update_viewport->camera);
  }
  
- if (game_hot)
  {// NOTE: Camera update
-  Camera_Data *save_camera = get_target_camera(state, update_viewport_index);
+  Camera_Data *target_camera = get_target_camera(state, update_viewport_index);
   
-  if ( just_pressed(input, Key_Code_X) ) {
-   save_camera->theta *= -1.f;
-  } else if ( just_pressed(input, Key_Code_Z) ) {
-   save_camera->theta = .5f - save_camera->theta;
-  }
-  
-  v3 ctrl_direction = key_direction(input, Key_Mod_Ctl, true);
-  if (ctrl_direction == V3())
+  if (game_hot)
   {
-   if (game_active && !selected_object_id())
-   {// NOTE: Don't move the camera when you are selecting an object @UpdateSelectedObjects
-    ctrl_direction = key_direction(input, 0, true);
-   }
-  }
-  
-  {// NOTE: Zoom levels
-   i32 *level = &save_camera->distance_level;
-   {
-    v1 dz = ctrl_direction.z;
-    if (dz > 0.f)      { (*level)++; }
-    else if (dz < 0.f) { (*level)--; }
-    macro_clamp_min((*level), 0);
-   }
-   {//note: Syncing the distance with the distance level
-    v1 distance = 5.f*centimeter;
-    v1 mult = 1.2f;
-    for_i32(whatever,0,*level) { distance *= mult; }
-    save_camera->distance = distance;
-   }
-  }
-  
-  {// NOTE: pan
-   if( just_pressed(input, Key_Code_0, Key_Mod_Alt) )
-   {
-    save_camera->pan = {};
-   }
-   else
-   {
-    v1 distance = camera->distance;
-    if (distance == 0) { distance = 0.5f; }
-    v1 step = CAMERA_PAN_STEP_PER_DISTANCE * distance;  // distance = .92m -> 3*pivot_step
-    v3 pan = save_camera->pan / step;
-    
-    v2 delta_pan = key_direction(input, Key_Mod_Alt, true).xy;
-    pan += (delta_pan.x * camera->x.xyz + 
-            delta_pan.y * camera->y.xyz);
-    
-    save_camera->pan = step*pan;
-   }
-  }
-  
-  {
-   v1 interval = 1.0f / 24.f;
-   v1 theta = roundv1(save_camera->theta / interval);
-   v1 phi   = roundv1(save_camera->phi   / interval);
-   {
-    v2 delta = ctrl_direction.xy;
-    theta += delta.x;
-    phi   += delta.y;  // NOTE: pitch up when we go up
+   if ( just_pressed(input, Key_Code_X) ) {
+    target_camera->theta *= -1.f;
+   } else if ( just_pressed(input, Key_Code_Z) ) {
+    target_camera->theta = .5f - target_camera->theta;
    }
    
-   save_camera->theta = theta * interval;
-   save_camera->phi   = phi * interval;
-   macro_clamp(-0.25f, save_camera->phi, 0.25f);
+   v3 ctrl_direction = key_direction(input, Key_Mod_Ctl, true);
+   if (ctrl_direction == V3())
+   {
+    if (game_active && !selected_object_id())
+    {// NOTE: Don't move the camera when you are selecting an object @UpdateSelectedObjects
+     ctrl_direction = key_direction(input, 0, true);
+    }
+   }
+   
+   {// NOTE: Zoom level keyboard control
+    i1 delta_distance_level = cast(i1)signof( ctrl_direction.z );
+    v1 &distance = target_camera->distance;
+    distance = update_camera_distance(distance, delta_distance_level);
+   }
+   
+   {// NOTE: pan
+    if( just_pressed(input, Key_Code_0, Key_Mod_Alt) )
+    {
+     target_camera->pan = {};
+    }
+    else
+    {
+     v1 distance = camera->distance;
+     if (distance == 0) { distance = 0.5f; }
+     v1 step = CAMERA_PAN_STEP_PER_DISTANCE * distance;  // distance = 0.92m -> 3*pivot_step
+     v3 pan = target_camera->pan / step;
+     
+     v2 delta_pan = key_direction(input, Key_Mod_Alt, true).xy;
+     pan += (delta_pan.x * camera->x.xyz + 
+             delta_pan.y * camera->y.xyz);
+     
+     target_camera->pan = step*pan;
+    }
+   }
+   
+   {
+    v1 interval = 1.0f / 24.f;
+    v1 theta = roundv1(target_camera->theta / interval);
+    v1 phi   = roundv1(target_camera->phi   / interval);
+    {
+     v2 delta = ctrl_direction.xy;
+     theta += delta.x;
+     phi   += delta.y;  // NOTE: pitch up when we go up
+    }
+    
+    target_camera->theta = theta * interval;
+    target_camera->phi   = phi   * interval;
+    macro_clamp(-0.25f, target_camera->phi, 0.25f);
+   }
+   
+   if ( is_key_down(input, Key_Mod_Sft, Key_Code_0) ) {
+    target_camera->roll  = {};
+   }
   }
-  
-  if ( is_key_down(input, Key_Mod_Sft, Key_Code_0) ) { save_camera->roll  = {}; }
  }
  
  {//-NOTE: Presets
@@ -741,24 +870,21 @@ game_update(game_update_params)
   }
   
   Fui_Slider *slider = fui_active_slider;
-  if (slider->type == Type_i1 || 
-      slider->type == Type_i2 ||
-      slider->type == Type_i3 ||
-      slider->type == Type_i4)
+  if (slider->type == Basic_Type_i1 || 
+      slider->type == Basic_Type_i2 ||
+      slider->type == Basic_Type_i3 ||
+      slider->type == Basic_Type_i4)
   {
    i4 value;
    block_copy(&value, slider+1, slider_value_size(slider));
    v4 direction = key_direction_v4(input, 0, true);
-   for_i32(index,0,4)
-   {
-    value.v[index] += i32(direction[index]);
+   for_i32(index,0,4) {
+    value.e[index] += i32(direction[index]);
    }
    
-   if (slider->flags & Slider_Clamp_01)
-   {
-    for_i32(index,0,4)
-    {
-     macro_clamp01i(value.v[index])
+   if (slider->flags & Slider_Clamp_01) {
+    for_i32(index,0,4) {
+     macro_clamp01i(value.e[index])
     }
    }
    
@@ -771,7 +897,7 @@ game_update(game_update_params)
    
    b32 j_pressed = just_pressed(input, Key_Code_J);
    b32 k_pressed = just_pressed(input, Key_Code_K);
-   if (slider->type == Type_v1 && (j_pressed || k_pressed))
+   if (slider->type == Basic_Type_v1 && (j_pressed || k_pressed))
    {
     if (j_pressed) { value.x = 0.f; }
     if (k_pressed) { value.x = 1.f; }
@@ -782,7 +908,7 @@ game_update(game_update_params)
     v4 direction = key_direction_v4(input, 0, false, &shifted);
     // NOTE: Switch active pair
     if (fui_v4_zw_active &&
-        slider->type == Type_v4)
+        slider->type == Basic_Type_v4)
     {
      direction.zw = direction.xy;
      direction.xy = {};
@@ -837,99 +963,206 @@ game_update(game_update_params)
    if (viewport->preset == 0) { viewport->last_preset = 2; }
    else { viewport->last_preset = 0; }
   }
-  
-  static_arena_clear(&viewport->frame_arena);
  }
  
  driver_update(state);
  
- if ( game_hot )
- {// ;UpdateSelectedObjects
-  Primitive_Type selected_type = prim_id_type(selected_object_id());
-  if ( selected_type )
+ b32 kb_handled = false;  // TODO(kv): Maybe we automatically set this when you call "just_pressed"?
+ 
+ {//;update_modeler
+  auto &m = state->modeler;
+  auto &h = m.history;
+  
+  kb_handled = true;
+  if (game_active)
   {
-   b32 escape_pressed = just_pressed(input, Key_Code_Escape);
-   b32 return_pressed = just_pressed(input, Key_Code_Return);
-   i32 selected_index = index_from_prim_id(selected_object_id());
-   if( selected_type == Prim_Vertex )
-   {
-    Vertex_Data *vertex = &state->modeler.vertices[selected_index];
-    if( escape_pressed )
-    {// NOTE: Cancelling
-     *vertex = modeler.previous_vertex;
-     modeler.selected_obj_id = 0;
-    }
-    else if( return_pressed )
-    {// NOTE: Committing
-     modeler.selected_obj_id = 0;
-    }
-    else
-    {
-     v3 direction = key_direction(input, 0, false);
-     direction.z = 0.f;
-     direction = noz( mat4vec(camera->forward, direction) );
-     v1 delta_scale = 0.2f;
-     v3 delta = delta_scale * dt * direction;
-     vertex->pos += delta;
-    }
+   if ( just_pressed(input, Key_Code_U, Key_Mod_Sft) ) {
+    game_load(state, app, state->autosave_path);
+   } else if (just_pressed(input, Key_Code_U)) {
+    modeler_undo(m);
+   } else if (just_pressed(input, Key_Code_R)) {
+    modeler_redo(m);
+   } else {
+    kb_handled = false;
    }
-   else if( selected_type == Prim_Curve )
-   {// NOTE: curve update
-    Bezier_Data *curve = &state->modeler.beziers[selected_index];
-    if ( escape_pressed )
+  }
+  
+  {// NOTE: Compute active objects
+   m.active_objects.count = 0;
+   if( m.selection_spanning )
+   {
+    Primitive_Type sel_type = prim_id_type(selected_object_id());
+    if( sel_type == Prim_Vertex )
     {
-     *curve = modeler.previous_curve;
-     modeler.selected_obj_id = 0;
-    }
-    else if (return_pressed)
-    {
-     modeler.selected_obj_id = 0;
-    }
-    else
-    {
-     // todo @incomplete
-     i1 direction = i1( key_direction(input, 0, true).x );
-     v1 delta = i2f6(direction);
-     if (delta != 0)
+     i32 sel_index = prim_id_to_index(selected_object_id());
+     Vertex_Data &sel = m.vertices[sel_index];
+     push_unique(m.active_objects, vertex_prim_id(sel_index));
+     for_i32(cindex,1,m.curves.count)
      {
-      for_i32(index, 0, 4)
-      {
-       curve->radii[index] += delta;
+      Bezier_Data &curve = m.curves[cindex];
+      if (sel_index == curve.p0_index) {
+       push_unique(m.active_objects, vertex_prim_id(curve.p3_index));
+      } else if (sel_index == curve.p3_index) {
+       push_unique(m.active_objects, vertex_prim_id(curve.p0_index));
       }
      }
-     DEBUG_VALUE(curve->radii);
+    }
+   }
+  }
+  
+  if ( game_hot && !kb_handled )
+  {// NOTE: Handling input
+   Primitive_Type sel_type = prim_id_type(selected_object_id());
+   if ( sel_type )
+   {
+    b32 escape_pressed = just_pressed(input, Key_Code_Escape);
+    b32 return_pressed = just_pressed(input, Key_Code_Return);
+    b32 exit_edit = escape_pressed || return_pressed;
+    if ( exit_edit )
+    {// NOTE: Committing
+     m.selected_obj_id = 0;
+     m.active_objects.count = 0;
+     if (escape_pressed && m.change_uncommitted) {
+      modeler_undo(m);
+     }
+     m.change_uncommitted = false;
+    }
+    else
+    {
+     i32 sel_index0 = prim_id_to_index(selected_object_id());
+     if( sel_type == Prim_Vertex )
+     {// NOTE: Selecting a vertex
+      Vert_Index sel_index = Vert_Index{sel_index0};
+      if( just_pressed(input, Key_Code_S) )
+      {// NOTE: Toggle spanning
+       toggle_boolean(modeler.selection_spanning);
+      }
+      else
+      {
+       v3 direction = key_direction(input, 0, false);
+       if (direction != v3{})
+       {// NOTE: Update vertex position
+        direction.z = 0.f;
+        direction = noz( mat4vec(camera->forward, direction) );
+        v1 delta_scale = 0.2f;
+        v3 delta = delta_scale * dt * direction;
+        
+        arrayof<Vert_Index> influenced_verts;
+        init_static(influenced_verts, scratch, m.active_objects.count);
+        for_i1(active_object_index,0,m.active_objects.count)
+        {
+         Vert_Index vi = prim_id_to_vertex_index(m.active_objects[active_object_index]);
+         influenced_verts.push(vi);
+        }
+        Modeler_Edit edit = Modeler_Edit{
+         .type=ME_Vert_Move,
+         .Vert_Move=Vert_Move {
+          .verts=influenced_verts,
+          .delta=delta,
+         },
+        };
+        {
+         b32 merged = false;
+         Modeler_Edit *current_edit = get_current_edit(h);
+         // NOTE(kv): edits_can_be_merged is a guardrail for now
+         if (current_edit &&
+             m.change_uncommitted &&
+             edits_can_be_merged(*current_edit, edit))
+         {
+          merged = true;
+          modeler_undo(m);
+          edit = *current_edit;
+          edit.Vert_Move.delta += delta;
+         }
+         if (!merged) {
+          edit.Vert_Move.verts = influenced_verts.copy(&h.arena);
+         }
+         apply_new_edit(m, edit);
+        }
+       }
+      }
+      DEBUG_VALUE(modeler.selection_spanning);
+     }
+     else if( sel_type == Prim_Curve )
+     {// NOTE: curve update
+      Bezier_Data &sel = modeler.curves[sel_index0];
+      {
+       // todo @incomplete
+       i1 direction = i1( key_direction(input, 0, true).x );
+       v1 delta = i2f6(direction);
+       if (delta != 0)
+       {
+        for_i32(index,0,4) {
+         sel.radii[index] += delta;
+        }
+       }
+       DEBUG_VALUE(sel.radii);
+      }
+     }
     }
    }
   }
  }
  
- if (debug_frame_time_on)
  {
-  DEBUG_NAME("work cycles", input->frame.work_cycles);
-  DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
-  DEBUG_NAME("work ms", input->frame.work_seconds * 1e3f);
+  // TODO: Have a better error reporting story
+  // Like, how do we turn these off? With a clear command?
+  if (state->load_failed) {
+   DEBUG_TEXT("Load failed!");
+  }
+  if (state->save_failed) {
+   DEBUG_TEXT("Save failed!");
+  }
  }
  
- if ( fbool(0) )
  {
-  DEBUG_VALUE(image_load_info.image_count);
-  DEBUG_VALUE(image_load_info.failure_count);
+  if (debug_frame_time_on)
+  {
+   DEBUG_NAME("work cycles", input->frame.work_cycles);
+   DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
+   DEBUG_NAME("work ms", input->frame.work_seconds * 1e3f);
+  }
+  
+  if ( fbool(0) )
+  {
+   DEBUG_VALUE(image_load_info.image_count);
+   DEBUG_VALUE(image_load_info.failure_count);
+  }
  }
  
- // TODO: Have a better error reporting story
- // Like, how do we turn these off? With a clear command?
- if (state->load_failed) {
-  DEBUG_TEXT("Load failed!");
- }
- if (state->save_failed) {
-  DEBUG_TEXT("Save failed!");
+ arrayof<String> game_commands = {};
+ {//~ NOTE: Game commands
+  {// NOTE: Process commands
+   auto &queue = state->command_queue;
+   for_i1(ci,0,queue.count)
+   {
+#define MATCH(NAME)    queue[ci] == strlit(NAME)
+    if (0) {}
+    else if (MATCH("save_manual"))
+    {
+     game_save(state, app, true);
+    }
+    else if (MATCH("load_manual"))
+    {
+     game_load(state, app, state->manual_save_path);
+    }
+    else { vim_set_bottom_text(strlit("game: cannot serve command")); }
+#undef MATCH
+   }
+   
+   queue.count = 0;
+  }
+  {// NOTE: Fill command lister
+   game_commands.count = 0;
+   game_commands.push(strlit("save_manual"));
+   game_commands.push(strlit("load_manual"));
+  }
  }
  
- return should_animate_next_frame;
+ return {
+  .should_animate_next_frame=should_animate_next_frame,
+  .game_commands            =game_commands,
+ };
 }
-
-#undef WARN_DELTA
-#undef hl_block
-#undef funit
 
 //~EOF

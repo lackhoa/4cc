@@ -62,10 +62,13 @@ global const u32 standard_build_exec_flags = CLI_OverlapWithConflict|CLI_SendEnd
 internal void
 standard_build_exec_command(App *app, View_ID view, String8 dir, String8 cmd)
 {
-    exec_system_command(app, view, standard_build_compilation_buffer_identifier,
-                        dir, cmd,
-                        standard_build_exec_flags);
+ exec_system_command(app, view, standard_build_compilation_buffer_identifier,
+                     dir, cmd,
+                     standard_build_exec_flags);
 }
+
+function void 
+vim_set_bottom_text(String msg);
 
 internal b32
 standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, char *command_args)
@@ -172,12 +175,20 @@ get_or_open_build_panel(App *app)
 function void
 set_fancy_compilation_buffer_font(App *app)
 {
-    Scratch_Block scratch(app);
+ Scratch_Block scratch(app);
  Buffer_ID buffer = get_comp_buffer(app);
  Font_Load_Location font = {};
  font.filename = def_search_normal_full_path(scratch, str8_lit("fonts/Inconsolata-Regular.ttf"));
  set_buffer_face_by_font_load_location(app, buffer, &font);
 }
+
+inline String8
+push_buffer_dirname(App *app, Arena *arena, Buffer_ID buffer)
+{
+ String8 filename = push_buffer_filename(app, arena, buffer);
+ return path_dirname(filename);
+}
+
 
 internal void 
 build_in_bottom_view(App *app, char *command_args)

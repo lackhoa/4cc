@@ -31,7 +31,7 @@ text_layout_new__alloc_layout(Text_Layout_Container *container){
 internal void
 text_layout_release(Thread_Context *tctx, Models *models, Text_Layout_Container *container, Text_Layout *layout){
     Arena arena = *layout->arena;
-    arena_free_all(&arena);
+    arena_clear(&arena);
     sll_stack_push(container->free_nodes, layout);
 }
 

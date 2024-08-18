@@ -497,7 +497,7 @@ system_post_clipboard_sig()
     }
     else
     {
-        arena_free_all(arena);
+        arena_clear(arena);
     }
     win32vars.clip_post.str = push_array(arena, u8, str.size + 1);
     if (win32vars.clip_post.str != 0)
@@ -1725,14 +1725,6 @@ win32_gl_create_windows(DWORD style, RECT rect)
 
 ////////////////////////////////
 
-global u32 hot_prim_id;
-
-internal get_hot_prim_id_return
-get_hot_prim_id(get_hot_prim_id_params)
-{
- return hot_prim_id;
-}
-
 int CALL_CONVENTION
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -1974,9 +1966,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  v1 work_seconds = 0.f;
  u32 work_cycles;
  MSG msg;
+ u32 hot_prim_id = 0;
  for (;keep_running;)
  {
-  arena_free_all(&win32vars.frame_arena);
+  arena_clear(&win32vars.frame_arena);
   block_zero_struct(&win32vars.input_chunk.trans);
   win32vars.active_key_stroke = 0;
   win32vars.active_text_input = 0;
@@ -2115,6 +2108,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   input.mouse.p     = input_chunk.pers.mouse;
   
   input.trying_to_kill = input_chunk.trans.trying_to_kill;
+  input.hot_prim_id = hot_prim_id;
   
   // TODO(allen): Not really appropriate to round trip this all the way to the OS layer, redo this system.
   // NOTE(allen): Ask the Core About Exiting if We Have an Exit Signal

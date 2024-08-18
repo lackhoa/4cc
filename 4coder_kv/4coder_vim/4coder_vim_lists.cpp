@@ -1,74 +1,111 @@
 #include "4coder_vim_lister.cpp"
+#include "4coder_kv/4ed_kv_game_.h"
+
+struct Game_Or_Custom_Command
+{
+ b32 ok;
+ b32 is_game_command;
+ union {
+  Custom_Command_Function *custom_command;
+  // or
+  String game_command;
+ };
+};
 
 function void
-vim__fill_command_lister(Arena *arena, Lister *lister, i1 *command_ids, i1 command_id_count, Command_Lister_Status_Rule *status_rule){
+vim__fill_command_lister(Arena *arena, Lister *lister, i1 *command_ids, i1 command_id_count, Command_Lister_Status_Rule *status_rule)
+{
 	if(command_ids == 0){ command_id_count = command_one_past_last_id; }
-
-	for(i1 i=0; i<command_id_count; i++){
-		i1 j = (command_ids ? command_ids[i] : i);
-		j = clamp_between(0, j, command_one_past_last_id);
-
-		Custom_Command_Function *proc = fcoder_metacmd_table[j].proc;
-
-		Command_Trigger_List triggers = map_get_triggers_recursive(arena, status_rule->mapping, status_rule->map_id, proc);
+ 
+ if ( global_game_on_readonly )
+ {
+  for_i1(cmd_index,0,received_game_commands.count)
+  {
+   auto &name = received_game_commands[cmd_index];
+   auto *cmd = push_struct(arena, Game_Or_Custom_Command);
+   *cmd = {.ok=true, .is_game_command=true, .game_command=name};
+   lister_add_item(lister, name, empty_string, cmd, 0);
+  }
+ }
+ 
+	for(i1 i=0; i<command_id_count; i++)
+ {
+  i1 j = (command_ids ? command_ids[i] : i);
+  j = clamp_between(0, j, command_one_past_last_id);
+  auto &meta_cmd = fcoder_metacmd_table[j];
+  
+		Command_Trigger_List triggers = map_get_triggers_recursive(arena, status_rule->mapping, status_rule->map_id, meta_cmd.proc);
 
 		List_String list = {};
 		if(triggers.first == 0){
-			string_list_push(arena, &list, string_u8_litexpr(""));
+			string_list_push(arena, &list, strlit(""));
 		}
 		for(Command_Trigger *node=triggers.first; node; node=node->next){
 			command_trigger_stringize(arena, &list, node);
 			if(node->next){
-				string_list_push(arena, &list, string_u8_litexpr(" "));
+				string_list_push(arena, &list, strlit(" "));
 			}
 		}
-
+  
 		String key_bind = string_list_flatten(arena, list);
-		String description = SCu8(fcoder_metacmd_table[j].description);
+		String description = SCu8(meta_cmd.description);
 		String status = push_stringfz(arena, "%.*s\n%.*s", string_expand(key_bind), string_expand(description));
-
-		lister_add_item(lister, SCu8(fcoder_metacmd_table[j].name), status, (void*)proc, 0);
+  
+  auto *cmd = push_struct(arena, Game_Or_Custom_Command);
+  *cmd = {.ok=true, .is_game_command=false, .custom_command=meta_cmd.proc};
+		lister_add_item(lister, SCu8(meta_cmd.name), status, cmd, 0);
 	}
 }
 
-function Custom_Command_Function*
+function Game_Or_Custom_Command
 vim_get_command_from_user(App *app, i1 *command_ids, i1 command_id_count, Command_Lister_Status_Rule *status_rule)
 {
-    Scratch_Block scratch(app);
-    Lister_Block lister(app, scratch);
-    vim_lister_set_default_handlers(lister);
-    lister_set_query(lister, string_u8_litexpr("Command:"));
-    vim__fill_command_lister(scratch, lister, command_ids, command_id_count, status_rule);
-    
+ Scratch_Block scratch(app);
+ Lister_Block lister(app, scratch);
+ vim_lister_set_default_handlers(lister);
+ lister_set_query(lister, strlit("Command:"));
+ vim__fill_command_lister(scratch, lister, command_ids, command_id_count, status_rule);
+ 
 #if VIM_USE_BOTTOM_LISTER
-    vim_reset_bottom_text();
-    string_concat(&vim_bottom_text, string_u8_litexpr(":"));
+ vim_reset_bottom_text();
+ string_concat(&vim_bottom_text, strlit(":"));
 #endif
-    Lister_Result l_result = vim_run_lister(app, lister);
-    
-    return (l_result.canceled ? 0 : (Custom_Command_Function *)l_result.user_data);
+ Lister_Result l_result = vim_run_lister(app, lister);
+ 
+ Game_Or_Custom_Command result = {};
+ if (!l_result.canceled) {
+  result = *(cast(Game_Or_Custom_Command *)l_result.user_data);
+ }
+ return result;
 }
 
 //CUSTOM_DOC("Enter Command Mode")
-internal void 
+function void 
 vim_command_mode(App *app)
 {
-    View_ID view = get_this_ctx_view(app, Access_Always);
-    if(view == 0){ return; }
-    
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Visible);
-    Managed_Scope buffer_scope = buffer_get_managed_scope(app, buffer);
-    Command_Map_ID *map = scope_attachment(app, buffer_scope, buffer_map_id, Command_Map_ID);
-    Command_Lister_Status_Rule rule =
-    (map ?
-     command_lister_status_bindings(&framework_mapping, *map) :
-     command_lister_status_descriptions());
-    
-    Custom_Command_Function *func = vim_get_command_from_user(app, 0, 0, &rule);
-    if(func)
-    {
-        view_enqueue_command_function(app, view, func);
+ View_ID view = get_this_ctx_view(app, Access_Always);
+ if(view)
+ {
+  Buffer_ID buffer = view_get_buffer(app, view, Access_Visible);
+  Managed_Scope buffer_scope = buffer_get_managed_scope(app, buffer);
+  Command_Map_ID *map = scope_attachment(app, buffer_scope, buffer_map_id, Command_Map_ID);
+  Command_Lister_Status_Rule rule =
+  (map ?
+   command_lister_status_bindings(&framework_mapping, *map) :
+   command_lister_status_descriptions());
+  
+  Game_Or_Custom_Command cmd = vim_get_command_from_user(app, 0, 0, &rule);
+  if (cmd.ok) {
+   if (cmd.is_game_command) {
+    auto game = get_game_code();
+    if (game) {
+     game->game_send_command(global_game_state, cmd.game_command);
     }
+   } else {
+    view_enqueue_command_function(app, view, cmd.custom_command);
+   }
+  }
+ }
 }
 
 function void
@@ -140,60 +177,62 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 	}
 }
 
+// TODO(kv): Broken: doesn't show the query
 function Lister_Choice*
-vim_get_choice_from_user(App *app, String query, Lister_Choice_List list){
-    Scratch_Block scratch(app);
-    Lister_Block lister(app, scratch);
-    for(Lister_Choice *choice = list.first; choice; choice = choice->next){
-        u64 code_size = sizeof(choice->key_code);
-        void *extra = lister_add_item(lister, choice->string, choice->status, choice, code_size);
-        block_copy(extra, &choice->key_code, code_size);
-    }
-    lister_set_query(lister, query);
-    Lister_Handlers handlers = {};
-    handlers.navigate        = lister__navigate__default;
-    handlers.key_stroke      = lister__key_stroke__choice_list;
-    lister_set_handlers(lister, &handlers);
-
-    Lister_Result l_result = vim_run_lister(app, lister);
-    Lister_Choice *result = 0;
-    if(!l_result.canceled){
-        result = (Lister_Choice*)l_result.user_data;
-    }
-    return result;
+vim_get_choice_from_user(App *app, String query, Lister_Choice_List list)
+{
+ Scratch_Block scratch(app);
+ Lister_Block lister(app, scratch);
+ for(Lister_Choice *choice = list.first; choice; choice = choice->next){
+  u64 code_size = sizeof(choice->key_code);
+  void *extra = lister_add_item(lister, choice->string, choice->status, choice, code_size);
+  block_copy(extra, &choice->key_code, code_size);
+ }
+ lister_set_query(lister, query);
+ Lister_Handlers handlers = {};
+ handlers.navigate        = lister__navigate__default;
+ handlers.key_stroke      = lister__key_stroke__choice_list;
+ lister_set_handlers(lister, &handlers);
+ 
+ Lister_Result l_result = vim_run_lister(app, lister);
+ Lister_Choice *result = 0;
+ if(!l_result.canceled){
+  result = (Lister_Choice*)l_result.user_data;
+ }
+ return result;
 }
 
 function b32
 vim_query_create_folder(App *app, String folder_name){
 	Scratch_Block scratch(app);
-    Lister_Choice_List list = {};
-    lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
-    lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
-
-    String message = push_stringfz(scratch, "Create the folder %.*s?", string_expand(folder_name));
-    Lister_Choice *choice = vim_get_choice_from_user(app, message, list);
-
+ Lister_Choice_List list = {};
+ lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
+ lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
+ 
+ String message = push_stringfz(scratch, "Create the folder %.*s?", string_expand(folder_name));
+ Lister_Choice *choice = vim_get_choice_from_user(app, message, list);
+ 
 	b32 did_create_folder = false;
-    if(choice != 0){
-        switch(choice->user_data){
-            case SureToCreateFolder_No:{} break;
-
-            case SureToCreateFolder_Yes:{
+ if(choice != 0){
+  switch(choice->user_data){
+   case SureToCreateFolder_No:{} break;
+   
+   case SureToCreateFolder_Yes:{
 				String hot = push_hot_directory(app, scratch);
-                String fixed_folder_name = push_string_copyz(scratch, folder_name);
-                foreach(i, fixed_folder_name.size){
+    String fixed_folder_name = push_string_copyz(scratch, folder_name);
+    foreach(i, fixed_folder_name.size){
 					if(fixed_folder_name.str[i] == '/'){ fixed_folder_name.str[i] = '\\'; }
 				}
-                if(fixed_folder_name.size > 0){
-                    String cmd = push_stringfz(scratch, "mkdir %.*s", string_expand(fixed_folder_name));
-                    exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
-                    did_create_folder = true;
+    if(fixed_folder_name.size > 0){
+     String cmd = push_stringfz(scratch, "mkdir %.*s", string_expand(fixed_folder_name));
+     exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
+     did_create_folder = true;
 				}
-            } break;
-        }
-    }
-
-    return(did_create_folder);
+   } break;
+  }
+ }
+ 
+ return(did_create_folder);
 }
 
 CUSTOM_UI_COMMAND_SIG(vim_interactive_open_or_new)
@@ -457,7 +496,7 @@ vim_do_buffer_close_user_check(App *app, Buffer_ID buffer, View_ID view){
     lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
     lister_choice(scratch, &list, "(S)ave", "", Key_Code_S, SureToKill_Save);
 
-    Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr("There are unsaved changes, close anyway?"), list);
+    Lister_Choice *choice = vim_get_choice_from_user(app, strlit("There are unsaved changes, close anyway?"), list);
 
     b32 do_kill = false;
     if (choice != 0){

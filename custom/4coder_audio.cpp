@@ -250,7 +250,7 @@ audio_clip_from_wav_data(String data){
 
 function Audio_Clip
 audio_clip_from_wav_FILE(Arena *arena, FILE *file){
- String data = data_from_file(arena, file);
+ String data = read_entire_file_handle(arena, file);
  Audio_Clip result = audio_clip_from_wav_data(data);
  return(result);
 }

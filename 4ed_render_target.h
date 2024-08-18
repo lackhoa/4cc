@@ -135,7 +135,6 @@ render_group_is_game(Render_Group *group)
  return group->viewport_id != 0;
 }
 
-
 // NOTE(kv): Render targets correspond to windows,
 // since we have multiple windows now.
 struct Render_Target

@@ -5,60 +5,66 @@
 // TOP
 
 internal Batch_Edit*
-make_batch_from_indentations(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i1 tab_width){
-    i64 *shifted_indentations = indentations - lines.first;
-    
-    Batch_Edit *batch_first = 0;
-    Batch_Edit *batch_last = 0;
-    
-    for (i64 line_number = lines.first;
-         line_number <= lines.max;
-         ++line_number){
-        i64 line_start_pos = get_line_start_pos(app, buffer, line_number);
-        Indent_Info indent_info = get_indent_info_line_number_and_start(app, buffer, line_number, line_start_pos, tab_width);
-        
-        i64 correct_indentation = shifted_indentations[line_number];
-        if (indent_info.is_blank && HasFlag(flags, Indent_ClearLine)){
-            correct_indentation = 0;
-        }
-        if (correct_indentation <= -1){
-            correct_indentation = indent_info.indent_pos;
-        }
-        
-        if (correct_indentation != indent_info.indent_pos){
-            u64 str_size = 0;
-            u8 *str = 0;
-            if (HasFlag(flags, Indent_UseTab)){
-                i64 tab_count = correct_indentation/tab_width;
-                i64 indent = tab_count*tab_width;
-                i64 space_count = correct_indentation - indent;
-                str_size = tab_count + space_count;
-                str = push_array(arena, u8, str_size);
-                block_fill_u8(str, tab_count, '\t');
-                block_fill_u8(str + tab_count, space_count, ' ');
-            }
-            else{
-                str_size = correct_indentation;
-                str = push_array(arena, u8, str_size);
-                block_fill_u8(str, str_size, ' ');
-            }
-            
-            Batch_Edit *batch = push_array(arena, Batch_Edit, 1);
-            sll_queue_push(batch_first, batch_last, batch);
-            batch->edit.text = SCu8(str, str_size);
-            batch->edit.range = Ii64(line_start_pos, indent_info.first_char_pos);
-        }
-    }
-    
-    return(batch_first);
+make_batch_from_indentations(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i1 tab_width)
+{
+ i64 *shifted_indentations = indentations - lines.first;
+ 
+ Batch_Edit *batch_first = 0;
+ Batch_Edit *batch_last = 0;
+ 
+ for (i64 line_number = lines.first;
+      line_number <= lines.max;
+      ++line_number)
+ {
+  i64 line_start_pos = get_line_start_pos(app, buffer, line_number);
+  Indent_Info indent_info = get_indent_info_line_number_and_start(app, buffer, line_number, line_start_pos, tab_width);
+  
+  i64 correct_indentation = shifted_indentations[line_number];
+  if (indent_info.is_blank && HasFlag(flags, Indent_ClearLine)){
+   correct_indentation = 0;
+  }
+  if (correct_indentation <= -1){
+   correct_indentation = indent_info.indent_pos;
+  }
+  
+  if (correct_indentation != indent_info.indent_pos){
+   u64 str_size = 0;
+   u8 *str = 0;
+   if (HasFlag(flags, Indent_UseTab)){
+    i64 tab_count = correct_indentation/tab_width;
+    i64 indent = tab_count*tab_width;
+    i64 space_count = correct_indentation - indent;
+    str_size = tab_count + space_count;
+    str = push_array(arena, u8, str_size);
+    block_fill_u8(str, tab_count, '\t');
+    block_fill_u8(str + tab_count, space_count, ' ');
+   }
+   else{
+    str_size = correct_indentation;
+    str = push_array(arena, u8, str_size);
+    block_fill_u8(str, str_size, ' ');
+   }
+   
+   Batch_Edit *batch = push_array(arena, Batch_Edit, 1);
+   sll_queue_push(batch_first, batch_last, batch);
+   batch->edit.text = SCu8(str, str_size);
+   batch->edit.range = Ii64(line_start_pos, indent_info.first_char_pos);
+  }
+ }
+ 
+ return(batch_first);
 }
 
-internal void
-set_line_indents(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i1 tab_width){
-    Batch_Edit *batch = make_batch_from_indentations(app, arena, buffer, lines, indentations, flags, tab_width);
-    if (batch != 0){
-        buffer_batch_edit(app, buffer, batch);
-    }
+function b32
+set_line_indents(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i1 tab_width)
+{
+ b32 result = false;
+ Batch_Edit *batch = make_batch_from_indentations(app, arena, buffer, lines, indentations, flags, tab_width);
+ if (batch != 0){
+  result = true;
+  buffer_batch_edit(app, buffer, batch);
+ }
+ return result;
 }
 
 internal Token*
@@ -99,11 +105,11 @@ find_anchor_token(App *app, Buffer_ID buffer, Token_Array *tokens, i64 invalid_l
        scope_counter -= 1;
       }
      }break;
-     case TokenBaseKind_ParentheticalOpen:
+     case TokenBaseKind_ParenOpen:
      {
       paren_counter += 1;
      }break;
-     case TokenBaseKind_ParentheticalClose:
+     case TokenBaseKind_ParenClose:
      {
       if (paren_counter > 0){
        paren_counter -= 1;
@@ -207,7 +213,7 @@ get_indentation_array(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines,
   
   for (;;)
   {
-   Token *token = token_it_read(&token_it);
+   Token *token = tkarr_read(&token_it);
    
    if (line_cache.where_token_starts == 0 ||
        token->pos >= line_cache.one_past_last_pos)
@@ -267,11 +273,11 @@ get_indentation_array(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines,
       ignore_unfinished_statement = true;
      }break;
      
-     case TokenBaseKind_ParentheticalOpen:
+     case TokenBaseKind_ParenOpen:
      {
       Nest *new_nest = indent__new_nest(arena, &nest_alloc);
       sll_stack_push(nest, new_nest);
-      nest->kind = TokenBaseKind_ParentheticalOpen;
+      nest->kind = TokenBaseKind_ParenOpen;
       line_indent_cache_update(app, buffer, tab_width, &line_cache);
       nest->indent = (token->pos - line_cache.indent_info.first_char_pos) + 1;
       following_indent = nest->indent;
@@ -279,9 +285,9 @@ get_indentation_array(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines,
       ignore_unfinished_statement = true;
      }break;
      
-     case TokenBaseKind_ParentheticalClose:
+     case TokenBaseKind_ParenClose:
      {
-      if (nest != 0 && nest->kind == TokenBaseKind_ParentheticalOpen)
+      if (nest != 0 && nest->kind == TokenBaseKind_ParenOpen)
       {
        Nest *n = nest;
        sll_stack_pop(nest);
@@ -372,7 +378,7 @@ actual_indent = N; )
    last_indent = following_indent;
    line_last_indented = line_it;
    
-   if (!token_it_inc_non_whitespace(&token_it)) { break; }
+   if (!tkarr_inc_non_whitespace(&token_it)) { break; }
   }
  }
  
@@ -391,8 +397,6 @@ auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos,
  b32 result = false;
  if (tokens->tokens != 0)
  {
-  result = true;
-  
   Scratch_Block scratch(app);
   Range_i64 line_numbers = {};
   if (HasFlag(flags, Indent_FullTokens))
@@ -420,13 +424,13 @@ auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos,
   line_numbers.min = clamp_min(line_numbers.min-8, 1);
   
   i64 *indentations = get_indentation_array(app, scratch, buffer, line_numbers, flags, tab_width, indent_width);
-  set_line_indents(app, scratch, buffer, line_numbers, indentations, flags, tab_width);
+  result = set_line_indents(app, scratch, buffer, line_numbers, indentations, flags, tab_width);
  }
  
  return(result);
 }
 
-function void
+function b32
 auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags)
 {
     i1 indent_width = (i1)def_get_config_u64(app, vars_intern_lit("indent_width"));
@@ -437,37 +441,38 @@ auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags)
     if (indent_with_tabs){
         AddFlag(flags, Indent_UseTab);
     }
-    auto_indent_buffer(app, buffer, pos, flags, indent_width, tab_width);
+    return auto_indent_buffer(app, buffer, pos, flags, indent_width, tab_width);
 }
 
-function void
+function b32
 auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos)
 {
-    auto_indent_buffer(app, buffer, pos, 0);
+    return auto_indent_buffer(app, buffer, pos, 0);
 }
 
 ////////////////////////////////
 
 // CUSTOM_DOC("Auto-indents the line on which the cursor sits.")
-internal void 
+function b32
 auto_indent_line_at_cursor(App *app)
 {
  View_ID view = get_active_view(app, Access_ReadWriteVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
  i64 pos = view_get_cursor_pos(app, view);
- auto_indent_buffer(app, buffer, Ii64(pos));
+ b32 result = auto_indent_buffer(app, buffer, Ii64(pos));
  move_past_lead_whitespace(app, view, buffer);
+ return result;
 }
 
-internal void vim_normal_mode(App *app);
+function void vim_normal_mode(App *app);
 
-internal void 
+function void
 auto_indent_range(App *app)
 {
  View_ID view = get_active_view(app, Access_ReadWriteVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
  Range_i64 range = get_view_range(app, view);
- auto_indent_buffer(app, buffer, range);
+ b32 result = auto_indent_buffer(app, buffer, range);
  move_past_lead_whitespace(app, view, buffer);
  vim_normal_mode(app);
 }

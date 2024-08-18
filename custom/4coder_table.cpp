@@ -25,7 +25,7 @@ make_table_u64_u64__inner(Base_Allocator *allocator, u32 slot_count, String loca
     Table_u64_u64 table = {};
     table.allocator = allocator;
     slot_count = clamp_min(8, slot_count);
-    String mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
+    String mem = base_allocate_function(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
     table.keys = (u64*)table.memory;
@@ -195,7 +195,7 @@ make_table_u32_u16__inner(Base_Allocator *allocator, u32 slot_count, String loca
     Table_u32_u16 table = {};
     table.allocator = allocator;
     slot_count = clamp_min(8, slot_count);
-    String mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
+    String mem = base_allocate_function(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
     table.keys = (u32*)table.memory;
@@ -359,7 +359,7 @@ make_table_Data_u64__inner(Base_Allocator *allocator, u32 slot_count, String8 lo
     Table_Data_u64 table = {};
     table.allocator = allocator;
     slot_count = clamp_min(8, slot_count);
-    String mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.hashes) + sizeof(*table.keys) + sizeof(*table.vals)), location);
+    String mem = base_allocate_function(allocator, slot_count*(sizeof(*table.hashes) + sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
     table.hashes = (u64*)table.memory;
@@ -538,7 +538,7 @@ make_table_u64_Data__inner(Base_Allocator *allocator, u32 slot_count, String loc
     Table_u64_Data table = {};
     table.allocator = allocator;
     slot_count = clamp_min(8, slot_count);
-    String mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
+    String mem = base_allocate_function(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
     table.keys = (u64*)table.memory;
@@ -707,7 +707,7 @@ make_table_Data_Data__inner(Base_Allocator *allocator, u32 slot_count, String lo
     Table_Data_Data table = {};
     table.allocator = allocator;
     slot_count = clamp_min(8, slot_count);
-    String mem = base_allocate__inner(allocator, slot_count*(sizeof(*table.hashes) + sizeof(*table.keys) + sizeof(*table.vals)), location);
+    String mem = base_allocate_function(allocator, slot_count*(sizeof(*table.hashes) + sizeof(*table.keys) + sizeof(*table.vals)), location);
     block_zero(mem.str, mem.size);
     table.memory = mem.str;
     table.hashes = (u64*)table.memory;

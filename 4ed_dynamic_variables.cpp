@@ -49,7 +49,7 @@ managed_ids_declare(Managed_ID_Set *set, String group_name, String name){
             group = push_array(&set->arena, Managed_ID_Group, 1);
             group->id_counter = 1;
             group->name_to_id_table = make_table_Data_u64(set->arena.base_allocator, 50);
-            data = push_string_copy(&set->arena, data);
+            data = push_string(&set->arena, data);
             table_insert(&set->name_to_group_table, data, PtrAsInt(group));
         }
     }
@@ -63,7 +63,7 @@ managed_ids_declare(Managed_ID_Set *set, String group_name, String name){
         else{
             result = group->id_counter;
             group->id_counter += 1;
-            data = push_string_copy(&set->arena, data);
+            data = push_string(&set->arena, data);
             table_insert(&group->name_to_id_table, data, result);
         }
     }
@@ -431,7 +431,7 @@ lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, 
     
     // Initialize
     u64 new_memory_size = sizeof(Lifetime_Object*)*count;
-    String new_memory = base_allocate(lifetime_allocator->allocator, new_memory_size);
+    String new_memory = base_allocate2(lifetime_allocator->allocator, new_memory_size);
     new_key->members = (Lifetime_Object**)new_memory.str;
     block_copy_count(new_key->members, object_ptr_array, count);
     new_key->count = count;
@@ -476,7 +476,7 @@ get_dynamic_object_memory_ptr(Managed_Object_Standard_Header *header){
 internal Managed_Object
 managed_object_alloc_managed_memory(Dynamic_Workspace *workspace, i1 item_size, i1 count, void **ptr_out){
     i1 size = item_size*count;
-    String new_memory = base_allocate(&workspace->heap_wrapper, sizeof(Managed_Memory_Header) + size);
+    String new_memory = base_allocate2(&workspace->heap_wrapper, sizeof(Managed_Memory_Header) + size);
     void *ptr = new_memory.str;
     Managed_Memory_Header *header = (Managed_Memory_Header*)ptr;
     header->std_header.type = ManagedObjectType_Memory;
@@ -492,7 +492,7 @@ managed_object_alloc_managed_memory(Dynamic_Workspace *workspace, i1 item_size, 
 internal Managed_Object
 managed_object_alloc_buffer_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id, i1 count, Marker **markers_out){
     i1 size = count*sizeof(Marker);
-    String new_memory = base_allocate(&workspace->heap_wrapper, size + sizeof(Managed_Buffer_Markers_Header));
+    String new_memory = base_allocate2(&workspace->heap_wrapper, size + sizeof(Managed_Buffer_Markers_Header));
     void *ptr = new_memory.str;
     Managed_Buffer_Markers_Header *header = (Managed_Buffer_Markers_Header*)ptr;
     header->std_header.type = ManagedObjectType_Markers;

@@ -14,8 +14,8 @@ get_identifier_at_cursor(Arena *arena, App *app, Buffer_ID buffer)
 internal void
 fui_tick(App *app, Frame_Info frame_info)
 {
- Game_API *game = &global_game_code;
- if (game->is_valid)
+ Game_API *game = get_game_code();
+ if (game)
  {
   if ( game->fui_is_active() )
   {
@@ -32,8 +32,8 @@ fui_tick(App *app, Frame_Info frame_info)
 internal void
 fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
 {
- Game_API *game = &global_game_code;
- if ( game->is_valid )
+ Game_API *game = get_game_code();
+ if ( game )
  {
   if ( game->fui_at_slider_p(app, buffer, 0) )
   {
@@ -53,29 +53,5 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
 
 internal void update_game_key_states(Input_Event *event);
 
-internal fui_editor_ui_loop_return
-fui_editor_ui_loop(fui_editor_ui_loop_params)
-{
- b32 writeback;
- for (;;)
- {// NOTE: UI loop
-  User_Input in = get_next_input(app, EventPropertyGroup_AnyKeyboardEvent, EventProperty_Escape);
-  if (in.abort)
-  {
-   writeback = false;
-   break;
-  }
-  else
-  {
-   update_game_key_states(&in.event);
-   if ( global_game_key_states[Key_Code_Return] )
-   {
-    writeback = true; 
-    break;
-   }
-  }
- }
- return writeback;
-}
 
 //~

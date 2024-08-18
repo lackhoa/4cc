@@ -808,7 +808,7 @@ int stb_c_lexer_get_token(stb_lexer *lexer)
 #include <stdio.h>
 #include <stdlib.h>
 
-static void print_token(stb_lexer *lexer)
+static void stb_print_token(stb_lexer *lexer)
 {
  switch (lexer->token) {
   case CLEX_id        : printf("_%s", lexer->string); break;

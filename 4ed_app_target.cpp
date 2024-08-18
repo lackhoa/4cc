@@ -25,13 +25,13 @@
 #include "4coder_token.h"
 
 #include "4coder_system_types.h"
-#define DYNAMIC_LINK_API
-#include "generated/system_api.h"
+//#define DYNAMIC_LINK_API
+//#include "generated/system_api.h"
 #include "4ed_font_interface.h"
-#define DYNAMIC_LINK_API
-#include "graphics_api.h"
-#define DYNAMIC_LINK_API
-#include "generated/font_api.h"
+//#define DYNAMIC_LINK_API
+//#include "graphics_api.h"
+//#define DYNAMIC_LINK_API
+//#include "generated/font_api.h"
 
 #include "4coder_profile.h"
 #include "4coder_command_map.h"
@@ -66,6 +66,7 @@
 
 ////////////////////////////////
 
+
 #include "4coder_layout.cpp"
 #include "4coder_string_match.cpp"
 #include "4coder_stringf.cpp"
@@ -83,12 +84,12 @@
 #include "4coder_token.cpp"
 #include "generated/lexer_cpp.cpp"
 
-#include "4ed_api_definition.cpp"
-#include "generated/custom_api_constructor.cpp"
-#include "4ed_api_parser.cpp"
-#include "4coder_doc_content_types.cpp"
-#include "docs/4ed_doc_helper.cpp"
-#include "docs/4ed_doc_custom_api.cpp"
+//#include "4ed_api_definition.cpp"
+//#include "generated/custom_api_constructor.cpp"
+//#include "4ed_api_parser.cpp"
+//#include "4coder_doc_content_types.cpp"
+//#include "docs/4ed_doc_helper.cpp"
+//#include "docs/4ed_doc_custom_api.cpp"
 
 #include "4ed_log.cpp"
 #include "4ed_coroutine.cpp"
@@ -108,7 +109,6 @@
 #include "4ed_view.cpp"
 #include "4ed_edit.cpp"
 #include "4ed_text_layout.cpp"
-#include "4ed_api_implementation.cpp"
 
 #include "4ed.cpp"
 
@@ -120,6 +120,10 @@
 #define STBI_NO_PIC
 #define STBI_NO_PNM
 #include "stb_image.h"
+
+#define STATIC_LINK_API
+#include "custom/generated/ed_api.cpp"
 #include "4coder_kv.cpp"
+#include "4ed_api_implementation.cpp"
 
 // BOTTOM

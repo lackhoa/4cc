@@ -165,12 +165,6 @@ CUSTOM_DOC("Sets the left size of the view near the x position of the cursor.")
 }
 
 
-internal view_set_buffer_named_return
-view_set_buffer_named(view_set_buffer_named_params)
-{
- Buffer_ID buffer = create_buffer(app, name, 0);
- view_set_buffer(app, view, buffer, 0);
-}
 //
 internal void
 set_buffer_named(App *app, String8 name)
@@ -1006,36 +1000,43 @@ CUSTOM_DOC("Begins an incremental search down through the current buffer for the
 CUSTOM_COMMAND_SIG(reverse_search_identifier)
 CUSTOM_DOC("Begins an incremental search up through the current buffer for the word or token under the cursor.")
 {
-    isearch_identifier(app, Scan_Backward);
+ isearch_identifier(app, Scan_Backward);
 }
 
 struct String_Pair{
-    b32 valid;
-    String a;
-    String b;
+ b32 valid;
+ String a;
+ String b;
 };
 
-internal String_Pair
-query_user_replace_pair(App *app, Arena *arena){
-    Query_Bar *replace = push_array(arena, Query_Bar, 1);
-    u8 *replace_space = push_array(arena, u8, KB(1));
-    replace->prompt = string_u8_litexpr("Replace: ");
-    replace->string = SCu8(replace_space, (u64)0);
-    replace->string_capacity = KB(1);
-    
-    Query_Bar *with = push_array(arena, Query_Bar, 1);
-    u8 *with_space = push_array(arena, u8, KB(1));
-    with->prompt = string_u8_litexpr("With: ");
-    with->string = SCu8(with_space, (u64)0);
-    with->string_capacity = KB(1);
-    
-    String_Pair result = {};
-    if (query_user_string(app, replace) && replace->string.size != 0 && query_user_string(app, with)){
-        result.valid = true;
-        result.a = replace->string;
-        result.b = with->string;
-    }
-    return(result);
+function Query_Bar
+make_query_bar(Arena *arena, char *prompt, u64 string_capacity=KB(1))
+{
+ u8 *buf = push_array(arena, u8, string_capacity);
+ Query_Bar result = {
+  .prompt          = SCu8(prompt),
+  .string          = SCu8(buf, (u64)0),
+  .string_capacity = string_capacity,
+ };
+ return result;
+}
+
+function String_Pair
+query_user_replace_pair(App *app, Arena *arena)
+{
+ Query_Bar replace = make_query_bar(arena, "Replace: ");
+ Query_Bar with    = make_query_bar(arena, "With: ");
+ 
+ String_Pair result = {};
+ if (query_user_string(app, &replace) &&
+     replace.string.size != 0 &&
+     query_user_string(app, &with))
+ {
+  result.valid = true;
+  result.a = replace.string;
+  result.b = with.string;
+ }
+ return(result);
 }
 
 // NOTE(allen): This is a bit of a hacky setup because of Query_Bar lifetimes.  This must be
@@ -1060,31 +1061,12 @@ CUSTOM_DOC("Queries the user for a needle and string. Replaces all occurences of
 }
 
 CUSTOM_COMMAND_SIG(replace_in_buffer)
-CUSTOM_DOC("Queries the user for a needle and string. Replaces all occurences of needle with string in the active buffer.")
+CUSTOM_DOC("Replace (current buffer only)")
 {
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    Range_i64 range = buffer_range(app, buffer);
-    replace_in_range_query_user(app, buffer, range);
-}
-
-CUSTOM_COMMAND_SIG(replace_in_all_buffers)
-CUSTOM_DOC("Queries the user for a needle and string. Replaces all occurences of needle with string in all editable buffers.")
-{
-    global_history_edit_group_begin(app);
-    
-    Scratch_Block scratch(app);
-    Query_Bar_Group group(app);
-    String_Pair pair = query_user_replace_pair(app, scratch);
-    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
-         buffer != 0;
-         buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
-    {
-        Range_i64 range = buffer_range(app, buffer);
-        replace_in_range(app, buffer, range, pair.a, pair.b);
-    }
-    
-    global_history_edit_group_end(app);
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ Range_i64 range = buffer_range(app, buffer);
+ replace_in_range_query_user(app, buffer, range);
 }
 
 function void
@@ -1624,13 +1606,14 @@ CUSTOM_DOC("Change to the most recently used buffer in this view - or to the top
 CUSTOM_COMMAND_SIG(kill_buffer)
 CUSTOM_DOC("Kills the current buffer.")
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    try_buffer_kill(app, buffer, view, 0);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ try_buffer_kill(app, buffer, view, 0);
 }
 
-CUSTOM_COMMAND_SIG(save)
-CUSTOM_DOC("Saves the current buffer.")
+//CUSTOM_DOC("Saves the current buffer.")
+function void
+save_current_buffer(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);

@@ -41,7 +41,7 @@ vars_intern(String8 string)
     else
     {
         id = ++vars_string_id_counter;
-        String8 string_copy = push_string_copy(&vars_arena, string);
+        String8 string_copy = push_string(&vars_arena, string);
         table_insert(&vars_string_to_id, string_copy, id);
         table_insert(&vars_id_to_string, id, string_copy);  // NOTE(kv): why is it a table? Why not just a growable array?
     }
@@ -51,13 +51,13 @@ vars_intern(String8 string)
 function String8
 vars_push_string(Arena *arena, String_ID id)
 {
-    _vars_init();
-    
-    Table_Lookup lookup = table_lookup(&vars_id_to_string, id);
-    String8 data = {};
-    table_read(&vars_id_to_string, lookup, &data);
-    
-    String8 result = push_string_copy(arena, data);
+ _vars_init();
+ 
+ Table_Lookup lookup = table_lookup(&vars_id_to_string, id);
+ String8 data = {};
+ table_read(&vars_id_to_string, lookup, &data);
+ 
+ String8 result = push_string(arena, data);
     return(result);
 }
 

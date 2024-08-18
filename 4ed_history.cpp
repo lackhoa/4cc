@@ -28,7 +28,7 @@ internal void
 history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table *lookup, Record *record){
     if (lookup->records == 0 || lookup->count == lookup->max){
         i1 new_max = clamp_min(1024, lookup->max*2);
-        String new_memory = base_allocate(allocator, sizeof(Record*)*new_max);
+        String new_memory = base_allocate2(allocator, sizeof(Record*)*new_max);
         Record **new_records = (Record**)new_memory.str;
         block_copy(new_records, lookup->records, sizeof(*new_records)*lookup->count);
         if (lookup->records != 0){
@@ -83,7 +83,7 @@ history__allocate_record(History *history){
     Node *new_node = sentinel->next;
     if (new_node == sentinel){
         i1 new_record_count = 1024;
-        String new_memory = base_allocate(&history->heap_wrapper, sizeof(Record)*new_record_count);
+        String new_memory = base_allocate2(&history->heap_wrapper, sizeof(Record)*new_record_count);
         void *memory = new_memory.str;
         
         Record *new_record = (Record*)memory;
@@ -148,7 +148,7 @@ history_is_activated(History *history){
 internal void
 history_free(Thread_Context *tctx, History *history){
     if (history->activated){
-        arena_free_all(&history->arena);
+        arena_clear(&history->arena);
         heap_free_all(&history->heap);
         block_zero_struct(history);
     }

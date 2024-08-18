@@ -230,7 +230,7 @@ F4_SetDefaultBindings(Mapping *mapping)
     Bind(query_replace_identifier,    Key_Code_Q, Key_Code_Control, Key_Code_Shift);
     Bind(query_replace_selection,     Key_Code_Q, Key_Code_Alt);
     Bind(reverse_search,              Key_Code_R, Key_Code_Control);
-    Bind(save,                        Key_Code_S, Key_Code_Control);
+    Bind(save_current_buffer,         Key_Code_S, Key_Code_Control);
     Bind(save_all_dirty_buffers,      Key_Code_S, Key_Code_Control, Key_Code_Shift);
     Bind(search_identifier,           Key_Code_T, Key_Code_Control);
     Bind(list_all_locations_of_identifier, Key_Code_T, Key_Code_Control, Key_Code_Shift);

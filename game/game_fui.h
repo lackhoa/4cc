@@ -40,7 +40,7 @@ struct Fui_Slider
 T \
 fast_fval(T init_value_T, Fui_Options options={}, i32 line=__builtin_LINE());
 //
-X_Types(X)
+X_Basic_Types(X)
 //
 #undef X
 // NOTE: slow version

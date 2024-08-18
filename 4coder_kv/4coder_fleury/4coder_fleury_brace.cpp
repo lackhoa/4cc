@@ -112,11 +112,11 @@ F4_Brace_RenderCloseBraceAnnotation(App *app, Buffer_ID buffer, Text_Layout_ID t
                     
                     if(token)
                     {
-                        if(token->kind == TokenBaseKind_ParentheticalClose)
+                        if(token->kind == TokenBaseKind_ParenClose)
                         {
                             ++paren_nest;
                         }
-                        else if(token->kind == TokenBaseKind_ParentheticalOpen)
+                        else if(token->kind == TokenBaseKind_ParenOpen)
                         {
                             --paren_nest;
                         }

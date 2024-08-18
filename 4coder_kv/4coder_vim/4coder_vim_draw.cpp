@@ -150,26 +150,30 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 	draw_string(app, face_id, PosText, p, base_color);
 }
 
-// NOTE: this is the in-buffer search highlight (like with "/")
+// NOTE(kv): This is the in-buffer search highlight (like with "/")
 function void
 vim_draw_search_highlight(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness)
 {
 	String_u8 *pattern = &vim_registers.search.data;
-	if(pattern->size == 0){ return; }
-	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
-	i64 buffer_size = buffer_get_size(app, buffer);
-	i64 cur_pos = visible_range.min;
-	while(cur_pos < visible_range.max){
-		i64 new_pos = 0;
-		seek_string_forward(app, buffer, cur_pos, 0, pattern->string, &new_pos);
-		if(new_pos == 0 || new_pos == buffer_size){ break; }
-		else{
-			cur_pos = new_pos;
-			Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, cur_pos);
-			rect.x1 = rect.x0 + (f64)pattern->size*(rect_width(rect));
-			draw_rect_fcolor(app, rect, roundness, fcolor_id(defcolor_highlight));
-		}
-	}
+	if(pattern->size > 1)  // TODO kv: Don't flood the buffer with highlights
+ {
+  Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+  i64 buffer_size = buffer_get_size(app, buffer);
+  i64 cur_pos = visible_range.min;
+  while(cur_pos < visible_range.max)
+  {
+   i64 new_pos = 0;
+   seek_string_forward(app, buffer, cur_pos, 0, pattern->string, &new_pos);
+   if(new_pos == 0 || new_pos == buffer_size){ break; }
+   else
+   {
+    cur_pos = new_pos;
+    Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, cur_pos);
+    rect.x1 = rect.x0 + (f64)pattern->size*(rect_width(rect));
+    draw_rect_fcolor(app, rect, roundness, fcolor_id(defcolor_highlight));
+   }
+  }
+ }
 }
 
 function void

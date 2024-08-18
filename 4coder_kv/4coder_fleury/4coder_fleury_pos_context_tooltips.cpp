@@ -37,7 +37,7 @@ _F4_PosContext_RenderDefinitionTokens(App *app, Face_ID face,
                     arg_idx += 1;
                 }
             }
-            else if(token->kind == TokenBaseKind_ParentheticalOpen)
+            else if(token->kind == TokenBaseKind_ParenOpen)
             {
                 found_first_open_paren = 1;
             }
@@ -153,11 +153,11 @@ F4_PosContext_Render(App *app, View_ID view, Buffer_ID buffer,
                             Token *token = token_it_read(&it);
                             if(token)
                             {
-                                if(token->kind == TokenBaseKind_ParentheticalOpen)
+                                if(token->kind == TokenBaseKind_ParenOpen)
                                 {
                                     paren_nest += 1;
                                 }
-                                if(token->kind == TokenBaseKind_ParentheticalClose)
+                                if(token->kind == TokenBaseKind_ParenClose)
                                 {
                                     paren_nest -= 1;
                                     if(paren_nest == 0)

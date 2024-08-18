@@ -4,8 +4,6 @@
 #include "game_colors.cpp"
 #include "ad_debug.h"
 
-#define X_Field_Type_Name(type,name) type name;
-
 // @distance_level_nonsense
 // TODO: NOT HAPPY with storing redundant data!
 struct Camera_Data  // IMPORTANT: @Serialized
@@ -14,7 +12,6 @@ struct Camera_Data  // IMPORTANT: @Serialized
 X(v1,distance) \
 X(v1,phi)      \
 X(v1,theta)    \
-X(i1,distance_level) \
 X(v1,roll)     \
 X(v3,pan)      \
 X(v3,pivot)    \
@@ -31,8 +28,8 @@ struct Viewport
  i1 last_preset;
  Camera_Data camera;
  Camera_Data target_camera;
- // ;viewport_frame_arena @frame_arena_init @frame_arena_clear
- Arena frame_arena;
+ // ;viewport_frame_arena @frame_arena_init
+ Arena render_arena;
 };
 
 struct Bezier
@@ -45,16 +42,39 @@ typedef Bezier Bez;
 // TODO(kv): we'll need to migrate off the X macro,
 // can't use b32 because C++ doesn't like it when you define function overloads
 // for both "b32" and "i1". No way to work around that afaict.
+// Unless, you use templates
+
+// kv: keeping this macro here so it builds
+#define X_Vertex_Data(X) \
+X(String, name)     \
+X(i1, object_index) \
+X(i1, symx)         \
+X(v3, pos)          \
+X(i1, basis_index)  \
+
+introspect()
 struct Vertex_Data
 {
-#define X_Vertex_Data(X) \
-X(String, name) \
-X(i1, object_index) \
-X(i1, symx) \
-X(v3, pos)  \
-X(i1, basis_index) \
-//
- X_Vertex_Data(X_Field_Type_Name)
+ String name;
+ i1 object_index;
+ i1 symx;
+ v3 pos;
+ i1 basis_index;
+};
+
+struct Planar_Bezier
+{
+ v2 d0;
+ v2 d3;
+ v3 unit_y;
+};
+
+struct Bezier_Planar_d
+{
+ i1 p0_index;
+ v3 d1;
+ v2 d3;
+ i1 p3_index;
 };
 
 struct Bezier_Data
@@ -100,27 +120,26 @@ prim_id_is_obj(u32 prim_id)
  return prim_id_type(prim_id) != 0;
 }
 
-force_inline u32
-prim_id_from_vertex_index(i1 index)
+inline u32
+vertex_prim_id(i1 index)
 {
  u32 type = u32(Prim_Vertex) << 24;
  u32 result = (u32)(index) | type;
  return result;
 }
 //
-force_inline u32
-index_from_prim_id(u32 id)
+inline i1
+prim_id_to_index(u32 id)
 {
  u32 result = 0;
- if ( prim_id_is_obj(id) )
- {
+ if( prim_id_is_obj(id) ) {
   result = (id & 0xFFFF);
  }
  return result;
 }
-
+//
 force_inline u32
-prim_id_from_curve_index(i1 index)
+curve_prim_id(i1 index)
 {
  u32 type = u32(Prim_Curve) << 24;
  u32 result = (u32)(index) | type;
@@ -181,15 +200,15 @@ setup_camera(Camera *camera, Camera_Data *data)
 
 
 //-
-#if AD_IS_DRIVER
-#    define framework_storage  global_extern
+#if AD_IS_FRAMEWORK
+#    define framework_storage global_exported
 #else
-#    define framework_storage  extern
+#    define framework_storage extern
 #endif
 
 //~;game_config
-framework_storage i1 BEZIER_POLY_NSLICE;
-framework_storage v1 DEFAULT_NSLICE_PER_METER;
+framework_storage i1  bezier_poly_nslice;
+framework_storage v1  DEFAULT_NSLICE_PER_METER;
 framework_storage b32 debug_frame_time_on;
 //~
 
@@ -257,14 +276,14 @@ struct Painter
  u32 draw_prim_id;
  
  b32 is_right;
- kv_array<Object> object_list;
- kv_array<i1>     object_stack;  // NOTE: offset into the object list
+ arrayof<Object> object_list;
+ arrayof<i1>     object_stack;  // NOTE: offset into the object list
  
  i32 view_vector_count;
  v3  view_vector_stack[16];
 };
 
-global_const argb hot_color      = argb_silver;
+global_const argb hot_color      = argb_lightness(argb_silver, 0.5f);
 global_const argb hot_color2     = argb_yellow;
 global_const argb selected_color = argb_red;
 
@@ -299,7 +318,7 @@ get_object_name()
 inline b32 is_left() { return painter.is_right == 0; }
 //-
 
-#include "game_ed.cpp"
+#include "game_modeler.h"
 
 #define fill3_inner_params v3 p0, v3 p1, v3 p2, \
 argb c0, argb c1, argb c2, \
@@ -312,7 +331,7 @@ v1 depth_offset, Poly_Flags flags
 #define draw_disk_inner_return void
 #define draw_disk_inner_params v3 center, v1 radius, argb color, v1 depth_offset, Poly_Flags flags
 
-internal v3
+function v3
 bezier_sample(const v3 P[4], v1 u)
 {
  v1 U = 1-u;
@@ -322,7 +341,7 @@ bezier_sample(const v3 P[4], v1 u)
          1*cubed(u)      *P[3]);
 }
 
-internal v1
+function v1
 bezier_sample(v4 P, v1 u)
 {
  v1 U = 1-u;
@@ -332,6 +351,17 @@ bezier_sample(v4 P, v1 u)
          1*cubed(u)      *P.v[3]);
 }
 
+framework_storage u32 hot_prim_id;
+//
+u32
+get_hot_prim_id()
+#if AD_IS_DRIVER
+;
+#else
+{
+ return hot_prim_id;
+}
+#endif
 
 #if AD_IS_DRIVER
 
@@ -340,6 +370,20 @@ fill3_inner_return fill3_inner(fill3_inner_params);
 draw_disk_inner_return draw_disk_inner(draw_disk_inner_params);
 
 #else
+
+function b32
+is_prim_id_active(u32 prim_id)
+{
+ b32 result = false;
+ auto &active_ids = global_modeler->active_objects;
+ for_i1(index, 0, active_ids.count) {
+  if (prim_id == active_ids[index]) {
+   result = true;
+   break;
+  }
+ }
+ return result;
+}
 
 fill3_inner_return
 fill3_inner(fill3_inner_params)
@@ -356,19 +400,22 @@ fill3_inner(fill3_inner_params)
  vertices[2].pos = p2;
  
  argb colors[3] = {c0,c1,c2};
- b32 is_hot      = (painter.draw_prim_id == get_hot_prim_id());
- b32 is_selected = (painter.draw_prim_id == global_modeler->selected_obj_id);
- if (is_hot || is_selected)
+ // TODO(kv): @Speed The caller should be in charge of passing the color in!
+ u32 prim_id = painter.draw_prim_id;
+ b32 is_hot        = prim_id == get_hot_prim_id();
+ b32 is_selected   = prim_id == global_modeler->selected_obj_id;
+ b32 is_active     = is_prim_id_active(prim_id);
+ // TODO(kv): @cleanup wtf is this code?
+ if (is_hot || is_selected || is_active)
  {
   argb hl_color;
-  if (is_hot)
-  {
+  if (is_hot) {
    hl_color = (c0 == hot_color) ? hot_color2 : hot_color;
-  }
-  else
-  {
-   kv_assert(is_selected);
+  } else if (is_selected) {
    hl_color = argb_red;
+  } else if (is_active) {
+   //TODO: pick color
+   hl_color = hot_color;
   }
   for_i32(index,0,3) { colors[index] = hl_color; };
  }
@@ -544,11 +591,10 @@ draw_bezier_inner(draw_bezier_inner_params)
   }
  }
 }
-
 #endif
 
 // NOTE: Actually bernstein basis
-internal v1
+function v1
 cubic_bernstein(i32 index, v1 t)
 {
  v1 factor = v1((index == 1 || index == 2) ? 3 : 1);
@@ -574,11 +620,7 @@ poly4_inner(v3 p0, v3 p1, v3 p2, v3 p3,
  fill3_inner(p0,p2,p3, c0,c2,c3, depth_offset, flags);
 }
 
-#if 0
-jump fill_patch_inner();
-#endif
-//
-extern "C" void
+void
 fill_patch_inner(const v3 P[4][4],
                  argb color, v1 depth_offset,
                  b32 viz)
@@ -657,20 +699,17 @@ Bezier bez(v3 p0, v3 d0, v2 d3, v3 p3)
 //NOTE: The state is saved between reloads.
 struct Game_State
 {
+ Base_Allocator malloc_base_allocator;
  Arena permanent_arena;
- Arena load_arena;  //NOTE: cleared on load
+ Arena data_load_arena;  // NOTE: cleared on data load
+ Arena dll_arena;        // NOTE: cleared on dll reload
+ Temp_Memory dll_temp_memory;
  
  b32 has_done_backup;
  String save_dir;
- String save_path_text;
- 
- //-NOTE: Misc
- v1 time;
- b32 indicator_level;
- b32 references_full_alpha;
- Viewport viewports[GAME_VIEWPORT_COUNT];
- b32 save_failed;
- b32 load_failed;
+ String backup_dir;
+ String autosave_path;
+ String manual_save_path;
  
  //-FUI
  // NOTE: We store things in the state to allow reload (reusing memory).
@@ -678,11 +717,19 @@ struct Game_State
  i32                    line_cap;
  struct Line_Map_Entry *line_map;
  Arena slider_store;
- //-Slow Slider Path
+ //-NOTE: Slow Slider Path
  Arena slow_slider_store;
  Slow_Line_Map slow_line_map;
  
+ //-NOTE: Misc
  Modeler modeler;
+ v1 time;
+ b32 indicator_level;
+ b32 references_full_alpha;
+ Viewport viewports[GAME_VIEWPORT_COUNT];
+ b32 save_failed;
+ b32 load_failed;
+ arrayof<String> command_queue;
  
  b8 __padding[64];
 };
@@ -700,17 +747,17 @@ selected_vertex_index(Game_State *state)
  u32 id = selected_object_id();
  if ( prim_id_type(id) == Prim_Vertex )
  {
-  result = index_from_prim_id(id);
+  result = prim_id_to_index(id);
  }
  return result;
 }
 
-internal void
+function void
 set_object_transform(mat4i const&transform)
 {
  Painter *p = &painter;
  p->obj_to_camera = invert(p->camera->transform) * transform;
- push_object_transform_to_target(p->target, &transform.m);
+ push_object_transform_to_target(p->target, cast(mat4*)&transform.m);
 }
 
 inline v3
@@ -720,14 +767,14 @@ camera_world_position(Camera *camera)
  return result;
 }
 
-internal v3
+function v3
 camera_object_position()
 {
  v3 result = get_object_transform().inv * camera_world_position(painter.camera);
  return result;
 }
 
-internal void
+function void
 push_view_vector(v3 object_center)
 {
  auto &p = painter;
@@ -837,45 +884,48 @@ draw_disk(v3 center, v1 radius,
 
 void
 indicate_vertex(char *vertex_name, v3 pos,
-                i32 force_draw_level=9000,
-                b32 force_overlay=false,
-                argb color=argb_yellow,
-                u32 prim_id = __builtin_LINE())
+                i32  force_draw_level=9000,
+                b32  force_overlay   =false,
+                argb color           =argb_yellow,
+                u32  prim_id         =__builtin_LINE())
 #if AD_IS_DRIVER
 ;
 #else
 {
- Painter *p = &painter;
- painter.draw_prim_id = prim_id;
- b32 mouse_near;
- const v1 radius = 3*millimeter;
- {//NOTE: above
-  mat4 object_to_view = p->view_transform * get_object_transform();
-  v3 vertex_viewp = mat4vert_div(object_to_view, pos);
-  v2 delta = painter.mouse_viewp - vertex_viewp.xy;
-  mouse_near = (absolute(delta.x) < 1*centimeter && 
-                absolute(delta.y) < 1*centimeter);
- }
- 
- b32 mouse_on_top = (prim_id == get_hot_prim_id());
- 
- b32 should_draw = ((painter.viz_level >= force_draw_level) || mouse_near);
- if (should_draw)
- {//NOTE: Draw
-  symx_off;
-  v1 depth_offset = painter.line_depth_offset - 1*centimeter;
-  u32 flags = 0;
-  // NOTE: If lines are overlayed, so should indicators (I guess?)
-  b32 line_overlay_on = (painter.line_params.flags & Line_Overlay);
-  if (line_overlay_on || force_overlay) {
-   flags = Poly_Overlay;
+ if ( is_left() )
+ {
+  Painter *p = &painter;
+  painter.draw_prim_id = prim_id;
+  b32 mouse_near;
+  const v1 radius = 3*millimeter;
+  {// NOTE: Above
+   mat4 object_to_view = p->view_transform * get_object_transform();
+   v3 vertex_viewp = mat4vert_div(object_to_view, pos);
+   v2 delta = painter.mouse_viewp - vertex_viewp.xy;
+   mouse_near = (absolute(delta.x) < 1*centimeter && 
+                 absolute(delta.y) < 1*centimeter);
   }
-  draw_disk(pos, radius, color, depth_offset, flags, prim_id);
- }
- 
- if ( mouse_on_top )
- {// NOTE: debug
-  DEBUG_NAME(vertex_name, prim_id);
+  
+  b32 mouse_on_top = (prim_id == get_hot_prim_id());
+  
+  b32 should_draw = ((painter.viz_level >= force_draw_level) || mouse_near);
+  if (should_draw)
+  {//NOTE: Draw
+   symx_off;
+   v1 depth_offset = painter.line_depth_offset - 1*centimeter;
+   u32 flags = 0;
+   // NOTE: If lines are overlayed, so should indicators (I guess?)
+   b32 line_overlay_on = (painter.line_params.flags & Line_Overlay);
+   if (line_overlay_on || force_overlay) {
+    flags = Poly_Overlay;
+   }
+   draw_disk(pos, radius, color, depth_offset, flags, prim_id);
+  }
+  
+  if ( mouse_on_top )
+  {// NOTE: debug
+   DEBUG_NAME(vertex_name, prim_id);
+  }
  }
 }
 #endif
@@ -1045,6 +1095,7 @@ operator*(mat4 transform, Bez bezier)
  return result;
 }
 
+// TODO(kv): We can invert the API and let this be the main rendering function instead?
 void
 render_data(Game_State &state)
 #if AD_IS_DRIVER
@@ -1052,6 +1103,7 @@ render_data(Game_State &state)
 #else
 {
  hl_block;
+ painter.is_right = 0;
  auto &m = state.modeler;
  auto &p = painter;
  argb inactive_color = argb_dark_green;
@@ -1059,7 +1111,7 @@ render_data(Game_State &state)
  {
   Vertex_Data &vert = m.vertices[vindex];
   Object &object = p.object_list[vert.object_index];
-  u32 prim_id = prim_id_from_vertex_index(vindex);
+  u32 prim_id = vertex_prim_id(vindex);
   {
    mat4 &mat = object.transform;
    v3 pos = mat4vert(mat, vert.pos);
@@ -1067,6 +1119,7 @@ render_data(Game_State &state)
   }
   if (vert.symx)
   {//NOTE: Draw the right side (TODO @speed stupid object lookup)
+   set_in_block(painter.is_right, 1);
    auto &objectR = get_right_object(object);
    mat4 &mat = objectR.transform;
    v3 pos = mat4vert(mat, vert.pos);
@@ -1074,9 +1127,9 @@ render_data(Game_State &state)
   }
  }
  
- for_i32(curve_index,1,m.beziers.count)
+ for_i32(curve_index,1,m.curves.count)
  {
-  Bezier_Data &bez = m.beziers[curve_index];
+  Bezier_Data &bez = m.curves[curve_index];
   auto &object = p.object_list[bez.object_index];
   {
    v3 p0 = m.vertices[bez.p0_index].pos;
@@ -1090,6 +1143,7 @@ render_data(Game_State &state)
    }
    if (bez.symx)
    {
+    set_in_block(painter.is_right, 1);
     auto &objectR = get_right_object(object);
     draw(objectR.transform*draw_bez);
    }
@@ -1099,7 +1153,6 @@ render_data(Game_State &state)
 #endif
 
 
-//-
 #undef framework_storage
 
 //~

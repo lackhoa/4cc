@@ -61,7 +61,7 @@ F4_CPP_SkipParseBody(F4_Index_ParseCtx *ctx)
 function b32
 F4_CPP_ParseDecl(F4_Index_ParseCtx *ctx, Token **name)
 {
- Token *base_type = 0;
+ Token *base_type = 0;  //note(kv) doesn't do anything
  return (F4_Index_ParsePattern(ctx, "%k%o%k%o%t",
                                TokenBaseKind_Identifier, &base_type,
                                TokenBaseKind_Identifier, name,
@@ -129,7 +129,7 @@ F4_CPP_ParseFunctionBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx, b32 *proto
     
     for(;!ctx->done;)
     {
-        Token *token = token_it_read(&ctx->it);
+        Token *token = tkarr_read(&ctx->it);
         if(token == 0) { break; }
         if(token->sub_kind == TokenCppKind_Semicolon)
         {
@@ -179,7 +179,7 @@ F4_CPP_ParseEnumBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx)
                 
                 for(;!ctx->done;)
                 {
-                    Token *token = token_it_read(&ctx->it);
+                    Token *token = tkarr_read(&ctx->it);
                     if(token->kind == TokenBaseKind_StatementClose)
                     {
                         F4_Index_ParseCtx_Inc(ctx, 0);
@@ -200,7 +200,7 @@ F4_CPP_ParseEnumBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx)
             else if(F4_Index_ParsePattern(ctx, "%t", "}"))
             {
                 break;
-            }
+   }
    else
    {
     F4_Index_ParseCtx_Inc(ctx, 0);
@@ -209,10 +209,11 @@ F4_CPP_ParseEnumBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx)
  }
 }
 
-// ;F4_CPP_IndexFile
-internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
+F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile);
+function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
 {
  int scope_nest = 0;
+ 
  for(b32 handled = 0; !ctx->done;)
  {
   handled = 0;
@@ -422,42 +423,77 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
   }
   
   //~ NOTE(rjf): Macro Functions
-  else if(0 && F4_Index_ParsePattern(ctx, "%n%t%k",
-                                     F4_Index_NoteKind_Macro, &note,
-                                     "(",
-                                     TokenBaseKind_Identifier, &name))
+  else if(F4_Index_ParsePattern(ctx, "%n%t%k",
+                                F4_Index_NoteKind_Macro, &note,
+                                "(",
+                                TokenBaseKind_Identifier, &name) ||
+#if 0
+          (F4_Index_ParsePattern(/* NOTE(kv): With storage class at the start */
+                                 ctx, "%n%n%t%k",
+                                 F4_Index_NoteKind_Macro, 0,
+                                 F4_Index_NoteKind_Macro, &note,
+                                  "(",
+                                  TokenBaseKind_Identifier, &name)) ||
+#endif
+          false)
   {
-   b32 valid = 0;
+   b32 valid     = 0;
    b32 prototype = 0;
    
+   if (0)
+   {
+    String token_string = string_substring(ctx->string, token_range(name));
+    if (string_match(token_string, strlit("F4_CPP_IndexFile"))){
+     breakhere;
+    }
+   }
+   
+#if 1
    for(;!ctx->done;)
    {
-    Token *token = token_it_read(&ctx->it);
+    Token *token = tkarr_read(&ctx->it);
     if(token == 0) { break; }
     if(token->sub_kind == TokenCppKind_Semicolon)
     {
      prototype = 1;
      valid = 1;
+     F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
      break;
     }
-    else if(token->sub_kind == TokenCppKind_ParenCl)
-    {
-    }
+    else if(token->sub_kind == TokenCppKind_ParenCl) { }
     else if(token->kind == TokenBaseKind_ScopeOpen)
     {
      valid = 1;
+     F4_CPP_SkipParseBody(ctx);
      break;
     }
-    F4_Index_ParseCtx_Inc(ctx, 0);
+    F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
    }
    
    if(valid)
    {
     handled = 1;
     F4_Index_MakeNote(ctx, Ii64(name), F4_Index_NoteKind_Function, prototype ? F4_Index_NoteFlag_ProductType : 0);
-    F4_CPP_SkipParseBody(ctx);
    }
+#else
+   if (F4_CPP_ParseFunctionBodyIFuckingHateCPlusPlus(ctx, &prototype))
+   {
+    handled = 1;
+    F4_Index_MakeNote(ctx, Ii64(name), F4_Index_NoteKind_Function, prototype ? F4_Index_NoteFlag_ProductType : 0);
+   }
+#endif
   }
+#if 0
+  else if (F4_Index_ParsePattern(/* NOTE(kv): With storage class at the start */
+                                 ctx, "%n%n%t%k",
+                                 F4_Index_NoteKind_Macro, 0,
+                                 F4_Index_NoteKind_Macro, &note,
+                                 "(",
+                                 TokenBaseKind_Identifier, &name))
+  {
+   breakhere;
+  }
+#endif
   
   //~ NOTE(rjf): Comment Tags
   else if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Comment, &name))
@@ -488,7 +524,7 @@ internal F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
     F4_Language_PosContextData *last = 0;
     
     Token_Array tokens = get_token_array_from_buffer(app, buffer);
-    Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
+    Token_Iterator_Array it = tkarr_at_pos(0, &tokens, pos);
     
     // NOTE(rjf): Search for left parentheses (function call or macro invocation).
     {
@@ -496,14 +532,14 @@ internal F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
         int arg_idx = 0;
         for(int i = 0; count < 4; i += 1)
         {
-            Token *token = token_it_read(&it);
+            Token *token = tkarr_read(&it);
             if(token)
             {
                 if(paren_nest == 0 &&
                    token->sub_kind == TokenCppKind_ParenOp &&
-                   token_it_dec_non_whitespace(&it))
+                   tkarr_dec_non_whitespace(&it))
                 {
-                    Token *name = token_it_read(&it);
+                    Token *name = tkarr_read(&it);
                     if(name && name->kind == TokenBaseKind_Identifier)
                     {
                         F4_Language_PosContext_PushData_Call(arena, &first, &last, push_buffer_range(app, arena, buffer, Ii64(name)), arg_idx);
@@ -525,7 +561,7 @@ internal F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
                 }
             }
             else { break; }
-            if(!token_it_dec_non_whitespace(&it))
+            if(!tkarr_dec_non_whitespace(&it))
             {
                 break;
             }

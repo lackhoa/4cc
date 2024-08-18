@@ -6,12 +6,6 @@
 global Debug_Entry *DEBUG_entries;
 global b32 DEBUG_draw_hud_p = true;
 
-internal DEBUG_send_entry_return
-DEBUG_send_entry(DEBUG_send_entry_params)
-{
- arrput(DEBUG_entries, entry);
-}
-
 internal void
 DEBUG_draw_entry(App *app, Face_ID face_id, Debug_Entry entry, v2 *at)
 {

@@ -7,7 +7,7 @@ global u32 slider_cycle_counter;
 force_inline i32
 slider_value_size(Fui_Slider *slider)
 {
- return(type_sizes[slider->type]);
+ return(get_basic_type_size(slider->type));
 }
 
 // todo: Put these in a struct
@@ -24,7 +24,8 @@ PACK_END
 //
 static_assert(sizeof(Line_Map_Entry) == 4, "size check");
 global Line_Map_Entry *line_map;
-global Arena *slider_store;
+//global Arena *slider_store;
+global Arena *dll_arena;
 
 //-The Slow Path
 
@@ -38,7 +39,7 @@ struct Slow_Line_Map_Entry
 PACK_END;
 
 global Slow_Line_Map slow_line_map;
-global Arena *slow_slider_store;
+//global Arena *slow_slider_store;
 
 internal fui_is_active_return
 fui_is_active(fui_is_active_params)
@@ -55,7 +56,7 @@ fast_fval_inner(Basic_Type type, void *init_value,
  void *result = 0;
  u64 cycle_start = gb_rdtsc();
  
- u8 *store_base = get_arena_base(slider_store);
+ u8 *store_base = get_cursor_base(dll_arena);
  u16 offset = line_map[linum].offset;
  Fui_Slider *slider;
  // @fui_ensure_nonzero_offset
@@ -66,8 +67,8 @@ fast_fval_inner(Basic_Type type, void *init_value,
  }
  else
  {//NOTE: Not found -> add new slider to the store
-  i32 value_size = type_sizes[type];
-  slider = cast(Fui_Slider *)(push_array(slider_store, u8, sizeof(Fui_Slider)+value_size));
+  i32 value_size = get_basic_type_size(type);
+  slider = cast(Fui_Slider *)(push_array(dll_arena, u8, sizeof(Fui_Slider)+value_size));
   line_map[linum].offset = cast(u16)(cast(u8 *)(slider) - store_base);
   
   b32 is_vertex = (options.flags & Slider_Vertex);
@@ -102,7 +103,7 @@ slow_fval_inner(Basic_Type type, void *init_value,
  void *result = 0;
  u64 cycle_start = gb_rdtsc();
  auto &map   = slow_line_map;
- auto &store = slow_slider_store;
+ auto &store = dll_arena;
  u16 offset = 0;
  
  String file = SCu8(file_c);
@@ -119,7 +120,7 @@ slow_fval_inner(Basic_Type type, void *init_value,
   }
  }
  
- u8 *store_base = get_arena_base(store);
+ u8 *store_base = get_cursor_base(store);
  Fui_Slider *slider;
  if( offset != 0 )  // @fui_ensure_nonzero_offset
  {
@@ -128,7 +129,7 @@ slow_fval_inner(Basic_Type type, void *init_value,
  }
  else
  {//NOTE: Not found
-  i32 value_size = type_sizes[type];
+  i32 value_size = get_basic_type_size(type);
   u8 *slider_u8 = push_array(store, u8, sizeof(Fui_Slider)+value_size);
   map.map[map.count++] = Slow_Line_Map_Entry{
    .file   = file,
@@ -164,12 +165,12 @@ jump slow_fval();
 T \
 fast_fval(T init_value_T, Fui_Options options, i32 line) \
 { \
-auto type = Type_##T; \
+auto type = Basic_Type_##T; \
 void *value = fast_fval_inner(type, cast(void*)(&init_value_T), line, options); \
 return *(cast(T *)value); \
 }
 //
-X_Types(X)
+X_Basic_Types(X)
 //
 #undef X
 
@@ -179,12 +180,12 @@ T \
 slow_fval(T init_value_T, Fui_Options options, \
 const char *file=__builtin_FILE(), i32 line=__builtin_LINE()) \
 { \
-auto type = Type_##T; \
+auto type = Basic_Type_##T; \
 void *value = slow_fval_inner(type, cast(void*)(&init_value_T), file, line, options); \
 return *(cast(T *)value); \
 }
 //
-X_Types(X)
+X_Basic_Types(X)
 //
 #undef X
 //-
@@ -198,7 +199,7 @@ filename_match(String a0, String b0)
 }
 
 //@GetSlider
-internal Fui_Slider *
+function Fui_Slider *
 fui_get_slider_external(String file, i32 linum)
 {
  Fui_Slider *slider = 0;
@@ -207,7 +208,7 @@ fui_get_slider_external(String file, i32 linum)
   u16 offset = line_map[linum].offset;
   if (offset != 0)
   {
-   u8 *store_base = get_arena_base(slider_store);
+   u8 *store_base = get_cursor_base(dll_arena);
    slider = cast(Fui_Slider *)(store_base + offset);
   }
  }
@@ -228,7 +229,7 @@ fui_get_slider_external(String file, i32 linum)
   
   if (offset != 0)
   {
-   u8 *store_base = get_arena_base(slow_slider_store);
+   u8 *store_base = get_cursor_base(dll_arena);
    slider = cast(Fui_Slider *)(store_base + offset);
   }
  }
@@ -237,13 +238,13 @@ fui_get_slider_external(String file, i32 linum)
 }
 
 
-internal Fui_Slider *
+function Fui_Slider *
 fui_get_active_slider(void)
 {
  return fui_active_slider;
 }
 
-internal void
+function void
 fui_set_active_slider(Fui_Slider *slider, String string)
 {
  fui_active_slider        = slider;
@@ -255,7 +256,7 @@ fui_set_active_slider(Fui_Slider *slider, String string)
 global const i32 MAX_SLIDER_VALUE_SIZE = 32;
 global u8 global_fui_saved_value[MAX_SLIDER_VALUE_SIZE];  //TODO: why is this a global?
 
-internal void
+function void
 fui_save_value(Fui_Slider *slider)
 {
  void *value = slider+1;
@@ -263,7 +264,7 @@ fui_save_value(Fui_Slider *slider)
  block_copy(global_fui_saved_value, value, size);
 }
 
-internal void
+function void
 fui_restore_value(Fui_Slider *slider)
 {
  void *value = slider+1;
@@ -271,7 +272,7 @@ fui_restore_value(Fui_Slider *slider)
  block_copy(value, global_fui_saved_value, size);
 }
 
-internal b32
+function b32
 fui_is_wrapped_slider(String at_string)
 {
  return (starts_with_lit(at_string, "fui")    ||
@@ -291,7 +292,7 @@ fui_is_wrapped_slider(String at_string)
 }
 
 // NOTE: Still in some cases, we want non-wrapped sliders (for like copying values)
-internal b32
+function b32
 fui_string_is_slider(String at_string)
 {
  return (fui_is_wrapped_slider(at_string)     ||
@@ -305,7 +306,7 @@ fui_string_is_slider(String at_string)
 
 //-
 
-internal String
+function String
 fui_push_slider_value(Arena *arena, Fui_Slider *slider)
 {
  String at_string = fui_active_slider_string;
@@ -316,14 +317,14 @@ fui_push_slider_value(Arena *arena, Fui_Slider *slider)
  i32 cap = 128;
  Printer printer = make_printer(arena, cap);
  print_code(printer, type, value0, wrapped);
- String result = end_printer(&printer);
+ String result = printer_get_string(printer);
  return result;
 }
 
 #define fui_push_active_slider_value_return String
 #define fui_push_active_slider_value_params Arena *arena
 
-internal fui_push_active_slider_value_return
+function fui_push_active_slider_value_return
 fui_push_active_slider_value(fui_push_active_slider_value_params)
 {
  String result = {};
@@ -335,8 +336,8 @@ fui_push_active_slider_value(fui_push_active_slider_value_params)
 }
 
 
-internal fui_at_slider_p_return
-fui_at_slider_p(fui_at_slider_p_params)
+function i64
+fui_at_slider_p(App *app, Buffer_ID buffer, Token_Iterator_Array *it_out)
 {
  i64 result = 0;
  Scratch_Block scratch(app);
@@ -344,21 +345,21 @@ fui_at_slider_p(fui_at_slider_p_params)
  Token_Iterator_Array it_value = get_token_it_on_current_line(app, buffer, &max_pos);
  Token_Iterator_Array *it = &it_value;
  
- Token *token = token_it_read(it);
+ Token *token = tkarr_read(it);
  while(result == 0 &&
        token       &&
        token->pos < max_pos)
  {
   String at_string = push_token_lexeme(app, scratch, buffer, token);
   if ( fui_string_is_slider(at_string) ) { result = token->pos; }
-  else { token = token_it_inc(it); }
+  else { token = tkarr_inc(it); }
  }
  
  if (it_out) { *it_out = it_value; }
  return result;
 }
 
-internal fui_handle_slider_return
+function fui_handle_slider_return
 fui_handle_slider(fui_handle_slider_params)
 {
  b32 result = false;
@@ -376,43 +377,42 @@ fui_handle_slider(fui_handle_slider_params)
   {
    b32 parse_ok = false;
    {// NOTE(kv): Parsing
-    Token_Iterator_Array *tk = &tk_value;
-    Quick_Parser parser_value = qp_new(app, buffer, tk);
-    Quick_Parser *p = &parser_value;
-    at_string = qp_push_token(p,scratch);
-    qp_eat_token_kind(p, TokenBaseKind_Identifier);
-    qp_eat_token_kind(p, TokenBaseKind_ParentheticalOpen);
+    Ed_Parser parser_value = make_ep_from_buffer(app, buffer, tk_value);
+    Ed_Parser *p = &parser_value;
+    at_string = ep_print_token(p,scratch);
+    ep_eat_kind(p, TokenBaseKind_Identifier);
+    ep_eat_kind(p, TokenBaseKind_ParenOpen);
     // NOTE: At value
-    slider_value_range.min = get_token_pos(p);
+    slider_value_range.min = ep_get_pos(p);
     {
      i32 component_count = 1;
      if (!(fui_is_wrapped_slider(at_string)))
      {
       switch(slider->type)
       {
-       case Type_v2: case Type_i2: { component_count = 2; }break;
-       case Type_v3: case Type_i3: { component_count = 3; }break;
-       case Type_v4: case Type_i4: { component_count = 4; }break;
+       case Basic_Type_v2: case Basic_Type_i2: { component_count = 2; }break;
+       case Basic_Type_v3: case Basic_Type_i3: { component_count = 3; }break;
+       case Basic_Type_v4: case Basic_Type_i4: { component_count = 4; }break;
        default: { component_count = 1; }break;
       }
      }
      
      for_i32(index,0,component_count)
      {
-      i32 eat_result = qp_eat_until_char_lit(p, ",)");
+      i32 eat_result = ep_eat_until_char_lit(p, ",)");
       if (index < component_count-1)
       {
        if (eat_result == 2)
        {// NOTE: early closing paren
-        p->ok = false;
+        p->set_ok(false);
         break;
        }
-       else { qp_eat_token(p); }
+       else { ep_eat_token(p); }
       }
      }
     }
-    slider_value_range.max = qp_get_pos(p);
-    parse_ok = p->ok;
+    slider_value_range.max = ep_get_pos(p);
+    parse_ok = p->ok_;
    }
    
    if (parse_ok)

@@ -12,17 +12,17 @@ kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
   if (!(tokens.tokens && tokens.count)) return;
 
   {// Nudge the cursor in case we're near parentheses.
-    Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
-    Token *token = token_it_read(&it);
-    if (token && (token->kind == TokenBaseKind_ParentheticalOpen))
+    Token_Iterator_Array it = tkarr_at_pos(0, &tokens, pos);
+    Token *token = tkarr_read(&it);
+    if (token && (token->kind == TokenBaseKind_ParenOpen))
     {
       pos = token->pos + token->size;
     }
-    else if ( token_it_dec_all(&it) )
+    else if ( tkarr_dec_all(&it) )
     {
-      token = token_it_read(&it);
+      token = tkarr_read(&it);
       if (token &&
-          token->kind == TokenBaseKind_ParentheticalClose &&
+          token->kind == TokenBaseKind_ParenClose &&
           pos == token->pos + token->size)
       {
         pos = token->pos;
@@ -69,82 +69,82 @@ kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
       i1 fore_index = color_index % color_count;
       paint_text_color_pos(app, text_layout_id, range.min, colors[fore_index]);
       paint_text_color_pos(app, text_layout_id, range.max - 1, colors[fore_index]);
-      color_index += 1;
-    }
+   color_index += 1;
   }
+ }
 }
 
 function void
 F4_RenderDividerComments(App *app, Buffer_ID buffer, View_ID view,
                          Text_Layout_ID text_layout_id)
 {
-    if(!def_get_config_b32(vars_intern_lit("f4_disable_divider_comments")))
+ if(!def_get_config_b32(vars_intern_lit("f4_disable_divider_comments")))
+ {
+  ProfileScope(app, "[F4] Divider Comments");
+  
+  Token_Array token_array = get_token_array_from_buffer(app, buffer);
+  Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+  Scratch_Block scratch(app);
+  
+  if(token_array.tokens != 0)
+  {
+   i64 first_index = token_index_from_pos(&token_array, visible_range.first);
+   Token_Iterator_Array it = token_iterator_index(0, &token_array, first_index);
+   
+   Token *token = 0;
+   for(;;)
+   {
+    token = tkarr_read(&it);
+    
+    if(token->pos >= visible_range.one_past_last || !token || !tkarr_inc_non_whitespace(&it))
     {
-        ProfileScope(app, "[F4] Divider Comments");
-        
-        Token_Array token_array = get_token_array_from_buffer(app, buffer);
-        Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
-        Scratch_Block scratch(app);
-        
-        if(token_array.tokens != 0)
-        {
-            i64 first_index = token_index_from_pos(&token_array, visible_range.first);
-            Token_Iterator_Array it = token_iterator_index(0, &token_array, first_index);
-            
-            Token *token = 0;
-            for(;;)
-            {
-                token = token_it_read(&it);
-                
-                if(token->pos >= visible_range.one_past_last || !token || !token_it_inc_non_whitespace(&it))
-                {
-                    break;
-                }
-                
-                if(token->kind == TokenBaseKind_Comment)
-                {
-                    Rect_f32 comment_first_char_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
-                    Rect_f32 comment_last_char_rect = text_layout_character_on_screen(app, text_layout_id, token->pos+token->size-1);
-                    String token_string = push_buffer_range(app, scratch, buffer, Ii64(token));
-                    String signifier_substring = string_substring(token_string, Ii64(0, 3));
-                    f32 roundness = 4.f;
-                    
-                    // NOTE(rjf): Strong dividers.
-                    if(string_match(signifier_substring, strong_divider_comment_signifier))
-                    {
-                        Rect_f32 rect =
-                        {
-                            comment_first_char_rect.x0,
-                            comment_first_char_rect.y0-2,
-                            10000,
-                            comment_first_char_rect.y0,
-                        };
-                        draw_rect(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)), 0);
-                    }
-                    
-                    // NOTE(rjf): Weak dividers.
-                    else if(string_match(signifier_substring, weak_divider_comment_signifier))
-                    {
-                        f32 dash_size = 8;
-                        Rect_f32 rect =
-                        {
-                            comment_last_char_rect.x1,
-                            (comment_last_char_rect.y0 + comment_last_char_rect.y1)/2 - 1,
-                            comment_last_char_rect.x1 + dash_size,
-                            (comment_last_char_rect.y0 + comment_last_char_rect.y1)/2 + 1,
-                        };
-                        
-                        for(int i = 0; i < 1000; i += 1)
-                        {
-                            draw_rect(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)), 0);
-                            rect.x0 += dash_size*1.5f;
-                            rect.x1 += dash_size*1.5f;
-                        }
-                    }
-                }
-            }
-        }
+     break;
     }
+    
+    if(token->kind == TokenBaseKind_Comment)
+    {
+     Rect_f32 comment_first_char_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
+     Rect_f32 comment_last_char_rect = text_layout_character_on_screen(app, text_layout_id, token->pos+token->size-1);
+     String token_string = push_buffer_range(app, scratch, buffer, Ii64(token));
+     String signifier_substring = string_substring(token_string, Ii64(0, 3));
+     f32 roundness = 4.f;
+     
+     // NOTE(rjf): Strong dividers.
+     if(string_match(signifier_substring, strong_divider_comment_signifier))
+     {
+      Rect_f32 rect =
+      {
+       comment_first_char_rect.x0,
+       comment_first_char_rect.y0-2,
+       10000,
+       comment_first_char_rect.y0,
+      };
+      draw_rect(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)), 0);
+     }
+     
+     // NOTE(rjf): Weak dividers.
+     else if(string_match(signifier_substring, weak_divider_comment_signifier))
+     {
+      f32 dash_size = 8;
+      Rect_f32 rect =
+      {
+       comment_last_char_rect.x1,
+       (comment_last_char_rect.y0 + comment_last_char_rect.y1)/2 - 1,
+       comment_last_char_rect.x1 + dash_size,
+       (comment_last_char_rect.y0 + comment_last_char_rect.y1)/2 + 1,
+      };
+      
+      for(int i = 0; i < 1000; i += 1)
+      {
+       draw_rect(app, rect, roundness, fcolor_resolve(fcolor_id(defcolor_comment)), 0);
+       rect.x0 += dash_size*1.5f;
+       rect.x1 += dash_size*1.5f;
+      }
+     }
+    }
+   }
+  }
+ }
 }
 
 function Render_Caller_Function kv_render_caller;
@@ -159,7 +159,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  rect2 clip      = view_get_screen_rect(app, view);
  rect2 prev_clip = draw_set_clip(app, clip);
  
- Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ Buffer_ID buffer = view_get_buffer(app, view, 0);
  Face_ID face_id = get_face_id(app, buffer);
  Face_Metrics face_metrics = get_face_metrics(app, face_id);
  v1 line_height = face_metrics.line_height;
@@ -248,7 +248,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
   defer( draw_set_clip(app, prev_clip2); );
   
   Scratch_Block scratch(app);
-  if ( i1 viewport = get_buffer_game_viewport_id(app, buffer) )
+  if ( i1 viewport = buffer_viewport_id(app, buffer) )
   {
    Render_Target *target = get_view_render_target(app, view);
    render_game(app, target, viewport, frame);

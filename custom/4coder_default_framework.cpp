@@ -162,65 +162,6 @@ view_set_passive(App *app, View_ID view_id, b32 value)
     }
 }
 
-function b32
-view_is_passive(App *app, View_ID view_id)
-{
-    Managed_Scope scope = view_get_managed_scope(app, view_id);
-    b32 *is_passive = scope_attachment(app, scope, view_is_passive_loc, b32);
-    b32 result = false;
-    if (is_passive != 0){
-        result = *is_passive;
-    }
-    return(result);
-}
-
-
-internal i1
-hax_guess_which_monitor_the_view_is_in(App *app, View_ID view)
-{
- rect2 clip = view_get_screen_rect(app, view);
- if ( in_range_inclusive(0, clip.x0, 1500) )
-  return 1;
- else 
-  return 2;
-}
-
-internal get_other_primary_view_return
-get_other_primary_view(get_other_primary_view_params)
-{
- i1 current_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
- View_ID view = start_view;
- do
- {
-  view = get_next_view_looped_all_panels(app, view, access);
-  if (!view_is_passive(app, view) && 
-      hax_guess_which_monitor_the_view_is_in(app, view) == current_monitor)
-  {
-   break;
-  }
- } while(view != start_view);
- 
- if (view == start_view && vsplit_if_fail)
- {// NOTE(kv): vsplit
-  view = open_view(app, start_view, ViewSplit_Right);
-  new_view_settings(app, view);
- }
- 
- return(view);
-}
-
-internal is_view_to_the_right_return
-is_view_to_the_right(is_view_to_the_right_params)
-{
- b32 result = false;
- v1 this_x0 = view_get_screen_rect(app, view).x0;
- View_ID other_view = get_other_primary_view(app, view, Access_Always, false);
- if (other_view) {
-  v1 other_x0 = view_get_screen_rect(app, other_view).x0;
-  result = (other_x0 < this_x0);
- }
- return result;
-}
 function View_ID
 get_prev_view_looped_primary_panels(App *app, View_ID start_view_id, Access_Flag access)
 {
@@ -370,14 +311,29 @@ change_active_primary_view_send_command(App *app, Custom_Command_Function *custo
  }
 }
 
-// TODO(kv): @Incomplete I want it to switch to the "last active" primary panel, if switched from a passive one.
-internal void
-change_active_primary_view(App *app)
+// @deprecated
+function i1
+hax_guess_which_monitor_the_view_is_in(App *app, View_ID view)
 {
- change_active_primary_view_send_command(app, 0);
+ rect2 clip = view_get_screen_rect(app, view);
+ if ( in_range_inclusive(0, clip.x0, 1500) )
+  return 1;
+ else 
+  return 2;
 }
 
-internal void
+function View_ID
+get_next_view_looped_all_panels(App *app, View_ID view_id, Access_Flag access)
+{
+ view_id = get_view_next(app, view_id, access);
+ if (view_id == 0)
+ {
+  view_id = get_view_next(app, 0, access);
+ }
+ return(view_id);
+}
+
+function void
 change_active_monitor(App *app)
 {
     View_ID start_view = get_active_view(app, Access_Always);
@@ -658,7 +614,7 @@ CUSTOM_DOC("Clear the theme list")
         global_theme_arena = make_arena_system();
     }
     else{
-        arena_free_all(&global_theme_arena);
+        arena_clear(&global_theme_arena);
     }
     
     block_zero_struct(&global_theme_list);
@@ -1024,7 +980,7 @@ clipboard_init(Base_Allocator *allocator, u32 history_depth, Clipboard *clipboar
 function void
 clipboard_clear(Clipboard *clipboard)
 {
-    arena_free_all(&clipboard->arena);
+    arena_clear(&clipboard->arena);
     clipboard_init_empty(clipboard, clipboard->clip_capacity);
 }
 

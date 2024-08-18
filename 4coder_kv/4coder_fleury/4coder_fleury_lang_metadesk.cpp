@@ -239,7 +239,7 @@ internal F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
         // NOTE(rjf): Paren-Open
         else if(chr == '(' || chr == '[')
         {
-            Token token = { i, 1, TokenBaseKind_ParentheticalOpen, 0 };
+            Token token = { i, 1, TokenBaseKind_ParenOpen, 0 };
             token_list_push(arena, list, &token);
             i += token.size;
         }
@@ -247,7 +247,7 @@ internal F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
         // NOTE(rjf): Scope-Close
         else if(chr == ')' || chr == ']')
         {
-            Token token = { i, 1, TokenBaseKind_ParentheticalClose, 0 };
+            Token token = { i, 1, TokenBaseKind_ParenClose, 0 };
             token_list_push(arena, list, &token);
             i += token.size;
         }

@@ -198,7 +198,7 @@ F4_Index_ClearFile(F4_Index_File *file)
         {
             _F4_Index_FreeNoteTree(note);
         }
-        arena_free_all(&file->arena);
+        arena_clear(&file->arena);
         file->first_note = file->last_note = 0;
     }
 }
@@ -354,7 +354,7 @@ _F4_Index_Parse(App *app, F4_Index_File *file, String8 string, Token_Array token
         .file=file,
         .string=string,
         .tokens=tokens,
-        .it=token_it_at_pos(0, &ctx.tokens, 0),
+        .it=tkarr_at_pos(0, &ctx.tokens, 0),
     };
     if(language != 0)
     {
@@ -403,11 +403,11 @@ F4_Index_ParseCtx_Inc(F4_Index_ParseCtx *ctx, F4_Index_TokenSkipFlags flags)
 {
     if(flags & F4_Index_TokenSkipFlag_SkipWhitespace)
     {
-        ctx->done = !token_it_inc_non_whitespace(&ctx->it);
+        ctx->done = !tkarr_inc_non_whitespace(&ctx->it);
     }
     else
     {
-        ctx->done = !token_it_inc_all(&ctx->it);
+        ctx->done = !tkarr_inc_all(&ctx->it);
     }
     return ctx->done;
 }
@@ -416,7 +416,7 @@ function b32
 F4_Index_RequireToken(F4_Index_ParseCtx *ctx, String8 string, F4_Index_TokenSkipFlags flags)
 {
     b32 result = 0;
-    Token *token = token_it_read(&ctx->it);
+    Token *token = tkarr_read(&ctx->it);
     if(token)
     {
         String8 token_string = string_substring(ctx->string, token_range(token));
@@ -440,7 +440,7 @@ function b32
 F4_Index_RequireTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **token_out, F4_Index_TokenSkipFlags flags)
 {
     b32 result = 0;
-    Token *token = token_it_read(&ctx->it);
+    Token *token = tkarr_read(&ctx->it);
     if(token)
     {
         if(token->kind == kind)
@@ -468,7 +468,7 @@ function b32
 F4_Index_RequireTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_out, F4_Index_TokenSkipFlags flags)
 {
     b32 result = 0;
-    Token *token = token_it_read(&ctx->it);
+    Token *token = tkarr_read(&ctx->it);
     if(token)
     {
         if(token->sub_kind == sub_kind)
@@ -494,7 +494,7 @@ function b32
 F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String8 string)
 {
     b32 result = 0;
-    Token *token = token_it_read(&ctx->it);
+    Token *token = tkarr_read(&ctx->it);
     if ( token )
     {
         String8 token_string = string_substring(ctx->string, token_range(token));
@@ -537,7 +537,7 @@ F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc)
 {
     for(;!ctx->done;)
     {
-        Token *token = token_it_read(&ctx->it);
+        Token *token = tkarr_read(&ctx->it);
         if(preproc)
         {
             if(!(token->flags & TokenBaseFlag_PreprocessorBody) ||
@@ -550,39 +550,39 @@ F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc)
         {
             if(token->kind == TokenBaseKind_StatementClose ||
                token->kind == TokenBaseKind_ScopeOpen ||
-               token->kind == TokenBaseKind_ParentheticalOpen)
+               token->kind == TokenBaseKind_ParenOpen)
             {
                 break;
             }
         }
-        if(!token_it_inc_non_whitespace(&ctx->it))
-        {
-            break;
-        }
-    }
+        if(!tkarr_inc_non_whitespace(&ctx->it))
+  {
+   break;
+  }
+ }
 }
 
 function void
 F4_Index_SkipOpTokens(F4_Index_ParseCtx *ctx)
 {
-    int paren_nest = 0;
-    for(;!ctx->done;)
-    {
-        Token *token = token_it_read(&ctx->it);
-        if(token->kind == TokenBaseKind_ParentheticalOpen)
-        {
-            paren_nest += 1;
-        }
-        else if(token->kind == TokenBaseKind_ParentheticalClose)
-        {
-            paren_nest -= 1;
-            if(paren_nest < 0)
-            {
-                paren_nest = 0;
-            }
-        }
-        else if(token->kind != TokenBaseKind_Operator && paren_nest == 0)
-        {
+ int paren_nest = 0;
+ for(;!ctx->done;)
+ {
+  Token *token = tkarr_read(&ctx->it);
+  if(token->kind == TokenBaseKind_ParenOpen)
+  {
+   paren_nest += 1;
+  }
+  else if(token->kind == TokenBaseKind_ParenClose)
+  {
+   paren_nest -= 1;
+   if(paren_nest < 0)
+   {
+    paren_nest = 0;
+   }
+  }
+  else if(token->kind != TokenBaseKind_Operator && paren_nest == 0)
+  {
    break;
   }
   F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
@@ -649,7 +649,7 @@ F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...)
       }
       if (note && kind_match)
       {
-       *output_note = note;
+       if (output_note) { *output_note = note; }
        parsed = 1;
       }
       else

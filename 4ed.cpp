@@ -319,13 +319,16 @@ app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
     }
     
     models->begin_buffer = begin_buffer_func;
-    
-    {// NOTE(allen): setup first panel
+ 
+ {// NOTE(allen): setup first panel
   Panel *panel = layout_initialize(arena, &models->layout);
   View *new_view = live_set_alloc_view(&models->lifetime_allocator, &models->view_set, panel);
   view_init(tctx, models, new_view, models->scratch_buffer, models->view_event_handler);
  }
 }
+
+function void
+file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file);
 
 internal Application_Step_Result 
 app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
@@ -559,9 +562,10 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
    View *view = imp_get_view(models, cmd_func.view_id);
    if (view != 0){
     input_node_next = input_node;
-    Input_Event cmd_func_event = {};
-    cmd_func_event.kind = InputEventKind_CustomFunction;
-    cmd_func_event.custom_func = cmd_func.custom_func;
+    Input_Event cmd_func_event = {
+     .kind = InputEventKind_CustomFunction,
+     .custom_func = cmd_func.custom_func,
+    };
     co_send_event(tctx, models, view, &cmd_func_event);
     continue;
    }
@@ -686,7 +690,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   }
  }
  
- arena_free_all(&models->virtual_event_arena);
+ arena_clear(&models->virtual_event_arena);
  models->free_virtual_event = 0;
  models->first_virtual_event = 0;
  models->last_virtual_event = 0;
@@ -762,6 +766,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   frame.animation_dt = animation_dt;
   frame.work_cycles  = input->work_cycles;
   frame.work_seconds = input->work_seconds;
+  frame.hot_prim_id  = input->hot_prim_id;
   
   App app = {};
   app.tctx = tctx;

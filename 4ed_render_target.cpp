@@ -24,17 +24,6 @@ target_last_config()
  else { return 0; }
 }
 
-inline draw_get_clip_return
-draw_get_clip(draw_get_clip_params)
-{
- auto &state = render_state;
- if (state.group_last)
- {
-  return state.group_last->clip_box;
- }
- else { return {}; }
-}
-
 inline Render_Target *
 get_render_target(i32 window_id)
 {
@@ -108,79 +97,6 @@ draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i1 size
  return(node);
 }
 
-internal draw__push_vertices_return
-draw__push_vertices(draw__push_vertices_params)
-{// TODO @speed This function is sus, what is the true cost of this thing?
- auto &state = render_state;
- if (count > 0)
- {
-  Render_Group *group = state.group_last;
-  if (group == 0 ||
-      group->window_id != target->window_id)
-  {
-   draw__new_group(target, 0);
-   group = state.group_last;
-  }
-  
-  Render_Vertex_List *list;
-  {
-   Render_Entry *entry0 = group->entry_last;
-   if (entry0 == 0 || entry0->type != RET_Poly)
-   {
-    entry0 = new_render_entry(RET_Poly);
-   }
-   
-   Render_Entry_Poly *entry = &entry0->poly;
-   
-   switch(type)
-   {
-    case Vertex_Poly:    { list = &entry->vertex_list; }        break;
-    case Vertex_Overlay: { list = &entry->vertex_list_overlay; }break;
-    invalid_default_case;
-   }
-  }
-  
-  Render_Vertex_Array_Node *last = list->last;
-  
-  Render_Vertex *tail_vertex = 0;
-  i1 tail_count = 0;
-  if (last != 0)
-  {
-   tail_vertex = last->vertices   + last->vertex_count;
-   tail_count  = last->vertex_max - last->vertex_count;
-  }
-  
-  i1 base_vertex_max = 64;
-  i1 transfer_count = clamp_max(count, tail_count);
-  if (transfer_count > 0)
-  {
-   block_copy_count(tail_vertex, vertices, transfer_count);
-   last->vertex_count += transfer_count;
-   list->count += transfer_count;
-   base_vertex_max = last->vertex_max;
-  }
-  
-  i1 count_leftover = count - transfer_count;
-  if (count_leftover > 0)
-  {
-   Render_Vertex *vertices_leftover = vertices + transfer_count;
-   
-   i1 next_node_size = (base_vertex_max + count_leftover)*2;  // TODO @memory Currently we are wasting this node's memory, which is totally unnecessary!
-   Render_Vertex_Array_Node *memory = draw__extend_group_vertex_memory(&state.arena, list, next_node_size);
-   block_copy_count(memory->vertices, vertices_leftover, count_leftover);
-   memory->vertex_count += count_leftover;
-   list->count += count_leftover;
-  }
- }
-}
-
-inline push_object_transform_to_target_return
-push_object_transform_to_target(push_object_transform_to_target_params)
-{
- Render_Entry *entry = new_render_entry(RET_Object_Transform);
- entry->object_transform = *transform;
-}
-
 internal void
 draw__set_face_id(Face_ID face_id)
 {
@@ -205,37 +121,7 @@ draw__set_face_id(Face_ID face_id)
  }
 }
 
-// TODO(kv): Not sure if I love the abstraction over Render_Target
-internal draw_configure_return
-draw_configure(draw_configure_params)
-{
- auto &state = render_state;
- if (state.group_last)
- {
-  Render_Group *group = state.group_last;
-  
-  if (config->clip_box.min==v2{} &&
-      config->clip_box.max==v2{})
-  {
-   if (group->y_is_up == config->y_is_up)
-   {
-    config->clip_box = group->clip_box;
-   }
-   else
-   {
-    // NOTE: Fun times changing the clip box
-    rect2 new_clip_box = group->clip_box;
-    new_clip_box.y0 = (v1)target->height - group->clip_box.y1;
-    new_clip_box.y1 = (v1)target->height - group->clip_box.y0;
-    config->clip_box = new_clip_box;
-   }
-  }
- }
- 
- draw__new_group(target, config);
-}
-
-internal void
+function void
 draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 thickness, u32 color,
                             v1 depth=0, Vertex_Type type=Vertex_Poly, v1 depth_offset=0.f)
 {
@@ -262,20 +148,12 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
  draw__push_vertices(target, vertices, alen(vertices), type);
 }
 
-internal Render_Target *
-draw_get_target(App *app)
-{
- Models *models = (Models *)app->cmd_context;
- return models->target;
-}
-
-api(custom) internal draw_rect_outline_return
-draw_rect_outline(draw_rect_outline_params)
+api(custom) function void
+draw_rect_outline(App *app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth)
 {
  Render_Target *target = draw_get_target(app);
  draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
-
 
 force_inline void
 draw_rect_outline2(App *app, rect2 rect, v1 thickness, ARGB_Color color)
@@ -325,16 +203,8 @@ draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
  draw_circle(app, V3(center,0), radius, color, thickness);
 }
 
-inline push_image_return
-push_image(push_image_params)
-{
- Render_Entry *entry = new_render_entry(RET_Image);
- entry->image = push_struct(&render_state.arena, Render_Entry_Image);
- *entry->image = {filename, o,x,y, color, prim_id};
-}
-
 //~
-internal rect2
+function rect2
 draw_set_clip(Render_Target *target, rect2 clip_box)
 {
  rect2 prev_clip;
@@ -362,7 +232,7 @@ internal void
 begin_frame(void *font_set)
 {
  auto &state = render_state;
- arena_free_all(&render_state.arena);
+ arena_clear(&render_state.arena);
  state.group_first = 0;
  state.group_last  = 0;
  state.face_id     = 0;

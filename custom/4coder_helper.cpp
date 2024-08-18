@@ -1,5 +1,9 @@
 /*
  * Miscellaneous helpers for common operations.
+ * NOTE(kv): It's when you just give up on trying to organize things and accept that no,
+ * there really is definite order to things, at the very least it's not immediately obvious.
+ * And when you pull your hair out trying to finish the goddamn project after 12 months,
+ * "immediately obvious" is the bare minimum you can afford.
  */
 
 // TOP
@@ -15,7 +19,7 @@
 ////////////////////////////////
 
 #define scope_attachment(app,S,I,T) ((T*)managed_scope_get_attachment((app), (S), (I), sizeof(T)))
-#define set_custom_hook(app,ID,F) set_custom_hook((app),(ID),(Void_Func*)(F))
+#define set_custom_hook(app,ID,F) set_custom_hook_func((app),(ID),(Void_Func*)(F))
 
 ////////////////////////////////
 
@@ -83,30 +87,24 @@ kv_token_at_cursor(App *app, i64 delta=0)
   return token_from_pos(&tokens, pos);
 }
 
-internal Token_Iterator_Array
-token_it_at_cursor_delta(App *app, i64 delta)
+function Token_Iterator_Array
+token_it_at_cursor(App *app, i64 delta=0)
 {
  GET_VIEW_AND_BUFFER;
  Token_Array tokens = get_token_array_from_buffer(app, buffer);
  i64 pos = view_get_cursor_pos(app, view) + delta;
- return token_it_at_pos(0, &tokens, pos);
+ return tkarr_at_pos(0, &tokens, pos);
 }
 
 function i64 get_line_start_pos(App *app, Buffer_ID buffer, i64 line_number);
 
-internal Token_Iterator_Array
+function Token_Iterator_Array
 get_token_it_for_line(App *app, Buffer_ID buffer, i64 line_number)
 {
  Token_Array tokens = get_token_array_from_buffer(app, buffer);
  i64 pos = get_line_start_pos(app, buffer, line_number);
- return token_it_at_pos(0, &tokens, pos);
-}
-
-// NOTE: This is an API function
-internal Token_Iterator_Array
-token_it_at_cursor(App *app)
-{
- return token_it_at_cursor_delta(app, 0);
+ Token_Iterator_Array result = tkarr_at_pos(0, &tokens, pos);
+ return result;
 }
 
 ////////////////////////////////
@@ -691,11 +689,11 @@ boundary_token(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, 
                 i64 buffer_size = buffer_get_size(app, buffer);
                 result = buffer_size;
                 if (tokens.count > 0){
-                    Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
-                    Token *token = token_it_read(&it);
+                    Token_Iterator_Array it = tkarr_at_pos(0, &tokens, pos);
+                    Token *token = tkarr_read(&it);
                     if (token->kind == TokenBaseKind_Whitespace){
-                        token_it_inc_non_whitespace(&it);
-                        token = token_it_read(&it);
+                        tkarr_inc_non_whitespace(&it);
+                        token = tkarr_read(&it);
                     }
                     if (token != 0){
                         if (side == Side_Max){
@@ -703,8 +701,8 @@ boundary_token(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, 
                         }
                         else{
                             if (token->pos <= pos){
-                                token_it_inc_non_whitespace(&it);
-                                token = token_it_read(&it);
+                                tkarr_inc_non_whitespace(&it);
+                                token = tkarr_read(&it);
                             }
                             if (token != 0){
                                 result = token->pos;
@@ -718,24 +716,24 @@ boundary_token(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, 
             {
                 result = 0;
                 if (tokens.count > 0){
-                    Token_Iterator_Array it = token_it_at_pos(0, &tokens, pos);
-                    Token *token = token_it_read(&it);
+                    Token_Iterator_Array it = tkarr_at_pos(0, &tokens, pos);
+                    Token *token = tkarr_read(&it);
                     if (token->kind == TokenBaseKind_Whitespace){
-                        token_it_dec_non_whitespace(&it);
-                        token = token_it_read(&it);
+                        tkarr_dec_non_whitespace(&it);
+                        token = tkarr_read(&it);
                     }
                     if (token != 0){
                         if (side == Side_Min){
                             if (token->pos >= pos){
-                                token_it_dec_non_whitespace(&it);
-                                token = token_it_read(&it);
+                                tkarr_dec_non_whitespace(&it);
+                                token = tkarr_read(&it);
                             }
                             result = token->pos;
                         }
                         else{
                             if (token->pos + token->size >= pos){
-                                token_it_dec_non_whitespace(&it);
-                                token = token_it_read(&it);
+                                tkarr_dec_non_whitespace(&it);
+                                token = tkarr_read(&it);
                             }
                             result = token->pos + token->size;
                         }
@@ -765,7 +763,7 @@ boundary_line(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i
             new_pos = (i32)buffer_get_size(app, buffer);
         }
     }
-    return(new_pos);
+ return(new_pos);
 }
 
 ////////////////////////////////
@@ -774,23 +772,23 @@ boundary_line(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i
 function void
 seek_string_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle, i64 *result)
 {
-    if (end == 0){
-        end = (i32)buffer_get_size(app, buffer);
-    }
-    String_Match match = {};
-    match.range.first = pos;
-    for (;;)
-    {
-        match = buffer_seek_string(app, buffer, needle, Scan_Forward, (i32)match.range.first, true);
-        if ( HasFlag(match.flags, StringMatch_CaseSensitive) ) break;
-        if (match.buffer != buffer || match.range.first >= end) break;
-    }
-    if (match.range.first < end && match.buffer == buffer){
-        *result = match.range.first;
-    }
-    else{
-        *result = buffer_get_size(app, buffer);
-    }
+ if (end == 0){
+  end = (i32)buffer_get_size(app, buffer);
+ }
+ String_Match match = {};
+ match.range.first = pos;
+ for (;;)
+ {
+  match = buffer_seek_string(app, buffer, needle, Scan_Forward, (i32)match.range.first, true);
+  if ( HasFlag(match.flags, StringMatch_CaseSensitive) ) break;
+  if (match.buffer != buffer || match.range.first >= end) break;
+ }
+ if (match.range.first < end && match.buffer == buffer){
+  *result = match.range.first;
+ }
+ else{
+  *result = buffer_get_size(app, buffer);
+ }
 }
 
 function void
@@ -1060,25 +1058,23 @@ push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
     return(result);
 }
 
-internal Range_i64
+function Range_i64
 get_selected_range(App *app)
 {
-    GET_VIEW_AND_BUFFER;
-    i64 curpos = view_get_cursor_pos(app, view);
-    i64 markpos = view_get_mark_pos(app, view);
-    return Ii64(curpos, markpos);
+ GET_VIEW_AND_BUFFER;
+ i64 curpos = view_get_cursor_pos(app, view);
+ i64 markpos = view_get_mark_pos(app, view);
+ Range_i64 result = Ii64(curpos, markpos);
+ result.max += 1;
+ return result;
 }
 
-internal String8
-push_buffer_selected_range(App *app, Arena *arena, Buffer_ID buffer)
+function String8
+get_selected_string(App *app, Arena *arena)
 {
-    Range_i64 range = get_selected_range(app);
-    return push_buffer_range(app, arena, buffer, range);
-}
-
-function String
-push_token_lexeme(App *app, Arena *arena, Buffer_ID buffer, Token *token){
-    return(push_buffer_range(app, arena, buffer, Ii64(token)));
+ GET_VIEW_AND_BUFFER;
+ Range_i64 range = get_selected_range(app);
+ return push_buffer_range(app, arena, buffer, range);
 }
 
 inline b32
@@ -1134,7 +1130,7 @@ push_enclose_range_at_pos(App *app, Arena *arena, Buffer_ID buffer, i64 pos, Enc
 function String
 token_it_lexeme(App *app, Arena *arena, Token_Iterator_Array *it){
     String result = {};
-    Token *token = token_it_read(it);
+    Token *token = tkarr_read(it);
     if (token != 0){
         result = push_token_lexeme(app, arena, (Buffer_ID)it->user_id, token);
     }
@@ -1143,7 +1139,7 @@ token_it_lexeme(App *app, Arena *arena, Token_Iterator_Array *it){
 
 function b32
 token_it_check_and_get_lexeme(App *app, Arena *arena, Token_Iterator_Array *it, Token_Base_Kind kind, String *lexeme_out){
-    Token *token = token_it_read(it);
+    Token *token = tkarr_read(it);
     b32 result = {};
     if (token != 0 && token->kind == kind){
         result = true;
@@ -1383,8 +1379,8 @@ function void
 history_group_end(History_Group group){
     History_Record_Index last = buffer_history_get_current_state_index(group.app, group.buffer);
     if (group.first < last){
-        buffer_history_merge_record_range(group.app, group.buffer, group.first, last, RecordMergeFlag_StateInRange_MoveStateForward);
-    }
+  buffer_history_merge_record_range(group.app, group.buffer, group.first, last, RecordMergeFlag_StateInRange_MoveStateForward);
+ }
 }
 
 ////////////////////////////////
@@ -1392,22 +1388,24 @@ history_group_end(History_Group group){
 function void
 replace_in_range(App *app, Buffer_ID buffer, Range_i64 range, String needle, String string)
 {
-    // TODO(allen): rewrite
-    History_Group group = history_group_begin(app, buffer);
-    i64 pos = range.min - 1;
-    i64 new_pos = 0;
-    // bookmark
-    seek_string_forward(app, buffer, pos, range.end, needle, &new_pos);
-    i64 shift = replace_range_shift(needle.size, string.size);
-    for (; new_pos + (i64)needle.size <= range.end;)
-    {
-        Range_i64 needle_range = Ii64(new_pos, new_pos + (i32)needle.size);
-        buffer_replace_range(app, buffer, needle_range, string);
-        range.end += shift;
-        pos = new_pos + (i32)string.size - 1;
-        seek_string_forward(app, buffer, pos, range.end, needle, &new_pos);
-    }
-    history_group_end(group);
+ if (needle.len > 0)
+ {
+  // TODO(allen): rewrite
+  History_Group group = history_group_begin(app, buffer);
+  i64 pos = range.min - 1;
+  i64 new_pos = 0;
+  seek_string_forward(app, buffer, pos, range.end, needle, &new_pos);
+  i64 shift = replace_range_shift(needle.size, string.size);
+  for (; new_pos + (i64)needle.size <= range.end;)
+  {
+   Range_i64 needle_range = Ii64(new_pos, new_pos + (i32)needle.size);
+   buffer_replace_range(app, buffer, needle_range, string);
+   range.end += shift;
+   pos = new_pos + (i32)string.size - 1;
+   seek_string_forward(app, buffer, pos, range.end, needle, &new_pos);
+  }
+  history_group_end(group);
+ }
 }
 
 function Range_i64
@@ -1465,7 +1463,7 @@ move_line(App *app, Buffer_ID buffer, i64 line_number, Scan_Direction direction)
 
 function void
 clear_buffer(App *app, Buffer_ID buffer){
-    buffer_replace_range(app, buffer, buffer_range(app, buffer), string_u8_litexpr(""));
+ buffer_replace_range(app, buffer, buffer_range(app, buffer), string_u8_litexpr(""));
 }
 
 ////////////////////////////////
@@ -1473,31 +1471,31 @@ clear_buffer(App *app, Buffer_ID buffer){
 function String_Match_List
 find_all_matches_all_buffers(App *app, Arena *arena, String_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags)
 {
-    String_Match_List all_matches = {};
-    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-         buffer != 0;
-         buffer = get_buffer_next(app, buffer, Access_Always)){
-        String_Match_List buffer_matches = {};
-        for (i32 i = 0; i < match_patterns.count; i += 1){
-            Range_i64 range = buffer_range(app, buffer);
-            String_Match_List pattern_matches = buffer_find_all_matches(app, arena, buffer, i, range, match_patterns.vals[i],
-                                                                        &character_predicate_alnum_underscore_utf8, Scan_Forward, false);
-            string_match_list_filter_flags(&pattern_matches, must_have_flags, must_not_have_flags);
-            if (pattern_matches.count > 0)
-            {
-                if (buffer_matches.count == 0)
-                {
-                    buffer_matches = pattern_matches;
-                }
-                else
-                {
-                    buffer_matches = string_match_list_merge_front_to_back(&buffer_matches, &pattern_matches);
-                }
-            }
-        }
-        all_matches = string_match_list_join(&all_matches, &buffer_matches);
+ String_Match_List all_matches = {};
+ for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+      buffer != 0;
+      buffer = get_buffer_next(app, buffer, Access_Always)){
+  String_Match_List buffer_matches = {};
+  for (i32 i = 0; i < match_patterns.count; i += 1){
+   Range_i64 range = buffer_range(app, buffer);
+   String_Match_List pattern_matches = buffer_find_all_matches(app, arena, buffer, i, range, match_patterns.vals[i],
+                                                               &character_predicate_alnum_underscore_utf8, Scan_Forward, false);
+   string_match_list_filter_flags(&pattern_matches, must_have_flags, must_not_have_flags);
+   if (pattern_matches.count > 0)
+   {
+    if (buffer_matches.count == 0)
+    {
+     buffer_matches = pattern_matches;
     }
-    return(all_matches);
+    else
+    {
+     buffer_matches = string_match_list_merge_front_to_back(&buffer_matches, &pattern_matches);
+    }
+   }
+  }
+  all_matches = string_match_list_join(&all_matches, &buffer_matches);
+ }
+ return(all_matches);
 }
 
 function String_Match_List
@@ -1556,36 +1554,6 @@ backspace_utf8(String string){
 
 ////////////////////////////////
 
-function User_Input
-get_next_input(App *app, Event_Property use_flags, Event_Property abort_flags)
-{
-    User_Input in = {};
-    if (use_flags != 0)
-    {
-        for (;;)
-        {
-            in = get_next_input_raw(app);
-            if (in.abort)
-            {
-                break;
-            }
-            Event_Property event_flags = get_event_properties(&in.event);
-            if (event_flags & abort_flags)
-            {
-                in.abort = true;
-                break;
-            }
-            if (event_flags & use_flags)
-            {
-                break;
-            }
-        }
-    }
-    return(in);
-}
-
-////////////////////////////////
-
 Query_Bar_Group::Query_Bar_Group(App *app){
     this->app = app;
     this->view = get_active_view(app, Access_Always);
@@ -1597,11 +1565,12 @@ Query_Bar_Group::Query_Bar_Group(App *app, View_ID view){
 }
 
 Query_Bar_Group::~Query_Bar_Group(){
-    clear_all_query_bars(this->app, this->view);
+ clear_all_query_bars(this->app, this->view);
 }
 
 function b32
-query_user_general(App *app, Query_Bar *bar, b32 force_number, String init_string){
+query_user_general(App *app, Query_Bar *bar, b32 force_number, String init_string)
+{
     if (start_query_bar(app, bar, 0) == 0){
         return(false);
     }
@@ -1839,33 +1808,6 @@ get_view_line_height(App *app, View_ID view){
     return(metrics.line_height);
 }
 
-internal View_ID
-open_view(App *app, View_ID view_location, View_Split_Position position)
-{
-    View_ID result = 0;
-    if ( view_exists(app, view_location) )
-    {
-        Panel_ID panel_id = view_get_panel(app, view_location);
-        if (panel_id != 0)
-        {
-            Dimension split = ((position == ViewSplit_Left ||
-                                position == ViewSplit_Right) ?
-                               Dimension_X :
-                               Dimension_Y);
-            Side side = ((position == ViewSplit_Left || 
-                          position == ViewSplit_Top) ?
-                         Side_Min :
-                         Side_Max);
-            if ( panel_split(app, panel_id, split) )
-            {
-                Panel_ID new_panel_id = panel_get_child(app, panel_id, side);
-                result = panel_get_view(app, new_panel_id, Access_Always);
-            }
-        }
-    }
-    return(result);
-}
-
 function View_ID
 get_first_view_with_buffer(App *app, Buffer_ID buffer_id)
 {
@@ -2011,23 +1953,51 @@ view_look_at_region(App *app, View_ID view, Range_i64 range){
 function Buffer_ID
 get_buffer_next_looped(App *app, Buffer_ID buffer, Access_Flag access){
     buffer = get_buffer_next(app, buffer, access);
-    if (buffer == 0){
-        buffer = get_buffer_next(app, 0, access);
-    }
-    return(buffer);
+ if (buffer == 0){
+  buffer = get_buffer_next(app, 0, access);
+ }
+ return(buffer);
 }
 
 ////////////////////////////////
 
-function View_ID
-get_next_view_looped_all_panels(App *app, View_ID view_id, Access_Flag access)
+function b32
+view_is_passive(App *app, View_ID view_id)
 {
-    view_id = get_view_next(app, view_id, access);
-    if (view_id == 0)
-    {
-        view_id = get_view_next(app, 0, access);
-    }
-    return(view_id);
+ Managed_Scope scope = view_get_managed_scope(app, view_id);
+ b32 *is_passive = scope_attachment(app, scope, view_is_passive_loc, b32);
+ b32 result = false;
+ if (is_passive != 0){
+  result = *is_passive;
+ }
+ return(result);
+}
+
+function View_ID
+open_view(App *app, View_ID view_location, View_Split_Position position)
+{
+ View_ID result = 0;
+ if ( view_exists(app, view_location) )
+ {
+  Panel_ID panel_id = view_get_panel(app, view_location);
+  if (panel_id != 0)
+  {
+   Dimension split = ((position == ViewSplit_Left ||
+                       position == ViewSplit_Right) ?
+                      Dimension_X :
+                      Dimension_Y);
+   Side side = ((position == ViewSplit_Left || 
+                 position == ViewSplit_Top) ?
+                Side_Min :
+                Side_Max);
+   if ( panel_split(app, panel_id, split) )
+   {
+    Panel_ID new_panel_id = panel_get_child(app, panel_id, side);
+    result = panel_get_view(app, new_panel_id, Access_Always);
+   }
+  }
+ }
+ return(result);
 }
 
 function View_ID
@@ -2215,7 +2185,7 @@ read_entire_file_search_up_path(Arena *arena, String path, String filename)
         if (data.str) 
         {
             result.data = data;
-            result.filename = full_path;
+            result.name = full_path;
         }
     }
     return(result);
@@ -2254,11 +2224,12 @@ sort_pairs_by_key__quick(Sort_Pair_i32 *pairs, i32 first, i32 one_past_last){
 
 function void
 sort_pairs_by_key(Sort_Pair_i32 *pairs, i32 count){
-    sort_pairs_by_key__quick(pairs, 0, count);
+ sort_pairs_by_key__quick(pairs, 0, count);
 }
 
 function Range_i32_Array
-get_ranges_of_duplicate_keys(Arena *arena, i32 *keys, i32 stride, i32 count){
+get_ranges_of_duplicate_keys(Arena *arena, i32 *keys, i32 stride, i32 count)
+{
     Range_i32_Array result = {};
     result.ranges = push_array(arena, Range_i32, count);
     u8 *ptr = (u8*)keys;
@@ -2469,13 +2440,13 @@ get_nest_delimiter_kind(Token_Base_Kind kind, Find_Nest_Flag flags){
                 result = NestDelim_Close;
             }
         }break;
-        case TokenBaseKind_ParentheticalOpen:
+        case TokenBaseKind_ParenOpen:
         {
             if (HasFlag(flags, FindNest_Paren)){
                 result = NestDelim_Open;
             }
         }break;
-        case TokenBaseKind_ParentheticalClose:
+        case TokenBaseKind_ParenClose:
         {
             if (HasFlag(flags, FindNest_Paren)){
                 result = NestDelim_Close;
@@ -2502,10 +2473,10 @@ find_nest_side(App *app, Buffer_ID buffer, i64 pos,
     Managed_Scope scope = buffer_get_managed_scope(app, buffer);
     Token_Array *tokens = scope_attachment(app, scope, attachment_tokens, Token_Array);
     if (tokens != 0 && tokens->count > 0){
-        Token_Iterator_Array it = token_it_at_pos(0, tokens, pos);
+        Token_Iterator_Array it = tkarr_at_pos(0, tokens, pos);
         i32 level = 0;
         for (;;){
-            Token *token = token_it_read(&it);
+            Token *token = tkarr_read(&it);
             Nest_Delimiter_Kind token_delim = get_nest_delimiter_kind(token->kind, flags);
             
             if (level == 0 && token_delim == delim){
@@ -2520,10 +2491,10 @@ find_nest_side(App *app, Buffer_ID buffer, i64 pos,
             
             b32 good = false;
             if (scan == Scan_Forward){
-                good = token_it_inc(&it) != 0;
+                good = tkarr_inc(&it) != 0;
             }
             else{
-                good = token_it_dec(&it) != 0;
+                good = tkarr_dec(&it) != 0;
             }
             if (!good){
                 break;
@@ -2716,18 +2687,18 @@ kv_find_nest_side_paren(App *app, Token_Array *tokens, i64 pos,
   Range_i64 range = {};
   b32 nest_found = false;
   {// b32 result = find_nest_side(app, buffer, pos, flags, scan, delim, &range);
-    Token_Iterator_Array it = token_it_at_pos(0, tokens, pos);
+    Token_Iterator_Array it = tkarr_at_pos(0, tokens, pos);
     i32 level = 0;
     for (;;)
     {
-      Token *token = token_it_read(&it);
+      Token *token = tkarr_read(&it);
       Nest_Delimiter_Kind token_delim_kind = NestDelim_None;
       //
-      if (token->kind == TokenBaseKind_ParentheticalOpen)
+      if (token->kind == TokenBaseKind_ParenOpen)
       {
         token_delim_kind = NestDelim_Open;
       }
-      else if (token->kind == TokenBaseKind_ParentheticalClose)
+      else if (token->kind == TokenBaseKind_ParenClose)
       {
         token_delim_kind = NestDelim_Close;
       }
@@ -2748,14 +2719,14 @@ kv_find_nest_side_paren(App *app, Token_Array *tokens, i64 pos,
             
         if (scan == Scan_Forward)
         {
-          if (!token_it_inc(&it))
+          if (!tkarr_inc(&it))
           {
             break;
           }
         }
         else
         {
-          if (!token_it_dec(&it))
+          if (!tkarr_dec(&it))
           {
             break;
           }
@@ -2776,13 +2747,4 @@ inline void animate_next_frame(App *app)
  animate_in_n_milliseconds(app, 0);
 }
 
-internal get_token_it_on_current_line_return
-get_token_it_on_current_line(get_token_it_on_current_line_params)
-{
- i64 line_number = get_current_line_number(app);
- Token_Iterator_Array result = get_token_it_for_line(app, buffer, line_number);
- i64 max_pos = get_line_end_pos(app, buffer, line_number);
- *line_end_pos = max_pos;
- return result;
-}
-
+//-

@@ -4,12 +4,14 @@
 // TODO(kv): remember this file is processed by the meta-generator.
 //           particularly the command metadata is required for the code to compile (and it's depressing).
 #include "4coder_custom_include.cpp"
+
 #include "4coder_kv_debug.cpp"
 #include "4coder_fleury/4coder_fleury_kv.cpp"
 #include "4coder_fleury/4coder_fleury_calc.cpp"
 
 #include "4coder_vim/4coder_vim_include.h"
 
+#define ED_PARSER_BUFFER 1
 #include "4ed_kv_parser.cpp"
 #include "4ed_kv_game_.cpp"
 #include "4ed_fui.cpp"
@@ -383,7 +385,6 @@ kv_vim_bindings(App *app)
  
  //-NOTE: SUB_G
  BIND(N|MAP, kv_open_note_file,   SUB_G,   Key_Code_N);
- BIND(N|MAP, toggle_indicators,   SUB_G,   Key_Code_I);
  BIND(N|MAP, kv_handle_g_f,       SUB_G,   Key_Code_F);
  BIND(N|MAP, toggle_the_game,     SUB_G,   Key_Code_O);
  BIND(N|MAP, toggle_game_auxiliary_viewports,  SUB_G, S|Key_Code_O);
@@ -568,6 +569,7 @@ kv_vim_bindings(App *app)
  BIND(N|MAP,  kv_build_normal,               M|Key_Code_M);
  BIND(N|MAP,  kv_build_run_only,           C|M|Key_Code_M);
  BIND(N|MAP,  kv_build_full_rebuild,       S|M|Key_Code_M);
+ BIND(N|V|MAP,  replace_in_all_buffers,        Key_Code_F2);
  BIND(N|0|MAP,  open_build_script,             Key_Code_F3);
  BIND(N|0|MAP,  toggle_bottom_view_command,  M|Key_Code_Period);
  BIND(N|0|MAP,  toggle_bottom_view_command,  C|Key_Code_Period);
@@ -686,58 +688,56 @@ kv_tick(App *app, Frame_Info frame)
 function void 
 kv_custom_layer_init(App *app)
 {
-    default_framework_init(app);
-    set_all_default_hooks(app);
-    
-    vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(string_u8_litexpr("*scratch*")), 1.f, 1.f };
-    vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(string_u8_litexpr("todo.txt")),  1.f, 1.f };
-    vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Title]     = byp_apply_title;
-    vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Comment]   = byp_apply_comment;
-    vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_UnComment] = byp_apply_uncomment;
-    
-    vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param0] = {',', (Vim_Text_Object_Func *)byp_object_param};
-    vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param1] = {';', (Vim_Text_Object_Func *)byp_object_param};
-    vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel0] = {'_', (Vim_Text_Object_Func *)byp_object_camel};
-    vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel1] = {'-', (Vim_Text_Object_Func *)byp_object_camel};
-    kv_vim_init(app);
-    
-    set_custom_hook(app, HookID_SaveFile,                kv_file_save);
-    set_custom_hook(app, HookID_RenderCaller,            kv_render_caller);
-    set_custom_hook(app, HookID_WholeScreenRenderCaller, vim_draw_whole_screen);
-    //
-    set_custom_hook(app, HookID_Tick,             kv_tick);
-    set_custom_hook(app, HookID_NewFile,          kv_new_file);
-    set_custom_hook(app, HookID_BeginBuffer,      kv_begin_buffer);
-    set_custom_hook(app, HookID_BufferEditRange,  kv_buffer_edit_range);
-    set_custom_hook(app, HookID_ViewChangeBuffer, vim_view_change_buffer);
-    set_custom_hook(app, HookID_ViewEventHandler, kv_view_input_handler);
-    set_custom_hook(app, HookID_DeltaRule,        F4_DeltaRule_lite);
-    set_custom_hook_memory_size(app, HookID_DeltaRule, delta_ctx_size(sizeof(Vec2_f32)));
-    
-    Thread_Context *tctx = get_thread_context(app);
-    mapping_init(tctx, &framework_mapping);
-    kv_essential_mapping(&framework_mapping);
-    //
-    kvInitShiftedTable();
-    kvInitQuailTable(app);
-    //
-    kv_vim_bindings(app);
-    
-    // NOTE(rjf): Set up custom code index.
-    F4_Index_Initialize();
-    // NOTE(rjf): Register languages.
-    F4_RegisterLanguages();
-    
-    {// NOTE: Game stuff
-        Scratch_Block scratch(app);
-        // Export ed_api
-#define X(N) const_ed_api.N = N;
-        X_ED_API_FUNCTIONS(X)
-#undef X
-        String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-        GAME_DLL_PATH = pjoin(&global_permanent_arena, binary_dir, "game.dll");
-        b32 loaded;
-    }
+ default_framework_init(app);
+ set_all_default_hooks(app);
+ 
+ vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(string_u8_litexpr("*scratch*")), 1.f, 1.f };
+ vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(string_u8_litexpr("todo.txt")),  1.f, 1.f };
+ vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Title]     = byp_apply_title;
+ vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Comment]   = byp_apply_comment;
+ vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_UnComment] = byp_apply_uncomment;
+ 
+ vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param0] = {',', (Vim_Text_Object_Func *)byp_object_param};
+ vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param1] = {';', (Vim_Text_Object_Func *)byp_object_param};
+ vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel0] = {'_', (Vim_Text_Object_Func *)byp_object_camel};
+ vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel1] = {'-', (Vim_Text_Object_Func *)byp_object_camel};
+ kv_vim_init(app);
+ 
+ set_custom_hook(app, HookID_SaveFile,                kv_file_save);
+ set_custom_hook(app, HookID_RenderCaller,            kv_render_caller);
+ set_custom_hook(app, HookID_WholeScreenRenderCaller, vim_draw_whole_screen);
+ //
+ set_custom_hook(app, HookID_Tick,             kv_tick);
+ set_custom_hook(app, HookID_NewFile,          kv_new_file);
+ set_custom_hook(app, HookID_BeginBuffer,      kv_begin_buffer);
+ set_custom_hook(app, HookID_BufferEditRange,  kv_buffer_edit_range);
+ set_custom_hook(app, HookID_ViewChangeBuffer, vim_view_change_buffer);
+ set_custom_hook(app, HookID_ViewEventHandler, kv_view_input_handler);
+ set_custom_hook(app, HookID_DeltaRule,        F4_DeltaRule_lite);
+ set_custom_hook_memory_size(app, HookID_DeltaRule, delta_ctx_size(sizeof(Vec2_f32)));
+ 
+ Thread_Context *tctx = get_thread_context(app);
+ mapping_init(tctx, &framework_mapping);
+ kv_essential_mapping(&framework_mapping);
+ //
+ kvInitShiftedTable();
+ kvInitQuailTable(app);
+ //
+ kv_vim_bindings(app);
+ 
+ // NOTE(rjf): Set up custom code index.
+ F4_Index_Initialize();
+ // NOTE(rjf): Register languages.
+ F4_RegisterLanguages();
+ 
+ {// NOTE: Game stuff
+  Scratch_Block scratch(app);
+  // Export ed_api
+  ed_api_fill_vtable(&const_ed_api);
+  String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+  GAME_DLL_PATH = pjoin(&global_permanent_arena, binary_dir, "game.dll");
+  b32 loaded;
+ }
 }
 
 extern "C" void

@@ -12,13 +12,14 @@
 
 // Select animation: @set_movie_shot
 
+// NOTE: I guess this function could be here for faster update, idk
 void
 driver_update(Game_State *state)
 {
  {
   // NOTE ;update_game_config
   debug_frame_time_on      = fbool(0);
-  BEZIER_POLY_NSLICE       = fval(16);
+  bezier_poly_nslice       = fval(16);
   DEFAULT_NSLICE_PER_METER = fval(2.2988f) * 100.f;
  }
  
@@ -702,7 +703,7 @@ render_forearm(mat4i const&ot,
   else
   {
    draw(bez(in_b, fvec(V3(-0.0318f, 0.f, 0.f)),
-            fval2(0,0), near_palm_in),
+                 fval2(0,0), near_palm_in),
         lp(fval4i(4,3,1,1)));
   }
  }
@@ -814,7 +815,6 @@ render_forearm(mat4i const&ot,
 #undef export_
  return forearm_obj;
 }
-
 
 internal void
 render_character(Pose const&pose, Arena *scratch,
@@ -1268,7 +1268,7 @@ render_character(Pose const&pose, Arena *scratch,
      draw(brow_in_line, radii);
     }
     {
-     Bezier brow_out_line = bez(brow_mid, fval((Planar_Bezier{v2{0.f, 0.5549f}, v2{0.f, 0.4409f}, v3{0.f, 1.f, 0.f}})), brow_out);
+     Bezier brow_out_line = bez(brow_mid, (v2{0.f, 0.5549f}), (v2{0.f, 0.4409f}), brow_out, (v3{0.f, 1.f, 0.f}));
      v4 radii = fval4(0.25f, 0.8f, 0.8f, 0.25f);
      radii.v[0] = brow_joint_radius;
      draw(brow_out_line, radii);
@@ -2339,8 +2339,8 @@ render_movie(render_movie_params)
  i32 viewport_index = viewport_id - 1;
  b32 is_main_viewport = (viewport_id == 1);
  Viewport *viewport = &state->viewports[viewport_index];
- Arena *arena = &viewport->frame_arena;
- push_struct(arena, i32);  // NOTE: arena can't handle emptyness lol
+ Arena *arena = &viewport->render_arena;
+ Temp_Memory_Block render_temp(arena);
  
  i32 scale_down_pow2 = fval(0); // ;scale_down_slider
  macro_clamp_min(scale_down_pow2, 0);
@@ -2461,8 +2461,8 @@ render_movie(render_movie_params)
  };
  {
   auto &p = painter;
-  init(p.object_list,  arena, 64);
-  init(p.object_stack, arena, 16);
+  init_static(p.object_list,  arena, 64);
+  init_static(p.object_stack, arena, 16);
   p.object_list.push(Object{.name=strlit("world"), .transform=mat4i_identity});
   p.object_stack.push(0);
   p.view_vector_stack[painter.view_vector_count++] = v3{};
@@ -2508,11 +2508,11 @@ render_movie(render_movie_params)
   DEBUG_VALUE(draw_cycle_counter);
   DEBUG_VALUE(u32(bs_cycle_counter));
  }
-#endif
  
  render_reference_images(state->references_full_alpha);
  
  render_data(*state);
+#endif
  
  if(0)
  {

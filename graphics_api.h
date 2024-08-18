@@ -14,7 +14,7 @@
 
 #define XList(X)  \
     XListHelper(X, get_texture)  \
-    XListHelper(X, fill_texture)  \
+    XListHelper(X, fill_texture) \
 
 // typedef
 XList(XTypedef);

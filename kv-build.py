@@ -1,9 +1,14 @@
 #!/usr/bin/env python3 -u
 
 # NOTE: configuration #########################
-COMPILE_GAME_WITH_MSVC = 1
-TRACE_COMPILE_TIME     = 0
-DISABLE_GAME_DEBUG_INFO     = 0  # NOTE(kv): Not worth disabling with MSVC
+FORCE_META_BUILDS = 1
+full_build_components = {
+ "custom_api_gen": 1,
+ "skm_lexer_gen":  0,
+}
+COMPILE_GAME_WITH_MSVC   = 1
+TRACE_COMPILE_TIME       = 0
+DISABLE_GAME_DEBUG_INFO  = 0  # NOTE(kv): Not worth disabling with MSVC
 if TRACE_COMPILE_TIME:
     DISABLE_GAME_DEBUG_INFO = 1
 FORCE_INLINE_ON = 1
@@ -125,7 +130,9 @@ def symlink_force(src, dst):
     mkdir_p( os.path.dirname(dst) )
     os.symlink(src, dst)
 
-def run(command, update_env={}):
+script_failed = False
+
+def run(command, exit_on_failure=True, update_env={}):
     print(command)
     begin = time.time()
     env = os.environ.copy()
@@ -138,11 +145,16 @@ def run(command, update_env={}):
         print(process.stderr.decode("utf-8"))
 
     if process.returncode == 0:
+        # NOTE: run success
         end = time.time()
         if (end - begin) > 0.05:
             print(f'Time taken: {end - begin:.3f} seconds\n')
     else:
-        exit(1)
+        # NOTE: Run fail
+        global script_failed
+        script_failed = True
+        if exit_on_failure:
+            exit(1)
 
     return process
 
@@ -178,33 +190,40 @@ def autogen():
     rm_rf(BUILD_DIR)
     mkdir_p(BUILD_DIR)
     with pushd(BUILD_DIR):
-        # print(f"BUILD_DIR: {os.getcwd()}")
         INCLUDES=f'-I{CUSTOM} -I{CODE}'
+        # NOTE: We don't need optimization at all since compilers are so.darn.fast!
         OPTIMIZATION='-O0'
         SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={KV_SLOW}'
         arch="-m64"
-        opts=f"{WARNINGS} {SYMBOLS} {debug_flag} {INCLUDES} {OPTIMIZATION}"
+        compile_flags=f"{WARNINGS} {SYMBOLS} {debug_flag} {INCLUDES} {OPTIMIZATION} {CPP_VERSION}"
         preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
-    
-        print('Lexer: Generate (one-time thing)')
-        LEXER_GEN = pjoin(BUILD_DIR, f"lexer_gen{DOT_EXE}")
-        run(f'clang++ {pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp')} {arch} {opts} {debug_flag} {WARNINGS} {CPP_VERSION} {OPTIMIZATION} -o {LEXER_GEN}')
-        #
-        print('running lexer generator')
-        mkdir_p(f'{CODE_KV}/generated')
-        run(f'{LEXER_GEN} {CODE_KV}/generated')
+        
+        if full_build_components["custom_api_gen"]:
+            print('4coder API parser/generator')
+            run(f"clang++ {CODE}/meta_main.cpp -o ad_meta.exe {compile_flags}")
+            api_files = " ".join([f"{CODE}/4ed_api_implementation.cpp",
+                                  f"{CODE}/platform_win32/win32_4ed_functions.cpp",
+                                  f"{CODE}/custom/4coder_token.cpp",
+                                  f"{CODE}/game/framework_driver_shared.h",
+                                 ])
+            run(f"ad_meta.exe {api_files}")
+
+        if full_build_components["skm_lexer_gen"]:
+            print('Lexer: Generate (one-time thing)')
+            LEXER_GEN = f"lexer_gen{DOT_EXE}"
+            run(f'clang++ {pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp')} {arch} {compile_flags} {debug_flag} {WARNINGS} {OPTIMIZATION} -o {LEXER_GEN}')
+            #
+            print('running lexer generator')
+            mkdir_p(f'{CODE_KV}/generated')
+            run(f'{LEXER_GEN} {CODE_KV}/generated')
     
         meta_macros="-DMETA_PASS"
         print('preproc_file: Generate')
-        run(f'clang++ -I{CUSTOM} {meta_macros} {arch} {opts} {debug_flag} {CPP_VERSION} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
-        #
-        print('Meta-generator: Compile & Link')
-        run(f'ccache clang++ -c "{CUSTOM}/4coder_metadata_generator.cpp" -I"{CUSTOM}" {opts} {CPP_VERSION} -o "{BUILD_DIR}/metadata_generator.o"')
-        #
-        run(f'clang++ -I"{CUSTOM}" "{CUSTOM}/metadata_generator.o" -o "{BUILD_DIR}/metadata_generator{DOT_EXE}" -g')
-        #
-        print('Meta-generator: Run')
-        run(f'"{BUILD_DIR}/metadata_generator" -R "{CUSTOM}" {preproc_file}')
+        run(f'clang++ -I{CUSTOM} {meta_macros} {arch} {compile_flags} {debug_flag} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
+        
+        print('Meta-generator')
+        run(f'clang++ "{CUSTOM}/4coder_metadata_generator.cpp" -I"{CUSTOM}" {compile_flags} -o metadata_generator{DOT_EXE}')
+        run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
 
 script_begin = time.time()
 
@@ -214,10 +233,10 @@ try:
     os.chdir(f'{OUTDIR}')
     print(f'Workdir: {os.getcwd()}')
 
-    if DEBUG_MODE:
-        full_rebuild = args.full
+    if DEBUG_MODE and (not FORCE_META_BUILDS):
+        meta_builds = args.full
     else:
-        full_rebuild = True
+        meta_builds = True
 
     arch = "-m64"
     debug_flag="-g" if DEBUG_MODE else ""
@@ -246,7 +265,7 @@ try:
             # NOTE(kv): cleanup build dir (TODO: arrange our build output directory so we don't have to do manual cleaning crap)
             delete_all_pdb_files(OUTDIR)
 
-            if full_rebuild:  # do some generation business in the custom layer
+            if meta_builds:  # do some generation business in the custom layer
                 autogen()
 
             print('========Producing 4ed========')
@@ -259,12 +278,11 @@ try:
                 PLATFORM_CPP = f"{CODE}/platform_mac/mac_4ed.mm"
                 LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
             #
-            # NOTE: static_dbg equals "MTd (multi-threaded debug)"
-            # NOTE Add "-fms-runtime-lib=static_dbg" to call with debug crt
+            # NOTE Add "-fms-runtime-lib=dll_dbg" to call with debug crt
             run(f'ccache clang++ -c {PLATFORM_CPP} -o {BINARY_NAME}.o {INCLUDES} {COMPILE_FLAGS}')
             # NOTE: clang uses the non-debug CRT and then fails when linking with something that uses the debug CRT: https://stackoverflow.com/questions/41850296/link-dynamic-c-runtime-with-clang-windows
             USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
-            run(f'clang++ {BINARY_NAME}.o {LINKED_LIBS} -o {BINARY_NAME}{DOT_EXE} {debug_flag}')
+            run(f'clang++ {BINARY_NAME}.o {LINKED_LIBS} -o {BINARY_NAME}{DOT_EXE} {debug_flag}', exit_on_failure=False)
             # NOTE: shipping shaders
             if SHIP_MODE:
                 OPENGL_OUTDIR = pjoin(OUTDIR, "opengl")
@@ -295,7 +313,7 @@ try:
         finally:
             os.remove("game_dll.lock")
 
-        if full_rebuild:
+        if meta_builds:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")
             for outdir in [OUT_DEBUG]:
                 symlink_force(pjoin(CODE_KV, "config.4coder"),   pjoin(outdir, "config.4coder"))
@@ -305,6 +323,10 @@ try:
 
 except Exception as e:
     print(f'Error: {e}')
+    exit(1)
+
+if script_failed:
+    print(f"Script failed due to silent failure in the middle")
     exit(1)
 
 script_end = time.time()

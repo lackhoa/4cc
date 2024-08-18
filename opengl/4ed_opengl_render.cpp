@@ -306,7 +306,7 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
    if (is_game) { vertex = read_entire_file_cstring(arena, strlit(SHADER_DIR "vertex_shader.glsl")); }
    else         { vertex = ed_vertex_shader; }
    GLchar *array[] = { version_str, defines, header, vertex };
-   glShaderSource(vertex_shader, arlen(array), array, 0);
+   glShaderSource(vertex_shader, alen(array), array, 0);
    glCompileShader(vertex_shader);
   }
   
@@ -314,7 +314,7 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
   {
    char *geometry = read_entire_file_cstring(arena, strlit(SHADER_DIR "geometry_shader.glsl"));
    GLchar *array[] = { version_str, defines, header, geometry };
-   glShaderSource(geometry_shader, arlen(array), array, 0);
+   glShaderSource(geometry_shader, alen(array), array, 0);
    glCompileShader(geometry_shader);
   } 
   
@@ -323,7 +323,7 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
    if (is_game) { fragment = read_entire_file_cstring(arena, strlit(SHADER_DIR "fragment_shader.glsl")); }
    else         { fragment = ed_fragment_shader; }
    GLchar *array[] = { version_str, defines, header, fragment };
-   glShaderSource(fragment_shader, arlen(array), array, 0);
+   glShaderSource(fragment_shader, alen(array), array, 0);
    glCompileShader(fragment_shader);
   }
 #undef SHADER_DIR
@@ -372,8 +372,7 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
  return(program);
 }
 
-#define GLOffsetStruct(p,m) ((void*)(OffsetOfMemberStruct(p,m)))
-#define GLOffset(S,m)       ((void*)(gb_offset_of(S,m)))
+#define GLOffset(S,m)       ((void*)(offsetof(S,m)))
 
 internal b32
 ogl__is_uniform_active(GLuint program, char *name)
@@ -435,29 +434,30 @@ ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *view_transform)
  Render_Group *group = s->group;
  
  {// NOTE: Uniforms
-#define is_active(uniform)  ogl__is_uniform_active(program, #uniform)
-  if( is_active(uniform_view_transform) ) {
+#define ACTIVE(uniform)  ogl__is_uniform_active(program, #uniform)
+  if( ACTIVE(uniform_view_transform) ) {
    ogl__uniform_mat4(uniform_view_transform, view_transform);
   }
   if (program == ogl_program_image)
   {
    GLint image_texture_binding = 0;
-   if ( is_active(image_texture_binding) ) {
+   if ( ACTIVE(image_texture_binding) ) {
     glUniform1i(image_texture_binding, GL_TEXTURE0);
    }
   }
-  if( is_active(uniform_camera_axes) ) {
+  if( ACTIVE(uniform_camera_axes) ) {
    glUniformMatrix3fv(uniform_camera_axes, 1, GL_TRUE, ogl_cast_mat3(&s->camera_axes));
   }
-  if( is_active(uniform_object_transform) ) {
+  if( ACTIVE(uniform_object_transform) ) {
    //glUniformMatrix4fv(uniform_object_transform, 1, GL_TRUE, ogl_cast_mat4(s->object_transform));
   }
-  if( is_active(uniform_meter_to_pixel) ) {
+  if( ACTIVE(uniform_meter_to_pixel) ) {
    glUniform1f(uniform_meter_to_pixel, group->meter_to_pixel);
   }
-  if( is_active(uniform_overlay) ) {
+  if( ACTIVE(uniform_overlay) ) {
    glUniform1i(uniform_overlay, false);
   }
+#undef ACTIVE
  }
  
  ogl__vertex_attributes();

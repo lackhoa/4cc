@@ -73,7 +73,7 @@ function void fold_push(App *app, Buffer_ID buffer, Range_i64 range){
 	if(fold_list->fold_count+1 == fold_list->fold_cap){
 		Base_Allocator *allocator = managed_scope_allocator(app, scope);
 		fold_list->fold_cap = i32(1.5*fold_list->fold_cap);
-		String new_data = base_allocate(allocator, fold_list->fold_cap);
+		String new_data = base_allocate2(allocator, fold_list->fold_cap);
 		if(new_data.size == 0){ return; }
 		block_copy(new_data.str, fold_list->folds, fold_list->fold_count*sizeof(Fold_Params));
 		base_free(allocator, fold_list->folds);
@@ -291,7 +291,7 @@ function void fold_begin_buffer_inner(App *app, Buffer_ID buffer_id){
 	Base_Allocator *allocator = managed_scope_allocator(app, scope);
 	Fold_List *fold_list = scope_attachment(app, scope, buffer_folds, Fold_List);
 	if(fold_list == 0){ return; }
-	String fold_data = base_allocate(allocator, 10*sizeof(Fold_Params));
+	String fold_data = base_allocate2(allocator, 10*sizeof(Fold_Params));
 	fold_list->folds = (Fold_Params *)fold_data.str;
 	fold_list->fold_cap = 10;
 	fold_list->fold_count = 0;

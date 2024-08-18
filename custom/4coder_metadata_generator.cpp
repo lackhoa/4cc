@@ -365,7 +365,7 @@ static b32
 require_open_parenthese(Reader *reader, i64 *opt_pos_out){
     b32 success = false;
     Token token = get_token(reader);
-    if (token.kind == TokenBaseKind_ParentheticalOpen){
+    if (token.kind == TokenBaseKind_ParenOpen){
         success = true;
         if (opt_pos_out != 0){
             *opt_pos_out = token.pos;
@@ -386,7 +386,7 @@ static b32
 require_close_parenthese(Reader *reader, i64 *opt_pos_out){
     b32 success = false;
     Token token = get_token(reader);
-    if (token.kind == TokenBaseKind_ParentheticalClose){
+    if (token.kind == TokenBaseKind_ParenClose){
         success = true;
         if (opt_pos_out != 0){
             *opt_pos_out = token.pos;

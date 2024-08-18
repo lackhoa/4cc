@@ -99,62 +99,62 @@ kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String needle)
 internal i64
 kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String needle)
 {
-    i64 result = -1;
-    
-    Scratch_Block temp(app);
-    String8_Array splits = kv_string_split_wildcards(temp, needle);
-    if ( !splits.count ) { return result; }
-    
-    while( pos > -1 )
+ i64 result = -1;
+ 
+ Scratch_Block temp(app);
+ String8_Array splits = kv_string_split_wildcards(temp, needle);
+ if ( !splits.count ) { return result; }
+ 
+ while( pos > -1 )
+ {
+  i64 original_pos = pos;
+  String_Match first_match;
+  {
+   String last_word = splits.strings[splits.count-1];
+   b32 case_sensitive = string_has_uppercase(last_word);
+   first_match = buffer_seek_string(app, buffer, last_word, Scan_Backward, pos, case_sensitive);
+  }
+  if( !first_match.buffer ) break;
+  
+  i64 match_start = first_match.range.max;
+  i64 line_start   = get_line_start_pos_from_pos(app, buffer, match_start);
+  pos = first_match.range.start;
+  b32 matched = true;
+  for (i64 index = splits.count-2;
+       index >= 0;
+       index--)
+  {
+   String word = splits.strings[index];
+   b32 case_sensitive = string_has_uppercase(word);
+   String_Match match = buffer_seek_string(app, buffer, word, Scan_Backward, pos, case_sensitive);
+   if ( match.buffer)
+   {
+    if ( match.range.min >= line_start )
     {
-        i64 original_pos = pos;
-        String_Match first_match;
-        {
-            String last_word = splits.strings[splits.count-1];
-            b32 case_sensitive = string_has_uppercase(last_word);
-            first_match = buffer_seek_string(app, buffer, last_word, Scan_Backward, pos, case_sensitive);
-        }
-        if( !first_match.buffer ) break;
-        
-        i64 match_start = first_match.range.max;
-        i64 line_start   = get_line_start_pos_from_pos(app, buffer, match_start);
-        pos = first_match.range.start;
-        b32 matched = true;
-        for (i64 index = splits.count-2;
-             index >= 0;
-             index--)
-        {
-            String word = splits.strings[index];
-            b32 case_sensitive = string_has_uppercase(word);
-            String_Match match = buffer_seek_string(app, buffer, word, Scan_Backward, pos, case_sensitive);
-            if ( match.buffer)
-            {
-                if ( match.range.min >= line_start )
-                {
-                    pos = match.range.start;
-                }
-                else
-                {
-                    pos = get_line_end_pos_from_pos(app, buffer, match.range.start);
-                    matched = false;
-                    break;
-                }
-            }
-            else
-            {
-                return result;
-            }
-        }
-        if ( matched )
-        {
-            result = pos;
-            break;
-        }
-        
-        assert_defend(pos < original_pos, return result;);
+     pos = match.range.start;
     }
-    
+    else
+    {
+     pos = get_line_end_pos_from_pos(app, buffer, match.range.start);
+     matched = false;
+     break;
+    }
+   }
+   else
+   {
     return result;
+   }
+  }
+  if ( matched )
+  {
+   result = pos;
+   break;
+  }
+  
+  assert_defend(pos < original_pos, return result;);
+ }
+ 
+ return result;
 }
 
 internal void
@@ -348,13 +348,13 @@ CUSTOM_DOC("Queries the user for a string and lists all case-insensitive substri
     list_all_locations__generic_query(app, ListAllLocationsFlag_MatchSubstring);
 }
 
-internal void 
+function void 
 list_all_locations_of_identifier(App *app)
 {
     list_all_locations__generic_identifier(app, ListAllLocationsFlag_CaseSensitive);
 }
 
-internal Range_i64
+function Range_i64
 get_word_complete_needle_range(App *app, Buffer_ID buffer, i64 pos)
 {
     Range_i64 needle_range = {};
@@ -367,7 +367,7 @@ get_word_complete_needle_range(App *app, Buffer_ID buffer, i64 pos)
     return(needle_range);
 }
 
-internal void
+function void
 string_match_list_enclose_all(App *app, String_Match_List list,
                               Enclose_Function *enclose){
     for (String_Match *node = list.first;
@@ -421,7 +421,7 @@ word_complete_list_extend_from_raw(App *app, Arena *arena, String_Match_List *ma
         String s = push_buffer_range(app, scratch, node->buffer, node->range);
         Table_Lookup lookup = table_lookup(used_table, s);
         if (!lookup.found_match){
-            String data = push_string_copy(arena, s);
+            String data = push_string(arena, s);
             table_insert(used_table, data, 1);
             string_list_push(arena, list, data);
         }

@@ -7,7 +7,7 @@
  *
  */
 
-internal b32
+function b32
 system_file_can_be_made(Arena *scratch, u8 *filename){
     HANDLE file = CreateFile_utf8(scratch, filename, FILE_APPEND_DATA, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     b32 result = false;
@@ -38,7 +38,7 @@ struct Memory_Annotation_Tracker{
 global Memory_Annotation_Tracker memory_tracker = {};
 global CRITICAL_SECTION memory_tracker_mutex;
 
-internal void*
+function void*
 win32_memory_allocate_extended(void *base, u64 size, String location)
 {
  u64 adjusted_size = size + 64;
@@ -53,7 +53,7 @@ win32_memory_allocate_extended(void *base, u64 size, String location)
  return(node + 1);
 }
 
-internal void
+function void
 win32_memory_free_extended(void *ptr){
     Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)ptr;
     node -= 1;
@@ -64,12 +64,12 @@ win32_memory_free_extended(void *ptr){
     VirtualFree(node, 0, MEM_RELEASE);
 }
 
-internal
+function
 system_memory_allocate_sig(){
     return(win32_memory_allocate_extended(0, size, location));
 }
 
-internal
+function
 system_memory_set_protection_sig(){
     DWORD protect = 0;
     
@@ -92,12 +92,12 @@ system_memory_set_protection_sig(){
     return(result);
 }
 
-internal
+function
 system_memory_free_sig(){
     win32_memory_free_extended(ptr);
 }
 
-internal
+function
 system_memory_annotation_sig(){
     Memory_Annotation result = {};
     EnterCriticalSection(&memory_tracker_mutex);
@@ -126,22 +126,23 @@ GetUserProfileDirectoryW(HANDLE  hToken, LPWSTR  lpProfileDir, LPDWORD lpcchSize
 
 global String8 w32_override_user_directory = {};
 
-internal String8 get_home_directory(Arena *arena)
+function String8
+get_home_directory(Arena *arena)
 {
     HANDLE current_process_token = GetCurrentProcessToken();
     DWORD size = 0;
     GetUserProfileDirectoryW(current_process_token, 0, &size);
     u16 *buffer_u16 = push_array(arena, u16, size);
-    if (GetUserProfileDirectoryW(current_process_token, (WCHAR*)buffer_u16, &size))
-    {
-        String8 result = string_u8_from_string_u16(arena, SCu16(buffer_u16, size), StringFill_NullTerminate).string;
-        return result;
-    }
-    else return {};
+ if (GetUserProfileDirectoryW(current_process_token, (WCHAR*)buffer_u16, &size))
+ {
+  String8 result = string_u8_from_string_u16(arena, SCu16(buffer_u16, size), StringFill_NullTerminate).string;
+  return result;
+ }
+ else return {};
 }
 
-internal system_get_path_return
-system_get_path(system_get_path_params)
+api(ed) function String
+system_get_path(Arena* arena, System_Path_Code path_code)
 {
     String8 result = {};
     switch (path_code)
@@ -191,7 +192,7 @@ system_get_path(system_get_path_params)
 // Files
 //
 
-internal String
+function String
 win32_remove_unc_prefix_characters(String path){
     if (string_match(string_prefix(path, 7), string_u8_litexpr("\\\\?\\UNC"))){
 #if 0
@@ -213,7 +214,7 @@ win32_remove_unc_prefix_characters(String path){
 }
 
 
-internal String8 
+function String8 
 expand_tilde(Arena *arena, String8 path)
 {
   String8 result = path;
@@ -221,114 +222,114 @@ expand_tilde(Arena *arena, String8 path)
   u8 char1 = string_get_character(path, 1);
   if (char0 == '~' && (char1 == '/' || char1 == '\\'))
   {
-    String8 home = get_home_directory(arena);
-    result = push_stringfz(arena, "%.*s\\%.*s", string_expand(home), (i1)path.size-2, path.str+2);
-  }
-  return result;
+  String8 home = get_home_directory(arena);
+  result = push_stringfz(arena, "%.*s\\%.*s", string_expand(home), (i1)path.size-2, path.str+2);
+ }
+ return result;
 }
 
 // String system_get_canonical(Arena* arena, String name)
-internal system_get_canonical_sig()
+function system_get_canonical_sig()
 {
-  String8 result = {};
-  b32 correct_format = false;
-  u8 char0 = string_get_character(name, 0);
-  u8 char1 = string_get_character(name, 1);
-  if (char0 == '~' && (char1 == '/' || char1 == '\\'))
-  { //NOTE(kv): expand tilde
-    correct_format = true;
-    name = expand_tilde(arena, name);
+ String8 result = {};
+ b32 correct_format = false;
+ u8 char0 = string_get_character(name, 0);
+ u8 char1 = string_get_character(name, 1);
+ if (char0 == '~' && (char1 == '/' || char1 == '\\'))
+ { //NOTE(kv): expand tilde
+  correct_format = true;
+  name = expand_tilde(arena, name);
+ }
+ else if ((character_is_alpha(char0) && (char1 == ':')) ||
+          string_match(string_prefix(name, 2), SCu8("\\\\")))
+ {// NOTE(kv): normal Windows path with drive letter
+  correct_format = true;
+ }
+ 
+ if (correct_format)
+ {
+  u8 *cname = push_array(arena, u8, name.size + 1);
+  block_copy(cname, name.str, name.size);
+  cname[name.size] = 0;
+  
+  HANDLE file = CreateFile_utf8(arena, cname, GENERIC_READ, 0, 0, OPEN_EXISTING,
+                                FILE_ATTRIBUTE_NORMAL, 0);
+  
+  if (file != INVALID_HANDLE_VALUE){
+   DWORD capacity = GetFinalPathNameByHandle_utf8(arena, file, 0, 0, 0);
+   u8 *buffer = push_array(arena, u8, capacity);
+   DWORD length = GetFinalPathNameByHandle_utf8(arena, file, buffer, capacity, 0);
+   if (length > 0 && buffer[length - 1] == 0){
+    length -= 1;
+   }
+   result = SCu8(buffer, length);
+   result = win32_remove_unc_prefix_characters(result);
+   CloseHandle(file);
   }
-  else if ((character_is_alpha(char0) && (char1 == ':')) ||
-           string_match(string_prefix(name, 2), SCu8("\\\\")))
-  {// NOTE(kv): normal Windows path with drive letter
-    correct_format = true;
-  }
-
-  if (correct_format)
-  {
-    u8 *cname = push_array(arena, u8, name.size + 1);
-    block_copy(cname, name.str, name.size);
-    cname[name.size] = 0;
-
-    HANDLE file = CreateFile_utf8(arena, cname, GENERIC_READ, 0, 0, OPEN_EXISTING,
-                                  FILE_ATTRIBUTE_NORMAL, 0);
-    
-    if (file != INVALID_HANDLE_VALUE){
-      DWORD capacity = GetFinalPathNameByHandle_utf8(arena, file, 0, 0, 0);
-      u8 *buffer = push_array(arena, u8, capacity);
-      DWORD length = GetFinalPathNameByHandle_utf8(arena, file, buffer, capacity, 0);
-      if (length > 0 && buffer[length - 1] == 0){
-        length -= 1;
-      }
-      result = SCu8(buffer, length);
-      result = win32_remove_unc_prefix_characters(result);
-      CloseHandle(file);
+  else{
+   String8 path = string_remove_front_of_path(name);
+   String8 front = path_filename(name);
+   
+   u8 *c_path = push_array(arena, u8, path.size + 1);
+   block_copy(c_path, path.str, path.size);
+   c_path[path.size] = 0;
+   
+   HANDLE dir = CreateFile_utf8(arena, c_path, FILE_LIST_DIRECTORY,
+                                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0,
+                                OPEN_EXISTING,
+                                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, 0);
+   
+   if (dir != INVALID_HANDLE_VALUE){
+    DWORD capacity = GetFinalPathNameByHandle_utf8(arena, dir, 0, 0, 0);
+    u8 *buffer = push_array(arena, u8, capacity + front.size + 1);
+    DWORD length = GetFinalPathNameByHandle_utf8(arena, dir, buffer, capacity, 0);
+    if (length > 0 && buffer[length - 1] == 0){
+     length -= 1;
     }
-    else{
-      String8 path = string_remove_front_of_path(name);
-      String8 front = path_filename(name);
-      
-      u8 *c_path = push_array(arena, u8, path.size + 1);
-      block_copy(c_path, path.str, path.size);
-      c_path[path.size] = 0;
-      
-      HANDLE dir = CreateFile_utf8(arena, c_path, FILE_LIST_DIRECTORY,
-                                   FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0,
-                                   OPEN_EXISTING,
-                                   FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, 0);
-      
-      if (dir != INVALID_HANDLE_VALUE){
-        DWORD capacity = GetFinalPathNameByHandle_utf8(arena, dir, 0, 0, 0);
-        u8 *buffer = push_array(arena, u8, capacity + front.size + 1);
-        DWORD length = GetFinalPathNameByHandle_utf8(arena, dir, buffer, capacity, 0);
-        if (length > 0 && buffer[length - 1] == 0){
-          length -= 1;
-        }
-        buffer[length] = '\\';
-        length += 1;
-        block_copy(buffer + length, front.str, front.size);
-        length += (DWORD)front.size;
-        result = SCu8(buffer, length);
-        result = win32_remove_unc_prefix_characters(result);
-        CloseHandle(dir);
-      }
-    }
+    buffer[length] = '\\';
+    length += 1;
+    block_copy(buffer + length, front.str, front.size);
+    length += (DWORD)front.size;
+    result = SCu8(buffer, length);
+    result = win32_remove_unc_prefix_characters(result);
+    CloseHandle(dir);
+   }
   }
-  return(result);
+ }
+ return(result);
 }
 
-internal File_Attribute_Flag
+function File_Attribute_Flag
 win32_convert_file_attribute_flags(DWORD dwFileAttributes){
     File_Attribute_Flag result = {};
     MovFlag(dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY, result, FileAttribute_IsDirectory);
     return(result);
 }
 
-internal u64
+function u64
 win32_u64_from_u32_u32(u32 hi, u32 lo){
     return( (((u64)hi) << 32) | ((u64)lo) );
 }
 
-internal u64
+function u64
 win32_u64_from_filetime(FILETIME time){
     return(win32_u64_from_u32_u32(time.dwHighDateTime, time.dwLowDateTime));
 }
 
-internal File_Attributes
+function File_Attributes
 win32_file_attributes_from_HANDLE(HANDLE file)
 {
     BY_HANDLE_FILE_INFORMATION info = {};
-    GetFileInformationByHandle(file, &info);
-    File_Attributes result = {};
-    result.size = win32_u64_from_u32_u32(info.nFileSizeHigh, info.nFileSizeLow);
-    result.last_write_time = win32_u64_from_filetime(info.ftLastWriteTime);
-    result.flags = win32_convert_file_attribute_flags(info.dwFileAttributes);
-    return(result);
+ GetFileInformationByHandle(file, &info);
+ File_Attributes result = {};
+ result.size = win32_u64_from_u32_u32(info.nFileSizeHigh, info.nFileSizeLow);
+ result.last_write_time = win32_u64_from_filetime(info.ftLastWriteTime);
+ result.flags = win32_convert_file_attribute_flags(info.dwFileAttributes);
+ return(result);
 }
 
-internal system_get_file_list_return 
-system_get_file_list(system_get_file_list_params)
+api(ed) function File_List
+system_get_file_list(Arena* arena, String directory)
 {
     File_List result = {};
     String search_pattern = {};
@@ -388,7 +389,7 @@ system_get_file_list(system_get_file_list_params)
     return(result);
 }
 
-internal
+function
 system_quick_file_attributes_sig()
 {
     WIN32_FILE_ATTRIBUTE_DATA info = {};
@@ -402,7 +403,7 @@ system_quick_file_attributes_sig()
     return(result);
 }
 
-internal
+function
 system_load_handle_sig(){
     b32 result = false;
     HANDLE file = CreateFile_utf8(scratch, (u8*)filename, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
@@ -413,13 +414,13 @@ system_load_handle_sig(){
     return(result);
 }
 
-internal
+function
 system_load_attributes_sig(){
     HANDLE file = *(HANDLE*)(&handle);
     return(win32_file_attributes_from_HANDLE(file));
 }
 
-internal
+function
 system_load_file_sig(){
     HANDLE file = *(HANDLE*)(&handle);
     DWORD read_size = 0;
@@ -432,7 +433,7 @@ system_load_file_sig(){
     return(result);
 }
 
-internal
+function
 system_load_close_sig(){
     b32 result = false;
     HANDLE file = *(HANDLE*)(&handle);
@@ -442,7 +443,7 @@ system_load_close_sig(){
     return(result);
 }
 
-internal
+function
 system_save_file_sig(){
     File_Attributes result = {};
     
@@ -477,7 +478,7 @@ system_save_file_sig(){
 
 ////////////////////////////////
 
-internal ARGB_Color
+function ARGB_Color
 swap_r_and_b(ARGB_Color a){
     ARGB_Color result = a & 0xff00ff00;
     result |= ((a >> 16) & 0xff);
@@ -485,7 +486,7 @@ swap_r_and_b(ARGB_Color a){
     return(result);
 }
 
-internal ARGB_Color
+function ARGB_Color
 int_color_from_colorref(COLORREF ref, ARGB_Color alpha_from){
     ARGB_Color rgb = swap_r_and_b(ref & 0xffffff);
     ARGB_Color result = ((0xff000000 & alpha_from) | rgb);
@@ -494,7 +495,7 @@ int_color_from_colorref(COLORREF ref, ARGB_Color alpha_from){
 
 #include "Commdlg.h"
 
-internal UINT_PTR CALLBACK
+function UINT_PTR CALLBACK
 color_picker_hook(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 {
     UINT_PTR result = 0;
@@ -565,7 +566,7 @@ color_picker_hook(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 }
 
 // TODO(allen): review
-internal DWORD WINAPI
+function DWORD WINAPI
 color_picker_thread(LPVOID Param)
 {
     Color_Picker *picker = (Color_Picker*)Param;
@@ -603,7 +604,7 @@ color_picker_thread(LPVOID Param)
     return(0);
 }
 
-internal
+function
 system_open_color_picker_sig(){
     // TODO(allen): review
     // NOTE(casey): Because this is going to be used by a semi-permanent thread, we need to
@@ -616,7 +617,7 @@ system_open_color_picker_sig(){
     CloseHandle(ThreadHandle);
 }
 
-internal
+function
 system_get_screen_scale_factor_sig(){
     return(win32vars.screen_scale_factor);
 }

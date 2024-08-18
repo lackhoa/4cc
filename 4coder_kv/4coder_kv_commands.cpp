@@ -23,12 +23,12 @@ VIM_COMMAND_SIG(kv_shift_character)
     {
         table_read(&shifted_version_of_characters, (u64)current_character, &replacement_char);
     }
-    //
-    if (replacement_char) {
-        buffer_replace_range(app, buffer, Ii64(pos, pos+1), SCu8((u8 *)&replacement_char, 1));
-    }
-    
-    move_right(app);
+ //
+ if (replacement_char) {
+  buffer_replace_range(app, buffer, Ii64(pos, pos+1), SCu8((u8 *)&replacement_char, 1));
+ }
+ 
+ move_right(app);
 }
 
 VIM_REQUEST_SIG(byp_apply_comment){
@@ -120,13 +120,13 @@ CUSTOM_DOC("Resets face size to default")
 
 force_inline b32 kv_is_group_opener(Token *token)
 {
-  return (token->kind == TokenBaseKind_ParentheticalOpen ||
+  return (token->kind == TokenBaseKind_ParenOpen ||
           token->kind == TokenBaseKind_ScopeOpen);
 }
 
 force_inline b32 kv_is_group_closer(Token *token)
 {
-  return (token->kind == TokenBaseKind_ParentheticalClose ||
+  return (token->kind == TokenBaseKind_ParenClose ||
           token->kind == TokenBaseKind_ScopeClose);
 }
 
@@ -223,7 +223,7 @@ VIM_COMMAND_SIG(kv_sexpr_down)
   
   do
   {
-    Token *token = token_it_read(&token_it);
+    Token *token = tkarr_read(&token_it);
     if (kv_is_group_opener(token))
     {
       kv_goto_token(app, token);
@@ -231,10 +231,10 @@ VIM_COMMAND_SIG(kv_sexpr_down)
    break;
   }
  }
- while ( token_it_inc(&token_it) );
+ while ( tkarr_inc(&token_it) );
 }
 
-internal b32
+function b32
 if_preprocessor_movement(App *app, Scan_Direction scan_direction)
 {
  b32 result = false;
@@ -242,33 +242,34 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction)
  Token_Iterator_Array token_it = token_it_at_cursor(app);
  if (token_it.tokens)
  {
-  Quick_Parser p_value = qp_new(app, buffer, &token_it, scan_direction);
-  Quick_Parser *p = &p_value;
+  Scratch_Block scratch(app);
+  Ed_Parser p_value = make_ep_from_buffer(app, buffer, token_it, scan_direction);
+  Ed_Parser *p = &p_value;
   i1 nest_level = 0;
-  if (!qp_maybe_preprocessor(p, str8lit("else")) &&
-      !qp_maybe_preprocessor(p, str8lit("elif")))
+  if (!ep_maybe_preprocessor(p, str8lit("else")) &&
+      !ep_maybe_preprocessor(p, str8lit("elif")))
   {
    if (scan_direction == Scan_Forward)
    {
-    p->ok = (qp_maybe_preprocessor(p, str8lit("if")) ||
-             qp_maybe_preprocessor(p, str8lit("ifdef")) ||
-             qp_maybe_preprocessor(p, str8lit("ifndef")));
+    p->set_ok(ep_maybe_preprocessor(p, str8lit("if")) ||
+              ep_maybe_preprocessor(p, str8lit("ifdef")) ||
+              ep_maybe_preprocessor(p, str8lit("ifndef")));
    }
    else
    {
-    qp_eat_preprocessor(p, str8lit("endif"));
+    ep_eat_preprocessor(p, str8lit("endif"));
    }
   }
-  while ( p->ok )
+  while ( p->ok_ )
   {
-   b32 is_ifs = (qp_test_preprocessor(p, str8lit("if")) ||
-                 qp_test_preprocessor(p, str8lit("ifdef")) ||
-                 qp_test_preprocessor(p, str8lit("ifndef")));
+   b32 is_ifs = (ep_test_preprocessor(p, str8lit("if")) ||
+                 ep_test_preprocessor(p, str8lit("ifdef")) ||
+                 ep_test_preprocessor(p, str8lit("ifndef")));
    
-   b32 is_endif = qp_test_preprocessor(p, str8lit("endif"));
+   b32 is_endif = ep_test_preprocessor(p, str8lit("endif"));
    
-   b32 is_el  = (qp_test_preprocessor(p, str8lit("else")) ||
-                 qp_test_preprocessor(p, str8lit("elif")));
+   b32 is_el  = (ep_test_preprocessor(p, str8lit("else")) ||
+                 ep_test_preprocessor(p, str8lit("elif")));
    
    if (is_ifs)
    {
@@ -288,11 +289,11 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction)
     break;
    }
    
-   qp_eat_token(p);
+   ep_eat_token(p);
   }
-  if ( p->ok )
+  if ( p->ok_ )
   {
-   kv_goto_token(app, qp_get_token(p));
+   kv_goto_token(app, ep_get_token(p));
    result = true;
   }
  }
@@ -312,7 +313,7 @@ kv_sexpr_right(App *app)
    i32 nest = 0;
    do
    {
-    Token *token = token_it_read(&token_it);
+    Token *token = tkarr_read(&token_it);
     if (token->kind == TokenBaseKind_LiteralString)
     {// NOTE: goto end of string
      if (nest == 0)
@@ -336,7 +337,7 @@ kv_sexpr_right(App *app)
       break;
      }
     }
-   } while ( token_it_inc(&token_it) );
+   } while ( tkarr_inc(&token_it) );
   }
  }
 }
@@ -346,8 +347,8 @@ kv_sexpr_left(App *app)
 {
  if ( if_preprocessor_movement(app, Scan_Backward) == 0 )
  {
-  Token_Iterator_Array token_it = token_it_at_cursor_delta(app, -1);
-  Token *token = token_it_read(&token_it);
+  Token_Iterator_Array token_it = token_it_at_cursor(app, -1);
+  Token *token = tkarr_read(&token_it);
   if (token)
   {
    View_ID view = get_active_view(app, Access_ReadVisible);
@@ -355,7 +356,7 @@ kv_sexpr_left(App *app)
    i32 nest = 0;
    do
    {
-    token = token_it_read(&token_it);
+    token = tkarr_read(&token_it);
     if (token->kind == TokenBaseKind_LiteralString)
     {
      if (nest == 0)
@@ -378,17 +379,39 @@ kv_sexpr_left(App *app)
     {
      nest += 1;
     }
-   } while ( token_it_dec(&token_it) );
+   } while ( tkarr_dec(&token_it) );
   }
  }
 }
 
 VIM_COMMAND_SIG(kv_sexpr_end)
 {
-  kv_sexpr_up(app);
-  kv_sexpr_right(app);
-  move_left(app);
-  move_left(app);
+ kv_sexpr_up(app);
+ kv_sexpr_right(app);
+ move_left(app);
+ move_left(app);
+}
+
+function Range_i64
+view_get_selected_range(App *app, View_ID view)
+{
+ i64 cursor = view_get_cursor_pos(app, view);
+ i64 mark   = view_get_mark_pos(app, view);
+ Range_i64 range = Ii64(cursor, mark);
+ range.max += 1;
+ return range;
+}
+
+inline void 
+buffer_delete_pos(App *app, Buffer_ID buffer, i64 min)
+{
+ buffer_replace_range(app, buffer, Ii64(min, min+1), empty_string);
+}
+
+inline void
+buffer_insert_pos(App *app, Buffer_ID buffer, i64 pos, String string)
+{
+ buffer_replace_range(app, buffer, Ii64(pos), string);
 }
 
 internal void 
@@ -422,54 +445,24 @@ kv_surround_brace_special(App *app)
     
     range.min = get_line_start_pos_from_pos(app, buffer, range.min);
     range.max = get_line_end_pos_from_pos  (app, buffer, range.max);
-    buffer_insert_pos(app, buffer, range.max, /*{*/str8lit("\n}"));
-    buffer_insert_pos(app, buffer, range.min, str8lit("{\n")/*}*/);
-    
-    auto_indent_buffer(app, buffer, Ii64(range.min, range.max+4));
-    
-    if (vim_state.mode == VIM_Visual)
-        vim_normal_mode(app);
+ buffer_insert_pos(app, buffer, range.max, /*{*/str8lit("\n}"));
+ buffer_insert_pos(app, buffer, range.min, str8lit("{\n")/*}*/);
+ 
+ auto_indent_buffer(app, buffer, Ii64(range.min, range.max+4));
+ 
+ if (vim_state.mode == VIM_Visual)
+  vim_normal_mode(app);
 }
 
 CUSTOM_COMMAND_SIG(kv_reopen_with_confirmation)
 CUSTOM_DOC("Like reopen, but asks for confirmation")
 {
-    Query_Bar_Group group(app);
-    Query_Bar bar = {};
-    bar.prompt = SCu8("Reload current buffer from disk?");
-    if (start_query_bar(app, & bar, 0))
-    {
-      b32 cancelled = false;
-      for (;!cancelled;){
-        User_Input in = get_next_input(app, EventProperty_AnyKey, 0);
-        if (in.abort){
-          cancelled = true;
-        }
-        else{
-          switch (in.event.key.code){
-            case Key_Code_Y:
-            {
-              View_ID view = get_active_view(app, Access_ReadVisible);
-              Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-              buffer_reopen(app, buffer, 0);
-              cancelled = true;
-            }break;
-                        
-            case Key_Code_Shift:
-            case Key_Code_Control:
-            case Key_Code_Alt:
-            case Key_Code_Command:
-            case Key_Code_CapsLock:
-            {}break;
-                        
-            default:
-            {
-              cancelled = true;
-            }break;
-          }
-        }
-      }
-    }
+ if (get_confirmation_from_user(app, strlit("Actually revert?")))
+ {
+  View_ID view = get_active_view(app, Access_ReadVisible);
+  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+  buffer_reopen(app, buffer, 0);
+ }
 }
 
 VIM_COMMAND_SIG(kv_surround_paren)          {kv_surround_with(app, "(", ")");}
@@ -845,7 +838,7 @@ CUSTOM_DOC("switch to my note file")
  set_buffer_named(app, strlit("~/notes/note.skm"));
 }
 
-CUSTOM_COMMAND_SIG(game)
+CUSTOM_COMMAND_SIG(switch_to_game_panel)
 CUSTOM_DOC("switch to game panel")
 {
  set_buffer_named(app, GAME_BUFFER_NAMES[0]);
@@ -924,7 +917,7 @@ kv_get_current_char(App *app)
 }
 
 // CUSTOM_DOC("adapted from list_all_locations for fuzzy search, if cursor at identifier then search for that instead")
-internal void 
+function void 
 kv_list_all_locations(App *app)
 {
  b32 at_identifier = false;
@@ -945,8 +938,7 @@ kv_list_all_locations(App *app)
   Scratch_Block temp(app);
   if (is_visual)
   {// note select range
-   GET_VIEW_AND_BUFFER;
-   needle_str = push_buffer_selected_range(app, temp, buffer);
+   needle_str = get_selected_string(app, temp);
    vim_normal_mode(app);
   }
   else
@@ -1166,8 +1158,8 @@ maybe_handle_fui(App *app, Buffer_ID buffer)
   // TODO: I still the handling is very wonky, idk what else to do.
   load_latest_game_code(app, 0);
   
-  Game_API *game = &global_game_code;
-  if ( game->is_valid )
+  Game_API *game = get_game_code();
+  if ( game )
   {
    global_game_dll_lock = true;
    Scratch_Block scratch(app);
@@ -1222,24 +1214,17 @@ CUSTOM_DOC("")
 #endif
 }
 
-internal void
+function void
 handle_tab_normal_mode(App *app)
 {
-#if 0
- if ( global_game_on_readonly )
+ b32 try_indent = auto_indent_line_at_cursor(app);
+ if ( !try_indent )
  {
   change_active_primary_view(app);
  }
- else
- {
-  auto_indent_line_at_cursor(app);
- }
-#else
- change_active_primary_view(app);
-#endif
 }
 
-internal void
+function void
 handle_space_command(App *app)
 {
 #if 0
@@ -1255,28 +1240,51 @@ handle_space_command(App *app)
 }
 
 internal void
-switch_to_mouse_panel(App *app)
-{
- i2 mouse = get_mouse_state(app).p;
- for (View_ID view = get_view_next(app, 0, Access_Always);
-      view != 0;
-      view = get_view_next(app, view, Access_Always))
- {
-  //@mouse_panel_code
-  rect2 rect = view_get_screen_rect(app, view);
-  if ( rect_contains_point(rect, V2(mouse)) )
-  {
-   view_set_active(app, view);
-   break;
-  }
- }
-}
-
-internal void
 kv_handle_left_click(App *app)
 {
  click_set_cursor_and_mark(app);
  switch_to_mouse_panel(app);
+}
+
+CUSTOM_COMMAND_SIG(replace_in_all_buffers)
+CUSTOM_DOC("Replace (in all editable buffers)")
+{
+ global_history_edit_group_begin(app);
+ Scratch_Block scratch(app);
+ 
+ b32 ok = true;
+ Query_Bar_Group group(app);
+ String_Pair pair;
+ b32 is_visual = (vim_state.mode == VIM_Visual);
+ if (is_visual)
+ {
+  pair.a = get_selected_string(app, scratch);
+  Query_Bar query = make_query_bar(scratch, "Replace selected with: ");
+  ok = query_user_string(app, &query);
+  pair.b = query.string;
+  if (ok) { pair.valid = true; }
+ }
+ else
+ {
+  pair = query_user_replace_pair(app, scratch);
+  if (!pair.valid) { ok = false; }
+ }
+ 
+ if (ok)
+ {
+  for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
+       buffer != 0;
+       buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
+  {
+   Range_i64 range = buffer_range(app, buffer);
+   replace_in_range(app, buffer, range, pair.a, pair.b);
+  }
+ }
+ 
+ if(is_visual){
+  vim_normal_mode(app);
+ }
+ global_history_edit_group_end(app);
 }
 
 
