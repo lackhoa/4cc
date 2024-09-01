@@ -580,7 +580,7 @@ color_picker_thread(LPVOID Param)
     
     CHOOSECOLORW win32_params = {};
     win32_params.lStructSize = sizeof(win32_params);
-    win32_params.hInstance = win32vars.window_handle[0];
+    win32_params.hInstance = win32vars.window_handles[0];
     win32_params.rgbResult = swap_r_and_b(color) & 0xffffff;
     win32_params.lpCustColors = custom_colors;
     win32_params.Flags = CC_RGBINIT | CC_FULLOPEN | CC_ANYCOLOR | CC_ENABLEHOOK;

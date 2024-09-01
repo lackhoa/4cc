@@ -12,7 +12,7 @@
 internal String8
 string_from_filename(Editing_File_Name *name)
 {
-    return(SCu8(name->name_space, name->name_size));
+ return(SCu8(name->name_space, name->name_size));
 }
 
 ////////////////////////////////
@@ -46,67 +46,72 @@ file_edit_positions_pop(Editing_File *file){
     }
     else{
         edit_pos = file->state.edit_pos_most_recent;
-    }
-    return(edit_pos);
+ }
+ return(edit_pos);
 }
 
 ////////////////////////////////
 
 internal Face*
 file_get_face(Models *models, Editing_File *file){
-    return(font_set_face_from_id(&models->font_set, file->settings.face_id));
+ return(font_set_face_from_id(&models->font_set, file->settings.face_id));
 }
 
 internal Access_Flag
-file_get_access_flags(Editing_File *file){
-    Access_Flag flags = Access_Read|Access_Visible;
-    if (!file->settings.read_only){
-        flags |= Access_Write;
-    }
-    return(flags);
+file_get_access_flags(Editing_File *file)
+{
+ Access_Flag flags = Access_Read|Access_Visible;
+ if (!file->settings.read_only) {
+  flags |= Access_Write;
+ }
+ return(flags);
 }
 
 internal b32
 file_needs_save(Editing_File *file){
     b32 result = false;
-    if (HasFlag(file->state.dirty, DirtyState_UnsavedChanges)){
-        result = true;
-    }
-    return(result);
+ if (HasFlag(file->state.dirty, DirtyState_UnsavedChanges)){
+  result = true;
+ }
+ return(result);
 }
 
 internal b32
-file_can_save(Editing_File *file){
-    b32 result = false;
-    if (HasFlag(file->state.dirty, DirtyState_UnsavedChanges) ||
-        HasFlag(file->state.dirty, DirtyState_UnloadedChanges)){
-        result = true;
-    }
-    return(result);
+file_can_save(Editing_File *file)
+{
+ b32 result = false;
+ if (HasFlag(file->state.dirty, DirtyState_UnsavedChanges) ||
+     HasFlag(file->state.dirty, DirtyState_UnloadedChanges)){
+  result = true;
+ }
+ return(result);
 }
 
 internal void
-file_set_unimportant(Editing_File *file, b32 val){
-    if (val)
-    {
-        file->state.dirty = DirtyState_UpToDate;
-    }
-    file->settings.unimportant = (b8)(val);
+file_set_unimportant(Editing_File *file, b32 val)
+{
+ if (val)
+ {
+  file->state.dirty = DirtyState_UpToDate;
+ }
+ file->settings.unimportant = (b8)(val);
 }
 
 internal void
-file_add_dirty_flag(Editing_File *file, Dirty_State state){
-    if (!file->settings.unimportant){
-        file->state.dirty |= state;
-    }
-    else{
-        file->state.dirty = DirtyState_UpToDate;
-    }
+file_add_dirty_flag(Editing_File *file, Dirty_State state)
+{
+ if (!file->settings.unimportant){
+  file->state.dirty |= state;
+ }
+ else{
+  file->state.dirty = DirtyState_UpToDate;
+ }
 }
 
 internal void
-file_clear_dirty_flags(Editing_File *file){
-    file->state.dirty = DirtyState_UpToDate;
+file_clear_dirty_flags(Editing_File *file)
+{
+ file->state.dirty = DirtyState_UpToDate;
 }
 
 ////////////////////////////////
@@ -277,9 +282,6 @@ file_get_managed_scope(Editing_File *file){
 
 ////////////////////////////////
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 internal Layout_Item_List
 file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
@@ -322,7 +324,6 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
     
     return(result);
 }
-#pragma clang diagnostic pop
 
 internal void
 file_clear_layout_cache(Editing_File *file){

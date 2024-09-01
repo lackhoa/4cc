@@ -12,6 +12,7 @@ api(custom) function i32 get_buffer_count(App* app);
 api(custom) function Buffer_ID get_buffer_next(App* app, Buffer_ID buffer_id, Access_Flag access);
 api(custom) function Buffer_ID get_buffer_by_name(App* app, String8 name, Access_Flag access);
 api(custom) function Buffer_ID get_buffer_by_filename(App* app, String filename, Access_Flag access);
+api(custom) function b32 is_buffer_limited_edit(App* app, Buffer_ID buffer_id);
 api(custom) function b32 buffer_read_range(App* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
 api(custom) function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
 api(custom) function b32 buffer_batch_edit(App* app, Buffer_ID buffer_id, Batch_Edit* batch);

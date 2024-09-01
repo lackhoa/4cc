@@ -91,8 +91,6 @@ vim_block_copy(App *app, View_ID view, Buffer_ID buffer, Range_i64 range, Vim_Re
 }
 
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-compare"
 
 function void
 vim_block_paste(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
@@ -103,7 +101,7 @@ vim_block_paste(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 
 	i64 line_min = get_line_number_from_pos(app, buffer, cursor_pos);
 	i64 line_max = line_min-1;
-	foreach(i,reg->data.size){ line_max += reg->data.str[i] == '\n'; }
+	foreach(i,(i1)reg->data.size){ line_max += reg->data.str[i] == '\n'; }
 
 	// TODO(BYP): Still doesn't handle empty lines gracefully
 	Range_i64 range = Ii64(cursor_pos, buffer_compute_cursor(app, buffer, seek_line_col(line_max, 0)).pos);
@@ -139,8 +137,6 @@ vim_block_paste(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 
 	vim_default_register();
 }
-#pragma clang diagnostic pop
-
 function void
 vim_block_edit(App *app, View_ID view, Buffer_ID buffer, Range_i64 range){
 	Vim_Params *params = &vim_state.params;

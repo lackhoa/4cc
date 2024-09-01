@@ -35,6 +35,8 @@
 #define EXTERN_C_BEGIN extern "C" {
 #define EXTERN_C_END   }
 
+
+
 // NOTE: These header files are supposed to be in the same directory as this file.
 #if COMPILER_LLVM
 #pragma clang diagnostic push
@@ -280,10 +282,10 @@ struct bit_scan_result
 inline bit_scan_result
 findLeastSignificantSetBit(u32 mask)
 {
-    bit_scan_result result = {};
-    
+ bit_scan_result result = {};
+ 
 #if COMPILER_MSVC
-    result.found = _BitScanForward((unsigned long *)&result.index, mask);
+ result.found = _BitScanForward((unsigned long *)&result.index, mask);
 #elif COMPILER_LLVM
     if (mask != 0)
     {
@@ -503,11 +505,11 @@ b = temp; \
 
 inline void *kv_xmalloc(size_t size) {
   void *ptr = malloc(size);
-  if (!ptr) {
-    perror("kv_xmalloc failed");
-    exit(1);
-  }
-  return ptr;
+ if (!ptr) {
+  perror("kv_xmalloc failed");
+  exit(1);
+ }
+ return ptr;
 }
 
 #define breakable_block for (i32 __kv_breakable_block__=0; __kv_breakable_block__ == 0; __kv_breakable_block__++)
@@ -580,7 +582,7 @@ v2::operator[](i32 index)
 
 inline v2 v2_all(v1 input)
 {
-    return v2{input, input};
+ return v2{input, input};
 }
 
 inline bool
@@ -1757,7 +1759,7 @@ enum{
 #define local_const  static const
 #define global_const static const  // NOTE(kv): Pretty useful you wanna eliminate globals, these aren't problematic
 
-#define ArrayCount(a) ((sizeof(a))/(sizeof(*a)))
+#define ArrayCount(a) i32((sizeof(a))/(sizeof(*a)))
 
 // TODO(kv): temporary
 #define ArrayCountSigned(a)  (isize)ArrayCount(a)
@@ -1838,8 +1840,6 @@ enum{
 #define AddFlag(fi,fl) ((fi)|=(fl))
 #define RemFlag(fi,fl) ((fi)&=(~(fl)))
 #define MovFlag(fi1,fl1,fi2,fl2) ((HasFlag(fi1,fl1))?(AddFlag(fi2,fl2)):(fi2))
-
-#define Swap(t,a,b) do { t glue(hidden_temp_,__LINE__) = a; a = b; b = glue(hidden_temp_,__LINE__); } while(0)
 
 #define div_round_up_positive_(n,d) (n + d - 1)/d
 #define div_round_up_positive(n,d) (div_round_up_positive_((n),(d)))
@@ -2116,13 +2116,13 @@ union Range_i32{
     i32 max;
   };
   struct{
-    i32 start;
-    i32 end;
-  };
-  struct{
-    i32 first;
-    i32 one_past_last;
-  };
+  i32 start;
+  i32 end;
+ };
+ struct{
+  i32 first;
+  i32 one_past_last;
+ };
 };
 union Range_i64{
   struct{
@@ -2166,7 +2166,6 @@ union Range_f32 {
   f32 one_past_last;
  };
 };
-typedef Range_f32 range2;
 
 struct Range_i32_Array{
   Range_i32 *ranges;
@@ -3501,8 +3500,8 @@ range_distance(Range_f32 a, Range_f32 b){
         }
         else{
             result = a.min - b.max;
-        }
-    }
+  }
+ }
  return(result);
 }
 
@@ -3675,15 +3674,9 @@ base_free(Base_Allocator *allocator, void *ptr)
     a.free(a.userdata, ptr);
    }break;
    
-   case Allocator_Arena:
-   {
-    //noop
-   }break;
+   case Allocator_Arena:  { /*noop*/ } break;
    
-   case Allocator_Malloc:
-   {
-    free(ptr);
-   }break;
+   case Allocator_Malloc: { free(ptr); } break;
    
    invalid_default_case;
   } 
@@ -4690,7 +4683,7 @@ struct arrayof
   return result;
  }
  //
- inline T&push2()
+ inline T &push2()
  {
   set_count(count+1);
   return last();
@@ -4708,7 +4701,7 @@ struct arrayof
 
 template<class T>
 inline void
-init_static(arrayof<T> &array, Arena *arena, i32 cap, b32 zero=false)
+init_static(arrayof<T> &array, Arena *arena, i32 cap=0, b32 zero=false)
 {
  array = {
   .items      = push_array(arena, T, cap, zero),
@@ -4738,7 +4731,27 @@ init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0)
  array.set_cap_min(initial_size);
 }
 
+#define X_Basic_Types(X) \
+X(v1) \
+X(v2) \
+X(v3) \
+X(v4) \
+X(i1) \
+X(i2) \
+X(i3) \
+X(i4) \
+X(String) \
 
+enum Basic_Type
+{
+ Basic_Type_None = 0,
+#define X(T) Basic_Type_##T,
+ X_Basic_Types(X)
+#undef X
+ Basic_Type_Count,
+};
+
+#if !AD_IS_DRIVER
 template<class T>
 function T *
 push_unique(arrayof<T> &array, T const&item)
@@ -4760,26 +4773,6 @@ push_unique(arrayof<T> &array, T const&item)
 }
 
 //~
-#define X_Basic_Types(X) \
-X(v1) \
-X(v2) \
-X(v3) \
-X(v4) \
-X(i1) \
-X(i2) \
-X(i3) \
-X(i4) \
-X(String) \
-
-enum Basic_Type
-{
- Basic_Type_None = 0,
-#define X(T) Basic_Type_##T,
- X_Basic_Types(X)
-#undef X
- Basic_Type_Count,
-};
-
 struct Type_Info;
 struct Struct_Member
 {
@@ -4827,7 +4820,7 @@ get_basic_type_size(Basic_Type type)
 
 //~
 
-#if !AD_IS_DRIVER
+
 
 force_inline u32
 AtomicAddU32AndReturnOriginal(u32 volatile *Value, u32 Addend)
@@ -5200,7 +5193,10 @@ enum Printer_Type
  Printer_Type_None,
  Printer_Type_Arena,
  Printer_Type_FILE,
+ Printer_Type_Generic,
 };
+
+typedef void Print_Function(void *userdata, char *format, va_list args);
 
 struct Printer
 {
@@ -5209,11 +5205,16 @@ struct Printer
  {
   Arena Arena;
   FILE *FILE;
+  struct
+  {
+   void *userdata;
+   Print_Function *print_function;
+  };
  };
 };
 
 inline Printer
-make_printer(Arena *arena, int cap)
+make_printer_arena(Arena *arena, int cap)
 {
  Printer result = {
   .type  = Printer_Type_Arena,
@@ -5223,7 +5224,7 @@ make_printer(Arena *arena, int cap)
 }
 
 inline Printer
-make_printer(FILE *file)
+make_printer_file(FILE *file)
 {
  Printer result = {
   .type = Printer_Type_FILE,
@@ -5263,57 +5264,44 @@ printer_delete(Printer &p)
 #define printn8(p,x,...)     print(p,x); printn7(p,__VA_ARGS__);
 #define printn9(p,x,...)     print(p,x); printn8(p,__VA_ARGS__);
 
-//-NOTE overloaded print functions
-inline void
-print(Printer &p, const char *cstring)
-{// NOTE: This function is fantastically redundant! Thanks C++!
+//-NOTE Base print function overloads
+// TODO(kv): This is awfully redundant!
+function void
+printer_printf(Printer &p, char *format, ...)
+{
+ va_list args;
+ va_start(args, format);
  switch(p.type)
  {
   case Printer_Type_Arena:
   {
-   push_string(&p.Arena, cstring);
+   push_stringfv(&p.Arena, format, args, false);
   }break;
+  
   case Printer_Type_FILE:
   {
-   fprintf(p.FILE, "%s", cstring);
+   vfprintf(p.FILE, format, args);
   }break;
+  
+  case Printer_Type_Generic:
+  {
+   p.print_function(p.userdata, format, args);
+  }break;
+  
   invalid_default_case;
  }
+ va_end(args);
 }
 
-inline void
-print(Printer &p, String string)
-{
- switch(p.type)
- {
-  case Printer_Type_Arena:
-  {
-   push_string(&p.Arena, string);
-  }break;
-  case Printer_Type_FILE:
-  {
-   fprintf(p.FILE, "%.*s", string_expand(string));
-  }break;
-  invalid_default_case;
- }
+inline void print(Printer &p, const char *cstring) { printer_printf(p, "%s", cstring); }
+inline void print(Printer &p, String string) {
+ printer_printf(p, "%.*s", string_expand(string));
 }
-
-inline void
-print(Printer &p, i1 integer)
-{
- switch(p.type)
- {
-  case Printer_Type_Arena:
-  {
-   push_stringf(&p.Arena, "%d", integer);
-  }break;
-  case Printer_Type_FILE:
-  {
-   fprintf(p.FILE, "%d", integer);
-  }break;
-  invalid_default_case;
- }
-}
+inline void print(Printer &p, char c)  { printer_printf(p, "%c", c); }
+inline void print(Printer &p, i1 d)    { printer_printf(p, "%d", d); }
+inline void print(Printer &p, u32 u)   { printer_printf(p, "%u", u); }
+inline void print(Printer &p, i64 ld)  { printer_printf(p, "%ld", ld); }
+inline void print(Printer &p, u64 lu)  { printer_printf(p, "%lu", lu); }
 
 // NOTE(kv): This is an absolutely ridiculous hack
 template <class T>
@@ -5426,19 +5414,6 @@ print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
    }
    if (wrapped) { print(p, ")"); }
   }break;
-  
-#if 0
-  case Type_Planar_Bezier:
-  {
-   Planar_Bezier *value = (Planar_Bezier *)value0;
-   
-   begin_struct(p, "Planar_Bezier");
-   print_field(p, v2, value, d0);
-   print_field(p, v2, value, d3);
-   print_field(p, v3, value, unit_y);
-   end_struct(p);
-  }break;
-#endif
   
   invalid_default_case;
  }
@@ -5620,5 +5595,7 @@ struct File_Name_Data
 };
 
 #define introspect(...)
+#define meta_tag(...)
+
 
 //~EOF

@@ -118,7 +118,7 @@ VIM_REQUEST_SIG(vim_apply_auto_indent){
 VIM_REQUEST_SIG(vim_apply_toggle_case){
 	Scratch_Block scratch(app);
 	String string = push_buffer_range(app, scratch, buffer, range);
-	foreach(i, string.size){
+	foreach(i, (i1)string.size){
 		string.str[i] = character_toggle_case(string.str[i]);
 	}
 	buffer_replace_range(app, buffer, range, string);
@@ -334,9 +334,9 @@ function void vim_append_keycode(Key_Code code){
 		string_concat_character(&vim_keystroke_text, '>');
 	}
 #else
-	if(code & Key_Mod_Ctl){ string_concat_character(&vim_keystroke_text, '^'); }
-	if(code & Key_Mod_Alt){ string_concat_character(&vim_keystroke_text, '~'); }
-	i1 index = (code & bitmask_8) + ((code & Key_Mod_Sft) != 0)*Key_Code_COUNT;
+	if(code & (u32)Key_Mod_Ctl){ string_concat_character(&vim_keystroke_text, '^'); }
+	if(code & (u32)Key_Mod_Alt){ string_concat_character(&vim_keystroke_text, '~'); }
+	i1 index = (code & bitmask_8) + ((code & (u32)Key_Mod_Sft) != 0)*(u32)Key_Code_COUNT;
 	string_concat(&vim_keystroke_text, SCu8(keycode_lut[index]));
 #endif
 }

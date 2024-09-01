@@ -9,11 +9,6 @@
 
 // TOP
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
-#pragma clang diagnostic ignored "-Wsign-compare"
-
 internal void
 managed_ids_init(Base_Allocator *allocator, Managed_ID_Set *set){
     set->arena = make_arena(allocator, KB(4), 8);
@@ -228,7 +223,7 @@ lifetime__free_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Key *key, Li
         for (Lifetime_Key_Ref_Node *node = object->key_node_first;
              node != 0;
              node = node->next){
-            i1 one_past_last = clamp_max(ArrayCount(node->keys), object->key_count - key_i);
+            i1 one_past_last = clamp_max((i1)ArrayCount(node->keys), object->key_count - key_i);
             for (i1 j = 0; j < one_past_last; j += 1){
                 if (node->keys[j] == key){
                     delete_point_node = node;
@@ -320,7 +315,7 @@ lifetime__object_free_all_keys(Lifetime_Allocator *lifetime_allocator, Lifetime_
     for (Lifetime_Key_Ref_Node *node = lifetime_object->key_node_first;
          node != 0;
          node = node->next){
-        i1 one_past_last = clamp_max(ArrayCount(node->keys), lifetime_object->key_count - key_i);
+        i1 one_past_last = clamp_max((i1)ArrayCount(node->keys), lifetime_object->key_count - key_i);
         for (i1 i = 0; i < one_past_last; i += 1){
             lifetime__free_key(lifetime_allocator, node->keys[i], lifetime_object);
         }
@@ -339,7 +334,7 @@ lifetime__object_clear_all_keys(Lifetime_Allocator *lifetime_allocator, Lifetime
     for (Lifetime_Key_Ref_Node *node = lifetime_object->key_node_first;
          node != 0;
          node = node->next){
-        i1 one_past_last = clamp_max(ArrayCount(node->keys), lifetime_object->key_count - key_i);
+        i1 one_past_last = clamp_max((i1)ArrayCount(node->keys), lifetime_object->key_count - key_i);
         Lifetime_Key **key_ptr = node->keys;
         for (i1 i = 0; i < one_past_last; i += 1, key_ptr += 1){
             dynamic_workspace_clear_contents(&(*key_ptr)->dynamic_workspace);
@@ -369,11 +364,11 @@ lifetime_sort_object_set__part(Lifetime_Object **ptr_array, i1 first, i1 one_pas
     for (i1 i = first; i < pivot_index; i += 1){
         Lifetime_Object *object = ptr_array[i];
         if (object < pivot){
-            Swap(Lifetime_Object*, ptr_array[i], ptr_array[j]);
+            macro_swap(ptr_array[i], ptr_array[j]);
             j += 1;
         }
     }
-    Swap(Lifetime_Object*, ptr_array[j], ptr_array[pivot_index]);
+    macro_swap(ptr_array[j], ptr_array[pivot_index]);
     return(j);
 }
 
@@ -532,6 +527,5 @@ managed_object_free(Dynamic_Workspace *workspace, Managed_Object object){
     return(result);
 }
 
-#pragma clang diagnostic pop
 
 // BOTTOM

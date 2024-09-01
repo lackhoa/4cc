@@ -4,13 +4,13 @@
 #include "4coder_vimrc.h"
 
 global Vim_State vim_state;
-global Table_u64_u64 vim_maps[VIM_MODE_COUNT*VIM_SUBMODE_COUNT];
+global Table_u64_u64 vim_maps[(i1)VIM_MODE_COUNT*(i1)VIM_SUBMODE_COUNT];
 global Vim_Registers vim_registers;
 
 global Range_i64 vim_macros[26 + 26];
 
-global Vim_Apply_Request* vim_request_vtable[VIM_REQUEST_COUNT + VIM_ADDITIONAL_REQUESTS];
-global Vim_Text_Object vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + VIM_ADDITIONAL_TEXT_OBJECTS];
+global Vim_Apply_Request* vim_request_vtable[(i1)VIM_REQUEST_COUNT + (i1)VIM_ADDITIONAL_REQUESTS];
+global Vim_Text_Object vim_text_object_vtable[(i1)VIM_TEXT_OBJECT_COUNT + (i1)VIM_ADDITIONAL_TEXT_OBJECTS];
 
 global Vim_Global_Mark vim_global_marks[26];
 

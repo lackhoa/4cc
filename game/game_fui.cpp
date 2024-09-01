@@ -315,7 +315,7 @@ fui_push_slider_value(Arena *arena, Fui_Slider *slider)
  b32 wrapped = fui_is_wrapped_slider(at_string);
  Basic_Type type = slider->type;
  i32 cap = 128;
- Printer printer = make_printer(arena, cap);
+ Printer printer = make_printer_arena(arena, cap);
  print_code(printer, type, value0, wrapped);
  String result = printer_get_string(printer);
  return result;
@@ -334,7 +334,6 @@ fui_push_active_slider_value(fui_push_active_slider_value_params)
  }
  return result;
 }
-
 
 function i64
 fui_at_slider_p(App *app, Buffer_ID buffer, Token_Iterator_Array *it_out)

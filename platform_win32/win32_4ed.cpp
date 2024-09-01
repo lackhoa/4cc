@@ -9,6 +9,11 @@
 
 // TOP
 
+#define IMGUI_USER_CONFIG "ad_imgui_config.h"
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_win32.h"
+#include "imgui/backends/imgui_impl_opengl3.h"
+
 #include "kv.h"
 #include "4ed_base.h"
 
@@ -64,12 +69,22 @@
 
 #define FPS 60
 global_const v1 frame_seconds  = (1.f / v1(FPS));
-global_const v1 frame_useconds = 1e6 * frame_seconds;
-global_const v1 frame_nseconds = 1e9 * frame_seconds;
+global_const v1 frame_useconds = v1(1e6 * frame_seconds);
+global_const v1 frame_nseconds = v1(1e9 * frame_seconds);
 
 global b32 log_os_enabled = false;
 #define log_os(...) \
-Stmnt( if (log_os_enabled){ fprintf(stdout, __VA_ARGS__); fflush(stdout); } )
+Stmnt( if (log_os_enabled) { fprintf(stdout, __VA_ARGS__); fflush(stdout); } )
+
+function void
+win32_log(char *string)
+{
+ if (log_os_enabled)
+ {
+  OutputDebugStringA(string);
+  OutputDebugStringA("\n");
+ }
+}
 
 //////////////////////////////
 
@@ -186,7 +201,7 @@ struct Win32_Vars
  Arena clip_post_arena;
  String clip_post;
  
- HWND window_handle[WINDOW_COUNT];
+ HWND window_handles[WINDOW_COUNT];
  HDC device_contexts[WINDOW_COUNT];  // NOTE(kv): We don't have too many windows, so just keep the DC.
  HGLRC opengl_context;
  f32 screen_scale_factor;
@@ -317,14 +332,14 @@ system_get_proc(SYSTEM_GET_PROC_PARAMS)
 internal void
 system_schedule_step(u32 code)
 {
-    PostMessage(win32vars.window_handle[0], WM_4coder_ANIMATE, code, 0);
+    PostMessage(win32vars.window_handles[0], WM_4coder_ANIMATE, code, 0);
 }
 
 ////////////////////////////////
 
 internal void
 win32_toggle_fullscreen(){
-    HWND win = win32vars.window_handle[0];
+    HWND win = win32vars.window_handles[0];
     DWORD style = GetWindowLongW(win, GWL_STYLE);
     b32 is_full = ((style & WS_OVERLAPPEDWINDOW) == 0);
     if (!is_full){
@@ -393,7 +408,7 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
     
     String8 result = {};
     
-    if (OpenClipboard(win32vars.window_handle[0]))
+    if (OpenClipboard(win32vars.window_handles[0]))
     {
         b32 got_result = false;
         if (!got_result)
@@ -433,7 +448,7 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
 internal void
 win32_post_clipboard(Arena *scratch, char *text, i32 len)
 {
-    if ( OpenClipboard(win32vars.window_handle[0]) )
+    if ( OpenClipboard(win32vars.window_handles[0]) )
     {
         if (!EmptyClipboard())
         {
@@ -530,7 +545,7 @@ system_get_clipboard_catch_all_sig(){
 internal
 system_cli_call_sig()
 {
-    Assert(sizeof(Plat_Handle) >= sizeof(HANDLE));
+    static_assert(sizeof(Plat_Handle) >= sizeof(HANDLE));
     
     char cmd[] = "c:\\windows\\system32\\cmd.exe";
     char *env_variables = 0;
@@ -608,7 +623,7 @@ struct CLI_Loop_Control{
 
 internal
 system_cli_begin_update_sig(){
-    Assert(sizeof(cli->scratch_space) >= sizeof(CLI_Loop_Control));
+    static_assert(sizeof(cli->scratch_space) >= sizeof(CLI_Loop_Control));
     CLI_Loop_Control *loop = (CLI_Loop_Control*)cli->scratch_space;
     loop->remaining_amount = 0;
 }
@@ -1009,7 +1024,7 @@ internal
 system_wake_up_timer_release_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(handle);
     if (object->kind == Win32ObjectKind_Timer){
-        KillTimer(win32vars.window_handle[0], object->timer.id);
+        KillTimer(win32vars.window_handles[0], object->timer.id);
         win32_free_object(object);
     }
 }
@@ -1018,7 +1033,7 @@ internal
 system_wake_up_timer_set_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(handle);
     if (object->kind == Win32ObjectKind_Timer){
-        object->timer.id = SetTimer(win32vars.window_handle[0], object->timer.id, time_milliseconds, 0);
+        object->timer.id = SetTimer(win32vars.window_handles[0], object->timer.id, time_milliseconds, 0);
     }
 }
 
@@ -1159,10 +1174,10 @@ system_condition_variable_wait_sig(){
 
 internal
 system_condition_variable_signal_sig(){
-    Win32_Object *object = (Win32_Object*)handle_type_ptr(cv);
-    if (object->kind == Win32ObjectKind_CV){
-        WakeConditionVariable(&object->cv);
-    }
+ Win32_Object *object = (Win32_Object*)handle_type_ptr(cv);
+ if (object->kind == Win32ObjectKind_CV){
+  WakeConditionVariable(&object->cv);
+ }
 }
 
 internal
@@ -1175,320 +1190,380 @@ system_condition_variable_free_sig(){
 
 ////////////////////////////////
 
+// NOTE(kv): Read "imgui_impl_win32.h" for why this is here
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-
-// NOTE: This is WndProc
+// NOTE: This is WndProc: the Win32 message handler
 internal LRESULT CALLBACK
 win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
  LRESULT result = 0;
- Scratch_Block scratch(win32vars.tctx);
- 
- i32 window_index = 0;
- for_i32(index,0,WINDOW_COUNT)
- {
-  if (hwnd == win32vars.window_handle[index])
-  {
-   window_index = index;
-   break;
-  }
+ if ( ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam) )
+ {// NOTE: imgui told us to not handle this event
+  result = true;
  }
- b32 is_main_window =   window_index == 0;
- 
- switch (uMsg)
+ else
  {
-  case WM_MENUCHAR:
-  {
-   result = (MNC_CLOSE << 16);
-  }break;
+  b32 call_default_handler = false;
+  b32 imgui_want_capture_mouse    = false;
+  b32 imgui_want_capture_keyboard = false;
+  if ( ImGui::GetCurrentContext() )
+  {// NOTE(kv): imgui might not have been initialized
+   ImGuiIO& io = ImGui::GetIO();
+   
+   imgui_want_capture_mouse    = io.WantCaptureMouse;
+   imgui_want_capture_keyboard = io.WantCaptureKeyboard;
+  }
   
-  case WM_SYSKEYDOWN:
-  case WM_SYSKEYUP:
-  case WM_KEYDOWN:
-  case WM_KEYUP:
+  if (imgui_want_capture_mouse ||
+      imgui_want_capture_keyboard)
+  {// TODO(kv): Is this true?
+   win32vars.got_useful_event = true;
+  }
+  
+  Scratch_Block scratch(win32vars.tctx);
+  
+  i32 window_index = 0;
+  for_i32(index,0,WINDOW_COUNT)
   {
-   b8 release = HasFlag(lParam, bit_32);
-   b8 down = !release;
-   b8 is_right = HasFlag(lParam, bit_25);
-   
-   u64 vk = wParam;
-   
-   if (win32vars.key_mode == Key_Mode_Physical &&
-       !keycode_physical_translaion_is_wrong(vk)){
-    UINT scan_code = ((lParam >> 16) & bitmask_8);
-    vk = MapVirtualKeyEx(scan_code, MAPVK_VSC_TO_VK_EX, win32vars.kl_universal);
-   }
-   
-   Input_Modifier_Set_Fixed *mods = &win32vars.input_chunk.pers.modifiers;
-   
-   Control_Keys *controls = &win32vars.input_chunk.pers.controls;
-   switch (vk)
+   if (hwnd == win32vars.window_handles[index])
    {
-    case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
-    case VK_MENU:case VK_LMENU:case VK_RMENU:
+    window_index = index;
+    break;
+   }
+  }
+  b32 is_main_window = window_index == 0;
+  
+  switch (uMsg)
+  {
+   case WM_MENUCHAR:
+   {
+    result = (MNC_CLOSE << 16);
+   }break;
+   
+   case WM_SYSKEYDOWN:
+   case WM_SYSKEYUP:
+   case WM_KEYDOWN:
+   case WM_KEYUP:
+   {
+#if 0
+    if (uMsg == WM_KEYUP)   { win32_log("Keyup fired!"); }
+    if (uMsg == WM_KEYDOWN) { win32_log("Keydown fired!"); }
+#endif
+    
+    if (imgui_want_capture_keyboard)
     {
-     switch (vk){
+     call_default_handler = true;
+    }
+    else
+    {
+     b8 release = HasFlag(lParam, bit_32);
+     b8 down = !release;
+     b8 is_right = HasFlag(lParam, bit_25);
+     
+     u64 vk = wParam;
+     
+     if (win32vars.key_mode == Key_Mode_Physical &&
+         !keycode_physical_translaion_is_wrong(vk))
+     {
+      UINT scan_code = ((lParam >> 16) & bitmask_8);
+      vk = MapVirtualKeyEx(scan_code, MAPVK_VSC_TO_VK_EX, win32vars.kl_universal);
+     }
+     
+     Input_Modifier_Set_Fixed *mods = &win32vars.input_chunk.pers.modifiers;
+     
+     Control_Keys *controls = &win32vars.input_chunk.pers.controls;
+     switch (vk)
+     {
       case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
-      {
-       if (is_right){
-        controls->r_ctrl = down;
-       }
-       else{
-        controls->l_ctrl = down;
-       }
-      }break;
       case VK_MENU:case VK_LMENU:case VK_RMENU:
       {
-       if (is_right){
-        controls->r_alt = down;
-       }
-       else{
-        controls->l_alt = down;
+       switch (vk)
+       {
+        case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
+        {
+         if (is_right){ controls->r_ctrl = down; }
+         else         { controls->l_ctrl = down; }
+        }break;
+        case VK_MENU:case VK_LMENU:case VK_RMENU:
+        {
+         if (is_right){ controls->r_alt = down; }
+         else         { controls->l_alt = down; }
+        }break;
        }
       }break;
      }
-    }break;
-   }
-			
-   b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
-   b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
-   if (win32vars.lctrl_lalt_is_altgr && controls->l_alt && controls->l_ctrl){
-    ctrl = false;
-    alt = false;
-   }
-   set_modifier(mods, Key_Code_Control, ctrl);
-   set_modifier(mods, Key_Code_Alt, alt);
-   
-   {
-    b8 shift = ((GetKeyState(VK_SHIFT) & bit_16) != 0);
-    set_modifier(mods, Key_Code_Shift, shift);
-   }
-   
-   Key_Code key = keycode_lookup_table[(u8)vk];
-   if (down){
-    if (key != 0){
-     add_modifier(mods, key);
      
-     Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
-     event->kind = InputEventKind_KeyStroke;
-     event->key.code = key;
-     event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
-     win32vars.active_key_stroke = event;
+     b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
+     b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
+     if (win32vars.lctrl_lalt_is_altgr && controls->l_alt && controls->l_ctrl){
+      ctrl = false;
+      alt = false;
+     }
+     set_modifier(mods, Key_Code_Control, ctrl);
+     set_modifier(mods, Key_Code_Alt, alt);
      
-     win32vars.got_useful_event = true;
+     {
+      b8 shift = ((GetKeyState(VK_SHIFT) & bit_16) != 0);
+      set_modifier(mods, Key_Code_Shift, shift);
+     }
+     
+     Key_Code key = keycode_lookup_table[(u8)vk];
+     if (down)
+     {
+      if (key != 0)
+      {
+       add_modifier(mods, key);
+       
+       Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
+       event->kind = InputEventKind_KeyStroke;
+       event->key.code = key;
+       event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
+       win32vars.active_key_stroke = event;
+       
+       win32vars.got_useful_event = true;
+      }
+     }
+     else
+     {
+      win32vars.active_key_stroke = 0;
+      win32vars.active_text_input = 0;
+      win32vars.got_useful_event = true;
+      
+      if (key != 0)
+      {
+       Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
+       event->kind = InputEventKind_KeyRelease;
+       event->key.code = key;
+       event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
+       
+       remove_modifier(mods, key);
+      }
+     }
     }
-   }
-   else{
+   }break;
+   
+   case WM_CHAR:
+   {
+    if (imgui_want_capture_keyboard)
+    {
+     call_default_handler = true;
+    }
+    else
+    {
+     u16 c = wParam & bitmask_16;
+     if (c == '\r') { c = '\n'; }
+     if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n')
+     {
+      String_Const_u16 str_16 = SCu16(&c, 1);
+      String str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16, StringFill_NullTerminate).string;
+      Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
+      event->kind = InputEventKind_TextInsert;
+      event->text.string = str_8;
+      event->text.next_text = 0;
+      event->text.blocked = false;
+      if (win32vars.active_text_input != 0){
+       win32vars.active_text_input->text.next_text = event;
+      }
+      else if (win32vars.active_key_stroke != 0){
+       win32vars.active_key_stroke->key.first_dependent_text = event;
+      }
+      win32vars.active_text_input = event;
+      
+      win32vars.got_useful_event = true;
+     }
+    }
+   }break;
+   
+   case WM_UNICHAR:
+   {
+    if (imgui_want_capture_keyboard)
+    {
+     call_default_handler = true;
+    }
+    else
+    {
+     if (wParam == UNICODE_NOCHAR) { result = true; }
+     else
+     {
+      u32 c = (u32)wParam;
+      if (c == '\r') { c= '\n'; }
+      if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n')
+      {
+       String_Const_u32 str_32 = SCu32(&c, 1);
+       String str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32, StringFill_NullTerminate).string;
+       Input_Event event = {};
+       event.kind = InputEventKind_TextInsert;
+       event.text.string = str_8;
+       push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list, &event);
+       win32vars.got_useful_event = true;
+      }
+     }
+    } 
+   }break;
+   
+   case WM_DEADCHAR:
+   {
+    if (win32vars.active_key_stroke != 0) {
+     AddFlag(win32vars.active_key_stroke->key.flags, KeyFlag_IsDeadKey);
+    }
+   }break;
+   
+   case WM_MOUSEMOVE:
+   case WM_MOUSEWHEEL:
+   case WM_LBUTTONDOWN:
+   case WM_RBUTTONDOWN:
+   case WM_LBUTTONUP:
+   case WM_RBUTTONUP:
+   {
+    win32vars.got_useful_event = true;
+    if (imgui_want_capture_mouse)
+    {
+     call_default_handler = true;
+    }
+    else
+    {
+     switch(uMsg)
+     {
+      case WM_MOUSEMOVE:
+      {
+       if (is_main_window)  //TODO(kv): cheese
+       {
+        i2 new_mousep = I2(GET_X_LPARAM(lParam),
+                           GET_Y_LPARAM(lParam));
+        if ( new_mousep != win32vars.input_chunk.pers.mouse )
+        {
+         win32vars.input_chunk.pers.mouse = new_mousep;
+        }
+       }
+      }break;
+      
+      case WM_MOUSEWHEEL:
+      {
+       i32 rotation = GET_WHEEL_DELTA_WPARAM(wParam);
+       if (rotation > 0){
+        win32vars.input_chunk.trans.mouse_wheel = -100;
+       }
+       else{
+        win32vars.input_chunk.trans.mouse_wheel =  100;
+       }
+      }break;
+      
+      case WM_LBUTTONDOWN:
+      {
+       SetCapture(hwnd);
+       win32vars.input_chunk.trans.mouse_l_press = true;
+       win32vars.input_chunk.pers.mouse_l = true;
+      }break;
+      
+      case WM_RBUTTONDOWN:
+      {
+       SetCapture(hwnd);
+       win32vars.input_chunk.trans.mouse_r_press = true;
+       win32vars.input_chunk.pers.mouse_r = true;
+      }break;
+      
+      case WM_LBUTTONUP:
+      {
+       ReleaseCapture();
+       win32vars.input_chunk.trans.mouse_l_release = true;
+       win32vars.input_chunk.pers.mouse_l = false;
+      }break;
+      
+      case WM_RBUTTONUP:
+      {
+       ReleaseCapture();
+       win32vars.input_chunk.trans.mouse_r_release = true;
+       win32vars.input_chunk.pers.mouse_r = false;
+      }break;
+     }
+    }
+   }break;
+   
+   case WM_KILLFOCUS:
+   case WM_SETFOCUS:
+   {
+    ReleaseCapture();
+    win32vars.got_useful_event = true;
+    win32vars.input_chunk.pers.mouse_l = false;
+    win32vars.input_chunk.pers.mouse_r = false;
+    block_zero_struct(&win32vars.input_chunk.pers.controls);
+    block_zero_struct(&win32vars.input_chunk.pers.modifiers);
     win32vars.active_key_stroke = 0;
     win32vars.active_text_input = 0;
-    win32vars.got_useful_event = true;
-    
-    if (key != 0){
-     Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
-     event->kind = InputEventKind_KeyRelease;
-     event->key.code = key;
-     event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
-     
-     remove_modifier(mods, key);
-    }
-   }
-  }break;
-  
-  case WM_CHAR:
-  {
-   u16 c = wParam & bitmask_16;
-   if (c == '\r'){
-    c = '\n';
-   }
-   if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
-    String_Const_u16 str_16 = SCu16(&c, 1);
-    String str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16, StringFill_NullTerminate).string;
-    Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
-    event->kind = InputEventKind_TextInsert;
-    event->text.string = str_8;
-    event->text.next_text = 0;
-    event->text.blocked = false;
-    if (win32vars.active_text_input != 0){
-     win32vars.active_text_input->text.next_text = event;
-    }
-    else if (win32vars.active_key_stroke != 0){
-     win32vars.active_key_stroke->key.first_dependent_text = event;
-    }
-    win32vars.active_text_input = event;
-    
-    win32vars.got_useful_event = true;
-   }
-  }break;
-  
-  case WM_DEADCHAR:
-  {
-   if (win32vars.active_key_stroke != 0){
-    AddFlag(win32vars.active_key_stroke->key.flags, KeyFlag_IsDeadKey);
-   }
-  }break;
-  
-  case WM_UNICHAR:
-  {
-   if (wParam == UNICODE_NOCHAR){
-    result = true;
-   }
-   else{
-    u32 c = (u32)wParam;
-    if (c == '\r'){
-     c= '\n';
-    }
-    if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n'){
-     String_Const_u32 str_32 = SCu32(&c, 1);
-     String str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32, StringFill_NullTerminate).string;
-     Input_Event event = {};
-     event.kind = InputEventKind_TextInsert;
-     event.text.string = str_8;
-     push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list, &event);
-     win32vars.got_useful_event = true;
-    }
-   }
-  }break;
-  
-  case WM_MOUSEMOVE:
-  {
-   if (is_main_window)//todo(kv) cheese
+   }break;
+   
+   case WM_SIZE:
    {
-    i2 new_mousep = I2(GET_X_LPARAM(lParam),
-                       GET_Y_LPARAM(lParam));
-    if (new_mousep != win32vars.input_chunk.pers.mouse)
-    {
-     win32vars.input_chunk.pers.mouse = new_mousep;
-     win32vars.got_useful_event = true;
-    }
-   }
-  }break;
-  
-  case WM_MOUSEWHEEL:
-  {
-   win32vars.got_useful_event = true;
-   i32 rotation = GET_WHEEL_DELTA_WPARAM(wParam);
-   if (rotation > 0){
-    win32vars.input_chunk.trans.mouse_wheel = -100;
-   }
-   else{
-    win32vars.input_chunk.trans.mouse_wheel =  100;
-   }
-  }break;
-  
-  case WM_LBUTTONDOWN:
-  {
-   SetCapture(hwnd);
-   win32vars.got_useful_event = true;
-   win32vars.input_chunk.trans.mouse_l_press = true;
-   win32vars.input_chunk.pers.mouse_l = true;
-  }break;
-  
-  case WM_RBUTTONDOWN:
-  {
-   SetCapture(hwnd);
-   win32vars.got_useful_event = true;
-   win32vars.input_chunk.trans.mouse_r_press = true;
-   win32vars.input_chunk.pers.mouse_r = true;
-  }break;
-  
-  case WM_LBUTTONUP:
-  {
-   ReleaseCapture();
-   win32vars.got_useful_event = true;
-   win32vars.input_chunk.trans.mouse_l_release = true;
-   win32vars.input_chunk.pers.mouse_l = false;
-  }break;
-  
-  case WM_RBUTTONUP:
-  {
-   ReleaseCapture();
-   win32vars.got_useful_event = true;
-   win32vars.input_chunk.trans.mouse_r_release = true;
-   win32vars.input_chunk.pers.mouse_r = false;
-  }break;
-  
-  case WM_KILLFOCUS:
-  case WM_SETFOCUS:
-  {
-   ReleaseCapture();
-   win32vars.got_useful_event = true;
-   win32vars.input_chunk.pers.mouse_l = false;
-   win32vars.input_chunk.pers.mouse_r = false;
-   block_zero_struct(&win32vars.input_chunk.pers.controls);
-   block_zero_struct(&win32vars.input_chunk.pers.modifiers);
-   win32vars.active_key_stroke = 0;
-   win32vars.active_text_input = 0;
-  }break;
-  
-  case WM_SIZE:
-  {
-   win32vars.got_useful_event = true;
-   i32 new_width  = LOWORD(lParam);
-   i32 new_height = HIWORD(lParam);
-   
-   Render_Target *render_target = get_render_target(window_index);
-   win32_resize_render_target(render_target, new_width, new_height);
-  }break;
-  
-  case WM_DISPLAYCHANGE:
-  {
-   win32vars.got_useful_event = true;
-   
-   LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
-   if (!(style & WS_OVERLAPPEDWINDOW)){
-    MONITORINFO monitor_info = {.cbSize=sizeof(MONITORINFO)};
-    if(GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &monitor_info))
-    {
-     SetWindowPos(hwnd, HWND_TOP,
-                  monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
-                  monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
-                  monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
-                  SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
-    }
-   }
-  }break;
-  
-  case WM_PAINT:
-  {
-   win32vars.got_useful_event = true;
-   PAINTSTRUCT ps;
-   BeginPaint(hwnd, &ps);
-   // NOTE(allen): Do nothing?
-   EndPaint(hwnd, &ps);
-  }break;
-  
-  case WM_CLIPBOARDUPDATE:
-  {
-   if (win32vars.clip_catch_all){
     win32vars.got_useful_event = true;
-    LogEventLit(win32vars.log_string(M), scratch, 0, 0, system_thread_get_id(),
-                "new clipboard contents");
-   }
-  }break;
+    i32 new_width  = LOWORD(lParam);
+    i32 new_height = HIWORD(lParam);
+    
+    Render_Target *render_target = get_render_target(window_index);
+    win32_resize_render_target(render_target, new_width, new_height);
+   }break;
+   
+   case WM_DISPLAYCHANGE:
+   {
+    win32vars.got_useful_event = true;
+    
+    LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
+    if (!(style & WS_OVERLAPPEDWINDOW)){
+     MONITORINFO monitor_info = {.cbSize=sizeof(MONITORINFO)};
+     if(GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &monitor_info))
+     {
+      SetWindowPos(hwnd, HWND_TOP,
+                   monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
+                   monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+                   monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+                   SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+     }
+    }
+   }break;
+   
+   case WM_PAINT:
+   {
+    win32vars.got_useful_event = true;
+    PAINTSTRUCT ps;
+    BeginPaint(hwnd, &ps);
+    // NOTE(allen): Do nothing?
+    EndPaint(hwnd, &ps);
+   }break;
+   
+   case WM_CLIPBOARDUPDATE:
+   {
+    if (win32vars.clip_catch_all){
+     win32vars.got_useful_event = true;
+     LogEventLit(win32vars.log_string(M), scratch, 0, 0, system_thread_get_id(),
+                 "new clipboard contents");
+    }
+   }break;
+   
+   case WM_CLOSE:
+   case WM_DESTROY:
+   {
+    win32vars.got_useful_event = true;
+    win32vars.input_chunk.trans.trying_to_kill = true;
+   }break;
+   
+   case WM_TIMER:
+   {
+    UINT_PTR timer_id = (UINT_PTR)wParam;
+    KillTimer(win32vars.window_handles[0], timer_id);
+    win32vars.got_useful_event = true;
+   }break;
+   
+   case WM_4coder_ANIMATE:
+   {
+    win32vars.got_useful_event = true;
+   }break;
+   
+   default: { call_default_handler = true; }break;
+  }
   
-  case WM_CLOSE:
-  case WM_DESTROY:
-  {
-   win32vars.got_useful_event = true;
-   win32vars.input_chunk.trans.trying_to_kill = true;
-  }break;
-  
-  case WM_TIMER:
-  {
-   UINT_PTR timer_id = (UINT_PTR)wParam;
-   KillTimer(win32vars.window_handle[0], timer_id);
-   win32vars.got_useful_event = true;
-  }break;
-  
-  case WM_4coder_ANIMATE:
-  {
-   win32vars.got_useful_event = true;
-  }break;
-  
-  default:
-  {
+  if (call_default_handler) {
    result = DefWindowProc(hwnd, uMsg, wParam, lParam);
-  }break;
+  }
  }
  
  return(result);
@@ -1497,7 +1572,8 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 ////////////////////////////////
 
 internal b32
-win32_wgl_good(Void_Func *f){
+win32_wgl_good(Void_Func *f)
+{
     return(f != 0 &&
            f != (Void_Func*)1 &&
            f != (Void_Func*)2 &&
@@ -1516,7 +1592,7 @@ global wglGetExtensionsStringEXT_Function *wglGetExtensionsStringEXT;
 global wglSwapIntervalEXT_Function *wglSwapIntervalEXT = 0;
 
 internal b32
-win32_gl_create_windows(DWORD style, RECT rect)
+win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles)
 {
  b32 ok;
  HINSTANCE this_instance = GetModuleHandle(0);
@@ -1703,7 +1779,7 @@ win32_gl_create_windows(DWORD style, RECT rect)
     ok = wglMakeCurrent(dc, opengl_context);
     kv_assert(ok);
     
-    win32vars.window_handle[window_index] = wnd;
+    window_handles[window_index] = wnd;
    }
   }
   
@@ -1725,6 +1801,48 @@ win32_gl_create_windows(DWORD style, RECT rect)
 
 ////////////////////////////////
 
+function void
+win32_wgl_make_current(i1 window_index)
+{
+ b32 ok = wglMakeCurrent(win32vars.device_contexts[window_index],
+                         win32vars.opengl_context);
+ kv_assert(ok);
+}
+
+function void
+win32_imgui_init()
+{
+ ImGui::CreateContext(0);
+ ImGui::StyleColorsDark();
+ {// NOTE(kv): At least DockingEnable has to be set before the first frame.
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;   // Enable Keyboard Controls
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;       // Enable Docking
+ }
+ ImGui_ImplWin32_InitForOpenGL(win32vars.window_handles[0]);
+ ImGui_ImplOpenGL3_Init("#version 460");
+}
+
+function void
+win32_imgui_new_frame()
+{
+ ImGui_ImplOpenGL3_NewFrame();
+ ImGui_ImplWin32_NewFrame();
+ ImGui::NewFrame();
+}
+
+function void
+win32_imgui_reinit()
+{
+ {// NOTE(kv): shutdown
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplWin32_Shutdown();
+  ImGui::DestroyContext();
+ }
+ win32_imgui_init();
+ win32_imgui_new_frame();
+}
+
 int CALL_CONVENTION
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -1736,7 +1854,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  for (i32 i = 0; i < argc; i += 1){
   String arg = SCu8(argv[i]);
   printf("arg[%d]: %.*s\n", i, string_expand(arg));
-  if (string_match(arg, str8_lit("-L"))){
+  if (string_match(arg, str8_lit("-L"))) {
    log_os_enabled = true;
   }
  }
@@ -1863,7 +1981,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         ((window_style & WS_MAXIMIZE) != 0));
  
  // important
- if ( !win32_gl_create_windows(window_style, window_rect) )
+ if ( !win32_gl_create_windows(window_style, window_rect,
+                               win32vars.window_handles) )
  {
   exit(1);
  }
@@ -1872,7 +1991,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  i32 window_height = window_rect.bottom - window_rect.top;
  if (plat_settings.set_window_pos)
  {
-  BOOL ok = SetWindowPos(win32vars.window_handle[0],
+  BOOL ok = SetWindowPos(win32vars.window_handles[0],
                          0,
                          /*x*/plat_settings.window_x,
                          /*y*/plat_settings.window_y,
@@ -1894,7 +2013,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  // NOTE(allen): Misc Init
  log_os("Initializing clipboard listener...\n");
- if (!AddClipboardFormatListener(win32vars.window_handle[0])){
+ if (!AddClipboardFormatListener(win32vars.window_handles[0])){
   String error_string = win32_get_error_string();
   win32_output_error_string(error_string);
  }
@@ -1937,26 +2056,28 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   app_init(win32vars.tctx, base_ptr, curdir);
  }
  
- //
- // Main loop
- //
+ {//-NOTE: DearImgui init
+  IMGUI_CHECKVERSION();
+  win32_imgui_init();
+ }
  
+ //-Main loop
  log_os("Starting main loop...\n");
  
  b32 keep_running = true;
  win32vars.first = true;
  timeBeginPeriod(1);
  
- if (plat_settings.fullscreen_window){
+ if (plat_settings.fullscreen_window) {
   win32_toggle_fullscreen();
  }
  
  for_i32(index,0,WINDOW_COUNT)
  {
-  ShowWindow(win32vars.window_handle[index], SW_SHOW);
+  ShowWindow(win32vars.window_handles[index], SW_SHOW);
  }
- SetForegroundWindow(win32vars.window_handle[0]);
- SetActiveWindow(win32vars.window_handle[0]);
+ SetForegroundWindow(win32vars.window_handles[0]);
+ SetActiveWindow(win32vars.window_handles[0]);
  
  win32vars.global_frame_mutex = system_mutex_make();
  system_acquire_global_frame_mutex(win32vars.tctx);
@@ -1964,11 +2085,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  u64 frame_time_start = system_time_usecond();
  u64 frame_cycle_start = gb_rdtsc();
  v1 work_seconds = 0.f;
- u32 work_cycles;
- MSG msg;
+ u32 work_cycles = 0;
  u32 hot_prim_id = 0;
- for (;keep_running;)
- {
+ bool show_demo_window = true;
+ while ( keep_running )
+ {//-NOTE The main loop
   arena_clear(&win32vars.frame_arena);
   block_zero_struct(&win32vars.input_chunk.trans);
   win32vars.active_key_stroke = 0;
@@ -1978,8 +2099,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   // without interfering with the reading process.
   // NOTE(allen): Looks like we can ReadFile with a
   // size of zero in an IOCP for this effect.
-  if (!win32vars.first){
-   if (win32vars.running_cli == 0){
+  if (!win32vars.first)
+  {
+   if (win32vars.running_cli == 0) {
     win32vars.got_useful_event = false;
    }
    
@@ -1987,23 +2109,30 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
    // we can let async processes get there time in.
 			system_release_global_frame_mutex(win32vars.tctx);
    
-   b32 get_more_messages = true;
-   do{
-    if (win32vars.got_useful_event == 0){
-     get_more_messages = GetMessage(&msg, 0, 0, 0);
-    }
-    else{
-     get_more_messages = PeekMessage(&msg, 0, 0, 0, 1);
+   while (true)
+   {//-NOTE(kv): Process events
+    MSG msg;
+    BOOL got_message;
+    // NOTE(kv): We won't block if we receive keyboard/mouse,
+    // or an animation event (WM_4coder_ANIMATE)
+    if (win32vars.got_useful_event) {
+     got_message = PeekMessage(&msg, 0, 0, 0, PM_REMOVE);
+    } else {
+     got_message = GetMessage(&msg, 0, 0, 0);
     }
     
-    if (get_more_messages){
-     if (msg.message == WM_QUIT){
+    if (got_message)
+    {
+     if (msg.message == WM_QUIT)
+     {
       keep_running = false;
      }
-     else{
+     else
+     {
       b32 treat_normally = true;
-      if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN){
-       switch (msg.wParam){
+      if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN)
+      {
+       switch (msg.wParam) {
         case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
         case VK_MENU:case VK_LMENU:case VK_RMENU:
         case VK_SHIFT:case VK_LSHIFT:case VK_RSHIFT:break;
@@ -2012,18 +2141,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
        }
       }
       
-      if (treat_normally){
+      if (treat_normally)
+      {
+       // NOTE(kv): more about this nonsense at https://youtu.be/4ROiWonnWGk?t=2955
        TranslateMessage(&msg);
        DispatchMessage(&msg);
       }
-      else{
+      else
+      {
        Control_Keys *controls = &win32vars.input_chunk.pers.controls;
        
        b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
        b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
        
-       if (win32vars.lctrl_lalt_is_altgr){
-        if (controls->l_alt && controls->l_ctrl){
+       if (win32vars.lctrl_lalt_is_altgr) {
+        if (controls->l_alt && controls->l_ctrl) {
          ctrl = 0;
          alt = 0;
         }
@@ -2031,13 +2163,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
        
        BYTE ctrl_state = 0, alt_state = 0;
        BYTE state[256];
-       if (ctrl || alt){
+       if (ctrl || alt)
+       {
         GetKeyboardState(state);
-        if (ctrl){
+        if (ctrl) {
          ctrl_state = state[VK_CONTROL];
          state[VK_CONTROL] = 0;
         }
-        if (alt){
+        if (alt) {
          alt_state = state[VK_MENU];
          state[VK_MENU] = 0;
         }
@@ -2046,22 +2179,20 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         TranslateMessage(&msg);
         DispatchMessage(&msg);
         
-        if (ctrl){
-         state[VK_CONTROL] = ctrl_state;
-        }
-        if (alt){
-         state[VK_MENU] = alt_state;
-        }
+        if (ctrl){ state[VK_CONTROL] = ctrl_state; }
+        if (alt) { state[VK_MENU] = alt_state; }
         SetKeyboardState(state);
        }
-       else{
+       else
+       {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
        }
       }
      }
     }
-   }while (get_more_messages);
+    else { break; }
+   }
    
 			system_acquire_global_frame_mutex(win32vars.tctx);
   }
@@ -2069,7 +2200,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   {
    POINT mouse_point;
    if (GetCursorPos(&mouse_point) &&
-       ScreenToClient(win32vars.window_handle[0], &mouse_point))
+       ScreenToClient(win32vars.window_handles[0], &mouse_point))
    {// NOTE(kv): Mouse situation
     Render_Target *render_target = get_render_target(0);
     Rect_i32 screen = Ri32(0,0, render_target->width,render_target->height);
@@ -2118,7 +2249,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   // NOTE(allen): Frame Clipboard Input
-  if (win32vars.clip_catch_all){
+  if (win32vars.clip_catch_all)
+  {
    input.clipboard = system_get_clipboard(scratch, 0);
   }
   
@@ -2128,30 +2260,31 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32vars.clip_post.size = 0;
   
   // NOTE(allen): Application Core Update
+  win32_imgui_new_frame();  // NOTE(kv): this new frame must be after input processing
   Application_Step_Result result = app_step(win32vars.tctx, base_ptr, &input);
   
   // NOTE(allen): Finish the Loop
-  if (result.perform_kill){
+  if (result.perform_kill) {
    keep_running = false;
   }
   
   // NOTE(allen): Post New Clipboard Content
-  if (win32vars.clip_post.size > 0)
-  {
+  if (win32vars.clip_post.size > 0) {
    win32_post_clipboard(scratch, (char*)win32vars.clip_post.str, (i32)win32vars.clip_post.size);
   }
   
   // NOTE(allen): Switch to New Title
-  if (result.has_new_title)
-  {
-   SetWindowTextA(win32vars.window_handle[0], cast(char*)result.title_string);
+  if (result.has_new_title) {
+   SetWindowTextA(win32vars.window_handles[0], cast(char*)result.title_string);
   }
   
   // NOTE(allen): Switch to New Cursor
   Win32SetCursorFromUpdate(result.mouse_cursor_type);
-  if (win32vars.cursor_show != win32vars.prev_cursor_show){
+  if (win32vars.cursor_show != win32vars.prev_cursor_show)
+  {
    win32vars.prev_cursor_show = win32vars.cursor_show;
-   switch (win32vars.cursor_show){
+   switch (win32vars.cursor_show)
+   {
     case MouseCursorShow_Never:
     {
      i32 counter = 0;
@@ -2175,18 +2308,27 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   // NOTE(allen): update lctrl_lalt_is_altgr status
   win32vars.lctrl_lalt_is_altgr = (b8)result.lctrl_lalt_is_altgr;
   
-  {// NOTE(allen): render
+  {//~NOTE(allen): render
+   ImGui::Render();
    for_i32(window_index, 0, WINDOW_COUNT)
    {
     // Activate OpenGL context for device context where we'll be drawing
-    b32 ok = wglMakeCurrent(win32vars.device_contexts[window_index],
-                            win32vars.opengl_context);
-    kv_assert(ok);
+    win32_wgl_make_current(window_index);
     ogl_render(input.mouse.p, window_index);
+    
+    if (window_index == 0)
+    {
+     if ( auto game = get_game_code() )
+     {// NOTE: imgui render
+      auto draw_data = ImGui::GetDrawData();
+      ImGui_ImplOpenGL3_RenderDrawData(draw_data);
+     }
+    }
    }
    
    for_i32(window_index, 0, WINDOW_COUNT)
    {
+    //win32_log("Swap framebuffer!");
     SwapBuffers( win32vars.device_contexts[window_index] );
    }
    
@@ -2194,16 +2336,18 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   // NOTE(allen): toggle full screen
-  if (win32vars.do_toggle){
+  if (win32vars.do_toggle) {
    win32_toggle_fullscreen();
    win32vars.do_toggle = false;
   }
   
-  // NOTE(allen): schedule another step if needed
-  if (result.animating){
+  // NOTE(allen): Schedule another step if needed
+  if (result.animating)
+  {
    system_schedule_step(0);
   }
-  else if (win32vars.clip_catch_all){
+  else if (win32vars.clip_catch_all)
+  {
    system_wake_up_timer_set(win32vars.clip_wakeup_timer, 250);
   }
   
@@ -2219,7 +2363,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
    while (current_time < end_target)
    {
     DWORD samount = (DWORD)((end_target - current_time)/1000);
-    if (samount > 0){
+    if (samount > 0) {
      Sleep(samount);
     }
     current_time = system_time_usecond();
@@ -2237,3 +2381,5 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 }
 
 #include "win32_utf8.cpp"
+
+//-

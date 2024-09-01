@@ -11,8 +11,6 @@ struct STB_Parser
  stb_lex_location fail_location;
  
  //-NOTE Embracing member functions
- force_inline b32 ok() { return ok_; };
- 
  void set_ok(b32 value)
  {// NOTE kv: Since we don't setting the value to true (I'm open for a better name)
   if (ok_)
@@ -44,7 +42,7 @@ struct STB_Parser
 function void
 eat_token(STB_Parser *p)
 {
- if (p->ok())
+ if (p->ok_)
  {
   i1 res = stb_c_lexer_get_token(&p->stb);
   // NOTE: 0 is eof, which is not an error
@@ -73,7 +71,7 @@ function b32
 test_id(STB_Parser *p, String id)
 {
  b32 result = false;
- if (p->ok())
+ if (p->ok_)
  {
   if (p->stb.token == CLEX_id)
   {
@@ -251,8 +249,9 @@ eat_v4(STB_Parser *p)
 }
 
 function void
-eat_data_basic_type(STB_Parser *p, Basic_Type type, u8 *pointer)
+eat_data_basic_type(STB_Parser *p, Basic_Type type, void *void_pointer)
 {
+ u8 *pointer = (u8 *)void_pointer;
  switch(type)
  {
 #define X(T)   case Basic_Type_##T: \

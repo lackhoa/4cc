@@ -29,11 +29,11 @@ buffer_quick_sort_cursors(Cursor_With_Index *positions, i1 first, i1 one_past_la
         for (i1 i = first; i < pivot; i += 1){
             i64 pos = positions[i].pos;
             if (pos < pivot_pos){
-                Swap(Cursor_With_Index, positions[j], positions[i]);
+                macro_swap(positions[j], positions[i]);
                 j += 1;
             }
         }
-        Swap(Cursor_With_Index, positions[j], positions[pivot]);
+        macro_swap(positions[j], positions[pivot]);
         buffer_quick_sort_cursors(positions, first, j);
         buffer_quick_sort_cursors(positions, j + 1, one_past_last);
     }
@@ -59,7 +59,7 @@ buffer_unsort_cursors(Cursor_With_Index *positions, i1 count){
             }
             else{
                 i1 j = positions[i].index;
-                Swap(Cursor_With_Index, positions[i], positions[j]);
+                macro_swap(positions[i], positions[j]);
             }
         }
     }
@@ -197,65 +197,69 @@ buffer_init(Gap_Buffer *buffer, u8 *data, u64 size, Base_Allocator *allocator){
     String memory = base_allocate2(allocator, capacity);
     buffer->data = (u8*)memory.str;
     buffer->size1 = size/2;
-    buffer->gap_size = capacity - size;
-    buffer->size2 = size - buffer->size1;
-    buffer->max = capacity;
-    
-    block_copy(buffer->data, data, buffer->size1);
-    block_copy(buffer->data + buffer->size1 + buffer->gap_size, data + buffer->size1, buffer->size2);
+ buffer->gap_size = capacity - size;
+ buffer->size2 = size - buffer->size1;
+ buffer->max = capacity;
+ 
+ block_copy(buffer->data, data, buffer->size1);
+ block_copy(buffer->data + buffer->size1 + buffer->gap_size, data + buffer->size1, buffer->size2);
 }
 
-internal b32
-buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String text, i64 shift_amount){
-    i64 size = buffer_size(buffer);
-    Assert(0 <= range.start);
-    Assert(range.start <= range.end);
-    Assert(range.end <= size);
-    
-    if (shift_amount + size > buffer->max){
-        i64 new_max = round_up_i64(2*(shift_amount + size), KB(4));
-        i64 new_gap_size = new_max - size;
-        String new_memory_data = base_allocate2(buffer->allocator, new_max);
-        u8 *new_memory = (u8*)new_memory_data.str;
-        block_copy(new_memory, buffer->data, buffer->size1);
-        block_copy(new_memory + buffer->size1 + new_gap_size, buffer->data + buffer->size1 + buffer->gap_size,
-                   buffer->size2);
-        base_free(buffer->allocator, buffer->data);
-        buffer->data = new_memory;
-        buffer->gap_size = new_gap_size;
-        buffer->max = new_max;
-    }
-    
-    Assert(shift_amount + size <= buffer->max);
-    
-    b32 result = false;
-    
-    if (range.end < buffer->size1){
-        i64 move_size = buffer->size1 - range.end;
-        block_copy(buffer->data + buffer->size1 + buffer->gap_size - move_size,
-                   buffer->data + range.end,
-                   move_size);
-        buffer->size1 -= move_size;
-        buffer->size2 += move_size;
-    }
-    if (range.start > buffer->size1){
-        i64 move_size = range.start - buffer->size1;
-        block_copy(buffer->data + buffer->size1,
-                   buffer->data + buffer->size1 + buffer->gap_size,
-                   move_size);
-        buffer->size1 += move_size;
-        buffer->size2 -= move_size;
-    }
-    
-    block_copy(buffer->data + range.start, text.str, text.size);
-    buffer->size2 = size - range.end;
-    buffer->size1 = range.start + text.size;
-    buffer->gap_size -= shift_amount;
-    
-    Assert(buffer->size1 + buffer->size2 == size + shift_amount);
-    Assert(buffer->size1 + buffer->gap_size + buffer->size2 == buffer->max);
-    
-    return(result);
+function b32
+gap_buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String text, i64 shift_amount)
+{
+ i64 size = buffer_size(buffer);
+ Assert(0 <= range.start);
+ Assert(range.start <= range.end);
+ Assert(range.end <= size);
+ 
+ if (shift_amount + size > buffer->max)
+ {
+  i64 new_max = round_up_i64(2*(shift_amount + size), KB(4));
+  i64 new_gap_size = new_max - size;
+  u8 *new_memory = base_allocate(buffer->allocator, new_max);
+  block_copy(new_memory, buffer->data, buffer->size1);
+  block_copy(new_memory + (buffer->size1 + new_gap_size),
+             buffer->data + (buffer->size1 + buffer->gap_size),
+             buffer->size2);
+  base_free(buffer->allocator, buffer->data);
+  buffer->data = new_memory;
+  buffer->gap_size = new_gap_size;
+  buffer->max = new_max;
+ }
+ 
+ Assert(shift_amount + size <= buffer->max);
+ 
+ b32 result = false;
+ 
+ if (range.end < buffer->size1)
+ {
+  i64 move_size = buffer->size1 - range.end;
+  block_copy(buffer->data + buffer->size1 + buffer->gap_size - move_size,
+             buffer->data + range.end,
+             move_size);
+  buffer->size1 -= move_size;
+  buffer->size2 += move_size;
+ }
+ if (range.start > buffer->size1)
+ {
+  i64 move_size = range.start - buffer->size1;
+  block_copy(buffer->data + buffer->size1,
+             buffer->data + buffer->size1 + buffer->gap_size,
+             move_size);
+  buffer->size1 += move_size;
+  buffer->size2 -= move_size;
+ }
+ 
+ block_copy(buffer->data + range.start, text.str, text.size);
+ buffer->size2 = size - range.end;
+ buffer->size1 = range.start + text.size;
+ buffer->gap_size -= shift_amount;
+ 
+ Assert(buffer->size1 + buffer->size2 == size + shift_amount);
+ Assert(buffer->size1 + buffer->gap_size + buffer->size2 == buffer->max);
+ 
+ return(result);
 }
 
 ////////////////////////////////

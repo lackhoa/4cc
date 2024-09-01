@@ -16,36 +16,38 @@ typedef i1 Edit_Pos_Set_Type;
 enum{
     EditPos_None,
     EditPos_CursorSet,
-    EditPos_ScrollSet
+ EditPos_ScrollSet
 };
 struct File_Edit_Positions{
-    Edit_Pos_Set_Type last_set_type;
-    Buffer_Scroll scroll;
-    i64 cursor_pos;
+ Edit_Pos_Set_Type last_set_type;
+ Buffer_Scroll scroll;
+ i64 cursor_pos;
 };
 
-struct Editing_File_Settings{
-    Layout_Function *layout_func;
-    Face_ID face_id;
-    b8 dos_write_mode;
-    b8 is_initialized;
-    b8 unimportant;
-    b8 read_only;
-    b8 unkillable;
-    b8 never_kill;
+struct Editing_File_Settings
+{
+ Layout_Function *layout_func;
+ Face_ID face_id;
+ b8 dos_write_mode;
+ b8 is_initialized;
+ b8 unimportant;
+ b8 read_only;
+ b8 limited_edit;
+ b8 unkillable;
+ b8 never_kill;
 };
 
 struct Line_Layout_Key{
     Face_ID face_id;
     i1 face_version_number;
     f32 width;
-    i64 line_number;
+ i64 line_number;
 };
 
 typedef i1 File_Save_State;
 enum{
-    FileSaveState_Normal,
-    FileSaveState_SavedWaitingForNotification,
+ FileSaveState_Normal,
+ FileSaveState_SavedWaitingForNotification,
 };
 
 struct Editing_File_State{
@@ -69,25 +71,27 @@ struct Editing_File_State{
 
 struct Editing_File_Name
 {
-    u8 name_space[256];
-    u64 name_size;
+ u8 name_space[256];
+ u64 name_size;
 };
 
-struct Editing_File{
-    union{
-        Editing_File *next;
-        Node main_chain_node;
-    };
-    Node touch_node;
-    Node external_mod_node;
-    Buffer_ID id;
-    Editing_File_Settings settings;
-    Editing_File_State state;
-    File_Attributes attributes;
-    Lifetime_Object *lifetime_object;
-    Editing_File_Name base_name;
-    Editing_File_Name unique_name;
-    Editing_File_Name canon;
+struct Editing_File
+{
+ union
+ {
+  Editing_File *next;
+  Node main_chain_node;
+ };
+ Node touch_node;
+ Node external_mod_node;
+ Buffer_ID id;
+ Editing_File_Settings settings;
+ Editing_File_State state;
+ File_Attributes attributes;  // NOTE(kv): System attributes
+ Lifetime_Object *lifetime_object;
+ Editing_File_Name base_name;
+ Editing_File_Name unique_name;
+ Editing_File_Name canon;
 };
 
 struct Buffer_Point_Delta{

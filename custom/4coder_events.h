@@ -23,15 +23,15 @@ enum{
     InputEventKind_Core,
     InputEventKind_CustomFunction,
     
-    InputEventKind_COUNT,
+ InputEventKind_COUNT,
 };
 
 // NOTE(kv): Totally a @Hack, these flags can be appended to the keycode
 typedef u32 Key_Mods;
 enum Key_Mod
 {
-    Key_Mod_NULL = 0,
-    Key_Mod_Ctl = bit_31,
+ Key_Mod_NULL = 0,
+ Key_Mod_Ctl = bit_31,
     Key_Mod_Sft = bit_30,
     Key_Mod_Alt = bit_29,
     Key_Mod_Cmd = bit_28,
@@ -40,7 +40,7 @@ enum Key_Mod
 
 typedef u32 Key_Flags;
 enum{
-    KeyFlag_IsDeadKey = (1 << 0),
+ KeyFlag_IsDeadKey = (1 << 0),
 };
 
 global_const i32 Input_MaxModifierCount = 8;

@@ -45,8 +45,8 @@ CUSTOM_ID(colors, defcolor_line_numbers_text);
 
 api(custom)
 struct Color_Array{
-    ARGB_Color *vals;
-    i1 count;
+ ARGB_Color *vals;
+ i1 count;
 };
 
 api(custom)

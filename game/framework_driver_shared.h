@@ -77,8 +77,6 @@ struct Bezier_Planar_d
  i1 p3_index;
 };
 
-struct Bezier_Data
-{
 #define X_Bezier_Data(X) \
 X(String, name) \
 X(i1, object_index) \
@@ -88,8 +86,33 @@ X(v3, p1) \
 X(v3, p2) \
 X(i1, p3_index) \
 X(v4, radii) \
-//
- X_Bezier_Data(X_Field_Type_Name)
+
+// TODO(kv): Reorganize these types
+
+introspect()
+enum Bezier_Type
+{
+ Bezier_Type_Planar_v3_v2       = 0,
+ Bezier_Type_Raw                = 1,
+ Bezier_Type_Offsets            = 2,
+ Bezier_Type_Planar_Unit_Vector = 3,
+};
+
+introspect()
+struct Bezier_Data
+{
+ String name;
+ i1 object_index;
+ i1 symx;
+ 
+ meta_tag(added(since_version=Version_Add_Bezier_Type,
+                default=Bezier_Type_Raw));
+ Bezier_Type type;
+ i1 p0_index;
+ v3 p1;
+ v3 p2;
+ i1 p3_index;
+ v4 radii;
 };
 
 struct Slow_Line_Map
@@ -100,7 +123,9 @@ struct Slow_Line_Map
 };
 
 //~ id system
-enum Primitive_Type : u8
+// NOTE(kv): Primitives are either drawn by code or data.
+// NOTE(kv): If something is drawn by data, we call it an object for SOME reason
+enum Object_Type : u8
 {
  Prim_Null     = 0,
  Prim_Vertex   = 1,
@@ -108,10 +133,10 @@ enum Primitive_Type : u8
  Prim_Triangle = 3,
 };
 
-force_inline Primitive_Type
+force_inline Object_Type
 prim_id_type(u32 id)
 {
- return Primitive_Type(id >> 24);
+ return Object_Type(id >> 24);
 }
 
 force_inline b32
@@ -669,10 +694,12 @@ fill_patch_inner(const v3 P[4][4],
 #endif
 
 #define render_movie_return void
-#define render_movie_params Game_State *state, App *app, Render_Target *render_target, i1 viewport_id, Mouse_State mouse
+#define render_movie_params \
+Viewport &viewport, v1 state_time, b32 references_full_alpha, \
+App *app, Render_Target *render_target, i1 viewport_id, Mouse_State mouse
 
 render_movie_return render_movie(render_movie_params);
-void driver_update(Game_State *state);
+void driver_update(Viewport *viewports);
 
 // NOTE: Planar curve (with v3 control point)
 Bezier bez(v3 p0, v3 d0, v2 d3, v3 p3)
@@ -696,6 +723,7 @@ Bezier bez(v3 p0, v3 d0, v2 d3, v3 p3)
 }
 #endif
 
+#if !AD_IS_DRIVER
 //NOTE: The state is saved between reloads.
 struct Game_State
 {
@@ -731,25 +759,16 @@ struct Game_State
  b32 load_failed;
  arrayof<String> command_queue;
  
+ Game_ImGui_State imgui_state;
+ 
  b8 __padding[64];
 };
+#endif
 
 force_inline u32
 selected_object_id()
 {
  return global_modeler->selected_obj_id;
-}
-
-force_inline i1
-selected_vertex_index(Game_State *state)
-{
- i1 result = 0;
- u32 id = selected_object_id();
- if ( prim_id_type(id) == Prim_Vertex )
- {
-  result = prim_id_to_index(id);
- }
- return result;
 }
 
 function void
@@ -1095,61 +1114,16 @@ operator*(mat4 transform, Bez bezier)
  return result;
 }
 
-// TODO(kv): We can invert the API and let this be the main rendering function instead?
-void
-render_data(Game_State &state)
-#if AD_IS_DRIVER
-;
-#else
-{
- hl_block;
- painter.is_right = 0;
- auto &m = state.modeler;
- auto &p = painter;
- argb inactive_color = argb_dark_green;
- for_i32(vindex,1,m.vertices.count)
- {
-  Vertex_Data &vert = m.vertices[vindex];
-  Object &object = p.object_list[vert.object_index];
-  u32 prim_id = vertex_prim_id(vindex);
-  {
-   mat4 &mat = object.transform;
-   v3 pos = mat4vert(mat, vert.pos);
-   indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
-  }
-  if (vert.symx)
-  {//NOTE: Draw the right side (TODO @speed stupid object lookup)
-   set_in_block(painter.is_right, 1);
-   auto &objectR = get_right_object(object);
-   mat4 &mat = objectR.transform;
-   v3 pos = mat4vert(mat, vert.pos);
-   indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
-  }
- }
- 
- for_i32(curve_index,1,m.curves.count)
- {
-  Bezier_Data &bez = m.curves[curve_index];
-  auto &object = p.object_list[bez.object_index];
-  {
-   v3 p0 = m.vertices[bez.p0_index].pos;
-   v3 p1 = bez.p1;
-   v3 p2 = bez.p2;
-   v3 p3 = m.vertices[bez.p3_index].pos;
-   
-   Bez draw_bez = Bez{p0,p1,p2,p3};
-   {
-    draw(object.transform*draw_bez);
-   }
-   if (bez.symx)
-   {
-    set_in_block(painter.is_right, 1);
-    auto &objectR = get_right_object(object);
-    draw(objectR.transform*draw_bez);
-   }
-  }
- }
-}
+#if AD_IS_FRAMEWORK
+// NOTE: ;read_basic_types
+#define X(T) \
+force_inline void \
+read_##T(Data_Reader &r, T &DST)  \
+{ DST = eat_##T(r.parser) ; }
+//
+X_Basic_Types(X)
+//
+#undef X
 #endif
 
 

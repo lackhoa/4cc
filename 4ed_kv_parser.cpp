@@ -46,9 +46,9 @@ struct Ed_Parser
 {
  b32 ok_;
  Scan_Direction scan_direction;
- Token_Iterator original_token_it;
  Token_Iterator it;
  Arena *string_arena;
+ Token_Iterator original_token_it;
  
  Token_Gen_Type Token_Gen_Type;
  union
@@ -69,7 +69,21 @@ struct Ed_Parser
    ok_ = value;
   }
  }
+ 
+ force_inline void fail() { set_ok(false); }
 };
+
+function i1
+count_newlines_in_string(String string)
+{
+ i1 result = 0;
+ for_i1(index,0,i1(string.len)) {
+  if (string.str[index] == '\n') { 
+   result++;
+  }
+ }
+ return result;
+}
 
 function Line_Column
 ep_get_fail_location(Ed_Parser *p)
@@ -81,18 +95,24 @@ ep_get_fail_location(Ed_Parser *p)
   // NOTE: Time for us to do some gymnastic
   auto it0 = p->original_token_it;
   i64 begin_line_pos = 0;
+  result.line = 1;  // NOTE(kv): Line number starts with 1 for some reason.
   while(true)
   {
    Token *token = token_it_inc_all(&it0);
-   if (!token ||  token->pos > fail_token->pos) {
+   if (!token || token->pos > fail_token->pos) {
     break;
    }
    result.column = i1(token->pos - begin_line_pos);
    if (token->kind == TokenBaseKind_Whitespace)
    {// NOTE: Increase line number
     Scratch_Block scratch;
-    if (ep_print_token(p, scratch) == "\n") {
-     result.line++;
+    String token_string = ep__print_given_token(p, scratch, token);
+    for_i1 (index,0,i1(token_string.len))
+    {
+     if (token_string.str[index] == '\n') {
+      result.line++;
+      begin_line_pos = token->pos+index+1;
+     }
     }
    }
   }
@@ -111,6 +131,7 @@ make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
   .scan_direction  =scan_direction,
   .it              =it,
   .string_arena    =string_arena,
+  .original_token_it = it,
   .Token_Gen_Type  =TG_Buffer,
   .Token_Gen_Buffer={
    .app   =app,
@@ -130,6 +151,7 @@ make_ep_from_string(String string, Token_Iterator const&it,
   .scan_direction  =Scan_Forward,
   .it              =it,
   .string_arena    =string_arena,
+  .original_token_it = it,
   .Token_Gen_Type  =TG_String,
   .Token_Gen_String={
    .source=string,
@@ -164,10 +186,10 @@ ep_get_token(Ed_Parser *p)
 }
 
 function String
-ep_print_token(Ed_Parser *p, Arena *arena)
+ep__print_given_token(Ed_Parser *p, Arena *arena, Token *token)
 {
  String result = {};
- if (Token *token = ep_get_token(p))
+ if (token)
  {
   switch(p->Token_Gen_Type)
   {
@@ -188,14 +210,19 @@ ep_print_token(Ed_Parser *p, Arena *arena)
  return result;
 }
 
+function String
+ep_print_token(Ed_Parser *p, Arena *arena)
+{
+ Token *token = ep_get_token(p);
+ return ep__print_given_token(p, arena, token);
+}
+
 function i64
 ep_get_pos(Ed_Parser *p)
 {
- if (Token *token = ep_get_token(p))
- {
+ if (Token *token = ep_get_token(p)) {
   return token->pos;
- }
- else { return 0; }
+ } else { return 0; }
 }
 
 function void
@@ -391,7 +418,7 @@ ep_eat_preprocessor(Ed_Parser *p, String string)
 }
 
 function String
-ep_eat_id(Ed_Parser *p, String test_id={})
+ep_id(Ed_Parser *p, String test_id={})
 {
  String result = {};
  // NOTE(kv): keywords are also identifier-like, but idk about this test
@@ -416,9 +443,9 @@ ep_eat_id(Ed_Parser *p, String test_id={})
 }
 //
 force_inline String
-ep_eat_id(Ed_Parser *p, char *test_id)
+ep_id(Ed_Parser *p, char *test_id)
 {
- return ep_eat_id(p, SCu8(test_id));
+ return ep_id(p, SCu8(test_id));
 }
 
 // NOTE Returns index + 1 (todo(kv): wtf man?)
@@ -437,15 +464,25 @@ ep__char_in_string(String chars, char chr)
  return result;
 }
 
-function void
-ep_eat_char(Ed_Parser *p, char c)
+function b32
+ep_maybe_char(Ed_Parser *p, char c)
 {
- Scratch_Block scratch;  // @slow
+ Scratch_Block scratch;  // @slow, also sometimes the arena isn't necessary
  String string = ep_print_token(p, scratch);
- p->set_ok(string.len == 1 &&
-           string.str[0] == c);
- ep_eat_token(p);  // this seems like a chore
+ b32 result = (string.len == 1 &&
+               string.str[0] == c);
+ if (result) {
+  ep_eat_token(p);
+ }
+ return result;
 }
+//
+function void
+ep_char(Ed_Parser *p, char c)
+{
+ p->set_ok( ep_maybe_char(p, c) );
+}
+
 
 // NOTE returns index + 1
 function i1

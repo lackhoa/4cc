@@ -640,15 +640,15 @@ F4_Boundary_CursorTokenOrBlankLine_TEST(App *app, Buffer_ID buffer,
             }
         }
     }
-    
-    return result ;
+ 
+ return result ;
 }
 
 CUSTOM_COMMAND_SIG(f4_move_up_token_occurrence)
 CUSTOM_DOC("Moves the cursor to the previous occurrence of the token that the cursor is over.")
 {
-    Scratch_Block scratch(app);
-    current_view_scan_move(app, Scan_Backward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine_TEST));
+ Scratch_Block scratch(app);
+ current_view_scan_move(app, Scan_Backward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine_TEST));
 }
 
 CUSTOM_COMMAND_SIG(f4_move_down_token_occurrence)

@@ -14,12 +14,6 @@
 #define BindingGetPtr(b) ((b).custom)
 #endif
 
-// TODO(kv): revisit
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
-#pragma clang diagnostic ignored "-Wsign-compare"
-
 function u64
 mapping__key(Input_Event_Kind kind, u32 sub_code){
     return((((u64)kind) << 32) | sub_code);
@@ -730,26 +724,27 @@ command_trigger_stringize(Arena *arena, List_String *list, Command_Trigger *trig
             string_list_push(arena, list, string_u8_litexpr("ERROR unexpected trigger kind"));
         }break;
     }
-    string_list_push(arena, list, string_u8_litexpr(">"));
+ string_list_push(arena, list, string_u8_litexpr(">"));
 }
 
 ////////////////////////////////
 
 function void
 map_set_binding_lv(Mapping *mapping, Command_Map *map,
-                   Command_Binding binding, u32 code1, u32 code2, va_list args){
-    Input_Modifier_Set mods = {};
-    Key_Code mods_array[Input_MaxModifierCount];
-    mods.mods = mods_array;
-    for (;mods.count < ArrayCount(mods_array);){
-        i1 v = va_arg(args, i1);
-        if (v <= 0){
-            break;
-        }
-        mods.mods[mods.count] = (Key_Code)v;
-        mods.count += 1;
-    }
-    return(map_set_binding(mapping, map, binding, code1, code2, &mods));
+                   Command_Binding binding, u32 code1, u32 code2, va_list args)
+{
+ Input_Modifier_Set mods = {};
+ Key_Code mods_array[Input_MaxModifierCount];
+ mods.mods = mods_array;
+ for (;mods.count < (i32)ArrayCount(mods_array);){
+  i1 v = va_arg(args, i1);
+  if (v <= 0){
+   break;
+  }
+  mods.mods[mods.count] = (Key_Code)v;
+  mods.count += 1;
+ }
+ return(map_set_binding(mapping, map, binding, code1, code2, &mods));
 }
 
 #if MAP_METADATA_ONLY
@@ -836,13 +831,12 @@ Command_Binding::Command_Binding(char *n){
     this->name = n;
 }
 Command_Binding::operator Custom_Command_Function*(){
-    return(this->custom);
+ return(this->custom);
 }
 Command_Binding::operator char*(){
-    return(this->name);
+ return(this->name);
 }
 
-#pragma clang diagnostic pop
 
 
 // BOTTOM

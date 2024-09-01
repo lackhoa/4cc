@@ -20,7 +20,7 @@ vim_pattern_inner_v(App *app, Buffer_Seek_String_Flags seek_flags)
   if (seek_flags & BufferSeekString_Identifier)
   {// NOTE(kv): Identifier search
    Scratch_Block scratch(app);
-   Token_Iterator_Array tk = token_it_at_cursor(app);
+   Token_Iterator_Array tk = get_token_it_at_cursor(app);
    while(true)
    {
     Token *token = (backward ?
@@ -44,9 +44,9 @@ vim_pattern_inner_v(App *app, Buffer_Seek_String_Flags seek_flags)
   else
   {// NOTE(kv): fuzzy string search
    if (backward) {
-    result = kv_fuzzy_search_backward(app, buffer, pos, pattern);
+    result = kv_fuzzy_search_backward(app, buffer, pos, pattern).min;
    } else {
-    result = kv_fuzzy_search_forward(app, buffer, pos, pattern);
+    result = kv_fuzzy_search_forward(app, buffer, pos, pattern).min;
    }
   }
  }
@@ -95,111 +95,100 @@ vim_start_search_inner(App *app, Scan_Direction start_direction)
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	if(!buffer_exists(app, buffer)){ return; }
-
+ 
 	i64 buffer_size = buffer_get_size(app, buffer);
-
+ 
 	Vec2_f32 old_margin = {};
 	Vec2_f32 old_push_in = {};
 	view_get_camera_bounds(app, view, &old_margin, &old_push_in);
-
+ 
 	Vec2_f32 margin = old_margin;
 	margin.y = clamp_min(200.f, margin.y);
 	view_set_camera_bounds(app, view, margin, old_push_in);
-
+ 
 	Scan_Direction direction = start_direction;
 	i64 pos = view_get_cursor_pos(app, view);
-
+ 
 	/// TODO(BYP): Need a better system to have multiple types of these drawing
 	vim_use_bottom_cursor = true;
-	String prefix = (start_direction == Scan_Forward ? string_u8_litexpr("/") : string_u8_litexpr("?"));
+	String prefix = (start_direction == Scan_Forward ? strlit("/")  : strlit("?"));
 	vim_set_bottom_text(prefix);
 	u8 *dest = vim_bottom_text.str + vim_bottom_text.size;
 	u64 after_size;
 	after_size = vim_bottom_text.size;
-
+ 
 	Vim_Register *reg = &vim_registers.search;
 	if(reg->data.size < 256){ vim_realloc_string(&reg->data, 0); }
 	reg->data.size = 0;
 	String_u8 *query = &reg->data;
-
+ 
 	f32 prev_offset = vim_nxt_lister_offset;
-
+ 
 	i64 match_size = 0;
 	User_Input in = {};
 	for(;;)
-    {
+ {
 		if(vim_nxt_lister_offset == 0.f){ vim_nxt_lister_offset = 0.1f; }
 		animate_in_n_milliseconds(app, 0);
 		vim_set_bottom_text(prefix);
 		block_copy(dest, query->str, query->size);
 		vim_bottom_text.size = after_size + query->size;
-
+  
 		in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
 		if(in.abort){ query->size = 0; break; }
-
+  
 		String string = to_writable(&in);
-
+  
 		b32 string_change = false;
 		if(match_key_code(&in, Key_Code_Return))
-        {
-          reg->flags |= (REGISTER_Set|REGISTER_Updated);
-          break;
+  {
+   reg->flags |= (REGISTER_Set|REGISTER_Updated);
+   break;
 		}
 		else if(string.str && string.size)
-        {
+  {
 			string_concat(query, string);
 			string_change = true;
 		}
 		else if(match_key_code(&in, Key_Code_Backspace))
-        {
-          u64 old_size = query->size;
-          if(set_has_modifier(&in.event.key.modifiers, Key_Code_Control)){
-            if(set_has_modifier(&in.event.key.modifiers, Key_Code_Shift)){
-              query->string.size = 0;
-            }else{
-              query->string = ctrl_backspace_utf8(query->string);
-            }
-          }else{
-            query->string = backspace_utf8(query->string);
-          }
-          string_change = old_size != query->size;
+  {
+   u64 old_size = query->size;
+   if(set_has_modifier(&in.event.key.modifiers, Key_Code_Control)){
+    if(set_has_modifier(&in.event.key.modifiers, Key_Code_Shift)){
+     query->string.size = 0;
+    }else{
+     query->string = ctrl_backspace_utf8(query->string);
+    }
+   }else{
+    query->string = backspace_utf8(query->string);
+   }
+   string_change = old_size != query->size;
 		}
 		else { leave_current_input_unhandled(app); }
-
+  
 		if(string_change)
-        {
-          reg->flags |= (REGISTER_Set|REGISTER_Updated);
-          vim_update_registers(app);
-          i64 new_pos = 0;
-          if (direction == Scan_Forward)
-          {
-            // seek_string_insensitive_forward(app, buffer, pos - 1, 0, query->string, &new_pos);
-            new_pos = kv_fuzzy_search_forward(app, buffer, pos - 1, query->string);
-            if(new_pos < buffer_size){
-              pos = new_pos;
-              match_size = query->string.size;
-            }
-          }
-          else
-          {
-            // seek_string_insensitive_backward(app, buffer, pos + 1, 0, query->string, &new_pos);
-            new_pos = kv_fuzzy_search_backward(app, buffer, pos+1, query->string);
-            if(new_pos >= 0){
-              pos = new_pos;
-              match_size = query->string.size;
-            }
-          }
-
-          if( in_range_exclude_last(0, new_pos, buffer_size) )
-          {
-            view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
-            isearch__update_highlight(app, view, Ii64_size(new_pos, match_size));
-          }
+  {
+   reg->flags |= (REGISTER_Set|REGISTER_Updated);
+   vim_update_registers(app);
+   Range_i64 new_match;
+   if (direction == Scan_Forward) {
+    new_match = kv_fuzzy_search_forward (app, buffer, pos-1, query->string);
+   } else {
+    new_match = kv_fuzzy_search_backward(app, buffer, pos+1, query->string);
+   }
+   
+   if (new_match.min != 0)
+   {
+    pos = new_match.min;
+    match_size = query->string.size;
+    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+    isearch__update_highlight(app, view, new_match);
+   }
 		}
 	}
-
+ 
 	view_disable_highlight_range(app, view);
-
+ 
 	vim_reset_bottom_text();
 	vim_use_bottom_cursor = false;
 	vim_nxt_lister_offset = prev_offset;
@@ -212,8 +201,8 @@ VIM_COMMAND_SIG(vim_clear_search){
 	vim_update_registers(app);
 }
 
-VIM_COMMAND_SIG(vim_start_search_forward) { vim_start_search_inner(app, Scan_Forward);  }
-VIM_COMMAND_SIG(vim_start_search_backward){ vim_start_search_inner(app, Scan_Backward); }
+VIM_COMMAND_SIG(vim_start_search_forward)  { vim_start_search_inner(app, Scan_Forward);  }
+VIM_COMMAND_SIG(vim_start_search_backward) { vim_start_search_inner(app, Scan_Backward); }
 
 VIM_COMMAND_SIG(vim_to_next_pattern){ vim_to_pattern_inner(app, false); }
 VIM_COMMAND_SIG(vim_to_prev_pattern){ vim_to_pattern_inner(app, true); }

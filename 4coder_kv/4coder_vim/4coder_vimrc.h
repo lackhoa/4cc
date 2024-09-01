@@ -9,7 +9,8 @@ CUSTOM_ID(colors, defcolor_vim_chord_error);
 #define VIM_USE_TRADITIONAL_CHORDS     0
 #define VIM_USE_REIGSTER_BUFFER        1
 
-enum BYP_Vim_Request{
+typedef u32 BYP_Vim_Request;
+enum {
 	BYP_REQUEST_Title,
 	BYP_REQUEST_Comment,
 	BYP_REQUEST_UnComment,
@@ -22,7 +23,7 @@ enum BYP_Vim_Objects{
 	BYP_OBJECT_param1,
 	BYP_OBJECT_camel0,
 	BYP_OBJECT_camel1,
-
+ 
 	BYP_OBJECT_COUNT
 };
 

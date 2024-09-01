@@ -2,9 +2,6 @@
 
 #include "4coder_vim.h"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
-
 // TODO(BYP): Clean this up a bit more
 function String
 ctrl_backspace_utf8(String string){
@@ -199,7 +196,7 @@ calc_col_row(App *app, Lister *lister)
 		}
 	}
 	
-	i32 col_num = i32(dim.x/((max_name_size+7)*max_advance));
+	i32 col_num = i32(dim.x/(v1(max_name_size+7)*max_advance));
 	col_num = clamp_between(lister_range.min, col_num, lister_range.max);
 	
 	i32 max_row_num = 1 + lister->filtered.count/col_num;
@@ -271,7 +268,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
 	
 	if(lister->set_vertical_focus_to_item){
 		lister->set_vertical_focus_to_item = false;
-		Range_f32 item_y = If32_size(((f32)lister->item_index/col_num)*block_height, block_height);
+		Range_f32 item_y = If32_size(((f32)lister->item_index/(v1)col_num)*block_height, block_height);
 		f32 view_h = rect_height(clip);
 		Range_f32 view_y = If32_size(scroll_y, view_h);
 		if(view_y.min > item_y.min || item_y.max > view_y.max){
@@ -304,11 +301,11 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
 	lister->scroll.position.x = 0.f;
 	
 	scroll_y = lister->scroll.position.y;
-	i32 first_index = (i32)(col_num*scroll_y/(block_height));
+	i32 first_index = (i32)((v1)col_num*scroll_y/(block_height));
 	
 	f32 x_base = clip.x0;
 	f32 y_base = clip.y1 - vim_cur_lister_offset;
-	f32 block_width = rect_width(clip)/col_num;
+	f32 block_width = rect_width(clip)/(v1)col_num;
 	Rect_f32 back_rect = clip;
 #if SCREW_THIS_JUST_KISS
  back_rect.y0 = y_base;
@@ -321,8 +318,8 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
  {// NOTE(kv): Drawing lister items
   Lister_Node *node = lister->filtered.node_ptrs[i];
 		
-		f32 x0 = x_base + block_width*((i-first_index) % col_num);
-		f32 y0 = y_base + block_height*((i-first_index) / col_num);
+		f32 x0 = x_base + block_width*v1((i-first_index) % col_num);
+		f32 y0 = y_base + block_height*v1((i-first_index) / col_num);
 		if(y0 > clip.y1){ break; }
 		Rect_f32 item_rect = Rf32(x0, y0, x0+block_width, y0+block_height);
 		Rect_f32 item_inner = rect_inner(item_rect, 3.f);
@@ -350,7 +347,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
 		}
 		
 		u64 lister_roundness_100 = def_get_config_u64(app, vars_intern_lit("lister_roundness"));
-		f32 roundness = block_height*lister_roundness_100*0.01f;
+		f32 roundness = block_height*v1(lister_roundness_100)*0.01f;
   draw_rect_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
   draw_rect_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
 		
@@ -522,7 +519,7 @@ vim_run_lister(App *app, Lister *lister)
 			} break;
 			
 			case InputEventKind_MouseWheel:{
-				lister->scroll.target.y += get_mouse_state(app).wheel;
+				lister->scroll.target.y += (v1)get_mouse_state(app).wheel;
 				lister_update_filtered_list(app, lister);
 			} break;
 			
@@ -618,5 +615,3 @@ vim_get_filename_from_user(App *app, Arena *arena, String query, View_ID view){
 	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, arena, query, handlers);
 	return vim_convert_lister_result_to_filename_result(l_result);
 }
-
-#pragma clang diagnostic pop

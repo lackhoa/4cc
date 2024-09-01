@@ -148,12 +148,10 @@ ogl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsi
  //Severity: GL_DEBUG_SEVERITY_HIGH, GL_DEBUG_SEVERITY_MEDIUM, GL_DEBUG_SEVERITY_LOW
  switch (id)
  {
-#if 0
   case 131218:
   {
    // NOTE(allen): performance warning, do nothing.
   }break;
-#endif
   
   invalid_default_case;
  }
@@ -471,7 +469,7 @@ ogl__begin_program_editor(Render_Target *target, Render_Group *group)
  {// NOTE: Uniforms
   mat4 screen_transform;
   {
-   v1 y_sign = (group->y_is_up) ? +1 : -1;
+   v1 y_sign = (group->y_is_up) ? +1.f : -1.f;
    v2 dst_dim = V2(v1(target->width), v1(target->height));
    // NOTE(kv): Scale to normalized device coordinate
    v1 a = 2.f/dst_dim.x;

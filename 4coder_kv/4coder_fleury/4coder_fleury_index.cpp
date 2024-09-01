@@ -419,7 +419,7 @@ F4_Index_RequireToken(F4_Index_ParseCtx *ctx, String8 string, F4_Index_TokenSkip
     Token *token = tkarr_read(&ctx->it);
     if(token)
     {
-        String8 token_string = string_substring(ctx->string, token_range(token));
+        String8 token_string = string_substring(ctx->string, get_token_range(token));
         if(string_match(string, token_string))
         {
             result = 1;
@@ -497,7 +497,7 @@ F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String8 string)
     Token *token = tkarr_read(&ctx->it);
     if ( token )
     {
-        String8 token_string = string_substring(ctx->string, token_range(token));
+        String8 token_string = string_substring(ctx->string, get_token_range(token));
         if (string_match(string, token_string))
         {
             result = 1;

@@ -338,7 +338,7 @@ kvInitQuailTable(App *app)
 {
  arrsetcap(kv_quail_table, 64);
  
-#define QUAIL_DEFRULE(KEY, VALUE) kv_quail_defrule(app, KEY, VALUE, strlen(KEY)-1, 0, strlen(VALUE))
+#define QUAIL_DEFRULE(KEY, VALUE) kv_quail_defrule(app, KEY, VALUE, (i1)strlen(KEY)-1, 0, (i1)strlen(VALUE))
  
  QUAIL_DEFRULE(",,", "_");
  kv_quail_defrule(app, ",,,", "__", 1,0,2);
@@ -384,12 +384,13 @@ kv_vim_bindings(App *app)
  
  
  //-NOTE: SUB_G
- BIND(N|MAP, kv_open_note_file,   SUB_G,   Key_Code_N);
- BIND(N|MAP, kv_handle_g_f,       SUB_G,   Key_Code_F);
- BIND(N|MAP, toggle_the_game,     SUB_G,   Key_Code_O);
- BIND(N|MAP, toggle_game_auxiliary_viewports,  SUB_G, S|Key_Code_O);
- BIND(N|V|MAP, vim_file_top,      SUB_G,   Key_Code_G);
- BIND(N|0|MAP, vim_switch_lister, SUB_G,   Key_Code_B);
+ BIND(N|MAP, kv_open_note_file,       SUB_G,   Key_Code_N);
+ BIND(N|MAP, kv_handle_g_f,           SUB_G,   Key_Code_F);
+ BIND(N|MAP, toggle_the_game,         SUB_G,   Key_Code_O);
+ BIND(N|MAP, toggle_game_auxiliary_viewports, SUB_G, S|Key_Code_O);
+ BIND(N|V|MAP, vim_file_top,          SUB_G,   Key_Code_G);
+ BIND(N|0|MAP, vim_switch_lister,     SUB_G,   Key_Code_B);
+ BIND(N|V|MAP, kv_toggle_cpp_comment, SUB_G,   Key_Code_C);
  
  BIND(N|MAP, undo,                                Key_Code_U);
  BIND(N|MAP, redo,                              C|Key_Code_R);
@@ -691,16 +692,16 @@ kv_custom_layer_init(App *app)
  default_framework_init(app);
  set_all_default_hooks(app);
  
- vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(string_u8_litexpr("*scratch*")), 1.f, 1.f };
- vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(string_u8_litexpr("todo.txt")),  1.f, 1.f };
- vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Title]     = byp_apply_title;
- vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_Comment]   = byp_apply_comment;
- vim_request_vtable[VIM_REQUEST_COUNT + BYP_REQUEST_UnComment] = byp_apply_uncomment;
+ vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(strlit("*scratch*")), 1.f, 1.f };
+ vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(strlit("todo.txt")),  1.f, 1.f };
+ vim_request_vtable[(u32)VIM_REQUEST_COUNT + (u32)BYP_REQUEST_Title]     = byp_apply_title;
+ vim_request_vtable[(u32)VIM_REQUEST_COUNT + (u32)BYP_REQUEST_Comment]   = byp_apply_comment;
+ vim_request_vtable[(u32)VIM_REQUEST_COUNT + (u32)BYP_REQUEST_UnComment] = byp_apply_uncomment;
  
- vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param0] = {',', (Vim_Text_Object_Func *)byp_object_param};
- vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_param1] = {';', (Vim_Text_Object_Func *)byp_object_param};
- vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel0] = {'_', (Vim_Text_Object_Func *)byp_object_camel};
- vim_text_object_vtable[VIM_TEXT_OBJECT_COUNT + BYP_OBJECT_camel1] = {'-', (Vim_Text_Object_Func *)byp_object_camel};
+ vim_text_object_vtable[(u32)VIM_TEXT_OBJECT_COUNT + (u32)BYP_OBJECT_param0] = {',', (Vim_Text_Object_Func *)byp_object_param};
+ vim_text_object_vtable[(u32)VIM_TEXT_OBJECT_COUNT + (u32)BYP_OBJECT_param1] = {';', (Vim_Text_Object_Func *)byp_object_param};
+ vim_text_object_vtable[(u32)VIM_TEXT_OBJECT_COUNT + (u32)BYP_OBJECT_camel0] = {'_', (Vim_Text_Object_Func *)byp_object_camel};
+ vim_text_object_vtable[(u32)VIM_TEXT_OBJECT_COUNT + (u32)BYP_OBJECT_camel1] = {'-', (Vim_Text_Object_Func *)byp_object_camel};
  kv_vim_init(app);
  
  set_custom_hook(app, HookID_SaveFile,                kv_file_save);

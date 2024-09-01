@@ -220,7 +220,7 @@ vim_query_create_folder(App *app, String folder_name){
    case SureToCreateFolder_Yes:{
 				String hot = push_hot_directory(app, scratch);
     String fixed_folder_name = push_string_copyz(scratch, folder_name);
-    foreach(i, fixed_folder_name.size){
+    foreach(i, (i1)fixed_folder_name.size){
 					if(fixed_folder_name.str[i] == '/'){ fixed_folder_name.str[i] = '\\'; }
 				}
     if(fixed_folder_name.size > 0){
@@ -311,10 +311,6 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 
 	if(result != 0){ active_color_table = *result; }
 }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 CUSTOM_UI_COMMAND_SIG(vim_switch_lister)
 CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
@@ -473,7 +469,7 @@ CUSTOM_DOC("Opens an interactive lists of the views jumps")
 
 		String line_text = push_buffer_line(app, scratch, slot->buffer, line);
 		b32 blank = true;
-		foreach(j, line_text.size){
+		foreach(j, (i1)line_text.size){
 			if(!character_is_whitespace(line_text.str[j])){ blank = false; break; }
 		}
 		if(blank){ line_text = string_u8_litexpr("*blank*"); }
@@ -619,5 +615,3 @@ CUSTOM_COMMAND_SIG(vim_file_externally_modified){
 		vim_reload_external_changes_lister(app, input.event.core.id);
 	}
 }
-
-#pragma clang diagnostic pop

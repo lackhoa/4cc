@@ -154,6 +154,7 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 function void
 vim_draw_search_highlight(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness)
 {
+#if 0
 	String_u8 *pattern = &vim_registers.search.data;
 	if(pattern->size > 1)  // TODO kv: Don't flood the buffer with highlights
  {
@@ -164,7 +165,8 @@ vim_draw_search_highlight(App *app, View_ID view, Buffer_ID buffer, Text_Layout_
   {
    i64 new_pos = 0;
    seek_string_forward(app, buffer, cur_pos, 0, pattern->string, &new_pos);
-   if(new_pos == 0 || new_pos == buffer_size){ break; }
+   
+   if (new_pos == 0 || new_pos == buffer_size) { break; }
    else
    {
     cur_pos = new_pos;
@@ -174,6 +176,7 @@ vim_draw_search_highlight(App *app, View_ID view, Buffer_ID buffer, Text_Layout_
    }
   }
  }
+#endif
 }
 
 function void
@@ -523,7 +526,7 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
  if (arrlen(DEBUG_entries) > 0 && 
      DEBUG_draw_hud_p)
  {// Debug HUD
-  i1 line_count = arrlen(DEBUG_entries);
+  i1 line_count = (i1)arrlen(DEBUG_entries);
   rect2_Pair pair = rect_split_top_bottom_neg(main_monitor_region, v1(line_count)*line_height);
   rect2 clip = pair.max;
   clip.x0 += 0.5f*(clip.x1 - clip.x0);

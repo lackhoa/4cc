@@ -21,6 +21,8 @@
 #    define AD_IS_EDITOR
 #endif
 
+#define AD_SHUTDOWN_IMGUI 1  // NOTE(kv): Because I'm still not sure what this is for?
+
 #include "kv.h"
 #include "4coder_types.h"
 #include "4ed_render_target.h"
@@ -136,6 +138,7 @@ DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0)
 
 //~ NOTE: Game
 
+#if !AD_IS_DRIVER
 struct Game_Input
 {
  Key_Mods active_mods;
@@ -146,22 +149,37 @@ struct Game_Input
  Mouse_State mouse;
 };
 
+struct Game_ImGui_State
+{
+ ImGuiContext* ctx;
+ ImGuiMemAllocFunc alloc_func;
+ ImGuiMemFreeFunc  free_func;
+ void*             user_data;
+};
+
 struct Image_Load_Info
 {
  i32 image_count;
  i32 failure_count;
 };
+#endif
 
 global_const i32 GAME_VIEWPORT_COUNT = 3;
 global_const i32 MAIN_VIEWPORT_ID    = 1;
 global_const String GAME_FILE_NAME = strlit("game.cpp");
 
+#if !AD_IS_DRIVER
 //-NOTE: game API functions (NOTE: The API is quite simple so let's just macro for now)
-#define game_reload_params struct Game_State *state, API_VTable_ed *ed_api, b32 first_time
 #define game_reload_return void
+#define game_reload_params struct Game_State *state, API_VTable_ed *ed_api, b32 first_time
 // @game_bootstrap_arena_zero_initialized
-#define game_init_params Arena *bootstrap_arena, API_VTable_ed *ed_api, App *app
 #define game_init_return struct Game_State *
+#define game_init_params \
+Arena *bootstrap_arena, API_VTable_ed *ed_api, App *app, \
+Game_ImGui_State &imgui_state
+//
+#define game_shutdown_return void
+#define game_shutdown_params void
 //
 struct game_update_return {
  b32 should_animate_next_frame;
@@ -193,6 +211,7 @@ struct game_update_return {
 
 #define X_GAME_API_FUNCTIONS(X) \
 X(game_init)                \
+X(game_shutdown)            \
 X(game_update)              \
 X(game_viewport_update)     \
 X(game_render)              \
@@ -212,15 +231,16 @@ X(game_send_command)        \
 
 struct Game_API
 {
-    b32 is_valid;
+ b32 is_valid;
 #define X(N) N##_type *N;
-    X_GAME_API_FUNCTIONS(X);
+ X_GAME_API_FUNCTIONS(X);
 #undef X
 };
 
 #define game_api_export_return void
-#define game_api_export_params Game_API *api
+#define game_api_export_params Game_API &api
 typedef game_api_export_return game_api_export_type(game_api_export_params);
+#endif
 
 //~
 

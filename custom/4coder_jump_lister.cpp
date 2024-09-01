@@ -4,9 +4,6 @@
 
 // TOP
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 function Jump_Lister_Result
 get_jump_index_from_user(App *app, Marker_List *list,
@@ -39,8 +36,6 @@ get_jump_index_from_user(App *app, Marker_List *list,
     
     return(result);
 }
-
-#pragma clang diagnostic pop
 
 function Jump_Lister_Result
 get_jump_index_from_user(App *app, Marker_List *list, char *query){

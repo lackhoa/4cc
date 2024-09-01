@@ -10,6 +10,7 @@
 // TOP
 
 #define REMOVE_OLD_STRING
+#define ED_CORRUPTION_CHECK 1
 
 #include "4ed_base.h"
 #include "4coder_version.h"

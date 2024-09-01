@@ -1,11 +1,9 @@
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-compare"
 VIM_REQUEST_SIG(byp_apply_title)
 {
 	Scratch_Block scratch(app);
 	String text = push_buffer_range(app, scratch, buffer, range);
 	u8 prev = buffer_get_char(app, buffer, range.min-1);
-	foreach(i, text.size){
+	foreach(i, (i1)text.size){
 		text.str[i] += u8(i1('A' - 'a')*((!character_is_alpha(prev) || prev == '_') &&
 										  character_is_lower(text.str[i])));
 		prev = text.str[i];
@@ -13,7 +11,6 @@ VIM_REQUEST_SIG(byp_apply_title)
 	buffer_replace_range(app, buffer, range, text);
 	buffer_post_fade(app, buffer, 0.667f, range, fcolor_resolve(fcolor_id(defcolor_paste)));
 }
-#pragma clang diagnostic pop
 
 VIM_TEXT_OBJECT_SIG(byp_object_param)
 {

@@ -127,14 +127,14 @@ create_child_process(App *app, String path, String command)
 api(custom) function b32
 child_process_set_target_buffer(App *app, Child_Process_ID child_process_id, Buffer_ID buffer_id, Child_Process_Set_Target_Flags flags)
 {
-    Models *models = (Models*)app->cmd_context;
-    Child_Process *child_process = child_process_from_id(&models->child_processes, child_process_id);
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file) && child_process != 0){
-        result = child_process_set_target_buffer(models, child_process, file, flags);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Child_Process *child_process = child_process_from_id(&models->child_processes, child_process_id);
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if (api_check_buffer(file) && child_process != 0){
+  result = child_process_set_target_buffer(models, child_process, file, flags);
+ }
+ return(result);
 }
 
 api(custom) function Child_Process_ID
@@ -179,26 +179,26 @@ enqueue_virtual_event(App *app, Input_Event *event){
 api(custom) function i32
 get_buffer_count(App *app)
 {
-    Models *models = (Models*)app->cmd_context;
-    Working_Set *working_set = &models->working_set;
-    return(working_set->active_file_count);
+ Models *models = (Models*)app->cmd_context;
+ Working_Set *working_set = &models->working_set;
+ return(working_set->active_file_count);
 }
 
 api(custom) function Buffer_ID
 get_buffer_next(App *app, Buffer_ID buffer_id, Access_Flag access)
 {
-    Models *models = (Models*)app->cmd_context;
-    Working_Set *working_set = &models->working_set;
-    Editing_File *file = working_set_get_file(working_set, buffer_id);
-    file = file_get_next(working_set, file);
-    for (;file != 0 && !access_test(file_get_access_flags(file), access);){
-        file = file_get_next(working_set, file);
-    }
-    Buffer_ID result = 0;
-    if (file != 0){
-        result = file->id;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Working_Set *working_set = &models->working_set;
+ Editing_File *file = working_set_get_file(working_set, buffer_id);
+ file = file_get_next(working_set, file);
+ for (;file != 0 && !access_test(file_get_access_flags(file), access);){
+  file = file_get_next(working_set, file);
+ }
+ Buffer_ID result = 0;
+ if (file != 0){
+  result = file->id;
+ }
+ return(result);
 }
 
 api(custom) function Buffer_ID
@@ -224,10 +224,23 @@ get_buffer_by_filename(App *app, String filename, Access_Flag access)
     Scratch_Block scratch(app);
     if (get_canon_name(scratch, filename, &canon)){
         Working_Set *working_set = &models->working_set;
-        Editing_File *file = working_set_contains_canon(working_set, string_from_filename(&canon));
-        if (api_check_buffer(file, access)){
+  Editing_File *file = working_set_contains_canon(working_set, string_from_filename(&canon));
+  if (api_check_buffer(file, access)){
    result = file->id;
   }
+ }
+ return(result);
+}
+
+api(custom) function b32
+is_buffer_limited_edit(App *app, Buffer_ID buffer_id)
+{
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if ( api_check_buffer(file) )
+ {
+  result = file->settings.limited_edit;
  }
  return(result);
 }
@@ -281,7 +294,6 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
   Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
   edit_single(app->tctx, models, file, range, string, behaviors);
   result = true;
-  //vim_set_dot_delete_count(range.max-range.min); NOTE: there are other buffers beside file buffers, so we can't do this
  }
  return(result);
 }
@@ -789,7 +801,7 @@ buffer_get_setting(App *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64
     return(result);
 }
 
-// @Cleanup Oh come on! Why aren't the buffer settings also flags?
+// @Cleanup (kv) Oh come on! Why aren't the buffer settings also flags?
 api(custom) function b32
 buffer_set_setting(App *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value)
 {
@@ -841,35 +853,35 @@ buffer_get_managed_scope(App *app, Buffer_ID buffer_id)
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     Managed_Scope result = 0;
-    if (api_check_buffer(file)){
-        result = file_get_managed_scope(file);
-    }
-    return(result);
+ if (api_check_buffer(file)){
+  result = file_get_managed_scope(file);
+ }
+ return(result);
 }
 
 api(custom) function b32
 buffer_send_end_signal(App *app, Buffer_ID buffer_id)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file)){
-        file_end_file(app->tctx, models, file);
-        result = true;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if (api_check_buffer(file)){
+  file_end_file(app->tctx, models, file);
+  result = true;
+ }
+ return(result);
 }
 
 api(custom) function Buffer_ID
 create_buffer(App *app, String filename, Buffer_Create_Flag flags)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *new_file = create_file(app->tctx, models, filename, flags);
-    Buffer_ID result = 0;
-    if (new_file != 0){
-        result = new_file->id;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *new_file = create_file(app->tctx, models, filename, flags);
+ Buffer_ID result = 0;
+ if (new_file != 0) {
+  result = new_file->id;
+ }
+ return(result);
 }
 
 api(custom) function b32
@@ -1357,7 +1369,7 @@ panel_swap_children(App *app, Panel_ID panel_id){
     Panel *panel = imp_get_panel(models, panel_id);
     if (api_check_panel(panel)){
         if (panel->kind == PanelKind_Intermediate){
-            Swap(Panel*, panel->tl_panel, panel->br_panel);
+            macro_swap(panel->tl_panel, panel->br_panel);
             layout_propogate_sizes_down_from_node(layout, panel);
         }
     }
@@ -1551,11 +1563,11 @@ view_get_managed_scope(App *app, View_ID view_id)
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
     Managed_Scope result = 0;
-    if (api_check_view(view)){
-        Assert(view->lifetime_object != 0);
-        result = (Managed_Scope)(view->lifetime_object->workspace.scope_id);
-    }
-    return(result);
+ if (api_check_view(view)){
+  Assert(view->lifetime_object != 0);
+  result = (Managed_Scope)(view->lifetime_object->workspace.scope_id);
+ }
+ return(result);
 }
 
 api(custom) function Buffer_Cursor
@@ -1782,30 +1794,25 @@ view_current_context_hook_memory(App *app, View_ID view_id,
                 {
                     result = make_data(ctx->delta_rule_memory,
                                        ctx->ctx.delta_rule_memory_size);
-                }break;
-            }
-        }
-    }
-    return(result);
+    }break;
+   }
+  }
+ }
+ return(result);
 }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 function Dynamic_Workspace*
 get_dynamic_workspace(Models *models, Managed_Scope handle){
-    Dynamic_Workspace *result = 0;
-    Table_Lookup lookup = table_lookup(&models->lifetime_allocator.scope_id_to_scope_ptr_table, handle);
-    if (lookup.found_match){
-        u64 val = 0;
-        table_read(&models->lifetime_allocator.scope_id_to_scope_ptr_table, lookup, &val);
-        result = (Dynamic_Workspace*)IntAsPtr(val);
-    }
-    return(result);
+ Dynamic_Workspace *result = 0;
+ Table_Lookup lookup = table_lookup(&models->lifetime_allocator.scope_id_to_scope_ptr_table, handle);
+ if (lookup.found_match){
+  u64 val = 0;
+  table_read(&models->lifetime_allocator.scope_id_to_scope_ptr_table, lookup, &val);
+  result = (Dynamic_Workspace*)IntAsPtr(val);
+ }
+ return(result);
 }
 
-#pragma clang diagnostic pop
 
 api(custom) function Managed_Scope
 create_user_managed_scope(App *app)
@@ -2473,12 +2480,12 @@ clear_all_query_bars(App *app, View_ID view_id){
 api(custom ed) function void
 print_message(App *app, String message)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = models->message_buffer;
-    if (file != 0){
-        output_file_append(app->tctx, models, file, message);
-        file_cursor_to_end(app->tctx, models, file);
-    }
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = models->message_buffer;
+ if (file != 0){
+  output_file_append(app->tctx, models, file, message);
+  file_cursor_to_end(app->tctx, models, file);
+ }
 }
 
 api(custom) function b32
@@ -2489,88 +2496,85 @@ log_string(App *app, String str){
 api(custom) function Face_ID
 get_largest_face_id(App *app)
 {
-    Models *models = (Models*)app->cmd_context;
-    return(font_set_get_largest_id(&models->font_set));
+ Models *models = (Models*)app->cmd_context;
+ return(font_set_get_largest_id(&models->font_set));
 }
 
 api(custom) function b32
 set_global_face(App *app, Face_ID id)
 {
-    Models *models = (Models*)app->cmd_context;
-    b32 result = false;
-    Face *face = font_set_face_from_id(&models->font_set, id);
-    if (face != 0){
-        models->global_face_id = face->id;
-        result = true;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ b32 result = false;
+ Face *face = font_set_face_from_id(&models->font_set, id);
+ if (face != 0){
+  models->global_face_id = face->id;
+  result = true;
+ }
+ return(result);
 }
 
 api(custom) function History_Record_Index
 buffer_history_get_max_record_index(App *app, Buffer_ID buffer_id){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    History_Record_Index result = 0;
-    if (api_check_buffer(file) && history_is_activated(&file->state.history)){
-        result = history_get_record_count(&file->state.history);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ History_Record_Index result = 0;
+ if (api_check_buffer(file) && history_is_activated(&file->state.history)){
+  result = history_get_record_count(&file->state.history);
+ }
+ return(result);
 }
 
 function void
 buffer_history__fill_record_info(Record *record, Record_Info *out)
 {
-    out->kind = record->kind;
-    out->pos_before_edit = record->pos_before_edit;
-    out->edit_number = record->edit_number;
-    switch (out->kind){
-        case RecordKind_Single:
-        {
-            out->single_string_forward  = record->single.forward_text ;
-            out->single_string_backward = record->single.backward_text;
-            out->single_first = record->single.first;
-        }break;
-        case RecordKind_Group:
-        {
-            out->group_count = record->group.count;
-        }break;
-        default:
-        {
-            InvalidPath;
-        }break;
-    }
+ out->kind            = record->kind;
+ out->pos_before_edit = record->pos_before_edit;
+ out->edit_number     = record->edit_number;
+ switch (out->kind){
+  case RecordKind_Single:
+  {
+   out->single_string_forward  = record->single.forward_text ;
+   out->single_string_backward = record->single.backward_text;
+   out->single_first           = record->single.first;
+  }break;
+  case RecordKind_Group:
+  {
+   out->group_count = record->group.count;
+  }break;
+  default:
+  {
+   InvalidPath;
+  }break;
+ }
 }
 
 api(custom) function Record_Info
-buffer_history_get_record_info(App *app, Buffer_ID buffer_id, History_Record_Index index){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    Record_Info result = {};
-    if (api_check_buffer(file)){
-        History *history = &file->state.history;
-        if (history_is_activated(history)){
-            i32 max_index = history_get_record_count(history);
-            if (0 <= index && index <= max_index){
-                if (0 < index){
-                    Record *record = history_get_record(history, index);
-                    buffer_history__fill_record_info(record, &result);
-                }
-                else{
-                    result.error = RecordError_InitialStateDummyRecord;
-                }
-            }
-            else{
-                result.error = RecordError_IndexOutOfBounds;
-            }
-        }
-        else{
-            result.error = RecordError_NoHistoryAttached;
-        }
+buffer_history_get_record_info(App *app, Buffer_ID buffer_id, History_Record_Index index)
+{
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ Record_Info result = {};
+ if ( api_check_buffer(file) )
+ {
+  History *history = &file->state.history;
+  if (history_is_activated(history))
+  {
+   i32 max_index = history_get_record_count(history);
+   if (0 <= index && index <= max_index)
+   {
+    if (0 < index)
+    {
+     Record *record = history_get_record(history, index);
+     buffer_history__fill_record_info(record, &result);
     }
-    else{
-        result.error = RecordError_InvalidBuffer;
-    }
-    return(result);
+    else { result.error = RecordError_InitialStateDummyRecord; }
+   }
+   else { result.error = RecordError_IndexOutOfBounds; }
+  }
+  else { result.error = RecordError_NoHistoryAttached; }
+ }
+ else { result.error = RecordError_InvalidBuffer; }
+ return(result);
 }
 
 api(custom) function Record_Info
@@ -2608,12 +2612,12 @@ buffer_history_get_group_sub_record(App *app, Buffer_ID buffer_id, History_Recor
         }
         else{
             result.error = RecordError_NoHistoryAttached;
-        }
-    }
-    else{
-        result.error = RecordError_InvalidBuffer;
-    }
-    return(result);
+  }
+ }
+ else{
+  result.error = RecordError_InvalidBuffer;
+ }
+ return(result);
 }
 
 api(custom) function History_Record_Index
@@ -3322,7 +3326,7 @@ draw_get_target(App *app)
 api(ed) function void 
 vim_set_bottom_text(String msg)
 {
- u32 copy_size = clamp_max(msg.size, alen(vim_bottom_buffer));
+ u32 copy_size = clamp_max((u32)msg.size, (u32)alen(vim_bottom_buffer));
  block_copy(vim_bottom_buffer, msg.str, copy_size);
  vim_bottom_text.size = copy_size;
 }
@@ -3381,7 +3385,7 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i1 count, Ve
    group = state.group_last;
   }
   
-  Render_Vertex_List *list;
+  Render_Vertex_List *list = 0;
   {
    Render_Entry *entry0 = group->entry_last;
    if (entry0 == 0 || entry0->type != RET_Poly)

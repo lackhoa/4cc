@@ -158,7 +158,11 @@ inline Token_Iterator_List::operator Token_Iterator()
 inline Range_i64
 Ii64(Token *token)
 {
- return(Ii64_size(token->pos, token->size));
+ if (token) {
+  return Ii64_size(token->pos, token->size);
+ } else {
+  return {};
+ }
 }
 
 

@@ -88,7 +88,7 @@ kv_token_at_cursor(App *app, i64 delta=0)
 }
 
 function Token_Iterator_Array
-token_it_at_cursor(App *app, i64 delta=0)
+get_token_it_at_cursor(App *app, i64 delta=0)
 {
  GET_VIEW_AND_BUFFER;
  Token_Array tokens = get_token_array_from_buffer(app, buffer);
@@ -405,15 +405,15 @@ buffer_get_character_legal_pos_from_pos(App *app, Buffer_ID buffer, f32 width, F
 
 function i64
 view_get_character_legal_pos_from_pos(App *app, View_ID view, i64 pos){
-    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
-    i64 character = view_relative_character_from_pos(app, view, cursor.line, pos);
-    return(view_pos_from_relative_character(app, view, cursor.line, character));
+ Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+ i64 character = view_relative_character_from_pos(app, view, cursor.line, pos);
+ return(view_pos_from_relative_character(app, view, cursor.line, character));
 }
 
 function Buffer_Cursor
 get_line_side(App *app, Buffer_ID buffer, i64 line_number, Side side){
-    i64 character_index = (side == Side_Min)?(1):(-1);
-    return(buffer_compute_cursor(app, buffer, seek_line_col(line_number, character_index)));
+ i64 character_index = (side == Side_Min)?(1):(-1);
+ return(buffer_compute_cursor(app, buffer, seek_line_col(line_number, character_index)));
 }
 function i64
 get_line_side_pos(App *app, Buffer_ID buffer, i64 line_number, Side side){
@@ -478,7 +478,7 @@ get_line_pos_range(App *app, Buffer_ID buffer, i64 line_number){
 
 function Range_i64
 make_range_from_cursors(Range_Cursor range){
-    return(Ii64(range.start.pos, range.end.pos));
+ return(Ii64(range.start.pos, range.end.pos));
 }
 
 function i64
@@ -739,30 +739,31 @@ boundary_token(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, 
                         }
                     }
                 }
-            }break;
-        }
-    }
-    return(result);
+   }break;
+  }
+ }
+ return(result);
 }
 
 function i64
-boundary_line(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos){
-    i64 line_number = get_line_number_from_pos(app, buffer, pos);
-    i64 new_pos = get_line_side_pos(app, buffer, line_number, side);
-    if (direction == Scan_Backward && new_pos >= pos){
-        if (line_number > 1){
-            new_pos = get_line_side_pos(app, buffer, line_number - 1, side);
-        }
-        else{
-            new_pos = 0;
-        }
-    }
-    else if (direction == Scan_Forward && new_pos <= pos){
-        new_pos = get_line_side_pos(app, buffer, line_number + 1, side);
-        if (new_pos <= pos){
-            new_pos = (i32)buffer_get_size(app, buffer);
-        }
-    }
+boundary_line(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i64 pos)
+{
+ i64 line_number = get_line_number_from_pos(app, buffer, pos);
+ i64 new_pos = get_line_side_pos(app, buffer, line_number, side);
+ if (direction == Scan_Backward && new_pos >= pos){
+  if (line_number > 1){
+   new_pos = get_line_side_pos(app, buffer, line_number - 1, side);
+  }
+  else{
+   new_pos = 0;
+  }
+ }
+ else if (direction == Scan_Forward && new_pos <= pos){
+  new_pos = get_line_side_pos(app, buffer, line_number + 1, side);
+  if (new_pos <= pos){
+   new_pos = (i32)buffer_get_size(app, buffer);
+  }
+ }
  return(new_pos);
 }
 
@@ -1050,12 +1051,12 @@ push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
         u8 *memory = push_array(arena, u8, length);
         if (buffer_read_range(app, buffer, range, memory)){
             result = SCu8(memory, length);
-        }
-        else{
-            end_temp(restore_point);
-        }
-    }
-    return(result);
+  }
+  else{
+   end_temp(restore_point);
+  }
+ }
+ return(result);
 }
 
 function Range_i64
@@ -1820,34 +1821,34 @@ get_first_view_with_buffer(App *app, Buffer_ID buffer_id)
             if (test_buffer == buffer_id){
                 result = test;
                 break;
-            }
-        }
-    }
-    return(result);
+   }
+  }
+ }
+ return(result);
 }
 
 function b32
 open_editing_file(App *app, Buffer_ID *buffer_out, String8 filename, b32 background, b32 never_new)
 {
-    b32 result = false;
-    Buffer_ID buffer = get_buffer_by_name(app, filename, Access_ReadVisible);
-    b32 exists = buffer_exists(app, buffer);
-    if (!exists)
-    {
-        Buffer_Create_Flag flags = 0;
-        if (background) flags |= BufferCreate_Background;
-        if (never_new)  flags |= BufferCreate_NeverNew;
-        
-        buffer = create_buffer(app, filename, flags);
-        exists = buffer_exists(app, buffer);
-    }
-    if (exists)
-    {
-        result = true;
-        if (buffer_out != 0)
-            *buffer_out = buffer;
-    }
-    return(result);
+ b32 result = false;
+ Buffer_ID buffer = get_buffer_by_name(app, filename, Access_ReadVisible);
+ b32 exists = buffer_exists(app, buffer);
+ if (!exists)
+ {
+  Buffer_Create_Flag flags = 0;
+  if (background) flags |= BufferCreate_Background;
+  if (never_new)  flags |= BufferCreate_NeverNew;
+  
+  buffer = create_buffer(app, filename, flags);
+  exists = buffer_exists(app, buffer);
+ }
+ if (exists)
+ {
+  result = true;
+  if (buffer_out != 0)
+   *buffer_out = buffer;
+ }
+ return(result);
 }
 
 function b32
@@ -2140,8 +2141,8 @@ file_exists_and_is_file(Arena *scratch, String8 filename)
 function b32
 file_exists_and_is_folder(Arena *scratch, String8 filename)
 {
-    File_Attributes attributes = system_quick_file_attributes(scratch, filename);
-    return(attributes.last_write_time > 0 && HasFlag(attributes.flags, FileAttribute_IsDirectory));
+ File_Attributes attributes = system_quick_file_attributes(scratch, filename);
+ return(attributes.last_write_time > 0 && HasFlag(attributes.flags, FileAttribute_IsDirectory));
 }
 
 function String
@@ -2648,9 +2649,9 @@ inline i64 get_current_column(App *app)
 inline i64
 get_current_line_number(App *app)
 {
-  GET_VIEW_AND_BUFFER;
-  i64 line = get_line_number_from_pos(app, buffer, view_get_cursor_pos(app, view));
-  return line;
+ GET_VIEW_AND_BUFFER;
+ i64 line = get_line_number_from_pos(app, buffer, view_get_cursor_pos(app, view));
+ return line;
 }
 
 inline i64 get_current_char(App *app)
@@ -2738,13 +2739,33 @@ kv_find_nest_side_paren(App *app, Token_Array *tokens, i64 pos,
   {
     if (delim == NestDelim_Close) { *out = range.end;   }
     else                          { *out = range.start; }
-  }
+ }
  return(nest_found);
 }
 
 inline void animate_next_frame(App *app)
 {
  animate_in_n_milliseconds(app, 0);
+}
+
+function void
+app_printer_function(void *userdata, char *format, va_list args)
+{
+ auto app = cast(App *)userdata;
+ Scratch_Block scratch(app);
+ String message = push_stringfv(scratch, format, args, false);
+ print_message(app, message);
+}
+
+inline Printer
+make_printer_app(App *app)
+{
+ Printer result = {
+  .type           = Printer_Type_Generic,
+  .userdata       = app,
+  .print_function = app_printer_function,
+ };
+ return result;
 }
 
 //-

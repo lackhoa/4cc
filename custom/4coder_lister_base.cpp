@@ -897,9 +897,6 @@ lister_choice(Arena *arena, Lister_Choice_List *list, String string, String stat
 }
 
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 function void
 lister_choice(Arena *arena, Lister_Choice_List *list, char *string, String status, Key_Code code, u64 user_data){
@@ -937,7 +934,6 @@ lister_choice(Arena *arena, Lister_Choice_List *list, char *string, char *status
     lister_choice(arena, list, string, status, code, (u64)PtrAsInt(user_data));
 }
 
-#pragma clang diagnostic pop
 
 function Lister_Activation_Code
 lister__key_stroke__choice_list(App *app){

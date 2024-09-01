@@ -11,23 +11,23 @@
 // NOTE(allen): Match Pattern Types
 
 struct Prj_Pattern{
-    String8List absolutes;
+ String8List absolutes;
 };
 
 struct Prj_Pattern_Node{
-    Prj_Pattern_Node *next;
-    Prj_Pattern pattern;
+ Prj_Pattern_Node *next;
+ Prj_Pattern pattern;
 };
 
 struct Prj_Pattern_List{
-    Prj_Pattern_Node *first;
-    Prj_Pattern_Node *last;
-    i1 count;
+ Prj_Pattern_Node *first;
+ Prj_Pattern_Node *last;
+ i1 count;
 };
 
 typedef u32 Prj_Open_File_Flags;
 enum{
-    PrjOpenFileFlag_Recursive = 1,
+ PrjOpenFileFlag_Recursive = 1,
 };
 
 ///////////////////////////////
@@ -50,9 +50,17 @@ struct Prj_Key_Strings{
 
 typedef u32 Prj_Setup_Script_Flags;
 enum{
-    PrjSetupScriptFlag_Project = 0x1,
-    PrjSetupScriptFlag_Bat     = 0x2,
-    PrjSetupScriptFlag_Sh      = 0x4,
+ PrjSetupScriptFlag_Project = 0x1,
+ PrjSetupScriptFlag_Bat     = 0x2,
+ PrjSetupScriptFlag_Sh      = 0x4,
+};
+
+struct Prj_Open_File_Config
+{
+ Prj_Pattern_List whitelist;
+ Prj_Pattern_List blacklist;
+ arrayof<String>  limited_edit_list;
+ Prj_Open_File_Flags flags;
 };
 
 ////////////////////////////////
@@ -65,20 +73,13 @@ function Prj_Pattern_List prj_get_standard_blacklist(Arena *arena);
 function b32  prj_match_in_pattern_list(String8 string, Prj_Pattern_List list);
 
 function void prj_close_files_with_ext(App *app, String8Array extension_array);
-function void prj_open_files_pattern_filter(App *app, String8 dir, Prj_Pattern_List whitelist, Prj_Pattern_List blacklist, Prj_Open_File_Flags flags);
+function void prj_open_files_pattern_filter(App *app, String8 dir, Prj_Pattern_List whitelist, Prj_Pattern_List blacklist, Prj_Pattern_List limited_edit_list, Prj_Open_File_Flags flags);
 function void prj_open_all_files_with_ext_in_hot(App *app, String8Array array, Prj_Open_File_Flags flags);
 
 ////////////////////////////////
 // NOTE(allen): Project Files
 
 function void prj_stringize_project(App *app, Arena *arena, Variable_Handle project, String8List *out);
-
-function Prj_Setup_Status prj_file_is_setup(App *app, String8 script_path, String8 script_file);
-function b32 prj_generate_bat(Arena *scratch, String8 opts, String8 compiler, String8 script_path, String8 script_file, String8 code_file, String8 output_dir, String8 binary_file);
-function b32 prj_generate_sh(Arena *scratch, String8 opts, String8 compiler, String8 script_path, String8 script_file, String8 code_file, String8 output_dir, String8 binary_file);
-function b32 prj_generate_project(Arena *scratch, String8 script_path, String8 script_file, String8 output_dir, String8 binary_file);
-
-function void prj_setup_scripts(App *app, Prj_Setup_Script_Flags flags);
 
 ////////////////////////////////
 // NOTE(allen): Project Operations

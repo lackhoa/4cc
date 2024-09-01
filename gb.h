@@ -2364,8 +2364,8 @@ gb_inline b32 gb_str_has_prefix(char const *str, char const *prefix) {
 }
 
 gb_inline b32 gb_str_has_suffix(char const *str, char const *suffix) {
-	isize i = gb_strlen(str);
-	isize j = gb_strlen(suffix);
+	isize i = strlen(str);
+	isize j = strlen(suffix);
 	if (j <= i) {
 		return gb_strcmp(str+i-j, suffix) == 0;
 	}

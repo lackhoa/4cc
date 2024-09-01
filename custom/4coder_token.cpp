@@ -677,15 +677,15 @@ token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, 
             else{
                 break;
             }
-            if (!token_it_dec_all(&it)){
-                break;
-            }
-        }
-    }
-    return(relex);
+   if (!token_it_dec_all(&it)){
+    break;
+   }
+  }
+ }
+ return(relex);
 }
 
-inline Range_i64 token_range(Token *token)
+inline Range_i64 get_token_range(Token *token)
 {
   if (token)
     return Range_i64{token->pos, token->pos + token->size};

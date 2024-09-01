@@ -349,15 +349,14 @@ push_string(Arena *arena, const char *data)
  return(push_string(arena, SCu8(data)));
 }
 
-
-force_inline b32
+inline b32
 string_match(String a, String b)
 {
  return(a.size == b.size &&
         block_match(a.str, b.str, a.size));
 }
 //
-inline bool
+force_inline bool
 operator==(String a, String b)
 {
  return string_match(a,b);
@@ -492,7 +491,7 @@ string_file_without_extension(String string)
  return(string);
 }
 
-force_inline String
+inline String
 SCu8(u8 *str, u8 *one_past_last){
  return(SCu8(str, (u64)(one_past_last - str)));
 }
@@ -510,7 +509,36 @@ SCu8(char *first, char *one_past_last){
 function String
 string_substring(String str, Range_i64 range)
 {
- return(SCu8(str.str + range.min, str.str + range.max));
+ return SCu8(str.str+range.min,
+             str.str+range.max);
+}
+
+function b32
+string_contains(String big, String small, i1 *first_match=0)
+{
+ b32 result = false;
+ if (small.len == 0)
+ {
+  result = big.len == 0;
+ }
+ else
+ {
+  i1 lendiff = i1(big.len - small.len);
+  for_i1(index,0,lendiff+1)
+  {
+   if (big.str[index] == small.str[0])
+   {
+    String substring = string_substring(big, Ii64_size(index, small.len));
+    if (substring == small)
+    {
+     result = true;
+     if (first_match) { *first_match = index; }
+     break;
+    }
+   }
+  }
+ }
+ return result;
 }
 
 internal b32

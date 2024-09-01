@@ -97,19 +97,19 @@ struct Dynamic_Workspace{
 global_const i1 lifetime_key_reference_per_node = 32;
 
 struct Lifetime_Key_Ref_Node{
-    Lifetime_Key_Ref_Node *next;
-    Lifetime_Key_Ref_Node *prev;
-    struct Lifetime_Key *keys[lifetime_key_reference_per_node];
+ Lifetime_Key_Ref_Node *next;
+ Lifetime_Key_Ref_Node *prev;
+ struct Lifetime_Key *keys[lifetime_key_reference_per_node];
 };
 
 union Lifetime_Object{
-    Lifetime_Object *next;
-    struct{
-        Lifetime_Key_Ref_Node *key_node_first;
-        Lifetime_Key_Ref_Node *key_node_last;
-        i1 key_count;
-        Dynamic_Workspace workspace;
-    };
+ Lifetime_Object *next;
+ struct{
+  Lifetime_Key_Ref_Node *key_node_first;
+  Lifetime_Key_Ref_Node *key_node_last;
+  i1 key_count;
+  Dynamic_Workspace workspace;
+ };
 };
 
 struct Lifetime_Key{

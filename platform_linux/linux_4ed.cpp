@@ -1737,24 +1737,25 @@ linux_epoll_process(struct epoll_event* events, int num_events) {
                 obj->timer.fd = -1;
                 linux_schedule_step();
             } break;
-        }
-    }
-    
-    return do_step;
+  }
+ }
+ 
+ return do_step;
 }
 
 int
-main(int argc, char **argv){
-    // NOTE(allen): fucking bullshit. someone get my shit togeth :(er
-    
-    for (i1 i = 0; i < argc; i += 1){
-        String arg = SCu8(argv[i]);
-        if (string_match(arg, str8_lit("-L"))){
-            log_os_enabled = true;
-        }
-    }
-    
-    // NOTE(allen): All of This thing
+main(int argc, char **argv)
+{
+ for (i1 i = 0; i < argc; i += 1)
+ {
+  String arg = SCu8(argv[i]);
+  if ( string_match(arg, str8_lit("-L")) )
+  {
+   log_os_enabled = true;
+  }
+ }
+ 
+ // NOTE(allen): All of This thing
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);

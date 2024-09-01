@@ -245,7 +245,7 @@ VIM_COMMAND_SIG(vim_block_swap){
 	i64 line = get_line_number_from_pos(app, buffer, c);
 	Vec2_f32 c_p = view_relative_xy_of_pos(app, view, line, c);
 	Vec2_f32 m_p = view_relative_xy_of_pos(app, view, line, m);
-	Swap(f32, c_p.x, m_p.x);
+	macro_swap(c_p.x, m_p.x);
 	c = view_pos_at_relative_xy(app, view, line, c_p);
 	m = view_pos_at_relative_xy(app, view, line, m_p);
 	view_set_cursor(app, view, seek_pos(c));
@@ -490,7 +490,7 @@ vim_is_wb_pivot(App *app, Buffer_ID buffer, i64 pos)
             {
                 return true;
             }
-            else if (cw == true)
+            else if (cw)
             {
                 if (character_is_upper(c) && character_is_lower(b))
                 {
@@ -726,14 +726,6 @@ vim_last_command(App* app)
     }
     buffer_replace_range(app, buffer, range, insertion);
 }
-
-#if 0
-internal void
-vim_set_dot_delete_count(u64 count)
-{
- vim_state.dot_delete_count = count;
-}
-#endif
 
 function b32
 vim_combine_line_inner(App *app, View_ID view, Buffer_ID buffer, i64 line_num){

@@ -1,3 +1,6 @@
+#define IMGUI_USER_CONFIG "ad_imgui_config.h"
+#include "imgui/imgui.h"
+
 #define AD_IS_FRAMEWORK 1
 #include "kv.h"
 #define AD_IS_GAME 1
@@ -7,14 +10,15 @@
 #include "4coder_game_shared.h"
 #define ED_PARSER_BUFFER 1
 #include "4ed_kv_parser.cpp"
+#include "ad_stb_parser.cpp"
 
+#include "framework.h"
 #include "framework_driver_shared.h"
 #include "framework_driver_shared.meta.h"
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 #include "game_api.cpp"
 
-#include "ad_stb_parser.cpp"
 #define DYNAMIC_LINK_API
 #include "custom/generated/ed_api.cpp"
 #include "game_modeler.cpp"
@@ -30,12 +34,6 @@
   - pma = Pre-multiplied alpha
   - v4 colors are in linear space, alpha=1 (so pma doesn't matter)
  */
-
-enum Data_Version
-{
- Data_Version_Init = 7,
-};
-global_const u32 data_current_version = Data_Version_Init;
 
 #define X(N) function N##_return N(N##_params);
 // Note: forward declare
@@ -97,12 +95,12 @@ key_direction(Game_Input *input, Key_Mods wanted_mods, b32 new_keypress)
 DLL_EXPORT game_api_export_return 
 game_api_export(game_api_export_params)
 {
-#define X(N) api->N = N;
+#define X(N) api.N = N;
  //
  X_GAME_API_FUNCTIONS(X)
   //
 #undef X
- api->is_valid = true;
+ api.is_valid = true;
 }
 
 global i32 MAIN_VIEWPORT_INDEX = MAIN_VIEWPORT_ID - 1;
@@ -196,44 +194,45 @@ clear_modeler_data(Modeler &m)
 }
 
 function void
-serialize_type(Printer &p, Type_Info &info, void *void_pointer)
+serialize_type_func(Printer &p, Type_Info &info, void *void_pointer)
 {
 #define newline   print(p, "\n")
- print(p, "{"); newline;
  u8 *pointer = cast(u8 *)void_pointer;
- for_i1(member_index, 0, info.members.count)
+ if (info.Basic_Type)
  {
-  Struct_Member &member = info.members[member_index];
-  p << member.name << " ";
-  u8 *member_pointer = pointer+member.offset;
-  if (member.type->Basic_Type) {
-   print_data_basic_type(p, member.type->Basic_Type, member_pointer);
-  } else {
-   serialize_type(p, *member.type, member_pointer);
-  }
-  newline;
+  print_data_basic_type(p, info.Basic_Type, pointer);
  }
- print(p, "}"); newline
+ else
+ {
+  if (info.members.count)
+  {// NOTE: struct
+   print(p, "{"); newline;
+   for_i1(member_index, 0, info.members.count)
+   {
+    Struct_Member &member = info.members[member_index];
+    p << member.name << " ";
+    u8 *member_pointer = pointer+member.offset;
+    if (member.type->Basic_Type) {
+     print_data_basic_type(p, member.type->Basic_Type, member_pointer);
+    } else {
+     serialize_type_func(p, *member.type, member_pointer);
+    }
+    newline;
+   }
+   print(p, "}"); newline;
+  }
+  else
+  {// NOTE: enum
+   i32 enum_value;
+   block_copy(&enum_value, pointer, info.size);
+   p << enum_value;
+  }
+ }
 #undef newline
 }
-
-function void
-deserialize_type(STB_Parser *p, Type_Info &info, void *void_pointer)
-{
- u8 *pointer = cast(u8 *)void_pointer;
- block_zero(pointer, info.size);
- for_i1(member_index, 0, info.members.count)
- {
-  Struct_Member &member = info.members[member_index];
-  eat_id(p, member.name);
-  u8 *member_pointer = pointer+member.offset;
-  if (member.type->Basic_Type) {
-   eat_data_basic_type(p, member.type->Basic_Type, member_pointer);
-  } else {
-   deserialize_type(p, *member.type, member_pointer);
-  }
- }
-}
+//
+#define serialize_type(PRINTER, POINTER) \
+serialize_type_func(PRINTER, type_info_of_pointer(POINTER), POINTER)
 
 function b32
 game_load(Game_State *state, App *app, String filename,
@@ -258,18 +257,19 @@ game_load(Game_State *state, App *app, String filename,
  }
  
  if( ok )
- {// NOTE: Deserialize
+ {// NOTE: ;deserialize
   Arena *load_arena = &state->data_load_arena;
   arena_clear(load_arena);
   STB_Parser parser = new_parser(read_string, load_arena, 128);
   STB_Parser *p = &parser;
+  Data_Reader r = {.parser = p};
   
   {
 #define brace_begin  eat_char(p, '{')
 #define brace_end    eat_char(p, '}')
 #define brace_block  brace_begin; defer( brace_end; )
    eat_id(p, "version");
-   game_save_version = eat_i1(p);
+   r.read_version = cast(Data_Version)eat_i1(p);
    {
     eat_id(p, "cameras");
     {
@@ -296,40 +296,26 @@ game_load(Game_State *state, App *app, String filename,
     {//-NOTE Vertices
      eat_id(p, "vertices");
      brace_begin;
-     while(p->ok())
+     while(p->ok_)
      {
       if ( maybe_char(p, '}') ) {
        break;
       }
       Vertex_Data &v = m.vertices.push2();
-      {
-       brace_begin;
-       //#define X(TYPE,NAME)  eat_id(p,#NAME); v.NAME = eat_##TYPE(p);
-       //       X_Vertex_Data(X);
-       //#undef X
-       deserialize_type(p, Vertex_Data_Type_Info, &v);
-       brace_end;
-      }
+      read_Vertex_Data(r,v);
      }
     }
     
     {//-NOTE Beziers
      eat_id(p, "beziers");
      brace_begin;
-     while(p->ok())
+     while(p->ok_)
      {
       if ( maybe_char(p, '}') ) {
        break;
       }
       Bezier_Data &b = m.curves.push2();
-      b = {};
-      {
-       brace_begin;
-#define X(TYPE,NAME)   eat_id(p,#NAME);  b.NAME = eat_##TYPE(p);
-       X_Bezier_Data(X);
-#undef X
-       brace_end;
-      }
+      read_Bezier_Data(r,b);
      }
     }
    }
@@ -348,13 +334,13 @@ game_load(Game_State *state, App *app, String filename,
   }
 #endif
   
-  ok = p->ok();
+  ok = p->ok_;
   if (!ok) {
    print_message(app, strlit("Game load: deserialization failed!\n"));
   }
  }
  
- if (!ok) { state->load_failed = true; }
+ state->load_failed = !ok; 
  if (ok) { clear_edit_history(state->modeler.history); }
  
  return ok;
@@ -362,11 +348,68 @@ game_load(Game_State *state, App *app, String filename,
 
 //~
 
+function void
+render_data(Game_State &state)
+{
+ hl_block;
+ painter.is_right = 0;
+ auto &m = state.modeler;
+ auto &p = painter;
+ argb inactive_color = argb_dark_green;
+ for_i32(vindex,1,m.vertices.count)
+ {
+  Vertex_Data &vert = m.vertices[vindex];
+  Object &object = p.object_list[vert.object_index];
+  u32 prim_id = vertex_prim_id(vindex);
+  {
+   mat4 &mat = object.transform;
+   v3 pos = mat4vert(mat, vert.pos);
+   indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
+  }
+  if (vert.symx)
+  {//NOTE: Draw the right side (TODO @speed stupid object lookup)
+   set_in_block(painter.is_right, 1);
+   auto &objectR = get_right_object(object);
+   mat4 &mat = objectR.transform;
+   v3 pos = mat4vert(mat, vert.pos);
+   indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
+  }
+ }
+ 
+ for_i32(curve_index,1,m.curves.count)
+ {
+  Bezier_Data &bez = m.curves[curve_index];
+  auto &object = p.object_list[bez.object_index];
+  u32 prim_id = curve_prim_id(curve_index);
+  {
+   v3 p0 = m.vertices[bez.p0_index].pos;
+   v3 p1 = bez.p1;
+   v3 p2 = bez.p2;
+   v3 p3 = m.vertices[bez.p3_index].pos;
+   
+   Bez draw_bez = Bez{p0,p1,p2,p3};
+   {
+    draw(object.transform*draw_bez, prim_id);
+   }
+   if (bez.symx)
+   {
+    set_in_block(painter.is_right, 1);
+    auto &objectR = get_right_object(object);
+    draw(objectR.transform*draw_bez, prim_id);
+   }
+  }
+ }
+}
+
+
 function game_render_return
 game_render(game_render_params)
 {//;switch_game_or_physics
  slider_cycle_counter = 0;
- render_movie(state, app, target, viewport_id, mouse); 
+ render_movie(state->viewports[viewport_id-1],
+              state->time, state->references_full_alpha,
+              app, target, viewport_id, mouse); 
+ render_data(*state);
 }
 
 function game_init_return
@@ -421,8 +464,8 @@ game_init(game_init_params)
  }
  
  {
-  state->line_cap     = 8192;
-  state->line_map     = push_array(arena, Line_Map_Entry, state->line_cap);
+  state->line_cap = 8192;
+  state->line_map = push_array(arena, Line_Map_Entry, state->line_cap);
  }
  
  {
@@ -434,6 +477,10 @@ game_init(game_init_params)
  }
  
  default_fvert_delta_scale = 0.1f;
+ 
+ {//-NOTE: Dear Imgui init
+  state->imgui_state = imgui_state;
+ }
  
  //-IMPORTANT: Reload is a part of init
  game_reload(state, ed_api, true);
@@ -460,15 +507,30 @@ game_reload(game_reload_params)
   line_map     =  state->line_map;
   block_zero(line_map, state->line_cap*sizeof(Line_Map_Entry));
   //-
-  slow_line_map     =  state->slow_line_map;
-  //slow_slider_store = &state->slow_slider_store;
+  slow_line_map       =  state->slow_line_map;
   slow_line_map.count = 0;
-  //push_struct(slow_slider_store, u8);// @fui_ensure_nonzero_offset
  }
  
  {//-NOTE: Modeling data
   global_modeler = &state->modeler;
  }
+ 
+ {//-NOTE: Dear ImGui reload
+  IMGUI_CHECKVERSION();
+  
+  {
+   auto &imgui = state->imgui_state;
+   ImGui::SetCurrentContext(imgui.ctx);
+   ImGui::SetAllocatorFunctions(imgui.alloc_func,
+                                imgui.free_func,
+                                imgui.user_data);
+  }
+ }
+}
+
+function game_shutdown_return
+game_shutdown(game_shutdown_params)
+{
 }
 
 #include "time.h"
@@ -509,7 +571,7 @@ serialize(Arena *arena, Game_State *state)
 print(p, #NAME " "); print_data_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newline
  
  const i32 MAX_SAVE_SIZE = KB(16);  // Wastes @Memory
- Printer p = make_printer(arena, MAX_SAVE_SIZE);
+ Printer p = make_printer_arena(arena, MAX_SAVE_SIZE);
  
  i32 indentation = 0;
  {// NOTE: Content
@@ -547,32 +609,23 @@ print(p, #NAME " "); print_data_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); 
     {
      brace_block;
      for_i32(vi,1,vertices.count)
-     {
+     {// NOTE tight loop
       auto &v = vertices[vi];
-      /*
-      #define X(TYPE,NAME)  macro_print_field(v, TYPE, NAME);
-            X_Vertex_Data(X);
-      #undef X
-      */
-      serialize_type(p, Vertex_Data_Type_Info, &v);
+      serialize_type(p, &v);
      }
     }
     newline;
    }
    
-   {//NOTE beziers
+   {//NOTE Beziers
     arrayof<Bezier_Data> &curves = modeler.curves;
     print(p, "beziers"); newline;
     {
      brace_block;
      for_i32(bi,1,curves.count)
-     {
-      brace_begin;
+     {// NOTE tight loop
       auto &b = curves[bi];
-#define X(TYPE,NAME)  macro_print_field(b, TYPE, NAME);
-      X_Bezier_Data(X);
-#undef X
-      brace_end;
+      serialize_type(p, &b);
      }
     }
     newline;
@@ -965,7 +1018,7 @@ game_update(game_update_params)
   }
  }
  
- driver_update(state);
+ driver_update(state->viewports);
  
  b32 kb_handled = false;  // TODO(kv): Maybe we automatically set this when you call "just_pressed"?
  
@@ -991,7 +1044,7 @@ game_update(game_update_params)
    m.active_objects.count = 0;
    if( m.selection_spanning )
    {
-    Primitive_Type sel_type = prim_id_type(selected_object_id());
+    Object_Type sel_type = prim_id_type(selected_object_id());
     if( sel_type == Prim_Vertex )
     {
      i32 sel_index = prim_id_to_index(selected_object_id());
@@ -1012,7 +1065,7 @@ game_update(game_update_params)
   
   if ( game_hot && !kb_handled )
   {// NOTE: Handling input
-   Primitive_Type sel_type = prim_id_type(selected_object_id());
+   Object_Type sel_type = prim_id_type(selected_object_id());
    if ( sel_type )
    {
     b32 escape_pressed = just_pressed(input, Key_Code_Escape);
@@ -1087,7 +1140,7 @@ game_update(game_update_params)
      {// NOTE: curve update
       Bezier_Data &sel = modeler.curves[sel_index0];
       {
-       // todo @incomplete
+       // TODO @incomplete
        i1 direction = i1( key_direction(input, 0, true).x );
        v1 delta = i2f6(direction);
        if (delta != 0)
@@ -1102,17 +1155,22 @@ game_update(game_update_params)
     }
    }
   }
+  
+  {//-NOTE: Drawing GUI
+   DEBUG_VALUE(selected_object_id());
+   Object_Type sel_type = prim_id_type(selected_object_id());
+   if (sel_type == Prim_Curve)
+   {
+    ImGui::ShowDemoWindow(0);
+   }
+  }
  }
  
  {
   // TODO: Have a better error reporting story
   // Like, how do we turn these off? With a clear command?
-  if (state->load_failed) {
-   DEBUG_TEXT("Load failed!");
-  }
-  if (state->save_failed) {
-   DEBUG_TEXT("Save failed!");
-  }
+  if (state->load_failed) { DEBUG_TEXT("Load failed!"); }
+  if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
  }
  
  {
@@ -1155,7 +1213,7 @@ game_update(game_update_params)
   {// NOTE: Fill command lister
    game_commands.count = 0;
    game_commands.push(strlit("save_manual"));
-   game_commands.push(strlit("load_manual"));
+   game_commands.push(strlit("load_manual"));  
   }
  }
  

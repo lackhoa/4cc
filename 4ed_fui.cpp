@@ -1,7 +1,7 @@
 internal String
 get_identifier_at_cursor(Arena *arena, App *app, Buffer_ID buffer)
 {
- Token_Iterator_Array tk_value = token_it_at_cursor(app);
+ Token_Iterator_Array tk_value = get_token_it_at_cursor(app);
  auto *tk = &tk_value;
  if ( tk->tokens )
  {

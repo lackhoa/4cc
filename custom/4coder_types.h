@@ -297,22 +297,23 @@ struct Character_Predicate{
 api(custom)
 typedef i1 View_Setting_ID;
 enum{
-    ViewSetting_Null,
-    ViewSetting_ShowWhitespace,
-    ViewSetting_ShowScrollbar,
-    ViewSetting_ShowFileBar,
+ ViewSetting_Null,
+ ViewSetting_ShowWhitespace,
+ ViewSetting_ShowScrollbar,
+ ViewSetting_ShowFileBar,
 };
 
 api(custom)
 typedef u32 Buffer_Create_Flag;
 enum{
-    BufferCreate_Background = 0x1,
-    BufferCreate_AlwaysNew  = 0x2,
-    BufferCreate_NeverNew   = 0x4,
-    BufferCreate_JustChangedFile = 0x8,
-    BufferCreate_MustAttachToFile = 0x10,
-    BufferCreate_NeverAttachToFile = 0x20,
-    BufferCreate_SuppressNewFileHook = 0x40,
+ BufferCreate_Background          = 0x1,
+ BufferCreate_AlwaysNew           = 0x2,
+ BufferCreate_NeverNew            = 0x4,
+ BufferCreate_JustChangedFile     = 0x8,
+ BufferCreate_MustAttachToFile    = 0x10,
+ BufferCreate_NeverAttachToFile   = 0x20,
+ BufferCreate_SuppressNewFileHook = 0x40,
+ BufferCreate_LimitedEdit         = 0x80,
 };
 
 api(custom)
@@ -564,8 +565,8 @@ struct Batch_Edit{
 api(custom)
 typedef i1 Record_Kind;
 enum{
-    RecordKind_Single,
-    RecordKind_Group,
+ RecordKind_Single,
+ RecordKind_Group,
 };
 
 api(custom)
@@ -584,29 +585,33 @@ api(custom)
 typedef u32 Record_Merge_Flag;
 enum{
     RecordMergeFlag_StateInRange_MoveStateForward = 0x0,
-    RecordMergeFlag_StateInRange_MoveStateBackward = 0x1,
-    RecordMergeFlag_StateInRange_ErrorOut = 0x2,
+ RecordMergeFlag_StateInRange_MoveStateBackward = 0x1,
+ RecordMergeFlag_StateInRange_ErrorOut = 0x2,
 };
 
 api(custom)
 typedef i1 History_Record_Index;
 
 api(custom)
-struct Record_Info{
-    Record_Error error;
-    Record_Kind kind;
-    i64 pos_before_edit;
-    i1 edit_number;
-    union{
-        struct{
-            String single_string_forward;
-            String single_string_backward;
-            i64 single_first;
-        };
-        struct{
-            i1 group_count;
-        };
-    };
+struct Record_Info
+{
+ Record_Error error;
+ Record_Kind kind;
+ i64 pos_before_edit;
+ i1 edit_number;
+ union
+ {
+  struct
+  {
+   String single_string_forward;
+   String single_string_backward;
+   i64 single_first;
+  };
+  struct
+  {
+   i1 group_count;
+  };
+ };
 };
 
 api(custom)

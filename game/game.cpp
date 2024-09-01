@@ -14,10 +14,9 @@
 
 // NOTE: I guess this function could be here for faster update, idk
 void
-driver_update(Game_State *state)
+driver_update(Viewport *viewports)
 {
- {
-  // NOTE ;update_game_config
+ {// NOTE ;update_game_config
   debug_frame_time_on      = fbool(0);
   bezier_poly_nslice       = fval(16);
   DEFAULT_NSLICE_PER_METER = fval(2.2988f) * 100.f;
@@ -27,8 +26,8 @@ driver_update(Game_State *state)
  v3 arm_pivot  = fvert(V3(0.0771f, -0.3359f, -0.0145f));
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {// TODO: Piggy code to set the camera pivot, but what isn't piggy?
-  Viewport *viewport = &state->viewports[viewport_index];
-  viewport->camera.pivot = arm_pivot;
+  Viewport &viewport = viewports[viewport_index];
+  viewport.camera.pivot = arm_pivot;
  }
 }
 
@@ -372,7 +371,7 @@ internal v3 get_forearm_rotation_pivot() {
 }
 
 // important: this is the key to skeletal transformation
-internal mat4i
+function mat4i
 trs_pivot_transform(v3 translate, mat4i const&rotate, v1 scale,
                     v3 object_space_pivot)
 {
@@ -388,7 +387,7 @@ trs_pivot_transform(v3 translate, mat4i const&rotate, v1 scale,
 }
 //~
 
-internal Arm
+function Arm
 render_arm(mat4i const&ot, Pose const&pose,
            mat4 const&torsoT, Torso const&torso_obj,
            v3 elbow_up_out)
@@ -2333,13 +2332,11 @@ render_reference_images(b32 full_alpha)
 render_movie_return
 render_movie(render_movie_params)
 {
-#ifndef KV_NO_RENDER
  painter.object_stack.count = 0;
  kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
  i32 viewport_index = viewport_id - 1;
  b32 is_main_viewport = (viewport_id == 1);
- Viewport *viewport = &state->viewports[viewport_index];
- Arena *arena = &viewport->render_arena;
+ Arena *arena = &viewport.render_arena;
  Temp_Memory_Block render_temp(arena);
  
  i32 scale_down_pow2 = fval(0); // ;scale_down_slider
@@ -2369,7 +2366,7 @@ render_movie(render_movie_params)
  //DEBUG_VALUE(mouse_viewp);
  
  i32 viz_level = 0;
- switch(viewport->preset){
+ switch(viewport.preset){
   case 1: viz_level = 1; break;
   case 2: viz_level = 2; break;
  }
@@ -2377,7 +2374,7 @@ render_movie(render_movie_params)
  Camera camera_value;
  Camera *camera = &camera_value;
  {// NOTE: camera
-  setup_camera(camera, &viewport->camera);
+  setup_camera(camera, &viewport.camera);
  }
  b32 camera_frontal=almost_equal(absolute(camera->z.z), 1.f, 1e-2f);
  b32 camera_profile=almost_equal(absolute(camera->z.x), 1.f, 1e-2f);
@@ -2387,7 +2384,7 @@ render_movie(render_movie_params)
  v4 background_v4 = srgb_to_linear(hsv_to_srgb(background_hsv));
  argb background_color = argb_pack(background_v4);
  
- b32 show_grid        = viewport->preset >= 3;
+ b32 show_grid        = viewport.preset >= 3;
  
  mat4 view_transform;
  {
@@ -2437,7 +2434,7 @@ render_movie(render_movie_params)
  // ;init_painter
  painter = Painter {
   .target            = render_target,
-  .viewport          = viewport,
+  .viewport          = &viewport,
   .mouse_viewp       = mouse_viewp,
   .camera            = camera,
   .view_transform    = view_transform,
@@ -2469,7 +2466,7 @@ render_movie(render_movie_params)
   p.painting_disabled = fbool(0);
  }
  
- v1 animation_time = state->time;
+ v1 animation_time = state_time;
  animation_time *= fval(1.f);  // IMPORTANT: animation_speed_multiplier
  Pose pose;
  {//-NOTE: Animation
@@ -2498,7 +2495,7 @@ render_movie(render_movie_params)
  
  
  if (debug_frame_time_on)
- {//@driver_update
+ {
   //f64 end_time  = gb_time_now();
   //f32 time_taken = f32(end_time - start_time);
   //DEBUG_VALUE( time_taken );
@@ -2509,10 +2506,7 @@ render_movie(render_movie_params)
   DEBUG_VALUE(u32(bs_cycle_counter));
  }
  
- render_reference_images(state->references_full_alpha);
- 
- render_data(*state);
-#endif
+ render_reference_images(references_full_alpha);
  
  if(0)
  {

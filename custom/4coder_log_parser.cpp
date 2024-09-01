@@ -8,9 +8,6 @@
  */
 
 // TOP
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 internal u64
 log_parse__string_code(Log_Parse *parse, String string, Log_String_Source string_source){
@@ -312,14 +309,14 @@ log_events_sort_by_tag__inner(Log_Event **events, Log_Sort_Key *keys, i32 first,
             }
             if (key_is_less_than_pivot_key){
                 if (j < i){
-                    Swap(Log_Event*, events[i], events[j]);
-                    Swap(Log_Sort_Key, keys[i], keys[j]);
+                    macro_swap(events[i], events[j]);
+                    macro_swap(keys[i], keys[j]);
                 }
                 j += 1;
             }
         }
-        Swap(Log_Event*, events[pivot_index], events[j]);
-        Swap(Log_Sort_Key, keys[pivot_index], keys[j]);
+        macro_swap(events[pivot_index], events[j]);
+        macro_swap(keys[pivot_index], keys[j]);
         log_events_sort_by_tag__inner(events, keys, first, j);
         log_events_sort_by_tag__inner(events, keys, j + 1, one_past_last);
     }
@@ -1081,7 +1078,6 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
     log_view = 0;
 }
 
-#pragma clang diagnostic pop
 
 
 // BOTTOM

@@ -670,17 +670,20 @@ default_4coder_initialize(App *app, String_Array filenames, i1 override_font_siz
     
     Scratch_Block scratch(app);
     
-    load_config_and_apply(app, &global_config_arena, override_font_size, override_hinting);
-    
-    String bindings_filename = string_u8_litexpr("bindings.4coder");
-    String mapping = def_get_config_string(scratch, vars_intern_lit("mapping"));
-    
-    if (string_match(mapping, string_u8_litexpr("mac-default"))){
-        bindings_filename = string_u8_litexpr("mac-bindings.4coder");
-    }
-    else if (OS_MAC && string_match(mapping, string_u8_litexpr("choose"))){
-        bindings_filename = string_u8_litexpr("mac-bindings.4coder");
-    }
+ load_config_and_apply(app, &global_config_arena, override_font_size, override_hinting);
+ 
+ String bindings_filename = string_u8_litexpr("bindings.4coder");
+ String mapping = def_get_config_string(scratch, vars_intern_lit("mapping"));
+ 
+ if (string_match(mapping, string_u8_litexpr("mac-default"))){
+  bindings_filename = string_u8_litexpr("mac-bindings.4coder");
+ } else {
+#if OS_MAC
+  if (string_match(mapping, string_u8_litexpr("choose"))) {
+   bindings_filename = string_u8_litexpr("mac-bindings.4coder");
+  }
+#endif
+ }
     
     // TODO(allen): cleanup
     String_ID global_map_id = vars_intern_lit("keys_global");
@@ -821,9 +824,6 @@ buffer_modified_set__alloc_node(Buffer_Modified_Set *set){
     return(result);
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 function void
 buffer_mark_as_modified(Buffer_ID buffer){
@@ -853,7 +853,6 @@ buffer_unmark_as_modified(Buffer_ID buffer){
     }
 }
 
-#pragma clang diagnostic pop
 
 function void
 buffer_modified_set_clear(void){

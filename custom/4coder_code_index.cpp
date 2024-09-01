@@ -4,9 +4,6 @@
 
 // TOP
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 global Code_Index global_code_index = {};
 
@@ -1247,6 +1244,5 @@ CUSTOM_DOC("Toggles virtual whitespace for all files.")
   def_set_config_b32(key, !enable_virtual_whitespace);
 }
 
-#pragma clang diagnostic pop
 
 // BOTTOM

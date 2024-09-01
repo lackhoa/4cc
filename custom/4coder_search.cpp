@@ -28,20 +28,20 @@ kv_string_split_wildcards(Arena *arena, String8 string)
 internal b32 
 string_has_uppercase(String string)
 {
-    for_u64 (index,0,string.size)
-    {
-        if ( is_uppercase(string.str[index]) )
+ for_u64 (index,0,string.size)
+ {
+  if ( is_uppercase(string.str[index]) )
    return true;
  }
  return false;
 }
 
 // NOTE(kv): We don't handle multiline string! @FuzzyMultiline
-function i64
+function Range_i64
 kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String needle)
 {
  i64 buffer_size = buffer_get_size(app, buffer);
- i64 result = buffer_size;
+ Range_i64 result = {};
  
  Scratch_Block temp(app);
  String8_Array splits = kv_string_split_wildcards(temp, needle);
@@ -67,42 +67,51 @@ kv_fuzzy_search_forward(App *app, Buffer_ID buffer, i64 pos, String needle)
    String word = splits.strings[index];
    b32 case_sensitive = string_has_uppercase(word);
    String_Match match = buffer_seek_string(app, buffer, word, Scan_Forward, pos, case_sensitive);
-   if ( match.buffer )
-   {
-    if ( match.range.max <= line_end )
-    {
+   if ( match.buffer ) {
+    if ( match.range.max <= line_end ) {
      pos = match.range.end - 1;
-    }
-    else
-    {
-     // This breaks for @FuzzyMultiline
+    } else {
      pos = get_line_start_pos_from_pos(app, buffer, match.range.start) - 1;
      matched = false;
      break;
     }
-   }
-   else return result;
+   } else { return result; }
   }
   
-  if ( matched )
-  {
-   result = match_start;
+  if ( matched ) {
+   result = Ii64(match_start, pos+1);
    break;
   }
   
-  assert_defend(pos > original_pos, return buffer_size;);
+  assert_defend(pos > original_pos, return {};);
  }
  
  return result;
 }
 
-internal i64
-kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String needle)
+function Range_i64
+kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 end_pos, String needle)
+#if 1
+{
+ // NOTE(kv): Just cheese it!
+ Range_i64 result = {};
+ while(true)
+ {
+  Range_i64 match = kv_fuzzy_search_forward(app, buffer, result.min, needle);
+  if (match.min == 0 || match.min >= end_pos) {
+   break;
+  } else {
+   result = match;
+  }
+ }
+ return result;
+}
+#else
 {
  i64 result = -1;
  
- Scratch_Block temp(app);
- String8_Array splits = kv_string_split_wildcards(temp, needle);
+ Scratch_Block scratch(app);
+ String8_Array splits = kv_string_split_wildcards(scratch, needle);
  if ( !splits.count ) { return result; }
  
  while( pos > -1 )
@@ -114,7 +123,7 @@ kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String needle)
    b32 case_sensitive = string_has_uppercase(last_word);
    first_match = buffer_seek_string(app, buffer, last_word, Scan_Backward, pos, case_sensitive);
   }
-  if( !first_match.buffer ) break;
+  if( !first_match.buffer ) { break; }
   
   i64 match_start = first_match.range.max;
   i64 line_start   = get_line_start_pos_from_pos(app, buffer, match_start);
@@ -129,21 +138,14 @@ kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String needle)
    String_Match match = buffer_seek_string(app, buffer, word, Scan_Backward, pos, case_sensitive);
    if ( match.buffer)
    {
-    if ( match.range.min >= line_start )
-    {
+    if ( match.range.min >= line_start ) {
      pos = match.range.start;
-    }
-    else
-    {
+    } else {
      pos = get_line_end_pos_from_pos(app, buffer, match.range.start);
      matched = false;
      break;
     }
-   }
-   else
-   {
-    return result;
-   }
+   } else { return result; }
   }
   if ( matched )
   {
@@ -151,11 +153,12 @@ kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 pos, String needle)
    break;
   }
   
-  assert_defend(pos < original_pos, return result;);
+  assert_defend(pos < original_pos, return {};);
  }
  
  return result;
 }
+#endif
 
 internal void
 print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Match_List matches)

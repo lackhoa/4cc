@@ -1795,7 +1795,8 @@ push_string_copyz(Arena *arena, u64 size, String_Const_Any src){
 }
 
 function void
-string_list_push(List_String *list, Node_String *node){
+string_list_push(List_String *list, Node_String *node)
+{
  sll_queue_push(list->first, list->last, node);
  list->node_count += 1;
  list->total_size += node->string.size;
@@ -1822,27 +1823,29 @@ string_list_push(List_String *list, List_String *src_list){
 }
 
 function void
-string_list_push_overlap(Arena *arena, List_String *list, u8 overlap, String string){
+string_list_push_overlap(Arena *arena, List_String *list, u8 overlap, String string)
+{
  b32 tail_has_overlap = false;
  b32 string_has_overlap = false;
- if (list->last != 0){
+ if (list->last != 0)
+ {
   String tail = list->last->string;
-  if (string_get_character(tail, tail.size - 1) == overlap){
+  if (string_get_character(tail, tail.size - 1) == overlap) {
    tail_has_overlap = true;
   }
  }
- if (string_get_character(string, 0) == overlap){
+ if (string_get_character(string, 0) == overlap) {
   string_has_overlap = true;
  }
- if (tail_has_overlap == string_has_overlap){
-  if (!tail_has_overlap){
+ if (tail_has_overlap == string_has_overlap)
+ {
+  if (!tail_has_overlap) {
    string_list_push(arena, list, push_string_copyz(arena, SCu8(&overlap, 1)));
-  }
-  else{
+  } else {
    string = string_skip(string, 1);
   }
  }
- if (string.size > 0){
+ if (string.size > 0) {
   string_list_push(arena, list, string);
  }
 }
@@ -2028,7 +2031,8 @@ string_split_wildcards(Arena *arena, String string){
 }
 
 function b32
-string_wildcard_match(List_String list, String string, String_Match_Rule rule){
+string_wildcard_match(List_String list, String string, String_Match_Rule rule)
+{
  b32 success = true;
  if (list.node_count > 0){
   String head = list.first->string;
@@ -2559,7 +2563,7 @@ string_from_integer(Arena *arena, u64 x, u32 radix){
    for (u64 j = 0, i = length - 1;
         j < i;
         j += 1, i -= 1){
-    Swap(u8, string_space[i], string_space[j]);
+    macro_swap(string_space[i], string_space[j]);
    }
    result = push_string_copyz(arena, SCu8(string_space, length));
   }

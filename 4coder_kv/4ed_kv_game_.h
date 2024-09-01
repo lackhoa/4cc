@@ -3,15 +3,7 @@
 global Game_State *global_game_state;
 global b32 global_game_on_readonly;
 global arrayof<String> received_game_commands;
-global Game_API global_game_code_ = {};
-
-#if 0
-force_inline b32
-game_code_valid()
-{
- return global_game_code.is_valid;
-}
-#endif
+global Game_API global_game_code_;
 
 inline Game_API *
 get_game_code()

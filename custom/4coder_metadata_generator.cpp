@@ -256,25 +256,25 @@ end_temp_read(Temp_Read temp){
 
 static String
 token_str(String  text, Token token){
-    String str = string_prefix(string_skip(text, token.pos), token.size);
-    return(str);
+ String str = string_prefix(string_skip(text, token.pos), token.size);
+ return(str);
 }
 
 ///////////////////////////////
 
 static i1
 quick_sort_part(Meta_Command_Entry **entries, i1 first, i1 one_past_last){
-    i1 pivot = one_past_last - 1;
-    String pivot_key = entries[pivot]->name;
-    i1 j = first;
-    for (i1 i = first; i < pivot; ++i){
-        if (string_compare(entries[i]->name, pivot_key) < 0){
-            Swap(Meta_Command_Entry*, entries[i], entries[j]);
-            ++j;
-        }
-    }
-    Swap(Meta_Command_Entry*, entries[j], entries[pivot]);
-    return(j);
+ i1 pivot = one_past_last - 1;
+ String pivot_key = entries[pivot]->name;
+ i1 j = first;
+ for (i1 i = first; i < pivot; ++i){
+  if (string_compare(entries[i]->name, pivot_key) < 0){
+   macro_swap(entries[i], entries[j]);
+   ++j;
+  }
+ }
+ macro_swap(entries[j], entries[pivot]);
+ return(j);
 }
 
 static void

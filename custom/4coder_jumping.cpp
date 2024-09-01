@@ -59,8 +59,6 @@ check_is_note(String line, u64 colon_pos){
     return(is_note);
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-compare"
 
 function Parsed_Jump
 parse_jump_location(String8 line)
@@ -80,7 +78,7 @@ parse_jump_location(String8 line)
         {
             jump.is_ms_style = true;
             jump.colon_position = (i1)(right_paren_pos + string_find_first(string_skip(line, right_paren_pos), ':'));
-            if (jump.colon_position < line.size)
+            if (jump.colon_position < (i1)line.size)
             {
                 if (check_is_note(line, jump.colon_position))
                 {
@@ -93,7 +91,7 @@ parse_jump_location(String8 line)
                 i1 close_pos = (i1)right_paren_pos;
                 i1 open_pos = (i1)left_paren_pos;
                 
-                if (0 < open_pos && open_pos < location_str.size){
+                if (0 < open_pos && open_pos < (i1)location_str.size){
                     String file = SCu8(location_str.str, open_pos);
                     file = string_skip_chop_whitespace(file);
                     
@@ -190,7 +188,6 @@ parse_jump_location(String8 line)
     }
     return(jump);
 }
-#pragma clang diagnostic pop
 
 function Parsed_Jump
 parse_jump_location(String line, Jump_Flag flags){

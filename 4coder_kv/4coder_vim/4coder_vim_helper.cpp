@@ -164,12 +164,12 @@ struct Vim_Motion_Block
 // TODO(BYP): clamp_end is arguably a hack, but the case it approximates is even more of a hack
 Vim_Motion_Block::~Vim_Motion_Block()
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    Vim_Params *params = &vim_state.params;
-
-    if(params->edit_type == EDIT_Block)
-    {
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ Vim_Params *params = &vim_state.params;
+ 
+ if(params->edit_type == EDIT_Block)
+ {
         vim_block_edit(app, view, buffer, get_view_range(app, view));
     }
     else
@@ -282,40 +282,40 @@ VIM_COMMAND_SIG(vim_left){
 
 VIM_COMMAND_SIG(vim_right)
 {
-  Vim_Motion_Block vim_motion_block(app);
-  move_horizontal_lines(app, vim_consume_number());
+ Vim_Motion_Block vim_motion_block(app);
+ move_horizontal_lines(app, vim_consume_number());
 }
 
 internal void
 vim_make_request(App *app, Vim_Request_Type request)
 {
-    if (vim_state.params.request == request)
-    {// NOTE(kv): This is what happens when you do d-d, or c-c (incomprehensible piece of shit!)
-        Vim_Motion_Block vim_motion_block(app);
-        vim_state.params.edit_type = EDIT_LineWise;
-        move_vertical_lines(app, vim_consume_number()-1);
-    }
-    else
-    {
-        vim_state.params.count = vim_consume_number();
-        vim_state.params.request = request;
-        if (vim_state.mode == VIM_Visual)
-        {
-            View_ID view = get_active_view(app, Access_ReadVisible);
-            b32 do_visual_insert = (vim_state.params.edit_type == EDIT_Block && request == REQUEST_Change);
-            vim_set_prev_visual(app, view);
-            vim_state.mode = VIM_Normal;
-            {
-                Vim_Motion_Block vim_motion_block(app, view_get_mark_pos(app, view));
-            }
-            if(do_visual_insert)
-            {
-                Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-                vim_visual_insert_inner(app, view, buffer);
-            }
-        }
-        else { vim_state.chord_resolved = false; }
-    }
+ if (vim_state.params.request == request)
+ {// NOTE(kv): This is what happens when you do d-d, or c-c
+  Vim_Motion_Block vim_motion_block(app);
+  vim_state.params.edit_type = EDIT_LineWise;
+  move_vertical_lines(app, vim_consume_number()-1);
+ }
+ else
+ {
+  vim_state.params.count = vim_consume_number();
+  vim_state.params.request = request;
+  if (vim_state.mode == VIM_Visual)
+  {
+   View_ID view = get_active_view(app, Access_ReadVisible);
+   b32 do_visual_insert = (vim_state.params.edit_type == EDIT_Block && request == REQUEST_Change);
+   vim_set_prev_visual(app, view);
+   vim_state.mode = VIM_Normal;
+   {
+    Vim_Motion_Block vim_motion_block(app, view_get_mark_pos(app, view));
+   }
+   if(do_visual_insert)
+   {
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    vim_visual_insert_inner(app, view, buffer);
+   }
+  }
+  else { vim_state.chord_resolved = false; }
+ }
 }
 
 internal void 
@@ -330,4 +330,10 @@ vim_page_scroll_inner(App *app, f32 ratio)
 	Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
 	scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, scroll_pixels));
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+}
+
+inline b32
+vim_is_editing_linewise()
+{
+ return vim_state.params.edit_type == EDIT_LineWise;
 }

@@ -31,11 +31,11 @@ hot_directory_quick_partition(File_Info **infos, i1 start, i1 pivot){
             comp = string_compare((**a).filename, (**p).filename);
         }
         if (comp < 0){
-            Swap(File_Info*, *a, infos[start]);
+            macro_swap(*a, infos[start]);
             ++start;
         }
     }
-    Swap(File_Info*, *p, infos[start]);
+    macro_swap(*p, infos[start]);
     return(start);
 }
 

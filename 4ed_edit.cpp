@@ -213,62 +213,70 @@ function void
 file_end_file(Thread_Context *tctx, Models *models, Editing_File *file){
     if (models->end_buffer != 0){
         App app = {};
-        app.tctx = tctx;
-        app.cmd_context = models;
-        models->end_buffer(&app, file->id);
-    }
-    Lifetime_Allocator *lifetime_allocator = &models->lifetime_allocator;
-    lifetime_free_object(lifetime_allocator, file->lifetime_object);
-    file->lifetime_object = lifetime_alloc_object(lifetime_allocator, DynamicWorkspace_Buffer, file);
+  app.tctx = tctx;
+  app.cmd_context = models;
+  models->end_buffer(&app, file->id);
+ }
+ Lifetime_Allocator *lifetime_allocator = &models->lifetime_allocator;
+ lifetime_free_object(lifetime_allocator, file->lifetime_object);
+ file->lifetime_object = lifetime_alloc_object(lifetime_allocator, DynamicWorkspace_Buffer, file);
 }
 
 function void
-edit__apply(Thread_Context *tctx, Models *models, Editing_File *file, Range_i64 range, String string, Edit_Behaviors behaviors){
-    Edit edit = {};
-    edit.text = string;
-    edit.range = range;
-    
-    Gap_Buffer *buffer = &file->state.buffer;
-    Assert(0 <= edit.range.first);
-    Assert(edit.range.first <= edit.range.one_past_last);
-    Assert(edit.range.one_past_last <= buffer_size(buffer));
-    
-    // NOTE(allen): history update
-    if (!behaviors.do_not_post_to_history){
-        ProfileTLBlock(tctx, &models->profile_list, "edit apply history");
-        history_record_edit(&models->global_history, &file->state.history, buffer,
-                            behaviors.pos_before_edit, edit);
-        file->state.current_record_index =
-            history_get_record_count(&file->state.history);
-    }
-    
-    {
-        ProfileTLBlock(tctx, &models->profile_list, "edit apply replace range");
-        i64 shift_amount = replace_range_shift(edit.range, (i64)edit.text.size);
-        buffer_replace_range(buffer, edit.range, edit.text, shift_amount);
-    }
+edit__apply(Thread_Context *tctx, Models *models, Editing_File *file,
+            Range_i64 range, String string, Edit_Behaviors behaviors)
+{
+#if ED_CORRUPTION_CHECK
+ if (!file->settings.unimportant) {
+  breakhere;
+ }
+#endif
+ 
+ Edit edit = {.text=string, .range=range};
+ 
+ Gap_Buffer *buffer = &file->state.buffer;
+ Assert(0 <= edit.range.first);
+ Assert(edit.range.first <= edit.range.one_past_last);
+ Assert(edit.range.one_past_last <= buffer_size(buffer));
+ 
+ // NOTE(allen): history update
+ if (!behaviors.do_not_post_to_history)
+ {
+  ProfileTLBlock(tctx, &models->profile_list, "edit apply history");
+  history_record_edit(&models->global_history, &file->state.history, buffer,
+                      behaviors.pos_before_edit, edit);
+  file->state.current_record_index =
+   history_get_record_count(&file->state.history);
+ }
+ 
+ {
+  ProfileTLBlock(tctx, &models->profile_list, "edit apply replace range");
+  i64 shift_amount = replace_range_shift(edit.range, (i64)edit.text.size);
+  gap_buffer_replace_range(buffer, edit.range, edit.text, shift_amount);
+ }
 }
 
 function void
 edit_single(Thread_Context *tctx, Models *models, Editing_File *file,
-            Range_i64 range, String string, Edit_Behaviors behaviors){
-    Range_Cursor cursor_range = {};
-    cursor_range.min = file_compute_cursor(file, seek_pos(range.min));
-    cursor_range.max = file_compute_cursor(file, seek_pos(range.max));
-    
-    pre_edit_state_change(models, file);
-    pre_edit_history_prep(file, behaviors);
-    
-    edit__apply(tctx, models, file, range, string, behaviors);
-    
-    file_clear_layout_cache(file);
-    
-    Batch_Edit batch = {};
-    batch.edit.text = string;
-    batch.edit.range = range;
-    
-    edit_fix_markers(tctx, models, file, &batch);
-    post_edit_call_hook(tctx, models, file, Ii64_size(range.first, string.size), cursor_range);
+            Range_i64 range, String string, Edit_Behaviors behaviors)
+{
+ Range_Cursor cursor_range = {};
+ cursor_range.min = file_compute_cursor(file, seek_pos(range.min));
+ cursor_range.max = file_compute_cursor(file, seek_pos(range.max));
+ 
+ pre_edit_state_change(models, file);
+ pre_edit_history_prep(file, behaviors);
+ 
+ edit__apply(tctx, models, file, range, string, behaviors);
+ 
+ file_clear_layout_cache(file);
+ 
+ Batch_Edit batch = {};
+ batch.edit.text = string;
+ batch.edit.range = range;
+ 
+ edit_fix_markers(tctx, models, file, &batch);
+ post_edit_call_hook(tctx, models, file, Ii64_size(range.first, string.size), cursor_range);
 }
 
 function void
@@ -510,146 +518,156 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
             edit_fix_markers(tctx, models, file, batch);
             
             post_edit_call_hook(tctx, models, file, new_range, cursor_range);
-        }
-    }
-    
-    return(result);
+  }
+ }
+ 
+ return(result);
 }
 
 ////////////////////////////////
 
-function Editing_File*
+function Editing_File *
 create_file(Thread_Context *tctx, Models *models, String8 filename, Buffer_Create_Flag flags)
 {
-    Editing_File *result = 0;
+ Editing_File *result = 0;
+ 
+ if (filename.size > 0)
+ {
+  Working_Set *working_set = &models->working_set;
+  Heap *heap = &models->heap;
+  
+  Scratch_Block scratch(tctx);
+  
+  Editing_File *file = 0;
+  b32 do_empty_buffer = false;
+  Editing_File_Name canon = {};
+  b32 has_canon_name = false;
+  b32 buffer_is_for_new_file = false;
+  
+  // NOTE(allen): Try to get the file by canon name.
+  if (HasFlag(flags, BufferCreate_NeverAttachToFile) == 0)
+  {
+   if (get_canon_name(scratch, filename, &canon)) {
+    has_canon_name = true;
+    file = working_set_contains_canon(working_set, string_from_filename(&canon));
+   } else {
+    do_empty_buffer = true;
+   }
+  }
+  
+  // NOTE(allen): Try to get the file by buffer name.
+  if ( (flags & BufferCreate_MustAttachToFile) == 0 ) {
+   if (file == 0) {
+    file = working_set_contains_name(working_set, filename);
+   }
+  }
+  
+  // NOTE(allen): If there is still no file, create a new buffer.
+  if (file == 0)
+  {
+   Plat_Handle handle = {};
+   
+   // NOTE(allen): Figure out whether this is a new file, or an existing file.
+   if (!do_empty_buffer){
+    if ((flags & BufferCreate_AlwaysNew) != 0){
+     do_empty_buffer = true;
+    }
+    else{
+     if (!system_load_handle(scratch, (char*)canon.name_space, &handle)){
+      do_empty_buffer = true;
+     }
+    }
+   }
+   
+   if (do_empty_buffer)
+   {
+    if (has_canon_name){
+     buffer_is_for_new_file = true;
+    }
+    if (!HasFlag(flags, BufferCreate_NeverNew)){
+     file = working_set_allocate_file(working_set, &models->lifetime_allocator);
+     if (file != 0){
+      if (has_canon_name){
+       file_bind_filename(working_set, file, string_from_filename(&canon));
+      }
+      String front = path_filename(filename);
+      buffer_bind_name(tctx, models, scratch, working_set, file, front);
+      File_Attributes attributes = {};
+      file_create_from_string(tctx, models, file, SCu8(""), attributes);
+      result = file;
+     }
+    }
+   }
+   else
+   {
+    File_Attributes attributes = system_load_attributes(handle);
+    b32 in_heap_mem = false;
+    char *buffer = push_array(scratch, char, (i1)attributes.size);
     
-    if (filename.size > 0)
-    {
-        Working_Set *working_set = &models->working_set;
-        Heap *heap = &models->heap;
-        
-        Scratch_Block scratch(tctx);
-        
-        Editing_File *file = 0;
-        b32 do_empty_buffer = false;
-        Editing_File_Name canon = {};
-        b32 has_canon_name = false;
-        b32 buffer_is_for_new_file = false;
-        
-        // NOTE(allen): Try to get the file by canon name.
-        if (HasFlag(flags, BufferCreate_NeverAttachToFile) == 0){
-            if (get_canon_name(scratch, filename, &canon)){
-                has_canon_name = true;
-                file = working_set_contains_canon(working_set, string_from_filename(&canon));
-            }
-            else{
-                do_empty_buffer = true;
-            }
-        }
-        
-        // NOTE(allen): Try to get the file by buffer name.
-        if ((flags & BufferCreate_MustAttachToFile) == 0){
-            if (file == 0){
-                file = working_set_contains_name(working_set, filename);
-            }
-        }
-        
-        // NOTE(allen): If there is still no file, create a new buffer.
-        if (file == 0){
-            Plat_Handle handle = {};
-            
-            // NOTE(allen): Figure out whether this is a new file, or an existing file.
-            if (!do_empty_buffer){
-                if ((flags & BufferCreate_AlwaysNew) != 0){
-                    do_empty_buffer = true;
-                }
-                else{
-                    if (!system_load_handle(scratch, (char*)canon.name_space, &handle)){
-                        do_empty_buffer = true;
-                    }
-                }
-            }
-            
-            if (do_empty_buffer){
-                if (has_canon_name){
-                    buffer_is_for_new_file = true;
-                }
-                if (!HasFlag(flags, BufferCreate_NeverNew)){
-                    file = working_set_allocate_file(working_set, &models->lifetime_allocator);
-                    if (file != 0){
-                        if (has_canon_name){
-                            file_bind_filename(working_set, file, string_from_filename(&canon));
-                        }
-                        String front = path_filename(filename);
-                        buffer_bind_name(tctx, models, scratch, working_set, file, front);
-                        File_Attributes attributes = {};
-                        file_create_from_string(tctx, models, file, SCu8(""), attributes);
-                        result = file;
-                    }
-                }
-            }
-            else{
-                File_Attributes attributes = system_load_attributes(handle);
-                b32 in_heap_mem = false;
-                char *buffer = push_array(scratch, char, (i1)attributes.size);
-                
-                if (buffer == 0){
-                    buffer = heap_array(heap, char, (i1)attributes.size);
-                    Assert(buffer != 0);
-                    in_heap_mem = true;
-                }
-                
-                if (system_load_file(handle, buffer, (i1)attributes.size)){
-                    system_load_close(handle);
-                    file = working_set_allocate_file(working_set, &models->lifetime_allocator);
-                    if (file != 0){
-                        file_bind_filename(working_set, file, string_from_filename(&canon));
-                        String front = path_filename(filename);
-                        buffer_bind_name(tctx, models, scratch, working_set, file, front);
-                        file_create_from_string(tctx, models, file, SCu8(buffer, (i1)attributes.size), attributes);
-                        result = file;
-                    }
-                }
-                else{
-                    system_load_close(handle);
-                }
-                
-                if (in_heap_mem){
-                    heap_free(heap, buffer);
-                }
-            }
-        }
-        else{
-            result = file;
-        }
-        
-        if (file != 0 && HasFlag(flags, BufferCreate_JustChangedFile)){
-            file->state.save_state = FileSaveState_SavedWaitingForNotification;
-        }
-        
-        if (file != 0 && HasFlag(flags, BufferCreate_AlwaysNew)){
-            i64 size = buffer_size(&file->state.buffer);
-            if (size > 0){
-                Edit_Behaviors behaviors = {};
-                edit_single(tctx, models, file, Ii64(0, size), string_u8_litexpr(""), behaviors);
-                if (has_canon_name){
-                    buffer_is_for_new_file = true;
-                }
-            }
-        }
-        
-        if (file != 0 && buffer_is_for_new_file &&
-            !HasFlag(flags, BufferCreate_SuppressNewFileHook) &&
-            models->new_file != 0)
-        {
-            App app = {};
-            app.tctx = tctx;
-            app.cmd_context = models;
-            models->new_file(&app, file->id);
-        }
+    if (buffer == 0){
+     buffer = heap_array(heap, char, (i1)attributes.size);
+     Assert(buffer != 0);
+     in_heap_mem = true;
     }
     
-    return(result);
+    if (system_load_file(handle, buffer, (i1)attributes.size)){
+     system_load_close(handle);
+     file = working_set_allocate_file(working_set, &models->lifetime_allocator);
+     if (file != 0){
+      file_bind_filename(working_set, file, string_from_filename(&canon));
+      String front = path_filename(filename);
+      buffer_bind_name(tctx, models, scratch, working_set, file, front);
+      file_create_from_string(tctx, models, file, SCu8(buffer, (i1)attributes.size), attributes);
+      result = file;
+     }
+    }
+    else{
+     system_load_close(handle);
+    }
+    
+    if (in_heap_mem){
+     heap_free(heap, buffer);
+    }
+   }
+  }
+  else {
+   result = file;
+  }
+  
+  if (file)
+  {
+   if (HasFlag(flags, BufferCreate_JustChangedFile)) {
+    file->state.save_state = FileSaveState_SavedWaitingForNotification;
+   }
+   
+   if (HasFlag(flags, BufferCreate_AlwaysNew)) {
+    i64 size = buffer_size(&file->state.buffer);
+    if (size > 0) {
+     Edit_Behaviors behaviors = {};
+     edit_single(tctx, models, file, Ii64(0, size), strlit(""), behaviors);
+     if (has_canon_name) {
+      buffer_is_for_new_file = true;
+     }
+    }
+   }
+   
+   if (buffer_is_for_new_file &&
+       !HasFlag(flags, BufferCreate_SuppressNewFileHook) &&
+       models->new_file != 0)
+   {
+    App app = {};
+    app.tctx = tctx;
+    app.cmd_context = models;
+    models->new_file(&app, file->id);
+   }
+   
+   if (flags & BufferCreate_LimitedEdit) {
+    file->settings.limited_edit = true;
+   }
+  }
+ }
+ 
+ return(result);
 }
 
 // BOTTOM

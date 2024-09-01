@@ -15,16 +15,20 @@ patterns = {
  "*.py",
 };
 blacklist_patterns = {
-    ".*",
-    //"command_metadata.h",
-    "*.skm",
-    "kv_trash*",
+ ".*",
+ //"command_metadata.h",
+ "*.skm",
+ "kv_trash*",
 };
 
-fcoder_source = { .path = "~/4ed/code", .recursive = true, };
+fcoder_source = { .path="" , .relative=true, .recursive=true, };
 
 load_paths = {
-    .win   = { fcoder_source, { .path = "~/remedybg", .recursive=true } },
-    .linux = { fcoder_source },
-    .mac   = { fcoder_source },
+ .win   = { fcoder_source, { .path="~/remedybg", .recursive=true } },
+ .linux = { fcoder_source },
+ .mac   = { fcoder_source },
+};
+
+limited_edit_paths = {
+ "libs",
 };

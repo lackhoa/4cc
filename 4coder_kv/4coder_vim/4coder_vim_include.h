@@ -12,8 +12,6 @@
 //
 ///////////////////////////////////
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-compare"
 
 #include "4coder_vimrc.h"
 
@@ -73,5 +71,3 @@
 #include "4coder_vim_bindings.cpp"
 #include "4coder_vim_draw.cpp"
 #include "4coder_vim_hooks.cpp"
-
-#pragma clang diagnostic pop

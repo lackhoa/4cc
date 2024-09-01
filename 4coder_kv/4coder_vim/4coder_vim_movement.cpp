@@ -275,16 +275,16 @@ vim_END_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos)
 	i64 prev_pos = pos;
 	Scratch_Block scratch(app);
 
-	if(true || direction == Scan_Forward){
+	/*if(true || direction == Scan_Forward)*/{
 		pos = vim_WORD_boundary(app, buffer, direction, pos)-direction;
 		if(character_is_whitespace(buffer_get_char(app, buffer, pos))){
 			pos = scan_list(app, push_boundary_list(scratch, boundary_whitespace), buffer, -direction, pos+direction) - direction;
 		}
 		if(pos == prev_pos){ pos = vim_END_boundary(app, buffer, direction, pos+direction); }
-	}else{
+	}/*else{
 		pos = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_non_whitespace, direction, pos);
 		pos = buffer_seek_character_class_change_0_1(app, buffer, &character_predicate_non_whitespace, direction, pos);
-	}
+	}*/
 	return pos;
 }
 
@@ -474,17 +474,17 @@ VIM_TEXT_OBJECT_SIG(vim_object_word){
 		range.min = scan(app, boundary_whitespace, buffer, Scan_Backward, cursor_pos+1);
 		range.max = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, cursor_pos)-1;
 	}else{
-		if(true || vim_state.params.clusivity == VIM_Exclusive){
+		/*if(true || vim_state.params.clusivity == VIM_Exclusive)*/{
 			u8 c1 = buffer_get_char(app, buffer, cursor_pos-1);
 			u8 c2 = buffer_get_char(app, buffer, cursor_pos+1);
 			b32 boundary1 = !character_predicate_check(character_predicate_word, c1) || character_is_whitespace(c1);
 			b32 boundary2 = !character_predicate_check(character_predicate_word, c2) || character_is_whitespace(c2);
 			range.min = boundary1 ? cursor_pos : vim_word_boundary(app, buffer, Scan_Backward, cursor_pos);
 			range.max = boundary2 ? cursor_pos : vim_end_boundary(app, buffer, Scan_Forward, cursor_pos);
-		}else{
+		}/*else{
 			range.min = vim_end_boundary(app, buffer, Scan_Backward, cursor_pos)+1;
 			range.max = vim_word_boundary(app, buffer, Scan_Forward, cursor_pos);
-		}
+		}*/
 	}
 	return range;
 }
@@ -497,15 +497,15 @@ VIM_TEXT_OBJECT_SIG(vim_object_WORD){
 		range.min = scan(app, boundary_whitespace, buffer, Scan_Backward, cursor_pos+1);
 		range.max = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, cursor_pos)-1;
 	}else{
-		if(true || vim_state.params.clusivity == VIM_Exclusive){
+		/*if(true || vim_state.params.clusivity == VIM_Exclusive)*/{
 			b32 boundary1 = character_is_whitespace(buffer_get_char(app, buffer, cursor_pos-1));
 			b32 boundary2 = character_is_whitespace(buffer_get_char(app, buffer, cursor_pos+1));
 			range.min = boundary1 ? cursor_pos : vim_WORD_boundary(app, buffer, Scan_Backward, cursor_pos);
 			range.max = boundary2 ? cursor_pos : vim_END_boundary(app, buffer, Scan_Forward, cursor_pos);
-		}else{
+		}/*else{
 			range.min = vim_END_boundary(app, buffer, Scan_Backward, cursor_pos)+1;
 			range.max = vim_WORD_boundary(app, buffer, Scan_Forward, cursor_pos);
-		}
+		}*/
 	}
 	return range;
 }
@@ -572,11 +572,11 @@ vim_text_object(App *app)
 	i64 cursor_pos = view_get_cursor_pos(app, view);
 	u8 character = vim_state.params.seek.character;
 	Vim_Clusivity object_clusivity = vim_state.params.clusivity;
-
+ 
 	Range_i64 range = {};
-
+ 
 	b32 did_range = false;
-	foreach(i, ArrayCount(vim_text_object_vtable)){
+	foreach(i, (i1)ArrayCount(vim_text_object_vtable)){
 		Vim_Text_Object *text_object = vim_text_object_vtable + i;
 		if(character == text_object->character){
 			range = text_object->func(app, buffer, cursor_pos);

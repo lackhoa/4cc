@@ -9,13 +9,12 @@
 
 // TOP
 
-#if !defined(FRED_HISTORY_H)
-#define FRED_HISTORY_H
+#pragma once
 
 struct Record_Batch_Slot{
-    i64 length_forward;
-    i64 length_backward;
-    i1 first;
+ i64 length_forward;
+ i64 length_backward;
+ i1 first;
 };
 
 struct Record{
@@ -38,27 +37,25 @@ struct Record{
 };
 
 struct Record_Ptr_Lookup_Table{
-    Record **records;
-    i1 count;
-    i1 max;
+ Record **records;
+ i1 count;
+ i1 max;
 };
 
 struct History{
-    b32 activated;
-    Arena arena;
-    Heap heap;
-    Base_Allocator heap_wrapper;
-    Node free_records;
-    Node records;
-    i1 record_count;
-    Record_Ptr_Lookup_Table record_lookup;
+ b32 activated;
+ Arena arena;
+ Heap heap;
+ Base_Allocator heap_wrapper;
+ Node free_records;
+ Node records;
+ i1 record_count;
+ Record_Ptr_Lookup_Table record_lookup;
 };
 
 struct Global_History{
-    i1 edit_number_counter;
-    i1 edit_grouping_counter;
+ i1 edit_number_counter;
+ i1 edit_grouping_counter;
 };
-
-#endif
 
 // BOTTOM

@@ -12,6 +12,7 @@
 #define custom_get_buffer_next_sig() Buffer_ID custom_get_buffer_next(App* app, Buffer_ID buffer_id, Access_Flag access)
 #define custom_get_buffer_by_name_sig() Buffer_ID custom_get_buffer_by_name(App* app, String8 name, Access_Flag access)
 #define custom_get_buffer_by_filename_sig() Buffer_ID custom_get_buffer_by_filename(App* app, String filename, Access_Flag access)
+#define custom_is_buffer_limited_edit_sig() b32 custom_is_buffer_limited_edit(App* app, Buffer_ID buffer_id)
 #define custom_buffer_read_range_sig() b32 custom_buffer_read_range(App* app, Buffer_ID buffer_id, Range_i64 range, u8* out)
 #define custom_buffer_replace_range_sig() b32 custom_buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string)
 #define custom_buffer_batch_edit_sig() b32 custom_buffer_batch_edit(App* app, Buffer_ID buffer_id, Batch_Edit* batch)
@@ -187,6 +188,7 @@ typedef i32 custom_get_buffer_count_type(App* app);
 typedef Buffer_ID custom_get_buffer_next_type(App* app, Buffer_ID buffer_id, Access_Flag access);
 typedef Buffer_ID custom_get_buffer_by_name_type(App* app, String8 name, Access_Flag access);
 typedef Buffer_ID custom_get_buffer_by_filename_type(App* app, String filename, Access_Flag access);
+typedef b32 custom_is_buffer_limited_edit_type(App* app, Buffer_ID buffer_id);
 typedef b32 custom_buffer_read_range_type(App* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
 typedef b32 custom_buffer_replace_range_type(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
 typedef b32 custom_buffer_batch_edit_type(App* app, Buffer_ID buffer_id, Batch_Edit* batch);
@@ -363,6 +365,7 @@ custom_get_buffer_count_type *get_buffer_count;
 custom_get_buffer_next_type *get_buffer_next;
 custom_get_buffer_by_name_type *get_buffer_by_name;
 custom_get_buffer_by_filename_type *get_buffer_by_filename;
+custom_is_buffer_limited_edit_type *is_buffer_limited_edit;
 custom_buffer_read_range_type *buffer_read_range;
 custom_buffer_replace_range_type *buffer_replace_range;
 custom_buffer_batch_edit_type *buffer_batch_edit;
@@ -540,6 +543,7 @@ internal i32 get_buffer_count(App* app);
 internal Buffer_ID get_buffer_next(App* app, Buffer_ID buffer_id, Access_Flag access);
 internal Buffer_ID get_buffer_by_name(App* app, String8 name, Access_Flag access);
 internal Buffer_ID get_buffer_by_filename(App* app, String filename, Access_Flag access);
+internal b32 is_buffer_limited_edit(App* app, Buffer_ID buffer_id);
 internal b32 buffer_read_range(App* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
 internal b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
 internal b32 buffer_batch_edit(App* app, Buffer_ID buffer_id, Batch_Edit* batch);
@@ -720,6 +724,7 @@ STORAGE_CLASS custom_get_buffer_count_type *get_buffer_count;
 STORAGE_CLASS custom_get_buffer_next_type *get_buffer_next;
 STORAGE_CLASS custom_get_buffer_by_name_type *get_buffer_by_name;
 STORAGE_CLASS custom_get_buffer_by_filename_type *get_buffer_by_filename;
+STORAGE_CLASS custom_is_buffer_limited_edit_type *is_buffer_limited_edit;
 STORAGE_CLASS custom_buffer_read_range_type *buffer_read_range;
 STORAGE_CLASS custom_buffer_replace_range_type *buffer_replace_range;
 STORAGE_CLASS custom_buffer_batch_edit_type *buffer_batch_edit;

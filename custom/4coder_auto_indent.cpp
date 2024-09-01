@@ -447,7 +447,7 @@ auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags)
 function b32
 auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos)
 {
-    return auto_indent_buffer(app, buffer, pos, 0);
+ return auto_indent_buffer(app, buffer, pos, 0);
 }
 
 ////////////////////////////////

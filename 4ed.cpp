@@ -156,8 +156,8 @@ models_init(void)
 {
  Arena arena = make_arena_system();
  Models *models = push_array_zero(&arena, Models, 1);
- models->arena_ = arena;
- models->arena = &models->arena_;
+ models->arena_value = arena;
+ models->arena       = &models->arena_value;
  heap_init(&models->heap, get_base_allocator_system());
  return(models);
 }
@@ -203,122 +203,122 @@ file_mtime(String filename)
 internal void 
 app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
 {
-    Models *models = (Models*)base_ptr;
-    models->keep_playing = true;
-    models->hard_exit = false;
-    
-    // models->config_api = api;
-    models->virtual_event_arena = make_arena_system();
-    
-    profile_init(&models->profile_list);
-    
-    managed_ids_init(tctx->allocator, &models->managed_id_set);
-   
-    // NOTE(allen): coroutines
-    coroutine_system_init(&models->coroutines);
-    
-    // NOTE(allen): font set
-    font_set_init(&models->font_set);
-    
-    // NOTE(allen): live set
-    Arena *arena = models->arena;
-    {
-        models->view_set.count = 0;
-        models->view_set.max = MAX_VIEWS;
-        models->view_set.views = push_array(arena, View, models->view_set.max);
-        
-        //dll_init_sentinel
-        models->view_set.free_sentinel.next = &models->view_set.free_sentinel;
-        models->view_set.free_sentinel.prev = &models->view_set.free_sentinel;
-        
-        i32 max = models->view_set.max;
-        View *view = models->view_set.views;
-        for (i32 i = 0; i < max; ++i, ++view){
-            //dll_insert(&models->view_set.free_sentinel, view);
-            view->next = models->view_set.free_sentinel.next;
-            view->prev = &models->view_set.free_sentinel;
-            models->view_set.free_sentinel.next = view;
-            view->next->prev = view;
-        }
-    }
-    
-    lifetime_allocator_init(tctx->allocator, &models->lifetime_allocator);
-    dynamic_workspace_init(&models->lifetime_allocator, DynamicWorkspace_Global, 0, &models->dynamic_workspace);
-    
-    // NOTE(allen): file setup
-    working_set_init(models, &models->working_set);
-    Mutex_Lock file_order_lock(models->working_set.mutex);
-    
-    // NOTE(allen):
-    global_history_init(&models->global_history);
-    text_layout_init(tctx, &models->text_layouts);
-    
-    // NOTE(allen): style setup
-    {
-        Scratch_Block scratch(tctx, arena);
-        
-        String8 binary_path = system_get_path(scratch, SystemPath_BinaryDirectory);
-        String8 full_path = push_stringfz(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
-        
-        Face_Description description = {};
-        description.font.filename = full_path;
-        description.parameters.pt_size = 12;
-        Face *new_face = font_set_new_face(&models->font_set, &description);
-        if (new_face == 0)
-        {
-            system_error_box("Could not load the required fallback font");
-        }
-        models->global_face_id = new_face->id;
-    }
-    
-    // NOTE(allen): title space
-    models->has_new_title = true;
-    models->title_capacity = KB(4);
-    models->title_space = push_array(arena, char, models->title_capacity);
-    block_copy(models->title_space, WINDOW_NAME, sizeof(WINDOW_NAME));
-    
-    // NOTE(allen): miscellaneous init
-    hot_directory_init(arena, &models->hot_directory, current_directory);
-    child_process_container_init(tctx->allocator, &models->child_processes);
-    models->period_wakeup_timer = system_wake_up_timer_create();
-    
-    // NOTE(allen): custom layer init
-    App app = {};
-    app.tctx = tctx;
-    app.cmd_context = models;
-    custom_layer_init(&app);
-    
-    // NOTE(allen): init baked in buffers
-    File_Init init_files[] = {
-        { str8_lit("*messages*"), &models->message_buffer , true , },
-        { str8_lit("*scratch*") , &models->scratch_buffer , false, },
-        { str8_lit("*log*")     , &models->log_buffer     , true , },
-        { str8_lit("*keyboard*"), &models->keyboard_buffer, true , },
-    };
-    
-    Buffer_Hook_Function *begin_buffer_func = models->begin_buffer;
-    models->begin_buffer = 0;
-    
-    for (u32 i = 0; i < ArrayCount(init_files); ++i){
-        Editing_File *file = working_set_allocate_file(&models->working_set, &models->lifetime_allocator);
-        buffer_bind_name(tctx, models, arena, &models->working_set, file, init_files[i].name);
-        
-        if (init_files[i].ptr != 0){
-            *init_files[i].ptr = file;
-        }
-        
-        File_Attributes attributes = {};
-        file_create_from_string(tctx, models, file, SCu8(), attributes);
-        if (init_files[i].read_only){
-            file->settings.read_only = true;
-            history_free(tctx, &file->state.history);
-        }
-        
-        file->settings.never_kill = true;
-        file_set_unimportant(file, true);
-    }
-    
-    models->begin_buffer = begin_buffer_func;
+ Models *models = (Models*)base_ptr;
+ models->keep_playing = true;
+ models->hard_exit = false;
+ 
+ // models->config_api = api;
+ models->virtual_event_arena = make_arena_system();
+ 
+ profile_init(&models->profile_list);
+ 
+ managed_ids_init(tctx->allocator, &models->managed_id_set);
+ 
+ // NOTE(allen): coroutines
+ coroutine_system_init(&models->coroutines);
+ 
+ // NOTE(allen): font set
+ font_set_init(&models->font_set);
+ 
+ // NOTE(allen): live set
+ Arena *arena = models->arena;
+ {
+  models->view_set.count = 0;
+  models->view_set.max = MAX_VIEWS;
+  models->view_set.views = push_array(arena, View, models->view_set.max);
+  
+  //dll_init_sentinel
+  models->view_set.free_sentinel.next = &models->view_set.free_sentinel;
+  models->view_set.free_sentinel.prev = &models->view_set.free_sentinel;
+  
+  i32 max = models->view_set.max;
+  View *view = models->view_set.views;
+  for (i32 i = 0; i < max; ++i, ++view){
+   //dll_insert(&models->view_set.free_sentinel, view);
+   view->next = models->view_set.free_sentinel.next;
+   view->prev = &models->view_set.free_sentinel;
+   models->view_set.free_sentinel.next = view;
+   view->next->prev = view;
+  }
+ }
+ 
+ lifetime_allocator_init(tctx->allocator, &models->lifetime_allocator);
+ dynamic_workspace_init(&models->lifetime_allocator, DynamicWorkspace_Global, 0, &models->dynamic_workspace);
+ 
+ // NOTE(allen): file setup
+ working_set_init(models, &models->working_set);
+ Mutex_Lock file_order_lock(models->working_set.mutex);
+ 
+ // NOTE(allen):
+ global_history_init(&models->global_history);
+ text_layout_init(tctx, &models->text_layouts);
+ 
+ // NOTE(allen): style setup
+ {
+  Scratch_Block scratch(tctx, arena);
+  
+  String8 binary_path = system_get_path(scratch, SystemPath_BinaryDirectory);
+  String8 full_path = push_stringfz(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
+  
+  Face_Description description = {};
+  description.font.filename = full_path;
+  description.parameters.pt_size = 12;
+  Face *new_face = font_set_new_face(&models->font_set, &description);
+  if (new_face == 0)
+  {
+   system_error_box("Could not load the required fallback font");
+  }
+  models->global_face_id = new_face->id;
+ }
+ 
+ // NOTE(allen): title space
+ models->has_new_title = true;
+ models->title_capacity = KB(4);
+ models->title_space = push_array(arena, char, models->title_capacity);
+ block_copy(models->title_space, WINDOW_NAME, sizeof(WINDOW_NAME));
+ 
+ // NOTE(allen): miscellaneous init
+ hot_directory_init(arena, &models->hot_directory, current_directory);
+ child_process_container_init(tctx->allocator, &models->child_processes);
+ models->period_wakeup_timer = system_wake_up_timer_create();
+ 
+ // NOTE(allen): custom layer init
+ App app = {};
+ app.tctx = tctx;
+ app.cmd_context = models;
+ custom_layer_init(&app);
+ 
+ // NOTE(allen): init baked in buffers
+ File_Init init_files[] = {
+  { str8_lit("*messages*"), &models->message_buffer , true , },
+  { str8_lit("*scratch*") , &models->scratch_buffer , false, },
+  { str8_lit("*log*")     , &models->log_buffer     , true , },
+  { str8_lit("*keyboard*"), &models->keyboard_buffer, true , },
+ };
+ 
+ Buffer_Hook_Function *begin_buffer_func = models->begin_buffer;
+ models->begin_buffer = 0;
+ 
+ for (u32 i = 0; i < ArrayCount(init_files); ++i){
+  Editing_File *file = working_set_allocate_file(&models->working_set, &models->lifetime_allocator);
+  buffer_bind_name(tctx, models, arena, &models->working_set, file, init_files[i].name);
+  
+  if (init_files[i].ptr != 0){
+   *init_files[i].ptr = file;
+  }
+  
+  File_Attributes attributes = {};
+  file_create_from_string(tctx, models, file, SCu8(), attributes);
+  if (init_files[i].read_only){
+   file->settings.read_only = true;
+   history_free(tctx, &file->state.history);
+  }
+  
+  file->settings.never_kill = true;
+  file_set_unimportant(file, true);
+ }
+ 
+ models->begin_buffer = begin_buffer_func;
  
  {// NOTE(allen): setup first panel
   Panel *panel = layout_initialize(arena, &models->layout);

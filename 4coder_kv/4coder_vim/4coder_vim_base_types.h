@@ -23,7 +23,8 @@ struct Vim_Text_Object{
 };
 
 
-enum Vim_Mode{
+typedef u32 Vim_Mode;
+enum {
 	VIM_Normal,
 	VIM_Insert,
 	VIM_Visual,
@@ -33,7 +34,8 @@ enum Vim_Mode{
 	VIM_Replace,
 };
 
-enum Vim_Sub_Mode{
+typedef u32 Vim_Sub_Mode;
+enum {
 	SUB_None,
 	SUB_G,
 	SUB_Z,

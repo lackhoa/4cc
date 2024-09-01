@@ -46,15 +46,15 @@ _F4_PosContext_RenderDefinitionTokens(App *app, Face_ID face,
             b32 highlight = 0;
             if(found_first_open_paren && arg_idx == highlight_arg &&
                (token->kind == TokenBaseKind_Identifier ||
-                token->kind == TokenBaseKind_Operator ||
-                token->kind == TokenBaseKind_Keyword))
-            {
-                color = finalize_color(fleury_color_token_highlight, 0);
-                highlight = 1;
-            }
-            
-            Vec2_f32 start_pos = text_position;
-            String token_string = string_substring(backing_string,
+       token->kind == TokenBaseKind_Operator ||
+       token->kind == TokenBaseKind_Keyword))
+   {
+    color = finalize_color(fleury_color_token_highlight, 0);
+    highlight = 1;
+   }
+   
+   Vec2_f32 start_pos = text_position;
+   String token_string = string_substring(backing_string,
                                                             Ii64(token->pos, token->pos+token->size));
             f32 string_advance = get_string_advance(app, face, token_string);
             if(text_position.x + string_advance >= max_x)

@@ -72,9 +72,6 @@ file_change_notification_thread_main(void *ptr){
 
 ////////////////////////////////
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 internal Editing_File*
 working_set_allocate_file(Working_Set *working_set, Lifetime_Allocator *lifetime_allocator){
@@ -107,24 +104,24 @@ working_set_free_file(Heap *heap, Working_Set *working_set, Editing_File *file){
     if (working_set->sync_check_iterator == &file->main_chain_node){
         working_set->sync_check_iterator = working_set->sync_check_iterator->next;
     }
-    dll_remove(&file->main_chain_node);
-    dll_remove(&file->touch_node);
-    working_set->active_file_count -= 1;
-    table_erase(&working_set->id_to_ptr_table, file->id);
-    sll_stack_push(working_set->free_files, file);
+ dll_remove(&file->main_chain_node);
+ dll_remove(&file->touch_node);
+ working_set->active_file_count -= 1;
+ table_erase(&working_set->id_to_ptr_table, file->id);
+ sll_stack_push(working_set->free_files, file);
 }
 
 internal Editing_File*
-working_set_get_file(Working_Set *working_set, Buffer_ID id){
-    Editing_File *result = 0;
-    u64 val = 0;
-    if (table_read(&working_set->id_to_ptr_table, id, &val)){
-        result = (Editing_File*)(IntAsPtr(val));
-    }
-    return(result);
+working_set_get_file(Working_Set *working_set, Buffer_ID id)
+{
+ Editing_File *result = 0;
+ u64 val = 0;
+ if (table_read(&working_set->id_to_ptr_table, id, &val)){
+  result = (Editing_File*)(IntAsPtr(val));
+ }
+ return(result);
 }
 
-#pragma clang diagnostic pop
 
 internal void
 working_set_init(Models *models, Working_Set *working_set){

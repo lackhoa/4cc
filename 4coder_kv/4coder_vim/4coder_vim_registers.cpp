@@ -3,9 +3,6 @@
 #include "4coder_vim_helper.cpp"
 // #include "calc.hpp"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-compare"
-
 function void
 vim_update_registers(App *app)
 {
@@ -27,7 +24,7 @@ vim_update_registers(App *app)
 	head.edit.text = top_text;
 
 	i64 total_size = top_text.size;
-	foreach(i, ArrayCount(vim_registers.r)){
+	foreach(i, (i1)ArrayCount(vim_registers.r)){
 		Vim_Register *reg = vim_registers.r + i;
 		if(reg->flags & REGISTER_Set){
 			u8 reg_char = vim_get_register_char(reg);
@@ -229,5 +226,3 @@ vim_process_insert_record(Record_Info record, i64 *prev_pos)
     }
     string_concat(insert_register, record.single_string_forward);
 }
-
-#pragma clang diagnostic pop

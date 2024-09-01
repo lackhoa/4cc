@@ -16,21 +16,21 @@ function void
 kv_quail_defrule(App *app, char *key, char *insert,
                  i1 delete_before, i1 delete_after, i1 cursor_index)
 {
-  i1 entry_index = arrlen(kv_quail_table);
-  // note: we keep the table sorted by key length, largest first, for overlapping keys.
-  for (i1 table_index=0;
-       table_index < arrlen(kv_quail_table);
-       table_index++)
+ i1 entry_index = (i1)arrlen(kv_quail_table);
+ // note: we keep the table sorted by key length, largest first, for overlapping keys.
+ for (i1 table_index=0;
+      table_index < arrlen(kv_quail_table);
+      table_index++)
+ {
+  char *existing_key = kv_quail_table[table_index].key;
+  if (gb_str_has_suffix(key, existing_key))
   {
-    char *existing_key = kv_quail_table[table_index].key;
-    if (gb_str_has_suffix(key, existing_key))
-    {
-      entry_index = table_index;  // change insertion index so this rule matches first
-      break;
-    }
+   entry_index = table_index;  // change insertion index so this rule matches first
+   break;
   }
-  KvQuailEntry entry = {key, insert, delete_before, delete_after, cursor_index};
-  arrins(kv_quail_table, entry_index, entry);
+ }
+ KvQuailEntry entry = {key, insert, delete_before, delete_after, cursor_index};
+ arrins(kv_quail_table, entry_index, entry);
 }
 
 function b32
@@ -54,7 +54,7 @@ kv_handle_text_insert(App *app, u8 character)
       quail_index++)
  {
   KvQuailEntry entry = kv_quail_table[quail_index];
-  i1 keylen = strlen(entry.key);
+  i1 keylen = (i1)strlen(entry.key);
   
   char *keys = keybuf + arrlen(keybuf) - keylen;
   substituted = ( strncmp(keys, entry.key, keylen) == 0 );
@@ -119,39 +119,39 @@ kv_handle_vim_keyboard_input(App *app, Input_Event *event)
             Key_Code modifiers = cast(Key_Code)pack_modifiers(mods.mods, mods.count);
             code = (Key_Code)(code|modifiers);
         }
-        
-        bool handled = false;
-        
-        // NOTE: Translate the Key_Code
-        if (vim_state.chord_resolved) { vim_keystroke_text.size=0; vim_state.chord_resolved=false; }
-        
-        b32 was_in_sub_mode = (vim_state.sub_mode != SUB_None);
-        u64 function_data = 0;
-        if ( table_read(vim_maps + vim_state.mode + vim_state.sub_mode*VIM_MODE_COUNT, code, &function_data) )
-        {
-            ProfileScope(app, "execute vim_func from vim_maps");
-            Custom_Command_Function *vim_func = (Custom_Command_Function *)IntAsPtr(function_data);
-            if (vim_func)
-            {
-                // Pre command stuff
-                View_ID view = get_active_view(app, Access_ReadVisible);
-                Managed_Scope scope = view_get_managed_scope(app, view);
-                default_pre_command(app, scope);
-                vim_pre_keystroke_size = vim_keystroke_text.size;
-                vim_append_keycode(code);
-                vim_state.active_command = vim_func;
-                vim_state.chord_resolved = true;
-                if (vim_func == no_op) { vim_state.chord_resolved = bitmask_2; }
-                
-                vim_func(app);
-                
-                // Post command stuff
-                default_post_command(app, scope);
-                vim_state.active_command = 0;
-                
-                handled = true;
-            }
-        }
+  
+  bool handled = false;
+  
+  // NOTE: Translate the Key_Code
+  if (vim_state.chord_resolved) { vim_keystroke_text.size=0; vim_state.chord_resolved=false; }
+  
+  b32 was_in_sub_mode = (vim_state.sub_mode != SUB_None);
+  u64 function_data = 0;
+  if ( table_read(vim_maps + vim_state.mode + (u32)vim_state.sub_mode*(u32)VIM_MODE_COUNT, code, &function_data) )
+  {
+   ProfileScope(app, "execute vim_func from vim_maps");
+   Custom_Command_Function *vim_func = (Custom_Command_Function *)IntAsPtr(function_data);
+   if (vim_func)
+   {
+    // Pre command stuff
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Managed_Scope scope = view_get_managed_scope(app, view);
+    default_pre_command(app, scope);
+    vim_pre_keystroke_size = vim_keystroke_text.size;
+    vim_append_keycode(code);
+    vim_state.active_command = vim_func;
+    vim_state.chord_resolved = true;
+    if (vim_func == no_op) { vim_state.chord_resolved = bitmask_2; }
+    
+    vim_func(app);
+    
+    // Post command stuff
+    default_post_command(app, scope);
+    vim_state.active_command = 0;
+    
+    handled = true;
+   }
+  }
         else if (vim_state.mode == VIM_Insert)
         {
             // passthrough to do text insertion
@@ -195,7 +195,7 @@ update_game_key_states(Input_Event *event)
   // NOTE: We have system_get_keyboard_modifiers to track modifier keys already
   if ( !is_modifier_key(keycode) )
   {
-   global_game_key_states       [keycode] = keydown;
+   global_game_key_states       [keycode] = (b8)(keydown != 0);
    global_game_key_state_changes[keycode]++;
   }
  }

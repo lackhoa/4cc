@@ -2,9 +2,6 @@
 
 #include "4coder_vim.h"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 // TODO(BYP): Might want meta-data on these, for now I prefer the simplicity
 function b32 vim_map_set_binding(u32 mode, u32 sub_mode, void *func, u64 key)
@@ -32,7 +29,6 @@ function b32 vim_map_set_binding(u32 mode, u32 sub_mode, void *func, u64 key)
     return no_conflict;
 }
 
-#pragma clang diagnostic pop
 
 inline b32 VimBind(u32 mode, Custom_Command_Function *custom, Vim_Sub_Mode sub_mode, u64 key)
 {

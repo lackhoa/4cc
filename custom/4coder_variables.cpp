@@ -155,7 +155,7 @@ vars_key_from_var(Arena *arena, Variable_Handle var)
 function String_ID
 vars_string_id_from_var(Variable_Handle var)
 {
-    return(var.ptr->val);
+ return(var.ptr->val);
 }
 
 function String8

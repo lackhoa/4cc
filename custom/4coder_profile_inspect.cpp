@@ -263,11 +263,11 @@ profile_qsort_nodes(Profile_Node **nodes, i1 first, i1 one_past_last){
             Profile_Node *node = nodes[i];
             u64 node_time = range_size(node->time);
             if (node_time > pivot_time){
-                Swap(Profile_Node*, nodes[i], nodes[j]);
+                macro_swap(nodes[i], nodes[j]);
                 j += 1;
             }
         }
-        Swap(Profile_Node*, nodes[pivot_index], nodes[j]);
+        macro_swap(nodes[pivot_index], nodes[j]);
         profile_qsort_nodes(nodes, first, j);
         profile_qsort_nodes(nodes, j + 1, one_past_last);
     }
@@ -498,19 +498,16 @@ profile_memory_sort_by_count(Memory_Bucket **buckets, i1 first, i1 one_past_last
         for (i1 i = first; i < pivot; i += 1){
             i1 key = buckets[i]->annotation.count;
             if (key <= pivot_key){
-                Swap(Memory_Bucket*, buckets[j], buckets[i]);
+                macro_swap(buckets[j], buckets[i]);
                 j += 1;
             }
         }
-        Swap(Memory_Bucket*, buckets[j], buckets[pivot]);
+        macro_swap(buckets[j], buckets[pivot]);
         profile_memory_sort_by_count(buckets, first, j);
         profile_memory_sort_by_count(buckets, j + 1, one_past_last);
     }
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 function void
 profile_render(App *app, Frame_Info frame_info, View_ID view){
@@ -876,7 +873,6 @@ profile_render(App *app, Frame_Info frame_info, View_ID view){
     draw_set_clip(app, prev_clip);
 }
 
-#pragma clang diagnostic pop
 
 function void
 profile_inspect__left_click(App *app, View_ID view,

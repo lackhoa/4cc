@@ -13,8 +13,8 @@
 #define FRED_BUFFER_H
 
 struct Cursor_With_Index{
-    i64 pos;
-    i1 index;
+ i64 pos;
+ i1 index;
 };
 
 struct Gap_Buffer{

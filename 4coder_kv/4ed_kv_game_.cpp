@@ -12,12 +12,6 @@ global b32 global_game_enabled = true;  // NOTE: Prevent crash
 global b32 global_auxiliary_viewports_on;
 global b32 global_debug_camera_on;
 
-inline b32
-is_game_on()
-{
- return global_game_on_readonly;
-}
-
 function b32 
 turn_game_on() 
 {
@@ -78,7 +72,7 @@ CUSTOM_DOC("")
  turn_game_off();
 }
 
-internal void debug_camera_on(App *app);
+void debug_camera_on(App *app);
 CUSTOM_COMMAND_SIG(debug_camera_on)
 CUSTOM_DOC("")
 {
@@ -94,15 +88,31 @@ init_game(App *app)
  //u8 *game_memory = cast(u8 *)system_memory_allocate(memsize, strlit("game memory"));
  Arena bootstrap_arena = make_arena_malloc(MB(1));
  auto game = get_game_code();
- global_game_state = game->game_init(&bootstrap_arena, &const_ed_api, app);
+ Game_ImGui_State imgui_state;
+ {
+  imgui_state.ctx = ImGui::GetCurrentContext();
+  ImGui::GetAllocatorFunctions(&imgui_state.alloc_func,
+                               &imgui_state.free_func,
+                               &imgui_state.user_data);
+ }
+ global_game_state = game->game_init(&bootstrap_arena, &const_ed_api, app,
+                                     imgui_state);
  
  //@ReferenceImages
  stbi_set_flip_vertically_on_load(true);
 }
 
-// TODO: The "delete old file" operation sometimes fail on us, 
+function void win32_imgui_reinit(void);
+
+function void
+reload_game(Game_API &game)
+{
+ game.game_reload(global_game_state, &const_ed_api, false);
+}
+
+// TODO(kv): The "delete old file" operation sometimes fail on us, 
 // so sometimes we have blank frames, which isn't ideal... but whatevs man!
-internal b32
+function b32
 load_latest_game_code(App *app, b32 *out_loaded)
 {// NOTE(kv): Load dynamc game code
  if (global_game_on_readonly)
@@ -133,48 +143,56 @@ load_latest_game_code(App *app, b32 *out_loaded)
      if (never_loaded_before || 
          (current_game_dll.mtime < mtime1))
      {// NOTE: We have new game code
-      // NOTE(kv): Ping-pong temp DLL, to avoid hickups
+      // NOTE(kv): Ping-pong temp DLL, to avoid hiccups
       u32 temp_index = 2;
       if (current_game_dll.temp_index == 2) { temp_index = 3; }
       
       String temp_path = (temp_index == 2) ? GAME2_DLL : GAME3_DLL;
       local_persist gbDllHandle library = {};
       
-      if (( ok = copy_file(GAME_DLL_PATH, temp_path, false) ))
+      ok = copy_file(GAME_DLL_PATH, temp_path, false);
+      if (!ok) { vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
+      
+      if (ok)
       {
        // NOTE(kv): We want to still display old game DLL for as long as possible, until load has succeeded.
-       // So we can compare results better and avoid nasty black screens.
+       // So we can compare change results better and avoid black screens.
        gbDllHandle new_library = gb_dll_load( to_c_string(scratch, temp_path) );
-       if (( ok = new_library != 0 ))
+       ok = (new_library != 0);
+       if (!ok) { vim_set_bottom_text_lit("failed to load dll"); }
+       
+       if (ok)
        {
+        if ( auto game = get_game_code() ) {
+         game->game_shutdown();
+        }
+#if AD_SHUTDOWN_IMGUI
+        win32_imgui_reinit();
+#endif
+        
         if (library)
         {
-         ok = gb_dll_unload(library);
-         if (!ok) { vim_set_bottom_text_lit("failed to unload old dll"); }
+         b32 unload_ok = gb_dll_unload(library);
+         if (!unload_ok) { vim_set_bottom_text_lit("failed to unload old dll"); }
         }
         
-        if (ok)
-        {
-         library = new_library;
-         
-         auto game_api_export = ((game_api_export_type *) gb_dll_proc_address(library, "game_api_export"));
-         game_api_export(&global_game_code_);
-         if ( never_loaded_before )
-         {
-          init_game(app);
-         }
-         else
-         {// NOTE: "game_reload" is itself reloaded
-          global_game_code_.game_reload(global_game_state, &const_ed_api, false);
-         }
-         
-         current_game_dll = { mtime1, temp_index };
-         loaded = true;
+        library = new_library;
+        
+        auto &game = global_game_code_;
+        auto game_api_export = (game_api_export_type *)gb_dll_proc_address(library, "game_api_export");
+        game_api_export(game);
+        if ( never_loaded_before ) {
+         init_game(app);
+        } else {
+         // NOTE: "game_reload" is itself reloaded... not sure how that'd be useful
+         reload_game(game);
         }
+        
+        current_game_dll = { mtime1, temp_index };
+        loaded = true;
        }
-       else { vim_set_bottom_text_lit("failed to load dll"); }
       }
-      else { vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
+      
      }
     }
    }

@@ -209,7 +209,6 @@ F4_CPP_ParseEnumBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx)
  }
 }
 
-F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile);
 function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
 {
  int scope_nest = 0;
@@ -422,7 +421,8 @@ function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
    F4_Index_MakeNote(ctx, Ii64(name), F4_Index_NoteKind_Decl, 0);
   }
   
-  //~ NOTE(rjf): Macro Functions
+#if 0
+  //~ NOTE(rjf): Macro Functions (NOTE(kv) it's.way.too.dangerous, messes with our introspection macros -> no good!)
   else if(F4_Index_ParsePattern(ctx, "%n%t%k",
                                 F4_Index_NoteKind_Macro, &note,
                                 "(",
@@ -442,7 +442,7 @@ function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
    
    if (0)
    {
-    String token_string = string_substring(ctx->string, token_range(name));
+    String token_string = string_substring(ctx->string, get_token_range(name));
     if (string_match(token_string, strlit("F4_CPP_IndexFile"))){
      breakhere;
     }
@@ -483,6 +483,7 @@ function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
    }
 #endif
   }
+#endif
 #if 0
   else if (F4_Index_ParsePattern(/* NOTE(kv): With storage class at the start */
                                  ctx, "%n%n%t%k",

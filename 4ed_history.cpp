@@ -18,28 +18,29 @@ history__to_node(Node *sentinel, i1 index){
             result = it;
             break;
         }
-        counter += 1;
-        it = it->next;
-    } while (it != sentinel);
-    return(result);
+  counter += 1;
+  it = it->next;
+ } while (it != sentinel);
+ return(result);
 }
 
 internal void
-history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table *lookup, Record *record){
-    if (lookup->records == 0 || lookup->count == lookup->max){
-        i1 new_max = clamp_min(1024, lookup->max*2);
-        String new_memory = base_allocate2(allocator, sizeof(Record*)*new_max);
-        Record **new_records = (Record**)new_memory.str;
-        block_copy(new_records, lookup->records, sizeof(*new_records)*lookup->count);
-        if (lookup->records != 0){
-            base_free(allocator, lookup->records);
-        }
-        lookup->records = new_records;
-        lookup->max = new_max;
-    }
-    Assert(lookup->count < lookup->max);
-    lookup->records[lookup->count] = record;
-    lookup->count += 1;
+history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table *lookup, Record *record)
+{
+ if (lookup->records == 0 || lookup->count == lookup->max){
+  i1 new_max = clamp_min(1024, lookup->max*2);
+  String new_memory = base_allocate2(allocator, sizeof(Record*)*new_max);
+  Record **new_records = (Record**)new_memory.str;
+  block_copy(new_records, lookup->records, sizeof(*new_records)*lookup->count);
+  if (lookup->records != 0){
+   base_free(allocator, lookup->records);
+  }
+  lookup->records = new_records;
+  lookup->max = new_max;
+ }
+ Assert(lookup->count < lookup->max);
+ lookup->records[lookup->count] = record;
+ lookup->count += 1;
 }
 
 internal void
@@ -71,14 +72,15 @@ history__to_node(History *history, i1 index){
         Record_Ptr_Lookup_Table *lookup = &history->record_lookup;
         Assert(lookup->count == history->record_count);
         result = &lookup->records[index - 1]->node;
-    }
-    return(result);
+ }
+ return(result);
 }
 
 ////////////////////////////////
 
 internal Record*
-history__allocate_record(History *history){
+history__allocate_record(History *history)
+{
     Node *sentinel = &history->free_records;
     Node *new_node = sentinel->next;
     if (new_node == sentinel){
@@ -106,8 +108,8 @@ history__allocate_record(History *history){
 
 internal void
 global_history_init(Global_History *global_history){
-    global_history->edit_number_counter = 0;
-    global_history->edit_grouping_counter = 0;
+ global_history->edit_number_counter = 0;
+ global_history->edit_grouping_counter = 0;
 }
 
 internal i1
@@ -191,20 +193,20 @@ history_get_sub_record(Record *record, i1 sub_index_one_based){
 
 internal Record*
 history_get_dummy_record(History *history){
-    Record *result = 0;
-    if (history->activated){
-        result = CastFromMember(Record, node, &history->records);
-    }
-    return(result);
+ Record *result = 0;
+ if (history->activated){
+  result = CastFromMember(Record, node, &history->records);
+ }
+ return(result);
 }
 
 internal void
 history__stash_record(History *history, Record *new_record){
-    Assert(history->record_lookup.count == history->record_count);
-    dll_insert_back(&history->records, &new_record->node);
-    history->record_count += 1;
-    history__push_back_record_ptr(&history->heap_wrapper, &history->record_lookup, new_record);
-    Assert(history->record_lookup.count == history->record_count);
+ Assert(history->record_lookup.count == history->record_count);
+ dll_insert_back(&history->records, &new_record->node);
+ history->record_count += 1;
+ history__push_back_record_ptr(&history->heap_wrapper, &history->record_lookup, new_record);
+ Assert(history->record_lookup.count == history->record_count);
 }
 
 internal void
@@ -235,38 +237,39 @@ history__free_nodes(History *history, i1 first_index, Node *first_node, Node *la
             last_node->next = right;
         }
     }
-    Assert(first_index != 0);
-    history->record_count = first_index - 1;
-    history__shrink_array(&history->record_lookup, history->record_count);
+ Assert(first_index != 0);
+ history->record_count = first_index - 1;
+ history__shrink_array(&history->record_lookup, history->record_count);
 }
 
 internal void
 history_record_edit(Global_History *global_history, History *history, Gap_Buffer *buffer,
-                    i64 pos_before_edit, Edit edit){
-    if (history->activated){
-        Assert(history->record_lookup.count == history->record_count);
-        
-        Record *new_record = history__allocate_record(history);
-        history__stash_record(history, new_record);
-        
-        new_record->restore_point = begin_temp(&history->arena);
-        if (pos_before_edit >= 0){
-            new_record->pos_before_edit = pos_before_edit;
-        }
-        else{
-            new_record->pos_before_edit = edit.range.min;
-        }
-        
-        new_record->edit_number = global_history_get_edit_number(global_history);
-        
-        new_record->kind = RecordKind_Single;
-        
-        new_record->single.forward_text = push_string_copyz(&history->arena, edit.text);
-        new_record->single.backward_text = buffer_stringify(&history->arena, buffer, edit.range);
-        new_record->single.first = edit.range.first;
-        
-        Assert(history->record_lookup.count == history->record_count);
-    }
+                    i64 pos_before_edit, Edit edit)
+{
+ if (history->activated)
+ {
+  Assert(history->record_lookup.count == history->record_count);
+  
+  Record *new_record = history__allocate_record(history);
+  history__stash_record(history, new_record);
+  
+  new_record->restore_point = begin_temp(&history->arena);
+  if (pos_before_edit >= 0) {
+   new_record->pos_before_edit = pos_before_edit;
+  } else {
+   new_record->pos_before_edit = edit.range.min;
+  }
+  
+  new_record->edit_number = global_history_get_edit_number(global_history);
+  
+  new_record->kind = RecordKind_Single;
+  
+  new_record->single.forward_text = push_string_copyz(&history->arena, edit.text);
+  new_record->single.backward_text = buffer_stringify(&history->arena, buffer, edit.range);
+  new_record->single.first = edit.range.first;
+  
+  Assert(history->record_lookup.count == history->record_count);
+ }
 }
 
 internal void
