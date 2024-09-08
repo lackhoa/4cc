@@ -304,77 +304,78 @@ lister__backspace_text_field__file_path(App *app){
             }
             
             lister->item_index = 0;
-            lister_zero_scroll(lister);
-            lister_update_filtered_list(app, lister);
-        }
-    }
+   lister_zero_scroll(lister);
+   lister_update_filtered_list(app, lister);
+  }
+ }
 }
 
 function void
-generate_hot_directory_file_list(App *app, Lister *lister){
-    Scratch_Block scratch(app, lister->arena);
-    
-    Temp_Memory temp = begin_temp(lister->arena);
-    String hot = push_hot_directory(app, lister->arena);
-    if (!character_is_slash(string_get_character(hot, hot.size - 1))){
-        hot = push_stringfz(lister->arena, "%.*s/", string_expand(hot));
+generate_hot_directory_file_list(App *app, Lister *lister)
+{
+ Scratch_Block scratch(app, lister->arena);
+ 
+ Temp_Memory temp = begin_temp(lister->arena);
+ String hot = push_hot_directory(app, lister->arena);
+ if (!character_is_slash(string_get_character(hot, hot.size - 1))){
+  hot = push_stringfz(lister->arena, "%.*s/", string_expand(hot));
+ }
+ lister_set_text_field(lister, hot);
+ lister_set_key(lister, path_filename(hot));
+ 
+ File_List file_list = system_get_file_list(scratch, hot);
+ end_temp(temp);
+ 
+ File_Info **one_past_last = file_list.infos + file_list.count;
+ 
+ lister_begin_new_item_set(app, lister);
+ 
+ hot = push_hot_directory(app, lister->arena);
+ if (hot.str != 0)
+ {
+  Lister_Prealloced_String empty_string_prealloced = lister_prealloced(empty_string);
+  for (File_Info **info = file_list.infos;
+       info < one_past_last;
+       info += 1){
+   if (!HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
+   String filename = push_stringfz(lister->arena, "%.*s/",
+                                   string_expand((**info).filename));
+   lister_add_item(lister, lister_prealloced(filename), empty_string_prealloced, filename.str, 0);
+  }
+  
+  for (File_Info **info = file_list.infos;
+       info < one_past_last;
+       info += 1){
+   if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
+   String filename = push_string_copyz(lister->arena, (**info).filename);
+   char *is_loaded = "";
+   char *status_flag = "";
+   
+   Buffer_ID buffer = {};
+   
+   {
+    Temp_Memory path_temp = begin_temp(lister->arena);
+    List_String list = {};
+    string_list_push(lister->arena, &list, hot);
+    string_list_push_overlap(lister->arena, &list, '/', (**info).filename);
+    String full_file_path = string_list_flatten(lister->arena, list);
+    buffer = get_buffer_by_filename(app, full_file_path, Access_Always);
+    end_temp(path_temp);
+   }
+   
+   if (buffer != 0){
+    is_loaded = "LOADED";
+    Dirty_State dirty = buffer_get_dirty_state(app, buffer);
+    switch (dirty){
+     case DirtyState_UnsavedChanges:  status_flag = " *"; break;
+     case DirtyState_UnloadedChanges: status_flag = " !"; break;
+     case DirtyState_UnsavedChangesAndUnloadedChanges: status_flag = " *!"; break;
     }
-    lister_set_text_field(lister, hot);
-    lister_set_key(lister, path_filename(hot));
-    
-    File_List file_list = system_get_file_list(scratch, hot);
-    end_temp(temp);
-    
-    File_Info **one_past_last = file_list.infos + file_list.count;
-    
-    lister_begin_new_item_set(app, lister);
-    
-    hot = push_hot_directory(app, lister->arena);
-    push_align(lister->arena, 8);
-    if (hot.str != 0){
-        Lister_Prealloced_String empty_string_prealloced = lister_prealloced(empty_string);
-        for (File_Info **info = file_list.infos;
-             info < one_past_last;
-             info += 1){
-            if (!HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-            String filename = push_stringfz(lister->arena, "%.*s/",
-                                                        string_expand((**info).filename));
-            lister_add_item(lister, lister_prealloced(filename), empty_string_prealloced, filename.str, 0);
-        }
-        
-        for (File_Info **info = file_list.infos;
-             info < one_past_last;
-             info += 1){
-            if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-            String filename = push_string_copyz(lister->arena, (**info).filename);
-            char *is_loaded = "";
-            char *status_flag = "";
-            
-            Buffer_ID buffer = {};
-            
-            {
-                Temp_Memory path_temp = begin_temp(lister->arena);
-                List_String list = {};
-                string_list_push(lister->arena, &list, hot);
-                string_list_push_overlap(lister->arena, &list, '/', (**info).filename);
-                String full_file_path = string_list_flatten(lister->arena, list);
-                buffer = get_buffer_by_filename(app, full_file_path, Access_Always);
-                end_temp(path_temp);
-            }
-            
-            if (buffer != 0){
-                is_loaded = "LOADED";
-                Dirty_State dirty = buffer_get_dirty_state(app, buffer);
-                switch (dirty){
-                    case DirtyState_UnsavedChanges:  status_flag = " *"; break;
-                    case DirtyState_UnloadedChanges: status_flag = " !"; break;
-                    case DirtyState_UnsavedChangesAndUnloadedChanges: status_flag = " *!"; break;
-                }
-            }
-            String status = push_stringfz(lister->arena, "%s%s", is_loaded, status_flag);
-            lister_add_item(lister, lister_prealloced(filename), lister_prealloced(status), filename.str, 0);
-        }
-    }
+   }
+   String status = push_stringfz(lister->arena, "%s%s", is_loaded, status_flag);
+   lister_add_item(lister, lister_prealloced(filename), lister_prealloced(status), filename.str, 0);
+  }
+ }
 }
 
 struct File_Name_Result{

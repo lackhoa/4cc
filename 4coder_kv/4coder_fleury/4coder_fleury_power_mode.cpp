@@ -209,13 +209,13 @@ F4_PowerMode_Spawn(App *app, View_ID view, u8 character)
 internal void
 F4_PowerMode_Tick(App *app, Frame_Info frame_info)
 {
-    // NOTE(rjf): Load keystroke sounds.
-    if(power_mode.enabled && power_mode.allowed)
-    {
-        for(u32 i = 0; i < ArrayCount(f4_powermode_keystroke_sounds); i += 1)
-        {
-            char path[256];
-            snprintf(path, sizeof(path), "sounds/PowerKey-%03d.wav", i+1);
+ // NOTE(rjf): Load keystroke sounds.
+ if(power_mode.enabled && power_mode.allowed)
+ {
+  for(u32 i = 0; i < ArrayCount(f4_powermode_keystroke_sounds); i += 1)
+  {
+   char path[256];
+   snprintf(path, sizeof(path), "sounds/PowerKey-%03d.wav", i+1);
             F4_RequireWAV(app, &f4_powermode_keystroke_sounds[i], path);
             f4_powermode_keystroke_sounds[i].channel_volume[0] = 0.25f;
             f4_powermode_keystroke_sounds[i].channel_volume[1] = 0.25f;

@@ -571,7 +571,7 @@ serialize(Arena *arena, Game_State *state)
 print(p, #NAME " "); print_data_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newline
  
  const i32 MAX_SAVE_SIZE = KB(16);  // Wastes @Memory
- Printer p = make_printer_arena(arena, MAX_SAVE_SIZE);
+ Printer p = make_printer_buffer(arena, MAX_SAVE_SIZE);
  
  i32 indentation = 0;
  {// NOTE: Content

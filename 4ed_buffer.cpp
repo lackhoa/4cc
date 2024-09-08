@@ -302,40 +302,44 @@ buffer_chunks_clamp(List_String *chunks, Range_i64 range){
 
 internal String
 buffer_stringify(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
-    List_String list = buffer_get_chunks(arena, buffer);
-    buffer_chunks_clamp(&list, range);
-    return(string_list_flatten(arena, list, StringFill_NullTerminate));
+ List_String list = buffer_get_chunks(arena, buffer);
+ buffer_chunks_clamp(&list, range);
+ return(string_list_flatten(arena, list, StringFill_NullTerminate));
 }
 
-internal String
-buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
-    List_String list = buffer_get_chunks(arena, buffer);
-    buffer_chunks_clamp(&list, range);
-    u64 cap = list.total_size*2;
-    u8 *memory = push_array(arena, u8, cap);
-    u8 *memory_opl = memory + cap;
-    u8 *ptr = memory;
-    for (Node_String *node = list.first;
-         node != 0;
-         node = node->next){
-        u8 *byte = node->string.str;
-        u8 *byte_opl = byte + node->string.size;
-        for (;byte < byte_opl; byte += 1){
-            if (*byte == '\n'){
-                *ptr = '\r';
-                ptr += 1;
-                *ptr = '\n';
-                ptr += 1;
-            }
-            else{
-                *ptr = *byte;
-                ptr += 1;
-            }
-        }
-    }
-    linalloc_pop(arena, (memory_opl - ptr));
-    push_align(arena, 8);
-    return(SCu8(memory, ptr));
+function String
+buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range)
+{
+ List_String list = buffer_get_chunks(arena, buffer);
+ buffer_chunks_clamp(&list, range);
+ u64 cap = list.total_size*2;
+ u8 *memory = push_array(arena, u8, cap);
+ u8 *memory_opl = memory + cap;
+ u8 *ptr = memory;
+ for (Node_String *node = list.first;
+      node != 0;
+      node = node->next)
+ {
+  u8 *byte = node->string.str;
+  u8 *byte_opl = byte + node->string.size;
+  for (;byte < byte_opl; byte += 1)
+  {
+   if (*byte == '\n')
+   {
+    *ptr = '\r';
+    ptr += 1;
+    *ptr = '\n';
+    ptr += 1;
+   }
+   else
+   {
+    *ptr = *byte;
+    ptr += 1;
+   }
+  }
+ }
+ arena_pop(arena, memory_opl - ptr);
+ return(SCu8(memory, ptr));
 }
 
 #if 0

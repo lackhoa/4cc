@@ -1846,6 +1846,23 @@ win32_imgui_reinit()
 int CALL_CONVENTION
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+ if (0)
+ {
+  u8 *result = (u8*)VirtualAlloc(0, (SIZE_T)4096,
+                                 MEM_COMMIT | MEM_RESERVE,
+                                 PAGE_READWRITE);
+  ASAN_POISON_MEMORY_REGION(result+4088, 8);
+  result[4088] = 0;
+ }
+ if (0)
+ {
+  u8 *result = (u8*)malloc(4096);
+  ASAN_POISON_MEMORY_REGION(result+4, 4);
+  result[7] = 0;
+  ASAN_POISON_MEMORY_REGION(result+4088, 8);
+  result[4088] = 0;
+ }
+ 
  i32 argc = __argc;
  char **argv = __argv;
  

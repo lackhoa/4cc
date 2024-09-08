@@ -544,10 +544,10 @@ prj_cmd_from_user(App *app, Variable_Handle prj_var, String8 query){
 CUSTOM_COMMAND_SIG(close_all_code)
 CUSTOM_DOC("Closes any buffer with a filename ending with an extension configured to be recognized as a code file type.")
 {
-    Scratch_Block scratch(app);
-    String8 treat_as_code = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
-    String8Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code);
-    prj_close_files_with_ext(app, extensions);
+ Scratch_Block scratch(app);
+ String8 treat_as_code = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
+ String8Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code);
+ prj_close_files_with_ext(app, extensions);
 }
 
 CUSTOM_COMMAND_SIG(open_all_code)

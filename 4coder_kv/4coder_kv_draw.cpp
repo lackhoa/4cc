@@ -67,8 +67,8 @@ kv_draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
     {
       Range_i64 range = ranges.ranges[range_i];
       i1 fore_index = color_index % color_count;
-      paint_text_color_pos(app, text_layout_id, range.min, colors[fore_index]);
-      paint_text_color_pos(app, text_layout_id, range.max - 1, colors[fore_index]);
+   paint_text_color_pos(app, text_layout_id, range.min, colors[fore_index]);
+   paint_text_color_pos(app, text_layout_id, range.max - 1, colors[fore_index]);
    color_index += 1;
   }
  }
@@ -106,7 +106,7 @@ F4_RenderDividerComments(App *app, Buffer_ID buffer, View_ID view,
      Rect_f32 comment_first_char_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
      Rect_f32 comment_last_char_rect = text_layout_character_on_screen(app, text_layout_id, token->pos+token->size-1);
      String token_string = push_buffer_range(app, scratch, buffer, Ii64(token));
-     String signifier_substring = string_substring(token_string, Ii64(0, 3));
+     String signifier_substring = string_substring(token_string, Ii64(0,clamp_max(3,token_string.size)));
      f32 roundness = 4.f;
      
      // NOTE(rjf): Strong dividers.

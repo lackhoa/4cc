@@ -31,8 +31,8 @@ def_search_normal_fopen(Arena *arena, char *filename, char *opt){
     Temp_Memory_Block block(arena);
     String8List list = {};
     def_search_normal_load_list(arena, &list);
-    FILE *file = def_search_fopen(arena, &list, filename, opt);
-    return(file);
+ FILE *file = def_search_fopen(arena, &list, filename, opt);
+ return(file);
 }
 
 ////////////////////////////////
@@ -41,29 +41,27 @@ def_search_normal_fopen(Arena *arena, char *filename, char *opt){
 function String_Array
 parse_extension_line_to_extension_list(App *app, Arena *arena, String8 str)
 {
-    ProfileScope(app, "parse extension line to extension list");
-    i1 count = 0;
-    for (u64 i = 0; i < str.size; i += 1){
-        if (str.str[i] == '.'){
-            count += 1;
-        }
-    }
-    
-    String_Array array = {};
-    array.count = count;
-    array.strings = push_array(arena, String, count);
-    
-    push_align(arena, 1);
-    str = string_skip(str, string_find_first(str, '.') + 1);
-    for (i1 i = 0; i < count; i += 1){
-        u64 next_period = string_find_first(str, '.');
-        String extension = string_prefix(str, next_period);
-        str = string_skip(str, next_period + 1);
-        array.strings[i] = push_string_copyz(arena, extension);
-    }
-    push_align(arena, 8);
-    
-    return(array);
+ ProfileScope(app, "parse extension line to extension list");
+ i1 count = 0;
+ for (u64 i = 0; i < str.size; i += 1){
+  if (str.str[i] == '.'){
+   count += 1;
+  }
+ }
+ 
+ String_Array array = {};
+ array.count = count;
+ array.strings = push_array(arena, String, count);
+ 
+ str = string_skip(str, string_find_first(str, '.') + 1);
+ for (i1 i = 0; i < count; i += 1) {
+  u64 next_period = string_find_first(str, '.');
+  String extension = string_prefix(str, next_period);
+  str = string_skip(str, next_period + 1);
+  array.strings[i] = push_string_copyz(arena, extension);
+ }
+ 
+ return(array);
 }
 
 ////////////////////////////////

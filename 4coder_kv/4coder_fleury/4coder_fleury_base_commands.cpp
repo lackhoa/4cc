@@ -893,7 +893,6 @@ F4_GenerateHotDirectoryFileList_Project(App *app, Lister *lister)
     lister_begin_new_item_set(app, lister);
     
     hot = push_hot_directory(app, lister->arena);
-    push_align(lister->arena, 8);
     if(hot.str != 0)
     {
         String empty_string = string_u8_litexpr("");

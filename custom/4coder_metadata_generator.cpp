@@ -821,7 +821,7 @@ main(int argc, char **argv){
         show_usage(argc, argv);
     }
     
-    Arena arena_ = make_arena_malloc(MB(1), 8);
+    Arena arena_ = make_arena_malloc(MB(1));
     Arena *arena = &arena_;
     
     String out_directory = SCu8(argv[2]);

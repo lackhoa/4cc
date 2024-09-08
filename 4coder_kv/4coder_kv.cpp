@@ -44,7 +44,7 @@
 #    include "generated/managed_id_metadata.cpp"  // from Mr. Allen 4th
 #endif
 
-internal void kvInitShiftedTable()
+function void kvInitShiftedTable()
 {
  Base_Allocator *base = get_base_allocator_system();
  shifted_version_of_characters = make_table_u64_u64(base, 32);
@@ -141,21 +141,21 @@ kv_default_bindings(Mapping *mapping)
 inline Buffer_ID 
 create_special_buffer(App *app, String name, Buffer_Create_Flag create_flags, Buffer_Setting_ID buffer_flags)
 {
-    Buffer_ID buffer = create_buffer(app, name, create_flags);
-    buffer_set_setting(app, buffer, buffer_flags, true);
-    return buffer;
+ Buffer_ID buffer = create_buffer(app, name, create_flags);
+ buffer_set_setting(app, buffer, buffer_flags, true);
+ return buffer;
 }
 
-internal void
+function void
 kv_4coder_initialize(App *app)
 {
-    Face_Description description = get_face_description(app, 0);
-    i32 override_font_size = description.parameters.pt_size;
-    b32 override_hinting = description.parameters.hinting;
-    load_config_and_apply(app, &global_config_arena, override_font_size, override_hinting);
+ Face_Description description = get_face_description(app, 0);
+ i32 override_font_size = description.parameters.pt_size;
+ b32 override_hinting = description.parameters.hinting;
+ load_config_and_apply(app, &global_config_arena, override_font_size, override_hinting);
 }
 
-internal void
+function void
 startup_panels_and_files(App *app)
 {
  Scratch_Block scratch(app);
@@ -215,7 +215,7 @@ startup_panels_and_files(App *app)
  }
 }
 
-internal void
+function void
 initialize_stylist_fonts(App *app)
 {
     Scratch_Block scratch(app);
@@ -284,52 +284,54 @@ initialize_stylist_fonts(App *app)
             global_small_code_face = try_create_new_face(app, &desc);
         }
         else
-        {
-            global_small_code_face = face_that_should_totally_be_there;
-        }
-    }
+  {
+   global_small_code_face = face_that_should_totally_be_there;
+  }
+ }
 }
 
-internal void 
+function void 
 kv_startup(App *app)
 {
-    ProfileScope(app, "kv_startup");
-    Scratch_Block temp(app);
-    
-    set_window_title(app, str8lit("4coder kv"));
-    load_themes_default_folder(app);
-    kv_4coder_initialize(app);
-    
-    String startup_hot_directory = def_get_config_string(temp, vars_intern_lit("startup_hot_directory"));
-    set_hot_directory(app, startup_hot_directory);
-   
+ ProfileScope(app, "kv_startup");
+ Scratch_Block temp(app);
+ 
+ set_window_title(app, str8lit("4coder kv"));
+ load_themes_default_folder(app);
+ kv_4coder_initialize(app);
+ 
+ String startup_hot_directory = def_get_config_string(temp, vars_intern_lit("startup_hot_directory"));
+ set_hot_directory(app, startup_hot_directory);
+ 
 #if !KV_INTERNAL
-    load_project(app);
+ load_project(app);
 #endif
-    
-    //def_audio_init();
-    
-    clear_all_layouts(app);
-    
-    kv_essential_mapping(&framework_mapping);
-    kv_default_bindings(&framework_mapping);
-    
-    {// NOTE(kv): Create special buffers.
-        Buffer_Create_Flag create_flags = BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew;
-        create_special_buffer(app, str8lit("*calc*"),       create_flags, BufferSetting_Unimportant);
-        create_special_buffer(app, compilation_buffer_name, create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
-        for_i32 (index,0,GAME_BUFFER_COUNT)
-        {
-            create_special_buffer(app, GAME_BUFFER_NAMES[index], create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
-        }
-    }
-  
-    startup_panels_and_files(app);
-    
-    initialize_stylist_fonts(app);
+ 
+ //def_audio_init();
+ 
+ clear_all_layouts(app);
+ 
+ kv_essential_mapping(&framework_mapping);
+ kv_default_bindings(&framework_mapping);
+ 
+ {// NOTE(kv): Create special buffers.
+  Buffer_Create_Flag create_flags = BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew;
+  create_special_buffer(app, str8lit("*calc*"),       create_flags, BufferSetting_Unimportant);
+  create_special_buffer(app, compilation_buffer_name, create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
+  for_i32 (index,0,GAME_BUFFER_COUNT)
+  {
+   create_special_buffer(app, GAME_BUFFER_NAMES[index], create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
+  }
+ }
+ 
+ startup_panels_and_files(app);
+ 
+ initialize_stylist_fonts(app);
  
 #if KV_INTERNAL
- global_game_on_readonly = true;
+ if ( !def_get_config_b32(vars_intern_lit("dev_disable_game_on_startup")) ) {
+  turn_game_on();
+ }
 #endif
 }
 
@@ -584,23 +586,23 @@ kv_vim_bindings(App *app)
 function void 
 default_custom_layer_init(App *app)
 {
-    Thread_Context *tctx = get_thread_context(app);
-    
-    // NOTE(allen): setup for default framework
-    default_framework_init(app);
-    
-    // NOTE(allen): default hooks and command maps
-    set_all_default_hooks(app);
-    mapping_init(tctx, &framework_mapping);
-    String_ID global_map_id = vars_intern_lit("keys_global");
-    String_ID file_map_id   = vars_intern_lit("keys_file");
-    String_ID code_map_id   = vars_intern_lit("keys_code");
-    setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+ Thread_Context *tctx = get_thread_context(app);
+ 
+ // NOTE(allen): setup for default framework
+ default_framework_init(app);
+ 
+ // NOTE(allen): default hooks and command maps
+ set_all_default_hooks(app);
+ mapping_init(tctx, &framework_mapping);
+ String_ID global_map_id = vars_intern_lit("keys_global");
+ String_ID file_map_id   = vars_intern_lit("keys_file");
+ String_ID code_map_id   = vars_intern_lit("keys_code");
+ setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 }
 
-internal Tick_Function kv_tick;
+function Tick_Function kv_tick;
 //
-internal void
+function void
 kv_tick(App *app, Frame_Info frame)
 {
  Scratch_Block scratch(app);
@@ -745,22 +747,22 @@ extern "C" void
 custom_layer_init(App *app)
 {
 #if USE_LAYER_kv
-    kv_custom_layer_init(app);
-    
-    {// note(kv): shared startup code
-        MappingScope();
-        SelectMapping(&framework_mapping);
-        
-        String_ID global_id = vars_intern_lit("keys_global");
-        SelectMap(global_id);
-        BindCore(kv_startup, CoreCode_Startup);
-    }
-    
+ kv_custom_layer_init(app);
+ 
+ {// note(kv): shared startup code
+  MappingScope();
+  SelectMapping(&framework_mapping);
+  
+  String_ID global_id = vars_intern_lit("keys_global");
+  SelectMap(global_id);
+  BindCore(kv_startup, CoreCode_Startup);
+ }
+ 
 #elif USE_LAYER_fleury
-    fleury_custom_layer_init(app);
+ fleury_custom_layer_init(app);
 #elif USE_LAYER_fleury_lite
-    fleury_lite_custom_layer_init(app);
+ fleury_lite_custom_layer_init(app);
 #elif USE_LAYER_default
-    default_custom_layer_init(app);
+ default_custom_layer_init(app);
 #endif
 }

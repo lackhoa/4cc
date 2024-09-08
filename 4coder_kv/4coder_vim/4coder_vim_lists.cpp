@@ -129,7 +129,6 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 	lister_begin_new_item_set(app, lister);
 
 	hot = push_hot_directory(app, lister->arena);
-	push_align(lister->arena, 8);
 	if (hot.str != 0){
 		Lister_Prealloced_String empty_string_prealloced = lister_prealloced(empty_string);
 		for (File_Info **info = file_list.infos;

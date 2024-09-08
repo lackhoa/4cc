@@ -89,8 +89,8 @@ typedef int8_t   b8;
 typedef int32_t  b32;
 typedef uint32_t u32;
 typedef uint64_t u64;
-typedef size_t   umm;
-typedef i64      imm;
+typedef uintptr_t umm;
+typedef i64       imm;
 
 typedef float    r32;
 typedef float    f32;
@@ -2258,7 +2258,6 @@ enum Base_Allocator_Type
 {
  Allocator_None,
  Allocator_Generic,
- Allocator_Arena,
  Allocator_Malloc,
 };
 
@@ -2287,7 +2286,7 @@ struct Base_Allocator
   // or
   Base_Allocator_Generic generic;
   // or
-  // malloc-based allocators don't need any pointer
+  // malloc-based allocators don't need anything
  };
 };
 
@@ -2296,38 +2295,40 @@ struct Memory_Cursor
 {
  Memory_Cursor *next;
  u8 *base;
- u64 pos;
+ u64 used_;
  u64 cap;
 };
 struct Temp_Memory_Cursor
 {
  Memory_Cursor *cursor;
- u64 pos;
+ u64 used;
 };
 struct Arena
 {
-    Base_Allocator *base_allocator;
-    Memory_Cursor  *cursor_node;
-    u64 chunk_size;
-    u64 alignment;
+ Base_Allocator *base_allocator;
+ Memory_Cursor  *cursor;
+ u64 chunk_size;
 };
 struct Temp_Memory_Arena
 {
-    Arena *arena;
-    Memory_Cursor *cursor_node;
-    u64 pos;
+ Arena *arena;
+ Memory_Cursor *cursor;
+ u64 used;
 };
 typedef i32 Linear_Allocator_Kind;
-enum{
-  LinearAllocatorKind_Cursor=1,
-  LinearAllocatorKind_Arena =2,
+enum
+{
+ LinearAllocatorKind_Cursor=1,
+ LinearAllocatorKind_Arena =2,
 };
-struct Temp_Memory{
-  Linear_Allocator_Kind kind;
-  union{
-    Temp_Memory_Cursor temp_memory_cursor;
-    Temp_Memory_Arena temp_memory_arena;
-  };
+struct Temp_Memory
+{
+ Linear_Allocator_Kind kind;
+ union
+ {
+  Temp_Memory_Cursor temp_memory_cursor;
+  Temp_Memory_Arena  temp_memory_arena;
+ };
 };
 
 ////////////////////////////////
@@ -2433,33 +2434,12 @@ struct Heap{
 
 // NOTE: these are inline functions anyway?
 
-inline u32
-round_up_u32(u32 x, u32 b){
- x += b - 1;
- x -= x%b;
- return(x);
-}
-
-inline u64
-round_up_u64(u64 x, u64 b){
- x += b - 1;
- x -= x%b;
- return(x);
-}
-
-inline i32
-round_up_i32(i32 x, i32 b){
- x += b - 1;
- x -= x%b;
- return(x);
-}
-
-inline i64
-round_up_i64(i64 x, i64 b){
- x += b - 1;
- x -= x%b;
- return(x);
-}
+#define BODY { x += b-1; x -= x%b; return(x); }
+inline u32 round_up_u32(u32 x, u32 b) {BODY}
+inline u64 round_up_u64(u64 x, u64 b) {BODY}
+inline i32 round_up_i32(i32 x, i32 b) {BODY}
+inline i64 round_up_i64(i64 x, i64 b) {BODY}
+#undef BODY
 
 inline String8
 make_data(void *memory, u64 size)
@@ -3323,12 +3303,12 @@ range_contains_inclusive(Range_u64 a, u64 p){
 }
 function b32
 range_inclusive_contains(Range_f32 a, f32 p){
-    return(a.min <= p && p <= a.max);
+ return(a.min <= p && p <= a.max);
 }
 
 function b32
 range_contains(Range_i32 a, i32 p){
-    return(a.min <= p && p < a.max);
+ return(a.min <= p && p < a.max);
 }
 function b32
 range_contains(Range_i64 a, i64 p){
@@ -3584,7 +3564,13 @@ global_const String empty_string = {(u8*)"", 0};
 
 #define filename_linum strlit(filename_line_number)
 
-////////////////////////////////
+//~Arena
+#include "sanitizer/asan_interface.h"
+#if defined(__has_feature)
+#   if __has_feature(address_sanitizer) // for clang
+#       define __SANITIZE_ADDRESS__  // GCC already sets this
+#   endif
+#endif
 
 function void*
 base_reserve__noop(void *user_data, u64 size, u64 *size_out, String location){
@@ -3628,9 +3614,6 @@ make_base_allocator_generic(Allocator_Reserve_Signature *func_reserve,
 }
 
 function String
-linalloc_push(Arena *arena, u64 size, String8 location);
-
-function String
 base_allocate_function(Base_Allocator *allocator, u64 size, String debug_location)
 {// @todo_leak_check
  u64 full_size = size;
@@ -3645,10 +3628,10 @@ base_allocate_function(Base_Allocator *allocator, u64 size, String debug_locatio
    a.commit(a.userdata, memory, full_size);
   }break;
   
-  case Allocator_Arena:
-  {// NOTE: This is a cyclic dependency situation.
+  /*case Allocator_Arena:
+  {// NOTE(kv): This is a cyclic dependency situation.
    memory = linalloc_push(allocator->arena, size, debug_location).str;
-  }break;
+  }break;*/
   
   case Allocator_Malloc:
   {
@@ -3674,13 +3657,18 @@ base_free(Base_Allocator *allocator, void *ptr)
     a.free(a.userdata, ptr);
    }break;
    
-   case Allocator_Arena:  { /*noop*/ } break;
+   //case Allocator_Arena:  {  breakhere; /*noop*/ } break;
    
    case Allocator_Malloc: { free(ptr); } break;
    
    invalid_default_case;
   } 
  }
+}
+inline void
+free_cursor(Base_Allocator *allocator, Memory_Cursor *cursor)
+{
+ base_free(allocator, cursor);
 }
 
 // TODO(kv): Does anyone actually care about the returned size? And why do they care?
@@ -3691,63 +3679,84 @@ base_free(Base_Allocator *allocator, void *ptr)
 
 //-
 
-function Memory_Cursor
-make_cursor(void *base, u64 cap){
+inline Memory_Cursor
+make_cursor(void *base, u64 cap)
+{
     Memory_Cursor cursor = {.base=(u8*)base, .cap=cap};
     return(cursor);
 }
-function Memory_Cursor
-make_cursor(String8 data){
-    return(make_cursor(data.str, data.size));
+inline Memory_Cursor
+make_cursor(String data) {
+ return(make_cursor(data.str, data.size));
 }
-function Memory_Cursor
+inline Memory_Cursor
 make_cursor(Base_Allocator *allocator, u64 size)
 {
- String8 memory = base_allocate2(allocator, size);
+ String memory = base_allocate2(allocator, size);
  return(make_cursor(memory));
 }
-function String8
-linalloc_bump(Memory_Cursor *cursor, u64 size, String8 location)
+function String
+cursor_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2)
 {
- String8 result = {};
- if (cursor->pos + size <= cursor->cap)
+ String result = {};
+ usize align = (1ULL<<align_pow2);
+ usize align_mask = align-1;
+ usize current_pos = usize(cursor->base)+cursor->used_;
+ usize pos = (current_pos + align_mask) & ~align_mask;
+ usize new_used = pos+size-usize(cursor->base);
+ if (new_used <= cursor->cap)
  {
-  result.str = cursor->base + cursor->pos;
-  result.size = size;
-  cursor->pos += size;
+  cursor->used_ = new_used;
+  result = {(u8*)pos, size};
+  ASAN_UNPOISON_MEMORY_REGION(result.str, size);
+  {
+   kv_assert((usize(result.str) & align_mask) == 0);
+  }
  }
  return(result);
+}
+function String
+linalloc_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2=3)
+{
+ return cursor_push(cursor, size, location, align_pow2);
 }
 function void
 cursor_pop(Memory_Cursor *cursor, u64 size)
 {
- kv_assert(cursor->pos >= size);
- cursor->pos -= size;
+ kv_assert(cursor->used_ >= size);
+ cursor->used_ -= size;
+ ASAN_POISON_MEMORY_REGION(cursor->base+cursor->used_, size);
 }
-function String8
-linalloc_align(Memory_Cursor *cursor, u64 alignment)
+function void
+linalloc_pop(Memory_Cursor *cursor, u64 size)
 {
-    u64 pos = round_up_u64(cursor->pos, alignment);
-    u64 new_size = pos - cursor->pos;
-    return linalloc_bump(cursor, new_size, filename_linum);
+ return cursor_pop(cursor, size);
 }
+inline void
+cursor_pop_to(Memory_Cursor *cursor, umm used)
+{
+ cursor_pop(cursor, cursor->used_-used);
+}
+
 function Temp_Memory_Cursor
-linalloc_begin_temp(Memory_Cursor *cursor)
+temp_cursor_begin(Memory_Cursor *cursor)
 {
-    Temp_Memory_Cursor temp = {cursor, cursor->pos};
+ Temp_Memory_Cursor temp = {cursor, cursor->used_};
  return(temp);
 }
 function void
-linalloc_end_temp(Temp_Memory_Cursor temp)
+temp_cursor_end(Temp_Memory_Cursor temp)
 {
- temp.cursor->pos = temp.pos;
+ cursor_pop_to(temp.cursor, temp.used);
 }
 function Arena
-make_arena(Base_Allocator *allocator, u64 chunk_size=KB(64), u64 alignment=8)
+make_arena(Base_Allocator *allocator, u64 chunk_size=KB(64))
 {
- Arena arena = {allocator, 0, chunk_size, alignment};
+ Arena arena = {allocator, 0, chunk_size};
  return(arena);
 }
+
+
 
 function Memory_Cursor *
 arena__new_node(Arena *arena, u64 min_size, String location)
@@ -3761,105 +3770,97 @@ arena__new_node(Arena *arena, u64 min_size, String location)
  // rather than the first allocated address,
  // since we want "arena_clear" to work
  *cursor = make_cursor(cursor+1, usable_size);
- sll_stack_push(arena->cursor_node, cursor);
+ sll_stack_push(arena->cursor, cursor);
+ ASAN_POISON_MEMORY_REGION(cursor+1, usable_size);
  return(cursor);
 }
 
 force_inline u8 *
 get_cursor_base(Arena *arena)
 {// NOTE: might crash if your arena doesn't have a base
- return arena->cursor_node->base;
+ return arena->cursor->base;
 }
 function String
-linalloc_push(Arena *arena, u64 size, String location)
+arena_push(Arena *arena, usize size, String location, u32 align_pow2)
 {
  String result = {};
  if (size > 0)
  {
-  Memory_Cursor *cursor_node = arena->cursor_node;
-  if (cursor_node == 0) {
-   cursor_node = arena__new_node(arena, size, location);
+  Memory_Cursor *cursor = arena->cursor;
+  if (cursor == 0) {
+   cursor = arena__new_node(arena, size, location);
   }
   
-  result = linalloc_bump(cursor_node, size, location);
+  result = cursor_push(cursor, size, location, align_pow2);
   if (result.str == 0)
   {
-   cursor_node = arena__new_node(arena, size, location);
-   result = linalloc_bump(cursor_node, size, location);
+   cursor = arena__new_node(arena, size, location);
+   result = cursor_push(cursor, size, location, align_pow2);
   }
-  String alignment_data = linalloc_align(cursor_node, arena->alignment);
-  result.size += alignment_data.size;
  }
  return(result);
 }
-// NOTE(kv): This function only supports the case where you have pushed
-// a contiguous block of memory, and want to "rewind back".
-// It doesn't support cursor node rewind (use temp memory for that).
+//
+function String
+linalloc_push(Arena *arena, usize size, String location, u32 align_pow2=3)
+{
+ return arena_push(arena, size, location, align_pow2);
+}
+//
+function void
+arena_pop(Arena *arena, u64 size)
+{
+ Memory_Cursor *cursor = arena->cursor;
+ if (size >= cursor->used_) {
+  // NOTE(kv): we can't handle this, because alignment complicates the calculus
+  invalid_code_path;
+ } else {
+  cursor_pop(cursor, size);
+ }
+}
+//
 function void
 linalloc_pop(Arena *arena, u64 size)
 {
- Base_Allocator *allocator = arena->base_allocator;
- Memory_Cursor *cursor_node = arena->cursor_node;
- for (Memory_Cursor *prev = 0;
-      cursor_node != 0 && size != 0;
-      cursor_node = prev)
- {
-  prev = cursor_node->next;
-  if (size >= cursor_node->pos)
-  {
-   size -= cursor_node->pos;
-   base_free(allocator, cursor_node);
-  }
-  else
-  {
-   cursor_pop(cursor_node, size);
-   break;
-  }
- }
- arena->cursor_node = cursor_node;
+ arena_pop(arena, size);
 }
-function String
-linalloc_align(Arena *arena, u64 alignment){
-    arena->alignment = alignment;
-    String data = {};
-    Memory_Cursor *cursor_node = arena->cursor_node;
-    if (cursor_node != 0){
-  data = linalloc_align(cursor_node, arena->alignment);
- }
- return(data);
-}
+//
 function Temp_Memory_Arena
-linalloc_begin_temp(Arena *arena){
- Memory_Cursor *cursor_node = arena->cursor_node;
+temp_arena_begin(Arena *arena)
+{
+ Memory_Cursor *cursor = arena->cursor;
  Temp_Memory_Arena temp = {
-  arena,
-  cursor_node,
-  cursor_node == 0 ? 0 : cursor_node->pos};
+  .arena  = arena,
+  .cursor = cursor,
+  .used   = (cursor == 0 ? 0 : cursor->used_),
+ };
  return(temp);
 }
 function void
 temp_arena_end(Temp_Memory_Arena temp)
-{// NOTE(kv): We free the cursor node, which works if it's the first thing you allocate.
- Base_Allocator *allocator = temp.arena->base_allocator;
- Memory_Cursor *cursor_node = temp.arena->cursor_node;
+{
+ Arena *arena = temp.arena;
+ Base_Allocator *allocator = arena->base_allocator;
+ Memory_Cursor *cursor = arena->cursor;
  for (Memory_Cursor *prev = 0;
-      cursor_node != temp.cursor_node && cursor_node != 0;
-      cursor_node = prev)
+      cursor != temp.cursor && cursor != 0;
+      cursor = prev)
  {
-  prev = cursor_node->next;
-  base_free(allocator, cursor_node);
+  prev = cursor->next;
+  free_cursor(allocator, cursor);
  }
- temp.arena->cursor_node = cursor_node;
- if (cursor_node != 0)
+ arena->cursor = cursor;
+ if (cursor != 0)
  {
-  if (temp.pos > 0)
+  if (temp.used > 0)
   {
-   cursor_node->pos = temp.pos;
+   cursor_pop(cursor, cursor->used_ - temp.used);
   }
   else
-  {
-   temp.arena->cursor_node = cursor_node->next;
-   base_free(allocator, cursor_node);
+  {// TODO(kv): This should never happen, right?
+   // Why would a cursor exist when it's empty?
+   arena->cursor = cursor->next;
+   free_cursor(allocator, cursor);
   }
  }
 }
@@ -3890,12 +3891,14 @@ static_arena_clear(Arena *arena, b32 clear_to_zero=false)
 
 //-
 function void*
-linalloc_wrap(String8 data, b32 zero=false){
+linalloc_wrap(String8 data, b32 zero=false)
+{
  if (zero) { block_zero(data.str, data.size); }
  return(data.str);
 }
 function void*
-linalloc_wrap_write(String8 data, u64 size, void *src) {
+linalloc_wrap_write(String8 data, u64 size, void *src)
+{
  block_copy(data.str, src, clamp_max(data.size, size));
  return(data.str);
 }
@@ -3904,8 +3907,7 @@ linalloc_wrap_write(String8 data, u64 size, void *src) {
 #define push_array_zero(a,T,c)    push_array(a,T,c,true)
 #define push_struct(a,T,...)      (T*)push_size(a,sizeof(T),__VA_ARGS__)
 #define push_array_write(a,T,c,s) ((T*)linalloc_wrap_write(linalloc_push(a, sizeof(T)*(c), filename_linum), sizeof(T)*(c), (s)))
-#define push_array_cursor(a,T,c)  ((T*)linalloc_wrap(linalloc_bump(a, sizeof(T)*(c), filename_linum)))
-#define push_align(a,b)           (linalloc_align((a), (b)))
+#define push_array_cursor(a,T,c)  ((T*)linalloc_wrap(linalloc_push(a, sizeof(T)*(c), filename_linum)))
 #define push_align_zero(a,b)      (linalloc_wrap(linalloc_align((a), (b)), true))
 #define pop_array(a,T,c)          (linalloc_pop((a), sizeof(T)*(c)))
 #define push_value(var,a,val)     var = push_struct(a, mytypeof(*var)); *var = val;
@@ -3916,7 +3918,7 @@ begin_temp(Memory_Cursor *cursor)
 {
  Temp_Memory temp = {};
  temp.kind=LinearAllocatorKind_Cursor;
-  temp.temp_memory_cursor = linalloc_begin_temp(cursor);
+ temp.temp_memory_cursor = temp_cursor_begin(cursor);
  return(temp);
 }
 
@@ -3925,7 +3927,7 @@ begin_temp(Arena *arena)
 {
  Temp_Memory temp = {};
  temp.kind=LinearAllocatorKind_Arena;
- temp.temp_memory_arena = linalloc_begin_temp(arena);
+ temp.temp_memory_arena = temp_arena_begin(arena);
  return(temp);
 }
 
@@ -3936,7 +3938,7 @@ end_temp(Temp_Memory temp)
  {
   case LinearAllocatorKind_Cursor:
   {
-   linalloc_end_temp(temp.temp_memory_cursor);
+   temp_cursor_end(temp.temp_memory_cursor);
   }break;
   case LinearAllocatorKind_Arena:
   {
@@ -3983,10 +3985,10 @@ get_allocator_malloc(void) {
 }
 //
 function Arena
-make_arena_malloc(u64 chunk_size=KB(16), u64 align=8)
+make_arena_malloc(u64 chunk_size=KB(16))
 {
  Base_Allocator *allocator = get_allocator_malloc();
- return(make_arena(allocator, chunk_size, align));
+ return(make_arena(allocator, chunk_size));
 }
 
 
@@ -4701,7 +4703,7 @@ struct arrayof
 
 template<class T>
 inline void
-init_static(arrayof<T> &array, Arena *arena, i32 cap=0, b32 zero=false)
+init_static(arrayof<T> &array, Arena *arena, i32 cap, b32 zero=false)
 {
  array = {
   .items      = push_array(arena, T, cap, zero),
@@ -4909,7 +4911,7 @@ Scratch_Block::restore(void){
 
 //-
 
-function Base_Allocator *
+/*function Base_Allocator *
 make_arena_base_allocator(Arena *arena)
 {// NOTE: So you put the allocator on the arena... whatevs man!
  auto allocator = push_struct(arena, Base_Allocator);
@@ -4918,7 +4920,7 @@ make_arena_base_allocator(Arena *arena)
   .arena = arena,
  };
  return allocator;
-}
+}*/
 
 #if 0
 function Arena
@@ -4956,22 +4958,21 @@ base_reserve__arena(void *userdata, u64 size, u64 *size_out, String location)
 // IMPORTANT(kv): This is for my use only,
 // it can't grow so don't pass it around
 function Arena
-make_static_arena(u8 *memory, u64 size, u64 alignment=8)
+make_static_arena(u8 *memory, u64 size)
 {
  auto cursor = cast(Memory_Cursor *)memory;
  *cursor = make_cursor(cursor+1, size);
  Arena result = {
-  .cursor_node = cursor,
-  .alignment   = alignment,
+  .cursor    = cursor,
  };
  return result;
 }
 
 function Arena
-sub_arena_static(Arena *arena, usize size, u64 alignment=8)
+sub_arena_static(Arena *arena, usize size)
 {
  u8 *memory = push_array(arena, u8, size);
- Arena result = make_static_arena(memory, size, alignment);
+ Arena result = make_static_arena(memory, size);
  return result;
 }
 
@@ -5191,7 +5192,7 @@ read_entire_file_cstring(Arena *arena, String filename)
 enum Printer_Type
 {
  Printer_Type_None,
- Printer_Type_Arena,
+ Printer_Type_Buffer,
  Printer_Type_FILE,
  Printer_Type_Generic,
 };
@@ -5203,7 +5204,12 @@ struct Printer
  Printer_Type type;
  union
  {
-  Arena Arena;
+  struct
+  {
+   u8  *base;
+   i32  used;
+   i32  cap;
+  };
   FILE *FILE;
   struct
   {
@@ -5214,11 +5220,12 @@ struct Printer
 };
 
 inline Printer
-make_printer_arena(Arena *arena, int cap)
+make_printer_buffer(Arena *arena, i32 cap)
 {
  Printer result = {
-  .type  = Printer_Type_Arena,
-  .Arena = sub_arena_static(arena, cap, /*alignment*/1),
+  .type = Printer_Type_Buffer,
+  .base = (u8*)push_size(arena, (usize)cap),
+  .cap  = cap,
  };
  return result;
 }
@@ -5236,11 +5243,10 @@ make_printer_file(FILE *file)
 function String
 printer_get_string(Printer &p)
 {
- kv_assert(p.type == Printer_Type_Arena);
- Memory_Cursor *cursor = p.Arena.cursor_node;
+ kv_assert(p.type == Printer_Type_Buffer);
  String string = {
-  .str  = cursor->base,
-  .size = cursor->pos,
+  .str  = p.base,
+  .size = (u32)p.used,
  };
  return string;
 }
@@ -5248,9 +5254,9 @@ printer_get_string(Printer &p)
 inline void
 printer_delete(Printer &p)
 {
- kv_assert(p.type == Printer_Type_Arena);
- Memory_Cursor *cursor = p.Arena.cursor_node;
- cursor->pos -= 1;
+ kv_assert(p.type == Printer_Type_Buffer);
+ kv_assert(p.used > 0);
+ p.used--;
 }
 
 //-NOTE: "Hey, would you like variadic macros that actually works?"
@@ -5273,9 +5279,12 @@ printer_printf(Printer &p, char *format, ...)
  va_start(args, format);
  switch(p.type)
  {
-  case Printer_Type_Arena:
+  case Printer_Type_Buffer:
   {
-   push_stringfv(&p.Arena, format, args, false);
+   i32 remaining = p.cap-p.used;
+   i32 written = vsnprintf((char *)(p.base+p.used), remaining, format, args);
+   kv_assert(written >= 0 && written < remaining);
+   p.used += written;
   }break;
   
   case Printer_Type_FILE:
@@ -5352,8 +5361,8 @@ function void
 print_float_trimmed(Printer &p, v1 value)
 {
  // NOTE: there's some delete action going on, so we have to make a temp buffer
- u8 buf[64];
- Arena temp = make_static_arena(buf, sizeof(buf), 1);
+ u8 buf[256];
+ Arena temp = make_static_arena(buf, sizeof(buf));
  String result = push_stringf(&temp, "%.4ff", value);
  // NOTE: trim trailing zeros
  while (result.len > 0)

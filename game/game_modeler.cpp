@@ -108,8 +108,9 @@ clear_edit_history(Modeler_Edit_History &h)
  if (h.inited)
  {
   arena_clear(&h.arena);
-  h.allocator = make_arena_base_allocator(&h.arena);
-  init_dynamic(h.stack, h.allocator, 128);
+  //TODO(kv): @incomplete
+  //h.allocator = make_arena_base_allocator(&h.arena);
+  init_static(h.stack, &h.arena, 128);
  }
 }
 

@@ -2,7 +2,8 @@
 
 # NOTE: Configuration #########################
 FORCE_MORE_BUILDS = 0
-asan_on = 1
+asan_on = 0
+DISABLE_GAME = asan_on  #nono
 full_build_components = {
  "custom_api_gen": 1,
  "skm_lexer_gen":  0,
@@ -211,20 +212,20 @@ script_begin = time.time()
 sanitize_address = "-fsanitize=address" if asan_on else ""
 
 class Compiler(Enum):
-    Clang = 1
-    MSVC  = 2
+    ClangCl = 1
+    MSVC    = 2
 
 # NOTE: parameters are just suggestions
 def run_compiler(compiler, input_files, output_file, debug_mode,
                  compiler_flags="", linker_flags="",
                  compile_only=False, link_only=False,
-                 no_ccache=False, exit_on_failure=True):
+                 no_ccache=False, exit_on_failure=True, no_warnings=False):
     global asan_on
     # NOTE: if asan is on then you have to use msvc
     if asan_on:
         compiler = Compiler.MSVC
 
-    is_clang = compiler == Compiler.Clang
+    is_clang = compiler == Compiler.ClangCl
     is_msvc  = compiler == Compiler.MSVC
 
     assert(is_clang or is_msvc)
@@ -285,7 +286,8 @@ def run_compiler(compiler, input_files, output_file, debug_mode,
         warnings = " -wd4200 -wd4201 -wd4100 -wd4101 -wd4189 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702"
     if is_clang:
         warnings = CLANG_WARNINGS
-    compiler_flags += f" -W4 -WX {warnings}"
+    if not no_warnings:
+        compiler_flags += f" -W4 -WX {warnings}"
 
     command = f"\
 {maybe_vcvarsall} {maybe_ccache} {compiler_exe} \
@@ -312,7 +314,7 @@ def autogen():
         
         if full_build_components["custom_api_gen"]:
             print('4coder API parser/generator')
-            run_compiler(Compiler.Clang, f"{CODE}/meta_main.cpp", "ad_meta.exe",
+            run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
                          debug_mode=True, compiler_flags=compiler_flags)
             api_files = " ".join([f"{CODE}/4ed_api_implementation.cpp",
                                   f"{CODE}/platform_win32/win32_4ed_functions.cpp",
@@ -324,7 +326,7 @@ def autogen():
         if full_build_components["skm_lexer_gen"]:
             print('Lexer: Generate (one-time thing)')
             LEXER_GEN = f"lexer_gen{DOT_EXE}"
-            run_compiler(Compiler.Clang, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), LEXER_GEN, 
+            run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), LEXER_GEN, 
                          debug_mode=True, compiler_flags=compiler_flags)
             #
             print('running lexer generator')
@@ -337,11 +339,41 @@ def autogen():
         run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
         
         print('Meta-generator')
-        run_compiler(Compiler.Clang, f"{CUSTOM}/4coder_metadata_generator.cpp", f"metadata_generator{DOT_EXE}",
+        run_compiler(Compiler.ClangCl, f"{CUSTOM}/4coder_metadata_generator.cpp", f"metadata_generator{DOT_EXE}",
                      debug_mode=True, compiler_flags=compiler_flags)
         run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
 
     asan_on = old_asan_on
+
+def build_game():
+    try:  # NOTE: Compiling the game
+        with open("game_dll.lock", "w") as file:
+            file.write("this is a lock file\n")
+        print(f'========Producing game{DOT_DLL}========')
+        DOT_LIB=".lib"
+        GAME_MAIN = pjoin(CODE, "game", "game_main.cpp")
+        GAME_CPP  = pjoin(CODE, "game", "game.cpp")
+        if TRACE_COMPILE_TIME:
+            # NOTE: ftime-trace only works with "-c"
+            run(f'clang++ -c {pjoin(CODE, "game", "game.cpp")}  {INCLUDES} {SYMBOLS} -Od -ftime-trace')
+        else:
+            cl_or_clang_cl = Compiler.MSVC if COMPILE_GAME_WITH_MSVC else Compiler.ClangCl
+            # NOTE: "Zc:strictStrings-" must be put after the cpp version for some reason
+            #
+            MSVC_COMPILE_FLAGS = f"{INCLUDES} {SYMBOLS}"
+            if not hotload_game:
+                # NOTE: Compile the framework
+                run_compiler(cl_or_clang_cl, GAME_MAIN, "",
+                             debug_mode=(not FRAMEWORK_OPTIMIZE_ON),
+                             compiler_flags=f"{INCLUDES} {SYMBOLS}",
+                             compile_only=True)
+            # NOTE: Compile the driver and the framework
+            run_compiler(cl_or_clang_cl, f'{GAME_CPP} game_main.obj {space_join(imgui_object_files)}', f"game{DOT_DLL}",
+                         compiler_flags=f"{INCLUDES} {SYMBOLS}",
+                         linker_flags="-DLL -export:game_api_export", debug_mode=True)
+
+    finally:
+        os.remove("game_dll.lock")
 
 
 
@@ -408,13 +440,13 @@ try:
             if more_builds:
                 for file in (imgui_files + imgui_backend_files):
                     # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
-                    run_compiler(Compiler.Clang, file, "",
+                    run_compiler(Compiler.ClangCl, file, "",
                                  debug_mode=DEBUG_MODE,
                                  compiler_flags=f"{imgui_config} -I{imgui_dir} -I{CODE}",
-                                 compile_only=True)
+                                 compile_only=True, no_warnings=True)
 
             ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
-            run_compiler(Compiler.Clang, PLATFORM_CPP,
+            run_compiler(Compiler.ClangCl, PLATFORM_CPP,
                          ed_obj, debug_mode=DEBUG_MODE,
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",
                          compile_only=True)
@@ -422,7 +454,7 @@ try:
             # NOTE(kv): Linking 4coder
             USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
             imgui_backend_object_files = [f"imgui_impl_win32{DOT_OBJ}", f"imgui_impl_opengl3{DOT_OBJ}"]
-            run_compiler(Compiler.Clang,
+            run_compiler(Compiler.ClangCl,
                          f"{ed_obj} {space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}",
                          f"{BINARY_NAME}{DOT_EXE}", debug_mode=DEBUG_MODE,
                          linker_flags=f"{LINKED_LIBS}",
@@ -435,34 +467,8 @@ try:
                 mkdir_p(OPENGL_OUTDIR)
                 for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
                     shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
-        try:  # NOTE: Compiling the game
-            with open("game_dll.lock", "w") as file:
-                file.write("this is a lock file\n")
-            print(f'========Producing game{DOT_DLL}========')
-            DOT_LIB=".lib"
-            GAME_MAIN = pjoin(CODE, "game", "game_main.cpp")
-            GAME_CPP  = pjoin(CODE, "game", "game.cpp")
-            if TRACE_COMPILE_TIME:
-                # NOTE: ftime-trace only works with "-c"
-                run(f'clang++ -c {pjoin(CODE, "game", "game.cpp")}  {INCLUDES} {SYMBOLS} -Od -ftime-trace')
-            else:
-                cl_or_clang_cl = Compiler.MSVC if COMPILE_GAME_WITH_MSVC else Compiler.Clang
-                # NOTE: "Zc:strictStrings-" must be put after the cpp version for some reason
-                #
-                MSVC_COMPILE_FLAGS = f"{INCLUDES} {SYMBOLS}"
-                if not hotload_game:
-                    # NOTE: Compile the framework
-                    run_compiler(cl_or_clang_cl, GAME_MAIN, "",
-                                 debug_mode=(not FRAMEWORK_OPTIMIZE_ON),
-                                 compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                                 compile_only=True)
-                # NOTE: Compile the driver and the framework
-                run_compiler(cl_or_clang_cl, f'{GAME_CPP} game_main.obj {space_join(imgui_object_files)}', f"game{DOT_DLL}",
-                             compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                             linker_flags="-DLL -export:game_api_export", debug_mode=True)
-
-        finally:
-            os.remove("game_dll.lock")
+        if not DISABLE_GAME:
+            build_game()
 
         if more_builds:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")

@@ -678,40 +678,40 @@ system_condition_variable_free(System_Condition_Variable cv){
     Linux_Object* object = *(Linux_Object**)&cv;
     LINUX_FN_DEBUG("%p", &object->condition_variable);
     Assert(object->kind == LinuxObjectKind_ConditionVariable);
-    pthread_cond_destroy(&object->condition_variable);
-    linux_free_object(object);
+ pthread_cond_destroy(&object->condition_variable);
+ linux_free_object(object);
 }
 
 #define MEMORY_PREFIX_SIZE 64
 
 internal void*
-system_memory_allocate(u64 size, String location){
-    
-    static_assert(MEMORY_PREFIX_SIZE >= sizeof(Memory_Annotation_Node), "MEMORY_PREFIX_SIZE is not enough to contain Memory_Annotation_Node");
-    u64 adjusted_size = size + MEMORY_PREFIX_SIZE;
-    
-    Assert(adjusted_size > size);
-    
-    const int prot  = PROT_READ | PROT_WRITE;
-    const int flags = MAP_PRIVATE | MAP_ANONYMOUS;
-    
-    void* result = mmap(NULL, adjusted_size, prot, flags, -1, 0);
-    
-    if(result == MAP_FAILED) {
-        perror("mmap");
-        return NULL;
-    }
-    
-    Linux_Memory_Tracker_Node* node = (Linux_Memory_Tracker_Node*)result;
-    node->location = location;
-    node->size = size;
-    
-    pthread_mutex_lock(&linuxvars.memory_tracker_mutex);
-    zdll_push_back(linuxvars.memory_tracker_head, linuxvars.memory_tracker_tail, node);
-    linuxvars.memory_tracker_count++;
-    pthread_mutex_unlock(&linuxvars.memory_tracker_mutex);
-    
-    return (u8*)result + MEMORY_PREFIX_SIZE;
+system_memory_allocate(u64 size, String location)
+{
+ static_assert(MEMORY_PREFIX_SIZE >= sizeof(Memory_Annotation_Node), "MEMORY_PREFIX_SIZE is not enough to contain Memory_Annotation_Node");
+ u64 adjusted_size = size + MEMORY_PREFIX_SIZE;
+ 
+ Assert(adjusted_size > size);
+ 
+ const int prot  = PROT_READ | PROT_WRITE;
+ const int flags = MAP_PRIVATE | MAP_ANONYMOUS;
+ 
+ void* result = mmap(NULL, adjusted_size, prot, flags, -1, 0);
+ 
+ if(result == MAP_FAILED) {
+  perror("mmap");
+  return NULL;
+ }
+ 
+ Linux_Memory_Tracker_Node* node = (Linux_Memory_Tracker_Node*)result;
+ node->location = location;
+ node->size = size;
+ 
+ pthread_mutex_lock(&linuxvars.memory_tracker_mutex);
+ zdll_push_back(linuxvars.memory_tracker_head, linuxvars.memory_tracker_tail, node);
+ linuxvars.memory_tracker_count++;
+ pthread_mutex_unlock(&linuxvars.memory_tracker_mutex);
+ 
+ return (u8*)result + MEMORY_PREFIX_SIZE;
 }
 
 internal b32

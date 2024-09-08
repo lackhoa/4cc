@@ -4,7 +4,7 @@ thread_ctx_init(Thread_Context *tctx, Thread_Kind kind, Base_Allocator *allocato
  block_zero_struct(tctx);
  tctx->kind = kind;
  tctx->allocator = allocator;
- tctx->node_arena = make_arena(allocator, KB(4), 8);
+ tctx->node_arena = make_arena(allocator, KB(4));
  
  tctx->prof_allocator = prof_allocator;
  tctx->prof_id_counter = 1;
@@ -35,7 +35,7 @@ tctx__alloc_arena_node(Thread_Context *tctx){
  }
  else{
   result = push_array(&tctx->node_arena, Arena_Node, 1, true);
-  result->arena = make_arena(tctx->allocator, KB(16), 8);
+  result->arena = make_arena(tctx->allocator, KB(16));
  }
  return(result);
 }
@@ -552,16 +552,17 @@ starts_with(String str, String prefix)
 
 //-
 
-internal String
+function String
 push_stringfv(Arena *arena, char *format, va_list args, b32 zero_terminated)
 {
  va_list args2;
  va_copy(args2, args);
  
- i32 push_size = vsnprintf(0, 0, format, args);
- push_size++;  // NOTE: vsnprintf is always terminated, and it won't print unless you set the buffer right
+ i32 pushed_size = vsnprintf(0, 0, format, args);
+ // NOTE(kv): vsnprintf is always terminated, and it won't print unless you reserve the buffer for nil-termination
+ pushed_size++;
  
- String result = push_data(arena, push_size);
+ String result = push_data(arena, pushed_size);
  vsnprintf((char*)result.str, (size_t)result.size, format, args2);
  
  result.size -= 1;
@@ -572,12 +573,10 @@ push_stringfv(Arena *arena, char *format, va_list args, b32 zero_terminated)
  else
  {// NOTE: Enable string concatenation
   // NOTE(kv): This is legal since the string has gotta be contiguous
-  arena->cursor_node->pos -= 1;
+  arena_pop(arena, 1);
  }
  
  return(result);
 }
-
-
 
 //~eof

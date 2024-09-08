@@ -40,29 +40,30 @@ begin_buffer_insertion(App *app){
 
 function void
 insert_string__no_buffering(Buffer_Insertion *insertion, String string){
-    buffer_replace_range(insertion->app, insertion->buffer, Ii64(insertion->at), string);
-    insertion->at += string.size;
+ buffer_replace_range(insertion->app, insertion->buffer, Ii64(insertion->at), string);
+ insertion->at += string.size;
 }
 
 function void
-insert__flush(Buffer_Insertion *insertion){
-    Memory_Cursor *cursor = insertion->cursor;
-    u64 pos = insertion->temp.temp_memory_cursor.pos;
-    String string = SCu8(cursor->base + pos, cursor->pos - pos);
-    insert_string__no_buffering(insertion, string);
-    end_temp(insertion->temp);
+insert__flush(Buffer_Insertion *insertion)
+{
+ Memory_Cursor *cursor = insertion->cursor;
+ u64 used = insertion->temp.temp_memory_cursor.used;
+ String string = SCu8(cursor->base + used, cursor->used_ - used);
+ insert_string__no_buffering(insertion, string);
+ end_temp(insertion->temp);
 }
 
 function char*
 insert__reserve(Buffer_Insertion *insertion, u64 size)
 {
-    char *space = push_array_cursor(insertion->cursor, char, size);
-    if (space == 0)
-    {
-        insert__flush(insertion);
-        space = push_array_cursor(insertion->cursor, char, size);
-    }
-    return(space);
+ char *space = push_array_cursor(insertion->cursor, char, size);
+ if (space == 0)
+ {
+  insert__flush(insertion);
+  space = push_array_cursor(insertion->cursor, char, size);
+ }
+ return(space);
 }
 
 function void

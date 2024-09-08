@@ -13,22 +13,22 @@ push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
     String8 base_name = push_buffer_base_name(app, arena, buffer);
     b32 is_match = string_match(filename, base_name);
     end_temp(restore_point);
-    if ( !is_match )
-    {
-        result = push_string_copyz(arena, path_dirname(filename));
-    }
-    return(result);
+ if ( !is_match )
+ {
+  result = push_string_copyz(arena, path_dirname(filename));
+ }
+ return(result);
 }
 
 global String standard_build_filename_array[] = 
 {
-    str8_lit("kv-build.py"),
-    str8_lit("build.py"),
-    str8_lit("kv-build.sh"),
-    str8_lit("build.sh"),
-    str8_lit("Makefile"),
+ str8_lit("kv-build.py"),
+ str8_lit("build.py"),
+ str8_lit("kv-build.sh"),
+ str8_lit("build.sh"),
+ str8_lit("Makefile"),
 #if OS_WINDOWS
-    str8_lit("build.bat"),
+ str8_lit("build.bat"),
 #endif
 };
 
@@ -73,9 +73,9 @@ vim_set_bottom_text(String msg);
 internal b32
 standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, char *command_args)
 {
-    Scratch_Block scratch(app);
-    
-    // NOTE(allen): Search
+ Scratch_Block scratch(app);
+ 
+ // NOTE(allen): Search
     String8 full_file_path = {};
     String8 cmd_string  = {};
     for (u32 i = 0; i < ArrayCount(standard_build_filename_array); i += 1)

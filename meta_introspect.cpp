@@ -284,7 +284,7 @@ introspect_main(arrayof<File_Name_Data> source_files)
    String filename  = path_filename(path);
    String filename_no_extension = string_file_without_extension(filename);
    {
-    Printer p = make_printer_arena(scratch, 256);
+    Printer p = make_printer_buffer(scratch, 256);
     p << dirname << filename_no_extension << ".meta." << extension;
     outname = printer_get_string(p);
    }

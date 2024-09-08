@@ -30,24 +30,31 @@ struct Memory_Annotation_Tracker_Node{
 };
 
 struct Memory_Annotation_Tracker{
-    Memory_Annotation_Tracker_Node *first;
-    Memory_Annotation_Tracker_Node *last;
+ Memory_Annotation_Tracker_Node *first;
+ Memory_Annotation_Tracker_Node *last;
  i1 count;
 };
 
 global Memory_Annotation_Tracker memory_tracker = {};
 global CRITICAL_SECTION memory_tracker_mutex;
 
-function void*
+function void *
 win32_memory_allocate_extended(void *base, u64 size, String location)
 {
- u64 adjusted_size = size + 64;
- void *result = VirtualAlloc(base, (SIZE_T)adjusted_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
- Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)result;
- EnterCriticalSection(&memory_tracker_mutex);
- zdll_push_back(memory_tracker.first, memory_tracker.last, node);
- memory_tracker.count += 1;
- LeaveCriticalSection(&memory_tracker_mutex);
+ u64 adjusted_size = size + sizeof(Memory_Annotation_Tracker_Node);
+#ifdef __SANITIZE_ADDRESS__
+ void *memory = malloc(adjusted_size);  //NOTE(kv): VirtualAlloc isn't intercepted -> use malloc to save some energy
+#else
+ void *memory = VirtualAlloc(base, (SIZE_T)adjusted_size,
+                             MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+#endif
+ auto node = cast(Memory_Annotation_Tracker_Node*)memory;
+ {// TODO(kv): Somehow when we use malloc-base allocator, we don't do any of this... :>
+  EnterCriticalSection(&memory_tracker_mutex);
+  zdll_push_back(memory_tracker.first, memory_tracker.last, node);
+  memory_tracker.count += 1;
+  LeaveCriticalSection(&memory_tracker_mutex);
+ }
  node->location = location;
  node->size = size;
  return(node + 1);
@@ -55,18 +62,20 @@ win32_memory_allocate_extended(void *base, u64 size, String location)
 
 function void
 win32_memory_free_extended(void *ptr){
-    Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)ptr;
-    node -= 1;
-    EnterCriticalSection(&memory_tracker_mutex);
-    zdll_remove(memory_tracker.first, memory_tracker.last, node);
-    memory_tracker.count -= 1;
-    LeaveCriticalSection(&memory_tracker_mutex);
-    VirtualFree(node, 0, MEM_RELEASE);
+ Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)ptr;
+ node -= 1;
+ EnterCriticalSection(&memory_tracker_mutex);
+ zdll_remove(memory_tracker.first, memory_tracker.last, node);
+ memory_tracker.count -= 1;
+ LeaveCriticalSection(&memory_tracker_mutex);
+ VirtualFree(node, 0, MEM_RELEASE);
 }
 
 function
-system_memory_allocate_sig(){
-    return(win32_memory_allocate_extended(0, size, location));
+system_memory_allocate_sig()
+{
+ // NOTE(kv): Calling malloc because I'm too lazy to wrap VirtualAlloc!
+ return(win32_memory_allocate_extended(0, size, location));
 }
 
 function

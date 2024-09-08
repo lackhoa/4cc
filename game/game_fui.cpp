@@ -315,7 +315,7 @@ fui_push_slider_value(Arena *arena, Fui_Slider *slider)
  b32 wrapped = fui_is_wrapped_slider(at_string);
  Basic_Type type = slider->type;
  i32 cap = 128;
- Printer printer = make_printer_arena(arena, cap);
+ Printer printer = make_printer_buffer(arena, cap);
  print_code(printer, type, value0, wrapped);
  String result = printer_get_string(printer);
  return result;

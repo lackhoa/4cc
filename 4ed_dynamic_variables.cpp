@@ -11,7 +11,7 @@
 
 internal void
 managed_ids_init(Base_Allocator *allocator, Managed_ID_Set *set){
-    set->arena = make_arena(allocator, KB(4), 8);
+    set->arena = make_arena(allocator, KB(4));
     set->name_to_group_table = make_table_Data_u64(allocator, 20);
 }
 
@@ -92,7 +92,7 @@ managed_ids_get(Managed_ID_Set *set, String group_name, String name){
 
 internal void
 dynamic_variable_block_init(Base_Allocator *allocator, Dynamic_Variable_Block *block){
-    block->arena = make_arena(allocator, KB(4), 8);
+    block->arena = make_arena(allocator, KB(4));
     block->id_to_data_table = make_table_u64_Data(allocator, 20);
 }
 

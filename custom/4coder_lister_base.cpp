@@ -724,10 +724,10 @@ run_lister(App *app, Lister *lister){
             else{
                 lister_call_refresh_handler(app, lister);
             }
-        }
-    }
-    
-    return(lister->out);
+  }
+ }
+ 
+ return(lister->out);
 }
 #endif
 

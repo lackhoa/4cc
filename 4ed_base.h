@@ -1750,8 +1750,6 @@ push_string_copyz(Arena *arena, String_Const_char src)
  return(string);
 }
 
-
-
 function String_Const_u16
 push_string_copyz(Arena *arena, String_Const_u16 src){
  String_Const_u16 string = {};
@@ -1908,9 +1906,6 @@ function void
 string_list_pushfv(Arena *arena, List_String *list, char *format, va_list args, b32 zero_terminated)
 {
  String string = push_stringfv(arena, format, args, zero_terminated);
- if (arena->alignment < sizeof(u64)){
-  push_align(arena, sizeof(u64));
- }
  string_list_push(arena, list, string);
 }
 function void
@@ -2441,7 +2436,8 @@ string_interpret_escapes(Arena *arena, String_Const_char string)
 {
  char *space = push_array(arena, char, string.size + 1);
  String_char result = Schar(space, 0, string.size);
- for (;;){
+ for (;;)
+ {
   u64 back_slash_pos = string_find_first(string, '\\');
   string_concat(&result, string_prefix(string, back_slash_pos));
   string = string_skip(string, back_slash_pos + 1);

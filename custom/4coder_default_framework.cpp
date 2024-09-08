@@ -972,7 +972,7 @@ function void
 clipboard_init(Base_Allocator *allocator, u32 history_depth, Clipboard *clipboard_out){
     u64 memsize = sizeof(String)*history_depth;
     memsize = round_up_u64(memsize, KB(4));
-    clipboard_out->arena = make_arena(allocator, memsize, 8);
+    clipboard_out->arena = make_arena(allocator, memsize);
     clipboard_init_empty(clipboard_out, history_depth);
 }
 
