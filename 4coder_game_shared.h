@@ -179,7 +179,7 @@ Arena *bootstrap_arena, API_VTable_ed *ed_api, App *app, \
 Game_ImGui_State &imgui_state
 //
 #define game_shutdown_return void
-#define game_shutdown_params void
+#define game_shutdown_params Game_State *state
 //
 struct game_update_return {
  b32 should_animate_next_frame;

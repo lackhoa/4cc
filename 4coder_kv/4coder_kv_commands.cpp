@@ -1257,7 +1257,7 @@ handle_space_command(App *app)
  if (global_game_on_readonly)
  {
   i1 viewport_id = get_active_game_viewport_id(app);
-  global_game_code.game_last_preset(global_game_state, viewport_id);
+  global_game_code.game_last_preset(ed_game_state_pointer, viewport_id);
  }
  //else if ( get_active_game_viewport_id(app) ) { turn_game_on(); }
  else

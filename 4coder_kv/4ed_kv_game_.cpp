@@ -95,7 +95,7 @@ init_game(App *app)
                                &imgui_state.free_func,
                                &imgui_state.user_data);
  }
- global_game_state = game->game_init(&bootstrap_arena, &const_ed_api, app,
+ ed_game_state_pointer = game->game_init(&bootstrap_arena, &const_ed_api, app,
                                      imgui_state);
  
  //@ReferenceImages
@@ -107,7 +107,7 @@ function void win32_imgui_reinit(void);
 function void
 reload_game(Game_API &game)
 {
- game.game_reload(global_game_state, &const_ed_api, false);
+ game.game_reload(ed_game_state_pointer, &const_ed_api, false);
 }
 
 // TODO(kv): The "delete old file" operation sometimes fail on us, 
@@ -164,7 +164,7 @@ load_latest_game_code(App *app, b32 *out_loaded)
        if (ok)
        {
         if ( auto game = get_game_code() ) {
-         game->game_shutdown();
+         game->game_shutdown(ed_game_state_pointer);
         }
 #if AD_SHUTDOWN_IMGUI
         win32_imgui_reinit();
@@ -270,7 +270,7 @@ maybe_update_game(App *app, Frame_Info frame)
     get_mouse_state(app),
    };
    Image_Load_Info image_load_info = get_image_load_info();
-   game_update_return update = game->game_update(global_game_state, app, active_viewport_id, input, image_load_info);
+   game_update_return update = game->game_update(ed_game_state_pointer, app, active_viewport_id, input, image_load_info);
    if (update.should_animate_next_frame) { animate_next_frame(app); }
    received_game_commands = update.game_commands;
    
@@ -288,7 +288,7 @@ render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame)
   Game_API *game = get_game_code();
   if (game)
   {
-   b32 should_animate_next_frame = game->game_viewport_update(global_game_state, viewport, frame.animation_dt);
+   b32 should_animate_next_frame = game->game_viewport_update(ed_game_state_pointer, viewport, frame.animation_dt);
    if (should_animate_next_frame) { animate_next_frame(app); }
    Render_Config old_render_config;
    {
@@ -296,7 +296,7 @@ render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame)
     if (old_render_configp) { old_render_config = *old_render_configp; }
     else { old_render_config = {}; }
    }
-   game->game_render(global_game_state, app, target, viewport,
+   game->game_render(ed_game_state_pointer, app, target, viewport,
                      get_mouse_state(app));
    draw_configure(target, &old_render_config);
   }
@@ -316,7 +316,7 @@ command_game_set_preset(App *app)
    Key_Code code = event->key.code;
    i32 pressed_number = cast(i32)code - cast(i32)Key_Code_0;
    i32 viewport_id = get_active_game_viewport_id(app);
-   game->game_set_preset(global_game_state, viewport_id, pressed_number);
+   game->game_set_preset(ed_game_state_pointer, viewport_id, pressed_number);
   }
  }
 }
@@ -328,7 +328,7 @@ command_game_last_preset(App *app)
  if ( game )
  {
   i32 viewport_id = get_active_game_viewport_id(app);
-  game->game_last_preset(global_game_state, viewport_id);
+  game->game_last_preset(ed_game_state_pointer, viewport_id);
  }
 }
 

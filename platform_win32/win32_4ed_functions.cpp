@@ -42,12 +42,15 @@ function void *
 win32_memory_allocate_extended(void *base, u64 size, String location)
 {
  u64 adjusted_size = size + sizeof(Memory_Annotation_Tracker_Node);
-#ifdef __SANITIZE_ADDRESS__
- void *memory = malloc(adjusted_size);  //NOTE(kv): VirtualAlloc isn't intercepted -> use malloc to save some energy
+ void *memory;
+ 
+#if ASAN_ON
+ memory = malloc(adjusted_size);  //NOTE(kv): VirtualAlloc isn't intercepted -> use malloc to save some energy
 #else
- void *memory = VirtualAlloc(base, (SIZE_T)adjusted_size,
-                             MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+ memory = VirtualAlloc(base, (SIZE_T)adjusted_size,
+                       MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
 #endif
+ 
  auto node = cast(Memory_Annotation_Tracker_Node*)memory;
  {// TODO(kv): Somehow when we use malloc-base allocator, we don't do any of this... :>
   EnterCriticalSection(&memory_tracker_mutex);

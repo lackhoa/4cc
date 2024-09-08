@@ -579,4 +579,11 @@ push_stringfv(Arena *arena, char *format, va_list args, b32 zero_terminated)
  return(result);
 }
 
+inline u32
+cast_u64_to_u32(u64 u)
+{
+ kv_assert(u < (1ULL << 32));
+ return (u32)u;
+}
+
 //~eof

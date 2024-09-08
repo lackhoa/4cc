@@ -435,29 +435,11 @@ inline i32 safeTruncateToInt32(u64 value)
 #define PP_Concat1(arg1, arg2)  PP_Concat2(arg1, arg2)
 #define PP_Concat2(arg1, arg2)  arg1##arg2
 
-#define DUMP_1(x) dump(x)
-#define DUMP_2(x, ...) dump(x); DUMP_1(__VA_ARGS__)
-#define DUMP_3(x, ...) dump(x); DUMP_2(__VA_ARGS__)
-#define DUMP_4(x, ...) dump(x); DUMP_3(__VA_ARGS__)
-#define DUMP_5(x, ...) dump(x); DUMP_4(__VA_ARGS__)
-#define DUMP_6(x, ...) dump(x); DUMP_5(__VA_ARGS__)
-#define DUMP_7(x, ...) dump(x); DUMP_6(__VA_ARGS__)
-#define DUMP_8(x, ...) dump(x); DUMP_7(__VA_ARGS__)
-#define DUMP_9(x, ...) dump(x); DUMP_8(__VA_ARGS__)
-#define DUMP_N(N) PP_Concat(DUMP_, N)
-#define DUMP_NO_NEWLINE(...) DUMP_N(PP_NARG(__VA_ARGS__))(__VA_ARGS__)
-#define DUMP(...) DUMP_NO_NEWLINE(__VA_ARGS__, "\n")
-// DUMP(a,b) -> DUMP_N(2,a,b)(a,b) -> DUMP_2()
-
 #if COMPILER_MSVC
 #    define mytypeof decltype
 #else
 #    define mytypeof __typeof__
 #endif
-
-#define pushCopy(arena, src) (mytypeof(src)) pushCopySize(arena, (src), sizeof(*(src)))
-/* #define copyStructNoCast(arena, src) copySize(arena, src, sizeof(*(src))) */
-#define pushCopyArray(arena, count, src) (mytypeof(src)) pushCopySize(arena, (src), count*sizeof(*(src)))
 
 #define macro_min(a, b) ((a < b) ? a : b)
 #define macro_max(a, b) ((a < b) ? b : a)
@@ -2294,7 +2276,7 @@ struct Base_Allocator
 struct Memory_Cursor
 {
  Memory_Cursor *next;
- u8 *base;
+ u8 *base;  // TODO(kv): Maybe we can use flexible array?
  u64 used_;
  u64 cap;
 };
@@ -3567,9 +3549,13 @@ global_const String empty_string = {(u8*)"", 0};
 //~Arena
 #include "sanitizer/asan_interface.h"
 #if defined(__has_feature)
-#   if __has_feature(address_sanitizer) // for clang
-#       define __SANITIZE_ADDRESS__  // GCC already sets this
-#   endif
+#    if __has_feature(address_sanitizer) // this is clang
+#        define __SANITIZE_ADDRESS__
+#    endif
+#endif
+//
+#ifdef __SANITIZE_ADDRESS__
+#    define ASAN_ON 1
 #endif
 
 function void*
@@ -3695,23 +3681,37 @@ make_cursor(Base_Allocator *allocator, u64 size)
  String memory = base_allocate2(allocator, size);
  return(make_cursor(memory));
 }
+// NOTE(kv): If you have time, try to research a good red zone scheme.
+//   https://github.com/llvm/llvm-project/blob/main/compiler-rt/lib/asan/asan_allocator.cpp#L456
+//   I feel like we need to pass the struct size.
+inline usize
+get_red_zone_size(u32 align_pow2)
+{
+ usize align_size = (1ULL<<align_pow2);
+#if ASAN_ON
+ usize result = macro_max(128, 2*align_size);
+#else
+ usize result = 0;
+#endif
+ return result;
+}
 function String
 cursor_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2)
 {
  String result = {};
- usize align = (1ULL<<align_pow2);
- usize align_mask = align-1;
- usize current_pos = usize(cursor->base)+cursor->used_;
- usize pos = (current_pos + align_mask) & ~align_mask;
- usize new_used = pos+size-usize(cursor->base);
+ kv_assert(align_pow2 >= 3);  // NOTE(kv): 8 alignment for asan
+ usize align_size = (1ULL<<align_pow2);
+ usize align_mask = align_size-1;
+ u8 *current_pos = cursor->base+cursor->used_;
+ u8 *pos = cast(u8*)(((usize(current_pos) + align_mask) & (~align_mask)) +
+                     get_red_zone_size(align_pow2));
+ usize new_used = (pos+size)-cursor->base;
  if (new_used <= cursor->cap)
  {
   cursor->used_ = new_used;
   result = {(u8*)pos, size};
   ASAN_UNPOISON_MEMORY_REGION(result.str, size);
-  {
-   kv_assert((usize(result.str) & align_mask) == 0);
-  }
+  kv_assert((usize(result.str) & align_mask) == 0);
  }
  return(result);
 }
@@ -3758,28 +3758,6 @@ make_arena(Base_Allocator *allocator, u64 chunk_size=KB(64))
 
 
 
-function Memory_Cursor *
-arena__new_node(Arena *arena, u64 min_size, String location)
-{
- u64 usable_size = clamp_min(min_size, arena->chunk_size);
- String memory = base_allocate_function(arena->base_allocator, usable_size+sizeof(Memory_Cursor), location);
- // NOTE: Tricky business: since we don't wanna call the allocator twice,
- //       we have to put the cursor in its own memory
- auto cursor = cast(Memory_Cursor *)memory.str;
- // NOTE: We keep the base at the first useful address
- // rather than the first allocated address,
- // since we want "arena_clear" to work
- *cursor = make_cursor(cursor+1, usable_size);
- sll_stack_push(arena->cursor, cursor);
- ASAN_POISON_MEMORY_REGION(cursor+1, usable_size);
- return(cursor);
-}
-
-force_inline u8 *
-get_cursor_base(Arena *arena)
-{// NOTE: might crash if your arena doesn't have a base
- return arena->cursor->base;
-}
 function String
 arena_push(Arena *arena, usize size, String location, u32 align_pow2)
 {
@@ -3787,15 +3765,30 @@ arena_push(Arena *arena, usize size, String location, u32 align_pow2)
  if (size > 0)
  {
   Memory_Cursor *cursor = arena->cursor;
-  if (cursor == 0) {
-   cursor = arena__new_node(arena, size, location);
+  if (cursor) {
+   // NOTE(kv): This might fail if the cursor doesn't have enough space.
+   result = cursor_push(cursor, size, location, align_pow2);
   }
   
-  result = cursor_push(cursor, size, location, align_pow2);
   if (result.str == 0)
   {
-   cursor = arena__new_node(arena, size, location);
+   usize min_cursor_size = size+get_red_zone_size(align_pow2);
+   {// NOTE(kv): Make a new cursor
+    // NOTE(kv): We don't want the cursor to mess with alignment calculations
+    static_assert(sizeof(Memory_Cursor) == 32);
+    u64 usable_size = clamp_min(min_cursor_size, arena->chunk_size);
+    String memory = base_allocate_function(arena->base_allocator, usable_size+sizeof(Memory_Cursor), location);
+    // NOTE(kv): Tricky business: put the cursor in its own memory
+    cursor = cast(Memory_Cursor *)memory.str;
+    // NOTE(kv): We keep the base at the first useful address
+    //   rather than the first allocated address, so it's cleaner.
+    *cursor = make_cursor(cursor+1, usable_size);
+    sll_stack_push(arena->cursor, cursor);
+    ASAN_POISON_MEMORY_REGION(cursor+1, usable_size);
+   }
+   
    result = cursor_push(cursor, size, location, align_pow2);
+   kv_assert(result.str);
   }
  }
  return(result);
@@ -3871,23 +3864,6 @@ arena_clear(Arena *arena)
  Temp_Memory_Arena temp = {arena, 0, 0};
  temp_arena_end(temp);
 }
-
-#if 0
-// NOTE: This is dangerous since you might wipe out too much data
-// Let's use the "temp" pattern.
-function void
-static_arena_clear(Arena *arena, b32 clear_to_zero=false)
-{
- Memory_Cursor *cursor = arena->cursor_node;
- kv_assert(!cursor->next);
- if(clear_to_zero)
- {// NOTE: partial-clear might incur bugs if you assume that it clears everything,
-  // but that probably won't happen though?
-  block_zero(cursor->base, cursor->pos);
- }
- cursor->pos = 0;
-}
-#endif
 
 //-
 function void*
@@ -4752,6 +4728,16 @@ enum Basic_Type
 #undef X
  Basic_Type_Count,
 };
+
+#if 0
+function Basic_Type basic_type_from_pointer(T *pointer);
+#endif
+//
+#define X(T) \
+function Basic_Type basic_type_from_pointer(T *pointer) \
+{ return Basic_Type_##T; }
+X_Basic_Types(X)
+#undef X
 
 #if !AD_IS_DRIVER
 template<class T>

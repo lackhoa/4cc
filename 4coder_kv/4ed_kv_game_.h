@@ -1,6 +1,6 @@
 #pragma once
 
-global Game_State *global_game_state;
+global Game_State *ed_game_state_pointer;
 global b32 global_game_on_readonly;
 global arrayof<String> received_game_commands;
 global Game_API global_game_code_;

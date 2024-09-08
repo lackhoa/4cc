@@ -34,7 +34,21 @@ struct Fui_Slider
  };
 };
 
+void *
+fast_fval_inner(Basic_Type type, void *init_value,
+                i32 linum, Fui_Options options);
+
+template<class T>
+function T
+fast_fval(T init_value, Fui_Options options={}, i32 line=__builtin_LINE())
+{
+ Basic_Type type = basic_type_from_pointer((T *)0);
+ void *value = fast_fval_inner(type, cast(void*)(&init_value), line, options);
+ return *(cast(T *)value);
+}
+
 // NOTE: Define fval overloads for the all the types
+#if 0
 // NOTE: faster version
 #    define X(T) \
 T \
@@ -43,6 +57,7 @@ fast_fval(T init_value_T, Fui_Options options={}, i32 line=__builtin_LINE());
 X_Basic_Types(X)
 //
 #undef X
+#endif
 // NOTE: slow version
 #    define X(t) \
 T \

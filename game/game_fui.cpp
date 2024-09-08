@@ -17,12 +17,11 @@ global String      fui_active_slider_string;
 PACK_BEGIN
 struct Line_Map_Entry
 {
- u16 linum;
- u16 offset;  // NOTE: We only have 65k of data, but can expand by enforcing alignment.
+ u32 linum;
+ u32 offset;  // NOTE: We only have 65k of data, but can expand by enforcing alignment.
 }
 PACK_END
 //
-static_assert(sizeof(Line_Map_Entry) == 4, "size check");
 global Line_Map_Entry *line_map;
 //global Arena *slider_store;
 global Arena *dll_arena;
@@ -47,17 +46,23 @@ fui_is_active(fui_is_active_params)
  return fui_active_slider != 0;
 }
 
+inline u8 *
+get_slider_store_base()
+{// @fui_ensure_arena_cursor_exists
+ return dll_arena->cursor->base;
+}
+
 //~
 //@GetSlider
-internal void *
+void *
 fast_fval_inner(Basic_Type type, void *init_value,
                 i32 linum, Fui_Options options)
 {
  void *result = 0;
  u64 cycle_start = gb_rdtsc();
  
- u8 *store_base = get_cursor_base(dll_arena);
- u16 offset = line_map[linum].offset;
+ u8 *store_base = get_slider_store_base();
+ u32 offset = line_map[linum].offset;
  Fui_Slider *slider;
  // @fui_ensure_nonzero_offset
  if( offset != 0 )
@@ -68,8 +73,8 @@ fast_fval_inner(Basic_Type type, void *init_value,
  else
  {//NOTE: Not found -> add new slider to the store
   i32 value_size = get_basic_type_size(type);
-  slider = cast(Fui_Slider *)(push_array(dll_arena, u8, sizeof(Fui_Slider)+value_size));
-  line_map[linum].offset = cast(u16)(cast(u8 *)(slider) - store_base);
+  slider = cast(Fui_Slider *)(push_size(dll_arena, sizeof(Fui_Slider)+value_size));
+  line_map[linum].offset = cast_u64_to_u32(cast(u8 *)(slider) - store_base);
   
   b32 is_vertex = (options.flags & Slider_Vertex);
   b32 is_vector = (options.flags & Slider_Vector);
@@ -120,7 +125,7 @@ slow_fval_inner(Basic_Type type, void *init_value,
   }
  }
  
- u8 *store_base = get_cursor_base(store);
+ u8 *store_base = get_slider_store_base();
  Fui_Slider *slider;
  if( offset != 0 )  // @fui_ensure_nonzero_offset
  {
@@ -155,9 +160,9 @@ slow_fval_inner(Basic_Type type, void *init_value,
 
 //-
 #if 0
-jump fast_fval();
 jump slow_fval();
 #endif
+#if 0
 // NOTE: We define overloads to avoid having to specify the type as a separate argument 
 // as well as receive the appropriate values as output.
 // NOTE: The fast path
@@ -173,6 +178,9 @@ return *(cast(T *)value); \
 X_Basic_Types(X)
 //
 #undef X
+#else
+#endif
+
 
 // NOTE: The slow path (NOTE: there's a weird compiler error if we don't specify the default params here?)
 #define X(T) \
@@ -205,10 +213,10 @@ fui_get_slider_external(String file, i32 linum)
  Fui_Slider *slider = 0;
  if ( filename_match(file, GAME_FILE_NAME) )
  {
-  u16 offset = line_map[linum].offset;
+  u32 offset = line_map[linum].offset;
   if (offset != 0)
   {
-   u8 *store_base = get_cursor_base(dll_arena);
+   u8 *store_base = get_slider_store_base();
    slider = cast(Fui_Slider *)(store_base + offset);
   }
  }
@@ -229,7 +237,7 @@ fui_get_slider_external(String file, i32 linum)
   
   if (offset != 0)
   {
-   u8 *store_base = get_cursor_base(dll_arena);
+   u8 *store_base = get_slider_store_base();
    slider = cast(Fui_Slider *)(store_base + offset);
   }
  }

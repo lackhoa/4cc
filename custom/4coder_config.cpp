@@ -114,48 +114,58 @@ config_stringize_errors(App *app, Arena *arena, Config *parsed)
             Error_Location location = get_error_location(app, parsed->data.str, error->pos);
             string_list_pushf(arena, &list, "%.*s:%d:%d: %.*s\n",
                               string_expand(error->filename), location.line_number, location.column_number, string_expand(error->text));
-        }
-        result = string_list_flatten(arena, list);
-    }
-    return(result);
+  }
+  result = string_list_flatten(arena, list);
+ }
+ return(result);
 }
 
 ////////////////////////////////
 // NOTE(allen): Parser
 
 function void
+config_parser__skip_whitespace(Config_Parser *p)
+{
+ while ((p->token->kind != TokenBaseKind_EOF) &&
+        (p->token != p->opl) &&
+        (p->token->kind == TokenBaseKind_Comment ||
+         p->token->kind == TokenBaseKind_Whitespace))
+ {
+  p->token++;
+ }
+ 
+ if (p->token == p->opl)
+ {
+  Token *eof = push_struct(p->arena, Token);
+  *eof = {
+   .kind    =TokenBaseKind_EOF,
+   .sub_kind=TokenCppKind_EOF,
+  };
+  p->token = eof;
+ }
+}
+
+function void
 config_parser_inc(Config_Parser *p)
 {
-    Token *t = p->token;
-    if (t->kind != TokenBaseKind_EOF)
-    {
-        for (t += 1;
-             t < p->opl && (t->kind == TokenBaseKind_Comment ||
-                            t->kind == TokenBaseKind_Whitespace);
-             t += 1);
-        
-        p->token = t;
-        if (p->token == p->opl)
-        {
-            Token *eof = push_array_zero(p->arena, Token, 1);
-            eof->kind     = TokenBaseKind_EOF;
-            eof->sub_kind = TokenCppKind_EOF;
-            p->token = eof;
-        }
-    }
+ if (p->token->kind != TokenBaseKind_EOF)
+ {
+  p->token += 1;
+  config_parser__skip_whitespace(p);
+ }
 }
 
 function Config_Parser
 config_parser_init(Arena *arena, String8 filename, String8 data, Token_Array array)
 {
-    Config_Parser p = {};
-    p.token    = array.tokens - 1;
-    p.opl      = array.tokens + array.count;
-    p.filename = filename;
-    p.data     = data;
-    p.arena    = arena;
-    config_parser_inc(&p);
-    return(p);
+ Config_Parser p = {};
+ p.token    = &array.tokens[0];
+ p.opl      = array.tokens + array.count;
+ p.filename = filename;
+ p.data     = data;
+ p.arena    = arena;
+ config_parser__skip_whitespace(&p);
+ return(p);
 }
 
 function u8*

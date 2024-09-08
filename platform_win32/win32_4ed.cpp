@@ -1571,7 +1571,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 ////////////////////////////////
 
-internal b32
+function b32
 win32_wgl_good(Void_Func *f)
 {
     return(f != 0 &&
@@ -1591,7 +1591,7 @@ global wglChoosePixelFormatARB_Function *wglChoosePixelFormatARB;
 global wglGetExtensionsStringEXT_Function *wglGetExtensionsStringEXT;
 global wglSwapIntervalEXT_Function *wglSwapIntervalEXT = 0;
 
-internal b32
+function b32
 win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles)
 {
  b32 ok;
@@ -1846,23 +1846,6 @@ win32_imgui_reinit()
 int CALL_CONVENTION
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
- if (0)
- {
-  u8 *result = (u8*)VirtualAlloc(0, (SIZE_T)4096,
-                                 MEM_COMMIT | MEM_RESERVE,
-                                 PAGE_READWRITE);
-  ASAN_POISON_MEMORY_REGION(result+4088, 8);
-  result[4088] = 0;
- }
- if (0)
- {
-  u8 *result = (u8*)malloc(4096);
-  ASAN_POISON_MEMORY_REGION(result+4, 4);
-  result[7] = 0;
-  ASAN_POISON_MEMORY_REGION(result+4088, 8);
-  result[4088] = 0;
- }
- 
  i32 argc = __argc;
  char **argv = __argv;
  
@@ -2278,10 +2261,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   // NOTE(allen): Application Core Update
   win32_imgui_new_frame();  // NOTE(kv): this new frame must be after input processing
-  Application_Step_Result result = app_step(win32vars.tctx, base_ptr, &input);
+  Application_Step_Result step_result = app_step(win32vars.tctx, base_ptr, &input);
   
   // NOTE(allen): Finish the Loop
-  if (result.perform_kill) {
+  if (step_result.perform_kill) {
    keep_running = false;
   }
   
@@ -2291,12 +2274,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   // NOTE(allen): Switch to New Title
-  if (result.has_new_title) {
-   SetWindowTextA(win32vars.window_handles[0], cast(char*)result.title_string);
+  if (step_result.has_new_title) {
+   SetWindowTextA(win32vars.window_handles[0], cast(char*)step_result.title_string);
   }
   
   // NOTE(allen): Switch to New Cursor
-  Win32SetCursorFromUpdate(result.mouse_cursor_type);
+  Win32SetCursorFromUpdate(step_result.mouse_cursor_type);
   if (win32vars.cursor_show != win32vars.prev_cursor_show)
   {
    win32vars.prev_cursor_show = win32vars.cursor_show;
@@ -2323,7 +2306,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   // NOTE(allen): update lctrl_lalt_is_altgr status
-  win32vars.lctrl_lalt_is_altgr = (b8)result.lctrl_lalt_is_altgr;
+  win32vars.lctrl_lalt_is_altgr = (b8)step_result.lctrl_lalt_is_altgr;
   
   {//~NOTE(allen): render
    ImGui::Render();
@@ -2359,7 +2342,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   // NOTE(allen): Schedule another step if needed
-  if (result.animating)
+  if (step_result.animating)
   {
    system_schedule_step(0);
   }

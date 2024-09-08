@@ -2,8 +2,9 @@
 
 # NOTE: Configuration #########################
 FORCE_MORE_BUILDS = 0
-asan_on = 0
-DISABLE_GAME = asan_on  #nono
+asan_on = 1
+DISABLE_GAME = 0
+DISABLE_ED   = 1
 full_build_components = {
  "custom_api_gen": 1,
  "skm_lexer_gen":  0,
@@ -379,6 +380,8 @@ def build_game():
 
 
 try:
+    if asan_on:
+        print("[asan_on]")
     OUTDIR = OUT_DEBUG
 
     os.chdir(f'{OUTDIR}')
@@ -445,21 +448,22 @@ try:
                                  compiler_flags=f"{imgui_config} -I{imgui_dir} -I{CODE}",
                                  compile_only=True, no_warnings=True)
 
-            ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
-            run_compiler(Compiler.ClangCl, PLATFORM_CPP,
-                         ed_obj, debug_mode=DEBUG_MODE,
-                         compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                         compile_only=True)
-
-            # NOTE(kv): Linking 4coder
-            USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
-            imgui_backend_object_files = [f"imgui_impl_win32{DOT_OBJ}", f"imgui_impl_opengl3{DOT_OBJ}"]
-            run_compiler(Compiler.ClangCl,
-                         f"{ed_obj} {space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}",
-                         f"{BINARY_NAME}{DOT_EXE}", debug_mode=DEBUG_MODE,
-                         linker_flags=f"{LINKED_LIBS}",
-                         link_only=True,
-                         exit_on_failure=False)
+            if more_builds or (not DISABLE_ED):
+                ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
+                run_compiler(Compiler.ClangCl, PLATFORM_CPP,
+                             ed_obj, debug_mode=DEBUG_MODE,
+                             compiler_flags=f"{INCLUDES} {SYMBOLS}",
+                             compile_only=True)
+    
+                # NOTE(kv): Linking 4coder
+                USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
+                imgui_backend_object_files = [f"imgui_impl_win32{DOT_OBJ}", f"imgui_impl_opengl3{DOT_OBJ}"]
+                run_compiler(Compiler.ClangCl,
+                             f"{ed_obj} {space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}",
+                             f"{BINARY_NAME}{DOT_EXE}", debug_mode=DEBUG_MODE,
+                             linker_flags=f"{LINKED_LIBS}",
+                             link_only=True,
+                             exit_on_failure=False)
 
             # NOTE: shipping shaders
             if SHIP_MODE:
@@ -467,7 +471,7 @@ try:
                 mkdir_p(OPENGL_OUTDIR)
                 for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
                     shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
-        if not DISABLE_GAME:
+        if more_builds or (not DISABLE_GAME):
             build_game()
 
         if more_builds:

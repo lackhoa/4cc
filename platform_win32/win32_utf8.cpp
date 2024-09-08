@@ -97,42 +97,42 @@ CreateProcess_utf8(Arena *scratch, u8 *app_name, u8 *command, LPSECURITY_ATTRIBU
     Temp_Memory temp = begin_temp(scratch);
     String_u16 app_name_16 = string_u16_from_string_u8(scratch, SCu8(app_name), StringFill_NullTerminate);
     String_u16 command_16 = string_u16_from_string_u8(scratch, SCu8(command), StringFill_NullTerminate);
-    String_u16 curdir_16 = string_u16_from_string_u8(scratch, SCu8(curdir), StringFill_NullTerminate);
-    BOOL result = CreateProcessW((LPWSTR)app_name_16.str, (LPWSTR)command_16.str, security, thread, inherit_handles, creation, environment, (LPWSTR)curdir_16.str, startup, process);
-    end_temp(temp);
-    return(result);
+ String_u16 curdir_16 = string_u16_from_string_u8(scratch, SCu8(curdir), StringFill_NullTerminate);
+ BOOL result = CreateProcessW((LPWSTR)app_name_16.str, (LPWSTR)command_16.str, security, thread, inherit_handles, creation, environment, (LPWSTR)curdir_16.str, startup, process);
+ end_temp(temp);
+ return(result);
 }
 
-internal DWORD
+function DWORD
 GetCurrentDirectory_utf8(Arena *arena, DWORD max, u8 *buffer)
 {
-    DWORD result = 0;
-    
-    if (buffer != 0)
-    {
-        Temp_Memory temp = begin_temp(arena);
-        u32 buffer_16_max = KB(40);
-        u16 *buffer_16 = push_array(arena, u16, buffer_16_max);
-        DWORD buffer_16_len = GetCurrentDirectoryW(buffer_16_max, (LPWSTR)buffer_16);
-        String_u8 curdir_8 = string_u8_from_string_u16(arena, SCu16(buffer_16, buffer_16_len), StringFill_NullTerminate);
-        if (curdir_8.size + 1 <= max)
-        {
-            block_copy(buffer, curdir_8.str, curdir_8.size + 1);
-            result = (DWORD)curdir_8.size;
-        }
-        else
-        {
-            result = (DWORD)curdir_8.size + 1;
-        }
-        end_temp(temp);
-    }
-    else
-    {
-        result = GetCurrentDirectoryW(0, 0);
-        result *= 2;
-    }
-    
-    return(result);
+ DWORD result = 0;
+ 
+ if (buffer != 0)
+ {
+  Temp_Memory temp = begin_temp(arena);
+  DWORD buffer_16_len = GetCurrentDirectoryW(0,0);
+  u16 *buffer_16 = push_array(arena, u16, buffer_16_len);
+  GetCurrentDirectoryW(buffer_16_len, (LPWSTR)buffer_16);
+  String_u8 curdir_8 = string_u8_from_string_u16(arena, SCu16(buffer_16, buffer_16_len), StringFill_NullTerminate);
+  if (curdir_8.size + 1 <= max)
+  {
+   block_copy(buffer, curdir_8.str, curdir_8.size + 1);
+   result = (DWORD)curdir_8.size;
+  }
+  else
+  {
+   result = (DWORD)curdir_8.size + 1;
+  }
+  end_temp(temp);
+ }
+ else
+ {
+  result = GetCurrentDirectoryW(0, 0);
+  result *= 2;
+ }
+ 
+ return(result);
 }
 
 internal int

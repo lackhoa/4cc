@@ -99,7 +99,7 @@ vim_command_mode(App *app)
    if (cmd.is_game_command) {
     auto game = get_game_code();
     if (game) {
-     game->game_send_command(global_game_state, cmd.game_command);
+     game->game_send_command(ed_game_state_pointer, cmd.game_command);
     }
    } else {
     view_enqueue_command_function(app, view, cmd.custom_command);

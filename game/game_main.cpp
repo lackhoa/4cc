@@ -494,17 +494,13 @@ game_reload(game_reload_params)
  // API import
  ed_api_read_vtable(ed_api);
  
- if (!first_time)
- {// NOTE: clear dll memory
-  end_temp(state->dll_temp_memory);
- }
- 
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
   state->dll_temp_memory = begin_temp(dll_arena);
-  push_struct(dll_arena, u8);// @fui_ensure_nonzero_offset
+  // TODO(kv): This trickery means that we do need "static arena".
+  push_struct(dll_arena, u8);  // @fui_ensure_nonzero_offset ;fui_ensure_arena_cursor_exists
   
-  line_map     =  state->line_map;
+  line_map = state->line_map;
   block_zero(line_map, state->line_cap*sizeof(Line_Map_Entry));
   //-
   slow_line_map       =  state->slow_line_map;
@@ -531,6 +527,7 @@ game_reload(game_reload_params)
 function game_shutdown_return
 game_shutdown(game_shutdown_params)
 {
+ end_temp(state->dll_temp_memory);
 }
 
 #include "time.h"
