@@ -816,7 +816,7 @@ render_forearm(mat4i const&ot,
 }
 
 internal void
-render_character(Pose const&pose, Arena *scratch,
+render_character(Pose const&pose,
                  v1 animation_time, i32 viewport_index,
                  b32 show_grid)
 {// NOTE: Drawing the character
@@ -2336,8 +2336,6 @@ render_movie(render_movie_params)
  kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
  i32 viewport_index = viewport_id - 1;
  b32 is_main_viewport = (viewport_id == 1);
- Arena *arena = &viewport.render_arena;
- Temp_Memory_Block render_temp(arena);
  
  i32 scale_down_pow2 = fval(0); // ;scale_down_slider
  macro_clamp_min(scale_down_pow2, 0);
@@ -2458,6 +2456,7 @@ render_movie(render_movie_params)
  };
  {
   auto &p = painter;
+  //TODO(kv): @Cleanup Where should the object list live?
   init_static(p.object_list,  arena, 64);
   init_static(p.object_stack, arena, 16);
   p.object_list.push(Object{.name=strlit("world"), .transform=mat4i_identity});
@@ -2471,8 +2470,8 @@ render_movie(render_movie_params)
  Pose pose;
  {//-NOTE: Animation
   // TODO: this crashes when arena is empty, since our static areana is janky!
-  Temp_Memory_Block temp(arena);
-  Movie_Shot *shot = push_struct(arena, Movie_Shot, true);
+  Temp_Memory_Block temp(scratch);
+  Movie_Shot *shot = push_struct(scratch, Movie_Shot, true);
   shot->animation_time = animation_time;
   {//NOTE: ;set_movie_shot
    i32 sel = fvali(2);
@@ -2490,9 +2489,9 @@ render_movie(render_movie_params)
   
   pose = shot->out_pose;
  }
- //IMPORTANT
- render_character(pose, arena, animation_time, viewport_index, show_grid);
  
+ //IMPORTANT
+ render_character(pose, animation_time, viewport_index, show_grid);
  
  if (debug_frame_time_on)
  {

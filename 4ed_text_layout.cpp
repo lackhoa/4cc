@@ -40,19 +40,20 @@ internal Text_Layout_ID
 text_layout_new(Text_Layout_Container *container, Arena *arena,
                 Buffer_ID buffer_id, Buffer_Point point,
                 Range_i64 visible_range, Range_i64 visible_line_number_range,
-                Rect_f32 rect, ARGB_Color *item_colors, Layout_Function *layout_func){
-    Text_Layout *new_layout_data = text_layout_new__alloc_layout(container);
-    new_layout_data->arena = arena;
-    new_layout_data->buffer_id = buffer_id;
-    new_layout_data->point = point;
-    new_layout_data->visible_range = visible_range;
-    new_layout_data->visible_line_number_range = visible_line_number_range;
-    new_layout_data->rect = rect;
-    new_layout_data->item_colors = item_colors;
-    new_layout_data->layout_func = layout_func;
-    Text_Layout_ID new_id = ++container->id_counter;
-    table_insert(&container->table, new_id, (u64)PtrAsInt(new_layout_data));
-    return(new_id);
+                Rect_f32 rect, ARGB_Color *item_colors, Layout_Function *layout_func)
+{
+ Text_Layout *new_layout_data = text_layout_new__alloc_layout(container);
+ new_layout_data->arena = arena;
+ new_layout_data->buffer_id = buffer_id;
+ new_layout_data->point = point;
+ new_layout_data->visible_range = visible_range;
+ new_layout_data->visible_line_number_range = visible_line_number_range;
+ new_layout_data->rect = rect;
+ new_layout_data->item_colors = item_colors;
+ new_layout_data->layout_func = layout_func;
+ Text_Layout_ID new_id = ++container->id_counter;
+ table_insert(&container->table, new_id, (u64)PtrAsInt(new_layout_data));
+ return(new_id);
 }
 
 internal Text_Layout*

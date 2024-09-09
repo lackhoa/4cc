@@ -695,6 +695,7 @@ fill_patch_inner(const v3 P[4][4],
 
 #define render_movie_return void
 #define render_movie_params \
+Arena *arena, Arena *scratch, \
 Viewport &viewport, v1 state_time, b32 references_full_alpha, \
 App *app, Render_Target *render_target, i1 viewport_id, Mouse_State mouse
 

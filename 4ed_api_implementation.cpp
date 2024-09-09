@@ -2936,55 +2936,59 @@ get_string_advance(App *app, Face_ID font_id, String str)
 api(custom) function Rect_f32
 draw_set_clip(App *app, Rect_f32 new_clip)
 {
-    Models *models = (Models*)app->cmd_context;
-    return( draw_set_clip(models->target, new_clip) );
+ Models *models = (Models*)app->cmd_context;
+ return( draw_set_clip(models->target, new_clip) );
 }
 
 api(custom) function Text_Layout_ID
-text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    Text_Layout_ID result = 0;
-    if (api_check_buffer(file)){
-        Thread_Context *tctx = app->tctx;
-        Face *face = file_get_face(models, file);
-        
-        Gap_Buffer *buffer = &file->state.buffer;
-        
-        Layout_Function *layout_func = file_get_layout_func(file);
-        
-        Vec2_f32 dim = rect2_dim(rect);
-        
-        i64 line_count = buffer_line_count(buffer);
-        i64 line_number = buffer_point.line_number;
-        f32 y = -buffer_point.pixel_shift.y;
-        for (;line_number <= line_count;
-             line_number += 1){
-            Layout_Item_List line = file_get_line_layout(tctx, models, file,
-                                                         layout_func, dim.x, face,
-                                                         line_number);
-            f32 next_y = y + line.height;
-            if (next_y >= dim.y){
-                break;
-            }
-            y = next_y;
-        }
-        
-        Range_i64 visible_line_number_range = Ii64(buffer_point.line_number, line_number);
-        Range_i64 visible_range = Ii64(buffer_get_first_pos_from_line_number(buffer, visible_line_number_range.min),
-                                       buffer_get_last_pos_from_line_number(buffer, visible_line_number_range.max));
-        
-        i64 item_count = range_size_inclusive(visible_range);
-        
-        Arena arena = make_arena_system();
-        Arena *arena_ptr = push_array_zero(&arena, Arena, 1);
-        *arena_ptr = arena;
-        ARGB_Color *colors_array = push_array_zero(arena_ptr, ARGB_Color, item_count);
-        result = text_layout_new(&models->text_layouts, arena_ptr, buffer_id, buffer_point,
-                                 visible_range, visible_line_number_range, rect, colors_array,
-                                 layout_func);
-    }
-    return(result);
+text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point)
+{
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ Text_Layout_ID result = 0;
+ if ( api_check_buffer(file) )
+ {
+  Thread_Context *tctx = app->tctx;
+  Face *face = file_get_face(models, file);
+  
+  Gap_Buffer *buffer = &file->state.buffer;
+  
+  Layout_Function *layout_func = file_get_layout_func(file);
+  
+  v2 dim = rect2_dim(rect);
+  
+  i64 line_count = buffer_line_count(buffer);
+  i64 line_number = buffer_point.line_number;
+  f32 y = -buffer_point.pixel_shift.y;
+  for (;
+       line_number <= line_count;
+       line_number += 1)
+  {
+   Layout_Item_List line = file_get_line_layout(tctx, models, file,
+                                                layout_func, dim.x, face,
+                                                line_number);
+   f32 next_y = y + line.height;
+   if (next_y >= dim.y) {
+    break;
+   }
+   y = next_y;
+  }
+  
+  Range_i64 visible_line_number_range = Ii64(buffer_point.line_number, line_number);
+  Range_i64 visible_range = Ii64(buffer_get_first_pos_from_line_number(buffer, visible_line_number_range.min),
+                                 buffer_get_last_pos_from_line_number(buffer, visible_line_number_range.max));
+  
+  i64 item_count = range_size_inclusive(visible_range);
+  
+  Arena arena = make_arena_system();
+  Arena *arena_ptr = push_struct(&arena, Arena);
+  *arena_ptr = arena;
+  ARGB_Color *colors_array = push_array_zero(arena_ptr, ARGB_Color, item_count);
+  result = text_layout_new(&models->text_layouts, arena_ptr, buffer_id, buffer_point,
+                           visible_range, visible_line_number_range, rect, colors_array,
+                           layout_func);
+ }
+ return(result);
 }
 
 api(custom) function Rect_f32

@@ -396,6 +396,7 @@ kv_vim_bindings(App *app)
  
  BIND(N|MAP, undo,                                Key_Code_U);
  BIND(N|MAP, redo,                              C|Key_Code_R);
+ BIND(N|MAP, swap_panels,                       C|Key_Code_S);
  BIND(N|MAP, vim_next_4coder_jump,              M|Key_Code_N);
  BIND(N|MAP, vim_prev_4coder_jump,              M|Key_Code_P);
  BIND(N|MAP, view_buffer_other_panel,           C|Key_Code_D);

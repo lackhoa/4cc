@@ -33,7 +33,7 @@ struct Slow_Line_Map_Entry
 {
  String file;
  u16 linum;
- u16 offset;
+ u32 offset;
 }
 PACK_END;
 
@@ -109,7 +109,7 @@ slow_fval_inner(Basic_Type type, void *init_value,
  u64 cycle_start = gb_rdtsc();
  auto &map   = slow_line_map;
  auto &store = dll_arena;
- u16 offset = 0;
+ u32 offset = 0;
  
  String file = SCu8(file_c);
  for_i32(index,0,map.count)
@@ -139,7 +139,7 @@ slow_fval_inner(Basic_Type type, void *init_value,
   map.map[map.count++] = Slow_Line_Map_Entry{
    .file   = file,
    .linum  = cast(u16)(linum),
-   .offset = cast(u16)(slider_u8 - store_base),
+   .offset = cast_u64_to_u32(slider_u8 - store_base),
   };
   kv_assert(map.count < map.cap);
   
@@ -158,44 +158,6 @@ slow_fval_inner(Basic_Type type, void *init_value,
  return result;
 }
 
-//-
-#if 0
-jump slow_fval();
-#endif
-#if 0
-// NOTE: We define overloads to avoid having to specify the type as a separate argument 
-// as well as receive the appropriate values as output.
-// NOTE: The fast path
-#define X(T) \
-T \
-fast_fval(T init_value_T, Fui_Options options, i32 line) \
-{ \
-auto type = Basic_Type_##T; \
-void *value = fast_fval_inner(type, cast(void*)(&init_value_T), line, options); \
-return *(cast(T *)value); \
-}
-//
-X_Basic_Types(X)
-//
-#undef X
-#else
-#endif
-
-
-// NOTE: The slow path (NOTE: there's a weird compiler error if we don't specify the default params here?)
-#define X(T) \
-T \
-slow_fval(T init_value_T, Fui_Options options, \
-const char *file=__builtin_FILE(), i32 line=__builtin_LINE()) \
-{ \
-auto type = Basic_Type_##T; \
-void *value = slow_fval_inner(type, cast(void*)(&init_value_T), file, line, options); \
-return *(cast(T *)value); \
-}
-//
-X_Basic_Types(X)
-//
-#undef X
 //-
 
 inline b32 
@@ -223,7 +185,7 @@ fui_get_slider_external(String file, i32 linum)
  else
  {
   auto &map = slow_line_map;
-  u16 offset = 0;
+  u32 offset = 0;
   for_i32(index,0,map.count)
   {
    Slow_Line_Map_Entry entry = map.map[index];

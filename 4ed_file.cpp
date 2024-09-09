@@ -186,9 +186,9 @@ file_compute_cursor(Editing_File *file, Buffer_Seek seek){
         case buffer_seek_line_col:
         {
             result = buffer_cursor_from_line_col(&file->state.buffer, seek.line, seek.col);
-        }break;
-    }
-    return(result);
+  }break;
+ }
+ return(result);
 }
 
 ////////////////////////////////
@@ -287,10 +287,10 @@ internal Layout_Item_List
 file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
                      Layout_Function *layout_func, f32 width, Face *face, i64 line_number)
 {
-    Layout_Item_List result = {};
-    
-    i64 line_count = buffer_line_count(&file->state.buffer);
-    if (1 <= line_number && line_number <= line_count){
+ Layout_Item_List result = {};
+ 
+ i64 line_count = buffer_line_count(&file->state.buffer);
+ if (1 <= line_number && line_number <= line_count){
         Line_Layout_Key key = {};
         key.face_id = face->id;
         key.face_version_number = face->version_number;

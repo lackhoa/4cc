@@ -41,13 +41,14 @@ global CRITICAL_SECTION memory_tracker_mutex;
 function void *
 win32_memory_allocate_extended(void *base, u64 size, String location)
 {
- u64 adjusted_size = size + sizeof(Memory_Annotation_Tracker_Node);
+ u64 allocated_size = size + sizeof(Memory_Annotation_Tracker_Node);
  void *memory;
  
 #if ASAN_ON
- memory = malloc(adjusted_size);  //NOTE(kv): VirtualAlloc isn't intercepted -> use malloc to save some energy
+ memory = malloc(allocated_size);  //NOTE(kv): VirtualAlloc isn't intercepted -> use malloc to save some energy
+ block_zero(memory, allocated_size);
 #else
- memory = VirtualAlloc(base, (SIZE_T)adjusted_size,
+ memory = VirtualAlloc(base, (SIZE_T)allocated_size,
                        MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
 #endif
  
@@ -395,35 +396,36 @@ system_get_file_list(Arena* arena, String directory)
         {
             result.infos[counter] = node;
             counter += 1;
-        }
-    }
-    
-    return(result);
+  }
+ }
+ 
+ return(result);
 }
 
 function
 system_quick_file_attributes_sig()
 {
-    WIN32_FILE_ATTRIBUTE_DATA info = {};
-    File_Attributes result = {};
-    if ( GetFileAttributesEx_utf8String(scratch, filename, GetFileExInfoStandard, &info) )
-    {
-        result.size = ((u64)info.nFileSizeHigh << 32LL) | ((u64)info.nFileSizeLow);
-        result.last_write_time = ((u64)info.ftLastWriteTime.dwHighDateTime << 32LL) | ((u64)info.ftLastWriteTime.dwLowDateTime);
-        result.flags = win32_convert_file_attribute_flags(info.dwFileAttributes);
-    }
-    return(result);
+ WIN32_FILE_ATTRIBUTE_DATA info = {};
+ File_Attributes result = {};
+ if ( GetFileAttributesEx_utf8String(scratch, filename, GetFileExInfoStandard, &info) )
+ {
+  result.size = ((u64)info.nFileSizeHigh << 32LL) | ((u64)info.nFileSizeLow);
+  result.last_write_time = ((u64)info.ftLastWriteTime.dwHighDateTime << 32LL) | ((u64)info.ftLastWriteTime.dwLowDateTime);
+  result.flags = win32_convert_file_attribute_flags(info.dwFileAttributes);
+ }
+ return(result);
 }
 
 function
-system_load_handle_sig(){
-    b32 result = false;
-    HANDLE file = CreateFile_utf8(scratch, (u8*)filename, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    if (file != INVALID_HANDLE_VALUE){
-        *(HANDLE*)out = file;
-        result = true;
-    }
-    return(result);
+system_load_handle_sig()
+{
+ b32 result = false;
+ HANDLE file = CreateFile_utf8(scratch, (u8*)filename, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+ if (file != INVALID_HANDLE_VALUE){
+  *(HANDLE*)out = file;
+  result = true;
+ }
+ return(result);
 }
 
 function

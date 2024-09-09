@@ -1938,7 +1938,7 @@ gb_inline void *gb_alloc_copy_align(gbAllocator a, void const *src, isize size, 
 }
 
 gb_inline char *gb_alloc_str(gbAllocator a, char const *str) {
-	return gb_alloc_str_len(a, str, gb_strlen(str));
+	return gb_alloc_str_len(a, str, strlen(str));
 }
 
 gb_inline char *gb_alloc_str_len(gbAllocator a, char const *str, isize len) {
@@ -2318,7 +2318,7 @@ inline isize gb_strlcpy(char *dest, char const *source, isize len) {
 }
 
 inline char *gb_strrev(char *str) {
-	isize len = gb_strlen(str);
+	isize len = strlen(str);
 	char *a = str + 0;
 	char *b = str + len-1;
 	len /= 2;
@@ -2482,7 +2482,7 @@ u64 gb_str_to_u64(char const *str, char **end_ptr, i1 base) {
 	u64 value = 0;
  
 	if (!base) {
-		if ((gb_strlen(str) > 2) && (gb_strncmp(str, "0x", 2) == 0)) {
+		if ((strlen(str) > 2) && (gb_strncmp(str, "0x", 2) == 0)) {
 			base = 16;
 		} else {
 			base = 10;
@@ -2499,7 +2499,7 @@ i64 gb_str_to_i64(char const *str, char **end_ptr, i1 base) {
 	i64 value;
  
 	if (!base) {
-		if ((gb_strlen(str) > 2) && (gb_strncmp(str, "0x", 2) == 0)) {
+		if ((strlen(str) > 2) && (gb_strncmp(str, "0x", 2) == 0)) {
 			base = 16;
 		} else {
 			base = 10;
@@ -2660,7 +2660,7 @@ gbString gb_string_make_reserve(gbAllocator a, isize capacity) {
 
 
 gb_inline gbString gb_string_make(gbAllocator a, char const *str) {
-	isize len = str ? gb_strlen(str) : 0;
+	isize len = str ? strlen(str) : 0;
 	return gb_string_make_length(a, str, len);
 }
 
@@ -2730,7 +2730,7 @@ gbString gb_string_concat_length(gbString str, void const *other, isize other_le
 }
 
 gb_inline gbString gb_string_concatc(gbString str, char const *other) {
-	return gb_string_concat_length(str, other, gb_strlen(other));
+	return gb_string_concat_length(str, other, strlen(other));
 }
 
 gbString gb_string_concat_rune(gbString str, Rune r) {
@@ -2744,7 +2744,7 @@ gbString gb_string_concat_rune(gbString str, Rune r) {
 
 
 gbString gb_string_set(gbString str, char const *cstr) {
-	isize len = gb_strlen(cstr);
+	isize len = strlen(cstr);
 	if (gb_string_capacity(str) < len) {
 		str = gb_string_make_space_for(str, len - gb_string_length(str));
 		if (str == NULL) {
@@ -3119,34 +3119,35 @@ isize gb_utf8_encode_rune(u8 buf[4], Rune r) {
 
 #if defined(GB_SYSTEM_WINDOWS)
 
-	gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isize *w_len_) {
-		wchar_t *w_text = NULL;
-		isize len = 0, w_len = 0, w_len1 = 0;
-		if (text == NULL) {
-			if (w_len_) *w_len_ = w_len;
-			return NULL;
-		}
-		len = gb_strlen(text);
-		if (len == 0) {
-			if (w_len_) *w_len_ = w_len;
-			return NULL;
-		}
-		w_len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, cast(int)len, NULL, 0);
-		if (w_len == 0) {
-			if (w_len_) *w_len_ = w_len;
-			return NULL;
-		}
-		w_text = gb_alloc_array(a, wchar_t, w_len+1);
-		w_len1 = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, cast(int)len, w_text, cast(int)w_len);
-		if (w_len1 == 0) {
-			gb_free(a, w_text);
-			if (w_len_) *w_len_ = 0;
-			return NULL;
-		}
-		w_text[w_len] = 0;
-		if (w_len_) *w_len_ = w_len;
-		return w_text;
-	}
+gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isize *w_len_)
+{
+ wchar_t *w_text = NULL;
+ isize len = 0, w_len = 0, w_len1 = 0;
+ if (text == NULL) {
+  if (w_len_) *w_len_ = w_len;
+  return NULL;
+ }
+ len = strlen(text);
+ if (len == 0) {
+  if (w_len_) *w_len_ = w_len;
+  return NULL;
+ }
+ w_len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, cast(int)len, NULL, 0);
+ if (w_len == 0) {
+  if (w_len_) *w_len_ = w_len;
+  return NULL;
+ }
+ w_text = gb_alloc_array(a, wchar_t, w_len+1);
+ w_len1 = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, cast(int)len, w_text, cast(int)w_len);
+ if (w_len1 == 0) {
+  gb_free(a, w_text);
+  if (w_len_) *w_len_ = 0;
+  return NULL;
+ }
+ w_text[w_len] = 0;
+ if (w_len_) *w_len_ = w_len;
+ return w_text;
+}
 
 	gb_internal GB_FILE_SEEK_PROC(gb__win32_file_seek) {
 		LARGE_INTEGER li_offset;
@@ -3353,7 +3354,7 @@ isize gb_utf8_encode_rune(u8 buf[4], Rune r) {
 
 gbFileError gb_file_new(gbFile *f, gbFileDescriptor fd, gbFileOperations ops, char const *filename) {
 	gbFileError err = gbFileError_None;
-	isize len = gb_strlen(filename);
+	isize len = strlen(filename);
 
 	// gb_printf_err("gb_file_new: %s\n", filename);
 
@@ -3520,13 +3521,14 @@ gbFileError gb_file_truncate(gbFile *f, i64 size) {
 }
 
 
-b32 gb_file_exists(char const *name) {
+b32 gb_file_exists(char const *name)
+{
 	WIN32_FIND_DATAW data;
 	wchar_t *w_text;
 	void *handle;
 	b32 found = false;
 	gbAllocator a = gb_heap_allocator();
-
+ 
 	w_text = gb__alloc_utf8_to_ucs2(a, name, NULL);
 	if (w_text == NULL) {
 		return false;
@@ -3750,11 +3752,11 @@ gb_inline b32 gb_path_is_absolute(char const *path) {
 	b32 result = false;
 	GB_ASSERT_NOT_NULL(path);
 #if defined(GB_SYSTEM_WINDOWS)
-	result == (gb_strlen(path) > 2) &&
+	result == (strlen(path) > 2) &&
 	          gb_char_is_alpha(path[0]) &&
 	          (path[1] == ':' && path[2] == GB_PATH_SEPARATOR);
 #else
-	result = (gb_strlen(path) > 0 && path[0] == GB_PATH_SEPARATOR);
+	result = (strlen(path) > 0 && path[0] == GB_PATH_SEPARATOR);
 #endif
 	return result;
 }
@@ -3765,9 +3767,9 @@ gb_inline b32 gb_path_is_root(char const *path) {
 	b32 result = false;
 	GB_ASSERT_NOT_NULL(path);
 #if defined(GB_SYSTEM_WINDOWS)
-	result = gb_path_is_absolute(path) && (gb_strlen(path) == 3);
+	result = gb_path_is_absolute(path) && (strlen(path) == 3);
 #else
-	result = gb_path_is_absolute(path) && (gb_strlen(path) == 1);
+	result = gb_path_is_absolute(path) && (strlen(path) == 1);
 #endif
 	return result;
 }
@@ -3838,7 +3840,7 @@ char *gb_path_get_full_name(gbAllocator a, char const *path) {
 		fullpath = cast(char *)path;
 	}
 
-	len = gb_strlen(fullpath);
+	len = strlen(fullpath);
 
 	result = gb_alloc_array(a, char, len + 1);
 	gb_memmove(result, fullpath, len);

@@ -86,7 +86,7 @@ init_game(App *app)
  // NOTE: Old static allocation code
  //u64 memsize = MB(256);
  //u8 *game_memory = cast(u8 *)system_memory_allocate(memsize, strlit("game memory"));
- Arena bootstrap_arena = make_arena_malloc(MB(1));
+ Arena bootstrap_arena = make_arena_system(MB(1));
  auto game = get_game_code();
  Game_ImGui_State imgui_state;
  {
@@ -96,7 +96,7 @@ init_game(App *app)
                                &imgui_state.user_data);
  }
  ed_game_state_pointer = game->game_init(&bootstrap_arena, &const_ed_api, app,
-                                     imgui_state);
+                                         imgui_state);
  
  //@ReferenceImages
  stbi_set_flip_vertically_on_load(true);

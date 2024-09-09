@@ -1,23 +1,34 @@
 #!/usr/bin/env python3 -u
 
-# NOTE: Configuration #########################
+# NOTE: Default configuration (don't overwrite me!) #########################
 FORCE_MORE_BUILDS = 0
-asan_on = 1
+asan_on = 0
 DISABLE_GAME = 0
-DISABLE_ED   = 1
+DISABLE_ED   = 0
 full_build_components = {
  "custom_api_gen": 1,
  "skm_lexer_gen":  0,
 }
 COMPILE_GAME_WITH_MSVC = 1
-if asan_on:
-    COMPILE_GAME_WITH_MSVC = 1
-TRACE_COMPILE_TIME       = 0
+TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
 AD_PROFILE = 1
 KV_SLOW = 0
 STOP_DEBUGGING_BEFORE_BUILD = 0
+
+# NOTE: Your configuration ############################
+#DISABLE_ED = 1
+asan_on = 1
+
+
+
+# Your config end ############################
+
+if asan_on:
+    COMPILE_GAME_WITH_MSVC = 1
+
+
 
 import os
 import pathlib
@@ -41,6 +52,8 @@ pjoin = os.path.join
 
 DEBUG_MODE = 0 if args.release else 1
 SHIP_MODE = 1-DEBUG_MODE
+if SHIP_MODE:
+    asan_on = 0
 
 HOME = os.path.expanduser("~")
 OUT_DEBUG=pjoin(HOME, '4coder')  # NOTE: for debug build
@@ -54,7 +67,7 @@ OS_MAC = int(not OS_WINDOWS)
 DOT_DLL=".dll" if OS_WINDOWS else ".so"
 DOT_EXE='.exe' if OS_WINDOWS else ''
 DOT_OBJ='.obj' if OS_WINDOWS else '.o'
-remedybg = "remedybg.exe"
+remedybg = f"{CODE}/call_vcvarsall.bat && remedybg.exe"
 CPP_VERSION      = "-std:c++20"
 if OS_WINDOWS:
     if TRACE_COMPILE_TIME:
@@ -245,7 +258,7 @@ def run_compiler(compiler, input_files, output_file, debug_mode,
 
     debug_flag = ""
     if debug_mode:
-        debug_flag = "-Zi"  # NOTE "-Zi" means that you produce a separate pdb fie
+        debug_flag = "-Zi -Ob1"  # NOTE "-Zi" means that you produce a separate pdb fie
     compiler_flags += f" {debug_flag}"
 
     optimization = "" if debug_mode else "-O2"

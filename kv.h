@@ -2193,11 +2193,11 @@ union rect2_Pair{
     Rect_f32 b;
   };
   struct{
-    Rect_f32 min;
-    Rect_f32 max;
-  };
-  struct{
-    Rect_f32 e[2];
+  Rect_f32 min;
+  Rect_f32 max;
+ };
+ struct{
+  Rect_f32 e[2];
  };
 };
 
@@ -3325,9 +3325,9 @@ range_size(Range_u64 a){
 }
 function f32
 range_size(Range_f32 a){
-    f32 size = a.max - a.min;
-    size = clamp_min(0, size);
-    return(size);
+ f32 size = a.max - a.min;
+ size = clamp_min(0, size);
+ return(size);
 }
 
 function i32
@@ -3698,8 +3698,8 @@ get_red_zone_size(u32 align_pow2)
 function String
 cursor_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2)
 {
- String result = {};
  kv_assert(align_pow2 >= 3);  // NOTE(kv): 8 alignment for asan
+ String result = {};
  usize align_size = (1ULL<<align_pow2);
  usize align_mask = align_size-1;
  u8 *current_pos = cursor->base+cursor->used_;
@@ -3774,8 +3774,11 @@ arena_push(Arena *arena, usize size, String location, u32 align_pow2)
   {
    usize min_cursor_size = size+get_red_zone_size(align_pow2);
    {// NOTE(kv): Make a new cursor
-    // NOTE(kv): We don't want the cursor to mess with alignment calculations
-    static_assert(sizeof(Memory_Cursor) == 32);
+    {
+     // NOTE(kv): We don't want the cursor to mess with alignment calculations.
+     //   If we do avx-512, we need 64-bytes alignment!
+     static_assert((sizeof(Memory_Cursor) & 31) == 0);
+    }
     u64 usable_size = clamp_min(min_cursor_size, arena->chunk_size);
     String memory = base_allocate_function(arena->base_allocator, usable_size+sizeof(Memory_Cursor), location);
     // NOTE(kv): Tricky business: put the cursor in its own memory
@@ -3788,9 +3791,9 @@ arena_push(Arena *arena, usize size, String location, u32 align_pow2)
    }
    
    result = cursor_push(cursor, size, location, align_pow2);
-   kv_assert(result.str);
   }
  }
+ kv_assert(result.str);
  return(result);
 }
 //
@@ -4831,10 +4834,10 @@ struct Scratch_Block
  Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2);
  Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2, Arena *a3);
  inline Scratch_Block(void) {
-  //NOTE(kv): in a scratch block, you don't need to worry about the malloc allocator being global
+  //NOTE(kv): in a scratch block, you don't need to worry about the malloc allocator being a global var.
   this->arena_value = make_arena( get_allocator_malloc() );
   this->arena = &arena_value;
-  this->temp = begin_temp(this->arena);  // TODO(kv): Why spam this line?
+  this->temp = begin_temp(this->arena);
  };
  Scratch_Block(struct App *app);
  Scratch_Block(struct App *app, Arena *a1);

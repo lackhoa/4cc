@@ -406,9 +406,15 @@ function game_render_return
 game_render(game_render_params)
 {//;switch_game_or_physics
  slider_cycle_counter = 0;
- render_movie(state->viewports[viewport_id-1],
-              state->time, state->references_full_alpha,
-              app, target, viewport_id, mouse); 
+ Scratch_Block scratch;
+ {
+  Scratch_Block render_scratch;
+  // TODO(kv): Why can't the game understand scratch blocks?
+  render_movie(scratch, render_scratch,
+               state->viewports[viewport_id-1],
+               state->time, state->references_full_alpha,
+               app, target, viewport_id, mouse); 
+ }
  render_data(*state);
 }
 
