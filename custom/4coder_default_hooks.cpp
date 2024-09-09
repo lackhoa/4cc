@@ -871,7 +871,7 @@ BUFFER_HOOK_SIG(default_new_file){
     date_time = system_local_date_time_from_universal(&date_time);
     String date_string = date_time_format(scratch, "month day yyyy h:mimi ampm", &date_time);
     
-    Buffer_Insertion insert = begin_buffer_insertion_at_buffered(app, buffer_id, 0, scratch, KB(16));
+    Buffer_Insertion insert = begin_buffer_insertion_at_buffered2(app, buffer_id, 0, scratch, KB(16));
     insertf(&insert,
             "/* date = %.*s */\n"
             "\n",

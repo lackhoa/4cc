@@ -1081,26 +1081,27 @@ get_selected_string(App *app, Arena *arena)
 inline b32
 token_equal_cstring(App *app, Buffer_ID buffer, Token *token, char *cstring)
 {
-  Scratch_Block scratch(app);
-  String8 string = push_token_lexeme(app, scratch, buffer, token);
-  b32 result = string_compare(string, SCu8(cstring)) == 0;
-  return result;
+ Scratch_Block scratch(app);
+ String8 string = push_token_lexeme(app, scratch, buffer, token);
+ b32 result = string_compare(string, SCu8(cstring)) == 0;
+ return result;
 }
 
 function String
-push_buffer_line(App *app, Arena *arena, Buffer_ID buffer, i64 line_number){
-    // NOTE(allen): 4coder flaw
-    // The system for dealing with CRLF vs LF is too sloppy. There is no way to
-    // avoid returning the CR from this function by adjusting the more
-    // fundamental position getter functions without risking breaking some of
-    // the users of those functions. It seems okay to just chop the CR
-    // off here - but it's clearly sloppy. Oh well - we're in duct tape mode
-    // these days anyways.
-    String string = push_buffer_range(app, arena, buffer, get_line_pos_range(app, buffer, line_number));
-    for (;string.size > 0 && string.str[string.size - 1] == '\r';){
-        string.size -= 1;
-    }
-    return(string);
+push_buffer_line(App *app, Arena *arena, Buffer_ID buffer, i64 line_number)
+{
+ // NOTE(allen): 4coder flaw
+ // The system for dealing with CRLF vs LF is too sloppy. There is no way to
+ // avoid returning the CR from this function by adjusting the more
+ // fundamental position getter functions without risking breaking some of
+ // the users of those functions. It seems okay to just chop the CR
+ // off here - but it's clearly sloppy. Oh well - we're in duct tape mode
+ // these days anyways.
+ String string = push_buffer_range(app, arena, buffer, get_line_pos_range(app, buffer, line_number));
+ for (;string.size > 0 && string.str[string.size - 1] == '\r';) {
+  string.size -= 1;
+ }
+ return(string);
 }
 
 function String
@@ -1456,15 +1457,15 @@ move_line(App *app, Buffer_ID buffer, i64 line_number, Scan_Direction direction)
             result = line_starts.min;
         }
     }
-    else{
-        result = get_line_side_pos(app, buffer, line_number, Side_Min);
-    }
-    return(result);
+ else{
+  result = get_line_side_pos(app, buffer, line_number, Side_Min);
+ }
+ return(result);
 }
 
 function void
-clear_buffer(App *app, Buffer_ID buffer){
- buffer_replace_range(app, buffer, buffer_range(app, buffer), string_u8_litexpr(""));
+clear_buffer(App *app, Buffer_ID buffer) {
+ buffer_replace_range(app, buffer, buffer_range(app, buffer), strlit(""));
 }
 
 ////////////////////////////////

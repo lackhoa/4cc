@@ -17,9 +17,12 @@ AD_PROFILE = 1
 KV_SLOW = 0
 STOP_DEBUGGING_BEFORE_BUILD = 0
 
+
+
+
 # NOTE: Your configuration ############################
 #DISABLE_ED = 1
-asan_on = 1
+#asan_on = 1
 
 
 

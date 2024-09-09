@@ -748,11 +748,11 @@ enum{
 api(custom)
 struct String_Match
 {
-    String_Match *next;
-    Buffer_ID buffer;
-    i1 string_id;
-    String_Match_Flag flags;
-    Range_i64 range;
+ String_Match *next;
+ Buffer_ID buffer;
+ i1 string_id;
+ String_Match_Flag flags;
+ Range_i64 range;
 };
 
 api(custom)

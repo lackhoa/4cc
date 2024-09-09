@@ -2,15 +2,16 @@ BUFFER_HOOK_SIG(kv_file_save)
 {
   default_file_save(app, buffer_id);
   vim_file_save(app, buffer_id);
-  return 0;
+ return 0;
 }
 
 BUFFER_HOOK_SIG(kv_new_file)
 {
 	Scratch_Block scratch(app);
 	String filename = push_buffer_base_name(app, scratch, buffer_id);
-	if(string_match(string_postfix(filename, 4), string_u8_litexpr(".bat"))){
-		Buffer_Insertion insert = begin_buffer_insertion_at_buffered(app, buffer_id, 0, scratch, KB(16));
+	if(string_match(string_postfix(filename, 4), string_u8_litexpr(".bat")))
+ {
+		Buffer_Insertion insert = begin_buffer_insertion_at_buffered2(app, buffer_id, 0, scratch, KB(16));
 		insertf(&insert, "@echo off" "\n");
 		end_buffer_insertion(&insert);
 		return 0;

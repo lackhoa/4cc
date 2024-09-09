@@ -196,73 +196,73 @@ print_positions_buffered(App *app, Buffer_Insertion *out, Buffer_ID buffer, Func
                 i64 index = tkarr_index(&it);
                 if (index > end_index){
                     break;
-                }
-            }
-            
-            insertc(out, '\n');
-        }
     }
+   }
+   
+   insertc(out, '\n');
+  }
+ }
 }
 
 function void
-list_all_functions(App *app, Buffer_ID optional_target_buffer){
-    // TODO(allen): Use create or switch to buffer and clear here?
-    String decls_name = string_u8_litexpr("*decls*");
-    Buffer_ID decls_buffer = get_buffer_by_name(app, decls_name, Access_Always);
-    if (!buffer_exists(app, decls_buffer)){
-        decls_buffer = create_buffer(app, decls_name, BufferCreate_AlwaysNew);
-        buffer_set_setting(app, decls_buffer, BufferSetting_Unimportant, true);
-        buffer_set_setting(app, decls_buffer, BufferSetting_ReadOnly, true);
-        //buffer_set_setting(app, decls_buffer, BufferSetting_WrapLine, false);
-    }
-    else{
-        clear_buffer(app, decls_buffer);
-        buffer_send_end_signal(app, decls_buffer);
-    }
+list_all_functions(App *app, Buffer_ID optional_target_buffer)
+{
+ // TODO(allen): Use create or switch to buffer and clear here?
+ String decls_name = string_u8_litexpr("*decls*");
+ Buffer_ID decls_buffer = get_buffer_by_name(app, decls_name, Access_Always);
+ if (!buffer_exists(app, decls_buffer)){
+  decls_buffer = create_buffer(app, decls_name, BufferCreate_AlwaysNew);
+  buffer_set_setting(app, decls_buffer, BufferSetting_Unimportant, true);
+  buffer_set_setting(app, decls_buffer, BufferSetting_ReadOnly, true);
+  //buffer_set_setting(app, decls_buffer, BufferSetting_WrapLine, false);
+ }
+ else{
+  clear_buffer(app, decls_buffer);
+  buffer_send_end_signal(app, decls_buffer);
+ }
+ 
+ Scratch_Block scratch(app);
+ 
+ // TODO(allen): rewrite get_function_positions to allocate on arena
+ i1 positions_max = KB(4)/sizeof(Function_Positions);
+ Function_Positions *positions_array = push_array(scratch, Function_Positions, positions_max);
+ 
+ Buffer_Insertion out = begin_buffer_insertion_at_buffered2(app, decls_buffer, 0, scratch, KB(256));
+ 
+ for (Buffer_ID buffer_it = get_buffer_next(app, 0, Access_Always);
+      buffer_it != 0;
+      buffer_it = get_buffer_next(app, buffer_it, Access_Always)){
+  Buffer_ID buffer = buffer_it;
+  if (optional_target_buffer != 0){
+   buffer = optional_target_buffer;
+  }
+  
+  Token_Array array = get_token_array_from_buffer(app, buffer);
+  if (array.tokens != 0){
+   i64 token_index = 0;
+   b32 still_looping = false;
+   do{
+    Get_Positions_Results get_positions_results = get_function_positions(app, buffer, token_index, positions_array, positions_max);
     
-    Scratch_Block scratch(app);
+    i64 positions_count = get_positions_results.positions_count;
+    token_index = get_positions_results.next_token_index;
+    still_looping = get_positions_results.still_looping;
     
-    // TODO(allen): rewrite get_function_positions to allocate on arena
-    i1 positions_max = KB(4)/sizeof(Function_Positions);
-    Function_Positions *positions_array = push_array(scratch, Function_Positions, positions_max);
-    
-    Memory_Cursor insertion_cursor = make_cursor(push_array(scratch, u8, KB(256)), KB(256));
-    Buffer_Insertion out = begin_buffer_insertion_at_buffered(app, decls_buffer, 0, &insertion_cursor);
-    
-    for (Buffer_ID buffer_it = get_buffer_next(app, 0, Access_Always);
-         buffer_it != 0;
-         buffer_it = get_buffer_next(app, buffer_it, Access_Always)){
-        Buffer_ID buffer = buffer_it;
-        if (optional_target_buffer != 0){
-            buffer = optional_target_buffer;
-        }
-        
-        Token_Array array = get_token_array_from_buffer(app, buffer);
-        if (array.tokens != 0){
-            i64 token_index = 0;
-            b32 still_looping = false;
-            do{
-                Get_Positions_Results get_positions_results = get_function_positions(app, buffer, token_index, positions_array, positions_max);
-                
-                i64 positions_count = get_positions_results.positions_count;
-                token_index = get_positions_results.next_token_index;
-                still_looping = get_positions_results.still_looping;
-                
-                print_positions_buffered(app, &out, buffer, positions_array, positions_count);
-            }while(still_looping);
-            
-            if (optional_target_buffer != 0){
-                break;
-            }
-        }
-    }
-    
-    end_buffer_insertion(&out);
-    
-    View_ID view = get_active_view(app, Access_Always);
-    view_set_buffer(app, view, decls_buffer, 0);
-    
-    lock_jump_buffer(app, decls_name);
+    print_positions_buffered(app, &out, buffer, positions_array, positions_count);
+   }while(still_looping);
+   
+   if (optional_target_buffer != 0){
+    break;
+   }
+  }
+ }
+ 
+ end_buffer_insertion(&out);
+ 
+ View_ID view = get_active_view(app, Access_Always);
+ view_set_buffer(app, view, decls_buffer, 0);
+ 
+ lock_jump_buffer(app, decls_name);
 }
 
 CUSTOM_COMMAND_SIG(list_all_functions_current_buffer)

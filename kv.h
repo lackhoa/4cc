@@ -89,7 +89,7 @@ typedef int8_t   b8;
 typedef int32_t  b32;
 typedef uint32_t u32;
 typedef uint64_t u64;
-typedef uintptr_t umm;
+typedef uintptr_t umm; // NOTE(kv): "umm" stands for "memory model"
 typedef i64       imm;
 
 typedef float    r32;
@@ -3792,8 +3792,8 @@ arena_push(Arena *arena, usize size, String location, u32 align_pow2)
    
    result = cursor_push(cursor, size, location, align_pow2);
   }
+  kv_assert(result.str);
  }
- kv_assert(result.str);
  return(result);
 }
 //
@@ -3881,12 +3881,12 @@ linalloc_wrap_write(String8 data, u64 size, void *src)
  block_copy(data.str, src, clamp_max(data.size, size));
  return(data.str);
 }
-#define push_size(a,s,...)        linalloc_wrap(linalloc_push(a, s, filename_linum), __VA_ARGS__)
+#define push_size(a,s,...)        (u8 *)linalloc_wrap(linalloc_push(a, s, filename_linum), __VA_ARGS__)
 #define push_array(a,T,c,...)     (T*)push_size(a, sizeof(T)*(c), __VA_ARGS__)
 #define push_array_zero(a,T,c)    push_array(a,T,c,true)
 #define push_struct(a,T,...)      (T*)push_size(a,sizeof(T),__VA_ARGS__)
 #define push_array_write(a,T,c,s) ((T*)linalloc_wrap_write(linalloc_push(a, sizeof(T)*(c), filename_linum), sizeof(T)*(c), (s)))
-#define push_array_cursor(a,T,c)  ((T*)linalloc_wrap(linalloc_push(a, sizeof(T)*(c), filename_linum)))
+//#define push_array_cursor(a,T,c)  ((T*)linalloc_wrap(linalloc_push(a, sizeof(T)*(c), filename_linum)))
 #define push_align_zero(a,b)      (linalloc_wrap(linalloc_align((a), (b)), true))
 #define pop_array(a,T,c)          (linalloc_pop((a), sizeof(T)*(c)))
 #define push_value(var,a,val)     var = push_struct(a, mytypeof(*var)); *var = val;

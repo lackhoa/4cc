@@ -4,19 +4,18 @@
 
 // TOP
 
-#if !defined(FRED_INSERTION_H)
-#define FRED_INSERTION_H
+#pragma once
 
-struct Buffer_Insertion{
-    App *app;
-    Buffer_ID buffer;
-    i64 at;
-    b32 buffering;
-    Memory_Cursor *cursor;
-    Temp_Memory temp;
+struct Buffer_Insertion
+{
+ App *app;
+ Buffer_ID buffer;
+ i64 at;
+ b32 buffering;
+ 
+ u8 *memory;
+ umm len;
+ umm cap;
 };
 
-#endif
-
 // BOTTOM
-
