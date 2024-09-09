@@ -35,7 +35,7 @@ copy_modifier_set(Arena *arena, Input_Modifier_Set_Fixed *set)
     result.count = set->count;
     if (result.count > 0)
     {
-        result.mods = push_array_write(arena, Key_Code, result.count, set->mods);
+        result.mods = push_array_copy(arena, Key_Code, result.count, set->mods);
     }
     return(result);
 }
@@ -91,7 +91,7 @@ copy_modifier_set(Arena *arena, Input_Modifier_Set *set)
     Input_Modifier_Set result = {};
     result.count = set->count;
     if (result.count > 0){
-        result.mods = push_array_write(arena, Key_Code, result.count, set->mods);
+        result.mods = push_array_copy(arena, Key_Code, result.count, set->mods);
     }
     return(result);
 }

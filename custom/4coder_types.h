@@ -688,39 +688,39 @@ typedef void View_Change_Buffer_Function(App *app, View_ID view_id,
 api(custom)
 typedef u32 Layout_Item_Flag;
 enum{
-    LayoutItemFlag_Special_Character = (1 << 0),
-    LayoutItemFlag_Ghost_Character = (1 << 1)
+ LayoutItemFlag_Special_Character = (1 << 0),
+ LayoutItemFlag_Ghost_Character = (1 << 1)
 };
 
 api(custom)
 struct Layout_Item{
-    i64 index;
-    u32 codepoint;
-    Layout_Item_Flag flags;
-    Rect_f32 rect;
-    f32 padded_y1;
+ i64 index;  //todo(kv): what is this index?
+ u32 codepoint;
+ Layout_Item_Flag flags;
+ Rect_f32 rect;
+ f32 padded_y1;
 };
 
 api(custom)
 struct Layout_Item_Block{
-    Layout_Item_Block *next;
-    Layout_Item *items;
-    i64 item_count;
-    i64 character_count;
-    Face_ID face;
+ Layout_Item_Block *next;
+ Layout_Item *items;
+ i64 item_count;
+ i64 character_count;
+ Face_ID face;
 };
 
 api(custom)
-struct Layout_Item_List{
-    Layout_Item_Block *first;
-    Layout_Item_Block *last;
-    i64 item_count;
-    i64 character_count;
-    i1 node_count;
-    f32 height;
-    f32 bottom_padding;
-    Range_i64 input_index_range;
-    Range_i64 manifested_index_range;
+struct Layout_Item_List {
+ Layout_Item_Block *first;
+ Layout_Item_Block *last;
+ i64 item_count;
+ i64 character_count;
+ i1 node_count;
+ f32 height;
+ f32 bottom_padding;
+ Range_i64 input_index_range;
+ Range_i64 manifested_index_range;
 };
 
 api(custom)

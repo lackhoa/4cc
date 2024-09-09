@@ -169,23 +169,15 @@ default_tick(App *app, Frame_Info frame_info)
     code_index_update_tick(app);
     
     ////////////////////////////////
-    // NOTE(allen): Update fade ranges
-    
-    if (tick_all_fade_ranges(app, frame_info.animation_dt))
-    {
-        animate_in_n_milliseconds(app, 0);
-    }
-    
-    ////////////////////////////////
-    // NOTE(allen): Clear layouts if virtual whitespace setting changed.
-    
-    {
-        b32 enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
-        if (enable_virtual_whitespace != def_enable_virtual_whitespace){
-            def_enable_virtual_whitespace = enable_virtual_whitespace;
-            clear_all_layouts(app);
-        }
-    }
+ // NOTE(allen): Update fade ranges
+ 
+ if (tick_all_fade_ranges(app, frame_info.animation_dt))
+ {
+  animate_in_n_milliseconds(app, 0);
+ }
+ 
+ ////////////////////////////////
+ // NOTE(allen): Clear layouts if virtual whitespace setting changed.
 }
 
 function Rect_f32
@@ -699,141 +691,127 @@ do_full_lex_async__inner(Async_Context *actx, Buffer_ID buffer_id){
 
 function void
 do_full_lex_async(Async_Context *actx, String data){
-    if (data.size == sizeof(Buffer_ID)){
-        Buffer_ID buffer = *(Buffer_ID*)data.str;
-        do_full_lex_async__inner(actx, buffer);
-    }
+ if (data.size == sizeof(Buffer_ID)){
+  Buffer_ID buffer = *(Buffer_ID*)data.str;
+  do_full_lex_async__inner(actx, buffer);
+ }
 }
 
-BUFFER_HOOK_SIG(default_begin_buffer){
-    ProfileScope(app, "begin buffer");
+BUFFER_HOOK_SIG(default_begin_buffer)
+{
+ ProfileScope(app, "begin buffer");
+ 
+ Scratch_Block scratch(app);
+ 
+ b32 treat_as_code = false;
+ String filename = push_buffer_filename(app, scratch, buffer_id);
+ if (filename.size > 0){
+  String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
+  String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
+  String ext = string_file_extension(filename);
+  for (i32 i = 0; i < extensions.count; ++i){
+   if (string_match(ext, extensions.strings[i])){
     
-    Scratch_Block scratch(app);
+    if (string_match(ext, string_u8_litexpr("cpp")) ||
+        string_match(ext, string_u8_litexpr("h")) ||
+        string_match(ext, string_u8_litexpr("c")) ||
+        string_match(ext, string_u8_litexpr("hpp")) ||
+        string_match(ext, string_u8_litexpr("cc"))){
+     treat_as_code = true;
+    }
     
-    b32 treat_as_code = false;
-    String filename = push_buffer_filename(app, scratch, buffer_id);
-    if (filename.size > 0){
-        String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
-        String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-        String ext = string_file_extension(filename);
-        for (i32 i = 0; i < extensions.count; ++i){
-            if (string_match(ext, extensions.strings[i])){
-                
-                if (string_match(ext, string_u8_litexpr("cpp")) ||
-                    string_match(ext, string_u8_litexpr("h")) ||
-                    string_match(ext, string_u8_litexpr("c")) ||
-                    string_match(ext, string_u8_litexpr("hpp")) ||
-                    string_match(ext, string_u8_litexpr("cc"))){
-                    treat_as_code = true;
-                }
-                
 #if 0
-                treat_as_code = true;
-                
-                if (string_match(ext, string_u8_litexpr("cs"))){
-                    if (parse_context_language_cs == 0){
-                        init_language_cs(app);
-                    }
-                    parse_context_id = parse_context_language_cs;
-                }
-                
-                if (string_match(ext, string_u8_litexpr("java"))){
-                    if (parse_context_language_java == 0){
-                        init_language_java(app);
-                    }
-                    parse_context_id = parse_context_language_java;
-                }
-                
-                if (string_match(ext, string_u8_litexpr("rs"))){
-                    if (parse_context_language_rust == 0){
-                        init_language_rust(app);
-                    }
-                    parse_context_id = parse_context_language_rust;
-                }
-                
-                if (string_match(ext, string_u8_litexpr("cpp")) ||
-                    string_match(ext, string_u8_litexpr("h")) ||
-                    string_match(ext, string_u8_litexpr("c")) ||
-                    string_match(ext, string_u8_litexpr("hpp")) ||
-                    string_match(ext, string_u8_litexpr("cc"))){
-                    if (parse_context_language_cpp == 0){
-                        init_language_cpp(app);
-                    }
-                    parse_context_id = parse_context_language_cpp;
-                }
-                
-                // TODO(NAME): Real GLSL highlighting
-                if (string_match(ext, string_u8_litexpr("glsl"))){
-                    if (parse_context_language_cpp == 0){
-                        init_language_cpp(app);
-                    }
-                    parse_context_id = parse_context_language_cpp;
-                }
-                
-                // TODO(NAME): Real Objective-C highlighting
-                if (string_match(ext, string_u8_litexpr("m"))){
-                    if (parse_context_language_cpp == 0){
-                        init_language_cpp(app);
-                    }
-                    parse_context_id = parse_context_language_cpp;
-                }
+    treat_as_code = true;
+    
+    if (string_match(ext, string_u8_litexpr("cs"))){
+     if (parse_context_language_cs == 0){
+      init_language_cs(app);
+     }
+     parse_context_id = parse_context_language_cs;
+    }
+    
+    if (string_match(ext, string_u8_litexpr("java"))){
+     if (parse_context_language_java == 0){
+      init_language_java(app);
+     }
+     parse_context_id = parse_context_language_java;
+    }
+    
+    if (string_match(ext, string_u8_litexpr("rs"))){
+     if (parse_context_language_rust == 0){
+      init_language_rust(app);
+     }
+     parse_context_id = parse_context_language_rust;
+    }
+    
+    if (string_match(ext, string_u8_litexpr("cpp")) ||
+        string_match(ext, string_u8_litexpr("h")) ||
+        string_match(ext, string_u8_litexpr("c")) ||
+        string_match(ext, string_u8_litexpr("hpp")) ||
+        string_match(ext, string_u8_litexpr("cc"))){
+     if (parse_context_language_cpp == 0){
+      init_language_cpp(app);
+     }
+     parse_context_id = parse_context_language_cpp;
+    }
+    
+    // TODO(NAME): Real GLSL highlighting
+    if (string_match(ext, string_u8_litexpr("glsl"))){
+     if (parse_context_language_cpp == 0){
+      init_language_cpp(app);
+     }
+     parse_context_id = parse_context_language_cpp;
+    }
+    
+    // TODO(NAME): Real Objective-C highlighting
+    if (string_match(ext, string_u8_litexpr("m"))){
+     if (parse_context_language_cpp == 0){
+      init_language_cpp(app);
+     }
+     parse_context_id = parse_context_language_cpp;
+    }
 #endif
-                
-                break;
-            }
-        }
-    }
     
-    String_ID file_map_id = vars_intern_lit("keys_file");
-    String_ID code_map_id = vars_intern_lit("keys_code");
-    
-    Command_Map_ID map_id = (treat_as_code)?(code_map_id):(file_map_id);
-    Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
-    Command_Map_ID *map_id_ptr = scope_attachment(app, scope, buffer_map_id, Command_Map_ID);
-    *map_id_ptr = map_id;
-    
-    Line_Ending_Kind setting = guess_line_ending_kind_from_buffer(app, buffer_id);
-    Line_Ending_Kind *eol_setting = scope_attachment(app, scope, buffer_eol_setting, Line_Ending_Kind);
-    *eol_setting = setting;
-    
-    // NOTE(allen): Decide buffer settings
-    b32 wrap_lines = true;
-    b32 use_lexer = false;
-    if (treat_as_code){
-        wrap_lines = def_get_config_b32(vars_intern_lit("enable_code_wrapping"));
-        use_lexer = true;
-    }
-    
-    String buffer_name = push_buffer_base_name(app, scratch, buffer_id);
-    if (buffer_name.size > 0 && buffer_name.str[0] == '*' && buffer_name.str[buffer_name.size - 1] == '*'){
-        wrap_lines = def_get_config_b32(vars_intern_lit("enable_output_wrapping"));
-    }
-    
-    if (use_lexer){
-        ProfileBlock(app, "begin buffer kick off lexer");
-        Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
-        *lex_task_ptr = async_task_no_dep(&global_async_system, do_full_lex_async, make_data_struct(&buffer_id));
-    }
-    
-    {
-        b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
-        *wrap_lines_ptr = wrap_lines;
-    }
-    
-    if (use_lexer){
-        buffer_set_layout(app, buffer_id, layout_virt_indent_index_generic);
-    }
-    else{
-        if (treat_as_code){
-            buffer_set_layout(app, buffer_id, layout_virt_indent_literal_generic);
-        }
-        else{
-            buffer_set_layout(app, buffer_id, layout_generic);
-        }
-    }
-    
-    // no meaning for return
-    return(0);
+    break;
+   }
+  }
+ }
+ 
+ String_ID file_map_id = vars_intern_lit("keys_file");
+ String_ID code_map_id = vars_intern_lit("keys_code");
+ 
+ Command_Map_ID map_id = (treat_as_code)?(code_map_id):(file_map_id);
+ Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
+ Command_Map_ID *map_id_ptr = scope_attachment(app, scope, buffer_map_id, Command_Map_ID);
+ *map_id_ptr = map_id;
+ 
+ Line_Ending_Kind setting = guess_line_ending_kind_from_buffer(app, buffer_id);
+ Line_Ending_Kind *eol_setting = scope_attachment(app, scope, buffer_eol_setting, Line_Ending_Kind);
+ *eol_setting = setting;
+ 
+ // NOTE(allen): Decide buffer settings
+ b32 wrap_lines = true;
+ b32 use_lexer = false;
+ if (treat_as_code){
+  wrap_lines = def_get_config_b32(vars_intern_lit("enable_code_wrapping"));
+  use_lexer = true;
+ }
+ 
+ String buffer_name = push_buffer_base_name(app, scratch, buffer_id);
+ if (buffer_name.size > 0 && buffer_name.str[0] == '*' && buffer_name.str[buffer_name.size - 1] == '*'){
+  wrap_lines = def_get_config_b32(vars_intern_lit("enable_output_wrapping"));
+ }
+ 
+ if (use_lexer){
+  ProfileBlock(app, "begin buffer kick off lexer");
+  Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
+  *lex_task_ptr = async_task_no_dep(&global_async_system, do_full_lex_async, make_data_struct(&buffer_id));
+ }
+ 
+ buffer_set_layout(app, buffer_id, layout_basic);
+ 
+ // no meaning for return
+ return(0);
 }
 
 BUFFER_HOOK_SIG(default_new_file){
@@ -1045,41 +1023,39 @@ BUFFER_HOOK_SIG(default_end_buffer){
 function void
 default_view_change_buffer(App *app, View_ID view_id,
                            Buffer_ID old_buffer_id, Buffer_ID new_buffer_id){
-    Managed_Scope scope = view_get_managed_scope(app, view_id);
-    Buffer_ID *prev_buffer_id = scope_attachment(app, scope, view_previous_buffer, Buffer_ID);
+ Managed_Scope scope = view_get_managed_scope(app, view_id);
+ Buffer_ID *prev_buffer_id = scope_attachment(app, scope, view_previous_buffer, Buffer_ID);
 	if (prev_buffer_id != 0){
 		*prev_buffer_id = old_buffer_id;
 	}
 }
 
 internal void
-set_all_default_hooks(App *app){
-    set_custom_hook(app, HookID_BufferViewerUpdate, default_view_adjust);
-    
-    set_custom_hook(app, HookID_ViewEventHandler, default_view_input_handler);
-    set_custom_hook(app, HookID_Tick, default_tick);
-    set_custom_hook(app, HookID_RenderCaller, default_render_caller);
-    set_custom_hook(app, HookID_WholeScreenRenderCaller, default_whole_screen_render_caller);
-    
-    set_custom_hook(app, HookID_DeltaRule, fixed_time_cubic_delta);
-    set_custom_hook_memory_size(app, HookID_DeltaRule,
-                                delta_ctx_size(fixed_time_cubic_delta_memory_size));
-    
-    set_custom_hook(app, HookID_BufferNameResolver, default_buffer_name_resolution);
-    
-    set_custom_hook(app, HookID_BeginBuffer, default_begin_buffer);
-    set_custom_hook(app, HookID_EndBuffer, end_buffer_close_jump_list);
-    set_custom_hook(app, HookID_NewFile, default_new_file);
-    set_custom_hook(app, HookID_SaveFile, default_file_save);
-    set_custom_hook(app, HookID_BufferEditRange, default_buffer_edit_range);
-    set_custom_hook(app, HookID_BufferRegion, default_buffer_region);
-    set_custom_hook(app, HookID_ViewChangeBuffer, default_view_change_buffer);
-    
-    set_custom_hook(app, HookID_Layout, layout_unwrapped);
-    //set_custom_hook(app, HookID_Layout, layout_wrap_anywhere);
-    //set_custom_hook(app, HookID_Layout, layout_wrap_whitespace);
-    //set_custom_hook(app, HookID_Layout, layout_virt_indent_unwrapped);
-    //set_custom_hook(app, HookID_Layout, layout_unwrapped_small_blank_lines);
+set_all_default_hooks(App *app)
+{
+ set_custom_hook(app, HookID_BufferViewerUpdate, default_view_adjust);
+ 
+ set_custom_hook(app, HookID_ViewEventHandler, default_view_input_handler);
+ set_custom_hook(app, HookID_Tick, default_tick);
+ set_custom_hook(app, HookID_RenderCaller, default_render_caller);
+ set_custom_hook(app, HookID_WholeScreenRenderCaller, default_whole_screen_render_caller);
+ 
+ set_custom_hook(app, HookID_DeltaRule, fixed_time_cubic_delta);
+ set_custom_hook_memory_size(app, HookID_DeltaRule,
+                             delta_ctx_size(fixed_time_cubic_delta_memory_size));
+ 
+ set_custom_hook(app, HookID_BufferNameResolver, default_buffer_name_resolution);
+ 
+ set_custom_hook(app, HookID_BeginBuffer, default_begin_buffer);
+ set_custom_hook(app, HookID_EndBuffer, end_buffer_close_jump_list);
+ set_custom_hook(app, HookID_NewFile, default_new_file);
+ set_custom_hook(app, HookID_SaveFile, default_file_save);
+ set_custom_hook(app, HookID_BufferEditRange, default_buffer_edit_range);
+ set_custom_hook(app, HookID_BufferRegion, default_buffer_region);
+ set_custom_hook(app, HookID_ViewChangeBuffer, default_view_change_buffer);
+ 
+ set_custom_hook(app, HookID_Layout, layout_unwrapped);
+ //set_custom_hook(app, HookID_Layout, layout_wrap_whitespace);
 }
 
 // BOTTOM

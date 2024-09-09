@@ -33,28 +33,21 @@ function void vim_set_file_register(App *app, Buffer_ID buffer)
 function void
 vim_view_change_buffer(App *app, View_ID view_id, Buffer_ID old_buffer_id, Buffer_ID new_buffer_id)
 {
-    vim_set_file_register(app, new_buffer_id);
-}
-
-function void
-vim_begin_buffer_inner(App *app, Buffer_ID buffer_id)
-{
-    Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
-    Vim_Prev_Visual *prev_visual = scope_attachment(app, scope, vim_buffer_prev_visual, Vim_Prev_Visual);
-    prev_visual->cursor_pos = prev_visual->mark_pos = 0;
-    
-    i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
-    block_fill_u64(marks, 26*sizeof(i64), max_u64);
-    
-    b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
-    *wrap_lines_ptr = false;
+ vim_set_file_register(app, new_buffer_id);
 }
 
 BUFFER_HOOK_SIG(vim_begin_buffer)
 {
-    fold_begin_buffer_hook(app, buffer_id);
-    vim_begin_buffer_inner(app, buffer_id);
-    return 0;
+	ProfileScope(app, "vim begin buffer");
+ 
+ Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
+ Vim_Prev_Visual *prev_visual = scope_attachment(app, scope, vim_buffer_prev_visual, Vim_Prev_Visual);
+ prev_visual->cursor_pos = prev_visual->mark_pos = 0;
+ 
+ i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
+ block_fill_u64(marks, 26*sizeof(i64), max_u64);
+ 
+ return 0;
 }
 
 function void
@@ -100,29 +93,6 @@ BUFFER_EDIT_RANGE_SIG(vim_buffer_edit_range){
 	fold_buffer_edit_range_inner(app, buffer_id, new_range, old_cursor_range);
 	// TODO(BYP): Update marks here as well
 	return 0;
-}
-
-function void
-vim_tick(App *app, Frame_Info frame_info)
-{
-	code_index_update_tick(app);
-	if(tick_all_fade_ranges(app, frame_info.animation_dt)){
-		animate_in_n_milliseconds(app, 0);
-	}
-
-	vim_animate_filebar(app, frame_info);
-	vim_animate_cursor(app, frame_info);
-#if VIM_DO_ANIMATE
-	vim_cursor_blink++;
-#endif
-
-	fold_tick(app, frame_info);
-
-	b32 enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
-	if(enable_virtual_whitespace != def_enable_virtual_whitespace){
-		def_enable_virtual_whitespace = enable_virtual_whitespace;
-		clear_all_layouts(app);
-	}
 }
 
 CUSTOM_COMMAND_SIG(vim_try_exit)

@@ -53,7 +53,6 @@ view_previous_buffer = managed_id_declare(app, string_u8_litexpr("attachment"), 
 buffer_map_id = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("buffer_map_id"));
 buffer_eol_setting = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("buffer_eol_setting"));
 buffer_lex_task = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("buffer_lex_task"));
-buffer_wrap_lines = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("buffer_wrap_lines"));
 sticky_jump_marker_handle = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("sticky_jump_marker_handle"));
 attachment_tokens = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("attachment_tokens"));
 fleury_color_syntax_crap = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("fleury_color_syntax_crap"));

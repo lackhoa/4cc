@@ -14,8 +14,8 @@
 
 typedef i1 Edit_Pos_Set_Type;
 enum{
-    EditPos_None,
-    EditPos_CursorSet,
+ EditPos_None,
+ EditPos_CursorSet,
  EditPos_ScrollSet
 };
 struct File_Edit_Positions{
@@ -38,9 +38,9 @@ struct Editing_File_Settings
 };
 
 struct Line_Layout_Key{
-    Face_ID face_id;
-    i1 face_version_number;
-    f32 width;
+ Face_ID face_id;
+ i1 face_version_number;
+ f32 width;
  i64 line_number;
 };
 

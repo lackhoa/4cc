@@ -213,31 +213,33 @@ vim_init(App *app){
 // TODO(BYP): Paste/registers and tab-completion (very unlikely with current implementation)
 // If it's a pressing feature switch to the more standard (less responsive) implementation
 function b32
-vim_handle_visual_insert_mode(App *app, Input_Event *event){
+vim_handle_visual_insert_mode(App *app, Input_Event *event)
+{
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-
+ 
 	local_persist i1 count=0;
-
+ 
 	if(event->kind == InputEventKind_KeyStroke)
-    {
-		if(event->key.code == Key_Code_Escape || event->key.code == Key_Code_Return){
+ {
+		if(event->key.code == Key_Code_Escape ||
+     event->key.code == Key_Code_Return)
+  {
 			vim_normal_mode(app);
 			history_group_end(vim_history_group);
-			if(vim_visual_insert_flags & bit_1){ toggle_line_wrap(app); }
-			if(vim_visual_insert_flags & bit_2){ toggle_virtual_whitespace(app); }
 			vim_visual_insert_flags = 0;
 			count = 0;
 			return true;
 		}
-
+  
 		if(event->key.code == Key_Code_Backspace)
-        {
+  {
 			if(count > 0){ undo(app); count--; }
 			if(has_modifier(event, Key_Code_Control))
-            {
+   {
 				b32 clearing_whitespace = true;
-				while(count > 0){
+				while(count > 0)
+    {
 					Range_i64 range = get_view_range(app, view);
 					i64 line_min = get_line_number_from_pos(app, buffer, range.min);
 					Rect_f32 block_rect = vim_get_rel_block_rect(app, view, buffer, range, line_min);
@@ -256,14 +258,15 @@ vim_handle_visual_insert_mode(App *app, Input_Event *event){
 			}
 			return true;
 		}
-
+  
 		// NOTE(BYP): Bit of a hack because I reflexively Ctl-S but don't want those inserted
 		b32 result = has_modifier(event, Key_Code_Control);
 		event->kind = InputEventKind_None;
 		return result;
 	}
-
-	if(event->kind == InputEventKind_TextInsert){
+ 
+	if(event->kind == InputEventKind_TextInsert)
+ {
 		vim_visual_insert_char(app, view, buffer, event->text.string.str[0]);
 		count++;
 		return true;

@@ -476,7 +476,7 @@ map_get_triggers_recursive(Arena *arena, Mapping *mapping, Command_Map *map, Com
         node = next)
    {
     next = node->next;
-    Command_Trigger *nnode = push_array_write(arena, Command_Trigger, 1, node);
+    Command_Trigger *nnode = push_array_copy(arena, Command_Trigger, 1, node);
     sll_queue_push(result.first, result.last, nnode);
    }
    

@@ -65,14 +65,20 @@ win32_memory_allocate_extended(void *base, u64 size, String location)
 }
 
 function void
-win32_memory_free_extended(void *ptr){
- Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)ptr;
- node -= 1;
- EnterCriticalSection(&memory_tracker_mutex);
- zdll_remove(memory_tracker.first, memory_tracker.last, node);
- memory_tracker.count -= 1;
- LeaveCriticalSection(&memory_tracker_mutex);
+win32_memory_free_extended(void *ptr)
+{
+ auto node = (Memory_Annotation_Tracker_Node*)ptr - 1;
+ {
+  EnterCriticalSection(&memory_tracker_mutex);
+  zdll_remove(memory_tracker.first, memory_tracker.last, node);
+  memory_tracker.count -= 1;
+  LeaveCriticalSection(&memory_tracker_mutex);
+ }
+#if ASAN_ON
+ free(node);
+#else
  VirtualFree(node, 0, MEM_RELEASE);
+#endif
 }
 
 function

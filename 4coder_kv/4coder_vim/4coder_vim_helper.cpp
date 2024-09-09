@@ -230,11 +230,11 @@ Vim_Motion_Block::~Vim_Motion_Block()
     if(vim_state.params.selected_reg)
     {
         vim_state.params.selected_reg->flags &= (~REGISTER_Append);
-    }
-    vim_default_register();
-
-    vim_state.sub_mode = SUB_None;
-    if (vim_state.mode == VIM_Visual) { vim_state.params.edit_type = prev_edit; }
+ }
+ vim_default_register();
+ 
+ vim_state.sub_mode = SUB_None;
+ if (vim_state.mode == VIM_Visual) { vim_state.params.edit_type = prev_edit; }
 }
 
 function void
@@ -247,15 +247,6 @@ vim_visual_insert_inner(App *app, View_ID view, Buffer_ID buffer){
 	
 	// NOTE: For Visual Block multi-line responsiveness, temporarily turn off virtual whitespace and line wrapping
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer);
-	b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
-	if(wrap_lines_ptr && *wrap_lines_ptr){
-		toggle_line_wrap(app);
-		vim_visual_insert_flags |= bit_1;
-	}
-	if(def_enable_virtual_whitespace){
-		toggle_virtual_whitespace(app);
-		vim_visual_insert_flags |= bit_2;
-	}
 	
 	//vim_enter_insert_mode(app);
 	vim_state.mode = VIM_Visual_Insert;

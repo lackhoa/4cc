@@ -91,7 +91,7 @@ make_colors(Arena *arena, ARGB_Color *colors, i1 count)
 {
     Color_Array result = {};
     result.count = count;
-    result.vals = push_array_write(arena, ARGB_Color, count, colors);
+    result.vals = push_array_copy(arena, ARGB_Color, count, colors);
     return(result);
 }
 

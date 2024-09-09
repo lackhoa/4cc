@@ -337,7 +337,7 @@ function String8
 push_string(Arena *arena, String8 data)
 {
  String8 result = {
-  .str = push_array_write(arena, u8, data.size, data.str),
+  .str = push_array_copy(arena, u8, data.size, data.str),
   .len = data.len,
  };
  return(result);

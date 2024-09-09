@@ -2273,6 +2273,7 @@ struct Base_Allocator
 };
 
 // NOTE(kv): Cursors are static arenas
+// TODO(kv): We really should just bake them into arenas
 struct Memory_Cursor
 {
  Memory_Cursor *next;
@@ -2280,37 +2281,17 @@ struct Memory_Cursor
  u64 used_;
  u64 cap;
 };
-struct Temp_Memory_Cursor
-{
- Memory_Cursor *cursor;
- u64 used;
-};
 struct Arena
 {
  Base_Allocator *base_allocator;
  Memory_Cursor  *cursor;
  u64 chunk_size;
 };
-struct Temp_Memory_Arena
+struct Temp_Memory
 {
  Arena *arena;
  Memory_Cursor *cursor;
  u64 used;
-};
-typedef i32 Linear_Allocator_Kind;
-enum
-{
- LinearAllocatorKind_Cursor=1,
- LinearAllocatorKind_Arena =2,
-};
-struct Temp_Memory
-{
- Linear_Allocator_Kind kind;
- union
- {
-  Temp_Memory_Cursor temp_memory_cursor;
-  Temp_Memory_Arena  temp_memory_arena;
- };
 };
 
 ////////////////////////////////
@@ -3330,47 +3311,17 @@ range_size(Range_f32 a){
  return(size);
 }
 
-function i32
-range_size_inclusive(Range_i32 a){
-    i32 size = a.max - a.min + 1;
-    size = clamp_min(0, size);
-    return(size);
-}
-function i64
-range_size_inclusive(Range_i64 a){
-    i64 size = a.max - a.min + 1;
-    size = clamp_min(0, size);
-    return(size);
-}
-function u64
-range_size_inclusive(Range_u64 a){
-    u64 size = a.max - a.min + 1;
-    size = clamp_min(0, size);
-    return(size);
-}
-function f32
-range_size_inclusive(Range_f32 a){
-    f32 size = a.max - a.min + 1;
-    size = clamp_min(0, size);
-    return(size);
-}
+#define BODY  return(clamp_min(0, a.max - a.min + 1));
+function i32 range_size_inclusive(Range_i32 a) { BODY }
+function i64 range_size_inclusive(Range_i64 a) { BODY }
+function u64 range_size_inclusive(Range_u64 a) { BODY }
+function f32 range_size_inclusive(Range_f32 a) { BODY }
+#undef BODY
 
-function Range_i32
-rectify(Range_i32 a){
-    return(Ii32(a.min, a.max));
-}
-function Range_i64
-rectify(Range_i64 a){
-    return(Ii64(a.min, a.max));
-}
-function Range_u64
-rectify(Range_u64 a){
-    return(Iu64(a.min, a.max));
-}
-function Range_f32
-rectify(Range_f32 a){
-    return(If32(a.min, a.max));
-}
+function Range_i32 rectify(Range_i32 a){ return(Ii32(a.min, a.max)); }
+function Range_i64 rectify(Range_i64 a){ return(Ii64(a.min, a.max)); }
+function Range_u64 rectify(Range_u64 a){ return(Iu64(a.min, a.max)); }
+function Range_f32 rectify(Range_f32 a){ return(If32(a.min, a.max)); }
 
 function Range_i32
 range_clamp_size(Range_i32 a, i32 max_size){
@@ -3715,11 +3666,6 @@ cursor_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2)
  }
  return(result);
 }
-function String
-linalloc_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2=3)
-{
- return cursor_push(cursor, size, location, align_pow2);
-}
 function void
 cursor_pop(Memory_Cursor *cursor, u64 size)
 {
@@ -3727,28 +3673,12 @@ cursor_pop(Memory_Cursor *cursor, u64 size)
  cursor->used_ -= size;
  ASAN_POISON_MEMORY_REGION(cursor->base+cursor->used_, size);
 }
-function void
-linalloc_pop(Memory_Cursor *cursor, u64 size)
-{
- return cursor_pop(cursor, size);
-}
 inline void
 cursor_pop_to(Memory_Cursor *cursor, umm used)
 {
  cursor_pop(cursor, cursor->used_-used);
 }
 
-function Temp_Memory_Cursor
-temp_cursor_begin(Memory_Cursor *cursor)
-{
- Temp_Memory_Cursor temp = {cursor, cursor->used_};
- return(temp);
-}
-function void
-temp_cursor_end(Temp_Memory_Cursor temp)
-{
- cursor_pop_to(temp.cursor, temp.used);
-}
 function Arena
 make_arena(Base_Allocator *allocator, u64 chunk_size=KB(64))
 {
@@ -3797,12 +3727,6 @@ arena_push(Arena *arena, usize size, String location, u32 align_pow2)
  return(result);
 }
 //
-function String
-linalloc_push(Arena *arena, usize size, String location, u32 align_pow2=3)
-{
- return arena_push(arena, size, location, align_pow2);
-}
-//
 function void
 arena_pop(Arena *arena, u64 size)
 {
@@ -3815,17 +3739,11 @@ arena_pop(Arena *arena, u64 size)
  }
 }
 //
-function void
-linalloc_pop(Arena *arena, u64 size)
-{
- arena_pop(arena, size);
-}
-//
-function Temp_Memory_Arena
-temp_arena_begin(Arena *arena)
+function Temp_Memory
+begin_temp(Arena *arena)
 {
  Memory_Cursor *cursor = arena->cursor;
- Temp_Memory_Arena temp = {
+ Temp_Memory temp = {
   .arena  = arena,
   .cursor = cursor,
   .used   = (cursor == 0 ? 0 : cursor->used_),
@@ -3833,7 +3751,7 @@ temp_arena_begin(Arena *arena)
  return(temp);
 }
 function void
-temp_arena_end(Temp_Memory_Arena temp)
+end_temp(Temp_Memory temp)
 {
  Arena *arena = temp.arena;
  Base_Allocator *allocator = arena->base_allocator;
@@ -3864,8 +3782,8 @@ temp_arena_end(Temp_Memory_Arena temp)
 function void
 arena_clear(Arena *arena)
 {
- Temp_Memory_Arena temp = {arena, 0, 0};
- temp_arena_end(temp);
+ Temp_Memory temp = {arena, 0, 0};
+ end_temp(temp);
 }
 
 //-
@@ -3881,50 +3799,13 @@ linalloc_wrap_write(String8 data, u64 size, void *src)
  block_copy(data.str, src, clamp_max(data.size, size));
  return(data.str);
 }
-#define push_size(a,s,...)        (u8 *)linalloc_wrap(linalloc_push(a, s, filename_linum), __VA_ARGS__)
+#define push_size(a,s,...)        (u8 *)linalloc_wrap(arena_push(a, s, filename_linum, 3), __VA_ARGS__)
+#define push_struct(a,T,...)      (T*)push_size(a,sizeof(T),__VA_ARGS__)
 #define push_array(a,T,c,...)     (T*)push_size(a, sizeof(T)*(c), __VA_ARGS__)
 #define push_array_zero(a,T,c)    push_array(a,T,c,true)
-#define push_struct(a,T,...)      (T*)push_size(a,sizeof(T),__VA_ARGS__)
-#define push_array_write(a,T,c,s) ((T*)linalloc_wrap_write(linalloc_push(a, sizeof(T)*(c), filename_linum), sizeof(T)*(c), (s)))
-//#define push_array_cursor(a,T,c)  ((T*)linalloc_wrap(linalloc_push(a, sizeof(T)*(c), filename_linum)))
-#define push_align_zero(a,b)      (linalloc_wrap(linalloc_align((a), (b)), true))
-#define pop_array(a,T,c)          (linalloc_pop((a), sizeof(T)*(c)))
-#define push_value(var,a,val)     var = push_struct(a, mytypeof(*var)); *var = val;
+#define push_array_copy(a,T,c,s)  ((T*)linalloc_wrap_write(arena_push(a, sizeof(T)*(c), filename_linum, 3), sizeof(T)*(c), (s)))
+#define pop_array(a,T,c)          (arena_pop((a), sizeof(T)*(c)))
 //-
-
-function Temp_Memory
-begin_temp(Memory_Cursor *cursor)
-{
- Temp_Memory temp = {};
- temp.kind=LinearAllocatorKind_Cursor;
- temp.temp_memory_cursor = temp_cursor_begin(cursor);
- return(temp);
-}
-
-function Temp_Memory
-begin_temp(Arena *arena)
-{
- Temp_Memory temp = {};
- temp.kind=LinearAllocatorKind_Arena;
- temp.temp_memory_arena = temp_arena_begin(arena);
- return(temp);
-}
-
-function void
-end_temp(Temp_Memory temp)
-{
- switch (temp.kind)
- {
-  case LinearAllocatorKind_Cursor:
-  {
-   temp_cursor_end(temp.temp_memory_cursor);
-  }break;
-  case LinearAllocatorKind_Arena:
-  {
-   temp_arena_end(temp.temp_memory_arena);
-  }break;
- }
-}
 
 //-
 struct Temp_Memory_Block{
@@ -4902,7 +4783,7 @@ Scratch_Block::restore(void){
 
 /*function Base_Allocator *
 make_arena_base_allocator(Arena *arena)
-{// NOTE: So you put the allocator on the arena... whatevs man!
+{// NOTE: So you put the allocator on the arena...
  auto allocator = push_struct(arena, Base_Allocator);
  *allocator = {
   .type  = Allocator_Arena,

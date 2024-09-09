@@ -2,7 +2,7 @@
 #define command_id(c) (fcoder_metacmd_ID_##c)
 #define command_metadata(c) (&fcoder_metacmd_table[command_id(c)])
 #define command_metadata_by_id(id) (&fcoder_metacmd_table[id])
-#define command_one_past_last_id 233
+#define command_one_past_last_id 231
 #if defined(CUSTOM_COMMAND_SIG)
 #define PROC_LINKS(x,y) x
 #else
@@ -214,11 +214,9 @@ CUSTOM_COMMAND_SIG(toggle_fullscreen);
 CUSTOM_COMMAND_SIG(toggle_highlight_enclosing_scopes);
 CUSTOM_COMMAND_SIG(toggle_highlight_line_at_cursor);
 CUSTOM_COMMAND_SIG(toggle_line_numbers);
-CUSTOM_COMMAND_SIG(toggle_line_wrap);
 CUSTOM_COMMAND_SIG(toggle_mouse);
 CUSTOM_COMMAND_SIG(toggle_paren_matching_helper);
 CUSTOM_COMMAND_SIG(toggle_show_whitespace);
-CUSTOM_COMMAND_SIG(toggle_virtual_whitespace);
 CUSTOM_COMMAND_SIG(uncomment_line);
 CUSTOM_COMMAND_SIG(undo_all_buffers);
 CUSTOM_COMMAND_SIG(view_jump_list_with_lister);
@@ -254,7 +252,7 @@ char *source_name;
 i1 source_name_len;
 i1 line_number;
 };
-static Command_Metadata fcoder_metacmd_table[233] = {
+static Command_Metadata fcoder_metacmd_table[231] = {
 { PROC_LINKS(DEBUG_draw_hud_toggle, 0), false, "DEBUG_draw_hud_toggle", 21, "toggle debug hud", 16, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_debug.cpp", 53, 47 },
 { PROC_LINKS(allow_mouse, 0), false, "allow_mouse", 11, "Shows the mouse and causes all mouse input to be processed normally.", 68, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 526 },
 { PROC_LINKS(are_we_in_debug_build, 0), false, "are_we_in_debug_build", 21, "", 0, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 1225 },
@@ -282,17 +280,17 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(default_view_input_handler, 0), false, "default_view_input_handler", 26, "Input consumption loop for default view behavior", 48, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_hooks.cpp", 55, 82 },
 { PROC_LINKS(delete_char, 0), false, "delete_char", 11, "Deletes the character to the right of the cursor.", 49, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 81 },
 { PROC_LINKS(delete_current_scope, 0), false, "delete_current_scope", 20, "Deletes the braces surrounding the currently selected scope.  Leaves the contents within the scope.", 99, "C:\\Users\\vodan\\4ed/code/custom/4coder_scope_commands.cpp", 56, 112 },
-{ PROC_LINKS(delete_file_query, 0), false, "delete_file_query", 17, "Deletes the file of the current buffer if 4coder has the appropriate access rights. Will ask the user for confirmation first.", 125, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1247 },
-{ PROC_LINKS(delete_line, 0), false, "delete_line", 11, "Delete the line the on which the cursor sits.", 45, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1419 },
+{ PROC_LINKS(delete_file_query, 0), false, "delete_file_query", 17, "Deletes the file of the current buffer if 4coder has the appropriate access rights. Will ask the user for confirmation first.", 125, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1234 },
+{ PROC_LINKS(delete_line, 0), false, "delete_line", 11, "Delete the line the on which the cursor sits.", 45, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1406 },
 { PROC_LINKS(dir, 0), false, "dir", 3, "kv copy dir name", 16, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 871 },
 { PROC_LINKS(display_key_codes, 0), false, "display_key_codes", 17, "Example of input handling loop", 30, "C:\\Users\\vodan\\4ed/code/custom/4coder_examples.cpp", 50, 90 },
 { PROC_LINKS(display_text_input, 0), false, "display_text_input", 18, "Example of to_writable and leave_current_input_unhandled", 56, "C:\\Users\\vodan\\4ed/code/custom/4coder_examples.cpp", 50, 137 },
 { PROC_LINKS(double_backspace, 0), false, "double_backspace", 16, "Example of history group helpers", 32, "C:\\Users\\vodan\\4ed/code/custom/4coder_examples.cpp", 50, 10 },
 { PROC_LINKS(dump_history_to_file, 0), false, "dump_history_to_file", 20, "a utility to combat file corruption", 35, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 1352 },
-{ PROC_LINKS(duplicate_line, 0), false, "duplicate_line", 14, "Create a copy of the line on which the cursor sits.", 51, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1405 },
+{ PROC_LINKS(duplicate_line, 0), false, "duplicate_line", 14, "Create a copy of the line on which the cursor sits.", 51, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1392 },
 { PROC_LINKS(execute_any_cli, 0), false, "execute_any_cli", 15, "Queries for an output buffer name and system command, runs the system command as a CLI and prints the output to the specified buffer.", 133, "C:\\Users\\vodan\\4ed/code/custom/4coder_cli_command.cpp", 53, 22 },
 { PROC_LINKS(execute_previous_cli, 0), false, "execute_previous_cli", 20, "If the command execute_any_cli has already been used, this will execute a CLI reusing the most recent buffer name and command.", 126, "C:\\Users\\vodan\\4ed/code/custom/4coder_cli_command.cpp", 53, 7 },
-{ PROC_LINKS(exit_4coder, 0), false, "exit_4coder", 11, "Attempts to close 4coder.", 25, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 694 },
+{ PROC_LINKS(exit_4coder, 0), false, "exit_4coder", 11, "Attempts to close 4coder.", 25, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 681 },
 { PROC_LINKS(file, 0), false, "file", 4, "kv copy file name", 17, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 865 },
 { PROC_LINKS(fold_clear, 0), false, "fold_clear", 10, "Clears all folds in buffer", 26, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_folds.hpp", 61, 132 },
 { PROC_LINKS(fold_pop_cursor, 0), false, "fold_pop_cursor", 15, "Pops fold at cursor", 19, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_folds.hpp", 61, 145 },
@@ -305,7 +303,7 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(goto_end_of_file, 0), false, "goto_end_of_file", 16, "Sets the cursor to the end of the file.", 39, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2372 },
 { PROC_LINKS(goto_first_jump, 0), false, "goto_first_jump", 15, "If a buffer containing jump locations has been locked in, goes to the first jump in the buffer.", 95, "C:\\Users\\vodan\\4ed/code/custom/4coder_jump_sticky.cpp", 53, 577 },
 { PROC_LINKS(goto_first_jump_same_panel_sticky, 0), false, "goto_first_jump_same_panel_sticky", 33, "If a buffer containing jump locations has been locked in, goes to the first jump in the buffer and views the buffer in the panel where the jump list was.", 153, "C:\\Users\\vodan\\4ed/code/custom/4coder_jump_sticky.cpp", 53, 594 },
-{ PROC_LINKS(goto_line, 0), false, "goto_line", 9, "Queries the user for a number, and jumps the cursor to the corresponding line.", 78, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 702 },
+{ PROC_LINKS(goto_line, 0), false, "goto_line", 9, "Queries the user for a number, and jumps the cursor to the corresponding line.", 78, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 689 },
 { PROC_LINKS(goto_next_jump_no_skips, 0), false, "goto_next_jump_no_skips", 23, "If a buffer containing jump locations has been locked in, goes to the next jump in the buffer, and does not skip sub jump locations.", 132, "C:\\Users\\vodan\\4ed/code/custom/4coder_jump_sticky.cpp", 53, 546 },
 { PROC_LINKS(goto_prev_jump_no_skips, 0), false, "goto_prev_jump_no_skips", 23, "If a buffer containing jump locations has been locked in, goes to the previous jump in the buffer, and does not skip sub jump locations.", 136, "C:\\Users\\vodan\\4ed/code/custom/4coder_jump_sticky.cpp", 53, 563 },
 { PROC_LINKS(hide_filebar, 0), false, "hide_filebar", 12, "Sets the current view to hide it's filebar.", 43, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 552 },
@@ -318,11 +316,11 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(interactive_open, 0), true, "interactive_open", 16, "Interactively opens a file.", 27, "C:\\Users\\vodan\\4ed/code/custom/4coder_lists.cpp", 47, 728 },
 { PROC_LINKS(interactive_open_or_new, 0), true, "interactive_open_or_new", 23, "Interactively open a file out of the file system.", 49, "C:\\Users\\vodan\\4ed/code/custom/4coder_lists.cpp", 47, 625 },
 { PROC_LINKS(interactive_switch_buffer, 0), true, "interactive_switch_buffer", 25, "Interactively switch to an open buffer.", 39, "C:\\Users\\vodan\\4ed/code/custom/4coder_lists.cpp", 47, 524 },
-{ PROC_LINKS(jump_to_last_point, 0), false, "jump_to_last_point", 18, "Read from the top of the point stack and jump there; if already there pop the top and go to the next option", 107, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1199 },
+{ PROC_LINKS(jump_to_last_point, 0), false, "jump_to_last_point", 18, "Read from the top of the point stack and jump there; if already there pop the top and go to the next option", 107, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1186 },
 { PROC_LINKS(keyboard_macro_finish_recording, 0), false, "keyboard_macro_finish_recording", 31, "Stop macro recording, do nothing if macro recording is not already started", 74, "C:\\Users\\vodan\\4ed/code/custom/4coder_keyboard_macro.cpp", 56, 54 },
 { PROC_LINKS(keyboard_macro_replay, 0), false, "keyboard_macro_replay", 21, "Replay the most recently recorded keyboard macro", 48, "C:\\Users\\vodan\\4ed/code/custom/4coder_keyboard_macro.cpp", 56, 77 },
 { PROC_LINKS(keyboard_macro_start_recording, 0), false, "keyboard_macro_start_recording", 30, "Start macro recording, do nothing if macro recording is already started", 71, "C:\\Users\\vodan\\4ed/code/custom/4coder_keyboard_macro.cpp", 56, 41 },
-{ PROC_LINKS(kill_buffer, 0), false, "kill_buffer", 11, "Kills the current buffer.", 25, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1606 },
+{ PROC_LINKS(kill_buffer, 0), false, "kill_buffer", 11, "Kills the current buffer.", 25, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1593 },
 { PROC_LINKS(kv_miscellaneous_debug_command, 0), false, "kv_miscellaneous_debug_command", 30, "just a placeholder command so I can test stuff", 46, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 994 },
 { PROC_LINKS(kv_open_note_file, 0), false, "kv_open_note_file", 17, "switch to my note file", 22, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 853 },
 { PROC_LINKS(kv_profile_disable_and_inspect, 0), false, "kv_profile_disable_and_inspect", 30, "disable and inspect profile", 27, "C:\\Users\\vodan\\4ed/code/custom/4coder_profile_commands.cpp", 58, 24 },
@@ -342,7 +340,7 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(load_theme_current_buffer, 0), false, "load_theme_current_buffer", 25, "Parse the current buffer as a theme file and add the theme to the theme list. If the buffer has a .4coder postfix in it's name, it is removed when the name is saved.", 165, "C:\\Users\\vodan\\4ed/code/custom/4coder_config.cpp", 48, 1684 },
 { PROC_LINKS(load_themes_default_folder, 0), false, "load_themes_default_folder", 26, "Loads all the theme files in the default theme folder.", 54, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 580 },
 { PROC_LINKS(load_themes_hot_directory, 0), false, "load_themes_hot_directory", 25, "Loads all the theme files in the current hot directory.", 55, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 599 },
-{ PROC_LINKS(make_directory_query, 0), false, "make_directory_query", 20, "Queries the user for a name and creates a new directory with the given name.", 76, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1359 },
+{ PROC_LINKS(make_directory_query, 0), false, "make_directory_query", 20, "Queries the user for a name and creates a new directory with the given name.", 76, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1346 },
 { PROC_LINKS(messages, 0), false, "messages", 8, "switch to messages buffer", 25, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 1097 },
 { PROC_LINKS(miblo_decrement_basic, 0), false, "miblo_decrement_basic", 21, "Decrement an integer under the cursor by one.", 45, "C:\\Users\\vodan\\4ed/code/custom/4coder_miblo_numbers.cpp", 55, 44 },
 { PROC_LINKS(miblo_decrement_time_stamp, 0), false, "miblo_decrement_time_stamp", 26, "Decrement a time stamp under the cursor by one second. (format [m]m:ss or h:mm:ss", 81, "C:\\Users\\vodan\\4ed/code/custom/4coder_miblo_numbers.cpp", 55, 237 },
@@ -359,8 +357,8 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(move_down_to_blank_line_end, 0), false, "move_down_to_blank_line_end", 27, "Seeks the cursor down to the next blank line and places it at the end of the line.", 82, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 396 },
 { PROC_LINKS(move_down_to_blank_line_skip_whitespace, 0), false, "move_down_to_blank_line_skip_whitespace", 39, "Seeks the cursor down to the next blank line and places it at the end of the line.", 82, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 384 },
 { PROC_LINKS(move_left, 0), false, "move_left", 9, "Moves the cursor one character to the left.", 43, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 402 },
-{ PROC_LINKS(move_line_down, 0), false, "move_line_down", 14, "Swaps the line under the cursor with the line below it, and moves the cursor down with it.", 90, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1399 },
-{ PROC_LINKS(move_line_up, 0), false, "move_line_up", 12, "Swaps the line under the cursor with the line above it, and moves the cursor up with it.", 88, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1393 },
+{ PROC_LINKS(move_line_down, 0), false, "move_line_down", 14, "Swaps the line under the cursor with the line below it, and moves the cursor down with it.", 90, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1386 },
+{ PROC_LINKS(move_line_up, 0), false, "move_line_up", 12, "Swaps the line under the cursor with the line above it, and moves the cursor up with it.", 88, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1380 },
 { PROC_LINKS(move_right, 0), false, "move_right", 10, "Moves the cursor one character to the right.", 44, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 410 },
 { PROC_LINKS(move_up, 0), false, "move_up", 7, "Moves the cursor up one line.", 29, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 295 },
 { PROC_LINKS(move_up_10, 0), false, "move_up_10", 10, "Moves the cursor up ten lines.", 30, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 307 },
@@ -373,12 +371,12 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(no_op, 0), false, "no_op", 5, "no op for binding keybinds to resolve without side effect", 57, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_helper.cpp", 66, 5 },
 { PROC_LINKS(open_all_code, 0), false, "open_all_code", 13, "Open all code in the current directory. File types are determined by extensions. An extension is considered code based on the extensions specified in 4coder.config.", 164, "C:\\Users\\vodan\\4ed/code/custom/4coder_project_commands.cpp", 58, 553 },
 { PROC_LINKS(open_all_code_recursive, 0), false, "open_all_code_recursive", 23, "Works as open_all_code but also runs in all subdirectories.", 59, "C:\\Users\\vodan\\4ed/code/custom/4coder_project_commands.cpp", 58, 562 },
-{ PROC_LINKS(open_file_in_quotes, 0), false, "open_file_in_quotes", 19, "Reads a filename from surrounding '\"' characters and attempts to open the corresponding file.", 94, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1440 },
+{ PROC_LINKS(open_file_in_quotes, 0), false, "open_file_in_quotes", 19, "Reads a filename from surrounding '\"' characters and attempts to open the corresponding file.", 94, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1427 },
 { PROC_LINKS(open_long_braces, 0), false, "open_long_braces", 16, "At the cursor, insert a '{' and '}' separated by a blank line.", 62, "C:\\Users\\vodan\\4ed/code/custom/4coder_combined_write_commands.cpp", 65, 46 },
 { PROC_LINKS(open_long_braces_break, 0), false, "open_long_braces_break", 22, "At the cursor, insert a '{' and '}break;' separated by a blank line.", 68, "C:\\Users\\vodan\\4ed/code/custom/4coder_combined_write_commands.cpp", 65, 62 },
 { PROC_LINKS(open_long_braces_semicolon, 0), false, "open_long_braces_semicolon", 26, "At the cursor, insert a '{' and '};' separated by a blank line.", 63, "C:\\Users\\vodan\\4ed/code/custom/4coder_combined_write_commands.cpp", 65, 54 },
-{ PROC_LINKS(open_matching_file_cpp, 0), false, "open_matching_file_cpp", 22, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file.", 92, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1527 },
-{ PROC_LINKS(open_matching_file_cpp_other_panel, 0), false, "open_matching_file_cpp_other_panel", 34, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.", 110, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1539 },
+{ PROC_LINKS(open_matching_file_cpp, 0), false, "open_matching_file_cpp", 22, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file.", 92, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1514 },
+{ PROC_LINKS(open_matching_file_cpp_other_panel, 0), false, "open_matching_file_cpp_other_panel", 34, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.", 110, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1526 },
 { PROC_LINKS(page_down, 0), false, "page_down", 9, "Scrolls the view down one view height and moves the cursor down one view height.", 80, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 337 },
 { PROC_LINKS(page_up, 0), false, "page_up", 7, "Scrolls the view up one view height and moves the cursor up one view height.", 76, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 329 },
 { PROC_LINKS(paste, 0), false, "paste", 5, "At the cursor, insert the text at the top of the clipboard.", 59, "C:\\Users\\vodan\\4ed/code/custom/4coder_clipboard.cpp", 51, 69 },
@@ -408,25 +406,25 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(project_fkey_command, 0), false, "project_fkey_command", 20, "Run an 'fkey command' configured in a project.4coder file.  Determines the index of the 'fkey command' by which function key or numeric key was pressed to trigger the command.", 175, "C:\\Users\\vodan\\4ed/code/custom/4coder_project_commands.cpp", 58, 742 },
 { PROC_LINKS(project_go_to_root_directory, 0), false, "project_go_to_root_directory", 28, "Changes 4coder's hot directory to the root directory of the currently loaded project. With no loaded project nothing hapepns.", 125, "C:\\Users\\vodan\\4ed/code/custom/4coder_project_commands.cpp", 58, 768 },
 { PROC_LINKS(project_reprint, 0), false, "project_reprint", 15, "Prints the current project to the file it was loaded from; prints in the most recent project file version", 105, "C:\\Users\\vodan\\4ed/code/custom/4coder_project_commands.cpp", 58, 789 },
-{ PROC_LINKS(query_replace, 0), false, "query_replace", 13, "Queries the user for two strings, and incrementally replaces every occurence of the first string with the second string.", 120, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1145 },
-{ PROC_LINKS(query_replace_identifier, 0), false, "query_replace_identifier", 24, "Queries the user for a string, and incrementally replace every occurence of the word or token found at the cursor with the specified string.", 140, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1166 },
-{ PROC_LINKS(query_replace_selection, 0), false, "query_replace_selection", 23, "Queries the user for a string, and incrementally replace every occurence of the string found in the selected range with the specified string.", 141, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1182 },
-{ PROC_LINKS(quick_swap_buffer, 0), false, "quick_swap_buffer", 17, "Change to the most recently used buffer in this view - or to the top of the buffer stack if the most recent doesn't exist anymore", 129, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1586 },
-{ PROC_LINKS(redo_all_buffers, 0), false, "redo_all_buffers", 16, "Advances forward through the undo history in the buffer containing the most recent regular edit.", 96, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1871 },
+{ PROC_LINKS(query_replace, 0), false, "query_replace", 13, "Queries the user for two strings, and incrementally replaces every occurence of the first string with the second string.", 120, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1132 },
+{ PROC_LINKS(query_replace_identifier, 0), false, "query_replace_identifier", 24, "Queries the user for a string, and incrementally replace every occurence of the word or token found at the cursor with the specified string.", 140, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1153 },
+{ PROC_LINKS(query_replace_selection, 0), false, "query_replace_selection", 23, "Queries the user for a string, and incrementally replace every occurence of the string found in the selected range with the specified string.", 141, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1169 },
+{ PROC_LINKS(quick_swap_buffer, 0), false, "quick_swap_buffer", 17, "Change to the most recently used buffer in this view - or to the top of the buffer stack if the most recent doesn't exist anymore", 129, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1573 },
+{ PROC_LINKS(redo_all_buffers, 0), false, "redo_all_buffers", 16, "Advances forward through the undo history in the buffer containing the most recent regular edit.", 96, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1858 },
 { PROC_LINKS(reg, 0), false, "reg", 3, "Vim: Display registers", 22, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_commands.cpp", 68, 76 },
-{ PROC_LINKS(rename_file_query, 0), false, "rename_file_query", 17, "Queries the user for a new name and renames the file of the current buffer, altering the buffer's name too.", 107, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1324 },
-{ PROC_LINKS(reopen, 0), false, "reopen", 6, "Reopen the current buffer from the hard drive.", 46, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1625 },
+{ PROC_LINKS(rename_file_query, 0), false, "rename_file_query", 17, "Queries the user for a new name and renames the file of the current buffer, altering the buffer's name too.", 107, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1311 },
+{ PROC_LINKS(reopen, 0), false, "reopen", 6, "Reopen the current buffer from the hard drive.", 46, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1612 },
 { PROC_LINKS(replace_in_all_buffers, 0), false, "replace_in_all_buffers", 22, "Replace (in all editable buffers)", 33, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 1275 },
-{ PROC_LINKS(replace_in_buffer, 0), false, "replace_in_buffer", 17, "Replace (current buffer only)", 29, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1063 },
-{ PROC_LINKS(replace_in_range, 0), false, "replace_in_range", 16, "Queries the user for a needle and string. Replaces all occurences of needle with string in the range between cursor and the mark in the active buffer.", 150, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1054 },
-{ PROC_LINKS(reverse_search, 0), false, "reverse_search", 14, "Begins an incremental search up through the current buffer for a user specified string.", 87, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 988 },
-{ PROC_LINKS(reverse_search_identifier, 0), false, "reverse_search_identifier", 25, "Begins an incremental search up through the current buffer for the word or token under the cursor.", 98, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1000 },
+{ PROC_LINKS(replace_in_buffer, 0), false, "replace_in_buffer", 17, "Replace (current buffer only)", 29, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1050 },
+{ PROC_LINKS(replace_in_range, 0), false, "replace_in_range", 16, "Queries the user for a needle and string. Replaces all occurences of needle with string in the range between cursor and the mark in the active buffer.", 150, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1041 },
+{ PROC_LINKS(reverse_search, 0), false, "reverse_search", 14, "Begins an incremental search up through the current buffer for a user specified string.", 87, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 975 },
+{ PROC_LINKS(reverse_search_identifier, 0), false, "reverse_search_identifier", 25, "Begins an incremental search up through the current buffer for the word or token under the cursor.", 98, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 987 },
 { PROC_LINKS(right_adjust_view, 0), false, "right_adjust_view", 17, "Sets the right size of the view near the x position of the cursor.", 66, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_commands.cpp", 68, 57 },
 { PROC_LINKS(save_all_dirty_buffers, 0), false, "save_all_dirty_buffers", 22, "Saves all buffers marked dirty (showing the '*' indicator).", 59, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 499 },
-{ PROC_LINKS(save_to_query, 0), false, "save_to_query", 13, "Queries the user for a file name and saves the contents of the current buffer, altering the buffer's name too.", 110, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1291 },
+{ PROC_LINKS(save_to_query, 0), false, "save_to_query", 13, "Queries the user for a file name and saves the contents of the current buffer, altering the buffer's name too.", 110, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1278 },
 { PROC_LINKS(scratch, 0), false, "scratch", 7, "switch to scratch buffer", 24, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 1091 },
-{ PROC_LINKS(search, 0), false, "search", 6, "Begins an incremental search down through the current buffer for a user specified string.", 89, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 982 },
-{ PROC_LINKS(search_identifier, 0), false, "search_identifier", 17, "Begins an incremental search down through the current buffer for the word or token under the cursor.", 100, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 994 },
+{ PROC_LINKS(search, 0), false, "search", 6, "Begins an incremental search down through the current buffer for a user specified string.", 89, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 969 },
+{ PROC_LINKS(search_identifier, 0), false, "search_identifier", 17, "Begins an incremental search down through the current buffer for the word or token under the cursor.", 100, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 981 },
 { PROC_LINKS(seek_beginning_of_textual_line, 0), false, "seek_beginning_of_textual_line", 30, "Seeks the cursor to the beginning of the line across all text.", 62, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2340 },
 { PROC_LINKS(seek_end_of_textual_line, 0), false, "seek_end_of_textual_line", 24, "Seeks the cursor to the end of the line across all text.", 56, "C:\\Users\\vodan\\4ed/code/custom/4coder_helper.cpp", 48, 2346 },
 { PROC_LINKS(select_all, 0), false, "select_all", 10, "Puts the cursor at the top of the file, and the mark at the bottom of the file.", 79, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 420 },
@@ -451,7 +449,7 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(show_the_log_graph, 0), true, "show_the_log_graph", 18, "Parses *log* and displays the 'log graph' UI", 44, "C:\\Users\\vodan\\4ed/code/custom/4coder_log_parser.cpp", 52, 992 },
 { PROC_LINKS(snippet_lister, 0), true, "snippet_lister", 14, "Opens a snippet lister for inserting whole pre-written snippets of text.", 72, "C:\\Users\\vodan\\4ed/code/custom/4coder_combined_write_commands.cpp", 65, 237 },
 { PROC_LINKS(suppress_mouse, 0), false, "suppress_mouse", 14, "Hides the mouse and causes all mosue input (clicks, position, wheel) to be ignored.", 83, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 520 },
-{ PROC_LINKS(swap_panels, 0), false, "swap_panels", 11, "Swaps the active panel with it's sibling.", 41, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1564 },
+{ PROC_LINKS(swap_panels, 0), false, "swap_panels", 11, "Swaps the active panel with it's sibling.", 41, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1551 },
 { PROC_LINKS(switch_to_game_panel, 0), false, "switch_to_game_panel", 20, "switch to game panel", 20, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_kv_commands.cpp", 56, 859 },
 { PROC_LINKS(theme_lister, 0), true, "theme_lister", 12, "Opens an interactive list of all registered themes.", 51, "C:\\Users\\vodan\\4ed/code/custom/4coder_lists.cpp", 47, 798 },
 { PROC_LINKS(toggle_filebar, 0), false, "toggle_filebar", 14, "Toggles the visibility status of the current view's filebar.", 60, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 559 },
@@ -460,13 +458,11 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(toggle_highlight_enclosing_scopes, 0), false, "toggle_highlight_enclosing_scopes", 33, "In code files scopes surrounding the cursor are highlighted with distinguishing colors.", 87, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 558 },
 { PROC_LINKS(toggle_highlight_line_at_cursor, 0), false, "toggle_highlight_line_at_cursor", 31, "Toggles the line highlight at the cursor.", 41, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 550 },
 { PROC_LINKS(toggle_line_numbers, 0), false, "toggle_line_numbers", 19, "Toggles the left margin line numbers.", 37, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 673 },
-{ PROC_LINKS(toggle_line_wrap, 0), false, "toggle_line_wrap", 16, "Toggles the line wrap setting on this buffer.", 45, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 681 },
 { PROC_LINKS(toggle_mouse, 0), false, "toggle_mouse", 12, "Toggles the mouse suppression mode, see suppress_mouse and allow_mouse.", 71, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 532 },
 { PROC_LINKS(toggle_paren_matching_helper, 0), false, "toggle_paren_matching_helper", 28, "In code files matching parentheses pairs are colored with distinguishing colors.", 80, "C:\\Users\\vodan\\4ed/code/custom/4coder_default_framework.cpp", 59, 566 },
 { PROC_LINKS(toggle_show_whitespace, 0), false, "toggle_show_whitespace", 22, "Toggles the current buffer's whitespace visibility status.", 58, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 664 },
-{ PROC_LINKS(toggle_virtual_whitespace, 0), false, "toggle_virtual_whitespace", 25, "Toggles virtual whitespace for all files.", 41, "C:\\Users\\vodan\\4ed/code/custom/4coder_code_index.cpp", 52, 1239 },
 { PROC_LINKS(uncomment_line, 0), false, "uncomment_line", 14, "If present, delete '//' at the beginning of the line after leading whitespace.", 78, "C:\\Users\\vodan\\4ed/code/custom/4coder_combined_write_commands.cpp", 65, 137 },
-{ PROC_LINKS(undo_all_buffers, 0), false, "undo_all_buffers", 16, "Advances backward through the undo history in the buffer containing the most recent regular edit.", 97, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1800 },
+{ PROC_LINKS(undo_all_buffers, 0), false, "undo_all_buffers", 16, "Advances backward through the undo history in the buffer containing the most recent regular edit.", 97, "C:\\Users\\vodan\\4ed/code/custom/4coder_base_commands.cpp", 55, 1787 },
 { PROC_LINKS(view_jump_list_with_lister, 0), false, "view_jump_list_with_lister", 26, "When executed on a buffer with jumps, creates a persistent lister for all the jumps", 83, "C:\\Users\\vodan\\4ed/code/custom/4coder_jump_lister.cpp", 53, 60 },
 { PROC_LINKS(vim_dec_buffer_peek, 0), false, "vim_dec_buffer_peek", 19, "Decrements buffer peek index", 28, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_commands.cpp", 68, 25 },
 { PROC_LINKS(vim_inc_buffer_peek, 0), false, "vim_inc_buffer_peek", 19, "Incremenets buffer peek index", 29, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_commands.cpp", 68, 17 },
@@ -479,7 +475,7 @@ static Command_Metadata fcoder_metacmd_table[233] = {
 { PROC_LINKS(vim_switch_lister, 0), true, "vim_switch_lister", 17, "Opens an interactive list of all loaded buffers.", 48, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_lists.cpp", 65, 314 },
 { PROC_LINKS(vim_theme_lister, 0), true, "vim_theme_lister", 16, "Opens an interactive list of all registered themes.", 51, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_lists.cpp", 65, 286 },
 { PROC_LINKS(vim_toggle_show_buffer_peek, 0), false, "vim_toggle_show_buffer_peek", 27, "Toggles buffer peek", 19, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_commands.cpp", 68, 1 },
-{ PROC_LINKS(vim_try_exit, 0), false, "vim_try_exit", 12, "Vim command for responding to a try-exit event", 46, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_hooks.cpp", 65, 128 },
+{ PROC_LINKS(vim_try_exit, 0), false, "vim_try_exit", 12, "Vim command for responding to a try-exit event", 46, "C:\\Users\\vodan\\4ed\\code\\4coder_kv/4coder_vim/4coder_vim_hooks.cpp", 65, 98 },
 { PROC_LINKS(word_complete, 0), false, "word_complete", 13, "Iteratively tries completing the word to the left of the cursor with other words in open buffers that have the same prefix string.", 130, "C:\\Users\\vodan\\4ed/code/custom/4coder_search.cpp", 48, 566 },
 { PROC_LINKS(word_complete_drop_down, 0), false, "word_complete_drop_down", 23, "Word complete with drop down menu.", 34, "C:\\Users\\vodan\\4ed/code/custom/4coder_search.cpp", 48, 812 },
 { PROC_LINKS(write_block, 0), false, "write_block", 11, "At the cursor, insert a block comment.", 38, "C:\\Users\\vodan\\4ed/code/custom/4coder_combined_write_commands.cpp", 65, 94 },
@@ -694,32 +690,30 @@ static i1 fcoder_metacmd_ID_toggle_fullscreen = 201;
 static i1 fcoder_metacmd_ID_toggle_highlight_enclosing_scopes = 202;
 static i1 fcoder_metacmd_ID_toggle_highlight_line_at_cursor = 203;
 static i1 fcoder_metacmd_ID_toggle_line_numbers = 204;
-static i1 fcoder_metacmd_ID_toggle_line_wrap = 205;
-static i1 fcoder_metacmd_ID_toggle_mouse = 206;
-static i1 fcoder_metacmd_ID_toggle_paren_matching_helper = 207;
-static i1 fcoder_metacmd_ID_toggle_show_whitespace = 208;
-static i1 fcoder_metacmd_ID_toggle_virtual_whitespace = 209;
-static i1 fcoder_metacmd_ID_uncomment_line = 210;
-static i1 fcoder_metacmd_ID_undo_all_buffers = 211;
-static i1 fcoder_metacmd_ID_view_jump_list_with_lister = 212;
-static i1 fcoder_metacmd_ID_vim_dec_buffer_peek = 213;
-static i1 fcoder_metacmd_ID_vim_inc_buffer_peek = 214;
-static i1 fcoder_metacmd_ID_vim_interactive_open_or_new = 215;
-static i1 fcoder_metacmd_ID_vim_jump_lister = 216;
-static i1 fcoder_metacmd_ID_vim_list_all_functions_current_buffer_lister = 217;
-static i1 fcoder_metacmd_ID_vim_proj_cmd_lister = 218;
-static i1 fcoder_metacmd_ID_vim_scoll_buffer_peek_down = 219;
-static i1 fcoder_metacmd_ID_vim_scoll_buffer_peek_up = 220;
-static i1 fcoder_metacmd_ID_vim_switch_lister = 221;
-static i1 fcoder_metacmd_ID_vim_theme_lister = 222;
-static i1 fcoder_metacmd_ID_vim_toggle_show_buffer_peek = 223;
-static i1 fcoder_metacmd_ID_vim_try_exit = 224;
-static i1 fcoder_metacmd_ID_word_complete = 225;
-static i1 fcoder_metacmd_ID_word_complete_drop_down = 226;
-static i1 fcoder_metacmd_ID_write_block = 227;
-static i1 fcoder_metacmd_ID_write_hack = 228;
-static i1 fcoder_metacmd_ID_write_note = 229;
-static i1 fcoder_metacmd_ID_write_text_and_auto_indent = 230;
-static i1 fcoder_metacmd_ID_write_todo = 231;
-static i1 fcoder_metacmd_ID_write_zero_struct = 232;
+static i1 fcoder_metacmd_ID_toggle_mouse = 205;
+static i1 fcoder_metacmd_ID_toggle_paren_matching_helper = 206;
+static i1 fcoder_metacmd_ID_toggle_show_whitespace = 207;
+static i1 fcoder_metacmd_ID_uncomment_line = 208;
+static i1 fcoder_metacmd_ID_undo_all_buffers = 209;
+static i1 fcoder_metacmd_ID_view_jump_list_with_lister = 210;
+static i1 fcoder_metacmd_ID_vim_dec_buffer_peek = 211;
+static i1 fcoder_metacmd_ID_vim_inc_buffer_peek = 212;
+static i1 fcoder_metacmd_ID_vim_interactive_open_or_new = 213;
+static i1 fcoder_metacmd_ID_vim_jump_lister = 214;
+static i1 fcoder_metacmd_ID_vim_list_all_functions_current_buffer_lister = 215;
+static i1 fcoder_metacmd_ID_vim_proj_cmd_lister = 216;
+static i1 fcoder_metacmd_ID_vim_scoll_buffer_peek_down = 217;
+static i1 fcoder_metacmd_ID_vim_scoll_buffer_peek_up = 218;
+static i1 fcoder_metacmd_ID_vim_switch_lister = 219;
+static i1 fcoder_metacmd_ID_vim_theme_lister = 220;
+static i1 fcoder_metacmd_ID_vim_toggle_show_buffer_peek = 221;
+static i1 fcoder_metacmd_ID_vim_try_exit = 222;
+static i1 fcoder_metacmd_ID_word_complete = 223;
+static i1 fcoder_metacmd_ID_word_complete_drop_down = 224;
+static i1 fcoder_metacmd_ID_write_block = 225;
+static i1 fcoder_metacmd_ID_write_hack = 226;
+static i1 fcoder_metacmd_ID_write_note = 227;
+static i1 fcoder_metacmd_ID_write_text_and_auto_indent = 228;
+static i1 fcoder_metacmd_ID_write_todo = 229;
+static i1 fcoder_metacmd_ID_write_zero_struct = 230;
 #endif

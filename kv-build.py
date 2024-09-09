@@ -22,7 +22,7 @@ STOP_DEBUGGING_BEFORE_BUILD = 0
 
 # NOTE: Your configuration ############################
 #DISABLE_ED = 1
-#asan_on = 1
+asan_on = 0
 
 
 

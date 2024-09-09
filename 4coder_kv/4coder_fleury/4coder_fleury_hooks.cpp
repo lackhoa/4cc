@@ -554,123 +554,118 @@ F4_Render(App *app, Frame_Info frame_info, View_ID view_id)
 #if OS_WINDOWS
     // CS_render_caller(app, frame_info, view_id);
 #endif
-    
-    text_layout_free(app, text_layout_id);
-    draw_set_clip(app, prev_clip);
+ 
+ text_layout_free(app, text_layout_id);
+ draw_set_clip(app, prev_clip);
 }
 
 //~ NOTE(rjf): Begin buffer hook
 
 function BUFFER_HOOK_SIG(F4_BeginBuffer)
 {
-    ProfileScope(app, "[Fleury] Begin Buffer");
-    
-    Scratch_Block scratch(app);
-    b32 treat_as_code = false;
-    String file_name = push_buffer_file_name(app, scratch, buffer_id);
-    String buffer_name = push_buffer_base_name(app, scratch, buffer_id);
-    
-    // NOTE(rjf): Treat as code if the config tells us to.
-    if(treat_as_code == false)
+ ProfileScope(app, "[Fleury] Begin Buffer");
+ 
+ Scratch_Block scratch(app);
+ b32 treat_as_code = false;
+ String file_name = push_buffer_file_name(app, scratch, buffer_id);
+ String buffer_name = push_buffer_base_name(app, scratch, buffer_id);
+ 
+ // NOTE(rjf): Treat as code if the config tells us to.
+ if(treat_as_code == false)
+ {
+  if(file_name.size > 0)
+  {
+   String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
+   String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
+   String ext = string_file_extension(file_name);
+   for(i1 i = 0; i < extensions.count; ++i)
+   {
+    if(string_match(ext, extensions.strings[i]))
     {
-        if(file_name.size > 0)
-        {
-            String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
-            String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-            String ext = string_file_extension(file_name);
-            for(i1 i = 0; i < extensions.count; ++i)
-            {
-                if(string_match(ext, extensions.strings[i]))
-                {
-                    treat_as_code = true;
-                    break;
-                }
-            }
-        }
+     treat_as_code = true;
+     break;
     }
-    
-    // NOTE(rjf): Treat as code for *calc* and *peek* buffers.
-    if(treat_as_code == false)
-    {
-        if(buffer_name.size > 0)
-        {
-            if(string_match(buffer_name, string_u8_litexpr("*calc*")))
-            {
-                treat_as_code = true;
-            }
-            else if(string_match(buffer_name, string_u8_litexpr("*peek*")))
-            {
-                treat_as_code = true;
-            }
-        }
-    }
-    
-    // NOTE(rjf): Treat as code if we've identified the language of a file.
-    if(treat_as_code == false)
-    {
-        F4_Language *language = F4_LanguageFromBuffer(app, buffer_id);
-        if(language)
-        {
-            treat_as_code = true;
-        }
-    }
-    
-    String_ID file_map_id = vars_intern_lit("keys_file");
-    String_ID code_map_id = vars_intern_lit("keys_code");
-    
-    Command_Map_ID map_id = (treat_as_code) ? (code_map_id) : (file_map_id);
-    Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
-    Command_Map_ID *map_id_ptr = scope_attachment(app, scope, buffer_map_id, Command_Map_ID);
-    *map_id_ptr = map_id;
-    
-    Line_Ending_Kind setting = guess_line_ending_kind_from_buffer(app, buffer_id);
-    Line_Ending_Kind *eol_setting = scope_attachment(app, scope, buffer_eol_setting, Line_Ending_Kind);
-    *eol_setting = setting;
-    
-    // NOTE(allen): Decide buffer settings
-    b32 wrap_lines = true;
-    b32 use_lexer = false;
-    if(treat_as_code)
-    {
-        wrap_lines = def_get_config_b32(vars_intern_lit("enable_code_wrapping"));
-        use_lexer = true;
-    }
-    
-    if(string_match(buffer_name, compilation_buffer_name))
-    {
-        wrap_lines = false;
-    }
-    
-    if (use_lexer)
-    {
-        ProfileBlock(app, "begin buffer kick off lexer");
-        Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
-        *lex_task_ptr = async_task_no_dep(&global_async_system, F4_DoFullLex_ASYNC, make_data_struct(&buffer_id));
-    }
-    
-    {
-        b32 *wrap_lines_ptr = scope_attachment(app, scope, buffer_wrap_lines, b32);
-        *wrap_lines_ptr = wrap_lines;
-    }
-    
-    if (use_lexer)
-    {
-        buffer_set_layout(app, buffer_id, layout_virt_indent_index_generic);
-    }
-    else
-    {
-        if (treat_as_code)
-        {
-            buffer_set_layout(app, buffer_id, layout_virt_indent_literal_generic);
-        }
-        else{
-            buffer_set_layout(app, buffer_id, layout_generic);
-        }
-    }
-    
-    
-    // no meaning for return
-    return(0);
+   }
+  }
+ }
+ 
+ // NOTE(rjf): Treat as code for *calc* and *peek* buffers.
+ if(treat_as_code == false)
+ {
+  if(buffer_name.size > 0)
+  {
+   if(string_match(buffer_name, string_u8_litexpr("*calc*")))
+   {
+    treat_as_code = true;
+   }
+   else if(string_match(buffer_name, string_u8_litexpr("*peek*")))
+   {
+    treat_as_code = true;
+   }
+  }
+ }
+ 
+ // NOTE(rjf): Treat as code if we've identified the language of a file.
+ if(treat_as_code == false)
+ {
+  F4_Language *language = F4_LanguageFromBuffer(app, buffer_id);
+  if(language)
+  {
+   treat_as_code = true;
+  }
+ }
+ 
+ String_ID file_map_id = vars_intern_lit("keys_file");
+ String_ID code_map_id = vars_intern_lit("keys_code");
+ 
+ Command_Map_ID map_id = (treat_as_code) ? (code_map_id) : (file_map_id);
+ Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
+ Command_Map_ID *map_id_ptr = scope_attachment(app, scope, buffer_map_id, Command_Map_ID);
+ *map_id_ptr = map_id;
+ 
+ Line_Ending_Kind setting = guess_line_ending_kind_from_buffer(app, buffer_id);
+ Line_Ending_Kind *eol_setting = scope_attachment(app, scope, buffer_eol_setting, Line_Ending_Kind);
+ *eol_setting = setting;
+ 
+ // NOTE(allen): Decide buffer settings
+ b32 wrap_lines = true;
+ b32 use_lexer = false;
+ if(treat_as_code)
+ {
+  wrap_lines = def_get_config_b32(vars_intern_lit("enable_code_wrapping"));
+  use_lexer = true;
+ }
+ 
+ if(string_match(buffer_name, compilation_buffer_name))
+ {
+  wrap_lines = false;
+ }
+ 
+ if (use_lexer)
+ {
+  ProfileBlock(app, "begin buffer kick off lexer");
+  Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
+  *lex_task_ptr = async_task_no_dep(&global_async_system, F4_DoFullLex_ASYNC, make_data_struct(&buffer_id));
+ }
+ 
+ if (use_lexer)
+ {
+  buffer_set_layout(app, buffer_id, layout_virt_indent_index_generic);
+ }
+ else
+ {
+  if (treat_as_code)
+  {
+   buffer_set_layout(app, buffer_id, layout_virt_indent_literal_generic);
+  }
+  else{
+   buffer_set_layout(app, buffer_id, layout_generic);
+  }
+ }
+ 
+ 
+ // no meaning for return
+ return(0);
 }
 
 //~ NOTE(rjf): Layout

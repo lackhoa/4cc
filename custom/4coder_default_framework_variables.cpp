@@ -21,7 +21,6 @@ CUSTOM_ID(attachment, view_previous_buffer);
 CUSTOM_ID(attachment, buffer_map_id);
 CUSTOM_ID(attachment, buffer_eol_setting);
 CUSTOM_ID(attachment, buffer_lex_task);
-CUSTOM_ID(attachment, buffer_wrap_lines);
 
 CUSTOM_ID(attachment, sticky_jump_marker_handle);
 CUSTOM_ID(attachment, attachment_tokens);
@@ -91,8 +90,6 @@ global char previous_isearch_query[256] = {};
 global Mapping framework_mapping = {};
 
 global Buffer_Modified_Set global_buffer_modified_set = {};
-
-global b32 def_enable_virtual_whitespace = false;
 
 ////////////////////////////////
 

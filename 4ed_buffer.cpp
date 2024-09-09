@@ -558,20 +558,22 @@ buffer_remeasure_starts(Thread_Context *tctx, Gap_Buffer *buffer, Batch_Edit *ba
     for (Line_Move *node = moves;
          node != 0;
          node = node->next){
-        if (node->kind == LineMove_MeasureString){
-            fill_line_starts(array + node->new_line_first, node->string, node->text_base);
-        }
-    }
+  if (node->kind == LineMove_MeasureString){
+   fill_line_starts(array + node->new_line_first, node->string, node->text_base);
+  }
+ }
 }
 
 internal Range_i64
-buffer_get_pos_range_from_line_number(Gap_Buffer *buffer, i64 line_number){
-    Range_i64 result = {};
-    if (1 <= line_number && line_number < buffer->line_start_count){
-        result.first = buffer->line_starts[line_number - 1];
-        result.one_past_last = buffer->line_starts[line_number];
-    }
-    return(result);
+buffer_get_pos_range_from_line_number(Gap_Buffer *buffer, i64 line_number)
+{
+ Range_i64 result = {};
+ if (1 <= line_number && line_number < buffer->line_start_count)
+ {
+  result.first         = buffer->line_starts[line_number-1];
+  result.one_past_last = buffer->line_starts[line_number];
+ }
+ return(result);
 }
 
 internal i64

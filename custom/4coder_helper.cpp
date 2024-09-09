@@ -2243,15 +2243,15 @@ get_ranges_of_duplicate_keys(Arena *arena, i32 *keys, i32 stride, i32 count)
         }
         else if (*(i32*)(ptr + i*stride) != *(i32*)(ptr + start_i*stride)){
             is_end = true;
-        }
-        if (is_end){
-            Range_i32 *new_range = &result.ranges[result.count++];
-            new_range->first = start_i;
-            new_range->one_past_last = i;
-            start_i = i;
-        }
-    }
-    pop_array(arena, Range_i32, count - result.count);
+  }
+  if (is_end){
+   Range_i32 *new_range = &result.ranges[result.count++];
+   new_range->first = start_i;
+   new_range->one_past_last = i;
+   start_i = i;
+  }
+ }
+ pop_array(arena, Range_i32, count - result.count);
     return(result);
 }
 

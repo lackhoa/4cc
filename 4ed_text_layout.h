@@ -14,18 +14,18 @@
 
 union Text_Layout
 {
-    Text_Layout *next;
-    struct
-    {
-        Arena *arena;
-        Buffer_ID buffer_id;
-        Buffer_Point point;
-        Range_i64 visible_range;
-        Range_i64 visible_line_number_range;
-        Rect_f32 rect;
-        ARGB_Color *item_colors;
-        Layout_Function *layout_func;
-    };
+ Text_Layout *next;
+ struct
+ {
+  Arena *arena;
+  Buffer_ID buffer_id;
+  Buffer_Point point;
+  Range_i64 visible_range;
+  Range_i64 visible_line_number_range;
+  Rect_f32 rect;
+  ARGB_Color *item_colors;
+  Layout_Function *layout_func;
+ };
 };
 
 struct Text_Layout_Container{

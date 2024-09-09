@@ -841,7 +841,7 @@ smi_field_set_construct(Arena *arena, Flag *flag, b32 value){
 internal Input_Set
 smi_input_set_copy(Arena *arena, Input_Set set){
     Input_Set result = {};
-    result.inputs = push_array_write(arena, u16, set.count, set.inputs);
+    result.inputs = push_array_copy(arena, u16, set.count, set.inputs);
     result.count = set.count;
     return(result);
 }
@@ -1955,7 +1955,7 @@ opt_copy_action_list(Arena *arena, Action_List actions){
     for (Action *node = actions.first;
          node != 0;
          node = node->next){
-        Action *new_node = push_array_write(arena, Action, 1, node);
+        Action *new_node = push_array_copy(arena, Action, 1, node);
         zdll_push_back(result.first, result.last, new_node);
         result.count += 1;
     }
@@ -2000,12 +2000,12 @@ opt_copy_condition(Arena *arena, Transition_Case condition, Table_u64_u64 old_to
 
 internal Emit_Rule*
 opt_copy_emit_rule(Arena *arena, Emit_Rule *emit, Table_u64_u64 old_to_new){
-    Emit_Rule *new_emit = push_array_write(arena, Emit_Rule, 1, emit);
+    Emit_Rule *new_emit = push_array_copy(arena, Emit_Rule, 1, emit);
     block_zero_struct(&new_emit->emit_checks);
     for (Emit_Check *emit_check = emit->emit_checks.first;
          emit_check != 0;
          emit_check = emit_check->next){
-        Emit_Check *new_emit_check = push_array_write(arena, Emit_Check, 1, emit_check);
+        Emit_Check *new_emit_check = push_array_copy(arena, Emit_Check, 1, emit_check);
         sll_queue_push(new_emit->emit_checks.first, new_emit->emit_checks.last, new_emit_check);
         new_emit->emit_checks.count += 1;
         new_emit_check->flag = opt_flag_fixup(new_emit_check->flag, old_to_new);
@@ -2015,7 +2015,7 @@ opt_copy_emit_rule(Arena *arena, Emit_Rule *emit, Table_u64_u64 old_to_new){
     for (Emit_Handler *handler = emit->first;
          handler != 0;
          handler = handler->next){
-        Emit_Handler *new_handler = push_array_write(arena, Emit_Handler, 1, handler);
+        Emit_Handler *new_handler = push_array_copy(arena, Emit_Handler, 1, handler);
         sll_queue_push(new_emit->first, new_emit->last, new_handler);
         new_handler->flag_check = opt_flag_fixup(handler->flag_check, old_to_new);
     }
@@ -2875,7 +2875,7 @@ opt__push_partial_transition(Arena *arena, Partial_Transition_List *list, Field_
     }
     
     if (!is_duplicate){
-        Partial_Transition *result = push_array_write(arena, Partial_Transition, 1, &partial);
+        Partial_Transition *result = push_array_copy(arena, Partial_Transition, 1, &partial);
         sll_queue_push(list->first, list->last, result);
         list->count += 1;
     }

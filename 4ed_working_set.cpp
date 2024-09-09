@@ -103,7 +103,7 @@ internal void
 working_set_free_file(Heap *heap, Working_Set *working_set, Editing_File *file){
     if (working_set->sync_check_iterator == &file->main_chain_node){
         working_set->sync_check_iterator = working_set->sync_check_iterator->next;
-    }
+ }
  dll_remove(&file->main_chain_node);
  dll_remove(&file->touch_node);
  working_set->active_file_count -= 1;
@@ -116,7 +116,7 @@ working_set_get_file(Working_Set *working_set, Buffer_ID id)
 {
  Editing_File *result = 0;
  u64 val = 0;
- if (table_read(&working_set->id_to_ptr_table, id, &val)){
+ if (table_read(&working_set->id_to_ptr_table, id, &val)) {
   result = (Editing_File*)(IntAsPtr(val));
  }
  return(result);
@@ -477,38 +477,38 @@ buffer_bind_name(Thread_Context *tctx, Models *models, Arena *scratch, Working_S
 
 internal void
 file_touch(Working_Set *working_set, Editing_File *file){
-    Assert(file != 0);
-    dll_remove(&file->touch_node);
-    dll_insert(&working_set->touch_order_sentinel, &file->touch_node);
+ Assert(file != 0);
+ dll_remove(&file->touch_node);
+ dll_insert(&working_set->touch_order_sentinel, &file->touch_node);
 }
 
 internal Editing_File*
-file_get_next(Working_Set *working_set, Editing_File *file){
-    if (file != 0){
-        Node *node = file->touch_node.next;
-        file = CastFromMember(Editing_File, touch_node, node);
-        if (node == &working_set->touch_order_sentinel){
-            file = 0;
-        }
-    }
-    else{
-        if (working_set->active_file_count > 0){
-            Node *node = working_set->touch_order_sentinel.next;
-            file = CastFromMember(Editing_File, touch_node, node);
-        }
-    }
-    return(file);
+file_get_next(Working_Set *working_set, Editing_File *file)
+{
+ if (file != 0)
+ {
+  Node *node = file->touch_node.next;
+  file = CastFromMember(Editing_File, touch_node, node);
+  if (node == &working_set->touch_order_sentinel){
+   file = 0;
+  }
+ }
+ else
+ {
+  if (working_set->active_file_count > 0) {
+   Node *node = working_set->touch_order_sentinel.next;
+   file = CastFromMember(Editing_File, touch_node, node);
+  }
+ }
+ return(file);
 }
 
 ////////////////////////////////
 
 internal Editing_File*
-imp_get_file(Models *models, Buffer_ID buffer_id){
-    Working_Set *working_set = &models->working_set;
-    return(working_set_get_file(working_set, buffer_id));
+imp_get_file(Models *models, Buffer_ID buffer_id) {
+ Working_Set *working_set = &models->working_set;
+ return(working_set_get_file(working_set, buffer_id));
 }
 
 // BOTTOM
-
-
-

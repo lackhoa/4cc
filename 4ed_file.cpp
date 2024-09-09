@@ -272,57 +272,66 @@ file_get_current_record_index(Editing_File *file){
 
 internal Managed_Scope
 file_get_managed_scope(Editing_File *file){
-    Managed_Scope scope = 0;
-    if (file != 0){
-        Assert(file->lifetime_object != 0);
-        scope = (Managed_Scope)file->lifetime_object->workspace.scope_id;
-    }
-    return(scope);
+ Managed_Scope scope = 0;
+ if (file != 0){
+  Assert(file->lifetime_object != 0);
+  scope = (Managed_Scope)file->lifetime_object->workspace.scope_id;
+ }
+ return(scope);
 }
 
 ////////////////////////////////
 
 
-internal Layout_Item_List
+function Layout_Item_List
 file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
-                     Layout_Function *layout_func, f32 width, Face *face, i64 line_number)
+                     Layout_Function *layout_func, f32 width, Face *face, i64 line_number,
+                     b32 *found_match=0)
 {
  Layout_Item_List result = {};
  
  i64 line_count = buffer_line_count(&file->state.buffer);
- if (1 <= line_number && line_number <= line_count){
-        Line_Layout_Key key = {};
-        key.face_id = face->id;
-        key.face_version_number = face->version_number;
-        key.width = width;
-        key.line_number = line_number;
-        
-        String key_data = make_data_struct(&key);
-        
-        Layout_Item_List *list = 0;
-        
-        Table_Lookup lookup = table_lookup(&file->state.line_layout_table, key_data);
-        if (lookup.found_match){
-            u64 val = 0;
-            table_read(&file->state.line_layout_table, lookup, &val);
-            list = (Layout_Item_List*)IntAsPtr(val);
-        }
-        else{
-            list = push_array(&file->state.cached_layouts_arena, Layout_Item_List, 1);
-            Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, line_number);
-            
-            App app = {};
-            app.tctx = tctx;
-            app.cmd_context = models;
-            *list = layout_func(&app, &file->state.cached_layouts_arena,
-                                file->id, line_range, face->id, width);
-            key_data = push_string(&file->state.cached_layouts_arena, key_data);
-            table_insert(&file->state.line_layout_table, key_data, (u64)PtrAsInt(list));
-        }
-        block_copy_struct(&result, list);
-    }
-    
-    return(result);
+ if (1 <= line_number && line_number <= line_count)
+ {
+  Line_Layout_Key key = {
+   .face_id             = face->id,
+   .face_version_number = face->version_number,
+   .width               = width,
+   .line_number         = line_number,
+  };
+  
+  String key_data = make_data_struct(&key);
+  
+  Layout_Item_List *list = 0;
+  
+  Table_Lookup lookup = table_lookup(&file->state.line_layout_table, key_data);
+  if (found_match)
+  {
+   *found_match = lookup.found_match;
+  }
+  
+  if (lookup.found_match)
+  {
+   u64 val = 0;
+   table_read(&file->state.line_layout_table, lookup, &val);
+   list = (Layout_Item_List*)IntAsPtr(val);
+  }
+  else
+  {
+   Arena *cached_layouts_arena = &file->state.cached_layouts_arena;
+   list = push_struct(cached_layouts_arena, Layout_Item_List);
+   Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, line_number);
+   
+   App app = {.tctx = tctx, .cmd_context = models};
+   *list = layout_func(&app, cached_layouts_arena,
+                       file->id, line_range, face->id, width);
+   key_data = push_string(cached_layouts_arena, key_data);
+   table_insert(&file->state.line_layout_table, key_data, (u64)PtrAsInt(list));
+  }
+  block_copy_struct(&result, list);
+ }
+ 
+ return(result);
 }
 
 internal void

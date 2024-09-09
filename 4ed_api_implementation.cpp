@@ -721,23 +721,25 @@ buffer_set_dirty_state(App *app, Buffer_ID buffer_id, Dirty_State dirty_state){
     Editing_File *file = imp_get_file(models, buffer_id);
     b32 result = false;
     if (api_check_buffer(file)){
-        result = true;
-        file->state.dirty = dirty_state;
-    }
-    return(result);
+  result = true;
+  file->state.dirty = dirty_state;
+ }
+ return(result);
 }
 
 api(custom) function b32
-buffer_set_layout(App *app, Buffer_ID buffer_id, Layout_Function *layout_func){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file)){
-        result = true;
-        file->settings.layout_func = layout_func;
-        file_clear_layout_cache(file);
-    }
-    return(result);
+buffer_set_layout(App *app, Buffer_ID buffer_id, Layout_Function *layout_func)
+{
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if ( api_check_buffer(file) )
+ {
+  result = true;
+  file->settings.layout_func = layout_func;
+  file_clear_layout_cache(file);
+ }
+ return(result);
 }
 
 api(custom) function b32
@@ -2976,7 +2978,7 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
   
   Range_i64 visible_line_number_range = Ii64(buffer_point.line_number, line_number);
   Range_i64 visible_range = Ii64(buffer_get_first_pos_from_line_number(buffer, visible_line_number_range.min),
-                                 buffer_get_last_pos_from_line_number(buffer, visible_line_number_range.max));
+                                 buffer_get_last_pos_from_line_number (buffer, visible_line_number_range.max));
   
   i64 item_count = range_size_inclusive(visible_range);
   
@@ -2987,6 +2989,33 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
   result = text_layout_new(&models->text_layouts, arena_ptr, buffer_id, buffer_point,
                            visible_range, visible_line_number_range, rect, colors_array,
                            layout_func);
+  //nono
+  if (1)
+  {
+   Text_Layout *layout = text_layout_get(&models->text_layouts, result);
+   f32 width = rect_width(layout->rect);
+   for(i64 linum = layout->visible_line_number_range.min;
+       linum <= layout->visible_line_number_range.max;
+       linum++)
+   {
+    b32 found_match = 0;
+    Layout_Item_List line_layout = file_get_line_layout(tctx, models, file,
+                                                        layout_func, width, face,
+                                                        linum, &found_match);
+    for (Layout_Item_Block *block = line_layout.first;
+         block != 0;
+         block = block->next)
+    {
+     Layout_Item *item = block->items;
+     for (i1 counter = 0;
+          counter < block->item_count;
+          counter++, item++)
+     {
+      kv_assert(item->index <= layout->visible_range.max);
+     }
+    }
+   }
+  }
  }
  return(result);
 }
