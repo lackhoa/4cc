@@ -83,7 +83,7 @@ F4_RenderDividerComments(App *app, Buffer_ID buffer, View_ID view,
   ProfileScope(app, "[F4] Divider Comments");
   
   Token_Array token_array = get_token_array_from_buffer(app, buffer);
-  Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+  Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
   Scratch_Block scratch(app);
   
   if(token_array.tokens != 0)
@@ -255,7 +255,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
   }
   else
   {
-   Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+   Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
    
    u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));
    f32 cursor_roundness = face_metrics.normal_advance*(f32)cursor_roundness_100*0.01f;
@@ -336,16 +336,6 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
    paint_fade_ranges(app, text_layout_id, buffer);
    
    draw_text_layout_default(app, text_layout_id);  // NOTE: this highlights the @Notes
-   
-   Buffer_ID calc_buffer_id = get_buffer_by_name(app, SCu8("*calc*"), AccessFlag_Read);
-   if(calc_buffer_id == buffer)
-   { // NOTE(rjf): Interpret the calc buffer as calc code.
-    F4_CLC_RenderBuffer(app, buffer, view, text_layout_id);
-   }
-   else
-   { // NOTE(rjf): Draw calc comments.
-    F4_CLC_RenderComments(app, buffer, view, text_layout_id);
-   }
    
    // NOTE(kv): fui
    fui_draw_slider(app, buffer, clip);

@@ -301,14 +301,14 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
 api(custom) function b32
 buffer_batch_edit(App *app, Buffer_ID buffer_id, Batch_Edit *batch)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file)){
-        Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
-        result = edit_batch(app->tctx, models, file, batch, behaviors);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if (api_check_buffer(file)) {
+  Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
+  result = edit_batch(app->tctx, models, file, batch, behaviors);
+ }
+ return(result);
 }
 
 api(custom) function String_Match
@@ -1585,7 +1585,7 @@ buffer_compute_cursor(App *app, Buffer_ID buffer, Buffer_Seek seek)
 }
 
 api(custom) function Buffer_Cursor
-view_compute_cursor(App *app, View_ID view_id, Buffer_Seek seek){
+view_compute_cursor(App *app, View_ID view_id, Buffer_Seek seek) {
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
     Buffer_Cursor result = {};
@@ -2722,28 +2722,28 @@ get_face_description(App *app, Face_ID face_id)
 api(custom) function Face_Metrics
 get_face_metrics(App *app, Face_ID face_id)
 {
-    Models *models = (Models*)app->cmd_context;
-    Face_Metrics result = {};
-    if (face_id != 0){
-        Face *face = font_set_face_from_id(&models->font_set, face_id);
-        if (face != 0){
-            result = face->metrics;
-        }
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Face_Metrics result = {};
+ if (face_id != 0){
+  Face *face = font_set_face_from_id(&models->font_set, face_id);
+  if (face != 0){
+   result = face->metrics;
+  }
+ }
+ return(result);
 }
 
 api(custom) function Face_Advance_Map
 get_face_advance_map(App *app, Face_ID face_id){
-    Models *models = (Models*)app->cmd_context;
-    Face_Advance_Map result = {};
-    if (face_id != 0){
-        Face *face = font_set_face_from_id(&models->font_set, face_id);
-        if (face != 0){
-            result = face->advance_map;
-        }
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Face_Advance_Map result = {};
+ if (face_id != 0){
+  Face *face = font_set_face_from_id(&models->font_set, face_id);
+  if (face != 0){
+   result = face->advance_map;
+  }
+ }
+ return(result);
 }
 
 api(custom) function Face_ID
@@ -2976,32 +2976,32 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
    y = next_y;
   }
   
-  Range_i64 visible_line_number_range = Ii64(buffer_point.line_number, line_number);
-  Range_i64 visible_range = Ii64(buffer_get_first_pos_from_line_number(buffer, visible_line_number_range.min),
-                                 buffer_get_last_pos_from_line_number (buffer, visible_line_number_range.max));
-  
-  i64 item_count = range_size_inclusive(visible_range);
+  Range_i64 visible_line_range = Ii64(buffer_point.line_number, line_number+1);
+  Range_i64 visible_range = Ii64(buffer_get_first_pos_from_line_number(buffer, visible_line_range.min),
+                                 buffer_get_last_pos_from_line_number (buffer, line_number)+1);
   
   Arena arena = make_arena_system();
   Arena *arena_ptr = push_struct(&arena, Arena);
   *arena_ptr = arena;
+  i64 item_count = range_size(visible_range);
   ARGB_Color *colors_array = push_array_zero(arena_ptr, ARGB_Color, item_count);
   result = text_layout_new(&models->text_layouts, arena_ptr, buffer_id, buffer_point,
-                           visible_range, visible_line_number_range, rect, colors_array,
+                           visible_range, visible_line_range, rect, colors_array,
                            layout_func);
-  //nono
-  if (1)
-  {
+/*  if (1) {
+   //nono
    Text_Layout *layout = text_layout_get(&models->text_layouts, result);
    f32 width = rect_width(layout->rect);
-   for(i64 linum = layout->visible_line_number_range.min;
-       linum <= layout->visible_line_number_range.max;
+   for(i64 linum = layout->visible_line_range.min;
+       linum < layout->visible_line_range.max;
        linum++)
    {
     b32 found_match = 0;
     Layout_Item_List line_layout = file_get_line_layout(tctx, models, file,
                                                         layout_func, width, face,
                                                         linum, &found_match);
+    Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, linum);
+    kv_assert(line_range.max <= layout->visible_range.max);
     for (Layout_Item_Block *block = line_layout.first;
          block != 0;
          block = block->next)
@@ -3011,11 +3011,11 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
           counter < block->item_count;
           counter++, item++)
      {
-      kv_assert(item->index <= layout->visible_range.max);
+      kv_assert(item->index < layout->visible_range.max);
      }
     }
    }
-  }
+  }*/
  }
  return(result);
 }
@@ -3035,183 +3035,188 @@ api(custom) function Buffer_ID
 text_layout_get_buffer(App *app, Text_Layout_ID text_layout_id){
     Models *models = (Models*)app->cmd_context;
     Buffer_ID result = 0;
-    Text_Layout *layout = text_layout_get(&models->text_layouts, text_layout_id);
-    if (layout != 0){
-        result = layout->buffer_id;
-    }
-    return(result);
+ Text_Layout *layout = text_layout_get(&models->text_layouts, text_layout_id);
+ if (layout != 0){
+  result = layout->buffer_id;
+ }
+ return(result);
 }
 
 api(custom) function Range_i64
-text_layout_get_visible_range(App *app, Text_Layout_ID text_layout_id){
-    Models *models = (Models*)app->cmd_context;
-    Range_i64 result = {};
-    Text_Layout *layout = text_layout_get(&models->text_layouts, text_layout_id);
-    if (layout != 0){
-        result = layout->visible_range;
-    }
-    return(result);
+text_layout_get_visible_range_(App *app, Text_Layout_ID text_layout_id) {
+ Models *models = (Models*)app->cmd_context;
+ Range_i64 result = {};
+ Text_Layout *layout = text_layout_get(&models->text_layouts, text_layout_id);
+ if (layout != 0) {
+  result = layout->visible_range;
+ }
+ return(result);
 }
 
 api(custom) function Range_f32
-text_layout_line_on_screen(App *app, Text_Layout_ID layout_id, i64 line_number){
-    Models *models = (Models*)app->cmd_context;
-    Range_f32 result = {};
-    Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
-    if (layout == 0){
-        return(result);
+text_layout_line_on_screen(App *app, Text_Layout_ID layout_id, i64 line_number)
+{
+ Models *models = (Models*)app->cmd_context;
+ Range_f32 result = {};
+ Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
+ if (layout == 0){
+  return(result);
+ }
+ 
+ Layout_Function *layout_func = layout->layout_func;
+ 
+ Rect_f32 rect = layout->rect;
+ if (range_contains(layout->visible_line_range, line_number)) {
+  Editing_File *file = imp_get_file(models, layout->buffer_id);
+  if (api_check_buffer(file)){
+   f32 width = rect_width(rect);
+   Face *face = file_get_face(models, file);
+   
+   for (i64 line_number_it = layout->visible_line_range.first;
+        ;
+        line_number_it += 1)
+   {
+    Layout_Item_List line = file_get_line_layout(app->tctx, models, file,
+                                                 layout_func, width, face,
+                                                 line_number_it);
+    result.max += line.height;
+    if (line_number_it == line_number) {
+     break;
     }
-    
-    Layout_Function *layout_func = layout->layout_func;
-    
-    Rect_f32 rect = layout->rect;
-    if (range_contains_inclusive(layout->visible_line_number_range, line_number)){
-        Editing_File *file = imp_get_file(models, layout->buffer_id);
-        if (api_check_buffer(file)){
-            f32 width = rect_width(rect);
-            Face *face = file_get_face(models, file);
-            
-            for (i64 line_number_it = layout->visible_line_number_range.first;;
-                 line_number_it += 1){
-                Layout_Item_List line = file_get_line_layout(app->tctx, models, file,
-                                                             layout_func, width, face,
-                                                             line_number_it);
-                result.max += line.height;
-                if (line_number_it == line_number){
-                    break;
-                }
-                result.min = result.max;
-            }
-            
-            result += rect.y0 - layout->point.pixel_shift.y;
-        }
-    }
-    else if (line_number < layout->visible_line_number_range.min){
-        result = If32(rect.y0, rect.y0);
-    }
-    else if (line_number > layout->visible_line_number_range.max){
-        result = If32(rect.y1, rect.y1);
-    }
-    
-    return(result);
+    result.min = result.max;
+   }
+   
+   result += rect.y0 - layout->point.pixel_shift.y;
+  }
+ }
+ else if (line_number < layout->visible_line_range.min){
+  result = If32(rect.y0, rect.y0);
+ }
+ else if (line_number >= layout->visible_line_range.max) {
+  result = If32(rect.y1, rect.y1);
+ }
+ 
+ return(result);
 }
 
 api(custom) function Rect_f32
 text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
 {
-    Models *models = (Models*)app->cmd_context;
-    Rect_f32 result = {};
-    Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
-    if (layout != 0 && 
-        range_contains_inclusive(layout->visible_range, pos))
+ Models *models = (Models*)app->cmd_context;
+ Rect_f32 result = {};
+ Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
+ if (layout != 0 && 
+     range_contains(layout->visible_range, pos))
+ {
+  Editing_File *file = imp_get_file(models, layout->buffer_id);
+  if ( api_check_buffer(file) ) {
+   Gap_Buffer *buffer = &file->state.buffer;
+   i64 line_number = buffer_get_line_index(buffer, pos) + 1;
+   
+   if ( range_contains(layout->visible_line_range, line_number) ) {
+    Rect_f32 rect = layout->rect;
+    f32 width = rect_width(rect);
+    Face *face = file_get_face(models, file);
+    
+    Layout_Function *layout_func = layout->layout_func;
+    
+    f32 y = 0.f;
+    Layout_Item_List line = {};
+    for (i64 line_number_it = layout->visible_line_range.first;;
+         line_number_it += 1)
     {
-        Editing_File *file = imp_get_file(models, layout->buffer_id);
-        if ( api_check_buffer(file) )
-        {
-            Gap_Buffer *buffer = &file->state.buffer;
-            i64 line_number = buffer_get_line_index(buffer, pos) + 1;
-            
-            if ( range_contains_inclusive(layout->visible_line_number_range, line_number) )
-            {
-                Rect_f32 rect = layout->rect;
-                f32 width = rect_width(rect);
-                Face *face = file_get_face(models, file);
-                
-                Layout_Function *layout_func = layout->layout_func;
-                
-                f32 y = 0.f;
-                Layout_Item_List line = {};
-                for (i64 line_number_it = layout->visible_line_number_range.first;;
-                     line_number_it += 1)
-                {
-                    line = file_get_line_layout(app->tctx, models, file,
-                                                layout_func, width, face,
-                                                line_number_it);
-                    if (line_number_it == line_number)
-                    {
-                        break;
-                    }
-                    y += line.height;
-                }
-                
-                // TODO(allen): optimization: This is some fairly heavy computation.  We really
-                // need to accelerate the (pos -> item) lookup within a single
-                // Buffer_Layout_Item_List.
-                result = Rf32_negative_infinity;
-                b32 found_item = false;
-                for (Layout_Item_Block *block = line.first;
-                     block != 0;
-                     block = block->next)
-                {
-                    i64 count = block->item_count;
-                    Layout_Item *item_ptr = block->items;
-                    for (i32 i = 0; 
-                         i < count; 
-                         i += 1, item_ptr += 1)
-                    {
-                        if ( HasFlag(item_ptr->flags, LayoutItemFlag_Ghost_Character) )
-                        {
-                            continue;
-                        }
-                        i64 index = item_ptr->index;
-                        if (index == pos)
-                        {
-                            result = rect_union(result, item_ptr->rect);
-                            found_item = true;
-                        }
-                        else if (index > pos)
-                        {
-                            break;
-                        }
-                    }
-                }
-                // kv_assert(found_item);
-                
-                Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
-                result.p0 += shift;
-                result.p1 += shift;
-            }
-        }
+     line = file_get_line_layout(app->tctx, models, file,
+                                 layout_func, width, face,
+                                 line_number_it);
+     if (line_number_it == line_number)
+     {
+      break;
+     }
+     y += line.height;
     }
-    return(result);
+    
+    // TODO(allen): optimization: This is some fairly heavy computation.  We really
+    // need to accelerate the (pos -> item) lookup within a single
+    // Buffer_Layout_Item_List.
+    result = Rf32_negative_infinity;
+    b32 found_item = false;
+    for (Layout_Item_Block *block = line.first;
+         block != 0;
+         block = block->next)
+    {
+     i64 count = block->item_count;
+     Layout_Item *item_ptr = block->items;
+     for (i32 i = 0; 
+          i < count; 
+          i += 1, item_ptr += 1)
+     {
+      if ( HasFlag(item_ptr->flags, LayoutItemFlag_Ghost_Character) )
+      {
+       continue;
+      }
+      i64 index = item_ptr->index;
+      if (index == pos)
+      {
+       result = rect_union(result, item_ptr->rect);
+       found_item = true;
+      }
+      else if (index > pos)
+      {
+       break;
+      }
+     }
+    }
+    // kv_assert(found_item);
+    
+    Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
+    result.p0 += shift;
+    result.p1 += shift;
+   }
+  }
+ }
+ return(result);
 }
 
 api(custom) function void
-paint_text_color(App *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color){
-    Models *models = (Models*)app->cmd_context;
-    Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
-    if (layout != 0){
-        range.min = clamp_min(layout->visible_range.min, range.min);
-        range.max = clamp_max(range.max, layout->visible_range.max);
-        range.min -= layout->visible_range.min;
-        range.max -= layout->visible_range.min;
-        ARGB_Color *color_ptr = layout->item_colors + range.min;
-        for (i64 i = range.min; i < range.max; i += 1, color_ptr += 1){
-            *color_ptr = color;
-        }
-    }
+paint_text_color(App *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color)
+{
+ Models *models = (Models*)app->cmd_context;
+ Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
+ if (layout != 0) {
+  i64 visible_min = layout->visible_range.min;
+  range.min = clamp_min(range.min, visible_min);
+  range.max = clamp_max(range.max, layout->visible_range.max);
+  
+  range.min -= visible_min;
+  range.max -= visible_min;
+  ARGB_Color *color_ptr = layout->item_colors + range.min;
+  for (i64 i = range.min; i < range.max; i += 1, color_ptr += 1) {
+   *color_ptr = color;
+  }
+ }
 }
 
 api(custom) function void
 paint_text_color_blend(App *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color, f32 blend)
 {
-    Models *models = (Models*)app->cmd_context;
-    Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
-    if (layout != 0){
-        range.min = clamp_min(layout->visible_range.min, range.min);
-        range.max = clamp_max(range.max, layout->visible_range.max);
-        range.min -= layout->visible_range.min;
-        range.max -= layout->visible_range.min;
-        Vec4_f32 color_v4f32 = argb_unpack(color);
-        Vec4_f32 color_pm_v4f32 = color_v4f32*blend;
-        f32 neg_blend = 1.f - blend;
-        ARGB_Color *color_ptr = layout->item_colors + range.min;
-        for (i64 i = range.min; i < range.max; i += 1, color_ptr += 1){
-            Vec4_f32 color_ptr_v4f32 = argb_unpack(*color_ptr);
-            Vec4_f32 blended_v4f32 = color_ptr_v4f32*neg_blend + color_pm_v4f32;
-            *color_ptr = argb_pack(blended_v4f32);
-        }
-    }
+ Models *models = (Models*)app->cmd_context;
+ Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
+ if (layout != 0){
+  i64 visible_min = layout->visible_range.min;
+  range.min = clamp_min(visible_min, range.min);
+  range.max = clamp_max(range.max, layout->visible_range.max);
+  range.min -= visible_min;
+  range.max -= visible_min;
+  Vec4_f32 color_v4f32 = argb_unpack(color);
+  Vec4_f32 color_pm_v4f32 = color_v4f32*blend;
+  f32 neg_blend = 1.f - blend;
+  ARGB_Color *color_ptr = layout->item_colors + range.min;
+  for (i64 i = range.min; i < range.max; i += 1, color_ptr += 1) {
+   Vec4_f32 color_ptr_v4f32 = argb_unpack(*color_ptr);
+   Vec4_f32 blended_v4f32 = color_ptr_v4f32*neg_blend + color_pm_v4f32;
+   *color_ptr = argb_pack(blended_v4f32);
+  }
+ }
 }
 
 api(custom) function b32

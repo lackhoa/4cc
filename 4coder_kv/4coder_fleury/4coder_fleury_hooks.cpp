@@ -673,7 +673,7 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
 function Layout_Item_List
 F4_LayoutInner(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width, Layout_Virtual_Indent virt_indent)
 {
-    Layout_Item_List list = get_empty_item_list(range);
+ Layout_Item_List list = get_empty_item_list(range);
     
     Scratch_Block scratch(app);
     String text = push_buffer_range(app, scratch, buffer, range);

@@ -40,19 +40,19 @@ text_layout_release(Thread_Context *tctx, Models *models, Text_Layout_Container 
 function Text_Layout_ID
 text_layout_new(Text_Layout_Container *container, Arena *arena,
                 Buffer_ID buffer_id, Buffer_Point point,
-                Range_i64 visible_range, Range_i64 visible_line_number_range,
+                Range_i64 visible_range, Range_i64 visible_line_range,
                 Rect_f32 rect, ARGB_Color *item_colors, Layout_Function *layout_func)
 {
  Text_Layout *new_layout_data = text_layout_new__alloc_layout(container);
  *new_layout_data = {
-  .arena                     = arena,
-  .buffer_id                 = buffer_id,
-  .point                     = point,
-  .visible_range             = visible_range,
-  .visible_line_number_range = visible_line_number_range,
-  .rect                      = rect,
-  .item_colors               = item_colors,
-  .layout_func               = layout_func,
+  .arena              = arena,
+  .buffer_id          = buffer_id,
+  .point              = point,
+  .visible_range      = visible_range,
+  .visible_line_range = visible_line_range,
+  .rect               = rect,
+  .item_colors        = item_colors,
+  .layout_func        = layout_func,
  };
  Text_Layout_ID new_id = ++container->id_counter;
  table_insert(&container->table, new_id, (u64)PtrAsInt(new_layout_data));
@@ -102,9 +102,9 @@ text_layout_render(Thread_Context *tctx, Models *models,
   v2 delta = V2(1.f, 0.f);
   
   v2 shift_p = layout->rect.p0 - layout->point.pixel_shift;
-  i64 linum = layout->visible_line_number_range.min;
+  i64 linum = layout->visible_line_range.min;
   for (;
-       linum <= layout->visible_line_number_range.max;
+       linum < layout->visible_line_range.max;
        linum += 1)
   {
    Layout_Item_List line_layout = file_get_line_layout(tctx, models, file,
@@ -128,7 +128,7 @@ text_layout_render(Thread_Context *tctx, Models *models,
        color = ghost_color;
       } else {
        i64 index = item->index - layout->visible_range.first;
-       kv_assert(index < range_size_inclusive(layout->visible_range));
+       kv_assert(index < range_size(layout->visible_range));
        color = layout->item_colors[index];
       }
       v2 p = item->rect.p0 + shift_p;

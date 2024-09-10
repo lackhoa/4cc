@@ -12,7 +12,7 @@ vim_get_rel_block_rect(App *app, View_ID view, Buffer_ID buffer, Range_i64 range
 
 function Rect_f32
 vim_get_abs_block_rect(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id, Range_i64 range){
-	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+	Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
 
 	i64 rel_pos = range.min;
 	if(!range_contains(visible_range, rel_pos)){ rel_pos = range.max; }

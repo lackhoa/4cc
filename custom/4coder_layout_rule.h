@@ -6,10 +6,10 @@
 
 #pragma once
 
-struct Newline_Layout_Vars{
-    i64 newline_character_index;
-    b32 consuming_newline_characters;
-    b32 prev_did_emit_newline;
+struct Newline_Layout_Vars {
+ i64 newline_character_index;
+ b32 consuming_newline_characters;
+ b32 prev_did_emit_newline;
 };
 
 struct LefRig_TopBot_Layout_Vars{

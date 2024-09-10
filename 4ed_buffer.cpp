@@ -172,100 +172,113 @@ buffer_update_cursors_lean_r(Cursor_With_Index *sorted_positions, i1 count,
 
 //////////////////////////////////////
 
-internal b32
-buffer_good(Gap_Buffer *buffer){
+inline b32
+buffer_good(Gap_Buffer *buffer) {
     return(buffer->data != 0);
 }
 
-internal i64
+inline i64
 buffer_size(Gap_Buffer *buffer){
-    return(buffer->size1 + buffer->size2);
+ return(buffer->size1 + buffer->size2);
 }
 
-internal i64
+inline i64
 buffer_line_count(Gap_Buffer *buffer){
-    return(buffer->line_start_count - 1);
+ return(buffer->line_start_count - 1);
 }
 
-internal void
-buffer_init(Gap_Buffer *buffer, u8 *data, u64 size, Base_Allocator *allocator){
-    block_zero_struct(buffer);
-    
-    buffer->allocator = allocator;
-    
-    u64 capacity = round_up_u64(size*2, KB(4));
-    String memory = base_allocate2(allocator, capacity);
-    buffer->data = (u8*)memory.str;
-    buffer->size1 = size/2;
- buffer->gap_size = capacity - size;
- buffer->size2 = size - buffer->size1;
- buffer->max = capacity;
+inline u8 *
+gap_buffer_data2(Gap_Buffer *buffer)
+{
+ return (buffer->data + (buffer->size1 + buffer->gap_size));
+}
+
+inline u8 *
+gap_buffer_gap(Gap_Buffer *buffer)
+{
+ return (buffer->data + buffer->size1);
+}
+
+
+function void
+buffer_init(Gap_Buffer *buffer, u8 *data, u64 size0, Base_Allocator *allocator) {
+ i64 size = (i64)size0;
+ i64 capacity = round_up_i64(size*2, KB(4));
+ u8 *memory = base_allocate(allocator, capacity);
+ i64 size1 = size/2;
+ *buffer = {
+  .allocator = allocator,
+  .data      = memory,
+  .size1     = size1,
+  .gap_size  = capacity - size,
+  .size2     = size - size1,
+  .cap       = capacity,
+ };
  
  block_copy(buffer->data, data, buffer->size1);
- block_copy(buffer->data + buffer->size1 + buffer->gap_size, data + buffer->size1, buffer->size2);
+ block_copy(gap_buffer_data2(buffer), data + buffer->size1, buffer->size2);
 }
 
-function b32
-gap_buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String text, i64 shift_amount)
+function void
+gap_buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String text)
 {
+ i64 delta_size = (i64)text.size-(range.end-range.start);
  i64 size = buffer_size(buffer);
  Assert(0 <= range.start);
  Assert(range.start <= range.end);
  Assert(range.end <= size);
  
- if (shift_amount + size > buffer->max)
- {
-  i64 new_max = round_up_i64(2*(shift_amount + size), KB(4));
-  i64 new_gap_size = new_max - size;
-  u8 *new_memory = base_allocate(buffer->allocator, new_max);
+ i64 new_size = size+delta_size;
+ if (new_size > buffer->cap) {
+  // NOTE(kv): Expand buffer
+  i64 new_cap = round_up_i64(2*(new_size), KB(4));
+  i64 new_gap_size = new_cap - size;
+  u8 *new_memory = base_allocate(buffer->allocator, new_cap);
   block_copy(new_memory, buffer->data, buffer->size1);
   block_copy(new_memory + (buffer->size1 + new_gap_size),
-             buffer->data + (buffer->size1 + buffer->gap_size),
+             gap_buffer_data2(buffer),
              buffer->size2);
   base_free(buffer->allocator, buffer->data);
-  buffer->data = new_memory;
+  buffer->data     = new_memory;
   buffer->gap_size = new_gap_size;
-  buffer->max = new_max;
+  buffer->cap      = new_cap;
  }
+ Assert(new_size <= buffer->cap);
  
- Assert(shift_amount + size <= buffer->max);
- 
- b32 result = false;
- 
- if (range.end < buffer->size1)
- {
+ if (range.end < buffer->size1) {
+  // NOTE(kv): Change entirely on the left
   i64 move_size = buffer->size1 - range.end;
-  block_copy(buffer->data + buffer->size1 + buffer->gap_size - move_size,
+  block_copy(gap_buffer_data2(buffer) - move_size,
              buffer->data + range.end,
              move_size);
   buffer->size1 -= move_size;
   buffer->size2 += move_size;
  }
- if (range.start > buffer->size1)
- {
+ 
+ if (range.start > buffer->size1) {
+  // NOTE(kv): Change entirely on the right
   i64 move_size = range.start - buffer->size1;
-  block_copy(buffer->data + buffer->size1,
-             buffer->data + buffer->size1 + buffer->gap_size,
+  block_copy(gap_buffer_gap(buffer),
+             gap_buffer_data2(buffer),
              move_size);
   buffer->size1 += move_size;
   buffer->size2 -= move_size;
  }
  
  block_copy(buffer->data + range.start, text.str, text.size);
- buffer->size2 = size - range.end;
- buffer->size1 = range.start + text.size;
- buffer->gap_size -= shift_amount;
+ buffer->size2     = size - range.end;
+ buffer->size1     = range.start + text.size;
+ buffer->gap_size -= delta_size;
+ kv_assert(buffer->gap_size >= 0);
  
- Assert(buffer->size1 + buffer->size2 == size + shift_amount);
- Assert(buffer->size1 + buffer->gap_size + buffer->size2 == buffer->max);
- 
- return(result);
+ Assert(buffer->size1 + buffer->size2 == new_size);
+ Assert(buffer->size1 + buffer->gap_size + buffer->size2 == buffer->cap);
 }
 
 ////////////////////////////////
 
-internal List_String
-buffer_get_chunks(Arena *arena, Gap_Buffer *buffer){
+function List_String
+buffer_get_chunks(Arena *arena, Gap_Buffer *buffer) {
     List_String list = {};
     if (buffer->size1 > 0){
         string_list_push(arena, &list, SCu8(buffer->data, buffer->size1));
@@ -277,7 +290,7 @@ buffer_get_chunks(Arena *arena, Gap_Buffer *buffer){
     return(list);
 }
 
-internal void
+function void
 buffer_chunks_clamp(List_String *chunks, Range_i64 range){
     i64 p = 0;
     List_String list = {};
@@ -578,32 +591,32 @@ buffer_get_pos_range_from_line_number(Gap_Buffer *buffer, i64 line_number)
 
 internal i64
 buffer_get_first_pos_from_line_number(Gap_Buffer *buffer, i64 line_number){
-    i64 result = 0;
-    if (line_number < 1){
-        result = 0;
-    }
-    else if (line_number >= buffer->line_start_count){
-        result = buffer_size(buffer);
-    }
-    else{
-        result = buffer->line_starts[line_number - 1];
-    }
-    return(result);
+ i64 result = 0;
+ if (line_number < 1) {
+  result = 0;
+ }
+ else if (line_number >= buffer->line_start_count) {
+  result = buffer_size(buffer);
+ }
+ else {
+  result = buffer->line_starts[line_number - 1];
+ }
+ return(result);
 }
 
 internal i64
-buffer_get_last_pos_from_line_number(Gap_Buffer *buffer, i64 line_number){
-    i64 result = 0;
-    if (line_number < 1){
-        result = 0;
-    }
-    else if (line_number >= buffer->line_start_count - 1){
-        result = buffer_size(buffer);
-    }
-    else{
-        result = buffer->line_starts[line_number] - 1;
-    }
-    return(result);
+buffer_get_last_pos_from_line_number(Gap_Buffer *buffer, i64 line_number) {
+ i64 result = 0;
+ if (line_number < 1) {
+  result = 0;
+ }
+ else if (line_number >= buffer->line_start_count - 1) {
+  result = buffer_size(buffer);
+ }
+ else {
+  result = buffer->line_starts[line_number] - 1;
+ }
+ return(result);
 }
 
 internal Buffer_Cursor

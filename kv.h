@@ -1791,15 +1791,15 @@ enum{
 #define StaticAssertAlways(c) StaticAssertDisambiguateAlways(c,__default__)
 
 #if !SHIP_MODE
-#define Assert(c) AssertAlways(c)
-#define AssertMessage(m) AssertMessageAlways(m)
-#define StaticAssertDisambiguate(c,d) StaticAssertDisambiguateAlways(c,d)
-#define StaticAssert(c) StaticAssertAlways(c)
+#  define Assert(c) AssertAlways(c)
+#  define AssertMessage(m) AssertMessageAlways(m)
+#  define StaticAssertDisambiguate(c,d) StaticAssertDisambiguateAlways(c,d)
+#  define StaticAssert(c) StaticAssertAlways(c)
 #else
-#define Assert(c)
-#define AssertMessage(m)
-#define StaticAssertDisambiguate(c,d)
-#define StaticAssert(c)
+#  define Assert(c)
+#  define AssertMessage(m)
+#  define StaticAssertDisambiguate(c,d)
+#  define StaticAssert(c)
 #endif
 
 #define AssertImplies(a,b) Assert(!(a) || (b))
@@ -2093,11 +2093,11 @@ typedef i3 Vec3_i32;
 typedef v3 Vec3_f32;
 
 union Range_i32{
-  struct{
-    i32 min;
-    i32 max;
-  };
-  struct{
+ struct{
+  i32 min;
+  i32 max;
+ };
+ struct{
   i32 start;
   i32 end;
  };
@@ -2107,18 +2107,18 @@ union Range_i32{
  };
 };
 union Range_i64{
-  struct{
-    i64 min;
-    i64 max;
-  };
-  struct{
-    i64 start;
-    i64 end;
-  };
-  struct{
-    i64 first;
-    i64 one_past_last;
-  };
+ struct{
+  i64 min;
+  i64 max;
+ };
+ struct{
+  i64 start;
+  i64 end;
+ };
+ struct{
+  i64 first;
+  i64 one_past_last;
+ };
 };
 union Range_u64{
   struct{
@@ -2339,7 +2339,7 @@ struct Arena_Node{
  i32 ref_counter;
 };
 
-struct Thread_Context{
+struct Thread_Context {
  Thread_Kind kind;
  Base_Allocator *allocator;
  Arena node_arena;
@@ -2411,8 +2411,20 @@ make_data(void *memory, u64 size)
  return(data);
 }
 
-function void
+inline void
 block_copy(void *dst, const void *src, u64 size)
+{
+#if AD_IS_DRIVER
+ memmove(dst, src, size);
+#else
+ // NOTE(kv): We got screwed over by changing this to "memcpy" once.
+ // Seriously it's NOT worth it man!
+ gb_memmove(dst, src, size);
+#endif
+}
+
+inline void
+block_copy_non_overlap(void *dst, const void *src, u64 size)
 {
 #if AD_IS_DRIVER
  memcpy(dst, src, size);
@@ -2433,8 +2445,8 @@ block_copy(void *dst, const void *src, u64 size)
 ////////////////////////////////
 
 inline void
-block_zero(String8 data){
-    block_zero(data.str, data.size);
+block_zero(String8 data) {
+ block_zero(data.str, data.size);
 }
 function void
 block_fill_ones(String8 data){
@@ -3195,11 +3207,11 @@ range_overlap(Range_i64 a, Range_i64 b){
 }
 function b32
 range_overlap(Range_u64 a, Range_u64 b){
-    return(a.min < b.max && b.min < a.max);
+ return(a.min < b.max && b.min < a.max);
 }
 function b32
 range_overlap(Range_f32 a, Range_f32 b){
-    return(a.min < b.max && b.min < a.max);
+ return(a.min < b.max && b.min < a.max);
 }
 
 function Range_i32
@@ -3245,71 +3257,33 @@ range_union(Range_i64 a, Range_i64 b){
 }
 function Range_u64
 range_union(Range_u64 a, Range_u64 b){
-    return(Iu64(Min(a.min, b.min), Max(a.max, b.max)));
+ return(Iu64(Min(a.min, b.min), Max(a.max, b.max)));
 }
 function Range_f32
 range_union(Range_f32 a, Range_f32 b){
-    return(If32(Min(a.min, b.min), Max(a.max, b.max)));
+ return(If32(Min(a.min, b.min), Max(a.max, b.max)));
 }
 
-function b32
-range_contains_inclusive(Range_i32 a, i32 p){
-    return(a.min <= p && p <= a.max);
-}
-function b32
-range_contains_inclusive(Range_i64 a, i64 p){
-    return(a.min <= p && p <= a.max);
-}
-function b32
-range_contains_inclusive(Range_u64 a, u64 p){
-    return(a.min <= p && p <= a.max);
-}
-function b32
-range_inclusive_contains(Range_f32 a, f32 p){
- return(a.min <= p && p <= a.max);
-}
+#define BODY  return(a.min <= p && p <= a.max);
+function b32 range_contains_inclusive(Range_i32 a, i32 p){ BODY }
+function b32 range_contains_inclusive(Range_i64 a, i64 p){ BODY }
+function b32 range_contains_inclusive(Range_u64 a, u64 p){ BODY }
+function b32 range_inclusive_contains(Range_f32 a, f32 p){ BODY }
+#undef BODY
 
-function b32
-range_contains(Range_i32 a, i32 p){
- return(a.min <= p && p < a.max);
-}
-function b32
-range_contains(Range_i64 a, i64 p){
-    return(a.min <= p && p < a.max);
-}
-function b32
-range_contains(Range_u64 a, u64 p){
-    return(a.min <= p && p < a.max);
-}
-function b32
-range_contains(Range_f32 a, f32 p){
-    return(a.min <= p && p < a.max);
-}
+#define BODY return(a.min <= p && p < a.max);
+function b32 range_contains(Range_i32 a, i32 p){ BODY }
+function b32 range_contains(Range_i64 a, i64 p){ BODY }
+function b32 range_contains(Range_u64 a, u64 p){ BODY }
+function b32 range_contains(Range_f32 a, f32 p){ BODY }
+#undef BODY
 
-function i32
-range_size(Range_i32 a){
-    i32 size = a.max - a.min;
-    size = clamp_min(0, size);
-    return(size);
-}
-function i64
-range_size(Range_i64 a){
-    i64 size = a.max - a.min;
-    size = clamp_min(0, size);
-    return(size);
-}
-function u64
-range_size(Range_u64 a){
-    u64 size = a.max - a.min;
-    size = clamp_min(0, size);
-    return(size);
-}
-function f32
-range_size(Range_f32 a){
- f32 size = a.max - a.min;
- size = clamp_min(0, size);
- return(size);
-}
+#define BODY  return(clamp_min(0, a.max - a.min));
+function i32 range_size(Range_i32 a){ BODY; }
+function i64 range_size(Range_i64 a){ BODY; }
+function u64 range_size(Range_u64 a){ BODY; }
+function f32 range_size(Range_f32 a){ BODY; }
+#undef BODY
 
 #define BODY  return(clamp_min(0, a.max - a.min + 1));
 function i32 range_size_inclusive(Range_i32 a) { BODY }

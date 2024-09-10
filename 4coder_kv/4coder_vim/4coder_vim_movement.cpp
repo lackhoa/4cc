@@ -111,7 +111,7 @@ function void vim_screen_inner(App *app, f32 ratio, i32 offset){
 	// NOTE(BYP): Not good to rely on this call
 	Rect_f32 region = view_get_buffer_region(app, view);
 	Text_Layout_ID text_layout_id = text_layout_create(app, buffer, region, buffer_point);
-	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+	Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
 
 	i64 pos = i64(ratio*(cast(f64)range_size(visible_range))) + visible_range.min;
 	Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));

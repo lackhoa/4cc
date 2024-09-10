@@ -22,7 +22,7 @@ STOP_DEBUGGING_BEFORE_BUILD = 0
 
 # NOTE: Your configuration ############################
 #DISABLE_ED = 1
-asan_on = 0
+asan_on = 1
 
 
 
@@ -70,7 +70,7 @@ OS_MAC = int(not OS_WINDOWS)
 DOT_DLL=".dll" if OS_WINDOWS else ".so"
 DOT_EXE='.exe' if OS_WINDOWS else ''
 DOT_OBJ='.obj' if OS_WINDOWS else '.o'
-remedybg = f"{CODE}/call_vcvarsall.bat && remedybg.exe"
+remedybg = f"remedybg.exe"
 CPP_VERSION      = "-std:c++20"
 if OS_WINDOWS:
     if TRACE_COMPILE_TIME:

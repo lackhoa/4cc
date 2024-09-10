@@ -355,13 +355,13 @@ buffer_range(App *app, Buffer_ID buffer)
 
 function i64
 buffer_side(App *app, Buffer_ID buffer, Side side){
-    return(range_side(buffer_range(app, buffer), side));
+ return(range_side(buffer_range(app, buffer), side));
 }
 
 // NOTE(kv): this was written by Allen, but idk why it doesn't increment the range max
 function Range_i64
 get_view_range(App *app, View_ID view){
-    return(Ii64(view_get_cursor_pos(app, view), view_get_mark_pos(app, view)));
+ return(Ii64(view_get_cursor_pos(app, view), view_get_mark_pos(app, view)));
 }
 
 function void
@@ -1044,15 +1044,14 @@ enclose_pos_whole_lines(App *app, Buffer_ID buffer, i64 pos){
 function String
 push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
 {
-    String result = {};
-    i64 length = range_size(range);
-    if (length > 0){
-        Temp_Memory restore_point = begin_temp(arena);
-        u8 *memory = push_array(arena, u8, length);
-        if (buffer_read_range(app, buffer, range, memory)){
-            result = SCu8(memory, length);
-  }
-  else{
+ String result = {};
+ i64 length = range_size(range);
+ if (length > 0) {
+  Temp_Memory restore_point = begin_temp(arena);
+  u8 *memory = push_array(arena, u8, length);
+  if ( buffer_read_range(app, buffer, range, memory) ) {
+   result = SCu8(memory, length);
+  } else {
    end_temp(restore_point);
   }
  }

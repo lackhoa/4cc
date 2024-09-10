@@ -21,27 +21,27 @@ codepoint_index_map_read(Codepoint_Index_Map *map, u32 codepoint, u16 *index_out
 
 function u16
 codepoint_index_map_count(Codepoint_Index_Map *map){
-    return(map->max_index + 1);
+ return(map->max_index + 1);
 }
 
 function f32
-font_get_glyph_advance(Face_Advance_Map *map, Face_Metrics *metrics, u32 codepoint, f32 tab_multiplier){
-    f32 result = 0.f;
-    if (codepoint == '\t'){
-        result = metrics->space_advance*tab_multiplier;
-    }
-    else{
-        if (character_is_whitespace(codepoint)){
-            codepoint = ' ';
-        }
-        u16 index = 0;
-        if (codepoint_index_map_read(&map->codepoint_to_index, codepoint, &index)){
-            if (index < map->index_count){
-                result = map->advance[index];
-            }
-        }
-    }
-    return(result);
+font_get_glyph_advance(Face_Advance_Map *map, Face_Metrics *metrics, u32 codepoint, f32 tab_multiplier) {
+ f32 result = 0.f;
+ if (codepoint == '\t') {
+  result = metrics->space_advance*tab_multiplier;
+ }
+ else {
+  if (character_is_whitespace(codepoint)) {
+   codepoint = ' ';
+  }
+  u16 index = 0;
+  if (codepoint_index_map_read(&map->codepoint_to_index, codepoint, &index)) {
+   if (index < map->index_count) {
+    result = map->advance[index];
+   }
+  }
+ }
+ return(result);
 }
 
 function f32

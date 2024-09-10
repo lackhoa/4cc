@@ -165,7 +165,7 @@ api(custom) function Rect_f32 draw_set_clip(App* app, Rect_f32 new_clip);
 api(custom) function Text_Layout_ID text_layout_create(App* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point);
 api(custom) function Rect_f32 text_layout_region(App* app, Text_Layout_ID text_layout_id);
 api(custom) function Buffer_ID text_layout_get_buffer(App* app, Text_Layout_ID text_layout_id);
-api(custom) function Range_i64 text_layout_get_visible_range(App* app, Text_Layout_ID text_layout_id);
+api(custom) function Range_i64 text_layout_get_visible_range_(App* app, Text_Layout_ID text_layout_id);
 api(custom) function Range_f32 text_layout_line_on_screen(App* app, Text_Layout_ID layout_id, i64 line_number);
 api(custom) function Rect_f32 text_layout_character_on_screen(App* app, Text_Layout_ID layout_id, i64 pos);
 api(custom) function void paint_text_color(App* app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color);

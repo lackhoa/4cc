@@ -2124,7 +2124,7 @@ global_const u8 utf8_class[32] = {
 };
 
 function Character_Consume_Result
-utf8_consume(u8 *str, u64 max){
+utf8_consume(u8 *str, u64 max) {
  Character_Consume_Result result = {1, max_u32};
  u8 byte = str[0];
  u8 byte_class = utf8_class[byte >> 3];

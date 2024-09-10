@@ -7,7 +7,6 @@
 
 #include "4coder_kv_debug.cpp"
 #include "4coder_fleury/4coder_fleury_kv.cpp"
-#include "4coder_fleury/4coder_fleury_calc.cpp"
 
 #include "4coder_vim/4coder_vim_include.h"
 
@@ -611,7 +610,6 @@ kv_tick(App *app, Frame_Info frame)
  
  // NOTE(kv): F4
  F4_Index_Tick(app);
- F4_CLC_Tick(frame);
  
  // NOTE(kv): Default tick stuff from the 4th dimension:
  default_tick(app, frame);

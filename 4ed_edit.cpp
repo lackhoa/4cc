@@ -251,8 +251,8 @@ edit__apply(Thread_Context *tctx, Models *models, Editing_File *file,
  
  {
   ProfileTLBlock(tctx, &models->profile_list, "edit apply replace range");
-  i64 shift_amount = replace_range_shift(edit.range, (i64)edit.text.size);
-  gap_buffer_replace_range(buffer, edit.range, edit.text, shift_amount);
+  //i64 shift_amount = replace_range_shift(edit.range, (i64)edit.text.size);
+  gap_buffer_replace_range(buffer, edit.range, edit.text);
  }
 }
 
@@ -433,94 +433,93 @@ edit_batch_check(Thread_Context *tctx, Profile_Global_List *list, Batch_Edit *ba
             batch->edit.range.first < prev_range.one_past_last){
             result = false;
             break;
-        }
-    }
-    return(result);
+  }
+ }
+ return(result);
 }
 
 function b32
 edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
-           Batch_Edit *batch, Edit_Behaviors behaviors){
-    b32 result = true;
-    if (batch != 0){
-        if (!edit_batch_check(tctx, &models->profile_list, batch)){
-            result = false;
-        }
-        else{
-            ProfileTLScope(tctx, &models->profile_list, "batch apply");
-            
-            pre_edit_state_change(models, file);
-            pre_edit_history_prep(file, behaviors);
-            
-            History_Record_Index start_index = 0;
-            if (history_is_activated(&file->state.history)){
-                start_index = file->state.current_record_index;
-            }
-            
-            ProfileTLBlockNamed(tctx, &models->profile_list, "batch text edits", profile_edits);
-            
-            Range_i64 old_range = {};
-            old_range.min = batch->edit.range.min;
-            for (Batch_Edit *edit = batch;
-                 edit != 0;
-                 edit = edit->next){
-                if (edit->next == 0){
-                    old_range.max = edit->edit.range.max;
-                }
-            }
-            Range_Cursor cursor_range = {};
-            cursor_range.min = file_compute_cursor(file, seek_pos(old_range.min));
-            cursor_range.max = file_compute_cursor(file, seek_pos(old_range.max));
-            
-            Range_i64 new_range = Ii64_neg_inf;
-            Gap_Buffer *buffer = &file->state.buffer;
-            
-            i64 shift = 0;
-            for (Batch_Edit *edit = batch;
-                 edit != 0;
-                 edit = edit->next){
-                String insert_string = edit->edit.text;
-                
-                Range_i64 edit_range = edit->edit.range;
-                edit_range.first += shift;
-                edit_range.one_past_last += shift;
-                
-                new_range.min = Min(new_range.min, edit_range.min);
-                i64 new_max = (i64)(edit_range.min + insert_string.size);
-                new_range.max = Max(new_range.max, new_max);
-                
-                i64 size = buffer_size(buffer);
-                if (0 <= edit_range.first &&
-                    edit_range.first <= edit_range.one_past_last &&
-                    edit_range.one_past_last <= size){
-                    edit__apply(tctx, models, file, edit_range, insert_string,
-                                behaviors);
-                    shift += replace_range_shift(edit_range, insert_string.size);
-                }
-                else{
-                    result = false;
-                    break;
-                }
-            }
-            ProfileCloseNow(profile_edits);
-            
-            if (history_is_activated(&file->state.history)){
-                History_Record_Index last_index = file->state.current_record_index;
-                if (start_index + 1 < last_index){
-                    edit_merge_history_range(tctx, models, file,
-                                             start_index + 1, last_index,
-                                             RecordMergeFlag_StateInRange_ErrorOut);
-                }
-            }
-            
-            file_clear_layout_cache(file);
-            
-            edit_fix_markers(tctx, models, file, batch);
-            
-            post_edit_call_hook(tctx, models, file, new_range, cursor_range);
+           Batch_Edit *batch, Edit_Behaviors behaviors)
+{
+ b32 result = true;
+ if ( batch ) {
+  if ( !edit_batch_check(tctx, &models->profile_list, batch) ) {
+   result = false;
+  } else {
+   ProfileTLScope(tctx, &models->profile_list, "batch apply");
+   
+   pre_edit_state_change(models, file);
+   pre_edit_history_prep(file, behaviors);
+   
+   History_Record_Index start_index = 0;
+   if (history_is_activated(&file->state.history)) {
+    start_index = file->state.current_record_index;
+   }
+   
+   ProfileTLBlockNamed(tctx, &models->profile_list, "batch text edits", profile_edits);
+   
+   Range_i64 old_range = {};
+   old_range.min = batch->edit.range.min;
+   for (Batch_Edit *edit = batch;
+        edit != 0;
+        edit = edit->next)
+   {
+    if (edit->next == 0) {
+     old_range.max = edit->edit.range.max;
+    }
+   }
+   Range_Cursor cursor_range = {};
+   cursor_range.min = file_compute_cursor(file, seek_pos(old_range.min));
+   cursor_range.max = file_compute_cursor(file, seek_pos(old_range.max));
+   
+   Range_i64 new_range = Ii64_neg_inf;
+   Gap_Buffer *buffer = &file->state.buffer;
+   
+   i64 shift = 0;
+   for (Batch_Edit *edit = batch;
+        edit != 0;
+        edit = edit->next)
+   {
+    String insert_string = edit->edit.text;
+    
+    Range_i64 edit_range = edit->edit.range;
+    edit_range.first += shift;
+    edit_range.one_past_last += shift;
+    
+    new_range.min = Min(new_range.min, edit_range.min);
+    i64 new_max = (i64)(edit_range.min + insert_string.size);
+    new_range.max = Max(new_range.max, new_max);
+    
+    i64 size = buffer_size(buffer);
+    if (0 <= edit_range.first &&
+        edit_range.first <= edit_range.one_past_last &&
+        edit_range.one_past_last <= size)
+    {
+     edit__apply(tctx, models, file, edit_range, insert_string,
+                 behaviors);
+     shift += replace_range_shift(edit_range, insert_string.size);
+    } else {
+     result = false;
+     break;
+    }
+   }
+   ProfileCloseNow(profile_edits);
+   
+   if ( history_is_activated(&file->state.history) ) {
+    History_Record_Index last_index = file->state.current_record_index;
+    if (start_index + 1 < last_index) {
+     edit_merge_history_range(tctx, models, file,
+                              start_index + 1, last_index,
+                              RecordMergeFlag_StateInRange_ErrorOut);
+    }
+   }
+   
+   file_clear_layout_cache(file);
+   edit_fix_markers(tctx, models, file, batch);
+   post_edit_call_hook(tctx, models, file, new_range, cursor_range);
   }
  }
- 
  return(result);
 }
 

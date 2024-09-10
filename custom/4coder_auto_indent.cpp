@@ -60,7 +60,7 @@ set_line_indents(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 
 {
  b32 result = false;
  Batch_Edit *batch = make_batch_from_indentations(app, arena, buffer, lines, indentations, flags, tab_width);
- if (batch != 0){
+ if (batch != 0) {
   result = true;
   buffer_batch_edit(app, buffer, batch);
  }
@@ -386,7 +386,7 @@ actual_indent = N; )
  return(indentations);
 }
 
-internal b32
+function b32
 auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, 
                    Indent_Flag flags, i1 tab_width, i1 indent_width)
 {

@@ -165,7 +165,7 @@
 #define custom_text_layout_create_sig() Text_Layout_ID custom_text_layout_create(App* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point)
 #define custom_text_layout_region_sig() Rect_f32 custom_text_layout_region(App* app, Text_Layout_ID text_layout_id)
 #define custom_text_layout_get_buffer_sig() Buffer_ID custom_text_layout_get_buffer(App* app, Text_Layout_ID text_layout_id)
-#define custom_text_layout_get_visible_range_sig() Range_i64 custom_text_layout_get_visible_range(App* app, Text_Layout_ID text_layout_id)
+#define custom_text_layout_get_visible_range__sig() Range_i64 custom_text_layout_get_visible_range_(App* app, Text_Layout_ID text_layout_id)
 #define custom_text_layout_line_on_screen_sig() Range_f32 custom_text_layout_line_on_screen(App* app, Text_Layout_ID layout_id, i64 line_number)
 #define custom_text_layout_character_on_screen_sig() Rect_f32 custom_text_layout_character_on_screen(App* app, Text_Layout_ID layout_id, i64 pos)
 #define custom_paint_text_color_sig() void custom_paint_text_color(App* app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color)
@@ -341,7 +341,7 @@ typedef Rect_f32 custom_draw_set_clip_type(App* app, Rect_f32 new_clip);
 typedef Text_Layout_ID custom_text_layout_create_type(App* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point);
 typedef Rect_f32 custom_text_layout_region_type(App* app, Text_Layout_ID text_layout_id);
 typedef Buffer_ID custom_text_layout_get_buffer_type(App* app, Text_Layout_ID text_layout_id);
-typedef Range_i64 custom_text_layout_get_visible_range_type(App* app, Text_Layout_ID text_layout_id);
+typedef Range_i64 custom_text_layout_get_visible_range__type(App* app, Text_Layout_ID text_layout_id);
 typedef Range_f32 custom_text_layout_line_on_screen_type(App* app, Text_Layout_ID layout_id, i64 line_number);
 typedef Rect_f32 custom_text_layout_character_on_screen_type(App* app, Text_Layout_ID layout_id, i64 pos);
 typedef void custom_paint_text_color_type(App* app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color);
@@ -518,7 +518,7 @@ custom_draw_set_clip_type *draw_set_clip;
 custom_text_layout_create_type *text_layout_create;
 custom_text_layout_region_type *text_layout_region;
 custom_text_layout_get_buffer_type *text_layout_get_buffer;
-custom_text_layout_get_visible_range_type *text_layout_get_visible_range;
+custom_text_layout_get_visible_range__type *text_layout_get_visible_range_;
 custom_text_layout_line_on_screen_type *text_layout_line_on_screen;
 custom_text_layout_character_on_screen_type *text_layout_character_on_screen;
 custom_paint_text_color_type *paint_text_color;
@@ -696,7 +696,7 @@ internal Rect_f32 draw_set_clip(App* app, Rect_f32 new_clip);
 internal Text_Layout_ID text_layout_create(App* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point);
 internal Rect_f32 text_layout_region(App* app, Text_Layout_ID text_layout_id);
 internal Buffer_ID text_layout_get_buffer(App* app, Text_Layout_ID text_layout_id);
-internal Range_i64 text_layout_get_visible_range(App* app, Text_Layout_ID text_layout_id);
+internal Range_i64 text_layout_get_visible_range_(App* app, Text_Layout_ID text_layout_id);
 internal Range_f32 text_layout_line_on_screen(App* app, Text_Layout_ID layout_id, i64 line_number);
 internal Rect_f32 text_layout_character_on_screen(App* app, Text_Layout_ID layout_id, i64 pos);
 internal void paint_text_color(App* app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color);
@@ -877,7 +877,7 @@ STORAGE_CLASS custom_draw_set_clip_type *draw_set_clip;
 STORAGE_CLASS custom_text_layout_create_type *text_layout_create;
 STORAGE_CLASS custom_text_layout_region_type *text_layout_region;
 STORAGE_CLASS custom_text_layout_get_buffer_type *text_layout_get_buffer;
-STORAGE_CLASS custom_text_layout_get_visible_range_type *text_layout_get_visible_range;
+STORAGE_CLASS custom_text_layout_get_visible_range__type *text_layout_get_visible_range_;
 STORAGE_CLASS custom_text_layout_line_on_screen_type *text_layout_line_on_screen;
 STORAGE_CLASS custom_text_layout_character_on_screen_type *text_layout_character_on_screen;
 STORAGE_CLASS custom_paint_text_color_type *paint_text_color;

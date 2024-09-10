@@ -196,7 +196,7 @@ draw_line_highlight(App *app, Text_Layout_ID layout, i64 line, ARGB_Color color)
 
 function void
 draw_line_highlight(App *app, Text_Layout_ID layout, i64 line, FColor color){
-    draw_line_highlight(app, layout, Ii64(line), color);
+ draw_line_highlight(app, layout, Ii64(line), color);
 }
 
 function void
@@ -335,81 +335,81 @@ draw_file_bar(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect
 function void
 draw_query_bar(App *app, Query_Bar *query_bar, Face_ID face_id, Rect_f32 bar){
     Scratch_Block scratch(app);
-    Fancy_Line list = {};
-    push_fancy_string(scratch, &list, fcolor_id(defcolor_pop1)        , query_bar->prompt);
-    push_fancy_string(scratch, &list, fcolor_id(defcolor_text_default), query_bar->string);
-    Vec2_f32 p = bar.p0 + V2(2.f, 2.f);
-    draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
+ Fancy_Line list = {};
+ push_fancy_string(scratch, &list, fcolor_id(defcolor_pop1)        , query_bar->prompt);
+ push_fancy_string(scratch, &list, fcolor_id(defcolor_text_default), query_bar->string);
+ Vec2_f32 p = bar.p0 + V2(2.f, 2.f);
+ draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
 }
 
 function void
-draw_line_number_margin(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Text_Layout_ID text_layout_id, Rect_f32 margin){
-    ProfileScope(app, "draw line number margin");
-    
-    Scratch_Block scratch(app);
-    FColor line_color = fcolor_id(defcolor_line_numbers_text);
-    
-    Rect_f32 prev_clip = draw_set_clip(app, margin);
-    draw_rect_fcolor(app, margin, 0.f, fcolor_id(defcolor_line_numbers_back));
-    
-    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
-    i64 line_count = buffer_get_line_count(app, buffer);
-    i64 line_count_digit_count = digit_count_from_integer(line_count, 10);
-    
-    Fancy_String fstring = {};
-    u8 *digit_buffer = push_array(scratch, u8, line_count_digit_count);
-    String digit_string = SCu8(digit_buffer, line_count_digit_count);
-    for (i32 i = 0; i < line_count_digit_count; i += 1){
-        digit_buffer[i] = ' ';
+draw_line_number_margin(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Text_Layout_ID text_layout_id, Rect_f32 margin) {
+ ProfileScope(app, "draw line number margin");
+ 
+ Scratch_Block scratch(app);
+ FColor line_color = fcolor_id(defcolor_line_numbers_text);
+ 
+ Rect_f32 prev_clip = draw_set_clip(app, margin);
+ draw_rect_fcolor(app, margin, 0.f, fcolor_id(defcolor_line_numbers_back));
+ 
+ Range_i64 visible_range_ = text_layout_get_visible_range_(app, text_layout_id);
+ i64 line_count = buffer_get_line_count(app, buffer);
+ i64 line_count_digit_count = digit_count_from_integer(line_count, 10);
+ 
+ Fancy_String fstring = {};
+ u8 *digit_buffer = push_array(scratch, u8, line_count_digit_count);
+ String digit_string = SCu8(digit_buffer, line_count_digit_count);
+ for (i32 i = 0; i < line_count_digit_count; i += 1){
+  digit_buffer[i] = ' ';
+ }
+ 
+ Buffer_Cursor cursor = view_compute_cursor(app, view_id, seek_pos(visible_range_.first));
+ i64 line_number = cursor.line;
+ 
+ Buffer_Cursor cursor_opl = view_compute_cursor(app, view_id, seek_pos(visible_range_.one_past_last));
+ i64 one_past_last_line_number = cursor_opl.line + 1;
+ 
+ u8 *small_digit = digit_buffer + line_count_digit_count - 1;
+ {
+  u8 *ptr = small_digit;
+  if (line_number == 0){
+   *ptr = '0';
+  }
+  else{
+   for (u64 X = line_number; X > 0; X /= 10){
+    *ptr = '0' + (X%10);
+    ptr -= 1;
+   }
+  }
+ }
+ 
+ for (;line_number < one_past_last_line_number &&
+      line_number < line_count;){
+  Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, line_number);
+  Vec2_f32 p = V2(margin.x0, line_y.min);
+  
+  fill_fancy_string(&fstring, 0, line_color, 0, 0, digit_string);
+  draw_fancy_string(app, face_id, fcolor_zero(), &fstring, p);
+  
+  line_number += 1;
+  {
+   u8 *ptr = small_digit;
+   for (;;){
+    if (ptr < digit_buffer){
+     break;
     }
-    
-    Buffer_Cursor cursor = view_compute_cursor(app, view_id, seek_pos(visible_range.first));
-    i64 line_number = cursor.line;
-    
-    Buffer_Cursor cursor_opl = view_compute_cursor(app, view_id, seek_pos(visible_range.one_past_last));
-    i64 one_past_last_line_number = cursor_opl.line + 1;
-    
-    u8 *small_digit = digit_buffer + line_count_digit_count - 1;
-    {
-        u8 *ptr = small_digit;
-        if (line_number == 0){
-            *ptr = '0';
-        }
-        else{
-            for (u64 X = line_number; X > 0; X /= 10){
-                *ptr = '0' + (X%10);
-                ptr -= 1;
-            }
-        }
+    if (*ptr == ' '){
+     *ptr = '0';
     }
-    
-    for (;line_number < one_past_last_line_number &&
-         line_number < line_count;){
-        Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, line_number);
-        Vec2_f32 p = V2(margin.x0, line_y.min);
-        
-        fill_fancy_string(&fstring, 0, line_color, 0, 0, digit_string);
-        draw_fancy_string(app, face_id, fcolor_zero(), &fstring, p);
-        
-        line_number += 1;
-        {
-            u8 *ptr = small_digit;
-            for (;;){
-                if (ptr < digit_buffer){
-                    break;
-                }
-                if (*ptr == ' '){
-                    *ptr = '0';
-                }
-                if (*ptr == '9'){
-                    *ptr = '0';
-                    ptr -= 1;
-                }
-                else{
-                    *ptr += 1;
-                    break;
-                }
-            }
+    if (*ptr == '9'){
+     *ptr = '0';
+     ptr -= 1;
+    }
+    else{
+     *ptr += 1;
+     break;
+    }
+   }
   }
  }
  
@@ -527,13 +527,13 @@ get_token_color_cpp(Token token){
 }
 
 function void
-draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *array){
-    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *array) {
+    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
     i64 first_index = token_index_from_pos(array, visible_range.first);
     Token_Iterator_Array it = token_iterator_index(0, array, first_index);
     for (;;){
         Token *token = tkarr_read(&it);
-        if (token->pos >= visible_range.one_past_last){
+        if (token->pos >= visible_range.one_past_last) {
             break;
         }
         FColor color = get_token_color_cpp(*token);
@@ -547,7 +547,7 @@ draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *arra
 
 function void
 draw_whitespace_highlight(App *app, Text_Layout_ID text_layout_id, Token_Array *array, f32 roundness){
-    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
     i64 first_index = token_index_from_pos(array, visible_range.first);
     Token_Iterator_Array it = token_iterator_index(0, array, first_index);
     for (;;){
@@ -568,7 +568,7 @@ draw_whitespace_highlight(App *app, Text_Layout_ID text_layout_id, Token_Array *
 
 function void
 draw_whitespace_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness){
-    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
     for (i64 i = visible_range.first; i < visible_range.one_past_last;){
         u8 c = buffer_get_char(app, buffer, i);
         if (character_is_whitespace(c)){
@@ -595,7 +595,7 @@ draw_comment_highlights(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
                         Token_Array *array, Comment_Highlight_Pair *pairs, i32 pair_count)
 {
     Scratch_Block scratch(app);
-    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
     i64 first_index = token_index_from_pos(array, visible_range.first);
     Token_Iterator_Array it = token_iterator_index(buffer, array, first_index);
     for (;;)

@@ -195,54 +195,54 @@ file_compute_cursor(Editing_File *file, Buffer_Seek seek){
 
 function Layout_Function*
 file_get_layout_func(Editing_File *file){
-    return(file->settings.layout_func);
+ return(file->settings.layout_func);
 }
 
-internal void
-file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String val, File_Attributes attributes){
-    Scratch_Block scratch(tctx);
-    
-    Base_Allocator *allocator = tctx->allocator;
-    block_zero_struct(&file->state);
-    buffer_init(&file->state.buffer, val.str, val.size, allocator);
-    
-    if (buffer_size(&file->state.buffer) < (i64)val.size){
-        file->settings.dos_write_mode = true;
-    }
-    file_clear_dirty_flags(file);
-    file->attributes = attributes;
-    
-    file->settings.layout_func = models->layout_func;
-    file->settings.face_id = models->global_face_id;
-    
-    buffer_measure_starts(scratch, &file->state.buffer);
-    
-    file->lifetime_object = lifetime_alloc_object(&models->lifetime_allocator, DynamicWorkspace_Buffer, file);
-    history_init(tctx, models, &file->state.history);
-    
-    file->state.cached_layouts_arena = make_arena(allocator);
-    file->state.line_layout_table = make_table_Data_u64(allocator, 500);
-    
-    file->settings.is_initialized = true;
-    
-    {
-        Temp_Memory temp = begin_temp(scratch);
-        String name = SCu8(file->unique_name.name_space, file->unique_name.name_size);
-        name = string_escape(scratch, name);
-        LogEventF(log_string(M), scratch, file->id, 0, system_thread_get_id(),
-                  "init file [lwt=0x%llx] [name=\"%.*s\"]",
-                  attributes.last_write_time, string_expand(name));
-        end_temp(temp);
-    }
-    
-    ////////////////////////////////
-    
-    if (models->begin_buffer != 0){
-        App app = {};
-        app.tctx = tctx;
-        app.cmd_context = models;
-        models->begin_buffer(&app, file->id);
-    }
+function void
+file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String val, File_Attributes attributes) {
+ Scratch_Block scratch(tctx);
+ 
+ Base_Allocator *allocator = tctx->allocator;
+ block_zero_struct(&file->state);
+ buffer_init(&file->state.buffer, val.str, val.size, allocator);
+ 
+ if (buffer_size(&file->state.buffer) < (i64)val.size) {
+  file->settings.dos_write_mode = true;
+ }
+ file_clear_dirty_flags(file);
+ file->attributes = attributes;
+ 
+ file->settings.layout_func = models->layout_func;
+ file->settings.face_id = models->global_face_id;
+ 
+ buffer_measure_starts(scratch, &file->state.buffer);
+ 
+ file->lifetime_object = lifetime_alloc_object(&models->lifetime_allocator, DynamicWorkspace_Buffer, file);
+ history_init(tctx, models, &file->state.history);
+ 
+ file->state.cached_layouts_arena = make_arena(allocator);
+ file->state.line_layout_table = make_table_Data_u64(allocator, 500);
+ 
+ file->settings.is_initialized = true;
+ 
+ {
+  Temp_Memory temp = begin_temp(scratch);
+  String name = SCu8(file->unique_name.name_space, file->unique_name.name_size);
+  name = string_escape(scratch, name);
+  LogEventF(log_string(M), scratch, file->id, 0, system_thread_get_id(),
+            "init file [lwt=0x%llx] [name=\"%.*s\"]",
+            attributes.last_write_time, string_expand(name));
+  end_temp(temp);
+ }
+ 
+ ////////////////////////////////
+ 
+ if (models->begin_buffer != 0){
+  App app = {};
+  app.tctx = tctx;
+  app.cmd_context = models;
+  models->begin_buffer(&app, file->id);
+ }
 }
 
 internal void
@@ -285,42 +285,34 @@ file_get_managed_scope(Editing_File *file){
 
 function Layout_Item_List
 file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
-                     Layout_Function *layout_func, f32 width, Face *face, i64 line_number,
+                     Layout_Function *layout_func, f32 width, Face *face, i64 linum,
                      b32 *found_match=0)
 {
  Layout_Item_List result = {};
  
  i64 line_count = buffer_line_count(&file->state.buffer);
- if (1 <= line_number && line_number <= line_count)
- {
+ if (1 <= linum && linum <= line_count) {
   Line_Layout_Key key = {
    .face_id             = face->id,
    .face_version_number = face->version_number,
    .width               = width,
-   .line_number         = line_number,
+   .line_number         = linum,
   };
-  
   String key_data = make_data_struct(&key);
-  
-  Layout_Item_List *list = 0;
-  
   Table_Lookup lookup = table_lookup(&file->state.line_layout_table, key_data);
-  if (found_match)
-  {
+  if (found_match) {
    *found_match = lookup.found_match;
   }
   
-  if (lookup.found_match)
-  {
+  Layout_Item_List *list = 0;
+  if (lookup.found_match) {
    u64 val = 0;
    table_read(&file->state.line_layout_table, lookup, &val);
    list = (Layout_Item_List*)IntAsPtr(val);
-  }
-  else
-  {
+  } else {
    Arena *cached_layouts_arena = &file->state.cached_layouts_arena;
    list = push_struct(cached_layouts_arena, Layout_Item_List);
-   Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, line_number);
+   Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, linum);
    
    App app = {.tctx = tctx, .cmd_context = models};
    *list = layout_func(&app, cached_layouts_arena,

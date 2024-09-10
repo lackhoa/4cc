@@ -14,7 +14,7 @@ vim_draw_visual_mode(App *app, View_ID view, Buffer_ID buffer, Face_ID face_id, 
 			f32 line_advance = rect_height(block_rect)/f32(Max(1, line_max-line_min));
 			f32 wid = rect_width(block_rect);
 			
-			Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+			Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
 			Range_i64 test_range = range_intersect(visible_range, range);
 			i64 test_line_min = get_line_number_from_pos(app, buffer, test_range.min);
 			i64 test_line_max = get_line_number_from_pos(app, buffer, test_range.max);
@@ -286,9 +286,9 @@ vim_draw_rel_line_number_margin(App *app, View_ID view, Buffer_ID buffer, Face_I
 	i64 bot_line_digit_count = digit_count_from_integer(line_count, 10);
 	i64 digit_count = Max(cur_line_digit_count+1, bot_line_digit_count);
 	
-	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+	Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
 	Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(visible_range.first));
-	Buffer_Cursor cursor_end = view_compute_cursor(app, view, seek_pos(visible_range.end));
+	Buffer_Cursor cursor_end = view_compute_cursor(app, view, seek_pos(visible_range.end-1));
 	const i64 first_line_num = cursor.line;
 	const i64 one_past_last = cursor_end.line;
 	
@@ -375,16 +375,16 @@ vim_draw_line_number_margin(App *app, View_ID view, Buffer_ID buffer, Face_ID fa
 	Rect_f32 prev_clip = draw_set_clip(app, margin);
 	draw_rect_fcolor(app, margin, 0.f, fcolor_id(defcolor_line_numbers_back));
 	
-	Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
-    i64 line_count = buffer_get_line_count(app, buffer);
-    i64 digit_count = digit_count_from_integer(line_count, 10);
+	Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
+ i64 line_count = buffer_get_line_count(app, buffer);
+ i64 digit_count = digit_count_from_integer(line_count, 10);
 	
 	u8 *digit_buffer = push_array(scratch, u8, digit_count);
 	String digit_string = SCu8(digit_buffer, digit_count);
 	foreach(i, digit_count){ digit_buffer[i] = ' '; }
 	
 	i64 cur_line = view_compute_cursor(app, view, seek_pos(visible_range.min)).line;
-	i64 end_line = view_compute_cursor(app, view, seek_pos(visible_range.max)).line+1;
+	i64 end_line = view_compute_cursor(app, view, seek_pos(visible_range.max-1)).line+1;
 	
 	u8 *small_digit = digit_buffer + (digit_count-1) - 1;
 	u8 *ptr = small_digit;
@@ -503,7 +503,7 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
   rect2 prev_clip = draw_set_clip(app, back_rect);
   
   Text_Layout_ID text_layout_id = text_layout_create(app, buffer, back_rect, buffer_point);
-  Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+  Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
   
   paint_text_color_fcolor(app, text_layout_id, visible_range, fcolor_id(defcolor_text_default));
   paint_fade_ranges(app, text_layout_id, buffer);

@@ -38,8 +38,9 @@ layout_reflex_get_rect(App *app, Layout_Reflex *reflex, i64 pos, b32 *unresolved
 ////////////////////////////////
 
 function i64
-layout_index_from_ptr(u8 *ptr, u8 *string_base, i64 index_base){
- return((i64)(ptr - string_base) + index_base);
+layout_index_from_ptr(u8 *ptr, u8 *string_base, i64 index_base) {
+ i64 result = (i64)(ptr - string_base) + index_base;
+ return(result);
 }
 
 function Layout_Item_List
@@ -117,33 +118,33 @@ get_newline_layout_vars(void){
 }
 
 function void
-newline_layout_consume_CR(Newline_Layout_Vars *vars, i64 index){
- if (!vars->consuming_newline_characters){
-  vars->consuming_newline_characters = true;
-  vars->newline_character_index = index;
+newline_layout_consume_CR(Newline_Layout_Vars &vars, i64 index){
+ if (!vars.consuming_newline_characters){
+  vars.consuming_newline_characters = true;
+  vars.newline_character_index = index;
  }
- vars->prev_did_emit_newline = false;
+ vars.prev_did_emit_newline = false;
 }
 
 function i64
-newline_layout_consume_LF(Newline_Layout_Vars *vars, i64 index){
- if (!vars->consuming_newline_characters){
-  vars->newline_character_index = index;
+newline_layout_consume_LF(Newline_Layout_Vars &vars, i64 index) {
+ if ( !vars.consuming_newline_characters ) {
+  vars.newline_character_index = index;
  }
- vars->prev_did_emit_newline = true;
- vars->consuming_newline_characters = false;
- return(vars->newline_character_index);
+ vars.prev_did_emit_newline = true;
+ vars.consuming_newline_characters = false;
+ return(vars.newline_character_index);
 }
 
 function void
-newline_layout_consume_default(Newline_Layout_Vars *vars){
- vars->consuming_newline_characters = false;
- vars->prev_did_emit_newline = false;
+newline_layout_consume_default(Newline_Layout_Vars &vars) {
+ vars.consuming_newline_characters = false;
+ vars.prev_did_emit_newline        = false;
 }
 
 function b32
-newline_layout_consume_finish(Newline_Layout_Vars *vars){
- return((!vars->prev_did_emit_newline));
+newline_layout_consume_finish(Newline_Layout_Vars &vars){
+ return(!vars.prev_did_emit_newline);
 }
 
 ////
@@ -178,14 +179,14 @@ lr_tb_crosses_width(LefRig_TopBot_Layout_Vars *vars, f32 advance){
 }
 
 function f32
-lr_tb_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, u32 codepoint){
+lr_tb_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, u32 codepoint) {
  return(font_get_glyph_advance(vars->advance_map, vars->metrics, codepoint, vars->tab_width));
 }
 
 function void
 lr_tb_write_with_advance_with_flags(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32 advance, Arena *arena, Layout_Item_List *list, i64 index, u32 codepoint, Layout_Item_Flag flags)
 {
- if (codepoint == '\t'){
+ if (codepoint == '\t') {
   codepoint = ' ';
  }
  vars->p.x = ceilv1(vars->p.x);
@@ -294,7 +295,8 @@ lr_tb_align_rightward(LefRig_TopBot_Layout_Vars *vars, f32 align_x){
 ////////////////////////////////
 
 function Layout_Item_List
-layout_unwrapped__inner(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width)
+layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer,
+                 Range_i64 range, Face_ID face, f32 width)
 {
  Layout_Item_List list = get_empty_item_list(range);
  
@@ -303,77 +305,66 @@ layout_unwrapped__inner(App *app, Arena *arena, Buffer_ID buffer, Range_i64 rang
  
  Face_Advance_Map advance_map = get_face_advance_map(app, face);
  Face_Metrics metrics = get_face_metrics(app, face);
- f32 tab_width = (f32)def_get_config_u64(app, vars_intern_lit("default_tab_width"));
+ u64 tab_width = def_get_config_u64(app, vars_intern_lit("default_tab_width"));
  tab_width = clamp_min(1, tab_width);
- LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, tab_width, width);
+ LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, (f32)tab_width, width);
  
- if (text.size == 0)
- {
+ if (text.size == 0) {
   lr_tb_write_blank(&pos_vars, face, arena, &list, range.first);
- }
- else
- {
-  b32 skipping_leading_whitespace = false;
+ } else {
   Newline_Layout_Vars newline_vars = get_newline_layout_vars();
-  
   u8 *ptr = text.str;
   u8 *end_ptr = ptr + text.size;
-  for (;ptr < end_ptr;){
+  for (;ptr < end_ptr;) {
    Character_Consume_Result consume = utf8_consume(ptr, (u64)(end_ptr - ptr));
-   
    i64 index = layout_index_from_ptr(ptr, text.str, range.first);
-   switch (consume.codepoint){
+   kv_assert(index < range.max);
+   
+   switch (consume.codepoint) {
     case '\t':
-    case ' ':
-    {
-     newline_layout_consume_default(&newline_vars);
+    case ' ': {
+     newline_layout_consume_default(newline_vars);
      f32 advance = lr_tb_advance(&pos_vars, face, consume.codepoint);
      lr_tb_write_with_advance(&pos_vars, face, advance, arena, &list, index, consume.codepoint);
     }break;
     
-    default:
-    {
-     newline_layout_consume_default(&newline_vars);
-     lr_tb_write(&pos_vars, face, arena, &list, index, consume.codepoint);
+    case '\r': {
+     newline_layout_consume_CR(newline_vars, index);
     }break;
     
-    case '\r':
-    {
-     newline_layout_consume_CR(&newline_vars, index);
-    }break;
-    
-    case '\n':
-    {
-     i64 newline_index = newline_layout_consume_LF(&newline_vars, index);
+    case '\n': {
+     i64 newline_index = newline_layout_consume_LF(newline_vars, index);
      lr_tb_write_blank(&pos_vars, face, arena, &list, newline_index);
      lr_tb_next_line(&pos_vars);
     }break;
     
-    case max_u32:
-    {
-     newline_layout_consume_default(&newline_vars);
+    case max_u32: {
+     newline_layout_consume_default(newline_vars);
      lr_tb_write_byte(&pos_vars, face, arena, &list, index, *ptr);
+    }break;
+    
+    default: {
+     newline_layout_consume_default(newline_vars);
+     lr_tb_write(&pos_vars, face, arena, &list, index, consume.codepoint);
     }break;
    }
    
    ptr += consume.inc;
   }
+  kv_assert(ptr-text.str == range_size(range));
   
-  if (newline_layout_consume_finish(&newline_vars)){
+  if ( newline_layout_consume_finish(newline_vars) ) {
    i64 index = layout_index_from_ptr(ptr, text.str, range.first);
-   lr_tb_write_blank(&pos_vars, face, arena, &list, index);
+   // NOTE(kv): original code got out of range here
+   if (index < range.max) {
+    lr_tb_write_blank(&pos_vars, face, arena, &list, index);
+   }
   }
  }
  
  layout_item_list_finish(&list, -pos_vars.line_to_text_shift);
  
  return(list);
-}
-
-function Layout_Item_List
-layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range, Face_ID face, f32 width)
-{
- return(layout_unwrapped__inner(app, arena, buffer, range, face, width));
 }
 
 function Layout_Item_List

@@ -1759,7 +1759,7 @@ internal void *gb_memmove(void *dest, void const *source, isize n) {
 		}
 		while (n) n--, d[n] = s[n];
 	}
-
+ 
 	return dest;
 }
 
