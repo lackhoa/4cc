@@ -15,7 +15,7 @@
 union Managed_Object_Standard_Header{
     u64 eight_byte_alignment__;
     struct{
-        Managed_Object_Type type;
+        Managed_Prim_Type type;
         u32 item_size;
         u32 count;
     };

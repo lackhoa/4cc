@@ -63,11 +63,7 @@ struct Ed_Parser
  //-
  void set_ok(b32 value)
  {// NOTE(kv): We don't setting the value to true (I'm open for a better name)
-  if (ok_)
-  {
-   auto p = this;
-   ok_ = value;
-  }
+  ok_ = ok_ && value;
  }
  
  force_inline void fail() { set_ok(false); }
@@ -127,13 +123,13 @@ make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
                     Arena *string_arena=0)
 {
  Ed_Parser result = {
-  .ok_             =true,
-  .scan_direction  =scan_direction,
-  .it              =it,
-  .string_arena    =string_arena,
+  .ok_               = true,
+  .scan_direction    = scan_direction,
+  .it                = it,
+  .string_arena      = string_arena,
   .original_token_it = it,
-  .Token_Gen_Type  =TG_Buffer,
-  .Token_Gen_Buffer={
+  .Token_Gen_Type    = TG_Buffer,
+  .Token_Gen_Buffer  = {
    .app   =app,
    .buffer=buffer,
   },
@@ -147,13 +143,13 @@ make_ep_from_string(String string, Token_Iterator const&it,
                     Arena *string_arena=0)
 {
  Ed_Parser result = {
-  .ok_             =true,
-  .scan_direction  =Scan_Forward,
-  .it              =it,
-  .string_arena    =string_arena,
+  .ok_               = true,
+  .scan_direction    = Scan_Forward,
+  .it                = it,
+  .string_arena      = string_arena,
   .original_token_it = it,
-  .Token_Gen_Type  =TG_String,
-  .Token_Gen_String={
+  .Token_Gen_Type    = TG_String,
+  .Token_Gen_String  = {
    .source=string,
   },
  };
@@ -163,15 +159,7 @@ make_ep_from_string(String string, Token_Iterator const&it,
 function Token *
 ep__get_token_please(Ed_Parser *p)
 {
- Token *token = 0;
- switch(p->Token_Gen_Type)
- {
-#if ED_PARSER_BUFFER
-  case TG_Buffer: { token = token_it_read(&p->it); } break;
-#endif
-  case TG_String: { token = token_it_read(&p->it); }break;
-  invalid_default_case;
- }
+ Token *token = token_it_read(&p->it);
  return token;
 }
 
@@ -183,6 +171,21 @@ ep_get_token(Ed_Parser *p)
   token = ep__get_token_please(p);
  }
  return token;
+}
+
+function Token *
+ep_get_token_delta(Ed_Parser *p, i32 delta)
+{
+ Token *result = 0;
+ if (delta < 0) {
+  i32 inverse_delta = -delta;
+  for_times(inverse_delta) { token_it_dec(&p->it); }
+  result = ep_get_token(p);
+  for_times(inverse_delta) { token_it_inc(&p->it); }
+ } else {
+  todo_incomplete;
+ }
+ return result;
 }
 
 function String
@@ -286,7 +289,7 @@ ep_eat_number(Ed_Parser *p, f32 *out)
  if (p->ok_)
  {
   String8 string = ep_print_token(p, scratch);
-  char *cstring = to_c_string(scratch, string);
+  char *cstring = to_cstring(scratch, string);
   *out = sign * gb_str_to_f32(cstring, 0);
  }
 }
@@ -465,12 +468,17 @@ ep__char_in_string(String chars, char chr)
 }
 
 function b32
-ep_maybe_char(Ed_Parser *p, char c)
+ep_test_char(Ed_Parser *p, char c)
 {
  Scratch_Block scratch;  // @slow, also sometimes the arena isn't necessary
  String string = ep_print_token(p, scratch);
- b32 result = (string.len == 1 &&
-               string.str[0] == c);
+ return (string.len == 1 &&
+         string.str[0] == c);
+}
+function b32
+ep_maybe_char(Ed_Parser *p, char c)
+{
+ b32 result = ep_test_char(p, c);
  if (result) {
   ep_eat_token(p);
  }
@@ -483,51 +491,78 @@ ep_char(Ed_Parser *p, char c)
  p->set_ok( ep_maybe_char(p, c) );
 }
 
-
-// NOTE returns index + 1
+//NOTE(kv) Returns index + 1
+//NOTE(kv) Also eats the terminator
 function i1
-ep_eat_until_char(Ed_Parser *p, String chars, 
-                  i1 max_recursion)
+ep_eat_until_char(Ed_Parser *p, String chars)
 {
- max_recursion -= 1;
- if (max_recursion < 0) { return 0; }
- else
- {
-  i1 result = 0;
-  while ( !result && p->ok_ )
-  {
-   Scratch_Block scratch;
-   String token = ep_print_token(p, scratch);
-   if (token.size == 1)
-   {
-    char character = token.str[0];
-    result = ep__char_in_string(chars, character);
-    if (result)
-    {
-     // break
-    }
-    else
-    {
-     ep_eat_token(p);
-     
-     char *matching = 0;
-     if (character == '(') { matching = ")"; }
-     if (character == '[') { matching = "]"; }
-     if (character == '{') { matching = "}"; }
-     if (matching)
-     {
-      ep_eat_until_char(p, SCu8(matching), max_recursion);
-      ep_eat_token(p);
-     }
+ i32 result = 0;
+ 
+ while ( !result && p->ok_ ) {
+  Scratch_Block scratch;
+  String token = ep_print_token(p, scratch);
+  b32 eaten = false;
+  if (token.size == 1) {
+   char character = token.str[0];
+   result = ep__char_in_string(chars, character);
+   if (!result) {
+    char *matching = 0;
+    if (character == '(') { matching = ")"; }
+    if (character == '[') { matching = "]"; }
+    if (character == '{') { matching = "}"; }
+    if (matching) {
+     ep_eat_until_char(p, SCu8(matching));
+     eaten = true;
     }
    }
-   else { ep_eat_token(p); }
   }
-  return result;
+  if (!eaten) { ep_eat_token(p); }
+ }
+ 
+ return result;
+}
+function i1
+ep_eat_until_char(Ed_Parser *p, char *s) {
+ return ep_eat_until_char(p, SCu8(s));
+}
+function i1
+ep_eat_until_char(Ed_Parser *p, char &c) {
+ return ep_eat_until_char(p, SCu8(c));
+}
+
+function String
+ep_capture_until_char(Ed_Parser *p, char terminator)
+{
+ kv_assert(p->Token_Gen_Type == TG_String);
+ String result = {};
+ if (p->ok_) {
+  Token *first_token = ep_get_token(p);
+  i1 res = ep_eat_until_char(p, SCu8(terminator));
+  if (res) {
+   // NOTE(kv): The terminator is one token to the left,
+   //   so the last token in the captured range is two tokens to the left.
+   Token *last_token = ep_get_token_delta(p, -2);
+   i64 last_pos = last_token->pos + last_token->size;
+   result = string_substring(p->Token_Gen_String.source,
+                             Ii64(first_token->pos, last_pos));
+  }
+ }
+ return result;
+}
+
+
+function void
+ep_eat_until_char_simple(Ed_Parser *p, char c)
+{
+ while ( p->ok_ ) {
+  if ( ep_maybe_char(p, c) ) {
+   break;
+  } else {
+   ep_eat_token(p);
+  }
  }
 }
 
-#define ep_eat_until_char_lit(p, cstring) \
-ep_eat_until_char(p, str8lit(cstring), 64);
-
 #undef ED_PARSER_BUFFER
+
+//-EOF

@@ -157,7 +157,7 @@ load_latest_game_code(App *app, b32 *out_loaded)
       {
        // NOTE(kv): We want to still display old game DLL for as long as possible, until load has succeeded.
        // So we can compare change results better and avoid black screens.
-       gbDllHandle new_library = gb_dll_load( to_c_string(scratch, temp_path) );
+       gbDllHandle new_library = gb_dll_load( to_cstring(scratch, temp_path) );
        ok = (new_library != 0);
        if (!ok) { vim_set_bottom_text_lit("failed to load dll"); }
        

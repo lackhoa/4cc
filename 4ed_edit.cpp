@@ -236,8 +236,8 @@ edit__apply(Thread_Context *tctx, Models *models, Editing_File *file,
  
  Gap_Buffer *buffer = &file->state.buffer;
  Assert(0 <= edit.range.first);
- Assert(edit.range.first <= edit.range.one_past_last);
- Assert(edit.range.one_past_last <= buffer_size(buffer));
+ Assert(edit.range.first <= edit.range.opl);
+ Assert(edit.range.opl <= buffer_size(buffer));
  
  // NOTE(allen): history update
  if (!behaviors.do_not_post_to_history)
@@ -430,7 +430,7 @@ edit_batch_check(Thread_Context *tctx, Profile_Global_List *list, Batch_Edit *ba
     for (;batch != 0;
          batch = batch->next){
         if (batch->edit.range.first <= prev_range.first ||
-            batch->edit.range.first < prev_range.one_past_last){
+            batch->edit.range.first < prev_range.opl){
             result = false;
             break;
   }
@@ -485,7 +485,7 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
     
     Range_i64 edit_range = edit->edit.range;
     edit_range.first += shift;
-    edit_range.one_past_last += shift;
+    edit_range.opl += shift;
     
     new_range.min = Min(new_range.min, edit_range.min);
     i64 new_max = (i64)(edit_range.min + insert_string.size);
@@ -493,8 +493,8 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
     
     i64 size = buffer_size(buffer);
     if (0 <= edit_range.first &&
-        edit_range.first <= edit_range.one_past_last &&
-        edit_range.one_past_last <= size)
+        edit_range.first <= edit_range.opl &&
+        edit_range.opl <= size)
     {
      edit__apply(tctx, models, file, edit_range, insert_string,
                  behaviors);

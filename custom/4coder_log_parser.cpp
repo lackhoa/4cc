@@ -565,13 +565,13 @@ log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
                 bucket->had_a_tag = had_a_tag;
                 bucket->thread_id_value = thread_id_value;
                 if (prev_bucket != 0){
-                    prev_bucket->range.one_past_last = i;
+                    prev_bucket->range.opl = i;
                 }
                 prev_bucket = bucket;
             }
         }
         if (prev_bucket != 0){
-            prev_bucket->range.one_past_last = log_graph.event_array.count;
+            prev_bucket->range.opl = log_graph.event_array.count;
         }
         
         Face_Metrics metrics = get_face_metrics(app, face_id);
@@ -592,7 +592,7 @@ log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
                 for (Log_Graph_Thread_Bucket *bucket = log_graph.first_bucket;
                      bucket != 0;
                      bucket = bucket->next, iteration_counter += 1){
-                    if (bucket->range.first < bucket->range.one_past_last){
+                    if (bucket->range.first < bucket->range.opl){
                         Log_Event *event = log_graph.event_array.events[bucket->range.first];
                         if (event->event_number < smallest_event_number){
                             smallest_event_number = event->event_number;

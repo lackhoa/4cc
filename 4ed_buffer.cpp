@@ -127,10 +127,10 @@ buffer_update_cursors_lean_l(Cursor_With_Index *sorted_positions, i1 count,
             for (;pos < end_pos && pos->pos < range.first; pos += 1);
         }
         i64 new_pos = range.first + shift_amount;
-        for (;pos < end_pos && pos->pos <= range.one_past_last; pos += 1){
+        for (;pos < end_pos && pos->pos <= range.opl; pos += 1){
             pos->pos = new_pos;
         }
-        shift_amount += len - (range.one_past_last - range.first);
+        shift_amount += len - (range.opl - range.first);
     }
     if (shift_amount != 0){
         for (;pos < end_pos; pos += 1){
@@ -158,10 +158,10 @@ buffer_update_cursors_lean_r(Cursor_With_Index *sorted_positions, i1 count,
             for (;pos < end_pos && pos->pos < range.first; pos += 1);
         }
         i64 new_pos = range.first + len + shift_amount;
-        for (;pos < end_pos && pos->pos < range.one_past_last; pos += 1){
+        for (;pos < end_pos && pos->pos < range.opl; pos += 1){
             pos->pos = new_pos;
         }
-        shift_amount += len - (range.one_past_last - range.first);
+        shift_amount += len - (range.opl - range.first);
     }
     if (shift_amount != 0){
         for (;pos < end_pos; pos += 1){
@@ -301,14 +301,14 @@ buffer_chunks_clamp(List_String *chunks, Range_i64 range){
         Range_i64 node_range = Ii64(p, p + node->string.size);
         if (range_overlap(range, node_range)){
             i64 first = Max(node_range.first, range.first) - node_range.first;
-            i64 one_past_last = Min(node_range.one_past_last, range.one_past_last) - node_range.first;
+            i64 one_past_last = Min(node_range.opl, range.opl) - node_range.first;
             String s = string_prefix(node->string, one_past_last);
             node->string = string_skip(s, first);
             sll_queue_push(list.first, list.last, node);
             list.total_size += node->string.size;
             list.node_count += 1;
         }
-        p = node_range.one_past_last;
+        p = node_range.opl;
     }
     *chunks = list;
 }
@@ -513,7 +513,7 @@ buffer_remeasure_starts(Thread_Context *tctx, Gap_Buffer *buffer, Batch_Edit *ba
          node != 0;
          node = node->next){
         i64 first_line = buffer_get_line_index(buffer, node->edit.range.first);
-        i64 opl_line = buffer_get_line_index(buffer, node->edit.range.one_past_last);
+        i64 opl_line = buffer_get_line_index(buffer, node->edit.range.opl);
         i64 new_line_count = count_lines(node->edit.text);
         i64 deleted_line_count = opl_line - first_line;
         
@@ -584,7 +584,7 @@ buffer_get_pos_range_from_line_number(Gap_Buffer *buffer, i64 line_number)
  if (1 <= line_number && line_number < buffer->line_start_count)
  {
   result.first         = buffer->line_starts[line_number-1];
-  result.one_past_last = buffer->line_starts[line_number];
+  result.opl = buffer->line_starts[line_number];
  }
  return(result);
 }

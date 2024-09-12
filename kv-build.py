@@ -8,21 +8,30 @@ DISABLE_ED   = 0
 full_build_components = {
  "custom_api_gen": 1,
  "skm_lexer_gen":  0,
+ "imgui":          1,
 }
 COMPILE_GAME_WITH_MSVC = 1
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
-AD_PROFILE = 1
-KV_SLOW = 0
-STOP_DEBUGGING_BEFORE_BUILD = 0
+AD_PROFILE = 0
+KV_SLOW    = 0
+STOP_DEBUGGING_BEFORE_BUILD = 1
 
 
 
 
-# NOTE: Your configuration ############################
-#DISABLE_ED = 1
-asan_on = 1
+
+
+# NOTE: Override configuration ############################
+#asan_on    = 1
+DISABLE_ED = 1
+#FORCE_MORE_BUILDS = 1
+full_build_components["imgui"] = 0
+
+
+
+
 
 
 
@@ -456,7 +465,7 @@ try:
             imgui_files = [pjoin(imgui_dir, f) for f in imgui_cpp_basenames]
             imgui_backend_files = [f"{imgui_dir}/backends/imgui_impl_win32.cpp", f"{imgui_dir}/backends/imgui_impl_opengl3.cpp"]
             imgui_config = '-DIMGUI_USER_CONFIG=\\"ad_imgui_config.h\\"'
-            if more_builds:
+            if more_builds and full_build_components["imgui"]:
                 for file in (imgui_files + imgui_backend_files):
                     # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
                     run_compiler(Compiler.ClangCl, file, "",

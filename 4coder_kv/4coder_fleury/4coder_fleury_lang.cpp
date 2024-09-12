@@ -63,7 +63,7 @@ _F4_RegisterLanguage(String name,
         language->next = f4_langs.language_table[slot];
         f4_langs.language_table[slot] = language;
         language->hash = hash;
-        language->name = push_string_copyz(&f4_langs.arena, name);
+        language->name = push_stringz(&f4_langs.arena, name);
         language->lex_state_size     = lex_state_size;
         language->IndexFile          = IndexFile;
         language->LexInit            = LexInit;

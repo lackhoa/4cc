@@ -160,7 +160,7 @@ function BUFFER_EDIT_RANGE_SIG(F4_BufferEditRange)
         
         i64 token_index_first = token_relex_first(ptr, old_range.first, 1);
         i64 token_index_resync_guess =
-            token_relex_resync(ptr, old_range.one_past_last, 16);
+            token_relex_resync(ptr, old_range.opl, 16);
         
         if (token_index_resync_guess - token_index_first >= 4000){
             do_full_relex = true;
@@ -183,7 +183,7 @@ function BUFFER_EDIT_RANGE_SIG(F4_BufferEditRange)
             Token_List relex_list = F4_Language_LexFullInput_NoBreaks(app, language, scratch, partial_text);
             //~
             
-            if (relex_range.one_past_last < buffer_get_size(app, buffer_id)){
+            if (relex_range.opl < buffer_get_size(app, buffer_id)){
                 token_drop_eof(&relex_list);
             }
             
@@ -213,7 +213,7 @@ function BUFFER_EDIT_RANGE_SIG(F4_BufferEditRange)
                 for (i64 i = 0, index = replaced.first; i < relexed_count; i += 1, index += 1){
                     new_tokens[index].pos += relex_range.first;
                 }
-                for (i64 i = tail.first; i < tail.one_past_last; i += 1){
+                for (i64 i = tail.first; i < tail.opl; i += 1){
                     old_tokens[i].pos += text_shift;
                 }
                 block_copy_array_shift(new_tokens, ptr->tokens, tail, tail_shift);

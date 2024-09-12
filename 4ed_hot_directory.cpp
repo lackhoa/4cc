@@ -58,7 +58,7 @@ internal void
 hot_directory_set(Hot_Directory *hot_directory, String str)
 {
     arena_clear(&hot_directory->arena);
-    hot_directory->string    = push_string_copyz(&hot_directory->arena, str);
+    hot_directory->string    = push_stringz(&hot_directory->arena, str);
     hot_directory->canonical = system_get_canonical(&hot_directory->arena, str);
     hot_directory->file_list = system_get_file_list(&hot_directory->arena, hot_directory->canonical);
 }
@@ -66,7 +66,7 @@ hot_directory_set(Hot_Directory *hot_directory, String str)
 internal void
 hot_directory_reload(Arena *scratch, Hot_Directory *hot_directory){
     Temp_Memory temp = begin_temp(scratch);
-    String string = push_string_copyz(scratch, hot_directory->string);
+    String string = push_stringz(scratch, hot_directory->string);
     hot_directory_set(hot_directory, string);
     end_temp(temp);
 }

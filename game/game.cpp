@@ -702,7 +702,7 @@ render_forearm(mat4i const&ot,
   else
   {
    draw(bez(in_b, fvec(V3(-0.0318f, 0.f, 0.f)),
-                 fval2(0,0), near_palm_in),
+            fval2(0,0), near_palm_in),
         lp(fval4i(4,3,1,1)));
   }
  }
@@ -2332,7 +2332,7 @@ render_reference_images(b32 full_alpha)
 render_movie_return
 render_movie(render_movie_params)
 {
- painter.object_stack.count = 0;
+ painter.bone_stack.count = 0;
  kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
  i32 viewport_index = viewport_id - 1;
  b32 is_main_viewport = (viewport_id == 1);
@@ -2457,10 +2457,10 @@ render_movie(render_movie_params)
  {
   auto &p = painter;
   //TODO(kv): @Cleanup Where should the object list live?
-  init_static(p.object_list,  arena, 64);
-  init_static(p.object_stack, arena, 16);
-  p.object_list.push(Object{.name=strlit("world"), .transform=mat4i_identity});
-  p.object_stack.push(0);
+  init_static(p.bone_list,  arena, 64);
+  init_static(p.bone_stack, arena, 16);
+  p.bone_list.push(Bone{.name=strlit("world"), .transform=mat4i_identity});
+  p.bone_stack.push(0);
   p.view_vector_stack[painter.view_vector_count++] = v3{};
   p.painting_disabled = fbool(0);
  }

@@ -318,7 +318,7 @@ copy_input_event(Arena *arena, Input_Event *event){
     switch (result.kind){
         case InputEventKind_TextInsert:
         {
-            result.text.string = push_string_copyz(arena, event->text.string);
+            result.text.string = push_stringz(arena, event->text.string);
         }break;
         
         case InputEventKind_KeyStroke:
@@ -355,7 +355,7 @@ copy_input_event(Arena *arena, Input_Event *event){
                 case CoreCode_FileExternallyModified:
                 case CoreCode_NewClipboardContents:
                 {
-                    result.core.string = push_string_copyz(arena, event->core.string);
+                    result.core.string = push_stringz(arena, event->core.string);
                 }break;
             }
         }break;
@@ -435,9 +435,9 @@ parse_keyboard_event(Arena *arena, String text)
         
         range.first = pos;
         for (;pos < text.size && character_is_base16(text.str[pos]); pos += 1);
-        range.one_past_last = pos;
+        range.opl = pos;
         
-        if (range.first == range.one_past_last){
+        if (range.first == range.opl){
             result.kind = InputEventKind_None;
         }
         else{
@@ -463,9 +463,9 @@ parse_keyboard_event(Arena *arena, String text)
                         for (;pos < text.size && character_is_whitespace(text.str[pos]); pos += 1);
                         range.first = pos;
                         for (;pos < text.size && character_is_base16(text.str[pos]); pos += 1);
-                        range.one_past_last = pos;
+                        range.opl = pos;
                         
-                        if (range.first == range.one_past_last){
+                        if (range.first == range.opl){
                             break;
                         }
                         

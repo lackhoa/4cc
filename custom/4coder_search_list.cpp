@@ -14,7 +14,7 @@
 
 function void
 def_search_list_add_path(Arena *arena, List_String *list, String path){
-    String path_copy = push_string_copyz(arena, path);
+    String path_copy = push_stringz(arena, path);
     string_list_push(arena, list, path_copy);
 }
 

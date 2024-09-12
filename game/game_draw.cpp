@@ -613,7 +613,7 @@ duo_line(v3 array[3], linum_param)
  duo_line(array[0], array[1], array[2], 0);
 }
 
-internal void
+function void
 draw_image(char *filename, v3 o, v3 x, v3 y, v1 alpha=1.f, v3 color={1,1,1},
            linum_param)
 {

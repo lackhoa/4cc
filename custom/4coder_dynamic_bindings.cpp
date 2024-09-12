@@ -23,7 +23,7 @@ dynamic_binding_load_from_file(App *app, Mapping *mapping, String filename){
     
     Scratch_Block scratch(app);
     
-    String filename_copied = push_string_copyz(scratch, filename);
+    String filename_copied = push_stringz(scratch, filename);
     String8List search_list = {};
     def_search_normal_load_list(scratch, &search_list);
     String full_path = def_search_get_full_path(scratch, &search_list, filename_copied);

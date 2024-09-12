@@ -221,7 +221,7 @@ layout_character_from_pos(Layout_Item_List list, i64 index){
     if (index <= list.manifested_index_range.first){
         result = 0;
     }
-    else if (index > list.manifested_index_range.one_past_last){
+    else if (index > list.manifested_index_range.opl){
         result = list.character_count - 1;
     }
     else{

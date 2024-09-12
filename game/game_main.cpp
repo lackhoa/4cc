@@ -43,7 +43,7 @@ X_GAME_API_FUNCTIONS(X)
 
 
 function b32
-just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=Key_Mod_NULL)
+just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0)
 {
  return ((input->key_states       [keycode])     &&
          (input->key_state_changes[keycode] > 0) &&
@@ -51,7 +51,7 @@ just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=Key_Mod_NUL
 }
 
 force_inline b32
-is_key_down(Game_Input *input, Key_Mods modifiers, Key_Code keycode)
+key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0)
 {
  return ((input->key_states[keycode]) &&
          (input->active_mods == modifiers));
@@ -194,45 +194,89 @@ clear_modeler_data(Modeler &m)
 }
 
 function void
-serialize_type_func(Printer &p, Type_Info &info, void *void_pointer)
+write_data_func(Printer &p, Type_Info &type, void *void_pointer)
 {
-#define newline   print(p, "\n")
+ char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
- if (info.Basic_Type)
- {
-  print_data_basic_type(p, info.Basic_Type, pointer);
- }
- else
- {
-  if (info.members.count)
-  {// NOTE: struct
-   print(p, "{"); newline;
-   for_i1(member_index, 0, info.members.count)
-   {
-    Struct_Member &member = info.members[member_index];
-    p << member.name << " ";
-    u8 *member_pointer = pointer+member.offset;
-    if (member.type->Basic_Type) {
-     print_data_basic_type(p, member.type->Basic_Type, member_pointer);
-    } else {
-     serialize_type_func(p, *member.type, member_pointer);
-    }
-    newline;
-   }
-   print(p, "}"); newline;
+ if (type.Basic_Type) {
+  write_basic_type(p, type.Basic_Type, pointer);
+ } else if (type.members.count) {
+  // NOTE: struct
+  p << "{\n";
+  for_i1(member_index, 0, type.members.count) {
+   Struct_Member &member = type.members[member_index];
+   p << member.name << " ";
+   u8 *member_pointer = pointer+member.offset;
+   write_data_func(p, *member.type, member_pointer);
+   p << newline;
   }
-  else
-  {// NOTE: enum
-   i32 enum_value;
-   block_copy(&enum_value, pointer, info.size);
-   p << enum_value;
-  }
+  p << "}\n";
+ } else {
+  // NOTE: enum
+  i32 enum_value;
+  block_copy(&enum_value, pointer, type.size);
+  p << enum_value;
  }
-#undef newline
 }
 //
-#define serialize_type(PRINTER, POINTER) \
-serialize_type_func(PRINTER, type_info_of_pointer(POINTER), POINTER)
+#define write_data(PRINTER, POINTER) \
+write_data_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
+
+function i32
+enum_index_from_pointer(Type_Info &type, void *pointer0)
+{
+ u8* pointer = (u8*)pointer0;
+ i32 value;
+ block_copy(&value, pointer, type.size);
+ i32 result = {};
+ for_i32 (index, 0, type.enum_values.count) {
+  Enum_Value enum_it = type.enum_values[index];
+  if (enum_it.value == value) {
+   result = index;
+   break;
+  }
+ }
+ return result;
+}
+function String
+enum_name_from_pointer(Type_Info &type, void *pointer0)
+{
+ i32 enum_index = enum_index_from_pointer(type, pointer0);
+ return type.enum_values[enum_index].name;
+}
+//nono: we're over-reading, don't do this!
+#define enum_index_from_value(value) \
+enum_index_from_pointer(type_info_from_pointer(&value), &value)
+#define enum_name_from_value(value) \
+enum_name_from_value(type_info_from_pointer(&value), &value)
+
+
+function void
+pretty_print_func(Printer &p, Type_Info &type, void *void_pointer)
+{
+ char newline = '\n';
+ u8 *pointer = cast(u8 *)void_pointer;
+ if (type.Basic_Type) {
+  write_basic_type(p, type.Basic_Type, pointer);
+ } else if (type.members.count) {
+  // NOTE: Struct
+  p << "{\n";
+  for_i1(member_index, 0, type.members.count) {
+   Struct_Member &member = type.members[member_index];
+   p << member.name << " ";
+   u8 *member_pointer = pointer+member.offset;
+   pretty_print_func(p, *member.type, member_pointer);
+   p << newline;
+  }
+  p << "}\n";
+ } else {
+  // NOTE: Enum -> Print out the correct name
+  p << enum_name_from_pointer(type, pointer);
+ }
+}
+//
+#define pretty_print(PRINTER, POINTER) \
+pretty_print_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
 
 function b32
 game_load(Game_State *state, App *app, String filename,
@@ -359,18 +403,18 @@ render_data(Game_State &state)
  for_i32(vindex,1,m.vertices.count)
  {
   Vertex_Data &vert = m.vertices[vindex];
-  Object &object = p.object_list[vert.object_index];
+  Bone &bone = p.bone_list[vert.bone_index];
   u32 prim_id = vertex_prim_id(vindex);
   {
-   mat4 &mat = object.transform;
+   mat4 &mat = bone.transform;
    v3 pos = mat4vert(mat, vert.pos);
    indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
   }
   if (vert.symx)
   {//NOTE: Draw the right side (TODO @speed stupid object lookup)
    set_in_block(painter.is_right, 1);
-   auto &objectR = get_right_object(object);
-   mat4 &mat = objectR.transform;
+   auto &boneR = get_right_bone(bone);
+   mat4 &mat = boneR.transform;
    v3 pos = mat4vert(mat, vert.pos);
    indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
   }
@@ -379,7 +423,7 @@ render_data(Game_State &state)
  for_i32(curve_index,1,m.curves.count)
  {
   Bezier_Data &bez = m.curves[curve_index];
-  auto &object = p.object_list[bez.object_index];
+  auto &bone = p.bone_list[bez.bone_index];
   u32 prim_id = curve_prim_id(curve_index);
   {
    v3 p0 = m.vertices[bez.p0_index].pos;
@@ -389,18 +433,17 @@ render_data(Game_State &state)
    
    Bez draw_bez = Bez{p0,p1,p2,p3};
    {
-    draw(object.transform*draw_bez, prim_id);
+    draw(bone.transform*draw_bez, prim_id);
    }
    if (bez.symx)
    {
     set_in_block(painter.is_right, 1);
-    auto &objectR = get_right_object(object);
-    draw(objectR.transform*draw_bez, prim_id);
+    auto &boneR = get_right_bone(bone);
+    draw(boneR.transform*draw_bez, prim_id);
    }
   }
  }
 }
-
 
 function game_render_return
 game_render(game_render_params)
@@ -425,24 +468,25 @@ game_init(game_init_params)
  
  //@game_bootstrap_arena_zero_initialized
  Game_State *state = push_struct(bootstrap_arena, Game_State);
- state->malloc_base_allocator = malloc_base_allocator;  // NOTE: Stupid: can't use global vars on reloaded code!
+ state->malloc_base_allocator = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
  state->permanent_arena = *bootstrap_arena;
  Arena *arena = &state->permanent_arena;
  state->dll_arena = make_arena(&state->malloc_base_allocator, MB(1));
  
  {//-;init_modeler
-  auto &m = state->modeler;
+  Modeler &m = state->modeler;
   m.permanent_arena = &state->permanent_arena;
   init_static(m.vertices, m.permanent_arena, 4096);
   init_static(m.curves,   m.permanent_arena, 512);
   {
-   init_dynamic(m.active_objects, 0, 16);
-   //m.active_objects.flags = Container_Unique;  Bleh! Can't do this!
+   init_dynamic(m.active_prims, &state->malloc_base_allocator, 16);
   }
-  {// NOTE: Modeler_Edit_History
-   auto &h = m.history;
-   h.arena = make_arena(&state->malloc_base_allocator);
-   h.inited = true;
+  {
+   Modeler_Edit_History &h = m.history;
+   // NOTE(kv): We might want to erase edit history, so put it in an arena.
+   h.arena     = make_arena(&state->malloc_base_allocator);
+   h.inited    = true;
+   h.allocator = make_arena_base_allocator(&h.arena);
    clear_edit_history(m.history);
   }
   
@@ -560,7 +604,7 @@ get_target_camera(Game_State *state, i32 index)
 }
 
 function String
-serialize(Arena *arena, Game_State *state)
+serialize_state(Arena *arena, Game_State *state)
 {
  // NOTE: lovely MSVC doesn't pass __VA_ARGS__ correctly between macros
  //TODO: Cleanup this macro hell
@@ -571,7 +615,7 @@ serialize(Arena *arena, Game_State *state)
 #define brace_end             indentation-=1; print(p, "}"); newline;
 #define brace_block           brace_begin; defer(brace_end);
 #define macro_print_field(STRUCT, TYPE, NAME) \
-print(p, #NAME " "); print_data_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newline
+print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newline
  
  const i32 MAX_SAVE_SIZE = KB(16);  // Wastes @Memory
  Printer p = make_printer_buffer(arena, MAX_SAVE_SIZE);
@@ -585,7 +629,7 @@ print(p, #NAME " "); print_data_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); 
     String timestamp = time_format(buf, alen(buf), "%d.%m.%Y %H:%M:%S");
     printn2(p, "// Written at ", timestamp); newline;
    }
-   printn2(p, "version ", data_current_version); newline;
+   printn2(p, "version ", Version_Current); newline;
   }
   {
    print(p, "cameras"); newline;
@@ -614,7 +658,7 @@ print(p, #NAME " "); print_data_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); 
      for_i32(vi,1,vertices.count)
      {// NOTE tight loop
       auto &v = vertices[vi];
-      serialize_type(p, &v);
+      write_data(p, &v);
      }
     }
     newline;
@@ -628,7 +672,7 @@ print(p, #NAME " "); print_data_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); 
      for_i32(bi,1,curves.count)
      {// NOTE tight loop
       auto &b = curves[bi];
-      serialize_type(p, &b);
+      write_data(p, &b);
      }
     }
     newline;
@@ -655,7 +699,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
  Scratch_Block scratch(app);
  String path = (is_manual ? state->manual_save_path :
                 state->autosave_path);
- char *pathz = to_c_string(scratch, path);
+ char *pathz = to_cstring(scratch, path);
  String backup_dir = state->backup_dir;
  
  b32 ok = true;
@@ -710,7 +754,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
  
  if (ok)
  {//-NOTE: Save the file
-  String text = serialize(scratch, state);
+  String text = serialize_state(scratch, state);
   ok = write_entire_file(path, text.str, text.size);
   if (ok) {vim_set_bottom_text(str8lit("Saved game state!"));}
   else    {printf_message(app, "Failed to write to %.*s", string_expand(path));}
@@ -763,10 +807,10 @@ game_update(game_update_params)
   u32 hot_prim = get_hot_prim_id();
   if (hot_prim)
   {
-   if ( prim_id_is_obj(hot_prim) )
+   if ( prim_id_is_data(hot_prim) )
    {// NOTE: Drawn by data -> change selected obj id
     auto &m = modeler;
-    m.selected_obj_id = hot_prim;
+    m.selected_prim_id = hot_prim;
     m.change_uncommitted = false;
     switch_to_mouse_panel(app);
    }
@@ -808,7 +852,7 @@ game_update(game_update_params)
   
   if(0)
   {
-   i32 selected_index = prim_id_to_index(selected_object_id());
+   i32 selected_index = prim_id_to_index(selected_prim_id(modeler));
    DEBUG_VALUE(selected_index);
   }
  } 
@@ -852,7 +896,7 @@ game_update(game_update_params)
    v3 ctrl_direction = key_direction(input, Key_Mod_Ctl, true);
    if (ctrl_direction == V3())
    {
-    if (game_active && !selected_object_id())
+    if (game_active && !selected_prim_id(modeler))
     {// NOTE: Don't move the camera when you are selecting an object @UpdateSelectedObjects
      ctrl_direction = key_direction(input, 0, true);
     }
@@ -899,7 +943,7 @@ game_update(game_update_params)
     macro_clamp(-0.25f, target_camera->phi, 0.25f);
    }
    
-   if ( is_key_down(input, Key_Mod_Sft, Key_Code_0) ) {
+   if ( just_pressed(input, Key_Code_0, Key_Mod_Sft) ) {
     target_camera->roll  = {};
    }
   }
@@ -1044,22 +1088,21 @@ game_update(game_update_params)
   }
   
   {// NOTE: Compute active objects
-   m.active_objects.count = 0;
-   if( m.selection_spanning )
-   {
-    Object_Type sel_type = prim_id_type(selected_object_id());
-    if( sel_type == Prim_Vertex )
-    {
-     i32 sel_index = prim_id_to_index(selected_object_id());
+   m.active_prims.count = 0;
+   u32 sel_obj = selected_prim_id(m);
+   // NOTE(kv): selected object is always active.
+   push_unique(m.active_prims, sel_obj);
+   if ( m.selection_spanning ) {
+    Prim_Type sel_type = prim_id_type(sel_obj);
+    if( sel_type == Prim_Vertex ) {
+     i32 sel_index = prim_id_to_index(sel_obj);
      Vertex_Data &sel = m.vertices[sel_index];
-     push_unique(m.active_objects, vertex_prim_id(sel_index));
-     for_i32(cindex,1,m.curves.count)
-     {
+     for_i32(cindex,1,m.curves.count) {
       Bezier_Data &curve = m.curves[cindex];
       if (sel_index == curve.p0_index) {
-       push_unique(m.active_objects, vertex_prim_id(curve.p3_index));
+       push_unique(m.active_prims, vertex_prim_id(curve.p3_index));
       } else if (sel_index == curve.p3_index) {
-       push_unique(m.active_objects, vertex_prim_id(curve.p0_index));
+       push_unique(m.active_prims, vertex_prim_id(curve.p0_index));
       }
      }
     }
@@ -1068,51 +1111,45 @@ game_update(game_update_params)
   
   if ( game_hot && !kb_handled )
   {// NOTE: Handling input
-   Object_Type sel_type = prim_id_type(selected_object_id());
-   if ( sel_type )
-   {
+   Prim_Type sel_type = prim_id_type(selected_prim_id(m));
+   if ( sel_type ) {
     b32 escape_pressed = just_pressed(input, Key_Code_Escape);
     b32 return_pressed = just_pressed(input, Key_Code_Return);
     b32 exit_edit = escape_pressed || return_pressed;
-    if ( exit_edit )
-    {// NOTE: Committing
-     m.selected_obj_id = 0;
-     m.active_objects.count = 0;
+    if ( exit_edit ) {
+     m.selected_prim_id   = 0;
+     m.active_prims.count = 0;
      if (escape_pressed && m.change_uncommitted) {
       modeler_undo(m);
      }
      m.change_uncommitted = false;
-    }
-    else
-    {
-     i32 sel_index0 = prim_id_to_index(selected_object_id());
+    } else {
+     i32 sel_index0 = prim_id_to_index(selected_prim_id(m));
      if( sel_type == Prim_Vertex )
      {// NOTE: Selecting a vertex
       Vert_Index sel_index = Vert_Index{sel_index0};
-      if( just_pressed(input, Key_Code_S) )
-      {// NOTE: Toggle spanning
+      if( just_pressed(input, Key_Code_S) ) {
+       // NOTE(kv): Toggle spanning
        toggle_boolean(modeler.selection_spanning);
-      }
-      else
-      {
+      } else {
        v3 direction = key_direction(input, 0, false);
-       if (direction != v3{})
-       {// NOTE: Update vertex position
+       if (direction != v3{}) {
+        // NOTE(kv): Update vertex position
         direction.z = 0.f;
         direction = noz( mat4vec(camera->forward, direction) );
         v1 delta_scale = 0.2f;
         v3 delta = delta_scale * dt * direction;
         
         arrayof<Vert_Index> influenced_verts;
-        init_static(influenced_verts, scratch, m.active_objects.count);
-        for_i1(active_object_index,0,m.active_objects.count)
-        {
-         Vert_Index vi = prim_id_to_vertex_index(m.active_objects[active_object_index]);
+        init_static(influenced_verts, scratch, m.active_prims.count);
+        for_i32(index,0,m.active_prims.count) {
+         Vert_Index vi = vertex_index_from_prim_id(m.active_prims[index]);
          influenced_verts.push(vi);
         }
+        
         Modeler_Edit edit = Modeler_Edit{
-         .type=ME_Vert_Move,
-         .Vert_Move=Vert_Move {
+         .type      = ME_Vert_Move,
+         .Vert_Move = {
           .verts=influenced_verts,
           .delta=delta,
          },
@@ -1146,8 +1183,7 @@ game_update(game_update_params)
        // TODO @incomplete
        i1 direction = i1( key_direction(input, 0, true).x );
        v1 delta = i2f6(direction);
-       if (delta != 0)
-       {
+       if (delta != 0) {
         for_i32(index,0,4) {
          sel.radii[index] += delta;
         }
@@ -1160,10 +1196,39 @@ game_update(game_update_params)
   }
   
   {//-NOTE: Drawing GUI
-   DEBUG_VALUE(selected_object_id());
-   Object_Type sel_type = prim_id_type(selected_object_id());
-   if (sel_type == Prim_Curve)
-   {
+   if ( is_selecting_type(m, Prim_Curve) ) {
+    //;draw_curve_info
+    ImGui::Begin("curve data", 0);
+    Bezier_Data curve = get_selected_curve(m);
+    Type_Info type = Type_Info_Bezier_Type;
+    i32 curve_type_index = enum_index_from_value(curve.type);
+    
+    /*arrayof<char *> items = {};
+    {
+     items.set_cap_min(type.enum_values.count);
+     for_i32(index, 0, type.enum_values.count) {
+      Enum_Value &eval = type.enum_values[index];
+      items.push(to_cstring(scratch, eval.name));
+     }
+    }*/
+    
+    i32 sel_index = curve_type_index;
+    const char* combo_preview = to_cstring(scratch, type.enum_values[curve_type_index].name);
+    if ( ImGui::BeginCombo("combo", combo_preview, 0) ) {
+     for_i32(enum_index, 0, type.enum_values.count) {
+      b32 is_selected = (enum_index == curve_type_index);
+      char *name = to_cstring(scratch, type.enum_values[enum_index].name);
+      if ( ImGui::Selectable(name, is_selected) ) {
+       //sel_index = enum_index;
+      }
+      if (is_selected) {
+       ImGui::SetItemDefaultFocus();
+      }
+     }
+     ImGui::EndCombo();
+    }
+    ImGui::End();
+   } else {
     ImGui::ShowDemoWindow(0);
    }
   }
@@ -1177,15 +1242,13 @@ game_update(game_update_params)
  }
  
  {
-  if (debug_frame_time_on)
-  {
+  if (debug_frame_time_on) {
    DEBUG_NAME("work cycles", input->frame.work_cycles);
    DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
    DEBUG_NAME("work ms", input->frame.work_seconds * 1e3f);
   }
   
-  if ( fbool(0) )
-  {
+  if ( fbool(0) ) {
    DEBUG_VALUE(image_load_info.image_count);
    DEBUG_VALUE(image_load_info.failure_count);
   }
@@ -1199,15 +1262,13 @@ game_update(game_update_params)
    {
 #define MATCH(NAME)    queue[ci] == strlit(NAME)
     if (0) {}
-    else if (MATCH("save_manual"))
-    {
+    else if (MATCH("save_manual")) {
      game_save(state, app, true);
-    }
-    else if (MATCH("load_manual"))
-    {
+    } else if (MATCH("load_manual")) {
      game_load(state, app, state->manual_save_path);
+    } else {
+     vim_set_bottom_text(strlit("game: cannot serve command"));
     }
-    else { vim_set_bottom_text(strlit("game: cannot serve command")); }
 #undef MATCH
    }
    

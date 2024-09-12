@@ -64,7 +64,7 @@ CUSTOM_DOC("Stop macro recording, do nothing if macro recording is not already s
     i64 end = buffer_get_size(app, buffer);
     Buffer_Cursor cursor = buffer_compute_cursor(app, buffer, seek_pos(end));
     Buffer_Cursor back_cursor = buffer_compute_cursor(app, buffer, seek_line_col(cursor.line - 1, 1));
-    global_keyboard_macro_range.one_past_last = back_cursor.pos;
+    global_keyboard_macro_range.opl = back_cursor.pos;
     
 #if 0
     Scratch_Block scratch(app);

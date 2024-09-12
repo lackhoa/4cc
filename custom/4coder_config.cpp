@@ -58,7 +58,7 @@ parse_extension_line_to_extension_list(App *app, Arena *arena, String8 str)
   u64 next_period = string_find_first(str, '.');
   String extension = string_prefix(str, next_period);
   str = string_skip(str, next_period + 1);
-  array.strings[i] = push_string_copyz(arena, extension);
+  array.strings[i] = push_stringz(arena, extension);
  }
  
  return(array);
@@ -273,7 +273,7 @@ config_push_error(Arena *arena, Config_Error_List *list, String8 filename, u8 *p
     list->count += 1;
     error->filename = filename;
     error->pos = pos;
-    error->text = push_string_copyz(arena, SCu8(error_text));
+    error->text = push_stringz(arena, SCu8(error_text));
     return(error);
 }
 
@@ -1451,7 +1451,7 @@ theme_parse__data(App *app, Arena *arena, String8 filename, String8 data, Arena 
         {
             Scratch_Block scratch(app, arena);
             Config_LValue *l = node->l;
-            String l_name = push_string_copyz(scratch, l->identifier);
+            String l_name = push_stringz(scratch, l->identifier);
             Managed_ID id = managed_id_get(app, str8lit("colors"), l_name);
             if (id != 0)
             {

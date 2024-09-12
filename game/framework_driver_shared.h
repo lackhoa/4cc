@@ -56,7 +56,13 @@ introspect()
 struct Vertex_Data
 {
  String name;
- i1 object_index;
+ 
+ meta_removed(i1 object_index;
+              removed = Version_Rename_Object_Index2);
+ meta_added(added   = Version_Rename_Object_Index2,
+            default = m_object_index);
+ i1 bone_index;
+ 
  i1 symx;
  v3 pos;
  i1 basis_index;
@@ -102,11 +108,16 @@ introspect()
 struct Bezier_Data
 {
  String name;
- i1 object_index;
- i1 symx;
  
- meta_tag(added(since_version=Version_Add_Bezier_Type,
-                default=Bezier_Type_Raw));
+ meta_removed(i1 object_index;
+              removed = Version_Rename_Object_Index);
+ meta_added(added   = Version_Rename_Object_Index,
+            default = m_object_index);
+ i1 bone_index;
+ 
+ i1 symx;
+ meta_added(added   = Version_Add_Bezier_Type,
+            default = Bezier_Type_Raw);
  Bezier_Type type;
  i1 p0_index;
  v3 p1;
@@ -124,8 +135,7 @@ struct Slow_Line_Map
 
 //~ id system
 // NOTE(kv): Primitives are either drawn by code or data.
-// NOTE(kv): If something is drawn by data, we call it an object for SOME reason
-enum Object_Type : u8
+enum Prim_Type : u8
 {
  Prim_Null     = 0,
  Prim_Vertex   = 1,
@@ -133,15 +143,13 @@ enum Object_Type : u8
  Prim_Triangle = 3,
 };
 
-force_inline Object_Type
-prim_id_type(u32 id)
-{
- return Object_Type(id >> 24);
+force_inline Prim_Type
+prim_id_type(u32 id) {
+ return Prim_Type(id >> 24);
 }
 
 force_inline b32
-prim_id_is_obj(u32 prim_id)
-{
+prim_id_is_data(u32 prim_id) {
  return prim_id_type(prim_id) != 0;
 }
 
@@ -157,7 +165,7 @@ inline i1
 prim_id_to_index(u32 id)
 {
  u32 result = 0;
- if( prim_id_is_obj(id) ) {
+ if( prim_id_is_data(id) ) {
   result = (id & 0xFFFF);
  }
  return result;
@@ -226,7 +234,7 @@ setup_camera(Camera *camera, Camera_Data *data)
 
 //-
 #if AD_IS_FRAMEWORK
-#    define framework_storage global_exported
+#    define framework_storage xglobal
 #else
 #    define framework_storage extern
 #endif
@@ -269,7 +277,7 @@ struct Line_Params
  Line_Flags flags;
 };
 
-struct Object
+struct Bone
 {
  String name;
  mat4i transform;
@@ -301,8 +309,8 @@ struct Painter
  u32 draw_prim_id;
  
  b32 is_right;
- arrayof<Object> object_list;
- arrayof<i1>     object_stack;  // NOTE: offset into the object list
+ arrayof<Bone>   bone_list;
+ arrayof<i1>     bone_stack;  // NOTE: Offset into the coframe list
  
  i32 view_vector_count;
  v3  view_vector_stack[16];
@@ -316,29 +324,19 @@ framework_storage Painter painter;
 
 //-
 inline i1
-current_object_index()
+current_bone_index()
 {
- return painter.object_stack.last();
+ return painter.bone_stack.last();
 }
 
-inline Object&
-current_object()
-{
- i1 index = painter.object_stack.last();
- return painter.object_list[index];
+inline Bone&
+current_bone() {
+ i1 index = painter.bone_stack.last();
+ return painter.bone_list[index];
 }
 //
-inline mat4i&
-get_object_transform()
-{
- return current_object().transform;
-}
-//
-inline String
-get_object_name()
-{
- return current_object().name;
-}
+inline mat4i& get_bone_transform() { return current_bone().transform; }
+inline String get_bone_name()      { return current_bone().name; }
 
 inline b32 is_left() { return painter.is_right == 0; }
 //-
@@ -378,14 +376,10 @@ bezier_sample(v4 P, v1 u)
 
 framework_storage u32 hot_prim_id;
 //
-u32
-get_hot_prim_id()
 #if AD_IS_DRIVER
-;
+u32 get_hot_prim_id();
 #else
-{
- return hot_prim_id;
-}
+u32 get_hot_prim_id() { return hot_prim_id; }
 #endif
 
 #if AD_IS_DRIVER
@@ -395,20 +389,6 @@ fill3_inner_return fill3_inner(fill3_inner_params);
 draw_disk_inner_return draw_disk_inner(draw_disk_inner_params);
 
 #else
-
-function b32
-is_prim_id_active(u32 prim_id)
-{
- b32 result = false;
- auto &active_ids = global_modeler->active_objects;
- for_i1(index, 0, active_ids.count) {
-  if (prim_id == active_ids[index]) {
-   result = true;
-   break;
-  }
- }
- return result;
-}
 
 fill3_inner_return
 fill3_inner(fill3_inner_params)
@@ -428,7 +408,7 @@ fill3_inner(fill3_inner_params)
  // TODO(kv): @Speed The caller should be in charge of passing the color in!
  u32 prim_id = painter.draw_prim_id;
  b32 is_hot        = prim_id == get_hot_prim_id();
- b32 is_selected   = prim_id == global_modeler->selected_obj_id;
+ b32 is_selected   = prim_id == selected_prim_id();
  b32 is_active     = is_prim_id_active(prim_id);
  // TODO(kv): @cleanup wtf is this code?
  if (is_hot || is_selected || is_active)
@@ -517,7 +497,7 @@ draw_bezier_inner(draw_bezier_inner_params)
    // and spaced out more when we look at them in 3D -> you'd underestimate the density in 2D
    Bezier P_transformed;
    {
-    const mat4 &transform = get_object_transform().forward;
+    const mat4 &transform = get_bone_transform();
     for_i32(index,0,4)
     {
      P_transformed[index] = mat4vert_div(transform, P[index]);
@@ -766,14 +746,8 @@ struct Game_State
 };
 #endif
 
-force_inline u32
-selected_object_id()
-{
- return global_modeler->selected_obj_id;
-}
-
 function void
-set_object_transform(mat4i const&transform)
+set_bone_transform(mat4i const&transform)
 {
  Painter *p = &painter;
  p->obj_to_camera = invert(p->camera->transform) * transform;
@@ -790,7 +764,7 @@ camera_world_position(Camera *camera)
 function v3
 camera_object_position()
 {
- v3 result = get_object_transform().inv * camera_world_position(painter.camera);
+ v3 result = get_bone_transform().inv * camera_world_position(painter.camera);
  return result;
 }
 
@@ -826,36 +800,36 @@ push_object(mat4i const&child_to_parent, v3 center, String name)
 {
  auto &p = painter;
  
- i1 object_index = -1;
+ i1 bone_index = -1;
  {
-  auto &list = p.object_list;
+  auto &list = p.bone_list;
   if( name != String{} )
   {
    for_i32(index,0,list.count)
    {
-    Object &object = list[index];
-    if(object.name     == name &&
-       object.is_right == p.is_right)
+    Bone &bone = list[index];
+    if(bone.name     == name &&
+       bone.is_right == p.is_right)
     {
-     object_index = index;
+     bone_index = index;
      break;
     }
    }
   }
   
-  if (object_index == -1)
+  if (bone_index == -1)
   {
-   object_index = list.count;
-   mat4i &parent = get_object_transform();
+   bone_index = list.count;
+   mat4i &parent = get_bone_transform();
    mat4i new_transform = parent * child_to_parent;
-   list.push(Object{.name=name, .transform=new_transform, .is_right=p.is_right});
+   list.push(Bone{.name=name, .transform=new_transform, .is_right=p.is_right});
   }
  }
  
- p.object_stack.push(object_index);
+ p.bone_stack.push(bone_index);
  push_view_vector(center);
  
- set_object_transform( get_object_transform() );
+ set_bone_transform( get_bone_transform() );
 }
 #endif
 // @Overload
@@ -875,9 +849,9 @@ internal void
 pop_object()
 {
  Painter &p = painter;
- p.object_stack.pop();
- mat4i &parent = get_object_transform();
- set_object_transform(parent);
+ p.bone_stack.pop();
+ mat4i &parent = get_bone_transform();
+ set_bone_transform(parent);
  pop_view_vector();
 }
 
@@ -919,7 +893,7 @@ indicate_vertex(char *vertex_name, v3 pos,
   b32 mouse_near;
   const v1 radius = 3*millimeter;
   {// NOTE: Above
-   mat4 object_to_view = p->view_transform * get_object_transform();
+   mat4 object_to_view = p->view_transform * get_bone_transform();
    v3 vertex_viewp = mat4vert_div(object_to_view, pos);
    v2 delta = painter.mouse_viewp - vertex_viewp.xy;
    mouse_near = (absolute(delta.x) < 1*centimeter && 
@@ -968,7 +942,7 @@ get_curve_view_alignment(const v3 P[4])
  v3 D = P[3];
  v3 normal = noz( cross(B-A, D-A) );  // NOTE: the normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
  v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
- v3 camera_obj = (get_object_transform().inv * camera_world_position(p->camera));  // TODO @speed
+ v3 camera_obj = (get_bone_transform().inv * camera_world_position(p->camera));  // TODO @speed
  v3 view_vector = noz(camera_obj - centroid);
  v1 visibility = absolute( dot(normal,view_vector) );
  return visibility;
@@ -1084,18 +1058,18 @@ set_in_block(painter.line_params, hl_line_params(color));
 #define hl_block_color hl_block_inner
 
 #if AD_IS_FRAMEWORK
-internal Object &
-get_right_object(Object &object)
+function Bone &
+get_right_bone(Bone &bone)
 {
  auto &p = painter;
- Object *result = &object;
- for_i32(object_index, 0, p.object_list.count)
+ Bone *result = &bone;
+ for_i32(bone_index, 0, p.bone_list.count)
  {
-  auto &objectR = p.object_list[object_index];
-  if (objectR.is_right &&
-      (objectR.name == object.name))
+  auto &boneR = p.bone_list[bone_index];
+  if (boneR.is_right &&
+      (boneR.name == bone.name))
   {
-   result = &objectR;
+   result = &boneR;
    break;
   }
  }

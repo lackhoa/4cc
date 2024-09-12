@@ -510,7 +510,7 @@ managed_object_free(Dynamic_Workspace *workspace, Managed_Object object){
     u32 lo_id = object&max_u32;
     u8 *object_ptr = (u8*)dynamic_workspace_get_pointer(workspace, lo_id);
     if (object_ptr != 0){
-        Managed_Object_Type *type = (Managed_Object_Type*)object_ptr;
+        Managed_Prim_Type *type = (Managed_Prim_Type*)object_ptr;
         switch (*type){
             case ManagedObjectType_Markers:
             {

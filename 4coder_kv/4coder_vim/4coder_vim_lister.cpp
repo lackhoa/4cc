@@ -167,7 +167,7 @@ vim_lister_user_data_at_p(App *app, View_ID view, Lister *lister, Vec2_f32 m_p, 
 	if(rect_contains_point(region, m_p)){
 		f32 y = m_p.y - region.y0 + lister->scroll.position.y;
 		i32 index = i32(m_p.x/block_width) + col_num*i32(y/block_height);
-		if(in_range_exclude_last(0, index, lister->filtered.count)){
+		if(in_range_exclusive(0, index, lister->filtered.count)){
 			return lister->filtered.node_ptrs[index]->user_data;
 		}
 	}
@@ -463,7 +463,7 @@ vim_run_lister(App *app, Lister *lister)
 					
 					case Key_Code_Return:{
 						void *user_data = 0;
-						if(in_range_exclude_last(0, lister->raw_item_index, lister->options.count)){
+						if(in_range_exclusive(0, lister->raw_item_index, lister->options.count)){
 							user_data = lister_get_user_data(lister, lister->raw_item_index);
 							block_copy(dest, lister->highlighted_node->string.str, lister->highlighted_node->string.size);
 							vim_bottom_text.size = base_size + lister->highlighted_node->string.size;

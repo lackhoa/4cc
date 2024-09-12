@@ -36,7 +36,7 @@
 #    if AD_IS_DRIVER
 #        define STORAGE_CLASS extern
 #    else
-#        define STORAGE_CLASS global_exported
+#        define STORAGE_CLASS xglobal
 #    endif
 #else
 #    define STATIC_LINK_API

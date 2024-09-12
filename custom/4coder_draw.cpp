@@ -100,13 +100,13 @@ draw_character_block(App *app, Text_Layout_ID layout, i64 pos, f32 roundness, FC
 
 function void
 draw_character_block(App *app, Text_Layout_ID layout, Range_i64 range, f32 roundness, ARGB_Color color){
-    if (range.first < range.one_past_last){
+    if (range.first < range.opl){
         i64 i = range.first;
         Rect_f32 first_rect = text_layout_character_on_screen(app, layout, i);
         i += 1;
         Range_f32 y = rect_range_y(first_rect);
         Range_f32 x = rect_range_x(first_rect);
-        for (;i < range.one_past_last; i += 1){
+        for (;i < range.opl; i += 1){
             Rect_f32 rect = text_layout_character_on_screen(app, layout, i);
             if (rect.x0 < rect.x1 && rect.y0 < rect.y1){
                 Range_f32 new_y = rect_range_y(rect);
@@ -152,7 +152,7 @@ draw_character_wire_frame(App *app, Text_Layout_ID layout, i64 pos, f32 roundnes
 
 function void
 draw_character_wire_frame(App *app, Text_Layout_ID layout, Range_i64 range, f32 roundness, f32 thickness, FColor color){
-    for (i64 i = range.first; i < range.one_past_last; i += 1){
+    for (i64 i = range.first; i < range.opl; i += 1){
         draw_character_wire_frame(app, layout, i, roundness, thickness, color);
     }
 }
@@ -366,7 +366,7 @@ draw_line_number_margin(App *app, View_ID view_id, Buffer_ID buffer, Face_ID fac
  Buffer_Cursor cursor = view_compute_cursor(app, view_id, seek_pos(visible_range_.first));
  i64 line_number = cursor.line;
  
- Buffer_Cursor cursor_opl = view_compute_cursor(app, view_id, seek_pos(visible_range_.one_past_last));
+ Buffer_Cursor cursor_opl = view_compute_cursor(app, view_id, seek_pos(visible_range_.opl));
  i64 one_past_last_line_number = cursor_opl.line + 1;
  
  u8 *small_digit = digit_buffer + line_count_digit_count - 1;
@@ -440,12 +440,12 @@ draw_fps_hud(App *app, Frame_Info frame_info, Face_ID face_id, Rect_f32 rect)
     
     Range_i32 ranges[2] = {};
     ranges[0].first = wrapped_index;
-    ranges[0].one_past_last = -1;
+    ranges[0].opl = -1;
     ranges[1].first = fps_history_depth - 1;
-    ranges[1].one_past_last = wrapped_index;
+    ranges[1].opl = wrapped_index;
     for (i32 i = 0; i < 2; i += 1){
         Range_i32 r = ranges[i];
-        for (i32 j = r.first; j > r.one_past_last; j -= 1, p.y += line_height){
+        for (i32 j = r.first; j > r.opl; j -= 1, p.y += line_height){
             f32 dts[2];
             dts[0] = history_literal_dt[j];
             dts[1] = history_animation_dt[j];
@@ -533,7 +533,7 @@ draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *arra
     Token_Iterator_Array it = token_iterator_index(0, array, first_index);
     for (;;){
         Token *token = tkarr_read(&it);
-        if (token->pos >= visible_range.one_past_last) {
+        if (token->pos >= visible_range.opl) {
             break;
         }
         FColor color = get_token_color_cpp(*token);
@@ -552,7 +552,7 @@ draw_whitespace_highlight(App *app, Text_Layout_ID text_layout_id, Token_Array *
     Token_Iterator_Array it = token_iterator_index(0, array, first_index);
     for (;;){
         Token *token = tkarr_read(&it);
-        if (token->pos >= visible_range.one_past_last){
+        if (token->pos >= visible_range.opl){
             break;
         }
         if (token->kind == TokenBaseKind_Whitespace){
@@ -569,12 +569,12 @@ draw_whitespace_highlight(App *app, Text_Layout_ID text_layout_id, Token_Array *
 function void
 draw_whitespace_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness){
     Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
-    for (i64 i = visible_range.first; i < visible_range.one_past_last;){
+    for (i64 i = visible_range.first; i < visible_range.opl;){
         u8 c = buffer_get_char(app, buffer, i);
         if (character_is_whitespace(c)){
             i64 s = i;
             i += 1;
-            for (; i < visible_range.one_past_last; i += 1){
+            for (; i < visible_range.opl; i += 1){
                 c = buffer_get_char(app, buffer, i);
                 if (!character_is_whitespace(c)){
                     break;
@@ -602,7 +602,7 @@ draw_comment_highlights(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
     {
         Temp_Memory_Block temp(scratch);
         Token *token = tkarr_read(&it);
-        if (token->pos >= visible_range.one_past_last)
+        if (token->pos >= visible_range.opl)
         {
             break;
         }

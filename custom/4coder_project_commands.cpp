@@ -793,7 +793,7 @@ CUSTOM_DOC("Prints the current project to the file it was loaded from; prints in
     if (!vars_is_nil(prj_var)){
         Scratch_Block scratch(app);
         String8 prj_full_path = prj_full_file_path_from_project(scratch, prj_var);
-        prj_full_path = push_string_copyz(scratch, prj_full_path);
+        prj_full_path = push_stringz(scratch, prj_full_path);
         String8 message = push_stringfz(scratch, "Reprinting project file: %.*s\n", string_expand(prj_full_path));
         print_message(app, message);
         

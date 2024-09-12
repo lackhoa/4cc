@@ -873,7 +873,7 @@ get_line_range_from_pos_range(App *app, Buffer_ID buffer, Range_i64 pos_range){
     Range_i64 line_range = {};
     line_range.first = get_line_number_from_pos(app, buffer, pos_range.first);
     if (line_range.first != 0){
-        line_range.end = get_line_number_from_pos(app, buffer, pos_range.one_past_last);
+        line_range.end = get_line_number_from_pos(app, buffer, pos_range.opl);
         if (line_range.end == 0){
             line_range.first = 0;
         }
@@ -888,7 +888,7 @@ get_pos_range_from_line_range(App *app, Buffer_ID buffer, Range_i64 line_range){
     Range_i64 pos_range = {};
     if (is_valid_line_range(app, buffer, line_range)){
         pos_range.first = get_line_start_pos(app, buffer, line_range.first);
-        pos_range.one_past_last = get_line_end_pos(app, buffer, line_range.end);
+        pos_range.opl = get_line_end_pos(app, buffer, line_range.end);
     }
     return(pos_range);
 }
@@ -2246,7 +2246,7 @@ get_ranges_of_duplicate_keys(Arena *arena, i32 *keys, i32 stride, i32 count)
   if (is_end){
    Range_i32 *new_range = &result.ranges[result.count++];
    new_range->first = start_i;
-   new_range->one_past_last = i;
+   new_range->opl = i;
    start_i = i;
   }
  }

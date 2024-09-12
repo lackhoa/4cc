@@ -1034,7 +1034,7 @@ function String8
 push_clipboard_index_inner(Arena *arena, Clipboard *clipboard, i1 item_index)
 {
     String8 result = get_clipboard_index(clipboard, item_index);
-    result = push_string_copyz(arena, result);
+    result = push_stringz(arena, result);
     return(result);
 }
 

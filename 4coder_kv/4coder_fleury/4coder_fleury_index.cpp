@@ -326,7 +326,7 @@ F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_
         // NOTE(rjf): Fill out data.
         {
             note->hash = hash;
-            note->string = push_string_copyz(&file->arena, string);
+            note->string = push_stringz(&file->arena, string);
             note->kind = note_kind;
             note->flags = note_flags;
             note->range = range;

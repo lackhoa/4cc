@@ -120,7 +120,7 @@ save_theme(Color_Table table, String name)
     Color_Table_Node *node = push_array(&global_theme_arena, Color_Table_Node, 1);
     sll_queue_push(global_theme_list.first, global_theme_list.last, node);
     global_theme_list.count += 1;
-    node->name = push_string_copyz(&global_theme_arena, name);
+    node->name = push_stringz(&global_theme_arena, name);
     node->table = table;
 }
 

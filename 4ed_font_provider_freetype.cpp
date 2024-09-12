@@ -167,7 +167,7 @@ ft__glyph_bounds_store_uv_raw(Vec3_i32 p, Vec2_i32 dim, Glyph_Bounds *bounds)
 internal Face*
 ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor)
 {
-    String8 filename = push_string_copyz(arena, description->font.filename);
+    String8 filename = push_stringz(arena, description->font.filename);
     
     FT_Library ft;
     FT_Init_FreeType(&ft);

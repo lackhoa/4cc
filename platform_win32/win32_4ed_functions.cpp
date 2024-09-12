@@ -188,7 +188,7 @@ system_get_path(Arena* arena, System_Path_Code path_code)
                 win32vars.binary_path = path_dirname(win32vars.binary_path);
                 win32vars.binary_path.str[win32vars.binary_path.size] = 0;
             }
-            result = push_string_copyz(arena, win32vars.binary_path);
+            result = push_stringz(arena, win32vars.binary_path);
         }break;
 
         case SystemPath_UserDirectory:

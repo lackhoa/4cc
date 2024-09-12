@@ -113,7 +113,7 @@
 #define custom_managed_object_get_item_size_sig() u32 custom_managed_object_get_item_size(App* app, Managed_Object object)
 #define custom_managed_object_get_item_count_sig() u32 custom_managed_object_get_item_count(App* app, Managed_Object object)
 #define custom_managed_object_get_pointer_sig() void* custom_managed_object_get_pointer(App* app, Managed_Object object)
-#define custom_managed_object_get_type_sig() Managed_Object_Type custom_managed_object_get_type(App* app, Managed_Object object)
+#define custom_managed_object_get_type_sig() Managed_Prim_Type custom_managed_object_get_type(App* app, Managed_Object object)
 #define custom_managed_object_get_containing_scope_sig() Managed_Scope custom_managed_object_get_containing_scope(App* app, Managed_Object object)
 #define custom_managed_object_free_sig() b32 custom_managed_object_free(App* app, Managed_Object object)
 #define custom_managed_object_store_data_sig() b32 custom_managed_object_store_data(App* app, Managed_Object object, u32 first_index, u32 count, void* mem)
@@ -289,7 +289,7 @@ typedef Managed_Object custom_alloc_buffer_markers_on_buffer_type(App* app, Buff
 typedef u32 custom_managed_object_get_item_size_type(App* app, Managed_Object object);
 typedef u32 custom_managed_object_get_item_count_type(App* app, Managed_Object object);
 typedef void* custom_managed_object_get_pointer_type(App* app, Managed_Object object);
-typedef Managed_Object_Type custom_managed_object_get_type_type(App* app, Managed_Object object);
+typedef Managed_Prim_Type custom_managed_object_get_type_type(App* app, Managed_Object object);
 typedef Managed_Scope custom_managed_object_get_containing_scope_type(App* app, Managed_Object object);
 typedef b32 custom_managed_object_free_type(App* app, Managed_Object object);
 typedef b32 custom_managed_object_store_data_type(App* app, Managed_Object object, u32 first_index, u32 count, void* mem);
@@ -644,7 +644,7 @@ internal Managed_Object alloc_buffer_markers_on_buffer(App* app, Buffer_ID buffe
 internal u32 managed_object_get_item_size(App* app, Managed_Object object);
 internal u32 managed_object_get_item_count(App* app, Managed_Object object);
 internal void* managed_object_get_pointer(App* app, Managed_Object object);
-internal Managed_Object_Type managed_object_get_type(App* app, Managed_Object object);
+internal Managed_Prim_Type managed_object_get_type(App* app, Managed_Object object);
 internal Managed_Scope managed_object_get_containing_scope(App* app, Managed_Object object);
 internal b32 managed_object_free(App* app, Managed_Object object);
 internal b32 managed_object_store_data(App* app, Managed_Object object, u32 first_index, u32 count, void* mem);

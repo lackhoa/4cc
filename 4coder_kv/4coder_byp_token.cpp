@@ -74,7 +74,7 @@ byp_draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *
 	Token_Iterator_Array it = token_iterator_index(0, array, first_index);
 	for(;;){
 		Token *token = tkarr_read(&it);
-		if(token->pos >= visible_range.one_past_last){ break; }
+		if(token->pos >= visible_range.opl){ break; }
 		ARGB_Color argb = byp_get_token_color_cpp(*token);
 		paint_text_color(app, text_layout_id, Ii64_size(token->pos, token->size), argb);
 		if(!tkarr_inc_all(&it)){ break; }

@@ -668,7 +668,7 @@ api_param(arena, call, "App*", "app");
 api_param(arena, call, "Managed_Object", "object");
 }
 {
-API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("managed_object_get_type"), string_u8_litexpr("Managed_Object_Type"), string_u8_litexpr(""));
+API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("managed_object_get_type"), string_u8_litexpr("Managed_Prim_Type"), string_u8_litexpr(""));
 api_param(arena, call, "App*", "app");
 api_param(arena, call, "Managed_Object", "object");
 }

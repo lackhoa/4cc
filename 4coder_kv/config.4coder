@@ -88,6 +88,6 @@ startup_file2 = game_file;
 
 DEBUG_draw_hud_p = true;
 dev_double_panel = true;
-dev_disable_game_on_startup = true;
+//dev_disable_game_on_startup = true;
 
 //~

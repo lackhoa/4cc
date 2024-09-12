@@ -145,7 +145,7 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 			 info < one_past_last;
 			 info += 1){
 			if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-			String8 filename = push_string_copyz(lister->arena, (**info).filename);
+			String8 filename = push_stringz(lister->arena, (**info).filename);
 			char *is_loaded = "";
 			char *status_flag = "";
 
@@ -218,7 +218,7 @@ vim_query_create_folder(App *app, String folder_name){
    
    case SureToCreateFolder_Yes:{
 				String hot = push_hot_directory(app, scratch);
-    String fixed_folder_name = push_string_copyz(scratch, folder_name);
+    String fixed_folder_name = push_stringz(scratch, folder_name);
     foreach(i, (i1)fixed_folder_name.size){
 					if(fixed_folder_name.str[i] == '/'){ fixed_folder_name.str[i] = '\\'; }
 				}
@@ -443,7 +443,7 @@ vim_jump_navigate(App *app, View_ID view, Lister *lister, i1 index_delta)
 	Managed_Scope scope = view_get_managed_scope(app, view);
 	Vim_Jump_List *jump_list = scope_attachment(app, scope, vim_view_jumps, Vim_Jump_List);
 	i1 index = i1(PtrAsInt(lister_get_user_data(lister, lister->raw_item_index)));
-	if(!in_range_exclude_last(0, index, ArrayCount(jump_list->markers))){ return; }
+	if(!in_range_exclusive(0, index, ArrayCount(jump_list->markers))){ return; }
 	Point_Stack_Slot *slot = &jump_list->markers[index];
 	view_set_buffer(app, view, slot->buffer, SetBuffer_KeepOriginalGUI);
 	view_set_cursor_and_preferred_x(app, view, seek_pos(slot->object));

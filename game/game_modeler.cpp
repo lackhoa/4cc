@@ -1,5 +1,34 @@
 //-File begin
 
+global Modeler *global_modeler;
+
+function u32
+selected_prim_id()
+{
+ return global_modeler->selected_prim_id;
+}
+
+b32
+is_prim_id_active(u32 prim_id)
+{
+ b32 result = false;
+ auto &active_ids = global_modeler->active_prims;
+ for_i1(index, 0, active_ids.count) {
+  if (prim_id == active_ids[index]) {
+   result = true;
+   break;
+  }
+ }
+ return result;
+}
+
+inline i32
+vertex_index_from_pointer(Vertex_Data *pointer)
+{
+ i32 result = i32(pointer - global_modeler->vertices.items);
+ return result;
+}
+
 function Vertex_Data *
 get_vertex_by_name(String name)
 {
@@ -34,7 +63,7 @@ void send_vert_func(String name, v3 pos)
  result->pos = pos;
  if ( is_left() ) {
   // NOTE: weird and arbitrary logic
-  result->object_index = current_object_index();
+  result->bone_index = current_bone_index();
  } else {
   result->symx = true;
  }
@@ -50,17 +79,14 @@ b32 send_bez_func(String name, String p0_name, v3 d0, v2 d3, String p3_name)
  Bezier_Data *curve = 0;
  auto &modeler = *global_modeler;
  
- for_i32(curve_index, 1, modeler.curves.count)
- {
+ for_i32(curve_index, 1, modeler.curves.count) {
   Bezier_Data *it = &modeler.curves[curve_index];
-  if ( string_match(it->name, name) )
-  {
+  if ( string_match(it->name, name) ) {
    curve = it;
   }
  }
  
- if (curve == 0)
- {
+ if (curve == 0) {
   curve = &modeler.curves.push2();
   *curve = {};
   curve->name = push_string(modeler.permanent_arena, name);
@@ -68,22 +94,19 @@ b32 send_bez_func(String name, String p0_name, v3 d0, v2 d3, String p3_name)
  
  Vertex_Data *vert0 = get_vertex_by_name(p0_name);
  Vertex_Data *vert3 = get_vertex_by_name(p3_name);
- if (vert0 && vert3)
- {
+ if (vert0 && vert3) {
   ok = true;
   Bez data = bez(vert0->pos, d0, d3, vert3->pos);
   curve->p0_index = vertex_index_from_pointer(vert0);
   curve->p1       = data[1];
   curve->p2       = data[2];
   curve->p3_index = vertex_index_from_pointer(vert3);
- }
- else
- {
+ } else {
   DEBUG_TEXT("bezier error: cannot find vertex");
  }
  
  if ( is_left() ) {
-  curve->object_index = current_object_index();
+  curve->bone_index = current_bone_index();
  } else {
   curve->symx = true;
  }
@@ -100,17 +123,12 @@ function void
 clear_edit_history(Modeler_Edit_History &h)
 {
  // NOTE(kv): We wanna clear all history when we want to.
- // Not needed now, but maybe later on when we start to run of memory.
- // NOTE(kv) malloc allocator wouldn't work for a "clear all" operation.
- // So we'll have to use something else later on
  // NOTE(kv): so when we clear, the plan is to just wipe out the memory, and re-initialize everything.
- // NOTE(kv): If "clear everything" isn't good enough, we can make multiple allocators, and free those.
+ // NOTE(kv): Later we can make multiple arena pools, and free those.
  if (h.inited)
  {
   arena_clear(&h.arena);
-  //TODO(kv): @incomplete
-  //h.allocator = make_arena_base_allocator(&h.arena);
-  init_static(h.stack, &h.arena, 128);
+  init_dynamic(h.stack, &h.allocator, 128);
  }
 }
 
@@ -187,9 +205,9 @@ apply_new_edit(Modeler &m, Modeler_Edit &edit)
  auto &h = m.history;
  h.stack.count = h.redo_index;
  h.stack.set_count(h.redo_index+1);  // NOTE(kv): overwrite everything after the redo
- h.stack[h.redo_index] = edit;  // NOTE: push the edit on top of the stack
+ h.stack[h.redo_index] = edit;  // NOTE(kv): push the edit on top of the stack
  modeler_redo(m);
- m.change_uncommitted = true;  // NOTE: controversial
+ m.change_uncommitted = true;
 }
 
 inline Modeler_Edit *
@@ -232,11 +250,13 @@ edits_can_be_merged(Modeler_Edit &edit1, Modeler_Edit &edit2)
  return result;
 }
 
-inline Vert_Index
-prim_id_to_vertex_index(u32 id)
+inline Bezier_Data
+get_selected_curve(Modeler &m)
 {
- kv_assert(prim_id_type(id) == Prim_Vertex);
- return Vert_Index{prim_id_to_index(id)};
+ u32 id = selected_prim_id(m);
+ Curve_Index index = curve_index_from_prim_id(id);
+ Bezier_Data result = m.curves[index.v];
+ return result;
 }
 
 //~ EOF

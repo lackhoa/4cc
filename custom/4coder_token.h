@@ -61,6 +61,8 @@ struct Token{
  u16 sub_flags;
 };
 
+global Token stub_token = {}; // NOTE(kv): experimenting with ZII!
+
 struct Token_Pair{
     Token a;
     Token b;
@@ -120,7 +122,7 @@ enum{
  TokenIterator_List,
 };
 
-struct Token_Iterator{
+struct Token_Iterator {
  Token_Iterator_Kind kind;
  union{
   Token_Iterator_Array array;
@@ -145,12 +147,10 @@ make_token_iterator(Token_Iterator_List const&it){
  return(result);
 }
 
-inline Token_Iterator_Array::operator Token_Iterator()
-{
+inline Token_Iterator_Array::operator Token_Iterator() {
  return make_token_iterator(*this); 
 }
-inline Token_Iterator_List::operator Token_Iterator()
-{
+inline Token_Iterator_List::operator Token_Iterator() {
  return make_token_iterator(*this); 
 }
 //-
@@ -165,7 +165,4 @@ Ii64(Token *token)
  }
 }
 
-
-
 // BOTTOM
-

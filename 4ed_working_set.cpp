@@ -420,8 +420,8 @@ buffer_bind_name(Thread_Context *tctx, Models *models, Arena *scratch, Working_S
             Buffer_Name_Conflict_Entry *entry = &conflicts[i];
             entry->buffer_id = file_ptr->id;
             
-            entry->filename = push_string_copyz(scratch, string_from_filename(&file_ptr->canon));
-            entry->base_name = push_string_copyz(scratch, base_name);
+            entry->filename = push_stringz(scratch, string_from_filename(&file_ptr->canon));
+            entry->base_name = push_stringz(scratch, base_name);
             
             String b = base_name;
             if (i > 0){

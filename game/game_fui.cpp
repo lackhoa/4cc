@@ -368,11 +368,10 @@ fui_handle_slider(fui_handle_slider_params)
      
      for_i32(index,0,component_count)
      {
-      i32 eat_result = ep_eat_until_char_lit(p, ",)");
-      if (index < component_count-1)
-      {
-       if (eat_result == 2)
-       {// NOTE: early closing paren
+      i32 eat_result = ep_eat_until_char(p, ",)");
+      if (index < component_count-1) {
+       if (eat_result == 2) {
+        // NOTE: early closing paren
         p->set_ok(false);
         break;
        }

@@ -1740,7 +1740,7 @@ string_const_any_push(Arena *arena, u64 size, String_Encoding encoding){
 #define push_string_const_u64 string_const_u64_push
 
 function String_Const_char
-push_string_copyz(Arena *arena, String_Const_char src)
+push_stringz(Arena *arena, String_Const_char src)
 {
  String_Const_char string = {};
  string.str  = push_array(arena, char, src.size + 1);
@@ -1751,7 +1751,7 @@ push_string_copyz(Arena *arena, String_Const_char src)
 }
 
 function String_Const_u16
-push_string_copyz(Arena *arena, String_Const_u16 src){
+push_stringz(Arena *arena, String_Const_u16 src){
  String_Const_u16 string = {};
  string.str = push_array(arena, u16, src.size + 1);
  string.size = src.size;
@@ -1760,7 +1760,7 @@ push_string_copyz(Arena *arena, String_Const_u16 src){
  return(string);
 }
 function String_Const_u32
-push_string_copyz(Arena *arena, String_Const_u32 src){
+push_stringz(Arena *arena, String_Const_u32 src){
  String_Const_u32 string = {};
  string.str = push_array(arena, u32, src.size + 1);
  string.size = src.size;
@@ -1775,19 +1775,19 @@ push_string_array_copy(Arena *arena, String_Array src){
  result.vals = push_array(arena, String, src.count);
  result.count = src.count;
  for (i32 i = 0; i < src.count; i += 1){
-  result.vals[i] = push_string_copyz(arena, src.vals[i]);
+  result.vals[i] = push_stringz(arena, src.vals[i]);
  }
  return(result);
 }
 
 function String_Const_Any
-push_string_copyz(Arena *arena, u64 size, String_Const_Any src){
+push_stringz(Arena *arena, u64 size, String_Const_Any src){
  String_Const_Any string = {};
  switch (src.encoding){
-  case StringEncoding_ASCII: string.s_char = push_string_copyz(arena, src.s_char); break;
-  case StringEncoding_UTF8:  string.s_u8   = push_string_copyz(arena, src.s_u8  ); break;
-  case StringEncoding_UTF16: string.s_u16  = push_string_copyz(arena, src.s_u16 ); break;
-  case StringEncoding_UTF32: string.s_u32  = push_string_copyz(arena, src.s_u32 ); break;
+  case StringEncoding_ASCII: string.s_char = push_stringz(arena, src.s_char); break;
+  case StringEncoding_UTF8:  string.s_u8   = push_stringz(arena, src.s_u8  ); break;
+  case StringEncoding_UTF16: string.s_u16  = push_stringz(arena, src.s_u16 ); break;
+  case StringEncoding_UTF32: string.s_u32  = push_stringz(arena, src.s_u32 ); break;
  }
  return(string);
 }
@@ -1838,7 +1838,7 @@ string_list_push_overlap(Arena *arena, List_String *list, u8 overlap, String str
  if (tail_has_overlap == string_has_overlap)
  {
   if (!tail_has_overlap) {
-   string_list_push(arena, list, push_string_copyz(arena, SCu8(&overlap, 1)));
+   string_list_push(arena, list, push_stringz(arena, SCu8(&overlap, 1)));
   } else {
    string = string_skip(string, 1);
   }
@@ -2546,7 +2546,7 @@ string_from_integer(Arena *arena, u64 x, u32 radix){
  String result = {};
  if (radix >= 2 && radix <= 16){
   if (x == 0){
-   result = push_string_copyz(arena, string_u8_litexpr("0"));
+   result = push_stringz(arena, string_u8_litexpr("0"));
   }
   else{
    u8 string_space[64];
@@ -2561,7 +2561,7 @@ string_from_integer(Arena *arena, u64 x, u32 radix){
         j += 1, i -= 1){
     macro_swap(string_space[i], string_space[j]);
    }
-   result = push_string_copyz(arena, SCu8(string_space, length));
+   result = push_stringz(arena, SCu8(string_space, length));
   }
  }
  return(result);

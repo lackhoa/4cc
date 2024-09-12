@@ -333,8 +333,8 @@ push_data(Arena *arena, u64 size)
  return(result);
 }
 
-function String8
-push_string(Arena *arena, String8 data)
+function String
+push_string(Arena *arena, String data)
 {
  String8 result = {
   .str = push_array_copy(arena, u8, data.size, data.str),

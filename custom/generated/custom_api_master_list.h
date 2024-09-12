@@ -113,7 +113,7 @@ api(custom) function Managed_Object alloc_buffer_markers_on_buffer(App* app, Buf
 api(custom) function u32 managed_object_get_item_size(App* app, Managed_Object object);
 api(custom) function u32 managed_object_get_item_count(App* app, Managed_Object object);
 api(custom) function void* managed_object_get_pointer(App* app, Managed_Object object);
-api(custom) function Managed_Object_Type managed_object_get_type(App* app, Managed_Object object);
+api(custom) function Managed_Prim_Type managed_object_get_type(App* app, Managed_Object object);
 api(custom) function Managed_Scope managed_object_get_containing_scope(App* app, Managed_Object object);
 api(custom) function b32 managed_object_free(App* app, Managed_Object object);
 api(custom) function b32 managed_object_store_data(App* app, Managed_Object object, u32 first_index, u32 count, void* mem);

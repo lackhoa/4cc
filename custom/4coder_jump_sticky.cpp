@@ -139,7 +139,7 @@ init_marker_list(App *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
         
         u32 total_jump_count = 0;
         for (i32 j = buffer_range_indices.first;
-             j < buffer_range_indices.one_past_last;
+             j < buffer_range_indices.opl;
              j += 1){
             i32 range_index = range_index_buffer_id_pairs[j].index;
             Range_i32 range = buffer_ranges.ranges[range_index];
@@ -151,14 +151,14 @@ init_marker_list(App *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
         Buffer_ID target_buffer_id = 0;
         u32 marker_index = 0;
         for (i32 j = buffer_range_indices.first;
-             j < buffer_range_indices.one_past_last;
+             j < buffer_range_indices.opl;
              j += 1){
             i32 range_index = range_index_buffer_id_pairs[j].index;
             Range_i32 range = buffer_ranges.ranges[range_index];
             if (target_buffer_id == 0){
                 target_buffer_id = jumps.jumps[range.first].jump_buffer_id;
             }
-            for (i32 k = range.first; k < range.one_past_last; k += 1){
+            for (i32 k = range.first; k < range.opl; k += 1){
                 markers[marker_index].pos = jumps.jumps[k].jump_pos;
                 markers[marker_index].lean_right = false;
                 stored[k].list_line        = jumps.jumps[k].list_line;

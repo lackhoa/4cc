@@ -163,10 +163,10 @@ vim_get_register_char(Vim_Register *reg){
 	else if(reg == &r->command){      result = ':'; }
 	else if(reg == &r->file){         result = '%'; }
 	else if(reg == &r->expression){   result = '='; }
-	else if(in_range_exclude_last(r->named, reg, r->named + ArrayCount(r->named))){
+	else if(in_range_exclusive(r->named, reg, r->named + ArrayCount(r->named))){
 		result = u8(i1('a') + i1(reg - r->named));
 	}
-	else if(in_range_exclude_last(r->digit, reg, r->digit + ArrayCount(r->digit))){
+	else if(in_range_exclusive(r->digit, reg, r->digit + ArrayCount(r->digit))){
 		result = u8(i1('0') + i1(reg - r->digit));
 	}
 	return result;

@@ -264,7 +264,7 @@ history_record_edit(Global_History *global_history, History *history, Gap_Buffer
   
   new_record->kind = RecordKind_Single;
   
-  new_record->single.forward_text = push_string_copyz(&history->arena, edit.text);
+  new_record->single.forward_text = push_stringz(&history->arena, edit.text);
   new_record->single.backward_text = buffer_stringify(&history->arena, buffer, edit.range);
   new_record->single.first = edit.range.first;
   
@@ -354,8 +354,8 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
                 
                 left->edit_number = right->edit_number;
                 left->single.first = merged_first;
-                left->single.forward_text  = push_string_copyz(&history->arena, merged_forward);
-                left->single.backward_text = push_string_copyz(&history->arena, merged_backward);
+                left->single.forward_text  = push_stringz(&history->arena, merged_forward);
+                left->single.backward_text = push_stringz(&history->arena, merged_backward);
                 
                 history__free_single_node(history, &right->node);
                 record->group.count -= 1;

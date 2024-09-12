@@ -71,10 +71,11 @@
 
 #define internal      static
 #define function      static  // NOTE: I guess we're using this now...
+#define xfunction     //NOTE(kv) exported function
 #define local_persist static
 #define global        static
 // NOTE(kv): Global variable that is exported to the symbol table to be linked.
-#define global_exported
+#define xglobal
 
 //~ END Unorganized
 
@@ -103,6 +104,8 @@ typedef float    v1;
 #define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
+#define line_unique_var               PP_Concat(i, __LINE__)
+#define for_times(TIMES)   for(i32 line_unique_var=0; line_unique_var<TIMES; line_unique_var++)
 
 #ifdef KV_NO_FORCE_INLINE
 # define force_inline inline
@@ -495,7 +498,7 @@ inline void *kv_xmalloc(size_t size) {
 }
 
 #define breakable_block for (i32 __kv_breakable_block__=0; __kv_breakable_block__ == 0; __kv_breakable_block__++)
-#define in_range_exclude_last(bot,mid,top) ((bot) <= (mid) && (mid) < (top))
+#define in_range_exclusive(bot,mid,top) ((bot) <= (mid) && (mid) < (top))
 #define in_range_inclusive(bot,mid,top) ((bot) <= (mid) && (mid) <= (top))
 
 /* ;math */
@@ -2089,64 +2092,27 @@ for(T *p_ = f; p_ != 0; p_ = p_->next){ Assert(p_->prev == 0 || p_->prev->next =
 
 typedef i2 Vec2_i32;
 typedef i3 Vec3_i32;
-
 typedef v3 Vec3_f32;
 
-union Range_i32{
- struct{
-  i32 min;
-  i32 max;
- };
- struct{
-  i32 start;
-  i32 end;
- };
- struct{
-  i32 first;
-  i32 one_past_last;
- };
+union Range_i32 {
+ struct{ i32 min; i32 max; };
+ struct{ i32 start; i32 end; };
+ struct{ i32 first; i32 opl; };
 };
-union Range_i64{
- struct{
-  i64 min;
-  i64 max;
- };
- struct{
-  i64 start;
-  i64 end;
- };
- struct{
-  i64 first;
-  i64 one_past_last;
- };
+union Range_i64 {
+ struct{ i64 min; i64 max; };
+ struct{ i64 start; i64 end; };
+ struct{ i64 first; i64 opl; };
 };
-union Range_u64{
-  struct{
-    u64 min;
-    u64 max;
-  };
-  struct{
-    u64 start;
-    u64 end;
-  };
-  struct{
-    u64 first;
-    u64 one_past_last;
-  };
+union Range_u64 {
+ struct{ u64 min; u64 max; };
+ struct{ u64 start; u64 end; };
+ struct{ u64 first; u64 opl; };
 };
 union Range_f32 {
-  struct{
-    f32 min;
-    f32 max;
-  };
-  struct{
-  f32 start;
-  f32 end;
- };
- struct{
-  f32 first;
-  f32 one_past_last;
- };
+ struct{ f32 min; f32 max; };
+ struct{ f32 start; f32 end; };
+ struct{ f32 first; f32 opl; };
 };
 
 struct Range_i32_Array{
@@ -2241,6 +2207,7 @@ enum Base_Allocator_Type
  Allocator_None,
  Allocator_Generic,
  Allocator_Malloc,
+ Allocator_Arena,
 };
 
 typedef void *Allocator_Reserve_Signature(void *user_data, u64 size, u64 *size_out, String location);
@@ -2507,7 +2474,7 @@ block_range_copy__inner(void *dst, void *src, Range_u64 range, i64 shift){
 function void
 block_range_copy__inner(void *dst, void *src, Range_u64 range, i64 shift, u64 item_size){
     range.first *= item_size;
-    range.one_past_last *= item_size;
+    range.opl *= item_size;
     shift *= item_size;
     block_range_copy__inner(dst, src, range, shift);
 }
@@ -2522,7 +2489,7 @@ block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i64 range
     u8 *sptr = (u8*)src;
     dptr += it_size*(range.first + shift);
     sptr += it_size*range.first;
-    block_copy(dptr, sptr, (u64)(it_size*(range.one_past_last - range.first)));
+    block_copy(dptr, sptr, (u64)(it_size*(range.opl - range.first)));
 }
 function void
 block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range, i64 shift){
@@ -2530,7 +2497,7 @@ block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range
  u8 *sptr = (u8*)src;
  dptr += it_size*(range.first + shift);
  sptr += it_size*range.first;
- block_copy(dptr, sptr, (u64)(it_size*(range.one_past_last - range.first)));
+ block_copy(dptr, sptr, (u64)(it_size*(range.opl - range.first)));
 }
 
 #define block_copy_array_shift(d,s,r,h) block_copy_array_shift__inner((d),(s),sizeof(*(d)),(r),(h))
@@ -3407,28 +3374,12 @@ force_inline u64 cstring_length(char *str) {
  return cstring_length((u8 *)str);
 }
 
-force_inline String
-SCu8(void){
- String string = {};
- return(string);
-}
-force_inline String
-SCu8(u8 *str, u64 size){
- String string = {str, size};
- return(string);
-}
-force_inline String
-SCu8(u8 *str){
- u64 size = cstring_length(str);
- String string = {str, size};
- return(string);
-}
-force_inline String SCu8(char *str){
- return(SCu8((u8*)str));
-}
-force_inline String SCu8(const char *str){
- return(SCu8((u8*)str));
-}
+force_inline String SCu8(void)             { return {}; }
+force_inline String SCu8(char &c)          { return {(u8*)&c, 1}; }
+force_inline String SCu8(u8 *str, u64 size){ return {str, size}; }
+force_inline String SCu8(u8 *str)          { return {str, cstring_length(str)}; }
+force_inline String SCu8(char *str)        { return(SCu8((u8*)str)); }
+force_inline String SCu8(const char *str)  { return(SCu8((u8*)str)); }
 
 struct String_u8
 {
@@ -3525,50 +3476,56 @@ make_base_allocator_generic(Allocator_Reserve_Signature *func_reserve,
 }
 
 function String
+arena_push(Arena *arena, usize size, String location, u32 align_pow2);
+
+function String
 base_allocate_function(Base_Allocator *allocator, u64 size, String debug_location)
 {// @todo_leak_check
- u64 full_size = size;
- void *memory = 0;
+ String result = {};
  
  switch(allocator->type)
  {
   case Allocator_Generic:
   {
    auto &a = allocator->generic;
-   memory = a.reserve(a.userdata, size, &full_size, debug_location);
-   a.commit(a.userdata, memory, full_size);
+   // TODO(kv): Just do one call and simplify this allocator interface?
+   result.str = (u8 *)a.reserve(a.userdata, size, &result.size, debug_location);
+   a.commit(a.userdata, result.str, result.size);
   }break;
   
-  /*case Allocator_Arena:
+  case Allocator_Arena:
   {// NOTE(kv): This is a cyclic dependency situation.
-   memory = linalloc_push(allocator->arena, size, debug_location).str;
-  }break;*/
+   result = arena_push(allocator->arena, size, debug_location, 3);
+  }break;
   
   case Allocator_Malloc:
   {
-   memory = malloc(size);
+   result.str  = (u8 *)malloc(size);
+   result.size = size;
   }break;
   
   invalid_default_case;
  }
  
- return (make_data(memory, (u64)full_size));
+ return result;
 }
 
 function void
-base_free(Base_Allocator *allocator, void *ptr)
+base_free(Base_Allocator *allocator, void *ptr, umm optional_size=0)
 {
  if (ptr != 0)
  {
   switch(allocator->type)
   {
-   case Allocator_Generic:
-   {
+   case Allocator_Generic: {
     auto &a = allocator->generic;
     a.free(a.userdata, ptr);
    }break;
    
-   //case Allocator_Arena:  {  breakhere; /*noop*/ } break;
+   case Allocator_Arena: {
+    auto a = allocator->arena;
+    ASAN_POISON_MEMORY_REGION(ptr, optional_size);
+   } break;
    
    case Allocator_Malloc: { free(ptr); } break;
    
@@ -3606,37 +3563,43 @@ make_cursor(Base_Allocator *allocator, u64 size)
  String memory = base_allocate2(allocator, size);
  return(make_cursor(memory));
 }
-// NOTE(kv): If you have time, try to research a good red zone scheme.
-//   https://github.com/llvm/llvm-project/blob/main/compiler-rt/lib/asan/asan_allocator.cpp#L456
-//   I feel like we need to pass the struct size.
-inline usize
-get_red_zone_size(u32 align_pow2)
-{
- usize align_size = (1ULL<<align_pow2);
-#if ASAN_ON
- usize result = macro_max(128, 2*align_size);
-#else
- usize result = 0;
-#endif
- return result;
-}
+
 function String
 cursor_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2)
-{
- kv_assert(align_pow2 >= 3);  // NOTE(kv): 8 alignment for asan
+{// TODO(kv): This allocation is not optimal yet in non-asan builds.
+ kv_assert(align_pow2 <= 3);  //NOTE(kv): don't support simd rn
+#if ASAN_ON
+ // NOTE(kv): we want a poisoned region to the left of the
+ //   unpoisoned allocation region, then the allocation has to
+ //   begin on an 8-byte boundary.
+ macro_clamp_min(align_pow2, 3);
+#endif
+ 
  String result = {};
- usize align_size = (1ULL<<align_pow2);
+ usize align_size = 1ULL << align_pow2;
  usize align_mask = align_size-1;
  u8 *current_pos = cursor->base+cursor->used_;
- u8 *pos = cast(u8*)(((usize(current_pos) + align_mask) & (~align_mask)) +
-                     get_red_zone_size(align_pow2));
+ 
+ // NOTE(kv): "redzone_size" doesn't include alignment
+#if ASAN_ON
+ umm redzone_size = 128;
+#else
+ umm redzone_size = 0;
+#endif
+ 
+ umm pos_umm = umm(current_pos) + redzone_size;
+ pos_umm = (pos_umm + align_mask) & (~align_mask);
+ u8 *pos = cast(u8*)(pos_umm);
  usize new_used = (pos+size)-cursor->base;
  if (new_used <= cursor->cap)
  {
   cursor->used_ = new_used;
   result = {(u8*)pos, size};
-  ASAN_UNPOISON_MEMORY_REGION(result.str, size);
-  kv_assert((usize(result.str) & align_mask) == 0);
+  kv_assert((usize(pos) & align_mask) == 0);
+  kv_assert((usize(pos) & 7)          == 0);
+  // NOTE(kv): Unpoisoned region has to start 8-byte aligned,
+  // which is this case right here (with the redzone being on the left).
+  ASAN_UNPOISON_MEMORY_REGION(pos, size);
  }
  return(result);
 }
@@ -3665,6 +3628,7 @@ make_arena(Base_Allocator *allocator, u64 chunk_size=KB(64))
 function String
 arena_push(Arena *arena, usize size, String location, u32 align_pow2)
 {
+ kv_assert(align_pow2 <= 3);  //NOTE(kv): don't support simd rn
  String result = {};
  if (size > 0)
  {
@@ -3676,13 +3640,14 @@ arena_push(Arena *arena, usize size, String location, u32 align_pow2)
   
   if (result.str == 0)
   {
-   usize min_cursor_size = size+get_red_zone_size(align_pow2);
+#if ASAN_ON
+   // NOTE(kv): alignment+redzone
+   umm max_allocation_waste = 256;
+#else
+   umm max_allocation_waste = 0;  // NOTE(kv): Assuming the cursor doesn't mess with us
+#endif
+   umm min_cursor_size = size + max_allocation_waste;
    {// NOTE(kv): Make a new cursor
-    {
-     // NOTE(kv): We don't want the cursor to mess with alignment calculations.
-     //   If we do avx-512, we need 64-bytes alignment!
-     static_assert((sizeof(Memory_Cursor) & 31) == 0);
-    }
     u64 usable_size = clamp_min(min_cursor_size, arena->chunk_size);
     String memory = base_allocate_function(arena->base_allocator, usable_size+sizeof(Memory_Cursor), location);
     // NOTE(kv): Tricky business: put the cursor in its own memory
@@ -3692,6 +3657,9 @@ arena_push(Arena *arena, usize size, String location, u32 align_pow2)
     *cursor = make_cursor(cursor+1, usable_size);
     sll_stack_push(arena->cursor, cursor);
     ASAN_POISON_MEMORY_REGION(cursor+1, usable_size);
+    // NOTE(kv): cursor+1 is usable memory, but when you push something on,
+    //   There will be poison to the left (see cursor_push),
+    //   so asan can detect somebody overwriting the cursor.
    }
    
    result = cursor_push(cursor, size, location, align_pow2);
@@ -4448,14 +4416,14 @@ remove_translation(mat4 result)
 //~NOTE: array
 // NOTE(kv): Can be zero-inited -> GOOD!
 // TODO(kv): I think we should switch to bucket array
-// since it plays better with arena allocator, and we can get stable pointers.
+// since it plays better with arena allocator, and we get stable pointers.
 template<class T>
 struct arrayof
 {
  i1 count;
- T *items;
  i1 cap;
  b32 fixed_size;
+ T *items;
  // NOTE(kv): Optional allocator to grow
  Base_Allocator *allocator;
  
@@ -4480,7 +4448,9 @@ struct arrayof
    T *old_items = items;
    items = cast(T *)base_allocate(used_allocator, new_cap*sizeof(T));
    block_copy(items, old_items, count*sizeof(T));
-   base_free(used_allocator, old_items);
+   // NOTE(kv): to free 100% of the space we allocated with the arena allocator,
+   //   We'd have to store the allocated size too. But I don't really care.
+   base_free(used_allocator, old_items, cap*sizeof(T));
    cap = new_cap;
   }
  }
@@ -4540,9 +4510,9 @@ inline void
 init_static(arrayof<T> &array, Arena *arena, i32 cap, b32 zero=false)
 {
  array = {
-  .items      = push_array(arena, T, cap, zero),
   .cap        = cap,
   .fixed_size = true,
+  .items      = push_array(arena, T, cap, zero),
  };
 }
 
@@ -4551,9 +4521,9 @@ inline void
 init_static(arrayof<T> &array, T *backing_buffer, i32 cap)
 {
  array = {
-  .items = backing_buffer,
-  .cap   = cap,
+  .cap        = cap,
   .fixed_size = true,
+  .items      = backing_buffer,
  };
 }
 
@@ -4598,6 +4568,7 @@ X_Basic_Types(X)
 #undef X
 
 #if !AD_IS_DRIVER
+
 template<class T>
 function T *
 push_unique(arrayof<T> &array, T const&item)
@@ -4619,20 +4590,21 @@ push_unique(arrayof<T> &array, T const&item)
 }
 
 //~
-struct Type_Info;
-struct Struct_Member
-{
- Type_Info *type;
- String     name;
- u32        offset;
+struct Struct_Member {
+ struct Type_Info *type;
+ String            name;
+ u32               offset;
 };
-
-struct Type_Info
-{
+struct Enum_Value {
+ String name;
+ i32    value;
+};
+struct Type_Info {
  String                 name;
  i1                     size;
  Basic_Type             Basic_Type;  // NOTE(kv): non-zero if it's a basic type
  arrayof<Struct_Member> members;
+ arrayof<Enum_Value>    enum_values;
 };
 
 #define X(T)                 \
@@ -4755,26 +4727,15 @@ Scratch_Block::restore(void){
 
 //-
 
-/*function Base_Allocator *
+function Base_Allocator
 make_arena_base_allocator(Arena *arena)
-{// NOTE: So you put the allocator on the arena...
- auto allocator = push_struct(arena, Base_Allocator);
- *allocator = {
+{// NOTE: We put the result on the arena and return the pointer.
+ Base_Allocator allocator = {
   .type  = Allocator_Arena,
   .arena = arena,
  };
  return allocator;
-}*/
-
-#if 0
-function Arena
-sub_arena_dynamic(Arena *parent_arena, u64 chunk_size=KB(16), u64 align=8)
-{// NOTE(kv): An arena that allocates from a parent arena.
- Base_Allocator *allocator = make_arena_base_allocator(parent_arena);
- Arena result = make_arena(allocator, chunk_size, align);
- return result;
 }
-#endif
 
 
 //~NOTE: Templated array
@@ -4823,7 +4784,7 @@ sub_arena_static(Arena *arena, usize size)
 //~
 
 function String
-push_string_copyz(Arena *arena, String src)
+push_stringz(Arena *arena, String src)
 {
  String string = {};
  string.str = push_array(arena, u8, src.size + 1);
@@ -4834,9 +4795,9 @@ push_string_copyz(Arena *arena, String src)
 }
 //
 force_inline char *
-to_c_string(Arena *arena, String8 string)
+to_cstring(Arena *arena, String8 string)
 {
- String8 result = push_string_copyz(arena, string);
+ String8 result = push_stringz(arena, string);
  return (char *)result.str;
 }
 
@@ -4926,8 +4887,8 @@ move_file(String from_filename, String to_filename)
 {
  u8 buffer[512];
  Arena arena = make_static_arena(buffer, 512);
- char *from = to_c_string(&arena, from_filename);
- char *to = to_c_string(&arena, to_filename);
+ char *from = to_cstring(&arena, from_filename);
+ char *to = to_cstring(&arena, to_filename);
  return gb_file_move(from, to);
 }
 
@@ -4936,8 +4897,8 @@ copy_file(String from_filename, String to_filename, b32 fail_if_exists)
 {
  u8 buffer[512];
  Arena arena = make_static_arena(buffer, 512);
- char *from = to_c_string(&arena, from_filename);
- char *to = to_c_string(&arena, to_filename);
+ char *from = to_cstring(&arena, from_filename);
+ char *to = to_cstring(&arena, to_filename);
  return gb_file_copy(from, to, fail_if_exists);
 }
 
@@ -4946,7 +4907,7 @@ remove_file(String filename)
 {
  u8 buffer[512];
  Arena arena = make_static_arena(buffer, 512);
- char *filenamec = to_c_string(&arena, filename);
+ char *filenamec = to_cstring(&arena, filename);
  return gb_file_remove(filenamec);
 }
 
@@ -4957,8 +4918,7 @@ function FILE *
 open_file(String name, char *mode)
 {
  make_temp_arena(scratch);
- String namez = push_string_copyz(scratch, name);
- FILE *file = fopen((char*)namez.str, mode);
+ FILE *file = fopen(to_cstring(scratch, name), mode);
  return(file);
 }
 
@@ -4977,7 +4937,7 @@ write_entire_file(String filename, void *data, u64 size)
  
  b32 result = false;
  gbFile file_value = {}; gbFile *file = &file_value;
- char *filename_c = to_c_string(arena, filename);
+ char *filename_c = to_cstring(arena, filename);
  gbFileError err = gb_file_open_mode(file, gbFileMode_Write, filename_c);
  if (err == gbFileError_None)
  {
@@ -5115,7 +5075,6 @@ printer_delete(Printer &p)
 #define printn9(p,x,...)     print(p,x); printn8(p,__VA_ARGS__);
 
 //-NOTE Base print function overloads
-// TODO(kv): This is awfully redundant!
 function void
 printer_printf(Printer &p, char *format, ...)
 {
@@ -5145,16 +5104,17 @@ printer_printf(Printer &p, char *format, ...)
  }
  va_end(args);
 }
-
+//-NOTE: Printing different types
 inline void print(Printer &p, const char *cstring) { printer_printf(p, "%s", cstring); }
 inline void print(Printer &p, String string) {
  printer_printf(p, "%.*s", string_expand(string));
 }
 inline void print(Printer &p, char c)  { printer_printf(p, "%c", c); }
-inline void print(Printer &p, i1 d)    { printer_printf(p, "%d", d); }
+inline void print(Printer &p, i32 d)   { printer_printf(p, "%d", d); }
 inline void print(Printer &p, u32 u)   { printer_printf(p, "%u", u); }
 inline void print(Printer &p, i64 ld)  { printer_printf(p, "%ld", ld); }
 inline void print(Printer &p, u64 lu)  { printer_printf(p, "%lu", lu); }
+//-
 
 // NOTE(kv): This is an absolutely ridiculous hack
 template <class T>
@@ -5281,7 +5241,7 @@ print_nspaces(Printer &p, i1 n)
 }
 
 function void
-print_data_basic_type(Printer &p, Basic_Type type, void *value0)
+write_basic_type(Printer &p, Basic_Type type, void *value0)
 {
  switch(type)
  {
@@ -5293,14 +5253,10 @@ print_data_basic_type(Printer &p, Basic_Type type, void *value0)
   {
    v1 *values = cast(v1*)value0;
    i1 count = get_basic_type_size(type) / 4;
-   if (count == 1)
-   {
+   if (count == 1) {
     print_float_trimmed(p, *values);
-   }
-   else
-   {
-    for_i32(index,0,count)
-    {
+   } else {
+    for_i32(index,0,count) {
      if (index != 0) { print(p, " "); }
      print_float_trimmed(p, values[index]);
     }
@@ -5321,8 +5277,7 @@ print_data_basic_type(Printer &p, Basic_Type type, void *value0)
    i1 count = get_basic_type_size(type) / 4;
    const i1 max_count = 4;
    
-   for_i32(index,0,count)
-   {
+   for_i32(index,0,count) {
     if (index != 0) { print(p, " "); }
     print(p, v[index]);
    }
@@ -5339,83 +5294,96 @@ print_data_basic_type(Printer &p, Basic_Type type, void *value0)
  }
 }
 
-#endif
-
 //~NOTE(kv): bucket array
 
-template <class T>
+#if 0
 struct bucket_array_bucket
 {
  bucket_array_bucket *next;
- T *items;
- i1 count;
+ bucket_array_bucket *prev;
+ i32 count;
+ i32 cap;
+ 
+ u8  items[0];
 };
+// NOTE(kv): Probably wouldn't wanna use this type with simd anyway
+static_assert((offsetof(bucket_array_bucket, items) & 7) == 0);
 
-template <class T>
-struct bucket_array
+struct bucket_array_void
 {
- bucket_array_bucket<T> *first_bucket;
- bucket_array_bucket<T> *last_bucket;
- i1 bucket_size;
  Arena *arena;
+ bucket_array_bucket *first_bucket;
+ bucket_array_bucket *last_bucket;  // NOTE(kv): always exists
+ bucket_array_bucket *free_bucket;
+ i32 item_size;
+ i32 last_bucket_cap;
  //-
  
- // NOTE: Don't allow set length higher than cap,
- // because why would you want to?
- inline void set_count(i32 new_count) {
-  kv_assert(new_count >= 0 && new_count <= cap);
-  count = new_count;
- }
- 
- inline void pop() {
-  set_count(count-1);
- }
- 
- inline i1 bucket_count() {
-  auto *bucket = first_bucket;
-  i1 result = 1;
-  while((bucket = bucket->next)){
-   result++;
+ i32 item_count()
+ {
+  i32 result = 0;
+  for(auto bucket = first_bucket;
+      bucket;
+      bucket = bucket->next)
+  {
+   result += bucket->count;
   }
   return result;
  }
  
- inline i1 cap(){
-  return bucket_size * bucket_count;
+ void expand(i32 delta)
+ {// NOTE(kv): Expand
+  i32 cur_cap = get_cap();
+  if (new_count <= cur_cap) {
+   // NOTE(kv): Lucky, we're within capacity
+   last_bucket->count += delta;
+   kv_assert(last_bucket->count <= last_bucket->cap);
+  } else {
+   // NOTE(kv): Need a new bucket
+   delta -= last_bucket->cap - last_bucket->count;
+   last_bucket->count = last_bucket->cap;
+   {
+    i32 new_bucket_cap = clamp_min(delta, 2*last_bucket->cap);
+    u8 *new_bucket_memory = push_size(arena, (new_bucket_cap*item_size+
+                                              sizeof(bucket_array_bucket)));
+    auto new_bucket = (bucket_array_bucket *)new_bucket_memory;
+    *new_bucket = {
+     .prev  = last_bucket,
+     .count = delta,
+     .cap   = new_bucket_cap,
+    };
+    last_bucket->next = new_bucket;
+   }
+  }
  }
  
- inline i1 count(){
-  i1 result = bucket_size * (bucket_count-1) + last_bucket->count;
-  return result;
+ void shrink(i32 size_to_pop)
+ {// NOTE(kv): Pop and contract
+  for_i32(auto bucket = last_bucket;
+          bucket;
+          bucket = bucket->prev)
+  {
+   if (bucket->count < size_to_pop) {
+    // NOTE(kv): Free the whole bucket
+    size_to_pop -= bucket->count;
+    sll_stack_push(free_bucket, bucket);
+   } else {
+    // NOTE(kv): Stopping point
+    bucket->count -= size_to_pop;
+    size_to_pop = 0;  // @decor
+    break;
+   }
+  }
+  kv_assert(size_to_pop == 0);
  }
  
- bucket_array_bucket<T> &new_bucket(){
-  auto result = push_struct(arena, bucket_array_bucket<T>);
-  *result = {
-   .items = push_array(arena, T, bucket_size),
-  };
-  return *result;
- }
+ inline void pop() { set_count(count-1); }
  
  void push(T const& item)
  {
-  /*
-  if (count == cap)
-  {
-   i32 new_cap = (cap > 0) ? 2*cap : 1;
-   set_cap(new_cap);
-  }
-  kv_assert(count < cap);
-  items[count++] = item;
-  */
-  auto &cur = *last_bucket;
-  if (cur.count == bucket_size)
-  {// NOTE: Panic! We need another bucket!
-   last_bucket = cur.next = new_bucket();
-  }
-  
-  // NOTE: Business as usual
-  last_bucket->items[last_bucket->count++] = item;
+  i32 new_count = get_count()+1;
+  set_count(new_count);
+  last_bucket->items[last_bucket->count] = item;
  }
  
  inline T& operator[](i32 index)
@@ -5440,6 +5408,11 @@ init(bucket_array<T> &array, Arena *arena, i1 bucket_size)
  array.bucket_size = bucket_size;
  array.first_bucket = array.last_bucket = &array.new_bucket();
 }
+#endif
+
+#endif
+
+//-
 
 struct File_Name_Data
 {
@@ -5449,6 +5422,10 @@ struct File_Name_Data
 
 #define introspect(...)
 #define meta_tag(...)
+#define meta_added(...)
+#define meta_removed(...)
+
+#define logically_implies(a,b)  !a || b
 
 
 //~EOF

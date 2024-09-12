@@ -1,101 +1,3 @@
-// internal Model
-// new_model(const char *filename)
-{
-    Model result = {};
-    
-    FILE *file = fopen(filename, "r");
-    if (!file) return result;
-    
-    char *line = 0;
-    umm line_len = 0;
-    b32 success = true;
-    while (true)
-    {
-        imm read_size = getline(&line, &line_len, file);
-        if (read_size == -1) break;
-      
-        if (line_len < 2) continue;
-        
-        char c0 = line[0];
-        char c1 = line[1];
-        
-        if (c0 == 'v' && c1 == ' ')
-        {
-            arrput(model.verts);
-            v3 v = arrlen(model.verts)-1;
-            if ( sscanf(line, "v %f %f %f", v, v+1, v+2) != 3 )
-            {
-                success = false;
-                break;
-            }
-        }
-        else if (c0 == 'f' && c1 == ' ')
-        {
-            i32 itrash;
-            i32 output = scanf(line, "f %i/%i/%i %i/%i/%i %i/%i/%i %i/%i/%i",
-                               i, &itrash, &itrash,
-                               );
-            if (output != 3) invalid_code_path;
-            {
-            }
-            while (iss >> idx >> trash >> itrash >> trash >> itrash) 
-            {
-                idx--; // in wavefront obj all indices start at 1, not zero
-                f.push_back(idx);
-            }
-            faces_.push_back(f);
-        }
-        else { /* passthrough for other */ }
-    }
-    
-    if (!success) invalid_code_path;
-    
-    return model;
-}
-
-// NOTE(kv): very hacky stuff!
-internal b32
-optional_char(stb_lexer *tk)
-{
-    stb_lexer tk_save = *tk;
-    b32 result = false;
-    if (*tk->parse_point && tk->parse_point != tk->eof)
-    {
-        tk->parse_point++;
-        if (tk->parse_point)
-    }
-    
-    if (!result)  *tk = tk_save;
-        
-    return result;
-}
-
-// NOTE(kv): "geometry.h"
-
-template <class t> struct Vec2 
-{
-	union 
-    {
-		struct {t u, v;};
-		struct {t x, y;};
-		t raw[2];
-	};
-	Vec2() : u(0), v(0) {}
-	Vec2(t _u, t _v) : u(_u),v(_v) {}
-};
-
-template <class t> struct Vec3 
-{
-	union 
-    {
-		struct {t x, y, z;};
-		struct { t ivert, iuv, inorm; };
-		t raw[3];
-	};
-	Vec3() : x(0), y(0), z(0) {}
-	inline Vec3<t> operator ^(const Vec3<t> &v) const { return Vec3<t>(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x); }
-	Vec3<t> & normalize(t l=1) { *this = (*this)*(l/norm()); return *this; }
-};
 
     if (1)
     {// test srgb
@@ -603,29 +505,151 @@ draw_line_inner(App *app, v3 *points, v1 thickness, ARGB_Color color, v1 interva
                             focal, 0,     0,            0,
                             0,     focal, 0,            0,
                             0,     0,     (n+f)/(f-n),  -2*f*n/(f-n),
-                            0,     0,     1,            0,
-                        },
-                    };
-                    
-                    m4x4 camera_project_and_z_to_depth = matmul4(&z_to_depth, &camera_project);
-                    m4x4 camera_project_and_z_to_depth_and_perspective = matmul4(&perspective_project, &camera_project_and_z_to_depth);
-                    view_m = matmul4(&view_m, &camera_project_and_z_to_depth_and_perspective);
-                    
-                    if (0)
-                    {
-                        v1 U = 1e3;
-                        v4 O = v4{0,0,0,1};
-                        v4 O1 = camera_project * O;
-                        v4 O2 = z_to_depth * O1;
-                        v4 O3 = perspective_project * O2;
-                        O3 /= O3.w;
-                            
-                        v4 point = U * v4{0,0,1,1};
-                        v4 point1 = camera_project * point;
-                        v4 point2 = z_to_depth * point1;
-                        v4 point3 = perspective_project * point2;
-                        point3 /= point3.w;
-                       
-                        breakhere;
-                    }
-                }
+   0,     0,     1,            0,
+  },
+ };
+ 
+ m4x4 camera_project_and_z_to_depth = matmul4(&z_to_depth, &camera_project);
+ m4x4 camera_project_and_z_to_depth_and_perspective = matmul4(&perspective_project, &camera_project_and_z_to_depth);
+ view_m = matmul4(&view_m, &camera_project_and_z_to_depth_and_perspective);
+ 
+ if (0)
+ {
+  v1 U = 1e3;
+  v4 O = v4{0,0,0,1};
+  v4 O1 = camera_project * O;
+  v4 O2 = z_to_depth * O1;
+  v4 O3 = perspective_project * O2;
+  O3 /= O3.w;
+  
+  v4 point = U * v4{0,0,1,1};
+  v4 point1 = camera_project * point;
+  v4 point2 = z_to_depth * point1;
+  v4 point3 = perspective_project * point2;
+  point3 /= point3.w;
+  
+  breakhere;
+ }
+ 
+ 
+ 
+#if 1
+ struct bucket_array_bucket
+ {
+  bucket_array_bucket *next;
+  bucket_array_bucket *prev;
+  i32 count;
+  
+  u8  pad[4];
+  u8  items[0];
+ };
+ // NOTE(kv): Probably wouldn't wanna use this type with simd anyway
+ static_assert((offsetof(bucket_array_bucket, items) & 7) == 0);
+ 
+ struct bucket_array_void
+ {
+  Arena *arena;
+  bucket_array_bucket *first_bucket;
+  bucket_array_bucket *last_bucket;
+  i32 bucket_count;
+  i32 bucket_cap;
+  i32 item_size;
+  //-
+  
+  inline i32 item_count()
+  {
+   i32 result = 0;
+   if (bucket_count > 1) {
+    result += (bucket_count-1)*bucket_cap;
+   }
+   result += last_bucket->count;
+   return result;
+  }
+  
+  inline i32 item_cap() {
+   return bucket_count * bucket_cap;
+  }
+  
+  void set_count(i32 new_count)
+  {
+   kv_assert(new_count >= 0);
+   i32 cur_count = item_count();
+   i32 delta = new_count - cur_count;
+   if ( new_count < cur_count )
+   {// NOTE(kv): Popping items
+    i32 size_to_pop = -delta;
+    for_i32(auto bucket = last_bucket;
+            bucket;
+            bucket = bucket->prev)
+    {
+     if (bucket->count < size_to_pop) {
+      size_to_pop -= bucket->count;
+      bucket->count = 0;
+     } else {
+      bucket->count -= size_to_pop;
+      size_to_pop = 0;  // @decor
+      break;
+     }
+    }
+    kv_assert(size_to_pop == 0);
+   }
+   else if (new_count > cur_count)
+   {// NOTE(kv): Expanding
+    i32 cur_cap = get_cap();
+    if (new_count <= cur_cap) {
+     // NOTE(kv): Lucky, we're within capacity
+     last_bucket->count += delta;
+     kv_assert(last_bucket->count <= last_bucket->cap);
+    } else {
+     // NOTE(kv): Need a new bucket
+     delta -= last_bucket->cap - last_bucket->count;
+     last_bucket->count = last_bucket->cap;
+     {
+      i32 new_bucket_cap = clamp_min(delta, 2*last_bucket->cap);
+      u8 *new_bucket_memory = push_size(arena, (new_bucket_cap*item_size+
+                                                sizeof(bucket_array_bucket)));
+      auto new_bucket = (bucket_array_bucket *)new_bucket_memory;
+      *new_bucket = {
+       .prev  = last_bucket,
+       .count = delta,
+       .cap   = new_bucket_cap,
+      };
+      last_bucket->next = new_bucket;
+     }
+    }
+   }
+  }
+  
+  inline void pop() { set_count(count-1); }
+  
+  void push(T const& item)
+  {
+   i32 new_count = get_count()+1;
+   set_count(new_count);
+   last_bucket->items[last_bucket->count] = item;
+  }
+  
+  inline T& operator[](i32 index)
+  {
+   kv_assert(index >= 0 && index < count());
+   i1 index_of_bucket = index / bucket_size;
+   i1 index_in_bucket = index % bucket_size;
+   auto *bucket = first_bucket;
+   for_i1(i, 0, index_of_bucket) {
+    bucket = bucket->next;
+   }
+   return bucket[index_in_bucket];
+  }
+ };
+ //
+ template <class T>
+  function void
+  init(bucket_array<T> &array, Arena *arena, i1 bucket_size)
+ {
+  // NOTE: Must have at least one bucket!
+  array.arena = arena;
+  array.bucket_size = bucket_size;
+  array.first_bucket = array.last_bucket = &array.new_bucket();
+ }
+#endif
+//

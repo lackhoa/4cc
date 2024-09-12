@@ -431,7 +431,7 @@ smi_try_add_token(Lexer_Primary_Context *ctx, String name, Token_Base_Kind base_
     Table_Lookup lookup = table_lookup(&set->name_to_ptr, make_data(name.str, name.size));
     if (!lookup.found_match){
         Token_Kind_Node *node = push_array_zero(&ctx->arena, Token_Kind_Node, 1);
-        node->name = push_string_copyz(&ctx->arena, name);
+        node->name = push_stringz(&ctx->arena, name);
         node->base_kind = base_kind;
         table_insert(&set->name_to_ptr, make_data(node->name.str, node->name.size), (u64)PtrAsInt(node));
         sll_queue_push(set->first, set->last, node);
@@ -450,8 +450,8 @@ smi_key(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, String lexeme
         if (!lookup.found_match){
             if (smi_try_add_token(ctx, name, base_kind)){
                 Keyword *key = push_array_zero(&ctx->arena, Keyword, 1);
-                key->name = push_string_copyz(&ctx->arena, name);
-                key->lexeme = push_string_copyz(&ctx->arena, lexeme);
+                key->name = push_stringz(&ctx->arena, name);
+                key->lexeme = push_stringz(&ctx->arena, lexeme);
                 table_insert(&set->name_to_ptr, make_data(key->name.str, key->name.size), (u64)PtrAsInt(key));
                 table_insert(&set->lexeme_to_ptr, make_data(key->lexeme.str, key->lexeme.size), (u64)PtrAsInt(key));
                 sll_queue_push(set->first, set->last, key);
@@ -469,7 +469,7 @@ smi_key_fallback(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, Toke
     if (!set->has_fallback_token_kind){
         if (smi_try_add_token(ctx, name, base_kind)){
             set->has_fallback_token_kind = true;
-            set->fallback_name = push_string_copyz(&ctx->arena, name);
+            set->fallback_name = push_stringz(&ctx->arena, name);
             result = true;
         }
     }
@@ -482,7 +482,7 @@ smi_add_state(Lexer_Primary_Context *ctx, String pretty_name){
     State *state = push_array_zero(&ctx->arena, State, 1);
     sll_queue_push(set->first, set->last, state);
     set->count += 1;
-    state->pretty_name = push_string_copyz(&ctx->arena, pretty_name);
+    state->pretty_name = push_stringz(&ctx->arena, pretty_name);
     return(state);
 }
 
@@ -1205,7 +1205,7 @@ sm_char_name(u8 c, char *str){
     if (lookup.found_match){
         table_erase(&helper_ctx.char_to_name, lookup);
     }
-    String string = push_string_copyz(helper_ctx.arena, SCu8(str));
+    String string = push_stringz(helper_ctx.arena, SCu8(str));
     table_insert(&helper_ctx.char_to_name, c, make_data(string.str, string.size));
 }
 
@@ -1260,8 +1260,8 @@ sm_op(String lexeme, String name){
     if (!lookup.found_match){
         if (smi_try_add_token(&helper_ctx.primary_ctx, name, helper_ctx.selected_base_kind)){
             Operator *op = push_array_zero(helper_ctx.arena, Operator, 1);
-            op->name = push_string_copyz(helper_ctx.arena, name);
-            op->op = push_string_copyz(helper_ctx.arena, lexeme);
+            op->name = push_stringz(helper_ctx.arena, name);
+            op->op = push_stringz(helper_ctx.arena, lexeme);
             table_insert(&set->lexeme_to_ptr, make_data(op->op.str, op->op.size), (u64)PtrAsInt(op));
             sll_queue_push(set->first, set->last, op);
             set->count += 1;
@@ -1297,7 +1297,7 @@ sm_begin_key_set(String pretty_name){
     Keyword_Set *set = push_array_zero(helper_ctx.arena, Keyword_Set, 1);
     set->name_to_ptr = make_table_Data_u64(helper_ctx.primary_ctx.allocator, 100);
     set->lexeme_to_ptr = make_table_Data_u64(helper_ctx.primary_ctx.allocator, 100);
-    set->pretty_name = push_string_copyz(helper_ctx.arena, pretty_name);
+    set->pretty_name = push_stringz(helper_ctx.arena, pretty_name);
     sll_queue_push(helper_ctx.primary_ctx.keywords.first,
                    helper_ctx.primary_ctx.keywords.last, set);
     helper_ctx.primary_ctx.keywords.count += 1;
@@ -1323,7 +1323,7 @@ sm_key(char *str, char *lexeme){
 internal b32
 sm_key(char *str){
     String name = SCu8(str);
-    String lexeme = push_string_copyz(helper_ctx.arena,  name);
+    String lexeme = push_stringz(helper_ctx.arena,  name);
     lexeme = string_mod_lower(lexeme);
     return(sm_key(name, lexeme));
 }
@@ -1583,7 +1583,7 @@ sm_emit_check_set_flag(String emit_check, Flag *flag, b32 value){
     Emit_Check *new_check = push_array_zero(helper_ctx.arena, Emit_Check, 1);
     sll_queue_push(rule->emit_checks.first, rule->emit_checks.last, new_check);
     rule->emit_checks.count += 1;
-    new_check->emit_check = push_string_copyz(helper_ctx.arena, emit_check);
+    new_check->emit_check = push_stringz(helper_ctx.arena, emit_check);
     new_check->flag = flag;
     new_check->value = value;
 }
@@ -2051,7 +2051,7 @@ opt_copy_model(Arena *arena, Lexer_Model model){
         result.states.count += 1;
         table_insert(&old_to_new, (u64)PtrAsInt(state), (u64)PtrAsInt(new_state));
         table_insert(&new_to_old, (u64)PtrAsInt(new_state), (u64)PtrAsInt(state));
-        new_state->pretty_name = push_string_copyz(arena, state->pretty_name);
+        new_state->pretty_name = push_stringz(arena, state->pretty_name);
     }
     
     for (State *new_state = result.states.first;

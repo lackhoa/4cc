@@ -369,7 +369,7 @@ lister_get_filtered(Arena *arena, Lister *lister){
     Temp_Memory_Block temp(arena);
     
     String key = lister->key_string.string;
-    key = push_string_copyz(arena, key);
+    key = push_stringz(arena, key);
     string_mod_replace_character(key, '_', '*');
     string_mod_replace_character(key, ' ', '*');
     
@@ -763,19 +763,19 @@ lister_add_item(Lister *lister, Lister_Prealloced_String string, Lister_Prealloc
 function void*
 lister_add_item(Lister *lister, Lister_Prealloced_String string, String status,
                 void *user_data, u64  extra_space){
-    return(lister_add_item(lister, string, lister_prealloced(push_string_copyz(lister->arena, status)), user_data, extra_space));
+    return(lister_add_item(lister, string, lister_prealloced(push_stringz(lister->arena, status)), user_data, extra_space));
 }
 
 function void*
 lister_add_item(Lister *lister, String string, Lister_Prealloced_String status, void *user_data, u64 extra_space){
-    return(lister_add_item(lister, lister_prealloced(push_string_copyz(lister->arena, string)), status, user_data, extra_space));
+    return(lister_add_item(lister, lister_prealloced(push_stringz(lister->arena, string)), status, user_data, extra_space));
 }
 
 function void*
 lister_add_item(Lister *lister, String string, String status, void *user_data, u64 extra_space){
     return(lister_add_item(lister,
-                           lister_prealloced(push_string_copyz(lister->arena, string)),
-                           lister_prealloced(push_string_copyz(lister->arena, status)),
+                           lister_prealloced(push_stringz(lister->arena, string)),
+                           lister_prealloced(push_stringz(lister->arena, status)),
                            user_data, extra_space));
 }
 

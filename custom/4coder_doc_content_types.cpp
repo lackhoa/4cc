@@ -93,7 +93,7 @@ new_doc_page_function(Arena *arena, Doc_Cluster *cluster, char *name){
 
 function Doc_Page*
 new_doc_page_function(Arena *arena, Doc_Cluster *cluster, String name){
-    name = push_string_copyz(arena, name);
+    name = push_stringz(arena, name);
     char *c_name = (char*)name.str;
     return(new_doc_page_function(arena, cluster, c_name));
 }

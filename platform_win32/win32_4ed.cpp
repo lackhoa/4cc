@@ -434,7 +434,7 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
                 {
                     String clip_ascii = SCu8(clip_ascii_ptr);
                     got_result = true;
-                    result = push_string_copyz(arena, clip_ascii);
+                    result = push_stringz(arena, clip_ascii);
                 }
                 GlobalUnlock(clip_data);
             }

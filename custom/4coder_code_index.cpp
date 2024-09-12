@@ -271,8 +271,8 @@ generic_parse_skip_soft_tokens(Code_Index_File *index, Generic_Parse_State *stat
     }
     else if (token->kind == TokenBaseKind_Whitespace){
       Range_i64 range = Ii64(token);
-      u8 *ptr = state->contents.str + range.one_past_last - 1;
-      for (i64 i = range.one_past_last - 1;
+      u8 *ptr = state->contents.str + range.opl - 1;
+      for (i64 i = range.opl - 1;
            i >= range.first;
            i -= 1, ptr -= 1){
         if (*ptr == '\n'){
@@ -338,7 +338,7 @@ index_new_note(Code_Index_File *index, Generic_Parse_State *state, Range_i64 ran
   index->note_list.count += 1;
   result->note_kind = kind;
   result->pos = range;
-  result->text = push_string_copyz(state->arena, string_substring(state->contents, range));
+  result->text = push_stringz(state->arena, string_substring(state->contents, range));
   result->file = index;
   result->parent = parent;
   return(result);

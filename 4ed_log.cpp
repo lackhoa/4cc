@@ -23,7 +23,7 @@ log_string(String str){
     i1 thread_id = system_thread_get_id();
     if (global_log.disabled_thread_id != thread_id){
         system_mutex_acquire(global_log.mutex);
-        string_list_push(&global_log.arena, &global_log.list, push_string_copyz(&global_log.arena, str));
+        string_list_push(&global_log.arena, &global_log.list, push_stringz(&global_log.arena, str));
         system_mutex_release(global_log.mutex);
         result = true;
     }

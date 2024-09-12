@@ -1719,11 +1719,11 @@ internal void *gb_memcopy(void *dest, void const *source, isize n) {
 internal void *gb_memmove(void *dest, void const *source, isize n) {
 	u8 *d = cast(u8 *)dest;
 	u8 const *s = cast(u8 const *)source;
-
+ 
 	if (dest == NULL) {
 		return NULL;
 	}
-
+ 
 	if (d == s) {
 		return d;
 	}

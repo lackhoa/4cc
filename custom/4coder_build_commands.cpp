@@ -15,7 +15,7 @@ push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
     end_temp(restore_point);
  if ( !is_match )
  {
-  result = push_string_copyz(arena, path_dirname(filename));
+  result = push_stringz(arena, path_dirname(filename));
  }
  return(result);
 }

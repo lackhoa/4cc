@@ -173,15 +173,15 @@ defer( pop_object(); );
 internal mat4i &
 get_parent_transform()
 {
- auto &stack = painter.object_stack;
+ auto &stack = painter.bone_stack;
  i1 index = stack[stack.count-2];
- return painter.object_list[index].transform;
+ return painter.bone_list[index].transform;
 }
 
 internal mat4
 from_parent()
 {
- return get_object_transform().inverse * get_parent_transform();
+ return get_bone_transform().inverse * get_parent_transform();
 }
 
 //~

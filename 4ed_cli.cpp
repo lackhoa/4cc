@@ -105,8 +105,8 @@ child_process_call(Thread_Context *tctx, Models *models, String path, String com
 {
  b32 result = false;
  Scratch_Block scratch(tctx);
- String path_n    = push_string_copyz(scratch, path);
- String command_n = push_string_copyz(scratch, command);
+ String path_n    = push_stringz(scratch, path);
+ String command_n = push_stringz(scratch, command);
  CLI_Handles cli_handles = {};
  if (system_cli_call(scratch, (char*)path_n.str, (char*)command_n.str, &cli_handles))
  {

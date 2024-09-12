@@ -2,10 +2,15 @@
 
 enum Data_Version
 {
- Version_Init            = 7,
- Version_Add_Bezier_Type = 8,
+ Version_Init                 = 7,
+ Version_Add_Bezier_Type      = 8,
+ Version_Rename_Object_Index  = 9,
+ Version_Rename_Object_Index2 = 10,
+ //-
+ Version_OPL,
+ Version_Inf                 = 0xFFFF,
 };
-global_const u32 data_current_version = Version_Add_Bezier_Type;
+global Data_Version Version_Current = Data_Version(Version_OPL-1);
 
 struct Data_Reader
 {

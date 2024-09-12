@@ -347,7 +347,7 @@ generate_hot_directory_file_list(App *app, Lister *lister)
        info < one_past_last;
        info += 1){
    if (HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
-   String filename = push_string_copyz(lister->arena, (**info).filename);
+   String filename = push_stringz(lister->arena, (**info).filename);
    char *is_loaded = "";
    char *status_flag = "";
    

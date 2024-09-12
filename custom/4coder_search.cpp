@@ -452,7 +452,7 @@ word_complete_iter_init__inner(Buffer_ID buffer, String needle, Range_i64 range,
     iter->arena = arena;
     
     iter->arena_restore = begin_temp(arena);
-    iter->needle = push_string_copyz(arena, needle);
+    iter->needle = push_stringz(arena, needle);
     iter->first_buffer = buffer;
     iter->current_buffer = buffer;
     

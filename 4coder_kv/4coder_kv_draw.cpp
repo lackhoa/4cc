@@ -96,7 +96,7 @@ F4_RenderDividerComments(App *app, Buffer_ID buffer, View_ID view,
    {
     token = tkarr_read(&it);
     
-    if(token->pos >= visible_range.one_past_last || !token || !tkarr_inc_non_whitespace(&it))
+    if(token->pos >= visible_range.opl || !token || !tkarr_inc_non_whitespace(&it))
     {
      break;
     }

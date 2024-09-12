@@ -653,7 +653,7 @@ BUFFER_HOOK_SIG(default_new_file){
         else{
             c[0] = '_';
         }
-        String part = push_string_copyz(scratch, SCu8(c, c_size));
+        String part = push_stringz(scratch, SCu8(c, c_size));
         string_list_push(scratch, &guard_list, part);
     }
     String guard = string_list_flatten(scratch, guard_list);
@@ -749,7 +749,7 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
         
         i64 token_index_first = token_relex_first(ptr, old_range.first, 1);
         i64 token_index_resync_guess =
-            token_relex_resync(ptr, old_range.one_past_last, 16);
+            token_relex_resync(ptr, old_range.opl, 16);
         
         if (token_index_resync_guess - token_index_first >= 4000){
             do_full_relex = true;
@@ -762,7 +762,7 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
             String partial_text = push_buffer_range(app, scratch, buffer_id, relex_range);
             
             Token_List relex_list = lex_full_input_cpp(scratch, partial_text);
-            if (relex_range.one_past_last < buffer_get_size(app, buffer_id)){
+            if (relex_range.opl < buffer_get_size(app, buffer_id)){
                 token_drop_eof(&relex_list);
             }
             
@@ -794,7 +794,7 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
                 for (i64 i = 0, index = replaced.first; i < relexed_count; i += 1, index += 1){
                     new_tokens[index].pos += relex_range.first;
                 }
-                for (i64 i = tail.first; i < tail.one_past_last; i += 1){
+                for (i64 i = tail.first; i < tail.opl; i += 1){
                     old_tokens[i].pos += text_shift;
                 }
                 block_copy_array_shift(new_tokens, ptr->tokens, tail, tail_shift);

@@ -465,7 +465,7 @@ struct Marker{
 };
 
 api(custom)
-typedef i1 Managed_Object_Type;
+typedef i1 Managed_Prim_Type;
 enum{
     ManagedObjectType_Error = 0,
     ManagedObjectType_Memory = 1,

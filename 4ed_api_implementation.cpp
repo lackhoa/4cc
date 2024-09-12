@@ -286,11 +286,11 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
  Editing_File *file = imp_get_file(models, buffer_id);
  b32 result = false;
  if (api_check_buffer(file) &&
-     (range.first <= range.one_past_last))
+     (range.first <= range.opl))
  {
   i64 size = buffer_size(&file->state.buffer);
   macro_clamp_min(range.first, 0);
-  macro_clamp_max(range.one_past_last, size);
+  macro_clamp_max(range.opl, size);
   Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
   edit_single(app->tctx, models, file, range, string, behaviors);
   result = true;
@@ -675,7 +675,7 @@ push_buffer_base_name(App *app, Arena *arena, Buffer_ID buffer_id)
     String8 result = {};
     if (api_check_buffer(file))
     {
-        result = push_string_copyz(arena, string_from_filename(&file->base_name));
+        result = push_stringz(arena, string_from_filename(&file->base_name));
     }
     return(result);
 }
@@ -686,7 +686,7 @@ push_buffer_unique_name(App *app, Arena *out, Buffer_ID buffer_id){
     Editing_File *file = imp_get_file(models, buffer_id);
     String result = {};
     if (api_check_buffer(file)){
-        result = push_string_copyz(out, string_from_filename(&file->unique_name));
+        result = push_stringz(out, string_from_filename(&file->unique_name));
     }
     return(result);
 }
@@ -699,7 +699,7 @@ push_buffer_filename(App *app, Arena *arena, Buffer_ID buffer_id)
  String result = {};
  if (api_check_buffer(file))
  {
-  result = push_string_copyz(arena, string_from_filename(&file->canon));
+  result = push_stringz(arena, string_from_filename(&file->canon));
  }
  return(result);
 }
@@ -904,7 +904,7 @@ buffer_save(App *app, Buffer_ID buffer_id, String filename, Buffer_Save_Flag fla
         if (!skip_save){
             Thread_Context *tctx = app->tctx;
             Scratch_Block scratch(tctx);
-            String name = push_string_copyz(scratch, filename);
+            String name = push_stringz(scratch, filename);
             save_file_to_name(tctx, models, file, name.str);
             result = true;
         }
@@ -2134,13 +2134,13 @@ managed_object_get_pointer(App *app, Managed_Object object)
     return(get_dynamic_object_memory_ptr(object_ptrs.header));
 }
 
-api(custom) function Managed_Object_Type
+api(custom) function Managed_Prim_Type
 managed_object_get_type(App *app, Managed_Object object)
 {
     Models *models = (Models*)app->cmd_context;
     Managed_Object_Ptr_And_Workspace object_ptrs = get_dynamic_object_ptrs(models, object);
     if (object_ptrs.header != 0){
-        Managed_Object_Type type = object_ptrs.header->type;
+        Managed_Prim_Type type = object_ptrs.header->type;
         if (type < 0 || ManagedObjectType_COUNT <= type){
             type = ManagedObjectType_Error;
         }
@@ -2835,7 +2835,7 @@ push_hot_directory(App *app, Arena *arena)
     Models *models = (Models*)app->cmd_context;
     Hot_Directory *hot = &models->hot_directory;
     hot_directory_clean_end(hot);
-    return push_string_copyz(arena, hot->canonical);
+    return push_stringz(arena, hot->canonical);
 }
 
 api(custom) function void
@@ -2988,34 +2988,6 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
   result = text_layout_new(&models->text_layouts, arena_ptr, buffer_id, buffer_point,
                            visible_range, visible_line_range, rect, colors_array,
                            layout_func);
-/*  if (1) {
-   //nono
-   Text_Layout *layout = text_layout_get(&models->text_layouts, result);
-   f32 width = rect_width(layout->rect);
-   for(i64 linum = layout->visible_line_range.min;
-       linum < layout->visible_line_range.max;
-       linum++)
-   {
-    b32 found_match = 0;
-    Layout_Item_List line_layout = file_get_line_layout(tctx, models, file,
-                                                        layout_func, width, face,
-                                                        linum, &found_match);
-    Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, linum);
-    kv_assert(line_range.max <= layout->visible_range.max);
-    for (Layout_Item_Block *block = line_layout.first;
-         block != 0;
-         block = block->next)
-    {
-     Layout_Item *item = block->items;
-     for (i1 counter = 0;
-          counter < block->item_count;
-          counter++, item++)
-     {
-      kv_assert(item->index < layout->visible_range.max);
-     }
-    }
-   }
-  }*/
  }
  return(result);
 }

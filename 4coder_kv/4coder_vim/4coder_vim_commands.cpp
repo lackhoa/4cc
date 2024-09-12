@@ -392,7 +392,7 @@ VIM_COMMAND_SIG(vim_digit){
 	User_Input input = get_current_input(app);
 	if(input.event.kind == InputEventKind_KeyStroke){
 		int digit = input.event.key.code - Key_Code_0;
-		if(in_range_exclude_last(0, digit, 10)){
+		if(in_range_exclusive(0, digit, 10)){
 			vim_state.number *= 10;
 			vim_state.number += digit;
 		}
@@ -686,7 +686,7 @@ function void vim_backspace_char_inner(App *app, i1 offset)
         Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
         i64 pos = view_get_cursor_pos(app, view);
         i64 buffer_size = buffer_get_size(app, buffer);
-        if(in_range_exclude_last(0, pos, buffer_size))
+        if(in_range_exclusive(0, pos, buffer_size))
         {
             Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
             i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
@@ -789,7 +789,7 @@ VIM_COMMAND_SIG(vim_set_mark){
 	i64 pos = view_get_cursor_pos(app, view);
 	Scratch_Block scratch(app);
 	u8 character = vim_query_user_key(app, string_u8_litexpr("-- SET MARK NEXT --"));
-	if(in_range_exclude_last('a', character, 'z'+1)){
+	if(in_range_exclusive('a', character, 'z'+1)){
 		Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 		i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
 		if(marks){
@@ -797,7 +797,7 @@ VIM_COMMAND_SIG(vim_set_mark){
 			vim_set_bottom_text(push_stringfz(scratch, "Mark %c set", character));
 		}
 	}
-	else if(in_range_exclude_last('A', character, 'Z'+1)){
+	else if(in_range_exclusive('A', character, 'Z'+1)){
 		vim_global_marks[character-'A'] = {buffer_identifier(buffer), pos};
 		vim_set_bottom_text(push_stringfz(scratch, "Global mark %c set", character));
 	}
@@ -813,7 +813,7 @@ VIM_COMMAND_SIG(vim_goto_mark){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	u8 c = vim_query_user_key(app, string_u8_litexpr("-- GOTO MARK NEXT --"));
-	if(in_range_exclude_last('a', c, 'z'+1)){
+	if(in_range_exclusive('a', c, 'z'+1)){
 		Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 		i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
 		if(marks){
@@ -828,7 +828,7 @@ VIM_COMMAND_SIG(vim_goto_mark){
 			}
 		}
 	}
-	else if(in_range_exclude_last('A', c, 'Z'+1)){
+	else if(in_range_exclusive('A', c, 'Z'+1)){
 		vim_push_jump(app, view);
 		Vim_Global_Mark mark = vim_global_marks[c-'A'];
 		if(mark.buffer_id.id){
@@ -972,7 +972,7 @@ VIM_COMMAND_SIG(vim_move_selection_down){ vim_move_selection(app, Scan_Forward);
 
 
 function i1 vim_macro_index(u8 c){
-	return((character_to_lower(c) - 'a') + 26*in_range_exclude_last('A', c, 'Z'+1));
+	return((character_to_lower(c) - 'a') + 26*in_range_exclusive('A', c, 'Z'+1));
 }
 
 VIM_COMMAND_SIG(vim_toggle_macro){
@@ -986,7 +986,7 @@ VIM_COMMAND_SIG(vim_toggle_macro){
 	}else{
 		if(vim_state.macro_char){ return; }
 		u8 c = vim_query_user_key(app, string_u8_litexpr("-- SELECT MACRO TO RECORD --"));
-		if(in_range_exclude_last('a', c, 'z'+1) || in_range_exclude_last('A', c, 'Z'+1)){
+		if(in_range_exclusive('a', c, 'z'+1) || in_range_exclusive('A', c, 'Z'+1)){
 			vim_state.macro_char = c;
 			i1 index = vim_macro_index(c);
 			vim_macros[index].min = buffer_get_size(app, get_keyboard_log_buffer(app));
@@ -997,7 +997,7 @@ VIM_COMMAND_SIG(vim_toggle_macro){
 VIM_COMMAND_SIG(vim_play_macro){
 	u8 c = vim_query_user_key(app, string_u8_litexpr("-- SELECT MACRO TO PLAY --"));
 	if(c == '@'){ c = vim_state.prev_macro; }
-	if(in_range_exclude_last('a', c, 'z'+1) || in_range_exclude_last('A', c, 'Z'+1)){
+	if(in_range_exclusive('a', c, 'z'+1) || in_range_exclusive('A', c, 'Z'+1)){
 		i1 index = vim_macro_index(c);
 		Range_i64 range = vim_macros[index];
 		if(range.min == 0 || range.max == 0){ return; }
