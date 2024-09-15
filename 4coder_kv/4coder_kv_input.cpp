@@ -84,41 +84,41 @@ kv_handle_text_insert(App *app, u8 character)
 function b32
 kv_handle_vim_keyboard_input(App *app, Input_Event *event)
 {
-    ProfileScope(app, "kv_handle_keyboard_input");
-    
-    if (vim_state.mode == VIM_Replace)
-    {
-        return vim_handle_replace_mode(app, event);
-    }
-    else if (vim_state.mode == VIM_Replace)
-    {
-        return vim_handle_visual_insert_mode(app, event);
-    }
-    else if (event->kind == InputEventKind_TextInsert)
-    {
-        ProfileScope(app, "InputEventKind_TextInsert");
-        String8 in_string = to_writable(event);
-        if ((vim_state.mode == VIM_Insert) &&
-            (in_string.size == 1))
-        {
-            return kv_handle_text_insert(app, in_string.str[0]);
-        }
-        else return false;
-    }
-    else if (event->kind == InputEventKind_KeyStroke)
-    {
-        ProfileScope(app, "InputEventKind_KeyStroke");
-        Key_Code code = event->key.code;
-        if ( is_modifier_key(code) )
-        {
-            return false;
-        }
-       
-        {
-            Input_Modifier_Set mods = event->key.modifiers;
-            Key_Code modifiers = cast(Key_Code)pack_modifiers(mods.mods, mods.count);
-            code = (Key_Code)(code|modifiers);
-        }
+ ProfileScope(app, "kv_handle_keyboard_input");
+ 
+ if (vim_state.mode == VIM_Replace)
+ {
+  return vim_handle_replace_mode(app, event);
+ }
+ else if (vim_state.mode == VIM_Replace)
+ {
+  return vim_handle_visual_insert_mode(app, event);
+ }
+ else if (event->kind == InputEventKind_TextInsert)
+ {
+  ProfileScope(app, "InputEventKind_TextInsert");
+  String8 in_string = to_writable(event);
+  if ((vim_state.mode == VIM_Insert) &&
+      (in_string.size == 1))
+  {
+   return kv_handle_text_insert(app, in_string.str[0]);
+  }
+  else return false;
+ }
+ else if (event->kind == InputEventKind_KeyStroke)
+ {
+  ProfileScope(app, "InputEventKind_KeyStroke");
+  Key_Code code = event->key.code;
+  if ( is_modifier_key(code) )
+  {
+   return false;
+  }
+  
+  {
+   Input_Modifier_Set mods = event->key.modifiers;
+   Key_Code modifiers = cast(Key_Code)pack_modifiers(mods.mods, mods.count);
+   code = (Key_Code)(code|modifiers);
+  }
   
   bool handled = false;
   
@@ -152,56 +152,54 @@ kv_handle_vim_keyboard_input(App *app, Input_Event *event)
     handled = true;
    }
   }
-        else if (vim_state.mode == VIM_Insert)
-        {
-            // passthrough to do text insertion
-        }
-        else 
-        { // global keymap passthrough
-            String_ID map_id = vars_intern_lit("keys_global");
-            Command_Binding command_binding = map_get_binding_non_recursive(&framework_mapping, map_id, event);
-            if (command_binding.custom) 
-            {
-                vim_reset_state();
-                command_binding.custom(app);
-                vim_keystroke_text.size = 0;
-            } 
-            else 
-            {
-                vim_append_keycode(code);
-                vim_state.chord_resolved = bitmask_2;
-            }
-            handled = true;
-        }
-        
-        if (was_in_sub_mode) { vim_state.sub_mode = SUB_None; }
-        
-        if (vim_keystroke_text.size >= vim_keystroke_text.cap) { vim_keystroke_text.size = 0; }
-        
-        return handled;
-    }
-    else return false;
+  else if (vim_state.mode == VIM_Insert)
+  {
+   // passthrough to do text insertion
+  }
+  else 
+  { // global keymap passthrough
+   String_ID map_id = vars_intern_lit("keys_global");
+   Command_Binding command_binding = map_get_binding_non_recursive(&framework_mapping, map_id, event);
+   if (command_binding.custom) 
+   {
+    vim_reset_state();
+    command_binding.custom(app);
+    vim_keystroke_text.size = 0;
+   } 
+   else 
+   {
+    vim_append_keycode(code);
+    vim_state.chord_resolved = bitmask_2;
+   }
+   handled = true;
+  }
+  
+  if (was_in_sub_mode) { vim_state.sub_mode = SUB_None; }
+  
+  if (vim_keystroke_text.size >= vim_keystroke_text.cap) { vim_keystroke_text.size = 0; }
+  
+  return handled;
+ }
+ else return false;
 }
 
 // TODO(kv): This key tracking is inaccurate at least in the case when you alt+tab out of the app
-internal void
+function void
 update_game_key_states(Input_Event *event)
 {
  b32 keydown = (event->kind == InputEventKind_KeyStroke);
  b32 keyup   = (event->kind == InputEventKind_KeyRelease);
- if (keydown || keyup)
- {
+ if (keydown || keyup) {
   Key_Code keycode = event->key.code;
   // NOTE: We have system_get_keyboard_modifiers to track modifier keys already
-  if ( !is_modifier_key(keycode) )
-  {
+  if ( !is_modifier_key(keycode) ) {
    global_game_key_states       [keycode] = (b8)(keydown != 0);
    global_game_key_state_changes[keycode]++;
   }
  }
 }
 
-internal void
+function void
 kv_view_input_handler(App *app)
 {
  Scratch_Block scratch(app);

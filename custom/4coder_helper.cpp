@@ -1852,19 +1852,17 @@ open_editing_file(App *app, Buffer_ID *buffer_out, String8 filename, b32 backgro
 }
 
 function b32
-view_open_file(App *app, View_ID view, String8 filename, b32 never_new)
-{
-    b32 result = false;
-    if (view != 0)
-    {
-        Buffer_ID buffer = 0;
-        if (open_editing_file(app, &buffer, filename, false, never_new))
-        {
-            view_set_buffer(app, view, buffer, 0);
-            result = true;
-        }
-    }
-    return(result);
+view_open_file(App *app, View_ID view, String8 filename, b32 never_new) {
+ b32 result = false;
+ if (view != 0) {
+  Buffer_ID buffer = 0;
+  if (open_editing_file(app, &buffer, filename, false, never_new))
+  {
+   view_set_buffer(app, view, buffer, 0);
+   result = true;
+  }
+ }
+ return(result);
 }
 
 function void
@@ -2056,7 +2054,7 @@ get_token_from_pos(App *app, Buffer_ID buffer, u64 pos){
 
 typedef b32 KV_Character_Predicate(char c);
 
-internal Range_i64
+function Range_i64
 get_surrounding_characters(App *app, KV_Character_Predicate predicate)
 {
  GET_VIEW_AND_BUFFER;

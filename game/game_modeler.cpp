@@ -7,9 +7,8 @@ selected_prim_id() {
  return global_modeler->selected_prim_id;
 }
 
-b32
-is_prim_id_active(u32 prim_id)
-{
+xfunction b32
+is_prim_id_active(u32 prim_id) {
  b32 result = false;
  auto &active_ids = global_modeler->active_prims;
  for_i1(index, 0, active_ids.count) {
@@ -22,22 +21,17 @@ is_prim_id_active(u32 prim_id)
 }
 
 inline i32
-vertex_index_from_pointer(Vertex_Data *pointer)
-{
- i32 result = i32(pointer - global_modeler->vertices.items);
- return result;
+vertex_index_from_pointer(Vertex_Data *pointer) {
+ return i32(pointer - global_modeler->vertices.items);
 }
 
 function Vertex_Data *
-get_vertex_by_name(String name)
-{
+get_vertex_by_name(String name) {
  Vertex_Data *result = 0;
  auto &modeler = *global_modeler;
- for_i32(vert_index, 1, modeler.vertices.count)
- {
+ for_i32(vert_index, 1, modeler.vertices.count) {
   Vertex_Data *vertex = &modeler.vertices[vert_index];
-  if( vertex->name == name )
-  {
+  if( vertex->name == name ) {
    result = vertex;
   }
  }
@@ -45,14 +39,12 @@ get_vertex_by_name(String name)
 }
 
 xfunction void
-send_vert_func(String name, v3 pos)
-{
+send_vert_func(String name, v3 pos) {
  b32 is_new = false;
  auto &modeler = *global_modeler;
  Vertex_Data *result = get_vertex_by_name(name);
  
- if (result == 0)
- {
+ if (result == 0) {
   is_new = true;
   result = &modeler.vertices.push2();
   *result = {
@@ -183,8 +175,7 @@ modeler_undo(Modeler &m)
 }
 
 inline b32
-can_redo(Modeler_Edit_History &h)
-{
+can_redo(Modeler_Edit_History &h) {
  return (h.redo_index < h.stack.count);
 }
 //
@@ -254,6 +245,28 @@ get_selected_curve(Modeler &m)
  Curve_Index index = curve_index_from_prim_id(id);
  Bezier_Data result = m.curves[index.v];
  return result;
+}
+
+function void
+modeler__reset_edit(Modeler &m) {
+ m.selected_prim_id   = 0;
+ m.active_prims.count = 0;
+}
+function void
+modeler_exit_edit(Modeler &m) {
+ modeler__reset_edit(m);
+ m.change_uncommitted = false;
+}
+function void
+modeler_exit_edit_undo(Modeler &m) {
+ modeler__reset_edit(m);
+ modeler_undo(m);
+ m.change_uncommitted = false;
+}
+
+inline b32
+selecting_vertex(Modeler &m) {
+ return prim_id_type(selected_prim_id(m)) == Prim_Vertex;
 }
 
 //~ EOF

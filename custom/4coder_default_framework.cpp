@@ -301,12 +301,10 @@ change_active_primary_view_send_command(App *app, Custom_Command_Function *custo
 {
  View_ID view = get_active_view(app, Access_Always);
  view = get_other_primary_view(app, view, Access_Always, true);
- if (view != 0)
- {
+ if (view != 0) {
   view_set_active(app, view);
  }
- if (custom_func != 0)
- {
+ if (custom_func != 0) {
   view_enqueue_command_function(app, view, custom_func);
  }
 }
@@ -355,7 +353,7 @@ change_active_monitor(App *app)
     }
 }
 
-internal void
+function void
 toggle_split_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
@@ -374,7 +372,7 @@ toggle_split_panel(App *app)
     }
 }
 
-internal void
+function void
 expand_bottom_view(App *app)
 {
     Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
@@ -384,35 +382,36 @@ expand_bottom_view(App *app)
     global_bottom_view_expanded = true;
 }
 
-internal void
+function void
 collapse_bottom_view(App *app)
 {
-    Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
-    Face_ID face_id = get_face_id(app, buffer);
-    Face_Metrics metrics = get_face_metrics(app, face_id);
-    view_set_split_pixel_size(app, global_bottom_view, (i1)(metrics.line_height*4.f));
-    global_bottom_view_expanded = false;
+ Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
+ Face_ID face_id = get_face_id(app, buffer);
+ Face_Metrics metrics = get_face_metrics(app, face_id);
+ view_set_split_pixel_size(app, global_bottom_view, (i1)(metrics.line_height*4.f));
+ global_bottom_view_expanded = false;
 }
 
-internal void
+global View_ID last_active_view;
+function void
 toggle_bottom_view_command(App *app)
 {
-    if (global_bottom_view_expanded)
-    {// NOTE: collapse
-        collapse_bottom_view(app);
-        if ( view_is_active(app, global_bottom_view) )
-        {
-            change_active_primary_view(app);
-        }
-    } 
-    else
-    {// NOTE: expand
-        expand_bottom_view(app);
-        view_set_active(app, global_bottom_view);
-    }
+ if (global_bottom_view_expanded) {
+  // NOTE: collapse
+  collapse_bottom_view(app);
+  if ( view_is_active(app, global_bottom_view) ) {
+   view_set_active(app, last_active_view);
+  }
+ } else {
+  // NOTE: expand
+  View_ID active_view = get_active_view(app, Access_Always);
+  last_active_view = active_view;
+  expand_bottom_view(app);
+  view_set_active(app, global_bottom_view);
+ }
 }
 
-internal void open_panel_vsplit(App *app);
+function void open_panel_vsplit(App *app);
 CUSTOM_DOC("Create a new panel by vertically splitting the active panel.")
 CUSTOM_COMMAND_SIG(open_panel_vsplit)
 {
@@ -423,7 +422,7 @@ CUSTOM_COMMAND_SIG(open_panel_vsplit)
     view_set_buffer(app, new_view, buffer, 0);
 }
 
-internal void open_panel_hsplit(App *app);
+function void open_panel_hsplit(App *app);
 CUSTOM_DOC("Create a new panel by horizontally splitting the active panel.")
 CUSTOM_COMMAND_SIG(open_panel_hsplit)
 {
@@ -623,7 +622,7 @@ CUSTOM_DOC("Clear the theme list")
 
 ////////////////////////////////
 
-internal void write_text_input(App *app);
+function void write_text_input(App *app);
 
 function void
 setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id){

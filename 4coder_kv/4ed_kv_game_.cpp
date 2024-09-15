@@ -260,14 +260,13 @@ maybe_update_game(App *app, Frame_Info frame)
    Scratch_Block scratch(app);
    Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
    i32 active_viewport_id = get_active_game_viewport_id(app);
-   Game_Input input =
-   {
-    pack_modifiers(set.mods, set.count),
-    global_game_key_states,
-    global_game_key_state_changes,
-    frame,
-    global_debug_camera_on,
-    get_mouse_state(app),
+   Game_Input_Public input = {
+    .active_mods      =pack_modifiers(set.mods, set.count),
+    .key_states       =global_game_key_states,
+    .key_state_changes=global_game_key_state_changes,
+    .frame            =frame,
+    .debug_camera_on  =global_debug_camera_on,
+    .mouse            =get_mouse_state(app),
    };
    Image_Load_Info image_load_info = get_image_load_info();
    game_update_return update = game->game_update(ed_game_state_pointer, app, active_viewport_id, input, image_load_info);

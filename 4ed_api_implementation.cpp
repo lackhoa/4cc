@@ -265,13 +265,13 @@ buffer_read_range(App *app, Buffer_ID buffer_id, Range_i64 range, u8 *out)
 
 function Edit_Behaviors
 get_active_edit_behaviors(Models *models, Editing_File *file){
-    Panel *panel = layout_get_active_panel(&models->layout);
-    Assert(panel != 0);
-    View *view = panel->view;
-    Assert(view != 0);
-    Edit_Behaviors behaviors = {};
-    if (view->file == file){
-        behaviors.pos_before_edit = view->edit_pos_.cursor_pos;
+ Panel *panel = layout_get_active_panel(&models->layout);
+ Assert(panel != 0);
+ View *view = panel->view;
+ Assert(view != 0);
+ Edit_Behaviors behaviors = {};
+ if (view->file == file){
+  behaviors.pos_before_edit = view->edit_pos_.cursor_pos;
  }
  else{
   behaviors.pos_before_edit = -1;
@@ -1451,14 +1451,14 @@ view_get_buffer_region(App *app, View_ID view_id){
 
 api(custom) function Buffer_Scroll
 view_get_buffer_scroll(App *app, View_ID view_id){
-    Models *models = (Models*)app->cmd_context;
-    Buffer_Scroll  result = {};
-    View *view = imp_get_view(models, view_id);
-    if (api_check_view(view)){
-        File_Edit_Positions edit_pos = view_get_edit_pos(view);
-        result = edit_pos.scroll;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Buffer_Scroll  result = {};
+ View *view = imp_get_view(models, view_id);
+ if (api_check_view(view)){
+  File_Edit_Positions edit_pos = view_get_edit_pos(view);
+  result = edit_pos.scroll;
+ }
+ return(result);
 }
 
 i32 buffer_viewport_id(App *app, Buffer_ID buffer);
@@ -3286,14 +3286,10 @@ get_custom_layer_boundary_docs(App *app, Arena *arena)
 api(ed) function View_ID
 get_other_primary_view(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
 {
- i1 current_monitor = hax_guess_which_monitor_the_view_is_in(app, start_view);
  View_ID view = start_view;
- do
- {
+ do {
   view = get_next_view_looped_all_panels(app, view, access);
-  if (!view_is_passive(app, view) && 
-      hax_guess_which_monitor_the_view_is_in(app, view) == current_monitor)
-  {
+  if (!view_is_passive(app, view)) {
    break;
   }
  } while(view != start_view);
@@ -3341,7 +3337,8 @@ vim_set_bottom_text(String msg)
  vim_bottom_text.size = copy_size;
 }
 
-// TODO(kv): @Incomplete I want it to switch to the "last active" primary panel, if switched from a passive one.
+//TODO(kv): @Incomplete I want it to switch to the "last active" primary panel,
+//  when switched from a passive one.
 api(ed) function void
 change_active_primary_view(App *app)
 {

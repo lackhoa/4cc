@@ -98,7 +98,7 @@ VIM_COMMAND_SIG(kv_newline_above)
   vim_normal_mode(app);
 }
 
-internal void kv_newline_below(App *app)
+function void kv_newline_below(App *app)
 {
     GET_VIEW_AND_BUFFER;
     HISTORY_GROUP_SCOPE;
@@ -154,7 +154,7 @@ inline u8 kv_is_group_closer(u8 c)
   }
 }
 
-internal void
+function void
 kv_vim_bounce(App *app)
 {
   GET_VIEW_AND_BUFFER;
@@ -164,7 +164,7 @@ kv_vim_bounce(App *app)
   view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-internal b32
+function b32
 kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos, Range_i64 *out)
 {
  Token_Array tokens = get_token_array_from_buffer(app, buffer);
@@ -197,7 +197,7 @@ kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos, Range_i64 *out)
  else { return false; }
 }
 
-internal void kv_sexpr_up(App *app)
+function void kv_sexpr_up(App *app)
 {
     GET_VIEW_AND_BUFFER;
     vim_push_jump(app, view);
@@ -309,7 +309,7 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction)
  return result;
 }
 
-internal void 
+function void 
 kv_sexpr_right(App *app)
 {
  Token_Iterator_Array token_it = get_token_it_at_cursor(app);
@@ -351,7 +351,7 @@ kv_sexpr_right(App *app)
  }
 }
 
-internal void
+function void
 kv_sexpr_left(App *app)
 {
  if ( if_preprocessor_movement(app, Scan_Backward) == 0 )
@@ -432,7 +432,7 @@ buffer_insert_pos(App *app, Buffer_ID buffer, i64 pos, String string)
  buffer_replace_range(app, buffer, Ii64(pos), string);
 }
 
-internal void 
+function void 
 kv_surround_with(App *app, char *opener, char *closer)
 {
  GET_VIEW_AND_BUFFER;
@@ -445,7 +445,7 @@ kv_surround_with(App *app, char *opener, char *closer)
  vim_normal_mode(app);
 }
 
-internal void
+function void
 kv_surround_brace_special(App *app)
 {
     GET_VIEW_AND_BUFFER;
@@ -489,7 +489,7 @@ VIM_COMMAND_SIG(kv_surround_brace)          {kv_surround_with(app, "{", "}");}
 VIM_COMMAND_SIG(kv_surround_brace_spaced)   {kv_surround_with(app, "{ ", " }");}
 VIM_COMMAND_SIG(kv_surround_double_quote)   {kv_surround_with(app, "\"", "\"");}
 
-internal void
+function void
 cmd_closing_bracket_in_visual_mode(App *app)
 {
     GET_VIEW_AND_BUFFER;
@@ -557,7 +557,7 @@ character_is_path(char character)
   }
 }
 
-internal void 
+function void 
 yank_current_filename(App *app)
 {
  GET_VIEW_AND_BUFFER;
@@ -570,7 +570,7 @@ yank_current_filename(App *app)
  }
 }
 
-internal void 
+function void 
 open_file_from_current_dir(App *app)
 {
     GET_VIEW_AND_BUFFER;
@@ -580,7 +580,7 @@ open_file_from_current_dir(App *app)
  vim_interactive_open_or_new(app);
 }
 
-internal void 
+function void 
 kv_handle_g_f(App *app)
 {
  open_file_from_current_dir(app);
@@ -589,7 +589,7 @@ kv_handle_g_f(App *app)
 
 global const String KV_FILE_FILENAME = str8lit("~/notes/file.skm");
 
-internal b32
+function b32
 F4_GoToDefinition(App *app, F4_Index_Note *note, b32 same_panel)
 {
  b32 result = false;
@@ -618,56 +618,45 @@ F4_GoToDefinition(App *app, F4_Index_Note *note, b32 same_panel)
  return result;
 }
 
-internal F4_Index_Note *
+function F4_Index_Note *
 F4_FindMostIntuitiveNoteInDuplicateChain(F4_Index_Note *note, Buffer_ID cursor_buffer, i64 cursor_pos)
-{
-    F4_Index_Note *result = note;
-    if(note != 0)
-    {
-        F4_Index_Note *best_note_based_on_cursor = 0;
-        for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next)
-        {
-            F4_Index_File *file = candidate->file;
-            if(file != 0)
-            {
-                if(cursor_buffer == file->buffer &&
-                   candidate->range.min <= cursor_pos && cursor_pos <= candidate->range.max)
-                {
-                    if(candidate->next)
-                    {
-                        best_note_based_on_cursor = candidate->next;
-                        break;
-                    }
-                    else
-                    {
-                        best_note_based_on_cursor = note;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        if(best_note_based_on_cursor)
-        {
-            result = best_note_based_on_cursor;
-        }
-        else if(note->flags & F4_Index_NoteFlag_Prototype)
-        {
-            for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next)
-            {
-                if(!(candidate->flags & F4_Index_NoteFlag_Prototype))
-                {
-                    result = candidate;
-                    break;
-                }
-            }
+{//NOTE(kv) You can keep cycling through different definitions, which is awesome!
+ F4_Index_Note *result = note;
+ if(note != 0) {
+  F4_Index_Note *best_note_based_on_cursor = 0;
+  for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next) {
+   F4_Index_File *file = candidate->file;
+   if(file != 0) {
+    if(cursor_buffer == file->buffer &&
+       candidate->range.min <= cursor_pos &&
+       cursor_pos <= candidate->range.max) {
+     if(candidate->next) {
+      best_note_based_on_cursor = candidate->next;
+      break;
+     } else {
+      best_note_based_on_cursor = note;
+      break;
+     }
+    }
+   }
+  }
+  
+  if(best_note_based_on_cursor) {
+   result = best_note_based_on_cursor;
+  } else if(note->flags & F4_Index_NoteFlag_Prototype) {
+   for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next) {
+    if(!(candidate->flags & F4_Index_NoteFlag_Prototype)) {
+     result = candidate;
+     break;
+    }
+   }
   }
  }
  return result;
 }
 
 // CUSTOM_DOC("Goes to the definition of the identifier under the cursor.")
-internal b32
+function b32
 f4_goto_definition(App *app)
 {
  View_ID view = get_active_view(app, Access_Always);
@@ -680,13 +669,13 @@ f4_goto_definition(App *app)
  return jumped;
 }
 
-internal b32
+function b32
 character_is_tag(char c)
 {
  return (c == '@' || character_is_alnum(c));
 }
 
-internal b32
+function b32
 goto_comment_identifier(App *app)
 {
  b32 jumped = false;
@@ -731,24 +720,26 @@ goto_comment_identifier(App *app)
  return jumped;
 }
 
-internal void
+function void
 kv_jump_ultimate(App *app)
 {
  GET_VIEW_AND_BUFFER;
- Scratch_Block temp(app);
- 
+ Scratch_Block scratch(app);
  vim_push_jump(app, view);
- 
  b32 jumped = false;
- 
- {
-  Range_i64 file_range = get_surrounding_characters(app, character_is_path);
-  if (file_range.max > 0)
-  {
-   String path = push_buffer_range(app, temp, buffer, file_range);
-   if ( view_open_file(app, view, path, true) )
-   {
+ {//NOTE(kv) File path and/or line+column
+  Range_i64 loc_range = get_surrounding_characters(app, character_is_path);
+  if (loc_range.max > 0) {
+   String loc = push_buffer_range(app, scratch, buffer, loc_range);
+   if (view_open_file(app, view, loc, true)){
+    //NOTE(kv) The parse_jump doesn't support file-only path
     jumped = true;
+   }else{
+    Parsed_Jump jump = parse_jump_location(loc);
+    if (jump.success){
+     jump_to_location(app, view, jump.location);
+     jumped = true;
+    }
    }
   }
  }
@@ -763,9 +754,7 @@ kv_jump_ultimate(App *app)
  }
 }
 
-internal void
-kv_jump_ultimate_other_panel(App *app)
-{
+function void kv_jump_ultimate_other_panel(App *app) {
  view_buffer_other_panel(app);
  kv_jump_ultimate(app);
 }
@@ -877,7 +866,7 @@ CUSTOM_DOC("kv copy dir name")
   clipboard_post(0, dirname);
 }
 
-internal void 
+function void 
 kv_vim_visual_line_mode(App *app)
 {
  if (vim_state.mode != VIM_Visual)
@@ -926,7 +915,7 @@ kv_list_all_locations_from_string(App *app, String needle)
  lock_jump_buffer(app, out_buffer);
 }
 
-internal u8 
+function u8 
 kv_get_current_char(App *app)
 {
  GET_VIEW_AND_BUFFER;
@@ -1003,7 +992,7 @@ CUSTOM_DOC("configure your editor!")
 }
 
 // todo: We don't wanna bind to a buffer, maybe?
-internal void kv_system_command(App *app, String8 cmd)
+function void kv_system_command(App *app, String8 cmd)
 {
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
@@ -1046,7 +1035,7 @@ VIM_COMMAND_SIG(remedy_run_to_cursor)
     kv_system_command(app, cmd);
 }
 
-internal void
+function void
 clipboard_pop_command(App *app)
 {
     clipboard_pop(app, 0);
@@ -1062,7 +1051,7 @@ clipboard_pop_command(App *app)
     vim_set_bottom_text(current_item);
 }
 
-internal void
+function void
 view_goto_first_search_position(App *app, View_ID view, String8 needle)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -1071,7 +1060,7 @@ view_goto_first_search_position(App *app, View_ID view, String8 needle)
 }
 
 
-internal void 
+function void 
 close_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_Always);
@@ -1100,7 +1089,7 @@ CUSTOM_DOC("switch to messages buffer")
  set_buffer_named(app, strlit("*messages*"));
 }
 
-internal void
+function void
 quick_align_command(App *app)
 {
  GET_VIEW_AND_BUFFER;
@@ -1165,7 +1154,7 @@ quick_align_command(App *app)
  }
 }
 
-internal b32
+function b32
 maybe_handle_fui(App *app, Buffer_ID buffer)
 {
  b32 result = false;
@@ -1190,27 +1179,19 @@ maybe_handle_fui(App *app, Buffer_ID buffer)
  return result;
 }
 
-internal void
+function void
 kv_handle_return_normal_mode(App *app)
 {
  View_ID view = get_active_view(app, Access_ReadVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
- if (buffer)
- {// Writable buffer
-  if ( maybe_handle_fui(app, buffer) )
-  {
-   // pass
-  }
-  else
-  {
+ if (buffer) { // Writable buffer
+  if ( maybe_handle_fui(app, buffer) ) { // pass
+  } else {
    save_all_dirty_buffers(app);
   }
- }
- else
- {
+ } else { // Readonly buffer
   buffer = view_get_buffer(app, view, Access_ReadVisible);
-  if (buffer)
-  {// Readonly buffer
+  if (buffer) {
    vim_push_jump(app, get_active_view(app, Access_ReadVisible));
    goto_jump_at_cursor(app);
    lock_jump_buffer(app, buffer);

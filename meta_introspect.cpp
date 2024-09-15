@@ -20,7 +20,7 @@ inline b32 m_maybe_paren_close(Ed_Parser *p) { return ep_maybe_char(p, ')'); }
 
 #define m_parens       defer_block(m_paren_open(p), m_paren_close(p))
 #define m_print_braces defer_block((p << "\n{\n"), (p << "\n}\n"))
-#define m_print_location p<<"//"<<filename_linum<<"\n"
+#define m_print_location p<<"// "<<filename_linum<<"\n"
 //-
 
 struct Enclosed_in_strlit { String string; };

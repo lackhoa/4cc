@@ -139,8 +139,8 @@ DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0)
 //~ NOTE: Game
 
 #if !AD_IS_DRIVER
-struct Game_Input
-{
+introspect(category=embedded)
+struct Game_Input_Public {
  Key_Mods active_mods;
  b8      *key_states;
  u8      *key_state_changes;
@@ -149,8 +149,7 @@ struct Game_Input
  Mouse_State mouse;
 };
 
-struct Game_ImGui_State
-{
+struct Game_ImGui_State {
  ImGuiContext* ctx;
  ImGuiMemAllocFunc alloc_func;
  ImGuiMemFreeFunc  free_func;
@@ -185,7 +184,7 @@ struct game_update_return {
  b32 should_animate_next_frame;
  arrayof<String> game_commands;
 };
-#define game_update_params Game_State *state, App *app, i1 active_viewport_id, Game_Input input_value, Image_Load_Info image_load_info
+#define game_update_params Game_State *state, App *app, i1 active_viewport_id, Game_Input_Public &input_public, Image_Load_Info image_load_info
 //
 #define game_render_return void
 #define game_render_params Game_State *state, App *app, Render_Target *target, i1 viewport_id, Mouse_State mouse

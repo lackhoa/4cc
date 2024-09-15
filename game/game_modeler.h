@@ -62,14 +62,12 @@ void send_vert_func(String name, v3 pos);
 b32 send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name);
 
 force_inline u32
-selected_prim_id(Modeler &m)
-{
+selected_prim_id(Modeler &m) {
  return m.selected_prim_id;
 }
 
 inline b32
-is_selecting_type(Modeler &m, Prim_Type type)
-{
+is_selecting_type(Modeler &m, Prim_Type type) {
  Prim_Type sel_type = prim_id_type(selected_prim_id(m));
  return sel_type == type;
 }
@@ -94,7 +92,7 @@ curve_index_from_prim_id(u32 id)
 }
 
 xfunction b32 is_prim_id_active(u32 prim_id);
-function u32 selected_prim_id();
+function u32 selected_prim_id(void);
 
 
 //~

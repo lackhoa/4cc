@@ -25,8 +25,9 @@ STOP_DEBUGGING_BEFORE_BUILD = 1
 
 # NOTE: Override configuration ############################
 #asan_on   = 1
-DISABLE_ED = 1
-FORCE_MORE_BUILDS = 1
+#DISABLE_ED = 1
+#DISABLE_GAME = 1
+#FORCE_MORE_BUILDS = 1
 full_build_components["imgui"] = 0
 
 

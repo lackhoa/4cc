@@ -1,4 +1,4 @@
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:163:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:163:
 function Type_Info
 get_type_info_Vertex_Data()
 {

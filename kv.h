@@ -3411,6 +3411,7 @@ string_concat(String_u8 *dst, String src)
 #endif
 
 #define string_litexpr(s) SCchar((s), sizeof(s) - 1)
+//NOTE(kv) The length of the string is the size minus one for the null terminator.
 #define string_u8_litexpr(s) SCu8((u8*)(s), (u64)(sizeof(s) - 1))
 #define str8lit string_u8_litexpr
 #define strlit  string_u8_litexpr
@@ -4514,8 +4515,7 @@ struct arrayof
 
 template<class T>
 inline void
-init_static(arrayof<T> &array, Arena *arena, i32 cap, b32 zero=false)
-{
+init_static(arrayof<T> &array, Arena *arena, i32 cap, b32 zero=false) {
  array = {
   .cap        = cap,
   .fixed_size = true,
@@ -4536,11 +4536,8 @@ init_static(arrayof<T> &array, T *backing_buffer, i32 cap)
 
 template<class T>
 inline void
-init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0)
-{
- array = {
-  .allocator = allocator,
- };
+init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0) {
+ array = { .allocator = allocator };
  array.set_cap_min(initial_size);
 }
 
@@ -4678,8 +4675,7 @@ AtomicAddU32AndReturnOriginal(u32 volatile *Value, u32 Addend)
 }
 
 
-struct Scratch_Block
-{
+struct Scratch_Block {
  Thread_Context *tctx;
  Arena arena_value;  // NOTE(kv): Optional
  Arena *arena;
@@ -4705,8 +4701,7 @@ struct Scratch_Block
  void restore(void);
 };
 
-inline Scratch_Block::Scratch_Block(Thread_Context *t)
-{
+inline Scratch_Block::Scratch_Block(Thread_Context *t) {
  this->tctx = t;
  this->arena = tctx_reserve(t);
  this->temp = begin_temp(this->arena);
@@ -4718,8 +4713,7 @@ inline Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1){
  this->temp = begin_temp(this->arena);
 }
 
-inline Scratch_Block::Scratch_Block(Arena *arena)
-{
+inline Scratch_Block::Scratch_Block(Arena *arena) {
  this->tctx = 0;
  this->arena = arena;
  this->temp = begin_temp(this->arena);
@@ -4737,8 +4731,7 @@ inline Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1, Arena *a2, Are
  this->temp = begin_temp(this->arena);
 }
 
-inline Scratch_Block::~Scratch_Block()
-{
+inline Scratch_Block::~Scratch_Block() {
  end_temp(this->temp);
  if (this->tctx) {
   tctx_release(this->tctx, this->arena);
@@ -5455,6 +5448,6 @@ struct File_Name_Data {
 #define tagged_by(discriminator)
 #define m_variant(tag)  //NOTE(kv) Use to tag union member with the variant it corresponds to
 
-#define logically_implies(a,b)  !a || b
+#define implying(a,b)  !a || b
 
 //~EOF

@@ -194,9 +194,9 @@ setup_camera(Camera *camera, Camera_Data *data)
  X_Camera_Data(X)
 #undef X
  
- camera->transform =  (mat4i_translate(data->pan) *
-                       mat4i_rotate_tpr(data->theta, data->phi, data->roll, data->pivot) *
-                       mat4i_translate(data->pivot+V3z(data->distance)));
+ camera->transform = (mat4i_translate(data->pan) *
+                      mat4i_rotate_tpr(data->theta, data->phi, data->roll, data->pivot) *
+                      mat4i_translate(data->pivot+V3z(data->distance)));
 }
 
 
@@ -715,8 +715,8 @@ struct Game_State
  b32 save_failed;
  b32 load_failed;
  arrayof<String> command_queue;
- 
  Game_ImGui_State imgui_state;
+ b32 keyboard_selection_mode;
  
  b8 __padding[64];
 };

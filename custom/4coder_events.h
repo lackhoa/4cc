@@ -55,56 +55,56 @@ struct Input_Modifier_Set
 
 
 struct Input_Modifier_Set_Fixed{
-    Key_Code mods[Input_MaxModifierCount];
-    i32 count;
+ Key_Code mods[Input_MaxModifierCount];
+ i32 count;
 };
 
 struct Input_Event{
-    Input_Event_Kind kind;
-    b32 virtual_event;
-    union{
-        struct{
-            String string;
-            
-            // used internally
-            Input_Event *next_text;
-            b32 blocked;
-        } text;
-        struct{
-            Key_Code code;
-            Key_Flags flags;
-            Input_Modifier_Set modifiers;
-            
-            // used internally
-            Input_Event *first_dependent_text;
-        } key;
-        struct{
-            Mouse_Code code;
-            Vec2_i32 p;
-            Input_Modifier_Set modifiers;
-        } mouse;
-        struct{
-            f32 value;
-            Vec2_i32 p;
-            Input_Modifier_Set modifiers;
-        } mouse_wheel;
-        struct{
-            Vec2_i32 p;
-            Input_Modifier_Set modifiers;
-        } mouse_move;
-        struct{
-            Core_Code code;
-            union{
-                String string;
-                i32 id;
-                struct{
-                    String_Array flag_strings;
-                    String_Array filenames;
-                };
-            };
-        } core;
-        Custom_Command_Function *custom_func;
+ Input_Event_Kind kind;
+ b32 virtual_event;
+ union{
+  struct{
+   String string;
+   
+   // used internally
+   Input_Event *next_text;
+   b32 blocked;
+  } text;
+  struct{
+   Key_Code code;
+   Key_Flags flags;
+   Input_Modifier_Set modifiers;
+   
+   // used internally
+   Input_Event *first_dependent_text;
+  } key;
+  struct{
+   Mouse_Code code;
+   Vec2_i32 p;
+   Input_Modifier_Set modifiers;
+  } mouse;
+  struct{
+   f32 value;
+   Vec2_i32 p;
+   Input_Modifier_Set modifiers;
+  } mouse_wheel;
+  struct{
+   Vec2_i32 p;
+   Input_Modifier_Set modifiers;
+  } mouse_move;
+  struct{
+   Core_Code code;
+   union{
+    String string;
+    i32 id;
+    struct{
+     String_Array flag_strings;
+     String_Array filenames;
     };
+   };
+  } core;
+  Custom_Command_Function *custom_func;
+ };
 };
 
 struct Input_Event_Node{

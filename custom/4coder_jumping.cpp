@@ -31,162 +31,155 @@ ms_style_verify(String line, u64 left_paren_pos, u64 right_paren_pos){
 
 function u64
 try_skip_rust_arrow(String line){
-    u64 pos = 0;
-    if (string_match(string_prefix(line, 3), string_u8_litexpr("-->"))){
-        String sub = string_skip(line, 3);
-        sub = string_skip_chop_whitespace(sub);
-        pos = (u64)(sub.str - line.str);
-    }
-    return(pos);
+ u64 pos = 0;
+ if (string_match(string_prefix(line, 3), string_u8_litexpr("-->"))){
+  String sub = string_skip(line, 3);
+  sub = string_skip_chop_whitespace(sub);
+  pos = (u64)(sub.str - line.str);
+ }
+ return(pos);
 }
 
 function b32
 check_is_note(String line, u64 colon_pos){
-    b32 is_note = false;
-    u64 note_pos = colon_pos + string_find_first(string_skip(line, colon_pos), string_u8_litexpr("note"));
-    if (note_pos < line.size){
-        b32 is_all_whitespace = true;
-        for (u64 i = colon_pos + 1; i < note_pos; i += 1){
-            if (!character_is_whitespace(line.str[i])){
-                is_all_whitespace = false;
-                break;
-            }
-        }
-        if (is_all_whitespace){
-            is_note = true;
-        }
-    }
-    return(is_note);
+ b32 is_note = false;
+ u64 note_pos = colon_pos + string_find_first(string_skip(line, colon_pos), string_u8_litexpr("note"));
+ if (note_pos < line.size){
+  b32 is_all_whitespace = true;
+  for (u64 i = colon_pos + 1; i < note_pos; i += 1){
+   if (!character_is_whitespace(line.str[i])){
+    is_all_whitespace = false;
+    break;
+   }
+  }
+  if (is_all_whitespace){
+   is_note = true;
+  }
+ }
+ return(is_note);
 }
 
 
 function Parsed_Jump
 parse_jump_location(String8 line)
 {
-    Parsed_Jump jump = {};
-    jump.sub_jump_indented = (string_get_character(line, 0) == ' ');
-    
-    String reduced_line = string_skip_chop_whitespace(line);
-    u64 whitespace_length = (u64)(reduced_line.str - line.str);
-    line = reduced_line;
-    
-    u64 left_paren_pos = string_find_first(line, '(');
-    u64 right_paren_pos = left_paren_pos + string_find_first(string_skip(line, left_paren_pos), ')');
-    for (;!jump.is_ms_style && right_paren_pos < line.size;)
-    {
-        if (ms_style_verify(line, left_paren_pos, right_paren_pos))
-        {
-            jump.is_ms_style = true;
-            jump.colon_position = (i1)(right_paren_pos + string_find_first(string_skip(line, right_paren_pos), ':'));
-            if (jump.colon_position < (i1)line.size)
-            {
-                if (check_is_note(line, jump.colon_position))
-                {
-                    jump.sub_jump_note = true;
-                }
-                
-                String location_str = string_prefix(line, jump.colon_position);
-                location_str = string_skip_chop_whitespace(location_str);
-                
-                i1 close_pos = (i1)right_paren_pos;
-                i1 open_pos = (i1)left_paren_pos;
-                
-                if (0 < open_pos && open_pos < (i1)location_str.size){
-                    String file = SCu8(location_str.str, open_pos);
-                    file = string_skip_chop_whitespace(file);
-                    
-                    if (file.size > 0){
-                        String line_number = string_skip(string_prefix(location_str, close_pos), open_pos + 1);
-                        line_number = string_skip_chop_whitespace(line_number);
-                        
-                        if (line_number.size > 0){
-                            u64 comma_pos = string_find_first(line_number, ',');
-                            if (comma_pos < line_number.size){
-                                String column_number = string_skip(line_number, comma_pos + 1);
-                                line_number = string_prefix(line_number, comma_pos);
-                                jump.location.line = (i1)string_to_u64(line_number, 10);
-                                jump.location.column = (i1)string_to_u64(column_number, 10);
-                            }
-                            else{
-                                jump.location.line = (i1)string_to_u64(line_number, 10);
-                                jump.location.column = 0;
-                            }
-                            jump.location.file = file;
-                            jump.colon_position = jump.colon_position + (i1)whitespace_length;
-                            jump.success = true;
-                        }
-                    }
-                }
-            }
-        }
-        else{
-            left_paren_pos = string_find_first(string_skip(line, left_paren_pos + 1), '(') + left_paren_pos + 1;
-            right_paren_pos = string_find_first(string_skip(line, left_paren_pos), ')') + left_paren_pos;
-        }
+ Parsed_Jump jump = {};
+ jump.sub_jump_indented = (string_get_character(line, 0) == ' ');
+ 
+ String reduced_line = string_skip_chop_whitespace(line);
+ u64 whitespace_length = (u64)(reduced_line.str - line.str);
+ line = reduced_line;
+ 
+ u64 left_paren_pos = string_find_first(line, '(');
+ u64 right_paren_pos = left_paren_pos + string_find_first(string_skip(line, left_paren_pos), ')');
+ for (;!jump.is_ms_style && right_paren_pos < line.size;) {
+  if (ms_style_verify(line, left_paren_pos, right_paren_pos)) {
+   jump.is_ms_style = true;
+   jump.colon_position = (i1)(right_paren_pos + string_find_first(string_skip(line, right_paren_pos), ':'));
+   if (jump.colon_position < (i1)line.size) {
+    if (check_is_note(line, jump.colon_position)) {
+     jump.sub_jump_note = true;
     }
     
-    if (!jump.is_ms_style){
-        i1 start = (i1)try_skip_rust_arrow(line);
-        if (start != 0){
-            jump.has_rust_arrow = true;
-        }
-        
-        u64 colon_pos1 = string_find_first(string_skip(line, start), ':') + start;
-        if (line.size > colon_pos1 + 1){
-            if (character_is_slash(string_get_character(line, colon_pos1 + 1))){
-                colon_pos1 = string_find_first(string_skip(line, colon_pos1 + 1), ':') + colon_pos1 + 1;
-            }
-        }
-        
-        u64 colon_pos2 = string_find_first(string_skip(line, colon_pos1 + 1), ':') + colon_pos1 + 1;
-        u64 colon_pos3 = string_find_first(string_skip(line, colon_pos2 + 1), ':') + colon_pos2 + 1;
-        
-        if (colon_pos3 < line.size){
-            if (check_is_note(line, colon_pos3)){
-                jump.sub_jump_note = true;
-            }
-            
-            String file_name = string_skip(string_prefix(line, colon_pos1), start);
-            String line_number = string_skip(string_prefix(line, colon_pos2), colon_pos1 + 1);
-            String column_number = string_skip(string_prefix(line, colon_pos3), colon_pos2 + 1);
-            
-            if (file_name.size > 0 && line_number.size > 0 && column_number.size > 0){
-                jump.location.file = file_name;
-                jump.location.line = (i1)string_to_u64(line_number, 10);
-                jump.location.column = (i1)string_to_u64(column_number, 10);
-                jump.colon_position = (i1)(colon_pos3 + whitespace_length);
-                jump.success = true;
-            }
-        }
-        else{
-            if (colon_pos2 < line.size){
-                if (check_is_note(line, colon_pos2)){
-                    jump.sub_jump_note = true;
-                }
-                
-                String file_name = string_prefix(line, colon_pos1);
-                String line_number = string_skip(string_prefix(line, colon_pos2), colon_pos1 + 1);
-                
-                if (string_is_integer(line_number, 10)){
-                    if (file_name.size > 0 && line_number.size > 0){
-                        jump.location.file = file_name;
-                        jump.location.line = (i1)string_to_u64(line_number, 10);
-                        jump.location.column = 0;
-                        jump.colon_position = (i1)(colon_pos3 + whitespace_length);
-                        jump.success = true;
-                    }
-                }
-            }
-        }
+    String location_str = string_prefix(line, jump.colon_position);
+    location_str = string_skip_chop_whitespace(location_str);
+    
+    i1 close_pos = (i1)right_paren_pos;
+    i1 open_pos = (i1)left_paren_pos;
+    
+    if (0 < open_pos && open_pos < (i1)location_str.size){
+     String file = SCu8(location_str.str, open_pos);
+     file = string_skip_chop_whitespace(file);
+     
+     if (file.size > 0){
+      String line_number = string_skip(string_prefix(location_str, close_pos), open_pos + 1);
+      line_number = string_skip_chop_whitespace(line_number);
+      
+      if (line_number.size > 0){
+       u64 comma_pos = string_find_first(line_number, ',');
+       if (comma_pos < line_number.size){
+        String column_number = string_skip(line_number, comma_pos + 1);
+        line_number = string_prefix(line_number, comma_pos);
+        jump.location.line = (i1)string_to_u64(line_number, 10);
+        jump.location.column = (i1)string_to_u64(column_number, 10);
+       }else{
+        jump.location.line = (i1)string_to_u64(line_number, 10);
+        jump.location.column = 0;
+       }
+       jump.location.file = file;
+       jump.colon_position = jump.colon_position + (i1)whitespace_length;
+       jump.success = true;
+      }
+     }
+    }
+   }
+  }else{
+   left_paren_pos = string_find_first(string_skip(line, left_paren_pos + 1), '(') + left_paren_pos + 1;
+   right_paren_pos = string_find_first(string_skip(line, left_paren_pos), ')') + left_paren_pos;
+  }
+ }
+ 
+ if (!jump.is_ms_style){
+  i1 start = (i1)try_skip_rust_arrow(line);
+  if (start != 0){
+   jump.has_rust_arrow = true;
+  }
+  
+  u64 colon_pos1 = string_find_first(string_skip(line, start), ':') + start;
+  if (line.size > colon_pos1 + 1){
+   if (character_is_slash(string_get_character(line, colon_pos1 + 1))){
+    //NOTE(kv) This is just the colon in the path
+    colon_pos1 = string_find_first(string_skip(line, colon_pos1 + 1), ':') + colon_pos1 + 1;
+   }
+  }
+  
+  u64 colon_pos2 = string_find_first(string_skip(line, colon_pos1 + 1), ':') + colon_pos1 + 1;
+  u64 colon_pos3 = string_find_first(string_skip(line, colon_pos2 + 1), ':') + colon_pos2 + 1;
+  
+  if (colon_pos3 < line.size){
+   if (check_is_note(line, colon_pos3)){
+    jump.sub_jump_note = true;
+   }
+   
+   String file_name = string_skip(string_prefix(line, colon_pos1), start);
+   String line_number = string_skip(string_prefix(line, colon_pos2), colon_pos1 + 1);
+   String column_number = string_skip(string_prefix(line, colon_pos3), colon_pos2 + 1);
+   
+   if (file_name.size > 0 && line_number.size > 0 && column_number.size > 0){
+    jump.location.file = file_name;
+    jump.location.line = (i1)string_to_u64(line_number, 10);
+    jump.location.column = (i1)string_to_u64(column_number, 10);
+    jump.colon_position = (i1)(colon_pos3 + whitespace_length);
+    jump.success = true;
+   }
+  }else{
+   if (colon_pos2 < line.size){
+    if (check_is_note(line, colon_pos2)){
+     jump.sub_jump_note = true;
     }
     
-    if (!jump.success){
-        block_zero_struct(&jump);
+    String file_name = string_prefix(line, colon_pos1);
+    String line_number = string_skip(string_prefix(line, colon_pos2), colon_pos1 + 1);
+    
+    if (string_is_integer(line_number, 10)){
+     if (file_name.size > 0 && line_number.size > 0){
+      jump.location.file = file_name;
+      jump.location.line = (i1)string_to_u64(line_number, 10);
+      jump.location.column = 0;
+      jump.colon_position = (i1)(colon_pos3 + whitespace_length);
+      jump.success = true;
+     }
     }
-    else{
-        jump.is_sub_jump = (jump.sub_jump_indented || jump.sub_jump_note);
-    }
-    return(jump);
+   }
+  }
+ }
+ 
+ if (!jump.success){
+  block_zero_struct(&jump);
+ }else{
+  jump.is_sub_jump = (jump.sub_jump_indented || jump.sub_jump_note);
+ }
+ return(jump);
 }
 
 function Parsed_Jump
@@ -248,41 +241,43 @@ switch_to_existing_view(App *app, View_ID view, Buffer_ID buffer)
 
 function void
 set_view_to_location(App *app, View_ID view, Buffer_ID buffer, Buffer_Seek seek){
-    Buffer_ID current_buffer = view_get_buffer(app, view, Access_Always);
-    if (current_buffer != buffer){
-        view_set_buffer(app, view, buffer, 0);
-    }
-    view_set_cursor_and_preferred_x(app, view, seek);
+ Buffer_ID current_buffer = view_get_buffer(app, view, Access_Always);
+ if (current_buffer != buffer){
+  view_set_buffer(app, view, buffer, 0);
+ }
+ view_set_cursor_and_preferred_x(app, view, seek);
 }
 
 function void
 jump_to_location(App *app, View_ID view, Buffer_ID buffer, i64 pos)
 {
-    view_set_active(app, view);
-    set_view_to_location(app, view, buffer, seek_pos(pos));
-    if (auto_center_after_jumps)
-    {
-        center_view(app);
-    }
+ view_set_active(app, view);
+ set_view_to_location(app, view, buffer, seek_pos(pos));
+ if (auto_center_after_jumps)
+ {
+  center_view(app);
+ }
 }
 
 function void
 jump_to_location(App *app, View_ID view, Buffer_ID buffer,
-                 Name_Line_Column_Location location){
-    view_set_active(app, view);
-    set_view_to_location(app, view, buffer, seek_line_col(location.line, location.column));
-    if (auto_center_after_jumps){
-        center_view(app);
-    }
+                 Name_Line_Column_Location location)
+{
+ view_set_active(app, view);
+ set_view_to_location(app, view, buffer, seek_line_col(location.line, location.column));
+ if (auto_center_after_jumps){
+  center_view(app);
+ }
 }
 
 function void
 jump_to_location(App *app, View_ID view,
-                 Name_Line_Column_Location location){
-    Buffer_ID buffer = 0;
-    if (get_jump_buffer(app, &buffer, &location)){
-        jump_to_location(app, view, buffer, location);
-    }
+                 Name_Line_Column_Location location)
+{
+ Buffer_ID buffer = 0;
+ if (get_jump_buffer(app, &buffer, &location)){
+  jump_to_location(app, view, buffer, location);
+ }
 }
 
 function void

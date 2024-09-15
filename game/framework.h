@@ -19,4 +19,31 @@ struct Data_Reader
  STB_Parser *parser;
 };
 
+struct Key_Direction{
+ v4  dir;
+ b32 new_keypress;
+};
+
+struct Game_Input{
+#if 0
+ Game_Input_Public_Embedding;
+#else
+ union{
+  struct{
+   //nono Make embedding work
+   Key_Mods active_mods;
+   b8      *key_states;
+   u8      *key_state_changes;
+   Frame_Info frame;
+   b32 debug_camera_on;
+   Mouse_State mouse;
+  };
+  
+  Game_Input_Public Game_Input_Public;
+ };
+#endif
+ 
+ Key_Direction direction;
+};
+
 //-eof
