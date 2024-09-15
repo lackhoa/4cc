@@ -6,6 +6,7 @@ enum Data_Version
  Version_Add_Bezier_Type      = 8,
  Version_Rename_Object_Index  = 9,
  Version_Rename_Object_Index2 = 10,
+ Version_Bezier_Revamp        = 11,
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

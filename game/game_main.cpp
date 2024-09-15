@@ -193,29 +193,80 @@ clear_modeler_data(Modeler &m)
  m.curves.count   = 1;
 }
 
+//-
+function void
+write_data_func(Printer &p, Type_Info &type, void *void_pointer);
+
+function void
+read_enum(Type_Info &type, void *pointer, i32 *dst)
+{
+ kv_assert(type.kind == Type_Kind_Enum);
+ *dst = 0;
+ block_copy(dst, pointer, type.size);
+}
+
+function void
+write_data_union(Printer &p, Type_Info &type,
+                 void *pointer0, void *pvariant0)
+{
+ kv_assert(type.kind == Type_Kind_Union);
+ u8 *pointer = (u8*)pointer0;
+ u8 *pvariant = (u8*)pvariant0;
+ 
+ i32 variant;
+ read_enum(*type.discriminator_type, pvariant, &variant);
+ 
+ auto &union_members = type.union_members;
+ for_i32(index,0,union_members.count){
+  auto &union_member = union_members[index];
+  if (union_member.variant == variant) {
+   //NOTE(kv) pointer of member is the same as pointer to the union.
+   write_data_func(p, *union_member.type, pointer);
+   break;
+  }
+ }
+}
+
 function void
 write_data_func(Printer &p, Type_Info &type, void *void_pointer)
 {
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
- if (type.Basic_Type) {
-  write_basic_type(p, type.Basic_Type, pointer);
- } else if (type.members.count) {
-  // NOTE: struct
-  p << "{\n";
-  for_i1(member_index, 0, type.members.count) {
-   Struct_Member &member = type.members[member_index];
-   p << member.name << " ";
-   u8 *member_pointer = pointer+member.offset;
-   write_data_func(p, *member.type, member_pointer);
-   p << newline;
-  }
-  p << "}\n";
- } else {
-  // NOTE: enum
-  i32 enum_value;
-  block_copy(&enum_value, pointer, type.size);
-  p << enum_value;
+ switch(type.kind){
+  case Type_Kind_Basic:{
+   write_basic_type(p, type.Basic_Type, pointer);
+  }break;
+  
+  case Type_Kind_Struct:{
+   // NOTE: struct
+   p << "{\n";
+   for_i1(member_index, 0, type.members.count){
+    Struct_Member &member = type.members[member_index];
+    p << member.name << " ";
+    u8 *member_pointer = pointer+member.offset;
+    if(member.type->kind == Type_Kind_Union){
+     write_data_union(p, *member.type, member_pointer,
+                      (pointer+member.discriminator_offset));
+    }else{
+     write_data_func(p, *member.type, member_pointer);
+    }
+    p << newline;
+   }
+   p << "}\n";
+  }break;
+  
+  case Type_Kind_Union:{
+   p<<"<can't write union without variant info>";
+  }break;
+  
+  case Type_Kind_Enum:{
+   // NOTE: enum
+   i32 enum_value;
+   block_copy(&enum_value, pointer, type.size);
+   p << enum_value;
+  }break;
+  
+  invalid_default_case;
  }
 }
 //
@@ -229,8 +280,8 @@ enum_index_from_pointer(Type_Info &type, void *pointer0)
  i32 value;
  block_copy(&value, pointer, type.size);
  i32 result = {};
- for_i32 (index, 0, type.enum_values.count) {
-  Enum_Value enum_it = type.enum_values[index];
+ for_i32 (index, 0, type.enum_members.count) {
+  Enum_Member enum_it = type.enum_members[index];
   if (enum_it.value == value) {
    result = index;
    break;
@@ -242,36 +293,44 @@ function String
 enum_name_from_pointer(Type_Info &type, void *pointer0)
 {
  i32 enum_index = enum_index_from_pointer(type, pointer0);
- return type.enum_values[enum_index].name;
+ return type.enum_members[enum_index].name;
 }
-//nono: we're over-reading, don't do this!
 #define enum_index_from_value(value) \
 enum_index_from_pointer(type_info_from_pointer(&value), &value)
 #define enum_name_from_value(value) \
 enum_name_from_value(type_info_from_pointer(&value), &value)
-
 
 function void
 pretty_print_func(Printer &p, Type_Info &type, void *void_pointer)
 {
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
- if (type.Basic_Type) {
-  write_basic_type(p, type.Basic_Type, pointer);
- } else if (type.members.count) {
-  // NOTE: Struct
-  p << "{\n";
-  for_i1(member_index, 0, type.members.count) {
-   Struct_Member &member = type.members[member_index];
-   p << member.name << " ";
-   u8 *member_pointer = pointer+member.offset;
-   pretty_print_func(p, *member.type, member_pointer);
-   p << newline;
-  }
-  p << "}\n";
- } else {
-  // NOTE: Enum -> Print out the correct name
-  p << enum_name_from_pointer(type, pointer);
+ switch(type.kind){
+  case Type_Kind_Basic:{
+   write_basic_type(p, type.Basic_Type, pointer);
+  }break;
+  
+  case Type_Kind_Struct:{
+   p << "{\n";
+   for_i1(member_index, 0, type.members.count) {
+    Struct_Member &member = type.members[member_index];
+    p << member.name << " ";
+    u8 *member_pointer = pointer+member.offset;
+    pretty_print_func(p, *member.type, member_pointer);
+    p << newline;
+   }
+   p << "}\n";
+  }break;
+  
+  case Type_Kind_Union:{
+   p<<"<enum requires knowledge of the variant>";
+  }break;
+  
+  case Type_Kind_Enum:{
+   p << enum_name_from_pointer(type, pointer);
+  }break;
+  
+  invalid_default_case;
  }
 }
 //
@@ -368,19 +427,10 @@ game_load(Game_State *state, App *app, String filename,
 #undef brace_block
   }
   
-#if 0
-  if (p->ok)
-  {// NOTE: test
-   make_temp_arena(arena);
-   String test_path = strlit("C:/Users/vodan/4ed/code/data/text_test.kv");
-   String serialization = serialize_state(arena, save);
-   write_entire_file(test_path, serialization);
-  }
-#endif
-  
   ok = p->ok_;
   if (!ok) {
-   print_message(app, strlit("Game load: deserialization failed!\n"));
+   printf_message(app, "Game load: deserialization failed at %d:%d!\n",
+                  p->fail_location.line_number, p->fail_location.line_offset);
   }
  }
  
@@ -422,20 +472,26 @@ render_data(Game_State &state)
  
  for_i32(curve_index,1,m.curves.count)
  {
-  Bezier_Data &bez = m.curves[curve_index];
-  auto &bone = p.bone_list[bez.bone_index];
+  Bezier_Data &curve = m.curves[curve_index];
+  auto &bone = p.bone_list[curve.bone_index];
   u32 prim_id = curve_prim_id(curve_index);
   {
-   v3 p0 = m.vertices[bez.p0_index].pos;
-   v3 p1 = bez.p1;
-   v3 p2 = bez.p2;
-   v3 p3 = m.vertices[bez.p3_index].pos;
+   v3 p0 = m.vertices[curve.p0_index].pos;
+   v3 p3 = m.vertices[curve.p3_index].pos;
+   Bez draw_bez;
+   switch(curve.type){
+    case Bezier_Type_v3v2:{
+     draw_bez = bez(p0, curve.data.v3v2.d0,
+                    curve.data.v3v2.d3, p3);
+    }break;
+    
+    invalid_default_case;
+   }
    
-   Bez draw_bez = Bez{p0,p1,p2,p3};
    {
     draw(bone.transform*draw_bez, prim_id);
    }
-   if (bez.symx)
+   if (curve.symx)
    {
     set_in_block(painter.is_right, 1);
     auto &boneR = get_right_bone(bone);
@@ -656,7 +712,7 @@ print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newli
     {
      brace_block;
      for_i32(vi,1,vertices.count)
-     {// NOTE tight loop
+     {//NOTE Tight loop
       auto &v = vertices[vi];
       write_data(p, &v);
      }
@@ -670,7 +726,7 @@ print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newli
     {
      brace_block;
      for_i32(bi,1,curves.count)
-     {// NOTE tight loop
+     {//NOTE tight loop
       auto &b = curves[bi];
       write_data(p, &b);
      }
@@ -1207,17 +1263,17 @@ game_update(game_update_params)
     {
      items.set_cap_min(type.enum_values.count);
      for_i32(index, 0, type.enum_values.count) {
-      Enum_Value &eval = type.enum_values[index];
+      Enum_Member &eval = type.enum_values[index];
       items.push(to_cstring(scratch, eval.name));
      }
     }*/
     
     i32 sel_index = curve_type_index;
-    const char* combo_preview = to_cstring(scratch, type.enum_values[curve_type_index].name);
+    const char* combo_preview = to_cstring(scratch, type.enum_members[curve_type_index].name);
     if ( ImGui::BeginCombo("combo", combo_preview, 0) ) {
-     for_i32(enum_index, 0, type.enum_values.count) {
+     for_i32(enum_index, 0, type.enum_members.count) {
       b32 is_selected = (enum_index == curve_type_index);
-      char *name = to_cstring(scratch, type.enum_values[enum_index].name);
+      char *name = to_cstring(scratch, type.enum_members[enum_index].name);
       if ( ImGui::Selectable(name, is_selected) ) {
        //sel_index = enum_index;
       }

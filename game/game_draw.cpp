@@ -220,12 +220,6 @@ bez(v3 p0, v4 d, v3 p3, v3 unit_y)
 {
  return bez(p0, d.xy, d.zw, p3, unit_y);
 }
-//
-force_inline Bezier
-bez(v3 p0, Planar_Bezier data, v3 p3)
-{
- return bez(p0, data.d0, data.d3, p3, data.unit_y);
-}
 
 // NOTE: Planar curve (with v3 control point)
 // NOTE: Control point is length adjusted, which is wasteful.

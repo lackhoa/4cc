@@ -33,10 +33,7 @@ struct STB_Parser
  // (Can't use pointer to files because that might be freed later),
  Arena *string_arena;
  
- union
- {
-  stb_lexer stb;
- };
+ stb_lexer stb;
 };
 
 function void

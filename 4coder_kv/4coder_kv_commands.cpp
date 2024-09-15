@@ -1348,7 +1348,7 @@ kv_toggle_cpp_comment(App *app)
  }
 }
 
-//;dump_history_to_file
+/*//;dump_history_to_file
 CUSTOM_COMMAND_SIG(dump_history_to_file)
 CUSTOM_DOC("a utility to combat file corruption")
 {
@@ -1399,6 +1399,6 @@ CUSTOM_DOC("a utility to combat file corruption")
  }
  
  close_file(outfile);
-}
+}*/
 
 //~EOF

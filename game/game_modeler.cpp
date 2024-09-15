@@ -3,8 +3,7 @@
 global Modeler *global_modeler;
 
 function u32
-selected_prim_id()
-{
+selected_prim_id() {
  return global_modeler->selected_prim_id;
 }
 
@@ -45,7 +44,8 @@ get_vertex_by_name(String name)
  return result;
 }
 
-void send_vert_func(String name, v3 pos)
+xfunction void
+send_vert_func(String name, v3 pos)
 {
  b32 is_new = false;
  auto &modeler = *global_modeler;
@@ -73,12 +73,14 @@ void send_vert_func(String name, v3 pos)
 
 Bezier bez(v3 p0, v3 d0, v2 d3, v3 p3);
 
-b32 send_bez_func(String name, String p0_name, v3 d0, v2 d3, String p3_name)
+xfunction b32
+send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name)
 {
  b32 ok = false;
  Bezier_Data *curve = 0;
  auto &modeler = *global_modeler;
  
+ //NOTE(kv) Query the curve
  for_i32(curve_index, 1, modeler.curves.count) {
   Bezier_Data *it = &modeler.curves[curve_index];
   if ( string_match(it->name, name) ) {
@@ -96,10 +98,8 @@ b32 send_bez_func(String name, String p0_name, v3 d0, v2 d3, String p3_name)
  Vertex_Data *vert3 = get_vertex_by_name(p3_name);
  if (vert0 && vert3) {
   ok = true;
-  Bez data = bez(vert0->pos, d0, d3, vert3->pos);
   curve->p0_index = vertex_index_from_pointer(vert0);
-  curve->p1       = data[1];
-  curve->p2       = data[2];
+  curve->data.v3v2 = { .d0 = d0, .d3 = d3, };
   curve->p3_index = vertex_index_from_pointer(vert3);
  } else {
   DEBUG_TEXT("bezier error: cannot find vertex");
@@ -113,9 +113,6 @@ b32 send_bez_func(String name, String p0_name, v3 d0, v2 d3, String p3_name)
  
  return ok;
 }
-//
-#define send_bez(name, p0_name, d0, d3, p3_name) \
-send_bez_func(strlit(#name), strlit(#p0_name), d0, d3, strlit(#p3_name))
 
 //-NOTE: Edit history
 

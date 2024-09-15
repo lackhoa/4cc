@@ -563,6 +563,12 @@ ep_eat_until_char_simple(Ed_Parser *p, char c)
  }
 }
 
+inline void
+ep_consume_semicolons(Ed_Parser *p)
+{//NOTE(kv) We may add semicolon for editor indentation.
+ while ( ep_maybe_char(p, ';') ) {  }
+}
+
 #undef ED_PARSER_BUFFER
 
 //-EOF

@@ -162,7 +162,7 @@ api_type_match(API_Type *a, API_Type *b){
                 if (a->enum_type.val_count == b->enum_type.val_count &&
                     string_match(a->enum_type.type_name, b->enum_type.type_name)){
                     result = true;
-                    for (API_Enum_Value *a_node = a->enum_type.first_val, *b_node = b->enum_type.first_val;
+                    for (API_Enum_Member *a_node = a->enum_type.first_val, *b_node = b->enum_type.first_val;
                          a_node != 0 && b_node != 0;
                          a_node = a_node->next, b_node = b_node->next){
                         if (!string_match(a_node->name, b_node->name) ||

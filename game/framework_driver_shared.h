@@ -39,19 +39,6 @@ struct Bezier
 };
 typedef Bezier Bez;
 
-// TODO(kv): we'll need to migrate off the X macro,
-// can't use b32 because C++ doesn't like it when you define function overloads
-// for both "b32" and "i1". No way to work around that afaict.
-// Unless, you use templates
-
-// kv: keeping this macro here so it builds
-#define X_Vertex_Data(X) \
-X(String, name)     \
-X(i1, object_index) \
-X(i1, symx)         \
-X(v3, pos)          \
-X(i1, basis_index)  \
-
 introspect()
 struct Vertex_Data
 {
@@ -68,13 +55,6 @@ struct Vertex_Data
  i1 basis_index;
 };
 
-struct Planar_Bezier
-{
- v2 d0;
- v2 d3;
- v3 unit_y;
-};
-
 struct Bezier_Planar_d
 {
  i1 p0_index;
@@ -83,45 +63,33 @@ struct Bezier_Planar_d
  i1 p3_index;
 };
 
-#define X_Bezier_Data(X) \
-X(String, name) \
-X(i1, object_index) \
-X(i1, symx) \
-X(i1, p0_index) \
-X(v3, p1) \
-X(v3, p2) \
-X(i1, p3_index) \
-X(v4, radii) \
+introspect()
+enum Bezier_Type {
+ Bezier_Type_v3v2       = 0,
+ Bezier_Type_Offsets    = 2,
+ Bezier_Type_Planar_Vec = 3,
+};
 
-// TODO(kv): Reorganize these types
+introspect() struct Bezier_Data_v3v2        { v3 d0; v2 d3; };
+introspect() struct Bezier_Data_Offsets     { v3 d0; v3 d3; };
+introspect() struct Bezier_Data_Planar_Vec  { v2 d0; v2 d3; v3 unit_y; };
 
 introspect()
-enum Bezier_Type
-{
- Bezier_Type_Planar_v3_v2       = 0,
- Bezier_Type_Raw                = 1,
- Bezier_Type_Offsets            = 2,
- Bezier_Type_Planar_Unit_Vector = 3,
+union Bezier_Union {
+ tagged_by(Bezier_Type);
+ m_variant(Bezier_Type_v3v2)       Bezier_Data_v3v2       v3v2;
+ m_variant(Bezier_Type_Offsets)    Bezier_Data_Offsets    offsets;
+ m_variant(Bezier_Type_Planar_Vec) Bezier_Data_Planar_Vec planar_vec;
 };
 
 introspect()
-struct Bezier_Data
-{
+struct Bezier_Data {
  String name;
- 
- meta_removed(i1 object_index;
-              removed = Version_Rename_Object_Index);
- meta_added(added   = Version_Rename_Object_Index,
-            default = m_object_index);
  i1 bone_index;
- 
  i1 symx;
- meta_added(added   = Version_Add_Bezier_Type,
-            default = Bezier_Type_Raw);
  Bezier_Type type;
  i1 p0_index;
- v3 p1;
- v3 p2;
+ tagged_by(type) Bezier_Union data;
  i1 p3_index;
  v4 radii;
 };
@@ -341,7 +309,15 @@ inline String get_bone_name()      { return current_bone().name; }
 inline b32 is_left() { return painter.is_right == 0; }
 //-
 
+#if AD_IS_FRAMEWORK
 #include "game_modeler.h"
+#endif
+
+xfunction b32
+send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name);
+//
+#define send_bez_v3v2(name, p0_name, d0, d3, p3_name) \
+send_bez_v3v2_func(strlit(#name), strlit(#p0_name), d0, d3, strlit(#p3_name))
 
 #define fill3_inner_params v3 p0, v3 p1, v3 p2, \
 argb c0, argb c1, argb c2, \

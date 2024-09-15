@@ -4,7 +4,7 @@
 FORCE_MORE_BUILDS = 0
 asan_on = 0
 DISABLE_GAME = 0
-DISABLE_ED   = 0
+DISABLE_ED   = 0  # if fast build, disable editor
 full_build_components = {
  "custom_api_gen": 1,
  "skm_lexer_gen":  0,
@@ -24,9 +24,9 @@ STOP_DEBUGGING_BEFORE_BUILD = 1
 
 
 # NOTE: Override configuration ############################
-#asan_on    = 1
+#asan_on   = 1
 DISABLE_ED = 1
-#FORCE_MORE_BUILDS = 1
+FORCE_MORE_BUILDS = 1
 full_build_components["imgui"] = 0
 
 

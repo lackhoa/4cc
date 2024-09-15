@@ -59,7 +59,7 @@ struct Modeler  // see @init_modeler
 //-NOTE: Vertex
 
 void send_vert_func(String name, v3 pos);
-b32 send_bez_func(String name, String p0_name, v3 d0, v2 d3, String p3_name);
+b32 send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name);
 
 force_inline u32
 selected_prim_id(Modeler &m)

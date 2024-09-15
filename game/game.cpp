@@ -659,17 +659,12 @@ render_forearm(mat4i const&ot,
    draw(bez(up, fvec(V3(0.0822f, 0.1457f, 0.f)), palm_in));
    draw(l492, params);
    // ;sending_data_to_draw
-   v3 v676 = V3(-0.1753f, -0.854f, -0.0817f);
-   v3 v677 = v676+V3(0.f, -0.3293f, -0.0435f);
+   //v3 v676 = V3(-0.1753f, -0.854f, -0.0817f);
+   //v3 v677 = v676+V3(0.f, -0.3293f, -0.0435f);
    //send_vert(v676);
    //send_vert(v677);
-   //send_bez(l679, v676, V3(-0.f, 0.1052f, -0.0852f),
-   //         V2(0.f, 0.0936f), v677);
-   if ( fbool(0) )
-   {// NOTE: Can't send the endpoint positions down, that's cheating!
-    draw(bez(v676, fvec(V3(-0.f, 0.1052f, -0.0852f)),
-             fval2(0.f, 0.0936f), v677));
-   }
+   //send_bez_v3v2(l679, v676, V3(-0.f, 0.1052f, -0.0852f),
+   //              V2(0.f, 0.0936f), v677);
   }
   {//NOTE: radius (outer)
    v3 up = bezier_sample(l492, fval(0.9006f));

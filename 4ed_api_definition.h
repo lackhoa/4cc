@@ -44,15 +44,15 @@ struct API_Type_Structure{
     String definition_string;
 };
 
-struct API_Enum_Value{
-    API_Enum_Value *next;
+struct API_Enum_Member{
+    API_Enum_Member *next;
     String name;
     String val;
 };
 struct API_Type_Enum{
     String type_name;
-    API_Enum_Value *first_val;
-    API_Enum_Value *last_val;
+    API_Enum_Member *first_val;
+    API_Enum_Member *last_val;
     i1 val_count;
 };
 

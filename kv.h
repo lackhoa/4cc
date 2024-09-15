@@ -3802,6 +3802,13 @@ Arena value_##ARENA_NAME = make_arena_malloc(); \
 Arena *ARENA_NAME = &value_##ARENA_NAME; \
 defer( arena_clear(ARENA_NAME) );
 
+//NOTE(kv) "defer_block" courtesy of Ryan Fleury.
+#define defer_block(STARTUP, SHUTDOWN) \
+for(int line_unique_var = ((STARTUP), 0); \
+!line_unique_var; \
+line_unique_var++, (SHUTDOWN))
+
+
 ////////////////////////////////
 
 #if !AD_IS_DRIVER
@@ -4415,8 +4422,8 @@ remove_translation(mat4 result)
 
 //~NOTE: array
 // NOTE(kv): Can be zero-inited -> GOOD!
-// TODO(kv): I think we should switch to bucket array
-// since it plays better with arena allocator, and we get stable pointers.
+//TODO(kv) Split the metadata out to a header, that we can allocate
+//  before the data, so we can pass the array around without fear.
 template<class T>
 struct arrayof
 {
@@ -4592,25 +4599,47 @@ push_unique(arrayof<T> &array, T const&item)
 //~
 struct Struct_Member {
  struct Type_Info *type;
- String            name;
- u32               offset;
+ String name;
+ u32    offset;
+ u32    discriminator_offset;  //NOTE(kv) union only
 };
-struct Enum_Value {
+struct Union_Member{
+ struct Type_Info *type;
+ String name;
+ i32 variant;
+};
+struct Enum_Member {
  String name;
  i32    value;
 };
+//NOTE(kv) If you have a better name, I'm all ears man!
+enum Type_Kind {
+ Type_Kind_None = 0,
+ Type_Kind_Basic,
+ Type_Kind_Struct,
+ Type_Kind_Union,
+ Type_Kind_Enum,
+};
 struct Type_Info {
- String                 name;
- i1                     size;
- Basic_Type             Basic_Type;  // NOTE(kv): non-zero if it's a basic type
- arrayof<Struct_Member> members;
- arrayof<Enum_Value>    enum_values;
+ String name;
+ i1     size;
+ Type_Kind kind;
+ union {
+  Basic_Type Basic_Type;
+  arrayof<Struct_Member> members;
+  struct {
+   Type_Info *discriminator_type;
+   arrayof<Union_Member> union_members;
+  };
+  arrayof<Enum_Member>   enum_members;
+ };
 };
 
 #define X(T)                 \
 Type_Info {                  \
 .name=strlit(#T),            \
 .size=i1(sizeof(T)),         \
+.kind=Type_Kind_Basic,       \
 .Basic_Type=Basic_Type_##T,  \
 },                           \
 //
@@ -5414,8 +5443,7 @@ init(bucket_array<T> &array, Arena *arena, i1 bucket_size)
 
 //-
 
-struct File_Name_Data
-{
+struct File_Name_Data {
  String name;
  String data;
 };
@@ -5424,8 +5452,9 @@ struct File_Name_Data
 #define meta_tag(...)
 #define meta_added(...)
 #define meta_removed(...)
+#define tagged_by(discriminator)
+#define m_variant(tag)  //NOTE(kv) Use to tag union member with the variant it corresponds to
 
 #define logically_implies(a,b)  !a || b
-
 
 //~EOF
