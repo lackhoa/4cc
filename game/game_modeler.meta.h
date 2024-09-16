@@ -1,4 +1,4 @@
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:163:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
 function Type_Info
 get_type_info_Vertex_Data()
 {
@@ -14,7 +14,7 @@ result.members[3] = {.type=&Type_Info_v3, .name=strlit("pos"), .offset=offsetof(
 result.members[4] = {.type=&Type_Info_i1, .name=strlit("basis_index"), .offset=offsetof(Vertex_Data, basis_index)};
 return result;
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:138:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
 global Type_Info Type_Info_Vertex_Data = get_type_info_Vertex_Data();
 
 function Type_Info &type_info_from_pointer(Vertex_Data*pointer)
@@ -34,14 +34,8 @@ read_String(r, m_name);
 }
 pointer.name = m_name;
 
-i1 m_object_index = {};
-if ( in_range_exclusive(0, r.read_version, Version_Rename_Object_Index2) )
-{
-eat_id(p, strlit("object_index"));
-read_i1(r, m_object_index);
-}
-i1 m_bone_index = m_object_index;
-if ( in_range_exclusive(Version_Rename_Object_Index2, r.read_version, Version_Inf) )
+i1 m_bone_index = {};
+
 {
 eat_id(p, strlit("bone_index"));
 read_i1(r, m_bone_index);
@@ -74,7 +68,7 @@ pointer.basis_index = m_basis_index;
 
 eat_char(p, '}');
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:342:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:344:
 function Type_Info
 get_type_info_Bezier_Type()
 {
@@ -88,7 +82,7 @@ result.enum_members[1] = {.name=strlit("Bezier_Type_Offsets"), .value=Bezier_Typ
 result.enum_members[2] = {.name=strlit("Bezier_Type_Planar_Vec"), .value=Bezier_Type_Planar_Vec};
 return result;
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:138:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
 global Type_Info Type_Info_Bezier_Type = get_type_info_Bezier_Type();
 
 function Type_Info &type_info_from_pointer(Bezier_Type*pointer)
@@ -104,7 +98,7 @@ pointer = *(Bezier_Type*)(&integer);
 }
 static_assert( sizeof(Bezier_Type) <= sizeof(i32) );
 
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:163:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
 function Type_Info
 get_type_info_Bezier_Data_v3v2()
 {
@@ -117,7 +111,7 @@ result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(B
 result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(Bezier_Data_v3v2, d3)};
 return result;
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:138:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
 global Type_Info Type_Info_Bezier_Data_v3v2 = get_type_info_Bezier_Data_v3v2();
 
 function Type_Info &type_info_from_pointer(Bezier_Data_v3v2*pointer)
@@ -147,7 +141,7 @@ pointer.d3 = m_d3;
 
 eat_char(p, '}');
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:163:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
 function Type_Info
 get_type_info_Bezier_Data_Offsets()
 {
@@ -160,7 +154,7 @@ result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(B
 result.members[1] = {.type=&Type_Info_v3, .name=strlit("d3"), .offset=offsetof(Bezier_Data_Offsets, d3)};
 return result;
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:138:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
 global Type_Info Type_Info_Bezier_Data_Offsets = get_type_info_Bezier_Data_Offsets();
 
 function Type_Info &type_info_from_pointer(Bezier_Data_Offsets*pointer)
@@ -190,7 +184,7 @@ pointer.d3 = m_d3;
 
 eat_char(p, '}');
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:163:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
 function Type_Info
 get_type_info_Bezier_Data_Planar_Vec()
 {
@@ -204,7 +198,7 @@ result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(B
 result.members[2] = {.type=&Type_Info_v3, .name=strlit("unit_y"), .offset=offsetof(Bezier_Data_Planar_Vec, unit_y)};
 return result;
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:138:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
 global Type_Info Type_Info_Bezier_Data_Planar_Vec = get_type_info_Bezier_Data_Planar_Vec();
 
 function Type_Info &type_info_from_pointer(Bezier_Data_Planar_Vec*pointer)
@@ -242,7 +236,7 @@ pointer.unit_y = m_unit_y;
 
 eat_char(p, '}');
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:276:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:278:
 function Type_Info
 get_type_info_Bezier_Union()
 {
@@ -257,14 +251,14 @@ result.union_members[1] = {.type=&Type_Info_Bezier_Data_Offsets, .name=strlit("o
 result.union_members[2] = {.type=&Type_Info_Bezier_Data_Planar_Vec, .name=strlit("planar_vec"), .variant=Bezier_Type_Planar_Vec};
 return result;
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:138:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
 global Type_Info Type_Info_Bezier_Union = get_type_info_Bezier_Union();
 
 function Type_Info &type_info_from_pointer(Bezier_Union*pointer)
 {
 return Type_Info_Bezier_Union;
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:304:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:306:
 function void
 read_Bezier_Union(Data_Reader &r, Bezier_Union &pointer, Bezier_Type variant)
 {
@@ -290,7 +284,7 @@ break;
 }
 
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:163:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
 function Type_Info
 get_type_info_Bezier_Data()
 {
@@ -309,7 +303,7 @@ result.members[6] = {.type=&Type_Info_i1, .name=strlit("p3_index"), .offset=offs
 result.members[7] = {.type=&Type_Info_v4, .name=strlit("radii"), .offset=offsetof(Bezier_Data, radii)};
 return result;
 }
-//C:\Users\vodan\4ed\code/meta_introspect.cpp:138:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
 global Type_Info Type_Info_Bezier_Data = get_type_info_Bezier_Data();
 
 function Type_Info &type_info_from_pointer(Bezier_Data*pointer)

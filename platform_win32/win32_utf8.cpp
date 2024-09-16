@@ -137,26 +137,26 @@ GetCurrentDirectory_utf8(Arena *arena, DWORD max, u8 *buffer)
 
 internal int
 MessageBox_utf8(Arena *scratch, HWND owner, u8 *text, u8 *caption, UINT type){
-    Temp_Memory temp = begin_temp(scratch);
-    String_u16 text_16 = string_u16_from_string_u8(scratch, SCu8(text), StringFill_NullTerminate);
-    String_u16 caption_16 = string_u16_from_string_u8(scratch, SCu8(caption), StringFill_NullTerminate);
-    int result = MessageBoxW(owner, (LPWSTR)text_16.str, (LPWSTR)caption_16.str, type);
-    end_temp(temp);
-    return(result);
+ Temp_Memory temp = begin_temp(scratch);
+ String_u16 text_16 = string_u16_from_string_u8(scratch, SCu8(text), StringFill_NullTerminate);
+ String_u16 caption_16 = string_u16_from_string_u8(scratch, SCu8(caption), StringFill_NullTerminate);
+ int result = MessageBoxW(owner, (LPWSTR)text_16.str, (LPWSTR)caption_16.str, type);
+ end_temp(temp);
+ return(result);
 }
 
 #if 0
-internal BOOL
+function BOOL
 SetWindowText_utf8(Arena *scratch, HWND window, u8 *string){
-    Temp_Memory temp = begin_temp(scratch);
-    String_u16 string_16 = string_u16_from_string_u8(scratch, SCu8(string), StringFill_NullTerminate);
-    BOOL result = SetWindowTextW(window, (LPWSTR)string_16.str);
-    end_temp(temp);
-    return(result);
+ Temp_Memory temp = begin_temp(scratch);
+ String_u16 string_16 = string_u16_from_string_u8(scratch, SCu8(string), StringFill_NullTerminate);
+ BOOL result = SetWindowTextW(window, (LPWSTR)string_16.str);
+ end_temp(temp);
+ return(result);
 }
 #endif
 
-internal BOOL
+function BOOL
 GetFileAttributesEx_utf8String(Arena *scratch, String8 file_name, GET_FILEEX_INFO_LEVELS info_level_id, LPVOID file_info)
 {
     Temp_Memory temp = begin_temp(scratch);

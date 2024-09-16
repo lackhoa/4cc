@@ -1,7 +1,8 @@
 #pragma once
 
 struct Meta_Struct_Member {
- String type;
+ String type;//NOTE(kv) no star
+ i32 type_star_count;
  String name;
  String version_added;
  String version_removed;
@@ -10,7 +11,7 @@ struct Meta_Struct_Member {
 };
 
 struct Meta_Union_Member{
- String type;
+ String type;//NOTE(kv) no star
  String name;
  String version_added;
  String version_removed;

@@ -1,48 +1,5 @@
 #!/usr/bin/env python3 -u
 
-# NOTE: Default configuration (don't overwrite me!) #########################
-FORCE_MORE_BUILDS = 0
-asan_on = 0
-DISABLE_GAME = 0
-DISABLE_ED   = 0  # if fast build, disable editor
-full_build_components = {
- "custom_api_gen": 1,
- "skm_lexer_gen":  0,
- "imgui":          1,
-}
-COMPILE_GAME_WITH_MSVC = 1
-TRACE_COMPILE_TIME     = 0
-FORCE_INLINE_ON = 1
-FRAMEWORK_OPTIMIZE_ON = 0
-AD_PROFILE = 0
-KV_SLOW    = 0
-STOP_DEBUGGING_BEFORE_BUILD = 1
-
-
-
-
-
-
-# NOTE: Override configuration ############################
-#asan_on   = 1
-#DISABLE_ED = 1
-#DISABLE_GAME = 1
-#FORCE_MORE_BUILDS = 1
-full_build_components["imgui"] = 0
-
-
-
-
-
-
-
-# Your config end ############################
-
-if asan_on:
-    COMPILE_GAME_WITH_MSVC = 1
-
-
-
 import os
 import pathlib
 import subprocess
@@ -53,17 +10,57 @@ from enum import Enum
 
 parser = argparse.ArgumentParser(prog='Autodraw build script')
 parser.add_argument('-a', '--action', type=str, default="build")
-parser.add_argument('--file', type=str, default="")
-parser.add_argument('--full', action="store_true")
+parser.add_argument('--file',    type=str, default="")
+parser.add_argument('--full',    action="store_true")
 parser.add_argument('--release', action="store_true")
 #
 args = parser.parse_args()
-run_only         = args.action == 'run'
-hotload_game     = "game.cpp" in args.file  # @build_filename_hack
+if args.release:
+    args.full = True
+run_only     = args.action == 'run'
+hotload_game = "game.cpp" in args.file  # @build_filename_hack
+
+# NOTE: Default configuration (don't overwrite me!) #########################
+default_build_level = 0
+#
+ed_build_level    = 0
+game_build_level  = 0
+meta_build_level  = 1
+imgui_build_level = 1
+#
+asan_on = 0
+COMPILE_GAME_WITH_MSVC = 1
+TRACE_COMPILE_TIME     = 0
+FORCE_INLINE_ON = 1
+FRAMEWORK_OPTIMIZE_ON = 0
+AD_PROFILE = 0
+KV_SLOW    = 0
+STOP_DEBUGGING_BEFORE_BUILD = 1
+
+
+
+# NOTE: Override configuration ############################
+#asan_on          = 1
+#meta_build_level = 0
+ed_build_level    = 1
+meta_build_level = 0
+COMPILE_GAME_WITH_MSVC = 0
+
+
+# Your config end ############################
+
+if asan_on:
+    COMPILE_GAME_WITH_MSVC = 1
 
 pjoin = os.path.join
 
+def meets_level(level):
+    global build_level
+    return build_level >= level
+
 DEBUG_MODE = 0 if args.release else 1
+build_level = default_build_level
+build_level = args.full
 SHIP_MODE = 1-DEBUG_MODE
 if SHIP_MODE:
     asan_on = 0
@@ -217,7 +214,7 @@ def check_extension(extensions, filename):
             return True
     return False
 
-def list_all_cpp_files(root_path):
+def list_all_cpp_files_top_level(root_path):
     extensions = [".cpp", ".c"]
     result = []
     for (dirpath, dirnames, filenames) in os.walk(root_path):
@@ -225,6 +222,12 @@ def list_all_cpp_files(root_path):
                      if check_extension(extensions, f)]
         result.extend(cpp_files)
         break
+    return result
+
+def list_all_files(root_path):
+    result = []
+    for (dirpath, dirnames, filenames) in os.walk(root_path):
+        result.extend(filenames)
     return result
 
 def get_file_stem(path):
@@ -325,7 +328,6 @@ def run_compiler(compiler, input_files, output_file, debug_mode,
 "
     run(command, exit_on_failure)
 
-
 def autogen():
     global asan_on
     old_asan_on = asan_on
@@ -339,18 +341,18 @@ def autogen():
         SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={KV_SLOW}'
         compiler_flags=f"{SYMBOLS} {INCLUDES}"
         
-        if full_build_components["custom_api_gen"]:
+        if meets_level(meta_build_level):
             print('4coder API parser/generator')
             run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
                          debug_mode=True, compiler_flags=compiler_flags)
-            api_files = " ".join([f"{CODE}/4ed_api_implementation.cpp",
-                                  f"{CODE}/platform_win32/win32_4ed_functions.cpp",
-                                  f"{CODE}/custom/4coder_token.cpp",
-                                  f"{CODE}/game/framework_driver_shared.h",
-                                 ])
-            run(f"ad_meta.exe {api_files}")
+            input_files = " ".join([f"{CODE}/game",
+                                    f"{CODE}/4ed_api_implementation.cpp",
+                                    f"{CODE}/platform_win32/win32_4ed_functions.cpp",
+                                    f"{CODE}/custom/4coder_token.cpp",
+                                    f"{CODE}/4coder_game_shared.h",
+                                   ])
+            run(f"ad_meta.exe {input_files}")
 
-        if full_build_components["skm_lexer_gen"]:
             print('Lexer: Generate (one-time thing)')
             LEXER_GEN = f"lexer_gen{DOT_EXE}"
             run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), LEXER_GEN, 
@@ -359,16 +361,16 @@ def autogen():
             print('running lexer generator')
             mkdir_p(f'{CODE_KV}/generated')
             run(f'{LEXER_GEN} {CODE_KV}/generated')
-    
-        meta_macros="-DMETA_PASS"
-        print('preproc_file: Generate')
-        preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
-        run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
         
-        print('Meta-generator')
-        run_compiler(Compiler.ClangCl, f"{CUSTOM}/4coder_metadata_generator.cpp", f"metadata_generator{DOT_EXE}",
-                     debug_mode=True, compiler_flags=compiler_flags)
-        run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
+            meta_macros="-DMETA_PASS"
+            print('preproc_file: Generate')
+            preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
+            run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
+            
+            print('Meta-generator')
+            run_compiler(Compiler.ClangCl, f"{CUSTOM}/4coder_metadata_generator.cpp", f"metadata_generator{DOT_EXE}",
+                         debug_mode=True, compiler_flags=compiler_flags)
+            run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
 
     asan_on = old_asan_on
 
@@ -402,9 +404,6 @@ def build_game():
     finally:
         os.remove("game_dll.lock")
 
-
-
-
 try:
     if asan_on:
         print("[asan_on]")
@@ -412,11 +411,6 @@ try:
 
     os.chdir(f'{OUTDIR}')
     print(f'Workdir: {os.getcwd()}')
-
-    if DEBUG_MODE and (not FORCE_MORE_BUILDS):
-        more_builds = args.full
-    else:
-        more_builds = True
 
     if run_only:
         if OS_WINDOWS:
@@ -438,20 +432,18 @@ try:
         BINARY_NAME = "4ed" if DEBUG_MODE else "4ed_stable"
 
         imgui_dir = f"{CODE}/libs/imgui"
-        imgui_cpp_basenames = list_all_cpp_files(imgui_dir)
+        imgui_cpp_basenames = list_all_cpp_files_top_level(imgui_dir)
         imgui_object_files  = [f"{get_file_stem(file)}{DOT_OBJ}" 
                                for file in imgui_cpp_basenames]
 
         if (not hotload_game) and (not TRACE_COMPILE_TIME):
             # NOTE(kv): cleanup build dir (TODO: arrange our build output directory so we don't have to do manual cleaning crap)
-            if more_builds:
+            if build_level >= 1:
                 delete_all_pdb_files(OUTDIR)
 
-            if more_builds:  # do some generation business in the custom layer
-                autogen()
+            autogen()
 
-            # NOTE: Platform build
-            print('========Producing 4ed========')
+            # NOTE: Editor build
             if OS_WINDOWS:
                 PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
                 WINDOWS_LIBS = "user32.lib winmm.lib gdi32.lib comdlg32.lib userenv.lib"
@@ -466,7 +458,7 @@ try:
             imgui_files = [pjoin(imgui_dir, f) for f in imgui_cpp_basenames]
             imgui_backend_files = [f"{imgui_dir}/backends/imgui_impl_win32.cpp", f"{imgui_dir}/backends/imgui_impl_opengl3.cpp"]
             imgui_config = '-DIMGUI_USER_CONFIG=\\"ad_imgui_config.h\\"'
-            if more_builds and full_build_components["imgui"]:
+            if meets_level(imgui_build_level):
                 for file in (imgui_files + imgui_backend_files):
                     # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
                     run_compiler(Compiler.ClangCl, file, "",
@@ -474,7 +466,8 @@ try:
                                  compiler_flags=f"{imgui_config} -I{imgui_dir} -I{CODE}",
                                  compile_only=True, no_warnings=True)
 
-            if more_builds or (not DISABLE_ED):
+            if meets_level(ed_build_level):
+                print('========Producing 4ed========')
                 ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
                 run_compiler(Compiler.ClangCl, PLATFORM_CPP,
                              ed_obj, debug_mode=DEBUG_MODE,
@@ -497,10 +490,10 @@ try:
                 mkdir_p(OPENGL_OUTDIR)
                 for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
                     shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
-        if more_builds or (not DISABLE_GAME):
+        if meets_level(game_build_level):
             build_game()
 
-        if more_builds:
+        if SHIP_MODE:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")
             for outdir in [OUT_DEBUG]:
                 symlink_force(pjoin(CODE_KV, "config.4coder"),   pjoin(outdir, "config.4coder"))

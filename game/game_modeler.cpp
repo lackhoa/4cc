@@ -109,7 +109,7 @@ send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name)
 //-NOTE: Edit history
 
 function void
-clear_edit_history(Modeler_Edit_History &h)
+clear_edit_history(Modeler_History &h)
 {
  // NOTE(kv): We wanna clear all history when we want to.
  // NOTE(kv): so when we clear, the plan is to just wipe out the memory, and re-initialize everything.
@@ -149,13 +149,13 @@ apply_edit_no_history(Modeler &m, Modeler_Edit &edit0, b32 redo)
 }
 
 inline i1
-get_undo_index(Modeler_Edit_History &h)
+get_undo_index(Modeler_History &h)
 {
  return h.redo_index-1;
 }
 
 inline b32
-can_undo(Modeler_Edit_History &h)
+can_undo(Modeler_History &h)
 {
  b32 ok = (get_undo_index(h) >= 0);
  return ok;
@@ -175,7 +175,7 @@ modeler_undo(Modeler &m)
 }
 
 inline b32
-can_redo(Modeler_Edit_History &h) {
+can_redo(Modeler_History &h) {
  return (h.redo_index < h.stack.count);
 }
 //
@@ -199,7 +199,7 @@ apply_new_edit(Modeler &m, Modeler_Edit &edit)
 }
 
 inline Modeler_Edit *
-get_current_edit(Modeler_Edit_History &h)
+get_current_edit(Modeler_History &h)
 {// NOTE: Sometimes the "current edit" doesn't exist yet
  Modeler_Edit *result = 0;
  if (can_undo(h)) {
@@ -235,15 +235,6 @@ edits_can_be_merged(Modeler_Edit &edit1, Modeler_Edit &edit2)
    } break;
   }
  }
- return result;
-}
-
-inline Bezier_Data
-get_selected_curve(Modeler &m)
-{
- u32 id = selected_prim_id(m);
- Curve_Index index = curve_index_from_prim_id(id);
- Bezier_Data result = m.curves[index.v];
  return result;
 }
 

@@ -40,9 +40,8 @@ PACK_END;
 global Slow_Line_Map slow_line_map;
 //global Arena *slow_slider_store;
 
-internal fui_is_active_return
-fui_is_active(fui_is_active_params)
-{
+function fui_is_active_return
+fui_is_active(fui_is_active_params) {
  return fui_active_slider != 0;
 }
 

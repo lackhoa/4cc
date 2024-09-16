@@ -20,6 +20,8 @@ inline b32 m_maybe_paren_close(Ed_Parser *p) { return ep_maybe_char(p, ')'); }
 
 #define m_parens       defer_block(m_paren_open(p), m_paren_close(p))
 #define m_print_braces defer_block((p << "\n{\n"), (p << "\n}\n"))
+#define m_macro_braces defer_block((p << "\\\n{\\\n"), (p << "\\\n}\\\n"))
+#define m_macro_braces_sm  defer_block((p << "\\\n{\\\n"), (p << "\\\n};\\\n"))
 #define m_print_location p<<"// "<<filename_linum<<"\n"
 //-
 
@@ -382,14 +384,14 @@ print_enum_meta(Printer &p, String type_name,
 }
 
 inline void
-parse_cpp_struct_member(Ed_Parser *p, Meta_Struct_Member &member)
-{
- if(ep_maybe_id(p, "tagged_by")){
-  m_parens{
-   member.discriminator = ep_id(p);
-  }
+parse_cpp_struct_member(Ed_Parser *p, Meta_Struct_Member &member) {
+ if (ep_maybe_id(p, "tagged_by")){
+  m_parens{ member.discriminator = ep_id(p); }
  }
- member.type = ep_id(p);
+ {
+  member.type = ep_id(p);
+  while (ep_maybe_char(p, '*')){ member.type_star_count++; }
+ }
  member.name = ep_id(p);
  ep_consume_semicolons(p);
 }
@@ -401,9 +403,28 @@ parse_cpp_union_member(Ed_Parser *p, Meta_Union_Member &member)
  ep_consume_semicolons(p);
 }
 
-function b32
-introspect_one_file(Arena *arena, File_Name_Data source, String outname)
+function void
+print_struct_embed(Printer &p, String type_name,
+                   arrayof<Meta_Struct_Member> &members)
 {
+ m_print_location;
+ p<<"#define "<<type_name<<"_Embedding \\\n union";
+ m_macro_braces_sm{
+  p<<"struct";
+  m_macro_braces_sm{
+   for_i32(imem, 0, members.count){
+    auto &member = members[imem];
+    p<<member.type<<" ";
+    for_repeat(member.type_star_count){ p<<"*"; }
+    p<<member.name<<";\\\n";
+   }
+  }
+  p<<type_name<<" "<<type_name<<";";
+ }
+}
+
+function b32
+introspect_one_file(Arena *arena, File_Name_Data source, String outname) {
  b32 ok = true;
  Scratch_Block scratch;
  Token_List token_list = lex_full_input_cpp(scratch, source.data);
@@ -414,11 +435,10 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname)
  char newline = '\n';
  while( p->ok_ )
  {// NOTE(kv): Parsing loop
-  if ( ep_maybe_id(p, "introspect") )
-  {
-   if (printer.FILE == 0)
-   {// NOTE(kv): Open the file, since we have something to write now
-    FILE *outfile = open_file(outname, "wb");
+  if ( ep_maybe_id(p, "introspect") ) {
+   if (printer.FILE == 0) {
+    // NOTE(kv): Open the file, since we have something to write now
+    FILE *outfile = fopen(outname, "wb");
     printer = make_printer_file(outfile);
     if (outfile) {
      if (meta_logging_level) {
@@ -430,14 +450,16 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname)
     }
    }
    
+   b32 do_info = false;
+   b32 do_embed = false;
    {// NOTE: Parsing the type
     {//-NOTE: Introspection parameters
-     ep_eat_kind(p, TokenBaseKind_ParenOpen);
-     while (p->ok_) {
-      if (ep_maybe_kind(p, TokenBaseKind_ParenClose)) {
-       break;
-      }
+     m_paren_open(p);
+     while (p->ok_ && !m_maybe_paren_close(p)){
+      if      (ep_maybe_id(p, "info")) { do_info = true; }
+      else if (ep_maybe_id(p, "embed")){ do_embed = true; }
      }
+     ep_consume_semicolons(p);
     }
     
     if ( ep_maybe_id(p, "struct") )
@@ -493,7 +515,12 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname)
       }
      }
      
-     print_struct_meta(printer, type_name, members);
+     if (do_info){
+      print_struct_meta(printer, type_name, members);
+     }
+     if (do_embed){
+      print_struct_embed(printer, type_name, members);
+     }
     } else if (ep_maybe_id(p, "union")) {
      //-NOTE(kv) ;meta_parse_union
      arrayof<Meta_Union_Member> members = {};
@@ -515,7 +542,9 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname)
       parse_cpp_union_member(p, member);
      }
      
-     print_union_meta(printer, type_name, members, discriminator_type);
+     if (do_info) {
+      print_union_meta(printer, type_name, members, discriminator_type);
+     }
     } else if ( ep_maybe_id(p, "enum") ) {
      //-NOTE(kv) enum
      arrayof<String> enum_values = {};
@@ -528,7 +557,9 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname)
       ep_eat_until_char_simple(p, ',');  // NOTE(kv): the ending comma is optional, but we for it becuz that's how I roll
      }
      
-     print_enum_meta(printer, type_name, enum_values);
+     if (do_info){
+      print_enum_meta(printer, type_name, enum_values);
+     }
     } else { p->fail(); }
    }
   }
@@ -548,13 +579,11 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname)
 }
 
 function b32
-introspect_main(arrayof<File_Name_Data> source_files)
-{
+introspect_main(arrayof<File_Name_Data> source_files) {
  b32 ok = true;
  Scratch_Block scratch;
  
- for_i1(index,0,source_files.count)
- {
+ for_i1(index,0,source_files.count) {
   if (!ok) { break; }
   
   auto source_file = source_files[index];

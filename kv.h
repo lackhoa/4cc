@@ -105,7 +105,7 @@ typedef float    v1;
 #define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
 #define line_unique_var               PP_Concat(i, __LINE__)
-#define for_times(TIMES)   for(i32 line_unique_var=0; line_unique_var<TIMES; line_unique_var++)
+#define for_repeat(TIMES)   for(i32 line_unique_var=0; line_unique_var<TIMES; line_unique_var++)
 
 #ifdef KV_NO_FORCE_INLINE
 # define force_inline inline
@@ -753,8 +753,7 @@ absolute(v3 v)
 }
 
 force_inline v3
-V3(v2 xy, v1 z)
-{
+V3(v2 xy, v1 z) {
  v3 result;
  result.xy = xy;
  result.z = z;
@@ -3418,6 +3417,7 @@ string_concat(String_u8 *dst, String src)
 #define string_u16_litexpr(s) SCu16((u16*)(s), (u64)(sizeof(s)/2 - 1))
 
 #define string_expand(s) (i32)(s).size, (char*)(s).str
+#define strexpand string_expand
 
 global_const String empty_string = {(u8*)"", 0};
 
@@ -4924,7 +4924,7 @@ copy_file(String from_filename, String to_filename, b32 fail_if_exists)
  return gb_file_copy(from, to, fail_if_exists);
 }
 
-inline b32
+function b32
 remove_file(String filename)
 {
  u8 buffer[512];
@@ -4933,12 +4933,8 @@ remove_file(String filename)
  return gb_file_remove(filenamec);
 }
 
-
-
-// NOTE(kv): Just fopen, but let's keep this so we can switch it out later.
-function FILE *
-open_file(String name, char *mode)
-{
+inline FILE *
+fopen(String name, char *mode) {
  make_temp_arena(scratch);
  FILE *file = fopen(to_cstring(scratch, name), mode);
  return(file);
@@ -4951,6 +4947,14 @@ close_file(FILE *file)
   fclose(file);
  }
 }
+
+#if OS_WINDOWS
+function b32
+path_is_directory(char *path){
+ DWORD attr = GetFileAttributes(path);
+ return (attr & FILE_ATTRIBUTE_DIRECTORY);
+}
+#endif
 
 function b32
 write_entire_file(String filename, void *data, u64 size)
@@ -4997,7 +5001,7 @@ function String
 read_entire_file(Arena *arena, String filename)
 {
  String result = {};
- FILE *file = open_file(filename, "rb");
+ FILE *file = fopen(filename, "rb");
  if (file != 0)
  {
   result = read_entire_file_handle(arena, file);
@@ -5025,20 +5029,16 @@ enum Printer_Type
 
 typedef void Print_Function(void *userdata, char *format, va_list args);
 
-struct Printer
-{
+struct Printer {
  Printer_Type type;
- union
- {
-  struct
-  {
+ union {
+  struct {
    u8  *base;
    i32  used;
    i32  cap;
   };
   FILE *FILE;
-  struct
-  {
+  struct {
    void *userdata;
    Print_Function *print_function;
   };

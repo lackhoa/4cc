@@ -8,13 +8,14 @@
 #define ED_API_USER_STORE_GLOBAL 1
 #define AD_IS_DRIVER 0
 #include "4coder_game_shared.h"
+#include "4coder_game_shared.meta.h"
 #define ED_PARSER_BUFFER 1
 #include "4ed_kv_parser.cpp"
 #include "ad_stb_parser.cpp"
 
-#include "framework.h"
 #include "framework_driver_shared.h"
-#include "framework_driver_shared.meta.h"
+#include "framework.h"
+#include "game_modeler.meta.h"
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 #include "game_api.cpp"
@@ -367,8 +368,7 @@ game_load(Game_State *state, App *app, String filename,
     {//-NOTE Vertices
      eat_id(p, "vertices");
      brace_begin;
-     while(p->ok_)
-     {
+     while(p->ok_) {
       if ( maybe_char(p, '}') ) {
        break;
       }
@@ -410,6 +410,23 @@ game_load(Game_State *state, App *app, String filename,
 
 //~
 
+function Bone &
+get_right_bone(Bone &bone) {
+ auto &p = painter;
+ Bone *result = &bone;
+ for_i32(bone_index, 0, p.bone_list.count) {
+  auto &boneR = p.bone_list[bone_index];
+  if (boneR.is_right &&
+      (boneR.name == bone.name))
+  {
+   result = &boneR;
+   break;
+  }
+ }
+ 
+ return *result;
+}
+
 function void
 render_data(Game_State &state)
 {
@@ -418,8 +435,7 @@ render_data(Game_State &state)
  auto &m = state.modeler;
  auto &p = painter;
  argb inactive_color = argb_dark_green;
- for_i32(vindex,1,m.vertices.count)
- {
+ for_i32(vindex,1,m.vertices.count) {
   Vertex_Data &vert = m.vertices[vindex];
   Bone &bone = p.bone_list[vert.bone_index];
   u32 prim_id = vertex_prim_id(vindex);
@@ -428,8 +444,8 @@ render_data(Game_State &state)
    v3 pos = mat4vert(mat, vert.pos);
    indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
   }
-  if (vert.symx)
-  {//NOTE: Draw the right side (TODO @speed stupid object lookup)
+  if (vert.symx) {
+   //NOTE: Draw the right side (TODO @speed stupid object lookup)
    set_in_block(painter.is_right, 1);
    auto &boneR = get_right_bone(bone);
    mat4 &mat = boneR.transform;
@@ -438,8 +454,7 @@ render_data(Game_State &state)
   }
  }
  
- for_i32(curve_index,1,m.curves.count)
- {
+ for_i32(curve_index,1,m.curves.count) {
   Bezier_Data &curve = m.curves[curve_index];
   auto &bone = p.bone_list[curve.bone_index];
   u32 prim_id = curve_prim_id(curve_index);
@@ -459,8 +474,7 @@ render_data(Game_State &state)
    {
     draw(bone.transform*draw_bez, prim_id);
    }
-   if (curve.symx)
-   {
+   if (curve.symx) {
     set_in_block(painter.is_right, 1);
     auto &boneR = get_right_bone(bone);
     draw(boneR.transform*draw_bez, prim_id);
@@ -483,6 +497,23 @@ game_render(game_render_params)
                app, target, viewport_id, mouse); 
  }
  render_data(*state);
+ {//NOTE(kv) Render cursor in the middle of the screen
+  v2 center_v2 = {};
+  v2 points_v2[] = {
+   center_v2,
+   center_v2 + centimeter*V2(-1,-1),
+   center_v2 + centimeter*V2(+1,-1),
+  };
+  v3 points[alen(points_v2)];
+  mat4 &camera_to_obj = painter.obj_to_camera.inverse;
+  for_i32(i,0,alen(points)){
+   points[i] = camera_to_obj*V3(points_v2[i],0);
+  }
+  {
+   hl_block_color(argb_blue);
+   fill3(points[0], points[1], points[2]);
+  }
+ }
 }
 
 function game_init_return
@@ -506,7 +537,7 @@ game_init(game_init_params)
    init_dynamic(m.active_prims, &state->malloc_base_allocator, 16);
   }
   {
-   Modeler_Edit_History &h = m.history;
+   Modeler_History &h = m.history;
    // NOTE(kv): We might want to erase edit history, so put it in an arena.
    h.arena     = make_arena(&state->malloc_base_allocator);
    h.inited    = true;
@@ -874,6 +905,18 @@ is_v3_key(Key_Code code)
  return false;
 }
 
+inline b32
+fui_slider_is_discrete(Fui_Slider *slider) {
+ return (slider->type == Basic_Type_i1 || 
+         slider->type == Basic_Type_i2 ||
+         slider->type == Basic_Type_i3 ||
+         slider->type == Basic_Type_i4);
+}
+
+inline b32
+fui_slider_is_continuous(Fui_Slider *slider) {
+ return !fui_slider_is_discrete(slider);
+}
 
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 function game_update_return
@@ -884,7 +927,8 @@ game_update(game_update_params)
  
  auto &modeler = state->modeler;
  b32 game_active = active_viewport_id != 0;
- b32 game_or_fui_active = (game_active != 0 || fui_is_active());
+ b32 fui_active = fui_is_active();
+ b32 game_or_fui_active = (game_active || fui_active);
  
  b32 should_animate_next_frame = false;
  if (game_or_fui_active) {
@@ -901,6 +945,11 @@ game_update(game_update_params)
   .Game_Input_Public = input_public,
  };
  Game_Input *input = &input_value;
+ v1 dt = input->frame.animation_dt;
+ {
+  state->time += dt;
+  if (state->time >= 1000.0f) { state->time -= 1000.0f; }
+ }
  hot_prim_id = input->frame.hot_prim_id;
  {//NOTE(kv) Compute key direction
   compute_direction_helper(input, Key_Code_L, 0, +1);
@@ -912,6 +961,7 @@ game_update(game_update_params)
   compute_direction_helper(input, Key_Code_Period, 3, +1);
   compute_direction_helper(input, Key_Code_Comma,  3, -1);
  }
+ v4 input_dir = input->direction.dir;
  
  //NOTE(kv) Cheesy single keyboard event per-frame,
  // since we're not a fighting game, it'd probably work ok anyway.
@@ -953,33 +1003,27 @@ game_update(game_update_params)
 #define V2_CASES \
 case Key_Code_L: case Key_Code_H: \
 case Key_Code_K: case Key_Code_J:
+#define V3_CASES  V2_CASES case Key_Code_O: case Key_Code_I:
+#define V4_CASES  V3_CASES case Key_Code_Period: case Key_Code_Comma:
  
-#define V3_CASES \
-V2_CASES \
-case Key_Code_O: case Key_Code_I:
- 
+ u32 mods = input->active_mods;
  for_i32(key_stroke_index, 0, key_strokes.count){
   //NOTE(kv) Handle keystroke event
   Key_Code key_code = key_strokes[key_stroke_index];
-  u32 mods = input->active_mods;
   if (game_active){
    if (mods == 0){
     switch (key_code){
-     V2_CASES
-     {
+     V2_CASES{
       if (state->keyboard_selection_mode){
        //...
-      }
-      else if (selected_prim_id()){
+      }else if (selected_prim_id()){
        //...
       }else{
        update_camera(update_target_cam, input->direction);
       }
      }break;
      
-     case Key_Code_O:
-     case Key_Code_I:
-     {
+     case Key_Code_O: case Key_Code_I: {
       update_camera(update_target_cam, input->direction);
      }break;
      
@@ -991,24 +1035,17 @@ case Key_Code_O: case Key_Code_I:
        game_save(state, app, false);
       }
      }break;
-     
      case Key_Code_U:{ modeler_undo(modeler); }break;
      case Key_Code_R:{ modeler_redo(modeler); }break;
      case Key_Code_Escape:{ modeler_exit_edit_undo(modeler); }break;
-     
-     case Key_Code_S:{
-      //TODO(kv) This is not how I envision the flow control, man!
-      // The vertex should handle the input.
-      if (selecting_vertex(modeler)){
-       toggle_boolean(modeler.selection_spanning);
-      }
-     }break;
-     
-     case Key_Code_X:{
-      update_target_cam->theta *= -1.f;
-     }break;
+     case Key_Code_X:{ update_target_cam->theta *= -1.f; }break;
      case Key_Code_Z:{
       update_target_cam->theta = .5f - update_target_cam->theta;
+     }break;
+     case Key_Code_S:{
+      if (selected_prim_id(modeler)){
+       toggle_boolean(modeler.selection_spanning);
+      }
      }break;
     }
    }else if (mods == Key_Mod_Sft){
@@ -1016,12 +1053,13 @@ case Key_Code_O: case Key_Code_I:
      case Key_Code_U:{
       game_load(state, app, state->autosave_path);
      }break;
-     
      case Key_Code_0: { update_target_cam->roll = {}; }break;
     }
    }else if (mods == Key_Mod_Ctl){
-    if (is_v3_key(key_code)){
-     update_camera(update_target_cam, input->direction);
+    switch(key_code){
+     V3_CASES{
+      update_camera(update_target_cam, input->direction);
+     }
     }
    }else if (mods == Key_Mod_Alt){
     switch (key_code){
@@ -1031,8 +1069,34 @@ case Key_Code_O: case Key_Code_I:
      case Key_Code_0: { update_target_cam->pan = {}; }break;
     }
    }
-  }else if(fui_is_active()){
-   if (mods == Key_Mod_Ctl){
+  }else if (fui_is_active()){
+   if (mods == 0){
+    switch(key_code){
+     V4_CASES{
+      Fui_Slider *slider = fui_active_slider;
+      if (fui_slider_is_discrete(slider)) {
+       i4 value;
+       block_copy(&value, slider+1, slider_value_size(slider));
+       //NOTE(kv) Discrete control for integer
+       for_i32(index,0,4) {
+        value.e[index] += i32(input_dir[index]);
+       }
+       
+       if (slider->flags & Slider_Clamp_01) {
+        for_i32(index,0,4) {
+         macro_clamp01i(value.e[index])
+        }
+       }
+       
+       block_copy(slider+1, &value, slider_value_size(slider));
+      }
+     }break;
+     
+     case Key_Code_Tab:{
+      toggle_boolean(fui_v4_zw_active);
+     }break;
+    }
+   }else if (mods == Key_Mod_Ctl){
     switch(key_code){
      V3_CASES{
       update_camera(update_target_cam, input->direction);
@@ -1048,7 +1112,116 @@ case Key_Code_O: case Key_Code_I:
   }
  }
  
- v4 input_dir = input->direction.dir;
+ Camera update_cam = {};
+ setup_camera(&update_cam, update_target_cam);
+ 
+ if (input_dir != v4{}){
+  //-NOTE(kv) Handling continuous directional input
+  if (fui_active){
+   //NOTE(kv) ;UpdateFuislider
+   Fui_Slider *slider = fui_active_slider;
+   if (fui_slider_is_continuous(slider)){
+    // NOTE(kv) we copy the slider value out, pretend it's a v4
+    // operate on it, and put it back in again.
+    v4 value;
+    block_copy(&value, slider+1, slider_value_size(slider));
+    if (mods == 0 || (mods == Key_Mod_Sft)){
+     if (input_dir.y != 0.f &&
+         slider->type == Basic_Type_v1){
+      value.x = (input_dir.y > 0) ? 1.f : 0.f; 
+     }else{
+      if (fui_v4_zw_active &&
+          slider->type == Basic_Type_v4) {
+       input_dir.zw = input_dir.xy;
+       input_dir.xy = {};
+      }
+      if (slider->flags & Slider_Camera_Aligned) {
+       input_dir = noz( update_cam.forward*input_dir );
+      }
+      v1 delta_scale = slider->delta_scale;
+      if (delta_scale == 0) { delta_scale = 0.2f; }
+      v4 delta = delta_scale * dt * input_dir;
+      if (mods == Key_Mod_Sft) { delta *= 10.f; }
+      value += delta;
+      
+      if (slider->flags & Slider_Clamp_X)  {value.x = 0;}
+      if (slider->flags & Slider_Clamp_Y)  {value.y = 0;}
+      if (slider->flags & Slider_Clamp_Z)  {value.z = 0;}
+      if (slider->flags & Slider_NOZ)      { value.xyz = noz(value.xyz); }
+      if (slider->flags & Slider_Clamp_01) {
+       for_i32(index,0,4) { macro_clamp01(value.v[index]); }
+      }
+     }
+    }
+    block_copy(slider+1, &value, slider_value_size(slider));
+   }
+  }else if (game_active){
+   if (u32 sel_prim = selected_prim_id(modeler)){
+    Modeler &m = modeler;
+    Modeler_History &h = m.history;
+    if (get_selected_type(m) == Prim_Vertex){
+     // NOTE: Selecting a vertex
+     Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
+     v3 direction = key_direction(input, 0, false);
+     if (direction != v3{}) {
+      // NOTE(kv): Update vertex position
+      direction.z = 0.f;
+      direction = noz( mat4vec(update_cam.forward, direction) );
+      v1 delta_scale = 0.2f;
+      v3 delta = delta_scale * dt * direction;
+      
+      arrayof<Vertex_Index> influenced_verts;
+      init_static(influenced_verts, scratch, m.active_prims.count);
+      for_i32(index,0,m.active_prims.count) {
+       Vertex_Index vi = vertex_index_from_prim_id(m.active_prims[index]);
+       influenced_verts.push(vi);
+      }
+      
+      Modeler_Edit edit = Modeler_Edit{
+       .type      = ME_Vert_Move,
+       .Vert_Move = {
+        .verts=influenced_verts,
+        .delta=delta,
+       },
+      };
+      {
+       b32 merged = false;
+       Modeler_Edit *current_edit = get_current_edit(h);
+       // NOTE(kv): edits_can_be_merged is a guardrail for now
+       if (current_edit &&
+           m.change_uncommitted &&
+           edits_can_be_merged(*current_edit, edit))
+       {
+        merged = true;
+        modeler_undo(m);
+        edit = *current_edit;
+        edit.Vert_Move.delta += delta;
+       }
+       if (!merged) {
+        edit.Vert_Move.verts = influenced_verts.copy(&h.arena);
+       }
+       apply_new_edit(m, edit);
+      }
+     }
+    }else if(get_selected_type(m) == Prim_Curve){
+#if 0
+     // NOTE(kv) Curve update stub
+     Bezier_Data &sel = modeler.curves[sel_index0];
+     {
+      i1 direction = i1( key_direction(input, 0, true).x );
+      v1 delta = i2f6(direction);
+      if (delta != 0) { for_i32(index,0,4) { sel.radii[index] += delta; } }
+      DEBUG_VALUE(sel.radii);
+     }
+#endif
+    }
+   }
+  }
+ }
+ 
+#undef V2_CASES
+#undef V3_CASES
+#undef V4_CASES
  
  if (input->mouse.press_l){
   // NOTE: Left click handling
@@ -1092,19 +1265,7 @@ case Key_Code_O: case Key_Code_I:
   DEBUG_VALUE(selected_index);
  }
  
- v1 dt = input->frame.animation_dt;
- {
-  state->time += dt;
-  if (state->time >= 1000.0f) { state->time -= 1000.0f; }
- }
- 
  Arena *permanent_arena = &state->permanent_arena;
- 
- Camera update_camera_value = {};
- Camera *update_cam = &update_camera_value;
- {// NOTE: camera init
-  setup_camera(update_cam, update_target_cam);
- }
  
  {//-NOTE: Presets
   if( just_pressed(input, Key_Code_Space) ) {
@@ -1116,92 +1277,17 @@ case Key_Code_O: case Key_Code_I:
   }
  }
  
- if ( fui_is_active() )
- {// NOTE: ;UpdateFuislider
-  if (just_pressed(input, Key_Code_Tab)) {
-   toggle_boolean(fui_v4_zw_active);
-  }
-  
-  Fui_Slider *slider = fui_active_slider;
-  if (slider->type == Basic_Type_i1 || 
-      slider->type == Basic_Type_i2 ||
-      slider->type == Basic_Type_i3 ||
-      slider->type == Basic_Type_i4)
-  {
-   i4 value;
-   block_copy(&value, slider+1, slider_value_size(slider));
-   v4 direction = key_direction_v4(input, 0, true);
-   for_i32(index,0,4) {
-    value.e[index] += i32(direction[index]);
-   }
-   
-   if (slider->flags & Slider_Clamp_01) {
-    for_i32(index,0,4) {
-     macro_clamp01i(value.e[index])
-    }
-   }
-   
-   block_copy(slider+1, &value, slider_value_size(slider));
-  } else {
-   v4 value;
-   block_copy(&value, slider+1, slider_value_size(slider));
-   
-   b32 j_pressed = just_pressed(input, Key_Code_J);
-   b32 k_pressed = just_pressed(input, Key_Code_K);
-   if (slider->type == Basic_Type_v1 && (j_pressed || k_pressed)) {
-    if (j_pressed) { value.x = 0.f; }
-    if (k_pressed) { value.x = 1.f; }
-   } else {
-    b32 shifted;
-    v4 direction = key_direction_v4(input, 0, false, &shifted);
-    // NOTE: Switch active pair
-    if (fui_v4_zw_active &&
-        slider->type == Basic_Type_v4) {
-     direction.zw = direction.xy;
-     direction.xy = {};
-    }
-    if (slider->flags & Slider_Camera_Aligned) {
-     direction = noz( update_cam->forward*direction );
-    }
-    v1 delta_scale = slider->delta_scale;
-    if (delta_scale == 0) { delta_scale = 0.2f; }
-    v4 delta = delta_scale * dt * direction;
-    if (shifted) { delta *= 10.f; }
-    value += delta;
-    
-    if (slider->flags & Slider_Clamp_X)  {value.x = 0;}
-    if (slider->flags & Slider_Clamp_Y)  {value.y = 0;}
-    if (slider->flags & Slider_Clamp_Z)  {value.z = 0;}
-    
-    if (slider->flags & Slider_NOZ) {
-     value.xyz = noz(value.xyz);
-    }
-    
-    if (slider->flags & Slider_Clamp_01) {
-     for_i32(index,0,4) {
-      macro_clamp01(value.v[index])
-     }
-    }
-   }
-   
-   block_copy(slider+1, &value, slider_value_size(slider));
-  }
- }
- 
- {
+ if (input->debug_camera_on) {
   auto cam = update_target_cam;
-  if (input->debug_camera_on) {
-   DEBUG_NAME("camera(theta,phi,distance)", V3(cam->theta, cam->phi, cam->distance));
-   DEBUG_NAME("camera(pan)", cam->pan);
-  }
+  DEBUG_NAME("camera(theta,phi,distance)", V3(cam->theta, cam->phi, cam->distance));
+  DEBUG_NAME("camera(pan)", cam->pan);
  }
  
- for_i32(index, 0, GAME_VIEWPORT_COUNT)
- {// NOTE: Set viewport presets to useful values
+ for_i32(index, 0, GAME_VIEWPORT_COUNT) {
+  // NOTE: Set viewport presets to useful values
   Viewport *viewport = &state->viewports[index];
   
-  if (viewport->preset == viewport->last_preset)
-  {
+  if (viewport->preset == viewport->last_preset) {
    if (viewport->preset == 0) { viewport->last_preset = 2; }
    else { viewport->last_preset = 0; }
   }
@@ -1214,82 +1300,8 @@ case Key_Code_O: case Key_Code_I:
  {//;update_modeler
   auto &m = state->modeler;
   auto &h = m.history;
-  
-  if ( game_or_fui_active && !kb_handled )
-  {// NOTE: Handling input
-   Prim_Type sel_type = prim_id_type(selected_prim_id(m));
-   if ( sel_type ) {
-    i32 sel_index0 = prim_id_to_index(selected_prim_id(m));
-    if( sel_type == Prim_Vertex )
-    {// NOTE: Selecting a vertex
-     Vert_Index sel_index = Vert_Index{sel_index0};
-     if( just_pressed(input, Key_Code_S) ) {
-      toggle_boolean(modeler.selection_spanning);
-     } else {
-      v3 direction = key_direction(input, 0, false);
-      if (direction != v3{}) {
-       // NOTE(kv): Update vertex position
-       direction.z = 0.f;
-       direction = noz( mat4vec(update_cam->forward, direction) );
-       v1 delta_scale = 0.2f;
-       v3 delta = delta_scale * dt * direction;
-       
-       arrayof<Vert_Index> influenced_verts;
-       init_static(influenced_verts, scratch, m.active_prims.count);
-       for_i32(index,0,m.active_prims.count) {
-        Vert_Index vi = vertex_index_from_prim_id(m.active_prims[index]);
-        influenced_verts.push(vi);
-       }
-       
-       Modeler_Edit edit = Modeler_Edit{
-        .type      = ME_Vert_Move,
-        .Vert_Move = {
-         .verts=influenced_verts,
-         .delta=delta,
-        },
-       };
-       {
-        b32 merged = false;
-        Modeler_Edit *current_edit = get_current_edit(h);
-        // NOTE(kv): edits_can_be_merged is a guardrail for now
-        if (current_edit &&
-            m.change_uncommitted &&
-            edits_can_be_merged(*current_edit, edit))
-        {
-         merged = true;
-         modeler_undo(m);
-         edit = *current_edit;
-         edit.Vert_Move.delta += delta;
-        }
-        if (!merged) {
-         edit.Vert_Move.verts = influenced_verts.copy(&h.arena);
-        }
-        apply_new_edit(m, edit);
-       }
-      }
-     }
-     DEBUG_VALUE(modeler.selection_spanning);
-    }
-    else if( sel_type == Prim_Curve )
-    {// NOTE: curve update
-     Bezier_Data &sel = modeler.curves[sel_index0];
-     {
-      // TODO @incomplete
-      i1 direction = i1( key_direction(input, 0, true).x );
-      v1 delta = i2f6(direction);
-      if (delta != 0) {
-       for_i32(index,0,4) {
-        sel.radii[index] += delta;
-       }
-      }
-      DEBUG_VALUE(sel.radii);
-     }
-    }
-   }
-  }
-  
   {//-NOTE: Drawing GUI
-   if ( is_selecting_type(m, Prim_Curve) ) {
+   if (get_selected_type(m) == Prim_Curve){
     //;draw_curve_info
     ImGui::Begin("curve data", 0);
     Bezier_Data curve = get_selected_curve(m);
@@ -1301,9 +1313,9 @@ case Key_Code_O: case Key_Code_I:
      for_i32(enum_index, 0, type.enum_members.count) {
       b32 is_selected = (enum_index == curve_type_index);
       char *name = to_cstring(scratch, type.enum_members[enum_index].name);
-      if ( ImGui::Selectable(name, is_selected) ) {
+      if (ImGui::Selectable(name, is_selected)){
       }
-      if (is_selected) {
+      if (is_selected){
        ImGui::SetItemDefaultFocus();
       }
      }

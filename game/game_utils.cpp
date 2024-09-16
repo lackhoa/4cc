@@ -326,4 +326,25 @@ u64 cy_end   = ad_rdtsc(); \
 v1 NAME = v1(f64(cy_end-cy_begin) / f64(ITERATIONS)); \
 DEBUG_VALUE(NAME) ;
 
+function Bezier
+get_uline(Patch const&pat, v1 u) {
+ Bezier result;
+ for_i32(index,0,4) {
+  result[index] = bezier_sample(get_column(pat, index), u);
+ }
+ return result;
+}
+
+function Bezier
+get_vline(Patch const&pat, v1 v) {
+ Bezier result;
+ for_i32(index,0,4)
+ {
+  result[index] = bezier_sample(pat.e[index], v);
+ }
+ return result;
+}
+
+
+
 //~ EOF;

@@ -5,7 +5,7 @@
 #define FUI_FAST_PATH 1
 #include "framework_driver_shared.h"
 #include "game_fui.h"
-#include "game_draw.cpp"
+//#include "game_draw.cpp"
 #include "game_anime.cpp"
 #include "game_utils.cpp"
 #include "game_body.cpp"
@@ -2323,6 +2323,52 @@ render_reference_images(b32 full_alpha)
   }
  }
 }
+
+function mat4
+camera_view_matrix(Camera *camera, b32 orthographic)
+{
+ mat4 result;
+ v1 focal = camera->focal_length;
+ v1 n = camera->near_clip;
+ v1 f = camera->far_clip;
+ 
+ //NOTE: Compute the depth from z
+ //NOTE: revserse z
+ result = mat4{{
+   1,0, 0,0,
+   0,1, 0,0,
+   0,0,-1,0,
+   0,0, 0,1,
+  }} * camera->inverse;
+ 
+ if (orthographic)
+ {// NOTE
+  //NOTE: All objects depth are at the origin's depth
+  v1 d = camera->distance;
+  mat4 ortho = {{
+    focal,0,0,0,
+    0,focal,0,0,
+    0,0,2*d/(f-n),-d*(f+n)/(f-n),
+    0,0,0,d,
+   }};
+  result = ortho*result;
+ }
+ else
+ {//NOTE
+  mat4 perspectiveT = {{
+    focal, 0,     0,            0,
+    0,     focal, 0,            0,
+    0,     0,     (n+f)/(f-n), -2*f*n/(f-n),
+    0,     0,     1,            0,
+   }};
+  
+  result = perspectiveT*result;
+ }
+ 
+ return result;
+}
+
+
 
 render_movie_return
 render_movie(render_movie_params)

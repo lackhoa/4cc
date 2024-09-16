@@ -123,17 +123,17 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 
 	File_List file_list = system_get_file_list(scratch, hot);
 	end_temp(temp);
-
+ 
 	File_Info **one_past_last = file_list.infos + file_list.count;
-
+ 
 	lister_begin_new_item_set(app, lister);
-
+ 
 	hot = push_hot_directory(app, lister->arena);
 	if (hot.str != 0){
 		Lister_Prealloced_String empty_string_prealloced = lister_prealloced(empty_string);
 		for (File_Info **info = file_list.infos;
-			 info < one_past_last;
-			 info += 1){
+       info < one_past_last;
+       info += 1){
 			if (!HasFlag((**info).attributes.flags, FileAttribute_IsDirectory)) continue;
 			String8 filename = push_stringfz(lister->arena, "%.*s/",
                                             string_expand((**info).filename));

@@ -179,9 +179,9 @@ ep_get_token_delta(Ed_Parser *p, i32 delta)
  Token *result = 0;
  if (delta < 0) {
   i32 inverse_delta = -delta;
-  for_times(inverse_delta) { token_it_dec(&p->it); }
+  for_repeat(inverse_delta) { token_it_dec(&p->it); }
   result = ep_get_token(p);
-  for_times(inverse_delta) { token_it_inc(&p->it); }
+  for_repeat(inverse_delta) { token_it_inc(&p->it); }
  } else {
   todo_incomplete;
  }
@@ -421,8 +421,7 @@ ep_eat_preprocessor(Ed_Parser *p, String string)
 }
 
 function String
-ep_id(Ed_Parser *p, String test_id={})
-{
+ep_id(Ed_Parser *p, String test_id={}) {
  String result = {};
  // NOTE(kv): keywords are also identifier-like, but idk about this test
  auto kind = ep_get_kind(p);
@@ -531,8 +530,7 @@ ep_eat_until_char(Ed_Parser *p, char &c) {
 }
 
 function String
-ep_capture_until_char(Ed_Parser *p, char terminator)
-{
+ep_capture_until_char(Ed_Parser *p, char terminator) {
  kv_assert(p->Token_Gen_Type == TG_String);
  String result = {};
  if (p->ok_) {
@@ -550,10 +548,8 @@ ep_capture_until_char(Ed_Parser *p, char terminator)
  return result;
 }
 
-
 function void
-ep_eat_until_char_simple(Ed_Parser *p, char c)
-{
+ep_eat_until_char_simple(Ed_Parser *p, char c) {
  while ( p->ok_ ) {
   if ( ep_maybe_char(p, c) ) {
    break;

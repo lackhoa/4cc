@@ -590,13 +590,13 @@ smi_append_emit(Arena *arena, Action_List *list, Emit_Rule *emit){
 #if 0
 internal void
 CHECK_PIN_LIST(Field_Pin_List *list){
-    i1 counter = 0;
-    for (Field_Pin *pin = list->first;
-         pin != 0;
-         pin = pin->next){
-        counter += 1;
-    }
-    Assert(counter == list->count);
+ i1 counter = 0;
+ for (Field_Pin *pin = list->first;
+      pin != 0;
+      pin = pin->next){
+  counter += 1;
+ }
+ Assert(counter == list->count);
 }
 #else
 #define CHECK_PIN_LIST(x)
@@ -2651,82 +2651,82 @@ opt_condition_is_eof_only(Transition_Case condition){
             Input_Set inputs = node->inputs;
             if (inputs.count > 1 || inputs.inputs[0] != smi_eof){
                 result = false;
-                break;
-            }
-        }
-    }
-    return(result);
+    break;
+   }
+  }
+ }
+ return(result);
 }
 
 internal Keyword_Layout
 opt_key_layout(Arena *arena, Keyword_Set keywords, i1 slot_count, u64 seed){
-    Keyword_Layout layout = {};
-    slot_count = clamp_min(keywords.count + 1, slot_count);
-    layout.seed = seed;
-    layout.hashes = push_array_zero(arena, u64, slot_count);
-    layout.contributed_error = push_array_zero(arena, u64, slot_count);
-    layout.slots = push_array_zero(arena, Keyword*, slot_count);
-    layout.slot_count = slot_count;
-    for (Keyword *keyword = keywords.first;
-         keyword != 0;
-         keyword = keyword->next){
-        u64 hash = lexeme_hash(seed, keyword->lexeme.str, keyword->lexeme.size);
-        i1 first_index = (hash%slot_count);
-        i1 index = first_index;
-        
-        Keyword *keyword_insert = keyword;
-        u64 contributed_error = 0;
-        
-        for (;;){
-            if (layout.slots[index] == 0){
-                layout.hashes[index] = hash;
-                layout.contributed_error[index] = contributed_error;
-                layout.slots[index] = keyword_insert;
-                break;
-            }
-            else{
-                if (contributed_error > layout.contributed_error[index]){
-                    Swap(u64, hash, layout.hashes[index]);
-                    Swap(Keyword*, keyword_insert, layout.slots[index]);
-                    Swap(u64, contributed_error, layout.contributed_error[index]);
-                }
-            }
-            index += 1;
-            contributed_error += 1;
-            if (index >= slot_count){
-                index = 0;
-            }
-            if (index == first_index){
-                InvalidPath;
-            }
-        }
+ Keyword_Layout layout = {};
+ slot_count = clamp_min(keywords.count + 1, slot_count);
+ layout.seed = seed;
+ layout.hashes = push_array_zero(arena, u64, slot_count);
+ layout.contributed_error = push_array_zero(arena, u64, slot_count);
+ layout.slots = push_array_zero(arena, Keyword*, slot_count);
+ layout.slot_count = slot_count;
+ for (Keyword *keyword = keywords.first;
+      keyword != 0;
+      keyword = keyword->next){
+  u64 hash = lexeme_hash(seed, keyword->lexeme.str, keyword->lexeme.size);
+  i1 first_index = (hash%slot_count);
+  i1 index = first_index;
+  
+  Keyword *keyword_insert = keyword;
+  u64 contributed_error = 0;
+  
+  for (;;){
+   if (layout.slots[index] == 0){
+    layout.hashes[index] = hash;
+    layout.contributed_error[index] = contributed_error;
+    layout.slots[index] = keyword_insert;
+    break;
+   }
+   else{
+    if (contributed_error > layout.contributed_error[index]){
+     macro_swap(hash, layout.hashes[index]);
+     macro_swap(keyword_insert, layout.slots[index]);
+     macro_swap(contributed_error, layout.contributed_error[index]);
     }
-    i1 max_run_length = 0;
-    i1 run_length = 0;
-    for (i1 i = 0; i < slot_count; i += 1){
-        if (layout.slots[i] == 0){
-            run_length = 0;
-        }
-        else{
-            run_length += 1;
-            layout.error_score += run_length;
-            max_run_length = Max(max_run_length, run_length);
-        }
-    }
-    i1 total_run_length = run_length;
-    for (i1 i = 0; i < slot_count; i += 1){
-        if (layout.slots[i] == 0){
-            break;
-        }
-        else{
-            layout.error_score += run_length;
-            total_run_length += 1;
-            max_run_length = Max(max_run_length, total_run_length);
-        }
-    }
-    layout.max_single_error_score = max_run_length;
-    layout.iterations_per_lookup = (f32)layout.error_score/(f32)layout.slot_count;
-    return(layout);
+   }
+   index += 1;
+   contributed_error += 1;
+   if (index >= slot_count){
+    index = 0;
+   }
+   if (index == first_index){
+    InvalidPath;
+   }
+  }
+ }
+ i1 max_run_length = 0;
+ i1 run_length = 0;
+ for (i1 i = 0; i < slot_count; i += 1){
+  if (layout.slots[i] == 0){
+   run_length = 0;
+  }
+  else{
+   run_length += 1;
+   layout.error_score += run_length;
+   max_run_length = Max(max_run_length, run_length);
+  }
+ }
+ i1 total_run_length = run_length;
+ for (i1 i = 0; i < slot_count; i += 1){
+  if (layout.slots[i] == 0){
+   break;
+  }
+  else{
+   layout.error_score += run_length;
+   total_run_length += 1;
+   max_run_length = Max(max_run_length, total_run_length);
+  }
+ }
+ layout.max_single_error_score = max_run_length;
+ layout.iterations_per_lookup = (f32)layout.error_score/(f32)layout.slot_count;
+ return(layout);
 }
 
 internal u64

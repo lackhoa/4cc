@@ -125,8 +125,7 @@ DEBUG_VALUE_inner(char *scope, char *name, v3 v, argb color=0)
 }
 
 inline void
-DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0)
-{
+DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0) {
  Debug_Entry entry = {};
  entry.scope=scope;
  entry.name=name;
@@ -139,7 +138,7 @@ DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0)
 //~ NOTE: Game
 
 #if !AD_IS_DRIVER
-introspect(category=embedded)
+introspect(embed);
 struct Game_Input_Public {
  Key_Mods active_mods;
  b8      *key_states;
@@ -148,6 +147,16 @@ struct Game_Input_Public {
  b32 debug_camera_on;
  Mouse_State mouse;
 };
+
+#if 0
+#define Game_Input_Public_Embedding
+union {
+ struct {
+  Key_Mods active_mods;
+ };
+ Game_Input_Public Game_Input_Public;
+};
+#endif
 
 struct Game_ImGui_State {
  ImGuiContext* ctx;
