@@ -147,7 +147,7 @@ view_get_buffer_rect(Thread_Context *tctx, Models *models, View *view){
     Rect_f32 region = Rf32(view->panel->rect_full);
     if (models->buffer_region != 0){
         Rect_f32 rect = region;
-        Rect_f32 sub_region = Rf32(V2(0, 0), rect2_dim(rect));
+        Rect_f32 sub_region = Rf32(V2(0, 0), get_dim(rect));
         App app = {};
         app.tctx = tctx;
         app.cmd_context = models;
@@ -334,7 +334,7 @@ view_move_view_to_cursor(Thread_Context *tctx, Models *models, View *view, Buffe
     Editing_File *file = view->file;
     Face *face = file_get_face(models, file);
     Rect_f32 rect = view_get_buffer_rect(tctx, models, view);
-    Vec2_f32 view_dim = rect2_dim(rect);
+    Vec2_f32 view_dim = get_dim(rect);
     
     Layout_Function *layout_func = file_get_layout_func(file);
     
@@ -386,7 +386,7 @@ view_move_cursor_to_view(Thread_Context *tctx, Models *models, View *view, Buffe
     Editing_File *file = view->file;
     Face *face = file_get_face(models, file);
     Rect_f32 rect = view_get_buffer_rect(tctx, models, view);
-    Vec2_f32 view_dim = rect2_dim(rect);
+    Vec2_f32 view_dim = get_dim(rect);
     
     Layout_Function *layout_func = file_get_layout_func(file);
     

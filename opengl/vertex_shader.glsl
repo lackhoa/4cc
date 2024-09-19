@@ -10,53 +10,46 @@ out Fragment_Data
 #if WRITE_PRIM_ID
  u32 prim_id;
 #else
-#    if IS_FIRST_PASS || IS_SECOND_PASS
+#  if IS_FIRST_PASS || IS_SECOND_PASS
  v4 color;
-#    else
+#  else
  flat v4 color;
  v3 uvw;
-#    endif
+#  endif
 #endif
 } vs_out;
 
 void main(void)
 {
- v4 world_pos = V4(vattr_pos, 1.0);
- world_pos    = uniform_object_transform*world_pos;
+ v4 world_pos = uniform_object_transform*V4(vattr_pos, 1.0);
  
- mat4 viewT = uniform_view_transform;
- gl_Position = viewT * world_pos;
+ mat4 sfw = uniform_screen_from_world;
+ gl_Position = sfw * world_pos;
  
 #if IS_FIRST_PASS || IS_SECOND_PASS
- {
-  if (uniform_overlay)
-  {
-   gl_Position.z = -gl_Position.w;  //NOTE: z=-1 IS the near-clip plane, so the shader really is the right place to do this.
-  }
-  else
-  {
-   v4 offsetted = world_pos;
-   v3 camz = uniform_camera_axes[2];
-   offsetted.xyz -= vattr_depth_offset * camz;
-   offsetted = viewT * offsetted;
-   gl_Position.z = offsetted.z * gl_Position.w / offsetted.w;
-  }
+ if (uniform_overlay) {
+  gl_Position.z = -gl_Position.w;  //NOTE: z=-1 IS the near-clip plane, so the shader really is the right place to do this.
+ } else {
+  v4 offsetted = world_pos;
+  v3 camz = uniform_camera_axes[2];
+  offsetted.xyz -= vattr_depth_offset * camz;
+  offsetted = sfw * offsetted;
+  gl_Position.z = offsetted.z * gl_Position.w / offsetted.w;
  }
- 
-#    if WRITE_PRIM_ID
+#  if WRITE_PRIM_ID
  vs_out.prim_id    = vattr_prim_id;
-#    else
+#  else
  vs_out.color.rgba = vattr_color.bgra;
-#    endif
+#  endif
  
 #else
  // NOTE: Blit image
- gl_Position.z = -gl_Position.w+1e-3;  // NOTE: overlay, but we want indicators to shine through
-#    if WRITE_PRIM_ID
+ gl_Position.z = -gl_Position.w+1e-3;  //NOTE(kv) We want indicators to shine through, so there's an offset.
+#  if WRITE_PRIM_ID
  vs_out.prim_id = vattr_prim_id;
-#    else
+#  else
  vs_out.uvw        = vattr_uvw;
  vs_out.color.rgba = vattr_color.bgra;
-#    endif
+#  endif
 #endif
 }

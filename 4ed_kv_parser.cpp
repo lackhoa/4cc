@@ -221,8 +221,7 @@ ep_print_token(Ed_Parser *p, Arena *arena)
 }
 
 function i64
-ep_get_pos(Ed_Parser *p)
-{
+ep_get_pos(Ed_Parser *p) {
  if (Token *token = ep_get_token(p)) {
   return token->pos;
  } else { return 0; }

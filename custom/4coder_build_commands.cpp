@@ -12,7 +12,7 @@ push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
     Temp_Memory restore_point = begin_temp(arena);
     String8 base_name = push_buffer_base_name(app, arena, buffer);
     b32 is_match = string_match(filename, base_name);
-    end_temp(restore_point);
+ end_temp(restore_point);
  if ( !is_match )
  {
   result = push_stringz(arena, path_dirname(filename));
@@ -20,27 +20,27 @@ push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
  return(result);
 }
 
-global String standard_build_filename_array[] = 
-{
- str8_lit("kv-build.py"),
- str8_lit("build.py"),
- str8_lit("kv-build.sh"),
- str8_lit("build.sh"),
- str8_lit("Makefile"),
+global String standard_build_filename_array[] =  {
+ strlit("kv-build.py"),
+ strlit("kv-build.bat"),
+ strlit("build.py"),
+ strlit("kv-build.sh"),
+ strlit("build.sh"),
+ strlit("Makefile"),
 #if OS_WINDOWS
- str8_lit("build.bat"),
+ strlit("build.bat"),
 #endif
 };
 
-global String standard_build_cmd_string_array[] = 
-{
-  str8_lit("kv-build.py"),
-  str8_lit("build.py"),
-  str8_lit("kv-build.sh"),
-  str8_lit("build.sh"),
-  str8_lit("make"),
+global String standard_build_cmd_string_array[] =  {
+ strlit("kv-build.py"),
+ strlit("kv-build.bat"),
+ strlit("build.py"),
+ strlit("kv-build.sh"),
+ strlit("build.sh"),
+ strlit("make"),
 #if OS_WINDOWS
-  str8_lit("build"),
+ strlit("build"),
 #endif
 };
 

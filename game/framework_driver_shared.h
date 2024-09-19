@@ -19,14 +19,6 @@ X(v3,pivot)    \
  X_Camera_Data(X_Field_Type_Name)
 };
 
-struct Viewport {
- i1 preset;
- i1 last_preset;
- Camera_Data camera;
- Camera_Data target_camera;
- // ;viewport_frame_arena @frame_arena_init
- Arena render_arena;
-};
 
 struct Bezier {
  v3 e[4];
@@ -91,14 +83,13 @@ global char *global_debug_scope;
 #define DEBUG_TEXT(TEXT)         DEBUG_VALUE_inner(global_debug_scope, TEXT, 0.f)
 //~
 
-struct Camera
-{
+struct Camera {
  union {
   mat4i transform;
   struct {
-   mat4 forward;   // NOTE: 3x3 Columns are camera axes
+   mat4 world_from_cam;   // NOTE: 3x3 Columns are camera axes
    union {
-    mat4 inverse;  // NOTE: 3x3 Rows are camera axes
+    mat4 cam_from_world;  // NOTE: 3x3 Rows are camera axes
     struct {v4 x,y,z,w;};
    };
   };
@@ -149,53 +140,35 @@ framework_storage b32 debug_frame_time_on;
 framework_storage u32 draw_cycle_counter;
 framework_storage v1  default_fvert_delta_scale;
 
-enum Poly_Flag
-{
- Poly_Viz     = 0x1,  //NOTE: this has to be 1 for compatibility with old code
- Poly_Line    = 0x2,
- Poly_Overlay = 0x4,
-};
-typedef u32 Poly_Flags;
-
-enum Line_Flag
-{
- Line_Overlay  = 0x1,
- Line_Straight = 0x2,
- Line_No_SymX  = 0x4,
- 
- Line_Null     = 0x80,
-};
-typedef u32 Line_Flags;
-
-struct Line_Params
-{
- v1 nslice_per_meter;
- v4 radii;
- argb color;
- v1 visibility;
- v1 alignment_threshold;
- v1 depth_offset;
- Line_Flags flags;
-};
-
-struct Bone
-{
+struct Bone {
  String name;
  mat4i transform;
  b32 is_right;
 };
 
-//NOTE: This is a convenient global store. See @init_painter
-struct Painter  
-{
+#include "game_draw.h"
+
+struct Viewport {
+ i1 preset;
+ i1 last_preset;
+ Camera_Data camera;
+ Camera_Data target_camera;
+ // ;viewport_frame_arena @frame_arena_init
+ Arena render_arena;
+ v2 clip_radius;
+};
+
+//NOTE(kv) This is a convenient global store.
+//NOTE(kv) See @init_painter
+struct Painter {
  Render_Target *target;
- Viewport *viewport;
+ struct Viewport *viewport;
  v2 mouse_viewp;
  u32 selected_obj_id;
- Camera *camera;
- mat4  view_transform;  // see @camera_view_matrix
- mat4i obj_to_camera;
- v1    meter_to_pixel;
+ Camera camera;
+ mat4  view_from_worldT;  // see @get_view_from_worldT
+ mat4i cam_from_boneT;
+ v1    meter_to_pixel_;
  v1   profile_score;  //TODO: @Cleanup axe this?
  b32  symx;
  argb fill_color;
@@ -203,11 +176,13 @@ struct Painter
  v1 line_depth_offset;
  v1 line_radius_unit;
  Line_Params line_params;
+ Fill_Params fill_params;
  i32 viz_level;
  b32 ignore_radii;
  b32 ignore_alignment_threshold;
  b32 painting_disabled;
  u32 draw_prim_id;
+ struct Modeler *modeler;
  
  b32 is_right;
  arrayof<Bone>   bone_list;
@@ -255,9 +230,10 @@ send_bez_v3v2_func(strlit(#name), strlit(#p0_name), d0, d3, strlit(#p3_name))
 
 #define render_movie_return void
 #define render_movie_params \
-Arena *arena, Arena *scratch, \
-Viewport &viewport, v1 state_time, b32 references_full_alpha, \
-App *app, Render_Target *render_target, i1 viewport_id, Mouse_State mouse
+Arena *arena, Arena *scratch,  Render_Config *render_config, \
+Viewport *viewport, i1 viewport_index, \
+v1 state_time, b32 references_full_alpha, \
+App *app, Render_Target *render_target, v2 mouse_viewp, Modeler *modeler
 
 render_movie_return render_movie(render_movie_params);
 void driver_update(Viewport *viewports);
@@ -265,13 +241,13 @@ void driver_update(Viewport *viewports);
 function void
 set_bone_transform(mat4i const&transform) {
  Painter *p = &painter;
- p->obj_to_camera = invert(p->camera->transform) * transform;
+ p->cam_from_boneT = invert(p->camera.transform) * transform;
  push_object_transform_to_target(p->target, cast(mat4*)&transform.m);
 }
 
 function v3
 camera_object_position() {
- v3 result = get_bone_transform().inv * camera_world_position(painter.camera);
+ v3 result = get_bone_transform().inv * camera_world_position(&painter.camera);
  return result;
 }
 

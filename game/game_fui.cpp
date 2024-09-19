@@ -1,12 +1,10 @@
 #include "game_fui.h"
 
 global b32 fui_v4_zw_active;
-
 global u32 slider_cycle_counter;
 
 force_inline i32
-slider_value_size(Fui_Slider *slider)
-{
+slider_value_size(Fui_Slider *slider) {
  return(get_basic_type_size(slider->type));
 }
 
@@ -15,8 +13,7 @@ global Fui_Slider *fui_active_slider;
 global String      fui_active_slider_string;
 
 PACK_BEGIN
-struct Line_Map_Entry
-{
+struct Line_Map_Entry {
  u32 linum;
  u32 offset;  // NOTE: We only have 65k of data, but can expand by enforcing alignment.
 }
@@ -77,8 +74,7 @@ fast_fval_inner(Basic_Type type, void *init_value,
   
   b32 is_vertex = (options.flags & Slider_Vertex);
   b32 is_vector = (options.flags & Slider_Vector);
-  if (is_vertex || is_vector)
-  {
+  if (is_vertex || is_vector) {
    options.flags |= Slider_Camera_Aligned;
    if(options.delta_scale == 0.f) {
     options.delta_scale = default_fvert_delta_scale;
@@ -365,25 +361,21 @@ fui_handle_slider(fui_handle_slider_params)
       }
      }
      
-     for_i32(index,0,component_count)
-     {
-      i32 eat_result = ep_eat_until_char(p, ",)");
-      if (index < component_count-1) {
-       if (eat_result == 2) {
-        // NOTE: early closing paren
-        p->set_ok(false);
-        break;
-       }
-       else { ep_eat_token(p); }
+     for_i32(index,0,component_count) {
+      if (index<component_count-1){
+       ep_eat_until_char(p, ",");
+      }else{
+       ep_eat_until_char(p, ")");
       }
      }
     }
-    slider_value_range.max = ep_get_pos(p);
     parse_ok = p->ok_;
+    if (p->ok_){
+     slider_value_range.max = ep_get_token_delta(p,-1)->pos;
+    }
    }
    
-   if (parse_ok)
-   {
+   if (parse_ok) {
     fui_save_value(slider);
     fui_set_active_slider(slider, at_string);
     //NOTE

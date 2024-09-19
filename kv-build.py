@@ -29,22 +29,21 @@ meta_build_level  = 1
 imgui_build_level = 1
 #
 asan_on = 0
-COMPILE_GAME_WITH_MSVC = 1
+COMPILE_GAME_WITH_MSVC = 0
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
 AD_PROFILE = 0
 KV_SLOW    = 0
-STOP_DEBUGGING_BEFORE_BUILD = 1
+STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the reload itself
 
 
 
 # NOTE: Override configuration ############################
 #asan_on          = 1
+#ed_build_level   = 1
 #meta_build_level = 0
-ed_build_level    = 1
-meta_build_level = 0
-COMPILE_GAME_WITH_MSVC = 0
+STOP_DEBUGGING_BEFORE_BUILD = 0
 
 
 # Your config end ############################
@@ -66,7 +65,7 @@ if SHIP_MODE:
     asan_on = 0
 
 HOME = os.path.expanduser("~")
-OUT_DEBUG=pjoin(HOME, '4coder')  # NOTE: for debug build
+OUTDIR=pjoin(HOME, '4coder')
 FCODER_ROOT=pjoin(HOME, '4ed')
 CODE=pjoin(FCODER_ROOT, "code")
 NON_SOURCE=pjoin(FCODER_ROOT, "4coder-non-source")
@@ -79,11 +78,6 @@ DOT_EXE='.exe' if OS_WINDOWS else ''
 DOT_OBJ='.obj' if OS_WINDOWS else '.o'
 remedybg = f"remedybg.exe"
 CPP_VERSION      = "-std:c++20"
-if OS_WINDOWS:
-    if TRACE_COMPILE_TIME:
-        CALL_CL = f'{CODE}/call_vcvarsall.bat -nologo && cl'  # NOTE: slow!
-    else:
-        CALL_CL = f'{HOME}/msvc/setup.bat && cl'
 
 warning_list = [
     #"-Werror", "-Wextra",
@@ -265,13 +259,6 @@ def run_compiler(compiler, input_files, output_file, debug_mode,
 
     compiler_exe = "clang-cl" if is_clang else "cl"
 
-    maybe_vcvarsall = ""
-    if is_msvc:
-        if asan_on:
-            maybe_vcvarsall = f"{CODE}/call_vcvarsall.bat && "
-        else:
-            maybe_vcvarsall = f"{HOME}/msvc/setup.bat && "
-
     debug_flag = ""
     if debug_mode:
         debug_flag = "-Zi -Ob1"  # NOTE "-Zi" means that you produce a separate pdb fie
@@ -320,7 +307,7 @@ def run_compiler(compiler, input_files, output_file, debug_mode,
         compiler_flags += f" -W4 -WX {warnings}"
 
     command = f"\
-{maybe_vcvarsall} {maybe_ccache} {compiler_exe} \
+{maybe_ccache} {compiler_exe} \
 {"-c" if compile_only else ""} {input_files}    \
 {asan_flag}  \
 {"" if link_only else compiler_flags} \
@@ -350,6 +337,7 @@ def autogen():
                                     f"{CODE}/platform_win32/win32_4ed_functions.cpp",
                                     f"{CODE}/custom/4coder_token.cpp",
                                     f"{CODE}/4coder_game_shared.h",
+                                    f"{CODE}/4ed_render_target.cpp",
                                    ])
             run(f"ad_meta.exe {input_files}")
 
@@ -407,7 +395,6 @@ def build_game():
 try:
     if asan_on:
         print("[asan_on]")
-    OUTDIR = OUT_DEBUG
 
     os.chdir(f'{OUTDIR}')
     print(f'Workdir: {os.getcwd()}')
@@ -416,7 +403,7 @@ try:
         if OS_WINDOWS:
             run(f"{remedybg} start-debugging")
         else:
-            run(pjoin(OUT_DEBUG, f'4ed{DOT_EXE}'))
+            run(pjoin(OUTDIR, f'4ed{DOT_EXE}'))
     else:
         #-NOTE(kv): Compile the project---------------------------
 
@@ -495,11 +482,10 @@ try:
 
         if SHIP_MODE:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")
-            for outdir in [OUT_DEBUG]:
-                symlink_force(pjoin(CODE_KV, "config.4coder"),   pjoin(outdir, "config.4coder"))
-                symlink_force(pjoin(CODE_KV, "theme-kv.4coder"), pjoin(outdir, 'themes', "theme-kv.4coder"))
-                symlink_force(pjoin(CODE, "project.4coder"),  pjoin(outdir, "project.4coder"))
-                symlink_force(pjoin(CODE, "data"), pjoin(outdir, "data"))
+            symlink_force(pjoin(CODE_KV, "config.4coder"),   pjoin(OUTDIR, "config.4coder"))
+            symlink_force(pjoin(CODE_KV, "theme-kv.4coder"), pjoin(OUTDIR, 'themes', "theme-kv.4coder"))
+            symlink_force(pjoin(CODE, "project.4coder"),     pjoin(OUTDIR, "project.4coder"))
+            symlink_force(pjoin(CODE, "data"),               pjoin(OUTDIR, "data"))
 
 except Exception as e:
     print(f'Error: {e}')

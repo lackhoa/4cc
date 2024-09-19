@@ -82,20 +82,20 @@
 
 
 /* Types */
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef int32_t  i32;
-typedef int64_t  i64;
-typedef int8_t   b8;
-typedef int32_t  b32;
-typedef uint32_t u32;
-typedef uint64_t u64;
+typedef uint8_t   u8;
+typedef uint16_t  u16;
+typedef int32_t   i32;
+typedef int64_t   i64;
+typedef int8_t    b8;
+typedef int32_t   b32;
+typedef uint32_t  u32;
+typedef uint64_t  u64;
 typedef uintptr_t umm; // NOTE(kv): "umm" stands for "memory model"
 typedef i64       imm;
 
-typedef float    r32;
-typedef float    f32;
-typedef float    v1;
+typedef float r32;
+typedef float f32;
+typedef float v1;
 /* Types: end */
 
 #define for_i1(VAR, INITIAL, FINAL)  for(i32 VAR=INITIAL; VAR<FINAL; VAR++)
@@ -1185,34 +1185,26 @@ contains(rect2 rect, v2 point)
          (point.x <  rect.x1) && (point.y <  rect.y1));
 }
 
-inline rect2
-rect_get_radius(v2 radius)
-{
-    return {-radius, radius};
-}
+inline rect2 rect2_radius(v2 radius) { return {-radius, radius}; }
 
-inline v2
-rect2_dim(rect2 rect)
-{
-    return (rect.max - rect.min);
-}
+inline v2 get_dim(rect2 rect) { return (rect.max - rect.min); }
+inline v2 get_radius(rect2 rect) { return 0.5f*(rect.max - rect.min); }
 
 inline rect2
 rect2_center_radius(v2 center, v2 radius)
 {
-    macro_clamp_min(radius.x,0);
-    macro_clamp_min(radius.y,0);
-    rect2 result;
-    result.min = center - radius;
-    result.max = center + radius;
-    return result;
+ macro_clamp_min(radius.x,0);
+ macro_clamp_min(radius.y,0);
+ rect2 result;
+ result.min = center - radius;
+ result.max = center + radius;
+ return result;
 }
 
 inline rect2
-rect2_center_dim(v2 center, v2 dim)
-{
-    rect2 result = rect2_center_radius(center, 0.5f*dim);
-    return result;
+rect2_center_dim(v2 center, v2 dim) {
+ rect2 result = rect2_center_radius(center, 0.5f*dim);
+ return result;
 }
 
 inline rect2
@@ -1250,71 +1242,31 @@ struct Rect3
     v3 max;
 };
 
-inline Rect3
-rectRadius(v3 radius)
-{
-    return {-radius, radius};
-}
-
-inline Rect3
-rectCenterRadius(v3 center, v3 radius)
-{
-    kv_assert((radius.x >= 0) && (radius.y >= 0) && (radius.z >= 0));
-    Rect3 result;
-    result.min = center - radius;
-    result.max = center + radius;
-    return result;
-}
-
 inline b32
 contains(Rect3 rect, v3 p)
 {
     b32 result = ((p.x >= rect.min.x)
-                  && (p.y >= rect.min.y)
-                  && (p.z >= rect.min.z)
-                  && (p.x < rect.max.x)
-                  && (p.y < rect.max.y)
-                  && (p.z < rect.max.z));
-    return result;
-}
-
-inline Rect3
-rectCenterDim(v3 center, v3 dim)
-{
-    Rect3 result = rectCenterRadius(center, 0.5f*dim);
-    return result;
-}
-
-inline Rect3
-get_dim(v3 dim)
-{
-    Rect3 result = rectCenterDim(v3{}, dim);
-    return result;
+               && (p.y >= rect.min.y)
+               && (p.z >= rect.min.z)
+               && (p.x < rect.max.x)
+               && (p.y < rect.max.y)
+               && (p.z < rect.max.z));
+ return result;
 }
 
 inline v3
-getRectCenter(Rect3 rect)
-{
-    v3 result;
-    result = 0.5f*(rect.min + rect.max);
-    return result;
-}
-
-inline v3
-get_radius(Rect3 rect)
-{
-    v3 result;
-    result = 0.5f * (rect.max - rect.min);
-    return result;
+get_radius(Rect3 rect) {
+ v3 result = 0.5f * (rect.max - rect.min);
+ return result;
 }
 
 inline b32
 overlap(Rect3 a, Rect3 b)
 {
-    b32 separate = ((a.max.x <= b.min.x) || (a.min.x >= b.max.x)
-                    || (a.max.y <= b.min.y) || (a.min.y >= b.max.y)
-                    || (a.max.z <= b.min.z) || (a.min.z >= b.max.z));
-    return !separate;
+ b32 separate = ((a.max.x <= b.min.x) || (a.min.x >= b.max.x)
+                 || (a.max.y <= b.min.y) || (a.min.y >= b.max.y)
+                 || (a.max.z <= b.min.z) || (a.min.z >= b.max.z));
+ return !separate;
 }
 
 inline v3
@@ -5448,6 +5400,6 @@ struct File_Name_Data {
 #define tagged_by(discriminator)
 #define m_variant(tag)  //NOTE(kv) Use to tag union member with the variant it corresponds to
 
-#define implying(a,b)  !a || b
+#define implies(a,b)  !a || b
 
 //~EOF

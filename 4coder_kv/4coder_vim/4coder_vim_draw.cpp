@@ -220,7 +220,7 @@ vim_draw_cursor(App *app, View_ID view, b32 is_active_view, Buffer_ID buffer, Te
 					vim_nxt_cursor_pos = rect.p1;
 				}
 				
-				Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - rect2_dim(rect), rect2_dim(rect));
+				Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - get_dim(rect), get_dim(rect));
                 // note(kv): this draws the normal cursor
 				draw_rect_fcolor(app, cursor_rect, roundness, fcolor_id(defcolor_cursor, cursor_sub_id));
 				

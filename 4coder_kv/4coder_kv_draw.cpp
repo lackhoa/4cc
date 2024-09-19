@@ -165,15 +165,15 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  v1 line_height = face_metrics.line_height;
  v1 digit_advance = face_metrics.decimal_digit_advance;
  
- // NOTE(kv): This is for the filebar?
+ // NOTE(kv) This is for the filebar?
  
  if (vim_lister_running)
- {// NOTE(kv): Watch out for the vim bottom lister!
+ {// NOTE(kv) Watch out for the vim bottom lister!
   clip.y1 -= 2.f*line_height;  // NOTE(kv): if you don't do this the filebar is gonna eat into the bottom lister.
   clip.y1 -= clamp_min(vim_cur_lister_offset,0);
  }
  
- {// NOTE: Clear
+ {// NOTE(kv) Clear
   draw_rect_fcolor(app, clip, 0.f, fcolor_id(defcolor_back));
  }
  
@@ -186,18 +186,16 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
   clip = pair.a;
  }
  
- if ( view_active )
+ if (view_active)
  {// Draw borders
   rect2 global_rect = global_get_screen_rectangle(app);
   FColor border_color = fcolor_id(defcolor_margin);
-  if(clip.x0 > global_rect.x0)
-  {
+  if(clip.x0 > global_rect.x0) {
    rect2_Pair border_pair = rect_split_left_right(clip, 2.f);
    draw_rect_fcolor(app, border_pair.a, 0.f, border_color);
    clip = border_pair.b;
   }
-  if(clip.x1 < global_rect.x1)
-  {
+  if(clip.x1 < global_rect.x1) {
    rect2_Pair border_pair = rect_split_left_right_neg(clip, 2.f);
    draw_rect_fcolor(app, border_pair.b, 0.f, border_color);
    clip = border_pair.a;
@@ -244,17 +242,14 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  {// NOTE(kv): kv_render_buffer(app, frame, view, face_id, buffer, text_layout_id, clip);
   // NOTE(kv): originally from "byp_render_buffer"
   ProfileScope(app, "render buffer");
-  rect2 prev_clip2 = draw_set_clip(app, clip);  // todo I don't even think this is necessary?
+  rect2 prev_clip2 = draw_set_clip(app, clip);
   defer( draw_set_clip(app, prev_clip2); );
   
   Scratch_Block scratch(app);
-  if ( i1 viewport = buffer_viewport_id(app, buffer) )
-  {
+  if (i1 viewport = buffer_viewport_id(app, buffer)){
    Render_Target *target = get_view_render_target(app, view);
-   render_game(app, target, viewport, frame);
-  }
-  else
-  {
+   render_game(app, target, viewport, frame, clip);
+  }else{
    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
    
    u64 cursor_roundness_100 = def_get_config_u64(app, vars_intern_lit("cursor_roundness"));

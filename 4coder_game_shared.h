@@ -193,10 +193,12 @@ struct game_update_return {
  b32 should_animate_next_frame;
  arrayof<String> game_commands;
 };
-#define game_update_params Game_State *state, App *app, i1 active_viewport_id, Game_Input_Public &input_public, Image_Load_Info image_load_info
+#define game_update_params \
+Game_State *state, App *app, i1 active_viewport_id, \
+Game_Input_Public &input_public, Image_Load_Info image_load_info
 //
 #define game_render_return void
-#define game_render_params Game_State *state, App *app, Render_Target *target, i1 viewport_id, Mouse_State mouse
+#define game_render_params Game_State *state, App *app, Render_Target *target, i1 viewport_id, Mouse_State mouse, rect2 clip_box
 //
 #define game_viewport_update_return b32
 #define game_viewport_update_params Game_State *state, i1 viewport_id, v1 dt

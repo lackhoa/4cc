@@ -24,8 +24,6 @@ vtable->fui_editor_ui_loop = fui_editor_ui_loop;
 vtable->view_set_buffer_named = view_set_buffer_named;
 vtable->seek_line_col = seek_line_col;
 vtable->push_image = push_image;
-vtable->draw_get_clip = draw_get_clip;
-vtable->draw_configure = draw_configure;
 vtable->switch_to_mouse_panel = switch_to_mouse_panel;
 vtable->mouse_viewport_id = mouse_viewport_id;
 vtable->get_confirmation_from_user = get_confirmation_from_user;
@@ -37,6 +35,8 @@ vtable->token_it_read = token_it_read;
 vtable->token_it_inc_all = token_it_inc_all;
 vtable->token_it_inc = token_it_inc;
 vtable->token_it_dec = token_it_dec;
+vtable->set_y_up = set_y_up;
+vtable->draw_new_group = draw_new_group;
 }
 #undef STATIC_LINK_API
 #endif
@@ -64,8 +64,6 @@ fui_editor_ui_loop = vtable->fui_editor_ui_loop;
 view_set_buffer_named = vtable->view_set_buffer_named;
 seek_line_col = vtable->seek_line_col;
 push_image = vtable->push_image;
-draw_get_clip = vtable->draw_get_clip;
-draw_configure = vtable->draw_configure;
 switch_to_mouse_panel = vtable->switch_to_mouse_panel;
 mouse_viewport_id = vtable->mouse_viewport_id;
 get_confirmation_from_user = vtable->get_confirmation_from_user;
@@ -77,6 +75,8 @@ token_it_read = vtable->token_it_read;
 token_it_inc_all = vtable->token_it_inc_all;
 token_it_inc = vtable->token_it_inc;
 token_it_dec = vtable->token_it_dec;
+set_y_up = vtable->set_y_up;
+draw_new_group = vtable->draw_new_group;
 }
 #undef DYNAMIC_LINK_API
 #endif

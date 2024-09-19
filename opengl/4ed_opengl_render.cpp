@@ -1,6 +1,6 @@
 global GLuint DEFAULT_FRAMEBUFFER = 0;
 
-global GLint uniform_view_transform      = 0;
+global GLint uniform_screen_from_world      = 0;
 global GLint uniform_camera_axes         = 1;
 global GLint uniform_unused              = 2;
 global GLint uniform_object_transform    = 3;
@@ -170,7 +170,7 @@ R"foo(
 #define V3 vec3
 #define V4 vec4
 
-layout(location=0) uniform mat4 uniform_view_transform;
+layout(location=0) uniform mat4 uniform_screen_from_world;
 layout(location=1) uniform mat3 uniform_camera_axes;
 layout(location=2) uniform v1   uniform_unused;
 layout(location=3) uniform mat4 uniform_object_transform;
@@ -194,7 +194,7 @@ out v1 half_thickness;
 
 void main(void)
 {
-    gl_Position = uniform_view_transform * V4(vertex_pos, 1, 1);
+    gl_Position = uniform_screen_from_world * V4(vertex_pos, 1, 1);
     color.rgba = vertex_color.bgra;
 
     uvw = vertex_uvw;
@@ -390,12 +390,9 @@ global u32 ogl_program_editor;
 internal v1 * ogl_cast_mat4(mat4 *matrix) { return cast(v1*)matrix; }
 internal v1 * ogl_cast_mat3(mat3 *matrix) { return cast(v1*)matrix; }
 
-struct OGL_Program_State
-{
+struct OGL_Program_State {
  Render_Group *group;
- //mat4 *object_transform;
  mat3 camera_axes;
- //mat4 *view_transform;
  b32 is_overlay;
 };
 
@@ -417,24 +414,23 @@ ogl__vertex_attributes()
  }
 }
 
-internal void
-ogl__uniform_mat4(GLint uniform, mat4 *mat)
-{
+function void
+ogl__uniform_mat4(GLint uniform, mat4 *mat) {
  glUniformMatrix4fv(uniform, 1, GL_TRUE, ogl_cast_mat4(mat));
 }
 
 // @Ugh The only reason why this function exist is because
 // every time you switch program, you gotta send it uniforms...
 internal void
-ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *view_transform)
+ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *screen_from_world)
 {
  glUseProgram(program);
  Render_Group *group = s->group;
  
  {// NOTE: Uniforms
 #define ACTIVE(uniform)  ogl__is_uniform_active(program, #uniform)
-  if( ACTIVE(uniform_view_transform) ) {
-   ogl__uniform_mat4(uniform_view_transform, view_transform);
+  if( ACTIVE(uniform_screen_from_world) ) {
+   ogl__uniform_mat4(uniform_screen_from_world, screen_from_world);
   }
   if (program == ogl_program_image)
   {
@@ -469,7 +465,7 @@ ogl__begin_program_editor(Render_Target *target, Render_Group *group)
  {// NOTE: Uniforms
   mat4 screen_transform;
   {
-   v1 y_sign = (group->y_is_up) ? +1.f : -1.f;
+   v1 y_sign = (group->y_up) ? +1.f : -1.f;
    v2 dst_dim = V2(v1(target->width), v1(target->height));
    // NOTE(kv): Scale to normalized device coordinate
    v1 a = 2.f/dst_dim.x;
@@ -485,7 +481,7 @@ ogl__begin_program_editor(Render_Target *target, Render_Group *group)
     }};
   }
   
-  glUniformMatrix4fv(uniform_view_transform, 1, GL_TRUE, ogl_cast_mat4(&screen_transform));
+  glUniformMatrix4fv(uniform_screen_from_world, 1, GL_TRUE, ogl_cast_mat4(&screen_transform));
  }
  
  ogl__vertex_attributes();
@@ -878,10 +874,13 @@ ogl_render(i2 mousep_ydown, i32 window_id)
  for (Render_Group *group = render_state.group_first;
       group != 0;
       group = group->next)
- {//NOTE: Each render group corresponds to one view/panel (for the game at least)
+ {//-NOTE: Each render group corresponds to one view/panel (for the game at least)
   Render_Target *target = get_render_target(group);
   b32 is_game = render_group_is_game(group);
-  b32 has_poly = (group->entry_first->poly.vertex_list.count > 0);
+  b32 has_poly = 0;
+  if(group->entry_first){
+   has_poly = (group->entry_first->poly.vertex_list.count > 0);
+  };
   if (target->window_id == window_id &&
       (is_game || has_poly))
   {
@@ -892,7 +891,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     rect2i box = Ri32(group->clip_box);
     dstx = box.x0;
     dsty = box.y0; 
-    if (!group->y_is_up)
+    if (!group->y_up)
     { 
      dsty = target->height - box.y1;
     };  // NOTE; For editor
@@ -913,7 +912,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     macro_clamp_min(dst_dimx, 0); macro_clamp_min(dst_dimy, 0);
    }
    
-   if( render_group_is_game(group) )
+   if( is_game )
    {//~NOTE: Render for the game!
     b32 should_draw_prim_id = false;
     v2 view_mousep = {};
@@ -945,35 +944,34 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     
     //
     mat4 object_transform = mat4_identity;
-    mat4 view_transform;
+    mat4 screen_from_world;
     OGL_Program_State state_value = {.group = group};
     auto state = &state_value;
     //state->object_transform = &object_transform;
     {
-     state->camera_axes = to_mat3(group->camera_transform.forward);
+     state->camera_axes = to_mat3(group->world_from_cam);
      {
-      mat4 screen_transform;
+      mat4 screen_from_view;
       {
        // :viewport_alignment The center of the game viewport lines up with the center of the opengl viewport
        v1 sx = 2.f*group->meter_to_pixel/dst_dim.x;
        v1 sy = 2.f*group->meter_to_pixel/dst_dim.y;
-       screen_transform = mat4_scales(sx,sy,1.f);
+       screen_from_view = mat4_scales(sx,sy,1.f);
       }
       
-      view_transform = screen_transform*group->view_transform;  //NOTE: this view transform is different from the camera view transform, which is confusing?
+      screen_from_world = screen_from_view*group->view_from_world;  //NOTE: this view transform is different from the camera view transform, which is confusing?
      }
     }
     mat4 view_transform_offsetted_by_mousep;
-    if (should_draw_prim_id)
-    {
+    if (should_draw_prim_id) {
      //NOTE: We have to translate in NDC space
      mat4 translation = mat4_translate( -V3((2.f*view_mousep) / dst_dim, 0.f) );
-     view_transform_offsetted_by_mousep = translation*view_transform;
+     view_transform_offsetted_by_mousep = translation*screen_from_world;
     }
     
     {// NOTE: second pass
      {// NOTE: main rendering
-      ogl__begin_program(state, ogl_program_2, &view_transform);
+      ogl__begin_program(state, ogl_program_2, &screen_from_world);
       ogl__render_entries(group);
       ogl__end_program();
      }
@@ -994,7 +992,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     
     {//-NOTE: Render @ReferenceImage
      {// NOTE: Actually rendering
-      ogl__begin_program(state, ogl_program_image, &view_transform);
+      ogl__begin_program(state, ogl_program_image, &screen_from_world);
       ogl__render_images(group, false);
       ogl__end_program();
      }
@@ -1032,21 +1030,16 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     
     {
      Face *face = 0;
-     if (group->face_id)
-     {
+     if (group->face_id) {
       face = font_set_face_from_id(font_set, group->face_id);
      }
-     if (face) 
-     {
+     if (face)  {
       GLuint tex = face->texture;
-      if (render_state.texture_bound_at_unit0 != tex)
-      {
+      if (render_state.texture_bound_at_unit0 != tex) {
        glBindTextureUnit(0,tex);
        render_state.texture_bound_at_unit0 = tex;
       }
-     }
-     else if (!render_state.texture_bound_at_unit0)
-     {
+     } else if (!render_state.texture_bound_at_unit0) {
       Assert(render_state.fallback_texture_id != 0);
       glBindTextureUnit(0, render_state.fallback_texture_id);
       render_state.texture_bound_at_unit0 = render_state.fallback_texture_id;

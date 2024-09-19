@@ -72,6 +72,7 @@ struct Game_State {
  arrayof<String> command_queue;
  Game_ImGui_State imgui_state;
  b32 keyboard_selection_mode;
+ v2 kb_cursor_pos;
  
  b8 __padding[64];
 };

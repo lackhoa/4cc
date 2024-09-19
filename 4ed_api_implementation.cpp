@@ -2957,7 +2957,7 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
   
   Layout_Function *layout_func = file_get_layout_func(file);
   
-  v2 dim = rect2_dim(rect);
+  v2 dim = get_dim(rect);
   
   i64 line_count = buffer_line_count(buffer);
   i64 line_number = buffer_point.line_number;
@@ -3388,7 +3388,7 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i1 count, Ve
   if (group == 0 ||
       group->window_id != target->window_id)
   {
-   draw__new_group(target, 0);
+   draw_new_group(target);
    group = state.group_last;
   }
   
@@ -3512,47 +3512,47 @@ push_image(Render_Target *target, char *filename, v3 o, v3 x, v3 y, argb color, 
  *entry->image = {filename, o,x,y, color, prim_id};
 }
 
+#if 0
 // TODO(kv) Axe this from the API, just pass it in bro!
-api(ed) function rect2
-draw_get_clip(void)
-{
+function rect2
+draw_get_clip(void) {
+ rect2 result = {};
  auto &state = render_state;
- if (state.group_last)
- {
-  return state.group_last->clip_box;
+ if (state.group_last) {
+  result = state.group_last->clip_box;
  }
- else { return {}; }
+ return result;
 }
+#endif
 
-// TODO(kv): Not sure if I love the abstraction over Render_Target
-api(ed) function void
-draw_configure(Render_Target *target, Render_Config *config)
+//TODO(kv) Pretty sure we shouldn't pass a config here?
+//  Because we wanna add more information as we go.
+//  But the main PITA is the "y_up" situation.
+//  We can't change it just like that, the clip_box is also involved.
+#if 0
+/*api(ed)*/ function Render_Config *
+//draw_new_group(Render_Target *target, Render_Config *config)
 {
  auto &state = render_state;
- if (state.group_last)
- {
-  Render_Group *group = state.group_last;
-  
+ Render_Group *last_group = state.group_last;
+ if (last_group) {
   if (config->clip_box.min==v2{} &&
-      config->clip_box.max==v2{})
-  {
-   if (group->y_is_up == config->y_is_up)
-   {
-    config->clip_box = group->clip_box;
-   }
-   else
-   {
-    // NOTE: Fun times changing the clip box
-    rect2 new_clip_box = group->clip_box;
-    new_clip_box.y0 = (v1)target->height - group->clip_box.y1;
-    new_clip_box.y1 = (v1)target->height - group->clip_box.y0;
+      config->clip_box.max==v2{}) {
+   if (last_group->y_up == config->y_up) {
+    config->clip_box = last_group->clip_box;
+   } else {
+    // NOTE(kv) Fun times changing the clip box (we probably don't even use this path)
+    rect2 new_clip_box = last_group->clip_box;
+    new_clip_box.y0 = (v1)target->height - last_group->clip_box.y1;
+    new_clip_box.y1 = (v1)target->height - last_group->clip_box.y0;
     config->clip_box = new_clip_box;
    }
   }
  }
  
- draw__new_group(target, config);
+ return draw__new_group(target, config);
 }
+#endif
 
 function b32
 view_contains_mouse(App *app, View_ID view)

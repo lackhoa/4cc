@@ -108,10 +108,10 @@ get_eye_min_distance(v3 center, v1 radius, Bezier line)
  return result;
 }
 
-internal v3
+function v3
 perspective_project_non_hyperbolic(Camera *camera, v3 worldP)
 {
- v3 result = (camera->inverse * V4(worldP, 1.f)).xyz;
+ v3 result = (camera->cam_from_world * V4(worldP, 1.f)).xyz;
  v1 depth = camera->distance-result.z;
  result.xy *= (camera->focal_length / depth);
  result.z   = depth;
@@ -126,7 +126,7 @@ lp_alignment_threshold(v1 threshold)
  return result;
 }
 
-internal void
+function void
 debug_view_vector(i1 linum=__builtin_LINE())
 {
  Painter &p = painter;
@@ -170,17 +170,15 @@ plane_transform(mat4 const&mat, v3 n, v1 d)
 push_object(__VA_ARGS__); \
 defer( pop_object(); );
 
-internal mat4i &
-get_parent_transform()
-{
+function mat4i &
+get_parent_transform() {
  auto &stack = painter.bone_stack;
  i1 index = stack[stack.count-2];
  return painter.bone_list[index].transform;
 }
 
-internal mat4
-from_parent()
-{
+function mat4
+from_parent() {
  return get_bone_transform().inverse * get_parent_transform();
 }
 
@@ -299,7 +297,7 @@ get_preset()
  return painter.viewport->preset;
 }
 
-inline v3 get_camz() { return painter.camera->z.xyz; }
+inline v3 get_camz() { return painter.camera.z.xyz; }
 
 inline b32 camera_is_right() {
  return(almost_equal(get_camz().x, -1.f, 1e-2f));

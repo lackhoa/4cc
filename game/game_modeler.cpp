@@ -1,16 +1,11 @@
 //-File begin
 
-global Modeler *global_modeler;
-
-function u32
-selected_prim_id() {
- return global_modeler->selected_prim_id;
-}
+//global Modeler *global_modeler;
 
 xfunction b32
-is_prim_id_active(u32 prim_id) {
+is_prim_id_active(Modeler *m, u32 prim_id) {
  b32 result = false;
- auto &active_ids = global_modeler->active_prims;
+ auto &active_ids = m->active_prims;
  for_i1(index, 0, active_ids.count) {
   if (prim_id == active_ids[index]) {
    result = true;
@@ -21,16 +16,15 @@ is_prim_id_active(u32 prim_id) {
 }
 
 inline i32
-vertex_index_from_pointer(Vertex_Data *pointer) {
- return i32(pointer - global_modeler->vertices.items);
+vertex_index_from_pointer(Modeler *m, Vertex_Data *pointer) {
+ return i32(pointer - m->vertices.items);
 }
 
 function Vertex_Data *
-get_vertex_by_name(String name) {
+get_vertex_by_name(Modeler *m, String name) {
  Vertex_Data *result = 0;
- auto &modeler = *global_modeler;
- for_i32(vert_index, 1, modeler.vertices.count) {
-  Vertex_Data *vertex = &modeler.vertices[vert_index];
+ for_i32(vert_index, 1, m->vertices.count) {
+  Vertex_Data *vertex = &m->vertices[vert_index];
   if( vertex->name == name ) {
    result = vertex;
   }
@@ -39,16 +33,15 @@ get_vertex_by_name(String name) {
 }
 
 xfunction void
-send_vert_func(String name, v3 pos) {
+send_vert_func(Modeler *m, String name, v3 pos) {
  b32 is_new = false;
- auto &modeler = *global_modeler;
- Vertex_Data *result = get_vertex_by_name(name);
+ Vertex_Data *result = get_vertex_by_name(m, name);
  
  if (result == 0) {
   is_new = true;
-  result = &modeler.vertices.push2();
+  result = &m->vertices.push2();
   *result = {
-   .name = push_string(modeler.permanent_arena, name)
+   .name = push_string(m->permanent_arena, name)
   };
  }
  
@@ -66,33 +59,32 @@ send_vert_func(String name, v3 pos) {
 Bezier bez(v3 p0, v3 d0, v2 d3, v3 p3);
 
 xfunction b32
-send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name)
+send_bez_v3v2_func(Modeler *m, String name, String p0_name, v3 d0, v2 d3, String p3_name)
 {
  b32 ok = false;
  Bezier_Data *curve = 0;
- auto &modeler = *global_modeler;
  
  //NOTE(kv) Query the curve
- for_i32(curve_index, 1, modeler.curves.count) {
-  Bezier_Data *it = &modeler.curves[curve_index];
+ for_i32(curve_index, 1, m->curves.count) {
+  Bezier_Data *it = &m->curves[curve_index];
   if ( string_match(it->name, name) ) {
    curve = it;
   }
  }
  
  if (curve == 0) {
-  curve = &modeler.curves.push2();
+  curve = &m->curves.push2();
   *curve = {};
-  curve->name = push_string(modeler.permanent_arena, name);
+  curve->name = push_string(m->permanent_arena, name);
  }
  
- Vertex_Data *vert0 = get_vertex_by_name(p0_name);
- Vertex_Data *vert3 = get_vertex_by_name(p3_name);
+ Vertex_Data *vert0 = get_vertex_by_name(m, p0_name);
+ Vertex_Data *vert3 = get_vertex_by_name(m, p3_name);
  if (vert0 && vert3) {
   ok = true;
-  curve->p0_index = vertex_index_from_pointer(vert0);
+  curve->p0_index = vertex_index_from_pointer(m, vert0);
   curve->data.v3v2 = { .d0 = d0, .d3 = d3, };
-  curve->p3_index = vertex_index_from_pointer(vert3);
+  curve->p3_index = vertex_index_from_pointer(m, vert3);
  } else {
   DEBUG_TEXT("bezier error: cannot find vertex");
  }
@@ -122,7 +114,7 @@ clear_edit_history(Modeler_History &h)
 }
 
 function void
-apply_edit_no_history(Modeler &m, Modeler_Edit &edit0, b32 redo)
+apply_edit_no_history(Modeler *m, Modeler_Edit &edit0, b32 redo)
 {
  switch(edit0.type)
  {
@@ -132,7 +124,7 @@ apply_edit_no_history(Modeler &m, Modeler_Edit &edit0, b32 redo)
    v3 delta = redo ? edit.delta : -edit.delta;
    for_i1(index,0,edit.verts.count){
     i1 vi = edit.verts[index].v;
-    m.vertices[vi].pos += delta;
+    m->vertices[vi].pos += delta;
    }
   }break;
   
@@ -162,9 +154,9 @@ can_undo(Modeler_History &h)
 }
 //
 function b32
-modeler_undo(Modeler &m)
+modeler_undo(Modeler *m)
 {
- auto &h = m.history;
+ auto &h = m->history;
  i1 undo_index = h.redo_index - 1;
  b32 ok = (undo_index >= 0);
  if (ok) {
@@ -180,22 +172,21 @@ can_redo(Modeler_History &h) {
 }
 //
 function void
-modeler_redo(Modeler &m)
-{
- auto &h = m.history;
+modeler_redo(Modeler *m) {
+ auto &h = m->history;
  apply_edit_no_history(m, h.stack[h.redo_index], true);
  h.redo_index += 1;
 }
 
 function void
-apply_new_edit(Modeler &m, Modeler_Edit &edit)
+apply_new_edit(Modeler *m, Modeler_Edit &edit)
 {
- auto &h = m.history;
+ auto &h = m->history;
  h.stack.count = h.redo_index;
  h.stack.set_count(h.redo_index+1);  // NOTE(kv): overwrite everything after the redo
  h.stack[h.redo_index] = edit;  // NOTE(kv): push the edit on top of the stack
  modeler_redo(m);
- m.change_uncommitted = true;
+ m->change_uncommitted = true;
 }
 
 inline Modeler_Edit *
@@ -239,24 +230,24 @@ edits_can_be_merged(Modeler_Edit &edit1, Modeler_Edit &edit2)
 }
 
 function void
-modeler__reset_edit(Modeler &m) {
- m.selected_prim_id   = 0;
- m.active_prims.count = 0;
+modeler__reset_edit(Modeler *m) {
+ m->selected_prim_id   = 0;
+ m->active_prims.count = 0;
 }
 function void
-modeler_exit_edit(Modeler &m) {
+modeler_exit_edit(Modeler *m) {
  modeler__reset_edit(m);
- m.change_uncommitted = false;
+ m->change_uncommitted = false;
 }
 function void
-modeler_exit_edit_undo(Modeler &m) {
+modeler_exit_edit_undo(Modeler *m) {
  modeler__reset_edit(m);
  modeler_undo(m);
- m.change_uncommitted = false;
+ m->change_uncommitted = false;
 }
 
 inline b32
-selecting_vertex(Modeler &m) {
+selecting_vertex(Modeler *m) {
  return prim_id_type(selected_prim_id(m)) == Prim_Vertex;
 }
 

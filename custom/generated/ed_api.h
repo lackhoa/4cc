@@ -21,8 +21,6 @@
 #define ed_view_set_buffer_named_sig() void ed_view_set_buffer_named(App* app, View_ID view, String8 name)
 #define ed_seek_line_col_sig() Buffer_Seek ed_seek_line_col(i64 line, i64 col)
 #define ed_push_image_sig() void ed_push_image(Render_Target* target, char* filename, v3 o, v3 x, v3 y, argb color, u32 prim_id)
-#define ed_draw_get_clip_sig() rect2 ed_draw_get_clip(void)
-#define ed_draw_configure_sig() void ed_draw_configure(Render_Target* target, Render_Config* config)
 #define ed_switch_to_mouse_panel_sig() void ed_switch_to_mouse_panel(App* app)
 #define ed_mouse_viewport_id_sig() i1 ed_mouse_viewport_id(App* app)
 #define ed_get_confirmation_from_user_sig() b32 ed_get_confirmation_from_user(App* app, String query)
@@ -34,6 +32,8 @@
 #define ed_token_it_inc_all_sig() Token* ed_token_it_inc_all(Token_Iterator* it)
 #define ed_token_it_inc_sig() Token* ed_token_it_inc(Token_Iterator* it)
 #define ed_token_it_dec_sig() Token* ed_token_it_dec(Token_Iterator* it)
+#define ed_set_y_up_sig() void ed_set_y_up(Render_Target* target, Render_Config* config)
+#define ed_draw_new_group_sig() Render_Config* ed_draw_new_group(Render_Target* target)
 typedef b32 ed_buffer_replace_range_type(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
 typedef View_ID ed_get_active_view_type(App* app, Access_Flag access);
 typedef b32 ed_view_set_cursor_type(App* app, View_ID view_id, Buffer_Seek seek);
@@ -55,8 +55,6 @@ typedef b32 ed_fui_editor_ui_loop_type(App* app);
 typedef void ed_view_set_buffer_named_type(App* app, View_ID view, String8 name);
 typedef Buffer_Seek ed_seek_line_col_type(i64 line, i64 col);
 typedef void ed_push_image_type(Render_Target* target, char* filename, v3 o, v3 x, v3 y, argb color, u32 prim_id);
-typedef rect2 ed_draw_get_clip_type(void);
-typedef void ed_draw_configure_type(Render_Target* target, Render_Config* config);
 typedef void ed_switch_to_mouse_panel_type(App* app);
 typedef i1 ed_mouse_viewport_id_type(App* app);
 typedef b32 ed_get_confirmation_from_user_type(App* app, String query);
@@ -68,6 +66,8 @@ typedef Token* ed_token_it_read_type(Token_Iterator* it);
 typedef Token* ed_token_it_inc_all_type(Token_Iterator* it);
 typedef Token* ed_token_it_inc_type(Token_Iterator* it);
 typedef Token* ed_token_it_dec_type(Token_Iterator* it);
+typedef void ed_set_y_up_type(Render_Target* target, Render_Config* config);
+typedef Render_Config* ed_draw_new_group_type(Render_Target* target);
 struct API_VTable_ed{
 ed_buffer_replace_range_type *buffer_replace_range;
 ed_get_active_view_type *get_active_view;
@@ -90,8 +90,6 @@ ed_fui_editor_ui_loop_type *fui_editor_ui_loop;
 ed_view_set_buffer_named_type *view_set_buffer_named;
 ed_seek_line_col_type *seek_line_col;
 ed_push_image_type *push_image;
-ed_draw_get_clip_type *draw_get_clip;
-ed_draw_configure_type *draw_configure;
 ed_switch_to_mouse_panel_type *switch_to_mouse_panel;
 ed_mouse_viewport_id_type *mouse_viewport_id;
 ed_get_confirmation_from_user_type *get_confirmation_from_user;
@@ -103,6 +101,8 @@ ed_token_it_read_type *token_it_read;
 ed_token_it_inc_all_type *token_it_inc_all;
 ed_token_it_inc_type *token_it_inc;
 ed_token_it_dec_type *token_it_dec;
+ed_set_y_up_type *set_y_up;
+ed_draw_new_group_type *draw_new_group;
 };
 #if defined(STATIC_LINK_API)
 internal b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
@@ -126,8 +126,6 @@ internal b32 fui_editor_ui_loop(App* app);
 internal void view_set_buffer_named(App* app, View_ID view, String8 name);
 internal Buffer_Seek seek_line_col(i64 line, i64 col);
 internal void push_image(Render_Target* target, char* filename, v3 o, v3 x, v3 y, argb color, u32 prim_id);
-internal rect2 draw_get_clip(void);
-internal void draw_configure(Render_Target* target, Render_Config* config);
 internal void switch_to_mouse_panel(App* app);
 internal i1 mouse_viewport_id(App* app);
 internal b32 get_confirmation_from_user(App* app, String query);
@@ -139,6 +137,8 @@ internal Token* token_it_read(Token_Iterator* it);
 internal Token* token_it_inc_all(Token_Iterator* it);
 internal Token* token_it_inc(Token_Iterator* it);
 internal Token* token_it_dec(Token_Iterator* it);
+internal void set_y_up(Render_Target* target, Render_Config* config);
+internal Render_Config* draw_new_group(Render_Target* target);
 #undef STATIC_LINK_API
 #elif defined(DYNAMIC_LINK_API)
 #ifndef STORAGE_CLASS
@@ -165,8 +165,6 @@ STORAGE_CLASS ed_fui_editor_ui_loop_type *fui_editor_ui_loop;
 STORAGE_CLASS ed_view_set_buffer_named_type *view_set_buffer_named;
 STORAGE_CLASS ed_seek_line_col_type *seek_line_col;
 STORAGE_CLASS ed_push_image_type *push_image;
-STORAGE_CLASS ed_draw_get_clip_type *draw_get_clip;
-STORAGE_CLASS ed_draw_configure_type *draw_configure;
 STORAGE_CLASS ed_switch_to_mouse_panel_type *switch_to_mouse_panel;
 STORAGE_CLASS ed_mouse_viewport_id_type *mouse_viewport_id;
 STORAGE_CLASS ed_get_confirmation_from_user_type *get_confirmation_from_user;
@@ -178,6 +176,8 @@ STORAGE_CLASS ed_token_it_read_type *token_it_read;
 STORAGE_CLASS ed_token_it_inc_all_type *token_it_inc_all;
 STORAGE_CLASS ed_token_it_inc_type *token_it_inc;
 STORAGE_CLASS ed_token_it_dec_type *token_it_dec;
+STORAGE_CLASS ed_set_y_up_type *set_y_up;
+STORAGE_CLASS ed_draw_new_group_type *draw_new_group;
 #undef DYNAMIC_LINK_API
 #undef STORAGE_CLASS
 #endif

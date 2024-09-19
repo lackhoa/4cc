@@ -15,11 +15,9 @@ enum Vertex_Type {
  Vertex_Overlay,
 };
 
-struct Render_Vertex
-{
+struct Render_Vertex {
  union { v3 pos; struct { v2 xy; v1 z; }; };
- union
- {
+ union {
   union  { v3 uvw;    v2 uv; };
   struct { v2 center; v1 roundness; };
  };
@@ -29,30 +27,27 @@ struct Render_Vertex
  u32 prim_id;
 };
 
-struct Render_Vertex_Array_Node
-{
-    Render_Vertex_Array_Node *next;
-    Render_Vertex *vertices;
-    i1 vertex_count;
-    i1 vertex_max;
+struct Render_Vertex_Array_Node {
+ Render_Vertex_Array_Node *next;
+ Render_Vertex *vertices;
+ i1 vertex_count;
+ i1 vertex_max;
 };
 
-struct Render_Vertex_List
-{
+struct Render_Vertex_List {
  Render_Vertex_Array_Node *first;
  Render_Vertex_Array_Node *last;
  i1 count;
 };
 
-struct Render_Config
-{
+struct Render_Config {
 #define RENDER_CONFIG_FIELDS \
 i1      viewport_id;      \
 rect2   clip_box;         \
-b32     y_is_up;          \
+b32     y_up;          \
 argb    background;       \
-mat4    view_transform;   \
-mat4i   camera_transform; \
+mat4    view_from_world;  \
+mat4i   world_from_cam;   \
 v1      meter_to_pixel;   \
 v1      focal_length;     \
 v1      near_clip;        \
@@ -62,16 +57,14 @@ i1      scale_down_pow2;  \
  RENDER_CONFIG_FIELDS
 };
 
-enum Render_Entry_Type
-{
+enum Render_Entry_Type {
  RET_Null,
  RET_Poly,
  RET_Object_Transform,
  RET_Image,
 };
 
-enum CSG_Type
-{
+enum CSG_Type {
  CSG_NULL     = 0,
  
  CSG_Union    = 1,
@@ -99,21 +92,18 @@ struct Render_Entry_Image
 };
 
 //
-struct Render_Entry
-{
+struct Render_Entry {
  Render_Entry *next;
  
  Render_Entry_Type type;
- union
- {
+ union {
   Render_Entry_Poly   poly;
   Render_Entry_Image *image;
   mat4                object_transform;
  };
 };
 
-struct Render_Group
-{
+struct Render_Group {
  i32 window_id;
  Render_Group *next;
  
@@ -122,16 +112,14 @@ struct Render_Group
  Render_Entry *entry_last;
  
  Face_ID face_id;
- union
- {
+ union {
   Render_Config config;
   struct { RENDER_CONFIG_FIELDS };
  };
 };
 
 force_inline b32
-render_group_is_game(Render_Group *group)
-{
+render_group_is_game(Render_Group *group) {
  return group->viewport_id != 0;
 }
 
@@ -142,6 +130,7 @@ struct Render_Target
  i1 window_id;
  i1 width;
  i1 height;
+ Render_Config stub_config;
 };
 //
 struct Render_State

@@ -48,7 +48,7 @@ function rect2
 hax_get_main_monitor_rectangle(App *app)
 {
     rect2 result = global_get_screen_rectangle(app);
-    v2 dim = rect2_dim(result);
+    v2 dim = get_dim(result);
     if ( dim.x > 1920 )
     {
         dim.x -= 1920;

@@ -51,10 +51,10 @@ key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0) {
 }
 
 function v4
-key_direction_v4(Game_Input *input, Key_Mods wanted_mods, b32 new_keypress,
-                 b32 *optional_shift=0) {
+key_direction(Game_Input *input, Key_Mods wanted_mods,
+              b32 want_new_keypress, b32 *optional_shift=0) {
  v4 result = {};
- if (new_keypress == input->direction.new_keypress) {
+ if (implies(want_new_keypress, input->direction.new_keypress)) {
   b32 mods_matched = (input->active_mods == wanted_mods);
   if (optional_shift) {
    *optional_shift = (input->active_mods == (wanted_mods|Key_Mod_Sft));
@@ -65,11 +65,6 @@ key_direction_v4(Game_Input *input, Key_Mods wanted_mods, b32 new_keypress,
   if (mods_matched) { result=input->direction.dir; }
  }
  return result;
-}
-
-force_inline v3
-key_direction(Game_Input *input, Key_Mods wanted_mods, b32 new_keypress) {
- return key_direction_v4(input, wanted_mods, new_keypress).xyz;
 }
 
 DLL_EXPORT game_api_export_return 
@@ -141,7 +136,7 @@ game_viewport_update(game_viewport_update_params)
  b32 should_animate_next_frame = false;
  i32 viewport_index = get_viewport_index(viewport_id);
  Viewport *viewport = &state->viewports[viewport_index];
- {// NOTE: camera animtion
+ {// NOTE: camera animation
   Camera_Data *target  = &viewport->target_camera;
   Camera_Data *current = &viewport->camera;
   b32 animation_ended = animate_camera(current, target, dt);
@@ -428,11 +423,10 @@ get_right_bone(Bone &bone) {
 }
 
 function void
-render_data(Game_State &state)
+render_data(Modeler &m)
 {
  hl_block;
  painter.is_right = 0;
- auto &m = state.modeler;
  auto &p = painter;
  argb inactive_color = argb_dark_green;
  for_i32(vindex,1,m.vertices.count) {
@@ -440,16 +434,14 @@ render_data(Game_State &state)
   Bone &bone = p.bone_list[vert.bone_index];
   u32 prim_id = vertex_prim_id(vindex);
   {
-   mat4 &mat = bone.transform;
-   v3 pos = mat4vert(mat, vert.pos);
+   v3 pos = mat4vert(bone.transform, vert.pos);
    indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
   }
   if (vert.symx) {
    //NOTE: Draw the right side (TODO @speed stupid object lookup)
    set_in_block(painter.is_right, 1);
    auto &boneR = get_right_bone(bone);
-   mat4 &mat = boneR.transform;
-   v3 pos = mat4vert(mat, vert.pos);
+   v3 pos = mat4vert(boneR.transform, vert.pos);
    indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
   }
  }
@@ -485,33 +477,63 @@ render_data(Game_State &state)
 
 function game_render_return
 game_render(game_render_params)
-{//;switch_game_or_physics
+{
  slider_cycle_counter = 0;
  Scratch_Block scratch;
+ Viewport *viewport = &state->viewports[viewport_id-1];
+ 
+ i32 scale_down_pow2 = fval(0); // ;scale_down_slider
+ v1 meter_to_pixel;
+ {
+  macro_clamp_min(scale_down_pow2, 0);
+  v1 render_scale = 1.f;
+  for_i32 (it,0,scale_down_pow2) { render_scale *= 0.5f; }
+  v1 default_meter_to_pixel = 4050.6329f;
+  meter_to_pixel = default_meter_to_pixel * render_scale;
+ }
+ v1 pixel_to_meter = 1.f / meter_to_pixel;
+ viewport->clip_radius = pixel_to_meter*get_radius(clip_box);
+ 
+ v2 mouse_viewp;
+ {// NOTE: @Ugh Compute the mouse position in view space
+  v2 clip_dim = get_dim(clip_box);
+  v2 mousep = V2(mouse.p);
+  v2 mouse_viewp_px = mousep;
+  mouse_viewp_px   -= clip_box.min + 0.5f * clip_dim;
+  mouse_viewp_px.y *= -1.0f;
+  mouse_viewp       = mouse_viewp_px / meter_to_pixel;
+ }
+ 
+ Render_Config *config = draw_new_group(target);
+ set_y_up(target, config);
+ config->scale_down_pow2 = scale_down_pow2;
+ config->meter_to_pixel  = meter_to_pixel;
  {
   Scratch_Block render_scratch;
-  // TODO(kv): Why can't the game understand scratch blocks?
+  //TODO(kv): Why can't the game understand scratch blocks?
   render_movie(scratch, render_scratch,
-               state->viewports[viewport_id-1],
+               config, viewport, viewport_id-1, 
                state->time, state->references_full_alpha,
-               app, target, viewport_id, mouse); 
+               app, target, mouse_viewp, &state->modeler);
  }
- render_data(*state);
- {//NOTE(kv) Render cursor in the middle of the screen
-  v2 center_v2 = {};
-  v2 points_v2[] = {
-   center_v2,
-   center_v2 + centimeter*V2(-1,-1),
-   center_v2 + centimeter*V2(+1,-1),
-  };
-  v3 points[alen(points_v2)];
-  mat4 &camera_to_obj = painter.obj_to_camera.inverse;
-  for_i32(i,0,alen(points)){
-   points[i] = camera_to_obj*V3(points_v2[i],0);
+ render_data(state->modeler);
+ if (state->keyboard_selection_mode)
+ {//NOTE(kv) ;draw_cursor
+  v1 radius = 4*millimeter;
+  v2 points[] = { v2{}, radius*V2(-1,-1), radius*V2(+1,-1), };
+  for_i32(i,0,3){ points[i] += state->kb_cursor_pos; }
+  
+  v3 points_v3[3];
+  mat4 &bone_from_cam = painter.cam_from_boneT.inverse;
+  for_i32(i,0,3){
+   //NOTE(kv) We want the size to be the same as we specified in 2D,
+   // which requires putting the object at distance=focal length.
+   v1 z = -painter.camera.focal_length;
+   points_v3[i] = bone_from_cam*V3(points[i],z);
   }
   {
-   hl_block_color(argb_blue);
-   fill3(points[0], points[1], points[2]);
+   Fill_Params params = {.non_default=true, .flags=Poly_Overlay};
+   fill3(points_v3, argb_blue, params);
   }
  }
 }
@@ -608,12 +630,8 @@ game_reload(game_reload_params)
   line_map = state->line_map;
   block_zero(line_map, state->line_cap*sizeof(Line_Map_Entry));
   //-
-  slow_line_map       =  state->slow_line_map;
+  slow_line_map       = state->slow_line_map;
   slow_line_map.count = 0;
- }
- 
- {//-NOTE: Modeling data
-  global_modeler = &state->modeler;
  }
  
  {//-NOTE: Dear ImGui reload
@@ -622,9 +640,7 @@ game_reload(game_reload_params)
   {
    auto &imgui = state->imgui_state;
    ImGui::SetCurrentContext(imgui.ctx);
-   ImGui::SetAllocatorFunctions(imgui.alloc_func,
-                                imgui.free_func,
-                                imgui.user_data);
+   ImGui::SetAllocatorFunctions(imgui.alloc_func, imgui.free_func, imgui.user_data);
   }
  }
 }
@@ -925,7 +941,7 @@ game_update(game_update_params)
  Scratch_Block scratch(app);
  Base_Allocator scratch_allocator = make_arena_base_allocator(scratch);
  
- auto &modeler = state->modeler;
+ Modeler *modeler = &state->modeler;
  b32 game_active = active_viewport_id != 0;
  b32 fui_active = fui_is_active();
  b32 game_or_fui_active = (game_active || fui_active);
@@ -978,22 +994,22 @@ game_update(game_update_params)
  }
  
  {//NOTE(kv) Compute active objects
-  auto &m = state->modeler;
-  m.active_prims.count = 0;
+  auto *m = &state->modeler;
+  m->active_prims.count = 0;
   u32 sel_obj = selected_prim_id(m);
   // NOTE(kv): selected object is always active.
-  push_unique(m.active_prims, sel_obj);
-  if (m.selection_spanning) {
+  push_unique(m->active_prims, sel_obj);
+  if (m->selection_spanning) {
    Prim_Type sel_type = prim_id_type(sel_obj);
    if (sel_type == Prim_Vertex){
     i32 sel_index = prim_id_to_index(sel_obj);
-    Vertex_Data &sel = m.vertices[sel_index];
-    for_i32(cindex,1,m.curves.count) {
-     Bezier_Data &curve = m.curves[cindex];
+    Vertex_Data &sel = m->vertices[sel_index];
+    for_i32(cindex,1,m->curves.count) {
+     Bezier_Data &curve = m->curves[cindex];
      if (sel_index == curve.p0_index) {
-      push_unique(m.active_prims, vertex_prim_id(curve.p3_index));
+      push_unique(m->active_prims, vertex_prim_id(curve.p3_index));
      } else if (sel_index == curve.p3_index) {
-      push_unique(m.active_prims, vertex_prim_id(curve.p0_index));
+      push_unique(m->active_prims, vertex_prim_id(curve.p0_index));
      }
     }
    }
@@ -1006,70 +1022,58 @@ case Key_Code_K: case Key_Code_J:
 #define V3_CASES  V2_CASES case Key_Code_O: case Key_Code_I:
 #define V4_CASES  V3_CASES case Key_Code_Period: case Key_Code_Comma:
  
+ b32 modeler_selecting = selected_prim_id(modeler);
  u32 mods = input->active_mods;
  for_i32(key_stroke_index, 0, key_strokes.count){
   //NOTE(kv) Handle keystroke event
   Key_Code key_code = key_strokes[key_stroke_index];
   if (game_active){
-   if (mods == 0){
-    switch (key_code){
-     V2_CASES{
-      if (state->keyboard_selection_mode){
-       //...
-      }else if (selected_prim_id()){
-       //...
-      }else{
-       update_camera(update_target_cam, input->direction);
-      }
-     }break;
-     
-     case Key_Code_O: case Key_Code_I: {
-      update_camera(update_target_cam, input->direction);
-     }break;
-     
-     case Key_Code_Return:{
-      if (selected_prim_id()){
-       modeler_exit_edit(modeler);
-      }else{
-       //TODO(kv) Just trigger autosave every 10s or so, and remove this
-       game_save(state, app, false);
-      }
-     }break;
-     case Key_Code_U:{ modeler_undo(modeler); }break;
-     case Key_Code_R:{ modeler_redo(modeler); }break;
-     case Key_Code_Escape:{ modeler_exit_edit_undo(modeler); }break;
-     case Key_Code_X:{ update_target_cam->theta *= -1.f; }break;
-     case Key_Code_Z:{
-      update_target_cam->theta = .5f - update_target_cam->theta;
-     }break;
-     case Key_Code_S:{
-      if (selected_prim_id(modeler)){
-       toggle_boolean(modeler.selection_spanning);
-      }
-     }break;
-    }
-   }else if (mods == Key_Mod_Sft){
-    switch(key_code){
-     case Key_Code_U:{
-      game_load(state, app, state->autosave_path);
-     }break;
-     case Key_Code_0: { update_target_cam->roll = {}; }break;
-    }
-   }else if (mods == Key_Mod_Ctl){
-    switch(key_code){
-     V3_CASES{
-      update_camera(update_target_cam, input->direction);
+   if (modeler_selecting){
+    //-NOTE
+    if (mods == 0){
+     switch (key_code){
+      case Key_Code_Return:{ modeler_exit_edit(modeler); }break;
+      case Key_Code_Escape:{ modeler_exit_edit_undo(modeler); }break;
+      case Key_Code_R:{ modeler_redo(modeler); }break;
+      case Key_Code_S:{ toggle_boolean(modeler->selection_spanning); }break;
+      case Key_Code_U:{ modeler_undo(modeler); }break;
      }
     }
-   }else if (mods == Key_Mod_Alt){
-    switch (key_code){
-     V2_CASES {
-      update_camera_pan(input, update_target_cam);
-     }break;
-     case Key_Code_0: { update_target_cam->pan = {}; }break;
+   }else if (state->keyboard_selection_mode){
+    //-NOTE
+    if (mods==0){
+     switch(key_code){
+      case Key_Code_Escape:{ state->keyboard_selection_mode=false; }break;
+     }
+    }
+   }else{
+    if (mods == 0){
+     switch (key_code){
+      V3_CASES{ update_camera(update_target_cam, input->direction); }break;
+      //TODO(kv) Just trigger autosave every 10s or so, and remove this
+      case Key_Code_Return:{ game_save(state, app, false); }break;
+      case Key_Code_M:{ state->keyboard_selection_mode = true; }break;
+      case Key_Code_X:{ update_target_cam->theta *= -1.f; }break;
+      case Key_Code_Z:{ update_target_cam->theta = .5f - update_target_cam->theta; }break;
+     }
+    }else if (mods == Key_Mod_Sft){
+     switch(key_code){
+      case Key_Code_U:{ game_load(state, app, state->autosave_path); }break;
+      case Key_Code_0:{ update_target_cam->roll = {}; }break;
+     }
+    }else if (mods == Key_Mod_Ctl){
+     switch(key_code){
+      V3_CASES{ update_camera(update_target_cam, input->direction); }break;
+     }
+    }else if (mods == Key_Mod_Alt){
+     switch (key_code){
+      V2_CASES{ update_camera_pan(input, update_target_cam); }break;
+      case Key_Code_0: { update_target_cam->pan = {}; }break;
+     }
     }
    }
   }else if (fui_is_active()){
+   //-NOTE
    if (mods == 0){
     switch(key_code){
      V4_CASES{
@@ -1092,21 +1096,15 @@ case Key_Code_K: case Key_Code_J:
       }
      }break;
      
-     case Key_Code_Tab:{
-      toggle_boolean(fui_v4_zw_active);
-     }break;
+     case Key_Code_Tab:{ toggle_boolean(fui_v4_zw_active); }break;
     }
    }else if (mods == Key_Mod_Ctl){
     switch(key_code){
-     V3_CASES{
-      update_camera(update_target_cam, input->direction);
-     }break;
+     V3_CASES{ update_camera(update_target_cam, input->direction); }break;
     }
    }else if (mods == Key_Mod_Alt){
     switch(key_code){
-     V2_CASES{
-      update_camera_pan(input, update_target_cam);
-     }break;
+     V2_CASES{ update_camera_pan(input, update_target_cam); }break;
     }
    }
   }
@@ -1125,7 +1123,7 @@ case Key_Code_K: case Key_Code_J:
     // operate on it, and put it back in again.
     v4 value;
     block_copy(&value, slider+1, slider_value_size(slider));
-    if (mods == 0 || (mods == Key_Mod_Sft)){
+    if (mods == 0 || mods == Key_Mod_Sft){
      if (input_dir.y != 0.f &&
          slider->type == Basic_Type_v1){
       value.x = (input_dir.y > 0) ? 1.f : 0.f; 
@@ -1136,7 +1134,7 @@ case Key_Code_K: case Key_Code_J:
        input_dir.xy = {};
       }
       if (slider->flags & Slider_Camera_Aligned) {
-       input_dir = noz( update_cam.forward*input_dir );
+       input_dir = noz( update_cam.world_from_cam*input_dir );
       }
       v1 delta_scale = slider->delta_scale;
       if (delta_scale == 0) { delta_scale = 0.2f; }
@@ -1156,24 +1154,33 @@ case Key_Code_K: case Key_Code_J:
     block_copy(slider+1, &value, slider_value_size(slider));
    }
   }else if (game_active){
-   if (u32 sel_prim = selected_prim_id(modeler)){
-    Modeler &m = modeler;
-    Modeler_History &h = m.history;
+   if (state->keyboard_selection_mode){
+    //-NOTE
+    b32 shifted = 0;
+    v2 dir = key_direction(input, 0, false, &shifted).xy;
+    v1 velocity = centimeter * fval(2.0272f);
+    v2 delta = velocity * dt * dir;
+    if (shifted){ delta *= 10.f; }
+    state->kb_cursor_pos += delta;
+   }else if (u32 sel_prim = selected_prim_id(modeler)){
+    //-NOTE
+    Modeler *m = modeler;
+    Modeler_History &h = m->history;
     if (get_selected_type(m) == Prim_Vertex){
      // NOTE: Selecting a vertex
      Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
-     v3 direction = key_direction(input, 0, false);
+     v3 direction = key_direction(input, 0, false).xyz;
      if (direction != v3{}) {
       // NOTE(kv): Update vertex position
       direction.z = 0.f;
-      direction = noz( mat4vec(update_cam.forward, direction) );
-      v1 delta_scale = 0.2f;
-      v3 delta = delta_scale * dt * direction;
+      direction = noz( mat4vec(update_cam.world_from_cam, direction) );
+      v1 velocity = 0.2f;
+      v3 delta = velocity * dt * direction;
       
       arrayof<Vertex_Index> influenced_verts;
-      init_static(influenced_verts, scratch, m.active_prims.count);
-      for_i32(index,0,m.active_prims.count) {
-       Vertex_Index vi = vertex_index_from_prim_id(m.active_prims[index]);
+      init_static(influenced_verts, scratch, m->active_prims.count);
+      for_i32(index,0,m->active_prims.count) {
+       Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
        influenced_verts.push(vi);
       }
       
@@ -1189,7 +1196,7 @@ case Key_Code_K: case Key_Code_J:
        Modeler_Edit *current_edit = get_current_edit(h);
        // NOTE(kv): edits_can_be_merged is a guardrail for now
        if (current_edit &&
-           m.change_uncommitted &&
+           m->change_uncommitted &&
            edits_can_be_merged(*current_edit, edit))
        {
         merged = true;
@@ -1230,8 +1237,8 @@ case Key_Code_K: case Key_Code_J:
    if (prim_id_is_data(hot_prim)){
     // NOTE: Drawn by data -> change selected obj id
     auto &m = modeler;
-    m.selected_prim_id = hot_prim;
-    m.change_uncommitted = false;
+    m->selected_prim_id = hot_prim;
+    m->change_uncommitted = false;
     switch_to_mouse_panel(app);
    }else{
     // NOTE: Drawn by code -> jump to code
@@ -1297,9 +1304,10 @@ case Key_Code_K: case Key_Code_J:
  
  b32 kb_handled = false;  // TODO(kv): Maybe we automatically set this when you call "just_pressed"?
  
+ if (1)
  {//;update_modeler
-  auto &m = state->modeler;
-  auto &h = m.history;
+  auto m = &state->modeler;
+  auto &h = m->history;
   {//-NOTE: Drawing GUI
    if (get_selected_type(m) == Prim_Curve){
     //;draw_curve_info
@@ -1373,6 +1381,15 @@ case Key_Code_K: case Key_Code_J:
    game_commands.push(strlit("save_manual"));
    game_commands.push(strlit("load_manual"));  
   }
+ }
+ 
+ {
+  v2 radius = (state->viewports[0].clip_radius);
+  v2 &curpos = state->kb_cursor_pos;
+  macro_clamp_min(curpos.x, -radius.x);
+  macro_clamp_max(curpos.x, +radius.x);
+  macro_clamp_min(curpos.y, -radius.y);
+  macro_clamp_max(curpos.y, +radius.y);
  }
  
  return {

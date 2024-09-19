@@ -17,78 +17,72 @@
 global Render_State render_state;
 
 inline Render_Config *
-target_last_config()
-{
- auto &state = render_state;
- if (state.group_last) { return &state.group_last->config; }
- else { return 0; }
+target_last_config(Render_Target *target) {
+ if (render_state.group_last){
+  return &render_state.group_last->config;
+ }else{
+  return &target->stub_config;
+ }
 }
 
 inline Render_Target *
-get_render_target(i32 window_id)
-{
+get_render_target(i32 window_id) {
  return &render_state.targets[window_id];
 }
 //
 inline Render_Target *
-get_render_target(Render_Group *group)
-{
+get_render_target(Render_Group *group) {
  return &render_state.targets[group->window_id];
 }
 
-inline Render_Entry *
+api(ed) function void
+set_y_up(Render_Target *target, Render_Config *config)
+{
+ if (!config->y_up){
+  rect2 old_clip = config->clip_box;
+  rect2 new_clip = old_clip;
+  new_clip.y0 = (v1)target->height - old_clip.y1;
+  new_clip.y1 = (v1)target->height - old_clip.y0;
+  config->clip_box = new_clip;
+  config->y_up = true;
+ }
+}
+
+function Render_Entry *
 new_render_entry(Render_Entry_Type type)
 {
  auto &state = render_state;
  Render_Group *group = state.group_last;
- if ( !render_group_is_game(group) )
- {
+ if ( !render_group_is_game(group) ) {
   kv_assert(group->entry_count == 0);
  }
- if (group)
- {
-  Render_Entry *entry = push_struct(&state.arena, Render_Entry, true);
-  entry->type = type;
-  sll_queue_push(group->entry_first, group->entry_last, entry);
-  group->entry_count++;
-  return entry;
- }
- else { return 0; }
+ Render_Entry *entry = push_struct(&state.arena, Render_Entry, true);
+ entry->type = type;
+ sll_queue_push(group->entry_first, group->entry_last, entry);
+ group->entry_count++;
+ return entry;
 }
 
-internal void
-draw__new_group(Render_Target *target, Render_Config *config)
+api(ed) function Render_Config *
+draw_new_group(Render_Target *target)
 {
  auto &state = render_state;
+ Render_Config *last_config = target_last_config(target);
  Render_Group *group = push_struct(&state.arena, Render_Group, true);
  sll_queue_push(state.group_first, state.group_last, group);
  state.group_count++;
  
- if (config) { group->config = *config; }
- group->face_id = state.face_id;
+ //NOTE(kv) Inherit last config
+ group->config = *last_config;
+ 
+ group->face_id   = state.face_id;
  group->window_id = target->window_id;
  
- new_render_entry(RET_Poly);
+ //if (!is_game){ new_render_entry(RET_Poly); }
+ return &group->config;
 }
 
-internal void
-draw__maybe_new_group(Render_Target *target, Render_Config *config)
-{
- Render_Group *last = render_state.group_last;
- if (last &&
-     !render_group_is_game(last) && 
-     last->entry_first->poly.vertex_list.count == 0 &&
-     config == 0)
- {
-  //pass
- }
- else
- {
-  draw__new_group(target, config);
- }
-}
-
-internal Render_Vertex_Array_Node*
+function Render_Vertex_Array_Node*
 draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i1 size){
  Render_Vertex_Array_Node *node = push_array_zero(arena, Render_Vertex_Array_Node, 1);
  sll_queue_push(list->first, list->last, node);
@@ -97,19 +91,17 @@ draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i1 size
  return(node);
 }
 
-internal void
+function void
 draw__set_face_id(Face_ID face_id)
 {
  auto &state = render_state;
- if (state.face_id != face_id)
- {
-  if (state.face_id != 0)
-  {// NOTE: Has existing face id
+ if (state.face_id != face_id) {
+  if (state.face_id != 0) {
+   // NOTE: Has existing face id
    state.face_id = face_id;
-   draw__new_group( get_render_target(0), target_last_config() );
-  }
-  else
-  {// NOTE: No current face is set
+   draw_new_group(get_render_target(0));
+  } else {
+   // NOTE: No current face is set
    state.face_id = face_id;
    for (Render_Group *group = state.group_first;
         group != 0;
@@ -171,7 +163,7 @@ draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
 internal void
 draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, v1 depth=0)
 {
-    v2 dim = rect2_dim(rect);
+    v2 dim = get_dim(rect);
     v1 thickness = Max(dim.x, dim.y);
     draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
@@ -179,7 +171,7 @@ draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, 
 force_inline void
 draw_rect(App *app, rect2 rect, v1 roundness, ARGB_Color color, v1 depth)
 {
-    v2 dim = rect2_dim(rect);
+    v2 dim = get_dim(rect);
     v1 thickness = Max(dim.x, dim.y);
     draw_rect_outline(app, rect, roundness, thickness, color, depth);
 }
@@ -207,28 +199,20 @@ draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
 function rect2
 draw_set_clip(Render_Target *target, rect2 clip_box)
 {
- rect2 prev_clip;
- Render_Group *group = render_state.group_last;
- if (group)
- {
-  if (group->clip_box != clip_box)
-  {
-   Render_Config config = group->config;
-   prev_clip = config.clip_box;
-   config.clip_box = clip_box;
-   draw__maybe_new_group(target, &config);
-  }
+ rect2 prev_clip = {};
+ b32 same = false;
+ if (Render_Group *group = render_state.group_last) {
+  prev_clip = group->clip_box;
+  same = (group->clip_box == clip_box);
  }
- else
- {
-  Render_Config config = {};
-  draw__maybe_new_group(target, &config);
-  prev_clip = {};
+ if (!same) {
+  Render_Config *config = draw_new_group(target);
+  config->clip_box = clip_box;
  }
  return(prev_clip);
 }
 
-internal void
+function void
 begin_frame(void *font_set)
 {
  auto &state = render_state;
@@ -238,14 +222,12 @@ begin_frame(void *font_set)
  state.face_id     = 0;
  state.font_set = font_set;
  
- for_i32(window_index,0,WINDOW_COUNT)
- {
+ for_i32(window_index,0,WINDOW_COUNT){
   Render_Target *target = &state.targets[window_index];
-  Render_Config config =
-  {
-   .clip_box = rect2{0, 0, (v1)target->width, (v1)target->height}
+  target->stub_config.clip_box = rect2{
+   .x1=(v1)target->width,
+   .y1=(v1)target->height,
   };
-  draw__new_group(target, &config);
  }
 }
 

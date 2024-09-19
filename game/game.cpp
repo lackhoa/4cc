@@ -5,7 +5,6 @@
 #define FUI_FAST_PATH 1
 #include "framework_driver_shared.h"
 #include "game_fui.h"
-//#include "game_draw.cpp"
 #include "game_anime.cpp"
 #include "game_utils.cpp"
 #include "game_body.cpp"
@@ -632,7 +631,7 @@ render_arm(mat4i const&ot, Pose const&pose,
  return arm_obj;
 }
 
-internal Forearm
+function Forearm
 render_forearm(mat4i const&ot,
                mat4 const&armLT, Arm const&arm_obj,
                v3 elbow_offset, v3 elbow_up_out)
@@ -810,7 +809,7 @@ render_forearm(mat4i const&ot,
  return forearm_obj;
 }
 
-internal void
+function void
 render_character(Pose const&pose,
                  v1 animation_time, i32 viewport_index,
                  b32 show_grid)
@@ -879,7 +878,7 @@ render_character(Pose const&pose,
   
   mat4 &to_local = ot.inverse;
   {// NOTE: profile score
-   v3 camera_local = to_local * camera_world_position(painter.camera);
+   v3 camera_local = to_local * camera_world_position(&painter.camera);
    v3 view_vector = noz(camera_local - nose_tip);
    
    v1 x = view_vector.z;
@@ -1187,8 +1186,8 @@ render_character(Pose const&pose,
     {// NOTE: Iris (featuring Mr. Depth Offset Hack)
      set_in_block(painter.line_params.nslice_per_meter, 128.f*fval(7.6378f));
      v1 iris_depth_offset = painter.fill_depth_offset + 1*centimeter;
-     painter.line_params.depth_offset += iris_depth_offset;
-     painter.fill_depth_offset        += iris_depth_offset;
+     painter.line_depth_offset += iris_depth_offset;
+     painter.fill_depth_offset += iris_depth_offset;
      
      {
       mat4 irisRelT;
@@ -1213,8 +1212,8 @@ render_character(Pose const&pose,
       }
      }
      
-     painter.line_params.depth_offset -= iris_depth_offset;
-     painter.fill_depth_offset        -= iris_depth_offset;
+     painter.line_depth_offset -= iris_depth_offset;
+     painter.fill_depth_offset -= iris_depth_offset;
     }
     
     {//-NOTE: Checking
@@ -1666,8 +1665,8 @@ render_character(Pose const&pose,
    
    if (show_grid)
    {
-    b32 camera_frontal=almost_equal(absolute(painter.camera->z.z), 1.f, 1e-2f);
-    b32 camera_profile=almost_equal(absolute(painter.camera->z.x), 1.f, 1e-2f);
+    b32 camera_frontal=almost_equal(absolute(painter.camera.z.z), 1.f, 1e-2f);
+    b32 camera_profile=almost_equal(absolute(painter.camera.z.x), 1.f, 1e-2f);
     
     {//NOTE: Grid lines for the face
      hl_block_color(argb_blue);
@@ -2092,7 +2091,7 @@ render_character(Pose const&pose,
     if (is_left())
     {
      hl_block;
-     set_in_block(painter.painting_disabled, false);
+     //set_in_block(painter.painting_disabled, false);
      va(scap_bot, scap_delt+fvec(V3(0.1134f, -0.7434f, 0.1812f)));
      va(scap_sock_bot, scap_sock_top+fvec(V3(0.0098f, -0.2771f, 0.f)));
      draw(bez(scap_delt,fval(V4(-0.14f, 0.1607f, 0.4409f, 0.224f)),scap_bot,
@@ -2204,7 +2203,7 @@ render_character(Pose const&pose,
  }
 }
 
-internal void
+function void
 render_reference_images(b32 full_alpha)
 {
  i32 preset = get_preset();
@@ -2325,8 +2324,7 @@ render_reference_images(b32 full_alpha)
 }
 
 function mat4
-camera_view_matrix(Camera *camera, b32 orthographic)
-{
+get_view_from_worldT(Camera *camera, b32 orthographic) {
  mat4 result;
  v1 focal = camera->focal_length;
  v1 n = camera->near_clip;
@@ -2339,11 +2337,10 @@ camera_view_matrix(Camera *camera, b32 orthographic)
    0,1, 0,0,
    0,0,-1,0,
    0,0, 0,1,
-  }} * camera->inverse;
+  }} * camera->cam_from_world;
  
- if (orthographic)
- {// NOTE
-  //NOTE: All objects depth are at the origin's depth
+ if (orthographic) {
+  //NOTE All objects depth are at the origin's depth
   v1 d = camera->distance;
   mat4 ortho = {{
     focal,0,0,0,
@@ -2352,60 +2349,27 @@ camera_view_matrix(Camera *camera, b32 orthographic)
     0,0,0,d,
    }};
   result = ortho*result;
- }
- else
- {//NOTE
+ } else {
+  //NOTE perspective
   mat4 perspectiveT = {{
     focal, 0,     0,            0,
     0,     focal, 0,            0,
     0,     0,     (n+f)/(f-n), -2*f*n/(f-n),
     0,     0,     1,            0,
    }};
-  
   result = perspectiveT*result;
  }
- 
  return result;
 }
-
-
 
 render_movie_return
 render_movie(render_movie_params)
 {
  painter.bone_stack.count = 0;
- kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
- i32 viewport_index = viewport_id - 1;
- b32 is_main_viewport = (viewport_id == 1);
- 
- i32 scale_down_pow2 = fval(0); // ;scale_down_slider
- macro_clamp_min(scale_down_pow2, 0);
- v1 render_scale = 1.f;
- for_i32 (it,0,scale_down_pow2) { render_scale *= 0.5f; }
- v1 default_meter_to_pixel = 4050.6329f;
- v1 meter_to_pixel = default_meter_to_pixel * render_scale;
- 
- b32 mouse_inside_view = false;
- v2 mouse_viewp;
- {// NOTE: @Ugh Compute the mouse position in view space
-  rect2 clip_box = draw_get_clip();
-  v2 clip_dim = rect2_dim(clip_box);
-  v2 mousep = V2(mouse.p);
-  v2 mouse_viewp_px = mousep;
-  mouse_viewp_px   -= clip_box.min + 0.5f * clip_dim;
-  mouse_viewp_px.y *= -1.0f;
-  mouse_viewp       = mouse_viewp_px / meter_to_pixel;
-  
-  rect2 rect = rect2_center_dim(V2(), clip_dim);
-  if ( contains(rect, mouse_viewp_px) )
-  {
-   mouse_inside_view = true;
-  }
- }
- //DEBUG_VALUE(mouse_viewp);
+ b32 is_main_viewport = (viewport_index == 0);
  
  i32 viz_level = 0;
- switch(viewport.preset){
+ switch(viewport->preset){
   case 1: viz_level = 1; break;
   case 2: viz_level = 2; break;
  }
@@ -2413,48 +2377,42 @@ render_movie(render_movie_params)
  Camera camera_value;
  Camera *camera = &camera_value;
  {// NOTE: camera
-  setup_camera(camera, &viewport.camera);
+  setup_camera(camera, &viewport->camera);
  }
- b32 camera_frontal=almost_equal(absolute(camera->z.z), 1.f, 1e-2f);
- b32 camera_profile=almost_equal(absolute(camera->z.x), 1.f, 1e-2f);
  
- mat4 camera_transform;
- v3 background_hsv = fval3(0.069f, 0.0648f, 0.5466f);
- v4 background_v4 = srgb_to_linear(hsv_to_srgb(background_hsv));
- argb background_color = argb_pack(background_v4);
- 
- b32 show_grid        = viewport.preset >= 3;
- 
- mat4 view_transform;
+ argb background_color;
  {
+  v3 background_hsv = fval3(0.069f, 0.0648f, 0.5466f);
+  v4 background_v4 = srgb_to_linear(hsv_to_srgb(background_hsv));
+  background_color = argb_pack(background_v4);
+ }
+ 
+ b32 show_grid = viewport->preset >= 3;
+ 
+ mat4 view_from_worldT;
+ {
+  b32 camera_frontal=almost_equal(absolute(camera->z.z), 1.f, 1e-2f);
+  b32 camera_profile=almost_equal(absolute(camera->z.x), 1.f, 1e-2f);
   b32 orthographic = show_grid && (camera_frontal || camera_profile);
   if (fbool(0)){orthographic = show_grid;}
   if (fbool(0)){orthographic = true;}
-  view_transform = camera_view_matrix(camera, orthographic);
+  view_from_worldT = get_view_from_worldT(camera, orthographic);
  }
  
  {
-  Render_Config config = {};
-  {
-   config.viewport_id = viewport_id;
-   // NOTE: Don't set the clip box here since we don't change it.
-   config.y_is_up          = true;
-   config.background       = background_color;
-   config.view_transform   = view_transform;
-   config.camera_transform = camera->transform;
-   config.meter_to_pixel   = meter_to_pixel;
-   config.focal_length     = camera->focal_length;
-   config.near_clip        = camera->near_clip;
-   config.far_clip         = camera->far_clip;
-   config.scale_down_pow2  = scale_down_pow2;
-  };
-  void *pointer = (void*)DEBUG_send_entry;
-  draw_configure(render_target, &config);
+  auto c = render_config;
+  c->viewport_id = viewport_index+1;
+  c->view_from_world  = view_from_worldT;
+  c->world_from_cam   = camera->transform;
+  c->focal_length     = camera->focal_length;
+  c->near_clip        = camera->near_clip;
+  c->far_clip         = camera->far_clip;
+  c->background = background_color;
  }
  
  //~ IMPORTANT: Please don't draw anything before this point! Because the color space are different.
  
- v1 default_line_radius_unit = 7.f / default_meter_to_pixel;  //NOTE: Changes size when we resize the image
+ v1 default_line_radius_unit = 1.728125f * millimeter;
  u64 start_cycle = ad_rdtsc();
  draw_cycle_counter   = 0;
  bs_cycle_counter     = 0;
@@ -2473,23 +2431,21 @@ render_movie(render_movie_params)
  // ;init_painter
  painter = Painter {
   .target            = render_target,
-  .viewport          = &viewport,
+  .viewport          = viewport,
   .mouse_viewp       = mouse_viewp,
-  .camera            = camera,
-  .view_transform    = view_transform,
-  .meter_to_pixel    = meter_to_pixel,
+  .camera            = camera_value,
+  .view_from_worldT  = view_from_worldT,
   .symx              = false,
   .fill_color        = default_fill,
   .fill_depth_offset = millimeter * 1.f,
   .line_radius_unit  = default_line_radius_unit,
-  .line_params       =
-  {
+  .line_params       = {
    .radii      = V4(default_line_radius_min, 
                     1.f,
                     i2f6(fval(5)),
                     default_line_end_radius),
-   .color      = default_line_color,
    .visibility = 1.0f,
+   .color      = default_line_color,
   },
   .viz_level = viz_level,
   .ignore_radii               = viz_level!=0,
@@ -2504,6 +2460,7 @@ render_movie(render_movie_params)
   p.bone_stack.push(0);
   p.view_vector_stack[painter.view_vector_count++] = v3{};
   p.painting_disabled = fbool(0);
+  p.modeler = modeler;
  }
  
  v1 animation_time = state_time;
@@ -2533,6 +2490,7 @@ render_movie(render_movie_params)
  
  //IMPORTANT
  render_character(pose, animation_time, viewport_index, show_grid);
+ 
  
  if (debug_frame_time_on)
  {

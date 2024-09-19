@@ -77,10 +77,8 @@ global b32 log_os_enabled = false;
 Stmnt( if (log_os_enabled) { fprintf(stdout, __VA_ARGS__); fflush(stdout); } )
 
 function void
-win32_log(char *string)
-{
- if (log_os_enabled)
- {
+win32_log(char *string) {
+ if (log_os_enabled) {
   OutputDebugStringA(string);
   OutputDebugStringA("\n");
  }
@@ -1194,40 +1192,32 @@ system_condition_variable_free_sig(){
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // NOTE: This is WndProc: the Win32 message handler
-internal LRESULT CALLBACK
+function LRESULT CALLBACK
 win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
  LRESULT result = 0;
  if ( ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam) )
  {// NOTE: imgui told us to not handle this event
   result = true;
- }
- else
- {
+ } else {
   b32 call_default_handler = false;
   b32 imgui_want_capture_mouse    = false;
   b32 imgui_want_capture_keyboard = false;
-  if ( ImGui::GetCurrentContext() )
-  {// NOTE(kv): imgui might not have been initialized
+  if ( ImGui::GetCurrentContext() ) {
+   // NOTE(kv): imgui might not have been initialized
    ImGuiIO& io = ImGui::GetIO();
-   
    imgui_want_capture_mouse    = io.WantCaptureMouse;
    imgui_want_capture_keyboard = io.WantCaptureKeyboard;
   }
-  
-  if (imgui_want_capture_mouse ||
-      imgui_want_capture_keyboard)
-  {// TODO(kv): Is this true?
-   win32vars.got_useful_event = true;
+  if (imgui_want_capture_keyboard){
+   breakhere;
   }
   
   Scratch_Block scratch(win32vars.tctx);
   
   i32 window_index = 0;
-  for_i32(index,0,WINDOW_COUNT)
-  {
-   if (hwnd == win32vars.window_handles[index])
-   {
+  for_i32(index,0,WINDOW_COUNT) {
+   if (hwnd == win32vars.window_handles[index]) {
     window_index = index;
     break;
    }
@@ -1246,17 +1236,10 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    case WM_KEYDOWN:
    case WM_KEYUP:
    {
-#if 0
-    if (uMsg == WM_KEYUP)   { win32_log("Keyup fired!"); }
-    if (uMsg == WM_KEYDOWN) { win32_log("Keydown fired!"); }
-#endif
-    
-    if (imgui_want_capture_keyboard)
-    {
+    if (imgui_want_capture_keyboard) {
      call_default_handler = true;
-    }
-    else
-    {
+     win32vars.got_useful_event = true;
+    } else {
      b8 release = HasFlag(lParam, bit_32);
      b8 down = !release;
      b8 is_right = HasFlag(lParam, bit_25);
@@ -1309,10 +1292,8 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
      }
      
      Key_Code key = keycode_lookup_table[(u8)vk];
-     if (down)
-     {
-      if (key != 0)
-      {
+     if (down) {
+      if (key != 0) {
        add_modifier(mods, key);
        
        Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
@@ -1323,15 +1304,12 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
        
        win32vars.got_useful_event = true;
       }
-     }
-     else
-     {
+     } else {
       win32vars.active_key_stroke = 0;
       win32vars.active_text_input = 0;
       win32vars.got_useful_event = true;
       
-      if (key != 0)
-      {
+      if (key != 0) {
        Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
        event->kind = InputEventKind_KeyRelease;
        event->key.code = key;
@@ -1343,18 +1321,14 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
    }break;
    
-   case WM_CHAR:
-   {
-    if (imgui_want_capture_keyboard)
-    {
+   case WM_CHAR: {
+    if (imgui_want_capture_keyboard) {
      call_default_handler = true;
-    }
-    else
-    {
+     win32vars.got_useful_event = true;
+    } else {
      u16 c = wParam & bitmask_16;
      if (c == '\r') { c = '\n'; }
-     if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n')
-     {
+     if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n') {
       String_Const_u16 str_16 = SCu16(&c, 1);
       String str_8 = string_u8_from_string_u16(&win32vars.frame_arena, str_16, StringFill_NullTerminate).string;
       Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
@@ -1364,8 +1338,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       event->text.blocked = false;
       if (win32vars.active_text_input != 0){
        win32vars.active_text_input->text.next_text = event;
-      }
-      else if (win32vars.active_key_stroke != 0){
+      } else if (win32vars.active_key_stroke != 0){
        win32vars.active_key_stroke->key.first_dependent_text = event;
       }
       win32vars.active_text_input = event;
@@ -1375,21 +1348,16 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
    }break;
    
-   case WM_UNICHAR:
-   {
-    if (imgui_want_capture_keyboard)
-    {
+   case WM_UNICHAR: {
+    if (imgui_want_capture_keyboard) {
      call_default_handler = true;
-    }
-    else
-    {
+     win32vars.got_useful_event = true;
+    } else {
      if (wParam == UNICODE_NOCHAR) { result = true; }
-     else
-     {
+     else {
       u32 c = (u32)wParam;
       if (c == '\r') { c= '\n'; }
-      if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n')
-      {
+      if (c > 127 || (' ' <= c && c <= '~') || c == '\t' || c == '\n') {
        String_Const_u32 str_32 = SCu32(&c, 1);
        String str_8 = string_u8_from_string_u32(&win32vars.frame_arena, str_32, StringFill_NullTerminate).string;
        Input_Event event = {};
@@ -1402,8 +1370,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } 
    }break;
    
-   case WM_DEADCHAR:
-   {
+   case WM_DEADCHAR: {
     if (win32vars.active_key_stroke != 0) {
      AddFlag(win32vars.active_key_stroke->key.flags, KeyFlag_IsDeadKey);
     }
@@ -1417,22 +1384,15 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    case WM_RBUTTONUP:
    {
     win32vars.got_useful_event = true;
-    if (imgui_want_capture_mouse)
-    {
+    if (imgui_want_capture_mouse) {
      call_default_handler = true;
-    }
-    else
-    {
-     switch(uMsg)
-     {
-      case WM_MOUSEMOVE:
-      {
-       if (is_main_window)  //TODO(kv): cheese
-       {
+    } else {
+     switch(uMsg) {
+      case WM_MOUSEMOVE: {
+       if (is_main_window) {//TODO(kv): cheese
         i2 new_mousep = I2(GET_X_LPARAM(lParam),
                            GET_Y_LPARAM(lParam));
-        if ( new_mousep != win32vars.input_chunk.pers.mouse )
-        {
+        if ( new_mousep != win32vars.input_chunk.pers.mouse ) {
          win32vars.input_chunk.pers.mouse = new_mousep;
         }
        }
@@ -1592,9 +1552,8 @@ global wglGetExtensionsStringEXT_Function *wglGetExtensionsStringEXT;
 global wglSwapIntervalEXT_Function *wglSwapIntervalEXT = 0;
 
 function b32
-win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles)
-{
- b32 ok;
+win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles) {
+ b32 ok = true;
  HINSTANCE this_instance = GetModuleHandle(0);
  
  {
@@ -1617,8 +1576,7 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles)
   log_os(" setting bootstrap pixel format...\n");
   HDC wgldc = GetDC(wglwindow);
   {
-   PIXELFORMATDESCRIPTOR desired_pixel_format =
-   {
+   PIXELFORMATDESCRIPTOR desired_pixel_format = {
     .nSize = sizeof(desired_pixel_format),
     .nVersion = 1,
     .dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER,
@@ -1708,8 +1666,7 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles)
  wndclass.lpszClassName = L"GRAPHICS-WINDOW-NAME";
  ok = RegisterClassW(&wndclass) != 0;
  
- if (ok)
- {
+ if (ok) {
   HGLRC &opengl_context = win32vars.opengl_context;
   PIXELFORMATDESCRIPTOR pixel_format = {};
   i32 suggested_format_index = 0;
@@ -1721,12 +1678,11 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles)
                               CW_USEDEFAULT, CW_USEDEFAULT,
                               rect.right - rect.left, rect.bottom - rect.top,
                               0, 0, this_instance, 0);
-   if (wnd != 0)
-   {
+   if (wnd != 0) {
     HDC &dc = win32vars.device_contexts[window_index];
     dc = GetDC(wnd);
-    if (suggested_format_index == 0)
-    {// NOTE(kv): Figure out the pixel format
+    if (suggested_format_index == 0) {
+     // NOTE(kv): Figure out the pixel format
      log_os(" setting graphics pixel format...\n");
      
      i32 pixel_attrib_list[] =
@@ -1758,12 +1714,10 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles)
     
     // NOTE Now create modern OpenGL context,
     // can do it after pixel format is set
-    if (opengl_context == 0)
-    {
+    if (opengl_context == 0) {
      log_os(" creating graphics GL context...\n");
      i32 debug_bit = (SHIP_MODE) ? 0 : WGL_CONTEXT_DEBUG_BIT_ARB;
-     i32 context_attrib_list[] = 
-     {
+     i32 context_attrib_list[] = {
       /*0*/WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
       /*2*/WGL_CONTEXT_MINOR_VERSION_ARB, 6,
       /*4*/WGL_CONTEXT_FLAGS_ARB,         debug_bit,
@@ -1783,14 +1737,12 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles)
    }
   }
   
-  if (wglSwapIntervalEXT != 0)
-  {
+  if (wglSwapIntervalEXT != 0) {
    log_os(" setting swap interval...\n");
    wglSwapIntervalEXT(1);
   }
   
-  if(0)
-  {
+  if(0) {
    const GLubyte *version = glGetString(GL_VERSION);
    breakhere;
   }
@@ -1810,8 +1762,7 @@ win32_wgl_make_current(i1 window_index)
 }
 
 function void
-win32_imgui_init()
-{
+win32_imgui_init() {
  ImGui::CreateContext(0);
  ImGui::StyleColorsDark();
  {// NOTE(kv): At least DockingEnable has to be set before the first frame.
@@ -1824,23 +1775,26 @@ win32_imgui_init()
 }
 
 function void
-win32_imgui_new_frame()
-{
+win32_imgui_new_frame() {
  ImGui_ImplOpenGL3_NewFrame();
  ImGui_ImplWin32_NewFrame();
  ImGui::NewFrame();
 }
 
 function void
-win32_imgui_reinit()
-{
- {// NOTE(kv): shutdown
+win32_imgui_reinit() {
+ {//NOTE(kv) shutdown
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplWin32_Shutdown();
   ImGui::DestroyContext();
  }
- win32_imgui_init();
- win32_imgui_new_frame();
+ {//NOTE(kv) init
+  win32_imgui_init();
+  win32_imgui_new_frame();
+ }
+ //NOTE(kv)  Combat the imgui bug where WantCaptureKeyboard is always true after reload,
+ //  causing us to lose one keystroke, which is nuts.
+ ImGui::SetNextFrameWantCaptureKeyboard(false);
 }
 
 int CALL_CONVENTION
@@ -2249,8 +2203,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   // NOTE(allen): Frame Clipboard Input
-  if (win32vars.clip_catch_all)
-  {
+  if (win32vars.clip_catch_all) {
    input.clipboard = system_get_clipboard(scratch, 0);
   }
   
@@ -2310,16 +2263,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   {//~NOTE(allen): render
    ImGui::Render();
-   for_i32(window_index, 0, WINDOW_COUNT)
-   {
+   for_i32(window_index, 0, WINDOW_COUNT) {
     // Activate OpenGL context for device context where we'll be drawing
     win32_wgl_make_current(window_index);
     ogl_render(input.mouse.p, window_index);
     
-    if (window_index == 0)
-    {
-     if ( auto game = get_game_code() )
-     {// NOTE: imgui render
+    if (window_index == 0) {
+     if (auto game = get_game_code()) {
+      // NOTE: imgui render
       auto draw_data = ImGui::GetDrawData();
       ImGui_ImplOpenGL3_RenderDrawData(draw_data);
      }

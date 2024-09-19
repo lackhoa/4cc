@@ -72,8 +72,7 @@ get_column(Patch const&surface, i32 col) {
 }
 
 xfunction void
-fill3_inner(v3 p0, v3 p1, v3 p2,
-            argb c0, argb c1, argb c2,
+poly3_inner(v3 points[3], argb colors[3],
             v1 depth_offset, Poly_Flags flags)
 #if NO_IMPL
 ;
@@ -81,27 +80,23 @@ fill3_inner(v3 p0, v3 p1, v3 p2,
 {// NOTE: Triangle
  TIMED_BLOCK(draw_cycle_counter);
  
- b32 is_viz     = (flags & Poly_Viz);
+ b32 shaded     = (flags & Poly_Shaded);
  b32 is_line    = (flags & Poly_Line);
  b32 is_overlay = (flags & Poly_Overlay);
  
  Render_Vertex vertices[3] = {};
- vertices[0].pos = p0;
- vertices[1].pos = p1;
- vertices[2].pos = p2;
+ for_i32(i,0,3){ vertices[i].pos = points[i]; }
  
- argb colors[3] = {c0,c1,c2};
  // TODO(kv): @Speed The caller should be in charge of passing the color in!
  u32 prim_id = painter.draw_prim_id;
- b32 is_hot        = prim_id == get_hot_prim_id();
- b32 is_selected   = prim_id == selected_prim_id();
- b32 is_active     = is_prim_id_active(prim_id);
+ b32 is_hot      = prim_id == get_hot_prim_id();
+ b32 is_selected = prim_id == selected_prim_id(painter.modeler);
+ b32 is_active   = is_prim_id_active(painter.modeler, prim_id);
  // TODO(kv): @cleanup wtf is this code?
- if (is_hot || is_selected || is_active)
- {
+ if (is_hot || is_selected || is_active) {
   argb hl_color;
   if (is_hot) {
-   hl_color = (c0 == hot_color) ? hot_color2 : hot_color;
+   hl_color = (colors[0] == hot_color) ? hot_color2 : hot_color;
   } else if (is_selected) {
    hl_color = argb_red;
   } else if (is_active) {
@@ -109,12 +104,11 @@ fill3_inner(v3 p0, v3 p1, v3 p2,
    hl_color = hot_color;
   }
   for_i32(index,0,3) { colors[index] = hl_color; };
- }
- else if (is_viz && !is_line)
- {// ;poly_shading
-  v3 normal = noz(cross(p1-p2, p0-p2));
-  for_i32(index,0,3)
-  {
+ } else if (shaded && !is_line) {
+  //NOTE(kv) Shading logic doesn't apply to line, because we can see them just fine.
+  // ;poly_shading
+  v3 normal = noz(cross(points[1]-points[2], points[0]-points[2]));
+  for_i32(index,0,3) {
    v4 colorv = argb_unpack(colors[index]);
    v1 darkness_fuzz = 0.3f;
    colorv.rgb *= lerp(darkness_fuzz,absolute(normal.z),1.f);
@@ -126,8 +120,7 @@ fill3_inner(v3 p0, v3 p1, v3 p2,
   vertices[index].color = colors[index];
  }
  
- for_u32(index,0,alen(vertices))
- {
+ for_u32(index,0,alen(vertices)) {
   Render_Vertex *vertex = vertices+index;
   vertex->uvw          = V3();
   vertex->depth_offset = depth_offset;
@@ -139,53 +132,67 @@ fill3_inner(v3 p0, v3 p1, v3 p2,
  draw__push_vertices(painter.target, vertices, alen(vertices), type);
 }
 #endif
+function void
+poly3_inner(v3 p0, v3 p1, v3 p2,
+            argb c0, argb c1, argb c2,
+            v1 depth_offset, Poly_Flags flags)
+{
+ v3 points[3]   = {p0,p1,p2};
+ argb colors[3] = {c0,c1,c2};
+ poly3_inner(points, colors, depth_offset, flags);
+}
 
 function void
-fill3(v3 a, v3 b, v3 c, 
-      argb ac, argb bc, argb cc,
-      linum_param)
+fill3_inner2(v3 points[3], argb colors[3],
+             Fill_Params const&params0,
+             linum_param)
 {
- set_linum;
- Painter *p = &painter;
- if( is_poly_enabled() ) {
-  b32 symx = p->symx;
+ if (is_poly_enabled()){
+  set_linum;
+  if (colors[0] == 0){
+   for_i32(i,0,3){ colors[i] = painter.fill_color; }
+  }
+  auto &params = (params0.non_default ? params0 :
+                  painter.fill_params);
+  b32 symx = painter.symx;
   const i32 npoints=3;
-  v3 points[3] = {a,b,c};
   
   v3 reflects[npoints];
-  if (symx) { 
-   for_i32 (ipoint,0,npoints) {
+  if (symx){
+   for_i32 (ipoint,0,npoints){
     reflects[ipoint] = negateX(points[ipoint]);
    }
   }
   
-  if (ac == 0) { ac = p->fill_color; }
-  if (bc == 0) { bc = p->fill_color; }
-  if (cc == 0) { cc = p->fill_color; }
-  
-  Poly_Flags flags = (p->viz_level) ? 1 : 0;
-  fill3_inner(expand3(points), ac,bc,cc, p->fill_depth_offset, flags);
+  Poly_Flags flags = params.flags;
+  v1 depth_offset = painter.fill_depth_offset;
+  poly3_inner(points, colors, depth_offset, flags);
   if (symx) {
-   fill3_inner(expand3(reflects), ac,bc,cc, p->fill_depth_offset, flags);
+   poly3_inner(reflects, colors, depth_offset, flags);
   }
  }
 }
-
 inline void
-fill3(v3 a, v3 b, v3 c, linum_param) {
- fill3(a,b,c,0,0,0, linum);
+fill3(v3 a, v3 b, v3 c, argb color=0,
+      Fill_Params params={}, linum_param){
+ v3   points[3] = {a,b,c};
+ argb colors[3] = {repeat3(color)};
+ fill3_inner2(points,colors,params,linum);
 }
-//
 inline void
-fill3(v3 a, v3 b, v3 c, argb color, linum_param) {
- fill3(a,b,c,repeat3(color), linum);
+fill3(v3 points[3], argb color=0,
+      Fill_Params params={}, linum_param){
+ argb colors[3] = { repeat3(color) };
+ fill3_inner2(points,colors,params,linum);
 }
-//
 inline void
-fill3(v3 P[3], linum_param) {
- fill3(P[0],P[1],P[2], linum);
+fill3(v3 a, v3 b, v3 c,
+      argb ca, argb cb, argb cc,
+      Fill_Params params={}, linum_param) {
+ v3   points[3] = {a,b,c};
+ argb colors[3] = {ca,cb,cc};
+ fill3_inner2(points,colors,params,linum);
 }
-
 
 inline Bezier
 bez_raw(v3 p0, v3 p1, v3 p2, v3 p3) {
@@ -336,7 +343,7 @@ radii_c2(v4 ref, v2 d_p3)
 
 inline v3
 camera_world_position(Camera *camera) {
- v3 result = mat4vert(camera->forward, V3());  //camera->distance * camera->z.xyz + camera->pan;
+ v3 result = mat4vert(camera->world_from_cam, V3());
  return result;
 }
 
@@ -349,7 +356,7 @@ get_curve_view_alignment(const v3 P[4]) {
  v3 D = P[3];
  v3 normal = noz( cross(B-A, D-A) );  // NOTE: the normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
  v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
- v3 camera_obj = (get_bone_transform().inv * camera_world_position(p->camera));  // TODO @speed
+ v3 camera_obj = (get_bone_transform().inv * camera_world_position(&p->camera));  // TODO @speed
  v3 view_vector = noz(camera_obj - centroid);
  v1 visibility = absolute( dot(normal,view_vector) );
  return visibility;
@@ -376,8 +383,9 @@ bezier_sample(v4 P, v1 u)
 }
 
 function void
-draw_disk_inner(v3 center, v1 radius, argb color, v1 depth_offset, Poly_Flags flags)
-{// TODO: @Speed We can cull the circle if it's too far away, or just reduce sample count
+draw_disk_inner(v3 center, v1 radius, argb color,
+                v1 depth_offset, Poly_Flags flags)
+{// TODO: @Speed We can reduce level of detail if it's too far away
  if (radius > 0.f) {
   const i32 CIRCLE_NSLICE = 8;
   i32 nslices = CIRCLE_NSLICE;  //NOTE: @Tested Minimum should be 8
@@ -386,10 +394,10 @@ draw_disk_inner(v3 center, v1 radius, argb color, v1 depth_offset, Poly_Flags fl
   for_i32(index, 0, nslices+1) {
    v1 angle = interval * v1(index);
    v2 arm = radius*arm2(angle);
-   mat4 &camera_to_obj = painter.obj_to_camera.inverse;
-   v3 sample = center + mat4vec(camera_to_obj, V3(arm, 0.f));//@slow
+   mat4 &bone_from_camT = painter.cam_from_boneT.inverse;
+   v3 sample = center + mat4vec(bone_from_camT, V3(arm, 0.f));//@slow
    if (index!=0) {
-    fill3_inner(center, last_sample, sample,
+    poly3_inner(center, last_sample, sample,
                 repeat3(color), depth_offset, flags);
    }
    last_sample = sample;
@@ -398,7 +406,7 @@ draw_disk_inner(v3 center, v1 radius, argb color, v1 depth_offset, Poly_Flags fl
 }
 
 xfunction void
-draw_bezier_inner(v3 P[4], Line_Params *params)
+draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
 #if NO_IMPL
 ;
 #else
@@ -480,21 +488,19 @@ draw_bezier_inner(v3 P[4], Line_Params *params)
    {
     v3 perp1;
     {
-     v3 d_camera_space = mat4vec(painter.obj_to_camera, (sample - last_sample));
+     v3 d_camera_space = mat4vec(painter.cam_from_boneT, (sample - last_sample));
      v2 perp_unit = noz( perp(d_camera_space.xy) );
-     perp1 = mat4vec(painter.obj_to_camera.inverse, V3(radius*perp_unit, 0.f));
+     perp1 = mat4vec(painter.cam_from_boneT.inverse, V3(radius*perp_unit, 0.f));
     }
     C = sample+perp1;
     D = sample-perp1;
    }
    
-   if (sample_index!=0)
-   {
+   if (sample_index!=0) {
     // NOTE: Clean up ugly tiny lines (and zeros), possibly unnecessary?
-    if (0.5f*(radius+last_radius) >= radius_threshold)
-    {
-     fill3_inner(A,C,D, repeat3(color), params->depth_offset, poly_flags);
-     fill3_inner(A,B,D, repeat3(color), params->depth_offset, poly_flags);
+    if (0.5f*(radius+last_radius) >= radius_threshold) {
+     poly3_inner(A,C,D, repeat3(color), depth_offset, poly_flags);
+     poly3_inner(A,B,D, repeat3(color), depth_offset, poly_flags);
     }
    }
    
@@ -510,9 +516,8 @@ draw_bezier_inner(v3 P[4], Line_Params *params)
    if (index==1) { t=1.f; }
    v3 center = bezier_sample(P,t);
    v1 radius = bezier_sample(radii,t);
-   if (radius > radius_threshold)
-   {
-    draw_disk_inner(center, radius, color, params->depth_offset, poly_flags);
+   if (radius > radius_threshold) {
+    draw_disk_inner(center, radius, color, depth_offset, poly_flags);
    }
   }
  }
@@ -549,9 +554,9 @@ draw(const v3 P0[4], Line_Params params, linum_param)
   if (params.nslice_per_meter <= 0.f) { params.nslice_per_meter = DEFAULT_NSLICE_PER_METER; }
   params.radii *= p->line_radius_unit;
   
-  draw_bezier_inner(points, &params);
+  draw_bezier_inner(points, &params, painter.line_depth_offset);
   if (symx) {
-   draw_bezier_inner(reflects, &params);
+   draw_bezier_inner(reflects, &params, painter.line_depth_offset);
   }
  }
  
@@ -648,28 +653,25 @@ compute_fill_color(v1 color_lerp) {
 
 force_inline void
 fill4(v3 p0, v3 p1, v3 p2, v3 p3,
-      argb c0, argb c1, argb c2, argb c3, linum_param) {
- set_linum;
- fill3( p0,p1,p2, c0,c1,c2, 0);
- fill3( p0,p2,p3, c0,c2,c3, 0);
+      argb c0, argb c1, argb c2, argb c3,
+      Fill_Params params={}, linum_param) {
+ fill3(p0,p1,p2, c0,c1,c2, params,linum);
+ fill3(p0,p2,p3, c0,c2,c3, params,linum);
 }
 //@Cleanup
 force_inline void
-fill4(v3 p0, v3 p1, v3 p2, v3 p3, argb c, linum_param) {
- fill4(p0,p1,p2,p3, repeat4(c), linum);
-}
-force_inline void
-fill4(v3 p0, v3 p1, v3 p2, v3 p3, linum_param) {
- fill4(p0,p1,p2,p3,0,0,0,0, linum);
+fill4(v3 p0, v3 p1, v3 p2, v3 p3, argb c=0,
+      Fill_Params params={}, linum_param) {
+ fill4(p0,p1,p2,p3, repeat4(c), params,linum);
 }
 
 inline void
 poly4_inner(v3 p0, v3 p1, v3 p2, v3 p3, 
             argb c0, argb c1, argb c2, argb c3,
-            v1 depth_offset, u32 flags)
+            v1 depth_offset, Poly_Flags flags)
 {
- fill3_inner(p0,p1,p2, c0,c1,c2, depth_offset, flags);
- fill3_inner(p0,p2,p3, c0,c2,c3, depth_offset, flags);
+ poly3_inner(p0,p1,p2, c0,c1,c2, depth_offset, flags);
+ poly3_inner(p0,p2,p3, c0,c2,c3, depth_offset, flags);
 }
 
 xfunction void
@@ -701,7 +703,7 @@ fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
 xfunction void
 bezier_poly3_inner(v3 A, v3 P[4], 
                    argb c0, argb c1, argb c2, 
-                   v1 depth_offset, b32 viz)
+                   v1 depth_offset, Poly_Flags flags)
 #if NO_IMPL
 ;
 #else
@@ -717,7 +719,9 @@ bezier_poly3_inner(v3 A, v3 P[4],
   v3 worldP = bezier_sample(P,u);
   v4 color  = lerp(color1, u, color2);
   if (sample_index != 0) {
-   fill3_inner(A, previous_worldP, worldP, c0,argb_pack(previous_color),argb_pack(color), depth_offset, viz);
+   poly3_inner(A, previous_worldP, worldP,
+               c0,argb_pack(previous_color),argb_pack(color),
+               depth_offset, flags);
   }
   previous_worldP = worldP;
   previous_color  = color;
@@ -749,7 +753,7 @@ fill(v3 A, Bezier &bezier,
   // NOTE: Reflect
   
   // TODO: Something fishy with this flag vs painter logic
-  if (p->viz_level) { flags |= Poly_Viz; }
+  if (p->viz_level) { flags |= Poly_Shaded; }
   
   bezier_poly3_inner(points[0], points+1, c0,c1,c2, p->fill_depth_offset, flags);
   if (symx) 
@@ -816,42 +820,40 @@ fill_patch_inner(const v3 P[4][4],
 ;
 #else
 {
- const i32 nslice = 16;
- v1 inv_nslice = 1.0f / (v1)nslice;
- v3 prev_v[nslice+1];
- v3 this_v[nslice+1];
- 
- for_i32(v_index, 0, nslice+1) 
- {
-  for_i32(u_index, 0, nslice+1)
-  {
-   v1 u = inv_nslice * (v1)u_index;
-   v1 v = inv_nslice * (v1)v_index;
-   v3 world_p = {};
-   for_i32(i,0,4)
-   {
-    for_i32(j,0,4)
+ if (is_poly_enabled()){
+  const i32 nslice = 16;
+  v1 inv_nslice = 1.0f / (v1)nslice;
+  v3 prev_v[nslice+1];
+  v3 this_v[nslice+1];
+  
+  for_i32(v_index, 0, nslice+1)  {
+   for_i32(u_index, 0, nslice+1) {
+    v1 u = inv_nslice * (v1)u_index;
+    v1 v = inv_nslice * (v1)v_index;
+    v3 world_p = {};
+    for_i32(i,0,4) {
+     for_i32(j,0,4) {
+      world_p += (cubic_bernstein(i,v) *
+                  cubic_bernstein(j,u) *
+                  P[i][j]);
+     }
+    }
+    this_v[u_index] = world_p;
+   }
+   
+   if (v_index != 0)
+   {// NOTE: Draw triangles between last_v and this_v
+    for_i32(u_index, 0, nslice)
     {
-     world_p += (cubic_bernstein(i,v) *
-                 cubic_bernstein(j,u) *
-                 P[i][j]);
+     poly4_inner(prev_v[u_index],   this_v[u_index],
+                 this_v[u_index+1], prev_v[u_index+1],
+                 color,color,color,color,
+                 depth_offset, viz);
     }
    }
-   this_v[u_index] = world_p;
+   
+   block_copy_array(prev_v, this_v);
   }
-  
-  if (v_index != 0)
-  {// NOTE: Draw triangles between last_v and this_v
-   for_i32(u_index, 0, nslice)
-   {
-    poly4_inner(prev_v[u_index],   this_v[u_index],
-                this_v[u_index+1], prev_v[u_index+1],
-                color,color,color,color,
-                depth_offset, viz);
-   }
-  }
-  
-  block_copy_array(prev_v, this_v);
  }
 } 
 #endif
@@ -898,9 +900,10 @@ fill_strip(v3 verts[], i32 vert_count, linum_param) {
 }
 
 function void 
-fill_fan(v3 A, v3 verts[], i32 vert_count, argb color=0, linum_param) {
+fill_fan(v3 A, v3 verts[], i32 vert_count, argb color=0,
+         Fill_Params params={}, linum_param) {
  for_i32(index, 0, vert_count-1) {
-  fill3(A, verts[index], verts[index+1], repeat3(color), linum);
+  fill3(A, verts[index], verts[index+1], color, params, linum);
  }
 }
 
@@ -986,7 +989,7 @@ draw_image(char *filename, v3 o, v3 x, v3 y, v1 alpha=1.f, v3 color={1,1,1},
 function void
 draw_disk(v3 center, v1 radius,
           argb color, v1 depth_offset, Poly_Flags flags,
-          i32 linum = __builtin_LINE())
+          linum_param)
 {
  if (is_poly_enabled()){
   painter.draw_prim_id = linum;
@@ -1004,15 +1007,13 @@ indicate_vertex(char *vertex_name, v3 pos,
 ;
 #else
 {
- if ( is_left() )
- {
-  Painter *p = &painter;
+ if (is_left()){
   painter.draw_prim_id = prim_id;
-  b32 mouse_near;
   const v1 radius = 3*millimeter;
-  {// NOTE: Above
-   mat4 object_to_view = p->view_transform * get_bone_transform();
-   v3 vertex_viewp = mat4vert_div(object_to_view, pos);
+  b32 mouse_near;
+  {
+   mat4 view_form_boneT = painter.view_from_worldT * get_bone_transform();
+   v3 vertex_viewp = mat4vert_div(view_form_boneT, pos);
    v2 delta = painter.mouse_viewp - vertex_viewp.xy;
    mouse_near = (absolute(delta.x) < 1*centimeter && 
                  absolute(delta.y) < 1*centimeter);
@@ -1021,8 +1022,7 @@ indicate_vertex(char *vertex_name, v3 pos,
   b32 mouse_on_top = (prim_id == get_hot_prim_id());
   
   b32 should_draw = ((painter.viz_level >= force_draw_level) || mouse_near);
-  if (should_draw)
-  {//NOTE: Draw
+  if (should_draw) {//NOTE: Draw
    symx_off;
    v1 depth_offset = painter.line_depth_offset - 1*centimeter;
    u32 flags = 0;
@@ -1034,8 +1034,7 @@ indicate_vertex(char *vertex_name, v3 pos,
    draw_disk(pos, radius, color, depth_offset, flags, prim_id);
   }
   
-  if ( mouse_on_top )
-  {// NOTE: debug
+  if ( mouse_on_top ) {// NOTE: debug
    DEBUG_NAME(vertex_name, prim_id);
   }
  }
@@ -1043,5 +1042,6 @@ indicate_vertex(char *vertex_name, v3 pos,
 #endif
 
 #undef  NO_IMPL
+#undef Default_Fill_Params
 
 //-

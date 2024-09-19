@@ -163,7 +163,7 @@ load_latest_game_code(App *app, b32 *out_loaded)
        
        if (ok)
        {
-        if ( auto game = get_game_code() ) {
+        if (auto game = get_game_code()){
          game->game_shutdown(ed_game_state_pointer);
         }
 #if AD_SHUTDOWN_IMGUI
@@ -248,15 +248,13 @@ function Image_Load_Info get_image_load_info(void);
 function void
 maybe_update_game(App *app, Frame_Info frame)
 {
- if (global_game_on_readonly)
- {//-NOTE: Game update
+ if (global_game_on_readonly) {
   Game_API *game = get_game_code();
   b32 loaded;
   load_latest_game_code(app, &loaded);
   if (loaded) { vim_set_bottom_text_lit("Game code reloaded"); }
   
-  if (game)
-  {
+  if (game) {
    Scratch_Block scratch(app);
    Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
    i32 active_viewport_id = get_active_game_viewport_id(app);
@@ -268,6 +266,7 @@ maybe_update_game(App *app, Frame_Info frame)
     .debug_camera_on  =global_debug_camera_on,
     .mouse            =get_mouse_state(app),
    };
+   rect2 clip_boxes[GAME_VIEWPORT_COUNT];
    Image_Load_Info image_load_info = get_image_load_info();
    game_update_return update = game->game_update(ed_game_state_pointer, app, active_viewport_id, input, image_load_info);
    if (update.should_animate_next_frame) { animate_next_frame(app); }
@@ -279,25 +278,22 @@ maybe_update_game(App *app, Frame_Info frame)
 }
 
 function void
-render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame)
+render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame, rect2 clip_box)
 {
  if (global_game_on_readonly &&
      (viewport == MAIN_VIEWPORT_ID || global_auxiliary_viewports_on))
  {
   Game_API *game = get_game_code();
-  if (game)
-  {
+  if (game){
    b32 should_animate_next_frame = game->game_viewport_update(ed_game_state_pointer, viewport, frame.animation_dt);
    if (should_animate_next_frame) { animate_next_frame(app); }
-   Render_Config old_render_config;
-   {
-    Render_Config *old_render_configp = target_last_config();
-    if (old_render_configp) { old_render_config = *old_render_configp; }
-    else { old_render_config = {}; }
-   }
+   Render_Config *old_config = target_last_config(target);
    game->game_render(ed_game_state_pointer, app, target, viewport,
-                     get_mouse_state(app));
-   draw_configure(target, &old_render_config);
+                     get_mouse_state(app), clip_box);
+   {
+    Render_Config *config = draw_new_group(target);
+    if (old_config){ *config = *old_config; }
+   }
   }
  }
 }

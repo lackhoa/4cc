@@ -176,3 +176,4 @@ api(custom) function void open_color_picker(App* app, Color_Picker* picker);
 api(custom) function void animate_in_n_milliseconds(App* app, u32 n);
 api(custom) function String_Match_List buffer_find_all_matches(App* app, Arena* arena, Buffer_ID buffer, i32 string_id, Range_i64 range, String needle, Character_Predicate* predicate, Scan_Direction direction, b32 case_sensitive);
 api(custom) function Profile_Global_List* get_core_profile_list(App* app);
+api(custom) function void draw_rect_outline(App* app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth);

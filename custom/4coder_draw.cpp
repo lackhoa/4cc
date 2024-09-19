@@ -869,7 +869,7 @@ draw_notepad_style_cursor_highlight(App *app, View_ID view_id,
 
 function Rect_f32
 get_contained_box_near_point(Rect_f32 container, Vec2_f32 p, Vec2_f32 box_dims){
-    Vec2_f32 container_dims = rect2_dim(container);
+    Vec2_f32 container_dims = get_dim(container);
     box_dims.x = clamp_max(box_dims.x, container_dims.x);
     box_dims.y = clamp_max(box_dims.y, container_dims.y);
     Vec2_f32 q = p + V2(-20.f, 22.f);

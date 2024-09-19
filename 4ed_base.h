@@ -534,7 +534,7 @@ rect2_half_dim(Rect_i32 r){
 }
 function Vec2_f32
 rect2_half_dim(Rect_f32 r){
- return(rect2_dim(r)*0.5f);
+ return(get_dim(r)*0.5f);
 }
 
 function Rect_i32

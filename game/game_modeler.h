@@ -101,13 +101,10 @@ struct Modeler  // see @init_modeler
 void send_vert_func(String name, v3 pos);
 b32 send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name);
 
-inline u32
-selected_prim_id(Modeler &m) {
- return m.selected_prim_id;
-}
+inline u32 selected_prim_id(Modeler *m) { return m->selected_prim_id; }
 
 inline Prim_Type
-get_selected_type(Modeler &m) {
+get_selected_type(Modeler *m) {
  return prim_id_type(selected_prim_id(m));
 }
 
@@ -130,14 +127,13 @@ curve_index_from_prim_id(u32 id){
 }
 
 inline Bezier_Data
-get_selected_curve(Modeler &m) {
+get_selected_curve(Modeler *m) {
  u32 id = selected_prim_id(m);
  Curve_Index index = curve_index_from_prim_id(id);
- Bezier_Data result = m.curves[index.v];
+ Bezier_Data result = m->curves[index.v];
  return result;
 }
 
-xfunction b32 is_prim_id_active(u32 prim_id);
-function u32 selected_prim_id(void);
+xfunction b32 is_prim_id_active(Modeler *m, u32 prim_id);
 
 //~
