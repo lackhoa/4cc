@@ -379,125 +379,100 @@ system_set_fullscreen_sig(){
 
 internal
 system_is_fullscreen_sig(){
-    // NOTE(allen): Report the fullscreen status as it would be set at the beginning of the
-    // next frame. That is, take into account all fullscreen toggle requests that have come in
-    // already this frame. Read: "full_screen XOR do_toggle"
-    b32 result = (win32vars.full_screen != win32vars.do_toggle);
-    return(result);
+ // NOTE(allen): Report the fullscreen status as it would be set at the beginning of the
+ // next frame. That is, take into account all fullscreen toggle requests that have come in
+ // already this frame. Read: "full_screen XOR do_toggle"
+ b32 result = (win32vars.full_screen != win32vars.do_toggle);
+ return(result);
 }
 
 internal
 system_get_keyboard_modifiers_sig(){
-    return(copy_modifier_set(arena, &win32vars.input_chunk.pers.modifiers));
+ return(copy_modifier_set(arena, &win32vars.input_chunk.pers.modifiers));
 }
 
-internal
+function
 system_set_key_mode_sig(){
-    win32vars.key_mode = mode;
+ win32vars.key_mode = mode;
 }
 
 ////////////////////////////////
 // NOTE(allen): Clipboard
 
-internal String8
-win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena)
-{
-    Scratch_Block scratch(tctx, arena);
-    
-    String8 result = {};
-    
-    if (OpenClipboard(win32vars.window_handles[0]))
-    {
-        b32 got_result = false;
-        if (!got_result)
-        {
-            HANDLE clip_data = GetClipboardData(CF_UNICODETEXT);
-            if (clip_data != 0){
-                u16 *clip_16_ptr = (u16*)GlobalLock(clip_data);
-                if (clip_16_ptr != 0){
-                    String_Const_u16 clip_16 = SCu16(clip_16_ptr);
-                    got_result = true;
-                    result = string_u8_from_string_u16(arena, clip_16, StringFill_NullTerminate).string;
-                }
-                GlobalUnlock(clip_data);
-            }
-        }
-        if (!got_result)
-        {
-            HANDLE clip_data = GetClipboardData(CF_TEXT);
-            if (clip_data != 0)
-            {
-                char *clip_ascii_ptr = (char*)GlobalLock(clip_data);
-                if (clip_ascii_ptr != 0)
-                {
-                    String clip_ascii = SCu8(clip_ascii_ptr);
-                    got_result = true;
-                    result = push_stringz(arena, clip_ascii);
-                }
-                GlobalUnlock(clip_data);
-            }
-        }
-        CloseClipboard();
+function String8
+win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena) {
+ Scratch_Block scratch(tctx, arena);
+ String8 result = {};
+ if (OpenClipboard(win32vars.window_handles[0])) {
+  b32 got_result = false;
+  if (!got_result) {
+   HANDLE clip_data = GetClipboardData(CF_UNICODETEXT);
+   if (clip_data != 0){
+    u16 *clip_16_ptr = (u16*)GlobalLock(clip_data);
+    if (clip_16_ptr != 0){
+     String_Const_u16 clip_16 = SCu16(clip_16_ptr);
+     got_result = true;
+     result = string_u8_from_string_u16(arena, clip_16, StringFill_NullTerminate).string;
     }
-    
-    return(result);
+    GlobalUnlock(clip_data);
+   }
+  }
+  if (!got_result) {
+   HANDLE clip_data = GetClipboardData(CF_TEXT);
+   if (clip_data != 0) {
+    char *clip_ascii_ptr = (char*)GlobalLock(clip_data);
+    if (clip_ascii_ptr != 0) {
+     String clip_ascii = SCu8(clip_ascii_ptr);
+     got_result = true;
+     result = push_stringz(arena, clip_ascii);
+    }
+    GlobalUnlock(clip_data);
+   }
+  }
+  CloseClipboard();
+ }
+ 
+ return(result);
 }
 
 internal void
 win32_post_clipboard(Arena *scratch, char *text, i32 len)
 {
-    if ( OpenClipboard(win32vars.window_handles[0]) )
-    {
-        if (!EmptyClipboard())
-        {
-            String8 error_string = win32_get_error_string();
-            win32_output_error_string(error_string);
-        }
-        HANDLE memory_handle = GlobalAlloc(GMEM_MOVEABLE, len  + 1);
-        if (memory_handle)
-        {
-            char *dest = (char*)GlobalLock(memory_handle);
-            memmove(dest, text, len);
-            dest[len] = 0;
-            GlobalUnlock(memory_handle);
-            SetClipboardData(CF_TEXT, memory_handle);
-            // win32vars.next_clipboard_is_self = true;
-        }
-        CloseClipboard();
-
-        // NOTE(kv): Acknowledge the new sequence number,
-        // So "system_get_clipboard" won't import it back into our clipboard history.
-        // TODO(kv): Do this for other platforms
-        win32vars.clipboard_sequence = GetClipboardSequenceNumber();
-    }
+ if ( OpenClipboard(win32vars.window_handles[0]) ) {
+  if (!EmptyClipboard()) {
+   String8 error_string = win32_get_error_string();
+   win32_output_error_string(error_string);
+  }
+  HANDLE memory_handle = GlobalAlloc(GMEM_MOVEABLE, len  + 1);
+  if (memory_handle) {
+   char *dest = (char*)GlobalLock(memory_handle);
+   memmove(dest, text, len);
+   dest[len] = 0;
+   GlobalUnlock(memory_handle);
+   SetClipboardData(CF_TEXT, memory_handle);
+   // win32vars.next_clipboard_is_self = true;
+  }
+  CloseClipboard();
+  
+  // NOTE(kv): Acknowledge the new sequence number,
+  // So "system_get_clipboard" won't import it back into our clipboard history.
+  win32vars.clipboard_sequence = GetClipboardSequenceNumber();
+ }
 }
 
 internal
 system_get_clipboard_sig()
 {
-    String8 result = {};
-    DWORD new_number = GetClipboardSequenceNumber();
-    if (new_number != win32vars.clipboard_sequence)
-    {
-        win32vars.clipboard_sequence = new_number;
-/*
-        if (win32vars.next_clipboard_is_self){
-          win32vars.next_clipboard_is_self = false;
-        }
-        else
-*/
-        {
-            for (i32 R = 0; R < 8; ++R)
-            {
-                result = win32_read_clipboard_contents(win32vars.tctx, arena);
-                if (result.str == 0)
-                {
-                    break;
-                }
-            }
-        }
-    }
-    return(result);
+ String8 result = {};
+ DWORD new_number = GetClipboardSequenceNumber();
+ if (new_number != win32vars.clipboard_sequence) {
+  win32vars.clipboard_sequence = new_number;
+  for (i32 R = 0; R < 8; ++R) {
+   result = win32_read_clipboard_contents(win32vars.tctx, arena);
+   if (result.size != 0) { break; }
+  }
+ }
+ return(result);
 }
 
 internal

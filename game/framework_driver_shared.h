@@ -28,35 +28,29 @@ typedef Bezier Bez;
 
 //~ id system
 // NOTE(kv): Primitives are either drawn by code or data.
-enum Prim_Type : u8
-{
+struct Vertex_Index { i1 v; };
+struct Curve_Index  { i1 v; };
+
+enum Prim_Type : u8 {
  Prim_Null     = 0,
  Prim_Vertex   = 1,
  Prim_Curve    = 2,
  Prim_Triangle = 3,
 };
 
-force_inline Prim_Type
-prim_id_type(u32 id) {
- return Prim_Type(id >> 24);
-}
-
-force_inline b32
-prim_id_is_data(u32 prim_id) {
- return prim_id_type(prim_id) != 0;
-}
+inline Prim_Type prim_id_type(u32 id) { return Prim_Type(id >> 24); }
+inline b32 prim_id_is_data(u32 prim_id) { return prim_id_type(prim_id) != 0; }
 
 inline u32
-vertex_prim_id(i1 index)
-{
+vertex_prim_id(i1 index) {
  u32 type = u32(Prim_Vertex) << 24;
  u32 result = (u32)(index) | type;
  return result;
 }
+inline u32 vertex_prim_id(Vertex_Index i) { return vertex_prim_id(i.v); }
 //
 inline i1
-prim_id_to_index(u32 id)
-{
+prim_id_to_index(u32 id) {
  u32 result = 0;
  if( prim_id_is_data(id) ) {
   result = (id & 0xFFFF);
@@ -64,9 +58,8 @@ prim_id_to_index(u32 id)
  return result;
 }
 //
-force_inline u32
-curve_prim_id(i1 index)
-{
+inline u32
+curve_prim_id(i1 index) {
  u32 type = u32(Prim_Curve) << 24;
  u32 result = (u32)(index) | type;
  return result;
@@ -90,7 +83,11 @@ struct Camera {
    mat4 world_from_cam;   // NOTE: 3x3 Columns are camera axes
    union {
     mat4 cam_from_world;  // NOTE: 3x3 Rows are camera axes
-    struct {v4 x,y,z,w;};
+    struct {
+     union {v4 x_; v3 x;};
+     union {v4 y_; v3 y;};
+     union {v4 z_; v3 z;};
+    };
    };
   };
  };
@@ -105,8 +102,7 @@ struct Camera {
 };
 
 function void
-setup_camera(Camera *camera, Camera_Data *data)
-{
+setup_camera(Camera *camera, Camera_Data *data) {
  *camera = {};
  
  camera->near_clip    = 1*centimeter;
@@ -118,11 +114,49 @@ setup_camera(Camera *camera, Camera_Data *data)
  X_Camera_Data(X)
 #undef X
  
- camera->transform = (mat4i_translate(data->pan) *
+ camera->transform = (/*mat4i_translate(data->pan) * */
                       mat4i_rotate_tpr(data->theta, data->phi, data->roll, data->pivot) *
                       mat4i_translate(data->pivot+V3z(data->distance)));
 }
 
+function mat4
+get_view_from_world(Camera *camera, b32 orthographic) {
+ mat4 result;
+ v1 focal = camera->focal_length;
+ v1 n = camera->near_clip;
+ v1 f = camera->far_clip;
+ 
+ //NOTE: Compute the depth from z
+ //NOTE: revserse z
+ result = mat4{{
+   1,0, 0,0,
+   0,1, 0,0,
+   0,0,-1,0,
+   0,0, 0,1,
+  }} * camera->cam_from_world;
+ 
+ if (orthographic) {
+  //NOTE All objects depth are at the origin's depth
+  v1 d = camera->distance;
+  mat4 ortho = {{
+    focal,0,0,0,
+    0,focal,0,0,
+    0,0,2*d/(f-n),-d*(f+n)/(f-n),
+    0,0,0,d,
+   }};
+  result = ortho*result;
+ } else {
+  //NOTE perspective
+  mat4 perspectiveT = {{
+    focal, 0,     0,            0,
+    0,     focal, 0,            0,
+    0,     0,     (n+f)/(f-n), -2*f*n/(f-n),
+    0,     0,     1,            0,
+   }};
+  result = perspectiveT*result;
+ }
+ return result;
+}
 
 //-
 #if AD_IS_FRAMEWORK
@@ -139,12 +173,6 @@ framework_storage b32 debug_frame_time_on;
 
 framework_storage u32 draw_cycle_counter;
 framework_storage v1  default_fvert_delta_scale;
-
-struct Bone {
- String name;
- mat4i transform;
- b32 is_right;
-};
 
 #include "game_draw.h"
 
@@ -185,8 +213,7 @@ struct Painter {
  struct Modeler *modeler;
  
  b32 is_right;
- arrayof<Bone>   bone_list;
- arrayof<i1>     bone_stack;  // NOTE: Offset into the coframe list
+ arrayof<i32> bone_stack;
  
  i32 view_vector_count;
  v3  view_vector_stack[16];
@@ -199,22 +226,47 @@ global_const argb selected_color = argb_red;
 framework_storage Painter painter;
 
 //-
-inline i1
-current_bone_index() {
- return painter.bone_stack.last();
+inline i1 current_bone_index(Painter *p) {
+ return p->bone_stack.last();
 }
 
-inline Bone&
-current_bone() {
- i1 index = painter.bone_stack.last();
- return painter.bone_list[index];
-}
+xfunction mat4i&
+get_bone_xform(Modeler *m, i32 index);
 //
-inline mat4i& get_bone_transform() { return current_bone().transform; }
-inline String get_bone_name()      { return current_bone().name; }
+inline mat4i&
+current_bone_xform(Painter *p) {
+ i1 index = current_bone_index(p);
+ return get_bone_xform(p->modeler, index);
+}
 
 inline b32 is_left() { return painter.is_right == 0; }
 //-
+enum Bone_Type{
+ Bone_None,
+ //-
+ Bone_Head          =1,
+ Bone_Arm           =2,
+ Bone_Forearm       =3,
+ Bone_Bottom_Phalanx=4,
+ Bone_Mid_Phalanx   =5,
+ Bone_Top_Phalanx   =6,
+ Bone_Torso         =7,
+ Bone_References    =8,
+ Bone_Hand          =9,
+ Bone_Thumb         =10,
+ Bone_Pelvis        =11,
+};
+struct Bone_ID{
+ Bone_Type type;
+ i32 id;
+};
+inline b32 operator==(Bone_ID &a, Bone_ID &b){
+ return (a.type==b.type) && (a.id==b.id);
+}
+inline Bone_ID
+make_bone_id(Bone_Type type, i32 id=0){
+ return Bone_ID{type, id};
+}
 
 #if AD_IS_FRAMEWORK
 #include "game_modeler.h"
@@ -223,17 +275,21 @@ inline b32 is_left() { return painter.is_right == 0; }
 #include "game_draw.cpp"
 
 xfunction b32
-send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name);
-//
+send_bez_v3v2_func(Painter *p, String name, String p0_name, v3 d0, v2 d3, String p3_name);
 #define send_bez_v3v2(name, p0_name, d0, d3, p3_name) \
-send_bez_v3v2_func(strlit(#name), strlit(#p0_name), d0, d3, strlit(#p3_name))
+send_bez_v3v2_func(&painter, strlit(#name), strlit(#p0_name), d0, d3, strlit(#p3_name))
+
+xfunction void
+send_vert_func(Painter *p, String name, v3 pos);
+#define send_vert(NAME)  send_vert_func(&painter, strlit(#NAME), NAME)
 
 #define render_movie_return void
 #define render_movie_params \
 Arena *arena, Arena *scratch,  Render_Config *render_config, \
 Viewport *viewport, i1 viewport_index, \
 v1 state_time, b32 references_full_alpha, \
-App *app, Render_Target *render_target, v2 mouse_viewp, Modeler *modeler
+App *app, Render_Target *render_target, v2 mouse_viewp, Modeler *modeler, \
+Camera *camera
 
 render_movie_return render_movie(render_movie_params);
 void driver_update(Viewport *viewports);
@@ -247,7 +303,8 @@ set_bone_transform(mat4i const&transform) {
 
 function v3
 camera_object_position() {
- v3 result = get_bone_transform().inv * camera_world_position(&painter.camera);
+ v3 result = (current_bone_xform(&painter).inv *
+              camera_world_position(&painter.camera));
  return result;
 }
 
@@ -271,63 +328,51 @@ pop_view_vector() {
  p.view_vector_count--;
  kv_assert(p.view_vector_count > 0);
 }
-
 xfunction void
-push_object(mat4i const&child_to_parent, v3 center, String name)
+push_bone(mat4i const&parent_from_child, Bone_ID id, v3 center={})
 #if AD_IS_DRIVER
 ;
 #else
 {
- auto &p = painter;
+ Painter *p = &painter;
+ auto m  = painter.modeler;
+ mat4i &parent = current_bone_xform(p);
  
- i1 bone_index = -1;
- {
-  auto &list = p.bone_list;
-  if( name != String{} )
-  {
-   for_i32(index,0,list.count)
-   {
-    Bone &bone = list[index];
-    if(bone.name     == name &&
-       bone.is_right == p.is_right)
-    {
-     bone_index = index;
-     break;
-    }
+ i1 bone_index = 0;
+ {//NOTE(kv) Add or get bone
+  for_i32(index,1,m->bones.count){
+   Bone &bone = m->bones[index];
+   if(bone.id       == id &&
+      bone.is_right == p->is_right) {
+    bone_index = index;
+    break;
    }
   }
   
-  if (bone_index == -1)
-  {
-   bone_index = list.count;
-   mat4i &parent = get_bone_transform();
-   mat4i new_transform = parent * child_to_parent;
-   list.push(Bone{.name=name, .transform=new_transform, .is_right=p.is_right});
+  if (!bone_index){
+   bone_index = m->bones.count;
+   m->bones.push(Bone{.id=id, .is_right=p->is_right});
   }
  }
  
- p.bone_stack.push(bone_index);
- push_view_vector(center);
+ mat4i new_transform = parent * parent_from_child;
+ m->bones[bone_index].xform = new_transform;
  
- set_bone_transform( get_bone_transform() );
+ p->bone_stack.push(bone_index);
+ push_view_vector(center);
+ set_bone_transform(new_transform);
 }
 #endif
-// @Overload
 inline void
-push_object(mat4i const&child_to_parent, v3 center={}, char *name="") {
- push_object(child_to_parent, center, SCu8(name));
-}
-// @Overload
-inline void
-push_object(mat4i const&child_to_parent, char *name) {
- return push_object(child_to_parent, V3(), SCu8(name));
+push_bone(mat4i const&parent_from_child, Bone_Type type, v3 center={}) {
+ return push_bone(parent_from_child, make_bone_id(type), center);
 }
 
 function void
-pop_object() {
- Painter &p = painter;
- p.bone_stack.pop();
- mat4i &parent = get_bone_transform();
+pop_bone() {
+ Painter *p = &painter;
+ p->bone_stack.pop();
+ mat4i &parent = current_bone_xform(p);
  set_bone_transform(parent);
  pop_view_vector();
 }

@@ -41,7 +41,8 @@ STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the relo
 
 # NOTE: Override configuration ############################
 #asan_on          = 1
-#ed_build_level   = 1
+#COMPILE_GAME_WITH_MSVC=1
+ed_build_level   = 1
 #meta_build_level = 0
 STOP_DEBUGGING_BEFORE_BUILD = 0
 
@@ -264,7 +265,7 @@ def run_compiler(compiler, input_files, output_file, debug_mode,
         debug_flag = "-Zi -Ob1"  # NOTE "-Zi" means that you produce a separate pdb fie
     compiler_flags += f" {debug_flag}"
 
-    optimization = "" if debug_mode else "-O2"
+    optimization = "-Od" if debug_mode else "-O2"
     compiler_flags += f" {optimization}"
 
     maybe_ccache = "ccache"

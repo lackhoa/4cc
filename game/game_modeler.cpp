@@ -33,41 +33,41 @@ get_vertex_by_name(Modeler *m, String name) {
 }
 
 xfunction void
-send_vert_func(Modeler *m, String name, v3 pos) {
- b32 is_new = false;
+send_vert_func(Painter *p, String name, v3 pos) {
+ auto m = p->modeler;
  Vertex_Data *result = get_vertex_by_name(m, name);
  
- if (result == 0) {
-  is_new = true;
+ if (result == 0){
   result = &m->vertices.push2();
   *result = {
    .name = push_string(m->permanent_arena, name)
   };
  }
  
- result->pos = pos;
- if ( is_left() ) {
-  // NOTE: weird and arbitrary logic
-  result->bone_index = current_bone_index();
+ if (is_left()){
+  //NOTE(kv) Only record vertex on the left
+  result->pos        = pos;
+  result->bone_index = current_bone_index(p);
  } else {
   result->symx = true;
  }
 }
-//
-#define send_vert(NAME)  send_vert_func(strlit(#NAME), NAME)
 
 Bezier bez(v3 p0, v3 d0, v2 d3, v3 p3);
 
 xfunction b32
-send_bez_v3v2_func(Modeler *m, String name, String p0_name, v3 d0, v2 d3, String p3_name)
+send_bez_v3v2_func(Painter *p, String name,
+                   String p0_name, v3 d0,
+                   v2 d3, String p3_name)
 {
+ Modeler *m = p->modeler;
  b32 ok = false;
  Bezier_Data *curve = 0;
  
  //NOTE(kv) Query the curve
  for_i32(curve_index, 1, m->curves.count) {
   Bezier_Data *it = &m->curves[curve_index];
-  if ( string_match(it->name, name) ) {
+  if (string_match(it->name, name)){
    curve = it;
   }
  }
@@ -89,8 +89,8 @@ send_bez_v3v2_func(Modeler *m, String name, String p0_name, v3 d0, v2 d3, String
   DEBUG_TEXT("bezier error: cannot find vertex");
  }
  
- if ( is_left() ) {
-  curve->bone_index = current_bone_index();
+ if (is_left()) {
+  curve->bone_index = current_bone_index(p);
  } else {
   curve->symx = true;
  }
@@ -101,15 +101,14 @@ send_bez_v3v2_func(Modeler *m, String name, String p0_name, v3 d0, v2 d3, String
 //-NOTE: Edit history
 
 function void
-clear_edit_history(Modeler_History &h)
+clear_edit_history(Modeler_History *h)
 {
  // NOTE(kv): We wanna clear all history when we want to.
  // NOTE(kv): so when we clear, the plan is to just wipe out the memory, and re-initialize everything.
  // NOTE(kv): Later we can make multiple arena pools, and free those.
- if (h.inited)
- {
-  arena_clear(&h.arena);
-  init_dynamic(h.stack, &h.allocator, 128);
+ if (h->inited) {
+  arena_clear(&h->arena);
+  init_dynamic(h->edit_stack, &h->allocator, 128);
  }
 }
 
@@ -160,7 +159,7 @@ modeler_undo(Modeler *m)
  i1 undo_index = h.redo_index - 1;
  b32 ok = (undo_index >= 0);
  if (ok) {
-  apply_edit_no_history(m, h.stack[undo_index], false);
+  apply_edit_no_history(m, h.edit_stack[undo_index], false);
   h.redo_index -= 1;
  }
  return ok;
@@ -168,13 +167,13 @@ modeler_undo(Modeler *m)
 
 inline b32
 can_redo(Modeler_History &h) {
- return (h.redo_index < h.stack.count);
+ return (h.redo_index < h.edit_stack.count);
 }
 //
 function void
 modeler_redo(Modeler *m) {
  auto &h = m->history;
- apply_edit_no_history(m, h.stack[h.redo_index], true);
+ apply_edit_no_history(m, h.edit_stack[h.redo_index], true);
  h.redo_index += 1;
 }
 
@@ -182,9 +181,9 @@ function void
 apply_new_edit(Modeler *m, Modeler_Edit &edit)
 {
  auto &h = m->history;
- h.stack.count = h.redo_index;
- h.stack.set_count(h.redo_index+1);  // NOTE(kv): overwrite everything after the redo
- h.stack[h.redo_index] = edit;  // NOTE(kv): push the edit on top of the stack
+ h.edit_stack.count = h.redo_index;
+ h.edit_stack.set_count(h.redo_index+1);  // NOTE(kv): overwrite everything after the redo
+ h.edit_stack[h.redo_index] = edit;  // NOTE(kv): push the edit on top of the stack
  modeler_redo(m);
  m->change_uncommitted = true;
 }
@@ -194,7 +193,7 @@ get_current_edit(Modeler_History &h)
 {// NOTE: Sometimes the "current edit" doesn't exist yet
  Modeler_Edit *result = 0;
  if (can_undo(h)) {
-  result = &h.stack[get_undo_index(h)];
+  result = &h.edit_stack[get_undo_index(h)];
  }
  return result;
 }
@@ -249,6 +248,19 @@ modeler_exit_edit_undo(Modeler *m) {
 inline b32
 selecting_vertex(Modeler *m) {
  return prim_id_type(selected_prim_id(m)) == Prim_Vertex;
+}
+
+xfunction mat4i&
+get_bone_xform(Modeler *m, i32 index){
+ return m->bones[index].xform;
+}
+
+function void
+modeler_clear_data(Modeler *m) {
+ m->vertices.set_count(1);
+ m->curves.  set_count(1);
+ m->bones.   set_count(1);
+ clear_edit_history(&m->history);
 }
 
 //~ EOF

@@ -10,6 +10,7 @@ enum Data_Version
  Version_Rename_Object_Index  = 9,
  Version_Rename_Object_Index2 = 10,
  Version_Bezier_Revamp        = 11,
+ Version_Add_Cursor           = 12,
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,
@@ -27,7 +28,7 @@ struct Key_Direction{
 };
 
 struct Game_Input{
- Game_Input_Public_Embedding;
+ Game_Input_Public_Embed;
  Key_Direction direction;
 };
 
@@ -37,9 +38,32 @@ struct Slow_Line_Map {
  struct Slow_Line_Map_Entry *map;
 };
 
+introspect(info)
+struct Keyboard_Cursor{
+ v3 pos;
+ v1 vel;
+};
+
+introspect(embed,info)
+struct Serialized_State{
+ Keyboard_Cursor kb_cursor;
+};
+
+// NOTE: ;read_basic_types
+#define X(T) \
+force_inline void \
+read_##T(Data_Reader &r, T &DST)  \
+{ DST = eat_##T(r.parser) ; }
+//
+X_Basic_Types(X)
+//
+#undef X
+
+#include "framework.meta.h"
+
 //NOTE: The state is saved between reloads.
 struct Game_State {
- Base_Allocator malloc_base_allocator;
+ Base_Allocator malloc;
  Arena permanent_arena;
  Arena data_load_arena;  // NOTE: cleared on data load
  Arena dll_arena;        // NOTE: cleared on dll reload
@@ -71,20 +95,10 @@ struct Game_State {
  b32 load_failed;
  arrayof<String> command_queue;
  Game_ImGui_State imgui_state;
- b32 keyboard_selection_mode;
- v2 kb_cursor_pos;
+ b32 kb_cursor_mode;
+ Serialized_State_Embed;
  
  b8 __padding[64];
 };
-
-// NOTE: ;read_basic_types
-#define X(T) \
-force_inline void \
-read_##T(Data_Reader &r, T &DST)  \
-{ DST = eat_##T(r.parser) ; }
-//
-X_Basic_Types(X)
-//
-#undef X
 
 //-eof

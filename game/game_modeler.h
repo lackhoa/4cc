@@ -1,8 +1,7 @@
 #pragma once
 
 //-NOTE: Editing
-enum Modeler_Edit_Type
-{
+enum Modeler_Edit_Type {
  ME_None,
  ME_Edit_Group,
  ME_Vert_Move,
@@ -12,17 +11,12 @@ enum Modeler_Edit_Type
 struct Modeler_Edit;
 typedef arrayof<Modeler_Edit> Edit_Group;
 
-struct Vertex_Index   { i1 v; };
-struct Curve_Index  { i1 v; };
-struct Object_Index { i1 v; };
-
 struct Vert_Move {
  arrayof<Vertex_Index> verts;
  v3 delta;
 };
 
-struct Modeler_Edit
-{
+struct Modeler_Edit {
  Modeler_Edit_Type type;
  union {
   Vert_Move  Vert_Move;
@@ -30,16 +24,28 @@ struct Modeler_Edit
  };
 };
 
-struct Modeler_History
-{
+struct Modeler_History {
  Arena arena;
  b32 inited;
  Base_Allocator allocator;
- arrayof<Modeler_Edit> stack;
+ arrayof<Modeler_Edit> edit_stack;
  i1 redo_index;
 };
 
 //-
+
+introspect(info)
+struct Bone{
+ Bone_ID id;
+ mat4i   xform;
+ b32     is_right;
+};
+
+introspect(info)
+struct Bone_Data{
+ Bone_ID id;
+ b32 is_right;
+};
 
 introspect(info)
 struct Vertex_Data {
@@ -87,6 +93,7 @@ struct Modeler  // see @init_modeler
  Arena      *permanent_arena;
  arrayof<Vertex_Data> vertices;
  arrayof<Bezier_Data> curves;
+ arrayof<Bone>        bones;
  
  //-NOTE: Editor
  u32 selected_prim_id;  // todo: There could be multiple selected obj?
@@ -98,7 +105,6 @@ struct Modeler  // see @init_modeler
 
 //-NOTE: Vertex
 
-void send_vert_func(String name, v3 pos);
 b32 send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name);
 
 inline u32 selected_prim_id(Modeler *m) { return m->selected_prim_id; }

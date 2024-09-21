@@ -891,15 +891,13 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     rect2i box = Ri32(group->clip_box);
     dstx = box.x0;
     dsty = box.y0; 
-    if (!group->y_up)
-    { 
+    if (!group->y_up) { 
      dsty = target->height - box.y1;
     };  // NOTE; For editor
     dst_dim = V2(rect2i_dim(box));
     
     {// NOTE: Handle scale down (TODO: Should've just let the game change the render surface, that would save us the trouble of computing render location at both places)
-     for_i32(it,0,group->scale_down_pow2)
-     {
+     for_i32(it,0,group->scale_down_pow2) {
       dst_dim *= 0.5f;
      }
      

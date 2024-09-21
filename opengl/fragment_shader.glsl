@@ -34,6 +34,15 @@ void main(void)
  out_prim_id = fs_in.prim_id;
 #    else
  out_color   = fs_in.color;
+ if (uniform_overlay){
+  //NOTE(kv) We have to set gl_FragDepth because if we don't,
+  //  overlays on the same depth level wouldn't sort correctly due to precision error.
+  //TODO(kv) @speed I think the right way is to just draw overlays on their own depth layer,
+  //  that's the only way to make overlays respect each other's depth.
+  gl_FragDepth = -1;
+ } else {
+  gl_FragDepth = gl_FragCoord.z;
+ }
 #    endif
  
 #else

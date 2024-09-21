@@ -1130,5 +1130,27 @@ struct CSG_Tree
  };
 };
 
+function b32
+is_v2_key(Key_Code code) {
+ switch(code){
+  case Key_Code_L: case Key_Code_H:
+  case Key_Code_K: case Key_Code_J:
+  return true;
+ }
+ return false;
+}
+
+inline b32
+is_v3_key(Key_Code code) {
+ switch(code){
+  case Key_Code_L: case Key_Code_H:
+  case Key_Code_K: case Key_Code_J:
+  case Key_Code_O: case Key_Code_I:
+  return true;
+ }
+ return false;
+}
+
+
 
 //~eof

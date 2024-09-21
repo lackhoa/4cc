@@ -117,13 +117,13 @@ current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.1f, MIN_SPEED
   ANIMATE(theta,    0.004f);
   ANIMATE(phi,      0.004f);
   ANIMATE(distance, CAMERA_DISTANCE_STEP/3.0f);
-  ANIMATE(pan.x,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
-  ANIMATE(pan.y,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
-  ANIMATE(pan.z,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
+  ANIMATE(pivot.x,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
+  ANIMATE(pivot.y,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
+  ANIMATE(pivot.z,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
 #undef ANIMATE
   
-  current->roll  = saved->roll;    // @Hack
-  saved->pivot   = current->pivot; // @Hack
+  current->roll = saved->roll; // @Hack
+  current->pan  = saved->pan; // @Hack
  }
  
  return animation_ended;
@@ -150,12 +150,6 @@ inline v1
 round_to_multiple_of(v1 value, v1 n) {
  v1 result = roundv1(value / n) * n;
  return result;
-}
-
-function void
-clear_modeler_data(Modeler &m) {
- m.vertices.count = 1;
- m.curves.count   = 1;
 }
 
 //-
@@ -301,6 +295,11 @@ pretty_print_func(Printer &p, Type_Info &type, void *void_pointer)
 #define pretty_print(PRINTER, POINTER) \
 pretty_print_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
 
+inline Camera_Data*
+get_target_camera(Game_State *state, i32 viewport_index){
+ return &state->viewports[viewport_index].target_camera;
+}
+
 function b32
 game_load(Game_State *state, App *app, String filename,
           b32 ask_confirmation=true)
@@ -314,8 +313,7 @@ game_load(Game_State *state, App *app, String filename,
  }
  
  String read_string = {};
- if (ok)
- {
+ if (ok) {
   read_string = read_entire_file(scratch, filename);
   ok = read_string.len > 0;
   if ( !ok ) {
@@ -323,8 +321,8 @@ game_load(Game_State *state, App *app, String filename,
   }
  }
  
- if( ok )
- {// NOTE: ;deserialize
+ if( ok ) {
+  // NOTE: ;deserialize
   Arena *load_arena = &state->data_load_arena;
   arena_clear(load_arena);
   STB_Parser parser = new_parser(read_string, load_arena, 128);
@@ -356,9 +354,13 @@ game_load(Game_State *state, App *app, String filename,
     eat_id(p, "references_full_alpha");
     state->references_full_alpha = eat_i1(p);
    }
+   if (r.read_version >= Version_Add_Cursor){
+    eat_id(p, "Serialized_State");
+    read_Serialized_State(r,state->Serialized_State);
+   }
    {
-    Modeler &m = state->modeler;
-    clear_modeler_data(m);
+    Modeler *m = &state->modeler;
+    modeler_clear_data(m);
     
     {//-NOTE Vertices
      eat_id(p, "vertices");
@@ -367,7 +369,7 @@ game_load(Game_State *state, App *app, String filename,
       if ( maybe_char(p, '}') ) {
        break;
       }
-      Vertex_Data &v = m.vertices.push2();
+      Vertex_Data &v = m->vertices.push2();
       read_Vertex_Data(r,v);
      }
     }
@@ -380,7 +382,7 @@ game_load(Game_State *state, App *app, String filename,
       if ( maybe_char(p, '}') ) {
        break;
       }
-      Bezier_Data &b = m.curves.push2();
+      Bezier_Data &b = m->curves.push2();
       read_Bezier_Data(r,b);
      }
     }
@@ -398,61 +400,60 @@ game_load(Game_State *state, App *app, String filename,
  }
  
  state->load_failed = !ok; 
- if (ok) { clear_edit_history(state->modeler.history); }
- 
  return ok;
 }
 
 //~
 
-function Bone &
-get_right_bone(Bone &bone) {
+function Bone *
+get_right_bone(Modeler *m, Bone *bone) {
+ Bone *result = 0;
  auto &p = painter;
- Bone *result = &bone;
- for_i32(bone_index, 0, p.bone_list.count) {
-  auto &boneR = p.bone_list[bone_index];
-  if (boneR.is_right &&
-      (boneR.name == bone.name))
-  {
-   result = &boneR;
-   break;
+ if(bone->is_right){
+  result = bone;
+ }else{
+  for_i32(bone_index, 0, m->bones.count){
+   auto boneR = &m->bones[bone_index];
+   if (boneR->is_right &&
+       (boneR->id == bone->id)) {
+    result = boneR;
+    break;
+   }
   }
  }
- 
- return *result;
+ return result;
 }
 
 function void
-render_data(Modeler &m)
+render_data(Modeler *m)
 {
  hl_block;
  painter.is_right = 0;
- auto &p = painter;
  argb inactive_color = argb_dark_green;
- for_i32(vindex,1,m.vertices.count) {
-  Vertex_Data &vert = m.vertices[vindex];
-  Bone &bone = p.bone_list[vert.bone_index];
+ for_i32(vindex,1,m->vertices.count) {
+  Vertex_Data &vert = m->vertices[vindex];
+  Bone *bone = &m->bones[vert.bone_index];
   u32 prim_id = vertex_prim_id(vindex);
   {
-   v3 pos = mat4vert(bone.transform, vert.pos);
+   v3 pos = mat4vert(bone->xform, vert.pos);
    indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
   }
   if (vert.symx) {
    //NOTE: Draw the right side (TODO @speed stupid object lookup)
    set_in_block(painter.is_right, 1);
-   auto &boneR = get_right_bone(bone);
-   v3 pos = mat4vert(boneR.transform, vert.pos);
+   auto boneR = get_right_bone(m, bone);
+   v3 pos = mat4vert(boneR->xform, vert.pos);
    indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
   }
  }
  
- for_i32(curve_index,1,m.curves.count) {
-  Bezier_Data &curve = m.curves[curve_index];
-  auto &bone = p.bone_list[curve.bone_index];
+ for_i32(curve_index,1,m->curves.count) {
+  Bezier_Data &curve = m->curves[curve_index];
+  Bone *bone = &m->bones[curve.bone_index];
   u32 prim_id = curve_prim_id(curve_index);
   {
-   v3 p0 = m.vertices[curve.p0_index].pos;
-   v3 p3 = m.vertices[curve.p3_index].pos;
+   v3 p0 = m->vertices[curve.p0_index].pos;
+   v3 p3 = m->vertices[curve.p3_index].pos;
    Bez draw_bez;
    switch(curve.type){
     case Bezier_Type_v3v2:{
@@ -464,12 +465,12 @@ render_data(Modeler &m)
    }
    
    {
-    draw(bone.transform*draw_bez, prim_id);
+    draw(bone->xform*draw_bez, prim_id);
    }
    if (curve.symx) {
     set_in_block(painter.is_right, 1);
-    auto &boneR = get_right_bone(bone);
-    draw(boneR.transform*draw_bez, prim_id);
+    auto boneR = get_right_bone(m, bone);
+    draw(boneR->xform*draw_bez, prim_id);
    }
   }
  }
@@ -504,36 +505,45 @@ game_render(game_render_params)
   mouse_viewp       = mouse_viewp_px / meter_to_pixel;
  }
  
- Render_Config *config = draw_new_group(target);
- set_y_up(target, config);
- config->scale_down_pow2 = scale_down_pow2;
- config->meter_to_pixel  = meter_to_pixel;
- {
-  Scratch_Block render_scratch;
-  //TODO(kv): Why can't the game understand scratch blocks?
-  render_movie(scratch, render_scratch,
-               config, viewport, viewport_id-1, 
-               state->time, state->references_full_alpha,
-               app, target, mouse_viewp, &state->modeler);
+ Camera camera_value;
+ Camera *camera = &camera_value;
+ {// NOTE: camera
+  setup_camera(camera, &viewport->camera);
  }
- render_data(state->modeler);
- if (state->keyboard_selection_mode)
+ 
+ {//-NOTE(kv) Drawing the movie
+  Render_Config *config = draw_new_group(target);
+  set_y_up(target, config);
+  config->scale_down_pow2 = scale_down_pow2;
+  config->meter_to_pixel  = meter_to_pixel;
+  {
+   Scratch_Block render_scratch;
+   //TODO(kv): Why can't the game understand scratch blocks?
+   render_movie(scratch, render_scratch,
+                config, viewport, viewport_id-1, 
+                state->time, state->references_full_alpha,
+                app, target, mouse_viewp, &state->modeler, camera);
+  }
+ }
+ //-NOTE(kv)
+ render_data(&state->modeler);
+ 
+ if (state->kb_cursor_mode &&
+     viewport_id == 1)
  {//NOTE(kv) ;draw_cursor
+  v1 cursor_dist = lengthof(camera->cam_from_world * state->kb_cursor.pos);
   v1 radius = 4*millimeter;
-  v2 points[] = { v2{}, radius*V2(-1,-1), radius*V2(+1,-1), };
-  for_i32(i,0,3){ points[i] += state->kb_cursor_pos; }
-  
-  v3 points_v3[3];
-  mat4 &bone_from_cam = painter.cam_from_boneT.inverse;
+  radius *= cursor_dist / camera->focal_length;
+  if (fbool(1)){ radius *= 10.f; }
+  v3 points[] = { v3{}, V3(-1,-1,0), V3(+1,-1,0), };
   for_i32(i,0,3){
-   //NOTE(kv) We want the size to be the same as we specified in 2D,
-   // which requires putting the object at distance=focal length.
-   v1 z = -painter.camera.focal_length;
-   points_v3[i] = bone_from_cam*V3(points[i],z);
+   points[i] = (state->kb_cursor.pos +
+                radius*(points[i].x*camera->x +
+                        points[i].y*camera->y));
   }
   {
    Fill_Params params = {.non_default=true, .flags=Poly_Overlay};
-   fill3(points_v3, argb_blue, params);
+   fill3(points, argb_blue, params);
   }
  }
 }
@@ -545,29 +555,28 @@ game_init(game_init_params)
  
  //@game_bootstrap_arena_zero_initialized
  Game_State *state = push_struct(bootstrap_arena, Game_State);
- state->malloc_base_allocator = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
+ state->malloc = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
  state->permanent_arena = *bootstrap_arena;
  Arena *arena = &state->permanent_arena;
- state->dll_arena = make_arena(&state->malloc_base_allocator, MB(1));
+ state->dll_arena = make_arena(&state->malloc, MB(1));
  
  {//-;init_modeler
-  Modeler &m = state->modeler;
-  m.permanent_arena = &state->permanent_arena;
-  init_static(m.vertices, m.permanent_arena, 4096);
-  init_static(m.curves,   m.permanent_arena, 512);
+  Modeler *m = &state->modeler;
+  m->permanent_arena = &state->permanent_arena;
+  init_dynamic(m->vertices, &state->malloc, 4096);
+  init_dynamic(m->curves,   &state->malloc, 512);
+  init_dynamic(m->bones,    &state->malloc, 16);
+  m->bones.push(Bone{.xform=mat4i_identity});
   {
-   init_dynamic(m.active_prims, &state->malloc_base_allocator, 16);
-  }
-  {
-   Modeler_History &h = m.history;
-   // NOTE(kv): We might want to erase edit history, so put it in an arena.
-   h.arena     = make_arena(&state->malloc_base_allocator);
+   Modeler_History &h = m->history;
+   // NOTE(kv): We might want to erase entire edit history (or part of it),
+   //  so we'll allocate items from an arena for now (maybe make a heap later).
+   h.arena     = make_arena(&state->malloc);
    h.inited    = true;
    h.allocator = make_arena_base_allocator(&h.arena);
-   clear_edit_history(m.history);
   }
   
-  clear_modeler_data(m);
+  modeler_clear_data(m);
  }
  
  {// NOTE: Save/Load business load_game
@@ -579,15 +588,14 @@ game_init(game_init_params)
   state->manual_save_path = pjoin(arena, state->save_dir, "manual.kv");
   
   {// NOTE: Load state
-   state->data_load_arena = make_arena(&state->malloc_base_allocator);
+   state->data_load_arena = make_arena(&state->malloc);
    game_load(state, app, state->autosave_path, false);
   }
  }
  
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {//;frame_arena_init
-  state->viewports[viewport_index].render_arena = 
-   make_arena(&state->malloc_base_allocator);
+  state->viewports[viewport_index].render_arena = make_arena(&state->malloc);
  }
  
  {
@@ -668,12 +676,6 @@ time_format(char *buf, i32 bufsize, char *format)
  return result;
 }
 
-inline Camera_Data *
-get_target_camera(Game_State *state, i32 index)
-{
- return &state->viewports[index].target_camera;
-}
-
 function String
 serialize_state(Arena *arena, Game_State *state)
 {
@@ -717,8 +719,9 @@ print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newli
    }
   }
   newline;
-  printn2(p, "references_full_alpha ", state->references_full_alpha); newline;
-  newline;
+  p<<"references_full_alpha "<<state->references_full_alpha<<"\n\n";
+  p<<"Serialized_State\n";
+  write_data(p, &state->Serialized_State);
   {// NOTE: Modeler data
    Modeler &modeler = state->modeler;
    {//NOTE vertices
@@ -728,8 +731,7 @@ print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newli
      brace_block;
      for_i32(vi,1,vertices.count)
      {//NOTE Tight loop
-      auto &v = vertices[vi];
-      write_data(p, &v);
+      write_data(p, &vertices[vi]);
      }
     }
     newline;
@@ -783,9 +785,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
   {
    print_message(app, str8lit("strftime failed... go figure that out!\n"));
    ok = false;
-  }
-  else
-  {
+  } else {
    const char *filename_base = is_manual ? "manual" : "auto";
    String backup_path = push_stringfz(scratch, "%.*s/%s_%.*s.kv",
                                       string_expand(backup_dir),
@@ -845,7 +845,6 @@ update_camera_distance(v1 distance, i1 delta_level) {
  return distance;
 }
 
-
 global arrayof<String> command_queue;
 
 function game_send_command_return
@@ -863,7 +862,7 @@ compute_direction_helper(Game_Input *input, Key_Code key_code, i32 component, v1
 }
 
 function void
-update_camera(Camera_Data *cam, Key_Direction key_dir)
+update_orbit(Camera_Data *cam, Key_Direction key_dir)
 {
  if (key_dir.new_keypress) {
   v3 dir = key_dir.dir.xyz;
@@ -887,38 +886,19 @@ update_camera(Camera_Data *cam, Key_Direction key_dir)
   }
  }
 }
+inline void
+update_orbit(Camera_Data *cam, Game_Input *input) {
+ update_orbit(cam, input->direction);
+}
 
 function void
-update_camera_pan(Game_Input *input, Camera_Data *cam)
+update_pan(Camera_Data *cam, Game_Input *input)
 {
  v1 step = CAMERA_PAN_STEP_PER_DISTANCE * cam->distance;
- v2 delta_pan = key_direction(input, Key_Mod_Alt, true).xy;
+ v2 delta_pan = input->direction.dir.xy;
  Camera computed_cam; setup_camera(&computed_cam, cam);
- cam->pan += step*(delta_pan.x * computed_cam.x.xyz + 
-                   delta_pan.y * computed_cam.y.xyz);
-}
-
-function b32
-is_v2_key(Key_Code code)
-{
- switch(code){
-  case Key_Code_L: case Key_Code_H:
-  case Key_Code_K: case Key_Code_J:
-  return true;
- }
- return false;
-}
-
-function b32
-is_v3_key(Key_Code code)
-{
- switch(code){
-  case Key_Code_L: case Key_Code_H:
-  case Key_Code_K: case Key_Code_J:
-  case Key_Code_O: case Key_Code_I:
-  return true;
- }
- return false;
+ cam->pivot += step*(delta_pan.x * computed_cam.x + 
+                     delta_pan.y * computed_cam.y);
 }
 
 inline b32
@@ -966,7 +946,22 @@ game_update(game_update_params)
   state->time += dt;
   if (state->time >= 1000.0f) { state->time -= 1000.0f; }
  }
- hot_prim_id = input->frame.hot_prim_id;
+ 
+ if (state->kb_cursor_mode){
+  v1 min_lensq = max_f32;
+  Vertex_Index closest_vertex = {};
+  for(i32 vi=1;
+      vi<modeler->vertices.count;
+      vi++)
+  {
+   v1 l = lensq(state->kb_cursor.pos - modeler->vertices[vi].pos);
+   if (l < min_lensq){ min_lensq = l; closest_vertex = {vi}; }
+  }
+  hot_prim_id = vertex_prim_id(closest_vertex);
+ }else{
+  hot_prim_id = input->frame.hot_prim_id;
+ }
+ 
  {//NOTE(kv) Compute key direction
   compute_direction_helper(input, Key_Code_L, 0, +1);
   compute_direction_helper(input, Key_Code_H, 0, -1);
@@ -1026,48 +1021,57 @@ case Key_Code_K: case Key_Code_J:
  u32 mods = input->active_mods;
  for_i32(key_stroke_index, 0, key_strokes.count){
   //NOTE(kv) Handle keystroke event
-  Key_Code key_code = key_strokes[key_stroke_index];
+  Key_Code keycode = key_strokes[key_stroke_index];
   if (game_active){
    if (modeler_selecting){
     //-NOTE
     if (mods == 0){
-     switch (key_code){
-      case Key_Code_Return:{ modeler_exit_edit(modeler); }break;
+     switch (keycode){
+      case Key_Code_Return:{ modeler_exit_edit(modeler); }     break;
       case Key_Code_Escape:{ modeler_exit_edit_undo(modeler); }break;
       case Key_Code_R:{ modeler_redo(modeler); }break;
       case Key_Code_S:{ toggle_boolean(modeler->selection_spanning); }break;
       case Key_Code_U:{ modeler_undo(modeler); }break;
      }
     }
-   }else if (state->keyboard_selection_mode){
+   }else if (state->kb_cursor_mode){
     //-NOTE
     if (mods==0){
-     switch(key_code){
-      case Key_Code_Escape:{ state->keyboard_selection_mode=false; }break;
+     switch(keycode){
+      case Key_Code_I: case Key_Code_O: {
+       update_orbit(update_target_cam, input); }break;
+      case Key_Code_Escape:{ state->kb_cursor_mode=false; }break;
+     }
+    }else if(mods==Key_Mod_Ctl){
+     switch(keycode){
+      V3_CASES{ update_orbit(update_target_cam, input); }break;
+     }
+    }else if(mods==Key_Mod_Alt){
+     switch(keycode){
+      V2_CASES{ update_pan(update_target_cam, input); }
      }
     }
    }else{
     if (mods == 0){
-     switch (key_code){
-      V3_CASES{ update_camera(update_target_cam, input->direction); }break;
-      //TODO(kv) Just trigger autosave every 10s or so, and remove this
+     switch (keycode){
+      V3_CASES{ update_orbit(update_target_cam, input->direction); }break;
       case Key_Code_Return:{ game_save(state, app, false); }break;
-      case Key_Code_M:{ state->keyboard_selection_mode = true; }break;
+      case Key_Code_M:{ state->kb_cursor_mode = true; }break;
       case Key_Code_X:{ update_target_cam->theta *= -1.f; }break;
       case Key_Code_Z:{ update_target_cam->theta = .5f - update_target_cam->theta; }break;
      }
     }else if (mods == Key_Mod_Sft){
-     switch(key_code){
+     switch(keycode){
       case Key_Code_U:{ game_load(state, app, state->autosave_path); }break;
       case Key_Code_0:{ update_target_cam->roll = {}; }break;
      }
     }else if (mods == Key_Mod_Ctl){
-     switch(key_code){
-      V3_CASES{ update_camera(update_target_cam, input->direction); }break;
+     switch(keycode){
+      V3_CASES{ update_orbit(update_target_cam, input); }break;
      }
     }else if (mods == Key_Mod_Alt){
-     switch (key_code){
-      V2_CASES{ update_camera_pan(input, update_target_cam); }break;
+     switch (keycode){
+      V2_CASES{ update_pan(update_target_cam, input); }break;
       case Key_Code_0: { update_target_cam->pan = {}; }break;
      }
     }
@@ -1075,7 +1079,7 @@ case Key_Code_K: case Key_Code_J:
   }else if (fui_is_active()){
    //-NOTE
    if (mods == 0){
-    switch(key_code){
+    switch(keycode){
      V4_CASES{
       Fui_Slider *slider = fui_active_slider;
       if (fui_slider_is_discrete(slider)) {
@@ -1099,12 +1103,12 @@ case Key_Code_K: case Key_Code_J:
      case Key_Code_Tab:{ toggle_boolean(fui_v4_zw_active); }break;
     }
    }else if (mods == Key_Mod_Ctl){
-    switch(key_code){
-     V3_CASES{ update_camera(update_target_cam, input->direction); }break;
+    switch(keycode){
+     V3_CASES{ update_orbit(update_target_cam, input); }break;
     }
    }else if (mods == Key_Mod_Alt){
-    switch(key_code){
-     V2_CASES{ update_camera_pan(input, update_target_cam); }break;
+    switch(keycode){
+     V2_CASES{ update_pan(update_target_cam, input); }break;
     }
    }
   }
@@ -1154,15 +1158,7 @@ case Key_Code_K: case Key_Code_J:
     block_copy(slider+1, &value, slider_value_size(slider));
    }
   }else if (game_active){
-   if (state->keyboard_selection_mode){
-    //-NOTE
-    b32 shifted = 0;
-    v2 dir = key_direction(input, 0, false, &shifted).xy;
-    v1 velocity = centimeter * fval(2.0272f);
-    v2 delta = velocity * dt * dir;
-    if (shifted){ delta *= 10.f; }
-    state->kb_cursor_pos += delta;
-   }else if (u32 sel_prim = selected_prim_id(modeler)){
+   if (u32 sel_prim = selected_prim_id(modeler)){
     //-NOTE
     Modeler *m = modeler;
     Modeler_History &h = m->history;
@@ -1170,45 +1166,44 @@ case Key_Code_K: case Key_Code_J:
      // NOTE: Selecting a vertex
      Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
      v3 direction = key_direction(input, 0, false).xyz;
-     if (direction != v3{}) {
-      // NOTE(kv): Update vertex position
-      direction.z = 0.f;
-      direction = noz( mat4vec(update_cam.world_from_cam, direction) );
-      v1 velocity = 0.2f;
-      v3 delta = velocity * dt * direction;
-      
-      arrayof<Vertex_Index> influenced_verts;
-      init_static(influenced_verts, scratch, m->active_prims.count);
-      for_i32(index,0,m->active_prims.count) {
-       Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
-       influenced_verts.push(vi);
-      }
-      
-      Modeler_Edit edit = Modeler_Edit{
-       .type      = ME_Vert_Move,
-       .Vert_Move = {
-        .verts=influenced_verts,
-        .delta=delta,
-       },
-      };
+     
+     // NOTE(kv): Update vertex position
+     direction.z = 0.f;
+     direction = noz( mat4vec(update_cam.world_from_cam, direction) );
+     v1 velocity = 0.2f;
+     v3 delta = velocity * dt * direction;
+     
+     arrayof<Vertex_Index> influenced_verts;
+     init_static(influenced_verts, scratch, m->active_prims.count);
+     for_i32(index,0,m->active_prims.count) {
+      Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
+      influenced_verts.push(vi);
+     }
+     
+     Modeler_Edit edit = Modeler_Edit{
+      .type      = ME_Vert_Move,
+      .Vert_Move = {
+       .verts=influenced_verts,
+       .delta=delta,
+      },
+     };
+     {
+      b32 merged = false;
+      Modeler_Edit *current_edit = get_current_edit(h);
+      // NOTE(kv): edits_can_be_merged is a guardrail for now
+      if (current_edit &&
+          m->change_uncommitted &&
+          edits_can_be_merged(*current_edit, edit))
       {
-       b32 merged = false;
-       Modeler_Edit *current_edit = get_current_edit(h);
-       // NOTE(kv): edits_can_be_merged is a guardrail for now
-       if (current_edit &&
-           m->change_uncommitted &&
-           edits_can_be_merged(*current_edit, edit))
-       {
-        merged = true;
-        modeler_undo(m);
-        edit = *current_edit;
-        edit.Vert_Move.delta += delta;
-       }
-       if (!merged) {
-        edit.Vert_Move.verts = influenced_verts.copy(&h.arena);
-       }
-       apply_new_edit(m, edit);
+       merged = true;
+       modeler_undo(m);
+       edit = *current_edit;
+       edit.Vert_Move.delta += delta;
       }
+      if (!merged) {
+       edit.Vert_Move.verts = influenced_verts.copy(&h.arena);
+      }
+      apply_new_edit(m, edit);
      }
     }else if(get_selected_type(m) == Prim_Curve){
 #if 0
@@ -1267,13 +1262,6 @@ case Key_Code_K: case Key_Code_J:
   }
  }
  
- if(0){
-  i32 selected_index = prim_id_to_index(selected_prim_id(modeler));
-  DEBUG_VALUE(selected_index);
- }
- 
- Arena *permanent_arena = &state->permanent_arena;
- 
  {//-NOTE: Presets
   if( just_pressed(input, Key_Code_Space) ) {
    game_last_preset(state, update_viewport_id);
@@ -1283,6 +1271,52 @@ case Key_Code_K: case Key_Code_J:
    state->references_full_alpha = !state->references_full_alpha;
   }
  }
+ 
+ if (game_active && state->kb_cursor_mode){
+  //-NOTE(kv) update cursor
+  Keyboard_Cursor &cursor = state->kb_cursor;
+  b32 shifted = 0;
+  v2 dir_v2 = key_direction(input, 0, false, &shifted).xy;
+  if (dir_v2 == v2{}){
+   cursor.vel = {};  //NOTE(kv) stop immediately, we don't want skating
+  }else{
+   Camera cam;
+   setup_camera(&cam, &state->viewports[0].camera);
+   {//NOTE(kv) Movement
+    v3 dir = noz( mat4vec(cam.world_from_cam, V3(dir_v2)) );
+    v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
+    v1 zoom = absolute(cursor_camz/cam.focal_length);
+    v1 acc = zoom * 0.1f * fval(2.0423f);
+    if (shifted){ acc *= 10.f; }
+    v1 new_vel = cursor.vel + dt*acc;
+    v1 max_vel = zoom*0.1f*fval(1.0625f);
+    if (shifted){ max_vel *= 10.f; }
+    macro_clamp_max(new_vel, max_vel);
+    v3 delta = 0.5f*(cursor.vel+new_vel)*dt*dir;
+    cursor.pos += delta;
+    cursor.vel = new_vel;
+   }
+   
+   {//NOTE(kv) Clamping (Pretty Involved)
+    //TODO(kv) @bug We don't know if we're in orthographic mode
+    v2 cursor_view = mat4vert_div(get_view_from_world(&cam, false),
+                                  cursor.pos).xy;
+    v2 radius_view = state->viewports[0].clip_radius;
+    {
+     auto &p = cursor_view;
+     auto &r = radius_view;
+     macro_clamp_min(p.x, -r.x); macro_clamp_min(p.y, -r.y);
+     macro_clamp_max(p.x, +r.x); macro_clamp_max(p.y, +r.y);
+    }
+    v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
+    v3 cursor_cam = V3(absolute(cursor_camz / cam.focal_length) * cursor_view,
+                       cursor_camz);
+    cursor.pos = (cam.world_from_cam * cursor_cam);
+   }
+  }
+ }
+ 
+ //~
  
  if (input->debug_camera_on) {
   auto cam = update_target_cam;
@@ -1301,8 +1335,6 @@ case Key_Code_K: case Key_Code_J:
  }
  
  driver_update(state->viewports);
- 
- b32 kb_handled = false;  // TODO(kv): Maybe we automatically set this when you call "just_pressed"?
  
  if (1)
  {//;update_modeler
@@ -1331,7 +1363,9 @@ case Key_Code_K: case Key_Code_J:
     }
     ImGui::End();
    } else {
-    //ImGui::ShowDemoWindow(0);
+    if (fbool(0)){
+     ImGui::ShowDemoWindow(0);
+    }
    }
   }
  }
@@ -1360,8 +1394,7 @@ case Key_Code_K: case Key_Code_J:
  {//~ NOTE: Game commands
   {// NOTE: Process commands
    auto &queue = state->command_queue;
-   for_i1(ci,0,queue.count)
-   {
+   for_i1(ci,0,queue.count) {
 #define MATCH(NAME)    queue[ci] == strlit(NAME)
     if (0) {}
     else if (MATCH("save_manual")) {
@@ -1381,15 +1414,6 @@ case Key_Code_K: case Key_Code_J:
    game_commands.push(strlit("save_manual"));
    game_commands.push(strlit("load_manual"));  
   }
- }
- 
- {
-  v2 radius = (state->viewports[0].clip_radius);
-  v2 &curpos = state->kb_cursor_pos;
-  macro_clamp_min(curpos.x, -radius.x);
-  macro_clamp_max(curpos.x, +radius.x);
-  macro_clamp_min(curpos.y, -radius.y);
-  macro_clamp_max(curpos.y, +radius.y);
  }
  
  return {

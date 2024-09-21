@@ -40,6 +40,8 @@ struct Render_Vertex_List {
  i1 count;
 };
 
+//TODO(kv) We could just send the camera stuff down as render entries...
+//  and that would be better as we don't need to send that stuff for editor anyway.
 struct Render_Config {
 #define RENDER_CONFIG_FIELDS \
 i1      viewport_id;      \

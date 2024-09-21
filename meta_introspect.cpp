@@ -408,7 +408,7 @@ print_struct_embed(Printer &p, String type_name,
                    arrayof<Meta_Struct_Member> &members)
 {
  m_print_location;
- p<<"#define "<<type_name<<"_Embedding \\\n union";
+ p<<"#define "<<type_name<<"_Embed \\\n union";
  m_macro_braces_sm{
   p<<"struct";
   m_macro_braces_sm{
@@ -456,8 +456,10 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname) {
     {//-NOTE: Introspection parameters
      m_paren_open(p);
      while (p->ok_ && !m_maybe_paren_close(p)){
+      ep_maybe_char(p, ',');
       if      (ep_maybe_id(p, "info")) { do_info = true; }
       else if (ep_maybe_id(p, "embed")){ do_embed = true; }
+      else {p->fail();}
      }
      ep_consume_semicolons(p);
     }

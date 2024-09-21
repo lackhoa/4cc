@@ -148,16 +148,6 @@ struct Game_Input_Public {
  Mouse_State mouse;
 };
 
-#if 0
-#define Game_Input_Public_Embedding
-union {
- struct {
-  Key_Mods active_mods;
- };
- Game_Input_Public Game_Input_Public;
-};
-#endif
-
 struct Game_ImGui_State {
  ImGuiContext* ctx;
  ImGuiMemAllocFunc alloc_func;
@@ -165,8 +155,7 @@ struct Game_ImGui_State {
  void*             user_data;
 };
 
-struct Image_Load_Info
-{
+struct Image_Load_Info {
  i32 image_count;
  i32 failure_count;
 };

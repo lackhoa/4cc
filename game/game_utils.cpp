@@ -166,20 +166,20 @@ plane_transform(mat4 const&mat, v3 n, v1 d)
 
 //~
 
-#define object_block(...) \
-push_object(__VA_ARGS__); \
-defer( pop_object(); );
+#define bone_block(...) \
+push_bone(__VA_ARGS__); \
+defer( pop_bone(); );
 
 function mat4i &
-get_parent_transform() {
- auto &stack = painter.bone_stack;
+get_parent_transform(Painter *p) {
+ auto &stack = p->bone_stack;
  i1 index = stack[stack.count-2];
- return painter.bone_list[index].transform;
+ return get_bone_xform(p->modeler, index);
 }
 
 function mat4
-from_parent() {
- return get_bone_transform().inverse * get_parent_transform();
+from_parent(Painter *p) {
+ return current_bone_xform(p).inverse * get_parent_transform(p);
 }
 
 //~
@@ -297,7 +297,7 @@ get_preset()
  return painter.viewport->preset;
 }
 
-inline v3 get_camz() { return painter.camera.z.xyz; }
+inline v3 get_camz() { return painter.camera.z; }
 
 inline b32 camera_is_right() {
  return(almost_equal(get_camz().x, -1.f, 1e-2f));

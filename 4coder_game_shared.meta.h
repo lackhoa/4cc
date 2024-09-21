@@ -1,5 +1,5 @@
 // C:\Users\vodan\4ed\code/meta_introspect.cpp:410:
-#define Game_Input_Public_Embedding \
+#define Game_Input_Public_Embed \
  union\
 {\
 struct\

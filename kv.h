@@ -728,8 +728,8 @@ union v3
 {
  struct { v1 x, y, z; };
  struct { v1 r, g, b; };
- struct { v2 xy; v1 _z; };
- struct { v1 _x; v2 yz; };
+ struct { v2 xy; v1 xy_z; };
+ struct { v1 x_yz; v2 yz; };
  v1 e[3];
  v1 v[3];
  
@@ -752,32 +752,26 @@ absolute(v3 v)
  return v;
 }
 
-force_inline v3
-V3(v2 xy, v1 z) {
- v3 result;
- result.xy = xy;
- result.z = z;
- return result;
-}
-
+force_inline v3 V3(v2 xy)       { return v3{.xy=xy}; }
+force_inline v3 V3(v2 xy, v1 z) { return v3{.xy=xy, .xy_z=z}; }
 force_inline v3 yzx(v3 v) { return v3{v.y, v.z, v.x}; }
 force_inline v3 zxy(v3 v) { return v3{v.z, v.x, v.y}; }
 
 inline v3
 operator-(v3 u, v3 v)
 {
-    v3 result;
-    result.x = u.x - v.x;
-    result.y = u.y - v.y;
-    result.z = u.z - v.z;
-    return result;
+ v3 result;
+ result.x = u.x - v.x;
+ result.y = u.y - v.y;
+ result.z = u.z - v.z;
+ return result;
 }
 
 inline b32
 operator<(v3 u, v3 v)
 {
-    b32 result = ((u.x < v.x) && (u.y < v.y) && (u.z < v.z));
-    return result;
+ b32 result = ((u.x < v.x) && (u.y < v.y) && (u.z < v.z));
+ return result;
 }
 
 inline b32
@@ -1229,23 +1223,37 @@ intersect(rect2 a, rect2 b)
     result.min.y = macro_max(a.min.y, b.min.y);
     result.max.x = minimum(a.max.x, b.max.x);
     result.max.y = minimum(a.max.y, b.max.y);
-    return result;
+ return result;
 }
 
 //
 // ;rect3
 //
 
-struct Rect3
-{
-    v3 min;
-    v3 max;
+struct rect3 {
+ union{
+  struct {v1 x0,y0,z0;};
+  v3 min;
+ };
+ union{
+  struct {v1 x1,y1,z1;};
+  v3 max;
+ };
 };
 
+function rect3
+rect3_center_radius(v3 center, v3 radius) {
+ radius = absolute(radius);
+ return rect3{
+  .min=center-radius,
+  .max=center+radius,
+ };
+}
+
 inline b32
-contains(Rect3 rect, v3 p)
+contains(rect3 rect, v3 p)
 {
-    b32 result = ((p.x >= rect.min.x)
+ b32 result = ((p.x >= rect.min.x)
                && (p.y >= rect.min.y)
                && (p.z >= rect.min.z)
                && (p.x < rect.max.x)
@@ -1255,13 +1263,13 @@ contains(Rect3 rect, v3 p)
 }
 
 inline v3
-get_radius(Rect3 rect) {
+get_radius(rect3 rect) {
  v3 result = 0.5f * (rect.max - rect.min);
  return result;
 }
 
 inline b32
-overlap(Rect3 a, Rect3 b)
+overlap(rect3 a, rect3 b)
 {
  b32 separate = ((a.max.x <= b.min.x) || (a.min.x >= b.max.x)
                  || (a.max.y <= b.min.y) || (a.min.y >= b.max.y)
@@ -1270,7 +1278,7 @@ overlap(Rect3 a, Rect3 b)
 }
 
 inline v3
-getBarycentricCoordinate(Rect3 rect, v3 pos)
+getBarycentricCoordinate(rect3 rect, v3 pos)
 {
  v3 result;
  v3 dim = rect.max - rect.min;
@@ -4494,14 +4502,8 @@ init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0) {
 }
 
 #define X_Basic_Types(X) \
-X(v1) \
-X(v2) \
-X(v3) \
-X(v4) \
-X(i1) \
-X(i2) \
-X(i3) \
-X(i4) \
+X(v1) X(v2) X(v3) X(v4) \
+X(i1) X(i2) X(i3) X(i4) \
 X(String) \
 
 enum Basic_Type

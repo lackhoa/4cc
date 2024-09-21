@@ -23,10 +23,13 @@ driver_update(Viewport *viewports)
  
  v3 hand_pivot = fvert(V3(0.2299f, -0.604f, -0.0145f));
  v3 arm_pivot  = fvert(V3(0.0771f, -0.3359f, -0.0145f));
- for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
- {// TODO: Piggy code to set the camera pivot, but what isn't piggy?
-  Viewport &viewport = viewports[viewport_index];
-  viewport.camera.pivot = arm_pivot;
+ if (0)
+ {
+  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
+  {// TODO: Piggy code to set the camera pivot, but what isn't piggy?
+   Viewport &viewport = viewports[viewport_index];
+   viewport.camera.pivot = arm_pivot;
+  }
  }
 }
 
@@ -135,7 +138,7 @@ internal void
 render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
 {//~NOTE: The hand
  radius_scale_block(fval(0.5038f));
- object_block(ot, "hand");
+ bone_block(ot, Bone_Hand);
  vertex_block("hand");
  set_in_block(painter.line_params.nslice_per_meter, fval(5.9797f) * 100.f);
  
@@ -173,7 +176,7 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
    // TODO: Hm, this doesn't line the thumb up all the way, there's some other motion in play
    thumbT = mat4i_rotateZ(-tadduct, thumb_kbot);
   }
-  object_block(thumbT, "thumb");
+  bone_block(thumbT, Bone_Thumb);
   
   //NOTE: "thumb_triangle_tip" is a prominent bump on your palm
   vv(thumb_triangle_tip, fvert(V3(0.3693f, -2.6673f, -0.2208f)));
@@ -184,12 +187,12 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
   if (fbool(1))
   {
    draw(bez(thumb_kmid_in, fvec(V3(-0.0085f, 0.0217f, 0.f)),
-            fval2(0,0), from_parent()*thumb_palm_conn));
+            fval2(0,0), from_parent(&painter)*thumb_palm_conn));
   }
   else
   {
    draw(bez(thumb_kmid_in, fval2(0.f, 2.9015f),
-            fval2(0,0), from_parent()*thumb_palm_conn,
+            fval2(0,0), from_parent(&painter)*thumb_palm_conn,
             V3y(1)));
   }
   vv1(thumb_ktop_in, fvert(V3(0.565f, -3.0125f, -0.2208f)));
@@ -298,7 +301,8 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
    v3 ikmid = kmid-xvec;
    v3 okmid = kmid+xvec;
    
-   object_block(mat4i_rotateX(-bot_tbend, k));
+   bone_block(mat4i_rotateX(-bot_tbend, k),
+              make_bone_id(Bone_Bottom_Phalanx, ifinger));
    
    {// NOTE: bottom phalanges
     v2 knuckle_control = fval2(0.4816f, 0.329f);
@@ -327,7 +331,8 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
    }
    
    {// NOTE: middle+top phalanges
-    object_block(mat4i_rotateX(-mid_tbend, kmid));
+    bone_block(mat4i_rotateX(-mid_tbend, kmid),
+               make_bone_id(Bone_Mid_Phalanx, ifinger));
     
     vv(ktop, k+0.75f*vec);
     v3 iktop = ktop-xvec;
@@ -342,7 +347,8 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
     
     v3 tip = k+vec;
     {// NOTE: top phalanges
-     object_block(mat4i_rotateX(-top_tbend, ktop));
+     bone_block(mat4i_rotateX(-top_tbend, ktop),
+                make_bone_id(Bone_Top_Phalanx, ifinger));
      
      v2 tip_control = fval2(-0.3298f, 1.1379f);
      v2 knuckle_control = fval2(0.2954f, -0.1896f);
@@ -393,7 +399,7 @@ render_arm(mat4i const&ot, Pose const&pose,
 {//;upper_arm
  vertex_block("upper_arm");  //NOTE: important for studying what goes where
  scale_in_block(default_fvert_delta_scale, 2.f);
- object_block(ot, fvert(V3(-0.0802f, 0.f, -0.1673f)), "arm");
+ bone_block(ot, Bone_Arm, fvert(V3(-0.0802f, 0.f, -0.1673f)));
  Torso torso;
  import_vertices(torso.verts, torso_obj.verts, ot.inv, torsoT, torso_vert_count);
  
@@ -636,7 +642,7 @@ render_forearm(mat4i const&ot,
                mat4 const&armLT, Arm const&arm_obj,
                v3 elbow_offset, v3 elbow_up_out)
 {//~NOTE: The lower arm / forearm
- object_block(ot, "forearm");
+ bone_block(ot, Bone_Forearm);
  
  Arm arm;
  import_vertices(arm.verts, arm_obj.verts, ot.inv, armLT, arm_vert_count);
@@ -658,12 +664,12 @@ render_forearm(mat4i const&ot,
    draw(bez(up, fvec(V3(0.0822f, 0.1457f, 0.f)), palm_in));
    draw(l492, params);
    // ;sending_data_to_draw
-   //v3 v676 = V3(-0.1753f, -0.854f, -0.0817f);
-   //v3 v677 = v676+V3(0.f, -0.3293f, -0.0435f);
-   //send_vert(v676);
-   //send_vert(v677);
-   //send_bez_v3v2(l679, v676, V3(-0.f, 0.1052f, -0.0852f),
-   //              V2(0.f, 0.0936f), v677);
+   v3 v676 = V3(-0.1753f, -0.854f, -0.0817f);
+   v3 v677 = v676+V3(0.f, -0.3293f, -0.0435f);
+   send_vert(v676);
+   send_vert(v677);
+   send_bez_v3v2(l679, v676, V3(-0.f, 0.1052f, -0.0852f),
+                 V2(0.f, 0.0936f), v677);
   }
   {//NOTE: radius (outer)
    v3 up = bezier_sample(l492, fval(0.9006f));
@@ -874,7 +880,7 @@ render_character(Pose const&pose,
   v1 noseY = -loomis_unit;
   vv(nose_tip, V3(0.f, noseY, faceZ) + fvec(V3(0.f, 0.0237f, 0.0916f), clampx));
   
-  object_block(ot, nose_tip, "head");
+  bone_block(ot, Bone_Head, nose_tip);
   
   mat4 &to_local = ot.inverse;
   {// NOTE: profile score
@@ -1841,7 +1847,7 @@ render_character(Pose const&pose,
                      fval(0.067f));
    ot = (mat4i_translate(translate) * mat4i_scale(head_radius_world));
   }
-  object_block(ot, "pelvis");
+  bone_block(ot, Bone_Pelvis);
   
   v1 navelY = (ot.inv * V3y(head_top_static - fval(2.5f) * head_unit_world)).y;
   vv0(navel, V3y(navelY) + fvert(V3(0.f, 0, 0.271f), clampy));
@@ -1903,7 +1909,7 @@ render_character(Pose const&pose,
   painter.is_right = lr_index;
   
   mat4i &ot = torsoTs[lr_index];
-  object_block(ot, fvert(V3(0.f, -2.3176f, 0.3862f)), "torso");
+  bone_block(ot, Bone_Torso, fvert(V3(0.f, -2.3176f, 0.3862f)));
   
   v1 head_unit = get_column(ot.inv,1).y * head_unit_world;
   
@@ -2182,9 +2188,9 @@ render_character(Pose const&pose,
   mat4i rotate = mat4i_rotateX(forearm_turn);
   for_i32(lr_index,0,2)
   {
-   forearmTs[lr_index] =  (armTs[lr_index] *
-                           trs_pivot_transform(translate, rotate, 1.f,
-                                               get_forearm_rotation_pivot()));
+   forearmTs[lr_index] = (armTs[lr_index] *
+                          trs_pivot_transform(translate, rotate, 1.f,
+                                              get_forearm_rotation_pivot()));
   }
  }
  for_i32(lr_index,0,2)
@@ -2209,7 +2215,7 @@ render_reference_images(b32 full_alpha)
  i32 preset = get_preset();
  if ( preset >= 3 )
  {// NOTE: The @ReferenceImage experience
-  object_block( mat4i_scale(head_radius_world) );
+  bone_block(mat4i_scale(head_radius_world), make_bone_id(Bone_References));
   if ( camera_is_right() )
   {
    v3 center = fvert(V3(-0.2112f, -4.5306f, -0.2689f));
@@ -2323,46 +2329,7 @@ render_reference_images(b32 full_alpha)
  }
 }
 
-function mat4
-get_view_from_worldT(Camera *camera, b32 orthographic) {
- mat4 result;
- v1 focal = camera->focal_length;
- v1 n = camera->near_clip;
- v1 f = camera->far_clip;
- 
- //NOTE: Compute the depth from z
- //NOTE: revserse z
- result = mat4{{
-   1,0, 0,0,
-   0,1, 0,0,
-   0,0,-1,0,
-   0,0, 0,1,
-  }} * camera->cam_from_world;
- 
- if (orthographic) {
-  //NOTE All objects depth are at the origin's depth
-  v1 d = camera->distance;
-  mat4 ortho = {{
-    focal,0,0,0,
-    0,focal,0,0,
-    0,0,2*d/(f-n),-d*(f+n)/(f-n),
-    0,0,0,d,
-   }};
-  result = ortho*result;
- } else {
-  //NOTE perspective
-  mat4 perspectiveT = {{
-    focal, 0,     0,            0,
-    0,     focal, 0,            0,
-    0,     0,     (n+f)/(f-n), -2*f*n/(f-n),
-    0,     0,     1,            0,
-   }};
-  result = perspectiveT*result;
- }
- return result;
-}
-
-render_movie_return
+xfunction render_movie_return
 render_movie(render_movie_params)
 {
  painter.bone_stack.count = 0;
@@ -2372,12 +2339,6 @@ render_movie(render_movie_params)
  switch(viewport->preset){
   case 1: viz_level = 1; break;
   case 2: viz_level = 2; break;
- }
- 
- Camera camera_value;
- Camera *camera = &camera_value;
- {// NOTE: camera
-  setup_camera(camera, &viewport->camera);
  }
  
  argb background_color;
@@ -2396,7 +2357,7 @@ render_movie(render_movie_params)
   b32 orthographic = show_grid && (camera_frontal || camera_profile);
   if (fbool(0)){orthographic = show_grid;}
   if (fbool(0)){orthographic = true;}
-  view_from_worldT = get_view_from_worldT(camera, orthographic);
+  view_from_worldT = get_view_from_world(camera, orthographic);
  }
  
  {
@@ -2433,7 +2394,7 @@ render_movie(render_movie_params)
   .target            = render_target,
   .viewport          = viewport,
   .mouse_viewp       = mouse_viewp,
-  .camera            = camera_value,
+  .camera            = *camera,
   .view_from_worldT  = view_from_worldT,
   .symx              = false,
   .fill_color        = default_fill,
@@ -2453,14 +2414,11 @@ render_movie(render_movie_params)
  };
  {
   auto &p = painter;
-  //TODO(kv): @Cleanup Where should the object list live?
-  init_static(p.bone_list,  arena, 64);
+  auto m = p.modeler = modeler;
   init_static(p.bone_stack, arena, 16);
-  p.bone_list.push(Bone{.name=strlit("world"), .transform=mat4i_identity});
   p.bone_stack.push(0);
-  p.view_vector_stack[painter.view_vector_count++] = v3{};
+  push_view_vector(v3{});
   p.painting_disabled = fbool(0);
-  p.modeler = modeler;
  }
  
  v1 animation_time = state_time;

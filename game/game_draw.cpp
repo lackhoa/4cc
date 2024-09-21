@@ -58,7 +58,7 @@ inline u32 get_hot_prim_id() { return hot_prim_id; }
 inline b32 is_poly_enabled() {
  return (painter.painting_disabled == false);
 }
-force_inline b32 is_line_enabled() {
+inline b32 is_line_enabled() {
  return painter.painting_disabled == false;
 }
 
@@ -356,7 +356,7 @@ get_curve_view_alignment(const v3 P[4]) {
  v3 D = P[3];
  v3 normal = noz( cross(B-A, D-A) );  // NOTE: the normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
  v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
- v3 camera_obj = (get_bone_transform().inv * camera_world_position(&p->camera));  // TODO @speed
+ v3 camera_obj = (current_bone_xform(p).inv * camera_world_position(&p->camera));  // TODO @speed
  v3 view_vector = noz(camera_obj - centroid);
  v1 visibility = absolute( dot(normal,view_vector) );
  return visibility;
@@ -426,7 +426,7 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
    // and spaced out more when we look at them in 3D -> you'd underestimate the density in 2D
    Bezier P_transformed;
    {
-    const mat4 &transform = get_bone_transform();
+    const mat4 &transform = current_bone_xform(&painter);
     for_i32(index,0,4)
     {
      P_transformed[index] = mat4vert_div(transform, P[index]);
@@ -1007,27 +1007,28 @@ indicate_vertex(char *vertex_name, v3 pos,
 ;
 #else
 {
+ auto *p = &painter;
  if (is_left()){
-  painter.draw_prim_id = prim_id;
+  p->draw_prim_id = prim_id;
   const v1 radius = 3*millimeter;
   b32 mouse_near;
   {
-   mat4 view_form_boneT = painter.view_from_worldT * get_bone_transform();
+   mat4 view_form_boneT = p->view_from_worldT * current_bone_xform(p);
    v3 vertex_viewp = mat4vert_div(view_form_boneT, pos);
-   v2 delta = painter.mouse_viewp - vertex_viewp.xy;
+   v2 delta = p->mouse_viewp - vertex_viewp.xy;
    mouse_near = (absolute(delta.x) < 1*centimeter && 
                  absolute(delta.y) < 1*centimeter);
   }
   
   b32 mouse_on_top = (prim_id == get_hot_prim_id());
   
-  b32 should_draw = ((painter.viz_level >= force_draw_level) || mouse_near);
+  b32 should_draw = ((p->viz_level >= force_draw_level) || mouse_near);
   if (should_draw) {//NOTE: Draw
    symx_off;
-   v1 depth_offset = painter.line_depth_offset - 1*centimeter;
+   v1 depth_offset = p->line_depth_offset - 1*centimeter;
    u32 flags = 0;
    // NOTE: If lines are overlayed, so should indicators (I guess?)
-   b32 line_overlay_on = (painter.line_params.flags & Line_Overlay);
+   b32 line_overlay_on = (p->line_params.flags & Line_Overlay);
    if (line_overlay_on || force_overlay) {
     flags = Poly_Overlay;
    }
