@@ -186,6 +186,41 @@ struct Viewport {
  v2 clip_radius;
 };
 
+introspect(info)
+enum Bone_Type{
+ Bone_None,
+ //-
+ Bone_Head          =1,
+ Bone_Arm           =2,
+ Bone_Forearm       =3,
+ Bone_Bottom_Phalanx=4,
+ Bone_Mid_Phalanx   =5,
+ Bone_Top_Phalanx   =6,
+ Bone_Torso         =7,
+ Bone_References    =8,
+ Bone_Hand          =9,
+ Bone_Thumb         =10,
+ Bone_Pelvis        =11,
+};
+introspect(info)
+struct Bone_ID{
+ Bone_Type type;
+ i1 id;
+};
+inline b32 operator==(Bone_ID &a, Bone_ID &b){
+ return (a.type==b.type) && (a.id==b.id);
+}
+inline Bone_ID
+make_bone_id(Bone_Type type, i1 id=0){
+ return Bone_ID{type, id};
+}
+
+struct Bone{
+ Bone_ID id;
+ mat4i   xform;
+ b32     is_right;
+};
+
 //NOTE(kv) This is a convenient global store.
 //NOTE(kv) See @init_painter
 struct Painter {
@@ -213,7 +248,7 @@ struct Painter {
  struct Modeler *modeler;
  
  b32 is_right;
- arrayof<i32> bone_stack;
+ arrayof<struct Bone*> bone_stack;
  
  i32 view_vector_count;
  v3  view_vector_stack[16];
@@ -226,47 +261,11 @@ global_const argb selected_color = argb_red;
 framework_storage Painter painter;
 
 //-
-inline i1 current_bone_index(Painter *p) {
- return p->bone_stack.last();
-}
-
-xfunction mat4i&
-get_bone_xform(Modeler *m, i32 index);
-//
-inline mat4i&
-current_bone_xform(Painter *p) {
- i1 index = current_bone_index(p);
- return get_bone_xform(p->modeler, index);
-}
+inline Bone *current_bone(Painter *p){ return p->bone_stack.last(); }
+inline mat4i& current_bone_xform(Painter *p) { return current_bone(p)->xform; }
 
 inline b32 is_left() { return painter.is_right == 0; }
 //-
-enum Bone_Type{
- Bone_None,
- //-
- Bone_Head          =1,
- Bone_Arm           =2,
- Bone_Forearm       =3,
- Bone_Bottom_Phalanx=4,
- Bone_Mid_Phalanx   =5,
- Bone_Top_Phalanx   =6,
- Bone_Torso         =7,
- Bone_References    =8,
- Bone_Hand          =9,
- Bone_Thumb         =10,
- Bone_Pelvis        =11,
-};
-struct Bone_ID{
- Bone_Type type;
- i32 id;
-};
-inline b32 operator==(Bone_ID &a, Bone_ID &b){
- return (a.type==b.type) && (a.id==b.id);
-}
-inline Bone_ID
-make_bone_id(Bone_Type type, i32 id=0){
- return Bone_ID{type, id};
-}
 
 #if AD_IS_FRAMEWORK
 #include "game_modeler.h"
@@ -328,45 +327,68 @@ pop_view_vector() {
  p.view_vector_count--;
  kv_assert(p.view_vector_count > 0);
 }
+
+#if AD_IS_FRAMEWORK
+function Bone *
+get_bone(Modeler *m, Bone_ID id, b32 is_right)
+{
+ for_i32(index,1,m->bones.count){
+  Bone *bone = &m->bones[index];
+  if(bone->id       == id &&
+     bone->is_right == is_right) {
+   return bone;
+  }
+ }
+ return 0;
+}
+function void
+push_bone2(Modeler *m, arrayof<Bone *> &stack,
+           mat4i const&mom_from_kid, Bone_ID id,
+           b32 is_right)
+{
+ mat4i &mom = stack.last()->xform;
+ Bone *bone = get_bone(m, id, is_right);
+ if (!bone){
+  bone = &m->bones.push(Bone{.id=id, .is_right=is_right});
+ }
+ 
+ mat4i new_transform = mom * mom_from_kid;
+ bone->xform = new_transform;
+ 
+ stack.push(bone);
+}
+#endif
+
 xfunction void
-push_bone(mat4i const&parent_from_child, Bone_ID id, v3 center={})
+push_bone(mat4i const&mom_from_kid, Bone_ID id, v3 center={})
 #if AD_IS_DRIVER
 ;
 #else
 {
  Painter *p = &painter;
  auto m  = painter.modeler;
- mat4i &parent = current_bone_xform(p);
+ //note(kv) temporary code, we don't be pushing transforms during drawing
+ push_bone2(m, p->bone_stack, mom_from_kid, id, p->is_right);
  
- i1 bone_index = 0;
- {//NOTE(kv) Add or get bone
-  for_i32(index,1,m->bones.count){
-   Bone &bone = m->bones[index];
-   if(bone.id       == id &&
-      bone.is_right == p->is_right) {
-    bone_index = index;
-    break;
-   }
-  }
-  
-  if (!bone_index){
-   bone_index = m->bones.count;
-   m->bones.push(Bone{.id=id, .is_right=p->is_right});
-  }
- }
+ Bone *bone = get_bone(m, id, p->is_right);
  
- mat4i new_transform = parent * parent_from_child;
- m->bones[bone_index].xform = new_transform;
- 
- p->bone_stack.push(bone_index);
  push_view_vector(center);
- set_bone_transform(new_transform);
+ set_bone_transform(bone->xform);
 }
 #endif
 inline void
-push_bone(mat4i const&parent_from_child, Bone_Type type, v3 center={}) {
- return push_bone(parent_from_child, make_bone_id(type), center);
+push_bone(mat4i const&mom_from_kid, Bone_Type type, v3 center={}) {
+ return push_bone(mom_from_kid, make_bone_id(type), center);
 }
+xfunction Bone *
+get_null_bone(Modeler *m)
+#if AD_IS_DRIVER
+;
+#else
+{
+ return &m->bones[0];
+}
+#endif
 
 function void
 pop_bone() {

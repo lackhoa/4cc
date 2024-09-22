@@ -1,5 +1,10 @@
+#define SILLY_IMGUI_PARTY 0
 #define IMGUI_USER_CONFIG "ad_imgui_config.h"
+#if SILLY_IMGUI_PARTY
+#  define IMGUI_DEFINE_MATH_OPERATORS // Access to math operators
+#endif
 #include "imgui/imgui.h"
+#include "imgui_internal.h"
 
 #define AD_IS_FRAMEWORK 1
 #include "kv.h"
@@ -13,7 +18,9 @@
 #include "4ed_kv_parser.cpp"
 #include "ad_stb_parser.cpp"
 
+#include "framework_data.h"
 #include "framework_driver_shared.h"
+#include "framework_driver_shared.meta.h"
 #include "framework.h"
 #include "game_modeler.meta.h"
 #define FUI_FAST_PATH 0
@@ -35,7 +42,9 @@ X_GAME_API_FUNCTIONS(X)
 //
 #undef X
 
-
+#if SILLY_IMGUI_PARTY
+#include "silly.cpp"
+#endif
 
 function b32
 just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0) {
@@ -432,7 +441,7 @@ render_data(Modeler *m)
  argb inactive_color = argb_dark_green;
  for_i32(vindex,1,m->vertices.count) {
   Vertex_Data &vert = m->vertices[vindex];
-  Bone *bone = &m->bones[vert.bone_index];
+  Bone *bone = get_bone(m, vert.bone_id, false);
   u32 prim_id = vertex_prim_id(vindex);
   {
    v3 pos = mat4vert(bone->xform, vert.pos);
@@ -449,7 +458,7 @@ render_data(Modeler *m)
  
  for_i32(curve_index,1,m->curves.count) {
   Bezier_Data &curve = m->curves[curve_index];
-  Bone *bone = &m->bones[curve.bone_index];
+  Bone *bone = get_bone(m, curve.bone_id, false);
   u32 prim_id = curve_prim_id(curve_index);
   {
    v3 p0 = m->vertices[curve.p0_index].pos;
@@ -565,7 +574,7 @@ game_init(game_init_params)
   m->permanent_arena = &state->permanent_arena;
   init_dynamic(m->vertices, &state->malloc, 4096);
   init_dynamic(m->curves,   &state->malloc, 512);
-  init_dynamic(m->bones,    &state->malloc, 16);
+  init_static (m->bones,     arena,         128);
   m->bones.push(Bone{.xform=mat4i_identity});
   {
    Modeler_History &h = m->history;
@@ -914,10 +923,15 @@ fui_slider_is_continuous(Fui_Slider *slider) {
  return !fui_slider_is_discrete(slider);
 }
 
+
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 function game_update_return
 game_update(game_update_params)
 {
+#if SILLY_IMGUI_PARTY 
+ FxTestBed();
+#endif
+  
  Scratch_Block scratch(app);
  Base_Allocator scratch_allocator = make_arena_base_allocator(scratch);
  
@@ -951,7 +965,7 @@ game_update(game_update_params)
   v1 min_lensq = max_f32;
   Vertex_Index closest_vertex = {};
   for(i32 vi=1;
-      vi<modeler->vertices.count;
+      vi < modeler->vertices.count;
       vi++)
   {
    v1 l = lensq(state->kb_cursor.pos - modeler->vertices[vi].pos);
@@ -1421,5 +1435,7 @@ case Key_Code_K: case Key_Code_J:
   .game_commands            =game_commands,
  };
 }
+
+
 
 //~EOF

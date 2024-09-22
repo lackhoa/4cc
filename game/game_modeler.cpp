@@ -46,9 +46,9 @@ send_vert_func(Painter *p, String name, v3 pos) {
  
  if (is_left()){
   //NOTE(kv) Only record vertex on the left
-  result->pos        = pos;
-  result->bone_index = current_bone_index(p);
- } else {
+  result->pos     = pos;
+  result->bone_id = current_bone(p)->id;
+ }else{
   result->symx = true;
  }
 }
@@ -89,9 +89,9 @@ send_bez_v3v2_func(Painter *p, String name,
   DEBUG_TEXT("bezier error: cannot find vertex");
  }
  
- if (is_left()) {
-  curve->bone_index = current_bone_index(p);
- } else {
+ if (is_left()){
+  curve->bone_id = current_bone(p)->id;
+ }else{
   curve->symx = true;
  }
  
@@ -248,11 +248,6 @@ modeler_exit_edit_undo(Modeler *m) {
 inline b32
 selecting_vertex(Modeler *m) {
  return prim_id_type(selected_prim_id(m)) == Prim_Vertex;
-}
-
-xfunction mat4i&
-get_bone_xform(Modeler *m, i32 index){
- return m->bones[index].xform;
 }
 
 function void

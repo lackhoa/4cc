@@ -11,6 +11,9 @@
 
 // Select animation: @set_movie_shot
 
+global v3 scap_sock_top;
+global v3 shoulder;
+
 // NOTE: I guess this function could be here for faster update, idk
 void
 driver_update(Viewport *viewports)
@@ -21,16 +24,8 @@ driver_update(Viewport *viewports)
   DEFAULT_NSLICE_PER_METER = fval(2.2988f) * 100.f;
  }
  
- v3 hand_pivot = fvert(V3(0.2299f, -0.604f, -0.0145f));
- v3 arm_pivot  = fvert(V3(0.0771f, -0.3359f, -0.0145f));
- if (0)
- {
-  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
-  {// TODO: Piggy code to set the camera pivot, but what isn't piggy?
-   Viewport &viewport = viewports[viewport_index];
-   viewport.camera.pivot = arm_pivot;
-  }
- }
+ shoulder = fvert(V3(1.1765f, -1.6108f, 0.0573f));
+ scap_sock_top = shoulder+fvert(V3(-0.1089f, -0.0285f, -0.0675f));  //NOTE: for @armT
 }
 
 //~ Movie shots
@@ -133,8 +128,9 @@ movie_shot_head_tilt(shot_function_params)
 
 //~
 global_const v1 head_radius_world = 9.2f * centimeter;  // @Tweak I have no idea where I pulled this number from
+global_const v1 head_unit_world   = head_radius_world*(1.f+square_root(2));
 
-internal void
+function void
 render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
 {//~NOTE: The hand
  radius_scale_block(fval(0.5038f));
@@ -641,7 +637,7 @@ function Forearm
 render_forearm(mat4i const&ot,
                mat4 const&armLT, Arm const&arm_obj,
                v3 elbow_offset, v3 elbow_up_out)
-{//~NOTE: The lower arm / forearm
+{
  bone_block(ot, Bone_Forearm);
  
  Arm arm;
@@ -816,6 +812,42 @@ render_forearm(mat4i const&ot,
 }
 
 function void
+bone_ing(Pose *pose)
+{
+ mat4i headT;
+ {
+  const v1 head_theta_max = 0.15f;   // @Tweak
+  const v1 head_phi_max   = 0.125f;  // @Tweak
+  const v1 head_roll_max  = 0.125f;  // @Tweak
+  v1 head_theta = lerp(0.f, (pose->thead_theta), head_theta_max);
+  v1 head_phi   = lerp(0.f, (pose->thead_phi),   head_phi_max);
+  v1 head_roll  = lerp(0.f, (pose->thead_roll),  head_roll_max);
+  v3 rotation_pivot = fvert3(0.f, -1.1466f, 0.3598f, clampx);  // TODO: This is totally wrong place now!
+  headT = (mat4i_scale(head_radius_world) *
+           mat4i_rotate_tpr(head_theta, head_phi, head_roll, rotation_pivot));
+ }
+ 
+ mat4i pelvisT;
+ {
+  v1 head_topY = head_radius_world;
+  v3 translate = V3(0.f, 
+                    head_topY - 3.2f * head_unit_world, 
+                    fval(0.067f));
+  pelvisT = (mat4i_translate(translate) * mat4i_scale(head_radius_world));
+ }
+ 
+ mat4i torsoT;
+ {
+  v1 torso_scale = head_radius_world*fval(1.2484f);
+  mat4i_scale(torso_scale);
+ }
+ 
+ mat4i armT;
+ {
+ }
+}
+
+function void
 render_character(Pose const&pose,
                  v1 animation_time, i32 viewport_index,
                  b32 show_grid)
@@ -845,8 +877,6 @@ render_character(Pose const&pose,
  if ( fbool(0) ) { shade_color = painter.fill_color; }
  
  Head head_world;
- v1 head_unit_world = head_radius_world*(1.f+square_root(2));
- v1 head_top_static = head_radius_world;
  b32 version2 = fbool(1);
  
  mat4i headT;
@@ -861,9 +891,9 @@ render_character(Pose const&pose,
    v1 head_roll  = lerp(0.f, (pose.thead_roll),  head_roll_max);
    
    v3 rotation_pivot = fvert3(0.f, -1.1466f, 0.3598f, clampx);  // TODO: this is totally wrong place now!
-   headT = (mat4i_scale(head_radius_world) * 
-            mat4i_rotate_tpr(head_theta, head_phi, head_roll, rotation_pivot));
-   indicate(headT*rotation_pivot);
+   ot = (mat4i_scale(head_radius_world) * 
+         mat4i_rotate_tpr(head_theta, head_phi, head_roll, rotation_pivot));
+   indicate(ot*rotation_pivot);
   }
   symx_on;
   set_in_block(painter.line_params.nslice_per_meter, fval(4.1128f) * 100.f);//NOTE: crank up the lod
@@ -1841,15 +1871,16 @@ render_character(Pose const&pose,
                painter.painting_disabled || !show_body);
   symx_on;
   mat4i &ot = pelvisT;
+  v1 head_topY = head_radius_world;
   {
    v3 translate = V3(0.f, 
-                     head_top_static - 3.2f * head_unit_world, 
+                     head_topY - 3.2f * head_unit_world, 
                      fval(0.067f));
    ot = (mat4i_translate(translate) * mat4i_scale(head_radius_world));
   }
   bone_block(ot, Bone_Pelvis);
   
-  v1 navelY = (ot.inv * V3y(head_top_static - fval(2.5f) * head_unit_world)).y;
+  v1 navelY = (ot.inv * V3y(head_topY - fval(2.5f) * head_unit_world)).y;
   vv0(navel, V3y(navelY) + fvert(V3(0.f, 0, 0.271f), clampy));
   
   vv(crotch, V3());  // NOTE: Yes, the crotch front is the origin, what about it?
@@ -1928,11 +1959,9 @@ render_character(Pose const&pose,
    }
   }
   
-  v1 shoulderY = head.chin_middle.y-0.2f*head_unit; // NOTE: from hpc
-  v1 shoulderX = fval(0.53f, f20th)*head_unit;
-  // NOTE: Let's decide that this is part of the CLAVICLE
-  vv(shoulder, V3(shoulderX, shoulderY, 0) + fval(V3(0.1516f, -0.0912f, 0.0573f)));
-  vv(scap_sock_top, shoulder+fvert(V3(-0.1089f, -0.0285f, -0.0675f)), true);  //NOTE: for @armT
+  // NOTE: Let's decide that shoulder is part of the CLAVICLE
+  indicate(shoulder);
+  indicate0(scap_sock_top, true);
   
   mat4i &armT = armTs[lr_index];
   {//NOTE: ;armT Calculate upper arm transform, so we can draw attachments to it
@@ -2416,7 +2445,7 @@ render_movie(render_movie_params)
   auto &p = painter;
   auto m = p.modeler = modeler;
   init_static(p.bone_stack, arena, 16);
-  p.bone_stack.push(0);
+  p.bone_stack.push(get_null_bone(m));
   push_view_vector(v3{});
   p.painting_disabled = fbool(0);
  }

@@ -17,33 +17,16 @@ X(teye_phi   , 6)  \
 X(tarm_bend  , 18)  \
 X(tarm_abduct, 36)  \
 
-// NOTE: Screw it, let's switch to using floats
-// There might not even be a @speed concern
 struct Pose
 {
-#if 0
- union {
-  i3 thead_rotation;
-  i2 thead_theta_phi;
-  struct { i1 thead_theta; i1 thead_phi; i1 thead_roll; };
- };
- 
- i1 tblink;
- i1 teye_theta;
- i1 teye_phi;
- 
- i1 tarm_bend;
- i1 tarm_abduct;
-#endif
- 
-#define X(NAME,DENOM_ignore)   v1 NAME;
+#define X(NAME,...)   v1 NAME;
  X_Pose_Fields(X);
 #undef X
 };
 
 //NOTE: Thank you C++, this could have just been simple.
 enum Pose_Field_Enum{
-#define X(NAME,DENOM_ignore)  PF_Enum_##NAME,
+#define X(NAME,...)  PF_Enum_##NAME,
  X_Pose_Fields(X)
 #undef X
 };

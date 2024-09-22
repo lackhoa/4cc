@@ -407,7 +407,7 @@ typedef i1 Rune; // NOTE(bill): Unicode codepoint
 
 typedef i8  b8;
 typedef i16 b16;
-typedef i1 b32; // NOTE(bill): Prefer this!!!
+typedef i1  b32; // NOTE(bill): Prefer this!!!
 
 // NOTE(bill): Get true and false
 #if !defined(__cplusplus)

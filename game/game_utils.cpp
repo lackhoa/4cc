@@ -173,8 +173,7 @@ defer( pop_bone(); );
 function mat4i &
 get_parent_transform(Painter *p) {
  auto &stack = p->bone_stack;
- i1 index = stack[stack.count-2];
- return get_bone_xform(p->modeler, index);
+ return stack[stack.count-2]->xform;
 }
 
 function mat4

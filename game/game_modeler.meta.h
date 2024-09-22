@@ -8,7 +8,7 @@ result.size = sizeof(Vertex_Data);
 result.kind = Type_Kind_Struct;
 result.members.set_count(5);
 result.members[0] = {.type=&Type_Info_String, .name=strlit("name"), .offset=offsetof(Vertex_Data, name)};
-result.members[1] = {.type=&Type_Info_i1, .name=strlit("bone_index"), .offset=offsetof(Vertex_Data, bone_index)};
+result.members[1] = {.type=&Type_Info_Bone_ID, .name=strlit("bone_id"), .offset=offsetof(Vertex_Data, bone_id)};
 result.members[2] = {.type=&Type_Info_i1, .name=strlit("symx"), .offset=offsetof(Vertex_Data, symx)};
 result.members[3] = {.type=&Type_Info_v3, .name=strlit("pos"), .offset=offsetof(Vertex_Data, pos)};
 result.members[4] = {.type=&Type_Info_i1, .name=strlit("basis_index"), .offset=offsetof(Vertex_Data, basis_index)};
@@ -35,12 +35,18 @@ read_String(r, m_name);
 pointer.name = m_name;
 
 i1 m_bone_index = {};
-
+if ( in_range_exclusive(0, r.read_version, Version_Remove_Bone_Index) )
 {
 eat_id(p, strlit("bone_index"));
 read_i1(r, m_bone_index);
 }
-pointer.bone_index = m_bone_index;
+Bone_ID m_bone_id = {};
+if ( in_range_exclusive(Version_Remove_Bone_Index, r.read_version, Version_Inf) )
+{
+eat_id(p, strlit("bone_id"));
+read_Bone_ID(r, m_bone_id);
+}
+pointer.bone_id = m_bone_id;
 
 i1 m_symx = {};
 
@@ -294,7 +300,7 @@ result.size = sizeof(Bezier_Data);
 result.kind = Type_Kind_Struct;
 result.members.set_count(8);
 result.members[0] = {.type=&Type_Info_String, .name=strlit("name"), .offset=offsetof(Bezier_Data, name)};
-result.members[1] = {.type=&Type_Info_i1, .name=strlit("bone_index"), .offset=offsetof(Bezier_Data, bone_index)};
+result.members[1] = {.type=&Type_Info_Bone_ID, .name=strlit("bone_id"), .offset=offsetof(Bezier_Data, bone_id)};
 result.members[2] = {.type=&Type_Info_i1, .name=strlit("symx"), .offset=offsetof(Bezier_Data, symx)};
 result.members[3] = {.type=&Type_Info_Bezier_Type, .name=strlit("type"), .offset=offsetof(Bezier_Data, type)};
 result.members[4] = {.type=&Type_Info_i1, .name=strlit("p0_index"), .offset=offsetof(Bezier_Data, p0_index)};
@@ -324,12 +330,18 @@ read_String(r, m_name);
 pointer.name = m_name;
 
 i1 m_bone_index = {};
-
+if ( in_range_exclusive(0, r.read_version, Version_Remove_Bone_Index) )
 {
 eat_id(p, strlit("bone_index"));
 read_i1(r, m_bone_index);
 }
-pointer.bone_index = m_bone_index;
+Bone_ID m_bone_id = {};
+if ( in_range_exclusive(Version_Remove_Bone_Index, r.read_version, Version_Inf) )
+{
+eat_id(p, strlit("bone_id"));
+read_Bone_ID(r, m_bone_id);
+}
+pointer.bone_id = m_bone_id;
 
 i1 m_symx = {};
 

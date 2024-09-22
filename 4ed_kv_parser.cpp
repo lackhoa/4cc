@@ -164,8 +164,7 @@ ep__get_token_please(Ed_Parser *p)
 }
 
 inline Token *
-ep_get_token(Ed_Parser *p)
-{
+ep_get_token(Ed_Parser *p) {
  Token *token = 0;
  if (p->ok_) {
   token = ep__get_token_please(p);
@@ -214,10 +213,13 @@ ep__print_given_token(Ed_Parser *p, Arena *arena, Token *token)
 }
 
 function String
-ep_print_token(Ed_Parser *p, Arena *arena)
-{
+ep_print_token(Ed_Parser *p, Arena *arena) {
  Token *token = ep_get_token(p);
  return ep__print_given_token(p, arena, token);
+}
+inline String
+ep_print_token(Ed_Parser *p) {
+ return ep_print_token(p, p->string_arena);
 }
 
 function i64
@@ -492,29 +494,32 @@ ep_char(Ed_Parser *p, char c)
 //NOTE(kv) Returns index + 1
 //NOTE(kv) Also eats the terminator
 function i1
-ep_eat_until_char(Ed_Parser *p, String chars)
+ep_eat_until_char(Ed_Parser *p, String chars, i1 max_recursion=20)
 {
- i32 result = 0;
+ i1 result = 0;
  
- while ( !result && p->ok_ ) {
-  Scratch_Block scratch;
-  String token = ep_print_token(p, scratch);
-  b32 eaten = false;
-  if (token.size == 1) {
-   char character = token.str[0];
-   result = ep__char_in_string(chars, character);
-   if (!result) {
-    char *matching = 0;
-    if (character == '(') { matching = ")"; }
-    if (character == '[') { matching = "]"; }
-    if (character == '{') { matching = "}"; }
-    if (matching) {
-     ep_eat_until_char(p, SCu8(matching));
-     eaten = true;
+ if (max_recursion > 0){
+  while ( !result && p->ok_ ) {
+   Scratch_Block scratch;
+   String token = ep_print_token(p, scratch);
+   b32 eaten = false;
+   if (token.size == 1) {
+    char character = token.str[0];
+    result = ep__char_in_string(chars, character);
+    if (!result) {
+     char *matching = 0;
+     if (character == '(') { matching = ")"; }
+     if (character == '[') { matching = "]"; }
+     if (character == '{') { matching = "}"; }
+     if (matching) {
+      ep_eat_token(p);
+      eaten = true;
+      ep_eat_until_char(p, SCu8(matching), max_recursion-1);
+     }
     }
    }
+   if (!eaten) { ep_eat_token(p); }
   }
-  if (!eaten) { ep_eat_token(p); }
  }
  
  return result;

@@ -35,22 +35,13 @@ struct Modeler_History {
 //-
 
 introspect(info)
-struct Bone{
- Bone_ID id;
- mat4i   xform;
- b32     is_right;
-};
-
-introspect(info)
-struct Bone_Data{
- Bone_ID id;
- b32 is_right;
-};
-
-introspect(info)
 struct Vertex_Data {
  String name;
- i1 bone_index;
+ meta_removed(i1 bone_index;
+              removed=Version_Remove_Bone_Index);
+ meta_added(added=Version_Remove_Bone_Index);
+ Bone_ID bone_id;
+ //meta_unserialized Bone *bone;
  i1 symx;
  v3 pos;
  i1 basis_index;
@@ -78,7 +69,11 @@ union Bezier_Union {
 introspect(info)
 struct Bezier_Data {
  String name;
- i1 bone_index;
+ meta_removed(i1 bone_index;
+              removed=Version_Remove_Bone_Index);
+ meta_added(added=Version_Remove_Bone_Index);
+ Bone_ID bone_id;
+ //meta_unserialized Bone *bone;
  i1 symx;
  Bezier_Type type;
  i1 p0_index;

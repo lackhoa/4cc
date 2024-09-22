@@ -138,8 +138,7 @@ maybe_char(STB_Parser *p, char c)
 }
 
 function i1
-eat_i1(STB_Parser *p)
-{
+eat_i1(STB_Parser *p) {
  i1 result = 0;
  
  i1 sign = 1;
@@ -149,8 +148,7 @@ eat_i1(STB_Parser *p)
   maybe_char(p, '+');
  }
  
- if (p->stb.token == CLEX_intlit)
- {
+ if (p->stb.token == CLEX_intlit) {
   result = sign*p->stb.int_value;
   eat_token(p);
  }

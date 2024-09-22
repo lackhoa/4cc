@@ -29,7 +29,7 @@ meta_build_level  = 1
 imgui_build_level = 1
 #
 asan_on = 0
-COMPILE_GAME_WITH_MSVC = 0
+COMPILE_GAME_WITH_MSVC = 1
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
@@ -41,9 +41,9 @@ STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the relo
 
 # NOTE: Override configuration ############################
 #asan_on          = 1
-#COMPILE_GAME_WITH_MSVC=1
+COMPILE_GAME_WITH_MSVC=1
 ed_build_level   = 1
-#meta_build_level = 0
+meta_build_level = 1
 STOP_DEBUGGING_BEFORE_BUILD = 0
 
 
@@ -301,7 +301,7 @@ def run_compiler(compiler, input_files, output_file, debug_mode,
         compiler_flags += f" {CPP_VERSION} -Zc:strictStrings- -D_CRT_SECURE_NO_WARNINGS -FC"
 
     if is_msvc:
-        warnings = " -wd4200 -wd4201 -wd4100 -wd4101 -wd4189 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702"
+        warnings = " -wd4200 -wd4201 -wd4100 -wd4101 -wd4189 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244"
     if is_clang:
         warnings = CLANG_WARNINGS
     if not no_warnings:

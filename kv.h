@@ -613,7 +613,7 @@ operator-=(v2 &v, v2 u)
 force_inline v2
 operator-(v2 v)
 {
-    v2 result;
+ v2 result;
  result.x = -v.x;
  result.y = -v.y;
  return result;
@@ -628,65 +628,20 @@ operator*(v1 c, v2 v)
  return result;
 }
 
-force_inline v2
-operator*(v2 v, v1 c)
-{
- v2 result;
- result.x = c * v.x;
- result.y = c * v.y;
- return result;
-}
-
-force_inline v2
-operator/(v2 v, v2 u)
-{
- return {v.x / u.x,
-          v.y / u.y};
-}
-
-force_inline v2 &
-operator*=(v2 &v, v1 c)
-{
-    v = c * v;
-    return v;
-}
-
-inline v2
-operator/(v2 v, v1 c)
-{
-    v2 result;
-    result.x = v.x / c;
-    result.y = v.y / c;
-    return result;
-}
-
-inline v1
-dot(v2 v, v2 u)
-{
-    v1 result = v.x*u.x + v.y*u.y;
-    return result;
-}
-
-inline v1
-lensq(v2 v)
-{
-    v1 result = squared(v.x) + squared(v.y);
-    return result;
-}
-
-inline v1
-lengthof(v2 v)
-{
-    v1 result = square_root(lensq(v));
-    return result;
-}
+force_inline v2 operator*(v2 v, v1 c) { return c*v; }
+inline v2 operator/(v2 v, v2 u) { return {v.x / u.x, v.y / u.y}; }
+inline void operator*=(v2 &v, v1 c) { v = c*v; }
+inline v2 operator/(v2 v, v1 c) { return v2{v.x / c, v.y / c}; }
+inline v1 dot(v2 v, v2 u) { return v.x*u.x + v.y*u.y; }
+inline v1 lensq(v2 v)    { return squared(v.x) + squared(v.y); }
+inline v1 lengthof(v2 v) { return square_root(lensq(v)); }
 
 inline v1
 projectLen(v2 onto, v2 v)
 {
-    v1 innerProd = dot(onto, v);
-    f32 result = (innerProd / lengthof(onto));
-    return result;
+ v1 innerProd = dot(onto, v);
+ f32 result = (innerProd / lengthof(onto));
+ return result;
 }
 
 inline v2
@@ -1342,9 +1297,9 @@ union i4{
  struct{ i32 r,g,b,a; };
  i32 e[4];
  
- i32 operator[](i32);
+ i32 &operator[](i32);
 };
-force_inline i32
+force_inline i32&
 i4::operator[](i32 index)
 {
  return e[index];
@@ -1769,7 +1724,6 @@ enum{
 #define NotImplemented AssertMessage("not implemented")
 #define DontCompile NoSeriouslyDontCompile
 
-#define  B(x)  (x)
 #define KB(x) ((x) << 10)
 #define MB(x) ((x) << 20)
 #define GB(x) ((x) << 30)
@@ -4501,10 +4455,10 @@ init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0) {
  array.set_cap_min(initial_size);
 }
 
-#define X_Basic_Types(X) \
-X(v1) X(v2) X(v3) X(v4) \
-X(i1) X(i2) X(i3) X(i4) \
-X(String) \
+#define X_Basic_Types(X)  \
+X(v1) X(v2) X(v3) X(v4)   \
+X(i1) X(i2) X(i3) X(i4)   \
+X(String)    \
 
 enum Basic_Type
 {
@@ -5241,17 +5195,12 @@ write_basic_type(Printer &p, Basic_Type type, void *value0)
   
   //-Integers
   case Basic_Type_i1:
-  {
-   i1 v = *(i1*)value0;
-   print(p, v);
-  }break;
   case Basic_Type_i2:
   case Basic_Type_i3:
   case Basic_Type_i4:
   {
    i1 *v = (i1*)value0;
    i1 count = get_basic_type_size(type) / 4;
-   const i1 max_count = 4;
    
    for_i32(index,0,count) {
     if (index != 0) { print(p, " "); }
@@ -5260,11 +5209,7 @@ write_basic_type(Printer &p, Basic_Type type, void *value0)
   }break;
   
   //-
-  case Basic_Type_String:
-  {
-   String v = *(String*)value0;
-   print(p, v);
-  }break;
+  case Basic_Type_String: { print(p, *(String*)value0); }break;
   
   invalid_default_case;
  }
@@ -5399,6 +5344,7 @@ struct File_Name_Data {
 #define meta_tag(...)
 #define meta_added(...)
 #define meta_removed(...)
+#define meta_unserialized
 #define tagged_by(discriminator)
 #define m_variant(tag)  //NOTE(kv) Use to tag union member with the variant it corresponds to
 
