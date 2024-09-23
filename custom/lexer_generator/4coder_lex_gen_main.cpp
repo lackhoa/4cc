@@ -275,9 +275,9 @@ struct Transition_Ptr_Node{
 };
 
 struct Transition_Ptr_Set{
-    Transition_Ptr_Node *first;
-    Transition_Ptr_Node *last;
-    i1 count;
+ Transition_Ptr_Node *first;
+ Transition_Ptr_Node *last;
+ i1 count;
 };
 
 struct State{

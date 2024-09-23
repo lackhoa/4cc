@@ -4351,11 +4351,8 @@ struct arrayof
  
  //-
  
- force_inline T& operator[](i32 index)
- {
-  kv_assert(index >= 0 && index < count);
-  return items[index];
- }
+ force_inline T& get       (i32 index) { return items[index]; }
+ force_inline T& operator[](i32 index) { return items[index]; }
  //
  force_inline T &last() { return items[count-1]; }
  

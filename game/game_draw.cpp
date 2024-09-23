@@ -356,7 +356,7 @@ get_curve_view_alignment(const v3 P[4]) {
  v3 D = P[3];
  v3 normal = noz( cross(B-A, D-A) );  // NOTE: the normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
  v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
- v3 camera_obj = (current_bone_xform(p).inv * camera_world_position(&p->camera));  // TODO @speed
+ v3 camera_obj = (current_bone_xform().inv * camera_world_position(&p->camera));  // TODO @speed
  v3 view_vector = noz(camera_obj - centroid);
  v1 visibility = absolute( dot(normal,view_vector) );
  return visibility;
@@ -426,7 +426,7 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
    // and spaced out more when we look at them in 3D -> you'd underestimate the density in 2D
    Bezier P_transformed;
    {
-    const mat4 &transform = current_bone_xform(&painter);
+    const mat4 &transform = current_bone_xform();
     for_i32(index,0,4)
     {
      P_transformed[index] = mat4vert_div(transform, P[index]);
@@ -1013,7 +1013,7 @@ indicate_vertex(char *vertex_name, v3 pos,
   const v1 radius = 3*millimeter;
   b32 mouse_near;
   {
-   mat4 view_form_boneT = p->view_from_worldT * current_bone_xform(p);
+   mat4 view_form_boneT = p->view_from_worldT * current_bone_xform();
    v3 vertex_viewp = mat4vert_div(view_form_boneT, pos);
    v2 delta = p->mouse_viewp - vertex_viewp.xy;
    mouse_near = (absolute(delta.x) < 1*centimeter && 

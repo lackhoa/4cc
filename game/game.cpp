@@ -13,9 +13,9 @@
 
 global v3 scap_sock_top;
 global v3 shoulder;
+global v3 palm_in;
 
-// NOTE: I guess this function could be here for faster update, idk
-void
+xfunction void
 driver_update(Viewport *viewports)
 {
  {// NOTE ;update_game_config
@@ -23,14 +23,11 @@ driver_update(Viewport *viewports)
   bezier_poly_nslice       = fval(16);
   DEFAULT_NSLICE_PER_METER = fval(2.2988f) * 100.f;
  }
- 
- shoulder = fvert(V3(1.1765f, -1.6108f, 0.0573f));
- scap_sock_top = shoulder+fvert(V3(-0.1089f, -0.0285f, -0.0675f));  //NOTE: for @armT
 }
 
 //~ Movie shots
 
-internal shot_function_return
+function shot_function_return
 movie_shot_blinking(shot_function_params)
 {
  aset(teye_theta, 3);
@@ -53,7 +50,7 @@ movie_shot_blinking(shot_function_params)
  arest(12);
 }
 
-internal shot_function_return
+function shot_function_return
 movie_shot_arm(shot_function_params)
 {
  asetf(tarm_abduct, fval(0.0211f, f20th));
@@ -63,7 +60,7 @@ movie_shot_arm(shot_function_params)
  arest(6);
 }
 
-internal void
+function void
 blink_2_frames(Movie_Shot *shot)
 {
  aset(tblink, 1);
@@ -72,12 +69,12 @@ blink_2_frames(Movie_Shot *shot)
  arest(1);
 }
 
-internal void
+function void
 open_eyes(Movie_Shot *shot) {
  aset(tblink,0);
 }
 
-internal shot_function_return
+function shot_function_return
 movie_shot_head_tilt(shot_function_params)
 {
  {// NOTE: right tilt
@@ -134,7 +131,7 @@ function void
 render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
 {//~NOTE: The hand
  radius_scale_block(fval(0.5038f));
- bone_block(ot, Bone_Hand);
+ bone_block_old(ot, Bone_Hand);
  vertex_block("hand");
  set_in_block(painter.line_params.nslice_per_meter, fval(5.9797f) * 100.f);
  
@@ -172,7 +169,7 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
    // TODO: Hm, this doesn't line the thumb up all the way, there's some other motion in play
    thumbT = mat4i_rotateZ(-tadduct, thumb_kbot);
   }
-  bone_block(thumbT, Bone_Thumb);
+  bone_block_old(thumbT, Bone_Thumb);
   
   //NOTE: "thumb_triangle_tip" is a prominent bump on your palm
   vv(thumb_triangle_tip, fvert(V3(0.3693f, -2.6673f, -0.2208f)));
@@ -297,7 +294,7 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
    v3 ikmid = kmid-xvec;
    v3 okmid = kmid+xvec;
    
-   bone_block(mat4i_rotateX(-bot_tbend, k),
+   bone_block_old(mat4i_rotateX(-bot_tbend, k),
               make_bone_id(Bone_Bottom_Phalanx, ifinger));
    
    {// NOTE: bottom phalanges
@@ -327,7 +324,7 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
    }
    
    {// NOTE: middle+top phalanges
-    bone_block(mat4i_rotateX(-mid_tbend, kmid),
+    bone_block_old(mat4i_rotateX(-mid_tbend, kmid),
                make_bone_id(Bone_Mid_Phalanx, ifinger));
     
     vv(ktop, k+0.75f*vec);
@@ -343,7 +340,7 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
     
     v3 tip = k+vec;
     {// NOTE: top phalanges
-     bone_block(mat4i_rotateX(-top_tbend, ktop),
+     bone_block_old(mat4i_rotateX(-top_tbend, ktop),
                 make_bone_id(Bone_Top_Phalanx, ifinger));
      
      v2 tip_control = fval2(-0.3298f, 1.1379f);
@@ -359,7 +356,7 @@ render_hand(mat4i ot, mat4i forearmLT, Forearm forearm_obj)
 }
 
 //~ NOTE: Pivot transform
-internal v3 get_arm_rotation_pivot() {
+inline v3 get_arm_rotation_pivot() {
  // NOTE: @armT
  // NOTE: "arm_rotation_pivot" is in arm space 
  // (think of it as the "left" rotation pivot, 
@@ -367,7 +364,7 @@ internal v3 get_arm_rotation_pivot() {
  return fvert(V3(0.0551f, 0.8153f, -0.1578f));
 }
 
-internal v3 get_forearm_rotation_pivot() {
+inline v3 get_forearm_rotation_pivot() {
  return fvert(V3(-0.2068f, -1.0341f, -0.0909f));
 }
 
@@ -395,7 +392,7 @@ render_arm(mat4i const&ot, Pose const&pose,
 {//;upper_arm
  vertex_block("upper_arm");  //NOTE: important for studying what goes where
  scale_in_block(default_fvert_delta_scale, 2.f);
- bone_block(ot, Bone_Arm, fvert(V3(-0.0802f, 0.f, -0.1673f)));
+ bone_block_old(ot, Bone_Arm, fvert(V3(-0.0802f, 0.f, -0.1673f)));
  Torso torso;
  import_vertices(torso.verts, torso_obj.verts, ot.inv, torsoT, torso_vert_count);
  
@@ -638,12 +635,11 @@ render_forearm(mat4i const&ot,
                mat4 const&armLT, Arm const&arm_obj,
                v3 elbow_offset, v3 elbow_up_out)
 {
- bone_block(ot, Bone_Forearm);
+ bone_block_old(ot, Bone_Forearm);
  
  Arm arm;
  import_vertices(arm.verts, arm_obj.verts, ot.inv, armLT, arm_vert_count);
  
- v3 palm_in;
  {//NOTE: The forearm bones from the front view (as rough guide)
   b32 painting_on = (level1 || get_preset() == 3);
   // set_in_block(painter.painting_disabled, !painting_on);
@@ -652,8 +648,8 @@ render_forearm(mat4i const&ot,
   auto params = lp(fval(0.5f));
   v3 down_common;
   {//NOTE: ulna (inner, main bone)
-   vv(up, fvert(V3(-0.3098f, -1.1833f, -0.1252f)));
-   va(palm_in, up+fvec(V3(0.2986f, -1.4924f, 0.1428f)));
+   vv(up, palm_in-fvec(V3(0.2986f, -1.4924f, 0.1428f)));
+   indicate(palm_in);
    v3 up1 = up+fvec(V3(0.1879f, 0.f, -0.0369f));
    down_common = palm_in+fvec(V3(0.1191f, 0.0489f, 0.f));
    l492 = bez(down_common, fvec(V3(-0.0036f, -0.2325f, 0.f)), up1);
@@ -791,7 +787,7 @@ render_forearm(mat4i const&ot,
  
  v3 v2189 = fvert(V3(-0.2725f, -0.8924f, -0.251f));
  draw(bez(v2189,
-          fvec(V3(0.f, 0.1288f, 0.1481f)),
+               fvec(V3(0.f, 0.1288f, 0.1481f)),
                fval2(0,0),
                fvert(V3(0.1923f, -1.8531f, -0.198f))));
  
@@ -812,39 +808,88 @@ render_forearm(mat4i const&ot,
 }
 
 function void
-bone_ing(Pose *pose)
+compute_bones(Modeler *m, Arena *scratch, Pose *pose)
 {
- mat4i headT;
+ shoulder = fvert(V3(1.1765f, -1.6108f, 0.0573f));
+ scap_sock_top = shoulder+fvert(V3(-0.1089f, -0.0285f, -0.0675f));  //NOTE: for @armT
+ 
+ arrayof<Bone *>stack;
+ init_static(stack, scratch, 16);
+ Bone null_bone = {.xform=mat4i_identity};
+ stack.push(&null_bone);
+ 
+#define bone_block4(...) \
+defer_block(push_bone_inner(m, &stack, __VA_ARGS__), stack.pop())
+ 
  {
   const v1 head_theta_max = 0.15f;   // @Tweak
   const v1 head_phi_max   = 0.125f;  // @Tweak
   const v1 head_roll_max  = 0.125f;  // @Tweak
-  v1 head_theta = lerp(0.f, (pose->thead_theta), head_theta_max);
-  v1 head_phi   = lerp(0.f, (pose->thead_phi),   head_phi_max);
-  v1 head_roll  = lerp(0.f, (pose->thead_roll),  head_roll_max);
+  v1 head_theta = (pose->thead_theta * head_theta_max);
+  v1 head_phi   = (pose->thead_phi   * head_phi_max);
+  v1 head_roll  = (pose->thead_roll  * head_roll_max);
   v3 rotation_pivot = fvert3(0.f, -1.1466f, 0.3598f, clampx);  // TODO: This is totally wrong place now!
-  headT = (mat4i_scale(head_radius_world) *
-           mat4i_rotate_tpr(head_theta, head_phi, head_roll, rotation_pivot));
+  mat4i headT = (mat4i_scale(head_radius_world) *
+                 mat4i_rotate_tpr(head_theta, head_phi, head_roll, rotation_pivot));
+  bone_block4(Bone_Head, headT, false);
  }
  
- mat4i pelvisT;
+ //NOTE(kv) We only have one pelvis bone
  {
   v1 head_topY = head_radius_world;
   v3 translate = V3(0.f, 
                     head_topY - 3.2f * head_unit_world, 
                     fval(0.067f));
-  pelvisT = (mat4i_translate(translate) * mat4i_scale(head_radius_world));
+  mat4i pelvisT = mat4i_translate(translate) * mat4i_scale(head_radius_world);
+  bone_block4(Bone_Pelvis, pelvisT, false);
  }
  
- mat4i torsoT;
- {
-  v1 torso_scale = head_radius_world*fval(1.2484f);
-  mat4i_scale(torso_scale);
+ v1 torso_scale = head_radius_world*fval(1.2484f);
+ for_i32(lr_index,0,2) {
+  mat4i torsoT = mat4i_scale(torso_scale);
+  if (lr_index){ torsoT = negateX(torsoT); }
+  bone_block4(Bone_Torso, torsoT, lr_index){
+   mat4i armT;
+   {
+    v1 arm_ry = head_unit_world*fval(0.5302f);
+    //NOTE: ;armT Calculate upper arm transform, so we can draw attachments to it
+    v1 scale = arm_ry / torso_scale; // note: Because it's multiplied by torsoT
+    v3 translate = scap_sock_top + fvert3(0.0764f, -0.9755f, 0.2612f);
+    v1 roll = -pose->tarm_abduct;
+    mat4i rotateT = mat4i_rotate_tpr(0, 0, roll);
+    armT = trs_pivot_transform(translate, rotateT, scale,
+                               get_arm_rotation_pivot());
+   }
+   bone_block4(Bone_Arm, armT, lr_index){
+    // NOTE ;forearmLT
+    // IMPORTANT: The ratio forearm/upper_arm=0.8 is measured on the iPad,
+    // Loomis female proportions, also gvaat
+    // I'm almost certain it's "correct"
+    
+    // NOTE ;arm_bend_max The number from Manga Materials is 145 degrees,
+    // which seems a bit short but idk our elbow might be completely wrong
+    const v1 arm_bend_max = fval(-0.5f);
+    v1 forearm_turn = pose->tarm_bend * arm_bend_max;
+    v3 translate = fvec(V3(0.3231f, -0.0051f, -0.117f));
+    mat4i rotate = mat4i_rotateX(forearm_turn);
+    mat4i forearmT = trs_pivot_transform(translate, rotate, 1.f,
+                                         get_forearm_rotation_pivot());
+    bone_block4(Bone_Forearm, forearmT, lr_index){
+     palm_in = fvert(V3(-0.0112f, -2.6757f, 0.0176f));
+     mat4i handT = mat4i_translate(palm_in +
+                                   fvec(V3(0.0112f, 2.5863f, 0.2802f)));
+     bone_block4(Bone_Hand, handT, lr_index);
+    }
+   }
+  }
  }
  
- mat4i armT;
- {
- }
+#undef bone_block4
+}
+
+inline mat4i &
+get_bone_xform(Bone_Type type, b32 lr_index){
+ return get_bone(painter.modeler, type, lr_index)->xform;
 }
 
 function void
@@ -879,22 +924,7 @@ render_character(Pose const&pose,
  Head head_world;
  b32 version2 = fbool(1);
  
- mat4i headT;
  {// NOTE: The ;head + face
-  mat4i &ot = headT;
-  {// NOTE: The head
-   const v1 head_theta_max = 0.15f;   // @Tweak
-   const v1 head_phi_max   = 0.125f;  // @Tweak
-   const v1 head_roll_max  = 0.125f;  // @Tweak
-   v1 head_theta = lerp(0.f, (pose.thead_theta), head_theta_max);
-   v1 head_phi   = lerp(0.f, (pose.thead_phi),   head_phi_max);
-   v1 head_roll  = lerp(0.f, (pose.thead_roll),  head_roll_max);
-   
-   v3 rotation_pivot = fvert3(0.f, -1.1466f, 0.3598f, clampx);  // TODO: this is totally wrong place now!
-   ot = (mat4i_scale(head_radius_world) * 
-         mat4i_rotate_tpr(head_theta, head_phi, head_roll, rotation_pivot));
-   indicate(ot*rotation_pivot);
-  }
   symx_on;
   set_in_block(painter.line_params.nslice_per_meter, fval(4.1128f) * 100.f);//NOTE: crank up the lod
   const v1 head_unit = 1.f+square_root(2);
@@ -904,13 +934,14 @@ render_character(Pose const&pose,
   
   const v1 root2 = square_root(2.f);
   const v1 inv_root2 = 1.f / root2;
-  v1 loomis_unit = inv_root2;// NOTE: From brow to nose tip and all that jazz
+  const v1 loomis_unit = inv_root2;// NOTE: From brow to nose tip and all that jazz
   
   //NOTE: My nose_tip is actually higher than the nose base (the loomis nose y is for the nose base)
   v1 noseY = -loomis_unit;
   vv(nose_tip, V3(0.f, noseY, faceZ) + fvec(V3(0.f, 0.0237f, 0.0916f), clampx));
   
-  bone_block(ot, Bone_Head, nose_tip);
+  bone_block(Bone_Head, nose_tip);
+  mat4i &ot = current_bone_xform();
   
   mat4 &to_local = ot.inverse;
   {// NOTE: profile score
@@ -1870,15 +1901,9 @@ render_character(Pose const&pose,
   set_in_block(painter.painting_disabled,
                painter.painting_disabled || !show_body);
   symx_on;
-  mat4i &ot = pelvisT;
   v1 head_topY = head_radius_world;
-  {
-   v3 translate = V3(0.f, 
-                     head_topY - 3.2f * head_unit_world, 
-                     fval(0.067f));
-   ot = (mat4i_translate(translate) * mat4i_scale(head_radius_world));
-  }
-  bone_block(ot, Bone_Pelvis);
+  bone_block(Bone_Pelvis);
+  mat4i &ot = pelvisT = current_bone_xform();
   
   v1 navelY = (ot.inv * V3y(head_topY - fval(2.5f) * head_unit_world)).y;
   vv0(navel, V3y(navelY) + fvert(V3(0.f, 0, 0.271f), clampy));
@@ -1924,23 +1949,18 @@ render_character(Pose const&pose,
  }
  
  v1 arm_ry = head_unit_world*fval(0.5302f);
- mat4i armTs[2];
- mat4i forearmTs[2];
  
  macro_torso(macro_world_declare);
  v1 torso_scale = head_radius_world*fval(1.2484f);
- mat4i torsoTs[2];
- torsoTs[0] = mat4i_scale( torso_scale );
- torsoTs[1] = negateX(torsoTs[0]);
  Torso torso_obj;
- for_i32(lr_index, 0, 2)
- {//~NOTE: torso
+ for_i32(lr_index,0,2)
+ {//~NOTE: Torso
   set_in_block(painter.painting_disabled, 
                painter.painting_disabled || !show_body);
-  painter.is_right = lr_index;
+  painter.lr_index = lr_index;
   
-  mat4i &ot = torsoTs[lr_index];
-  bone_block(ot, Bone_Torso, fvert(V3(0.f, -2.3176f, 0.3862f)));
+  bone_block(Bone_Torso, fvert(V3(0.f, -2.3176f, 0.3862f)));
+  mat4i &ot = current_bone_xform();
   
   v1 head_unit = get_column(ot.inv,1).y * head_unit_world;
   
@@ -1954,7 +1974,7 @@ render_character(Pose const&pose,
    mat4 transform = ot.inv * pelvisT;
    for_i32(index, 0, pelvis_vert_count) {
     v3 vertex = pelvis_obj.verts[index];
-    if (painter.is_right) { vertex = negateX(vertex); }
+    if (painter.lr_index) { vertex = negateX(vertex); }
     pelvis.verts[index] = mat4vert(transform, vertex);
    }
   }
@@ -1963,6 +1983,7 @@ render_character(Pose const&pose,
   indicate(shoulder);
   indicate0(scap_sock_top, true);
   
+#if 0
   mat4i &armT = armTs[lr_index];
   {//NOTE: ;armT Calculate upper arm transform, so we can draw attachments to it
    v1 scale = arm_ry / torso_scale; // note: Because it's multiplied by torsoT
@@ -1975,6 +1996,8 @@ render_character(Pose const&pose,
    armT = ot * trs_pivot_transform(translate, rotateT, scale,
                                    get_arm_rotation_pivot());
   }
+#endif
+  mat4i &armT = get_bone_xform(Bone_Arm, lr_index);
   
   // NOTE: "arm_local" is the arm on the side of the torso being drawn (left/right)
   // because: you wouldn't ever wanna connect the torso to the arm on a different side.
@@ -1991,13 +2014,13 @@ render_character(Pose const&pose,
                                       fval2(0.f, 0.2897f), sternum);
    draw( neck_front_vline, profile_visible(0.5f));
    
-   Bezier neck_back_line = bez_old(painter.is_right ? head.trapezius_headR : head.trapezius_head,
+   Bezier neck_back_line = bez_old(painter.lr_index ? head.trapezius_headR : head.trapezius_head,
                                    fvert3(-0.1529f, -0.1932f, 0.2857f),
                                    fvert3(-0.1937f, 0.0701f, 0.0969f),
                                    shoulder_in);
    draw(neck_back_line, fci(I4(0,1,3,0)));
    
-   if (painter.is_right == 0)
+   if (painter.lr_index == 0)
    {
     fill_dbez(neck_back_line, negateX(neck_back_line));
    }
@@ -2205,35 +2228,19 @@ render_character(Pose const&pose,
  argb side_plane = shade_color;
  v3 elbow_offset = fvert(V3(0.0107f, -1.864f, -0.1208f));
  v3 elbow_up_out = elbow_offset+fvec(V3(0.0527f, 0.9446f, -0.2298f));
- {// NOTE ;forearmLT
-  // IMPORTANT: The ratio forearm/upper_arm=0.8 is measured on the iPad, Loomis female proportions, also gvaat
-  // I'm almost certain it's "correct"
-  
-  // NOTE ;arm_bend_max The number from Manga Materials is 145 degrees,
-  // which seems a bit short but idk our elbow might be completely wrong
-  const v1 arm_bend_max = fval(-0.5f);
-  v1 forearm_turn = lerp(0.f, pose.tarm_bend, arm_bend_max);
-  v3 translate = fvec(V3(0.3231f, -0.0051f, -0.117f));
-  mat4i rotate = mat4i_rotateX(forearm_turn);
-  for_i32(lr_index,0,2)
-  {
-   forearmTs[lr_index] = (armTs[lr_index] *
-                          trs_pivot_transform(translate, rotate, 1.f,
-                                              get_forearm_rotation_pivot()));
-  }
- }
  for_i32(lr_index,0,2)
  {
-  painter.is_right = lr_index;
-  Arm arm_obj = render_arm(armTs[lr_index], pose,
-                           torsoTs[lr_index], torso_obj,
+  mat4i &armT   = get_bone_xform(Bone_Arm, lr_index);
+  mat4i &torsoT = get_bone_xform(Bone_Torso, lr_index);
+  painter.lr_index = lr_index;
+  Arm arm_obj = render_arm(armT, pose,
+                           torsoT, torso_obj,
                            elbow_up_out);
-  Forearm forearm_obj = render_forearm(forearmTs[lr_index],
-                                       armTs[lr_index], arm_obj,
-                                       elbow_offset, elbow_up_out); 
-  mat4i forearmT = forearmTs[lr_index];
-  mat4i handT = (forearmT *
-                 mat4i_translate( forearm_obj.palm_in+fvec(V3(0.0112f, 2.5863f, 0.2802f))));  //@Temp
+  mat4i forearmT = get_bone_xform(Bone_Forearm, lr_index);
+  Forearm forearm_obj = render_forearm(forearmT,
+                                       armT, arm_obj,
+                                       elbow_offset, elbow_up_out);
+  mat4i handT = get_bone_xform(Bone_Hand, lr_index);  //@Temp
   render_hand(handT, forearmT, forearm_obj);
  }
 }
@@ -2244,7 +2251,7 @@ render_reference_images(b32 full_alpha)
  i32 preset = get_preset();
  if ( preset >= 3 )
  {// NOTE: The @ReferenceImage experience
-  bone_block(mat4i_scale(head_radius_world), make_bone_id(Bone_References));
+  bone_block_old(mat4i_scale(head_radius_world), make_bone_id(Bone_References));
   if ( camera_is_right() )
   {
    v3 center = fvert(V3(-0.2112f, -4.5306f, -0.2689f));
@@ -2445,7 +2452,8 @@ render_movie(render_movie_params)
   auto &p = painter;
   auto m = p.modeler = modeler;
   init_static(p.bone_stack, arena, 16);
-  p.bone_stack.push(get_null_bone(m));
+  auto bones = get_bones(m);
+  p.bone_stack.push(&bones->get(0));
   push_view_vector(v3{});
   p.painting_disabled = fbool(0);
  }
@@ -2474,10 +2482,10 @@ render_movie(render_movie_params)
   
   pose = shot->out_pose;
  }
+ compute_bones(modeler, scratch, &pose);
  
  //IMPORTANT
  render_character(pose, animation_time, viewport_index, show_grid);
- 
  
  if (debug_frame_time_on)
  {

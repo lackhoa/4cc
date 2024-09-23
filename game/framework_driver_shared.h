@@ -247,7 +247,10 @@ struct Painter {
  u32 draw_prim_id;
  struct Modeler *modeler;
  
- b32 is_right;
+ union {
+  b32 is_right;
+  b32 lr_index;
+ };
  arrayof<struct Bone*> bone_stack;
  
  i32 view_vector_count;
@@ -262,7 +265,7 @@ framework_storage Painter painter;
 
 //-
 inline Bone *current_bone(Painter *p){ return p->bone_stack.last(); }
-inline mat4i& current_bone_xform(Painter *p) { return current_bone(p)->xform; }
+inline mat4i& current_bone_xform() { return current_bone(&painter)->xform; }
 
 inline b32 is_left() { return painter.is_right == 0; }
 //-
@@ -302,7 +305,7 @@ set_bone_transform(mat4i const&transform) {
 
 function v3
 camera_object_position() {
- v3 result = (current_bone_xform(&painter).inv *
+ v3 result = (current_bone_xform().inv *
               camera_world_position(&painter.camera));
  return result;
 }
@@ -328,73 +331,102 @@ pop_view_vector() {
  kv_assert(p.view_vector_count > 0);
 }
 
-#if AD_IS_FRAMEWORK
-function Bone *
-get_bone(Modeler *m, Bone_ID id, b32 is_right)
+
+//NOTE(kv)  Don't you dare return a reference here!
+xfunction arrayof<Bone> *
+get_bones(Modeler *m)
+#if AD_IS_DRIVER
+;
+#else
 {
- for_i32(index,1,m->bones.count){
-  Bone *bone = &m->bones[index];
+ return &m->bones;
+}
+#endif
+
+function Bone *
+get_bone(Modeler *m, Bone_ID id, b32 is_right) {
+ auto bones = get_bones(m);
+ for_i32(index,1,bones->count){
+  Bone *bone = &bones->get(index);
   if(bone->id       == id &&
-     bone->is_right == is_right) {
+     bone->is_right == is_right){
    return bone;
   }
  }
  return 0;
 }
+inline Bone *
+get_bone(Modeler *m, Bone_Type type, b32 is_right) {
+ return get_bone(m, make_bone_id(type), is_right);
+}
+
 function void
-push_bone2(Modeler *m, arrayof<Bone *> &stack,
-           mat4i const&mom_from_kid, Bone_ID id,
-           b32 is_right)
+push_bone_inner(Modeler *m, arrayof<Bone *> *stack,
+                Bone_ID id, mat4i const&mom_from_kid,
+                b32 is_right)
 {
- mat4i &mom = stack.last()->xform;
+ mat4i &mom = stack->last()->xform;
  Bone *bone = get_bone(m, id, is_right);
  if (!bone){
-  bone = &m->bones.push(Bone{.id=id, .is_right=is_right});
+  auto bones = get_bones(m);
+  bone = &bones->push(Bone{.id=id, .is_right=is_right});
  }
  
- mat4i new_transform = mom * mom_from_kid;
- bone->xform = new_transform;
+ mat4i xform = mom * mom_from_kid;
+ bone->xform = xform;
  
- stack.push(bone);
+ stack->push(bone);
 }
-#endif
+inline void
+push_bone_inner(Modeler *m, arrayof<Bone *> *stack,
+                Bone_Type type, mat4i const&mom_from_kid,
+                b32 is_right)
+{
+ push_bone_inner(m,stack,make_bone_id(type),mom_from_kid,is_right);
+}
 
-xfunction void
+function void
 push_bone(mat4i const&mom_from_kid, Bone_ID id, v3 center={})
-#if AD_IS_DRIVER
-;
-#else
 {
  Painter *p = &painter;
  auto m  = painter.modeler;
  //note(kv) temporary code, we don't be pushing transforms during drawing
- push_bone2(m, p->bone_stack, mom_from_kid, id, p->is_right);
+ push_bone_inner(m, &p->bone_stack, id, mom_from_kid, p->is_right);
  
  Bone *bone = get_bone(m, id, p->is_right);
  
  push_view_vector(center);
  set_bone_transform(bone->xform);
 }
-#endif
 inline void
 push_bone(mat4i const&mom_from_kid, Bone_Type type, v3 center={}) {
  return push_bone(mom_from_kid, make_bone_id(type), center);
 }
-xfunction Bone *
-get_null_bone(Modeler *m)
-#if AD_IS_DRIVER
-;
-#else
-{
- return &m->bones[0];
-}
-#endif
 
 function void
-pop_bone() {
+push_bone3(Bone_ID id, v3 center={})
+{
+ Painter *p = &painter;
+ auto m  = painter.modeler;
+ Bone *bone = get_bone(m, id, p->is_right);
+ p->bone_stack.push(bone);
+ push_view_vector(center);
+ set_bone_transform(bone->xform);
+}
+inline void
+push_bone3(Bone_Type type, v3 center={}) {
+ return push_bone3(make_bone_id(type), center);
+}
+
+
+#define bone_block(...)  push_bone3(__VA_ARGS__); defer(pop_bone(););
+
+function void
+pop_bone()
+{
  Painter *p = &painter;
  p->bone_stack.pop();
- mat4i &parent = current_bone_xform(p);
+ mat4i &parent = current_bone_xform();
  set_bone_transform(parent);
  pop_view_vector();
 }

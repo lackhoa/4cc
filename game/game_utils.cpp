@@ -154,7 +154,7 @@ invent_uv(v3 n)
  return v3_pair{u,v};
 }
 
-internal v4
+function v4
 plane_transform(mat4 const&mat, v3 n, v1 d)
 {
  v3 p0 = -d*n;
@@ -166,8 +166,8 @@ plane_transform(mat4 const&mat, v3 n, v1 d)
 
 //~
 
-#define bone_block(...) \
-push_bone(__VA_ARGS__); \
+#define bone_block_old(...)\
+push_bone(__VA_ARGS__);\
 defer( pop_bone(); );
 
 function mat4i &
@@ -178,7 +178,7 @@ get_parent_transform(Painter *p) {
 
 function mat4
 from_parent(Painter *p) {
- return current_bone_xform(p).inverse * get_parent_transform(p);
+ return current_bone_xform().inverse * get_parent_transform(p);
 }
 
 //~
