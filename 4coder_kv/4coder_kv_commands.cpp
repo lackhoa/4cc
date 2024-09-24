@@ -761,72 +761,107 @@ function void kv_jump_ultimate_other_panel(App *app) {
 
 VIM_COMMAND_SIG(kv_delete_surrounding_groupers)
 {
-  GET_VIEW_AND_BUFFER;
-  HISTORY_GROUP_SCOPE;
-
-  i64 pos = view_get_cursor_pos(app, view);
-  Range_i64 range = {};
-  if ( kv_find_current_nest(app, buffer, pos, &range) )
-  {
-    buffer_delete_pos(app, buffer, range.max-1);
-    buffer_delete_pos(app, buffer, range.min);
-  }
+ GET_VIEW_AND_BUFFER;
+ HISTORY_GROUP_SCOPE;
+ 
+ i64 pos = view_get_cursor_pos(app, view);
+ Range_i64 range = {};
+ if ( kv_find_current_nest(app, buffer, pos, &range) )
+ {
+  buffer_delete_pos(app, buffer, range.max-1);
+  buffer_delete_pos(app, buffer, range.min);
+  auto_indent_buffer(app, buffer, range);
+ }
 }
 
 function void 
 kv_do_t_internal(App *app, b32 shiftp)
 {
-  GET_VIEW_AND_BUFFER;
-  HISTORY_GROUP_SCOPE;
-    
-  i64 pos = view_get_cursor_pos(app, view);
-  u8 current_char = buffer_get_char(app, buffer, pos);
-  // 1. optionally delete space
-  if (current_char == ' ')
-  {
-    buffer_delete_pos(app, buffer, pos);
-    current_char = buffer_get_char(app, buffer, pos);
+ GET_VIEW_AND_BUFFER;
+ HISTORY_GROUP_SCOPE;
+ 
+ i64 pos = view_get_cursor_pos(app, view);
+ u8 current_char = buffer_get_char(app, buffer, pos);
+ 
+ // 1. optionally delete space
+ if (current_char == ' ') {
+  buffer_delete_pos(app, buffer, pos);
+  current_char = buffer_get_char(app, buffer, pos);
+ } else if (current_char == '_') {
+  pos++;
+  current_char = buffer_get_char(app, buffer, pos);
+ }
+ 
+ if ( character_is_alpha(current_char) ) {
+  // 2. upcase character/word
+  Scratch_Block temp(app);
+  i64 max = 0;
+  String replacement = {};
+  i64 alpha_max = scan_any_boundary(app, boundary_alnum, buffer, Scan_Forward, pos);
+  if (shiftp) {
+   max = alpha_max;
+   Range_i64 range = {pos, alpha_max};
+   replacement = push_buffer_range(app, temp, buffer, range);
+   string_mod_upper(replacement);
+  } else {
+   max = pos+1;
+   u8 upper = character_to_upper(current_char);
+   replacement = push_string_const_u8(temp, 1);
+   replacement.str[0] = upper;
   }
-  else if (current_char == '_')
-  {
-    pos++;
-    current_char = buffer_get_char(app, buffer, pos);
-  }
-
-  if ( character_is_alpha(current_char) )
-  {
-    // 2. upcase character/word
-    Scratch_Block temp(app);
-    i64 max = 0;
-    String replacement = {};
-    i64 alpha_max = scan_any_boundary(app, boundary_alnum, buffer, Scan_Forward, pos);
-    if (shiftp)
-    {
-      max = alpha_max;
-      Range_i64 range = {pos, alpha_max};
-      replacement = push_buffer_range(app, temp, buffer, range);
-      string_mod_upper(replacement);
-    }
-    else
-    {
-      max = pos+1;
-      u8 upper = character_to_upper(current_char);
-      replacement = push_string_const_u8(temp, 1);
-      replacement.str[0] = upper;
-    }
-    buffer_replace_range(app, buffer, Ii64(pos,max), replacement);
-
-    // 3. move
-    view_set_cursor_and_preferred_x(app, view, seek_pos(alpha_max));
-  }
-  else
-  {
-    move_right(app);
-  }
+  buffer_replace_range(app, buffer, Ii64(pos,max), replacement);
+  
+  // 3. move
+  view_set_cursor_and_preferred_x(app, view, seek_pos(alpha_max));
+ } else {
+  move_right(app);
+ }
 }
-
 VIM_COMMAND_SIG(kv_do_t) {kv_do_t_internal(app, false);}
 VIM_COMMAND_SIG(kv_do_T) {kv_do_t_internal(app, true);}
+
+function void 
+kv_do_underscore_internal(App *app, b32 shiftp)
+{
+ GET_VIEW_AND_BUFFER;
+ HISTORY_GROUP_SCOPE;
+ 
+ i64 pos = view_get_cursor_pos(app, view);
+ u8 current_char = buffer_get_char(app, buffer, pos);
+ 
+ // 1. Replace space with underscore
+ if (current_char == ' '){
+  buffer_replace_range(app, buffer, Ii64(pos, pos+1), strlit("_"));
+  pos++;
+  current_char = buffer_get_char(app, buffer, pos);
+ } else if (current_char == '_'){
+  pos++;
+  current_char = buffer_get_char(app, buffer, pos);
+ }
+ 
+ if (character_is_alpha(current_char)){
+  // 2. Upcase character/word
+  Scratch_Block temp(app);
+  i64 max = 0;
+  i64 alpha_max = scan_any_boundary(app, boundary_alnum, buffer, Scan_Forward, pos);
+  if (shiftp) {
+   max = pos+1;
+   u8 upper = character_to_upper(current_char);
+   String replacement = push_string_const_u8(temp, 1);
+   replacement.str[0] = upper;
+   buffer_replace_range(app, buffer, Ii64(pos,max), replacement);
+  }
+  
+  // 3. move
+  view_set_cursor_and_preferred_x(app, view, seek_pos(alpha_max));
+ } else {
+  move_right(app);
+ }
+}
+VIM_COMMAND_SIG(kv_do_underscore)         {kv_do_underscore_internal(app, false);}
+VIM_COMMAND_SIG(kv_do_underscore_shifted) {kv_do_underscore_internal(app, true);}
+
+
 
 CUSTOM_COMMAND_SIG(kv_run)
 CUSTOM_DOC("run the current script")
@@ -1197,6 +1232,15 @@ kv_handle_return_normal_mode(App *app)
    lock_jump_buffer(app, buffer);
   }
  }
+}
+
+function void
+cmd_insert_ampersand(App *app) {
+ write_text(app, strlit("&"), false);
+}
+function void
+cmd_insert_asterisk(App *app) {
+ write_text(app, strlit("*"), false);
 }
 
 #if 0

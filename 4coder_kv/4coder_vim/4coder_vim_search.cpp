@@ -85,7 +85,7 @@ vim_to_pattern_inner(App *app, b32 backward)
   Vim_Motion_Block vim_motion_block(app);
   view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
  }
- vim_scroll_screen_mid(app);  // kv: If we don't scroll, the cursor will be lost
+ //vim_scroll_screen_mid(app);  // kv: If we don't scroll, the cursor will be lost
 }
 
 function void

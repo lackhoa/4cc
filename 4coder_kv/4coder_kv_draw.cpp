@@ -165,12 +165,16 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  v1 line_height = face_metrics.line_height;
  v1 digit_advance = face_metrics.decimal_digit_advance;
  
- // NOTE(kv) This is for the filebar?
- 
  if (vim_lister_running)
  {// NOTE(kv) Watch out for the vim bottom lister!
-  clip.y1 -= 2.f*line_height;  // NOTE(kv): if you don't do this the filebar is gonna eat into the bottom lister.
   clip.y1 -= clamp_min(vim_cur_lister_offset,0);
+ }
+ 
+ //NOTE(kv) If the bottom view is expanded,
+ //  the bottom text wouldn't eat into our buffer.
+ if (!global_bottom_view_expanded){
+  //NOTE @vim_bottom_text_height
+  clip.y1 -= 2.f*line_height;
  }
  
  {// NOTE(kv) Clear
@@ -211,16 +215,6 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
   animate_in_n_milliseconds(app, 1000);
  }
  
- // NOTE(allen): layout line numbers
- b32 show_line_number_margins = def_get_config_b32(vars_intern_lit("show_line_number_margins"));
- rect2 line_number_rect = {};
- if (show_line_number_margins)
- {
-  rect2_Pair pair = layout_line_number_margin(app, buffer, clip, digit_advance);
-  line_number_rect = pair.min;
-  clip = pair.max;
- }
- 
  Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
  Buffer_Point_Delta_Result delta = delta_apply(app, view, frame.animation_dt, scroll);
  if(!block_match_struct(&scroll.position, &delta.point))
@@ -235,10 +229,6 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  Buffer_Point buffer_point = scroll.position;
  Text_Layout_ID text_layout_id = text_layout_create(app, buffer, clip, buffer_point);
  
- if(show_line_number_margins)
- {
-  vim_draw_line_number_margin(app, view, buffer, face_id, text_layout_id, line_number_rect);
- }
  {// NOTE(kv): kv_render_buffer(app, frame, view, face_id, buffer, text_layout_id, clip);
   // NOTE(kv): originally from "byp_render_buffer"
   ProfileScope(app, "render buffer");

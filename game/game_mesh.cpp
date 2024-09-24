@@ -56,14 +56,14 @@ clip_triangle(v3 p_in[3], v3 n, v1 d)
  {
   if (p0_outside == true)
   {// NOTE: Everything outside
-   block_copy_array(result.a, p_in);
+   block_copy_array_dst(result.a, p_in);
   }
   //else everything is inside: the triangle is discarded
  }
  else
  {
   v3 p[3];
-  block_copy_array(p, p_in);
+  block_copy_array_dst(p, p_in);
   
   // NOTE: Rank order: Outside to Inside (made-up 100%)
   if (!p0_outside)
@@ -106,15 +106,15 @@ clip_triangle(v3 p_in[3], v3 n, v1 d)
    
    v3 a[] = {p[0], p[1], i02};
    v3 b[] = {p[1], i12, i02};
-   block_copy_array(result.a, a);
-   block_copy_array(result.b, b);
+   block_copy_array_dst(result.a, a);
+   block_copy_array_dst(result.b, b);
   }
   else
   {// NOTE: 1 triangle
    v3 i01 = plane_segment_intersect(n, d, p[0], p[1]);
    v3 i02 = plane_segment_intersect(n, d, p[0], p[2]);
    v3 a[] = {p[0], i01, i02};
-   block_copy_array(result.a, a);
+   block_copy_array_dst(result.a, a);
   }
  }
  

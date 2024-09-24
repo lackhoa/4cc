@@ -375,11 +375,11 @@ toggle_split_panel(App *app)
 function void
 expand_bottom_view(App *app)
 {
-    Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
-    Face_ID face_id = get_face_id(app, buffer);
-    Face_Metrics metrics = get_face_metrics(app, face_id);
-    view_set_split_pixel_size(app, global_bottom_view, (i1)(metrics.line_height*24.f));
-    global_bottom_view_expanded = true;
+ Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
+ Face_ID face_id = get_face_id(app, buffer);
+ Face_Metrics metrics = get_face_metrics(app, face_id);
+ view_set_split_pixel_size(app, global_bottom_view, (i1)(metrics.line_height*24.f));
+ global_bottom_view_expanded = true;
 }
 
 function void
@@ -388,7 +388,9 @@ collapse_bottom_view(App *app)
  Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
  Face_ID face_id = get_face_id(app, buffer);
  Face_Metrics metrics = get_face_metrics(app, face_id);
- view_set_split_pixel_size(app, global_bottom_view, (i1)(metrics.line_height*4.f));
+ view_set_split_pixel_size(app, global_bottom_view,
+                           /*(i1)(metrics.line_height*4.f)*/
+                           0);
  global_bottom_view_expanded = false;
 }
 

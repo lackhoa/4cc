@@ -2402,12 +2402,12 @@ view_set_split(App *app, View_ID view, View_Split_Kind kind, f32 t){
 
 function b32
 view_set_split_proportion(App *app, View_ID view, f32 t){
-    return(view_set_split(app, view, ViewSplitKind_Ratio, t));
+ return(view_set_split(app, view, ViewSplitKind_Ratio, t));
 }
 
 function b32
 view_set_split_pixel_size(App *app, View_ID view, i32 t){
-    return(view_set_split(app, view, ViewSplitKind_FixedPixels, (f32)t));
+ return(view_set_split(app, view, ViewSplitKind_FixedPixels, (f32)t));
 }
 
 ////////////////////////////////

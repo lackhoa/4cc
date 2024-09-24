@@ -2397,7 +2397,7 @@ block_range_copy__inner(void *dst, void *src, Range_u64 range, i64 shift, u64 it
 #define block_range_copy_typed(d,s,r,h) block_range_copy_sized((d),(s),(r),(h),sizeof(*(d)))
 
 function void
-block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i64 range, i64 shift){
+block_copy_array_dst_shift__inner(void *dst, void *src, u64 it_size, Range_i64 range, i64 shift){
     u8 *dptr = (u8*)dst;
     u8 *sptr = (u8*)src;
     dptr += it_size*(range.first + shift);
@@ -2405,7 +2405,7 @@ block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i64 range
     block_copy(dptr, sptr, (u64)(it_size*(range.opl - range.first)));
 }
 function void
-block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range, i64 shift){
+block_copy_array_dst_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range, i64 shift){
     u8 *dptr = (u8*)dst;
  u8 *sptr = (u8*)src;
  dptr += it_size*(range.first + shift);
@@ -2413,15 +2413,19 @@ block_copy_array_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range
  block_copy(dptr, sptr, (u64)(it_size*(range.opl - range.first)));
 }
 
-#define block_copy_array_shift(d,s,r,h) block_copy_array_shift__inner((d),(s),sizeof(*(d)),(r),(h))
+#define block_copy_array_dst_shift(d,s,r,h) block_copy_array_dst_shift__inner((d),(s),sizeof(*(d)),(r),(h))
 #endif
 
+//TODO(kv) What is with all the "block"?
 #define block_zero_struct(p) block_zero((p), sizeof(*(p)))
 #define block_zero_array(a)  block_zero((a), sizeof(a))
 #define block_zero_dynamic_array(p,c) block_zero((p), sizeof(*(p))*(c))
 
 #define block_copy_struct(d,s) block_copy((d), (s), sizeof(*(d)))
-#define block_copy_array(d,s)  block_copy((d), (s), sizeof(d))
+//NOTE(kv) Due to C array being major ass, we don't know the size of arrays.
+//  This is not a language for content creation.
+#define copy_array_dst(d,s)  block_copy((d), (s), sizeof(d))
+#define copy_array_src(d,s)  block_copy((d), (s), sizeof(s))
 #define block_copy_count(d,s,c) block_copy((d), (s), sizeof(*(d))*(c))
 
 #define block_match_struct(a,b) block_match((a), (b), sizeof(*(a)))

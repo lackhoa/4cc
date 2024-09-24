@@ -166,19 +166,16 @@ plane_transform(mat4 const&mat, v3 n, v1 d)
 
 //~
 
-#define bone_block_old(...)\
-push_bone(__VA_ARGS__);\
-defer( pop_bone(); );
-
 function mat4i &
-get_parent_transform(Painter *p) {
+mom_bone_xform() {
+ Painter *p = &painter;
  auto &stack = p->bone_stack;
  return stack[stack.count-2]->xform;
 }
-
 function mat4
-from_parent(Painter *p) {
- return current_bone_xform().inverse * get_parent_transform(p);
+from_parent() {
+ //NOTE(kv) If we just stored the relative offset, we wouldn't need this.
+ return current_bone_xform().inverse * mom_bone_xform();
 }
 
 //~
@@ -291,8 +288,7 @@ lp(v1 alignment_threshold, i4 radii={})
 }
 
 inline i1
-get_preset()
-{
+get_preset() {
  return painter.viewport->preset;
 }
 
@@ -342,6 +338,21 @@ get_vline(Patch const&pat, v1 v) {
  return result;
 }
 
+// IMPORTANT: this is the key to skeletal transformation
+function mat4i
+trs_pivot_transform(v3 translate, mat4i const&rotate, v1 scale,
+                    v3 object_space_pivot)
+{
+ // NOTE: The key to making this work is that the first translation
+ // will make the pivot zero, which means scale and rotate will work as expected,
+ // then you translate back
+ // Finally tack on to that whatever translation the user supplied.
+ mat4i result = (mat4i_translate(translate + object_space_pivot)
+                 * rotate
+                 * mat4i_scale(scale)
+                 * mat4i_translate(-object_space_pivot));
+ return result;
+}
 
 
 //~ EOF;

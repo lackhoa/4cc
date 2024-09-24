@@ -40,11 +40,13 @@ STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the relo
 
 
 # NOTE: Override configuration ############################
-#asan_on          = 1
+#asan_on         = 1
 COMPILE_GAME_WITH_MSVC=1
 ed_build_level   = 1
 meta_build_level = 1
 STOP_DEBUGGING_BEFORE_BUILD = 0
+
+
 
 
 # Your config end ############################

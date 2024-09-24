@@ -177,6 +177,7 @@ framework_storage v1  default_fvert_delta_scale;
 #include "game_draw.h"
 
 struct Viewport {
+ i1 index;  //NOTE(kv) Redundant data
  i1 preset;
  i1 last_preset;
  Camera_Data camera;
@@ -185,6 +186,7 @@ struct Viewport {
  Arena render_arena;
  v2 clip_radius;
 };
+inline b32 is_main_viewport(Viewport *viewport){ return viewport->index==0; }
 
 introspect(info)
 enum Bone_Type{
@@ -224,6 +226,7 @@ struct Bone{
 //NOTE(kv) This is a convenient global store.
 //NOTE(kv) See @init_painter
 struct Painter {
+ //-misc
  Render_Target *target;
  struct Viewport *viewport;
  v2 mouse_viewp;
@@ -246,6 +249,8 @@ struct Painter {
  b32 painting_disabled;
  u32 draw_prim_id;
  struct Modeler *modeler;
+ b32 show_grid;
+ argb shade_color;
  
  union {
   b32 is_right;
@@ -267,7 +272,8 @@ framework_storage Painter painter;
 inline Bone *current_bone(Painter *p){ return p->bone_stack.last(); }
 inline mat4i& current_bone_xform() { return current_bone(&painter)->xform; }
 
-inline b32 is_left() { return painter.is_right == 0; }
+inline b32 is_right() { return painter.is_right; }
+inline b32 is_left()  { return painter.is_right == 0; }
 //-
 
 #if AD_IS_FRAMEWORK
@@ -362,8 +368,8 @@ get_bone(Modeler *m, Bone_Type type, b32 is_right) {
 
 function void
 push_bone_inner(Modeler *m, arrayof<Bone *> *stack,
-                Bone_ID id, mat4i const&mom_from_kid,
-                b32 is_right)
+                b32 is_right,
+                Bone_ID id, mat4i const&mom_from_kid)
 {
  mat4i &mom = stack->last()->xform;
  Bone *bone = get_bone(m, id, is_right);
@@ -378,33 +384,14 @@ push_bone_inner(Modeler *m, arrayof<Bone *> *stack,
  stack->push(bone);
 }
 inline void
-push_bone_inner(Modeler *m, arrayof<Bone *> *stack,
-                Bone_Type type, mat4i const&mom_from_kid,
-                b32 is_right)
+push_bone_inner(Modeler *m, arrayof<Bone *> *stack, b32 is_right,
+                Bone_Type type, mat4i const&mom_from_kid)
 {
- push_bone_inner(m,stack,make_bone_id(type),mom_from_kid,is_right);
+ push_bone_inner(m,stack,is_right,make_bone_id(type),mom_from_kid);
 }
 
 function void
-push_bone(mat4i const&mom_from_kid, Bone_ID id, v3 center={})
-{
- Painter *p = &painter;
- auto m  = painter.modeler;
- //note(kv) temporary code, we don't be pushing transforms during drawing
- push_bone_inner(m, &p->bone_stack, id, mom_from_kid, p->is_right);
- 
- Bone *bone = get_bone(m, id, p->is_right);
- 
- push_view_vector(center);
- set_bone_transform(bone->xform);
-}
-inline void
-push_bone(mat4i const&mom_from_kid, Bone_Type type, v3 center={}) {
- return push_bone(mom_from_kid, make_bone_id(type), center);
-}
-
-function void
-push_bone3(Bone_ID id, v3 center={})
+push_bone(Bone_ID id, v3 center={})
 {
  Painter *p = &painter;
  auto m  = painter.modeler;
@@ -414,13 +401,9 @@ push_bone3(Bone_ID id, v3 center={})
  set_bone_transform(bone->xform);
 }
 inline void
-push_bone3(Bone_Type type, v3 center={}) {
- return push_bone3(make_bone_id(type), center);
+push_bone(Bone_Type type, v3 center={}) {
+ return push_bone(make_bone_id(type), center);
 }
-
-
-#define bone_block(...)  push_bone3(__VA_ARGS__); defer(pop_bone(););
-
 function void
 pop_bone()
 {
@@ -430,6 +413,7 @@ pop_bone()
  set_bone_transform(parent);
  pop_view_vector();
 }
+#define bone_block(...)  push_bone(__VA_ARGS__); defer(pop_bone(););
 
 #undef framework_storage
 

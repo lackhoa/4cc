@@ -789,7 +789,7 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
                 Token *new_tokens = base_array(allocator, Token, new_tokens_count);
                 
                 Token *old_tokens = ptr->tokens;
-                block_copy_array_shift(new_tokens, old_tokens, head, 0);
+                block_copy_array_dst_shift(new_tokens, old_tokens, head, 0);
                 token_fill_memory_from_list(new_tokens + replaced.first, &relex_list, relexed_count);
                 for (i64 i = 0, index = replaced.first; i < relexed_count; i += 1, index += 1){
                     new_tokens[index].pos += relex_range.first;
@@ -797,7 +797,7 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
                 for (i64 i = tail.first; i < tail.opl; i += 1){
                     old_tokens[i].pos += text_shift;
                 }
-                block_copy_array_shift(new_tokens, ptr->tokens, tail, tail_shift);
+                block_copy_array_dst_shift(new_tokens, ptr->tokens, tail, tail_shift);
                 
                 base_free(allocator, ptr->tokens);
                 

@@ -65,16 +65,14 @@ write_text(App *app, String insert, b32 move_cursor)
 }
 
 inline void 
-write_text_input(App *app)
-{
-    User_Input in = get_current_input(app);
-    String insert = to_writable(&in);
-    write_text(app, insert, true);
+write_text_input(App *app) {
+ User_Input in = get_current_input(app);
+ String insert = to_writable(&in);
+ write_text(app, insert, true);
 }
 
 force_inline void
-write_space_command(App *app)
-{
+write_space_command(App *app) {
  write_text(app, strlit(" "), false);
 }
 

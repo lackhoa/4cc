@@ -604,7 +604,9 @@ game_init(game_init_params)
  
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {//;frame_arena_init
-  state->viewports[viewport_index].render_arena = make_arena(&state->malloc);
+  Viewport *viewport = &state->viewports[viewport_index];
+  viewport->render_arena = make_arena(&state->malloc);
+  viewport->index = viewport_index;
  }
  
  {
@@ -1435,7 +1437,5 @@ case Key_Code_K: case Key_Code_J:
   .game_commands            =game_commands,
  };
 }
-
-
 
 //~EOF

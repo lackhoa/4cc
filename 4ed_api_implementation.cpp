@@ -1640,42 +1640,42 @@ view_set_cursor(App *app, View_ID view_id, Buffer_Seek seek)
         if (api_check_buffer(file)){
             Buffer_Cursor cursor = file_compute_cursor(file, seek);
             view_set_cursor(app->tctx, models, view, cursor.pos);
-            result = true;
-        }
-    }
-    return(result);
+   result = true;
+  }
+ }
+ return(result);
 }
 
 api(custom) function b32
 view_set_buffer_scroll(App *app, View_ID view_id, Buffer_Scroll scroll,
                        Set_Buffer_Scroll_Rule rule)
 {
-    Models *models = (Models*)app->cmd_context;
-    b32 result = false;
-    View *view = imp_get_view(models, view_id);
-    if (api_check_view(view)){
-        Thread_Context *tctx = app->tctx;
-        scroll.position = view_normalize_buffer_point(tctx, models, view, scroll.position);
-        scroll.target = view_normalize_buffer_point(tctx, models, view, scroll.target);
-        scroll.target.pixel_shift.x = roundv1(scroll.target.pixel_shift.x);
-        scroll.target.pixel_shift.y = roundv1(scroll.target.pixel_shift.y);
-        scroll.target.pixel_shift.x = clamp_min(0.f, scroll.target.pixel_shift.x);
-        Layout_Item_List line = view_get_line_layout(tctx, models, view,
-                                                     scroll.target.line_number);
-        scroll.target.pixel_shift.y =
-            clamp_between(0.f, scroll.target.pixel_shift.y, line.height);
-        if (rule == SetBufferScroll_SnapCursorIntoView){
-            view_set_scroll(tctx, models, view, scroll);
-        }
-        else{
-            File_Edit_Positions edit_pos = view_get_edit_pos(view);
-            edit_pos.scroll = scroll;
-            view_set_edit_pos(view, edit_pos);
-        }
-        view->new_scroll_target = true;
-        result = true;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ b32 result = false;
+ View *view = imp_get_view(models, view_id);
+ if (api_check_view(view)){
+  Thread_Context *tctx = app->tctx;
+  scroll.position = view_normalize_buffer_point(tctx, models, view, scroll.position);
+  scroll.target = view_normalize_buffer_point(tctx, models, view, scroll.target);
+  scroll.target.pixel_shift.x = roundv1(scroll.target.pixel_shift.x);
+  scroll.target.pixel_shift.y = roundv1(scroll.target.pixel_shift.y);
+  scroll.target.pixel_shift.x = clamp_min(0.f, scroll.target.pixel_shift.x);
+  Layout_Item_List line = view_get_line_layout(tctx, models, view,
+                                               scroll.target.line_number);
+  scroll.target.pixel_shift.y =
+   clamp_between(0.f, scroll.target.pixel_shift.y, line.height);
+  if (rule == SetBufferScroll_SnapCursorIntoView){
+   view_set_scroll(tctx, models, view, scroll);
+  }
+  else{
+   File_Edit_Positions edit_pos = view_get_edit_pos(view);
+   edit_pos.scroll = scroll;
+   view_set_edit_pos(view, edit_pos);
+  }
+  view->new_scroll_target = true;
+  result = true;
+ }
+ return(result);
 }
 
 api(custom) function b32

@@ -787,8 +787,8 @@ GB_DEF void const *gb_memrchr   (void const *data, u8 byte_value, isize size);
 #endif
 
 
-#ifndef gb_memcopy_array
-#define gb_memcopy_array(dst, src, count) gb_memcopy((dst), (src), gb_size_of(*(dst))*(count))
+#ifndef gb_memcopy_array_dst
+#define gb_memcopy_array_dst(dst, src, count) gb_memcopy((dst), (src), gb_size_of(*(dst))*(count))
 #endif
 
 #ifndef gb_memmove_array

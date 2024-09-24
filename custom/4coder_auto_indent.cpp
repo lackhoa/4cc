@@ -439,9 +439,9 @@ auto_indent_buffer(App *app, Buffer_ID buffer, Range_i64 pos, Indent_Flag flags)
     AddFlag(flags, Indent_FullTokens);
     b32 indent_with_tabs = def_get_config_b32(vars_intern_lit("indent_with_tabs"));
     if (indent_with_tabs){
-        AddFlag(flags, Indent_UseTab);
-    }
-    return auto_indent_buffer(app, buffer, pos, flags, indent_width, tab_width);
+  AddFlag(flags, Indent_UseTab);
+ }
+ return auto_indent_buffer(app, buffer, pos, flags, indent_width, tab_width);
 }
 
 function b32

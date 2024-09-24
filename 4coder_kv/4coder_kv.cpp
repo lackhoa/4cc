@@ -198,10 +198,11 @@ startup_panels_and_files(App *app)
    Buffer_ID buffer = view_get_buffer(app, bottom_view, Access_Always);
    Face_ID face_id = get_face_id(app, buffer);
    Face_Metrics metrics = get_face_metrics(app, face_id);
-   view_set_split_pixel_size(app, bottom_view, (i32)(metrics.line_height*4.f));
+   //view_set_split_pixel_size(app, bottom_view, (i32)(metrics.line_height*4.f));
    view_set_passive(app, bottom_view, true);
    global_bottom_view = bottom_view;
    view_set_buffer(app, bottom_view, comp_id, 0);
+   collapse_bottom_view(app);
   }
   
   {// NOTE: 2
@@ -476,8 +477,6 @@ kv_vim_bindings(App *app)
  BIND(N|0|MAP, kv_jump_ultimate,                   Key_Code_F);
  BIND(N|0|MAP, kv_jump_ultimate_other_panel,     M|Key_Code_F);
  BIND(0|V|MAP, vim_set_seek_char,                  Key_Code_F);
- //BIND(N|V|MAP, vim_paragraph_up,                   Key_Code_LeftBracket);
- //BIND(N|0|MAP, vim_paragraph_down,                 Key_Code_RightBracket);
  BIND(N|V|MAP, vim_half_page_up,                   Key_Code_LeftBracket);
  BIND(N|0|MAP, vim_half_page_down,                 Key_Code_RightBracket);
  BIND(N|V|MAP, vim_screen_top,                  (S|Key_Code_H));
@@ -548,9 +547,6 @@ kv_vim_bindings(App *app)
  BIND(N|V,     kv_surround_brace_special,       M|Key_Code_LeftBracket)
  BIND(N|MAP,   kv_delete_surrounding_groupers,  M|Key_Code_RightBracket);
  
- // NOTE(kv) KV miscellaneous binds
- BIND(N,  kv_handle_return_normal_mode, Key_Code_Return);
- // BIND(N|  MAP,  if_read_only_goto_position_same_panel, S|Key_Code_Return);
  //
  BIND(N|  MAP,  handle_space_command,       Key_Code_Space);
  BIND(N|  MAP,  vim_insert_end,             Key_Code_A);
@@ -559,7 +555,7 @@ kv_vim_bindings(App *app)
  BIND(N|  MAP,  kv_shift_character,         Key_Code_Comma);
  BIND(N|  MAP,  exit_4coder,              M|Key_Code_Q);
  BIND(N|V|MAP,  vim_command_mode,           Key_Code_Semicolon);
- BIND(N|  MAP,  kv_reopen_with_confirmation,                   S|Key_Code_U);
+ BIND(N|  MAP,  kv_reopen_with_confirmation, S|Key_Code_U);
  BIND(N|  MAP,  quick_swap_buffer,        M|Key_Code_Comma);
  BIND(N|0|MAP,  kv_do_t,                    Key_Code_T);
  BIND(N|0|MAP,  kv_do_T,                  S|Key_Code_T);
@@ -579,6 +575,13 @@ kv_vim_bindings(App *app)
  //
  BIND(N|0|MAP,  clipboard_pop_command,  S|Key_Code_P);
  BIND(V|MAP,    quick_align_command,    M|Key_Code_A);
+ 
+ //-NOTE(kv) KV miscellaneous binds
+ BIND(N, kv_handle_return_normal_mode, Key_Code_Return);
+ BIND(N, cmd_insert_ampersand,       Key_Code_7);
+ BIND(N, cmd_insert_asterisk,        Key_Code_8);
+ BIND(N, kv_do_underscore,           Key_Code_Minus);
+ BIND(N, kv_do_underscore_shifted, S|Key_Code_Minus);
  
 #undef BIND
 }

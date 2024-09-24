@@ -541,7 +541,7 @@ draw(const v3 P0[4], Line_Params params, linum_param)
   
   const i32 npoints = 4;
   v3 points[npoints];
-  block_copy_array(points,P0);
+  copy_array_dst(points,P0);
   
   // NOTE: reflect
   v3 reflects[npoints];
@@ -852,7 +852,7 @@ fill_patch_inner(const v3 P[4][4],
     }
    }
    
-   block_copy_array(prev_v, this_v);
+   copy_array_dst(prev_v, this_v);
   }
  }
 } 
@@ -872,10 +872,10 @@ fill_patch(v3 P0[4], v3 P1[4],
            argb color=0)
 {
  v3 P[4][4];
- block_copy_array(P[0], P0);
- block_copy_array(P[1], P1);
- block_copy_array(P[2], P2);
- block_copy_array(P[3], P3);
+ copy_array_dst(P[0], P0);
+ copy_array_dst(P[1], P1);
+ copy_array_dst(P[2], P2);
+ copy_array_dst(P[3], P3);
  fill_patch(P, color);
 }
 
@@ -933,10 +933,10 @@ draw_box(mat4 const&transform, linum_param) {
 force_inline Patch
 patch(Bezier const&p0, Bezier const&p1, Bezier const&p2, Bezier const&p3) {
  Patch result;
- block_copy_array(result.e[0], p0.e);
- block_copy_array(result.e[1], p1.e);
- block_copy_array(result.e[2], p2.e);
- block_copy_array(result.e[3], p3.e);
+ copy_array_dst(result.e[0], p0.e);
+ copy_array_dst(result.e[1], p1.e);
+ copy_array_dst(result.e[2], p2.e);
+ copy_array_dst(result.e[3], p3.e);
  return result;
 }
 

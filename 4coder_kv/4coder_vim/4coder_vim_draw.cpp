@@ -425,7 +425,16 @@ vim_draw_line_number_margin(App *app, View_ID view, Buffer_ID buffer, Face_ID fa
 	draw_set_clip(app, prev_clip);
 }
 
-internal void
+/*inline v1
+vim_bottom_text_height(App *app)
+{
+ Face_ID face_id = get_face_id(app, 0);
+ Face_Metrics metrics = get_face_metrics(app, face_id);
+ v1 result = 2*metrics.line_height;
+ return result;
+}*/
+
+function void
 vim_draw_whole_screen(App *app, Frame_Info frame_info)
 {
  rect2 region = global_get_screen_rectangle(app);
@@ -459,9 +468,10 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
  }
  
  v2 main_monitor_bot_left = V2(main_monitor_region.x0 + 4.f, 
-                                 main_monitor_region.y1 - 1.5f*line_height);
+                               main_monitor_region.y1 - 1.5f*line_height);
  if(1)
  {// NOTE: Draw bottom text
+  //NOTE ;vim_bottom_text_height
   draw_rect2(app, rect_split_top_bottom_neg(region, 2.f*line_height).b, back_color);
   if (vim_use_bottom_cursor)
   {// NOTE(kv): bottom text in lister situation
