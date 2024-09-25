@@ -57,7 +57,7 @@ FX(ImDrawList* d, ImVec2 a, ImVec2 b, ImVec2 s, ImVec4, float t)
  }
 }
 #elif 0
-#define V2 ImVec2
+/*#define V2 ImVec2
 function void
 FX (ImDrawList* d, V2 a, V2 b, V2 s, ImVec4 m, float t)
 {
@@ -91,7 +91,7 @@ FX (ImDrawList* d, V2 a, V2 b, V2 s, ImVec4 m, float t)
 		}
 	}
 }
-#undef V2
+#undef V2*/
 
 #elif 1
 

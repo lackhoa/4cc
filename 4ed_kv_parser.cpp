@@ -15,35 +15,24 @@
 #    define ED_PARSER_BUFFER 0
 #endif
 
-enum Token_Gen_Type
-{
+enum Token_Gen_Type{
  TG_None,
  TG_Buffer,
  TG_String,
 };
 
 #if ED_PARSER_BUFFER //-
-struct Token_Gen_Buffer
-{
+struct Token_Gen_Buffer{
  App *app;
  Buffer_ID buffer;
 };
 
 #endif //-ED_PARSER_BUFFER
 
-struct Token_Gen_String
-{
- String source;
-};
+struct Token_Gen_String { String source; };
+struct Line_Column { i1 line; i1 column; };
 
-struct Line_Column
-{
- i1 line;
- i1 column;
-};
-
-struct Ed_Parser
-{
+struct Ed_Parser{
  b32 ok_;
  Scan_Direction scan_direction;
  Token_Iterator it;
@@ -51,8 +40,7 @@ struct Ed_Parser
  Token_Iterator original_token_it;
  
  Token_Gen_Type Token_Gen_Type;
- union
- {
+ union{
 #if ED_PARSER_BUFFER
   Token_Gen_Buffer Token_Gen_Buffer;
 #endif
@@ -61,11 +49,8 @@ struct Ed_Parser
  };
  
  //-
- void set_ok(b32 value)
- {// NOTE(kv): We don't setting the value to true (I'm open for a better name)
-  ok_ = ok_ && value;
- }
- 
+ // NOTE(kv): We don't setting the value to true (I'm open for a better name)
+ void set_ok(b32 value){ ok_ = ok_ && value; }
  force_inline void fail() { set_ok(false); }
 };
 
@@ -492,18 +477,18 @@ ep_char(Ed_Parser *p, char c)
 }
 
 //NOTE(kv) Returns index + 1
-//NOTE(kv) Also eats the terminator
+//NOTE(kv) Also eats the terminator (TODO(kv) Please change it to not include terminator, it makes the calling code harder to write)
 function i1
 ep_eat_until_char(Ed_Parser *p, String chars, i1 max_recursion=20)
 {
  i1 result = 0;
  
  if (max_recursion > 0){
-  while ( !result && p->ok_ ) {
+  while(!result && p->ok_){
    Scratch_Block scratch;
-   String token = ep_print_token(p, scratch);
+   String token = ep_print_token(p, scratch);//TODO(kv) OMG this is bad!
    b32 eaten = false;
-   if (token.size == 1) {
+   if(token.size == 1){
     char character = token.str[0];
     result = ep__char_in_string(chars, character);
     if (!result) {

@@ -11,7 +11,6 @@ struct Patch {
  operator Array4x4&() { return e; } 
 };
 
-#define linum_param     i32 linum = __builtin_LINE()
 #define set_linum       if (linum!=0) { painter.draw_prim_id = linum; }
 #define macro_control_points(p0,d0, d3,p3)  p0,p0+d0, p3+d3,p3
 #define symx_off set_in_block(painter.symx, false)
@@ -145,7 +144,7 @@ poly3_inner(v3 p0, v3 p1, v3 p2,
 function void
 fill3_inner2(v3 points[3], argb colors[3],
              Fill_Params const&params0,
-             linum_param)
+             linum_defparam)
 {
  if (is_poly_enabled()){
   set_linum;
@@ -174,44 +173,46 @@ fill3_inner2(v3 points[3], argb colors[3],
 }
 inline void
 fill3(v3 a, v3 b, v3 c, argb color=0,
-      Fill_Params params={}, linum_param){
+      Fill_Params params={}, linum_defparam){
  v3   points[3] = {a,b,c};
  argb colors[3] = {repeat3(color)};
  fill3_inner2(points,colors,params,linum);
 }
 inline void
 fill3(v3 points[3], argb color=0,
-      Fill_Params params={}, linum_param){
+      Fill_Params params={}, linum_defparam){
  argb colors[3] = { repeat3(color) };
  fill3_inner2(points,colors,params,linum);
 }
 inline void
 fill3(v3 a, v3 b, v3 c,
       argb ca, argb cb, argb cc,
-      Fill_Params params={}, linum_param) {
+      Fill_Params params={}, linum_defparam) {
  v3   points[3] = {a,b,c};
  argb colors[3] = {ca,cb,cc};
  fill3_inner2(points,colors,params,linum);
 }
 
-inline Bezier
-bez_raw(v3 p0, v3 p1, v3 p2, v3 p3) {
+inline Bezier bez_raw(v3 p0, v3 p1, v3 p2, v3 p3){
  return Bezier{ p0,p1,p2,p3 };
 }
-
-inline Bezier
-bez(v3 P[4]) {
+inline Bezier bez_raw(v3 P[4]){
  return Bezier{ P[0],P[1],P[2],P[3] };
 }
 
-// @deprecated Vanilla bezier curves Controlled by point (NOT length invariant)
+// @deprecated Vanilla bezier curves controlled by point (NOT length invariant)
 inline Bezier
-bez_old(v3 p0, v3 d0, v3 d3, v3 p3) {
- return bez_raw(macro_control_points(p0,d0, d3,p3) );
+bez_old(v3 p0, v3 d0, v3 d3, v3 p3){
+ return bez_raw(macro_control_points(p0,d0,d3,p3) );
 }
 
+//TODO(kv) This is length dependent so fix it?
+//  Why don't we want length dependence?
+//  Because look, if the length changes, so would the curve.
+//  There just isn't much point to specifying curves that look the same
+//  when the distance between the endpoints change.
 function Bezier
-bez(v3 p0, v3 d0, v3 d3, v3 p3)
+bez_v3v3(v3 p0, v3 d0, v3 d3, v3 p3)
 {
  TIMED_BLOCK(bs_cycle_counter);
  v1 length = lengthof(p3-p0);
@@ -234,7 +235,7 @@ bez_parabola_len(v3 p0, v3 d, v3 p3)
 
 // NOTE: Parabola (no length dependence)
 function Bezier
-bez(v3 p0, v3 d, v3 p3)
+bez_parabola(v3 p0, v3 d, v3 p3)
 {
  TIMED_BLOCK(bs_cycle_counter);
  v3 q = 0.5f*(p0 + p3) + d;
@@ -245,7 +246,7 @@ bez(v3 p0, v3 d, v3 p3)
 
 // NOTE: Planar curve (with v3 control point)
 function Bezier
-bez(v3 p0, v3 d0, v2 d3, v3 p3) {
+bez_v3v2(v3 p0, v3 d0, v2 d3, v3 p3) {
  v3 w, p1;
  {
   v3 u = p3 - p0;
@@ -264,7 +265,7 @@ bez(v3 p0, v3 d0, v2 d3, v3 p3) {
 
 // NOTE: Planar curve with unit vector guide
 function Bezier
-bez(v3 p0, v2 d0, v2 d3, v3 p3, v3 unit_y)
+bez_unit(v3 p0, v2 d0, v2 d3, v3 p3, v3 unit_y)
 {
  TIMED_BLOCK(bs_cycle_counter);
  v3 p1, unit_z;
@@ -286,8 +287,8 @@ bez(v3 p0, v2 d0, v2 d3, v3 p3, v3 unit_y)
 }
 //
 force_inline Bezier
-bez(v3 p0, v4 d, v3 p3, v3 unit_y) {
- return bez(p0, d.xy, d.zw, p3, unit_y);
+bez_unit(v3 p0, v4 d, v3 p3, v3 unit_y) {
+ return bez_unit(p0, d.xy, d.zw, p3, unit_y);
 }
 
 // NOTE: Planar curve (with v3 control point)
@@ -296,7 +297,7 @@ bez(v3 p0, v4 d, v3 p3, v3 unit_y) {
 inline Bezier
 bezd_len(v3 p0, v3 d0, v2 d3, v3 p3) {
  d0 *= lengthof(p3-p0);
- return bez(p0, d0, d3, p3);
+ return bez_v3v2(p0, d0, d3, p3);
 }
 
 //NOTE: Planar curve (with v3 control point, BUT it doesn't automatically adjust d3)
@@ -525,7 +526,7 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
 #endif
 
 function b32
-draw(const v3 P0[4], Line_Params params, linum_param)
+draw(const v3 P0[4], Line_Params params, linum_defparam)
 {
  set_linum;
  Painter *p = &painter;
@@ -565,7 +566,7 @@ draw(const v3 P0[4], Line_Params params, linum_param)
 
 // NOTE: Line
 force_inline Bezier
-bez(v3 a, v3 b) {
+bez_line(v3 a, v3 b){
  return Bezier{
   a,
   (2.f*a+b)/3.f,
@@ -576,27 +577,27 @@ bez(v3 a, v3 b) {
 
 //NOTE: radii in fractions
 force_inline void
-draw(Bezier b, v4 radii, linum_param) {
+draw(Bezier b, v4 radii, linum_defparam) {
  Line_Params params = painter.line_params;
  params.radii = radii;
  draw(b, params, linum);
 }
 //NOTE radii in sixths
 force_inline void
-draw(Bezier b, i4 radii, linum_param) {
+draw(Bezier b, i4 radii, linum_defparam) {
  Line_Params params = painter.line_params;
  params.radii = i2f6(radii);
  draw(b, params, linum);
 }
 // NOTE: omit params
 force_inline void
-draw(Bezier b, linum_param) {
+draw(Bezier b, linum_defparam) {
  draw(b, painter.line_params, linum);
 }
 // NOTE: straight line
 force_inline void
-draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_param) {
- draw(bez(a,b), params, linum);
+draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam) {
+ draw(bez_line(a,b), params, linum);
 }
 
 inline Line_Params
@@ -610,14 +611,14 @@ hl_line_params(argb color=0) {
 }
 
 force_inline void
-draw_line(v3 a, v3 b, Line_Params in_params, linum_param) {
+draw_line(v3 a, v3 b, Line_Params in_params, linum_defparam) {
  Line_Params params = in_params;
  params.flags |= Line_Straight;
- draw(bez(a,b), params, linum);
+ draw(bez_line(a,b), params, linum);
 }
 //
 force_inline void
-draw_line(v3 a, v3 b, linum_param) {
+draw_line(v3 a, v3 b, linum_defparam) {
  draw_line(a,b, painter.line_params, linum);
 }
 
@@ -654,14 +655,14 @@ compute_fill_color(v1 color_lerp) {
 force_inline void
 fill4(v3 p0, v3 p1, v3 p2, v3 p3,
       argb c0, argb c1, argb c2, argb c3,
-      Fill_Params params={}, linum_param) {
+      Fill_Params params={}, linum_defparam) {
  fill3(p0,p1,p2, c0,c1,c2, params,linum);
  fill3(p0,p2,p3, c0,c2,c3, params,linum);
 }
 //@Cleanup
 force_inline void
 fill4(v3 p0, v3 p1, v3 p2, v3 p3, argb c=0,
-      Fill_Params params={}, linum_param) {
+      Fill_Params params={}, linum_defparam) {
  fill4(p0,p1,p2,p3, repeat4(c), params,linum);
 }
 
@@ -732,7 +733,7 @@ bezier_poly3_inner(v3 A, v3 P[4],
 function void
 fill(v3 A, Bezier &bezier, 
      argb c0=0, argb c1=0, argb c2=0,
-     u32 flags=0, linum_param)
+     u32 flags=0, linum_defparam)
 {
  set_linum;
  auto p = &painter;
@@ -790,13 +791,13 @@ fill_dbez_inner(const v3 P[4], const v3 Q[4], argb color)
 }
 
 force_inline void
-fill_dbez(Bezier const&b1, Bezier const&b2, argb color=0, linum_param) {
+fill_dbez(Bezier const&b1, Bezier const&b2, argb color=0, linum_defparam) {
  set_linum;
  fill_dbez_inner(b1.e, b2.e, color);
 }
 
 function void
-fill_dbez(v3 a, v3 b, Bezier const&bezier, argb color=0, linum_param) {
+fill_dbez(v3 a, v3 b, Bezier const&bezier, argb color=0, linum_defparam) {
  set_linum;
  v3 ab[4] = {
   a,
@@ -808,7 +809,7 @@ fill_dbez(v3 a, v3 b, Bezier const&bezier, argb color=0, linum_param) {
 }
 
 force_inline void
-fill_bez(Bezier const&bezier, argb color=0, linum_param) {
+fill_bez(Bezier const&bezier, argb color=0, linum_defparam) {
  fill_dbez(bezier.e[0], bezier.e[3], bezier, color, linum);
 }
 
@@ -880,19 +881,19 @@ fill_patch(v3 P0[4], v3 P1[4],
 }
 
 force_inline void
-fill3_symx(v3 a, v3 b, linum_param) {
+fill3_symx(v3 a, v3 b, linum_defparam) {
  symx_off;
  fill3(a, b, negateX(b), linum);
 }
 
 force_inline void
-fill4_symx(v3 a, v3 b, linum_param) {
+fill4_symx(v3 a, v3 b, linum_defparam) {
  symx_off;
  fill4(a, b, negateX(b), negateX(a), linum);
 }
 
 function void 
-fill_strip(v3 verts[], i32 vert_count, linum_param) {
+fill_strip(v3 verts[], i32 vert_count, linum_defparam) {
  for_i32(i,0,vert_count-2)
  {
   fill3(verts[i], verts[i+1], verts[i+2], linum);
@@ -901,33 +902,33 @@ fill_strip(v3 verts[], i32 vert_count, linum_param) {
 
 function void 
 fill_fan(v3 A, v3 verts[], i32 vert_count, argb color=0,
-         Fill_Params params={}, linum_param) {
+         Fill_Params params={}, linum_defparam) {
  for_i32(index, 0, vert_count-1) {
   fill3(A, verts[index], verts[index+1], color, params, linum);
  }
 }
 
 function void
-draw_box(mat4 const&transform, linum_param) {
+draw_box(mat4 const&transform, linum_defparam) {
  set_linum;
  v3 x = mat4vec(transform, V3x(2));
  v3 y = mat4vec(transform, V3y(2));
  v3 z = mat4vec(transform, V3z(2));
  v3 O = transform*V3() - 0.5f*(x+y+z);
  v3 X = O+x;
- draw(bez(X,X+y), 0);
- draw(bez(X,X+z), 0);
+ draw(bez_line(X,X+y), 0);
+ draw(bez_line(X,X+z), 0);
  v3 Y = O+y;
- draw(bez(Y,Y+x), 0);
- draw(bez(Y,Y+z), 0);
+ draw(bez_line(Y,Y+x), 0);
+ draw(bez_line(Y,Y+z), 0);
  v3 Z = O+z;
- draw(bez(Z,Z+x), 0);
- draw(bez(Z,Z+y), 0);
+ draw(bez_line(Z,Z+x), 0);
+ draw(bez_line(Z,Z+y), 0);
  
- draw(bez(O,X), 0); draw(bez(O,Y), 0); draw(bez(O,Z), 0);
+ draw(bez_line(O,X), 0); draw(bez_line(O,Y), 0); draw(bez_line(O,Z), 0);
  
  v3 P = O+x+y+z;
- draw(bez(P,P-x), 0); draw(bez(P,P-y), 0); draw(bez(P,P-z), 0);
+ draw(bez_line(P,P-x), 0); draw(bez_line(P,P-y), 0); draw(bez_line(P,P-z), 0);
 }
 
 force_inline Patch
@@ -962,21 +963,21 @@ small_to_big() {
 }
 
 force_inline void
-duo_line(v3 a, v3 b, v3 c, linum_param) {
+duo_line(v3 a, v3 b, v3 c, linum_defparam) {
  set_linum;
- draw(bez(a,b), small_to_big(), 0);
- draw(bez(b,c), big_to_small(), 0);
+ draw(bez_line(a,b), small_to_big(), 0);
+ draw(bez_line(b,c), big_to_small(), 0);
 }
 //
 force_inline void
-duo_line(v3 array[3], linum_param) {
+duo_line(v3 array[3], linum_defparam) {
  set_linum;
  duo_line(array[0], array[1], array[2], 0);
 }
 
 function void
 draw_image(char *filename, v3 o, v3 x, v3 y, v1 alpha=1.f, v3 color={1,1,1},
-           linum_param) {
+           linum_defparam) {
  if (get_hot_prim_id() == u32(linum))
  {// NOTE: tint it
   color = V3(1.f, 1.f, 0.f)*color;
@@ -989,7 +990,7 @@ draw_image(char *filename, v3 o, v3 x, v3 y, v1 alpha=1.f, v3 color={1,1,1},
 function void
 draw_disk(v3 center, v1 radius,
           argb color, v1 depth_offset, Poly_Flags flags,
-          linum_param)
+          linum_defparam)
 {
  if (is_poly_enabled()){
   painter.draw_prim_id = linum;
@@ -1013,8 +1014,8 @@ indicate_vertex(char *vertex_name, v3 pos,
   const v1 radius = 3*millimeter;
   b32 mouse_near;
   {
-   mat4 view_form_boneT = p->view_from_worldT * current_bone_xform();
-   v3 vertex_viewp = mat4vert_div(view_form_boneT, pos);
+   mat4 view_form_bone = p->view_from_world * current_bone_xform();
+   v3 vertex_viewp = mat4vert_div(view_form_bone, pos);
    v2 delta = p->mouse_viewp - vertex_viewp.xy;
    mouse_near = (absolute(delta.x) < 1*centimeter && 
                  absolute(delta.y) < 1*centimeter);

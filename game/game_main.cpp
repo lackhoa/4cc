@@ -4,7 +4,9 @@
 #  define IMGUI_DEFINE_MATH_OPERATORS // Access to math operators
 #endif
 #include "imgui/imgui.h"
-#include "imgui_internal.h"
+#if SILLY_IMGUI_PARTY
+#  include "imgui_internal.h"
+#endif
 
 #define AD_IS_FRAMEWORK 1
 #include "kv.h"
@@ -209,15 +211,17 @@ write_data_func(Printer &p, Type_Info &type, void *void_pointer)
    p << "{\n";
    for_i1(member_index, 0, type.members.count){
     Struct_Member &member = type.members[member_index];
-    p << member.name << " ";
-    u8 *member_pointer = pointer+member.offset;
-    if(member.type->kind == Type_Kind_Union){
-     write_data_union(p, *member.type, member_pointer,
-                      (pointer+member.discriminator_offset));
-    }else{
-     write_data_func(p, *member.type, member_pointer);
+    if(!member.unserialized){
+     p << member.name << " ";
+     u8 *member_pointer = pointer+member.offset;
+     if(member.type->kind == Type_Kind_Union){
+      write_data_union(p, *member.type, member_pointer,
+                       (pointer+member.discriminator_offset));
+     }else{
+      write_data_func(p, *member.type, member_pointer);
+     }
+     p << newline;
     }
-    p << newline;
    }
    p << "}\n";
   }break;
@@ -309,17 +313,14 @@ get_target_camera(Game_State *state, i32 viewport_index){
  return &state->viewports[viewport_index].target_camera;
 }
 
+#define IGNORE_MODELING_DATA 1
+
 function b32
 game_load(Game_State *state, App *app, String filename,
           b32 ask_confirmation=true)
 {// IMPORTANT: This function overwrites edit history.
  b32 ok = true;
  Scratch_Block scratch(app);
- 
- if (ask_confirmation) {
-  // TODO(kv): Well, I wish confirmation dialog would be *this* easy
-  // ok = get_confirmation_from_user(app, strlit("Really reload game? (Will overwrite edit history)"));
- }
  
  String read_string = {};
  if (ok) {
@@ -330,7 +331,7 @@ game_load(Game_State *state, App *app, String filename,
   }
  }
  
- if( ok ) {
+ if(ok){
   // NOTE: ;deserialize
   Arena *load_arena = &state->data_load_arena;
   arena_clear(load_arena);
@@ -349,8 +350,7 @@ game_load(Game_State *state, App *app, String filename,
     {
      brace_block;
      Camera_Data cameras[GAME_VIEWPORT_COUNT];
-     for_i32(cam_index,0,GAME_VIEWPORT_COUNT)
-     {
+     for_i32(cam_index,0,GAME_VIEWPORT_COUNT){
       Camera_Data *cam = &state->viewports[cam_index].target_camera;
       brace_block;
 #define X(TYPE,NAME)  eat_id(p, #NAME); cam->NAME = eat_##TYPE(p);
@@ -369,30 +369,40 @@ game_load(Game_State *state, App *app, String filename,
    }
    {
     Modeler *m = &state->modeler;
-    modeler_clear_data(m);
+    clear_modeling_data(m);
     
     {//-NOTE Vertices
      eat_id(p, "vertices");
      brace_begin;
-     while(p->ok_) {
-      if ( maybe_char(p, '}') ) {
+     while(p->ok_){
+      if(maybe_char(p, '}')){
        break;
       }
       Vertex_Data &v = m->vertices.push2();
+#if IGNORE_MODELING_DATA
+      eat_char(p,'{');
+      eat_until_char(p, '}');
+      eat_char(p,'}');
+#else
       read_Vertex_Data(r,v);
+#endif
      }
     }
     
     {//-NOTE Beziers
      eat_id(p, "beziers");
      brace_begin;
-     while(p->ok_)
-     {
-      if ( maybe_char(p, '}') ) {
+     while(p->ok_){
+      if(maybe_char(p, '}')){
        break;
       }
       Bezier_Data &b = m->curves.push2();
+#if IGNORE_MODELING_DATA
+      eat_char(p,'{');
+      eat_until_char(p, '}');
+#else
       read_Bezier_Data(r,b);
+#endif
      }
     }
    }
@@ -410,6 +420,10 @@ game_load(Game_State *state, App *app, String filename,
  
  state->load_failed = !ok; 
  return ok;
+}
+function void
+revert_from_autosave(Game_State *state, App *app){
+ game_load(state, app, state->autosave_path);
 }
 
 //~
@@ -442,7 +456,7 @@ render_data(Modeler *m)
  for_i32(vindex,1,m->vertices.count) {
   Vertex_Data &vert = m->vertices[vindex];
   Bone *bone = get_bone(m, vert.bone_id, false);
-  u32 prim_id = vertex_prim_id(vindex);
+  u32 prim_id = prim_id_from_vertex_index({vindex});
   {
    v3 pos = mat4vert(bone->xform, vert.pos);
    indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
@@ -456,26 +470,26 @@ render_data(Modeler *m)
   }
  }
  
- for_i32(curve_index,1,m->curves.count) {
-  Bezier_Data &curve = m->curves[curve_index];
+ for_i32(ci,1,m->curves.count) {
+  Bezier_Data &curve = m->curves[ci];
   Bone *bone = get_bone(m, curve.bone_id, false);
-  u32 prim_id = curve_prim_id(curve_index);
+  u32 prim_id = prim_id_from_curve_index({ci});
   {
-   v3 p0 = m->vertices[curve.p0_index].pos;
-   v3 p3 = m->vertices[curve.p3_index].pos;
+   v3 p0 = m->vertices[curve.p0_index.v].pos;
+   v3 p3 = m->vertices[curve.p3_index.v].pos;
    Bez draw_bez;
    switch(curve.type){
     case Bezier_Type_v3v2:{
-     draw_bez = bez(p0, curve.data.v3v2.d0,
-                    curve.data.v3v2.d3, p3);
+     draw_bez = bez_v3v2(p0, curve.data.v3v2.d0,
+                         curve.data.v3v2.d3, p3);
     }break;
-    
+    case Bezier_Type_Parabola:{
+     draw_bez = bez_parabola(p0, curve.data.parabola.d, p3);
+    }break;
     invalid_default_case;
    }
    
-   {
-    draw(bone->xform*draw_bez, prim_id);
-   }
+   draw(bone->xform*draw_bez, prim_id);
    if (curve.symx) {
     set_in_block(painter.is_right, 1);
     auto boneR = get_right_bone(m, bone);
@@ -485,9 +499,11 @@ render_data(Modeler *m)
  }
 }
 
+//TODO(kv) @cleanup We wanna change this from update+render to update_and_render
 function game_render_return
 game_render(game_render_params)
 {
+ Modeler *modeler = &state->modeler;
  slider_cycle_counter = 0;
  Scratch_Block scratch;
  Viewport *viewport = &state->viewports[viewport_id-1];
@@ -527,15 +543,18 @@ game_render(game_render_params)
   config->meter_to_pixel  = meter_to_pixel;
   {
    Scratch_Block render_scratch;
-   //TODO(kv): Why can't the game understand scratch blocks?
+   //TODO(kv) Why can't the game understand scratch blocks?
+   modeler->vertices.set_count(1);
+   modeler->curves.  set_count(1);
    render_movie(scratch, render_scratch,
-                config, viewport, viewport_id-1, 
-                state->time, state->references_full_alpha,
-                app, target, mouse_viewp, &state->modeler, camera);
+                config, viewport,
+                state->references_full_alpha,
+                app, target, mouse_viewp, modeler,
+                camera, &state->pose, state->anime_time);
   }
  }
  //-NOTE(kv)
- render_data(&state->modeler);
+ render_data(modeler);
  
  if (state->kb_cursor_mode &&
      viewport_id == 1)
@@ -543,7 +562,7 @@ game_render(game_render_params)
   v1 cursor_dist = lengthof(camera->cam_from_world * state->kb_cursor.pos);
   v1 radius = 4*millimeter;
   radius *= cursor_dist / camera->focal_length;
-  if (fbool(1)){ radius *= 10.f; }
+  if (fbool(0)){ radius *= 10.f; }
   v3 points[] = { v3{}, V3(-1,-1,0), V3(+1,-1,0), };
   for_i32(i,0,3){
    points[i] = (state->kb_cursor.pos +
@@ -585,7 +604,7 @@ game_init(game_init_params)
    h.allocator = make_arena_base_allocator(&h.arena);
   }
   
-  modeler_clear_data(m);
+  clear_modeling_data(m);
  }
  
  {// NOTE: Save/Load business load_game
@@ -856,7 +875,7 @@ update_camera_distance(v1 distance, i1 delta_level) {
  return distance;
 }
 
-global arrayof<String> command_queue;
+//global arrayof<String> command_queue;
 
 function game_send_command_return
 game_send_command(game_send_command_params) {
@@ -921,10 +940,25 @@ fui_slider_is_discrete(Fui_Slider *slider) {
 }
 
 inline b32
-fui_slider_is_continuous(Fui_Slider *slider) {
+fui_slider_is_continuous(Fui_Slider *slider){
  return !fui_slider_is_discrete(slider);
 }
 
+//-
+#define V2_CASES \
+case Key_Code_L: case Key_Code_H: \
+case Key_Code_K: case Key_Code_J:
+#define V3_CASES  V2_CASES case Key_Code_O: case Key_Code_I:
+#define V4_CASES  V3_CASES case Key_Code_Period: case Key_Code_Comma:
+
+inline b32 is_v2_key(Key_Code code){ switch(code){ V2_CASES return true; } return false; }
+inline b32 is_v3_key(Key_Code code){ switch(code){ V3_CASES return true; } return false; }
+inline b32 is_v4_key(Key_Code code){ switch(code){ V4_CASES return true; } return false; }
+
+#undef V2_CASES
+#undef V3_CASES
+#undef V4_CASES
+//-
 
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 function game_update_return
@@ -933,7 +967,7 @@ game_update(game_update_params)
 #if SILLY_IMGUI_PARTY 
  FxTestBed();
 #endif
-  
+ 
  Scratch_Block scratch(app);
  Base_Allocator scratch_allocator = make_arena_base_allocator(scratch);
  
@@ -963,19 +997,73 @@ game_update(game_update_params)
   if (state->time >= 1000.0f) { state->time -= 1000.0f; }
  }
  
+ //NOTE(kv) If you wanna load states, then do it first and foremost.
+ arrayof<String> game_commands = {};
+ {//~ NOTE: Game commands
+  {// NOTE: Process commands
+   arrayof<String> &queue = state->command_queue;
+   for_i1(ci,0,queue.count){
+#define MATCH(NAME)    queue[ci] == strlit(NAME)
+    if(0){
+    }else if(MATCH("save_manual")) {
+     game_save(state, app, true);
+    }else if(MATCH("load_manual")) {
+     game_load(state, app, state->manual_save_path);
+    }else if(MATCH("revert")){
+     revert_from_autosave(state, app);
+    }else{
+     vim_set_bottom_text(strlit("game: cannot serve command"));
+    }
+#undef MATCH
+   }
+   queue.count = 0;
+  }
+  {// NOTE: Fill command lister
+   auto &cmds = game_commands;
+   cmds.count = 0;
+   cmds.push(strlit("save_manual"));
+   cmds.push(strlit("load_manual"));  
+   cmds.push(strlit("revert"));  
+  }
+ }
+ 
+ {
+  state->anime_time = state->time;
+  state->pose = driver_animate(modeler, scratch, state->anime_time);
+ }
+ 
  if (state->kb_cursor_mode){
+  Modeler *m = modeler;
   v1 min_lensq = max_f32;
   Vertex_Index closest_vertex = {};
-  for(i32 vi=1;
-      vi < modeler->vertices.count;
-      vi++)
-  {
-   v1 l = lensq(state->kb_cursor.pos - modeler->vertices[vi].pos);
+  for_i32(vi,1,modeler->vertices.count){
+   Vertex_Data *v = &modeler->vertices[vi];
+   Bone *bone = get_bone(m, v->bone_id, false);
+   v1 l = lensq(state->kb_cursor.pos - bone->xform*v->pos);
    if (l < min_lensq){ min_lensq = l; closest_vertex = {vi}; }
   }
-  hot_prim_id = vertex_prim_id(closest_vertex);
+  hot_prim_id = prim_id_from_vertex_index(closest_vertex);
  }else{
   hot_prim_id = input->frame.hot_prim_id;
+ }
+ 
+ if(!hot_prim_id){
+  //NOTE(kv) If there's nothing hot, then we select by cursor position
+  Buffer_ID buffer = get_active_buffer(app);
+  String active_buffer_name = push_buffer_base_name(app, scratch, buffer);
+  if(active_buffer_name == GAME_FILE_NAME){
+   i64 pos = get_current_line_number(app);
+   auto m = modeler;
+   Vertex_Data *v = get_vertex_by_linum(m,pos);
+   if(v){
+    hot_prim_id = prim_id_from_vertex_index(vertex_index_from_pointer(m,v));
+   }else{
+    Bezier_Data *c = get_curve_by_linum(m,pos);
+    if(c){
+     hot_prim_id = prim_id_from_curve_index(curve_index_from_pointer(m,c));
+    }
+   }
+  }
  }
  
  {//NOTE(kv) Compute key direction
@@ -1004,127 +1092,110 @@ game_update(game_update_params)
   }
  }
  
- {//NOTE(kv) Compute active objects
-  auto *m = &state->modeler;
-  m->active_prims.count = 0;
-  u32 sel_obj = selected_prim_id(m);
-  // NOTE(kv): selected object is always active.
-  push_unique(m->active_prims, sel_obj);
-  if (m->selection_spanning) {
-   Prim_Type sel_type = prim_id_type(sel_obj);
-   if (sel_type == Prim_Vertex){
-    i32 sel_index = prim_id_to_index(sel_obj);
-    Vertex_Data &sel = m->vertices[sel_index];
-    for_i32(cindex,1,m->curves.count) {
-     Bezier_Data &curve = m->curves[cindex];
-     if (sel_index == curve.p0_index) {
-      push_unique(m->active_prims, vertex_prim_id(curve.p3_index));
-     } else if (sel_index == curve.p3_index) {
-      push_unique(m->active_prims, vertex_prim_id(curve.p0_index));
-     }
-    }
-   }
-  }
- }
- 
-#define V2_CASES \
-case Key_Code_L: case Key_Code_H: \
-case Key_Code_K: case Key_Code_J:
-#define V3_CASES  V2_CASES case Key_Code_O: case Key_Code_I:
-#define V4_CASES  V3_CASES case Key_Code_Period: case Key_Code_Comma:
- 
  b32 modeler_selecting = selected_prim_id(modeler);
  u32 mods = input->active_mods;
  for_i32(key_stroke_index, 0, key_strokes.count){
-  //NOTE(kv) Handle keystroke event
+  //-NOTE(kv) Key bindings
+  auto cam = update_target_cam;
   Key_Code keycode = key_strokes[key_stroke_index];
-  if (game_active){
-   if (modeler_selecting){
+  u32 code = mods|keycode;
+  const u32 S = Key_Mod_Sft;
+  const u32 C = Key_Mod_Ctl;
+  const u32 M = Key_Mod_Alt;
+  if(game_active){
+   if(modeler_selecting){
     //-NOTE
-    if (mods == 0){
-     switch (keycode){
-      case Key_Code_Return:{ modeler_exit_edit(modeler); }     break;
-      case Key_Code_Escape:{ modeler_exit_edit_undo(modeler); }break;
-      case Key_Code_R:{ modeler_redo(modeler); }break;
-      case Key_Code_S:{ toggle_boolean(modeler->selection_spanning); }break;
-      case Key_Code_U:{ modeler_undo(modeler); }break;
-     }
+    auto m = modeler;
+    switch(code){
+     case Key_Code_Return:{ modeler_exit_edit(m); }break;
+     case Key_Code_Escape:{
+      if(m->change_uncommitted){
+       modeler_exit_edit_undo(m);
+      }else{
+       clear_selection(m);
+      }
+     }break;
+     case Key_Code_S:{
+      toggle_boolean(m->selection_spanning);
+      compute_active_prims(m);
+     }break;
     }
-   }else if (state->kb_cursor_mode){
+   }else if(state->kb_cursor_mode){
     //-NOTE
-    if (mods==0){
-     switch(keycode){
+    if(mods==Key_Mod_Ctl && is_v3_key(keycode)){
+     update_orbit(cam, input);
+    }else if(mods==Key_Mod_Alt && is_v2_key(keycode)){
+     update_pan(cam, input); 
+    }else{
+     switch(code){
       case Key_Code_I: case Key_Code_O: {
-       update_orbit(update_target_cam, input); }break;
+       update_orbit(cam, input);
+      }break;
       case Key_Code_Escape:{ state->kb_cursor_mode=false; }break;
-     }
-    }else if(mods==Key_Mod_Ctl){
-     switch(keycode){
-      V3_CASES{ update_orbit(update_target_cam, input); }break;
-     }
-    }else if(mods==Key_Mod_Alt){
-     switch(keycode){
-      V2_CASES{ update_pan(update_target_cam, input); }
+      case Key_Code_Return:{
+       state->kb_cursor_mode=false;
+       select_primitive(modeler, get_hot_prim_id());
+      }break;
      }
     }
    }else{
-    if (mods == 0){
-     switch (keycode){
-      V3_CASES{ update_orbit(update_target_cam, input->direction); }break;
+    //-NOTE Normal mode
+    if(mods==C && is_v3_key(keycode)){
+     update_orbit(cam, input);
+    }else if (mods==M && is_v2_key(keycode)){
+     update_pan(cam, input);
+    }else if (mods==0 && is_v3_key(keycode)){
+     update_orbit(cam, input->direction);
+    }else{
+     switch(code){
       case Key_Code_Return:{ game_save(state, app, false); }break;
       case Key_Code_M:{ state->kb_cursor_mode = true; }break;
-      case Key_Code_X:{ update_target_cam->theta *= -1.f; }break;
-      case Key_Code_Z:{ update_target_cam->theta = .5f - update_target_cam->theta; }break;
-     }
-    }else if (mods == Key_Mod_Sft){
-     switch(keycode){
-      case Key_Code_U:{ game_load(state, app, state->autosave_path); }break;
-      case Key_Code_0:{ update_target_cam->roll = {}; }break;
-     }
-    }else if (mods == Key_Mod_Ctl){
-     switch(keycode){
-      V3_CASES{ update_orbit(update_target_cam, input); }break;
-     }
-    }else if (mods == Key_Mod_Alt){
-     switch (keycode){
-      V2_CASES{ update_pan(update_target_cam, input); }break;
-      case Key_Code_0: { update_target_cam->pan = {}; }break;
+      case Key_Code_Q:{ toggle_boolean(state->references_full_alpha); }break;
+      case Key_Code_U:{ modeler_undo(modeler); }break;
+      case Key_Code_X:{ cam->theta *= -1.f; }break;
+      case Key_Code_Z:{ cam->theta = .5f - cam->theta; }break;
+      case S|Key_Code_0:{ cam->roll = {}; }break;
+      //NOTE(kv) Reverting is just.so.useful for debugging!
+      //TODO(kv) Pushing strings is dangerous! Since the game might restart.
+      case S|Key_Code_U:{ state->command_queue.push(strlit("revert")); }break;
+      case C|Key_Code_R:{ modeler_redo(modeler); }break;
+      case M|Key_Code_0:{ cam->pan = {}; }break;
+      //NOTE(kv) Set camera frontal
+      case C|M|Key_Code_K:{ cam->theta=0; cam->phi=0; }break;
+      //NOTE(kv) Set camera to the right
+      case C|M|Key_Code_L:{ cam->theta=.25f; cam->phi=0; }break;
+      //NOTE(kv) Set camera to the left
+      case C|M|Key_Code_H:{ cam->theta=-.25f; cam->phi=0; }break;
      }
     }
    }
   }else if (fui_is_active()){
    //-NOTE
-   if (mods == 0){
-    switch(keycode){
-     V4_CASES{
-      Fui_Slider *slider = fui_active_slider;
-      if (fui_slider_is_discrete(slider)) {
-       i4 value;
-       block_copy(&value, slider+1, slider_value_size(slider));
-       //NOTE(kv) Discrete control for integer
-       for_i32(index,0,4) {
-        value.e[index] += i32(input_dir[index]);
-       }
-       
-       if (slider->flags & Slider_Clamp_01) {
-        for_i32(index,0,4) {
-         macro_clamp01i(value.e[index])
-        }
-       }
-       
-       block_copy(slider+1, &value, slider_value_size(slider));
-      }
-     }break;
+   if(mods==C && is_v3_key(keycode)){
+    update_orbit(cam, input);
+   }else if(mods==M && is_v2_key(keycode)){
+    update_pan(cam, input);
+   }else if(mods==0 && is_v4_key(keycode)){
+    //NOTE(kv) Update discrete slider
+    Fui_Slider *slider = fui_active_slider;
+    if(fui_slider_is_discrete(slider)){
+     i4 value;
+     block_copy(&value, slider+1, slider_value_size(slider));
+     for_i32(index,0,4) {
+      value.e[index] += i32(input_dir[index]);
+     }
      
+     if (slider->flags & Slider_Clamp_01) {
+      for_i32(index,0,4) {
+       macro_clamp01i(value.e[index])
+      }
+     }
+     
+     block_copy(slider+1, &value, slider_value_size(slider));
+    }
+   }else{
+    switch(code){
      case Key_Code_Tab:{ toggle_boolean(fui_v4_zw_active); }break;
-    }
-   }else if (mods == Key_Mod_Ctl){
-    switch(keycode){
-     V3_CASES{ update_orbit(update_target_cam, input); }break;
-    }
-   }else if (mods == Key_Mod_Alt){
-    switch(keycode){
-     V2_CASES{ update_pan(update_target_cam, input); }break;
     }
    }
   }
@@ -1237,9 +1308,6 @@ case Key_Code_K: case Key_Code_J:
   }
  }
  
-#undef V2_CASES
-#undef V3_CASES
-#undef V4_CASES
  
  if (input->mouse.press_l){
   // NOTE: Left click handling
@@ -1248,7 +1316,7 @@ case Key_Code_K: case Key_Code_J:
    if (prim_id_is_data(hot_prim)){
     // NOTE: Drawn by data -> change selected obj id
     auto &m = modeler;
-    m->selected_prim_id = hot_prim;
+    select_primitive(m, hot_prim);
     m->change_uncommitted = false;
     switch_to_mouse_panel(app);
    }else{
@@ -1281,10 +1349,6 @@ case Key_Code_K: case Key_Code_J:
  {//-NOTE: Presets
   if( just_pressed(input, Key_Code_Space) ) {
    game_last_preset(state, update_viewport_id);
-  }
-  
-  if ( just_pressed(input, Key_Code_Q) ) {
-   state->references_full_alpha = !state->references_full_alpha;
   }
  }
  
@@ -1352,12 +1416,11 @@ case Key_Code_K: case Key_Code_J:
  
  driver_update(state->viewports);
  
- if (1)
  {//;update_modeler
   auto m = &state->modeler;
   auto &h = m->history;
   {//-NOTE: Drawing GUI
-   if (get_selected_type(m) == Prim_Curve){
+   if(get_selected_type(m) == Prim_Curve){
     //;draw_curve_info
     ImGui::Begin("curve data", 0);
     Bezier_Data curve = get_selected_curve(m);
@@ -1403,32 +1466,6 @@ case Key_Code_K: case Key_Code_J:
   if ( fbool(0) ) {
    DEBUG_VALUE(image_load_info.image_count);
    DEBUG_VALUE(image_load_info.failure_count);
-  }
- }
- 
- arrayof<String> game_commands = {};
- {//~ NOTE: Game commands
-  {// NOTE: Process commands
-   auto &queue = state->command_queue;
-   for_i1(ci,0,queue.count) {
-#define MATCH(NAME)    queue[ci] == strlit(NAME)
-    if (0) {}
-    else if (MATCH("save_manual")) {
-     game_save(state, app, true);
-    } else if (MATCH("load_manual")) {
-     game_load(state, app, state->manual_save_path);
-    } else {
-     vim_set_bottom_text(strlit("game: cannot serve command"));
-    }
-#undef MATCH
-   }
-   
-   queue.count = 0;
-  }
-  {// NOTE: Fill command lister
-   game_commands.count = 0;
-   game_commands.push(strlit("save_manual"));
-   game_commands.push(strlit("load_manual"));  
   }
  }
  

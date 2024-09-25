@@ -75,7 +75,7 @@ pointer.kb_cursor = m_kb_cursor;
 
 eat_char(p, '}');
 }
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:410:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:414:
 #define Serialized_State_Embed \
  union\
 {\

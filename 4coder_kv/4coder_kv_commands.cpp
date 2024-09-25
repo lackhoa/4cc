@@ -1193,7 +1193,7 @@ function b32
 maybe_handle_fui(App *app, Buffer_ID buffer)
 {
  b32 result = false;
- if (global_game_on_readonly)
+ if (game_on_ro)
  {
   // NOTE: When the tick doesn't run, we don't load the game code.
   // so we update the game code here so that it doesn't reach in the wrong part slider.
@@ -1279,7 +1279,7 @@ function void
 handle_space_command(App *app)
 {
 #if 0
- if (global_game_on_readonly)
+ if (game_on_ro)
  {
   i1 viewport_id = get_active_game_viewport_id(app);
   global_game_code.game_last_preset(ed_game_state_pointer, viewport_id);

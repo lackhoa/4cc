@@ -75,16 +75,16 @@ get_token_array_from_buffer(App *app, Buffer_ID buffer){
     if (ptr != 0){
         result = *ptr;
     }
-    return(result);
+ return(result);
 }
 
 internal Token *
 kv_token_at_cursor(App *app, i64 delta=0)
 {
-  GET_VIEW_AND_BUFFER;
-  Token_Array tokens = get_token_array_from_buffer(app, buffer);
-  i64 pos = view_get_cursor_pos(app, view) + delta;
-  return token_from_pos(&tokens, pos);
+ GET_VIEW_AND_BUFFER;
+ Token_Array tokens = get_token_array_from_buffer(app, buffer);
+ i64 pos = view_get_cursor_pos(app, view) + delta;
+ return token_from_pos(&tokens, pos);
 }
 
 function Token_Iterator_Array
@@ -2642,14 +2642,6 @@ inline i64 get_current_column(App *app)
  GET_VIEW_AND_BUFFER;
  i64 column = get_pos_column(app, buffer, view_get_cursor_pos(app, view));
  return column;
-}
-
-inline i64
-get_current_line_number(App *app)
-{
- GET_VIEW_AND_BUFFER;
- i64 line = get_line_number_from_pos(app, buffer, view_get_cursor_pos(app, view));
- return line;
 }
 
 inline i64 get_current_char(App *app)

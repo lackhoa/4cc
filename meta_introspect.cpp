@@ -188,8 +188,11 @@ print_struct_meta(Printer &p, String type_name,
       "{.type=&" << member_type <<
       ", .name=" << enclosed_in_strlit(member.name) <<
       ", .offset=offsetof("<<type_name<<", "<<member.name<<")";
-     if (member.discriminator.len) {
+     if(member.discriminator.len){
       p<<", .discriminator_offset=offsetof("<<type_name<<", "<<member.discriminator<<")";
+     }
+     if(member.unserialized){
+      p<<", .unserialized=true";
      }
      p<<"};\n";
      member_index++;
@@ -210,49 +213,50 @@ print_struct_meta(Printer &p, String type_name,
    p << "STB_Parser *p = r.parser;\n";
    
    p << "eat_char(p, '{');\n";
-   for_i1(member_index,0,members.count) {
-    auto &member = members[member_index];
-    
-    String version_added = member.version_added;
-    b32 has_version_added = version_added.len != 0;
-    if (!has_version_added) { version_added = strlit("0"); }
-    String version_removed = member.version_removed;
-    b32 has_version_removed = version_removed.len != 0;
-    if (!has_version_removed) { version_removed = strlit("Version_Inf"); }
-    String default_value = member.default_value;
-    b32 has_default = default_value.len != 0;
-    if (!has_default) { default_value = strlit("{}"); }
-    
-    b32 member_currently_exists = !has_version_removed;
-    //NOTE(kv) Mangle the name so that we don't have conflict with other local vars.
-    String varname = push_stringf(scratch, "m_%.*s", string_expand(member.name));
-    
-    {//NOTE(kv) Make a local variable to store the value, for
-     //  1. convenience, and
-     //  2. the struct might not have that member anymore,
-     //     but we may need that value for conversion purpose.
-     p<<member.type<<" "<<varname<<" = "<<default_value<<";\n";
-    }
-    
-    if (has_version_added || has_version_removed)
-    {// NOTE(kv) Only read if the data has that member.
-     p<<"if ( in_range_exclusive("<<
-      version_added<<", r.read_version, "<< version_removed<<") )";
-    }
-    {//NOTE(kv) Read data to the local var
-     brace_block;
-     p << "eat_id(p, " << enclosed_in_strlit(member.name) << ");\n";
-     String read_function = get_type_read_function_name(member.type);
-     b32 has_disciminator = member.discriminator.len != 0;
-     if (has_disciminator){
-      p<<read_function<<"(r, "<<varname<<", pointer."<<member.discriminator<<");";
-     } else{
-      p<<read_function<<"(r, "<<varname<<");";
+   for_i1(member_index,0,members.count){
+    Meta_Struct_Member &member = members[member_index];
+    if(!member.unserialized){
+     String version_added = member.version_added;
+     b32 has_version_added = version_added.len != 0;
+     if (!has_version_added) { version_added = strlit("0"); }
+     String version_removed = member.version_removed;
+     b32 has_version_removed = version_removed.len != 0;
+     if (!has_version_removed) { version_removed = strlit("Version_Inf"); }
+     String default_value = member.default_value;
+     b32 has_default = default_value.len != 0;
+     if (!has_default) { default_value = strlit("{}"); }
+     
+     b32 member_currently_exists = !has_version_removed;
+     //NOTE(kv) Mangle the name so that we don't have conflict with other local vars.
+     String varname = push_stringf(scratch, "m_%.*s", string_expand(member.name));
+     
+     {//NOTE(kv) Make a local variable to store the value, for
+      //  1. convenience, and
+      //  2. the struct might not have that member anymore,
+      //     but we may need that value for conversion purpose.
+      p<<member.type<<" "<<varname<<" = "<<default_value<<";\n";
      }
-    }
-    if ( member_currently_exists ) {
-     //NOTE(kv) Assign the local var to the dest struct member.
-     p<<"pointer."<<member.name<<" = "<<varname<<";\n\n";
+     
+     if (has_version_added || has_version_removed)
+     {// NOTE(kv) Only read if the data has that member.
+      p<<"if ( in_range_exclusive("<<
+       version_added<<", r.read_version, "<< version_removed<<") )";
+     }
+     {//NOTE(kv) Read data to the local var
+      brace_block;
+      p << "eat_id(p, " << enclosed_in_strlit(member.name) << ");\n";
+      String read_function = get_type_read_function_name(member.type);
+      b32 has_disciminator = member.discriminator.len != 0;
+      if (has_disciminator){
+       p<<read_function<<"(r, "<<varname<<", pointer."<<member.discriminator<<");";
+      } else{
+       p<<read_function<<"(r, "<<varname<<");";
+      }
+     }
+     if ( member_currently_exists ) {
+      //NOTE(kv) Assign the local var to the dest struct member.
+      p<<"pointer."<<member.name<<" = "<<varname<<";\n\n";
+     }
     }
    }
    p << "eat_char(p, '}');";
@@ -435,8 +439,8 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname) {
  char newline = '\n';
  while( p->ok_ )
  {// NOTE(kv): Parsing loop
-  if ( ep_maybe_id(p, "introspect") ) {
-   if (printer.FILE == 0) {
+  if(ep_maybe_id(p, "introspect")){
+   if(printer.FILE == 0){
     // NOTE(kv): Open the file, since we have something to write now
     FILE *outfile = fopen(outname, "wb");
     printer = make_printer_file(outfile);
@@ -474,13 +478,13 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname) {
       Meta_Struct_Member &member = members.push2();
       member = {};
       
-      if ( ep_maybe_id(p, "meta_removed") ) {
+      if (ep_maybe_id(p, "meta_removed")) {
        // NOTE(kv): meta_removed
        ep_char(p, '(');
        {
         parse_cpp_struct_member(p, member);
        }
-       if ( meta_maybe_key(p, "added") ) {
+       if(meta_maybe_key(p, "added")){
         member.version_added = ep_id(p);
         ep_maybe_char(p, ',');
        }
@@ -495,8 +499,8 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname) {
         ep_char(p,')');
        }
        ep_consume_semicolons(p);
-      } else {
-       if ( ep_maybe_id(p, "meta_added") ) {
+      }else{
+       if(ep_maybe_id(p, "meta_added")){
         // NOTE(kv): meta_added
         ep_char(p, '(');
         while(p->ok_ && !ep_maybe_char(p, ')')){
@@ -509,6 +513,8 @@ introspect_one_file(Arena *arena, File_Name_Data source, String outname) {
           ep_eat_token(p);
          }else{ p->fail(); }
         }
+       }else if(ep_maybe_id(p, "meta_unserialized")){
+        member.unserialized = true;
        }
        ep_consume_semicolons(p);
        

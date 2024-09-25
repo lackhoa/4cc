@@ -17,7 +17,7 @@ turn_game_on()
 {
  if (global_game_enabled)
  {
-  global_game_on_readonly = true;
+  game_on_ro = true;
   return true;
  }
  else 
@@ -29,16 +29,16 @@ turn_game_on()
 
 force_inline void turn_game_off()
 {
- global_game_on_readonly = false;
+ game_on_ro = false;
 }
 
 function void
 toggle_the_game(App *app)
 {
- if (global_game_on_readonly) { turn_game_off(); }
+ if (game_on_ro) { turn_game_off(); }
  else                         { turn_game_on(); }
  
- if (global_game_on_readonly)
+ if (game_on_ro)
  {
   View_ID view = get_active_view(app, Access_Always);
   if ( is_view_to_the_right(app, view) )
@@ -79,7 +79,7 @@ CUSTOM_DOC("")
  global_debug_camera_on = !global_debug_camera_on;
 }
 
-internal void
+function void
 init_game(App *app)
 {
  // IMPORTANT: ;game_bootstrap_arena_zero_initialized
@@ -105,8 +105,7 @@ init_game(App *app)
 function void win32_imgui_reinit(void);
 
 function void
-reload_game(Game_API &game)
-{
+reload_game(Game_API &game) {
  game.game_reload(ed_game_state_pointer, &const_ed_api, false);
 }
 
@@ -115,8 +114,7 @@ reload_game(Game_API &game)
 function b32
 load_latest_game_code(App *app, b32 *out_loaded)
 {// NOTE(kv): Load dynamc game code
- if (global_game_on_readonly)
- {
+ if (game_on_ro) {
   Scratch_Block scratch(app);
   b32 loaded = false;
   b32 ok = true;
@@ -153,16 +151,14 @@ load_latest_game_code(App *app, b32 *out_loaded)
       ok = copy_file(GAME_DLL_PATH, temp_path, false);
       if (!ok) { vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
       
-      if (ok)
-      {
+      if (ok) {
        // NOTE(kv): We want to still display old game DLL for as long as possible, until load has succeeded.
        // So we can compare change results better and avoid black screens.
        gbDllHandle new_library = gb_dll_load( to_cstring(scratch, temp_path) );
        ok = (new_library != 0);
        if (!ok) { vim_set_bottom_text_lit("failed to load dll"); }
        
-       if (ok)
-       {
+       if (ok) {
         if (auto game = get_game_code()){
          game->game_shutdown(ed_game_state_pointer);
         }
@@ -178,7 +174,7 @@ load_latest_game_code(App *app, b32 *out_loaded)
         
         library = new_library;
         
-        auto &game = global_game_code_;
+        auto &game = game_code_ro;
         auto game_api_export = (game_api_export_type *)gb_dll_proc_address(library, "game_api_export");
         game_api_export(game);
         if ( never_loaded_before ) {
@@ -192,7 +188,6 @@ load_latest_game_code(App *app, b32 *out_loaded)
         loaded = true;
        }
       }
-      
      }
     }
    }
@@ -228,14 +223,6 @@ view_viewport_id(App *app, View_ID view)
  return buffer_viewport_id(app, buffer);
 }
 
-inline Buffer_ID
-get_active_buffer(App *app)
-{
- View_ID active_view = get_active_view(app, Access_Always);
- return view_get_buffer(app, active_view, Access_Always);
-}
-
-
 force_inline i32
 get_active_game_viewport_id(App *app)
 {
@@ -248,13 +235,13 @@ function Image_Load_Info get_image_load_info(void);
 function void
 maybe_update_game(App *app, Frame_Info frame)
 {
- if (global_game_on_readonly) {
-  Game_API *game = get_game_code();
+ if (game_on_ro){
   b32 loaded;
   load_latest_game_code(app, &loaded);
   if (loaded) { vim_set_bottom_text_lit("Game code reloaded"); }
   
-  if (game) {
+  Game_API *game = get_game_code();
+  if (game){
    Scratch_Block scratch(app);
    Input_Modifier_Set set = system_get_keyboard_modifiers(scratch);
    i32 active_viewport_id = get_active_game_viewport_id(app);
@@ -268,7 +255,7 @@ maybe_update_game(App *app, Frame_Info frame)
    };
    rect2 clip_boxes[GAME_VIEWPORT_COUNT];
    Image_Load_Info image_load_info = get_image_load_info();
-   game_update_return update = game->game_update(ed_game_state_pointer, app, active_viewport_id, input, image_load_info);
+   auto update = game->game_update(ed_game_state_pointer, app, active_viewport_id, input, image_load_info);
    if (update.should_animate_next_frame) { animate_next_frame(app); }
    received_game_commands = update.game_commands;
    
@@ -280,19 +267,19 @@ maybe_update_game(App *app, Frame_Info frame)
 function void
 render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame, rect2 clip_box)
 {
- if (global_game_on_readonly &&
+ if (game_on_ro &&
      (viewport == MAIN_VIEWPORT_ID || global_auxiliary_viewports_on))
  {
   Game_API *game = get_game_code();
-  if (game){
+  if(game){
    b32 should_animate_next_frame = game->game_viewport_update(ed_game_state_pointer, viewport, frame.animation_dt);
-   if (should_animate_next_frame) { animate_next_frame(app); }
+   if(should_animate_next_frame){ animate_next_frame(app); }
    Render_Config *old_config = target_last_config(target);
    game->game_render(ed_game_state_pointer, app, target, viewport,
                      get_mouse_state(app), clip_box);
    {
     Render_Config *config = draw_new_group(target);
-    if (old_config){ *config = *old_config; }
+    if(old_config){ *config = *old_config; }
    }
   }
  }

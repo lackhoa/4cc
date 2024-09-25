@@ -13,9 +13,9 @@ function b32
 byp_highlight_token(Token_Base_Kind kind)
 {
 	switch(kind)
-    {
+ {
 		case TokenBaseKind_Keyword:
-        case TokenBaseKind_Identifier:
+  case TokenBaseKind_Identifier:
 		case byp_TokenKind_Primitive:
 		case byp_TokenKind_ControlFlow:
 		case byp_TokenKind_Struct:
@@ -99,8 +99,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
  Rect_f32 cursor_tok_rect = {};
  Vec2_f32 tok_rect_dim = {};
  
- if (do_cursor_tok_highlight)
- {
+ if (do_cursor_tok_highlight) {
   token_string = push_token_lexeme(app, scratch, buffer, cursor_token);
   cursor_tok_rect = text_layout_character_on_screen(app, text_layout_id, cursor_token->pos);
   f32 tok_rect_dimx = f32(cursor_token->size) * rect_width(cursor_tok_rect);
@@ -115,15 +114,12 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
  ARGB_Color constant_color = fcolor_resolve(fcolor_id(defcolor_int_constant));
 	ARGB_Color cursor_tok_color = byp_get_token_color_cpp(*cursor_token);
  
-	if (cursor_token->kind == TokenBaseKind_Identifier)
- {
+	if (cursor_token->kind == TokenBaseKind_Identifier) {
   String lexeme = push_token_lexeme(app, scratch, buffer, cursor_token);
   Code_Index_Note *note = code_index_note_from_string(lexeme);
   
-  if(note != 0)
-  {
-   switch(note->note_kind)
-   {
+  if(note != 0) {
+   switch(note->note_kind) {
     case CodeIndexNote_Function: cursor_tok_color = function_color; break;
     case CodeIndexNote_Type:     cursor_tok_color = type_color;     break;
     case CodeIndexNote_Macro:    cursor_tok_color = macro_color;    break;
@@ -138,30 +134,23 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
 	{// NOTE(BYP): @Annotations
 		i64 first_index = token_index_from_pos(&token_array, visible_range.first);
 		Token_Iterator_Array comment_it = token_iterator_index(buffer, &token_array, first_index);
-		for(;;)
-  {
+		for(;;) {
    Token *token = tkarr_read(&comment_it);
    if(token->pos >= visible_range.max){ break; }
    String tail = {};
-   if(token_it_check_and_get_lexeme(app, scratch, &comment_it, TokenBaseKind_Comment, &tail))
-   {
-    foreach(i, token->size)
-    {
-     if(tail.str[i] == '@')
-     {
+   if(token_it_check_and_get_lexeme(app, scratch, &comment_it, TokenBaseKind_Comment, &tail)) {
+    foreach(i, token->size) {
+     if(tail.str[i] == '@') {
       Range_i64 annot_range = Ii64(i);
       i1 j=i+1;
-      for(; j<token->size; j++)
-      {
-       if( character_is_whitespace   (tail.str[j]) || 
-          !character_is_alnum(tail.str[j]) )
-       {
+      for(; j<token->size; j++) {
+       if( character_is_whitespace(tail.str[j]) || 
+          !character_is_alnum(tail.str[j]) ) {
         break;
        }
       }
       annot_range.max = j;
-      if(annot_range.min != annot_range.max-1)
-      {
+      if(annot_range.min != annot_range.max-1) {
        annot_range += token->pos;
        paint_text_color(app, text_layout_id, annot_range, comment_pop_0);
       }
@@ -184,17 +173,16 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
  }
  
  it = tkarr_at_pos(0, &token_array, Max(0, visible_range.first-1));
- for (;;)
- {
+ for (;;) {
   Token *token = tkarr_read(&it);
-  if (token->pos > visible_range.max)
+  if (token->pos > visible_range.max) {
    break;
+  }
   
   String lexeme = push_token_lexeme(app, scratch, buffer, token);
-  if (do_cursor_tok_highlight)
-  {
-   if (string_match(lexeme, token_string))
-   {
+  //-NOTE(kv) Identifier highlight
+  if(cursor_token->kind != TokenBaseKind_Keyword){
+   if(string_match(lexeme, token_string)){
     Rect_f32 cur_tok_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
     cur_tok_rect = Rf32_xy_wh(V2(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
     draw_rect(app, cur_tok_rect, 5.f, cursor_tok_color, 0);

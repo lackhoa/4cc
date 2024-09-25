@@ -324,7 +324,7 @@ internal void
 vim_request_delete(App *app)
 {
     vim_state.dot_do_insert = false;
-    vim_make_request(app, REQUEST_Delete);
+ vim_make_request(app, REQUEST_Delete);
 }
 
 internal void vim_request_change(App *app){  vim_make_request(app, REQUEST_Change); }
@@ -333,7 +333,6 @@ VIM_COMMAND_SIG(vim_lowercase){       vim_make_request(app, REQUEST_Lower); }
 VIM_COMMAND_SIG(vim_toggle_case){     vim_make_request(app, REQUEST_ToggleCase); }
 VIM_COMMAND_SIG(vim_request_indent){  vim_make_request(app, REQUEST_Indent); }
 VIM_COMMAND_SIG(vim_request_outdent){ vim_make_request(app, REQUEST_Outdent); }
-VIM_COMMAND_SIG(vim_request_fold){    vim_make_request(app, REQUEST_Fold); }
 VIM_COMMAND_SIG(vim_request_auto_indent){ vim_make_request(app, REQUEST_AutoIndent); }
 
 VIM_COMMAND_SIG(vim_toggle_char){

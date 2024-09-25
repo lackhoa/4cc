@@ -1,15 +1,15 @@
 // autodraw data file (DO NOT EDIT)
-// Written at 24.09.2024 12:32:30
+// Written at 25.09.2024 16:04:29
 version 13
 cameras
 {
  {
-  distance 0.7704f
+  distance 1.302f
   phi 0.f
-  theta 0.f
+  theta 0.125f
   roll 0.f
   pan 0.f 0.f 0.f
-  pivot 0.1182f -0.3161f 0.1164f
+  pivot 0.1652f -0.4174f 0.0856f
   }
  {
   distance 1.3312f
@@ -33,24 +33,101 @@ references_full_alpha 1
 
 Serialized_State
 {
-kb_cursor {
-pos 0.1745f -0.4392f -0.0067f
-vel 0.f
-}
-
+ kb_cursor {
+  pos 0.1745f -0.4392f -0.0067f
+   vel 0.f
+ }
+ 
 }
 vertices
 {
  {
-name v676
+name internal_condyle
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+pos -0.1053f -1.0756f -0.1775f
+basis_index 0
+}
+{
+name external_condyle
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+pos 0.2978f -0.9692f -0.1373f
+basis_index 0
+}
+{
+name sock
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+pos -0.0675f 0.733f -0.2688f
+basis_index 0
+}
+{
+name v89
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+pos 0.0217f -0.8859f -0.1775f
+basis_index 0
+}
+{
+name up
 bone_id {
 type 3
 id 0
 }
 
 symx 1
-pos -0.1753f -0.854f -0.0817f
+pos -0.3098f -1.1833f -0.1252f
 basis_index 0
+}
+{
+name up1
+bone_id {
+type 3
+id 0
+}
+
+  symx 1
+   pos -0.1219f -1.1833f -0.1621f
+   basis_index 0
+ }
+ {
+  name down_common
+   bone_id {
+   type 3
+    id 0
+  }
+  
+  symx 1
+   pos 0.1079f -2.6268f 0.0176f
+   basis_index 0
+ }
+ {
+  name v676
+   bone_id {
+   type 3
+    id 0
+  }
+  
+  symx 1
+   pos -0.1753f -0.854f -0.0817f
+   basis_index 0
 }
 {
 name v677
@@ -68,23 +145,23 @@ basis_index 0
 beziers
 {
  {
-name l679
-bone_id {
-type 3
-id 0
-}
-
-symx 1
-type 0
-p0_index 1
-data {
-d0 -0.f 0.1052f -0.0852f
-d3 0.f 0.0936f
-}
-
-p3_index 2
-radii 0.f 0.f 0.f 0.f
-}
+  name l
+   bone_id {
+   type 3
+    id 0
+  }
+  
+  symx 1
+   type 0
+   p0_index 8
+   data {
+   d0 -0.f 0.1052f -0.0852f
+    d3 0.f 0.0936f
+  }
+  
+  p3_index 9
+   radii 0.f 0.f 0.f 0.f
+ }
 }
 
 

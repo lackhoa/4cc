@@ -237,47 +237,47 @@ internal void
 draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
                 ARGB_Color color, Glyph_Flag flags, Vec2_f32 x_axis)
 {
-    draw__set_face_id(face->id);
-    
-    u16 glyph_index = 0;
-    if (!codepoint_index_map_read(&face->advance_map.codepoint_to_index,
-                                  codepoint, &glyph_index))
-    {
-        glyph_index = 0;
-    }
-    // NOTE(kv): I guess this is a mega-texture situation?
-    Glyph_Bounds bounds = face->bounds[glyph_index];
-    kv_assert(bounds.w == 0);
-    
-    Render_Vertex vertices[6] = {};
-    
-    Rect_f32 uv = bounds.uv;
-    vertices[0].uvw = V3(uv.x0, uv.y0, bounds.w);
-    vertices[1].uvw = V3(uv.x1, uv.y0, bounds.w);
-    vertices[2].uvw = V3(uv.x0, uv.y1, bounds.w);
-    vertices[5].uvw = V3(uv.x1, uv.y1, bounds.w);
-    
-    Vec2_f32 y_axis = V2(-x_axis.y, x_axis.x);
-    Vec2_f32 x_min = bounds.xy_off.x0*x_axis;
-    Vec2_f32 x_max = bounds.xy_off.x1*x_axis;
-    Vec2_f32 y_min = bounds.xy_off.y0*y_axis;
-    Vec2_f32 y_max = bounds.xy_off.y1*y_axis;
-    Vec2_f32 p_x_min = p + x_min;
-    Vec2_f32 p_x_max = p + x_max;
-    vertices[0].xy = p_x_min + y_min;
-    vertices[1].xy = p_x_max + y_min;
-    vertices[2].xy = p_x_min + y_max;
-    vertices[3]    = vertices[1];
-    vertices[4]    = vertices[2];
-    vertices[5].xy = p_x_max + y_max;
-    
-    for (u32 i = 0; i < alen(vertices); i += 1)
-    {
-        vertices[i].color = color;
-        vertices[i].half_thickness = 0.f;
-    }
-    
-    draw__push_vertices(target, vertices, alen(vertices), Vertex_Poly);
+ draw__set_face_id(face->id);
+ 
+ u16 glyph_index = 0;
+ if (!codepoint_index_map_read(&face->advance_map.codepoint_to_index,
+                               codepoint, &glyph_index))
+ {
+  glyph_index = 0;
+ }
+ // NOTE(kv): I guess this is a mega-texture situation?
+ Glyph_Bounds bounds = face->bounds[glyph_index];
+ kv_assert(bounds.w == 0);
+ 
+ Render_Vertex vertices[6] = {};
+ 
+ Rect_f32 uv = bounds.uv;
+ vertices[0].uvw = V3(uv.x0, uv.y0, bounds.w);
+ vertices[1].uvw = V3(uv.x1, uv.y0, bounds.w);
+ vertices[2].uvw = V3(uv.x0, uv.y1, bounds.w);
+ vertices[5].uvw = V3(uv.x1, uv.y1, bounds.w);
+ 
+ Vec2_f32 y_axis = V2(-x_axis.y, x_axis.x);
+ Vec2_f32 x_min = bounds.xy_off.x0*x_axis;
+ Vec2_f32 x_max = bounds.xy_off.x1*x_axis;
+ Vec2_f32 y_min = bounds.xy_off.y0*y_axis;
+ Vec2_f32 y_max = bounds.xy_off.y1*y_axis;
+ Vec2_f32 p_x_min = p + x_min;
+ Vec2_f32 p_x_max = p + x_max;
+ vertices[0].xy = p_x_min + y_min;
+ vertices[1].xy = p_x_max + y_min;
+ vertices[2].xy = p_x_min + y_max;
+ vertices[3]    = vertices[1];
+ vertices[4]    = vertices[2];
+ vertices[5].xy = p_x_max + y_max;
+ 
+ for (u32 i = 0; i < alen(vertices); i += 1)
+ {
+  vertices[i].color = color;
+  vertices[i].half_thickness = 0.f;
+ }
+ 
+ draw__push_vertices(target, vertices, alen(vertices), Vertex_Poly);
 }
 
 ////////////////////////////////

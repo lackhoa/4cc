@@ -62,7 +62,6 @@ defcolor_vim_chord_error = managed_id_declare(app, string_u8_litexpr("colors"), 
 vim_buffer_prev_visual = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("vim_buffer_prev_visual"));
 vim_buffer_marks = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("vim_buffer_marks"));
 vim_view_jumps = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("vim_view_jumps"));
-buffer_folds = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("buffer_folds"));
 defcolor_function = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_function"));
 defcolor_type = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_type"));
 defcolor_primitive = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_primitive"));

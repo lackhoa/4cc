@@ -21,12 +21,13 @@ run_only     = args.action == 'run'
 hotload_game = "game.cpp" in args.file  # @build_filename_hack
 
 # NOTE: Default configuration (don't overwrite me!) #########################
+# NOTE(kv) Build level
 default_build_level = 0
-#
 ed_build_level    = 0
 game_build_level  = 0
 meta_build_level  = 1
 imgui_build_level = 1
+lexer_build_level = 2
 #
 asan_on = 0
 COMPILE_GAME_WITH_MSVC = 1
@@ -40,10 +41,10 @@ STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the relo
 
 
 # NOTE: Override configuration ############################
-#asan_on         = 1
-COMPILE_GAME_WITH_MSVC=1
-ed_build_level   = 1
-meta_build_level = 1
+#asan_on                    = 1
+COMPILE_GAME_WITH_MSVC      = 0
+ed_build_level              = 1
+meta_build_level            = 1
 STOP_DEBUGGING_BEFORE_BUILD = 0
 
 
@@ -331,6 +332,16 @@ def autogen():
         SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={KV_SLOW}'
         compiler_flags=f"{SYMBOLS} {INCLUDES}"
         
+        if meets_level(lexer_build_level):
+            print('Lexer: Generate (one-time thing)')
+            LEXER_GEN = f"lexer_gen{DOT_EXE}"
+            run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), LEXER_GEN, 
+                         debug_mode=True, compiler_flags=compiler_flags)
+            #
+            print('running lexer generator')
+            mkdir_p(f'{CODE_KV}/generated')
+            run(f'{LEXER_GEN} {CODE_KV}/generated')
+            
         if meets_level(meta_build_level):
             print('4coder API parser/generator')
             run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
@@ -344,15 +355,6 @@ def autogen():
                                    ])
             run(f"ad_meta.exe {input_files}")
 
-            print('Lexer: Generate (one-time thing)')
-            LEXER_GEN = f"lexer_gen{DOT_EXE}"
-            run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), LEXER_GEN, 
-                         debug_mode=True, compiler_flags=compiler_flags)
-            #
-            print('running lexer generator')
-            mkdir_p(f'{CODE_KV}/generated')
-            run(f'{LEXER_GEN} {CODE_KV}/generated')
-        
             meta_macros="-DMETA_PASS"
             print('preproc_file: Generate')
             preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")

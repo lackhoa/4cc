@@ -28,8 +28,10 @@ typedef Bezier Bez;
 
 //~ id system
 // NOTE(kv): Primitives are either drawn by code or data.
-struct Vertex_Index { i1 v; };
-struct Curve_Index  { i1 v; };
+introspect(info) struct Vertex_Index { i1 v; };
+inline b32 operator ==(Vertex_Index a, Vertex_Index b){ return a.v == b.v; }
+introspect(info) struct Curve_Index  { i1 v; };
+inline b32 operator ==(Curve_Index a, Curve_Index b){ return a.v == b.v; }
 
 enum Prim_Type : u8 {
  Prim_Null     = 0,
@@ -42,28 +44,16 @@ inline Prim_Type prim_id_type(u32 id) { return Prim_Type(id >> 24); }
 inline b32 prim_id_is_data(u32 prim_id) { return prim_id_type(prim_id) != 0; }
 
 inline u32
-vertex_prim_id(i1 index) {
+prim_id_from_vertex_index(Vertex_Index i){
  u32 type = u32(Prim_Vertex) << 24;
- u32 result = (u32)(index) | type;
- return result;
+ return (u32)(i.v) | type;
 }
-inline u32 vertex_prim_id(Vertex_Index i) { return vertex_prim_id(i.v); }
-//
-inline i1
-prim_id_to_index(u32 id) {
- u32 result = 0;
- if( prim_id_is_data(id) ) {
-  result = (id & 0xFFFF);
- }
- return result;
-}
-//
 inline u32
-curve_prim_id(i1 index) {
+prim_id_from_curve_index(Curve_Index i){
  u32 type = u32(Prim_Curve) << 24;
- u32 result = (u32)(index) | type;
- return result;
+ return (u32)(i.v) | type;
 }
+//
 
 //~
 
@@ -207,7 +197,7 @@ enum Bone_Type{
 introspect(info)
 struct Bone_ID{
  Bone_Type type;
- i1 id;
+ i1        id;
 };
 inline b32 operator==(Bone_ID &a, Bone_ID &b){
  return (a.type==b.type) && (a.id==b.id);
@@ -220,7 +210,8 @@ make_bone_id(Bone_Type type, i1 id=0){
 struct Bone{
  Bone_ID id;
  mat4i   xform;
- b32     is_right;
+ b32     is_right;  //TODO(kv) What if this was in the id, hm?
+ v3      center;
 };
 
 //NOTE(kv) This is a convenient global store.
@@ -232,7 +223,7 @@ struct Painter {
  v2 mouse_viewp;
  u32 selected_obj_id;
  Camera camera;
- mat4  view_from_worldT;  // see @get_view_from_worldT
+ mat4  view_from_world;  // see @get_view_from_worldT
  mat4i cam_from_boneT;
  v1    meter_to_pixel_;
  v1   profile_score;  //TODO: @Cleanup axe this?
@@ -282,25 +273,51 @@ inline b32 is_left()  { return painter.is_right == 0; }
 
 #include "game_draw.cpp"
 
-xfunction b32
-send_bez_v3v2_func(Painter *p, String name, String p0_name, v3 d0, v2 d3, String p3_name);
-#define send_bez_v3v2(name, p0_name, d0, d3, p3_name) \
-send_bez_v3v2_func(&painter, strlit(#name), strlit(#p0_name), d0, d3, strlit(#p3_name))
+// NOTE: Name,Denom
+#define X_Pose_Fields(X) \
+X(thead_theta, 6) \
+X(thead_phi  , 6)  \
+X(thead_roll , 6)  \
+X(tblink     , 6)  \
+X(teye_theta , 6)  \
+X(teye_phi   , 6)  \
+X(tarm_bend  , 18)  \
+X(tarm_abduct, 36)  \
+
+struct Pose
+{
+#define X(NAME,...)   v1 NAME;
+ X_Pose_Fields(X);
+#undef X
+};
 
 xfunction void
-send_vert_func(Painter *p, String name, v3 pos);
-#define send_vert(NAME)  send_vert_func(&painter, strlit(#NAME), NAME)
+send_bez_v3v2_func(String name, String p0_name, String p3_name, v3 d0, v2 d3, linum_defparam);
+#define send_bez_v3v2(name, p0, p3, d0, d3) \
+send_bez_v3v2_func(strlit(#name), strlit(#p0), strlit(#p3), d0, d3)
 
-#define render_movie_return void
+xfunction void
+send_bez_parabola_func(String name, String p0, String p3, v3 d, linum_defparam);
+#define send_bez_parabola(name, p0, p3, d) \
+send_bez_parabola_func(strlit(#name), strlit(#p0), strlit(#p3), d)
+
+xfunction void
+send_vert_func(String name, v3 pos, i32 linum=__builtin_LINE());
+//NOTE(kv) You can only send one vert on one line
+#define send_vert(NAME)  send_vert_func(strlit(#NAME), NAME)
+
+#define driver_animate_params Modeler *m, Arena *scratch, v1 anime_time
+xfunction Pose driver_animate(driver_animate_params);
+
+//TODO(kv) Maybe put the majority of this in the painter?
 #define render_movie_params \
 Arena *arena, Arena *scratch,  Render_Config *render_config, \
-Viewport *viewport, i1 viewport_index, \
-v1 state_time, b32 references_full_alpha, \
+Viewport *viewport, b32 references_full_alpha, \
 App *app, Render_Target *render_target, v2 mouse_viewp, Modeler *modeler, \
-Camera *camera
+Camera *camera, struct Pose *pose, v1 anime_time
 
-render_movie_return render_movie(render_movie_params);
-void driver_update(Viewport *viewports);
+xfunction void render_movie(render_movie_params);
+xfunction void driver_update(Viewport *viewports);
 
 function void
 set_bone_transform(mat4i const&transform) {
@@ -329,30 +346,27 @@ inline v3
 get_view_vector() {
  return painter.view_vector_stack[painter.view_vector_count-1];
 }
-
 inline void
 pop_view_vector() {
  auto &p = painter;
  p.view_vector_count--;
  kv_assert(p.view_vector_count > 0);
 }
-
+#define view_vector_block(center) \
+push_view_vector(center); \
+defer(pop_view_vector());
 
 //NOTE(kv)  Don't you dare return a reference here!
-xfunction arrayof<Bone> *
-get_bones(Modeler *m)
 #if AD_IS_DRIVER
-;
+xfunction arrayof<Bone> *get_bones(Modeler *m);
 #else
-{
- return &m->bones;
-}
+xfunction arrayof<Bone> *get_bones(Modeler *m) { return &m->bones; }
 #endif
 
 function Bone *
 get_bone(Modeler *m, Bone_ID id, b32 is_right) {
  auto bones = get_bones(m);
- for_i32(index,1,bones->count){
+ for_i32(index,0,bones->count){
   Bone *bone = &bones->get(index);
   if(bone->id       == id &&
      bone->is_right == is_right){
@@ -397,7 +411,6 @@ push_bone(Bone_ID id, v3 center={})
  auto m  = painter.modeler;
  Bone *bone = get_bone(m, id, p->is_right);
  p->bone_stack.push(bone);
- push_view_vector(center);
  set_bone_transform(bone->xform);
 }
 inline void
@@ -411,10 +424,12 @@ pop_bone()
  p->bone_stack.pop();
  mat4i &parent = current_bone_xform();
  set_bone_transform(parent);
- pop_view_vector();
 }
-#define bone_block(...)  push_bone(__VA_ARGS__); defer(pop_bone(););
+#define bone_block(id)  push_bone(id); defer(pop_bone(););
 
+
+
+//-
 #undef framework_storage
 
 //~

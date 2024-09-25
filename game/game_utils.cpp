@@ -34,9 +34,8 @@ scale_in_block(painter.line_radius_unit, multiplier)
 #define line_radius_medium    scale_in_block(painter.line_radius_unit, 0.5f)
 #define line_color_lightness(scale)  set_in_block(painter.line_params.color, argb_lightness(painter.line_params.color, scale))
 
-#define indicate_level(vertex,level,...) indicate_vertex(#vertex, vertex, level,__VA_ARGS__)
-#define indicate(vertex,...)             indicate_level(vertex,9000,__VA_ARGS__)
-#define indicate0(vertex,...)            indicate_level(vertex,0,__VA_ARGS__)
+#define indicate(vertex,...)  indicate_vertex(#vertex, vertex, __VA_ARGS__)
+#define indicate0(vertex,...) indicate(vertex,0,__VA_ARGS__)
 
 global_const Slider clampx = Slider_Clamp_X;
 global_const Slider clampy = Slider_Clamp_Y;
@@ -71,10 +70,10 @@ draw_bezier_circle(mat4 const&transform, v4 radii={})
  {
   Line_Params params = painter.line_params;
   params.radii = radii;
-  draw(bez(arc1), params);
-  draw(bez(arc2), params);
-  draw(bez(arc3), params);
-  draw(bez(arc4), params);
+  draw(bez_raw(arc1), params);
+  draw(bez_raw(arc2), params);
+  draw(bez_raw(arc3), params);
+  draw(bez_raw(arc4), params);
  }
 }
 

@@ -1,6 +1,5 @@
 
 #include "4coder_vim.cpp"
-#include "4coder_folds.hpp"
 
 function void
 vim_file_save(App *app, Buffer_ID buffer_id)
@@ -90,7 +89,6 @@ vim_animate_cursor(App *app, Frame_Info frame_info){
 
 BUFFER_EDIT_RANGE_SIG(vim_buffer_edit_range){
 	default_buffer_edit_range(app, buffer_id, new_range, old_cursor_range);
-	fold_buffer_edit_range_inner(app, buffer_id, new_range, old_cursor_range);
 	// TODO(BYP): Update marks here as well
 	return 0;
 }

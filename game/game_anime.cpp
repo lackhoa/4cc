@@ -1,29 +1,5 @@
 global_const v1 Animation_FPS = 12.f;
 
-// TODO: If we store pose data in floating points,
-// why not store the sliders in floating points too?
-// Then you wouldn't have to monkey around with data updates
-// every time you change how it is updated.
-// We can do that later when we need to upgrade our control methods.
-
-// NOTE: Name,Denom
-#define X_Pose_Fields(X) \
-X(thead_theta, 6) \
-X(thead_phi  , 6)  \
-X(thead_roll , 6)  \
-X(tblink     , 6)  \
-X(teye_theta , 6)  \
-X(teye_phi   , 6)  \
-X(tarm_bend  , 18)  \
-X(tarm_abduct, 36)  \
-
-struct Pose
-{
-#define X(NAME,...)   v1 NAME;
- X_Pose_Fields(X);
-#undef X
-};
-
 //NOTE: Thank you C++, this could have just been simple.
 enum Pose_Field_Enum{
 #define X(NAME,...)  PF_Enum_##NAME,
@@ -49,14 +25,13 @@ Pose_Field_Info{ \
 },
  //
  X_Pose_Fields(X)
- //
+  //
 #undef X
 };
 
 struct Movie_Shot
 {
- v1 animation_time;
- //Arena *arena;
+ v1 anime_time;
  
  b32 ready;
  i1 current_frame;
@@ -120,7 +95,7 @@ internal void
 shot_go(Movie_Shot *shot, Shot_Function shot_function)
 {
  //NOTE: animation_time has to be filled in
- i1 requested_frame = i1(Animation_FPS * shot->animation_time);
+ i1 requested_frame = i1(Animation_FPS * shot->anime_time);
  shot__init(shot, requested_frame, &dummy_pose);
  
  // NOTE: Prepass

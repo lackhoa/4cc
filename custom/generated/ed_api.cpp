@@ -4,7 +4,10 @@
 function void
 ed_api_fill_vtable(API_VTable_ed *vtable){
 vtable->buffer_replace_range = buffer_replace_range;
+vtable->push_buffer_base_name = push_buffer_base_name;
 vtable->get_active_view = get_active_view;
+vtable->view_get_buffer = view_get_buffer;
+vtable->view_get_cursor_pos = view_get_cursor_pos;
 vtable->view_set_cursor = view_set_cursor;
 vtable->print_message = print_message;
 vtable->draw_string_oriented = draw_string_oriented;
@@ -27,6 +30,7 @@ vtable->push_image = push_image;
 vtable->switch_to_mouse_panel = switch_to_mouse_panel;
 vtable->mouse_viewport_id = mouse_viewport_id;
 vtable->get_confirmation_from_user = get_confirmation_from_user;
+vtable->get_current_line_number = get_current_line_number;
 vtable->system_get_path = system_get_path;
 vtable->system_get_file_list = system_get_file_list;
 vtable->tkarr_read = tkarr_read;
@@ -44,7 +48,10 @@ vtable->draw_new_group = draw_new_group;
 function void
 ed_api_read_vtable(API_VTable_ed *vtable){
 buffer_replace_range = vtable->buffer_replace_range;
+push_buffer_base_name = vtable->push_buffer_base_name;
 get_active_view = vtable->get_active_view;
+view_get_buffer = vtable->view_get_buffer;
+view_get_cursor_pos = vtable->view_get_cursor_pos;
 view_set_cursor = vtable->view_set_cursor;
 print_message = vtable->print_message;
 draw_string_oriented = vtable->draw_string_oriented;
@@ -67,6 +74,7 @@ push_image = vtable->push_image;
 switch_to_mouse_panel = vtable->switch_to_mouse_panel;
 mouse_viewport_id = vtable->mouse_viewport_id;
 get_confirmation_from_user = vtable->get_confirmation_from_user;
+get_current_line_number = vtable->get_current_line_number;
 system_get_path = vtable->system_get_path;
 system_get_file_list = vtable->system_get_file_list;
 tkarr_read = vtable->tkarr_read;

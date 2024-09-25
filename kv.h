@@ -1802,6 +1802,7 @@ global_const f64 epsilon_f64 = 1.11022302462515650e-16;
 
 #define line_number_as_string stringify(__LINE__)
 #define filename_line_number __FILE__ ":" line_number_as_string ":"
+#define linum_defparam  i32 linum=__builtin_LINE()
 
 #define macro_require(c) Stmnt( if (!(c)){ return(0); } )
 
@@ -4496,7 +4497,7 @@ push_unique(arrayof<T> &array, T const&item)
   }
  }
  
- if (ok) {
+ if(ok){
   result = &array.push(item);
  }
  return result;
@@ -4508,6 +4509,7 @@ struct Struct_Member {
  String name;
  u32    offset;
  u32    discriminator_offset;  //NOTE(kv) union only
+ b32    unserialized;
 };
 struct Union_Member{
  struct Type_Info *type;

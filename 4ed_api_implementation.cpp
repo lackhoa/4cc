@@ -659,25 +659,25 @@ buffer_get_size(App *app, Buffer_ID buffer_id){
 api(custom) function i64
 buffer_get_line_count(App *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    u64 result = 0;
-    if (api_check_buffer(file)){
-        result = buffer_line_count(&file->state.buffer);
-    }
-    return(result);
+ Editing_File *file = imp_get_file(models, buffer_id);
+ u64 result = 0;
+ if (api_check_buffer(file)){
+  result = buffer_line_count(&file->state.buffer);
+ }
+ return(result);
 }
 
-api(custom) function String8
+api(custom ed) function String8
 push_buffer_base_name(App *app, Arena *arena, Buffer_ID buffer_id)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    String8 result = {};
-    if (api_check_buffer(file))
-    {
-        result = push_stringz(arena, string_from_filename(&file->base_name));
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ String8 result = {};
+ if (api_check_buffer(file))
+ {
+  result = push_stringz(arena, string_from_filename(&file->base_name));
+ }
+ return(result);
 }
 
 api(custom) function String
@@ -1171,36 +1171,36 @@ get_active_view(App *app, Access_Flag access)
 api(custom) function b32
 view_exists(App *app, View_ID view_id)
 {
-    Models *models = (Models*)app->cmd_context;
-    View *view = imp_get_view(models, view_id);
-    b32 result = api_check_view(view);
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ b32 result = api_check_view(view);
+ return(result);
 }
 
-api(custom) function Buffer_ID
+api(custom ed) function Buffer_ID
 view_get_buffer(App *app, View_ID view_id, Access_Flag access){
-    Models *models = (Models*)app->cmd_context;
-    View *view = imp_get_view(models, view_id);
-    Buffer_ID result = 0;
-    if (api_check_view(view)){
-        Editing_File *file = view->file;
-        if (api_check_buffer(file, access)){
-            result = file->id;
-        }
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ Buffer_ID result = 0;
+ if (api_check_view(view)){
+  Editing_File *file = view->file;
+  if (api_check_buffer(file, access)){
+   result = file->id;
+  }
+ }
+ return(result);
 }
 
-api(custom) function i64
+api(custom ed) function i64
 view_get_cursor_pos(App *app, View_ID view_id){
-    Models *models = (Models*)app->cmd_context;
-    View *view = imp_get_view(models, view_id);
-    i64 result = 0;
-    if (api_check_view(view)){
-        File_Edit_Positions edit_pos = view_get_edit_pos(view);
-        result = edit_pos.cursor_pos;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ i64 result = 0;
+ if (api_check_view(view)){
+  File_Edit_Positions edit_pos = view_get_edit_pos(view);
+  result = edit_pos.cursor_pos;
+ }
+ return(result);
 }
 
 api(custom) function i64
@@ -2911,20 +2911,20 @@ api(custom ed) function v2
 draw_string_oriented(App *app, Face_ID font_id, ARGB_Color color,
                      String8 str, v2 point, u32 flags, v2 delta)
 {
-    Vec2_f32 result = point;
-    Models *models = (Models*)app->cmd_context;
-    Face *face = font_set_face_from_id(&models->font_set, font_id);
-    if (models->target == 0)
-    {
-        f32 width = font_string_width(models->target, face, str);
-        result += delta*width;
-    }
-    else
-    {
-        f32 width = draw_string_inner(models->target, face, str, point, color, flags, delta);
-        result += delta*width;
-    }
-    return(result);
+ Vec2_f32 result = point;
+ Models *models = (Models*)app->cmd_context;
+ Face *face = font_set_face_from_id(&models->font_set, font_id);
+ if (models->target == 0)
+ {
+  f32 width = font_string_width(models->target, face, str);
+  result += delta*width;
+ }
+ else
+ {
+  f32 width = draw_string_inner(models->target, face, str, point, color, flags, delta);
+  result += delta*width;
+ }
+ return(result);
 }
 
 api(custom ed) function f32
@@ -3202,8 +3202,7 @@ draw_text_layout(App *app, Text_Layout_ID layout_id, ARGB_Color special_color, A
 {
  Models *models = (Models*)app->cmd_context;
  Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
- if (layout != 0)
- {
+ if (layout != 0) {
   text_layout_render(app->tctx, models, layout, special_color, ghost_color);
  }
 }
@@ -3604,6 +3603,13 @@ get_confirmation_from_user(App *app, String query)
  Lister_Choice *choice = vim_get_choice_from_user(app, query, list);
  b32 confirmed = choice && choice->user_data == 2;
  return confirmed;
+}
+
+api(custom ed) function i64
+get_current_line_number(App *app){
+ GET_VIEW_AND_BUFFER;
+ i64 line = get_line_number_from_pos(app, buffer, view_get_cursor_pos(app, view));
+ return line;
 }
 
 //-BOTTOM

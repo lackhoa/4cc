@@ -1,12 +1,14 @@
-defcolor_base         = 0xFF777700;  // NOTE(kv): the text color on vim filebar
+defcolor_base         = 0xff9F5E4A;
 defcolor_text_default = 0xFF787878;
 defcolor_function     = 0xFF587898;
 defcolor_keyword      = 0xFF998963;
-defcolor_comment      = 0xFF886666;
+
+defcolor_comment      = 0xFF3a7745;
+
 defcolor_macro        = 0xFF798999;
-defcolor_non_text     = defcolor_keyword;  // NOTE(kv): parens
-defcolor_comment_pop  = { 0xFF2A83a0, 0xFF885802, defcolor_keyword };  // notes, todos,  bookmark
-defcolor_type         =  defcolor_base;
+defcolor_non_text     = 0xff396279;  // NOTE(kv): parens
+defcolor_comment_pop  = { 0xFF2A83a0, defcolor_base, defcolor_keyword };  // notes, todos, bookmark
+defcolor_type         = defcolor_base;
 defcolor_constant     = 0xFF5868b0;
 
 defcolor_highlight_junk  = 0xFF3A0000;  // NOTE(kv): error highlight

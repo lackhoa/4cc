@@ -17,7 +17,7 @@ vim__fill_command_lister(Arena *arena, Lister *lister, i1 *command_ids, i1 comma
 {
 	if(command_ids == 0){ command_id_count = command_one_past_last_id; }
  
- if ( global_game_on_readonly )
+ if ( game_on_ro )
  {
   for_i1(cmd_index,0,received_game_commands.count)
   {

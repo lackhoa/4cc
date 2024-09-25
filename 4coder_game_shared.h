@@ -139,7 +139,7 @@ DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0) {
 
 #if !AD_IS_DRIVER
 introspect(embed);
-struct Game_Input_Public {
+struct Game_Input_Public{
  Key_Mods active_mods;
  b8      *key_states;
  u8      *key_state_changes;
@@ -302,6 +302,12 @@ inline Scratch_Block::Scratch_Block(App *app, Arena *a1, Arena *a2, Arena *a3){
 }
 #endif
 //-
+
+inline Buffer_ID
+get_active_buffer(App *app){
+ View_ID active_view = get_active_view(app, Access_Always);
+ return view_get_buffer(app, active_view, Access_Always);
+}
 
 #define vim_set_bottom_text_lit(msg) vim_set_bottom_text(strlit(msg))
 

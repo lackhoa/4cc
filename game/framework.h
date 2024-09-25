@@ -65,8 +65,10 @@ struct Game_State {
  Game_ImGui_State imgui_state;
  b32 kb_cursor_mode;
  Serialized_State_Embed;
+ Pose pose;
+ v1 anime_time;
  
  b8 __padding[64];
 };
 
-//-eof
+//-EOF

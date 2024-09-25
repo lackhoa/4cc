@@ -109,6 +109,5 @@ BUFFER_EDIT_RANGE_SIG(kv_buffer_edit_range)
   // NOTE(kv): Fleury
   F4_BufferEditRange(app, buffer_id, new_range, old_cursor_range);
   // NOTE(kv): vim
-  fold_buffer_edit_range_inner(app, buffer_id, new_range, old_cursor_range);
   return 0;
 }

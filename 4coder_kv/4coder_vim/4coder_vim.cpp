@@ -1,7 +1,6 @@
 #pragma once
 
 #include "4coder_vim_registers.cpp"
-#include "4coder_folds.hpp"
 #include "4coder_vim_keycode_lut.h"
 #include "4coder_vim_movement.cpp"
 #include "4coder_vim_lists.cpp"
@@ -125,10 +124,6 @@ VIM_REQUEST_SIG(vim_apply_toggle_case){
 	buffer_post_fade(app, buffer, 0.667f, range, fcolor_resolve(fcolor_id(defcolor_paste)));
 }
 
-VIM_REQUEST_SIG(vim_apply_fold){
-	fold_push(app, buffer, range);
-}
-
 function void
 vim_init(App *app){
 	init_keycode_lut();
@@ -150,11 +145,11 @@ vim_init(App *app){
 	buffer_set_setting(app, reg_buffer, BufferSetting_Unkillable, true);
 	buffer_set_setting(app, reg_buffer, BufferSetting_Unimportant, true);
 #endif
-
+ 
 	vim_state.arena = make_arena_system();
 	heap_init(&vim_state.heap, &vim_state.arena);
 	vim_state.alloc = base_allocator_on_heap(&vim_state.heap);
-
+ 
 	vim_request_vtable[REQUEST_None]       = vim_apply_none;
 	vim_request_vtable[REQUEST_Yank]       = vim_apply_yank;
 	vim_request_vtable[REQUEST_Delete]     = vim_apply_delete;
@@ -166,7 +161,6 @@ vim_init(App *app){
 	vim_request_vtable[REQUEST_Indent]     = vim_apply_indent;
 	vim_request_vtable[REQUEST_Outdent]    = vim_apply_outdent;
 	vim_request_vtable[REQUEST_AutoIndent] = vim_apply_auto_indent;
-	vim_request_vtable[REQUEST_Fold]       = vim_apply_fold;
 
 	vim_text_object_vtable[TEXT_OBJECT_para] = {'p', (Vim_Text_Object_Func *)vim_object_para};
 	vim_text_object_vtable[TEXT_OBJECT_word] = {'w', (Vim_Text_Object_Func *)vim_object_word};

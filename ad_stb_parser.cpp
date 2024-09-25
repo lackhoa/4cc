@@ -126,11 +126,9 @@ eat_char(STB_Parser *p, char c)
 }
 
 force_inline b32
-maybe_char(STB_Parser *p, char c)
-{
+maybe_char(STB_Parser *p, char c){
  b32 result = false;
- if (p->stb.token == c)
- {
+ if (p->stb.token == c){
   eat_token(p);
   result = true;
  }
@@ -142,13 +140,13 @@ eat_i1(STB_Parser *p) {
  i1 result = 0;
  
  i1 sign = 1;
- if( maybe_char(p, '-') ) {
+ if(maybe_char(p, '-')){
   sign = -1;
- } else {
+ }else{
   maybe_char(p, '+');
  }
  
- if (p->stb.token == CLEX_intlit) {
+ if(p->stb.token == CLEX_intlit){
   result = sign*p->stb.int_value;
   eat_token(p);
  }
@@ -159,32 +157,25 @@ eat_i1(STB_Parser *p) {
 function auto &eat_b32 = eat_i1;
 
 inline void
-eat_integer_vector(STB_Parser *p, i1 *result, i1 count)
-{
+eat_integer_vector(STB_Parser *p, i1 *result, i1 count) {
  for_i32(index,0,count) {
   result[index] = eat_i1(p);
  }
 }
-
 force_inline i2
-eat_i2(STB_Parser *p)
-{
+eat_i2(STB_Parser *p) {
  i2 result;
  eat_integer_vector(p, result.e, 2);
  return result;
 }
-//
 force_inline i3
-eat_i3(STB_Parser *p)
-{
+eat_i3(STB_Parser *p) {
  i3 result;
  eat_integer_vector(p, result.e, 3);
  return result;
 }
-//
 force_inline i4
-eat_i4(STB_Parser *p)
-{
+eat_i4(STB_Parser *p) {
  i4 result;
  eat_integer_vector(p, result.e, 4);
  return result;
@@ -212,32 +203,26 @@ eat_v1(STB_Parser *p)
 }
 //
 inline void
-eat_vector(STB_Parser *p, v1 *result, i1 count)
-{
+eat_vector(STB_Parser *p, v1 *result, i1 count){
  for_i32(index,0,count) {
   result[index] = eat_v1(p);
  }
 }
 //
 force_inline v2
-eat_v2(STB_Parser *p)
-{
+eat_v2(STB_Parser *p){
  v2 result;
  eat_vector(p, result.e, 2);
  return result;
 }
-//
 force_inline v3
-eat_v3(STB_Parser *p)
-{
+eat_v3(STB_Parser *p){
  v3 result;
  eat_vector(p, result.e, 3);
  return result;
 }
-//
 force_inline v4
-eat_v4(STB_Parser *p)
-{
+eat_v4(STB_Parser *p){
  v4 result;
  eat_vector(p, result.e, 4);
  return result;
@@ -257,6 +242,35 @@ block_copy(pointer, &value, get_basic_type_size(type)); \
   //
   X_Basic_Types(X)
 #undef X
+ }
+}
+
+//NOTE(kv) Exclude the terminator
+function void
+eat_until_char(STB_Parser *p, char terminator, i1 max_recursion=20)
+{
+ if(max_recursion > 0){
+  while(p->ok_){
+   char c = p->stb.token;
+   if(c == terminator){
+    break;
+   }else{
+    //NOTE Not the terminator
+    char matching = 0;
+    if(c == '('){ matching = ')'; }
+    if(c == '['){ matching = ']'; }
+    if(c == '{'){ matching = '}'; }
+    if(matching){
+     //NOTE(kv) Eat grouper
+     eat_token(p);
+     eat_until_char(p, matching, max_recursion-1);
+     eat_token(p);
+    }else{
+     //NOTE(kv) Default
+     eat_token(p);
+    }
+   }
+  }
  }
 }
 

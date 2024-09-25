@@ -1,4 +1,72 @@
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:344:
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
+function Type_Info
+get_type_info_Vertex_Index()
+{
+Type_Info result = {};
+result.name = strlit("Vertex_Index");
+result.size = sizeof(Vertex_Index);
+result.kind = Type_Kind_Struct;
+result.members.set_count(1);
+result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Vertex_Index, v)};
+return result;
+}
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
+global Type_Info Type_Info_Vertex_Index = get_type_info_Vertex_Index();
+
+function Type_Info &type_info_from_pointer(Vertex_Index*pointer)
+{
+return Type_Info_Vertex_Index;
+}
+function void
+read_Vertex_Index(Data_Reader &r, Vertex_Index &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+i1 m_v = {};
+
+{
+eat_id(p, strlit("v"));
+read_i1(r, m_v);
+}
+pointer.v = m_v;
+
+eat_char(p, '}');
+}
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
+function Type_Info
+get_type_info_Curve_Index()
+{
+Type_Info result = {};
+result.name = strlit("Curve_Index");
+result.size = sizeof(Curve_Index);
+result.kind = Type_Kind_Struct;
+result.members.set_count(1);
+result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Curve_Index, v)};
+return result;
+}
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
+global Type_Info Type_Info_Curve_Index = get_type_info_Curve_Index();
+
+function Type_Info &type_info_from_pointer(Curve_Index*pointer)
+{
+return Type_Info_Curve_Index;
+}
+function void
+read_Curve_Index(Data_Reader &r, Curve_Index &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+i1 m_v = {};
+
+{
+eat_id(p, strlit("v"));
+read_i1(r, m_v);
+}
+pointer.v = m_v;
+
+eat_char(p, '}');
+}
+// C:\Users\vodan\4ed\code/meta_introspect.cpp:348:
 function Type_Info
 get_type_info_Bone_Type()
 {

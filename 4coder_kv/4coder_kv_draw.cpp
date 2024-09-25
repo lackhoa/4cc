@@ -217,13 +217,11 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  
  Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
  Buffer_Point_Delta_Result delta = delta_apply(app, view, frame.animation_dt, scroll);
- if(!block_match_struct(&scroll.position, &delta.point))
- {
+ if(!block_match_struct(&scroll.position, &delta.point)) {
   block_copy_struct(&scroll.position, &delta.point);
   view_set_buffer_scroll(app, view, scroll, SetBufferScroll_NoCursorChange);
  }
- if(delta.still_animating)
- {
+ if(delta.still_animating) {
   animate_in_n_milliseconds(app, 0);
  }
  Buffer_Point buffer_point = scroll.position;
@@ -263,12 +261,9 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
    }
    
    Token_Array token_array = get_token_array_from_buffer(app, buffer);
-   if(token_array.tokens)
-   {
+   if(token_array.tokens) {
     byp_draw_token_colors(app, view, buffer, text_layout_id);
-   }
-   else
-   {
+   } else {
     paint_text_color_fcolor(app, text_layout_id, visible_range, fcolor_id(defcolor_text_default));
    }
    
@@ -277,8 +272,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
     draw_jump_highlights(app, buffer, text_layout_id, comp_buffer, fcolor_id(defcolor_highlight_junk));
     // TODO(BYP): Draw error messsage annotations
     Buffer_ID jump_buffer = get_locked_jump_buffer(app);
-    if (jump_buffer != comp_buffer)
-    {
+    if (jump_buffer != comp_buffer) {
      draw_jump_highlights(app, buffer, text_layout_id, jump_buffer, fcolor_id(defcolor_highlight_white));
     }
    }
@@ -297,35 +291,28 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
      draw_paren_highlight(app, buffer, text_layout_id, cursor_pos, colors.vals, colors.count);
    }
    
-   b64 show_whitespace = false;
-   view_get_setting(app, view, ViewSetting_ShowWhitespace, &show_whitespace);
-   if(show_whitespace)
    {
-    if(token_array.tokens == 0)
-     draw_whitespace_highlight(app, buffer, text_layout_id, cursor_roundness);
-    else
-     draw_whitespace_highlight(app, text_layout_id, &token_array, cursor_roundness);
+    b64 show_whitespace = false;
+    view_get_setting(app, view, ViewSetting_ShowWhitespace, &show_whitespace);
+    if(show_whitespace) {
+     if(token_array.tokens == 0)
+      draw_whitespace_highlight(app, buffer, text_layout_id, cursor_roundness);
+     else
+      draw_whitespace_highlight(app, text_layout_id, &token_array, cursor_roundness);
+    }
    }
    
-   if(view_active && vim_state.mode == VIM_Visual)
-   {
+   if(view_active && vim_state.mode == VIM_Visual) {
     vim_draw_visual_mode(app, view, buffer, face_id, text_layout_id);
    }
    
-   fold_draw(app, buffer, text_layout_id);
-   
    vim_draw_search_highlight(app, view, buffer, text_layout_id, cursor_roundness);
-   
    vim_draw_cursor(app, view, view_active, buffer, text_layout_id, cursor_roundness, mark_thickness);
-   
    paint_fade_ranges(app, text_layout_id, buffer);
-   
    draw_text_layout_default(app, text_layout_id);  // NOTE: this highlights the @Notes
-   
-   // NOTE(kv): fui
-   fui_draw_slider(app, buffer, clip);
-   
    F4_RenderDividerComments(app, buffer, view, text_layout_id);
+   
+   fui_draw_slider(app, buffer, clip);
   }
  }
  
