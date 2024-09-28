@@ -75,66 +75,66 @@ function void kvInitShiftedTable()
 function void
 kv_essential_mapping(Mapping *mapping)
 {
-    String_ID global_id = vars_intern_lit("keys_global");
-    String_ID file_id   = vars_intern_lit("keys_file");
-    String_ID code_id   = vars_intern_lit("keys_code");
-    
-    MappingScope();
-    SelectMapping(mapping);
-    
-    SelectMap(global_id);
-    BindCore(vim_try_exit, CoreCode_TryExit);
-    BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
-    BindMouseWheel(mouse_wheel_scroll);
-    BindMouseWheel(mouse_wheel_change_face_size, Key_Code_Control);
-    // BindCore(vim_file_externally_modified, CoreCode_FileExternallyModified);  NOTE(kv): cool idea but there are auto-generated files that we don't care about
-    
-    SelectMap(file_id);
-    ParentMap(global_id);
-    BindTextInput(write_text_input);
-    BindMouse       (kv_handle_left_click, MouseCode_Left);
-    //BindMouseRelease(click_set_cursor,          MouseCode_Left);
-    BindCore        (click_set_cursor_and_mark, CoreCode_ClickActivateView);
-    BindMouseMove   (click_set_cursor_if_lbutton);
-    
-    SelectMap(code_id);
-    ParentMap(file_id);
+ String_ID global_id = vars_intern_lit("keys_global");
+ String_ID file_id   = vars_intern_lit("keys_file");
+ String_ID code_id   = vars_intern_lit("keys_code");
+ 
+ MappingScope();
+ SelectMapping(mapping);
+ 
+ SelectMap(global_id);
+ BindCore(vim_try_exit, CoreCode_TryExit);
+ BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
+ BindMouseWheel(mouse_wheel_scroll);
+ BindMouseWheel(mouse_wheel_change_face_size, Key_Code_Control);
+ // BindCore(vim_file_externally_modified, CoreCode_FileExternallyModified);  NOTE(kv): cool idea but there are auto-generated files that we don't care about
+ 
+ SelectMap(file_id);
+ ParentMap(global_id);
+ BindTextInput(write_text_input);
+ BindMouse       (kv_handle_left_click, MouseCode_Left);
+ //BindMouseRelease(click_set_cursor,          MouseCode_Left);
+ BindCore        (click_set_cursor_and_mark, CoreCode_ClickActivateView);
+ BindMouseMove   (click_set_cursor_if_lbutton);
+ 
+ SelectMap(code_id);
+ ParentMap(file_id);
 }
 
 // NOTE(kv): shared between custom layers
 function void 
 kv_default_bindings(Mapping *mapping)
 {
-    String_ID global_id = vars_intern_lit("keys_global");
-    String_ID file_id   = vars_intern_lit("keys_file");
-    String_ID code_id   = vars_intern_lit("keys_code");
-   
-    MappingScope();
-    SelectMapping(mapping);
-    
-    SelectMap(global_id);
-    
-    Bind(toggle_fullscreen,   Key_Code_F11);
-    Bind(increase_face_size,  Key_Code_Equal, Key_Code_Control);
-    Bind(decrease_face_size,  Key_Code_Minus, Key_Code_Control);
-    Bind(byp_reset_face_size, Key_Code_0, Key_Code_Control);
-    Bind(exit_4coder,         Key_Code_Q, Key_Code_Control);
-    Bind(exit_4coder,         Key_Code_Q, Key_Code_Command);
-    
-    SelectMap(file_id);
-    ParentMap(global_id);
-    
-    Bind(delete_char,        Key_Code_Delete);
-    Bind(backspace_char,     Key_Code_Backspace);
-    Bind(move_up,            Key_Code_Up);
-    Bind(move_down,          Key_Code_Down);
-    Bind(move_left,          Key_Code_Left);
-    Bind(move_right,         Key_Code_Right);
-    Bind(seek_end_of_line,   Key_Code_End);
-    Bind(right_adjust_view,  Key_Code_Home);
-    
-    SelectMap(code_id);
-    ParentMap(file_id);
+ String_ID global_id = vars_intern_lit("keys_global");
+ String_ID file_id   = vars_intern_lit("keys_file");
+ String_ID code_id   = vars_intern_lit("keys_code");
+ 
+ MappingScope();
+ SelectMapping(mapping);
+ 
+ SelectMap(global_id);
+ 
+ Bind(toggle_fullscreen,   Key_Code_F11);
+ Bind(increase_face_size,  Key_Code_Equal, Key_Code_Control);
+ Bind(decrease_face_size,  Key_Code_Minus, Key_Code_Control);
+ Bind(byp_reset_face_size, Key_Code_0, Key_Code_Control);
+ Bind(exit_4coder,         Key_Code_Q, Key_Code_Control);
+ Bind(exit_4coder,         Key_Code_Q, Key_Code_Command);
+ 
+ SelectMap(file_id);
+ ParentMap(global_id);
+ 
+ Bind(delete_char,        Key_Code_Delete);
+ Bind(backspace_char,     Key_Code_Backspace);
+ Bind(move_up,            Key_Code_Up);
+ Bind(move_down,          Key_Code_Down);
+ Bind(move_left,          Key_Code_Left);
+ Bind(move_right,         Key_Code_Right);
+ Bind(seek_end_of_line,   Key_Code_End);
+ Bind(right_adjust_view,  Key_Code_Home);
+ 
+ SelectMap(code_id);
+ ParentMap(file_id);
 }
 
 inline Buffer_ID 
@@ -218,72 +218,72 @@ startup_panels_and_files(App *app)
 function void
 initialize_stylist_fonts(App *app)
 {
-    Scratch_Block scratch(app);
-    String bin_path = system_get_path(scratch, SystemPath_BinaryDirectory);
-    
-    // NOTE(rjf): Fallback font.
-    Face_ID face_that_should_totally_be_there = get_face_id(app, 0);
-    
-    // NOTE(rjf): Title font.
-    {
-        Face_Description desc = {};
-        {
-            desc.font.filename =  push_stringfz(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
-            desc.parameters.pt_size = 18;
-            desc.parameters.bold = 0;
-            desc.parameters.italic = 0;
-            desc.parameters.hinting = 0;
-        }
-        
-        if(IsFileReadable(desc.font.filename))
-        {
-            global_styled_title_face = try_create_new_face(app, &desc);
-        }
-        else
-        {
-            global_styled_title_face = face_that_should_totally_be_there;
-        }
-    }
-    
-    // NOTE(rjf): Label font.
-    {
-        Face_Description desc = {};
-        {
-            desc.font.filename =  push_stringfz(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
-            desc.parameters.pt_size = 10;
-            desc.parameters.bold = 1;
-            desc.parameters.italic = 1;
-            desc.parameters.hinting = 0;
-        }
-        
-        if(IsFileReadable(desc.font.filename))
-        {
-            global_styled_label_face = try_create_new_face(app, &desc);
-        }
-        else
-        {
-            global_styled_label_face = face_that_should_totally_be_there;
-        }
-    }
-    
-    // NOTE(rjf): Small code font.
-    {
-        Face_Description normal_code_desc = get_face_description(app, get_face_id(app, 0));
-        
-        Face_Description desc = {};
-        {
-            desc.font.filename =  push_stringfz(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
-            desc.parameters.pt_size = normal_code_desc.parameters.pt_size - 1;
-            desc.parameters.bold = 1;
-            desc.parameters.italic = 1;
-            desc.parameters.hinting = 0;
-        }
-        
-        if(IsFileReadable(desc.font.filename))
-        {
-            global_small_code_face = try_create_new_face(app, &desc);
-        }
-        else
+ Scratch_Block scratch(app);
+ String bin_path = system_get_path(scratch, SystemPath_BinaryDirectory);
+ 
+ // NOTE(rjf): Fallback font.
+ Face_ID face_that_should_totally_be_there = get_face_id(app, 0);
+ 
+ // NOTE(rjf): Title font.
+ {
+  Face_Description desc = {};
+  {
+   desc.font.filename =  push_stringfz(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+   desc.parameters.pt_size = 18;
+   desc.parameters.bold = 0;
+   desc.parameters.italic = 0;
+   desc.parameters.hinting = 0;
+  }
+  
+  if(IsFileReadable(desc.font.filename))
+  {
+   global_styled_title_face = try_create_new_face(app, &desc);
+  }
+  else
+  {
+   global_styled_title_face = face_that_should_totally_be_there;
+  }
+ }
+ 
+ // NOTE(rjf): Label font.
+ {
+  Face_Description desc = {};
+  {
+   desc.font.filename =  push_stringfz(scratch, "%.*sfonts/RobotoCondensed-Regular.ttf", string_expand(bin_path));
+   desc.parameters.pt_size = 10;
+   desc.parameters.bold = 1;
+   desc.parameters.italic = 1;
+   desc.parameters.hinting = 0;
+  }
+  
+  if(IsFileReadable(desc.font.filename))
+  {
+   global_styled_label_face = try_create_new_face(app, &desc);
+  }
+  else
+  {
+   global_styled_label_face = face_that_should_totally_be_there;
+  }
+ }
+ 
+ // NOTE(rjf): Small code font.
+ {
+  Face_Description normal_code_desc = get_face_description(app, get_face_id(app, 0));
+  
+  Face_Description desc = {};
+  {
+   desc.font.filename =  push_stringfz(scratch, "%.*sfonts/Inconsolata-Regular.ttf", string_expand(bin_path));
+   desc.parameters.pt_size = normal_code_desc.parameters.pt_size - 1;
+   desc.parameters.bold = 1;
+   desc.parameters.italic = 1;
+   desc.parameters.hinting = 0;
+  }
+  
+  if(IsFileReadable(desc.font.filename))
+  {
+   global_small_code_face = try_create_new_face(app, &desc);
+  }
+  else
   {
    global_small_code_face = face_that_should_totally_be_there;
   }
@@ -329,7 +329,7 @@ kv_startup(App *app)
  initialize_stylist_fonts(app);
  
 #if KV_INTERNAL
- if ( !def_get_config_b32(vars_intern_lit("dev_disable_game_on_startup")) ) {
+ if(!def_get_config_b32(vars_intern_lit("dev_disable_game_on_startup"))){
   turn_game_on();
  }
 #endif

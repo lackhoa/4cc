@@ -224,58 +224,56 @@ CUSTOM_DOC("Sets the mark position to the mouse position.")
 CUSTOM_COMMAND_SIG(mouse_wheel_scroll)
 CUSTOM_DOC("Reads the scroll wheel value from the mouse state and scrolls accordingly.")
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Mouse_State mouse = get_mouse_state(app);
-    if (mouse.wheel != 0){
-        Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-        scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, (f32)mouse.wheel));
-        view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
-    }
-    if (mouse.l){
-        no_mark_snap_to_cursor(app, view);
-    }
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Mouse_State mouse = get_mouse_state(app);
+ if (mouse.wheel != 0){
+  Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+  scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, (f32)mouse.wheel));
+  view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+ }
+ if (mouse.l){
+  no_mark_snap_to_cursor(app, view);
+ }
 }
 
 ////////////////////////////////
 
 internal void
-move_vertical_pixels(App *app, View_ID view, f32 pixels){
-    ProfileScope(app, "move vertical pixels");
-    i64 pos = view_get_cursor_pos(app, view);
-    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
-    Rect_f32 r = view_padded_box_of_pos(app, view, cursor.line, pos);
-    Vec2_f32 p = {};
-    p.x = view_get_preferred_x(app, view);
-    if (pixels > 0.f){
-        p.y = r.y1 + pixels;
-    }
-    else{
-        p.y = r.y0 + pixels;
-    }
-    i64 new_pos = view_pos_at_relative_xy(app, view, cursor.line, p);
-    view_set_cursor(app, view, seek_pos(new_pos));
-    no_mark_snap_to_cursor_if_shift(app, view);
+move_vertical_pixels(App *app, View_ID view, f32 pixels)
+{
+ ProfileScope(app, "move vertical pixels");
+ i64 pos = view_get_cursor_pos(app, view);
+ Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+ Rect_f32 r = view_padded_box_of_pos(app, view, cursor.line, pos);
+ Vec2_f32 p = {};
+ p.x = view_get_preferred_x(app, view);
+ if(pixels > 0.f){
+  p.y = r.y1 + pixels;
+ }else{
+  p.y = r.y0 + pixels;
+ }
+ i64 new_pos = view_pos_at_relative_xy(app, view, cursor.line, p);
+ view_set_cursor(app, view, seek_pos(new_pos));
+ no_mark_snap_to_cursor_if_shift(app, view);
 }
 
 internal void
-move_vertical_pixels(App *app, f32 pixels)
-{
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    move_vertical_pixels(app, view, pixels);
+move_vertical_pixels(App *app, f32 pixels){
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ move_vertical_pixels(app, view, pixels);
 }
 
 internal void
 move_vertical_lines(App *app, View_ID view, i64 lines){
-    if (lines > 0){
-        for (i64 i = 0; i < lines; i += 1){
-            move_vertical_pixels(app, 1.f);
-        }
-    }
-    else{
-        for (i64 i = 0; i > lines; i -= 1){
-            move_vertical_pixels(app, -1.f);
-        }
-    }
+ if(lines > 0){
+  for(i64 i=0; i<lines; i+=1){
+   move_vertical_pixels(app, 1.f);
+  }
+ }else{
+  for (i64 i=0; i>lines; i-=1){
+   move_vertical_pixels(app, -1.f);
+  }
+ }
 }
 
 internal void
@@ -1464,7 +1462,7 @@ get_cpp_matching_file(App *app, Buffer_ID buffer, Buffer_ID *buffer_out)
     String filename = push_buffer_filename(app, scratch, buffer);
     if (filename.size > 0)
     {
-        String extension = string_file_extension(filename);
+        String extension = path_extension(filename);
         String new_extensions[2] = {};
         i1 new_extensions_count = 0;
         if (string_match(extension, string_u8_litexpr("cpp")) || string_match(extension, string_u8_litexpr("cc"))){
@@ -1486,7 +1484,7 @@ get_cpp_matching_file(App *app, Buffer_ID buffer, Buffer_ID *buffer_out)
             new_extensions_count = 1;
         }
         
-        String file_without_extension = string_file_without_extension(filename);
+        String file_without_extension = path_no_extension(filename);
         for (i1 i = 0; i < new_extensions_count; i += 1){
             Temp_Memory temp = begin_temp(scratch);
             String8 new_extension = new_extensions[i];

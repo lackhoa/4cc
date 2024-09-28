@@ -30,7 +30,7 @@ imgui_build_level = 1
 lexer_build_level = 2
 #
 asan_on = 0
-COMPILE_GAME_WITH_MSVC = 1
+COMPILE_GAME_WITH_MSVC = 0
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
@@ -41,11 +41,9 @@ STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the relo
 
 
 # NOTE: Override configuration ############################
-#asan_on                    = 1
 COMPILE_GAME_WITH_MSVC      = 0
 ed_build_level              = 1
-meta_build_level            = 1
-STOP_DEBUGGING_BEFORE_BUILD = 0
+meta_build_level            = 0
 
 
 
@@ -346,14 +344,7 @@ def autogen():
             print('4coder API parser/generator')
             run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
                          debug_mode=True, compiler_flags=compiler_flags)
-            input_files = " ".join([f"{CODE}/game",
-                                    f"{CODE}/4ed_api_implementation.cpp",
-                                    f"{CODE}/platform_win32/win32_4ed_functions.cpp",
-                                    f"{CODE}/custom/4coder_token.cpp",
-                                    f"{CODE}/4coder_game_shared.h",
-                                    f"{CODE}/4ed_render_target.cpp",
-                                   ])
-            run(f"ad_meta.exe {input_files}")
+            run(f"ad_meta.exe {CODE}")
 
             meta_macros="-DMETA_PASS"
             print('preproc_file: Generate')

@@ -1,4 +1,5 @@
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
+#pragma once
+//  C:\Users\vodan\4ed\code/meta_print.cpp:109:
 function Type_Info
 get_type_info_Keyboard_Cursor()
 {
@@ -11,13 +12,8 @@ result.members[0] = {.type=&Type_Info_v3, .name=strlit("pos"), .offset=offsetof(
 result.members[1] = {.type=&Type_Info_v1, .name=strlit("vel"), .offset=offsetof(Keyboard_Cursor, vel)};
 return result;
 }
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
-global Type_Info Type_Info_Keyboard_Cursor = get_type_info_Keyboard_Cursor();
-
-function Type_Info &type_info_from_pointer(Keyboard_Cursor*pointer)
-{
-return Type_Info_Keyboard_Cursor;
-}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:81:
+global_decl Type_Info Type_Info_Keyboard_Cursor;
 function void
 read_Keyboard_Cursor(Data_Reader &r, Keyboard_Cursor &pointer)
 {
@@ -41,7 +37,7 @@ pointer.vel = m_vel;
 
 eat_char(p, '}');
 }
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:165:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:109:
 function Type_Info
 get_type_info_Serialized_State()
 {
@@ -53,13 +49,8 @@ result.members.set_count(1);
 result.members[0] = {.type=&Type_Info_Keyboard_Cursor, .name=strlit("kb_cursor"), .offset=offsetof(Serialized_State, kb_cursor)};
 return result;
 }
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:140:
-global Type_Info Type_Info_Serialized_State = get_type_info_Serialized_State();
-
-function Type_Info &type_info_from_pointer(Serialized_State*pointer)
-{
-return Type_Info_Serialized_State;
-}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:81:
+global_decl Type_Info Type_Info_Serialized_State;
 function void
 read_Serialized_State(Data_Reader &r, Serialized_State &pointer)
 {
@@ -75,7 +66,7 @@ pointer.kb_cursor = m_kb_cursor;
 
 eat_char(p, '}');
 }
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:414:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:350:
 #define Serialized_State_Embed \
  union\
 {\

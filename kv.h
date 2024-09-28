@@ -70,12 +70,12 @@
 #endif
 
 #define internal      static
-#define function      static  // NOTE: I guess we're using this now...
-#define xfunction     //NOTE(kv) exported function
+#define function      static
+#define xfunction             //NOTE(kv) exported function
 #define local_persist static
 #define global        static
-// NOTE(kv): Global variable that is exported to the symbol table to be linked.
-#define xglobal
+#define global_decl   extern //NOTE(kv) Global var that is not intended to exported, but forward-declared (C doesn't let us forward-declare global???)
+#define xglobal              //NOTE(kv) exported variable
 
 //~ END Unorganized
 
@@ -98,7 +98,7 @@ typedef float f32;
 typedef float v1;
 /* Types: end */
 
-#define for_i1(VAR, INITIAL, FINAL)  for(i32 VAR=INITIAL; VAR<FINAL; VAR++)
+#define for_i1(VAR, MIN, MAX)  for(i32 VAR=MIN; VAR<MAX; VAR++)
 #define for_i32  for_i1
 #define for_i32_test(VAR, INITIAL, FINAL, TEST)  for(i32 VAR=INITIAL; VAR<FINAL && TEST; VAR++)
 #define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
@@ -2086,17 +2086,23 @@ typedef u32 argb;
 
 ////////////////////////////////
 
-struct String
-{
+struct String{
  u8 *str;
- union
- {
+ union{
   u64 size;
   u64 len;
   u64 length;
  };
 };
 typedef String String8;  // @Deprecated
+
+//NOTE(kv) nil-terminated string (cutnpaste)
+struct Stringz{
+ u8 *str;
+ union{ u64 size; u64 len; u64 length; };
+ operator String&(){ return *(String*)this; }
+};
+inline char *to_cstring(Stringz string){ return (char *)string.str; }
 
 struct String_Array{
  union{
@@ -3295,9 +3301,9 @@ force_inline u64 cstring_length(char *str) {
 force_inline String SCu8(void)             { return {}; }
 force_inline String SCu8(char &c)          { return {(u8*)&c, 1}; }
 force_inline String SCu8(u8 *str, u64 size){ return {str, size}; }
-force_inline String SCu8(u8 *str)          { return {str, cstring_length(str)}; }
-force_inline String SCu8(char *str)        { return(SCu8((u8*)str)); }
-force_inline String SCu8(const char *str)  { return(SCu8((u8*)str)); }
+force_inline Stringz SCu8(u8 *str)          { return {str, cstring_length(str)}; }
+force_inline Stringz SCu8(char *str)        { return(SCu8((u8*)str)); }
+force_inline Stringz SCu8(const char *str)  { return(SCu8((u8*)str)); }
 
 struct String_u8
 {
@@ -3713,14 +3719,6 @@ make_arena_malloc(u64 chunk_size=KB(16))
  return(make_arena(allocator, chunk_size));
 }
 
-
-//TODO: Scratch_Block requires that we pass it a Thread_Context, which is annoying,
-// But we can maybe use thread-local storage whatever.
-// NOTE: We use make_arena_malloc because this is basically malloc that automatically frees for us.
-#define make_temp_arena(ARENA_NAME) \
-Arena value_##ARENA_NAME = make_arena_malloc(); \
-Arena *ARENA_NAME = &value_##ARENA_NAME; \
-defer( arena_clear(ARENA_NAME) );
 
 //NOTE(kv) "defer_block" courtesy of Ryan Fleury.
 #define defer_block(STARTUP, SHUTDOWN) \
@@ -4345,8 +4343,7 @@ remove_translation(mat4 result)
 //TODO(kv) Split the metadata out to a header, that we can allocate
 //  before the data, so we can pass the array around without fear.
 template<class T>
-struct arrayof
-{
+struct arrayof{
  i1 count;
  i1 cap;
  b32 fixed_size;
@@ -4413,10 +4410,15 @@ struct arrayof
   return result;
  }
  //
- inline T &push2()
- {
+ inline T &push2(){
   set_count(count+1);
   return last();
+ }
+ inline T *push_zero(){
+  set_count(count+1);
+  T *result = &last();
+  *result = {};
+  return result;
  }
  
  arrayof<T> copy(Arena *arena)
@@ -4460,7 +4462,7 @@ init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0) {
 #define X_Basic_Types(X)  \
 X(v1) X(v2) X(v3) X(v4)   \
 X(i1) X(i2) X(i3) X(i4)   \
-X(String)    \
+X(String) X(u32)   \
 
 enum Basic_Type
 {
@@ -4504,7 +4506,7 @@ push_unique(arrayof<T> &array, T const&item)
 }
 
 //~
-struct Struct_Member {
+struct Struct_Member{
  struct Type_Info *type;
  String name;
  u32    offset;
@@ -4516,19 +4518,19 @@ struct Union_Member{
  String name;
  i32 variant;
 };
-struct Enum_Member {
+struct Enum_Member{
  String name;
  i32    value;
 };
 //NOTE(kv) If you have a better name, I'm all ears man!
-enum Type_Kind {
+enum Type_Kind{
  Type_Kind_None = 0,
  Type_Kind_Basic,
  Type_Kind_Struct,
  Type_Kind_Union,
  Type_Kind_Enum,
 };
-struct Type_Info {
+struct Type_Info{
  String name;
  i1     size;
  Type_Kind kind;
@@ -4716,20 +4718,22 @@ sub_arena_static(Arena *arena, usize size)
 
 //~
 
-function String
-push_stringz(Arena *arena, String src)
-{
- String string = {};
+function Stringz
+push_stringz(Arena *arena, String src){
+ Stringz string = {};
  string.str = push_array(arena, u8, src.size + 1);
  string.size = src.size;
  block_copy_count(string.str, src.str, src.size);
  string.str[string.size] = 0;
  return(string);
 }
+force_inline Stringz
+to_stringz(Arena *a, String s){
+ return push_stringz(a,s);
+}
 //
 force_inline char *
-to_cstring(Arena *arena, String8 string)
-{
+to_cstring(Arena *arena, String8 string){
  String8 result = push_stringz(arena, string);
  return (char *)result.str;
 }
@@ -4770,19 +4774,28 @@ push_stringf(Arena *arena, char *format, ...)
  return(result);
 }
 //
-function String
+function Stringz
 push_stringfz(Arena *arena, char *format, ...)
 {
  va_list args;
  va_start(args, format);
- String result = push_stringfv(arena, format, args, true);
+ String result0 = push_stringfv(arena, format, args, true);
+ Stringz result = *(Stringz*)&result0;
  va_end(args);
  return(result);
 }
+//TODO(kv) Hackjob to concat strings together, goddamn it dude!
+inline String
+string_concat(Arena *arena, char *a, String b){
+ return push_stringf(arena, "%s%.*s", a, strexpand(b));
+}
+inline String
+string_concat(Arena *arena, String a, char *b){
+ return push_stringf(arena, "%.*s%s", strexpand(a), b);
+}
 
 inline String8
-to_string(Arena *arena, i32 value)
-{
+to_string(Arena *arena, i32 value){
  return push_stringfz(arena, "%d", value);
 }
 
@@ -4794,20 +4807,18 @@ to_string(Arena *arena, i32 value)
 #define SLASH '/'
 #endif
 
-function String8
-pjoin(Arena *arena, String8 a, String8 b)
-{
- String8 result = push_stringfz(arena, "%.*s%c%.*s", string_expand(a), OS_SLASH, string_expand(b));
- return result;
+function Stringz
+pjoin(Arena *arena, String8 a, String8 b){
+ return push_stringfz(arena, "%.*s%c%.*s", string_expand(a), OS_SLASH, string_expand(b));
 }
-
-function String8
-pjoin(Arena *arena, String8 a, const char *b)
-{
- String8 result = push_stringfz(arena, "%.*s%c%s", string_expand(a), OS_SLASH, b);
- return result;
+function Stringz
+pjoin(Arena *arena, String8 a, const char *b){
+ return push_stringfz(arena, "%.*s%c%s", string_expand(a), OS_SLASH, b);
 }
-
+function Stringz
+pjoin(Arena *arena, const char *a, const char *b){
+ return push_stringfz(arena, "%s%c%s", a, OS_SLASH, b);
+}
 
 force_inline b32
 move_file(char const *from_filename, char const *to_filename)
@@ -4836,33 +4847,59 @@ copy_file(String from_filename, String to_filename, b32 fail_if_exists)
 }
 
 function b32
-remove_file(String filename)
-{
+remove_file(String filename){
  u8 buffer[512];
  Arena arena = make_static_arena(buffer, 512);
  char *filenamec = to_cstring(&arena, filename);
  return gb_file_remove(filenamec);
 }
-
-inline FILE *
-fopen(String name, char *mode) {
- make_temp_arena(scratch);
- FILE *file = fopen(to_cstring(scratch, name), mode);
- return(file);
+#if OS_WINDOWS
+function b32
+create_directory(Stringz path){
+ b32 ok = 1;
+ if(!CreateDirectoryA(to_cstring(path),0)){
+  DWORD error = GetLastError();
+  if(error != ERROR_ALREADY_EXISTS){
+   ok = 0;
+  }
+ }
+ return ok;
 }
-
+function b32
+create_directory(String path){
+ Scratch_Block scratch;
+ Stringz pathz = to_stringz(scratch, path);
+ return create_directory(pathz);
+}
+#endif
+inline FILE *
+open_file(Stringz name, char *mode){
+ return fopen(to_cstring(name), mode);
+}
+function FILE *
+open_or_create_file(Stringz name, char *mode){
+ char *cname = to_cstring(name);
+ FILE *file = open_file(name, mode);
+ if(!file){
+  if(errno == ENOENT){
+   create_directory(path_dirname(name));
+   open_file(name, mode);
+  }
+ }
+ return file;
+}
 inline void
 close_file(FILE *file)
 {// NOTE(kv): Turns out writing a wrapper is sometimes beneficial.
- if (file != 0) {
+ if(file != 0){
   fclose(file);
  }
 }
 
 #if OS_WINDOWS
 function b32
-path_is_directory(char *path){
- DWORD attr = GetFileAttributes(path);
+path_is_directory(Stringz path){
+ DWORD attr = GetFileAttributes(to_cstring(path));
  return (attr & FILE_ATTRIBUTE_DIRECTORY);
 }
 #endif
@@ -4870,11 +4907,11 @@ path_is_directory(char *path){
 function b32
 write_entire_file(String filename, void *data, u64 size)
 {
- make_temp_arena(arena);
+ Scratch_Block scratch;
  
  b32 result = false;
  gbFile file_value = {}; gbFile *file = &file_value;
- char *filename_c = to_cstring(arena, filename);
+ char *filename_c = to_cstring(scratch, filename);
  gbFileError err = gb_file_open_mode(file, gbFileMode_Write, filename_c);
  if (err == gbFileError_None)
  {
@@ -4891,41 +4928,31 @@ write_entire_file(String filename, String data)
 }
 
 
-function String
+function Stringz
 read_entire_file_handle(Arena *arena, FILE *file)
 {
- String result = {};
- if (file != 0)
- {
+ Stringz result = {};
+ if(file != 0){
   fseek(file, 0, SEEK_END);
   u64 size = ftell(file);
   char *mem = push_array(arena, char, size+1);
   fseek(file, 0, SEEK_SET);
   fread(mem, 1, (size_t)size, file);
-  result = make_data(mem, size);
+  result = {(u8*)mem,size};
   mem[size] = 0;// NOTE: null-termination
  }
  return(result);
 }
 
 function String
-read_entire_file(Arena *arena, String filename)
-{
+read_entire_file(Arena *arena, Stringz filename){
  String result = {};
- FILE *file = fopen(filename, "rb");
- if (file != 0)
- {
+ FILE *file = open_file(filename, "rb");
+ if (file != 0){
   result = read_entire_file_handle(arena, file);
   close_file(file);
  }
  return(result);
-}
-
-force_inline char *
-read_entire_file_cstring(Arena *arena, String filename)
-{// NOTE: Files are null-terminated so we're fine
- String result = read_entire_file(arena, filename);
- return (char *)result.str;
 }
 
 //~ Printer
@@ -4942,23 +4969,21 @@ typedef void Print_Function(void *userdata, char *format, va_list args);
 
 struct Printer {
  Printer_Type type;
- union {
-  struct {
+ union{
+  struct{
    u8  *base;
    i32  used;
    i32  cap;
   };
   FILE *FILE;
-  struct {
+  struct{
    void *userdata;
    Print_Function *print_function;
   };
  };
 };
-
 inline Printer
-make_printer_buffer(Arena *arena, i32 cap)
-{
+make_printer_buffer(Arena *arena, i32 cap){
  Printer result = {
   .type = Printer_Type_Buffer,
   .base = (u8*)push_size(arena, (usize)cap),
@@ -4966,26 +4991,27 @@ make_printer_buffer(Arena *arena, i32 cap)
  };
  return result;
 }
-
 inline Printer
-make_printer_file(FILE *file)
-{
+make_printer_file(FILE *file){
  Printer result = {
   .type = Printer_Type_FILE,
   .FILE = file,
  };
  return result;
 }
-
-function String
-printer_get_string(Printer &p)
-{
- kv_assert(p.type == Printer_Type_Buffer);
- String string = {
-  .str  = p.base,
-  .size = (u32)p.used,
- };
- return string;
+function Stringz
+printer_get_string(Printer &p){
+ if(p.type==Printer_Type_Buffer){
+  Stringz string = {
+   .str  = p.base,
+   .size = (u64)p.used,
+  };
+  p.base[p.used++] = 0;  //NOTE nil-termination
+  return string;
+ }else{
+  invalid_code_path;
+  return {};
+ }
 }
 
 inline void
@@ -5013,26 +5039,19 @@ printer_printf(Printer &p, char *format, ...)
 {
  va_list args;
  va_start(args, format);
- switch(p.type)
- {
-  case Printer_Type_Buffer:
-  {
+ switch(p.type){
+  case Printer_Type_Buffer:{
    i32 remaining = p.cap-p.used;
    i32 written = vsnprintf((char *)(p.base+p.used), remaining, format, args);
    kv_assert(written >= 0 && written < remaining);
    p.used += written;
   }break;
-  
-  case Printer_Type_FILE:
-  {
+  case Printer_Type_FILE:{
    vfprintf(p.FILE, format, args);
   }break;
-  
-  case Printer_Type_Generic:
-  {
+  case Printer_Type_Generic:{
    p.print_function(p.userdata, format, args);
   }break;
-  
   invalid_default_case;
  }
  va_end(args);
@@ -5123,15 +5142,11 @@ print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
   {
    v1 *values = cast(v1*)value0;
    i1 count = get_basic_type_size(type) / 4;
-   if (count == 1)
-   {
+   if (count == 1) {
     print_float_trimmed(p, *values);
-   }
-   else
-   {
+   } else {
     if (wrapped) { print(p,"V"); print(p,count); print(p,"("); }
-    for_i32(index,0,count)
-    {
+    for_i32(index,0,count) {
      if (index != 0) { print(p, ", "); }
      print_float_trimmed(p, values[index]);
     }
@@ -5153,8 +5168,7 @@ print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
    const i1 max_count = 4;
    
    if (wrapped) { print(p, "I"); print(p, count); print(p, "("); }
-   for_i32(index,0,count)
-   {
+   for_i32(index,0,count) {
     if (index != 0) { print(p, ","); }
     print(p, v[index]);
    }
@@ -5165,19 +5179,12 @@ print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
  }
 }
 
-inline void
-print_nspaces(Printer &p, i1 n)
-{
- for_i32(i,0,n) {
-  print(p, " ");
- }
-}
+inline void print_nspaces(Printer &p, i1 n){ for_repeat(n) { print(p, " "); } }
 
 function void
 write_basic_type(Printer &p, Basic_Type type, void *value0)
 {
- switch(type)
- {
+ switch(type){
   //-Floats
   case Basic_Type_v1:
   case Basic_Type_v2:
@@ -5213,6 +5220,7 @@ write_basic_type(Printer &p, Basic_Type type, void *value0)
   
   //-
   case Basic_Type_String: { print(p, *(String*)value0); }break;
+  case Basic_Type_u32:    { print(p, *(u32*)value0);    }break;
   
   invalid_default_case;
  }

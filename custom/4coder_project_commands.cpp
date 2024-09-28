@@ -87,7 +87,7 @@ prj_close_files_with_ext(App *app, String8Array extension_array)
                 String8 filename = push_buffer_filename(app, scratch, buffer);
                 is_match = false;
                 if (filename.size > 0){
-                    String8 extension = string_file_extension(filename);
+                    String8 extension = path_extension(filename);
                     for (i1 i = 0; i < extension_array.count; ++i){
                         if (string_match(extension, extension_array.strings[i])){
                             is_match = true;

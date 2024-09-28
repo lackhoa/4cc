@@ -521,7 +521,7 @@ BUFFER_HOOK_SIG(default_begin_buffer)
  if (filename.size > 0){
   String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
   String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-  String ext = string_file_extension(filename);
+  String ext = path_extension(filename);
   for (i32 i = 0; i < extensions.count; ++i){
    if (string_match(ext, extensions.strings[i])){
     

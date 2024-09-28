@@ -39,7 +39,7 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
   {
    String8 treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
    String8_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-   String8 ext = string_file_extension(filename);
+   String8 ext = path_extension(filename);
    for(i1 i = 0; i < extensions.count; ++i)
    {
     if(string_match(ext, extensions.strings[i]))

@@ -417,14 +417,14 @@ struct Buffer_Identifier{
 api(custom)
 typedef i1 Set_Buffer_Scroll_Rule;
 enum{
-    SetBufferScroll_NoCursorChange,
-    SetBufferScroll_SnapCursorIntoView,
+ SetBufferScroll_NoCursorChange,
+ SetBufferScroll_SnapCursorIntoView,
 };
 
 api(custom)
 struct Buffer_Scroll{
-    Buffer_Point position;
-    Buffer_Point target;
+ Buffer_Point position;
+ Buffer_Point target;
 };
 
 api(custom)

@@ -21,35 +21,37 @@ api_call_with_location(Arena *arena, API_Definition *api, String name, String ty
     API_Call *call = push_array_zero(arena, API_Call, 1);
     sll_queue_push(api->first_call, api->last_call, call);
     api->call_count += 1;
-    call->name = name;
-    call->return_type = type;
-    call->location_string = location;
-    return(call);
+ call->name = name;
+ call->return_type = type;
+ call->location_string = location;
+ return(call);
 }
 
 function API_Call*
 api_call_with_location(Arena *arena, API_Definition *api, char *name, char *type, char *location){
-    return(api_call_with_location(arena, api, SCu8(name), SCu8(type), SCu8(location)));
+ String sname = SCu8(name);
+ return(api_call_with_location(arena, api, sname, SCu8(type), SCu8(location)));
 }
 
 function API_Type*
 api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, String name, List_String member_list, String definition, String location){
-    API_Type *type = push_array_zero(arena, API_Type, 1);
-    sll_queue_push(api->first_type, api->last_type, type);
-    api->type_count += 1;
-    type->kind = APITypeKind_Structure;
-    type->name = name;
-    type->location_string = location;
-    type->struct_type.kind = kind;
-    type->struct_type.member_names = member_list;
-    type->struct_type.definition_string = definition;
-    return(type);
+ API_Type *type = push_array_zero(arena, API_Type, 1);
+ sll_queue_push(api->first_type, api->last_type, type);
+ api->type_count += 1;
+ type->kind = APITypeKind_Structure;
+ type->name = name;
+ type->location_string = location;
+ type->struct_type.kind = kind;
+ type->struct_type.member_names = member_list;
+ type->struct_type.definition_string = definition;
+ return(type);
 }
 
 function API_Type*
 api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, char *name, List_String member_list, char *definition, char *location)
 {
-    return(api_type_structure_with_location(arena, api, kind, SCu8(name), member_list, SCu8(definition), SCu8(location)));
+ String sname = SCu8(name);
+ return(api_type_structure_with_location(arena, api, kind, sname, member_list, SCu8(definition), SCu8(location)));
 }
 
 #define api_call(arena, api, name, type) \

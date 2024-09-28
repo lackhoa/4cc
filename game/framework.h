@@ -27,10 +27,10 @@ struct Serialized_State{
  Keyboard_Cursor kb_cursor;
 };
 
-#include "framework.meta.h"
+#include "generated/framework.gen.h"
 
 //NOTE: The state is saved between reloads.
-struct Game_State {
+struct Game_State{
  Base_Allocator malloc;
  Arena permanent_arena;
  Arena data_load_arena;  // NOTE: cleared on data load
@@ -40,8 +40,8 @@ struct Game_State {
  b32 has_done_backup;
  String save_dir;
  String backup_dir;
- String autosave_path;
- String manual_save_path;
+ Stringz autosave_path;
+ Stringz manual_save_path;
  
  //-FUI
  // NOTE: We store things in the state to allow reload (reusing memory).

@@ -15,16 +15,15 @@
 #define ED_API_USER_STORE_GLOBAL 1
 #define AD_IS_DRIVER 0
 #include "4coder_game_shared.h"
-#include "4coder_game_shared.meta.h"
+#include "generated/4coder_game_shared.gen.h"
 #define ED_PARSER_BUFFER 1
 #include "4ed_kv_parser.cpp"
 #include "ad_stb_parser.cpp"
 
 #include "framework_data.h"
 #include "framework_driver_shared.h"
-#include "framework_driver_shared.meta.h"
 #include "framework.h"
-#include "game_modeler.meta.h"
+#include "generated/game_modeler.gen.h"
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 #include "game_api.cpp"
@@ -32,6 +31,11 @@
 #define DYNAMIC_LINK_API
 #include "custom/generated/ed_api.cpp"
 #include "game_modeler.cpp"
+#include "generated/4coder_game_shared.gen.cpp"
+#include "generated/framework.gen.cpp"
+#include "generated/framework_driver_shared.gen.cpp"
+#include "generated/game_modeler.gen.cpp"
+#include "generated/bezier_types.gen.cpp"
 
 /*
   IMPORTANT Rule for the renderer
@@ -316,14 +320,13 @@ get_target_camera(Game_State *state, i32 viewport_index){
 #define IGNORE_MODELING_DATA 1
 
 function b32
-game_load(Game_State *state, App *app, String filename,
-          b32 ask_confirmation=true)
-{// IMPORTANT: This function overwrites edit history.
+game_load(Game_State *state, App *app, Stringz filename){
+ // IMPORTANT: This function overwrites edit history.
  b32 ok = true;
  Scratch_Block scratch(app);
  
  String read_string = {};
- if (ok) {
+ if(ok){
   read_string = read_entire_file(scratch, filename);
   ok = read_string.len > 0;
   if ( !ok ) {
@@ -429,7 +432,7 @@ revert_from_autosave(Game_State *state, App *app){
 //~
 
 function Bone *
-get_right_bone(Modeler *m, Bone *bone) {
+get_right_bone(Modeler *m, Bone *bone){
  Bone *result = 0;
  auto &p = painter;
  if(bone->is_right){
@@ -450,50 +453,48 @@ get_right_bone(Modeler *m, Bone *bone) {
 function void
 render_data(Modeler *m)
 {
- hl_block;
  painter.is_right = 0;
  argb inactive_color = argb_dark_green;
- for_i32(vindex,1,m->vertices.count) {
-  Vertex_Data &vert = m->vertices[vindex];
+ for_i32(vi,1,m->vertices.count){
+  Vertex_Data &vert = m->vertices[vi];
   Bone *bone = get_bone(m, vert.bone_id, false);
-  u32 prim_id = prim_id_from_vertex_index({vindex});
+  u32 prim_id = prim_id_from_vertex_index({vi});
   {
    v3 pos = mat4vert(bone->xform, vert.pos);
-   indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
+   indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
   }
-  if (vert.symx) {
-   //NOTE: Draw the right side (TODO @speed stupid object lookup)
+  if(vert.symx){
+   //NOTE: Draw the right side
    set_in_block(painter.is_right, 1);
-   auto boneR = get_right_bone(m, bone);
+   auto boneR = get_right_bone(m, bone);  //@slow
    v3 pos = mat4vert(boneR->xform, vert.pos);
-   indicate_vertex("data", pos, 0, true, inactive_color, prim_id);
+   indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
   }
  }
  
- for_i32(ci,1,m->curves.count) {
+ for_i32(ci,1,m->curves.count){
   Bezier_Data &curve = m->curves[ci];
   Bone *bone = get_bone(m, curve.bone_id, false);
   u32 prim_id = prim_id_from_curve_index({ci});
   {
    v3 p0 = m->vertices[curve.p0_index.v].pos;
    v3 p3 = m->vertices[curve.p3_index.v].pos;
-   Bez draw_bez;
+   Bez drawn;
    switch(curve.type){
     case Bezier_Type_v3v2:{
-     draw_bez = bez_v3v2(p0, curve.data.v3v2.d0,
-                         curve.data.v3v2.d3, p3);
+     drawn = bez_v3v2(p0, curve.data.v3v2.d0,
+                      curve.data.v3v2.d3, p3);
     }break;
     case Bezier_Type_Parabola:{
-     draw_bez = bez_parabola(p0, curve.data.parabola.d, p3);
+     drawn = bez_parabola(p0, curve.data.Parabola.d, p3);
     }break;
     invalid_default_case;
    }
-   
-   draw(bone->xform*draw_bez, prim_id);
-   if (curve.symx) {
+   draw(bone->xform*drawn, curve.params, prim_id);
+   if(curve.symx){
     set_in_block(painter.is_right, 1);
     auto boneR = get_right_bone(m, bone);
-    draw(boneR->xform*draw_bez, prim_id);
+    draw(boneR->xform*drawn, curve.params, prim_id);
    }
   }
  }
@@ -504,6 +505,7 @@ function game_render_return
 game_render(game_render_params)
 {
  Modeler *modeler = &state->modeler;
+ painter = {};
  slider_cycle_counter = 0;
  Scratch_Block scratch;
  Viewport *viewport = &state->viewports[viewport_id-1];
@@ -520,21 +522,29 @@ game_render(game_render_params)
  v1 pixel_to_meter = 1.f / meter_to_pixel;
  viewport->clip_radius = pixel_to_meter*get_radius(clip_box);
  
- v2 mouse_viewp;
- {// NOTE: @Ugh Compute the mouse position in view space
-  v2 clip_dim = get_dim(clip_box);
-  v2 mousep = V2(mouse.p);
-  v2 mouse_viewp_px = mousep;
-  mouse_viewp_px   -= clip_box.min + 0.5f * clip_dim;
-  mouse_viewp_px.y *= -1.0f;
-  mouse_viewp       = mouse_viewp_px / meter_to_pixel;
- }
- 
  Camera camera_value;
  Camera *camera = &camera_value;
  {// NOTE: camera
   setup_camera(camera, &viewport->camera);
  }
+ {
+  b32 camera_frontal=almost_equal(absolute(camera->z.z), 1.f, 1e-2f);
+  b32 camera_profile=almost_equal(absolute(camera->z.x), 1.f, 1e-2f);
+  b32 orthographic = painter.show_grid && (camera_frontal || camera_profile);
+  if(fbool(0)){orthographic = painter.show_grid;}
+  if(fbool(0)){orthographic = true;}
+  painter.view_from_world = get_view_from_world(camera, orthographic);
+ }
+ 
+#if 0
+ // NOTE: @Ugh Compute the mouse position in view space
+ v2 clip_dim = get_dim(clip_box);
+ v2 mouse_viewp_px = V2(mouse.p);
+ mouse_viewp_px   -= clip_box.min + 0.5f * clip_dim;
+ mouse_viewp_px.y *= -1.0f;
+ painter.mousep = mouse_viewp_px / meter_to_pixel;
+#endif
+ painter.cursorp = state->kb_cursor.pos;
  
  {//-NOTE(kv) Drawing the movie
   Render_Config *config = draw_new_group(target);
@@ -546,10 +556,11 @@ game_render(game_render_params)
    //TODO(kv) Why can't the game understand scratch blocks?
    modeler->vertices.set_count(1);
    modeler->curves.  set_count(1);
+   //nono Let's pull painter out
    render_movie(scratch, render_scratch,
                 config, viewport,
                 state->references_full_alpha,
-                app, target, mouse_viewp, modeler,
+                app, target, modeler,
                 camera, &state->pose, state->anime_time);
   }
  }
@@ -617,7 +628,7 @@ game_init(game_init_params)
   
   {// NOTE: Load state
    state->data_load_arena = make_arena(&state->malloc);
-   game_load(state, app, state->autosave_path, false);
+   game_load(state, app, state->autosave_path);
   }
  }
  
@@ -960,6 +971,20 @@ inline b32 is_v4_key(Key_Code code){ switch(code){ V4_CASES return true; } retur
 #undef V4_CASES
 //-
 
+global_const b32 transitioning_from_code = true;
+
+function void
+g_jump_to_line(App *app, i1 linum){
+ // NOTE: Don't switch to the game panel, because the cursor should be in the code panel.
+ View_ID view = get_active_view(app,0);
+ if(!is_view_to_the_right(app, view)){
+  //NOTE(kv) Switch to the right view
+  view = get_other_primary_view(app, view, Access_Always, true);
+ }
+ view_set_buffer_named(app, view, GAME_FILE_NAME);
+ view_set_cursor(app, view, seek_line_col(linum, 0));
+}
+
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 function game_update_return
 game_update(game_update_params)
@@ -1133,9 +1158,34 @@ game_update(game_update_params)
       }break;
       case Key_Code_Escape:{ state->kb_cursor_mode=false; }break;
       case Key_Code_Return:{
-       state->kb_cursor_mode=false;
-       select_primitive(modeler, get_hot_prim_id());
+       auto m = modeler;
+       state->kb_cursor_mode = false;
+       Prim_XID hot_xid = prim_xid_from_id(get_hot_prim_id());
+       if(transitioning_from_code){
+        if(hot_xid.type){
+         //NOTE(kv) drawn by data
+         if(hot_xid.type==Prim_Vertex){
+          Vertex_Data *vertex = &m->vertices[hot_xid.index];
+          g_jump_to_line(app, vertex->linum);
+         }else if(hot_xid.type==Prim_Curve){
+          Bezier_Data *curve  = &m->curves[hot_xid.index];
+          g_jump_to_line(app, curve->linum);
+         }
+        }else{
+         g_jump_to_line(app, hot_xid.index);
+        }
+       }else{
+        //NOTE(kv) Normal editor behavior
+        select_primitive(m, hot_xid.id);
+       }
       }break;
+      //TODO(kv) @cleanup cutnpaste
+      //NOTE(kv) Set camera frontal
+      case C|M|Key_Code_K:{ cam->theta=0; cam->phi=0; }break;
+      //NOTE(kv) Set camera to the right
+      case C|M|Key_Code_L:{ cam->theta=.25f; cam->phi=0; }break;
+      //NOTE(kv) Set camera to the left
+      case C|M|Key_Code_H:{ cam->theta=-.25f; cam->phi=0; }break;
      }
     }
    }else{
@@ -1204,7 +1254,7 @@ game_update(game_update_params)
  Camera update_cam = {};
  setup_camera(&update_cam, update_target_cam);
  
- if (input_dir != v4{}){
+ if(input_dir != v4{}){
   //-NOTE(kv) Handling continuous directional input
   if (fui_active){
    //NOTE(kv) ;UpdateFuislider
@@ -1251,7 +1301,7 @@ game_update(game_update_params)
     Modeler_History &h = m->history;
     if (get_selected_type(m) == Prim_Vertex){
      // NOTE: Selecting a vertex
-     Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
+     Vertex_Index sel_index = vertex_prim_index_from_id(sel_prim);
      v3 direction = key_direction(input, 0, false).xyz;
      
      // NOTE(kv): Update vertex position
@@ -1263,7 +1313,7 @@ game_update(game_update_params)
      arrayof<Vertex_Index> influenced_verts;
      init_static(influenced_verts, scratch, m->active_prims.count);
      for_i32(index,0,m->active_prims.count) {
-      Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
+      Vertex_Index vi = vertex_prim_index_from_id(m->active_prims[index]);
       influenced_verts.push(vi);
      }
      
@@ -1308,12 +1358,11 @@ game_update(game_update_params)
   }
  }
  
- 
- if (input->mouse.press_l){
+ if(input->mouse.press_l){
   // NOTE: Left click handling
   u32 hot_prim = get_hot_prim_id();
   if (hot_prim){
-   if (prim_id_is_data(hot_prim)){
+   if(prim_id_is_data(hot_prim)){
     // NOTE: Drawn by data -> change selected obj id
     auto &m = modeler;
     select_primitive(m, hot_prim);
@@ -1321,14 +1370,7 @@ game_update(game_update_params)
     switch_to_mouse_panel(app);
    }else{
     // NOTE: Drawn by code -> jump to code
-    // NOTE: Don't switch to the game panel, because the cursor should be in the code panel.
-    View_ID view = get_active_view(app,0);
-    if (!is_view_to_the_right(app, view)){
-     //NOTE(kv) Switch to the right view
-     view = get_other_primary_view(app, view, Access_Always, true);
-    }
-    view_set_buffer_named(app, view, GAME_FILE_NAME);
-    view_set_cursor(app, view, seek_line_col(hot_prim, 0));
+    g_jump_to_line(app, hot_prim);
    }
   }
  }
@@ -1352,7 +1394,7 @@ game_update(game_update_params)
   }
  }
  
- if (game_active && state->kb_cursor_mode){
+ if(game_active && state->kb_cursor_mode){
   //-NOTE(kv) update cursor
   Keyboard_Cursor &cursor = state->kb_cursor;
   b32 shifted = 0;
@@ -1408,9 +1450,9 @@ game_update(game_update_params)
   // NOTE: Set viewport presets to useful values
   Viewport *viewport = &state->viewports[index];
   
-  if (viewport->preset == viewport->last_preset) {
-   if (viewport->preset == 0) { viewport->last_preset = 2; }
-   else { viewport->last_preset = 0; }
+  if(viewport->preset == viewport->last_preset){
+   if(viewport->preset == 0){ viewport->last_preset = 2; }
+   else{ viewport->last_preset = 0; }
   }
  }
  
@@ -1423,9 +1465,9 @@ game_update(game_update_params)
    if(get_selected_type(m) == Prim_Curve){
     //;draw_curve_info
     ImGui::Begin("curve data", 0);
-    Bezier_Data curve = get_selected_curve(m);
+    Bezier_Data *curve = get_selected_curve(m);
     Type_Info type = Type_Info_Bezier_Type;
-    i32 curve_type_index = enum_index_from_value(curve.type);
+    i32 curve_type_index = enum_index_from_value(curve->type);
     
     const char* combo_preview = to_cstring(scratch, type.enum_members[curve_type_index].name);
     if ( ImGui::BeginCombo("combo", combo_preview, 0) ) {

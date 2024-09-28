@@ -17,28 +17,34 @@ is_prim_id_active(Modeler *m, u32 prim_id) {
 }
 
 inline Vertex_Index
-vertex_index_from_pointer(Modeler *m, Vertex_Data *pointer) {
- return {i32(pointer - m->vertices.items)};
+vertex_index_from_pointer(Modeler *m, Vertex_Data *pointer){
+ if(pointer){
+  return {i32(pointer - m->vertices.items)};
+ }
+ return {};
 }
 inline Curve_Index
 curve_index_from_pointer(Modeler *m, Bezier_Data *pointer) {
- return {i32(pointer - m->curves.items)};
+ if(pointer){
+  return {i32(pointer - m->curves.items)};
+ }
+ return {};
 }
 
 function Vertex_Data *
-get_vertex_by_name(Modeler *m, String name, i1 max_linum){
+get_vertex_by_name(Modeler *m, String name){
  Vertex_Data *result = 0;
- i1 max_linum_seen = 0;
- for_i32(vert_index,1,m->vertices.count){
-  Vertex_Data *vertex = &m->vertices[vert_index];
-  if(vertex->linum >= max_linum_seen &&
-     vertex->linum < max_linum &&
-     vertex->name == name){
+ //NOTE(kv) We can rely on the fact that vertices are added in "code order" for now.
+ //  so the latest always wins.
+ for(auto vi=m->vertices.count-1;
+     vi >= 1;
+     vi--){
+  Vertex_Data *vertex = &m->vertices[vi];
+  if(vertex->name == name){
    result = vertex;
-   max_linum_seen = vertex->linum;
+   break;
   }
  }
- kv_assert(result);
  return result;
 }
 function Vertex_Data *
@@ -53,28 +59,19 @@ get_vertex_by_linum(Modeler *m, i1 linum){
 }
 
 xfunction void
-send_vert_func(String name, v3 pos, i1 linum)
+send_vert_func(Painter *p, String name, v3 pos, i1 linum)
 {
- if(sending_draw_data){
-  Painter *p = &painter;
-  auto m = p->modeler;
-  Vertex_Data *result = 0;
-  result = get_vertex_by_linum(m, linum);
-  if(result == 0){
-   result = &m->vertices.push2();
-   *result = {
-    .name = push_string(m->permanent_arena, name)
-   };
-  }
-  
-  if(is_left()){
-   //NOTE(kv) Only record vertex on the left
-   result->pos     = pos;
-   result->bone_id = current_bone(p)->id;
-   result->linum   = linum;
-  }else{
-   result->symx = true;
-  }
+ auto m = p->modeler;
+ 
+ if(is_left(p)){
+  Vertex_Data *vertex = &m->vertices.push2();
+  *vertex = { .name = name };
+  vertex->pos     = pos;
+  vertex->bone_id = current_bone(p)->id;
+  vertex->linum   = linum;
+ }else{
+  Vertex_Data *vertex = get_vertex_by_linum(m, linum);
+  vertex->symx = true;
  }
 }
 
@@ -90,49 +87,75 @@ get_curve_by_linum(Modeler *m, i1 linum){
  }
  return 0;
 }
+function Bezier_Data *
+get_curve_by_name(Modeler *m, String name){
+ for(auto ci=m->curves.count-1;
+     ci >= 1;
+     ci--){
+  Bezier_Data *curve = &m->curves[ci];
+  if(curve->name == name){
+   return curve;
+  }
+ }
+ return 0;
+}
 
+struct Send_Bez_Additional_Data{
+ String c2_ref;
+};
 xfunction void
-send_bez_func(String name,
+send_bez_func(Painter *p, String name,
               String p0_name, String p3_name,
               Bezier_Type type, Bezier_Union data,
-              i1 linum)
+              Line_Params params, i1 linum,
+              Send_Bez_Additional_Data additional={})
 {
- if(sending_draw_data){
-  Painter *p = &painter;
-  Modeler *m = p->modeler;
-  Bezier_Data *curve = get_curve_by_linum(m, linum);
-  if(curve == 0){
-   curve = &m->curves.push2();
-   *curve = {};
+ Modeler *m = p->modeler;
+ 
+ if(is_left(p)){
+  Bezier_Data *curve = &m->curves.push2();
+  *curve = {};
+  Vertex_Data *vert0 = 0;
+  if(type!=Bezier_Type_C2){
+   vert0 = get_vertex_by_name(m, p0_name);
+   kv_assert(vert0);
   }
-  //NOTE(kv) Only get vertex above this line number
-  Vertex_Data *vert0 = get_vertex_by_name(m, p0_name, linum);
-  Vertex_Data *vert3 = get_vertex_by_name(m, p3_name, linum);
-  kv_assert(vert0 && vert3);
+  Vertex_Data *vert3 = get_vertex_by_name(m, p3_name);
+  kv_assert(vert3);
   
   curve->type     = type;
   curve->name     = name;
   curve->p0_index = vertex_index_from_pointer(m, vert0);
   curve->p3_index = vertex_index_from_pointer(m, vert3);
   curve->data     = data;
+  curve->params   = params;
   curve->linum    = linum;
+  curve->bone_id  = current_bone(p)->id;
   
-  if(is_left()){
-   curve->bone_id = current_bone(p)->id;
-  }else{
-   curve->symx = true;
+  if(type==Bezier_Type_C2){
+   Bezier_Data *ref = get_curve_by_name(m, additional.c2_ref);
+   curve->data.C2.ref = curve_index_from_pointer(m, ref);
   }
+ }else{
+  Bezier_Data *curve = get_curve_by_linum(m, linum);
+  curve->symx = true;
  }
 }
 xfunction void
-send_bez_v3v2_func(String name, String p0, String p3, v3 d0, v2 d3, i1 linum) {
+send_bez_v3v2(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i1 linum){
  Bezier_Union data = {.v3v2={ .d0=d0, .d3=d3 }};
- send_bez_func(name, p0, p3, Bezier_Type_v3v2, data, linum);
+ send_bez_func(&painter, name, p0, p3, Bezier_Type_v3v2, data, params, linum);
 }
 xfunction void
-send_bez_parabola_func(String name, String p0, String p3, v3 d, i1 linum) {
- Bezier_Union data = {.parabola={ .d=d }};
- send_bez_func(name, p0, p3, Bezier_Type_Parabola, data, linum);
+send_bez_parabola(String name, String p0, v3 d, String p3, Line_Params params, i1 linum){
+ Bezier_Union data = {.Parabola={.d=d}};
+ send_bez_func(&painter, name, p0, p3, Bezier_Type_Parabola, data, params, linum);
+}
+xfunction void
+send_bez_c2(String name, String ref, v3 d3, String p3, Line_Params params, i1 linum){
+ Bezier_Union data = {.C2={.d3=d3}};
+ Send_Bez_Additional_Data additional = {.c2_ref=ref};
+ send_bez_func(&painter, name, strlit(""), p3, Bezier_Type_C2, data, params, linum, additional);
 }
 
 //-NOTE: Edit history
@@ -278,7 +301,7 @@ modeler_exit_edit_undo(Modeler *m) {
 
 inline b32
 selecting_vertex(Modeler *m){
- return prim_id_type(selected_prim_id(m)) == Prim_Vertex;
+ return prim_type_from_id(selected_prim_id(m)) == Prim_Vertex;
 }
 
 function void
@@ -297,9 +320,9 @@ compute_active_prims(Modeler *m)
  // NOTE(kv): selected object is always active.
  push_unique(m->active_prims, sel_prim);
  if (m->selection_spanning) {
-  Prim_Type sel_type = prim_id_type(sel_prim);
+  Prim_Type sel_type = prim_type_from_id(sel_prim);
   if (sel_type == Prim_Vertex){
-   Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
+   Vertex_Index sel_index = vertex_prim_index_from_id(sel_prim);
    Vertex_Data &sel = m->vertices[sel_index.v];
    for_i32(cindex,1,m->curves.count) {
     Bezier_Data &curve = m->curves[cindex];
@@ -318,7 +341,7 @@ select_primitive(Modeler *m, u32 prim){
  compute_active_prims(m);
 }
 inline void
-clear_selection(Modeler *m) {
+clear_selection(Modeler *m){
  m->selected_prim_ro = 0;
  m->active_prims.count = 0;
 }

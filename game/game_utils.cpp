@@ -128,8 +128,7 @@ lp_alignment_threshold(v1 threshold)
 function void
 debug_view_vector(i1 linum=__builtin_LINE())
 {
- Painter &p = painter;
- v3 camera_obj = camera_object_position();
+ v3 camera_obj = camera_object_position(&painter);
  v3 view_vector = get_view_vector();
  v3 object_center = camera_obj + view_vector;
  indicate_vertex("view_center", object_center, 0, linum);
@@ -166,15 +165,16 @@ plane_transform(mat4 const&mat, v3 n, v1 d)
 //~
 
 function mat4i &
-mom_bone_xform() {
- Painter *p = &painter;
+mom_bone_xform(Painter *p){
  auto &stack = p->bone_stack;
  return stack[stack.count-2]->xform;
 }
+inline mat4i& p_mom_bone_xform(){ return mom_bone_xform(&painter); }
 function mat4
-from_parent() {
+from_parent(){
  //NOTE(kv) If we just stored the relative offset, we wouldn't need this.
- return current_bone_xform().inverse * mom_bone_xform();
+ auto p = &painter;
+ return current_world_from_bone(p).inverse * mom_bone_xform(p);
 }
 
 //~
@@ -353,5 +353,6 @@ trs_pivot_transform(v3 translate, mat4i const&rotate, v1 scale,
  return result;
 }
 
+inline mat4i& p_current_world_from_bone(){ return current_world_from_bone(&painter); }
 
 //~ EOF;

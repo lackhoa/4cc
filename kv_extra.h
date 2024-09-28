@@ -325,8 +325,7 @@ base_allocator_on_heap(Heap *heap){
 ////////////////////////////////
 
 function String8
-push_data(Arena *arena, u64 size)
-{
+push_data(Arena *arena, u64 size){
  String result = {};
  result.str = push_array(arena, u8, size);
  result.size = size;
@@ -334,19 +333,21 @@ push_data(Arena *arena, u64 size)
 }
 
 function String
-push_string(Arena *arena, String data)
-{
+push_string8(Arena *arena, String data){
  String8 result = {
   .str = push_array_copy(arena, u8, data.size, data.str),
   .len = data.len,
  };
  return(result);
 }
+function String
+push_string(Arena *arena, String data){
+ return push_string8(arena, data);
+}
 //
 force_inline String8
-push_string(Arena *arena, const char *data)
-{
- return(push_string(arena, SCu8(data)));
+push_string(Arena *arena, const char *data){
+ return(push_string8(arena, SCu8(data)));
 }
 
 inline b32
@@ -409,10 +410,7 @@ function b32
 character_is_slash(char c){
  return((c == '/') || (c == '\\'));
 }
-force_inline b32
-character_is_slash(u8 c){
- return(character_is_slash(char(c)));
-}
+force_inline b32 character_is_slash(u8 c){ return(character_is_slash(char(c))); }
 
 function u64
 string_find_first_slash(String str){
@@ -470,7 +468,7 @@ string_find_last(String str, u8 c){
 }
 
 function String
-string_file_extension(String string){
+path_extension(String string){
  return(string_skip(string, string_find_last(string, '.') + 1));
 }
 
@@ -482,10 +480,9 @@ string_prefix(String str, u64 size){
 }
 
 function String
-string_file_without_extension(String string)
-{
+path_no_extension(String string){
  i64 pos = string_find_last(string, '.');
- if (pos > 0) {
+ if(pos > 0){
   string = string_prefix(string, pos);
  }
  return(string);

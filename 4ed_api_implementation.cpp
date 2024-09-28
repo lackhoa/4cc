@@ -587,22 +587,22 @@ api(custom) function Rect_f32
 view_relative_box_of_pos(App *app, View_ID view_id, i64 base_line, i64 pos){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
-    Rect_f32 result = {};
-    if (api_check_view(view)){
-        result = view_relative_box_of_pos(app->tctx, models, view, base_line, pos);
-    }
-    return(result);
+ Rect_f32 result = {};
+ if (api_check_view(view)){
+  result = view_relative_box_of_pos(app->tctx, models, view, base_line, pos);
+ }
+ return(result);
 }
 
 api(custom) function Rect_f32
 view_padded_box_of_pos(App *app, View_ID view_id, i64 base_line, i64 pos){
-    Models *models = (Models*)app->cmd_context;
-    View *view = imp_get_view(models, view_id);
-    Rect_f32 result = {};
-    if (api_check_view(view)){
-        result = view_padded_box_of_pos(app->tctx, models, view, base_line, pos);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ Rect_f32 result = {};
+ if (api_check_view(view)){
+  result = view_padded_box_of_pos(app->tctx, models, view, base_line, pos);
+ }
+ return(result);
 }
 
 api(custom) function i64
@@ -1627,19 +1627,18 @@ view_get_camera_bounds(App *app, View_ID view_id, Vec2_f32 *margin, Vec2_f32 *pu
  return(result);
 }
 
-// NOTE(kv): patient zero of the ed api experiment
 api(custom ed) function b32
 view_set_cursor(App *app, View_ID view_id, Buffer_Seek seek)
 {
-    Models *models = (Models*)app->cmd_context;
-    View *view = imp_get_view(models, view_id);
-    b32 result = false;
-    if (api_check_view(view)){
-        Editing_File *file = view->file;
-        Assert(file != 0);
-        if (api_check_buffer(file)){
-            Buffer_Cursor cursor = file_compute_cursor(file, seek);
-            view_set_cursor(app->tctx, models, view, cursor.pos);
+ Models *models = (Models*)app->cmd_context;
+ View *view = imp_get_view(models, view_id);
+ b32 result = false;
+ if (api_check_view(view)){
+  Editing_File *file = view->file;
+  Assert(file != 0);
+  if (api_check_buffer(file)){
+   Buffer_Cursor cursor = file_compute_cursor(file, seek);
+   view_set_cursor(app->tctx, models, view, cursor.pos);
    result = true;
   }
  }

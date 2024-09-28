@@ -1,4 +1,5 @@
-// C:\Users\vodan\4ed\code/meta_introspect.cpp:414:
+#pragma once
+//  C:\Users\vodan\4ed\code/meta_print.cpp:350:
 #define Game_Input_Public_Embed \
  union\
 {\

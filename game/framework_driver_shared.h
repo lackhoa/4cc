@@ -40,8 +40,27 @@ enum Prim_Type : u8 {
  Prim_Triangle = 3,
 };
 
-inline Prim_Type prim_id_type(u32 id) { return Prim_Type(id >> 24); }
-inline b32 prim_id_is_data(u32 prim_id) { return prim_id_type(prim_id) != 0; }
+inline Prim_Type prim_type_from_id(u32 id) { return Prim_Type(id >> 24); }
+inline b32 prim_id_is_data(u32 id) { return prim_type_from_id(id) != 0; }
+
+struct Prim_XID{
+ u32       id;
+ Prim_Type type;
+ i1        index;
+};
+inline i1
+prim_index_from_id(u32 id){
+ if(prim_id_is_data(id)){ return (id & 0xFFFF); }
+ return 0;
+}
+inline Prim_XID
+prim_xid_from_id(u32 id){
+ Prim_XID result = {};
+ result.id    = id;
+ result.type  = prim_type_from_id(id);
+ result.index = prim_index_from_id(id);
+ return result;
+}
 
 inline u32
 prim_id_from_vertex_index(Vertex_Index i){
@@ -164,7 +183,40 @@ framework_storage b32 debug_frame_time_on;
 framework_storage u32 draw_cycle_counter;
 framework_storage v1  default_fvert_delta_scale;
 
-#include "game_draw.h"
+introspect(info)
+typedef u32 Line_Flags;
+enum{
+ Line_Overlay  = 0x1,
+ Line_Straight = 0x2,
+ Line_No_SymX  = 0x4,
+};
+
+introspect(info)
+typedef u32 argb;
+
+introspect(info)
+struct Line_Params{
+ v4 radii;
+ v1 nslice_per_meter;
+ v1 visibility;
+ v1 alignment_threshold;
+ argb color;
+ Line_Flags flags;
+};
+
+typedef u32 Poly_Flags;
+enum{
+ Poly_Shaded  = 0x1,  //NOTE: Has to be 1, for compatibility with old code.
+ Poly_Line    = 0x2,
+ Poly_Overlay = 0x4,
+};
+
+struct Fill_Params{
+ //NOTE(kv) Might need to make a different set of flags for fill versus polygons.
+ // because the polygon routine is shared by both fills and lines.
+ b32 non_default;
+ Poly_Flags flags;
+};
 
 struct Viewport {
  i1 index;  //NOTE(kv) Redundant data
@@ -214,13 +266,16 @@ struct Bone{
  v3      center;
 };
 
+struct Viewport;
+struct Modeler;
 //NOTE(kv) This is a convenient global store.
 //NOTE(kv) See @init_painter
-struct Painter {
+struct Painter{
  //-misc
  Render_Target *target;
- struct Viewport *viewport;
- v2 mouse_viewp;
+ Viewport *viewport;
+ //v2  mousep;  //NOTE(kv) In view space
+ v3 cursorp;
  u32 selected_obj_id;
  Camera camera;
  mat4  view_from_world;  // see @get_view_from_worldT
@@ -239,15 +294,12 @@ struct Painter {
  b32 ignore_alignment_threshold;
  b32 painting_disabled;
  u32 draw_prim_id;
- struct Modeler *modeler;
+ Modeler *modeler;
  b32 show_grid;
  argb shade_color;
  
- union {
-  b32 is_right;
-  b32 lr_index;
- };
- arrayof<struct Bone*> bone_stack;
+ union{ b32 is_right; b32 lr_index; };
+ arrayof<Bone*> bone_stack;
  
  i32 view_vector_count;
  v3  view_vector_stack[16];
@@ -261,10 +313,12 @@ framework_storage Painter painter;
 
 //-
 inline Bone *current_bone(Painter *p){ return p->bone_stack.last(); }
-inline mat4i& current_bone_xform() { return current_bone(&painter)->xform; }
+inline mat4i& current_world_from_bone(Painter *p) {
+ return current_bone(p)->xform;
+}
 
-inline b32 is_right() { return painter.is_right; }
-inline b32 is_left()  { return painter.is_right == 0; }
+inline b32 is_right(Painter *p=&painter) { return p->is_right; }
+inline b32 is_left(Painter *p=&painter)  { return !p->is_right; }
 //-
 
 #if AD_IS_FRAMEWORK
@@ -291,20 +345,44 @@ struct Pose
 #undef X
 };
 
+//~NOTE Atrocity Alert! Transitional code to convert code to data.
+#define line_params_defp Line_Params params=painter.line_params
 xfunction void
-send_bez_v3v2_func(String name, String p0_name, String p3_name, v3 d0, v2 d3, linum_defparam);
-#define send_bez_v3v2(name, p0, p3, d0, d3) \
-send_bez_v3v2_func(strlit(#name), strlit(#p0), strlit(#p3), d0, d3)
+send_bez_v3v2(String name, String p0_name, v3 d0, v2 d3, String p3_name, line_params_defp, linum_defparam);
+#define bn_v3v2(name, p0,d0,d3,p3, ...) \
+send_bez_v3v2(strlit(#name), strlit(#p0), d0, d3, strlit(#p3), __VA_ARGS__)
 
-xfunction void
-send_bez_parabola_func(String name, String p0, String p3, v3 d, linum_defparam);
-#define send_bez_parabola(name, p0, p3, d) \
-send_bez_parabola_func(strlit(#name), strlit(#p0), strlit(#p3), d)
+#define bs_v3v2(p0,d0,d3,p3, ...) \
+send_bez_v3v2(strlit("l"), strlit(#p0), d0, d3, strlit(#p3), __VA_ARGS__)
 
+#define bb_v3v2(name, p0,d0,d3,p3, ...) \
+bn_v3v2(name, p0,d0,d3,p3, __VA_ARGS__); \
+Bez name = bez_v3v2(p0,d0,d3,p3);
+
+#define ba_v3v2(name, p0,d0,d3,p3, ...) \
+bn_v3v2(name, p0,d0,d3,p3, __VA_ARGS__); \
+name = bez_v3v2(p0,d0,d3,p3);
+//-
 xfunction void
-send_vert_func(String name, v3 pos, i32 linum=__builtin_LINE());
+send_bez_parabola(String name, String p0, v3 d, String p3, line_params_defp, linum_defparam);
+#define bn_parabola(name, p0,d,p3, ...) \
+send_bez_parabola(strlit(#name), strlit(#p0), d, strlit(#p3), __VA_ARGS__)
+
+#define bs_parabola(p0,d,p3, ...) \
+send_bez_parabola(strlit("l"), strlit(#p0), d, strlit(#p3), __VA_ARGS__)
+
+#define bb_parabola(name, p0,d,p3, ...) \
+bn_parabola(name, p0,d,p3, __VA_ARGS__); \
+Bez name = bez_parabola(p0,d,p3);
+
+#define ba_parabola(name, p0,d,p3, ...) \
+bn_parabola(name, p0,d,p3, __VA_ARGS__); \
+name = bez_parabola(p0,d,p3);
+//-
+xfunction void
+send_vert_func(Painter *p, String name, v3 pos, i32 linum=__builtin_LINE());
 //NOTE(kv) You can only send one vert on one line
-#define send_vert(NAME)  send_vert_func(strlit(#NAME), NAME)
+#define send_vert(NAME)  send_vert_func(&painter, strlit(#NAME), NAME)
 
 #define driver_animate_params Modeler *m, Arena *scratch, v1 anime_time
 xfunction Pose driver_animate(driver_animate_params);
@@ -313,7 +391,7 @@ xfunction Pose driver_animate(driver_animate_params);
 #define render_movie_params \
 Arena *arena, Arena *scratch,  Render_Config *render_config, \
 Viewport *viewport, b32 references_full_alpha, \
-App *app, Render_Target *render_target, v2 mouse_viewp, Modeler *modeler, \
+App *app, Render_Target *render_target, Modeler *modeler, \
 Camera *camera, struct Pose *pose, v1 anime_time
 
 xfunction void render_movie(render_movie_params);
@@ -327,34 +405,32 @@ set_bone_transform(mat4i const&transform) {
 }
 
 function v3
-camera_object_position() {
- v3 result = (current_bone_xform().inv *
+camera_object_position(Painter *p) {
+ v3 result = (current_world_from_bone(p).inv *
               camera_world_position(&painter.camera));
  return result;
 }
 
 function void
-push_view_vector(v3 object_center) {
- auto &p = painter;
- v3 camera_obj = camera_object_position();
+push_view_vector(Painter *p, v3 object_center){
+ v3 camera_obj = camera_object_position(p);
  v3 view_vector = noz(camera_obj - object_center);
- p.view_vector_stack[p.view_vector_count++] = view_vector;
- kv_assert(p.view_vector_count < alen(p.view_vector_stack));
+ p->view_vector_stack[p->view_vector_count++] = view_vector;
+ kv_assert(p->view_vector_count < alen(p->view_vector_stack));
 }
 //-
 inline v3
-get_view_vector() {
+get_view_vector(){
  return painter.view_vector_stack[painter.view_vector_count-1];
 }
 inline void
-pop_view_vector() {
- auto &p = painter;
- p.view_vector_count--;
- kv_assert(p.view_vector_count > 0);
+pop_view_vector(Painter *p){
+ p->view_vector_count--;
+ kv_assert(p->view_vector_count > 0);
 }
 #define view_vector_block(center) \
-push_view_vector(center); \
-defer(pop_view_vector());
+push_view_vector(&painter, center); \
+defer(pop_view_vector(&painter));
 
 //NOTE(kv)  Don't you dare return a reference here!
 #if AD_IS_DRIVER
@@ -405,27 +481,25 @@ push_bone_inner(Modeler *m, arrayof<Bone *> *stack, b32 is_right,
 }
 
 function void
-push_bone(Bone_ID id, v3 center={})
+push_bone(Painter *p, Bone_ID id, v3 center={})
 {
- Painter *p = &painter;
- auto m  = painter.modeler;
+ auto m  = p->modeler;
  Bone *bone = get_bone(m, id, p->is_right);
  p->bone_stack.push(bone);
  set_bone_transform(bone->xform);
 }
 inline void
-push_bone(Bone_Type type, v3 center={}) {
- return push_bone(make_bone_id(type), center);
+push_bone(Painter *p, Bone_Type type, v3 center={}) {
+ return push_bone(p, make_bone_id(type), center);
 }
 function void
-pop_bone()
+pop_bone(Painter *p)
 {
- Painter *p = &painter;
  p->bone_stack.pop();
- mat4i &parent = current_bone_xform();
+ mat4i &parent = current_world_from_bone(p);
  set_bone_transform(parent);
 }
-#define bone_block(id)  push_bone(id); defer(pop_bone(););
+#define bone_block(id) push_bone(&painter, id); defer(pop_bone(&painter););
 
 
 

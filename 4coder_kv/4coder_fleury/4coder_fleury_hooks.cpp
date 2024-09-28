@@ -577,7 +577,7 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
   {
    String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
    String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
-   String ext = string_file_extension(file_name);
+   String ext = path_extension(file_name);
    for(i1 i = 0; i < extensions.count; ++i)
    {
     if(string_match(ext, extensions.strings[i]))

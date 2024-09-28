@@ -45,27 +45,32 @@ struct Vertex_Data{
  meta_unserialized i1 linum;
 };
 
-introspect(info)
-enum Bezier_Type{
+#if 0
+/*enum Bezier_Type{
  Bezier_Type_v3v2       = 0,
  Bezier_Type_Parabola   = 1,
  Bezier_Type_Offsets    = 2,
  Bezier_Type_Planar_Vec = 3,
+ Bezier_Type_C2         = 4,
 };
 
-introspect(info) struct Bezier_v3v2        { v3 d0; v2 d3; };
-introspect(info) struct Bezier_Parabola    { v3 d; };
-introspect(info) struct Bezier_Offsets     { v3 d0; v3 d3; };
-introspect(info) struct Bezier_Planar_Vec  { v2 d0; v2 d3; v3 unit_y; };
+struct Bezier_v3v2        { v3 d0; v2 d3; };
+struct Bezier_Parabola    { v3 d; };
+struct Bezier_Offsets     { v3 d0; v3 d3; };
+struct Bezier_Planar_Vec  { v2 d0; v2 d3; v3 unit_y; };
+struct Bezier_C2          { Curve_Index ref; };
 
-introspect(info)
 union Bezier_Union{
  tagged_by(Bezier_Type);
- m_variant(Bezier_Type_v3v2)       Bezier_v3v2       v3v2;
- m_variant(Bezier_Type_Parabola)   Bezier_Parabola   parabola;
- m_variant(Bezier_Type_Offsets)    Bezier_Offsets    offsets;
- m_variant(Bezier_Type_Planar_Vec) Bezier_Planar_Vec planar_vec;
-};
+ m_variant(v3v2)       Bezier_v3v2       v3v2;
+ m_variant(Parabola)   Bezier_Parabola   Parabola;
+ m_variant(Offsets)    Bezier_Offsets    Offsets;
+ m_variant(Planar_Vec) Bezier_Planar_Vec Planar_Vec;
+ m_variant(C2)         Bezier_C2         C2;
+};*/
+#endif
+#include "generated/framework_driver_shared.gen.h"
+#include "generated/bezier_types.gen.h"
 
 introspect(info)
 struct Bezier_Data{
@@ -76,10 +81,10 @@ struct Bezier_Data{
  Vertex_Index p0_index;
  Vertex_Index p3_index;
  tagged_by(type) Bezier_Union data;
- v4 radii;
- 
+ Line_Params params;
  meta_unserialized i1 linum;
 };
+typedef Bezier_Data Curve_Data;
 
 struct Modeler  // see @init_modeler
 {
@@ -99,45 +104,47 @@ struct Modeler  // see @init_modeler
 
 //-NOTE: Vertex
 
-b32 send_bez_v3v2_func(String name, String p0_name, v3 d0, v2 d3, String p3_name);
-
 inline u32 selected_prim_id(Modeler *m) { return m->selected_prim_ro; }
 
 inline Prim_Type
 get_selected_type(Modeler *m) {
- return prim_id_type(selected_prim_id(m));
+ return prim_type_from_id(selected_prim_id(m));
 }
-
-inline i1
-index_from_prim_id_(u32 id){
- if(prim_id_is_data(id)){ return (id & 0xFFFF); }
- return 0;
-}
-
 inline Vertex_Index
-vertex_index_from_prim_id(u32 id){
+vertex_prim_index_from_id(u32 id){
  Vertex_Index result = {};
- if ( prim_id_type(id) == Prim_Vertex ) {
-  result = { index_from_prim_id_(id) };
+ if(prim_type_from_id(id) == Prim_Vertex){
+  result = { prim_index_from_id(id) };
  }
  return result;
 }
 
 inline Curve_Index
-curve_index_from_prim_id(u32 id){
+curve_prim_index_from_id(u32 id){
  Curve_Index result = {};
- if ( prim_id_type(id) == Prim_Curve ) {
-  result = { index_from_prim_id_(id) };
+ if(prim_type_from_id(id) == Prim_Curve){
+  result = { prim_index_from_id(id) };
  }
  return result;
 }
 
-inline Bezier_Data
-get_selected_curve(Modeler *m) {
- u32 id = selected_prim_id(m);
- Curve_Index index = curve_index_from_prim_id(id);
- Bezier_Data result = m->curves[index.v];
- return result;
+inline Vertex_Data *
+get_vertex_from_id(Modeler *m, u32 id){
+ Vertex_Index index = vertex_prim_index_from_id(id);
+ return &m->vertices[index.v];
+}
+inline Curve_Data *
+get_curve_from_id(Modeler *m, u32 id){
+ Curve_Index index = curve_prim_index_from_id(id);
+ return &m->curves[index.v];
+}
+inline Vertex_Data *
+get_selected_vertex(Modeler *m){
+ return get_vertex_from_id(m, selected_prim_id(m));
+}
+inline Bezier_Data *
+get_selected_curve(Modeler *m){
+ return get_curve_from_id(m, selected_prim_id(m));
 }
 
 xfunction b32 is_prim_id_active(Modeler *m, u32 prim_id);

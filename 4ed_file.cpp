@@ -19,8 +19,8 @@ string_from_filename(Editing_File_Name *name)
 
 internal void
 file_edit_positions_set_cursor(File_Edit_Positions *edit_pos, i64 pos){
-    edit_pos->cursor_pos = pos;
-    edit_pos->last_set_type = EditPos_CursorSet;
+ edit_pos->cursor_pos = pos;
+ edit_pos->last_set_type = EditPos_CursorSet;
 }
 
 internal void

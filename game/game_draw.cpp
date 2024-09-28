@@ -78,6 +78,7 @@ poly3_inner(v3 points[3], argb colors[3],
 #else
 {// NOTE: Triangle
  TIMED_BLOCK(draw_cycle_counter);
+ auto &p = painter;
  
  b32 shaded     = (flags & Poly_Shaded);
  b32 is_line    = (flags & Poly_Line);
@@ -87,22 +88,22 @@ poly3_inner(v3 points[3], argb colors[3],
  for_i32(i,0,3){ vertices[i].pos = points[i]; }
  
  // TODO(kv): @Speed The caller should be in charge of passing the color in!
- u32 prim_id = painter.draw_prim_id;
+ u32 prim_id = p.draw_prim_id;
  b32 is_hot      = prim_id == get_hot_prim_id();
- b32 is_selected = prim_id == selected_prim_id(painter.modeler);
- b32 is_active   = is_prim_id_active(painter.modeler, prim_id);
+ b32 is_selected = prim_id == selected_prim_id(p.modeler);
+ b32 is_active   = is_prim_id_active(p.modeler, prim_id);
  // TODO(kv): @cleanup wtf is this code?
- if (is_hot || is_selected || is_active) {
+ if(is_hot || is_selected || is_active){
   argb hl_color;
-  if (is_hot) {
+  if(is_hot){
    hl_color = (colors[0] == hot_color) ? hot_color2 : hot_color;
-  } else if (is_selected) {
+  }else if (is_selected){
    hl_color = argb_red;
-  } else if (is_active) {
+  }else if (is_active){
    //TODO: pick color
    hl_color = hot_color;
   }
-  for_i32(index,0,3) { colors[index] = hl_color; };
+  for_i32(index,0,3){ colors[index] = hl_color; };
  } else if (shaded && !is_line) {
   //NOTE(kv) Shading logic doesn't apply to line, because we can see them just fine.
   // ;poly_shading
@@ -123,12 +124,12 @@ poly3_inner(v3 points[3], argb colors[3],
   Render_Vertex *vertex = vertices+index;
   vertex->uvw          = V3();
   vertex->depth_offset = depth_offset;
-  vertex->prim_id      = painter.draw_prim_id;
+  vertex->prim_id      = p.draw_prim_id;
  }
  
  Vertex_Type type = Vertex_Poly;
- if (is_overlay) { type = Vertex_Overlay; }
- draw__push_vertices(painter.target, vertices, alen(vertices), type);
+ if(is_overlay){ type = Vertex_Overlay; }
+ draw__push_vertices(p.target, vertices, alen(vertices), type);
 }
 #endif
 function void
@@ -200,9 +201,8 @@ inline Bezier bez_raw(v3 P[4]){
  return Bezier{ P[0],P[1],P[2],P[3] };
 }
 
-// @deprecated Vanilla bezier curves controlled by point (NOT length invariant)
 inline Bezier
-bez_old(v3 p0, v3 d0, v3 d3, v3 p3){
+bez_offset(v3 p0, v3 d0, v3 d3, v3 p3){
  return bez_raw(macro_control_points(p0,d0,d3,p3) );
 }
 
@@ -317,7 +317,6 @@ bezd_old(v3 p0, v3 d0, v2 d3, v3 p3)
  v3 p2 = (p0 + 2.f*p3)/3.f + (d3.x*u + d3.y*v);
  return bez_raw(p0, p1, p2, p3);
 }
-
 // NOTE: No length adjustment, non-planar
 function Bezier 
 bez_c2(Bez const&ref, v3 d3, v3 p3)
@@ -349,15 +348,15 @@ camera_world_position(Camera *camera) {
 }
 
 function v1
-get_curve_view_alignment(const v3 P[4]) {
- Painter *p = &painter;
+get_curve_view_alignment(Painter *p, const v3 P[4]){
  v3 A = P[0];
  v3 B = P[1];
  v3 C = P[2];
  v3 D = P[3];
- v3 normal = noz( cross(B-A, D-A) );  // NOTE: the normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
+ v3 normal = noz(cross(B-A, D-A));  // NOTE: the normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
  v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
- v3 camera_obj = (current_bone_xform().inv * camera_world_position(&p->camera));  // TODO @speed
+ mat4 &bone_from_world = current_world_from_bone(p).inv;
+ v3 camera_obj = bone_from_world * camera_world_position(&p->camera);
  v3 view_vector = noz(camera_obj - centroid);
  v1 visibility = absolute( dot(normal,view_vector) );
  return visibility;
@@ -427,7 +426,7 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
    // and spaced out more when we look at them in 3D -> you'd underestimate the density in 2D
    Bezier P_transformed;
    {
-    const mat4 &transform = current_bone_xform();
+    const mat4 &transform = current_world_from_bone(&painter);
     for_i32(index,0,4)
     {
      P_transformed[index] = mat4vert_div(transform, P[index]);
@@ -534,10 +533,10 @@ draw(const v3 P0[4], Line_Params params, linum_defparam)
  if (ok && !p->ignore_alignment_threshold &&
      (params.alignment_threshold > 0.f))
  {
-  ok = get_curve_view_alignment(P0) > params.alignment_threshold;
+  ok = get_curve_view_alignment(p, P0) > params.alignment_threshold;
  }
  
- if (ok) {
+ if(ok){
   b32 symx = p->symx && !(params.flags & Line_No_SymX);
   
   const i32 npoints = 4;
@@ -549,7 +548,7 @@ draw(const v3 P0[4], Line_Params params, linum_defparam)
   if (symx) { for_i32 (ipoint,0,npoints) { reflects[ipoint] = negateX(points[ipoint]); } }
   
   // NOTE: Processing parameters
-  if (p->ignore_radii || (params.radii == v4{})) {
+  if(p->ignore_radii || params.radii == v4{}){
    params.radii = p->line_params.radii;
   }
   if (params.nslice_per_meter <= 0.f) { params.nslice_per_meter = DEFAULT_NSLICE_PER_METER; }
@@ -601,8 +600,8 @@ draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam) {
 }
 
 inline Line_Params
-hl_line_params(argb color=0) {
- if (color == 0) { color = srgb_to_linear(0xffDBA50F); }
+hl_line_params(argb color=0){
+ if(color == 0){ color = srgb_to_linear(0XFFDBA50F); }
  Line_Params params = painter.line_params;
  params.flags |= Line_Overlay|Line_No_SymX;
  params.color = color;
@@ -992,7 +991,7 @@ draw_disk(v3 center, v1 radius,
           argb color, v1 depth_offset, Poly_Flags flags,
           linum_defparam)
 {
- if (is_poly_enabled()){
+ if(is_poly_enabled()){
   painter.draw_prim_id = linum;
   draw_disk_inner(center, radius, color, depth_offset, flags);
  }
@@ -1009,34 +1008,37 @@ indicate_vertex(char *vertex_name, v3 pos,
 #else
 {
  auto *p = &painter;
- if (is_left()){
+ if(is_left()){
   p->draw_prim_id = prim_id;
   const v1 radius = 3*millimeter;
   b32 mouse_near;
   {
-   mat4 view_form_bone = p->view_from_world * current_bone_xform();
-   v3 vertex_viewp = mat4vert_div(view_form_bone, pos);
-   v2 delta = p->mouse_viewp - vertex_viewp.xy;
-   mouse_near = (absolute(delta.x) < 1*centimeter && 
-                 absolute(delta.y) < 1*centimeter);
+#if 0
+   mat4 view_from_bone = p->view_from_world * current_world_from_bone(p);
+   v3 vertex_viewp = mat4vert_div(view_from_bone, pos);
+   v1 dist = lensq(p->mousep - vertex_viewp.xy);
+   mouse_near = dist < squared(1*centimeter);
+#endif
+   v1 dist = lensq(pos-p->cursorp);
+   mouse_near = dist < squared(3*centimeter);
   }
   
   b32 mouse_on_top = (prim_id == get_hot_prim_id());
   
   b32 should_draw = ((p->viz_level >= force_draw_level) || mouse_near);
-  if (should_draw) {//NOTE: Draw
+  if(should_draw){//NOTE: Draw
    symx_off;
    v1 depth_offset = p->line_depth_offset - 1*centimeter;
    u32 flags = 0;
    // NOTE: If lines are overlayed, so should indicators (I guess?)
    b32 line_overlay_on = (p->line_params.flags & Line_Overlay);
-   if (line_overlay_on || force_overlay) {
+   if(line_overlay_on || force_overlay){
     flags = Poly_Overlay;
    }
    draw_disk(pos, radius, color, depth_offset, flags, prim_id);
   }
   
-  if ( mouse_on_top ) {// NOTE: debug
+  if(mouse_on_top) {// NOTE: debug
    DEBUG_NAME(vertex_name, prim_id);
   }
  }

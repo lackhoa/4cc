@@ -104,8 +104,8 @@ ep_get_fail_location(Ed_Parser *p)
 #if ED_PARSER_BUFFER
 function Ed_Parser
 make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
-                    Scan_Direction scan_direction=Scan_Forward,
-                    Arena *string_arena=0)
+                    Arena *string_arena=0,
+                    Scan_Direction scan_direction=Scan_Forward)
 {
  Ed_Parser result = {
   .ok_               = true,
@@ -124,14 +124,12 @@ make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
 #endif
 
 function Ed_Parser
-make_ep_from_string(String string, Token_Iterator const&it,
-                    Arena *string_arena=0)
+make_ep_from_string(String string, Token_Iterator const&it)
 {
  Ed_Parser result = {
   .ok_               = true,
   .scan_direction    = Scan_Forward,
   .it                = it,
-  .string_arena      = string_arena,
   .original_token_it = it,
   .Token_Gen_Type    = TG_String,
   .Token_Gen_String  = {
@@ -353,24 +351,21 @@ ep_test_id(Ed_Parser *p, String string)
 }
 //
 force_inline b32
-ep_test_id(Ed_Parser *p, char *string) {
- return ep_test_id(p, SCu8(string));
+ep_test_id(Ed_Parser *p, char *string){
+ String s = SCu8(string);
+ return ep_test_id(p, s);
 }
-
 function b32
-ep_maybe_id(Ed_Parser *p, String string)
-{
+ep_maybe_id(Ed_Parser *p, String string){
  b32 result = ep_test_id(p, string);
  if (result) { ep_eat_token(p); }
  return result;
 }
-//
 force_inline b32
-ep_maybe_id(Ed_Parser *p, char *string)
-{
- return ep_maybe_id(p, SCu8(string));
+ep_maybe_id(Ed_Parser *p, char *string){
+ String s = SCu8(string);
+ return ep_maybe_id(p, s);
 }
-
 
 function b32
 ep_test_preprocessor(Ed_Parser *p, String string)
@@ -401,8 +396,7 @@ ep_maybe_preprocessor(Ed_Parser *p, String string)
 }
 
 force_inline void
-ep_eat_preprocessor(Ed_Parser *p, String string)
-{
+ep_eat_preprocessor(Ed_Parser *p, String string){
  p->set_ok(ep_maybe_preprocessor(p, string));
 }
 
@@ -412,15 +406,12 @@ ep_id(Ed_Parser *p, String test_id={}) {
  // NOTE(kv): keywords are also identifier-like, but idk about this test
  auto kind = ep_get_kind(p);
  p->set_ok(kind == TokenBaseKind_Identifier ||
-          kind == TokenBaseKind_Keyword);
+           kind == TokenBaseKind_Keyword);
  if (p->ok_)
  {
-  if (test_id == String{})
-  {
+  if (test_id == String{}){
    result = ep_print_token(p, p->string_arena);
-  }
-  else
-  {// NOTE: matching against something
+  }else{// NOTE: matching against something
    Scratch_Block scratch;
    String string = ep_print_token(p, scratch);
    p->set_ok(string == test_id);
@@ -431,9 +422,9 @@ ep_id(Ed_Parser *p, String test_id={}) {
 }
 //
 force_inline String
-ep_id(Ed_Parser *p, char *test_id)
-{
- return ep_id(p, SCu8(test_id));
+ep_id(Ed_Parser *p, char *test_id){
+ String t = SCu8(test_id);
+ return ep_id(p, t);
 }
 
 // NOTE Returns index + 1 (todo(kv): wtf man?)
@@ -511,7 +502,8 @@ ep_eat_until_char(Ed_Parser *p, String chars, i1 max_recursion=20)
 }
 function i1
 ep_eat_until_char(Ed_Parser *p, char *s) {
- return ep_eat_until_char(p, SCu8(s));
+ String ss = SCu8(s);
+ return ep_eat_until_char(p, ss);
 }
 function i1
 ep_eat_until_char(Ed_Parser *p, char &c) {

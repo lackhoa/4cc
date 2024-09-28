@@ -340,25 +340,27 @@ require_key_identifier(Reader *reader, String string, i64 *opt_pos_out){
         String error_string = push_stringfz(reader->error_arena, "expected to find '%.*s'",
                                                        string.size, string.str);
         error(reader, token.pos, error_string.str);
-        end_temp(temp);
-    }
-    
-    return(success);
+  end_temp(temp);
+ }
+ 
+ return(success);
 }
 
 static b32
 require_key_identifier(Reader *reader, char *str, i64 *opt_pos_out){
-    return(require_key_identifier(reader, SCu8(str), opt_pos_out));
+ String s = SCu8(str);
+ return(require_key_identifier(reader, s, opt_pos_out));
 }
 
 static b32
 require_key_identifier(Reader *reader, String string){
-    return(require_key_identifier(reader, string, 0));
+ return(require_key_identifier(reader, string, 0));
 }
 
 static b32
 require_key_identifier(Reader *reader, char *str){
-    return(require_key_identifier(reader, SCu8(str), 0));
+ String s = SCu8(str);
+ return(require_key_identifier(reader, s, 0));
 }
 
 static b32

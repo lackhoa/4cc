@@ -79,17 +79,16 @@ test_id(STB_Parser *p, String id)
 }
 
 function b32
-maybe_id(STB_Parser *p, String id)
-{
+maybe_id(STB_Parser *p, String id){
  b32 result = test_id(p, id);
  if (result) { eat_token(p); }
  return result;
 }
 //
 force_inline b32
-maybe_id(STB_Parser *p, char *id)
-{ 
- return maybe_id(p, SCu8(id));
+maybe_id(STB_Parser *p, char *id){ 
+ String id_ = SCu8(id);
+ return maybe_id(p, id_);
 }
 
 force_inline String
@@ -111,7 +110,8 @@ eat_id(STB_Parser *p, String id={})
 //
 force_inline void
 eat_id(STB_Parser *p, char *id) {
- eat_id(p, SCu8(id));
+ String id_ = SCu8(id);
+ eat_id(p, id_);
 }
 //
 force_inline String eat_String(STB_Parser *p) { return eat_id(p); }
@@ -136,21 +136,16 @@ maybe_char(STB_Parser *p, char c){
 }
 
 function i1
-eat_i1(STB_Parser *p) {
- i1 result = 0;
- 
+eat_i1(STB_Parser *p){
  i1 sign = 1;
  if(maybe_char(p, '-')){
   sign = -1;
  }else{
   maybe_char(p, '+');
  }
- 
- if(p->stb.token == CLEX_intlit){
-  result = sign*p->stb.int_value;
-  eat_token(p);
- }
- 
+ p->set_ok(p->stb.token == CLEX_intlit);
+ i1 result = sign*p->stb.int_value;
+ eat_token(p);
  return result;
 }
 // NOTE: Fancy "auto" usage
@@ -228,10 +223,17 @@ eat_v4(STB_Parser *p){
  return result;
 }
 
+inline u32
+eat_u32(STB_Parser *p){
+ p->set_ok(p->stb.token == CLEX_intlit);
+ u32 result = p->stb.int_value;
+ eat_token(p);
+ return result;
+}
+
 function void
-eat_data_basic_type(STB_Parser *p, Basic_Type type, void *void_pointer)
+eat_data_basic_type(STB_Parser *p, Basic_Type type, void *pointer)
 {
- u8 *pointer = (u8 *)void_pointer;
  switch(type)
  {
 #define X(T)   case Basic_Type_##T: \

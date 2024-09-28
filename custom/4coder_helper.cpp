@@ -2249,13 +2249,13 @@ get_ranges_of_duplicate_keys(Arena *arena, i32 *keys, i32 stride, i32 count)
   }
  }
  pop_array(arena, Range_i32, count - result.count);
-    return(result);
+ return(result);
 }
 
 function void
 no_mark_snap_to_cursor(App *app, Managed_Scope view_scope){
-    b32 *snap_to_cursor = scope_attachment(app, view_scope, view_snap_mark_to_cursor, b32);
-    *snap_to_cursor = false;
+ b32 *snap_to_cursor = scope_attachment(app, view_scope, view_snap_mark_to_cursor, b32);
+ *snap_to_cursor = false;
 }
 
 function void

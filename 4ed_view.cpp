@@ -127,17 +127,17 @@ live_set_free_view(Lifetime_Allocator *lifetime_allocator, Live_Views *live_set,
 
 ////////////////////////////////
 
-internal File_Edit_Positions
+function File_Edit_Positions
 view_get_edit_pos(View *view){
-    return(view->edit_pos_);
+ return(view->edit_pos_);
 }
 
-internal void
+function void
 view_set_edit_pos(View *view, File_Edit_Positions edit_pos){
-    edit_pos.scroll.position.line_number = clamp_min(1, edit_pos.scroll.position.line_number);
-    edit_pos.scroll.target.line_number = clamp_min(1, edit_pos.scroll.target.line_number);
-    view->edit_pos_ = edit_pos;
-    view->file->state.edit_pos_most_recent = edit_pos;
+ macro_clamp_min(edit_pos.scroll.position.line_number, 1);
+ macro_clamp_min(edit_pos.scroll.target.line_number,   1);
+ view->edit_pos_ = edit_pos;
+ view->file->state.edit_pos_most_recent = edit_pos;
 }
 
 ////////////////////////////////
@@ -323,62 +323,60 @@ view_relative_character_from_pos(Thread_Context *tctx, Models *models, View *vie
 
 internal Buffer_Cursor
 view_compute_cursor(View *view, Buffer_Seek seek){
-    Editing_File *file = view->file;
-    return(file_compute_cursor(file, seek));
+ Editing_File *file = view->file;
+ return(file_compute_cursor(file, seek));
 }
 
 ////////////////////////////////
 
 internal b32
 view_move_view_to_cursor(Thread_Context *tctx, Models *models, View *view, Buffer_Scroll *scroll){
-    Editing_File *file = view->file;
-    Face *face = file_get_face(models, file);
-    Rect_f32 rect = view_get_buffer_rect(tctx, models, view);
-    Vec2_f32 view_dim = get_dim(rect);
-    
-    Layout_Function *layout_func = file_get_layout_func(file);
-    
-    File_Edit_Positions edit_pos = view_get_edit_pos(view);
-    Vec2_f32 p = file_relative_xy_of_pos(tctx, models, file,
-                                         layout_func, view_dim.x, face,
-                                         scroll->target.line_number, edit_pos.cursor_pos);
-    p -= scroll->target.pixel_shift;
-    
-    f32 line_height = face->metrics.line_height;
-    f32 normal_advance = face->metrics.normal_advance;
-    
-    Vec2_f32 margin = view->cursor_margin;
-    Vec2_f32 push_in = view->cursor_push_in_multiplier;
-    
-    Vec2_f32 lim_dim = view_dim*0.45f;
-    margin.x = clamp_max(margin.x, lim_dim.x);
-    margin.y = clamp_max(margin.y, lim_dim.y);
-    
-    Vec2_f32 push_in_lim_dim = hadamard(lim_dim, V2(1.f/line_height, 1.f/normal_advance)) - margin;
-	push_in_lim_dim.x = clamp_min(0.f, push_in_lim_dim.x);
-	push_in_lim_dim.y = clamp_min(0.f, push_in_lim_dim.y);
-    push_in.x = clamp_max(push_in.x, push_in_lim_dim.x);
-    push_in.y = clamp_max(push_in.y, push_in_lim_dim.y);
-    
-    Vec2_f32 target_p_relative = {};
-    if (p.y < margin.y){
-        target_p_relative.y = p.y - margin.y - line_height*push_in.y;
-    }
-    else if (p.y > view_dim.y - margin.y){
-        target_p_relative.y = (p.y + margin.y + line_height*push_in.y) - view_dim.y;
-    }
-    if (p.x < margin.x){
-        target_p_relative.x = p.x - margin.x - normal_advance*push_in.x;
-    }
-    else if (p.x > view_dim.x - margin.x){
-        target_p_relative.x = (p.x + margin.x + normal_advance*push_in.x) - view_dim.x;
-    }
-    scroll->target.pixel_shift += target_p_relative;
-    scroll->target = view_normalize_buffer_point(tctx, models, view, scroll->target);
-    scroll->target.pixel_shift.x = roundv1(scroll->target.pixel_shift.x);
-    scroll->target.pixel_shift.y = roundv1(scroll->target.pixel_shift.y);
-    
-    return(target_p_relative != V2(0.f, 0.f));
+ Editing_File *file = view->file;
+ Face *face = file_get_face(models, file);
+ Rect_f32 rect = view_get_buffer_rect(tctx, models, view);
+ v2 view_dim = get_dim(rect);
+ 
+ Layout_Function *layout_func = file_get_layout_func(file);
+ 
+ File_Edit_Positions edit_pos = view_get_edit_pos(view);
+ v2 p = file_relative_xy_of_pos(tctx, models, file,
+                                layout_func, view_dim.x, face,
+                                scroll->target.line_number, edit_pos.cursor_pos);
+ p -= scroll->target.pixel_shift;
+ 
+ f32 line_height = face->metrics.line_height;
+ f32 normal_advance = face->metrics.normal_advance;
+ 
+ v2 margin = view->cursor_margin;
+ v2 push_in = view->cursor_push_in_multiplier;
+ 
+ v2 lim_dim = view_dim*0.45f;
+ macro_clamp_max(margin.x, lim_dim.x);
+ macro_clamp_max(margin.y, lim_dim.y);
+ 
+ v2 push_in_lim_dim = hadamard(lim_dim, V2(1.f/line_height, 1.f/normal_advance)) - margin;
+	macro_clamp_min(push_in_lim_dim.x, 0);
+	macro_clamp_min(push_in_lim_dim.y, 0);
+ macro_clamp_max(push_in.x, push_in_lim_dim.x);
+ macro_clamp_max(push_in.y, push_in_lim_dim.y);
+ 
+ v2 target_p_relative = {};
+ if(p.y < margin.y){
+  target_p_relative.y = p.y - margin.y - line_height*push_in.y;
+ }else if(p.y > view_dim.y - margin.y){
+  target_p_relative.y = (p.y + margin.y + line_height*push_in.y) - view_dim.y;
+ }
+ if(p.x < margin.x){
+  target_p_relative.x = p.x - margin.x - normal_advance*push_in.x;
+ }else if(p.x > view_dim.x - margin.x){
+  target_p_relative.x = (p.x + margin.x + normal_advance*push_in.x) - view_dim.x;
+ }
+ scroll->target.pixel_shift += target_p_relative;
+ scroll->target = view_normalize_buffer_point(tctx, models, view, scroll->target);
+ scroll->target.pixel_shift.x = roundv1(scroll->target.pixel_shift.x);
+ scroll->target.pixel_shift.y = roundv1(scroll->target.pixel_shift.y);
+ 
+ return(target_p_relative != V2(0.f, 0.f));
 }
 
 internal b32
@@ -413,23 +411,23 @@ view_move_cursor_to_view(Thread_Context *tctx, Models *models, View *view, Buffe
         p += scroll.target.pixel_shift;
         *pos_in_out = file_pos_at_relative_xy(tctx, models, file,
                                               layout_func, view_dim.x, face,
-                                              scroll.target.line_number, p);
-        result = true;
-    }
-    
-    return(result);
+                                        scroll.target.line_number, p);
+  result = true;
+ }
+ 
+ return(result);
 }
 
 internal void
 view_set_cursor(Thread_Context *tctx, Models *models, View *view, i64 pos){
-    File_Edit_Positions edit_pos = view_get_edit_pos(view);
-    file_edit_positions_set_cursor(&edit_pos, pos);
-    view_set_edit_pos(view, edit_pos);
-    Buffer_Scroll scroll = edit_pos.scroll;
-    if (view_move_view_to_cursor(tctx, models, view, &scroll)){
-        edit_pos.scroll = scroll;
-        view_set_edit_pos(view, edit_pos);
-    }
+ File_Edit_Positions edit_pos = view_get_edit_pos(view);
+ file_edit_positions_set_cursor(&edit_pos, pos);
+ view_set_edit_pos(view, edit_pos);
+ Buffer_Scroll scroll = edit_pos.scroll;
+ if(view_move_view_to_cursor(tctx, models, view, &scroll)){
+  edit_pos.scroll = scroll;
+  view_set_edit_pos(view, edit_pos);
+ }
 }
 
 internal void
@@ -522,10 +520,10 @@ view_current_context_node(View *view){
 
 function View_Context
 view_current_context(View *view){
-    View_Context ctx = {};
-    View_Context_Node *node = view->ctx;
-    if (node != 0){
-        block_copy_struct(&ctx, &node->ctx);
+ View_Context ctx = {};
+ View_Context_Node *node = view->ctx;
+ if (node != 0){
+  block_copy_struct(&ctx, &node->ctx);
  }
  return(ctx);
 }
