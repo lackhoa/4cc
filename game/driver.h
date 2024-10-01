@@ -28,10 +28,12 @@ typedef Bezier Bez;
 
 //~ id system
 // NOTE(kv): Primitives are either drawn by code or data.
-introspect(info) struct Vertex_Index { i1 v; };
+#if 0
+struct Vertex_Index{ i1 v; };
 inline b32 operator ==(Vertex_Index a, Vertex_Index b){ return a.v == b.v; }
-introspect(info) struct Curve_Index  { i1 v; };
+struct Curve_Index{ i1 v; };
 inline b32 operator ==(Curve_Index a, Curve_Index b){ return a.v == b.v; }
+#endif
 
 enum Prim_Type : u8 {
  Prim_Null     = 0,
@@ -183,27 +185,6 @@ framework_storage b32 debug_frame_time_on;
 framework_storage u32 draw_cycle_counter;
 framework_storage v1  default_fvert_delta_scale;
 
-introspect(info)
-typedef u32 Line_Flags;
-enum{
- Line_Overlay  = 0x1,
- Line_Straight = 0x2,
- Line_No_SymX  = 0x4,
-};
-
-introspect(info)
-typedef u32 argb;
-
-introspect(info)
-struct Line_Params{
- v4 radii;
- v1 nslice_per_meter;
- v1 visibility;
- v1 alignment_threshold;
- argb color;
- Line_Flags flags;
-};
-
 typedef u32 Poly_Flags;
 enum{
  Poly_Shaded  = 0x1,  //NOTE: Has to be 1, for compatibility with old code.
@@ -230,27 +211,6 @@ struct Viewport {
 };
 inline b32 is_main_viewport(Viewport *viewport){ return viewport->index==0; }
 
-introspect(info)
-enum Bone_Type{
- Bone_None,
- //-
- Bone_Head          =1,
- Bone_Arm           =2,
- Bone_Forearm       =3,
- Bone_Bottom_Phalanx=4,
- Bone_Mid_Phalanx   =5,
- Bone_Top_Phalanx   =6,
- Bone_Torso         =7,
- Bone_References    =8,
- Bone_Hand          =9,
- Bone_Thumb         =10,
- Bone_Pelvis        =11,
-};
-introspect(info)
-struct Bone_ID{
- Bone_Type type;
- i1        id;
-};
 inline b32 operator==(Bone_ID &a, Bone_ID &b){
  return (a.type==b.type) && (a.id==b.id);
 }
@@ -500,8 +460,6 @@ pop_bone(Painter *p)
  set_bone_transform(parent);
 }
 #define bone_block(id) push_bone(&painter, id); defer(pop_bone(&painter););
-
-
 
 //-
 #undef framework_storage

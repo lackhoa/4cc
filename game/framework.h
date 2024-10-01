@@ -16,19 +16,6 @@ struct Slow_Line_Map {
  struct Slow_Line_Map_Entry *map;
 };
 
-introspect(info)
-struct Keyboard_Cursor{
- v3 pos;
- v1 vel;
-};
-
-introspect(embed,info)
-struct Serialized_State{
- Keyboard_Cursor kb_cursor;
-};
-
-#include "generated/framework.gen.h"
-
 //NOTE: The state is saved between reloads.
 struct Game_State{
  Base_Allocator malloc;

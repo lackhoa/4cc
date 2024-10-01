@@ -1,0 +1,40 @@
+struct Vertex_Data{
+ String name;
+ Bone_ID bone_id;
+ i1 symx;
+ v3 pos;
+ i1 basic_index;
+ meta_unserialized i1 linum;
+};
+
+unique Bezier_Type;
+/*{
+ v3v2       0 { v3 d0; v2 d3; }
+ Parabola   1 { v3 d; }
+ Offsets    2 { v3 d0; v3 d3; }
+ Planar_Vec 3 { v2 d0; v2 d3; v3 unit_y; }
+ C2         4 { Curve_Index ref; v3 d3; }
+};*/
+
+struct Bezier_Data{
+ String name;
+ Bone_ID bone_id;
+ i1 symx;
+ Bezier_Type type;
+ Vertex_Index p0_index;
+ Vertex_Index p3_index;
+ tagged_by(type) Bezier_Union data;
+ Line_Params params;
+ meta_unserialized i1 linum;
+};
+
+struct Keyboard_Cursor{
+ v3 pos;
+ v1 vel;
+};
+[embed]
+struct Serialized_State{
+ Keyboard_Cursor kb_cursor;
+};
+
+//-

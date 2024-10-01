@@ -310,8 +310,7 @@ api_parse_source_add_to_list(Arena *arena, String source_name, String source, AP
   {
    const i1 api_cap = 8;
    String buffer[api_cap];
-   arrayof<String> api_names;
-   init_static(api_names, buffer, api_cap);
+   arrayof<String> api_names = static_array(buffer, api_cap);
    if (api_parse__match(&token_it, TokenCppKind_ParenOp))
    {
     String name;

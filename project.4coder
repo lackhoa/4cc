@@ -13,10 +13,11 @@ patterns = {
  "*.txt",
  "*.glsl",
  "*.py",
+ "*.kh",  // NOTE(kv) My made-up C++ preprocessor files
+ "*.kpp",
 };
 blacklist_patterns = {
  ".*",
- //"command_metadata.h",
  "*.skm",
  "kv_trash*",
 };

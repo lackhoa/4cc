@@ -1,7 +1,7 @@
 #pragma once
 
 //-NOTE: Editing
-enum Modeler_Edit_Type {
+enum Modeler_Edit_Type{
  ME_None,
  ME_Edit_Group,
  ME_Vert_Move,
@@ -11,79 +11,25 @@ enum Modeler_Edit_Type {
 struct Modeler_Edit;
 typedef arrayof<Modeler_Edit> Edit_Group;
 
-struct Vert_Move {
+struct Vert_Move{
  arrayof<Vertex_Index> verts;
  v3 delta;
 };
-
-struct Modeler_Edit {
+struct Modeler_Edit{
  Modeler_Edit_Type type;
  union {
   Vert_Move  Vert_Move;
   Edit_Group Edit_Group;
  };
 };
-
-struct Modeler_History {
+struct Modeler_History{
  Arena arena;
  b32 inited;
  Base_Allocator allocator;
  arrayof<Modeler_Edit> edit_stack;
  i1 redo_index;
 };
-
 //-
-
-introspect(info)
-struct Vertex_Data{
- String name;
- Bone_ID bone_id;
- i1 symx;
- v3 pos;
- i1 basis_index;
- 
- meta_unserialized i1 linum;
-};
-
-#if 0
-/*enum Bezier_Type{
- Bezier_Type_v3v2       = 0,
- Bezier_Type_Parabola   = 1,
- Bezier_Type_Offsets    = 2,
- Bezier_Type_Planar_Vec = 3,
- Bezier_Type_C2         = 4,
-};
-
-struct Bezier_v3v2        { v3 d0; v2 d3; };
-struct Bezier_Parabola    { v3 d; };
-struct Bezier_Offsets     { v3 d0; v3 d3; };
-struct Bezier_Planar_Vec  { v2 d0; v2 d3; v3 unit_y; };
-struct Bezier_C2          { Curve_Index ref; };
-
-union Bezier_Union{
- tagged_by(Bezier_Type);
- m_variant(v3v2)       Bezier_v3v2       v3v2;
- m_variant(Parabola)   Bezier_Parabola   Parabola;
- m_variant(Offsets)    Bezier_Offsets    Offsets;
- m_variant(Planar_Vec) Bezier_Planar_Vec Planar_Vec;
- m_variant(C2)         Bezier_C2         C2;
-};*/
-#endif
-#include "generated/framework_driver_shared.gen.h"
-#include "generated/bezier_types.gen.h"
-
-introspect(info)
-struct Bezier_Data{
- String name;
- Bone_ID bone_id;
- i1 symx;
- Bezier_Type type;
- Vertex_Index p0_index;
- Vertex_Index p3_index;
- tagged_by(type) Bezier_Union data;
- Line_Params params;
- meta_unserialized i1 linum;
-};
 typedef Bezier_Data Curve_Data;
 
 struct Modeler  // see @init_modeler

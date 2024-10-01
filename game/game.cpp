@@ -3,7 +3,9 @@
 #define AD_IS_GAME 1
 #define ED_API_USER 1
 #define FUI_FAST_PATH 1
-#include "framework_driver_shared.h"
+#include "kv.h"
+#include "generated/driver.gen.h"
+#include "driver.h"
 #include "game_fui.h"
 #include "game_anime.cpp"
 #include "game_utils.cpp"

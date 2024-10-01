@@ -2168,14 +2168,12 @@ struct Memory_Cursor
  u64 used_;
  u64 cap;
 };
-struct Arena
-{
+struct Arena{
  Base_Allocator *base_allocator;
  Memory_Cursor  *cursor;
  u64 chunk_size;
 };
-struct Temp_Memory
-{
+struct Temp_Memory{
  Arena *arena;
  Memory_Cursor *cursor;
  u64 used;
@@ -4430,33 +4428,58 @@ struct arrayof{
   return result;
  }
 };
-
 template<class T>
 inline void
-init_static(arrayof<T> &array, Arena *arena, i32 cap, b32 zero=false) {
+init_static(arrayof<T> &array, Arena *arena, i32 cap, b32 zero=false){
  array = {
   .cap        = cap,
   .fixed_size = true,
   .items      = push_array(arena, T, cap, zero),
  };
 }
+template<class T>
+inline arrayof<T>
+static_array(Arena *arena, i32 cap, b32 zero=false){
+ arrayof<T> array; init_static(array, arena, cap, zero); return array;
+}
 
 template<class T>
 inline void
-init_static(arrayof<T> &array, T *backing_buffer, i32 cap)
-{
+init_static(arrayof<T> &array, T *backing_buffer, i32 cap){
  array = {
   .cap        = cap,
   .fixed_size = true,
   .items      = backing_buffer,
  };
 }
+template<class T>
+inline arrayof<T>
+static_array(T *backing_buffer, i32 cap){
+ arrayof<T> array; init_static(array, backing_buffer, cap); return array;
+}
 
 template<class T>
 inline void
-init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0) {
+init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0){
  array = { .allocator = allocator };
  array.set_cap_min(initial_size);
+}
+template<class T>
+inline arrayof<T>
+dynamic_array(Base_Allocator *allocator, i1 initial_size=0){
+ arrayof<T> array; init_dynamic(array, allocator, initial_size); return array;
+}
+
+template<class T>
+inline void
+init_dynamic(arrayof<T> &array, Arena *arena, i1 initial_size=0){
+ auto alloc = push_arena_base_allocator(arena);
+ init_dynamic<T>(array, alloc, initial_size);
+}
+template<class T>
+inline arrayof<T>
+dynamic_array(Arena *arena, i1 initial_size=0){
+ arrayof<T> array; init_dynamic(array, arena, initial_size); return array;
 }
 
 #define X_Basic_Types(X)  \
@@ -4663,13 +4686,18 @@ Scratch_Block::restore(void){
 //-
 
 function Base_Allocator
-make_arena_base_allocator(Arena *arena)
-{// NOTE: We put the result on the arena and return the pointer.
+make_arena_base_allocator(Arena *arena){
  Base_Allocator allocator = {
   .type  = Allocator_Arena,
   .arena = arena,
  };
  return allocator;
+}
+function Base_Allocator *
+push_arena_base_allocator(Arena *arena){
+ auto *alloc = push_struct(arena, Base_Allocator);
+ *alloc = make_arena_base_allocator(arena);
+ return alloc;
 }
 
 
@@ -5035,8 +5063,7 @@ printer_delete(Printer &p)
 
 //-NOTE Base print function overloads
 function void
-printer_printf(Printer &p, char *format, ...)
-{
+printer_printf(Printer &p, char *format, ...){
  va_list args;
  va_start(args, format);
  switch(p.type){
@@ -5071,8 +5098,7 @@ inline void print(Printer &p, u64 lu)  { printer_printf(p, "%lu", lu); }
 // NOTE(kv): This is an absolutely ridiculous hack
 template <class T>
 inline Printer &
-operator<<(Printer &p, T object)
-{
+operator<<(Printer &p, T object){
  print(p, object);
  return p;
 }
@@ -5080,16 +5106,14 @@ operator<<(Printer &p, T object)
 //-
 
 inline void
-begin_struct(Printer &p, char *name)
-{
+begin_struct(Printer &p, char *name){
  print(p, "(");
  print(p, name);
  print(p, "{ ");
 }
 //
 inline void
-end_struct(Printer &p)
-{
+end_struct(Printer &p){
  print(p, "})");
 }
 
@@ -5097,8 +5121,7 @@ function void
 print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped);
 
 function void
-print_fieldf(Printer &p, Basic_Type type, char *name, void *value)
-{
+print_fieldf(Printer &p, Basic_Type type, char *name, void *value){
  print(p, ".");
  print(p, name);
  print(p, "=");

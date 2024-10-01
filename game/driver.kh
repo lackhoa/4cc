@@ -1,0 +1,43 @@
+//-
+typedef u32 argb;
+i1_wrapper(Vertex_Index);
+i1_wrapper(Curve_Index);
+
+enum Bone_Type
+{
+ Bone_None = 0,
+ Bone_Head = 1,
+ Bone_Arm = 2,
+ Bone_Forearm = 3,
+ Bone_Bottom_Phalanx = 4,
+ Bone_Mid_Phalanx = 5,
+ Bone_Top_Phalanx = 6,
+ Bone_Torso = 7,
+ Bone_References = 8,
+ Bone_Hand = 9,
+ Bone_Thumb = 10,
+ Bone_Pelvis = 11,
+};
+
+
+struct Bone_ID{
+ Bone_Type type;
+ i1        id;
+};
+
+typedef u32 Line_Flags;
+enum{
+ Line_Overlay  = 0x1,
+ Line_Straight = 0x2,
+ Line_No_SymX  = 0x4,
+};
+
+struct Line_Params{
+ v4 radii;
+ v1 nslice_per_meter;
+ v1 visibility;
+ v1 alignment_threshold;
+ argb color;
+ Line_Flags flags;
+};
+//-

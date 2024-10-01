@@ -15,15 +15,18 @@
 #define ED_API_USER_STORE_GLOBAL 1
 #define AD_IS_DRIVER 0
 #include "4coder_game_shared.h"
-#include "generated/4coder_game_shared.gen.h"
 #define ED_PARSER_BUFFER 1
 #include "4ed_kv_parser.cpp"
 #include "ad_stb_parser.cpp"
 
 #include "framework_data.h"
-#include "framework_driver_shared.h"
+
+#include "generated/4coder_game_shared.gen.h"
+#include "generated/driver.gen.h"
+#include "generated/framework.gen.h"
+
+#include "driver.h"
 #include "framework.h"
-#include "generated/game_modeler.gen.h"
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 #include "game_api.cpp"
@@ -32,10 +35,8 @@
 #include "custom/generated/ed_api.cpp"
 #include "game_modeler.cpp"
 #include "generated/4coder_game_shared.gen.cpp"
-#include "generated/framework.gen.cpp"
-#include "generated/framework_driver_shared.gen.cpp"
-#include "generated/game_modeler.gen.cpp"
-#include "generated/bezier_types.gen.cpp"
+#include "generated/driver_meta.gen.cpp"
+#include "generated/framework_meta.gen.cpp"
 
 /*
   IMPORTANT Rule for the renderer
@@ -53,14 +54,13 @@ X_GAME_API_FUNCTIONS(X)
 #endif
 
 function b32
-just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0) {
+just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
  return ((input->key_states       [keycode])     &&
          (input->key_state_changes[keycode] > 0) &&
          (input->active_mods == modifiers));
 }
-
 force_inline b32
-key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0) {
+key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
  return ((input->key_states[keycode]) &&
          (input->active_mods == modifiers));
 }

@@ -33,7 +33,7 @@ mark_thickness = 2;
 lister_roundness = 20;
 
 // Code
-treat_as_code = ".cpp.c.hpp.h.cc.cs.java.rs.glsl.m.mm.4coder.kv";
+treat_as_code = ".cpp.c.hpp.h.cc.cs.java.rs.glsl.m.mm.4coder.kv.kh.kpp";
 enable_virtual_whitespace         = false;
 //virtual_whitespace_regular_indent = 4;
 enable_code_wrapping              = true;

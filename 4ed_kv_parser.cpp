@@ -140,8 +140,7 @@ make_ep_from_string(String string, Token_Iterator const&it)
 }
 
 function Token *
-ep__get_token_please(Ed_Parser *p)
-{
+ep__get_token_please(Ed_Parser *p){
  Token *token = token_it_read(&p->it);
  return token;
 }
@@ -236,23 +235,18 @@ ep_eat_token(Ed_Parser *p)
 
 // NOTE: Both float and int, for convenience
 function void
-ep_eat_number(Ed_Parser *p, f32 *out)
-{
+ep_number(Ed_Parser *p, f32 *out){
  Scratch_Block scratch;
  
  f32 sign = 1;
  Token *token = ep_get_token(p);
- if (token)
- {
-  if (token->kind == TokenBaseKind_Operator)
+ if(token){
+  if(token->kind == TokenBaseKind_Operator)
   {// NOTE(kv): parse sign
    String string = ep_print_token(p, scratch);
-   if ( string_match_lit(string, "-") )
-   {
+   if ( string_match_lit(string, "-") ){
     sign = -1;
-   }
-   else if (!string_match_lit(string, "+"))
-   {
+   }else if (!string_match_lit(string, "+")){
     p->set_ok(false);
    }
    
@@ -261,28 +255,59 @@ ep_eat_number(Ed_Parser *p, f32 *out)
   }
  }
  
- if (p->ok_)
- {
+ if(p->ok_){
   if (token->kind != TokenBaseKind_LiteralFloat &&
-      token->kind != TokenBaseKind_LiteralInteger)
-  {
+      token->kind != TokenBaseKind_LiteralInteger){
    p->set_ok(false);
   }
  }
  
- if (p->ok_)
- {
+ if(p->ok_){
   String8 string = ep_print_token(p, scratch);
   char *cstring = to_cstring(scratch, string);
   *out = sign * gb_str_to_f32(cstring, 0);
  }
 }
+function i1
+ep_i1(Ed_Parser *p){
+ Scratch_Block scratch;
+ 
+ i1 sign = 1;
+ Token *token = ep_get_token(p);
+ if(token){
+  if(token->kind == TokenBaseKind_Operator){
+   // NOTE(kv): parse sign
+   String string = ep_print_token(p, scratch);
+   if(string == strlit("-")){
+    sign = -1;
+   }else if(string != strlit("+")){
+    p->fail();
+   }
+   
+   ep_eat_token(p);
+   token = ep_get_token(p);
+  }
+ }
+ 
+ if(p->ok_){
+  if(token->kind != TokenBaseKind_LiteralInteger){
+   p->fail();
+  }
+ }
+ 
+ i1 result = 0;
+ if(p->ok_){
+  String8 string = ep_print_token(p, scratch);
+  char *cstring = to_cstring(scratch, string);
+  result = i1(sign * gb_str_to_i64(cstring, 0, 0));
+ }
+ return result;
+}
 
 function b32
-ep_maybe_number(Ed_Parser *p, f32 *out)
-{
+ep_maybe_number(Ed_Parser *p, f32 *out){
  Ed_Parser save = *p;
- ep_eat_number(p, out);
+ ep_number(p, out);
  b32 result = p->ok_;
  if (!result) {
   *p = save;
@@ -291,20 +316,17 @@ ep_maybe_number(Ed_Parser *p, f32 *out)
 }
 
 function Token_Base_Kind
-ep_get_kind(Ed_Parser *p)
-{
+ep_get_kind(Ed_Parser *p){
  Token_Base_Kind result = 0;
  Token *token = ep_get_token(p);
- if (token)
- {
+ if (token){
   result = token->kind;
  }
  return result;
 }
 
 function void
-ep_eat_kind(Ed_Parser *p, Token_Base_Kind kind)
-{
+ep_eat_kind(Ed_Parser *p, Token_Base_Kind kind){
  Token *token = ep_get_token(p);
  if (token) {
   p->set_ok(token->kind == kind);
@@ -313,8 +335,7 @@ ep_eat_kind(Ed_Parser *p, Token_Base_Kind kind)
 }
 
 function b32
-ep_maybe_kind(Ed_Parser *p, Token_Base_Kind kind)
-{
+ep_maybe_kind(Ed_Parser *p, Token_Base_Kind kind){
  b32 result = false;
  if (p->ok_)
  {
@@ -338,11 +359,9 @@ ep_at_eof(Ed_Parser *p)
 }
 
 function b32
-ep_test_id(Ed_Parser *p, String string)
-{
+ep_test_id(Ed_Parser *p, String string){
  b32 result = false;
- if (p->ok_)
- {
+ if (p->ok_){
   Scratch_Block scratch;
   String token = ep_print_token(p, scratch);
   result = string_match(token, string);
@@ -365,6 +384,17 @@ force_inline b32
 ep_maybe_id(Ed_Parser *p, char *string){
  String s = SCu8(string);
  return ep_maybe_id(p, s);
+}
+inline String
+ep_maybe_id(Ed_Parser *p){
+ String result = {};
+ if(Token *token = ep_get_token(p)){
+  if(token->kind == TokenBaseKind_Identifier){
+   result = ep_print_token(p, p->string_arena);
+   ep_eat_token(p);
+  }
+ }
+ return result;
 }
 
 function b32
@@ -409,7 +439,7 @@ ep_id(Ed_Parser *p, String test_id={}) {
            kind == TokenBaseKind_Keyword);
  if (p->ok_)
  {
-  if (test_id == String{}){
+  if(test_id == String{}){
    result = ep_print_token(p, p->string_arena);
   }else{// NOTE: matching against something
    Scratch_Block scratch;
@@ -427,15 +457,12 @@ ep_id(Ed_Parser *p, char *test_id){
  return ep_id(p, t);
 }
 
-// NOTE Returns index + 1 (todo(kv): wtf man?)
+// NOTE Returns index + 1
 function i1
-ep__char_in_string(String chars, char chr)
-{
+ep__char_in_string(String chars, char chr){
  i1 result = 0;
- for_u32 (index, 0, (u32)chars.size)
- {
-  if (chars.str[index] == chr)
-  {
+ for_u32 (index, 0, (u32)chars.size){
+  if (chars.str[index] == chr){
    result = index + 1;
    break;
   }

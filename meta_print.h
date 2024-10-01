@@ -4,6 +4,15 @@ struct Printer_Pair{
  Printer h;
  Printer c;
 };
+inline b32 okp(Printer &p){ return p.FILE != 0; }
+inline b32 okp(Printer_Pair &ps){ return ps.h.FILE && ps.c.FILE; }
+inline void close_file(Printer &p){ close_file(p.FILE); }
+inline void
+close_pair(Printer_Pair &ps){
+ close_file(ps.h.FILE);
+ close_file(ps.c.FILE);
+}
+
 struct Meta_Type_Names {
  String type_name;
  String info_function_name;
@@ -12,7 +21,7 @@ struct Meta_Type_Names {
 };
 global arrayof<Meta_Type_Names> meta_type_name_store;
 
-struct Enclosed_in_strlit { String string; };
+struct Enclosed_in_strlit{ String string; };
 //
 function void
 print(Printer &p, Enclosed_in_strlit item){

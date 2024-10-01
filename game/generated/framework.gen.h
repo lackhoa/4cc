@@ -1,72 +1,82 @@
-#pragma once
-//  C:\Users\vodan\4ed\code/meta_print.cpp:109:
-function Type_Info
-get_type_info_Keyboard_Cursor()
+struct Vertex_Data
 {
-Type_Info result = {};
-result.name = strlit("Keyboard_Cursor");
-result.size = sizeof(Keyboard_Cursor);
-result.kind = Type_Kind_Struct;
-result.members.set_count(2);
-result.members[0] = {.type=&Type_Info_v3, .name=strlit("pos"), .offset=offsetof(Keyboard_Cursor, pos)};
-result.members[1] = {.type=&Type_Info_v1, .name=strlit("vel"), .offset=offsetof(Keyboard_Cursor, vel)};
-return result;
-}
-//  C:\Users\vodan\4ed\code/meta_print.cpp:81:
-global_decl Type_Info Type_Info_Keyboard_Cursor;
-function void
-read_Keyboard_Cursor(Data_Reader &r, Keyboard_Cursor &pointer)
+String name;
+Bone_ID bone_id;
+i1 symx;
+v3 pos;
+i1 basic_index;
+i1 linum;
+};
+//  C:\Users\vodan\4ed\code/meta_print.cpp:354:
+enum Bezier_Type
 {
-STB_Parser *p = r.parser;
-eat_char(p, '{');
-v3 m_pos = {};
-
+Bezier_Type_v3v2 = 0,
+Bezier_Type_Parabola = 1,
+Bezier_Type_Offsets = 2,
+Bezier_Type_Planar_Vec = 3,
+Bezier_Type_C2 = 4,
+};
+//  C:\Users\vodan\4ed\code/meta_main.cpp:114:
+struct Bezier_v3v2
 {
-eat_id(p, strlit("pos"));
-read_v3(r, m_pos);
-}
-pointer.pos = m_pos;
-
-v1 m_vel = {};
-
+v3 d0;
+v2 d3;
+};
+//  C:\Users\vodan\4ed\code/meta_main.cpp:114:
+struct Bezier_Parabola
 {
-eat_id(p, strlit("vel"));
-read_v1(r, m_vel);
-}
-pointer.vel = m_vel;
-
-eat_char(p, '}');
-}
-//  C:\Users\vodan\4ed\code/meta_print.cpp:109:
-function Type_Info
-get_type_info_Serialized_State()
+v3 d;
+};
+//  C:\Users\vodan\4ed\code/meta_main.cpp:114:
+struct Bezier_Offsets
 {
-Type_Info result = {};
-result.name = strlit("Serialized_State");
-result.size = sizeof(Serialized_State);
-result.kind = Type_Kind_Struct;
-result.members.set_count(1);
-result.members[0] = {.type=&Type_Info_Keyboard_Cursor, .name=strlit("kb_cursor"), .offset=offsetof(Serialized_State, kb_cursor)};
-return result;
-}
-//  C:\Users\vodan\4ed\code/meta_print.cpp:81:
-global_decl Type_Info Type_Info_Serialized_State;
-function void
-read_Serialized_State(Data_Reader &r, Serialized_State &pointer)
+v3 d0;
+v3 d3;
+};
+//  C:\Users\vodan\4ed\code/meta_main.cpp:114:
+struct Bezier_Planar_Vec
 {
-STB_Parser *p = r.parser;
-eat_char(p, '{');
-Keyboard_Cursor m_kb_cursor = {};
-
+v2 d0;
+v2 d3;
+v3 unit_y;
+};
+//  C:\Users\vodan\4ed\code/meta_main.cpp:114:
+struct Bezier_C2
 {
-eat_id(p, strlit("kb_cursor"));
-read_Keyboard_Cursor(r, m_kb_cursor);
-}
-pointer.kb_cursor = m_kb_cursor;
-
-eat_char(p, '}');
-}
-//  C:\Users\vodan\4ed\code/meta_print.cpp:350:
+Curve_Index ref;
+v3 d3;
+};
+//  C:\Users\vodan\4ed\code/meta_main.cpp:122:
+union Bezier_Union
+{
+Bezier_v3v2 v3v2;
+Bezier_Parabola Parabola;
+Bezier_Offsets Offsets;
+Bezier_Planar_Vec Planar_Vec;
+Bezier_C2 C2;
+};
+struct Bezier_Data
+{
+String name;
+Bone_ID bone_id;
+i1 symx;
+Bezier_Type type;
+Vertex_Index p0_index;
+Vertex_Index p3_index;
+Bezier_Union data;
+Line_Params params;
+i1 linum;
+};
+struct Keyboard_Cursor
+{
+v3 pos;
+v1 vel;
+};
+struct Serialized_State
+{
+Keyboard_Cursor kb_cursor;
+};
+//  C:\Users\vodan\4ed\code/meta_print.cpp:467:
 #define Serialized_State_Embed \
  union\
 {\
