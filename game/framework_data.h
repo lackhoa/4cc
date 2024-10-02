@@ -3,7 +3,7 @@
 global u32 game_save_magic_number;
 global u32 game_save_version;
 
-enum Data_Version {
+enum Data_Version{
  Version_Init                 = 7,
  Version_Add_Bezier_Type      = 8,
  Version_Rename_Object_Index  = 9,

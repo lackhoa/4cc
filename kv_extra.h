@@ -351,27 +351,21 @@ push_string(Arena *arena, const char *data){
 }
 
 inline b32
-string_match(String a, String b)
-{
+string_match(String a, String b){
  return(a.size == b.size &&
         block_match(a.str, b.str, a.size));
 }
 //
 force_inline bool
-operator==(String a, String b)
-{
+operator==(String a, String b){
  return string_match(a,b);
 }
-//
 force_inline bool
-operator==(String a, const char *b)
-{
- return a == strlit(b);
+operator==(String a, const char *b){
+ return a == SCu8(b);
 }
-
 force_inline b32
-string_match(char *a, char *b)
-{
+string_match(char *a, char *b){
  return gb_strcmp(a,b) == 0;
 }
 

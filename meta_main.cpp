@@ -30,8 +30,27 @@
 #include "meta_print.cpp"
 #include "meta_klang.cpp"
 
+inline String
+maybe_skip_begin_and_end(String string){
+ if(string.len>1){
+  if(string.str[0]=='{'){
+   string.str++;
+   string.size--;
+   
+   if(string.len>0){
+    if(string.str[string.len]=='}'){
+     string.len--;
+    }
+   }
+  }
+ }
+ return string;
+}
+#define strlit_noquote(anything) \
+maybe_skip_begin_and_end(strlit(#anything))
+
 function b32
-list_files_recursive(Arena *arena, arrayof<char *> &outfiles, char *path){
+list_files_recursive(Arena *arena, arrayof<char*> &outfiles, char *path){
  b32 ok = true;
  WIN32_FIND_DATA fdFile;
  char sPath[2048];
@@ -67,31 +86,36 @@ list_files_recursive(Arena *arena, arrayof<char *> &outfiles, char *path){
 }
 
 inline void
-push_bezier_variant(arrayof<Union_Variant> *variants,
-                    char *name, i32 enum_value, char *struct_members){
+push_bezier_variant(arrayof<Union_Variant> &variants, Union_Variant v,
+                    String struct_members){
  Arena *arena = &meta_permanent_arena;
  Scratch_Block scratch;
- Ed_Parser parser = m_parser_from_string(scratch, SCu8(struct_members));
- Union_Variant *v = variants->push_zero();
- v->name           = SCu8(name);
- v->enum_value     = enum_value;
- v->struct_members = parse_struct_body(arena, &parser);
- v->enum_name      = string_concat(arena, "Bezier_Type_", v->name);
- v->struct_name    = string_concat(arena, "Bezier_",      v->name);
+ Ed_Parser parser = m_parser_from_string(scratch, struct_members);
+ v.struct_members = parse_struct_body(arena, &parser);
+ v.enum_name      = strcat(arena, "Bezier_Type_", v.name);
+ v.struct_name    = strcat(arena, "Bezier_",      v.name);
+ variants.push(v);
 }
 
 function void
-generate_bezier_types(Printer &p, Printer_Pair &ps_meta){
+generate_bezier_types(Printer &p0, Printer_Pair &ps_meta){
  Scratch_Block scratch;
  //-NOTE Bezier types
  arrayof<Union_Variant> variants = {};
  //-NOTE @data of the bezier variants
-#define X(...)  push_bezier_variant(&variants, __VA_ARGS__)
- X("v3v2",       0, "{ v3 d0; v2 d3; };");
- X("Parabola",   1, "{ v3 d; };");
- X("Offsets",    2, "{ v3 d0; v3 d3; };");
- X("Planar_Vec", 3, "{ v2 d0; v2 d3; v3 unit_y; };");
- X("C2",         4, "{ Curve_Index ref; v3 d3; };");
+#define X(penum_val, pname, pname_lower, pstruct_members) \
+push_bezier_variant(variants, \
+Union_Variant{ \
+.enum_value=penum_val, \
+.name=strlit(#pname), \
+.name_lower=strlit(#pname_lower) }, \
+strlit(#pstruct_members))
+ 
+ X(0, v3v2,     v3v2,     { v3 d0; v2 d3; });
+ X(1, Parabola, parabola, { v3 d; });
+ X(2, Offsets,  offsets,  { v3 d0; v3 d3; });
+ X(3, v2v2v3,   v2v2v3,   { v2 d0; v2 d3; v3 unit_y; });
+ X(4, C2,       c2,       { Curve_Index ref; v3 d3; });
 #undef X
  
  String enum_type = strlit("Bezier_Type");
@@ -105,20 +129,21 @@ generate_bezier_types(Printer &p, Printer_Pair &ps_meta){
   enum_values.set_count(variants.count);
   for_i32(i,0,variants.count){ enum_values[i] = variants[i].enum_value; }
   
-  print_enum(p, enum_type, enum_names, enum_values);
+  print_enum(p0, enum_type, enum_names, enum_values);
   print_enum_meta(ps_meta, enum_type, enum_names);
  }
  {//-NOTE "Data structure associated with each variant"
   for_i32(i,0,variants.count){
    auto *variant = &variants.get(i);
-   m_location;
-   print_struct(p, variant->struct_name, variant->struct_members);
+   m_locationp(p0);
+   print_struct(p0, variant->struct_name, variant->struct_members);
    print_struct_meta(ps_meta, variant->struct_name, variant->struct_members);
   }
  }
  {//-NOTE ("Union of all the Bezier type")
   String type_name = strlit("Bezier_Union");
   {
+   auto &p = p0;
    m_location;
    {//NOTE Code
     p<<"union "<<type_name;
@@ -135,12 +160,111 @@ generate_bezier_types(Printer &p, Printer_Pair &ps_meta){
    print_union_meta(ps_meta, type_name, &variants, enum_type);
   }
  }
+ {//-NOTE Transitional functions (aggravation: 100%)
+  Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, "send_bez.gen.h"));
+  m_location;
+  for_i1(iv,0,variants.count){
+   auto &variant = variants[iv];
+   b32 is_c2 = variant.name=="C2";
+   {//NOTE Function prototype
+    p<<"xfunction void\n"<<"send_bez_"<<variant.name_lower;
+    m_parens{
+     p<<"String name";
+     if(!is_c2){ p<<", String p0"; }
+     for_i32(im,0,variant.struct_members.count){
+      auto &member = variant.struct_members[im];
+      p<<", ";
+      print_struct_member(p, member);
+     }
+     p<<", String p3"; 
+     p<<", Line_Params params=lp()";
+     p<<", i32 linum=__builtin_LINE()";
+    }
+    p<<";\n";
+   }
+   {//-NOTE Macros
+    {//NOTE bn_bs
+     auto bn_bs = [&](b32 is_bs)->void{
+      b32 is_bn = !is_bs;
+      p<"#define "<(is_bs?"bs_":"bn_")<variant.name_lower;
+      m_parens{
+       if(is_bn){ p<"name, "; };
+       if(!is_c2){ p<<"p0, "; }
+       for_i32(im,0,variant.struct_members.count){
+        auto &member = variant.struct_members[im];
+        p<member.name<", ";
+       }
+       p<"p3, ...";
+      }
+      p<"\\\n";
+      p<"send_bez_"<variant.name_lower;
+      m_parens{
+       if(is_bn){ p<"strlit(#name), "; }
+       else     { p<"strlit(\"l\"), "; }
+       if(!is_c2){ p<"strlit(#p0), "; }
+       for_i32(im,0,variant.struct_members.count){
+        auto &member = variant.struct_members[im];
+        p<member.name<", ";
+       }
+       p<"strlit(#p3), __VA_ARGS__";
+      }
+      p<"\n";
+     };
+     bn_bs(0);
+     bn_bs(1);
+    }
+    {//NOTE bb_ba
+     auto bb_ba = [&](b32 is_ba)->void{
+      b32 is_bb = !is_ba;
+      p<"#define "<(is_ba?"ba_":"bb_")<variant.name_lower;
+      m_parens{//NOTE macro parameters
+       p<"name, ";
+       if(!is_c2){ p<"p0, "; }
+       for_i32(im,0,variant.struct_members.count){
+        auto &member = variant.struct_members[im];
+        p<member.name<", ";
+       }
+       p<"p3, ...";
+      }
+      p<"\\\n";
+      p<"bn_"<variant.name_lower;
+      m_parens{//NOTE bn parameters
+       p<"name, ";
+       if(!is_c2){ p<"p0, " ;}
+       //TODO @cleanup too much copy pasta!
+       for_i32(im,0,variant.struct_members.count){
+        auto &member = variant.struct_members[im];
+        p<member.name<", ";
+       }
+       p<"p3, __VA_ARGS__";
+      }
+      p<"; \\\n";
+      if(is_bb){ p<"Bez "; }
+      p<"name = bez_"<variant.name_lower;
+      m_parens{//NOTE bezier curve calculation
+       if(!is_c2){ p<"p0, "; };
+       for_i32(im,0,variant.struct_members.count){
+        auto &member = variant.struct_members[im];
+        p<member.name<", ";
+       }
+       p<"p3";
+      }
+      p<";\n";
+     };
+     bb_ba(0);
+     bb_ba(1);
+    }
+   }
+   p<"\n";
+  }
+  close_file(p);
+ }
 }
 
 xfunction i32
 main(i32 argc, char **argv){
  b32 ok = true;
- Scratch_Block scratch;
+ Arena *arena = &meta_permanent_arena;
  command_name = argv[0];
  char *code_dir = "";
  if(argc < 2){
@@ -149,6 +273,10 @@ main(i32 argc, char **argv){
  }else{
   code_dir = argv[1];
  }
+ //;meta_dirs_init
+ meta_dirs.code     = SCu8(code_dir);
+ meta_dirs.game     = pjoin(arena, meta_dirs.code, "game");
+ meta_dirs.game_gen = pjoin(arena, meta_dirs.game, "generated");
  
  char *cpaths[] = {
   "game",
@@ -161,7 +289,7 @@ main(i32 argc, char **argv){
  Stringz paths[alen(cpaths)];
  for_i1(i,0,alen(paths)){
   //NOTE(kv) Expand from relative path to full path, based on the given code dir
-  paths[i] = pjoin(scratch, code_dir, cpaths[i]);
+  paths[i] = pjoin(arena, code_dir, cpaths[i]);
  }
  
  arrayof<File_Name_Data> source_files = {};
@@ -171,7 +299,7 @@ main(i32 argc, char **argv){
    Stringz path = paths[ipath];
    arrayof<char *> filenames = {};
    if(path_is_directory(path)){
-    ok = list_files_recursive(scratch, filenames, to_cstring(path));
+    ok = list_files_recursive(arena, filenames, to_cstring(path));
     if(!ok){
      printf("error: could not list files under path: [%s]\n", to_cstring(path));
     }
@@ -184,10 +312,10 @@ main(i32 argc, char **argv){
      char *filename = filenames[ifile];
      FILE *file = fopen(filename, "rb");
      if (file) {
-      Stringz text = read_entire_file_handle(scratch, file);
+      Stringz text = read_entire_file_handle(arena, file);
       fclose(file);
       source_files.push(File_Name_Data{
-                         .name=push_string(scratch, filename),
+                         .name=push_string(arena, filename),
                          .data=text});
      }else{
       printf("error: could not open input file: [%s]\n", filename);

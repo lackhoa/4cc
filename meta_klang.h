@@ -18,8 +18,9 @@ member_was_removed(Meta_Struct_Member &member){
 
 struct Union_Variant{
  //-NOTE Input data
- String name;
  i32    enum_value;
+ String name;
+ String name_lower;
  Meta_Struct_Members struct_members;
  //-NOTE Auto-generated fields
  String enum_name;

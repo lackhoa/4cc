@@ -1261,7 +1261,6 @@ string_prefix(String_Const_u16 str, u64 size){
  return(str);
 }
 
-
 function String
 string_postfix(String str, u64 size){
  size = clamp_max(size, str.size);

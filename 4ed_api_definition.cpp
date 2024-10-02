@@ -499,7 +499,7 @@ api_definition_generate_api_includes(Arena *arena,
                            string_expand(path_to_self),
                            string_expand(dir),
                            string_expand(api->name));
-   printf(format, it.name.str);
+   meta_logf(format, it.name.str);
   }
  }
  

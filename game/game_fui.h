@@ -24,20 +24,18 @@ v1 delta_scale;         \
  FUI_OPTIONS(X);
 };
 
-struct Fui_Slider
-{
+struct Fui_Slider{
  Basic_Type  type;   // 1
- union
- {
+ union{
   Fui_Options options;  // 5
   struct { FUI_OPTIONS(X); };
  };
 };
 
-void *
+xfunction void *
 fast_fval_inner(Basic_Type type, void *init_value,
                 i32 linum, Fui_Options options);
-void *
+xfunction void *
 slow_fval_inner(Basic_Type type, void *init_value,
                 char *file_c, i32 linum, Fui_Options options);
 
@@ -91,22 +89,21 @@ fopts(u32 flags, v1 delta_scale)
 }
 
 force_inline Fui_Options
-fopts_add_flags(Fui_Options options, u32 flags)
-{
+fopts_add_flags(Fui_Options options, u32 flags){
  options.flags |= flags;
  return options;
 }
 
 force_inline Fui_Options
-fopts_add_delta_scale(Fui_Options options, v1 delta_scale)
-{
+fopts_add_delta_scale(Fui_Options options, v1 delta_scale){
  if(options.delta_scale == 0.f) {
   options.delta_scale = delta_scale;
  }
  return options;
 }
 
-force_inline Fui_Options fopts(u32 flags) { 
+force_inline Fui_Options
+fopts(u32 flags){
  Fui_Options result = {};
  result.flags=flags;
  return result;

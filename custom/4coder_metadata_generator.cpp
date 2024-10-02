@@ -731,85 +731,85 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
                 }
             }
         }
-        
-        if (token.kind == TokenBaseKind_EOF){
-            break;
-        }
-    }
+  
+  if (token.kind == TokenBaseKind_EOF){
+   break;
+  }
+ }
 }
 
 static void
 parse_file(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Character *name_, i1 len){
-    char *name = unencode(arena, name_, len);
-    if (name == 0){
-        if (sizeof(*name_) == 2){
-            fprintf(stdout, "warning: could not unencode file name %ls - file skipped\n", (wchar_t*)name_);
-        }
-        else{
-            fprintf(stdout, "warning: could not unencode file name %s - file skipped\n", (char*)name_);
-        }
-        return;
-    }
-    
-    String text = file_dump(arena, name);
-    parse_text(arena, entry_arrays, (u8*)name, text);
+ char *name = unencode(arena, name_, len);
+ if (name == 0){
+  if (sizeof(*name_) == 2){
+   fprintf(stdout, "warning: could not unencode file name %ls - file skipped\n", (wchar_t*)name_);
+  }
+  else{
+   fprintf(stdout, "warning: could not unencode file name %s - file skipped\n", (char*)name_);
+  }
+  return;
+ }
+ 
+ String text = file_dump(arena, name);
+ parse_text(arena, entry_arrays, (u8*)name, text);
 }
 
 static void
 parse_files_by_pattern(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Filename_Character *pattern, b32 recursive)
 {
-    Cross_Platform_File_List list = get_file_list(arena, pattern, filter_all);
-    for (i1 i = 0; i < list.count; ++i){
-        Cross_Platform_File_Info *info = &list.info[i];
-        
-        String_Const_Any info_name = SCany(info->name, info->len);
-        Temp_Memory temp = begin_temp(arena);
-        String info_name_ascii = string_u8_from_any(arena, info_name);
-        b32 is_generated = string_match(info_name_ascii, strlit("4coder_generated"));
-        end_temp(temp);
-        
-        if (info->is_folder && is_generated){
-            continue;
-        }
-        if (!recursive && info->is_folder){
-            continue;
-        }
-        
-        i1 full_name_len = list.path_length + 1 + info->len;
-        if (info->is_folder){
-            full_name_len += 2;
-        }
-        Filename_Character *full_name = push_array(arena, Filename_Character, full_name_len + 1);
-        
-        if (full_name == 0){
-            fprintf(stdout, "fatal error: not enough memory to recurse to sub directory\n");
-            exit(1);
-        }
-        
-        memmove(full_name, list.path_name, list.path_length*sizeof(*full_name));
-        full_name[list.path_length] = SLASH;
-        memmove(full_name + list.path_length + 1, info->name, info->len*sizeof(*full_name));
-        full_name[full_name_len] = 0;
-        
-        if (!info->is_folder){
-            parse_file(arena, entry_arrays, full_name, full_name_len);
-        }
-        else{
-            full_name[full_name_len - 2] = SLASH;
-            full_name[full_name_len - 1] = '*';
-            parse_files_by_pattern(arena, entry_arrays, full_name, true);
-        }
-    }
+ Cross_Platform_File_List list = get_file_list(arena, pattern, filter_all);
+ for (i1 i = 0; i < list.count; ++i){
+  Cross_Platform_File_Info *info = &list.info[i];
+  
+  String_Const_Any info_name = SCany(info->name, info->len);
+  Temp_Memory temp = begin_temp(arena);
+  String info_name_ascii = string_u8_from_any(arena, info_name);
+  b32 is_generated = string_match(info_name_ascii, strlit("4coder_generated"));
+  end_temp(temp);
+  
+  if (info->is_folder && is_generated){
+   continue;
+  }
+  if (!recursive && info->is_folder){
+   continue;
+  }
+  
+  i1 full_name_len = list.path_length + 1 + info->len;
+  if (info->is_folder){
+   full_name_len += 2;
+  }
+  Filename_Character *full_name = push_array(arena, Filename_Character, full_name_len + 1);
+  
+  if (full_name == 0){
+   fprintf(stdout, "fatal error: not enough memory to recurse to sub directory\n");
+   exit(1);
+  }
+  
+  memmove(full_name, list.path_name, list.path_length*sizeof(*full_name));
+  full_name[list.path_length] = SLASH;
+  memmove(full_name + list.path_length + 1, info->name, info->len*sizeof(*full_name));
+  full_name[full_name_len] = 0;
+  
+  if (!info->is_folder){
+   parse_file(arena, entry_arrays, full_name, full_name_len);
+  }
+  else{
+   full_name[full_name_len - 2] = SLASH;
+   full_name[full_name_len - 1] = '*';
+   parse_files_by_pattern(arena, entry_arrays, full_name, true);
+  }
+ }
 }
 
 static void
 show_usage(int argc, char **argv){
-    char *name = "metadata_generator";
-    if (argc >= 1){
-        name = argv[0];
-    }
-    fprintf(stdout, "usage:\n%s [-R] <4coder-root-directory> <input-file-pattern> [<input-file-pattern> ...]\n", name);
-    exit(0);
+ char *name = "metadata_generator";
+ if (argc >= 1){
+  name = argv[0];
+ }
+ fprintf(stdout, "usage:\n%s [-R] <4coder-root-directory> <input-file-pattern> [<input-file-pattern> ...]\n", name);
+ exit(0);
 }
 
 int

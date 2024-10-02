@@ -262,30 +262,23 @@ reverse(Bezier B)
 }
 
 force_inline v3
-reflect_origin(v3 origin, v3 point)
-{
+reflect_origin(v3 origin, v3 point){
  return origin-(point-origin);
 }
 
-inline Line_Params lp() { return painter.line_params; }
-
 inline Line_Params
-lp(i4 radii)
-{
+lp(i4 radii){
  Line_Params result = painter.line_params;
  result.radii = i2f6(radii);
  return result;
 }
-
 inline Line_Params
-lp(v1 alignment_threshold, i4 radii={})
-{
+lp(v1 alignment_threshold, i4 radii={}){
  Line_Params result = painter.line_params;
  result.alignment_threshold = alignment_threshold;
  result.radii               = i2f6(radii);
  return result;
 }
-
 inline i1
 get_preset() {
  return painter.viewport->preset;

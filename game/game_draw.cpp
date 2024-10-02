@@ -1,11 +1,12 @@
-//NOTE(kv) Highest-level drawing functions
+//-NOTE(kv) Highest-level drawing functions
+//  We wanna share most of these functions with the driver.
 #pragma once
 
 #define NO_IMPL  AD_IS_DRIVER
 
 framework_storage u32 bs_cycle_counter;
 
-struct Patch {
+struct Patch{
  v3 e[4][4];
  typedef v3 Array4x4[4][4];  // @stroustrup
  operator Array4x4&() { return e; } 
@@ -22,16 +23,14 @@ set_in_block(painter.line_params, hl_line_params(color));
 
 // NOTE: Actually bernstein basis
 function v1
-cubic_bernstein(i32 index, v1 t)
-{
+cubic_bernstein(i32 index, v1 t){
  v1 factor = v1((index == 1 || index == 2) ? 3 : 1);
  v1 result = factor * integer_power(t,index) * integer_power(1.f-t, 3-index);
  return result;
 }
 // NOTE: Actually bernstein basis
 function v1
-quad_bernstein(i32 index, v1 t)
-{
+quad_bernstein(i32 index, v1 t){
  v1 result = (index==0 ? squared(1-t) :
               index==1 ? 2*(1-t)*t :
               squared(t));
@@ -52,17 +51,17 @@ operator*(mat4 transform, Bez bezier) {
 }
 
 framework_storage u32 hot_prim_id;
-inline u32 get_hot_prim_id() { return hot_prim_id; }
+inline u32 get_hot_prim_id(){ return hot_prim_id; }
 
-inline b32 is_poly_enabled() {
+inline b32 is_poly_enabled(){
  return (painter.painting_disabled == false);
 }
-inline b32 is_line_enabled() {
+inline b32 is_line_enabled(){
  return painter.painting_disabled == false;
 }
 
 function Bezier
-get_column(Patch const&surface, i32 col) {
+get_column(Patch const&surface, i32 col){
  Bezier result;
  for_i32(index,0,4) {
   result[index] = surface.e[index][col];
@@ -212,8 +211,7 @@ bez_offset(v3 p0, v3 d0, v3 d3, v3 p3){
 //  There just isn't much point to specifying curves that look the same
 //  when the distance between the endpoints change.
 function Bezier
-bez_v3v3(v3 p0, v3 d0, v3 d3, v3 p3)
-{
+bez_v3v3(v3 p0, v3 d0, v3 d3, v3 p3){
  TIMED_BLOCK(bs_cycle_counter);
  v1 length = lengthof(p3-p0);
  v3 p1 = (2.f*p0 + p3)/3.f + length*d0;
@@ -235,8 +233,7 @@ bez_parabola_len(v3 p0, v3 d, v3 p3)
 
 // NOTE: Parabola (no length dependence)
 function Bezier
-bez_parabola(v3 p0, v3 d, v3 p3)
-{
+bez_parabola(v3 p0, v3 d, v3 p3){
  TIMED_BLOCK(bs_cycle_counter);
  v3 q = 0.5f*(p0 + p3) + d;
  v3 p1 = (p0 + 2.f*q) / 3.f;
@@ -265,8 +262,7 @@ bez_v3v2(v3 p0, v3 d0, v2 d3, v3 p3) {
 
 // NOTE: Planar curve with unit vector guide
 function Bezier
-bez_unit(v3 p0, v2 d0, v2 d3, v3 p3, v3 unit_y)
-{
+bez_unit(v3 p0, v2 d0, v2 d3, v3 p3, v3 unit_y){
  TIMED_BLOCK(bs_cycle_counter);
  v3 p1, unit_z;
  {
@@ -303,8 +299,7 @@ bezd_len(v3 p0, v3 d0, v2 d3, v3 p3) {
 //NOTE: Planar curve (with v3 control point, BUT it doesn't automatically adjust d3)
 // @deprecated
 function Bezier
-bezd_old(v3 p0, v3 d0, v2 d3, v3 p3)
-{
+bezd_old(v3 p0, v3 d0, v2 d3, v3 p3){
  TIMED_BLOCK(bs_cycle_counter);
  
  v3 u = p3 - p0;
@@ -319,18 +314,15 @@ bezd_old(v3 p0, v3 d0, v2 d3, v3 p3)
 }
 // NOTE: No length adjustment, non-planar
 function Bezier 
-bez_c2(Bez const&ref, v3 d3, v3 p3)
-{
+bez_c2(Bez const&ref, v3 d3, v3 p3){
  TIMED_BLOCK(bs_cycle_counter);
  v3 p0 = ref.e[3];
  v3 p1 = p0 + (ref.e[3] - ref.e[2]);
  v3 p2 = 0.5f*(p3+p1) + d3;
  return bez_raw(p0,p1,p2,p3);
 }
-
 function v4
-radii_c2(v4 ref, v2 d_p3)
-{
+radii_c2(v4 ref, v2 d_p3){
  TIMED_BLOCK(bs_cycle_counter);
  v1 d  = d_p3[0];
  v1 p3 = d_p3[1];
@@ -340,13 +332,6 @@ radii_c2(v4 ref, v2 d_p3)
  v1 p2 = 0.5f*(p3+p1) + len*d;
  return V4(p0,p1,p2,p3);
 }
-
-inline v3
-camera_world_position(Camera *camera) {
- v3 result = mat4vert(camera->world_from_cam, V3());
- return result;
-}
-
 function v1
 get_curve_view_alignment(Painter *p, const v3 P[4]){
  v3 A = P[0];

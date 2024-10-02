@@ -34,6 +34,11 @@ struct Slow_Line_Map_Entry
 }
 PACK_END;
 
+struct Slow_Line_Map{
+ i32 cap;
+ i32 count;
+ struct Slow_Line_Map_Entry *map;
+};
 global Slow_Line_Map slow_line_map;
 //global Arena *slow_slider_store;
 

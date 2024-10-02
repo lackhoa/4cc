@@ -1,3 +1,4 @@
+//-
 struct Vertex_Data{
  String name;
  Bone_ID bone_id;
@@ -8,13 +9,6 @@ struct Vertex_Data{
 };
 
 unique Bezier_Type;
-/*{
- v3v2       0 { v3 d0; v2 d3; }
- Parabola   1 { v3 d; }
- Offsets    2 { v3 d0; v3 d3; }
- Planar_Vec 3 { v2 d0; v2 d3; v3 unit_y; }
- C2         4 { Curve_Index ref; v3 d3; }
-};*/
 
 struct Bezier_Data{
  String name;
@@ -36,5 +30,4 @@ struct Keyboard_Cursor{
 struct Serialized_State{
  Keyboard_Cursor kb_cursor;
 };
-
 //-

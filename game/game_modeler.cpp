@@ -4,7 +4,7 @@
 global b32 sending_draw_data = true;
 
 xfunction b32
-is_prim_id_active(Modeler *m, u32 prim_id) {
+is_prim_id_active(Modeler *m, u32 prim_id){
  b32 result = false;
  auto &active_ids = m->active_prims;
  for_i1(index, 0, active_ids.count) {
@@ -108,10 +108,8 @@ send_bez_func(Painter *p, String name,
               String p0_name, String p3_name,
               Bezier_Type type, Bezier_Union data,
               Line_Params params, i1 linum,
-              Send_Bez_Additional_Data additional={})
-{
+              Send_Bez_Additional_Data additional={}){
  Modeler *m = p->modeler;
- 
  if(is_left(p)){
   Bezier_Data *curve = &m->curves.push2();
   *curve = {};
@@ -345,6 +343,8 @@ clear_selection(Modeler *m){
  m->selected_prim_ro = 0;
  m->active_prims.count = 0;
 }
+
+xfunction arrayof<Bone> *get_bones(Modeler *m){ return &m->bones; }
 
 
 //~ EOF

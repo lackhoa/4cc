@@ -22,14 +22,15 @@
 #include "framework_data.h"
 
 #include "generated/4coder_game_shared.gen.h"
-#include "generated/driver.gen.h"
-#include "generated/framework.gen.h"
 
+#include "generated/driver.gen.h"
 #include "driver.h"
-#include "framework.h"
+#include "generated/framework.gen.h"
+#include "game_modeler.h"
+#include "game_draw.cpp"
+
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
-#include "game_api.cpp"
 
 #define DYNAMIC_LINK_API
 #include "custom/generated/ed_api.cpp"
@@ -37,6 +38,9 @@
 #include "generated/4coder_game_shared.gen.cpp"
 #include "generated/driver_meta.gen.cpp"
 #include "generated/framework_meta.gen.cpp"
+
+#include "framework.h"
+#include "game_api.cpp"
 
 /*
   IMPORTANT Rule for the renderer

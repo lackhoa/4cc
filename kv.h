@@ -4814,11 +4814,11 @@ push_stringfz(Arena *arena, char *format, ...)
 }
 //TODO(kv) Hackjob to concat strings together, goddamn it dude!
 inline String
-string_concat(Arena *arena, char *a, String b){
+strcat(Arena *arena, char *a, String b){
  return push_stringf(arena, "%s%.*s", a, strexpand(b));
 }
 inline String
-string_concat(Arena *arena, String a, char *b){
+strcat(Arena *arena, String a, char *b){
  return push_stringf(arena, "%.*s%s", strexpand(a), b);
 }
 
@@ -5099,6 +5099,12 @@ inline void print(Printer &p, u64 lu)  { printer_printf(p, "%lu", lu); }
 template <class T>
 inline Printer &
 operator<<(Printer &p, T object){
+ print(p, object);
+ return p;
+}
+template <class T>
+inline Printer &
+operator<(Printer &p, T object){
  print(p, object);
  return p;
 }

@@ -1,4 +1,4 @@
-//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:27:
+//NOTE Generated at C:\Users\vodan\4ed\code/meta_print.cpp:35:
 //  C:\Users\vodan\4ed\code/meta_print.cpp:435:
 function Type_Info
 get_type_info_argb()
@@ -7,7 +7,7 @@ Type_Info result = Type_Info_u32;
 result.name = strlit("argb");
 return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:96:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
 global Type_Info Type_Info_argb = get_type_info_argb();
 
 //  C:\Users\vodan\4ed\code/meta_print.cpp:456:
@@ -28,7 +28,7 @@ result.members.set_count(1);
 result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Vertex_Index, v)};
 return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:96:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
 global Type_Info Type_Info_Vertex_Index = get_type_info_Vertex_Index();
 
 function Type_Info &type_info_from_pointer(Vertex_Index*pointer)
@@ -63,7 +63,7 @@ result.members.set_count(1);
 result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Curve_Index, v)};
 return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:96:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
 global Type_Info Type_Info_Curve_Index = get_type_info_Curve_Index();
 
 function Type_Info &type_info_from_pointer(Curve_Index*pointer)
@@ -109,7 +109,7 @@ result.enum_members[10] = {.name=strlit("Bone_Thumb"), .value=Bone_Thumb};
 result.enum_members[11] = {.name=strlit("Bone_Pelvis"), .value=Bone_Pelvis};
 return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:96:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
 global Type_Info Type_Info_Bone_Type = get_type_info_Bone_Type();
 
 function Type_Info &type_info_from_pointer(Bone_Type*pointer)
@@ -137,7 +137,7 @@ result.members[0] = {.type=&Type_Info_Bone_Type, .name=strlit("type"), .offset=o
 result.members[1] = {.type=&Type_Info_i1, .name=strlit("id"), .offset=offsetof(Bone_ID, id)};
 return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:96:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
 global Type_Info Type_Info_Bone_ID = get_type_info_Bone_ID();
 
 function Type_Info &type_info_from_pointer(Bone_ID*pointer)
@@ -176,7 +176,7 @@ Type_Info result = Type_Info_u32;
 result.name = strlit("Line_Flags");
 return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:96:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
 global Type_Info Type_Info_Line_Flags = get_type_info_Line_Flags();
 
 //  C:\Users\vodan\4ed\code/meta_print.cpp:456:
@@ -202,7 +202,7 @@ result.members[4] = {.type=&Type_Info_argb, .name=strlit("color"), .offset=offse
 result.members[5] = {.type=&Type_Info_Line_Flags, .name=strlit("flags"), .offset=offsetof(Line_Params, flags)};
 return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:96:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
 global Type_Info Type_Info_Line_Params = get_type_info_Line_Params();
 
 function Type_Info &type_info_from_pointer(Line_Params*pointer)

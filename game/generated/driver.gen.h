@@ -1,3 +1,6 @@
+//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:26:
+#pragma once
+// NOTE: source: C:\Users\vodan\4ed\code\game\driver.kh
 typedef u32 argb;
 struct Vertex_Index
 {

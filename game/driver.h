@@ -264,12 +264,13 @@ struct Painter{
  i32 view_vector_count;
  v3  view_vector_stack[16];
 };
+framework_storage Painter painter;
+function Line_Params lp(){ return painter.line_params; }
 
 global_const argb hot_color      = argb_lightness(argb_silver, 0.5f);
 global_const argb hot_color2     = argb_yellow;
 global_const argb selected_color = argb_red;
 
-framework_storage Painter painter;
 
 //-
 inline Bone *current_bone(Painter *p){ return p->bone_stack.last(); }
@@ -281,11 +282,7 @@ inline b32 is_right(Painter *p=&painter) { return p->is_right; }
 inline b32 is_left(Painter *p=&painter)  { return !p->is_right; }
 //-
 
-#if AD_IS_FRAMEWORK
-#include "game_modeler.h"
-#endif
-
-#include "game_draw.cpp"
+//#include "game_draw.cpp"
 
 // NOTE: Name,Denom
 #define X_Pose_Fields(X) \
@@ -306,9 +303,9 @@ struct Pose
 };
 
 //~NOTE Atrocity Alert! Transitional code to convert code to data.
+#include "generated/send_bez.gen.h"
 #define line_params_defp Line_Params params=painter.line_params
-xfunction void
-send_bez_v3v2(String name, String p0_name, v3 d0, v2 d3, String p3_name, line_params_defp, linum_defparam);
+#if 0
 #define bn_v3v2(name, p0,d0,d3,p3, ...) \
 send_bez_v3v2(strlit(#name), strlit(#p0), d0, d3, strlit(#p3), __VA_ARGS__)
 
@@ -323,8 +320,6 @@ Bez name = bez_v3v2(p0,d0,d3,p3);
 bn_v3v2(name, p0,d0,d3,p3, __VA_ARGS__); \
 name = bez_v3v2(p0,d0,d3,p3);
 //-
-xfunction void
-send_bez_parabola(String name, String p0, v3 d, String p3, line_params_defp, linum_defparam);
 #define bn_parabola(name, p0,d,p3, ...) \
 send_bez_parabola(strlit(#name), strlit(#p0), d, strlit(#p3), __VA_ARGS__)
 
@@ -338,6 +333,7 @@ Bez name = bez_parabola(p0,d,p3);
 #define ba_parabola(name, p0,d,p3, ...) \
 bn_parabola(name, p0,d,p3, __VA_ARGS__); \
 name = bez_parabola(p0,d,p3);
+#endif
 //-
 xfunction void
 send_vert_func(Painter *p, String name, v3 pos, i32 linum=__builtin_LINE());
@@ -364,6 +360,11 @@ set_bone_transform(mat4i const&transform) {
  push_object_transform_to_target(p->target, cast(mat4*)&transform.m);
 }
 
+inline v3
+camera_world_position(Camera *camera){
+ v3 result = mat4vert(camera->world_from_cam, V3());
+ return result;
+}
 function v3
 camera_object_position(Painter *p) {
  v3 result = (current_world_from_bone(p).inv *
@@ -393,11 +394,7 @@ push_view_vector(&painter, center); \
 defer(pop_view_vector(&painter));
 
 //NOTE(kv)  Don't you dare return a reference here!
-#if AD_IS_DRIVER
 xfunction arrayof<Bone> *get_bones(Modeler *m);
-#else
-xfunction arrayof<Bone> *get_bones(Modeler *m) { return &m->bones; }
-#endif
 
 function Bone *
 get_bone(Modeler *m, Bone_ID id, b32 is_right) {
@@ -441,8 +438,7 @@ push_bone_inner(Modeler *m, arrayof<Bone *> *stack, b32 is_right,
 }
 
 function void
-push_bone(Painter *p, Bone_ID id, v3 center={})
-{
+push_bone(Painter *p, Bone_ID id, v3 center={}){
  auto m  = p->modeler;
  Bone *bone = get_bone(m, id, p->is_right);
  p->bone_stack.push(bone);
@@ -453,8 +449,7 @@ push_bone(Painter *p, Bone_Type type, v3 center={}) {
  return push_bone(p, make_bone_id(type), center);
 }
 function void
-pop_bone(Painter *p)
-{
+pop_bone(Painter *p){
  p->bone_stack.pop();
  mat4i &parent = current_world_from_bone(p);
  set_bone_transform(parent);
@@ -462,6 +457,5 @@ pop_bone(Painter *p)
 #define bone_block(id) push_bone(&painter, id); defer(pop_bone(&painter););
 
 //-
-#undef framework_storage
 
 //~

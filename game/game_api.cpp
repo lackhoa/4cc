@@ -1,6 +1,5 @@
 internal game_set_preset_return
-game_set_preset(game_set_preset_params)
-{
+game_set_preset(game_set_preset_params){
  if (viewport_id <= 0) { viewport_id = 1; }
  i1 viewport_index = viewport_id - 1;
  Viewport *viewport = &state->viewports[viewport_index];
@@ -9,8 +8,7 @@ game_set_preset(game_set_preset_params)
 }
 
 internal game_last_preset_return
-game_last_preset(game_last_preset_params)
-{
+game_last_preset(game_last_preset_params){
  if (viewport_id <= 0) { viewport_id = 1; }
  i1 viewport_index = viewport_id - 1;
  Viewport *viewport = &state->viewports[viewport_index];

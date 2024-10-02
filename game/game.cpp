@@ -6,6 +6,7 @@
 #include "kv.h"
 #include "generated/driver.gen.h"
 #include "driver.h"
+#include "game_draw.cpp"
 #include "game_fui.h"
 #include "game_anime.cpp"
 #include "game_utils.cpp"
@@ -266,8 +267,7 @@ render_hand(Forearm forearm_obj)
   
   v1 top_tbend = fval(0.f);
   
-  for_i32(ifinger,0,finger_count)
-  {
+  for_i32(ifinger,0,finger_count){
    bone_block(make_bone_id(Bone_Bottom_Phalanx, ifinger));
    
    v3 k = knuckle_tops[ifinger];

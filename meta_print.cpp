@@ -1,13 +1,18 @@
 
 function Printer
-m_open_file_to_write(Stringz filename){
+m_open_file_to_write(Stringz filename,
+                     const char *call_file=__builtin_FILE(),
+                     u32 call_line=__builtin_LINE()){
+ Printer p = {};
  FILE *file = open_or_create_file(filename, "wb");
  if(file){
   meta_logf("Writing to file %.*s\n", strexpand(filename));
+  p = make_printer_file(file);
+  p<<"//NOTE Generated at "<<call_file<<':'<<call_line<<":\n";
  }else{
   meta_logf("Failed to open file %.*s\n with errno: %d", strexpand(filename), errno);
  }
- return make_printer_file(file);
+ return p;
 }
 function Printer_Pair
 m_open_files_to_write(String base_path,
@@ -28,17 +33,9 @@ m_open_files_to_write(String base_path,
  Printer_Pair result = {};
  result.h = m_open_file_to_write(outname_h);
  result.c = m_open_file_to_write(outname_c);
-#define M  p<<"//NOTE Generated at "<<call_file<<':'<<call_line<<":\n"
  if(FILE *hfile = result.h.FILE){
-  Printer p = make_printer_file(hfile);
-  M;
-  p<<"#pragma once\n";
+  result.h<<"#pragma once\n";
  }
- if(FILE *hfile = result.c.FILE){
-  Printer p = make_printer_file(hfile);
-  M;
- }
-#undef M
  return result;
 }
 function void
@@ -126,17 +123,20 @@ print_type_info_function_prototype(Printer &p, String type_name){
  p<<"function Type_Info\n"<<function_name<<"()";
 }
 function void
+print_struct_member(Printer &p, Meta_Struct_Member &member){
+ p<<member.type<<" ";
+ for_repeat(member.type_star_count){ p<<"*"; }
+ p<<member.name;
+}
+function void
 print_struct_body(Printer &p, Meta_Struct_Members &members){
  m_braces_sm{
   for_i32(i,0,members.count){
-   auto &member = members.items[i];
+   auto &member = members[i];
    if(!member_was_removed(member)){
     if(i!=0){ p<<"\n"; }
-    
-    p<<member.type<<" ";
-    for_repeat(member.type_star_count){ p<<"*"; }
-    
-    p<<member.name<<";";
+    print_struct_member(p, member);
+    p<<";";
    }
   }
  }

@@ -323,7 +323,7 @@ def autogen():
     asan_on = False
     CUSTOM=f'{FCODER_ROOT}/code/custom'
     BUILD_DIR = pjoin(CUSTOM, "build")
-    rm_rf(BUILD_DIR)
+    #rm_rf(BUILD_DIR)
     mkdir_p(BUILD_DIR)
     with pushd(BUILD_DIR):
         INCLUDES=f'-I{CUSTOM} -I{CODE}'
@@ -340,21 +340,22 @@ def autogen():
             mkdir_p(f'{CODE_KV}/generated')
             run(f'{LEXER_GEN} {CODE_KV}/generated')
             
+        print('4coder API parser/generator')
         if meets_level(meta_build_level):
-            print('4coder API parser/generator')
             run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
                          debug_mode=True, compiler_flags=compiler_flags)
-            run(f"ad_meta.exe {CODE}")
+        run(f"ad_meta.exe {CODE}")
 
-            meta_macros="-DMETA_PASS"
-            print('preproc_file: Generate')
-            preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
-            run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
+        meta_macros="-DMETA_PASS"
+        print('preproc_file: Generate')
+        preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
+        run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
             
-            print('Meta-generator')
+        print('Meta-generator')
+        if meets_level(meta_build_level):
             run_compiler(Compiler.ClangCl, f"{CUSTOM}/4coder_metadata_generator.cpp", f"metadata_generator{DOT_EXE}",
                          debug_mode=True, compiler_flags=compiler_flags)
-            run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
+        run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
 
     asan_on = old_asan_on
 

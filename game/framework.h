@@ -10,12 +10,6 @@ struct Game_Input{
  Key_Direction direction;
 };
 
-struct Slow_Line_Map {
- i32 cap;
- i32 count;
- struct Slow_Line_Map_Entry *map;
-};
-
 //NOTE: The state is saved between reloads.
 struct Game_State{
  Base_Allocator malloc;
