@@ -140,50 +140,50 @@ code_index_lock(void){
 
 function void
 code_index_unlock(void){
-  system_mutex_release(global_code_index.mutex);
+ system_mutex_release(global_code_index.mutex);
 }
 
 function void
 code_index__hash_file(Code_Index_File *file){
-  for (Code_Index_Note *node = file->note_list.first;
-       node != 0;
-       node = node->next){
-    Code_Index_Note_List *list = code_index__list_from_string(node->text);
-    zdll_push_back_NP_(list->first, list->last, node, next_in_hash, prev_in_hash);
-    list->count += 1;
-  }
+ for (Code_Index_Note *node = file->note_list.first;
+      node != 0;
+      node = node->next){
+  Code_Index_Note_List *list = code_index__list_from_string(node->text);
+  zdll_push_back_NP_(list->first, list->last, node, next_in_hash, prev_in_hash);
+  list->count += 1;
+ }
 }
 
 function void
 code_index__clear_file(Code_Index_File *file){
-  for (Code_Index_Note *node = file->note_list.first;
-       node != 0;
-       node = node->next){
-    Code_Index_Note_List *list = code_index__list_from_string(node->text);
-    zdll_remove_NP_(list->first, list->last, node, next_in_hash, prev_in_hash);
-    list->count -= 1;
-  }
+ for (Code_Index_Note *node = file->note_list.first;
+      node != 0;
+      node = node->next){
+  Code_Index_Note_List *list = code_index__list_from_string(node->text);
+  zdll_remove_NP_(list->first, list->last, node, next_in_hash, prev_in_hash);
+  list->count -= 1;
+ }
 }
 
 function void
 code_index_set_file(Buffer_ID buffer, Arena arena, Code_Index_File *index){
-  Code_Index_File_Storage *storage = 0;
-  Table_Lookup lookup = table_lookup(&global_code_index.buffer_to_index_file, buffer);
-  if (lookup.found_match){
-    u64 val = 0;
-    table_read(&global_code_index.buffer_to_index_file, lookup, &val);
-    storage = (Code_Index_File_Storage*)IntAsPtr(val);
-    code_index__clear_file(storage->file);
-    arena_clear(&storage->arena);
-  }
-  else{
-    storage = code_index__alloc_storage();
-    table_insert(&global_code_index.buffer_to_index_file, buffer, (u64)PtrAsInt(storage));
-  }
-  storage->arena = arena;
-  storage->file = index;
-  
-  code_index__hash_file(index);
+ Code_Index_File_Storage *storage = 0;
+ Table_Lookup lookup = table_lookup(&global_code_index.buffer_to_index_file, buffer);
+ if (lookup.found_match){
+  u64 val = 0;
+  table_read(&global_code_index.buffer_to_index_file, lookup, &val);
+  storage = (Code_Index_File_Storage*)IntAsPtr(val);
+  code_index__clear_file(storage->file);
+  arena_clear(&storage->arena);
+ }
+ else{
+  storage = code_index__alloc_storage();
+  table_insert(&global_code_index.buffer_to_index_file, buffer, (u64)PtrAsInt(storage));
+ }
+ storage->arena = arena;
+ storage->file = index;
+ 
+ code_index__hash_file(index);
 }
 
 function void

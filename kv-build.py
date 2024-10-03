@@ -41,9 +41,10 @@ STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the relo
 
 
 # NOTE: Override configuration ############################
-COMPILE_GAME_WITH_MSVC      = 0
-ed_build_level              = 1
-meta_build_level            = 0
+COMPILE_GAME_WITH_MSVC = 0
+ed_build_level   = 0
+meta_build_level = 1
+game_build_level = 1
 
 
 
@@ -242,7 +243,7 @@ class Compiler(Enum):
     MSVC    = 2
 
 # NOTE: parameters are just suggestions
-def run_compiler(compiler, input_files, output_file, debug_mode,
+def run_compiler(compiler, input_files, output_file, debug_mode=True,
                  compiler_flags="", linker_flags="",
                  compile_only=False, link_only=False,
                  no_ccache=False, exit_on_failure=True, no_warnings=False):
@@ -334,7 +335,7 @@ def autogen():
             print('Lexer: Generate (one-time thing)')
             LEXER_GEN = f"lexer_gen{DOT_EXE}"
             run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), LEXER_GEN, 
-                         debug_mode=True, compiler_flags=compiler_flags)
+                         compiler_flags=compiler_flags)
             #
             print('running lexer generator')
             mkdir_p(f'{CODE_KV}/generated')
@@ -342,9 +343,11 @@ def autogen():
             
         print('4coder API parser/generator')
         if meets_level(meta_build_level):
-            run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
-                         debug_mode=True, compiler_flags=compiler_flags)
-        run(f"ad_meta.exe {CODE}")
+            run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "",
+                         compiler_flags=compiler_flags, compile_only=True)
+            run_compiler(Compiler.ClangCl, f"meta_main.obj", "ad_meta.exe",
+                         link_only=True)
+        run(f"ad_meta {CODE}")
 
         meta_macros="-DMETA_PASS"
         print('preproc_file: Generate')
@@ -353,8 +356,10 @@ def autogen():
             
         print('Meta-generator')
         if meets_level(meta_build_level):
-            run_compiler(Compiler.ClangCl, f"{CUSTOM}/4coder_metadata_generator.cpp", f"metadata_generator{DOT_EXE}",
-                         debug_mode=True, compiler_flags=compiler_flags)
+            run_compiler(Compiler.ClangCl, f"{CUSTOM}/4coder_metadata_generator.cpp", f"",
+                         compiler_flags=compiler_flags, compile_only=True)
+            run_compiler(Compiler.ClangCl, f"4coder_metadata_generator.obj", f"metadata_generator{DOT_EXE}",
+                         link_only=True)
         run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
 
     asan_on = old_asan_on
@@ -384,7 +389,7 @@ def build_game():
             # NOTE: Compile the driver and the framework
             run_compiler(cl_or_clang_cl, f'{GAME_CPP} game_main.obj {space_join(imgui_object_files)}', f"game{DOT_DLL}",
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                         linker_flags="-DLL -export:game_api_export", debug_mode=True)
+                         linker_flags="-DLL -export:game_api_export")
 
     finally:
         os.remove("game_dll.lock")

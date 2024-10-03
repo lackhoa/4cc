@@ -453,10 +453,34 @@ get_right_bone(Modeler *m, Bone *bone){
  }
  return result;
 }
-
+function Bez
+compute_curve_from_data(Modeler *m, Bezier_Data &data0){
+ Bez result = {};
+ v3 p0 = m->vertices[data0.p0_index.v].pos;
+ v3 p3 = m->vertices[data0.p3_index.v].pos;
+ switch(data0.type){
+  case Bezier_Type_v3v2:{
+   auto &data = data0.data.v3v2;
+   result = bez_v3v2(p0, data.d0, data.d3, p3);
+  }break;
+  case Bezier_Type_Parabola:{
+   result = bez_parabola(p0, data0.data.parabola.d, p3);
+  }break;
+  case Bezier_Type_C2:{
+   auto &data = data0.data.c2;
+   Bezier_Data &refd = m->curves[data.ref.v];
+   Bez ref = compute_curve_from_data(m, refd);  //@recursion
+   result = bez_c2(ref, data.d3, p3);
+  }break;
+  case Bezier_Type_Unit:{
+   auto &data = data0.data.unit;
+   result = bez_unit(p0, data.d0,data.d3,data.unit_y, p3);
+  }break;
+ }
+ return result;
+}
 function void
-render_data(Modeler *m)
-{
+render_data(Modeler *m){
  painter.is_right = 0;
  argb inactive_color = argb_dark_green;
  for_i32(vi,1,m->vertices.count){
@@ -483,17 +507,7 @@ render_data(Modeler *m)
   {
    v3 p0 = m->vertices[curve.p0_index.v].pos;
    v3 p3 = m->vertices[curve.p3_index.v].pos;
-   Bez drawn;
-   switch(curve.type){
-    case Bezier_Type_v3v2:{
-     drawn = bez_v3v2(p0, curve.data.v3v2.d0,
-                      curve.data.v3v2.d3, p3);
-    }break;
-    case Bezier_Type_Parabola:{
-     drawn = bez_parabola(p0, curve.data.Parabola.d, p3);
-    }break;
-    invalid_default_case;
-   }
+   Bez drawn = compute_curve_from_data(m,curve);
    draw(bone->xform*drawn, curve.params, prim_id);
    if(curve.symx){
     set_in_block(painter.is_right, 1);
@@ -539,17 +553,11 @@ game_render(game_render_params)
   if(fbool(0)){orthographic = true;}
   painter.view_from_world = get_view_from_world(camera, orthographic);
  }
- 
-#if 0
- // NOTE: @Ugh Compute the mouse position in view space
- v2 clip_dim = get_dim(clip_box);
- v2 mouse_viewp_px = V2(mouse.p);
- mouse_viewp_px   -= clip_box.min + 0.5f * clip_dim;
- mouse_viewp_px.y *= -1.0f;
- painter.mousep = mouse_viewp_px / meter_to_pixel;
-#endif
- painter.cursorp = state->kb_cursor.pos;
- 
+ painter.cursorp  = state->kb_cursor.pos;
+ painter.target   = target;
+ painter.viewport = viewport;
+ painter.modeler  = modeler;
+ painter.camera   = *camera;
  {//-NOTE(kv) Drawing the movie
   Render_Config *config = draw_new_group(target);
   set_y_up(target, config);
@@ -560,15 +568,12 @@ game_render(game_render_params)
    //TODO(kv) Why can't the game understand scratch blocks?
    modeler->vertices.set_count(1);
    modeler->curves.  set_count(1);
-   //nono Let's pull painter out
    render_movie(scratch, render_scratch,
-                config, viewport,
-                state->references_full_alpha,
-                app, target, modeler,
-                camera, &state->pose, state->anime_time);
+                config, state->references_full_alpha,
+                &state->pose, state->anime_time);
   }
  }
- //-NOTE(kv)
+ //-NOTE
  render_data(modeler);
  
  if (state->kb_cursor_mode &&
@@ -889,8 +894,6 @@ update_camera_distance(v1 distance, i1 delta_level) {
  distance *= integer_power(mult, delta_level);
  return distance;
 }
-
-//global arrayof<String> command_queue;
 
 function game_send_command_return
 game_send_command(game_send_command_params) {

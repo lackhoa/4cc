@@ -4,8 +4,6 @@
 #include "game_colors.cpp"
 #include "ad_debug.h"
 
-// @distance_level_nonsense
-// TODO: NOT HAPPY with storing redundant data!
 struct Camera_Data  // IMPORTANT: @Serialized
 {
 #define X_Camera_Data(X) \
@@ -19,8 +17,7 @@ X(v3,pivot)    \
  X_Camera_Data(X_Field_Type_Name)
 };
 
-
-struct Bezier {
+struct Bezier{
  v3 e[4];
  force_inline operator v3 *() { return e; };
 };
@@ -28,13 +25,6 @@ typedef Bezier Bez;
 
 //~ id system
 // NOTE(kv): Primitives are either drawn by code or data.
-#if 0
-struct Vertex_Index{ i1 v; };
-inline b32 operator ==(Vertex_Index a, Vertex_Index b){ return a.v == b.v; }
-struct Curve_Index{ i1 v; };
-inline b32 operator ==(Curve_Index a, Curve_Index b){ return a.v == b.v; }
-#endif
-
 enum Prim_Type : u8 {
  Prim_Null     = 0,
  Prim_Vertex   = 1,
@@ -42,8 +32,8 @@ enum Prim_Type : u8 {
  Prim_Triangle = 3,
 };
 
-inline Prim_Type prim_type_from_id(u32 id) { return Prim_Type(id >> 24); }
-inline b32 prim_id_is_data(u32 id) { return prim_type_from_id(id) != 0; }
+inline Prim_Type prim_type_from_id(u32 id){ return Prim_Type(id >> 24); }
+inline b32 prim_id_is_data(u32 id){ return prim_type_from_id(id) != 0; }
 
 struct Prim_XID{
  u32       id;
@@ -246,7 +236,8 @@ struct Painter{
  argb fill_color;
  v1 fill_depth_offset;
  v1 line_depth_offset;
- v1 line_radius_unit;
+ //v1 line_radius_unit;
+ v1 line_radius_unit_mult;
  Line_Params line_params;
  Fill_Params fill_params;
  i32 viz_level;
@@ -270,11 +261,11 @@ function Line_Params lp(){ return painter.line_params; }
 global_const argb hot_color      = argb_lightness(argb_silver, 0.5f);
 global_const argb hot_color2     = argb_yellow;
 global_const argb selected_color = argb_red;
-
+global_const v1 default_line_radius_unit = 1.728125f * millimeter;
 
 //-
 inline Bone *current_bone(Painter *p){ return p->bone_stack.last(); }
-inline mat4i& current_world_from_bone(Painter *p) {
+inline mat4i& current_world_from_bone(Painter *p){
  return current_bone(p)->xform;
 }
 
@@ -295,8 +286,7 @@ X(teye_phi   , 6)  \
 X(tarm_bend  , 18)  \
 X(tarm_abduct, 36)  \
 
-struct Pose
-{
+struct Pose{
 #define X(NAME,...)   v1 NAME;
  X_Pose_Fields(X);
 #undef X
@@ -305,35 +295,6 @@ struct Pose
 //~NOTE Atrocity Alert! Transitional code to convert code to data.
 #include "generated/send_bez.gen.h"
 #define line_params_defp Line_Params params=painter.line_params
-#if 0
-#define bn_v3v2(name, p0,d0,d3,p3, ...) \
-send_bez_v3v2(strlit(#name), strlit(#p0), d0, d3, strlit(#p3), __VA_ARGS__)
-
-#define bs_v3v2(p0,d0,d3,p3, ...) \
-send_bez_v3v2(strlit("l"), strlit(#p0), d0, d3, strlit(#p3), __VA_ARGS__)
-
-#define bb_v3v2(name, p0,d0,d3,p3, ...) \
-bn_v3v2(name, p0,d0,d3,p3, __VA_ARGS__); \
-Bez name = bez_v3v2(p0,d0,d3,p3);
-
-#define ba_v3v2(name, p0,d0,d3,p3, ...) \
-bn_v3v2(name, p0,d0,d3,p3, __VA_ARGS__); \
-name = bez_v3v2(p0,d0,d3,p3);
-//-
-#define bn_parabola(name, p0,d,p3, ...) \
-send_bez_parabola(strlit(#name), strlit(#p0), d, strlit(#p3), __VA_ARGS__)
-
-#define bs_parabola(p0,d,p3, ...) \
-send_bez_parabola(strlit("l"), strlit(#p0), d, strlit(#p3), __VA_ARGS__)
-
-#define bb_parabola(name, p0,d,p3, ...) \
-bn_parabola(name, p0,d,p3, __VA_ARGS__); \
-Bez name = bez_parabola(p0,d,p3);
-
-#define ba_parabola(name, p0,d,p3, ...) \
-bn_parabola(name, p0,d,p3, __VA_ARGS__); \
-name = bez_parabola(p0,d,p3);
-#endif
 //-
 xfunction void
 send_vert_func(Painter *p, String name, v3 pos, i32 linum=__builtin_LINE());
@@ -345,10 +306,9 @@ xfunction Pose driver_animate(driver_animate_params);
 
 //TODO(kv) Maybe put the majority of this in the painter?
 #define render_movie_params \
-Arena *arena, Arena *scratch,  Render_Config *render_config, \
-Viewport *viewport, b32 references_full_alpha, \
-App *app, Render_Target *render_target, Modeler *modeler, \
-Camera *camera, struct Pose *pose, v1 anime_time
+Arena *arena, Arena *scratch, Render_Config *render_config, \
+b32 references_full_alpha, \
+Pose *pose, v1 anime_time
 
 xfunction void render_movie(render_movie_params);
 xfunction void driver_update(Viewport *viewports);
@@ -366,12 +326,11 @@ camera_world_position(Camera *camera){
  return result;
 }
 function v3
-camera_object_position(Painter *p) {
+camera_object_position(Painter *p){
  v3 result = (current_world_from_bone(p).inv *
               camera_world_position(&painter.camera));
  return result;
 }
-
 function void
 push_view_vector(Painter *p, v3 object_center){
  v3 camera_obj = camera_object_position(p);

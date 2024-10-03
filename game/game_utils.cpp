@@ -27,12 +27,11 @@ fval( (value), fopts_add_flags(fopts(__VA_ARGS__), Slider_Vector) )
 #define fkeyframe(nframes, value)  add_keyframe(ani, fval2i(nframes, value))
 #define fhsv(h,s,v) argb_pack(srgb_to_linear(hsv_to_srgb(fval3(h,s,v))))
 
-#define radius_scale_block(multiplier)  \
-scale_in_block(painter.line_radius_unit, multiplier)
+#define radius_scale_block(multiplier) \
+scale_in_block(painter.line_params.radius_mult, multiplier)
 
-#define line_radius_fine_tip  scale_in_block(painter.line_radius_unit, 0.25f)
-#define line_radius_medium    scale_in_block(painter.line_radius_unit, 0.5f)
-#define line_color_lightness(scale)  set_in_block(painter.line_params.color, argb_lightness(painter.line_params.color, scale))
+#define line_color_lightness(scale) \
+set_in_block(painter.line_params.color, argb_lightness(painter.line_params.color, scale))
 
 #define indicate(vertex,...)  indicate_vertex(#vertex, vertex, __VA_ARGS__)
 #define indicate0(vertex,...) indicate(vertex,0,__VA_ARGS__)
@@ -254,18 +253,20 @@ line_color(argb color)
  result.color = color;
  return result;
 }
-
 force_inline Bezier
-reverse(Bezier B)
-{
+reverse(Bezier B){
  return {B[3], B[2], B[1], B[0]};
 }
-
 force_inline v3
 reflect_origin(v3 origin, v3 point){
  return origin-(point-origin);
 }
-
+inline Line_Params
+lp(v4 radii){
+ Line_Params result=painter.line_params;
+ result.radii = radii;
+ return result;
+}
 inline Line_Params
 lp(i4 radii){
  Line_Params result = painter.line_params;
@@ -280,7 +281,7 @@ lp(v1 alignment_threshold, i4 radii={}){
  return result;
 }
 inline i1
-get_preset() {
+get_preset(){
  return painter.viewport->preset;
 }
 

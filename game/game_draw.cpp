@@ -259,10 +259,9 @@ bez_v3v2(v3 p0, v3 d0, v2 d3, v3 p3) {
  return Bezier{p0, p1, p2, p3};
 }
 
-
 // NOTE: Planar curve with unit vector guide
 function Bezier
-bez_unit(v3 p0, v2 d0, v2 d3, v3 p3, v3 unit_y){
+bez_unit(v3 p0, v2 d0, v2 d3, v3 unit_y, v3 p3){
  TIMED_BLOCK(bs_cycle_counter);
  v3 p1, unit_z;
  {
@@ -283,8 +282,8 @@ bez_unit(v3 p0, v2 d0, v2 d3, v3 p3, v3 unit_y){
 }
 //
 force_inline Bezier
-bez_unit(v3 p0, v4 d, v3 p3, v3 unit_y) {
- return bez_unit(p0, d.xy, d.zw, p3, unit_y);
+bez_unit2(v3 p0, v4 d0d3, v3 unit_y, v3 p3){
+ return bez_unit(p0, d0d3.xy, d0d3.zw, unit_y, p3);
 }
 
 // NOTE: Planar curve (with v3 control point)
@@ -536,11 +535,11 @@ draw(const v3 P0[4], Line_Params params, linum_defparam)
   if(p->ignore_radii || params.radii == v4{}){
    params.radii = p->line_params.radii;
   }
-  if (params.nslice_per_meter <= 0.f) { params.nslice_per_meter = DEFAULT_NSLICE_PER_METER; }
-  params.radii *= p->line_radius_unit;
+  if (params.nslice_per_meter <= 0.f){ params.nslice_per_meter = DEFAULT_NSLICE_PER_METER; }
+  params.radii *= (params.radius_mult * default_line_radius_unit);
   
   draw_bezier_inner(points, &params, painter.line_depth_offset);
-  if (symx) {
+  if(symx){
    draw_bezier_inner(reflects, &params, painter.line_depth_offset);
   }
  }

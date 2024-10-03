@@ -301,16 +301,15 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
   {
    char *vertex;
    //
-   if (is_game) { vertex = read_entire_file(arena, strlit(SHADER_DIR "vertex_shader.glsl")); }
-   else         { vertex = ed_vertex_shader; }
+   if(is_game){ vertex = to_cstring(read_entire_file(arena, strlit(SHADER_DIR "vertex_shader.glsl"))); }
+   else       { vertex = ed_vertex_shader; }
    GLchar *array[] = { version_str, defines, header, vertex };
    glShaderSource(vertex_shader, alen(array), array, 0);
    glCompileShader(vertex_shader);
   }
   
-  if (is_first_pass)
-  {
-   char *geometry = read_entire_file(arena, strlit(SHADER_DIR "geometry_shader.glsl"));
+  if(is_first_pass){
+   char *geometry = to_cstring(read_entire_file(arena, strlit(SHADER_DIR "geometry_shader.glsl")));
    GLchar *array[] = { version_str, defines, header, geometry };
    glShaderSource(geometry_shader, alen(array), array, 0);
    glCompileShader(geometry_shader);
@@ -318,8 +317,8 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
   
   {
    char *fragment;
-   if (is_game) { fragment = read_entire_file(arena, strlit(SHADER_DIR "fragment_shader.glsl")); }
-   else         { fragment = ed_fragment_shader; }
+   if(is_game){ fragment = to_cstring(read_entire_file(arena, strlit(SHADER_DIR "fragment_shader.glsl"))); }
+   else       { fragment = ed_fragment_shader; }
    GLchar *array[] = { version_str, defines, header, fragment };
    glShaderSource(fragment_shader, alen(array), array, 0);
    glCompileShader(fragment_shader);

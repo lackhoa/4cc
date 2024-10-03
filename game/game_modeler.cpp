@@ -59,8 +59,7 @@ get_vertex_by_linum(Modeler *m, i1 linum){
 }
 
 xfunction void
-send_vert_func(Painter *p, String name, v3 pos, i1 linum)
-{
+send_vert_func(Painter *p, String name, v3 pos, i1 linum){
  auto m = p->modeler;
  
  if(is_left(p)){
@@ -132,13 +131,15 @@ send_bez_func(Painter *p, String name,
   
   if(type==Bezier_Type_C2){
    Bezier_Data *ref = get_curve_by_name(m, additional.c2_ref);
-   curve->data.C2.ref = curve_index_from_pointer(m, ref);
+   kv_assert(ref);
+   curve->data.c2.ref = curve_index_from_pointer(m, ref);
   }
  }else{
   Bezier_Data *curve = get_curve_by_linum(m, linum);
   curve->symx = true;
  }
 }
+//NOTE(kv) Prototypes at send_bez.gen.h
 xfunction void
 send_bez_v3v2(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i1 linum){
  Bezier_Union data = {.v3v2={ .d0=d0, .d3=d3 }};
@@ -146,14 +147,23 @@ send_bez_v3v2(String name, String p0, v3 d0, v2 d3, String p3, Line_Params param
 }
 xfunction void
 send_bez_parabola(String name, String p0, v3 d, String p3, Line_Params params, i1 linum){
- Bezier_Union data = {.Parabola={.d=d}};
+ Bezier_Union data = {.parabola={.d=d}};
  send_bez_func(&painter, name, p0, p3, Bezier_Type_Parabola, data, params, linum);
 }
 xfunction void
 send_bez_c2(String name, String ref, v3 d3, String p3, Line_Params params, i1 linum){
- Bezier_Union data = {.C2={.d3=d3}};
+ Bezier_Union data = {.c2={.d3=d3}};
  Send_Bez_Additional_Data additional = {.c2_ref=ref};
  send_bez_func(&painter, name, strlit(""), p3, Bezier_Type_C2, data, params, linum, additional);
+}
+xfunction void
+send_bez_unit(String name, String p0, v2 d0, v2 d3, v3 unit_y, String p3, Line_Params params, i32 linum){
+ Bezier_Union data = {.unit={d0,d3,unit_y}};
+ send_bez_func(&painter, name, p0, p3, Bezier_Type_Unit, data, params, linum);
+}
+xfunction void
+send_bez_unit2(String name, String p0, v4 d0d3, v3 unit_y, String p3, Line_Params params, i32 linum){
+ send_bez_unit(name, p0, d0d3.xy, d0d3.zw, unit_y, p3, params, linum);
 }
 
 //-NOTE: Edit history
@@ -164,7 +174,7 @@ clear_edit_history(Modeler_History *h)
  // NOTE(kv): We wanna clear all history when we want to.
  // NOTE(kv): so when we clear, the plan is to just wipe out the memory, and re-initialize everything.
  // NOTE(kv): Later we can make multiple arena pools, and free those.
- if (h->inited) {
+ if(h->inited){
   arena_clear(&h->arena);
   init_dynamic(h->edit_stack, &h->allocator, 128);
  }

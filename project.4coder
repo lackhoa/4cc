@@ -20,6 +20,7 @@ blacklist_patterns = {
  ".*",
  "*.skm",
  "kv_trash*",
+ "*4coder_command_metadata.i",
 };
 
 fcoder_source = { .path="" , .relative=true, .recursive=true, };

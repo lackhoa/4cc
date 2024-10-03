@@ -88,12 +88,15 @@ kv_token_at_cursor(App *app, i64 delta=0)
 }
 
 function Token_Iterator_Array
-get_token_it_at_cursor(App *app, i64 delta=0)
-{
- GET_VIEW_AND_BUFFER;
+get_token_it_at_pos(App *app, Buffer_ID buffer, i64 pos){
  Token_Array tokens = get_token_array_from_buffer(app, buffer);
- i64 pos = view_get_cursor_pos(app, view) + delta;
  return tkarr_at_pos(0, &tokens, pos);
+}
+function Token_Iterator_Array
+get_token_it_at_cursor(App *app, i64 delta=0){
+ GET_VIEW_AND_BUFFER;
+ i64 pos = view_get_cursor_pos(app, view) + delta;
+ return get_token_it_at_pos(app, buffer, pos);
 }
 
 function i64 get_line_start_pos(App *app, Buffer_ID buffer, i64 line_number);
@@ -1004,63 +1007,60 @@ enclose_pos_alnum_underscore(App *app, Buffer_ID buffer, i64 pos){
 }
 function Range_i64
 right_enclose_alnum_underscore(App *app, Buffer_ID buffer,
-                                       Range_i64 range){
-    return(right_enclose_boundary(app, buffer, range, boundary_alnum_underscore));
+                               Range_i64 range){
+ return(right_enclose_boundary(app, buffer, range, boundary_alnum_underscore));
 }
 
 function Range_i64
 enclose_alnum_underscore_utf8(App *app, Buffer_ID buffer, Range_i64 range){
-    return(enclose_boundary(app, buffer, range, boundary_alnum_underscore_utf8));
+ return(enclose_boundary(app, buffer, range, boundary_alnum_underscore_utf8));
 }
 function Range_i64
 enclose_pos_alnum_underscore_utf8(App *app, Buffer_ID buffer, i64 pos){
-    return(enclose_boundary(app, buffer, Ii64(pos), boundary_alnum_underscore_utf8));
+ return(enclose_boundary(app, buffer, Ii64(pos), boundary_alnum_underscore_utf8));
 }
 function Range_i64
 right_enclose_alnum_underscore_utf8(App *app, Buffer_ID buffer,
-                                            Range_i64 range){
-    return(right_enclose_boundary(app, buffer, range, boundary_alnum_underscore_utf8));
+                                    Range_i64 range){
+ return(right_enclose_boundary(app, buffer, range, boundary_alnum_underscore_utf8));
 }
-
 
 function Range_i64
 enclose_pos_inside_quotes(App *app, Buffer_ID buffer, i64 pos){
-    return(enclose_boundary(app, buffer, Ii64(pos), boundary_inside_quotes));
+ return(enclose_boundary(app, buffer, Ii64(pos), boundary_inside_quotes));
 }
-
 function Range_i64
 enclose_whole_lines(App *app, Buffer_ID buffer, Range_i64 range){
-    return(enclose_boundary(app, buffer, range, boundary_line));
+ return(enclose_boundary(app, buffer, range, boundary_line));
 }
 function Range_i64
 enclose_pos_whole_lines(App *app, Buffer_ID buffer, i64 pos){
-    return(enclose_boundary(app, buffer, Ii64(pos), boundary_line));
+ return(enclose_boundary(app, buffer, Ii64(pos), boundary_line));
 }
-
-////////////////////////////////
+function void
+view_set_cursor_pos(App *app, View_ID view, i64 pos){
+ view_set_cursor(app, view, seek_pos(pos));
+}
 
 ////////////////////////////////
 
 function String
-push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
-{
+push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range){
  String result = {};
  i64 length = range_size(range);
- if (length > 0) {
+ if(length > 0){
   Temp_Memory restore_point = begin_temp(arena);
   u8 *memory = push_array(arena, u8, length);
-  if ( buffer_read_range(app, buffer, range, memory) ) {
+  if(buffer_read_range(app, buffer, range, memory)){
    result = SCu8(memory, length);
-  } else {
+  }else{
    end_temp(restore_point);
   }
  }
  return(result);
 }
-
 function Range_i64
-get_selected_range(App *app)
-{
+get_selected_range(App *app){
  GET_VIEW_AND_BUFFER;
  i64 curpos = view_get_cursor_pos(app, view);
  i64 markpos = view_get_mark_pos(app, view);
@@ -1068,18 +1068,14 @@ get_selected_range(App *app)
  result.max += 1;
  return result;
 }
-
 function String8
-get_selected_string(App *app, Arena *arena)
-{
+get_selected_string(App *app, Arena *arena){
  GET_VIEW_AND_BUFFER;
  Range_i64 range = get_selected_range(app);
  return push_buffer_range(app, arena, buffer, range);
 }
-
 inline b32
-token_equal_cstring(App *app, Buffer_ID buffer, Token *token, char *cstring)
-{
+token_equal_cstring(App *app, Buffer_ID buffer, Token *token, char *cstring){
  Scratch_Block scratch(app);
  String8 string = push_token_lexeme(app, scratch, buffer, token);
  b32 result = string_compare(string, SCu8(cstring)) == 0;
@@ -2143,51 +2139,45 @@ file_exists_and_is_folder(Arena *scratch, String8 filename)
  return(attributes.last_write_time > 0 && HasFlag(attributes.flags, FileAttribute_IsDirectory));
 }
 
-function String
-search_up_path(Arena *arena, String start_path, String filename)
-{
-    String result = {};
-    String path = start_path;
-    for (;path.size > 0;)
-    {
-        char last_char = string_get_character(path, path.size - 1);
-        if (character_is_slash(last_char))
-        {
-            path = string_chop(path, 1);
-        }
-        Temp_Memory temp = begin_temp(arena);
-        String full_path = push_stringfz(arena, "%.*s/%.*s",
-                                        string_expand(path),
-                                        string_expand(filename));
-        if ( file_exists(arena, full_path) )
-        {
-            result = full_path;
-            break;
-        }
-        else
-        {
-            end_temp(temp);
-            path = path_dirname(path);
-        }
-    }
-    return(result);
+function Stringz
+search_up_path(Arena *arena, String start_path, String filename){
+ Stringz result = {};
+ String path = start_path;
+ for (;path.size > 0;)
+ {
+  char last_char = string_get_character(path, path.size - 1);
+  if (character_is_slash(last_char))
+  {
+   path = string_chop(path, 1);
+  }
+  Temp_Memory temp = begin_temp(arena);
+  Stringz full_path = push_stringfz(arena, "%.*s/%.*s",
+                                    string_expand(path),
+                                    string_expand(filename));
+  if (file_exists(arena, full_path)){
+   result = full_path;
+   break;
+  }else{
+   end_temp(temp);
+   path = path_dirname(path);
+  }
+ }
+ return(result);
 }
 
 function File_Name_Data
 read_entire_file_search_up_path(Arena *arena, String path, String filename)
 {
-    File_Name_Data result = {};
-    String8 full_path = search_up_path(arena, path, filename);
-    if (full_path.size > 0)
-    {
-        String8 data = read_entire_file(arena, full_path);
-        if (data.str) 
-        {
-            result.data = data;
-            result.name = full_path;
-        }
-    }
-    return(result);
+ File_Name_Data result = {};
+ Stringz full_path = search_up_path(arena, path, filename);
+ if (full_path.size > 0){
+  String data = read_entire_file(arena, full_path);
+  if(data.str){
+   result.data = data;
+   result.name = full_path;
+  }
+ }
+ return(result);
 }
 
 function void

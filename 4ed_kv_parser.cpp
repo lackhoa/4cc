@@ -55,8 +55,7 @@ struct Ed_Parser{
 };
 
 function i1
-count_newlines_in_string(String string)
-{
+count_newlines_in_string(String string) {
  i1 result = 0;
  for_i1(index,0,i1(string.len)) {
   if (string.str[index] == '\n') { 
@@ -67,30 +66,26 @@ count_newlines_in_string(String string)
 }
 
 function Line_Column
-ep_get_fail_location(Ed_Parser *p)
-{
+ep_get_fail_location(Ed_Parser *p){
  Line_Column result = {};
- if (p->ok_ == false)
- {
+ if(p->ok_ == false){
   Token *fail_token = ep__get_token_please(p);
   // NOTE: Time for us to do some gymnastic
   auto it0 = p->original_token_it;
   i64 begin_line_pos = 0;
-  result.line = 1;  // NOTE(kv): Line number starts with 1 for some reason.
-  while(true)
-  {
+  result.line = 1;  // NOTE(kv): Line number starts with 1, for good reason.
+  while(true){
    Token *token = token_it_inc_all(&it0);
-   if (!token || token->pos > fail_token->pos) {
+   if(!token || token->pos > fail_token->pos){
     break;
    }
    result.column = i1(token->pos - begin_line_pos);
-   if (token->kind == TokenBaseKind_Whitespace)
-   {// NOTE: Increase line number
+   if(token->kind == TokenBaseKind_Whitespace){
+    // NOTE: Increase line number
     Scratch_Block scratch;
     String token_string = ep__print_given_token(p, scratch, token);
-    for_i1 (index,0,i1(token_string.len))
-    {
-     if (token_string.str[index] == '\n') {
+    for_i1 (index,0,i1(token_string.len)){
+     if(token_string.str[index] == '\n'){
       result.line++;
       begin_line_pos = token->pos+index+1;
      }
@@ -105,8 +100,7 @@ ep_get_fail_location(Ed_Parser *p)
 function Ed_Parser
 make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
                     Arena *string_arena=0,
-                    Scan_Direction scan_direction=Scan_Forward)
-{
+                    Scan_Direction scan_direction=Scan_Forward){
  Ed_Parser result = {
   .ok_               = true,
   .scan_direction    = scan_direction,
@@ -124,8 +118,7 @@ make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
 #endif
 
 function Ed_Parser
-make_ep_from_string(String string, Token_Iterator const&it)
-{
+make_ep_from_string(String string, Token_Iterator const&it){
  Ed_Parser result = {
   .ok_               = true,
   .scan_direction    = Scan_Forward,
@@ -138,56 +131,47 @@ make_ep_from_string(String string, Token_Iterator const&it)
  };
  return result;
 }
-
-function Token *
-ep__get_token_please(Ed_Parser *p){
- Token *token = token_it_read(&p->it);
- return token;
-}
-
 inline Token *
-ep_get_token(Ed_Parser *p) {
+ep__get_token_please(Ed_Parser *p){
+ return token_it_read(&p->it);
+}
+//NOTE(kv) If you get back a token, it will never be past the end
+inline Token *
+ep_get_token(Ed_Parser *p){
  Token *token = 0;
- if (p->ok_) {
+ if(p->ok_){
   token = ep__get_token_please(p);
  }
  return token;
 }
-
 function Token *
-ep_get_token_delta(Ed_Parser *p, i32 delta)
-{
+ep_get_token_delta(Ed_Parser *p, i32 delta){
  Token *result = 0;
- if (delta < 0) {
+ if(delta < 0){
   i32 inverse_delta = -delta;
   for_repeat(inverse_delta) { token_it_dec(&p->it); }
   result = ep_get_token(p);
   for_repeat(inverse_delta) { token_it_inc(&p->it); }
- } else {
+ }else{
   todo_incomplete;
  }
  return result;
 }
 
 function String
-ep__print_given_token(Ed_Parser *p, Arena *arena, Token *token)
-{
+ep__print_given_token(Ed_Parser *p, Arena *arena, Token *token) {
  String result = {};
- if (token)
- {
-  switch(p->Token_Gen_Type)
-  {
+ if (token) {
+  switch(p->Token_Gen_Type) {
 #if ED_PARSER_BUFFER
    case TG_Buffer: {
     auto &tg = p->Token_Gen_Buffer;
     result = push_token_lexeme(tg.app, arena, tg.buffer, token);
    }break;
 #endif
-   
    case TG_String: {
     result = string_substring(p->Token_Gen_String.source, Ii64(token));
    } break;
-   
    invalid_default_case;
   }
  }
@@ -196,34 +180,25 @@ ep__print_given_token(Ed_Parser *p, Arena *arena, Token *token)
 
 function String
 ep_print_token(Ed_Parser *p, Arena *arena) {
+ if(arena==0){ arena=p->string_arena; }
  Token *token = ep_get_token(p);
  return ep__print_given_token(p, arena, token);
 }
-inline String
-ep_print_token(Ed_Parser *p) {
- return ep_print_token(p, p->string_arena);
-}
-
 function i64
 ep_get_pos(Ed_Parser *p) {
  if (Token *token = ep_get_token(p)) {
   return token->pos;
  } else { return 0; }
 }
-
 function void
-ep_eat_token(Ed_Parser *p)
-{
- if (p->ok_)
- {
-  switch(p->Token_Gen_Type)
-  {
+ep_eat_token(Ed_Parser *p) {
+ if (p->ok_) {
+  switch(p->Token_Gen_Type) {
    case TG_String:
-   case TG_Buffer:
-   {
-    if (p->scan_direction == Scan_Forward) {
+   case TG_Buffer: {
+    if(p->scan_direction == Scan_Forward){
      p->set_ok(token_it_inc(&p->it) != 0);
-    } else {
+    }else{
      p->set_ok(token_it_dec(&p->it) != 0);
     }
    }break;
@@ -346,14 +321,15 @@ ep_maybe_kind(Ed_Parser *p, Token_Base_Kind kind){
  return result;
 }
 
-force_inline b32
-ep_at_eof(Ed_Parser *p)
-{
+function b32
+ep_at_eof(Ed_Parser *p){
  b32 result = false;
- if (p->ok_)
- {
+ if(p->ok_){
   Token *token = ep_get_token(p);
   result = (token->kind == TokenBaseKind_EOF);
+  if(result){
+   ep_get_token(p);
+  }
  }
  return result;
 }
@@ -459,15 +435,25 @@ ep_id(Ed_Parser *p, char *test_id){
 
 // NOTE Returns index + 1
 function i1
-ep__char_in_string(String chars, char chr){
+ep__char_in_string_old(String chars, char chr){
  i1 result = 0;
- for_u32 (index, 0, (u32)chars.size){
-  if (chars.str[index] == chr){
+ for_u32(index, 0, (u32)chars.size){
+  if(chars.str[index] == chr){
    result = index + 1;
    break;
   }
  }
  return result;
+}
+// NOTE Returns index + 1
+function b32
+ep__char_in_string_new(String chars, char chr){
+ for_u32(index, 0, (u32)chars.size){
+  if(chars.str[index] == chr){
+   return true;
+  }
+ }
+ return false;
 }
 
 function b32
@@ -489,16 +475,52 @@ ep_maybe_char(Ed_Parser *p, char c)
 }
 //
 function void
-ep_char(Ed_Parser *p, char c)
-{
+ep_char(Ed_Parser *p, char c){
  p->set_ok( ep_maybe_char(p, c) );
 }
 
+//NOTE(kv) Excludes the nil terminator
+function char
+ep_eat_until_char_new(Ed_Parser *p, String chars, i1 max_recursion=20){
+ char result = 0;
+ if(max_recursion > 0){
+  while(!result && p->ok_){
+   Scratch_Block scratch;
+   String token = ep_print_token(p, scratch);//TODO(kv) OMG this is bad!
+   b32 should_eat = true;
+   if(token.len == 1){
+    char char0 = token.str[0];
+    if(ep__char_in_string_new(chars, char0)){
+     result = char0;
+     should_eat = false;
+    }else{
+     char *matching = 0;
+     if(char0 == '('){ matching = ")"; }
+     if(char0 == '['){ matching = "]"; }
+     if(char0 == '{'){ matching = "}"; }
+     if(matching){
+      ep_eat_token(p);
+      ep_eat_until_char_new(p, SCu8(matching), max_recursion-1);
+     }
+    }
+   }
+   if(should_eat){
+    ep_eat_token(p);
+   }
+  }
+ }
+ return result;
+}
+function i1
+ep_eat_until_char_new(Ed_Parser *p, char *s) {
+ String ss = SCu8(s);
+ return ep_eat_until_char_new(p, ss);
+}
+//-
 //NOTE(kv) Returns index + 1
 //NOTE(kv) Also eats the terminator (TODO(kv) Please change it to not include terminator, it makes the calling code harder to write)
 function i1
-ep_eat_until_char(Ed_Parser *p, String chars, i1 max_recursion=20)
-{
+ep_eat_until_char_old(Ed_Parser *p, String chars, i1 max_recursion=20){
  i1 result = 0;
  
  if (max_recursion > 0){
@@ -508,16 +530,16 @@ ep_eat_until_char(Ed_Parser *p, String chars, i1 max_recursion=20)
    b32 eaten = false;
    if(token.size == 1){
     char character = token.str[0];
-    result = ep__char_in_string(chars, character);
-    if (!result) {
+    result = ep__char_in_string_old(chars, character);
+    if(!result){
      char *matching = 0;
      if (character == '(') { matching = ")"; }
      if (character == '[') { matching = "]"; }
      if (character == '{') { matching = "}"; }
-     if (matching) {
+     if(matching){
       ep_eat_token(p);
       eaten = true;
-      ep_eat_until_char(p, SCu8(matching), max_recursion-1);
+      ep_eat_until_char_old(p, SCu8(matching), max_recursion-1);
      }
     }
    }
@@ -528,13 +550,13 @@ ep_eat_until_char(Ed_Parser *p, String chars, i1 max_recursion=20)
  return result;
 }
 function i1
-ep_eat_until_char(Ed_Parser *p, char *s) {
+ep_eat_until_char_old(Ed_Parser *p, char *s) {
  String ss = SCu8(s);
- return ep_eat_until_char(p, ss);
+ return ep_eat_until_char_old(p, ss);
 }
 function i1
-ep_eat_until_char(Ed_Parser *p, char &c) {
- return ep_eat_until_char(p, SCu8(c));
+ep_eat_until_char_old(Ed_Parser *p, char &c) {
+ return ep_eat_until_char_old(p, SCu8(c));
 }
 
 function String
@@ -543,7 +565,7 @@ ep_capture_until_char(Ed_Parser *p, char terminator) {
  String result = {};
  if (p->ok_) {
   Token *first_token = ep_get_token(p);
-  i1 res = ep_eat_until_char(p, SCu8(terminator));
+  i1 res = ep_eat_until_char_old(p, SCu8(terminator));
   if (res) {
    // NOTE(kv): The terminator is one token to the left,
    //   so the last token in the captured range is two tokens to the left.

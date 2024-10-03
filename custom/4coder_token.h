@@ -60,20 +60,16 @@ struct Token{
  i16 sub_kind;
  u16 sub_flags;
 };
-
 global Token stub_token = {}; // NOTE(kv): experimenting with ZII!
-
 struct Token_Pair{
-    Token a;
-    Token b;
+ Token a;
+ Token b;
 };
-
 struct Token_Array{
-    Token *tokens;
-    i64 count;
-    i64 max;
+ Token *tokens;
+ i64 count;
+ i64 max;
 };
-
 struct Token_Block{
  Token_Block *next;
  Token_Block *prev;
@@ -81,21 +77,18 @@ struct Token_Block{
  i64 count;
  i64 max;
 };
-
 struct Token_List{
  Token_Block *first;
  Token_Block *last;
  i64 node_count;
  i64 total_count;
 };
-
 struct Token_Relex{
  b32 successful_resync;
  i64 first_resync_index;
 };
 
 struct Token_Iterator;
-
 struct Token_Iterator_Array{
  u64 user_id;
  Token *ptr;
@@ -103,7 +96,6 @@ struct Token_Iterator_Array{
  i64 count;
  operator Token_Iterator();
 };
-
 struct Token_Iterator_List{
  u64 user_id;
  i64 index;
@@ -115,21 +107,18 @@ struct Token_Iterator_List{
  i64 total_count;
  operator Token_Iterator();
 };
-
 typedef i1 Token_Iterator_Kind;
 enum{
  TokenIterator_Array,
  TokenIterator_List,
 };
-
-struct Token_Iterator {
+struct Token_Iterator{
  Token_Iterator_Kind kind;
  union{
   Token_Iterator_Array array;
   Token_Iterator_List list;
  };
 };
-
 //-
 inline Token_Iterator
 make_token_iterator(Token_Iterator_Array const&it){

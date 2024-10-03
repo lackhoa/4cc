@@ -153,37 +153,31 @@ tkarr_at_pos(u64 user_id, Token *tokens, i64 count, i64 pos){
  i64 index = token_index_from_pos(tokens, count, pos);
  return(token_iterator_index(user_id, tokens, count, index));
 }
-
 function Token_Iterator_Array
 tkarr_at_pos(u64 user_id, Token_Array *tokens, i64 pos){
  i64 index = token_index_from_pos(tokens->tokens, tokens->count, pos);
  return(token_iterator_index(user_id, tokens->tokens, tokens->count, index));
 }
-
 function i64
 tkarr_index(Token_Iterator_Array *it){
  return((i64)(it->ptr - it->tokens));
 }
-
 function Token *
-tkarr_inc_all(Token_Iterator_Array *it)
-{
+tkarr_inc_all(Token_Iterator_Array *it){
  Token *result = 0;
- if (it->tokens != 0) {
-  if (it->ptr < (it->tokens + it->count - 1)) {
+ if(it->tokens != 0){
+  if(it->ptr < (it->tokens + it->count-1)){
    it->ptr++;
    result = it->ptr;
   }
  }
  return(result);
 }
-
 function Token *
-tkarr_dec_all(Token_Iterator_Array *it)
-{
+tkarr_dec_all(Token_Iterator_Array *it){
  Token *result = 0;
- if (it->tokens != 0){
-  if (it->ptr > it->tokens){
+ if(it->tokens != 0){
+  if(it->ptr > it->tokens){
    it->ptr -= 1;
    result = it->ptr;
   }
@@ -195,27 +189,22 @@ tkarr_dec_all(Token_Iterator_Array *it)
 // with the API generator.
 // Because the tokenizer is used by the API generator!
 api(ed) function Token *
-tkarr_read(Token_Iterator_Array *it)
-{
+tkarr_read(Token_Iterator_Array *it){
  Token *result = 0;
- if (it->tokens != 0)
- {
+ if (it->tokens != 0){
   result = it->ptr;
  }
  return(result);
 }
 
 api(ed) function Token *
-tkarr_inc(Token_Iterator_Array *it)
-{
+tkarr_inc(Token_Iterator_Array *it){
  Token *result = 0;
  repeat:
- if ( tkarr_inc_all(it) )
- {
+ if ( tkarr_inc_all(it) ) {
   Token *token = tkarr_read(it);
   if (token != 0 && (token->kind == TokenBaseKind_Whitespace ||
-                     token->kind == TokenBaseKind_Comment))
-  {
+                     token->kind == TokenBaseKind_Comment)) {
    goto repeat;
   }
   result = token;
@@ -224,12 +213,10 @@ tkarr_inc(Token_Iterator_Array *it)
 }
 
 function Token *
-tkarr_dec(Token_Iterator_Array *it)
-{
+tkarr_dec(Token_Iterator_Array *it) {
  Token *result = 0;
  repeat:
- if ( tkarr_dec_all(it) )
- {
+ if(tkarr_dec_all(it)){
   Token *token = tkarr_read(it);
   if (token != 0 && (token->kind == TokenBaseKind_Whitespace ||
                      token->kind == TokenBaseKind_Comment)){
@@ -343,11 +330,11 @@ token_it_at_pos(u64 user_id, Token_List *list, i64 pos){
 
 function Token*
 token_it_read(Token_Iterator_List *it){
-    Token *result = 0;
-    if (it->block != 0){
-        result = it->ptr;
-    }
-    return(result);
+ Token *result = 0;
+ if (it->block != 0){
+  result = it->ptr;
+ }
+ return(result);
 }
 
 internal i64
@@ -356,26 +343,25 @@ token_it_index(Token_Iterator_List *it){
 }
 
 internal Token *
-token_it_inc_all(Token_Iterator_List *it)
-{
-    Token *result = 0;
-    if (it->block != 0){
-        i64 sub_index = (i64)(it->ptr - it->block->tokens);
-        if (sub_index + 1 < it->block->count){
-            it->index += 1;
-            it->ptr += 1;
-            result = it->ptr;
-        }
-        else{
-            if (it->block->next != 0){
-                it->block = it->block->next;
-                it->index += 1;
-                it->ptr = it->block->tokens;
-                result = it->ptr;
-            }
-        }
-    }
-    return(result);
+token_it_inc_all(Token_Iterator_List *it) {
+ Token *result = 0;
+ if (it->block != 0){
+  i64 sub_index = (i64)(it->ptr - it->block->tokens);
+  if (sub_index + 1 < it->block->count){
+   it->index += 1;
+   it->ptr += 1;
+   result = it->ptr;
+  }
+  else{
+   if (it->block->next != 0){
+    it->block = it->block->next;
+    it->index += 1;
+    it->ptr = it->block->tokens;
+    result = it->ptr;
+   }
+  }
+ }
+ return(result);
 }
 
 internal Token *
@@ -493,15 +479,12 @@ token_it_index(Token_Iterator *it){
 
 api(ed)
 function Token *
-token_it_inc_all(Token_Iterator *it)
-{
+token_it_inc_all(Token_Iterator *it) {
  switch (it->kind) {
-  case TokenIterator_Array:
-  {
+  case TokenIterator_Array: {
    return(tkarr_inc_all(&it->array));
   }break;
-  case TokenIterator_List:
-  {
+  case TokenIterator_List: {
    return(token_it_inc_all(&it->list));
   }break;
  }
@@ -510,28 +493,24 @@ token_it_inc_all(Token_Iterator *it)
 
 internal Token *
 token_it_dec_all(Token_Iterator *it){
-    switch (it->kind){
-        case TokenIterator_Array:
-        {
-            return(tkarr_dec_all(&it->array));
-        }break;
-        case TokenIterator_List:
-        {
-            return(token_it_dec_all(&it->list));
-        }break;
-    }
-    return(0);
+ switch (it->kind){
+  case TokenIterator_Array: {
+   return(tkarr_dec_all(&it->array));
+  }break;
+  case TokenIterator_List: {
+   return(token_it_dec_all(&it->list));
+  }break;
+ }
+ return(0);
 }
 
 internal Token *
 token_it_inc_non_whitespace(Token_Iterator *it){
  switch (it->kind){
-  case TokenIterator_Array:
-  {
+  case TokenIterator_Array: {
    return(tkarr_inc_non_whitespace(&it->array));
   }break;
-  case TokenIterator_List:
-  {
+  case TokenIterator_List: {
    return(token_it_inc_non_whitespace(&it->list));
   }break;
  }
@@ -539,15 +518,12 @@ token_it_inc_non_whitespace(Token_Iterator *it){
 }
 
 internal Token *
-token_it_dec_non_whitespace(Token_Iterator *it)
-{
+token_it_dec_non_whitespace(Token_Iterator *it) {
  switch (it->kind){
-  case TokenIterator_Array:
-  {
+  case TokenIterator_Array: {
    return(tkarr_dec_non_whitespace(&it->array));
   }break;
-  case TokenIterator_List:
-  {
+  case TokenIterator_List: {
    return(token_it_dec_non_whitespace(&it->list));
   }break;
  }
@@ -555,15 +531,12 @@ token_it_dec_non_whitespace(Token_Iterator *it)
 }
 
 api(ed) function Token *
-token_it_inc(Token_Iterator *it)
-{
+token_it_inc(Token_Iterator *it) {
  switch (it->kind){
-  case TokenIterator_Array:
-  {
+  case TokenIterator_Array: {
    return(tkarr_inc(&it->array));
   }break;
-  case TokenIterator_List:
-  {
+  case TokenIterator_List: {
    return(token_it_inc(&it->list));
   }break;
  }
@@ -571,19 +544,16 @@ token_it_inc(Token_Iterator *it)
 }
 
 api(ed) function Token *
-token_it_dec(Token_Iterator *it)
-{
-    switch (it->kind){
-        case TokenIterator_Array:
-        {
-            return(tkarr_dec(&it->array));
-        }break;
-        case TokenIterator_List:
-        {
-            return(token_it_dec(&it->list));
-        }break;
-    }
-    return(0);
+token_it_dec(Token_Iterator *it) {
+ switch (it->kind){
+  case TokenIterator_Array: {
+   return(tkarr_dec(&it->array));
+  }break;
+  case TokenIterator_List: {
+   return(token_it_dec(&it->list));
+  }break;
+ }
+ return(0);
 }
 
 ////////////////////////////////
@@ -648,8 +618,7 @@ token_relex_resync(Token_Array *tokens, i64 edit_range_first, i64 look_ahead_rep
 }
 
 internal Token_Relex
-token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, i64 relex_first, i64 relex_last)
-{
+token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, i64 relex_first, i64 relex_last) {
  Token_Relex relex = {};
  if (relex_list.total_count > 0){
   Token_Array relexed_tokens = 
@@ -658,23 +627,22 @@ token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, 
    .count = relex_last - relex_first + 1,
   };
   Token_Iterator_List it = token_iterator_index(0, &relex_list, relex_list.total_count - 1);
-        for (;;){
-            Token *token = token_it_read(&it);
-            i64 new_pos_rebased = token->pos + new_pos_to_old_pos_shift;
-            i64 old_token_index = token_index_from_pos(&relexed_tokens, new_pos_rebased);
-            Token *old_token = relexed_tokens.tokens + old_token_index;
-            if (new_pos_rebased == old_token->pos &&
-                token->size == old_token->size &&
-                token->kind == old_token->kind &&
-                token->sub_kind == old_token->sub_kind &&
-                token->flags == old_token->flags &&
-                token->sub_flags == old_token->sub_flags){
-                relex.successful_resync = true;
-                relex.first_resync_index = relex_first + old_token_index;
-            }
-            else{
-                break;
-            }
+  for (;;){
+   Token *token = token_it_read(&it);
+   i64 new_pos_rebased = token->pos + new_pos_to_old_pos_shift;
+   i64 old_token_index = token_index_from_pos(&relexed_tokens, new_pos_rebased);
+   Token *old_token = relexed_tokens.tokens + old_token_index;
+   if (new_pos_rebased == old_token->pos &&
+       token->size == old_token->size &&
+       token->kind == old_token->kind &&
+       token->sub_kind == old_token->sub_kind &&
+       token->flags == old_token->flags &&
+       token->sub_flags == old_token->sub_flags){
+    relex.successful_resync = true;
+    relex.first_resync_index = relex_first + old_token_index;
+   } else{
+    break;
+   }
    if (!token_it_dec_all(&it)){
     break;
    }
@@ -683,8 +651,7 @@ token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, 
  return(relex);
 }
 
-inline Range_i64 get_token_range(Token *token)
-{
+inline Range_i64 get_token_range(Token *token) {
   if (token)
     return Range_i64{token->pos, token->pos + token->size};
   else

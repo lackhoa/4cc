@@ -368,9 +368,9 @@ fui_handle_slider(fui_handle_slider_params)
      
      for_i32(index,0,component_count) {
       if (index<component_count-1){
-       ep_eat_until_char(p, ",");
+       ep_eat_until_char_old(p, ",");
       }else{
-       ep_eat_until_char(p, ")");
+       ep_eat_until_char_old(p, ")");
       }
      }
     }

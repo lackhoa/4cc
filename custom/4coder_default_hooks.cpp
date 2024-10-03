@@ -42,9 +42,9 @@ CUSTOM_DOC("Default command for responding to a try-exit event")
         b32 do_exit = true;
         if (!allow_immediate_close_without_checking_for_changes){
             b32 has_unsaved_changes = false;
-            for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-                 buffer != 0;
-                 buffer = get_buffer_next(app, buffer, Access_Always)){
+            for(Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+                buffer != 0;
+                buffer = get_buffer_next(app, buffer, Access_Always)){
                 Dirty_State dirty = buffer_get_dirty_state(app, buffer);
                 if (HasFlag(dirty, DirtyState_UnsavedChanges)){
                     has_unsaved_changes = true;
@@ -73,111 +73,97 @@ default_implicit_map(App *app, String_ID lang, String_ID mode, Input_Event *even
     Command_Binding binding = map_get_binding_recursive(&framework_mapping, map_id, event);
     
     // TODO(allen): map_id <-> map name?
-    result.map = 0;
-    result.command = binding.custom;
-    
-    return(result);
+ result.map = 0;
+ result.command = binding.custom;
+ 
+ return(result);
 }
 
 CUSTOM_COMMAND_SIG(default_view_input_handler)
 CUSTOM_DOC("Input consumption loop for default view behavior")
 {
-    Scratch_Block scratch(app);
-    default_input_handler_init(app, scratch);
-    
-    View_ID view = get_this_ctx_view(app, Access_Always);
-    Managed_Scope scope = view_get_managed_scope(app, view);
-    
-    for (;;){
-        // NOTE(allen): Get input
-        User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
-        if (input.abort){
-            break;
-        }
-        
-        ProfileScopeNamed(app, "before view input", view_input_profile);
-        
-        // NOTE(allen): Mouse Suppression
-        Event_Property event_properties = get_event_properties(&input.event);
-        if (suppressing_mouse && (event_properties & EventPropertyGroup_AnyMouseEvent) != 0){
-            continue;
-        }
-        
-        // NOTE(allen): Get binding
-        if (implicit_map_function == 0){
-            implicit_map_function = default_implicit_map;
-        }
-        Implicit_Map_Result map_result = implicit_map_function(app, 0, 0, &input.event);
-        if (map_result.command == 0){
-            leave_current_input_unhandled(app);
-            continue;
-        }
-        
-        // NOTE(allen): Run the command and pre/post command stuff
-        default_pre_command(app, scope);
-        ProfileCloseNow(view_input_profile);
-        map_result.command(app);
-        ProfileScope(app, "after view input");
-        default_post_command(app, scope);
-    }
+ Scratch_Block scratch(app);
+ default_input_handler_init(app, scratch);
+ 
+ View_ID view = get_this_ctx_view(app, Access_Always);
+ Managed_Scope scope = view_get_managed_scope(app, view);
+ 
+ for (;;){
+  // NOTE(allen): Get input
+  User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
+  if (input.abort){
+   break;
+  }
+  
+  ProfileScopeNamed(app, "before view input", view_input_profile);
+  
+  // NOTE(allen): Mouse Suppression
+  Event_Property event_properties = get_event_properties(&input.event);
+  if (suppressing_mouse && (event_properties & EventPropertyGroup_AnyMouseEvent) != 0){
+   continue;
+  }
+  
+  // NOTE(allen): Get binding
+  if (implicit_map_function == 0){
+   implicit_map_function = default_implicit_map;
+  }
+  Implicit_Map_Result map_result = implicit_map_function(app, 0, 0, &input.event);
+  if (map_result.command == 0){
+   leave_current_input_unhandled(app);
+   continue;
+  }
+  
+  // NOTE(allen): Run the command and pre/post command stuff
+  default_pre_command(app, scope);
+  ProfileCloseNow(view_input_profile);
+  map_result.command(app);
+  ProfileScope(app, "after view input");
+  default_post_command(app, scope);
+ }
 }
 
+//NOTE(kv) This function actually does... thing.
+//  IDK what but the editor crashes if you don't call it
 function void
 code_index_update_tick(App *app){
-    Scratch_Block scratch(app);
-    for (Buffer_Modified_Node *node = global_buffer_modified_set.first;
-         node != 0;
-         node = node->next){
-        Temp_Memory_Block temp(scratch);
-        Buffer_ID buffer_id = node->buffer;
-        
-        String contents = push_whole_buffer(app, scratch, buffer_id);
-        Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
-        if (tokens.count == 0){
-            continue;
-        }
-        
-        Arena arena = make_arena_system(KB(16));
-        Code_Index_File *index = push_array_zero(&arena, Code_Index_File, 1);
-        index->buffer = buffer_id;
-        
-        Generic_Parse_State state = {};
-        generic_parse_init(app, &arena, contents, &tokens, &state);
-        // TODO(allen): Actually determine this in a fair way.
-        // Maybe switch to an enum?
-        // Actually probably a pointer to a struct that defines the language.
-        state.do_cpp_parse = true;
-        generic_parse_full_input_breaks(index, &state, max_i32);
-        
-        code_index_lock();
-        code_index_set_file(buffer_id, arena, index);
-        code_index_unlock();
-        buffer_clear_layout_cache(app, buffer_id);
-    }
-    
-    buffer_modified_set_clear();
-}
-
-function void
-default_tick(App *app, Frame_Info frame_info)
-{
-    arena_clear(&global_frame_arena);
-    
-    ////////////////////////////////
-    // NOTE(allen): Update code index
-    
-    code_index_update_tick(app);
-    
-    ////////////////////////////////
- // NOTE(allen): Update fade ranges
- 
- if (tick_all_fade_ranges(app, frame_info.animation_dt))
- {
-  animate_in_n_milliseconds(app, 0);
+ Scratch_Block scratch(app);
+ for (Buffer_Modified_Node *node = global_buffer_modified_set.first;
+      node != 0;
+      node = node->next){
+  Temp_Memory_Block temp(scratch);
+  Buffer_ID buffer_id = node->buffer;
+  
+  String contents = push_whole_buffer(app, scratch, buffer_id);
+  Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
+  if(tokens.count){
+   Arena arena = make_arena_system(KB(16));
+   auto index = push_array_zero(&arena, Code_Index_File, 1);
+   index->buffer = buffer_id;
+   
+   Generic_Parse_State state = {};
+   generic_parse_init(app, &arena, contents, &tokens, &state);
+   // TODO(allen): Actually determine this in a fair way.
+   // Maybe switch to an enum?
+   // Actually probably a pointer to a struct that defines the language.
+   state.do_cpp_parse = true;
+   generic_parse_full_input_breaks(index, &state, max_i32);
+   
+   code_index_lock();
+   code_index_set_file(buffer_id, arena, index);
+   code_index_unlock();
+   buffer_clear_layout_cache(app, buffer_id);
+  }
  }
  
- ////////////////////////////////
- // NOTE(allen): Clear layouts if virtual whitespace setting changed.
+ buffer_modified_set_clear();
+}
+function void
+default_tick(App *app, Frame_Info frame_info){
+ arena_clear(&global_frame_arena);
+ code_index_update_tick(app);
+ if(tick_all_fade_ranges(app, frame_info.animation_dt)){
+  animate_in_n_milliseconds(app, 0);
+ }
 }
 
 function Rect_f32

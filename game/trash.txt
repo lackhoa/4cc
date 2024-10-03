@@ -1130,7 +1130,14 @@ struct CSG_Tree
  };
 };
 
-
+#if 0
+ // NOTE: @Ugh Compute the mouse position in view space
+ v2 clip_dim = get_dim(clip_box);
+ v2 mouse_viewp_px = V2(mouse.p);
+ mouse_viewp_px   -= clip_box.min + 0.5f * clip_dim;
+ mouse_viewp_px.y *= -1.0f;
+ painter.mousep = mouse_viewp_px / meter_to_pixel;
+#endif
 
 
 //~eof

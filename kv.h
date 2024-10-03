@@ -2102,7 +2102,14 @@ struct Stringz{
  union{ u64 size; u64 len; u64 length; };
  operator String&(){ return *(String*)this; }
 };
-inline char *to_cstring(Stringz string){ return (char *)string.str; }
+inline char *
+to_cstring(Stringz string){
+ char *result = "";
+ if(string.len){
+  result = (char *)string.str;
+ }
+ return result;
+}
 
 struct String_Array{
  union{
@@ -2891,17 +2898,17 @@ Iu64(u64 a, u64 b){
 
 function Range_f32
 If32(f32 a, f32 b){
-    Range_f32 interval = {a, b};
-    if (b < a){
-        interval.min = b;
-        interval.max = a;
-    }
-    return(interval);
+ Range_f32 interval = {a, b};
+ if(b < a){
+  interval.min = b;
+  interval.max = a;
+ }
+ return(interval);
 }
 
 function Range_i32
 Ii32_size(i32 pos, i32 size){
-    return(Ii32(pos, pos + size));
+ return(Ii32(pos, pos + size));
 }
 function Range_i64
 Ii64_size(i64 pos, i64 size){
@@ -3299,6 +3306,7 @@ force_inline u64 cstring_length(char *str) {
 force_inline String SCu8(void)             { return {}; }
 force_inline String SCu8(char &c)          { return {(u8*)&c, 1}; }
 force_inline String SCu8(u8 *str, u64 size){ return {str, size}; }
+force_inline Stringz SCu8z(u8 *str, u64 size){ return {str, size}; }
 force_inline Stringz SCu8(u8 *str)          { return {str, cstring_length(str)}; }
 force_inline Stringz SCu8(char *str)        { return(SCu8((u8*)str)); }
 force_inline Stringz SCu8(const char *str)  { return(SCu8((u8*)str)); }
@@ -3333,8 +3341,8 @@ string_concat(String_u8 *dst, String src)
 #endif
 
 #define string_litexpr(s) SCchar((s), sizeof(s) - 1)
-//NOTE(kv) The length of the string is the size minus one for the null terminator.
-#define string_u8_litexpr(s) SCu8((u8*)(s), (u64)(sizeof(s) - 1))
+//NOTE(kv) sizeof takes into account the null terminator, for some reason.
+#define string_u8_litexpr(s)  SCu8z((u8*)(s), (u64)(sizeof(s) - 1))
 #define str8lit string_u8_litexpr
 #define strlit  string_u8_litexpr
 #define string_u16_litexpr(s) SCu16((u16*)(s), (u64)(sizeof(s)/2 - 1))
@@ -4767,8 +4775,7 @@ to_cstring(Arena *arena, String8 string){
 }
 
 typedef i32 Scan_Direction;
-enum
-{
+enum{
  Scan_Backward = -1,
  Scan_Forward  =  1,
 };
@@ -4847,23 +4854,18 @@ function Stringz
 pjoin(Arena *arena, const char *a, const char *b){
  return push_stringfz(arena, "%s%c%s", a, OS_SLASH, b);
 }
-
 force_inline b32
-move_file(char const *from_filename, char const *to_filename)
-{
+move_file(char const *from_filename, char const *to_filename){
  return gb_file_move(from_filename, to_filename);
 }
-
 inline b32
-move_file(String from_filename, String to_filename)
-{
+move_file(String from_filename, String to_filename){
  u8 buffer[512];
  Arena arena = make_static_arena(buffer, 512);
  char *from = to_cstring(&arena, from_filename);
  char *to = to_cstring(&arena, to_filename);
  return gb_file_move(from, to);
 }
-
 inline b32 
 copy_file(String from_filename, String to_filename, b32 fail_if_exists)
 {
@@ -4933,32 +4935,26 @@ path_is_directory(Stringz path){
 #endif
 
 function b32
-write_entire_file(String filename, void *data, u64 size)
-{
+write_entire_file(String filename, void *data, u64 size){
  Scratch_Block scratch;
  
  b32 result = false;
  gbFile file_value = {}; gbFile *file = &file_value;
  char *filename_c = to_cstring(scratch, filename);
  gbFileError err = gb_file_open_mode(file, gbFileMode_Write, filename_c);
- if (err == gbFileError_None)
- {
+ if(err == gbFileError_None){
   result = gb_file_write(file, data, size);
  }
  gb_file_close(file);
  return result;
 }
-//
 force_inline b32
-write_entire_file(String filename, String data)
-{
+write_entire_file(String filename, String data){
  return write_entire_file(filename, data.str, data.size);
 }
 
-
 function Stringz
-read_entire_file_handle(Arena *arena, FILE *file)
-{
+read_entire_file_handle(Arena *arena, FILE *file){
  Stringz result = {};
  if(file != 0){
   fseek(file, 0, SEEK_END);
@@ -4971,12 +4967,11 @@ read_entire_file_handle(Arena *arena, FILE *file)
  }
  return(result);
 }
-
-function String
+function Stringz
 read_entire_file(Arena *arena, Stringz filename){
- String result = {};
+ Stringz result = {};
  FILE *file = open_file(filename, "rb");
- if (file != 0){
+ if(file){
   result = read_entire_file_handle(arena, file);
   close_file(file);
  }
@@ -4995,7 +4990,7 @@ enum Printer_Type
 
 typedef void Print_Function(void *userdata, char *format, va_list args);
 
-struct Printer {
+struct Printer{
  Printer_Type type;
  union{
   struct{

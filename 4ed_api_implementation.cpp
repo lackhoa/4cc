@@ -744,14 +744,14 @@ buffer_set_layout(App *app, Buffer_ID buffer_id, Layout_Function *layout_func)
 
 api(custom) function b32
 buffer_clear_layout_cache(App *app, Buffer_ID buffer_id){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file)){
-        result = true;
-        file_clear_layout_cache(file);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if (api_check_buffer(file)){
+  result = true;
+  file_clear_layout_cache(file);
+ }
+ return(result);
 }
 
 api(custom) function Layout_Function*
@@ -1614,8 +1614,7 @@ view_set_camera_bounds(App *app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push
 }
 
 api(custom) function b32
-view_get_camera_bounds(App *app, View_ID view_id, Vec2_f32 *margin, Vec2_f32 *push_in_multiplier)
-{
+view_get_camera_bounds(App *app, View_ID view_id, Vec2_f32 *margin, Vec2_f32 *push_in_multiplier){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
     b32 result = false;
@@ -1628,8 +1627,7 @@ view_get_camera_bounds(App *app, View_ID view_id, Vec2_f32 *margin, Vec2_f32 *pu
 }
 
 api(custom ed) function b32
-view_set_cursor(App *app, View_ID view_id, Buffer_Seek seek)
-{
+view_set_cursor(App *app, View_ID view_id, Buffer_Seek seek){
  Models *models = (Models*)app->cmd_context;
  View *view = imp_get_view(models, view_id);
  b32 result = false;
@@ -1647,8 +1645,7 @@ view_set_cursor(App *app, View_ID view_id, Buffer_Seek seek)
 
 api(custom) function b32
 view_set_buffer_scroll(App *app, View_ID view_id, Buffer_Scroll scroll,
-                       Set_Buffer_Scroll_Rule rule)
-{
+                       Set_Buffer_Scroll_Rule rule){
  Models *models = (Models*)app->cmd_context;
  b32 result = false;
  View *view = imp_get_view(models, view_id);

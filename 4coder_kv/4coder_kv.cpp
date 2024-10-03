@@ -582,6 +582,8 @@ kv_vim_bindings(App *app)
  BIND(N, cmd_insert_asterisk,        Key_Code_8);
  BIND(N, kv_do_underscore,           Key_Code_Minus);
  BIND(N, kv_do_underscore_shifted, S|Key_Code_Minus);
+ BIND(N, move_parameter_left,      C|Key_Code_H);
+ BIND(N, move_parameter_right,     C|Key_Code_L);
  
 #undef BIND
 }

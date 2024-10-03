@@ -797,8 +797,8 @@ default_4coder_one_panel(App *app, String_Array filenames){
 
 function void
 default_4coder_one_panel(App *app){
-    String_Array filenames = {};
-    default_4coder_one_panel(app, filenames);
+ String_Array filenames = {};
+ default_4coder_one_panel(app, filenames);
 }
 
 ////////////////////////////////

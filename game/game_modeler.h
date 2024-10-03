@@ -7,7 +7,6 @@ enum Modeler_Edit_Type{
  ME_Vert_Move,
  ME_Count,
 };
-
 struct Modeler_Edit;
 typedef arrayof<Modeler_Edit> Edit_Group;
 
@@ -50,10 +49,10 @@ struct Modeler  // see @init_modeler
 
 //-NOTE: Vertex
 
-inline u32 selected_prim_id(Modeler *m) { return m->selected_prim_ro; }
+inline u32 selected_prim_id(Modeler *m){ return m->selected_prim_ro; }
 
 inline Prim_Type
-get_selected_type(Modeler *m) {
+get_selected_type(Modeler *m){
  return prim_type_from_id(selected_prim_id(m));
 }
 inline Vertex_Index
@@ -64,7 +63,6 @@ vertex_prim_index_from_id(u32 id){
  }
  return result;
 }
-
 inline Curve_Index
 curve_prim_index_from_id(u32 id){
  Curve_Index result = {};
@@ -73,7 +71,6 @@ curve_prim_index_from_id(u32 id){
  }
  return result;
 }
-
 inline Vertex_Data *
 get_vertex_from_id(Modeler *m, u32 id){
  Vertex_Index index = vertex_prim_index_from_id(id);

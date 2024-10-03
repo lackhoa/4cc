@@ -1,12 +1,10 @@
-/*
+/* 
  * Mr. 4th Dimention - Allen Webster
  * (Modified by kv)
  *
  * Do all the meta programming things
  *
  */
-
-// TOP
 
 #include "kv.h"
 #include "4coder_token.h"
@@ -114,8 +112,9 @@ strlit(#pstruct_members))
  X(0, v3v2,     v3v2,     { v3 d0; v2 d3; });
  X(1, Parabola, parabola, { v3 d; });
  X(2, Offsets,  offsets,  { v3 d0; v3 d3; });
- X(3, v2v2v3,   v2v2v3,   { v2 d0; v2 d3; v3 unit_y; });
- X(4, C2,       c2,       { Curve_Index ref; v3 d3; });
+ X(3, Unit,     unit,     { v2 d0; v2 d3; v3 unit_y; });
+ X(4, Unit2,    unit2,    { v4 d0d3; v3 unit_y; });
+ X(5, C2,       c2,       { Curve_Index ref; v3 d3; });
 #undef X
  
  String enum_type = strlit("Bezier_Type");
@@ -151,7 +150,7 @@ strlit(#pstruct_members))
      for_i32(i,0,variants.count){
       if(i!=0){ p<<"\n"; }
       auto &variant = variants.get(i);
-      p<<variant.struct_name<<" "<<variant.name<<";";
+      p<<variant.struct_name<<" "<<variant.name_lower<<";";
      }
     }
    }
@@ -166,21 +165,34 @@ strlit(#pstruct_members))
   for_i1(iv,0,variants.count){
    auto &variant = variants[iv];
    b32 is_c2 = variant.name=="C2";
+   auto variant_parameters = [&]()->void{
+    if(!is_c2){ p<"p0, "; }
+    for_i32(im,0,variant.struct_members.count){
+     auto &member = variant.struct_members[im];
+     p<member.name<", ";
+    }
+    p<"p3";
+   };
    {//NOTE Function prototype
     p<<"xfunction void\n"<<"send_bez_"<<variant.name_lower;
     m_parens{
-     p<<"String name";
-     if(!is_c2){ p<<", String p0"; }
+     p<"String name";
+     if(!is_c2){ p<", String p0"; }
      for_i32(im,0,variant.struct_members.count){
       auto &member = variant.struct_members[im];
-      p<<", ";
-      print_struct_member(p, member);
+      p<", ";
+      if(member.type==strlit("Curve_Index")){
+       p<"String ";
+      }else{
+       print_struct_member_type(p,member);
+      }
+      p<member.name;
      }
-     p<<", String p3"; 
-     p<<", Line_Params params=lp()";
-     p<<", i32 linum=__builtin_LINE()";
+     p<", String p3"; 
+     p<", Line_Params params=lp()";
+     p<", i32 linum=__builtin_LINE()";
     }
-    p<<";\n";
+    p<";\n";
    }
    {//-NOTE Macros
     {//NOTE bn_bs
@@ -189,7 +201,7 @@ strlit(#pstruct_members))
       p<"#define "<(is_bs?"bs_":"bn_")<variant.name_lower;
       m_parens{
        if(is_bn){ p<"name, "; };
-       if(!is_c2){ p<<"p0, "; }
+       if(!is_c2){ p<"p0, "; }
        for_i32(im,0,variant.struct_members.count){
         auto &member = variant.struct_members[im];
         p<member.name<", ";
@@ -199,12 +211,16 @@ strlit(#pstruct_members))
       p<"\\\n";
       p<"send_bez_"<variant.name_lower;
       m_parens{
-       if(is_bn){ p<"strlit(#name), "; }
-       else     { p<"strlit(\"l\"), "; }
+       p<(is_bn?"strlit(#name), " : "strlit(\"l\"), ");
        if(!is_c2){ p<"strlit(#p0), "; }
        for_i32(im,0,variant.struct_members.count){
         auto &member = variant.struct_members[im];
-        p<member.name<", ";
+        if(is_c2 && member.name==strlit("ref")){
+         p<"strlit(#ref)";
+        }else{
+         p<member.name;
+        }
+        p<", ";
        }
        p<"strlit(#p3), __VA_ARGS__";
       }
@@ -219,35 +235,21 @@ strlit(#pstruct_members))
       p<"#define "<(is_ba?"ba_":"bb_")<variant.name_lower;
       m_parens{//NOTE macro parameters
        p<"name, ";
-       if(!is_c2){ p<"p0, "; }
-       for_i32(im,0,variant.struct_members.count){
-        auto &member = variant.struct_members[im];
-        p<member.name<", ";
-       }
-       p<"p3, ...";
+       variant_parameters();
+       p<", ...";
       }
       p<"\\\n";
       p<"bn_"<variant.name_lower;
       m_parens{//NOTE bn parameters
        p<"name, ";
-       if(!is_c2){ p<"p0, " ;}
-       //TODO @cleanup too much copy pasta!
-       for_i32(im,0,variant.struct_members.count){
-        auto &member = variant.struct_members[im];
-        p<member.name<", ";
-       }
-       p<"p3, __VA_ARGS__";
+       variant_parameters();
+       p<", __VA_ARGS__";
       }
       p<"; \\\n";
       if(is_bb){ p<"Bez "; }
       p<"name = bez_"<variant.name_lower;
       m_parens{//NOTE bezier curve calculation
-       if(!is_c2){ p<"p0, "; };
-       for_i32(im,0,variant.struct_members.count){
-        auto &member = variant.struct_members[im];
-        p<member.name<", ";
-       }
-       p<"p3";
+       variant_parameters();
       }
       p<";\n";
      };

@@ -29,6 +29,7 @@ enum{
  Line_No_SymX  = 0x4,
 };
 struct Line_Params{
+ v1 radius_mult;  // NOTE(kv) Temporary measure
  v4 radii;
  v1 nslice_per_meter;
  v1 visibility;

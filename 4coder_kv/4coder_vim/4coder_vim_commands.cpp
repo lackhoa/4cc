@@ -629,8 +629,7 @@ VIM_COMMAND_SIG(vim_modal_percent)
 }
 
 inline void 
-buffer_delete_range(App *app, Buffer_ID buffer, Range_i64 range)
-{
+buffer_delete_range(App *app, Buffer_ID buffer, Range_i64 range){
  buffer_replace_range(app, buffer, range, empty_string);
 }
 

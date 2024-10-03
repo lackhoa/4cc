@@ -1,15 +1,15 @@
 // autodraw data file (DO NOT EDIT)
-// Written at 01.10.2024 17:49:42
+// Written at 02.10.2024 17:24:22
 version 13
 cameras
 {
  {
-  distance 1.302f
+  distance 2.2004f
   phi 0.f
-  theta -0.0833f
+  theta 0.0417f
   roll 0.f
   pan 0.f 0.f 0.f
-  pivot 0.1229f -0.4174f 0.0612f
+  pivot 0.0455f -0.2204f 0.0589f
   }
  {
   distance 1.3312f
@@ -61,6 +61,17 @@ id 0
 
 symx 0
 pos 0.f -1.4142f 0.9144f
+basic_index 0
+}
+{
+name ear_center
+bone_id {
+type 1
+id 0
+}
+
+symx 0
+pos 0.7487f -0.3601f -0.2332f
 basic_index 0
 }
 {
@@ -116,6 +127,28 @@ id 0
 
 symx 0
 pos 0.3046f -0.0512f 0.8255f
+basic_index 0
+}
+{
+name ear_back
+bone_id {
+type 1
+id 0
+}
+
+symx 0
+pos 0.9184f -0.3567f -0.566f
+basic_index 0
+}
+{
+name ear_low
+bone_id {
+type 1
+id 0
+}
+
+symx 0
+pos 0.6848f -0.8865f -0.1191f
 basic_index 0
 }
 {
@@ -1432,6 +1465,74 @@ basic_index 0
 beziers
 {
  {
+name ear1
+bone_id {
+type 1
+id 0
+}
+
+symx 0
+type 3
+p0_index {
+v 3
+}
+
+p3_index {
+v 9
+}
+
+data {
+d0 0.2792f 3.5588f
+d3 0.1526f 0.3068f
+unit_y 0.3587f 0.692f -0.6264f
+}
+
+params {
+radii 0.25f 1.9122f 0.7259f 1.3455f
+nslice_per_meter 411.28f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
+name ear2
+bone_id {
+type 1
+id 0
+}
+
+symx 0
+type 4
+p0_index {
+v 0
+}
+
+p3_index {
+v 10
+}
+
+data {
+ref {
+v 1
+}
+
+d3 0.f 0.f 0.f
+}
+
+params {
+radii 1.3455f 1.9651f -0.2799f 0.f
+nslice_per_meter 411.28f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
 name l492
 bone_id {
 type 3
@@ -1441,11 +1542,11 @@ id 0
 symx 1
 type 1
 p0_index {
-v 85
+v 88
 }
 
 p3_index {
-v 84
+v 87
 }
 
 data {
@@ -1472,11 +1573,11 @@ id 0
 symx 1
 type 1
 p0_index {
-v 83
+v 86
 }
 
 p3_index {
-v 82
+v 85
 }
 
 data {
@@ -1503,11 +1604,11 @@ id 0
 symx 1
 type 0
 p0_index {
-v 86
+v 89
 }
 
 p3_index {
-v 87
+v 90
 }
 
 data {
@@ -1535,11 +1636,11 @@ id 0
 symx 1
 type 1
 p0_index {
-v 85
+v 88
 }
 
 p3_index {
-v 88
+v 91
 }
 
 data {
@@ -1566,11 +1667,11 @@ id 0
 symx 1
 type 1
 p0_index {
-v 89
+v 92
 }
 
 p3_index {
-v 90
+v 93
 }
 
 data {
@@ -1597,11 +1698,11 @@ id 0
 symx 1
 type 0
 p0_index {
-v 92
+v 95
 }
 
 p3_index {
-v 93
+v 96
 }
 
 data {
@@ -1611,6 +1712,76 @@ d3 0.f 0.f
 
 params {
 radii 0.f 0.3333f 0.3333f 0.8333f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
+name l499
+bone_id {
+type 3
+id 0
+}
+
+symx 1
+type 4
+p0_index {
+v 0
+}
+
+p3_index {
+v 97
+}
+
+data {
+ref {
+v 8
+}
+
+d3 0.f 0.f 0.f
+}
+
+params {
+radii 0.8333f 0.5f 0.5f 0.f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
+name l500
+bone_id {
+type 3
+id 0
+}
+
+symx 1
+type 4
+p0_index {
+v 0
+}
+
+p3_index {
+v 94
+}
+
+data {
+ref {
+v 9
+}
+
+d3 0.0348f 0.0219f -0.0201f
+}
+
+params {
+radii 0.5089f 1.f 0.8333f 0.3333f
 nslice_per_meter 0.f
 visibility 1.f
 alignment_threshold 0.f

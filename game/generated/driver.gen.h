@@ -12,7 +12,7 @@ struct Curve_Index
 i1 v;
 };
 inline b32 operator==(Curve_Index a, Curve_Index b){ return a.v==b.v; }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:354:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:358:
 enum Bone_Type
 {
 Bone_None = 0,
@@ -34,7 +34,7 @@ Bone_Type type;
 i1 id;
 };
 typedef u32 Line_Flags;
-//  C:\Users\vodan\4ed\code/meta_print.cpp:354:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:358:
 enum 
 {
 Line_Overlay = 1,
@@ -43,6 +43,7 @@ Line_No_SymX = 4,
 };
 struct Line_Params
 {
+v1 radius_mult;
 v4 radii;
 v1 nslice_per_meter;
 v1 visibility;

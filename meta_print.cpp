@@ -123,10 +123,14 @@ print_type_info_function_prototype(Printer &p, String type_name){
  p<<"function Type_Info\n"<<function_name<<"()";
 }
 function void
+print_struct_member_type(Printer &p, Meta_Struct_Member &member){
+ p<member.type<" ";
+ for_repeat(member.type_star_count){ p<"*"; }
+}
+function void
 print_struct_member(Printer &p, Meta_Struct_Member &member){
- p<<member.type<<" ";
- for_repeat(member.type_star_count){ p<<"*"; }
- p<<member.name;
+ print_struct_member_type(p, member);
+ p<member.name;
 }
 function void
 print_struct_body(Printer &p, Meta_Struct_Members &members){
@@ -337,7 +341,7 @@ print_union_meta(Printer_Pair &ps, String type_name,
       p<<"case "<<variant.enum_name<<":";
       {brace_block;
        p<<get_type_read_function_name(variant.struct_name)<<
-        "(r, "<<"pointer."<<variant.name<<");\n"<<
+        "(r, "<<"pointer."<<variant.name_lower<<");\n"<<
         "break;";
       }
      }

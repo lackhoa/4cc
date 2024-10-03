@@ -1,0 +1,52 @@
+//;dump_history_to_file
+CUSTOM_COMMAND_SIG(dump_history_to_file)
+CUSTOM_DOC("a utility to combat file corruption")
+{
+ GET_VIEW_AND_BUFFER;
+ 
+ FILE *outfile = 0;
+ Scratch_Block scratch(app);
+ String buffer_filename = push_buffer_filename(app, scratch, buffer);
+ String out_filename = push_stringf(scratch, "%.*s.history_dump", string_expand(buffer_filename));
+ outfile = open_file(out_filename, "wb");
+ 
+ Printer pr = make_printer_file(outfile);
+ {
+  History_Record_Index max_index = 
+   buffer_history_get_current_state_index(app, buffer);
+  
+  char newline = '\n';
+  char *newlinex2 = "\n\n";
+  
+  for_i1(index,1,max_index+1)
+  {
+   Record_Info record = buffer_history_get_record_info(app, buffer, index);
+   pr << "\n{\n";
+   if (record.error) { pr << "- error"; }
+   else
+   {
+    switch(record.kind)
+    {
+     case RecordKind_Single:
+     {
+      pr <<
+       "- pos: " << record.pos_before_edit << newline <<
+       "- forward: "  << record.single_string_forward  << newline <<
+       "- backward: " << record.single_string_backward << newline <<
+       "- single_first:" << record.single_first;
+     }break;
+     
+     case RecordKind_Group: { pr << "- group"; }break;
+    }
+   }
+   pr<<"\n}\n";
+  }
+ }
+ 
+ {
+  String message = push_stringf(scratch,"History written out to file %.*s", string_expand(out_filename));
+  vim_set_bottom_text(message);
+ }
+ 
+ close_file(outfile);
+}
