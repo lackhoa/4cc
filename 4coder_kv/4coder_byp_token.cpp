@@ -144,7 +144,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
       Range_i64 annot_range = Ii64(i);
       i1 j=i+1;
       for(; j<token->size; j++) {
-       if( character_is_whitespace(tail.str[j]) || 
+       if( char_is_whitespace(tail.str[j]) || 
           !character_is_alnum(tail.str[j]) ) {
         break;
        }

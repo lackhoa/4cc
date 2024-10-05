@@ -671,7 +671,7 @@ F4_Index_Tick(App *app){
   F4_Parse_Buffer(app, buffer_id);
  }
 }
-function void F4_Index_Reset(App *app);
+void F4_Index_Reset(App *app);
 CUSTOM_COMMAND_SIG(F4_Index_Reset)
 CUSTOM_DOC("Reset the index")
 {

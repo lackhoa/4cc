@@ -65,6 +65,22 @@ global_decl Type_Info Type_Info_Bezier_C2;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:214:
 function void
 read_Bezier_C2(Data_Reader &r, Bezier_C2 &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:162:
+struct Bezier_Line;
+function Type_Info
+get_type_info_Bezier_Line();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Bezier_Line;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:214:
+function void
+read_Bezier_Line(Data_Reader &r, Bezier_Line &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:162:
+struct Bezier_Bezd_Old;
+function Type_Info
+get_type_info_Bezier_Bezd_Old();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Bezier_Bezd_Old;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:214:
+function void
+read_Bezier_Bezd_Old(Data_Reader &r, Bezier_Bezd_Old &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:287:
 union Bezier_Union;
 function Type_Info

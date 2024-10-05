@@ -306,10 +306,10 @@ view_set_pos_by_character_delta(App *app, View_ID view, i64 pos, i64 character_d
 
 function i64
 view_set_cursor_by_character_delta(App *app, View_ID view, i64 character_delta){
-    i64 pos = view_get_cursor_pos(app, view);
-    i64 new_pos = view_set_pos_by_character_delta(app, view, pos, character_delta);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
-    return(new_pos);
+ i64 pos = view_get_cursor_pos(app, view);
+ i64 new_pos = view_set_pos_by_character_delta(app, view, pos, character_delta);
+ view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
+ return(new_pos);
 }
 
 function i64
@@ -1204,7 +1204,7 @@ line_is_valid_and_blank(App *app, Buffer_ID buffer, i64 line_number){
         String line = push_buffer_line(app, scratch, buffer, line_number);
         result = true;
         for (u64 i = 0; i < line.size; i += 1){
-            if (!character_is_whitespace(line.str[i])){
+            if (!char_is_whitespace(line.str[i])){
                 result = false;
                 break;
             }
@@ -1222,7 +1222,7 @@ get_pos_past_lead_whitespace_from_line_number(App *app, Buffer_ID buffer, i64 li
     String line = push_buffer_range(app, scratch, buffer, line_range);
     i64 result = line_range.end;
     for (u64 i = 0; i < line.size; i += 1){
-        if (!character_is_whitespace(line.str[i])){
+        if (!char_is_whitespace(line.str[i])){
             result = line_range.start + i;
             break;
         }
@@ -1257,7 +1257,7 @@ line_is_blank(App *app, Buffer_ID buffer, i64 line_number){
     String line = push_buffer_line(app, scratch, buffer, line_number);
     b32 is_blank = true;
     for (u64 i = 0; i < line.size; i += 1){
-        if (!character_is_whitespace(line.str[i])){
+        if (!char_is_whitespace(line.str[i])){
             is_blank = false;
             break;
         }
@@ -1329,7 +1329,7 @@ get_indent_info_range(App *app, Buffer_ID buffer, Range_i64 range, i32 tab_width
  for (u64 i = 0; i < s.size; i += 1)
  {
   u8 c = s.str[i];
-  if ( !character_is_whitespace(c) )
+  if ( !char_is_whitespace(c) )
   {
    info.is_blank = false;
    info.all_space = false;
@@ -1722,10 +1722,10 @@ buffer_identifier_to_id_create_out_buffer(App *app, Buffer_Identifier buffer_id)
             }
         }
     }
-    else{
-        result = buffer_id.id;
-    }
-    return(result);
+ else{
+  result = buffer_id.id;
+ }
+ return(result);
 }
 
 ////////////////////////////////

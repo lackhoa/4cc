@@ -305,16 +305,15 @@ findLeastSignificantSetBit(u32 mask)
             result.found = true;
             result.index = index;
             return result;
-        }
-    }
+  }
+ }
 #endif
-    
-    return result;
+ 
+ return result;
 }
 
 force_inline v1
-absolute(v1 x)
-{
+absolute(v1 x){
 #if COMPILER_MSVC
  v1 result = (v1)fabs(x);
 #else
@@ -457,10 +456,10 @@ inline i32 safeTruncateToInt32(u64 value)
 
 /* MARK: End of String */
 
-force_inline v1 min(v1 a, v1 b)       { return macro_min(a,b); }
-force_inline v1 min(v1 a, v1 b, v1 c) { return macro_min(macro_min(a,b),c); }
-force_inline v1 max(v1 a, v1 b)       { return macro_max(a,b); }
-force_inline v1 max(v1 a, v1 b, v1 c) { return macro_max(macro_max(a,b),c); }
+inline v1 min(v1 a, v1 b){ return macro_min(a,b); }
+inline v1 max(v1 a, v1 b){ return macro_max(a,b); }
+inline v1 min(v1 a, v1 b, v1 c){ return macro_min(macro_min(a,b),c); }
+inline v1 max(v1 a, v1 b, v1 c){ return macro_max(macro_max(a,b),c); }
 
 inline b32
 checkFlag(u32 flags, u32 flag)
@@ -487,6 +486,19 @@ b = temp; \
 }
 
 #define swap_minmax(a,b) if (a > b) { macro_swap(a,b); }
+// TODO: Deprecate these
+#define v2_expand(v) v.x, v.y
+#define v3_expand(v) v.x, v.y, v.z
+#define v4_expand(v) v.x, v.y, v.z, v.w
+
+#define array_expand(v) v, alen(v)
+#define expand2(v)   v[0], v[1]
+#define expand3(v)   v[0], v[1], v[2]
+#define expand4(v)   v[0], v[1], v[2], v[3]
+//
+#define repeat2(v)   v,v
+#define repeat3(v)   v,v,v
+#define repeat4(v)   v,v,v,v
 
 inline void *kv_xmalloc(size_t size) {
   void *ptr = malloc(size);
@@ -679,8 +691,7 @@ force_inline v2 bilateral(v2 v)  { return v2{bilateral(v.x), bilateral(v.y)}; }
 
 // ;v3
 
-union v3 
-{
+union v3{
  struct { v1 x, y, z; };
  struct { v1 r, g, b; };
  struct { v2 xy; v1 xy_z; };
@@ -691,40 +702,30 @@ union v3
  force_inline v1 &operator[](i32 index) {return v[index];}
 };
 
-force_inline v3 
-max(v3 u, v3 v) 
-{
- return (v3
-         {max(u.x,v.x),
-          max(u.y,v.y),
-          max(u.z,v.z)});
-}
 
 inline v3
-absolute(v3 v)
-{
+absolute(v3 v){
  for_i32(index,0,3){ v[index] = absolute(v[index]); };
  return v;
 }
-
 force_inline v3 V3(v2 xy)       { return v3{.xy=xy}; }
 force_inline v3 V3(v2 xy, v1 z) { return v3{.xy=xy, .xy_z=z}; }
 force_inline v3 yzx(v3 v) { return v3{v.y, v.z, v.x}; }
 force_inline v3 zxy(v3 v) { return v3{v.z, v.x, v.y}; }
-
+inline v3 min(v3 a, v3 b){ return v3{min(a.x,b.x),min(a.y,b.y),min(a.z,b.z),}; }
+inline v3 max(v3 a, v3 b){ return v3{max(a.x,b.x),max(a.y,b.y),max(a.z,b.z),}; }
+inline v3 min(v3 a, v1 b){ return min(a,v3{repeat3(b)}); }
+inline v3 max(v3 a, v1 b){ return max(a,v3{repeat3(b)}); }
 inline v3
-operator-(v3 u, v3 v)
-{
+operator-(v3 u, v3 v){
  v3 result;
  result.x = u.x - v.x;
  result.y = u.y - v.y;
  result.z = u.z - v.z;
  return result;
 }
-
 inline b32
-operator<(v3 u, v3 v)
-{
+operator<(v3 u, v3 v){
  b32 result = ((u.x < v.x) && (u.y < v.y) && (u.z < v.z));
  return result;
 }
@@ -1310,19 +1311,6 @@ i4::operator[](i32 index)
 #define kvAssert     kv_assert
 /* Old names > */
 
-// TODO: Deprecate these
-#define v2_expand(v) v.x, v.y
-#define v3_expand(v) v.x, v.y, v.z
-#define v4_expand(v) v.x, v.y, v.z, v.w
-
-#define array_expand(v) v, alen(v)
-#define expand2(v)   v[0], v[1]
-#define expand3(v)   v[0], v[1], v[2]
-#define expand4(v)   v[0], v[1], v[2], v[3]
-//
-#define repeat2(v)   v,v
-#define repeat3(v)   v,v,v
-#define repeat4(v)   v,v,v,v
 
 // X macros //////////////////////////////////
 #define XTypedef(N,R,P)              typedef R N##_type P;
@@ -1719,6 +1707,10 @@ enum{
 #  define StaticAssert(c)
 #endif
 
+#define and &&
+#define or  ||
+#define not !
+#define implies(a,b)  !a || b
 #define AssertImplies(a,b) Assert(!(a) || (b))
 #define InvalidPath AssertMessage("invalid path")
 #define NotImplemented AssertMessage("not implemented")
@@ -4313,31 +4305,24 @@ global_const mat4 mat4_negateX = {{
   0,0,0,1,
  }};
 
-
 force_inline v3 
-negateX(v3 vert) 
-{
+negateX(v3 vert){
  return V3(-vert.x, vert.y, vert.z);
 }
-
+//NOTE(kv) I think this is like multiple by a negateX matrix on the right.
 inline mat4
-negateX(mat4 mat)
-{
+negateX(mat4 mat){
  for_i32(row,0,4) { mat.e[row][0] *= -1.f; }
  return mat;
 }
-//
 inline mat4i
-negateX(mat4i mat)
-{
- for_i32(row,0,4) { mat.forward.e[row][0] *= -1.f; }
- for_i32(col,0,4) { mat.inverse.e[0][col] *= -1.f; }
+negateX(mat4i mat){
+ for_i32(row,0,4){ mat.forward.e[row][0] *= -1.f; }
+ for_i32(col,0,4){ mat.inverse.e[0][col] *= -1.f; }
  return mat;
 }
-
 function mat4
-remove_translation(mat4 result)
-{
+remove_translation(mat4 result){
  result[0][3] = 0.f;
  result[1][3] = 0.f;
  result[2][3] = 0.f;
@@ -4359,10 +4344,10 @@ struct arrayof{
  
  //-
  
- force_inline T& get       (i32 index) { return items[index]; }
- force_inline T& operator[](i32 index) { return items[index]; }
+ inline T& get(i32 index)        { return items[index]; }
+ inline T& operator[](i32 index) { return items[index]; }
  //
- force_inline T &last() { return items[count-1]; }
+ inline T &last() { return items[count-1]; }
  
  void set_cap_(i32 new_cap)
  {// NOTE(kv): Can only grow for now
@@ -4420,10 +4405,10 @@ struct arrayof{
   set_count(count+1);
   return last();
  }
- inline T *push_zero(){
+ inline T &push_zero(){
   set_count(count+1);
-  T *result = &last();
-  *result = {};
+  T &result = last();
+  result = {};
   return result;
  }
  
@@ -4478,6 +4463,8 @@ dynamic_array(Base_Allocator *allocator, i1 initial_size=0){
  arrayof<T> array; init_dynamic(array, allocator, initial_size); return array;
 }
 
+function Base_Allocator *
+push_arena_base_allocator(Arena *arena);
 template<class T>
 inline void
 init_dynamic(arrayof<T> &array, Arena *arena, i1 initial_size=0){
@@ -4787,7 +4774,7 @@ enum{
 function u64
 string_find_first_non_whitespace(String str){
  u64 i = 0;
- for (;i < str.size && character_is_whitespace(str.str[i]); i += 1);
+ for (;i < str.size && char_is_whitespace(str.str[i]); i += 1);
  return(i);
 }
 
@@ -5383,6 +5370,5 @@ struct File_Name_Data {
 #define tagged_by(discriminator)
 #define m_variant(tag)  //NOTE(kv) Use to tag union member with the variant it corresponds to
 
-#define implies(a,b)  !a || b
 
 //~EOF

@@ -56,7 +56,7 @@ vim_draw_visual_mode(App *app, View_ID view, Buffer_ID buffer, Face_ID face_id, 
 			Command_Map_ID *map_id_ptr = scope_attachment(app, scope, buffer_map_id, Command_Map_ID);
 			b32 is_code = *map_id_ptr == i64(vars_intern_lit("keys_code"));
 			b32 virtual_enabled = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
-			if((virtual_enabled && is_code) && character_is_whitespace(buffer_get_char(app, buffer, range.min))){
+			if((virtual_enabled && is_code) && char_is_whitespace(buffer_get_char(app, buffer, range.min))){
 				//range.min = get_pos_past_lead_whitespace(app, buffer, range.min);
 				i64 line_end = get_line_end_pos(app, buffer, get_line_number_from_pos(app, buffer, range.min));
 				line_end -= (line_end > 0 && buffer_get_char(app, buffer, line_end) == '\n' && buffer_get_char(app, buffer, line_end-1) == '\r');

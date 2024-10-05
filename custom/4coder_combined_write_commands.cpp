@@ -62,15 +62,15 @@ CUSTOM_DOC("At the cursor, insert a '{' and '};' separated by a blank line.")
 CUSTOM_COMMAND_SIG(open_long_braces_break)
 CUSTOM_DOC("At the cursor, insert a '{' and '}break;' separated by a blank line.")
 {
-    char text[] = "{\n\n}break;";
-    i1 size = sizeof(text) - 1;
-    long_braces(app, text, size);
+ char text[] = "{\n\n}break;";
+ i1 size = sizeof(text) - 1;
+ long_braces(app, text, size);
 }
 
 CUSTOM_COMMAND_SIG(if0_off)
 CUSTOM_DOC("Surround the range between the cursor and mark with an '#if 0' and an '#endif'")
 {
-    place_begin_and_end_on_own_lines(app, "#if 0", "#endif");
+ place_begin_and_end_on_own_lines(app, "#if 0", "#else\n#endif");
 }
 
 CUSTOM_COMMAND_SIG(write_todo)

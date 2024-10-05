@@ -481,7 +481,7 @@ ep_char(Ed_Parser *p, char c){
 
 //NOTE(kv) Excludes the nil terminator
 function char
-ep_eat_until_char_new(Ed_Parser *p, String chars, i1 max_recursion=20){
+ep_eat_until_char(Ed_Parser *p, String chars, i1 max_recursion=20){
  char result = 0;
  if(max_recursion > 0){
   while(!result && p->ok_){
@@ -500,7 +500,7 @@ ep_eat_until_char_new(Ed_Parser *p, String chars, i1 max_recursion=20){
      if(char0 == '{'){ matching = "}"; }
      if(matching){
       ep_eat_token(p);
-      ep_eat_until_char_new(p, SCu8(matching), max_recursion-1);
+      ep_eat_until_char(p, SCu8(matching), max_recursion-1);
      }
     }
    }
@@ -512,64 +512,20 @@ ep_eat_until_char_new(Ed_Parser *p, String chars, i1 max_recursion=20){
  return result;
 }
 function i1
-ep_eat_until_char_new(Ed_Parser *p, char *s) {
+ep_eat_until_char(Ed_Parser *p, char *s) {
  String ss = SCu8(s);
- return ep_eat_until_char_new(p, ss);
+ return ep_eat_until_char(p, ss);
 }
-//-
-//NOTE(kv) Returns index + 1
-//NOTE(kv) Also eats the terminator (TODO(kv) Please change it to not include terminator, it makes the calling code harder to write)
-function i1
-ep_eat_until_char_old(Ed_Parser *p, String chars, i1 max_recursion=20){
- i1 result = 0;
- 
- if (max_recursion > 0){
-  while(!result && p->ok_){
-   Scratch_Block scratch;
-   String token = ep_print_token(p, scratch);//TODO(kv) OMG this is bad!
-   b32 eaten = false;
-   if(token.size == 1){
-    char character = token.str[0];
-    result = ep__char_in_string_old(chars, character);
-    if(!result){
-     char *matching = 0;
-     if (character == '(') { matching = ")"; }
-     if (character == '[') { matching = "]"; }
-     if (character == '{') { matching = "}"; }
-     if(matching){
-      ep_eat_token(p);
-      eaten = true;
-      ep_eat_until_char_old(p, SCu8(matching), max_recursion-1);
-     }
-    }
-   }
-   if (!eaten) { ep_eat_token(p); }
-  }
- }
- 
- return result;
-}
-function i1
-ep_eat_until_char_old(Ed_Parser *p, char *s) {
- String ss = SCu8(s);
- return ep_eat_until_char_old(p, ss);
-}
-function i1
-ep_eat_until_char_old(Ed_Parser *p, char &c) {
- return ep_eat_until_char_old(p, SCu8(c));
-}
-
 function String
-ep_capture_until_char(Ed_Parser *p, char terminator) {
+ep_capture_until_char(Ed_Parser *p, char terminator){
  kv_assert(p->Token_Gen_Type == TG_String);
  String result = {};
- if (p->ok_) {
+ if(p->ok_){
   Token *first_token = ep_get_token(p);
-  i1 res = ep_eat_until_char_old(p, SCu8(terminator));
-  if (res) {
-   // NOTE(kv): The terminator is one token to the left,
-   //   so the last token in the captured range is two tokens to the left.
-   Token *last_token = ep_get_token_delta(p, -2);
+  char res = ep_eat_until_char(p, SCu8(terminator));
+  if(res){
+   // NOTE(kv): The last token is one token to the left of the terminator
+   Token *last_token = ep_get_token_delta(p, -1);
    i64 last_pos = last_token->pos + last_token->size;
    result = string_substring(p->Token_Gen_String.source,
                              Ii64(first_token->pos, last_pos));
@@ -577,13 +533,12 @@ ep_capture_until_char(Ed_Parser *p, char terminator) {
  }
  return result;
 }
-
 function void
 ep_eat_until_char_simple(Ed_Parser *p, char c) {
- while ( p->ok_ ) {
-  if ( ep_maybe_char(p, c) ) {
+ while(p->ok_){
+  if(ep_maybe_char(p, c)){
    break;
-  } else {
+  }else{
    ep_eat_token(p);
   }
  }

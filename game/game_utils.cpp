@@ -49,7 +49,7 @@ circular_arc_helper(mat4 const&transform, v3 dst[4], v2 src[4])
  }
 }
 
-internal void
+function void
 draw_bezier_circle(mat4 const&transform, v4 radii={})
 {
  v1 a = 1.00005519f;
@@ -173,7 +173,7 @@ function mat4
 from_parent(){
  //NOTE(kv) If we just stored the relative offset, we wouldn't need this.
  auto p = &painter;
- return current_world_from_bone(p).inverse * mom_bone_xform(p);
+ return current_world_from_bone(*p).inverse * mom_bone_xform(p);
 }
 
 //~
@@ -261,25 +261,6 @@ force_inline v3
 reflect_origin(v3 origin, v3 point){
  return origin-(point-origin);
 }
-inline Line_Params
-lp(v4 radii){
- Line_Params result=painter.line_params;
- result.radii = radii;
- return result;
-}
-inline Line_Params
-lp(i4 radii){
- Line_Params result = painter.line_params;
- result.radii = i2f6(radii);
- return result;
-}
-inline Line_Params
-lp(v1 alignment_threshold, i4 radii={}){
- Line_Params result = painter.line_params;
- result.alignment_threshold = alignment_threshold;
- result.radii               = i2f6(radii);
- return result;
-}
 inline i1
 get_preset(){
  return painter.viewport->preset;
@@ -346,7 +327,7 @@ trs_pivot_transform(v3 translate, mat4i const&rotate, v1 scale,
                  * mat4i_translate(-object_space_pivot));
  return result;
 }
-
-inline mat4i& p_current_world_from_bone(){ return current_world_from_bone(&painter); }
+inline mat4i& p_current_world_from_bone(){
+ return current_world_from_bone(painter); }
 
 //~ EOF;

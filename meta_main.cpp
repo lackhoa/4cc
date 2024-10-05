@@ -82,7 +82,6 @@ list_files_recursive(Arena *arena, arrayof<char*> &outfiles, char *path){
  
  return ok;
 }
-
 inline void
 push_bezier_variant(arrayof<Union_Variant> &variants, Union_Variant v,
                     String struct_members){
@@ -94,7 +93,6 @@ push_bezier_variant(arrayof<Union_Variant> &variants, Union_Variant v,
  v.struct_name    = strcat(arena, "Bezier_",      v.name);
  variants.push(v);
 }
-
 function void
 generate_bezier_types(Printer &p0, Printer_Pair &ps_meta){
  Scratch_Block scratch;
@@ -115,6 +113,8 @@ strlit(#pstruct_members))
  X(3, Unit,     unit,     { v2 d0; v2 d3; v3 unit_y; });
  X(4, Unit2,    unit2,    { v4 d0d3; v3 unit_y; });
  X(5, C2,       c2,       { Curve_Index ref; v3 d3; });
+ X(6, Line,     line,     { });
+ X(7, Bezd_Old, bezd_old, { v3 d0; v2 d3; });
 #undef X
  
  String enum_type = strlit("Bezier_Type");
@@ -173,26 +173,65 @@ strlit(#pstruct_members))
     }
     p<"p3";
    };
-   {//NOTE Function prototype
-    p<<"xfunction void\n"<<"send_bez_"<<variant.name_lower;
-    m_parens{
-     p<"String name";
-     if(!is_c2){ p<", String p0"; }
-     for_i32(im,0,variant.struct_members.count){
-      auto &member = variant.struct_members[im];
-      p<", ";
-      if(member.type==strlit("Curve_Index")){
-       p<"String ";
-      }else{
-       print_struct_member_type(p,member);
+   {//-Function prototype
+    {//-The main function
+     p<<"xfunction void\n"<<"send_bez_"<<variant.name_lower;
+     m_parens{
+      p<"String name";
+      if(!is_c2){ p<", String p0"; }
+      for_i32(im,0,variant.struct_members.count){
+       auto &member = variant.struct_members[im];
+       p<", ";
+       if(member.type==strlit("Curve_Index")){
+        p<"String ";
+       }else{
+        print_struct_member_type(p,member);
+       }
+       p<member.name;
       }
-      p<member.name;
+      p<", String p3"; 
+      p<", Line_Params params=lp()";
+      p<", i32 linum=__builtin_LINE()";
      }
-     p<", String p3"; 
-     p<", Line_Params params=lp()";
-     p<", i32 linum=__builtin_LINE()";
+     p<";\n";
     }
-    p<";\n";
+    {//-Overloads with radii
+     auto fun=[&](b32 is_v4)->void{
+      p<<"inline void\n"<<"send_bez_"<<variant.name_lower;
+      m_parens{
+       p<"String name";
+       if(!is_c2){ p<", String p0"; }
+       for_i32(im,0,variant.struct_members.count){
+        auto &member = variant.struct_members[im];
+        p<", ";
+        if(member.type==strlit("Curve_Index")){
+         p<"String ";
+        }else{
+         print_struct_member_type(p,member);
+        }
+        p<member.name;
+       }
+       p<", String p3"; 
+       if(is_v4){
+        p<", v4 radii";
+       }else{
+        p<", i4 radii";
+       }
+       p<", i32 linum=__builtin_LINE()";
+      }
+      m_braces{
+       p<"send_bez_"<variant.name_lower;
+       m_parens{
+        p<"name, ";
+        variant_parameters();
+        p<", lp(radii), linum";
+       }
+       p<";\n";
+      }
+     };
+     fun(0);
+     fun(1);
+    }
    }
    {//-NOTE Macros
     {//NOTE bn_bs

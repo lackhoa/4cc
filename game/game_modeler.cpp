@@ -7,8 +7,8 @@ xfunction b32
 is_prim_id_active(Modeler *m, u32 prim_id){
  b32 result = false;
  auto &active_ids = m->active_prims;
- for_i1(index, 0, active_ids.count) {
-  if (prim_id == active_ids[index]) {
+ for_i1(index, 0, active_ids.count){
+  if(prim_id == active_ids[index]){
    result = true;
    break;
   }
@@ -30,7 +30,6 @@ curve_index_from_pointer(Modeler *m, Bezier_Data *pointer) {
  }
  return {};
 }
-
 function Vertex_Data *
 get_vertex_by_name(Modeler *m, String name){
  Vertex_Data *result = 0;
@@ -57,20 +56,20 @@ get_vertex_by_linum(Modeler *m, i1 linum){
  }
  return 0;
 }
-
 xfunction void
-send_vert_func(Painter *p, String name, v3 pos, i1 linum){
- auto m = p->modeler;
- 
+send_vert_func(Painter &p, String name, v3 pos, i1 linum){
+ auto m = p.modeler;
  if(is_left(p)){
-  Vertex_Data *vertex = &m->vertices.push2();
-  *vertex = { .name = name };
-  vertex->pos     = pos;
-  vertex->bone_id = current_bone(p)->id;
-  vertex->linum   = linum;
- }else{
-  Vertex_Data *vertex = get_vertex_by_linum(m, linum);
-  vertex->symx = true;
+  Vertex_Data &vertex = m->vertices.push_zero();
+  vertex.name    = name ;
+  vertex.pos     = pos;
+  vertex.bone_id = current_bone(p)->id;
+  vertex.linum   = linum;
+ }else{// on the right
+  if(p.is_right and p.symx){
+   Vertex_Data *vertex = get_vertex_by_linum(m, linum);
+   vertex->symx = true;
+  }
  }
 }
 
@@ -103,15 +102,16 @@ struct Send_Bez_Additional_Data{
  String c2_ref;
 };
 xfunction void
-send_bez_func(Painter *p, String name,
+send_bez_func(String name,
               String p0_name, String p3_name,
               Bezier_Type type, Bezier_Union data,
               Line_Params params, i1 linum,
               Send_Bez_Additional_Data additional={}){
- Modeler *m = p->modeler;
+ Painter &p = painter;
+ Modeler *m = p.modeler;
  if(is_left(p)){
-  Bezier_Data *curve = &m->curves.push2();
-  *curve = {};
+  Bezier_Data &curve = m->curves.push2();
+  curve = {};
   Vertex_Data *vert0 = 0;
   if(type!=Bezier_Type_C2){
    vert0 = get_vertex_by_name(m, p0_name);
@@ -120,50 +120,62 @@ send_bez_func(Painter *p, String name,
   Vertex_Data *vert3 = get_vertex_by_name(m, p3_name);
   kv_assert(vert3);
   
-  curve->type     = type;
-  curve->name     = name;
-  curve->p0_index = vertex_index_from_pointer(m, vert0);
-  curve->p3_index = vertex_index_from_pointer(m, vert3);
-  curve->data     = data;
-  curve->params   = params;
-  curve->linum    = linum;
-  curve->bone_id  = current_bone(p)->id;
+  curve.type     = type;
+  curve.name     = name;
+  curve.p0_index = vertex_index_from_pointer(m, vert0);
+  curve.p3_index = vertex_index_from_pointer(m, vert3);
+  curve.data     = data;
+  curve.params   = params;
+  curve.linum    = linum;
+  curve.bone_id  = current_bone(p)->id;
   
   if(type==Bezier_Type_C2){
    Bezier_Data *ref = get_curve_by_name(m, additional.c2_ref);
    kv_assert(ref);
-   curve->data.c2.ref = curve_index_from_pointer(m, ref);
+   curve.data.c2.ref = curve_index_from_pointer(m, ref);
   }
  }else{
-  Bezier_Data *curve = get_curve_by_linum(m, linum);
-  curve->symx = true;
+  if(p.is_right and p.symx){
+   Bezier_Data *curve = get_curve_by_linum(m, linum);
+   curve->symx = true;
+  }
  }
 }
 //NOTE(kv) Prototypes at send_bez.gen.h
 xfunction void
 send_bez_v3v2(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i1 linum){
  Bezier_Union data = {.v3v2={ .d0=d0, .d3=d3 }};
- send_bez_func(&painter, name, p0, p3, Bezier_Type_v3v2, data, params, linum);
+ send_bez_func(name, p0, p3, Bezier_Type_v3v2, data, params, linum);
 }
 xfunction void
 send_bez_parabola(String name, String p0, v3 d, String p3, Line_Params params, i1 linum){
  Bezier_Union data = {.parabola={.d=d}};
- send_bez_func(&painter, name, p0, p3, Bezier_Type_Parabola, data, params, linum);
+ send_bez_func(name, p0, p3, Bezier_Type_Parabola, data, params, linum);
 }
 xfunction void
 send_bez_c2(String name, String ref, v3 d3, String p3, Line_Params params, i1 linum){
  Bezier_Union data = {.c2={.d3=d3}};
  Send_Bez_Additional_Data additional = {.c2_ref=ref};
- send_bez_func(&painter, name, strlit(""), p3, Bezier_Type_C2, data, params, linum, additional);
+ send_bez_func(name, strlit(""), p3, Bezier_Type_C2, data, params, linum, additional);
 }
 xfunction void
 send_bez_unit(String name, String p0, v2 d0, v2 d3, v3 unit_y, String p3, Line_Params params, i32 linum){
  Bezier_Union data = {.unit={d0,d3,unit_y}};
- send_bez_func(&painter, name, p0, p3, Bezier_Type_Unit, data, params, linum);
+ send_bez_func(name, p0, p3, Bezier_Type_Unit, data, params, linum);
 }
 xfunction void
 send_bez_unit2(String name, String p0, v4 d0d3, v3 unit_y, String p3, Line_Params params, i32 linum){
  send_bez_unit(name, p0, d0d3.xy, d0d3.zw, unit_y, p3, params, linum);
+}
+xfunction void
+send_bez_line(String name, String p0, String p3, Line_Params params, i32 linum){
+ Bezier_Union data = {};
+ send_bez_func(name, p0, p3, Bezier_Type_Line, data, params, linum);
+}
+xfunction void
+send_bez_bezd_old(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i32 linum){
+ Bezier_Union data = {.bezd_old={.d0=d0, .d3=d3,}};
+ send_bez_func(name, p0, p3, Bezier_Type_Bezd_Old, data, params, linum);
 }
 
 //-NOTE: Edit history
@@ -309,7 +321,7 @@ modeler_exit_edit_undo(Modeler *m) {
 
 inline b32
 selecting_vertex(Modeler *m){
- return prim_type_from_id(selected_prim_id(m)) == Prim_Vertex;
+ return type_from_prim_id(selected_prim_id(m)) == Prim_Vertex;
 }
 
 function void
@@ -328,9 +340,9 @@ compute_active_prims(Modeler *m)
  // NOTE(kv): selected object is always active.
  push_unique(m->active_prims, sel_prim);
  if (m->selection_spanning) {
-  Prim_Type sel_type = prim_type_from_id(sel_prim);
+  Prim_Type sel_type = type_from_prim_id(sel_prim);
   if (sel_type == Prim_Vertex){
-   Vertex_Index sel_index = vertex_prim_index_from_id(sel_prim);
+   Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
    Vertex_Data &sel = m->vertices[sel_index.v];
    for_i32(cindex,1,m->curves.count) {
     Bezier_Data &curve = m->curves[cindex];
@@ -354,7 +366,7 @@ clear_selection(Modeler *m){
  m->active_prims.count = 0;
 }
 
-xfunction arrayof<Bone> *get_bones(Modeler *m){ return &m->bones; }
+xfunction arrayof<Bone> &get_bones(Modeler &m){ return m.bones; }
 
 
 //~ EOF

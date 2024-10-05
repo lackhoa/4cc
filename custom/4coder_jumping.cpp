@@ -47,7 +47,7 @@ check_is_note(String line, u64 colon_pos){
  if (note_pos < line.size){
   b32 is_all_whitespace = true;
   for (u64 i = colon_pos + 1; i < note_pos; i += 1){
-   if (!character_is_whitespace(line.str[i])){
+   if (!char_is_whitespace(line.str[i])){
     is_all_whitespace = false;
     break;
    }

@@ -20,14 +20,14 @@ if args.release:
 run_only     = args.action == 'run'
 hotload_game = "game.cpp" in args.file  # @build_filename_hack
 
-# NOTE: Default configuration (don't overwrite me!) #########################
+# NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-default_build_level = 0
-ed_build_level    = 0
+ed_build_level    = 1
 game_build_level  = 0
-meta_build_level  = 1
-imgui_build_level = 1
+meta_build_level  = 0
+imgui_build_level = 2
 lexer_build_level = 2
+ed_meta_build_level = 1
 #
 asan_on = 0
 COMPILE_GAME_WITH_MSVC = 0
@@ -38,18 +38,8 @@ AD_PROFILE = 0
 KV_SLOW    = 0
 STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the reload itself
 
-
-
-# NOTE: Override configuration ############################
-COMPILE_GAME_WITH_MSVC = 0
-ed_build_level   = 0
-meta_build_level = 1
-game_build_level = 1
-
-
-
-
-# Your config end ############################
+# Configuration end ############################
+default_build_level = 0
 
 if asan_on:
     COMPILE_GAME_WITH_MSVC = 1
@@ -333,13 +323,16 @@ def autogen():
         
         if meets_level(lexer_build_level):
             print('Lexer: Generate (one-time thing)')
-            LEXER_GEN = f"lexer_gen{DOT_EXE}"
+            LEXER_GEN = f"skm_lexer_gen{DOT_EXE}"
             run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), LEXER_GEN, 
                          compiler_flags=compiler_flags)
             #
             print('running lexer generator')
             mkdir_p(f'{CODE_KV}/generated')
             run(f'{LEXER_GEN} {CODE_KV}/generated')
+            run_compiler(Compiler.ClangCl, pjoin(CUSTOM,"languages",'4coder_cpp_lexer_gen.cpp'), "cpp_lexer_gen.exe",
+                         compiler_flags=compiler_flags)
+            run(f'cpp_lexer_gen.exe {CUSTOM}/generated')
             
         print('4coder API parser/generator')
         if meets_level(meta_build_level):
@@ -347,20 +340,18 @@ def autogen():
                          compiler_flags=compiler_flags, compile_only=True)
             run_compiler(Compiler.ClangCl, f"meta_main.obj", "ad_meta.exe",
                          link_only=True)
-        run(f"ad_meta {CODE}")
+            run(f"ad_meta {CODE}")
 
-        meta_macros="-DMETA_PASS"
-        print('preproc_file: Generate')
-        preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
-        run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
-            
-        print('Meta-generator')
-        if meets_level(meta_build_level):
+        if meets_level(ed_meta_build_level):
+            meta_macros="-DMETA_PASS"
+            preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
+            print('Editor metadata generator')
+            run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
             run_compiler(Compiler.ClangCl, f"{CUSTOM}/4coder_metadata_generator.cpp", f"",
                          compiler_flags=compiler_flags, compile_only=True)
             run_compiler(Compiler.ClangCl, f"4coder_metadata_generator.obj", f"metadata_generator{DOT_EXE}",
                          link_only=True)
-        run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
+            run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
 
     asan_on = old_asan_on
 

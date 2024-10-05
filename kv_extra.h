@@ -369,26 +369,29 @@ string_match(char *a, char *b){
  return gb_strcmp(a,b) == 0;
 }
 
-function b32
-character_is_whitespace(char c){
+force_inline b32
+char_is_whitespace(u8 c){
  return(c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\f' || c == '\v');
 }
-force_inline b32
-character_is_whitespace(u8 c){
- return(character_is_whitespace(char(c)));
+inline u8
+get_matching_group_closer(u8 c){
+ if(c == '(') return ')';
+ if(c == '[') return ']';
+ if(c == '{') return '}';
+ return 0;
 }
 
 function u64
 string_find_first_whitespace(String str){
  u64 i = 0;
- for (;i < str.size && !character_is_whitespace(str.str[i]); i += 1);
+ for (;i < str.size && !char_is_whitespace(str.str[i]); i += 1);
  return(i);
 }
 function i64
 string_find_last_whitespace(String str){
  i64 size = (i64)str.size;
  i64 i = size - 1;
- for (;i >= 0 && !character_is_whitespace(str.str[i]); i -= 1);
+ for (;i >= 0 && !char_is_whitespace(str.str[i]); i -= 1);
  return(i);
 }
 
@@ -396,7 +399,7 @@ function i64
 string_find_last_non_whitespace(String str){
  i64 size = (i64)str.size;
  i64 i = size - 1;
- for (;i >= 0 && character_is_whitespace(str.str[i]); i -= 1);
+ for (;i >= 0 && char_is_whitespace(str.str[i]); i -= 1);
  return(i);
 }
 

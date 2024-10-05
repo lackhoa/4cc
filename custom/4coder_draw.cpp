@@ -571,12 +571,12 @@ draw_whitespace_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout
     Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
     for (i64 i = visible_range.first; i < visible_range.opl;){
         u8 c = buffer_get_char(app, buffer, i);
-        if (character_is_whitespace(c)){
+        if (char_is_whitespace(c)){
             i64 s = i;
             i += 1;
             for (; i < visible_range.opl; i += 1){
                 c = buffer_get_char(app, buffer, i);
-                if (!character_is_whitespace(c)){
+                if (!char_is_whitespace(c)){
                     break;
                 }
             }

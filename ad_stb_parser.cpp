@@ -249,8 +249,7 @@ block_copy(pointer, &value, get_basic_type_size(type)); \
 
 //NOTE(kv) Exclude the terminator
 function void
-eat_until_char(STB_Parser *p, char terminator, i1 max_recursion=20)
-{
+eat_until_char(STB_Parser *p, char terminator, i1 max_recursion=20){
  if(max_recursion > 0){
   while(p->ok_){
    char c = p->stb.token;
@@ -258,19 +257,13 @@ eat_until_char(STB_Parser *p, char terminator, i1 max_recursion=20)
     break;
    }else{
     //NOTE Not the terminator
-    char matching = 0;
-    if(c == '('){ matching = ')'; }
-    if(c == '['){ matching = ']'; }
-    if(c == '{'){ matching = '}'; }
+    char matching = get_matching_group_closer(c);
     if(matching){
      //NOTE(kv) Eat grouper
      eat_token(p);
      eat_until_char(p, matching, max_recursion-1);
-     eat_token(p);
-    }else{
-     //NOTE(kv) Default
-     eat_token(p);
     }
+    eat_token(p);
    }
   }
  }

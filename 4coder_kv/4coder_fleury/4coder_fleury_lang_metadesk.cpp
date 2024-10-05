@@ -109,11 +109,11 @@ internal F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
         }
         
         // NOTE(rjf): Whitespace
-        else if(character_is_whitespace(chr))
+        else if(char_is_whitespace(chr))
         {
             Token token = { i, 1, TokenBaseKind_Whitespace, 0 };
             for(i64 j = i+1; j < (i64)state->string.size && 
-                character_is_whitespace(state->string.str[j]);
+                char_is_whitespace(state->string.str[j]);
                 j += 1, token.size += 1);
             token_list_push(arena, list, &token);
             i += token.size;

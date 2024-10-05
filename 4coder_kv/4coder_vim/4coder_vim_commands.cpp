@@ -62,7 +62,7 @@ CUSTOM_DOC("Sets the right size of the view near the x position of the cursor.")
 	i64 pos = view_get_cursor_pos(app, view);
 	if(!line_is_valid_and_blank(app, buffer, get_line_number_from_pos(app, buffer, pos))){
 		i64 new_pos = get_line_side_pos_from_pos(app, buffer, pos, Side_Min);
-		if(character_is_whitespace(buffer_get_char(app, buffer, new_pos))){
+		if(char_is_whitespace(buffer_get_char(app, buffer, new_pos))){
 			new_pos = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, new_pos);
 		}
 		view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
@@ -470,14 +470,14 @@ internal b32
 vim_is_wb_pivot(App *app, Buffer_ID buffer, i64 pos)
 {
     u8 c = buffer_get_char(app, buffer, pos);
-    if ( character_is_whitespace(c) )
+    if ( char_is_whitespace(c) )
     {
         return false;
     }
     else
     {
         u8 b = buffer_get_char(app, buffer, pos-1);
-        if ( character_is_whitespace(b) )
+        if ( char_is_whitespace(b) )
         {
             return true;
         }
@@ -735,7 +735,7 @@ vim_combine_line_inner(App *app, View_ID view, Buffer_ID buffer, i64 line_num){
 	i64 new_pos = pos + 1;
 	String delimiter = (vim_state.sub_mode == SUB_G ? empty_string : string_u8_litexpr(" "));
 	if(!line_is_valid_and_blank(app, buffer, line_num+1)){
-		if(character_is_whitespace(buffer_get_char(app, buffer, new_pos))){
+		if(char_is_whitespace(buffer_get_char(app, buffer, new_pos))){
 			new_pos = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, new_pos);
 		}
 	}else{

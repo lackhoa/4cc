@@ -674,11 +674,11 @@ F4_ReIndentLine(App *app, Buffer_ID buffer, i64 line, i64 indent_delta)
         {
             tabs_at_beginning += 1;
         }
-        else if(character_is_whitespace(line_string.str[i]))
+        else if(char_is_whitespace(line_string.str[i]))
         {
             spaces_at_beginning += 1;
         }
-        else if(!character_is_whitespace(line_string.str[i]))
+        else if(!char_is_whitespace(line_string.str[i]))
         {
             line_indent_range.max = (i64)i;
             break;
@@ -763,7 +763,7 @@ F4_AdjustCursorAndMarkForIndentation(App *app, View_ID view, i64 original_cursor
         String line = push_buffer_line(app, scratch, buffer, original_line_range.min);
         for(u64 i = 0; i < line.size; i += 1)
         {
-            if(!character_is_whitespace(line.str[i]))
+            if(!char_is_whitespace(line.str[i]))
             {
                 new_pos = start_pos + (i64)i;
                 break;
@@ -1306,7 +1306,7 @@ F4_LOCInfoFromBuffer(App *app, Arena *arena, Buffer_ID buffer)
         {
             for(u64 i = 0; i < line.size; i += 1)
             {
-                if(!character_is_whitespace(line.str[i]))
+                if(!char_is_whitespace(line.str[i]))
                 {
                     is_only_whitespace = false;
                     break;
@@ -1320,7 +1320,7 @@ F4_LOCInfoFromBuffer(App *app, Arena *arena, Buffer_ID buffer)
         {
             for(u64 i = 0; i < line.size; i += 1)
             {
-                if(!character_is_whitespace(line.str[i]))
+                if(!char_is_whitespace(line.str[i]))
                 {
                     is_only_open_brace = line.str[i] == '{';
                     if(!is_only_open_brace)

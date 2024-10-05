@@ -61,8 +61,8 @@ k_process_file(File_Name_Data source){
     ep_char(p, '{');
     while(p->ok_ && !m_maybe_brace_close(p)){
      // NOTE: Field
-     Meta_Struct_Member *member = &members.push2();
-     *member = {};
+     Meta_Struct_Member &member = members.push2();
+     member = {};
      
      if (ep_maybe_id(p, "meta_removed")) {
       // NOTE(kv): meta_removed
@@ -71,16 +71,16 @@ k_process_file(File_Name_Data source){
        parse_struct_member(p, member);
       }
       if(meta_maybe_key(p, "added")){
-       member->version_added = ep_id(p);
+       member.version_added = ep_id(p);
        ep_maybe_char(p, ',');
       }
       {
        meta_parse_key(p, "removed");
-       member->version_removed = ep_id(p);
+       member.version_removed = ep_id(p);
        ep_maybe_char(p, ',');
       }
       if ( meta_maybe_key(p, "default") ) {
-       member->default_value = ep_capture_until_char(p,')');
+       member.default_value = ep_capture_until_char(p,')');
       } else {
        ep_char(p,')');
       }
@@ -92,15 +92,15 @@ k_process_file(File_Name_Data source){
        while(p->ok_ && !ep_maybe_char(p, ')')){
         ep_maybe_char(p, ',');
         if (meta_maybe_key(p, "added")){
-         member->version_added = ep_id(p);
+         member.version_added = ep_id(p);
         }else if (meta_maybe_key(p, "default")){
          //TODO(kv): support arbitrary expression in parens
-         member->default_value = ep_print_token(p);
+         member.default_value = ep_print_token(p);
          ep_eat_token(p);
         }else{ p->fail(); }
        }
       }else if(ep_maybe_id(p, "meta_unserialized")){
-       member->unserialized = true;
+       member.unserialized = true;
       }
       ep_consume_semicolons(p);
       

@@ -1356,11 +1356,11 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
     if(token->pos >= nest.max){
      break;
     }else{
-     Range_i64 *item = list.push_zero();
-     item->min = token->pos;
-     ep_eat_until_char_new(p, strlit(",)]}"));
+     Range_i64 &item = list.push_zero();
+     item.min = token->pos;
+     ep_eat_until_char(p, strlit(",)]}"));
      if(Token *end_token = ep_get_token(p)){
-      item->max = end_token->pos;
+      item.max = end_token->pos;
      }
      ep_eat_token(p);
     }

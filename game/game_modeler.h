@@ -53,32 +53,32 @@ inline u32 selected_prim_id(Modeler *m){ return m->selected_prim_ro; }
 
 inline Prim_Type
 get_selected_type(Modeler *m){
- return prim_type_from_id(selected_prim_id(m));
+ return type_from_prim_id(selected_prim_id(m));
 }
 inline Vertex_Index
-vertex_prim_index_from_id(u32 id){
+vertex_index_from_prim_id(u32 id){
  Vertex_Index result = {};
- if(prim_type_from_id(id) == Prim_Vertex){
-  result = { prim_index_from_id(id) };
+ if(type_from_prim_id(id) == Prim_Vertex){
+  result = { index_from_prim_id(id) };
  }
  return result;
 }
 inline Curve_Index
-curve_prim_index_from_id(u32 id){
+curve_index_from_prim_id(u32 id){
  Curve_Index result = {};
- if(prim_type_from_id(id) == Prim_Curve){
-  result = { prim_index_from_id(id) };
+ if(type_from_prim_id(id) == Prim_Curve){
+  result = { index_from_prim_id(id) };
  }
  return result;
 }
 inline Vertex_Data *
 get_vertex_from_id(Modeler *m, u32 id){
- Vertex_Index index = vertex_prim_index_from_id(id);
+ Vertex_Index index = vertex_index_from_prim_id(id);
  return &m->vertices[index.v];
 }
 inline Curve_Data *
 get_curve_from_id(Modeler *m, u32 id){
- Curve_Index index = curve_prim_index_from_id(id);
+ Curve_Index index = curve_index_from_prim_id(id);
  return &m->curves[index.v];
 }
 inline Vertex_Data *

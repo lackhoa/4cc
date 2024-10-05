@@ -444,12 +444,12 @@ parse_keyboard_event(Arena *arena, String text)
             String code_str = string_substring(text, range);
             result.key.code = (Key_Code)string_to_u64(code_str, 16);
             
-            for (;pos < text.size && character_is_whitespace(text.str[pos]); pos += 1);
+            for (;pos < text.size && char_is_whitespace(text.str[pos]); pos += 1);
             
             if (pos < text.size && text.str[pos] == '^'){
                 result.kind = InputEventKind_KeyRelease;
                 pos += 1;
-                for (;pos < text.size && character_is_whitespace(text.str[pos]); pos += 1);
+                for (;pos < text.size && char_is_whitespace(text.str[pos]); pos += 1);
             }
             
             if (pos < text.size && text.str[pos] == 'm'){
@@ -460,7 +460,7 @@ parse_keyboard_event(Arena *arena, String text)
                     
                     Input_Modifier_Set_Fixed mods = {};
                     for (;mods.count < ArrayCountSigned(mods.mods);){
-                        for (;pos < text.size && character_is_whitespace(text.str[pos]); pos += 1);
+                        for (;pos < text.size && char_is_whitespace(text.str[pos]); pos += 1);
                         range.first = pos;
                         for (;pos < text.size && character_is_base16(text.str[pos]); pos += 1);
                         range.opl = pos;

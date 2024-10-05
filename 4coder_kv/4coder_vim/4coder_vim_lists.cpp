@@ -469,7 +469,7 @@ CUSTOM_DOC("Opens an interactive lists of the views jumps")
 		String line_text = push_buffer_line(app, scratch, slot->buffer, line);
 		b32 blank = true;
 		foreach(j, (i1)line_text.size){
-			if(!character_is_whitespace(line_text.str[j])){ blank = false; break; }
+			if(!char_is_whitespace(line_text.str[j])){ blank = false; break; }
 		}
 		if(blank){ line_text = string_u8_litexpr("*blank*"); }
 		line_text.size = Min(line_text.size, 20);

@@ -79,13 +79,15 @@ Type_Info result = {};
 result.name = strlit("Bezier_Type");
 result.size = sizeof(Bezier_Type);
 result.kind = Type_Kind_Enum;
-result.enum_members.set_count(6);
+result.enum_members.set_count(8);
 result.enum_members[0] = {.name=strlit("Bezier_Type_v3v2"), .value=Bezier_Type_v3v2};
 result.enum_members[1] = {.name=strlit("Bezier_Type_Parabola"), .value=Bezier_Type_Parabola};
 result.enum_members[2] = {.name=strlit("Bezier_Type_Offsets"), .value=Bezier_Type_Offsets};
 result.enum_members[3] = {.name=strlit("Bezier_Type_Unit"), .value=Bezier_Type_Unit};
 result.enum_members[4] = {.name=strlit("Bezier_Type_Unit2"), .value=Bezier_Type_Unit2};
 result.enum_members[5] = {.name=strlit("Bezier_Type_C2"), .value=Bezier_Type_C2};
+result.enum_members[6] = {.name=strlit("Bezier_Type_Line"), .value=Bezier_Type_Line};
+result.enum_members[7] = {.name=strlit("Bezier_Type_Bezd_Old"), .value=Bezier_Type_Bezd_Old};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -367,6 +369,76 @@ pointer.d3 = m_d3;
 
 eat_char(p, '}');
 }
+//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+function Type_Info
+get_type_info_Bezier_Line()
+{
+Type_Info result = {};
+result.name = strlit("Bezier_Line");
+result.size = sizeof(Bezier_Line);
+result.kind = Type_Kind_Struct;
+result.members.set_count(0);
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Bezier_Line = get_type_info_Bezier_Line();
+
+function Type_Info &type_info_from_pointer(Bezier_Line*pointer)
+{
+return Type_Info_Bezier_Line;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+function void
+read_Bezier_Line(Data_Reader &r, Bezier_Line &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+eat_char(p, '}');
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+function Type_Info
+get_type_info_Bezier_Bezd_Old()
+{
+Type_Info result = {};
+result.name = strlit("Bezier_Bezd_Old");
+result.size = sizeof(Bezier_Bezd_Old);
+result.kind = Type_Kind_Struct;
+result.members.set_count(2);
+result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(Bezier_Bezd_Old, d0)};
+result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(Bezier_Bezd_Old, d3)};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Bezier_Bezd_Old = get_type_info_Bezier_Bezd_Old();
+
+function Type_Info &type_info_from_pointer(Bezier_Bezd_Old*pointer)
+{
+return Type_Info_Bezier_Bezd_Old;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+function void
+read_Bezier_Bezd_Old(Data_Reader &r, Bezier_Bezd_Old &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+v3 m_d0 = {};
+
+{
+eat_id(p, strlit("d0"));
+read_v3(r, m_d0);
+}
+pointer.d0 = m_d0;
+
+v2 m_d3 = {};
+
+{
+eat_id(p, strlit("d3"));
+read_v2(r, m_d3);
+}
+pointer.d3 = m_d3;
+
+eat_char(p, '}');
+}
 //  C:\Users\vodan\4ed\code/meta_print.cpp:294:
 function Type_Info
 get_type_info_Bezier_Union()
@@ -376,13 +448,15 @@ result.name = strlit("Bezier_Union");
 result.size = sizeof(Bezier_Union);
 result.kind = Type_Kind_Union;
 result.discriminator_type = &Type_Info_Bezier_Type;
-result.union_members.set_count(6);
+result.union_members.set_count(8);
 result.union_members[0] = {.type=&Type_Info_Bezier_v3v2, .name=strlit("v3v2"), .variant=Bezier_Type_v3v2};
 result.union_members[1] = {.type=&Type_Info_Bezier_Parabola, .name=strlit("Parabola"), .variant=Bezier_Type_Parabola};
 result.union_members[2] = {.type=&Type_Info_Bezier_Offsets, .name=strlit("Offsets"), .variant=Bezier_Type_Offsets};
 result.union_members[3] = {.type=&Type_Info_Bezier_Unit, .name=strlit("Unit"), .variant=Bezier_Type_Unit};
 result.union_members[4] = {.type=&Type_Info_Bezier_Unit2, .name=strlit("Unit2"), .variant=Bezier_Type_Unit2};
 result.union_members[5] = {.type=&Type_Info_Bezier_C2, .name=strlit("C2"), .variant=Bezier_Type_C2};
+result.union_members[6] = {.type=&Type_Info_Bezier_Line, .name=strlit("Line"), .variant=Bezier_Type_Line};
+result.union_members[7] = {.type=&Type_Info_Bezier_Bezd_Old, .name=strlit("Bezd_Old"), .variant=Bezier_Type_Bezd_Old};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -427,6 +501,16 @@ break;
 case Bezier_Type_C2:
 {
 read_Bezier_C2(r, pointer.c2);
+break;
+}
+case Bezier_Type_Line:
+{
+read_Bezier_Line(r, pointer.line);
+break;
+}
+case Bezier_Type_Bezd_Old:
+{
+read_Bezier_Bezd_Old(r, pointer.bezd_old);
 break;
 }
 

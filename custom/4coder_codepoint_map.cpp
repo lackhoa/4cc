@@ -31,7 +31,7 @@ font_get_glyph_advance(Face_Advance_Map *map, Face_Metrics *metrics, u32 codepoi
   result = metrics->space_advance*tab_multiplier;
  }
  else {
-  if (character_is_whitespace(codepoint)) {
+  if (char_is_whitespace(codepoint)) {
    codepoint = ' ';
   }
   u16 index = 0;

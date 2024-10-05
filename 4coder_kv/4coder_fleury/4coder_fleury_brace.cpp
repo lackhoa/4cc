@@ -266,7 +266,7 @@ F4_Brace_RenderLines(App *app, Buffer_ID buffer, View_ID view,
                 String line = push_buffer_line(app, scratch, buffer, get_line_number_from_pos(app, buffer, range.end));
                 for(u64 char_idx = 0; char_idx < line.size; char_idx += 1)
                 {
-                    if(!character_is_whitespace(line.str[char_idx]))
+                    if(!char_is_whitespace(line.str[char_idx]))
                     {
                         x_position = metrics.space_advance * (f32)char_idx;
                         break;

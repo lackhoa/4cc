@@ -16,7 +16,7 @@ ctrl_backspace_utf8(String string){
 			i++;
 			break;
 		}
-		if(clearing_whitespace && !character_is_whitespace(string.str[i])){ clearing_whitespace=false; }
+		if(clearing_whitespace && !char_is_whitespace(string.str[i])){ clearing_whitespace=false; }
 	}
 	return SCu8(string.str, i);
 }

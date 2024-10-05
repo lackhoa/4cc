@@ -293,7 +293,7 @@ F4_SyntaxHighlight(App *app, Text_Layout_ID text_layout_id, Token_Array *array)
                         u64 j = i+1;
                         for(; j < string.size; j += 1)
                         {
-                            if(character_is_whitespace(string.str[j]))
+                            if(char_is_whitespace(string.str[j]))
                             {
                                 break;
                             }

@@ -243,8 +243,8 @@ vim_handle_visual_insert_mode(App *app, Input_Event *event)
 					i64 pos = view_pos_at_relative_xy(app, view, line_min, point) + vim_visual_insert_after;
 
 					u8 c = buffer_get_char(app, buffer, pos-1);
-					if(!clearing_whitespace &&  character_is_whitespace(c)){ break; }
-					if(clearing_whitespace  && !character_is_whitespace(c)){ clearing_whitespace = false; }
+					if(!clearing_whitespace &&  char_is_whitespace(c)){ break; }
+					if(clearing_whitespace  && !char_is_whitespace(c)){ clearing_whitespace = false; }
 
 					undo(app); count--;
 				}
@@ -284,7 +284,7 @@ vim_handle_replace_mode(App *app, Input_Event *event){
 			if(has_modifier(event, Key_Code_Control)){
 				i64 cursor_pos = view_get_cursor_pos(app, view);
 				while(cursor_pos != view_get_mark_pos(app, view) &&
-					  !character_is_whitespace(buffer_get_char(app, buffer, cursor_pos-1)))
+					  !char_is_whitespace(buffer_get_char(app, buffer, cursor_pos-1)))
 				{
 					undo(app);
 					cursor_pos = view_get_cursor_pos(app, view);

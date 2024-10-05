@@ -150,66 +150,66 @@ boundary_whitespace(App *app, Buffer_ID buffer, Side side, Scan_Direction direct
 internal i64
 scan_backward_min(App *app, Boundary_Function *func, Buffer_ID buffer, i64 pos)
 {
-    return func(app, buffer, Side_Min, Scan_Backward, pos);
+ return func(app, buffer, Side_Min, Scan_Backward, pos);
 }
 
 function i64
 scan_list_backward_min(App *app, Boundary_Function_List funcs, Buffer_ID buffer, i64 start_pos)
 {
-    i64 result = -1;
-    for (Boundary_Function_Node *node = funcs.first;
-         node != 0;
-         node = node->next)
-    {
-        i64 pos = scan_backward_min(app, node->func, buffer, start_pos);
-        result = Max(result, pos);
-    }
-    return(result);
+ i64 result = -1;
+ for (Boundary_Function_Node *node = funcs.first;
+      node != 0;
+      node = node->next)
+ {
+  i64 pos = scan_backward_min(app, node->func, buffer, start_pos);
+  result = Max(result, pos);
+ }
+ return(result);
 }
 
 // @Hack
 internal i64 
 vim_word_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos)
 {
-    Scratch_Block scratch(app);
-    Boundary_Function_List boundary = push_boundary_list(scratch, boundary_alnum_camel, vim_boundary_non_word);
-    
-    u8 c = buffer_get_char(app, buffer, pos);
-    u8 d = buffer_get_char(app, buffer, pos+direction);
-    if ( character_is_upper(c) && character_is_upper(d) )
-    {
-        // NOTE(kv): Handle the ALL_UPPERCASE case (not tested thoroughly yet)
-        pos += direction*2;
-        for (;
-             pos < buffer_get_size(app, buffer);
-             pos += direction)
-        {
-            c = buffer_get_char(app, buffer, pos);
-            if ( !character_is_upper(c) )
-            {
-                break;
-            }
-        }
-    }
-    else if ( !character_is_whitespace(c) )
-    {
-        pos = scan_list(app, boundary, buffer, direction, pos);
-        c = buffer_get_char(app, buffer, pos);
-    }
-    
-    if ( character_is_whitespace(c) )
-    {
-        if ( direction == Scan_Forward )
-        {// todo wonder why need to special case this?
-            String_Match match = buffer_seek_character_class(app, buffer, &character_predicate_non_whitespace, direction, pos);
-            pos = match.range.min;
-        }
-        else 
-        {
-            pos = scan_list(app, boundary, buffer, Scan_Backward, pos);
-        }
-    }
-    return pos;
+ Scratch_Block scratch(app);
+ Boundary_Function_List boundary = push_boundary_list(scratch, boundary_alnum_camel, vim_boundary_non_word);
+ 
+ u8 c = buffer_get_char(app, buffer, pos);
+ u8 d = buffer_get_char(app, buffer, pos+direction);
+ if ( character_is_upper(c) && character_is_upper(d) )
+ {
+  // NOTE(kv): Handle the ALL_UPPERCASE case (not tested thoroughly yet)
+  pos += direction*2;
+  for (;
+       pos < buffer_get_size(app, buffer);
+       pos += direction)
+  {
+   c = buffer_get_char(app, buffer, pos);
+   if ( !character_is_upper(c) )
+   {
+    break;
+   }
+  }
+ }
+ else if ( !char_is_whitespace(c) )
+ {
+  pos = scan_list(app, boundary, buffer, direction, pos);
+  c = buffer_get_char(app, buffer, pos);
+ }
+ 
+ if ( char_is_whitespace(c) )
+ {
+  if ( direction == Scan_Forward )
+  {// todo wonder why need to special case this?
+   String_Match match = buffer_seek_character_class(app, buffer, &character_predicate_non_whitespace, direction, pos);
+   pos = match.range.min;
+  }
+  else 
+  {
+   pos = scan_list(app, boundary, buffer, Scan_Backward, pos);
+  }
+ }
+ return pos;
 }
 
 function i64 vim_WORD_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos){
@@ -233,7 +233,7 @@ function i64 vim_end_boundary(App *app, Buffer_ID buffer, Scan_Direction directi
 	u8 c2 = buffer_get_char(app, buffer, pos+2);
 
 	if(direction == Scan_Forward){
-		if(!character_is_whitespace(c1)){
+		if(!char_is_whitespace(c1)){
 			// This is a weird edge case (single character predicate type changes), so it's somewhat hardcoded
 			b32 c1_w = character_predicate_check(character_predicate_word, c1);
 			b32 c2_w = character_predicate_check(character_predicate_word, c2);
@@ -242,7 +242,7 @@ function i64 vim_end_boundary(App *app, Buffer_ID buffer, Scan_Direction directi
 			if((c1_n && c2_w) || (c1_w && c2_n)){ return pos+1; }
 		}
 
-		if(character_is_whitespace(c)){
+		if(char_is_whitespace(c)){
 			pos = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, direction, pos);
 		}
 		pos = scan_list(app, push_boundary_list(scratch, vim_boundary_word, vim_boundary_non_word, boundary_whitespace), buffer, direction, pos)-1;
@@ -250,7 +250,7 @@ function i64 vim_end_boundary(App *app, Buffer_ID buffer, Scan_Direction directi
 			pos = vim_end_boundary(app, buffer, direction, pos+1);
 		}
 	}else{
-		if(character_is_whitespace(c)){
+		if(char_is_whitespace(c)){
 			pos = scan_list(app, push_boundary_list(scratch, boundary_whitespace), buffer, direction, pos+1);
 		}
 		//i64 p1  = scan(app, push_boundary_list(scratch, vim_boundary_word),     buffer, direction, pos);
@@ -259,7 +259,7 @@ function i64 vim_end_boundary(App *app, Buffer_ID buffer, Scan_Direction directi
 		//scan_any_boundary(app, Boundary_Function *func, buffer, direction, pos);
 		//pos = Max(pos, Max(p1, p2));
 
-		if(character_is_whitespace(buffer_get_char(app, buffer, pos))){
+		if(char_is_whitespace(buffer_get_char(app, buffer, pos))){
 			pos--;
 			//pos = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, direction, pos+1);
 			//pos = scan(app, push_boundary_list(scratch, boundary_whitespace), buffer, direction, pos);
@@ -277,7 +277,7 @@ vim_END_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos)
 
 	/*if(true || direction == Scan_Forward)*/{
 		pos = vim_WORD_boundary(app, buffer, direction, pos)-direction;
-		if(character_is_whitespace(buffer_get_char(app, buffer, pos))){
+		if(char_is_whitespace(buffer_get_char(app, buffer, pos))){
 			pos = scan_list(app, push_boundary_list(scratch, boundary_whitespace), buffer, -direction, pos+direction) - direction;
 		}
 		if(pos == prev_pos){ pos = vim_END_boundary(app, buffer, direction, pos+direction); }
@@ -469,16 +469,16 @@ VIM_TEXT_OBJECT_SIG(vim_object_para){
 
 VIM_TEXT_OBJECT_SIG(vim_object_word){
 	Range_i64 range = {};
-	char c = buffer_get_char(app, buffer, cursor_pos);
-	if(character_is_whitespace(c)){
+	u8 c = buffer_get_char(app, buffer, cursor_pos);
+	if(char_is_whitespace(c)){
 		range.min = scan(app, boundary_whitespace, buffer, Scan_Backward, cursor_pos+1);
 		range.max = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, cursor_pos)-1;
 	}else{
 		/*if(true || vim_state.params.clusivity == VIM_Exclusive)*/{
 			u8 c1 = buffer_get_char(app, buffer, cursor_pos-1);
 			u8 c2 = buffer_get_char(app, buffer, cursor_pos+1);
-			b32 boundary1 = !character_predicate_check(character_predicate_word, c1) || character_is_whitespace(c1);
-			b32 boundary2 = !character_predicate_check(character_predicate_word, c2) || character_is_whitespace(c2);
+			b32 boundary1 = !character_predicate_check(character_predicate_word, c1) || char_is_whitespace(c1);
+			b32 boundary2 = !character_predicate_check(character_predicate_word, c2) || char_is_whitespace(c2);
 			range.min = boundary1 ? cursor_pos : vim_word_boundary(app, buffer, Scan_Backward, cursor_pos);
 			range.max = boundary2 ? cursor_pos : vim_end_boundary(app, buffer, Scan_Forward, cursor_pos);
 		}/*else{
@@ -492,14 +492,14 @@ VIM_TEXT_OBJECT_SIG(vim_object_word){
 
 VIM_TEXT_OBJECT_SIG(vim_object_WORD){
 	Range_i64 range = {};
-	char c = buffer_get_char(app, buffer, cursor_pos);
-	if(character_is_whitespace(c)){
+	u8 c = buffer_get_char(app, buffer, cursor_pos);
+	if(char_is_whitespace(c)){
 		range.min = scan(app, boundary_whitespace, buffer, Scan_Backward, cursor_pos+1);
 		range.max = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, cursor_pos)-1;
 	}else{
 		/*if(true || vim_state.params.clusivity == VIM_Exclusive)*/{
-			b32 boundary1 = character_is_whitespace(buffer_get_char(app, buffer, cursor_pos-1));
-			b32 boundary2 = character_is_whitespace(buffer_get_char(app, buffer, cursor_pos+1));
+			b32 boundary1 = char_is_whitespace(buffer_get_char(app, buffer, cursor_pos-1));
+			b32 boundary2 = char_is_whitespace(buffer_get_char(app, buffer, cursor_pos+1));
 			range.min = boundary1 ? cursor_pos : vim_WORD_boundary(app, buffer, Scan_Backward, cursor_pos);
 			range.max = boundary2 ? cursor_pos : vim_END_boundary(app, buffer, Scan_Forward, cursor_pos);
 		}/*else{

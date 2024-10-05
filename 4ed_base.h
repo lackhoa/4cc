@@ -1089,11 +1089,11 @@ character_to_lower(u32 c){
 }
 
 function b32
-character_is_whitespace(u16 c){
+char_is_whitespace(u16 c){
  return(c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\f' || c == '\v');
 }
 function b32
-character_is_whitespace(u32 c){
+char_is_whitespace(u32 c){
  return(c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\f' || c == '\v');
 }
 

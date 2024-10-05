@@ -98,40 +98,31 @@ csg_union(CSG_Tree *l, CSG_Tree *r)
 
 //~NOTE: Operations
 force_inline v1
-sd_intersect(v1 d1, v1 d2)
-{
+sd_intersect(v1 d1, v1 d2){
  return macro_max(d1, d2);
 }
-
 force_inline v1
-sd_union(v1 d1, v1 d2)
-{
+sd_union(v1 d1, v1 d2){
  return macro_min(d1, d2);
 }
-
 #if 0
-//~NOTE: Shapes
-force_inline v1
-sd_sphere(v3 center, v1 radius, v3 pos)
-{
+//~NOTE: Shapes sdf
+inline v1
+sd_sphere(v3 center, v1 radius, v3 pos){
  v1 result = lengthof(pos-center) - radius;
  return result;
 }
-
-force_inline v1
-sd_plane(v3 unit_normal, v1 d, v3 pos)
-{//NOTE: The plane normal points "outside" of the plane, which translates directly to this sdf.
+inline v1
+sd_plane(v3 unit_normal, v1 d, v3 pos){
+ //NOTE: The plane normal points "outside" of the plane, which translates directly to this sdf.
  return dot(unit_normal, pos) + d;
 }
-
-internal v1
-sd_box(v3 center, v3 dim, v3 pos)
-{
- v3 q = absolute(pos-center) - dim;
+function v1
+sd_box(v3 center, v3 radius, v3 pos){
+ v3 q = absolute(pos-center) - radius;
  return (lengthof(max(q,V3())) +
          macro_min(sd_intersect(q.x,sd_intersect(q.y,q.z)), 0.f));
 }
 #endif
-
 
 //~EOF

@@ -329,36 +329,31 @@ fui_at_slider_p(App *app, Buffer_ID buffer, Token_Iterator_Array *it_out)
 }
 
 function fui_handle_slider_return
-fui_handle_slider(fui_handle_slider_params)
-{
+fui_handle_slider(fui_handle_slider_params) {
  b32 result = false;
  
  Token_Iterator_Array tk_value; 
  i64 slider_pos = fui_at_slider_p(app, buffer, &tk_value);
  String at_string = {};
- if (slider_pos)
- {
+ if(slider_pos){
   Scratch_Block scratch(app);
   
   Range_i64 slider_value_range = {};
   Fui_Slider *slider = fui_get_slider_external(filename, line_number);
-  if (slider)
-  {
+  if(slider){
    b32 parse_ok = false;
    {// NOTE(kv): Parsing
     Ed_Parser parser_value = make_ep_from_buffer(app, buffer, tk_value);
     Ed_Parser *p = &parser_value;
     at_string = ep_print_token(p,scratch);
     ep_eat_kind(p, TokenBaseKind_Identifier);
-    ep_eat_kind(p, TokenBaseKind_ParenOpen);
+    ep_char(p, '(');
     // NOTE: At value
     slider_value_range.min = ep_get_pos(p);
     {
      i32 component_count = 1;
-     if (!(fui_is_wrapped_slider(at_string)))
-     {
-      switch(slider->type)
-      {
+     if(!(fui_is_wrapped_slider(at_string))){
+      switch(slider->type){
        case Basic_Type_v2: case Basic_Type_i2: { component_count = 2; }break;
        case Basic_Type_v3: case Basic_Type_i3: { component_count = 3; }break;
        case Basic_Type_v4: case Basic_Type_i4: { component_count = 4; }break;
@@ -366,11 +361,13 @@ fui_handle_slider(fui_handle_slider_params)
       }
      }
      
-     for_i32(index,0,component_count) {
-      if (index<component_count-1){
-       ep_eat_until_char_old(p, ",");
+     for_i32(index,0,component_count){
+      if(index<component_count-1){
+       ep_eat_until_char(p, ",");
+       ep_eat_token(p);
       }else{
-       ep_eat_until_char_old(p, ")");
+       ep_eat_until_char(p, ")");
+       ep_eat_token(p);
       }
      }
     }

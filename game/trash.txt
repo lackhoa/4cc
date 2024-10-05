@@ -21,101 +21,6 @@
 }
 
 //-
-force_inline rect2 
-draw_widget_children(App *app, Widget_State *state, Widget *parent, v2 top_left)
-{
- return draw_sibling_widgets(app, state, parent->children, parent->children_count, top_left);
-}
-
-internal rect2
-draw_single_widget(App *app, Widget_State *state, Widget *widget, v2 top_left)
-{
- Scratch_Block scratch(app);
- 
-#if 0
- Face_ID face = get_face_id(app,0);
- Face_Metrics face_metrics = get_face_metrics(app, face);
- 
- Fancy_Line line_value = {}; 
- Fancy_Line *line = &line_value;
- push_fancy_string(scratch, line, f_white, widget->name);
- // 
- v2 name_dim = V2(get_fancy_line_width(app, face, line),
-                    face_metrics.line_height);
- // 
- draw_fancy_line(app, face, fcolor_zero(), line, widget_min);
-#else
- v2 name_dim = V2(50.0f, 50.0f);
- v2 widget_min = V2(top_left.x, top_left.y-name_dim.y);
- draw_rect2(app, rect2_min_dim(widget_min, name_dim), argb_gray(.5));
-#endif
- 
- auto widget_indentation = 10.0f;
- v2 children_top_left = V2(widget_min.x + widget_indentation,
-                             widget_min.y);
- rect2 children = draw_widget_children(app, state, widget, children_top_left);
- //
- v2 whole_max = V2(macro_max(widget_min.x + name_dim.x, children.max.x),
-                     widget_min.y + name_dim.y + widget_margin);
- //
- widget_min.y = children.min.y - widget_margin;
- 
- rect2 whole_box = rect2_min_max(widget_min, whole_max);
- if (widget == state->hot_item)
- {
-  u32 color = argb_yellow;
-  if (state->is_editing)  color = argb_red;
-  v1 thickness = 2.0f;
-  draw_rect_outline2(app, whole_box, thickness, color);
- }
- 
- return whole_box;
-}
-internal rect2 draw_single_widget(App *app, Widget_State *state, Widget *tree, v2 top_left);
-
-internal rect2
-draw_sibling_widgets(App *app, Widget_State *state, Widget *siblings, u32 sibling_count, v2 top_left)
-{
- v2 min = top_left;
- v2 max = top_left;
- for_u32 (index,0,sibling_count)
- {
-  Widget *widget = siblings + index;
-  rect2 rect = draw_single_widget(app, state, widget, min);
-  
-  max.x = macro_max(rect.max.x, max.x);
-  min.y = rect.min.y - widget_margin;
- }
- return rect2_min_max(min, max);
-}
-
-//-
-
-#if 0
-Animation *theta_animation = push_struct(arena, Animation);
-{// NOTE: head tilting animation
- Animation *ani = theta_animation;
- begin_animation(ani, true);
- if(fbool(1))
- {
-  fkeyframe(4, 0);  // rest
-  fkeyframe(1, 1);  // anticipation
-  fkeyframe(8, -6); // rest
- }
- 
- if(fbool(1))
- {// NOTE: left tilt
-  fkeyframe(1, -8); // anticipation
-  fkeyframe(1, -7);  // movement
-  fkeyframe(1, 5);  // movement
- }
- 
- fkeyframe(8, 6); // rest
- end_animation(ani);
-}
-#endif
-
-//-
 enum Anime_Command_Type
 {
  Anime_Command_Null,
@@ -139,24 +44,6 @@ struct Anime_Command
  };
 };
 //-
-{
-#if 0
- v1 blink_period = fval(0.4f);
- v1 tblink0 = animation_time / blink_period;
- b32 should_blink = ((i1)tblink0 % 4 == 0 ||
-                     (i1)tblink0 % 4 == 1);
- v1 tblink = cycle01_positive(tblink0);
- 
- v1 tclose = shot->tblink;
- {
-  const i1 nframes = 6;
-  v1 tclose_middle = fval(0.203905f);
-  v1 tclose_keys[nframes] = { 0.f, tclose_middle, 1.f, 1.f, tclose_middle, 0.f };
-  tclose = tclose_keys[ get_frame_index(nframes, tblink) ];
- }
-#endif
- 
-}
 //-NOTE: Oh widget, don't need it, it's not what the project is about!
 
 struct Widget
@@ -1137,6 +1024,57 @@ struct CSG_Tree
  mouse_viewp_px   -= clip_box.min + 0.5f * clip_dim;
  mouse_viewp_px.y *= -1.0f;
  painter.mousep = mouse_viewp_px / meter_to_pixel;
+#endif
+
+#if 0
+  {// NOTE: ;inflection-point-experiment
+   Bez line = bezd(V3(1.2193f, 1.2078f, -0.0168f),
+                   V3(0.3117f, 0.2096f, -0.0057f),
+                   V2(0,0),
+                   V3(1.6441f, -1.6599f, -0.6047f));
+   draw(line);
+   v3 u = noz(line[3]-line[0]);
+   v3 v;
+   {
+    v3 w = cross(u, line[1]-line[0]);
+    v = noz(cross(w,u));
+   }
+   Bez rebased = line;
+   for_i32(index,0,4)
+   {
+    rebased[index] -= line[0];
+   }
+   v2 b2[4];
+   for_i32(index,0,4)
+   {
+    b2[index] = V2(dot(rebased[index], u),
+                   dot(rebased[index], v));
+   }
+   if( fbool(0) )
+   {
+    hl_block;
+    Bez line_check = {};
+    for_i32(index,0,4)
+    {
+     line_check[index] = line[0] + b2[index][0]*u + b2[index][1]*v;
+    }
+    draw(line_check);
+   }
+   i32 nslices = 32;
+   v1 slice = 1.f / v1(nslices);
+   v1 circle_radius = 3.f*millimeter;
+   for_i32(index,0,nslices+1)
+   {
+    v1 t = v1(index)*slice;
+    v1 sign = signof(bezier_curvature(b2, t));
+    argb color = argb_green;
+    if (sign >= 1e-6)
+    {
+     color = argb_red;
+    }
+    draw_disk(bezier_sample(line,t), circle_radius, color, 0.f, 0);
+   }
+  }
 #endif
 
 

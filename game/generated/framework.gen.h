@@ -19,6 +19,8 @@ Bezier_Type_Offsets = 2,
 Bezier_Type_Unit = 3,
 Bezier_Type_Unit2 = 4,
 Bezier_Type_C2 = 5,
+Bezier_Type_Line = 6,
+Bezier_Type_Bezd_Old = 7,
 };
 //  C:\Users\vodan\4ed\code/meta_main.cpp:137:
 struct Bezier_v3v2
@@ -56,6 +58,17 @@ struct Bezier_C2
 Curve_Index ref;
 v3 d3;
 };
+//  C:\Users\vodan\4ed\code/meta_main.cpp:137:
+struct Bezier_Line
+{
+
+};
+//  C:\Users\vodan\4ed\code/meta_main.cpp:137:
+struct Bezier_Bezd_Old
+{
+v3 d0;
+v2 d3;
+};
 //  C:\Users\vodan\4ed\code/meta_main.cpp:146:
 union Bezier_Union
 {
@@ -65,6 +78,8 @@ Bezier_Offsets offsets;
 Bezier_Unit unit;
 Bezier_Unit2 unit2;
 Bezier_C2 c2;
+Bezier_Line line;
+Bezier_Bezd_Old bezd_old;
 };
 struct Bezier_Data
 {

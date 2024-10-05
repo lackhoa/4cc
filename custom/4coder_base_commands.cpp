@@ -30,10 +30,10 @@ write_text(App *app, String insert, b32 move_cursor)
     String string = record.single_string_forward;
     i1 last_end = (i1)(record.single_first + string.size);
     if (last_end == pos && string.size > 0){
-     char c = string.str[string.size - 1];
+     u8 c = string.str[string.size - 1];
      if (c != '\n')
      {
-      if (character_is_whitespace(insert.str[0]) && character_is_whitespace(c))
+      if (char_is_whitespace(insert.str[0]) && char_is_whitespace(c))
       {
        do_merge = true;
       }
@@ -450,11 +450,11 @@ clean_all_lines_buffer(App *app, Buffer_ID buffer, Clean_All_Lines_Mode mode){
             has_cr_character = true;
             if (line_end - 2 >= line_start){
                 prev = buffer_get_char(app, buffer, line_end - 2);
-                has_tail_whitespace = character_is_whitespace(prev);
+                has_tail_whitespace = char_is_whitespace(prev);
             }
         }
         else{
-            has_tail_whitespace = character_is_whitespace(prev);
+            has_tail_whitespace = char_is_whitespace(prev);
         }
         if (has_tail_whitespace){
             String line = push_buffer_range(app, scratch, buffer,
@@ -468,7 +468,7 @@ clean_all_lines_buffer(App *app, Buffer_ID buffer, Clean_All_Lines_Mode mode){
                 }
                 i64 start_offset = 0;
                 for (; i >= 0; i -= 1){
-                    if (!character_is_whitespace(line.str[i])){
+                    if (!char_is_whitespace(line.str[i])){
                         start_offset = i + 1;
                         break;
                     }
@@ -1719,7 +1719,7 @@ undo(App *app)
             record.single_string_backward.size == 0){
             b32 has_hard_character = false;
             for (u64 i = 0; i < record.single_string_forward.size; i += 1){
-                if (!character_is_whitespace(record.single_string_forward.str[i])){
+                if (!char_is_whitespace(record.single_string_forward.str[i])){
                     has_hard_character = true;
                     break;
                 }

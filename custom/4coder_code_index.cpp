@@ -682,7 +682,7 @@ generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state){
     u8 *end_ptr = state->contents.str + token->pos;
     // NOTE(allen): Initial whitespace
     for (;ptr < end_ptr; ptr += 1){
-      if (!character_is_whitespace(*ptr)){
+      if (!char_is_whitespace(*ptr)){
         break;
       }
     }

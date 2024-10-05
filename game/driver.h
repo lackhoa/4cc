@@ -32,8 +32,8 @@ enum Prim_Type : u8 {
  Prim_Triangle = 3,
 };
 
-inline Prim_Type prim_type_from_id(u32 id){ return Prim_Type(id >> 24); }
-inline b32 prim_id_is_data(u32 id){ return prim_type_from_id(id) != 0; }
+inline Prim_Type type_from_prim_id(u32 id){ return Prim_Type(id >> 24); }
+inline b32 prim_id_is_data(u32 id){ return type_from_prim_id(id) != 0; }
 
 struct Prim_XID{
  u32       id;
@@ -41,7 +41,7 @@ struct Prim_XID{
  i1        index;
 };
 inline i1
-prim_index_from_id(u32 id){
+index_from_prim_id(u32 id){
  if(prim_id_is_data(id)){ return (id & 0xFFFF); }
  return 0;
 }
@@ -49,11 +49,10 @@ inline Prim_XID
 prim_xid_from_id(u32 id){
  Prim_XID result = {};
  result.id    = id;
- result.type  = prim_type_from_id(id);
- result.index = prim_index_from_id(id);
+ result.type  = type_from_prim_id(id);
+ result.index = index_from_prim_id(id);
  return result;
 }
-
 inline u32
 prim_id_from_vertex_index(Vertex_Index i){
  u32 type = u32(Prim_Vertex) << 24;
@@ -201,7 +200,7 @@ struct Viewport {
 };
 inline b32 is_main_viewport(Viewport *viewport){ return viewport->index==0; }
 
-inline b32 operator==(Bone_ID &a, Bone_ID &b){
+inline bool operator==(Bone_ID &a, Bone_ID &b){
  return (a.type==b.type) && (a.id==b.id);
 }
 inline Bone_ID
@@ -226,6 +225,7 @@ struct Painter{
  Viewport *viewport;
  //v2  mousep;  //NOTE(kv) In view space
  v3 cursorp;
+ b32 cursor_on;
  u32 selected_obj_id;
  Camera camera;
  mat4  view_from_world;  // see @get_view_from_worldT
@@ -255,8 +255,20 @@ struct Painter{
  i32 view_vector_count;
  v3  view_vector_stack[16];
 };
-framework_storage Painter painter;
+framework_storage Painter painter;  // see @init_painter
 function Line_Params lp(){ return painter.line_params; }
+inline Line_Params
+lp(v4 radii){
+ Line_Params result=painter.line_params;
+ result.radii = radii;
+ return result;
+}
+inline Line_Params
+lp(i4 radii){
+ Line_Params result = painter.line_params;
+ result.radii = i2f6(radii);
+ return result;
+}
 
 global_const argb hot_color      = argb_lightness(argb_silver, 0.5f);
 global_const argb hot_color2     = argb_yellow;
@@ -264,13 +276,13 @@ global_const argb selected_color = argb_red;
 global_const v1 default_line_radius_unit = 1.728125f * millimeter;
 
 //-
-inline Bone *current_bone(Painter *p){ return p->bone_stack.last(); }
-inline mat4i& current_world_from_bone(Painter *p){
+inline Bone *current_bone(Painter &p){ return p.bone_stack.last(); }
+inline mat4i& current_world_from_bone(Painter &p){
  return current_bone(p)->xform;
 }
 
-inline b32 is_right(Painter *p=&painter) { return p->is_right; }
-inline b32 is_left(Painter *p=&painter)  { return !p->is_right; }
+inline b32 is_right(Painter &p=painter){ return p.is_right; }
+inline b32 is_left (Painter &p=painter){ return !p.is_right; }
 //-
 
 //#include "game_draw.cpp"
@@ -294,12 +306,11 @@ struct Pose{
 
 //~NOTE Atrocity Alert! Transitional code to convert code to data.
 #include "generated/send_bez.gen.h"
-#define line_params_defp Line_Params params=painter.line_params
 //-
 xfunction void
-send_vert_func(Painter *p, String name, v3 pos, i32 linum=__builtin_LINE());
+send_vert_func(Painter &p, String name, v3 pos, i32 linum=__builtin_LINE());
 //NOTE(kv) You can only send one vert on one line
-#define send_vert(NAME)  send_vert_func(&painter, strlit(#NAME), NAME)
+#define send_vert(NAME)  send_vert_func(painter, strlit(#NAME), NAME)
 
 #define driver_animate_params Modeler *m, Arena *scratch, v1 anime_time
 xfunction Pose driver_animate(driver_animate_params);
@@ -327,7 +338,7 @@ camera_world_position(Camera *camera){
 }
 function v3
 camera_object_position(Painter *p){
- v3 result = (current_world_from_bone(p).inv *
+ v3 result = (current_world_from_bone(*p).inv *
               camera_world_position(&painter.camera));
  return result;
 }
@@ -352,56 +363,50 @@ pop_view_vector(Painter *p){
 push_view_vector(&painter, center); \
 defer(pop_view_vector(&painter));
 
-//NOTE(kv)  Don't you dare return a reference here!
-xfunction arrayof<Bone> *get_bones(Modeler *m);
+xfunction arrayof<Bone> &get_bones(Modeler &m);
 
-function Bone *
-get_bone(Modeler *m, Bone_ID id, b32 is_right) {
- auto bones = get_bones(m);
- for_i32(index,0,bones->count){
-  Bone *bone = &bones->get(index);
-  if(bone->id       == id &&
-     bone->is_right == is_right){
+function Bone &
+get_bone(Modeler &m, Bone_ID id, b32 is_right){
+ auto &bones = get_bones(m);
+ for_i32(index,0,bones.count){
+  Bone &bone = bones[index];
+  if(bone.id       == id &&
+     bone.is_right == is_right){
    return bone;
   }
  }
- return 0;
+ return bones[0];
 }
-inline Bone *
-get_bone(Modeler *m, Bone_Type type, b32 is_right) {
+inline Bone &
+get_bone(Modeler &m, Bone_Type type, b32 is_right) {
  return get_bone(m, make_bone_id(type), is_right);
 }
-
 function void
-push_bone_inner(Modeler *m, arrayof<Bone *> *stack,
+push_bone_inner(Modeler &m, arrayof<Bone *> &stack,
                 b32 is_right,
-                Bone_ID id, mat4i const&mom_from_kid)
-{
- mat4i &mom = stack->last()->xform;
- Bone *bone = get_bone(m, id, is_right);
- if (!bone){
-  auto bones = get_bones(m);
-  bone = &bones->push(Bone{.id=id, .is_right=is_right});
+                Bone_ID id, mat4i const&mom_from_kid) {
+ mat4i &mom = stack.last()->xform;
+ Bone *bone = &get_bone(m, id, is_right);
+ if(bone->id.type == 0){
+  auto &bones = get_bones(m);
+  bone = &bones.push_zero();
+  bone->id       = id;
+  bone->is_right = is_right;
+  bone->xform    = mom * mom_from_kid; 
  }
- 
- mat4i xform = mom * mom_from_kid;
- bone->xform = xform;
- 
- stack->push(bone);
+ stack.push(bone);
 }
 inline void
-push_bone_inner(Modeler *m, arrayof<Bone *> *stack, b32 is_right,
-                Bone_Type type, mat4i const&mom_from_kid)
-{
+push_bone_inner(Modeler &m, arrayof<Bone *> &stack, b32 is_right,
+                Bone_Type type, mat4i const&mom_from_kid) {
  push_bone_inner(m,stack,is_right,make_bone_id(type),mom_from_kid);
 }
-
 function void
 push_bone(Painter *p, Bone_ID id, v3 center={}){
  auto m  = p->modeler;
- Bone *bone = get_bone(m, id, p->is_right);
- p->bone_stack.push(bone);
- set_bone_transform(bone->xform);
+ Bone &bone = get_bone(*m, id, p->is_right);
+ p->bone_stack.push(&bone);
+ set_bone_transform(bone.xform);
 }
 inline void
 push_bone(Painter *p, Bone_Type type, v3 center={}) {
@@ -410,11 +415,10 @@ push_bone(Painter *p, Bone_Type type, v3 center={}) {
 function void
 pop_bone(Painter *p){
  p->bone_stack.pop();
- mat4i &parent = current_world_from_bone(p);
+ mat4i &parent = current_world_from_bone(*p);
  set_bone_transform(parent);
 }
 #define bone_block(id) push_bone(&painter, id); defer(pop_bone(&painter););
-
 //-
 
 //~

@@ -1,15 +1,15 @@
 // autodraw data file (DO NOT EDIT)
-// Written at 02.10.2024 17:24:22
+// Written at 05.10.2024 15:49:45
 version 13
 cameras
 {
  {
-  distance 2.2004f
+  distance 3.7186f
   phi 0.f
-  theta 0.0417f
+  theta 0.f
   roll 0.f
   pan 0.f 0.f 0.f
-  pivot 0.0455f -0.2204f 0.0589f
+  pivot 0.1389f -0.3623f 0.005f
   }
  {
   distance 1.3312f
@@ -34,7 +34,7 @@ references_full_alpha 1
 Serialized_State
 {
 kb_cursor {
-pos 0.1745f -0.4392f -0.0067f
+pos 0.1769f -0.4225f -0.0024f
 vel 0.f
 }
 
@@ -290,7 +290,7 @@ type 11
 id 0
 }
 
-symx 0
+symx 1
 pos 0.f 1.6899f 0.271f
 basic_index 0
 }
@@ -301,7 +301,7 @@ type 11
 id 0
 }
 
-symx 0
+symx 1
 pos 0.f 0.f 0.f
 basic_index 0
 }
@@ -312,7 +312,7 @@ type 11
 id 0
 }
 
-symx 0
+symx 1
 pos 0.1f 0.f 0.f
 basic_index 0
 }
@@ -323,7 +323,7 @@ type 11
 id 0
 }
 
-symx 0
+symx 1
 pos 1.0685f 0.8105f -0.6117f
 basic_index 0
 }
@@ -334,7 +334,7 @@ type 11
 id 0
 }
 
-symx 0
+symx 1
 pos 0.f 0.951f 0.1677f
 basic_index 0
 }
@@ -345,7 +345,7 @@ type 11
 id 0
 }
 
-symx 0
+symx 1
 pos 0.8075f 1.2113f 0.096f
 basic_index 0
 }
@@ -356,8 +356,30 @@ type 11
 id 0
 }
 
-symx 0
+symx 1
 pos 0.5102f 1.3265f -0.7766f
+basic_index 0
+}
+{
+name shoulder
+bone_id {
+type 7
+id 0
+}
+
+symx 1
+pos 1.1765f -1.6108f 0.0573f
+basic_index 0
+}
+{
+name scap_sock_top
+bone_id {
+type 7
+id 0
+}
+
+symx 1
+pos 1.0676f -1.6393f -0.0102f
 basic_index 0
 }
 {
@@ -688,6 +710,17 @@ id 0
 
 symx 1
 pos 0.1987f 0.6986f -0.2313f
+basic_index 0
+}
+{
+name c
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+pos 0.0467f 0.9571f -0.2313f
 basic_index 0
 }
 {
@@ -1488,6 +1521,7 @@ unit_y 0.3587f 0.692f -0.6264f
 }
 
 params {
+radius_mult 0.5f
 radii 0.25f 1.9122f 0.7259f 1.3455f
 nslice_per_meter 411.28f
 visibility 1.f
@@ -1505,7 +1539,7 @@ id 0
 }
 
 symx 0
-type 4
+type 5
 p0_index {
 v 0
 }
@@ -1523,12 +1557,575 @@ d3 0.f 0.f 0.f
 }
 
 params {
+radius_mult 0.5f
 radii 1.3455f 1.9651f -0.2799f 0.f
 nslice_per_meter 411.28f
 visibility 1.f
 alignment_threshold 0.f
 color 4279703319
 flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 11
+id 0
+}
+
+symx 1
+type 6
+p0_index {
+v 24
+}
+
+p3_index {
+v 25
+}
+
+data {
+}
+
+params {
+radius_mult 1.f
+radii 0.5089f 1.f 0.8333f 0.3333f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 11
+id 0
+}
+
+symx 1
+type 3
+p0_index {
+v 25
+}
+
+p3_index {
+v 26
+}
+
+data {
+d0 -0.2081f 0.2062f
+d3 0.316f 0.3309f
+unit_y -0.1823f -0.0005f 0.9832f
+}
+
+params {
+radius_mult 1.f
+radii 0.5089f 1.f 0.8333f 0.3333f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 11
+id 0
+}
+
+symx 1
+type 3
+p0_index {
+v 25
+}
+
+p3_index {
+v 26
+}
+
+data {
+d0 -0.2767f 0.2024f
+d3 0.213f 0.2503f
+unit_y 0.1823f 0.0005f -0.9832f
+}
+
+params {
+radius_mult 1.f
+radii 0.5089f 1.f 0.8333f 0.3333f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
+name girdle_side_line
+bone_id {
+type 11
+id 0
+}
+
+symx 1
+type 3
+p0_index {
+v 28
+}
+
+p3_index {
+v 29
+}
+
+data {
+d0 -0.3554f 0.3781f
+d3 0.2608f 0.2404f
+unit_y 0.7543f 0.6022f 0.2614f
+}
+
+params {
+radius_mult 1.f
+radii 0.f 1.f 1.f 0.1667f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 11
+id 0
+}
+
+symx 1
+type 7
+p0_index {
+v 27
+}
+
+p3_index {
+v 28
+}
+
+data {
+d0 -0.0581f -0.1036f 0.f
+d3 -0.0136f 0.1226f
+}
+
+params {
+radius_mult 1.f
+radii 0.5089f 1.f 0.8333f 0.3333f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4279703319
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 7
+id 0
+}
+
+symx 1
+type 3
+p0_index {
+v 35
+}
+
+p3_index {
+v 44
+}
+
+data {
+d0 -0.14f 0.1607f
+d3 0.4409f 0.224f
+unit_y -0.6328f 0.f -0.7743f
+}
+
+params {
+radius_mult 1.f
+radii 0.5f 0.5f 0.5f 0.5f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 7
+id 0
+}
+
+symx 1
+type 3
+p0_index {
+v 35
+}
+
+p3_index {
+v 31
+}
+
+data {
+d0 0.f 0.f
+d3 0.f 0.f
+unit_y 0.f 0.f 0.f
+}
+
+params {
+radius_mult 1.f
+radii 0.5f 0.5f 0.5f 0.5f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 7
+id 0
+}
+
+symx 1
+type 3
+p0_index {
+v 44
+}
+
+p3_index {
+v 45
+}
+
+data {
+d0 0.f 0.118f
+d3 0.f 0.f
+unit_y -0.f 0.f -1.f
+}
+
+params {
+radius_mult 1.f
+radii 0.5f 0.5f 0.5f 0.5f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 7
+id 0
+}
+
+symx 1
+type 1
+p0_index {
+v 31
+}
+
+p3_index {
+v 45
+}
+
+data {
+d -0.1101f -0.0058f -0.0915f
+}
+
+params {
+radius_mult 1.f
+radii 0.5f 0.5f 0.5f 0.5f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 1
+p0_index {
+v 58
+}
+
+p3_index {
+v 59
+}
+
+data {
+d 0.137f 0.5108f 0.0235f
+}
+
+params {
+radius_mult 1.f
+radii 0.5f 0.5f 0.5f 0.5f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 3
+p0_index {
+v 59
+}
+
+p3_index {
+v 56
+}
+
+data {
+d0 0.f 0.4207f
+d3 0.f 0.f
+unit_y 0.5647f -0.8253f 0.f
+}
+
+params {
+radius_mult 1.f
+radii 0.5f 0.5f 0.25f 0.25f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 3
+p0_index {
+v 60
+}
+
+p3_index {
+v 57
+}
+
+data {
+d0 0.f 1.0357f
+d3 0.f 0.f
+unit_y -0.1623f -0.9867f 0.f
+}
+
+params {
+radius_mult 1.f
+radii 0.5f 0.5f 0.5f 0.5f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 1
+p0_index {
+v 61
+}
+
+p3_index {
+v 60
+}
+
+data {
+d -0.0431f 0.296f 0.f
+}
+
+params {
+radius_mult 1.f
+radii 0.f 0.f 0.f 0.f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.5f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 0
+p0_index {
+v 61
+}
+
+p3_index {
+v 62
+}
+
+data {
+d0 0.1369f 0.0569f 0.f
+d3 0.0914f 0.1488f
+}
+
+params {
+radius_mult 1.f
+radii 0.f 0.f 0.f 0.f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.5f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 1
+p0_index {
+v 63
+}
+
+p3_index {
+v 64
+}
+
+data {
+d -0.f -0.1087f 0.0612f
+}
+
+params {
+radius_mult 1.f
+radii 0.f 0.f 0.f 0.f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.9f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 0
+p0_index {
+v 64
+}
+
+p3_index {
+v 65
+}
+
+data {
+d0 -0.f 0.f -0.0834f
+d3 0.2691f 0.0874f
+}
+
+params {
+radius_mult 1.f
+radii 0.f 0.f 0.f 0.f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.9f
+color 4290010881
+flags 5
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 1
+p0_index {
+v 65
+}
+
+p3_index {
+v 66
+}
+
+data {
+d 0.f 0.0368f 0.1927f
+}
+
+params {
+radius_mult 1.f
+radii 0.f 0.f 0.f 0.f
+nslice_per_meter 0.f
+visibility 1.f
+alignment_threshold 0.9f
+color 4290010881
+flags 5
 }
 
 }
@@ -1542,11 +2139,11 @@ id 0
 symx 1
 type 1
 p0_index {
-v 88
+v 91
 }
 
 p3_index {
-v 87
+v 90
 }
 
 data {
@@ -1554,6 +2151,7 @@ d -0.0036f -0.2325f 0.f
 }
 
 params {
+radius_mult 1.f
 radii 0.5f 0.5f 0.5f 0.5f
 nslice_per_meter 0.f
 visibility 1.f
@@ -1573,11 +2171,11 @@ id 0
 symx 1
 type 1
 p0_index {
-v 86
+v 89
 }
 
 p3_index {
-v 85
+v 88
 }
 
 data {
@@ -1585,6 +2183,7 @@ d 0.0822f 0.1457f 0.f
 }
 
 params {
+radius_mult 1.f
 radii 0.f 0.f 0.f 0.f
 nslice_per_meter 0.f
 visibility 1.f
@@ -1604,11 +2203,11 @@ id 0
 symx 1
 type 0
 p0_index {
-v 89
+v 92
 }
 
 p3_index {
-v 90
+v 93
 }
 
 data {
@@ -1617,6 +2216,7 @@ d3 0.f 0.0936f
 }
 
 params {
+radius_mult 1.f
 radii 0.5f 0.5f 0.5f 0.5f
 nslice_per_meter 0.f
 visibility 1.f
@@ -1636,11 +2236,11 @@ id 0
 symx 1
 type 1
 p0_index {
-v 88
+v 91
 }
 
 p3_index {
-v 91
+v 94
 }
 
 data {
@@ -1648,6 +2248,7 @@ d 0.0871f 0.0251f 0.f
 }
 
 params {
+radius_mult 1.f
 radii 0.f 0.f 0.f 0.f
 nslice_per_meter 0.f
 visibility 1.f
@@ -1667,11 +2268,11 @@ id 0
 symx 1
 type 1
 p0_index {
-v 92
+v 95
 }
 
 p3_index {
-v 93
+v 96
 }
 
 data {
@@ -1679,6 +2280,7 @@ d 0.0988f -0.2945f 0.f
 }
 
 params {
+radius_mult 1.f
 radii 0.f 0.f 0.f 0.f
 nslice_per_meter 0.f
 visibility 1.f
@@ -1698,11 +2300,11 @@ id 0
 symx 1
 type 0
 p0_index {
-v 95
+v 98
 }
 
 p3_index {
-v 96
+v 99
 }
 
 data {
@@ -1711,6 +2313,7 @@ d3 0.f 0.f
 }
 
 params {
+radius_mult 1.f
 radii 0.f 0.3333f 0.3333f 0.8333f
 nslice_per_meter 0.f
 visibility 1.f
@@ -1728,24 +2331,25 @@ id 0
 }
 
 symx 1
-type 4
+type 5
 p0_index {
 v 0
 }
 
 p3_index {
-v 97
+v 100
 }
 
 data {
 ref {
-v 8
+v 25
 }
 
 d3 0.f 0.f 0.f
 }
 
 params {
+radius_mult 1.f
 radii 0.8333f 0.5f 0.5f 0.f
 nslice_per_meter 0.f
 visibility 1.f
@@ -1763,24 +2367,25 @@ id 0
 }
 
 symx 1
-type 4
+type 5
 p0_index {
 v 0
 }
 
 p3_index {
-v 94
+v 97
 }
 
 data {
 ref {
-v 9
+v 26
 }
 
 d3 0.0348f 0.0219f -0.0201f
 }
 
 params {
+radius_mult 1.f
 radii 0.5089f 1.f 0.8333f 0.3333f
 nslice_per_meter 0.f
 visibility 1.f

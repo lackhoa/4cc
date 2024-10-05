@@ -68,7 +68,6 @@ key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
  return ((input->key_states[keycode]) &&
          (input->active_mods == modifiers));
 }
-
 function v4
 key_direction(Game_Input *input, Key_Mods wanted_mods,
               b32 want_new_keypress, b32 *optional_shift=0) {
@@ -85,7 +84,6 @@ key_direction(Game_Input *input, Key_Mods wanted_mods,
  }
  return result;
 }
-
 DLL_EXPORT game_api_export_return 
 game_api_export(game_api_export_params) {
  api.is_valid = true;
@@ -93,20 +91,16 @@ game_api_export(game_api_export_params) {
  X_GAME_API_FUNCTIONS(X)
 #undef X
 }
-
 global i32 MAIN_VIEWPORT_INDEX = MAIN_VIEWPORT_ID - 1;
-
 inline i32
 get_viewport_index(i32 viewport_id) {
  kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
  return (viewport_id - 1);
 }
-
 force_inline b32
 camera_data_equal(Camera_Data *a, Camera_Data *b) {
  return block_match(a, b, sizeof(Camera_Data));
 }
-
 function v1
 animate_value(v1 start, v1 end, v1 dt, v1 difference_multiplier, v1 min_speed)
 {
@@ -147,11 +141,9 @@ current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.1f, MIN_SPEED
  
  return animation_ended;
 }
-
 // TODO: Merge this with game_update, come on why are there two calls instead of one?
 function game_viewport_update_return
-game_viewport_update(game_viewport_update_params)
-{
+game_viewport_update(game_viewport_update_params){
  b32 should_animate_next_frame = false;
  i32 viewport_index = get_viewport_index(viewport_id);
  Viewport *viewport = &state->viewports[viewport_index];
@@ -170,22 +162,18 @@ round_to_multiple_of(v1 value, v1 n) {
  v1 result = roundv1(value / n) * n;
  return result;
 }
-
 //-
 function void
 write_data_func(Printer &p, Type_Info &type, void *void_pointer);
-
 function void
-read_enum(Type_Info &type, void *pointer, i32 *dst) {
+read_enum(Type_Info &type, void *pointer, i32 *dst){
  kv_assert(type.kind == Type_Kind_Enum);
  *dst = 0;
  block_copy(dst, pointer, type.size);
 }
-
 function void
 write_data_union(Printer &p, Type_Info &type,
-                 void *pointer0, void *pvariant0)
-{
+                 void *pointer0, void *pvariant0){
  kv_assert(type.kind == Type_Kind_Union);
  u8 *pointer = (u8*)pointer0;
  u8 *pvariant = (u8*)pvariant0;
@@ -203,17 +191,14 @@ write_data_union(Printer &p, Type_Info &type,
   }
  }
 }
-
 function void
-write_data_func(Printer &p, Type_Info &type, void *void_pointer)
-{
+write_data_func(Printer &p, Type_Info &type, void *void_pointer){
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
  switch(type.kind){
   case Type_Kind_Basic:{
    write_basic_type(p, type.Basic_Type, pointer);
   }break;
-  
   case Type_Kind_Struct:{
    // NOTE: struct
    p << "{\n";
@@ -233,11 +218,9 @@ write_data_func(Printer &p, Type_Info &type, void *void_pointer)
    }
    p << "}\n";
   }break;
-  
   case Type_Kind_Union:{
    p<<"<can't write union without variant info>";
   }break;
-  
   case Type_Kind_Enum:{
    // NOTE: enum
    i32 enum_value;
@@ -248,13 +231,10 @@ write_data_func(Printer &p, Type_Info &type, void *void_pointer)
   invalid_default_case;
  }
 }
-//
 #define write_data(PRINTER, POINTER) \
 write_data_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
-
 function i32
-enum_index_from_pointer(Type_Info &type, void *pointer0)
-{
+enum_index_from_pointer(Type_Info &type, void *pointer0) {
  u8* pointer = (u8*)pointer0;
  i32 value;
  block_copy(&value, pointer, type.size);
@@ -269,8 +249,7 @@ enum_index_from_pointer(Type_Info &type, void *pointer0)
  return result;
 }
 function String
-enum_name_from_pointer(Type_Info &type, void *pointer0)
-{
+enum_name_from_pointer(Type_Info &type, void *pointer0) {
  i32 enum_index = enum_index_from_pointer(type, pointer0);
  return type.enum_members[enum_index].name;
 }
@@ -278,10 +257,8 @@ enum_name_from_pointer(Type_Info &type, void *pointer0)
 enum_index_from_pointer(type_info_from_pointer(&value), &value)
 #define enum_name_from_value(value) \
 enum_name_from_value(type_info_from_pointer(&value), &value)
-
 function void
-pretty_print_func(Printer &p, Type_Info &type, void *void_pointer)
-{
+pretty_print_func(Printer &p, Type_Info &type, void *void_pointer) {
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
  switch(type.kind){
@@ -300,15 +277,12 @@ pretty_print_func(Printer &p, Type_Info &type, void *void_pointer)
    }
    p << "}\n";
   }break;
-  
   case Type_Kind_Union:{
    p<<"<enum requires knowledge of the variant>";
   }break;
-  
   case Type_Kind_Enum:{
    p << enum_name_from_pointer(type, pointer);
   }break;
-  
   invalid_default_case;
  }
 }
@@ -435,89 +409,120 @@ revert_from_autosave(Game_State *state, App *app){
 
 //~
 
-function Bone *
-get_right_bone(Modeler *m, Bone *bone){
+function Bone &
+get_right_bone(Modeler &m, Bone &bone){
  Bone *result = 0;
  auto &p = painter;
- if(bone->is_right){
-  result = bone;
+ if(bone.is_right){
+  result = &bone;
  }else{
-  for_i32(bone_index, 0, m->bones.count){
-   auto boneR = &m->bones[bone_index];
-   if (boneR->is_right &&
-       (boneR->id == bone->id)) {
-    result = boneR;
+  for_i32(bone_index, 0, m.bones.count){
+   auto &boneR = m.bones[bone_index];
+   if(boneR.is_right &&
+      boneR.id == bone.id){
+    result = &boneR;
     break;
    }
   }
  }
- return result;
+ return *result;
 }
+//NOTE(kv) Unfortunately a curve can look differently based on
+//  which side of the body it is on.
+//  I just feel kinda yucky because this is an animation problem we have yet to "solve".
 function Bez
-compute_curve_from_data(Modeler *m, Bezier_Data &data0){
- Bez result = {};
- v3 p0 = m->vertices[data0.p0_index.v].pos;
- v3 p3 = m->vertices[data0.p3_index.v].pos;
- switch(data0.type){
-  case Bezier_Type_v3v2:{
-   auto &data = data0.data.v3v2;
-   result = bez_v3v2(p0, data.d0, data.d3, p3);
-  }break;
-  case Bezier_Type_Parabola:{
-   result = bez_parabola(p0, data0.data.parabola.d, p3);
-  }break;
-  case Bezier_Type_C2:{
-   auto &data = data0.data.c2;
-   Bezier_Data &refd = m->curves[data.ref.v];
-   Bez ref = compute_curve_from_data(m, refd);  //@recursion
-   result = bez_c2(ref, data.d3, p3);
-  }break;
-  case Bezier_Type_Unit:{
-   auto &data = data0.data.unit;
-   result = bez_unit(p0, data.d0,data.d3,data.unit_y, p3);
-  }break;
+compute_curve_from_data(Modeler &m, Bezier_Data &data0, b32 lr){
+ b32 is_c2 = (data0.type == Bezier_Type_C2);
+ b32 is_unit = (data0.type == Bezier_Type_Unit);
+ Bez result;
+ Bone_ID curve_bone_id = data0.bone_id;
+ Bone &curve_bone = get_bone(m,curve_bone_id,lr);
+ mat4i &curve_xform = curve_bone.xform;
+#define curve_vec(vec)  mat4vec(curve_xform, vec)
+ Vertex_Data &ve0 = m.vertices[data0.p0_index.v];
+ Vertex_Data &ve3 = m.vertices[data0.p3_index.v];
+ if(is_unit){
+  //NOTE(kv) Has to preserve the wrong logic here, omg!
+  //  could be wrong in some cases with differing coframes but I don't care!
+  v3 p0 = ve0.pos;
+  v3 p3 = ve3.pos;
+  auto &data = data0.data.unit;
+  result = bez_unit(p0, data.d0, data.d3, data.unit_y, p3);
+  result = curve_xform*result;
+ }else{
+  v3 p0 = get_bone(m,ve0.bone_id,lr).xform * ve0.pos;
+  v3 p3 = get_bone(m,ve3.bone_id,lr).xform * ve3.pos;
+  switch(data0.type){
+   case Bezier_Type_v3v2:{
+    auto &data = data0.data.v3v2;
+    result = bez_v3v2(p0, curve_vec(data.d0), data.d3, p3);
+   }break;
+   case Bezier_Type_Parabola:{
+    result = bez_parabola(p0, curve_vec(data0.data.parabola.d), p3);
+   }break;
+   case Bezier_Type_C2:{
+    auto &data = data0.data.c2;
+    Bezier_Data &refd = m.curves[data.ref.v];
+    Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
+    result = bez_c2(ref, curve_vec(data.d3), p3);
+   }break;
+   case Bezier_Type_Unit:{
+    auto &data = data0.data.unit;
+    result = bez_unit(p0, data.d0, data.d3,
+                      noz(curve_vec(data.unit_y)), p3);
+   }break;
+   case Bezier_Type_Line:{
+    result = bez_line(p0,p3);
+   }break;
+   case Bezier_Type_Bezd_Old:{
+    auto &data = data0.data.bezd_old;
+    result = bezd_old(p0,data.d0,data.d3,p3);
+   }break;
+   invalid_default_case;
+  }
  }
  return result;
+#undef curve_vec
 }
 function void
-render_data(Modeler *m){
+render_data(Modeler &m){
  painter.is_right = 0;
  argb inactive_color = argb_dark_green;
- for_i32(vi,1,m->vertices.count){
-  Vertex_Data &vert = m->vertices[vi];
-  Bone *bone = get_bone(m, vert.bone_id, false);
+ for_i32(vi,1,m.vertices.count){
+  Vertex_Data &vert = m.vertices[vi];
+  Bone &bone = get_bone(m, vert.bone_id, false);
   u32 prim_id = prim_id_from_vertex_index({vi});
   {
-   v3 pos = mat4vert(bone->xform, vert.pos);
+   v3 pos = mat4vert(bone.xform, vert.pos);
    indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
   }
   if(vert.symx){
    //NOTE: Draw the right side
    set_in_block(painter.is_right, 1);
-   auto boneR = get_right_bone(m, bone);  //@slow
-   v3 pos = mat4vert(boneR->xform, vert.pos);
+   Bone &boneR = get_right_bone(m, bone);  //@slow
+   v3 pos = mat4vert(bone.xform, vert.pos);
    indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
   }
  }
  
- for_i32(ci,1,m->curves.count){
-  Bezier_Data &curve = m->curves[ci];
-  Bone *bone = get_bone(m, curve.bone_id, false);
+ for_i32(ci,1,m.curves.count){
+  Bezier_Data &curve = m.curves[ci];
   u32 prim_id = prim_id_from_curve_index({ci});
   {
-   v3 p0 = m->vertices[curve.p0_index.v].pos;
-   v3 p3 = m->vertices[curve.p3_index.v].pos;
-   Bez drawn = compute_curve_from_data(m,curve);
-   draw(bone->xform*drawn, curve.params, prim_id);
+   v3 p0 = m.vertices[curve.p0_index.v].pos;
+   v3 p3 = m.vertices[curve.p3_index.v].pos;
+   {
+    Bez drawn = compute_curve_from_data(m,curve,0);
+    draw(drawn, curve.params, prim_id);
+   }
    if(curve.symx){
     set_in_block(painter.is_right, 1);
-    auto boneR = get_right_bone(m, bone);
-    draw(boneR->xform*drawn, curve.params, prim_id);
+    Bez drawn = compute_curve_from_data(m,curve,1);
+    draw(drawn, curve.params, prim_id);
    }
   }
  }
 }
-
 //TODO(kv) @cleanup We wanna change this from update+render to update_and_render
 function game_render_return
 game_render(game_render_params)
@@ -553,11 +558,12 @@ game_render(game_render_params)
   if(fbool(0)){orthographic = true;}
   painter.view_from_world = get_view_from_world(camera, orthographic);
  }
- painter.cursorp  = state->kb_cursor.pos;
- painter.target   = target;
- painter.viewport = viewport;
- painter.modeler  = modeler;
- painter.camera   = *camera;
+ painter.cursorp   = state->kb_cursor.pos;
+ painter.cursor_on = state->kb_cursor_mode;
+ painter.target    = target;
+ painter.viewport  = viewport;
+ painter.modeler   = modeler;
+ painter.camera    = *camera;
  {//-NOTE(kv) Drawing the movie
   Render_Config *config = draw_new_group(target);
   set_y_up(target, config);
@@ -574,7 +580,7 @@ game_render(game_render_params)
   }
  }
  //-NOTE
- render_data(modeler);
+ render_data(*modeler);
  
  if (state->kb_cursor_mode &&
      viewport_id == 1)
@@ -740,7 +746,7 @@ serialize_state(Arena *arena, Game_State *state)
 #define macro_print_field(STRUCT, TYPE, NAME) \
 print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newline
  
- const i32 MAX_SAVE_SIZE = KB(16);  // Wastes @Memory
+ const i32 MAX_SAVE_SIZE = KB(32);  // Wastes @Memory
  Printer p = make_printer_buffer(arena, MAX_SAVE_SIZE);
  
  i32 indentation = 0;
@@ -758,8 +764,7 @@ print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newli
    print(p, "cameras"); newline;
    {
     brace_block;
-    for_i32(camera_index, 0, GAME_VIEWPORT_COUNT)
-    {
+    for_i32(camera_index, 0, GAME_VIEWPORT_COUNT) {
      brace_block;
      Camera_Data &cam = state->viewports[camera_index].target_camera;
 #define X(TYPE,NAME)  macro_print_field(cam, TYPE, NAME);
@@ -1064,17 +1069,53 @@ game_update(game_update_params)
   state->pose = driver_animate(modeler, scratch, state->anime_time);
  }
  
- if (state->kb_cursor_mode){
-  Modeler *m = modeler;
+ if(state->kb_cursor_mode){
+  v3 curpos = state->kb_cursor.pos;
+  Modeler &m = *modeler;
   v1 min_lensq = max_f32;
-  Vertex_Index closest_vertex = {};
-  for_i32(vi,1,modeler->vertices.count){
-   Vertex_Data *v = &modeler->vertices[vi];
-   Bone *bone = get_bone(m, v->bone_id, false);
-   v1 l = lensq(state->kb_cursor.pos - bone->xform*v->pos);
-   if (l < min_lensq){ min_lensq = l; closest_vertex = {vi}; }
+  for_i32(vi,1,m.vertices.count){
+   //-Closest vertex
+   Vertex_Data &v = m.vertices[vi];
+   Bone &bone = get_bone(m, v.bone_id, false);
+   v1 l = lensq(curpos - bone.xform*v.pos);
+   if(l < min_lensq){
+    min_lensq = l;
+    hot_prim_id = prim_id_from_vertex_index(Vertex_Index{vi});
+   }
   }
-  hot_prim_id = prim_id_from_vertex_index(closest_vertex);
+  for_i1(ci,1,m.curves.count){
+   //-Closest curve
+   Curve_Data &c = m.curves[ci];
+   Bez computed = compute_curve_from_data(m, c, 0);
+   v1 sd_squared;
+   {//-Convex box culling
+    v3 min_corner = V3(max_f32);
+    v3 max_corner = V3(min_f32);
+    for_i32(i,0,4){
+     min_corner = min(min_corner, computed[i]);
+     max_corner = max(max_corner, computed[i]);
+    }
+    v3 center = lerp(min_corner, 0.5f, max_corner);
+    v3 p = curpos-center;
+    v3 r = 0.5f*(max_corner-min_corner);
+    v3 q = absolute(p)-r;
+    sd_squared = lensq(max(q,0.f));  //NOTE zero for anything inside, which is what we want
+   }
+   if(sd_squared < min_lensq){
+    v1 l = max_f32;
+    const i1 test_segment_count = 8;
+    for_i1(iseg,1,test_segment_count){
+     //NOTE(kv) Don't need to test the endpoints, those are vertices.
+     v1 t = v1(iseg) / v1(test_segment_count);
+     v3 sample = bezier_sample(computed,t);
+     l = min(l,lensq(curpos-sample));
+    }
+    if(l < min_lensq){
+     min_lensq = l;
+     hot_prim_id = prim_id_from_curve_index(Curve_Index{ci});
+    }
+   }
+  }
  }else{
   hot_prim_id = input->frame.hot_prim_id;
  }
@@ -1153,7 +1194,7 @@ game_update(game_update_params)
      }break;
     }
    }else if(state->kb_cursor_mode){
-    //-NOTE
+    //-
     if(mods==Key_Mod_Ctl && is_v3_key(keycode)){
      update_orbit(cam, input);
     }else if(mods==Key_Mod_Alt && is_v2_key(keycode)){
@@ -1163,10 +1204,12 @@ game_update(game_update_params)
       case Key_Code_I: case Key_Code_O: {
        update_orbit(cam, input);
       }break;
-      case Key_Code_Escape:{ state->kb_cursor_mode=false; }break;
+      case Key_Code_Escape:
+      case Key_Code_M:{
+       state->kb_cursor_mode=false;
+      }break;
       case Key_Code_Return:{
        auto m = modeler;
-       state->kb_cursor_mode = false;
        Prim_XID hot_xid = prim_xid_from_id(get_hot_prim_id());
        if(transitioning_from_code){
         if(hot_xid.type){
@@ -1183,6 +1226,7 @@ game_update(game_update_params)
         }
        }else{
         //NOTE(kv) Normal editor behavior
+        state->kb_cursor_mode = false;
         select_primitive(m, hot_xid.id);
        }
       }break;
@@ -1308,7 +1352,7 @@ game_update(game_update_params)
     Modeler_History &h = m->history;
     if (get_selected_type(m) == Prim_Vertex){
      // NOTE: Selecting a vertex
-     Vertex_Index sel_index = vertex_prim_index_from_id(sel_prim);
+     Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
      v3 direction = key_direction(input, 0, false).xyz;
      
      // NOTE(kv): Update vertex position
@@ -1320,7 +1364,7 @@ game_update(game_update_params)
      arrayof<Vertex_Index> influenced_verts;
      init_static(influenced_verts, scratch, m->active_prims.count);
      for_i32(index,0,m->active_prims.count) {
-      Vertex_Index vi = vertex_prim_index_from_id(m->active_prims[index]);
+      Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
       influenced_verts.push(vi);
      }
      

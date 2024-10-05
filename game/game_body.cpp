@@ -7,13 +7,11 @@ union Head
 #define macro_head(X) \
 X(jaw) \
 X(behind_ear) \
-X(behind_earR) \
 X(head_neck_junction) \
 X(trapezius_head) \
-X(trapezius_headR) \
 X(chin_middle) \
 //
- struct { macro_head(X_struct_member_v3); };
+ struct{ macro_head(X_struct_member_v3); };
  v3 verts[];
 };
 //
@@ -87,12 +85,11 @@ global_const i32 forearm_vert_count = sizeof(Forearm) / sizeof(v3);
 
 internal void
 import_vertices(v3 *dst, v3 const*src,
-                mat4 const&dstT, mat4 const&srcT,
+                mat4i const&dstT, mat4i const&srcT,
                 i32 vert_count)
 {
- mat4 to_local = dstT * srcT;
- for_i32(index,0,vert_count)
- {
+ mat4 to_local = dstT.inverse * srcT.forward;
+ for_i32(index,0,vert_count){
   dst[index] = mat4vert(to_local, src[index]);
  }
 }

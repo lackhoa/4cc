@@ -6,15 +6,15 @@ m_parser_from_string(Arena *arena, String string){
  return parser;
 }
 function void
-parse_struct_member(Ed_Parser *p, Meta_Struct_Member *member){
+parse_struct_member(Ed_Parser *p, Meta_Struct_Member &member){
  if(ep_maybe_id(p, "tagged_by")){
-  mpa_parens{ member->discriminator = ep_id(p); }
+  mpa_parens{ member.discriminator = ep_id(p); }
  }
  {
-  member->type = ep_id(p);
-  while(ep_maybe_char(p, '*')){ member->type_star_count++; }
+  member.type = ep_id(p);
+  while(ep_maybe_char(p, '*')){ member.type_star_count++; }
  }
- member->name = ep_id(p);
+ member.name = ep_id(p);
  ep_consume_semicolons(p);
 }
 function Meta_Struct_Members
@@ -22,7 +22,7 @@ parse_struct_body(Arena *arena, Ed_Parser *p){
  auto result = dynamic_array<Meta_Struct_Member>(arena);
  m_brace_open(p);
  while(p->ok_ && !m_maybe_brace_close(p)){
-  Meta_Struct_Member *member = result.push_zero();
+  auto &member = result.push_zero();
   parse_struct_member(p, member);
  }
  return result;
