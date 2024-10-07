@@ -30,14 +30,17 @@ struct Modeler_History{
 };
 //-
 typedef Bezier_Data Curve_Data;
-
 struct Modeler  // see @init_modeler
-{
- //-NOTE: Data
- Arena      *permanent_arena;
- arrayof<Vertex_Data> vertices;
- arrayof<Bezier_Data> curves;
- arrayof<Bone>        bones;
+{//-Data
+ Arena data_arena;
+ //NOTE(kv) Do we need really need these arrays?
+ //  For transition it does have some utility: referring to the last vertex with this name.
+ arrayof<Bone> bones;
+ arrayof<Common_Line_Params> line_cparams;
+ 
+ arrayof<Vertex_Data>   vertices;
+ arrayof<Bezier_Data>   curves;
+ arrayof<Triangle_Data> triangles;
  
  //-NOTE: Editor
  u32 selected_prim_ro;  // todo: There could be multiple selected obj?
@@ -46,11 +49,8 @@ struct Modeler  // see @init_modeler
  arrayof<u32> active_prims;
  Modeler_History history;
 };
-
 //-NOTE: Vertex
-
 inline u32 selected_prim_id(Modeler *m){ return m->selected_prim_ro; }
-
 inline Prim_Type
 get_selected_type(Modeler *m){
  return type_from_prim_id(selected_prim_id(m));
@@ -67,7 +67,7 @@ inline Curve_Index
 curve_index_from_prim_id(u32 id){
  Curve_Index result = {};
  if(type_from_prim_id(id) == Prim_Curve){
-  result = { index_from_prim_id(id) };
+  result = {index_from_prim_id(id)};
  }
  return result;
 }

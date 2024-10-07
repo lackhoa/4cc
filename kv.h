@@ -3671,6 +3671,9 @@ linalloc_wrap_write(String8 data, u64 size, void *src)
 #define push_array_zero(a,T,c)    push_array(a,T,c,true)
 #define push_array_copy(a,T,c,s)  ((T*)linalloc_wrap_write(arena_push(a, sizeof(T)*(c), filename_linum, 3), sizeof(T)*(c), (s)))
 #define pop_array(a,T,c)          (arena_pop((a), sizeof(T)*(c)))
+#define push_value(arena,value,pointer) \
+mytypeof(value) *pointer = push_struct(arena, mytypeof(value)); \
+*pointer = value;
 //-
 
 //-
@@ -4211,6 +4214,8 @@ defer(variable /= multiplier)
 // TODO: This should be specialized to a 128 value or something
 #define set_in_block(variable, value) \
 auto PP_Concat(old_value, __LINE__) = variable; variable = value; defer(variable = PP_Concat(old_value,__LINE__);)
+#define add_in_block(variable, value) \
+set_in_block(variable, variable+value)
 
 force_inline v1 i2f6 (i32 integer) { return v1(integer) / 6.f; }
 force_inline v1 i2f(i32 integer, v1 div) { return v1(integer) / div; }
@@ -4344,10 +4349,12 @@ struct arrayof{
  
  //-
  
- inline T& get(i32 index)        { return items[index]; }
- inline T& operator[](i32 index) { return items[index]; }
- //
- inline T &last() { return items[count-1]; }
+ inline T& get(i32 index){
+  kv_assert(index>=0 and index<count);
+  return items[index];
+ }
+ inline T& operator[](i32 index){ return get(index); }
+ inline T& last() { return items[count-1]; }
  
  void set_cap_(i32 new_cap)
  {// NOTE(kv): Can only grow for now
@@ -4392,7 +4399,6 @@ struct arrayof{
  inline void pop() {
   set_count(count-1);
  }
- // NOTE(kv): Have to return pointer on this one, because the push might fail.
  inline T& push(const T& item)
  {//TODO(kv): implement sorting
   set_count(count+1);
@@ -4400,7 +4406,6 @@ struct arrayof{
   result = item;
   return result;
  }
- //
  inline T &push2(){
   set_count(count+1);
   return last();
@@ -4450,7 +4455,6 @@ inline arrayof<T>
 static_array(T *backing_buffer, i32 cap){
  arrayof<T> array; init_static(array, backing_buffer, cap); return array;
 }
-
 template<class T>
 inline void
 init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0){

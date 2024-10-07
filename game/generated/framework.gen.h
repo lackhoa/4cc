@@ -1,16 +1,14 @@
 //NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:26:
-#pragma once
 // NOTE: source: C:\Users\vodan\4ed\code\game\framework.kh
+#pragma once
 struct Vertex_Data
 {
 String name;
 Bone_ID bone_id;
-i1 symx;
 v3 pos;
-i1 basic_index;
 i1 linum;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:358:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:384:
 enum Bezier_Type
 {
 Bezier_Type_v3v2 = 0,
@@ -85,12 +83,21 @@ struct Bezier_Data
 {
 String name;
 Bone_ID bone_id;
-i1 symx;
+b32 symx;
 Bezier_Type type;
 Vertex_Index p0_index;
 Vertex_Index p3_index;
 Bezier_Union data;
 Line_Params params;
+Common_Line_Params_Index cparams;
+i1 linum;
+};
+struct Triangle_Data
+{
+Vertex_Index verts[3];
+argb color;
+b32 symx;
+Fill_Params params;
 i1 linum;
 };
 struct Keyboard_Cursor
@@ -102,7 +109,7 @@ struct Serialized_State
 {
 Keyboard_Cursor kb_cursor;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:471:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:497:
 #define Serialized_State_Embed \
  union\
 {\

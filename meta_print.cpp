@@ -123,14 +123,23 @@ print_type_info_function_prototype(Printer &p, String type_name){
  p<<"function Type_Info\n"<<function_name<<"()";
 }
 function void
-print_struct_member_type(Printer &p, Meta_Struct_Member &member){
- p<member.type<" ";
- for_repeat(member.type_star_count){ p<"*"; }
+print_type_and_name(Printer &p, Parsed_Type &type, String name){
+ //NOTE(kv) I cannot figure out how to print generic C type, Jesus man!
+ switch(type.kind){
+  case Parsed_Type_Named:{
+   p < type.name < " " < name;
+  }break;
+  case Parsed_Type_Pointer:{
+   p < type.name < " " < repeated("*", type.count) < name;
+  }break;
+  case Parsed_Type_Array:{
+   p < type.name < " " < name < "[" < type.count < "]";
+  }break;
+ }
 }
 function void
 print_struct_member(Printer &p, Meta_Struct_Member &member){
- print_struct_member_type(p, member);
- p<member.name;
+ print_type_and_name(p, member.type, member.name);
 }
 function void
 print_struct_body(Printer &p, Meta_Struct_Members &members){
@@ -184,8 +193,9 @@ print_struct_meta(Printer_Pair &ps, String type_name,
     i32 member_index = 0;
     for_i1(raw_member_index,0,members.count){
      auto &member = members.get(raw_member_index);
-     if (!member_was_removed(member)) {
-      String member_type = get_type_global_info_name(member.type);
+     if(!member_was_removed(member)){
+      //NOTE(kv) Cheese
+      String member_type = get_type_global_info_name(member.type.name);
       p<<"result.members["<<member_index<<"] = "<<
        "{.type=&"<<member_type<<
        ", .name="<<enclosed_in_strlit(member.name)<<
@@ -244,7 +254,8 @@ print_struct_meta(Printer_Pair &ps, String type_name,
        //  1. convenience, and
        //  2. the struct might not have that member anymore,
        //     but we may need that value for conversion purpose.
-       p<<member.type<<" "<<varname<<" = "<<default_value<<";\n";
+       print_type_and_name(p, member.type, varname);
+       p<" = "<default_value<";\n";
       }
       
       if (has_version_added || has_version_removed)
@@ -255,21 +266,36 @@ print_struct_meta(Printer_Pair &ps, String type_name,
       {//NOTE(kv) Read data to the local var
        brace_block;
        p << "eat_id(p, " << enclosed_in_strlit(member.name) << ");\n";
-       String read_function = get_type_read_function_name(member.type);
+       //NOTE(kv) cheese!
+       String read_function = get_type_read_function_name(member.type.name);
        b32 has_disciminator = member.discriminator.len != 0;
-       if (has_disciminator){
-        p<<read_function<<"(r, "<<varname<<", pointer."<<member.discriminator<<");";
-       } else{
-        p<<read_function<<"(r, "<<varname<<");";
+       if(has_disciminator){
+        p<read_function<"(r, "<varname<", pointer."<member.discriminator<");";
+       }else{
+        if(member.type.kind == Parsed_Type_Array){
+         //-Read array
+         p < "eat_char(p, '{');";
+         for_i32(i,0,member.type.count){
+          p<read_function<"(r, "<varname<"["<i<"]);";
+         }
+         p < "eat_char(p, '}');";
+        }else{
+         //-Read normal type (NOTE(kv) We still don't handle pointer, but who knows what to do then)
+         p<read_function<"(r, "<varname<");";
+        }
        }
       }
-      if ( member_currently_exists ) {
+      if(member_currently_exists){
        //NOTE(kv) Assign the local var to the dest struct member.
-       p<<"pointer."<<member.name<<" = "<<varname<<";\n\n";
+       if(member.type.kind == Parsed_Type_Array){
+        p<"copy_array_dst(pointer."<member.name<", "<varname<");\n\n";
+       }else{
+        p<"pointer."<member.name<" = "<varname<";\n\n";
+       }
       }
      }
     }
-    p << "eat_char(p, '}');";
+    p < "eat_char(p, '}');";
    }
   }
  }
@@ -475,9 +501,8 @@ print_struct_embed(Printer &p, String type_name,
   m_macro_braces_sm{
    for_i1(imem, 0, members.count){
     auto &member = members[imem];
-    p<<member.type<<" ";
-    for_repeat(member.type_star_count){ p<<"*"; }
-    p<<member.name<<";\\\n";
+    print_struct_member(p, member);
+    p<";\\\n";
    }
   }
   p<<type_name<<" "<<type_name<<";";

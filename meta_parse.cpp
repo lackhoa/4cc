@@ -10,11 +10,19 @@ parse_struct_member(Ed_Parser *p, Meta_Struct_Member &member){
  if(ep_maybe_id(p, "tagged_by")){
   mpa_parens{ member.discriminator = ep_id(p); }
  }
- {
-  member.type = ep_id(p);
-  while(ep_maybe_char(p, '*')){ member.type_star_count++; }
+ //NOTE(kv) Cheese alert!
+ String type_name = ep_id(p);
+ member.type = make_type_named(type_name);
+ while(ep_maybe_char(p, '*')){
+  member.type.kind = Parsed_Type_Pointer;
+  member.type.count++;
  }
  member.name = ep_id(p);
+ if(ep_maybe_char(p, '[')){
+  member.type.kind = Parsed_Type_Array;
+  member.type.count = ep_i1(p);
+  ep_char(p, ']');
+ }
  ep_consume_semicolons(p);
 }
 function Meta_Struct_Members

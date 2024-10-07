@@ -1,5 +1,5 @@
 //NOTE Generated at C:\Users\vodan\4ed\code/meta_print.cpp:35:
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Vertex_Data()
 {
@@ -7,13 +7,11 @@ Type_Info result = {};
 result.name = strlit("Vertex_Data");
 result.size = sizeof(Vertex_Data);
 result.kind = Type_Kind_Struct;
-result.members.set_count(6);
+result.members.set_count(4);
 result.members[0] = {.type=&Type_Info_String, .name=strlit("name"), .offset=offsetof(Vertex_Data, name)};
 result.members[1] = {.type=&Type_Info_Bone_ID, .name=strlit("bone_id"), .offset=offsetof(Vertex_Data, bone_id)};
-result.members[2] = {.type=&Type_Info_i1, .name=strlit("symx"), .offset=offsetof(Vertex_Data, symx)};
-result.members[3] = {.type=&Type_Info_v3, .name=strlit("pos"), .offset=offsetof(Vertex_Data, pos)};
-result.members[4] = {.type=&Type_Info_i1, .name=strlit("basic_index"), .offset=offsetof(Vertex_Data, basic_index)};
-result.members[5] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Vertex_Data, linum), .unserialized=true};
+result.members[2] = {.type=&Type_Info_v3, .name=strlit("pos"), .offset=offsetof(Vertex_Data, pos)};
+result.members[3] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Vertex_Data, linum), .unserialized=true};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -23,7 +21,7 @@ function Type_Info &type_info_from_pointer(Vertex_Data*pointer)
 {
 return Type_Info_Vertex_Data;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Vertex_Data(Data_Reader &r, Vertex_Data &pointer)
 {
@@ -45,14 +43,6 @@ read_Bone_ID(r, m_bone_id);
 }
 pointer.bone_id = m_bone_id;
 
-i1 m_symx = {};
-
-{
-eat_id(p, strlit("symx"));
-read_i1(r, m_symx);
-}
-pointer.symx = m_symx;
-
 v3 m_pos = {};
 
 {
@@ -61,17 +51,9 @@ read_v3(r, m_pos);
 }
 pointer.pos = m_pos;
 
-i1 m_basic_index = {};
-
-{
-eat_id(p, strlit("basic_index"));
-read_i1(r, m_basic_index);
-}
-pointer.basic_index = m_basic_index;
-
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:379:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:405:
 function Type_Info
 get_type_info_Bezier_Type()
 {
@@ -97,7 +79,7 @@ function Type_Info &type_info_from_pointer(Bezier_Type*pointer)
 {
 return Type_Info_Bezier_Type;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:410:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:436:
 function void
 read_Bezier_Type(Data_Reader &r, Bezier_Type &pointer)
 {
@@ -105,7 +87,7 @@ STB_Parser *p = r.parser;
 i32 integer = eat_i1(p);
 pointer = *(Bezier_Type*)(&integer);
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_v3v2()
 {
@@ -125,7 +107,7 @@ function Type_Info &type_info_from_pointer(Bezier_v3v2*pointer)
 {
 return Type_Info_Bezier_v3v2;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_v3v2(Data_Reader &r, Bezier_v3v2 &pointer)
 {
@@ -149,7 +131,7 @@ pointer.d3 = m_d3;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_Parabola()
 {
@@ -168,7 +150,7 @@ function Type_Info &type_info_from_pointer(Bezier_Parabola*pointer)
 {
 return Type_Info_Bezier_Parabola;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_Parabola(Data_Reader &r, Bezier_Parabola &pointer)
 {
@@ -184,7 +166,7 @@ pointer.d = m_d;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_Offsets()
 {
@@ -204,7 +186,7 @@ function Type_Info &type_info_from_pointer(Bezier_Offsets*pointer)
 {
 return Type_Info_Bezier_Offsets;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_Offsets(Data_Reader &r, Bezier_Offsets &pointer)
 {
@@ -228,7 +210,7 @@ pointer.d3 = m_d3;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_Unit()
 {
@@ -249,7 +231,7 @@ function Type_Info &type_info_from_pointer(Bezier_Unit*pointer)
 {
 return Type_Info_Bezier_Unit;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_Unit(Data_Reader &r, Bezier_Unit &pointer)
 {
@@ -281,7 +263,7 @@ pointer.unit_y = m_unit_y;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_Unit2()
 {
@@ -301,7 +283,7 @@ function Type_Info &type_info_from_pointer(Bezier_Unit2*pointer)
 {
 return Type_Info_Bezier_Unit2;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_Unit2(Data_Reader &r, Bezier_Unit2 &pointer)
 {
@@ -325,7 +307,7 @@ pointer.unit_y = m_unit_y;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_C2()
 {
@@ -345,7 +327,7 @@ function Type_Info &type_info_from_pointer(Bezier_C2*pointer)
 {
 return Type_Info_Bezier_C2;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_C2(Data_Reader &r, Bezier_C2 &pointer)
 {
@@ -369,7 +351,7 @@ pointer.d3 = m_d3;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_Line()
 {
@@ -387,7 +369,7 @@ function Type_Info &type_info_from_pointer(Bezier_Line*pointer)
 {
 return Type_Info_Bezier_Line;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_Line(Data_Reader &r, Bezier_Line &pointer)
 {
@@ -395,7 +377,7 @@ STB_Parser *p = r.parser;
 eat_char(p, '{');
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_Bezd_Old()
 {
@@ -415,7 +397,7 @@ function Type_Info &type_info_from_pointer(Bezier_Bezd_Old*pointer)
 {
 return Type_Info_Bezier_Bezd_Old;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_Bezd_Old(Data_Reader &r, Bezier_Bezd_Old &pointer)
 {
@@ -439,7 +421,7 @@ pointer.d3 = m_d3;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:294:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:320:
 function Type_Info
 get_type_info_Bezier_Union()
 {
@@ -466,7 +448,7 @@ function Type_Info &type_info_from_pointer(Bezier_Union*pointer)
 {
 return Type_Info_Bezier_Union;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:330:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:356:
 function void
 read_Bezier_Union(Data_Reader &r, Bezier_Union &pointer, Bezier_Type variant)
 {
@@ -517,7 +499,7 @@ break;
 }
 
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Bezier_Data()
 {
@@ -525,16 +507,17 @@ Type_Info result = {};
 result.name = strlit("Bezier_Data");
 result.size = sizeof(Bezier_Data);
 result.kind = Type_Kind_Struct;
-result.members.set_count(9);
+result.members.set_count(10);
 result.members[0] = {.type=&Type_Info_String, .name=strlit("name"), .offset=offsetof(Bezier_Data, name)};
 result.members[1] = {.type=&Type_Info_Bone_ID, .name=strlit("bone_id"), .offset=offsetof(Bezier_Data, bone_id)};
-result.members[2] = {.type=&Type_Info_i1, .name=strlit("symx"), .offset=offsetof(Bezier_Data, symx)};
+result.members[2] = {.type=&Type_Info_b32, .name=strlit("symx"), .offset=offsetof(Bezier_Data, symx)};
 result.members[3] = {.type=&Type_Info_Bezier_Type, .name=strlit("type"), .offset=offsetof(Bezier_Data, type)};
 result.members[4] = {.type=&Type_Info_Vertex_Index, .name=strlit("p0_index"), .offset=offsetof(Bezier_Data, p0_index)};
 result.members[5] = {.type=&Type_Info_Vertex_Index, .name=strlit("p3_index"), .offset=offsetof(Bezier_Data, p3_index)};
 result.members[6] = {.type=&Type_Info_Bezier_Union, .name=strlit("data"), .offset=offsetof(Bezier_Data, data), .discriminator_offset=offsetof(Bezier_Data, type)};
 result.members[7] = {.type=&Type_Info_Line_Params, .name=strlit("params"), .offset=offsetof(Bezier_Data, params)};
-result.members[8] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Bezier_Data, linum), .unserialized=true};
+result.members[8] = {.type=&Type_Info_Common_Line_Params_Index, .name=strlit("cparams"), .offset=offsetof(Bezier_Data, cparams)};
+result.members[9] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Bezier_Data, linum), .unserialized=true};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -544,7 +527,7 @@ function Type_Info &type_info_from_pointer(Bezier_Data*pointer)
 {
 return Type_Info_Bezier_Data;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Bezier_Data(Data_Reader &r, Bezier_Data &pointer)
 {
@@ -566,11 +549,11 @@ read_Bone_ID(r, m_bone_id);
 }
 pointer.bone_id = m_bone_id;
 
-i1 m_symx = {};
+b32 m_symx = {};
 
 {
 eat_id(p, strlit("symx"));
-read_i1(r, m_symx);
+read_b32(r, m_symx);
 }
 pointer.symx = m_symx;
 
@@ -614,9 +597,80 @@ read_Line_Params(r, m_params);
 }
 pointer.params = m_params;
 
+Common_Line_Params_Index m_cparams = {};
+
+{
+eat_id(p, strlit("cparams"));
+read_Common_Line_Params_Index(r, m_cparams);
+}
+pointer.cparams = m_cparams;
+
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
+function Type_Info
+get_type_info_Triangle_Data()
+{
+Type_Info result = {};
+result.name = strlit("Triangle_Data");
+result.size = sizeof(Triangle_Data);
+result.kind = Type_Kind_Struct;
+result.members.set_count(5);
+result.members[0] = {.type=&Type_Info_Vertex_Index, .name=strlit("verts"), .offset=offsetof(Triangle_Data, verts)};
+result.members[1] = {.type=&Type_Info_argb, .name=strlit("color"), .offset=offsetof(Triangle_Data, color)};
+result.members[2] = {.type=&Type_Info_b32, .name=strlit("symx"), .offset=offsetof(Triangle_Data, symx)};
+result.members[3] = {.type=&Type_Info_Fill_Params, .name=strlit("params"), .offset=offsetof(Triangle_Data, params)};
+result.members[4] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Triangle_Data, linum), .unserialized=true};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Triangle_Data = get_type_info_Triangle_Data();
+
+function Type_Info &type_info_from_pointer(Triangle_Data*pointer)
+{
+return Type_Info_Triangle_Data;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
+function void
+read_Triangle_Data(Data_Reader &r, Triangle_Data &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+Vertex_Index m_verts[3] = {};
+
+{
+eat_id(p, strlit("verts"));
+eat_char(p, '{');read_Vertex_Index(r, m_verts[0]);read_Vertex_Index(r, m_verts[1]);read_Vertex_Index(r, m_verts[2]);eat_char(p, '}');
+}
+copy_array_dst(pointer.verts, m_verts);
+
+argb m_color = {};
+
+{
+eat_id(p, strlit("color"));
+read_argb(r, m_color);
+}
+pointer.color = m_color;
+
+b32 m_symx = {};
+
+{
+eat_id(p, strlit("symx"));
+read_b32(r, m_symx);
+}
+pointer.symx = m_symx;
+
+Fill_Params m_params = {};
+
+{
+eat_id(p, strlit("params"));
+read_Fill_Params(r, m_params);
+}
+pointer.params = m_params;
+
+eat_char(p, '}');
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Keyboard_Cursor()
 {
@@ -636,7 +690,7 @@ function Type_Info &type_info_from_pointer(Keyboard_Cursor*pointer)
 {
 return Type_Info_Keyboard_Cursor;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Keyboard_Cursor(Data_Reader &r, Keyboard_Cursor &pointer)
 {
@@ -660,7 +714,7 @@ pointer.vel = m_vel;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:168:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
 get_type_info_Serialized_State()
 {
@@ -679,7 +733,7 @@ function Type_Info &type_info_from_pointer(Serialized_State*pointer)
 {
 return Type_Info_Serialized_State;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
 read_Serialized_State(Data_Reader &r, Serialized_State &pointer)
 {

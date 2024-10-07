@@ -30,7 +30,7 @@ lexer_build_level = 2
 ed_meta_build_level = 1
 #
 asan_on = 0
-COMPILE_GAME_WITH_MSVC = 0
+COMPILE_GAME_WITH_MSVC = 1
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
@@ -376,7 +376,7 @@ def build_game():
                 run_compiler(cl_or_clang_cl, GAME_MAIN, "",
                              debug_mode=(not FRAMEWORK_OPTIMIZE_ON),
                              compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                             compile_only=True)
+                             compile_only=True, no_ccache=True)
             # NOTE: Compile the driver and the framework
             run_compiler(cl_or_clang_cl, f'{GAME_CPP} game_main.obj {space_join(imgui_object_files)}', f"game{DOT_DLL}",
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",

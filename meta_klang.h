@@ -1,9 +1,43 @@
 #pragma once
-
-struct Meta_Struct_Member{
- String type;  //NOTE(kv) @janky no star
- i32    type_star_count;
+enum Parsed_Type_Kind{
+ Parsed_Type_None,
+ Parsed_Type_Named,
+ Parsed_Type_Pointer,
+ Parsed_Type_Array,
+};
+//NOTE(kv) Cheesy type!!!
+struct Parsed_Type{
+ Parsed_Type_Kind kind;
  String name;
+ i32    count; // NOTE either pointer count, or array count
+};
+inline Parsed_Type
+make_type_named(String name){
+ Parsed_Type result = {};
+ result.kind = Parsed_Type_Named;
+ result.name = name;
+ return result;
+}
+inline Parsed_Type
+make_type_pointer(String name, i32 count){
+ Parsed_Type result = {};
+ result.kind  = Parsed_Type_Pointer;
+ result.name  = name;
+ result.count = count;
+ return result;
+}
+inline Parsed_Type
+make_type_array(String name, i32 count){
+ Parsed_Type result = {};
+ result.kind  = Parsed_Type_Array;
+ result.name  = name;
+ result.count = count;
+ result.count = count;
+ return result;
+}
+struct Meta_Struct_Member{
+ String name;
+ Parsed_Type type;
  String version_added;
  String version_removed;
  String default_value;

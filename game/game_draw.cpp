@@ -16,10 +16,8 @@ struct Patch{
 #define macro_control_points(p0,d0, d3,p3)  p0,p0+d0, p3+d3,p3
 #define symx_off set_in_block(painter.symx, false)
 #define symx_on  set_in_block(painter.symx, true)
-#define hl_block_color(color) \
-set_in_block(painter.line_params, hl_line_params(color));
-
-#define hl_block hl_block_color(0)
+#define hl_block_color(...)  push_hl(__VA_ARGS__); defer(pop_hl(););
+#define hl_block  hl_block_color(0)
 
 // NOTE: Actually bernstein basis
 function v1
@@ -70,7 +68,7 @@ get_column(Patch const&surface, i32 col){
 }
 
 xfunction void
-poly3_inner(v3 points[3], argb colors[3],
+poly3_inner(v3 points[3], argb color,
             v1 depth_offset, Poly_Flags flags)
 #if NO_IMPL
 ;
@@ -78,14 +76,11 @@ poly3_inner(v3 points[3], argb colors[3],
 {// NOTE: Triangle
  TIMED_BLOCK(draw_cycle_counter);
  auto &p = painter;
- 
  b32 shaded     = (flags & Poly_Shaded);
  b32 is_line    = (flags & Poly_Line);
  b32 is_overlay = (flags & Poly_Overlay);
- 
  Render_Vertex vertices[3] = {};
  for_i32(i,0,3){ vertices[i].pos = points[i]; }
- 
  // TODO(kv): @Speed The caller should be in charge of passing the color in!
  u32 prim_id = p.draw_prim_id;
  b32 is_hot      = prim_id == get_hot_prim_id();
@@ -93,33 +88,33 @@ poly3_inner(v3 points[3], argb colors[3],
  b32 is_active   = is_prim_id_active(p.modeler, prim_id);
  // TODO(kv): @cleanup wtf is this code?
  if(is_hot || is_selected || is_active){
-  argb hl_color;
+  argb hl_color = hot_color;
   if(is_hot){
-   hl_color = (colors[0] == hot_color) ? hot_color2 : hot_color;
-  }else if (is_selected){
+   hl_color = (color == hot_color) ? hot_color2 : hot_color;
+  }else if(is_selected){
    hl_color = argb_red;
-  }else if (is_active){
+  }else if(is_active){
    //TODO: pick color
    hl_color = hot_color;
   }
-  for_i32(index,0,3){ colors[index] = hl_color; };
- } else if (shaded && !is_line) {
+  color = hl_color;
+ }else if(shaded && !is_line){
   //NOTE(kv) Shading logic doesn't apply to line, because we can see them just fine.
   // ;poly_shading
   v3 normal = noz(cross(points[1]-points[2], points[0]-points[2]));
-  for_i32(index,0,3) {
-   v4 colorv = argb_unpack(colors[index]);
+  {
+   v4 colorv = argb_unpack(color);
    v1 darkness_fuzz = 0.3f;
    colorv.rgb *= lerp(darkness_fuzz,absolute(normal.z),1.f);
-   colors[index] = argb_pack(colorv);
+   color = argb_pack(colorv);
   }
  }
  
- for_i32(index,0,3) {
-  vertices[index].color = colors[index];
+ for_i32(index,0,3){
+  vertices[index].color = color;
  }
  
- for_u32(index,0,alen(vertices)) {
+ for_u32(index,0,alen(vertices)){
   Render_Vertex *vertex = vertices+index;
   vertex->uvw          = V3();
   vertex->depth_offset = depth_offset;
@@ -127,79 +122,52 @@ poly3_inner(v3 points[3], argb colors[3],
  }
  
  Vertex_Type type = Vertex_Poly;
- if(is_overlay){ type = Vertex_Overlay; }
+ if(is_overlay){type = Vertex_Overlay;}
  draw__push_vertices(p.target, vertices, alen(vertices), type);
 }
 #endif
 function void
 poly3_inner(v3 p0, v3 p1, v3 p2,
-            argb c0, argb c1, argb c2,
-            v1 depth_offset, Poly_Flags flags)
-{
- v3 points[3]   = {p0,p1,p2};
- argb colors[3] = {c0,c1,c2};
- poly3_inner(points, colors, depth_offset, flags);
+            argb color,
+            v1 depth_offset, Poly_Flags flags) {
+ v3 points[3] = {p0,p1,p2};
+ poly3_inner(points, color, depth_offset, flags);
 }
-
 function void
-fill3_inner2(v3 points[3], argb colors[3],
-             Fill_Params const&params0,
-             linum_defparam)
-{
- if (is_poly_enabled()){
+fill3_inner2(v3 points[3],
+             Fill_Params const&params,
+             linum_defparam){
+ if(is_poly_enabled()){
   set_linum;
-  if (colors[0] == 0){
-   for_i32(i,0,3){ colors[i] = painter.fill_color; }
-  }
-  auto &params = (params0.non_default ? params0 :
-                  painter.fill_params);
-  //b32 symx = painter.symx;
   const i32 npoints=3;
-  
-  /*v3 reflects[npoints];
-  if (symx){
-   for_i32 (ipoint,0,npoints){
-    reflects[ipoint] = negateX(points[ipoint]);
-   }
-  }*/
-  
   Poly_Flags flags = params.flags;
   v1 depth_offset = painter.fill_depth_offset;
-  poly3_inner(points, colors, depth_offset, flags);
-/*  if (symx) {
-   poly3_inner(reflects, colors, depth_offset, flags);
-  }*/
+  poly3_inner(points, params.color, depth_offset, flags);
  }
 }
 inline void
-fill3(v3 a, v3 b, v3 c, argb color=0,
-      Fill_Params params={}, linum_defparam){
- v3   points[3] = {a,b,c};
- argb colors[3] = {repeat3(color)};
- fill3_inner2(points,colors,params,linum);
+fill3(v3 a, v3 b, v3 c, Fill_Params params=fp(), linum_defparam){
+ v3 points[3] = {a,b,c};
+ fill3_inner2(points,params,linum);
 }
 inline void
-fill3(v3 points[3], argb color=0,
-      Fill_Params params={}, linum_defparam){
- argb colors[3] = { repeat3(color) };
- fill3_inner2(points,colors,params,linum);
+dfill3_func(String a, String b, String c, Fill_Params params=fp(), linum_defparam){
+ String points[3] = {a,b,c};
+ dfill3_inner(points,params,linum);
 }
+#define dfill3(a,b,c,...) \
+dfill3_func(strlit(#a), strlit(#b), strlit(#c), __VA_ARGS__)
 inline void
-fill3(v3 a, v3 b, v3 c,
-      argb ca, argb cb, argb cc,
-      Fill_Params params={}, linum_defparam) {
- v3   points[3] = {a,b,c};
- argb colors[3] = {ca,cb,cc};
- fill3_inner2(points,colors,params,linum);
+fill3(v3 points[3], Fill_Params params=fp(), linum_defparam){
+ fill3_inner2(points,params,linum);
 }
-
+//-
 inline Bezier bez_raw(v3 p0, v3 p1, v3 p2, v3 p3){
  return Bezier{ p0,p1,p2,p3 };
 }
 inline Bezier bez_raw(v3 P[4]){
  return Bezier{ P[0],P[1],P[2],P[3] };
 }
-
 inline Bezier
 bez_offset(v3 p0, v3 d0, v3 d3, v3 p3){
  return bez_raw(macro_control_points(p0,d0,d3,p3) );
@@ -359,22 +327,24 @@ draw_disk_inner(v3 center, v1 radius, argb color,
    v3 sample = center + mat4vec(bone_from_camT, V3(arm, 0.f));//@slow
    if (index!=0) {
     poly3_inner(center, last_sample, sample,
-                repeat3(color), depth_offset, flags);
+                color, depth_offset, flags);
    }
    last_sample = sample;
   }
  }
 }
 xfunction void
-draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
+draw_bezier_inner(v3 P[4], Common_Line_Params &cparams, Line_Params &params)
 #if NO_IMPL
 ;
 #else
 {
- if (params->visibility > 0.f) {
+ if(params.visibility > 0.f){
+  v1 depth_offset = cparams.depth_offset;
   i32 nslices;
-  v4 radii = params->radii;
-  if (params->flags & Line_Straight) {
+  v4 radii = params.radii;
+  radii *= cparams.radius_mult * default_line_radius_unit;
+  if (params.flags & Line_Straight) {
    radii = V4(radii[1]);  //note: don't wanna take radius from the tip
    nslices = 1;
   } else {
@@ -409,7 +379,7 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
     }
    }
    
-   nslices = i32(params->nslice_per_meter * the_length)+1;
+   nslices = i32(cparams.nslice_per_meter * the_length)+1;
    
    i32 MAX_NSLICES = 128;
    if (nslices > MAX_NSLICES) {
@@ -419,7 +389,7 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
   }
   
   Poly_Flags poly_flags = Poly_Line;
-  if (params->flags & Line_Overlay) { poly_flags |= Poly_Overlay; }
+  if (params.flags & Line_Overlay) { poly_flags |= Poly_Overlay; }
   
   v1 radius_threshold = 0.1065f*millimeter;
   macro_clamp_min(radius_threshold, 0.f);
@@ -428,7 +398,7 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
   
   Vertex_Type vertex_type = Vertex_Poly; //@temp
   
-  argb color = params->color;
+  argb color = cparams.color;
   //NOTE: the hot color is deferred to the triangle filling routine
   
   v3 last_sample = bezier_sample(P,-interval);  //NOTE: so we can calculate C and D at t=0
@@ -454,11 +424,11 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
     D = sample-perp1;
    }
    
-   if (sample_index!=0) {
+   if(sample_index!=0){
     // NOTE: Clean up ugly tiny lines (and zeros), possibly unnecessary?
-    if (0.5f*(radius+last_radius) >= radius_threshold) {
-     poly3_inner(A,C,D, repeat3(color), depth_offset, poly_flags);
-     poly3_inner(A,B,D, repeat3(color), depth_offset, poly_flags);
+    if(0.5f*(radius+last_radius) >= radius_threshold){
+     poly3_inner(A,C,D, color, depth_offset, poly_flags);
+     poly3_inner(A,B,D, color, depth_offset, poly_flags);
     }
    }
    
@@ -468,60 +438,46 @@ draw_bezier_inner(v3 P[4], Line_Params *params, v1 depth_offset)
    last_radius = radius;
   }
   
-  for_i32(index,0,2)
-  {//NOTE: Draw the circular endpoints
+  for_i32(index,0,2){
+   //NOTE: Draw the circular endpoints
    v1 t = 0.f;
-   if (index==1) { t=1.f; }
+   if(index==1){t=1.f;}
    v3 center = bezier_sample(P,t);
    v1 radius = bezier_sample(radii,t);
-   if (radius > radius_threshold) {
+   if(radius > radius_threshold){
     draw_disk_inner(center, radius, color, depth_offset, poly_flags);
    }
   }
  }
 }
 #endif
-
 function b32
-draw(const v3 P0[4], Line_Params params, linum_defparam){
+draw_cparams(const v3 P0[4], Common_Line_Params &cparams, Line_Params params, linum_defparam){
  set_linum;
  Painter &p = painter;
  b32 ok = is_line_enabled();
  if(ok and
-    (not p.ignore_alignment_threshold) and
-    (u32(linum) != get_hot_prim_id()) and
-    (params.alignment_threshold > 0.f))
- {
+    not p.ignore_alignment_threshold and
+    u32(linum) != get_hot_prim_id()  and
+    params.alignment_threshold > 0.f){
   ok = get_curve_view_alignment(p, P0) > params.alignment_threshold;
  }
- 
  if(ok){
-  //b32 symx = p.symx && !(params.flags & Line_No_SymX);
-  
   const i32 npoints = 4;
   v3 points[npoints];
   copy_array_dst(points,P0);
-  
-  // NOTE: reflect
-  v3 reflects[npoints];
-  //if (symx) { for_i32 (ipoint,0,npoints) { reflects[ipoint] = negateX(points[ipoint]); } }
-  
   // NOTE: Processing parameters
-  if(p.ignore_radii || params.radii == v4{}){
+  if(p.ignore_radii or params.radii == v4{}){
    params.radii = p.line_params.radii;
   }
-  if (params.nslice_per_meter <= 0.f){ params.nslice_per_meter = DEFAULT_NSLICE_PER_METER; }
-  params.radii *= (params.radius_mult * default_line_radius_unit);
-  
-  draw_bezier_inner(points, &params, painter.line_depth_offset);
-  /*if(symx){
-   draw_bezier_inner(reflects, &params, painter.line_depth_offset);
-  }*/
+  draw_bezier_inner(points, cparams, params);
  }
- 
  return ok;
 }
-
+function b32
+draw(const v3 P0[4], Line_Params params, linum_defparam){
+ return draw_cparams(P0,current_line_cparams(),params,linum);
+}
 // NOTE: Line
 force_inline Bezier
 bez_line(v3 a, v3 b){
@@ -554,15 +510,16 @@ force_inline void
 draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  draw(bez_line(a,b), params, linum);
 }
-inline Line_Params
-hl_line_params(argb color=0){
- if(color == 0){ color = srgb_to_linear(0XFFDBA50F); }
- Line_Params params = painter.line_params;
- params.flags |= Line_Overlay|Line_No_SymX;
- params.color = color;
- params.radii = i2f6(I4(3,3,3,3));
- return params;
+inline void
+push_hl(argb color=0){
+ if(color == 0){color = srgb_to_linear(0XFFDBA50F);}
+ auto cparams = current_line_cparams();
+ cparams.flags |= Line_Overlay|Line_No_SymX;
+ cparams.color = color;
+ cparams.radii = i2f6(I4(3,3,3,3));
+ push_line_cparams(cparams);
 }
+inline void pop_hl(){ pop_line_cparams(); }
 force_inline void
 draw_line(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  params.flags |= Line_Straight;
@@ -581,45 +538,30 @@ v4_gray(v1 value) {
 }
 
 function argb
-compute_fill_color(v1 color_lerp) {
- Painter *p = &painter;
- // @Slow Maybe we should just store the color in v4 form?
- argb color;
- if (color_lerp != 0.0f)
- {
-  v4 color_v4 = argb_unpack(p->fill_color);
+compute_fill_color(v1 color_lerp){
+ Painter &p = painter;
+ argb color = p.fill_params.color;
+ if(color_lerp != 0.0f){
+  v4 color_v4 = argb_unpack(color);
   // NOTE(kv): 0 is the lerp target
   color_v4.xyz *= (1.f-color_lerp);
   color = argb_pack(color_v4);
  }
- else { color = p->fill_color; }
- 
  return color;
 }
 
-force_inline void
+inline void
 fill4(v3 p0, v3 p1, v3 p2, v3 p3,
-      argb c0, argb c1, argb c2, argb c3,
-      Fill_Params params={}, linum_defparam) {
- fill3(p0,p1,p2, c0,c1,c2, params,linum);
- fill3(p0,p2,p3, c0,c2,c3, params,linum);
+      Fill_Params params=fp(), linum_defparam){
+ fill3(p0,p1,p2,params,linum);
+ fill3(p0,p2,p3,params,linum);
 }
-//@Cleanup
-force_inline void
-fill4(v3 p0, v3 p1, v3 p2, v3 p3, argb c=0,
-      Fill_Params params={}, linum_defparam) {
- fill4(p0,p1,p2,p3, repeat4(c), params,linum);
-}
-
 inline void
 poly4_inner(v3 p0, v3 p1, v3 p2, v3 p3, 
-            argb c0, argb c1, argb c2, argb c3,
-            v1 depth_offset, Poly_Flags flags)
-{
- poly3_inner(p0,p1,p2, c0,c1,c2, depth_offset, flags);
- poly3_inner(p0,p2,p3, c0,c2,c3, depth_offset, flags);
+            argb c0, v1 depth_offset, Poly_Flags flags){
+ poly3_inner(p0,p1,p2, c0, depth_offset, flags);
+ poly3_inner(p0,p2,p3, c0, depth_offset, flags);
 }
-
 xfunction void
 fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
 #if NO_IMPL
@@ -638,7 +580,7 @@ fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
   if (sample_index != 0)
   {
    poly4_inner(previous_worldP, previous_worldQ, worldQ, worldP, 
-               repeat4(color), depth_offset, viz);
+               color, depth_offset, viz);
   }
   previous_worldP = worldP;
   previous_worldQ = worldQ;
@@ -648,7 +590,7 @@ fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
 
 xfunction void
 bezier_poly3_inner(v3 A, v3 P[4], 
-                   argb c0, argb c1, argb c2, 
+                   argb color,
                    v1 depth_offset, Poly_Flags flags)
 #if NO_IMPL
 ;
@@ -656,92 +598,56 @@ bezier_poly3_inner(v3 A, v3 P[4],
 {
  i32 nslices = bezier_poly_nslice;
  v1 inv_nslices = 1.f / (v1)nslices;
- v4 color1 = argb_unpack(c1);
- v4 color2 = argb_unpack(c2);
  v3 previous_worldP;
- v4 previous_color;
  for_i32(sample_index,0,nslices+1) {
   v1 u = inv_nslices * (v1)sample_index;
   v3 worldP = bezier_sample(P,u);
-  v4 color  = lerp(color1, u, color2);
   if (sample_index != 0) {
    poly3_inner(A, previous_worldP, worldP,
-               c0,argb_pack(previous_color),argb_pack(color),
+               color,
                depth_offset, flags);
   }
   previous_worldP = worldP;
-  previous_color  = color;
  }
 }
 #endif
-
 function void
 fill(v3 A, Bezier &bezier, 
-     argb c0=0, argb c1=0, argb c2=0,
-     u32 flags=0, linum_defparam)
-{
+     argb c0=0,
+     Poly_Flags flags=0, linum_defparam){
  set_linum;
  auto p = &painter;
- if ( is_poly_enabled() )
- {
-  if (c0 == 0) { c0 = p->fill_color; }
-  if (c1 == 0) { c1 = p->fill_color; }
-  if (c2 == 0) { c2 = p->fill_color; }
-  
+ if(is_poly_enabled()){
+  if(c0 == 0){c0 = p->fill_params.color;}
   v3 *P = bezier;
-  //b32 symx = p->symx;
-  
   const i32 npoints = 5;
   v3 points[npoints];
   points[0] = A;
   block_copy(points+1, P, 4*sizeof(*points));
-  
-  // NOTE: Reflect
-  
   // TODO: Something fishy with this flag vs painter logic
   if (p->viz_level) { flags |= Poly_Shaded; }
-  
-  bezier_poly3_inner(points[0], points+1, c0,c1,c2, p->fill_depth_offset, flags);
-  /*if(symx){
-   for_i32 (ipoint,0,npoints) { points[ipoint] = negateX(points[ipoint]); }
-   bezier_poly3_inner(points[0], points+1, c0,c1,c2, p->fill_depth_offset, flags);
-  }*/
+  bezier_poly3_inner(points[0], points+1, c0, p->fill_depth_offset, flags);
  }
 }
-
 function void
-fill_dbez_inner(const v3 P[4], const v3 Q[4], argb color)
-{
+fill_dbez_inner(const v3 P[4], const v3 Q[4], argb color){
  Painter *p = &painter;
- if ( is_poly_enabled() )
- {
-  if (color == 0) { color = p->fill_color; }
-  //b32 symx = p->symx;
-  
+ if(is_poly_enabled()){
+  if(color == 0){color = p->fill_params.color;}
   const i32 npoints = 8;
   v3 points[npoints];
-  for_i32(ipoint,0,4) { points[ipoint+0] = P[ipoint]; }
-  for_i32(ipoint,0,4) { points[ipoint+4] = Q[ipoint]; }
-  
-  // NOTE: reflect
-  v3 reflects[npoints];
-  //if (symx) { for_i32 (ipoint,0,npoints) { reflects[ipoint] = negateX(points[ipoint]); } }
-  
+  for_i32(ipoint,0,4){points[ipoint+0] = P[ipoint];}
+  for_i32(ipoint,0,4){points[ipoint+4] = Q[ipoint];}
   fill_bezier_inner_2(points, points+4, color, p->fill_depth_offset, p->viz_level);
-  /*if (symx) { 
-   fill_bezier_inner_2(reflects, reflects+4, color, p->fill_depth_offset, p->viz_level);
-  }*/
  }
 }
-
 force_inline void
-fill_dbez(Bezier const&b1, Bezier const&b2, argb color=0, linum_defparam) {
+fill_dbez(Bezier const&b1, Bezier const&b2, argb color=0, linum_defparam){
  set_linum;
  fill_dbez_inner(b1.e, b2.e, color);
 }
-
 function void
-fill_dbez(v3 a, v3 b, Bezier const&bezier, argb color=0, linum_defparam) {
+fill_dbez(v3 a, v3 b, Bezier const&bezier, argb color=0, linum_defparam){
  set_linum;
  v3 ab[4] = {
   a,
@@ -751,12 +657,10 @@ fill_dbez(v3 a, v3 b, Bezier const&bezier, argb color=0, linum_defparam) {
  };
  fill_dbez_inner(ab, bezier.e, color);
 }
-
 force_inline void
-fill_bez(Bezier const&bezier, argb color=0, linum_defparam) {
+fill_bez(Bezier const&bezier, argb color=0, linum_defparam){
  fill_dbez(bezier.e[0], bezier.e[3], bezier, color, linum);
 }
-
 xfunction void
 fill_patch_inner(const v3 P[4][4],
                  argb color, v1 depth_offset,
@@ -792,7 +696,7 @@ fill_patch_inner(const v3 P[4][4],
     {
      poly4_inner(prev_v[u_index],   this_v[u_index],
                  this_v[u_index+1], prev_v[u_index+1],
-                 color,color,color,color,
+                 color,
                  depth_offset, viz);
     }
    }
@@ -802,15 +706,12 @@ fill_patch_inner(const v3 P[4][4],
  }
 } 
 #endif
-
-
 function void
 fill_patch(const v3 P[4][4], argb color=0) {
  auto p = &painter;
- if (color == 0) { color = p->fill_color; }
+ if(color == 0){color = p->fill_params.color;}
  fill_patch_inner(P, color, p->fill_depth_offset, p->viz_level);
 }
-
 function void
 fill_patch(v3 P0[4], v3 P1[4],
            v3 P2[4], v3 P3[4],
@@ -823,35 +724,18 @@ fill_patch(v3 P0[4], v3 P1[4],
  copy_array_dst(P[3], P3);
  fill_patch(P, color);
 }
-
 force_inline void
-fill3_symx(v3 a, v3 b, linum_defparam) {
+fill3_symx(v3 a, v3 b, linum_defparam){
  symx_off;
- fill3(a, b, negateX(b), linum);
+ fill3(a,b,negateX(b),fp(),linum);
 }
-
-force_inline void
-fill4_symx(v3 a, v3 b, linum_defparam) {
- symx_off;
- fill4(a, b, negateX(b), negateX(a), linum);
-}
-
 function void 
-fill_strip(v3 verts[], i32 vert_count, linum_defparam) {
- for_i32(i,0,vert_count-2)
- {
-  fill3(verts[i], verts[i+1], verts[i+2], linum);
- }
-}
-
-function void 
-fill_fan(v3 A, v3 verts[], i32 vert_count, argb color=0,
-         Fill_Params params={}, linum_defparam) {
+fill_fan(v3 A, v3 verts[], i32 vert_count,
+         Fill_Params params=fp(), linum_defparam){
  for_i32(index, 0, vert_count-1) {
-  fill3(A, verts[index], verts[index+1], color, params, linum);
+  fill3(A, verts[index], verts[index+1], params, linum);
  }
 }
-
 function void
 draw_box(mat4 const&transform, linum_defparam) {
  set_linum;
@@ -874,7 +758,6 @@ draw_box(mat4 const&transform, linum_defparam) {
  v3 P = O+x+y+z;
  draw(bez_line(P,P-x), 0); draw(bez_line(P,P-y), 0); draw(bez_line(P,P-z), 0);
 }
-
 force_inline Patch
 patch(Bezier const&p0, Bezier const&p1, Bezier const&p2, Bezier const&p3) {
  Patch result;
@@ -931,19 +814,15 @@ draw_image(char *filename, v3 o, v3 x, v3 y, v1 alpha=1.f, v3 color={1,1,1},
  argb argb_color = argb_pack( V4(color,alpha) );
  push_image(painter.target, filename,o,x,y,argb_color, linum);
 }
-
-
 function void
 draw_disk(v3 center, v1 radius,
           argb color, v1 depth_offset, Poly_Flags flags,
-          linum_defparam)
-{
+          linum_defparam) {
  if(is_poly_enabled()){
   painter.draw_prim_id = linum;
   draw_disk_inner(center, radius, color, depth_offset, flags);
  }
 }
-
 xfunction void
 indicate_vertex(char *vertex_name, v3 pos,
                 i32  force_draw_level=9000,
@@ -970,7 +849,8 @@ indicate_vertex(char *vertex_name, v3 pos,
   b32 should_draw = ((p.viz_level >= force_draw_level) || mouse_near);
   if(should_draw){//NOTE: Draw
    symx_off;
-   v1 depth_offset = p.line_depth_offset - 1*centimeter;
+   auto &cparams = current_line_cparams();
+   v1 depth_offset = cparams.depth_offset - 1*centimeter;
    u32 flags = 0;
    // NOTE: If lines are overlayed, so should indicators (I guess?)
    b32 line_overlay_on = (p.line_params.flags & Line_Overlay);

@@ -28,10 +28,22 @@ fval( (value), fopts_add_flags(fopts(__VA_ARGS__), Slider_Vector) )
 #define fhsv(h,s,v) argb_pack(srgb_to_linear(hsv_to_srgb(fval3(h,s,v))))
 
 #define radius_scale_block(multiplier) \
-scale_in_block(painter.line_params.radius_mult, multiplier)
+Common_Line_Params line_unique_var = current_line_cparams(); \
+line_unique_var.radius_mult *= multiplier; \
+push_line_cparams(line_unique_var); \
+defer(pop_line_cparams());
 
 #define line_color_lightness(scale) \
-set_in_block(painter.line_params.color, argb_lightness(painter.line_params.color, scale))
+Common_Line_Params line_unique_var = current_line_cparams(); \
+line_unique_var.color = argb_lightness(line_unique_var.color, scale); \
+push_line_cparams(line_unique_var); \
+defer(pop_line_cparams());
+
+#define lp_block(FIELD, value) \
+Common_Line_Params line_unique_var = current_line_cparams(); \
+line_unique_var.FIELD = value; \
+push_line_cparams(line_unique_var); \
+defer(pop_line_cparams());
 
 #define indicate(vertex,...)  indicate_vertex(#vertex, vertex, __VA_ARGS__)
 #define indicate0(vertex,...) indicate(vertex,0,__VA_ARGS__)
@@ -41,17 +53,13 @@ global_const Slider clampy = Slider_Clamp_Y;
 global_const Slider clampz = Slider_Clamp_Z;
 
 inline void
-circular_arc_helper(mat4 const&transform, v3 dst[4], v2 src[4])
-{
- for_i32 (index,0,4) 
- {
+circular_arc_helper(mat4 const&transform, v3 dst[4], v2 src[4]){
+ for_i32(index,0,4){
   dst[index] = mat4vert(transform, V3(src[index].x, src[index].y, 0.f));
  }
 }
-
 function void
-draw_bezier_circle(mat4 const&transform, v4 radii={})
-{
+draw_bezier_circle(mat4 const&transform, v4 radii={}){
  v1 a = 1.00005519f;
  v1 b = 0.55342686f;
  v1 c = 0.99873585f;
@@ -75,7 +83,6 @@ draw_bezier_circle(mat4 const&transform, v4 radii={})
   draw(bez_raw(arc4), params);
  }
 }
-
 #define WARN_DELTA(a, b, EPSILON) \
 if (absolute(a-b) > EPSILON) { DEBUG_NAME("WARN " #a "-" #b, (a-b)); }
 
@@ -239,19 +246,10 @@ profile_visible(Line_Params *params, v1 edge1)
  else { params->visibility = 0.f; }
 }
 force_inline Line_Params
-profile_visible(v1 edge1)
-{
+profile_visible(v1 edge1){
  Line_Params params = painter.line_params;
  profile_visible(&params, edge1);
  return params;
-}
-
-force_inline Line_Params
-line_color(argb color)
-{
- Line_Params result = painter.line_params;
- result.color = color;
- return result;
 }
 force_inline Bezier
 reverse(Bezier B){
@@ -265,9 +263,7 @@ inline i1
 get_preset(){
  return painter.viewport->preset;
 }
-
 inline v3 get_camz() { return painter.camera.z; }
-
 inline b32 camera_is_right() {
  return(almost_equal(get_camz().x, -1.f, 1e-2f));
 }

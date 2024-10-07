@@ -307,7 +307,7 @@ game_load(Game_State *state, App *app, Stringz filename){
  if(ok){
   read_string = read_entire_file(scratch, filename);
   ok = read_string.len > 0;
-  if ( !ok ) {
+  if(!ok){
    print_message(app, strlit("Game load: can't read the file!\n"));
   }
  }
@@ -349,7 +349,7 @@ game_load(Game_State *state, App *app, Stringz filename){
     read_Serialized_State(r,state->Serialized_State);
    }
    {
-    Modeler *m = &state->modeler;
+    Modeler &m = state->modeler;
     clear_modeling_data(m);
     
     {//-NOTE Vertices
@@ -359,7 +359,7 @@ game_load(Game_State *state, App *app, Stringz filename){
       if(maybe_char(p, '}')){
        break;
       }
-      Vertex_Data &v = m->vertices.push2();
+      Vertex_Data &v = m.vertices.push2();
 #if IGNORE_MODELING_DATA
       eat_char(p,'{');
       eat_until_char(p, '}');
@@ -377,7 +377,7 @@ game_load(Game_State *state, App *app, Stringz filename){
       if(maybe_char(p, '}')){
        break;
       }
-      Bezier_Data &b = m->curves.push2();
+      Bezier_Data &b = m.curves.push2();
 #if IGNORE_MODELING_DATA
       eat_char(p,'{');
       eat_until_char(p, '}');
@@ -487,48 +487,48 @@ compute_curve_from_data(Modeler &m, Bezier_Data &data0, b32 lr){
 function void
 render_data(Modeler &m){
  painter.is_right = 0;
- argb inactive_color = argb_dark_green;
  for_i32(vi,1,m.vertices.count){
+  //-Vertices
   Vertex_Data &vert = m.vertices[vi];
-  Bone &bone = get_bone(m, vert.bone_id, false);
+  Bone &bone = get_bone(m, vert.bone_id, 0);
   u32 prim_id = prim_id_from_vertex_index({vi});
-  {
-   v3 pos = mat4vert(bone.xform, vert.pos);
-   indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
-  }
-  if(vert.symx){
-   //NOTE: Draw the right side
-   set_in_block(painter.is_right, 1);
-   Bone &boneR = get_right_bone(m, bone);  //@slow
-   v3 pos = mat4vert(bone.xform, vert.pos);
-   indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
-  }
+  v3 pos = mat4vert(bone.xform, vert.pos);
+  argb inactive_color = argb_dark_green;
+  indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
  }
- 
  for_i32(ci,1,m.curves.count){
+  //-Curves
   Bezier_Data &curve = m.curves[ci];
   u32 prim_id = prim_id_from_curve_index({ci});
-  {
-   v3 p0 = m.vertices[curve.p0_index.v].pos;
-   v3 p3 = m.vertices[curve.p3_index.v].pos;
-   {
-    Bez drawn = compute_curve_from_data(m,curve,0);
-    draw(drawn, curve.params, prim_id);
-   }
-   if(curve.symx){
-    set_in_block(painter.is_right, 1);
-    Bez drawn = compute_curve_from_data(m,curve,1);
-    draw(drawn, curve.params, prim_id);
+  Common_Line_Params &cparams = m.line_cparams[curve.cparams.v];
+  for_i32(lr_index,0,2){
+   set_in_block(painter.lr_index, lr_index);
+   if(curve.symx or lr_index==0){
+    Bez drawn = compute_curve_from_data(m,curve,lr_index);
+    draw_cparams(drawn, cparams, curve.params, prim_id);
    }
   }
+ }
+ for_i32(ti,1,m.triangles.count){
+  //-Triangles
+  Triangle_Data &tri = m.triangles[ti];
+  u32 prim_id = prim_id_from_tri_index({ti});
+  v3 p[3];
+  for_i32(vi,0,3){
+   i1 vert_index = tri.verts[vi].v;
+   Vertex_Data &vert = m.vertices[vert_index];
+   Bone &bone = get_bone(m, vert.bone_id, 0);
+   p[vi] = bone.xform*vert.pos;
+  }
+  fill3_inner2(p,tri.params,prim_id);
  }
 }
 //TODO(kv) @cleanup We wanna change this from update+render to update_and_render
 function game_render_return
-game_render(game_render_params)
-{
- Modeler *modeler = &state->modeler;
- painter = {};
+game_render(game_render_params){
+ Modeler &mo = state->modeler;
+ Painter &pa = painter;
+ pa = {};
  slider_cycle_counter = 0;
  Scratch_Block scratch;
  Viewport *viewport = &state->viewports[viewport_id-1];
@@ -553,17 +553,17 @@ game_render(game_render_params)
  {
   b32 camera_frontal=almost_equal(absolute(camera->z.z), 1.f, 1e-2f);
   b32 camera_profile=almost_equal(absolute(camera->z.x), 1.f, 1e-2f);
-  b32 orthographic = painter.show_grid && (camera_frontal || camera_profile);
-  if(fbool(0)){orthographic = painter.show_grid;}
+  b32 orthographic = pa.show_grid and (camera_frontal or camera_profile);
+  if(fbool(0)){orthographic = pa.show_grid;}
   if(fbool(0)){orthographic = true;}
-  painter.view_from_world = get_view_from_world(camera, orthographic);
+  pa.view_from_world = get_view_from_world(camera, orthographic);
  }
- painter.cursorp   = state->kb_cursor.pos;
- painter.cursor_on = state->kb_cursor_mode;
- painter.target    = target;
- painter.viewport  = viewport;
- painter.modeler   = modeler;
- painter.camera    = *camera;
+ pa.cursorp   = state->kb_cursor.pos;
+ pa.cursor_on = state->kb_cursor_mode;
+ pa.target    = target;
+ pa.viewport  = viewport;
+ pa.modeler   = &mo;
+ pa.camera    = *camera;
  {//-NOTE(kv) Drawing the movie
   Render_Config *config = draw_new_group(target);
   set_y_up(target, config);
@@ -572,15 +572,16 @@ game_render(game_render_params)
   {
    Scratch_Block render_scratch;
    //TODO(kv) Why can't the game understand scratch blocks?
-   modeler->vertices.set_count(1);
-   modeler->curves.  set_count(1);
+   mo.vertices. set_count(1);
+   mo.curves.   set_count(1);
+   mo.triangles.set_count(1);
    render_movie(scratch, render_scratch,
                 config, state->references_full_alpha,
                 &state->pose, state->anime_time);
   }
  }
  //-NOTE
- render_data(*modeler);
+ render_data(mo);
  
  if (state->kb_cursor_mode &&
      viewport_id == 1)
@@ -596,12 +597,12 @@ game_render(game_render_params)
                         points[i].y*camera->y));
   }
   {
-   Fill_Params params = {.non_default=true, .flags=Poly_Overlay};
-   fill3(points, argb_blue, params);
+   Fill_Params params = {.flags=Poly_Overlay};
+   params.color = argb_blue;
+   fill3(points, params);
   }
  }
 }
-
 function game_init_return
 game_init(game_init_params)
 {// API import
@@ -615,21 +616,29 @@ game_init(game_init_params)
  state->dll_arena = make_arena(&state->malloc, MB(1));
  
  {//-;init_modeler
-  Modeler *m = &state->modeler;
-  m->permanent_arena = &state->permanent_arena;
-  init_dynamic(m->vertices, &state->malloc, 4096);
-  init_dynamic(m->curves,   &state->malloc, 512);
-  init_static (m->bones,     arena,         128);
-  m->bones.push(Bone{.xform=mat4i_identity});
+  Modeler &m = state->modeler;
+  //NOTE(kv) when you refer to something make sure it doesn't move!
+  init_static(m.vertices,  arena, 4096);
+  init_static(m.curves,    arena, 512);
+  init_static(m.triangles, arena, 512);
+  init_static(m.bones,     arena, 128);
+  init_static(m.bones,     arena, 128);
+  init_static(m.line_cparams,arena, 32);
+  m.bones.push(Bone{.xform=mat4i_identity});
   {
-   Modeler_History &h = m->history;
+   Common_Line_Params cp = {};
+   cp.radius_mult      = 1.f;
+   cp.nslice_per_meter = 2.2988f * 100.f;
+   m.line_cparams.push(cp);
+  }
+  {
+   Modeler_History &h = m.history;
    // NOTE(kv): We might want to erase entire edit history (or part of it),
    //  so we'll allocate items from an arena for now (maybe make a heap later).
    h.arena     = make_arena(&state->malloc);
    h.inited    = true;
    h.allocator = make_arena_base_allocator(&h.arena);
   }
-  
   clear_modeling_data(m);
  }
  
@@ -906,8 +915,7 @@ game_send_command(game_send_command_params) {
 }
 
 function void
-compute_direction_helper(Game_Input *input, Key_Code key_code, i32 component, v1 value)
-{
+compute_direction_helper(Game_Input *input, Key_Code key_code, i32 component, v1 value) {
  if (input->key_states[key_code] != 0){
   input->direction.dir.e[component] = value;
   input->direction.new_keypress = (input->key_state_changes[key_code] > 0);
@@ -943,30 +951,25 @@ inline void
 update_orbit(Camera_Data *cam, Game_Input *input) {
  update_orbit(cam, input->direction);
 }
-
 function void
-update_pan(Camera_Data *cam, Game_Input *input)
-{
+update_pan(Camera_Data *cam, Game_Input *input){
  v1 step = CAMERA_PAN_STEP_PER_DISTANCE * cam->distance;
  v2 delta_pan = input->direction.dir.xy;
  Camera computed_cam; setup_camera(&computed_cam, cam);
  cam->pivot += step*(delta_pan.x * computed_cam.x + 
                      delta_pan.y * computed_cam.y);
 }
-
 inline b32
-fui_slider_is_discrete(Fui_Slider *slider) {
+fui_slider_is_discrete(Fui_Slider *slider){
  return (slider->type == Basic_Type_i1 || 
          slider->type == Basic_Type_i2 ||
          slider->type == Basic_Type_i3 ||
          slider->type == Basic_Type_i4);
 }
-
 inline b32
 fui_slider_is_continuous(Fui_Slider *slider){
  return !fui_slider_is_discrete(slider);
 }
-
 //-
 #define V2_CASES \
 case Key_Code_L: case Key_Code_H: \
@@ -996,11 +999,21 @@ g_jump_to_line(App *app, i1 linum){
  view_set_buffer_named(app, view, GAME_FILE_NAME);
  view_set_cursor(app, view, seek_line_col(linum, 0));
 }
-
+function void
+set_camera_frontal_or_profile(Camera_Data &cam){
+ if(cam.theta == 0 and cam.phi == 0){
+  // if frontal -> set to profile
+  cam.theta = .25f;
+  cam.phi   = 0;
+ }else{
+  // set frontal
+  cam.theta = 0;
+  cam.phi   = 0;
+ }
+}
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 function game_update_return
-game_update(game_update_params)
-{
+game_update(game_update_params){
 #if SILLY_IMGUI_PARTY 
  FxTestBed();
 #endif
@@ -1083,7 +1096,7 @@ game_update(game_update_params)
     hot_prim_id = prim_id_from_vertex_index(Vertex_Index{vi});
    }
   }
-  for_i1(ci,1,m.curves.count){
+  for_i32(ci,1,m.curves.count){
    //-Closest curve
    Curve_Data &c = m.curves[ci];
    Bez computed = compute_curve_from_data(m, c, 0);
@@ -1121,20 +1134,24 @@ game_update(game_update_params)
  }
  
  if(!hot_prim_id){
-  //NOTE(kv) If there's nothing hot, then we select by cursor position
+  //NOTE(kv) If there's nothing hot, then we select by editor cursor position
   Buffer_ID buffer = get_active_buffer(app);
   String active_buffer_name = push_buffer_base_name(app, scratch, buffer);
   if(active_buffer_name == GAME_FILE_NAME){
-   i64 pos = get_current_line_number(app);
-   auto m = modeler;
-   Vertex_Data *v = get_vertex_by_linum(m,pos);
+   i64 linum = get_current_line_number(app);
+   Modeler &m = *modeler;
+   Vertex_Data *v = get_vertex_by_linum(m,linum);
    if(v){
     hot_prim_id = prim_id_from_vertex_index(vertex_index_from_pointer(m,v));
    }else{
-    Bezier_Data *c = get_curve_by_linum(m,pos);
+    Bezier_Data *c = get_curve_by_linum(m,linum);
     if(c){
      hot_prim_id = prim_id_from_curve_index(curve_index_from_pointer(m,c));
     }
+   }
+   if(!hot_prim_id){
+    //NOTE(kv) If still no hot prim id found, just wing it! (might crash if we're not careful)
+    hot_prim_id = linum;
    }
   }
  }
@@ -1201,7 +1218,8 @@ game_update(game_update_params)
      update_pan(cam, input); 
     }else{
      switch(code){
-      case Key_Code_I: case Key_Code_O: {
+      case Key_Code_A:{ set_camera_frontal_or_profile(*cam); }break;
+      case Key_Code_I: case Key_Code_O:{
        update_orbit(cam, input);
       }break;
       case Key_Code_Escape:
@@ -1250,6 +1268,7 @@ game_update(game_update_params)
     }else{
      switch(code){
       case Key_Code_Return:{ game_save(state, app, false); }break;
+      case Key_Code_A:{ set_camera_frontal_or_profile(*cam); }break;
       case Key_Code_M:{ state->kb_cursor_mode = true; }break;
       case Key_Code_Q:{ toggle_boolean(state->references_full_alpha); }break;
       case Key_Code_U:{ modeler_undo(modeler); }break;
@@ -1270,7 +1289,7 @@ game_update(game_update_params)
      }
     }
    }
-  }else if (fui_is_active()){
+  }else if(fui_is_active()){
    //-NOTE
    if(mods==C && is_v3_key(keycode)){
     update_orbit(cam, input);
@@ -1282,16 +1301,14 @@ game_update(game_update_params)
     if(fui_slider_is_discrete(slider)){
      i4 value;
      block_copy(&value, slider+1, slider_value_size(slider));
-     for_i32(index,0,4) {
+     for_i32(index,0,4){
       value.e[index] += i32(input_dir[index]);
      }
-     
-     if (slider->flags & Slider_Clamp_01) {
+     if(slider->flags & Slider_Clamp_01){
       for_i32(index,0,4) {
        macro_clamp01i(value.e[index])
       }
      }
-     
      block_copy(slider+1, &value, slider_value_size(slider));
     }
    }else{
@@ -1329,23 +1346,23 @@ game_update(game_update_params)
        input_dir = noz( update_cam.world_from_cam*input_dir );
       }
       v1 delta_scale = slider->delta_scale;
-      if (delta_scale == 0) { delta_scale = 0.2f; }
+      if(delta_scale == 0){ delta_scale = 0.2f; }
       v4 delta = delta_scale * dt * input_dir;
-      if (mods == Key_Mod_Sft) { delta *= 10.f; }
+      if(mods == Key_Mod_Sft){ delta *= 10.f; }
       value += delta;
       
-      if (slider->flags & Slider_Clamp_X)  {value.x = 0;}
-      if (slider->flags & Slider_Clamp_Y)  {value.y = 0;}
-      if (slider->flags & Slider_Clamp_Z)  {value.z = 0;}
-      if (slider->flags & Slider_NOZ)      { value.xyz = noz(value.xyz); }
-      if (slider->flags & Slider_Clamp_01) {
+      if(slider->flags & Slider_Clamp_X) {value.x = 0;}
+      if(slider->flags & Slider_Clamp_Y) {value.y = 0;}
+      if(slider->flags & Slider_Clamp_Z) {value.z = 0;}
+      if(slider->flags & Slider_NOZ)     { value.xyz = noz(value.xyz); }
+      if(slider->flags & Slider_Clamp_01){
        for_i32(index,0,4) { macro_clamp01(value.v[index]); }
       }
      }
     }
     block_copy(slider+1, &value, slider_value_size(slider));
    }
-  }else if (game_active){
+  }else if(game_active){
    if (u32 sel_prim = selected_prim_id(modeler)){
     //-NOTE
     Modeler *m = modeler;
@@ -1550,19 +1567,19 @@ game_update(game_update_params)
  }
  
  {
-  if (debug_frame_time_on) {
+  if(debug_frame_time_on){
    DEBUG_NAME("work cycles", input->frame.work_cycles);
    DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
    DEBUG_NAME("work ms", input->frame.work_seconds * 1e3f);
   }
   
-  if ( fbool(0) ) {
+  if(fbool(0)){
    DEBUG_VALUE(image_load_info.image_count);
    DEBUG_VALUE(image_load_info.failure_count);
   }
  }
  
- return {
+ return{
   .should_animate_next_frame=should_animate_next_frame,
   .game_commands            =game_commands,
  };

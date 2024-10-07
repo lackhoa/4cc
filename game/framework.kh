@@ -2,26 +2,30 @@
 struct Vertex_Data{
  String name;
  Bone_ID bone_id;
- i1 symx;
  v3 pos;
- i1 basic_index;
  meta_unserialized i1 linum;
 };
-
 unique Bezier_Type;
-
 struct Bezier_Data{
  String name;
  Bone_ID bone_id;
- i1 symx;
+ b32 symx;
  Bezier_Type type;
  Vertex_Index p0_index;
  Vertex_Index p3_index;
  tagged_by(type) Bezier_Union data;
  Line_Params params;
+ Common_Line_Params_Index cparams;
  meta_unserialized i1 linum;
 };
-
+struct Triangle_Data{
+ Vertex_Index verts[3];
+ argb         color;
+ b32 symx;
+ Fill_Params  params;
+ meta_unserialized i1 linum;
+};
+//-
 struct Keyboard_Cursor{
  v3 pos;
  v1 vel;

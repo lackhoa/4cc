@@ -2,7 +2,6 @@
 
 //global Modeler *global_modeler;
 global b32 sending_draw_data = true;
-
 xfunction b32
 is_prim_id_active(Modeler *m, u32 prim_id){
  b32 result = false;
@@ -15,30 +14,29 @@ is_prim_id_active(Modeler *m, u32 prim_id){
  }
  return result;
 }
-
 inline Vertex_Index
-vertex_index_from_pointer(Modeler *m, Vertex_Data *pointer){
+vertex_index_from_pointer(Modeler &m, Vertex_Data *pointer){
  if(pointer){
-  return {i32(pointer - m->vertices.items)};
+  return {i32(pointer - m.vertices.items)};
  }
  return {};
 }
 inline Curve_Index
-curve_index_from_pointer(Modeler *m, Bezier_Data *pointer) {
+curve_index_from_pointer(Modeler &m, Bezier_Data *pointer) {
  if(pointer){
-  return {i32(pointer - m->curves.items)};
+  return {i32(pointer - m.curves.items)};
  }
  return {};
 }
 function Vertex_Data *
-get_vertex_by_name(Modeler *m, String name){
+get_vertex_by_name(Modeler &m, String name){
  Vertex_Data *result = 0;
  //NOTE(kv) We can rely on the fact that vertices are added in "code order" for now.
  //  so the latest always wins.
- for(auto vi=m->vertices.count-1;
+ for(auto vi=m.vertices.count-1;
      vi >= 1;
      vi--){
-  Vertex_Data *vertex = &m->vertices[vi];
+  Vertex_Data *vertex = &m.vertices[vi];
   if(vertex->name == name){
    result = vertex;
    break;
@@ -47,9 +45,9 @@ get_vertex_by_name(Modeler *m, String name){
  return result;
 }
 function Vertex_Data *
-get_vertex_by_linum(Modeler *m, i1 linum){
- for_i32(vert_index, 1, m->vertices.count){
-  Vertex_Data *vertex = &m->vertices[vert_index];
+get_vertex_by_linum(Modeler &m, i1 linum){
+ for_i32(vert_index, 1, m.vertices.count){
+  Vertex_Data *vertex = &m.vertices[vert_index];
   if(vertex->linum == linum){
    return vertex;
   }
@@ -58,27 +56,19 @@ get_vertex_by_linum(Modeler *m, i1 linum){
 }
 xfunction void
 send_vert_func(Painter &p, String name, v3 pos, i1 linum){
- auto m = p.modeler;
+ Modeler &m = *p.modeler;
  if(is_left(p)){
-  Vertex_Data &vertex = m->vertices.push_zero();
-  vertex.name    = name ;
+  Vertex_Data &vertex = m.vertices.push_zero();
+  vertex.name    = name;
   vertex.pos     = pos;
   vertex.bone_id = current_bone(p)->id;
   vertex.linum   = linum;
- }else{// on the right
-  if(p.is_right and p.symx){
-   Vertex_Data *vertex = get_vertex_by_linum(m, linum);
-   vertex->symx = true;
-  }
  }
 }
-
-xfunction Bezier bez_v3v2(v3 p0, v3 d0, v2 d3, v3 p3);
-
 function Bezier_Data *
-get_curve_by_linum(Modeler *m, i1 linum){
- for_i32(i,1,m->curves.count){
-  Bezier_Data *it = &m->curves[i];
+get_curve_by_linum(Modeler &m, i1 linum){
+ for_i32(i,1,m.curves.count){
+  Bezier_Data *it = &m.curves[i];
   if(it->linum == linum){
    return it;
   }
@@ -86,16 +76,28 @@ get_curve_by_linum(Modeler *m, i1 linum){
  return 0;
 }
 function Bezier_Data *
-get_curve_by_name(Modeler *m, String name){
- for(auto ci=m->curves.count-1;
+get_curve_by_name(Modeler &m, String name){
+ for(i1 ci=m.curves.count-1;
      ci >= 1;
      ci--){
-  Bezier_Data *curve = &m->curves[ci];
+  Bezier_Data *curve = &m.curves[ci];
   if(curve->name == name){
    return curve;
   }
  }
  return 0;
+}
+function Triangle_Data &
+get_triangle_by_linum(Modeler &m, i1 linum){
+ for(i1 ti=m.triangles.count-1;
+     ti >= 1;
+     ti--){
+  Triangle_Data &tri = m.triangles[ti];
+  if(tri.linum == linum){
+   return tri;
+  }
+ }
+ return m.triangles[0];
 }
 
 struct Send_Bez_Additional_Data{
@@ -108,10 +110,9 @@ send_bez_func(String name,
               Line_Params params, i1 linum,
               Send_Bez_Additional_Data additional={}){
  Painter &p = painter;
- Modeler *m = p.modeler;
+ Modeler &m = *p.modeler;
  if(is_left(p)){
-  Bezier_Data &curve = m->curves.push2();
-  curve = {};
+  Bezier_Data &curve = m.curves.push_zero();
   Vertex_Data *vert0 = 0;
   if(type!=Bezier_Type_C2){
    vert0 = get_vertex_by_name(m, p0_name);
@@ -120,6 +121,9 @@ send_bez_func(String name,
   Vertex_Data *vert3 = get_vertex_by_name(m, p3_name);
   kv_assert(vert3);
   
+  curve.cparams  = current_line_cparams_index();
+  kv_assert(curve.cparams.v >= 0 and
+            curve.cparams.v <  m.line_cparams.count);
   curve.type     = type;
   curve.name     = name;
   curve.p0_index = vertex_index_from_pointer(m, vert0);
@@ -177,12 +181,32 @@ send_bez_bezd_old(String name, String p0, v3 d0, v2 d3, String p3, Line_Params p
  Bezier_Union data = {.bezd_old={.d0=d0, .d3=d3,}};
  send_bez_func(name, p0, p3, Bezier_Type_Bezd_Old, data, params, linum);
 }
-
+//-
+xfunction void
+dfill3_inner(String vert_names[3], Fill_Params params, i1 linum){
+ Painter &p = painter;
+ Modeler &m = *p.modeler;
+ if(is_left(p)){
+  Triangle_Data &tri = m.triangles.push_zero();
+  Vertex_Data *verts[3];
+  for_i32(i,0,3){
+   Vertex_Data *pointer=  get_vertex_by_name(m,vert_names[i]);
+   kv_assert(pointer);
+   tri.verts[i] = vertex_index_from_pointer(m,pointer);
+  }
+  tri.color  = params.color;
+  tri.params = params;
+  tri.linum  = linum;
+ }else{
+  if(p.symx){
+   Triangle_Data &tri = get_triangle_by_linum(m, linum);
+   tri.symx = true;
+  }
+ }
+}
 //-NOTE: Edit history
-
 function void
-clear_edit_history(Modeler_History *h)
-{
+clear_edit_history(Modeler_History *h) {
  // NOTE(kv): We wanna clear all history when we want to.
  // NOTE(kv): so when we clear, the plan is to just wipe out the memory, and re-initialize everything.
  // NOTE(kv): Later we can make multiple arena pools, and free those.
@@ -191,10 +215,8 @@ clear_edit_history(Modeler_History *h)
   init_dynamic(h->edit_stack, &h->allocator, 128);
  }
 }
-
 function void
-apply_edit_no_history(Modeler *m, Modeler_Edit &edit0, b32 redo)
-{
+apply_edit_no_history(Modeler *m, Modeler_Edit &edit0, b32 redo) {
  switch(edit0.type) {
   case ME_Vert_Move: {
    auto &edit = edit0.Vert_Move;
@@ -204,34 +226,26 @@ apply_edit_no_history(Modeler *m, Modeler_Edit &edit0, b32 redo)
     m->vertices[vi].pos += delta;
    }
   }break;
-  
   case ME_Edit_Group: {
    auto &edit = edit0.Edit_Group;
    for_i1(index,0,edit.count){
     apply_edit_no_history(m, edit[index], redo);
    }
   }break;
-  
   invalid_default_case;
  }
 }
-
 inline i1
-get_undo_index(Modeler_History &h)
-{
+get_undo_index(Modeler_History &h) {
  return h.redo_index-1;
 }
-
 inline b32
-can_undo(Modeler_History &h)
-{
+can_undo(Modeler_History &h) {
  b32 ok = (get_undo_index(h) >= 0);
  return ok;
 }
-//
 function b32
-modeler_undo(Modeler *m)
-{
+modeler_undo(Modeler *m) {
  auto &h = m->history;
  i1 undo_index = h.redo_index - 1;
  b32 ok = (undo_index >= 0);
@@ -311,27 +325,25 @@ modeler_exit_edit(Modeler *m) {
  }
 }
 function void
-modeler_exit_edit_undo(Modeler *m) {
+modeler_exit_edit_undo(Modeler *m){
  if(m->change_uncommitted){
   modeler__reset_edit(m);
   modeler_undo(m);
   m->change_uncommitted = false;
  }
 }
-
 inline b32
 selecting_vertex(Modeler *m){
  return type_from_prim_id(selected_prim_id(m)) == Prim_Vertex;
 }
-
 function void
-clear_modeling_data(Modeler *m){
- m->vertices.set_count(1);
- m->curves.  set_count(1);
- m->bones.   set_count(1);
- clear_edit_history(&m->history);
+clear_modeling_data(Modeler &m){
+ m.vertices. set_count(1);
+ m.curves.   set_count(1);
+ m.triangles.set_count(1);
+ m.bones.    set_count(1);
+ clear_edit_history(&m.history);
 }
-
 function void
 compute_active_prims(Modeler *m)
 {
@@ -362,11 +374,13 @@ select_primitive(Modeler *m, u32 prim){
 }
 inline void
 clear_selection(Modeler *m){
- m->selected_prim_ro = 0;
+ m->selected_prim_ro   = 0;
  m->active_prims.count = 0;
 }
-
 xfunction arrayof<Bone> &get_bones(Modeler &m){ return m.bones; }
-
-
-//~ EOF
+//-
+xfunction arrayof<Common_Line_Params> &
+get_line_cparams_list(Modeler &m){
+ return m.line_cparams;
+}
+//~EOF

@@ -175,21 +175,20 @@ strlit(#pstruct_members))
    };
    {//-Function prototype
     {//-The main function
-     p<<"xfunction void\n"<<"send_bez_"<<variant.name_lower;
+     p<"xfunction void\n"<"send_bez_"<variant.name_lower;
      m_parens{
       p<"String name";
       if(!is_c2){ p<", String p0"; }
       for_i32(im,0,variant.struct_members.count){
-       auto &member = variant.struct_members[im];
+       Meta_Struct_Member &member = variant.struct_members[im];
        p<", ";
-       if(member.type==strlit("Curve_Index")){
-        p<"String ";
+       if(member.type.name==strlit("Curve_Index")){
+        p<"String "<member.name;
        }else{
-        print_struct_member_type(p,member);
+        print_struct_member(p,member);
        }
-       p<member.name;
       }
-      p<", String p3"; 
+      p<", String p3";
       p<", Line_Params params=lp()";
       p<", i32 linum=__builtin_LINE()";
      }
@@ -204,12 +203,11 @@ strlit(#pstruct_members))
        for_i32(im,0,variant.struct_members.count){
         auto &member = variant.struct_members[im];
         p<", ";
-        if(member.type==strlit("Curve_Index")){
-         p<"String ";
+        if(member.type.name==strlit("Curve_Index")){
+         p<"String "<member.name;
         }else{
-         print_struct_member_type(p,member);
+         print_struct_member(p,member);
         }
-        p<member.name;
        }
        p<", String p3"; 
        if(is_v4){
@@ -301,7 +299,6 @@ strlit(#pstruct_members))
   close_file(p);
  }
 }
-
 xfunction i32
 main(i32 argc, char **argv){
  b32 ok = true;

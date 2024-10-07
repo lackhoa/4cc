@@ -263,18 +263,13 @@ ep_i1(Ed_Parser *p){
    token = ep_get_token(p);
   }
  }
- 
- if(p->ok_){
-  if(token->kind != TokenBaseKind_LiteralInteger){
-   p->fail();
-  }
- }
- 
+ p->set_ok(token->kind == TokenBaseKind_LiteralInteger);
  i1 result = 0;
  if(p->ok_){
   String8 string = ep_print_token(p, scratch);
   char *cstring = to_cstring(scratch, string);
   result = i1(sign * gb_str_to_i64(cstring, 0, 0));
+  ep_eat_token(p);
  }
  return result;
 }

@@ -25,8 +25,8 @@ k_process_file(File_Name_Data source){
  }
  Printer      ph      = m_open_file_to_write(hpp_path);
  {
-  ph<<"#pragma once\n";
   ph<<"// NOTE: source: "<<source.name<<"\n";
+  ph<<"#pragma once\n";
  }
  Printer_Pair ps_meta = m_open_files_to_write(meta_base);
  b32 ok = okp(ph) && okp(ps_meta);

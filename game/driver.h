@@ -63,10 +63,12 @@ prim_id_from_curve_index(Curve_Index i){
  u32 type = u32(Prim_Curve) << 24;
  return (u32)(i.v) | type;
 }
-//
-
+inline u32
+prim_id_from_tri_index(Triangle_Index i){
+ u32 type = u32(Prim_Triangle) << 24;
+ return (u32)(i.v) | type;
+}
 //~
-
 global char *global_debug_scope;
 #define vertex_block(NAME) set_in_block(global_debug_scope, NAME)
 
@@ -167,27 +169,10 @@ get_view_from_world(Camera *camera, b32 orthographic) {
 
 //~;game_config
 framework_storage i1  bezier_poly_nslice;
-framework_storage v1  DEFAULT_NSLICE_PER_METER;
 framework_storage b32 debug_frame_time_on;
 //~
-
 framework_storage u32 draw_cycle_counter;
 framework_storage v1  default_fvert_delta_scale;
-
-typedef u32 Poly_Flags;
-enum{
- Poly_Shaded  = 0x1,  //NOTE: Has to be 1, for compatibility with old code.
- Poly_Line    = 0x2,
- Poly_Overlay = 0x4,
-};
-
-struct Fill_Params{
- //NOTE(kv) Might need to make a different set of flags for fill versus polygons.
- // because the polygon routine is shared by both fills and lines.
- b32 non_default;
- Poly_Flags flags;
-};
-
 struct Viewport {
  i1 index;  //NOTE(kv) Redundant data
  i1 preset;
@@ -223,7 +208,6 @@ struct Painter{
  //-misc
  Render_Target *target;
  Viewport *viewport;
- //v2  mousep;  //NOTE(kv) In view space
  v3 cursorp;
  b32 cursor_on;
  u32 selected_obj_id;
@@ -233,10 +217,7 @@ struct Painter{
  v1    meter_to_pixel_;
  v1   profile_score;  //TODO: @Cleanup axe this?
  b32  symx;
- argb fill_color;
  v1 fill_depth_offset;
- v1 line_depth_offset;
- //v1 line_radius_unit;
  v1 line_radius_unit_mult;
  Line_Params line_params;
  Fill_Params fill_params;
@@ -248,6 +229,7 @@ struct Painter{
  Modeler *modeler;
  b32 show_grid;
  argb shade_color;
+ arrayof<Common_Line_Params *> line_cparams_stack;
  
  union{ b32 is_right; b32 lr_index; };
  arrayof<Bone*> bone_stack;
@@ -257,6 +239,11 @@ struct Painter{
 };
 framework_storage Painter painter;  // see @init_painter
 function Line_Params lp(){ return painter.line_params; }
+function Fill_Params fp(argb color=0){
+ Fill_Params result = painter.fill_params;
+ if(color){result.color = color;}
+ return result;
+}
 inline Line_Params
 lp(v4 radii){
  Line_Params result=painter.line_params;
@@ -309,6 +296,8 @@ struct Pose{
 //-
 xfunction void
 send_vert_func(Painter &p, String name, v3 pos, i32 linum=__builtin_LINE());
+xfunction void
+dfill3_inner(String vert_names[3], Fill_Params params, i1 linum);
 //NOTE(kv) You can only send one vert on one line
 #define send_vert(NAME)  send_vert_func(painter, strlit(#NAME), NAME)
 
@@ -364,7 +353,6 @@ push_view_vector(&painter, center); \
 defer(pop_view_vector(&painter));
 
 xfunction arrayof<Bone> &get_bones(Modeler &m);
-
 function Bone &
 get_bone(Modeler &m, Bone_ID id, b32 is_right){
  auto &bones = get_bones(m);
@@ -378,13 +366,13 @@ get_bone(Modeler &m, Bone_ID id, b32 is_right){
  return bones[0];
 }
 inline Bone &
-get_bone(Modeler &m, Bone_Type type, b32 is_right) {
+get_bone(Modeler &m, Bone_Type type, b32 is_right){
  return get_bone(m, make_bone_id(type), is_right);
 }
 function void
 push_bone_inner(Modeler &m, arrayof<Bone *> &stack,
                 b32 is_right,
-                Bone_ID id, mat4i const&mom_from_kid) {
+                Bone_ID id, mat4i const&mom_from_kid){
  mat4i &mom = stack.last()->xform;
  Bone *bone = &get_bone(m, id, is_right);
  if(bone->id.type == 0){
@@ -420,5 +408,56 @@ pop_bone(Painter *p){
 }
 #define bone_block(id) push_bone(&painter, id); defer(pop_bone(&painter););
 //-
+xfunction arrayof<Common_Line_Params> &
+get_line_cparams_list(Modeler &m);
 
+function Common_Line_Params&
+get_line_cparams(Modeler &m, i1 linum){
+ auto &list = get_line_cparams_list(m);
+ for_i32(i,0,list.count){
+  auto &cparams = list[i];
+  if(cparams.linum == linum){ return cparams; }
+ }
+ return list[0];
+}
+function void
+use_line_cparams(Common_Line_Params &cparams){
+ Line_Params &params = painter.line_params;
+ params.flags = cparams.flags;
+ params.radii = cparams.radii;
+}
+inline Common_Line_Params_Index
+current_line_cparams_index();
+
+function void
+push_line_cparams(Common_Line_Params &value, i1 linum=__builtin_LINE()){
+ Modeler &m = *painter.modeler;
+ auto &list = get_line_cparams_list(m);
+ Common_Line_Params *address = &get_line_cparams(m, linum);
+ if(address == &list[0]){// not found
+  address = &list.push(value);
+  address->linum = linum;
+ }
+ painter.line_cparams_stack.push(address);
+ use_line_cparams(value);
+}
+function void
+pop_line_cparams(){
+ auto &p = painter;
+ Modeler &m = *p.modeler;
+ p.line_cparams_stack.pop();
+ use_line_cparams(*p.line_cparams_stack.last());
+}
+inline Common_Line_Params&
+current_line_cparams(){
+ return *painter.line_cparams_stack.last();
+}
+inline Common_Line_Params_Index
+current_line_cparams_index(){
+ //NOTE(kv) This "index" business is so ridiculous,... but we gotta pull through
+ Common_Line_Params_Index result;
+ Common_Line_Params *base = &get_line_cparams_list(*painter.modeler)[0];
+ result.v = &current_line_cparams() - base;
+ return result;
+}
 //~
