@@ -1,6 +1,8 @@
 //-
 function void
 generate_bezier_types(Printer &p, Printer_Pair &ps_meta);
+function void
+generate_fill_types(Printer &p0, Printer_Pair &ps_meta);
 
 function b32
 k_process_file(File_Name_Data source){
@@ -154,8 +156,12 @@ k_process_file(File_Name_Data source){
     }
    }else if(ep_maybe_id(p, "unique")){
     //-NOTE one-off/miscellaneous stuff
-    if(ep_maybe_id(p, "Bezier_Type")){
+    if(ep_maybe_id(p, "Curve_Type")){
      generate_bezier_types(ph, ps_meta);
+    }else if(ep_maybe_id(p, "Fill_Type")){
+     generate_fill_types(ph, ps_meta);
+    }else{
+     p->fail();
     }
    }else{
     ep_eat_token(p);

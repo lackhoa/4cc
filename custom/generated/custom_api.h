@@ -176,6 +176,7 @@
 #define custom_animate_in_n_milliseconds_sig() void custom_animate_in_n_milliseconds(App* app, u32 n)
 #define custom_buffer_find_all_matches_sig() String_Match_List custom_buffer_find_all_matches(App* app, Arena* arena, Buffer_ID buffer, i32 string_id, Range_i64 range, String needle, Character_Predicate* predicate, Scan_Direction direction, b32 case_sensitive)
 #define custom_get_core_profile_list_sig() Profile_Global_List* custom_get_core_profile_list(App* app)
+#define custom_get_current_line_number2_sig() i64 custom_get_current_line_number2(App* app, View_ID view, Buffer_ID buffer)
 #define custom_get_current_line_number_sig() i64 custom_get_current_line_number(App* app)
 #define custom_draw_rect_outline_sig() void custom_draw_rect_outline(App* app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth)
 typedef b32 custom_global_set_setting_type(App* app, Global_Setting_ID setting, i64 value);
@@ -354,6 +355,7 @@ typedef void custom_open_color_picker_type(App* app, Color_Picker* picker);
 typedef void custom_animate_in_n_milliseconds_type(App* app, u32 n);
 typedef String_Match_List custom_buffer_find_all_matches_type(App* app, Arena* arena, Buffer_ID buffer, i32 string_id, Range_i64 range, String needle, Character_Predicate* predicate, Scan_Direction direction, b32 case_sensitive);
 typedef Profile_Global_List* custom_get_core_profile_list_type(App* app);
+typedef i64 custom_get_current_line_number2_type(App* app, View_ID view, Buffer_ID buffer);
 typedef i64 custom_get_current_line_number_type(App* app);
 typedef void custom_draw_rect_outline_type(App* app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth);
 struct API_VTable_custom{
@@ -533,6 +535,7 @@ custom_open_color_picker_type *open_color_picker;
 custom_animate_in_n_milliseconds_type *animate_in_n_milliseconds;
 custom_buffer_find_all_matches_type *buffer_find_all_matches;
 custom_get_core_profile_list_type *get_core_profile_list;
+custom_get_current_line_number2_type *get_current_line_number2;
 custom_get_current_line_number_type *get_current_line_number;
 custom_draw_rect_outline_type *draw_rect_outline;
 };
@@ -713,6 +716,7 @@ internal void open_color_picker(App* app, Color_Picker* picker);
 internal void animate_in_n_milliseconds(App* app, u32 n);
 internal String_Match_List buffer_find_all_matches(App* app, Arena* arena, Buffer_ID buffer, i32 string_id, Range_i64 range, String needle, Character_Predicate* predicate, Scan_Direction direction, b32 case_sensitive);
 internal Profile_Global_List* get_core_profile_list(App* app);
+internal i64 get_current_line_number2(App* app, View_ID view, Buffer_ID buffer);
 internal i64 get_current_line_number(App* app);
 internal void draw_rect_outline(App* app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth);
 #undef STATIC_LINK_API
@@ -896,6 +900,7 @@ STORAGE_CLASS custom_open_color_picker_type *open_color_picker;
 STORAGE_CLASS custom_animate_in_n_milliseconds_type *animate_in_n_milliseconds;
 STORAGE_CLASS custom_buffer_find_all_matches_type *buffer_find_all_matches;
 STORAGE_CLASS custom_get_core_profile_list_type *get_core_profile_list;
+STORAGE_CLASS custom_get_current_line_number2_type *get_current_line_number2;
 STORAGE_CLASS custom_get_current_line_number_type *get_current_line_number;
 STORAGE_CLASS custom_draw_rect_outline_type *draw_rect_outline;
 #undef DYNAMIC_LINK_API

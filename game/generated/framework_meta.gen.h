@@ -10,12 +10,12 @@ function void
 read_Vertex_Data(Data_Reader &r, Vertex_Data &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:400:
 function Type_Info
-get_type_info_Bezier_Type();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Type;
+get_type_info_Curve_Type();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Type;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:430:
 function void
-read_Bezier_Type(Data_Reader &r, Bezier_Type &pointer);
-static_assert( sizeof(Bezier_Type) <= sizeof(i32) );
+read_Curve_Type(Data_Reader &r, Curve_Type &pointer);
+static_assert( sizeof(Curve_Type) <= sizeof(i32) );
 
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
 struct Bezier_v3v2;
@@ -82,30 +82,64 @@ global_decl Type_Info Type_Info_Bezier_Bezd_Old;
 function void
 read_Bezier_Bezd_Old(Data_Reader &r, Bezier_Bezd_Old &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:313:
-union Bezier_Union;
+union Curve_Union;
 function Type_Info
-get_type_info_Bezier_Union();
+get_type_info_Curve_Union();
 //  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Union;
+global_decl Type_Info Type_Info_Curve_Union;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:350:
 function void
-read_Bezier_Union(Data_Reader &r, Bezier_Union &pointer, Bezier_Type variant);
+read_Curve_Union(Data_Reader &r, Curve_Union &pointer, Curve_Type variant);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_Data;
+struct Curve_Data;
 function Type_Info
-get_type_info_Bezier_Data();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Data;
+get_type_info_Curve_Data();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Data;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_Data(Data_Reader &r, Bezier_Data &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Triangle_Data;
+read_Curve_Data(Data_Reader &r, Curve_Data &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:400:
 function Type_Info
-get_type_info_Triangle_Data();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Triangle_Data;
+get_type_info_Fill_Type();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Fill_Type;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:430:
+function void
+read_Fill_Type(Data_Reader &r, Fill_Type &pointer);
+static_assert( sizeof(Fill_Type) <= sizeof(i32) );
+
+//  C:\Users\vodan\4ed\code/meta_print.cpp:171:
+struct Fill_Fill3;
+function Type_Info
+get_type_info_Fill_Fill3();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Fill_Fill3;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Triangle_Data(Data_Reader &r, Triangle_Data &pointer);
+read_Fill_Fill3(Data_Reader &r, Fill_Fill3 &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:171:
+struct Fill_Bez;
+function Type_Info
+get_type_info_Fill_Bez();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Fill_Bez;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:224:
+function void
+read_Fill_Bez(Data_Reader &r, Fill_Bez &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:313:
+union Fill_Union;
+function Type_Info
+get_type_info_Fill_Union();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Fill_Union;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:350:
+function void
+read_Fill_Union(Data_Reader &r, Fill_Union &pointer, Fill_Type variant);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:171:
+struct Fill_Data;
+function Type_Info
+get_type_info_Fill_Data();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Fill_Data;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:224:
+function void
+read_Fill_Data(Data_Reader &r, Fill_Data &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
 struct Keyboard_Cursor;
 function Type_Info

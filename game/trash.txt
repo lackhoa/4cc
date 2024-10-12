@@ -966,7 +966,7 @@ fill_parallel(Painter *p, v3 a[], i1 acount, v3 b[], i1 bcount, argb color=0)
  push_object_transform(&torsoT);//TODO: we're just hacking it!
  for_i32(curve_index, 1, state->curve_count)
  {
-  Bezier_Data *curve = &state->curves[curve_index];
+  Curve_Data *curve = &state->curves[curve_index];
   g_draw_prim_id = prim_id_from_curve_index(curve_index);
   drawf(curve->bezier, curve->radii);
  }

@@ -22,7 +22,7 @@ hotload_game = "game.cpp" in args.file  # @build_filename_hack
 
 # NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-ed_build_level    = 1
+ed_build_level    = 0
 game_build_level  = 0
 meta_build_level  = 0
 imgui_build_level = 2
@@ -241,14 +241,15 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
     # NOTE: if asan is on then you have to use msvc
     if asan_on:
         compiler = Compiler.MSVC
+    if not debug_mode:
+        compiler = Compiler.MSVC
+        no_ccache = True
 
     is_clang = compiler == Compiler.ClangCl
     is_msvc  = compiler == Compiler.MSVC
-
     assert(is_clang or is_msvc)
-
-    if asan_on and not debug_mode:
-        assert(False and "asan has to be in debug mode")
+    if asan_on:
+        debug_mode = True
 
     compiler_exe = "clang-cl" if is_clang else "cl"
 

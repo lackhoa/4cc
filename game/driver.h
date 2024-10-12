@@ -64,7 +64,7 @@ prim_id_from_curve_index(Curve_Index i){
  return (u32)(i.v) | type;
 }
 inline u32
-prim_id_from_tri_index(Triangle_Index i){
+prim_id_from_triangle_index(Fill_Index i){
  u32 type = u32(Prim_Triangle) << 24;
  return (u32)(i.v) | type;
 }
@@ -296,8 +296,6 @@ struct Pose{
 //-
 xfunction void
 send_vert_func(Painter &p, String name, v3 pos, i32 linum=__builtin_LINE());
-xfunction void
-dfill3_inner(String vert_names[3], Fill_Params params, i1 linum);
 //NOTE(kv) You can only send one vert on one line
 #define send_vert(NAME)  send_vert_func(painter, strlit(#NAME), NAME)
 

@@ -34,20 +34,17 @@ quad_bernstein(i32 index, v1 t){
               squared(t));
  return result;
 }
-
 force_inline Bezier
-negateX(Bezier line) {
+negateX(Bezier line){
  for_i32(i,0,4) { line[i].x = -line[i].x; }
  return line;
 }
-
 function Bez
-operator*(mat4 transform, Bez bezier) {
+operator*(mat4 transform, Bez bezier){
  Bez result;
  for_i32(index,0,4) { result[index] = transform*bezier[index]; }
  return result;
 }
-
 framework_storage u32 hot_prim_id;
 inline u32 get_hot_prim_id(){ return hot_prim_id; }
 
@@ -66,7 +63,6 @@ get_column(Patch const&surface, i32 col){
  }
  return result;
 }
-
 xfunction void
 poly3_inner(v3 points[3], argb color,
             v1 depth_offset, Poly_Flags flags)
@@ -150,13 +146,18 @@ fill3(v3 a, v3 b, v3 c, Fill_Params params=fp(), linum_defparam){
  v3 points[3] = {a,b,c};
  fill3_inner2(points,params,linum);
 }
+xfunction void
+dfill3_func(String vert_names[3], Fill_Params params=fp(), linum_defparam);
 inline void
 dfill3_func(String a, String b, String c, Fill_Params params=fp(), linum_defparam){
  String points[3] = {a,b,c};
- dfill3_inner(points,params,linum);
+ dfill3_func(points,params,linum);
 }
 #define dfill3(a,b,c,...) \
 dfill3_func(strlit(#a), strlit(#b), strlit(#c), __VA_ARGS__)
+xfunction void
+dfill_bez_func(String curve_name, Fill_Params params=fp(), linum_defparam);
+#define dfill_bez(b,...)  dfill_bez_func(strlit(#b),__VA_ARGS__)
 inline void
 fill3(v3 points[3], Fill_Params params=fp(), linum_defparam){
  fill3_inner2(points,params,linum);
@@ -341,10 +342,13 @@ draw_bezier_inner(v3 P[4], Common_Line_Params &cparams, Line_Params &params)
 {
  if(params.visibility > 0.f){
   v1 depth_offset = cparams.depth_offset;
-  i32 nslices;
   v4 radii = params.radii;
+  if(radii == v4{}){ radii = cparams.radii; }
   radii *= cparams.radius_mult * default_line_radius_unit;
-  if (params.flags & Line_Straight) {
+  //NOTE(kv) we view zero as default, so whoever turns gets to stick it
+  Line_Flags flags = params.flags | cparams.flags;
+  i32 nslices;
+  if(flags & Line_Straight){
    radii = V4(radii[1]);  //note: don't wanna take radius from the tip
    nslices = 1;
   } else {
@@ -389,7 +393,7 @@ draw_bezier_inner(v3 P[4], Common_Line_Params &cparams, Line_Params &params)
   }
   
   Poly_Flags poly_flags = Poly_Line;
-  if (params.flags & Line_Overlay) { poly_flags |= Poly_Overlay; }
+  if (flags & Line_Overlay) { poly_flags |= Poly_Overlay; }
   
   v1 radius_threshold = 0.1065f*millimeter;
   macro_clamp_min(radius_threshold, 0.f);
@@ -467,9 +471,6 @@ draw_cparams(const v3 P0[4], Common_Line_Params &cparams, Line_Params params, li
   v3 points[npoints];
   copy_array_dst(points,P0);
   // NOTE: Processing parameters
-  if(p.ignore_radii or params.radii == v4{}){
-   params.radii = p.line_params.radii;
-  }
   draw_bezier_inner(points, cparams, params);
  }
  return ok;
@@ -511,13 +512,13 @@ draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  draw(bez_line(a,b), params, linum);
 }
 inline void
-push_hl(argb color=0){
+push_hl(argb color=0, i1 linum=__builtin_LINE()){
  if(color == 0){color = srgb_to_linear(0XFFDBA50F);}
  auto cparams = current_line_cparams();
  cparams.flags |= Line_Overlay|Line_No_SymX;
  cparams.color = color;
  cparams.radii = i2f6(I4(3,3,3,3));
- push_line_cparams(cparams);
+ push_line_cparams(cparams, linum);
 }
 inline void pop_hl(){ pop_line_cparams(); }
 force_inline void

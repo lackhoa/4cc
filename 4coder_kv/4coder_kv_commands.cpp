@@ -996,22 +996,22 @@ CUSTOM_DOC("configure your editor!")
 // todo: We don't wanna bind to a buffer, maybe?
 function void kv_system_command(App *app, String8 cmd)
 {
-    GET_VIEW_AND_BUFFER;
-    Scratch_Block temp(app);
-    String8 dir = push_buffer_dirname(app, temp, buffer);
-    exec_system_command(app, global_bottom_view, standard_build_compilation_buffer_identifier,
-                        dir, cmd, standard_build_exec_flags);
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block temp(app);
+ String8 dir = push_buffer_dirname(app, temp, buffer);
+ exec_system_command(app, global_bottom_view, standard_build_compilation_buffer_identifier,
+                     dir, cmd, standard_build_exec_flags);
 }
 
 VIM_COMMAND_SIG(remedy_add_breakpoint)
 {
-    GET_VIEW_AND_BUFFER;
-    Scratch_Block temp(app);
-    String8 filename = push_buffer_filename(app, temp, buffer);
-    i64 linum = get_current_line_number(app);
-    String8 cmd = push_stringfz(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
-                               string_expand(filename), linum);
-    kv_system_command(app, cmd);
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block temp(app);
+ String8 filename = push_buffer_filename(app, temp, buffer);
+ i64 linum = get_current_line_number(app);
+ String8 cmd = push_stringfz(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
+                             string_expand(filename), linum);
+ kv_system_command(app, cmd);
 }
 
 VIM_COMMAND_SIG(remedy_start_debugging)

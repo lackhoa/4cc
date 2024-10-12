@@ -89,16 +89,26 @@ push_bezier_variant(arrayof<Union_Variant> &variants, Union_Variant v,
  Scratch_Block scratch;
  Ed_Parser parser = m_parser_from_string(scratch, struct_members);
  v.struct_members = parse_struct_body(arena, &parser);
- v.enum_name      = strcat(arena, "Bezier_Type_", v.name);
+ v.enum_name      = strcat(arena, "Curve_Type_", v.name);
  v.struct_name    = strcat(arena, "Bezier_",      v.name);
+ variants.push(v);
+}
+inline void
+push_fill_variant(arrayof<Union_Variant> &variants, Union_Variant v,
+                  String struct_members){
+ Arena *arena = &meta_permanent_arena;
+ Scratch_Block scratch;
+ Ed_Parser parser = m_parser_from_string(scratch, struct_members);
+ v.struct_members = parse_struct_body(arena, &parser);
+ v.enum_name      = strcat(arena, "Fill_Type_", v.name);
+ v.struct_name    = strcat(arena, "Fill_",      v.name);
  variants.push(v);
 }
 function void
 generate_bezier_types(Printer &p0, Printer_Pair &ps_meta){
  Scratch_Block scratch;
- //-NOTE Bezier types
  arrayof<Union_Variant> variants = {};
- //-NOTE @data of the bezier variants
+ //-NOTE @data of the variants
 #define X(penum_val, pname, pname_lower, pstruct_members) \
 push_bezier_variant(variants, \
 Union_Variant{ \
@@ -117,7 +127,7 @@ strlit(#pstruct_members))
  X(7, Bezd_Old, bezd_old, { v3 d0; v2 d3; });
 #undef X
  
- String enum_type = strlit("Bezier_Type");
+ String enum_type = strlit("Curve_Type");
  {//-NOTE ("Enum")
   //TODO(kv) array copy mega-annoyance!
   auto enum_names = static_array<String>(scratch, variants.count);
@@ -140,7 +150,7 @@ strlit(#pstruct_members))
   }
  }
  {//-NOTE ("Union of all the Bezier type")
-  String type_name = strlit("Bezier_Union");
+  String type_name = strlit("Curve_Union");
   {
    auto &p = p0;
    m_location;
@@ -297,6 +307,67 @@ strlit(#pstruct_members))
    p<"\n";
   }
   close_file(p);
+ }
+}
+function void
+generate_fill_types(Printer &p0, Printer_Pair &ps_meta){
+ //TODO(kv) important copy pasta!
+ Scratch_Block scratch;
+ arrayof<Union_Variant> variants = {};
+ //-NOTE @data of the variants
+#define X(penum_val, pname, pname_lower, pstruct_members) \
+push_fill_variant(variants, \
+Union_Variant{ \
+.enum_value=penum_val, \
+.name=strlit(#pname), \
+.name_lower=strlit(#pname_lower) }, \
+strlit(#pstruct_members))
+ 
+ X(1, Fill3,    fill3,    { Vertex_Index verts[3]; });
+ X(2, Bez,      bez,      { Curve_Index bez; });
+#undef X
+ 
+ String enum_type = strlit("Fill_Type");
+ {//-NOTE ("Enum")
+  //TODO(kv) array copy mega-annoyance!
+  auto enum_names = static_array<String>(scratch, variants.count);
+  enum_names.set_count(variants.count);
+  for_i32(i,0,variants.count){ enum_names[i] = variants[i].enum_name; }
+  
+  auto enum_values = static_array<i32>(scratch, variants.count);
+  enum_values.set_count(variants.count);
+  for_i32(i,0,variants.count){ enum_values[i] = variants[i].enum_value; }
+  
+  print_enum(p0, enum_type, enum_names, enum_values);
+  print_enum_meta(ps_meta, enum_type, enum_names);
+ }
+ {//-NOTE Data structure associated with each variant
+  for_i32(i,0,variants.count){
+   auto *variant = &variants.get(i);
+   m_locationp(p0);
+   print_struct(p0, variant->struct_name, variant->struct_members);
+   print_struct_meta(ps_meta, variant->struct_name, variant->struct_members);
+  }
+ }
+ {//-NOTE ("Union of all the Bezier type")
+  String type_name = strlit("Fill_Union");
+  {
+   auto &p = p0;
+   m_location;
+   {//NOTE Code
+    p<<"union "<<type_name;
+    m_braces_sm{
+     for_i32(i,0,variants.count){
+      if(i!=0){ p<<"\n"; }
+      auto &variant = variants.get(i);
+      p<<variant.struct_name<<" "<<variant.name_lower<<";";
+     }
+    }
+   }
+  }
+  {//NOTE Meta
+   print_union_meta(ps_meta, type_name, &variants, enum_type);
+  }
  }
 }
 xfunction i32

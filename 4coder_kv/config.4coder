@@ -58,7 +58,7 @@ default_theme_name = "theme-kv";
 
 // Font
 default_font_name    = "liberation-mono.ttf";
-default_font_size    = 20;
+default_font_size    = 16;
 default_font_hinting = false;
 
 // aa modes:

@@ -1707,9 +1707,6 @@ enum{
 #  define StaticAssert(c)
 #endif
 
-#define and &&
-#define or  ||
-#define not !
 #define implies(a,b)  !a || b
 #define AssertImplies(a,b) Assert(!(a) || (b))
 #define InvalidPath AssertMessage("invalid path")

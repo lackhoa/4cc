@@ -5,7 +5,7 @@ global u32 game_save_version;
 
 enum Data_Version{
  Version_Init                 = 7,
- Version_Add_Bezier_Type      = 8,
+ Version_Add_Curve_Type      = 8,
  Version_Rename_Object_Index  = 9,
  Version_Rename_Object_Index2 = 10,
  Version_Bezier_Revamp        = 11,

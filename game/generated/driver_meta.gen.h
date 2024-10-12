@@ -29,13 +29,13 @@ global_decl Type_Info Type_Info_Curve_Index;
 function void
 read_Curve_Index(Data_Reader &r, Curve_Index &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Triangle_Index;
+struct Fill_Index;
 function Type_Info
-get_type_info_Triangle_Index();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Triangle_Index;
+get_type_info_Fill_Index();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Fill_Index;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Triangle_Index(Data_Reader &r, Triangle_Index &pointer);
+read_Fill_Index(Data_Reader &r, Fill_Index &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:400:
 function Type_Info
 get_type_info_Bone_Type();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:

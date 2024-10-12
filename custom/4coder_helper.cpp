@@ -9,8 +9,8 @@
 // TOP
 
 #define GET_VIEW_AND_BUFFER \
-  View_ID   view = get_active_view(app, Access_ReadVisible); \
-  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible)
+View_ID   view = get_active_view(app, Access_ReadVisible); \
+Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible)
 
 #define HISTORY_GROUP_SCOPE \
   History_Group history_group = history_group_begin(app, buffer); \

@@ -105,26 +105,26 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Triangle_Index()
+get_type_info_Fill_Index()
 {
 Type_Info result = {};
-result.name = strlit("Triangle_Index");
-result.size = sizeof(Triangle_Index);
+result.name = strlit("Fill_Index");
+result.size = sizeof(Fill_Index);
 result.kind = Type_Kind_Struct;
 result.members.set_count(1);
-result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Triangle_Index, v)};
+result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Fill_Index, v)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Triangle_Index = get_type_info_Triangle_Index();
+global Type_Info Type_Info_Fill_Index = get_type_info_Fill_Index();
 
-function Type_Info &type_info_from_pointer(Triangle_Index*pointer)
+function Type_Info &type_info_from_pointer(Fill_Index*pointer)
 {
-return Type_Info_Triangle_Index;
+return Type_Info_Fill_Index;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Triangle_Index(Data_Reader &r, Triangle_Index &pointer)
+read_Fill_Index(Data_Reader &r, Fill_Index &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');

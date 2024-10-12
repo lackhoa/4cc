@@ -79,23 +79,22 @@ vim_to_pattern_inner(App *app, b32 backward)
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
  i64 buffer_size = buffer_get_size(app, buffer);
  i64 new_pos = vim_pattern_inner_v(app, seek_flags);
- if(new_pos > 0 && new_pos != buffer_size)
- {
+ if(new_pos > 0 && new_pos != buffer_size) {
   vim_push_jump(app, view);
-  Vim_Motion_Block vim_motion_block(app);
-  view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
- }
- //vim_scroll_screen_mid(app);  // kv: If we don't scroll, the cursor will be lost
+        Vim_Motion_Block vim_motion_block(app);
+        view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
+    }
+    //vim_scroll_screen_mid(app);  // kv: If we don't scroll, the cursor will be lost
 }
 
 function void
-vim_start_search_inner(App *app, Scan_Direction start_direction)
-{
- vim_state.identifier_search_mode = false;
+vim_start_search_inner(App *app, Scan_Direction start_direction) {
+    vim_state.identifier_search_mode = false;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	if(!buffer_exists(app, buffer)){ return; }
- 
+    
+    vim_push_jump(app, view);
 	i64 buffer_size = buffer_get_size(app, buffer);
  
 	Vec2_f32 old_margin = {};

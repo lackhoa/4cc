@@ -1045,8 +1045,8 @@ render_pelvis(Pose &pose){
               V2(-0.0136f, 0.1226f), girdle_front);
   {
    dfill3(bikini_front_mid, crotch, girdle_front);
-   fill3(girdle_front, crotch, bikini_up_back);
-   fill_bez(girdle_side_line);
+   dfill3(girdle_front, crotch, bikini_up_back);
+   dfill_bez(girdle_side_line);
   }
  }
  
@@ -1789,7 +1789,7 @@ render_head(Pose *pose, v1 animation_time)
    
    {//NOTE: Grid lines for the face
     hl_block_color(argb_blue);
-    radius_scale_block((0.33f));
+    radius_scale_block(0.33f);
     
     v1 face_minY = -2.f*loomis_unit;
     v1 unit = 0.25f * loomis_unit;

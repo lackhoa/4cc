@@ -27,6 +27,7 @@
 #define ed_switch_to_mouse_panel_sig() void ed_switch_to_mouse_panel(App* app)
 #define ed_mouse_viewport_id_sig() i1 ed_mouse_viewport_id(App* app)
 #define ed_get_confirmation_from_user_sig() b32 ed_get_confirmation_from_user(App* app, String query)
+#define ed_get_current_line_number2_sig() i64 ed_get_current_line_number2(App* app, View_ID view, Buffer_ID buffer)
 #define ed_get_current_line_number_sig() i64 ed_get_current_line_number(App* app)
 #define ed_system_get_path_sig() String ed_system_get_path(Arena* arena, System_Path_Code path_code)
 #define ed_system_get_file_list_sig() File_List ed_system_get_file_list(Arena* arena, String directory)
@@ -65,6 +66,7 @@ typedef void ed_push_image_type(Render_Target* target, char* filename, v3 o, v3 
 typedef void ed_switch_to_mouse_panel_type(App* app);
 typedef i1 ed_mouse_viewport_id_type(App* app);
 typedef b32 ed_get_confirmation_from_user_type(App* app, String query);
+typedef i64 ed_get_current_line_number2_type(App* app, View_ID view, Buffer_ID buffer);
 typedef i64 ed_get_current_line_number_type(App* app);
 typedef String ed_system_get_path_type(Arena* arena, System_Path_Code path_code);
 typedef File_List ed_system_get_file_list_type(Arena* arena, String directory);
@@ -104,6 +106,7 @@ ed_push_image_type *push_image;
 ed_switch_to_mouse_panel_type *switch_to_mouse_panel;
 ed_mouse_viewport_id_type *mouse_viewport_id;
 ed_get_confirmation_from_user_type *get_confirmation_from_user;
+ed_get_current_line_number2_type *get_current_line_number2;
 ed_get_current_line_number_type *get_current_line_number;
 ed_system_get_path_type *system_get_path;
 ed_system_get_file_list_type *system_get_file_list;
@@ -144,6 +147,7 @@ internal void push_image(Render_Target* target, char* filename, v3 o, v3 x, v3 y
 internal void switch_to_mouse_panel(App* app);
 internal i1 mouse_viewport_id(App* app);
 internal b32 get_confirmation_from_user(App* app, String query);
+internal i64 get_current_line_number2(App* app, View_ID view, Buffer_ID buffer);
 internal i64 get_current_line_number(App* app);
 internal String system_get_path(Arena* arena, System_Path_Code path_code);
 internal File_List system_get_file_list(Arena* arena, String directory);
@@ -187,6 +191,7 @@ STORAGE_CLASS ed_push_image_type *push_image;
 STORAGE_CLASS ed_switch_to_mouse_panel_type *switch_to_mouse_panel;
 STORAGE_CLASS ed_mouse_viewport_id_type *mouse_viewport_id;
 STORAGE_CLASS ed_get_confirmation_from_user_type *get_confirmation_from_user;
+STORAGE_CLASS ed_get_current_line_number2_type *get_current_line_number2;
 STORAGE_CLASS ed_get_current_line_number_type *get_current_line_number;
 STORAGE_CLASS ed_system_get_path_type *system_get_path;
 STORAGE_CLASS ed_system_get_file_list_type *system_get_file_list;

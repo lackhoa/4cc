@@ -55,37 +55,37 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:405:
 function Type_Info
-get_type_info_Bezier_Type()
+get_type_info_Curve_Type()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Type");
-result.size = sizeof(Bezier_Type);
+result.name = strlit("Curve_Type");
+result.size = sizeof(Curve_Type);
 result.kind = Type_Kind_Enum;
 result.enum_members.set_count(8);
-result.enum_members[0] = {.name=strlit("Bezier_Type_v3v2"), .value=Bezier_Type_v3v2};
-result.enum_members[1] = {.name=strlit("Bezier_Type_Parabola"), .value=Bezier_Type_Parabola};
-result.enum_members[2] = {.name=strlit("Bezier_Type_Offsets"), .value=Bezier_Type_Offsets};
-result.enum_members[3] = {.name=strlit("Bezier_Type_Unit"), .value=Bezier_Type_Unit};
-result.enum_members[4] = {.name=strlit("Bezier_Type_Unit2"), .value=Bezier_Type_Unit2};
-result.enum_members[5] = {.name=strlit("Bezier_Type_C2"), .value=Bezier_Type_C2};
-result.enum_members[6] = {.name=strlit("Bezier_Type_Line"), .value=Bezier_Type_Line};
-result.enum_members[7] = {.name=strlit("Bezier_Type_Bezd_Old"), .value=Bezier_Type_Bezd_Old};
+result.enum_members[0] = {.name=strlit("Curve_Type_v3v2"), .value=Curve_Type_v3v2};
+result.enum_members[1] = {.name=strlit("Curve_Type_Parabola"), .value=Curve_Type_Parabola};
+result.enum_members[2] = {.name=strlit("Curve_Type_Offsets"), .value=Curve_Type_Offsets};
+result.enum_members[3] = {.name=strlit("Curve_Type_Unit"), .value=Curve_Type_Unit};
+result.enum_members[4] = {.name=strlit("Curve_Type_Unit2"), .value=Curve_Type_Unit2};
+result.enum_members[5] = {.name=strlit("Curve_Type_C2"), .value=Curve_Type_C2};
+result.enum_members[6] = {.name=strlit("Curve_Type_Line"), .value=Curve_Type_Line};
+result.enum_members[7] = {.name=strlit("Curve_Type_Bezd_Old"), .value=Curve_Type_Bezd_Old};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Type = get_type_info_Bezier_Type();
+global Type_Info Type_Info_Curve_Type = get_type_info_Curve_Type();
 
-function Type_Info &type_info_from_pointer(Bezier_Type*pointer)
+function Type_Info &type_info_from_pointer(Curve_Type*pointer)
 {
-return Type_Info_Bezier_Type;
+return Type_Info_Curve_Type;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:436:
 function void
-read_Bezier_Type(Data_Reader &r, Bezier_Type &pointer)
+read_Curve_Type(Data_Reader &r, Curve_Type &pointer)
 {
 STB_Parser *p = r.parser;
 i32 integer = eat_i1(p);
-pointer = *(Bezier_Type*)(&integer);
+pointer = *(Curve_Type*)(&integer);
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
@@ -423,74 +423,74 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:320:
 function Type_Info
-get_type_info_Bezier_Union()
+get_type_info_Curve_Union()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Union");
-result.size = sizeof(Bezier_Union);
+result.name = strlit("Curve_Union");
+result.size = sizeof(Curve_Union);
 result.kind = Type_Kind_Union;
-result.discriminator_type = &Type_Info_Bezier_Type;
+result.discriminator_type = &Type_Info_Curve_Type;
 result.union_members.set_count(8);
-result.union_members[0] = {.type=&Type_Info_Bezier_v3v2, .name=strlit("v3v2"), .variant=Bezier_Type_v3v2};
-result.union_members[1] = {.type=&Type_Info_Bezier_Parabola, .name=strlit("Parabola"), .variant=Bezier_Type_Parabola};
-result.union_members[2] = {.type=&Type_Info_Bezier_Offsets, .name=strlit("Offsets"), .variant=Bezier_Type_Offsets};
-result.union_members[3] = {.type=&Type_Info_Bezier_Unit, .name=strlit("Unit"), .variant=Bezier_Type_Unit};
-result.union_members[4] = {.type=&Type_Info_Bezier_Unit2, .name=strlit("Unit2"), .variant=Bezier_Type_Unit2};
-result.union_members[5] = {.type=&Type_Info_Bezier_C2, .name=strlit("C2"), .variant=Bezier_Type_C2};
-result.union_members[6] = {.type=&Type_Info_Bezier_Line, .name=strlit("Line"), .variant=Bezier_Type_Line};
-result.union_members[7] = {.type=&Type_Info_Bezier_Bezd_Old, .name=strlit("Bezd_Old"), .variant=Bezier_Type_Bezd_Old};
+result.union_members[0] = {.type=&Type_Info_Bezier_v3v2, .name=strlit("v3v2"), .variant=Curve_Type_v3v2};
+result.union_members[1] = {.type=&Type_Info_Bezier_Parabola, .name=strlit("Parabola"), .variant=Curve_Type_Parabola};
+result.union_members[2] = {.type=&Type_Info_Bezier_Offsets, .name=strlit("Offsets"), .variant=Curve_Type_Offsets};
+result.union_members[3] = {.type=&Type_Info_Bezier_Unit, .name=strlit("Unit"), .variant=Curve_Type_Unit};
+result.union_members[4] = {.type=&Type_Info_Bezier_Unit2, .name=strlit("Unit2"), .variant=Curve_Type_Unit2};
+result.union_members[5] = {.type=&Type_Info_Bezier_C2, .name=strlit("C2"), .variant=Curve_Type_C2};
+result.union_members[6] = {.type=&Type_Info_Bezier_Line, .name=strlit("Line"), .variant=Curve_Type_Line};
+result.union_members[7] = {.type=&Type_Info_Bezier_Bezd_Old, .name=strlit("Bezd_Old"), .variant=Curve_Type_Bezd_Old};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Union = get_type_info_Bezier_Union();
+global Type_Info Type_Info_Curve_Union = get_type_info_Curve_Union();
 
-function Type_Info &type_info_from_pointer(Bezier_Union*pointer)
+function Type_Info &type_info_from_pointer(Curve_Union*pointer)
 {
-return Type_Info_Bezier_Union;
+return Type_Info_Curve_Union;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:356:
 function void
-read_Bezier_Union(Data_Reader &r, Bezier_Union &pointer, Bezier_Type variant)
+read_Curve_Union(Data_Reader &r, Curve_Union &pointer, Curve_Type variant)
 {
 STB_Parser *p = r.parser;
 switch(variant)
 {
-case Bezier_Type_v3v2:
+case Curve_Type_v3v2:
 {
 read_Bezier_v3v2(r, pointer.v3v2);
 break;
 }
-case Bezier_Type_Parabola:
+case Curve_Type_Parabola:
 {
 read_Bezier_Parabola(r, pointer.parabola);
 break;
 }
-case Bezier_Type_Offsets:
+case Curve_Type_Offsets:
 {
 read_Bezier_Offsets(r, pointer.offsets);
 break;
 }
-case Bezier_Type_Unit:
+case Curve_Type_Unit:
 {
 read_Bezier_Unit(r, pointer.unit);
 break;
 }
-case Bezier_Type_Unit2:
+case Curve_Type_Unit2:
 {
 read_Bezier_Unit2(r, pointer.unit2);
 break;
 }
-case Bezier_Type_C2:
+case Curve_Type_C2:
 {
 read_Bezier_C2(r, pointer.c2);
 break;
 }
-case Bezier_Type_Line:
+case Curve_Type_Line:
 {
 read_Bezier_Line(r, pointer.line);
 break;
 }
-case Bezier_Type_Bezd_Old:
+case Curve_Type_Bezd_Old:
 {
 read_Bezier_Bezd_Old(r, pointer.bezd_old);
 break;
@@ -501,35 +501,35 @@ break;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_Data()
+get_type_info_Curve_Data()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Data");
-result.size = sizeof(Bezier_Data);
+result.name = strlit("Curve_Data");
+result.size = sizeof(Curve_Data);
 result.kind = Type_Kind_Struct;
 result.members.set_count(10);
-result.members[0] = {.type=&Type_Info_String, .name=strlit("name"), .offset=offsetof(Bezier_Data, name)};
-result.members[1] = {.type=&Type_Info_Bone_ID, .name=strlit("bone_id"), .offset=offsetof(Bezier_Data, bone_id)};
-result.members[2] = {.type=&Type_Info_b32, .name=strlit("symx"), .offset=offsetof(Bezier_Data, symx)};
-result.members[3] = {.type=&Type_Info_Bezier_Type, .name=strlit("type"), .offset=offsetof(Bezier_Data, type)};
-result.members[4] = {.type=&Type_Info_Vertex_Index, .name=strlit("p0_index"), .offset=offsetof(Bezier_Data, p0_index)};
-result.members[5] = {.type=&Type_Info_Vertex_Index, .name=strlit("p3_index"), .offset=offsetof(Bezier_Data, p3_index)};
-result.members[6] = {.type=&Type_Info_Bezier_Union, .name=strlit("data"), .offset=offsetof(Bezier_Data, data), .discriminator_offset=offsetof(Bezier_Data, type)};
-result.members[7] = {.type=&Type_Info_Line_Params, .name=strlit("params"), .offset=offsetof(Bezier_Data, params)};
-result.members[8] = {.type=&Type_Info_Common_Line_Params_Index, .name=strlit("cparams"), .offset=offsetof(Bezier_Data, cparams)};
-result.members[9] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Bezier_Data, linum), .unserialized=true};
+result.members[0] = {.type=&Type_Info_String, .name=strlit("name"), .offset=offsetof(Curve_Data, name)};
+result.members[1] = {.type=&Type_Info_Bone_ID, .name=strlit("bone_id"), .offset=offsetof(Curve_Data, bone_id)};
+result.members[2] = {.type=&Type_Info_b32, .name=strlit("symx"), .offset=offsetof(Curve_Data, symx)};
+result.members[3] = {.type=&Type_Info_Curve_Type, .name=strlit("type"), .offset=offsetof(Curve_Data, type)};
+result.members[4] = {.type=&Type_Info_Vertex_Index, .name=strlit("p0_index"), .offset=offsetof(Curve_Data, p0_index)};
+result.members[5] = {.type=&Type_Info_Vertex_Index, .name=strlit("p3_index"), .offset=offsetof(Curve_Data, p3_index)};
+result.members[6] = {.type=&Type_Info_Curve_Union, .name=strlit("data"), .offset=offsetof(Curve_Data, data), .discriminator_offset=offsetof(Curve_Data, type)};
+result.members[7] = {.type=&Type_Info_Line_Params, .name=strlit("params"), .offset=offsetof(Curve_Data, params)};
+result.members[8] = {.type=&Type_Info_Common_Line_Params_Index, .name=strlit("cparams"), .offset=offsetof(Curve_Data, cparams)};
+result.members[9] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Curve_Data, linum), .unserialized=true};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Data = get_type_info_Bezier_Data();
+global Type_Info Type_Info_Curve_Data = get_type_info_Curve_Data();
 
-function Type_Info &type_info_from_pointer(Bezier_Data*pointer)
+function Type_Info &type_info_from_pointer(Curve_Data*pointer)
 {
-return Type_Info_Bezier_Data;
+return Type_Info_Curve_Data;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_Data(Data_Reader &r, Bezier_Data &pointer)
+read_Curve_Data(Data_Reader &r, Curve_Data &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -557,11 +557,11 @@ read_b32(r, m_symx);
 }
 pointer.symx = m_symx;
 
-Bezier_Type m_type = {};
+Curve_Type m_type = {};
 
 {
 eat_id(p, strlit("type"));
-read_Bezier_Type(r, m_type);
+read_Curve_Type(r, m_type);
 }
 pointer.type = m_type;
 
@@ -581,11 +581,11 @@ read_Vertex_Index(r, m_p3_index);
 }
 pointer.p3_index = m_p3_index;
 
-Bezier_Union m_data = {};
+Curve_Union m_data = {};
 
 {
 eat_id(p, strlit("data"));
-read_Bezier_Union(r, m_data, pointer.type);
+read_Curve_Union(r, m_data, pointer.type);
 }
 pointer.data = m_data;
 
@@ -607,32 +607,56 @@ pointer.cparams = m_cparams;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:405:
 function Type_Info
-get_type_info_Triangle_Data()
+get_type_info_Fill_Type()
 {
 Type_Info result = {};
-result.name = strlit("Triangle_Data");
-result.size = sizeof(Triangle_Data);
-result.kind = Type_Kind_Struct;
-result.members.set_count(5);
-result.members[0] = {.type=&Type_Info_Vertex_Index, .name=strlit("verts"), .offset=offsetof(Triangle_Data, verts)};
-result.members[1] = {.type=&Type_Info_argb, .name=strlit("color"), .offset=offsetof(Triangle_Data, color)};
-result.members[2] = {.type=&Type_Info_b32, .name=strlit("symx"), .offset=offsetof(Triangle_Data, symx)};
-result.members[3] = {.type=&Type_Info_Fill_Params, .name=strlit("params"), .offset=offsetof(Triangle_Data, params)};
-result.members[4] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Triangle_Data, linum), .unserialized=true};
+result.name = strlit("Fill_Type");
+result.size = sizeof(Fill_Type);
+result.kind = Type_Kind_Enum;
+result.enum_members.set_count(2);
+result.enum_members[0] = {.name=strlit("Fill_Type_Fill3"), .value=Fill_Type_Fill3};
+result.enum_members[1] = {.name=strlit("Fill_Type_Bez"), .value=Fill_Type_Bez};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Triangle_Data = get_type_info_Triangle_Data();
+global Type_Info Type_Info_Fill_Type = get_type_info_Fill_Type();
 
-function Type_Info &type_info_from_pointer(Triangle_Data*pointer)
+function Type_Info &type_info_from_pointer(Fill_Type*pointer)
 {
-return Type_Info_Triangle_Data;
+return Type_Info_Fill_Type;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:436:
+function void
+read_Fill_Type(Data_Reader &r, Fill_Type &pointer)
+{
+STB_Parser *p = r.parser;
+i32 integer = eat_i1(p);
+pointer = *(Fill_Type*)(&integer);
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
+function Type_Info
+get_type_info_Fill_Fill3()
+{
+Type_Info result = {};
+result.name = strlit("Fill_Fill3");
+result.size = sizeof(Fill_Fill3);
+result.kind = Type_Kind_Struct;
+result.members.set_count(1);
+result.members[0] = {.type=&Type_Info_Vertex_Index, .name=strlit("verts"), .offset=offsetof(Fill_Fill3, verts)};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Fill_Fill3 = get_type_info_Fill_Fill3();
+
+function Type_Info &type_info_from_pointer(Fill_Fill3*pointer)
+{
+return Type_Info_Fill_Fill3;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Triangle_Data(Data_Reader &r, Triangle_Data &pointer)
+read_Fill_Fill3(Data_Reader &r, Fill_Fill3 &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -643,6 +667,131 @@ eat_id(p, strlit("verts"));
 eat_char(p, '{');read_Vertex_Index(r, m_verts[0]);read_Vertex_Index(r, m_verts[1]);read_Vertex_Index(r, m_verts[2]);eat_char(p, '}');
 }
 copy_array_dst(pointer.verts, m_verts);
+
+eat_char(p, '}');
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
+function Type_Info
+get_type_info_Fill_Bez()
+{
+Type_Info result = {};
+result.name = strlit("Fill_Bez");
+result.size = sizeof(Fill_Bez);
+result.kind = Type_Kind_Struct;
+result.members.set_count(1);
+result.members[0] = {.type=&Type_Info_Curve_Index, .name=strlit("bez"), .offset=offsetof(Fill_Bez, bez)};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Fill_Bez = get_type_info_Fill_Bez();
+
+function Type_Info &type_info_from_pointer(Fill_Bez*pointer)
+{
+return Type_Info_Fill_Bez;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
+function void
+read_Fill_Bez(Data_Reader &r, Fill_Bez &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+Curve_Index m_bez = {};
+
+{
+eat_id(p, strlit("bez"));
+read_Curve_Index(r, m_bez);
+}
+pointer.bez = m_bez;
+
+eat_char(p, '}');
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:320:
+function Type_Info
+get_type_info_Fill_Union()
+{
+Type_Info result = {};
+result.name = strlit("Fill_Union");
+result.size = sizeof(Fill_Union);
+result.kind = Type_Kind_Union;
+result.discriminator_type = &Type_Info_Fill_Type;
+result.union_members.set_count(2);
+result.union_members[0] = {.type=&Type_Info_Fill_Fill3, .name=strlit("Fill3"), .variant=Fill_Type_Fill3};
+result.union_members[1] = {.type=&Type_Info_Fill_Bez, .name=strlit("Bez"), .variant=Fill_Type_Bez};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Fill_Union = get_type_info_Fill_Union();
+
+function Type_Info &type_info_from_pointer(Fill_Union*pointer)
+{
+return Type_Info_Fill_Union;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:356:
+function void
+read_Fill_Union(Data_Reader &r, Fill_Union &pointer, Fill_Type variant)
+{
+STB_Parser *p = r.parser;
+switch(variant)
+{
+case Fill_Type_Fill3:
+{
+read_Fill_Fill3(r, pointer.fill3);
+break;
+}
+case Fill_Type_Bez:
+{
+read_Fill_Bez(r, pointer.bez);
+break;
+}
+
+}
+
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
+function Type_Info
+get_type_info_Fill_Data()
+{
+Type_Info result = {};
+result.name = strlit("Fill_Data");
+result.size = sizeof(Fill_Data);
+result.kind = Type_Kind_Struct;
+result.members.set_count(6);
+result.members[0] = {.type=&Type_Info_Fill_Type, .name=strlit("type"), .offset=offsetof(Fill_Data, type)};
+result.members[1] = {.type=&Type_Info_Fill_Union, .name=strlit("data"), .offset=offsetof(Fill_Data, data), .discriminator_offset=offsetof(Fill_Data, type)};
+result.members[2] = {.type=&Type_Info_argb, .name=strlit("color"), .offset=offsetof(Fill_Data, color)};
+result.members[3] = {.type=&Type_Info_b32, .name=strlit("symx"), .offset=offsetof(Fill_Data, symx)};
+result.members[4] = {.type=&Type_Info_Fill_Params, .name=strlit("params"), .offset=offsetof(Fill_Data, params)};
+result.members[5] = {.type=&Type_Info_i1, .name=strlit("linum"), .offset=offsetof(Fill_Data, linum), .unserialized=true};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Fill_Data = get_type_info_Fill_Data();
+
+function Type_Info &type_info_from_pointer(Fill_Data*pointer)
+{
+return Type_Info_Fill_Data;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
+function void
+read_Fill_Data(Data_Reader &r, Fill_Data &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+Fill_Type m_type = {};
+
+{
+eat_id(p, strlit("type"));
+read_Fill_Type(r, m_type);
+}
+pointer.type = m_type;
+
+Fill_Union m_data = {};
+
+{
+eat_id(p, strlit("data"));
+read_Fill_Union(r, m_data, pointer.type);
+}
+pointer.data = m_data;
 
 argb m_color = {};
 

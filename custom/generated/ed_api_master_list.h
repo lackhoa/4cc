@@ -27,6 +27,7 @@ api(ed) function void push_image(Render_Target* target, char* filename, v3 o, v3
 api(ed) function void switch_to_mouse_panel(App* app);
 api(ed) function i1 mouse_viewport_id(App* app);
 api(ed) function b32 get_confirmation_from_user(App* app, String query);
+api(ed) function i64 get_current_line_number2(App* app, View_ID view, Buffer_ID buffer);
 api(ed) function i64 get_current_line_number(App* app);
 api(ed) function String system_get_path(Arena* arena, System_Path_Code path_code);
 api(ed) function File_List system_get_file_list(Arena* arena, String directory);

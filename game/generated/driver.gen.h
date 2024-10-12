@@ -1,4 +1,4 @@
-//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:26:
+//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:28:
 // NOTE: source: C:\Users\vodan\4ed\code\game\driver.kh
 #pragma once
 typedef u32 argb;
@@ -13,11 +13,11 @@ struct Curve_Index
 i1 v;
 };
 inline b32 operator==(Curve_Index a, Curve_Index b){ return a.v==b.v; }
-struct Triangle_Index
+struct Fill_Index
 {
 i1 v;
 };
-inline b32 operator==(Triangle_Index a, Triangle_Index b){ return a.v==b.v; }
+inline b32 operator==(Fill_Index a, Fill_Index b){ return a.v==b.v; }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:384:
 enum Bone_Type
 {

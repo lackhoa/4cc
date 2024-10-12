@@ -3,7 +3,7 @@ typedef u32 argb;
 typedef i1  b32;
 i1_wrapper(Vertex_Index);
 i1_wrapper(Curve_Index);
-i1_wrapper(Triangle_Index);
+i1_wrapper(Fill_Index);
 enum Bone_Type{
  Bone_None = 0,
  Bone_Head = 1,

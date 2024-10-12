@@ -1,5 +1,5 @@
-//NOTE Generated at C:\Users\vodan\4ed\code/meta_main.cpp:163:
-//  C:\Users\vodan\4ed\code/meta_main.cpp:164:
+//NOTE Generated at C:\Users\vodan\4ed\code/meta_main.cpp:173:
+//  C:\Users\vodan\4ed\code/meta_main.cpp:174:
 xfunction void
 send_bez_v3v2(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params=lp(), i32 linum=__builtin_LINE());
 inline void

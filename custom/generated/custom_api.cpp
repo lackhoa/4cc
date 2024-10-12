@@ -179,6 +179,7 @@ vtable->open_color_picker = open_color_picker;
 vtable->animate_in_n_milliseconds = animate_in_n_milliseconds;
 vtable->buffer_find_all_matches = buffer_find_all_matches;
 vtable->get_core_profile_list = get_core_profile_list;
+vtable->get_current_line_number2 = get_current_line_number2;
 vtable->get_current_line_number = get_current_line_number;
 vtable->draw_rect_outline = draw_rect_outline;
 }
@@ -363,6 +364,7 @@ open_color_picker = vtable->open_color_picker;
 animate_in_n_milliseconds = vtable->animate_in_n_milliseconds;
 buffer_find_all_matches = vtable->buffer_find_all_matches;
 get_core_profile_list = vtable->get_core_profile_list;
+get_current_line_number2 = vtable->get_current_line_number2;
 get_current_line_number = vtable->get_current_line_number;
 draw_rect_outline = vtable->draw_rect_outline;
 }

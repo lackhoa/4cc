@@ -94,8 +94,8 @@ game_api_export(game_api_export_params) {
 global i32 MAIN_VIEWPORT_INDEX = MAIN_VIEWPORT_ID - 1;
 inline i32
 get_viewport_index(i32 viewport_id) {
- kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
- return (viewport_id - 1);
+    kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
+    return (viewport_id - 1);
 }
 force_inline b32
 camera_data_equal(Camera_Data *a, Camera_Data *b) {
@@ -377,12 +377,12 @@ game_load(Game_State *state, App *app, Stringz filename){
       if(maybe_char(p, '}')){
        break;
       }
-      Bezier_Data &b = m.curves.push2();
+      Curve_Data &b = m.curves.push2();
 #if IGNORE_MODELING_DATA
       eat_char(p,'{');
       eat_until_char(p, '}');
 #else
-      read_Bezier_Data(r,b);
+      read_Curve_Data(r,b);
 #endif
      }
     }
@@ -431,9 +431,9 @@ get_right_bone(Modeler &m, Bone &bone){
 //  which side of the body it is on.
 //  I just feel kinda yucky because this is an animation problem we have yet to "solve".
 function Bez
-compute_curve_from_data(Modeler &m, Bezier_Data &data0, b32 lr){
- b32 is_c2 = (data0.type == Bezier_Type_C2);
- b32 is_unit = (data0.type == Bezier_Type_Unit);
+compute_curve_from_data(Modeler &m, Curve_Data &data0, b32 lr){
+ b32 is_c2 = (data0.type == Curve_Type_C2);
+ b32 is_unit = (data0.type == Curve_Type_Unit);
  Bez result;
  Bone_ID curve_bone_id = data0.bone_id;
  Bone &curve_bone = get_bone(m,curve_bone_id,lr);
@@ -453,28 +453,28 @@ compute_curve_from_data(Modeler &m, Bezier_Data &data0, b32 lr){
   v3 p0 = get_bone(m,ve0.bone_id,lr).xform * ve0.pos;
   v3 p3 = get_bone(m,ve3.bone_id,lr).xform * ve3.pos;
   switch(data0.type){
-   case Bezier_Type_v3v2:{
+   case Curve_Type_v3v2:{
     auto &data = data0.data.v3v2;
     result = bez_v3v2(p0, curve_vec(data.d0), data.d3, p3);
    }break;
-   case Bezier_Type_Parabola:{
+   case Curve_Type_Parabola:{
     result = bez_parabola(p0, curve_vec(data0.data.parabola.d), p3);
    }break;
-   case Bezier_Type_C2:{
+   case Curve_Type_C2:{
     auto &data = data0.data.c2;
-    Bezier_Data &refd = m.curves[data.ref.v];
+    Curve_Data &refd = m.curves[data.ref.v];
     Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
     result = bez_c2(ref, curve_vec(data.d3), p3);
    }break;
-   case Bezier_Type_Unit:{
+   case Curve_Type_Unit:{
     auto &data = data0.data.unit;
     result = bez_unit(p0, data.d0, data.d3,
                       noz(curve_vec(data.unit_y)), p3);
    }break;
-   case Bezier_Type_Line:{
+   case Curve_Type_Line:{
     result = bez_line(p0,p3);
    }break;
-   case Bezier_Type_Bezd_Old:{
+   case Curve_Type_Bezd_Old:{
     auto &data = data0.data.bezd_old;
     result = bezd_old(p0,data.d0,data.d3,p3);
    }break;
@@ -498,29 +498,45 @@ render_data(Modeler &m){
  }
  for_i32(ci,1,m.curves.count){
   //-Curves
-  Bezier_Data &curve = m.curves[ci];
+  Curve_Data &curve = m.curves[ci];
   u32 prim_id = prim_id_from_curve_index({ci});
   Common_Line_Params &cparams = m.line_cparams[curve.cparams.v];
   for_i32(lr_index,0,2){
-   set_in_block(painter.lr_index, lr_index);
-   if(curve.symx or lr_index==0){
+   if(curve.symx || lr_index==0){
+    set_in_block(painter.lr_index, lr_index);
     Bez drawn = compute_curve_from_data(m,curve,lr_index);
     draw_cparams(drawn, cparams, curve.params, prim_id);
    }
   }
  }
- for_i32(ti,1,m.triangles.count){
+ for_i32(ti,1,m.fills.count){
   //-Triangles
-  Triangle_Data &tri = m.triangles[ti];
-  u32 prim_id = prim_id_from_tri_index({ti});
-  v3 p[3];
-  for_i32(vi,0,3){
-   i1 vert_index = tri.verts[vi].v;
-   Vertex_Data &vert = m.vertices[vert_index];
-   Bone &bone = get_bone(m, vert.bone_id, 0);
-   p[vi] = bone.xform*vert.pos;
+  Fill_Data &fill = m.fills[ti];
+  u32 prim_id = prim_id_from_triangle_index({ti});
+  for_i32(lr_index,0,2){
+   if(fill.symx || lr_index==0){
+    switch(fill.type){
+     case Fill_Type_Fill3:{
+      v3 p[3];
+      for_i32(vi,0,3){
+       i1 vert_index = fill.data.fill3.verts[vi].v;
+       Vertex_Data &vert = m.vertices[vert_index];
+       Bone &bone = get_bone(m, vert.bone_id, lr_index);
+       p[vi] = bone.xform*vert.pos;
+      }
+      set_in_block(painter.lr_index, lr_index);
+      fill3_inner2(p,fill.params,prim_id);
+     }break;
+     case Fill_Type_Bez:{
+      Fill_Bez &data = fill.data.bez;
+      Curve_Data &curve_data = m.curves[data.bez.v];
+      Bezier curve = compute_curve_from_data(m,curve_data,lr_index);
+      fill_bez(curve,0,prim_id);
+     }break;
+     invalid_default_case;
+    }
+   }
   }
-  fill3_inner2(p,tri.params,prim_id);
  }
 }
 //TODO(kv) @cleanup We wanna change this from update+render to update_and_render
@@ -572,9 +588,9 @@ game_render(game_render_params){
   {
    Scratch_Block render_scratch;
    //TODO(kv) Why can't the game understand scratch blocks?
-   mo.vertices. set_count(1);
-   mo.curves.   set_count(1);
-   mo.triangles.set_count(1);
+   mo.vertices.set_count(1);
+   mo.curves.  set_count(1);
+   mo.fills.   set_count(1);
    render_movie(scratch, render_scratch,
                 config, state->references_full_alpha,
                 &state->pose, state->anime_time);
@@ -620,10 +636,10 @@ game_init(game_init_params)
   //NOTE(kv) when you refer to something make sure it doesn't move!
   init_static(m.vertices,  arena, 4096);
   init_static(m.curves,    arena, 512);
-  init_static(m.triangles, arena, 512);
+  init_static(m.fills,     arena, 512);
   init_static(m.bones,     arena, 128);
   init_static(m.bones,     arena, 128);
-  init_static(m.line_cparams,arena, 32);
+  init_static(m.line_cparams,arena, 128);
   m.bones.push(Bone{.xform=mat4i_identity});
   {
    Common_Line_Params cp = {};
@@ -802,7 +818,7 @@ print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newli
    }
    
    {//NOTE Beziers
-    arrayof<Bezier_Data> &curves = modeler.curves;
+    arrayof<Curve_Data> &curves = modeler.curves;
     print(p, "beziers"); newline;
     {
      brace_block;
@@ -1137,16 +1153,28 @@ game_update(game_update_params){
   //NOTE(kv) If there's nothing hot, then we select by editor cursor position
   Buffer_ID buffer = get_active_buffer(app);
   String active_buffer_name = push_buffer_base_name(app, scratch, buffer);
+  View_ID view_id = get_active_view(app,0);
+  if(active_buffer_name != GAME_FILE_NAME){
+   //note(kv) Retry with the other view 
+   view_id = get_other_primary_view(app, view_id, 0, false);
+   buffer = view_get_buffer(app, view_id, 0);
+   active_buffer_name = push_buffer_base_name(app, scratch, buffer);
+  }
   if(active_buffer_name == GAME_FILE_NAME){
-   i64 linum = get_current_line_number(app);
+   i64 linum = get_current_line_number2(app, view_id, buffer);
    Modeler &m = *modeler;
-   Vertex_Data *v = get_vertex_by_linum(m,linum);
-   if(v){
-    hot_prim_id = prim_id_from_vertex_index(vertex_index_from_pointer(m,v));
+   Prim_Ref v = get_vertex_by_linum(m,linum);
+   if(v.vertex){
+    hot_prim_id = prim_id_from_vertex_index(v.vertex_index);
    }else{
-    Bezier_Data *c = get_curve_by_linum(m,linum);
-    if(c){
-     hot_prim_id = prim_id_from_curve_index(curve_index_from_pointer(m,c));
+    Prim_Ref c = get_curve_by_linum(m,linum);
+    if(c.curve){
+     hot_prim_id = prim_id_from_curve_index(c.curve_index);
+    }else{
+     Prim_Ref t = get_fill_by_linum(m,linum);
+     if(t.fill){
+      hot_prim_id = prim_id_from_triangle_index(t.fill_index);
+     }
     }
    }
    if(!hot_prim_id){
@@ -1236,7 +1264,7 @@ game_update(game_update_params){
           Vertex_Data *vertex = &m->vertices[hot_xid.index];
           g_jump_to_line(app, vertex->linum);
          }else if(hot_xid.type==Prim_Curve){
-          Bezier_Data *curve  = &m->curves[hot_xid.index];
+          Curve_Data *curve  = &m->curves[hot_xid.index];
           g_jump_to_line(app, curve->linum);
          }
         }else{
@@ -1413,7 +1441,7 @@ game_update(game_update_params){
     }else if(get_selected_type(m) == Prim_Curve){
 #if 0
      // NOTE(kv) Curve update stub
-     Bezier_Data &sel = modeler.curves[sel_index0];
+     Curve_Data &sel = modeler.curves[sel_index0];
      {
       i1 direction = i1( key_direction(input, 0, true).x );
       v1 delta = i2f6(direction);
@@ -1505,9 +1533,7 @@ game_update(game_update_params){
    }
   }
  }
- 
  //~
- 
  if (input->debug_camera_on) {
   auto cam = update_target_cam;
   DEBUG_NAME("camera(theta,phi,distance)", V3(cam->theta, cam->phi, cam->distance));
@@ -1533,8 +1559,8 @@ game_update(game_update_params){
    if(get_selected_type(m) == Prim_Curve){
     //;draw_curve_info
     ImGui::Begin("curve data", 0);
-    Bezier_Data *curve = get_selected_curve(m);
-    Type_Info type = Type_Info_Bezier_Type;
+    Curve_Data *curve = get_selected_curve(m);
+    Type_Info type = Type_Info_Curve_Type;
     i32 curve_type_index = enum_index_from_value(curve->type);
     
     const char* combo_preview = to_cstring(scratch, type.enum_members[curve_type_index].name);

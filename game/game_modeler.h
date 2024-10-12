@@ -29,7 +29,7 @@ struct Modeler_History{
  i1 redo_index;
 };
 //-
-typedef Bezier_Data Curve_Data;
+typedef Curve_Data Curve_Data;
 struct Modeler  // see @init_modeler
 {//-Data
  Arena data_arena;
@@ -38,9 +38,9 @@ struct Modeler  // see @init_modeler
  arrayof<Bone> bones;
  arrayof<Common_Line_Params> line_cparams;
  
- arrayof<Vertex_Data>   vertices;
- arrayof<Bezier_Data>   curves;
- arrayof<Triangle_Data> triangles;
+ arrayof<Vertex_Data> vertices;
+ arrayof<Curve_Data> curves;
+ arrayof<Fill_Data>   fills;
  
  //-NOTE: Editor
  u32 selected_prim_ro;  // todo: There could be multiple selected obj?
@@ -85,11 +85,28 @@ inline Vertex_Data *
 get_selected_vertex(Modeler *m){
  return get_vertex_from_id(m, selected_prim_id(m));
 }
-inline Bezier_Data *
+inline Curve_Data *
 get_selected_curve(Modeler *m){
  return get_curve_from_id(m, selected_prim_id(m));
 }
 
 xfunction b32 is_prim_id_active(Modeler *m, u32 prim_id);
+struct Curve_Ref{
+ Curve_Index index;
+ Curve_Data *curve;
+};
+struct Prim_Ref{
+ Prim_Type type;
+ union{
+  Vertex_Index vertex_index;
+  Curve_Index  curve_index;
+  Fill_Index   fill_index;
+ };
+ union{
+  Vertex_Data *vertex;
+  Curve_Data *curve;
+  Fill_Data   *fill;
+ };
+};
 
 //~

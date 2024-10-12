@@ -3279,17 +3279,16 @@ get_custom_layer_boundary_docs(App *app, Arena *arena)
 //-
 
 api(ed) function View_ID
-get_other_primary_view(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail)
-{
+get_other_primary_view(App *app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail) {
  View_ID view = start_view;
  do {
   view = get_next_view_looped_all_panels(app, view, access);
-  if (!view_is_passive(app, view)) {
+  if(!view_is_passive(app, view)){
    break;
   }
  } while(view != start_view);
  
- if (view == start_view && vsplit_if_fail)
+ if(view == start_view && vsplit_if_fail)
  {// NOTE(kv): vsplit
   view = open_view(app, start_view, ViewSplit_Right);
   new_view_settings(app, view);
@@ -3600,7 +3599,11 @@ get_confirmation_from_user(App *app, String query)
  b32 confirmed = choice && choice->user_data == 2;
  return confirmed;
 }
-
+api(custom ed) function i64
+get_current_line_number2(App *app, View_ID view, Buffer_ID buffer){
+ i64 line = get_line_number_from_pos(app, buffer, view_get_cursor_pos(app, view));
+ return line;
+}
 api(custom ed) function i64
 get_current_line_number(App *app){
  GET_VIEW_AND_BUFFER;

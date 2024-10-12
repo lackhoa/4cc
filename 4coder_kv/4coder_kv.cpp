@@ -360,6 +360,8 @@ kvInitQuailTable(App *app)
  QUAIL_DEFRULE("leq", "<=");
  QUAIL_DEFRULE("geq", ">=");
  QUAIL_DEFRULE("neq", "!=");
+ QUAIL_DEFRULE("andll", "&&");
+ QUAIL_DEFRULE("orll", "||");
  
 #undef QUAIL_DEFRULE
 }
