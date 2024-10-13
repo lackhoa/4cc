@@ -35,13 +35,18 @@ struct Common_Line_Params{
  v1 depth_offset;
  Line_Flags flags;  //NOTE(kv) We do need to store some flags here, though we may not use all the bits, so it's complicated...
  v4 radii;          //NOTE(kv) The default radii
- meta_unserialized i1 linum;
+ meta_unserialized i1 linum;  //NOTE(kv) The line number where this common line params is defined.
 };
 struct Line_Params{
  v4 radii;
  v1 visibility;
- v1 alignment_threshold;
  Line_Flags flags;
+ 
+ //TODO(kv) Should alignment be specified per-curve, or should they be grouped?
+ //  I have no means of making the decision right now,
+ //  but currently we specify them per-curve so... let's just do that to ease the transition.
+ v3 unit_normal;
+ v1 alignment_min;
 };
 typedef u32 Poly_Flags;
 enum{

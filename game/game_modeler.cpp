@@ -116,27 +116,28 @@ get_fill_by_linum(Modeler &m, i1 linum){
  }
  return result;
 }
-
-struct Send_Bez_Additional_Data{
- String c2_ref;
-};
 xfunction void
-send_bez_func(String name,
-              String p0_name, String p3_name,
+send_bez_func(String name, String p0_name, String p3_name,
               Curve_Type type, Curve_Union data,
-              Line_Params params, i1 linum,
-              Send_Bez_Additional_Data additional={}){
+              Line_Params params, i1 linum){
  Painter &p = painter;
  Modeler &m = *p.modeler;
+ b32 is_c2      = type==Curve_Type_C2;
+ b32 is_negateX = type==Curve_Type_NegateX;
+ b32 has_p0 = !(is_c2 || is_negateX);
+ b32 has_p3 = !(is_negateX);
  if(is_left(p)){
   Curve_Data &curve = m.curves.push_zero();
   Vertex_Index vert0 = {};
-  if(type!=Curve_Type_C2){
+  if(has_p0){
    vert0 = get_vertex_by_name(m, p0_name).vertex_index;
    kv_assert(vert0.v);
   }
-  Vertex_Index vert3 = get_vertex_by_name(m, p3_name).vertex_index;
-  kv_assert(vert3.v);
+  Vertex_Index vert3 = {};
+  if(has_p3){
+   vert3 = get_vertex_by_name(m, p3_name).vertex_index;
+   kv_assert(vert3.v);
+  }
   
   curve.cparams  = current_line_cparams_index();
   kv_assert(curve.cparams.v >= 0 and
@@ -149,12 +150,6 @@ send_bez_func(String name,
   curve.params   = params;
   curve.linum    = linum;
   curve.bone_id  = current_bone(p)->id;
-  
-  if(type==Curve_Type_C2){
-   Curve_Data *ref = get_curve_by_name(m, additional.c2_ref).curve;
-   kv_assert(ref);
-   curve.data.c2.ref = curve_index_from_pointer(m, ref);
-  }
  }else{
   if(p.is_right and p.symx){
    Curve_Data *curve = get_curve_by_linum(m, linum).curve;
@@ -175,9 +170,12 @@ send_bez_parabola(String name, String p0, v3 d, String p3, Line_Params params, i
 }
 xfunction void
 send_bez_c2(String name, String ref, v3 d3, String p3, Line_Params params, i1 linum){
+ Modeler &m = *painter.modeler;
  Curve_Union data = {.c2={.d3=d3}};
- Send_Bez_Additional_Data additional = {.c2_ref=ref};
- send_bez_func(name, strlit(""), p3, Curve_Type_C2, data, params, linum, additional);
+ Curve_Ref ref2 = get_curve_by_name(m, ref);
+ kv_assert(ref2.curve);
+ data.c2.ref = ref2.index;
+ send_bez_func(name, strlit(""), p3, Curve_Type_C2, data, params, linum);
 }
 xfunction void
 send_bez_unit(String name, String p0, v2 d0, v2 d3, v3 unit_y, String p3, Line_Params params, i32 linum){
@@ -198,6 +196,20 @@ send_bez_bezd_old(String name, String p0, v3 d0, v2 d3, String p3, Line_Params p
  Curve_Union data = {.bezd_old={.d0=d0, .d3=d3,}};
  send_bez_func(name, p0, p3, Curve_Type_Bezd_Old, data, params, linum);
 }
+xfunction void
+send_bez_offset(String name, String p0, v3 d0, v3 d3, String p3, Line_Params params, i32 linum){
+ Curve_Union data = {.offset={.d0=d0, .d3=d3,}};
+ send_bez_func(name, p0, p3, Curve_Type_Offset, data, params, linum);
+}
+xfunction void
+send_bez_negateX(String name, String ref, Line_Params params, i32 linum){
+ Modeler &m = *painter.modeler;
+ Curve_Union data;
+ Curve_Ref ref2 = get_curve_by_name(m, ref);
+ kv_assert(ref2.curve);
+ data.negateX.ref = ref2.index;
+ send_bez_func(name, empty_string, empty_string, Curve_Type_NegateX, data, params, linum);
+}
 //-NOTE(kv) Fill situation
 function void
 dfill_func(Fill_Type type, Fill_Union &data, Fill_Params params, i1 linum){
@@ -215,7 +227,7 @@ dfill_func(Fill_Type type, Fill_Union &data, Fill_Params params, i1 linum){
   }
  }
 }
-xfunction void
+function void
 dfill3_func(String vert_names[3], Fill_Params params, i1 linum){
  Painter &p = painter;
  Modeler &m = *p.modeler;
@@ -227,17 +239,30 @@ dfill3_func(String vert_names[3], Fill_Params params, i1 linum){
  }
  dfill_func(Fill_Type_Fill3, data, params, linum);
 }
-xfunction void
+function void
 dfill_bez_func(String curve_name, Fill_Params params, i1 linum){
  Painter &p = painter;
  Modeler &m = *p.modeler;
  Fill_Union data = {};
  {
-  Curve_Index curve = get_curve_by_name(m, curve_name).index;
-  kv_assert(curve.v);
-  data.bez.bez = curve;
+  data.bez.curve = get_curve_by_name(m, curve_name).index;
+  kv_assert(data.bez.curve.v);
  }
  dfill_func(Fill_Type_Bez, data, params, linum);
+}
+function void
+dfill_dbez_func(String b1n, String b2n, Fill_Params params, i1 linum){
+ Painter &p = painter;
+ Modeler &m = *p.modeler;
+ Fill_Union data0 = {};
+ Fill_DBez &data = data0.dbez;
+ {
+  data.curve1 = get_curve_by_name(m, b1n).index;
+  data.curve2 = get_curve_by_name(m, b2n).index;
+  kv_assert(data.curve1.v);
+  kv_assert(data.curve2.v);
+ }
+ dfill_func(Fill_Type_DBez, data0, params, linum);
 }
 //-NOTE: Edit history
 function void

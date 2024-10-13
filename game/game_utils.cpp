@@ -1,6 +1,5 @@
 internal v3
-fvert_function(v3 init_value, Fui_Options opts, i32 line=__builtin_LINE())
-{
+fvert_function(v3 init_value, Fui_Options opts, i32 line=__builtin_LINE()){
  opts = fopts_add_flags(opts, Slider_Vertex);
  v3 result = fval(init_value, opts, line);
  return result;
@@ -112,28 +111,22 @@ get_eye_min_distance(v3 center, v1 radius, Bezier line)
  result.min_distance = square_root(min_lensq) - radius;
  return result;
 }
-
 function v3
-perspective_project_non_hyperbolic(Camera *camera, v3 worldP)
-{
+perspective_project_non_hyperbolic(Camera *camera, v3 worldP){
  v3 result = (camera->cam_from_world * V4(worldP, 1.f)).xyz;
  v1 depth = camera->distance-result.z;
  result.xy *= (camera->focal_length / depth);
  result.z   = depth;
  return result;
 }
-
 force_inline Line_Params
-lp_alignment_threshold(v1 threshold)
-{
+lp_alignment_min(v1 min){
  Line_Params result = painter.line_params;
- result.alignment_threshold = threshold;
+ result.alignment_min = min;
  return result;
 }
-
 function void
-debug_view_vector(i1 linum=__builtin_LINE())
-{
+debug_view_vector(i1 linum=__builtin_LINE()){
  v3 camera_obj = camera_object_position(&painter);
  v3 view_vector = get_view_vector();
  v3 object_center = camera_obj + view_vector;
@@ -232,24 +225,10 @@ global_const Fui_Options f10th = Fui_Options{0, 0.1f};
 global_const Fui_Options f10s  = Fui_Options{0, 10.f};
 
 force_inline Fui_Options
-fscale(v1 delta_scale)
-{
+fscale(v1 delta_scale){
  Fui_Options result = {};
  result.delta_scale = delta_scale;
  return result;
-}
-
-force_inline void
-profile_visible(Line_Params *params, v1 edge1)
-{
- if (painter.profile_score > edge1) { params->visibility = 1.f; }
- else { params->visibility = 0.f; }
-}
-force_inline Line_Params
-profile_visible(v1 edge1){
- Line_Params params = painter.line_params;
- profile_visible(&params, edge1);
- return params;
 }
 force_inline Bezier
 reverse(Bezier B){
@@ -326,4 +305,26 @@ trs_pivot_transform(v3 translate, mat4i const&rotate, v1 scale,
 inline mat4i& p_current_world_from_bone(){
  return current_world_from_bone(painter); }
 
+inline void
+push_hl(argb color=0, i1 linum=__builtin_LINE()){
+ if(color == 0){color = srgb_to_linear(0XFFDBA50F);}
+ Common_Line_Params cparams = current_line_cparams();
+ cparams.flags |= Line_Overlay|Line_No_SymX;
+ cparams.color = color;
+ cparams.radii = i2f6(I4(3,3,3,3));
+ push_line_cparams(cparams, linum);
+}
+inline void pop_hl(){ pop_line_cparams(); }
+
+inline Line_Params
+profile_visible(v1 min, i1 linum=__builtin_LINE()){
+ Line_Params result = painter.line_params;
+ result.unit_normal = V3x(1.0f);
+ result.alignment_min = min;
+ return result;
+}
+inline Line_Params
+profile_visible_transition(v1 min){
+ return profile_visible(cosine(min*0.25f));
+}
 //~ EOF;

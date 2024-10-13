@@ -108,5 +108,12 @@ struct Prim_Ref{
   Fill_Data   *fill;
  };
 };
+//-
+function void
+dfill3_func(String vert_names[3], Fill_Params params=fp(), linum_defparam);
+function void
+dfill_bez_func(String curve_name, Fill_Params params=fp(), linum_defparam);
+function void
+dfill_dbez_func(String b1, String b2, Fill_Params params=fp(), linum_defparam);
 
 //~

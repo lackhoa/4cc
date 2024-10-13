@@ -1,4 +1,4 @@
-
+//-
 function Printer
 m_open_file_to_write(Stringz filename,
                      const char *call_file=__builtin_FILE(),
@@ -523,5 +523,4 @@ inline void
 print_i1_wrapper(Printer &p, Printer_Pair &ps_meta, char *type_name){
  print_i1_wrapper(p, ps_meta, SCu8(type_name));
 }
-
 //-

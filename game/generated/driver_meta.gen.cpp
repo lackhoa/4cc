@@ -326,11 +326,12 @@ Type_Info result = {};
 result.name = strlit("Line_Params");
 result.size = sizeof(Line_Params);
 result.kind = Type_Kind_Struct;
-result.members.set_count(4);
+result.members.set_count(5);
 result.members[0] = {.type=&Type_Info_v4, .name=strlit("radii"), .offset=offsetof(Line_Params, radii)};
 result.members[1] = {.type=&Type_Info_v1, .name=strlit("visibility"), .offset=offsetof(Line_Params, visibility)};
-result.members[2] = {.type=&Type_Info_v1, .name=strlit("alignment_threshold"), .offset=offsetof(Line_Params, alignment_threshold)};
-result.members[3] = {.type=&Type_Info_Line_Flags, .name=strlit("flags"), .offset=offsetof(Line_Params, flags)};
+result.members[2] = {.type=&Type_Info_Line_Flags, .name=strlit("flags"), .offset=offsetof(Line_Params, flags)};
+result.members[3] = {.type=&Type_Info_v3, .name=strlit("unit_normal"), .offset=offsetof(Line_Params, unit_normal)};
+result.members[4] = {.type=&Type_Info_v1, .name=strlit("alignment_min"), .offset=offsetof(Line_Params, alignment_min)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -362,14 +363,6 @@ read_v1(r, m_visibility);
 }
 pointer.visibility = m_visibility;
 
-v1 m_alignment_threshold = {};
-
-{
-eat_id(p, strlit("alignment_threshold"));
-read_v1(r, m_alignment_threshold);
-}
-pointer.alignment_threshold = m_alignment_threshold;
-
 Line_Flags m_flags = {};
 
 {
@@ -377,6 +370,22 @@ eat_id(p, strlit("flags"));
 read_Line_Flags(r, m_flags);
 }
 pointer.flags = m_flags;
+
+v3 m_unit_normal = {};
+
+{
+eat_id(p, strlit("unit_normal"));
+read_v3(r, m_unit_normal);
+}
+pointer.unit_normal = m_unit_normal;
+
+v1 m_alignment_min = {};
+
+{
+eat_id(p, strlit("alignment_min"));
+read_v1(r, m_alignment_min);
+}
+pointer.alignment_min = m_alignment_min;
 
 eat_char(p, '}');
 }

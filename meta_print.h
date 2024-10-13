@@ -24,18 +24,27 @@ print(Printer &p, Enclosed_in_strlit item){
 }
 inline Enclosed_in_strlit
 enclosed_in_strlit(String string){ return Enclosed_in_strlit{ string, }; }
+//-
 struct Repeated_Printee{
  String string;
  i32 count;
 };
-function void
-print(Printer &p, Repeated_Printee item){
- for_repeat(item.count){ p < item.string; };
-}
 inline Repeated_Printee
 repeated(String string, i32 count){ return {string, count}; }
 inline Repeated_Printee
 repeated(char *string, i32 count){ return {SCu8(string), count}; }
+function void
+print(Printer &p, Repeated_Printee item){
+ for_repeat(item.count){ p < item.string; };
+}
+//-
+function void
+print_comma_separated(Printer &p, arrayof<String> list){
+ for_i32(i,0,list.count){
+  if(i){ p<", "; }
+  p<list.items[i];
+ }
+}
 
 #define m_parens       defer_block((p << "("), (p << ")"))
 #define m_braces       defer_block((p << "\n{\n"), (p << "\n}\n"))

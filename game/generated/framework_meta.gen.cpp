@@ -61,15 +61,16 @@ Type_Info result = {};
 result.name = strlit("Curve_Type");
 result.size = sizeof(Curve_Type);
 result.kind = Type_Kind_Enum;
-result.enum_members.set_count(8);
+result.enum_members.set_count(9);
 result.enum_members[0] = {.name=strlit("Curve_Type_v3v2"), .value=Curve_Type_v3v2};
 result.enum_members[1] = {.name=strlit("Curve_Type_Parabola"), .value=Curve_Type_Parabola};
-result.enum_members[2] = {.name=strlit("Curve_Type_Offsets"), .value=Curve_Type_Offsets};
+result.enum_members[2] = {.name=strlit("Curve_Type_Offset"), .value=Curve_Type_Offset};
 result.enum_members[3] = {.name=strlit("Curve_Type_Unit"), .value=Curve_Type_Unit};
 result.enum_members[4] = {.name=strlit("Curve_Type_Unit2"), .value=Curve_Type_Unit2};
 result.enum_members[5] = {.name=strlit("Curve_Type_C2"), .value=Curve_Type_C2};
 result.enum_members[6] = {.name=strlit("Curve_Type_Line"), .value=Curve_Type_Line};
 result.enum_members[7] = {.name=strlit("Curve_Type_Bezd_Old"), .value=Curve_Type_Bezd_Old};
+result.enum_members[8] = {.name=strlit("Curve_Type_NegateX"), .value=Curve_Type_NegateX};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -89,27 +90,27 @@ pointer = *(Curve_Type*)(&integer);
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_v3v2()
+get_type_info_Curve_v3v2()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_v3v2");
-result.size = sizeof(Bezier_v3v2);
+result.name = strlit("Curve_v3v2");
+result.size = sizeof(Curve_v3v2);
 result.kind = Type_Kind_Struct;
 result.members.set_count(2);
-result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(Bezier_v3v2, d0)};
-result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(Bezier_v3v2, d3)};
+result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(Curve_v3v2, d0)};
+result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(Curve_v3v2, d3)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_v3v2 = get_type_info_Bezier_v3v2();
+global Type_Info Type_Info_Curve_v3v2 = get_type_info_Curve_v3v2();
 
-function Type_Info &type_info_from_pointer(Bezier_v3v2*pointer)
+function Type_Info &type_info_from_pointer(Curve_v3v2*pointer)
 {
-return Type_Info_Bezier_v3v2;
+return Type_Info_Curve_v3v2;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_v3v2(Data_Reader &r, Bezier_v3v2 &pointer)
+read_Curve_v3v2(Data_Reader &r, Curve_v3v2 &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -133,26 +134,26 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_Parabola()
+get_type_info_Curve_Parabola()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Parabola");
-result.size = sizeof(Bezier_Parabola);
+result.name = strlit("Curve_Parabola");
+result.size = sizeof(Curve_Parabola);
 result.kind = Type_Kind_Struct;
 result.members.set_count(1);
-result.members[0] = {.type=&Type_Info_v3, .name=strlit("d"), .offset=offsetof(Bezier_Parabola, d)};
+result.members[0] = {.type=&Type_Info_v3, .name=strlit("d"), .offset=offsetof(Curve_Parabola, d)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Parabola = get_type_info_Bezier_Parabola();
+global Type_Info Type_Info_Curve_Parabola = get_type_info_Curve_Parabola();
 
-function Type_Info &type_info_from_pointer(Bezier_Parabola*pointer)
+function Type_Info &type_info_from_pointer(Curve_Parabola*pointer)
 {
-return Type_Info_Bezier_Parabola;
+return Type_Info_Curve_Parabola;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_Parabola(Data_Reader &r, Bezier_Parabola &pointer)
+read_Curve_Parabola(Data_Reader &r, Curve_Parabola &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -168,27 +169,27 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_Offsets()
+get_type_info_Curve_Offset()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Offsets");
-result.size = sizeof(Bezier_Offsets);
+result.name = strlit("Curve_Offset");
+result.size = sizeof(Curve_Offset);
 result.kind = Type_Kind_Struct;
 result.members.set_count(2);
-result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(Bezier_Offsets, d0)};
-result.members[1] = {.type=&Type_Info_v3, .name=strlit("d3"), .offset=offsetof(Bezier_Offsets, d3)};
+result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(Curve_Offset, d0)};
+result.members[1] = {.type=&Type_Info_v3, .name=strlit("d3"), .offset=offsetof(Curve_Offset, d3)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Offsets = get_type_info_Bezier_Offsets();
+global Type_Info Type_Info_Curve_Offset = get_type_info_Curve_Offset();
 
-function Type_Info &type_info_from_pointer(Bezier_Offsets*pointer)
+function Type_Info &type_info_from_pointer(Curve_Offset*pointer)
 {
-return Type_Info_Bezier_Offsets;
+return Type_Info_Curve_Offset;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_Offsets(Data_Reader &r, Bezier_Offsets &pointer)
+read_Curve_Offset(Data_Reader &r, Curve_Offset &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -212,28 +213,28 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_Unit()
+get_type_info_Curve_Unit()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Unit");
-result.size = sizeof(Bezier_Unit);
+result.name = strlit("Curve_Unit");
+result.size = sizeof(Curve_Unit);
 result.kind = Type_Kind_Struct;
 result.members.set_count(3);
-result.members[0] = {.type=&Type_Info_v2, .name=strlit("d0"), .offset=offsetof(Bezier_Unit, d0)};
-result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(Bezier_Unit, d3)};
-result.members[2] = {.type=&Type_Info_v3, .name=strlit("unit_y"), .offset=offsetof(Bezier_Unit, unit_y)};
+result.members[0] = {.type=&Type_Info_v2, .name=strlit("d0"), .offset=offsetof(Curve_Unit, d0)};
+result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(Curve_Unit, d3)};
+result.members[2] = {.type=&Type_Info_v3, .name=strlit("unit_y"), .offset=offsetof(Curve_Unit, unit_y)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Unit = get_type_info_Bezier_Unit();
+global Type_Info Type_Info_Curve_Unit = get_type_info_Curve_Unit();
 
-function Type_Info &type_info_from_pointer(Bezier_Unit*pointer)
+function Type_Info &type_info_from_pointer(Curve_Unit*pointer)
 {
-return Type_Info_Bezier_Unit;
+return Type_Info_Curve_Unit;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_Unit(Data_Reader &r, Bezier_Unit &pointer)
+read_Curve_Unit(Data_Reader &r, Curve_Unit &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -265,27 +266,27 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_Unit2()
+get_type_info_Curve_Unit2()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Unit2");
-result.size = sizeof(Bezier_Unit2);
+result.name = strlit("Curve_Unit2");
+result.size = sizeof(Curve_Unit2);
 result.kind = Type_Kind_Struct;
 result.members.set_count(2);
-result.members[0] = {.type=&Type_Info_v4, .name=strlit("d0d3"), .offset=offsetof(Bezier_Unit2, d0d3)};
-result.members[1] = {.type=&Type_Info_v3, .name=strlit("unit_y"), .offset=offsetof(Bezier_Unit2, unit_y)};
+result.members[0] = {.type=&Type_Info_v4, .name=strlit("d0d3"), .offset=offsetof(Curve_Unit2, d0d3)};
+result.members[1] = {.type=&Type_Info_v3, .name=strlit("unit_y"), .offset=offsetof(Curve_Unit2, unit_y)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Unit2 = get_type_info_Bezier_Unit2();
+global Type_Info Type_Info_Curve_Unit2 = get_type_info_Curve_Unit2();
 
-function Type_Info &type_info_from_pointer(Bezier_Unit2*pointer)
+function Type_Info &type_info_from_pointer(Curve_Unit2*pointer)
 {
-return Type_Info_Bezier_Unit2;
+return Type_Info_Curve_Unit2;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_Unit2(Data_Reader &r, Bezier_Unit2 &pointer)
+read_Curve_Unit2(Data_Reader &r, Curve_Unit2 &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -309,27 +310,27 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_C2()
+get_type_info_Curve_C2()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_C2");
-result.size = sizeof(Bezier_C2);
+result.name = strlit("Curve_C2");
+result.size = sizeof(Curve_C2);
 result.kind = Type_Kind_Struct;
 result.members.set_count(2);
-result.members[0] = {.type=&Type_Info_Curve_Index, .name=strlit("ref"), .offset=offsetof(Bezier_C2, ref)};
-result.members[1] = {.type=&Type_Info_v3, .name=strlit("d3"), .offset=offsetof(Bezier_C2, d3)};
+result.members[0] = {.type=&Type_Info_Curve_Index, .name=strlit("ref"), .offset=offsetof(Curve_C2, ref)};
+result.members[1] = {.type=&Type_Info_v3, .name=strlit("d3"), .offset=offsetof(Curve_C2, d3)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_C2 = get_type_info_Bezier_C2();
+global Type_Info Type_Info_Curve_C2 = get_type_info_Curve_C2();
 
-function Type_Info &type_info_from_pointer(Bezier_C2*pointer)
+function Type_Info &type_info_from_pointer(Curve_C2*pointer)
 {
-return Type_Info_Bezier_C2;
+return Type_Info_Curve_C2;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_C2(Data_Reader &r, Bezier_C2 &pointer)
+read_Curve_C2(Data_Reader &r, Curve_C2 &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -353,25 +354,25 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_Line()
+get_type_info_Curve_Line()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Line");
-result.size = sizeof(Bezier_Line);
+result.name = strlit("Curve_Line");
+result.size = sizeof(Curve_Line);
 result.kind = Type_Kind_Struct;
 result.members.set_count(0);
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Line = get_type_info_Bezier_Line();
+global Type_Info Type_Info_Curve_Line = get_type_info_Curve_Line();
 
-function Type_Info &type_info_from_pointer(Bezier_Line*pointer)
+function Type_Info &type_info_from_pointer(Curve_Line*pointer)
 {
-return Type_Info_Bezier_Line;
+return Type_Info_Curve_Line;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_Line(Data_Reader &r, Bezier_Line &pointer)
+read_Curve_Line(Data_Reader &r, Curve_Line &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -379,27 +380,27 @@ eat_char(p, '}');
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:177:
 function Type_Info
-get_type_info_Bezier_Bezd_Old()
+get_type_info_Curve_Bezd_Old()
 {
 Type_Info result = {};
-result.name = strlit("Bezier_Bezd_Old");
-result.size = sizeof(Bezier_Bezd_Old);
+result.name = strlit("Curve_Bezd_Old");
+result.size = sizeof(Curve_Bezd_Old);
 result.kind = Type_Kind_Struct;
 result.members.set_count(2);
-result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(Bezier_Bezd_Old, d0)};
-result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(Bezier_Bezd_Old, d3)};
+result.members[0] = {.type=&Type_Info_v3, .name=strlit("d0"), .offset=offsetof(Curve_Bezd_Old, d0)};
+result.members[1] = {.type=&Type_Info_v2, .name=strlit("d3"), .offset=offsetof(Curve_Bezd_Old, d3)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
-global Type_Info Type_Info_Bezier_Bezd_Old = get_type_info_Bezier_Bezd_Old();
+global Type_Info Type_Info_Curve_Bezd_Old = get_type_info_Curve_Bezd_Old();
 
-function Type_Info &type_info_from_pointer(Bezier_Bezd_Old*pointer)
+function Type_Info &type_info_from_pointer(Curve_Bezd_Old*pointer)
 {
-return Type_Info_Bezier_Bezd_Old;
+return Type_Info_Curve_Bezd_Old;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:230:
 function void
-read_Bezier_Bezd_Old(Data_Reader &r, Bezier_Bezd_Old &pointer)
+read_Curve_Bezd_Old(Data_Reader &r, Curve_Bezd_Old &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
@@ -421,6 +422,41 @@ pointer.d3 = m_d3;
 
 eat_char(p, '}');
 }
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
+function Type_Info
+get_type_info_Curve_NegateX()
+{
+Type_Info result = {};
+result.name = strlit("Curve_NegateX");
+result.size = sizeof(Curve_NegateX);
+result.kind = Type_Kind_Struct;
+result.members.set_count(1);
+result.members[0] = {.type=&Type_Info_Curve_Index, .name=strlit("ref"), .offset=offsetof(Curve_NegateX, ref)};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Curve_NegateX = get_type_info_Curve_NegateX();
+
+function Type_Info &type_info_from_pointer(Curve_NegateX*pointer)
+{
+return Type_Info_Curve_NegateX;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
+function void
+read_Curve_NegateX(Data_Reader &r, Curve_NegateX &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+Curve_Index m_ref = {};
+
+{
+eat_id(p, strlit("ref"));
+read_Curve_Index(r, m_ref);
+}
+pointer.ref = m_ref;
+
+eat_char(p, '}');
+}
 //  C:\Users\vodan\4ed\code/meta_print.cpp:320:
 function Type_Info
 get_type_info_Curve_Union()
@@ -430,15 +466,16 @@ result.name = strlit("Curve_Union");
 result.size = sizeof(Curve_Union);
 result.kind = Type_Kind_Union;
 result.discriminator_type = &Type_Info_Curve_Type;
-result.union_members.set_count(8);
-result.union_members[0] = {.type=&Type_Info_Bezier_v3v2, .name=strlit("v3v2"), .variant=Curve_Type_v3v2};
-result.union_members[1] = {.type=&Type_Info_Bezier_Parabola, .name=strlit("Parabola"), .variant=Curve_Type_Parabola};
-result.union_members[2] = {.type=&Type_Info_Bezier_Offsets, .name=strlit("Offsets"), .variant=Curve_Type_Offsets};
-result.union_members[3] = {.type=&Type_Info_Bezier_Unit, .name=strlit("Unit"), .variant=Curve_Type_Unit};
-result.union_members[4] = {.type=&Type_Info_Bezier_Unit2, .name=strlit("Unit2"), .variant=Curve_Type_Unit2};
-result.union_members[5] = {.type=&Type_Info_Bezier_C2, .name=strlit("C2"), .variant=Curve_Type_C2};
-result.union_members[6] = {.type=&Type_Info_Bezier_Line, .name=strlit("Line"), .variant=Curve_Type_Line};
-result.union_members[7] = {.type=&Type_Info_Bezier_Bezd_Old, .name=strlit("Bezd_Old"), .variant=Curve_Type_Bezd_Old};
+result.union_members.set_count(9);
+result.union_members[0] = {.type=&Type_Info_Curve_v3v2, .name=strlit("v3v2"), .variant=Curve_Type_v3v2};
+result.union_members[1] = {.type=&Type_Info_Curve_Parabola, .name=strlit("Parabola"), .variant=Curve_Type_Parabola};
+result.union_members[2] = {.type=&Type_Info_Curve_Offset, .name=strlit("Offset"), .variant=Curve_Type_Offset};
+result.union_members[3] = {.type=&Type_Info_Curve_Unit, .name=strlit("Unit"), .variant=Curve_Type_Unit};
+result.union_members[4] = {.type=&Type_Info_Curve_Unit2, .name=strlit("Unit2"), .variant=Curve_Type_Unit2};
+result.union_members[5] = {.type=&Type_Info_Curve_C2, .name=strlit("C2"), .variant=Curve_Type_C2};
+result.union_members[6] = {.type=&Type_Info_Curve_Line, .name=strlit("Line"), .variant=Curve_Type_Line};
+result.union_members[7] = {.type=&Type_Info_Curve_Bezd_Old, .name=strlit("Bezd_Old"), .variant=Curve_Type_Bezd_Old};
+result.union_members[8] = {.type=&Type_Info_Curve_NegateX, .name=strlit("NegateX"), .variant=Curve_Type_NegateX};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -457,42 +494,47 @@ switch(variant)
 {
 case Curve_Type_v3v2:
 {
-read_Bezier_v3v2(r, pointer.v3v2);
+read_Curve_v3v2(r, pointer.v3v2);
 break;
 }
 case Curve_Type_Parabola:
 {
-read_Bezier_Parabola(r, pointer.parabola);
+read_Curve_Parabola(r, pointer.parabola);
 break;
 }
-case Curve_Type_Offsets:
+case Curve_Type_Offset:
 {
-read_Bezier_Offsets(r, pointer.offsets);
+read_Curve_Offset(r, pointer.offset);
 break;
 }
 case Curve_Type_Unit:
 {
-read_Bezier_Unit(r, pointer.unit);
+read_Curve_Unit(r, pointer.unit);
 break;
 }
 case Curve_Type_Unit2:
 {
-read_Bezier_Unit2(r, pointer.unit2);
+read_Curve_Unit2(r, pointer.unit2);
 break;
 }
 case Curve_Type_C2:
 {
-read_Bezier_C2(r, pointer.c2);
+read_Curve_C2(r, pointer.c2);
 break;
 }
 case Curve_Type_Line:
 {
-read_Bezier_Line(r, pointer.line);
+read_Curve_Line(r, pointer.line);
 break;
 }
 case Curve_Type_Bezd_Old:
 {
-read_Bezier_Bezd_Old(r, pointer.bezd_old);
+read_Curve_Bezd_Old(r, pointer.bezd_old);
+break;
+}
+case Curve_Type_NegateX:
+{
+read_Curve_NegateX(r, pointer.negateX);
 break;
 }
 
@@ -615,9 +657,10 @@ Type_Info result = {};
 result.name = strlit("Fill_Type");
 result.size = sizeof(Fill_Type);
 result.kind = Type_Kind_Enum;
-result.enum_members.set_count(2);
+result.enum_members.set_count(3);
 result.enum_members[0] = {.name=strlit("Fill_Type_Fill3"), .value=Fill_Type_Fill3};
 result.enum_members[1] = {.name=strlit("Fill_Type_Bez"), .value=Fill_Type_Bez};
+result.enum_members[2] = {.name=strlit("Fill_Type_DBez"), .value=Fill_Type_DBez};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -679,7 +722,7 @@ result.name = strlit("Fill_Bez");
 result.size = sizeof(Fill_Bez);
 result.kind = Type_Kind_Struct;
 result.members.set_count(1);
-result.members[0] = {.type=&Type_Info_Curve_Index, .name=strlit("bez"), .offset=offsetof(Fill_Bez, bez)};
+result.members[0] = {.type=&Type_Info_Curve_Index, .name=strlit("curve"), .offset=offsetof(Fill_Bez, curve)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -695,13 +738,57 @@ read_Fill_Bez(Data_Reader &r, Fill_Bez &pointer)
 {
 STB_Parser *p = r.parser;
 eat_char(p, '{');
-Curve_Index m_bez = {};
+Curve_Index m_curve = {};
 
 {
-eat_id(p, strlit("bez"));
-read_Curve_Index(r, m_bez);
+eat_id(p, strlit("curve"));
+read_Curve_Index(r, m_curve);
 }
-pointer.bez = m_bez;
+pointer.curve = m_curve;
+
+eat_char(p, '}');
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:177:
+function Type_Info
+get_type_info_Fill_DBez()
+{
+Type_Info result = {};
+result.name = strlit("Fill_DBez");
+result.size = sizeof(Fill_DBez);
+result.kind = Type_Kind_Struct;
+result.members.set_count(2);
+result.members[0] = {.type=&Type_Info_Curve_Index, .name=strlit("curve1"), .offset=offsetof(Fill_DBez, curve1)};
+result.members[1] = {.type=&Type_Info_Curve_Index, .name=strlit("curve2"), .offset=offsetof(Fill_DBez, curve2)};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:93:
+global Type_Info Type_Info_Fill_DBez = get_type_info_Fill_DBez();
+
+function Type_Info &type_info_from_pointer(Fill_DBez*pointer)
+{
+return Type_Info_Fill_DBez;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:230:
+function void
+read_Fill_DBez(Data_Reader &r, Fill_DBez &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+Curve_Index m_curve1 = {};
+
+{
+eat_id(p, strlit("curve1"));
+read_Curve_Index(r, m_curve1);
+}
+pointer.curve1 = m_curve1;
+
+Curve_Index m_curve2 = {};
+
+{
+eat_id(p, strlit("curve2"));
+read_Curve_Index(r, m_curve2);
+}
+pointer.curve2 = m_curve2;
 
 eat_char(p, '}');
 }
@@ -714,9 +801,10 @@ result.name = strlit("Fill_Union");
 result.size = sizeof(Fill_Union);
 result.kind = Type_Kind_Union;
 result.discriminator_type = &Type_Info_Fill_Type;
-result.union_members.set_count(2);
+result.union_members.set_count(3);
 result.union_members[0] = {.type=&Type_Info_Fill_Fill3, .name=strlit("Fill3"), .variant=Fill_Type_Fill3};
 result.union_members[1] = {.type=&Type_Info_Fill_Bez, .name=strlit("Bez"), .variant=Fill_Type_Bez};
+result.union_members[2] = {.type=&Type_Info_Fill_DBez, .name=strlit("DBez"), .variant=Fill_Type_DBez};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:93:
@@ -741,6 +829,11 @@ break;
 case Fill_Type_Bez:
 {
 read_Fill_Bez(r, pointer.bez);
+break;
+}
+case Fill_Type_DBez:
+{
+read_Fill_DBez(r, pointer.dbez);
 break;
 }
 

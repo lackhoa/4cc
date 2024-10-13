@@ -1,16 +1,14 @@
-//-NOTE: The script, compiles super fast, runs super slow!
-#define AD_IS_DRIVER 1
-#define AD_IS_GAME 1
-#define ED_API_USER 1
-#define FUI_FAST_PATH 1
-#include "kv.h"
-#include "generated/driver.gen.h"
-#include "driver.h"
-#include "game_draw.cpp"
-#include "game_fui.h"
-#include "game_anime.cpp"
-#include "game_utils.cpp"
-#include "game_body.cpp"
+//-NOTE(kv): The (deprecating) "script"
+//#define AD_IS_DRIVER 1
+//#define AD_IS_GAME 1
+//#define ED_API_USER 1
+//#include "kv.h"
+//#include "generated/driver.gen.h"
+//#include "driver.h"
+//#include "game_draw.cpp"
+//#include "game_fui.h"
+//#include "game_utils.cpp"
+//#include "game_body.cpp"
 
 // Select animation: @set_movie_shot
 
@@ -412,10 +410,10 @@ render_arm(Pose *pose, Torso const&torso_obj, v3 elbow_up_out)
   va(delt_back, (V3(-0.0076f, 0.2268f, -0.4244f)));
   fill3(delt_back, delt_bot, delt_top_back);
   
-  draw(delt_vmid, lp_alignment_threshold((0.8202f)));
+  draw(delt_vmid, lp_alignment_min((0.8202f)));
   //if (level1)
   {
-   Line_Params params = lp_alignment_threshold((0.6061f));
+   Line_Params params = lp_alignment_min((0.6061f));
    params.radii = (V4(0.712f, 0.f, 0.f, 0.5464f));
    draw(delt_vback, params);
    fill_bez(delt_vback);
@@ -777,17 +775,18 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
  vv(sternumL, sternum + V3x((0.0919f)));
  {// NOTE: Neck
   Bezier neck_front_vline = bezd_old(head.head_neck_junction,
-                                     (V3(-0.f, 0.f, -0.0968f)), 
+                                     V3(-0.f, 0.f, -0.0968f), 
                                      V2(0.f, 0.2897f), sternum);
-  draw( neck_front_vline, profile_visible(0.5f));
+  draw(neck_front_vline, profile_visible_transition(0.5f));
   
   Bezier neck_back_line = bez_offset(head.trapezius_head,
                                      V3(-0.1529f, -0.1932f, 0.2857f),
                                      V3(-0.1937f, 0.0701f, 0.0969f),
                                      shoulder_in);
-  draw(neck_back_line, i2f6(I4(0,1,3,0)));
+  draw(neck_back_line, I4(0,1,3,0));
   
-  if(painter.lr_index == 0){
+  {
+   symx_off;
    fill_dbez(neck_back_line, negateX(neck_back_line));
   }
   
@@ -800,9 +799,9 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
                                  V3(-0.0607f, 0.0941f, 0.0168f),
                                  shoulder);
   draw(bez_offset(shoulder_in,
-                       V3(0.0993f, -0.0342f, -0.f),
-                       V3(-0.0356f, 0.0675f, -0.0634f),
-                       shoulder),
+                  V3(0.0993f, -0.0342f, -0.f),
+                  V3(-0.0356f, 0.0675f, -0.0634f),
+                  shoulder),
        I4(5,3,3,1));
   {
    auto lp = painter.line_params;
@@ -892,7 +891,7 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
                                 V2(0.151f, 0.0235f),
                                 (V3(1.f, 0.f, -0.f)),
                                 latis_arm);
-  draw(latis_arm_line, lp_alignment_threshold(0.7f));
+  draw(latis_arm_line, lp_alignment_min(0.7f));
  }
  
  v3 scap_sock_bot;
@@ -996,7 +995,7 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
                             V2(0,0), 
                             (V3(0,0,-1)),
                             rib_back);
-  draw(latis_side,lp_alignment_threshold(0.7f));
+  draw(latis_side,lp_alignment_min(0.7f));
  }
  
  if(is_left()){
@@ -1095,10 +1094,6 @@ render_head(Pose *pose, v1 animation_time)
   v1 y = view_vector.x;
   v1 theta = arctan2(y,x);
   painter.profile_score = absolute(theta*4.f);
-  
-  if ( fbool(0) && is_main_viewport(painter.viewport) ) {
-   DEBUG_VALUE(painter.profile_score);
-  }
  }
  
  v1 chinY = -2.f*loomis_unit;
@@ -1112,7 +1107,7 @@ render_head(Pose *pose, v1 animation_time)
  v3 side_circle_center = V3(face_sideX,0,0);
  v1 side_circle_radius = loomis_unit;
  
- vv(chinL, V3(0,chinY,chin_middle.z) + (V3(0.1572f, 0.0504f, -0.077f)));
+ vv(chinL, V3(0,chinY,chin_middle.z) + V3(0.1572f, 0.0504f, -0.077f));
  
  v3 jaw = V3(face_sideX, chinY, 0) + (V3(-0.0844f, 0.4575f, -0.0247f));
  
@@ -1130,17 +1125,14 @@ render_head(Pose *pose, v1 animation_time)
  v1 browY = 0.f;
  v1 nose_sideX = (0.0586f);
  //NOTE: nose_rootL is just below the brow
- v3 nose_rootL = V3(nose_sideX, 
-                    lerp(browY, (0.1534f), noseY), 
-                    faceZ+(-0.104f));
- indicate(nose_rootL);
+ vv(nose_rootL, V3(nose_sideX, 
+                   lerp(browY, (0.1534f), noseY), 
+                   faceZ+(-0.104f)));
  
- v3 nose_wing = { nose_wingX, nose_baseY, faceZ };
- indicate(nose_wing);
+ vv(nose_wing, V3(nose_wingX, nose_baseY, faceZ));
  
  // NOTE: Is this point real? Not really, but it's here to stay.
- v3 nose_wing_up = nose_wing+(V3(-0.011f, 0.1107f, 0.0069f));
- indicate(nose_wing_up);
+ vv(nose_wing_up, nose_wing+V3(-0.011f, 0.1107f, 0.0069f));
  //-
  
  v3 lip_low_center;
@@ -1172,11 +1164,11 @@ render_head(Pose *pose, v1 animation_time)
   
   v3 philtrum_lowL = philtrum_low+V3x(philtrumX);
   lip_up  = bez_v3v3(philtrum_lowL, 
-                (V3(0.088f, 0.1234f, 0.2037f)),
-                (V3(-0.0951f, 0.0104f, 0.3071f)),
-                mouth_corner);
+                     (V3(0.088f, 0.1234f, 0.2037f)),
+                     (V3(-0.0951f, 0.0104f, 0.3071f)),
+                     mouth_corner);
   {// NOTE: lip_up 
-   Line_Params params = profile_visible((0.6014f));
+   Line_Params params = profile_visible_transition(0.6014f);
    params.radii = i2f6(I4(1,1,3,0));
    if (level1) { params = painter.line_params;  }
    //draw(lip_up, params);
@@ -1208,8 +1200,7 @@ render_head(Pose *pose, v1 animation_time)
    }
   }
   
-  v3 philtrum_offset_point = nose_wing+(V3(-0.0499f, -0.0725f, -0.0489f));
-  indicate(philtrum_offset_point);
+  vv(philtrum_offset_point, nose_wing+(V3(-0.0499f, -0.0725f, -0.0489f)));
   fill(philtrum_offset_point, lip_up);
   fill(philtrum_offset_point, philtrum_line_mid);
   fill3(philtrum_offset_point, nose_wing, philtrum_up+V3x(philtrumX));
@@ -1219,27 +1210,30 @@ render_head(Pose *pose, v1 animation_time)
  }
  
  //-NOTE: Nose
- Bezier nose_line_side = bez_unit2(nose_rootL,
-                                   (V4()),
-                                   (V3(0.f, 0.f, 1.f)),
-                                   addx(nose_tip, nose_sideX));
- v3 nose_tipL = nose_tip+V3x(nose_sideX);
- draw(bez_offset(nose_tipL,
-                 V3(0.0121f, -0.0404f, -0.1108f),
-                 V3(),
-                 nose_wing),
-      V4(0.151758f, 0.699609f, 1.149659f, -0.148325f));
+ vv(v1219, addx(nose_tip, nose_sideX));
+ bb_unit2(nose_line_side,
+          nose_rootL,
+          V4(),
+          V3(0.f, 0.f, 1.f),
+          v1219,
+          lp_invisible());
+ vv(nose_tipL, nose_tip+V3x(nose_sideX));
+ bs_offset(nose_tipL,
+           V3(0.0121f, -0.0404f, -0.1108f),
+           V3(),
+           nose_wing,
+           V4(0.151758f, 0.699609f, 1.149659f, -0.148325f));
  
  {
   symx_off;
-  Bezier nose_line_sideR = negateX(nose_line_side);
-  fill_dbez( nose_line_side, nose_line_sideR);
+  bb_negateX(nose_line_sideR, nose_line_side, lp_invisible());
+  dfill_dbez(nose_line_side, nose_line_sideR);
  }
  
  {//NOTE: Draw that tasty nose wing :>
   v3 d1089 = nose_wing+(V3(0.0539f, 0.07f, -0.0417f));
   Bezier P = bez_raw( nose_wing, d1089, d1089, nose_wing_up);
-  draw(P,profile_visible(0.70f));
+  draw(P,profile_visible_transition(0.70f));
  }
  {// NOTE: Some nose tip drawing (very fudgy)
   // TODO: We can merge this with the "nose under" lines, maybe? 
@@ -1604,7 +1598,7 @@ render_head(Pose *pose, v1 animation_time)
    radius_scale_block(0.25f);
    v3 mouth_low_valley = lip_low_center+V3(0.f, -0.0704f, -0.0417f);
    {
-    Line_Params params = profile_visible(0.73f);
+    Line_Params params = profile_visible_transition(0.73f);
     draw(bez_line(lip_low_center, mouth_low_valley), params);
     draw(bez_line(chin_middle, setx(chin_upL, 0.f)), params);
    }
@@ -1701,7 +1695,7 @@ render_head(Pose *pose, v1 animation_time)
                                  V4(0.f, 0.2629f, 0.1602f, 0.3068f),
                                  V3(0.f, 0.f, 1.f),
                                  bang_midpoint);
-   draw(bang_vline,profile_visible((0.4036f)));
+   draw(bang_vline,profile_visible_transition(0.4036f));
   }
   v3 bang_tip;
   {
@@ -1766,7 +1760,7 @@ render_head(Pose *pose, v1 animation_time)
                         V2(0.0175f, 0.2904f),
                         ear_center);
    draw(over1); 
-   draw(over2, lp_alignment_threshold((0.4764f)));
+   draw(over2, lp_alignment_min((0.4764f)));
   }
   {
    Bez line = bez_unit2(hair_root,
@@ -2333,7 +2327,7 @@ render_movie(render_movie_params)
   }
   p.viz_level                  = viz_level;
   p.ignore_radii               = viz_level!=0;
-  p.ignore_alignment_threshold = viz_level!=0;
+  p.ignore_alignment_min = viz_level!=0;
   init_static(p.bone_stack, arena, 16);
   auto &bones = get_bones(m);
   p.bone_stack.push(&bones[0]);
@@ -2365,7 +2359,6 @@ render_movie(render_movie_params)
  }
 }
 
-#undef indicate_level
 #undef indicate
 #undef indicate0
 #undef vv

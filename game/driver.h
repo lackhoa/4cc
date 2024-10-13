@@ -223,7 +223,7 @@ struct Painter{
  Fill_Params fill_params;
  i32 viz_level;
  b32 ignore_radii;
- b32 ignore_alignment_threshold;
+ b32 ignore_alignment_min;
  b32 painting_disabled;
  u32 draw_prim_id;
  Modeler *modeler;
@@ -254,6 +254,12 @@ inline Line_Params
 lp(i4 radii){
  Line_Params result = painter.line_params;
  result.radii = i2f6(radii);
+ return result;
+}
+inline Line_Params
+lp_invisible(){
+ Line_Params result = painter.line_params;
+ result.visibility = 0.0f;
  return result;
 }
 

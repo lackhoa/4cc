@@ -34,11 +34,13 @@ quad_bernstein(i32 index, v1 t){
               squared(t));
  return result;
 }
-force_inline Bezier
+inline Bezier
 negateX(Bezier line){
  for_i32(i,0,4) { line[i].x = -line[i].x; }
  return line;
 }
+inline Bezier
+bez_negateX(Bezier line){ return negateX(line); }
 function Bez
 operator*(mat4 transform, Bez bezier){
  Bez result;
@@ -146,8 +148,6 @@ fill3(v3 a, v3 b, v3 c, Fill_Params params=fp(), linum_defparam){
  v3 points[3] = {a,b,c};
  fill3_inner2(points,params,linum);
 }
-xfunction void
-dfill3_func(String vert_names[3], Fill_Params params=fp(), linum_defparam);
 inline void
 dfill3_func(String a, String b, String c, Fill_Params params=fp(), linum_defparam){
  String points[3] = {a,b,c};
@@ -155,13 +155,12 @@ dfill3_func(String a, String b, String c, Fill_Params params=fp(), linum_defpara
 }
 #define dfill3(a,b,c,...) \
 dfill3_func(strlit(#a), strlit(#b), strlit(#c), __VA_ARGS__)
-xfunction void
-dfill_bez_func(String curve_name, Fill_Params params=fp(), linum_defparam);
 #define dfill_bez(b,...)  dfill_bez_func(strlit(#b),__VA_ARGS__)
 inline void
 fill3(v3 points[3], Fill_Params params=fp(), linum_defparam){
  fill3_inner2(points,params,linum);
 }
+#define dfill_dbez(b1,b2,...) dfill_dbez_func(strlit(#b1), strlit(#b2), __VA_ARGS__)
 //-
 inline Bezier bez_raw(v3 p0, v3 p1, v3 p2, v3 p3){
  return Bezier{ p0,p1,p2,p3 };
@@ -282,20 +281,6 @@ radii_c2(v4 ref, v2 d_p3){
  v1 p2 = 0.5f*(p3+p1) + len*d;
  return V4(p0,p1,p2,p3);
 }
-function v1
-get_curve_view_alignment(Painter &p, const v3 P[4]){
- v3 A = P[0];
- v3 B = P[1];
- v3 C = P[2];
- v3 D = P[3];
- v3 normal = noz(cross(B-A, D-A));  // NOTE: the normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
- v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
- mat4 &bone_from_world = current_world_from_bone(p).inv;
- v3 camera_obj = bone_from_world * camera_world_position(&p.camera);
- v3 view_vector = noz(camera_obj - centroid);
- v1 visibility = absolute( dot(normal,view_vector) );
- return visibility;
-}
 function v3
 bezier_sample(const v3 P[4], v1 u){
  v1 U = 1-u;
@@ -334,12 +319,8 @@ draw_disk_inner(v3 center, v1 radius, argb color,
   }
  }
 }
-xfunction void
-draw_bezier_inner(v3 P[4], Common_Line_Params &cparams, Line_Params &params)
-#if NO_IMPL
-;
-#else
-{
+function void
+draw_bezier_inner(const v3 P[4], Common_Line_Params &cparams, Line_Params &params){
  if(params.visibility > 0.f){
   v1 depth_offset = cparams.depth_offset;
   v4 radii = params.radii;
@@ -351,7 +332,7 @@ draw_bezier_inner(v3 P[4], Common_Line_Params &cparams, Line_Params &params)
   if(flags & Line_Straight){
    radii = V4(radii[1]);  //note: don't wanna take radius from the tip
    nslices = 1;
-  } else {
+  }else{
    //~NOTE: pre-pass
    // NOTE: Working in 2D is no good, because we don't take into account that samples are moving in 3D,
    // so they might be traveling longer distances due to the depth, 
@@ -386,9 +367,7 @@ draw_bezier_inner(v3 P[4], Common_Line_Params &cparams, Line_Params &params)
    nslices = i32(cparams.nslice_per_meter * the_length)+1;
    
    i32 MAX_NSLICES = 128;
-   if (nslices > MAX_NSLICES) {
-    DEBUG_VALUE(nslices);
-   }
+   if(nslices > MAX_NSLICES){ DEBUG_VALUE(nslices); }
    macro_clamp_max(nslices, MAX_NSLICES);
   }
   
@@ -454,24 +433,39 @@ draw_bezier_inner(v3 P[4], Common_Line_Params &cparams, Line_Params &params)
   }
  }
 }
-#endif
 function b32
-draw_cparams(const v3 P0[4], Common_Line_Params &cparams, Line_Params params, linum_defparam){
+draw_cparams(const v3 P[4], Common_Line_Params &cparams, Line_Params params, linum_defparam){
  set_linum;
  Painter &p = painter;
  b32 ok = is_line_enabled();
  if(ok and
-    not p.ignore_alignment_threshold and
+    not p.ignore_alignment_min and
     u32(linum) != get_hot_prim_id()  and
-    params.alignment_threshold > 0.f){
-  ok = get_curve_view_alignment(p, P0) > params.alignment_threshold;
+    params.alignment_min > 0.f)
+ {//-NOTE(kv) Alignment business
+  v3 A = P[0];
+  v3 B = P[1];
+  v3 C = P[2];
+  v3 D = P[3];
+  v3 normal = params.unit_normal;
+  if(normal == V3()){
+   //NOTE(kv) The normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
+   normal = noz(cross(B-A, D-A));
+  }
+  v1 alignment;
+  {
+   v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
+   mat4 &bone_from_world = current_world_from_bone(p).inv;
+   v3 camera_obj = bone_from_world * camera_world_position(&p.camera);
+   v3 view_vector = noz(camera_obj - centroid);
+   alignment = absolute(dot(normal,view_vector));
+  }
+  ok = alignment > params.alignment_min;
  }
  if(ok){
   const i32 npoints = 4;
-  v3 points[npoints];
-  copy_array_dst(points,P0);
   // NOTE: Processing parameters
-  draw_bezier_inner(points, cparams, params);
+  draw_bezier_inner(P, cparams, params);
  }
  return ok;
 }
@@ -511,16 +505,6 @@ force_inline void
 draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  draw(bez_line(a,b), params, linum);
 }
-inline void
-push_hl(argb color=0, i1 linum=__builtin_LINE()){
- if(color == 0){color = srgb_to_linear(0XFFDBA50F);}
- auto cparams = current_line_cparams();
- cparams.flags |= Line_Overlay|Line_No_SymX;
- cparams.color = color;
- cparams.radii = i2f6(I4(3,3,3,3));
- push_line_cparams(cparams, linum);
-}
-inline void pop_hl(){ pop_line_cparams(); }
 force_inline void
 draw_line(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  params.flags |= Line_Straight;
@@ -788,10 +772,10 @@ small_to_big() {
  return V4(small, small, big, big);
 }
 inline Line_Params
-lp(v1 alignment_threshold, i4 radii={}){
+lp(v1 alignment_min, i4 radii={}){
  Line_Params result = painter.line_params;
- result.alignment_threshold = alignment_threshold;
- result.radii               = i2f6(radii);
+ result.alignment_min = alignment_min;
+ result.radii         = i2f6(radii);
  return result;
 }
 force_inline void

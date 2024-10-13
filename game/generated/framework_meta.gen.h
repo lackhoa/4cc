@@ -18,69 +18,77 @@ read_Curve_Type(Data_Reader &r, Curve_Type &pointer);
 static_assert( sizeof(Curve_Type) <= sizeof(i32) );
 
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_v3v2;
+struct Curve_v3v2;
 function Type_Info
-get_type_info_Bezier_v3v2();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_v3v2;
+get_type_info_Curve_v3v2();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_v3v2;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_v3v2(Data_Reader &r, Bezier_v3v2 &pointer);
+read_Curve_v3v2(Data_Reader &r, Curve_v3v2 &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_Parabola;
+struct Curve_Parabola;
 function Type_Info
-get_type_info_Bezier_Parabola();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Parabola;
+get_type_info_Curve_Parabola();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Parabola;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_Parabola(Data_Reader &r, Bezier_Parabola &pointer);
+read_Curve_Parabola(Data_Reader &r, Curve_Parabola &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_Offsets;
+struct Curve_Offset;
 function Type_Info
-get_type_info_Bezier_Offsets();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Offsets;
+get_type_info_Curve_Offset();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Offset;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_Offsets(Data_Reader &r, Bezier_Offsets &pointer);
+read_Curve_Offset(Data_Reader &r, Curve_Offset &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_Unit;
+struct Curve_Unit;
 function Type_Info
-get_type_info_Bezier_Unit();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Unit;
+get_type_info_Curve_Unit();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Unit;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_Unit(Data_Reader &r, Bezier_Unit &pointer);
+read_Curve_Unit(Data_Reader &r, Curve_Unit &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_Unit2;
+struct Curve_Unit2;
 function Type_Info
-get_type_info_Bezier_Unit2();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Unit2;
+get_type_info_Curve_Unit2();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Unit2;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_Unit2(Data_Reader &r, Bezier_Unit2 &pointer);
+read_Curve_Unit2(Data_Reader &r, Curve_Unit2 &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_C2;
+struct Curve_C2;
 function Type_Info
-get_type_info_Bezier_C2();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_C2;
+get_type_info_Curve_C2();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_C2;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_C2(Data_Reader &r, Bezier_C2 &pointer);
+read_Curve_C2(Data_Reader &r, Curve_C2 &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_Line;
+struct Curve_Line;
 function Type_Info
-get_type_info_Bezier_Line();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Line;
+get_type_info_Curve_Line();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Line;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_Line(Data_Reader &r, Bezier_Line &pointer);
+read_Curve_Line(Data_Reader &r, Curve_Line &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:171:
-struct Bezier_Bezd_Old;
+struct Curve_Bezd_Old;
 function Type_Info
-get_type_info_Bezier_Bezd_Old();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
-global_decl Type_Info Type_Info_Bezier_Bezd_Old;
+get_type_info_Curve_Bezd_Old();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Bezd_Old;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
-read_Bezier_Bezd_Old(Data_Reader &r, Bezier_Bezd_Old &pointer);
+read_Curve_Bezd_Old(Data_Reader &r, Curve_Bezd_Old &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:171:
+struct Curve_NegateX;
+function Type_Info
+get_type_info_Curve_NegateX();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_NegateX;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:224:
+function void
+read_Curve_NegateX(Data_Reader &r, Curve_NegateX &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:313:
 union Curve_Union;
 function Type_Info
@@ -123,6 +131,14 @@ global_decl Type_Info Type_Info_Fill_Bez;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
 read_Fill_Bez(Data_Reader &r, Fill_Bez &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:171:
+struct Fill_DBez;
+function Type_Info
+get_type_info_Fill_DBez();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Fill_DBez;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:224:
+function void
+read_Fill_DBez(Data_Reader &r, Fill_DBez &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:313:
 union Fill_Union;
 function Type_Info

@@ -61,8 +61,9 @@ struct Line_Params
 {
 v4 radii;
 v1 visibility;
-v1 alignment_threshold;
 Line_Flags flags;
+v3 unit_normal;
+v1 alignment_min;
 };
 typedef u32 Poly_Flags;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:384:

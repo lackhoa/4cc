@@ -59,11 +59,7 @@ slow_fval(T init_value, Fui_Options options={},
 }
 
 // NOTE: The "fval" macro switches between "fast" and "slow" version
-#if FUI_FAST_PATH
-#    define fval fast_fval
-#else
-#    define fval slow_fval
-#endif
+#define fval slow_fval
 
 //-
 #define fval2(x,y,...)      fval(V2(x,y),     ##__VA_ARGS__)

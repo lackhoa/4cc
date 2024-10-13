@@ -1,4 +1,3 @@
-
 //-
 
 #define X_struct_member_v3(NAME, ...)   v3 NAME;

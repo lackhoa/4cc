@@ -90,7 +90,7 @@ push_bezier_variant(arrayof<Union_Variant> &variants, Union_Variant v,
  Ed_Parser parser = m_parser_from_string(scratch, struct_members);
  v.struct_members = parse_struct_body(arena, &parser);
  v.enum_name      = strcat(arena, "Curve_Type_", v.name);
- v.struct_name    = strcat(arena, "Bezier_",      v.name);
+ v.struct_name    = strcat(arena, "Curve_",      v.name);
  variants.push(v);
 }
 inline void
@@ -119,12 +119,13 @@ strlit(#pstruct_members))
  
  X(0, v3v2,     v3v2,     { v3 d0; v2 d3; });
  X(1, Parabola, parabola, { v3 d; });
- X(2, Offsets,  offsets,  { v3 d0; v3 d3; });
+ X(2, Offset,   offset,   { v3 d0; v3 d3; });
  X(3, Unit,     unit,     { v2 d0; v2 d3; v3 unit_y; });
  X(4, Unit2,    unit2,    { v4 d0d3; v3 unit_y; });
  X(5, C2,       c2,       { Curve_Index ref; v3 d3; });
  X(6, Line,     line,     { });
  X(7, Bezd_Old, bezd_old, { v3 d0; v2 d3; });
+ X(8, NegateX,  negateX,  { Curve_Index ref; });
 #undef X
  
  String enum_type = strlit("Curve_Type");
@@ -174,21 +175,28 @@ strlit(#pstruct_members))
   m_location;
   for_i1(iv,0,variants.count){
    auto &variant = variants[iv];
-   b32 is_c2 = variant.name=="C2";
+   b32 is_c2      = variant.name=="C2";
+   b32 is_negateX = variant.name=="NegateX";
+   b32 has_p0 = !(is_c2 || is_negateX);
+   b32 has_p3 = !(is_negateX);
    auto variant_parameters = [&]()->void{
-    if(!is_c2){ p<"p0, "; }
+    arrayof<String> list;
+    init_dynamic(list, scratch);
+    if(has_p0){ list.push(strlit("p0")); }
     for_i32(im,0,variant.struct_members.count){
      auto &member = variant.struct_members[im];
-     p<member.name<", ";
+     list.push(member.name);
     }
-    p<"p3";
+    if(has_p3){ list.push(strlit("p3")); };
+    print_comma_separated(p,list);
    };
    {//-Function prototype
+    m_location;
     {//-The main function
      p<"xfunction void\n"<"send_bez_"<variant.name_lower;
      m_parens{
       p<"String name";
-      if(!is_c2){ p<", String p0"; }
+      if(has_p0){ p<", String p0"; }
       for_i32(im,0,variant.struct_members.count){
        Meta_Struct_Member &member = variant.struct_members[im];
        p<", ";
@@ -198,7 +206,7 @@ strlit(#pstruct_members))
         print_struct_member(p,member);
        }
       }
-      p<", String p3";
+      if(has_p3){ p<", String p3"; }
       p<", Line_Params params=lp()";
       p<", i32 linum=__builtin_LINE()";
      }
@@ -209,7 +217,7 @@ strlit(#pstruct_members))
       p<<"inline void\n"<<"send_bez_"<<variant.name_lower;
       m_parens{
        p<"String name";
-       if(!is_c2){ p<", String p0"; }
+       if(has_p0){ p<", String p0"; }
        for_i32(im,0,variant.struct_members.count){
         auto &member = variant.struct_members[im];
         p<", ";
@@ -219,7 +227,7 @@ strlit(#pstruct_members))
          print_struct_member(p,member);
         }
        }
-       p<", String p3"; 
+       if(has_p3){p<", String p3";}; 
        if(is_v4){
         p<", v4 radii";
        }else{
@@ -242,34 +250,44 @@ strlit(#pstruct_members))
     }
    }
    {//-NOTE Macros
+    m_location;
     {//NOTE bn_bs
      auto bn_bs = [&](b32 is_bs)->void{
       b32 is_bn = !is_bs;
       p<"#define "<(is_bs?"bs_":"bn_")<variant.name_lower;
       m_parens{
-       if(is_bn){ p<"name, "; };
-       if(!is_c2){ p<"p0, "; }
+       arrayof<String> list;
+       init_dynamic(list, scratch);
+       if(is_bn){ list.push(strlit("name")); };
+       if(has_p0){ list.push(strlit("p0")); }
        for_i32(im,0,variant.struct_members.count){
         auto &member = variant.struct_members[im];
-        p<member.name<", ";
+        list.push(member.name);
        }
-       p<"p3, ...";
+       if(has_p3){list.push(strlit("p3"));}
+       list.push(strlit("..."));
+       print_comma_separated(p,list);
       }
       p<"\\\n";
       p<"send_bez_"<variant.name_lower;
       m_parens{
-       p<(is_bn?"strlit(#name), " : "strlit(\"l\"), ");
-       if(!is_c2){ p<"strlit(#p0), "; }
+       begin_separator(p, ", ");
+       p < (is_bn?"strlit(#name)" : "strlit(\"l\")"); separator(p);
+       if(has_p0){ p<"strlit(#p0)"; separator(p); }
        for_i32(im,0,variant.struct_members.count){
         auto &member = variant.struct_members[im];
-        if(is_c2 && member.name==strlit("ref")){
-         p<"strlit(#ref)";
+        if(member.type.name==strlit("Curve_Index")){
+         p<"strlit(#"<member.name<")";
         }else{
          p<member.name;
         }
-        p<", ";
+        separator(p);
        }
-       p<"strlit(#p3), __VA_ARGS__";
+       if(has_p3){
+        p<"strlit(#p3)"; separator(p);
+       }
+       p<"__VA_ARGS__"; separator(p);
+       end_separator(p);
       }
       p<"\n";
      };
@@ -324,7 +342,8 @@ Union_Variant{ \
 strlit(#pstruct_members))
  
  X(1, Fill3,    fill3,    { Vertex_Index verts[3]; });
- X(2, Bez,      bez,      { Curve_Index bez; });
+ X(2, Bez,      bez,      { Curve_Index curve; });
+ X(3, DBez,     dbez,     { Curve_Index curve1; Curve_Index curve2; });
 #undef X
  
  String enum_type = strlit("Fill_Type");

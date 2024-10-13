@@ -2454,37 +2454,11 @@ mod_f32(f32 x, i32 m)
 }
 
 //~ NOTE(kv): Trig functions
-
-// TODO: make these be based on actual turn
-force_inline v1
-cosine(v1 x)
-{
-    return cosf(TAU32 * x);
-}
-
-force_inline f32
-sine(v1 x)
-{
-    return sinf(TAU32 * x);
-}
-
-force_inline v1
-arctan2(v1 y, v1 x)
-{
- return atan2f(y,x) / TAU32;
-}
-
-force_inline v1
-arcsin(v1 between_zero_and_one)
-{
- return asinf(between_zero_and_one) / TAU32;
-}
-
-force_inline v1
-arccos(v1 between_minus_one_and_one)
-{
- return acosf(between_minus_one_and_one) / TAU32;
-}
+inline v1 cosine(v1 v01) { return cosf(TAU32 * v01); }
+inline v1 sine(v1 v01){ return sinf(TAU32 * v01); }
+inline v1 arctan2(v1 y, v1 x) { return atan2f(y,x) / TAU32; }
+inline v1 arcsin(v1 v01) { return asinf(v01) / TAU32; }
+inline v1 arccos(v1 v01){ return acosf(v01) / TAU32; }
 
 ////////////////////////////////
 
@@ -4980,6 +4954,8 @@ typedef void Print_Function(void *userdata, char *format, va_list args);
 
 struct Printer{
  Printer_Type type;
+ b32 print_separator_before_anything_else;
+ String separator;
  union{
   struct{
    u8  *base;
@@ -4993,6 +4969,23 @@ struct Printer{
   };
  };
 };
+//-NOTE(kv) Brought to you by Meta-Programming needs
+inline void
+begin_separator(Printer &p, char *separator){
+ p.print_separator_before_anything_else = false;
+ p.separator = SCu8(separator);
+}
+inline void
+end_separator(Printer &p){
+ p.print_separator_before_anything_else = false;
+ p.separator = {};
+}
+//NOTE(kv) The separator signal
+function void
+separator(Printer &p){
+ p.print_separator_before_anything_else = true;
+}
+//-
 inline Printer
 make_printer_buffer(Arena *arena, i32 cap){
  Printer result = {
@@ -5010,6 +5003,7 @@ make_printer_file(FILE *file){
  };
  return result;
 }
+//-
 function Stringz
 printer_get_string(Printer &p){
  if(p.type==Printer_Type_Buffer){
@@ -5024,10 +5018,8 @@ printer_get_string(Printer &p){
   return {};
  }
 }
-
 inline void
-printer_delete(Printer &p)
-{
+printer_delete(Printer &p){
  kv_assert(p.type == Printer_Type_Buffer);
  kv_assert(p.used > 0);
  p.used--;
@@ -5046,9 +5038,7 @@ printer_delete(Printer &p)
 
 //-NOTE Base print function overloads
 function void
-printer_printf(Printer &p, char *format, ...){
- va_list args;
- va_start(args, format);
+printer_printf2v(Printer &p, char *format, va_list args){
  switch(p.type){
   case Printer_Type_Buffer:{
    i32 remaining = p.cap-p.used;
@@ -5064,12 +5054,30 @@ printer_printf(Printer &p, char *format, ...){
   }break;
   invalid_default_case;
  }
+}
+//NOTE(kv) omg totally unnecessary
+function void
+printer_printf2(Printer &p, char *format, ...){
+ va_list args;
+ va_start(args, format);
+ printer_printf2v(p,format,args);
+ va_end(args);
+}
+function void
+printer_printf(Printer &p, char *format, ...){
+ va_list args;
+ va_start(args, format);
+ if(p.print_separator_before_anything_else){
+  p.print_separator_before_anything_else = false;
+  printer_printf2(p, "%.*s", strexpand(p.separator));
+ }
+ printer_printf2v(p, format, args);
  va_end(args);
 }
 //-NOTE: Printing different types
 inline void print(Printer &p, const char *cstring) { printer_printf(p, "%s", cstring); }
 inline void print(Printer &p, String string) {
- printer_printf(p, "%.*s", string_expand(string));
+ printer_printf(p, "%.*s", strexpand(string));
 }
 inline void print(Printer &p, char c)  { printer_printf(p, "%c", c); }
 inline void print(Printer &p, i32 d)   { printer_printf(p, "%d", d); }

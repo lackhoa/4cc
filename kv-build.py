@@ -22,7 +22,7 @@ hotload_game = "game.cpp" in args.file  # @build_filename_hack
 
 # NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-ed_build_level    = 0
+ed_build_level    = 1
 game_build_level  = 0
 meta_build_level  = 0
 imgui_build_level = 2
@@ -369,17 +369,10 @@ def build_game():
             run(f'clang++ -c {pjoin(CODE, "game", "game.cpp")}  {INCLUDES} {SYMBOLS} -Od -ftime-trace')
         else:
             cl_or_clang_cl = Compiler.MSVC if COMPILE_GAME_WITH_MSVC else Compiler.ClangCl
-            # NOTE: "Zc:strictStrings-" must be put after the cpp version for some reason
-            #
             MSVC_COMPILE_FLAGS = f"{INCLUDES} {SYMBOLS}"
-            if not hotload_game:
-                # NOTE: Compile the framework
-                run_compiler(cl_or_clang_cl, GAME_MAIN, "",
-                             debug_mode=(not FRAMEWORK_OPTIMIZE_ON),
-                             compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                             compile_only=True, no_ccache=True)
             # NOTE: Compile the driver and the framework
-            run_compiler(cl_or_clang_cl, f'{GAME_CPP} game_main.obj {space_join(imgui_object_files)}', f"game{DOT_DLL}",
+            run_compiler(cl_or_clang_cl, f'{GAME_MAIN} {space_join(imgui_object_files)}', f"game{DOT_DLL}",
+                         debug_mode=(not FRAMEWORK_OPTIMIZE_ON),
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",
                          linker_flags="-DLL -export:game_api_export")
 

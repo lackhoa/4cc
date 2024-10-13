@@ -42,6 +42,15 @@
 #include "framework.h"
 #include "game_api.cpp"
 
+#undef fval
+#define fval fast_fval
+#include "game_anime.cpp"
+#include "game_utils.cpp"
+#include "game_body.cpp"
+#include "game.cpp"
+#undef fval
+#define fval slow_fval
+
 /*
   IMPORTANT Rule for the renderer
   1. Colors are in linear space (todo precision loss if passed as u32)
@@ -428,12 +437,11 @@ get_right_bone(Modeler &m, Bone &bone){
  return *result;
 }
 //NOTE(kv) Unfortunately a curve can look differently based on
-//  which side of the body it is on.
-//  I just feel kinda yucky because this is an animation problem we have yet to "solve".
+//  which side of the body it is on (because the endpoints can belong to different bones).
+//  It feels wonky because this is an animation problem we have yet to "solve".
 function Bez
 compute_curve_from_data(Modeler &m, Curve_Data &data0, b32 lr){
  b32 is_c2 = (data0.type == Curve_Type_C2);
- b32 is_unit = (data0.type == Curve_Type_Unit);
  Bez result;
  Bone_ID curve_bone_id = data0.bone_id;
  Bone &curve_bone = get_bone(m,curve_bone_id,lr);
@@ -441,9 +449,9 @@ compute_curve_from_data(Modeler &m, Curve_Data &data0, b32 lr){
 #define curve_vec(vec)  mat4vec(curve_xform, vec)
  Vertex_Data &ve0 = m.vertices[data0.p0_index.v];
  Vertex_Data &ve3 = m.vertices[data0.p3_index.v];
- if(is_unit){
+ if(data0.type == Curve_Type_Unit){
   //NOTE(kv) Has to preserve the wrong logic here, omg!
-  //  could be wrong in some cases with differing coframes but I don't care!
+  //  could be wrong in some cases with differing coframes, but I don't care!
   v3 p0 = ve0.pos;
   v3 p3 = ve3.pos;
   auto &data = data0.data.unit;
@@ -477,6 +485,16 @@ compute_curve_from_data(Modeler &m, Curve_Data &data0, b32 lr){
    case Curve_Type_Bezd_Old:{
     auto &data = data0.data.bezd_old;
     result = bezd_old(p0,data.d0,data.d3,p3);
+   }break;
+   case Curve_Type_Offset:{
+    auto &data = data0.data.offset;
+    result = bez_offset(p0,curve_vec(data.d0),curve_vec(data.d3),p3);
+   }break;
+   case Curve_Type_NegateX:{
+    auto &data = data0.data.negateX;
+    Curve_Data &refd = m.curves[data.ref.v];
+    Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
+    result = negateX(ref);
    }break;
    invalid_default_case;
   }
@@ -529,9 +547,17 @@ render_data(Modeler &m){
      }break;
      case Fill_Type_Bez:{
       Fill_Bez &data = fill.data.bez;
-      Curve_Data &curve_data = m.curves[data.bez.v];
+      Curve_Data &curve_data = m.curves[data.curve.v];
       Bezier curve = compute_curve_from_data(m,curve_data,lr_index);
       fill_bez(curve,0,prim_id);
+     }break;
+     case Fill_Type_DBez:{
+      Fill_DBez &data = fill.data.dbez;
+      Curve_Data &curve1_data = m.curves[data.curve1.v];
+      Curve_Data &curve2_data = m.curves[data.curve2.v];
+      Bezier curve1 = compute_curve_from_data(m,curve1_data,lr_index);
+      Bezier curve2 = compute_curve_from_data(m,curve2_data,lr_index);
+      fill_dbez(curve1,curve2,0,prim_id);
      }break;
      invalid_default_case;
     }
