@@ -1231,9 +1231,8 @@ render_head(Pose *pose, v1 animation_time)
  }
  
  {//NOTE: Draw that tasty nose wing :>
-  v3 d1089 = nose_wing+(V3(0.0539f, 0.07f, -0.0417f));
-  Bezier P = bez_raw( nose_wing, d1089, d1089, nose_wing_up);
-  draw(P,profile_visible_transition(0.70f));
+  bs_parabola(nose_wing, V3(0.0539f, 0.07f, -0.0417f), nose_wing_up,
+              profile_visible_transition(0.70f));
  }
  {// NOTE: Some nose tip drawing (very fudgy)
   // TODO: We can merge this with the "nose under" lines, maybe? 
@@ -1288,13 +1287,13 @@ render_head(Pose *pose, v1 animation_time)
   WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
   
   b32 show_eye_guideline = painter.show_grid;
-  if (level1 || show_eye_guideline){
+  if(level1 || show_eye_guideline){
    hl_block;
-   if (level1) { draw(bez_line(eye_in, nose_rootL)); }
+   if(level1){ draw(bez_line(eye_in, nose_rootL)); }
   }
   v3 eye_out = eye_in + V3(2.f * eye_in.x + (-0.03f),
                            0,
-                           (-0.154f));
+                           -0.154f);
   indicate(eye_out);
   if(level1){hl_block; draw_line( eye_out, brow_out);}
   va(es_up_in, bezier_sample(brow_ridge, (0.3668f)));
@@ -1312,7 +1311,7 @@ render_head(Pose *pose, v1 animation_time)
                                  eye_out);
   
   {
-   v3 eye_low_patch = lerp(eye_in, (0.4768f), cheek_low);
+   v3 eye_low_patch = lerp(eye_in, 0.4768f, cheek_low);
    indicate(eye_low_patch);
    fill( eye_low_patch, eye_low_line);
    fill3(eye_low_patch, eye_out, cheek_low);
@@ -1322,7 +1321,7 @@ render_head(Pose *pose, v1 animation_time)
   argb eye_socket_shade = eye_in_shade;
   Bezier eye_up_line_now;
   {// NOTE: Blinking animation control
-   v1 tblink = (pose->tblink);
+   v1 tblink = pose->tblink;
    eye_up_line_now = bez_raw(eye_in, 
                              lerp(eye_up_line[1], tblink, eye_low_line[1]),
                              lerp(eye_up_line[2], tblink, eye_low_line[2]),
@@ -1397,10 +1396,9 @@ render_head(Pose *pose, v1 animation_time)
    }
    
    {//-NOTE: Checking
-    for_i32(index,0,2)
-    {
+    for_i32(index,0,2) {
      Bez line;
-     if (index == 0) { line = eye_up_line; }
+     if(index == 0){ line = eye_up_line; }
      else { line = eye_low_line; }
      auto result = get_eye_min_distance(eyeball_center, eyeball_radius, line);
      if (result.min_distance < 0)
@@ -1452,7 +1450,7 @@ render_head(Pose *pose, v1 animation_time)
   v3 cj = lerp(chinL, 0.5f, jaw);
   {
    // TODO: This line (and "cj") is here because it happens to look good
-   jaw_line = bez_raw( ear_center, jaw, jaw, cj);
+   jaw_line = bez_raw(ear_center, jaw, jaw, cj);
    v4 radii = painter.line_params.radii;
    radii[0] = 0.f;
    radii[1] = 0.f;

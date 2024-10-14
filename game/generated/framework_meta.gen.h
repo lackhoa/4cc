@@ -89,6 +89,14 @@ global_decl Type_Info Type_Info_Curve_NegateX;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:224:
 function void
 read_Curve_NegateX(Data_Reader &r, Curve_NegateX &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:171:
+struct Curve_Lerp;
+function Type_Info
+get_type_info_Curve_Lerp();//  C:\Users\vodan\4ed\code/meta_print.cpp:86:
+global_decl Type_Info Type_Info_Curve_Lerp;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:224:
+function void
+read_Curve_Lerp(Data_Reader &r, Curve_Lerp &pointer);
 //  C:\Users\vodan\4ed\code/meta_print.cpp:313:
 union Curve_Union;
 function Type_Info

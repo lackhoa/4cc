@@ -66,11 +66,11 @@ k_process_file(File_Name_Data source){
      Meta_Struct_Member &member = members.push2();
      member = {};
      
-     if (ep_maybe_id(p, "meta_removed")) {
+     if(ep_maybe_id(p, "meta_removed")){
       // NOTE(kv): meta_removed
       ep_char(p, '(');
       {
-       parse_struct_member(p, member);
+       parse_struct_member(p, &member);
       }
       if(meta_maybe_key(p, "added")){
        member.version_added = ep_id(p);
@@ -106,7 +106,7 @@ k_process_file(File_Name_Data source){
       }
       ep_consume_semicolons(p);
       
-      parse_struct_member(p, member);
+      parse_struct_member(p, &member);
      }
     }
     

@@ -11,8 +11,6 @@ struct Curve_Data{
  Bone_ID bone_id;
  b32 symx;
  Curve_Type type;
- Vertex_Index p0_index;
- Vertex_Index p3_index;
  tagged_by(type) Curve_Union data;
  Line_Params params;
  Common_Line_Params_Index cparams;

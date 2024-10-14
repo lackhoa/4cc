@@ -4348,8 +4348,7 @@ struct arrayof{
  {// TODO(kv): This grow logic is wonky: there are two cases:
   // 1. Natural growth: doubling
   // 2. User-dictated growth: just set the cap to the dictated value
-  if (cap_min > cap)
-  {
+  if (cap_min > cap) {
    i32 new_cap = (cap == 0);
    if (cap == 0) {
     new_cap = cap_min;
@@ -4359,8 +4358,7 @@ struct arrayof{
    set_cap_(new_cap);
   }
  }
- void set_count(i32 new_count)
- {
+ void set_count(i32 new_count) {
   kv_assert(new_count >= 0);
   set_cap_min(new_count);
   count = new_count;
@@ -4370,12 +4368,21 @@ struct arrayof{
  inline void pop() {
   set_count(count-1);
  }
- inline T& push(const T& item)
- {//TODO(kv): implement sorting
+ inline T& push(const T& item){
   set_count(count+1);
   T &result = last();
   result = item;
   return result;
+ }
+ inline T& push_first(const T& new_item){
+  set_count(count+1);
+  for(i32 index=count-1;
+      index >= 1;
+      index--){
+   items[index] = items[index-1];
+  }
+  items[0] = new_item;
+  return items[0];
  }
  inline T &push2(){
   set_count(count+1);
@@ -4388,8 +4395,7 @@ struct arrayof{
   return result;
  }
  
- arrayof<T> copy(Arena *arena)
- {
+ arrayof<T> copy(Arena *arena) {
   arrayof<T> result = *this;
   result.items = push_array(arena, T, count);
   umm size = count*sizeof(T);
@@ -4985,6 +4991,9 @@ function void
 separator(Printer &p){
  p.print_separator_before_anything_else = true;
 }
+#define separator_block(printer, separator) \
+defer_block(begin_separator(printer, separator), \
+end_separator(printer))
 //-
 inline Printer
 make_printer_buffer(Arena *arena, i32 cap){

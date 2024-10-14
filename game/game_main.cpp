@@ -26,9 +26,10 @@
 #include "generated/driver.gen.h"
 #include "driver.h"
 #include "generated/framework.gen.h"
+#include "generated/send_bez.gen.h"
 #include "game_modeler.h"
-#include "game_draw.cpp"
 
+#include "game_draw.cpp"
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 
@@ -38,6 +39,7 @@
 #include "generated/4coder_game_shared.gen.cpp"
 #include "generated/driver_meta.gen.cpp"
 #include "generated/framework_meta.gen.cpp"
+#include "generated/send_bez.gen.cpp"
 
 #include "framework.h"
 #include "game_api.cpp"
@@ -440,58 +442,61 @@ get_right_bone(Modeler &m, Bone &bone){
 //  which side of the body it is on (because the endpoints can belong to different bones).
 //  It feels wonky because this is an animation problem we have yet to "solve".
 function Bez
-compute_curve_from_data(Modeler &m, Curve_Data &data0, b32 lr){
- b32 is_c2 = (data0.type == Curve_Type_C2);
+compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
+ b32 is_c2 = (curve.type == Curve_Type_C2);
  Bez result;
- Bone_ID curve_bone_id = data0.bone_id;
+ Bone_ID curve_bone_id = curve.bone_id;
  Bone &curve_bone = get_bone(m,curve_bone_id,lr);
  mat4i &curve_xform = curve_bone.xform;
 #define curve_vec(vec)  mat4vec(curve_xform, vec)
- Vertex_Data &ve0 = m.vertices[data0.p0_index.v];
- Vertex_Data &ve3 = m.vertices[data0.p3_index.v];
- if(data0.type == Curve_Type_Unit){
+ Vertex_Data &ve0 = m.vertices[get_p0_index_or_zero(curve).v];
+ Vertex_Data &ve3 = m.vertices[get_p3_index_or_zero(curve).v];
+ if(curve.type == Curve_Type_Unit){
   //NOTE(kv) Has to preserve the wrong logic here, omg!
   //  could be wrong in some cases with differing coframes, but I don't care!
   v3 p0 = ve0.pos;
   v3 p3 = ve3.pos;
-  auto &data = data0.data.unit;
+  auto &data = curve.data.unit;
   result = bez_unit(p0, data.d0, data.d3, data.unit_y, p3);
   result = curve_xform*result;
  }else{
   v3 p0 = get_bone(m,ve0.bone_id,lr).xform * ve0.pos;
   v3 p3 = get_bone(m,ve3.bone_id,lr).xform * ve3.pos;
-  switch(data0.type){
+  switch(curve.type){
    case Curve_Type_v3v2:{
-    auto &data = data0.data.v3v2;
+    auto &data = curve.data.v3v2;
     result = bez_v3v2(p0, curve_vec(data.d0), data.d3, p3);
    }break;
    case Curve_Type_Parabola:{
-    result = bez_parabola(p0, curve_vec(data0.data.parabola.d), p3);
+    result = bez_parabola(p0, curve_vec(curve.data.parabola.d), p3);
    }break;
    case Curve_Type_C2:{
-    auto &data = data0.data.c2;
+    auto &data = curve.data.c2;
     Curve_Data &refd = m.curves[data.ref.v];
     Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
     result = bez_c2(ref, curve_vec(data.d3), p3);
    }break;
    case Curve_Type_Unit:{
-    auto &data = data0.data.unit;
-    result = bez_unit(p0, data.d0, data.d3,
-                      noz(curve_vec(data.unit_y)), p3);
+    auto &data = curve.data.unit;
+    result = bez_unit(p0, data.d0, data.d3, noz(curve_vec(data.unit_y)), p3);
+   }break;
+   case Curve_Type_Unit2:{
+    auto &data = curve.data.unit2;
+    result = bez_unit2(p0, data.d0d3, noz(curve_vec(data.unit_y)), p3);
    }break;
    case Curve_Type_Line:{
     result = bez_line(p0,p3);
    }break;
    case Curve_Type_Bezd_Old:{
-    auto &data = data0.data.bezd_old;
+    auto &data = curve.data.bezd_old;
     result = bezd_old(p0,data.d0,data.d3,p3);
    }break;
    case Curve_Type_Offset:{
-    auto &data = data0.data.offset;
+    auto &data = curve.data.offset;
     result = bez_offset(p0,curve_vec(data.d0),curve_vec(data.d3),p3);
    }break;
    case Curve_Type_NegateX:{
-    auto &data = data0.data.negateX;
+    auto &data = curve.data.negateX;
     Curve_Data &refd = m.curves[data.ref.v];
     Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
     result = negateX(ref);
@@ -606,21 +611,25 @@ game_render(game_render_params){
  pa.viewport  = viewport;
  pa.modeler   = &mo;
  pa.camera    = *camera;
+ pa.sending_data = state->sending_data;
  {//-NOTE(kv) Drawing the movie
   Render_Config *config = draw_new_group(target);
-  set_y_up(target, config);
-  config->scale_down_pow2 = scale_down_pow2;
-  config->meter_to_pixel  = meter_to_pixel;
   {
-   Scratch_Block render_scratch;
-   //TODO(kv) Why can't the game understand scratch blocks?
+   set_y_up(target, config);
+   config->scale_down_pow2 = scale_down_pow2;
+   config->meter_to_pixel  = meter_to_pixel;
+  }
+  //TODO(kv) Why can't the game understand scratch blocks?
+  Scratch_Block render_scratch;
+  if(pa.sending_data){
    mo.vertices.set_count(1);
    mo.curves.  set_count(1);
    mo.fills.   set_count(1);
-   render_movie(scratch, render_scratch,
-                config, state->references_full_alpha,
-                &state->pose, state->anime_time);
   }
+  render_movie(scratch, render_scratch,
+               config, state->references_full_alpha,
+               &state->pose, state->anime_time);
+  state->sending_data = false;
  }
  //-NOTE
  render_data(mo);
@@ -735,7 +744,6 @@ game_reload(game_reload_params)
 {// Game_State
  // API import
  ed_api_read_vtable(ed_api);
- 
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
   state->dll_temp_memory = begin_temp(dll_arena);
@@ -748,7 +756,6 @@ game_reload(game_reload_params)
   slow_line_map       = state->slow_line_map;
   slow_line_map.count = 0;
  }
- 
  {//-NOTE: Dear ImGui reload
   IMGUI_CHECKVERSION();
   
@@ -758,11 +765,11 @@ game_reload(game_reload_params)
    ImGui::SetAllocatorFunctions(imgui.alloc_func, imgui.free_func, imgui.user_data);
   }
  }
+ state->sending_data = true;
 }
 
 function game_shutdown_return
-game_shutdown(game_shutdown_params)
-{
+game_shutdown(game_shutdown_params){
  end_temp(state->dll_temp_memory);
 }
 
@@ -1189,17 +1196,17 @@ game_update(game_update_params){
   if(active_buffer_name == GAME_FILE_NAME){
    i64 linum = get_current_line_number2(app, view_id, buffer);
    Modeler &m = *modeler;
-   Prim_Ref v = get_vertex_by_linum(m,linum);
+   Vertex_Ref v = get_vertex_by_linum(m,linum);
    if(v.vertex){
-    hot_prim_id = prim_id_from_vertex_index(v.vertex_index);
+    hot_prim_id = prim_id_from_vertex_index(v.index);
    }else{
-    Prim_Ref c = get_curve_by_linum(m,linum);
+    Curve_Ref c = get_curve_by_linum(m,linum);
     if(c.curve){
-     hot_prim_id = prim_id_from_curve_index(c.curve_index);
+     hot_prim_id = prim_id_from_curve_index(c.index);
     }else{
-     Prim_Ref t = get_fill_by_linum(m,linum);
+     Fill_Ref t = get_fill_by_linum(m,linum);
      if(t.fill){
-      hot_prim_id = prim_id_from_triangle_index(t.fill_index);
+      hot_prim_id = prim_id_from_triangle_index(t.index);
      }
     }
    }

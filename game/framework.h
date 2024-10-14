@@ -48,6 +48,7 @@ struct Game_State{
  Serialized_State_Embed;
  Pose pose;
  v1 anime_time;
+ b32 sending_data;
  
  b8 __padding[64];
 };

@@ -230,6 +230,7 @@ struct Painter{
  b32 show_grid;
  argb shade_color;
  arrayof<Common_Line_Params *> line_cparams_stack;
+ b32 sending_data;
  
  union{ b32 is_right; b32 lr_index; };
  arrayof<Bone*> bone_stack;
@@ -296,12 +297,7 @@ struct Pose{
  X_Pose_Fields(X);
 #undef X
 };
-
-//~NOTE Atrocity Alert! Transitional code to convert code to data.
-#include "generated/send_bez.gen.h"
 //-
-xfunction void
-send_vert_func(Painter &p, String name, v3 pos, i32 linum=__builtin_LINE());
 //NOTE(kv) You can only send one vert on one line
 #define send_vert(NAME)  send_vert_func(painter, strlit(#NAME), NAME)
 

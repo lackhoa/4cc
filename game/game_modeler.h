@@ -91,9 +91,17 @@ get_selected_curve(Modeler *m){
 }
 
 xfunction b32 is_prim_id_active(Modeler *m, u32 prim_id);
+struct Vertex_Ref{
+ Vertex_Index index;
+ Vertex_Data *vertex;
+};
 struct Curve_Ref{
  Curve_Index index;
  Curve_Data *curve;
+};
+struct Fill_Ref{
+ Fill_Index index;
+ Fill_Data *fill;
 };
 struct Prim_Ref{
  Prim_Type type;
@@ -110,10 +118,12 @@ struct Prim_Ref{
 };
 //-
 function void
-dfill3_func(String vert_names[3], Fill_Params params=fp(), linum_defparam);
+send_vert_func(Painter &p, String name, v3 pos, i1 linum=__builtin_LINE());
 function void
-dfill_bez_func(String curve_name, Fill_Params params=fp(), linum_defparam);
+dfill3_func(String vert_names[3], Fill_Params params=fp(), i1 linum=__builtin_LINE());
 function void
-dfill_dbez_func(String b1, String b2, Fill_Params params=fp(), linum_defparam);
+dfill_bez_func(String curve_name, Fill_Params params=fp(), i1 linum=__builtin_LINE());
+function void
+dfill_dbez_func(String b1, String b2, Fill_Params params=fp(), i1 linum=__builtin_LINE());
 
 //~

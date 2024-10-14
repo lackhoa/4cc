@@ -49,13 +49,17 @@ inline b32
 member_was_removed(Meta_Struct_Member &member){
  return member.version_removed.len != 0;
 }
-
+typedef u32 Meta_Variant_Flags;
+enum{
+ Meta_Curve_No_Endpoints = 0x1,
+};
 struct Union_Variant{
  //-NOTE Input data
  i32    enum_value;
  String name;
  String name_lower;
  Meta_Struct_Members struct_members;
+ Meta_Variant_Flags flags;  //NOTE(kv) Haven't thought this through
  //-NOTE Auto-generated fields
  String enum_name;
  String struct_name;
@@ -68,5 +72,4 @@ struct K_Struct{
 
 #define k_struct(text)  k_struct_func(strlit(#text))
 function void k_print_struct(Printer &p, K_Struct struc);
-
 //-

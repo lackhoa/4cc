@@ -82,16 +82,28 @@ list_files_recursive(Arena *arena, arrayof<char*> &outfiles, char *path){
  
  return ok;
 }
-inline void
-push_bezier_variant(arrayof<Union_Variant> &variants, Union_Variant v,
-                    String struct_members){
+function void
+push_bezier_variant(arrayof<Union_Variant> &variants, Union_Variant variant,
+                    String struct_members, char *options=""){
  Arena *arena = &meta_permanent_arena;
  Scratch_Block scratch;
- Ed_Parser parser = m_parser_from_string(scratch, struct_members);
- v.struct_members = parse_struct_body(arena, &parser);
- v.enum_name      = strcat(arena, "Curve_Type_", v.name);
- v.struct_name    = strcat(arena, "Curve_",      v.name);
- variants.push(v);
+ {
+  Ed_Parser parser = m_parser_from_string(scratch, SCu8(options));
+  if(ep_maybe_id(&parser, "no_endpoints")){
+   variant.flags |= Meta_Curve_No_Endpoints;
+  }
+ }
+ {
+  Ed_Parser parser = m_parser_from_string(scratch, struct_members);
+  variant.struct_members = parse_struct_body(arena, &parser);
+  if(not(variant.flags & Meta_Curve_No_Endpoints)){
+   variant.struct_members.push_first(struct_member_from_string("Vertex_Index p0"));
+   variant.struct_members.push(struct_member_from_string("Vertex_Index p3"));
+  }
+ }
+ variant.enum_name   = strcat(arena, "Curve_Type_", variant.name);
+ variant.struct_name = strcat(arena, "Curve_",      variant.name);
+ variants.push(variant);
 }
 inline void
 push_fill_variant(arrayof<Union_Variant> &variants, Union_Variant v,
@@ -105,27 +117,29 @@ push_fill_variant(arrayof<Union_Variant> &variants, Union_Variant v,
  variants.push(v);
 }
 function void
-generate_bezier_types(Printer &p0, Printer_Pair &ps_meta){
+generate_bezier_types(Printer &p_header, Printer_Pair &ps_meta){
  Scratch_Block scratch;
  arrayof<Union_Variant> variants = {};
  //-NOTE @data of the variants
-#define X(penum_val, pname, pname_lower, pstruct_members) \
+#define X(penum_val, pname, pname_lower, pstruct_members, ...) \
 push_bezier_variant(variants, \
 Union_Variant{ \
 .enum_value=penum_val, \
 .name=strlit(#pname), \
 .name_lower=strlit(#pname_lower) }, \
-strlit(#pstruct_members))
+strlit(#pstruct_members), \
+__VA_ARGS__)
  
  X(0, v3v2,     v3v2,     { v3 d0; v2 d3; });
  X(1, Parabola, parabola, { v3 d; });
  X(2, Offset,   offset,   { v3 d0; v3 d3; });
  X(3, Unit,     unit,     { v2 d0; v2 d3; v3 unit_y; });
  X(4, Unit2,    unit2,    { v4 d0d3; v3 unit_y; });
- X(5, C2,       c2,       { Curve_Index ref; v3 d3; });
+ X(5, C2,       c2,       { Curve_Index ref; v3 d3; Vertex_Index p3; }, "no_endpoints");
  X(6, Line,     line,     { });
  X(7, Bezd_Old, bezd_old, { v3 d0; v2 d3; });
- X(8, NegateX,  negateX,  { Curve_Index ref; });
+ X(8, NegateX,  negateX,  { Curve_Index ref; }, "no_endpoints");
+ X(9, Lerp,     lerp,     { Curve_Index begin; Curve_Index end; }, "no_endpoints");
 #undef X
  
  String enum_type = strlit("Curve_Type");
@@ -139,21 +153,21 @@ strlit(#pstruct_members))
   enum_values.set_count(variants.count);
   for_i32(i,0,variants.count){ enum_values[i] = variants[i].enum_value; }
   
-  print_enum(p0, enum_type, enum_names, enum_values);
+  print_enum(p_header, enum_type, enum_names, enum_values);
   print_enum_meta(ps_meta, enum_type, enum_names);
  }
  {//-NOTE "Data structure associated with each variant"
   for_i32(i,0,variants.count){
    auto *variant = &variants.get(i);
-   m_locationp(p0);
-   print_struct(p0, variant->struct_name, variant->struct_members);
+   m_locationp(p_header);
+   print_struct(p_header, variant->struct_name, variant->struct_members);
    print_struct_meta(ps_meta, variant->struct_name, variant->struct_members);
   }
  }
- {//-NOTE ("Union of all the Bezier type")
+ {//-Union of all the Bezier type
   String type_name = strlit("Curve_Union");
   {
-   auto &p = p0;
+   auto &p = p_header;
    m_location;
    {//NOTE Code
     p<<"union "<<type_name;
@@ -171,164 +185,231 @@ strlit(#pstruct_members))
   }
  }
  {//-NOTE Transitional functions (aggravation: 100%)
-  Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, "send_bez.gen.h"));
-  m_location;
-  for_i1(iv,0,variants.count){
-   auto &variant = variants[iv];
-   b32 is_c2      = variant.name=="C2";
-   b32 is_negateX = variant.name=="NegateX";
-   b32 has_p0 = !(is_c2 || is_negateX);
-   b32 has_p3 = !(is_negateX);
-   auto variant_parameters = [&]()->void{
-    arrayof<String> list;
-    init_dynamic(list, scratch);
-    if(has_p0){ list.push(strlit("p0")); }
-    for_i32(im,0,variant.struct_members.count){
-     auto &member = variant.struct_members[im];
-     list.push(member.name);
+  auto is_vertex_or_curve_index = [&](Parsed_Type &type)->b32{
+   return (type.name==strlit("Vertex_Index") ||
+           type.name==strlit("Curve_Index"));
+  };
+  auto print_prototype = [&](Printer &p, Union_Variant &variant, b32 is_declaration)->void{
+   p<"function void\n"<"send_bez_"<variant.name_lower;
+   m_parens{
+    separator_block(p, ", "){
+     p<"String name"; separator(p);
+     for_i32(im,0,variant.struct_members.count){
+      Meta_Struct_Member &member = variant.struct_members[im];
+      if(is_vertex_or_curve_index(member.type)){
+       p<"String "<member.name;
+      }else{
+       print_struct_member(p,member);
+      }
+      separator(p);
+     }
+     if(is_declaration){
+      p<"Line_Params params=lp()";    separator(p);
+      p<"i32 linum=__builtin_LINE()"; separator(p);
+     }else{
+      p<"Line_Params params";    separator(p);
+      p<"i32 linum"; separator(p);
+     }
     }
-    if(has_p3){ list.push(strlit("p3")); };
-    print_comma_separated(p,list);
-   };
-   {//-Function prototype
+   }
+  };
+  {//-Header
+   Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, "send_bez.gen.h"));
+   {//-get_p0_index_or_zero / get_p3_index_or_zero
     m_location;
-    {//-The main function
-     p<"xfunction void\n"<"send_bez_"<variant.name_lower;
-     m_parens{
-      p<"String name";
-      if(has_p0){ p<", String p0"; }
-      for_i32(im,0,variant.struct_members.count){
-       Meta_Struct_Member &member = variant.struct_members[im];
-       p<", ";
-       if(member.type.name==strlit("Curve_Index")){
-        p<"String "<member.name;
-       }else{
-        print_struct_member(p,member);
+    for_i32(p0_p3_index,0,2){
+     b32 is_p0 = p0_p3_index==0;
+     b32 is_p3 = p0_p3_index==1;
+     String endpoint_name = is_p0 ? strlit("p0") : strlit("p3");
+     p<"function Vertex_Index\n"<
+      "get_"<endpoint_name<"_index_or_zero(Curve_Data &curve)";
+     m_braces{
+      p<"switch(curve.type)";
+      m_braces{
+       for_i32(variant_index,0,variants.count){
+        Union_Variant &variant = variants[variant_index];
+        b32 has_endpoint = false;
+        for_i32(member_index,0,variant.struct_members.count){
+         Meta_Struct_Member &member = variant.struct_members[member_index];
+         if(member.name == endpoint_name){
+          has_endpoint = true;
+          break;
+         }
+        }
+        p<"case "<variant.enum_name<": return {";
+        if(has_endpoint){
+         p<"curve.data."<variant.name_lower<"."<endpoint_name;
+        };
+        p<"};\n";
        }
       }
-      if(has_p3){ p<", String p3"; }
-      p<", Line_Params params=lp()";
-      p<", i32 linum=__builtin_LINE()";
+      p<"return {};";
+     }
+    }
+   }
+   m_location;
+   for_i1(variant_index,0,variants.count){
+    Union_Variant &variant = variants[variant_index];
+    auto member_names = [&]()->void{
+     arrayof<String> list;
+     init_dynamic(list, scratch);
+     for_i32(im,0,variant.struct_members.count){
+      auto &member = variant.struct_members[im];
+      list.push(member.name);
+     }
+     print_comma_separated(p,list);
+    };
+    {//-Send function
+     m_location;
+     {//-The main send function
+      print_prototype(p, variant, true);
+      p<";\n";
+     }
+     {//-Overloads with radii
+      auto fun = [&](b32 is_v4)->void{
+       p<<"inline void\n"<<"send_bez_"<<variant.name_lower;
+       m_parens{
+        p<"String name";
+        for_i32(im,0,variant.struct_members.count){
+         auto &member = variant.struct_members[im];
+         p<", ";
+         if(is_vertex_or_curve_index(member.type)){
+          p<"String "<member.name;
+         }else{
+          print_struct_member(p,member);
+         }
+        }
+        p<(is_v4 ? ", v4 radii" : ", i4 radii");
+        p<", i32 linum=__builtin_LINE()";
+       }
+       m_braces{
+        p<"send_bez_"<variant.name_lower;
+        m_parens{
+         p<"name, ";
+         member_names();
+         p<", lp(radii), linum";
+        }
+        p<";\n";
+       }
+      };
+      fun(0);
+      fun(1);
+     }
+    }
+    {//-Macros
+     m_location;
+     {//-bn_bs
+      auto bn_bs = [&](b32 is_bs)->void{
+       b32 is_bn = !is_bs;
+       p<"#define "<(is_bs?"bs_":"bn_")<variant.name_lower;
+       m_parens{
+        arrayof<String> list;
+        init_dynamic(list, scratch);
+        if(is_bn){ list.push(strlit("name")); };
+        for_i32(im,0,variant.struct_members.count){
+         auto &member = variant.struct_members[im];
+         list.push(member.name);
+        }
+        list.push(strlit("..."));
+        print_comma_separated(p,list);
+       }
+       p<"\\\n";
+       p<"send_bez_"<variant.name_lower;
+       m_parens{
+        begin_separator(p, ", ");
+        p < (is_bn?"strlit(#name)" : "strlit(\"l\")"); separator(p);
+        for_i32(im,0,variant.struct_members.count){
+         auto &member = variant.struct_members[im]; 
+         if(is_vertex_or_curve_index(member.type)){
+          p<"strlit(#"<member.name<")";
+         }else{
+          p<member.name;
+         }
+         separator(p);
+        }
+        p<"__VA_ARGS__"; separator(p);
+        end_separator(p);
+       }
+       p<"\n";
+      };
+      bn_bs(0);
+      bn_bs(1);
+     }
+     {//-bb_ba
+      auto bb_ba = [&](b32 is_ba)->void{
+       b32 is_bb = !is_ba;
+       p<"#define "<(is_ba?"ba_":"bb_")<variant.name_lower;
+       m_parens{//NOTE macro parameters
+        p<"name, ";
+        member_names();
+        p<", ...";
+       }
+       p<"\\\n";
+       p<"bn_"<variant.name_lower;
+       m_parens{//NOTE bn parameters
+        p<"name, ";
+        member_names();
+        p<", __VA_ARGS__";
+       }
+       p<"; \\\n";
+       if(is_bb){ p<"Bez "; }
+       p<"name = bez_"<variant.name_lower;
+       m_parens{//NOTE bezier curve calculation
+        member_names();
+       }
+       p<";\n";
+      };
+      bb_ba(0);
+      bb_ba(1);
+     }
+    }
+    {//-Function that sends each variant
+     
+    }
+    p<"\n";
+   }
+   close_file(p);
+  }
+  {//-Implementation
+   Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, "send_bez.gen.cpp"));
+   m_location;
+   for_i1(variant_index,0,variants.count){
+    Union_Variant &variant = variants[variant_index];
+    print_prototype(p, variant, false); m_braces{
+     p<"Modeler &m = *painter.modeler;\n";
+     //-Fetch all the references
+     for_i32(member_index,0,variant.struct_members.count){
+      Meta_Struct_Member &member = variant.struct_members[member_index];
+      b32 is_vertex = member.type.name == strlit("Vertex_Index");
+      b32 is_curve  = member.type.name == strlit("Curve_Index");
+      if(is_vertex || is_curve){
+       p<member.type.name<" "<member.name<"_index = "<
+       (is_vertex ? "get_vertex_by_name" : "get_curve_by_name")<
+        "(m, "<member.name<").index;\n";
+       p<"kv_assert("<member.name<"_index.v);\n";
+      }
+     }
+     
+     p<"Curve_Union data = {."<variant.name_lower<"={ ";
+     for_i32(member_index,0,variant.struct_members.count){
+      Meta_Struct_Member &member = variant.struct_members[member_index];
+      p<"."<member.name<"="<member.name<
+      (is_vertex_or_curve_index(member.type) ? "_index" : "")
+       <", ";
+     }
+     p<"}};\n";
+     p<"send_bez_func"; m_comma_list{
+      p<"name, "<variant.enum_name<", data, params, linum";
      }
      p<";\n";
     }
-    {//-Overloads with radii
-     auto fun=[&](b32 is_v4)->void{
-      p<<"inline void\n"<<"send_bez_"<<variant.name_lower;
-      m_parens{
-       p<"String name";
-       if(has_p0){ p<", String p0"; }
-       for_i32(im,0,variant.struct_members.count){
-        auto &member = variant.struct_members[im];
-        p<", ";
-        if(member.type.name==strlit("Curve_Index")){
-         p<"String "<member.name;
-        }else{
-         print_struct_member(p,member);
-        }
-       }
-       if(has_p3){p<", String p3";}; 
-       if(is_v4){
-        p<", v4 radii";
-       }else{
-        p<", i4 radii";
-       }
-       p<", i32 linum=__builtin_LINE()";
-      }
-      m_braces{
-       p<"send_bez_"<variant.name_lower;
-       m_parens{
-        p<"name, ";
-        variant_parameters();
-        p<", lp(radii), linum";
-       }
-       p<";\n";
-      }
-     };
-     fun(0);
-     fun(1);
-    }
    }
-   {//-NOTE Macros
-    m_location;
-    {//NOTE bn_bs
-     auto bn_bs = [&](b32 is_bs)->void{
-      b32 is_bn = !is_bs;
-      p<"#define "<(is_bs?"bs_":"bn_")<variant.name_lower;
-      m_parens{
-       arrayof<String> list;
-       init_dynamic(list, scratch);
-       if(is_bn){ list.push(strlit("name")); };
-       if(has_p0){ list.push(strlit("p0")); }
-       for_i32(im,0,variant.struct_members.count){
-        auto &member = variant.struct_members[im];
-        list.push(member.name);
-       }
-       if(has_p3){list.push(strlit("p3"));}
-       list.push(strlit("..."));
-       print_comma_separated(p,list);
-      }
-      p<"\\\n";
-      p<"send_bez_"<variant.name_lower;
-      m_parens{
-       begin_separator(p, ", ");
-       p < (is_bn?"strlit(#name)" : "strlit(\"l\")"); separator(p);
-       if(has_p0){ p<"strlit(#p0)"; separator(p); }
-       for_i32(im,0,variant.struct_members.count){
-        auto &member = variant.struct_members[im];
-        if(member.type.name==strlit("Curve_Index")){
-         p<"strlit(#"<member.name<")";
-        }else{
-         p<member.name;
-        }
-        separator(p);
-       }
-       if(has_p3){
-        p<"strlit(#p3)"; separator(p);
-       }
-       p<"__VA_ARGS__"; separator(p);
-       end_separator(p);
-      }
-      p<"\n";
-     };
-     bn_bs(0);
-     bn_bs(1);
-    }
-    {//NOTE bb_ba
-     auto bb_ba = [&](b32 is_ba)->void{
-      b32 is_bb = !is_ba;
-      p<"#define "<(is_ba?"ba_":"bb_")<variant.name_lower;
-      m_parens{//NOTE macro parameters
-       p<"name, ";
-       variant_parameters();
-       p<", ...";
-      }
-      p<"\\\n";
-      p<"bn_"<variant.name_lower;
-      m_parens{//NOTE bn parameters
-       p<"name, ";
-       variant_parameters();
-       p<", __VA_ARGS__";
-      }
-      p<"; \\\n";
-      if(is_bb){ p<"Bez "; }
-      p<"name = bez_"<variant.name_lower;
-      m_parens{//NOTE bezier curve calculation
-       variant_parameters();
-      }
-      p<";\n";
-     };
-     bb_ba(0);
-     bb_ba(1);
-    }
-   }
-   p<"\n";
+   close_file(p);
   }
-  close_file(p);
  }
 }
 function void
-generate_fill_types(Printer &p0, Printer_Pair &ps_meta){
+generate_fill_types(Printer &p_header, Printer_Pair &ps_meta){
  //TODO(kv) important copy pasta!
  Scratch_Block scratch;
  arrayof<Union_Variant> variants = {};
@@ -357,21 +438,21 @@ strlit(#pstruct_members))
   enum_values.set_count(variants.count);
   for_i32(i,0,variants.count){ enum_values[i] = variants[i].enum_value; }
   
-  print_enum(p0, enum_type, enum_names, enum_values);
+  print_enum(p_header, enum_type, enum_names, enum_values);
   print_enum_meta(ps_meta, enum_type, enum_names);
  }
  {//-NOTE Data structure associated with each variant
   for_i32(i,0,variants.count){
    auto *variant = &variants.get(i);
-   m_locationp(p0);
-   print_struct(p0, variant->struct_name, variant->struct_members);
+   m_locationp(p_header);
+   print_struct(p_header, variant->struct_name, variant->struct_members);
    print_struct_meta(ps_meta, variant->struct_name, variant->struct_members);
   }
  }
  {//-NOTE ("Union of all the Bezier type")
   String type_name = strlit("Fill_Union");
   {
-   auto &p = p0;
+   auto &p = p_header;
    m_location;
    {//NOTE Code
     p<<"union "<<type_name;

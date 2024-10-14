@@ -47,6 +47,8 @@ print_comma_separated(Printer &p, arrayof<String> list){
 }
 
 #define m_parens       defer_block((p << "("), (p << ")"))
+#define m_comma_list   defer_block(((p << "("), begin_separator(p, ", ")),\
+((p << ")"), end_separator(p)))
 #define m_braces       defer_block((p << "\n{\n"), (p << "\n}\n"))
 #define m_braces_sm    defer_block((p << "\n{\n"), (p << "\n};\n"))
 #define m_macro_braces defer_block((p << "\\\n{\\\n"), (p << "\\\n}\\\n"))
