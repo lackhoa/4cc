@@ -25,7 +25,7 @@ CUSTOM_DOC("Queries for an output buffer name and system command, runs the syste
     Query_Bar_Group group(app);
     
     Query_Bar bar_out = {};
-    bar_out.prompt = string_u8_litexpr("Output Buffer: ");
+    bar_out.prompt = strlit("Output Buffer: ");
     bar_out.string = SCu8(out_buffer_space, (u64)0);
     bar_out.string_capacity = sizeof(out_buffer_space);
     if (!query_user_string(app, &bar_out)) return;
@@ -33,7 +33,7 @@ CUSTOM_DOC("Queries for an output buffer name and system command, runs the syste
     out_buffer_space[bar_out.string.size] = 0;
     
     Query_Bar bar_cmd = {};
-    bar_cmd.prompt = string_u8_litexpr("Command: ");
+    bar_cmd.prompt = strlit("Command: ");
     bar_cmd.string = SCu8(command_space, (u64)0);
     bar_cmd.string_capacity = sizeof(command_space);
     if (!query_user_string(app, &bar_cmd)) return;

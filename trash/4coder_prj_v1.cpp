@@ -30,10 +30,10 @@ prj_v1_parse_os_match(String8 str, String8 this_os_str){
     if (string_match(str, this_os_str)){
         result = PrjV1OSMatchLevel_ActiveMatch;
     }
-    else if (string_match(str, string_u8_litexpr("all"))){
+    else if (string_match(str, strlit("all"))){
         result = PrjV1OSMatchLevel_ActiveMatch;
     }
-    else if (string_match(str, string_u8_litexpr("default"))){
+    else if (string_match(str, strlit("default"))){
         result = PrjV1OSMatchLevel_PassiveMatch;
     }
     return(result);
@@ -84,7 +84,7 @@ prj_v1_parse_from_config(App *app, Arena *arena, String8 dir, Config *parsed){
                 if (config_compound_compound_member(parsed, paths_option, "paths", 0, &paths)){
                     String8 str = {};
                     if (config_compound_string_member(parsed, paths_option, "os", 1, &str)){
-                        Prj_V1_OS_Match_Level r = prj_v1_parse_os_match(str, string_u8_litexpr(OS_NAME));
+                        Prj_V1_OS_Match_Level r = prj_v1_parse_os_match(str, strlit(OS_NAME));
                         if (r == PrjV1OSMatchLevel_ActiveMatch){
                             found_match = true;
                             best_paths = paths;
@@ -162,7 +162,7 @@ prj_v1_parse_from_config(App *app, Arena *arena, String8 dir, Config *parsed){
                     goto finish_command;
                 }
                 
-                cmd_result = config_compound_member(parsed, src, string_u8_litexpr("cmd"), 1);
+                cmd_result = config_compound_member(parsed, src, strlit("cmd"), 1);
                 if (cmd_result.success && cmd_result.type == Config_RValue_Type_Compound){
                     cmd_set = cmd_result.compound;
                     cmd_pos = cmd_result.pos;
@@ -188,7 +188,7 @@ prj_v1_parse_from_config(App *app, Arena *arena, String8 dir, Config *parsed){
                     if (config_compound_string_member(parsed, cmd_option, "cmd", 0, &cmd)){
                         String8 str = {};
                         if (config_compound_string_member(parsed, cmd_option, "os", 1, &str)){
-                            Prj_V1_OS_Match_Level r = prj_v1_parse_os_match(str, string_u8_litexpr(OS_NAME));
+                            Prj_V1_OS_Match_Level r = prj_v1_parse_os_match(str, strlit(OS_NAME));
                             if (r == PrjV1OSMatchLevel_ActiveMatch){
                                 can_emit_command = true;
                                 cmd_str = cmd;

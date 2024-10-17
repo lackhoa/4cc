@@ -659,7 +659,7 @@ map_set_binding_text_input(Mapping *mapping, Command_Map_ID map_id, Command_Bind
 function void
 command_trigger_stringize_mods(Arena *arena, List_String *list, Input_Modifier_Set *modifiers){
     if (modifiers->count > 0){
-        string_list_push(arena, list, string_u8_litexpr(" holding:"));
+        string_list_push(arena, list, strlit(" holding:"));
         i1 count = modifiers->count;
         Key_Code *mods = modifiers->mods;
         for (i1 i = 0; i < count; i += 1){
@@ -670,11 +670,11 @@ command_trigger_stringize_mods(Arena *arena, List_String *list, Input_Modifier_S
 
 function void
 command_trigger_stringize(Arena *arena, List_String *list, Command_Trigger *trigger){
-    string_list_push(arena, list, string_u8_litexpr("<"));
+    string_list_push(arena, list, strlit("<"));
     switch (trigger->kind){
         case InputEventKind_TextInsert:
         {
-            string_list_push(arena, list, string_u8_litexpr("TextInsert"));
+            string_list_push(arena, list, strlit("TextInsert"));
         }break;
         
         case InputEventKind_KeyStroke:
@@ -704,13 +704,13 @@ command_trigger_stringize(Arena *arena, List_String *list, Command_Trigger *trig
         
         case InputEventKind_MouseWheel:
         {
-            string_list_push(arena, list, string_u8_litexpr("MouseWheel"));
+            string_list_push(arena, list, strlit("MouseWheel"));
             command_trigger_stringize_mods(arena, list, &trigger->mods);
         }break;
         
         case InputEventKind_MouseMove:
         {
-            string_list_push(arena, list, string_u8_litexpr("MouseMove"));
+            string_list_push(arena, list, strlit("MouseMove"));
             command_trigger_stringize_mods(arena, list, &trigger->mods);
         }break;
         
@@ -721,10 +721,10 @@ command_trigger_stringize(Arena *arena, List_String *list, Command_Trigger *trig
         
         default:
         {
-            string_list_push(arena, list, string_u8_litexpr("ERROR unexpected trigger kind"));
+            string_list_push(arena, list, strlit("ERROR unexpected trigger kind"));
         }break;
     }
- string_list_push(arena, list, string_u8_litexpr(">"));
+ string_list_push(arena, list, strlit(">"));
 }
 
 ////////////////////////////////

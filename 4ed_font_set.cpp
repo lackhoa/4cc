@@ -9,7 +9,7 @@
 
 // TOP
 
-internal Face_ID
+function Face_ID
 font_set__alloc_face_id(Font_Set *set){
     Face_ID result = 0;
     if (set->free_ids != 0){
@@ -25,7 +25,7 @@ font_set__alloc_face_id(Font_Set *set){
     return(result);
 }
 
-internal void
+function void
 font_set__free_face_id(Font_Set *set, Face_ID id){
     if (id + 1 == set->next_id_counter){
         set->next_id_counter -= 1;
@@ -44,7 +44,7 @@ font_set__free_face_id(Font_Set *set, Face_ID id){
     }
 }
 
-internal Font_Face_Slot*
+function Font_Face_Slot*
 font_set__alloc_face_slot(Font_Set *set){
     Font_Face_Slot *result = 0;
     if (set->free_face_slots == 0){
@@ -57,7 +57,7 @@ font_set__alloc_face_slot(Font_Set *set){
     return(result);
 }
 
-internal void
+function void
 font_set__free_face_slot(Font_Set *set, Font_Face_Slot *slot){
     if (slot->arena.base_allocator != 0){
         table_free(&slot->face->advance_map.codepoint_to_index.table);
@@ -67,7 +67,7 @@ font_set__free_face_slot(Font_Set *set, Font_Face_Slot *slot){
     sll_stack_push(set->free_face_slots, slot);
 }
 
-internal void
+function void
 font_set_init(Font_Set *set){
     block_zero_struct(set);
     set->arena = make_arena_system();
@@ -76,7 +76,7 @@ font_set_init(Font_Set *set){
     set->scale_factor = system_get_screen_scale_factor();
 }
 
-internal Face*
+function Face*
 font_set_new_face(Font_Set *set, Face_Description *description){
     Arena arena = make_arena_system();
     Face *face = font_make_face(&arena, description, set->scale_factor);
@@ -94,7 +94,7 @@ font_set_new_face(Font_Set *set, Face_Description *description){
     return(face);
 }
 
-internal Font_Face_Slot*
+function Font_Face_Slot*
 font_set__get_face_slot(Font_Set *set, Face_ID id){
     Font_Face_Slot *result = 0;
     u64 slot_ptr_u64 = 0;
@@ -104,7 +104,7 @@ font_set__get_face_slot(Font_Set *set, Face_ID id){
     return(result);
 }
 
-internal b32
+function b32
 font_set_release_face(Font_Set *set, Face_ID id){
     b32 result = false;
     Font_Face_Slot *slot = font_set__get_face_slot(set, id);
@@ -117,7 +117,7 @@ font_set_release_face(Font_Set *set, Face_ID id){
     return(result);
 }
 
-internal Face*
+function Face*
 font_set_face_from_id(Font_Set *set, Face_ID id){
     Face *result = 0;
     Font_Face_Slot *slot = font_set__get_face_slot(set, id);
@@ -127,7 +127,7 @@ font_set_face_from_id(Font_Set *set, Face_ID id){
     return(result);
 }
 
-internal Face_ID
+function Face_ID
 font_set_get_fallback_face(Font_Set *set){
     Face_ID result = 0;
     for (Face_ID i = 1; i < set->next_id_counter; i += 1){
@@ -139,12 +139,12 @@ font_set_get_fallback_face(Font_Set *set){
     return(result);
 }
 
-internal Face_ID
+function Face_ID
 font_set_get_largest_id(Font_Set *set){
     return(set->next_id_counter - 1);
 }
 
-internal b32
+function b32
 font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
     b32 result = false;
     Font_Face_Slot *slot = font_set__get_face_slot(set, id);

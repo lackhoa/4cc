@@ -44,7 +44,7 @@ struct Movie_Shot
 // NOTE: Reroute destination so that updates don't do anything.
 global Pose dummy_pose;
 
-internal void
+function void
 arest_function(Movie_Shot *shot, i1 nframes)
 {
  shot->current_frame += nframes;
@@ -54,7 +54,7 @@ arest_function(Movie_Shot *shot, i1 nframes)
  }
 }
 
-internal void
+function void
 aset_func_float(Movie_Shot *shot, Pose_Field_Enum field, v1 value)
 {
  u8 *pose = cast(u8*)(shot->updated_pose);
@@ -62,7 +62,7 @@ aset_func_float(Movie_Shot *shot, Pose_Field_Enum field, v1 value)
  block_copy(dst, &value, sizeof(value));
 }
 
-internal void
+function void
 aset_func_int(Movie_Shot *shot, Pose_Field_Enum field, i1 value_int)
 {
  v1 value = i2f(value_int, pose_field_info[field].denom);
@@ -82,7 +82,7 @@ typedef shot_function_return Shot_Function(shot_function_params);
 
 //NOTE(kv): We don't zero the pose data,
 // so we can play animations on top of each other.
-internal void
+function void
 shot__init(Movie_Shot *shot, i1 requested_frame, Pose *updated_pose)
 {
  shot->ready           = false;
@@ -91,7 +91,7 @@ shot__init(Movie_Shot *shot, i1 requested_frame, Pose *updated_pose)
  shot->updated_pose    = updated_pose;
 }
 
-internal void
+function void
 shot_go(Movie_Shot *shot, Shot_Function shot_function)
 {
  //NOTE: animation_time has to be filled in
@@ -127,7 +127,7 @@ struct Animation_Old
  i32 group_count;
 };
 
-internal void
+function void
 add_frame_group(Animation_Old *ani, v1 weight, v4 values)
 {
  if (ani->group_count < alen(ani->groups))
@@ -141,13 +141,13 @@ add_frame_group(Animation_Old *ani, v1 weight, v4 values)
   };
  }
 }
-internal void 
+function void 
 begin_animation(Animation_Old *ani)
 {
  ani->group_count = 0;
 }
 
-internal void
+function void
 end_animation(Animation_Old *ani)
 {
  v1 total_weight = 0.f;
@@ -174,7 +174,7 @@ end_animation(Animation_Old *ani)
  else  { todo_error_report; }
 }
 
-internal v1
+function v1
 get_animation_value(Animation_Old *ani, v1 global_t)
 {
  macro_clamp01(global_t);
@@ -222,7 +222,7 @@ struct Animation
  b32 looping;
 };
 
-internal void
+function void
 add_keyframe(Animation *ani, i32 nframes, i32 value)
 {
  if ((nframes > 0) &&
@@ -255,7 +255,7 @@ begin_animation(Animation *ani, b32 looping)
 inline void
 end_animation(Animation *ani) { }
 
-internal v1
+function v1
 get_animation_value(Animation *ani, v1 global_t)
 {
  if (ani->keyframe_count > 0 && 

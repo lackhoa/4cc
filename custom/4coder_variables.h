@@ -31,7 +31,7 @@ struct Variable_Handle
 // NOTE(allen): Functions
 
 function String_ID         vars_intern(String8 string);
-#define vars_intern_lit(S) vars_intern( string_u8_litexpr(S) )
+#define vars_intern_lit(S) vars_intern( strlit(S) )
 //
 function String8         vars_push_string(Arena *arena, String_ID id);
 

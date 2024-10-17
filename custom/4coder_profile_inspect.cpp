@@ -72,7 +72,7 @@ profile_parse_record(Arena *arena, Profile_Inspection *insp,
         if (record == 0 || record->id < id){
             if (record == 0){
 #define M "List ended before all nodes closed"
-                profile_parse_error(arena, insp, string_u8_litexpr(M), location);
+                profile_parse_error(arena, insp, strlit(M), location);
 #undef M
             }
             else{
@@ -236,7 +236,7 @@ profile_node_thread_name(Profile_Node *node){
 
 function String
 profile_node_name(Profile_Node *node){
-    String result = string_u8_litexpr("*root*");
+    String result = strlit("*root*");
     if (node->slot != 0){
         result = node->slot->name;
     }
@@ -340,7 +340,7 @@ profile_draw_node(App *app, View_ID view, Face_ID face_id,
     x_pos += nav_bar_w + x_half_padding;
     if (node->parent != 0){
         Fancy_String *fstr = push_fancy_string(scratch, 0, fcolor_zero(),
-                                               string_u8_litexpr("to parent"));
+                                               strlit("to parent"));
         f32 w = get_fancy_string_width(app, face_id, fstr) + x_padding;
         Range_f32 btn_x = If32_size(x_pos, w);
         Rect_f32 box = Rf32(btn_x, nav_bar_y);
@@ -532,7 +532,7 @@ profile_render(App *app, Frame_Info frame_info, View_ID view){
     
     if (inspect->thread_count == 0){
         Fancy_String *fstr = push_fancy_string(scratch, 0, fcolor_id(defcolor_pop2),
-                                               string_u8_litexpr("no profile data"));
+                                               strlit("no profile data"));
         f32 width = get_fancy_string_width(app, face_id, fstr);
         Vec2_f32 view_center = (region.p0 + region.p1)*0.5f;
         Vec2_f32 half_dim = V2(width, line_height)*0.5f;
@@ -570,23 +570,23 @@ profile_render(App *app, Frame_Info frame_info, View_ID view){
             }
             
             profile_draw_tab(app, &tab_state, inspect,
-                             string_u8_litexpr("threads"),
+                             strlit("threads"),
                              ProfileInspectTab_Threads);
             
             if (inspect->slot_count > 0){
                 profile_draw_tab(app, &tab_state, inspect,
-                                 string_u8_litexpr("blocks"),
+                                 strlit("blocks"),
                                  ProfileInspectTab_Blocks);
             }
             
             if (inspect->error_count > 0){
                 profile_draw_tab(app, &tab_state, inspect,
-                                 string_u8_litexpr("errors"),
+                                 strlit("errors"),
                                  ProfileInspectTab_Errors);
             }
             
             profile_draw_tab(app, &tab_state, inspect,
-                             string_u8_litexpr("memory"),
+                             strlit("memory"),
                              ProfileInspectTab_Memory);
             
             if (inspect->tab_id == ProfileInspectTab_Selection){
@@ -675,7 +675,7 @@ profile_render(App *app, Frame_Info frame_info, View_ID view){
                     
                     if (node->corrupted_time){
                         push_fancy_string(scratch, &list, fcolor_id(defcolor_pop2),
-                                          string_u8_litexpr("timing error "));
+                                          strlit("timing error "));
                     }
                     else{
                         push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop2),

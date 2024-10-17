@@ -1,0 +1,293 @@
+function Head
+render_head(Pose *pose, v1 animation_time)
+{// NOTE: The ;head + face
+ if(hair_on)
+ {//~NOTE: Hair omg
+  lp_block(nslice_per_meter, 1.5162f*128.f);
+  symx_off;
+  radius_scale_block(0.5489f);
+  //NOTE: Fine tip hair -> thicker, more even radius
+  lp_block(radii, fval4(0.5f, 1.f, 1.f, 0.25f));
+  
+  v1 hairY = loomis_unit;
+  vv(hair_root, V3(0.f, 1.087f, 0.f));  //NOTE: the point on top of the head, literally the highest point
+  vv(bang_root, bezier_sample(hair_hline, 0.5f));
+  
+  v1 flutter_period = 2.75f;
+  b32 should_flutter;
+  v1 time;
+  {
+   v1 time0 = animation_time / flutter_period;
+   should_flutter = ((i32)time0 % 2 == 0);
+   time = cycle01_positive(time0);
+  }
+  Animation_Old ani_value; auto ani = &ani_value;
+  {
+   begin_animation(ani);
+#define Group(...)  add_frame_group(ani, __VA_ARGS__)
+   {
+    Group(1.f, fval4(0.f, -0.304f, 0.f, 1.2f));
+    Group(1.f, fval4(1.2f, 0.f, 0.f, 1.2f));
+    Group(1.f, fval4(0.5752f, -0.2f, 0.2f, 1.f));
+    Group(0.5f, fval4(1.2f, 0.f, 0.f, 1.2f));
+    Group(1.f, fval4(0.2176f, -0.4755f, 0.2169f, 0.f));
+   }
+#undef Group
+   end_animation(ani);
+  }
+  v1 thair = 0.f;
+  if(should_flutter){
+   if(is_right()){
+    thair = get_animation_value(ani, time+0.06f);
+   }else{
+    thair = get_animation_value(ani, time);
+   }
+  }
+  vv(bang_midpoint, V3(0.f, -0.0929f, 1.042f));
+  {
+   Bezier bang_vline = bez_unit2(bang_root,
+                                 V4(0.f, 0.2629f, 0.1602f, 0.3068f),
+                                 V3(0.f, 0.f, 1.f),
+                                 bang_midpoint);
+   draw(bang_vline,profile_visible_transition(0.4036f));
+  }
+  v3 bang_tip;
+  {
+   v3 c = V3(0.0537f, 0.1334f, -0.0695f);
+   va(bang_tip, V3(0.7418f, -0.0689f, 0.6115f)+thair*c);
+  }
+  Bez bang_vline2 = bez_bezd_old(bang_root, 
+                                 V3(0.3419f, 0.0757f, 0.129f),
+                                 V2(0.1345f, 0.1639f),
+                                 bang_tip);
+  {
+   v3 a = V3(0.0172f, -0.0113f, -0.0825f);
+   v3 b = V3(-0.0664f, 0.0812f, 0.0059f);
+   bang_vline2[1] += thair*a;
+   bang_vline2[2] += thair*b;
+  }
+  Bez bang_hline = bez_offset(bang_midpoint,
+                              V3(0.1302f, -0.0069f, -0.0297f),
+                              V3(0.0001f, 0.2158f, 0.056f),
+                              bang_tip);
+  {
+   v3 a = V3(0.0000f, -0.1217f, 0.0000f);
+   v3 b = V3(0.0467f, 0.0385f, 0.0000f);
+   bang_hline[1] += thair*b;
+   bang_hline[2] += thair*a;
+  }
+  {
+   draw(bang_vline2);
+   draw(bang_hline, (0.5176f) * painter.line_params.radii);
+  }
+  
+  //-NOTE: The bang saga is over, let's move onto something else
+  v3 hair_main_tip = V3(0.7814f, -1.6599f, -0.6047f);
+  Bez vline = bez_bezd_old(hair_root,
+                           V3(0.1414f, 0.2764f, -0.471f),
+                           V2(0.3956f, 0.3102f),
+                           hair_main_tip);
+  { symx_on; draw(vline); }
+  
+  v3 hcontrol = V3(0.1291f, -0.0058f, -0.2506f);
+  Bez connecting = bez_offset(hair_main_tip,
+                              hcontrol,
+                              negateX(hcontrol),
+                              negateX(hair_main_tip));
+  draw(connecting, (0.5f)*painter.line_params.radii);
+  
+  Bezier hairline_side = bez_offset(bang_root,
+                                    V3(0.5271f, -0.0051f, 0.0478f),
+                                    V3(0.0671f, 0.1143f, 0.3924f),
+                                    ear_center);
+  { symx_on; draw(hairline_side); }
+  
+  {
+   symx_on;
+   // NOTE: Some hair outline so it looks good at the front
+   Bez over1 = bez_bezd_old(hair_root,
+                            V3(0.5313f, 0.0177f, 0.1293f),
+                            V2(0.1839f, 0.232f),
+                            bezier_sample(hairline_side, (0.3991f)));
+   Bez over2 = bez_bezd_old(hair_root,
+                            V3(0.3694f, 0.2549f, -0.0512f),
+                            V2(0.0175f, 0.2904f),
+                            ear_center);
+   draw(over1); 
+   draw(over2, lp_alignment_min((0.4764f)));
+  }
+  {
+   Bez line = bez_unit2(hair_root,
+                        V4(0.f, 0.2255f, 0.3279f, 0.2047f),
+                        (V3(0.f, 1.f, 0.f)),
+                        bang_root);
+   draw(line);
+  }
+ }
+ 
+ if(painter.show_grid || show_loomis_ball)
+ {//~NOTE: Proportions diagram
+  hl_block_color(argb_dark_blue);
+  symx_off;
+  
+  if (painter.show_grid)
+  {
+   b32 camera_frontal=almost_equal(absolute(painter.camera.z.z), 1.f, 1e-2f);
+   b32 camera_profile=almost_equal(absolute(painter.camera.z.x), 1.f, 1e-2f);
+   
+   {//NOTE: Grid lines for the face
+    hl_block_color(argb_blue);
+    radius_scale_block(0.33f);
+    
+    v1 face_minY = -2.f*loomis_unit;
+    v1 unit = 0.25f * loomis_unit;
+    i32 yi_min = (-7);
+    i32 yi_max = (8);
+    if (camera_frontal)
+    {//NOTE: frontal view
+     v1 z = faceZ;
+     {
+      for_i32(xi, 0, 5)
+      {//note: Vertical
+       v1 x = unit*v1(xi);
+       draw_line( V3(x, 1.f, z), V3(x, face_minY, z));
+      }
+     }
+     {
+      v1 xmax = (0.9369f);
+      for_i32(yi, yi_min, yi_max)
+      {//note: Horizontal
+       v1 y = unit*v1(yi);
+       draw_line( V3(0.f, y, z), V3(xmax, y, z));
+      }
+     }
+    }
+    
+    if (camera_profile)
+    {// NOTE: Profile view
+     v1 x = 0.f;
+     for_i32(zi, (-11), (2))
+     {//NOTE: Vertical
+      v1 z = faceZ+unit*v1(zi);
+      draw_line( V3(x,1.f,z), V3(x,face_minY,z));
+     }
+     for_i32(yi, yi_min, yi_max)
+     {//NOTE: Horizontal
+      v1 y = unit*v1(yi);
+      draw_line(V3(x,y,(-1.8208f)),
+                V3(x,y,(1.7172f)));
+     }
+    }
+   }
+   
+   {//NOTE: Grid lines for the body
+    radius_scale_block((0.5f));
+    v1 body_minY = 1.f-6*head_unit;
+    v1 unit = face_sideX;
+    if (camera_frontal)
+    {//NOTE: frontal view
+     {
+      for_i32(xi, 0, 5)
+      {//NOTE: Vertical
+       v1 x = unit*v1(xi);
+       draw_line(V3(x, 1.f, 0.f), V3(x, body_minY, 0.f));
+      }
+     }
+     {
+      v1 xmax = (2.8346f);
+      for_i32(yi, -20, 4)
+      {//NOTE: Horizontal
+       v1 y = unit*v1(yi);
+       draw_line(V3(0.f, y, 0.f), V3(xmax, y, 0.f));
+      }
+     }
+     
+     {//NOTE: Where the shoulder should be
+      lp_block(color, argb_blue);
+      v1 y = (-2.2334f);
+      draw_line(V3(0.f, y, 0.f), V3(0.7f*head_unit, y, 0.f));
+     }
+    }
+    
+    if (camera_profile)
+    {// NOTE: Profile view
+     v1 x = 0.f;
+     for_i32(xi, -4, 2)
+     {//NOTE: Vertical
+      v1 z = faceZ+unit*v1(xi);
+      draw_line( V3(x,1.f,z), V3(x,body_minY,z));
+     }
+     for_i32(yi, -20, 4)
+     {//NOTE: Horizontal
+      v1 y = unit*v1(yi);
+      draw_line( V3(x,y,(-1.8208f)),
+                V3(x,y,(1.7172f)));
+     }
+    }
+   }
+   
+   if(fbool(1))
+   {//NOTE: Head unit body proportions markers (we've got 6 heads!)
+    lp_block(color, argb_red);
+    if (camera_frontal)
+    {//NOTE
+     v1 r = 0.5f*head_unit;
+     for_i32(yi,-6,1)
+     {
+      v1 y = 1.f + v1(yi)*head_unit;
+      v3 left  = V3(r,y,0);
+      draw_line( V3y(y), left);
+     }
+    }
+    if (camera_profile)
+    {//NOTE
+     for_i32(yi,-6,1)
+     {
+      v1 y = 1.f + v1(yi)*head_unit;
+      draw_line( V3y(y), V3(0,y,-1.f));
+     }
+    }
+   }
+  }
+  
+  if(show_loomis_ball)
+  {//NOTE: The face
+   argb line_color = current_line_cparams().color;
+   if(painter.show_grid){ line_color = argb_silver; }
+   lp_block(color, line_color);
+   
+   {// NOTE: Loomis The side circle
+    mat4 tform = (mat4_translate(loomis_side_center) *
+                  mat4_scale(loomis_side_radius) *
+                  rotateY(0.25f));
+    draw_bezier_circle(tform);
+   }
+   {
+    // NOTE: Face z
+    draw(bez_line(V3z(faceZ), setz(chin_middle, faceZ)));
+    draw_bezier_circle( mat4_identity);  // NOTE: The Loomis "unit circle" (i.e the first circle you draw)
+    {
+     mat4 equator = rotateX(0.25f);
+     draw_bezier_circle( equator);
+    }
+    {
+     mat4 longitude = rotateY(0.25f);
+     draw_bezier_circle( longitude);
+    }
+   } 
+  }
+ }
+ 
+ Head head_obj;
+ {//~NOTE: Export head
+  //TODO: Maybe analytically define this point on the skull?
+  vv(trapezius_head, (V3(0, noseY, head_back_out.z) + 
+                      V3(0.2824f, 0.0086f, -0.323f)));
+#define head_export(vertex)  head_obj.vertex = vertex;
+  macro_head(head_export)
+#undef head_export
+ }
+ return head_obj;
+}
+
+//-

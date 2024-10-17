@@ -21,7 +21,7 @@ struct Test_Painter
  i1 count;
 };
 
-internal void
+function void
 test_draw_quad(Test_Painter *p, v3 Av, v3 Bv, v3 Cv, v3 Dv)
 {// NOTE: vertices are given counter-clock-wise
  argb color = 0xff666666;
@@ -35,7 +35,7 @@ test_draw_quad(Test_Painter *p, v3 Av, v3 Bv, v3 Cv, v3 Dv)
  glDrawArrays(GL_TRIANGLES, 0, count);
 }
 
-internal void
+function void
 test_draw_opposite_faces(Test_Painter *p, v3 o, v3 x, v3 y, v3 z)
 {
  v3 O = o+z;

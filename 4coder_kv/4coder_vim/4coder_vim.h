@@ -77,9 +77,9 @@ global i1 vim_buffer_peek_index;
 global Vim_Buffer_Peek_Entry vim_default_peek_list[] = {
 	{ buffer_identifier(compilation_buffer_name), 1.f, 1.f },
 #if VIM_USE_REIGSTER_BUFFER
-	{ buffer_identifier(string_u8_litexpr("*registers*")),   1.f, 1.f },
+	{ buffer_identifier(strlit("*registers*")),   1.f, 1.f },
 #endif
-	{ buffer_identifier(string_u8_litexpr("*messages*")),    1.f, 1.f },
+	{ buffer_identifier(strlit("*messages*")),    1.f, 1.f },
 };
 
 global Vim_Buffer_Peek_Entry vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + VIM_ADDITIONAL_PEEK];
@@ -88,7 +88,7 @@ CUSTOM_ID(attachment, vim_buffer_prev_visual);
 CUSTOM_ID(attachment, vim_buffer_marks);
 CUSTOM_ID(attachment, vim_view_jumps);
 
-internal void vim_reset_bottom_text() { vim_bottom_text.size=0; }
+function void vim_reset_bottom_text() { vim_bottom_text.size=0; }
 
 function i1 vim_consume_number(){
 	i1 result = Max(1, vim_state.number)*Max(1, vim_state.params.count);

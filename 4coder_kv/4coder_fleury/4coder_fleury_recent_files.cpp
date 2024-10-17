@@ -52,7 +52,7 @@ F4_RecentFiles_RefreshView(App *app, View_ID view)
     }
 }
 
-internal void
+function void
 F4_RecentFiles_Render(App *app, View_ID view, Face_ID face)
 {
 #if 1

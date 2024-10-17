@@ -1,9 +1,13 @@
 function Ed_Parser
-m_parser_from_string(Arena *arena, String string){
- Token_List token_list = lex_full_input_cpp(arena, string);
+m_parser_from_token_list(Arena *arena, String string, Token_List &token_list){
  Token_Iterator token_it = make_token_iterator(token_iterator(0, &token_list));
  Ed_Parser parser = make_ep_from_string(string, token_it);
  return parser;
+}
+function Ed_Parser
+m_parser_from_string(Arena *arena, String string){
+ Token_List token_list = lex_full_input_cpp(arena, string);
+ return m_parser_from_token_list(arena, string, token_list);
 }
 function void
 parse_struct_member(Ed_Parser *p, Meta_Struct_Member *member){
@@ -23,7 +27,7 @@ parse_struct_member(Ed_Parser *p, Meta_Struct_Member *member){
   member->type.count = ep_i1(p);
   ep_char(p, ']');
  }
- ep_consume_semicolons(p);
+ ep_skip_semicolons(p);
 }
 inline Meta_Struct_Member
 parse_struct_member(Ed_Parser *p){
@@ -59,18 +63,17 @@ parse_struct_body(Arena *a, char *string){
 }
 
 inline void
-meta_parse_key(Ed_Parser *p, char *key) {
- ep_id(p, key); ep_char(p, '=');
+meta_parse_key(Ed_Parser *p, String key){
+ ep_id(p, key);
+ ep_char(p, '=');
 }
 inline b32
-meta_maybe_key(Ed_Parser *p, char *key)
-{
+meta_maybe_key(Ed_Parser *p, String key){
  b32 result = false;
- if ( ep_maybe_id(p, key) ) {
+ if(ep_maybe_id(p, key)){
   ep_char(p, '=');
   result = p->ok_;
  }
  return result;
 }
-
 //-

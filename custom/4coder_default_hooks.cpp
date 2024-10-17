@@ -346,9 +346,9 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                     String_u8 builder = Su8(conflict->unique_name_in_out,
                                             conflict->unique_name_len_in_out,
                                             conflict->unique_name_capacity);
-                    string_concat(&builder, string_u8_litexpr(" <"));
+                    string_concat(&builder, strlit(" <"));
                     string_concat(&builder, uniqueifier);
-                    string_concat(&builder, string_u8_litexpr(">"));
+                    string_concat(&builder, strlit(">"));
                     conflict->unique_name_len_in_out = builder.size;
                 }
             }
@@ -511,43 +511,43 @@ BUFFER_HOOK_SIG(default_begin_buffer)
   for (i32 i = 0; i < extensions.count; ++i){
    if (string_match(ext, extensions.strings[i])){
     
-    if (string_match(ext, string_u8_litexpr("cpp")) ||
-        string_match(ext, string_u8_litexpr("h")) ||
-        string_match(ext, string_u8_litexpr("c")) ||
-        string_match(ext, string_u8_litexpr("hpp")) ||
-        string_match(ext, string_u8_litexpr("cc"))){
+    if (string_match(ext, strlit("cpp")) ||
+        string_match(ext, strlit("h")) ||
+        string_match(ext, strlit("c")) ||
+        string_match(ext, strlit("hpp")) ||
+        string_match(ext, strlit("cc"))){
      treat_as_code = true;
     }
     
 #if 0
     treat_as_code = true;
     
-    if (string_match(ext, string_u8_litexpr("cs"))){
+    if (string_match(ext, strlit("cs"))){
      if (parse_context_language_cs == 0){
       init_language_cs(app);
      }
      parse_context_id = parse_context_language_cs;
     }
     
-    if (string_match(ext, string_u8_litexpr("java"))){
+    if (string_match(ext, strlit("java"))){
      if (parse_context_language_java == 0){
       init_language_java(app);
      }
      parse_context_id = parse_context_language_java;
     }
     
-    if (string_match(ext, string_u8_litexpr("rs"))){
+    if (string_match(ext, strlit("rs"))){
      if (parse_context_language_rust == 0){
       init_language_rust(app);
      }
      parse_context_id = parse_context_language_rust;
     }
     
-    if (string_match(ext, string_u8_litexpr("cpp")) ||
-        string_match(ext, string_u8_litexpr("h")) ||
-        string_match(ext, string_u8_litexpr("c")) ||
-        string_match(ext, string_u8_litexpr("hpp")) ||
-        string_match(ext, string_u8_litexpr("cc"))){
+    if (string_match(ext, strlit("cpp")) ||
+        string_match(ext, strlit("h")) ||
+        string_match(ext, strlit("c")) ||
+        string_match(ext, strlit("hpp")) ||
+        string_match(ext, strlit("cc"))){
      if (parse_context_language_cpp == 0){
       init_language_cpp(app);
      }
@@ -555,7 +555,7 @@ BUFFER_HOOK_SIG(default_begin_buffer)
     }
     
     // TODO(NAME): Real GLSL highlighting
-    if (string_match(ext, string_u8_litexpr("glsl"))){
+    if (string_match(ext, strlit("glsl"))){
      if (parse_context_language_cpp == 0){
       init_language_cpp(app);
      }
@@ -563,7 +563,7 @@ BUFFER_HOOK_SIG(default_begin_buffer)
     }
     
     // TODO(NAME): Real Objective-C highlighting
-    if (string_match(ext, string_u8_litexpr("m"))){
+    if (string_match(ext, strlit("m"))){
      if (parse_context_language_cpp == 0){
       init_language_cpp(app);
      }
@@ -616,7 +616,7 @@ BUFFER_HOOK_SIG(default_begin_buffer)
 BUFFER_HOOK_SIG(default_new_file){
     Scratch_Block scratch(app);
     String filename = push_buffer_base_name(app, scratch, buffer_id);
-    if (!string_match(string_postfix(filename, 2), string_u8_litexpr(".h"))) {
+    if (!string_match(string_postfix(filename, 2), strlit(".h"))) {
         return(0);
     }
     
@@ -829,7 +829,7 @@ default_view_change_buffer(App *app, View_ID view_id,
 	}
 }
 
-internal void
+function void
 set_all_default_hooks(App *app)
 {
  set_custom_hook(app, HookID_BufferViewerUpdate, default_view_adjust);

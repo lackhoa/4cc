@@ -139,6 +139,7 @@ send_bez_func(String name, Curve_Type type, Curve_Union data,
  }
 }
 //-NOTE(kv) Prototypes at send_bez.gen.h
+/*
 #if 0
 function void
 send_bez_v3v2(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i1 linum){
@@ -174,8 +175,8 @@ send_bez_line(String name, String p0, String p3, Line_Params params, i32 linum){
  send_bez_func(name, p0, p3, Curve_Type_Line, data, params, linum);
 }
 function void
-send_bez_bezd_old(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i32 linum){
- Curve_Union data = {.bezd_old={.d0=d0, .d3=d3,}};
+send_bez_bez_bezd_old(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i32 linum){
+ Curve_Union data = {.bez_bezd_old={.d0=d0, .d3=d3,}};
  send_bez_func(name, p0, p3, Curve_Type_Bezd_Old, data, params, linum);
 }
 function void
@@ -193,6 +194,7 @@ send_bez_negateX(String name, String ref, Line_Params params, i32 linum){
  send_bez_func(name, empty_string, empty_string, Curve_Type_NegateX, data, params, linum);
 }
 #endif
+*/
 //-NOTE(kv) Fill situation
 function void
 send_fill_func(Fill_Type type, Fill_Union &data, Fill_Params params, i1 linum){

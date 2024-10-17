@@ -1,4 +1,4 @@
-internal String
+function String
 get_identifier_at_cursor(Arena *arena, App *app, Buffer_ID buffer)
 {
  Token_Iterator_Array tk = get_token_it_at_cursor(app);
@@ -8,7 +8,7 @@ get_identifier_at_cursor(Arena *arena, App *app, Buffer_ID buffer)
  } else { return {}; }
 }
 
-internal void
+function void
 fui_tick(App *app, Frame_Info frame_info)
 {
  Game_API *game = get_game_code();
@@ -24,7 +24,7 @@ fui_tick(App *app, Frame_Info frame_info)
  }
 }
 
-internal void
+function void
 fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
 {
  Game_API *game = get_game_code();
@@ -45,7 +45,7 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
  }
 }
 
-internal void update_game_key_states(Input_Event *event);
+function void update_game_key_states(Input_Event *event);
 
 
 //~

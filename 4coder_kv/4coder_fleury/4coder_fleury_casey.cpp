@@ -81,7 +81,7 @@ CUSTOM_DOC("Inserts a newline at the cursor position and indent the next line au
     
     if (buffer_get_access_flags(app, buffer) & Access_Write)
 	{
-		write_text(app, string_u8_litexpr("\n"));
+		write_text(app, strlit("\n"));
         auto_indent_line_at_cursor(app);
     }
     else
@@ -115,7 +115,7 @@ CUSTOM_DOC("Deletes everything from the cursor to the end of the line.")
         range.start -= 1;
         range.first = clamp_min(0, range.first);
     }
-    buffer_replace_range(app, buffer, range, string_u8_litexpr(""));
+    buffer_replace_range(app, buffer, range, strlit(""));
 }
 
 CUSTOM_COMMAND_SIG(casey_find_matching_file)

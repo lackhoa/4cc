@@ -9,7 +9,7 @@
 
 // TOP
 
-internal void
+function void
 coroutine__pass_control(Coroutine *me, Coroutine *other,
                         Coroutine_State my_new_state, Coroutine_Pass_Control control){
     Assert(me->state == CoroutineState_Active);
@@ -26,7 +26,7 @@ coroutine__pass_control(Coroutine *me, Coroutine *other,
     }
 }
 
-internal void
+function void
 coroutine_main(void *ptr){
     Coroutine *me = (Coroutine*)ptr;
     
@@ -66,7 +66,7 @@ coroutine_main(void *ptr){
     }
 }
 
-internal void
+function void
 coroutine_sub_init(Coroutine *co, Coroutine_Group *sys){
     block_zero_struct(co);
     co->sys = sys;
@@ -80,7 +80,7 @@ coroutine_sub_init(Coroutine *co, Coroutine_Group *sys){
     }
 }
 
-internal void
+function void
 coroutine_system_init(Coroutine_Group *sys){
     sys->arena = make_arena_system();
     
@@ -101,7 +101,7 @@ coroutine_system_init(Coroutine_Group *sys){
     system_mutex_acquire(sys->lock);
 }
 
-internal Coroutine*
+function Coroutine*
 coroutine_system_alloc(Coroutine_Group *sys){
     Coroutine *result = sys->unused;
     if (result != 0){
@@ -115,14 +115,14 @@ coroutine_system_alloc(Coroutine_Group *sys){
     return(result);
 }
 
-internal void
+function void
 coroutine_system_free(Coroutine_Group *sys, Coroutine *coroutine){
     sll_stack_push(sys->unused, coroutine);
 }
 
 ////////////////////////////////
 
-internal Coroutine*
+function Coroutine*
 coroutine_create(Coroutine_Group *coroutines, Coroutine_Function *func){
     Coroutine *result = coroutine_system_alloc(coroutines);
     Assert(result->state == CoroutineState_Dead);
@@ -130,7 +130,7 @@ coroutine_create(Coroutine_Group *coroutines, Coroutine_Function *func){
     return(result);
 }
 
-internal Coroutine*
+function Coroutine*
 coroutine_run(Coroutine_Group *sys, Coroutine *other, void *in, void *out)
 {
     other->in = in;
@@ -153,7 +153,7 @@ coroutine_run(Coroutine_Group *sys, Coroutine *other, void *in, void *out)
     return(result);
 }
 
-internal void
+function void
 coroutine_yield(Coroutine *me)
 {
     Coroutine *other = me->yield_ctx;

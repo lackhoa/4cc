@@ -5,7 +5,7 @@
 #endif
 #include "imgui/imgui.h"
 #if SILLY_IMGUI_PARTY
-#  include "imgui_internal.h"
+#  include "imgui_function.h"
 #endif
 
 #define AD_IS_FRAMEWORK 1
@@ -49,7 +49,7 @@
 #include "game_anime.cpp"
 #include "game_utils.cpp"
 #include "game_body.cpp"
-#include "game.cpp"
+#include "generated/driver.gen.cpp"
 #undef fval
 #define fval slow_fval
 
@@ -443,7 +443,6 @@ get_right_bone(Modeler &m, Bone &bone){
 //  It feels wonky because this is an animation problem we have yet to "solve".
 function Bez
 compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
- b32 is_c2 = (curve.type == Curve_Type_C2);
  Bez result;
  Bone_ID curve_bone_id = curve.bone_id;
  Bone &curve_bone = get_bone(m,curve_bone_id,lr);
@@ -473,7 +472,7 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
    case Curve_Type_C2:{
     auto &data = curve.data.c2;
     Curve_Data &refd = m.curves[data.ref.v];
-    Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
+    Bez ref = compute_curve_from_data(m, refd, lr);
     result = bez_c2(ref, curve_vec(data.d3), p3);
    }break;
    case Curve_Type_Unit:{
@@ -489,7 +488,7 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
    }break;
    case Curve_Type_Bezd_Old:{
     auto &data = curve.data.bezd_old;
-    result = bezd_old(p0,data.d0,data.d3,p3);
+    result = bez_bezd_old(p0,data.d0,data.d3,p3);
    }break;
    case Curve_Type_Offset:{
     auto &data = curve.data.offset;
@@ -498,8 +497,19 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
    case Curve_Type_NegateX:{
     auto &data = curve.data.negateX;
     Curve_Data &refd = m.curves[data.ref.v];
-    Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
+    Bez ref = compute_curve_from_data(m, refd, lr);
     result = negateX(ref);
+   }break;
+   case Curve_Type_Lerp:{
+    auto &data = curve.data.lerp;
+    v1 t = 0.0f;//todo(kv) incomplete
+    Bez begin_data = compute_curve_from_data(m, m.curves[data.begin.v], lr);
+    Bez end_data   = compute_curve_from_data(m, m.curves[data.end.v], lr);
+    result = bez_lerp(begin_data, t, end_data);
+   }break;
+   case Curve_Type_Raw:{
+    auto &data = curve.data.raw;
+    result = bez_raw(p0, curve_xform*data.p1, curve_xform*data.p2, p3);
    }break;
    invalid_default_case;
   }
@@ -1045,7 +1055,7 @@ g_jump_to_line(App *app, i1 linum){
   //NOTE(kv) Switch to the right view
   view = get_other_primary_view(app, view, Access_Always, true);
  }
- view_set_buffer_named(app, view, GAME_FILE_NAME);
+ view_set_buffer_named(app, view, DRIVER_FILE_NAME);
  view_set_cursor(app, view, seek_line_col(linum, 0));
 }
 function void
@@ -1187,13 +1197,13 @@ game_update(game_update_params){
   Buffer_ID buffer = get_active_buffer(app);
   String active_buffer_name = push_buffer_base_name(app, scratch, buffer);
   View_ID view_id = get_active_view(app,0);
-  if(active_buffer_name != GAME_FILE_NAME){
+  if(active_buffer_name != DRIVER_FILE_NAME){
    //note(kv) Retry with the other view 
    view_id = get_other_primary_view(app, view_id, 0, false);
    buffer = view_get_buffer(app, view_id, 0);
    active_buffer_name = push_buffer_base_name(app, scratch, buffer);
   }
-  if(active_buffer_name == GAME_FILE_NAME){
+  if(active_buffer_name == DRIVER_FILE_NAME){
    i64 linum = get_current_line_number2(app, view_id, buffer);
    Modeler &m = *modeler;
    Vertex_Ref v = get_vertex_by_linum(m,linum);

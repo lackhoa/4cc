@@ -43,8 +43,8 @@
 #    include "generated/managed_id_metadata.cpp"  // from Mr. Allen 4th
 #endif
 
-function void kvInitShiftedTable()
-{
+function void
+kvInitShiftedTable(){
  Base_Allocator *base = get_base_allocator_system();
  shifted_version_of_characters = make_table_u64_u64(base, 32);
  
@@ -73,8 +73,7 @@ function void kvInitShiftedTable()
 
 // NOTE(kv): shared between custom layers
 function void
-kv_essential_mapping(Mapping *mapping)
-{
+kv_essential_mapping(Mapping *mapping) {
  String_ID global_id = vars_intern_lit("keys_global");
  String_ID file_id   = vars_intern_lit("keys_file");
  String_ID code_id   = vars_intern_lit("keys_code");
@@ -103,8 +102,7 @@ kv_essential_mapping(Mapping *mapping)
 
 // NOTE(kv): shared between custom layers
 function void 
-kv_default_bindings(Mapping *mapping)
-{
+kv_default_bindings(Mapping *mapping) {
  String_ID global_id = vars_intern_lit("keys_global");
  String_ID file_id   = vars_intern_lit("keys_file");
  String_ID code_id   = vars_intern_lit("keys_code");

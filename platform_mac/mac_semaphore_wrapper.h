@@ -14,18 +14,18 @@ union Semaphore{
     FixSize(SEMAPHORE_TYPE_SIZE);
 };
 
-internal void
+function void
 system_init_semaphore(Semaphore *s, u32 count){
     task_t task = mach_task_self();
     semaphore_create(task, &s->s, SYNC_POLICY_FIFO, 0);
 }
 
-internal void
+function void
 system_wait_on_semaphore(Semaphore *s){
     semaphore_wait(s->s);
 }
 
-internal void
+function void
 system_release_semaphore(Semaphore *s){
     semaphore_signal(s->s);
 }

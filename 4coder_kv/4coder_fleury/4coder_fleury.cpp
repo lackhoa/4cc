@@ -482,7 +482,7 @@ void fleury_custom_layer_init(App *app)
     {
         Thread_Context *tctx = get_thread_context(app);
         mapping_init(tctx, &framework_mapping);
-        String bindings_file = string_u8_litexpr("bindings.4coder");
+        String bindings_file = strlit("bindings.4coder");
         F4_SetAbsolutelyNecessaryBindings(&framework_mapping);
         if(!dynamic_binding_load_from_file(app, &framework_mapping, bindings_file))
         {
@@ -527,7 +527,7 @@ CUSTOM_DOC("Fleury startup event")
     {
         // NOTE(rjf): Open compilation buffer.
         {
-            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*compilation*"),
+            Buffer_ID buffer = create_buffer(app, strlit("*compilation*"),
                                              BufferCreate_NeverAttachToFile |
                                              BufferCreate_AlwaysNew);
             buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
@@ -536,7 +536,7 @@ CUSTOM_DOC("Fleury startup event")
         
         // NOTE(rjf): Open lego buffer.
         {
-            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*lego*"),
+            Buffer_ID buffer = create_buffer(app, strlit("*lego*"),
                                              BufferCreate_NeverAttachToFile |
                                              BufferCreate_AlwaysNew);
             buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
@@ -545,7 +545,7 @@ CUSTOM_DOC("Fleury startup event")
         
         // NOTE(rjf): Open calc buffer.
         {
-            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*calc*"),
+            Buffer_ID buffer = create_buffer(app, strlit("*calc*"),
                                              BufferCreate_NeverAttachToFile |
                                              BufferCreate_AlwaysNew);
             buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
@@ -553,7 +553,7 @@ CUSTOM_DOC("Fleury startup event")
         
         // NOTE(rjf): Open peek buffer.
         {
-            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*peek*"),
+            Buffer_ID buffer = create_buffer(app, strlit("*peek*"),
                                              BufferCreate_NeverAttachToFile |
                                              BufferCreate_AlwaysNew);
             buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
@@ -561,7 +561,7 @@ CUSTOM_DOC("Fleury startup event")
         
         // NOTE(rjf): Open LOC buffer.
         {
-            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*loc*"),
+            Buffer_ID buffer = create_buffer(app, strlit("*loc*"),
                                              BufferCreate_NeverAttachToFile |
                                              BufferCreate_AlwaysNew);
             buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);

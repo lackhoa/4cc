@@ -4,7 +4,7 @@ function API_Definition*
 ed_api_construct(Arena *arena){
 API_Definition *result = begin_api(arena, "ed");
 {
-API_Call *call = api_call_with_location(arena, result, string_u8_litexpr("view_set_cursor"), string_u8_litexpr("b32"), string_u8_litexpr(""));
+API_Call *call = api_call_with_location(arena, result, strlit("view_set_cursor"), strlit("b32"), strlit(""));
 api_param(arena, call, "App*", "app");
 api_param(arena, call, "View_ID", "view_id");
 api_param(arena, call, "Buffer_Seek", "seek");

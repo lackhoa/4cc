@@ -160,7 +160,7 @@ draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
     draw_rect_outline(app, square, radius, thickness, color, center.z);
 }
 
-internal void
+function void
 draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, v1 depth=0)
 {
     v2 dim = get_dim(rect);
@@ -233,7 +233,7 @@ begin_frame(void *font_set)
 
 ////////////////////////////////
 
-internal void
+function void
 draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
                 ARGB_Color color, Glyph_Flag flags, Vec2_f32 x_axis)
 {
@@ -282,7 +282,7 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
 
 ////////////////////////////////
 
-internal Vec2_f32
+function Vec2_f32
 floor_v2(Vec2_f32 point)
 {
     point.x = floorv1(point.x);
@@ -290,7 +290,7 @@ floor_v2(Vec2_f32 point)
     return(point);
 }
 
-internal f32
+function f32
 draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
                   ARGB_Color color, u32 flags, v2 delta)
 {
@@ -325,8 +325,8 @@ draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
                         }
                         draw_font_glyph(target, face, draw_codepoint, point, color, flags, delta);
                     }
-                    local_const f32 internal_tab_width = 4.f;
-                    f32 d = font_get_glyph_advance(&face->advance_map, &face->metrics, codepoint, internal_tab_width);
+                    local_const f32 function_tab_width = 4.f;
+                    f32 d = font_get_glyph_advance(&face->advance_map, &face->metrics, codepoint, function_tab_width);
                     point += d*delta;
                     total_delta += d;
                 }
@@ -365,27 +365,27 @@ draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
     return(total_delta);
 }
 
-internal f32
+function f32
 draw_string(Render_Target *target, Face *face, String string, Vec2_f32 point, u32 color){
     return(draw_string_inner(target, face, string, point, color, 0, V2(1.f, 0.f)));
 }
 
-internal f32
+function f32
 draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color, u32 flags, Vec2_f32 delta){
     return(draw_string_inner(target, face, SCu8(str), point, color, flags, delta));
 }
 
-internal f32
+function f32
 draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color){
     return(draw_string_inner(target, face, SCu8(str), point, color, 0, V2(1.f, 0.f)));
 }
 
-internal f32
+function f32
 font_string_width(Render_Target *target, Face *face, String str){
  return(draw_string_inner(target, face, str, V2(0, 0), 0, 0, V2(0, 0)));
 }
 
-internal f32
+function f32
 font_string_width(Render_Target *target, Face *face, u8 *str){
  return(draw_string_inner(target, face, SCu8(str), V2(0, 0), 0, 0, V2(0, 0)));
 }

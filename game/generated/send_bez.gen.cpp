@@ -1,5 +1,5 @@
-//NOTE Generated at C:\Users\vodan\4ed\code/meta_main.cpp:374:
-//  C:\Users\vodan\4ed\code/meta_main.cpp:375:
+//NOTE Generated at C:\Users\vodan\4ed\code/meta_main.cpp:352:
+//  C:\Users\vodan\4ed\code/meta_main.cpp:353:
 function void
 send_bez_v3v2(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i32 linum)
 {
@@ -116,5 +116,17 @@ Curve_Index end_index = get_curve_by_name(m, end).index;
 kv_assert(end_index.v);
 Curve_Union data = {.lerp={ .begin=begin_index, .end=end_index, }};
 send_bez_func(name, Curve_Type_Lerp, data, params, linum);
+
+}
+function void
+send_bez_raw(String name, String p0, v3 p1, v3 p2, String p3, Line_Params params, i32 linum)
+{
+Modeler &m = *painter.modeler;
+Vertex_Index p0_index = get_vertex_by_name(m, p0).index;
+kv_assert(p0_index.v);
+Vertex_Index p3_index = get_vertex_by_name(m, p3).index;
+kv_assert(p3_index.v);
+Curve_Union data = {.raw={ .p0=p0_index, .p1=p1, .p2=p2, .p3=p3_index, }};
+send_bez_func(name, Curve_Type_Raw, data, params, linum);
 
 }

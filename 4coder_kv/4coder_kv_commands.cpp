@@ -41,7 +41,7 @@ VIM_REQUEST_SIG(byp_apply_comment){
 		i64 line_start = get_pos_past_lead_whitespace_from_line_number(app, buffer, l);
 		b32 has_comment = c_line_comment_starts_at_position(app, buffer, line_start);
 		if(!has_comment){
-			buffer_replace_range(app, buffer, Ii64(line_start), string_u8_litexpr("//"));
+			buffer_replace_range(app, buffer, Ii64(line_start), strlit("//"));
 			buffer_post_fade(app, buffer, 0.667f, Ii64_size(line_start,2), fcolor_resolve(fcolor_id(defcolor_paste)));
 		}
 	}
@@ -284,43 +284,33 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction){
 }
 
 function void 
-kv_sexpr_right(App *app)
-{
+kv_sexpr_right(App *app) {
  Token_Iterator_Array token_it = get_token_it_at_cursor(app);
- if ( token_it.tokens )
- {
+ if ( token_it.tokens ) {
   View_ID view = get_active_view(app, Access_ReadVisible);
   vim_push_jump(app, view);
-  if ( !if_preprocessor_movement(app, Scan_Forward) )
-  {
+  if(!if_preprocessor_movement(app, Scan_Forward)){
    i32 nest = 0;
-   do
-   {
+   do{
     Token *token = tkarr_read(&token_it);
-    if (token->kind == TokenBaseKind_LiteralString)
+    if(token->kind == TokenBaseKind_LiteralString)
     {// NOTE: goto end of string
-     if (nest == 0)
-     {
+     if(nest == 0){
       i64 token_end = get_token_range(token).end;
       kv_goto_pos(app, view, token_end);
       break;
      }
-    }
-    else if( kv_is_group_opener(token) )
-    {
+    }else if(kv_is_group_opener(token)){
      nest += 1;
-    }
-    else if( kv_is_group_closer(token) )
-    {
+    }else if(kv_is_group_closer(token)){
      nest -= 1;
-     if (nest <= 0)
-     {
+     if(nest <= 0){
       kv_goto_token(app, token);
-      if (nest == 0) { move_right(app); }
+      if(nest == 0){ move_right(app); }
       break;
      }
     }
-   } while ( tkarr_inc(&token_it) );
+   }while(tkarr_inc(&token_it));
   }
  }
 }
@@ -742,7 +732,7 @@ VIM_COMMAND_SIG(kv_delete_surrounding_groupers){
 }
 
 function void 
-kv_do_t_internal(App *app, b32 shiftp)
+kv_do_t_function(App *app, b32 shiftp)
 {
  GET_VIEW_AND_BUFFER;
  HISTORY_GROUP_SCOPE;
@@ -784,11 +774,11 @@ kv_do_t_internal(App *app, b32 shiftp)
   move_right(app);
  }
 }
-VIM_COMMAND_SIG(kv_do_t) {kv_do_t_internal(app, false);}
-VIM_COMMAND_SIG(kv_do_T) {kv_do_t_internal(app, true);}
+VIM_COMMAND_SIG(kv_do_t) {kv_do_t_function(app, false);}
+VIM_COMMAND_SIG(kv_do_T) {kv_do_t_function(app, true);}
 
 function void 
-kv_do_underscore_internal(App *app, b32 shiftp)
+kv_do_underscore_function(App *app, b32 shiftp)
 {
  GET_VIEW_AND_BUFFER;
  HISTORY_GROUP_SCOPE;
@@ -825,8 +815,8 @@ kv_do_underscore_internal(App *app, b32 shiftp)
   move_right(app);
  }
 }
-VIM_COMMAND_SIG(kv_do_underscore)         {kv_do_underscore_internal(app, false);}
-VIM_COMMAND_SIG(kv_do_underscore_shifted) {kv_do_underscore_internal(app, true);}
+VIM_COMMAND_SIG(kv_do_underscore)         {kv_do_underscore_function(app, false);}
+VIM_COMMAND_SIG(kv_do_underscore_shifted) {kv_do_underscore_function(app, true);}
 
 
 
@@ -1317,7 +1307,7 @@ kv_toggle_cpp_comment(App *app) {
    if (token->kind == TokenBaseKind_Comment){
     Scratch_Block scratch;
     GET_VIEW_AND_BUFFER;
-    String token_string = ep_print_token(p, scratch);
+    String token_string = ep_print_token(scratch, p);
     Range_i64 token_range = get_token_range(token);
     if (token_string.str[0] == '/' &&
         token_string.str[1] == '*')

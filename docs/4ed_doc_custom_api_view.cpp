@@ -467,7 +467,7 @@ doc_custom_api__view(Arena *arena, API_Definition *api_def, Doc_Cluster *cluster
     ////////////////////////////////
     
     if (begin_doc_call(arena, cluster, api_def, "panel_is_split", &func)){
-        doc_function_brief(arena, &func, "Check if a panel is an internal split panel");
+        doc_function_brief(arena, &func, "Check if a panel is an function split panel");
         
         // params
         Doc_Block *params = doc_function_begin_params(arena, &func);
@@ -478,11 +478,11 @@ doc_custom_api__view(Arena *arena, API_Definition *api_def, Doc_Cluster *cluster
         
         // return
         Doc_Block *ret = doc_function_return(arena, &func);
-        doc_text(arena, ret, "non-zero if the panel exists and is an internal panel in the panel layout tree");
+        doc_text(arena, ret, "non-zero if the panel exists and is an function panel in the panel layout tree");
         
         // details
         Doc_Block *det = doc_function_details(arena, &func);
-        doc_text(arena, det, "The panel layout tree is a binary tree with internal panels having exactly two children and a split rule, and leaf panels having an associated view.");
+        doc_text(arena, det, "The panel layout tree is a binary tree with function panels having exactly two children and a split rule, and leaf panels having an associated view.");
     }
     
     ////////////////////////////////
@@ -503,7 +503,7 @@ doc_custom_api__view(Arena *arena, API_Definition *api_def, Doc_Cluster *cluster
         
         // details
         Doc_Block *det = doc_function_details(arena, &func);
-        doc_text(arena, det, "The panel layout tree is a binary tree with internal panels having exactly two children and a split rule, and leaf panels having an associated view.");
+        doc_text(arena, det, "The panel layout tree is a binary tree with function panels having exactly two children and a split rule, and leaf panels having an associated view.");
     }
     
     ////////////////////////////////
@@ -529,7 +529,7 @@ doc_custom_api__view(Arena *arena, API_Definition *api_def, Doc_Cluster *cluster
         Doc_Block *det = doc_function_details(arena, &func);
         doc_text(arena, det, "New splits are created as 50/50 proportional splits.");
         doc_paragraph(arena, det);
-        doc_text(arena, det, "The only limit on splits is the number of views, which is 16. When a leaf panel is split, the view it was associated with is placed in the 'min' child of the split and a panel with a new view is placed in the 'max' child of the split. When an internal panel is split, it's 'min' child adopts the old children and split settings of the panel and the 'max' child gets a panel with a new view.");
+        doc_text(arena, det, "The only limit on splits is the number of views, which is 16. When a leaf panel is split, the view it was associated with is placed in the 'min' child of the split and a panel with a new view is placed in the 'max' child of the split. When an function panel is split, it's 'min' child adopts the old children and split settings of the panel and the 'max' child gets a panel with a new view.");
         doc_paragraph(arena, det);
         doc_text(arena, det, "In either case, a successful split puts a new leaf panel in the 'max' child, puts the old contents of the panel into the 'min' child. The id of the panel that was split becomes the id of the parent of the split. View panel associations are modified by a split.");
     }
@@ -813,7 +813,7 @@ doc_custom_api__view(Arena *arena, API_Definition *api_def, Doc_Cluster *cluster
     ////////////////////////////////
     
     if (begin_doc_call(arena, cluster, api_def, "view_set_cursor", &func)){
-        doc_function_brief(arena, &func, "Set a view's internal cursor position");
+        doc_function_brief(arena, &func, "Set a view's function cursor position");
         
         // params
         Doc_Block *params = doc_function_begin_params(arena, &func);
@@ -844,7 +844,7 @@ doc_custom_api__view(Arena *arena, API_Definition *api_def, Doc_Cluster *cluster
     ////////////////////////////////
     
     if (begin_doc_call(arena, cluster, api_def, "view_set_mark", &func)){
-        doc_function_brief(arena, &func, "Set a view's internal mark position");
+        doc_function_brief(arena, &func, "Set a view's function mark position");
         
         // params
         Doc_Block *params = doc_function_begin_params(arena, &func);

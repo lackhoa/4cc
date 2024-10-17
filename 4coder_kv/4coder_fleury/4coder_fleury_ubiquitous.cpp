@@ -201,7 +201,7 @@ CStringCRC32(char *string)
     return hash;
 }
 
-internal u64
+function u64
 BitOffset(u64 value)
 {
     u64 offset = 0;

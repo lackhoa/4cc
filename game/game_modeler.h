@@ -29,7 +29,6 @@ struct Modeler_History{
  i1 redo_index;
 };
 //-
-typedef Curve_Data Curve_Data;
 struct Modeler  // see @init_modeler
 {//-Data
  Arena data_arena;

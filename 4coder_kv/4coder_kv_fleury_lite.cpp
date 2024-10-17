@@ -65,7 +65,7 @@ F4_RenderBufferLite(App *app, View_ID view_id, Face_ID face_id,
     draw_text_layout_default(app, text_layout_id);
     
     // NOTE(rjf): Interpret buffer as calc code, if it's the calc buffer.
-    Buffer_ID calc_buffer_id = get_buffer_by_name(app, string_u8_litexpr("*calc*"), AccessFlag_Read);
+    Buffer_ID calc_buffer_id = get_buffer_by_name(app, strlit("*calc*"), AccessFlag_Read);
     if(calc_buffer_id == buffer)
     {
         F4_CLC_RenderBuffer(app, buffer, view_id, text_layout_id, frame_info);

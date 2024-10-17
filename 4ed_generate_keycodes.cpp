@@ -78,8 +78,8 @@ add_code(Arena *arena, Event_Code_List *list, String name){
 function Event_Code_List
 make_key_list(Arena *arena){
     Event_Code_List list = {};
-    list.code_prefix = string_u8_litexpr("Key_Code");
-    list.name_table = string_u8_litexpr("key_code_name");
+    list.code_prefix = strlit("Key_Code");
+    list.name_table = strlit("key_code_name");
     for (u32 i = 'A'; i <= 'Z'; i += 1){
         u8 c = (u8)i;
         add_code(arena, &list, SCu8(&c, 1));
@@ -88,52 +88,52 @@ make_key_list(Arena *arena){
         u8 c = (u8)i;
         add_code(arena, &list, SCu8(&c, 1));
     }
-    add_code(arena, &list, string_u8_litexpr("Space"));
-    add_code(arena, &list, string_u8_litexpr("Tick"));
-    add_code(arena, &list, string_u8_litexpr("Minus"));
-    add_code(arena, &list, string_u8_litexpr("Equal"));
-    add_code(arena, &list, string_u8_litexpr("LeftBracket"));
-    add_code(arena, &list, string_u8_litexpr("RightBracket"));
-    add_code(arena, &list, string_u8_litexpr("Semicolon"));
-    add_code(arena, &list, string_u8_litexpr("Quote"));
-    add_code(arena, &list, string_u8_litexpr("Comma"));
-    add_code(arena, &list, string_u8_litexpr("Period"));
-    add_code(arena, &list, string_u8_litexpr("ForwardSlash"));
-    add_code(arena, &list, string_u8_litexpr("BackwardSlash"));
-    add_code(arena, &list, string_u8_litexpr("Tab"));
-    add_code(arena, &list, string_u8_litexpr("Escape"));
-    add_code(arena, &list, string_u8_litexpr("Pause"));
-    add_code(arena, &list, string_u8_litexpr("Up"));
-    add_code(arena, &list, string_u8_litexpr("Down"));
-    add_code(arena, &list, string_u8_litexpr("Left"));
-    add_code(arena, &list, string_u8_litexpr("Right"));
-    add_code(arena, &list, string_u8_litexpr("Backspace"));
-    add_code(arena, &list, string_u8_litexpr("Return"));
-    add_code(arena, &list, string_u8_litexpr("Delete"));
-    add_code(arena, &list, string_u8_litexpr("Insert"));
-    add_code(arena, &list, string_u8_litexpr("Home"));
-    add_code(arena, &list, string_u8_litexpr("End"));
-    add_code(arena, &list, string_u8_litexpr("PageUp"));
-    add_code(arena, &list, string_u8_litexpr("PageDown"));
-    add_code(arena, &list, string_u8_litexpr("CapsLock"));
-    add_code(arena, &list, string_u8_litexpr("NumLock"));
-    add_code(arena, &list, string_u8_litexpr("ScrollLock"));
-    add_code(arena, &list, string_u8_litexpr("Menu"));
-    add_code(arena, &list, string_u8_litexpr("Shift"));
-    add_code(arena, &list, string_u8_litexpr("Control"));
-    add_code(arena, &list, string_u8_litexpr("Alt"));
-    add_code(arena, &list, string_u8_litexpr("Command"));
+    add_code(arena, &list, strlit("Space"));
+    add_code(arena, &list, strlit("Tick"));
+    add_code(arena, &list, strlit("Minus"));
+    add_code(arena, &list, strlit("Equal"));
+    add_code(arena, &list, strlit("LeftBracket"));
+    add_code(arena, &list, strlit("RightBracket"));
+    add_code(arena, &list, strlit("Semicolon"));
+    add_code(arena, &list, strlit("Quote"));
+    add_code(arena, &list, strlit("Comma"));
+    add_code(arena, &list, strlit("Period"));
+    add_code(arena, &list, strlit("ForwardSlash"));
+    add_code(arena, &list, strlit("BackwardSlash"));
+    add_code(arena, &list, strlit("Tab"));
+    add_code(arena, &list, strlit("Escape"));
+    add_code(arena, &list, strlit("Pause"));
+    add_code(arena, &list, strlit("Up"));
+    add_code(arena, &list, strlit("Down"));
+    add_code(arena, &list, strlit("Left"));
+    add_code(arena, &list, strlit("Right"));
+    add_code(arena, &list, strlit("Backspace"));
+    add_code(arena, &list, strlit("Return"));
+    add_code(arena, &list, strlit("Delete"));
+    add_code(arena, &list, strlit("Insert"));
+    add_code(arena, &list, strlit("Home"));
+    add_code(arena, &list, strlit("End"));
+    add_code(arena, &list, strlit("PageUp"));
+    add_code(arena, &list, strlit("PageDown"));
+    add_code(arena, &list, strlit("CapsLock"));
+    add_code(arena, &list, strlit("NumLock"));
+    add_code(arena, &list, strlit("ScrollLock"));
+    add_code(arena, &list, strlit("Menu"));
+    add_code(arena, &list, strlit("Shift"));
+    add_code(arena, &list, strlit("Control"));
+    add_code(arena, &list, strlit("Alt"));
+    add_code(arena, &list, strlit("Command"));
     for (u32 i = 1; i <= 24; i += 1){
         add_code(arena, &list, push_u8_stringf(arena, "F%d", i));
     }
     for (u32 i = '0'; i <= '9'; i += 1){
         add_code(arena, &list, push_u8_stringf(arena, "NumPad%c", i));
     }
-    add_code(arena, &list, string_u8_litexpr("NumPadStar"));
-    add_code(arena, &list, string_u8_litexpr("NumPadPlus"));
-    add_code(arena, &list, string_u8_litexpr("NumPadMinus"));
-    add_code(arena, &list, string_u8_litexpr("NumPadDot"));
-    add_code(arena, &list, string_u8_litexpr("NumPadSlash"));
+    add_code(arena, &list, strlit("NumPadStar"));
+    add_code(arena, &list, strlit("NumPadPlus"));
+    add_code(arena, &list, strlit("NumPadMinus"));
+    add_code(arena, &list, strlit("NumPadDot"));
+    add_code(arena, &list, strlit("NumPadSlash"));
     for (i1 i = 0; i < 30; i += 1){
         add_code(arena, &list, push_u8_stringf(arena, "Ex%d", i));
     }
@@ -143,26 +143,26 @@ make_key_list(Arena *arena){
 function Event_Code_List
 make_mouse_list(Arena *arena){
     Event_Code_List list = {};
-    list.code_prefix = string_u8_litexpr("MouseCode");
-    list.name_table = string_u8_litexpr("mouse_code_name");
-    add_code(arena, &list, string_u8_litexpr("Left"));
-    add_code(arena, &list, string_u8_litexpr("Middle"));
-    add_code(arena, &list, string_u8_litexpr("Right"));
+    list.code_prefix = strlit("MouseCode");
+    list.name_table = strlit("mouse_code_name");
+    add_code(arena, &list, strlit("Left"));
+    add_code(arena, &list, strlit("Middle"));
+    add_code(arena, &list, strlit("Right"));
     return(list);
 }
 
 function Event_Code_List
 make_core_list(Arena *arena){
     Event_Code_List list = {};
-    list.code_prefix = string_u8_litexpr("CoreCode");
-    list.name_table = string_u8_litexpr("core_code_name");
-    add_code(arena, &list, string_u8_litexpr("Startup"));
-    add_code(arena, &list, string_u8_litexpr("Animate"));
-    add_code(arena, &list, string_u8_litexpr("ClickActivateView"));
-    add_code(arena, &list, string_u8_litexpr("ClickDeactivateView"));
-    add_code(arena, &list, string_u8_litexpr("TryExit"));
-    add_code(arena, &list, string_u8_litexpr("FileExternallyModified"));
-    add_code(arena, &list, string_u8_litexpr("NewClipboardContents"));
+    list.code_prefix = strlit("CoreCode");
+    list.name_table = strlit("core_code_name");
+    add_code(arena, &list, strlit("Startup"));
+    add_code(arena, &list, strlit("Animate"));
+    add_code(arena, &list, strlit("ClickActivateView"));
+    add_code(arena, &list, strlit("ClickDeactivateView"));
+    add_code(arena, &list, strlit("TryExit"));
+    add_code(arena, &list, strlit("FileExternallyModified"));
+    add_code(arena, &list, strlit("NewClipboardContents"));
     return(list);
 }
 
@@ -176,7 +176,7 @@ main(void){
     Event_Code_List mouse_list = make_mouse_list(&arena);
     Event_Code_List core_list = make_core_list(&arena);
     
-    String path_to_self = string_u8_litexpr(__FILE__);
+    String path_to_self = strlit(__FILE__);
     path_to_self = string_remove_last_folder(path_to_self);
     String file_name =
         push_u8_stringf(&arena, "%.*scustom/generated/4coder_event_codes.h",

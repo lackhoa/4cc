@@ -9,7 +9,7 @@
 
 // TOP
 
-internal void
+function void
 child_process_container_init(Base_Allocator *allocator, Child_Process_Container *container){
     container->arena = make_arena(allocator);
     dll_init_sentinel(&container->child_process_active_list);
@@ -20,7 +20,7 @@ child_process_container_init(Base_Allocator *allocator, Child_Process_Container 
     container->id_to_return_code_table = make_table_u64_u64(allocator, 10);
 }
 
-internal void
+function void
 child_process_container_release(Child_Process_Container *container, Models *models){
     arena_clear(&container->arena);
     table_free(&container->id_to_ptr_table);
@@ -28,7 +28,7 @@ child_process_container_release(Child_Process_Container *container, Models *mode
 }
 
 
-internal Child_Process_And_ID
+function Child_Process_And_ID
 child_process_alloc_new(Models *models, Child_Process_Container *container){
     Child_Process_And_ID result = {};
     Child_Process *new_process = 0;
@@ -53,7 +53,7 @@ child_process_alloc_new(Models *models, Child_Process_Container *container){
     return(result);
 }
 
-internal Child_Process*
+function Child_Process*
 child_process_from_id(Child_Process_Container *container, Child_Process_ID id){
     Table_Lookup lookup = table_lookup(&container->id_to_ptr_table, id);
     Child_Process *process = 0;
@@ -65,7 +65,7 @@ child_process_from_id(Child_Process_Container *container, Child_Process_ID id){
     return(process);
 }
 
-internal b32
+function b32
 child_process_free(Child_Process_Container *container, Child_Process_ID id){
     b32 result = false;
     Child_Process *process = child_process_from_id(container, id);
@@ -79,14 +79,14 @@ child_process_free(Child_Process_Container *container, Child_Process_ID id){
     return(result);
 }
 
-internal b32
+function b32
 child_process_set_return_code(Models *models, Child_Process_Container *container, Child_Process_ID id, i64 val)
 {
     table_insert(&container->id_to_return_code_table, id, val);
     return(true);
 }
 
-internal b32
+function b32
 child_process_lookup_return_code(Child_Process_Container *container, Child_Process_ID id, i64 *out)
 {
     b32 result = false;
@@ -100,7 +100,7 @@ child_process_lookup_return_code(Child_Process_Container *container, Child_Proce
 
 ////////////////////////////////
 
-internal b32
+function b32
 child_process_call(Thread_Context *tctx, Models *models, String path, String command, Child_Process_ID *id_out)
 {
  b32 result = false;
@@ -118,7 +118,7 @@ child_process_call(Thread_Context *tctx, Models *models, String path, String com
  return(result);
 }
 
-internal b32
+function b32
 child_process_set_target_buffer(Models *models, Child_Process *child_process, Editing_File *file, Child_Process_Set_Target_Flags flags){
     b32 result = false;
     b32 fail_if_process_has_buffer = HasFlag(flags, ChildProcessSet_FailIfProcessAlreadyAttachedToABuffer);
@@ -145,7 +145,7 @@ child_process_set_target_buffer(Models *models, Child_Process *child_process, Ed
     return(result);
 }
 
-internal Process_State
+function Process_State
 child_process_get_state(Child_Process_Container *procs, Child_Process_ID procid)
 {
     Child_Process *proc = child_process_from_id(procs, procid);

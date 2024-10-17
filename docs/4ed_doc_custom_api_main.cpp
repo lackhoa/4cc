@@ -38,7 +38,7 @@
 int main(void){
     Arena arena = make_arena_malloc();
     
-    String me = string_u8_litexpr(__FILE__);
+    String me = strlit(__FILE__);
     String docs_folder = string_remove_last_folder(me);
     String root = string_remove_last_folder(docs_folder);
     String file_name = push_u8_stringf(&arena, "%.*scustom/generated/custom_api_master_list.h",
@@ -57,7 +57,7 @@ int main(void){
     API_Definition_List def_list = {};
     api_parse_source_add_to_list(&arena, file_name, text, &def_list);
     
-    API_Definition *api_def = api_get_api(&def_list, string_u8_litexpr("custom"));
+    API_Definition *api_def = api_get_api(&def_list, strlit("custom"));
     Doc_Cluster *cluster = doc_custom_api(&arena, api_def);
     
     doc_api_check_full_coverage(&arena, cluster, api_def);

@@ -32,7 +32,7 @@ static struct
 }
 power_mode;
 
-internal void
+function void
 F4_PowerMode_SetAllow(b32 allowed)
 {
     power_mode.allowed = allowed;
@@ -46,19 +46,19 @@ CUSTOM_COMMAND_SIG(f4_powermode_disallow)
 CUSTOM_DOC("Disallow power mode.")
 { F4_PowerMode_SetAllow(0); }
 
-internal b32
+function b32
 F4_PowerMode_IsEnabled(void)
 {
     return power_mode.enabled;
 }
 
-internal f32
+function f32
 F4_PowerMode_ScreenShake(void)
 {
     return power_mode.screen_shake;
 }
 
-internal f32
+function f32
 F4_PowerMode_ActiveCharactersPerMinute(void)
 {
     f32 result = 0.f;
@@ -72,7 +72,7 @@ F4_PowerMode_ActiveCharactersPerMinute(void)
     return result;
 }
 
-internal void
+function void
 F4_PowerMode_CharacterPressed(void)
 {
     u64 now = system_time_usecond();
@@ -104,7 +104,7 @@ F4_PowerMode_CharacterPressed(void)
     }
 }
 
-internal Particle *
+function Particle *
 F4_PowerMode_Particle(f32 x, f32 y, f32 velocity_x, f32 velocity_y, f32 decay_rate, ARGB_Color color,
                       f32 roundness, f32 scale, String str)
 {
@@ -127,7 +127,7 @@ F4_PowerMode_Particle(f32 x, f32 y, f32 velocity_x, f32 velocity_y, f32 decay_ra
     return result;
 }
 
-internal Vec2_f32
+function Vec2_f32
 F4_PowerMode_CameraOffsetFromView(App *app, View_ID view)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -144,7 +144,7 @@ F4_PowerMode_CameraOffsetFromView(App *app, View_ID view)
     return v;
 }
 
-internal void
+function void
 F4_PowerMode_Spawn(App *app, View_ID view, u8 character)
 {
     if(F4_PowerMode_IsEnabled())
@@ -162,24 +162,24 @@ F4_PowerMode_Spawn(App *app, View_ID view, u8 character)
                 f32 random = RandomF32(0, 1);
                 if(random < 0.03f)
                 {
-                    string = string_u8_litexpr("CRITICAL HIT!!!");
+                    string = strlit("CRITICAL HIT!!!");
                     color = 0xffff6060;
                     decay_rate = 0.05f;
                     scale = 0;
                 }
                 else if(random < 0.33f)
                 {
-                    string = string_u8_litexpr("EPIC COMBO!!!");
+                    string = strlit("EPIC COMBO!!!");
                     scale = 0;
                 }
                 else if(random < 0.66f)
                 {
-                    string = string_u8_litexpr("SLICK TYPING DUDE!!!!!!");
+                    string = strlit("SLICK TYPING DUDE!!!!!!");
                     scale = 0;
                 }
                 else
                 {
-                    string = string_u8_litexpr("WHOOOOOAAAAAAAA!!!!!!!");
+                    string = strlit("WHOOOOOAAAAAAAA!!!!!!!");
                     scale = 0;
                 }
             }
@@ -206,7 +206,7 @@ F4_PowerMode_Spawn(App *app, View_ID view, u8 character)
     }
 }
 
-internal void
+function void
 F4_PowerMode_Tick(App *app, Frame_Info frame_info)
 {
  // NOTE(rjf): Load keystroke sounds.
@@ -287,7 +287,7 @@ F4_PowerMode_Tick(App *app, Frame_Info frame_info)
     power_mode.enabled_t += ((f32)(!!power_mode.enabled) - power_mode.enabled_t) * frame_info.animation_dt;
 }
 
-internal void
+function void
 F4_PowerMode_RenderBuffer(App *app, View_ID view, Face_ID face, Frame_Info frame_info)
 {
     ProfileScope(app, "[Fleury] Power Mode");
@@ -346,7 +346,7 @@ F4_PowerMode_RenderBuffer(App *app, View_ID view, Face_ID face, Frame_Info frame
     }
 }
 
-internal void
+function void
 F4_PowerMode_RenderWholeScreen(App *app, Frame_Info frame_info)
 {
     Scratch_Block scratch(app);

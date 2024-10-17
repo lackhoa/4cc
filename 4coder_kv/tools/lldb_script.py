@@ -8,7 +8,7 @@
 import lldb
 import os
 
-def __lldb_init_module(debugger, internal_dict):
+def __lldb_init_module(debugger, function_dict):
     for i in range(debugger.GetNumTargets()):
         target = debugger.GetTargetAtIndex(i)
         target.DeleteAllBreakpoints()
@@ -24,13 +24,13 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(f'command script add --overwrite -f {__name__}.goto_line goto')
     debugger.HandleCommand('process kill --force')
 
-def print_v3(value, internal_dict, options):
+def print_v3(value, function_dict, options):
    x = value.GetChildMemberWithName('x').GetValue()
    y = value.GetChildMemberWithName('y').GetValue()
    z = value.GetChildMemberWithName('z').GetValue()
    return f'[{x}, {y}, {z}]'
 
-def print_v2(value, internal_dict, options):
+def print_v2(value, function_dict, options):
    x = value.GetChildMemberWithName('x').GetValue()
    y = value.GetChildMemberWithName('y').GetValue()
    return f'[{x}, {y}]'

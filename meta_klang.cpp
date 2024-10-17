@@ -3,186 +3,390 @@ function void
 generate_bezier_types(Printer &p, Printer_Pair &ps_meta);
 function void
 generate_fill_types(Printer &p0, Printer_Pair &ps_meta);
-
+//-Parsing
 function b32
-k_process_file(File_Name_Data source){
+test_char_in(Ed_Parser *p, String terminators){
+ String chr = ep_print_token(p);
+ if(chr.count == 1){
+  for_i32(i,0,i32(terminators.count)){
+   if(terminators[i] == chr[0]){
+    return true;
+   }
+  }
+ }
+ return false;
+}
+function Meta_Expression
+k_parse_expression(Arena *arena, Ed_Parser *p, String terminators){
+ Meta_Expression result = {};
+ Token *token0 = ep_get_token(p);
+ String token0_string = ep_print_token(p);
+ if(true){
+  result.kind = Expression_Kind_Unknown;
+  result.unknown = ep_capture_until_char(p, terminators);
+ }else{
+  if(ep_maybe_kind(p, TokenBaseKind_Identifier)){
+   if(ep_maybe_char(p, '(')){
+    //-Function call
+    result.kind = Expression_Kind_Function_Call;
+    Expression_Function_Call &call = result.function_call;
+    call.function_name = token0_string;
+    init_dynamic(call.arguments, arena);
+    while(p->ok_ and (not ep_maybe_char(p, ')'))){
+     Meta_Expression argument = k_parse_expression(arena, p, strlit(",)"));
+     call.arguments.push(argument);
+     if(ep_maybe_char(p, ')')){ break; }
+     else{ ep_char(p, ','); }
+    }
+   }else if(ep_maybe_char(p, '=')){
+    //-Assignment
+    result.kind = Expression_Kind_Assignment;
+    Expression_Assignment &assignment = result.assignment;
+    assignment.lhs = token0_string;
+    assignment.rhs = push_value(arena, k_parse_expression(arena,p,terminators));
+   }else if(test_char_in(p, terminators)){
+    result.kind = Expression_Kind_Identifier;
+    result.identifier = token0_string;
+   }else{ p->fail(); }
+  }else if(ep_maybe_kind(p, TokenBaseKind_LiteralInteger)){
+   //-Int
+   result.kind = Expression_Kind_Int;
+   result.int_value = token0_string;
+  }else if(ep_maybe_kind(p, TokenBaseKind_LiteralFloat)){
+   //-Float
+   result.kind = Expression_Kind_Float;
+   result.float_value = token0_string;
+  }else{
+   p->fail();
+  }
+ }
+ return result;
+}
+function String
+k_parse_preprocessor(Ed_Parser *p){
+ String start = ep_print_token(p);
+ ep_eat_kind(p, TokenBaseKind_Preprocessor);
+ while(true){
+  Token *token = ep_get_token(p);
+  if(token->flags & TokenBaseFlag_PreprocessorBody){
+   ep_eat_token_all(p);
+  }else{ break; }
+ }
+ ep_skip_comments_and_spaces(p);
+ String end = ep_print_token(p);
+ String result = {start.str, u64(end.str - start.str)};
+ return result;
+}
+function Meta_Statement
+k_parse_statement(Arena *arena, Ed_Parser *p){
+ Token *token0 = ep_get_token(p);
+ String token0_string = ep_print_given_token(p, token0);
+ Meta_Statement statement = {};
+ if(token0->kind == TokenBaseKind_Preprocessor){
+  statement.kind    = Statement_Kind_Unknown;
+  //-Preprocessor
+  statement.unknown = k_parse_preprocessor(p);
+ }else if(token0->kind == TokenBaseKind_Identifier ||
+          token0->kind == TokenBaseKind_Keyword){
+  if(token0_string == strlit("if") ||
+     token0_string == strlit("while") ||
+     starts_with(token0_string, strlit("for"))){
+   //-Block with header
+   ep_eat_token(p);
+   statement.kind = Statement_Kind_Block;
+   {
+    ep_char(p, '(');
+    ep_eat_until_char(p, strlit(")"));
+    ep_char(p, ')');
+    String token_after_header = ep_print_token(p);
+    statement.block.header = {token0_string.str, u64(token_after_header.str - token0_string.str)};
+   }
+   statement.block.statements = k_parse_statement_block(arena, p);
+  }else if(ep_maybe_id(p, strlit("return"))){
+   statement.kind = Statement_Kind_Return;
+   statement.return_ = k_parse_expression(arena, p, strlit(";"));
+  }else{
+   //-Declaration?
+   ep_recovery_block(p);
+   {
+    statement.kind = Statement_Kind_Declaration;
+    Statement_Declaration &decl = statement.declaration;
+    decl.type = ep_id(p);
+    decl.lhs  = ep_id(p);
+    if(ep_maybe_char(p,'=')){
+     //-Declaration and assignment
+     decl.rhs = k_parse_expression(arena, p, strlit(";"));
+    }else{
+     //-Declaration only
+     ep_char(p,';');
+    }
+   }
+   if(not p->ok_){
+    statement.kind = Statement_Kind_None;
+   }
+  }
+ }else if(token0->kind == TokenBaseKind_ScopeOpen){
+  //-Statement block
+  statement.kind  = Statement_Kind_Block;
+  statement.block.statements = k_parse_statement_block(arena, p);
+ }
+ if(not statement.kind){
+  //-Defaults to expressions
+  statement.kind = Statement_Kind_Expression;
+  statement.expression = k_parse_expression(arena, p, strlit(";"));
+ }
+ return statement;
+}
+function arrayof<Meta_Statement>
+k_parse_statement_block(Arena *arena, Ed_Parser *p){
+ ep_char(p,'{');
+ arrayof<Meta_Statement> statements;
+ init_dynamic(statements, arena);
+ ep_skip_semicolons(p);
+ while(p->ok_ and (not ep_maybe_char(p,'}'))){
+  //-Statement
+  Meta_Statement statement = k_parse_statement(arena, p);
+  statements.push(statement);
+  ep_skip_semicolons(p);
+ }
+ return statements;
+}
+function b32
+k_process_file(Meta_Parsed_File source){
  Scratch_Block scratch;
- Stringz hpp_path, meta_base;
- {
+ Stringz gen_path, meta_base; {
   String path = source.name;
   String dir  = path_dirname(path);
   dir = pjoin(scratch, dir, "generated");
-  String filename_ = path_filename(path);
-  String filename_no_ext = path_no_extension(filename_);
+  String filename = path_filename(path);
+  String stem = path_stem(filename);
+  if(not (stem == "test")){ return true; }  //nono
+  String extension = path_extension(filename);
   {
    Printer pr = make_printer_buffer(scratch, 256);
-   pr<<dir<<OS_SLASH<<filename_no_ext<<".gen.h";
-   hpp_path = printer_get_string(pr);
+   pr<dir<OS_SLASH<stem<".gen"<(extension == "kh" ? ".h" : ".cpp");
+   gen_path = printer_get_string(pr);
   }
   {
    Printer pr = make_printer_buffer(scratch, 256);
-   pr<<dir<<OS_SLASH<<filename_no_ext<<"_meta.gen";
+   pr<<dir<<OS_SLASH<<stem<<"_meta.gen";
    meta_base = printer_get_string(pr);
   }
  }
- Printer      ph      = m_open_file_to_write(hpp_path);
+ Printer printer_gen = m_open_file_to_write(gen_path);
  {
-  ph<<"// NOTE: source: "<<source.name<<"\n";
-  ph<<"#pragma once\n";
+  printer_gen<<"// NOTE: source: "<<source.name<<"\n";
+  printer_gen<<"#pragma once\n";
  }
  Printer_Pair ps_meta = m_open_files_to_write(meta_base);
- b32 ok = okp(ph) && okp(ps_meta);
- 
- Ed_Parser parser = m_parser_from_string(scratch, source.data);
+ b32 ok = okp(printer_gen) && okp(ps_meta);
+ Ed_Parser parser = m_parser_from_token_list(scratch, source.data, source.token_list);
  Ed_Parser *p = &parser;
- 
- ep_consume_semicolons(p);
  while(ok && p->ok_){
   //-NOTE(kv): Parsing loop
-  if(ep_at_eof(p)){
-   break;
-  }else{
-   b32 do_info  = true;
-   b32 do_embed = false;
-   {//-NOTE: Introspection parameters
-    if(m_maybe_bracket_open(p)){
-     while(p->ok_ && !m_maybe_bracket_close(p)){
-      ep_maybe_char(p, ',');
-      if     (ep_maybe_id(p, "noinfo")){ do_info = false; }
-      else if(ep_maybe_id(p, "embed")){ do_embed = true; }
-      else{ p->fail(); }
-     }
+  Scratch_Block scratch_loop;
+  {//-When we read a newline, print a newline back out
+   while(true){
+    Token *token = ep_get_token(p);
+    if(token->kind == TokenBaseKind_Whitespace ||
+       token->kind == TokenBaseKind_Comment ||
+       token->kind == TokenBaseKind_StatementClose){
+     ep_print_token(printer_gen, p);
+     ep_eat_token_all(p);
+    }else{
+     break;
     }
-    ep_consume_semicolons(p);
    }
-   
-   if(ep_maybe_id(p, "struct")){
-    //-NOTE struct case
-    arrayof<Meta_Struct_Member> members = {};
-    String type_name = ep_id(p);
-    ep_char(p, '{');
-    while(p->ok_ && !m_maybe_brace_close(p)){
-     // NOTE: Field
-     Meta_Struct_Member &member = members.push2();
-     member = {};
-     
-     if(ep_maybe_id(p, "meta_removed")){
-      // NOTE(kv): meta_removed
-      ep_char(p, '(');
-      {
-       parse_struct_member(p, &member);
-      }
-      if(meta_maybe_key(p, "added")){
-       member.version_added = ep_id(p);
-       ep_maybe_char(p, ',');
-      }
-      {
-       meta_parse_key(p, "removed");
-       member.version_removed = ep_id(p);
-       ep_maybe_char(p, ',');
-      }
-      if ( meta_maybe_key(p, "default") ) {
-       member.default_value = ep_capture_until_char(p,')');
-      } else {
-       ep_char(p,')');
-      }
-      ep_consume_semicolons(p);
-     }else{
-      if(ep_maybe_id(p, "meta_added")){
-       // NOTE(kv): meta_added
-       ep_char(p, '(');
-       while(p->ok_ && !ep_maybe_char(p, ')')){
-        ep_maybe_char(p, ',');
-        if (meta_maybe_key(p, "added")){
-         member.version_added = ep_id(p);
-        }else if (meta_maybe_key(p, "default")){
-         //TODO(kv): support arbitrary expression in parens
-         member.default_value = ep_print_token(p);
-         ep_eat_token(p);
-        }else{ p->fail(); }
-       }
-      }else if(ep_maybe_id(p, "meta_unserialized")){
-       member.unserialized = true;
-      }
-      ep_consume_semicolons(p);
-      
+   ep_skip_comments_and_spaces(p);
+  }
+  Token *token0 = ep_get_token(p);
+  String token0_string = ep_print_token(scratch_loop, p);
+  ep_scope_block(p, strlit("top-level"), token0);
+  b32 do_info  = true;
+  b32 do_embed = false;
+  if(m_maybe_bracket_open(p)){
+   //-Introspection parameters
+   while(p->ok_ && !m_maybe_bracket_close(p)){
+    ep_maybe_char(p, ',');
+    if     (ep_maybe_id(p, "noinfo")){ do_info = false; }
+    else if(ep_maybe_id(p, "embed")) { do_embed = true; }
+    else{ p->fail(); }
+   }
+   ep_skip_semicolons(p);
+  }
+  if(token0->kind == TokenBaseKind_EOF){
+   break;
+  }else if(ep_maybe_id(p, "struct")){
+   //-struct case
+   arrayof<Meta_Struct_Member> members = {};
+   String type_name = ep_id(p);
+   ep_char(p, '{');
+   while(p->ok_ && !m_maybe_brace_close(p)){
+    // NOTE: Field
+    Meta_Struct_Member &member = members.push2();
+    member = {};
+    
+    if(ep_maybe_id(p, "meta_removed")){
+     // NOTE(kv): meta_removed
+     ep_char(p, '(');
+     {
       parse_struct_member(p, &member);
      }
-    }
-    
-    print_struct(ph, type_name, members);
-    if(do_info){
-     print_struct_meta(ps_meta, type_name, members);
-    }
-    if(do_embed){
-     print_struct_embed(ph, type_name, members);
-    }
-   }else if(ep_maybe_id(p, "union")){
-    //-NOTE(kv) Union: We don't have that right now
-   }else if(ep_maybe_id(p, "enum")){
-    //-NOTE(kv) enum
-    arrayof<String> enum_names = {};
-    arrayof<i1> enum_vals      = {};
-    String type_name = ep_maybe_id(p);
-    m_brace_open(p);
-    while(p->ok_ && !m_maybe_brace_close(p)){
-     //NOTE(kv) Enum value
-     enum_names.push(ep_id(p));
-     ep_char(p, '=');
-     enum_vals.push(ep_i1(p));
-     ep_eat_until_char_simple(p, ',');  // NOTE(kv) The ending comma is optional, but I don't care.
-    }
-    
-    print_enum(ph, type_name, enum_names, enum_vals);
-    if(type_name.len!=0 && do_info){
-     //NOTE(kv) Anonymous enums can't be read, since it can't be referred to.
-     print_enum_meta(ps_meta, type_name, enum_names);
-    }
-   }else if(ep_maybe_id(p, "typedef")){
-    //-NOTE(kv) typedef
-    String typedef_to = ep_id(p);
-    String type_name  = ep_id(p);
-    {
-     ph<<"typedef "<<typedef_to<<" "<<type_name<<";\n";
-    }
-    if(do_info){
-     print_typedef_meta(ps_meta, type_name, typedef_to);
-    }
-   }else if(ep_maybe_id(p, "i1_wrapper")){
-    //-NOTE i1_wrapper
-    mpa_parens{
-     String type_name = ep_id(p);
-     print_i1_wrapper(ph, ps_meta, type_name);
-    }
-   }else if(ep_maybe_id(p, "unique")){
-    //-NOTE one-off/miscellaneous stuff
-    if(ep_maybe_id(p, "Curve_Type")){
-     generate_bezier_types(ph, ps_meta);
-    }else if(ep_maybe_id(p, "Fill_Type")){
-     generate_fill_types(ph, ps_meta);
+     if(meta_maybe_key(p, strlit("added"))){
+      member.version_added = ep_id(p);
+      ep_maybe_char(p, ',');
+     }
+     {
+      meta_parse_key(p, strlit("removed"));
+      member.version_removed = ep_id(p);
+      ep_maybe_char(p, ',');
+     }
+     if ( meta_maybe_key(p, strlit("default")) ) {
+      member.default_value = ep_capture_until_char(p, ')');
+     } else {
+      ep_char(p,')');
+     }
+     ep_skip_semicolons(p);
     }else{
-     p->fail();
+     if(ep_maybe_id(p, "meta_added")){
+      // NOTE(kv): meta_added
+      ep_char(p, '(');
+      while(p->ok_ && !ep_maybe_char(p, ')')){
+       ep_maybe_char(p, ',');
+       if(meta_maybe_key(p, strlit("added"))){
+        member.version_added = ep_id(p);
+       }else if(meta_maybe_key(p, strlit("default"))){
+        //TODO(kv): support arbitrary expression in parens
+        member.default_value = ep_print_token(p);
+        ep_eat_token(p);
+       }else{ p->fail(); }
+      }
+     }else if(ep_maybe_id(p, "meta_unserialized")){
+      member.unserialized = true;
+     }
+     ep_skip_semicolons(p);
+     
+     parse_struct_member(p, &member);
     }
-   }else{
-    ep_eat_token(p);
    }
+   
+   print_struct(printer_gen, type_name, members);
+   if(do_info){
+    print_struct_meta(ps_meta, type_name, members);
+   }
+   if(do_embed){
+    print_struct_embed(printer_gen, type_name, members);
+   }
+  }else if(ep_maybe_id(p, "union")){
+   //-Union
+  }else if(ep_maybe_id(p, "enum")){
+   //-enum
+   arrayof<String> enum_names = {};
+   arrayof<i1> enum_vals      = {};
+   String type_name = ep_maybe_id(p);
+   m_brace_open(p);
+   while(p->ok_ && !m_maybe_brace_close(p)){
+    //NOTE(kv) Enum value
+    enum_names.push(ep_id(p));
+    ep_char(p, '=');
+    enum_vals.push(ep_i1(p));
+    ep_eat_until_char_simple(p, ',');  // NOTE(kv) The ending comma is optional, but I don't care.
+   }
+   
+   print_enum(printer_gen, type_name, enum_names, enum_vals);
+   if(type_name.len!=0 && do_info){
+    //NOTE(kv) Anonymous enums can't be read, since it can't be referred to.
+    print_enum_meta(ps_meta, type_name, enum_names);
+   }
+  }else if(ep_maybe_id(p, "typedef")){
+   //-typedef
+   String typedef_to = ep_id(p);
+   String type_name  = ep_id(p);
+   {
+    printer_gen<<"typedef "<<typedef_to<<" "<<type_name<<";\n";
+   }
+   if(do_info){
+    print_typedef_meta(ps_meta, type_name, typedef_to);
+   }
+  }else if(ep_maybe_id(p, "i1_wrapper")){
+   //-i1_wrapper
+   mpa_parens{
+    String type_name = ep_id(p);
+    print_i1_wrapper(printer_gen, ps_meta, type_name);
+   }
+  }else if(ep_maybe_id(p, "unique")){
+   //-One-off/miscellaneous stuff
+   if(ep_maybe_id(p, "Curve_Type")){
+    generate_bezier_types(printer_gen, ps_meta);
+   }else if(ep_maybe_id(p, "Fill_Type")){
+    generate_fill_types(printer_gen, ps_meta);
+   }else{
+    p->fail();
+   }
+  }else if(token0->kind == TokenBaseKind_Preprocessor){
+   //-Preprocessor
+   String preproc_string = k_parse_preprocessor(p);
+   printer_gen < preproc_string;
+  }else if(string_match(token0_string, strlit("global"))){
+   while(p->ok_){
+    Token *token = ep_get_token(p);
+    if(token->kind == TokenBaseKind_StatementClose){
+     break;
+    }else{
+     ep_print_token(printer_gen, p);
+     ep_eat_token_all(p);
+    }
+   }
+  }else if(token0_string == strlit("xfunction") ||
+           token0_string == strlit("function") ||
+           token0_string == strlit("inline")){
+   ep_print_token(printer_gen, p); printer_gen<" ";
+   ep_eat_token(p);
+   String return_type = ep_id(p);
+   printer_gen<return_type<"\n";
+   String function_name = ep_id(p);
+   ep_scope_block(p, function_name, token0);
+   printer_gen<function_name;
+   mpa_parens{
+    m_parens2(printer_gen){
+     String parameters = ep_capture_until_char(p,')');
+     printer_gen<parameters;
+    }
+   }
+   {//-Body
+    arrayof<Meta_Statement> statements = k_parse_statement_block(scratch_loop, p);
+    if(p->ok_){
+     m_braces2(printer_gen){
+      for_i32(statement_index,0,statements.count){
+       //-printing the body
+       if(statement_index){ printer_gen < "\n"; }
+       print_statement(printer_gen, statements[statement_index]);
+      }
+     }
+    }
+   }
+  }else{
+   p->fail();
   }
-  ep_consume_semicolons(p);
+  kv_assert(not p->recoverable);
  }
- 
  if(!p->ok_){
   ok = false;
-  Line_Column location = ep_get_fail_location(p);
-  printf("klang: parse error at %.*s:%d:%d\n",
+  Line_Column fail_location = ep_get_fail_location(p);
+  Line_Column scope_location = ep_get_scope_location(p);
+  printf("klang: [%.*s:%d:%d] parse error at %.*s:%d:%d\n",
+         string_expand(p->scope_.name),
+         scope_location.line,
+         scope_location.column,
          string_expand(source.name),
-         location.line, location.column);
+         fail_location.line,
+         fail_location.column);
  }
- 
- close_file(ph);
+ close_file(printer_gen);
  close_pair(ps_meta);
  return ok;
 }
-
+//-
 inline void
 k_print_struct(Printer &p, K_Struct struc){
  print_struct(p, struc.name, struc.members);
@@ -193,16 +397,17 @@ k_print_struct_meta(Printer_Pair &ps, K_Struct struc){
 }
 
 function b32
-klang_main(arrayof<File_Name_Data> source_files){
+klang_main(arrayof<Meta_Parsed_File> source_files){
  b32 ok = true;
  for_i1(index,0,source_files.count){
-  auto source_file = source_files[index];
-  if(path_extension(source_file.name) == strlit("kh")){
+  Meta_Parsed_File &source_file = source_files[index];
+  String extension = path_extension(source_file.name);
+  if(extension == strlit("kh") ||
+     extension == strlit("kc")){
    ok = k_process_file(source_file);
    if(!ok){ break; }
   }
  }
  return ok;
 }
-
 //-

@@ -1,7 +1,7 @@
 #if !defined(FCODER_LEX_GEN_HAND_WRITTEN)
 #define FCODER_LEX_GEN_HAND_WRITTEN
 
-internal u64
+function u64
 lexeme_hash(u64 seed, u8 *ptr, u64 size){
     u64 result = 0;
     for (u64 i = 0; i < size; i += 1, ptr += 1){
@@ -10,7 +10,7 @@ lexeme_hash(u64 seed, u8 *ptr, u64 size){
     return(result);
 }
 
-internal Lexeme_Table_Lookup
+function Lexeme_Table_Lookup
 lexeme_table_lookup(u64 *hash_array, String *key_array, 
                     Lexeme_Table_Value *value_array, i1 slot_count, u64 seed,
                     u8 *ptr, u64 size){

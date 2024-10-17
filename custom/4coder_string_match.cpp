@@ -9,7 +9,7 @@
 
 // TOP
 
-internal void
+function void
 string_match_list_push(Arena *arena, String_Match_List *list,
                        Buffer_ID buffer, i1 string_id, String_Match_Flag flags, Range_i64 range){
     String_Match *match = push_array(arena, String_Match, 1);
@@ -21,14 +21,14 @@ string_match_list_push(Arena *arena, String_Match_List *list,
     match->range = range;
 }
 
-internal void
+function void
 string_match_list_push(Arena *arena, String_Match_List *list,
                        Buffer_ID buffer, i1 string_id, String_Match_Flag flags, i64 start, i64 length){
     string_match_list_push(arena, list, buffer, string_id, flags,
                            Ii64(start, start + length));
 }
 
-internal String_Match_List
+function String_Match_List
 string_match_list_join(String_Match_List *a, String_Match_List *b){
     String_Match_List list = *a;
     block_zero_struct(a);
@@ -47,7 +47,7 @@ string_match_list_join(String_Match_List *a, String_Match_List *b){
     return(list);
 }
 
-internal void
+function void
 string_match_list_filter_flags(String_Match_List *list, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags)
 {
     String_Match_List new_list = {};
@@ -65,7 +65,7 @@ string_match_list_filter_flags(String_Match_List *list, String_Match_Flag must_h
     *list = new_list;
 }
 
-internal void
+function void
 string_match_list_filter_remove_buffer(String_Match_List *list, Buffer_ID buffer){
     String_Match_List new_list = {};
     for (String_Match *node = list->first, *next = 0;
@@ -80,7 +80,7 @@ string_match_list_filter_remove_buffer(String_Match_List *list, Buffer_ID buffer
     *list = new_list;
 }
 
-internal void
+function void
 string_match_list_filter_remove_buffer_predicate(App *app, String_Match_List *list, Buffer_Predicate *predicate)
 {
     String_Match_List new_list = {};
@@ -96,7 +96,7 @@ string_match_list_filter_remove_buffer_predicate(App *app, String_Match_List *li
     *list = new_list;
 }
 
-internal String_Match_List
+function String_Match_List
 string_match_list_merge_nearest(String_Match_List *a, String_Match_List *b, Range_i64 range){
     String_Match_List list = {};
     String_Match *node_a = a->first;
@@ -138,7 +138,7 @@ string_match_list_merge_nearest(String_Match_List *a, String_Match_List *b, Rang
     return(list);
 }
 
-internal String_Match_List
+function String_Match_List
 string_match_list_merge_front_to_back(String_Match_List *a, String_Match_List *b){
     return(string_match_list_merge_nearest(a, b, Ii64((i64)0)));
 }

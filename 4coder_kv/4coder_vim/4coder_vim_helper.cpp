@@ -277,7 +277,7 @@ VIM_COMMAND_SIG(vim_right)
  move_horizontal_lines(app, vim_consume_number());
 }
 
-internal void
+function void
 vim_make_request(App *app, Vim_Request_Type request)
 {
  if (vim_state.params.request == request)
@@ -309,7 +309,7 @@ vim_make_request(App *app, Vim_Request_Type request)
  }
 }
 
-internal void 
+function void 
 vim_page_scroll_inner(App *app, f32 ratio)
 {
 	View_ID view = get_active_view(app, Access_ReadVisible);

@@ -25,7 +25,7 @@ kv_string_split_wildcards(Arena *arena, String8 string)
   return(array);
 }
 
-internal b32 
+function b32 
 string_has_uppercase(String string)
 {
  for_u64 (index,0,string.size)
@@ -213,7 +213,7 @@ print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Matc
  end_buffer_insertion(&out);
 }
 
-internal void
+function void
 kv_filter_match_list(App *app, String_Match_List *matches, Buffer_ID out_buffer)
 {
     string_match_list_filter_remove_buffer(matches, out_buffer);
@@ -221,7 +221,7 @@ kv_filter_match_list(App *app, String_Match_List *matches, Buffer_ID out_buffer)
     string_match_list_filter_remove_buffer_predicate(app, matches, buffer_is_skm);
 }
 
-internal void
+function void
 print_all_matches_all_buffers(App *app, String8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer)
 {
     Scratch_Block scratch(app);
@@ -230,21 +230,21 @@ print_all_matches_all_buffers(App *app, String8_Array match_patterns, String_Mat
     print_string_match_list_to_buffer(app, out_buffer, matches);
 }
 
-internal void
+function void
 print_all_matches_all_buffers(App *app, String8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id)
 {
     String8_Array array = {&pattern, 1};
     print_all_matches_all_buffers(app, array, must_have_flags, must_not_have_flags, out_buffer_id);
 }
 
-internal String
+function String
 query_user_list_needle(App *app, Arena *arena)
 {
     u8 *space = push_array(arena, u8, KB(1));
     return(get_query_string(app, "List Locations For: ", space, KB(1)));
 }
 
-internal String_Array
+function String_Array
 user_list_definition_array(App *app, Arena *arena, String base_needle)
 {
     String_Array result = {};
@@ -270,14 +270,14 @@ user_list_definition_array(App *app, Arena *arena, String base_needle)
     return(result);
 }
 
-internal String_Array
+function String_Array
 query_user_list_definition_needle(App *app, Arena *arena){
     u8 *space = push_array(arena, u8, KB(1));
     String base_needle = get_query_string(app, "List Definitions For: ", space, KB(1));
     return(user_list_definition_array(app, arena, base_needle));
 }
 
-internal void
+function void
 list_all_locations__generic(App *app, String8_Array needle, List_All_Locations_Flag flags)
 {
     if (needle.count > 0)
@@ -300,7 +300,7 @@ list_all_locations__generic(App *app, String8_Array needle, List_All_Locations_F
     }
 }
 
-internal void
+function void
 list_all_locations__generic(App *app, String needle, List_All_Locations_Flag flags)
 {
     if (needle.size != 0){
@@ -309,7 +309,7 @@ list_all_locations__generic(App *app, String needle, List_All_Locations_Flag fla
     }
 }
 
-internal void
+function void
 list_all_locations__generic_query(App *app, List_All_Locations_Flag flags){
     Scratch_Block scratch(app);
     u8 *space = push_array(scratch, u8, KB(1));
@@ -317,7 +317,7 @@ list_all_locations__generic_query(App *app, List_All_Locations_Flag flags){
     list_all_locations__generic(app, needle, flags);
 }
 
-internal void
+function void
 list_all_locations__generic_identifier(App *app, List_All_Locations_Flag flags)
 {
     Scratch_Block scratch(app);
@@ -325,7 +325,7 @@ list_all_locations__generic_identifier(App *app, List_All_Locations_Flag flags)
     list_all_locations__generic(app, needle, flags);
 }
 
-internal void
+function void
 list_all_locations__generic_view_range(App *app, List_All_Locations_Flag flags){
     Scratch_Block scratch(app);
     String needle = push_view_range_string(app, scratch);
@@ -389,7 +389,7 @@ global String_Match_Flag complete_must = (StringMatch_CaseSensitive|
                                           StringMatch_RightSideSloppy);
 global String_Match_Flag complete_must_not = StringMatch_LeftSideSloppy;
 
-internal String_Match_List
+function String_Match_List
 get_complete_list_raw(App *app, Arena *arena, Buffer_ID buffer,
                       Range_i64 needle_range, String needle){
     local_persist Character_Predicate *pred =

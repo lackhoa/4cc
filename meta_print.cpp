@@ -524,3 +524,68 @@ print_i1_wrapper(Printer &p, Printer_Pair &ps_meta, char *type_name){
  print_i1_wrapper(p, ps_meta, SCu8(type_name));
 }
 //-
+function void
+print_expression(Printer &p, Meta_Expression &expression){
+ switch(expression.kind){
+  case Expression_Kind_None: break;
+  case Expression_Kind_Assignment:{
+   Expression_Assignment &assign = expression.assignment;
+   p < assign.lhs < " = ";
+   print_expression(p, *assign.rhs);
+  }break;
+  case Expression_Kind_Function_Call:{
+   Expression_Function_Call &call = expression.function_call;
+   p < call.function_name;
+   m_parens{
+    for_i32(arg_index,0,call.arguments.count){
+     if(arg_index){ p<", "; }
+     print_expression(p, call.arguments[arg_index]);
+    }
+   }
+  }break;
+  case Expression_Kind_Identifier:{ p < expression.identifier; }break;
+  case Expression_Kind_Int:{ p < expression.int_value; }break;
+  case Expression_Kind_Float:{ p < expression.float_value; }break;
+  case Expression_Kind_Unknown: { p < expression.unknown; }break;
+  invalid_default_case;
+ }
+}
+function void
+print_statement(Printer &p, Meta_Statement &statement){
+ switch(statement.kind){
+  case Statement_Kind_None: break;
+  case Statement_Kind_Unknown:{ p < statement.unknown; }break;
+  case Statement_Kind_Return:{
+   p < "return ";
+   print_expression(p, statement.return_);
+  }break;
+  case Statement_Kind_Expression:{
+   print_expression(p, statement.expression);
+   p<";";
+  }break;
+  case Statement_Kind_Block:{
+   Statement_Block &block = statement.block;
+   p < block.header; 
+   {
+    p<"{";
+    for_i32(statement_index,0,block.statements.count){
+     p < "\n"; 
+     print_statement(p, block.statements[statement_index]);
+    }
+    p<"\n}";
+   }
+  }break;
+  case Statement_Kind_Declaration:{
+   Statement_Declaration &decl = statement.declaration;
+   p < decl.lhs;
+   if(decl.rhs.kind){
+    //-Assignment included
+    p<" = ";
+    print_expression(p, decl.rhs);
+   }
+   p<";";
+  }break;
+  invalid_default_case;
+ }
+}
+//-

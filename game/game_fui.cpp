@@ -100,7 +100,7 @@ fast_fval_inner(Basic_Type type, void *init_value,
 }
 
 //@GetSlider
-internal void *
+function void *
 slow_fval_inner(Basic_Type type, void *init_value,
                 const char *file_c, i32 linum,
                 Fui_Options options)
@@ -157,72 +157,49 @@ slow_fval_inner(Basic_Type type, void *init_value,
  slider_cycle_counter += u32(cycle_end-cycle_start);
  return result;
 }
-
 //-
-
 inline b32 
-filename_match(String a0, String b0)
-{
+filename_match(String a0, String b0) {
  String a = path_filename(a0);
  String b = path_filename(b0);
  return string_match(a,b);
 }
-
 //@GetSlider
 function Fui_Slider *
-fui_get_slider_external(String file, i32 linum)
-{
+fui_get_slider_external(String file, i32 linum){
  Fui_Slider *slider = 0;
- if ( filename_match(file, GAME_FILE_NAME) )
- {
+ if(filename_match(file, DRIVER_FILE_NAME)){
   u32 offset = line_map[linum].offset;
-  if (offset != 0)
-  {
+  if(offset != 0){
    u8 *store_base = get_slider_store_base();
    slider = cast(Fui_Slider *)(store_base + offset);
   }
- }
- else
- {
+ }else{
   auto &map = slow_line_map;
   u32 offset = 0;
-  for_i32(index,0,map.count)
-  {
+  for_i32(index,0,map.count){
    Slow_Line_Map_Entry entry = map.map[index];
-   if (filename_match(entry.file, file) &&
-       entry.linum == linum)
-   {
+   if(filename_match(entry.file, file) &&
+      entry.linum == linum){
     offset = entry.offset;
     break;
    }
   }
-  
-  if (offset != 0)
-  {
+  if(offset != 0){
    u8 *store_base = get_slider_store_base();
    slider = cast(Fui_Slider *)(store_base + offset);
   }
  }
- 
  return slider;
 }
-
-
 function Fui_Slider *
-fui_get_active_slider(void)
-{
- return fui_active_slider;
-}
-
+fui_get_active_slider(void) { return fui_active_slider; }
 function void
-fui_set_active_slider(Fui_Slider *slider, String string)
-{
+fui_set_active_slider(Fui_Slider *slider, String string) {
  fui_active_slider        = slider;
  fui_active_slider_string = string;
 }
-
-//
-
+//-
 global const i32 MAX_SLIDER_VALUE_SIZE = 32;
 global u8 global_fui_saved_value[MAX_SLIDER_VALUE_SIZE];  //TODO: why is this a global?
 
@@ -345,7 +322,7 @@ fui_handle_slider(fui_handle_slider_params) {
    {// NOTE(kv): Parsing
     Ed_Parser parser_value = make_ep_from_buffer(app, buffer, tk_value);
     Ed_Parser *p = &parser_value;
-    at_string = ep_print_token(p,scratch);
+    at_string = ep_print_token(scratch, p);
     ep_eat_kind(p, TokenBaseKind_Identifier);
     ep_char(p, '(');
     // NOTE: At value
@@ -363,10 +340,10 @@ fui_handle_slider(fui_handle_slider_params) {
      
      for_i32(index,0,component_count){
       if(index<component_count-1){
-       ep_eat_until_char(p, ",");
+       ep_eat_until_char(p, strlit(","));
        ep_eat_token(p);
       }else{
-       ep_eat_until_char(p, ")");
+       ep_eat_until_char(p, strlit(")"));
        ep_eat_token(p);
       }
      }
@@ -401,5 +378,4 @@ fui_handle_slider(fui_handle_slider_params) {
  }
  return result;
 }
-
 //~

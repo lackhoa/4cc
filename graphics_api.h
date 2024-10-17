@@ -28,7 +28,7 @@ struct API_VTable_graphics
 
 XList(XInternalFunction)
 
-internal void
+function void
 graphics_api_fill_vtable(API_VTable_graphics *vtable)
 {
     vtable->graphics_get_texture      = graphics_get_texture;
@@ -42,7 +42,7 @@ graphics_api_fill_vtable(API_VTable_graphics *vtable)
 //
 XList(XGlobalPointer);
 
-internal void
+function void
 graphics_api_read_vtable(API_VTable_graphics *vtable)
 {
     graphics_get_texture      = vtable->graphics_get_texture;

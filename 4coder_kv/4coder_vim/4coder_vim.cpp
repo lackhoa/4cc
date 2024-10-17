@@ -14,7 +14,7 @@ VIM_REQUEST_SIG(vim_apply_yank){
 	}
 }
 
-internal VIM_REQUEST_RETURN
+function VIM_REQUEST_RETURN
 vim_apply_delete(VIM_REQUEST_PARAMS)
 {
  vim_state.dot_delete_count = range.max - range.min;
@@ -39,7 +39,7 @@ vim_apply_delete(VIM_REQUEST_PARAMS)
  }
 }
 
-internal VIM_REQUEST_RETURN
+function VIM_REQUEST_RETURN
 vim_apply_change(VIM_REQUEST_PARAMS)
 {
 	vim_enter_insert_mode(app);
@@ -79,7 +79,7 @@ VIM_REQUEST_SIG(vim_apply_indent){
 	History_Group history_group = history_group_begin(app, buffer);
 	for(i64 l=line0; l<line1; l++){
 		i64 pos = get_line_start_pos(app, buffer, l);
-		buffer_replace_range(app, buffer, Ii64(pos), string_u8_litexpr("    "));
+		buffer_replace_range(app, buffer, Ii64(pos), strlit("    "));
 	}
 	history_group_end(history_group);
 }
@@ -139,7 +139,7 @@ vim_init(App *app){
 	}
 
 #if VIM_USE_REIGSTER_BUFFER
-	Buffer_ID reg_buffer = create_buffer(app, string_u8_litexpr("*registers*"),
+	Buffer_ID reg_buffer = create_buffer(app, strlit("*registers*"),
 										 BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew);
 	buffer_set_setting(app, reg_buffer, BufferSetting_ReadOnly, true);
 	buffer_set_setting(app, reg_buffer, BufferSetting_Unkillable, true);

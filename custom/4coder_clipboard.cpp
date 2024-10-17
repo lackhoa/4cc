@@ -10,7 +10,7 @@ CUSTOM_DOC("In response to a new clipboard contents events, saves the new clip o
     User_Input in = get_current_input(app);
     if (in.event.kind == InputEventKind_Core &&
         in.event.core.code == CoreCode_NewClipboardContents){
-        clipboard_post_internal_only(0, in.event.core.string);
+        clipboard_post_function_only(0, in.event.core.string);
     }
 }
 
@@ -37,7 +37,7 @@ clipboard_update_history_from_system(App *app, i1 clipboard_id)
     String8 string = system_get_clipboard(scratch, clipboard_id);
     if (string.str != 0)
     {
-        clipboard_post_internal_only(clipboard_id, string);
+        clipboard_post_function_only(clipboard_id, string);
         result = true;
     }
     return(result);
@@ -254,7 +254,7 @@ multi_paste_interactive_up_down(App *app, i1 paste_count, i1 clip_count){
     
     Query_Bar_Group group(app);
     Query_Bar bar = {};
-    bar.prompt = string_u8_litexpr("Up and Down to condense and expand paste stages; R to reverse order; Return to finish; Escape to abort.");
+    bar.prompt = strlit("Up and Down to condense and expand paste stages; R to reverse order; Return to finish; Escape to abort.");
     if (start_query_bar(app, &bar, 0) == 0) return;
     
     User_Input in = {};
@@ -311,7 +311,7 @@ CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled by input
         u8 string_space[256];
         Query_Bar_Group group(app);
         Query_Bar bar = {};
-        bar.prompt = string_u8_litexpr("How Many Slots To Paste: ");
+        bar.prompt = strlit("How Many Slots To Paste: ");
         bar.string = SCu8(string_space, (u64)0);
         bar.string_capacity = sizeof(string_space);
         query_user_number(app, &bar);
@@ -341,14 +341,14 @@ clipboard_count(App *app, i1 clipboard_id)
 {
     return(clipboard_count(clipboard_id));
 }
-internal String8
+function String8
 push_clipboard_index(App *app, Arena *arena, i1 clipboard_id, i1 item_index)
 {
     return push_clipboard_index_inner(arena, clipboard_id, item_index);
 }
 #endif
 
-internal void
+function void
 clipboard_pop(App *app, i1 clipboard_id)
 {// TODO(kv): My code, too lazy (and ignorant) to preserve the API
     // @Experiment Watch out for the system clipboard

@@ -4,7 +4,7 @@
 #include "4coder_fleury_lang.cpp"
 #include "4coder_fleury_render_helpers.cpp"
 
-internal Vec2_f32
+function Vec2_f32
 _F4_PosContext_RenderDefinitionTokens(App *app, Face_ID face,
                                       String backing_string,
                                       Token_Array tokens, b32 do_render,
@@ -24,7 +24,7 @@ _F4_PosContext_RenderDefinitionTokens(App *app, Face_ID face,
         
         if(token->kind == TokenBaseKind_Whitespace)
         {
-            text_position.x += get_string_advance(app, face, string_u8_litexpr(" "));
+            text_position.x += get_string_advance(app, face, strlit(" "));
         }
         else
         {
@@ -86,7 +86,7 @@ _F4_PosContext_RenderDefinitionTokens(App *app, Face_ID face,
     return text_position;
 }
 
-internal void
+function void
 F4_PosContext_Render(App *app, View_ID view, Buffer_ID buffer,
                      Text_Layout_ID text_layout_id, i64 pos)
 {

@@ -9,7 +9,7 @@
 
 // TOP
 
-internal void
+function void
 hot_directory_clean_end(Hot_Directory *hot_directory)
 {
     String8 str = hot_directory->string;
@@ -19,7 +19,7 @@ hot_directory_clean_end(Hot_Directory *hot_directory)
     }
 }
 
-internal i1
+function i1
 hot_directory_quick_partition(File_Info **infos, i1 start, i1 pivot){
     File_Info **p = infos + pivot;
     File_Info **a = infos + start;
@@ -39,14 +39,14 @@ hot_directory_quick_partition(File_Info **infos, i1 start, i1 pivot){
     return(start);
 }
 
-internal void
+function void
 hot_directory_quick_sort(File_Info **infos, i1 start, i1 pivot){
     i1 mid = hot_directory_quick_partition(infos, start, pivot);
     if (start < mid-1) hot_directory_quick_sort(infos, start, mid-1);
     if (mid+1 < pivot) hot_directory_quick_sort(infos, mid+1, pivot);
 }
 
-internal void
+function void
 hot_directory_fixup(Hot_Directory *hot_directory){
     File_List *files = &hot_directory->file_list;
     if (files->count >= 2){
@@ -54,7 +54,7 @@ hot_directory_fixup(Hot_Directory *hot_directory){
     }
 }
 
-internal void
+function void
 hot_directory_set(Hot_Directory *hot_directory, String str)
 {
     arena_clear(&hot_directory->arena);
@@ -63,7 +63,7 @@ hot_directory_set(Hot_Directory *hot_directory, String str)
     hot_directory->file_list = system_get_file_list(&hot_directory->arena, hot_directory->canonical);
 }
 
-internal void
+function void
 hot_directory_reload(Arena *scratch, Hot_Directory *hot_directory){
     Temp_Memory temp = begin_temp(scratch);
     String string = push_stringz(scratch, hot_directory->string);
@@ -71,7 +71,7 @@ hot_directory_reload(Arena *scratch, Hot_Directory *hot_directory){
     end_temp(temp);
 }
 
-internal void
+function void
 hot_directory_init(Arena *scratch, Hot_Directory *hot_directory, String directory){
     hot_directory->arena = make_arena_system();
     Temp_Memory temp = begin_temp(scratch);

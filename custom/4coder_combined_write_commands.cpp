@@ -100,7 +100,7 @@ CUSTOM_DOC("At the cursor, insert a block comment.")
 CUSTOM_COMMAND_SIG(write_zero_struct)
 CUSTOM_DOC("At the cursor, insert a ' = {};'.")
 {
-    write_string(app, string_u8_litexpr(" = {};"));
+    write_string(app, strlit(" = {};"));
 }
 
 function i64
@@ -130,7 +130,7 @@ CUSTOM_DOC("Insert '//' at the beginning of the line after leading whitespace.")
     i64 pos = get_start_of_line_at_cursor(app, view, buffer);
     b32 alread_has_comment = c_line_comment_starts_at_position(app, buffer, pos);
     if (!alread_has_comment){
-        buffer_replace_range(app, buffer, Ii64(pos), string_u8_litexpr("//"));
+        buffer_replace_range(app, buffer, Ii64(pos), strlit("//"));
     }
 }
 
@@ -157,7 +157,7 @@ CUSTOM_DOC("Turns uncommented lines into commented lines and vice versa for comm
         buffer_replace_range(app, buffer, Ii64(pos, pos + 2), empty_string);
     }
     else{
-        buffer_replace_range(app, buffer, Ii64(pos), string_u8_litexpr("//"));
+        buffer_replace_range(app, buffer, Ii64(pos), strlit("//"));
     }
 }
 

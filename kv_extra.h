@@ -437,20 +437,11 @@ path_dirname(String str)
  
  return(str);
 }
-function String
-string_skip(String str, u64 n){
- n = clamp_max(n, str.size);
- str.str += n;;
- str.size -= n;
- return(str);
-}
 
 function String
-path_filename(String str)
-{
+path_filename(String str) {
  i64 slash_pos = string_find_last_slash(str);
- if (slash_pos >= 0)
- {
+ if (slash_pos >= 0) {
   str = string_skip(str, slash_pos + 1);
  }
  return(str);
@@ -477,7 +468,7 @@ string_prefix(String str, u64 size){
 }
 
 function String
-path_no_extension(String string){
+path_stem(String string){
  i64 pos = string_find_last(string, '.');
  if(pos > 0){
   string = string_prefix(string, pos);
@@ -535,7 +526,7 @@ string_contains(String big, String small, i1 *first_match=0)
  return result;
 }
 
-internal b32
+function b32
 starts_with(String str, String prefix)
 {
  return string_match(string_prefix(str, prefix.size), prefix);
@@ -578,6 +569,112 @@ cast_u64_to_u32(u64 u)
 {
  kv_assert(u < (1ULL << 32));
  return (u32)u;
+}
+function isize
+gb__scan_i64(String string, i1 base, i64 *value){
+	u8 *text_begin = string.str;
+	i64 result = 0;
+	b32 negative = false;
+	if(string[0] == '-'){
+		negative = true;
+		string_skip(&string, 1);
+	}
+	if(base == 16 && string_prefix(string, 2) == "0x"){
+		string_skip(&string, 2);
+	}
+	for(;;){
+		i64 v;
+		if(gb_char_is_digit(*string.str)){
+			v = *string.str - '0';
+		}else if(base == 16 && gb_char_is_hex_digit(*string.str)) {
+			v = gb_hex_digit_to_int(*string.str);
+		}else{
+			break;
+		}
+		result *= base;
+		result += v;
+		string_skip(&string, 1);
+	}
+	if(value){
+		if(negative){ result = -result; }
+		*value = result;
+	}
+	return (string.str - text_begin);
+}
+function i64
+str_to_i64(String string, char **end_ptr, i1 base){
+	if(!base){
+  base = 10;
+		if(string_prefix(string, 2) == strlit("0x")){
+			base = 16;
+		}
+	}
+	i64 value;
+	isize len = gb__scan_i64(string, base, &value);
+	if(end_ptr){ *end_ptr = (char *)string.str + len; }
+	return value;
+}
+function f64
+str_to_f64(String string, char **end_ptr_out){
+ char *str = (char *)string.str;
+	f64 result, value, sign, scale;
+	i1 frac = 0;
+ 
+	while(gb_char_is_space(*str)){
+		str++;
+	}
+ 
+	sign = 1.0;
+	if(*str == '-'){
+		sign = -1.0;
+		str++;
+	}else if(*str == '+'){
+		str++;
+	}
+ 
+	for (value = 0.0; gb_char_is_digit(*str); str++) {
+  // note(kv): before the decimal point
+		value = value * 10.0 + (*str-'0');
+	}
+ 
+	if (*str == '.') {
+  // note(kv): after the decimal point
+		f64 pow10 = 10.0;
+		str++;
+		while (gb_char_is_digit(*str)) {
+			value += (*str-'0') / pow10;
+			pow10 *= 10.0;
+			str++;
+		}
+	}
+ 
+	scale = 1.0;
+	if((*str == 'e') || (*str == 'E')){
+		u32 exp;
+  
+		str++;
+		if (*str == '-') {
+			frac = 1;
+			str++;
+		} else if (*str == '+') {
+			str++;
+		}
+  
+		for(exp = 0; gb_char_is_digit(*str); str++){
+			exp = exp * 10 + (*str-'0');
+		}
+		if (exp > 308) exp = 308;
+  
+		while (exp >= 50) { scale *= 1e50; exp -= 50; }
+		while (exp >=  8) { scale *= 1e8;  exp -=  8; }
+		while (exp >   0) { scale *= 10.0; exp -=  1; }
+	}
+ 
+	result = sign * (frac ? (value / scale) : (value * scale));
+ 
+	if(end_ptr_out){ *end_ptr_out = cast(char *)str; }
+ 
+	return result;
 }
 
 //~eof

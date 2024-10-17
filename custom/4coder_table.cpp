@@ -4,7 +4,7 @@
 
 // TOP
 
-internal u64
+function u64
 table_hash(String key){
     return(table_hash_u8((u8*)key.str, key.size) | bit_64);
 }
@@ -20,7 +20,7 @@ global_const u32 table_erased_u32_key = max_u32;
 
 ////////////////////////////////
 
-internal Table_u64_u64
+function Table_u64_u64
 make_table_u64_u64__inner(Base_Allocator *allocator, u32 slot_count, String location){
     Table_u64_u64 table = {};
     table.allocator = allocator;
@@ -38,13 +38,13 @@ make_table_u64_u64__inner(Base_Allocator *allocator, u32 slot_count, String loca
 
 #define make_table_u64_u64(a,s) make_table_u64_u64__inner((a),(s),filename_linum)
 
-internal void
+function void
 table_free(Table_u64_u64 *table){
     base_free(table->allocator, table->memory);
     block_zero_struct(table);
 }
 
-internal Table_Lookup
+function Table_Lookup
 table_lookup(Table_u64_u64 *table, u64 key)
 {
     Table_Lookup result = {};
@@ -91,7 +91,7 @@ table_lookup(Table_u64_u64 *table, u64 key)
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_u64_u64 *table, Table_Lookup lookup, u64 *val_out)
 {
     b32 result = false;
@@ -103,13 +103,13 @@ table_read(Table_u64_u64 *table, Table_Lookup lookup, u64 *val_out)
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_u64_u64 *table, u64 key, u64 *val_out){
     Table_Lookup lookup = table_lookup(table, key);
     return(table_read(table, lookup, val_out));
 }
 
-internal void
+function void
 table_insert__inner(Table_u64_u64 *table, Table_Lookup lookup, u64 val){
     Assert(lookup.found_empty_slot || lookup.found_erased_slot);
     table->keys[lookup.index] = lookup.hash;
@@ -120,7 +120,7 @@ table_insert__inner(Table_u64_u64 *table, Table_Lookup lookup, u64 val){
     }
 }
 
-internal b32
+function b32
 table_rehash(Table_u64_u64 *dst, Table_u64_u64 *src){
     b32 result = false;
     u32 src_slot_count = src->slot_count;
@@ -139,7 +139,7 @@ table_rehash(Table_u64_u64 *dst, Table_u64_u64 *src){
     return(result);
 }
 
-internal b32
+function b32
 table_insert(Table_u64_u64 *table, u64 key, u64 val){
     b32 result = false;
     if (key != table_empty_key && key != table_erased_key){
@@ -164,7 +164,7 @@ table_insert(Table_u64_u64 *table, u64 key, u64 val){
     return(result);
 }
 
-internal b32
+function b32
 table_erase(Table_u64_u64 *table, Table_Lookup lookup){
     b32 result = false;
     if (lookup.found_match){
@@ -176,13 +176,13 @@ table_erase(Table_u64_u64 *table, Table_Lookup lookup){
     return(result);
 }
 
-internal b32
+function b32
 table_erase(Table_u64_u64 *table, u64 key){
     Table_Lookup lookup = table_lookup(table, key);
     return(table_erase(table, lookup));
 }
 
-internal void
+function void
 table_clear(Table_u64_u64 *table){
     block_zero_dynamic_array(table->keys, table->slot_count);
     block_zero_dynamic_array(table->vals, table->slot_count);
@@ -190,7 +190,7 @@ table_clear(Table_u64_u64 *table){
 
 ////////////////////////////////
 
-internal Table_u32_u16
+function Table_u32_u16
 make_table_u32_u16__inner(Base_Allocator *allocator, u32 slot_count, String location){
     Table_u32_u16 table = {};
     table.allocator = allocator;
@@ -208,13 +208,13 @@ make_table_u32_u16__inner(Base_Allocator *allocator, u32 slot_count, String loca
 
 #define make_table_u32_u16(a,s) make_table_u32_u16__inner((a),(s),filename_linum)
 
-internal void
+function void
 table_free(Table_u32_u16 *table){
     base_free(table->allocator, table->memory);
     block_zero_struct(table);
 }
 
-internal Table_Lookup
+function Table_Lookup
 table_lookup(Table_u32_u16 *table, u32 key){
     Table_Lookup result = {};
     
@@ -260,7 +260,7 @@ table_lookup(Table_u32_u16 *table, u32 key){
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_u32_u16 *table, u32 key, u16 *val_out){
     b32 result = false;
     Table_Lookup lookup = table_lookup(table, key);
@@ -271,7 +271,7 @@ table_read(Table_u32_u16 *table, u32 key, u16 *val_out){
     return(result);
 }
 
-internal void
+function void
 table_insert__inner(Table_u32_u16 *table, Table_Lookup lookup, u32 key, u16 val){
     Assert(lookup.found_empty_slot || lookup.found_erased_slot);
     table->keys[lookup.index] = key;
@@ -282,7 +282,7 @@ table_insert__inner(Table_u32_u16 *table, Table_Lookup lookup, u32 key, u16 val)
     }
 }
 
-internal b32
+function b32
 table_rehash(Table_u32_u16 *dst, Table_u32_u16 *src){
     b32 result = false;
     u32 src_slot_count = src->slot_count;
@@ -300,7 +300,7 @@ table_rehash(Table_u32_u16 *dst, Table_u32_u16 *src){
     return(result);
 }
 
-internal b32
+function b32
 table_insert(Table_u32_u16 *table, u32 key, u16 val){
     b32 result = false;
     if (key != table_empty_u32_key && key != table_erased_u32_key){
@@ -325,7 +325,7 @@ table_insert(Table_u32_u16 *table, u32 key, u16 val){
     return(result);
 }
 
-internal b32
+function b32
 table_erase(Table_u32_u16 *table, Table_Lookup lookup){
     b32 result = false;
     if (lookup.found_match){
@@ -337,13 +337,13 @@ table_erase(Table_u32_u16 *table, Table_Lookup lookup){
     return(result);
 }
 
-internal b32
+function b32
 table_erase(Table_u32_u16 *table, u32 key){
     Table_Lookup lookup = table_lookup(table, key);
     return(table_erase(table, lookup));
 }
 
-internal void
+function void
 table_clear(Table_u32_u16 *table){
     block_zero_dynamic_array(table->keys, table->slot_count);
     block_zero_dynamic_array(table->vals, table->slot_count);
@@ -353,7 +353,7 @@ table_clear(Table_u32_u16 *table){
 
 ////////////////////////////////
 
-internal Table_Data_u64
+function Table_Data_u64
 make_table_Data_u64__inner(Base_Allocator *allocator, u32 slot_count, String8 location)
 {
     Table_Data_u64 table = {};
@@ -373,13 +373,13 @@ make_table_Data_u64__inner(Base_Allocator *allocator, u32 slot_count, String8 lo
 
 #define make_table_Data_u64(a,s) make_table_Data_u64__inner((a),(s),filename_linum)
 
-internal void
+function void
 table_free(Table_Data_u64 *table){
     base_free(table->allocator, table->memory);
     block_zero_struct(table);
 }
 
-internal Table_Lookup
+function Table_Lookup
 table_lookup(Table_Data_u64 *table, String key){
     Table_Lookup result = {};
     
@@ -427,7 +427,7 @@ table_lookup(Table_Data_u64 *table, String key){
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_Data_u64 *table, Table_Lookup lookup, u64 *val_out){
     b32 result = false;
     if (lookup.found_match){
@@ -437,7 +437,7 @@ table_read(Table_Data_u64 *table, Table_Lookup lookup, u64 *val_out){
     return(result);
 }
 
-internal b32
+function b32
 table_read_key(Table_Data_u64 *table, Table_Lookup lookup, String *key_out){
     b32 result = false;
     if (lookup.found_match){
@@ -447,13 +447,13 @@ table_read_key(Table_Data_u64 *table, Table_Lookup lookup, String *key_out){
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_Data_u64 *table, String key, u64 *val_out){
     Table_Lookup lookup = table_lookup(table, key);
     return(table_read(table, lookup, val_out));
 }
 
-internal void
+function void
 table_insert__inner(Table_Data_u64 *table, Table_Lookup lookup, String key, u64 val){
     Assert(lookup.found_empty_slot || lookup.found_erased_slot);
     table->hashes[lookup.index] = lookup.hash;
@@ -465,7 +465,7 @@ table_insert__inner(Table_Data_u64 *table, Table_Lookup lookup, String key, u64 
     }
 }
 
-internal b32
+function b32
 table_rehash(Table_Data_u64 *dst, Table_Data_u64 *src){
     b32 result = false;
     u32 src_slot_count = src->slot_count;
@@ -483,7 +483,7 @@ table_rehash(Table_Data_u64 *dst, Table_Data_u64 *src){
     return(result);
 }
 
-internal b32
+function b32
 table_insert(Table_Data_u64 *table, String key, u64 val){
     b32 result = false;
     if (key.str != 0){
@@ -508,7 +508,7 @@ table_insert(Table_Data_u64 *table, String key, u64 val){
     return(result);
 }
 
-internal b32
+function b32
 table_erase(Table_Data_u64 *table, String key){
     b32 result = false;
     Table_Lookup lookup = table_lookup(table, key);
@@ -522,7 +522,7 @@ table_erase(Table_Data_u64 *table, String key){
     return(result);
 }
 
-internal void
+function void
 table_clear(Table_Data_u64 *table){
     block_zero_dynamic_array(table->hashes, table->slot_count);
     block_zero_dynamic_array(table->keys, table->slot_count);
@@ -533,7 +533,7 @@ table_clear(Table_Data_u64 *table){
 
 ////////////////////////////////
 
-internal Table_u64_Data
+function Table_u64_Data
 make_table_u64_Data__inner(Base_Allocator *allocator, u32 slot_count, String location){
     Table_u64_Data table = {};
     table.allocator = allocator;
@@ -551,13 +551,13 @@ make_table_u64_Data__inner(Base_Allocator *allocator, u32 slot_count, String loc
 
 #define make_table_u64_Data(a,s) make_table_u64_Data__inner((a),(s),filename_linum)
 
-internal void
+function void
 table_free(Table_u64_Data *table){
     base_free(table->allocator, table->memory);
     block_zero_struct(table);
 }
 
-internal Table_Lookup
+function Table_Lookup
 table_lookup(Table_u64_Data *table, u64 key){
     Table_Lookup result = {};
     
@@ -603,7 +603,7 @@ table_lookup(Table_u64_Data *table, u64 key){
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_u64_Data *table, Table_Lookup lookup, String *val_out){
     b32 result = false;
     if (lookup.found_match){
@@ -613,13 +613,13 @@ table_read(Table_u64_Data *table, Table_Lookup lookup, String *val_out){
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_u64_Data *table, u64 key, String *val_out){
     Table_Lookup lookup = table_lookup(table, key);
     return(table_read(table, lookup, val_out));
 }
 
-internal void
+function void
 table_insert__inner(Table_u64_Data *table, Table_Lookup lookup, String val){
     Assert(lookup.found_empty_slot || lookup.found_erased_slot);
     table->keys[lookup.index] = lookup.hash;
@@ -630,7 +630,7 @@ table_insert__inner(Table_u64_Data *table, Table_Lookup lookup, String val){
     }
 }
 
-internal b32
+function b32
 table_rehash(Table_u64_Data *dst, Table_u64_Data *src){
     b32 result = false;
     u32 src_slot_count = src->slot_count;
@@ -649,7 +649,7 @@ table_rehash(Table_u64_Data *dst, Table_u64_Data *src){
     return(result);
 }
 
-internal b32
+function b32
 table_insert(Table_u64_Data *table, u64 key, String val){
     b32 result = false;
     if (key != table_empty_key && table_erased_key){
@@ -674,7 +674,7 @@ table_insert(Table_u64_Data *table, u64 key, String val){
     return(result);
 }
 
-internal b32
+function b32
 table_erase(Table_u64_Data *table, Table_Lookup lookup){
     b32 result = false;
     if (lookup.found_match){
@@ -686,13 +686,13 @@ table_erase(Table_u64_Data *table, Table_Lookup lookup){
     return(result);
 }
 
-internal b32
+function b32
 table_erase(Table_u64_Data *table, u64 key){
     Table_Lookup lookup = table_lookup(table, key);
     return(table_erase(table, lookup));
 }
 
-internal void
+function void
 table_clear(Table_u64_Data *table){
     block_zero_dynamic_array(table->keys, table->slot_count);
     block_zero_dynamic_array(table->vals, table->slot_count);
@@ -702,7 +702,7 @@ table_clear(Table_u64_Data *table){
 
 ////////////////////////////////
 
-internal Table_Data_Data
+function Table_Data_Data
 make_table_Data_Data__inner(Base_Allocator *allocator, u32 slot_count, String location){
     Table_Data_Data table = {};
     table.allocator = allocator;
@@ -721,13 +721,13 @@ make_table_Data_Data__inner(Base_Allocator *allocator, u32 slot_count, String lo
 
 #define make_table_Data_Data(a,s) make_table_Data_Data__inner((a),(s),filename_linum)
 
-internal void
+function void
 table_free(Table_Data_Data *table){
     base_free(table->allocator, table->memory);
     block_zero_struct(table);
 }
 
-internal Table_Lookup
+function Table_Lookup
 table_lookup(Table_Data_Data *table, String key){
     Table_Lookup result = {};
     
@@ -773,7 +773,7 @@ table_lookup(Table_Data_Data *table, String key){
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_Data_Data *table, Table_Lookup lookup, String *val_out){
     b32 result = false;
     if (lookup.found_match){
@@ -783,7 +783,7 @@ table_read(Table_Data_Data *table, Table_Lookup lookup, String *val_out){
     return(result);
 }
 
-internal b32
+function b32
 table_read_key(Table_Data_Data *table, Table_Lookup lookup, String *key_out){
     b32 result = false;
     if (lookup.found_match){
@@ -793,13 +793,13 @@ table_read_key(Table_Data_Data *table, Table_Lookup lookup, String *key_out){
     return(result);
 }
 
-internal b32
+function b32
 table_read(Table_Data_Data *table, String key, String *val_out){
     Table_Lookup lookup = table_lookup(table, key);
     return(table_read(table, lookup, val_out));
 }
 
-internal void
+function void
 table_insert__inner(Table_Data_Data *table, Table_Lookup lookup, String key, String val){
     Assert(lookup.found_empty_slot || lookup.found_erased_slot);
     table->hashes[lookup.index] = lookup.hash;
@@ -811,7 +811,7 @@ table_insert__inner(Table_Data_Data *table, Table_Lookup lookup, String key, Str
     }
 }
 
-internal b32
+function b32
 table_rehash(Table_Data_Data *dst, Table_Data_Data *src){
     b32 result = false;
     u32 src_slot_count = src->slot_count;
@@ -829,7 +829,7 @@ table_rehash(Table_Data_Data *dst, Table_Data_Data *src){
     return(result);
 }
 
-internal b32
+function b32
 table_insert(Table_Data_Data *table, String key, String val){
     b32 result = false;
     if (key.str != 0){
@@ -854,7 +854,7 @@ table_insert(Table_Data_Data *table, String key, String val){
     return(result);
 }
 
-internal b32
+function b32
 table_erase(Table_Data_Data *table, String key){
     b32 result = false;
     Table_Lookup lookup = table_lookup(table, key);
@@ -868,7 +868,7 @@ table_erase(Table_Data_Data *table, String key){
     return(result);
 }
 
-internal void
+function void
 table_clear(Table_Data_Data *table){
     block_zero_dynamic_array(table->hashes, table->slot_count);
     block_zero_dynamic_array(table->keys, table->slot_count);

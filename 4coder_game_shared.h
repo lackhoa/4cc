@@ -163,7 +163,7 @@ struct Image_Load_Info {
 
 global_const i32 GAME_VIEWPORT_COUNT = 3;
 global_const i32 MAIN_VIEWPORT_ID    = 1;
-global_const String GAME_FILE_NAME = strlit("game.cpp");
+global_const String DRIVER_FILE_NAME = strlit("driver.kc");
 
 #if !AD_IS_DRIVER
 //-NOTE: game API functions (NOTE: The API is quite simple so let's just macro for now)

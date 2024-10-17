@@ -298,17 +298,17 @@ draw_file_bar(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect
     switch (*eol_setting){
         case LineEndingKind_Binary:
         {
-            push_fancy_string(scratch, &list, base_color, string_u8_litexpr(" bin"));
+            push_fancy_string(scratch, &list, base_color, strlit(" bin"));
         }break;
         
         case LineEndingKind_LF:
         {
-            push_fancy_string(scratch, &list, base_color, string_u8_litexpr(" lf"));
+            push_fancy_string(scratch, &list, base_color, strlit(" lf"));
         }break;
         
         case LineEndingKind_CRLF:
         {
-            push_fancy_string(scratch, &list, base_color, string_u8_litexpr(" crlf"));
+            push_fancy_string(scratch, &list, base_color, strlit(" crlf"));
         }break;
     }
     
@@ -317,13 +317,13 @@ draw_file_bar(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect
         Dirty_State dirty = buffer_get_dirty_state(app, buffer);
         String_u8 str = Su8(space, 0, 3);
         if (dirty != 0){
-            string_concat(&str, string_u8_litexpr(" "));
+            string_concat(&str, strlit(" "));
         }
         if (HasFlag(dirty, DirtyState_UnsavedChanges)){
-            string_concat(&str, string_u8_litexpr("*"));
+            string_concat(&str, strlit("*"));
         }
         if (HasFlag(dirty, DirtyState_UnloadedChanges)){
-            string_concat(&str, string_u8_litexpr("!"));
+            string_concat(&str, strlit("!"));
         }
         push_fancy_string(scratch, &list, pop2_color, str.string);
     }

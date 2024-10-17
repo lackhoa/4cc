@@ -15,7 +15,7 @@ struct Clip_Result
 global v1 F32_INVALID  = F32_MAX;
 global v3 VEC3_INVALID = V3(F32_INVALID);
 
-internal v3
+function v3
 plane_segment_intersect(v3 n, v1 d, v3 p0, v3 p1)
 {
  // start from p0, end at p1
@@ -45,7 +45,7 @@ is_outside_plane(v3 n, v1 d, v3 p)
 }
 
 // NOTE: Return either 1 or 2 triangles
-internal Clip_Result
+function Clip_Result
 clip_triangle(v3 p_in[3], v3 n, v1 d)
 {
  Clip_Result result = {};
@@ -121,7 +121,7 @@ clip_triangle(v3 p_in[3], v3 n, v1 d)
  return result;
 }
 
-internal std_array<v3,2>
+function std_array<v3,2>
 intersect_triangle(v3 n, v1 d, v3 p[3])
 {
  std_array<v3,2> result = {VEC3_INVALID, VEC3_INVALID};
@@ -145,7 +145,7 @@ intersect_triangle(v3 n, v1 d, v3 p[3])
  return result;
 }
 
-internal Mesh
+function Mesh
 new_mesh(Arena *arena, 
          v3 *in_vertices, i1 vertex_count, 
          i3 *in_triangles, i1 triangle_count)
@@ -163,7 +163,7 @@ new_mesh(Arena *arena,
  return result;
 }
 
-internal Mesh
+function Mesh
 transformed_mesh(Arena *arena, mat4 const&mat, Mesh const&mesh)
 {
  Mesh result = mesh;
@@ -198,7 +198,7 @@ add_box_face(Triangle_Sbuf *triangles, i3 a, i3 b, i3 c, i3 d)
  arrpush(*triangles, I3(A,C,D));
 }
 
-internal void
+function void
 add_box_opposite_faces(Triangle_Sbuf *triangles, i3 x, i3 y, i3 z)
 {
  i3 O = z;
@@ -209,7 +209,7 @@ add_box_opposite_faces(Triangle_Sbuf *triangles, i3 x, i3 y, i3 z)
 
 global Mesh the_box_mesh;
 
-internal void
+function void
 make_meshes(Arena *arena)
 {
  arena_clear(arena);
@@ -237,7 +237,7 @@ make_meshes(Arena *arena)
  }
 }
 
-internal b32
+function b32
 triangle_valid(v3 triangle[3])
 {
  return !(triangle[0] == V3() && 

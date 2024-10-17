@@ -293,15 +293,15 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 	vim_lister_set_default_handlers(lister);
 	vim_reset_bottom_text();
 
-	lister_add_item(lister, string_u8_litexpr("4coder"), string_u8_litexpr(""),
+	lister_add_item(lister, strlit("4coder"), strlit(""),
 					(void*)&default_color_table, 0);
 
 	for(Color_Table_Node *node = color_table_list->first; node; node = node->next){
-		lister_add_item(lister, node->name, string_u8_litexpr(""), (void*)&node->table, 0);
+		lister_add_item(lister, node->name, strlit(""), (void*)&node->table, 0);
 	}
 
 #if VIM_USE_BOTTOM_LISTER
-	string_concat(&vim_bottom_text, string_u8_litexpr("Theme:"));
+	string_concat(&vim_bottom_text, strlit("Theme:"));
 #endif
 	Lister_Result l_result = vim_run_lister(app, lister);
 
@@ -320,9 +320,9 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 	Scratch_Block scratch(app);
 #if VIM_USE_BOTTOM_LISTER
 	vim_reset_bottom_text();
-	string_concat(&vim_bottom_text, string_u8_litexpr("Switch:"));
+	string_concat(&vim_bottom_text, strlit("Switch:"));
 #endif
-	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, string_u8_litexpr("Switch:"), handlers);
+	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, strlit("Switch:"), handlers);
 	Buffer_ID buffer = 0;
 	if (!l_result.canceled){
 		buffer = (Buffer_ID)(PtrAsInt(l_result.user_data));
@@ -405,7 +405,7 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 	lister_set_handlers(lister, &handlers);
 
 	vim_reset_bottom_text();
-	string_concat(&vim_bottom_text, string_u8_litexpr("Command:"));
+	string_concat(&vim_bottom_text, strlit("Command:"));
 
 	Variable_Handle cmd_list_var = vars_read_key(prj_var, vars_intern_lit("commands"));
 	String_ID os_id = vars_intern_lit(OS_NAME);
@@ -471,7 +471,7 @@ CUSTOM_DOC("Opens an interactive lists of the views jumps")
 		foreach(j, (i1)line_text.size){
 			if(!char_is_whitespace(line_text.str[j])){ blank = false; break; }
 		}
-		if(blank){ line_text = string_u8_litexpr("*blank*"); }
+		if(blank){ line_text = strlit("*blank*"); }
 		line_text.size = Min(line_text.size, 20);
 		String unique_name = push_buffer_unique_name(app, scratch, slot->buffer);
 		String text = push_stringfz(scratch, "[%.*s]:(%d)", string_expand(unique_name), line);
@@ -540,7 +540,7 @@ vim_do_4coder_close_user_check(App *app, View_ID view){
 	lister_choice(scratch, &list, "(S)ave all and close", "", Key_Code_S, SureToKill_Save);
 
 #define M "There are one or more buffers with unsave changes, close anyway?"
-	Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr(M), list);
+	Lister_Choice *choice = vim_get_choice_from_user(app, strlit(M), list);
 #undef M
 
 	b32 do_exit = false;
@@ -564,7 +564,7 @@ vim_do_4coder_close_user_check(App *app, View_ID view){
 	return do_exit;
 }
 
-internal b32
+function b32
 vim_4coder_close_are_you_sure_check(App *app, View_ID view)
 {
 	Scratch_Block scratch(app);
@@ -573,7 +573,7 @@ vim_4coder_close_are_you_sure_check(App *app, View_ID view)
 	lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
 
 #define M "Are you sure you want to close?"
-	Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr(M), list);
+	Lister_Choice *choice = vim_get_choice_from_user(app, strlit(M), list);
 #undef M
 
 	if(choice != 0){
@@ -598,7 +598,7 @@ vim_reload_external_changes_lister(App *app, Buffer_ID buffer){
 	lister_choice(scratch, &list, "(K)eep current buffer" , "", Key_Code_K, u64(0));
 
 #define M "External changes have been detected. Reload buffer from file?"
-	Lister_Choice *choice = vim_get_choice_from_user(app, string_u8_litexpr(M), list);
+	Lister_Choice *choice = vim_get_choice_from_user(app, strlit(M), list);
 #undef M
 
 	if(choice != 0 && choice->user_data){

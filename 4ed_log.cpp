@@ -11,13 +11,13 @@
 
 global Log global_log = {};
 
-internal void
+function void
 log_init(void){
     global_log.mutex = system_mutex_make();
     global_log.arena = make_arena_system();
 }
 
-internal b32
+function b32
 log_string(String str){
     b32 result = false;
     i1 thread_id = system_thread_get_id();
@@ -30,10 +30,10 @@ log_string(String str){
     return(result);
 }
 
-internal void
+function void
 output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value);
 
-internal b32
+function b32
 log_flush(Thread_Context *tctx, Models *models){
     b32 result = false;
     

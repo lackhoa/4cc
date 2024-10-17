@@ -4,7 +4,7 @@
 
 // TOP
 
-internal Face_Description
+function Face_Description
 get_buffer_face_description(App *app, Buffer_ID buffer){
     Face_ID current_id = get_face_id(app, buffer);
     Face_Description description = {};
@@ -14,22 +14,22 @@ get_buffer_face_description(App *app, Buffer_ID buffer){
     return(description);
 }
 
-internal Face_Description
+function Face_Description
 get_global_face_description(App *app){
     return(get_buffer_face_description(app, 0));
 }
 
-internal b32
+function b32
 font_load_location_match(Font_Load_Location *a, Font_Load_Location *b){
     return(string_match(a->filename, b->filename));
 }
 
-internal b32
+function b32
 face_load_parameters_match(Face_Load_Parameters *a, Face_Load_Parameters *b){
     return(block_compare(a, b, sizeof(*a)) == 0);
 }
 
-internal b32
+function b32
 face_description_match(Face_Description *a, Face_Description *b){
     b32 result = false;
     if (font_load_location_match(&a->font, &b->font) &&
@@ -39,7 +39,7 @@ face_description_match(Face_Description *a, Face_Description *b){
     return(result);
 }
 
-internal Face_ID
+function Face_ID
 face_id_from_font_load_target(App *app, Font_Load_Location *font){
     Face_ID largest_id = get_largest_face_id(app);
     Face_ID result = 0;
@@ -53,7 +53,7 @@ face_id_from_font_load_target(App *app, Font_Load_Location *font){
     return(result);
 }
 
-internal Face_ID
+function Face_ID
 face_id_from_face_load_parameters(App *app, Face_Load_Parameters *parameters){
     Face_ID largest_id = get_largest_face_id(app);
     Face_ID result = 0;
@@ -67,7 +67,7 @@ face_id_from_face_load_parameters(App *app, Face_Load_Parameters *parameters){
     return(result);
 }
 
-internal Face_ID
+function Face_ID
 face_id_from_description(App *app, Face_Description *description){
     Face_ID largest_id = get_largest_face_id(app);
     Face_ID result = 0;
@@ -81,13 +81,13 @@ face_id_from_description(App *app, Face_Description *description){
     return(result);
 }
 
-internal b32
+function b32
 modify_global_face_by_description(App *app, Face_Description description){
     Face_ID face_id = get_face_id(app, 0);
     return(try_modify_face(app, face_id, &description));
 }
 
-internal void
+function void
 set_buffer_face_by_description(App *app, Buffer_ID buffer, Face_Description *description){
     Face_ID id = face_id_from_description(app, description);
     if (id == 0){
@@ -98,14 +98,14 @@ set_buffer_face_by_description(App *app, Buffer_ID buffer, Face_Description *des
     }
 }
 
-internal void
+function void
 set_buffer_face_by_font_load_location(App *app, Buffer_ID buffer, Font_Load_Location *font){
     Face_Description description = get_buffer_face_description(app, buffer);
     description.font = *font;
     set_buffer_face_by_description(app, buffer, &description);
 }
 
-internal void
+function void
 set_buffer_face_by_face_load_parameters(App *app, Buffer_ID buffer, Face_Load_Parameters *parameters){
     Face_Description description = get_buffer_face_description(app, buffer);
     description.parameters = *parameters;

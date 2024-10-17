@@ -374,13 +374,13 @@ stringize_keyboard_event(Arena *arena, Input_Event *event)
     {
         case InputEventKind_TextInsert:
         {
-            string_list_push(arena, &list, string_u8_litexpr("t"));
+            string_list_push(arena, &list, strlit("t"));
             u64 size = event->text.string.size;
             u8 *ptr = event->text.string.str;
             for (u64 i = 0; i < size; i += 1, ptr += 1){
                 string_list_pushf(arena, &list, "%02X", (i1)(*ptr));
             }
-            string_list_push(arena, &list, string_u8_litexpr("\n"));
+            string_list_push(arena, &list, strlit("\n"));
         }break;
         
         case InputEventKind_KeyStroke:
@@ -388,18 +388,18 @@ stringize_keyboard_event(Arena *arena, Input_Event *event)
         {
             string_list_pushf(arena, &list, "k%X ", event->key.code);
             if (event->kind == InputEventKind_KeyRelease){
-                string_list_push(arena, &list, string_u8_litexpr("^"));
+                string_list_push(arena, &list, strlit("^"));
             }
             i1 count = event->key.modifiers.count;
             if (count > 0){
                 Key_Code *m = event->key.modifiers.mods;
-                string_list_push(arena, &list, string_u8_litexpr("m{"));
+                string_list_push(arena, &list, strlit("m{"));
                 for (i1 i = 0; i < count; i += 1, m += 1){
                     string_list_pushf(arena, &list, "%X ", *m);
                 }
-                string_list_push(arena, &list, string_u8_litexpr("}"));
+                string_list_push(arena, &list, strlit("}"));
             }
-            string_list_push(arena, &list, string_u8_litexpr("\n"));
+            string_list_push(arena, &list, strlit("\n"));
         }break;
     }
     

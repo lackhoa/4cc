@@ -8,7 +8,7 @@
 
 // TOP
 
-internal Node*
+function Node*
 history__to_node(Node *sentinel, i1 index){
     Node *result = 0;
     i1 counter = 0;
@@ -24,7 +24,7 @@ history__to_node(Node *sentinel, i1 index){
  return(result);
 }
 
-internal void
+function void
 history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table *lookup, Record *record)
 {
  if (lookup->records == 0 || lookup->count == lookup->max){
@@ -43,13 +43,13 @@ history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table
  lookup->count += 1;
 }
 
-internal void
+function void
 history__shrink_array(Record_Ptr_Lookup_Table *lookup, i1 new_count){
     Assert(0 <= new_count && new_count <= lookup->count);
     lookup->count = new_count;
 }
 
-internal void
+function void
 history__merge_record_ptr_range_to_one_ptr(Record_Ptr_Lookup_Table *lookup, i1 first_one_based, i1 last_one_based, Record *record){
     i1 first = first_one_based - 1;
     i1 one_past_last = last_one_based;
@@ -62,7 +62,7 @@ history__merge_record_ptr_range_to_one_ptr(Record_Ptr_Lookup_Table *lookup, i1 f
     lookup->records[first] = record;
 }
 
-internal Node*
+function Node*
 history__to_node(History *history, i1 index){
     Node *result = 0;
     if (index == 0){
@@ -78,7 +78,7 @@ history__to_node(History *history, i1 index){
 
 ////////////////////////////////
 
-internal Record*
+function Record*
 history__allocate_record(History *history)
 {
     Node *sentinel = &history->free_records;
@@ -106,13 +106,13 @@ history__allocate_record(History *history)
     return(record);
 }
 
-internal void
+function void
 global_history_init(Global_History *global_history){
  global_history->edit_number_counter = 0;
  global_history->edit_grouping_counter = 0;
 }
 
-internal i1
+function i1
 global_history_get_edit_number(Global_History *global_history){
     i1 result = global_history->edit_number_counter;
     if (global_history->edit_grouping_counter == 0){
@@ -121,7 +121,7 @@ global_history_get_edit_number(Global_History *global_history){
     return(result);
 }
 
-internal void
+function void
 global_history_adjust_edit_grouping_counter(Global_History *global_history, i1 adjustment){
     i1 original = global_history->edit_grouping_counter;
     global_history->edit_grouping_counter = clamp_min(0, global_history->edit_grouping_counter + adjustment);
@@ -130,7 +130,7 @@ global_history_adjust_edit_grouping_counter(Global_History *global_history, i1 a
     }
 }
 
-internal void
+function void
 history_init(Thread_Context *tctx, Models *models, History *history){
     history->activated = true;
     history->arena = make_arena_system();
@@ -142,12 +142,12 @@ history_init(Thread_Context *tctx, Models *models, History *history){
     block_zero_struct(&history->record_lookup);
 }
 
-internal b32
+function b32
 history_is_activated(History *history){
     return(history->activated);
 }
 
-internal void
+function void
 history_free(Thread_Context *tctx, History *history){
     if (history->activated){
         arena_clear(&history->arena);
@@ -156,7 +156,7 @@ history_free(Thread_Context *tctx, History *history){
     }
 }
 
-internal i1
+function i1
 history_get_record_count(History *history){
     i1 result = 0;
     if (history->activated){
@@ -165,7 +165,7 @@ history_get_record_count(History *history){
     return(result);
 }
 
-internal Record*
+function Record*
 history_get_record(History *history, i1 index){
     Record *result = 0;
     if (history->activated){
@@ -177,7 +177,7 @@ history_get_record(History *history, i1 index){
     return(result);
 }
 
-internal Record*
+function Record*
 history_get_sub_record(Record *record, i1 sub_index_one_based){
     Record *result = 0;
     if (record->kind == RecordKind_Group){
@@ -191,7 +191,7 @@ history_get_sub_record(Record *record, i1 sub_index_one_based){
     return(result);
 }
 
-internal Record*
+function Record*
 history_get_dummy_record(History *history){
  Record *result = 0;
  if (history->activated){
@@ -200,7 +200,7 @@ history_get_dummy_record(History *history){
  return(result);
 }
 
-internal void
+function void
 history__stash_record(History *history, Record *new_record){
  Assert(history->record_lookup.count == history->record_count);
  dll_insert_back(&history->records, &new_record->node);
@@ -209,13 +209,13 @@ history__stash_record(History *history, Record *new_record){
  Assert(history->record_lookup.count == history->record_count);
 }
 
-internal void
+function void
 history__free_single_node(History *history, Node *node){
     dll_remove(node);
     dll_insert(&history->free_records, node);
 }
 
-internal void
+function void
 history__free_nodes(History *history, i1 first_index, Node *first_node, Node *last_node){
     if (first_node == last_node){
         history__free_single_node(history, first_node);
@@ -242,7 +242,7 @@ history__free_nodes(History *history, i1 first_index, Node *first_node, Node *la
  history__shrink_array(&history->record_lookup, history->record_count);
 }
 
-internal void
+function void
 history_record_edit(Global_History *global_history, History *history, Gap_Buffer *buffer,
                     i64 pos_before_edit, Edit edit)
 {
@@ -272,7 +272,7 @@ history_record_edit(Global_History *global_history, History *history, Gap_Buffer
  }
 }
 
-internal void
+function void
 history_dump_records_after_index(History *history, i1 index){
     if (history->activated){
         Assert(history->record_lookup.count == history->record_count);
@@ -297,7 +297,7 @@ history_dump_records_after_index(History *history, i1 index){
     }
 }
 
-internal void
+function void
 history__optimize_group(Arena *scratch, History *history, Record *record){
     Assert(record->kind == RecordKind_Group);
     for (;;){
@@ -369,7 +369,7 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
     }
 }
 
-internal void
+function void
 history_merge_records(Arena *scratch, History *history, i1 first_index, i1 last_index){
     if (history->activated){
         Assert(history->record_lookup.count == history->record_count);

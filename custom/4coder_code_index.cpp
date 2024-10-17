@@ -394,9 +394,9 @@ cpp_parse_type_def(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
     }
     else if (token->kind == TokenBaseKind_Keyword){
       String lexeme = string_substring(state->contents, Ii64(token));
-      if (string_match(lexeme, string_u8_litexpr("struct")) ||
-          string_match(lexeme, string_u8_litexpr("union")) ||
-          string_match(lexeme, string_u8_litexpr("enum"))){
+      if (string_match(lexeme, strlit("struct")) ||
+          string_match(lexeme, strlit("union")) ||
+          string_match(lexeme, strlit("enum"))){
         break;
       }
     }

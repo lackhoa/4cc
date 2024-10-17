@@ -50,14 +50,14 @@ def_audio_play_clip(Audio_Clip clip, Audio_Control *control){
  def_audio_end_ticket_mutex(Crunky);
 }
 
-internal b32
+function b32
 def_audio_is_playing(Audio_Control *control){
  Audio_System *Crunky = &def_audio_system;
  b32 result = (Crunky->generation - control->generation < 2);
  return(result);
 }
 
-internal void
+function void
 def_audio_stop(Audio_Control *control){
  Audio_System *Crunky = &def_audio_system;
  def_audio_begin_ticket_mutex(Crunky);

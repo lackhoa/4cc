@@ -26,7 +26,7 @@ struct Fancy_Block{
     i1 line_count;
 };
 
-internal FColor
+function FColor
 fcolor_argb(ARGB_Color color)
 {
     FColor result = {};
@@ -37,25 +37,25 @@ fcolor_argb(ARGB_Color color)
     }
     return(result);
 }
-internal FColor
+function FColor
 fcolor_argb(v4 color)
 {
     return(fcolor_argb(argb_pack(color)));
 }
-internal FColor
+function FColor
 fcolor_argb(f32 r, f32 g, f32 b, f32 a)
 {
     return(fcolor_argb(argb_pack(V4(r, g, b, a))));
 }
 
-internal FColor
+function FColor
 fcolor_id(Managed_ID id){
     FColor result = {};
     result.id = (ID_Color)id;
     return(result);
 }
 
-internal FColor
+function FColor
 fcolor_id(Managed_ID id, u32 sub_index){
     FColor result = {};
     result.id = (ID_Color)id;
@@ -63,7 +63,7 @@ fcolor_id(Managed_ID id, u32 sub_index){
     return(result);
 }
 
-internal ARGB_Color
+function ARGB_Color
 argb_color_blend(ARGB_Color a, f32 at, ARGB_Color b, f32 bt)
 {
     Vec4_f32 av = argb_unpack(a);
@@ -71,13 +71,13 @@ argb_color_blend(ARGB_Color a, f32 at, ARGB_Color b, f32 bt)
     Vec4_f32 value = at*av + bt*bv;
     return(argb_pack(value));
 }
-internal ARGB_Color
+function ARGB_Color
 argb_color_blend(ARGB_Color a, f32 t, ARGB_Color b)
 {
     return(argb_color_blend(a, 1.f - t, b, t));
 }
 
-internal ARGB_Color
+function ARGB_Color
 fcolor_resolve(FColor color)
 {
     ARGB_Color result = 0;
@@ -106,43 +106,43 @@ fcolor_resolve(Managed_ID color_id)
     return(fcolor_resolve(fcolor_id(color_id)));
 }
 
-internal FColor
+function FColor
 fcolor_change_alpha(FColor color, f32 alpha)
 {
     Vec4_f32 v = argb_unpack(fcolor_resolve(color));
     v.a = alpha;
     return(fcolor_argb(argb_pack(v)));
 }
-internal FColor
+function FColor
 fcolor_blend(FColor a, f32 at, FColor b, f32 bt){
     ARGB_Color a_argb = fcolor_resolve(a);
     ARGB_Color b_argb = fcolor_resolve(b);
     return(fcolor_argb(argb_color_blend(a_argb, at, b_argb, bt)));
 }
-internal FColor
+function FColor
 fcolor_blend(FColor a, f32 t, FColor b){
     return(fcolor_blend(a, 1.f - t, b, t));
 }
 
-internal FColor
+function FColor
 fcolor_zero(void){
     FColor result = {};
     return(result);
 }
 
-internal b32
+function b32
 fcolor_is_valid(FColor color){
     return(color.argb != 0);
 }
 
 ////////////////////////////////
 
-internal void
+function void
 push_fancy_string(Fancy_Line *line, Fancy_String *string){
     sll_queue_push(line->first, line->last, string);
 }
 
-internal void
+function void
 push_fancy_line(Fancy_Block *block, Fancy_Line *line){
     sll_queue_push(block->first, block->last, line);
     block->line_count += 1;
@@ -150,7 +150,7 @@ push_fancy_line(Fancy_Block *block, Fancy_Line *line){
 
 ////////////////////////////////
 
-internal Fancy_String*
+function Fancy_String*
 fill_fancy_string(Fancy_String *ptr, Face_ID face, FColor fore, f32 pre_margin, f32 post_margin,
                   String value){
     ptr->value = value;
@@ -161,7 +161,7 @@ fill_fancy_string(Fancy_String *ptr, Face_ID face, FColor fore, f32 pre_margin, 
     return(ptr);
 }
 
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                   f32 pre_margin, f32 post_margin, String value){
     Fancy_String *result = push_array_zero(arena, Fancy_String, 1);
@@ -172,87 +172,87 @@ push_fancy_string(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
     return(result);
 }
 
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                   String value){
     return(push_fancy_string(arena, line, face, fore, 0, 0, value));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, Face_ID face,
                   f32 pre_margin, f32 post_margin, String value){
     return(push_fancy_string(arena, line, face, fcolor_zero(),
                              pre_margin, post_margin, value));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, FColor fore,
                   f32 pre_margin, f32 post_margin, String value){
     return(push_fancy_string(arena, line, 0, fore, pre_margin, post_margin, value));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, Face_ID face, String value){
     return(push_fancy_string(arena, line, face, fcolor_zero(), 0, 0, value));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, FColor color, String value){
     return(push_fancy_string(arena, line, 0, color, 0, 0, value));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, f32 pre_margin, f32 post_margin,
                   String value){
     return(push_fancy_string(arena, line, 0, fcolor_zero(), pre_margin, post_margin,
                              value));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, String value){
     return(push_fancy_string(arena, line, 0, fcolor_zero(), 0, 0, value));
 }
 
 ////////////////////////////////
 
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                     f32 pre_margin, f32 post_margin,
                     char *format, va_list args){
     return(push_fancy_string(arena, line, face, fore, pre_margin, post_margin,
                              push_stringfv(arena, format, args, true)));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                     char *format, va_list args){
     return(push_fancy_stringfv(arena, line, face, fore, 0, 0, format, args));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line, Face_ID face,
                     f32 pre_margin, f32 post_margin,
                     char *format, va_list args){
     return(push_fancy_stringfv(arena, line, face, fcolor_zero(),
                                pre_margin, post_margin, format, args));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line, FColor fore,
                     f32 pre_margin, f32 post_margin,
                     char *format, va_list args){
     return(push_fancy_stringfv(arena, line, 0, fore, pre_margin, post_margin,
                                format, args));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line, Face_ID face,
                     char *format, va_list args){
     return(push_fancy_stringfv(arena, line, face, fcolor_zero(), 0, 0,
                                format, args));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line, FColor color,
                     char *format, va_list args){
     return(push_fancy_stringfv(arena, line, 0, color, 0, 0, format, args));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line, f32 pre_margin, f32 post_margin,
                     char *format, va_list args){
     return(push_fancy_stringfv(arena, line, 0, fcolor_zero(), pre_margin, post_margin,
                                format, args));
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringfv(Arena *arena, Fancy_Line *line,
                     char *format, va_list args){
     return(push_fancy_stringfv(arena, line, 0, fcolor_zero(), 0, 0, format, args));
@@ -262,7 +262,7 @@ push_fancy_stringfv(Arena *arena, Fancy_Line *line,
 #define StringFPass(N) Fancy_String *result = N
 #define StringFEnd() va_end(args); return(result)
 
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringf(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                    f32 pre_margin, f32 post_margin,
                    char *format, ...){
@@ -271,14 +271,14 @@ push_fancy_stringf(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                                   push_stringfv(arena, format, args, true)));
     StringFEnd();
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringf(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                    char *format, ...){
     StringFBegin();
     StringFPass(push_fancy_stringfv(arena, line, face, fore, 0, 0, format, args));
     StringFEnd();
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringf(Arena *arena, Fancy_Line *line, Face_ID face,
                    f32 pre_margin, f32 post_margin,
                    char *format, ...){
@@ -287,7 +287,7 @@ push_fancy_stringf(Arena *arena, Fancy_Line *line, Face_ID face,
                                     pre_margin, post_margin, format, args));
     StringFEnd();
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringf(Arena *arena, Fancy_Line *line, FColor fore,
                    f32 pre_margin, f32 post_margin,
                    char *format, ...){
@@ -296,7 +296,7 @@ push_fancy_stringf(Arena *arena, Fancy_Line *line, FColor fore,
                                     format, args));
     StringFEnd();
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringf(Arena *arena, Fancy_Line *line, Face_ID face,
                    char *format, ...){
     StringFBegin();
@@ -304,14 +304,14 @@ push_fancy_stringf(Arena *arena, Fancy_Line *line, Face_ID face,
                                     format, args));
     StringFEnd();
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringf(Arena *arena, Fancy_Line *line, FColor color,
                    char *format, ...){
     StringFBegin();
     StringFPass(push_fancy_stringfv(arena, line, 0, color, 0, 0, format, args));
     StringFEnd();
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringf(Arena *arena, Fancy_Line *line, f32 pre_margin, f32 post_margin,
                    char *format, ...){
     StringFBegin();
@@ -319,7 +319,7 @@ push_fancy_stringf(Arena *arena, Fancy_Line *line, f32 pre_margin, f32 post_marg
                                     pre_margin, post_margin, format, args));
     StringFEnd();
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_stringf(Arena *arena, Fancy_Line *line,
                    char *format, ...){
     StringFBegin();
@@ -329,7 +329,7 @@ push_fancy_stringf(Arena *arena, Fancy_Line *line,
 
 ////////////////////////////////
 
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                         f32 pre_margin, f32 post_margin,
                         String value, u32 max){
@@ -342,7 +342,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
                                   "%-*.*s...", max - 3, string_expand(value)));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                         String value, u32 max){
     if (value.size <= max){
@@ -354,7 +354,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
                                   "%-*.*s...", max - 3, string_expand(value)));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
                         f32 pre_margin, f32 post_margin, String value,
                         u32 max){
@@ -369,7 +369,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
                                   "%-*.*s...", max - 3, string_expand(value)));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
                         f32 pre_margin, f32 post_margin, String value,
                         u32 max){
@@ -382,7 +382,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
                                   "%-*.*s...", max - 3, string_expand(value)));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
                         String value, u32 max){
     if (value.size <= max){
@@ -394,7 +394,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, Face_ID face,
                                   "%-*.*s...", max - 3, string_expand(value)));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
                         String value, u32 max)
 {
@@ -408,7 +408,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, FColor fore,
         return(push_fancy_stringf(arena, line, (Face_ID)0, fore, 0.f, 0.f, format, max - 3, string_expand(value)));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line,
                         f32 pre_margin, f32 post_margin, String value,
                         u32 max){
@@ -425,7 +425,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line,
                                   format, max - 3, string_expand(value)));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_fixed(Arena *arena, Fancy_Line *line, String value,
                         u32 max){
     if (value.size <= max){
@@ -440,7 +440,7 @@ push_fancy_string_fixed(Arena *arena, Fancy_Line *line, String value,
     }
 }
 
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                         f32 pre_margin, f32 post_margin,
                         String value, u32 max){
@@ -455,7 +455,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
                                   format, max - 3, value.str));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                         String value, u32 max){
     if (value.size <= max){
@@ -467,7 +467,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face, FColor for
                                   "%.*s...", max - 3, value.str));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
                         f32 pre_margin, f32 post_margin, String value,
                         u32 max){
@@ -484,7 +484,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
                                   format, max - 3, value.str));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
                         f32 pre_margin, f32 post_margin, String value,
                         u32 max){
@@ -497,7 +497,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
                                   "%.*s...", max - 3, value.str));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
                         String value, u32 max){
     if (value.size <= max){
@@ -509,7 +509,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, Face_ID face,
                                   "%.*s...", max - 3, value.str));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
                         String value, u32 max){
     if (value.size <= max){
@@ -523,7 +523,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, FColor fore,
                                   format, max - 3, value.str));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line,
                         f32 pre_margin, f32 post_margin, String value,
                         u32 max){
@@ -540,7 +540,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line,
                                   format, max - 3, value.str));
     }
 }
-internal Fancy_String*
+function Fancy_String*
 push_fancy_string_trunc(Arena *arena, Fancy_Line *line, String value,
                         u32 max){
     if (value.size <= max){
@@ -557,7 +557,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, String value,
 
 ////////////////////////////////
 
-internal Fancy_Line*
+function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block, Face_ID face, FColor fore,
                 String text){
     Fancy_Line *line = push_array_zero(arena, Fancy_Line, 1);
@@ -571,38 +571,38 @@ push_fancy_line(Arena *arena, Fancy_Block *block, Face_ID face, FColor fore,
     }
     return(line);
 }
-internal Fancy_Line*
+function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block, Face_ID face, FColor fcolor){
     return(push_fancy_line(arena, block, face, fcolor, SCu8()));
 }
-internal Fancy_Line*
+function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block, Face_ID face, String val){
     return(push_fancy_line(arena, block, face, fcolor_zero(), val));
 }
-internal Fancy_Line*
+function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block, FColor color, String val){
     return(push_fancy_line(arena, block, 0, color, val));
 }
-internal Fancy_Line*
+function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block, Face_ID face){
     return(push_fancy_line(arena, block, face, fcolor_zero(), SCu8()));
 }
-internal Fancy_Line*
+function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block, FColor color){
     return(push_fancy_line(arena, block, 0, color, SCu8()));
 }
-internal Fancy_Line*
+function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block, String val){
     return(push_fancy_line(arena, block, 0, fcolor_zero(), val));
 }
-internal Fancy_Line*
+function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block){
     return(push_fancy_line(arena, block, 0, fcolor_zero(), SCu8()));
 }
 
 ////////////////////////////////
 
-internal f32
+function f32
 get_fancy_string_width__inner(App *app, Face_ID face,
                               Fancy_String *string)
 {
@@ -625,7 +625,7 @@ get_fancy_string_width__inner(App *app, Face_ID face,
     return(result);
 }
 
-internal f32
+function f32
 get_fancy_string_height__inner(App *app, Face_ID face, Fancy_String *string){
     f32 result = 0.f;
     if (face != 0)
@@ -644,7 +644,7 @@ get_fancy_string_height__inner(App *app, Face_ID face, Fancy_String *string){
     return(result);
 }
 
-internal f32
+function f32
 get_fancy_string_text_height__inner(App *app, Face_ID face, Fancy_String *string){
     f32 result = 0.f;
     if (face != 0){
@@ -662,7 +662,7 @@ get_fancy_string_text_height__inner(App *app, Face_ID face, Fancy_String *string
     return(result);
 }
 
-internal Vec2_f32
+function Vec2_f32
 draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *first_string, Vec2_f32 p, u32 flags, Vec2_f32 delta)
 {
     f32 base_line = 0.f;
@@ -724,7 +724,7 @@ draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *firs
     return(p);
 }
 
-internal f32
+function f32
 get_fancy_string_width(App *app, Face_ID face,
                        Fancy_String *string){
     Fancy_String *next = string->next;
@@ -734,7 +734,7 @@ get_fancy_string_width(App *app, Face_ID face,
     return(result);
 }
 
-internal f32
+function f32
 get_fancy_string_height(App *app, Face_ID face,
                         Fancy_String *string){
     Fancy_String *next = string->next;
@@ -744,7 +744,7 @@ get_fancy_string_height(App *app, Face_ID face,
     return(result);
 }
 
-internal f32
+function f32
 get_fancy_string_text_height(App *app, Face_ID face,
                              Fancy_String *string){
     Fancy_String *next = string->next;
@@ -754,7 +754,7 @@ get_fancy_string_text_height(App *app, Face_ID face,
     return(result);
 }
 
-internal Vec2_f32
+function Vec2_f32
 get_fancy_string_dim(App *app, Face_ID face, Fancy_String *string){
     Fancy_String *next = string->next;
     string->next = 0;
@@ -764,7 +764,7 @@ get_fancy_string_dim(App *app, Face_ID face, Fancy_String *string){
     return(result);
 }
 
-internal Vec2_f32
+function Vec2_f32
 draw_fancy_string(App *app, Face_ID face, FColor fore,
                   Fancy_String *string, Vec2_f32 p, u32 flags, Vec2_f32 delta){
     Fancy_String *next = string->next;
@@ -774,7 +774,7 @@ draw_fancy_string(App *app, Face_ID face, FColor fore,
     return(result);
 }
 
-internal f32
+function f32
 get_fancy_line_width(App *app, Face_ID face, Fancy_Line *line){
     f32 result = 0.f;
     if (line != 0){
@@ -786,7 +786,7 @@ get_fancy_line_width(App *app, Face_ID face, Fancy_Line *line){
     return(result);
 }
 
-internal f32
+function f32
 get_fancy_line_height(App *app, Face_ID face, Fancy_Line *line){
     f32 result = 0.f;
     if (line != 0){
@@ -798,7 +798,7 @@ get_fancy_line_height(App *app, Face_ID face, Fancy_Line *line){
     return(result);
 }
 
-internal f32
+function f32
 get_fancy_line_text_height(App *app, Face_ID face, Fancy_Line *line){
     f32 result = 0.f;
     if (line != 0){
@@ -810,7 +810,7 @@ get_fancy_line_text_height(App *app, Face_ID face, Fancy_Line *line){
     return(result);
 }
 
-internal Vec2_f32
+function Vec2_f32
 get_fancy_line_dim(App *app, Face_ID face, Fancy_Line *line){
     Vec2_f32 result = {};
     if (line != 0){
@@ -822,7 +822,7 @@ get_fancy_line_dim(App *app, Face_ID face, Fancy_Line *line){
     return(result);
 }
 
-internal Vec2_f32
+function Vec2_f32
 draw_fancy_line(App *app, Face_ID face, FColor fore,
                 Fancy_Line *line, Vec2_f32 p, u32 flags, Vec2_f32 delta){
     Vec2_f32 result = {};
@@ -840,7 +840,7 @@ draw_fancy_line(App *app, Face_ID face, FColor fore,
     return(result);
 }
 
-internal f32
+function f32
 get_fancy_block_width(App *app, Face_ID face, Fancy_Block *block){
     f32 width = 0.f;
     for (Fancy_Line *node = block->first;
@@ -852,7 +852,7 @@ get_fancy_block_width(App *app, Face_ID face, Fancy_Block *block){
     return(width);
 }
 
-internal f32
+function f32
 get_fancy_block_height(App *app, Face_ID face, Fancy_Block *block){
     f32 height = 0.f;
     for (Fancy_Line *node = block->first;
@@ -863,7 +863,7 @@ get_fancy_block_height(App *app, Face_ID face, Fancy_Block *block){
     return(height);
 }
 
-internal Vec2_f32
+function Vec2_f32
 get_fancy_block_dim(App *app, Face_ID face, Fancy_Block *block){
     Vec2_f32 result = {};
     result.x = get_fancy_block_width(app, face, block);
@@ -871,7 +871,7 @@ get_fancy_block_dim(App *app, Face_ID face, Fancy_Block *block){
     return(result);
 }
 
-internal void
+function void
 draw_fancy_block(App *app, Face_ID face, FColor fore,
                  Fancy_Block *block, Vec2_f32 p, u32 flags, Vec2_f32 delta){
     for (Fancy_Line *node = block->first;
@@ -882,24 +882,24 @@ draw_fancy_block(App *app, Face_ID face, FColor fore,
     }
 }
 
-internal Vec2_f32
+function Vec2_f32
 draw_fancy_string(App *app, Face_ID face, FColor fore,
                   Fancy_String *string, Vec2_f32 p){
     return(draw_fancy_string(app, face, fore, string, p, 0, V2(1.f, 0.f)));
 }
 
-internal Vec2_f32
+function Vec2_f32
 draw_fancy_string(App *app, Fancy_String *string, Vec2_f32 p){
     return(draw_fancy_string(app, 0, fcolor_zero(), string, p, 0, V2(1.f, 0.f)));
 }
 
-internal Vec2_f32
+function Vec2_f32
 draw_fancy_line(App *app, Face_ID face, FColor fore,
                 Fancy_Line *line, Vec2_f32 p){
     return(draw_fancy_line(app, face, fore, line, p, 0, V2(1.f, 0.f)));
 }
 
-internal void
+function void
 draw_fancy_block(App *app, Face_ID face, FColor fore,
                  Fancy_Block *block, Vec2_f32 p)
 {

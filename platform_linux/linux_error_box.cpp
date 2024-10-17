@@ -11,7 +11,7 @@
 // TOP
 
 // HACK(allen): // NOTE(inso): this was a quick hack, might need some cleanup.
-internal void
+function void
 system_error_box(char *msg){
     fprintf(stderr, "Fatal Error: %s\n", msg);
     //LOGF("Fatal Error: %s\n", msg);

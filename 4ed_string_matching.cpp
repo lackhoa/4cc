@@ -9,7 +9,7 @@
 
 // TOP
 
-internal u64_Array
+function u64_Array
 string_compute_prefix_table(Arena *arena, String string, Scan_Direction direction){
     u64_Array array = {};
     array.count = (i1)(string.size);
@@ -45,7 +45,7 @@ string_compute_prefix_table(Arena *arena, String string, Scan_Direction directio
     return(array);
 }
 
-internal u64_Array
+function u64_Array
 string_compute_needle_jump_table(Arena *arena, u64_Array longest_prefixes){
     u64_Array array = {};
     array.count = longest_prefixes.count + 1;
@@ -57,7 +57,7 @@ string_compute_needle_jump_table(Arena *arena, u64_Array longest_prefixes){
     return(array);
 }
 
-internal u64_Array
+function u64_Array
 string_compute_needle_jump_table(Arena *arena, String needle, Scan_Direction direction){
     u64_Array prefix_table = string_compute_prefix_table(arena, needle, direction);
     return(string_compute_needle_jump_table(arena, prefix_table));
@@ -65,7 +65,7 @@ string_compute_needle_jump_table(Arena *arena, String needle, Scan_Direction dir
 
 #define character_predicate_check(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
 
-internal String_Match_List
+function String_Match_List
 find_matches_forward(Arena *arena, i1 maximum_output_count,
                      List_String chunks, String8 needle,
                      u64_Array jump_table, Character_Predicate *predicate,
@@ -200,7 +200,7 @@ find_matches_forward(Arena *arena, i1 maximum_output_count,
     return(list);
 }
 
-internal String_Match_List
+function String_Match_List
 find_matches_backward(Arena *arena, i1 maximum_output_count,
                       List_String chunks, String needle,
                       u64_Array jump_table, Character_Predicate *predicate,
@@ -329,7 +329,7 @@ find_matches_backward(Arena *arena, i1 maximum_output_count,
     return(list);
 }
 
-internal String_Match_List
+function String_Match_List
 find_matches(Arena *arena, i1 maximum_output_count,
              List_String chunks, String needle,
              u64_Array jump_table, Character_Predicate *predicate,

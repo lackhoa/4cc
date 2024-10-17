@@ -1353,7 +1353,7 @@ panel_set_split(App *app, Panel_ID panel_id, Panel_Split_Kind kind,
                 
                 default:
                 {
-                    print_message(app, string_u8_litexpr("Invalid split kind passed to panel_set_split, no change made to view layout"));
+                    print_message(app, strlit("Invalid split kind passed to panel_set_split, no change made to view layout"));
                 }break;
             }
             layout_propogate_sizes_down_from_node(layout, panel);
@@ -2030,7 +2030,7 @@ managed_scope_get_attachment(App *app, Managed_Scope scope, Managed_ID id, u64 s
         else{
 #define M \
 "ERROR: scope attachment already exists with a size smaller than the requested size; no attachment pointer can be returned."
-            print_message(app, string_u8_litexpr(M));
+            print_message(app, strlit(M));
 #undef M
         }
     }
@@ -2227,7 +2227,7 @@ get_next_input_raw(App *app)
     else
     {
 #define M "ERROR: get_next_input called in a hook that may not make calls to blocking APIs"
-        print_message(app, string_u8_litexpr(M));
+        print_message(app, strlit(M));
 #undef M
     }
     return(result);

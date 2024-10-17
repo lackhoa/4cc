@@ -517,38 +517,30 @@ F4_Index_ParseComment(F4_Index_ParseCtx *ctx, Token *token)
         else if(i+4 < string.size && 
                 string_match(S8Lit("TODO"), string_substring(string, Ii64(i, i + 4))))
         {
-            Range_i64 range = Ii64(token);
-            range.min += i;
-            F4_Index_MakeNote(ctx, range, F4_Index_NoteKind_CommentToDo, 0);
-        }
-    }
+   Range_i64 range = Ii64(token);
+   range.min += i;
+   F4_Index_MakeNote(ctx, range, F4_Index_NoteKind_CommentToDo, 0);
+  }
+ }
 }
 
 function void
-F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc)
-{
-    for(;!ctx->done;)
-    {
-        Token *token = tkarr_read(&ctx->it);
-        if(preproc)
-        {
-            if(!(token->flags & TokenBaseFlag_PreprocessorBody) ||
-               token->kind == TokenBaseKind_Preprocessor)
-            {
-                break;
-            }
-        }
-        else
-        {
-            if(token->kind == TokenBaseKind_StatementClose ||
-               token->kind == TokenBaseKind_ScopeOpen ||
-               token->kind == TokenBaseKind_ParenOpen)
-            {
-                break;
-            }
-        }
-        if(!tkarr_inc_non_whitespace(&ctx->it))
-  {
+F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc) {
+ for(;!ctx->done;) {
+  Token *token = tkarr_read(&ctx->it);
+  if(preproc) {
+   if(!(token->flags & TokenBaseFlag_PreprocessorBody) ||
+      token->kind == TokenBaseKind_Preprocessor) {
+    break;
+   }
+  } else {
+   if(token->kind == TokenBaseKind_StatementClose ||
+      token->kind == TokenBaseKind_ScopeOpen ||
+      token->kind == TokenBaseKind_ParenOpen) {
+    break;
+   }
+  }
+  if(!tkarr_inc_non_whitespace(&ctx->it)) {
    break;
   }
  }

@@ -53,7 +53,7 @@
 #include "mac_objective_c_to_cpp_links.h"
 
 #undef function
-#undef internal
+#undef function
 #undef global
 #undef external
 #import <Cocoa/Cocoa.h>
@@ -77,7 +77,7 @@
 #include <time.h> // NOTE(allen): I don't know a better way to get Date_Time data; replace if there is a Mac low-level option time.h doesn't give milliseconds
 
 #define function static
-#define internal static
+#define function static
 #define global static
 #define external extern "C"
 
@@ -551,7 +551,7 @@ mac_get_clipboard_change_count(void){
     return(result);
 }
 
-internal void
+function void
 mac_post_clipboard(Arena *scratch, char *text, i1 len){
     NSPasteboard *board = [NSPasteboard generalPasteboard];
 
@@ -572,7 +572,7 @@ mac_post_clipboard(Arena *scratch, char *text, i1 len){
 
 ////////////////////////////////
 
-internal
+function
 system_get_clipboard_sig(){
     String result = {};
     u32 change_count = mac_get_clipboard_change_count();
@@ -600,7 +600,7 @@ system_get_clipboard_sig(){
     return(result);
 }
 
-internal
+function
 system_post_clipboard_sig(){
     Arena *arena = &mac_vars.clip_post_arena;
     if (arena->base_allocator == 0){
@@ -619,12 +619,12 @@ system_post_clipboard_sig(){
     }
 }
 
-internal
+function
 system_set_clipboard_catch_all_sig(){
     mac_vars.clip_catch_all = enabled?true:false;
 }
 
-internal
+function
 system_get_clipboard_catch_all_sig(){
     return(mac_vars.clip_catch_all);
 }

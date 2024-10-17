@@ -38,7 +38,7 @@ global F4_SyntaxOptions f4_syntax_opts[] =
 };
 global i1 f4_active_syntax_opt_idx = 0;
 
-internal void
+function void
 F4_TickColors(App *app, Frame_Info frame_info)
 {
     F4_SyntaxOptions opts = f4_syntax_opts[f4_active_syntax_opt_idx];
@@ -59,7 +59,7 @@ CUSTOM_DOC("Switches the syntax highlighting mode.")
     f4_active_syntax_opt_idx = (f4_active_syntax_opt_idx + 1) % ArrayCount(f4_syntax_opts);
 }
 
-internal String8
+function String8
 F4_SyntaxOptionString(void)
 {
     return f4_syntax_opts[f4_active_syntax_opt_idx].name;
@@ -80,7 +80,7 @@ struct ColorCtx
     keybinding_mode mode;
 };
 
-internal ColorCtx
+function ColorCtx
 ColorCtx_Token(Token token, Buffer_ID buffer)
 {
     ColorCtx ctx = {};
@@ -89,7 +89,7 @@ ColorCtx_Token(Token token, Buffer_ID buffer)
     return ctx;
 }
 
-internal ColorCtx
+function ColorCtx
 ColorCtx_Cursor(ColorFlags flags, keybinding_mode mode)
 {
     ColorCtx ctx = {};
@@ -98,7 +98,7 @@ ColorCtx_Cursor(ColorFlags flags, keybinding_mode mode)
     return ctx;
 }
 
-internal ARGB_Color
+function ARGB_Color
 F4_ARGBFromID(Color_Table table, Managed_ID id, int subindex)
 {
     ARGB_Color result = 0;
@@ -114,13 +114,13 @@ F4_ARGBFromID(Color_Table table, Managed_ID id, int subindex)
     return(result);
 }
 
-internal ARGB_Color
+function ARGB_Color
 F4_ARGBFromID(Color_Table table, Managed_ID id)
 {
     return F4_ARGBFromID(table, id, 0);
 }
 
-internal ARGB_Color
+function ARGB_Color
 F4_GetColor(App *app, ColorCtx ctx)
 {
     Color_Table table = active_color_table;

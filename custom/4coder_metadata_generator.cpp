@@ -535,10 +535,10 @@ extract_string(Reader *reader, String *str_out){
 function Meta_Command_Entry_Kind
 parse_command_kind(String kind){
     Meta_Command_Entry_Kind result = MetaCommandEntryKind_ERROR;
-    if (string_match(kind, string_u8_litexpr("Normal"))){
+    if (string_match(kind, strlit("Normal"))){
         result = MetaCommandEntryKind_Normal;
     }
-    else if (string_match(kind, string_u8_litexpr("UI"))){
+    else if (string_match(kind, strlit("UI"))){
         result = MetaCommandEntryKind_UI;
     }
     return(result);
@@ -695,7 +695,7 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
         if (token.kind == TokenBaseKind_Identifier){
             if (!HasFlag(token.flags, TokenBaseFlag_PreprocessorBody)){
                 String lexeme = token_str(text, token);
-                if (string_match(lexeme, string_u8_litexpr("CUSTOM_DOC"))){
+                if (string_match(lexeme, strlit("CUSTOM_DOC"))){
                     Temp_Read temp_read = begin_temp_read(reader);
                 
                 b32 found_start_pos = false;
@@ -703,7 +703,7 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
                     Token p_token = prev_token(reader);
                     if (p_token.kind == TokenBaseKind_Identifier){
                         String p_lexeme = token_str(text, p_token);
-                        if (string_match(p_lexeme, string_u8_litexpr("CUSTOM_COMMAND"))){
+                        if (string_match(p_lexeme, strlit("CUSTOM_COMMAND"))){
                             found_start_pos = true;
                             break;
                         }
@@ -722,7 +722,7 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
                     }
                 }
                 }
-                else if (string_match(lexeme, string_u8_litexpr("CUSTOM_ID"))){
+                else if (string_match(lexeme, strlit("CUSTOM_ID"))){
                     Temp_Read temp_read = begin_temp_read(reader);
                     prev_token(reader);
                     if (!parse_custom_id(arena, entry_arrays, reader)){
@@ -818,7 +818,7 @@ main(int argc, char **argv){
         show_usage(argc, argv);
     }
     
-    b32 recursive = string_match(SCu8(argv[1]), string_u8_litexpr("-R"));
+    b32 recursive = string_match(SCu8(argv[1]), strlit("-R"));
     if (recursive && argc < 4){
         show_usage(argc, argv);
     }
@@ -956,7 +956,7 @@ main(int argc, char **argv){
         for (Meta_ID_Entry *node = entry_arrays.first_id;
              node != 0;
              node = node->next){
-            fprintf(id_out, "%.*s = managed_id_declare(app, string_u8_litexpr(\"%.*s\"), string_u8_litexpr(\"%.*s\"));\n",
+            fprintf(id_out, "%.*s = managed_id_declare(app, strlit(\"%.*s\"), strlit(\"%.*s\"));\n",
                     string_expand(node->id_name),
                     string_expand(node->group_name),
                     string_expand(node->id_name));

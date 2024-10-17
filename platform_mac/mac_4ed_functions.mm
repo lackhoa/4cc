@@ -133,7 +133,7 @@ system_get_file_list_sig(){
             char *c_file_name = entry->d_name;
             String file_name = SCu8(c_file_name);
 
-            if (string_match(file_name, string_u8_litexpr(".")) || string_match(file_name, string_u8_litexpr(".."))){
+            if (string_match(file_name, strlit(".")) || string_match(file_name, strlit(".."))){
                 continue;
             }
 
@@ -947,12 +947,12 @@ system_set_key_mode_sig(){
     mac_vars.key_mode = mode;
 }
 
-internal void
+function void
 system_set_source_mixer(void* ctx, Audio_Mix_Sources_Function* mix_func){
     // TODO(allen): Audio on Mac
 }
 
-internal void
+function void
 system_set_destination_mixer(Audio_Mix_Destination_Function* mix_func){
     // TODO(allen): Audio on Mac
 }

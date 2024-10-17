@@ -35,6 +35,7 @@
 #define ed_tkarr_inc_sig() Token* ed_tkarr_inc(Token_Iterator_Array* it)
 #define ed_token_it_read_sig() Token* ed_token_it_read(Token_Iterator* it)
 #define ed_token_it_inc_all_sig() Token* ed_token_it_inc_all(Token_Iterator* it)
+#define ed_token_it_dec_all_sig() Token* ed_token_it_dec_all(Token_Iterator* it)
 #define ed_token_it_inc_sig() Token* ed_token_it_inc(Token_Iterator* it)
 #define ed_token_it_dec_sig() Token* ed_token_it_dec(Token_Iterator* it)
 #define ed_set_y_up_sig() void ed_set_y_up(Render_Target* target, Render_Config* config)
@@ -74,6 +75,7 @@ typedef Token* ed_tkarr_read_type(Token_Iterator_Array* it);
 typedef Token* ed_tkarr_inc_type(Token_Iterator_Array* it);
 typedef Token* ed_token_it_read_type(Token_Iterator* it);
 typedef Token* ed_token_it_inc_all_type(Token_Iterator* it);
+typedef Token* ed_token_it_dec_all_type(Token_Iterator* it);
 typedef Token* ed_token_it_inc_type(Token_Iterator* it);
 typedef Token* ed_token_it_dec_type(Token_Iterator* it);
 typedef void ed_set_y_up_type(Render_Target* target, Render_Config* config);
@@ -114,51 +116,53 @@ ed_tkarr_read_type *tkarr_read;
 ed_tkarr_inc_type *tkarr_inc;
 ed_token_it_read_type *token_it_read;
 ed_token_it_inc_all_type *token_it_inc_all;
+ed_token_it_dec_all_type *token_it_dec_all;
 ed_token_it_inc_type *token_it_inc;
 ed_token_it_dec_type *token_it_dec;
 ed_set_y_up_type *set_y_up;
 ed_draw_new_group_type *draw_new_group;
 };
 #if defined(STATIC_LINK_API)
-internal b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
-internal String8 push_buffer_base_name(App* app, Arena* arena, Buffer_ID buffer_id);
-internal View_ID get_active_view(App* app, Access_Flag access);
-internal Buffer_ID view_get_buffer(App* app, View_ID view_id, Access_Flag access);
-internal i64 view_get_cursor_pos(App* app, View_ID view_id);
-internal b32 view_set_cursor(App* app, View_ID view_id, Buffer_Seek seek);
-internal void print_message(App* app, String message);
-internal v2 draw_string_oriented(App* app, Face_ID font_id, ARGB_Color color, String8 str, v2 point, u32 flags, v2 delta);
-internal f32 get_string_advance(App* app, Face_ID font_id, String str);
-internal View_ID get_other_primary_view(App* app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail);
-internal b32 is_view_to_the_right(App* app, View_ID view);
-internal void DEBUG_send_entry(Debug_Entry entry);
-internal Render_Target* draw_get_target(App* app);
-internal void vim_set_bottom_text(String msg);
-internal void change_active_primary_view(App* app);
-internal String push_token_lexeme(App* app, Arena* arena, Buffer_ID buffer, Token* token);
-internal User_Input get_next_input(App* app, Event_Property use_flags, Event_Property abort_flags);
-internal void draw__push_vertices(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type);
-internal void push_object_transform_to_target(Render_Target* target, mat4* transform);
-internal Token_Iterator_Array get_token_it_on_current_line(App* app, Buffer_ID buffer, i64* line_end_pos);
-internal b32 fui_editor_ui_loop(App* app);
-internal void view_set_buffer_named(App* app, View_ID view, String8 name);
-internal Buffer_Seek seek_line_col(i64 line, i64 col);
-internal void push_image(Render_Target* target, char* filename, v3 o, v3 x, v3 y, argb color, u32 prim_id);
-internal void switch_to_mouse_panel(App* app);
-internal i1 mouse_viewport_id(App* app);
-internal b32 get_confirmation_from_user(App* app, String query);
-internal i64 get_current_line_number2(App* app, View_ID view, Buffer_ID buffer);
-internal i64 get_current_line_number(App* app);
-internal String system_get_path(Arena* arena, System_Path_Code path_code);
-internal File_List system_get_file_list(Arena* arena, String directory);
-internal Token* tkarr_read(Token_Iterator_Array* it);
-internal Token* tkarr_inc(Token_Iterator_Array* it);
-internal Token* token_it_read(Token_Iterator* it);
-internal Token* token_it_inc_all(Token_Iterator* it);
-internal Token* token_it_inc(Token_Iterator* it);
-internal Token* token_it_dec(Token_Iterator* it);
-internal void set_y_up(Render_Target* target, Render_Config* config);
-internal Render_Config* draw_new_group(Render_Target* target);
+function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
+function String8 push_buffer_base_name(App* app, Arena* arena, Buffer_ID buffer_id);
+function View_ID get_active_view(App* app, Access_Flag access);
+function Buffer_ID view_get_buffer(App* app, View_ID view_id, Access_Flag access);
+function i64 view_get_cursor_pos(App* app, View_ID view_id);
+function b32 view_set_cursor(App* app, View_ID view_id, Buffer_Seek seek);
+function void print_message(App* app, String message);
+function v2 draw_string_oriented(App* app, Face_ID font_id, ARGB_Color color, String8 str, v2 point, u32 flags, v2 delta);
+function f32 get_string_advance(App* app, Face_ID font_id, String str);
+function View_ID get_other_primary_view(App* app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail);
+function b32 is_view_to_the_right(App* app, View_ID view);
+function void DEBUG_send_entry(Debug_Entry entry);
+function Render_Target* draw_get_target(App* app);
+function void vim_set_bottom_text(String msg);
+function void change_active_primary_view(App* app);
+function String push_token_lexeme(App* app, Arena* arena, Buffer_ID buffer, Token* token);
+function User_Input get_next_input(App* app, Event_Property use_flags, Event_Property abort_flags);
+function void draw__push_vertices(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type);
+function void push_object_transform_to_target(Render_Target* target, mat4* transform);
+function Token_Iterator_Array get_token_it_on_current_line(App* app, Buffer_ID buffer, i64* line_end_pos);
+function b32 fui_editor_ui_loop(App* app);
+function void view_set_buffer_named(App* app, View_ID view, String8 name);
+function Buffer_Seek seek_line_col(i64 line, i64 col);
+function void push_image(Render_Target* target, char* filename, v3 o, v3 x, v3 y, argb color, u32 prim_id);
+function void switch_to_mouse_panel(App* app);
+function i1 mouse_viewport_id(App* app);
+function b32 get_confirmation_from_user(App* app, String query);
+function i64 get_current_line_number2(App* app, View_ID view, Buffer_ID buffer);
+function i64 get_current_line_number(App* app);
+function String system_get_path(Arena* arena, System_Path_Code path_code);
+function File_List system_get_file_list(Arena* arena, String directory);
+function Token* tkarr_read(Token_Iterator_Array* it);
+function Token* tkarr_inc(Token_Iterator_Array* it);
+function Token* token_it_read(Token_Iterator* it);
+function Token* token_it_inc_all(Token_Iterator* it);
+function Token* token_it_dec_all(Token_Iterator* it);
+function Token* token_it_inc(Token_Iterator* it);
+function Token* token_it_dec(Token_Iterator* it);
+function void set_y_up(Render_Target* target, Render_Config* config);
+function Render_Config* draw_new_group(Render_Target* target);
 #undef STATIC_LINK_API
 #elif defined(DYNAMIC_LINK_API)
 #ifndef STORAGE_CLASS
@@ -199,6 +203,7 @@ STORAGE_CLASS ed_tkarr_read_type *tkarr_read;
 STORAGE_CLASS ed_tkarr_inc_type *tkarr_inc;
 STORAGE_CLASS ed_token_it_read_type *token_it_read;
 STORAGE_CLASS ed_token_it_inc_all_type *token_it_inc_all;
+STORAGE_CLASS ed_token_it_dec_all_type *token_it_dec_all;
 STORAGE_CLASS ed_token_it_inc_type *token_it_inc;
 STORAGE_CLASS ed_token_it_dec_type *token_it_dec;
 STORAGE_CLASS ed_set_y_up_type *set_y_up;

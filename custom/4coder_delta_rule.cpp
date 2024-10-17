@@ -138,7 +138,7 @@ delta_apply(App *app, View_ID view,
 
 ////////////////////////////////
 
-internal Smooth_Step
+function Smooth_Step
 smooth_camera_step(f32 target, f32 v, f32 S, f32 T){
     Smooth_Step step = {};
     step.v = v;

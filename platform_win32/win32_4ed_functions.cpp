@@ -181,7 +181,7 @@ system_get_path(Arena* arena, System_Path_Code path_code)
             {
                 has_stashed_4ed_path = true;
                 local_const i1 binary_path_capacity = KB(32);
-                u8 *memory = (u8*)system_memory_allocate(binary_path_capacity, string_u8_litexpr(filename_line_number));
+                u8 *memory = (u8*)system_memory_allocate(binary_path_capacity, strlit(filename_line_number));
                 i1 size = GetModuleFileName_utf8(arena, 0, memory, binary_path_capacity);
                 Assert(size <= binary_path_capacity - 1);
                 win32vars.binary_path = SCu8(memory, size);
@@ -213,7 +213,7 @@ system_get_path(Arena* arena, System_Path_Code path_code)
 
 function String
 win32_remove_unc_prefix_characters(String path){
-    if (string_match(string_prefix(path, 7), string_u8_litexpr("\\\\?\\UNC"))){
+    if (string_match(string_prefix(path, 7), strlit("\\\\?\\UNC"))){
 #if 0
         // TODO(allen): Why no just do
         path = string_skip(path, 7);
@@ -224,7 +224,7 @@ win32_remove_unc_prefix_characters(String path){
         block_copy(path.str, path.str + 7, path.size);
         path.str[0] = '\\';
     }
-    else if (string_match(string_prefix(path, 4), string_u8_litexpr("\\\\?\\"))){
+    else if (string_match(string_prefix(path, 4), strlit("\\\\?\\"))){
         // TODO(allen): Same questions essentially.
         path.size -= 4;
         block_copy(path.str, path.str + 4, path.size);
@@ -630,7 +630,7 @@ system_open_color_picker_sig(){
     // NOTE(casey): Because this is going to be used by a semi-permanent thread, we need to
     // copy it to system memory where it can live as long as it wants, no matter what we do
     // over here on the 4coder threads.
-    Color_Picker *perm = (Color_Picker*)system_memory_allocate(sizeof(Color_Picker), string_u8_litexpr(filename_line_number));
+    Color_Picker *perm = (Color_Picker*)system_memory_allocate(sizeof(Color_Picker), strlit(filename_line_number));
     *perm = *picker;
     
     HANDLE ThreadHandle = CreateThread(0, 0, color_picker_thread, perm, 0, 0);

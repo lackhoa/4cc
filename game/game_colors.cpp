@@ -1,6 +1,6 @@
 #pragma once
 
-internal v3 
+function v3 
 hue2rgb(v1 hue)
 {
  hue = cycle01(hue); //only use fractional part of hue, making it loop
@@ -14,7 +14,7 @@ hue2rgb(v1 hue)
  return rgb;
 }
 
-internal v3 
+function v3 
 hsv_to_srgb(v1 h, v1 s, v1 v)
 {
  // hue
@@ -59,7 +59,7 @@ srgb_to_linear(v1 r, v1 g, v1 b)
  return srgb_to_linear( V4(r,g,b,1.0f) );
 }
 
-internal argb
+function argb
 hsv_to_argb(v1 h, v1 s, v1 v)
 {
  return argb_pack(srgb_to_linear(hsv_to_srgb(h,s,v)));
@@ -75,7 +75,7 @@ linear_to_srgb(argb input)
  return argb_pack(value);
 }
 
-internal argb
+function argb
 argb_lightness(argb color, v1 lightness)
 {
  v4 result = argb_unpack(color);

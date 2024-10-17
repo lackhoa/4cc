@@ -35,6 +35,7 @@ make_type_array(String name, i32 count){
  result.count = count;
  return result;
 }
+//-
 struct Meta_Struct_Member{
  String name;
  Parsed_Type type;
@@ -49,6 +50,70 @@ inline b32
 member_was_removed(Meta_Struct_Member &member){
  return member.version_removed.len != 0;
 }
+//-
+struct Meta_Expression;
+enum Expression_Kind{
+ Expression_Kind_None = 0,
+ Expression_Kind_Unknown,
+ Expression_Kind_Assignment,
+ Expression_Kind_Function_Call,
+ Expression_Kind_Identifier,
+ Expression_Kind_If,
+ Expression_Kind_Loop,
+ Expression_Kind_Float,  //NOTE(kv) Support double too, why not?
+ Expression_Kind_Int,
+};
+struct Expression_Assignment{
+ String          lhs;
+ Meta_Expression *rhs;
+};
+struct Expression_Function_Call{
+ String function_name;
+ arrayof<Meta_Expression> arguments;
+};
+struct Meta_Expression{
+ Expression_Kind kind;
+ union{
+  Expression_Assignment assignment;
+  Expression_Function_Call function_call;
+  String int_value;
+  String float_value;
+  String identifier;
+  String unknown;
+ };
+};
+Meta_Expression stub_expression = {};
+//-
+struct Meta_Statement;
+enum Statement_Kind{
+ Statement_Kind_None = 0,
+ Statement_Kind_Unknown,
+ Statement_Kind_Expression,
+ Statement_Kind_Block,
+ Statement_Kind_Return,
+ Statement_Kind_Declaration,
+};
+struct Statement_Declaration{
+ String     type;//todo(kv) freaking type: how do I parse it? Like seriously!
+ String          lhs;
+ Meta_Expression rhs;  //NOTE Without "rhs", it means "declaration-only"
+};
+typedef arrayof<Meta_Statement> Meta_Statements;
+struct Statement_Block{
+ String header;  //NOTE(kv): optional
+ Meta_Statements statements;
+};
+struct Meta_Statement{
+ Statement_Kind kind;
+ union{
+  String                unknown;
+  Meta_Expression       expression;
+  Statement_Block       block;
+  Statement_Declaration declaration;
+  Meta_Expression       return_;
+ };
+};
+//-
 typedef u32 Meta_Variant_Flags;
 enum{
  Meta_Curve_No_Endpoints = 0x1,
@@ -71,5 +136,8 @@ struct K_Struct{
 };
 
 #define k_struct(text)  k_struct_func(strlit(#text))
-function void k_print_struct(Printer &p, K_Struct struc);
+function void
+k_print_struct(Printer &p, K_Struct struc);
+function arrayof<Meta_Statement>
+k_parse_statement_block(Arena *arena, Ed_Parser *p);
 //-

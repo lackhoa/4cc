@@ -76,10 +76,10 @@ F4_RenderErrorAnnotations(App *app, Buffer_ID buffer,
                 
                 // NOTE(rjf): Remove file part of jump line.
                 {
-                    u64 index = string_find_first(jump_line, string_u8_litexpr("error"), StringMatch_CaseInsensitive);
+                    u64 index = string_find_first(jump_line, strlit("error"), StringMatch_CaseInsensitive);
                     if(index == jump_line.size)
                     {
-                        index = string_find_first(jump_line, string_u8_litexpr("warning"), StringMatch_CaseInsensitive);
+                        index = string_find_first(jump_line, strlit("warning"), StringMatch_CaseInsensitive);
                         if(index == jump_line.size)
                         {
                             index = 0;

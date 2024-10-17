@@ -9,14 +9,14 @@
 
 // TOP
 
-internal void
+function void
 working_set_file_default_settings(Working_Set *working_set, Editing_File *file){
     block_zero_struct(&file->settings);
 }
 
 ////////////////////////////////
 
-internal void
+function void
 file_change_notification_check(Arena *scratch, Working_Set *working_set, Editing_File *file){
     if (file->canon.name_size > 0 && !file->settings.unimportant){
         String name = SCu8(file->canon.name_space, file->canon.name_size);
@@ -41,7 +41,7 @@ file_change_notification_check(Arena *scratch, Working_Set *working_set, Editing
     }
 }
 
-internal void
+function void
 file_change_notification_thread_main(void *ptr){
     Models *models = (Models*)ptr;
     Arena arena = make_arena_system();
@@ -73,7 +73,7 @@ file_change_notification_thread_main(void *ptr){
 ////////////////////////////////
 
 
-internal Editing_File*
+function Editing_File*
 working_set_allocate_file(Working_Set *working_set, Lifetime_Allocator *lifetime_allocator){
     Editing_File *file = working_set->free_files;
     if (file == 0){
@@ -99,7 +99,7 @@ working_set_allocate_file(Working_Set *working_set, Lifetime_Allocator *lifetime
     return(file);
 }
 
-internal void
+function void
 working_set_free_file(Heap *heap, Working_Set *working_set, Editing_File *file){
     if (working_set->sync_check_iterator == &file->main_chain_node){
         working_set->sync_check_iterator = working_set->sync_check_iterator->next;
@@ -111,7 +111,7 @@ working_set_free_file(Heap *heap, Working_Set *working_set, Editing_File *file){
  sll_stack_push(working_set->free_files, file);
 }
 
-internal Editing_File*
+function Editing_File*
 working_set_get_file(Working_Set *working_set, Buffer_ID id)
 {
  Editing_File *result = 0;
@@ -123,7 +123,7 @@ working_set_get_file(Working_Set *working_set, Buffer_ID id)
 }
 
 
-internal void
+function void
 working_set_init(Models *models, Working_Set *working_set){
     block_zero_struct(working_set);
     working_set->arena = make_arena_system();
@@ -144,7 +144,7 @@ working_set_init(Models *models, Working_Set *working_set){
     working_set->file_change_thread = system_thread_launch(file_change_notification_thread_main, models);
 }
 
-internal Editing_File*
+function Editing_File*
 working_set_contains__generic(Working_Set *working_set, Table_Data_u64 *table, String name){
     Editing_File *result = 0;
     u64 val = 0;
@@ -154,47 +154,47 @@ working_set_contains__generic(Working_Set *working_set, Table_Data_u64 *table, S
     return(result);
 }
 
-internal b32
+function b32
 working_set_add__generic(Table_Data_u64 *table, Buffer_ID id, String name){
     return(table_insert(table, make_data(name.str, name.size), id));
 }
 
-internal void
+function void
 working_set_remove__generic(Table_Data_u64 *table, String name){
     table_erase(table, make_data(name.str, name.size));
 }
 
-internal Editing_File*
+function Editing_File*
 working_set_contains_canon(Working_Set *working_set, String name){
     return(working_set_contains__generic(working_set, &working_set->canon_table, name));
 }
 
-internal b32
+function b32
 working_set_canon_add(Working_Set *working_set, Editing_File *file, String name){
     return(working_set_add__generic(&working_set->canon_table, file->id, name));
 }
 
-internal void
+function void
 working_set_canon_remove(Working_Set *working_set, String name){
     working_set_remove__generic(&working_set->canon_table, name);
 }
 
-internal Editing_File*
+function Editing_File*
 working_set_contains_name(Working_Set *working_set, String name){
     return(working_set_contains__generic(working_set, &working_set->name_table, name));
 }
 
-internal b32
+function b32
 working_set_add_name(Working_Set *working_set, Editing_File *file, String name){
     return(working_set_add__generic(&working_set->name_table, file->id, name));
 }
 
-internal void
+function void
 working_set_remove_name(Working_Set *working_set, String name){
     working_set_remove__generic(&working_set->name_table, name);
 }
 
-internal Editing_File*
+function Editing_File*
 get_file_from_identifier(Working_Set *working_set, Buffer_Identifier buffer){
     Editing_File *file = 0;
     if (buffer.id != 0){
@@ -211,7 +211,7 @@ get_file_from_identifier(Working_Set *working_set, Buffer_Identifier buffer){
 
 #if 0
 // TODO(allen): Bring the clipboard fully to the custom side.
-internal void
+function void
 working_set_clipboard_clear(Heap *heap, Working_Set *working){
     String *str = working->clipboards;
     for (i1 i = 0; i < working->clipboard_size; i += 1, str += 1){
@@ -222,7 +222,7 @@ working_set_clipboard_clear(Heap *heap, Working_Set *working){
     working->clipboard_current = 0;
 }
 
-internal String*
+function String*
 working_set_next_clipboard_string(Heap *heap, Working_Set *working, u64 str_size){
     i1 clipboard_current = working->clipboard_current;
     if (working->clipboard_size == 0){
@@ -248,7 +248,7 @@ working_set_next_clipboard_string(Heap *heap, Working_Set *working, u64 str_size
     return(result);
 }
 
-internal String*
+function String*
 working_set_clipboard_index(Working_Set *working, i1 index){
     String *result = 0;
     i1 size = working->clipboard_size;
@@ -266,7 +266,7 @@ working_set_clipboard_index(Working_Set *working, i1 index){
 ////////////////////////////////
 
 // TODO(allen): get rid of this???
-internal b32
+function b32
 get_canon_name(Arena *scratch, String filename, Editing_File_Name *canon_name)
 {
     Temp_Memory temp = begin_temp(scratch);
@@ -279,7 +279,7 @@ get_canon_name(Arena *scratch, String filename, Editing_File_Name *canon_name)
     return(canon_name->name_size > 0);
 }
 
-internal void
+function void
 file_bind_filename(Working_Set *working_set, Editing_File *file, String canon_filename)
 {
     Assert(file->unique_name.name_size == 0);
@@ -293,7 +293,7 @@ file_bind_filename(Working_Set *working_set, Editing_File *file, String canon_fi
     Assert(result);
 }
 
-internal void
+function void
 buffer_unbind_file(Working_Set *working_set, Editing_File *file){
     Assert(file->unique_name.name_size == 0);
     Assert(file->canon.name_size != 0);
@@ -301,7 +301,7 @@ buffer_unbind_file(Working_Set *working_set, Editing_File *file){
     file->canon.name_size = 0;
 }
 
-internal b32
+function b32
 buffer_name_has_conflict(Working_Set *working_set, String base_name){
     b32 hit_conflict = false;
     Node *used_nodes = &working_set->active_file_sentinel;
@@ -317,7 +317,7 @@ buffer_name_has_conflict(Working_Set *working_set, String base_name){
     return(hit_conflict);
 }
 
-internal void
+function void
 buffer_resolve_name_low_level(Arena *scratch, Working_Set *working_set, Editing_File_Name *name, String base_name){
     u64 size = base_name.size;
     size = clamp_max(size, sizeof(name->name_space));
@@ -332,16 +332,16 @@ buffer_resolve_name_low_level(Arena *scratch, Working_Set *working_set, Editing_
             string.size = original_size;
             Temp_Memory temp = begin_temp(scratch);
             String int_str = string_from_integer(scratch, file_x, 10);
-            string_concat(&string, string_u8_litexpr(" ("));
+            string_concat(&string, strlit(" ("));
             string_concat(&string, int_str);
-            string_concat(&string, string_u8_litexpr(")"));
+            string_concat(&string, strlit(")"));
             end_temp(temp);
         }
     }
     name->name_size = string.size;
 }
 
-internal void
+function void
 buffer_bind_name_low_level(Arena *scratch, Working_Set *working_set, Editing_File *file, String base_name, String name){
     Assert(file->base_name.name_size == 0);
     Assert(file->unique_name.name_size == 0);
@@ -366,7 +366,7 @@ buffer_bind_name_low_level(Arena *scratch, Working_Set *working_set, Editing_Fil
     Assert(result);
 }
 
-internal void
+function void
 buffer_unbind_name_low_level(Working_Set *working_set, Editing_File *file){
     Assert(file->base_name.name_size != 0);
     Assert(file->unique_name.name_size != 0);
@@ -375,7 +375,7 @@ buffer_unbind_name_low_level(Working_Set *working_set, Editing_File *file){
     file->unique_name.name_size = 0;
 }
 
-internal void
+function void
 buffer_bind_name(Thread_Context *tctx, Models *models, Arena *scratch, Working_Set *working_set, Editing_File *file, String base_name){
     Temp_Memory temp = begin_temp(scratch);
     
@@ -475,14 +475,14 @@ buffer_bind_name(Thread_Context *tctx, Models *models, Arena *scratch, Working_S
 
 ////////////////////////////////
 
-internal void
+function void
 file_touch(Working_Set *working_set, Editing_File *file){
  Assert(file != 0);
  dll_remove(&file->touch_node);
  dll_insert(&working_set->touch_order_sentinel, &file->touch_node);
 }
 
-internal Editing_File*
+function Editing_File*
 file_get_next(Working_Set *working_set, Editing_File *file)
 {
  if (file != 0)
@@ -505,7 +505,7 @@ file_get_next(Working_Set *working_set, Editing_File *file)
 
 ////////////////////////////////
 
-internal Editing_File*
+function Editing_File*
 imp_get_file(Models *models, Buffer_ID buffer_id) {
  Working_Set *working_set = &models->working_set;
  return(working_set_get_file(working_set, buffer_id));

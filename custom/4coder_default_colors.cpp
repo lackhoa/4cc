@@ -149,7 +149,7 @@ get_color_table_by_name(String name)
 function Color_Table
 make_color_table(App *app, Arena *arena)
 {
-    Managed_ID highest_color_id = managed_id_group_highest_id(app, string_u8_litexpr("colors"));
+    Managed_ID highest_color_id = managed_id_group_highest_id(app, strlit("colors"));
     Color_Table result = {};
     result.count = (u32)(clamp_max(highest_color_id + 1, max_u32));
     result.arrays = push_array(arena, Color_Array, result.count);

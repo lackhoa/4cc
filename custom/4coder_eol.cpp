@@ -33,7 +33,7 @@ rewrite_lines_to_crlf(App *app, Buffer_ID buffer){
             if (pos + 1 == size || c2 != '\n'){
                 Batch_Edit *edit = push_array(scratch, Batch_Edit, 1);
                 sll_queue_push(first, last, edit);
-                edit->edit.text = string_u8_litexpr("");
+                edit->edit.text = strlit("");
                 edit->edit.range = match.range;
             }
             else{
@@ -43,7 +43,7 @@ rewrite_lines_to_crlf(App *app, Buffer_ID buffer){
         else{
             Batch_Edit *edit = push_array(scratch, Batch_Edit, 1);
             sll_queue_push(first, last, edit);
-            edit->edit.text = string_u8_litexpr("\r");
+            edit->edit.text = strlit("\r");
             edit->edit.range = Ii64(pos);
         }
     }
@@ -73,7 +73,7 @@ rewrite_lines_to_lf(App *app, Buffer_ID buffer){
         
         Batch_Edit *edit = push_array(scratch, Batch_Edit, 1);
         sll_queue_push(first, last, edit);
-        edit->edit.text = string_u8_litexpr("");
+        edit->edit.text = strlit("");
         edit->edit.range = match.range;
     }
     ProfileCloseNow(profile_batch);

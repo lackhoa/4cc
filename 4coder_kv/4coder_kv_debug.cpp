@@ -6,7 +6,7 @@
 global Debug_Entry *DEBUG_entries;
 global b32 DEBUG_draw_hud_p = true;
 
-internal void
+function void
 DEBUG_draw_entry(App *app, Face_ID face_id, Debug_Entry entry, v2 *at)
 {
  Scratch_Block scratch(app);
@@ -28,7 +28,7 @@ DEBUG_draw_entry(App *app, Face_ID face_id, Debug_Entry entry, v2 *at)
  at->y += line_height;
 }
 
-internal void
+function void
 DEBUG_draw_hud(App *app, Face_ID face_id, Rect_f32 rect)
 {
     draw_rect_fcolor(app, rect, 0.f, fcolor_change_alpha(f_black, 0.3f));

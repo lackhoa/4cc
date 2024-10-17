@@ -16,7 +16,7 @@ union Library{
     FixSize(LIBRARY_TYPE_SIZE);
 };
 
-internal b32
+function b32
 system_load_library_direct(Library *library, char *name){
     AssertLibrarySizes();
     library->lib = dlopen(name, RTLD_LAZY);
@@ -24,13 +24,13 @@ system_load_library_direct(Library *library, char *name){
     return(success);
 }
 
-internal void*
+function void*
 system_get_proc(Library *library, char *name){
     void *result = dlsym(library->lib, name);
     return(result);
 }
 
-internal void
+function void
 system_free_library(Library *library){
     dlclose(library->lib);
     library->lib = 0;

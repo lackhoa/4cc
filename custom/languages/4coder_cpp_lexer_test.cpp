@@ -431,7 +431,7 @@ R"bar(foo
 #include <stdio.h>
 #include <time.h>
 
-internal void
+function void
 print_token_list(Token_List *list, String text){
     for (Token_Block *block = list->first;
          block != 0;
@@ -449,7 +449,7 @@ print_token_list(Token_List *list, String text){
     }
 }
 
-internal String
+function String
 file_read_all(Arena *arena, FILE *file){
     String result = {};
     fseek(file, 0, SEEK_END);
@@ -465,7 +465,7 @@ int main(void){
     Arena arena_ = make_arena_malloc();
     Arena *arena = &arena_;
     
-    String path_to_self = string_u8_litexpr(__FILE__);
+    String path_to_self = strlit(__FILE__);
     path_to_self = string_remove_last_folder(path_to_self);
     String path_to_src = string_remove_last_folder(path_to_self);
     

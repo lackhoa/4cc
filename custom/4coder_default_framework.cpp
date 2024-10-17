@@ -581,7 +581,7 @@ CUSTOM_DOC("Toggle fullscreen mode on or off.  The change(s) do not take effect 
 CUSTOM_COMMAND_SIG(load_themes_default_folder)
 CUSTOM_DOC("Loads all the theme files in the default theme folder.")
 {
-    String fcoder_extension = string_u8_litexpr(".4coder");
+    String fcoder_extension = strlit(".4coder");
     save_all_dirty_buffers_with_postfix(app, fcoder_extension);
     
     Scratch_Block scratch(app);
@@ -600,7 +600,7 @@ CUSTOM_DOC("Loads all the theme files in the default theme folder.")
 CUSTOM_COMMAND_SIG(load_themes_hot_directory)
 CUSTOM_DOC("Loads all the theme files in the current hot directory.")
 {
-    String fcoder_extension = string_u8_litexpr(".4coder");
+    String fcoder_extension = strlit(".4coder");
     save_all_dirty_buffers_with_postfix(app, fcoder_extension);
     
     Scratch_Block scratch(app);
@@ -666,22 +666,22 @@ default_4coder_initialize(App *app, String_Array filenames, i1 override_font_siz
 "\n" \
 "The change log can be found in CHANGES.txt\n" \
 "\n"
-    print_message(app, string_u8_litexpr(M));
+    print_message(app, strlit(M));
 #undef M
     
     Scratch_Block scratch(app);
     
  load_config_and_apply(app, &global_config_arena, override_font_size, override_hinting);
  
- String bindings_filename = string_u8_litexpr("bindings.4coder");
+ String bindings_filename = strlit("bindings.4coder");
  String mapping = def_get_config_string(scratch, vars_intern_lit("mapping"));
  
- if (string_match(mapping, string_u8_litexpr("mac-default"))){
-  bindings_filename = string_u8_litexpr("mac-bindings.4coder");
+ if (string_match(mapping, strlit("mac-default"))){
+  bindings_filename = strlit("mac-bindings.4coder");
  } else {
 #if OS_MAC
-  if (string_match(mapping, string_u8_litexpr("choose"))) {
-   bindings_filename = string_u8_litexpr("mac-bindings.4coder");
+  if (string_match(mapping, strlit("choose"))) {
+   bindings_filename = strlit("mac-bindings.4coder");
   }
 #endif
  }
@@ -767,8 +767,8 @@ default_4coder_side_by_side_panels(App *app,
 
 function void
 default_4coder_side_by_side_panels(App *app, String_Array filenames){
-    Buffer_Identifier left = buffer_identifier(string_u8_litexpr("*scratch*"));
-    Buffer_Identifier right = buffer_identifier(string_u8_litexpr("*messages*"));
+    Buffer_Identifier left = buffer_identifier(strlit("*scratch*"));
+    Buffer_Identifier right = buffer_identifier(strlit("*messages*"));
     default_4coder_side_by_side_panels(app, left, right, filenames);
 }
 
@@ -788,7 +788,7 @@ default_4coder_one_panel(App *app, Buffer_Identifier buffer){
 
 function void
 default_4coder_one_panel(App *app, String_Array filenames){
-    Buffer_Identifier buffer = buffer_identifier(string_u8_litexpr("*messages*"));
+    Buffer_Identifier buffer = buffer_identifier(strlit("*messages*"));
     if (filenames.count > 0){
         buffer = buffer_identifier(filenames.vals[0]);
     }
@@ -985,7 +985,7 @@ clipboard_clear(Clipboard *clipboard)
 }
 
 function String8
-clipboard_post_internal_only(Clipboard *clipboard, String8 string)
+clipboard_post_function_only(Clipboard *clipboard, String8 string)
 {
     u32 rolled_index = clipboard->clip_index % clipboard->clip_capacity;
     clipboard->clip_index += 1;
@@ -1047,15 +1047,15 @@ clipboard_clear(i1 clipboard_id){
 }
 
 function String
-clipboard_post_internal_only(i1 clipboard_id, String string)
+clipboard_post_function_only(i1 clipboard_id, String string)
 {
-    return(clipboard_post_internal_only(&global_clipboard0, string));
+    return(clipboard_post_function_only(&global_clipboard0, string));
 }
 
 function void
 clipboard_post(i1 clipboard_id, String8 string)
 {
-    clipboard_post_internal_only(clipboard_id, string);
+    clipboard_post_function_only(clipboard_id, string);
     system_post_clipboard(string, clipboard_id);
 }
 
@@ -1086,7 +1086,7 @@ default_framework_init(App *app)
     code_index_init();
     buffer_modified_set_init();
     Profile_Global_List *list = get_core_profile_list(app);
-    ProfileThreadName(tctx, list, string_u8_litexpr("main"));
+    ProfileThreadName(tctx, list, strlit("main"));
     initialize_managed_id_metadata(app);
     set_default_color_scheme(app);
     heap_init(&global_heap, tctx->allocator);

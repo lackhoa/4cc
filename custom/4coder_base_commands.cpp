@@ -164,7 +164,7 @@ CUSTOM_DOC("Sets the left size of the view near the x position of the cursor.")
 
 
 //
-internal void
+function void
 set_buffer_named(App *app, String8 name)
 {
  View_ID view = get_active_view(app, Access_ReadVisible);
@@ -238,7 +238,7 @@ CUSTOM_DOC("Reads the scroll wheel value from the mouse state and scrolls accord
 
 ////////////////////////////////
 
-internal void
+function void
 move_vertical_pixels(App *app, View_ID view, f32 pixels)
 {
  ProfileScope(app, "move vertical pixels");
@@ -257,13 +257,13 @@ move_vertical_pixels(App *app, View_ID view, f32 pixels)
  no_mark_snap_to_cursor_if_shift(app, view);
 }
 
-internal void
+function void
 move_vertical_pixels(App *app, f32 pixels){
  View_ID view = get_active_view(app, Access_ReadVisible);
  move_vertical_pixels(app, view, pixels);
 }
 
-internal void
+function void
 move_vertical_lines(App *app, View_ID view, i64 lines){
  if(lines > 0){
   for(i64 i=0; i<lines; i+=1){
@@ -276,13 +276,13 @@ move_vertical_lines(App *app, View_ID view, i64 lines){
  }
 }
 
-internal void
+function void
 move_vertical_lines(App *app, i64 lines){
     View_ID view = get_active_view(app, Access_ReadVisible);
     move_vertical_lines(app, view, lines);
 }
 
-internal f32
+function f32
 get_page_jump(App *app, View_ID view){
     Rect_f32 region = view_get_buffer_region(app, view);
     return(rect_height(region)*.9f);
@@ -338,7 +338,7 @@ CUSTOM_DOC("Scrolls the view down one view height and moves the cursor down one 
     move_vertical_pixels(app, page_jump);
 }
 
-internal void
+function void
 seek_blank_line(App *app, Scan_Direction direction, Position_Within_Line position){
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -578,7 +578,7 @@ CUSTOM_DOC("Set face size of the face used by the current buffer.")
     Query_Bar_Group group(app);
     u8 string_space[256];
     Query_Bar bar = {};
-    bar.prompt = string_u8_litexpr("Face Size: ");
+    bar.prompt = strlit("Face Size: ");
     bar.string = SCu8(string_space, (u64)0);
     bar.string_capacity = sizeof(string_space);
     if (query_user_number(app, &bar, description.parameters.pt_size)){
@@ -688,7 +688,7 @@ CUSTOM_DOC("Queries the user for a number, and jumps the cursor to the correspon
     Query_Bar_Group group(app);
     u8 string_space[256];
     Query_Bar bar = {};
-    bar.prompt = string_u8_litexpr("Goto Line: ");
+    bar.prompt = strlit("Goto Line: ");
     bar.string = SCu8(string_space, (u64)0);
     bar.string_capacity = sizeof(string_space);
     if (query_user_number(app, &bar)){
@@ -751,8 +751,8 @@ isearch(App *app, Scan_Direction start_scan, i64 first_pos,
     bar.string = SCu8(bar_string_space, query_init.size);
     block_copy(bar.string.str, query_init.str, query_init.size);
     
-    String isearch_str = string_u8_litexpr("I-Search: ");
-    String rsearch_str = string_u8_litexpr("Reverse-I-Search: ");
+    String isearch_str = strlit("I-Search: ");
+    String rsearch_str = strlit("Reverse-I-Search: ");
     
     u64 match_size = bar.string.size;
     
@@ -1024,7 +1024,7 @@ query_user_replace_pair(App *app, Arena *arena)
 
 // NOTE(allen): This is a bit of a hacky setup because of Query_Bar lifetimes.  This must be
 // called as the last operation of a command.
-internal void
+function void
 replace_in_range_query_user(App *app, Buffer_ID buffer, Range_i64 range){
     Scratch_Block scratch(app);
     Query_Bar_Group group(app);
@@ -1096,7 +1096,7 @@ function void
 query_replace_parameter(App *app, String replace_str, i64 start_pos, b32 add_replace_query_bar){
     Query_Bar_Group group(app);
     Query_Bar replace = {};
-    replace.prompt = string_u8_litexpr("Replace: ");
+    replace.prompt = strlit("Replace: ");
     replace.string = replace_str;
     
     if (add_replace_query_bar){
@@ -1105,7 +1105,7 @@ query_replace_parameter(App *app, String replace_str, i64 start_pos, b32 add_rep
     
     Query_Bar with = {};
     u8 with_space[1024];
-    with.prompt = string_u8_litexpr("With: ");
+    with.prompt = strlit("With: ");
     with.string = SCu8(with_space, (u64)0);
     with.string_capacity = sizeof(with_space);
     
@@ -1118,7 +1118,7 @@ query_replace_parameter(App *app, String replace_str, i64 start_pos, b32 add_rep
         i64 pos = start_pos;
         
         Query_Bar bar = {};
-        bar.prompt = string_u8_litexpr("Replace? (y)es, (n)ext, (esc)\n");
+        bar.prompt = strlit("Replace? (y)es, (n)ext, (esc)\n");
         start_query_bar(app, &bar, 0);
         
         query_replace_base(app, view, buffer, pos, r, w);
@@ -1134,7 +1134,7 @@ CUSTOM_DOC("Queries the user for two strings, and incrementally replaces every o
         Query_Bar_Group group(app);
         Query_Bar replace = {};
         u8 replace_space[1024];
-        replace.prompt = string_u8_litexpr("Replace: ");
+        replace.prompt = strlit("Replace: ");
         replace.string = SCu8(replace_space, (u64)0);
         replace.string_capacity = sizeof(replace_space);
         if (query_user_string(app, &replace)){
@@ -1363,7 +1363,7 @@ CUSTOM_DOC("Queries the user for a name and creates a new directory with the giv
 
 ////////////////////////////////
 
-internal void
+function void
 current_view_move_line(App *app, Scan_Direction direction){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -1415,7 +1415,7 @@ CUSTOM_DOC("Delete the line the on which the cursor sits.")
         range.start -= 1;
         range.first = clamp_min(0, range.first);
     }
-    buffer_replace_range(app, buffer, range, string_u8_litexpr(""));
+    buffer_replace_range(app, buffer, range, strlit(""));
 }
 
 ////////////////////////////////
@@ -1465,26 +1465,26 @@ get_cpp_matching_file(App *app, Buffer_ID buffer, Buffer_ID *buffer_out)
         String extension = path_extension(filename);
         String new_extensions[2] = {};
         i1 new_extensions_count = 0;
-        if (string_match(extension, string_u8_litexpr("cpp")) || string_match(extension, string_u8_litexpr("cc"))){
-            new_extensions[0] = string_u8_litexpr("h");
-            new_extensions[1] = string_u8_litexpr("hpp");
+        if (string_match(extension, strlit("cpp")) || string_match(extension, strlit("cc"))){
+            new_extensions[0] = strlit("h");
+            new_extensions[1] = strlit("hpp");
             new_extensions_count = 2;
         }
-        else if (string_match(extension, string_u8_litexpr("c"))){
-            new_extensions[0] = string_u8_litexpr("h");
+        else if (string_match(extension, strlit("c"))){
+            new_extensions[0] = strlit("h");
             new_extensions_count = 1;
         }
-        else if (string_match(extension, string_u8_litexpr("h"))){
-            new_extensions[0] = string_u8_litexpr("cpp");
-            new_extensions[1] = string_u8_litexpr("c");
+        else if (string_match(extension, strlit("h"))){
+            new_extensions[0] = strlit("cpp");
+            new_extensions[1] = strlit("c");
             new_extensions_count = 2;
         }
-        else if (string_match(extension, string_u8_litexpr("hpp"))){
-            new_extensions[0] = string_u8_litexpr("cpp");
+        else if (string_match(extension, strlit("hpp"))){
+            new_extensions[0] = strlit("cpp");
             new_extensions_count = 1;
         }
         
-        String file_without_extension = path_no_extension(filename);
+        String file_without_extension = path_stem(filename);
         for (i1 i = 0; i < new_extensions_count; i += 1){
             Temp_Memory temp = begin_temp(scratch);
             String8 new_extension = new_extensions[i];
@@ -1533,7 +1533,7 @@ CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the correspo
     }
 }
 
-internal void view_buffer_other_panel(App *app)
+function void view_buffer_other_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -1615,7 +1615,7 @@ CUSTOM_DOC("Reopen the current buffer from the hard drive.")
 
 ////////////////////////////////
 
-internal i64
+function i64
 record_get_new_cursor_position_undo(App *app, Buffer_ID buffer_id, History_Record_Index index, Record_Info record){
     i64 new_edit_position = record.pos_before_edit;
 #if 0
@@ -1635,13 +1635,13 @@ record_get_new_cursor_position_undo(App *app, Buffer_ID buffer_id, History_Recor
     return(new_edit_position);
 }
 
-internal i64
+function i64
 record_get_new_cursor_position_undo(App *app, Buffer_ID buffer_id, History_Record_Index index){
     Record_Info record = buffer_history_get_record_info(app, buffer_id, index);
     return(record_get_new_cursor_position_undo(app, buffer_id, index, record));
 }
 
-internal i64
+function i64
 record_get_new_cursor_position_redo(App *app, Buffer_ID buffer_id, History_Record_Index index, Record_Info record)
 {
     i64 new_edit_position = 0;
@@ -1661,7 +1661,7 @@ record_get_new_cursor_position_redo(App *app, Buffer_ID buffer_id, History_Recor
     return((i1)(new_edit_position));
 }
 
-internal i64
+function i64
 record_get_new_cursor_position_redo(App *app, Buffer_ID buffer_id, History_Record_Index index){
     Record_Info record = buffer_history_get_record_info(app, buffer_id, index);
     return(record_get_new_cursor_position_redo(app, buffer_id, index, record));
@@ -1698,7 +1698,7 @@ undo__flush_fades(App *app, Buffer_ID buffer){
 }
 
 //CUSTOM_DOC("Advances backwards through the undo history of the current buffer.")
-internal void 
+function void 
 undo(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
@@ -1751,7 +1751,7 @@ undo(App *app)
 }
 
 //CUSTOM_DOC("Advances forwards through the undo history of the current buffer.")
-internal void 
+function void 
 redo(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
