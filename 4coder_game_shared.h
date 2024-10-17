@@ -5,8 +5,6 @@
 
 #pragma once
 
-// TODO: I'm not happy with this global pointer business
-// mostly because it's not clear if a function call is a pointer or not.
 #if ED_API_USER
 #    if ED_API_USER_STORE_GLOBAL  // NOTE: store function pointers here
 #        define ED_FUNCTION(N) kv_function_typedef(N); kv_function_pointer(N);
@@ -138,7 +136,6 @@ DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0) {
 //~ NOTE: Game
 
 #if !AD_IS_DRIVER
-introspect(embed);
 struct Game_Input_Public{
  Key_Mods active_mods;
  b8      *key_states;
@@ -163,7 +160,7 @@ struct Image_Load_Info {
 
 global_const i32 GAME_VIEWPORT_COUNT = 3;
 global_const i32 MAIN_VIEWPORT_ID    = 1;
-global_const String GAME_FILE_NAME = strlit("game.cpp");
+global_const String DRIVER_FILE_NAME = strlit("driver.kc");
 
 #if !AD_IS_DRIVER
 //-NOTE: game API functions (NOTE: The API is quite simple so let's just macro for now)

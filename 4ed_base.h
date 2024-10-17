@@ -910,9 +910,9 @@ SCany(void *str, String_Encoding encoding){
  String_Const_Any string = {.encoding=encoding};
  switch (encoding){
   case StringEncoding_ASCII: string.s_char = SCchar((char*)str); break;
-  case StringEncoding_UTF8:  string.s_u8 = SCu8((u8*)str); break;
-  case StringEncoding_UTF16: string.s_u16 = SCu16((u16*)str); break;
-  case StringEncoding_UTF32: string.s_u32 = SCu32((u32*)str); break;
+  case StringEncoding_UTF8:  string.s_u8   = SCu8  ((char*)str); break;
+  case StringEncoding_UTF16: string.s_u16  = SCu16 ((u16*)str); break;
+  case StringEncoding_UTF32: string.s_u32  = SCu32 ((u32*)str); break;
  }
  return(string);
 }
@@ -1278,8 +1278,7 @@ string_skip(String_Const_char str, u64 n){
 }
 
 function String
-string_chop(String str, u64 n)
-{
+string_chop(String str, u64 n){
  n = clamp_max(n, str.size);
  str.size -= n;
  return(str);
@@ -1414,7 +1413,7 @@ string_match(String_Const_u32 a, String_Const_u32 b){
 }
 
 
-internal b32
+function b32
 string_ends_with(String string, String test)
 {
  b32 result = string_match(string_postfix(string, test.size), test);
@@ -1809,7 +1808,7 @@ string_list_push(Arena *arena, List_String *list, String string){
 }
 
 #define string_list_push_lit(a,l,s) string_list_push((a), (l), string_litexpr(s))
-#define string_list_push_u8_lit(a,l,s) string_list_push((a), (l), string_u8_litexpr(s))
+#define string_list_push_u8_lit(a,l,s) string_list_push((a), (l), strlit(s))
 
 function void
 string_list_push(List_String *list, List_String *src_list){
@@ -2408,15 +2407,15 @@ data_is_ascii(String data){
 
 function String
 string_escape(Arena *arena, String string){
- List_String list = string_replace_list(arena, string, string_u8_litexpr("\\"),
-                                                 string_u8_litexpr("\\\\"));
+ List_String list = string_replace_list(arena, string, strlit("\\"),
+                                                 strlit("\\\\"));
  Node_String **fixup_ptr = &list.first;
  for (Node_String *node = list.first, *next = 0;
       node != 0;
       node = next){
   next = node->next;
-  List_String relist = string_replace_list(arena, node->string, string_u8_litexpr("\""),
-                                                    string_u8_litexpr("\\\""));
+  List_String relist = string_replace_list(arena, node->string, strlit("\""),
+                                                    strlit("\\\""));
   if (relist.first != 0){
    *fixup_ptr = relist.first;
    relist.last->next = next;
@@ -2545,7 +2544,7 @@ string_from_integer(Arena *arena, u64 x, u32 radix){
  String result = {};
  if (radix >= 2 && radix <= 16){
   if (x == 0){
-   result = push_stringz(arena, string_u8_litexpr("0"));
+   result = push_stringz(arena, strlit("0"));
   }
   else{
    u8 string_space[64];

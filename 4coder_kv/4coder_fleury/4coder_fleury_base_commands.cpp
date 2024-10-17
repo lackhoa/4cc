@@ -12,7 +12,7 @@ CUSTOM_DOC("when bound to keystroke, ensures the event falls through to text ins
     leave_current_input_unhandled(app);
 }
 
-internal void
+function void
 F4_Search(App *app, Scan_Direction dir)
 {
     Scratch_Block scratch(app);
@@ -64,7 +64,7 @@ CUSTOM_DOC("Inserts text and auto-indents the line on which the cursor sits if a
 CUSTOM_COMMAND_SIG(f4_write_zero_struct)
 CUSTOM_DOC("At the cursor, insert a ' = {0};'.")
 {
-    write_string(app, string_u8_litexpr(" = {0};"));
+    write_string(app, strlit(" = {0};"));
     F4_PowerMode_CharacterPressed();
     F4_PowerMode_Spawn(app, get_active_view(app, Access_ReadWriteVisible), 0);
 }
@@ -86,7 +86,7 @@ CUSTOM_DOC("Toggles battery saving mode.")
 }
 
 
-internal void
+function void
 _F4_PushListerOptionForNote(App *app, Arena *arena, Lister *lister, F4_Index_Note *note)
 {
     if(note && note->file)
@@ -141,7 +141,7 @@ _F4_PushListerOptionForNote(App *app, Arena *arena, Lister *lister, F4_Index_Not
     }
 }
 
-internal void
+function void
 F4_JumpToLocation(App *app, View_ID view, Buffer_ID buffer, i64 pos)
 {
     // NOTE(rjf): This function was ripped from 4coder's jump_to_location. It was copied
@@ -359,7 +359,7 @@ CUSTOM_DOC("Sets up a blank 4coder project provided some user folder.")
     u8 project_folder_absolute[1024];
     {
         Query_Bar path_bar = {};
-        path_bar.prompt = string_u8_litexpr("Absolute Path To Project Folder: ");
+        path_bar.prompt = strlit("Absolute Path To Project Folder: ");
         path_bar.string = SCu8(project_folder_absolute, (u64)0);
         path_bar.string_capacity = sizeof(project_folder_absolute);
         if(query_user_string(app, &path_bar))
@@ -710,7 +710,7 @@ F4_ReIndentLine(App *app, Buffer_ID buffer, i64 line, i64 indent_delta)
     
 }
 
-internal void
+function void
 F4_ReIndentLineRange(App *app, Buffer_ID buffer, Range_i64 range, i64 indent_delta)
 {
     for(i64 i = range.min; i <= range.max; i += 1)
@@ -719,7 +719,7 @@ F4_ReIndentLineRange(App *app, Buffer_ID buffer, Range_i64 range, i64 indent_del
     }
 }
 
-internal Range_i64
+function Range_i64
 F4_LineRangeFromPosRange(App *app, Buffer_ID buffer, Range_i64 pos_range)
 {
     Range_i64 lines_range =
@@ -728,7 +728,7 @@ F4_LineRangeFromPosRange(App *app, Buffer_ID buffer, Range_i64 pos_range)
     return lines_range;
 }
 
-internal Range_i64
+function Range_i64
 F4_PosRangeFromLineRange(App *app, Buffer_ID buffer, Range_i64 line_range)
 {
     if(line_range.min > line_range.max)
@@ -743,7 +743,7 @@ F4_PosRangeFromLineRange(App *app, Buffer_ID buffer, Range_i64 line_range)
     return pos_range;
 }
 
-internal void
+function void
 F4_ReIndentPosRange(App *app, Buffer_ID buffer, Range_i64 range, i64 indent_delta)
 {
     F4_ReIndentLineRange(app, buffer,
@@ -751,7 +751,7 @@ F4_ReIndentPosRange(App *app, Buffer_ID buffer, Range_i64 range, i64 indent_delt
                          indent_delta);
 }
 
-internal void
+function void
 F4_AdjustCursorAndMarkForIndentation(App *app, View_ID view, i64 original_cursor, i64 original_mark, Range_i64 original_line_range)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_Read);
@@ -895,7 +895,7 @@ F4_GenerateHotDirectoryFileList_Project(App *app, Lister *lister)
     hot = push_hot_directory(app, lister->arena);
     if(hot.str != 0)
     {
-        String empty_string = string_u8_litexpr("");
+        String empty_string = strlit("");
         Lister_Prealloced_String empty_string_prealloced = lister_prealloced(empty_string);
         
         // NOTE(rjf): Add all directories.
@@ -1042,7 +1042,7 @@ CUSTOM_DOC("Interactively open a file out of the file system, filtered to files 
     }
 }
 
-internal void
+function void
 F4_SetLineCommentedOnLine(App *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
 {
     i64 cursor = *cursor_p;
@@ -1060,7 +1060,7 @@ F4_SetLineCommentedOnLine(App *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p
         {
             if(!already_has_comment)
             {
-                buffer_replace_range(app, buffer, Ii64(line_start), string_u8_litexpr("//"));
+                buffer_replace_range(app, buffer, Ii64(line_start), strlit("//"));
                 cursor = mark += 2;
             }
         }
@@ -1078,7 +1078,7 @@ F4_SetLineCommentedOnLine(App *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p
     *mark_p = mark;
 }
 
-internal void
+function void
 F4_SetBlockCommentedOnRange(App *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
 {
     Scratch_Block scratch(app);
@@ -1127,7 +1127,7 @@ F4_CBlockCommentStartsAtPosition(App *app, Buffer_ID buffer, i64 pos)
     return(alread_has_comment);
 }
 
-internal void
+function void
 F4_SetCommentedOnRange(App *app, Buffer_ID buffer, i64 *cursor_p, i64 *mark_p, b32 commented)
 {
     Scratch_Block scratch(app);
@@ -1463,7 +1463,7 @@ CUSTOM_DOC("Insert the required number of spaces to get to a specified column nu
     Query_Bar_Group group(app);
     u8 string_space[256];
     Query_Bar bar = {};
-    bar.prompt = string_u8_litexpr("Column Number: ");
+    bar.prompt = strlit("Column Number: ");
     bar.string = SCu8(string_space, (u64)0);
     bar.string_capacity = sizeof(string_space);
     if(query_user_number(app, &bar))

@@ -10,7 +10,7 @@ F4_CodePeek_Render(App *app, View_ID view_id, Face_ID face_id,
                    Buffer_ID buffer, Frame_Info frame_info)
 {
     Scratch_Block scratch(app);
-    Buffer_ID peek_buf = get_buffer_by_name(app, string_u8_litexpr("*peek*"), AccessFlag_Read);
+    Buffer_ID peek_buf = get_buffer_by_name(app, strlit("*peek*"), AccessFlag_Read);
     
     if(!global_code_peek_open && buffer != peek_buf)
     {
@@ -137,10 +137,10 @@ CUSTOM_DOC("Yanks the current cursor identifier into the *peek* buffer.")
     Scratch_Block scratch(app);
     String string = push_token_or_word_under_active_cursor(app, scratch);
     Code_Index_Note *note = code_index_note_from_string(string);
-    Buffer_ID buffer = get_buffer_by_name(app, string_u8_litexpr("*peek*"), Access_Read | Access_Write);
+    Buffer_ID buffer = get_buffer_by_name(app, strlit("*peek*"), Access_Read | Access_Write);
     if(buffer != 0 && note != 0)
     {
-        buffer_replace_range(app, buffer, Ii64(buffer_get_size(app, buffer)), string_u8_litexpr("\n"));
+        buffer_replace_range(app, buffer, Ii64(buffer_get_size(app, buffer)), strlit("\n"));
         buffer_replace_range(app, buffer, Ii64(buffer_get_size(app, buffer)), string);
     }
 }
@@ -148,7 +148,7 @@ CUSTOM_DOC("Yanks the current cursor identifier into the *peek* buffer.")
 CUSTOM_COMMAND_SIG(f4_code_peek_clear)
 CUSTOM_DOC("Clears the *peek* buffer.")
 {
-    Buffer_ID buffer = get_buffer_by_name(app, string_u8_litexpr("*peek*"), Access_Read | Access_Write);
+    Buffer_ID buffer = get_buffer_by_name(app, strlit("*peek*"), Access_Read | Access_Write);
     if(buffer)
     {
         clear_buffer(app, buffer);

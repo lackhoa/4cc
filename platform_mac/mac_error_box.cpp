@@ -9,7 +9,7 @@
 
 // TOP
 
-internal void
+function void
 system_error_box(char *msg){
     //LOGF("error box: %s\n", msg);
     osx_error_dialogue(msg);

@@ -416,7 +416,7 @@ struct Character_Set{
 
 // NOTE(allen): INTERNAL CONSTRUCTORS
 
-internal void
+function void
 smi_primary_init(Base_Allocator *allocator, Lexer_Primary_Context *ctx){
     ctx->allocator = allocator;
     ctx->arena = make_arena(allocator);
@@ -424,7 +424,7 @@ smi_primary_init(Base_Allocator *allocator, Lexer_Primary_Context *ctx){
     ctx->tokens.name_to_ptr = make_table_Data_u64(allocator, 400);
 }
 
-internal b32
+function b32
 smi_try_add_token(Lexer_Primary_Context *ctx, String name, Token_Base_Kind base_kind){
     b32 result = false;
     Token_Kind_Set *set = &ctx->tokens;
@@ -441,7 +441,7 @@ smi_try_add_token(Lexer_Primary_Context *ctx, String name, Token_Base_Kind base_
     return(result);
 }
 
-internal b32
+function b32
 smi_key(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, String lexeme, Token_Base_Kind base_kind){
     b32 result = false;
     Table_Lookup lookup = table_lookup(&set->name_to_ptr, make_data(name.str, name.size));
@@ -463,7 +463,7 @@ smi_key(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, String lexeme
     return(result);
 }
 
-internal b32
+function b32
 smi_key_fallback(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, Token_Base_Kind base_kind){
     b32 result = false;
     if (!set->has_fallback_token_kind){
@@ -476,7 +476,7 @@ smi_key_fallback(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, Toke
     return(result);
 }
 
-internal State*
+function State*
 smi_add_state(Lexer_Primary_Context *ctx, String pretty_name){
     State_Set *set = &ctx->model.states;
     State *state = push_array_zero(&ctx->arena, State, 1);
@@ -486,7 +486,7 @@ smi_add_state(Lexer_Primary_Context *ctx, String pretty_name){
     return(state);
 }
 
-internal Flag*
+function Flag*
 smi_add_flag(Lexer_Primary_Context *ctx, Flag_Reset_Rule rule){
     Flag_Set *set = &ctx->model.flags;
     Flag *flag = push_array_zero(&ctx->arena, Flag, 1);
@@ -496,12 +496,12 @@ smi_add_flag(Lexer_Primary_Context *ctx, Flag_Reset_Rule rule){
     return(flag);
 }
 
-internal Emit_Rule*
+function Emit_Rule*
 smi_emit_rule(Arena *arena){
     return(push_array_zero(arena, Emit_Rule, 1));
 }
 
-internal Emit_Handler*
+function Emit_Handler*
 smi_emit_handler__inner(Arena *arena, Emit_Rule *rule, Emit_Handler_Kind kind, Flag *flag_check){
     Emit_Handler *handler = push_array_zero(arena, Emit_Handler, 1);
     handler->kind = kind;
@@ -513,28 +513,28 @@ smi_emit_handler__inner(Arena *arena, Emit_Rule *rule, Emit_Handler_Kind kind, F
     return(handler);
 }
 
-internal Emit_Handler*
+function Emit_Handler*
 smi_emit_handler(Arena *arena, Emit_Rule *rule, String name, Flag *flag_check){
     Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_Direct, flag_check);
     handler->token_name = name;
     return(handler);
 }
 
-internal Emit_Handler*
+function Emit_Handler*
 smi_emit_handler(Arena *arena, Emit_Rule *rule, Keyword_Set *set, Flag *flag_check){
     Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_Keywords, flag_check);
     handler->keywords = set;
     return(handler);
 }
 
-internal Emit_Handler*
+function Emit_Handler*
 smi_emit_handler_delim(Arena *arena, Emit_Rule *rule, Keyword_Set *set, Flag *flag_check){
     Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_KeywordsDelim, flag_check);
     handler->keywords = set;
     return(handler);
 }
 
-internal void
+function void
 smi_append_set_flag(Arena *arena, Action_List *list, Flag *flag, b32 value){
     Action *action = push_array_zero(arena, Action, 1);
     zdll_push_back(list->first, list->last, action);
@@ -544,7 +544,7 @@ smi_append_set_flag(Arena *arena, Action_List *list, Flag *flag, b32 value){
     action->set_flag.value = value;
 }
 
-internal void
+function void
 smi_append_zero_flags(Arena *arena, Action_List *list){
     Action *action = push_array_zero(arena, Action, 1);
     zdll_push_back(list->first, list->last, action);
@@ -552,7 +552,7 @@ smi_append_zero_flags(Arena *arena, Action_List *list){
     action->kind = ActionKind_ZeroFlags;
 }
 
-internal void
+function void
 smi_append_delim_mark_first(Arena *arena, Action_List *list){
     Action *action = push_array_zero(arena, Action, 1);
     zdll_push_back(list->first, list->last, action);
@@ -560,7 +560,7 @@ smi_append_delim_mark_first(Arena *arena, Action_List *list){
     action->kind = ActionKind_DelimMarkFirst;
 }
 
-internal void
+function void
 smi_append_delim_mark_one_past_last(Arena *arena, Action_List *list){
     Action *action = push_array_zero(arena, Action, 1);
     zdll_push_back(list->first, list->last, action);
@@ -568,7 +568,7 @@ smi_append_delim_mark_one_past_last(Arena *arena, Action_List *list){
     action->kind = ActionKind_DelimMarkOnePastLast;
 }
 
-internal void
+function void
 smi_append_consume(Arena *arena, Action_List *list){
     Action *action = push_array_zero(arena, Action, 1);
     zdll_push_back(list->first, list->last, action);
@@ -576,7 +576,7 @@ smi_append_consume(Arena *arena, Action_List *list){
     action->kind = ActionKind_Consume;
 }
 
-internal void
+function void
 smi_append_emit(Arena *arena, Action_List *list, Emit_Rule *emit){
     Action *action = push_array_zero(arena, Action, 1);
     zdll_push_back(list->first, list->last, action);
@@ -588,7 +588,7 @@ smi_append_emit(Arena *arena, Action_List *list, Emit_Rule *emit){
 ////////////////////////////////
 
 #if 0
-internal void
+function void
 CHECK_PIN_LIST(Field_Pin_List *list){
  i1 counter = 0;
  for (Field_Pin *pin = list->first;
@@ -602,7 +602,7 @@ CHECK_PIN_LIST(Field_Pin_List *list){
 #define CHECK_PIN_LIST(x)
 #endif
 
-internal Field_Pin*
+function Field_Pin*
 smi_field_pin_copy(Arena *arena, Field_Pin *pin){
     Field_Pin *result = push_array_zero(arena, Field_Pin, 1);
     result->flag = pin->flag;
@@ -610,7 +610,7 @@ smi_field_pin_copy(Arena *arena, Field_Pin *pin){
     return(result);
 }
 
-internal Field_Pin_List*
+function Field_Pin_List*
 smi_field_pin_list_copy(Arena *arena, Field_Pin_List list){
     CHECK_PIN_LIST(&list);
     Field_Pin_List *new_list = push_array_zero(arena, Field_Pin_List, 1);
@@ -625,7 +625,7 @@ smi_field_pin_list_copy(Arena *arena, Field_Pin_List list){
     return(new_list);
 }
 
-internal Field_Set
+function Field_Set
 smi_field_set_copy(Arena *arena, Field_Set set){
     Field_Set result = {};
     result.count = set.count;
@@ -638,7 +638,7 @@ smi_field_set_copy(Arena *arena, Field_Set set){
     return(result);
 }
 
-internal void
+function void
 smi_field_pin_sub__recursive(Arena *arena, Field_Pin_List a, Field_Pin_List *list, Field_Pin_List growing_list, Field_Set *result){
     if (list != 0){
         growing_list.count += 1;
@@ -690,7 +690,7 @@ smi_field_pin_sub__recursive(Arena *arena, Field_Pin_List a, Field_Pin_List *lis
     }
 }
 
-internal Field_Set
+function Field_Set
 smi_field_pin_sub(Arena *arena, Field_Pin_List a, Field_Set b){
     Field_Set result = {};
     Field_Pin_List *list = b.first;
@@ -699,7 +699,7 @@ smi_field_pin_sub(Arena *arena, Field_Pin_List a, Field_Set b){
     return(result);
 }
 
-internal Field_Set
+function Field_Set
 smi_field_set_subtract(Arena *arena, Field_Set a, Field_Set b){
     Field_Set result = {};
     for (Field_Pin_List *list = a.first;
@@ -722,7 +722,7 @@ smi_field_set_subtract(Arena *arena, Field_Set a, Field_Set b){
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wtautological-compare"
-internal Field_Set
+function Field_Set
 smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
     Field_Set result = {};
     for (Field_Pin_List *a_list = a.first;
@@ -769,7 +769,7 @@ smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
 }
 #pragma clang diagnostic pop
 
-internal b32
+function b32
 smi_field_set_match(Arena *scratch, Field_Set a, Field_Set b){
     Temp_Memory temp = begin_temp(scratch);
     b32 result = false;
@@ -784,7 +784,7 @@ smi_field_set_match(Arena *scratch, Field_Set a, Field_Set b){
     return(result);
 }
 
-internal Field_Set
+function Field_Set
 smi_field_set_union(Arena *arena, Field_Set a, Field_Set b){
     Field_Set result = {};
     if (a.first != 0){
@@ -810,7 +810,7 @@ smi_field_set_union(Arena *arena, Field_Set a, Field_Set b){
     return(result);
 }
 
-internal Field_Set
+function Field_Set
 smi_field_set_construct(Arena *arena){
     Field_Set result = {};
     Field_Pin_List *list = push_array_zero(arena, Field_Pin_List, 1);
@@ -819,7 +819,7 @@ smi_field_set_construct(Arena *arena){
     return(result);
 }
 
-internal Field_Set
+function Field_Set
 smi_field_set_construct(Arena *arena, Flag *flag, b32 value){
     Field_Set result = {};
     if (flag != 0){
@@ -838,7 +838,7 @@ smi_field_set_construct(Arena *arena, Flag *flag, b32 value){
     return(result);
 }
 
-internal Input_Set
+function Input_Set
 smi_input_set_copy(Arena *arena, Input_Set set){
     Input_Set result = {};
     result.inputs = push_array_copy(arena, u16, set.count, set.inputs);
@@ -846,7 +846,7 @@ smi_input_set_copy(Arena *arena, Input_Set set){
     return(result);
 }
 
-internal Input_Set
+function Input_Set
 smi_input_set_subtract(Arena *arena, Input_Set a, Input_Set b){
     Input_Set result = {};
     if (a.count > 0){
@@ -874,7 +874,7 @@ smi_input_set_subtract(Arena *arena, Input_Set a, Input_Set b){
     return(result);
 }
 
-internal Input_Set
+function Input_Set
 smi_input_set_intersect(Arena *arena, Input_Set a, Input_Set b){
     Input_Set result = {};
     if (a.count > 0 && b.count > 0){
@@ -902,7 +902,7 @@ smi_input_set_intersect(Arena *arena, Input_Set a, Input_Set b){
     return(result);
 }
 
-internal Input_Set
+function Input_Set
 smi_input_set_union(Arena *arena, Input_Set a, Input_Set b){
     Input_Set result = {};
     if (a.count > 0 || b.count > 0){
@@ -926,7 +926,7 @@ smi_input_set_union(Arena *arena, Input_Set a, Input_Set b){
     return(result);
 }
 
-internal Input_Set
+function Input_Set
 smi_input_set_construct(Arena *arena, String characters){
     Input_Set result = {};
     result.count = (i1)characters.size;
@@ -937,7 +937,7 @@ smi_input_set_construct(Arena *arena, String characters){
     return(result);
 }
 
-internal Input_Set
+function Input_Set
 smi_input_set_construct_eof(Arena *arena){
     Input_Set result = {};
     result.count = 1;
@@ -946,7 +946,7 @@ smi_input_set_construct_eof(Arena *arena){
     return(result);
 }
 
-internal Input_Set
+function Input_Set
 smi_input_set_construct_fallback(Arena *arena){
     Input_Set result = {};
     result.count = 257;
@@ -957,7 +957,7 @@ smi_input_set_construct_fallback(Arena *arena){
     return(result);
 }
 
-internal Condition_Node*
+function Condition_Node*
 smi_condition_node_copy(Arena *arena, Condition_Node *node){
     Condition_Node *result = push_array_zero(arena, Condition_Node, 1);
     result->fields = smi_field_set_copy(arena, node->fields);
@@ -965,7 +965,7 @@ smi_condition_node_copy(Arena *arena, Condition_Node *node){
     return(result);
 }
 
-internal Condition_Set
+function Condition_Set
 smi_condition_set_copy(Arena *arena, Condition_Set set){
     Condition_Set result = {};
     for (Condition_Node *node = set.first;
@@ -978,7 +978,7 @@ smi_condition_set_copy(Arena *arena, Condition_Set set){
     return(result);
 }
 
-internal Condition_Set
+function Condition_Set
 smi_condition_node_sub(Arena *arena, Condition_Node a, Condition_Node b){
     Condition_Set result = {};
     Input_Set a_minus_b_input = smi_input_set_subtract(arena, a.inputs, b.inputs);
@@ -1026,7 +1026,7 @@ smi_condition_node_sub(Arena *arena, Condition_Node a, Condition_Node b){
     return(result);
 }
 
-internal Condition_Node*
+function Condition_Node*
 smi_condition_node_int(Arena *arena, Condition_Node a, Condition_Node b){
     Condition_Node *result = push_array_zero(arena, Condition_Node, 1);
     result->inputs = smi_input_set_intersect(arena, a.inputs, b.inputs);
@@ -1034,7 +1034,7 @@ smi_condition_node_int(Arena *arena, Condition_Node a, Condition_Node b){
     return(result);
 }
 
-internal Condition_Set
+function Condition_Set
 smi_condition_set_subtract_node(Arena *arena, Condition_Set a, Condition_Node *b){
     Condition_Set result = {};
     for (Condition_Node *node = a.first;
@@ -1055,7 +1055,7 @@ smi_condition_set_subtract_node(Arena *arena, Condition_Set a, Condition_Node *b
     return(result);
 }
 
-internal Condition_Set
+function Condition_Set
 smi_condition_set_subtract(Arena *arena, Condition_Set a, Condition_Set b){
     Condition_Set result = a;
     for (Condition_Node *node = b.first;
@@ -1066,7 +1066,7 @@ smi_condition_set_subtract(Arena *arena, Condition_Set a, Condition_Set b){
     return(result);
 }
 
-internal Condition_Set
+function Condition_Set
 smi_condition_set_intersect(Arena *arena, Condition_Set a, Condition_Set b){
     Condition_Set result = {};
     for (Condition_Node *a_node = a.first;
@@ -1085,7 +1085,7 @@ smi_condition_set_intersect(Arena *arena, Condition_Set a, Condition_Set b){
     return(result);
 }
 
-internal Condition_Set
+function Condition_Set
 smi_condition_set_union(Arena *arena, Condition_Set a, Condition_Set b){
     Condition_Set result = {};
     if (a.count != 0){
@@ -1110,7 +1110,7 @@ smi_condition_set_union(Arena *arena, Condition_Set a, Condition_Set b){
     return(result);
 }
 
-internal Condition_Node*
+function Condition_Node*
 smi_condition_node(Arena *arena, Input_Set inputs, Field_Set fields){
     Condition_Node *node = push_array_zero(arena, Condition_Node, 1);
     node->fields = fields;
@@ -1118,7 +1118,7 @@ smi_condition_node(Arena *arena, Input_Set inputs, Field_Set fields){
     return(node);
 }
 
-internal Condition_Set
+function Condition_Set
 smi_condition(Arena *arena, Input_Set inputs, Field_Set fields){
     Condition_Set result = {};
     Condition_Node *node = smi_condition_node(arena, inputs, fields);
@@ -1129,7 +1129,7 @@ smi_condition(Arena *arena, Input_Set inputs, Field_Set fields){
 
 ////////////////////////////////
 
-internal Transition*
+function Transition*
 smi_case(Lexer_Primary_Context *ctx, State *state,
          Transition_Case_Kind kind, String characters, Flag *flag_check,b32 flag_check_value,
          State *dst, Transition_Consume_Rule consume_rule, Emit_Rule *emit){
@@ -1191,7 +1191,7 @@ smi_case(Lexer_Primary_Context *ctx, State *state,
 
 global Lexer_Helper_Context helper_ctx = {};
 
-internal void
+function void
 sm_helper_init(Base_Allocator *allocator){
     smi_primary_init(allocator, &helper_ctx.primary_ctx);
     helper_ctx.char_to_name = make_table_u64_Data(allocator, 100);
@@ -1199,7 +1199,7 @@ sm_helper_init(Base_Allocator *allocator){
     helper_ctx.arena = &helper_ctx.primary_ctx.arena;
 }
 
-internal void
+function void
 sm_char_name(u8 c, char *str){
     Table_Lookup lookup = table_lookup(&helper_ctx.char_to_name, c);
     if (lookup.found_match){
@@ -1209,42 +1209,42 @@ sm_char_name(u8 c, char *str){
     table_insert(&helper_ctx.char_to_name, c, make_data(string.str, string.size));
 }
 
-internal void
+function void
 sm_select_base_kind(Token_Base_Kind kind){
     helper_ctx.selected_base_kind = kind;
 }
 
-internal void
+function void
 sm_select_state(State *state){
     helper_ctx.selected_state = state;
 }
 
-internal void
+function void
 sm_select_op_set(Operator_Set *set){
     helper_ctx.selected_op_set = set;
 }
 
-internal void
+function void
 sm_select_key_set(Keyword_Set *set){
     helper_ctx.selected_key_set = set;
 }
 
-internal void
+function void
 sm_select_emit(Emit_Rule *emit){
     helper_ctx.selected_emit_rule = emit;
 }
 
-internal void
+function void
 sm_select_transition(Transition *transition){
     helper_ctx.selected_transition = transition;
 }
 
-internal b32
+function b32
 sm_direct_token_kind(char *str){
     return(smi_try_add_token(&helper_ctx.primary_ctx, SCu8(str), helper_ctx.selected_base_kind));
 }
 
-internal Operator_Set*
+function Operator_Set*
 sm_begin_op_set(void){
     Operator_Set *set = push_array_zero(helper_ctx.arena, Operator_Set, 1);
     set->lexeme_to_ptr = make_table_Data_u64(helper_ctx.primary_ctx.allocator, 100);
@@ -1252,7 +1252,7 @@ sm_begin_op_set(void){
     return(set);
 }
 
-internal b32
+function b32
 sm_op(String lexeme, String name){
     b32 result = false;
     Operator_Set *set = helper_ctx.selected_op_set;
@@ -1271,12 +1271,12 @@ sm_op(String lexeme, String name){
     return(result);
 }
 
-internal b32
+function b32
 sm_op(char *lexeme, char *name){
     return(sm_op(SCu8(lexeme), SCu8(name)));
 }
 
-internal b32
+function b32
 sm_op(char *lexeme){
     String l = SCu8(lexeme);
     List_String name_list = {};
@@ -1292,7 +1292,7 @@ sm_op(char *lexeme){
     return(sm_op(l, name));
 }
 
-internal Keyword_Set*
+function Keyword_Set*
 sm_begin_key_set(String pretty_name){
     Keyword_Set *set = push_array_zero(helper_ctx.arena, Keyword_Set, 1);
     set->name_to_ptr = make_table_Data_u64(helper_ctx.primary_ctx.allocator, 100);
@@ -1305,22 +1305,22 @@ sm_begin_key_set(String pretty_name){
     return(set);
 }
 
-internal Keyword_Set*
+function Keyword_Set*
 sm_begin_key_set(char *pretty_name){
     return(sm_begin_key_set(SCu8(pretty_name)));
 }
 
-internal b32
+function b32
 sm_key(String name, String lexeme){
     return(smi_key(&helper_ctx.primary_ctx, helper_ctx.selected_key_set, name, lexeme, helper_ctx.selected_base_kind));
 }
 
-internal b32
+function b32
 sm_key(char *str, char *lexeme){
     return(sm_key(SCu8(str), SCu8(lexeme)));
 }
 
-internal b32
+function b32
 sm_key(char *str){
     String name = SCu8(str);
     String lexeme = push_stringz(helper_ctx.arena,  name);
@@ -1328,27 +1328,27 @@ sm_key(char *str){
     return(sm_key(name, lexeme));
 }
 
-internal b32
+function b32
 sm_key_fallback(String name){
     return(smi_key_fallback(&helper_ctx.primary_ctx, helper_ctx.selected_key_set, name, helper_ctx.selected_base_kind));
 }
 
-internal b32
+function b32
 sm_key_fallback(char *str){
     return(sm_key_fallback(SCu8(str)));
 }
 
-internal State*
+function State*
 sm_add_state(String pretty_name){
     return(smi_add_state(&helper_ctx.primary_ctx, pretty_name));
 }
 
-internal State*
+function State*
 sm_add_state(char *pretty_name){
     return(smi_add_state(&helper_ctx.primary_ctx, SCu8(pretty_name)));
 }
 
-internal State*
+function State*
 sm_begin_state_machine(void){
     State *state = sm_add_state("root");
     // If this fails first check sm_begin_state_machine is only called once
@@ -1357,74 +1357,74 @@ sm_begin_state_machine(void){
     return(state);
 }
 
-internal Flag*
+function Flag*
 sm_add_flag(Flag_Reset_Rule rule){
     return(smi_add_flag(&helper_ctx.primary_ctx, rule));
 }
 
-internal void
+function void
 sm_flag_bind(Flag *flag, Token_Base_Kind emit_flags){
     flag->emit_flags = emit_flags;
 }
 
-internal void
+function void
 sm_sub_flag_bind(Flag *flag, u16 emit_sub_flags){
     flag->emit_sub_flags = emit_sub_flags;
 }
 
-internal Emit_Rule*
+function Emit_Rule*
 sm_emit_rule(void){
     Emit_Rule *rule = smi_emit_rule(helper_ctx.arena);
     helper_ctx.selected_emit_rule = rule;
     return(rule);
 }
 
-internal void
+function void
 sm_emit_handler_direct(Flag *flag_check, String name){
     Emit_Rule *rule = helper_ctx.selected_emit_rule;
     smi_emit_handler(helper_ctx.arena, rule, name, flag_check);
 }
 
-internal void
+function void
 sm_emit_handler_direct(char *name){
     sm_emit_handler_direct(0, SCu8(name));
 }
 
-internal void
+function void
 sm_emit_handler_direct(Flag *flag_check, char *name){
     sm_emit_handler_direct(flag_check, SCu8(name));
 }
 
-internal void
+function void
 sm_emit_handler_keys(Flag *flag_check, Keyword_Set *set){
     Emit_Rule *rule = helper_ctx.selected_emit_rule;
     smi_emit_handler(helper_ctx.arena, rule, set, flag_check);
 }
 
-internal void
+function void
 sm_emit_handler_keys(Keyword_Set *set){
     sm_emit_handler_keys(0, set);
 }
 
-internal void
+function void
 sm_emit_handler_keys_delim(Flag *flag_check, Keyword_Set *set){
     Emit_Rule *rule = helper_ctx.selected_emit_rule;
     smi_emit_handler_delim(helper_ctx.arena, rule, set, flag_check);
 }
 
-internal void
+function void
 sm_emit_handler_keys_delim(Keyword_Set *set){
     sm_emit_handler_keys_delim(0, set);
 }
 
-internal Transition*
+function Transition*
 sm_case(String str, Flag *flag_check, b32 flag_check_value, State *dst, Transition_Consume_Rule consume_rule, Emit_Rule *emit){
     Transition *transition = smi_case(&helper_ctx.primary_ctx, helper_ctx.selected_state, TransitionCaseKind_CharaterArray, str,
                                       flag_check, flag_check_value, dst, consume_rule, emit);
     helper_ctx.selected_transition = transition;
     return(transition);
 }
-internal Transition*
+function Transition*
 sm_case(Transition_Case_Kind kind, Flag *flag_check, b32 flag_check_value, State *dst, Transition_Consume_Rule consume_rule, Emit_Rule *emit){
     Assert(kind != TransitionCaseKind_CharaterArray);
     String str = {};
@@ -1434,150 +1434,150 @@ sm_case(Transition_Case_Kind kind, Flag *flag_check, b32 flag_check_value, State
     return(transition);
 }
 
-internal Transition*
+function Transition*
 sm_case(char *str, State *dst){
     return(sm_case(SCu8(str), 0, 0, dst, Transition_Consume, 0));
 }
-internal Transition*
+function Transition*
 sm_case(u8 *str, State *dst){
     return(sm_case(SCu8(str), 0, 0, dst, Transition_Consume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_peek(char *str, State *dst){
     return(sm_case(SCu8(str), 0, 0, dst, Transition_NoConsume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_peek(u8 *str, State *dst){
     return(sm_case(SCu8(str), 0, 0, dst, Transition_NoConsume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_flagged(Flag *flag_check, b32 flag_check_value, char *str, State *dst){
     return(sm_case(SCu8(str), flag_check, flag_check_value, dst, Transition_Consume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_flagged(Flag *flag_check, b32 flag_check_value, u8 *str, State *dst){
     return(sm_case(SCu8(str), flag_check, flag_check_value, dst, Transition_Consume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_peek_flagged(Flag *flag_check, b32 flag_check_value, char *str, State *dst){
     return(sm_case(SCu8(str), flag_check, flag_check_value, dst, Transition_NoConsume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_peek_flagged(Flag *flag_check, b32 flag_check_value, u8 *str, State *dst){
     return(sm_case(SCu8(str), flag_check, flag_check_value, dst, Transition_NoConsume, 0));
 }
-internal Transition*
+function Transition*
 sm_case(char *str, Emit_Rule *emit){
     return(sm_case(SCu8(str), 0, 0, helper_ctx.primary_ctx.model.root, Transition_Consume, emit));
 }
-internal Transition*
+function Transition*
 sm_case(u8 *str, Emit_Rule *emit){
     return(sm_case(SCu8(str), 0, 0, helper_ctx.primary_ctx.model.root, Transition_Consume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_peek(char *str, Emit_Rule *emit){
     return(sm_case(SCu8(str), 0, 0, helper_ctx.primary_ctx.model.root, Transition_NoConsume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_peek(u8 *str, Emit_Rule *emit){
     return(sm_case(SCu8(str), 0, 0, helper_ctx.primary_ctx.model.root, Transition_NoConsume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_flagged(Flag *flag_check, b32 flag_check_value, char *str, Emit_Rule *emit){
     return(sm_case(SCu8(str), flag_check, flag_check_value, helper_ctx.primary_ctx.model.root, Transition_Consume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_flagged(Flag *flag_check, b32 flag_check_value, u8 *str, Emit_Rule *emit){
     return(sm_case(SCu8(str), flag_check, flag_check_value, helper_ctx.primary_ctx.model.root, Transition_Consume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_peek_flagged(Flag *flag_check, b32 flag_check_value, char *str, Emit_Rule *emit){
     return(sm_case(SCu8(str), flag_check, flag_check_value, helper_ctx.primary_ctx.model.root, Transition_NoConsume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_peek_flagged(Flag *flag_check, b32 flag_check_value, u8 *str, Emit_Rule *emit){
     return(sm_case(SCu8(str), flag_check, flag_check_value, helper_ctx.primary_ctx.model.root, Transition_NoConsume, emit));
 }
 
-internal Transition*
+function Transition*
 sm_case_eof(State *dst){
     return(sm_case(TransitionCaseKind_EOF, 0, 0, dst, Transition_Consume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_eof_peek(State *dst){
     return(sm_case(TransitionCaseKind_EOF, 0, 0, dst, Transition_NoConsume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_eof_flagged(Flag *flag_check, b32 flag_check_value, State *dst){
     return(sm_case(TransitionCaseKind_EOF, flag_check, flag_check_value, dst, Transition_Consume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_eof_peek_flagged(Flag *flag_check, b32 flag_check_value, State *dst){
     return(sm_case(TransitionCaseKind_EOF, flag_check, flag_check_value, dst, Transition_NoConsume, 0));
 }
-internal Transition*
+function Transition*
 sm_case_eof(Emit_Rule *emit){
     return(sm_case(TransitionCaseKind_EOF, 0, 0, helper_ctx.primary_ctx.model.root, Transition_Consume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_eof_peek(Emit_Rule *emit){
     return(sm_case(TransitionCaseKind_EOF, 0, 0, helper_ctx.primary_ctx.model.root, Transition_NoConsume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_eof_flagged(Flag *flag_check, b32 flag_check_value, Emit_Rule *emit){
     return(sm_case(TransitionCaseKind_EOF, flag_check, flag_check_value, helper_ctx.primary_ctx.model.root, Transition_Consume, emit));
 }
-internal Transition*
+function Transition*
 sm_case_eof_peek_flagged(Flag *flag_check, b32 flag_check_value, Emit_Rule *emit){
     return(sm_case(TransitionCaseKind_EOF, flag_check, flag_check_value, helper_ctx.primary_ctx.model.root, Transition_NoConsume, emit));
 }
 
-internal Transition*
+function Transition*
 sm_fallback(State *dst){
     return(sm_case(TransitionCaseKind_Fallback, 0, 0, dst, Transition_Consume, 0));
 }
-internal Transition*
+function Transition*
 sm_fallback_peek(State *dst){
     return(sm_case(TransitionCaseKind_Fallback, 0, 0, dst, Transition_NoConsume, 0));
 }
-internal Transition*
+function Transition*
 sm_fallback_flagged(Flag *flag_check, b32 flag_check_value, State *dst){
     return(sm_case(TransitionCaseKind_Fallback, flag_check, flag_check_value, dst, Transition_Consume, 0));
 }
-internal Transition*
+function Transition*
 sm_fallback_peek_flagged(Flag *flag_check, b32 flag_check_value, State *dst){
     return(sm_case(TransitionCaseKind_Fallback, flag_check, flag_check_value, dst, Transition_NoConsume, 0));
 }
-internal Transition*
+function Transition*
 sm_fallback(Emit_Rule *emit){
     return(sm_case(TransitionCaseKind_Fallback, 0, 0, helper_ctx.primary_ctx.model.root, Transition_Consume, emit));
 }
-internal Transition*
+function Transition*
 sm_fallback_peek(Emit_Rule *emit){
     return(sm_case(TransitionCaseKind_Fallback, 0, 0, helper_ctx.primary_ctx.model.root, Transition_NoConsume, emit));
 }
-internal Transition*
+function Transition*
 sm_fallback_flagged(Flag *flag_check, b32 flag_check_value, Emit_Rule *emit){
     return(sm_case(TransitionCaseKind_Fallback, flag_check, flag_check_value, helper_ctx.primary_ctx.model.root, Transition_Consume, emit));
 }
-internal Transition*
+function Transition*
 sm_fallback_peek_flagged(Flag *flag_check, b32 flag_check_value, Emit_Rule *emit){
     return(sm_case(TransitionCaseKind_Fallback, flag_check, flag_check_value, helper_ctx.primary_ctx.model.root, Transition_NoConsume, emit));
 }
 
-internal void
+function void
 sm_match_delim(State *dst, State *fail_dst){
     sm_case(TransitionCaseKind_DelimMatch, 0, 0, dst, Transition_NoConsume, 0);
     sm_case(TransitionCaseKind_DelimMatchFail, 0, 0, fail_dst, Transition_NoConsume, 0);
 }
 
-internal void
+function void
 sm_on_transition_set_flag(Flag *flag, b32 value){
     Transition *transition = helper_ctx.selected_transition;
     smi_append_set_flag(helper_ctx.arena, &transition->activation_actions, flag, value);
 }
 
-internal void
+function void
 sm_emit_check_set_flag(String emit_check, Flag *flag, b32 value){
     Emit_Rule *rule = helper_ctx.selected_emit_rule;
     Emit_Check *new_check = push_array_zero(helper_ctx.arena, Emit_Check, 1);
@@ -1588,24 +1588,24 @@ sm_emit_check_set_flag(String emit_check, Flag *flag, b32 value){
     new_check->value = value;
 }
 
-internal void
+function void
 sm_emit_check_set_flag(char *emit_check, Flag *flag, b32 value){
     sm_emit_check_set_flag(SCu8(emit_check), flag, value);
 }
 
-internal void
+function void
 sm_set_flag(Flag *flag, b32 value){
     State *state = helper_ctx.selected_state;
     smi_append_set_flag(helper_ctx.arena, &state->on_entry_actions, flag, value);
 }
 
-internal void
+function void
 sm_delim_mark_first(void){
     State *state = helper_ctx.selected_state;
     smi_append_delim_mark_first(helper_ctx.arena, &state->on_entry_actions);
 }
 
-internal void
+function void
 sm_delim_mark_one_past_last(void){
     State *state = helper_ctx.selected_state;
     smi_append_delim_mark_one_past_last(helper_ctx.arena, &state->on_entry_actions);
@@ -1615,7 +1615,7 @@ sm_delim_mark_one_past_last(void){
 
 // NOTE(allen): OPERATORS FOR COMPOSING MODEL COMPONENTS AS EXPRESSIONS
 
-internal Operator_Set*
+function Operator_Set*
 smo_copy_op_set(Operator_Set *set){
     Operator_Set *new_set = push_array_zero(helper_ctx.arena, Operator_Set, 1);
     new_set->lexeme_to_ptr = make_table_Data_u64(helper_ctx.primary_ctx.allocator, set->count*2);
@@ -1632,7 +1632,7 @@ smo_copy_op_set(Operator_Set *set){
     return(new_set);
 }
 
-internal void
+function void
 smo_remove_ops_with_prefix(Operator_Set *set, String prefix){
     Operator *first = 0;
     Operator *last = 0;
@@ -1656,12 +1656,12 @@ smo_remove_ops_with_prefix(Operator_Set *set, String prefix){
     set->count = count;
 }
 
-internal void
+function void
 smo_remove_ops_with_prefix(Operator_Set *set, char *prefix){
     smo_remove_ops_with_prefix(set, SCu8(prefix));
 }
 
-internal void
+function void
 smo_remove_ops_without_prefix(Operator_Set *set, String prefix){
     Operator *first = 0;
     Operator *last = 0;
@@ -1685,12 +1685,12 @@ smo_remove_ops_without_prefix(Operator_Set *set, String prefix){
     set->count = count;
 }
 
-internal void
+function void
 smo_remove_ops_without_prefix(Operator_Set *set, char *prefix){
     smo_remove_ops_without_prefix(set, SCu8(prefix));
 }
 
-internal void
+function void
 smo_ops_string_skip(Operator_Set *set, u64 size){
     Operator_Set new_set = {};
     new_set.lexeme_to_ptr = make_table_Data_u64(helper_ctx.primary_ctx.allocator, set->count*2);
@@ -1713,14 +1713,14 @@ smo_ops_string_skip(Operator_Set *set, u64 size){
     *set = new_set;
 }
 
-internal Character_Set*
+function Character_Set*
 smo_new_char_set(void){
     Character_Set *set = push_array_zero(helper_ctx.arena, Character_Set, 1);
     set->table = make_table_u64_u64(helper_ctx.primary_ctx.allocator, 100);
     return(set);
 }
 
-internal void
+function void
 smo_char_set_union_ops_firsts(Character_Set *chars, Operator_Set *ops){
     for (Operator *node = ops->first;
          node != 0;
@@ -1731,14 +1731,14 @@ smo_char_set_union_ops_firsts(Character_Set *chars, Operator_Set *ops){
     }
 }
 
-internal void
+function void
 smo_char_set_remove(Character_Set *set, char *str){
     for (char *ptr = str; *ptr != 0; ptr += 1){
         table_erase(&set->table, (u64)(*ptr));
     }
 }
 
-internal char*
+function char*
 smo_char_set_get_array(Character_Set *set){
     u32 count = set->table.used_count;
     char *result = push_array_zero(helper_ctx.arena, char, count + 1);
@@ -1755,7 +1755,7 @@ smo_char_set_get_array(Character_Set *set){
     return(result);
 }
 
-internal State*
+function State*
 smo_op_set_lexer_root(Operator_Set *set, State *machine_root, String fallback_token_name){
     Base_Allocator *allocator = helper_ctx.primary_ctx.allocator;
     Table_Data_u64 string_to_state = make_table_Data_u64(allocator, set->count*8);
@@ -1862,7 +1862,7 @@ smo_op_set_lexer_root(Operator_Set *set, State *machine_root, String fallback_to
     return(root);
 }
 
-internal State*
+function State*
 smo_op_set_lexer_root(Operator_Set *set, State *machine_root, char *fallback_token_name){
     return(smo_op_set_lexer_root(set, machine_root, SCu8(fallback_token_name)));
 }
@@ -1873,7 +1873,7 @@ smo_op_set_lexer_root(Operator_Set *set, State *machine_root, char *fallback_tok
 
 // NOTE(allen): utf8 should be an u8 array with 129 slots.
 // This will fill it out to represent all characters above the ASCII range.
-internal void
+function void
 smh_utf8_fill(u8 *utf8){
     for (u16 i = 0; i < 128; i += 1){
         utf8[i] = (u8)(i + 128);
@@ -1881,7 +1881,7 @@ smh_utf8_fill(u8 *utf8){
     utf8[128] = 0;
 }
 
-internal void
+function void
 smh_set_base_character_names(void){
     sm_char_name('{', "BraceOp");
     sm_char_name('}', "BraceCl");
@@ -1912,7 +1912,7 @@ smh_set_base_character_names(void){
     sm_char_name('|', "Pipe");
 }
 
-internal void
+function void
 smh_typical_tokens(void){
     sm_select_base_kind(TokenBaseKind_EOF);
     sm_direct_token_kind("EOF");
@@ -1932,7 +1932,7 @@ smh_typical_tokens(void){
 
 // NOTE(allen): OPTIMIZER
 
-internal String
+function String
 string_char_subtract(String a, String b){
     for (u64 i = 0; i < b.size; i += 1){
         u8 c = b.str[i];
@@ -1949,7 +1949,7 @@ string_char_subtract(String a, String b){
     return(a);
 }
 
-internal Action_List
+function Action_List
 opt_copy_action_list(Arena *arena, Action_List actions){
     Action_List result = {};
     for (Action *node = actions.first;
@@ -1962,7 +1962,7 @@ opt_copy_action_list(Arena *arena, Action_List actions){
     return(result);
 }
 
-internal Flag*
+function Flag*
 opt_flag_fixup(Flag *old_flag, Table_u64_u64 old_to_new){
     Flag *result = 0;
     if (old_flag != 0){
@@ -1975,7 +1975,7 @@ opt_flag_fixup(Flag *old_flag, Table_u64_u64 old_to_new){
     return(result);
 }
 
-internal Transition_Case
+function Transition_Case
 opt_copy_condition(Arena *arena, Transition_Case condition, Table_u64_u64 old_to_new){
     Transition_Case result = condition;
     if (result.kind == TransitionCaseKind_ConditionSet){
@@ -1998,7 +1998,7 @@ opt_copy_condition(Arena *arena, Transition_Case condition, Table_u64_u64 old_to
     return(result);
 }
 
-internal Emit_Rule*
+function Emit_Rule*
 opt_copy_emit_rule(Arena *arena, Emit_Rule *emit, Table_u64_u64 old_to_new){
     Emit_Rule *new_emit = push_array_copy(arena, Emit_Rule, 1, emit);
     block_zero_struct(&new_emit->emit_checks);
@@ -2022,7 +2022,7 @@ opt_copy_emit_rule(Arena *arena, Emit_Rule *emit, Table_u64_u64 old_to_new){
     return(new_emit);
 }
 
-internal Lexer_Model
+function Lexer_Model
 opt_copy_model(Arena *arena, Lexer_Model model){
     Lexer_Model result = {};
     
@@ -2115,7 +2115,7 @@ opt_copy_model(Arena *arena, Lexer_Model model){
     return(result);
 }
 
-internal void
+function void
 opt_simplify_transitions(Lexer_Primary_Context *ctx){
     for (State *state = ctx->model.states.first;
          state != 0;
@@ -2164,7 +2164,7 @@ opt_simplify_transitions(Lexer_Primary_Context *ctx){
     }
 }
 
-internal void
+function void
 opt_mark_all_states_excluded(Lexer_Primary_Context *ctx){
     for (State *state = ctx->model.states.first;
          state != 0;
@@ -2173,7 +2173,7 @@ opt_mark_all_states_excluded(Lexer_Primary_Context *ctx){
     }
 }
 
-internal void
+function void
 opt_mark_all_states_included(Lexer_Primary_Context *ctx){
     for (State *state = ctx->model.states.first;
          state != 0;
@@ -2182,7 +2182,7 @@ opt_mark_all_states_included(Lexer_Primary_Context *ctx){
     }
 }
 
-internal void
+function void
 opt_discard_all_excluded_states(Lexer_Primary_Context *ctx){
     State *first = 0;
     State *last = 0;
@@ -2202,7 +2202,7 @@ opt_discard_all_excluded_states(Lexer_Primary_Context *ctx){
     ctx->model.states.count = count;
 }
 
-internal void
+function void
 opt_include_reachable_states(State *state){
     if (!state->optimized_in){
         state->optimized_in = true;
@@ -2214,7 +2214,7 @@ opt_include_reachable_states(State *state){
     }
 }
 
-internal void
+function void
 opt_update_state_back_references(Lexer_Primary_Context *ctx){
     for (State *state = ctx->model.states.first;
          state != 0;
@@ -2239,13 +2239,13 @@ opt_update_state_back_references(Lexer_Primary_Context *ctx){
     }
 }
 
-internal void
+function void
 opt_set_auto_zero_flags_on_root(Lexer_Primary_Context *ctx){
     State *root = ctx->model.root;
     smi_append_zero_flags(&ctx->arena, &root->on_entry_actions);
 }
 
-internal void
+function void
 opt_transfer_state_actions_to_transitions(Lexer_Primary_Context *ctx){
     opt_update_state_back_references(ctx);
     
@@ -2274,7 +2274,7 @@ opt_transfer_state_actions_to_transitions(Lexer_Primary_Context *ctx){
     }
 }
 
-internal void
+function void
 opt_flags_set_numbers(Lexer_Model model){
     i1 number = 0;
     for (Flag *flag = model.flags.first;
@@ -2285,7 +2285,7 @@ opt_flags_set_numbers(Lexer_Model model){
     }
 }
 
-internal void
+function void
 opt_states_set_numbers(Lexer_Model model){
     i1 number = 1;
     for (State *state = model.states.first;
@@ -2296,7 +2296,7 @@ opt_states_set_numbers(Lexer_Model model){
     }
 }
 
-internal void
+function void
 opt_transition_pull_actions_backward(Lexer_Primary_Context *ctx, Transition *a, Transition *b){
     if (b->activation_actions.count > 0){
         Action_List b_actions = opt_copy_action_list(&ctx->arena, b->activation_actions);
@@ -2314,7 +2314,7 @@ opt_transition_pull_actions_backward(Lexer_Primary_Context *ctx, Transition *a, 
     a->dst_state = b->dst_state;
 }
 
-internal void
+function void
 opt_transition_push_actions_forward(Lexer_Primary_Context *ctx, Transition *a, Transition *b){
     if (b->activation_actions.count > 0){
         Action_List a_actions = opt_copy_action_list(&ctx->arena, a->activation_actions);
@@ -2331,7 +2331,7 @@ opt_transition_push_actions_forward(Lexer_Primary_Context *ctx, Transition *a, T
     }
 }
 
-internal b32
+function b32
 opt_action_list_contains_consume(Action_List list){
     b32 result = false;
     for (Action *act = list.first;
@@ -2345,7 +2345,7 @@ opt_action_list_contains_consume(Action_List list){
     return(result);
 }
 
-internal void
+function void
 opt_skip_past_thunk_states(Lexer_Primary_Context *ctx){
     opt_mark_all_states_included(ctx);
     
@@ -2389,7 +2389,7 @@ opt_skip_past_thunk_states(Lexer_Primary_Context *ctx){
     }
 }
 
-internal b32
+function b32
 opt_emit_rule_match(Emit_Rule *rule_a, Emit_Rule *rule_b){
     b32 result = true;
     if (rule_a->emit_checks.count != rule_b->emit_checks.count){
@@ -2443,7 +2443,7 @@ opt_emit_rule_match(Emit_Rule *rule_a, Emit_Rule *rule_b){
     return(result);
 }
 
-internal b32
+function b32
 opt_action_lists_match(Action_List a, Action_List b){
     b32 result = false;
     if (a.count == b.count){
@@ -2480,7 +2480,7 @@ opt_action_lists_match(Action_List a, Action_List b){
     return(result);
 }
 
-internal void
+function void
 opt_merge_redundant_transitions_in_each_state(Lexer_Primary_Context *ctx){
     for (State *state = ctx->model.states.first;
          state != 0;
@@ -2527,7 +2527,7 @@ opt_merge_redundant_transitions_in_each_state(Lexer_Primary_Context *ctx){
     }
 }
 
-internal b32
+function b32
 opt_condition_set_is_subset(Arena *scratch, Condition_Set sub, Condition_Set super){
     Temp_Memory temp = begin_temp(scratch);
     Condition_Set left_over = smi_condition_set_subtract(scratch, sub, super);
@@ -2536,7 +2536,7 @@ opt_condition_set_is_subset(Arena *scratch, Condition_Set sub, Condition_Set sup
     return(result);
 }
 
-internal void
+function void
 opt_remove_peeks_without_creating_transition_splits(Lexer_Primary_Context *ctx){
     for (State *state = ctx->model.states.first;
          state != 0;
@@ -2582,7 +2582,7 @@ opt_remove_peeks_without_creating_transition_splits(Lexer_Primary_Context *ctx){
     }
 }
 
-internal void
+function void
 opt_remove_peeks_into_single_entry_point_states(Lexer_Primary_Context *ctx){
     opt_update_state_back_references(ctx);
     opt_mark_all_states_included(ctx);
@@ -2640,7 +2640,7 @@ opt_remove_peeks_into_single_entry_point_states(Lexer_Primary_Context *ctx){
     }
 }
 
-internal b32
+function b32
 opt_condition_is_eof_only(Transition_Case condition){
     b32 result = false;
     if (condition.kind == TransitionCaseKind_ConditionSet){
@@ -2658,7 +2658,7 @@ opt_condition_is_eof_only(Transition_Case condition){
  return(result);
 }
 
-internal Keyword_Layout
+function Keyword_Layout
 opt_key_layout(Arena *arena, Keyword_Set keywords, i1 slot_count, u64 seed){
  Keyword_Layout layout = {};
  slot_count = clamp_min(keywords.count + 1, slot_count);
@@ -2729,7 +2729,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords, i1 slot_count, u64 seed){
  return(layout);
 }
 
-internal u64
+function u64
 random_u64_dirty(void){
     u64 a = pcg32_random();
     u64 b = pcg32_random();
@@ -2737,7 +2737,7 @@ random_u64_dirty(void){
 }
 
 #if 0
-internal Keyword_Layout
+function Keyword_Layout
 opt_key_layout(Arena *arena, Keyword_Set keywords){
     i1 slot_count = keywords.count*2;
     u64 seed = random_u64_dirty();
@@ -2745,7 +2745,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
 }
 #endif
 
-internal Keyword_Layout
+function Keyword_Layout
 opt_key_layout(Arena *arena, Keyword_Set keywords){
     i1 init_slot_count = keywords.count + 1;
     if (keywords.count == 1){
@@ -2832,7 +2832,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
 
 ////////////////////////////////
 
-internal b32
+function b32
 opt__input_set_contains(Input_Set set, u16 x){
     b32 result = false;
     for (i1 i = 0; i < set.count; i += 1){
@@ -2844,7 +2844,7 @@ opt__input_set_contains(Input_Set set, u16 x){
     return(result);
 }
 
-internal b32
+function b32
 opt__partial_transition_match(Arena *scratch, Partial_Transition *a, Partial_Transition *b){
     b32 result = false;
     if (smi_field_set_match(scratch, a->fields, b->fields)){
@@ -2857,7 +2857,7 @@ opt__partial_transition_match(Arena *scratch, Partial_Transition *a, Partial_Tra
     return(result);
 }
 
-internal void
+function void
 opt__push_partial_transition(Arena *arena, Partial_Transition_List *list, Field_Set fields, Transition *trans){
     Partial_Transition partial = {};
     partial.fields = fields;
@@ -2881,7 +2881,7 @@ opt__push_partial_transition(Arena *arena, Partial_Transition_List *list, Field_
     }
 }
 
-internal b32
+function b32
 opt__partial_transition_list_match(Arena *scratch, Partial_Transition_List *a, Partial_Transition_List *b){
     b32 result = false;
     if (a->count == b->count){
@@ -2906,7 +2906,7 @@ opt__partial_transition_list_match(Arena *scratch, Partial_Transition_List *a, P
     return(result);
 }
 
-internal void
+function void
 opt__insert_input_into_group(Grouped_Input_Handler *group, u8 x){
     if (!group->inputs_used[x]){
         group->inputs_used[x] = true;
@@ -2915,7 +2915,7 @@ opt__insert_input_into_group(Grouped_Input_Handler *group, u8 x){
     }
 }
 
-internal Grouped_Input_Handler_List
+function Grouped_Input_Handler_List
 opt_grouped_input_handlers(Arena *arena, Transition *first_trans){
     Grouped_Input_Handler_List result = {};
     
@@ -2974,7 +2974,7 @@ opt_grouped_input_handlers(Arena *arena, Transition *first_trans){
 
 ////////////////////////////////
 
-internal void
+function void
 debug_print_states(Lexer_Primary_Context *ctx){
     printf("Number of States: %d\n", ctx->model.states.count);
     i1 transition_count = 0;
@@ -2992,7 +2992,7 @@ debug_print_states(Lexer_Primary_Context *ctx){
     }
 }
 
-internal void
+function void
 debug_print_transitions(Arena *scratch, Lexer_Model model){
     Temp_Memory temp = begin_temp(scratch);
     
@@ -3126,12 +3126,12 @@ debug_print_transitions(Arena *scratch, Lexer_Model model){
     end_temp(temp);
 }
 
-internal void
+function void
 debug_print_transitions(Lexer_Primary_Context *ctx){
     debug_print_transitions(&ctx->arena, ctx->model);
 }
 
-internal void
+function void
 debug_print_keyword_table_metrics(Keyword_Layout key_layout, i1 keyword_count){
     printf("used count: %d\n", keyword_count);
     printf("slot count: %d\n", key_layout.slot_count);
@@ -3152,7 +3152,7 @@ debug_print_keyword_table_metrics(Keyword_Layout key_layout, i1 keyword_count){
 
 ////////////////////////////////
 
-internal char*
+function char*
 gen_token_full_name(Arena *arena, String base_name){
     String string = push_stringfz(arena,
                                           "Token" LANG_NAME_CAMEL_STR "Kind_%.*s",
@@ -3160,7 +3160,7 @@ gen_token_full_name(Arena *arena, String base_name){
     return((char*)(string.str));
 }
 
-internal void
+function void
 gen_tokens(Arena *scratch, Token_Kind_Set tokens, FILE *out){
     Temp_Memory temp = begin_temp(scratch);
     i1 counter = 0;
@@ -3186,7 +3186,7 @@ gen_tokens(Arena *scratch, Token_Kind_Set tokens, FILE *out){
     end_temp(temp);
 }
 
-internal void
+function void
 gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, FILE *out){
     Temp_Memory temp = begin_temp(scratch);
     Keyword_Layout key_layout = opt_key_layout(scratch, keywords);
@@ -3263,7 +3263,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
     end_temp(temp);
 }
 
-internal void
+function void
 gen_flag_check__cont_flow(Flag *flag, b32 value, FILE *out){
     if (value == 0){
         fprintf(out, "!");
@@ -3271,7 +3271,7 @@ gen_flag_check__cont_flow(Flag *flag, b32 value, FILE *out){
     fprintf(out, "HasFlag(state.%.*s%d, 0x%x)", string_expand(flag->base_name), flag->index, flag->value);
 }
 
-internal void
+function void
 gen_SLOW_field_set_check__cont_flow(Field_Set fields, FILE *out){
     for (Field_Pin_List *pin_list = fields.first;
          pin_list != 0;
@@ -3298,7 +3298,7 @@ gen_SLOW_field_set_check__cont_flow(Field_Set fields, FILE *out){
     }
 }
 
-internal void
+function void
 gen_goto_state__cont_flow(State *state, Action_Context context, FILE *out){
     switch (context){
         case ActionContext_Normal:
@@ -3314,12 +3314,12 @@ gen_goto_state__cont_flow(State *state, Action_Context context, FILE *out){
     }
 }
 
-internal void
+function void
 gen_goto_dst_state__cont_flow(Transition *trans, Action_Context context, FILE *out){
     gen_goto_state__cont_flow(trans->dst_state, context, out);
 }
 
-internal void
+function void
 gen_action__set_flag(Flag *flag, b32 value, FILE *out){
     if (flag != 0){
         if (value == 0){
@@ -3333,7 +3333,7 @@ gen_action__set_flag(Flag *flag, b32 value, FILE *out){
     }
 }
 
-internal void
+function void
 gen_emit__fill_token_flags(Flag_Set flags, Flag_Bucket_Set bucket_set, FILE *out){
     if (bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_AutoZero].count > 0){
         if (bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_KeepState].count > 0){
@@ -3361,7 +3361,7 @@ gen_emit__fill_token_flags(Flag_Set flags, Flag_Bucket_Set bucket_set, FILE *out
     }
 }
 
-internal void
+function void
 gen_emit__fill_token_base_kind(Token_Kind_Set tokens, String name, FILE *out){
     Table_Lookup lookup = table_lookup(&tokens.name_to_ptr, make_data(name.str, name.size));
     Assert(lookup.found_match);
@@ -3373,7 +3373,7 @@ gen_emit__fill_token_base_kind(Token_Kind_Set tokens, String name, FILE *out){
     fprintf(out, "token.kind = %u;\n", base_kind);
 }
 
-internal void
+function void
 gen_emit__direct(Arena *scratch, Token_Kind_Set tokens, String base_name, FILE *out){
     Temp_Memory temp = begin_temp(scratch);
     char *token_full_name = gen_token_full_name(scratch, base_name);
@@ -3382,7 +3382,7 @@ gen_emit__direct(Arena *scratch, Token_Kind_Set tokens, String base_name, FILE *
     end_temp(temp);
 }
 
-internal Action_Context
+function Action_Context
 gen_SLOW_action_list__cont_flow(Arena *scratch, Token_Kind_Set tokens, Flag_Set flags,
                                 Flag_Bucket_Set bucket_set, Action_List action_list,
                                 Action_Context context, FILE *out){
@@ -3554,7 +3554,7 @@ gen_SLOW_action_list__cont_flow(Arena *scratch, Token_Kind_Set tokens, Flag_Set 
     return(result_context);
 }
 
-internal void
+function void
 gen_flag_declarations__cont_flow(Flag_Bucket *bucket, FILE *out){
     i1 max_bits = bucket->max_bits;
     i1 number_of_flag_variables = (bucket->count + max_bits - 1)/max_bits;
@@ -3565,7 +3565,7 @@ gen_flag_declarations__cont_flow(Flag_Bucket *bucket, FILE *out){
     bucket->number_of_variables = number_of_flag_variables;
 }
 
-internal void
+function void
 gen_flag_init__cont_flow(Flag_Bucket *bucket, FILE *out){
     i1 max_bits = bucket->max_bits;
     i1 number_of_flag_variables = (bucket->count + max_bits - 1)/max_bits;
@@ -3576,7 +3576,7 @@ gen_flag_init__cont_flow(Flag_Bucket *bucket, FILE *out){
     bucket->number_of_variables = number_of_flag_variables;
 }
 
-internal void
+function void
 gen_bound_flag_fill_lookup__cont_flow(Flag_Bucket *bucket){
     i1 counter = 0;
     for (Flag_Ptr_Node *node = bucket->first;
@@ -3590,7 +3590,7 @@ gen_bound_flag_fill_lookup__cont_flow(Flag_Bucket *bucket){
     }
 }
 
-internal void
+function void
 gen_flag_fill_lookup__cont_flow(Flag_Bucket *bucket){
     i1 max_bits = bucket->max_bits;
     i1 counter = 0;
@@ -3605,7 +3605,7 @@ gen_flag_fill_lookup__cont_flow(Flag_Bucket *bucket){
     }
 }
 
-internal void
+function void
 gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_Model model, FILE *out){
     Temp_Memory temp = begin_temp(scratch);
     
@@ -3666,13 +3666,13 @@ gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_M
     }
     
     Flag_Bucket_Set bucket_set = {};
-    bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_AutoZero].pretty_name = string_u8_litexpr("flags_ZF");
+    bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_AutoZero].pretty_name = strlit("flags_ZF");
     bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_AutoZero].max_bits = 32;
-    bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_KeepState].pretty_name = string_u8_litexpr("flags_KF");
+    bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_KeepState].pretty_name = strlit("flags_KF");
     bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_KeepState].max_bits = 32;
-    bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_AutoZero].pretty_name = string_u8_litexpr("flags_ZB");
+    bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_AutoZero].pretty_name = strlit("flags_ZB");
     bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_AutoZero].max_bits = 16;
-    bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_KeepState].pretty_name = string_u8_litexpr("flags_KB");
+    bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_KeepState].pretty_name = strlit("flags_KB");
     bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_KeepState].max_bits = 16;
     
     for (Flag *flag = model.flags.first;
@@ -3714,7 +3714,7 @@ gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_M
     fprintf(out, "u8 *opl_ptr;\n");
     fprintf(out, "};\n");
     
-    fprintf(out, "internal void\n");
+    fprintf(out, "function void\n");
     fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_init(Lex_State_"
             LANG_NAME_CAMEL_STR " *state_ptr, String input){\n");
     for (i1 i = 0; i < FlagBindProperty_COUNT; i += 1){
@@ -3730,7 +3730,7 @@ gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_M
     fprintf(out, "state_ptr->opl_ptr = input.str + input.size;\n");
     fprintf(out, "}\n");
     
-    fprintf(out, "internal b32\n");
+    fprintf(out, "function b32\n");
     fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_breaks("
             "Arena *arena, Token_List *list, Lex_State_" LANG_NAME_CAMEL_STR " *state_ptr, u64 max){\n");
     fprintf(out, "b32 result = false;\n");
@@ -3883,7 +3883,7 @@ gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_M
     fprintf(out, "return(result);\n");
     fprintf(out, "}\n");
     
-    fprintf(out, "internal Token_List\n");
+    fprintf(out, "function Token_List\n");
     fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "(Arena *arena, String input){\n");
     fprintf(out, "Lex_State_" LANG_NAME_CAMEL_STR " state = {};\n");
     fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_init(&state, input);\n");
@@ -3900,10 +3900,10 @@ gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_M
 #include <stdio.h>
 #include <time.h>
 
-internal void
+function void
 build_language_model(void);
 
-internal String
+function String
 file_read_all(Arena *arena, FILE *file){
     String result = {};
     fseek(file, 0, SEEK_END);
@@ -3991,7 +3991,7 @@ int main(int argc, char **argv){
     
     // NOTE(allen): Arrange input files and output files
     
-    String path_to_self = string_u8_litexpr(__FILE__);
+    String path_to_self = strlit(__FILE__);
     path_to_self = path_dirname(path_to_self);
     
     String hand_written_h_name = push_stringfz(&ctx->arena,

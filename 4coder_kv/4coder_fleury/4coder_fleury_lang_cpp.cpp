@@ -2,7 +2,7 @@
 #include "4coder_fleury_index.h"
 #include "4coder_fleury_lang.cpp"
 
-internal void
+function void
 F4_CPP_ParseMacroDefinition(F4_Index_ParseCtx *ctx)
 {
     Token *name = 0;
@@ -15,7 +15,7 @@ F4_CPP_ParseMacroDefinition(F4_Index_ParseCtx *ctx)
     }
 }
 
-internal b32
+function b32
 F4_CPP_SkipParseBody(F4_Index_ParseCtx *ctx)
 {
     b32 body_found = 0;
@@ -518,7 +518,7 @@ function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
  }
 }
 
-internal F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
+function F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
 {
     int count = 0;
     F4_Language_PosContextData *first = 0;
@@ -605,6 +605,6 @@ internal F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
     return first;
 }
 
-internal F4_LANGUAGE_HIGHLIGHT(F4_CPP_Highlight)
+function F4_LANGUAGE_HIGHLIGHT(F4_CPP_Highlight)
 {
 }

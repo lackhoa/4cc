@@ -78,7 +78,7 @@ get_token_array_from_buffer(App *app, Buffer_ID buffer){
  return(result);
 }
 
-internal Token *
+function Token *
 kv_token_at_cursor(App *app, i64 delta=0)
 {
  GET_VIEW_AND_BUFFER;
@@ -522,7 +522,7 @@ scan_any_boundary(App *app, Boundary_Function *func, Buffer_ID buffer, Scan_Dire
     return(result);
 }
 
-internal i64
+function i64
 scan(App *app, Boundary_Function *func, Buffer_ID buffer, Scan_Direction direction, i64 pos)
 {
     Side side = (direction == Scan_Forward) ? (Side_Max) : (Side_Min);
@@ -1075,11 +1075,14 @@ get_selected_string(App *app, Arena *arena){
  return push_buffer_range(app, arena, buffer, range);
 }
 inline b32
-token_equal_cstring(App *app, Buffer_ID buffer, Token *token, char *cstring){
+token_equal_string(App *app, Buffer_ID buffer, Token *token, String string){
  Scratch_Block scratch(app);
- String8 string = push_token_lexeme(app, scratch, buffer, token);
- b32 result = string_compare(string, SCu8(cstring)) == 0;
- return result;
+ String8 token_string = push_token_lexeme(app, scratch, buffer, token);
+ return string_match(token_string, string);
+}
+inline b32
+token_equal_cstring(App *app, Buffer_ID buffer, Token *token, char *cstring){
+ return token_equal_string(app, buffer, token, SCu8(cstring));
 }
 
 function String
@@ -1168,7 +1171,7 @@ token_it_check_and_get_lexeme(App *app, Arena *arena, Token_Iterator_List *it, T
 
 ////////////////////////////////
 
-internal b32
+function b32
 buffer_has_name_with_star(App *app, Buffer_ID buffer)
 {
     Scratch_Block scratch(app);
@@ -1176,7 +1179,7 @@ buffer_has_name_with_star(App *app, Buffer_ID buffer)
     return(str.size > 0 && str.str[0] == '*');
 }
 
-internal b32
+function b32
 buffer_is_skm(App *app, Buffer_ID buffer)
 {
     Scratch_Block scratch(app);
@@ -1592,11 +1595,11 @@ query_user_general(App *app, Query_Bar *bar, b32 force_number, String init_strin
         String insert_string = to_writable(&in);
         if (insert_string.str != 0 && insert_string.size > 0){
             insert_string = string_replace(scratch, insert_string,
-                                           string_u8_litexpr("\n"),
-                                           string_u8_litexpr(""));
+                                           strlit("\n"),
+                                           strlit(""));
             insert_string = string_replace(scratch, insert_string,
-                                           string_u8_litexpr("\t"),
-                                           string_u8_litexpr(""));
+                                           strlit("\t"),
+                                           strlit(""));
             if (force_number){
                 if (string_is_integer(insert_string, 10)){
                     good_insert = true;
@@ -2282,7 +2285,7 @@ if_view_has_highlighted_range_delete_range(App *app, View_ID view_id){
     if (view_has_highlighted_range(app, view_id)){
         Range_i64 range = get_view_range(app, view_id);
         Buffer_ID buffer = view_get_buffer(app, view_id, Access_ReadWriteVisible);
-        buffer_replace_range(app, buffer, range, string_u8_litexpr(""));
+        buffer_replace_range(app, buffer, range, strlit(""));
         result = true;
     }
     return(result);
@@ -2336,13 +2339,13 @@ CUSTOM_DOC("Seeks the cursor to the end of the line across all text.")
     seek_pos_of_textual_line(app, Side_Max);
 }
 
-internal void 
+function void 
 seek_beginning_of_line(App *app)
 {
     seek_pos_of_visual_line(app, Side_Min);
 }
 
-internal void 
+function void 
 seek_end_of_line(App *app)
 {
     seek_pos_of_visual_line(app, Side_Max);
@@ -2580,7 +2583,7 @@ set_buffer_system_command(App *app, Child_Process_ID process, Buffer_ID buffer, 
  return(result);
 }
 
-internal b32
+function b32
 exec_system_command(App *app, View_ID view, Buffer_Identifier buffer_id,
                     String path, String command, Command_Line_Interface_Flag flags)
 {
@@ -2651,7 +2654,7 @@ get_cursor_rect(App *app, Text_Layout_ID text_layout_id)
     return result;
 }
 
-internal b32
+function b32
 view_is_active(App *app, View_ID view)
 {
     View_ID active_view = get_active_view(app, Access_Always);

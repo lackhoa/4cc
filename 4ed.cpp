@@ -1,4 +1,4 @@
-internal void
+function void
 init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings, i32 argc, char **argv){
     char *arg = 0;
     Command_Line_Mode mode = CLMode_App;
@@ -16,7 +16,7 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
         
         if (arg[0] == '-' && arg[1] == '-'){
             char *long_arg_name = arg+2;
-            if (string_match(SCu8(long_arg_name), string_u8_litexpr("custom"))){
+            if (string_match(SCu8(long_arg_name), strlit("custom"))){
                 mode = CLMode_Custom;
                 continue;
             }
@@ -95,8 +95,8 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
                         if (i + 1 < argc){
                             plat_settings->set_window_pos = true;
                             // NOTE(kv): Doesn't handle negative values here yet
-                            i32 x = (i32)gb_str_to_i64(argv[i],   0, 10);
-                            i32 y = (i32)gb_str_to_i64(argv[i+1], 0, 10);
+                            i32 x = (i32)str_to_i64(SCu8(argv[i]),   0, 10);
+                            i32 y = (i32)str_to_i64(SCu8(argv[i+1]), 0, 10);
                             
                             plat_settings->window_x = x;
                             plat_settings->window_y = y;
@@ -151,7 +151,7 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
 
 ////////////////////////////////
 
-internal Models*
+function Models*
 models_init(void)
 {
  Arena arena = make_arena_system();
@@ -162,14 +162,14 @@ models_init(void)
  return(models);
 }
 
-internal Log_Function*
+function Log_Function*
 app_get_logger(void)
 {
     log_init();
     return(log_string);
 }
 
-internal void *
+function void *
 app_read_command_line(Thread_Context *tctx,
                       String current_directory,
                       Plat_Settings *plat_settings,
@@ -192,7 +192,7 @@ app_read_command_line(Thread_Context *tctx,
 // TODO(kv): move this somewhere better
 extern "C" void custom_layer_init(App *app);
 
-internal u64
+function u64
 file_mtime(String filename)
 {
  Arena arena = make_arena_malloc();
@@ -200,7 +200,7 @@ file_mtime(String filename)
  return attr.last_write_time;
 }
 
-internal void 
+function void 
 app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
 {
  Models *models = (Models*)base_ptr;
@@ -330,7 +330,7 @@ app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
 function void
 file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file);
 
-internal Application_Step_Result 
+function Application_Step_Result 
 app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
 {
  Models *models = (Models*)base_ptr;
@@ -825,7 +825,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
     app.tctx = tctx;
     app.cmd_context = models;
 #define M "SERIOUS ERROR: coroutine wind down did not complete\n"
-    print_message(&app, string_u8_litexpr(M));
+    print_message(&app, strlit(M));
 #undef M
     break;
    }

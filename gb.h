@@ -581,9 +581,9 @@ extern "C++" {
 // NOTE(bill): Because static means 3/4 different things in C/C++. Great design (!)
 #ifndef gb_global
 #define gb_global        static // Global variables
-#define gb_internal      static // Internal linkage
+#define gb_function      static // Internal linkage
 #define gb_local_persist static // Local Persisting variables
-#define internal static
+#define function static
 #endif
 
 
@@ -1169,9 +1169,6 @@ GB_DEF void gb_str_concat(char *dest, isize dest_len,
                           char const *src_b, isize src_b_len);
 
 GB_DEF u64   gb_str_to_u64(char const *str, char **end_ptr, i1 base); // TODO(bill): Support more than just decimal and hexadecimal
-GB_DEF i64   gb_str_to_i64(char const *str, char **end_ptr, i1 base); // TODO(bill): Support more than just decimal and hexadecimal
-GB_DEF f32   gb_str_to_f32(char const *str, char **end_ptr);
-GB_DEF f64   gb_str_to_f64(char const *str, char **end_ptr);
 GB_DEF void  gb_i64_to_str(i64 value, char *string, i1 base);
 GB_DEF void  gb_u64_to_str(u64 value, char *string, i1 base);
 
@@ -1342,7 +1339,7 @@ typedef enum gbFileModeFlag {
 	gbFileMode_Modes = gbFileMode_Read | gbFileMode_Write | gbFileMode_Append | gbFileMode_Rw,
 } gbFileModeFlag;
 
-// NOTE(bill): Only used internally and for the file operations
+// NOTE(bill): Only used functionly and for the file operations
 typedef enum gbSeekWhenceType {
 	gbSeekWhence_Begin   = 0,
 	gbSeekWhence_Current = 1,
@@ -1487,10 +1484,9 @@ GB_DEF isize gb_printf_err_va (char const *fmt, va_list va);
 GB_DEF isize gb_fprintf       (gbFile *f, char const *fmt, ...) GB_PRINTF_ARGS(2);
 GB_DEF isize gb_fprintf_va    (gbFile *f, char const *fmt, va_list va);
 
-GB_DEF char *gb_bprintf    (char const *fmt, ...) GB_PRINTF_ARGS(1); // NOTE(bill): A locally persisting buffer is used internally
-GB_DEF char *gb_bprintf_va (char const *fmt, va_list va);            // NOTE(bill): A locally persisting buffer is used internally
+GB_DEF char *gb_bprintf    (char const *fmt, ...) GB_PRINTF_ARGS(1); // NOTE(bill): A locally persisting buffer is used functionly
+GB_DEF char *gb_bprintf_va (char const *fmt, va_list va);            // NOTE(bill): A locally persisting buffer is used functionly
 GB_DEF isize gb_snprintf   (char *str, isize n, char const *fmt, ...) GB_PRINTF_ARGS(3);
-GB_DEF isize gb_snprintf_va(char *str, isize n, char const *fmt, va_list va);
 
 ////////////////////////////////////////////////////////////////
 //
@@ -1695,7 +1691,7 @@ gb_inline void gb_zero_size(void *ptr, isize size) { gb_memset(ptr, 0, size); }
 #pragma intrinsic(__movsb)
 #endif
 
-internal void *gb_memcopy(void *dest, void const *source, isize n) {
+function void *gb_memcopy(void *dest, void const *source, isize n) {
 	if (dest == NULL) { return NULL; }
  
 #if defined(_MSC_VER)
@@ -1716,7 +1712,7 @@ internal void *gb_memcopy(void *dest, void const *source, isize n) {
 	return dest;
 }
 
-internal void *gb_memmove(void *dest, void const *source, isize n) {
+function void *gb_memmove(void *dest, void const *source, isize n) {
 	u8 *d = cast(u8 *)dest;
 	u8 const *s = cast(u8 const *)source;
  
@@ -1763,7 +1759,7 @@ internal void *gb_memmove(void *dest, void const *source, isize n) {
 	return dest;
 }
 
-internal void *gb_memset(void *dest, u8 c, isize n) {
+function void *gb_memset(void *dest, u8 c, isize n) {
 	u8 *s = cast(u8 *)dest;
 	isize k;
 	u32 c32 = ((u32)-1)/255 * c;
@@ -1828,12 +1824,12 @@ internal void *gb_memset(void *dest, u8 c, isize n) {
 			s += 32;
 		}
 	}
-
+ 
 	return dest;
 }
 
-gb_inline i1 gb_memcompare(void const *s1, void const *s2, isize size)
-{
+function i1
+gb_memcompare(void const *s1, void const *s2, isize size) {
 	// TODO(bill): Heavily optimize
 	u8 const *s1p8 = cast(u8 const *)s1;
 	u8 const *s2p8 = cast(u8 const *)s2;
@@ -1850,8 +1846,8 @@ gb_inline i1 gb_memcompare(void const *s1, void const *s2, isize size)
 	}
 	return 0;
 }
-
-void gb_memswap(void *i, void *j, isize size) {
+function void
+gb_memswap(void *i, void *j, isize size) {
 	if (i == j) return;
 
 	if (size == 4) {
@@ -1877,16 +1873,15 @@ void gb_memswap(void *i, void *j, isize size) {
 			j = gb_pointer_add(j, gb_size_of(buffer));
 			size -= gb_size_of(buffer);
 		}
-
+  
 		gb_memcopy(buffer, i,      size);
 		gb_memcopy(i,      j,      size);
 		gb_memcopy(j,      buffer, size);
 	}
 }
 
-
-
-void const *gb_memchr(void const *data, u8 c, isize n) {
+function const void
+*gb_memchr(void const *data, u8 c, isize n) {
 	u8 const *s = cast(u8 const *)data;
 	while ((cast(uintptr)s & (sizeof(usize)-1)) &&
 	       n && *s != c) {
@@ -1910,8 +1905,6 @@ void const *gb_memchr(void const *data, u8 c, isize n) {
 
 	return n ? cast(void const *)s : NULL;
 }
-
-
 void const *gb_memrchr(void const *data, u8 c, isize n) {
 	u8 const *s = cast(u8 const *)data;
 	while (n--) {
@@ -2411,44 +2404,7 @@ gb_inline void gb_str_concat(char *dest, isize dest_len,
 }
 
 
-gb_internal isize gb__scan_i64(char const *text, i1 base, i64 *value) {
-	char const *text_begin = text;
-	i64 result = 0;
-	b32 negative = false;
- 
-	if (*text == '-') {
-		negative = true;
-		text++;
-	}
- 
-	if (base == 16 && gb_strncmp(text, "0x", 2) == 0) {
-		text += 2;
-	}
- 
-	for (;;) {
-		i64 v;
-		if (gb_char_is_digit(*text)) {
-			v = *text - '0';
-		} else if (base == 16 && gb_char_is_hex_digit(*text)) {
-			v = gb_hex_digit_to_int(*text);
-		} else {
-			break;
-		}
-  
-		result *= base;
-		result += v;
-		text++;
-	}
- 
-	if (value) {
-		if (negative) result = -result;
-		*value = result;
-	}
- 
-	return (text - text_begin);
-}
-
-gb_internal isize gb__scan_u64(char const *text, i1 base, u64 *value) {
+gb_function isize gb__scan_u64(char const *text, i1 base, u64 *value) {
 	char const *text_begin = text;
 	u64 result = 0;
  
@@ -2494,22 +2450,6 @@ u64 gb_str_to_u64(char const *str, char **end_ptr, i1 base) {
 	return value;
 }
 
-i64 gb_str_to_i64(char const *str, char **end_ptr, i1 base) {
-	isize len;
-	i64 value;
- 
-	if (!base) {
-		if ((strlen(str) > 2) && (gb_strncmp(str, "0x", 2) == 0)) {
-			base = 16;
-		} else {
-			base = 10;
-		}
-	}
- 
-	len = gb__scan_i64(str, base, &value);
-	if (end_ptr) *end_ptr = (char *)str + len;
-	return value;
-}
 
 // TODO(bill): Are these good enough for characters?
 gb_global char const gb__num_to_char_table[] =
@@ -2560,73 +2500,6 @@ gb_inline void gb_u64_to_str(u64 value, char *string, i1 base) {
 	gb_strrev(string);
 }
 
-gb_inline f32 gb_str_to_f32(char const *str, char **end_ptr) {
-	f64 f = gb_str_to_f64(str, end_ptr);
-	f32 r = cast(f32)f;
-	return r;
-}
-
-gb_inline f64 gb_str_to_f64(char const *str, char **end_ptr_out) {
-	f64 result, value, sign, scale;
-	i1 frac;
- 
-	while ( gb_char_is_space(*str) ) {
-		str++;
-	}
- 
-	sign = 1.0;
-	if (*str == '-') {
-		sign = -1.0;
-		str++;
-	} else if (*str == '+') {
-		str++;
-	}
- 
-	for (value = 0.0; gb_char_is_digit(*str); str++) {
-  // note(kv): before the decimal point
-		value = value * 10.0 + (*str-'0');
-	}
- 
-	if (*str == '.') {
-  // note(kv): after the decimal point
-		f64 pow10 = 10.0;
-		str++;
-		while (gb_char_is_digit(*str)) {
-			value += (*str-'0') / pow10;
-			pow10 *= 10.0;
-			str++;
-		}
-	}
- 
-	frac = 0;
-	scale = 1.0;
-	if ((*str == 'e') || (*str == 'E')) {
-		u32 exp;
-  
-		str++;
-		if (*str == '-') {
-			frac = 1;
-			str++;
-		} else if (*str == '+') {
-			str++;
-		}
-  
-		for (exp = 0; gb_char_is_digit(*str); str++) {
-			exp = exp * 10 + (*str-'0');
-		}
-		if (exp > 308) exp = 308;
-  
-		while (exp >= 50) { scale *= 1e50; exp -= 50; }
-		while (exp >=  8) { scale *= 1e8;  exp -=  8; }
-		while (exp >   0) { scale *= 10.0; exp -=  1; }
-	}
- 
-	result = sign * (frac ? (value / scale) : (value * scale));
- 
-	if (end_ptr_out) *end_ptr_out = cast(char *)str;
- 
-	return result;
-}
 
 
 
@@ -3119,7 +2992,7 @@ isize gb_utf8_encode_rune(u8 buf[4], Rune r) {
 
 #if defined(GB_SYSTEM_WINDOWS)
 
-gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isize *w_len_)
+gb_function wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isize *w_len_)
 {
  wchar_t *w_text = NULL;
  isize len = 0, w_len = 0, w_len1 = 0;
@@ -3149,7 +3022,7 @@ gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isi
  return w_text;
 }
 
-	gb_internal GB_FILE_SEEK_PROC(gb__win32_file_seek) {
+	gb_function GB_FILE_SEEK_PROC(gb__win32_file_seek) {
 		LARGE_INTEGER li_offset;
 		li_offset.QuadPart = offset;
 		if (!SetFilePointerEx(fd.p, li_offset, &li_offset, whence)) {
@@ -3160,7 +3033,7 @@ gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isi
 		return true;
 	}
 
-	gb_internal GB_FILE_READ_AT_PROC(gb__win32_file_read) {
+	gb_function GB_FILE_READ_AT_PROC(gb__win32_file_read) {
 		b32 result = false;
 		DWORD size_ = cast(DWORD)(size > I32_MAX ? I32_MAX : size);
 		DWORD bytes_read_;
@@ -3173,7 +3046,7 @@ gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isi
 		return result;
 	}
 
-	gb_internal GB_FILE_WRITE_AT_PROC(gb__win32_file_write) {
+	gb_function GB_FILE_WRITE_AT_PROC(gb__win32_file_write) {
 		DWORD size_ = cast(DWORD)(size > I32_MAX ? I32_MAX : size);
 		DWORD bytes_written_;
 		gb__win32_file_seek(fd, offset, gbSeekWhence_Begin, NULL);
@@ -3184,7 +3057,7 @@ gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isi
 		return false;
 	}
 
-	gb_internal GB_FILE_CLOSE_PROC(gb__win32_file_close) {
+	gb_function GB_FILE_CLOSE_PROC(gb__win32_file_close) {
 		CloseHandle(fd.p);
 	}
 
@@ -3267,7 +3140,7 @@ gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isi
 	}
 
 #else // POSIX
-	gb_internal GB_FILE_SEEK_PROC(gb__posix_file_seek) {
+	gb_function GB_FILE_SEEK_PROC(gb__posix_file_seek) {
 		#if defined(GB_SYSTEM_OSX)
 		i64 res = lseek(fd.i, offset, whence);
 		#else
@@ -3278,14 +3151,14 @@ gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isi
 		return true;
 	}
 
-	gb_internal GB_FILE_READ_AT_PROC(gb__posix_file_read) {
+	gb_function GB_FILE_READ_AT_PROC(gb__posix_file_read) {
 		isize res = pread(fd.i, buffer, size, offset);
 		if (res < 0) return false;
 		if (bytes_read) *bytes_read = res;
 		return true;
 	}
 
-	gb_internal GB_FILE_WRITE_AT_PROC(gb__posix_file_write) {
+	gb_function GB_FILE_WRITE_AT_PROC(gb__posix_file_write) {
 		isize res;
 		i64 curr_offset = 0;
 		gb__posix_file_seek(fd, 0, gbSeekWhence_Current, &curr_offset);
@@ -3301,7 +3174,7 @@ gb_internal wchar_t *gb__alloc_utf8_to_ucs2(gbAllocator a, char const *text, isi
 	}
 
 
-	gb_internal GB_FILE_CLOSE_PROC(gb__posix_file_close) {
+	gb_function GB_FILE_CLOSE_PROC(gb__posix_file_close) {
 		close(fd.i);
 	}
 

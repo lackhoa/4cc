@@ -37,7 +37,7 @@ struct Loaded_Image
 global Loaded_Image *loaded_images;
 global i32 image_load_failure_count;
 
-internal Image_Load_Info
+function Image_Load_Info
 get_image_load_info(void) 
 {
  return Image_Load_Info
@@ -78,29 +78,29 @@ ogl__filter_nearest()
  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
-internal GLuint
+function GLuint
 ogl__gen_ed_texture(i3 dim, Texture_Kind texture_kind)
 {
  GLuint tex = {};
  glGenTextures(1, &tex);
  glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
  
- GLint internal_format = 0;
+ GLint function_format = 0;
  GLenum submit_format = 0;
  GLenum submit_type = GL_UNSIGNED_BYTE;
  if (texture_kind == TextureKind_Mono)
  {
-  internal_format = GL_R8;
+  function_format = GL_R8;
   submit_format   = GL_RED;
  }
  else if (texture_kind == TextureKind_ARGB)
  {
-  internal_format = GL_RGBA8;
+  function_format = GL_RGBA8;
   submit_format   = GL_BGRA;//NOTE: this is how it's stored in memory, GL_UNSIGNED_BYTE basically says "read the value byte-by-byte in memory order"
  }
  else { invalid_code_path; }
  //
- glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internal_format, v3_expand(dim), 0, submit_format, submit_type, 0);
+ glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, function_format, v3_expand(dim), 0, submit_format, submit_type, 0);
  
  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -110,7 +110,7 @@ ogl__gen_ed_texture(i3 dim, Texture_Kind texture_kind)
  return(tex);
 }
 
-internal b32
+function b32
 ogl__fill_texture(Texture_Kind texture_kind, u32 texture, Vec3_i32 p, Vec3_i32 dim, void *data)
 {
  b32 result = false;
@@ -141,7 +141,7 @@ ogl__fill_texture(Texture_Kind texture_kind, u32 texture, Vec3_i32 p, Vec3_i32 d
  return(result);
 }
 
-internal void
+function void
 ogl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, 
                     const char *message, const void *userParam)
 {
@@ -266,7 +266,7 @@ enum OGL_Program_Flag
 };
 typedef u32 OGL_Program_Flags;
 
-internal u32
+function u32
 ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
 {
  // const GLubyte *version_confirm = glGetString(GL_VERSION);
@@ -371,7 +371,7 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
 
 #define GLOffset(S,m)       ((void*)(offsetof(S,m)))
 
-internal b32
+function b32
 ogl__is_uniform_active(GLuint program, char *name)
 {
  return (glGetUniformLocation(program, name) != -1);
@@ -386,8 +386,8 @@ global u32 ogl_program_image;
 global u32 ogl_program_image_prim_id;
 global u32 ogl_program_editor;
 
-internal v1 * ogl_cast_mat4(mat4 *matrix) { return cast(v1*)matrix; }
-internal v1 * ogl_cast_mat3(mat3 *matrix) { return cast(v1*)matrix; }
+function v1 * ogl_cast_mat4(mat4 *matrix) { return cast(v1*)matrix; }
+function v1 * ogl_cast_mat3(mat3 *matrix) { return cast(v1*)matrix; }
 
 struct OGL_Program_State {
  Render_Group *group;
@@ -395,7 +395,7 @@ struct OGL_Program_State {
  b32 is_overlay;
 };
 
-internal void
+function void
 ogl__vertex_attributes()
 {
  for_i32 (attr,0,VATTR_COUNT) { glEnableVertexAttribArray(attr); }
@@ -420,7 +420,7 @@ ogl__uniform_mat4(GLint uniform, mat4 *mat) {
 
 // @Ugh The only reason why this function exist is because
 // every time you switch program, you gotta send it uniforms...
-internal void
+function void
 ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *screen_from_world)
 {
  glUseProgram(program);
@@ -456,7 +456,7 @@ ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *screen_from_world)
  ogl__vertex_attributes();
 }
 
-internal void
+function void
 ogl__begin_program_editor(Render_Target *target, Render_Group *group)
 {
  glUseProgram(ogl_program_editor);
@@ -486,7 +486,7 @@ ogl__begin_program_editor(Render_Target *target, Render_Group *group)
  ogl__vertex_attributes();
 }
 
-internal void
+function void
 ogl__end_program()
 {
  // NOTE: Disable Vertex Attrib Array
@@ -496,7 +496,7 @@ ogl__end_program()
  }
 }
 
-internal void
+function void
 ogl__send_buffer_data(Render_Vertex_List *list)
 {
  glBufferData(GL_ARRAY_BUFFER, list->count*sizeof(Render_Vertex), 0, GL_STREAM_DRAW);
@@ -515,22 +515,22 @@ ogl__send_buffer_data(Render_Vertex_List *list)
 // glTexStorage2D is less verbose, so idk.
 // IMPORTANT: you CANNOT call glTexImage2D after calling glTexStorage2D
 // https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexStorage2D.xhtml
-internal void
-glTexStorage2D_wrapper(GLint internal_format, GLsizei width, GLsizei height)
+function void
+glTexStorage2D_wrapper(GLint function_format, GLsizei width, GLsizei height)
 {
  // TODO: we can switch to glTextureStorage2D
- glTexStorage2D(GL_TEXTURE_2D, /*level*/1, internal_format, width, height);
+ glTexStorage2D(GL_TEXTURE_2D, /*level*/1, function_format, width, height);
  // NOTE: Some texture voodoo that may or may not be needed
  ogl__clamp_to_edge();
  ogl__filter_nearest();
 }
 
-internal void
-glTexImage2D_wrapper(GLint internal_format, GLsizei width, GLsizei height,
+function void
+glTexImage2D_wrapper(GLint function_format, GLsizei width, GLsizei height,
                      GLenum submission_format, GLenum type,
                      const void * data)
 {
- glTexImage2D(GL_TEXTURE_2D, /*level*/0, internal_format, width, height,
+ glTexImage2D(GL_TEXTURE_2D, /*level*/0, function_format, width, height,
               /*border*/0, submission_format, type, data);
 }
 
@@ -543,7 +543,7 @@ assert_framebuffer_status()
 
 global GLuint prim_id_framebuffer;
 
-internal u32
+function u32
 ogl_read_primitive_id()
 {// NOTE: We have to read after rendering, because reading while you're rendering 
  // causes flicker, idk why because it shouldn't change the draw order.
@@ -572,7 +572,7 @@ ogl_read_primitive_id()
  return result;
 }
 
-internal void
+function void
 ogl__stream_draw(Render_Vertex_List *list)
 {
  if (list->count)
@@ -582,7 +582,7 @@ ogl__stream_draw(Render_Vertex_List *list)
  }
 }
 
-internal void
+function void
 ogl__stream_draw(Render_Vertex *vertices, i32 count)
 {
  if (count)
@@ -593,7 +593,7 @@ ogl__stream_draw(Render_Vertex *vertices, i32 count)
 }
 
 
-internal void
+function void
 ogl__render_entries(Render_Group *group)
 {
  for (Render_Entry *entry = group->entry_first;
@@ -618,7 +618,7 @@ ogl__render_entries(Render_Group *group)
  }
 }
 
-internal void
+function void
 ogl__render_images(Render_Group *group, b32 render_primitive_id)
 {
  mat4 *current_object_transform = &mat4_identity;
@@ -704,7 +704,7 @@ ogl__render_images(Render_Group *group, b32 render_primitive_id)
  }
 }
 
-internal void
+function void
 ogl_render(i2 mousep_ydown, i32 window_id)
 {
  //@HardCoded Allow one 1080p panel maximum

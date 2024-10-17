@@ -1,4 +1,4 @@
-internal game_set_preset_return
+function game_set_preset_return
 game_set_preset(game_set_preset_params){
  if (viewport_id <= 0) { viewport_id = 1; }
  i1 viewport_index = viewport_id - 1;
@@ -7,7 +7,7 @@ game_set_preset(game_set_preset_params){
  viewport->preset      = preset;
 }
 
-internal game_last_preset_return
+function game_last_preset_return
 game_last_preset(game_last_preset_params){
  if (viewport_id <= 0) { viewport_id = 1; }
  i1 viewport_index = viewport_id - 1;
@@ -15,7 +15,7 @@ game_last_preset(game_last_preset_params){
  macro_swap(viewport->preset, viewport->last_preset);
 }
 
-internal is_event_handled_by_game_return
+function is_event_handled_by_game_return
 is_event_handled_by_game(is_event_handled_by_game_params)
 {
  b32 result = false;

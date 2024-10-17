@@ -160,7 +160,7 @@ render_doc_page(App *app, Doc_Page *page){
                     }break;
                 }
                 
-                insert_string(&insert, string_u8_litexpr("\n"));
+                insert_string(&insert, strlit("\n"));
             }
             
             insertf(&insert, "%.*s\n", page->title.size, dashes);

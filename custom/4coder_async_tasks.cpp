@@ -80,7 +80,7 @@ async_task_thread(void *thread_ptr){
     app.cmd_context = async_system->cmd_context;
     
     Profile_Global_List *list = get_core_profile_list(&app);
-    ProfileThreadName(tctx, list, string_u8_litexpr("async"));
+    ProfileThreadName(tctx, list, strlit("async"));
     
     Async_Context ctx = {&app, thread};
     

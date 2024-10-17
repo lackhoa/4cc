@@ -86,8 +86,8 @@ win32_log(char *string) {
 
 //////////////////////////////
 
-internal String win32_get_error_string(void);
-internal void win32_output_error_string(String string);
+function String win32_get_error_string(void);
+function void win32_output_error_string(String string);
 
 //////////////////////////////
 
@@ -233,7 +233,7 @@ global Win32_Vars win32vars;
 
 ////////////////////////////////
 
-internal void
+function void
 system_error_box(char *msg){
     MessageBoxA(0, msg, "Error", MB_OK);
     ExitProcess(1);
@@ -241,7 +241,7 @@ system_error_box(char *msg){
 
 ////////////////////////////////
 
-internal String
+function String
 win32_get_error_string(void){
     String result = {};
     DWORD error = GetLastError();
@@ -255,35 +255,35 @@ win32_get_error_string(void){
     return(result);
 }
 
-internal void
+function void
 win32_output_error_string(String error_string){
     system_error_box((char*)error_string.str);
 }
 
 ////////////////////////////////
 
-internal HANDLE
+function HANDLE
 handle_type(Plat_Handle h){
     HANDLE result;
     block_copy(&result, &h, sizeof(result));
     return(result);
 }
 
-internal Plat_Handle
+function Plat_Handle
 handle_type(HANDLE h){
     Plat_Handle result = {};
     block_copy(&result, &h, sizeof(h));
     return(result);
 }
 
-internal void*
+function void*
 handle_type_ptr(Plat_Handle h){
     void *result;
     block_copy(&result, &h, sizeof(result));
     return(result);
 }
 
-internal Plat_Handle
+function Plat_Handle
 handle_type_ptr(void *ptr){
     Plat_Handle result = {};
     block_copy(&result, &ptr, sizeof(ptr));
@@ -298,7 +298,7 @@ handle_type_ptr(void *ptr){
 
 ////////////////////////////////
 
-internal SYSTEM_LOAD_LIBRARY_RETURN
+function SYSTEM_LOAD_LIBRARY_RETURN
 system_load_library(SYSTEM_LOAD_LIBRARY_PARAMS)
 {
     HMODULE lib = LoadLibrary_utf8String(scratch, filename);
@@ -311,14 +311,14 @@ system_load_library(SYSTEM_LOAD_LIBRARY_PARAMS)
     return(result);
 }
 
-internal SYSTEM_RELEASE_LIBRARY_RETURN
+function SYSTEM_RELEASE_LIBRARY_RETURN
 system_release_library(SYSTEM_RELEASE_LIBRARY_PARAMS)
 {
     HMODULE lib = (HMODULE)handle_type(handle);
     return(FreeLibrary(lib));
 }
 
-internal SYSTEM_GET_PROC_RETURN
+function SYSTEM_GET_PROC_RETURN
 system_get_proc(SYSTEM_GET_PROC_PARAMS)
 {
  HMODULE lib = (HMODULE)handle_type(handle);
@@ -327,7 +327,7 @@ system_get_proc(SYSTEM_GET_PROC_PARAMS)
 
 ////////////////////////////////
 
-internal void
+function void
 system_schedule_step(u32 code)
 {
     PostMessage(win32vars.window_handles[0], WM_4coder_ANIMATE, code, 0);
@@ -335,7 +335,7 @@ system_schedule_step(u32 code)
 
 ////////////////////////////////
 
-internal void
+function void
 win32_toggle_fullscreen(){
     HWND win = win32vars.window_handles[0];
     DWORD style = GetWindowLongW(win, GWL_STYLE);
@@ -363,12 +363,12 @@ win32_toggle_fullscreen(){
 }
 
 // TODO(allen): add a "shown but auto-hides on timer" setting here.
-internal
+function
 system_show_mouse_cursor_sig(){
     win32vars.cursor_show = show;
 }
 
-internal
+function
 system_set_fullscreen_sig(){
     // NOTE(allen): If the new value of full_screen does not match the current value,
     // set toggle to true.
@@ -377,7 +377,7 @@ system_set_fullscreen_sig(){
     return(success);
 }
 
-internal
+function
 system_is_fullscreen_sig(){
  // NOTE(allen): Report the fullscreen status as it would be set at the beginning of the
  // next frame. That is, take into account all fullscreen toggle requests that have come in
@@ -386,7 +386,7 @@ system_is_fullscreen_sig(){
  return(result);
 }
 
-internal
+function
 system_get_keyboard_modifiers_sig(){
  return(copy_modifier_set(arena, &win32vars.input_chunk.pers.modifiers));
 }
@@ -435,7 +435,7 @@ win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena) {
  return(result);
 }
 
-internal void
+function void
 win32_post_clipboard(Arena *scratch, char *text, i32 len)
 {
  if ( OpenClipboard(win32vars.window_handles[0]) ) {
@@ -460,7 +460,7 @@ win32_post_clipboard(Arena *scratch, char *text, i32 len)
  }
 }
 
-internal
+function
 system_get_clipboard_sig()
 {
  String8 result = {};
@@ -475,7 +475,7 @@ system_get_clipboard_sig()
  return(result);
 }
 
-internal
+function
 system_post_clipboard_sig()
 {
     Arena *arena = &win32vars.clip_post_arena;
@@ -500,12 +500,12 @@ system_post_clipboard_sig()
     }
 }
 
-internal
+function
 system_set_clipboard_catch_all_sig(){
     win32vars.clip_catch_all = enabled?true:false;
 }
 
-internal
+function
 system_get_clipboard_catch_all_sig(){
  return(win32vars.clip_catch_all);
 }
@@ -515,7 +515,7 @@ system_get_clipboard_catch_all_sig(){
 //
 
 // ;win32_system_cli_call
-internal
+function
 system_cli_call_sig()
 {
     static_assert(sizeof(Plat_Handle) >= sizeof(HANDLE));
@@ -594,14 +594,14 @@ struct CLI_Loop_Control{
     u32 remaining_amount;
 };
 
-internal
+function
 system_cli_begin_update_sig(){
     static_assert(sizeof(cli->scratch_space) >= sizeof(CLI_Loop_Control));
     CLI_Loop_Control *loop = (CLI_Loop_Control*)cli->scratch_space;
     loop->remaining_amount = 0;
 }
 
-internal
+function
 system_cli_update_step_sig(){
     HANDLE handle = *(HANDLE*)&cli->out_read;
     CLI_Loop_Control *loop = (CLI_Loop_Control*)cli->scratch_space;
@@ -637,7 +637,7 @@ system_cli_update_step_sig(){
     return(has_more);
 }
 
-internal
+function
 system_cli_end_update_sig(){
     b32 close_me = false;
     HANDLE proc = *(HANDLE*)&cli->proc;
@@ -683,19 +683,19 @@ os_popup_error(char *title, char *message){
 #include "opengl/4ed_opengl_funcs.h"
 #include "opengl/4ed_opengl_render.cpp"
 
-internal graphics_get_texture_return 
+function graphics_get_texture_return 
 graphics_get_texture(graphics_get_texture_params)
 {
     return(ogl__gen_ed_texture(dim, texture_kind));
 }
 
-internal graphics_fill_texture_return
+function graphics_fill_texture_return
 graphics_fill_texture(graphics_fill_texture_params)
 {
     return(ogl__fill_texture(texture_kind, texture, p, dim, data));
 }
 
-internal
+function
 font_make_face_sig(){
     return(ft__font_make_face(arena, description, scale_factor));
 }
@@ -706,7 +706,7 @@ font_make_face_sig(){
 
 global Key_Code keycode_lookup_table[255];
 
-internal void
+function void
 win32_keycode_init(void){
     for (u32 i = 'A'; i <= 'Z'; i += 1){
         keycode_lookup_table[i] = (Key_Code)((u32)Key_Code_A + i - 'A');
@@ -807,7 +807,7 @@ win32_keycode_init(void){
  }
 }
 
-internal b32
+function b32
 keycode_physical_translaion_is_wrong(u64 vk)
 {
  b32 result = false;
@@ -842,7 +842,7 @@ keycode_physical_translaion_is_wrong(u64 vk)
  return(result);
 }
 
-internal void
+function void
 win32_resize_render_target(Render_Target *target, i32 width, i32 height)
 {
  if (width > 0 && height > 0)
@@ -852,7 +852,7 @@ win32_resize_render_target(Render_Target *target, i32 width, i32 height)
  }
 }
 
-internal void
+function void
 Win32SetCursorFromUpdate(Application_Mouse_Cursor cursor){
     switch (cursor){
         case APP_MOUSE_CURSOR_ARROW:
@@ -877,7 +877,7 @@ Win32SetCursorFromUpdate(Application_Mouse_Cursor cursor){
  }
 }
 
-internal Win32_Object*
+function Win32_Object*
 win32_alloc_object(Win32_Object_Kind kind)
 {
  Win32_Object *result = 0;
@@ -906,7 +906,7 @@ win32_alloc_object(Win32_Object_Kind kind)
  return(result);
 }
 
-internal void
+function void
 win32_free_object(Win32_Object *object){
     if (object->node.next != 0){
         dll_remove(&object->node);
@@ -916,7 +916,7 @@ win32_free_object(Win32_Object *object){
 
 ////////////////////////////////
 
-internal
+function
 system_time_usecond_sig(){
     u64 result = 0;
     LARGE_INTEGER t;
@@ -926,7 +926,7 @@ system_time_usecond_sig(){
     return(result);
 }
 
-internal void
+function void
 date_time_from_win32_system_time(Date_Time *out, SYSTEMTIME *in){
     out->year = in->wYear;
     out->mon = (u8)(in->wMonth - 1);
@@ -937,7 +937,7 @@ date_time_from_win32_system_time(Date_Time *out, SYSTEMTIME *in){
     out->msec = in->wMilliseconds;
 }
 
-internal void
+function void
 win32_system_time_from_date_time(SYSTEMTIME *out, Date_Time *in){
     out->wYear = (WORD)(in->year);
     out->wMonth = in->mon + 1;
@@ -948,7 +948,7 @@ win32_system_time_from_date_time(SYSTEMTIME *out, Date_Time *in){
     out->wMilliseconds = in->msec;
 }
 
-internal
+function
 system_now_date_time_universal_sig(){
     SYSTEMTIME systime = {};
     GetSystemTime(&systime);
@@ -957,7 +957,7 @@ system_now_date_time_universal_sig(){
     return(result);
 }
 
-internal
+function
 system_local_date_time_from_universal_sig(){
     SYSTEMTIME systime = {};
     win32_system_time_from_date_time(&systime, date_time);
@@ -971,7 +971,7 @@ system_local_date_time_from_universal_sig(){
     return(result);
 }
 
-internal
+function
 system_universal_date_time_from_local_sig(){
     SYSTEMTIME systime = {};
     win32_system_time_from_date_time(&systime, date_time);
@@ -985,7 +985,7 @@ system_universal_date_time_from_local_sig(){
     return(result);
 }
 
-internal
+function
 system_wake_up_timer_create_sig(){
     Win32_Object *object = win32_alloc_object(Win32ObjectKind_Timer);
     dll_insert(&win32vars.timer_objects, &object->node);
@@ -993,7 +993,7 @@ system_wake_up_timer_create_sig(){
     return(handle_type(object));
 }
 
-internal
+function
 system_wake_up_timer_release_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(handle);
     if (object->kind == Win32ObjectKind_Timer){
@@ -1002,7 +1002,7 @@ system_wake_up_timer_release_sig(){
     }
 }
 
-internal
+function
 system_wake_up_timer_set_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(handle);
     if (object->kind == Win32ObjectKind_Timer){
@@ -1010,12 +1010,12 @@ system_wake_up_timer_set_sig(){
     }
 }
 
-internal
+function
 system_signal_step_sig(){
     system_schedule_step(code);
 }
 
-internal
+function
 system_sleep_sig(){
     u32 milliseconds = (u32)(microseconds/Thousand(1));
     Sleep(milliseconds);
@@ -1023,7 +1023,7 @@ system_sleep_sig(){
 
 ////////////////////////////////
 
-internal DWORD CALL_CONVENTION
+function DWORD CALL_CONVENTION
 win32_thread_wrapper(void *ptr){
     Win32_Object *object = (Win32_Object*)ptr;
     Thread_Function *proc = object->thread.proc;
@@ -1036,7 +1036,7 @@ win32_thread_wrapper(void *ptr){
     return(0);
 }
 
-internal
+function
 system_thread_launch_sig(){
     Win32_Object *object = win32_alloc_object(Win32ObjectKind_Thread);
     object->thread.proc = proc;
@@ -1051,7 +1051,7 @@ system_thread_launch_sig(){
     return(handle_type(object));
 }
 
-internal
+function
 system_thread_join_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(thread);
     if (object->kind == Win32ObjectKind_Thread){
@@ -1059,7 +1059,7 @@ system_thread_join_sig(){
     }
 }
 
-internal
+function
 system_thread_free_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(thread);
     if (object->kind == Win32ObjectKind_Thread){
@@ -1068,20 +1068,20 @@ system_thread_free_sig(){
     }
 }
 
-internal
+function
 system_thread_get_id_sig(){
     DWORD result = GetCurrentThreadId();
     return((i32)result);
 }
 
-internal
+function
 system_mutex_make_sig(){
     Win32_Object *object = win32_alloc_object(Win32ObjectKind_Mutex);
     InitializeCriticalSection(&object->mutex);
     return(handle_type(object));
 }
 
-internal
+function
 system_mutex_acquire_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(mutex);
     if (object->kind == Win32ObjectKind_Mutex){
@@ -1089,7 +1089,7 @@ system_mutex_acquire_sig(){
     }
 }
 
-internal
+function
 system_mutex_release_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(mutex);
     if (object->kind == Win32ObjectKind_Mutex){
@@ -1099,7 +1099,7 @@ system_mutex_release_sig(){
 
 global i32 global_frame_mutex_state_ticker = 0;
 
-internal
+function
 system_acquire_global_frame_mutex_sig(){
     if (tctx->kind == ThreadKind_AsyncTasks ||
         tctx->kind == ThreadKind_Main){
@@ -1109,7 +1109,7 @@ system_acquire_global_frame_mutex_sig(){
     }
 }
 
-internal
+function
 system_release_global_frame_mutex_sig(){
     if (tctx->kind == ThreadKind_AsyncTasks ||
         tctx->kind == ThreadKind_Main){
@@ -1119,7 +1119,7 @@ system_release_global_frame_mutex_sig(){
     }
 }
 
-internal
+function
 system_mutex_free_sig(){
     Win32_Object *object = (Win32_Object*)handle_type_ptr(mutex);
     if (object->kind == Win32ObjectKind_Mutex){
@@ -1128,14 +1128,14 @@ system_mutex_free_sig(){
     }
 }
 
-internal
+function
 system_condition_variable_make_sig(){
     Win32_Object *object = win32_alloc_object(Win32ObjectKind_CV);
     InitializeConditionVariable(&object->cv);
     return(handle_type(object));
 }
 
-internal
+function
 system_condition_variable_wait_sig(){
     Win32_Object *object_cv = (Win32_Object*)handle_type_ptr(cv);
     Win32_Object *object_mutex = (Win32_Object*)handle_type_ptr(mutex);
@@ -1145,7 +1145,7 @@ system_condition_variable_wait_sig(){
     }
 }
 
-internal
+function
 system_condition_variable_signal_sig(){
  Win32_Object *object = (Win32_Object*)handle_type_ptr(cv);
  if (object->kind == Win32ObjectKind_CV){
@@ -1153,7 +1153,7 @@ system_condition_variable_signal_sig(){
  }
 }
 
-internal
+function
 system_condition_variable_free_sig(){
  Win32_Object *object = (Win32_Object*)handle_type_ptr(cv);
  if (object->kind == Win32ObjectKind_CV){

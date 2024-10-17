@@ -14,7 +14,7 @@ patterns = {
  "*.glsl",
  "*.py",
  "*.kh",  // NOTE(kv) My made-up C++ preprocessor files
- "*.kpp",
+ "*.kc",
 };
 blacklist_patterns = {
  ".*",

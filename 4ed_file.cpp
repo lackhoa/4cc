@@ -9,7 +9,7 @@
 
 // TOP
 
-internal String8
+function String8
 string_from_filename(Editing_File_Name *name)
 {
  return(SCu8(name->name_space, name->name_size));
@@ -17,19 +17,19 @@ string_from_filename(Editing_File_Name *name)
 
 ////////////////////////////////
 
-internal void
+function void
 file_edit_positions_set_cursor(File_Edit_Positions *edit_pos, i64 pos){
  edit_pos->cursor_pos = pos;
  edit_pos->last_set_type = EditPos_CursorSet;
 }
 
-internal void
+function void
 file_edit_positions_set_scroll(File_Edit_Positions *edit_pos, Buffer_Scroll scroll){
     edit_pos->scroll = scroll;
     edit_pos->last_set_type = EditPos_ScrollSet;
 }
 
-internal void
+function void
 file_edit_positions_push(Editing_File *file, File_Edit_Positions edit_pos){
     if (file->state.edit_pos_stack_top + 1 < ArrayCountSigned(file->state.edit_pos_stack)){
         file->state.edit_pos_stack_top += 1;
@@ -37,7 +37,7 @@ file_edit_positions_push(Editing_File *file, File_Edit_Positions edit_pos){
     }
 }
 
-internal File_Edit_Positions
+function File_Edit_Positions
 file_edit_positions_pop(Editing_File *file){
     File_Edit_Positions edit_pos = {};
     if (file->state.edit_pos_stack_top >= 0){
@@ -52,12 +52,12 @@ file_edit_positions_pop(Editing_File *file){
 
 ////////////////////////////////
 
-internal Face*
+function Face*
 file_get_face(Models *models, Editing_File *file){
  return(font_set_face_from_id(&models->font_set, file->settings.face_id));
 }
 
-internal Access_Flag
+function Access_Flag
 file_get_access_flags(Editing_File *file)
 {
  Access_Flag flags = Access_Read|Access_Visible;
@@ -67,7 +67,7 @@ file_get_access_flags(Editing_File *file)
  return(flags);
 }
 
-internal b32
+function b32
 file_needs_save(Editing_File *file){
     b32 result = false;
  if (HasFlag(file->state.dirty, DirtyState_UnsavedChanges)){
@@ -76,7 +76,7 @@ file_needs_save(Editing_File *file){
  return(result);
 }
 
-internal b32
+function b32
 file_can_save(Editing_File *file)
 {
  b32 result = false;
@@ -87,7 +87,7 @@ file_can_save(Editing_File *file)
  return(result);
 }
 
-internal void
+function void
 file_set_unimportant(Editing_File *file, b32 val)
 {
  if (val)
@@ -97,7 +97,7 @@ file_set_unimportant(Editing_File *file, b32 val)
  file->settings.unimportant = (b8)(val);
 }
 
-internal void
+function void
 file_add_dirty_flag(Editing_File *file, Dirty_State state)
 {
  if (!file->settings.unimportant){
@@ -108,7 +108,7 @@ file_add_dirty_flag(Editing_File *file, Dirty_State state)
  }
 }
 
-internal void
+function void
 file_clear_dirty_flags(Editing_File *file)
 {
  file->state.dirty = DirtyState_UpToDate;
@@ -116,7 +116,7 @@ file_clear_dirty_flags(Editing_File *file)
 
 ////////////////////////////////
 
-internal void
+function void
 filename_terminate(Editing_File_Name *name){
     u64 size = name->name_size;
     size = clamp_max(size, sizeof(name->name_space) - 1);
@@ -127,7 +127,7 @@ filename_terminate(Editing_File_Name *name){
 ////////////////////////////////
 
 // TODO(allen): filename should be String
-internal b32
+function b32
 save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *filename){
     b32 result = false;
     b32 using_actual_filename = false;
@@ -175,7 +175,7 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
 
 ////////////////////////////////
 
-internal Buffer_Cursor
+function Buffer_Cursor
 file_compute_cursor(Editing_File *file, Buffer_Seek seek){
     Buffer_Cursor result = {};
     switch (seek.type){
@@ -245,7 +245,7 @@ file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file
  }
 }
 
-internal void
+function void
 file_free(Thread_Context *tctx, Models *models, Editing_File *file){
     Lifetime_Allocator *lifetime_allocator = &models->lifetime_allocator;
     
@@ -265,12 +265,12 @@ file_free(Thread_Context *tctx, Models *models, Editing_File *file){
 
 ////////////////////////////////
 
-internal i1
+function i1
 file_get_current_record_index(Editing_File *file){
     return(file->state.current_record_index);
 }
 
-internal Managed_Scope
+function Managed_Scope
 file_get_managed_scope(Editing_File *file){
  Managed_Scope scope = 0;
  if (file != 0){
@@ -326,13 +326,13 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
  return(result);
 }
 
-internal void
+function void
 file_clear_layout_cache(Editing_File *file){
     arena_clear(&file->state.cached_layouts_arena);
     table_clear(&file->state.line_layout_table);
 }
 
-internal Line_Shift_Vertical
+function Line_Shift_Vertical
 file_line_shift_y(Thread_Context *tctx, Models *models, Editing_File *file,
                   Layout_Function *layout_func, f32 width, Face *face,
                   i64 line_number, f32 y_delta){
@@ -392,7 +392,7 @@ file_line_shift_y(Thread_Context *tctx, Models *models, Editing_File *file,
     return(result);
 }
 
-internal f32
+function f32
 file_line_y_difference(Thread_Context *tctx, Models *models, Editing_File *file,
                        Layout_Function *layout_func, f32 width, Face *face,
                        i64 line_a, i64 line_b){
@@ -410,7 +410,7 @@ file_line_y_difference(Thread_Context *tctx, Models *models, Editing_File *file,
     return(result);
 }
 
-internal i64
+function i64
 file_pos_at_relative_xy(Thread_Context *tctx, Models *models, Editing_File *file,
                         Layout_Function *layout_func, f32 width, Face *face,
                         i64 base_line, Vec2_f32 relative_xy){
@@ -420,7 +420,7 @@ file_pos_at_relative_xy(Thread_Context *tctx, Models *models, Editing_File *file
     return(layout_nearest_pos_to_xy(line, relative_xy));
 }
 
-internal Rect_f32
+function Rect_f32
 file_relative_box_of_pos(Thread_Context *tctx, Models *models, Editing_File *file,
                          Layout_Function *layout_func, f32 width, Face *face,
                          i64 base_line, i64 pos){
@@ -458,7 +458,7 @@ file_padded_box_of_pos(Thread_Context *tctx, Models *models, Editing_File *file,
     return(result);
 }
 
-internal Buffer_Point
+function Buffer_Point
 file_normalize_buffer_point(Thread_Context *tctx, Models *models, Editing_File *file,
                             Layout_Function *layout_func, f32 width, Face *face,
                             Buffer_Point point){
@@ -470,7 +470,7 @@ file_normalize_buffer_point(Thread_Context *tctx, Models *models, Editing_File *
     return(point);
 }
 
-internal Vec2_f32
+function Vec2_f32
 file_buffer_point_difference(Thread_Context *tctx, Models *models, Editing_File *file,
                              Layout_Function *layout_func, f32 width, Face *face,
                              Buffer_Point a, Buffer_Point b){
@@ -480,7 +480,7 @@ file_buffer_point_difference(Thread_Context *tctx, Models *models, Editing_File 
     return(result);
 }
 
-internal Line_Shift_Character
+function Line_Shift_Character
 file_line_shift_characters(Thread_Context *tctx, Models *models, Editing_File *file, Layout_Function *layout_func, f32 width, Face *face, i64 line_number, i64 character_delta){
     Line_Shift_Character result = {};
     
@@ -536,7 +536,7 @@ file_line_shift_characters(Thread_Context *tctx, Models *models, Editing_File *f
     return(result);
 }
 
-internal i64
+function i64
 file_line_character_difference(Thread_Context *tctx, Models *models, Editing_File *file, Layout_Function *layout_func, f32 width, Face *face, i64 line_a, i64 line_b){
     i64 result = 0;
     if (line_a != line_b){
@@ -552,7 +552,7 @@ file_line_character_difference(Thread_Context *tctx, Models *models, Editing_Fil
     return(result);
 }
 
-internal i64
+function i64
 file_pos_from_relative_character(Thread_Context *tctx, Models *models, Editing_File *file,
                                  Layout_Function *layout_func, f32 width, Face *face,
                                  i64 base_line, i64 relative_character){
@@ -562,7 +562,7 @@ file_pos_from_relative_character(Thread_Context *tctx, Models *models, Editing_F
     return(layout_get_pos_at_character(line, relative_character));
 }
 
-internal i64
+function i64
 file_relative_character_from_pos(Thread_Context *tctx, Models *models, Editing_File *file, Layout_Function *layout_func, f32 width, Face *face,
                                  i64 base_line, i64 pos){
     i64 line_number = buffer_get_line_index(&file->state.buffer, pos) + 1;

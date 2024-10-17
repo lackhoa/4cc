@@ -290,7 +290,7 @@ kv_view_input_handler(App *app)
  }
 }
 
-internal void 
+function void 
 kv_newline_and_indent(App *app)
 {
     GET_VIEW_AND_BUFFER;

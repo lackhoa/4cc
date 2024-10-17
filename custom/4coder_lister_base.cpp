@@ -333,75 +333,84 @@ lister_render(App *app, Frame_Info frame_info, View_ID view){
         push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), node->status);
         
         Vec2_f32 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
-        draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
-    }
-    
-    draw_set_clip(app, prev_clip);
+  draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
+ }
+ 
+ draw_set_clip(app, prev_clip);
 }
 #endif
 
 function void*
 lister_get_user_data(Lister *lister, i1 index){
-    void *result = 0;
-    if (0 <= index && index < lister->options.count){
-        i1 counter = 0;
-        for (Lister_Node *node = lister->options.first;
-             node != 0;
-             node = node->next, counter += 1){
-            if (counter == index){
-                result = node->user_data;
-                break;
-            }
-        }
-    }
-    return(result);
+ void *result = 0;
+ if (0 <= index && index < lister->options.count){
+  i1 counter = 0;
+  for (Lister_Node *node = lister->options.first;
+       node != 0;
+       node = node->next, counter += 1){
+   if (counter == index){
+    result = node->user_data;
+    break;
+   }
+  }
+ }
+ return(result);
 }
-
 function Lister_Filtered
 lister_get_filtered(Arena *arena, Lister *lister){
-    i1 node_count = lister->options.count;
-    
-    Lister_Filtered filtered = {};
-    filtered.exact_matches.node_ptrs = push_array(arena, Lister_Node*, 1);
-    filtered.before_extension_matches.node_ptrs = push_array(arena, Lister_Node*, node_count);
-    filtered.substring_matches.node_ptrs = push_array(arena, Lister_Node*, node_count);
-    
-    Temp_Memory_Block temp(arena);
-    
-    String key = lister->key_string.string;
-    key = push_stringz(arena, key);
-    string_mod_replace_character(key, '_', '*');
-    string_mod_replace_character(key, ' ', '*');
-    
-    List_String absolutes = {};
-    string_list_push(arena, &absolutes, string_u8_litexpr(""));
-    List_String splits = string_split(arena, key, (u8*)"*", 1);
-    b32 has_wildcard = (splits.node_count > 1);
-    string_list_push(&absolutes, &splits);
-    string_list_push(arena, &absolutes, string_u8_litexpr(""));
-    
-    for (Lister_Node *node = lister->options.first;
-         node != 0;
-         node = node->next){
-        String node_string = node->string;
-        if (key.size == 0 || string_wildcard_match_insensitive(absolutes, node_string)){
-            if (string_match_insensitive(node_string, key) && filtered.exact_matches.count == 0){
-                filtered.exact_matches.node_ptrs[filtered.exact_matches.count++] = node;
-            }
-            else if (key.size > 0 &&
-                     !has_wildcard &&
-                     string_match_insensitive(string_prefix(node_string, key.size), key) &&
-                     node->string.size > key.size &&
-                     node->string.str[key.size] == '.'){
-                filtered.before_extension_matches.node_ptrs[filtered.before_extension_matches.count++] = node;
-            }
-            else{
-                filtered.substring_matches.node_ptrs[filtered.substring_matches.count++] = node;
-            }
-        }
-    }
-    
-    return(filtered);
+ i1 node_count = lister->options.count;
+ Lister_Filtered filtered = {};
+ {
+  filtered.exact_matches.node_ptrs = push_array(arena, Lister_Node*, 1);
+  filtered.before_extension_matches.node_ptrs = push_array(arena, Lister_Node*, node_count);
+  filtered.substring_matches.node_ptrs = push_array(arena, Lister_Node*, node_count);
+ }
+ Temp_Memory_Block temp(arena);
+ String key = lister->key_string.string;
+ {
+  key = push_stringz(arena, key);
+  string_mod_replace_character(key, '_', '*');
+  string_mod_replace_character(key, ' ', '*');
+ }
+ List_String absolutes = {};
+ b32 has_wildcard;
+ {
+  string_list_push(arena, &absolutes, strlit(""));
+  List_String splits = string_split(arena, key, (u8*)"*", 1);
+  has_wildcard = (splits.node_count > 1);
+  string_list_push(&absolutes, &splits);
+  string_list_push(arena, &absolutes, strlit(""));
+ }
+ for(Lister_Node *node = lister->options.first;
+     node != 0;
+     node = node->next){
+  String node_string = node->string;
+  if (key.size == 0 || string_wildcard_match_insensitive(absolutes, node_string)){
+   if(filtered.exact_matches.count == 0 &&
+      string_match_insensitive(node_string, key)){
+    filtered.exact_matches.node_ptrs[filtered.exact_matches.count++] = node;
+   }else if(key.size > 0 &&
+            !has_wildcard &&
+            string_match_insensitive(string_prefix(node_string, key.size), key) &&
+            node->string.size > key.size &&
+            node->string.str[key.size] == '.'){
+    filtered.before_extension_matches.node_ptrs[filtered.before_extension_matches.count++] = node;
+   }else{
+    filtered.substring_matches.node_ptrs[filtered.substring_matches.count++] = node;
+   }
+  }
+ }
+ {//-TODO(kv) sort the results
+  auto compare = [](void *a0, void *b0)->i32{
+   Lister_Node *a = *(Lister_Node **)a0;
+   Lister_Node *b = *(Lister_Node **)b0;
+   return a->string.count - b->string.count;
+  };
+  gb_sort_array(filtered.substring_matches.node_ptrs,
+                filtered.substring_matches.count,
+                compare);
+ }
+ return(filtered);
 }
 
 function void
@@ -411,48 +420,48 @@ lister_update_selection_values(Lister *lister){
     i1 count = lister->filtered.count;
     for (i1 i = 0; i < count; i += 1){
         Lister_Node *node = lister->filtered.node_ptrs[i];
-        if (lister->item_index == i){
-            lister->highlighted_node = node;
-            lister->raw_item_index = node->raw_index;
-        }
-    }
+  if (lister->item_index == i){
+   lister->highlighted_node = node;
+   lister->raw_item_index = node->raw_index;
+  }
+ }
 }
 
 function void
 lister_update_filtered_list(App *app, Lister *lister){
-    Arena *arena = lister->arena;
-    Scratch_Block scratch(app, arena);
-    
-    Lister_Filtered filtered = lister_get_filtered(scratch, lister);
-    
-    Lister_Node_Ptr_Array node_ptr_arrays[] = {
-        filtered.exact_matches,
-        filtered.before_extension_matches,
-        filtered.substring_matches,
-    };
-    
-    end_temp(lister->filter_restore_point);
-    
-    i1 total_count = 0;
-    for (u32 array_index = 0; array_index < ArrayCount(node_ptr_arrays); array_index += 1){
-        Lister_Node_Ptr_Array node_ptr_array = node_ptr_arrays[array_index];
-        total_count += node_ptr_array.count;
-    }
-    
-    Lister_Node **node_ptrs = push_array(arena, Lister_Node*, total_count);
-    lister->filtered.node_ptrs = node_ptrs;
-    lister->filtered.count = total_count;
-    i1 counter = 0;
-    for (u32 array_index = 0; array_index < ArrayCount(node_ptr_arrays); array_index += 1){
-        Lister_Node_Ptr_Array node_ptr_array = node_ptr_arrays[array_index];
-        for (i1 node_index = 0; node_index < node_ptr_array.count; node_index += 1){
-            Lister_Node *node = node_ptr_array.node_ptrs[node_index];
-            node_ptrs[counter] = node;
-            counter += 1;
-        }
-    }
-    
-    lister_update_selection_values(lister);
+ Arena *arena = lister->arena;
+ Scratch_Block scratch(app, arena);
+ 
+ Lister_Filtered filtered = lister_get_filtered(scratch, lister);
+ 
+ Lister_Node_Ptr_Array node_ptr_arrays[] = {
+  filtered.exact_matches,
+  filtered.before_extension_matches,
+  filtered.substring_matches,
+ };
+ 
+ end_temp(lister->filter_restore_point);
+ 
+ i1 total_count = 0;
+ for_u32(array_index, 0, ArrayCount(node_ptr_arrays)){
+  Lister_Node_Ptr_Array node_ptr_array = node_ptr_arrays[array_index];
+  total_count += node_ptr_array.count;
+ }
+ 
+ Lister_Node **node_ptrs = push_array(arena, Lister_Node*, total_count);
+ lister->filtered.node_ptrs = node_ptrs;
+ lister->filtered.count = total_count;
+ i1 counter = 0;
+ for_u32(array_index, 0, ArrayCount(node_ptr_arrays)){
+  Lister_Node_Ptr_Array node_ptr_array = node_ptr_arrays[array_index];
+  for_i1(node_index, 0, node_ptr_array.count){
+   Lister_Node *node = node_ptr_array.node_ptrs[node_index];
+   node_ptrs[counter] = node;
+   counter += 1;
+  }
+ }
+ 
+ lister_update_selection_values(lister);
 }
 
 function void
@@ -994,7 +1003,7 @@ get_choice_from_user(App *app, String query, Lister_Choice_List list)
 function Lister_Choice*
 get_choice_from_user(App *app, char *query, Lister_Choice_List list)
 {
-    return(get_choice_from_user(app, SCu8(query), list));
+ return(get_choice_from_user(app, SCu8(query), list));
 }
 
 // BOTTOM

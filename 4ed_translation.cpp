@@ -37,7 +37,7 @@
 #define ERROR_BYTE (max_u8-1)
 #define CONTINUATION_BYTE max_u8
 
-internal void
+function void
 translating_consume_byte(Translation_State *tran, u8 ch, u32 i, u32 size, Translation_Byte_Description *desc_out){
     desc_out->byte_class = 0;
     if (ch < 0x80){
@@ -105,7 +105,7 @@ translating_consume_byte(Translation_State *tran, u8 ch, u32 i, u32 size, Transl
     }
 }
 
-internal void
+function void
 translating_select_emit_rule_UTF8(Translation_State *tran, Translation_Byte_Description desc, Translation_Emit_Rule *type_out){
     type_out->byte_class = desc.byte_class;
     type_out->last_byte_handler = desc.last_byte_handler;
@@ -137,7 +137,7 @@ translating_select_emit_rule_UTF8(Translation_State *tran, Translation_Byte_Desc
     }
 }
 
-internal void
+function void
 translating_generate_emits(Translation_State *tran, Translation_Emit_Rule emit_rule, u8 ch, u32 i, Translation_Emits *emits_out){
     emits_out->step_count = 0;
     switch (emit_rule.emit_type){
@@ -190,7 +190,7 @@ translating_generate_emits(Translation_State *tran, Translation_Emit_Rule emit_r
     skip_all:;
 }
 
-internal void
+function void
 translating_fully_process_byte(Translation_State *tran, u8 ch, u32 i, u32 size, Translation_Emits *emits_out){
     Translation_Byte_Description description = {};
     translating_consume_byte(tran, ch, i, size, &description);
@@ -199,7 +199,7 @@ translating_fully_process_byte(Translation_State *tran, u8 ch, u32 i, u32 size, 
     translating_generate_emits(tran, emit_rule, ch, i, emits_out);
 }
 
-internal void
+function void
 translation_step_read(Buffer_Model_Step step, Buffer_Model_Behavior *behavior_out){
     behavior_out->do_newline = false;
     behavior_out->do_codepoint_advance = false;

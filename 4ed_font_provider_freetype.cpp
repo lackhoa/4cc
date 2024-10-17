@@ -11,12 +11,12 @@
 
 // NOTE(allen): Thanks to insofaras.  This is copy-pasted from some work he originally did to get free type working on Linux.
 
-#undef internal
+#undef function
 #include <ft2build.h>
 #include FT_FREETYPE_H
-#define internal static
+#define function static
 
-internal u32
+function u32
 ft__load_flags(b32 use_hinting){
     u32 ft_flags = FT_LOAD_RENDER;
     if (use_hinting)
@@ -32,7 +32,7 @@ ft__load_flags(b32 use_hinting){
     return(ft_flags);
 }
 
-internal FT_Codepoint_Index_Pair_Array
+function FT_Codepoint_Index_Pair_Array
 ft__get_codepoint_index_pairs(Arena *arena, FT_Face face, u16 *maximum_index_out){
     FT_Long glyph_count = face->num_glyphs;
     
@@ -65,7 +65,7 @@ ft__get_codepoint_index_pairs(Arena *arena, FT_Face face, u16 *maximum_index_out
     return(array);
 }
 
-internal Codepoint_Index_Map
+function Codepoint_Index_Map
 ft__get_codepoint_index_map(Base_Allocator *base_allocator, FT_Face face){
     FT_Long glyph_count = face->num_glyphs;
     
@@ -109,7 +109,7 @@ struct Bad_Rect_Pack{
     i32 current_line_h;
 };
 
-internal void
+function void
 ft__bad_rect_pack_init(Bad_Rect_Pack *pack, Vec2_i32 max_dim){
     pack->max_dim = max_dim;
     pack->dim = I3(0, 0, 1);
@@ -117,7 +117,7 @@ ft__bad_rect_pack_init(Bad_Rect_Pack *pack, Vec2_i32 max_dim){
     pack->current_line_h = 0;
 }
 
-internal void
+function void
 ft__bad_rect_pack_end_line(Bad_Rect_Pack *pack){
     pack->p.y += pack->current_line_h;
     pack->dim.y = Max(pack->dim.y, pack->p.y);
@@ -125,7 +125,7 @@ ft__bad_rect_pack_end_line(Bad_Rect_Pack *pack){
     pack->p.x = 0;
 }
 
-internal Vec3_i32
+function Vec3_i32
 ft__bad_rect_pack_next(Bad_Rect_Pack *pack, Vec2_i32 dim){
     Vec3_i32 result = {};
     if (dim.x <= pack->max_dim.x && dim.y <= pack->max_dim.y){
@@ -151,20 +151,20 @@ ft__bad_rect_pack_next(Bad_Rect_Pack *pack, Vec2_i32 dim){
     return(result);
 }
 
-internal void
+function void
 ft__bad_rect_store_finish(Bad_Rect_Pack *pack)
 {
     ft__bad_rect_pack_end_line(pack);
 }
 
-internal void
+function void
 ft__glyph_bounds_store_uv_raw(Vec3_i32 p, Vec2_i32 dim, Glyph_Bounds *bounds)
 {
     bounds->uv = Rf32((f32)p.x, (f32)p.y, (f32)dim.x, (f32)dim.y);
     bounds->w = (f32)p.z;
 }
 
-internal Face*
+function Face*
 ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor)
 {
     String8 filename = push_stringz(arena, description->font.filename);

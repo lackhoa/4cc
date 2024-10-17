@@ -4,7 +4,7 @@
 
 // TOP
 
-internal i64
+function i64
 layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
     i64 closest_match = 0;
     if (p.y < 0.f){
@@ -118,7 +118,7 @@ layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
     return(closest_match);
 }
 
-internal Layout_Item*
+function Layout_Item*
 layout_get_first_with_index(Layout_Item_List list, i64 index){
     Layout_Item *result = 0;
     Layout_Item *prev = 0;
@@ -149,7 +149,7 @@ layout_get_first_with_index(Layout_Item_List list, i64 index){
     return(result);
 }
 
-internal Rect_f32
+function Rect_f32
 layout_box_of_pos(Layout_Item_List list, i64 index){
     Rect_f32 result = {};
     Layout_Item *item = layout_get_first_with_index(list, index);
@@ -172,7 +172,7 @@ layout_padded_box_of_pos(Layout_Item_List list, i64 index){
     return(result);
 }
 
-internal i64
+function i64
 layout_get_pos_at_character(Layout_Item_List list, i64 character){
     i64 result = 0;
     if (character <= 0){
@@ -214,7 +214,7 @@ layout_get_pos_at_character(Layout_Item_List list, i64 character){
     return(result);
 }
 
-internal i64
+function i64
 layout_character_from_pos(Layout_Item_List list, i64 index){
     i64 result = 0;
     i64 prev_index = -1;

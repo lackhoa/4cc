@@ -5,9 +5,9 @@
 #endif
 #include "imgui/imgui.h"
 #if SILLY_IMGUI_PARTY
-#  include "imgui_internal.h"
+#  include "imgui_function.h"
 #endif
-
+//-
 #define AD_IS_FRAMEWORK 1
 #include "kv.h"
 #define AD_IS_GAME 1
@@ -21,10 +21,12 @@
 
 #include "framework_data.h"
 
-#include "generated/4coder_game_shared.gen.h"
+//#include "generated/4coder_game_shared.gen.h"
 
+//#include "generated/driver.gen.h"
 #include "generated/driver.gen.h"
 #include "driver.h"
+//#include "generated/framework.gen.h"
 #include "generated/framework.gen.h"
 #include "generated/send_bez.gen.h"
 #include "game_modeler.h"
@@ -36,9 +38,6 @@
 #define DYNAMIC_LINK_API
 #include "custom/generated/ed_api.cpp"
 #include "game_modeler.cpp"
-#include "generated/4coder_game_shared.gen.cpp"
-#include "generated/driver_meta.gen.cpp"
-#include "generated/framework_meta.gen.cpp"
 #include "generated/send_bez.gen.cpp"
 
 #include "framework.h"
@@ -49,7 +48,7 @@
 #include "game_anime.cpp"
 #include "game_utils.cpp"
 #include "game_body.cpp"
-#include "game.cpp"
+#include "generated/driver.gen.cpp"
 #undef fval
 #define fval slow_fval
 
@@ -443,7 +442,6 @@ get_right_bone(Modeler &m, Bone &bone){
 //  It feels wonky because this is an animation problem we have yet to "solve".
 function Bez
 compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
- b32 is_c2 = (curve.type == Curve_Type_C2);
  Bez result;
  Bone_ID curve_bone_id = curve.bone_id;
  Bone &curve_bone = get_bone(m,curve_bone_id,lr);
@@ -473,7 +471,7 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
    case Curve_Type_C2:{
     auto &data = curve.data.c2;
     Curve_Data &refd = m.curves[data.ref.v];
-    Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
+    Bez ref = compute_curve_from_data(m, refd, lr);
     result = bez_c2(ref, curve_vec(data.d3), p3);
    }break;
    case Curve_Type_Unit:{
@@ -489,7 +487,7 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
    }break;
    case Curve_Type_Bezd_Old:{
     auto &data = curve.data.bezd_old;
-    result = bezd_old(p0,data.d0,data.d3,p3);
+    result = bez_bezd_old(p0,data.d0,data.d3,p3);
    }break;
    case Curve_Type_Offset:{
     auto &data = curve.data.offset;
@@ -498,8 +496,19 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
    case Curve_Type_NegateX:{
     auto &data = curve.data.negateX;
     Curve_Data &refd = m.curves[data.ref.v];
-    Bez ref = compute_curve_from_data(m, refd, lr);  //@recursion
+    Bez ref = compute_curve_from_data(m, refd, lr);
     result = negateX(ref);
+   }break;
+   case Curve_Type_Lerp:{
+    auto &data = curve.data.lerp;
+    v1 t = 0.0f;//todo(kv) incomplete
+    Bez begin_data = compute_curve_from_data(m, m.curves[data.begin.v], lr);
+    Bez end_data   = compute_curve_from_data(m, m.curves[data.end.v], lr);
+    result = bez_lerp(begin_data, t, end_data);
+   }break;
+   case Curve_Type_Raw:{
+    auto &data = curve.data.raw;
+    result = bez_raw(p0, curve_xform*data.p1, curve_xform*data.p2, p3);
    }break;
    invalid_default_case;
   }
@@ -629,7 +638,7 @@ game_render(game_render_params){
   render_movie(scratch, render_scratch,
                config, state->references_full_alpha,
                &state->pose, state->anime_time);
-  state->sending_data = false;
+  //state->sending_data = false;  //NOTE(kv) We will be caching computation, so this is not needed anymore I don't think
  }
  //-NOTE
  render_data(mo);
@@ -1045,7 +1054,7 @@ g_jump_to_line(App *app, i1 linum){
   //NOTE(kv) Switch to the right view
   view = get_other_primary_view(app, view, Access_Always, true);
  }
- view_set_buffer_named(app, view, GAME_FILE_NAME);
+ view_set_buffer_named(app, view, DRIVER_FILE_NAME);
  view_set_cursor(app, view, seek_line_col(linum, 0));
 }
 function void
@@ -1086,9 +1095,8 @@ game_update(game_update_params){
  Viewport *update_viewport = &state->viewports[update_viewport_index];
  Camera_Data *update_target_cam = get_target_camera(state, update_viewport_index);
  
- Game_Input input_value = {
-  .Game_Input_Public = input_public,
- };
+ Game_Input input_value = {};
+ (Game_Input_Public&) input_value = input_public;
  Game_Input *input = &input_value;
  v1 dt = input->frame.animation_dt;
  {
@@ -1187,13 +1195,13 @@ game_update(game_update_params){
   Buffer_ID buffer = get_active_buffer(app);
   String active_buffer_name = push_buffer_base_name(app, scratch, buffer);
   View_ID view_id = get_active_view(app,0);
-  if(active_buffer_name != GAME_FILE_NAME){
+  if(active_buffer_name != DRIVER_FILE_NAME){
    //note(kv) Retry with the other view 
    view_id = get_other_primary_view(app, view_id, 0, false);
    buffer = view_get_buffer(app, view_id, 0);
    active_buffer_name = push_buffer_base_name(app, scratch, buffer);
   }
-  if(active_buffer_name == GAME_FILE_NAME){
+  if(active_buffer_name == DRIVER_FILE_NAME){
    i64 linum = get_current_line_number2(app, view_id, buffer);
    Modeler &m = *modeler;
    Vertex_Ref v = get_vertex_by_linum(m,linum);
@@ -1217,7 +1225,7 @@ game_update(game_update_params){
   }
  }
  
- {//NOTE(kv) Compute key direction
+ {//-Compute key direction
   compute_direction_helper(input, Key_Code_L, 0, +1);
   compute_direction_helper(input, Key_Code_H, 0, -1);
   compute_direction_helper(input, Key_Code_K, 1, +1);
@@ -1272,7 +1280,7 @@ game_update(game_update_params){
      }break;
     }
    }else if(state->kb_cursor_mode){
-    //-
+    //-Cursor mode
     if(mods==Key_Mod_Ctl && is_v3_key(keycode)){
      update_orbit(cam, input);
     }else if(mods==Key_Mod_Alt && is_v2_key(keycode)){
@@ -1319,13 +1327,11 @@ game_update(game_update_params){
      }
     }
    }else{
-    //-NOTE Normal mode
-    if(mods==C && is_v3_key(keycode)){
+    //-Normal mode
+    if((mods==C || mods==0) && is_v3_key(keycode)){
      update_orbit(cam, input);
     }else if (mods==M && is_v2_key(keycode)){
      update_pan(cam, input);
-    }else if (mods==0 && is_v3_key(keycode)){
-     update_orbit(cam, input->direction);
     }else{
      switch(code){
       case Key_Code_Return:{ game_save(state, app, false); }break;

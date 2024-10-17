@@ -9,7 +9,7 @@ BUFFER_HOOK_SIG(kv_new_file)
 {
 	Scratch_Block scratch(app);
 	String filename = push_buffer_base_name(app, scratch, buffer_id);
-	if(string_match(string_postfix(filename, 4), string_u8_litexpr(".bat")))
+	if(string_match(string_postfix(filename, 4), strlit(".bat")))
  {
 		Buffer_Insertion insert = begin_buffer_insertion_at_buffered2(app, buffer_id, 0, scratch, KB(16));
 		insertf(&insert, "@echo off" "\n");
@@ -54,7 +54,7 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
  // NOTE(rjf): Treat as code for *calc* buffers.
  if(treat_as_code == false)
  {
-  if(string_match(buffer_name, string_u8_litexpr("*calc*")))
+  if(string_match(buffer_name, strlit("*calc*")))
   {
    treat_as_code = true;
   }

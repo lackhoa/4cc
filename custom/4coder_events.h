@@ -66,7 +66,7 @@ struct Input_Event{
   struct{
    String string;
    
-   // used internally
+   // used functionly
    Input_Event *next_text;
    b32 blocked;
   } text;
@@ -75,7 +75,7 @@ struct Input_Event{
    Key_Flags flags;
    Input_Modifier_Set modifiers;
    
-   // used internally
+   // used functionly
    Input_Event *first_dependent_text;
   } key;
   struct{

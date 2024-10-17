@@ -1,4 +1,4 @@
-//internal v3
+//function v3
 //perspective_project(Camera *camera, v4 worldP)
 {
  v4 result = matvmul4(camera->project, worldP);
@@ -120,7 +120,7 @@ typedef u32 Widget_ID;
  DEBUG_VALUE(turn);
 }
 
-internal v3
+function v3
 perspective_project(Painter *p, v3 worldP)
 {
  Camera *camera = p->camera;
@@ -293,7 +293,7 @@ action_in(CSG_Action action, CSG_Action actions[3])
 //todo @incomplete
 #define elemof(value, a,b) (value == (a) || value == (b))
 
-internal Hit_Result
+function Hit_Result
 hit_test(v3 rd, CSG_Tree *tree, v1 lower_bound /*@tmin_exclusive*/)
 {
  v1 miss_time = 0.f;  // ;hit_test_zero NOTE hit_test returns "0.f" for a miss
@@ -430,7 +430,7 @@ hit_test(v3 rd, CSG_Tree *tree, v1 lower_bound /*@tmin_exclusive*/)
 }
 
 // @call_csg_render
-internal void
+function void
 csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
 {
  v1 default_fvert_delta_scale = 0.1f;
@@ -864,7 +864,7 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
 }
 
 #if 0
-internal void
+function void
 fill_parallel(Painter *p, v3 a[], i1 acount, v3 b[], i1 bcount, argb color=0)
 {
  if (acount > bcount) { macro_swap(a,b); macro_swap(acount,bcount); }
@@ -973,7 +973,7 @@ fill_parallel(Painter *p, v3 a[], i1 acount, v3 b[], i1 bcount, argb color=0)
 }
 
 #if 0
-internal void
+function void
 draw_meshf(Mesh const&mesh)
 {
  for_i32(triangle_index,0,mesh.triangle_count)

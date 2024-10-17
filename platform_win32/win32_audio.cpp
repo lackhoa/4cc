@@ -36,7 +36,7 @@ win32_default_mix_destination(i16 *dst, f32 *src, u32 sample_count){
 ////////////////////////////////
 // NOTE(allen): Win32 Audio System API
 
-internal
+function
 system_set_source_mixer_sig(){
     win32_audio_begin_ticket_mutex();
     win32vars.audio_mix_ctx = ctx;
@@ -44,7 +44,7 @@ system_set_source_mixer_sig(){
     win32_audio_end_ticket_mutex();
 }
 
-internal
+function
 system_set_destination_mixer_sig(){
     win32_audio_begin_ticket_mutex();
     win32vars.audio_mix_destination = mix_func;

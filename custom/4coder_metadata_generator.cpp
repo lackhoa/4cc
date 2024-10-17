@@ -535,10 +535,10 @@ extract_string(Reader *reader, String *str_out){
 function Meta_Command_Entry_Kind
 parse_command_kind(String kind){
     Meta_Command_Entry_Kind result = MetaCommandEntryKind_ERROR;
-    if (string_match(kind, string_u8_litexpr("Normal"))){
+    if (string_match(kind, strlit("Normal"))){
         result = MetaCommandEntryKind_Normal;
     }
-    else if (string_match(kind, string_u8_litexpr("UI"))){
+    else if (string_match(kind, strlit("UI"))){
         result = MetaCommandEntryKind_UI;
     }
     return(result);
@@ -695,7 +695,7 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
         if (token.kind == TokenBaseKind_Identifier){
             if (!HasFlag(token.flags, TokenBaseFlag_PreprocessorBody)){
                 String lexeme = token_str(text, token);
-                if (string_match(lexeme, string_u8_litexpr("CUSTOM_DOC"))){
+                if (string_match(lexeme, strlit("CUSTOM_DOC"))){
                     Temp_Read temp_read = begin_temp_read(reader);
                 
                 b32 found_start_pos = false;
@@ -703,7 +703,7 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
                     Token p_token = prev_token(reader);
                     if (p_token.kind == TokenBaseKind_Identifier){
                         String p_lexeme = token_str(text, p_token);
-                        if (string_match(p_lexeme, string_u8_litexpr("CUSTOM_COMMAND"))){
+                        if (string_match(p_lexeme, strlit("CUSTOM_COMMAND"))){
                             found_start_pos = true;
                             break;
                         }
@@ -722,7 +722,7 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
                     }
                 }
                 }
-                else if (string_match(lexeme, string_u8_litexpr("CUSTOM_ID"))){
+                else if (string_match(lexeme, strlit("CUSTOM_ID"))){
                     Temp_Read temp_read = begin_temp_read(reader);
                     prev_token(reader);
                     if (!parse_custom_id(arena, entry_arrays, reader)){
@@ -814,163 +814,163 @@ show_usage(int argc, char **argv){
 
 int
 main(int argc, char **argv){
-    if (argc < 3){
-        show_usage(argc, argv);
-    }
-    
-    b32 recursive = string_match(SCu8(argv[1]), string_u8_litexpr("-R"));
-    if (recursive && argc < 4){
-        show_usage(argc, argv);
-    }
-    
-    Arena arena_ = make_arena_malloc(MB(1));
-    Arena *arena = &arena_;
-    
-    String out_directory = SCu8(argv[2]);
-    
-    i1 start_i = 2;
-    if (recursive){
-        start_i = 3;
-    }
-    
-    printf("metadata_generator ");
-    for (i1 i = start_i; i < argc; i += 1){
-        printf("%s ", argv[i]);
-    }
-    printf("\n");
-    fflush(stdout);
-    
-    Meta_Command_Entry_Arrays entry_arrays = {};
-    for (i1 i = start_i; i < argc; ++i){
-        Filename_Character *pattern_name = encode(arena, argv[i]);
-        parse_files_by_pattern(arena, &entry_arrays, pattern_name, recursive);
-    }
-    
-    if (out_directory.size > 2 &&
-        out_directory.str[0] == '"' &&
-        out_directory.str[out_directory.size - 1] == '"'){
-        out_directory.str += 1;
-        out_directory.size -= 2;
-    }
-    
-    out_directory = string_skip_chop_whitespace(out_directory);
-    
-    String cmd_out_name = push_stringfz(arena, "%.*s/%s",
-                                                        string_expand(out_directory),
-                                                        COMMAND_METADATA_OUT);
-    FILE *cmd_out = fopen((char*)cmd_out_name.str, "wb");
-    
-    if (cmd_out != 0){
-        i1 entry_count = entry_arrays.doc_string_count;
-        Meta_Command_Entry **entries = get_sorted_meta_commands(arena, entry_arrays.first_doc_string, entry_count);
-        
-        fprintf(cmd_out, "#if !defined(META_PASS)\n");
-        fprintf(cmd_out, "#define command_id(c) (fcoder_metacmd_ID_##c)\n");
-        fprintf(cmd_out, "#define command_metadata(c) (&fcoder_metacmd_table[command_id(c)])\n");
-        fprintf(cmd_out, "#define command_metadata_by_id(id) (&fcoder_metacmd_table[id])\n");
-        fprintf(cmd_out, "#define command_one_past_last_id %d\n", entry_arrays.doc_string_count);
-        fprintf(cmd_out, "#if defined(CUSTOM_COMMAND_SIG)\n");
-        fprintf(cmd_out, "#define PROC_LINKS(x,y) x\n");
-        fprintf(cmd_out, "#else\n");
-        fprintf(cmd_out, "#define PROC_LINKS(x,y) y\n");
-        fprintf(cmd_out, "#endif\n");
-        
-        fprintf(cmd_out, "#if defined(CUSTOM_COMMAND_SIG)\n");
-        for (i1 i = 0; i < entry_count; ++i){
-            Meta_Command_Entry *entry = entries[i];
-            fprintf(cmd_out, "CUSTOM_COMMAND_SIG(%.*s);\n", string_expand(entry->name));
-        }
-        fprintf(cmd_out, "#endif\n");
-        
-        fprintf(cmd_out,
-                "struct Command_Metadata{\n"
-                "PROC_LINKS(Custom_Command_Function, void) *proc;\n"
-                "b32 is_ui;\n"
-                "char *name;\n"
-                "i1 name_len;\n"
-                "char *description;\n"
-                "i1 description_len;\n"
-                "char *source_name;\n"
-                "i1 source_name_len;\n"
-                "i1 line_number;\n"
-                "};\n");
-        
-        fprintf(cmd_out,
-                "static Command_Metadata fcoder_metacmd_table[%d] = {\n",
-                entry_arrays.doc_string_count);
-        for (i1 i = 0; i < entry_count; ++i){
-            Meta_Command_Entry *entry = entries[i];
-            
-            Temp_Memory temp = begin_temp(arena);
-            
-            String source_name = SCu8(entry->source_name);
-            String printable = string_replace(arena, source_name,
-                                                       SCu8("\\"), SCu8("\\\\"),
-                                                       StringFill_NullTerminate);
-            
-            char *is_ui = "false";
-            if (entry->kind == MetaCommandEntryKind_UI){
-                is_ui = "true";
-            }
-            
-            fprintf(cmd_out,
-                    "{ PROC_LINKS(%.*s, 0), %s, \"%.*s\", %d, "
-                    "\"%.*s\", %d, \"%s\", %d, %" FMTi64 " },\n",
-                    string_expand(entry->name),
-                    is_ui,
-                    string_expand(entry->name),
-                    (i1)entry->name.size,
-                    string_expand(entry->docstring.doc),
-                    (i1)entry->docstring.doc.size,
-                    printable.str,
-                    (i1)source_name.size,
-                    entry->line_number);
-            end_temp(temp);
-        }
-        fprintf(cmd_out, "};\n");
-        
-        i1 id = 0;
-        for (i1 i = 0; i < entry_count; ++i){
-            Meta_Command_Entry *entry = entries[i];
-            fprintf(cmd_out, "static i1 fcoder_metacmd_ID_%.*s = %d;\n", string_expand(entry->name), id);
-            ++id;
-        }
-        
-        fprintf(cmd_out, "#endif\n");
-        
-        fclose(cmd_out);
-    }
-    else{
-        fprintf(stdout, "fatal error: could not open output file %.*s\n", string_expand(cmd_out_name));
-    }
-    
-    String id_out_name = push_stringfz(arena, "%.*s/%s",
-                                                  string_expand(out_directory),
-                                                  ID_METADATA_OUT);
-    FILE *id_out = fopen((char*)id_out_name.str, "wb");
-    
-    if (id_out != 0){
-        fprintf(id_out, "function void\n");
-        fprintf(id_out, "initialize_managed_id_metadata(App *app){\n");
-        
-        for (Meta_ID_Entry *node = entry_arrays.first_id;
-             node != 0;
-             node = node->next){
-            fprintf(id_out, "%.*s = managed_id_declare(app, string_u8_litexpr(\"%.*s\"), string_u8_litexpr(\"%.*s\"));\n",
-                    string_expand(node->id_name),
-                    string_expand(node->group_name),
-                    string_expand(node->id_name));
-        }
-        
-        fprintf(id_out, "}\n");
-        
-        fclose(id_out);
-    }
-    else{
-        fprintf(stdout, "fatal error: could not open output file %.*s\n", string_expand(id_out_name));
-    }
-    
-    return(0);
+ if (argc < 3){
+  show_usage(argc, argv);
+ }
+ 
+ b32 recursive = string_match(SCu8(argv[1]), strlit("-R"));
+ if (recursive && argc < 4){
+  show_usage(argc, argv);
+ }
+ 
+ Arena arena_ = make_arena_malloc(MB(1));
+ Arena *arena = &arena_;
+ 
+ String out_directory = SCu8(argv[2]);
+ 
+ i1 start_i = 2;
+ if (recursive){
+  start_i = 3;
+ }
+ 
+ printf("metadata_generator ");
+ for (i1 i = start_i; i < argc; i += 1){
+  printf("%s ", argv[i]);
+ }
+ printf("\n");
+ fflush(stdout);
+ 
+ Meta_Command_Entry_Arrays entry_arrays = {};
+ for (i1 i = start_i; i < argc; ++i){
+  Filename_Character *pattern_name = encode(arena, argv[i]);
+  parse_files_by_pattern(arena, &entry_arrays, pattern_name, recursive);
+ }
+ 
+ if (out_directory.size > 2 &&
+     out_directory.str[0] == '"' &&
+     out_directory.str[out_directory.size - 1] == '"'){
+  out_directory.str += 1;
+  out_directory.size -= 2;
+ }
+ 
+ out_directory = string_skip_chop_whitespace(out_directory);
+ 
+ String cmd_out_name = push_stringfz(arena, "%.*s/%s",
+                                     string_expand(out_directory),
+                                     COMMAND_METADATA_OUT);
+ FILE *cmd_out = fopen((char*)cmd_out_name.str, "wb");
+ 
+ if (cmd_out != 0){
+  i1 entry_count = entry_arrays.doc_string_count;
+  Meta_Command_Entry **entries = get_sorted_meta_commands(arena, entry_arrays.first_doc_string, entry_count);
+  
+  fprintf(cmd_out, "#if !defined(META_PASS)\n");
+  fprintf(cmd_out, "#define command_id(c) (fcoder_metacmd_ID_##c)\n");
+  fprintf(cmd_out, "#define command_metadata(c) (&fcoder_metacmd_table[command_id(c)])\n");
+  fprintf(cmd_out, "#define command_metadata_by_id(id) (&fcoder_metacmd_table[id])\n");
+  fprintf(cmd_out, "#define command_one_past_last_id %d\n", entry_arrays.doc_string_count);
+  fprintf(cmd_out, "#if defined(CUSTOM_COMMAND_SIG)\n");
+  fprintf(cmd_out, "#define PROC_LINKS(x,y) x\n");
+  fprintf(cmd_out, "#else\n");
+  fprintf(cmd_out, "#define PROC_LINKS(x,y) y\n");
+  fprintf(cmd_out, "#endif\n");
+  
+  fprintf(cmd_out, "#if defined(CUSTOM_COMMAND_SIG)\n");
+  for (i1 i = 0; i < entry_count; ++i){
+   Meta_Command_Entry *entry = entries[i];
+   fprintf(cmd_out, "CUSTOM_COMMAND_SIG(%.*s);\n", string_expand(entry->name));
+  }
+  fprintf(cmd_out, "#endif\n");
+  
+  fprintf(cmd_out,
+          "struct Command_Metadata{\n"
+          "PROC_LINKS(Custom_Command_Function, void) *proc;\n"
+          "b32 is_ui;\n"
+          "char *name;\n"
+          "i1 name_len;\n"
+          "char *description;\n"
+          "i1 description_len;\n"
+          "char *source_name;\n"
+          "i1 source_name_len;\n"
+          "i1 line_number;\n"
+          "};\n");
+  
+  fprintf(cmd_out,
+          "static Command_Metadata fcoder_metacmd_table[%d] = {\n",
+          entry_arrays.doc_string_count);
+  for (i1 i = 0; i < entry_count; ++i){
+   Meta_Command_Entry *entry = entries[i];
+   
+   Temp_Memory temp = begin_temp(arena);
+   
+   String source_name = SCu8((char *)entry->source_name);
+   String printable = string_replace(arena, source_name,
+                                     SCu8("\\"), SCu8("\\\\"),
+                                     StringFill_NullTerminate);
+   
+   char *is_ui = "false";
+   if (entry->kind == MetaCommandEntryKind_UI){
+    is_ui = "true";
+   }
+   
+   fprintf(cmd_out,
+           "{ PROC_LINKS(%.*s, 0), %s, \"%.*s\", %d, "
+           "\"%.*s\", %d, \"%s\", %d, %" FMTi64 " },\n",
+           string_expand(entry->name),
+           is_ui,
+           string_expand(entry->name),
+           (i1)entry->name.size,
+           string_expand(entry->docstring.doc),
+           (i1)entry->docstring.doc.size,
+           printable.str,
+           (i1)source_name.size,
+           entry->line_number);
+   end_temp(temp);
+  }
+  fprintf(cmd_out, "};\n");
+  
+  i1 id = 0;
+  for (i1 i = 0; i < entry_count; ++i){
+   Meta_Command_Entry *entry = entries[i];
+   fprintf(cmd_out, "static i1 fcoder_metacmd_ID_%.*s = %d;\n", string_expand(entry->name), id);
+   ++id;
+  }
+  
+  fprintf(cmd_out, "#endif\n");
+  
+  fclose(cmd_out);
+ }
+ else{
+  fprintf(stdout, "fatal error: could not open output file %.*s\n", string_expand(cmd_out_name));
+ }
+ 
+ String id_out_name = push_stringfz(arena, "%.*s/%s",
+                                    string_expand(out_directory),
+                                    ID_METADATA_OUT);
+ FILE *id_out = fopen((char*)id_out_name.str, "wb");
+ 
+ if (id_out != 0){
+  fprintf(id_out, "function void\n");
+  fprintf(id_out, "initialize_managed_id_metadata(App *app){\n");
+  
+  for (Meta_ID_Entry *node = entry_arrays.first_id;
+       node != 0;
+       node = node->next){
+   fprintf(id_out, "%.*s = managed_id_declare(app, strlit(\"%.*s\"), strlit(\"%.*s\"));\n",
+           string_expand(node->id_name),
+           string_expand(node->group_name),
+           string_expand(node->id_name));
+  }
+  
+  fprintf(id_out, "}\n");
+  
+  fclose(id_out);
+ }
+ else{
+  fprintf(stdout, "fatal error: could not open output file %.*s\n", string_expand(id_out_name));
+ }
+ 
+ return(0);
 }
 
 // BOTTOM

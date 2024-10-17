@@ -1,4 +1,4 @@
-internal v3
+function v3
 fvert_function(v3 init_value, Fui_Options opts, i32 line=__builtin_LINE()){
  opts = fopts_add_flags(opts, Slider_Vertex);
  v3 result = fval(init_value, opts, line);
@@ -91,7 +91,7 @@ struct Eye_Min_Distance_Result
  v3 closest_point;
 };
 //
-internal Eye_Min_Distance_Result
+function Eye_Min_Distance_Result
 get_eye_min_distance(v3 center, v1 radius, Bezier line)
 {
  Eye_Min_Distance_Result result;
@@ -178,7 +178,7 @@ from_parent(){
 
 //~
 
-internal v3
+function v3
 bezier_deriv_div3(Bezier bezier, v1 t)
 {//NOTE: The real derivative is multiplied by 3, for some reason
  v3 result = {};
@@ -189,7 +189,7 @@ bezier_deriv_div3(Bezier bezier, v1 t)
  return result;
 }
 
-internal v1
+function v1
 bezier_curvature(v2 p[4], v1 t)
 {
  v2 deriv = {};
@@ -208,7 +208,7 @@ bezier_curvature(v2 p[4], v1 t)
 
 #if 0
 // NOTE: A line is still a v3
-internal v3
+function v3
 bezier_tangent(Bezier bezier, v1 t)
 {
  v3 point = bezier_sample(bezier,t);
@@ -326,5 +326,13 @@ profile_visible(v1 min, i1 linum=__builtin_LINE()){
 inline Line_Params
 profile_visible_transition(v1 min){
  return profile_visible(cosine(min*0.25f));
+}
+inline mat4i &
+get_bone_xform(Bone_Type type, i1 lr_index){
+ return get_bone(*painter.modeler, type, lr_index).xform;
+}
+inline mat4i &
+get_bone_xform(Bone_Type type){
+ return get_bone_xform(type, painter.lr_index);
 }
 //~ EOF;

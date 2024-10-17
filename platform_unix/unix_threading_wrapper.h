@@ -32,37 +32,37 @@ union Condition_Variable{
     FixSize(CONDITION_VARIABLE_TYPE_SIZE);
 };
 
-internal void
+function void
 system_init_and_launch_thread(Thread *t, Thread_Function *proc, void *ptr){
     pthread_create(&t->t, 0, proc, ptr);
 }
 
-internal void
+function void
 system_init_lock(Mutex *m){
     pthread_mutex_init(&m->crit, NULL);
 }
 
-internal void
+function void
 system_acquire_lock(Mutex *m){
     pthread_mutex_lock(&m->crit);
 }
 
-internal void
+function void
 system_release_lock(Mutex *m){
     pthread_mutex_unlock(&m->crit);
 }
 
-internal void
+function void
 system_init_cv(Condition_Variable *cv){
     pthread_cond_init(&cv->cv, NULL);
 }
 
-internal void
+function void
 system_wait_cv(Condition_Variable *cv, Mutex *m){
     pthread_cond_wait(&cv->cv, &m->crit);
 }
 
-internal void
+function void
 system_signal_cv(Condition_Variable *cv, Mutex *m){
     pthread_cond_signal(&cv->cv);
 }

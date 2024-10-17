@@ -42,7 +42,7 @@ Assert(n < sizeof(SF_CMD));                                \
 SYSTEMF_PRINTF("systemf dry-run: %s\n", SF_CMD);                            \
 }while(0)
 
-internal void fm_execute_in_dir(char *dir, char *str, char *args);
+function void fm_execute_in_dir(char *dir, char *str, char *args);
 
 // Init
 enum{
@@ -52,49 +52,49 @@ enum{
 };
 global i1 detail_level = 0;
 
-internal Arena fm_init_system(i1 detail_level);
+function Arena fm_init_system(i1 detail_level);
 
 // Timing
-internal u64 fm_get_time();
+function u64 fm_get_time();
 
 // Files and Folders Manipulation
-internal void fm_make_folder_if_missing(Arena *arena, char *dir);
-internal void fm_clear_folder(char *folder);
-internal void fm_delete_file(char *file);
-internal void fm_copy_file(char *file, char *newname);
-internal void fm_copy_all(char *source, char *folder);
-internal void fm_copy_folder(Arena *arena, char *src_dir, char *dst_dir, char *src_folder);
+function void fm_make_folder_if_missing(Arena *arena, char *dir);
+function void fm_clear_folder(char *folder);
+function void fm_delete_file(char *file);
+function void fm_copy_file(char *file, char *newname);
+function void fm_copy_all(char *source, char *folder);
+function void fm_copy_folder(Arena *arena, char *src_dir, char *dst_dir, char *src_folder);
 
 // File Reading and Writing
-internal void fm_write_file(char *file_name, char *data, u32 size);
+function void fm_write_file(char *file_name, char *data, u32 size);
 
 // Zip
-internal void fm_zip(char *parent, char *folder, char *dest);
+function void fm_zip(char *parent, char *folder, char *dest);
 
 // Slash Correction
-internal void fm_slash_fix(char *path);
+function void fm_slash_fix(char *path);
 
 // Memory concat helpers
-internal char *fm_prepare_string_internal(Arena *arena, char *s1, ...);
-#define fm_str(...) fm_prepare_string_internal(__VA_ARGS__, (void*)0)
+function char *fm_prepare_string_function(Arena *arena, char *s1, ...);
+#define fm_str(...) fm_prepare_string_function(__VA_ARGS__, (void*)0)
 
-internal char *fm_basic_string_internal(Arena *arena, char *s1, ...);
-#define fm_basic_str(...) fm_basic_string_internal(__VA_ARGS__, (void*)0)
+function char *fm_basic_string_function(Arena *arena, char *s1, ...);
+#define fm_basic_str(...) fm_basic_string_function(__VA_ARGS__, (void*)0)
 
-internal char **fm_prepare_list_internal(Arena *arena, char **l1, ...);
-#define fm_list(...) fm_prepare_list_internal(__VA_ARGS__, (void*)0)
+function char **fm_prepare_list_function(Arena *arena, char **l1, ...);
+#define fm_list(...) fm_prepare_list_function(__VA_ARGS__, (void*)0)
 
-internal char **fm_list_one_item(Arena *arena, char *item);
+function char **fm_list_one_item(Arena *arena, char *item);
 
 // File System Navigation
-internal i1  fm_get_current_directory(char *buffer, i1 max);
+function i1  fm_get_current_directory(char *buffer, i1 max);
 
 struct Temp_Dir{
     char dir[512];
 };
 
-internal Temp_Dir fm_pushdir(char *dir);
-internal void fm_popdir(Temp_Dir temp);
+function Temp_Dir fm_pushdir(char *dir);
+function void fm_popdir(Temp_Dir temp);
 
 // Build Line
 #define BUILD_LINE_MAX 4096
@@ -106,10 +106,10 @@ struct Build_Line{
     i1 build_max;
 };
 
-internal void fm_init_build_line(Build_Line *line);
-internal void fm_finish_build_line(Build_Line *line);
+function void fm_init_build_line(Build_Line *line);
+function void fm_finish_build_line(Build_Line *line);
 
-internal void fm__swap_ptr(char **A, char **B);
+function void fm__swap_ptr(char **A, char **B);
 
 #if COMPILER_CL
 
@@ -183,7 +183,7 @@ static char platform_correct_slash = '/';
 #if defined(FTECH_FILE_MOVING_IMPLEMENTATION) && !defined(FTECH_FILE_MOVING_IMPL_GUARD)
 #define FTECH_FILE_MOVING_IMPL_GUARD
 
-internal Arena
+function Arena
 fm__init_memory(void){
     return(make_arena_malloc(MB(512), 8));
 }
@@ -282,7 +282,7 @@ extern "C"{
 
 global u64 perf_frequency;
 
-internal Arena
+function Arena
 fm_init_system(i1 det){
     detail_level = det;
     LARGE_INTEGER lint;
@@ -292,7 +292,7 @@ fm_init_system(i1 det){
     return(fm__init_memory());
 }
 
-internal Temp_Dir
+function Temp_Dir
 fm_pushdir(char *dir){
     Temp_Dir temp = {};
     GetCurrentDirectoryA(sizeof(temp.dir), temp.dir);
@@ -300,12 +300,12 @@ fm_pushdir(char *dir){
     return(temp);
 }
 
-internal void
+function void
 fm_popdir(Temp_Dir temp){
     SetCurrentDirectoryA(temp.dir);
 }
 
-internal u64
+function u64
 fm_get_time(){
     u64 time = 0;
     LARGE_INTEGER lint;
@@ -316,13 +316,13 @@ fm_get_time(){
     return(time);
 }
 
-internal i1
+function i1
 fm_get_current_directory(char *buffer, i1 max){
     i1 result = GetCurrentDirectoryA(max, buffer);
     return(result);
 }
 
-internal void
+function void
 fm_execute_in_dir(char *dir, char *str, char *args){
     if (dir){
         Temp_Dir temp = fm_pushdir(dir);
@@ -344,7 +344,7 @@ fm_execute_in_dir(char *dir, char *str, char *args){
     }
 }
 
-internal void
+function void
 fm_slash_fix(char *path){
     if (path != 0){
         for (i1 i = 0; path[i]; ++i){
@@ -353,7 +353,7 @@ fm_slash_fix(char *path){
     }
 }
 
-internal void
+function void
 fm_make_folder_if_missing(Arena *arena, char *dir){
     char *path = fm_str(arena, dir);
     char *p = path;
@@ -367,7 +367,7 @@ fm_make_folder_if_missing(Arena *arena, char *dir){
     CreateDirectoryA(path, 0);
 }
 
-internal void
+function void
 fm_clear_folder(char *folder){
     if (fm__show_details_for_file_operations()){
         fprintf(stdout, "clearing folder %s\n", folder);
@@ -376,12 +376,12 @@ fm_clear_folder(char *folder){
     systemf("del /S /Q /F %s\\* > nul & rmdir /S /Q %s > nul & mkdir %s > nul", folder, folder, folder);
 }
 
-internal void
+function void
 fm_delete_file(char *file){
     systemf("del %s", file);
 }
 
-internal void
+function void
 fm_copy_file(char *file, char *newname){
     if (fm__show_details_for_file_operations()){
         printf("copy %s to %s\n", file, newname);
@@ -390,7 +390,7 @@ fm_copy_file(char *file, char *newname){
     CopyFileA(file, newname, 0);
 }
 
-internal void
+function void
 fm_copy_all(char *source, char *folder){
     if (fm__show_details_for_file_operations()){
         fprintf(stdout, "copy %s to %s\n", source, folder);
@@ -399,7 +399,7 @@ fm_copy_all(char *source, char *folder){
     systemf("xcopy /s /e /y /q %s %s > nul", source, folder);
 }
 
-internal void
+function void
 fm_write_file(char *file_name, char *data, u32 size){
     HANDLE file = CreateFileA(file_name, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     if (file != INVALID_HANDLE_VALUE){
@@ -416,7 +416,7 @@ fm_write_file(char *file_name, char *data, u32 size){
     }
 }
 
-internal void
+function void
 fm_zip(char *parent, char *folder, char *dest){
     if (fm__show_details_for_file_operations()){
         printf("zipping %s\\%s to %s\n", parent, folder, dest);
@@ -450,7 +450,7 @@ fm_zip(char *parent, char *folder, char *dest){
 #include <time.h>
 #include <unistd.h>
 
-internal Temp_Dir
+function Temp_Dir
 fm_pushdir(char *dir){
     Temp_Dir temp;
     char *result = getcwd(temp.dir, sizeof(temp.dir));
@@ -463,18 +463,18 @@ fm_pushdir(char *dir){
     return(temp);
 }
 
-internal void
+function void
 fm_popdir(Temp_Dir temp){
     chdir(temp.dir);
 }
 
-internal Arena
+function Arena
 fm_init_system(i1 det){
     detail_level = det;
     return(fm__init_memory());
 }
 
-internal u64
+function u64
 fm_get_time(){
     struct timespec spec;
     u64 result;
@@ -483,7 +483,7 @@ fm_get_time(){
     return(result);
 }
 
-internal i1
+function i1
 fm_get_current_directory(char *buffer, i1 max){
     i1 result = 0;
     char *d = getcwd(buffer, max);
@@ -493,7 +493,7 @@ fm_get_current_directory(char *buffer, i1 max){
     return(result);
 }
 
-internal void
+function void
 fm_execute_in_dir(char *dir, char *str, char *args){
     if (dir){
         if (args){
@@ -517,15 +517,15 @@ fm_execute_in_dir(char *dir, char *str, char *args){
     }
 }
 
-internal void
+function void
 fm_slash_fix(char *path){}
 
-internal void
+function void
 fm_make_folder_if_missing(Arena *arena, char *dir){
     systemf("mkdir -p %s", dir);
 }
 
-internal void
+function void
 fm_clear_folder(char *folder){
     if (fm__show_details_for_file_operations()){
         fprintf(stdout, "clearing folder %s\n", folder);
@@ -534,12 +534,12 @@ fm_clear_folder(char *folder){
     systemf("rm -rf %s* > /dev/null", folder);
 }
 
-internal void
+function void
 fm_delete_file(char *file){
     systemf("rm %s", file);
 }
 
-internal void
+function void
 fm_copy_file(char *file, char *newname){
     if (fm__show_details_for_file_operations()){
         printf("copy %s to %s\n", file, newname);
@@ -548,7 +548,7 @@ fm_copy_file(char *file, char *newname){
     systemf("cp %s %s", file, newname);
 }
 
-internal void
+function void
 fm_copy_all(char *source, char *folder){
     if (fm__show_details_for_file_operations()){
         fprintf(stdout, "copy %s to %s\n", source, folder);
@@ -557,7 +557,7 @@ fm_copy_all(char *source, char *folder){
     systemf("cp -rf %s/* %s > /dev/null", source, folder);
 }
 
-internal void
+function void
 fm_write_file(char *file_name, char *data, u32 size){
     // TODO(allen): Real unix version?
     FILE *file = fopen(file_name, "wb");
@@ -567,7 +567,7 @@ fm_write_file(char *file_name, char *data, u32 size){
     }
 }
 
-internal void
+function void
 fm_zip(char *parent, char *folder, char *file){
     if (fm__show_details_for_file_operations()){
         printf("zipping %s/%s to %s\n", parent, folder, file);
@@ -590,7 +590,7 @@ fm_zip(char *parent, char *folder, char *file){
 #error This OS is not supported yet
 #endif
 
-internal void
+function void
 fm_copy_folder(Arena *arena, char *src_dir, char *dst_dir, char *src_folder){
     Temp_Dir temp = fm_pushdir(src_dir);
     fm_make_folder_if_missing(arena, fm_str(arena, dst_dir, "/", src_folder));
@@ -600,7 +600,7 @@ fm_copy_folder(Arena *arena, char *src_dir, char *dst_dir, char *src_folder){
 }
 
 // List Helpers
-internal i1
+function i1
 listsize(void *p, u64 item_size){
     u64 zero = 0;
     u8 *ptr = (u8*)p;
@@ -609,7 +609,7 @@ listsize(void *p, u64 item_size){
     return(size);
 }
 
-internal void*
+function void*
 fm__prepare(Arena *arena, i1 item_size, void *i1, va_list list){
     List_String_Const_char out_list = {};
     i1 size = listsize(i1, item_size);
@@ -626,8 +626,8 @@ fm__prepare(Arena *arena, i1 item_size, void *i1, va_list list){
     return(result.str);
 }
 
-internal char*
-fm_basic_string_internal(Arena *arena, char *s1, ...){
+function char*
+fm_basic_string_function(Arena *arena, char *s1, ...){
     i1 item_size = sizeof(*s1);
     va_list list;
     va_start(list, s1);
@@ -636,8 +636,8 @@ fm_basic_string_internal(Arena *arena, char *s1, ...){
     return(result);
 }
 
-internal char*
-fm_prepare_string_internal(Arena *arena, char *s1, ...){
+function char*
+fm_prepare_string_function(Arena *arena, char *s1, ...){
     i1 item_size = sizeof(*s1);
     va_list list;
     va_start(list, s1);
@@ -647,8 +647,8 @@ fm_prepare_string_internal(Arena *arena, char *s1, ...){
     return(result);
 }
 
-internal char**
-fm_prepare_list_internal(Arena *arena, char **p1, ...){
+function char**
+fm_prepare_list_function(Arena *arena, char **p1, ...){
     i1 item_size = sizeof(*p1);
     va_list list;
     va_start(list, p1);
@@ -657,7 +657,7 @@ fm_prepare_list_internal(Arena *arena, char **p1, ...){
     return(result);
 }
 
-internal char**
+function char**
 fm_list_one_item(Arena *arena, char *item){
     char **result = push_array(arena, char*, 2);
     result[0] = item;
@@ -666,7 +666,7 @@ fm_list_one_item(Arena *arena, char *item){
 }
 
 // Build Line
-internal void
+function void
 fm_init_build_line(Build_Line *line){
     line->build_options = line->build_optionsA;
     line->build_options_prev = line->build_optionsB;
@@ -675,12 +675,12 @@ fm_init_build_line(Build_Line *line){
     line->build_max = BUILD_LINE_MAX;
 }
 
-internal void
+function void
 fm_finish_build_line(Build_Line *line){
     fm__swap_ptr(&line->build_options, &line->build_options_prev);
 }
 
-internal void
+function void
 fm__swap_ptr(char **A, char **B){
     char *a = *A;
     char *b = *B;

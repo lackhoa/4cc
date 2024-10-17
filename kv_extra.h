@@ -380,6 +380,13 @@ get_matching_group_closer(u8 c){
  if(c == '{') return '}';
  return 0;
 }
+inline u8
+get_matching_group_opener(u8 c){
+ if(c == ')') return '(';
+ if(c == ']') return '[';
+ if(c == '}') return '{';
+ return 0;
+}
 
 function u64
 string_find_first_whitespace(String str){
@@ -437,20 +444,11 @@ path_dirname(String str)
  
  return(str);
 }
-function String
-string_skip(String str, u64 n){
- n = clamp_max(n, str.size);
- str.str += n;;
- str.size -= n;
- return(str);
-}
 
 function String
-path_filename(String str)
-{
+path_filename(String str) {
  i64 slash_pos = string_find_last_slash(str);
- if (slash_pos >= 0)
- {
+ if (slash_pos >= 0) {
   str = string_skip(str, slash_pos + 1);
  }
  return(str);
@@ -477,7 +475,7 @@ string_prefix(String str, u64 size){
 }
 
 function String
-path_no_extension(String string){
+path_stem(String string){
  i64 pos = string_find_last(string, '.');
  if(pos > 0){
   string = string_prefix(string, pos);
@@ -535,7 +533,7 @@ string_contains(String big, String small, i1 *first_match=0)
  return result;
 }
 
-internal b32
+function b32
 starts_with(String str, String prefix)
 {
  return string_match(string_prefix(str, prefix.size), prefix);
@@ -579,5 +577,191 @@ cast_u64_to_u32(u64 u)
  kv_assert(u < (1ULL << 32));
  return (u32)u;
 }
+function isize
+gb__scan_i64(String string, i1 base, i64 *value){
+	u8 *text_begin = string.str;
+	i64 result = 0;
+	b32 negative = false;
+	if(string[0] == '-'){
+		negative = true;
+		string_skip(&string, 1);
+	}
+	if(base == 16 && string_prefix(string, 2) == "0x"){
+		string_skip(&string, 2);
+	}
+	for(;;){
+		i64 v;
+		if(gb_char_is_digit(*string.str)){
+			v = *string.str - '0';
+		}else if(base == 16 && gb_char_is_hex_digit(*string.str)) {
+			v = gb_hex_digit_to_int(*string.str);
+		}else{
+			break;
+		}
+		result *= base;
+		result += v;
+		string_skip(&string, 1);
+	}
+	if(value){
+		if(negative){ result = -result; }
+		*value = result;
+	}
+	return (string.str - text_begin);
+}
+function i64
+str_to_i64(String string, char **end_ptr, i1 base){
+	if(!base){
+  base = 10;
+		if(string_prefix(string, 2) == strlit("0x")){
+			base = 16;
+		}
+	}
+	i64 value;
+	isize len = gb__scan_i64(string, base, &value);
+	if(end_ptr){ *end_ptr = (char *)string.str + len; }
+	return value;
+}
+function f64
+str_to_f64(String string, char **end_ptr_out){
+ char *str = (char *)string.str;
+	f64 result, value, sign, scale;
+	i1 frac = 0;
+ 
+	while(gb_char_is_space(*str)){
+		str++;
+	}
+ 
+	sign = 1.0;
+	if(*str == '-'){
+		sign = -1.0;
+		str++;
+	}else if(*str == '+'){
+		str++;
+	}
+ 
+	for (value = 0.0; gb_char_is_digit(*str); str++) {
+  // note(kv): before the decimal point
+		value = value * 10.0 + (*str-'0');
+	}
+ 
+	if (*str == '.') {
+  // note(kv): after the decimal point
+		f64 pow10 = 10.0;
+		str++;
+		while (gb_char_is_digit(*str)) {
+			value += (*str-'0') / pow10;
+			pow10 *= 10.0;
+			str++;
+		}
+	}
+ 
+	scale = 1.0;
+	if((*str == 'e') || (*str == 'E')){
+		u32 exp;
+  
+		str++;
+		if (*str == '-') {
+			frac = 1;
+			str++;
+		} else if (*str == '+') {
+			str++;
+		}
+  
+		for(exp = 0; gb_char_is_digit(*str); str++){
+			exp = exp * 10 + (*str-'0');
+		}
+		if (exp > 308) exp = 308;
+  
+		while (exp >= 50) { scale *= 1e50; exp -= 50; }
+		while (exp >=  8) { scale *= 1e8;  exp -=  8; }
+		while (exp >   0) { scale *= 10.0; exp -=  1; }
+	}
+ 
+	result = sign * (frac ? (value / scale) : (value * scale));
+ 
+	if(end_ptr_out){ *end_ptr_out = cast(char *)str; }
+ 
+	return result;
+}
+//-Sorting
+typedef i32 Compare_Function(void *a, void *b);
 
+#define GB__SORT_PUSH(_base, _limit) do { \
+stack_ptr[0] = (_base); \
+stack_ptr[1] = (_limit); \
+stack_ptr += 2; \
+} while (0)
+
+#define GB__SORT_POP(_base, _limit) do { \
+stack_ptr -= 2; \
+(_base)  = stack_ptr[0]; \
+(_limit) = stack_ptr[1]; \
+} while (0)
+
+function void
+gb_sort(void *base_, isize count, isize size, Compare_Function compare){
+ // NOTE(bill): Uses quick sort for large arrays but insertion sort for small
+ const i32 insert_sort_threshold = 8;
+	u8 *i, *j;
+	u8 *base = cast(u8 *)base_;
+	u8 *limit = base + count*size;
+	isize threshold = insert_sort_threshold * size;
+ 
+ const i32 stack_size = 64;  //NOTE(kv) We could math it out if we care, but 64 items is enough for everything.
+ u8 *stack[stack_size];
+ u8 **stack_ptr = stack;
+ 
+ while(true){
+  if((limit-base) > threshold){
+   //-NOTE(bill): Quick sort
+   i = base + size;
+   j = limit - size;
+   //NOTE(kv) Swap pivot to the beginning (so that it's not involved in the swapping below)
+   gb_memswap(((limit-base)/size/2) * size + base, base, size);
+   {//NOTE(kv) Maintain the ordering base < i < j
+    if (compare(i, j) > 0)    gb_memswap(i, j, size);
+    if (compare(base, j) > 0) gb_memswap(base, j, size);
+    if (compare(i, base) > 0) gb_memswap(i, base, size);
+   }
+   for (;;) {
+    do i += size; while (compare(i, base) < 0);
+    do j -= size; while (compare(j, base) > 0);
+    if (i > j) break;
+    gb_memswap(i, j, size);
+   }
+   {//NOTE(kv) Swap the pivot back to its place,
+    //  now all items to the left of the pivot are less, items to the right greater.
+    gb_memswap(base, j, size);
+   }
+   //NOTE(kv) Between the region to the left and right of the pivot,
+   //  sort the smaller one first. (I guess since we wanna minimize stack usage).
+   if(j - base > limit - i){
+    GB__SORT_PUSH(base, j);
+    base = i;
+   } else {
+    GB__SORT_PUSH(i, limit);
+    limit = j;
+   }
+  }else{
+   //-NOTE(bill): Insertion sort
+   for (j = base, i = j+size;
+        i < limit;
+        j = i, i += size) {
+    for(; compare(j, j+size) > 0; j -= size){
+     gb_memswap(j, j+size, size);
+     if (j == base) break;
+    }
+   }
+   if(stack_ptr == stack){
+    break; // NOTE(bill): Sorting is done!
+   } else {
+    GB__SORT_POP(base, limit);
+   }
+  }
+ }
+}
+#undef GB__SORT_PUSH
+#undef GB__SORT_POP
+#define gb_sort_array(array, count, compare) \
+gb_sort(array, count, gb_size_of(*(array)), compare)
 //~eof

@@ -4,7 +4,7 @@
 
 // TOP
 
-internal Batch_Edit*
+function Batch_Edit*
 make_batch_from_indentations(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 *indentations, Indent_Flag flags, i1 tab_width)
 {
  i64 *shifted_indentations = indentations - lines.first;
@@ -67,7 +67,7 @@ set_line_indents(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, i64 
  return result;
 }
 
-internal Token*
+function Token*
 find_anchor_token(App *app, Buffer_ID buffer, Token_Array *tokens, i64 invalid_line)
 {
  ProfileScope(app, "find anchor token");
@@ -123,7 +123,7 @@ find_anchor_token(App *app, Buffer_ID buffer, Token_Array *tokens, i64 invalid_l
  return(result);
 }
 
-internal Nest*
+function Nest*
 indent__new_nest(Arena *arena, Nest_Alloc *alloc)
 {
  Nest *new_nest = alloc->free_nest;
@@ -138,12 +138,12 @@ indent__new_nest(Arena *arena, Nest_Alloc *alloc)
  return(new_nest);
 }
 
-internal void
+function void
 indent__free_nest(Nest_Alloc *alloc, Nest *nest){
     sll_stack_push(alloc->free_nest, nest);
 }
 
-internal b32
+function b32
 indent__unfinished_statement(Token *token, Nest *current_nest){
     b32 result = false;
     if (current_nest != 0 && current_nest->kind == TokenBaseKind_ScopeOpen){
@@ -176,7 +176,7 @@ line_indent_cache_update(App *app, Buffer_ID buffer, i1 tab_width, Indent_Line_C
  }
 }
 
-internal i64*
+function i64*
 get_indentation_array(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines,
                       Indent_Flag flags, i1 tab_width, i1 indent_width)
 {

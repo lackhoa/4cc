@@ -217,7 +217,7 @@ int sts_net_check_socket_set(sts_net_set_t* set, const float timeout);
 //  }
 //
 #ifndef STS_NET_NO_PACKETS
-// try to "refill" the internal packet buffer with data
+// try to "refill" the function packet buffer with data
 // note that the socket has to be "ready" so use it in conjunction with a socket set
 // returns:
 //  -1  on errors
@@ -667,8 +667,8 @@ int main(int argc, char *argv[]) {
 #pragma push_macro("COMMAND_SERVER_PORT")
 #pragma push_macro("COMMAND_SERVER_UPDATE_PERIOD_MS")
 
-#define xstr(s) str(s)
-#define str(s) #s
+/*#define xstr(s) str(s)
+#define str(s) #s*/
 
 #ifndef COMMAND_SERVER_PORT
 #define COMMAND_SERVER_PORT 4041
@@ -735,11 +735,11 @@ CUSTOM_COMMAND_SIG(toggle_command_server)
 CUSTOM_DOC("Toggle command server.")
 {
     if(!global_CS_state.running){
-        log_string(app, string_u8_litexpr("Starting server\n"));
+        log_string(app, strlit("Starting server\n"));
         CS_start(app);
     }
     else{
-        log_string(app, string_u8_litexpr("Stopping server\n"));
+        log_string(app, strlit("Stopping server\n"));
         CS_stop();
     }
 }
@@ -841,7 +841,7 @@ CS_update(App *app)
                     }
                 }
                 
-                if(string_match(command, string_u8_litexpr("open")))
+                if(string_match(command, strlit("open")))
                 {
                     Buffer_ID buffer_id = create_buffer(app, location.file,
                                                         BufferCreate_NeverNew || BufferCreate_MustAttachToFile);
@@ -886,7 +886,7 @@ CS_render_caller(App *app, Frame_Info frame_info, View_ID view_id)
     {
         struct stat info;
         if(stat(COMMAND_SERVER_AUTO_LAUNCH_IF_FILE_PRESENT, &info) == 0){
-            log_string(app, string_u8_litexpr("Starting server\n"));
+            log_string(app, strlit("Starting server\n"));
             CS_start(app);
         }
         global_CS_state.autostart_has_been_checked = true;

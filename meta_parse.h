@@ -11,5 +11,5 @@ inline b32 m_maybe_paren_close  (Ed_Parser *p){ return ep_maybe_char(p, ')'); }
 inline b32 m_maybe_bracket_close(Ed_Parser *p){ return ep_maybe_char(p, ']'); }
 inline b32 m_maybe_brace_close  (Ed_Parser *p){ return ep_maybe_char(p, '}'); }
 #define mpa_parens     defer_block(m_paren_open(p), m_paren_close(p))
-
+#define mpa_braces     defer_block(m_brace_open(p), m_brace_close(p))
 //-

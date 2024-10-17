@@ -33,6 +33,7 @@ inline Repeated_Printee
 repeated(String string, i32 count){ return {string, count}; }
 inline Repeated_Printee
 repeated(char *string, i32 count){ return {SCu8(string), count}; }
+
 function void
 print(Printer &p, Repeated_Printee item){
  for_repeat(item.count){ p < item.string; };
@@ -46,15 +47,21 @@ print_comma_separated(Printer &p, arrayof<String> list){
  }
 }
 
-#define m_parens       defer_block((p << "("), (p << ")"))
-#define m_comma_list   defer_block(((p << "("), begin_separator(p, ", ")),\
+#define m_parens2(p)   defer_block((p << "("), (p << ")"))
+#define m_parens       m_parens2(p)
+#define m_comma_list   \
+defer_block( \
+((p << "("), begin_separator(p, ", ")), \
 ((p << ")"), end_separator(p)))
-#define m_braces       defer_block((p << "\n{\n"), (p << "\n}\n"))
-#define m_braces_sm    defer_block((p << "\n{\n"), (p << "\n};\n"))
+#define m_braces2(p)   defer_block((p < "{"), (p < "}"))
+#define m_braces       m_braces2(p)
+#define m_braces_newline defer_block((p < "{\n"), (p < "\n}"))
+#define m_braces_sm    defer_block((p << "{"), (p << "};"))
 #define m_macro_braces defer_block((p << "\\\n{\\\n"), (p << "\\\n}\\\n"))
 #define m_macro_braces_sm  defer_block((p << "\\\n{\\\n"), (p << "\\\n};\\\n"))
 #define m_locationp(p) p<<"// "<<      " "<<filename_linum<<"\n"
 #define m_location     m_locationp(p)
 #define m_note(note)   p<<"// "<<note<<" "<<filename_linum<<"\n"
-
+//-
+global const String cache_storage_prefix = strlit("cache_storage_");
 //-

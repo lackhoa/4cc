@@ -6,7 +6,7 @@
 
 function Buffer_ID
 get_keyboard_log_buffer(App *app){
-    return(get_buffer_by_name(app, string_u8_litexpr("*keyboard*"), Access_Always));
+    return(get_buffer_by_name(app, strlit("*keyboard*"), Access_Always));
 }
 
 function void
@@ -69,7 +69,7 @@ CUSTOM_DOC("Stop macro recording, do nothing if macro recording is not already s
 #if 0
     Scratch_Block scratch(app);
     String macro = push_buffer_range(app, scratch, buffer, global_keyboard_macro_range);
-    print_message(app, string_u8_litexpr("recorded:\n"));
+    print_message(app, strlit("recorded:\n"));
     print_message(app, macro);
 #endif
 }

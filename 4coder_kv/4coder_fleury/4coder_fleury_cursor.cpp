@@ -280,7 +280,7 @@ F4_Cursor_RenderEmacsStyle(App *app, View_ID view_id, b32 is_active_view,
     draw_set_clip(app, clip);
 }
 
-internal b32
+function b32
 F4_Cursor_DrawHighlightRange(App *app, View_ID view_id,
                              Buffer_ID buffer, Text_Layout_ID text_layout_id,
                              f32 roundness)

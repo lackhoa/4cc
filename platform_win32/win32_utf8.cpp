@@ -11,7 +11,7 @@
 
 #pragma once
 
-internal HANDLE
+function HANDLE
 CreateFile_utf8(Arena *scratch, u8 *name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES security, DWORD creation, DWORD flags, HANDLE template_file){
     Temp_Memory temp = begin_temp(scratch);
     String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
@@ -20,7 +20,7 @@ CreateFile_utf8(Arena *scratch, u8 *name, DWORD access, DWORD share, LPSECURITY_
     return(result);
 }
 
-internal DWORD
+function DWORD
 GetFinalPathNameByHandle_utf8(Arena *scratch, HANDLE file, u8 *file_path_out, DWORD path_max, DWORD flags){
     DWORD result = 0;
     
@@ -55,7 +55,7 @@ GetFinalPathNameByHandle_utf8(Arena *scratch, HANDLE file, u8 *file_path_out, DW
     return(result);
 }
 
-internal HANDLE
+function HANDLE
 FindFirstFile_utf8(Arena *scratch, u8 *name, LPWIN32_FIND_DATAW find_data){
     Temp_Memory temp = begin_temp(scratch);
     String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
@@ -64,7 +64,7 @@ FindFirstFile_utf8(Arena *scratch, u8 *name, LPWIN32_FIND_DATAW find_data){
     return(result);
 }
 
-internal DWORD
+function DWORD
 GetFileAttributes_utf8(Arena *scratch, u8 *name){
     Temp_Memory temp = begin_temp(scratch);
     String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
@@ -73,7 +73,7 @@ GetFileAttributes_utf8(Arena *scratch, u8 *name){
     return(result);
 }
 
-internal DWORD
+function DWORD
 GetModuleFileName_utf8(Arena *scratch, HMODULE module, u8 *file_out, DWORD max)
 {
     Temp_Memory temp = begin_temp(scratch);
@@ -91,7 +91,7 @@ GetModuleFileName_utf8(Arena *scratch, HMODULE module, u8 *file_out, DWORD max)
     return(result);
 }
 
-internal BOOL
+function BOOL
 CreateProcess_utf8(Arena *scratch, u8 *app_name, u8 *command, LPSECURITY_ATTRIBUTES security, LPSECURITY_ATTRIBUTES thread, BOOL inherit_handles, DWORD creation, LPVOID environment, u8 *curdir, LPSTARTUPINFOW startup, LPPROCESS_INFORMATION process)
 {
     Temp_Memory temp = begin_temp(scratch);
@@ -135,7 +135,7 @@ GetCurrentDirectory_utf8(Arena *arena, DWORD max, u8 *buffer)
  return(result);
 }
 
-internal int
+function int
 MessageBox_utf8(Arena *scratch, HWND owner, u8 *text, u8 *caption, UINT type){
  Temp_Memory temp = begin_temp(scratch);
  String_u16 text_16 = string_u16_from_string_u8(scratch, SCu8(text), StringFill_NullTerminate);

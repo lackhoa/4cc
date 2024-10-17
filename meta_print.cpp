@@ -38,12 +38,12 @@ m_open_files_to_write(String base_path,
  }
  return result;
 }
-function void
+inline void
 m_close_pair(Printer_Pair &ps){
  fclose(ps.h.FILE);
  fclose(ps.c.FILE);
 }
-
+//-
 function Meta_Type_Names &
 m_get_type_names(String type_name){
  auto &store = meta_type_name_store;
@@ -78,20 +78,19 @@ get_type_info_function_name(String type_name){
 }
 
 function void
-print_type_meta_shared(Printer_Pair &ps, String type_name, b32 is_typedef=false){
+print_type_meta_shared(Printer &p, String type_name, b32 is_typedef=false){
  String type_global_var = get_type_global_info_name  (type_name);
  String function_name   = get_type_info_function_name(type_name);
  {
-  Printer &p = ps.h;
   m_location;
   //NOTE ("The global type info variable")
   p<<"global_decl Type_Info "<<type_global_var<<";\n";
  }
  {
-  Printer &p = ps.c;
-  {
+  {//TODO(kv) Oh my God, we have to change these to function calls
+   //  because for some goddamn reason I can't forward declare global vars in C goddamn it!.
    m_location;
-   p<<"global Type_Info "<<type_global_var<<" = "<<function_name<<"();\n\n";
+   p<<"xglobal Type_Info "<<type_global_var<<" = "<<function_name<<"();\n\n";
   }
   if(!is_typedef)
   {
@@ -160,20 +159,18 @@ print_struct(Printer &p, String type_name, Meta_Struct_Members &members){
  print_struct_body(p,members);
 }
 function void
-print_struct_meta(Printer_Pair &ps, String type_name,
+print_struct_meta(Printer &p, String type_name,
                   Meta_Struct_Members &members){
  Scratch_Block scratch;
 #define brace_block  p << "\n{\n"; defer( p << "\n}\n"; );
  {//-NOTE ("Function to generate the type info")
   String function_name = get_type_info_function_name(type_name);
   {//NOTE .h
-   Printer &p = ps.h;
    m_location;
    p<<"struct "<<type_name<<";\n";
    p<<"function Type_Info\n"<<function_name<<"();";
   }
   {//NOTE .cpp
-   Printer &p = ps.c;
    m_location;
    p<<"function Type_Info\n"<<function_name<<"()";
    {brace_block;
@@ -216,17 +213,15 @@ print_struct_meta(Printer_Pair &ps, String type_name,
   } 
  }
  
- print_type_meta_shared(ps, type_name);
+ print_type_meta_shared(p, type_name);
  
  {//-NOTE: ;meta_read_struct
   {//NOTE .h
-   Printer &p = ps.h;
    m_location;
    print_type_read_function_prototype(p,type_name);
    p<<";\n";
   }
   {//NOTE .cpp
-   Printer &p = ps.c;
    m_location;
    print_type_read_function_prototype(p,type_name);
    {brace_block;
@@ -301,22 +296,19 @@ print_struct_meta(Printer_Pair &ps, String type_name,
  }
 #undef brace_block
 }
-
 function void
-print_union_meta(Printer_Pair &ps, String type_name,
+print_union_meta(Printer &p, String type_name,
                  arrayof<Union_Variant> *variants,
                  String discriminator_type){
 #define brace_block  p << "\n{\n"; defer( p << "\n}\n"; );
  {//-NOTE: ("Function to generate the type info")
   {
-   Printer &p = ps.h;
    m_location;
    p<<"union "<<type_name<<";\n";
    print_type_info_function_prototype(p,type_name);
    p<<";\n";
   }
   {
-   Printer &p = ps.c;
    m_location;
    print_type_info_function_prototype(p,type_name);
    {brace_block;
@@ -342,17 +334,15 @@ print_union_meta(Printer_Pair &ps, String type_name,
   }
  }
  
- print_type_meta_shared(ps, type_name);
+ print_type_meta_shared(p, type_name);
  
  {// NOTE: ;read union
   {
-   Printer &p = ps.h;
    m_location;
    print_union_read_function_prototype(p,type_name,discriminator_type);
    p<<";\n";
   }
   {
-   Printer &p = ps.c;
    m_location;
    print_union_read_function_prototype(p,type_name,discriminator_type);
    
@@ -391,17 +381,15 @@ print_enum(Printer &p, String type_name,
  }
 }
 function void
-print_enum_meta(Printer_Pair &ps, String type_name,
+print_enum_meta(Printer &p, String type_name,
                 arrayof<String> &enum_names){
  {//-NOTE: ("Function to generate the type info")
   String function_name = get_type_info_function_name(type_name);
   {//NOTE .h
-   Printer &p = ps.h;
    m_location;
    p<<"function Type_Info\n"<<function_name<<"();";
   }
   {//NOTE .cpp
-   Printer &p = ps.c;
    m_location;
    p<<"function Type_Info\n"<<function_name<<"()";
    m_braces{
@@ -422,17 +410,15 @@ print_enum_meta(Printer_Pair &ps, String type_name,
   }
  }
  
- print_type_meta_shared(ps, type_name);
+ print_type_meta_shared(p, type_name);
  
  {// NOTE: meta_read
   {
-   Printer &p = ps.h;
    m_location;
    print_type_read_function_prototype(p,type_name);
    p<<";\n";
   }
   {
-   Printer &p = ps.c;
    m_location;
    print_type_read_function_prototype(p,type_name);
    m_braces{
@@ -446,47 +432,41 @@ print_enum_meta(Printer_Pair &ps, String type_name,
  }
  
  {// NOTE ;meta_introspect_enum_size
-  ps.h << "static_assert( sizeof(" << type_name << ") <= sizeof(i32) );\n\n";
+  p << "static_assert( sizeof(" << type_name << ") <= sizeof(i32) );\n\n";
  }
 }
-
 function void
-print_typedef_meta(Printer_Pair &ps, String type_name, String typedef_to){
- {//-NOTE: Function to generate type info
+print_typedef_meta(Printer &p, String type_name, String typedef_to){
+ {//-Function to generate type info
   String function_name = get_type_info_function_name(type_name);
-#define PROTOTYPE  p<<"function Type_Info\n"<<function_name<<"()"
+#define PROTOTYPE  p<"function Type_Info\n"<function_name<"()"
   {
-   Printer &p = ps.h;
    m_location;
-   PROTOTYPE<<";";
+   PROTOTYPE<";";
   }
   {
-   Printer &p = ps.c;
    m_location;
    PROTOTYPE;
    m_braces{
-    p<<"Type_Info result = "<<get_type_global_info_name(typedef_to)<<";\n";
-    p<<"result.name = "<<enclosed_in_strlit(type_name)<<";\n";
-    p << "return result;";
+    p<"Type_Info result = "<get_type_global_info_name(typedef_to)<";\n";
+    p<"result.name = "<enclosed_in_strlit(type_name)<";\n";
+    p < "return result;";
    }
   }
 #undef PROTOTYPE
  }
- 
- print_type_meta_shared(ps, type_name, true);
- 
- {//NOTE meta read
+ print_type_meta_shared(p, type_name, true);
+ {//-meta read
   {
-   Printer &p = ps.h;
    m_location;
    print_type_read_function_prototype(p,type_name);
+   p<";\n";
   }
   {
-   Printer &p = ps.c;
    m_location;
    print_type_read_function_prototype(p,type_name);
    m_braces{
-    p<<get_type_read_function_name(typedef_to)<<"(r, pointer);";
+    p<get_type_read_function_name(typedef_to)<"(r, pointer);";
    }
   }
  }
@@ -509,7 +489,7 @@ print_struct_embed(Printer &p, String type_name,
  }
 }
 function void
-print_i1_wrapper(Printer &p, Printer_Pair &ps_meta, String type_name){
+print_i1_wrapper(Printer &p, String type_name){
  Scratch_Block scratch;
  Meta_Struct_Members members = parse_struct_body(scratch, "{ i1 v; }");
  {
@@ -517,10 +497,150 @@ print_i1_wrapper(Printer &p, Printer_Pair &ps_meta, String type_name){
   p<<"inline b32 operator==("<<type_name<<" a, "<<type_name<<" b)"<<
    "{ return a.v==b.v; }\n";
  }
- print_struct_meta(ps_meta, type_name, members);
+ print_struct_meta(p, type_name, members);
 }
 inline void
-print_i1_wrapper(Printer &p, Printer_Pair &ps_meta, char *type_name){
- print_i1_wrapper(p, ps_meta, SCu8(type_name));
+print_i1_wrapper(Printer &p, char *type_name){
+ print_i1_wrapper(p, SCu8(type_name));
+}
+//-
+function void
+print(Printer &p, Meta_Expression &expression){
+ switch(expression.kind){
+  case Expression_Kind_None: break;
+  case Expression_Kind_Assignment:{
+   Expression_Assignment &assign = expression.assignment;
+   p < assign.lhs < " = ";
+   print(p, *assign.rhs);
+  }break;
+  case Expression_Kind_Function_Call:{
+   Expression_Function_Call &call = expression.function_call;
+   p < call.function_name;
+   m_parens{
+    for_i32(arg_index,0,call.arguments.count){
+     if(arg_index){ p<", "; }
+     print(p, call.arguments[arg_index]);
+    }
+   }
+  }break;
+  case Expression_Kind_Identifier:{ p < expression.identifier; }break;
+  case Expression_Kind_Int:{ p < expression.int_value; }break;
+  case Expression_Kind_Float:{ p < expression.float_value; }break;
+  case Expression_Kind_Unknown: { p < expression.unknown; }break;
+  invalid_default_case;
+ }
+}
+function void
+print(Printer &p, Meta_Statement &statement){
+ switch(statement.kind){
+  case Statement_Kind_None: break;
+  case Statement_Kind_Unknown:{ p < statement.unknown; }break;
+  case Statement_Kind_Return:{
+   p < "return " < statement.return0 < ";";
+  }break;
+  case Statement_Kind_Expression:{
+   print(p, statement.expression);
+   p<";";
+  }break;
+  case Statement_Kind_Block:{
+   Statement_Block &block = statement.block;
+   p<"{";
+   for_i32(statement_index,0,block.count){
+    p < "\n"; 
+    print(p, block[statement_index]);
+   }
+   p<"\n}";
+  }break;
+  case Statement_Kind_Header_And_Body:{
+   Statement_Header_And_Body &header_body = statement.header_and_body;
+   p < header_body.header < *header_body.body;
+  }break;
+  case Statement_Kind_If:{
+   Statement_If &if0 = statement.if0;
+   p < "if(" < if0.condition < ")" < *if0.body;
+   if(if0.else0){
+    p < "else " < *if0.else0;
+   }
+  }break;
+  case Statement_Kind_Switch:{
+   Statement_Switch &switch0 = statement.switch0;
+   p < "switch" < "(" < switch0.expression < ")";
+   {
+    p < "{";
+    for_i32(case_index,0,switch0.cases.count){
+     Switch_Case &case0 = switch0.cases[case_index];
+     p < "\ncase " < case0.expression < ": " <
+      case0.body <
+     (case0.break_after ? " break;" : "");
+    }
+    p < "\n}";
+   }
+  }break;
+  case Statement_Kind_Declaration:{
+   Statement_Declaration &decl = statement.declaration;
+   print_type_and_name(p, decl.type, decl.name);
+   if(decl.rhs.kind){
+    //-Assignment included
+    p<" = ";
+    print(p, decl.rhs);
+   }
+   p<";";
+  }break;
+  case Statement_Kind_Cache:{
+   Statement_Cache &cache0 = statement.cache0;
+   for_i32(item_index, 0, cache0.cache_items.count){
+    //-Computing cache values
+    Cache_Item &cache_item = cache0.cache_items[item_index];
+    print_type_and_name(p, cache_item.type, cache_item.name);
+    p < " = " < cache_item.rhs < ";\n";
+   }
+   p < "if"; m_parens{
+    //-Condition for a cache miss
+    p < "not"; m_parens{
+     for_i32(item_index, 0, cache0.cache_items.count){
+      String name = cache0.cache_items[item_index].name;
+      p<name<" == "<cache_storage_prefix<cache0.id<"."<name<" &&\n";
+     }
+     p<"true";
+    }
+   }
+   m_braces_newline{
+    //-Do computation if cache miss
+    m_braces_newline{//-Recompute the cache
+     for_i32(item_index, 0, cache0.cache_items.count){
+      if(item_index){ p<"\n"; }
+      String name = cache0.cache_items[item_index].name;
+      p < cache_storage_prefix<cache0.id<"."<name<" = "<name<";";
+     }
+    }
+    p<"\n";
+    {//-Redo the actual computation
+     p < *cache0.body;
+    }
+   }
+  }break;
+  case Statement_Kind_Empty:{
+   p<";";
+  }break;
+  invalid_default_case;
+ }
+}
+function void
+print_cache_meta(Printer &p, Statement_Cache &cache0){
+ {//-The struct
+  p < "struct Cache_Storage_" < cache0.id;
+  m_braces{
+   p < "\n";
+   for_i32(item_index,0,cache0.cache_items.count){
+    Statement_Declaration &item = cache0.cache_items[item_index];
+    print_type_and_name(p, item.type, item.name);
+    p < ";\n";
+   }
+  }
+  p < ";\n";
+ }
+ {//-Global var
+  p<"global Cache_Storage_"<cache0.id<" "<cache_storage_prefix<cache0.id<";\n";
+ }
 }
 //-

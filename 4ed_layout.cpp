@@ -9,7 +9,7 @@
 
 // TOP
 
-internal Panel_Split
+function Panel_Split
 make_panel_split(Panel_Split_Kind kind, i32 v){
     Panel_Split split = {};
     split.kind = kind;
@@ -17,7 +17,7 @@ make_panel_split(Panel_Split_Kind kind, i32 v){
     return(split);
 }
 
-internal Panel_Split
+function Panel_Split
 make_panel_split(Panel_Split_Kind kind, f32 v){
     Panel_Split split = {};
     split.kind = kind;
@@ -25,12 +25,12 @@ make_panel_split(Panel_Split_Kind kind, f32 v){
     return(split);
 }
 
-internal Panel_Split
+function Panel_Split
 make_panel_split_50_50(void){
     return(make_panel_split(PanelSplitKind_Ratio_Min, 0.5f));
 }
 
-internal Panel*
+function Panel*
 layout__alloc_panel(Layout *layout){
     Panel *panel = 0;
     Node *node = layout->free_panels.next;
@@ -41,7 +41,7 @@ layout__alloc_panel(Layout *layout){
     return(panel);
 }
 
-internal void
+function void
 layout__free_panel(Layout *layout, Panel *panel){
     Assert(panel != layout->active_panel);
     Assert(panel != layout->root);
@@ -50,13 +50,13 @@ layout__free_panel(Layout *layout, Panel *panel){
     panel->kind = PanelKind_Unused;
 }
 
-internal void
+function void
 layout__set_panel_rectangle(Layout *layout, Panel *panel, Rect_i32 rect){
     panel->rect_full = rect;
     panel->rect_inner = rect_inner(rect, layout->margin);
 }
 
-internal i32
+function i32
 layout__evaluate_split(Panel_Split split, i32 v0, i32 v1){
     i32 v = 0;
     switch (split.kind){
@@ -80,7 +80,7 @@ layout__evaluate_split(Panel_Split split, i32 v0, i32 v1){
     return(v);
 }
 
-internal void
+function void
 layout_propogate_sizes_down_from_node(Layout *layout, Panel *panel){
     if (panel->kind == PanelKind_Intermediate){
         Panel *tl_panel = panel->tl_panel;
@@ -108,12 +108,12 @@ layout_propogate_sizes_down_from_node(Layout *layout, Panel *panel){
     }
 }
 
-internal i32
+function i32
 layout_get_open_panel_count(Layout *layout){
     return(layout->open_panel_count);
 }
 
-internal Panel*
+function Panel*
 layout_get_first_open_panel(Layout *layout){
     Panel *panel = CastFromMember(Panel, node, layout->open_panels.next);
     if (panel != 0 && &panel->node == &layout->open_panels){
@@ -123,7 +123,7 @@ layout_get_first_open_panel(Layout *layout){
     return(panel);
 }
 
-internal Panel*
+function Panel*
 layout_get_last_open_panel(Layout *layout){
     Panel *panel = CastFromMember(Panel, node, layout->open_panels.prev);
     if (panel != 0 && &panel->node == &layout->open_panels){
@@ -133,7 +133,7 @@ layout_get_last_open_panel(Layout *layout){
     return(panel);
 }
 
-internal Panel*
+function Panel*
 layout_get_next_open_panel(Layout *layout, Panel *panel){
     panel = CastFromMember(Panel, node, panel->node.next);
     if (&panel->node == &layout->open_panels){
@@ -143,7 +143,7 @@ layout_get_next_open_panel(Layout *layout, Panel *panel){
     return(panel);
 }
 
-internal Panel*
+function Panel*
 layout_get_prev_open_panel(Layout *layout, Panel *panel){
     panel = CastFromMember(Panel, node, panel->node.prev);
     if (&panel->node == &layout->open_panels){
@@ -153,12 +153,12 @@ layout_get_prev_open_panel(Layout *layout, Panel *panel){
     return(panel);
 }
 
-internal Panel*
+function Panel*
 layout_get_active_panel(Layout *layout){
     return(layout->active_panel);
 }
 
-internal b32
+function b32
 layout_split_panel(Layout *layout, Panel *panel, b32 vertical_split, Panel **new_panel_out)
 {
     b32 result = false;
@@ -221,7 +221,7 @@ layout_split_panel(Layout *layout, Panel *panel, b32 vertical_split, Panel **new
     return(result);
 }
 
-internal b32
+function b32
 layout_close_panel(Layout *layout, Panel *panel){
     b32 result = false;
     if (layout->open_panel_count > 1){
@@ -281,7 +281,7 @@ layout_close_panel(Layout *layout, Panel *panel){
     return(result);
 }
 
-internal Panel*
+function Panel*
 layout_initialize(Arena *arena, Layout *layout){
     i32 panel_alloc_count = MAX_VIEWS*2 - 1;
     Panel *panels = push_array(arena, Panel, panel_alloc_count);
@@ -322,7 +322,7 @@ layout_initialize(Arena *arena, Layout *layout){
     return(panel);
 }
 
-internal void
+function void
 layout_set_margin(Layout *layout, i32 margin){
     if (layout->margin != margin){
         layout->margin = margin;
@@ -332,7 +332,7 @@ layout_set_margin(Layout *layout, i32 margin){
  }
 }
 
-internal void
+function void
 layout_set_root_size(Layout *layout, i2 dim)
 {
  if (layout->full_dim != dim)
@@ -344,12 +344,12 @@ layout_set_root_size(Layout *layout, i2 dim)
  }
 }
 
-internal Vec2_i32
+function Vec2_i32
 layout_get_root_size(Layout *layout){
     return(layout->full_dim);
 }
 
-internal i32
+function i32
 layout_get_absolute_position_of_split(Panel *panel){
     i32 pos = 0;
     if (panel->vertical_split){
@@ -361,7 +361,7 @@ layout_get_absolute_position_of_split(Panel *panel){
     return(pos);
 }
 
-internal Range_i32
+function Range_i32
 layout__get_limiting_range_on_split_children(i32 mid, b32 vertical_split, Panel *panel, Range_i32 range){
     if (panel->kind == PanelKind_Intermediate){
         if (vertical_split == panel->vertical_split){
@@ -379,7 +379,7 @@ layout__get_limiting_range_on_split_children(i32 mid, b32 vertical_split, Panel 
     return(range);
 }
 
-internal Range_i32
+function Range_i32
 layout_get_limiting_range_on_split(Layout *layout, Panel *panel){
     // root level min max
     Range_i32 range = {};
@@ -417,7 +417,7 @@ layout_get_limiting_range_on_split(Layout *layout, Panel *panel){
     return(range);
 }
 
-internal void
+function void
 layout__reverse_evaluate_panel_split(Panel *panel, i32 position){
     i32 v0 = 0;
     i32 v1 = 0;
@@ -449,7 +449,7 @@ layout__reverse_evaluate_panel_split(Panel *panel, i32 position){
     }
 }
 
-internal void
+function void
 layout__set_split_absolute_position_inner(Panel *panel){
     if (panel->kind == PanelKind_Intermediate){
         Rect_i32 r = panel->rect_full;
@@ -464,7 +464,7 @@ layout__set_split_absolute_position_inner(Panel *panel){
     }
 }
 
-internal void
+function void
 layout_set_split_absolute_position(Layout *layout, Panel *panel, i32 absolute_position){
     if (panel->kind == PanelKind_Intermediate){
         layout__reverse_evaluate_panel_split(panel, absolute_position);
@@ -475,7 +475,7 @@ layout_set_split_absolute_position(Layout *layout, Panel *panel, i32 absolute_po
     }
 }
 
-internal Panel_ID
+function Panel_ID
 panel_get_id(Layout *layout, Panel *panel){
     Panel_ID id = 0;
     if (layout->panel_first <= panel && panel < layout->panel_one_past_last){
@@ -486,7 +486,7 @@ panel_get_id(Layout *layout, Panel *panel){
 
 ////////////////////////////////
 
-internal Panel*
+function Panel*
 imp_get_panel(Models *models, Panel_ID panel_id)
 {
     Layout *layout = &models->layout;

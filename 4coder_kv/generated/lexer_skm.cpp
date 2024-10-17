@@ -1,7 +1,7 @@
 #if !defined(FCODER_LEX_GEN_HAND_WRITTEN)
 #define FCODER_LEX_GEN_HAND_WRITTEN
 
-internal u64
+function u64
 lexeme_hash(u64 seed, u8 *ptr, u64 size){
     u64 result = 0;
     for (u64 i = 0; i < size; i += 1, ptr += 1){
@@ -10,7 +10,7 @@ lexeme_hash(u64 seed, u8 *ptr, u64 size){
     return(result);
 }
 
-internal Lexeme_Table_Lookup
+function Lexeme_Table_Lookup
 lexeme_table_lookup(u64 *hash_array, String *key_array, 
                     Lexeme_Table_Value *value_array, i1 slot_count, u64 seed,
                     u8 *ptr, u64 size){
@@ -51,7 +51,7 @@ u8 *emit_ptr;
 u8 *ptr;
 u8 *opl_ptr;
 };
-internal void
+function void
 lex_full_input_skm_init(Lex_State_Skm *state_ptr, String input){
 state_ptr->base = input.str;
 state_ptr->delim_first = input.str;
@@ -60,7 +60,7 @@ state_ptr->emit_ptr = input.str;
 state_ptr->ptr = input.str;
 state_ptr->opl_ptr = input.str + input.size;
 }
-internal b32
+function b32
 lex_full_input_skm_breaks(Arena *arena, Token_List *list, Lex_State_Skm *state_ptr, u64 max){
 b32 result = false;
 u64 emit_counter = 0;
@@ -367,7 +367,7 @@ end:;
 block_copy_struct(state_ptr, &state);
 return(result);
 }
-internal Token_List
+function Token_List
 lex_full_input_skm(Arena *arena, String input){
 Lex_State_Skm state = {};
 lex_full_input_skm_init(&state, input);

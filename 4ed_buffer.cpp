@@ -13,14 +13,14 @@
 // Buffer low level operations
 //
 
-internal void
+function void
 write_cursor_with_index(Cursor_With_Index *positions, i1 *count, i64 pos){
     positions[*count].index = *count;
     positions[*count].pos = pos;
     ++(*count);
 }
 
-internal void
+function void
 buffer_quick_sort_cursors(Cursor_With_Index *positions, i1 first, i1 one_past_last){
     if (first + 1 < one_past_last){
         i1 pivot = one_past_last - 1;
@@ -39,14 +39,14 @@ buffer_quick_sort_cursors(Cursor_With_Index *positions, i1 first, i1 one_past_la
     }
 }
 
-internal void
+function void
 buffer_sort_cursors(Cursor_With_Index *positions, i1 count){
     if (count > 0){
         buffer_quick_sort_cursors(positions, 0, count);
     }
 }
 
-internal void
+function void
 buffer_unsort_cursors(Cursor_With_Index *positions, i1 count){
     if (count > 0){
         i1 i = 0;
@@ -108,7 +108,7 @@ buffer_sort_batch(Arena *arena, Batch_Edit *batch, i1 count){
 }
 #endif
 
-internal void
+function void
 buffer_update_cursors_lean_l(Cursor_With_Index *sorted_positions, i1 count,
                              Batch_Edit *batch){
     Cursor_With_Index *pos = sorted_positions;
@@ -139,7 +139,7 @@ buffer_update_cursors_lean_l(Cursor_With_Index *sorted_positions, i1 count,
     }
 }
 
-internal void
+function void
 buffer_update_cursors_lean_r(Cursor_With_Index *sorted_positions, i1 count,
                              Batch_Edit *batch){
     Cursor_With_Index *pos = sorted_positions;
@@ -313,7 +313,7 @@ buffer_chunks_clamp(List_String *chunks, Range_i64 range){
     *chunks = list;
 }
 
-internal String
+function String
 buffer_stringify(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
  List_String list = buffer_get_chunks(arena, buffer);
  buffer_chunks_clamp(&list, range);
@@ -356,7 +356,7 @@ buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range)
 }
 
 #if 0
-internal i64
+function i64
 buffer_count_newlines(Arena *scratch, Gap_Buffer *buffer, i64 start, i64 end){
     Temp_Memory temp = begin_temp(scratch);
     List_String list = buffer_get_chunks(scratch, buffer);
@@ -381,7 +381,7 @@ buffer_count_newlines(Arena *scratch, Gap_Buffer *buffer, i64 start, i64 end){
 }
 #endif
 
-internal void
+function void
 buffer_starts__ensure_max_size(Gap_Buffer *buffer, i64 max_size){
     if (max_size > buffer->line_start_max){
         i64 new_max = round_up_i64(max_size*2, KB(1));
@@ -394,14 +394,14 @@ buffer_starts__ensure_max_size(Gap_Buffer *buffer, i64 max_size){
     }
 }
 
-internal void
+function void
 buffer_measure_starts__write(Gap_Buffer *buffer, i64 pos){
     buffer_starts__ensure_max_size(buffer, buffer->line_start_count + 1);
     buffer->line_starts[buffer->line_start_count] = pos;
     buffer->line_start_count += 1;
 }
 
-internal void
+function void
 buffer_measure_starts(Arena *scratch, Gap_Buffer *buffer){
     Temp_Memory temp = begin_temp(scratch);
     List_String list = buffer_get_chunks(scratch, buffer);
@@ -424,7 +424,7 @@ buffer_measure_starts(Arena *scratch, Gap_Buffer *buffer){
     end_temp(temp);
 }
 
-internal i64
+function i64
 buffer_get_line_index(Gap_Buffer *buffer, i64 pos){
     i64 i = 0;
     if (buffer->line_start_count > 2){
@@ -577,7 +577,7 @@ buffer_remeasure_starts(Thread_Context *tctx, Gap_Buffer *buffer, Batch_Edit *ba
  }
 }
 
-internal Range_i64
+function Range_i64
 buffer_get_pos_range_from_line_number(Gap_Buffer *buffer, i64 line_number)
 {
  Range_i64 result = {};
@@ -589,7 +589,7 @@ buffer_get_pos_range_from_line_number(Gap_Buffer *buffer, i64 line_number)
  return(result);
 }
 
-internal i64
+function i64
 buffer_get_first_pos_from_line_number(Gap_Buffer *buffer, i64 line_number){
  i64 result = 0;
  if (line_number < 1) {
@@ -604,7 +604,7 @@ buffer_get_first_pos_from_line_number(Gap_Buffer *buffer, i64 line_number){
  return(result);
 }
 
-internal i64
+function i64
 buffer_get_last_pos_from_line_number(Gap_Buffer *buffer, i64 line_number) {
  i64 result = 0;
  if (line_number < 1) {
@@ -619,7 +619,7 @@ buffer_get_last_pos_from_line_number(Gap_Buffer *buffer, i64 line_number) {
  return(result);
 }
 
-internal Buffer_Cursor
+function Buffer_Cursor
 buffer_cursor_from_pos(Gap_Buffer *buffer, i64 pos){
     i64 size = buffer_size(buffer);
     pos = clamp_between(0, pos, size);
@@ -632,7 +632,7 @@ buffer_cursor_from_pos(Gap_Buffer *buffer, i64 pos){
     return(result);
 }
 
-internal Buffer_Cursor
+function Buffer_Cursor
 buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
     i64 line_index = line - 1;
     i64 line_count = buffer_line_count(buffer);
@@ -671,7 +671,7 @@ buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
     return(result);
 }
 
-internal String
+function String
 buffer_invert_edit_shift(Arena *arena, Gap_Buffer *buffer, Edit edit, Edit *inv, i64 shift_amount){
     String string = buffer_stringify(arena, buffer, edit.range);
     inv->text = string;
@@ -679,7 +679,7 @@ buffer_invert_edit_shift(Arena *arena, Gap_Buffer *buffer, Edit edit, Edit *inv,
     return(string);
 }
 
-internal Buffer_Chunk_Position
+function Buffer_Chunk_Position
 buffer_get_chunk_position(String_Array chunks, i64 buffer_size, i64 real_pos){
     Buffer_Chunk_Position pos = {};
     pos.real_pos = real_pos;
@@ -698,7 +698,7 @@ buffer_get_chunk_position(String_Array chunks, i64 buffer_size, i64 real_pos){
     return(pos);
 }
 
-internal i1
+function i1
 buffer_chunk_position_iterate(String_Array chunks, Buffer_Chunk_Position *pos, Scan_Direction direction){
     i1 past_end = 0;
     pos->real_pos += direction;

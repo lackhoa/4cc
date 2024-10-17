@@ -6,7 +6,7 @@
 
 global F4_Language_State f4_langs = {};
 
-internal F4_Language *
+function F4_Language *
 F4_LanguageFromString(String name)
 {
     F4_Language *result = 0;
@@ -30,7 +30,7 @@ F4_LanguageFromString(String name)
 _F4_RegisterLanguage(name, IndexFile, (F4_Language_LexInit *)LexInit, (F4_Language_LexFullInput *)LexFullInput, \
 (F4_Language_PosContext *)PosContext, (F4_Language_Highlight *)Highlight, sizeof(lex_state_type))
 
-internal void
+function void
 _F4_RegisterLanguage(String name,
                      F4_Language_IndexFile          *IndexFile,
                      F4_Language_LexInit            *LexInit,
@@ -73,7 +73,7 @@ _F4_RegisterLanguage(String name,
     }
 }
 
-internal F4_Language *
+function F4_Language *
 F4_LanguageFromBuffer(App *app, Buffer_ID buffer)
 {
     F4_Language *language = 0;
@@ -84,7 +84,7 @@ F4_LanguageFromBuffer(App *app, Buffer_ID buffer)
     return language;
 }
 
-internal void
+function void
 F4_Language_PosContext_PushData(Arena *arena,
                                 F4_Language_PosContextData **first_ptr,
                                 F4_Language_PosContextData **last_ptr,
@@ -111,7 +111,7 @@ F4_Language_PosContext_PushData(Arena *arena,
     *last_ptr = last;
 }
 
-internal void
+function void
 F4_Language_PosContext_PushData_Call(Arena *arena,
                                      F4_Language_PosContextData **first_ptr,
                                      F4_Language_PosContextData **last_ptr,
@@ -120,7 +120,7 @@ F4_Language_PosContext_PushData_Call(Arena *arena,
     F4_Language_PosContext_PushData(arena, first_ptr, last_ptr, F4_Index_LookupNote(string, 0), 0, param_idx);
 }
 
-internal void
+function void
 F4_Language_PosContext_PushData_Dot(Arena *arena,
                                     F4_Language_PosContextData **first_ptr,
                                     F4_Language_PosContextData **last_ptr,
@@ -129,7 +129,7 @@ F4_Language_PosContext_PushData_Dot(Arena *arena,
     F4_Language_PosContext_PushData(arena, first_ptr, last_ptr, F4_Index_LookupNote(string, 0), query, 0);
 }
 
-internal Token_List
+function Token_List
 F4_Language_LexFullInput_NoBreaks(App *app, F4_Language *language, Arena *arena, String text)
 {
     Token_List list = {};

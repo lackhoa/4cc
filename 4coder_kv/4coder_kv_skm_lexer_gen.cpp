@@ -8,7 +8,7 @@
 
 #include "lexer_generator/4coder_lex_gen_main.cpp"
 
-internal void
+function void
 build_language_model(void)
 {
     u8 utf8[129];

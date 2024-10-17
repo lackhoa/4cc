@@ -7,7 +7,7 @@ function void
 vim_update_registers(App *app)
 {
 #if VIM_USE_REIGSTER_BUFFER
-	Buffer_ID buffer = buffer_identifier_to_id(app, buffer_identifier(string_u8_litexpr("*registers*")));
+	Buffer_ID buffer = buffer_identifier_to_id(app, buffer_identifier(strlit("*registers*")));
 	i64 buffer_size = buffer_get_size(app, buffer);
 
 	f32 advance = get_face_metrics(app, get_face_id(app, buffer)).normal_advance;
@@ -18,7 +18,7 @@ vim_update_registers(App *app)
 	Batch_Edit head = {};
 	Batch_Edit *last = &head;
 
-	String top_text = string_u8_litexpr("Vim Registers\n-+-----------");
+	String top_text = strlit("Vim Registers\n-+-----------");
 
 	head.edit.range = Ii64(0, top_text.size);
 	head.edit.text = top_text;
@@ -161,7 +161,7 @@ vim_paste_from_register(App *app, View_ID view, Buffer_ID buffer, Vim_Register *
 VIM_COMMAND_SIG(vim_select_register)
 {
 	vim_is_selecting_register = true;
-	u8 c = vim_query_user_key(app, string_u8_litexpr("-- SELECT REGISTER --"));
+	u8 c = vim_query_user_key(app, strlit("-- SELECT REGISTER --"));
 	vim_is_selecting_register = false;
 	if(c == 0){ return; }
 	Vim_Register *reg = vim_state.params.selected_reg;

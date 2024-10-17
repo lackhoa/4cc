@@ -16,7 +16,7 @@ enum F4_MD_TokenSubKind
     F4_MD_TokenSubKind_Tag,
 };
 
-internal F4_LANGUAGE_INDEXFILE(F4_MD_IndexFile)
+function F4_LANGUAGE_INDEXFILE(F4_MD_IndexFile)
 {
     for(;!ctx->done;)
     {
@@ -39,7 +39,7 @@ internal F4_LANGUAGE_INDEXFILE(F4_MD_IndexFile)
     }
 }
 
-internal F4_LANGUAGE_LEXINIT(F4_MD_LexInit_unused)
+function F4_LANGUAGE_LEXINIT(F4_MD_LexInit_unused)
 {
     F4_MD_LexerState *state = (F4_MD_LexerState *)state_ptr;
     state->string = contents;
@@ -47,7 +47,7 @@ internal F4_LANGUAGE_LEXINIT(F4_MD_LexInit_unused)
     state->one_past_last = contents.str + contents.size;
 }
 
-internal b32
+function b32
 F4_MD_CharIsSymbol(u8 c)
 {
     return (c == '~' || c == '!' || c == '@' || c == '#' || c == '$' ||
@@ -58,7 +58,7 @@ F4_MD_CharIsSymbol(u8 c)
             c == '?' || c == '|' || c == '\\');
 }
 
-internal F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
+function F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
 {
     b32 result = false;
     F4_MD_LexerState state_ = *(F4_MD_LexerState *)state_ptr;
@@ -309,12 +309,12 @@ internal F4_LANGUAGE_LEXFULLINPUT(F4_MD_LexFullInput_unused)
     return result;
 }
 
-internal F4_LANGUAGE_POSCONTEXT(F4_MD_PosContext)
+function F4_LANGUAGE_POSCONTEXT(F4_MD_PosContext)
 {
     return 0;
 }
 
-internal F4_LANGUAGE_HIGHLIGHT(F4_MD_Highlight)
+function F4_LANGUAGE_HIGHLIGHT(F4_MD_Highlight)
 {
     Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     i64 first_index = token_index_from_pos(array, visible_range.first);

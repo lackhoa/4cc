@@ -86,7 +86,7 @@ global_const v1 frame_nseconds = 1e9 * frame_seconds;
 
 #define Cursor XCursor
 #undef function
-#undef internal
+#undef function
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
@@ -98,7 +98,7 @@ global_const v1 frame_nseconds = 1e9 * frame_seconds;
 #undef Cursor
 
 //#include <fontconfig/fontconfig.h>
-#define internal static
+#define function static
 
 #include <GL/glx.h>
 #include <GL/glext.h>
@@ -244,10 +244,10 @@ enum {
 // If per-event data is needed, container_of can be used on data.ptr
 // to access the containing struct and all its other members.
 
-internal Epoll_Kind epoll_tag_step_timer = EPOLL_STEP_TIMER;
-internal Epoll_Kind epoll_tag_x11 = EPOLL_X11;
-internal Epoll_Kind epoll_tag_x11_internal = EPOLL_X11_INTERNAL;
-internal Epoll_Kind epoll_tag_cli_pipe = EPOLL_CLI_PIPE;
+function Epoll_Kind epoll_tag_step_timer = EPOLL_STEP_TIMER;
+function Epoll_Kind epoll_tag_x11 = EPOLL_X11;
+function Epoll_Kind epoll_tag_x11_function = EPOLL_X11_INTERNAL;
+function Epoll_Kind epoll_tag_cli_pipe = EPOLL_CLI_PIPE;
 
 ////////////////////////////
 
@@ -288,7 +288,7 @@ object_to_handle(Linux_Object* obj) {
     return *(Plat_Handle*)&obj;
 }
 
-internal Linux_Object*
+function Linux_Object*
 linux_alloc_object(Linux_Object_Kind kind){
     Linux_Object* result = NULL;
     
@@ -323,7 +323,7 @@ linux_alloc_object(Linux_Object_Kind kind){
     return result;
 }
 
-internal void
+function void
 linux_free_object(Linux_Object *object){
     if (object->node.next != 0){
         dll_remove(&object->node);
@@ -333,7 +333,7 @@ linux_free_object(Linux_Object *object){
 
 ////////////////////////////
 
-internal int
+function int
 linux_compare_file_infos(File_Info** a, File_Info** b) {
     b32 a_hidden = (*a)->file_name.str[0] == '.';
     b32 b_hidden = (*b)->file_name.str[0] == '.';
@@ -347,31 +347,31 @@ linux_compare_file_infos(File_Info** a, File_Info** b) {
     return strcoll((char*)(*a)->file_name.str, (char*)(*b)->file_name.str);
 }
 
-internal int
+function int
 linux_system_get_file_list_filter(const struct dirent *dirent) {
     String file_name = SCu8((u8*)dirent->d_name);
-    if (string_match(file_name, string_u8_litexpr("."))) {
+    if (string_match(file_name, strlit("."))) {
         return 0;
     }
-    else if (string_match(file_name, string_u8_litexpr(".."))) {
+    else if (string_match(file_name, strlit(".."))) {
         return 0;
     }
     return 1;
 }
 
-internal u64
+function u64
 linux_us_from_timespec(const struct timespec timespec) {
     return timespec.tv_nsec/Thousand(1) + Million(1) * timespec.tv_sec;
 }
 
-internal File_Attribute_Flag
+function File_Attribute_Flag
 linux_convert_file_attribute_flags(int mode) {
     File_Attribute_Flag result = {};
     MovFlag(mode, S_IFDIR, result, FileAttribute_IsDirectory);
     return result;
 }
 
-internal File_Attributes
+function File_Attributes
 linux_file_attributes_from_struct_stat(struct stat* file_stat) {
     File_Attributes result = {};
     result.size = file_stat->st_size;
@@ -380,7 +380,7 @@ linux_file_attributes_from_struct_stat(struct stat* file_stat) {
     return(result);
 }
 
-internal void
+function void
 linux_schedule_step(){
     u64 now  = system_time_usecond();
     u64 diff = (now - linuxvars.last_step_time);
@@ -405,7 +405,7 @@ enum wm_state_mode {
     WM_STATE_TOGGLE = 2,
 };
 
-internal void
+function void
 linux_set_wm_state(Atom one, Atom two, enum wm_state_mode mode){
     //NOTE(inso): this will only work after the window has been mapped
     
@@ -424,17 +424,17 @@ linux_set_wm_state(Atom one, Atom two, enum wm_state_mode mode){
                0, SubstructureNotifyMask | SubstructureRedirectMask, &e);
 }
 
-internal void
+function void
 linux_window_maximize(enum wm_state_mode mode){
     linux_set_wm_state(linuxvars.atom__NET_WM_STATE_MAXIMIZED_HORZ, linuxvars.atom__NET_WM_STATE_MAXIMIZED_VERT, mode);
 }
 
-internal void
+function void
 linux_window_fullscreen(enum wm_state_mode mode) {
     linux_set_wm_state(linuxvars.atom__NET_WM_STATE_FULLSCREEN, 0, mode);
 }
 
-internal int
+function int
 linux_get_xsettings_dpi(Display* dpy, int screen){
     struct XSettingHeader {
         u8 type;
@@ -542,7 +542,7 @@ linux_get_xsettings_dpi(Display* dpy, int screen){
     return dpi;
 }
 
-internal void*
+function void*
 linux_thread_proc_start(void* arg) {
     Linux_Object* info = (Linux_Object*)arg;
     Assert(info->kind == LinuxObjectKind_Thread);
@@ -551,7 +551,7 @@ linux_thread_proc_start(void* arg) {
 }
 
 #include "linux_icon.h"
-internal void
+function void
 linux_set_icon(Display* d, Window w){
     Atom WM_ICON = XInternAtom(d, "_NET_WM_ICON", False);
     XChangeProperty(d, w, WM_ICON, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)linux_icon, sizeof(linux_icon) / sizeof(long));
@@ -578,19 +578,19 @@ os_popup_error(char *title, char *message){
 #include "opengl/4ed_opengl_funcs.h"
 #include "opengl/4ed_opengl_render.cpp"
 
-internal
+function
 graphics_get_texture_sig(){
     return(gl__get_texture(dim, texture_kind));
 }
 
-internal
+function
 graphics_fill_texture_sig(){
     return(gl__fill_texture(texture_kind, texture, p, dim, data));
 }
 
 ////////////////////////////
 
-internal Face*
+function Face*
 font_make_face(Arena* arena, Face_Description* description, f32 scale_factor) {
     
     Face_Description local_description = *description;
@@ -616,7 +616,7 @@ font_make_face(Arena* arena, Face_Description* description, f32 scale_factor) {
 
 ////////////////////////////
 
-internal b32
+function b32
 glx_init(void) {
     int glx_maj, glx_min;
     
@@ -627,7 +627,7 @@ glx_init(void) {
     return glx_maj > 1 || (glx_maj == 1 && glx_min >= 3);
 }
 
-internal b32
+function b32
 glx_get_config(GLXFBConfig* fb_config, XVisualInfo* vi) {
     
     static const int attrs[] = {
@@ -665,9 +665,9 @@ glx_get_config(GLXFBConfig* fb_config, XVisualInfo* vi) {
     return true;
 }
 
-internal b32 glx_ctx_error;
+function b32 glx_ctx_error;
 
-internal int
+function int
 glx_error_handler(Display* dpy, XErrorEvent* ev){
     glx_ctx_error = true;
     return 0;
@@ -679,7 +679,7 @@ typedef int        (glXSwapIntervalMESA_Function)       (unsigned int interval);
 typedef int        (glXGetSwapIntervalMESA_Function)    (void);
 typedef int        (glXSwapIntervalSGI_Function)        (int interval);
 
-internal b32
+function b32
 glx_create_context(GLXFBConfig fb_config){
     const char *glx_exts = glXQueryExtensionsString(linuxvars.dpy, DefaultScreen(linuxvars.dpy));
     
@@ -739,7 +739,7 @@ glx_create_context(GLXFBConfig fb_config){
 
 ////////////////////////////
 
-internal void
+function void
 linux_x11_init(int argc, char** argv, Plat_Settings* settings) {
     
     Display* dpy = XOpenDisplay(0);
@@ -900,7 +900,7 @@ linux_x11_init(int argc, char** argv, Plat_Settings* settings) {
     
     linuxvars.xim = XOpenIM(dpy, 0, 0, 0);
     if (!linuxvars.xim){
-        // NOTE(inso): Try falling back to the internal XIM implementation that
+        // NOTE(inso): Try falling back to the function XIM implementation that
         // should in theory always exist.
         XSetLocaleModifiers("@im=none");
         linuxvars.xim = XOpenIM(dpy, 0, 0, 0);
@@ -1006,7 +1006,7 @@ struct SymCode {
     Key_Code code;
 };
 
-internal void
+function void
 linux_keycode_init_common(Display* dpy, Key_Code* keycode_lookup_table, SymCode* sym_table, SymCode* p, size_t sym_table_size){
     
     *p++ = { XK_space, Key_Code_Space };
@@ -1104,7 +1104,7 @@ linux_keycode_init_common(Display* dpy, Key_Code* keycode_lookup_table, SymCode*
     
 }
 
-internal void
+function void
 linux_keycode_init_language(Display* dpy, Key_Code* keycode_lookup_table){
     SymCode sym_table[300];
     SymCode* p = sym_table;
@@ -1136,7 +1136,7 @@ linux_keycode_init_language(Display* dpy, Key_Code* keycode_lookup_table){
     linux_keycode_init_common(dpy, keycode_lookup_table, sym_table, p, ArrayCount(sym_table));
 }
 
-internal void
+function void
 linux_keycode_init_physical(Display* dpy, Key_Code* keycode_lookup_table){
     
     // Find common keys by their key label
@@ -1197,7 +1197,7 @@ linux_keycode_init_physical(Display* dpy, Key_Code* keycode_lookup_table){
     }
 }
 
-internal void
+function void
 linux_keycode_init(Display* dpy){
     block_zero_array(keycode_lookup_table_physical);
     block_zero_array(keycode_lookup_table_language);
@@ -1206,7 +1206,7 @@ linux_keycode_init(Display* dpy){
     linux_keycode_init_language(dpy, keycode_lookup_table_language);
 }
 
-internal void
+function void
 linux_epoll_init(void) {
     struct epoll_event e = {};
     e.events = EPOLLIN | EPOLLET;
@@ -1221,7 +1221,7 @@ linux_epoll_init(void) {
     epoll_ctl(linuxvars.epoll, EPOLL_CTL_ADD, linuxvars.step_timer_fd, &e);
 }
 
-internal void
+function void
 linux_clipboard_send(XSelectionRequestEvent* req) {
     
     XSelectionEvent rsp = {};
@@ -1288,7 +1288,7 @@ linux_clipboard_send(XSelectionRequestEvent* req) {
     XSendEvent(req->display, req->requestor, True, 0, (XEvent*)&rsp);
 }
 
-internal String
+function String
 linux_clipboard_recv(Arena *arena){
     Atom type;
     int fmt;
@@ -1314,7 +1314,7 @@ linux_clipboard_recv(Arena *arena){
     return(clip);
 }
 
-internal void
+function void
 linux_clipboard_recv(XSelectionEvent* ev) {
     
     if(ev->selection != linuxvars.atom_CLIPBOARD ||
@@ -1333,13 +1333,13 @@ linux_clipboard_recv(XSelectionEvent* ev) {
     }
 }
 
-internal
+function
 system_get_clipboard_sig(){
     // TODO(inso): index?
     return(push_string_copy(arena, linuxvars.clipboard_contents));
 }
 
-internal void
+function void
 system_post_clipboard(String str, i1 index){
     // TODO(inso): index?
     //LINUX_FN_DEBUG("%.*s", string_expand(str));
@@ -1348,18 +1348,18 @@ system_post_clipboard(String str, i1 index){
     XSetSelectionOwner(linuxvars.dpy, linuxvars.atom_CLIPBOARD, linuxvars.win, CurrentTime);
 }
 
-internal void
+function void
 system_set_clipboard_catch_all(b32 enabled){
     LINUX_FN_DEBUG("%d", enabled);
     linuxvars.clipboard_catch_all = !!enabled;
 }
 
-internal b32
+function b32
 system_get_clipboard_catch_all(void){
     return linuxvars.clipboard_catch_all;
 }
 
-internal String
+function String
 linux_filter_text(Arena* arena, u8* buf, int len) {
     u8* const result = push_array(arena, u8, len);
     u8* outp = result;
@@ -1377,7 +1377,7 @@ linux_filter_text(Arena* arena, u8* buf, int len) {
     return SCu8(result, outp - result);
 }
 
-internal Key_Code
+function Key_Code
 linux_numlock_convert(Key_Code in){
     static const Key_Code lookup[] = {
         Key_Code_Insert,
@@ -1404,7 +1404,7 @@ linux_numlock_convert(Key_Code in){
     return in;
 }
 
-internal void
+function void
 linux_handle_x11_events() {
     static XEvent prev_event = {};
     b32 should_step = false;
@@ -1701,7 +1701,7 @@ linux_handle_x11_events() {
     }
 }
 
-internal b32
+function b32
 linux_epoll_process(struct epoll_event* events, int num_events) {
     b32 do_step = false;
     
@@ -1868,7 +1868,7 @@ main(int argc, char **argv)
         char custom_fail_init_apis[] = "Failed to load custom code due to missing 'init_apis' symbol.  Try rebuilding with buildsuper";
         
         Scratch_Block scratch(&linuxvars.tctx);
-        String default_file_name = string_u8_litexpr("custom_4coder.so");
+        String default_file_name = strlit("custom_4coder.so");
         List_String search_list = {};
         def_search_list_add_system_path(scratch, &search_list, SystemPath_UserDirectory);
         def_search_list_add_system_path(scratch, &search_list, SystemPath_BinaryDirectory);

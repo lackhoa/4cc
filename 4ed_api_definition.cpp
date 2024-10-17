@@ -316,7 +316,7 @@ generate_header(Arena *scratch, API_Definition *api, API_Generation_Flag flags, 
        call != 0;
        call = call->next){
    String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
-   fprintf(out, "internal %.*s %.*s(",
+   fprintf(out, "function %.*s %.*s(",
            string_expand(call->return_type),
            string_expand(callable_name));
    if (call->params.count == 0){
@@ -418,9 +418,9 @@ generate_constructor(Arena *scratch, API_Definition *api, API_Generation_Flag fl
          call = call->next){
         fprintf(out, "{\n");
         fprintf(out, "API_Call *call = api_call_with_location(arena, result, "
-                "string_u8_litexpr(\"%.*s\"), "
-                "string_u8_litexpr(\"%.*s\"), "
-                "string_u8_litexpr(\"\"));\n",
+                "strlit(\"%.*s\"), "
+                "strlit(\"%.*s\"), "
+                "strlit(\"\"));\n",
                 string_expand(call->name),
                 string_expand(call->return_type));
         
@@ -579,7 +579,7 @@ api_definition_error(Arena *arena, List_String *list,
     if (e2 != 0){
         string_list_pushf(arena, list, " %s", e2);
     }
-    string_list_push(arena, list, string_u8_litexpr("\n"));
+    string_list_push(arena, list, strlit("\n"));
 }
 
 function void

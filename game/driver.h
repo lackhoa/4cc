@@ -264,10 +264,10 @@ lp_invisible(){
  return result;
 }
 
-global_const argb hot_color      = argb_lightness(argb_silver, 0.5f);
-global_const argb hot_color2     = argb_yellow;
-global_const argb selected_color = argb_red;
-global_const v1 default_line_radius_unit = 1.728125f * millimeter;
+global const argb hot_color      = argb_lightness(argb_silver, 0.5f);
+global const argb hot_color2     = argb_yellow;
+global const argb selected_color = argb_red;
+global const v1 default_line_radius_unit = 1.728125f * millimeter;
 
 //-
 inline Bone *current_bone(Painter &p){ return p.bone_stack.last(); }

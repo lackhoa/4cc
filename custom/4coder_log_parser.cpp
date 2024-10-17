@@ -9,7 +9,7 @@
 
 // TOP
 
-internal u64
+function u64
 log_parse__string_code(Log_Parse *parse, String string, Log_String_Source string_source){
     u64 result = 0;
     if (string.size > 0){
@@ -31,7 +31,7 @@ log_parse__string_code(Log_Parse *parse, String string, Log_String_Source string
     return(result);
 }
 
-internal String
+function String
 log_parse__get_string(Log_Parse *parse, u64 code){
     Table_Lookup lookup = table_lookup(&parse->id_to_string_table, code);
     String result = {};
@@ -41,7 +41,7 @@ log_parse__get_string(Log_Parse *parse, u64 code){
     return(result);
 }
 
-internal Log_Event*
+function Log_Event*
 log_parse__event(Log_Parse *parse,
                  String filename, String line_number, String event_name){
     Log_Event *new_event = push_array(parse->arena, Log_Event, 1);
@@ -54,7 +54,7 @@ log_parse__event(Log_Parse *parse,
     return(new_event);
 }
 
-internal Log_Tag*
+function Log_Tag*
 log_parse__tag(Log_Parse *parse, Log_Event *event, String tag_name, String tag_value){
     Log_Tag *new_tag = push_array(parse->arena, Log_Tag, 1);
     sll_queue_push(event->first_tag, event->last_tag, new_tag);
@@ -83,11 +83,11 @@ log_parse__tag(Log_Parse *parse, Log_Event *event, String tag_name, String tag_v
         else{
             new_tag->value.kind = LogTagKind_Integer;
             b32 is_negative = false;
-            if (string_match(string_prefix(tag_value, 1), string_u8_litexpr("-"))){
+            if (string_match(string_prefix(tag_value, 1), strlit("-"))){
                 tag_value = string_skip(tag_value, 1);
                 is_negative = true;
             }
-            if (string_match(string_prefix(tag_value, 2), string_u8_litexpr("0x"))){
+            if (string_match(string_prefix(tag_value, 2), strlit("0x"))){
                 tag_value = string_skip(tag_value, 2);
                 new_tag->value.value_s = (i64)string_to_u64(tag_value, 16);
             }
@@ -102,7 +102,7 @@ log_parse__tag(Log_Parse *parse, Log_Event *event, String tag_name, String tag_v
     return(new_tag);
 }
 
-internal Log_Event_List*
+function Log_Event_List*
 log_parse_get_list_tag_value(Log_Parse *parse, u64 name, Log_Tag_Value value){
     Log_Event_List *result = 0;
     Log_Tag_Name_Value key = {name, value};
@@ -115,7 +115,7 @@ log_parse_get_list_tag_value(Log_Parse *parse, u64 name, Log_Tag_Value value){
     return(result);
 }
 
-internal Log_Event_List*
+function Log_Event_List*
 log_parse__get_or_make_list_tag_value(Log_Parse *parse, Log_Tag *tag){
     Log_Event_List *result = 0;
     Log_Tag_Name_Value key = {tag->name, tag->value};
@@ -134,7 +134,7 @@ log_parse__get_or_make_list_tag_value(Log_Parse *parse, Log_Tag *tag){
     return(result);
 }
 
-internal Log_Event_List*
+function Log_Event_List*
 log_parse_get_list_tag_name(Log_Parse *parse, u64 name){
     Log_Event_List *result = 0;
     Table_Lookup lookup = table_lookup(&parse->tag_name_to_event_list_table, name);
@@ -146,7 +146,7 @@ log_parse_get_list_tag_name(Log_Parse *parse, u64 name){
     return(result);
 }
 
-internal Log_Event_List*
+function Log_Event_List*
 log_parse__get_or_make_list_tag_name(Log_Parse *parse, Log_Tag *tag){
     Log_Event_List *result = 0;
     Table_Lookup lookup = table_lookup(&parse->tag_name_to_event_list_table, tag->name);
@@ -162,7 +162,7 @@ log_parse__get_or_make_list_tag_name(Log_Parse *parse, Log_Tag *tag){
     return(result);
 }
 
-internal Log_Parse
+function Log_Parse
 make_log_parse(Arena *arena, String source){
     Log_Parse parse = {};
     parse.arena = arena;
@@ -285,7 +285,7 @@ make_log_parse(Arena *arena, String source){
 
 ////////////////////////////////
 
-internal void
+function void
 log_events_sort_by_tag__inner(Log_Event **events, Log_Sort_Key *keys, i32 first, i32 one_past_last){
     if (first + 1 < one_past_last){
         i32 pivot_index = one_past_last - 1;
@@ -322,7 +322,7 @@ log_events_sort_by_tag__inner(Log_Event **events, Log_Sort_Key *keys, i32 first,
     }
 }
 
-internal void
+function void
 log_events_sort_by_tag(Arena *scratch, Log_Event_Ptr_Array array, u64 tag_name){
     Temp_Memory temp = begin_temp(scratch);
     Log_Sort_Key *keys = push_array(scratch, Log_Sort_Key, array.count);
@@ -347,7 +347,7 @@ log_events_sort_by_tag(Arena *scratch, Log_Event_Ptr_Array array, u64 tag_name){
     end_temp(temp);
 }
 
-internal Log_Event_Ptr_Array
+function Log_Event_Ptr_Array
 log_event_array_from_list(Arena *arena, Log_Event_List list){
     Log_Event_Ptr_Array array = {};
     array.count = list.count;
@@ -371,7 +371,7 @@ global Log_Graph log_graph = {};
 global Log_Filter_Set log_filter_set = {};
 global Log_Filter_Set log_preview_set = {};
 
-internal void
+function void
 log_filter_set_init(Log_Filter_Set *set){
     block_zero_struct(set);
     for (i32 i = ArrayCount(set->filters_memory) - 1; i >= 0; i -= 1){
@@ -379,7 +379,7 @@ log_filter_set_init(Log_Filter_Set *set){
     }
 }
 
-internal Log_Filter_Set*
+function Log_Filter_Set*
 log_filter_set_from_tab(Log_Graph_List_Tab tab){
     Log_Filter_Set *result = 0;
     switch (tab){
@@ -395,7 +395,7 @@ log_filter_set_from_tab(Log_Graph_List_Tab tab){
     return(result);
 }
 
-internal Log_Filter*
+function Log_Filter*
 log_filter_set__new_filter(Log_Filter_Set *set, Log_Filter *prototype){
     Log_Filter *result = set->free_filters;
     if (result != 0){
@@ -420,7 +420,7 @@ log_filter_set__new_filter(Log_Filter_Set *set, Log_Filter *prototype){
     return(result);
 }
 
-internal void
+function void
 log_filter_set__free_filter(Log_Filter_Set *set, Log_Filter *filter){
     zdll_remove(set->first, set->last, filter);
     set->count -= 1;
@@ -428,7 +428,7 @@ log_filter_set__free_filter(Log_Filter_Set *set, Log_Filter *filter){
     sll_stack_push(set->free_filters, filter);
 }
 
-internal void
+function void
 log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
     if (log_parse.arena != 0){
         if (log_graph.holding_temp){
@@ -455,7 +455,7 @@ log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
         log_graph.details_region.p0 -= layout_region.p0;
         log_graph.details_region.p1 -= layout_region.p0;
         
-        u64 thread_code = log_parse__string_code(&log_parse, string_u8_litexpr("thread"),
+        u64 thread_code = log_parse__string_code(&log_parse, strlit("thread"),
                                                  LogParse_ExternalString);
         
         if (log_filter_set.count == 0){
@@ -627,7 +627,7 @@ log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
     }
 }
 
-internal void
+function void
 log_parse_fill(App *app, Buffer_ID buffer){
     if (log_arena.base_allocator == 0){
         log_arena = make_arena_system();
@@ -642,7 +642,7 @@ log_parse_fill(App *app, Buffer_ID buffer){
     log_parse = make_log_parse(&log_arena, log_text);
 }
 
-internal void
+function void
 log_graph_render__tag(Arena *arena, Fancy_Line *line,
                       Log_Parse *log, Log_Tag *tag){
     String tag_name = log_parse__get_string(log, tag->name);
@@ -659,7 +659,7 @@ log_graph_render__tag(Arena *arena, Fancy_Line *line,
     push_fancy_stringf(arena, line, f_white, "]");
 }
 
-internal void
+function void
 log_graph_render(App *app, Frame_Info frame_info, View_ID view){
     if (log_parse.arena != 0){
         ////////////////////////////////
@@ -735,7 +735,7 @@ log_graph_render(App *app, Frame_Info frame_info, View_ID view){
                     u64 val = 0;
                     table_read(table, lookup, &val);
                     Log_Tag *tag = (Log_Tag*)IntAsPtr(val);
-                    push_fancy_string(scratch, &line, string_u8_litexpr(" "));
+                    push_fancy_string(scratch, &line, strlit(" "));
                     log_graph_render__tag(scratch, &line, &log_parse, tag);
                 }
             }
@@ -918,7 +918,7 @@ log_graph_render(App *app, Frame_Info frame_info, View_ID view){
     }
 }
 
-internal Log_Graph_Box*
+function Log_Graph_Box*
 log_graph__get_box_at_point(Log_Graph *graph, Vec2_f32 p){
     Log_Graph_Box *result = 0;
     if (!rect_contains_point(graph->details_region, p)){
@@ -937,7 +937,7 @@ log_graph__get_box_at_point(Log_Graph *graph, Vec2_f32 p){
     return(result);
 }
 
-internal Log_Graph_Box*
+function Log_Graph_Box*
 log_graph__get_box_at_mouse_point(App *app, Log_Graph *graph){
     Mouse_State mouse = get_mouse_state(app);
     Vec2_f32 m_p = V2(mouse.p) - graph->layout_region.p0;
@@ -996,7 +996,7 @@ CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
         return;
     }
     
-    Buffer_ID log_buffer = get_buffer_by_name(app, string_u8_litexpr("*log*"), Access_Always);
+    Buffer_ID log_buffer = get_buffer_by_name(app, strlit("*log*"), Access_Always);
     log_parse_fill(app, log_buffer);
     
     log_view = get_this_ctx_view(app, Access_Always);

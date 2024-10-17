@@ -2,8 +2,6 @@
 //  We wanna share most of these functions with the driver.
 #pragma once
 
-#define NO_IMPL  AD_IS_DRIVER
-
 framework_storage u32 bs_cycle_counter;
 
 struct Patch{
@@ -68,9 +66,6 @@ get_column(Patch const&surface, i32 col){
 xfunction void
 poly3_inner(v3 points[3], argb color,
             v1 depth_offset, Poly_Flags flags)
-#if NO_IMPL
-;
-#else
 {// NOTE: Triangle
  TIMED_BLOCK(draw_cycle_counter);
  auto &p = painter;
@@ -123,7 +118,6 @@ poly3_inner(v3 points[3], argb color,
  if(is_overlay){type = Vertex_Overlay;}
  draw__push_vertices(p.target, vertices, alen(vertices), type);
 }
-#endif
 function void
 poly3_inner(v3 p0, v3 p1, v3 p2,
             argb color,
@@ -248,7 +242,7 @@ bezd_len(v3 p0, v3 d0, v2 d3, v3 p3) {
 //NOTE: Planar curve (with v3 control point, BUT it doesn't automatically adjust d3)
 // @deprecated
 function Bezier
-bezd_old(v3 p0, v3 d0, v2 d3, v3 p3){
+bez_bezd_old(v3 p0, v3 d0, v2 d3, v3 p3){
  TIMED_BLOCK(bs_cycle_counter);
  
  v3 u = p3 - p0;
@@ -549,9 +543,6 @@ poly4_inner(v3 p0, v3 p1, v3 p2, v3 p3,
 }
 xfunction void
 fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
-#if NO_IMPL
-;
-#else
 {
  i32 nslices = bezier_poly_nslice;
  v1 inv_nslices = 1.0f / (v1)nslices;
@@ -571,15 +562,11 @@ fill_bezier_inner_2(v3 P[4], v3 Q[4], argb color, v1 depth_offset, b32 viz)
   previous_worldQ = worldQ;
  }
 }
-#endif
 
 xfunction void
 bezier_poly3_inner(v3 A, v3 P[4], 
                    argb color,
                    v1 depth_offset, Poly_Flags flags)
-#if NO_IMPL
-;
-#else
 {
  i32 nslices = bezier_poly_nslice;
  v1 inv_nslices = 1.f / (v1)nslices;
@@ -595,7 +582,6 @@ bezier_poly3_inner(v3 A, v3 P[4],
   previous_worldP = worldP;
  }
 }
-#endif
 function void
 fill(v3 A, Bezier &bezier, 
      argb c0=0,
@@ -650,9 +636,6 @@ xfunction void
 fill_patch_inner(const v3 P[4][4],
                  argb color, v1 depth_offset,
                  b32 viz)
-#if NO_IMPL
-;
-#else
 {
  if (is_poly_enabled()){
   const i32 nslice = 16;
@@ -690,7 +673,6 @@ fill_patch_inner(const v3 P[4][4],
   }
  }
 } 
-#endif
 function void
 fill_patch(const v3 P[4][4], argb color=0) {
  auto p = &painter;
@@ -814,9 +796,6 @@ indicate_vertex(char *vertex_name, v3 pos,
                 b32  force_overlay   =false,
                 argb color           =argb_yellow,
                 u32  prim_id         =__builtin_LINE())
-#if NO_IMPL
-;
-#else
 {
  auto &p = painter;
  if(is_left()){
@@ -850,9 +829,12 @@ indicate_vertex(char *vertex_name, v3 pos,
   }
  }
 }
-#endif
-
-#undef  NO_IMPL
-#undef Default_Fill_Params
-
+function Bez
+bez_lerp(Bez &begin, v1 t, Bez &end){
+ Bez result;
+ for_i32(index,0,4){
+  result[index] = lerp(begin[index], t, end[index]);
+ }
+ return result;
+}
 //-

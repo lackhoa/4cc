@@ -1,11 +1,7 @@
 /* 
- * Mr. 4th Dimention - Allen Webster
- * (Modified by kv)
- *
+ * Mr. 4th Dimention - Allen Webster (Modified by kv)
  * Do all the meta programming things
- *
  */
-
 #include "kv.h"
 #include "4coder_token.h"
 #include "generated/lexer_cpp.h"
@@ -17,7 +13,7 @@
 #include "generated/lexer_cpp.cpp"
 #include "4ed_kv_parser.cpp"
 
-#include "meta.h"
+#include "meta_main.h"
 #include "meta_print.h"
 #include "meta_parse.h"
 #include "meta_klang.h"
@@ -27,26 +23,7 @@
 #include "4ed_api_parser.cpp"
 #include "meta_print.cpp"
 #include "meta_klang.cpp"
-
-inline String
-maybe_skip_begin_and_end(String string){
- if(string.len>1){
-  if(string.str[0]=='{'){
-   string.str++;
-   string.size--;
-   
-   if(string.len>0){
-    if(string.str[string.len]=='}'){
-     string.len--;
-    }
-   }
-  }
- }
- return string;
-}
-#define strlit_noquote(anything) \
-maybe_skip_begin_and_end(strlit(#anything))
-
+//-
 function b32
 list_files_recursive(Arena *arena, arrayof<char*> &outfiles, char *path){
  b32 ok = true;
@@ -105,7 +82,7 @@ push_bezier_variant(arrayof<Union_Variant> &variants, Union_Variant variant,
  variant.struct_name = strcat(arena, "Curve_",      variant.name);
  variants.push(variant);
 }
-inline void
+function void
 push_fill_variant(arrayof<Union_Variant> &variants, Union_Variant v,
                   String struct_members){
  Arena *arena = &meta_permanent_arena;
@@ -117,7 +94,7 @@ push_fill_variant(arrayof<Union_Variant> &variants, Union_Variant v,
  variants.push(v);
 }
 function void
-generate_bezier_types(Printer &p_header, Printer_Pair &ps_meta){
+generate_bezier_types(Printer &printer){
  Scratch_Block scratch;
  arrayof<Union_Variant> variants = {};
  //-NOTE @data of the variants
@@ -130,16 +107,17 @@ Union_Variant{ \
 strlit(#pstruct_members), \
 __VA_ARGS__)
  
- X(0, v3v2,     v3v2,     { v3 d0; v2 d3; });
- X(1, Parabola, parabola, { v3 d; });
- X(2, Offset,   offset,   { v3 d0; v3 d3; });
- X(3, Unit,     unit,     { v2 d0; v2 d3; v3 unit_y; });
- X(4, Unit2,    unit2,    { v4 d0d3; v3 unit_y; });
- X(5, C2,       c2,       { Curve_Index ref; v3 d3; Vertex_Index p3; }, "no_endpoints");
- X(6, Line,     line,     { });
- X(7, Bezd_Old, bezd_old, { v3 d0; v2 d3; });
- X(8, NegateX,  negateX,  { Curve_Index ref; }, "no_endpoints");
- X(9, Lerp,     lerp,     { Curve_Index begin; Curve_Index end; }, "no_endpoints");
+ X(0,  v3v2,     v3v2,     { v3 d0; v2 d3; });
+ X(1,  Parabola, parabola, { v3 d; });
+ X(2,  Offset,   offset,   { v3 d0; v3 d3; });
+ X(3,  Unit,     unit,     { v2 d0; v2 d3; v3 unit_y; });
+ X(4,  Unit2,    unit2,    { v4 d0d3; v3 unit_y; });
+ X(5,  C2,       c2,       { Curve_Index ref; v3 d3; Vertex_Index p3; }, "no_endpoints");
+ X(6,  Line,     line,     { });
+ X(7,  Bezd_Old, bezd_old, { v3 d0; v2 d3; });
+ X(8,  NegateX,  negateX,  { Curve_Index ref; }, "no_endpoints");
+ X(9,  Lerp,     lerp,     { Curve_Index begin; Curve_Index end; }, "no_endpoints");
+ X(10, Raw,      raw,      { v3 p1; v3 p2; });
 #undef X
  
  String enum_type = strlit("Curve_Type");
@@ -153,21 +131,21 @@ __VA_ARGS__)
   enum_values.set_count(variants.count);
   for_i32(i,0,variants.count){ enum_values[i] = variants[i].enum_value; }
   
-  print_enum(p_header, enum_type, enum_names, enum_values);
-  print_enum_meta(ps_meta, enum_type, enum_names);
+  print_enum(printer, enum_type, enum_names, enum_values);
+  print_enum_meta(printer, enum_type, enum_names);
  }
  {//-NOTE "Data structure associated with each variant"
   for_i32(i,0,variants.count){
    auto *variant = &variants.get(i);
-   m_locationp(p_header);
-   print_struct(p_header, variant->struct_name, variant->struct_members);
-   print_struct_meta(ps_meta, variant->struct_name, variant->struct_members);
+   m_locationp(printer);
+   print_struct(printer, variant->struct_name, variant->struct_members);
+   print_struct_meta(printer, variant->struct_name, variant->struct_members);
   }
  }
  {//-Union of all the Bezier type
   String type_name = strlit("Curve_Union");
   {
-   auto &p = p_header;
+   Printer &p = printer;
    m_location;
    {//NOTE Code
     p<<"union "<<type_name;
@@ -181,7 +159,7 @@ __VA_ARGS__)
    }
   }
   {//NOTE Meta
-   print_union_meta(ps_meta, type_name, &variants, enum_type);
+   print_union_meta(printer, type_name, &variants, enum_type);
   }
  }
  {//-NOTE Transitional functions (aggravation: 100%)
@@ -409,7 +387,7 @@ __VA_ARGS__)
  }
 }
 function void
-generate_fill_types(Printer &p_header, Printer_Pair &ps_meta){
+generate_fill_types(Printer &p){
  //TODO(kv) important copy pasta!
  Scratch_Block scratch;
  arrayof<Union_Variant> variants = {};
@@ -438,21 +416,20 @@ strlit(#pstruct_members))
   enum_values.set_count(variants.count);
   for_i32(i,0,variants.count){ enum_values[i] = variants[i].enum_value; }
   
-  print_enum(p_header, enum_type, enum_names, enum_values);
-  print_enum_meta(ps_meta, enum_type, enum_names);
+  print_enum(p, enum_type, enum_names, enum_values);
+  print_enum_meta(p, enum_type, enum_names);
  }
  {//-NOTE Data structure associated with each variant
   for_i32(i,0,variants.count){
    auto *variant = &variants.get(i);
-   m_locationp(p_header);
-   print_struct(p_header, variant->struct_name, variant->struct_members);
-   print_struct_meta(ps_meta, variant->struct_name, variant->struct_members);
+   m_locationp(p);
+   print_struct(p, variant->struct_name, variant->struct_members);
+   print_struct_meta(p, variant->struct_name, variant->struct_members);
   }
  }
  {//-NOTE ("Union of all the Bezier type")
   String type_name = strlit("Fill_Union");
   {
-   auto &p = p_header;
    m_location;
    {//NOTE Code
     p<<"union "<<type_name;
@@ -466,14 +443,14 @@ strlit(#pstruct_members))
    }
   }
   {//NOTE Meta
-   print_union_meta(ps_meta, type_name, &variants, enum_type);
+   print_union_meta(p, type_name, &variants, enum_type);
   }
  }
 }
 xfunction i32
 main(i32 argc, char **argv){
  b32 ok = true;
- Arena *arena = &meta_permanent_arena;
+ Arena *scratch = &meta_permanent_arena;
  command_name = argv[0];
  char *code_dir = "";
  if(argc < 2){
@@ -484,8 +461,8 @@ main(i32 argc, char **argv){
  }
  //;meta_dirs_init
  meta_dirs.code     = SCu8(code_dir);
- meta_dirs.game     = pjoin(arena, meta_dirs.code, "game");
- meta_dirs.game_gen = pjoin(arena, meta_dirs.game, "generated");
+ meta_dirs.game     = pjoin(scratch, meta_dirs.code, "game");
+ meta_dirs.game_gen = pjoin(scratch, meta_dirs.game, "generated");
  
  char *cpaths[] = {
   "game",
@@ -498,17 +475,17 @@ main(i32 argc, char **argv){
  Stringz paths[alen(cpaths)];
  for_i1(i,0,alen(paths)){
   //NOTE(kv) Expand from relative path to full path, based on the given code dir
-  paths[i] = pjoin(arena, code_dir, cpaths[i]);
+  paths[i] = pjoin(scratch, code_dir, cpaths[i]);
  }
  
- arrayof<File_Name_Data> source_files = {};
+ arrayof<Meta_Parsed_File> source_files = {};
  if(ok){
-  // NOTE: Reading the input files
+  //-Reading input files
   for_i1(ipath,0,alen(paths)){
    Stringz path = paths[ipath];
    arrayof<char *> filenames = {};
    if(path_is_directory(path)){
-    ok = list_files_recursive(arena, filenames, to_cstring(path));
+    ok = list_files_recursive(scratch, filenames, to_cstring(path));
     if(!ok){
      printf("error: could not list files under path: [%s]\n", to_cstring(path));
     }
@@ -520,12 +497,15 @@ main(i32 argc, char **argv){
     for_i32(ifile, 0, filenames.count){
      char *filename = filenames[ifile];
      FILE *file = fopen(filename, "rb");
-     if (file) {
-      Stringz text = read_entire_file_handle(arena, file);
+     if(file){
+      Stringz data = read_entire_file_handle(scratch, file);
       fclose(file);
-      source_files.push(File_Name_Data{
-                         .name=push_string(arena, filename),
-                         .data=text});
+      Token_List token_list = lex_full_input_cpp(scratch, data);
+      source_files.push(Meta_Parsed_File{
+                         .name=push_string(scratch, filename),
+                         .data=data,
+                         .token_list=token_list,
+                        });
      }else{
       printf("error: could not open input file: [%s]\n", filename);
       ok = false;
@@ -536,12 +516,15 @@ main(i32 argc, char **argv){
   }
  }
  
+ //TODO(kv) Maybe we don't wanna do these passes separately?
  ok = ok && api_parser_main(source_files);
  ok = ok && klang_main(source_files);
  
- int exit_code = !ok;
+ i32 exit_code = !ok;
  fflush(stdout);
+ if(!ok){
+  breakhere;
+ }
  return exit_code;
 }
-
 //~BOTTOM

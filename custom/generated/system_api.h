@@ -185,7 +185,7 @@ system_set_destination_mixer_type *set_destination_mixer;
 // NOTE(kv): defining linkage class for these functions
 #if defined(STATIC_LINK_API) || defined(EXTERNAL_LINK_API)
 #    if defined(STATIC_LINK_API)
-#        define LINKAGE internal
+#        define LINKAGE function
 #        undef STATIC_LINK_API
 #    elif defined(EXTERNAL_LINK_API)
 #        define LINKAGE extern "C"

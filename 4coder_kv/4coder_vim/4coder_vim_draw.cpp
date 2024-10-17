@@ -110,9 +110,9 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 	Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 	Line_Ending_Kind *eol_kind = scope_attachment(app, scope, buffer_eol_setting, Line_Ending_Kind);
 	switch(*eol_kind){
-		case LineEndingKind_Binary:{ string_concat(&str, string_u8_litexpr("bin"));  } break;
-		case LineEndingKind_LF:    { string_concat(&str, string_u8_litexpr("lf"));   } break;
-		case LineEndingKind_CRLF:  { string_concat(&str, string_u8_litexpr("crlf")); } break;
+		case LineEndingKind_Binary:{ string_concat(&str, strlit("bin"));  } break;
+		case LineEndingKind_LF:    { string_concat(&str, strlit("lf"));   } break;
+		case LineEndingKind_CRLF:  { string_concat(&str, strlit("crlf")); } break;
 	}
 	
 	
@@ -122,12 +122,12 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 	str = Su8(space, 0, 5);
 	Dirty_State dirty = buffer_get_dirty_state(app, buffer);
 	if(dirty != 0){
-		string_concat(&str, string_u8_litexpr(" ["));
+		string_concat(&str, strlit(" ["));
 		if(HasFlag(dirty, DirtyState_UnsavedChanges))
-			string_concat(&str, string_u8_litexpr("+"));
+			string_concat(&str, strlit("+"));
 		if(HasFlag(dirty, DirtyState_UnloadedChanges))
-			string_concat(&str, string_u8_litexpr("!"));
-		string_concat(&str, string_u8_litexpr("]"));
+			string_concat(&str, strlit("!"));
+		string_concat(&str, strlit("]"));
 		draw_string(app, face_id, str.string, p, pop2_color);
 	}
 	
@@ -141,9 +141,9 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 	i64 buffer_size = buffer_get_size(app, buffer);
 	String PosText;
 	if(cursor_position == 0){
-		PosText = string_u8_litexpr("Top");
+		PosText = strlit("Top");
 	}else if(cursor_position ==  buffer_size){
-		PosText = string_u8_litexpr("Bot");
+		PosText = strlit("Bot");
 	}else{
 		PosText = push_stringfz(scratch, "%d%%", i64(100.L*cast(f64)cursor_position/(f64)(buffer_size)));
 	}
@@ -478,7 +478,7 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
    v2 p = draw_string(app, face_id, vim_bottom_text.string, main_monitor_bot_left, finalize_color(defcolor_text_default, 0));
    {
     p.x -= 0.37f*(p.x - main_monitor_bot_left.x) / cast(v1)vim_bottom_text.size;
-    draw_string(app, face_id, string_u8_litexpr("|"), p, finalize_color(defcolor_text_default, 0));
+    draw_string(app, face_id, strlit("|"), p, finalize_color(defcolor_text_default, 0));
    }
   }
   else

@@ -24,7 +24,7 @@ global Unix_Vars unixvars;
 // 4ed Path
 //
 
-internal
+function
 Sys_Get_Current_Path_Sig(system_get_current_path){
     i1 result = 0;
     char *d = getcwd(out, capacity);
@@ -38,7 +38,7 @@ Sys_Get_Current_Path_Sig(system_get_current_path){
 // Shared system functions (system_shared.h)
 //
 
-internal
+function
 Sys_File_Can_Be_Made_Sig(system_file_can_be_made){
     b32 result = access((char*)filename, W_OK) == 0;
     //LOGF("%s = %d\n", filename, result);
@@ -49,7 +49,7 @@ Sys_File_Can_Be_Made_Sig(system_file_can_be_made){
 // Memory
 //
 
-internal void*
+function void*
 system_memory_allocate_extended(void *base, u64 size){
     // NOTE(allen): This must return the exact base of the vpage.
     // We will count on the user to keep track of size themselves.
@@ -60,13 +60,13 @@ system_memory_allocate_extended(void *base, u64 size){
     return(result);
 }
 
-internal
+function
 Sys_Memory_Allocate_Sig(system_memory_allocate){
     void *result = system_memory_allocate_extended(0, size);
     return(result);
 }
 
-internal
+function
 Sys_Memory_Set_Protection_Sig(system_memory_set_protection){
     bool32 result = true;
     
@@ -100,7 +100,7 @@ Sys_Memory_Set_Protection_Sig(system_memory_set_protection){
     return(result);
 }
 
-internal
+function
 Sys_Memory_Free_Sig(system_memory_free){
     // NOTE(allen): This must take the exact base of the vpage.
     munmap(ptr, size);
@@ -110,7 +110,7 @@ Sys_Memory_Free_Sig(system_memory_free){
 // Files
 //
 
-internal
+function
 Sys_Set_File_List_Sig(system_set_file_list){
     if (directory == 0){
         system_memory_free(file_list->block, file_list->block_size);
@@ -206,7 +206,7 @@ Sys_Set_File_List_Sig(system_set_file_list){
     }
 }
 
-internal
+function
 Sys_Get_Canonical_Sig(system_get_canonical){
     char* path = (char*) alloca(len + 1);
     char* write_p = path;
@@ -267,7 +267,7 @@ Sys_Get_Canonical_Sig(system_get_canonical){
     return(length);
 }
 
-internal
+function
 Sys_Load_Handle_Sig(system_load_handle){
     b32 result = false;
     
@@ -286,7 +286,7 @@ Sys_Load_Handle_Sig(system_load_handle){
     return(result);
 }
 
-internal
+function
 Sys_Load_Size_Sig(system_load_size){
     u32 result = 0;
     
@@ -304,7 +304,7 @@ Sys_Load_Size_Sig(system_load_size){
     return(result);
 }
 
-internal
+function
 Sys_Load_File_Sig(system_load_file){
     i1 fd = *(i1*)&handle;
     
@@ -325,7 +325,7 @@ Sys_Load_File_Sig(system_load_file){
     return(size == 0);
 }
 
-internal
+function
 Sys_Load_Close_Sig(system_load_close){
     b32 result = true;
     
@@ -343,7 +343,7 @@ Sys_Load_Close_Sig(system_load_close){
     return(result);
 }
 
-internal
+function
 Sys_Save_File_Sig(system_save_file){
     i1 fd = open(filename, O_WRONLY|O_TRUNC|O_CREAT, 00640);
     
@@ -374,7 +374,7 @@ Sys_Save_File_Sig(system_save_file){
 // File System
 //
 
-internal
+function
 Sys_File_Exists_Sig(system_file_exists){
     int result = 0;
     char buff[PATH_MAX] = {};

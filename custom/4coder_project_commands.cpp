@@ -42,7 +42,7 @@ prj_pattern_list_from_var(Arena *arena, Variable_Handle var)
 function Prj_Pattern_List
 prj_get_standard_blacklist(Arena *arena)
 {
- String8 dot = string_u8_litexpr(".*");
+ String8 dot = strlit(".*");
  String8Array black_array = {};
  black_array.strings = &dot;
  black_array.count = 1;
@@ -432,7 +432,7 @@ prj_exec_command(App *app, Variable_Handle cmd_var)
         }
         else{
             // TODO(allen): fix the exec_system_command call so it can take a null buffer_id.
-            buffer_id = buffer_identifier(string_u8_litexpr("*dump*"));
+            buffer_id = buffer_identifier(strlit("*dump*"));
         }
         
         Variable_Handle command_list_var = vars_parent(cmd_var);
@@ -780,7 +780,7 @@ CUSTOM_COMMAND_SIG(project_command_lister)
 CUSTOM_DOC("Open a lister of all commands in the currently loaded project.")
 {
  Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_intern_lit("prj_config"));
- Variable_Handle prj_cmd = prj_cmd_from_user(app, prj_var, string_u8_litexpr("Command:"));
+ Variable_Handle prj_cmd = prj_cmd_from_user(app, prj_var, strlit("Command:"));
  if (!vars_is_nil(prj_cmd)){
   prj_exec_command(app, prj_cmd);
  }

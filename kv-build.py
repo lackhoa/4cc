@@ -18,7 +18,8 @@ args = parser.parse_args()
 if args.release:
     args.full = True
 run_only     = args.action == 'run'
-hotload_game = "game.cpp" in args.file  # @build_filename_hack
+#hotload_game = "driver.kc" in args.file  # @build_filename_hack
+hotload_game = False
 
 # NOTE: Configuration begin #########################
 # NOTE(kv) Build level
@@ -310,9 +311,9 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
     run(command, exit_on_failure)
 
 def autogen():
-    global asan_on
-    old_asan_on = asan_on
-    asan_on = False
+    #global asan_on
+    #old_asan_on = asan_on
+    #asan_on = False
     CUSTOM=f'{FCODER_ROOT}/code/custom'
     BUILD_DIR = pjoin(CUSTOM, "build")
     #rm_rf(BUILD_DIR)
@@ -354,7 +355,7 @@ def autogen():
                          link_only=True)
             run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
 
-    asan_on = old_asan_on
+    #asan_on = old_asan_on
 
 def build_game():
     try:  # NOTE: Compiling the game
@@ -363,10 +364,9 @@ def build_game():
         print(f'========Producing game{DOT_DLL}========')
         DOT_LIB=".lib"
         GAME_MAIN = pjoin(CODE, "game", "game_main.cpp")
-        GAME_CPP  = pjoin(CODE, "game", "game.cpp")
         if TRACE_COMPILE_TIME:
             # NOTE: ftime-trace only works with "-c"
-            run(f'clang++ -c {pjoin(CODE, "game", "game.cpp")}  {INCLUDES} {SYMBOLS} -Od -ftime-trace')
+            run(f'clang++ -c {pjoin(CODE, "game", "game_main.cpp")}  {INCLUDES} {SYMBOLS} -Od -ftime-trace')
         else:
             cl_or_clang_cl = Compiler.MSVC if COMPILE_GAME_WITH_MSVC else Compiler.ClangCl
             MSVC_COMPILE_FLAGS = f"{INCLUDES} {SYMBOLS}"

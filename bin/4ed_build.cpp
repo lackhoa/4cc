@@ -161,7 +161,7 @@ enum
     SHIP = 0x100,
 };
 
-internal char**
+function char**
 get_defines_from_flags(Arena *arena, u32 flags){
     char **result = 0;
     if (HasFlag(flags, SHIP)){
@@ -196,7 +196,7 @@ get_defines_from_flags(Arena *arena, u32 flags){
 
 #define CL_ICON "..\\4coder-non-source\\res\\icon.res"
 
-internal void
+function void
 build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, char *out_path, char *out_file, char **defines, char **exports, char **inc_folders){
     Temp_Dir temp = fm_pushdir(out_path);
     
@@ -323,7 +323,7 @@ build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, cha
 # error gcc options not set for this platform
 #endif
 
-internal void
+function void
 build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, char *out_path, char *out_file, char **defines, char **exports, char **inc_folders){
     Build_Line line;
     fm_init_build_line(&line);
@@ -420,7 +420,7 @@ FOREIGN "/x86/libfreetype-mac.a"
 #endif
 
 //;build_clang
-internal void
+function void
 build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, char *out_path, char *out_file, char **defines, char **exports, char **inc_folders)
 {
   // bookmark: split the build step out for ccache
@@ -509,13 +509,13 @@ build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, cha
 # error build function not defined for this compiler
 #endif
 
-internal void
+function void
 build(Arena *arena, u32 flags, u32 arch, char *code_path, char *code_file, char *out_path, char *out_file, char **defines, char **exports, char **inc_folders){
     char **code_files = fm_list_one_item(arena, code_file);
     build(arena, flags, arch, code_path, code_files, out_path, out_file, defines, exports, inc_folders);
 }
 
-internal void
+function void
 build_and_run(Arena *arena, char *cdir, char *filename, char *name, u32 flags){
     char *dir = fm_str(arena, BUILD_DIR);
     
@@ -530,7 +530,7 @@ build_and_run(Arena *arena, char *cdir, char *filename, char *name, u32 flags){
     }
 }
 
-internal void
+function void
 buildsuper(Arena *arena, char *cdir, char *file, u32 arch){
     printf("BUILDSUPER:\n cdir = %s;\n file = %s;\n arch = %s;\n", cdir, file, arch_names[arch]);
     fflush(stdout);
@@ -564,7 +564,7 @@ buildsuper(Arena *arena, char *cdir, char *file, u32 arch){
     fflush(stdout);
 }
 
-internal void
+function void
 build_main(Arena *arena, char *cdir, b32 update_local_theme, u32 flags, u32 arch){
   // dup2(1,2);  // NOTE(kv): there's no order guarantee between stderr and stdout, which messes up our error reporting.
     setbuf(stdout, NULL);
@@ -597,13 +597,13 @@ build_main(Arena *arena, char *cdir, b32 update_local_theme, u32 flags, u32 arch
     }
 }
 
-internal void
+function void
 standard_build(Arena *arena, char *cdir, u32 flags, u32 arch){
     buildsuper(arena, cdir, fm_str(arena, default_custom_target), arch);
     build_main(arena, cdir, true, flags, arch);
 }
 
-internal char*
+function char*
 get_4coder_dist_name(Arena *arena, u32 platform, char *tier, u32 arch){
     char *name = fm_str(arena, "4coder-" MAJOR_STR "-" MINOR_STR "-" PATCH_STR "-", tier);
     if (platform != Platform_None){
@@ -660,7 +660,7 @@ package_for_arch(Arena *arena, u32 arch, char *cdir, char *build_dir, char *pack
     fm_zip(parent_dir, "4coder", zip_name);
 }
 
-internal u32
+function u32
 tier_flags(Tier_Code code){
     u32 result = 0;
     switch (code){
@@ -672,7 +672,7 @@ tier_flags(Tier_Code code){
     return(result);
 }
 
-internal void
+function void
 package(Arena *arena, char *cdir, Tier_Code tier, Arch_Code arch)
 {
     // NOTE(allen): meta

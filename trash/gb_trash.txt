@@ -1405,7 +1405,7 @@ GB_XINPUT_SET_STATE(gbXInputSetState_Stub) {
 }
 
 
-gb_internal gb_inline f32 gb__process_xinput_stick_value(i16 value, i16 dead_zone_threshold) {
+gb_function gb_inline f32 gb__process_xinput_stick_value(i16 value, i16 dead_zone_threshold) {
 	f32 result = 0;
  
 	if (value < -dead_zone_threshold) {
@@ -1417,7 +1417,7 @@ gb_internal gb_inline f32 gb__process_xinput_stick_value(i16 value, i16 dead_zon
 	return result;
 }
 
-gb_internal void gb__platform_resize_dib_section(gbPlatform *p, i1 width, i1 height) {
+gb_function void gb__platform_resize_dib_section(gbPlatform *p, i1 width, i1 height) {
 	if ((p->renderer_type == gbRenderer_Software) &&
 	    !(p->window_width == width && p->window_height == height)) {
 		BITMAPINFO bmi = {0};
@@ -1457,7 +1457,7 @@ gb_internal void gb__platform_resize_dib_section(gbPlatform *p, i1 width, i1 hei
 }
 
 
-gb_internal gbKeyType gb__win32_from_vk(unsigned int key) {
+gb_function gbKeyType gb__win32_from_vk(unsigned int key) {
 	// NOTE(bill): Letters and numbers are defined the same for VK_* and GB_*
 	if (key >= 'A' && key < 'Z') return cast(gbKeyType)key;
 	if (key >= '0' && key < '9') return cast(gbKeyType)key;
@@ -2422,17 +2422,17 @@ extern id const NSDefaultRunLoopMode;
 #define objc_msgSend_void_bool		((void (*)(id, SEL, BOOL))objc_msgSend)
 #define objc_msgSend_id_char_const	((id (*)(id, SEL, char const *))objc_msgSend)
 
-gb_internal NSUInteger gb__osx_application_should_terminate(id self, SEL _sel, id sender) {
+gb_function NSUInteger gb__osx_application_should_terminate(id self, SEL _sel, id sender) {
 	// NOTE(bill): Do nothing
 	return 0;
 }
 
-gb_internal void gb__osx_window_will_close(id self, SEL _sel, id notification) {
+gb_function void gb__osx_window_will_close(id self, SEL _sel, id notification) {
 	NSUInteger value = true;
 	object_setInstanceVariable(self, "closed", cast(void *)value);
 }
 
-gb_internal void gb__osx_window_did_become_key(id self, SEL _sel, id notification) {
+gb_function void gb__osx_window_did_become_key(id self, SEL _sel, id notification) {
 	gbPlatform *p = NULL;
 	object_getInstanceVariable(self, "gbPlatform", cast(void **)&p);
 	if (p) {
@@ -2633,7 +2633,7 @@ b32 gb_platform_init_with_opengl(gbPlatform *p, char const *window_title, i1 wid
 }
 
 // NOTE(bill): Reverse engineering can be fun!!!
-gb_internal gbKeyType gb__osx_from_key_code(u16 key_code) {
+gb_function gbKeyType gb__osx_from_key_code(u16 key_code) {
 	switch (key_code) {
   default: return gbKey_Unknown;
   // NOTE(bill): WHO THE FUCK DESIGNED THIS VIRTUAL KEY CODE SYSTEM?!
@@ -2747,7 +2747,7 @@ gb_internal gbKeyType gb__osx_from_key_code(u16 key_code) {
 	}
 }
 
-gb_internal void gb__osx_on_cocoa_event(gbPlatform *p, id event, id window) {
+gb_function void gb__osx_on_cocoa_event(gbPlatform *p, id event, id window) {
 	if (!event) {
 		return;
 	} else if (objc_msgSend_id(window, sel_registerName("delegate"))) {
@@ -4245,77 +4245,10 @@ GB_COMPARE_PROC_PTR(gb_str_cmp(isize offset)) {
 
 
 // TODO(bill): Make user definable?
-#define GB__SORT_STACK_SIZE            64
-#define GB__SORT_INSERT_SORT_THRESHOLD  8
-
-#define GB__SORT_PUSH(_base, _limit) do { \
-stack_ptr[0] = (_base); \
-stack_ptr[1] = (_limit); \
-stack_ptr += 2; \
-} while (0)
-
-
-#define GB__SORT_POP(_base, _limit) do { \
-stack_ptr -= 2; \
-(_base)  = stack_ptr[0]; \
-(_limit) = stack_ptr[1]; \
-} while (0)
 
 
 
-void gb_sort(void *base_, isize count, isize size, gbCompareProc cmp) {
-	u8 *i, *j;
-	u8 *base = cast(u8 *)base_;
-	u8 *limit = base + count*size;
-	isize threshold = GB__SORT_INSERT_SORT_THRESHOLD * size;
- 
-	// NOTE(bill): Prepare the stack
-	u8 *stack[GB__SORT_STACK_SIZE] = {0};
-	u8 **stack_ptr = stack;
- 
-	for (;;) {
-		if ((limit-base) > threshold) {
-			// NOTE(bill): Quick sort
-			i = base + size;
-			j = limit - size;
-   
-			gb_memswap(((limit-base)/size/2) * size + base, base, size);
-			if (cmp(i, j) > 0)    gb_memswap(i, j, size);
-			if (cmp(base, j) > 0) gb_memswap(base, j, size);
-			if (cmp(i, base) > 0) gb_memswap(i, base, size);
-   
-			for (;;) {
-				do i += size; while (cmp(i, base) < 0);
-				do j -= size; while (cmp(j, base) > 0);
-				if (i > j) break;
-				gb_memswap(i, j, size);
-			}
-   
-			gb_memswap(base, j, size);
-   
-			if (j - base > limit - i) {
-				GB__SORT_PUSH(base, j);
-				base = i;
-			} else {
-				GB__SORT_PUSH(i, limit);
-				limit = j;
-			}
-		} else {
-			// NOTE(bill): Insertion sort
-			for (j = base, i = j+size;
-			     i < limit;
-			     j = i, i += size) {
-				for (; cmp(j, j+size) > 0; j -= size) {
-					gb_memswap(j, j+size, size);
-					if (j == base) break;
-				}
-			}
-   
-			if (stack_ptr == stack) break; // NOTE(bill): Sorting is done!
-			GB__SORT_POP(base, limit);
-		}
-	}
-}
+
 
 #undef GB__SORT_PUSH
 #undef GB__SORT_POP
@@ -4404,7 +4337,7 @@ void gb_reverse(void *base, isize count, isize size) {
 
 gb_global gbAtomic32 gb__random_shared_counter = {0};
 
-gb_internal u32 gb__get_noise_from_time(void) {
+gb_function u32 gb__get_noise_from_time(void) {
 	u32 accum = 0;
 	f64 start, remaining, end, curr = 0;
 	u64 interval = 100000ll;
@@ -4423,7 +4356,7 @@ gb_internal u32 gb__get_noise_from_time(void) {
 // NOTE(bill): Partly from http://preshing.com/20121224/how-to-generate-a-sequence-of-unique-random-integers/
 // But the generation is even more random-er-est
 
-gb_internal gb_inline u32 gb__permute_qpr(u32 x) {
+gb_function gb_inline u32 gb__permute_qpr(u32 x) {
 	gb_local_persist u32 const prime = 4294967291; // 2^32 - 5
 	if (x >= prime) {
 		return x;
@@ -4437,7 +4370,7 @@ gb_internal gb_inline u32 gb__permute_qpr(u32 x) {
 	}
 }
 
-gb_internal gb_inline u32 gb__permute_with_offset(u32 x, u32 offset) {
+gb_function gb_inline u32 gb__permute_with_offset(u32 x, u32 offset) {
 	return (gb__permute_qpr(x) + offset) ^ 0x5bf03635;
 }
 
@@ -5698,7 +5631,7 @@ typedef struct {
 } gbprivFmtInfo;
 
 
-gb_internal isize gb__print_string(char *text, isize max_len, gbprivFmtInfo *info, char const *str) {
+gb_function isize gb__print_string(char *text, isize max_len, gbprivFmtInfo *info, char const *str) {
 	// TODO(bill): Get precision and width to work correctly. How does it actually work?!
 	// TODO(bill): This looks very buggy indeed.
 	isize res = 0, len;
@@ -5748,27 +5681,27 @@ gb_internal isize gb__print_string(char *text, isize max_len, gbprivFmtInfo *inf
 	return res;
 }
 
-gb_internal isize gb__print_char(char *text, isize max_len, gbprivFmtInfo *info, char arg) {
+gb_function isize gb__print_char(char *text, isize max_len, gbprivFmtInfo *info, char arg) {
 	char str[2] = "";
 	str[0] = arg;
 	return gb__print_string(text, max_len, info, str);
 }
 
 
-gb_internal isize gb__print_i64(char *text, isize max_len, gbprivFmtInfo *info, i64 value) {
+gb_function isize gb__print_i64(char *text, isize max_len, gbprivFmtInfo *info, i64 value) {
 	char num[130];
 	gb_i64_to_str(value, num, info ? info->base : 10);
 	return gb__print_string(text, max_len, info, num);
 }
 
-gb_internal isize gb__print_u64(char *text, isize max_len, gbprivFmtInfo *info, u64 value) {
+gb_function isize gb__print_u64(char *text, isize max_len, gbprivFmtInfo *info, u64 value) {
 	char num[130];
 	gb_u64_to_str(value, num, info ? info->base : 10);
 	return gb__print_string(text, max_len, info, num);
 }
 
 
-gb_internal isize gb__print_f64(char *text, isize max_len, gbprivFmtInfo *info, f64 arg) {
+gb_function isize gb__print_f64(char *text, isize max_len, gbprivFmtInfo *info, f64 arg) {
 	// TODO(bill): Handle exponent notation
 	isize width, len, remaining = max_len;
 	char *text_begin = text;
@@ -5867,7 +5800,8 @@ gb_internal isize gb__print_f64(char *text, isize max_len, gbprivFmtInfo *info, 
 
 
 
-gb_no_inline isize gb_snprintf_va(char *text, isize max_len, char const *fmt, va_list va) {
+gb_no_inline isize
+gb_snprintf_va(char *text, isize max_len, char const *fmt, va_list va) {
 	char const *text_begin = text;
 	isize remaining = max_len, res;
  
@@ -6340,7 +6274,7 @@ if (h->entries) gb_array_free(h->entries); \
 if (h->hashes)  gb_array_free(h->hashes); \
 } \
 \
-gb_internal isize GB_JOIN2(FUNC,_add_entry)(NAME *h, u64 key) { \
+gb_function isize GB_JOIN2(FUNC,_add_entry)(NAME *h, u64 key) { \
 isize index; \
 GB_JOIN2(NAME,Entry) e = {0}; \
 e.key = key; \
@@ -6350,7 +6284,7 @@ gb_array_append(h->entries, e); \
 return index; \
 } \
 \
-gb_internal gbHashTableFindResult GB_JOIN2(FUNC,_find)(NAME *h, u64 key) { \
+gb_function gbHashTableFindResult GB_JOIN2(FUNC,_find)(NAME *h, u64 key) { \
 gbHashTableFindResult r = {-1, -1, -1}; \
 if (gb_array_count(h->hashes) > 0) { \
 r.hash_index  = key % gb_array_count(h->hashes); \
@@ -6365,7 +6299,7 @@ r.entry_index = h->entries[r.entry_index].next; \
 return r; \
 } \
 \
-gb_internal b32 GB_JOIN2(FUNC,_full)(NAME *h) { \
+gb_function b32 GB_JOIN2(FUNC,_full)(NAME *h) { \
 return 0.75f * gb_array_count(h->hashes) < gb_array_count(h->entries); \
 } \
 \
@@ -6542,9 +6476,6 @@ GB_DEF GB_COMPARE_PROC_PTR(gb_f32_cmp  (isize offset));
 GB_DEF GB_COMPARE_PROC_PTR(gb_f64_cmp  (isize offset));
 GB_DEF GB_COMPARE_PROC_PTR(gb_char_cmp (isize offset));
 
-// TODO(bill): Better sorting algorithms
-// NOTE(bill): Uses quick sort for large arrays but insertion sort for small
-#define gb_sort_array(array, count, compare_proc) gb_sort(array, count, gb_size_of(*(array)), compare_proc)
 GB_DEF void gb_sort(void *base, isize count, isize size, gbCompareProc compare_proc);
 
 // NOTE(bill): the count of temp == count of items

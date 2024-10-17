@@ -204,7 +204,7 @@ render_doc_page_to_html_no_header(Arena *scratch, Doc_Page *page, FILE *file){
          block != 0;
          block = block->next){
         if (block->name.size > 0 &&
-            !string_match(block->name, string_u8_litexpr("brief"))){
+            !string_match(block->name, strlit("brief"))){
             fprintf(file, "<h2>%.*s</h2>\n", string_expand(block->name));
         }
         
@@ -417,8 +417,8 @@ int main(){
     thread_ctx_init(&tctx_, ThreadKind_Main, get_allocator_malloc(), get_allocator_malloc());
     Thread_Context *tctx = &tctx_;
     
-    String self = string_u8_litexpr(__FILE__);
-    u64 code_pos = string_find_first(self, string_u8_litexpr("code"));
+    String self = strlit(__FILE__);
+    u64 code_pos = string_find_first(self, strlit("code"));
     String root = string_prefix(self, code_pos + 5);
     String outside_root = string_prefix(self, code_pos);
     String build_root = push_u8_stringf(&arena, "%.*sbuild/",

@@ -21,7 +21,7 @@ struct Lexer
  u32 string_buffer_size;
 };
 
-internal void
+function void
 eat_all_spaces(Lexer *lex)
 {
     while( gb_char_is_space(*lex->at) )
@@ -31,7 +31,7 @@ eat_all_spaces(Lexer *lex)
     }
 }
 
-internal Lexer
+function Lexer
 new_lexer(char *at, char *string_buffer, u32 string_buffer_size)
 {
     Lexer lex = {};
@@ -43,11 +43,11 @@ new_lexer(char *at, char *string_buffer, u32 string_buffer_size)
 }
 
 // NOTE(kv): also eats the sign.
-internal void
+function void
 kv_eat_integer(Lexer *lex)
 {
     char *end = 0;
-    i64 value = gb_str_to_i64(lex->at, &end, 0);
+    i64 value = str_to_i64(lex->at, &end, 0);
     
     lex->int_value = value;
     lex->ok = ( end != lex->at );
@@ -57,7 +57,7 @@ kv_eat_integer(Lexer *lex)
 }
 
 // NOTE(kv): also eats the sign.
-internal void
+function void
 kv_eat_float(Lexer *lex)
 {
     char *end = 0;
@@ -70,7 +70,7 @@ kv_eat_float(Lexer *lex)
     eat_all_spaces(lex);
 }
 
-internal void
+function void
 kv_eat_character(Lexer *lex, char character)
 {
     lex->ok = (*lex->at == character);
@@ -81,7 +81,7 @@ kv_eat_character(Lexer *lex, char character)
     }
 }
 
-internal b32
+function b32
 kv_maybe_eat_character(Lexer *lex, char character)
 {
  if (*lex->at == character)
@@ -94,7 +94,7 @@ kv_maybe_eat_character(Lexer *lex, char character)
 }
 
 // TODO dunno This should be just a "save" version of eat_string
-internal b32
+function b32
 kv_maybe_eat_string(Lexer *lex, char *string)
 {
     char *at_save = lex->at;
@@ -120,7 +120,7 @@ kv_maybe_eat_string(Lexer *lex, char *string)
     }
 }
 
-internal void
+function void
 kv_eat_line(Lexer *lex)
 {
     if (*lex->at)

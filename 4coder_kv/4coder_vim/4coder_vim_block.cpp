@@ -53,7 +53,7 @@ vim_block_copy(App *app, View_ID view, Buffer_ID buffer, Range_i64 range, Vim_Re
 	}
 	reg->edit_type = EDIT_Block;
 	reg->flags |= (REGISTER_Set|REGISTER_Updated);
-	print_message(app, string_u8_litexpr("Block copy\n"));
+	print_message(app, strlit("Block copy\n"));
 	i64 line_min = get_line_number_from_pos(app, buffer, range.min);
 	i64 line_max = get_line_number_from_pos(app, buffer, range.max);
 	Rect_f32 block_rect = vim_get_rel_block_rect(app, view, buffer, range, line_min);

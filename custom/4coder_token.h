@@ -27,23 +27,22 @@ enum{
  
  TokenBaseKind_COUNT          = 16,
 };
-
-global char *token_base_kind_names[] ={
-    "EOF",
-    "Whitespace",
-    "LexError",
-    "Comment",
-    "Keyword",
-    "Preprocessor",
-    "Identifier",
-    "Operator",
-    "LiteralInteger",
-    "LiteralFloat",
-    "LiteralString",
-    "ScopeOpen",
-    "ScopeClose",
-    "ParenOpen",
-    "ParenClose",
+global char *token_base_kind_names[] = {
+ "EOF",
+ "Whitespace",
+ "LexError",
+ "Comment",
+ "Keyword",
+ "Preprocessor",
+ "Identifier",
+ "Operator",
+ "LiteralInteger",
+ "LiteralFloat",
+ "LiteralString",
+ "ScopeOpen",
+ "ScopeClose",
+ "ParenOpen",
+ "ParenClose",
  "StatementClose",
 };
 
@@ -77,6 +76,7 @@ struct Token_Block{
  i64 count;
  i64 max;
 };
+//TODO(kv) Bro, why doesn't this include the source string?
 struct Token_List{
  Token_Block *first;
  Token_Block *last;

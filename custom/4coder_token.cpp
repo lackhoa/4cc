@@ -4,7 +4,7 @@
 
 // TOP
 
-internal void
+function void
 token_list_push(Arena *arena, Token_List *list, Token *token){
  Token_Block *block = list->last;
  if (block == 0 || block->count + 1 > block->max) {
@@ -23,7 +23,7 @@ token_list_push(Arena *arena, Token_List *list, Token *token){
  list->total_count += 1;
 }
 
-internal void
+function void
 token_fill_memory_from_list(Token *dst, Token_List *list, i64 count){
  Token *ptr = dst;
  for (Token_Block *node = list->first;
@@ -36,12 +36,12 @@ token_fill_memory_from_list(Token *dst, Token_List *list, i64 count){
  }
 }
 
-internal void
+function void
 token_fill_memory_from_list(Token *dst, Token_List *list){
  token_fill_memory_from_list(dst, list, list->total_count);
 }
 
-internal Token_Array
+function Token_Array
 token_array_from_list(Arena *arena, Token_List *list){
  Token_Array array = {};
  if (list->node_count > 1) {
@@ -58,7 +58,7 @@ token_array_from_list(Arena *arena, Token_List *list){
  return(array);
 }
 
-internal i64
+function i64
 token_index_from_pos(Token *tokens, i64 count, i64 pos){
  i64 result = 0;
  if (count > 0){
@@ -90,18 +90,18 @@ token_index_from_pos(Token *tokens, i64 count, i64 pos){
  return(result);
 }
 
-internal i64
+function i64
 token_index_from_pos(Token_Array *tokens, u64 pos){
  return(token_index_from_pos(tokens->tokens, tokens->count, pos));
 }
 
-internal Token*
+function Token*
 token_from_pos(Token *tokens, i64 count, i64 pos){
     i64 index = token_index_from_pos(tokens, count, pos);
     return(tokens + index);
 }
 
-internal Token*
+function Token*
 token_from_pos(Token_Array *tokens, u64 pos){
  i64 index = token_index_from_pos(tokens, pos);
  return(tokens->tokens + index);
@@ -121,28 +121,23 @@ token_iterator_index(u64 user_id, Token *tokens, i64 count, i64 token_index)
  }
  return(it);
 }
-
-internal Token_Iterator_Array
+function Token_Iterator_Array
 token_iterator_index(u64 user_id, Token_Array *tokens, i64 token_index){
  return(token_iterator_index(user_id, tokens->tokens, tokens->count, token_index));
 }
 
-internal Token_Iterator_Array
-token_iterator(u64 user_id, Token *tokens, i64 count, Token *token)
-{
+function Token_Iterator_Array
+token_iterator(u64 user_id, Token *tokens, i64 count, Token *token){
  return(token_iterator_index(user_id, tokens, count, (i64)(token - tokens)));
 }
-
-internal Token_Iterator_Array
+function Token_Iterator_Array
 token_iterator(u64 user_id, Token_Array *tokens, Token *token){
     return(token_iterator_index(user_id, tokens->tokens, tokens->count, (i64)(token - tokens->tokens)));
 }
-
-internal Token_Iterator_Array
+function Token_Iterator_Array
 token_iterator(u64 user_id, Token *tokens, i64 count){
  return(token_iterator_index(user_id, tokens, count, 0));
 }
-
 function Token_Iterator_Array
 token_iterator(u64 user_id, Token_Array *tokens){
  return(token_iterator_index(user_id, tokens->tokens, tokens->count, 0));
@@ -255,44 +250,42 @@ tkarr_dec_non_whitespace(Token_Iterator_Array *it){
  }
  return(result);
 }
-
 //-
-
 function Token_Iterator_List
 token_iterator_index(u64 user_id, Token_List *list, i64 index){
-    Token_Iterator_List it = {};
-    if (list->first != 0){
-        index = clamp_between(0, index, list->total_count - 1);
-        i64 base_index = 0;
-        Token_Block *block = 0;
-        for (Token_Block *node = list->first;
-             node != 0;
-             node = node->next){
-            if (index < base_index + node->count){
-                block = node;
-                break;
-            }
-            base_index += node->count;
-        }
-        Assert(block != 0);
-        it.user_id = user_id;
-        it.index = index;
-        it.ptr = block->tokens + (index - base_index);
-        it.block = block;
-        it.first = list->first;
-        it.last = list->last;
-        it.node_count = list->node_count;
-        it.total_count = list->total_count;
-    }
-    return(it);
+ Token_Iterator_List it = {};
+ if (list->first != 0){
+  index = clamp_between(0, index, list->total_count - 1);
+  i64 base_index = 0;
+  Token_Block *block = 0;
+  for (Token_Block *node = list->first;
+       node != 0;
+       node = node->next){
+   if (index < base_index + node->count){
+    block = node;
+    break;
+   }
+   base_index += node->count;
+  }
+  Assert(block != 0);
+  it.user_id = user_id;
+  it.index = index;
+  it.ptr = block->tokens + (index - base_index);
+  it.block = block;
+  it.first = list->first;
+  it.last = list->last;
+  it.node_count = list->node_count;
+  it.total_count = list->total_count;
+ }
+ return(it);
 }
 
-internal Token_Iterator_List
+function Token_Iterator_List
 token_iterator(u64 user_id, Token_List *list){
     return(token_iterator_index(user_id, list, 0));
 }
 
-internal Token_Iterator_List
+function Token_Iterator_List
 token_it_at_pos(u64 user_id, Token_List *list, i64 pos){
  Token_Iterator_List it = {};
  if (list->first != 0){
@@ -337,13 +330,13 @@ token_it_read(Token_Iterator_List *it){
  return(result);
 }
 
-internal i64
+function i64
 token_it_index(Token_Iterator_List *it){
  return(it->index);
 }
 
-internal Token *
-token_it_inc_all(Token_Iterator_List *it) {
+function Token *
+tklist_inc_all(Token_Iterator_List *it) {
  Token *result = 0;
  if (it->block != 0){
   i64 sub_index = (i64)(it->ptr - it->block->tokens);
@@ -364,8 +357,8 @@ token_it_inc_all(Token_Iterator_List *it) {
  return(result);
 }
 
-internal Token *
-token_it_dec_all(Token_Iterator_List *it){
+function Token *
+tklist_dec_all(Token_Iterator_List *it){
     Token *result = 0;
     if (it->block != 0){
         i64 sub_index = (i64)(it->ptr - it->block->tokens);
@@ -386,26 +379,26 @@ token_it_dec_all(Token_Iterator_List *it){
     return(result);
 }
 
-internal Token *
-token_it_inc_non_whitespace(Token_Iterator_List *it){
+function Token *
+tklist_inc_non_whitespace(Token_Iterator_List *it){
     Token *result = 0;
     repeat:
-    if (token_it_inc_all(it)){
+    if (tklist_inc_all(it)){
         Token *token = token_it_read(it);
         if (token != 0 && token->kind == TokenBaseKind_Whitespace){
-            goto repeat;
-        }
-        result = token;
-    }
-    return(result);
+   goto repeat;
+  }
+  result = token;
+ }
+ return(result);
 }
 
-internal Token *
-token_it_dec_non_whitespace(Token_Iterator_List *it){
-    Token *result = 0;
-    repeat:
-    if (token_it_dec_all(it)){
-        Token *token = token_it_read(it);
+function Token *
+tklist_dec_non_whitespace(Token_Iterator_List *it){
+ Token *result = 0;
+ repeat:
+ if (tklist_dec_all(it)){
+  Token *token = token_it_read(it);
   if (token != 0 && token->kind == TokenBaseKind_Whitespace){
    goto repeat;
   }
@@ -414,28 +407,27 @@ token_it_dec_non_whitespace(Token_Iterator_List *it){
  return(result);
 }
 
-internal Token *
-token_it_inc(Token_Iterator_List *it){
-    Token *result = 0;
-    repeat:
-    if (token_it_inc_all(it))
-    {
-        Token *token = token_it_read(it);
-        if (token && (token->kind == TokenBaseKind_Whitespace || 
-                      token->kind == TokenBaseKind_Comment))
-        {
-            goto repeat;
-        }
-        result = token;
-    }
-    return(result);
+function Token *
+tklist_inc(Token_Iterator_List *it){
+ Token *result = 0;
+ repeat:
+ if (tklist_inc_all(it)){
+  Token *token = token_it_read(it);
+  if (token && (token->kind == TokenBaseKind_Whitespace || 
+                token->kind == TokenBaseKind_Comment))
+  {
+   goto repeat;
+  }
+  result = token;
+ }
+ return(result);
 }
 
-internal Token *
-token_it_dec(Token_Iterator_List *it){
+function Token *
+tklist_dec(Token_Iterator_List *it){
     Token *result = 0;
     repeat:
-    if (token_it_dec_all(it)){
+    if (tklist_dec_all(it)){
         Token *token = token_it_read(it);
         if (token != 0 && (token->kind == TokenBaseKind_Whitespace ||
                          token->kind == TokenBaseKind_Comment)){
@@ -462,7 +454,7 @@ token_it_read(Token_Iterator *it){
  return(0);
 }
 
-internal i64
+function i64
 token_it_index(Token_Iterator *it){
  switch (it->kind){
   case TokenIterator_Array:
@@ -477,54 +469,52 @@ token_it_index(Token_Iterator *it){
  return(0);
 }
 
-api(ed)
-function Token *
+api(ed) function Token *
 token_it_inc_all(Token_Iterator *it) {
  switch (it->kind) {
   case TokenIterator_Array: {
    return(tkarr_inc_all(&it->array));
   }break;
   case TokenIterator_List: {
-   return(token_it_inc_all(&it->list));
+   return(tklist_inc_all(&it->list));
   }break;
  }
  return(0);
 }
-
-internal Token *
+api(ed) function Token *
 token_it_dec_all(Token_Iterator *it){
  switch (it->kind){
   case TokenIterator_Array: {
    return(tkarr_dec_all(&it->array));
   }break;
   case TokenIterator_List: {
-   return(token_it_dec_all(&it->list));
+   return(tklist_dec_all(&it->list));
   }break;
  }
  return(0);
 }
 
-internal Token *
+function Token *
 token_it_inc_non_whitespace(Token_Iterator *it){
  switch (it->kind){
   case TokenIterator_Array: {
    return(tkarr_inc_non_whitespace(&it->array));
   }break;
   case TokenIterator_List: {
-   return(token_it_inc_non_whitespace(&it->list));
+   return(tklist_inc_non_whitespace(&it->list));
   }break;
  }
  return(0);
 }
 
-internal Token *
+function Token *
 token_it_dec_non_whitespace(Token_Iterator *it) {
  switch (it->kind){
   case TokenIterator_Array: {
    return(tkarr_dec_non_whitespace(&it->array));
   }break;
   case TokenIterator_List: {
-   return(token_it_dec_non_whitespace(&it->list));
+   return(tklist_dec_non_whitespace(&it->list));
   }break;
  }
  return(0);
@@ -537,7 +527,7 @@ token_it_inc(Token_Iterator *it) {
    return(tkarr_inc(&it->array));
   }break;
   case TokenIterator_List: {
-   return(token_it_inc(&it->list));
+   return(tklist_inc(&it->list));
   }break;
  }
  return(0);
@@ -550,7 +540,7 @@ token_it_dec(Token_Iterator *it) {
    return(tkarr_dec(&it->array));
   }break;
   case TokenIterator_List: {
-   return(token_it_dec(&it->list));
+   return(tklist_dec(&it->list));
   }break;
  }
  return(0);
@@ -558,7 +548,7 @@ token_it_dec(Token_Iterator *it) {
 
 ////////////////////////////////
 
-internal void
+function void
 token_drop_eof(Token_List *list){
     if (list->last != 0){
         Token_Block *block = list->last;
@@ -568,35 +558,35 @@ token_drop_eof(Token_List *list){
             if (block->count == 0){
                 zdll_remove(list->first, list->last, block);
                 list->node_count -= 1;
-            }
-        }
-    }
+   }
+  }
+ }
 }
 
 ////////////////////////////////
 
-internal i64
+function i64
 token_relex_first(Token_Array *tokens, i64 edit_range_first, i64 backup_repeats){
-    Token_Iterator_Array it = tkarr_at_pos(0, tokens, edit_range_first);
-    b32 good_status = true;
-    for (i64 i = 0; i < backup_repeats && good_status; i += 1){
-        good_status = tkarr_dec(&it) != 0;
-    }
-    if (good_status){
-        for (;;){
-            Token *token = tkarr_read(&it);
-            if (!HasFlag(token->flags, TokenBaseFlag_PreprocessorBody)){
-                break;
-            }
-            if (!tkarr_dec(&it)){
-                break;
-            }
-        }
-    }
-    return(tkarr_index(&it));
+ Token_Iterator_Array it = tkarr_at_pos(0, tokens, edit_range_first);
+ b32 good_status = true;
+ for (i64 i = 0; i < backup_repeats && good_status; i += 1){
+  good_status = tkarr_dec(&it) != 0;
+ }
+ if (good_status){
+  for (;;){
+   Token *token = tkarr_read(&it);
+   if (!HasFlag(token->flags, TokenBaseFlag_PreprocessorBody)){
+    break;
+   }
+   if (!tkarr_dec(&it)){
+    break;
+   }
+  }
+ }
+ return(tkarr_index(&it));
 }
 
-internal i64
+function i64
 token_relex_resync(Token_Array *tokens, i64 edit_range_first, i64 look_ahead_repeats){
     Token_Iterator_Array it = tkarr_at_pos(0, tokens, edit_range_first);
     b32 good_status = true;
@@ -617,7 +607,7 @@ token_relex_resync(Token_Array *tokens, i64 edit_range_first, i64 look_ahead_rep
  return(tkarr_index(&it));
 }
 
-internal Token_Relex
+function Token_Relex
 token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, i64 relex_first, i64 relex_last) {
  Token_Relex relex = {};
  if (relex_list.total_count > 0){
@@ -643,7 +633,7 @@ token_relex(Token_List relex_list, i64 new_pos_to_old_pos_shift, Token *tokens, 
    } else{
     break;
    }
-   if (!token_it_dec_all(&it)){
+   if (!tklist_dec_all(&it)){
     break;
    }
   }

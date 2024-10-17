@@ -8,8 +8,8 @@ function b32
 ms_style_verify(String line, u64 left_paren_pos, u64 right_paren_pos){
     i1 result = false;
     String line_part = string_skip(line, right_paren_pos);
-    if (string_match(string_prefix(line_part, 4), string_u8_litexpr(") : ")) ||
-        string_match(string_prefix(line_part, 3), string_u8_litexpr("): "))){
+    if (string_match(string_prefix(line_part, 4), strlit(") : ")) ||
+        string_match(string_prefix(line_part, 3), strlit("): "))){
         result = true;
     }
     if (result){
@@ -32,7 +32,7 @@ ms_style_verify(String line, u64 left_paren_pos, u64 right_paren_pos){
 function u64
 try_skip_rust_arrow(String line){
  u64 pos = 0;
- if (string_match(string_prefix(line, 3), string_u8_litexpr("-->"))){
+ if (string_match(string_prefix(line, 3), strlit("-->"))){
   String sub = string_skip(line, 3);
   sub = string_skip_chop_whitespace(sub);
   pos = (u64)(sub.str - line.str);
@@ -43,7 +43,7 @@ try_skip_rust_arrow(String line){
 function b32
 check_is_note(String line, u64 colon_pos){
  b32 is_note = false;
- u64 note_pos = colon_pos + string_find_first(string_skip(line, colon_pos), string_u8_litexpr("note"));
+ u64 note_pos = colon_pos + string_find_first(string_skip(line, colon_pos), strlit("note"));
  if (note_pos < line.size){
   b32 is_all_whitespace = true;
   for (u64 i = colon_pos + 1; i < note_pos; i += 1){

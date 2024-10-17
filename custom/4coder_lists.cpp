@@ -13,9 +13,9 @@ generate_all_buffers_list__output_buffer(App *app, Lister *lister,
     Dirty_State dirty = buffer_get_dirty_state(app, buffer);
     String status = {};
     switch (dirty){
-        case DirtyState_UnsavedChanges:  status = string_u8_litexpr("*"); break;
-        case DirtyState_UnloadedChanges: status = string_u8_litexpr("!"); break;
-        case DirtyState_UnsavedChangesAndUnloadedChanges: status = string_u8_litexpr("*!"); break;
+        case DirtyState_UnsavedChanges:  status = strlit("*"); break;
+        case DirtyState_UnloadedChanges: status = strlit("!"); break;
+        case DirtyState_UnsavedChangesAndUnloadedChanges: status = strlit("*!"); break;
     }
     Scratch_Block scratch(app, lister->arena);
     String buffer_name = push_buffer_unique_name(app, scratch, buffer);
@@ -166,7 +166,7 @@ get_command_from_user(App *app, String query, i1 *command_ids, i1 command_id_cou
                      node = node->next){
                     command_trigger_stringize(scratch, &list, node);
                     if (node->next != 0){
-                        string_list_push(scratch, &list, string_u8_litexpr(" "));
+                        string_list_push(scratch, &list, strlit(" "));
                     }
                 }
                 
@@ -219,13 +219,13 @@ get_color_table_from_user(App *app, String query, Color_Table_List *color_table_
     lister_set_query(lister, query);
     lister_set_default_handlers(lister);
     
-    lister_add_item(lister, string_u8_litexpr("4coder"), string_u8_litexpr(""),
+    lister_add_item(lister, strlit("4coder"), strlit(""),
                     (void*)&default_color_table, 0);
     
     for (Color_Table_Node *node = color_table_list->first;
          node != 0;
          node = node->next){
-        lister_add_item(lister, node->name, string_u8_litexpr(""),
+        lister_add_item(lister, node->name, strlit(""),
                         (void*)&node->table, 0);
     }
     
@@ -240,7 +240,7 @@ get_color_table_from_user(App *app, String query, Color_Table_List *color_table_
 
 function Color_Table*
 get_color_table_from_user(App *app){
-    return(get_color_table_from_user(app, string_u8_litexpr("Theme:"), 0));
+    return(get_color_table_from_user(app, strlit("Theme:"), 0));
 }
 #endif
 
@@ -595,7 +595,7 @@ activate_open_or_new__generic(App *app, View_ID view,
     
     if (filename.size == 0){
 #define M "Zero length filename passed to activate_open_or_new__generic\n"
-        print_message(app, string_u8_litexpr(M));
+        print_message(app, strlit(M));
 #undef M
         result = ListerActivation_Finished;
     }

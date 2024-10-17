@@ -50,7 +50,7 @@ main(int argc, char **argv){
         i1 i = 1;
         for (;i < argc; i += 1){
             char *file_name = argv[i];
-            if (string_match(SCu8(file_name), string_u8_litexpr(":"))){
+            if (string_match(SCu8(file_name), strlit(":"))){
                 i += 1;
                 break;
             }

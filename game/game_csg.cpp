@@ -25,7 +25,7 @@ get_object_scale()
  return get_xscale(painter.object_transform);
 }
 
-internal CSG_Tree *
+function CSG_Tree *
 csg_sphere(v3 center, v1 radius)
 {
  v1 object_scale = get_object_scale();
@@ -36,7 +36,7 @@ csg_sphere(v3 center, v1 radius)
  return tree;
 }
 
-internal void
+function void
 csg_plane_inner(v3 n, v1 d)
 {
  v4 plane = plane_transform(raycast_transform, n, d);
@@ -45,7 +45,7 @@ csg_plane_inner(v3 n, v1 d)
  tree->d = plane.w;
 }
 
-internal void
+function void
 csg_plane(v3 n, v1 d)
 {
  csg_plane_inner(n, d);
@@ -55,7 +55,7 @@ csg_plane(v3 n, v1 d)
  }
 }
 
-internal CSG_Tree *
+function CSG_Tree *
 csg_box(v3 center, v3 radius)
 {
  v1 object_scale = get_object_scale();
@@ -86,7 +86,7 @@ csg_box(v3 center, v3 radius)
 }
 #endif
 
-internal CSG_Tree *
+function CSG_Tree *
 csg_union(CSG_Tree *l, CSG_Tree *r)
 {
  CSG_Tree *tree = csg_push_tree(CSG_Union);

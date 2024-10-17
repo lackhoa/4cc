@@ -8,7 +8,7 @@
 // - Your source file (fx.inl) must be <= 1024 bytes.
 // - Effect should be reasonably portable (not relying on specific render backend callback)
 // - OK to use preprocessor define or other tricks as long as they are reasonably portable.
-// - Included are: math.h, imgui.h, imgui_internal.h with ImVec2 maths operators
+// - Included are: math.h, imgui.h, imgui_function.h with ImVec2 maths operators
 // - The effect should not use ImGui:: functions, only use ImDrawList facilities. No ImGui:: function!
 // - Canvas ratio is expected to be 16/9, canvas size expected to be 320 by 180.
 // - For simplicity we assume you can encode a color as 0xAAGGBBRR instead of using the IM_COL32() macro,

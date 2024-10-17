@@ -236,7 +236,7 @@ config_parser_get_int(Config_Parser *p)
 {
     Config_Integer config_integer = {};
     String8 str = config_parser_get_lexeme(p);
-    if ( string_match(string_prefix(str, 2), string_u8_litexpr("0x")) )
+    if ( string_match(string_prefix(str, 2), strlit("0x")) )
     {
         config_integer.is_signed = false;
         config_integer.uinteger = (u32)(string_to_u64(string_skip(str, 2), 16));
@@ -262,7 +262,7 @@ function b32
 config_parser_get_boolean(Config_Parser *p)
 {
     String str = config_parser_get_lexeme(p);
-    return(string_match(str, string_u8_litexpr("true")));
+    return(string_match(str, strlit("true")));
 }
 
 function Config_Error*
@@ -370,9 +370,9 @@ config_parser_lvalue(Config_Parser *p)
     return(lvalue);
 }
 
-internal Config_RValue * config_parser_rvalue(Config_Parser *p);
+function Config_RValue * config_parser_rvalue(Config_Parser *p);
 
-internal Config_Compound_Element *
+function Config_Compound_Element *
 config_parser_element(Config_Parser *p)
 {
     Config_Layout layout = {};
@@ -407,7 +407,7 @@ config_parser_element(Config_Parser *p)
     return(element);
 }
 
-internal void
+function void
 config_parser__compound__check(Config_Parser *p, Config_Compound *compound)
 {
     b32 implicit_index_allowed = true;
@@ -426,7 +426,7 @@ config_parser__compound__check(Config_Parser *p, Config_Compound *compound)
     }
 }
 
-internal Config_Compound*
+function Config_Compound*
 config_parser_compound(Config_Parser *p)
 {
     Config_Compound_Element *first = 0;
@@ -461,7 +461,7 @@ config_parser_compound(Config_Parser *p)
     return(compound);
 }
 
-internal Config_RValue *
+function Config_RValue *
 config_parser_rvalue(Config_Parser *p)
 {
     Config_RValue *rvalue = 0;
@@ -594,7 +594,7 @@ config_parser_top(Config_Parser *p)
     return(config);
 }
 
-internal Config*
+function Config*
 config_parse(App *app, Arena *arena, String8 filename, String8 data, Token_Array array)
 {
     ProfileScope(app, "config parse");
@@ -608,7 +608,7 @@ config_parse(App *app, Arena *arena, String8 filename, String8 data, Token_Array
     return(config);
 }
 
-internal Config*
+function Config*
 config_from_text(App *app, Arena *arena, String8 filename, String8 data)
 {
     Config *parsed = 0;
@@ -1371,7 +1371,7 @@ function Config_Iteration_Step_Result
 typed_array_iteration_step(Config *parsed, Config_Compound *compound, Config_RValue_Type type, i1 index){
     Config_Iteration_Step_Result result = {};
     result.step = Iteration_Quit;
-    Config_Get_Result get_result = config_compound_member(parsed, compound, string_u8_litexpr("~"), index);
+    Config_Get_Result get_result = config_compound_member(parsed, compound, strlit("~"), index);
     if (get_result.success){
         if (get_result.type == type){
             result.step = Iteration_Good;
@@ -1424,14 +1424,14 @@ typed_array_reference_list(Arena *arena, Config *parsed, Config_Compound *compou
 function void
 change_mode(App *app, String mode){
     fcoder_mode = FCoderMode_Original;
-    if (string_match(mode, string_u8_litexpr("4coder"))){
+    if (string_match(mode, strlit("4coder"))){
         fcoder_mode = FCoderMode_Original;
     }
-    else if (string_match(mode, string_u8_litexpr("notepad-like"))){
+    else if (string_match(mode, strlit("notepad-like"))){
         begin_notepad_mode(app);
     }
     else{
-        print_message(app, string_u8_litexpr("Unknown mode.\n"));
+        print_message(app, strlit("Unknown mode.\n"));
     }
 }
 
@@ -1548,7 +1548,7 @@ load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 ove
         // Errors
         String error_text = config_stringize_errors(app, scratch, parsed);
         if (error_text.str != 0){
-            print_message(app, string_u8_litexpr("trying to load config file:\n"));
+            print_message(app, strlit("trying to load config file:\n"));
             print_message(app, error_text);
         }
         
@@ -1560,11 +1560,11 @@ load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 ove
                                                                   vars_intern_lit("def_config"),
                                                                   parsed);
 			vars_print(app, config_var);
-            print_message(app, string_u8_litexpr("\n"));
+            print_message(app, strlit("\n"));
         }
     }
     else{
-        print_message(app, string_u8_litexpr("Using default config:\n"));
+        print_message(app, strlit("Using default config:\n"));
         Face_Description description = get_face_description(app, 0);
         if (description.font.filename.str != 0){
             def_set_config_string(vars_intern_lit("default_font_name"), description.font.filename);
@@ -1573,7 +1573,7 @@ load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 ove
     
     String default_font_name = def_get_config_string(scratch, vars_intern_lit("default_font_name"));
     if (default_font_name.size == 0){
-        default_font_name = string_u8_litexpr("liberation-mono.ttf");
+        default_font_name = strlit("liberation-mono.ttf");
     }
     
     // TODO(allen): this part seems especially weird now.
@@ -1650,7 +1650,7 @@ load_theme_file_into_live_set(App *app, char *filename){
     
     String name = SCu8(filename);
     name = path_filename(name);
-    if (string_match(string_postfix(name, 7), string_u8_litexpr(".4coder"))){
+    if (string_match(string_postfix(name, 7), strlit(".4coder"))){
         name = string_chop(name, 7);
     }
     save_theme(color_table, name);
@@ -1713,7 +1713,7 @@ CUSTOM_DOC("Parse the current buffer as a theme file and add the theme to the th
         }
         else{
             String name = path_filename(filename);
-            if (string_match(string_postfix(name, 7), string_u8_litexpr(".4coder"))){
+            if (string_match(string_postfix(name, 7), strlit(".4coder"))){
                 name = string_chop(name, 7);
             }
             save_theme(color_table, name);

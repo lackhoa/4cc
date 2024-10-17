@@ -49,7 +49,7 @@ toggle_the_game(App *app)
  }
 }
 
-internal void 
+function void 
 toggle_game_auxiliary_viewports(App *app)
 {
  global_auxiliary_viewports_on = !global_auxiliary_viewports_on;

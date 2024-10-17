@@ -346,7 +346,7 @@ NOTES - HASH MAP
     order of insertions and deletions. In particular, if you never delete, new
     keys are always added at the end of the array. This will be consistent
     across all platforms and versions of the library. However, you should not
-    attempt to serialize the internal hash table, as the hash is not consistent
+    attempt to serialize the function hash table, as the hash is not consistent
     between different platforms, and may change with future versions of the library.
 
   * Use sh_new_arena() for string hashmaps that you never delete from. Initialize
@@ -477,7 +477,7 @@ extern "C" {
 // for security against attackers, seed the library with a random number, at least time() but stronger is better
 STBDS_FUNC void stbds_rand_seed(size_t seed);
 
-// these are the hash functions used internally if you want to test them or use them for other purposes
+// these are the hash functions used functionly if you want to test them or use them for other purposes
 STBDS_FUNC size_t stbds_hash_bytes(void *p, size_t len, size_t seed);
 STBDS_FUNC size_t stbds_hash_string(char *str, size_t seed);
 
@@ -618,7 +618,7 @@ STBDS_FUNC void * stbds_arrgrowf(void *a, size_t elemsize, size_t addlen, size_t
 #define stbds_shputs(t, s) \
     ((t) = stbds_hmput_key_wrapper((t), sizeof *(t), (void*) (s).key, sizeof (s).key, STBDS_HM_STRING), \
      (t)[stbds_temp((t)-1)] = (s), \
-     (t)[stbds_temp((t)-1)].key = stbds_temp_key((t)-1)) // above line overwrites whole structure, so must rewrite key here if it was allocated internally
+     (t)[stbds_temp((t)-1)].key = stbds_temp_key((t)-1)) // above line overwrites whole structure, so must rewrite key here if it was allocated functionly
 
 #define stbds_pshput(t, p) \
     ((t) = stbds_hmput_key_wrapper((t), sizeof *(t), (void*) (p)->key, sizeof (p)->key, STBDS_HM_PTR_TO_STRING), \

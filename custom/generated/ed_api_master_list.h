@@ -35,6 +35,7 @@ api(ed) function Token* tkarr_read(Token_Iterator_Array* it);
 api(ed) function Token* tkarr_inc(Token_Iterator_Array* it);
 api(ed) function Token* token_it_read(Token_Iterator* it);
 api(ed) function Token* token_it_inc_all(Token_Iterator* it);
+api(ed) function Token* token_it_dec_all(Token_Iterator* it);
 api(ed) function Token* token_it_inc(Token_Iterator* it);
 api(ed) function Token* token_it_dec(Token_Iterator* it);
 api(ed) function void set_y_up(Render_Target* target, Render_Config* config);

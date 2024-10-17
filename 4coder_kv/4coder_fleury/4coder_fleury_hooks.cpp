@@ -125,7 +125,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
         Token_Iterator_Array active_cursor_it = token_it_at_pos(0, &active_cursor_buffer_tokens, active_cursor_pos);
         Token *active_cursor_token = token_it_read(&active_cursor_it);
         
-        String active_cursor_string = string_u8_litexpr("");
+        String active_cursor_string = strlit("");
         if(active_cursor_token)
         {
             active_cursor_string = push_buffer_range(app, scratch, active_cursor_buffer, Ii64(active_cursor_token));
@@ -248,7 +248,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
     
     // NOTE(rjf): Interpret buffer as calc code, if it's the calc buffer.
     {
-        Buffer_ID calc_buffer_id = get_buffer_by_name(app, string_u8_litexpr("*calc*"), AccessFlag_Read);
+        Buffer_ID calc_buffer_id = get_buffer_by_name(app, strlit("*calc*"), AccessFlag_Read);
         if(calc_buffer_id == buffer)
         {
             F4_CLC_RenderBuffer(app, buffer, view_id, text_layout_id);
@@ -364,17 +364,17 @@ F4_DrawFileBar(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rec
     switch (*eol_setting){
         case LineEndingKind_Binary:
         {
-            push_fancy_string(scratch, &list, base_color, string_u8_litexpr(" bin"));
+            push_fancy_string(scratch, &list, base_color, strlit(" bin"));
         }break;
         
         case LineEndingKind_LF:
         {
-            push_fancy_string(scratch, &list, base_color, string_u8_litexpr(" lf"));
+            push_fancy_string(scratch, &list, base_color, strlit(" lf"));
         }break;
         
         case LineEndingKind_CRLF:
         {
-            push_fancy_string(scratch, &list, base_color, string_u8_litexpr(" crlf"));
+            push_fancy_string(scratch, &list, base_color, strlit(" crlf"));
         }break;
     }
     
@@ -383,13 +383,13 @@ F4_DrawFileBar(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rec
         Dirty_State dirty = buffer_get_dirty_state(app, buffer);
         String_u8 str = Su8(space, 0, 3);
         if (dirty != 0){
-            string_concat(&str, string_u8_litexpr(" "));
+            string_concat(&str, strlit(" "));
         }
         if (HasFlag(dirty, DirtyState_UnsavedChanges)){
-            string_concat(&str, string_u8_litexpr("*"));
+            string_concat(&str, strlit("*"));
         }
         if (HasFlag(dirty, DirtyState_UnloadedChanges)){
-            string_concat(&str, string_u8_litexpr("!"));
+            string_concat(&str, strlit("!"));
         }
         push_fancy_string(scratch, &list, pop2_color, str.string);
     }
@@ -594,11 +594,11 @@ function BUFFER_HOOK_SIG(F4_BeginBuffer)
  {
   if(buffer_name.size > 0)
   {
-   if(string_match(buffer_name, string_u8_litexpr("*calc*")))
+   if(string_match(buffer_name, strlit("*calc*")))
    {
     treat_as_code = true;
    }
-   else if(string_match(buffer_name, string_u8_litexpr("*peek*")))
+   else if(string_match(buffer_name, strlit("*peek*")))
    {
     treat_as_code = true;
    }

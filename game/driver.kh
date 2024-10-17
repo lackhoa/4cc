@@ -5,18 +5,18 @@ i1_wrapper(Vertex_Index);
 i1_wrapper(Curve_Index);
 i1_wrapper(Fill_Index);
 enum Bone_Type{
- Bone_None = 0,
- Bone_Head = 1,
- Bone_Arm = 2,
- Bone_Forearm = 3,
+ Bone_None           = 0,
+ Bone_Head           = 1,
+ Bone_Arm            = 2,
+ Bone_Forearm        = 3,
  Bone_Bottom_Phalanx = 4,
- Bone_Mid_Phalanx = 5,
- Bone_Top_Phalanx = 6,
- Bone_Torso = 7,
- Bone_References = 8,
- Bone_Hand = 9,
- Bone_Thumb = 10,
- Bone_Pelvis = 11,
+ Bone_Mid_Phalanx    = 5,
+ Bone_Top_Phalanx    = 6,
+ Bone_Torso          = 7,
+ Bone_References     = 8,
+ Bone_Hand           = 9,
+ Bone_Thumb          = 10,
+ Bone_Pelvis         = 11,
 };
 struct Bone_ID{
  Bone_Type type;

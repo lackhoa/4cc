@@ -4,13 +4,13 @@
 #include <poll.h>
 #define function ___fred_function
 
-internal void
+function void
 linux_default_mix_sources(void *ctx, f32 *mix_buffer, u32 sample_count)
 {
 
 }
 
-internal void
+function void
 linux_default_mix_destination(i16 *dst, f32 *src, u32 sample_count)
 {
     u32 opl = sample_count*2;
@@ -19,13 +19,13 @@ linux_default_mix_destination(i16 *dst, f32 *src, u32 sample_count)
     }
 }
 
-internal struct alsa_funcs {
+function struct alsa_funcs {
 #define ALSA_FN(r,n,a) r (*n) a;
 #include "alsa_funcs.txt"
 #undef ALSA_FN
 } snd_pcm;
 
-internal void
+function void
 linux_submit_audio(snd_pcm_t* pcm, i16* samples, u32 sample_count, f32* mix_buffer)
 {
     Audio_Mix_Sources_Function *audio_mix_src;
@@ -61,7 +61,7 @@ linux_submit_audio(snd_pcm_t* pcm, i16* samples, u32 sample_count, f32* mix_buff
 	}\
 })
 
-internal void
+function void
 linux_audio_main(void* _unused)
 {
     const u32 SamplesPerSecond = 48000;

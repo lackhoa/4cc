@@ -13,7 +13,7 @@ GL_FUNC(glBindVertexArray,    void, (GLuint array))
 GL_FUNC(glDeleteVertexArrays, void, (GLsizei n, const GLuint *arrays))
 
 #if !OS_LINUX
-GL_FUNC(glTexImage3D, void, (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels))
+GL_FUNC(glTexImage3D, void, (GLenum target, GLint level, GLint functionformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels))
 GL_FUNC(glTexSubImage3D, void, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void *pixels))
 GL_FUNC(glActiveTexture, void, (GLenum texture))
 #endif
@@ -81,18 +81,18 @@ GL_FUNC(glFramebufferTexture3D, void, (GLenum target, GLenum attachment, GLenum 
 
 GL_FUNC(glBlitFramebuffer, void, (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter))
 
-GL_FUNC(glTexImage2DMultisample, void, (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations))
+GL_FUNC(glTexImage2DMultisample, void, (GLenum target, GLsizei samples, GLenum functionformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations))
 
 
 GL_FUNC(glTexStorage2D, void, (GLenum target,
                                GLsizei levels,
-                               GLenum internalformat,
+                               GLenum functionformat,
                                GLsizei width,
                                GLsizei height))
 
 GL_FUNC(glTextureStorage2D, void, (GLuint texture,
                                    GLsizei levels,
-                                   GLenum internalformat,
+                                   GLenum functionformat,
                                            GLsizei width,
                                            GLsizei height))
 

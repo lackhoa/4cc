@@ -42,7 +42,7 @@ make_doc_function(Arena *arena, Doc_Cluster *cluster, API_Call *call){
                               string_expand(indent));
         }
     }
-    string_list_push(arena, &list, string_u8_litexpr(");"));
+    string_list_push(arena, &list, strlit(");"));
     
     String contents = string_list_flatten(arena, list);
     new_doc_par_single_code(arena, result.sig, contents, DocCodeLanguage_Cpp);

@@ -9,14 +9,14 @@
 
 // TOP
 
-internal void
+function void
 text_layout_init(Thread_Context *tctx, Text_Layout_Container *container){
  block_zero_struct(container);
  container->node_arena = make_arena_system();
  container->table = make_table_u64_u64(tctx->allocator, 20);
 }
 
-internal Text_Layout*
+function Text_Layout*
 text_layout_new__alloc_layout(Text_Layout_Container *container)
 {
  Text_Layout *node = container->free_nodes;
@@ -28,7 +28,7 @@ text_layout_new__alloc_layout(Text_Layout_Container *container)
  return(node);
 }
 
-internal void
+function void
 text_layout_release(Thread_Context *tctx, Models *models, Text_Layout_Container *container, Text_Layout *layout)
 {
  Arena arena = *layout->arena;
@@ -71,7 +71,7 @@ text_layout_get(Text_Layout_Container *container, Text_Layout_ID id){
     return(result);
 }
 
-internal b32
+function b32
 text_layout_erase(Thread_Context *tctx, Models *models, Text_Layout_Container *container, Text_Layout_ID id){
  b32 result = false;
  Table_Lookup lookup = table_lookup(&container->table, id);

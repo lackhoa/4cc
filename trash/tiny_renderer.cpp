@@ -1,4 +1,4 @@
-internal void
+function void
 bitmap_set(Bitmap *bitmap, i1 x, i1 y, u32 color)
 {
     y = bitmap->dim.y-1 - y; // inverting y
@@ -17,7 +17,7 @@ get_bitmap_size(Bitmap *bitmap)
     return bitmap->dim.y * bitmap->pitch;
 }
 
-internal void
+function void
 tr_rectangle2i(Bitmap *bitmap, rect2i rect, ARGB_Color color)
 {
     i2 dim = rect2i_get_dim(rect);
@@ -30,7 +30,7 @@ tr_rectangle2i(Bitmap *bitmap, rect2i rect, ARGB_Color color)
     }
 }
 
-internal void 
+function void 
 tr_linei(Bitmap *bitmap, 
          i1 x0, i1 y0, i1 x1, i1 y1,
          ARGB_Color color)
@@ -75,7 +75,7 @@ tr_linei(Bitmap *bitmap,
     }
 }
 
-internal void
+function void
 tr_line(Bitmap *bitmap, 
         f32 x0, f32 y0, f32 x1, f32 y1,
         ARGB_Color color)
@@ -89,7 +89,7 @@ tr_line(Bitmap *bitmap, v2 p0, v2 p1, ARGB_Color color)
     tr_line(bitmap, p0.x, p0.y, p1.x, p1.y, color);
 }
 
-internal void
+function void
 tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color) 
 {
     if (p0.y > p1.y) macro_swap(p0, p1); 
@@ -144,7 +144,7 @@ tr_triangle_old_school(Bitmap *bitmap, v2 p0, v2 p1, v2 p2, ARGB_Color color)
 
 
 // TODO: idk why this returns a v3, but rn I don't care
-internal v3 barycentric(v2 *p, v2 P)
+function v3 barycentric(v2 *p, v2 P)
 {
     v2 p0 = p[0];
     v2 p1 = p[1];
@@ -158,7 +158,7 @@ internal v3 barycentric(v2 *p, v2 P)
         return v3{1.0f - (u.x+u.y)/u.z, u.y/u.z, u.x/u.z};
 }
 
-internal void 
+function void 
 tr_triangle(Bitmap *bitmap, v2 *p, ARGB_Color color)
 { 
     i2 max = bitmap->dim;
@@ -188,7 +188,7 @@ tr_triangle(Bitmap *bitmap, v2 *p, ARGB_Color color)
 }
 
 
-internal void
+function void
 tiny_renderer_main(i2 dim, u32 *data, Model *model)
 {
     Bitmap bitmap_value = {.data=data, .dim=dim, .pitch=4*dim.x};

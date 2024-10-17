@@ -69,7 +69,7 @@
 #    define PACK_END    ; __pragma( pack(pop))
 #endif
 
-#define internal      static
+#define function      static
 #define function      static
 #define xfunction             //NOTE(kv) exported function
 #define local_persist static
@@ -97,6 +97,8 @@ typedef float r32;
 typedef float f32;
 typedef float v1;
 /* Types: end */
+#define line_unique_var   PP_Concat(i, __LINE__)
+#define count_unit_var    PP_Concat(i, __COUNT__)
 
 #define for_i1(VAR, MIN, MAX)  for(i32 VAR=MIN; VAR<MAX; VAR++)
 #define for_i32  for_i1
@@ -104,8 +106,7 @@ typedef float v1;
 #define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
-#define line_unique_var               PP_Concat(i, __LINE__)
-#define for_repeat(TIMES)   for(i32 line_unique_var=0; line_unique_var<TIMES; line_unique_var++)
+#define for_repeat(TIMES) for(i32 line_unique_var=0; line_unique_var<TIMES; line_unique_var++)
 
 #ifdef KV_NO_FORCE_INLINE
 # define force_inline inline
@@ -1644,7 +1645,7 @@ enum{
 #define api(x)
 
 #define local_const  static const
-#define global_const static const  // NOTE(kv): Pretty useful you wanna eliminate globals, these aren't problematic
+#define global_const static const  // TODO(kv) Just say "global const" man! The language already helped you do it!
 
 #define ArrayCount(a) i32((sizeof(a))/(sizeof(*a)))
 
@@ -2081,7 +2082,11 @@ struct String{
   u64 size;
   u64 len;
   u64 length;
+  u64 count;
  };
+ u8 &operator[](i32 index){
+  return str[index];
+ }
 };
 typedef String String8;  // @Deprecated
 
@@ -2098,6 +2103,19 @@ to_cstring(Stringz string){
   result = (char *)string.str;
  }
  return result;
+}
+inline String
+string_skip(String str, u64 n){
+ n = clamp_max(n, str.size);
+ str.str  += n;;
+ str.size -= n;
+ return(str);
+}
+inline void
+string_skip(String *str, u64 n){
+ n = clamp_max(n, str->size);
+ str->str  += n;;
+ str->size -= n;
 }
 
 struct String_Array{
@@ -2347,18 +2365,17 @@ block_match(void *a, void *b, u64 size)
 }
 
 inline void
-block_fill_u8(void *dst, u64 size, u8 val)
-{
-    gb_memset(dst, val, size);
+block_fill_u8(void *dst, u64 size, u8 val) {
+ gb_memset(dst, val, size);
 }
 function void
 block_fill_u16(void *a, u64 size, u16 val)
 {
-    Assert(size%sizeof(u16) == 0);
-    u64 count = size/sizeof(u16);
-    for (u16 *ptr = (u16*)a, *e = ptr + count; ptr < e; ptr += 1){
-        *ptr = val;
-    }
+ Assert(size%sizeof(u16) == 0);
+ u64 count = size/sizeof(u16);
+ for (u16 *ptr = (u16*)a, *e = ptr + count; ptr < e; ptr += 1){
+  *ptr = val;
+ }
 }
 function void
 block_fill_u32(void *a, u64 size, u32 val)
@@ -3262,25 +3279,24 @@ cstring_length(u8 *str){
  return(length);
 }
 //
-force_inline u64 cstring_length(char *str) {
+inline u64 cstring_length(char *str) {
  return cstring_length((u8 *)str);
 }
 
-force_inline String SCu8(void)             { return {}; }
-force_inline String SCu8(char &c)          { return {(u8*)&c, 1}; }
-force_inline String SCu8(u8 *str, u64 size){ return {str, size}; }
-force_inline Stringz SCu8z(u8 *str, u64 size){ return {str, size}; }
-force_inline Stringz SCu8(u8 *str)          { return {str, cstring_length(str)}; }
-force_inline Stringz SCu8(char *str)        { return(SCu8((u8*)str)); }
-force_inline Stringz SCu8(const char *str)  { return(SCu8((u8*)str)); }
-
-struct String_u8
-{
- union
- {
+global const String empty_string   = {(u8*)"", 0};
+global const Stringz empty_stringz = {(u8*)"", 0};
+inline String  SCu8()                  { return empty_string; }
+inline String  SCu8(char &c)           { return {(u8*)&c, 1}; }
+inline String  SCu8(u8 *str, u64 size) { return {str, size}; }
+inline Stringz SCu8z(u8 *str, u64 size){ return {str, size}; }
+inline Stringz SCu8(u8 *str)           { return {(u8 *)str, cstring_length(str)}; }
+inline Stringz SCu8(char *str)         { return {(u8 *)str, cstring_length(str)}; }
+inline Stringz SCu8(const char *str)   { return {(u8 *)str, cstring_length((char *)str)}; }
+//-
+struct String_u8 {
+ union {
   String string;
-  struct
-  {
+  struct {
    u8 *str;
    u64 size;
   };
@@ -3305,15 +3321,13 @@ string_concat(String_u8 *dst, String src)
 
 #define string_litexpr(s) SCchar((s), sizeof(s) - 1)
 //NOTE(kv) sizeof takes into account the null terminator, for some reason.
-#define string_u8_litexpr(s)  SCu8z((u8*)(s), (u64)(sizeof(s) - 1))
-#define str8lit string_u8_litexpr
-#define strlit  string_u8_litexpr
+#define strlit(s)  SCu8z((u8*)(s), (u64)(sizeof(s) - 1))
+#define str8lit strlit
 #define string_u16_litexpr(s) SCu16((u16*)(s), (u64)(sizeof(s)/2 - 1))
 
 #define string_expand(s) (i32)(s).size, (char*)(s).str
 #define strexpand string_expand
 
-global_const String empty_string = {(u8*)"", 0};
 
 #define filename_linum strlit(filename_line_number)
 
@@ -3642,11 +3656,13 @@ linalloc_wrap_write(String8 data, u64 size, void *src)
 #define push_array_zero(a,T,c)    push_array(a,T,c,true)
 #define push_array_copy(a,T,c,s)  ((T*)linalloc_wrap_write(arena_push(a, sizeof(T)*(c), filename_linum, 3), sizeof(T)*(c), (s)))
 #define pop_array(a,T,c)          (arena_pop((a), sizeof(T)*(c)))
-#define push_value(arena,value,pointer) \
-mytypeof(value) *pointer = push_struct(arena, mytypeof(value)); \
-*pointer = value;
-//-
-
+template<class T>
+inline T
+*push_value(Arena *arena, const T &value){
+ T *pointer = push_struct(arena, T);
+ *pointer = value;
+ return pointer;
+}
 //-
 struct Temp_Memory_Block{
  Temp_Memory temp;
@@ -3655,19 +3671,15 @@ struct Temp_Memory_Block{
  ~Temp_Memory_Block();
  void restore(void);
 };
-
 inline Temp_Memory_Block::Temp_Memory_Block(Temp_Memory t){
  this->temp = t;
 }
-
 inline Temp_Memory_Block::Temp_Memory_Block(Arena *arena){
  this->temp = begin_temp(arena);
 }
-
 inline Temp_Memory_Block::~Temp_Memory_Block(){
  end_temp(this->temp);
 }
-
 inline void
 Temp_Memory_Block::restore(void){
  end_temp(this->temp);
@@ -4748,8 +4760,6 @@ enum{
  Scan_Forward  =  1,
 };
 
-
-
 //~
 
 function u64
@@ -4760,8 +4770,7 @@ string_find_first_non_whitespace(String str){
 }
 
 function String
-string_skip_whitespace(String str)
-{
+string_skip_whitespace(String str){
  u64 f = string_find_first_non_whitespace(str);
  str = string_skip(str, f);
  return(str);

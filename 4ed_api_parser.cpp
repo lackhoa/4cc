@@ -294,78 +294,57 @@ api_parse_source__union(Arena *arena, String source_name, String source, Token_I
 }
 
 function void
-api_parse_source_add_to_list(Arena *arena, String source_name, String source, API_Definition_List *list)
-{
- Token_List token_list = lex_full_input_cpp(arena, source);
+api_parse_source_add_to_list(Arena *arena, String source_name, String source, Token_List token_list, API_Definition_List *list){
  Token_Iterator token_it = make_token_iterator(token_iterator(0, &token_list));
  
- for (;;)
- {
+ for(;;){
   Token *token = token_it_read(&token_it);
-  if (token->sub_kind == TokenCppKind_EOF){
+  if(token->sub_kind == TokenCppKind_EOF){
    break;
   }
   
-  if (api_parse__match_ident(&token_it, source, "api"))
-  {
+  if(api_parse__match_ident(&token_it, source, "api")){
    const i1 api_cap = 8;
    String buffer[api_cap];
    arrayof<String> api_names = static_array(buffer, api_cap);
-   if (api_parse__match(&token_it, TokenCppKind_ParenOp))
-   {
+   if(api_parse__match(&token_it, TokenCppKind_ParenOp)) {
     String name;
-    while( api_parse__ident(&token_it, source, &name) )
-    {
+    while(api_parse__ident(&token_it, source, &name)) {
      api_names.push(name);
      if (api_parse__match(&token_it, TokenCppKind_ParenCl)) {
       break;
      }
     }
     {
-     if (api_parse__match_ident(&token_it, source, "function")){
+     if(api_parse__match_ident(&token_it, source, "function")){
       api_parse_source__function(arena, source_name, source, &token_it, api_names, list);
-     }
-     else if (api_parse__match_ident(&token_it, source, "struct")){
+     }else if(api_parse__match_ident(&token_it, source, "struct")){
       api_parse_source__struct(arena, source_name, source, &token_it, api_names, list);
-     }
-     else if (api_parse__match_ident(&token_it, source, "union")){
+     }else if(api_parse__match_ident(&token_it, source, "union")){
       api_parse_source__union(arena, source_name, source, &token_it, api_names, list);
      }
     }
    }
-  }
-  else if (!token_it_inc(&token_it)) {
+  }else if(!token_it_inc(&token_it)){
    break;
   }
  }
 }
-
-function API_Definition_List
-api_parse_source(Arena *arena, String source_name, String source){
- API_Definition_List list = {};
- api_parse_source_add_to_list(arena, source_name, source, &list);
- return(list);
-}
-
 function b32
-api_parser_main(arrayof<File_Name_Data> source_files)
-{
+api_parser_main(arrayof<Meta_Parsed_File> source_files){
  b32 ok = true;
  Arena scratch = make_arena_malloc();
  
  API_Definition_List list = {};
- for_i1(index,0,source_files.count)
- {
+ for_i1(index,0,source_files.count){
   auto source_file = source_files[index];
-  api_parse_source_add_to_list(&scratch, source_file.name, source_file.data, &list);
+  api_parse_source_add_to_list(&scratch, source_file.name, source_file.data, source_file.token_list, &list);
  }
  
- if (ok)
- {
+ if(ok){
   for (API_Definition *node = list.first;
        node != 0;
-       node = node->next)
-  {
+       node = node->next){
    ok = api_definition_generate_api_includes(&scratch, node, GeneratedGroup_Custom, APIGeneration_NoAPINameOnCallables);
    if (!ok) { break; }
   }
@@ -373,5 +352,4 @@ api_parser_main(arrayof<File_Name_Data> source_files)
  
  return ok;
 }
-
 // BOTTOM

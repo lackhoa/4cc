@@ -26,6 +26,6 @@ global b32 global_battery_saver = 0;
 #define MemorySet                 memset
 #define MemoryCopy                memcpy
 #define CalculateCStringLength    strlen
-#define S8Lit(s)                  string_u8_litexpr(s)
+#define S8Lit(s)                  strlit(s)
 
 #endif // FCODER_FLEURY_UBIQUITOUS_H

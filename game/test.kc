@@ -1,0 +1,8 @@
+// Generates: test.gen.cpp
+function void
+render_character(Pose *pose, v1 animation_time){
+ cache(v1 tblink = pose->tblink;){
+  b32 show_eye_guideline = painter.show_grid;
+ }
+}
+//-

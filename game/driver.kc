@@ -1,20 +1,22 @@
+//@generates driver.gen.cpp
 //-NOTE(kv): The (deprecating) "script"
+//IMPORTANT(kv): DO NOT delete until you've resolved all TODOs
 //#define AD_IS_DRIVER 1
 //#define AD_IS_GAME 1
 //#define ED_API_USER 1
-//#include "kv.h"
-//#include "generated/driver.gen.h"
-//#include "driver.h"
-//#include "game_draw.cpp"
-//#include "game_fui.h"
-//#include "game_utils.cpp"
-//#include "game_body.cpp"
 
 // Select animation: @set_movie_shot
-
-global_const v1 head_radius_world = 9.2f * centimeter;  // @Tweak I have no idea where I pulled this number from
-global_const v1 head_unit_world   = head_radius_world*(1.f+square_root(2));
-
+//-
+#define cache
+#define cached
+//-
+global const v1 head_radius_world = 9.2f * centimeter;  // @Tweak I have no idea where I pulled this number from
+global const v1 head_unit_world   = head_radius_world*(1.f+square_root(2));
+global const v1 root2 = square_root(2.f);
+global const v1 inv_root2 = 1.f / root2;
+global const v1 loomis_unit = inv_root2;// NOTE: From brow to nose tip and all that jazz
+global const v1 faceZ = 1.f;
+//-
 global v3 scap_sock_top;
 global v3 palm_in;
 global v3 thumb_kbot;
@@ -28,18 +30,24 @@ global v3 finger_vecs[4];
 global v3 arm_rotation_pivot;
 // NOTE: "forearm_rotation_pivot" is in forearm space 
 global v3 forearm_rotation_pivot;
-
+//-TODO(kv) Gotta put these in a struct
+global v3 nose_rootL;
+global v3 nose_wing;
+global v3 brow_out;
+global Bez brow_ridge;
+global v3 cheek_low;
+global v3 nose_root_backL;
+global v3 cheek_up;
+//-
 xfunction void
-driver_update(Viewport *viewports)
-{
+driver_update(Viewport *viewports){
  // NOTE ;update_game_config
- debug_frame_time_on      = fbool(0);
- bezier_poly_nslice       = fval(16);
+ debug_frame_time_on = fbool(0);
+ bezier_poly_nslice  = fval(16);
 }
 //~ Movie shots
 function shot_function_return
-movie_shot_blinking(shot_function_params)
-{
+movie_shot_blinking(shot_function_params){
  aset(teye_theta, 3);
  arest(8);
  aset(teye_theta, -2);
@@ -59,34 +67,27 @@ movie_shot_blinking(shot_function_params)
  aset(tblink, 0);
  arest(12);
 }
-
 function shot_function_return
-movie_shot_arm(shot_function_params)
-{
+movie_shot_arm(shot_function_params){
  asetf(tarm_abduct, fval(0.0211f, f20th));
- if ( fbool(0) ) {
+ if(fbool(0)){
   aset(tarm_bend, fval(11));
  }
  arest(6);
 }
-
 function void
-blink_2_frames(Movie_Shot *shot)
-{
+blink_2_frames(Movie_Shot *shot){
  aset(tblink, 1);
  arest(1);
  aset(tblink, 6);
  arest(1);
 }
-
 function void
-open_eyes(Movie_Shot *shot) {
+open_eyes(Movie_Shot *shot){
  aset(tblink,0);
 }
-
 function shot_function_return
-movie_shot_head_tilt(shot_function_params)
-{
+movie_shot_head_tilt(shot_function_params){
  {// NOTE: right tilt
   aset(thead_theta, 0);
   arest(2);
@@ -120,7 +121,6 @@ movie_shot_head_tilt(shot_function_params)
  aset(thead_theta, 6); // rest
  arest(8);
 }
-
 //~
 //TODO(kv) We ain't done yet: need to store "indicate_vertex" parameters
 #define vv(NAME, VAL, ...) \
@@ -131,7 +131,7 @@ send_vert(NAME);
 NAME = VAL; \
 send_vert(NAME);
 
-//TODO(kv) @incomplete we're not saving the fact that it is a sampling situation
+//TODO(kv) @incomplete We're not storing the fact that it is a sampling vertex
 #define vv_sample(name, curve, t, ...) \
 v3 name = bezier_sample(curve, t); \
 send_vert(name);
@@ -144,8 +144,7 @@ send_vert(name);
 #define X_comma_list(NAME)              NAME,
 //~
 function void
-render_hand(Forearm forearm_obj)
-{//~NOTE: The hand
+render_hand(Forearm forearm_obj){
  vertex_block("hand");
  radius_scale_block(fval(0.5038f));
  lp_block(nslice_per_meter, fval(5.9797f) * 100.f);
@@ -172,7 +171,7 @@ render_hand(Forearm forearm_obj)
                kline_in),
       lp(I4(8,0,3,1)));
  vv(thumb_palm_conn, (V3(0.3704f, -3.0096f, -0.3481f)));
- draw(bez_v3v2(thumb_kbot, (V3()),
+ draw(bez_v3v2(thumb_kbot, V3(),
                V2(0,0), thumb_palm_conn));
  {// NOTE: Thumb
   bone_block(Bone_Thumb);
@@ -201,14 +200,14 @@ render_hand(Forearm forearm_obj)
                  V2(0,0), V3x(-1)
                  , thumb_ktop_out));
   draw(bez_unit(thumb_ktop_out, V2(0.f, 0.2369f),
-                 V2(0.4569f, -1.7741f), V3x(-1), thumb_tip),
+                V2(0.4569f, -1.7741f), V3x(-1), thumb_tip),
        lp(I4(4,1,2,1)));
   draw(bez_unit(thumb_ktop_in, V2(0,0),
                 V2(0.2207f, 1.4562f), V3x(-1), thumb_tip),
        lp(I4(1,1,1,2)));
  }
  draw(thumb_palm_conn, kline_out, lp(I4(5,3,1,1)));
- if (level1){ draw(knuckle_line); }
+ if(level1){ draw(knuckle_line); }
  
  draw(bez_v3v2(forearm.radius_bump, (V3(-0.f, 0.0101f, 0.0167f)),
                V2(0,0), thumb_kbot));
@@ -319,13 +318,8 @@ render_hand(Forearm forearm_obj)
   }
  }
 }
-
-
-//~
-
 function Arm
-render_arm(Pose *pose, Torso const&torso_obj, v3 elbow_up_out)
-{//;upper_arm
+render_arm(Pose *pose, Torso &torso_obj, v3 elbow_up_out) {//;upper_arm
  view_vector_block((V3(-0.0802f, 0.f, -0.1673f)));
  vertex_block("upper_arm");  //NOTE: important for studying what goes where
  scale_in_block(default_fvert_delta_scale, 2.f);
@@ -337,36 +331,31 @@ render_arm(Pose *pose, Torso const&torso_obj, v3 elbow_up_out)
  v1 tarm_bend = (pose->tarm_bend);
  indicate(arm_rotation_pivot,0,true);  // @armT
  
- v3 internal_condyle, external_condyle;
+ v3 function_condyle, external_condyle;
  {//NOTE: The skeleton (humerus and ulna)
-  va(internal_condyle, V3(-0.1053f, -1.0756f, -0.1775f));
-  va(external_condyle, internal_condyle+(V3(0.4031f, 0.1064f, 0.0402f)));
+  va(function_condyle, V3(-0.1053f, -1.0756f, -0.1775f));
+  va(external_condyle, function_condyle+(V3(0.4031f, 0.1064f, 0.0402f)));
   //if ( level2 || preset == 0 || preset == 1 || preset == 3 || preset == 4 )
   {// NOTE: Drawing the skeleton
    hl_block;
    vv(sock, (V3(-0.0675f, 0.733f, -0.2688f)));
-   {//NOTE: internal
-    vv(v89, internal_condyle+(V3(0.127f, 0.1897f, -0.f)));
+   {//NOTE: function
+    vv(v89, function_condyle+(V3(0.127f, 0.1897f, -0.f)));
     bs_parabola(sock,
-                (V3(0.137f, 0.5108f, 0.0235f)),
+                V3(0.137f, 0.5108f, 0.0235f),
                 v89,
                 lp(V4(0.5f)));
-    bs_unit2(v89, (V4(0.f, 0.4207f, 0.f, 0.f)),
-             (V3(0.5647f, -0.8253f, 0.f)), internal_condyle,
+    bs_unit2(v89, V4(0.f, 0.4207f, 0.f, 0.f),
+             V3(0.5647f, -0.8253f, 0.f), function_condyle,
              lp(0.5f*big_to_small()));
    }
    {//NOTE: external
-    vv(a,external_condyle+(V3(-0.0777f, 0.3589f, -0.0402f)));
-    vv(b,sock+(V3(0.2662f, -0.0344f, 0.0375f)));
-    bs_unit2(a,(V4(0.f, 1.0357f, 0.f, 0.f)),(V3(-0.1623f, -0.9867f, 0.f)), external_condyle);
-    bs_parabola(b, V3(-0.0431f, 0.296f, 0.f), a,
-                lp(.5f));
-    vv(c,b+V3(-0.152f, 0.2585f, 0.f));
-    bs_v3v2(b,
-            V3(0.1369f, 0.0569f, 0.f),
-            V2(0.0914f, 0.1488f),
-            c,
-            lp(.5f));
+    vv(a,external_condyle+V3(-0.0777f, 0.3589f, -0.0402f));
+    vv(b,sock+V3(0.2662f, -0.0344f, 0.0375f));
+    bs_unit2(a, V4(0.f, 1.0357f, 0.f, 0.f), V3(-0.1623f, -0.9867f, 0.f), external_condyle);
+    bs_parabola(b, V3(-0.0431f, 0.296f, 0.f), a, lp(.5f));
+    vv(c, b+V3(-0.152f, 0.2585f, 0.f));
+    bs_v3v2(b, V3(0.1369f, 0.0569f, 0.f), V2(0.0914f, 0.1488f), c, lp(.5f));
    }
    vv(v98, sock+(V3(0.0947f, 0.1683f, 0.2105f)));
    vv(v99, v98+(V3(-0.f, -0.6114f, -0.0063f)));
@@ -404,10 +393,10 @@ render_arm(Pose *pose, Torso const&torso_obj, v3 elbow_up_out)
                             (V3(0.9999f, 0.f, 0.0112f)),
                             delt_bot);
   Bez delt_vback = bez_unit2(delt_top_back,
-                             (V4(-0.13f, 0.1784f, -0.1368f, 0.2863f)),
-                             (V3(0.6431f, 0.f, -0.7657f)),
+                             V4(-0.13f, 0.1784f, -0.1368f, 0.2863f),
+                             V3(0.6431f, 0.f, -0.7657f),
                              delt_bot);
-  va(delt_back, (V3(-0.0076f, 0.2268f, -0.4244f)));
+  va(delt_back, V3(-0.0076f, 0.2268f, -0.4244f));
   fill3(delt_back, delt_bot, delt_top_back);
   
   draw(delt_vmid, lp_alignment_min((0.8202f)));
@@ -418,7 +407,7 @@ render_arm(Pose *pose, Torso const&torso_obj, v3 elbow_up_out)
    draw(delt_vback, params);
    fill_bez(delt_vback);
   }
-  delt_bot_line = bezd_old(delt_bot, (V3()),
+  delt_bot_line = bez_bezd_old(delt_bot, (V3()),
                            V2(0,0), delt_back);
   draw(delt_bot_line, i2f6(I4(4,0,0,4)));
   //NOTE: fill the side
@@ -449,11 +438,11 @@ render_arm(Pose *pose, Torso const&torso_obj, v3 elbow_up_out)
    fill( bezier_sample(delt_cross, (0.5f)), delt_vfront);
   }
  }
- v3 pectoral_arm = (V3(-0.2013f, 0.475f, 0.1047f));
+ v3 pectoral_arm = V3(-0.2013f, 0.475f, 0.1047f);
  {
   Bez line = bez_unit2(pectoral_arm,
-                       (V4(0.f, 0.3866f, 0.f, 0.f)),
-                       (V3(-0.997f, 0.0775f, 0.f)),
+                       V4(0.f, 0.3866f, 0.f, 0.f),
+                       V3(-0.997f, 0.0775f, 0.f),
                        torso.pectoral_torso);
   draw(line);
   fill(torso.delt_collar, line);
@@ -465,15 +454,15 @@ render_arm(Pose *pose, Torso const&torso_obj, v3 elbow_up_out)
  vv(brachio_a, (V3(0.1031f, -0.7618f, -0.0498f)));
  {//NOTE: The 'ceps
   {//NOTE: tricep
-   vv(tricep_up, bezier_sample(delt_back_line, (0.2993f)));
+   vv_sample(tricep_up, delt_back_line, 0.2993f);
    va(tricep_mid, (V3(-0.1105f, -0.1135f, -0.475f)));
    //NOTE: The white part
-   va(white_out, tricep_mid+(V3(0.0446f, -0.1341f, 0.0966f)));
-   va(white_in, tricep_mid+(V3(-0.1177f, -0.3581f, 0.007f)));
+   va(white_out, tricep_mid+V3(0.0446f, -0.1341f, 0.0966f));
+   va(white_in, tricep_mid+V3(-0.1177f, -0.3581f, 0.007f));
    {
-    draw(bezd_len(delt_back, (V3(-0.f, 0.f, -0.0662f)),
+    draw(bezd_len(delt_back, V3(-0.f, 0.f, -0.0662f),
                   V2(0,0), tricep_mid),
-         i2f6(I4(5,0,0,0)));
+         I4(5,0,0,0));
     draw(bez_line(tricep_mid, white_in), i2f6(I4(3,0,0,0)));
     draw(bez_line(tricep_mid, white_out), i2f6(I4(1,1,1,1)));
    }
@@ -572,9 +561,8 @@ render_arm(Pose *pose, Torso const&torso_obj, v3 elbow_up_out)
  }
  return arm_obj;
 }
-
 function Forearm
-render_forearm(Arm const&arm_obj, v3 elbow_offset, v3 elbow_up_out)
+render_forearm(Arm &arm_obj, v3 elbow_offset, v3 elbow_up_out)
 {
  mat4i &ot   = p_current_world_from_bone();
  mat4i &armT = p_mom_bone_xform();
@@ -680,11 +668,11 @@ render_forearm(Arm const&arm_obj, v3 elbow_offset, v3 elbow_up_out)
                arm.brachio_a));
  // brachio_mid
  draw(bez_unit(arm.brachio_humerus2,
-                V2(0.f, 0.0875f),
-                V2(0.f, 0.1935f),
-                (V3(0.7928f, 0.f, 0.6095f)),
-                brachio_b),
-      i2f6(I4(0,0,3,6)));
+               V2(0.f, 0.0875f),
+               V2(0.f, 0.1935f),
+               (V3(0.7928f, 0.f, 0.6095f)),
+               brachio_b),
+      I4(0,0,3,6));
  fill3(arm.brachio_humerus, arm.brachio_a, elbow_up_out);
  fill4(arm.brachio_humerus, arm.brachio_humerus2, arm.brachio_a, brachio_b);
  
@@ -703,7 +691,7 @@ render_forearm(Arm const&arm_obj, v3 elbow_offset, v3 elbow_up_out)
   draw(bez_v3v2(ulnar_ball, (V3(0.0482f, 0.f, -0.f)),
            V2(0,0), v566),
        lp(I4(0,5,2,0)));
-  draw(bez_v3v2(arm.internal_condyle, (V3(-0.0671f, 0.f, 0.f)),
+  draw(bez_v3v2(arm.function_condyle, (V3(-0.0671f, 0.f, 0.f)),
                 V2(0,0), v566),
        lp(I4(1,5,5,0)));
   // NOTE: This part of the wrist is receded from the palm
@@ -721,9 +709,9 @@ render_forearm(Arm const&arm_obj, v3 elbow_offset, v3 elbow_up_out)
                (V3(0.1923f, -1.8531f, -0.198f))));
  
  Bez l618 = bez_v3v2(arm.external_condyle, (V3(0.0833f, 0.3209f, -0.0449f)),
-                V2(0,0), middle_finger_meeter);
+                     V2(0,0), middle_finger_meeter);
  draw(l618);
- vv(v612, bezier_sample(l618, (0.7612f)));
+ vv_sample(v612, l618, 0.7612f);
  fill3(v612, arm.external_condyle, brachio_c);
  fill3(v612, v593, radius_back);
  fill3(v612, brachio_c, v593);
@@ -734,15 +722,6 @@ render_forearm(Arm const&arm_obj, v3 elbow_offset, v3 elbow_up_out)
  macro_forearm(export_);
 #undef export_
  return forearm_obj;
-}
-
-inline mat4i &
-get_bone_xform(Bone_Type type, i1 lr_index){
- return get_bone(*painter.modeler, type, lr_index).xform;
-}
-inline mat4i &
-get_bone_xform(Bone_Type type){
- return get_bone_xform(type, painter.lr_index);
 }
 function Torso
 render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
@@ -774,7 +753,7 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
  vv(delt_collar, shoulder + V3(-0.3387f, -0.02f, 0.1371f));
  vv(sternumL, sternum + V3x((0.0919f)));
  {// NOTE: Neck
-  Bezier neck_front_vline = bezd_old(head.head_neck_junction,
+  Bezier neck_front_vline = bez_bezd_old(head.head_neck_junction,
                                      V3(-0.f, 0.f, -0.0968f), 
                                      V2(0.f, 0.2897f), sternum);
   draw(neck_front_vline, profile_visible_transition(0.5f));
@@ -804,19 +783,14 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
                   shoulder),
        I4(5,3,3,1));
   {
-   auto lp = painter.line_params;
-   if(level1){
-    push_hl();
-   }
+   //TODO(kv) What ARE we gonna do with this conditional highlighting?
+   //  We could add a thing that says "turn on highlighting when this changes"
+   if(level1){ push_hl(); }
    draw(collar_out);
    draw(collar_in);
-   if(level1){
-    pop_hl();
-   }
+   if(level1){ pop_hl(); }
   }
-  
-  //~TODO: Weird code alert!!!
-  {
+  {//~TODO: Weird code alert!!!
    Bezier sterno;
    {
     sterno = bez_offset(head.behind_ear,
@@ -835,7 +809,7 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
    }
    
    //TODO: the sterno is bugged when looked from behind ;sterno_drawing
-   draw(sterno, i2f6(I4(2,0,0,3)));
+   draw(sterno, I4(2,0,0,3));
    
    fill_dbez(neck_back_line, sterno);
    fill_dbez(neck_front_vline, sterno);
@@ -849,28 +823,27 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
   // NOTE rib_midY is lower than half shoulder to navel
   v1 rib_midY = (shoulder.y - 0.65f*head_unit + (-0.0775f));
   va(rib_mid, V3(0.f, rib_midY, (0.8061f)));
-  if(is_left())
-  {
-   draw(bezd_old(sternum,
-                 V3(0.f, 0.0027f, 0.2265f),
-                 V2(0.f, 0.0935f),
-                 rib_mid));
+  if(is_left()){
+   draw(bez_bezd_old(sternum,
+                     V3(0.f, 0.0027f, 0.2265f),
+                     V2(0.f, 0.0935f),
+                     rib_mid));
   }
   vv(ribL, rib_mid+(V3(0.559f, -0.7158f, -0.2772f)));
   // NOTE: I guess the rib cage ends where the elbow is
   v3 rib_in = rib_mid+V3x((0.0905f));
   draw(bez_unit2(rib_in,
-                V4(0.f, 0.0689f, 0.0558f, 0.2431f),
-                (V3(0.629f, -0.2482f, 0.7367f)),
-                ribL),
+                 V4(0.f, 0.0689f, 0.0558f, 0.2431f),
+                 V3(0.629f, -0.2482f, 0.7367f),
+                 ribL),
        I4(2,6,3,1));
   
   fill4( rib_mid, ribL, delt_collar, sternum);
   va(rib_back, ribL+(V3(0.0855f, 0.171f, -0.5742f)));
   draw(bez_unit(ribL, V2(-0.0705f, 0.2667f),
-                 V2(0.f, 0.384f), 
-                 (V3(0.5421f, -0.8353f, 0.0916f)),
-                      rib_back));
+                V2(0.f, 0.384f), 
+                V3(0.5421f, -0.8353f, 0.0916f),
+                rib_back));
   {//-NOTE: David Finch's vest shape
    vv(vestL,ribL+(V3(0.0371f, 0.3022f, 0.0011f)));
    draw(bez_unit2(rib_in,
@@ -880,7 +853,7 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
    vv(vest_back, rib_back+(V3(-0.f, 0.5114f, -0.0067f)));//todo: where?
    draw(bez_unit2(vestL,
                   V4(-0.0067f, 0.1427f, 0.f, 0.3102f),
-                  (V3(0.9212f, -0.3891f, -0.f)),
+                  V3(0.9212f, -0.3891f, -0.f),
                   vest_back));
   }
  }
@@ -889,7 +862,7 @@ render_torso(Pose *pose, Pelvis pelvis_obj, Head head_obj){
  {// NOTE: connection to the arm
   Bez latis_arm_line = bez_unit(rib_back, V2(0.1935f, 0.0429f), 
                                 V2(0.151f, 0.0235f),
-                                (V3(1.f, 0.f, -0.f)),
+                                V3(1.f, 0.f, -0.f),
                                 latis_arm);
   draw(latis_arm_line, lp_alignment_min(0.7f));
  }
@@ -1055,29 +1028,170 @@ render_pelvis(Pose &pose){
 #undef export_
  return pelvis_obj;
 }
+function void
+render_eyes(Pose *pose){
+ cache(v1 tblink = pose->tblink;){
+  //-
+  // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
+  // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
+  v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
+  v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
+  mat4i eyeT_ = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
+  // TODO: Having a mini-coordinate system seems over-engineered to me... but idk man!
+  // I think we've managed to dig ourselves out of that situation almost?
+  // because we can use eye_in - eye_out to establish a coord frame
+  mat4 eyeT = eyeT_.forward;
+  vv(eye_in, eyeT*V3(-0.0282f, 0.f, -0.1236f));
+  v1 loomis_eye_inZ = faceZ - loomis_unit/3.f;
+  WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
+  
+  b32 show_eye_guideline = painter.show_grid;
+  if(level1 || show_eye_guideline){
+   hl_block;
+   if(level1){ draw(bez_line(eye_in, nose_rootL)); }
+  }
+  vv(eye_out, eye_in + V3(2.f * eye_in.x+(-0.03f), 0, -0.154f));
+  if(level1){ hl_block; draw_line(eye_out, brow_out); }
+  vv_sample(es_up_in, brow_ridge, 0.3668f);
+  Bezier eye_up_line = bez_bezd_old(eye_in, 
+                                    V3(0.0814f, 0.3741f, 0.2401f),
+                                    V2(0.0159f, 0.3341f),
+                                    eye_out);
+  fill(es_up_in, eye_up_line);
+  argb eye_in_shade = painter.shade_color;
+  fill3(nose_rootL, eye_in, es_up_in, 
+        fp(eye_in_shade));
+  //-
+  v4 eye_up_line_radii;
+  v4 eye_low_line_radii;
+  {//TODO(kv) Depends on t -> Cannot be captured by static data!
+   v1 eye_in_radius  = lerp(V2(0.0137f, -0.0006f), tblink);
+   v1 eye_out_radius = lerp(V2(0.4791f, 0.17f), tblink);
+   v1 eye0_radius = lerp(V2(0.6426f, 0.499f), tblink);
+   v1 eye1_radius = lerp(V2(0.f, 0.6154f), tblink);
+   eye_up_line_radii= V4(eye_in_radius, eye0_radius, eye1_radius, eye_out_radius);
+   eye_low_line_radii= eye_up_line_radii;
+   eye_low_line_radii[1] = 0.0555f;
+  }
+  //-
+  bb_bezd_old(eye_low_line,
+              eye_in, 
+              V3(0.1735f, -0.2094f, 0.1663f), 
+              V2(0.117f, 0.2053f), 
+              eye_out,
+              eye_low_line_radii);
+  {
+   vv(eye_low_patch, lerp(eye_in, 0.4768f, cheek_low));
+   fill(eye_low_patch, eye_low_line);
+   fill3(eye_low_patch, eye_out, cheek_low);
+   fill3(eye_out, brow_out, es_up_in);
+  }
+  argb eye_socket_shade = eye_in_shade;
+  Bezier eye_up_line_now;
+  {// NOTE: Blinking animation control
+   eye_up_line_now = bez_raw(eye_in, 
+                             lerp(eye_up_line[1], tblink, eye_low_line[1]),
+                             lerp(eye_up_line[2], tblink, eye_low_line[2]),
+                             eye_out);
+   {
+    draw(eye_up_line_now,eye_up_line_radii);
+    // NOTE: The eyelid
+    fill_dbez(eye_up_line, eye_up_line_now, eye_in_shade);
+   }
+  }
+  {//~NOTE: Eyeball
+   v3 eyeball_center = eyeT*V3(0.1531f, 0.0101f, -0.3179f);
+   v1 eyeball_radius = (eye_out.x - eye_in.x)*0.4526f;
+   mat4 eyeballT;
+   {// NOTE: Eyeball visualization
+    mat4 to_eyeballL   = mat4_translate(eyeball_center);
+    mat4 eyeball_scale = mat4_scale(eyeball_radius);
+    mat4 rot;
+    {// NOTE: We don't have phi yet
+     v1 eyeball_theta = 0.13f*(pose->teye_theta);
+     if(painter.lr_index){ eyeball_theta *= -1; };
+     rot = rotateY(eyeball_theta);
+    }
+    eyeballT = to_eyeballL*eyeball_scale*rot;
+    b32 show_eyeball = get_preset() == 2;
+    if(show_eyeball){
+     hl_block;
+     v4 eyeball_radii;
+     {
+      v1 big   = 0.5f;
+      v1 small = 0.25f;
+      eyeball_radii = V4(big,small,small,big);
+     }
+     draw_bezier_circle(eyeballT, eyeball_radii);  // NOTE: A prime meridian
+     mat4 eyeball_equator = eyeballT*rotateX(0.25f);
+     draw_bezier_circle(eyeball_equator, eyeball_radii);
+    }
+   }
+   {// NOTE: Iris (featuring Mr. Depth Offset Hack)
+    lp_block(nslice_per_meter, 128.f*(7.6378f));
+    v1 iris_depth_offset = painter.fill_depth_offset + 1*centimeter;
+    lp_block(depth_offset, current_line_cparams().depth_offset+iris_depth_offset);
+    add_in_block(painter.fill_depth_offset, iris_depth_offset);
+    
+    {
+     mat4 irisRelT;
+     {
+      //NOTE: https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
+      // so iris radius is [0.5, 0.6] that of eyeball
+      v1 iris_radius     = (0.4934f);
+      v3 iris_rel_center = V3z(square_root(1-squared(iris_radius)));
+      irisRelT = mat4_translate(iris_rel_center) * mat4i_scale(iris_radius);
+     }
+     v4 iris_radii;
+     {
+      v1 big   = 0.5f;
+      v1 small = 0.25f;
+      iris_radii = V4(big,small,small,big);
+     }
+     {
+      mat4 irisLT = eyeballT*irisRelT;
+      draw_bezier_circle(irisLT, iris_radii);
+     }
+    }
+   }
+   
+   {//-NOTE: Checking
+    for_i32(index,0,2){
+     Bez line;
+     if(index == 0){ line = eye_up_line; }
+     else{ line = eye_low_line; }
+     auto result = get_eye_min_distance(eyeball_center, eyeball_radius, line);
+     if (result.min_distance < 0){
+      DEBUG_VALUE(result.min_distance/millimeter);
+      indicate(result.closest_point, 0);
+     }
+    }
+   }
+  }
+  
+  // NOTE: These fills are most dubious...
+  fill3(nose_wing, cheek_low, eye_in);
+  fill3(nose_root_backL, eye_in, nose_rootL);
+  fill3(nose_root_backL, nose_wing, eye_in);
+  fill3(eye_out, cheek_up, brow_out);
+ }
+}
 function Head
 render_head(Pose *pose, v1 animation_time)
 {// NOTE: The ;head + face
  lp_block(nslice_per_meter, (4.1128f) * 100.f);//NOTE: crank up the lod
  const v1 head_unit = 1.f+square_root(2);
  
- b32 show_eyeball     = false;
  b32 show_loomis_ball = fbool(0);
  if(level2){ show_loomis_ball = true; }
  
  i32 preset = get_preset();
  {
-  if(preset == 2){show_eyeball = true;}
   if(preset == 3){show_loomis_ball = fbool(1);}
   if(preset == 4){show_loomis_ball = fbool(0);}
  }
  
  const v3 loomis_cross_center = V3(0.f,0.f,1.f);
- const v1 faceZ = 1.f;
- 
- const v1 root2 = square_root(2.f);
- const v1 inv_root2 = 1.f / root2;
- const v1 loomis_unit = inv_root2;// NOTE: From brow to nose tip and all that jazz
  
  mat4i &ot = p_current_world_from_bone();
  
@@ -1125,11 +1239,11 @@ render_head(Pose *pose, v1 animation_time)
  v1 browY = 0.f;
  v1 nose_sideX = (0.0586f);
  //NOTE: nose_rootL is just below the brow
- vv(nose_rootL, V3(nose_sideX, 
+ va(nose_rootL, V3(nose_sideX, 
                    lerp(browY, (0.1534f), noseY), 
                    faceZ+(-0.104f)));
  
- vv(nose_wing, V3(nose_wingX, nose_baseY, faceZ));
+ va(nose_wing, V3(nose_wingX, nose_baseY, faceZ));
  
  // NOTE: Is this point real? Not really, but it's here to stay.
  vv(nose_wing_up, nose_wing+V3(-0.011f, 0.1107f, 0.0069f));
@@ -1247,15 +1361,15 @@ render_head(Pose *pose, v1 animation_time)
  }
  
  //~NOTE: Cheek situation pretty complex!
- vv(cheek_low,(V3(0,noseY,faceZ) +
+ va(cheek_low,(V3(0,noseY,faceZ) +
                V3(0.6062f, 0.f, -0.4289f)));
  
  fill4(jaw, chinL, cheek_low, mouth_corner);
  
- v3 nose_root_backL = (V3(0.f, -0.0651f, -0.1755f)) + V3x(nose_sideX);
+ va(nose_root_backL, V3(0.f, -0.0651f, -0.1755f) + V3x(nose_sideX));
  
- vv(brow_out, (V3(0.585f, -0.1342f, 0.5485f)));
- vv(cheek_up, brow_out+(V3(0.f, -0.2935f, 0.f)));
+ va(brow_out, V3(0.585f, -0.1342f, 0.5485f));
+ va(cheek_up, brow_out+V3(0.f, -0.2935f, 0.f));
  if(level1){
   hl_block;
   draw_line(brow_out, cheek_up);  //NOTE: Literally a straight line
@@ -1263,175 +1377,25 @@ render_head(Pose *pose, v1 animation_time)
  
  //NOTE: brow_ridge is the neutral bone structure of the brow, as well as the eye socket
  //NOTE: I have few ideas what its shape should be, also very hard to draw right
- Bez brow_ridge = bez_unit2(nose_rootL,
-                            (V4(0.f, 0.3208f, 0.f, 0.6236f)),
-                            (V3(0.f, 0.6019f, 0.7986f)),
-                            brow_out);
- if (level1) { hl_block; draw(brow_ridge); }
+ brow_ridge = bez_unit2(nose_rootL,
+                        V4(0.f, 0.3208f, 0.f, 0.6236f),
+                        V3(0.f, 0.6019f, 0.7986f),
+                        brow_out);
+ if(level1){ hl_block; draw(brow_ridge); }
  
- v3 es_up_in;
- {//~NOTE: The Eyes
-  vertex_block("eye");
-  // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
-  // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
-  v3 eyeO = (V3(0.1953f, -0.2348f, 0.8954f));
-  v3 eye_scale = (V3(0.8324f, 0.9882f, 0.92f));
-  mat4i eyeT_ = mat4i_translate(eyeO)*mat4i_scales(eye_scale);;
-  // TODO: Having a mini-coordinate system seems over-engineered to me... but idk man!
-  // I think we've managed to dig ourselves out of that situation almost?
-  // because we can use eye_in - eye_out to establish a coord frame
-  mat4 eyeT     = eyeT_.forward;
-  mat4 eyeT_inv = eyeT_.inverse;
-  v3 eye_in = eyeT*V3(-0.0282f, 0.f, -0.1236f);
-  v1 loomis_eye_inZ = faceZ - loomis_unit/3.f;
-  WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
-  
-  b32 show_eye_guideline = painter.show_grid;
-  if(level1 || show_eye_guideline){
-   hl_block;
-   if(level1){ draw(bez_line(eye_in, nose_rootL)); }
-  }
-  v3 eye_out = eye_in + V3(2.f * eye_in.x + (-0.03f),
-                           0,
-                           -0.154f);
-  indicate(eye_out);
-  if(level1){hl_block; draw_line( eye_out, brow_out);}
-  va(es_up_in, bezier_sample(brow_ridge, (0.3668f)));
-  Bezier eye_up_line = bezd_old(eye_in, 
-                                V3(0.0814f, 0.3741f, 0.2401f),
-                                V2(0.0159f, 0.3341f),
-                                eye_out);
-  fill(es_up_in, eye_up_line);
-  argb eye_in_shade = painter.shade_color;
-  fill3(nose_rootL, eye_in, es_up_in, 
-        fp(eye_in_shade));
-  Bezier eye_low_line = bezd_old(eye_in, 
-                                 V3(0.1735f, -0.2094f, 0.1663f), 
-                                 V2(0.117f, 0.2053f), 
-                                 eye_out);
-  
-  {
-   v3 eye_low_patch = lerp(eye_in, 0.4768f, cheek_low);
-   indicate(eye_low_patch);
-   fill( eye_low_patch, eye_low_line);
-   fill3(eye_low_patch, eye_out, cheek_low);
-   fill3(eye_out, brow_out, es_up_in);
-  }
-  
-  argb eye_socket_shade = eye_in_shade;
-  Bezier eye_up_line_now;
-  {// NOTE: Blinking animation control
-   v1 tblink = pose->tblink;
-   eye_up_line_now = bez_raw(eye_in, 
-                             lerp(eye_up_line[1], tblink, eye_low_line[1]),
-                             lerp(eye_up_line[2], tblink, eye_low_line[2]),
-                             eye_out);
-   v1 eye_in_radius  = lerp(V2(0.0137f, -0.0006f), tblink);
-   v1 eye_out_radius = lerp(V2(0.4791f, 0.17f), tblink);
-   v1 eye0_radius = lerp(V2(0.6426f, 0.499f), tblink);
-   v1 eye1_radius = lerp(V2(0.f, 0.6154f), tblink);
-   v4 eye_up_line_radius  = V4( eye_in_radius, eye0_radius, eye1_radius, eye_out_radius);
-   v4 eye_low_line_radius = eye_up_line_radius;
-   eye_low_line_radius[1] = (0.0555f);
-   {
-    draw(eye_up_line_now,eye_up_line_radius);
-    draw(eye_low_line,eye_low_line_radius);
-    // NOTE: The eyelid
-    fill_dbez( eye_up_line, eye_up_line_now, eye_in_shade);
-   }
-  }
-  {//~NOTE: Eyeball
-   v3 eyeball_center = eyeT*V3(0.1531f, 0.0101f, -0.3179f);
-   v1 eyeball_radius = (eye_out.x - eye_in.x)*(0.4526f);
-   mat4 eyeballL_T;
-   {// NOTE: Eyeball visualization
-    mat4 to_eyeballL   = mat4_translate(eyeball_center);
-    mat4 eyeball_scale = mat4_scale(eyeball_radius);
-    mat4 rot;
-    {// NOTE: We don't have phi yet
-     v1 eyeball_theta = 0.13f*(pose->teye_theta);
-     if(painter.lr_index){ eyeball_theta *= -1; };
-     rot = rotateY(eyeball_theta);
-    }
-    eyeballL_T = to_eyeballL*eyeball_scale*rot;
-    if(show_eyeball){
-     hl_block;
-     v4 eyeball_radii;
-     {
-      v1 big   = 0.5f;
-      v1 small = 0.25f;
-      eyeball_radii = V4(big,small,small,big);
-     }
-     draw_bezier_circle(eyeballL_T, eyeball_radii);  // NOTE: A prime meridian
-     mat4 eyeball_equator = eyeballL_T*rotateX(0.25f);
-     draw_bezier_circle(eyeball_equator, eyeball_radii);
-    }
-   }
-   {// NOTE: Iris (featuring Mr. Depth Offset Hack)
-    lp_block(nslice_per_meter, 128.f*(7.6378f));
-    v1 iris_depth_offset = painter.fill_depth_offset + 1*centimeter;
-    lp_block(depth_offset, current_line_cparams().depth_offset+iris_depth_offset);
-    add_in_block(painter.fill_depth_offset, iris_depth_offset);
-    
-    {
-     mat4 irisRelT;
-     {
-      //NOTE: https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
-      // so iris radius is [0.5, 0.6] that of eyeball
-      v1 iris_radius     = (0.4934f);
-      v3 iris_rel_center = V3z(square_root(1-squared(iris_radius)));
-      irisRelT = mat4_translate(iris_rel_center) * mat4i_scale(iris_radius);
-     }
-     v4 iris_radii;
-     {
-      v1 big   = 0.5f;
-      v1 small = 0.25f;
-      iris_radii = V4(big,small,small,big);
-     }
-     {
-      mat4 irisLT = eyeballL_T*irisRelT;
-      draw_bezier_circle(irisLT, iris_radii);
-     }
-    }
-   }
-   
-   {//-NOTE: Checking
-    for_i32(index,0,2) {
-     Bez line;
-     if(index == 0){ line = eye_up_line; }
-     else { line = eye_low_line; }
-     auto result = get_eye_min_distance(eyeball_center, eyeball_radius, line);
-     if (result.min_distance < 0)
-     {
-      DEBUG_VALUE(result.min_distance/millimeter);
-      indicate(result.closest_point, 0);
-     }
-    }
-   }
-  }
-  
-  // NOTE: These fills are most dubious...
-  fill3(nose_wing, cheek_low, eye_in);
-  fill3(nose_root_backL, eye_in, nose_rootL);
-  fill3(nose_root_backL, nose_wing, eye_in);  // NOTE: smooth shading this thing is a disaster!
-  fill3(eye_out, cheek_up, brow_out);
- }
- 
- //-NOTE: Eyebrows
- {
+ {//-NOTE: Eyebrows
   radius_scale_block((0.8053f));
   // NOTE: determined expression
-  v3 brow_in = (bezier_sample(brow_ridge, (0.1313f)) +
-                (V3(0.0044f, -0.0566f, 0.0056f)));
+  v3 brow_in = (bezier_sample(brow_ridge, 0.1313f) +
+                V3(0.0044f, -0.0566f, 0.0056f));
   indicate(brow_in);
   //NOTE: brow_mid is a really fuzzy point!
   v3 brow_mid = (bezier_sample(brow_ridge, (0.593f)) + 
-                 (V3(-0.0006f, 0.0008f, 0.0086f)));
+                 V3(-0.0006f, 0.0008f, 0.0086f));
   indicate(brow_mid);
   
   Bezier brow_in_line = bez_line(brow_in, brow_mid);
   v1 brow_joint_radius;
-  
   {
    v4 radii = fval4(0.3344f, 0.6654f, 0.61f, 1.f);
    brow_joint_radius = radii.v[3];
@@ -1445,20 +1409,17 @@ render_head(Pose *pose, v1 animation_time)
   }
  }
  
- Bezier jaw_line;
  {
-  v3 cj = lerp(chinL, 0.5f, jaw);
-  {
-   // TODO: This line (and "cj") is here because it happens to look good
-   jaw_line = bez_raw(ear_center, jaw, jaw, cj);
+  vv(cj, lerp(chinL, 0.5f, jaw));
+  {// TODO: This line (and "cj") is here because it happens to look good
    v4 radii = painter.line_params.radii;
    radii[0] = 0.f;
    radii[1] = 0.f;
-   draw(jaw_line, radii);
+   bb_raw(jaw_line, ear_center, jaw, jaw, cj, radii);
   }
  }
  
- fill3( nose_wing, mouth_corner, cheek_low);
+ fill3(nose_wing, mouth_corner, cheek_low);
  
  // TODO(kv): Extreme hackiness, maybe we could replace bezier_poly
  {
@@ -1523,11 +1484,11 @@ render_head(Pose *pose, v1 animation_time)
  }
  
  vv(head_back_in,V3(0.2242f, 0.6295f, -1.1258f));
- Bezier head_top_in_line = bezd_old(forehead_in,
+ Bezier head_top_in_line = bez_bezd_old(forehead_in,
                                     V3(0.f, 0.4276f, -0.1837f),
                                     V2(0.3589f, 0.1402f),
                                     head_back_in);
- if (level2) {
+ if(level2){
   draw(head_top_in_line);
  }
  fill_patch( patch_symx(head_top_out_line, head_top_in_line));
@@ -1560,7 +1521,7 @@ render_head(Pose *pose, v1 animation_time)
  fill(ear_center, head_top_out_line);
  fill_dbez(ear_center, head_back_out, head_back_out_line);
  
- if (fbool(0))
+ if(fbool(0))
  {//NOTE The forehead
   v3 hair_hline_center = bezier_sample(hair_hline, 0.5f);
   v3 hair_hline_half_controls[4];
@@ -1612,7 +1573,7 @@ render_head(Pose *pose, v1 animation_time)
                                        control_point,
                                        negateX(control_point),
                                        negateX(chin_point0));
-   if(level1){draw(mouth_low_valley_line);}
+   if(level1){ draw(mouth_low_valley_line); }
    {
     symx_on;
     fill3(lip_low_center,mouth_corner,mouth_low_valley);
@@ -1700,7 +1661,7 @@ render_head(Pose *pose, v1 animation_time)
    v3 c = V3(0.0537f, 0.1334f, -0.0695f);
    va(bang_tip, V3(0.7418f, -0.0689f, 0.6115f)+thair*c);
   }
-  Bez bang_vline2 = bezd_old(bang_root, 
+  Bez bang_vline2 = bez_bezd_old(bang_root, 
                              V3(0.3419f, 0.0757f, 0.129f),
                              V2(0.1345f, 0.1639f),
                              bang_tip);
@@ -1727,7 +1688,7 @@ render_head(Pose *pose, v1 animation_time)
   
   //-NOTE: The bang saga is over, let's move onto something else
   v3 hair_main_tip = V3(0.7814f, -1.6599f, -0.6047f);
-  Bez vline = bezd_old(hair_root,
+  Bez vline = bez_bezd_old(hair_root,
                        V3(0.1414f, 0.2764f, -0.471f),
                        V2(0.3956f, 0.3102f),
                        hair_main_tip);
@@ -1741,19 +1702,19 @@ render_head(Pose *pose, v1 animation_time)
   draw(connecting, (0.5f)*painter.line_params.radii);
   
   Bezier hairline_side = bez_offset(bang_root,
-                                 V3(0.5271f, -0.0051f, 0.0478f),
-                                 V3(0.0671f, 0.1143f, 0.3924f),
-                                 ear_center);
+                                    V3(0.5271f, -0.0051f, 0.0478f),
+                                    V3(0.0671f, 0.1143f, 0.3924f),
+                                    ear_center);
   { symx_on; draw(hairline_side); }
   
   {
    symx_on;
    // NOTE: Some hair outline so it looks good at the front
-   Bez over1 = bezd_old(hair_root,
+   Bez over1 = bez_bezd_old(hair_root,
                         V3(0.5313f, 0.0177f, 0.1293f),
                         V2(0.1839f, 0.232f),
                         bezier_sample(hairline_side, (0.3991f)));
-   Bez over2 = bezd_old(hair_root,
+   Bez over2 = bez_bezd_old(hair_root,
                         V3(0.3694f, 0.2549f, -0.0512f),
                         V2(0.0175f, 0.2904f),
                         ear_center);
@@ -1839,7 +1800,7 @@ render_head(Pose *pose, v1 animation_time)
      }
      {
       v1 xmax = (2.8346f);
-      for_i32(yi, (-20), (4))
+      for_i32(yi, -20, 4)
       {//NOTE: Horizontal
        v1 y = unit*v1(yi);
        draw_line(V3(0.f, y, 0.f), V3(xmax, y, 0.f));
@@ -1856,7 +1817,7 @@ render_head(Pose *pose, v1 animation_time)
     if (camera_profile)
     {// NOTE: Profile view
      v1 x = 0.f;
-     for_i32(xi, (-4), (2))
+     for_i32(xi, -4, 2)
      {//NOTE: Vertical
       v1 z = faceZ+unit*v1(xi);
       draw_line( V3(x,1.f,z), V3(x,body_minY,z));
@@ -1928,14 +1889,13 @@ render_head(Pose *pose, v1 animation_time)
   vv(trapezius_head, (V3(0, noseY, head_back_out.z) + 
                       V3(0.2824f, 0.0086f, -0.323f)));
 #define head_export(vertex)  head_obj.vertex = vertex;
-  macro_head(head_export)
+  macro_head(head_export);
 #undef head_export
  }
  return head_obj;
 }
 function void
-render_character(Pose *pose, v1 animation_time)
-{// NOTE: Drawing the character
+render_character(Pose *pose, v1 animation_time){
  //~ IMPORTANT: Conventions
  // 1: Things are on the left (side of the face) by default. Meaning x>0.
  // 2: Things like eyeY are just landmarks, nobody cares if there is actually no vertex lying on that y.
@@ -1951,6 +1911,7 @@ render_character(Pose *pose, v1 animation_time)
   {
    bone_block(Bone_Head);
    head = render_head(pose, animation_time);
+   render_eyes(pose);
   }
   Pelvis pelvis_obj;
   {
@@ -1983,16 +1944,14 @@ render_reference_images(b32 full_alpha){
  if ( preset >= 3 )
  {// NOTE: The @ReferenceImage experience
   bone_block(Bone_References);
-  if ( camera_is_right() )
-  {
+  if(camera_is_right()){
    v3 center = (V3(-0.2112f, -4.5306f, -0.2689f));
    v1 width = (0.7966f);
    char *filename = "G:/My Drive/Art/arm medial.jpg";
    draw_image(filename, center, V3z(width), V3y(1.f),
               (0.5f));
   }
-  if ( camera_is_front() )
-  {
+  if(camera_is_front()){
    const i32 start = 4;
    struct Reference_Image
    {
@@ -2106,6 +2065,7 @@ compute_bones_from_pose(Modeler *m, Arena *scratch, Pose *pose){
  stack.push(&null_bone);
 #define bone_blockm(...) \
 defer_block(push_bone_inner(*m, stack, lr_index, __VA_ARGS__), stack.pop())
+ 
  v1 torso_scale = head_radius_world*fval(1.2484f);
  for_i32(lr_index,0,2){
   {//NOTE(kv) We're being inefficient here: we only need to animate one side, but who cares!
@@ -2234,7 +2194,7 @@ defer_block(push_bone_inner(*m, stack, lr_index, __VA_ARGS__), stack.pop())
 xfunction Pose
 driver_animate(driver_animate_params){
  Pose pose;
- {//-NOTE: Animation
+ {//-Animation
   // TODO: this crashes when arena is empty, since our static areana is janky!
   Temp_Memory_Block temp(scratch);
   Movie_Shot *shot = push_struct(scratch, Movie_Shot, true);
@@ -2259,8 +2219,7 @@ driver_animate(driver_animate_params){
  return pose;
 }
 xfunction void
-render_movie(render_movie_params)
-{
+render_movie(render_movie_params){
  i32 viz_level = 0;
  auto viewport = painter.viewport;
  switch(viewport->preset){
@@ -2305,13 +2264,9 @@ render_movie(render_movie_params)
   Painter &p = painter;
   auto &m = *p.modeler;
   p.symx              = true;
-  {
-   p.fill_params.color = default_fill;
-  }
+  p.fill_params.color = default_fill;
   p.fill_depth_offset = millimeter * 1.f;
-  {
-   p.line_params.visibility = 1.0f ;
-  }
+  p.line_params.visibility = 1.0f ;
   {
    Common_Line_Params cp = get_line_cparams_list(m)[0];
    cp.radii = V4(default_line_radius_min, 
@@ -2323,8 +2278,8 @@ render_movie(render_movie_params)
    cp.color = default_line_color;
    push_line_cparams(cp);
   }
-  p.viz_level                  = viz_level;
-  p.ignore_radii               = viz_level!=0;
+  p.viz_level            = viz_level;
+  p.ignore_radii         = viz_level!=0;
   p.ignore_alignment_min = viz_level!=0;
   init_static(p.bone_stack, arena, 16);
   auto &bones = get_bones(m);
@@ -2347,13 +2302,8 @@ render_movie(render_movie_params)
  
  render_reference_images(references_full_alpha);
  
- if(0)
- {
-  test_speed_block(cy_per, 16,
-                   bez_v3v2(((v3{0,0,0})),
-                       v3{0,0,0},
-                       v2{0,0},
-                       v3{0,0,0}););
+ if(0){
+  test_speed_block(cy_per, 16, bez_v3v2(v3{0,0,0}, v3{0,0,0}, v2{0,0}, v3{0,0,0}););
  }
 }
 
@@ -2362,5 +2312,4 @@ render_movie(render_movie_params)
 #undef vv
 #undef va
 #undef X_comma_list
-
 //~EOF

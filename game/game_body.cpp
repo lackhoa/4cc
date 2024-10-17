@@ -56,7 +56,7 @@ X(tricep_wedge) \
 X(brachio_a) \
 X(brachio_humerus) \
 X(brachio_humerus2) \
-X(internal_condyle) \
+X(function_condyle) \
 X(external_condyle) \
 //
  struct { macro_arm(X_struct_member_v3) };
@@ -82,7 +82,7 @@ global_const i32 forearm_vert_count = sizeof(Forearm) / sizeof(v3);
 
 //-
 
-internal void
+function void
 import_vertices(v3 *dst, v3 const*src,
                 mat4i const&dstT, mat4i const&srcT,
                 i32 vert_count)

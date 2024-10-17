@@ -204,7 +204,7 @@ metal__make_buffer(u32 size, id<MTLDevice> device){
 }
 
 // NOTE(kv): rewritten from the awful objective-c method nonsense
-internal b32 
+function b32 
 metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3_i1 pos, Vec3_i1 dim, void *data)
 {
   b32 result = false;

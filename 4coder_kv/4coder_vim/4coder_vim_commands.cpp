@@ -82,7 +82,7 @@ CUSTOM_DOC("Vim: Display registers"){
 #endif
 
 
-internal void
+function void
 vim_normal_mode(App *app)
 {
  View_ID view = get_active_view(app, Access_ReadVisible);
@@ -132,7 +132,7 @@ vim_normal_mode(App *app)
 }
 
 
-internal void 
+function void 
 vim_insert_mode_after(App *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
@@ -151,14 +151,14 @@ vim_insert_mode_after(App *app)
 }
 VIM_COMMAND_SIG(vim_insert_begin){ vim_begin_line(app); vim_enter_insert_mode(app); }
 
-internal void 
+function void 
 vim_insert_end(App *app)
 {
     vim_end_line(app);
     vim_insert_mode_after(app);
 }
 
-internal void 
+function void 
 vim_modal_i(App *app)
 {
     vim_state.dot_delete_count = 0;
@@ -169,7 +169,7 @@ VIM_COMMAND_SIG(vim_modal_a)
 {
 	if(vim_state.mode == VIM_Visual || vim_state.params.request != REQUEST_None){
 		vim_state.params.clusivity = VIM_Inclusive;
-		u8 key = vim_query_user_key(app, string_u8_litexpr("-- TEXT OBJECT --"));
+		u8 key = vim_query_user_key(app, strlit("-- TEXT OBJECT --"));
 		if(key){
 			vim_state.params.seek.character = key;
 			vim_state.active_command = vim_text_object;
@@ -179,7 +179,7 @@ VIM_COMMAND_SIG(vim_modal_a)
 	else{ vim_insert_mode_after(app); }
 }
 
-internal void 
+function void 
 vim_newline_below(App *app)
 {
     vim_insert_end(app);
@@ -198,7 +198,7 @@ VIM_COMMAND_SIG(vim_newline_above)
     auto_indent_line_at_cursor(app);
 }
 
-internal void vim_visual_char_mode(App *app)
+function void vim_visual_char_mode(App *app)
 {
 	if(vim_state.mode != VIM_Visual)
   {
@@ -290,7 +290,7 @@ VIM_COMMAND_SIG(vim_submode_g){ vim_state.sub_mode = SUB_G; vim_state.chord_reso
 VIM_COMMAND_SIG(vim_submode_z){ vim_state.sub_mode = SUB_Z; vim_state.chord_resolved = false; }
 VIM_COMMAND_SIG(vim_submode_leader){ vim_state.sub_mode = SUB_Leader; vim_state.chord_resolved = false; }
 
-internal void 
+function void 
 vim_replace_next_char(App *app)
 {
  u8 key = vim_query_user_key(app, strlit("-- REPLACE NEXT --"));
@@ -310,7 +310,7 @@ vim_replace_next_char(App *app)
 
 VIM_COMMAND_SIG(vim_replace_range_next)
 {
-	u8 key = vim_query_user_key(app, string_u8_litexpr("-- RANGE REPLACE NEXT --"));
+	u8 key = vim_query_user_key(app, strlit("-- RANGE REPLACE NEXT --"));
 	if(key)
     {
 		vim_state.params.seek.character = key;
@@ -320,14 +320,14 @@ VIM_COMMAND_SIG(vim_replace_range_next)
 
 VIM_COMMAND_SIG(vim_request_yank){    vim_make_request(app, REQUEST_Yank); }
 
-internal void 
+function void 
 vim_request_delete(App *app)
 {
     vim_state.dot_do_insert = false;
  vim_make_request(app, REQUEST_Delete);
 }
 
-internal void vim_request_change(App *app){  vim_make_request(app, REQUEST_Change); }
+function void vim_request_change(App *app){  vim_make_request(app, REQUEST_Change); }
 VIM_COMMAND_SIG(vim_uppercase){       vim_make_request(app, REQUEST_Upper); }
 VIM_COMMAND_SIG(vim_lowercase){       vim_make_request(app, REQUEST_Lower); }
 VIM_COMMAND_SIG(vim_toggle_case){     vim_make_request(app, REQUEST_ToggleCase); }
@@ -466,7 +466,7 @@ VIM_COMMAND_SIG(vim_line_down)
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
 }
 
-internal b32
+function b32
 vim_is_wb_pivot(App *app, Buffer_ID buffer, i64 pos)
 {
     u8 c = buffer_get_char(app, buffer, pos);
@@ -502,7 +502,7 @@ vim_is_wb_pivot(App *app, Buffer_ID buffer, i64 pos)
     }
 }
 
-internal void 
+function void 
 vim_w_cmd(App *app)
 {
     Vim_Motion_Block vim_motion_block(app);
@@ -535,7 +535,7 @@ vim_w_cmd(App *app)
     }
 }
 
-internal void
+function void
 vim_b_cmd(App *app)
 {
     Vim_Motion_Block vim_motion_block(app);
@@ -633,7 +633,7 @@ buffer_delete_range(App *app, Buffer_ID buffer, Range_i64 range){
  buffer_replace_range(app, buffer, range, empty_string);
 }
 
-internal void
+function void
 vim_paste_before(App *app)
 {
  if(vim_state.params.selected_reg)
@@ -707,7 +707,7 @@ function void vim_backspace_char_inner(App *app, i1 offset)
 VIM_COMMAND_SIG(vim_backspace_char){ vim_backspace_char_inner(app, -1); }
 VIM_COMMAND_SIG(vim_delete_char){    vim_backspace_char_inner(app, 0); }
 
-internal void
+function void
 vim_last_command(App* app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
@@ -733,7 +733,7 @@ vim_combine_line_inner(App *app, View_ID view, Buffer_ID buffer, i64 line_num){
 	range.min = pos;
 
 	i64 new_pos = pos + 1;
-	String delimiter = (vim_state.sub_mode == SUB_G ? empty_string : string_u8_litexpr(" "));
+	String delimiter = (vim_state.sub_mode == SUB_G ? empty_string : strlit(" "));
 	if(!line_is_valid_and_blank(app, buffer, line_num+1)){
 		if(char_is_whitespace(buffer_get_char(app, buffer, new_pos))){
 			new_pos = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, new_pos);
@@ -786,7 +786,7 @@ VIM_COMMAND_SIG(vim_set_mark){
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	i64 pos = view_get_cursor_pos(app, view);
 	Scratch_Block scratch(app);
-	u8 character = vim_query_user_key(app, string_u8_litexpr("-- SET MARK NEXT --"));
+	u8 character = vim_query_user_key(app, strlit("-- SET MARK NEXT --"));
 	if(in_range_exclusive('a', character, 'z'+1)){
 		Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 		i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
@@ -810,7 +810,7 @@ VIM_COMMAND_SIG(vim_goto_mark){
 	}
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-	u8 c = vim_query_user_key(app, string_u8_litexpr("-- GOTO MARK NEXT --"));
+	u8 c = vim_query_user_key(app, strlit("-- GOTO MARK NEXT --"));
 	if(in_range_exclusive('a', c, 'z'+1)){
 		Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 		i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
@@ -892,20 +892,20 @@ VIM_COMMAND_SIG(vim_open_file_in_quotes)
 	}
 }
 
-internal void 
+function void 
 vim_goto_definition(App *app)
 {
     vim_push_jump(app, get_active_view(app, Access_ReadVisible));
     jump_to_definition_at_cursor(app);
 }
 */
-internal void 
+function void 
 vim_next_4coder_jump(App *app)
 {
     vim_push_jump(app, get_active_view(app, Access_ReadVisible));
     goto_next_jump(app);
 }
-internal void vim_prev_4coder_jump(App *app)
+function void vim_prev_4coder_jump(App *app)
 {
     vim_push_jump(app, get_active_view(app, Access_ReadVisible));
     goto_prev_jump(app);
@@ -983,7 +983,7 @@ VIM_COMMAND_SIG(vim_toggle_macro){
 		vim_state.macro_char = 0;
 	}else{
 		if(vim_state.macro_char){ return; }
-		u8 c = vim_query_user_key(app, string_u8_litexpr("-- SELECT MACRO TO RECORD --"));
+		u8 c = vim_query_user_key(app, strlit("-- SELECT MACRO TO RECORD --"));
 		if(in_range_exclusive('a', c, 'z'+1) || in_range_exclusive('A', c, 'Z'+1)){
 			vim_state.macro_char = c;
 			i1 index = vim_macro_index(c);
@@ -993,7 +993,7 @@ VIM_COMMAND_SIG(vim_toggle_macro){
 }
 
 VIM_COMMAND_SIG(vim_play_macro){
-	u8 c = vim_query_user_key(app, string_u8_litexpr("-- SELECT MACRO TO PLAY --"));
+	u8 c = vim_query_user_key(app, strlit("-- SELECT MACRO TO PLAY --"));
 	if(c == '@'){ c = vim_state.prev_macro; }
 	if(in_range_exclusive('a', c, 'z'+1) || in_range_exclusive('A', c, 'Z'+1)){
 		i1 index = vim_macro_index(c);

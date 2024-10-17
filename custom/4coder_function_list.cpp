@@ -208,7 +208,7 @@ function void
 list_all_functions(App *app, Buffer_ID optional_target_buffer)
 {
  // TODO(allen): Use create or switch to buffer and clear here?
- String decls_name = string_u8_litexpr("*decls*");
+ String decls_name = strlit("*decls*");
  Buffer_ID decls_buffer = get_buffer_by_name(app, decls_name, Access_Always);
  if (!buffer_exists(app, decls_buffer)){
   decls_buffer = create_buffer(app, decls_name, BufferCreate_AlwaysNew);

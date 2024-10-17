@@ -10,7 +10,7 @@ global Marker_List_Node *marker_list_last = 0;
 
 ////////////////////////////////
 
-internal i32
+function i32
 binary_search(i64 *array, i32 stride, i32 count, i64 x){
     u8 *raw = (u8*)array;
     i32 i = 0;
@@ -101,7 +101,7 @@ parse_buffer_to_jump_array(App *app, Arena *arena, Buffer_ID buffer)
  return(result);
 }
 
-internal void
+function void
 init_marker_list(App *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
  Scratch_Block scratch(app);
  
@@ -185,17 +185,17 @@ init_marker_list(App *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
  list->buffer_id = buffer;
 }
 
-internal void
+function void
 delete_marker_list(Marker_List_Node *node){
     zdll_remove(marker_list_first, marker_list_last, node);
 }
 
-internal void
+function void
 delete_marker_list(Marker_List *list){
     delete_marker_list(CastFromMember(Marker_List_Node, list, list));
 }
 
-internal Marker_List*
+function Marker_List*
 make_new_marker_list_for_buffer(Heap *heap, i32 buffer_id){
     Marker_List_Node *new_node = heap_array(heap, Marker_List_Node, 1);
     zdll_push_back(marker_list_first, marker_list_last, new_node);
@@ -205,7 +205,7 @@ make_new_marker_list_for_buffer(Heap *heap, i32 buffer_id){
     return(result);
 }
 
-internal Marker_List*
+function Marker_List*
 get_marker_list_for_buffer(Buffer_ID buffer_id){
     for (Marker_List_Node *node = marker_list_first;
          node != 0;
@@ -217,7 +217,7 @@ get_marker_list_for_buffer(Buffer_ID buffer_id){
  return(0);
 }
 
-internal Marker_List*
+function Marker_List*
 get_or_make_list_for_buffer(App *app, Heap *heap, Buffer_ID buffer_id)
 {
  Marker_List *result = get_marker_list_for_buffer(buffer_id);
@@ -240,7 +240,7 @@ get_or_make_list_for_buffer(App *app, Heap *heap, Buffer_ID buffer_id)
  return(result);
 }
 
-internal b32
+function b32
 get_stored_jump_from_list(App *app, Marker_List *list, i32 index,
                           Sticky_Jump_Stored *stored_out){
     Sticky_Jump_Stored stored = {};
@@ -253,7 +253,7 @@ get_stored_jump_from_list(App *app, Marker_List *list, i32 index,
     return(false);
 }
 
-internal Sticky_Jump_Stored*
+function Sticky_Jump_Stored*
 get_all_stored_jumps_from_list(App *app, Arena *arena, Marker_List *list){
     Sticky_Jump_Stored *stored = 0;
     if (list != 0){
@@ -269,7 +269,7 @@ get_all_stored_jumps_from_list(App *app, Arena *arena, Marker_List *list){
     return(stored);
 }
 
-internal b32
+function b32
 get_jump_from_list(App *app, Marker_List *list, i32 index, ID_Pos_Jump_Location *location){
     b32 result = false;
     Sticky_Jump_Stored stored = {};
@@ -293,7 +293,7 @@ get_jump_from_list(App *app, Marker_List *list, i32 index, ID_Pos_Jump_Location 
     return(result);
 }
 
-internal i64
+function i64
 get_line_from_list(App *app, Marker_List *list, i32 index)
 {
     i64 result = 0;
@@ -308,7 +308,7 @@ get_line_from_list(App *app, Marker_List *list, i32 index)
     return(result);
 }
 
-internal b32
+function b32
 get_is_sub_error_from_list(App *app, Marker_List *list, i32 index)
 {
     b32 result = false;
@@ -323,7 +323,7 @@ get_is_sub_error_from_list(App *app, Marker_List *list, i32 index)
     return(result);
 }
 
-internal i32
+function i32
 get_index_nearest_from_list(App *app, Marker_List *list, i64 line){
     i32 result = -1;
     if (list != 0){
@@ -410,7 +410,7 @@ CUSTOM_DOC("If the cursor is found to be on a jump location, parses the jump loc
 }
 */
 
-internal void
+function void
 goto_jump_in_order(App *app, Marker_List *list, View_ID jump_view, ID_Pos_Jump_Location location)
 {
     Buffer_ID buffer = {};
@@ -435,7 +435,7 @@ jump_is_repeat(ID_Pos_Jump_Location prev, ID_Pos_Jump_Location location)
            prev.pos       == location.pos);
 }
 
-internal void
+function void
 goto_next_filtered_jump(App *app, Marker_List *list, View_ID jump_view, i32 list_index, i32 direction, 
                         b32 skip_repeats, b32 skip_sub_errors)
 {
@@ -476,7 +476,7 @@ goto_next_filtered_jump(App *app, Marker_List *list, View_ID jump_view, i32 list
     }
 }
 
-internal Locked_Jump_State
+function Locked_Jump_State
 get_locked_jump_state(App *app, Heap *heap)
 {
     Locked_Jump_State result = {};
@@ -494,7 +494,7 @@ get_locked_jump_state(App *app, Heap *heap)
 }
 
 // CUSTOM_DOC("If a buffer containing jump locations has been locked in, goes to the next jump in the buffer, skipping sub jump locations.")
-internal void 
+function void 
 goto_next_jump(App *app)
 {
     Heap *heap = &global_heap;
@@ -516,7 +516,7 @@ goto_next_jump(App *app)
 }
 
 // CUSTOM_DOC("If a buffer containing jump locations has been locked in, goes to the previous jump in the buffer, skipping sub jump locations.")
-internal void 
+function void 
 goto_prev_jump(App *app)
 {
     Heap *heap = &global_heap;

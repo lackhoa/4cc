@@ -5,8 +5,7 @@ struct Key_Direction{
  b32 new_keypress;
 };
 
-struct Game_Input{
- Game_Input_Public_Embed;
+struct Game_Input : Game_Input_Public{
  Key_Direction direction;
 };
 

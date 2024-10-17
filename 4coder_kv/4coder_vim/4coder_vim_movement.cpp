@@ -10,7 +10,7 @@ VIM_COMMAND_SIG(vim_line_start){
 	seek_beginning_of_line(app);
 }
 
-internal i64
+function i64
 line_last_nonwhite(App *app, Buffer_ID buffer, i64 pos)
 {
  i64 min_pos = get_line_side_pos_from_pos(app, buffer, pos, Side_Min);
@@ -24,7 +24,7 @@ line_last_nonwhite(App *app, Buffer_ID buffer, i64 pos)
  return new_pos;
 }
 
-internal void
+function void
 vim_end_line(App *app)
 {
  Vim_Motion_Block vim_motion_block(app);
@@ -147,7 +147,7 @@ boundary_whitespace(App *app, Buffer_ID buffer, Side side, Scan_Direction direct
 	return(boundary_predicate(app, buffer, side, direction, pos, &character_predicate_whitespace));
 }
 
-internal i64
+function i64
 scan_backward_min(App *app, Boundary_Function *func, Buffer_ID buffer, i64 pos)
 {
  return func(app, buffer, Side_Min, Scan_Backward, pos);
@@ -168,7 +168,7 @@ scan_list_backward_min(App *app, Boundary_Function_List funcs, Buffer_ID buffer,
 }
 
 // @Hack
-internal i64 
+function i64 
 vim_word_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos)
 {
  Scratch_Block scratch(app);
@@ -269,7 +269,7 @@ function i64 vim_end_boundary(App *app, Buffer_ID buffer, Scan_Direction directi
 
 }
 
-internal i64 
+function i64 
 vim_END_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos)
 {
 	i64 prev_pos = pos;
@@ -288,7 +288,7 @@ vim_END_boundary(App *app, Buffer_ID buffer, Scan_Direction direction, i64 pos)
 	return pos;
 }
 
-internal i64 
+function i64 
 vim_scan_word(App *app, View_ID view, Scan_Direction direction, i64 *prev_pos=0, const i32 N=1)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -301,7 +301,7 @@ vim_scan_word(App *app, View_ID view, Scan_Direction direction, i64 *prev_pos=0,
     return cursor_pos;
 }
 
-internal i64 
+function i64 
 vim_scan_WORD(App *app, View_ID view, Scan_Direction direction, i64 *prev_pos=0, const i32 N=1)
 {
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -366,7 +366,7 @@ VIM_COMMAND_SIG(vim_set_seek_char){
 		vim_state.params.seek.clusivity = (input.event.key.code == Key_Code_T ? VIM_Exclusive : VIM_Inclusive);
 		vim_state.params.seek.direction = (has_modifier(&input.event, Key_Code_Shift) ? -1 : 1);
 
-		u8 key = vim_query_user_key(app, string_u8_litexpr("-- SEEK NEXT --"));
+		u8 key = vim_query_user_key(app, strlit("-- SEEK NEXT --"));
 		if(key){
 			vim_state.params.seek.character = key;
 			vim_state.active_command = vim_seek_char;
