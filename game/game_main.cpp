@@ -21,12 +21,8 @@
 
 #include "framework_data.h"
 
-//#include "generated/4coder_game_shared.gen.h"
-
-//#include "generated/driver.gen.h"
 #include "generated/driver.gen.h"
 #include "driver.h"
-//#include "generated/framework.gen.h"
 #include "generated/framework.gen.h"
 #include "generated/send_bez.gen.h"
 #include "game_modeler.h"
@@ -177,14 +173,14 @@ function void
 write_data_func(Printer &p, Type_Info &type, void *void_pointer);
 function void
 read_enum(Type_Info &type, void *pointer, i32 *dst){
- kv_assert(type.kind == Type_Kind_Enum);
+ kv_assert(type.kind == I_Type_Kind_Enum);
  *dst = 0;
  block_copy(dst, pointer, type.size);
 }
 function void
 write_data_union(Printer &p, Type_Info &type,
                  void *pointer0, void *pvariant0){
- kv_assert(type.kind == Type_Kind_Union);
+ kv_assert(type.kind == I_Type_Kind_Union);
  u8 *pointer = (u8*)pointer0;
  u8 *pvariant = (u8*)pvariant0;
  
@@ -206,18 +202,18 @@ write_data_func(Printer &p, Type_Info &type, void *void_pointer){
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
  switch(type.kind){
-  case Type_Kind_Basic:{
+  case I_Type_Kind_Basic:{
    write_basic_type(p, type.Basic_Type, pointer);
   }break;
-  case Type_Kind_Struct:{
+  case I_Type_Kind_Struct:{
    // NOTE: struct
    p << "{\n";
    for_i1(member_index, 0, type.members.count){
-    Struct_Member &member = type.members[member_index];
+    I_Struct_Member &member = type.members[member_index];
     if(!member.unserialized){
      p << member.name << " ";
      u8 *member_pointer = pointer+member.offset;
-     if(member.type->kind == Type_Kind_Union){
+     if(member.type->kind == I_Type_Kind_Union){
       write_data_union(p, *member.type, member_pointer,
                        (pointer+member.discriminator_offset));
      }else{
@@ -228,10 +224,10 @@ write_data_func(Printer &p, Type_Info &type, void *void_pointer){
    }
    p << "}\n";
   }break;
-  case Type_Kind_Union:{
+  case I_Type_Kind_Union:{
    p<<"<can't write union without variant info>";
   }break;
-  case Type_Kind_Enum:{
+  case I_Type_Kind_Enum:{
    // NOTE: enum
    i32 enum_value;
    block_copy(&enum_value, pointer, type.size);
@@ -250,7 +246,7 @@ enum_index_from_pointer(Type_Info &type, void *pointer0) {
  block_copy(&value, pointer, type.size);
  i32 result = {};
  for_i32 (index, 0, type.enum_members.count) {
-  Enum_Member enum_it = type.enum_members[index];
+  I_Enum_Member enum_it = type.enum_members[index];
   if (enum_it.value == value) {
    result = index;
    break;
@@ -272,14 +268,14 @@ pretty_print_func(Printer &p, Type_Info &type, void *void_pointer) {
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
  switch(type.kind){
-  case Type_Kind_Basic:{
+  case I_Type_Kind_Basic:{
    write_basic_type(p, type.Basic_Type, pointer);
   }break;
   
-  case Type_Kind_Struct:{
+  case I_Type_Kind_Struct:{
    p << "{\n";
    for_i1(member_index, 0, type.members.count) {
-    Struct_Member &member = type.members[member_index];
+    I_Struct_Member &member = type.members[member_index];
     p << member.name << " ";
     u8 *member_pointer = pointer+member.offset;
     pretty_print_func(p, *member.type, member_pointer);
@@ -287,10 +283,10 @@ pretty_print_func(Printer &p, Type_Info &type, void *void_pointer) {
    }
    p << "}\n";
   }break;
-  case Type_Kind_Union:{
+  case I_Type_Kind_Union:{
    p<<"<enum requires knowledge of the variant>";
   }break;
-  case Type_Kind_Enum:{
+  case I_Type_Kind_Enum:{
    p << enum_name_from_pointer(type, pointer);
   }break;
   invalid_default_case;
@@ -510,11 +506,19 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
     auto &data = curve.data.raw;
     result = bez_raw(p0, curve_xform*data.p1, curve_xform*data.p2, p3);
    }break;
+   case Curve_Type_Circle:{
+    auto &data = curve.data.circle;
+    result = bez_circle(curve_xform*data.center, curve_vec(data.normal));
+   }break;
    invalid_default_case;
   }
  }
  return result;
 #undef curve_vec
+}
+function b32
+entity_is_curve(Curve_Data &entity){
+ return entity_variant_info_table[entity.type].is_curve;
 }
 function void
 render_data(Modeler &m){
@@ -535,12 +539,45 @@ render_data(Modeler &m){
   Common_Line_Params &cparams = m.line_cparams[curve.cparams.v];
   for_i32(lr_index,0,2){
    if(curve.symx || lr_index==0){
-    set_in_block(painter.lr_index, lr_index);
-    Bez drawn = compute_curve_from_data(m,curve,lr_index);
-    draw_cparams(drawn, cparams, curve.params, prim_id);
+    if(entity_is_curve(curve)){
+     //-Curve
+     set_in_block(painter.lr_index, lr_index);
+     Bez drawn = compute_curve_from_data(m,curve,lr_index);
+     draw_cparams(drawn, cparams, curve.params, prim_id);
+    }else{
+     //-Fill
+     switch(curve.type){
+      case Curve_Type_Fill3:{
+       v3 p[3];
+       for_i32(vi,0,3){
+        i1 vert_index = curve.data.fill3.verts[vi].v;
+        Vertex_Data &vert = m.vertices[vert_index];
+        Bone &bone = get_bone(m, vert.bone_id, lr_index);
+        p[vi] = bone.xform*vert.pos;
+       }
+       set_in_block(painter.lr_index, lr_index);
+       fill3_inner2(p,curve.fill_params,prim_id);
+      }break;
+      case Curve_Type_Fill_Bez:{
+       auto &data = curve.data.fill_bez;
+       Curve_Data &curve_data = m.curves[data.curve.v];
+       Bezier curve_ = compute_curve_from_data(m,curve_data,lr_index);
+       fill_bez(curve_,0,prim_id);
+      }break;
+      case Curve_Type_Fill_DBez:{
+       auto &data = curve.data.fill_dbez;
+       Curve_Data &curve1_data = m.curves[data.curve1.v];
+       Curve_Data &curve2_data = m.curves[data.curve2.v];
+       Bezier curve1 = compute_curve_from_data(m,curve1_data,lr_index);
+       Bezier curve2 = compute_curve_from_data(m,curve2_data,lr_index);
+       fill_dbez(curve1,curve2,0,prim_id);
+      }break;
+     }
+    }
    }
   }
  }
+#if 0
  for_i32(ti,1,m.fills.count){
   //-Triangles
   Fill_Data &fill = m.fills[ti];
@@ -548,36 +585,13 @@ render_data(Modeler &m){
   for_i32(lr_index,0,2){
    if(fill.symx || lr_index==0){
     switch(fill.type){
-     case Fill_Type_Fill3:{
-      v3 p[3];
-      for_i32(vi,0,3){
-       i1 vert_index = fill.data.fill3.verts[vi].v;
-       Vertex_Data &vert = m.vertices[vert_index];
-       Bone &bone = get_bone(m, vert.bone_id, lr_index);
-       p[vi] = bone.xform*vert.pos;
-      }
-      set_in_block(painter.lr_index, lr_index);
-      fill3_inner2(p,fill.params,prim_id);
-     }break;
-     case Fill_Type_Bez:{
-      Fill_Bez &data = fill.data.bez;
-      Curve_Data &curve_data = m.curves[data.curve.v];
-      Bezier curve = compute_curve_from_data(m,curve_data,lr_index);
-      fill_bez(curve,0,prim_id);
-     }break;
-     case Fill_Type_DBez:{
-      Fill_DBez &data = fill.data.dbez;
-      Curve_Data &curve1_data = m.curves[data.curve1.v];
-      Curve_Data &curve2_data = m.curves[data.curve2.v];
-      Bezier curve1 = compute_curve_from_data(m,curve1_data,lr_index);
-      Bezier curve2 = compute_curve_from_data(m,curve2_data,lr_index);
-      fill_dbez(curve1,curve2,0,prim_id);
-     }break;
      invalid_default_case;
     }
    }
   }
  }
+#else
+#endif
 }
 //TODO(kv) @cleanup We wanna change this from update+render to update_and_render
 function game_render_return
@@ -630,11 +644,11 @@ game_render(game_render_params){
   }
   //TODO(kv) Why can't the game understand scratch blocks?
   Scratch_Block render_scratch;
-  if(pa.sending_data){
+/*  if(pa.sending_data){
    mo.vertices.set_count(1);
    mo.curves.  set_count(1);
    mo.fills.   set_count(1);
-  }
+  }*/
   render_movie(scratch, render_scratch,
                config, state->references_full_alpha,
                &state->pose, state->anime_time);
@@ -643,8 +657,8 @@ game_render(game_render_params){
  //-NOTE
  render_data(mo);
  
- if (state->kb_cursor_mode &&
-     viewport_id == 1)
+ if(state->kb_cursor_mode &&
+    viewport_id == 1)
  {//NOTE(kv) ;draw_cursor
   v1 cursor_dist = lengthof(camera->cam_from_world * state->kb_cursor.pos);
   v1 radius = 4*millimeter;
@@ -667,7 +681,6 @@ function game_init_return
 game_init(game_init_params)
 {// API import
  ed_api_read_vtable(ed_api);
- 
  //@game_bootstrap_arena_zero_initialized
  Game_State *state = push_struct(bootstrap_arena, Game_State);
  state->malloc = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
@@ -680,7 +693,7 @@ game_init(game_init_params)
   //NOTE(kv) when you refer to something make sure it doesn't move!
   init_static(m.vertices,  arena, 4096);
   init_static(m.curves,    arena, 512);
-  init_static(m.fills,     arena, 512);
+  //init_static(m.fills,     arena, 512);
   init_static(m.bones,     arena, 128);
   init_static(m.bones,     arena, 128);
   init_static(m.line_cparams,arena, 128);
@@ -747,12 +760,17 @@ game_init(game_init_params)
  
  return state;
 }
-
+function void
+meta_init(){
+ init_entity_type_info_table();
+}
 function game_reload_return
 game_reload(game_reload_params)
 {// Game_State
- // API import
- ed_api_read_vtable(ed_api);
+ meta_init();
+ {// API import
+  ed_api_read_vtable(ed_api);
+ }
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
   state->dll_temp_memory = begin_temp(dll_arena);
@@ -1211,11 +1229,6 @@ game_update(game_update_params){
     Curve_Ref c = get_curve_by_linum(m,linum);
     if(c.curve){
      hot_prim_id = prim_id_from_curve_index(c.index);
-    }else{
-     Fill_Ref t = get_fill_by_linum(m,linum);
-     if(t.fill){
-      hot_prim_id = prim_id_from_triangle_index(t.index);
-     }
     }
    }
    if(!hot_prim_id){

@@ -39,6 +39,9 @@ global v3 cheek_low;
 global v3 nose_root_backL;
 global v3 cheek_up;
 //-
+global v3 eyeball_center;
+global v1 eyeball_radius;
+//-
 xfunction void
 driver_update(Viewport *viewports){
  // NOTE ;update_game_config
@@ -1016,9 +1019,9 @@ render_pelvis(Pose &pose){
   bs_bezd_old(bikini_front_mid, V3(-0.0581f, -0.1036f, 0.f),
               V2(-0.0136f, 0.1226f), girdle_front);
   {
-   dfill3(bikini_front_mid, crotch, girdle_front);
-   dfill3(girdle_front, crotch, bikini_up_back);
-   dfill_bez(girdle_side_line);
+   bs_fill3(bikini_front_mid, crotch, girdle_front);
+   bs_fill3(girdle_front, crotch, bikini_up_back);
+   bs_fill_bez(girdle_side_line);
   }
  }
  
@@ -1036,11 +1039,10 @@ render_eyes(Pose *pose){
   // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
   v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
   v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
-  mat4i eyeT_ = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
+  mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
   // TODO: Having a mini-coordinate system seems over-engineered to me... but idk man!
   // I think we've managed to dig ourselves out of that situation almost?
   // because we can use eye_in - eye_out to establish a coord frame
-  mat4 eyeT = eyeT_.forward;
   vv(eye_in, eyeT*V3(-0.0282f, 0.f, -0.1236f));
   v1 loomis_eye_inZ = faceZ - loomis_unit/3.f;
   WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
@@ -1086,33 +1088,19 @@ render_eyes(Pose *pose){
    fill3(eye_low_patch, eye_out, cheek_low);
    fill3(eye_out, brow_out, es_up_in);
   }
-  argb eye_socket_shade = eye_in_shade;
-  Bezier eye_up_line_now;
   {// NOTE: Blinking animation control
-   eye_up_line_now = bez_raw(eye_in, 
-                             lerp(eye_up_line[1], tblink, eye_low_line[1]),
-                             lerp(eye_up_line[2], tblink, eye_low_line[2]),
-                             eye_out);
-   {
-    draw(eye_up_line_now,eye_up_line_radii);
-    // NOTE: The eyelid
-    fill_dbez(eye_up_line, eye_up_line_now, eye_in_shade);
-   }
+   bb_raw(eye_up_line_now,
+          eye_in, 
+          lerp(eye_up_line[1], tblink, eye_low_line[1]),
+          lerp(eye_up_line[2], tblink, eye_low_line[2]),
+          eye_out,
+          eye_up_line_radii);
+   // NOTE: The eyelid
+   fill_dbez(eye_up_line, eye_up_line_now, eye_in_shade);
   }
   {//~NOTE: Eyeball
-   v3 eyeball_center = eyeT*V3(0.1531f, 0.0101f, -0.3179f);
-   v1 eyeball_radius = (eye_out.x - eye_in.x)*0.4526f;
-   mat4 eyeballT;
-   {// NOTE: Eyeball visualization
-    mat4 to_eyeballL   = mat4_translate(eyeball_center);
-    mat4 eyeball_scale = mat4_scale(eyeball_radius);
-    mat4 rot;
-    {// NOTE: We don't have phi yet
-     v1 eyeball_theta = 0.13f*(pose->teye_theta);
-     if(painter.lr_index){ eyeball_theta *= -1; };
-     rot = rotateY(eyeball_theta);
-    }
-    eyeballT = to_eyeballL*eyeball_scale*rot;
+   bone_block(Bone_Eyeball);
+   {//-Eyeball visualization
     b32 show_eyeball = get_preset() == 2;
     if(show_eyeball){
      hl_block;
@@ -1122,46 +1110,37 @@ render_eyes(Pose *pose){
       v1 small = 0.25f;
       eyeball_radii = V4(big,small,small,big);
      }
-     draw_bezier_circle(eyeballT, eyeball_radii);  // NOTE: A prime meridian
-     mat4 eyeball_equator = eyeballT*rotateX(0.25f);
-     draw_bezier_circle(eyeball_equator, eyeball_radii);
+     bs_circle(V3(),V3z(1),eyeball_radii);  // NOTE: A prime meridian
+     bs_circle(V3(),V3x(1),eyeball_radii);
     }
    }
-   {// NOTE: Iris (featuring Mr. Depth Offset Hack)
+   {//-Iris (featuring Mr. Depth Offset Hack)
     lp_block(nslice_per_meter, 128.f*(7.6378f));
     v1 iris_depth_offset = painter.fill_depth_offset + 1*centimeter;
     lp_block(depth_offset, current_line_cparams().depth_offset+iris_depth_offset);
     add_in_block(painter.fill_depth_offset, iris_depth_offset);
     
     {
+     //NOTE: https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
+     // so iris radius is [0.5, 0.6] that of eyeball
      mat4 irisRelT;
-     {
-      //NOTE: https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
-      // so iris radius is [0.5, 0.6] that of eyeball
-      v1 iris_radius     = (0.4934f);
-      v3 iris_rel_center = V3z(square_root(1-squared(iris_radius)));
-      irisRelT = mat4_translate(iris_rel_center) * mat4i_scale(iris_radius);
-     }
+     v1 iris_radius     = (0.4934f);
+     v3 iris_rel_center = V3z(square_root(1-squared(iris_radius)));
      v4 iris_radii;
      {
       v1 big   = 0.5f;
       v1 small = 0.25f;
       iris_radii = V4(big,small,small,big);
      }
-     {
-      mat4 irisLT = eyeballT*irisRelT;
-      draw_bezier_circle(irisLT, iris_radii);
-     }
+     bs_circle(iris_rel_center, V3z(iris_radius), iris_radii);
     }
    }
    
    {//-NOTE: Checking
     for_i32(index,0,2){
-     Bez line;
-     if(index == 0){ line = eye_up_line; }
-     else{ line = eye_low_line; }
+     Bez line = index==0 ? eye_up_line : eye_low_line;
      auto result = get_eye_min_distance(eyeball_center, eyeball_radius, line);
-     if (result.min_distance < 0){
+     if(result.min_distance < 0){
       DEBUG_VALUE(result.min_distance/millimeter);
       indicate(result.closest_point, 0);
      }
@@ -1341,7 +1320,7 @@ render_head(Pose *pose, v1 animation_time)
  {
   symx_off;
   bb_negateX(nose_line_sideR, nose_line_side, lp_invisible());
-  dfill_dbez(nose_line_side, nose_line_sideR);
+  bs_fill_dbez(nose_line_side, nose_line_sideR);
  }
  
  {//NOTE: Draw that tasty nose wing :>
@@ -1384,7 +1363,7 @@ render_head(Pose *pose, v1 animation_time)
  if(level1){ hl_block; draw(brow_ridge); }
  
  {//-NOTE: Eyebrows
-  radius_scale_block((0.8053f));
+  radius_scale_block(0.8053f);
   // NOTE: determined expression
   v3 brow_in = (bezier_sample(brow_ridge, 0.1313f) +
                 V3(0.0044f, -0.0566f, 0.0056f));
@@ -1860,25 +1839,15 @@ render_head(Pose *pose, v1 animation_time)
    argb line_color = current_line_cparams().color;
    if(painter.show_grid){ line_color = argb_silver; }
    lp_block(color, line_color);
-   
    {// NOTE: Loomis The side circle
-    mat4 tform = (mat4_translate(loomis_side_center) *
-                  mat4_scale(loomis_side_radius) *
-                  rotateY(0.25f));
-    draw_bezier_circle(tform);
+    bs_circle(loomis_side_center, V3x(loomis_side_radius));
    }
    {
     // NOTE: Face z
     draw(bez_line(V3z(faceZ), setz(chin_middle, faceZ)));
-    draw_bezier_circle( mat4_identity);  // NOTE: The Loomis "unit circle" (i.e the first circle you draw)
-    {
-     mat4 equator = rotateX(0.25f);
-     draw_bezier_circle( equator);
-    }
-    {
-     mat4 longitude = rotateY(0.25f);
-     draw_bezier_circle( longitude);
-    }
+    bs_circle(V3(), V3z(1));  // NOTE: The Loomis "unit circle" (i.e the first circle you draw)
+    bs_circle(V3(), V3y(1));  // equator
+    bs_circle(V3(), V3x(1));  //longitude
    } 
   }
  }
@@ -1900,7 +1869,7 @@ render_character(Pose *pose, v1 animation_time){
  // 1: Things are on the left (side of the face) by default. Meaning x>0.
  // 2: Things like eyeY are just landmarks, nobody cares if there is actually no vertex lying on that y.
  painter.shade_color = compute_fill_color(0.094014f);
- if(fbool(0)){painter.shade_color = painter.fill_params.color;}
+ if(fbool(0)){painter.shade_color = painter.line_params.fill.color;}
  b32 show_body = fbool(1);  //;show_body  NOTE: Her face somehow looks a lot worse when the body is on?
  v1 arm_ry = head_unit_world*(0.5302f);
  macro_torso(macro_world_declare);
@@ -2068,7 +2037,8 @@ defer_block(push_bone_inner(*m, stack, lr_index, __VA_ARGS__), stack.pop())
  
  v1 torso_scale = head_radius_world*fval(1.2484f);
  for_i32(lr_index,0,2){
-  {//NOTE(kv) We're being inefficient here: we only need to animate one side, but who cares!
+  {//-Head
+   //NOTE(kv) We only need to animate one side, but who cares!
    const v1 head_theta_max = 0.15f;   // @Tweak
    const v1 head_phi_max   = 0.125f;  // @Tweak
    const v1 head_roll_max  = 0.125f;  // @Tweak
@@ -2079,13 +2049,32 @@ defer_block(push_bone_inner(*m, stack, lr_index, __VA_ARGS__), stack.pop())
    mat4i headT = (mat4i_scale(head_radius_world) *
                   mat4i_rotate_tpr(head_theta, head_phi, head_roll, rotation_pivot));
    if(lr_index){ headT = negateX(headT); }
-   bone_blockm(Bone_Head, headT);
+   bone_blockm(Bone_Head, headT){
+    //-Eyeball
+    v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
+    v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
+    mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
+    v3 eye_in = eyeT*V3(-0.0282f, 0.f, -0.1236f);
+    v3 eye_out = eye_in + V3(2.f * eye_in.x+(-0.03f), 0, -0.154f);
+    eyeball_center = eyeT*V3(0.1531f, 0.0101f, -0.3179f);
+    mat4i to_eyeball = mat4i_translate(eyeball_center);
+    eyeball_radius = (eye_out.x - eye_in.x)*0.4526f;
+    mat4i eyeball_scale = mat4i_scale(eyeball_radius);
+    mat4i rot;
+    {// NOTE: We don't have phi yet
+     v1 eyeball_theta = 0.13f*(pose->teye_theta);
+     if(painter.lr_index){ eyeball_theta *= -1; };
+     rot = mat4i_rotateY(eyeball_theta);
+    }
+    mat4i eyeballT = to_eyeball*eyeball_scale*rot;
+    bone_blockm(Bone_Eyeball, eyeballT);
+   }
   }
-  {
+  {//-Pelvis
    v1 head_topY = head_radius_world;
    v3 translate = V3(0.f,
                      head_topY - 3.2f * head_unit_world, 
-                     fval(0.067f));
+                     (0.067f));
    mat4i pelvisT = mat4i_translate(translate) * mat4i_scale(head_radius_world);
    if(lr_index){ pelvisT = negateX(pelvisT); }
    bone_blockm(Bone_Pelvis, pelvisT);
@@ -2096,7 +2085,7 @@ defer_block(push_bone_inner(*m, stack, lr_index, __VA_ARGS__), stack.pop())
   bone_blockm(Bone_Torso, torsoT){
    mat4i armT;
    {
-    v1 arm_ry = head_unit_world*fval(0.5302f);
+    v1 arm_ry = head_unit_world*(0.5302f);
     //NOTE: ;armT Calculate upper arm transform, so we can draw attachments to it
     v1 scale = arm_ry / torso_scale; // note: Because it's multiplied by torsoT
     v3 translate = scap_sock_top + V3(0.0764f, -0.9755f, 0.2612f);
@@ -2264,7 +2253,8 @@ render_movie(render_movie_params){
   Painter &p = painter;
   auto &m = *p.modeler;
   p.symx              = true;
-  p.fill_params.color = default_fill;
+  //p.fill_params.color = default_fill;
+  p.line_params.fill.color = default_fill;
   p.fill_depth_offset = millimeter * 1.f;
   p.line_params.visibility = 1.0f ;
   {

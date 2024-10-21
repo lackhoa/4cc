@@ -17,6 +17,7 @@ enum Bone_Type{
  Bone_Hand           = 9,
  Bone_Thumb          = 10,
  Bone_Pelvis         = 11,
+ Bone_Eyeball        = 12,
 };
 struct Bone_ID{
  Bone_Type type;
@@ -37,6 +38,13 @@ struct Common_Line_Params{
  v4 radii;          //NOTE(kv) The default radii
  meta_unserialized i1 linum;  //NOTE(kv) The line number where this common line params is defined.
 };
+typedef u32 Poly_Flags;
+struct Fill_Params{
+ //NOTE(kv) Might need to make a different set of flags for fill versus polygons.
+ //  because the polygon routine is shared by both fills and lines.
+ argb color;
+ Poly_Flags flags;
+};
 struct Line_Params{
  v4 radii;
  v1 visibility;
@@ -47,18 +55,13 @@ struct Line_Params{
  //  but currently we specify them per-curve so... let's just do that to ease the transition.
  v3 unit_normal;
  v1 alignment_min;
+ //-Fill
+ Fill_Params fill;
 };
-typedef u32 Poly_Flags;
 enum{
  Poly_Shaded  = 0x1,  //NOTE: Has to be 1, for compatibility with old code.
  Poly_Line    = 0x2,
  Poly_Overlay = 0x4,
-};
-struct Fill_Params{
- //NOTE(kv) Might need to make a different set of flags for fill versus polygons.
- //  because the polygon routine is shared by both fills and lines.
- argb color;
- Poly_Flags flags;
 };
 i1_wrapper(Common_Line_Params_Index);
 //-

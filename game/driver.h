@@ -24,10 +24,10 @@ struct Bezier{
 typedef Bezier Bez;
 
 //~ id system
-// NOTE(kv): Primitives are either drawn by code or data.
-enum Prim_Type : u8 {
+// NOTE(kv): Entities are either drawn by code or data.
+enum Prim_Type : u8{
  Prim_Null     = 0,
- Prim_Vertex   = 1,
+ Prim_Vertex   = 1,  //NOTE(kv) Idk if vertices are really entities? Maybe they're like vertex visualizer?
  Prim_Curve    = 2,
  Prim_Triangle = 3,
 };
@@ -63,11 +63,13 @@ prim_id_from_curve_index(Curve_Index i){
  u32 type = u32(Prim_Curve) << 24;
  return (u32)(i.v) | type;
 }
+#if 0
 inline u32
 prim_id_from_triangle_index(Fill_Index i){
  u32 type = u32(Prim_Triangle) << 24;
  return (u32)(i.v) | type;
 }
+#endif
 //~
 global char *global_debug_scope;
 #define vertex_block(NAME) set_in_block(global_debug_scope, NAME)
@@ -173,7 +175,7 @@ framework_storage b32 debug_frame_time_on;
 //~
 framework_storage u32 draw_cycle_counter;
 framework_storage v1  default_fvert_delta_scale;
-struct Viewport {
+struct Viewport{
  i1 index;  //NOTE(kv) Redundant data
  i1 preset;
  i1 last_preset;
@@ -202,9 +204,9 @@ struct Bone{
 
 struct Viewport;
 struct Modeler;
-//NOTE(kv) This is a convenient global store.
-//NOTE(kv) See @init_painter
 struct Painter{
+ //NOTE(kv) This is a convenient global store.
+ //NOTE(kv) See @init_painter
  //-misc
  Render_Target *target;
  Viewport *viewport;
@@ -217,10 +219,10 @@ struct Painter{
  v1    meter_to_pixel_;
  v1   profile_score;  //TODO: @Cleanup axe this?
  b32  symx;
- v1 fill_depth_offset;
+ v1 fill_depth_offset;  //TODO(kv) This should be part of the fill params?
  v1 line_radius_unit_mult;
  Line_Params line_params;
- Fill_Params fill_params;
+ //Fill_Params fill_params;  //NOTE(kv) smuggle this in the line params, temporarily
  i32 viz_level;
  b32 ignore_radii;
  b32 ignore_alignment_min;
@@ -241,7 +243,7 @@ struct Painter{
 framework_storage Painter painter;  // see @init_painter
 function Line_Params lp(){ return painter.line_params; }
 function Fill_Params fp(argb color=0){
- Fill_Params result = painter.fill_params;
+ Fill_Params result = painter.line_params.fill;
  if(color){result.color = color;}
  return result;
 }

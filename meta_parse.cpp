@@ -26,40 +26,41 @@ parse_type_and_name(Ed_Parser *p, Parsed_Type *otype, String *oname){
  }
 }
 function void
-parse_struct_member(Ed_Parser *p, Meta_Struct_Member *member){
+parse_struct_member(Ed_Parser *p, M_Struct_Member *member){
  if(ep_maybe_id(p, "tagged_by")){
   mpa_parens{ member->discriminator = ep_id(p); }
  }
  parse_type_and_name(p, &member->type, &member->name);
  ep_skip_semicolons(p);
 }
-inline Meta_Struct_Member
+inline M_Struct_Member
 parse_struct_member(Ed_Parser *p){
- Meta_Struct_Member member = {};
+ M_Struct_Member member = {};
  parse_struct_member(p, &member);
  return member;
 }
-function Meta_Struct_Member
+function M_Struct_Member
 struct_member_from_string(String string){
  Scratch_Block scratch;
  Ed_Parser parser = m_parser_from_string(scratch, string);
  return parse_struct_member(&parser);
 }
-inline Meta_Struct_Member
+inline M_Struct_Member
 struct_member_from_string(char *cstring){
  return struct_member_from_string(SCu8(cstring));
 }
-function Meta_Struct_Members
+function M_Struct_Members
 parse_struct_body(Arena *arena, Ed_Parser *p){
- auto result = dynamic_array<Meta_Struct_Member>(arena);
+ M_Struct_Members result;
+ init_dynamic(result, arena);
  m_brace_open(p);
  while(p->ok_ && !m_maybe_brace_close(p)){
-  auto &member = result.push_zero();
-  parse_struct_member(p, &member);
+  M_Struct_Member *member = &result.push_zero();
+  parse_struct_member(p, member);
  }
  return result;
 }
-inline Meta_Struct_Members
+inline M_Struct_Members
 parse_struct_body(Arena *a, char *string){
  Scratch_Block scratch;
  Ed_Parser parser = m_parser_from_string(scratch, SCu8(string));

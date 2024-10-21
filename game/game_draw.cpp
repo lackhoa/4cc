@@ -143,6 +143,11 @@ fill3(v3 a, v3 b, v3 c, Fill_Params params=fp(), linum_defparam){
  fill3_inner2(points,params,linum);
 }
 inline void
+fill3(v3 points[3], Fill_Params params=fp(), linum_defparam){
+ fill3_inner2(points,params,linum);
+}
+#if 0
+inline void
 dfill3_func(String a, String b, String c, Fill_Params params=fp(), linum_defparam){
  String points[3] = {a,b,c};
  dfill3_func(points,params,linum);
@@ -150,10 +155,7 @@ dfill3_func(String a, String b, String c, Fill_Params params=fp(), linum_defpara
 #define dfill3(a,b,c,...) \
 dfill3_func(strlit(#a), strlit(#b), strlit(#c), __VA_ARGS__)
 #define dfill_bez(b,...)  dfill_bez_func(strlit(#b),__VA_ARGS__)
-inline void
-fill3(v3 points[3], Fill_Params params=fp(), linum_defparam){
- fill3_inner2(points,params,linum);
-}
+#endif
 #define dfill_dbez(b1,b2,...) dfill_dbez_func(strlit(#b1), strlit(#b2), __VA_ARGS__)
 //-
 inline Bezier bez_raw(v3 p0, v3 p1, v3 p2, v3 p3){
@@ -519,7 +521,7 @@ v4_gray(v1 value) {
 function argb
 compute_fill_color(v1 color_lerp){
  Painter &p = painter;
- argb color = p.fill_params.color;
+ argb color = p.line_params.fill.color;
  if(color_lerp != 0.0f){
   v4 color_v4 = argb_unpack(color);
   // NOTE(kv): 0 is the lerp target
@@ -589,7 +591,7 @@ fill(v3 A, Bezier &bezier,
  set_linum;
  auto p = &painter;
  if(is_poly_enabled()){
-  if(c0 == 0){c0 = p->fill_params.color;}
+  if(c0 == 0){c0 = p->line_params.fill.color;}
   v3 *P = bezier;
   const i32 npoints = 5;
   v3 points[npoints];
@@ -604,7 +606,7 @@ function void
 fill_dbez_inner(const v3 P[4], const v3 Q[4], argb color){
  Painter *p = &painter;
  if(is_poly_enabled()){
-  if(color == 0){color = p->fill_params.color;}
+  if(color == 0){color = p->line_params.fill.color;}
   const i32 npoints = 8;
   v3 points[npoints];
   for_i32(ipoint,0,4){points[ipoint+0] = P[ipoint];}
@@ -676,7 +678,7 @@ fill_patch_inner(const v3 P[4][4],
 function void
 fill_patch(const v3 P[4][4], argb color=0) {
  auto p = &painter;
- if(color == 0){color = p->fill_params.color;}
+ if(color == 0){color = p->line_params.fill.color;}
  fill_patch_inner(P, color, p->fill_depth_offset, p->viz_level);
 }
 function void

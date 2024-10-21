@@ -1,4 +1,4 @@
-//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:259:
+//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:254:
 // NOTE: source: C:\Users\vodan\4ed\code\game\driver.kh
 #pragma once
 //-Generated: driver.gen.h
@@ -49,7 +49,7 @@ get_type_info_Vertex_Index()
 Type_Info result = {};
 result.name = strlit("Vertex_Index");
 result.size = sizeof(Vertex_Index);
-result.kind = Type_Kind_Struct;
+result.kind = I_Type_Kind_Struct;
 result.members.set_count(1);
 result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Vertex_Index, v)};
 return result;
@@ -90,7 +90,7 @@ get_type_info_Curve_Index()
 Type_Info result = {};
 result.name = strlit("Curve_Index");
 result.size = sizeof(Curve_Index);
-result.kind = Type_Kind_Struct;
+result.kind = I_Type_Kind_Struct;
 result.members.set_count(1);
 result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Curve_Index, v)};
 return result;
@@ -131,7 +131,7 @@ get_type_info_Fill_Index()
 Type_Info result = {};
 result.name = strlit("Fill_Index");
 result.size = sizeof(Fill_Index);
-result.kind = Type_Kind_Struct;
+result.kind = I_Type_Kind_Struct;
 result.members.set_count(1);
 result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Fill_Index, v)};
 return result;
@@ -173,15 +173,16 @@ Bone_Torso = 7,
 Bone_References = 8,
 Bone_Hand = 9,
 Bone_Thumb = 10,
-Bone_Pelvis = 11,};//  C:\Users\vodan\4ed\code/meta_print.cpp:389:
+Bone_Pelvis = 11,
+Bone_Eyeball = 12,};//  C:\Users\vodan\4ed\code/meta_print.cpp:389:
 function Type_Info
 get_type_info_Bone_Type();//  C:\Users\vodan\4ed\code/meta_print.cpp:393:
 function Type_Info
 get_type_info_Bone_Type(){Type_Info result = {};
 result.name = strlit("Bone_Type");
 result.size = sizeof(Bone_Type);
-result.kind = Type_Kind_Enum;
-result.enum_members.set_count(12);
+result.kind = I_Type_Kind_Enum;
+result.enum_members.set_count(13);
 result.enum_members[0] = {.name=strlit("Bone_None"), .value=Bone_None};
 result.enum_members[1] = {.name=strlit("Bone_Head"), .value=Bone_Head};
 result.enum_members[2] = {.name=strlit("Bone_Arm"), .value=Bone_Arm};
@@ -194,6 +195,7 @@ result.enum_members[8] = {.name=strlit("Bone_References"), .value=Bone_Reference
 result.enum_members[9] = {.name=strlit("Bone_Hand"), .value=Bone_Hand};
 result.enum_members[10] = {.name=strlit("Bone_Thumb"), .value=Bone_Thumb};
 result.enum_members[11] = {.name=strlit("Bone_Pelvis"), .value=Bone_Pelvis};
+result.enum_members[12] = {.name=strlit("Bone_Eyeball"), .value=Bone_Eyeball};
 return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:85:
 global_decl Type_Info Type_Info_Bone_Type;
 //  C:\Users\vodan\4ed\code/meta_print.cpp:92:
@@ -220,7 +222,7 @@ get_type_info_Bone_ID()
 Type_Info result = {};
 result.name = strlit("Bone_ID");
 result.size = sizeof(Bone_ID);
-result.kind = Type_Kind_Struct;
+result.kind = I_Type_Kind_Struct;
 result.members.set_count(2);
 result.members[0] = {.type=&Type_Info_Bone_Type, .name=strlit("type"), .offset=offsetof(Bone_ID, type)};
 result.members[1] = {.type=&Type_Info_i1, .name=strlit("id"), .offset=offsetof(Bone_ID, id)};
@@ -297,7 +299,7 @@ get_type_info_Common_Line_Params()
 Type_Info result = {};
 result.name = strlit("Common_Line_Params");
 result.size = sizeof(Common_Line_Params);
-result.kind = Type_Kind_Struct;
+result.kind = I_Type_Kind_Struct;
 result.members.set_count(7);
 result.members[0] = {.type=&Type_Info_v1, .name=strlit("radius_mult"), .offset=offsetof(Common_Line_Params, radius_mult)};
 result.members[1] = {.type=&Type_Info_v1, .name=strlit("nslice_per_meter"), .offset=offsetof(Common_Line_Params, nslice_per_meter)};
@@ -373,11 +375,80 @@ pointer.radii = m_radii;
 eat_char(p, '}');
 }
 ;
+typedef u32 Poly_Flags;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:444:
+function Type_Info
+get_type_info_Poly_Flags();//  C:\Users\vodan\4ed\code/meta_print.cpp:448:
+function Type_Info
+get_type_info_Poly_Flags(){Type_Info result = Type_Info_u32;
+result.name = strlit("Poly_Flags");
+return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:85:
+global_decl Type_Info Type_Info_Poly_Flags;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:92:
+xglobal Type_Info Type_Info_Poly_Flags = get_type_info_Poly_Flags();
+
+//  C:\Users\vodan\4ed\code/meta_print.cpp:461:
+function void
+read_Poly_Flags(Data_Reader &r, Poly_Flags &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:466:
+function void
+read_Poly_Flags(Data_Reader &r, Poly_Flags &pointer){read_u32(r, pointer);};
+struct Fill_Params{argb color;
+Poly_Flags flags;};//  C:\Users\vodan\4ed\code/meta_print.cpp:169:
+struct Fill_Params;
+function Type_Info
+get_type_info_Fill_Params();//  C:\Users\vodan\4ed\code/meta_print.cpp:174:
+function Type_Info
+get_type_info_Fill_Params()
+{
+Type_Info result = {};
+result.name = strlit("Fill_Params");
+result.size = sizeof(Fill_Params);
+result.kind = I_Type_Kind_Struct;
+result.members.set_count(2);
+result.members[0] = {.type=&Type_Info_argb, .name=strlit("color"), .offset=offsetof(Fill_Params, color)};
+result.members[1] = {.type=&Type_Info_Poly_Flags, .name=strlit("flags"), .offset=offsetof(Fill_Params, flags)};
+return result;
+}
+//  C:\Users\vodan\4ed\code/meta_print.cpp:85:
+global_decl Type_Info Type_Info_Fill_Params;
+//  C:\Users\vodan\4ed\code/meta_print.cpp:92:
+xglobal Type_Info Type_Info_Fill_Params = get_type_info_Fill_Params();
+
+function Type_Info &type_info_from_pointer(Fill_Params*pointer){return Type_Info_Fill_Params;}//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
+function void
+read_Fill_Params(Data_Reader &r, Fill_Params &pointer);
+//  C:\Users\vodan\4ed\code/meta_print.cpp:225:
+function void
+read_Fill_Params(Data_Reader &r, Fill_Params &pointer)
+{
+STB_Parser *p = r.parser;
+eat_char(p, '{');
+argb m_color = {};
+
+{
+eat_id(p, strlit("color"));
+read_argb(r, m_color);
+}
+pointer.color = m_color;
+
+Poly_Flags m_flags = {};
+
+{
+eat_id(p, strlit("flags"));
+read_Poly_Flags(r, m_flags);
+}
+pointer.flags = m_flags;
+
+eat_char(p, '}');
+}
+;
 struct Line_Params{v4 radii;
 v1 visibility;
 Line_Flags flags;
 v3 unit_normal;
-v1 alignment_min;};//  C:\Users\vodan\4ed\code/meta_print.cpp:169:
+v1 alignment_min;
+Fill_Params fill;};//  C:\Users\vodan\4ed\code/meta_print.cpp:169:
 struct Line_Params;
 function Type_Info
 get_type_info_Line_Params();//  C:\Users\vodan\4ed\code/meta_print.cpp:174:
@@ -387,13 +458,14 @@ get_type_info_Line_Params()
 Type_Info result = {};
 result.name = strlit("Line_Params");
 result.size = sizeof(Line_Params);
-result.kind = Type_Kind_Struct;
-result.members.set_count(5);
+result.kind = I_Type_Kind_Struct;
+result.members.set_count(6);
 result.members[0] = {.type=&Type_Info_v4, .name=strlit("radii"), .offset=offsetof(Line_Params, radii)};
 result.members[1] = {.type=&Type_Info_v1, .name=strlit("visibility"), .offset=offsetof(Line_Params, visibility)};
 result.members[2] = {.type=&Type_Info_Line_Flags, .name=strlit("flags"), .offset=offsetof(Line_Params, flags)};
 result.members[3] = {.type=&Type_Info_v3, .name=strlit("unit_normal"), .offset=offsetof(Line_Params, unit_normal)};
 result.members[4] = {.type=&Type_Info_v1, .name=strlit("alignment_min"), .offset=offsetof(Line_Params, alignment_min)};
+result.members[5] = {.type=&Type_Info_Fill_Params, .name=strlit("fill"), .offset=offsetof(Line_Params, fill)};
 return result;
 }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:85:
@@ -450,81 +522,21 @@ read_v1(r, m_alignment_min);
 }
 pointer.alignment_min = m_alignment_min;
 
+Fill_Params m_fill = {};
+
+{
+eat_id(p, strlit("fill"));
+read_Fill_Params(r, m_fill);
+}
+pointer.fill = m_fill;
+
 eat_char(p, '}');
 }
 ;
-typedef u32 Poly_Flags;
-//  C:\Users\vodan\4ed\code/meta_print.cpp:444:
-function Type_Info
-get_type_info_Poly_Flags();//  C:\Users\vodan\4ed\code/meta_print.cpp:448:
-function Type_Info
-get_type_info_Poly_Flags(){Type_Info result = Type_Info_u32;
-result.name = strlit("Poly_Flags");
-return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:85:
-global_decl Type_Info Type_Info_Poly_Flags;
-//  C:\Users\vodan\4ed\code/meta_print.cpp:92:
-xglobal Type_Info Type_Info_Poly_Flags = get_type_info_Poly_Flags();
-
-//  C:\Users\vodan\4ed\code/meta_print.cpp:461:
-function void
-read_Poly_Flags(Data_Reader &r, Poly_Flags &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:466:
-function void
-read_Poly_Flags(Data_Reader &r, Poly_Flags &pointer){read_u32(r, pointer);};
 //  C:\Users\vodan\4ed\code/meta_print.cpp:374:
 enum {Poly_Shaded = 1,
 Poly_Line = 2,
 Poly_Overlay = 4,};;
-struct Fill_Params{argb color;
-Poly_Flags flags;};//  C:\Users\vodan\4ed\code/meta_print.cpp:169:
-struct Fill_Params;
-function Type_Info
-get_type_info_Fill_Params();//  C:\Users\vodan\4ed\code/meta_print.cpp:174:
-function Type_Info
-get_type_info_Fill_Params()
-{
-Type_Info result = {};
-result.name = strlit("Fill_Params");
-result.size = sizeof(Fill_Params);
-result.kind = Type_Kind_Struct;
-result.members.set_count(2);
-result.members[0] = {.type=&Type_Info_argb, .name=strlit("color"), .offset=offsetof(Fill_Params, color)};
-result.members[1] = {.type=&Type_Info_Poly_Flags, .name=strlit("flags"), .offset=offsetof(Fill_Params, flags)};
-return result;
-}
-//  C:\Users\vodan\4ed\code/meta_print.cpp:85:
-global_decl Type_Info Type_Info_Fill_Params;
-//  C:\Users\vodan\4ed\code/meta_print.cpp:92:
-xglobal Type_Info Type_Info_Fill_Params = get_type_info_Fill_Params();
-
-function Type_Info &type_info_from_pointer(Fill_Params*pointer){return Type_Info_Fill_Params;}//  C:\Users\vodan\4ed\code/meta_print.cpp:220:
-function void
-read_Fill_Params(Data_Reader &r, Fill_Params &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:225:
-function void
-read_Fill_Params(Data_Reader &r, Fill_Params &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
-argb m_color = {};
-
-{
-eat_id(p, strlit("color"));
-read_argb(r, m_color);
-}
-pointer.color = m_color;
-
-Poly_Flags m_flags = {};
-
-{
-eat_id(p, strlit("flags"));
-read_Poly_Flags(r, m_flags);
-}
-pointer.flags = m_flags;
-
-eat_char(p, '}');
-}
-;
 struct Common_Line_Params_Index{i1 v;};inline b32 operator==(Common_Line_Params_Index a, Common_Line_Params_Index b){ return a.v==b.v; }
 //  C:\Users\vodan\4ed\code/meta_print.cpp:169:
 struct Common_Line_Params_Index;
@@ -536,7 +548,7 @@ get_type_info_Common_Line_Params_Index()
 Type_Info result = {};
 result.name = strlit("Common_Line_Params_Index");
 result.size = sizeof(Common_Line_Params_Index);
-result.kind = Type_Kind_Struct;
+result.kind = I_Type_Kind_Struct;
 result.members.set_count(1);
 result.members[0] = {.type=&Type_Info_i1, .name=strlit("v"), .offset=offsetof(Common_Line_Params_Index, v)};
 return result;

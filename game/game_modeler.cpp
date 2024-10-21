@@ -26,18 +26,19 @@ curve_index_from_pointer(Modeler &m, Curve_Data *pointer) {
  return {};
 }
 function Vertex_Ref
-get_vertex_by_name(Modeler &m, String name){
+get_vertex_from_var(Modeler &m, String name, i32 linum){
  Vertex_Ref result = {};
- //NOTE(kv) We can rely on the fact that vertices are added in "code order" for now.
- //  so the latest always wins.
+ i32 closest_linum = 0;
  for(auto vi=m.vertices.count-1;
      vi >= 1;
      vi--){
-  Vertex_Data *vertex = &m.vertices[vi];
-  if(vertex->name == name){
+  Vertex_Data &vertex = m.vertices[vi];
+  if(vertex.linum < linum and
+     vertex.linum > closest_linum and
+     vertex.name == name){
+   closest_linum = vertex.linum;
    result.index = {vi};
-   result.vertex = vertex;
-   break;
+   result.vertex = &vertex;
   }
  }
  return result;
@@ -69,20 +70,24 @@ get_curve_by_linum(Modeler &m, i1 linum){
  return result;
 }
 function Curve_Ref
-get_curve_by_name(Modeler &m, String name){
+get_curve_from_var(Modeler &m, String name, i32 linum){
  Curve_Ref result = {};
+ i32 closest_linum = 0;
  for(i1 ci=m.curves.count-1;
      ci >= 1;
      ci--){
-  Curve_Data *curve = &m.curves[ci];
-  if(curve->name == name){
+  Curve_Data &curve = m.curves[ci];
+  if(curve.linum < linum and
+     curve.linum > closest_linum and
+     curve.name == name){
+   closest_linum = curve.linum;
    result.index = {ci};
-   result.curve = curve;
-   break;
+   result.curve = &curve;
   }
  }
  return result;
 }
+#if 0
 function Fill_Ref
 get_fill_by_linum(Modeler &m, i1 linum){
  Fill_Ref result = {};
@@ -98,133 +103,84 @@ get_fill_by_linum(Modeler &m, i1 linum){
  }
  return result;
 }
+#else
+#endif
 //-
 function void
 send_vert_func(Painter &p, String name, v3 pos, i1 linum){
  if(p.sending_data){
   Modeler &m = *p.modeler;
   if(is_left(p)){
-   Vertex_Data &vertex = m.vertices.push_zero();
-   vertex.name    = name;
-   vertex.pos     = pos;
-   vertex.bone_id = current_bone(p)->id;
-   vertex.linum   = linum;
+   Vertex_Ref existing = get_vertex_by_linum(m, linum);
+   Vertex_Data *vertex = (existing.index.v ? existing.vertex :
+                          &m.vertices.push_zero());
+   vertex->name    = name;
+   vertex->pos     = pos;
+   vertex->bone_id = current_bone(p)->id;
+   vertex->linum   = linum;
   }
  }
 }
 //-
 function void
-send_bez_func(String name, Curve_Type type, Curve_Union data,
+send_bez_func(String name, Curve_Type type, const Curve_Union &data,
               Line_Params params, i1 linum){
  Painter &p = painter;
  if(p.sending_data){
   Modeler &m = *p.modeler;
   if(is_left(p)){
-   Curve_Data &curve = m.curves.push_zero();
-   curve.cparams  = current_line_cparams_index();
-   kv_assert(curve.cparams.v >= 0 and
-             curve.cparams.v <  m.line_cparams.count);
-   curve.type     = type;
-   curve.name     = name;
-   curve.data     = data;
-   curve.params   = params;
-   curve.linum    = linum;
-   curve.bone_id  = current_bone(p)->id;
-  }else{
-   if(p.is_right and p.symx){
-    Curve_Data *curve = get_curve_by_linum(m, linum).curve;
-    curve->symx = true;
-   }
+   Curve_Ref existing = get_curve_by_linum(m, linum);
+   Curve_Data *curve = (existing.index.v ? existing.curve :
+                        &m.curves.push_zero());
+   curve->cparams  = current_line_cparams_index();
+   kv_assert(curve->cparams.v >= 0 and
+             curve->cparams.v <  m.line_cparams.count);
+   curve->type    = type;
+   curve->name    = name;
+   curve->data    = data;
+   curve->params  = params;
+   curve->linum   = linum;
+   curve->bone_id = current_bone(p)->id;
+   curve->symx = p.symx;
   }
  }
 }
-//-NOTE(kv) Prototypes at send_bez.gen.h
-/*
-#if 0
+//-Fill situation
 function void
-send_bez_v3v2(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i1 linum){
- Curve_Union data = {.v3v2={ .d0=d0, .d3=d3 }};
- send_bez_func(name, p0, p3, Curve_Type_v3v2, data, params, linum);
-}
-function void
-send_bez_parabola(String name, String p0, v3 d, String p3, Line_Params params, i1 linum){
- Curve_Union data = {.parabola={.d=d}};
- send_bez_func(name, p0, p3, Curve_Type_Parabola, data, params, linum);
-}
-function void
-send_bez_c2(String name, String ref, v3 d3, String p3, Line_Params params, i1 linum){
- Modeler &m = *painter.modeler;
- Curve_Union data = {.c2={.d3=d3}};
- Curve_Ref ref2 = get_curve_by_name(m, ref);
- kv_assert(ref2.curve);
- data.c2.ref = ref2.index;
- send_bez_func(name, strlit(""), p3, Curve_Type_C2, data, params, linum);
-}
-function void
-send_bez_unit(String name, String p0, v2 d0, v2 d3, v3 unit_y, String p3, Line_Params params, i32 linum){
- Curve_Union data = {.unit={d0,d3,unit_y}};
- send_bez_func(name, p0, p3, Curve_Type_Unit, data, params, linum);
-}
-function void
-send_bez_unit2(String name, String p0, v4 d0d3, v3 unit_y, String p3, Line_Params params, i32 linum){
- send_bez_unit(name, p0, d0d3.xy, d0d3.zw, unit_y, p3, params, linum);
-}
-function void
-send_bez_line(String name, String p0, String p3, Line_Params params, i32 linum){
+send_bez_fill3(String name, String verts[3], Line_Params params, i32 linum){
+ Painter &p = painter;
+ Modeler &m = *p.modeler;
  Curve_Union data = {};
- send_bez_func(name, p0, p3, Curve_Type_Line, data, params, linum);
+ for_i32(i,0,3){
+  Vertex_Index vi = get_vertex_from_var(m, verts[i], linum).index;
+  kv_assert(vi.v);
+  data.fill3.verts[i] = vi;
+ }
+ send_bez_func(name, Curve_Type_Fill3, data, params, linum);
 }
 function void
-send_bez_bez_bezd_old(String name, String p0, v3 d0, v2 d3, String p3, Line_Params params, i32 linum){
- Curve_Union data = {.bez_bezd_old={.d0=d0, .d3=d3,}};
- send_bez_func(name, p0, p3, Curve_Type_Bezd_Old, data, params, linum);
+send_bez_fill3(String name, String verts0, String verts1, String verts2,
+               Line_Params params, i32 linum){
+ String verts[] = {verts0, verts1, verts2};
+ send_bez_fill3(name, verts, params, linum);
 }
-function void
-send_bez_offset(String name, String p0, v3 d0, v3 d3, String p3, Line_Params params, i32 linum){
- Curve_Union data = {.offset={.d0=d0, .d3=d3,}};
- send_bez_func(name, p0, p3, Curve_Type_Offset, data, params, linum);
-}
-function void
-send_bez_negateX(String name, String ref, Line_Params params, i32 linum){
- Modeler &m = *painter.modeler;
- Curve_Union data;
- Curve_Ref ref2 = get_curve_by_name(m, ref);
- kv_assert(ref2.curve);
- data.negateX.ref = ref2.index;
- send_bez_func(name, empty_string, empty_string, Curve_Type_NegateX, data, params, linum);
-}
-#endif
-*/
-//-NOTE(kv) Fill situation
+#if 0
 function void
 send_fill_func(Fill_Type type, Fill_Union &data, Fill_Params params, i1 linum){
  Painter &p = painter;
  if(p.sending_data){
   Modeler &m = *p.modeler;
   if(is_left(p)){
-   Fill_Data &fill = m.fills.push_zero();
-   fill.type = type;
-   fill.params = params;
-   fill.linum = linum;
-   fill.data = data;
-  }else{
-   if(p.symx){
-    get_fill_by_linum(m, linum).fill->symx = true;
-   }
+   Fill_Ref existing = get_fill_by_linum(m, linum);
+   Fill_Data *fill = (existing.index.v ? existing.fill :
+                      &m.fills.push_zero());
+   fill->type = type;
+   fill->params = params;
+   fill->linum = linum;
+   fill->data = data;
+   fill->symx = p.symx;
   }
  }
-}
-function void
-dfill3_func(String vert_names[3], Fill_Params params, i1 linum){
- Painter &p = painter;
- Modeler &m = *p.modeler;
- Fill_Union data = {};
- for_i32(i,0,3){
-  Vertex_Index vi = get_vertex_by_name(m,vert_names[i]).index;
-  kv_assert(vi.v);
-  data.fill3.verts[i] = vi;
- }
- send_fill_func(Fill_Type_Fill3, data, params, linum);
 }
 function void
 dfill_bez_func(String curve_name, Fill_Params params, i1 linum){
@@ -232,7 +188,7 @@ dfill_bez_func(String curve_name, Fill_Params params, i1 linum){
  Modeler &m = *p.modeler;
  Fill_Union data = {};
  {
-  data.bez.curve = get_curve_by_name(m, curve_name).index;
+  data.bez.curve = get_curve_from_var(m, curve_name, linum).index;
   kv_assert(data.bez.curve.v);
  }
  send_fill_func(Fill_Type_Bez, data, params, linum);
@@ -244,13 +200,14 @@ dfill_dbez_func(String b1n, String b2n, Fill_Params params, i1 linum){
  Fill_Union data0 = {};
  Fill_DBez &data = data0.dbez;
  {
-  data.curve1 = get_curve_by_name(m, b1n).index;
-  data.curve2 = get_curve_by_name(m, b2n).index;
+  data.curve1 = get_curve_from_var(m, b1n, linum).index;
+  data.curve2 = get_curve_from_var(m, b2n, linum).index;
   kv_assert(data.curve1.v);
   kv_assert(data.curve2.v);
  }
  send_fill_func(Fill_Type_DBez, data0, params, linum);
 }
+#endif
 //-NOTE: Edit history
 function void
 clear_edit_history(Modeler_History *h){
@@ -387,7 +344,7 @@ function void
 clear_modeling_data(Modeler &m){
  m.vertices.set_count(1);
  m.curves.  set_count(1);
- m.fills.   set_count(1);
+ //m.fills.   set_count(1);
  m.bones.   set_count(1);
  clear_edit_history(&m.history);
 }

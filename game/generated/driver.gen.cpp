@@ -1,4 +1,4 @@
-//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:259:
+//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:254:
 // NOTE: source: C:\Users\vodan\4ed\code\game\driver.kc
 #pragma once
 //@generates driver.gen.cpp
@@ -41,6 +41,9 @@ global Bez brow_ridge;
 global v3 cheek_low;
 global v3 nose_root_backL;
 global v3 cheek_up;
+//-
+global v3 eyeball_center;
+global v1 eyeball_radius;
 //-
 xfunction void
 driver_update(Viewport *viewports){
@@ -901,9 +904,9 @@ bb_unit2(girdle_side_line,
 bs_bezd_old(bikini_front_mid, V3(-0.0581f, -0.1036f, 0.f),
               V2(-0.0136f, 0.1226f), girdle_front);
 {
-dfill3(bikini_front_mid, crotch, girdle_front);
-dfill3(girdle_front, crotch, bikini_up_back);
-dfill_bez(girdle_side_line);
+bs_fill3(bikini_front_mid, crotch, girdle_front);
+bs_fill3(girdle_front, crotch, bikini_up_back);
+bs_fill_bez(girdle_side_line);
 }
 }
 Pelvis pelvis_obj;
@@ -914,23 +917,26 @@ macro_pelvis(export_);
  
 return pelvis_obj;
 }
-struct Cache_Storage_34909{
+//  C:\Users\vodan\4ed\code/meta_klang.cpp:449:
+struct Cache_Storage_34971{
+b32 cache_initialized;
 v1 tblink;
 };
-global Cache_Storage_34909 cache_storage_34909;
+global Cache_Storage_34971 cache_storage_34971;
 function void
 render_eyes(Pose *pose){
 v1 tblink = pose->tblink;
-if(not(tblink == cache_storage_34909.tblink &&
+if(not cache_storage_34971.cache_initialized or
+not(tblink == cache_storage_34971.tblink &&
 true)){
 {
-cache_storage_34909.tblink = tblink;
+cache_storage_34971.cache_initialized = true;
+cache_storage_34971.tblink = tblink;
 }
 {
 v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
 v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
-mat4i eyeT_ = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
-mat4 eyeT = eyeT_.forward;
+mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
 vv(eye_in, eyeT*V3(-0.0282f, 0.f, -0.1236f));
 v1 loomis_eye_inZ = faceZ - loomis_unit/3.f;
 WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
@@ -978,34 +984,18 @@ fill(eye_low_patch, eye_low_line);
 fill3(eye_low_patch, eye_out, cheek_low);
 fill3(eye_out, brow_out, es_up_in);
 }
-argb eye_socket_shade = eye_in_shade;
-Bezier eye_up_line_now;
 {
-eye_up_line_now = bez_raw(eye_in, 
-                             lerp(eye_up_line[1], tblink, eye_low_line[1]),
-                             lerp(eye_up_line[2], tblink, eye_low_line[2]),
-                             eye_out);
-{
-draw(eye_up_line_now,eye_up_line_radii);
+bb_raw(eye_up_line_now,
+          eye_in, 
+          lerp(eye_up_line[1], tblink, eye_low_line[1]),
+          lerp(eye_up_line[2], tblink, eye_low_line[2]),
+          eye_out,
+          eye_up_line_radii);
 fill_dbez(eye_up_line, eye_up_line_now, eye_in_shade);
 }
-}
 {
-v3 eyeball_center = eyeT*V3(0.1531f, 0.0101f, -0.3179f);
-v1 eyeball_radius = (eye_out.x - eye_in.x)*0.4526f;
-mat4 eyeballT;
+bone_block(Bone_Eyeball);
 {
-mat4 to_eyeballL = mat4_translate(eyeball_center);
-mat4 eyeball_scale = mat4_scale(eyeball_radius);
-mat4 rot;
-{
-v1 eyeball_theta = 0.13f*(pose->teye_theta);
-if(painter.lr_index){
-eyeball_theta *= -1;
-}
-rot = rotateY(eyeball_theta);
-}
-eyeballT = to_eyeballL*eyeball_scale*rot;
 b32 show_eyeball = get_preset() == 2;
 if(show_eyeball){
 hl_block;
@@ -1015,9 +1005,8 @@ v1 big = 0.5f;
 v1 small = 0.25f;
 eyeball_radii = V4(big,small,small,big);
 }
-draw_bezier_circle(eyeballT, eyeball_radii);
-mat4 eyeball_equator = eyeballT*rotateX(0.25f);
-draw_bezier_circle(eyeball_equator, eyeball_radii);
+bs_circle(V3(),V3z(1),eyeball_radii);
+bs_circle(V3(),V3x(1),eyeball_radii);
 }
 }
 {
@@ -1027,31 +1016,20 @@ lp_block(depth_offset, current_line_cparams().depth_offset+iris_depth_offset);
 add_in_block(painter.fill_depth_offset, iris_depth_offset);
 {
 mat4 irisRelT;
-{
 v1 iris_radius = (0.4934f);
 v3 iris_rel_center = V3z(square_root(1-squared(iris_radius)));
-irisRelT = mat4_translate(iris_rel_center) * mat4i_scale(iris_radius);
-}
 v4 iris_radii;
 {
 v1 big = 0.5f;
 v1 small = 0.25f;
 iris_radii = V4(big,small,small,big);
 }
-{
-mat4 irisLT = eyeballT*irisRelT;
-draw_bezier_circle(irisLT, iris_radii);
-}
+bs_circle(iris_rel_center, V3z(iris_radius), iris_radii);
 }
 }
 {
 for_i32(index,0,2){
-Bez line;
-if(index == 0){
-line = eye_up_line;
-}else {
-line = eye_low_line;
-}
+Bez line = index==0 ? eye_up_line : eye_low_line;
 auto result = get_eye_min_distance(eyeball_center, eyeball_radius, line);
 if(result.min_distance < 0){
 DEBUG_VALUE(result.min_distance/millimeter);
@@ -1208,7 +1186,7 @@ bs_offset(nose_tipL,
 {
 symx_off;
 bb_negateX(nose_line_sideR, nose_line_side, lp_invisible());
-dfill_dbez(nose_line_side, nose_line_sideR);
+bs_fill_dbez(nose_line_side, nose_line_sideR);
 }
 {
 bs_parabola(nose_wing, V3(0.0539f, 0.07f, -0.0417f), nose_wing_up,
@@ -1242,7 +1220,7 @@ hl_block;
 draw(brow_ridge);
 }
 {
-radius_scale_block((0.8053f));
+radius_scale_block(0.8053f);
 v3 brow_in = (bezier_sample(brow_ridge, 0.1313f) +
                 V3(0.0044f, -0.0566f, 0.0056f));
 indicate(brow_in);
@@ -1671,22 +1649,13 @@ line_color = argb_silver;
 }
 lp_block(color, line_color);
 {
-mat4 tform = (mat4_translate(loomis_side_center) *
-                  mat4_scale(loomis_side_radius) *
-                  rotateY(0.25f));
-draw_bezier_circle(tform);
+bs_circle(loomis_side_center, V3x(loomis_side_radius));
 }
 {
 draw(bez_line(V3z(faceZ), setz(chin_middle, faceZ)));
-draw_bezier_circle( mat4_identity);
-{
-mat4 equator = rotateX(0.25f);
-draw_bezier_circle( equator);
-}
-{
-mat4 longitude = rotateY(0.25f);
-draw_bezier_circle( longitude);
-}
+bs_circle(V3(), V3z(1));
+bs_circle(V3(), V3y(1));
+bs_circle(V3(), V3x(1));
 }
 }
 }
@@ -1706,7 +1675,7 @@ function void
 render_character(Pose *pose, v1 animation_time){
 painter.shade_color = compute_fill_color(0.094014f);
 if(fbool(0)){
-painter.shade_color = painter.fill_params.color;
+painter.shade_color = painter.line_params.fill.color;
 }
 b32 show_body = fbool(1);
 v1 arm_ry = head_unit_world*(0.5302f);
@@ -1883,13 +1852,33 @@ mat4i headT = (mat4i_scale(head_radius_world) *
 if(lr_index){
 headT = negateX(headT);
 }
-bone_blockm(Bone_Head, headT);
+bone_blockm(Bone_Head, headT){
+v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
+v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
+mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
+v3 eye_in = eyeT*V3(-0.0282f, 0.f, -0.1236f);
+v3 eye_out = eye_in + V3(2.f * eye_in.x+(-0.03f), 0, -0.154f);
+eyeball_center = eyeT*V3(0.1531f, 0.0101f, -0.3179f);
+mat4i to_eyeball = mat4i_translate(eyeball_center);
+eyeball_radius = (eye_out.x - eye_in.x)*0.4526f;
+mat4i eyeball_scale = mat4i_scale(eyeball_radius);
+mat4i rot;
+{
+v1 eyeball_theta = 0.13f*(pose->teye_theta);
+if(painter.lr_index){
+eyeball_theta *= -1;
+}
+rot = mat4i_rotateY(eyeball_theta);
+}
+mat4i eyeballT = to_eyeball*eyeball_scale*rot;
+bone_blockm(Bone_Eyeball, eyeballT);
+}
 }
 {
 v1 head_topY = head_radius_world;
 v3 translate = V3(0.f,
                      head_topY - 3.2f * head_unit_world, 
-                     fval(0.067f));
+                     (0.067f));
 mat4i pelvisT = mat4i_translate(translate) * mat4i_scale(head_radius_world);
 if(lr_index){
 pelvisT = negateX(pelvisT);
@@ -1903,7 +1892,7 @@ torsoT = negateX(torsoT);
 bone_blockm(Bone_Torso, torsoT){
 mat4i armT;
 {
-v1 arm_ry = head_unit_world*fval(0.5302f);
+v1 arm_ry = head_unit_world*(0.5302f);
 v1 scale = arm_ry / torso_scale;
 v3 translate = scap_sock_top + V3(0.0764f, -0.9755f, 0.2612f);
 v1 roll = -pose->tarm_abduct;
@@ -2047,7 +2036,7 @@ default_line_end_radius = i2f6(fval(2));
 Painter &p = painter;
 auto &m = *p.modeler;
 p.symx              = true;
-p.fill_params.color = default_fill;
+p.line_params.fill.color = default_fill;
 p.fill_depth_offset = millimeter * 1.f;
 p.line_params.visibility = 1.0f;
 {

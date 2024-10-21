@@ -57,12 +57,29 @@ circular_arc_helper(mat4 const&transform, v3 dst[4], v2 src[4]){
   dst[index] = mat4vert(transform, V3(src[index].x, src[index].y, 0.f));
  }
 }
-function void
-draw_bezier_circle(mat4 const&transform, v4 radii={}){
+struct v3_pair{
+ union{v3 u,a,x;};
+ union{v3 v,b,y;};
+};
+typedef v3_pair v6;
+inline v3_pair
+invent_uv(v3 n){
+ v3 u = (almost_equal(absolute(n.x), 1.f, 1e-4f) ?
+         cross(n, V3y(1.f)) :
+         cross(n, V3x(1.f)));
+ u = noz(u);
+ v3 v = cross(n,u);
+ return v3_pair{u,v};
+}
+function Bez
+bez_circle(v3 center, v3 normal){
  v1 a = 1.00005519f;
  v1 b = 0.55342686f;
  v1 c = 0.99873585f;
  v2 arc[4] = { V2(a,0.f),V2(c,b),V2(b,c),V2(0.f,a) };
+ v1 radius = lengthof(normal);
+ v3_pair xy = invent_uv(noz(normal));
+ mat4 transform = mat4_columns(radius*xy.x, radius*xy.y, normal, center);
  
  v3 arc1[4], arc2[4], arc3[4], arc4[4];
  circular_arc_helper(transform, arc1, arc);
@@ -73,24 +90,21 @@ draw_bezier_circle(mat4 const&transform, v4 radii={}){
  for_i32(index,0,4) {arc[index].x *= -1;}
  circular_arc_helper(transform, arc4, arc);
  
- {
-  Line_Params params = painter.line_params;
-  params.radii = radii;
+ /*{
   draw(bez_raw(arc1), params);
   draw(bez_raw(arc2), params);
   draw(bez_raw(arc3), params);
   draw(bez_raw(arc4), params);
- }
+ }*/
+ return bez_raw(arc1);  //TODO @incomplete What are you gonan do now?
 }
 #define WARN_DELTA(a, b, EPSILON) \
 if (absolute(a-b) > EPSILON) { DEBUG_NAME("WARN " #a "-" #b, (a-b)); }
 
-struct Eye_Min_Distance_Result
-{
+struct Eye_Min_Distance_Result {
  v1 min_distance;
  v3 closest_point;
 };
-//
 function Eye_Min_Distance_Result
 get_eye_min_distance(v3 center, v1 radius, Bezier line)
 {
@@ -132,23 +146,6 @@ debug_view_vector(i1 linum=__builtin_LINE()){
  v3 object_center = camera_obj + view_vector;
  indicate_vertex("view_center", object_center, 0, linum);
  DEBUG_VALUE(view_vector);
-}
-
-struct v3_pair {
- union{v3 u; v3 a;};
- union{v3 v; v3 b;};
-};
-typedef v3_pair v6;
-
-inline v3_pair
-invent_uv(v3 n)
-{
- v3 u = (almost_equal(absolute(n.x), 1.f, 1e-4f) ?
-         cross(n, V3y(1.f)) :
-         cross(n, V3x(1.f)));
- u = noz(u);
- v3 v = cross(n,u);
- return v3_pair{u,v};
 }
 
 function v4

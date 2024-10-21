@@ -1,4 +1,9 @@
 //-
+[noinfo]
+struct Entity_Type_Info{
+ b32 is_curve;
+};
+//-
 struct Vertex_Data{
  String name;
  Bone_ID bone_id;
@@ -14,15 +19,10 @@ struct Curve_Data{
  tagged_by(type) Curve_Union data;
  Line_Params params;
  Common_Line_Params_Index cparams;
- meta_unserialized i1 linum;
-};
-unique Fill_Type;
-struct Fill_Data{
- Fill_Type type;
- tagged_by(type) Fill_Union data;
- argb color;  //NOTE(kv) color override, otw "params" also have color
- b32 symx;
- Fill_Params  params;
+ //-Fill stuff
+ argb fill_color;  //TODO(kv) color override, darn it!
+ Fill_Params  fill_params;
+ //-
  meta_unserialized i1 linum;
 };
 //-

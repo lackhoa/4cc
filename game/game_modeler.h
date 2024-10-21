@@ -32,14 +32,14 @@ struct Modeler_History{
 struct Modeler  // see @init_modeler
 {//-Data
  Arena data_arena;
- //NOTE(kv) Do we need really need these arrays?
  //  For transition it does have some utility: referring to the last vertex with this name.
  arrayof<Bone> bones;
  arrayof<Common_Line_Params> line_cparams;
  
+ //NOTE(kv) Do we need really need these arrays?
  arrayof<Vertex_Data> vertices;
- arrayof<Curve_Data> curves;
- arrayof<Fill_Data>   fills;
+ arrayof<Curve_Data>  curves;
+ //arrayof<Fill_Data>   fills;
  
  //-NOTE: Editor
  u32 selected_prim_ro;  // todo: There could be multiple selected obj?
@@ -98,10 +98,6 @@ struct Curve_Ref{
  Curve_Index index;
  Curve_Data *curve;
 };
-struct Fill_Ref{
- Fill_Index index;
- Fill_Data *fill;
-};
 struct Prim_Ref{
  Prim_Type type;
  union{
@@ -112,17 +108,18 @@ struct Prim_Ref{
  union{
   Vertex_Data *vertex;
   Curve_Data *curve;
-  Fill_Data   *fill;
  };
 };
 //-
 function void
 send_vert_func(Painter &p, String name, v3 pos, i1 linum=__builtin_LINE());
+#if 0
 function void
 dfill3_func(String vert_names[3], Fill_Params params=fp(), i1 linum=__builtin_LINE());
 function void
 dfill_bez_func(String curve_name, Fill_Params params=fp(), i1 linum=__builtin_LINE());
 function void
 dfill_dbez_func(String b1, String b2, Fill_Params params=fp(), i1 linum=__builtin_LINE());
+#endif
 
 //~

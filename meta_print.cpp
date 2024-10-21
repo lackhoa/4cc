@@ -137,11 +137,11 @@ print_type_and_name(Printer &p, Parsed_Type &type, String name){
  }
 }
 function void
-print_struct_member(Printer &p, Meta_Struct_Member &member){
+print_struct_member(Printer &p, M_Struct_Member &member){
  print_type_and_name(p, member.type, member.name);
 }
 function void
-print_struct_body(Printer &p, Meta_Struct_Members &members){
+print_struct_body(Printer &p, M_Struct_Members &members){
  m_braces_sm{
   for_i32(i,0,members.count){
    auto &member = members[i];
@@ -154,13 +154,13 @@ print_struct_body(Printer &p, Meta_Struct_Members &members){
  }
 }
 function void
-print_struct(Printer &p, String type_name, Meta_Struct_Members &members){
+print_struct(Printer &p, String type_name, M_Struct_Members &members){
  p<<"struct "<<type_name;
  print_struct_body(p,members);
 }
 function void
 print_struct_meta(Printer &p, String type_name,
-                  Meta_Struct_Members &members){
+                  M_Struct_Members &members){
  Scratch_Block scratch;
 #define brace_block  p << "\n{\n"; defer( p << "\n}\n"; );
  {//-NOTE ("Function to generate the type info")
@@ -177,7 +177,7 @@ print_struct_meta(Printer &p, String type_name,
     p<<"Type_Info result = {};\n";
     p<<"result.name = "<<enclosed_in_strlit(type_name) << ";\n";
     p<<"result.size = sizeof("<<type_name<<");\n";
-    p<<"result.kind = Type_Kind_Struct;\n";
+    p<<"result.kind = I_Type_Kind_Struct;\n";
     // NOTE(kv) Computing member count
     i32 member_count = 0;
     for_i32(raw_member_index,0,members.count){
@@ -229,7 +229,7 @@ print_struct_meta(Printer &p, String type_name,
     
     p << "eat_char(p, '{');\n";
     for_i1(member_index,0,members.count){
-     Meta_Struct_Member &member = members.get(member_index);
+     M_Struct_Member &member = members.get(member_index);
      if(!member.unserialized){
       String version_added = member.version_added;
       b32 has_version_added = version_added.len != 0;
@@ -304,32 +304,32 @@ print_union_meta(Printer &p, String type_name,
  {//-NOTE: ("Function to generate the type info")
   {
    m_location;
-   p<<"union "<<type_name<<";\n";
+   p<"union "<type_name<";\n";
    print_type_info_function_prototype(p,type_name);
-   p<<";\n";
+   p<";\n";
   }
   {
    m_location;
    print_type_info_function_prototype(p,type_name);
    {brace_block;
-    p << "Type_Info result = {};\n" <<
-     "result.name = "<<enclosed_in_strlit(type_name)<<";\n" <<
-     "result.size = sizeof("<<type_name<<");\n"<<
-     "result.kind = Type_Kind_Union;\n"<<
-     "result.discriminator_type = &"<<get_type_global_info_name(discriminator_type)<<";\n";
+    p < "Type_Info result = {};\n" <
+     "result.name = "<enclosed_in_strlit(type_name)<";\n" <
+     "result.size = sizeof("<type_name<");\n"<
+     "result.kind = I_Type_Kind_Union;\n"<
+     "result.discriminator_type = &"<get_type_global_info_name(discriminator_type)<";\n";
     {
-     p<<"result.union_members.set_count("<<variants->count<<");\n";
+     p<"result.union_members.set_count("<variants->count<");\n";
      for_i32(index,0,variants->count){
       auto &variant = variants->get(index);
       String variant_type = get_type_global_info_name(variant.struct_name);
-      p<<"result.union_members["<<index<<"] = {"<<
-       ".type=&"<<variant_type<<", "<<
-       ".name="<<enclosed_in_strlit(variant.name)<<", "<<
-       ".variant="<<variant.enum_name<<
+      p<"result.union_members["<index<"] = {"<
+       ".type=&"<variant_type<", "<
+       ".name="<enclosed_in_strlit(variant.name)<", "<
+       ".variant="<variant.enum_name<
        "};\n";
      }
     }
-    p<<"return result;";
+    p<"return result;";
    }
   }
  }
@@ -340,24 +340,24 @@ print_union_meta(Printer &p, String type_name,
   {
    m_location;
    print_union_read_function_prototype(p,type_name,discriminator_type);
-   p<<";\n";
+   p<";\n";
   }
   {
    m_location;
    print_union_read_function_prototype(p,type_name,discriminator_type);
    
    {brace_block;
-    p<<"STB_Parser *p = r.parser;\n";
+    p<"STB_Parser *p = r.parser;\n";
     //NOTE(kv) When we add/remove union members, this is gonna get complicated,
     //  but right now I don't care.
-    p<<"switch(variant)";
+    p<"switch(variant)";
     {brace_block;
      for_i1(vi,0,variants->count){
       auto &variant = variants->get(vi);
-      p<<"case "<<variant.enum_name<<":";
+      p<"case "<variant.enum_name<":";
       {brace_block;
-       p<<get_type_read_function_name(variant.struct_name)<<
-        "(r, "<<"pointer."<<variant.name_lower<<");\n"<<
+       p<get_type_read_function_name(variant.struct_name)<
+        "(r, "<"pointer."<variant.name_lower<");\n"<
         "break;";
       }
      }
@@ -396,7 +396,7 @@ print_enum_meta(Printer &p, String type_name,
     p<<"Type_Info result = {};\n";
     p<<"result.name = "<<enclosed_in_strlit(type_name)<<";\n";
     p<<"result.size = sizeof("<<type_name<<");\n";
-    p<<"result.kind = Type_Kind_Enum;\n";
+    p<<"result.kind = I_Type_Kind_Enum;\n";
     p<<"result.enum_members.set_count("<<enum_names.count<<");\n";
     for_i1(enum_index,0,enum_names.count){
      String name = enum_names.get(enum_index);
@@ -473,7 +473,7 @@ print_typedef_meta(Printer &p, String type_name, String typedef_to){
 }
 function void
 print_struct_embed(Printer &p, String type_name,
-                   arrayof<Meta_Struct_Member> &members){
+                   arrayof<M_Struct_Member> &members){
  m_location;
  p<<"#define "<<type_name<<"_Embed \\\n union";
  m_macro_braces_sm{
@@ -491,7 +491,7 @@ print_struct_embed(Printer &p, String type_name,
 function void
 print_i1_wrapper(Printer &p, String type_name){
  Scratch_Block scratch;
- Meta_Struct_Members members = parse_struct_body(scratch, "{ i1 v; }");
+ M_Struct_Members members = parse_struct_body(scratch, "{ i1 v; }");
  {
   print_struct(p, type_name, members);
   p<<"inline b32 operator==("<<type_name<<" a, "<<type_name<<" b)"<<
@@ -588,6 +588,7 @@ print(Printer &p, Meta_Statement &statement){
   }break;
   case Statement_Kind_Cache:{
    Statement_Cache &cache0 = statement.cache0;
+#define CACHE_NAME cache_storage_prefix<cache0.id
    for_i32(item_index, 0, cache0.cache_items.count){
     //-Computing cache values
     Cache_Item &cache_item = cache0.cache_items[item_index];
@@ -596,10 +597,11 @@ print(Printer &p, Meta_Statement &statement){
    }
    p < "if"; m_parens{
     //-Condition for a cache miss
-    p < "not"; m_parens{
+    p<"not "<CACHE_NAME<".cache_initialized or\n";
+    p<"not"; m_parens{
      for_i32(item_index, 0, cache0.cache_items.count){
       String name = cache0.cache_items[item_index].name;
-      p<name<" == "<cache_storage_prefix<cache0.id<"."<name<" &&\n";
+      p<name<" == "<CACHE_NAME<"."<name<" &&\n";
      }
      p<"true";
     }
@@ -607,10 +609,11 @@ print(Printer &p, Meta_Statement &statement){
    m_braces_newline{
     //-Do computation if cache miss
     m_braces_newline{//-Recompute the cache
+     p<CACHE_NAME<".cache_initialized = true;\n";//nono doesn't work!
      for_i32(item_index, 0, cache0.cache_items.count){
       if(item_index){ p<"\n"; }
       String name = cache0.cache_items[item_index].name;
-      p < cache_storage_prefix<cache0.id<"."<name<" = "<name<";";
+      p<CACHE_NAME<"."<name<" = "<name<";";
      }
     }
     p<"\n";
@@ -618,29 +621,12 @@ print(Printer &p, Meta_Statement &statement){
      p < *cache0.body;
     }
    }
+#undef CACHE_NAME
   }break;
   case Statement_Kind_Empty:{
    p<";";
   }break;
   invalid_default_case;
- }
-}
-function void
-print_cache_meta(Printer &p, Statement_Cache &cache0){
- {//-The struct
-  p < "struct Cache_Storage_" < cache0.id;
-  m_braces{
-   p < "\n";
-   for_i32(item_index,0,cache0.cache_items.count){
-    Statement_Declaration &item = cache0.cache_items[item_index];
-    print_type_and_name(p, item.type, item.name);
-    p < ";\n";
-   }
-  }
-  p < ";\n";
- }
- {//-Global var
-  p<"global Cache_Storage_"<cache0.id<" "<cache_storage_prefix<cache0.id<";\n";
  }
 }
 //-

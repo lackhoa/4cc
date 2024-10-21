@@ -1,16 +1,11 @@
-//-
-function void
-generate_bezier_types(Printer &p);
-function void
-generate_fill_types(Printer &p0);
 //-Parsing utilities
-//TODO(kv) Stop cheesing keywords!
 global const String header_keywords[] = {
  strlit("while"),
  strlit("for"),
  strlit("for_i32"),
  strlit("for_u32"),
  strlit("for_i64"),
+ //TODO(kv) Stop cheesing keywords!
  strlit("bone_blockm"),
 };
 function b32
@@ -306,12 +301,12 @@ k_process_file(Meta_Parsed_File source){
    break;
   }else if(ep_maybe_id(p, "struct")){
    //-struct case
-   arrayof<Meta_Struct_Member> members = {};
+   arrayof<M_Struct_Member> members = {};
    String type_name = ep_id(p);
    ep_char(p, '{');
    while(p->ok_ && !m_maybe_brace_close(p)){
     // NOTE: Field
-    Meta_Struct_Member &member = members.push2();
+    M_Struct_Member &member = members.push2();
     member = {};
     
     if(ep_maybe_id(p, "meta_removed")){
@@ -431,9 +426,28 @@ k_process_file(Meta_Parsed_File source){
    if(p->ok_)
    {//-Print
     {//-Caches
+     //nono see what this does?
+     auto print_cache_storage = [](Printer &p, Statement_Cache &cache0)->void{
+      {//-The struct
+       p < "struct Cache_Storage_" < cache0.id;
+       m_braces{
+        p < "\nb32 cache_initialized;\n";
+        for_i32(item_index,0,cache0.cache_items.count){
+         Statement_Declaration &item = cache0.cache_items[item_index];
+         print_type_and_name(p, item.type, item.name);
+         p < ";\n";
+        }
+       }
+       p < ";\n";
+      }
+      {//-Global var
+       p<"global Cache_Storage_"<cache0.id<" "<cache_storage_prefix<cache0.id<";\n";
+      }
+     };
      for_i32(cache_index,0,p->cache_list.count){
       Statement_Cache &cache0 = *p->cache_list[cache_index];
-      print_cache_meta(printer_gen, cache0);
+      m_locationp(printer_gen);
+      print_cache_storage(printer_gen, cache0);
      }
     }
     {//-Prototype
@@ -462,9 +476,7 @@ k_process_file(Meta_Parsed_File source){
   }else if(ep_maybe_id(p, "unique")){
    //-One-off/miscellaneous stuff
    if(ep_maybe_id(p, "Curve_Type")){
-    generate_bezier_types(printer_gen);
-   }else if(ep_maybe_id(p, "Fill_Type")){
-    generate_fill_types(printer_gen);
+    generate_entity_types(printer_gen);
    }else{
     p->fail();
    }

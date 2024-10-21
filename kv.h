@@ -3895,8 +3895,7 @@ mat4i_scale(v1 s)
 }
 
 function mat4 
-transpose(mat4 mat)
-{
+transpose(mat4 mat){
  for_i32(r,0,4) { 
   for_i32(c,0,r) {
    macro_swap(mat.e[r][c], mat.e[c][r]);
@@ -3904,10 +3903,8 @@ transpose(mat4 mat)
  }
  return mat;
 }
-
 function mat3
-transpose(mat3 mat)
-{
+transpose(mat3 mat){
  for_i32(r,0,3) {
   for_i32(c,0,r) {
    macro_swap(mat.e[r][c], mat.e[c][r]);
@@ -3915,20 +3912,25 @@ transpose(mat3 mat)
  }
  return mat;
 }
-
-function mat4i
-mat4_columns(v3 x, v3 y, v3 z)
-{
- mat4i result;
+function mat4
+mat4_columns(v3 x, v3 y, v3 z, v3 w){
+ mat4 inverse;
+ inverse.rows[0] = V4(x,0);
+ inverse.rows[1] = V4(y,0);
+ inverse.rows[2] = V4(z,0);
+ inverse.rows[3] = V4(w,1);
  
+ return transpose(inverse);
+}
+function mat4i
+mat4i_columns(v3 x, v3 y, v3 z, v3 w){
+ mat4i result;
  mat4 &inverse = result.inverse;
  inverse.rows[0] = V4(x,0);
  inverse.rows[1] = V4(y,0);
  inverse.rows[2] = V4(z,0);
- inverse.rows[3] = V4(0,0,0,1);
- 
+ inverse.rows[3] = V4(w,1);
  result.forward = transpose(inverse);
- 
  return result;
 }
 
@@ -4517,42 +4519,43 @@ push_unique(arrayof<T> &array, T const&item)
 }
 
 //~
-struct Struct_Member{
- struct Type_Info *type;
+struct Type_Info;
+struct I_Struct_Member{
+ Type_Info *type;
  String name;
  u32    offset;
  u32    discriminator_offset;  //NOTE(kv) union only
  b32    unserialized;
 };
-struct Union_Member{
- struct Type_Info *type;
+struct I_Union_Member{
+ Type_Info *type;
  String name;
  i32 variant;
 };
-struct Enum_Member{
+struct I_Enum_Member{
  String name;
  i32    value;
 };
 //NOTE(kv) If you have a better name, I'm all ears man!
-enum Type_Kind{
- Type_Kind_None = 0,
- Type_Kind_Basic,
- Type_Kind_Struct,
- Type_Kind_Union,
- Type_Kind_Enum,
+enum I_Type_Kind{
+ I_Type_Kind_None = 0,
+ I_Type_Kind_Basic,
+ I_Type_Kind_Struct,
+ I_Type_Kind_Union,
+ I_Type_Kind_Enum,
 };
 struct Type_Info{
  String name;
  i1     size;
- Type_Kind kind;
+ I_Type_Kind kind;
  union {
   Basic_Type Basic_Type;
-  arrayof<Struct_Member> members;
+  arrayof<I_Struct_Member> members;
   struct {
    Type_Info *discriminator_type;
-   arrayof<Union_Member> union_members;
+   arrayof<I_Union_Member> union_members;
   };
-  arrayof<Enum_Member>   enum_members;
+  arrayof<I_Enum_Member>   enum_members;
  };
 };
 
@@ -4560,7 +4563,7 @@ struct Type_Info{
 Type_Info {                  \
 .name=strlit(#T),            \
 .size=i1(sizeof(T)),         \
-.kind=Type_Kind_Basic,       \
+.kind=I_Type_Kind_Basic,     \
 .Basic_Type=Basic_Type_##T,  \
 },                           \
 //
@@ -5056,7 +5059,7 @@ printer_delete(Printer &p){
 
 //-NOTE Base print function overloads
 function void
-printer_printf2v(Printer &p, char *format, va_list args){
+print_format2v(Printer &p, char *format, va_list args){
  switch(p.type){
   case Printer_Type_Buffer:{
    i32 remaining = p.cap-p.used;
@@ -5075,33 +5078,33 @@ printer_printf2v(Printer &p, char *format, va_list args){
 }
 //NOTE(kv) omg totally unnecessary
 function void
-printer_printf2(Printer &p, char *format, ...){
+print_format2(Printer &p, char *format, ...){
  va_list args;
  va_start(args, format);
- printer_printf2v(p,format,args);
+ print_format2v(p,format,args);
  va_end(args);
 }
 function void
-printer_printf(Printer &p, char *format, ...){
+print_format(Printer &p, char *format, ...){
  va_list args;
  va_start(args, format);
  if(p.print_separator_before_anything_else){
   p.print_separator_before_anything_else = false;
-  printer_printf2(p, "%.*s", strexpand(p.separator));
+  print_format2(p, "%.*s", strexpand(p.separator));
  }
- printer_printf2v(p, format, args);
+ print_format2v(p, format, args);
  va_end(args);
 }
 //-NOTE: Printing different types
-inline void print(Printer &p, const char *cstring) { printer_printf(p, "%s", cstring); }
+inline void print(Printer &p, const char *cstring) { print_format(p, "%s", cstring); }
 inline void print(Printer &p, String string) {
- printer_printf(p, "%.*s", strexpand(string));
+ print_format(p, "%.*s", strexpand(string));
 }
-inline void print(Printer &p, char c)  { printer_printf(p, "%c", c); }
-inline void print(Printer &p, i32 d)   { printer_printf(p, "%d", d); }
-inline void print(Printer &p, u32 u)   { printer_printf(p, "%u", u); }
-inline void print(Printer &p, i64 ld)  { printer_printf(p, "%ld", ld); }
-inline void print(Printer &p, u64 lu)  { printer_printf(p, "%lu", lu); }
+inline void print(Printer &p, char c)  { print_format(p, "%c", c); }
+inline void print(Printer &p, i32 d)   { print_format(p, "%d", d); }
+inline void print(Printer &p, u32 u)   { print_format(p, "%u", u); }
+inline void print(Printer &p, i64 ld)  { print_format(p, "%ld", ld); }
+inline void print(Printer &p, u64 lu)  { print_format(p, "%lu", lu); }
 //-
 
 // NOTE(kv): This is an absolutely ridiculous hack
