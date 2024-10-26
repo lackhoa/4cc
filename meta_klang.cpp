@@ -38,11 +38,8 @@ k_parse_expression(Arena *arena, Ed_Parser *p, String terminators){
  Meta_Expression result = {};
  Token *token0 = ep_get_token(p);
  String token0_string = ep_print_token(p);
- if(true){
-  //-NOTE(kv) Temporary cheese!
-  result.kind    = Expression_Kind_Unknown;
-  result.unknown = ep_capture_until_char(p, terminators);
- }else{
+ {
+  ep_recovery_block(p);
   if(ep_maybe_kind(p, TokenBaseKind_Identifier)){
    if(ep_maybe_char(p, '(')){
     //-Function call
@@ -62,10 +59,10 @@ k_parse_expression(Arena *arena, Ed_Parser *p, String terminators){
     Expression_Assignment &assignment = result.assignment;
     assignment.lhs = token0_string;
     assignment.rhs = push_value(arena, k_parse_expression(arena,p,terminators));
-   }else if(test_char_in(p, terminators)){
+   }else if(k_test_char(p, terminators)){
     result.kind = Expression_Kind_Identifier;
     result.identifier = token0_string;
-   }else{ p->fail(); }
+   }
   }else if(ep_maybe_kind(p, TokenBaseKind_LiteralInteger)){
    //-Int
    result.kind = Expression_Kind_Int;
@@ -74,64 +71,80 @@ k_parse_expression(Arena *arena, Ed_Parser *p, String terminators){
    //-Float
    result.kind = Expression_Kind_Float;
    result.float_value = token0_string;
-  }else{
+  }
+  
+  if(not k_test_char(p, terminators)){
+   //-If we're not at the terminator, then parsing has failed!
    p->fail();
   }
+  if(not p->ok_){
+   result.kind = {};
+  }
+ }
+ if(result.kind == 0){
+  //-NOTE Cheese: unknown expressions
+  result.kind    = Expression_Kind_Unknown;
+  result.unknown = ep_capture_until_char(p, terminators);
  }
  return result;
 }
 function void
-k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p, Meta_Statement *statement){
+k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
+                             /*out*/Statement_Union *statement0){
  Token *token0 = ep_get_token(p);
+ statement0->head.pos = token0->pos;
+ statement0->head.mom = p->current_statement;
+ set_in_block(p->current_statement, &statement0->head);
  String token0_string = ep_print_given_token(p, token0);
  if(token0->kind == TokenBaseKind_Preprocessor){
   //-Preprocessor
-  statement->kind    = Statement_Kind_Unknown;
-  statement->unknown = k_parse_preprocessor(p);
+  statement0->head.kind    = Statement_Kind_Unknown;
+  cast_to_var(Statement_Unknown *, unknown, statement0);
+  unknown->unknown = k_parse_preprocessor(p);
  }else if(token0->kind == TokenBaseKind_Identifier ||
           token0->kind == TokenBaseKind_Keyword){
   if(is_header_keyword(token0_string)){
    //-Header and body
    ep_eat_token(p);
-   statement->kind = Statement_Kind_Header_And_Body;
-   Statement_Header_And_Body &header_body = statement->header_and_body;
+   statement0->head.kind = Statement_Kind_Header_And_Body;
+   cast_to_var(Statement_Header_And_Body *, header_body, statement0);
    if(ep_maybe_char(p, '(')){
     //NOTE optional parameters
-    ep_eat_until_char(p, strlit(")"));
+    k_eat_until_char(p, strlit(")"));
     ep_char(p, ')');
    }
-   header_body.header = k_string_from_token_to_current(p, token0);
-   header_body.body = k_parse_statement_to_arena(arena, p);
+   header_body->header = k_string_from_token_to_current(p, token0);
+   header_body->body = k_parse_statement_to_arena(arena, p);
   }else if(token0_string == strlit("if")){
    //-If
    ep_eat_token(p);
-   statement->kind = Statement_Kind_If;
-   Statement_If &if0 = statement->if0;
+   statement0->head.kind = Statement_Kind_If;
+   cast_to_var(Statement_If *, if0, statement0);
    {//-condition
     ep_char(p, '(');
-    if0.condition = k_parse_expression(arena, p, strlit(")"));
+    if0->condition = k_parse_expression(arena, p, strlit(")"));
     ep_char(p, ')');
    }
    {//-body
-    if0.body = k_parse_statement_to_arena(arena, p);
+    if0->body = k_parse_statement_to_arena(arena, p);
    }
    if(ep_maybe_id(p, strlit("else"))){
     //-else
-    if0.else0 = k_parse_statement_to_arena(arena, p);
+    if0->else0 = k_parse_statement_to_arena(arena, p);
    }
   }else if(ep_maybe_id(p, strlit("switch"))){
    //-switch
-   statement->kind = Statement_Kind_Switch;
-   Statement_Switch &switch0 = statement->switch0;
+   statement0->head.kind = Statement_Kind_Switch;
+   cast_to_var(Statement_Switch *, switch0, statement0);
    {//-expression
     ep_char(p, '(');
-    switch0.expression = k_parse_expression(arena, p, strlit(")"));
+    switch0->expression = k_parse_expression(arena, p, strlit(")"));
     ep_char(p, ')');
    }
    {//-cases
     ep_char(p, '{');
     while(p->ok_ && not ep_maybe_char(p, '}')){
-     Switch_Case *case0 = &switch0.cases.push_zero();
+     Switch_Case *case0 = &switch0->cases.push_zero();
      ep_id(p, strlit("case"));
      case0->expression = k_parse_expression(arena, p, strlit(":"));
      ep_char(p, ':');
@@ -142,13 +155,14 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p, Meta_Statement *stat
    }
   }else if(ep_maybe_id(p, strlit("return"))){
    //-Return
-   statement->kind = Statement_Kind_Return;
-   statement->return0 = k_parse_expression(arena, p, strlit(";"));
+   statement0->head.kind = Statement_Kind_Return;
+   cast_to_var(Statement_Return *, return0, statement0);
+   return0->return0 = k_parse_expression(arena, p, strlit(";"));
    ep_char(p,';');
   }else if(ep_maybe_id(p, strlit("cache"))){
    //-cache
-   statement->kind = Statement_Kind_Cache;
-   Statement_Cache *cache0 = &statement->cache0;
+   statement0->head.kind = Statement_Kind_Cache;
+   cast_to_var(Statement_Cache *, cache0, statement0);
    cache0->id = i32(token0->pos);
    init_dynamic(cache0->cache_items, arena);
    ep_char(p, '(');
@@ -169,46 +183,48 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p, Meta_Statement *stat
    //-Declaration?
    ep_recovery_block(p);
    {
-    statement->kind = Statement_Kind_Declaration;
-    Statement_Declaration &decl = statement->declaration;
-    parse_type_and_name(p, &decl.type, &decl.name);
+    statement0->head.kind = Statement_Kind_Declaration;
+    cast_to_var(Statement_Declaration *, decl, statement0);
+    parse_type_and_name(p, &decl->type, &decl->name);
     if(ep_maybe_char(p,'=')){
      //-Declaration and assignment
-     decl.rhs = k_parse_expression(arena, p, strlit(";"));
+     decl->rhs = k_parse_expression(arena, p, strlit(";"));
     }
     ep_char(p,';');
    }
    if(not p->ok_){
-    statement->kind = Statement_Kind_None;
+    statement0->head.kind = Statement_Kind_None;
    }
   }
  }else if(token0->kind == TokenBaseKind_ScopeOpen){
   //-Block
-  statement->kind  = Statement_Kind_Block;
-  statement->block = k_parse_statement_block(arena, p);
+  statement0->head.kind  = Statement_Kind_Block;
+  cast_to_var(Statement_Block*, block, statement0);
+  block->block = k_parse_statement_block(arena, p);
  }else if(token0->kind == TokenBaseKind_StatementClose){
-  statement->kind = Statement_Kind_Empty;
+  statement0->head.kind = Statement_Kind_Empty;
  }
- if(not statement->kind){
+ if(not statement0->head.kind){
   //-Defaults to expressions
   //NOTE(kv) Warning: sometimes we use macro, forget a semicolon,
   //  and it parses until the end of the file.
-  ep_scope_block(p, strlit("statement"), token0);
-  statement->kind = Statement_Kind_Expression;
-  statement->expression = k_parse_expression(arena, p, strlit(";"));
+  ep_scope_block(p, token0_string, token0);
+  statement0->head.kind = Statement_Kind_Expression;
+  cast_to_var(Statement_Expression*, expr, statement0);
+  expr->expression = k_parse_expression(arena, p, strlit(";"));
   ep_char(p, ';');
  }
 }
-function Meta_Statement *
+function Statement_Head *
 k_parse_statement_to_arena(Arena *arena, Klang_Parser *p){
- Meta_Statement *statement = push_struct(arena, Meta_Statement, true);
+ Statement_Union* statement = push_struct(arena, Statement_Union, true);
  k_parse_statement_to_pointer(arena, p, statement);
- return statement;
+ return &statement->head;
 }
-function arrayof<Meta_Statement>
+function Meta_Statements
 k_parse_statement_block(Arena *arena, Klang_Parser *p){
  ep_char(p,'{');
- arrayof<Meta_Statement> statements;
+ Meta_Statements statements;
  init_dynamic(statements, arena);
  ep_skip_semicolons(p);
  while(p->ok_ and (not ep_maybe_char(p,'}'))){
@@ -218,56 +234,14 @@ k_parse_statement_block(Arena *arena, Klang_Parser *p){
  }
  return statements;
 }
-function b32
-k_process_file(Meta_Parsed_File source){
- Scratch_Block scratch;
- Printer printer_gen;
- //Printer_Pair ps_meta;
- {
-  Stringz gen_path, meta_base;
-  String stem;
-  {
-   String path = source.name;
-   String dir  = path_dirname(path);
-   dir = pjoin(scratch, dir, "generated");
-   String filename = path_filename(path);
-   stem = path_stem(filename);
-   if(DEBUG_parse_test_file){
-    if(not (stem == "test")){ return true; }
-   }
-   String extension = path_extension(filename);
-   b32 is_kh = extension == strlit("kh");
-   if(not is_kh){
-    kv_assert(extension == strlit("kc"));
-   }
-   {
-    Printer pr = make_printer_buffer(scratch, 256);
-    pr<dir<OS_SLASH<stem<".gen"<(is_kh ? ".h" : ".cpp");
-    gen_path = printer_get_string(pr);
-   }
-   {
-    Printer pr = make_printer_buffer(scratch, 256);
-    pr<dir<OS_SLASH<stem<"_"<extension<"_meta.gen";
-    meta_base = printer_get_string(pr);
-   }
-  }
-  printer_gen = m_open_file_to_write(gen_path);
-  {
-   printer_gen<"// NOTE: source: "<source.name<"\n";
-   printer_gen<"#pragma once\n";
-  }
-  //ps_meta = m_open_files_to_write(meta_base);
- }
- b32 ok = okp(printer_gen)/* && okp(ps_meta)*/;
- Klang_Parser klang_parser = {};
- {
-  Ed_Parser *ed_parser = &klang_parser;
-  *ed_parser = m_parser_from_token_list(scratch, source.data, source.token_list);
- }
- Klang_Parser *p = &klang_parser;
- while(ok && p->ok_){
+function void
+k_process_top_level(Arena *arena,
+                    Klang_Parser *p, Meta_Printer &printer_gen,
+                    /*out*/ Statement_Root *root){
+ Scratch_Block scratch_loop(get_thread_context(), arena);
+ while(p->ok_){
   //-NOTE(kv): Parsing loop
-  Scratch_Block scratch_loop;
+  Temp_Memory_Block temp_loop(scratch_loop);
   {//-When we read a newline, print a newline back out
    while(true){
     Token *token = ep_get_token(p);
@@ -287,20 +261,28 @@ k_process_file(Meta_Parsed_File source){
   ep_scope_block(p, strlit("top-level"), token0);
   b32 do_info  = true;
   b32 do_embed = false;
+  b32 is_packed = false;
   if(m_maybe_bracket_open(p)){
-   //-Introspection parameters
+   //-Struct attributes (like the clang attributes)
    while(p->ok_ && !m_maybe_bracket_close(p)){
-    ep_maybe_char(p, ',');
-    if     (ep_maybe_id(p, "noinfo")){ do_info = false; }
-    else if(ep_maybe_id(p, "embed")) { do_embed = true; }
-    else{ p->fail(); }
+    String string = ep_print_token(scratch_loop, p);
+    if(string == strlit("noinfo")){
+     do_info = false;
+    }else if(string == strlit("embed")){
+     do_embed = true;
+    }else if(string == strlit("packed")){
+     is_packed = true;
+    }else{
+     p->fail();
+    }
+    ep_eat_token(p);
    }
-   ep_skip_semicolons(p);
   }
+  
   if(token0->kind == TokenBaseKind_EOF){
    break;
   }else if(ep_maybe_id(p, "struct")){
-   //-struct case
+   //-parse struct
    arrayof<M_Struct_Member> members = {};
    String type_name = ep_id(p);
    ep_char(p, '{');
@@ -310,7 +292,7 @@ k_process_file(Meta_Parsed_File source){
     member = {};
     
     if(ep_maybe_id(p, "meta_removed")){
-     // NOTE(kv): meta_removed
+     //-meta_removed
      ep_char(p, '(');
      {
       parse_struct_member(p, &member);
@@ -332,7 +314,7 @@ k_process_file(Meta_Parsed_File source){
      ep_skip_semicolons(p);
     }else{
      if(ep_maybe_id(p, "meta_added")){
-      // NOTE(kv): meta_added
+      //-meta_added
       ep_char(p, '(');
       while(p->ok_ && !ep_maybe_char(p, ')')){
        ep_maybe_char(p, ',');
@@ -353,7 +335,7 @@ k_process_file(Meta_Parsed_File source){
     }
    }
    
-   print_struct(printer_gen, type_name, members);
+   print_struct(printer_gen, type_name, members, is_packed);
    if(do_info){
     print_struct_meta(printer_gen, type_name, members);
    }
@@ -364,7 +346,7 @@ k_process_file(Meta_Parsed_File source){
    //-Union
    todo_incomplete;
   }else if(ep_maybe_id(p, "enum")){
-   //-enum
+   //-Enum
    arrayof<String> enum_names = {};
    arrayof<i1> enum_vals      = {};
    String type_name = ep_maybe_id(p);
@@ -387,7 +369,7 @@ k_process_file(Meta_Parsed_File source){
    String typedef_to = ep_id(p);
    String type_name  = ep_id(p);
    {
-    printer_gen<<"typedef "<<typedef_to<<" "<<type_name<<";\n";
+    printer_gen<"typedef "<typedef_to<" "<type_name<";\n";
    }
    if(do_info){
     print_typedef_meta(printer_gen, type_name, typedef_to);
@@ -419,15 +401,16 @@ k_process_file(Meta_Parsed_File source){
    mpa_parens{
     parameters = ep_capture_until_char(p,')');
    }
-   Meta_Statements body;
+   Statement_Union *func0 = &root->top_levels.push_zero();
+   cast_to_var(Statement_Function *, func, func0);
    {//-Body
-    body = k_parse_statement_block(scratch_loop, p);
+    func->kind = Statement_Kind_Function;
+    func->body = k_parse_statement_block(arena, p);
    }
    if(p->ok_)
    {//-Print
     {//-Caches
-     //nono see what this does?
-     auto print_cache_storage = [](Printer &p, Statement_Cache &cache0)->void{
+     auto print_cache_storage = [](Meta_Printer &p, Statement_Cache &cache0)->void{
       {//-The struct
        p < "struct Cache_Storage_" < cache0.id;
        m_braces{
@@ -441,30 +424,34 @@ k_process_file(Meta_Parsed_File source){
        p < ";\n";
       }
       {//-Global var
-       p<"global Cache_Storage_"<cache0.id<" "<cache_storage_prefix<cache0.id<";\n";
+       p<"global Cache_Storage_"<cache0.id<" "<cache_storage_prefix<cache0.id<";";
+       mline(p);
       }
      };
-     for_i32(cache_index,0,p->cache_list.count){
+     for_i32(cache_index, 0, p->cache_list.count){
       Statement_Cache &cache0 = *p->cache_list[cache_index];
       m_locationp(printer_gen);
       print_cache_storage(printer_gen, cache0);
      }
     }
     {//-Prototype
-     printer_gen<token0_string<" "<return_type<"\n"<function_name;
+     add_to_source_map(printer_gen.source_map, printer_gen, token0->pos);
+     printer_gen<token0_string<" "<return_type;
+     mline(printer_gen);
+     printer_gen<function_name;
      m_parens2(printer_gen){
       printer_gen<parameters;
      }
     }
     {//-Print body
      m_braces2(printer_gen){
-      printer_gen < "\n";
-      for_i32(statement_index,0,body.count){
-       print(printer_gen, body[statement_index]);
-       printer_gen < "\n";
+      mline(printer_gen);
+      for_i32(statement_index,0,func->body.count){
+       mline(printer_gen);
+       print(printer_gen, func->body[statement_index].head);
       }
      }
-     printer_gen < "\n";
+     mline(printer_gen);
     }
    }
   }else if(ep_maybe_id(p, "i1_wrapper")){
@@ -485,17 +472,90 @@ k_process_file(Meta_Parsed_File source){
   }
   kv_assert(not p->recoverable);
  }
- if(!p->ok_){
+}
+function b32
+k_process_file(Arena *arena, Meta_Parsed_File source,
+               /*out*/ Statement_Root *root){
+ Scratch_Block scratch(get_thread_context(), arena);
+ *root = {};
+ root->kind = Statement_Kind_Root;
+ root->source_path=source.name;
+ {
+  init_dynamic(root->top_levels, arena, 64);
+ }
+ Meta_Printer printer_gen;
+ Stringz map_file_path;
+ {//-filepath business
+  Stringz gen_path;
+  {
+   String path = source.name;
+   String gen_dir = pjoin(scratch, path_dir(path), "generated");
+   String filename = path_filename(path);
+   String stem = path_stem(filename);
+   String extension = path_extension(filename);
+   b32 is_kh = extension == strlit("kh");
+   if(not is_kh){
+    kv_assert(extension == strlit("kc"));
+   }
+   {//-Generated file path
+    Printer pr = make_printer_buffer(scratch, 256);
+    pr<gen_dir<OS_SLASH<stem<".gen"<(is_kh ? ".h" : ".cpp");
+    gen_path = printer_get_string(pr);
+   }
+   {
+    Printer pr = make_printer_buffer(scratch, 256);
+    pr<gen_dir<OS_SLASH<filename<".map";
+    map_file_path = printer_get_string(pr);
+   }
+  }
+  {
+   printer_gen = m_open_file_to_write(gen_path);
+   printer_gen<"// NOTE: source: "<source.name<"\n";
+   printer_gen<"#pragma once\n";
+  }
+ }
+ init_dynamic(printer_gen.source_map, arena, 256);
+ b32 ok = okp(printer_gen);
+ Klang_Parser klang_parser = {};
+ Klang_Parser *p = &klang_parser;
+ {
+  Ed_Parser *ed_parser = p;
+  *ed_parser = m_parser_from_token_list(source.data, source.token_list);
+  p->current_statement = root;
+ }
+ {
+  k_process_top_level(arena, p, printer_gen, root);
+ }
+ if(p->ok_){
+  //-Print source map
+  FILE *file = open_or_create_file(map_file_path, "wb");
+  if(file){
+   Source_Map &map = printer_gen.source_map;
+   {//-Magic
+    char *magic = "kmap";
+    fwrite(magic, 1, 4, file);
+   }
+   {//-Number of items
+    fwrite(&map.count, 1, 4, file);
+   }
+   {//-The bulk of the data
+    fwrite(map.items, 1, map.count*sizeof(*map.items), file);
+   }
+   close_file(file);
+  }else{
+   ok = false;
+  }
+ }else{
   ok = false;
   Line_Column fail_location = ep_get_fail_location(p);
   Line_Column scope_location = ep_get_scope_location(p);
-  printf("klang: [%.*s:%d:%d] parse error at %.*s:%d:%d\n",
-         string_expand(p->scope_.name),
-         scope_location.line,
-         scope_location.column,
+  printf("%.*s:%d:%d [klang: %.*s:%d:%d] parse error\n",
          string_expand(source.name),
          fail_location.line,
-         fail_location.column);
+         fail_location.column,
+         string_expand(p->scope_.name),
+         scope_location.line,
+         scope_location.column);
  }
  close_file(printer_gen);
  return ok;
@@ -514,11 +574,26 @@ function b32
 klang_main(arrayof<Meta_Parsed_File> source_files){
  b32 ok = true;
  for_i1(index,0,source_files.count){
+  Scratch_Block file_scratch(get_thread_context(), 0);
   Meta_Parsed_File &source_file = source_files[index];
+  {//-Test file
+   b32 is_test_file = path_filename(source_file.name) == "test.kc";
+   if(DEBUG_parse_test_file){
+    if(not is_test_file){
+     continue;
+    }
+   }else if(is_test_file){
+    continue;
+   }
+  }
   String extension = path_extension(source_file.name);
   if(extension == strlit("kh") ||
      extension == strlit("kc")){
-   ok = k_process_file(source_file);
+   Statement_Root root;
+   ok = k_process_file(file_scratch, source_file, &root);
+   if(ok){
+    meta_process_ast(&root);
+   }
    if(!ok){ break; }
   }
  }

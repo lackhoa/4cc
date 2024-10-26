@@ -209,8 +209,8 @@ VIM_COMMAND_SIG(vim_to_prev_pattern){ vim_to_pattern_inner(app, true); }
 // VIM_COMMAND_SIG(vim_in_next_pattern){ vim_in_pattern_inner(app, 0); }
 // VIM_COMMAND_SIG(vim_in_prev_pattern){ vim_in_pattern_inner(app, BufferSeekString_Backward); }
 
-VIM_COMMAND_SIG(vim_search_identifier)
-{
+function void
+vim_search_identifier(App *app){
  vim_state.identifier_search_mode = true;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);

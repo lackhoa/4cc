@@ -1,9 +1,14 @@
 /* NOTE(kv): This file is for miscellaneous commands */
 
+function Ed_Parser
+make_ed_parser_at_cursor(App *app, Scan_Direction direction=Scan_Forward){
+ GET_VIEW_AND_BUFFER;
+ Token_Iterator_Array token_it = get_token_it_at_cursor(app);
+ Ed_Parser result = make_ep_from_buffer(app, buffer, token_it, 0, direction);
+ return result;
+}
 global Table_u64_u64 shifted_version_of_characters;
-
-VIM_COMMAND_SIG(kv_shift_character)
-{
+VIM_COMMAND_SIG(kv_shift_character) {
  GET_VIEW_AND_BUFFER;
  i64 pos = view_get_cursor_pos(app, view);
  
@@ -11,16 +16,11 @@ VIM_COMMAND_SIG(kv_shift_character)
  buffer_read_range(app, buffer, Ii64(pos, pos+1), &current_character);
  
  u64 replacement_char = 0;
- if (character_is_upper(current_character))
- {
+ if (character_is_upper(current_character)) {
   replacement_char = character_to_lower(current_character);
- }
- else if (character_is_lower(current_character))
- {
+ } else if (character_is_lower(current_character)) {
   replacement_char = character_to_upper(current_character);
- }
- else
- {
+ } else {
   table_read(&shifted_version_of_characters, (u64)current_character, &replacement_char);
  }
  //
@@ -110,20 +110,19 @@ function void kv_newline_below(App *app)
 CUSTOM_COMMAND_SIG(byp_reset_face_size)
 CUSTOM_DOC("Resets face size to default")
 {
-  GET_VIEW_AND_BUFFER;
-  Face_ID face_id = get_face_id(app, buffer);
-  Face_Description description = get_face_description(app, face_id);
-  description.parameters.pt_size = (i1)def_get_config_u64(app, vars_intern_lit("default_font_size"));
-  try_modify_face(app, face_id, &description);
+ GET_VIEW_AND_BUFFER;
+ Face_ID face_id = get_face_id(app, buffer);
+ Face_Description description = get_face_description(app, face_id);
+ description.parameters.pt_size = (i1)def_get_config_u64(app, vars_intern_lit("default_font_size"));
+ try_modify_face(app, face_id, &description);
 }
 
 
-force_inline b32 kv_is_group_opener(Token *token) {
+inline b32 token_is_group_opener(Token *token) {
   return (token->kind == TokenBaseKind_ParenOpen ||
           token->kind == TokenBaseKind_ScopeOpen);
 }
-
-force_inline b32 kv_is_group_closer(Token *token) {
+inline b32 token_is_group_closer(Token *token) {
   return (token->kind == TokenBaseKind_ParenClose ||
           token->kind == TokenBaseKind_ScopeClose);
 }
@@ -161,57 +160,110 @@ kv_vim_bounce(App *app) {
  view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-function b32
-kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos, Range_i64 *out){
+function Range_i64
+kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos){
+ Scratch_Block scratch(app);
+ Range_i64 result = {};
  Token_Array tokens = get_token_array_from_buffer(app, buffer);
- if(Token *token = token_from_pos(&tokens, pos)){
-  if(token->kind == TokenBaseKind_LiteralString){
-   Range_i64 range = get_token_range(token);
-   *out = range;
-   return true;
+ if(Token *cur_token = token_from_pos(&tokens, pos)){
+  if(cur_token->kind == TokenBaseKind_LiteralString){
+   //-String
+   result = get_token_range(cur_token);
   }else{
+   //-Normal groups (surrounded by group characters)
    u8 current_char = buffer_get_char(app, buffer, pos);
-   if(kv_is_group_opener(current_char)){ pos++; }
-   
-   Find_Nest_Flag flags = FindNest_Scope | FindNest_Paren | FindNest_Balanced;
-   Range_i64 range = {};
-   if(find_nest_side(app, buffer, pos-1, flags,
-                     Scan_Backward, NestDelim_Open, &range.start) &&
-      find_nest_side(app, buffer, pos, flags|FindNest_EndOfToken,
-                     Scan_Forward, NestDelim_Close, &range.end)){
-    *out = range;
-    return true;
-   }else{ return false; }
+   Ed_Parser parser_value = make_ed_parser_at_cursor(app);
+   Ed_Parser *parser = &parser_value;
+   char closer_char = 0;
+   i64 closer_pos = 0;
+   i64 opener_pos = 0;
+   b32 found_nest = false;
+   {//-forward
+    if(token_is_group_opener(cur_token)){
+     //move inside the group, if we're at the start of it
+     ep_eat_token(parser);
+    }
+    closer_char = ep_eat_until_char(parser, strlit("}])"));
+    closer_pos  = ep_get_pos(parser);
+   }
+   if(closer_char)
+   {//-backward
+    //NOTE(kv) If the forward succeeded, then the parser should be at
+    //  the group closer, so we'll avoid it on the way back.
+    parser->direction = Scan_Backward;
+    ep_eat_token(parser);
+    char opener_char = get_matching_group_opener(closer_char);
+    found_nest = ep_eat_until_char(parser, String{(u8 *)&opener_char, 1});
+    opener_pos = ep_get_pos(parser);
+   }
+   if(found_nest){
+    result = Ii64(opener_pos, closer_pos+1);
+   }
   }
- }else{ return false; }
+ }
+ return result;
 }
 
-function void kv_sexpr_up(App *app){
+function void
+kv_sexpr_up(App *app){
+ Scratch_Block scratch(app);
  GET_VIEW_AND_BUFFER;
  vim_push_jump(app, view);
  Vim_Motion_Block vim_motion_block(app);
- 
- i64 pos = view_correct_cursor(app, view);
- if(kv_is_group_opener(buffer_get_char(app, buffer, pos))){
-  pos--;
+ Ed_Parser parser = make_ed_parser_at_cursor(app, Scan_Backward);
+ b32 done = false;
+ {
+  Token *token = ep_get_token(&parser);
+  if(token_is_group_closer(token)){
+   //-if we're at group end, jump to the beginning
+   String closer_string = ep_print_token(scratch, &parser);
+   u8 closer = closer_string.data[0];
+   u8 opener = get_matching_group_opener(closer);
+   ep_eat_token(&parser);  //NOTE eat past the group closer
+   char do_jump = ep_eat_until_char(&parser, opener);
+   if(do_jump){
+    i64 goto_pos = ep_get_pos(&parser);
+    kv_goto_pos(app, view, goto_pos);
+   }
+   done = true;
+  }
  }
- 
- Range_i64 range = {pos, pos};
- kv_find_current_nest(app, buffer, pos, &range);
- kv_goto_pos(app, view, range.start);
+ if(not done){
+  {//-Detect if we're right at the start of a group
+   Token *token = ep_get_token(&parser);
+   if(token->kind == TokenBaseKind_LiteralString){
+    if(view_get_cursor_pos(app, view) == token->pos){
+     //-We're standing right at the string -> back up
+     ep_eat_token(&parser);
+    }
+   }else if(token_is_group_opener(token)){
+    ep_eat_token(&parser);
+   }
+  }
+  {//-jump
+   Token *token = ep_get_token(&parser);
+   if(token->kind == TokenBaseKind_LiteralString){
+    kv_goto_pos(app, view, token->pos);
+   }else{
+    char do_jump = ep_eat_until_char(&parser, strlit("{[("));
+    if(do_jump){
+     i64 goto_pos = ep_get_pos(&parser);
+     kv_goto_pos(app, view, goto_pos);
+    }
+   }
+  }
+ }
 }
-
-VIM_COMMAND_SIG(kv_sexpr_down)
-{
+function void
+kv_sexpr_down(App *app){
   View_ID   view = get_active_view(app, Access_ReadVisible);
   vim_push_jump(app, view);
   Token_Iterator_Array token_it = get_token_it_at_cursor(app);
   if ( !token_it.tokens ) return;
   
-  do
-  {
+  do {
     Token *token = tkarr_read(&token_it);
-    if (kv_is_group_opener(token))
+    if (token_is_group_opener(token))
   {
    kv_goto_token(app, token);
    move_right(app);
@@ -221,13 +273,6 @@ VIM_COMMAND_SIG(kv_sexpr_down)
  while ( tkarr_inc(&token_it) );
 }
 
-function Ed_Parser
-make_ed_parser_at_cursor(App *app){
- GET_VIEW_AND_BUFFER;
- Token_Iterator_Array token_it = get_token_it_at_cursor(app);
- Ed_Parser result = make_ep_from_buffer(app, buffer, token_it);
- return result;
-}
 
 function b32
 if_preprocessor_movement(App *app, Scan_Direction scan_direction){
@@ -284,7 +329,7 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction){
 }
 
 function void 
-kv_sexpr_right(App *app) {
+kv_sexpr_right(App *app){
  Token_Iterator_Array token_it = get_token_it_at_cursor(app);
  if ( token_it.tokens ) {
   View_ID view = get_active_view(app, Access_ReadVisible);
@@ -300,9 +345,9 @@ kv_sexpr_right(App *app) {
       kv_goto_pos(app, view, token_end);
       break;
      }
-    }else if(kv_is_group_opener(token)){
+    }else if(token_is_group_opener(token)){
      nest += 1;
-    }else if(kv_is_group_closer(token)){
+    }else if(token_is_group_closer(token)){
      nest -= 1;
      if(nest <= 0){
       kv_goto_token(app, token);
@@ -316,8 +361,7 @@ kv_sexpr_right(App *app) {
 }
 
 function void
-kv_sexpr_left(App *app)
-{
+kv_sexpr_left(App *app) {
  if ( if_preprocessor_movement(app, Scan_Backward) == 0 )
  {
   Token_Iterator_Array token_it = get_token_it_at_cursor(app, -1);
@@ -338,7 +382,7 @@ kv_sexpr_left(App *app)
       break;
      }
     }
-    else if (kv_is_group_opener(token))
+    else if (token_is_group_opener(token))
     {
      nest -= 1;
      if (nest <= 0)
@@ -348,7 +392,7 @@ kv_sexpr_left(App *app)
       break;
      }
     }
-    else if (kv_is_group_closer(token))
+    else if (token_is_group_closer(token))
     {
      nest += 1;
     }
@@ -487,30 +531,86 @@ cmd_closing_bracket_in_visual_mode(App *app)
 VIM_COMMAND_SIG(kv_void_command) { return; }
 
 VIM_COMMAND_SIG(kv_vim_normal_mode) {
- vim_normal_mode(app);
- arrsetlen(kv_quail_keystroke_buffer, 0);
+    vim_normal_mode(app);
+    arrsetlen(kv_quail_keystroke_buffer, 0);
 }
 function void
 vim_enter_visual_mode(){
  vim_state.mode = VIM_Visual;
  vim_state.params.edit_type = EDIT_CharWise;
 }
-VIM_COMMAND_SIG(kv_sexpr_select_whole){
+function void
+kv_sexpr_select_whole(App *app){
  GET_VIEW_AND_BUFFER;
- 
  i64 pos = view_get_cursor_pos(app, view);
- Range_i64 nest = {};
- if(kv_find_current_nest(app, buffer, pos, &nest)){
-  view_set_cursor_and_preferred_x(app, view, seek_pos(nest.min));
-  view_set_mark(app, view, seek_pos(nest.max-1));
+ Token_Array tokens = get_token_array_from_buffer(app, buffer);
+ Token *token = token_from_pos(&tokens, pos);
+ Range_i64 range = {};
+ if(token->kind == TokenBaseKind_ScopeOpen or
+    token->kind == TokenBaseKind_ScopeClose or
+    token->kind == TokenBaseKind_ParenOpen or
+    token->kind == TokenBaseKind_ParenClose){
+  //-Select nest
+  range = kv_find_current_nest(app, buffer, pos);
+ }else{
+  //-Select token
+  range = get_token_range(token);
+ }
+ if(range.max != 0){
+  view_set_cursor_and_preferred_x(app, view, seek_pos(range.min));
+  view_set_mark(app, view, seek_pos(range.max-1));
   vim_enter_visual_mode();
+ }
+}
+//NOTE(kv) "q" doesn't truly work yet, but I wonder if I can hack it!
+function void
+cmd_handle_q_visual(App *app){
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block scratch(app);
+ i64 curpos = view_get_cursor_pos(app, view);
+ 
+ auto scan_function = [&](Scan_Direction direction) -> Token *{
+  Token *end_token = 0;
+  Ed_Parser parser_value = make_ed_parser_at_cursor(app, direction);
+  Ed_Parser *parser = &parser_value;
+  Token *init_token = ep_get_token(parser);
+  b32 expecting_identifier = (init_token->kind == TokenBaseKind_Identifier);
+  while(true){
+   Token *test_token = ep_get_token(parser);
+   b32 passes = false;
+   if(expecting_identifier){
+    passes = (test_token->kind == TokenBaseKind_Identifier);
+    expecting_identifier = false;
+   }else{
+    if(test_token->kind == TokenBaseKind_Operator){
+     String test_string = ep_print_given_token(scratch, parser, test_token);
+     passes = (test_string == "." or test_string == "->");
+    }
+    expecting_identifier = true;
+   }
+   if(passes){
+    end_token = test_token;
+    ep_eat_token(parser);
+   }else{
+    break;
+   }
+  }
+  return end_token;
+ };
+ 
+ Token *begin_token = scan_function(Scan_Backward);
+ Token *end_token   = scan_function(Scan_Forward);
+ if(begin_token and end_token){
+  //-Select
+  view_set_cursor_pos(app, view, begin_token->pos);
+  view_set_mark_pos(app, view, end_token->pos + end_token->size - 1);
  }
 }
 
 inline b32
 character_is_path(char character) {
  switch (character) {
-  case '/': case '~': case '.': case '\\':  case '-': case ':':
+  case '/': case '~': case '.': case '\\':  case '-': case '+': case ':':
   return true;
   default:
   return character_is_alnum(character);
@@ -522,7 +622,7 @@ yank_current_filename(App *app)
 {
  GET_VIEW_AND_BUFFER;
  Scratch_Block temp(app);
- String8 filename = push_buffer_filename(app, temp, buffer);
+ String8 filename = push_buffer_filepath(app, temp, buffer);
  if (filename.size)
  {
   string_mod_replace_character(filename, '\\', '/');
@@ -687,18 +787,42 @@ kv_jump_ultimate(App *app)
  Scratch_Block scratch(app);
  vim_push_jump(app, view);
  b32 jumped = false;
- {//NOTE(kv) File path and/or line+column
+ {//-File path (and maybe line+column)
   Range_i64 loc_range = get_surrounding_characters(app, character_is_path);
-  if (loc_range.max > 0) {
+  if(loc_range.max > 0){
    String loc = push_buffer_range(app, scratch, buffer, loc_range);
-   if (view_open_file(app, view, loc, true)){
-    //NOTE(kv) The parse_jump doesn't support file-only path
+   if(view_open_file(app, view, loc, true)){
     jumped = true;
    }else{
     Parsed_Jump jump = parse_jump_location(loc);
-    if (jump.success){
+    if(jump.success){
      jump_to_location(app, view, jump.location);
      jumped = true;
+    }
+   }
+  }
+  if(not jumped){
+   //-Looking at quotes? It might be a path -> just jump to it!
+   i64 curpos = view_get_cursor_pos(app, view);
+   i64 line_min = get_line_side_pos_from_pos(app, buffer, curpos, Side_Min);
+   i64 line_max = get_line_side_pos_from_pos(app, buffer, curpos, Side_Max);
+   String needle = strlit("\"");
+   i64 quote_start = seek_string_backward(app, buffer, curpos, line_min, needle);
+   if(quote_start >= 0){
+    i64 quote_end = seek_string_forward(app, buffer, curpos, line_max, needle);
+    if(quote_end <= line_max){
+     Range_i64 range = Ii64(quote_start+1, quote_end);
+     String path = push_buffer_range(app, scratch, buffer, range);
+     jumped = view_open_file(app, view, path, true);
+     if(not jumped){
+      //-Maybe it's some relative path?
+      String filename = path_filename(path);
+      Buffer_ID existing_buffer = create_buffer(app, filename, BufferCreate_NeverNew);
+      if(existing_buffer){
+       view_set_buffer(app, view, existing_buffer, 0);
+       jumped = true;
+      }
+     }
     }
    }
   }
@@ -723,8 +847,8 @@ VIM_COMMAND_SIG(kv_delete_surrounding_groupers){
  GET_VIEW_AND_BUFFER;
  HISTORY_GROUP_SCOPE;
  i64 pos = view_get_cursor_pos(app, view);
- Range_i64 range = {};
- if(kv_find_current_nest(app, buffer, pos, &range)){
+ Range_i64 range = kv_find_current_nest(app, buffer, pos);
+ if(range.max){
   buffer_delete_pos(app, buffer, range.max-1);
   buffer_delete_pos(app, buffer, range.min);
   auto_indent_buffer(app, buffer, range);
@@ -827,7 +951,7 @@ CUSTOM_DOC("run the current script")
   Scratch_Block temp(app);
 
   String8 dir = push_hot_directory(app, temp);
-  String8 cmd = push_buffer_filename(app, temp, buffer);
+  String8 cmd = push_buffer_filepath(app, temp, buffer);
   standard_build_exec_command(app, view, dir, cmd);
 }
 
@@ -902,7 +1026,7 @@ kv_list_all_locations_from_string(App *app, String needle)
  //
  Buffer_ID out_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
  kv_filter_match_list(app, &all_matches, out_buffer);
- print_string_match_list_to_buffer(app, out_buffer, all_matches);
+ print_string_match_list_to_buffer(app, needle, out_buffer, all_matches);
  
  lock_jump_buffer(app, out_buffer);
 }
@@ -997,7 +1121,7 @@ VIM_COMMAND_SIG(remedy_add_breakpoint)
 {
  GET_VIEW_AND_BUFFER;
  Scratch_Block temp(app);
- String8 filename = push_buffer_filename(app, temp, buffer);
+ String8 filename = push_buffer_filepath(app, temp, buffer);
  i64 linum = get_current_line_number(app);
  String8 cmd = push_stringfz(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
                              string_expand(filename), linum);
@@ -1020,7 +1144,7 @@ VIM_COMMAND_SIG(remedy_run_to_cursor)
 {
     GET_VIEW_AND_BUFFER;
     Scratch_Block temp(app);
-    String8 filename = push_buffer_filename(app, temp, buffer);
+    String8 filename = push_buffer_filepath(app, temp, buffer);
     i64 linum = get_current_line_number(app);
     String8 cmd = push_stringfz(temp, "remedybg.exe run-to-cursor %.*s %lld",
                                string_expand(filename), linum);
@@ -1162,7 +1286,7 @@ maybe_handle_fui(App *app, Buffer_ID buffer)
   {
    global_game_dll_lock = true;
    Scratch_Block scratch(app);
-   String filename = push_buffer_filename(app, scratch, buffer);
+   String filename = push_buffer_filepath(app, scratch, buffer);
    i32 line_number = (i32)get_current_line_number(app);
    result = game->fui_handle_slider(app, buffer, filename, line_number);
    global_game_dll_lock = false;
@@ -1177,8 +1301,12 @@ kv_handle_return_normal_mode(App *app)
  View_ID view = get_active_view(app, Access_ReadVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
  if (buffer) { // Writable buffer
-  if ( maybe_handle_fui(app, buffer) ) { // pass
-  } else {
+  if(maybe_handle_fui(app, buffer)) { // pass
+  }else{
+   //NOTE(kv) Still not sure why "save_all_dirty_buffers" sometimes fails to save?
+   Scratch_Block scratch(app);
+   String filename = push_buffer_filepath(app, scratch, buffer);
+   buffer_save(app, buffer, filename, 0);
    save_all_dirty_buffers(app);
   }
  } else { // Readonly buffer
@@ -1215,19 +1343,17 @@ CUSTOM_DOC("")
 }
 
 function void
-handle_tab_normal_mode(App *app)
-{
+handle_tab_normal_mode(App *app) {
  GET_VIEW_AND_BUFFER;
- 
+    
  b32 try_indent = false;
  b32 is_limited = is_buffer_limited_edit(app, buffer);
- if (!is_limited)
- {
+ b32 is_dirty = buffer_get_dirty_state(app, buffer) == DirtyState_UnsavedChanges;
+ if(!is_limited and is_dirty){
   try_indent = auto_indent_line_at_cursor(app);
  }
  
- if ( !try_indent )
- {
+ if(!try_indent){
   change_active_primary_view(app);
  }
 }
@@ -1296,7 +1422,7 @@ CUSTOM_DOC("Replace (in all editable buffers)")
 }
 
 function void
-kv_toggle_cpp_comment(App *app) {
+kv_toggle_cpp_comment(App *app){
  if (vim_state.mode == VIM_Visual) {
   kv_surround_with(app, "/*", "*/");
  }else{
@@ -1305,7 +1431,7 @@ kv_toggle_cpp_comment(App *app) {
   Token *token = ep_get_token(p);
   if (token){
    if (token->kind == TokenBaseKind_Comment){
-    Scratch_Block scratch;
+    Scratch_Block scratch(app);
     GET_VIEW_AND_BUFFER;
     String token_string = ep_print_token(scratch, p);
     Range_i64 token_range = get_token_range(token);
@@ -1331,8 +1457,9 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
  Scratch_Block scratch(app);
  GET_VIEW_AND_BUFFER;
  i64 curpos = view_get_cursor_pos(app, view);
- Range_i64 nest;
- if(kv_find_current_nest(app, buffer, curpos, &nest)){
+ //nono uh oh, this wouldn't work if the parameter is a group?
+ Range_i64 nest = kv_find_current_nest(app, buffer, curpos);
+ if(nest.max){
   Token_Iterator_Array token_it = get_token_it_at_pos(app, buffer, nest.min);
   Ed_Parser parser = make_ep_from_buffer(app, buffer, token_it);
   Ed_Parser *p = &parser;
@@ -1378,7 +1505,7 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
        for_i1(i,0,list.count){
         if(i){ pr<", "; }
         if(i == curindex+1){
-         new_curpos = nest.min+1+pr.used;
+         new_curpos = nest.min+1+pr.byte_pos;
         }
         pr<push_buffer_range(app, scratch, buffer, list[i]);
        }
@@ -1398,7 +1525,7 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
        for_i1(i,0,list.count){
         if(i){ pr<", "; }
         if(i == curindex-1){
-         new_curpos = nest.min+1+pr.used;
+         new_curpos = nest.min+1+pr.byte_pos;
         }
         pr<push_buffer_range(app, scratch, buffer, list[i]);
        }
@@ -1416,5 +1543,151 @@ function void
 move_parameter_right(App* app){ move_parameter_left_or_right(app, 1); }
 function void
 move_parameter_left (App* app){ move_parameter_left_or_right(app, 0); }
-
+//-
+//-
+struct Source_Map_Entry{
+ i32 source_pos;
+ i32 gen_pos;
+};
+PACK_BEGIN
+struct Meta_Map_File_Layout{
+ u32 magic;
+ i32 count;
+ Source_Map_Entry entries[1];
+}
+PACK_END
+;
+function void
+jump_between_meta_and_generated_code(App *app){
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block scratch(app);
+ String buffer_path = push_buffer_filepath(app, scratch, buffer);
+ String buffer_dir = path_dir(buffer_path);
+ i32 curpos = view_get_cursor_pos(app, view);
+ if(char_is_whitespace(buffer_get_char(app, buffer, curpos))){
+  //-Scan first non whitespace
+  i32 line_min = get_line_side_pos_from_pos(app, buffer, curpos, Side_Min);
+  i32 line_max = get_line_side_pos_from_pos(app, buffer, curpos, Side_Max);
+  i32 first_non_white = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, line_min);
+  if(first_non_white <= line_max){
+   macro_clamp_min(curpos, first_non_white);
+  }
+ }
+ auto open_file_at_pos = [&](String path, i32 pos) -> void{
+  if(view_open_file(app, view, path, true)){
+   view_goto_pos(app, view, pos);
+   vim_scroll_screen_mid(app);
+  }else{
+   vim_set_bottom_text_lit("Can't open the destination file!");
+  }
+ };
+ if(path_basename(buffer_dir) == "generated"){
+  //-Generated -> Generator
+  String source_dir = path_dir(buffer_dir);
+  String gen_dir = buffer_dir;
+  b32 is_h = path_extension(buffer_path)==strlit("h");
+  Stringz map_file_path;
+  String stem = path_stem(path_stem(buffer_path));
+  {
+   Printer p = make_printer_buffer(scratch, 256);
+   p < gen_dir < OS_SLASH < stem < (is_h ? ".kh" : ".kc") < ".map";
+   map_file_path = printer_get_string(p);
+  }
+  Stringz map_string = read_entire_file(scratch, map_file_path);
+  if(map_string.data){
+   char *magic = "kmap";
+   Meta_Map_File_Layout *map = (Meta_Map_File_Layout *)map_string.data;
+   if(map->magic==*(u32 *)magic &&
+      map->count){
+    //-Map is valid
+    //NOTE(kv) In finding the best match, we favor positions that are less than
+    //  the current position (because you can read from there and find the actual location).
+    i32 begin = 0; //NOTE(kv) stores the best match entry
+    i32 end = map->count;
+    while(end-begin > 1){
+     i32 entry_index = begin+(end-begin)/2;
+     i32 entry_pos = map->entries[entry_index].gen_pos;
+     i32 delta = entry_pos - curpos;
+     if(delta <= 0){
+      begin = entry_index;
+      if(delta == 0){
+       break;
+      }
+     }else /*if(delta > 0)*/{
+      end = entry_index;
+     }
+    }
+    {//-Jump!
+     String source_path;
+     {
+      Printer p = make_printer_buffer(scratch, 256);
+      p<source_dir<OS_SLASH<stem<(is_h ? ".kh" : ".kc");
+      source_path = printer_get_string(p);
+     }
+     open_file_at_pos(source_path, map->entries[begin].source_pos);
+    }
+   }else{
+    vim_set_bottom_text_lit("Map file corrupted or empty.");
+   }
+  }else{
+   vim_set_bottom_text_lit("Can't find map file.");
+  }
+ }else{
+  //-Generator -> Generated
+  String gen_dir = pjoin(scratch, buffer_dir, "generated");
+  Stringz map_file_path;
+  {
+   Printer p = make_printer_buffer(scratch, 256);
+   p < gen_dir < OS_SLASH < path_filename(buffer_path) < ".map";
+   map_file_path = printer_get_string(p);
+  }
+  Stringz map_string = read_entire_file(scratch, map_file_path);
+  if(map_string.data){
+   char *magic = "kmap";
+   Meta_Map_File_Layout *map = (Meta_Map_File_Layout *)map_string.data;
+   if(map->magic==*(u32 *)magic &&
+      map->count){
+    //-Map is valid
+    //NOTE(kv) In finding the best match, we favor positions that are less than
+    //  the current position (because you can read from there and find the actual location).
+    i32 begin = 0; //NOTE(kv) stores the best match entry
+    i32 end = map->count;
+    while(end-begin > 1){
+     i32 entry_index = begin+(end-begin)/2;
+     i32 entry_pos = map->entries[entry_index].source_pos;
+     i32 delta = entry_pos - curpos;
+     if(delta <= 0){
+      begin = entry_index;
+      if(delta == 0){
+       break;
+      }
+     }else /*if(delta > 0)*/{
+      end = entry_index;
+     }
+    }
+    {//-Jump!
+     String gen_path;
+     {
+      b32 is_kh = path_extension(buffer_path) == strlit("kh");
+      Printer p = make_printer_buffer(scratch, 256);
+      String stem = path_stem(buffer_path);
+      p<gen_dir<OS_SLASH<stem<".gen"<(is_kh ? ".h" : ".cpp");
+      gen_path = printer_get_string(p);
+     }
+     open_file_at_pos(gen_path, map->entries[begin].gen_pos);
+    }
+   }else{
+    vim_set_bottom_text_lit("Map file corrupted or empty.");
+   }
+  }else{
+   vim_set_bottom_text_lit("Can't find map file.");
+  }
+ }
+}
+function void
+cmd_handle_8_normal(App *app){
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ i64 curpos = view_get_cursor_pos(app, view);
+ write_text(app, strlit("*"), false);
+}
 //~EOF

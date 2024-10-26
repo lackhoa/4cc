@@ -37,7 +37,6 @@ struct Game_State{
  Modeler modeler;
  v1 time;
  b32 indicator_level;
- b32 references_full_alpha;
  Viewport viewports[GAME_VIEWPORT_COUNT];
  b32 save_failed;
  b32 load_failed;

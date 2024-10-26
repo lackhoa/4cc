@@ -54,9 +54,8 @@ CUSTOM_COMMAND_SIG(vim_scoll_buffer_peek_down)
 CUSTOM_DOC("Scrolls buffer peek down")
 { vim_scoll_buffer_peek_inner(app,  0.75f); }
 
-CUSTOM_COMMAND_SIG(right_adjust_view)
-CUSTOM_DOC("Sets the right size of the view near the x position of the cursor.")
-{
+function void
+right_adjust_view(App *app){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	i64 pos = view_get_cursor_pos(app, view);

@@ -23,9 +23,9 @@ hotload_game = False
 
 # NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-ed_build_level    = 1
-game_build_level  = 0
 meta_build_level  = 0
+game_build_level  = 1
+ed_build_level    = 0
 imgui_build_level = 2
 lexer_build_level = 2
 ed_meta_build_level = 1
@@ -231,7 +231,7 @@ sanitize_address = "-fsanitize=address" if asan_on else ""
 
 class Compiler(Enum):
     ClangCl = 1
-    MSVC    = 2
+    Cl    = 2
 
 # NOTE: parameters are just suggestions
 def run_compiler(compiler, input_files, output_file, debug_mode=True,
@@ -239,20 +239,24 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
                  compile_only=False, link_only=False,
                  no_ccache=False, exit_on_failure=True, no_warnings=False):
     global asan_on
-    # NOTE: if asan is on then you have to use msvc
+    # NOTE: if asan is on then you have to use Cl
     if asan_on:
-        compiler = Compiler.MSVC
+        compiler = Compiler.Cl
     if not debug_mode:
-        compiler = Compiler.MSVC
+        # No reason to use clang if not for easier debugging
+        compiler = Compiler.Cl
         no_ccache = True
 
     is_clang = compiler == Compiler.ClangCl
-    is_msvc  = compiler == Compiler.MSVC
+    is_msvc  = compiler == Compiler.Cl
     assert(is_clang or is_msvc)
     if asan_on:
         debug_mode = True
 
     compiler_exe = "clang-cl" if is_clang else "cl"
+    if is_clang:
+        # NOTE(kv) clang-cl will masquerade as MSVC, but there are still differences from MSVC.
+        compiler_flags += " -DCOMPILER_LLVM"
 
     debug_flag = ""
     if debug_mode:
@@ -311,9 +315,6 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
     run(command, exit_on_failure)
 
 def autogen():
-    #global asan_on
-    #old_asan_on = asan_on
-    #asan_on = False
     CUSTOM=f'{FCODER_ROOT}/code/custom'
     BUILD_DIR = pjoin(CUSTOM, "build")
     #rm_rf(BUILD_DIR)
@@ -355,8 +356,6 @@ def autogen():
                          link_only=True)
             run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
 
-    #asan_on = old_asan_on
-
 def build_game():
     try:  # NOTE: Compiling the game
         with open("game_dll.lock", "w") as file:
@@ -368,7 +367,7 @@ def build_game():
             # NOTE: ftime-trace only works with "-c"
             run(f'clang++ -c {pjoin(CODE, "game", "game_main.cpp")}  {INCLUDES} {SYMBOLS} -Od -ftime-trace')
         else:
-            cl_or_clang_cl = Compiler.MSVC if COMPILE_GAME_WITH_MSVC else Compiler.ClangCl
+            cl_or_clang_cl = Compiler.Cl if COMPILE_GAME_WITH_MSVC else Compiler.ClangCl
             MSVC_COMPILE_FLAGS = f"{INCLUDES} {SYMBOLS}"
             # NOTE: Compile the driver and the framework
             run_compiler(cl_or_clang_cl, f'{GAME_MAIN} {space_join(imgui_object_files)}', f"game{DOT_DLL}",
@@ -398,7 +397,7 @@ try:
         if OS_WINDOWS and STOP_DEBUGGING_BEFORE_BUILD:
             run(f"{remedybg} stop-debugging")
 
-        INCLUDES=f'-I{CODE} -I{CODE}/libs -I{CODE}/libs/imgui -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv'
+        INCLUDES=f'-I{CODE} -I{CODE}/libs -I{CODE}/libs/imgui -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/generated -I{CODE}/game/generated'
         #
         COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
         SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DAD_PROFILE={AD_PROFILE} -DKV_INTERNAL={DEBUG_MODE} -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
@@ -446,7 +445,7 @@ try:
                 run_compiler(Compiler.ClangCl, PLATFORM_CPP,
                              ed_obj, debug_mode=DEBUG_MODE,
                              compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                             compile_only=True)
+                             compile_only=True, no_ccache=True)
     
                 # NOTE(kv): Linking 4coder
                 USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
@@ -464,7 +463,7 @@ try:
                 mkdir_p(OPENGL_OUTDIR)
                 for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
                     shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
-        if meets_level(game_build_level):
+        if meets_level(game_build_level) and (not args.release):
             build_game()
 
         if SHIP_MODE:

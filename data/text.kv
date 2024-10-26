@@ -1,15 +1,15 @@
 // autodraw data file (DO NOT EDIT)
-// Written at 14.10.2024 20:43:37
-version 13
+// Written at 26.10.2024 14:38:08
+version 14
 cameras
 {
  {
-  distance 2.2004f
+  distance 1.302f
   phi 0.f
-  theta 0.f
+  theta 0.9167f
   roll 0.f
   pan 0.f 0.f 0.f
-  pivot 0.0564f -0.1148f 0.005f
+  pivot 0.0564f -0.4566f 0.005f
   }
  {
   distance 1.3312f
@@ -22,34 +22,32 @@ cameras
  {
   distance 3.3124f
   phi 0.f
-  theta 0.5f
-  roll 0.f
-  pan 0.f 0.1633f 0.f
-  pivot 0.2299f -0.604f -0.0145f
-  }
+   theta 0.5f
+   roll 0.f
+   pan 0.f 0.1633f 0.f
+   pivot 0.2299f -0.604f -0.0145f
  }
-
-references_full_alpha 1
+}
 
 Serialized_State
 {
-kb_cursor {
-pos 0.1769f -0.4225f -0.0024f
-vel 0.f
-}
-
+ kb_cursor {
+  pos 0.1769f -0.4225f -0.0024f
+   vel 0.f
+ }
+ references_full_alpha 1
 }
 vertices
 {
  {
-name nose_tip
-bone_id {
-type 1
-id 0
-}
-
-pos 0.f -0.6834f 1.0916f
-}
+  name nose_tip
+   bone_id {
+   type 1
+    id 0
+  }
+  
+  pos 0.f -0.6834f 1.0916f
+ }
 {
 name chin_middle
 bone_id {
@@ -141,6 +139,15 @@ id 0
 pos 0.6062f -0.7071f 0.5711f
 }
 {
+name nose_root_backL
+bone_id {
+type 1
+id 0
+}
+
+pos 0.0586f -0.0651f -0.1755f
+}
+{
 name brow_out
 bone_id {
 type 1
@@ -157,42 +164,6 @@ id 0
 }
 
 pos 0.585f -0.4277f 0.5485f
-}
-{
-name eye_in
-bone_id {
-type 1
-id 0
-}
-
-pos 0.1718f -0.2348f 0.7817f
-}
-{
-name eye_out
-bone_id {
-type 1
-id 0
-}
-
-pos 0.4855f -0.2348f 0.6277f
-}
-{
-name es_up_in
-bone_id {
-type 1
-id 0
-}
-
-pos 0.3046f -0.0512f 0.8255f
-}
-{
-name eye_low_patch
-bone_id {
-type 1
-id 0
-}
-
-pos 0.3789f -0.46f 0.6813f
 }
 {
 name cj
@@ -258,7 +229,7 @@ id 0
 pos 0.f -1.1949f 0.3195f
 }
 {
-name a
+name a1626
 bone_id {
 type 1
 id 0
@@ -267,7 +238,7 @@ id 0
 pos 0.2651f -0.5154f 0.8715f
 }
 {
-name b
+name b1627
 bone_id {
 type 1
 id 0
@@ -276,7 +247,7 @@ id 0
 pos 0.5636f -0.3601f 0.5385f
 }
 {
-name c
+name c1633
 bone_id {
 type 1
 id 0
@@ -318,7 +289,7 @@ type 1
 id 0
 }
 
-pos 0.7418f -0.0689f 0.6115f
+pos 0.8062f 0.0912f 0.5281f
 }
 {
 name trapezius_head
@@ -328,6 +299,42 @@ id 0
 }
 
 pos 0.2824f -0.6985f -0.7815f
+}
+{
+name eye_in
+bone_id {
+type 1
+id 0
+}
+
+pos 0.1718f -0.2348f 0.7817f
+}
+{
+name eye_out
+bone_id {
+type 1
+id 0
+}
+
+pos 0.4855f -0.2348f 0.6277f
+}
+{
+name es_up_in
+bone_id {
+type 1
+id 0
+}
+
+pos 0.3046f -0.0512f 0.8255f
+}
+{
+name eye_low_patch
+bone_id {
+type 1
+id 0
+}
+
+pos 0.3789f -0.46f 0.6813f
 }
 {
 name navel
@@ -627,7 +634,7 @@ id 0
 pos 0.7613f -2.0817f 0.039f
 }
 {
-name internal_condyle
+name function_condyle
 bone_id {
 type 2
 id 0
@@ -1032,7 +1039,7 @@ id 0
 pos -0.1582f -1.8388f 0.1688f
 }
 {
-name b
+name brachio_b
 bone_id {
 type 3
 id 0
@@ -1041,7 +1048,7 @@ id 0
 pos -0.0717f -0.9853f 0.0538f
 }
 {
-name c
+name brachio_c
 bone_id {
 type 3
 id 0
@@ -1251,60 +1258,6 @@ pos 0.189f -2.7729f -0.3832f
 name kmid
 bone_id {
 type 4
-id 0
-}
-
-pos 0.3128f -3.3436f -0.3612f
-}
-{
-name ktop
-bone_id {
-type 5
-id 0
-}
-
-pos 0.3128f -3.4705f -0.3612f
-}
-{
-name kmid
-bone_id {
-type 4
-id 1
-}
-
-pos 0.189f -3.3665f -0.3612f
-}
-{
-name ktop
-bone_id {
-type 5
-id 1
-}
-
-pos 0.189f -3.507f -0.3612f
-}
-{
-name kmid
-bone_id {
-type 4
-id 2
-}
-
-pos 0.0483f -3.3152f -0.3612f
-}
-{
-name ktop
-bone_id {
-type 5
-id 2
-}
-
-pos 0.0483f -3.4464f -0.3612f
-}
-{
-name kmid
-bone_id {
-type 4
 id 3
 }
 
@@ -1351,10 +1304,21 @@ visibility 0.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 2
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1386,10 +1350,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 2
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1415,10 +1390,65 @@ visibility 0.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 2
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 1
+id 0
+}
+
+symx 0
+type 35
+data {
+curve1 {
+v 1
+}
+
+curve2 {
+v 3
+}
+
+}
+
+params {
+radii 0.5089f 1.f 0.8333f 0.3333f
+visibility 1.f
+flags 0
+unit_normal 0.f 0.f 0.f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 2
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1449,45 +1479,21 @@ visibility 1.f
 flags 0
 unit_normal 1.f 0.f 0.f
 alignment_min 0.454f
-}
-
-cparams {
-v 2
-}
-
-}
-{
-name eye_low_line
-bone_id {
-type 1
-id 0
-}
-
-symx 1
-type 7
-data {
-p0 {
-v 14
-}
-
-d0 0.1735f -0.2094f 0.1663f
-d3 0.117f 0.2053f
-p3 {
-v 15
-}
-
-}
-
-params {
-radii 0.0137f 0.0555f 0.f 0.4791f
-visibility 1.f
+fill {
+color 4282530873
 flags 0
-unit_normal 0.f 0.f 0.f
-alignment_min 0.f
+}
+
 }
 
 cparams {
 v 2
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1508,7 +1514,7 @@ v 3
 p1 0.6227f -0.9567f -0.0247f
 p2 0.6227f -0.9567f -0.0247f
 p3 {
-v 18
+v 15
 }
 
 }
@@ -1519,10 +1525,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 2
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1544,7 +1561,7 @@ d0 0.2792f 3.5588f
 d3 0.1526f 0.3068f
 unit_y 0.3587f 0.692f -0.6264f
 p3 {
-v 19
+v 16
 }
 
 }
@@ -1555,10 +1572,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
-v 7
+v 5
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1578,7 +1606,7 @@ v 7
 
 d3 0.f 0.f 0.f
 p3 {
-v 20
+v 17
 }
 
 }
@@ -1589,10 +1617,151 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
-v 7
+v 5
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name eye_low_line
+bone_id {
+type 1
+id 0
+}
+
+symx 1
+type 7
+data {
+p0 {
+v 30
+}
+
+d0 0.1735f -0.2094f 0.1663f
+d3 0.117f 0.2053f
+p3 {
+v 31
+}
+
+}
+
+params {
+radii 0.0137f 0.0555f 0.f 0.4791f
+visibility 1.f
+flags 0
+unit_normal 0.f 0.f 0.f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name eye_up_line_now
+bone_id {
+type 1
+id 0
+}
+
+symx 1
+type 10
+data {
+p0 {
+v 30
+}
+
+p1 0.3048f -0.1041f 0.8143f
+p2 0.4146f -0.1379f 0.735f
+p3 {
+v 31
+}
+
+}
+
+params {
+radii 0.0137f 0.6426f 0.f 0.4791f
+visibility 1.f
+flags 0
+unit_normal 0.f 0.f 0.f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 12
+id 0
+}
+
+symx 1
+type 32
+data {
+center 0.f 0.f 0.8698f
+normal 0.f 0.f 0.4934f
+}
+
+params {
+radii 0.5f 0.25f 0.25f 0.5f
+visibility 1.f
+flags 0
+unit_normal 0.f 0.f 0.f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 13
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1607,11 +1776,11 @@ symx 1
 type 6
 data {
 p0 {
-v 34
+v 35
 }
 
 p3 {
-v 35
+v 36
 }
 
 }
@@ -1622,10 +1791,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1640,14 +1820,14 @@ symx 1
 type 3
 data {
 p0 {
-v 35
+v 36
 }
 
 d0 -0.2081f 0.2062f
 d3 0.316f 0.3309f
 unit_y -0.1823f -0.0005f 0.9832f
 p3 {
-v 36
+v 37
 }
 
 }
@@ -1658,10 +1838,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1676,14 +1867,14 @@ symx 1
 type 3
 data {
 p0 {
-v 35
+v 36
 }
 
 d0 -0.2767f 0.2024f
 d3 0.213f 0.2503f
 unit_y 0.1823f 0.0005f -0.9832f
 p3 {
-v 36
+v 37
 }
 
 }
@@ -1694,10 +1885,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1712,13 +1914,13 @@ symx 1
 type 4
 data {
 p0 {
-v 38
+v 39
 }
 
 d0d3 -0.3554f 0.3781f 0.2608f 0.2404f
 unit_y 0.7543f 0.6022f 0.2614f
 p3 {
-v 39
+v 40
 }
 
 }
@@ -1729,10 +1931,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1747,13 +1960,13 @@ symx 1
 type 7
 data {
 p0 {
-v 37
+v 38
 }
 
 d0 -0.0581f -0.1036f 0.f
 d3 -0.0136f 0.1226f
 p3 {
-v 38
+v 39
 }
 
 }
@@ -1764,12 +1977,165 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 1
+}
+  
+  fill_color 0
+   fill_params {
+   color 0
+    flags 0
+  }
+  
+ }
+ {
+  name l
+   bone_id {
+   type 11
+    id 0
+  }
+  
+  symx 1
+   type 33
+   data {
+   verts {
+    {
+     v 38
+    }
+    
+    {
+     v 35
+    }
+    
+    {
+     v 39
+    }
+    
+   }
+   
+  }
+  
+  params {
+   radii 0.5089f 1.f 0.8333f 0.3333f
+    visibility 1.f
+    flags 0
+    unit_normal 0.f 0.f 0.f
+    alignment_min 0.f
+    fill {
+    color 4282530873
+     flags 0
+   }
+   
+  }
+  
+  cparams {
+   v 1
+  }
+  
+  fill_color 0
+   fill_params {
+   color 0
+    flags 0
+  }
+  
+ }
+{
+name l
+bone_id {
+type 11
+id 0
+}
+
+symx 1
+type 33
+data {
+verts {
+{
+v 39
+}
+
+{
+v 35
+}
+
+{
+v 40
+}
+
+}
+
+}
+
+params {
+radii 0.5089f 1.f 0.8333f 0.3333f
+visibility 1.f
+flags 0
+unit_normal 0.f 0.f 0.f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 1
 }
 
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 11
+id 0
+}
+
+symx 1
+type 34
+data {
+curve {
+v 15
+}
+
+}
+
+params {
+radii 0.5089f 1.f 0.8333f 0.3333f
+visibility 1.f
+flags 0
+unit_normal 0.f 0.f 0.f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
 }
 {
 name l
@@ -1782,81 +2148,11 @@ symx 1
 type 4
 data {
 p0 {
-v 45
+v 46
 }
 
 d0d3 -0.14f 0.1607f 0.4409f 0.224f
 unit_y -0.6328f 0.f -0.7743f
-p3 {
-v 54
-}
-
-}
-
-params {
-radii 0.5f 0.5f 0.5f 0.5f
-visibility 1.f
-flags 5
-unit_normal 0.f 0.f 0.f
-alignment_min 0.f
-}
-
-cparams {
-v 14
-}
-
-}
-{
-name l
-bone_id {
-type 7
-id 0
-}
-
-symx 1
-type 4
-data {
-p0 {
-v 45
-}
-
-d0d3 0.f 0.f 0.f 0.f
-unit_y 0.f 0.f 0.f
-p3 {
-v 41
-}
-
-}
-
-params {
-radii 0.5f 0.5f 0.5f 0.5f
-visibility 1.f
-flags 5
-unit_normal 0.f 0.f 0.f
-alignment_min 0.f
-}
-
-cparams {
-v 14
-}
-
-}
-{
-name l
-bone_id {
-type 7
-id 0
-}
-
-symx 1
-type 4
-data {
-p0 {
-v 54
-}
-
-d0d3 0.f 0.118f 0.f 0.f
-unit_y -0.f 0.f -1.f
 p3 {
 v 55
 }
@@ -1869,10 +2165,113 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 14
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 7
+id 0
+}
+
+symx 1
+type 4
+data {
+p0 {
+v 46
+}
+
+d0d3 0.f 0.f 0.f 0.f
+unit_y 0.f 0.f 0.f
+p3 {
+v 42
+}
+
+}
+
+params {
+radii 0.5f 0.5f 0.5f 0.5f
+visibility 1.f
+flags 5
+unit_normal 0.f 0.f 0.f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 14
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 7
+id 0
+}
+
+symx 1
+type 4
+data {
+p0 {
+v 55
+}
+
+d0d3 0.f 0.118f 0.f 0.f
+unit_y -0.f 0.f -1.f
+p3 {
+v 56
+}
+
+}
+
+params {
+radii 0.5f 0.5f 0.5f 0.5f
+visibility 1.f
+flags 5
+unit_normal 0.f 0.f 0.f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 14
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1887,12 +2286,12 @@ symx 1
 type 1
 data {
 p0 {
-v 41
+v 42
 }
 
 d -0.1101f -0.0058f -0.0915f
 p3 {
-v 55
+v 56
 }
 
 }
@@ -1903,10 +2302,21 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 14
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1921,12 +2331,12 @@ symx 1
 type 1
 data {
 p0 {
-v 68
+v 69
 }
 
 d 0.137f 0.5108f 0.0235f
 p3 {
-v 69
+v 70
 }
 
 }
@@ -1937,12 +2347,23 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 15
 }
 
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
 }
 {
 name l
@@ -1955,13 +2376,13 @@ symx 1
 type 4
 data {
 p0 {
-v 69
+v 70
 }
 
 d0d3 0.f 0.4207f 0.f 0.f
 unit_y 0.5647f -0.8253f 0.f
 p3 {
-v 66
+v 67
 }
 
 }
@@ -1972,10 +2393,21 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 15
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -1990,13 +2422,13 @@ symx 1
 type 4
 data {
 p0 {
-v 70
+v 71
 }
 
 d0d3 0.f 1.0357f 0.f 0.f
 unit_y -0.1623f -0.9867f 0.f
 p3 {
-v 67
+v 68
 }
 
 }
@@ -2007,10 +2439,21 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 15
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2025,12 +2468,12 @@ symx 1
 type 1
 data {
 p0 {
-v 71
+v 72
 }
 
 d -0.0431f 0.296f 0.f
 p3 {
-v 70
+v 71
 }
 
 }
@@ -2041,10 +2484,21 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.5f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 15
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2056,16 +2510,16 @@ id 0
 }
 
 symx 1
-type 0
+type 11
 data {
 p0 {
-v 71
+v 72
 }
 
 d0 0.1369f 0.0569f 0.f
 d3 0.0914f 0.1488f
 p3 {
-v 72
+v 73
 }
 
 }
@@ -2076,10 +2530,21 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.5f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 15
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2094,12 +2559,12 @@ symx 1
 type 1
 data {
 p0 {
-v 73
+v 74
 }
 
 d -0.f -0.1087f 0.0612f
 p3 {
-v 74
+v 75
 }
 
 }
@@ -2110,10 +2575,21 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.9f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 15
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2125,48 +2601,14 @@ id 0
 }
 
 symx 1
-type 0
+type 11
 data {
 p0 {
-v 74
+v 75
 }
 
 d0 -0.f 0.f -0.0834f
 d3 0.2691f 0.0874f
-p3 {
-v 75
-}
-
-}
-
-params {
-radii 0.f 0.f 0.f 0.f
-visibility 1.f
-flags 5
-unit_normal 0.f 0.f 0.f
-alignment_min 0.9f
-}
-
-cparams {
-v 15
-}
-
-}
-{
-name l
-bone_id {
-type 2
-id 0
-}
-
-symx 1
-type 1
-data {
-p0 {
-v 75
-}
-
-d 0.f 0.0368f 0.1927f
 p3 {
 v 76
 }
@@ -2179,10 +2621,66 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.9f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 15
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 2
+id 0
+}
+
+symx 1
+type 1
+data {
+p0 {
+v 76
+}
+
+d 0.f 0.0368f 0.1927f
+p3 {
+v 77
+}
+
+}
+
+params {
+radii 0.f 0.f 0.f 0.f
+visibility 1.f
+flags 5
+unit_normal 0.f 0.f 0.f
+alignment_min 0.9f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 15
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2197,12 +2695,12 @@ symx 1
 type 1
 data {
 p0 {
-v 101
+v 102
 }
 
 d -0.0036f -0.2325f 0.f
 p3 {
-v 100
+v 101
 }
 
 }
@@ -2213,10 +2711,21 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 16
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2231,12 +2740,12 @@ symx 1
 type 1
 data {
 p0 {
-v 99
+v 100
 }
 
 d 0.0822f 0.1457f 0.f
 p3 {
-v 98
+v 99
 }
 
 }
@@ -2247,10 +2756,21 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.5f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 16
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2262,48 +2782,14 @@ id 0
 }
 
 symx 1
-type 0
+type 11
 data {
 p0 {
-v 102
+v 103
 }
 
 d0 -0.f 0.1052f -0.0852f
 d3 0.f 0.0936f
-p3 {
-v 103
-}
-
-}
-
-params {
-radii 0.5f 0.5f 0.5f 0.5f
-visibility 1.f
-flags 5
-unit_normal 0.f 0.f 0.f
-alignment_min 0.f
-}
-
-cparams {
-v 16
-}
-
-}
-{
-name l
-bone_id {
-type 3
-id 0
-}
-
-symx 1
-type 1
-data {
-p0 {
-v 101
-}
-
-d 0.0871f 0.0251f 0.f
 p3 {
 v 104
 }
@@ -2311,15 +2797,26 @@ v 104
 }
 
 params {
-radii 0.f 0.f 0.f 0.f
+radii 0.5f 0.5f 0.5f 0.5f
 visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
-alignment_min 0.5f
+alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 16
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2334,12 +2831,12 @@ symx 1
 type 1
 data {
 p0 {
-v 105
+v 102
 }
 
-d 0.0988f -0.2945f 0.f
+d 0.0871f 0.0251f 0.f
 p3 {
-v 106
+v 105
 }
 
 }
@@ -2350,10 +2847,66 @@ visibility 1.f
 flags 5
 unit_normal 0.f 0.f 0.f
 alignment_min 0.5f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 16
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
+}
+
+}
+{
+name l
+bone_id {
+type 3
+id 0
+}
+
+symx 1
+type 1
+data {
+p0 {
+v 106
+}
+
+d 0.0988f -0.2945f 0.f
+p3 {
+v 107
+}
+
+}
+
+params {
+radii 0.f 0.f 0.f 0.f
+visibility 1.f
+flags 5
+unit_normal 0.f 0.f 0.f
+alignment_min 0.5f
+fill {
+color 4282530873
+flags 0
+}
+
+}
+
+cparams {
+v 16
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2365,16 +2918,16 @@ id 0
 }
 
 symx 1
-type 0
+type 11
 data {
 p0 {
-v 108
+v 109
 }
 
 d0 -0.0385f 0.f 0.f
 d3 0.f 0.f
 p3 {
-v 109
+v 110
 }
 
 }
@@ -2385,10 +2938,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2403,12 +2967,12 @@ symx 1
 type 5
 data {
 ref {
-v 31
+v 37
 }
 
 d3 0.f 0.f 0.f
 p3 {
-v 110
+v 111
 }
 
 }
@@ -2419,10 +2983,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }
@@ -2437,12 +3012,12 @@ symx 1
 type 5
 data {
 ref {
-v 32
+v 38
 }
 
 d3 0.0348f 0.0219f -0.0201f
 p3 {
-v 107
+v 108
 }
 
 }
@@ -2453,10 +3028,21 @@ visibility 1.f
 flags 0
 unit_normal 0.f 0.f 0.f
 alignment_min 0.f
+fill {
+color 4282530873
+flags 0
+}
+
 }
 
 cparams {
 v 1
+}
+
+fill_color 0
+fill_params {
+color 0
+flags 0
 }
 
 }

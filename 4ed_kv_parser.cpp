@@ -38,7 +38,7 @@ ep_get_token_location(Ed_Parser *p, Token *input_token){
   result.column = i1(token->pos - begin_line_pos);
   if(token->kind == TokenBaseKind_Whitespace){
    // NOTE: Increase line number
-   Scratch_Block scratch;
+   Scratch_Block scratch(get_thread_context(), 0);
    String token_string = ep_print_given_token(scratch, p, token);
    for_i1 (index,0,i1(token_string.len)){
     if(token_string.str[index] == '\n'){
@@ -64,10 +64,18 @@ ep_get_scope_location(Ed_Parser *p){
 function Ed_Parser
 make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
                     Arena *string_arena=0,
-                    Scan_Direction scan_direction=Scan_Forward){
+                    Scan_Direction direction=Scan_Forward){
+ b32 ok;
+ if(it.kind == TokenIterator_Array){
+  ok = it.array.count;
+ }else if(it.kind == TokenIterator_List){
+  ok = it.list.node_count;
+ }else{
+  invalid_code_path;
+ }
  Ed_Parser result = {
-  .ok_               = true,
-  .scan_direction    = scan_direction,
+  .ok_               = ok,
+  .direction         = direction,
   .it                = it,
   .string_arena      = string_arena,
   .original_token_it = it,
@@ -84,7 +92,7 @@ function Ed_Parser
 make_ep_from_string(String string, Token_Iterator const&it){
  Ed_Parser result = {
   .ok_               = true,
-  .scan_direction    = Scan_Forward,
+  .direction    = Scan_Forward,
   .it                = it,
   .original_token_it = it,
   .Token_Gen_Type    = TG_String,
@@ -98,7 +106,9 @@ make_ep_from_string(String string, Token_Iterator const&it){
 //-
 inline Token *
 ep__get_token_please(Ed_Parser *p){
- return token_it_read(&p->it);
+ Token *token = token_it_read(&p->it);
+ if(not token) token = &stub_token;
+ return token;
 }
 //NOTE(kv) If you get back a token, it will never be past the end
 inline Token *
@@ -178,7 +188,7 @@ ep_eat_token(Ed_Parser *p){
   switch(p->Token_Gen_Type){
    case TG_String:
    case TG_Buffer:{
-    if(p->scan_direction == Scan_Forward){
+    if(p->direction == Scan_Forward){
      p->set_ok(token_it_inc(&p->it) != 0);
     }else{
      p->set_ok(token_it_dec(&p->it) != 0);
@@ -194,7 +204,7 @@ ep_eat_token_all(Ed_Parser *p){
   switch(p->Token_Gen_Type){
    case TG_String:
    case TG_Buffer:{
-    if(p->scan_direction == Scan_Forward){
+    if(p->direction == Scan_Forward){
      p->set_ok(token_it_inc_all(&p->it) != 0);
     }else{
      p->set_ok(token_it_dec_all(&p->it) != 0);
@@ -215,7 +225,7 @@ struct Parse_Number_Result{
 //  with arbitrary expressions (like f.ex "pi-0.5f").
 function Parse_Number_Result
 ep_number(Ed_Parser *p){
- Scratch_Block scratch;
+ Scratch_Block scratch(get_thread_context(), 0);
  f64 sign = 1;
  Token *token = ep_get_token(p);
  if(token){
@@ -247,7 +257,7 @@ ep_number(Ed_Parser *p){
 }
 function i1
 ep_i1(Ed_Parser *p){
- Scratch_Block scratch;
+ Scratch_Block scratch(get_thread_context(), 0);
  i1 sign = 1;
  Token *token = ep_get_token(p);
  if(token){
@@ -327,7 +337,7 @@ function b32
 ep_test_id(Ed_Parser *p, String string){
  b32 result = false;
  if (p->ok_){
-  Scratch_Block scratch;
+  Scratch_Block scratch(get_thread_context(), 0);
   String token = ep_print_token(scratch, p);
   result = string_match(token, string);
  }
@@ -366,7 +376,7 @@ ep_test_preprocessor(Ed_Parser *p, String string){
  b32 result = false;
  Token *token = ep_get_token(p);
  if(p->ok_ && token->kind == TokenBaseKind_Preprocessor){
-  Scratch_Block scratch;
+  Scratch_Block scratch(get_thread_context(), 0);
   String token_str = ep_print_token(scratch, p);
   token_str.str++; token_str.size--;  // skip the pound
   token_str = string_skip_whitespace(token_str);
@@ -399,7 +409,7 @@ ep_id(Ed_Parser *p, String test_id){
  p->set_ok(kind == TokenBaseKind_Identifier ||
            kind == TokenBaseKind_Keyword);
  {
-  Scratch_Block scratch;
+  Scratch_Block scratch(get_thread_context(), 0);
   String string = ep_print_token(scratch, p);
   p->set_ok(string == test_id);
  }
@@ -442,7 +452,7 @@ ep__char_in_string_new(String chars, char chr){
 }
 function b32
 ep_test_char(Ed_Parser *p, char c){
- Scratch_Block scratch;  // @slow, also sometimes the arena isn't necessary
+ Scratch_Block scratch(get_thread_context(), 0);  // @slow, also sometimes the arena isn't necessary
  String string = ep_print_token(scratch, p);
  return (string.len == 1 &&
          string.str[0] == c);
@@ -464,36 +474,45 @@ ep_char(Ed_Parser *p, char c){
 function char
 ep_eat_until_char(Ed_Parser *p, String terminators){
  char result = 0;
- {
-  while(!result && p->ok_){
-   Scratch_Block scratch;
-   String token = ep_print_token(scratch, p);//TODO(kv) OMG this is bad!
-   b32 should_eat = true;
-   if(token.len == 1){
-    char char0 = token.str[0];
-    if(ep__char_in_string_new(terminators, char0)){
-     result = char0;
-     should_eat = false;
-    }else{
+ while(!result && p->ok_){
+  Scratch_Block scratch(get_thread_context(), 0);
+  String token = ep_print_token(scratch, p);//TODO(kv) OMG this is bad!
+  b32 should_eat = true;
+  if(token.len == 1){
+   char char0 = token.str[0];
+   if(ep__char_in_string_new(terminators, char0)){
+    result = char0;
+    should_eat = false;
+   }else{
+    if(p->direction == Scan_Forward){
+     //-forward
      u8 closer = get_matching_group_closer(char0);
      if(closer){
       ep_eat_token(p);
       ep_eat_until_char(p, String{&closer, 1});
-     }else{
-      u8 opener = get_matching_group_opener(char0);
-      if(opener){//NOTE(kv) Encountered unbalanced group closer, we should stop!
-       p->fail();
-      }
+     }
+    }else{
+     //-backward
+     u8 opener = get_matching_group_opener(char0);
+     if(opener){
+      ep_eat_token(p);
+      ep_eat_until_char(p, String{&opener, 1});
      }
     }
    }
-   if(should_eat){
-    ep_eat_token(p);
-   }
+  }
+  if(should_eat){
+   ep_eat_token(p);
   }
  }
  return result;
 }
+inline char
+ep_eat_until_char(Ed_Parser *p, char terminator){
+ String terminator_string = {.data=(u8 *)&terminator, .count=1};
+ return ep_eat_until_char(p, terminator_string);
+}
+
 function String
 ep_capture_until_char(Ed_Parser *p, String terminators){
  kv_assert(p->Token_Gen_Type == TG_String);

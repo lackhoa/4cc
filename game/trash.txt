@@ -1077,5 +1077,20 @@ struct CSG_Tree
   }
 #endif
 
+  if(0)
+  {//-Preamble (Text for human)
+   Printer ppre = make_printer_buffer(scratch, 1024);
+   {
+    char buf[64];
+    String timestamp = time_format(buf, alen(buf), "%d.%m.%Y %H:%M:%S");
+    ppre<"Written at "<timestamp<"\n";
+   }
+   {
+    Stringz preamble_text = printer_get_string(ppre);
+    fwrite_lvalue(preamble_text.size);
+    fwrite(preamble_text.str, preamble_text.size, 1, file);
+   }
+  }
+
 
 //~eof

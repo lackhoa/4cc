@@ -13,14 +13,15 @@
 #include "generated/lexer_cpp.cpp"
 #include "4ed_kv_parser.cpp"
 
-#include "meta_main.h"
 #include "meta_print.h"
 #include "meta_parse.h"
 #include "meta_klang.h"
 #include "meta_entity.h"
+#include "meta_main.h"
 
-#include "meta_parse.cpp"
 #include "4ed_api_definition.cpp"
+#include "meta_parse.cpp"
+#include "4ed_system_api.cpp"
 #include "4ed_api_parser.cpp"
 #include "meta_print.cpp"
 #include "meta_klang.cpp"
@@ -135,9 +136,138 @@ strlit(#pstruct_members))
  }
 }
 #endif
+//-
+function void
+meta_process_ast(Statement_Root *root){
+ kv_assert(root->kind == Statement_Kind_Root);
+ if(DEBUG_vv_name){
+  //-Vertex check
+  Scratch_Block scratch(get_thread_context(), 0);
+  arrayof<String> existing_names;
+  init_dynamic(existing_names, scratch, 200);
+  
+  struct Stack_Entry{
+   Statement_Union *statements;  //TODO(kv) We could store Statement_Head here, but then only for one pointer
+   i32 statement_count;
+   i32 next_index;
+  };
+  arrayof<Stack_Entry> stack;
+  init_dynamic(stack, scratch, 32);
+  auto stack_push_block = [&](Meta_Statements *block){
+   stack.push({block->items, block->count, 0});
+  };
+  auto stack_push_statement = [&](Statement_Head *statement){
+   stack.push({cast(Statement_Union *)statement, 1, 0});
+  };
+  stack_push_block(&root->top_levels);
+  while(true){
+   Statement_Head *statement = 0;
+   {//-Pop the stack
+    while(not statement and stack.count > 0){
+     Stack_Entry &last = stack.last();
+     if(last.next_index < last.statement_count){
+      statement = &last.statements[last.next_index++].head;
+     }else{
+      stack.pop();
+     }
+    }
+   }
+   if(statement){
+    if(statement->kind == Statement_Kind_Function){
+     //-Function
+     cast_to_var(Statement_Function*, func, statement);
+     stack_push_block(&func->body);
+    }else if(statement->kind == Statement_Kind_Block){
+     //-Block
+     cast_to_var(Statement_Block *, block, statement);
+     stack_push_block(&block->block);
+    }else if(statement->kind == Statement_Kind_If){
+     //-If
+     cast_to_var(Statement_If *, if0, statement);
+     stack_push_statement(if0->else0);
+     stack_push_statement(if0->body);
+    }else{
+     //-Leaf
+     if(statement->kind == Statement_Kind_Expression){
+      //-Expression
+      cast_to_var(Statement_Expression*, statement_expression, statement);
+      Meta_Expression &expr = statement_expression->expression;
+      if(expr.kind == Expression_Kind_Function_Call){
+       Expression_Function_Call &call = expr.function_call;
+       if(call.function_name == strlit("vv") or
+          call.function_name == strlit("va")){
+        //-Is vertex
+        String vertex_name = call.arguments[0].identifier;
+        {
+         Statement_Head *test = statement->mom;
+         while(test){
+          //-"if" check
+          if(test->kind == Statement_Kind_If){
+           printf("[kv]%.*s[%d] error: vertex used within if block\n",
+                  strexpand(root->source_path),
+                  statement->pos);
+           break;
+          }
+          test = test->mom;
+         }
+        }
+        {//-conflict check
+         b32 conflict = false;
+         for_i32(existing_name_index,0,existing_names.count){
+          if(vertex_name == existing_names[existing_name_index]){
+           //-conflict
+           printf("[kv]%.*s[%d]: error: conflicting name found: %.*s\n",
+                  strexpand(root->source_path),
+                  statement->pos,
+                  strexpand(vertex_name));
+           conflict = true;
+           break;
+          }
+         }
+         if(not conflict){
+          //-new name -> add to the pool
+          existing_names.push(vertex_name);
+         }
+        }
+       }
+      }
+     }
+    }
+   }else{
+    break;
+   }
+  }
+  printf("Total vertex count: %d\n", existing_names.count);
+ }
+}
+function void
+test_read_map_file(Stringz path){
+ Scratch_Block scratch(get_thread_context(), 0);
+ Stringz data = read_entire_file(scratch, path);
+ u8 *pointer = data.str;
+ Printer p = make_printer_file(stdout);
+ {
+  p < "Magic value: " < String{(u8 *)pointer, 4} < "\n";
+  pointer += 4;
+ }
+ i32 count = *(i32 *)pointer;
+ {
+  p < "count: " < count < "\n";
+  pointer += 4;
+ }
+ {
+  Source_Map_Entry *entry = (Source_Map_Entry *)pointer;
+  for_i32(index,0,count){
+   p < entry->source_pos < " -> " < entry->gen_pos < "\n";
+   entry++;
+  }
+ }
+}
 xfunction i32
 main(i32 argc, char **argv){
  b32 ok = true;
+ thread_context_init(&global_thread_context, ThreadKind_Main,
+                     &malloc_base_allocator, 0);
  Arena *scratch = &meta_permanent_arena;
  command_name = argv[0];
  char *code_dir = "";
@@ -207,11 +337,19 @@ main(i32 argc, char **argv){
  //TODO(kv) Maybe we don't wanna do these passes separately?
  ok = ok && api_parser_main(source_files);
  ok = ok && klang_main(source_files);
+ {//-System api
+  Scratch_Block scratch_api(get_thread_context(), scratch);
+  API_Definition *api = make_system_api(scratch_api);
+  api_definition_generate_api_includes(api, strlit("4ed_system_api.cpp"), GeneratedGroup_Custom, 0);
+ }
  
  i32 exit_code = !ok;
  fflush(stdout);
  if(!ok){
   breakhere;
+ }
+ if(0){
+  test_read_map_file(strlit("C:/Users/vodan/4ed/code/game/generated/driver.kc.map"));
  }
  return exit_code;
 }

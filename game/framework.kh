@@ -33,5 +33,6 @@ struct Keyboard_Cursor{
 [embed]
 struct Serialized_State{
  Keyboard_Cursor kb_cursor;
+ b32 references_full_alpha;
 };
 //-

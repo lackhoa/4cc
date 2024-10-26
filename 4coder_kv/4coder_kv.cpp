@@ -479,14 +479,14 @@ kv_vim_bindings(App *app)
  BIND(0|V|MAP, vim_set_seek_char,                  Key_Code_F);
  BIND(N|V|MAP, vim_half_page_up,                   Key_Code_LeftBracket);
  BIND(N|0|MAP, vim_half_page_down,                 Key_Code_RightBracket);
- BIND(N|V|MAP, vim_screen_top,                  (S|Key_Code_H));
- BIND(N|V|MAP, vim_screen_bot,                  (S|Key_Code_L));
- BIND(N|V|MAP, vim_screen_mid,                  (S|Key_Code_M));
+ //BIND(N|V|MAP, vim_screen_top,                  (S|Key_Code_H));
+ //BIND(N|V|MAP, vim_screen_bot,                  (S|Key_Code_L));
+ //BIND(N|V|MAP, vim_screen_mid,                  (S|Key_Code_M));
  BIND(V|MAP,   cursor_mark_swap,                   Key_Code_O);
  BIND(V|MAP,   vim_block_swap,                  (S|Key_Code_O));
  
- BIND(N|MAP, vim_search_identifier,           (C|S|Key_Code_8));
- BIND(N|MAP, vim_search_identifier,             (S|Key_Code_8));
+ BIND(N|MAP, cmd_handle_8_normal,                  Key_Code_8);
+ BIND(N|MAP, vim_search_identifier,     SUB_G     ,Key_Code_8);
  BIND(N|MAP, vim_clear_search,          SUB_Leader,Key_Code_Space);
  BIND(N|MAP, vim_start_search_forward,             Key_Code_ForwardSlash);
  BIND(N|MAP, vim_start_search_backward,         (S|Key_Code_ForwardSlash));
@@ -514,6 +514,7 @@ kv_vim_bindings(App *app)
  BIND(N|V|MAP, vim_play_macro,                     S|Key_Code_2);
  BIND(N|MAP,   open_matching_file_cpp,               Key_Code_F12);
  BIND(N|MAP,   open_matching_file_cpp_other_panel, M|Key_Code_F12);
+ BIND(N,       jump_between_meta_and_generated_code, Key_Code_F4)
  
  /// Panel
  BIND(N|V|I, change_active_primary_view,   C|Key_Code_Tab);
@@ -537,6 +538,7 @@ kv_vim_bindings(App *app)
  BIND(N|V|MAP,   kv_sexpr_left,   M|Key_Code_H);
  BIND(N|V|MAP,   kv_sexpr_end,    M|Key_Code_Semicolon);
  BIND(N|MAP,     kv_sexpr_select_whole, Key_Code_Q);
+ BIND(V|MAP,     cmd_handle_q_visual,   Key_Code_Q);
  // surround paren
  BIND(V|MAP,   kv_surround_paren,                 Key_Code_0);
  BIND(V|MAP,   kv_surround_paren_spaced,          Key_Code_9);
@@ -579,7 +581,7 @@ kv_vim_bindings(App *app)
  //-NOTE(kv) KV miscellaneous binds
  BIND(N, kv_handle_return_normal_mode, Key_Code_Return);
  BIND(N, cmd_insert_ampersand,       Key_Code_7);
- BIND(N, cmd_insert_asterisk,        Key_Code_8);
+ //BIND(N, cmd_insert_asterisk,      S|Key_Code_8);
  BIND(N, kv_do_underscore,           Key_Code_Minus);
  BIND(N, kv_do_underscore_shifted, S|Key_Code_Minus);
  BIND(N, move_parameter_left,      C|Key_Code_H);
@@ -667,14 +669,14 @@ kv_tick(App *app, Frame_Info frame)
       case DirtyState_UnsavedChanges:
       {
        saved_at_least_one_buffer = true;
-       String filename = push_buffer_filename(app, scratch, buffer);
+       String filename = push_buffer_filepath(app, scratch, buffer);
        buffer_save(app, buffer, filename, 0);
       }break;
       
       case DirtyState_UnloadedChanges:
       {
        buffer_reopen(app, buffer, 0);
-       String filename = push_buffer_filename(app, scratch, buffer);
+       String filename = push_buffer_filepath(app, scratch, buffer);
        printf_message(app, "automatically reloaded file %.*s\n", string_expand(filename));
       }break;
      }

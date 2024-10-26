@@ -57,7 +57,6 @@ parse_buffer_to_jump_array(App *app, Arena *arena, Buffer_ID buffer)
    String8 line_str = push_buffer_line(app, arena, buffer, line);
    Parsed_Jump parsed_jump = parse_jump_location(line_str);
    if (parsed_jump.sub_jump_note) {
-    // NOTE(kv): I don't know exactly what all these "sub_jump" business means
     is_sub_error = true;
    }
    if ( parsed_jump.success ) {
@@ -382,33 +381,6 @@ goto_jump_at_cursor(App *app)
   }
  }
 }
-
-/*
-CUSTOM_COMMAND_SIG(goto_jump_at_cursor_same_panel)
-CUSTOM_DOC("If the cursor is found to be on a jump location, parses the jump location and brings up the file and position in this view, losing the compilation output or jump list.")
-{
-    Heap *heap = &global_heap;
-    
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    
-    Marker_List *list = get_or_make_list_for_buffer(app, heap, buffer);
-    
-    i64 pos = view_get_cursor_pos(app, view);
-    Buffer_Cursor cursor = buffer_compute_cursor(app, buffer, seek_pos(pos));
-    
-    i32 list_index = get_index_exact_from_list(app, list, cursor.line);
-    
-    if (list_index >= 0){
-        ID_Pos_Jump_Location location = {};
-        if (get_jump_from_list(app, list, list_index, &location)){
-            if (get_jump_buffer(app, &buffer, &location)){
-                jump_to_location(app, view, buffer, location);
-            }
-        }
-    }
-}
-*/
 
 function void
 goto_jump_in_order(App *app, Marker_List *list, View_ID jump_view, ID_Pos_Jump_Location location)

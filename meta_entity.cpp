@@ -4,7 +4,9 @@ push_entity_variant_inner(arrayof<Union_Variant> *variants, Union_Variant &varia
  variant.enum_name   = strcat(arena, "Curve_Type_", variant.name);
  variant.struct_name = strcat(arena, "Curve_",      variant.name);
  variants->push(variant);
- macro_clamp_min(max_entity_enum, variant.enum_value);
+ if(variant.enum_value >= max_entity_enum){
+  max_entity_enum = variant.enum_value+1;
+ }
 }
 function void
 push_curve_variant_with_endpoints(Arena *arena, arrayof<Union_Variant> *variants,
@@ -15,7 +17,7 @@ push_curve_variant_with_endpoints(Arena *arena, arrayof<Union_Variant> *variants
  variant.name = name;
  variant.name_lower = name_lower;
  {
-  Scratch_Block scratch;
+  Scratch_Block scratch(get_thread_context(), arena);
   M_Struct_Members &members = variant.struct_members;
   Ed_Parser parser = m_parser_from_string(scratch, struct_members);
   members = parse_struct_body(arena, &parser);
@@ -36,7 +38,7 @@ push_entity_variant(Arena *arena, arrayof<Union_Variant> *variants,
  variant.name = name;
  variant.name_lower = name_lower;
  {
-  Scratch_Block scratch;
+  Scratch_Block scratch(get_thread_context(), arena);
   Ed_Parser parser = m_parser_from_string(scratch, struct_members);
   variant.struct_members = parse_struct_body(arena, &parser);
  }
@@ -49,7 +51,7 @@ entity_variant_is_curve(Union_Variant &variant){
 }
 function void
 generate_entity_types(Printer &printer){
- Scratch_Block scratch;
+ Scratch_Block scratch(get_thread_context(), 0);
  arrayof<Union_Variant> variants = {};
  //-NOTE @data of the variants
  //TODO(kv) I'd just pass the whole thing as a string, and be done with it!

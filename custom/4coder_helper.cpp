@@ -119,12 +119,17 @@ seek_location(ID_Line_Column_Jump_Location location){
 
 function Buffer_Seek
 seek_location(ID_Pos_Jump_Location location){
-    return(seek_pos(location.pos));
+ return(seek_pos(location.pos));
 }
 
 function Buffer_Seek
 seek_location(Name_Line_Column_Location location){
-    return(seek_line_col(location.line, location.column));
+ if(location.line){
+  //NOTE(kv) Thank God line number is 1-based
+  return seek_line_col(location.line, location.column);
+ }else{
+  return seek_pos(location.pos);
+ }
 }
 
 function Buffer_Seek
@@ -773,8 +778,8 @@ boundary_line(App *app, Buffer_ID buffer, Side side, Scan_Direction direction, i
 ////////////////////////////////
 
 // TODO(allen): these need a little more rewrite
-function void
-seek_string_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle, i64 *result)
+function i64
+seek_string_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle)
 {
  if (end == 0){
   end = (i32)buffer_get_size(app, buffer);
@@ -788,15 +793,14 @@ seek_string_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle
   if (match.buffer != buffer || match.range.first >= end) break;
  }
  if (match.range.first < end && match.buffer == buffer){
-  *result = match.range.first;
- }
- else{
-  *result = buffer_get_size(app, buffer);
+  return match.range.first;
+ }else{
+  return buffer_get_size(app, buffer);
  }
 }
 
-function void
-seek_string_backward(App *app, Buffer_ID buffer, i64 pos, i64 min, String8 needle, i64 *result)
+function i64
+seek_string_backward(App *app, Buffer_ID buffer, i64 pos, i64 min, String8 needle)
 {
     String_Match match = {};
     match.range.first = pos;
@@ -808,65 +812,66 @@ seek_string_backward(App *app, Buffer_ID buffer, i64 pos, i64 min, String8 needl
         
     }
     if (match.range.first >= min && match.buffer == buffer){
-        *result = match.range.first;
-    }
-    else{
-        *result = -1;
-    }
+  return match.range.first;
+ }else{
+  return -1;
+ }
 }
 
-function void
-seek_string_insensitive_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle, i64 *result)
+function i64
+seek_string_insensitive_forward(App *app, Buffer_ID buffer, i64 pos, i64 end, String8 needle)
 {
-    if (end == 0){
-        end = (i32)buffer_get_size(app, buffer);
-    }
-    String_Match match = buffer_seek_string(app, buffer, needle, Scan_Forward, pos, false);
-    if (match.range.first < end && match.buffer == buffer){
-        *result = match.range.first;
-    }
-    else{
-        *result = buffer_get_size(app, buffer);
-    }
+ i64 result;
+ if (end == 0){
+  end = (i32)buffer_get_size(app, buffer);
+ }
+ String_Match match = buffer_seek_string(app, buffer, needle, Scan_Forward, pos, false);
+ if(match.range.first < end && match.buffer == buffer){
+  result = match.range.first;
+ }else{
+  result = buffer_get_size(app, buffer);
+ }
+ return result;
 }
 
-function void
-seek_string_insensitive_backward(App *app, Buffer_ID buffer, i64 pos, i64 min, String needle, i64 *result)
+function i64
+seek_string_insensitive_backward(App *app, Buffer_ID buffer, i64 pos, i64 min, String needle)
 {
-    String_Match match = buffer_seek_string(app, buffer, needle, Scan_Backward, pos, false);
-    if (match.range.first >= min && match.buffer == buffer){
-        *result = match.range.first;
-    }
-    else{
-        *result = -1;
-    }
+ i64 result = -1;
+ String_Match match = buffer_seek_string(app, buffer, needle, Scan_Backward, pos, false);
+ if (match.range.first >= min && match.buffer == buffer){
+  result = match.range.first;
+ }
+ return result;
 }
 
-function void
-seek_string(App *app, Buffer_ID buffer_id, i64 pos, i64 end, i64 min, String8 str, i64 *result, Buffer_Seek_String_Flags flags)
+function i64
+seek_string(App *app, Buffer_ID buffer_id, i64 pos, i64 end, i64 min, String8 str, Buffer_Seek_String_Flags flags)
 {
-    switch (flags & 3)
-    {
-        case 0:
-        {
-            seek_string_forward(app, buffer_id, pos, end, str, result);
-        }break;
-        
-        case BufferSeekString_Backward:
-        {
-            seek_string_backward(app, buffer_id, pos, min, str, result);
-        }break;
-        
-        case BufferSeekString_CaseInsensitive:
-        {
-            seek_string_insensitive_forward(app, buffer_id, pos, end, str, result);
-        }break;
-        
-        case BufferSeekString_Backward|BufferSeekString_CaseInsensitive:
-        {
-            seek_string_insensitive_backward(app, buffer_id, pos, min, str, result);
-        }break;
-    }
+ i64 result = 0;
+ switch (flags & 3)
+ {
+  case 0:
+  {
+   result = seek_string_forward(app, buffer_id, pos, end, str);
+  }break;
+  
+  case BufferSeekString_Backward:
+  {
+   result = seek_string_backward(app, buffer_id, pos, min, str);
+  }break;
+  
+  case BufferSeekString_CaseInsensitive:
+  {
+   result = seek_string_insensitive_forward(app, buffer_id, pos, end, str);
+  }break;
+  
+  case BufferSeekString_Backward|BufferSeekString_CaseInsensitive:
+  {
+   result = seek_string_insensitive_backward(app, buffer_id, pos, min, str);
+  }break;
+ }
+ return result;
 }
 
 ////////////////////////////////
@@ -1393,8 +1398,7 @@ replace_in_range(App *app, Buffer_ID buffer, Range_i64 range, String needle, Str
   // TODO(allen): rewrite
   History_Group group = history_group_begin(app, buffer);
   i64 pos = range.min - 1;
-  i64 new_pos = 0;
-  seek_string_forward(app, buffer, pos, range.end, needle, &new_pos);
+  i64 new_pos = seek_string_forward(app, buffer, pos, range.end, needle);
   i64 shift = replace_range_shift(needle.size, string.size);
   for (; new_pos + (i64)needle.size <= range.end;)
   {
@@ -1402,7 +1406,7 @@ replace_in_range(App *app, Buffer_ID buffer, Range_i64 range, String needle, Str
    buffer_replace_range(app, buffer, needle_range, string);
    range.end += shift;
    pos = new_pos + (i32)string.size - 1;
-   seek_string_forward(app, buffer, pos, range.end, needle, &new_pos);
+   new_pos = seek_string_forward(app, buffer, pos, range.end, needle);
   }
   history_group_end(group);
  }
@@ -2162,7 +2166,7 @@ search_up_path(Arena *arena, String start_path, String filename){
    break;
   }else{
    end_temp(temp);
-   path = path_dirname(path);
+   path = path_dir(path);
   }
  }
  return(result);
@@ -2640,25 +2644,24 @@ inline i64 get_current_column(App *app)
 inline i64 get_current_char(App *app)
 {
   GET_VIEW_AND_BUFFER;
-  i64 pos = view_get_cursor_pos(app, view);
-  u8 character = buffer_get_char(app, buffer, pos);
-  return character;
+ i64 pos = view_get_cursor_pos(app, view);
+ u8 character = buffer_get_char(app, buffer, pos);
+ return character;
 }
 
 inline Rect_f32 
 get_cursor_rect(App *app, Text_Layout_ID text_layout_id)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    i64 cursor_pos = view_get_cursor_pos(app, view);
-    Rect_f32 result = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
-    return result;
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ i64 cursor_pos = view_get_cursor_pos(app, view);
+ Rect_f32 result = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
+ return result;
 }
 
 function b32
-view_is_active(App *app, View_ID view)
-{
-    View_ID active_view = get_active_view(app, Access_Always);
-    return (active_view == view);
+view_is_active(App *app, View_ID view) {
+ View_ID active_view = get_active_view(app, Access_Always);
+ return (active_view == view) and os_window_is_active(app);
 }
 
 function b32
@@ -2731,13 +2734,13 @@ inline void animate_next_frame(App *app)
  animate_in_n_milliseconds(app, 0);
 }
 
-function void
-app_printer_function(void *userdata, char *format, va_list args)
-{
+function i32
+app_printer_function(void *userdata, char *format, va_list args){
  auto app = cast(App *)userdata;
  Scratch_Block scratch(app);
  String message = push_stringfv(scratch, format, args, false);
  print_message(app, message);
+ return message.count;
 }
 
 inline Printer
@@ -2750,5 +2753,8 @@ make_printer_app(App *app)
  };
  return result;
 }
-
+inline void
+view_set_mark_pos(App *app, View_ID view, i64 pos){
+ view_set_mark(app, view, seek_pos(pos));
+}
 //-

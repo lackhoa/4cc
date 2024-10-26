@@ -4,8 +4,7 @@
 
 // TOP
 
-#if !defined(FCODER_SYSTEM_TYPES_H)
-#define FCODER_SYSTEM_TYPES_H
+#pragma once
 
 typedef i1 Key_Mode;
 enum{
@@ -51,7 +50,4 @@ struct Mutex_Lock{
     System_Mutex mutex;
 };
 
-#endif
-
 // BOTTOM
-

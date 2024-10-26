@@ -79,24 +79,24 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 {
 	Scratch_Block scratch(app);
 	String unique_name = push_buffer_unique_name(app, scratch, buffer);
-    b32 view_active = view_is_active(app, view);
+ b32 view_active = view_is_active(app, view);
 	
 	draw_rect_fcolor(app, bar, 0.f, fcolor_id(defcolor_bar));
-
-    v1 char_wid = get_face_metrics(app, face_id).normal_advance;
+ 
+ v1 char_wid = get_face_metrics(app, face_id).normal_advance;
 	Rect_f32 title_rect = bar;
-    title_rect.x1 = bar.x0 + char_wid*(f32)unique_name.size;
-    
+ title_rect.x1 = bar.x0 + char_wid*(f32)unique_name.size;
+ 
 	if (view_active)
-    {
-        draw_rect_fcolor(app, title_rect, 0.f, fcolor_id(defcolor_vim_filebar_pop));
-        
-        rect2 triangle_rect = title_rect;
-        v1 radius_fudge = 5.f;
-        triangle_rect.x0 = title_rect.x1 - radius_fudge*char_wid;
-        triangle_rect.x1 = title_rect.x1 + radius_fudge*char_wid;
-        draw_rect_fcolor(app, triangle_rect, radius_fudge*char_wid, fcolor_id(defcolor_vim_filebar_pop));
-    }
+ {
+  draw_rect_fcolor(app, title_rect, 0.f, fcolor_id(defcolor_vim_filebar_pop));
+  
+  rect2 triangle_rect = title_rect;
+  v1 radius_fudge = 5.f;
+  triangle_rect.x0 = title_rect.x1 - radius_fudge*char_wid;
+  triangle_rect.x1 = title_rect.x1 + radius_fudge*char_wid;
+  draw_rect_fcolor(app, triangle_rect, radius_fudge*char_wid, fcolor_id(defcolor_vim_filebar_pop));
+ }
 	
 	FColor base_color = fcolor_id(defcolor_base);
 	FColor pop2_color = fcolor_id(defcolor_pop2);
@@ -182,62 +182,57 @@ vim_draw_search_highlight(App *app, View_ID view, Buffer_ID buffer, Text_Layout_
 function void
 vim_draw_cursor(App *app, View_ID view, b32 is_active_view, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness, f32 thickness)
 {
-	
-	if(is_active_view && vim_state.mode == VIM_Visual_Insert){
-    // @modified(kv): no blinking!
-		// animate_in_n_milliseconds(app, 1000);
-		// if(ACTIVE_BLINK(vim_cursor_blink))
+ if(os_window_is_active(app)){
+  if(is_active_view &&
+     vim_state.mode == VIM_Visual_Insert){
+   Range_i64 range = get_view_range(app, view);
+   Rect_f32 block_rect = vim_get_abs_block_rect(app, view, buffer, text_layout_id, range);
+   
+   // TODO(BYP): Could use vim_show_block_helper to have nicer, more precise cursors like in vim_draw_visual_mode
+   if(vim_visual_insert_after){
+    block_rect.x0 = block_rect.x1 - 2.f;
+   }else{
+    block_rect.x1 = block_rect.x0 + 2.f;
+   }
+   draw_rect_fcolor(app, block_rect, 1.f, fcolor_id(defcolor_cursor));
+  }else{
+   b32 has_highlight_range = draw_highlight_range(app, view, buffer, text_layout_id, roundness);
+   if(!has_highlight_range){
+    i1 cursor_sub_id = default_cursor_sub_id();
+    
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos = view_get_mark_pos(app, view);
+    if(is_active_view && vim_lister_view_id == 0)
     {
-			Range_i64 range = get_view_range(app, view);
-			Rect_f32 block_rect = vim_get_abs_block_rect(app, view, buffer, text_layout_id, range);
-			
-			// TODO(BYP): Could use vim_show_block_helper to have nicer, more precise cursors like in vim_draw_visual_mode
-			if(vim_visual_insert_after){
-				block_rect.x0 = block_rect.x1 - 2.f;
-			}else{
-				block_rect.x1 = block_rect.x0 + 2.f;
-			}
-			draw_rect_fcolor(app, block_rect, 1.f, fcolor_id(defcolor_cursor));
-		}
-		return;
-	}
-
-	b32 has_highlight_range = draw_highlight_range(app, view, buffer, text_layout_id, roundness);
-	if(!has_highlight_range)
-    {
-		i1 cursor_sub_id = default_cursor_sub_id();
-		
-		i64 cursor_pos = view_get_cursor_pos(app, view);
-		i64 mark_pos = view_get_mark_pos(app, view);
-		if(is_active_view && vim_lister_view_id == 0)
-        {
-			Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
-			// animate_in_n_milliseconds(app, 1000);  // @modified(kv)
-			// if(ACTIVE_BLINK(vim_cursor_blink) && !vim_is_selecting_register) @modified(kv)
-            {
-				if(vim_state.mode == VIM_Insert){ rect = rect_split_top_bottom_neg(rect, 5.f).b; }
-				if(rect.p1 != V2(0,0)){
-					vim_nxt_cursor_pos = rect.p1;
-				}
-				
-				Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - get_dim(rect), get_dim(rect));
-                // note(kv): this draws the normal cursor
-				draw_rect_fcolor(app, cursor_rect, roundness, fcolor_id(defcolor_cursor, cursor_sub_id));
-				
-				if(vim_state.mode != VIM_Insert){
-					paint_text_color_pos(app, text_layout_id, cursor_pos, fcolor_id(defcolor_at_cursor));
-				}
-			}
-			if(vim_state.mode == VIM_Insert){
-				draw_character_wire_frame(app, text_layout_id, mark_pos,roundness, thickness, fcolor_id(defcolor_mark));
-			}
-		}else{
-			draw_character_wire_frame(app, text_layout_id, cursor_pos, roundness, thickness, fcolor_id(defcolor_cursor, cursor_sub_id));
-			if(vim_state.mode == VIM_Insert){
-				draw_character_wire_frame(app, text_layout_id, mark_pos, roundness, thickness, fcolor_id(defcolor_mark));
-			}
-		}
-	}
+     Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
+     // animate_in_n_milliseconds(app, 1000);  // @modified(kv)
+     // if(ACTIVE_BLINK(vim_cursor_blink) && !vim_is_selecting_register) @modified(kv)
+     {
+      if(vim_state.mode == VIM_Insert){ rect = rect_split_top_bottom_neg(rect, 5.f).b; }
+      if(rect.p1 != V2(0,0)){
+       vim_nxt_cursor_pos = rect.p1;
+      }
+      
+      Rect_f32 cursor_rect = Rf32_xy_wh(vim_cur_cursor_pos - get_dim(rect), get_dim(rect));
+      // note(kv): this draws the normal cursor
+      draw_rect_fcolor(app, cursor_rect, roundness, fcolor_id(defcolor_cursor, cursor_sub_id));
+      
+      if(vim_state.mode != VIM_Insert){
+       paint_text_color_pos(app, text_layout_id, cursor_pos, fcolor_id(defcolor_at_cursor));
+      }
+     }
+     if(vim_state.mode == VIM_Insert){
+      draw_character_wire_frame(app, text_layout_id, mark_pos,roundness, thickness, fcolor_id(defcolor_mark));
+     }
+    }else{
+     draw_character_wire_frame(app, text_layout_id, cursor_pos, roundness, thickness, fcolor_id(defcolor_cursor, cursor_sub_id));
+     if(vim_state.mode == VIM_Insert){
+      draw_character_wire_frame(app, text_layout_id, mark_pos, roundness, thickness, fcolor_id(defcolor_mark));
+     }
+    }
+   }
+  }
+ }
 }
 
 function Rect_f32

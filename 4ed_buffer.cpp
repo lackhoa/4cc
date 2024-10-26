@@ -501,7 +501,7 @@ fill_line_starts(i64 *lines_starts, String string, i64 text_base){
 
 function void
 buffer_remeasure_starts(Thread_Context *tctx, Gap_Buffer *buffer, Batch_Edit *batch){
-    Scratch_Block scratch(tctx);
+    Scratch_Block scratch(tctx,0);
     
     i64 line_start_count = buffer_line_count(buffer) + 1;
     

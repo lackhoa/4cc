@@ -406,133 +406,6 @@ CUSTOM_DOC("Allows the user to copy multiple strings from other applications bef
             }
         }
         
-internal void
-draw_line_inner(App *app, v3 *points, v1 thickness, ARGB_Color color, v1 interval)
-{
-    macro_clamp_bot(interval, 1.f);
-    v1 half_thickness = clamp_bot(0.5f*thickness, 1.0f);
-    Render_Target *target = draw_get_target(app);
-    b32 steep = false;
-    // NOTE: If z (i.e "depth") is linear then this the interpolation works.
-    v1 x0 = points[0].x; v1 y0 = points[0].y; v1 z0 = points[0].z; 
-    v1 x1 = points[1].x; v1 y1 = points[1].y; v1 z1 = points[1].z;
-    
-    if (absolute(x0-x1) < 
-        absolute(y0-y1))
-    {// if the line is steep, we transpose the image 
-        macro_swap(x0, y0);
-        macro_swap(x1, y1);
-        steep = true;
-    }
-    
-    if (x0 > x1)
-    {// make it "left to right"
-        macro_swap(x0, x1); 
-        macro_swap(y0, y1); 
-        macro_swap(z0, z1);
-    }
-    
-    if ((x1-x0) > 0.0001f)
-    {
-        v1 dy = (y1-y0) / (x1-x0);
-        v1 dz = (z1-z0) / (x1-x0);
-        
-        // NOTE: Clipping
-        v1 xstart = x0;
-        v1 xend   = x1;
-        {
-            v1 xbot;
-            v1 xtop;
-            if (steep)
-            {
-                xbot = (target->clip_box.y0 - target->offset.y);
-                xtop = (target->clip_box.y1 - target->offset.y);
-            }
-            else
-            {
-                xbot = (target->clip_box.x0 - target->offset.x);
-                xtop = (target->clip_box.x1 - target->offset.x);
-            }
-            macro_clamp_bot(xstart, xbot);
-            macro_clamp_top(xend,   xtop);
-        }
-        
-        for (v1 x = xstart; 
-             x <= xend;
-             x += interval)
-        {
-            v1 y = y0 + dy*(x-x0);
-            v1 z = z0 + dz*(x-x0);
-            v2 center = (steep ?
-                         v2{y,x} : 
-                         v2{x,y});
-            rect2 square = rect2_center_radius(center, vec2_all(half_thickness));
-            draw_rect_to_target(target, square, half_thickness, color, z);
-        }
-    }
-}
-
-                if (group->is_perspective)
-                {// NOTE: Someday when we draw lots of triangles, we may need this, that day is not today!
-                   
-                    m4x4 camera_project =
-                    {
-                        {
-                            vec4(camera->px,0),
-                            vec4(camera->py,0),
-                            vec4(camera->pz,0),
-                            vec4(0,0,0,1),
-                        }
-                    };
-                    
-                    m4x4 z_to_depth =
-                    {
-                        {
-                           vec4(1,0,0,0),
-                           vec4(0,1,0,0),
-                           vec4(0,0,-1,camera->distance),
-                           vec4(0,0,0,1),
-                        } 
-                    };
-                    
-                    v1 focal = camera->focal_length;
-                    v1 n  = 10.0f;         // NOTE: in depth
-                    v1 f  = 100.0f * 1E3;  // NOTE: in depth
-                   
-                    m4x4 perspective_project =
-                    {
-                        {
-                            focal, 0,     0,            0,
-                            0,     focal, 0,            0,
-                            0,     0,     (n+f)/(f-n),  -2*f*n/(f-n),
-   0,     0,     1,            0,
-  },
- };
- 
- m4x4 camera_project_and_z_to_depth = matmul4(&z_to_depth, &camera_project);
- m4x4 camera_project_and_z_to_depth_and_perspective = matmul4(&perspective_project, &camera_project_and_z_to_depth);
- view_m = matmul4(&view_m, &camera_project_and_z_to_depth_and_perspective);
- 
- if (0)
- {
-  v1 U = 1e3;
-  v4 O = v4{0,0,0,1};
-  v4 O1 = camera_project * O;
-  v4 O2 = z_to_depth * O1;
-  v4 O3 = perspective_project * O2;
-  O3 /= O3.w;
-  
-  v4 point = U * v4{0,0,1,1};
-  v4 point1 = camera_project * point;
-  v4 point2 = z_to_depth * point1;
-  v4 point3 = perspective_project * point2;
-  point3 /= point3.w;
-  
-  breakhere;
- }
- 
- 
- 
 #if 1
  struct bucket_array_bucket
  {
@@ -652,4 +525,102 @@ draw_line_inner(App *app, v3 *points, v1 thickness, ARGB_Color color, v1 interva
   array.first_bucket = array.last_bucket = &array.new_bucket();
  }
 #endif
+ function void
+  init_thread_context(){
+  Thread_Context *ctx = get_thread_context();
+  ctx->kind = ThreadKind_Main;
+  for_i32(scratch_index, 0, alen(ctx->scratches)){
+   Arena *scratch = &ctx->scratches[scratch_index];
+   scratch->chunk_size = MB(1);
+   push_size(scratch, 1);  //NOTE(kv) Hack so there's always available arena node (TODO not good).
+  }
+ }
+ function void
+  destroy_thread_context(){
+  Thread_Context *ctx = get_thread_context();
+  for_i32(scratch_index, 0, alen(ctx->scratches)){
+   arena_clear(&ctx->scratches[scratch_index]);
+  }
+ }
+ 
+global Memory_Annotation_Tracker memory_tracker = {};
+global CRITICAL_SECTION memory_tracker_mutex;
+#if ASAN_ON
+global const usize win32_redzone_size = 128;
+global const usize win32_memory_header_size = win32_redzone_size;
+#else
+global const usize win32_redzone_size = 0;
+global const usize win32_memory_header_size = 64;
+#endif
+static_assert(sizeof(Memory_Annotation_Tracker_Node) <= win32_memory_header_size);
+static_assert(win32_memory_header_size % 64 == 0);
+
+function
+system_memory_allocate_at_least_sig(){
+ usize allocated_size = 0;
+ 
+ //NOTE(kv) The logic for computing the allocated size is exactly like alignment.
+ usize granularity_size = KB(64);
+ usize granularity_mask = granularity_size-1;
+ allocated_size = (wanted_size +
+                   win32_memory_header_size +
+                   /*redzone at the end*/win32_redzone_size);
+ allocated_size = (allocated_size+granularity_mask) & (~granularity_mask);
+ 
+ void *base = 0;  //NOTE(kv) We don't control the base address yet!
+ void *memory0 = VirtualAlloc(base, (SIZE_T)allocated_size,
+                              MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
+ 
+ u8 *memory = (u8 *)memory0;
+ usize usable_size = allocated_size-(win32_memory_header_size+win32_redzone_size);
+ u8 *usable_base = memory + win32_memory_header_size;
+ {
+  Memory_Annotation_Tracker_Node *node = cast(Memory_Annotation_Tracker_Node *)memory;
+  {// TODO(kv): When we use malloc-based allocator, we don't do any of this... :>
+   EnterCriticalSection(&memory_tracker_mutex);
+   {//NOTE(kv) asan poisoning
+    usize tracker_size = sizeof(Memory_Annotation_Tracker_Node);
+    //NOTE(kv) The left redzone is smaller since we still needs to access the tracker.
+    //  But I don't really care, underflow errors are super rare anyway.
+    ASAN_POISON_MEMORY_REGION(memory, allocated_size);
+    ASAN_UNPOISON_MEMORY_REGION(memory, tracker_size);
+    ASAN_UNPOISON_MEMORY_REGION(usable_base, usable_size);
+   }
+   zdll_push_back(memory_tracker.first, memory_tracker.last, node);
+   memory_tracker.count += 1;
+   LeaveCriticalSection(&memory_tracker_mutex);
+  }
+  node->location = location;
+  node->size = allocated_size;
+ }
+ *usable_size_out = usable_size;
+ return usable_base;
+}
+function
+system_memory_allocate_exact_sig(){
+ usize usable_size;
+ void *result0 = system_memory_allocate_at_least(size, location, &usable_size);
+ u8 *result = (u8 *)result0;
+ //NOTE(kv) We don't use the extraneous memory, so poison it!
+ kv_assert(usable_size >= size);
+ ASAN_POISON_MEMORY_REGION(result+size, usable_size-size);
+ return result;
+}
+function
+system_memory_free_sig(){
+ u8 *memory = (u8 *)memory0;
+ Memory_Annotation_Tracker_Node *tracker = ((Memory_Annotation_Tracker_Node *)
+                                            (memory - win32_memory_header_size));
+ usize allocated_size = tracker->size;
+ {
+  EnterCriticalSection(&memory_tracker_mutex);
+  zdll_remove(memory_tracker.first, memory_tracker.last, tracker);
+  memory_tracker.count -= 1;
+  LeaveCriticalSection(&memory_tracker_mutex);
+ }
+ VirtualFree(tracker, 0, MEM_RELEASE);
+ ASAN_POISON_MEMORY_REGION(tracker, allocated_size);
+}
+
+
 //

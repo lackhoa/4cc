@@ -488,7 +488,7 @@ save_all_dirty_buffers_with_postfix(App *app, String postfix){
         Dirty_State dirty = buffer_get_dirty_state(app, buffer);
         if (dirty == DirtyState_UnsavedChanges){
             Temp_Memory temp = begin_temp(scratch);
-            String8 filename = push_buffer_filename(app, scratch, buffer);
+            String8 filename = push_buffer_filepath(app, scratch, buffer);
             if (string_match(string_postfix(filename, postfix.size), postfix)){
                 buffer_save(app, buffer, filename, 0);
             }

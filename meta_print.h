@@ -1,8 +1,17 @@
 #pragma once
+//-
+struct Source_Map_Entry{
+ i32 source_pos;
+ i32 gen_pos;
+};
+typedef arrayof<Source_Map_Entry> Source_Map;
 
+struct Meta_Printer : Printer{
+ Source_Map source_map;
+};
 struct Printer_Pair{
- Printer h;
- Printer c;
+ Meta_Printer h;
+ Meta_Printer c;
 };
 inline b32 okp(Printer &p){ return p.FILE != 0; }
 inline b32 okp(Printer_Pair &ps){ return ps.h.FILE && ps.c.FILE; }
@@ -47,21 +56,35 @@ print_comma_separated(Printer &p, arrayof<String> list){
  }
 }
 
-#define m_parens2(p)   defer_block((p << "("), (p << ")"))
+#define m_parens2(p)   defer_block((p < "("), (p < ")"))
 #define m_parens       m_parens2(p)
 #define m_comma_list   \
 defer_block( \
-((p << "("), begin_separator(p, ", ")), \
-((p << ")"), end_separator(p)))
+((p < "("), begin_separator(p, ", ")), \
+((p < ")"), end_separator(p)))
 #define m_braces2(p)   defer_block((p < "{"), (p < "}"))
 #define m_braces       m_braces2(p)
 #define m_braces_newline defer_block((p < "{\n"), (p < "\n}"))
-#define m_braces_sm    defer_block((p << "{"), (p << "};"))
-#define m_macro_braces defer_block((p << "\\\n{\\\n"), (p << "\\\n}\\\n"))
-#define m_macro_braces_sm  defer_block((p << "\\\n{\\\n"), (p << "\\\n};\\\n"))
-#define m_locationp(p) p<<"// "<<      " "<<filename_linum<<"\n"
+#define m_braces_sm    defer_block((p < "{"), (p < "};"))
+#define m_macro_braces defer_block((p < "\\\n{\\\n"), (p < "\\\n}\\\n"))
+#define m_macro_braces_sm  defer_block((p < "\\\n{\\\n"), (p < "\\\n};\\\n"))
+#define m_locationp(p) p<"// "<      " "<filename_linum<"\n"
 #define m_location     m_locationp(p)
-#define m_note(note)   p<<"// "<<note<<" "<<filename_linum<<"\n"
+#define m_note(note)   p<"// "<note<" "<filename_linum<"\n"
 //-
 global const String cache_storage_prefix = strlit("cache_storage_");
+//-
+inline void
+mline(Printer &p){
+ //NOTE(kv) I always feel like we might wanna track newlines in the future.
+ //  Is it paranoia? Maybe!
+ p < "\n";
+}
+inline void
+add_to_source_map(Source_Map &source_map, Printer &printer, i32 source_pos){
+ Source_Map_Entry entry;
+ entry.source_pos = source_pos;
+ entry.gen_pos = printer.byte_pos;
+ source_map.push(entry);
+}
 //-

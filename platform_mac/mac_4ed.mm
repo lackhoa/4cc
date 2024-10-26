@@ -1261,7 +1261,7 @@ main(int arg_count, char **args){
 
         // NOTE(yuval): Context setup
         Thread_Context _tctx = {};
-        thread_ctx_init(&_tctx, ThreadKind_Main,
+        thread_context_init(&_tctx, ThreadKind_Main,
                         get_base_allocator_system(),
                         get_base_allocator_system());
 

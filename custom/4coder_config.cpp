@@ -1499,7 +1499,7 @@ theme_parse__buffer(App *app, Arena *arena, Buffer_ID buffer, Arena *color_arena
     Config *parsed = 0;
     if (contents.str != 0)
     {
-        String8 filename = push_buffer_filename(app, arena, buffer);
+        String8 filename = push_buffer_filepath(app, arena, buffer);
         parsed = theme_parse__data(app, arena, filename, contents, color_arena, color_table);
     }
     return(parsed);
@@ -1688,7 +1688,7 @@ CUSTOM_DOC("Parse the current buffer as a theme file and add the theme to the th
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
     
     Scratch_Block scratch(app);
-    String filename = push_buffer_filename(app, scratch, buffer);
+    String filename = push_buffer_filepath(app, scratch, buffer);
     if (filename.size > 0){
         Arena *arena = &global_theme_arena;
         Color_Table color_table = make_color_table(app, arena);

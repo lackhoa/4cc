@@ -55,6 +55,7 @@ struct Application_Step_Input
  v1  work_seconds;
  u32 work_cycles;
  u32 hot_prim_id;
+ b32 window_is_active;
 };
 
 typedef b32 Log_Function(String str);

@@ -73,7 +73,7 @@ vim_get_command_from_user(App *app, i1 *command_ids, i1 command_id_count, Comman
  Lister_Result l_result = vim_run_lister(app, lister);
  
  Game_Or_Custom_Command result = {};
- if (!l_result.canceled) {
+ if (!l_result.canceled && l_result.user_data) {
   result = *(cast(Game_Or_Custom_Command *)l_result.user_data);
  }
  return result;
@@ -501,7 +501,7 @@ vim_do_buffer_close_user_check(App *app, Buffer_ID buffer, View_ID view){
             case SureToKill_Yes:{ do_kill = true; } break;
 
             case SureToKill_Save:{
-                String filename = push_buffer_filename(app, scratch, buffer);
+                String filename = push_buffer_filepath(app, scratch, buffer);
                 if(buffer_save(app, buffer, filename, BufferSave_IgnoreDirtyFlag)){
                     do_kill = true;
                 }else{

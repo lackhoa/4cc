@@ -1,23 +1,25 @@
-function void
-thread_ctx_init(Thread_Context *tctx, Thread_Kind kind, Base_Allocator *allocator,
-                Base_Allocator *prof_allocator){
- block_zero_struct(tctx);
- tctx->kind = kind;
- tctx->allocator = allocator;
- tctx->node_arena = make_arena(allocator, KB(4));
- 
- tctx->prof_allocator = prof_allocator;
- tctx->prof_id_counter = 1;
- tctx->prof_arena = make_arena(prof_allocator, KB(16));
-}
+//-
+thread_global Thread_Context global_thread_context;
 
+function Thread_Context *
+get_thread_context(){
+ return &global_thread_context;
+}
 function void
-thread_ctx_release(Thread_Context *tctx){
- for (Arena_Node *node = tctx->free_arenas;
-      node != 0;
-      node = node->next){
-  arena_clear(&node->arena);
+thread_context_init(Thread_Context *tctx, Thread_Kind kind, Base_Allocator *allocator,
+                    Base_Allocator *prof_allocator){
+ block_zero_struct(tctx);
+ tctx->kind       = kind;
+ tctx->allocator  = allocator;
+ tctx->node_arena = make_arena(allocator, KB(4));
+ if(prof_allocator){
+  tctx->prof_allocator  = prof_allocator;
+  tctx->prof_id_counter = 1;
+  tctx->prof_arena      = make_arena(prof_allocator, KB(16));
  }
+}
+function void
+thread_context_destroy(Thread_Context *tctx){
  for (Arena_Node *node = tctx->used_first;
       node != 0;
       node = node->next){
@@ -25,106 +27,45 @@ thread_ctx_release(Thread_Context *tctx){
  }
  arena_clear(&tctx->node_arena);
  block_zero_struct(tctx);
+ //TODO(kv) Hello? What about prof_allocator?
+ //  we don't ever call this function anyway?
 }
-
-function Arena_Node*
+function Arena_Node *
 tctx__alloc_arena_node(Thread_Context *tctx){
- Arena_Node *result = tctx->free_arenas;
- if (result != 0){
-  sll_stack_pop(tctx->free_arenas);
- }
- else{
-  result = push_array(&tctx->node_arena, Arena_Node, 1, true);
-  result->arena = make_arena(tctx->allocator, KB(16));
- }
+ Arena_Node *result = push_array(&tctx->node_arena, Arena_Node, 1, true);
+ result->arena = make_arena(tctx->allocator, MB(1));
  return(result);
 }
-
-function void
-tctx__free_arena_node(Thread_Context *tctx, Arena_Node *node){
- sll_stack_push(tctx->free_arenas, node);
-}
-
 function Arena*
-tctx_reserve(Thread_Context *tctx){
+tctx_reserve(Thread_Context *tctx, Arena **conflicts, i32 conflict_count){
  Arena_Node *node = tctx->used_first;
- if (node == 0){
-  node = tctx__alloc_arena_node(tctx);
-  zdll_push_back(tctx->used_first, tctx->used_last, node);
- }
- node->ref_counter += 1;
- return(&node->arena);
-}
-
-function Arena*
-tctx_reserve(Thread_Context *tctx, Arena *a1){
- Arena_Node *node = tctx->used_first;
- for (; node != 0; node = node->next){
-  Arena *na = &node->arena;
-  if (na != a1){
+ for(; node != 0; node = node->next){
+  //-Find non-conflicting arena
+  b32 conflicted = false;
+  for_i32(conflict_index,0,conflict_count){
+   if(&node->arena == conflicts[conflict_index]){
+    conflicted = true;
+    break;
+   }
+  }
+  if(not conflicted){
    break;
   }
  }
- if (node == 0){
+ if(node == 0){
+  //-If not found, make a new arena
   node = tctx__alloc_arena_node(tctx);
   zdll_push_back(tctx->used_first, tctx->used_last, node);
  }
  node->ref_counter += 1;
  return(&node->arena);
 }
-
-function Arena*
-tctx_reserve(Thread_Context *tctx, Arena *a1, Arena *a2){
- Arena_Node *node = tctx->used_first;
- for (; node != 0; node = node->next){
-  Arena *na = &node->arena;
-  if (na != a1 && na != a2){
-   break;
-  }
- }
- if (node == 0){
-  node = tctx__alloc_arena_node(tctx);
-  zdll_push_back(tctx->used_first, tctx->used_last, node);
- }
- node->ref_counter += 1;
- return(&node->arena);
-}
-
-function Arena*
-tctx_reserve(Thread_Context *tctx, Arena *a1, Arena *a2, Arena *a3){
- Arena_Node *node = tctx->used_first;
- for (; node != 0; node = node->next){
-  Arena *na = &node->arena;
-  if (na != a1 && na != a2 && na != a3){
-   break;
-  }
- }
- if (node == 0){
-  node = tctx__alloc_arena_node(tctx);
-  zdll_push_back(tctx->used_first, tctx->used_last, node);
- }
- node->ref_counter += 1;
- return(&node->arena);
-}
-
 function void
 tctx_release(Thread_Context *tctx, Arena *arena){
  Arena_Node *node = CastFromMember(Arena_Node, arena, arena);
-#if 0
- CastFromMember(S=Arena_Node, m=arena, ptr=arena)
- ( (u8*)(arena) - OffsetOfMember(Arena_Node,arena) )
- ( (u8*)(arena) - PtrAsInt(&Member(Arena_Node,arena)) )
-#endif
  node->ref_counter -= 1;
- if (node->ref_counter == 0){
-  // TODO(allen): make a version of clear that keeps memory allocated from the sytem level
-  // but still resets to zero.
-  arena_clear(&node->arena);
-  zdll_remove(tctx->used_first, tctx->used_last, node);
-  sll_stack_push(tctx->free_arenas, node);
- }
 }
-
+//~
 #define heap__sent_init(s) (s)->next=(s)->prev=(s)
 #define heap__insert_next(p,n) ((n)->next=(p)->next,(n)->prev=(p),(n)->next->prev=(n),(p)->next=(n))
 #define heap__insert_prev(p,n) ((n)->prev=(p)->prev,(n)->next=(p),(n)->prev->next=(n),(p)->prev=(n))
@@ -364,11 +305,10 @@ force_inline bool
 operator==(String a, const char *b){
  return a == SCu8(b);
 }
-force_inline b32
-string_match(char *a, char *b){
- return gb_strcmp(a,b) == 0;
+force_inline bool
+operator==(String a, char b){
+ return a.count == 1 && *a.str == b;
 }
-
 force_inline b32
 char_is_whitespace(u8 c){
  return(c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\f' || c == '\v');
@@ -429,31 +369,6 @@ string_find_last_slash(String str){
  for (;i >= 0 && !character_is_slash(str.str[i]); i -= 1);
  return(i);
 }
-
-function String
-path_dirname(String str)
-{
- if (str.size > 0)
- {// NOTE: Remove the last slash
-  str.size -= 1;
- }
- i64 slash_pos = string_find_last_slash(str);
- 
- str.size = 0;
- if (slash_pos >= 0) str.size = slash_pos + 1;
- 
- return(str);
-}
-
-function String
-path_filename(String str) {
- i64 slash_pos = string_find_last_slash(str);
- if (slash_pos >= 0) {
-  str = string_skip(str, slash_pos + 1);
- }
- return(str);
-}
-
 function i64
 string_find_last(String str, u8 c){
  i64 size = (i64)str.size;
@@ -461,33 +376,71 @@ string_find_last(String str, u8 c){
  for (;i >= 0 && c != str.str[i]; i -= 1);
  return(i);
 }
-
-function String
-path_extension(String string){
- return(string_skip(string, string_find_last(string, '.') + 1));
-}
-
 function String
 string_prefix(String str, u64 size){
  size = clamp_max(size, str.size);
  str.size = size;
  return(str);
 }
-
+//-
 function String
-path_stem(String string){
- i64 pos = string_find_last(string, '.');
- if(pos > 0){
-  string = string_prefix(string, pos);
+path_dir(String str){
+ if(str.size > 0){
+  // NOTE(kv) Remove the last slash, if exists
+  str.size -= 1;
  }
- return(string);
+ i64 slash_pos = string_find_last_slash(str);
+ String result = {.str=str.str};
+ if(slash_pos >= 0){ result.size = slash_pos + 1; }
+ return result;
 }
-
+function String
+path_basename(String str){
+ if(str.count > 0 &&
+    str.str[str.count-1]==OS_SLASH){
+  //-NOTE(kv) remove last slash
+  str.size -= 1;
+ }
+ i64 slash_pos = string_find_last_slash(str);
+ if(slash_pos >= 0){
+  str = string_skip(str, slash_pos + 1);
+ }
+ return(str);
+}
+function String
+path_filename(String str){
+ //NOTE(kv) Different from "basename" in that if you provide me a path with a slash at the end
+ //  I will return empty string. Do we really need it? I have no idea...
+ i64 slash_pos = string_find_last_slash(str);
+ if(slash_pos >= 0){
+  str = string_skip(str, slash_pos + 1);
+ }
+ return(str);
+}
+function String
+path_extension(String path){
+ return(string_skip(path, string_find_last(path, '.') + 1));
+}
+function String
+path_no_extension(String path){
+ i64 pos = string_find_last(path, '.');
+ if(pos > 0){
+  //NOTE(kv) Ignore the first dot, because that could be a dot file.
+  path = string_prefix(path, pos);
+ }
+ return path;
+}
+function String
+path_stem(String path){
+ path = path_filename(path);
+ path = path_no_extension(path);
+ return(path);
+}
+//-
 inline String
 SCu8(u8 *str, u8 *one_past_last){
  return(SCu8(str, (u64)(one_past_last - str)));
 }
-//
 force_inline String
 SCu8(char *str, u64 length){
  return(SCu8((u8*)str, length));
@@ -534,9 +487,12 @@ string_contains(String big, String small, i1 *first_match=0)
 }
 
 function b32
-starts_with(String str, String prefix)
-{
+starts_with(String str, String prefix) {
  return string_match(string_prefix(str, prefix.size), prefix);
+}
+function b32
+starts_with(String str, char prefix) {
+ return str.count > 0 and str[0] == prefix;
 }
 #define starts_with_lit(string,prefix) starts_with(string, strlit(prefix))
 
@@ -572,8 +528,7 @@ push_stringfv(Arena *arena, char *format, va_list args, b32 zero_terminated)
 }
 
 inline u32
-cast_u64_to_u32(u64 u)
-{
+cast_u64_to_u32(u64 u){
  kv_assert(u < (1ULL << 32));
  return (u32)u;
 }

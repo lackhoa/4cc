@@ -333,19 +333,22 @@ api_parse_source_add_to_list(Arena *arena, String source_name, String source, To
 function b32
 api_parser_main(arrayof<Meta_Parsed_File> source_files){
  b32 ok = true;
- Arena scratch = make_arena_malloc();
+ Scratch_Block scratch(get_thread_context(), 0);
  
  API_Definition_List list = {};
  for_i1(index,0,source_files.count){
-  auto source_file = source_files[index];
-  api_parse_source_add_to_list(&scratch, source_file.name, source_file.data, source_file.token_list, &list);
+  Meta_Parsed_File &source_file = source_files[index];
+  api_parse_source_add_to_list(scratch, source_file.name, source_file.data, source_file.token_list, &list);
  }
  
  if(ok){
   for (API_Definition *node = list.first;
        node != 0;
        node = node->next){
-   ok = api_definition_generate_api_includes(&scratch, node, GeneratedGroup_Custom, APIGeneration_NoAPINameOnCallables);
+   ok = api_definition_generate_api_includes(node,
+                                             strlit("UNKNOWN"),
+                                             GeneratedGroup_Custom,
+                                             APIGeneration_NoAPINameOnCallables);
    if (!ok) { break; }
   }
  }

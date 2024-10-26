@@ -3,7 +3,7 @@
 global b8 global_game_key_states       [Key_Code_COUNT];
 global u8 global_game_key_state_changes[Key_Code_COUNT];
 
-global String GAME_DLL_PATH;
+global Stringz GAME_DLL_PATH;
 struct Game_DLL { u64 mtime; u32 temp_index; };
 global Game_DLL current_game_dll;
 global API_VTable_ed const_ed_api;
@@ -133,8 +133,8 @@ load_latest_game_code(App *app, b32 *out_loaded)
 #else
 # define TEMP_DLL_PREFIX ""
 #endif
-     String GAME2_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game2.dll");
-     String GAME3_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game3.dll");
+     Stringz GAME2_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game2.dll");
+     Stringz GAME3_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game3.dll");
 #undef TEMP_DLL_PREFIX
      
      b32 never_loaded_before = (current_game_dll.mtime == 0);
@@ -145,7 +145,7 @@ load_latest_game_code(App *app, b32 *out_loaded)
       u32 temp_index = 2;
       if (current_game_dll.temp_index == 2) { temp_index = 3; }
       
-      String temp_path = (temp_index == 2) ? GAME2_DLL : GAME3_DLL;
+      Stringz temp_path = (temp_index == 2) ? GAME2_DLL : GAME3_DLL;
       local_persist gbDllHandle library = {};
       
       ok = copy_file(GAME_DLL_PATH, temp_path, false);

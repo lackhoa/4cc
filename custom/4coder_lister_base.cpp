@@ -343,7 +343,7 @@ lister_render(App *app, Frame_Info frame_info, View_ID view){
 function void*
 lister_get_user_data(Lister *lister, i1 index){
  void *result = 0;
- if (0 <= index && index < lister->options.count){
+ if(0 <= index && index < lister->options.count){
   i1 counter = 0;
   for (Lister_Node *node = lister->options.first;
        node != 0;

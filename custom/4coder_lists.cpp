@@ -283,7 +283,7 @@ lister__backspace_text_field__file_path(App *app){
             if (character_is_slash(last_char)){
                 User_Input input = get_current_input(app);
                 String8 text_field = lister->text_field.string;
-                String8 new_hot = path_dirname(text_field);
+                String8 new_hot = path_dir(text_field);
                 b32 is_modified = input_has_modifier(&input, Key_Code_Control);
                 b32 whole_word_when_mod = def_get_config_b32(vars_intern_lit("lister_whole_word_backspace_when_modified"));
                 b32 whole_word_backspace = (is_modified == whole_word_when_mod);
@@ -464,7 +464,7 @@ do_buffer_kill_user_check(App *app, Buffer_ID buffer, View_ID view){
             
             case SureToKill_Save:
             {
-                String filename = push_buffer_filename(app, scratch, buffer);
+                String filename = push_buffer_filepath(app, scratch, buffer);
                 if (buffer_save(app, buffer, filename, BufferSave_IgnoreDirtyFlag)){
                     do_kill = true;
                 }

@@ -21,8 +21,8 @@ enum{
 
 struct ID_Line_Column_Jump_Location{
     Buffer_ID buffer_id;
-    i1 line;
-    i1 column;
+    i32 line;
+    i32 column;
 };
 typedef ID_Line_Column_Jump_Location ID_Based_Jump_Location;
 
@@ -33,19 +33,17 @@ struct ID_Pos_Jump_Location{
 
 struct Name_Line_Column_Location{
  String file;
- i1 line;
- i1 column;
+ i32 line;
+ i32 column;
+ i32 pos;  //NOTE(kv) This is probably an either line/column or pos
 };
 
 struct Parsed_Jump {
  b32 success;
  Name_Line_Column_Location location;
- i1 colon_position;
  b32 is_sub_jump;
  b32 sub_jump_indented;
  b32 sub_jump_note;
- b32 is_ms_style;
- b32 has_rust_arrow;
 };
 
 struct ID_Pos_Jump_Location_Array{

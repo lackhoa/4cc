@@ -1,14 +1,14 @@
 //-
-function Printer
+function Meta_Printer
 m_open_file_to_write(Stringz filename,
                      const char *call_file=__builtin_FILE(),
                      u32 call_line=__builtin_LINE()){
- Printer p = {};
+ Meta_Printer p = {};
  FILE *file = open_or_create_file(filename, "wb");
  if(file){
   meta_logf("Writing to file %.*s\n", strexpand(filename));
-  p = make_printer_file(file);
-  p<<"//NOTE Generated at "<<call_file<<':'<<call_line<<":\n";
+  (Printer&)p = make_printer_file(file);
+  p<"//NOTE Generated at "<call_file<':'<call_line<":\n";
  }else{
   meta_logf("Failed to open file %.*s\n with errno: %d", strexpand(filename), errno);
  }
@@ -18,23 +18,23 @@ function Printer_Pair
 m_open_files_to_write(String base_path,
                       const char *call_file=__builtin_FILE(),
                       u32 call_line=__builtin_LINE()){
- Scratch_Block scratch;
+ Scratch_Block scratch(get_thread_context(),0);
  Stringz outname_c, outname_h;
  {
   Printer p = make_printer_buffer(scratch, base_path.len+3);
-  p<<base_path<<".h";
+  p<base_path<".h";
   outname_h = printer_get_string(p);
  }
  {
   Printer p = make_printer_buffer(scratch, base_path.len+5);
-  p<<base_path<<".cpp";
+  p<base_path<".cpp";
   outname_c = printer_get_string(p);
  }
  Printer_Pair result = {};
  result.h = m_open_file_to_write(outname_h);
  result.c = m_open_file_to_write(outname_c);
  if(FILE *hfile = result.h.FILE){
-  result.h<<"#pragma once\n";
+  result.h<"#pragma once\n";
  }
  return result;
 }
@@ -141,43 +141,45 @@ print_struct_member(Printer &p, M_Struct_Member &member){
  print_type_and_name(p, member.type, member.name);
 }
 function void
-print_struct_body(Printer &p, M_Struct_Members &members){
- m_braces_sm{
+print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_packed=false){
+ if(is_packed) p<"PACK_BEGIN\n";
+ p<"struct "<type_name;
+ m_braces{
+  mline(p);
   for_i32(i,0,members.count){
    auto &member = members[i];
    if(!member_was_removed(member)){
-    if(i!=0){ p<<"\n"; }
+    if(i!=0){ mline(p); }
     print_struct_member(p, member);
-    p<<";";
+    p<";";
    }
   }
+  mline(p);
  }
-}
-function void
-print_struct(Printer &p, String type_name, M_Struct_Members &members){
- p<<"struct "<<type_name;
- print_struct_body(p,members);
+ if(is_packed) {mline(p); p<"PACK_END";}
+ p<";";
+ mline(p);
 }
 function void
 print_struct_meta(Printer &p, String type_name,
                   M_Struct_Members &members){
- Scratch_Block scratch;
-#define brace_block  p << "\n{\n"; defer( p << "\n}\n"; );
+ Scratch_Block scratch(get_thread_context(), 0);
+#define brace_block  p < "\n{\n"; defer( p < "\n}\n"; );
  {//-NOTE ("Function to generate the type info")
   String function_name = get_type_info_function_name(type_name);
   {//NOTE .h
    m_location;
-   p<<"struct "<<type_name<<";\n";
-   p<<"function Type_Info\n"<<function_name<<"();";
+   p<"struct "<type_name<";\n";
+   p<"function Type_Info\n"<function_name<"();";
   }
   {//NOTE .cpp
    m_location;
-   p<<"function Type_Info\n"<<function_name<<"()";
+   p<"function Type_Info\n"<function_name<"()";
    {brace_block;
-    p<<"Type_Info result = {};\n";
-    p<<"result.name = "<<enclosed_in_strlit(type_name) << ";\n";
-    p<<"result.size = sizeof("<<type_name<<");\n";
-    p<<"result.kind = I_Type_Kind_Struct;\n";
+    p<"Type_Info result = {};\n";
+    p<"result.name = "<enclosed_in_strlit(type_name) < ";\n";
+    p<"result.size = sizeof("<type_name<");\n";
+    p<"result.kind = I_Type_Kind_Struct;\n";
     // NOTE(kv) Computing member count
     i32 member_count = 0;
     for_i32(raw_member_index,0,members.count){
@@ -186,29 +188,49 @@ print_struct_meta(Printer &p, String type_name,
      }
     }
     
-    p << "result.members.set_count(" << member_count << ");\n";
+    p < "result.members.set_count(" < member_count < ");\n";
     i32 member_index = 0;
     for_i1(raw_member_index,0,members.count){
-     auto &member = members.get(raw_member_index);
+     M_Struct_Member &member = members.get(raw_member_index);
      if(!member_was_removed(member)){
-      //NOTE(kv) Cheese
-      String member_type = get_type_global_info_name(member.type.name);
-      p<<"result.members["<<member_index<<"] = "<<
-       "{.type=&"<<member_type<<
-       ", .name="<<enclosed_in_strlit(member.name)<<
-       ", .offset=offsetof("<<type_name<<", "<<member.name<<")";
-      if(member.discriminator.len){
-       p<<", .discriminator_offset=offsetof("<<type_name<<", "<<member.discriminator<<")";
+      m_braces{
+       {//-Member type
+        if(member.type.kind == Parsed_Type_Array){
+         //NOTE(kv) Array type -> Must create it on the fly
+         print(p, "Type_Info *member_type = push_struct(global_meta_arena, Type_Info, true);\n");
+         String item_type_info = get_type_global_info_name(member.type.name);
+         //NOTE(kv) Made-up array type name
+         print_format(p, "member_type->name = strlit(\"%.*s[%d]\");\n",
+                      strexpand(member.type.name), member.type.count);
+         print_format(p, "member_type->kind = I_Type_Kind_Array;\n");
+         print_format(p, "member_type->size = %d * %.*s.size;\n",
+                      member.type.count, strexpand(item_type_info));
+         print_format(p, "member_type->array_item_type = & %.*s;\n",
+                      strexpand(item_type_info));
+         print_format(p, "member_type->count = %d;\n", member.type.count);
+        }else{
+         //NOTE(kv) Normal type
+         print_format(p, "Type_Info *member_type = & %.*s;\n",
+                      strexpand(get_type_global_info_name(member.type.name)));
+        }
+       }
+       p<"result.members["<member_index<"] = "<
+        "{.type=member_type"<
+        ", .name="<enclosed_in_strlit(member.name)<
+        ", .offset=offsetof("<type_name<", "<member.name<")";
+       if(member.discriminator.len){
+        p<", .discriminator_offset=offsetof("<type_name<", "<member.discriminator<")";
+       }
+       if(member.unserialized){
+        p<", .unserialized=true";
+       }
+       p<"};\n";
       }
-      if(member.unserialized){
-       p<<", .unserialized=true";
-      }
-      p<<"};\n";
       member_index++;
      }
     }
     
-    p << "return result;";
+    p < "return result;";
    }
   } 
  }
@@ -216,18 +238,18 @@ print_struct_meta(Printer &p, String type_name,
  print_type_meta_shared(p, type_name);
  
  {//-NOTE: ;meta_read_struct
-  {//NOTE .h
+  {//- .h
    m_location;
    print_type_read_function_prototype(p,type_name);
-   p<<";\n";
+   p<";\n";
   }
-  {//NOTE .cpp
+  {//- .cpp
    m_location;
    print_type_read_function_prototype(p,type_name);
    {brace_block;
-    p << "STB_Parser *p = r.parser;\n";
+    p < "STB_Parser *p = r.parser;\n";
     
-    p << "eat_char(p, '{');\n";
+    p < "eat_char(p, '{');\n";
     for_i1(member_index,0,members.count){
      M_Struct_Member &member = members.get(member_index);
      if(!member.unserialized){
@@ -255,12 +277,12 @@ print_struct_meta(Printer &p, String type_name,
       
       if (has_version_added || has_version_removed)
       {// NOTE(kv) Only read if the data has that member.
-       p<<"if ( in_range_exclusive("<<
-        version_added<<", r.read_version, "<< version_removed<<") )";
+       p<"if ( in_range_exclusive("<
+        version_added<", r.read_version, "< version_removed<") )";
       }
       {//NOTE(kv) Read data to the local var
        brace_block;
-       p << "eat_id(p, " << enclosed_in_strlit(member.name) << ");\n";
+       p < "eat_id(p, " < enclosed_in_strlit(member.name) < ");\n";
        //NOTE(kv) cheese!
        String read_function = get_type_read_function_name(member.type.name);
        b32 has_disciminator = member.discriminator.len != 0;
@@ -275,7 +297,7 @@ print_struct_meta(Printer &p, String type_name,
          }
          p < "eat_char(p, '}');";
         }else{
-         //-Read normal type (NOTE(kv) We still don't handle pointer, but who knows what to do then)
+         //-Read normal type (NOTE(kv) We still don't handle pointer, I don't even know how to)
          p<read_function<"(r, "<varname<");";
         }
        }
@@ -300,8 +322,8 @@ function void
 print_union_meta(Printer &p, String type_name,
                  arrayof<Union_Variant> *variants,
                  String discriminator_type){
-#define brace_block  p << "\n{\n"; defer( p << "\n}\n"; );
- {//-NOTE: ("Function to generate the type info")
+#define brace_block  p < "\n{\n"; defer( p < "\n}\n"; );
+ {//-Function to generate the type info
   {
    m_location;
    p<"union "<type_name<";\n";
@@ -490,7 +512,7 @@ print_struct_embed(Printer &p, String type_name,
 }
 function void
 print_i1_wrapper(Printer &p, String type_name){
- Scratch_Block scratch;
+ Scratch_Block scratch(get_thread_context(), 0);
  M_Struct_Members members = parse_struct_body(scratch, "{ i1 v; }");
  {
   print_struct(p, type_name, members);
@@ -531,53 +553,62 @@ print(Printer &p, Meta_Expression &expression){
  }
 }
 function void
-print(Printer &p, Meta_Statement &statement){
+print(Meta_Printer &p, Statement_Head &statement){
+ add_to_source_map(p.source_map, p, statement.pos);
  switch(statement.kind){
   case Statement_Kind_None: break;
-  case Statement_Kind_Unknown:{ p < statement.unknown; }break;
+  case Statement_Kind_Unknown:{
+   Statement_Unknown &unknown = (Statement_Unknown &)statement;
+   p < unknown.unknown;
+  }break;
   case Statement_Kind_Return:{
-   p < "return " < statement.return0 < ";";
+   cast_to_var(Statement_Return&, return0, statement);
+   p < "return " < return0.return0 < ";";
   }break;
   case Statement_Kind_Expression:{
-   print(p, statement.expression);
+   cast_to_var(Statement_Expression &, expr, statement);
+   print(p, expr.expression);
    p<";";
   }break;
   case Statement_Kind_Block:{
-   Statement_Block &block = statement.block;
+   cast_to_var(Statement_Block &, block, statement);
    p<"{";
-   for_i32(statement_index,0,block.count){
+   for_i32(statement_index,0,block.block.count){
     p < "\n"; 
-    print(p, block[statement_index]);
+    print(p, (Statement_Head&)block.block[statement_index]);
    }
    p<"\n}";
   }break;
   case Statement_Kind_Header_And_Body:{
-   Statement_Header_And_Body &header_body = statement.header_and_body;
-   p < header_body.header < *header_body.body;
+   cast_to_var(Statement_Header_And_Body &, header_body, statement);
+   p < header_body.header;
+   print(p, *header_body.body);
   }break;
   case Statement_Kind_If:{
-   Statement_If &if0 = statement.if0;
-   p < "if(" < if0.condition < ")" < *if0.body;
+   cast_to_var(Statement_If &, if0, statement);
+   p < "if(" < if0.condition < ")";
+   print(p,*if0.body);
    if(if0.else0){
-    p < "else " < *if0.else0;
+    p < "else ";
+    print(p, *if0.else0);
    }
   }break;
   case Statement_Kind_Switch:{
-   Statement_Switch &switch0 = statement.switch0;
+   cast_to_var(Statement_Switch &, switch0, statement);
    p < "switch" < "(" < switch0.expression < ")";
    {
     p < "{";
     for_i32(case_index,0,switch0.cases.count){
      Switch_Case &case0 = switch0.cases[case_index];
-     p < "\ncase " < case0.expression < ": " <
-      case0.body <
-     (case0.break_after ? " break;" : "");
+     p < "\ncase " < case0.expression < ": ";
+     print(p, case0.body.head);
+     p < (case0.break_after ? " break;" : "");
     }
     p < "\n}";
    }
   }break;
   case Statement_Kind_Declaration:{
-   Statement_Declaration &decl = statement.declaration;
+   cast_to_var(Statement_Declaration &, decl, statement);
    print_type_and_name(p, decl.type, decl.name);
    if(decl.rhs.kind){
     //-Assignment included
@@ -587,7 +618,7 @@ print(Printer &p, Meta_Statement &statement){
    p<";";
   }break;
   case Statement_Kind_Cache:{
-   Statement_Cache &cache0 = statement.cache0;
+   cast_to_var(Statement_Cache &, cache0, statement);
 #define CACHE_NAME cache_storage_prefix<cache0.id
    for_i32(item_index, 0, cache0.cache_items.count){
     //-Computing cache values
@@ -609,7 +640,7 @@ print(Printer &p, Meta_Statement &statement){
    m_braces_newline{
     //-Do computation if cache miss
     m_braces_newline{//-Recompute the cache
-     p<CACHE_NAME<".cache_initialized = true;\n";//nono doesn't work!
+     p<CACHE_NAME<".cache_initialized = true;\n";
      for_i32(item_index, 0, cache0.cache_items.count){
       if(item_index){ p<"\n"; }
       String name = cache0.cache_items[item_index].name;
@@ -617,8 +648,8 @@ print(Printer &p, Meta_Statement &statement){
      }
     }
     p<"\n";
-    {//-Redo the actual computation
-     p < *cache0.body;
+    {//-Redo the computation
+     print(p, *cache0.body);
     }
    }
 #undef CACHE_NAME

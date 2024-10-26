@@ -766,7 +766,7 @@ size_t stbds_rehash_items;
 
 static void *stbds_arrgrowf(void *a, size_t elemsize, size_t addlen, size_t min_cap)
 {
-  stbds_array_header temp={0}; // force debugging
+  stbds_array_header temp={}; // force debugging
   void *b;
   size_t min_len = stbds_arrlen(a) + addlen;
   (void) sizeof(temp);

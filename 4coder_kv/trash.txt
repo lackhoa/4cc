@@ -6,7 +6,7 @@ CUSTOM_DOC("a utility to combat file corruption")
  
  FILE *outfile = 0;
  Scratch_Block scratch(app);
- String buffer_filename = push_buffer_filename(app, scratch, buffer);
+ String buffer_filename = push_buffer_filepath(app, scratch, buffer);
  String out_filename = push_stringf(scratch, "%.*s.history_dump", string_expand(buffer_filename));
  outfile = open_file(out_filename, "wb");
  

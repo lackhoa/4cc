@@ -167,20 +167,20 @@ draw_character_i_bar(App *app, Text_Layout_ID layout, i64 pos, ARGB_Color color)
 
 function void
 draw_character_i_bar(App *app, Text_Layout_ID layout, i64 pos, FColor color){
-    ARGB_Color argb = fcolor_resolve(color);
-    draw_character_i_bar(app, layout, pos, argb);
+ ARGB_Color argb = fcolor_resolve(color);
+ draw_character_i_bar(app, layout, pos, argb);
 }
 
 function void
 draw_line_highlight(App *app, Text_Layout_ID layout, Range_i64 line_range, ARGB_Color color){
-    Range_f32 y1 = text_layout_line_on_screen(app, layout, line_range.min);
-    Range_f32 y2 = text_layout_line_on_screen(app, layout, line_range.max);
-    Range_f32 y = range_union(y1, y2);
-    if (range_size(y) > 0.f)
-    {
-        Rect_f32 region = text_layout_region(app, layout);
-        draw_rect2(app, Rf32(rect_range_x(region), y), color);
-    }
+ Range_f32 y1 = text_layout_line_on_screen(app, layout, line_range.min);
+ Range_f32 y2 = text_layout_line_on_screen(app, layout, line_range.max);
+ Range_f32 y = range_union(y1, y2);
+ if (range_size(y) > 0.f)
+ {
+  Rect_f32 region = text_layout_region(app, layout);
+  draw_rect2(app, Rf32(rect_range_x(region), y), color);
+ }
 }
 
 function void

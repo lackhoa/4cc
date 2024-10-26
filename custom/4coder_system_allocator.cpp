@@ -1,54 +1,39 @@
 /*
- * 4coder malloc base allocator
+ * 4coder system base allocator
  */
 
 // TOP
 
 function void *
-base_reserve__system(void *user_data, u64 size, u64 *usable_size, String8 location)
-{
- const u64 extra_size = 128;
- u64 allocated_size = round_up_u64(size + extra_size, KB(4));
- *usable_size = allocated_size - extra_size;
- 
- void *allocated_ptr = system_memory_allocate(allocated_size, location);
- *(u64*)allocated_ptr = size;
- 
- return ((u8*)allocated_ptr + extra_size);
+base_reserve__system(void *user_data, u64 wanted_size, u64 *usable_size, String8 location){
+ //NOTE(kv) We used to put the size at the front in the this call,
+ //  But the OS layer should already do that, so let's just use that instead.
+ void *allocated_ptr = system_memory_allocate_at_least(wanted_size, location, usable_size);
+ return allocated_ptr;
 }
-
 function void
-base_free__system(void *user_data, void *ptr)
-{
- const u64 extra_size = 128;
- ptr = (u8*)ptr - extra_size;
- u64 allocated_size = *(u64*)ptr;
- system_memory_free(ptr, allocated_size);
+base_free__system(void *user_data, void *ptr){
+ system_memory_free(ptr);
 }
 
 function Base_Allocator
-make_base_allocator_system(void)
-{
+make_base_allocator_system(void){
  return(make_base_allocator_generic(base_reserve__system, 0, 0, base_free__system, 0, 0));
 }
 
 global Base_Allocator base_allocator_system = {};
 
-function Base_Allocator*
-get_base_allocator_system(void)
-{
- if (base_allocator_system.type == 0)
- {
+function Base_Allocator *
+get_base_allocator_system(void){
+ if(base_allocator_system.type == 0){
   base_allocator_system = make_base_allocator_system();
  }
  return(&base_allocator_system);
 }
-
+//NOTE(kv) "chunk_size" is pretty silly because
+//  it depends on the operating system anyway!
 function Arena
-make_arena_system(u64 chunk_size=KB(16))
-{
+make_arena_system(u64 chunk_size=KB(32)){
  return(make_arena(get_base_allocator_system(), chunk_size));
 }
-
 // BOTTOM
-

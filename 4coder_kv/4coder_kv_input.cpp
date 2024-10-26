@@ -23,8 +23,7 @@ kv_quail_defrule(App *app, char *key, char *insert,
       table_index++)
  {
   char *existing_key = kv_quail_table[table_index].key;
-  if (gb_str_has_suffix(key, existing_key))
-  {
+  if(starts_with(SCu8(key), SCu8(existing_key))){
    entry_index = table_index;  // change insertion index so this rule matches first
    break;
   }

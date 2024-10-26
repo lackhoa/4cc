@@ -1,0 +1,54 @@
+typedef long i32;
+typedef QWORD i64;
+typedef unsigned long u32;
+typedef unsigned QWORD u64;
+typedef float f32;
+typedef float v1;
+typedef float v3[3];
+typedef i32 b32;
+
+void eat_string(string expected_string){
+ local i64 current_pos = FTell();
+ local string read_string = ReadString(current_pos);
+ if(read_string != expected_string){
+  Warning("expected string not found: %s", expected_string);
+  Exit(-1);
+ }
+ FSkip(Strlen(expected_string)+1);
+}
+//-Magic and version
+LittleEndian();
+char magic[4];
+u32 version <style=sHeading1Accent>;
+if(magic != "adda"){
+ Warning("magic value not correct -> template stopped.");
+ Exit(-1);
+}
+//-
+time64_t file_timestamp;
+Printf("File timestamp: %s\n", Time64TToString(file_timestamp));
+eat_string("cameras");
+i32 camera_count;
+struct Camera_Data{
+ v1 distance;
+ v1 phi;
+ v1 theta;
+ v1 roll;
+ v3 pan;
+ v3 pivot;
+};
+Camera_Data cameras[camera_count];
+
+struct Keyboard_Cursor{
+ v3 pos;
+ v1 vel;
+};
+struct Serialized_State{
+ Keyboard_Cursor kb_cursor;
+ b32 references_full_alpha;
+};
+eat_string("Serialized_State");
+Serialized_State serialized_state;
+
+eat_string("EOF");
+//-

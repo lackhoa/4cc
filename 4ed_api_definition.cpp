@@ -3,8 +3,6 @@
  *
  * 03.10.2019
  *
- * System API definition program.
- *
  */
 
 // TOP
@@ -53,9 +51,6 @@ api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Str
  String sname = SCu8(name);
  return(api_type_structure_with_location(arena, api, kind, sname, member_list, SCu8(definition), SCu8(location)));
 }
-
-#define api_call(arena, api, name, type) \
-api_call_with_location((arena), (api), (name), (type), file_name_line_number)
 
 function API_Param*
 api_param(Arena *arena, API_Call *call, char *type_name, char *name){
@@ -196,14 +191,14 @@ api_type_match(API_Type *a, API_Type *b){
 
 function String
 api_get_callable_name(Arena *arena, String api_name, String name, API_Generation_Flag flags){
-    String result = {};
-    if (HasFlag(flags, APIGeneration_NoAPINameOnCallables)){
-        result = push_stringfz(arena, "%.*s", string_expand(name));
-    }
-    else{
-        result = push_stringfz(arena, "%.*s_%.*s",
-                                 string_expand(api_name),
-                                 string_expand(name));
+ String result = {};
+ if (HasFlag(flags, APIGeneration_NoAPINameOnCallables)){
+  result = push_stringfz(arena, "%.*s", string_expand(name));
+ }
+ else{
+  result = push_stringfz(arena, "%.*s_%.*s",
+                         string_expand(api_name),
+                         string_expand(name));
  }
  return(result);
 }
@@ -211,8 +206,9 @@ api_get_callable_name(Arena *arena, String api_name, String name, API_Generation
 ////////////////////////////////
 
 function void
-generate_api_master_list(Arena *scratch, API_Definition *api, API_Generation_Flag flags, FILE *out)
+generate_api_master_list(API_Definition *api, Stringz source_name, API_Generation_Flag flags, FILE *out)
 {
+ fprintf(out, "//source: %.*s\n", strexpand(source_name));
  for (API_Call *call = api->first_call;
       call != 0;
       call = call->next)
@@ -239,10 +235,11 @@ generate_api_master_list(Arena *scratch, API_Definition *api, API_Generation_Fla
   fprintf(out, ");\n");
  }
 }
-
 function void
-generate_header(Arena *scratch, API_Definition *api, API_Generation_Flag flags, FILE *out)
+generate_header(API_Definition *api, Stringz source_name, API_Generation_Flag flags, FILE *out)
 {
+ fprintf(out, "//source: %.*s\n", strexpand(source_name));
+ Scratch_Block scratch(get_thread_context(), 0);
  for (API_Call *call = api->first_call;
       call != 0;
       call = call->next)
@@ -360,10 +357,11 @@ generate_header(Arena *scratch, API_Definition *api, API_Generation_Flag flags, 
  fprintf(out, "#undef STORAGE_CLASS\n");
  fprintf(out, "#endif\n");
 }
-
 function void
-generate_cpp(Arena *scratch, API_Definition *api, API_Generation_Flag flags, FILE *out)
+generate_cpp(API_Definition *api, Stringz source_name, API_Generation_Flag flags, FILE *out)
 {//NOTE(kv): vtable
+ fprintf(out, "//source: %.*s\n", strexpand(source_name));
+ Scratch_Block scratch(get_thread_context(), 0); 
  {// NOTE(kv): fill vtable
   fprintf(out, "#if defined(STATIC_LINK_API)\n");
   fprintf(out, "function void\n");
@@ -448,15 +446,16 @@ generate_constructor(Arena *scratch, API_Definition *api, API_Generation_Flag fl
 ////////////////////////////////
 
 function b32
-api_definition_generate_api_includes(Arena *arena, 
-                                     API_Definition *api, 
-                                     Generated_Group group, 
+api_definition_generate_api_includes(API_Definition *api,
+                                     Stringz source_name,
+                                     Generated_Group group,
                                      API_Generation_Flag flags)
 {
+ Scratch_Block scratch(get_thread_context(), 0);
  // NOTE(allen): Arrange output files
  
  String path_to_self = strlit(__FILE__);
- path_to_self = path_dirname(path_to_self);
+ path_to_self = path_dir(path_to_self);
  
  struct Generated_File
  {
@@ -466,7 +465,7 @@ api_definition_generate_api_includes(Arena *arena,
  
  const i1 filecount = 3;
  Generated_File genfiles[filecount] = {};
- Generated_File &gen_ml  = genfiles[0];
+ Generated_File &gen_master  = genfiles[0];
  Generated_File &gen_h   = genfiles[1];
  Generated_File &gen_cpp = genfiles[2];
  //Generated_File &gen_con = genfiles[3];
@@ -495,7 +494,7 @@ api_definition_generate_api_includes(Arena *arena,
   for_i32(index,0,filecount)
   {
    auto &it = genfiles[index];
-   it.name = push_stringfz(arena, formats[index],
+   it.name = push_stringfz(scratch, formats[index],
                            string_expand(path_to_self),
                            string_expand(dir),
                            string_expand(api->name));
@@ -519,9 +518,9 @@ api_definition_generate_api_includes(Arena *arena,
  }
  
  // NOTE(allen): Generate output
- generate_api_master_list(arena, api, flags, gen_ml.out);
- generate_header         (arena, api, flags, gen_h.out);
- generate_cpp            (arena, api, flags, gen_cpp.out);
+ generate_api_master_list(api, source_name, flags, gen_master.out);
+ generate_header         (api, source_name, flags, gen_h.out);
+ generate_cpp            (api, source_name, flags, gen_cpp.out);
  //generate_constructor    (arena, api, flags, gen_con.out);
  
  //-

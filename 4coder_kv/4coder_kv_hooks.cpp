@@ -29,7 +29,7 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
  
  Scratch_Block scratch(app);
  b32 treat_as_code = false;
- String8 filename = push_buffer_filename(app, scratch, buffer_id);
+ String8 filename = push_buffer_filepath(app, scratch, buffer_id);
  String8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
  
  // NOTE(rjf): Treat as code if the config tells us to.

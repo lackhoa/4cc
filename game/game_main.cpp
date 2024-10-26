@@ -7,7 +7,7 @@
 #if SILLY_IMGUI_PARTY
 #  include "imgui_function.h"
 #endif
-//-
+//~
 #define AD_IS_FRAMEWORK 1
 #include "kv.h"
 #define AD_IS_GAME 1
@@ -26,6 +26,7 @@
 #include "generated/framework.gen.h"
 #include "generated/send_bez.gen.h"
 #include "game_modeler.h"
+#include "ad_serialize.h"
 
 #include "game_draw.cpp"
 #define FUI_FAST_PATH 0
@@ -39,14 +40,16 @@
 #include "framework.h"
 #include "game_api.cpp"
 
+#pragma push_macro("fval")
 #undef fval
 #define fval fast_fval
 #include "game_anime.cpp"
 #include "game_utils.cpp"
 #include "game_body.cpp"
 #include "generated/driver.gen.cpp"
-#undef fval
-#define fval slow_fval
+#pragma pop_macro("fval")
+
+#include "ad_serialize.cpp"
 
 /*
   IMPORTANT Rule for the renderer
@@ -170,77 +173,79 @@ round_to_multiple_of(v1 value, v1 n) {
 }
 //-
 function void
-write_data_func(Printer &p, Type_Info &type, void *void_pointer);
+print_data_func(Printer &p, Type_Info *type, void *void_pointer);
+
 function void
-read_enum(Type_Info &type, void *pointer, i32 *dst){
- kv_assert(type.kind == I_Type_Kind_Enum);
- *dst = 0;
- block_copy(dst, pointer, type.size);
-}
-function void
-write_data_union(Printer &p, Type_Info &type,
+print_data_union(Printer &p, Type_Info *type,
                  void *pointer0, void *pvariant0){
- kv_assert(type.kind == I_Type_Kind_Union);
+ kv_assert(type->kind == I_Type_Kind_Union);
  u8 *pointer = (u8*)pointer0;
  u8 *pvariant = (u8*)pvariant0;
  
- i32 variant;
- read_enum(*type.discriminator_type, pvariant, &variant);
+ i32 variant = read_enum(*type->discriminator_type, pvariant);
  
- auto &union_members = type.union_members;
+ auto &union_members = type->union_members;
  for_i32(index,0,union_members.count){
   auto &union_member = union_members[index];
   if (union_member.variant == variant) {
    //NOTE(kv) pointer of member is the same as pointer to the union.
-   write_data_func(p, *union_member.type, pointer);
+   print_data_func(p, union_member.type, pointer);
    break;
   }
  }
 }
 function void
-write_data_func(Printer &p, Type_Info &type, void *void_pointer){
+print_data_func(Printer &p, Type_Info *type, void *void_pointer){
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
- switch(type.kind){
+ switch(type->kind){
   case I_Type_Kind_Basic:{
-   write_basic_type(p, type.Basic_Type, pointer);
+   write_basic_type(p, type->Basic_Type, pointer);
   }break;
   case I_Type_Kind_Struct:{
-   // NOTE: struct
-   p << "{\n";
-   for_i1(member_index, 0, type.members.count){
-    I_Struct_Member &member = type.members[member_index];
+   p < "{\n";
+   for_i1(member_index, 0, type->members.count){
+    I_Struct_Member &member = type->members[member_index];
     if(!member.unserialized){
-     p << member.name << " ";
+     p < member.name < " ";
      u8 *member_pointer = pointer+member.offset;
      if(member.type->kind == I_Type_Kind_Union){
-      write_data_union(p, *member.type, member_pointer,
-                       (pointer+member.discriminator_offset));
+      print_data_union(p, member.type, member_pointer,
+                       pointer+member.discriminator_offset);
      }else{
-      write_data_func(p, *member.type, member_pointer);
+      print_data_func(p, member.type, member_pointer);
      }
-     p << newline;
+     p<newline;
     }
    }
-   p << "}\n";
+   p < "}\n";
   }break;
   case I_Type_Kind_Union:{
-   p<<"<can't write union without variant info>";
+   p < "<can't write union without variant info>";
+  }break;
+  case I_Type_Kind_Array:{
+   Type_Info *item_type = type->array_item_type;
+   p<"{\n";
+   for_i32(item_index,0,type->count){
+    print_data_func(p, item_type, pointer + item_type->size*item_index);
+    p < newline;
+   }
+   p < "}\n";
   }break;
   case I_Type_Kind_Enum:{
-   // NOTE: enum
    i32 enum_value;
-   block_copy(&enum_value, pointer, type.size);
-   p << enum_value;
+   block_copy(&enum_value, pointer, type->size);
+   p < enum_value;
   }break;
-  
   invalid_default_case;
  }
 }
-#define write_data(PRINTER, POINTER) \
-write_data_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
+#define print_data(PRINTER, POINTER) \
+print_data_func(PRINTER, &type_info_from_pointer(POINTER), POINTER)
+//~
+//-
 function i32
-enum_index_from_pointer(Type_Info &type, void *pointer0) {
+enum_index_from_pointer(Type_Info &type, void *pointer0){
  u8* pointer = (u8*)pointer0;
  i32 value;
  block_copy(&value, pointer, type.size);
@@ -261,8 +266,10 @@ enum_name_from_pointer(Type_Info &type, void *pointer0) {
 }
 #define enum_index_from_value(value) \
 enum_index_from_pointer(type_info_from_pointer(&value), &value)
+
 #define enum_name_from_value(value) \
 enum_name_from_value(type_info_from_pointer(&value), &value)
+
 function void
 pretty_print_func(Printer &p, Type_Info &type, void *void_pointer) {
  char newline = '\n';
@@ -292,7 +299,6 @@ pretty_print_func(Printer &p, Type_Info &type, void *void_pointer) {
   invalid_default_case;
  }
 }
-//
 #define pretty_print(PRINTER, POINTER) \
 pretty_print_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
 
@@ -301,11 +307,9 @@ get_target_camera(Game_State *state, i32 viewport_index){
  return &state->viewports[viewport_index].target_camera;
 }
 
-#define IGNORE_MODELING_DATA 1
-
 function b32
 game_load(Game_State *state, App *app, Stringz filename){
- // IMPORTANT: This function overwrites edit history.
+ // IMPORTANT(kv) This function overwrites edit history.
  b32 ok = true;
  Scratch_Block scratch(app);
  
@@ -319,7 +323,7 @@ game_load(Game_State *state, App *app, Stringz filename){
  }
  
  if(ok){
-  // NOTE: ;deserialize
+  //-;deserialize
   Arena *load_arena = &state->data_load_arena;
   arena_clear(load_arena);
   STB_Parser parser = new_parser(read_string, load_arena, 128);
@@ -340,25 +344,26 @@ game_load(Game_State *state, App *app, Stringz filename){
      for_i32(cam_index,0,GAME_VIEWPORT_COUNT){
       Camera_Data *cam = &state->viewports[cam_index].target_camera;
       brace_block;
-#define X(TYPE,NAME)  eat_id(p, #NAME); cam->NAME = eat_##TYPE(p);
-      X_Camera_Data(X)
-#undef X 
+      //TODO(kv) temporary hack
+      eat_id(p, "distance"); cam->distance = eat_v1(p);
+      eat_id(p, "phi");      cam->phi      = eat_v1(p);
+      eat_id(p, "theta");    cam->theta    = eat_v1(p);
+      eat_id(p, "roll");     cam->roll     = eat_v1(p);
+      eat_id(p, "pan");      cam->pan      = eat_v3(p);
+      eat_id(p, "pivot");    cam->pivot    = eat_v3(p);
      }
     }
    }
-   {
-    eat_id(p, "references_full_alpha");
-    state->references_full_alpha = eat_i1(p);
-   }
-   if (r.read_version >= Version_Add_Cursor){
+   if(r.read_version >= Version_Add_Cursor){
     eat_id(p, "Serialized_State");
     read_Serialized_State(r,state->Serialized_State);
    }
-   {
+#if 0
+   if(r.read_version >= Version_We_So_Back)
+   {//-Modeling
     Modeler &m = state->modeler;
     clear_modeling_data(m);
-    
-    {//-NOTE Vertices
+    {//-Vertices
      eat_id(p, "vertices");
      brace_begin;
      while(p->ok_){
@@ -366,17 +371,13 @@ game_load(Game_State *state, App *app, Stringz filename){
        break;
       }
       Vertex_Data &v = m.vertices.push2();
-#if IGNORE_MODELING_DATA
-      eat_char(p,'{');
+      /*eat_char(p,'{');
       eat_until_char(p, '}');
-      eat_char(p,'}');
-#else
+      eat_char(p,'}');*/
       read_Vertex_Data(r,v);
-#endif
      }
     }
-    
-    {//-NOTE Beziers
+    {//-Curves
      eat_id(p, "beziers");
      brace_begin;
      while(p->ok_){
@@ -384,22 +385,19 @@ game_load(Game_State *state, App *app, Stringz filename){
        break;
       }
       Curve_Data &b = m.curves.push2();
-#if IGNORE_MODELING_DATA
-      eat_char(p,'{');
-      eat_until_char(p, '}');
-#else
       read_Curve_Data(r,b);
-#endif
      }
     }
    }
+#endif
+   
 #undef brace_begin
 #undef brace_end
 #undef brace_block
   }
   
   ok = p->ok_;
-  if (!ok) {
+  if(!ok){
    printf_message(app, "Game load: deserialization failed at %d:%d!\n",
                   p->fail_location.line_number, p->fail_location.line_offset);
   }
@@ -538,7 +536,7 @@ render_data(Modeler &m){
   u32 prim_id = prim_id_from_curve_index({ci});
   Common_Line_Params &cparams = m.line_cparams[curve.cparams.v];
   for_i32(lr_index,0,2){
-   if(curve.symx || lr_index==0){
+   if(implies(lr_index==1, curve.symx)){
     if(entity_is_curve(curve)){
      //-Curve
      set_in_block(painter.lr_index, lr_index);
@@ -590,7 +588,6 @@ render_data(Modeler &m){
    }
   }
  }
-#else
 #endif
 }
 //TODO(kv) @cleanup We wanna change this from update+render to update_and_render
@@ -600,7 +597,7 @@ game_render(game_render_params){
  Painter &pa = painter;
  pa = {};
  slider_cycle_counter = 0;
- Scratch_Block scratch;
+ Scratch_Block scratch(get_thread_context(), 0);
  Viewport *viewport = &state->viewports[viewport_id-1];
  
  i32 scale_down_pow2 = fval(0); // ;scale_down_slider
@@ -643,7 +640,7 @@ game_render(game_render_params){
    config->meter_to_pixel  = meter_to_pixel;
   }
   //TODO(kv) Why can't the game understand scratch blocks?
-  Scratch_Block render_scratch;
+  Scratch_Block render_scratch(get_thread_context(), scratch);
 /*  if(pa.sending_data){
    mo.vertices.set_count(1);
    mo.curves.  set_count(1);
@@ -652,7 +649,7 @@ game_render(game_render_params){
   render_movie(scratch, render_scratch,
                config, state->references_full_alpha,
                &state->pose, state->anime_time);
-  //state->sending_data = false;  //NOTE(kv) We will be caching computation, so this is not needed anymore I don't think
+  //state->sending_data = false;  //NOTE(kv) We will be caching computation, so we'll send data always?
  }
  //-NOTE
  render_data(mo);
@@ -679,15 +676,19 @@ game_render(game_render_params){
 }
 function game_init_return
 game_init(game_init_params)
-{// API import
- ed_api_read_vtable(ed_api);
+{
+ {// API import
+  ed_api_read_vtable(ed_api);
+ }
+ {
+  thread_context_init(&global_thread_context,ThreadKind_Main,&malloc_base_allocator,0);
+ }
  //@game_bootstrap_arena_zero_initialized
  Game_State *state = push_struct(bootstrap_arena, Game_State);
  state->malloc = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
  state->permanent_arena = *bootstrap_arena;
- Arena *arena = &state->permanent_arena;
  state->dll_arena = make_arena(&state->malloc, MB(1));
- 
+ Arena *arena = &state->permanent_arena;
  {//-;init_modeler
   Modeler &m = state->modeler;
   //NOTE(kv) when you refer to something make sure it doesn't move!
@@ -714,33 +715,30 @@ game_init(game_init_params)
   }
   clear_modeling_data(m);
  }
- 
  {// NOTE: Save/Load business load_game
   Scratch_Block scratch(app);
   String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
   state->save_dir         = pjoin(arena, binary_dir, "data");
   state->backup_dir       = pjoin(arena, state->save_dir, "backups");
-  state->autosave_path    = pjoin(arena, state->save_dir, "text.kv");
-  state->manual_save_path = pjoin(arena, state->save_dir, "manual.kv");
+  state->autosave_path    = pjoin(arena, state->save_dir, "autosave.ad");
+  state->manual_save_path = pjoin(arena, state->save_dir, "manual.ad");
   
   {// NOTE: Load state
    state->data_load_arena = make_arena(&state->malloc);
-   game_load(state, app, state->autosave_path);
+   Stringz nono_autosave_path = pjoin(arena, state->save_dir, "text.kv");
+   game_load(state, app, nono_autosave_path);
   }
  }
- 
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {//;frame_arena_init
   Viewport *viewport = &state->viewports[viewport_index];
   viewport->render_arena = make_arena(&state->malloc);
   viewport->index = viewport_index;
  }
- 
  {
   state->line_cap = 8192;
   state->line_map = push_array(arena, Line_Map_Entry, state->line_cap);
  }
- 
  {
   i32 cap = 128;
   state->slow_line_map = {
@@ -748,16 +746,13 @@ game_init(game_init_params)
    .map = push_array(arena, Slow_Line_Map_Entry, cap)
   };
  }
- 
  default_fvert_delta_scale = 0.1f;
- 
  {//-NOTE: Dear Imgui init
   state->imgui_state = imgui_state;
  }
- 
- //-IMPORTANT: Reload is a part of init
- game_reload(state, ed_api, true);
- 
+ {//-IMPORTANT: Reload is a part of init
+  game_reload(state, ed_api, true);
+ }
  return state;
 }
 function void
@@ -794,144 +789,36 @@ game_reload(game_reload_params)
  }
  state->sending_data = true;
 }
-
 function game_shutdown_return
 game_shutdown(game_shutdown_params){
  end_temp(state->dll_temp_memory);
+ thread_context_destroy(&global_thread_context);
 }
-
-#include "time.h"
-
-function String
-time_format(char *buf, i32 bufsize, char *format)
-{
- String result = {};
- time_t rawtime;
- time(&rawtime);
- struct tm *timeinfo = localtime(&rawtime);
- size_t strftime_result = strftime(buf, bufsize, format, timeinfo);
- if (strftime_result != 0)
- {
-  result = SCu8(buf);
- }
- return result;
-}
-
-function String
-serialize_state(Arena *arena, Game_State *state)
-{
- // NOTE: lovely MSVC doesn't pass __VA_ARGS__ correctly between macros
- //TODO: Cleanup this macro hell
-#define indent                print_nspaces(p, indentation)
- //#define println(VALUE, ...)   print(p, VALUE "\n", ##__VA_ARGS__); indent
-#define newline               print(p, "\n"); indent
-#define brace_begin           indentation+=1; print(p, "{"); newline;
-#define brace_end             indentation-=1; print(p, "}"); newline;
-#define brace_block           brace_begin; defer(brace_end);
-#define macro_print_field(STRUCT, TYPE, NAME) \
-print(p, #NAME " "); write_basic_type(p, Basic_Type_##TYPE, &STRUCT.NAME); newline
- 
- const i32 MAX_SAVE_SIZE = KB(32);  // Wastes @Memory
- Printer p = make_printer_buffer(arena, MAX_SAVE_SIZE);
- 
- i32 indentation = 0;
- {// NOTE: Content
-  {// NOTE: preamble
-   print(p, "// autodraw data file (DO NOT EDIT)" ); newline;
-   {
-    char buf[64];
-    String timestamp = time_format(buf, alen(buf), "%d.%m.%Y %H:%M:%S");
-    printn2(p, "// Written at ", timestamp); newline;
-   }
-   printn2(p, "version ", Version_Current); newline;
-  }
-  {
-   print(p, "cameras"); newline;
-   {
-    brace_block;
-    for_i32(camera_index, 0, GAME_VIEWPORT_COUNT) {
-     brace_block;
-     Camera_Data &cam = state->viewports[camera_index].target_camera;
-#define X(TYPE,NAME)  macro_print_field(cam, TYPE, NAME);
-     X_Camera_Data(X);
-#undef X
-    }
-   }
-  }
-  newline;
-  p<<"references_full_alpha "<<state->references_full_alpha<<"\n\n";
-  p<<"Serialized_State\n";
-  write_data(p, &state->Serialized_State);
-  {// NOTE: Modeler data
-   Modeler &modeler = state->modeler;
-   {//NOTE vertices
-    arrayof<Vertex_Data> &vertices = modeler.vertices;
-    print(p, "vertices"); newline;
-    {
-     brace_block;
-     for_i32(vi,1,vertices.count)
-     {//NOTE Tight loop
-      write_data(p, &vertices[vi]);
-     }
-    }
-    newline;
-   }
-   
-   {//NOTE Beziers
-    arrayof<Curve_Data> &curves = modeler.curves;
-    print(p, "beziers"); newline;
-    {
-     brace_block;
-     for_i32(bi,1,curves.count)
-     {//NOTE tight loop
-      auto &b = curves[bi];
-      write_data(p, &b);
-     }
-    }
-    newline;
-   }
-  }
-  newline;
-  print(p, "//~EOF"); newline;
- }
- 
- String result = printer_get_string(p);
- return result;
- 
-#undef indent
-#undef brace_begin
-#undef brace_end
-#undef brace_block
-#undef newline
-#undef macro_print_field
-}
-
+//~
 function b32
 game_save(Game_State *state, App *app, b32 is_manual)
 {// NOTE: save and backup logic
  Scratch_Block scratch(app);
- String path = (is_manual ? state->manual_save_path :
-                state->autosave_path);
- char *pathz = to_cstring(scratch, path);
+ Stringz outpath = (is_manual ? state->manual_save_path :
+                    state->autosave_path);
  String backup_dir = state->backup_dir;
  
  b32 ok = true;
- if (!state->has_done_backup &&
-     gb_file_exists(pathz))
- {//-NOTE: Backup situation
+ if(!state->has_done_backup &&
+    gb_file_exists(to_cstring(outpath)))
+ {//-Backup situation
   char buf[64];
   String time_string = time_format(buf, alen(buf), "%d_%m_%Y_%H_%M_%S");
-  if (time_string.len == 0)
-  {
+  if(time_string.len == 0){
    print_message(app, str8lit("strftime failed... go figure that out!\n"));
    ok = false;
-  } else {
+  }else{
    const char *filename_base = is_manual ? "manual" : "auto";
-   String backup_path = push_stringfz(scratch, "%.*s/%s_%.*s.kv",
+   Stringz backup_path = push_stringfz(scratch, "%.*s/%s_%.*s.kv",
                                       string_expand(backup_dir),
                                       filename_base,
                                       string_expand(time_string));
-   ok = copy_file(path, backup_path, true);
+   ok = copy_file(outpath, backup_path, true);
    state->has_done_backup = ok;
   }
   
@@ -943,7 +830,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
    if (backup_files.count > max_backup)
    {
     u64 oldest_mtime = U64_MAX;
-    String file_to_delete = {};
+    Stringz file_to_delete = empty_string;
     File_Info **opl = backup_files.infos + backup_files.count;
     for (File_Info **backup = backup_files.infos;
          backup < opl;
@@ -957,22 +844,48 @@ game_save(Game_State *state, App *app, b32 is_manual)
      }
     }
     b32 delete_ok = remove_file(file_to_delete);
-    if (delete_ok) printf_message(app, "INFO: deleted backup file %.*s because it's too old", string_expand(file_to_delete));
-    else           printf_message(app, "ERROR: failed to delete backup file %.*s", string_expand(file_to_delete));
+    if (delete_ok) printf_message(app, "INFO: deleted backup file %.*s because it's too old\n", string_expand(file_to_delete));
+    else           printf_message(app, "ERROR: failed to delete backup file %.*s\n", string_expand(file_to_delete));
    }
   }
  }
- 
- if (ok)
- {//-NOTE: Save the file
-  String text = serialize_state(scratch, state);
-  ok = write_entire_file(path, text.str, text.size);
-  if (ok) {vim_set_bottom_text(str8lit("Saved game state!"));}
-  else    {printf_message(app, "Failed to write to %.*s", string_expand(path));}
+ {
+  Stringz temp_path = pjoin(scratch, state->save_dir, "temp_file.ad");
+  Stringz old_path = pjoin(scratch, state->save_dir, "temp_old_file.ad");
+  if(ok)
+  {//-serialize to temp file
+   FILE *temp_outfile = open_file(temp_path, "wb");
+   ok = serialize_state(temp_outfile, state);
+   if(not ok){
+    printf_message(app, "Failed to write to %.*s\n", strexpand(outpath));
+   }
+   close_file(temp_outfile);
+  }
+  b32 moved_to_old_path = false;
+  if(ok){
+   //-fail-safe setup
+   if(file_exists(outpath)){
+    ok = move_file(outpath, old_path);
+    moved_to_old_path = ok;
+   }
+  }
+  if(ok){
+   //-rename the file
+   ok = move_file(temp_path, outpath);
+  }
+  if(not ok and moved_to_old_path){
+   //-fail-safe recover
+   move_file(old_path, outpath);
+  }
+  remove_file(old_path);
+  if(not ok){
+   vim_set_bottom_text(strlit("failed to save state"));
+  }
  }
- 
- if (!ok) { state->save_failed = true; }
- 
+ if(ok){
+  vim_set_bottom_text(strlit("Saved game state!"));
+ }
+ state->save_failed = not ok; 
  return ok;
 }
 
@@ -1174,6 +1087,9 @@ game_update(game_update_params){
   for_i32(ci,1,m.curves.count){
    //-Closest curve
    Curve_Data &c = m.curves[ci];
+   if(c.type == Curve_Type_Fill_DBez){
+    int x = 5;
+   }
    Bez computed = compute_curve_from_data(m, c, 0);
    v1 sd_squared;
    {//-Convex box culling

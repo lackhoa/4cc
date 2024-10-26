@@ -148,7 +148,7 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
         
         Gap_Buffer *buffer = &file->state.buffer;
         
-        Scratch_Block scratch(tctx);
+        Scratch_Block scratch(tctx,0);
         
         if (!using_actual_filename){
             String s_filename = SCu8(filename);
@@ -200,7 +200,7 @@ file_get_layout_func(Editing_File *file){
 
 function void
 file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String val, File_Attributes attributes) {
- Scratch_Block scratch(tctx);
+ Scratch_Block scratch(tctx,0);
  
  Base_Allocator *allocator = tctx->allocator;
  block_zero_struct(&file->state);

@@ -425,22 +425,22 @@ typedef struct tagMONITORINFO {
 
 typedef DWORD WINAPI THREAD_START_ROUTINE(void *parameter);
 
-GB_DLL_IMPORT DWORD   WINAPI GetLastError       (void);
-GB_DLL_IMPORT BOOL    WINAPI CloseHandle        (HANDLE object);
-GB_DLL_IMPORT HANDLE  WINAPI CreateSemaphoreA   (SECURITY_ATTRIBUTES *semaphore_attributes, LONG initial_count,
+DLL_IMPORT DWORD   WINAPI GetLastError       (void);
+DLL_IMPORT BOOL    WINAPI CloseHandle        (HANDLE object);
+DLL_IMPORT HANDLE  WINAPI CreateSemaphoreA   (SECURITY_ATTRIBUTES *semaphore_attributes, LONG initial_count,
                                                  LONG maximum_count, char const *name);
-GB_DLL_IMPORT BOOL    WINAPI ReleaseSemaphore   (HANDLE semaphore, LONG release_count, LONG *previous_count);
-GB_DLL_IMPORT DWORD   WINAPI WaitForSingleObject(HANDLE handle, DWORD milliseconds);
-GB_DLL_IMPORT HANDLE  WINAPI CreateThread       (SECURITY_ATTRIBUTES *semaphore_attributes, usize stack_size,
+DLL_IMPORT BOOL    WINAPI ReleaseSemaphore   (HANDLE semaphore, LONG release_count, LONG *previous_count);
+DLL_IMPORT DWORD   WINAPI WaitForSingleObject(HANDLE handle, DWORD milliseconds);
+DLL_IMPORT HANDLE  WINAPI CreateThread       (SECURITY_ATTRIBUTES *semaphore_attributes, usize stack_size,
                                                  THREAD_START_ROUTINE *start_address, void *parameter,
                                                  DWORD creation_flags, DWORD *thread_id);
-GB_DLL_IMPORT DWORD   WINAPI GetThreadId        (HANDLE handle);
-GB_DLL_IMPORT void    WINAPI RaiseException     (DWORD, DWORD, DWORD, ULONG_PTR const *);
+DLL_IMPORT DWORD   WINAPI GetThreadId        (HANDLE handle);
+DLL_IMPORT void    WINAPI RaiseException     (DWORD, DWORD, DWORD, ULONG_PTR const *);
 
 
-GB_DLL_IMPORT BOOL      WINAPI GetLogicalProcessorInformation(SYSTEM_LOGICAL_PROCESSOR_INFORMATION *buffer, DWORD *return_length);
-GB_DLL_IMPORT DWORD_PTR WINAPI SetThreadAffinityMask(HANDLE thread, DWORD_PTR check_mask);
-GB_DLL_IMPORT HANDLE    WINAPI GetCurrentThread(void);
+DLL_IMPORT BOOL      WINAPI GetLogicalProcessorInformation(SYSTEM_LOGICAL_PROCESSOR_INFORMATION *buffer, DWORD *return_length);
+DLL_IMPORT DWORD_PTR WINAPI SetThreadAffinityMask(HANDLE thread, DWORD_PTR check_mask);
+DLL_IMPORT HANDLE    WINAPI GetCurrentThread(void);
 
 #define PAGE_NOACCESS          0x01
 #define PAGE_READONLY          0x02
@@ -469,10 +469,10 @@ GB_DLL_IMPORT HANDLE    WINAPI GetCurrentThread(void);
 
 
 
-GB_DLL_IMPORT void * WINAPI VirtualAlloc (void *addr, usize size, DWORD allocation_type, DWORD protect);
-GB_DLL_IMPORT usize  WINAPI VirtualQuery (void const *address, MEMORY_BASIC_INFORMATION *buffer, usize length);
-GB_DLL_IMPORT BOOL   WINAPI VirtualFree  (void *address, usize size, DWORD free_type);
-GB_DLL_IMPORT void   WINAPI GetSystemInfo(SYSTEM_INFO *system_info);
+DLL_IMPORT void * WINAPI VirtualAlloc (void *addr, usize size, DWORD allocation_type, DWORD protect);
+DLL_IMPORT usize  WINAPI VirtualQuery (void const *address, MEMORY_BASIC_INFORMATION *buffer, usize length);
+DLL_IMPORT BOOL   WINAPI VirtualFree  (void *address, usize size, DWORD free_type);
+DLL_IMPORT void   WINAPI GetSystemInfo(SYSTEM_INFO *system_info);
 
 
 #ifndef VK_UNKNOWN
@@ -678,35 +678,35 @@ GB_DLL_IMPORT void   WINAPI GetSystemInfo(SYSTEM_INFO *system_info);
 #define STD_OUTPUT_HANDLE        ((DWORD)-11)
 #define STD_ERROR_HANDLE         ((DWORD)-12)
 
-GB_DLL_IMPORT int           MultiByteToWideChar(UINT code_page, DWORD flags, char const *   multi_byte_str, int multi_byte_len, wchar_t const *wide_char_str,  int wide_char_len);
-GB_DLL_IMPORT int           WideCharToMultiByte(UINT code_page, DWORD flags, wchar_t const *wide_char_str,  int wide_char_len, char const *    multi_byte_str, int multi_byte_len);
-GB_DLL_IMPORT BOOL   WINAPI SetFilePointerEx(HANDLE file, LARGE_INTEGER distance_to_move,
+DLL_IMPORT int           MultiByteToWideChar(UINT code_page, DWORD flags, char const *   multi_byte_str, int multi_byte_len, wchar_t const *wide_char_str,  int wide_char_len);
+DLL_IMPORT int           WideCharToMultiByte(UINT code_page, DWORD flags, wchar_t const *wide_char_str,  int wide_char_len, char const *    multi_byte_str, int multi_byte_len);
+DLL_IMPORT BOOL   WINAPI SetFilePointerEx(HANDLE file, LARGE_INTEGER distance_to_move,
                                              LARGE_INTEGER *new_file_pointer, DWORD move_method);
-GB_DLL_IMPORT BOOL   WINAPI ReadFile        (HANDLE file, void *buffer, DWORD bytes_to_read, DWORD *bytes_read, OVERLAPPED *overlapped);
-GB_DLL_IMPORT BOOL   WINAPI WriteFile       (HANDLE file, void const *buffer, DWORD bytes_to_write, DWORD *bytes_written, OVERLAPPED *overlapped);
-GB_DLL_IMPORT HANDLE WINAPI CreateFileW     (wchar_t const *path, DWORD desired_access, DWORD share_mode,
+DLL_IMPORT BOOL   WINAPI ReadFile        (HANDLE file, void *buffer, DWORD bytes_to_read, DWORD *bytes_read, OVERLAPPED *overlapped);
+DLL_IMPORT BOOL   WINAPI WriteFile       (HANDLE file, void const *buffer, DWORD bytes_to_write, DWORD *bytes_written, OVERLAPPED *overlapped);
+DLL_IMPORT HANDLE WINAPI CreateFileW     (wchar_t const *path, DWORD desired_access, DWORD share_mode,
                                              SECURITY_ATTRIBUTES *, DWORD creation_disposition,
                                              DWORD flags_and_attributes, HANDLE template_file);
-GB_DLL_IMPORT HANDLE WINAPI GetStdHandle    (DWORD std_handle);
-GB_DLL_IMPORT BOOL   WINAPI GetFileSizeEx   (HANDLE file, LARGE_INTEGER *size);
-GB_DLL_IMPORT BOOL   WINAPI SetEndOfFile    (HANDLE file);
-GB_DLL_IMPORT HANDLE WINAPI FindFirstFileW  (wchar_t const *path, WIN32_FIND_DATAW *data);
-GB_DLL_IMPORT BOOL   WINAPI FindClose       (HANDLE find_file);
-GB_DLL_IMPORT BOOL   WINAPI GetFileAttributesExW(wchar_t const *path, GET_FILEEX_INFO_LEVELS info_level_id, WIN32_FILE_ATTRIBUTE_DATA *data);
-GB_DLL_IMPORT BOOL   WINAPI CopyFileW(wchar_t const *old_f, wchar_t const *new_f, BOOL fail_if_exists);
-GB_DLL_IMPORT BOOL   WINAPI MoveFileW(wchar_t const *old_f, wchar_t const *new_f);
+DLL_IMPORT HANDLE WINAPI GetStdHandle    (DWORD std_handle);
+DLL_IMPORT BOOL   WINAPI GetFileSizeEx   (HANDLE file, LARGE_INTEGER *size);
+DLL_IMPORT BOOL   WINAPI SetEndOfFile    (HANDLE file);
+DLL_IMPORT HANDLE WINAPI FindFirstFileW  (wchar_t const *path, WIN32_FIND_DATAW *data);
+DLL_IMPORT BOOL   WINAPI FindClose       (HANDLE find_file);
+DLL_IMPORT BOOL   WINAPI GetFileAttributesExW(wchar_t const *path, GET_FILEEX_INFO_LEVELS info_level_id, WIN32_FILE_ATTRIBUTE_DATA *data);
+DLL_IMPORT BOOL   WINAPI CopyFileW(wchar_t const *old_f, wchar_t const *new_f, BOOL fail_if_exists);
+DLL_IMPORT BOOL   WINAPI MoveFileW(wchar_t const *old_f, wchar_t const *new_f);
 
-GB_DLL_IMPORT HMODULE WINAPI LoadLibraryA  (char const *filename);
-GB_DLL_IMPORT BOOL    WINAPI FreeLibrary   (HMODULE module);
-GB_DLL_IMPORT FARPROC WINAPI GetProcAddress(HMODULE module, char const *name);
+DLL_IMPORT HMODULE WINAPI LoadLibraryA  (char const *filename);
+DLL_IMPORT BOOL    WINAPI FreeLibrary   (HMODULE module);
+DLL_IMPORT FARPROC WINAPI GetProcAddress(HMODULE module, char const *name);
 
-GB_DLL_IMPORT BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *frequency);
-GB_DLL_IMPORT BOOL WINAPI QueryPerformanceCounter  (LARGE_INTEGER *counter);
-GB_DLL_IMPORT void WINAPI GetSystemTimeAsFileTime  (FILETIME *system_time_as_file_time);
-GB_DLL_IMPORT void WINAPI Sleep(DWORD milliseconds);
-GB_DLL_IMPORT void WINAPI ExitProcess(UINT exit_code);
+DLL_IMPORT BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *frequency);
+DLL_IMPORT BOOL WINAPI QueryPerformanceCounter  (LARGE_INTEGER *counter);
+DLL_IMPORT void WINAPI GetSystemTimeAsFileTime  (FILETIME *system_time_as_file_time);
+DLL_IMPORT void WINAPI Sleep(DWORD milliseconds);
+DLL_IMPORT void WINAPI ExitProcess(UINT exit_code);
 
-GB_DLL_IMPORT BOOL WINAPI SetEnvironmentVariableA(char const *name, char const *value);
+DLL_IMPORT BOOL WINAPI SetEnvironmentVariableA(char const *name, char const *value);
 
 
 #define WM_NULL                   0x0000
@@ -813,9 +813,9 @@ GB_DLL_IMPORT BOOL WINAPI SetEnvironmentVariableA(char const *name, char const *
 #define MAPVK_VK_TO_CHAR   2
 #define MAPVK_VSC_TO_VK_EX 3
 
-GB_DLL_IMPORT BOOL WINAPI RegisterRawInputDevices(RAWINPUTDEVICE const *raw_input_devices, UINT num_devices, UINT size);
-GB_DLL_IMPORT UINT WINAPI GetRawInputData(HRAWINPUT raw_input, UINT ui_command, void *data, UINT *size, UINT size_header);
-GB_DLL_IMPORT UINT WINAPI MapVirtualKeyW(UINT code, UINT map_type);
+DLL_IMPORT BOOL WINAPI RegisterRawInputDevices(RAWINPUTDEVICE const *raw_input_devices, UINT num_devices, UINT size);
+DLL_IMPORT UINT WINAPI GetRawInputData(HRAWINPUT raw_input, UINT ui_command, void *data, UINT *size, UINT size_header);
+DLL_IMPORT UINT WINAPI MapVirtualKeyW(UINT code, UINT map_type);
 
 
 #define CS_DBLCLKS 		0x0008
@@ -828,11 +828,11 @@ GB_DLL_IMPORT UINT WINAPI MapVirtualKeyW(UINT code, UINT map_type);
 #define MB_HELP            0x4000l
 #define MB_ICONEXCLAMATION 0x0030l
 
-GB_DLL_IMPORT LRESULT WINAPI DefWindowProcW(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
-GB_DLL_IMPORT HGDIOBJ WINAPI GetStockObject(int object);
-GB_DLL_IMPORT HMODULE WINAPI GetModuleHandleW(wchar_t const *);
-GB_DLL_IMPORT ATOM    WINAPI RegisterClassExW(WNDCLASSEXW const *wcx); // u16 == ATOM
-GB_DLL_IMPORT int     WINAPI MessageBoxW(void *wnd, wchar_t const *text, wchar_t const *caption, unsigned int type);
+DLL_IMPORT LRESULT WINAPI DefWindowProcW(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam);
+DLL_IMPORT HGDIOBJ WINAPI GetStockObject(int object);
+DLL_IMPORT HMODULE WINAPI GetModuleHandleW(wchar_t const *);
+DLL_IMPORT ATOM    WINAPI RegisterClassExW(WNDCLASSEXW const *wcx); // u16 == ATOM
+DLL_IMPORT int     WINAPI MessageBoxW(void *wnd, wchar_t const *text, wchar_t const *caption, unsigned int type);
 
 
 #define DM_BITSPERPEL 0x00040000l
@@ -892,32 +892,32 @@ GB_DLL_IMPORT int     WINAPI MessageBoxW(void *wnd, wchar_t const *text, wchar_t
 #define ENUM_CURRENT_SETTINGS  cast(DWORD)-1
 #define ENUM_REGISTRY_SETTINGS cast(DWORD)-2
 
-GB_DLL_IMPORT LONG    WINAPI ChangeDisplaySettingsW(DEVMODEW *dev_mode, DWORD flags);
-GB_DLL_IMPORT BOOL    WINAPI AdjustWindowRect(RECT *rect, DWORD style, BOOL enu);
-GB_DLL_IMPORT HWND    WINAPI CreateWindowExW(DWORD ex_style, wchar_t const *class_name, wchar_t const *window_name,
+DLL_IMPORT LONG    WINAPI ChangeDisplaySettingsW(DEVMODEW *dev_mode, DWORD flags);
+DLL_IMPORT BOOL    WINAPI AdjustWindowRect(RECT *rect, DWORD style, BOOL enu);
+DLL_IMPORT HWND    WINAPI CreateWindowExW(DWORD ex_style, wchar_t const *class_name, wchar_t const *window_name,
                                              DWORD style, int x, int y, int width, int height, HWND wnd_parent,
                                              HMENU menu, HINSTANCE instance, void *param);
-GB_DLL_IMPORT HMODULE  WINAPI GetModuleHandleW(wchar_t const *);
-GB_DLL_IMPORT HDC             GetDC(HANDLE);
-GB_DLL_IMPORT BOOL     WINAPI GetWindowPlacement(HWND hWnd, WINDOWPLACEMENT *lpwndpl);
-GB_DLL_IMPORT BOOL            GetMonitorInfoW(HMONITOR hMonitor, MONITORINFO *lpmi);
-GB_DLL_IMPORT HMONITOR        MonitorFromWindow(HWND hwnd, DWORD dwFlags);
-GB_DLL_IMPORT LONG     WINAPI SetWindowLongW(HWND hWnd, int nIndex, LONG dwNewLong);
-GB_DLL_IMPORT BOOL     WINAPI SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
-GB_DLL_IMPORT BOOL     WINAPI SetWindowPlacement(HWND hWnd, WINDOWPLACEMENT const *lpwndpl);
-GB_DLL_IMPORT BOOL     WINAPI ShowWindow(HWND hWnd, int nCmdShow);
-GB_DLL_IMPORT LONG_PTR WINAPI GetWindowLongPtrW(HWND wnd, int index);
+DLL_IMPORT HMODULE  WINAPI GetModuleHandleW(wchar_t const *);
+DLL_IMPORT HDC             GetDC(HANDLE);
+DLL_IMPORT BOOL     WINAPI GetWindowPlacement(HWND hWnd, WINDOWPLACEMENT *lpwndpl);
+DLL_IMPORT BOOL            GetMonitorInfoW(HMONITOR hMonitor, MONITORINFO *lpmi);
+DLL_IMPORT HMONITOR        MonitorFromWindow(HWND hwnd, DWORD dwFlags);
+DLL_IMPORT LONG     WINAPI SetWindowLongW(HWND hWnd, int nIndex, LONG dwNewLong);
+DLL_IMPORT BOOL     WINAPI SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
+DLL_IMPORT BOOL     WINAPI SetWindowPlacement(HWND hWnd, WINDOWPLACEMENT const *lpwndpl);
+DLL_IMPORT BOOL     WINAPI ShowWindow(HWND hWnd, int nCmdShow);
+DLL_IMPORT LONG_PTR WINAPI GetWindowLongPtrW(HWND wnd, int index);
 
-GB_DLL_IMPORT BOOL           EnumDisplaySettingsW(wchar_t const *lpszDeviceName, DWORD iModeNum, DEVMODEW *lpDevMode);
-GB_DLL_IMPORT void *  WINAPI GlobalLock(HGLOBAL hMem);
-GB_DLL_IMPORT BOOL    WINAPI GlobalUnlock(HGLOBAL hMem);
-GB_DLL_IMPORT HGLOBAL WINAPI GlobalAlloc(UINT uFlags, usize dwBytes);
-GB_DLL_IMPORT HANDLE  WINAPI GetClipboardData(UINT uFormat);
-GB_DLL_IMPORT BOOL    WINAPI IsClipboardFormatAvailable(UINT format);
-GB_DLL_IMPORT BOOL    WINAPI OpenClipboard(HWND hWndNewOwner);
-GB_DLL_IMPORT BOOL    WINAPI EmptyClipboard(void);
-GB_DLL_IMPORT BOOL    WINAPI CloseClipboard(void);
-GB_DLL_IMPORT HANDLE  WINAPI SetClipboardData(UINT uFormat, HANDLE hMem);
+DLL_IMPORT BOOL           EnumDisplaySettingsW(wchar_t const *lpszDeviceName, DWORD iModeNum, DEVMODEW *lpDevMode);
+DLL_IMPORT void *  WINAPI GlobalLock(HGLOBAL hMem);
+DLL_IMPORT BOOL    WINAPI GlobalUnlock(HGLOBAL hMem);
+DLL_IMPORT HGLOBAL WINAPI GlobalAlloc(UINT uFlags, usize dwBytes);
+DLL_IMPORT HANDLE  WINAPI GetClipboardData(UINT uFormat);
+DLL_IMPORT BOOL    WINAPI IsClipboardFormatAvailable(UINT format);
+DLL_IMPORT BOOL    WINAPI OpenClipboard(HWND hWndNewOwner);
+DLL_IMPORT BOOL    WINAPI EmptyClipboard(void);
+DLL_IMPORT BOOL    WINAPI CloseClipboard(void);
+DLL_IMPORT HANDLE  WINAPI SetClipboardData(UINT uFormat, HANDLE hMem);
 
 #define PFD_TYPE_RGBA             0
 #define PFD_TYPE_COLORINDEX       1
@@ -946,28 +946,28 @@ GB_DLL_IMPORT HANDLE  WINAPI SetClipboardData(UINT uFormat, HANDLE hMem);
 #define GWL_ID    -12
 #define GWL_STYLE -16
 
-GB_DLL_IMPORT BOOL  WINAPI SetPixelFormat   (HDC hdc, int pixel_format, PIXELFORMATDESCRIPTOR const *pfd);
-GB_DLL_IMPORT int   WINAPI ChoosePixelFormat(HDC hdc, PIXELFORMATDESCRIPTOR const *pfd);
-GB_DLL_IMPORT HGLRC WINAPI wglCreateContext (HDC hdc);
-GB_DLL_IMPORT BOOL  WINAPI wglMakeCurrent   (HDC hdc, HGLRC hglrc);
-GB_DLL_IMPORT PROC  WINAPI wglGetProcAddress(char const *str);
-GB_DLL_IMPORT BOOL  WINAPI wglDeleteContext (HGLRC hglrc);
+DLL_IMPORT BOOL  WINAPI SetPixelFormat   (HDC hdc, int pixel_format, PIXELFORMATDESCRIPTOR const *pfd);
+DLL_IMPORT int   WINAPI ChoosePixelFormat(HDC hdc, PIXELFORMATDESCRIPTOR const *pfd);
+DLL_IMPORT HGLRC WINAPI wglCreateContext (HDC hdc);
+DLL_IMPORT BOOL  WINAPI wglMakeCurrent   (HDC hdc, HGLRC hglrc);
+DLL_IMPORT PROC  WINAPI wglGetProcAddress(char const *str);
+DLL_IMPORT BOOL  WINAPI wglDeleteContext (HGLRC hglrc);
 
-GB_DLL_IMPORT BOOL     WINAPI SetForegroundWindow(HWND hWnd);
-GB_DLL_IMPORT HWND     WINAPI SetFocus(HWND hWnd);
-GB_DLL_IMPORT LONG_PTR WINAPI SetWindowLongPtrW(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
-GB_DLL_IMPORT BOOL     WINAPI GetClientRect(HWND hWnd, RECT *lpRect);
-GB_DLL_IMPORT BOOL     WINAPI IsIconic(HWND hWnd);
-GB_DLL_IMPORT HWND     WINAPI GetFocus(void);
-GB_DLL_IMPORT int      WINAPI ShowCursor(BOOL bShow);
-GB_DLL_IMPORT SHORT    WINAPI GetAsyncKeyState(int key);
-GB_DLL_IMPORT BOOL     WINAPI GetCursorPos(POINT *lpPoint);
-GB_DLL_IMPORT BOOL     WINAPI SetCursorPos(int x, int y);
-GB_DLL_IMPORT BOOL            ScreenToClient(HWND hWnd, POINT *lpPoint);
-GB_DLL_IMPORT BOOL            ClientToScreen(HWND hWnd, POINT *lpPoint);
-GB_DLL_IMPORT BOOL     WINAPI MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint);
-GB_DLL_IMPORT BOOL     WINAPI SetWindowTextW(HWND hWnd, wchar_t const *lpString);
-GB_DLL_IMPORT DWORD    WINAPI GetWindowLongW(HWND hWnd, int nIndex);
+DLL_IMPORT BOOL     WINAPI SetForegroundWindow(HWND hWnd);
+DLL_IMPORT HWND     WINAPI SetFocus(HWND hWnd);
+DLL_IMPORT LONG_PTR WINAPI SetWindowLongPtrW(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+DLL_IMPORT BOOL     WINAPI GetClientRect(HWND hWnd, RECT *lpRect);
+DLL_IMPORT BOOL     WINAPI IsIconic(HWND hWnd);
+DLL_IMPORT HWND     WINAPI GetFocus(void);
+DLL_IMPORT int      WINAPI ShowCursor(BOOL bShow);
+DLL_IMPORT SHORT    WINAPI GetAsyncKeyState(int key);
+DLL_IMPORT BOOL     WINAPI GetCursorPos(POINT *lpPoint);
+DLL_IMPORT BOOL     WINAPI SetCursorPos(int x, int y);
+DLL_IMPORT BOOL            ScreenToClient(HWND hWnd, POINT *lpPoint);
+DLL_IMPORT BOOL            ClientToScreen(HWND hWnd, POINT *lpPoint);
+DLL_IMPORT BOOL     WINAPI MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint);
+DLL_IMPORT BOOL     WINAPI SetWindowTextW(HWND hWnd, wchar_t const *lpString);
+DLL_IMPORT DWORD    WINAPI GetWindowLongW(HWND hWnd, int nIndex);
 
 
 
@@ -975,9 +975,9 @@ GB_DLL_IMPORT DWORD    WINAPI GetWindowLongW(HWND hWnd, int nIndex);
 #define PM_NOREMOVE 0
 #define PM_REMOVE   1
 
-GB_DLL_IMPORT BOOL    WINAPI PeekMessageW(MSG *lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
-GB_DLL_IMPORT BOOL    WINAPI TranslateMessage(MSG const *lpMsg);
-GB_DLL_IMPORT LRESULT WINAPI DispatchMessageW(MSG const *lpMsg);
+DLL_IMPORT BOOL    WINAPI PeekMessageW(MSG *lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
+DLL_IMPORT BOOL    WINAPI TranslateMessage(MSG const *lpMsg);
+DLL_IMPORT LRESULT WINAPI DispatchMessageW(MSG const *lpMsg);
 
 typedef  enum
 {
@@ -1002,9 +1002,9 @@ typedef  enum
 #define BLACKNESS   (u32)0x00000042
 #define WHITENESS   (u32)0x00FF0062
 
-GB_DLL_IMPORT BOOL WINAPI SwapBuffers(HDC hdc);
-GB_DLL_IMPORT BOOL WINAPI DestroyWindow(HWND hWnd);
-GB_DLL_IMPORT int         StretchDIBits(HDC hdc, int XDest, int YDest, int nDestWidth, int nDestHeight,
+DLL_IMPORT BOOL WINAPI SwapBuffers(HDC hdc);
+DLL_IMPORT BOOL WINAPI DestroyWindow(HWND hWnd);
+DLL_IMPORT int         StretchDIBits(HDC hdc, int XDest, int YDest, int nDestWidth, int nDestHeight,
                                         int XSrc, int YSrc, int nSrcWidth, int nSrcHeight,
                                         void const *lpBits, /*BITMAPINFO*/void const *lpBitsInfo, UINT iUsage, DWORD dwRop);
 // IMPORTANT TODO(bill): FIX THIS!!!!
@@ -1381,7 +1381,7 @@ GB_DEF void  gb_platform_hide_window                (gbPlatform *p);
 
 #if defined(GB_PLATFORM)
 
-gb_inline void gb_key_state_update(gbKeyState *s, b32 is_down) {
+inline void gb_key_state_update(gbKeyState *s, b32 is_down) {
 	b32 was_down = (*s & gbKeyState_Down) != 0;
 	is_down = is_down != 0; // NOTE(bill): Make sure it's a boolean
 	GB_MASK_SET(*s, is_down,               gbKeyState_Down);
@@ -1405,7 +1405,7 @@ GB_XINPUT_SET_STATE(gbXInputSetState_Stub) {
 }
 
 
-gb_function gb_inline f32 gb__process_xinput_stick_value(i16 value, i16 dead_zone_threshold) {
+function inline f32 gb__process_xinput_stick_value(i16 value, i16 dead_zone_threshold) {
 	f32 result = 0;
  
 	if (value < -dead_zone_threshold) {
@@ -1417,7 +1417,7 @@ gb_function gb_inline f32 gb__process_xinput_stick_value(i16 value, i16 dead_zon
 	return result;
 }
 
-gb_function void gb__platform_resize_dib_section(gbPlatform *p, i1 width, i1 height) {
+function void gb__platform_resize_dib_section(gbPlatform *p, i1 width, i1 height) {
 	if ((p->renderer_type == gbRenderer_Software) &&
 	    !(p->window_width == width && p->window_height == height)) {
 		BITMAPINFO bmi = {0};
@@ -1457,7 +1457,7 @@ gb_function void gb__platform_resize_dib_section(gbPlatform *p, i1 width, i1 hei
 }
 
 
-gb_function gbKeyType gb__win32_from_vk(unsigned int key) {
+function gbKeyType gb__win32_from_vk(unsigned int key) {
 	// NOTE(bill): Letters and numbers are defined the same for VK_* and GB_*
 	if (key >= 'A' && key < 'Z') return cast(gbKeyType)key;
 	if (key >= '0' && key < '9') return cast(gbKeyType)key;
@@ -1877,7 +1877,7 @@ b32 gb__platform_init(gbPlatform *p, char const *window_title, gbVideoMode mode,
 	return true;
 }
 
-gb_inline b32 gb_platform_init_with_software(gbPlatform *p, char const *window_title,
+inline b32 gb_platform_init_with_software(gbPlatform *p, char const *window_title,
                                              i1 width, i1 height, u32 window_flags) {
 	gbVideoMode mode;
 	mode.width          = width;
@@ -1886,7 +1886,7 @@ gb_inline b32 gb_platform_init_with_software(gbPlatform *p, char const *window_t
 	return gb__platform_init(p, window_title, mode, gbRenderer_Software, window_flags);
 }
 
-gb_inline b32 gb_platform_init_with_opengl(gbPlatform *p, char const *window_title,
+inline b32 gb_platform_init_with_opengl(gbPlatform *p, char const *window_title,
                                            i1 width, i1 height, u32 window_flags, i1 major, i1 minor, b32 core, b32 compatible) {
 	gbVideoMode mode;
 	mode.width          = width;
@@ -2264,23 +2264,23 @@ void gb_platform_toggle_borderless(gbPlatform *p) {
 
 
 
-gb_inline void gb_platform_make_opengl_context_current(gbPlatform *p) {
+inline void gb_platform_make_opengl_context_current(gbPlatform *p) {
 	if (p->renderer_type == gbRenderer_Opengl) {
 		wglMakeCurrent(cast(HDC)p->win32_dc, cast(HGLRC)p->opengl.context);
 	}
 }
 
-gb_inline void gb_platform_show_window(gbPlatform *p) {
+inline void gb_platform_show_window(gbPlatform *p) {
 	ShowWindow(cast(HWND)p->window_handle, SW_SHOW);
 	p->window_flags &= ~gbWindow_Hidden;
 }
 
-gb_inline void gb_platform_hide_window(gbPlatform *p) {
+inline void gb_platform_hide_window(gbPlatform *p) {
 	ShowWindow(cast(HWND)p->window_handle, SW_HIDE);
 	p->window_flags |= gbWindow_Hidden;
 }
 
-gb_inline gbVideoMode gb_video_mode_get_desktop(void) {
+inline gbVideoMode gb_video_mode_get_desktop(void) {
 	DEVMODEW win32_mode = {gb_size_of(win32_mode)};
 	EnumDisplaySettingsW(NULL, ENUM_CURRENT_SETTINGS, &win32_mode);
 	return gb_video_mode(win32_mode.dmPelsWidth, win32_mode.dmPelsHeight, win32_mode.dmBitsPerPel);
@@ -2422,17 +2422,17 @@ extern id const NSDefaultRunLoopMode;
 #define objc_msgSend_void_bool		((void (*)(id, SEL, BOOL))objc_msgSend)
 #define objc_msgSend_id_char_const	((id (*)(id, SEL, char const *))objc_msgSend)
 
-gb_function NSUInteger gb__osx_application_should_terminate(id self, SEL _sel, id sender) {
+function NSUInteger gb__osx_application_should_terminate(id self, SEL _sel, id sender) {
 	// NOTE(bill): Do nothing
 	return 0;
 }
 
-gb_function void gb__osx_window_will_close(id self, SEL _sel, id notification) {
+function void gb__osx_window_will_close(id self, SEL _sel, id notification) {
 	NSUInteger value = true;
 	object_setInstanceVariable(self, "closed", cast(void *)value);
 }
 
-gb_function void gb__osx_window_did_become_key(id self, SEL _sel, id notification) {
+function void gb__osx_window_did_become_key(id self, SEL _sel, id notification) {
 	gbPlatform *p = NULL;
 	object_getInstanceVariable(self, "gbPlatform", cast(void **)&p);
 	if (p) {
@@ -2633,7 +2633,7 @@ b32 gb_platform_init_with_opengl(gbPlatform *p, char const *window_title, i1 wid
 }
 
 // NOTE(bill): Reverse engineering can be fun!!!
-gb_function gbKeyType gb__osx_from_key_code(u16 key_code) {
+function gbKeyType gb__osx_from_key_code(u16 key_code) {
 	switch (key_code) {
   default: return gbKey_Unknown;
   // NOTE(bill): WHO THE FUCK DESIGNED THIS VIRTUAL KEY CODE SYSTEM?!
@@ -2747,7 +2747,7 @@ gb_function gbKeyType gb__osx_from_key_code(u16 key_code) {
 	}
 }
 
-gb_function void gb__osx_on_cocoa_event(gbPlatform *p, id event, id window) {
+function void gb__osx_on_cocoa_event(gbPlatform *p, id event, id window) {
 	if (!event) {
 		return;
 	} else if (objc_msgSend_id(window, sel_registerName("delegate"))) {
@@ -3102,7 +3102,7 @@ isize gb_video_mode_get_fullscreen_modes(gbVideoMode *modes, isize max_mode_coun
 // TODO(bill): OSX Platform Layer
 // NOTE(bill): Use this as a guide so there is no need for Obj-C https://github.com/jimon/osx_app_in_plain_c
 
-gb_inline gbVideoMode gb_video_mode(i1 width, i1 height, i1 bits_per_pixel) {
+inline gbVideoMode gb_video_mode(i1 width, i1 height, i1 bits_per_pixel) {
 	gbVideoMode m;
 	m.width = width;
 	m.height = height;
@@ -3110,7 +3110,7 @@ gb_inline gbVideoMode gb_video_mode(i1 width, i1 height, i1 bits_per_pixel) {
 	return m;
 }
 
-gb_inline b32 gb_video_mode_is_valid(gbVideoMode mode) {
+inline b32 gb_video_mode_is_valid(gbVideoMode mode) {
 	gb_local_persist gbVideoMode modes[256] = {0};
 	gb_local_persist isize mode_count = 0;
 	gb_local_persist b32 is_set = false;
@@ -3155,26 +3155,26 @@ GB_COMPARE_PROC(gb_video_mode_dsc_cmp) {
 // IMPORTANT TODO(bill): Use compiler intrinsics for the atomics
 
 #if defined(GB_COMPILER_MSVC) && !defined(GB_COMPILER_CLANG)
-gb_inline i1  gb_atomic32_load (gbAtomic32 const volatile *a)      { return a->value;  }
-gb_inline void gb_atomic32_store(gbAtomic32 volatile *a, i1 value) { a->value = value; }
+inline i1  gb_atomic32_load (gbAtomic32 const volatile *a)      { return a->value;  }
+inline void gb_atomic32_store(gbAtomic32 volatile *a, i1 value) { a->value = value; }
 
-gb_inline i1 gb_atomic32_compare_exchange(gbAtomic32 volatile *a, i1 expected, i1 desired) {
+inline i1 gb_atomic32_compare_exchange(gbAtomic32 volatile *a, i1 expected, i1 desired) {
 	return _InterlockedCompareExchange(cast(long volatile *)a, desired, expected);
 }
-gb_inline i1 gb_atomic32_exchanged(gbAtomic32 volatile *a, i1 desired) {
+inline i1 gb_atomic32_exchanged(gbAtomic32 volatile *a, i1 desired) {
 	return _InterlockedExchange(cast(long volatile *)a, desired);
 }
-gb_inline i1 gb_atomic32_fetch_add(gbAtomic32 volatile *a, i1 operand) {
+inline i1 gb_atomic32_fetch_add(gbAtomic32 volatile *a, i1 operand) {
 	return _InterlockedExchangeAdd(cast(long volatile *)a, operand);
 }
-gb_inline i1 gb_atomic32_fetch_and(gbAtomic32 volatile *a, i1 operand) {
+inline i1 gb_atomic32_fetch_and(gbAtomic32 volatile *a, i1 operand) {
 	return _InterlockedAnd(cast(long volatile *)a, operand);
 }
-gb_inline i1 gb_atomic32_fetch_or(gbAtomic32 volatile *a, i1 operand) {
+inline i1 gb_atomic32_fetch_or(gbAtomic32 volatile *a, i1 operand) {
 	return _InterlockedOr(cast(long volatile *)a, operand);
 }
 
-gb_inline i64 gb_atomic64_load(gbAtomic64 const volatile *a) {
+inline i64 gb_atomic64_load(gbAtomic64 const volatile *a) {
 #if defined(GB_ARCH_64_BIT)
 	return a->value;
 #elif GB_CPU_X86
@@ -3194,7 +3194,7 @@ gb_inline i64 gb_atomic64_load(gbAtomic64 const volatile *a) {
 #endif
 }
 
-gb_inline void gb_atomic64_store(gbAtomic64 volatile *a, i64 value) {
+inline void gb_atomic64_store(gbAtomic64 volatile *a, i64 value) {
 #if defined(GB_ARCH_64_BIT)
 	a->value = value;
 #elif GB_CPU_X86
@@ -3212,11 +3212,11 @@ gb_inline void gb_atomic64_store(gbAtomic64 volatile *a, i64 value) {
 #endif
 }
 
-gb_inline i64 gb_atomic64_compare_exchange(gbAtomic64 volatile *a, i64 expected, i64 desired) {
+inline i64 gb_atomic64_compare_exchange(gbAtomic64 volatile *a, i64 expected, i64 desired) {
 	return _InterlockedCompareExchange64(cast(i64 volatile *)a, desired, expected);
 }
 
-gb_inline i64 gb_atomic64_exchanged(gbAtomic64 volatile *a, i64 desired) {
+inline i64 gb_atomic64_exchanged(gbAtomic64 volatile *a, i64 desired) {
 #if defined(GB_ARCH_64_BIT)
 	return _InterlockedExchange64(cast(i64 volatile *)a, desired);
 #elif GB_CPU_X86
@@ -3232,7 +3232,7 @@ gb_inline i64 gb_atomic64_exchanged(gbAtomic64 volatile *a, i64 desired) {
 #endif
 }
 
-gb_inline i64 gb_atomic64_fetch_add(gbAtomic64 volatile *a, i64 operand) {
+inline i64 gb_atomic64_fetch_add(gbAtomic64 volatile *a, i64 operand) {
 #if defined(GB_ARCH_64_BIT)
 	return _InterlockedExchangeAdd64(cast(i64 volatile *)a, operand);
 #elif GB_CPU_X86
@@ -3248,7 +3248,7 @@ gb_inline i64 gb_atomic64_fetch_add(gbAtomic64 volatile *a, i64 operand) {
 #endif
 }
 
-gb_inline i64 gb_atomic64_fetch_and(gbAtomic64 volatile *a, i64 operand) {
+inline i64 gb_atomic64_fetch_and(gbAtomic64 volatile *a, i64 operand) {
 #if defined(GB_ARCH_64_BIT)
 	return _InterlockedAnd64(cast(i64 volatile *)a, operand);
 #elif GB_CPU_X86
@@ -3264,7 +3264,7 @@ gb_inline i64 gb_atomic64_fetch_and(gbAtomic64 volatile *a, i64 operand) {
 #endif
 }
 
-gb_inline i64 gb_atomic64_fetch_or(gbAtomic64 volatile *a, i64 operand) {
+inline i64 gb_atomic64_fetch_or(gbAtomic64 volatile *a, i64 operand) {
 #if defined(GB_ARCH_64_BIT)
 	return _InterlockedOr64(cast(i64 volatile *)a, operand);
 #elif GB_CPU_X86
@@ -3284,10 +3284,10 @@ gb_inline i64 gb_atomic64_fetch_or(gbAtomic64 volatile *a, i64 operand) {
 
 #elif defined(GB_CPU_X86)
 
-gb_inline i1  gb_atomic32_load (gbAtomic32 const volatile *a)      { return a->value;  }
-gb_inline void gb_atomic32_store(gbAtomic32 volatile *a, i1 value) { a->value = value; }
+inline i1  gb_atomic32_load (gbAtomic32 const volatile *a)      { return a->value;  }
+inline void gb_atomic32_store(gbAtomic32 volatile *a, i1 value) { a->value = value; }
 
-gb_inline i1 gb_atomic32_compare_exchange(gbAtomic32 volatile *a, i1 expected, i1 desired) {
+inline i1 gb_atomic32_compare_exchange(gbAtomic32 volatile *a, i1 expected, i1 desired) {
 	i1 original;
 	__asm__ volatile(
                   "lock; cmpxchgl %2, %1"
@@ -3297,7 +3297,7 @@ gb_inline i1 gb_atomic32_compare_exchange(gbAtomic32 volatile *a, i1 expected, i
 	return original;
 }
 
-gb_inline i1 gb_atomic32_exchanged(gbAtomic32 volatile *a, i1 desired) {
+inline i1 gb_atomic32_exchanged(gbAtomic32 volatile *a, i1 desired) {
 	// NOTE(bill): No lock prefix is necessary for xchgl
 	i1 original;
 	__asm__ volatile(
@@ -3308,7 +3308,7 @@ gb_inline i1 gb_atomic32_exchanged(gbAtomic32 volatile *a, i1 desired) {
 	return original;
 }
 
-gb_inline i1 gb_atomic32_fetch_add(gbAtomic32 volatile *a, i1 operand) {
+inline i1 gb_atomic32_fetch_add(gbAtomic32 volatile *a, i1 operand) {
 	i1 original;
 	__asm__ volatile(
                   "lock; xaddl %0, %1"
@@ -3318,7 +3318,7 @@ gb_inline i1 gb_atomic32_fetch_add(gbAtomic32 volatile *a, i1 operand) {
 	return original;
 }
 
-gb_inline i1 gb_atomic32_fetch_and(gbAtomic32 volatile *a, i1 operand) {
+inline i1 gb_atomic32_fetch_and(gbAtomic32 volatile *a, i1 operand) {
 	i1 original;
 	i1 tmp;
 	__asm__ volatile(
@@ -3333,7 +3333,7 @@ gb_inline i1 gb_atomic32_fetch_and(gbAtomic32 volatile *a, i1 operand) {
 	return original;
 }
 
-gb_inline i1 gb_atomic32_fetch_or(gbAtomic32 volatile *a, i1 operand) {
+inline i1 gb_atomic32_fetch_or(gbAtomic32 volatile *a, i1 operand) {
 	i1 original;
 	i1 temp;
 	__asm__ volatile(
@@ -3349,7 +3349,7 @@ gb_inline i1 gb_atomic32_fetch_or(gbAtomic32 volatile *a, i1 operand) {
 }
 
 
-gb_inline i64 gb_atomic64_load(gbAtomic64 const volatile *a) {
+inline i64 gb_atomic64_load(gbAtomic64 const volatile *a) {
 #if defined(GB_ARCH_64_BIT)
 	return a->value;
 #else
@@ -3365,7 +3365,7 @@ gb_inline i64 gb_atomic64_load(gbAtomic64 const volatile *a) {
 #endif
 }
 
-gb_inline void gb_atomic64_store(gbAtomic64 volatile *a, i64 value) {
+inline void gb_atomic64_store(gbAtomic64 volatile *a, i64 value) {
 #if defined(GB_ARCH_64_BIT)
 	a->value = value;
 #else
@@ -3379,7 +3379,7 @@ gb_inline void gb_atomic64_store(gbAtomic64 volatile *a, i64 value) {
 #endif
 }
 
-gb_inline i64 gb_atomic64_compare_exchange(gbAtomic64 volatile *a, i64 expected, i64 desired) {
+inline i64 gb_atomic64_compare_exchange(gbAtomic64 volatile *a, i64 expected, i64 desired) {
 #if defined(GB_ARCH_64_BIT)
 	i64 original;
 	__asm__ volatile(
@@ -3399,7 +3399,7 @@ gb_inline i64 gb_atomic64_compare_exchange(gbAtomic64 volatile *a, i64 expected,
 #endif
 }
 
-gb_inline i64 gb_atomic64_exchanged(gbAtomic64 volatile *a, i64 desired) {
+inline i64 gb_atomic64_exchanged(gbAtomic64 volatile *a, i64 desired) {
 #if defined(GB_ARCH_64_BIT)
 	i64 original;
 	__asm__ volatile(
@@ -3419,7 +3419,7 @@ gb_inline i64 gb_atomic64_exchanged(gbAtomic64 volatile *a, i64 desired) {
 #endif
 }
 
-gb_inline i64 gb_atomic64_fetch_add(gbAtomic64 volatile *a, i64 operand) {
+inline i64 gb_atomic64_fetch_add(gbAtomic64 volatile *a, i64 operand) {
 #if defined(GB_ARCH_64_BIT)
 	i64 original;
 	__asm__ volatile(
@@ -3437,7 +3437,7 @@ gb_inline i64 gb_atomic64_fetch_add(gbAtomic64 volatile *a, i64 operand) {
 #endif
 }
 
-gb_inline i64 gb_atomic64_fetch_and(gbAtomic64 volatile *a, i64 operand) {
+inline i64 gb_atomic64_fetch_and(gbAtomic64 volatile *a, i64 operand) {
 #if defined(GB_ARCH_64_BIT)
 	i64 original;
 	i64 tmp;
@@ -3460,7 +3460,7 @@ gb_inline i64 gb_atomic64_fetch_and(gbAtomic64 volatile *a, i64 operand) {
 #endif
 }
 
-gb_inline i64 gb_atomic64_fetch_or(gbAtomic64 volatile *a, i64 operand) {
+inline i64 gb_atomic64_fetch_or(gbAtomic64 volatile *a, i64 operand) {
 #if defined(GB_ARCH_64_BIT)
 	i64 original;
 	i64 temp;
@@ -3487,7 +3487,7 @@ gb_inline i64 gb_atomic64_fetch_or(gbAtomic64 volatile *a, i64 operand) {
 #error TODO(bill): Implement Atomics for this CPU
 #endif
 
-gb_inline b32 gb_atomic32_spin_lock(gbAtomic32 volatile *a, isize time_out) {
+inline b32 gb_atomic32_spin_lock(gbAtomic32 volatile *a, isize time_out) {
 	i1 old_value = gb_atomic32_compare_exchange(a, 1, 0);
 	i1 counter = 0;
 	while (old_value != 0 && (time_out < 0 || counter++ < time_out)) {
@@ -3497,12 +3497,12 @@ gb_inline b32 gb_atomic32_spin_lock(gbAtomic32 volatile *a, isize time_out) {
 	}
 	return old_value == 0;
 }
-gb_inline void gb_atomic32_spin_unlock(gbAtomic32 volatile *a) {
+inline void gb_atomic32_spin_unlock(gbAtomic32 volatile *a) {
 	gb_atomic32_store(a, 0);
 	gb_mfence();
 }
 
-gb_inline b32 gb_atomic64_spin_lock(gbAtomic64 volatile *a, isize time_out) {
+inline b32 gb_atomic64_spin_lock(gbAtomic64 volatile *a, isize time_out) {
 	i64 old_value = gb_atomic64_compare_exchange(a, 1, 0);
 	i64 counter = 0;
 	while (old_value != 0 && (time_out < 0 || counter++ < time_out)) {
@@ -3513,12 +3513,12 @@ gb_inline b32 gb_atomic64_spin_lock(gbAtomic64 volatile *a, isize time_out) {
 	return old_value == 0;
 }
 
-gb_inline void gb_atomic64_spin_unlock(gbAtomic64 volatile *a) {
+inline void gb_atomic64_spin_unlock(gbAtomic64 volatile *a) {
 	gb_atomic64_store(a, 0);
 	gb_mfence();
 }
 
-gb_inline b32 gb_atomic32_try_acquire_lock(gbAtomic32 volatile *a) {
+inline b32 gb_atomic32_try_acquire_lock(gbAtomic32 volatile *a) {
 	i1 old_value;
 	gb_yield_thread();
 	old_value = gb_atomic32_compare_exchange(a, 1, 0);
@@ -3526,7 +3526,7 @@ gb_inline b32 gb_atomic32_try_acquire_lock(gbAtomic32 volatile *a) {
 	return old_value == 0;
 }
 
-gb_inline b32 gb_atomic64_try_acquire_lock(gbAtomic64 volatile *a) {
+inline b32 gb_atomic64_try_acquire_lock(gbAtomic64 volatile *a) {
 	i64 old_value;
 	gb_yield_thread();
 	old_value = gb_atomic64_compare_exchange(a, 1, 0);
@@ -3538,73 +3538,73 @@ gb_inline b32 gb_atomic64_try_acquire_lock(gbAtomic64 volatile *a) {
 
 #if defined(GB_ARCH_32_BIT)
 
-gb_inline void *gb_atomic_ptr_load(gbAtomicPtr const volatile *a) {
+inline void *gb_atomic_ptr_load(gbAtomicPtr const volatile *a) {
 	return cast(void *)cast(intptr)gb_atomic32_load(cast(gbAtomic32 const volatile *)a);
 }
-gb_inline void gb_atomic_ptr_store(gbAtomicPtr volatile *a, void *value) {
+inline void gb_atomic_ptr_store(gbAtomicPtr volatile *a, void *value) {
 	gb_atomic32_store(cast(gbAtomic32 volatile *)a, cast(i1)cast(intptr)value);
 }
-gb_inline void *gb_atomic_ptr_compare_exchange(gbAtomicPtr volatile *a, void *expected, void *desired) {
+inline void *gb_atomic_ptr_compare_exchange(gbAtomicPtr volatile *a, void *expected, void *desired) {
 	return cast(void *)cast(intptr)gb_atomic32_compare_exchange(cast(gbAtomic32 volatile *)a, cast(i1)cast(intptr)expected, cast(i1)cast(intptr)desired);
 }
-gb_inline void *gb_atomic_ptr_exchanged(gbAtomicPtr volatile *a, void *desired) {
+inline void *gb_atomic_ptr_exchanged(gbAtomicPtr volatile *a, void *desired) {
 	return cast(void *)cast(intptr)gb_atomic32_exchanged(cast(gbAtomic32 volatile *)a, cast(i1)cast(intptr)desired);
 }
-gb_inline void *gb_atomic_ptr_fetch_add(gbAtomicPtr volatile *a, void *operand) {
+inline void *gb_atomic_ptr_fetch_add(gbAtomicPtr volatile *a, void *operand) {
 	return cast(void *)cast(intptr)gb_atomic32_fetch_add(cast(gbAtomic32 volatile *)a, cast(i1)cast(intptr)operand);
 }
-gb_inline void *gb_atomic_ptr_fetch_and(gbAtomicPtr volatile *a, void *operand) {
+inline void *gb_atomic_ptr_fetch_and(gbAtomicPtr volatile *a, void *operand) {
 	return cast(void *)cast(intptr)gb_atomic32_fetch_and(cast(gbAtomic32 volatile *)a, cast(i1)cast(intptr)operand);
 }
-gb_inline void *gb_atomic_ptr_fetch_or(gbAtomicPtr volatile *a, void *operand) {
+inline void *gb_atomic_ptr_fetch_or(gbAtomicPtr volatile *a, void *operand) {
 	return cast(void *)cast(intptr)gb_atomic32_fetch_or(cast(gbAtomic32 volatile *)a, cast(i1)cast(intptr)operand);
 }
-gb_inline b32 gb_atomic_ptr_spin_lock(gbAtomicPtr volatile *a, isize time_out) {
+inline b32 gb_atomic_ptr_spin_lock(gbAtomicPtr volatile *a, isize time_out) {
 	return gb_atomic32_spin_lock(cast(gbAtomic32 volatile *)a, time_out);
 }
-gb_inline void gb_atomic_ptr_spin_unlock(gbAtomicPtr volatile *a) {
+inline void gb_atomic_ptr_spin_unlock(gbAtomicPtr volatile *a) {
 	gb_atomic32_spin_unlock(cast(gbAtomic32 volatile *)a);
 }
-gb_inline b32 gb_atomic_ptr_try_acquire_lock(gbAtomicPtr volatile *a) {
+inline b32 gb_atomic_ptr_try_acquire_lock(gbAtomicPtr volatile *a) {
 	return gb_atomic32_try_acquire_lock(cast(gbAtomic32 volatile *)a);
 }
 
 #elif defined(GB_ARCH_64_BIT)
 
-gb_inline void *gb_atomic_ptr_load(gbAtomicPtr const volatile *a) {
+inline void *gb_atomic_ptr_load(gbAtomicPtr const volatile *a) {
 	return cast(void *)cast(intptr)gb_atomic64_load(cast(gbAtomic64 const volatile *)a);
 }
-gb_inline void gb_atomic_ptr_store(gbAtomicPtr volatile *a, void *value) {
+inline void gb_atomic_ptr_store(gbAtomicPtr volatile *a, void *value) {
 	gb_atomic64_store(cast(gbAtomic64 volatile *)a, cast(i64)cast(intptr)value);
 }
-gb_inline void *gb_atomic_ptr_compare_exchange(gbAtomicPtr volatile *a, void *expected, void *desired) {
+inline void *gb_atomic_ptr_compare_exchange(gbAtomicPtr volatile *a, void *expected, void *desired) {
 	return cast(void *)cast(intptr)gb_atomic64_compare_exchange(cast(gbAtomic64 volatile *)a, cast(i64)cast(intptr)expected, cast(i64)cast(intptr)desired);
 }
-gb_inline void *gb_atomic_ptr_exchanged(gbAtomicPtr volatile *a, void *desired) {
+inline void *gb_atomic_ptr_exchanged(gbAtomicPtr volatile *a, void *desired) {
 	return cast(void *)cast(intptr)gb_atomic64_exchanged(cast(gbAtomic64 volatile *)a, cast(i64)cast(intptr)desired);
 }
-gb_inline void *gb_atomic_ptr_fetch_add(gbAtomicPtr volatile *a, void *operand) {
+inline void *gb_atomic_ptr_fetch_add(gbAtomicPtr volatile *a, void *operand) {
 	return cast(void *)cast(intptr)gb_atomic64_fetch_add(cast(gbAtomic64 volatile *)a, cast(i64)cast(intptr)operand);
 }
-gb_inline void *gb_atomic_ptr_fetch_and(gbAtomicPtr volatile *a, void *operand) {
+inline void *gb_atomic_ptr_fetch_and(gbAtomicPtr volatile *a, void *operand) {
 	return cast(void *)cast(intptr)gb_atomic64_fetch_and(cast(gbAtomic64 volatile *)a, cast(i64)cast(intptr)operand);
 }
-gb_inline void *gb_atomic_ptr_fetch_or(gbAtomicPtr volatile *a, void *operand) {
+inline void *gb_atomic_ptr_fetch_or(gbAtomicPtr volatile *a, void *operand) {
 	return cast(void *)cast(intptr)gb_atomic64_fetch_or(cast(gbAtomic64 volatile *)a, cast(i64)cast(intptr)operand);
 }
-gb_inline b32 gb_atomic_ptr_spin_lock(gbAtomicPtr volatile *a, isize time_out) {
+inline b32 gb_atomic_ptr_spin_lock(gbAtomicPtr volatile *a, isize time_out) {
 	return gb_atomic64_spin_lock(cast(gbAtomic64 volatile *)a, time_out);
 }
-gb_inline void gb_atomic_ptr_spin_unlock(gbAtomicPtr volatile *a) {
+inline void gb_atomic_ptr_spin_unlock(gbAtomicPtr volatile *a) {
 	gb_atomic64_spin_unlock(cast(gbAtomic64 volatile *)a);
 }
-gb_inline b32 gb_atomic_ptr_try_acquire_lock(gbAtomicPtr volatile *a) {
+inline b32 gb_atomic_ptr_try_acquire_lock(gbAtomicPtr volatile *a) {
 	return gb_atomic64_try_acquire_lock(cast(gbAtomic64 volatile *)a);
 }
 #endif
 
 
-gb_inline void gb_yield_thread(void) {
+inline void gb_yield_thread(void) {
 #if defined(GB_SYSTEM_WINDOWS)
 	_mm_pause();
 #elif defined(GB_SYSTEM_OSX)
@@ -3616,7 +3616,7 @@ gb_inline void gb_yield_thread(void) {
 #endif
 }
 
-gb_inline void gb_mfence(void) {
+inline void gb_mfence(void) {
 #if defined(GB_SYSTEM_WINDOWS)
 	_ReadWriteBarrier();
 #elif defined(GB_SYSTEM_OSX)
@@ -3628,7 +3628,7 @@ gb_inline void gb_mfence(void) {
 #endif
 }
 
-gb_inline void gb_sfence(void) {
+inline void gb_sfence(void) {
 #if defined(GB_SYSTEM_WINDOWS)
 	_WriteBarrier();
 #elif defined(GB_SYSTEM_OSX)
@@ -3640,7 +3640,7 @@ gb_inline void gb_sfence(void) {
 #endif
 }
 
-gb_inline void gb_lfence(void) {
+inline void gb_lfence(void) {
 #if defined(GB_SYSTEM_WINDOWS)
 	_ReadBarrier();
 #elif defined(GB_SYSTEM_OSX)
@@ -3653,31 +3653,31 @@ gb_inline void gb_lfence(void) {
 }
 
 
-gb_inline void gb_semaphore_release(gbSemaphore *s) { gb_semaphore_post(s, 1); }
+inline void gb_semaphore_release(gbSemaphore *s) { gb_semaphore_post(s, 1); }
 
 #if defined(GB_SYSTEM_WINDOWS)
-gb_inline void gb_semaphore_init   (gbSemaphore *s)            { s->win32_handle = CreateSemaphoreA(NULL, 0, I32_MAX, NULL); }
-gb_inline void gb_semaphore_destroy(gbSemaphore *s)            { CloseHandle(s->win32_handle); }
-gb_inline void gb_semaphore_post   (gbSemaphore *s, i1 count) { ReleaseSemaphore(s->win32_handle, count, NULL); }
-gb_inline void gb_semaphore_wait   (gbSemaphore *s)            { WaitForSingleObject(s->win32_handle, INFINITE); }
+inline void gb_semaphore_init   (gbSemaphore *s)            { s->win32_handle = CreateSemaphoreA(NULL, 0, I32_MAX, NULL); }
+inline void gb_semaphore_destroy(gbSemaphore *s)            { CloseHandle(s->win32_handle); }
+inline void gb_semaphore_post   (gbSemaphore *s, i1 count) { ReleaseSemaphore(s->win32_handle, count, NULL); }
+inline void gb_semaphore_wait   (gbSemaphore *s)            { WaitForSingleObject(s->win32_handle, INFINITE); }
 
 #elif defined(GB_SYSTEM_OSX)
-gb_inline void gb_semaphore_init   (gbSemaphore *s)            { semaphore_create(mach_task_self(), &s->osx_handle, SYNC_POLICY_FIFO, 0); }
-gb_inline void gb_semaphore_destroy(gbSemaphore *s)            { semaphore_destroy(mach_task_self(), s->osx_handle); }
-gb_inline void gb_semaphore_post   (gbSemaphore *s, i1 count) { while (count --> 0) semaphore_signal(s->osx_handle); }
-gb_inline void gb_semaphore_wait   (gbSemaphore *s)            { semaphore_wait(s->osx_handle); }
+inline void gb_semaphore_init   (gbSemaphore *s)            { semaphore_create(mach_task_self(), &s->osx_handle, SYNC_POLICY_FIFO, 0); }
+inline void gb_semaphore_destroy(gbSemaphore *s)            { semaphore_destroy(mach_task_self(), s->osx_handle); }
+inline void gb_semaphore_post   (gbSemaphore *s, i1 count) { while (count --> 0) semaphore_signal(s->osx_handle); }
+inline void gb_semaphore_wait   (gbSemaphore *s)            { semaphore_wait(s->osx_handle); }
 
 #elif defined(GB_SYSTEM_UNIX)
-gb_inline void gb_semaphore_init   (gbSemaphore *s)            { sem_init(&s->unix_handle, 0, 0); }
-gb_inline void gb_semaphore_destroy(gbSemaphore *s)            { sem_destroy(&s->unix_handle); }
-gb_inline void gb_semaphore_post   (gbSemaphore *s, i1 count) { while (count --> 0) sem_post(&s->unix_handle); }
-gb_inline void gb_semaphore_wait   (gbSemaphore *s)            { int i; do { i = sem_wait(&s->unix_handle); } while (i == -1 && errno == EINTR); }
+inline void gb_semaphore_init   (gbSemaphore *s)            { sem_init(&s->unix_handle, 0, 0); }
+inline void gb_semaphore_destroy(gbSemaphore *s)            { sem_destroy(&s->unix_handle); }
+inline void gb_semaphore_post   (gbSemaphore *s, i1 count) { while (count --> 0) sem_post(&s->unix_handle); }
+inline void gb_semaphore_wait   (gbSemaphore *s)            { int i; do { i = sem_wait(&s->unix_handle); } while (i == -1 && errno == EINTR); }
 
 #else
 #error
 #endif
 
-gb_inline void gb_mutex_init(gbMutex *m) {
+inline void gb_mutex_init(gbMutex *m) {
 #if defined(GB_SYSTEM_WINDOWS)
 	InitializeCriticalSection(&m->win32_critical_section);
 #else
@@ -3687,7 +3687,7 @@ gb_inline void gb_mutex_init(gbMutex *m) {
 #endif
 }
 
-gb_inline void gb_mutex_destroy(gbMutex *m) {
+inline void gb_mutex_destroy(gbMutex *m) {
 #if defined(GB_SYSTEM_WINDOWS)
 	DeleteCriticalSection(&m->win32_critical_section);
 #else
@@ -3695,7 +3695,7 @@ gb_inline void gb_mutex_destroy(gbMutex *m) {
 #endif
 }
 
-gb_inline void gb_mutex_lock(gbMutex *m) {
+inline void gb_mutex_lock(gbMutex *m) {
 #if defined(GB_SYSTEM_WINDOWS)
 	EnterCriticalSection(&m->win32_critical_section);
 #else
@@ -3703,7 +3703,7 @@ gb_inline void gb_mutex_lock(gbMutex *m) {
 #endif
 }
 
-gb_inline b32 gb_mutex_try_lock(gbMutex *m) {
+inline b32 gb_mutex_try_lock(gbMutex *m) {
 #if defined(GB_SYSTEM_WINDOWS)
 	return TryEnterCriticalSection(&m->win32_critical_section) != 0;
 #else
@@ -3711,7 +3711,7 @@ gb_inline b32 gb_mutex_try_lock(gbMutex *m) {
 #endif
 }
 
-gb_inline void gb_mutex_unlock(gbMutex *m) {
+inline void gb_mutex_unlock(gbMutex *m) {
 #if defined(GB_SYSTEM_WINDOWS)
 	LeaveCriticalSection(&m->win32_critical_section);
 #else
@@ -3741,20 +3741,20 @@ void gb_thread_destroy(gbThread *t) {
 }
 
 
-gb_inline void gb__thread_run(gbThread *t) {
+inline void gb__thread_run(gbThread *t) {
 	gb_semaphore_release(&t->semaphore);
 	t->return_value = t->proc(t);
 }
 
 #if defined(GB_SYSTEM_WINDOWS)
-gb_inline DWORD __stdcall gb__thread_proc(void *arg) {
+inline DWORD __stdcall gb__thread_proc(void *arg) {
  gbThread *t = cast(gbThread *)arg;
  gb__thread_run(t);
  t->is_running = false;
  return 0;
 }
 #else
-gb_inline void *          gb__thread_proc(void *arg) {
+inline void *          gb__thread_proc(void *arg) {
  gbThread *t = cast(gbThread *)arg;
  gb__thread_run(t);
  t->is_running = false;
@@ -3762,9 +3762,9 @@ gb_inline void *          gb__thread_proc(void *arg) {
 }
 #endif
 
-gb_inline void gb_thread_start(gbThread *t, gbThreadProc *proc, void *user_data) { gb_thread_start_with_stack(t, proc, user_data, 0); }
+inline void gb_thread_start(gbThread *t, gbThreadProc *proc, void *user_data) { gb_thread_start_with_stack(t, proc, user_data, 0); }
 
-gb_inline void gb_thread_start_with_stack(gbThread *t, gbThreadProc *proc, void *user_data, isize stack_size) {
+inline void gb_thread_start_with_stack(gbThread *t, gbThreadProc *proc, void *user_data, isize stack_size) {
 	GB_ASSERT(!t->is_running);
 	GB_ASSERT(proc != NULL);
 	t->proc = proc;
@@ -3791,7 +3791,7 @@ gb_inline void gb_thread_start_with_stack(gbThread *t, gbThreadProc *proc, void 
 	gb_semaphore_wait(&t->semaphore);
 }
 
-gb_inline void gb_thread_join(gbThread *t) {
+inline void gb_thread_join(gbThread *t) {
 	if (!t->is_running) return;
  
 #if defined(GB_SYSTEM_WINDOWS)
@@ -3805,9 +3805,9 @@ gb_inline void gb_thread_join(gbThread *t) {
 	t->is_running = false;
 }
 
-gb_inline b32 gb_thread_is_running(gbThread const *t) { return t->is_running != 0; }
+inline b32 gb_thread_is_running(gbThread const *t) { return t->is_running != 0; }
 
-gb_inline u32 gb_thread_current_id(void) {
+inline u32 gb_thread_current_id(void) {
 	u32 thread_id;
 #if defined(GB_SYSTEM_WINDOWS)
 #if defined(GB_ARCH_32_BIT) && defined(GB_CPU_X86)
@@ -4288,7 +4288,7 @@ GB_RADIX_SORT_PROC_GEN(u16);
 GB_RADIX_SORT_PROC_GEN(u32);
 GB_RADIX_SORT_PROC_GEN(u64);
 
-gb_inline isize gb_binary_search(void const *base, isize count, isize size, void const *key, gbCompareProc compare_proc) {
+inline isize gb_binary_search(void const *base, isize count, isize size, void const *key, gbCompareProc compare_proc) {
 	isize start = 0;
 	isize end = count;
  
@@ -4337,7 +4337,7 @@ void gb_reverse(void *base, isize count, isize size) {
 
 gb_global gbAtomic32 gb__random_shared_counter = {0};
 
-gb_function u32 gb__get_noise_from_time(void) {
+function u32 gb__get_noise_from_time(void) {
 	u32 accum = 0;
 	f64 start, remaining, end, curr = 0;
 	u64 interval = 100000ll;
@@ -4356,7 +4356,7 @@ gb_function u32 gb__get_noise_from_time(void) {
 // NOTE(bill): Partly from http://preshing.com/20121224/how-to-generate-a-sequence-of-unique-random-integers/
 // But the generation is even more random-er-est
 
-gb_function gb_inline u32 gb__permute_qpr(u32 x) {
+function inline u32 gb__permute_qpr(u32 x) {
 	gb_local_persist u32 const prime = 4294967291; // 2^32 - 5
 	if (x >= prime) {
 		return x;
@@ -4370,7 +4370,7 @@ gb_function gb_inline u32 gb__permute_qpr(u32 x) {
 	}
 }
 
-gb_function gb_inline u32 gb__permute_with_offset(u32 x, u32 offset) {
+function inline u32 gb__permute_with_offset(u32 x, u32 offset) {
 	return (gb__permute_qpr(x) + offset) ^ 0x5bf03635;
 }
 
@@ -4734,8 +4734,8 @@ u64 gb_fnv64a(void const *data, isize len) {
 	return h;
 }
 
-gb_inline u32 gb_murmur32(void const *data, isize len) { return gb_murmur32_seed(data, len, 0x9747b28c); }
-gb_inline u64 gb_murmur64(void const *data, isize len) { return gb_murmur64_seed(data, len, 0x9747b28c); }
+inline u32 gb_murmur32(void const *data, isize len) { return gb_murmur32_seed(data, len, 0x9747b28c); }
+inline u64 gb_murmur64(void const *data, isize len) { return gb_murmur64_seed(data, len, 0x9747b28c); }
 
 u32 gb_murmur32_seed(void const *data, isize len, u32 seed) {
 	u32 const c1 = 0xcc9e2d51;
@@ -4900,7 +4900,7 @@ gbVirtualMemory gb_virtual_memory(void *data, isize size) {
 
 
 #if defined(GB_SYSTEM_WINDOWS)
-gb_inline gbVirtualMemory gb_vm_alloc(void *addr, isize size) {
+inline gbVirtualMemory gb_vm_alloc(void *addr, isize size) {
 	gbVirtualMemory vm;
 	GB_ASSERT(size > 0);
 	vm.data = VirtualAlloc(addr, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -4908,7 +4908,7 @@ gb_inline gbVirtualMemory gb_vm_alloc(void *addr, isize size) {
 	return vm;
 }
 
-gb_inline b32 gb_vm_free(gbVirtualMemory vm) {
+inline b32 gb_vm_free(gbVirtualMemory vm) {
 	MEMORY_BASIC_INFORMATION info;
 	while (vm.size > 0) {
 		if (VirtualQuery(vm.data, &info, gb_size_of(info)) == 0)
@@ -4926,7 +4926,7 @@ gb_inline b32 gb_vm_free(gbVirtualMemory vm) {
 	return true;
 }
 
-gb_inline gbVirtualMemory gb_vm_trim(gbVirtualMemory vm, isize lead_size, isize size) {
+inline gbVirtualMemory gb_vm_trim(gbVirtualMemory vm, isize lead_size, isize size) {
 	gbVirtualMemory new_vm = {0};
 	void *ptr;
 	GB_ASSERT(vm.size >= lead_size + size);
@@ -4942,7 +4942,7 @@ gb_inline gbVirtualMemory gb_vm_trim(gbVirtualMemory vm, isize lead_size, isize 
 	return new_vm;
 }
 
-gb_inline b32 gb_vm_purge(gbVirtualMemory vm) {
+inline b32 gb_vm_purge(gbVirtualMemory vm) {
 	VirtualAlloc(vm.data, vm.size, MEM_RESET, PAGE_READWRITE);
 	// NOTE(bill): Can this really fail?
 	return true;
@@ -4961,7 +4961,7 @@ isize gb_virtual_memory_page_size(isize *alignment_out) {
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
-gb_inline gbVirtualMemory gb_vm_alloc(void *addr, isize size) {
+inline gbVirtualMemory gb_vm_alloc(void *addr, isize size) {
 	gbVirtualMemory vm;
 	GB_ASSERT(size > 0);
 	vm.data = mmap(addr, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -4969,12 +4969,12 @@ gb_inline gbVirtualMemory gb_vm_alloc(void *addr, isize size) {
 	return vm;
 }
 
-gb_inline b32 gb_vm_free(gbVirtualMemory vm) {
+inline b32 gb_vm_free(gbVirtualMemory vm) {
 	munmap(vm.data, vm.size);
 	return true;
 }
 
-gb_inline gbVirtualMemory gb_vm_trim(gbVirtualMemory vm, isize lead_size, isize size) {
+inline gbVirtualMemory gb_vm_trim(gbVirtualMemory vm, isize lead_size, isize size) {
 	void *ptr;
 	isize trail_size;
 	GB_ASSERT(vm.size >= lead_size + size);
@@ -4990,7 +4990,7 @@ gb_inline gbVirtualMemory gb_vm_trim(gbVirtualMemory vm, isize lead_size, isize 
  
 }
 
-gb_inline b32 gb_vm_purge(gbVirtualMemory vm) {
+inline b32 gb_vm_purge(gbVirtualMemory vm) {
 	int err = madvise(vm.data, vm.size, MADV_DONTNEED);
 	return err != 0;
 }
@@ -5010,7 +5010,7 @@ isize gb_virtual_memory_page_size(isize *alignment_out) {
 // Arena Allocator
 //
 
-gb_inline void gb_arena_init_from_memory(gbArena *arena, void *start, isize size) {
+inline void gb_arena_init_from_memory(gbArena *arena, void *start, isize size) {
 	arena->backing.proc    = NULL;
 	arena->backing.data    = NULL;
 	arena->physical_start  = start;
@@ -5019,7 +5019,7 @@ gb_inline void gb_arena_init_from_memory(gbArena *arena, void *start, isize size
 	arena->temp_count      = 0;
 }
 
-gb_inline void gb_arena_init_from_allocator(gbArena *arena, gbAllocator backing, isize size) {
+inline void gb_arena_init_from_allocator(gbArena *arena, gbAllocator backing, isize size) {
 	arena->backing         = backing;
 	arena->physical_start  = gb_alloc(backing, size); // NOTE(bill): Uses default alignment
 	arena->total_size      = size;
@@ -5027,10 +5027,10 @@ gb_inline void gb_arena_init_from_allocator(gbArena *arena, gbAllocator backing,
 	arena->temp_count      = 0;
 }
 
-gb_inline void gb_arena_init_sub(gbArena *arena, gbArena *parent_arena, isize size) { gb_arena_init_from_allocator(arena, gb_arena_allocator(parent_arena), size); }
+inline void gb_arena_init_sub(gbArena *arena, gbArena *parent_arena, isize size) { gb_arena_init_from_allocator(arena, gb_arena_allocator(parent_arena), size); }
 
 
-gb_inline void gb_arena_free(gbArena *arena) {
+inline void gb_arena_free(gbArena *arena) {
 	if (arena->backing.proc) {
 		gb_free(arena->backing, arena->physical_start);
 		arena->physical_start = NULL;
@@ -5038,7 +5038,7 @@ gb_inline void gb_arena_free(gbArena *arena) {
 }
 
 
-gb_inline isize gb_arena_alignment_of(gbArena *arena, isize alignment) {
+inline isize gb_arena_alignment_of(gbArena *arena, isize alignment) {
 	isize alignment_offset, result_pointer, mask;
 	GB_ASSERT(gb_is_power_of_two(alignment));
  
@@ -5051,19 +5051,19 @@ gb_inline isize gb_arena_alignment_of(gbArena *arena, isize alignment) {
 	return alignment_offset;
 }
 
-gb_inline isize gb_arena_size_remaining(gbArena *arena, isize alignment) {
+inline isize gb_arena_size_remaining(gbArena *arena, isize alignment) {
 	isize result = arena->total_size - (arena->total_allocated + gb_arena_alignment_of(arena, alignment));
 	return result;
 }
 
-gb_inline void gb_arena_check(gbArena *arena) { GB_ASSERT(arena->temp_count == 0); }
+inline void gb_arena_check(gbArena *arena) { GB_ASSERT(arena->temp_count == 0); }
 
 
 
 
 
 
-gb_inline gbAllocator gb_arena_allocator(gbArena *arena) {
+inline gbAllocator gb_arena_allocator(gbArena *arena) {
 	gbAllocator allocator;
 	allocator.proc = gb_arena_allocator_proc;
 	allocator.data = arena;
@@ -5112,7 +5112,7 @@ GB_ALLOCATOR_PROC(gb_arena_allocator_proc) {
 }
 
 
-gb_inline gbTempArenaMemory gb_temp_arena_memory_begin(gbArena *arena) {
+inline gbTempArenaMemory gb_temp_arena_memory_begin(gbArena *arena) {
 	gbTempArenaMemory tmp;
 	tmp.arena = arena;
 	tmp.original_count = arena->total_allocated;
@@ -5120,7 +5120,7 @@ gb_inline gbTempArenaMemory gb_temp_arena_memory_begin(gbArena *arena) {
 	return tmp;
 }
 
-gb_inline void gb_temp_arena_memory_end(gbTempArenaMemory tmp) {
+inline void gb_temp_arena_memory_end(gbTempArenaMemory tmp) {
 	GB_ASSERT_MSG(tmp.arena->total_allocated >= tmp.original_count,
 	              "%td >= %td", tmp.arena->total_allocated, tmp.original_count);
 	GB_ASSERT(tmp.arena->temp_count > 0);
@@ -5138,7 +5138,7 @@ gb_inline void gb_temp_arena_memory_end(gbTempArenaMemory tmp) {
 //
 
 
-gb_inline void gb_pool_init(gbPool *pool, gbAllocator backing, isize num_blocks, isize block_size) {
+inline void gb_pool_init(gbPool *pool, gbAllocator backing, isize num_blocks, isize block_size) {
 	gb_pool_init_align(pool, backing, num_blocks, block_size, GB_DEFAULT_MEMORY_ALIGNMENT);
 }
 
@@ -5173,14 +5173,14 @@ void gb_pool_init_align(gbPool *pool, gbAllocator backing, isize num_blocks, isi
 	pool->free_list      = data;
 }
 
-gb_inline void gb_pool_free(gbPool *pool) {
+inline void gb_pool_free(gbPool *pool) {
 	if (pool->backing.proc) {
 		gb_free(pool->backing, pool->physical_start);
 	}
 }
 
 
-gb_inline gbAllocator gb_pool_allocator(gbPool *pool) {
+inline gbAllocator gb_pool_allocator(gbPool *pool) {
 	gbAllocator allocator;
 	allocator.proc = gb_pool_allocator_proc;
 	allocator.data = pool;
@@ -5234,7 +5234,7 @@ GB_ALLOCATOR_PROC(gb_pool_allocator_proc) {
 
 
 
-gb_inline gbAllocationHeader *gb_allocation_header(void *data) {
+inline gbAllocationHeader *gb_allocation_header(void *data) {
 	isize *p = cast(isize *)data;
 	while (p[-1] == cast(isize)(-1)) {
 		p--;
@@ -5242,7 +5242,7 @@ gb_inline gbAllocationHeader *gb_allocation_header(void *data) {
 	return cast(gbAllocationHeader *)p - 1;
 }
 
-gb_inline void gb_allocation_header_fill(gbAllocationHeader *header, void *data, isize size) {
+inline void gb_allocation_header_fill(gbAllocationHeader *header, void *data, isize size) {
 	isize *ptr;
 	header->size = size;
 	ptr = cast(isize *)(header + 1);
@@ -5257,7 +5257,7 @@ gb_inline void gb_allocation_header_fill(gbAllocationHeader *header, void *data,
 // Free List Allocator
 //
 
-gb_inline void gb_free_list_init(gbFreeList *fl, void *start, isize size) {
+inline void gb_free_list_init(gbFreeList *fl, void *start, isize size) {
 	GB_ASSERT(size > gb_size_of(gbFreeListBlock));
  
 	fl->physical_start   = start;
@@ -5268,14 +5268,14 @@ gb_inline void gb_free_list_init(gbFreeList *fl, void *start, isize size) {
 }
 
 
-gb_inline void gb_free_list_init_from_allocator(gbFreeList *fl, gbAllocator backing, isize size) {
+inline void gb_free_list_init_from_allocator(gbFreeList *fl, gbAllocator backing, isize size) {
 	void *start = gb_alloc(backing, size);
 	gb_free_list_init(fl, start, size);
 }
 
 
 
-gb_inline gbAllocator gb_free_list_allocator(gbFreeList *fl) {
+inline gbAllocator gb_free_list_allocator(gbFreeList *fl) {
 	gbAllocator a;
 	a.proc = gb_free_list_allocator_proc;
 	a.data = fl;
@@ -5575,15 +5575,15 @@ isize gb_snprintf(char *str, isize n, char const *fmt, ...) {
 
 
 
-gb_inline isize gb_printf_va(char const *fmt, va_list va) {
+inline isize gb_printf_va(char const *fmt, va_list va) {
 	return gb_fprintf_va(gb_file_get_standard(gbFileStandard_Output), fmt, va);
 }
 
-gb_inline isize gb_printf_err_va(char const *fmt, va_list va) {
+inline isize gb_printf_err_va(char const *fmt, va_list va) {
 	return gb_fprintf_va(gb_file_get_standard(gbFileStandard_Error), fmt, va);
 }
 
-gb_inline isize gb_fprintf_va(struct gbFile *f, char const *fmt, va_list va) {
+inline isize gb_fprintf_va(struct gbFile *f, char const *fmt, va_list va) {
 	gb_local_persist char buf[4096];
 	isize len = gb_snprintf_va(buf, gb_size_of(buf), fmt, va);
 	gb_file_write(f, buf, len-1); // NOTE(bill): prevent extra whitespace
@@ -5591,7 +5591,7 @@ gb_inline isize gb_fprintf_va(struct gbFile *f, char const *fmt, va_list va) {
 }
 
 
-gb_inline char *gb_bprintf_va(char const *fmt, va_list va) {
+inline char *gb_bprintf_va(char const *fmt, va_list va) {
 	gb_local_persist char buffer[4096];
 	gb_snprintf_va(buffer, gb_size_of(buffer), fmt, va);
 	return buffer;
@@ -5631,7 +5631,7 @@ typedef struct {
 } gbprivFmtInfo;
 
 
-gb_function isize gb__print_string(char *text, isize max_len, gbprivFmtInfo *info, char const *str) {
+function isize gb__print_string(char *text, isize max_len, gbprivFmtInfo *info, char const *str) {
 	// TODO(bill): Get precision and width to work correctly. How does it actually work?!
 	// TODO(bill): This looks very buggy indeed.
 	isize res = 0, len;
@@ -5681,27 +5681,27 @@ gb_function isize gb__print_string(char *text, isize max_len, gbprivFmtInfo *inf
 	return res;
 }
 
-gb_function isize gb__print_char(char *text, isize max_len, gbprivFmtInfo *info, char arg) {
+function isize gb__print_char(char *text, isize max_len, gbprivFmtInfo *info, char arg) {
 	char str[2] = "";
 	str[0] = arg;
 	return gb__print_string(text, max_len, info, str);
 }
 
 
-gb_function isize gb__print_i64(char *text, isize max_len, gbprivFmtInfo *info, i64 value) {
+function isize gb__print_i64(char *text, isize max_len, gbprivFmtInfo *info, i64 value) {
 	char num[130];
 	gb_i64_to_str(value, num, info ? info->base : 10);
 	return gb__print_string(text, max_len, info, num);
 }
 
-gb_function isize gb__print_u64(char *text, isize max_len, gbprivFmtInfo *info, u64 value) {
+function isize gb__print_u64(char *text, isize max_len, gbprivFmtInfo *info, u64 value) {
 	char num[130];
 	gb_u64_to_str(value, num, info ? info->base : 10);
 	return gb__print_string(text, max_len, info, num);
 }
 
 
-gb_function isize gb__print_f64(char *text, isize max_len, gbprivFmtInfo *info, f64 arg) {
+function isize gb__print_f64(char *text, isize max_len, gbprivFmtInfo *info, f64 arg) {
 	// TODO(bill): Handle exponent notation
 	isize width, len, remaining = max_len;
 	char *text_begin = text;
@@ -6274,7 +6274,7 @@ if (h->entries) gb_array_free(h->entries); \
 if (h->hashes)  gb_array_free(h->hashes); \
 } \
 \
-gb_function isize GB_JOIN2(FUNC,_add_entry)(NAME *h, u64 key) { \
+function isize GB_JOIN2(FUNC,_add_entry)(NAME *h, u64 key) { \
 isize index; \
 GB_JOIN2(NAME,Entry) e = {0}; \
 e.key = key; \
@@ -6284,7 +6284,7 @@ gb_array_append(h->entries, e); \
 return index; \
 } \
 \
-gb_function gbHashTableFindResult GB_JOIN2(FUNC,_find)(NAME *h, u64 key) { \
+function gbHashTableFindResult GB_JOIN2(FUNC,_find)(NAME *h, u64 key) { \
 gbHashTableFindResult r = {-1, -1, -1}; \
 if (gb_array_count(h->hashes) > 0) { \
 r.hash_index  = key % gb_array_count(h->hashes); \
@@ -6299,7 +6299,7 @@ r.entry_index = h->entries[r.entry_index].next; \
 return r; \
 } \
 \
-gb_function b32 GB_JOIN2(FUNC,_full)(NAME *h) { \
+function b32 GB_JOIN2(FUNC,_full)(NAME *h) { \
 return 0.75f * gb_array_count(h->hashes) < gb_array_count(h->entries); \
 } \
 \

@@ -1,7 +1,8 @@
-#pragma once
 /*
-  NOTE: This is the most basic file, containing things EVERYONE needs.
+  NOTE(kv): This is the most basic file, containing things EVERYONE needs.
 */
+
+#pragma once
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -10,56 +11,147 @@
 #include <stdio.h>  // printf, perror
 #include <cstdint>
 #include <string.h>
-#include <math.h>  // NOTE: This is for msvc
+#include <math.h>
 
-/* Compilers */
+//~Compilers
+//-NOTE(kv) Allow overwriting compiler (for e.g clang-cl)
+#if !defined(COMPILER_MSVC)
+#  define COMPILER_MSVC 0
+#endif
 
-#if __llvm__
-#    undef COMPILER_LLVM
+#if !defined(COMPILER_LLVM)
+#  define COMPILER_LLVM 0
+#endif
+
+#if !defined(COMPILER_GCC)
+#  define COMPILER_GCC 0
+#endif
+//-
+
+#if !(COMPILER_LLVM || COMPILER_MSVC || COMPILER_GCC)
+#  if __llvm__
+#    undef  COMPILER_LLVM
 #    define COMPILER_LLVM 1
-#else
-#    undef COMPILER_MSVC
+#  elif defined(__GNUC__) 
+#    undef  COMPILER_GCC 1
+#    define COMPILER_GCC 1
+#  elif _MSC_VER
+#    undef  COMPILER_MSVC
 #    define COMPILER_MSVC 1
+#  else
+#    error Compiler not recognized!
+#  endif
 #endif
-
-//~  BEGIN: Other single-header libraries
-
-// NOTE: Just compile the implementation, it's small enough!
-#define STB_DEFINE
-#define STB_DS_IMPLEMENTATION
-#define GB_IMPLEMENTATION
-
-#define DLL_EXPORT GB_DLL_EXPORT
-#define DLL_IMPORT GB_DLL_IMPORT
-
-#define EXTERN_C_BEGIN extern "C" {
-#define EXTERN_C_END   }
-
-
-
-// NOTE: These header files are supposed to be in the same directory as this file.
-#if COMPILER_LLVM
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Weverything"
-#elif COMPILER_MSVC
-#endif
-
-#include "stb_ds.h"
-#define GB_STATIC
-#include "gb.h"
-
-#if COMPILER_LLVM
-#pragma clang diagnostic pop
-#elif COMPILER_MSVC
-#endif
-
-#undef STB_DEFINE
-#undef STB_DS_IMPLEMENTATION
-#undef GB_IMPLEMENTATION
-
-//~END: Other single-header libraries
 
 //~ Unorganized
+//~ END Unorganized
+
+//~ IMPORTANT Fundamental types, idioms
+#if defined(__cplusplus)
+#  define EXTERN_C_BEGIN extern "C" {
+#  define EXTERN_C_END   }
+#else
+#  define EXTERN_C_BEGIN
+#  define EXTERN_C_END
+#endif
+
+#if COMPILER_MSVC
+#  define thread_global __declspec(thread)
+#elif COMPILER_LLVM
+#  define thread_global __thread
+#elif COMPILER_GCC
+#  define thread_global __thread
+#endif
+
+#if defined(GB_COMPILER_MSVC)
+#if _MSC_VER < 1300
+typedef unsigned char     u8;
+typedef   signed char     i8;
+typedef unsigned short   u16;
+typedef   signed short   i16;
+typedef unsigned int     u32;
+typedef   signed int     i32;
+#else
+typedef unsigned __int8   u8;
+typedef   signed __int8   i8;
+typedef unsigned __int16 u16;
+typedef   signed __int16 i16;
+typedef unsigned __int32 u32;
+typedef   signed __int32 i32;
+#endif
+typedef unsigned __int64 u64;
+typedef   signed __int64 i64;
+#else
+#include <stdint.h>
+typedef uint8_t   u8;
+typedef  int8_t   i8;
+typedef uint16_t u16;
+typedef  int16_t i16;
+typedef uint32_t u32;
+typedef int32_t  i32;
+typedef uint64_t u64;
+typedef  int64_t i64;
+#endif
+
+typedef i32       i1;
+typedef int8_t    b8;
+typedef int32_t   b32;
+typedef uintptr_t umm; // NOTE(kv): "umm" stands for "memory model"
+typedef i64       imm;
+typedef size_t    usize;
+typedef ptrdiff_t isize;
+
+typedef float r32;
+typedef float f32;
+typedef double f64;
+typedef float v1;
+
+#define function      static
+#define xfunction             //NOTE(kv) exported function
+#define local_persist static
+#define global        static
+#define global_decl   extern //NOTE(kv) Global var that is not intended to exported, but forward-declared (C doesn't let us forward-declare global???)
+#define xglobal              //NOTE(kv) exported variable
+
+#define line_unique_var   PP_Concat(i, __LINE__)
+#define count_unique_var    PP_Concat(i, __COUNT__)
+
+#define for_i1(VAR, MIN, MAX)  for(i32 VAR=MIN; VAR<MAX; VAR++)
+#define for_i32  for_i1
+//#define for_i32_test(VAR, INITIAL, FINAL, TEST)  for(i32 VAR=INITIAL; VAR<FINAL && TEST; VAR++)
+#define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
+#define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
+#define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
+#define for_inc(TYPE, VAR, INITIAL, FINAL)  for(TYPE VAR=INITIAL; VAR<FINAL; VAR++)
+#define for_repeat(TIMES) for_i32(line_unique_var,0,TIMES)
+
+#define and &&
+#define or  ||
+#define not !
+
+#define cast_to_var(type, variable, value)  type variable = (type)value
+
+#define PP_Concat(arg1, arg2)   PP_Concat1(arg1, arg2)
+#define PP_Concat1(arg1, arg2)  PP_Concat2(arg1, arg2)
+#define PP_Concat2(arg1, arg2)  arg1##arg2
+
+//~
+
+//~stb_ds
+#define STB_DEFINE
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
+#undef STB_DEFINE
+#undef STB_DS_IMPLEMENTATION
+//~gb
+#define GB_IMPLEMENTATION
+#define GB_STATIC
+#undef function
+#include "gb.h"
+#define function static
+#undef GB_STATIC
+#undef GB_IMPLEMENTATION
+//~
 
 #if COMPILER_LLVM
 #    define PACK_BEGIN
@@ -69,50 +161,13 @@
 #    define PACK_END    ; __pragma( pack(pop))
 #endif
 
-#define function      static
-#define function      static
-#define xfunction             //NOTE(kv) exported function
-#define local_persist static
-#define global        static
-#define global_decl   extern //NOTE(kv) Global var that is not intended to exported, but forward-declared (C doesn't let us forward-declare global???)
-#define xglobal              //NOTE(kv) exported variable
-
-//~ END Unorganized
-
-
-
-/* Types */
-typedef uint8_t   u8;
-typedef uint16_t  u16;
-typedef int32_t   i32;
-typedef int64_t   i64;
-typedef int8_t    b8;
-typedef int32_t   b32;
-typedef uint32_t  u32;
-typedef uint64_t  u64;
-typedef uintptr_t umm; // NOTE(kv): "umm" stands for "memory model"
-typedef i64       imm;
-
-typedef float r32;
-typedef float f32;
-typedef float v1;
-/* Types: end */
-#define line_unique_var   PP_Concat(i, __LINE__)
-#define count_unit_var    PP_Concat(i, __COUNT__)
-
-#define for_i1(VAR, MIN, MAX)  for(i32 VAR=MIN; VAR<MAX; VAR++)
-#define for_i32  for_i1
-#define for_i32_test(VAR, INITIAL, FINAL, TEST)  for(i32 VAR=INITIAL; VAR<FINAL && TEST; VAR++)
-#define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_repeat(TIMES) for(i32 line_unique_var=0; line_unique_var<TIMES; line_unique_var++)
 
 #ifdef KV_NO_FORCE_INLINE
 # define force_inline inline
 #else
-# define force_inline gb_inline
+# define force_inline inline
 #endif
+
 
 /* Intrinsics */
 
@@ -434,10 +489,6 @@ inline i32 safeTruncateToInt32(u64 value)
 #define PP_ARG_N(_1,_2,_3,_4,_5,_6,_7,_8,N,...) N
 #define PP_NARG(...) PP_ARG_N(__VA_ARGS__,8,7,6,5,4,3,2,1,0)
 
-#define PP_Concat(arg1, arg2)   PP_Concat1(arg1, arg2)
-#define PP_Concat1(arg1, arg2)  PP_Concat2(arg1, arg2)
-#define PP_Concat2(arg1, arg2)  arg1##arg2
-
 #if COMPILER_MSVC
 #    define mytypeof decltype
 #else
@@ -486,13 +537,13 @@ a = b; \
 b = temp; \
 }
 
+#define arrc(v) v, alen(v)
 #define swap_minmax(a,b) if (a > b) { macro_swap(a,b); }
 // TODO: Deprecate these
 #define v2_expand(v) v.x, v.y
 #define v3_expand(v) v.x, v.y, v.z
 #define v4_expand(v) v.x, v.y, v.z, v.w
 
-#define array_expand(v) v, alen(v)
 #define expand2(v)   v[0], v[1]
 #define expand3(v)   v[0], v[1], v[2]
 #define expand4(v)   v[0], v[1], v[2], v[3]
@@ -1322,7 +1373,7 @@ i4::operator[](i32 index)
 
 // Bitmap //////////////////////////////////////
 
-struct Bitmap 
+struct Loaded_Bitmap 
 {
   u8 *data;
   i2  dim;
@@ -1588,6 +1639,12 @@ mat4::operator[](i32 i)
 # define CALL_CONVENTION __stdcall
 #else
 # define CALL_CONVENTION
+#endif
+
+#if OS_WINDOWS
+#define OS_SLASH '\\'
+#else
+#define OS_SLASH '/'
 #endif
 
 #if defined(JUST_GUESS_INTS)
@@ -2077,13 +2134,8 @@ typedef u32 argb;
 ////////////////////////////////
 
 struct String{
- u8 *str;
- union{
-  u64 size;
-  u64 len;
-  u64 length;
-  u64 count;
- };
+ union{u8 *str, *data; };
+ union{ u64 size, len, length, count; };
  u8 &operator[](i32 index){
   return str[index];
  }
@@ -2092,8 +2144,8 @@ typedef String String8;  // @Deprecated
 
 //NOTE(kv) nil-terminated string (cutnpaste)
 struct Stringz{
- u8 *str;
- union{ u64 size; u64 len; u64 length; };
+ union{u8 *str, *data; };
+ union{ u64 size, len, length, count; };
  operator String&(){ return *(String*)this; }
 };
 inline char *
@@ -2136,14 +2188,12 @@ enum{
 
 ////////////////////////////////
 
-enum Base_Allocator_Type
-{
+enum Base_Allocator_Type {
  Allocator_None,
  Allocator_Generic,
  Allocator_Malloc,
  Allocator_Arena,
 };
-
 typedef void *Allocator_Reserve_Signature(void *user_data, u64 size, u64 *size_out, String location);
 typedef void  Allocator_Commit_Signature(void *user_data, void *ptr, u64 size);
 typedef void  Allocator_Uncommit_Signature(void *user_data, void *ptr, u64 size);
@@ -2192,6 +2242,10 @@ struct Temp_Memory{
  Memory_Cursor *cursor;
  u64 used;
 };
+// NOTE(kv): beware of using global variables in hot-reloaded code!!!
+global Base_Allocator malloc_base_allocator = {
+ .type = Allocator_Malloc
+};
 
 ////////////////////////////////
 
@@ -2226,6 +2280,7 @@ struct Profile_Global_List;
 
 typedef i32 Thread_Kind;
 enum{
+ ThreadKind_None = 0,
  ThreadKind_Main,
  ThreadKind_MainCoroutine,
  ThreadKind_AsyncTasks,
@@ -2244,8 +2299,7 @@ struct Thread_Context {
  Arena node_arena;
  Arena_Node *used_first;
  Arena_Node *used_last;
- Arena_Node *free_arenas;
-  
+ 
  Base_Allocator *prof_allocator;
  Profile_ID prof_id_counter;
  Arena prof_arena;
@@ -3283,8 +3337,7 @@ inline u64 cstring_length(char *str) {
  return cstring_length((u8 *)str);
 }
 
-global const String empty_string   = {(u8*)"", 0};
-global const Stringz empty_stringz = {(u8*)"", 0};
+global Stringz empty_string = {(u8*)"", 0};
 inline String  SCu8()                  { return empty_string; }
 inline String  SCu8(char &c)           { return {(u8*)&c, 1}; }
 inline String  SCu8(u8 *str, u64 size) { return {str, size}; }
@@ -3426,18 +3479,17 @@ base_free(Base_Allocator *allocator, void *ptr, umm optional_size=0)
  {
   switch(allocator->type)
   {
-   case Allocator_Generic: {
+   case Allocator_Generic:{
     auto &a = allocator->generic;
     a.free(a.userdata, ptr);
    }break;
-   
-   case Allocator_Arena: {
-    auto a = allocator->arena;
+   case Allocator_Arena:{
+    //NOTE(kv) Not really "free", just a poison.
     ASAN_POISON_MEMORY_REGION(ptr, optional_size);
-   } break;
-   
-   case Allocator_Malloc: { free(ptr); } break;
-   
+   }break;
+   case Allocator_Malloc:{
+    free(ptr);
+   }break;
    invalid_default_case;
   } 
  }
@@ -3472,7 +3524,6 @@ make_cursor(Base_Allocator *allocator, u64 size)
  String memory = base_allocate2(allocator, size);
  return(make_cursor(memory));
 }
-
 function String
 cursor_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2)
 {// TODO(kv): This allocation is not optimal yet in non-asan builds.
@@ -3491,12 +3542,12 @@ cursor_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2)
  
  // NOTE(kv): "redzone_size" doesn't include alignment
 #if ASAN_ON
- umm redzone_size = 128;
+ usize redzone_size = 128;
 #else
- umm redzone_size = 0;
+ usize redzone_size = 0;
 #endif
  
- umm pos_umm = umm(current_pos) + redzone_size;
+ usize pos_umm = usize(current_pos) + redzone_size;
  pos_umm = (pos_umm + align_mask) & (~align_mask);
  u8 *pos = cast(u8*)(pos_umm);
  usize new_used = (pos+size)-cursor->base;
@@ -3526,29 +3577,38 @@ cursor_pop_to(Memory_Cursor *cursor, umm used)
 }
 
 function Arena
-make_arena(Base_Allocator *allocator, u64 chunk_size=KB(64))
-{
+make_arena(Base_Allocator *allocator, u64 chunk_size=KB(32)){
  Arena arena = {allocator, 0, chunk_size};
  return(arena);
 }
-
-
+function Base_Allocator *
+arena_get_allocator(Arena *arena){
+ Base_Allocator *result = arena->base_allocator;
+ if(not result){
+  result = &malloc_base_allocator;
+ }
+ return result;
+}
+function Arena
+make_arena_malloc(u64 chunk_size=KB(16)){
+ return(make_arena(&malloc_base_allocator, chunk_size));
+}
 
 function String
 arena_push(Arena *arena, usize size, String location, u32 align_pow2)
 {
  kv_assert(align_pow2 <= 3);  //NOTE(kv): don't support simd rn
  String result = {};
- if (size > 0)
+ if(size > 0)
  {
   Memory_Cursor *cursor = arena->cursor;
-  if (cursor) {
-   // NOTE(kv): This might fail if the cursor doesn't have enough space.
+  if(cursor){
    result = cursor_push(cursor, size, location, align_pow2);
   }
   
-  if (result.str == 0)
-  {
+  if(result.str == 0){
+   //-Dynamically grow
+   Base_Allocator *allocator = arena_get_allocator(arena);
 #if ASAN_ON
    // NOTE(kv): alignment+redzone
    umm max_allocation_waste = 256;
@@ -3558,7 +3618,7 @@ arena_push(Arena *arena, usize size, String location, u32 align_pow2)
    umm min_cursor_size = size + max_allocation_waste;
    {// NOTE(kv): Make a new cursor
     u64 usable_size = clamp_min(min_cursor_size, arena->chunk_size);
-    String memory = base_allocate_function(arena->base_allocator, usable_size+sizeof(Memory_Cursor), location);
+    String memory = base_allocate_function(allocator, usable_size+sizeof(Memory_Cursor), location);
     // NOTE(kv): Tricky business: put the cursor in its own memory
     cursor = cast(Memory_Cursor *)memory.str;
     // NOTE(kv): We keep the base at the first useful address
@@ -3602,10 +3662,9 @@ begin_temp(Arena *arena)
  return(temp);
 }
 function void
-end_temp(Temp_Memory temp)
-{
+end_temp(Temp_Memory temp){
  Arena *arena = temp.arena;
- Base_Allocator *allocator = arena->base_allocator;
+ Base_Allocator *allocator = arena_get_allocator(arena);
  Memory_Cursor *cursor = arena->cursor;
  for (Memory_Cursor *prev = 0;
       cursor != temp.cursor && cursor != 0;
@@ -3617,30 +3676,23 @@ end_temp(Temp_Memory temp)
  arena->cursor = cursor;
  if (cursor != 0)
  {
-  if (temp.used > 0)
-  {
+  if(temp.used > 0){
    cursor_pop(cursor, cursor->used_ - temp.used);
-  }
-  else
-  {// TODO(kv): This should never happen, right?
+  }else{// TODO(kv): This should never happen, right?
    // Why would a cursor exist when it's empty?
    arena->cursor = cursor->next;
    free_cursor(allocator, cursor);
   }
  }
 }
-
 function void
-arena_clear(Arena *arena)
-{
+arena_clear(Arena *arena){
  Temp_Memory temp = {arena, 0, 0};
  end_temp(temp);
 }
-
 //-
 function void*
-linalloc_wrap(String8 data, b32 zero=false)
-{
+linalloc_wrap(String8 data, b32 zero=false) {
  if (zero) { block_zero(data.str, data.size); }
  return(data.str);
 }
@@ -3663,47 +3715,23 @@ inline T
  *pointer = value;
  return pointer;
 }
-//-
 struct Temp_Memory_Block{
  Temp_Memory temp;
- Temp_Memory_Block(Temp_Memory temp);
- Temp_Memory_Block(Arena *arena);
- ~Temp_Memory_Block();
- void restore(void);
+ //-
+ Temp_Memory_Block(Temp_Memory temp){
+  this->temp = temp;
+ }
+ Temp_Memory_Block(Arena *arena){
+  this->temp = begin_temp(arena);
+ }
+ ~Temp_Memory_Block(){
+  end_temp(this->temp);
+ }
+ void restore(void){
+  end_temp(this->temp);
+ }
 };
-inline Temp_Memory_Block::Temp_Memory_Block(Temp_Memory t){
- this->temp = t;
-}
-inline Temp_Memory_Block::Temp_Memory_Block(Arena *arena){
- this->temp = begin_temp(arena);
-}
-inline Temp_Memory_Block::~Temp_Memory_Block(){
- end_temp(this->temp);
-}
-inline void
-Temp_Memory_Block::restore(void){
- end_temp(this->temp);
-}
 //-
-
-// NOTE(kv): Not usable in hot-reloaded code!!!
-global Base_Allocator malloc_base_allocator = {
- .type = Allocator_Malloc
-};
-//
-function Base_Allocator *
-get_allocator_malloc(void) {
- return(&malloc_base_allocator);
-}
-//
-function Arena
-make_arena_malloc(u64 chunk_size=KB(16))
-{
- Base_Allocator *allocator = get_allocator_malloc();
- return(make_arena(allocator, chunk_size));
-}
-
-
 //NOTE(kv) "defer_block" courtesy of Ryan Fleury.
 #define defer_block(STARTUP, SHUTDOWN) \
 for(int line_unique_var = ((STARTUP), 0); \
@@ -4321,8 +4349,7 @@ remove_translation(mat4 result){
 
 //~NOTE: array
 // NOTE(kv): Can be zero-inited -> GOOD!
-//TODO(kv) Split the metadata out to a header, that we can allocate
-//  before the data, so we can pass the array around without fear.
+//TODO(kv) Please don't templatize so much code!
 template<class T>
 struct arrayof{
  i1 count;
@@ -4346,9 +4373,9 @@ struct arrayof{
   if (new_cap > cap)
   {
    kv_assert(!fixed_size);
+   Base_Allocator *used_allocator = allocator;;
    // NOTE(kv): get malloc allocator here to avoid the "stale pointer" problem.
-   Base_Allocator *used_allocator = (allocator ? allocator :
-                                     get_allocator_malloc());
+   if(not used_allocator) used_allocator = &malloc_base_allocator;
    T *old_items = items;
    items = cast(T *)base_allocate(used_allocator, new_cap*sizeof(T));
    block_copy(items, old_items, count*sizeof(T));
@@ -4543,19 +4570,22 @@ enum I_Type_Kind{
  I_Type_Kind_Struct,
  I_Type_Kind_Union,
  I_Type_Kind_Enum,
+ I_Type_Kind_Array,
 };
 struct Type_Info{
  String name;
  i1     size;
  I_Type_Kind kind;
- union {
+ i32 count;
+ union{
   Basic_Type Basic_Type;
   arrayof<I_Struct_Member> members;
-  struct {
+  struct{
    Type_Info *discriminator_type;
    arrayof<I_Union_Member> union_members;
   };
-  arrayof<I_Enum_Member>   enum_members;
+  arrayof<I_Enum_Member> enum_members;
+  Type_Info *array_item_type;
  };
 };
 
@@ -4600,82 +4630,76 @@ AtomicAddU32AndReturnOriginal(u32 volatile *Value, u32 Addend)
  u32 Result = _InterlockedExchangeAdd((long volatile*)Value, (long)Addend);
  return(Result);
 }
-
-
-struct Scratch_Block {
+//-
+struct Scratch_Block{
  Thread_Context *tctx;
- Arena arena_value;  // NOTE(kv): Optional
  Arena *arena;
  Temp_Memory temp;
+ //-
+ //NOTE(kv) Deleting implicit copy constructor: This is why C++ is garbage!
+ Scratch_Block(const Scratch_Block&) = delete;
+#if 0
+ Scratch_Block();
+#endif
  
- Scratch_Block(struct Thread_Context *tctx);
+ //TODO(kv) Passing in the thread context is deprecated,
+ //  because you could grab a "thread_global"
+ //NOTE(kv): You need to put the arena name here, it's far too dangerous to ignore the conflict arena.
+ //Scratch_Block(struct Thread_Context *tctx);
  Scratch_Block(struct Thread_Context *tctx, Arena *a1);
  Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2);
- Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2, Arena *a3);
- inline Scratch_Block(void) {
-  //NOTE(kv): in a scratch block, you don't need to worry about the malloc allocator being a global var.
-  this->arena_value = make_arena( get_allocator_malloc() );
-  this->arena = &arena_value;
-  this->temp = begin_temp(this->arena);
- };
+ 
  Scratch_Block(struct App *app);
  Scratch_Block(struct App *app, Arena *a1);
  Scratch_Block(struct App *app, Arena *a1, Arena *a2);
- Scratch_Block(struct App *app, Arena *a1, Arena *a2, Arena *a3);
- Scratch_Block(Arena *arena);
+ 
  ~Scratch_Block();
- operator Arena*();
+ 
+ operator Arena*(){ return this->arena; }
  void restore(void);
 };
-
-inline Scratch_Block::Scratch_Block(Thread_Context *t) {
- this->tctx = t;
- this->arena = tctx_reserve(t);
- this->temp = begin_temp(this->arena);
+//-
+function void
+init_scratch_block(Scratch_Block *scratch, Thread_Context *t,
+                   Arena **conflicts, i32 conflict_count){
+ scratch->tctx = t;
+ scratch->arena = tctx_reserve(t, conflicts, conflict_count);
+ scratch->temp = begin_temp(scratch->arena);
 }
-
-inline Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1){
- this->tctx = t;
- this->arena = tctx_reserve(t, a1);
- this->temp = begin_temp(this->arena);
+//-
+Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1){
+ init_scratch_block(this, t, &a1, 1);
 }
-
-inline Scratch_Block::Scratch_Block(Arena *arena) {
- this->tctx = 0;
- this->arena = arena;
- this->temp = begin_temp(this->arena);
+Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1, Arena *a2){
+ Arena *conflicts[] = {a1, a2};
+ init_scratch_block(this, t, conflicts, alen(conflicts));
 }
-
-inline Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1, Arena *a2){
- this->tctx = t;
- this->arena = tctx_reserve(t, a1, a2);
- this->temp = begin_temp(this->arena);
+#if 0
+//NOTE(kv) Temporarily nerfing these one,
+//  since previously we made a "child arena" thing,
+//  which was dumb because you could just use a Temp_Memory_Block for that!
+//  Also I never took into account the arena aliasing thing.
+Scratch_Block::Scratch_Block(){
+ Thread_Context *t = get_thread_context();
+ init_scratch_block(this, t, 0, 0);
 }
-
-inline Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1, Arena *a2, Arena *a3){
- this->tctx = t;
- this->arena = tctx_reserve(t, a1, a2, a3);
- this->temp = begin_temp(this->arena);
+Scratch_Block::Scratch_Block(Arena *conflict){
+ Thread_Context *t = get_thread_context();
+ init_scratch_block(this, t, &conflict, 1);
 }
+#endif
 
-inline Scratch_Block::~Scratch_Block() {
+Scratch_Block::~Scratch_Block() {
  end_temp(this->temp);
  if (this->tctx) {
   tctx_release(this->tctx, this->arena);
  }
 }
-
-force_inline Scratch_Block::operator Arena*(){
- return(this->arena);
-}
-
 inline void
 Scratch_Block::restore(void){
  end_temp(this->temp);
 }
-
 //-
-
 function Base_Allocator
 make_arena_base_allocator(Arena *arena){
  Base_Allocator allocator = {
@@ -4746,7 +4770,7 @@ push_stringz(Arena *arena, String src){
  string.str[string.size] = 0;
  return(string);
 }
-force_inline Stringz
+inline Stringz
 to_stringz(Arena *a, String s){
  return push_stringz(a,s);
 }
@@ -4764,14 +4788,12 @@ enum{
 };
 
 //~
-
 function u64
 string_find_first_non_whitespace(String str){
  u64 i = 0;
  for (;i < str.size && char_is_whitespace(str.str[i]); i += 1);
  return(i);
 }
-
 function String
 string_skip_whitespace(String str){
  u64 f = string_find_first_non_whitespace(str);
@@ -4815,13 +4837,6 @@ to_string(Arena *arena, i32 value){
 }
 
 //~
-
-#if OS_WINDOWS
-#define OS_SLASH '\\'
-#else
-#define SLASH '/'
-#endif
-
 function Stringz
 pjoin(Arena *arena, String8 a, String8 b){
  return push_stringfz(arena, "%.*s%c%.*s", string_expand(a), OS_SLASH, string_expand(b));
@@ -4834,34 +4849,28 @@ function Stringz
 pjoin(Arena *arena, const char *a, const char *b){
  return push_stringfz(arena, "%s%c%s", a, OS_SLASH, b);
 }
-force_inline b32
-move_file(char const *from_filename, char const *to_filename){
- return gb_file_move(from_filename, to_filename);
-}
+//~
 inline b32
-move_file(String from_filename, String to_filename){
- u8 buffer[512];
- Arena arena = make_static_arena(buffer, 512);
- char *from = to_cstring(&arena, from_filename);
- char *to = to_cstring(&arena, to_filename);
- return gb_file_move(from, to);
+file_exists(Stringz file){
+ return gb_file_exists(to_cstring(file));
+}
+function b32
+remove_file(Stringz filename){
+ b32 result = true;
+ if(file_exists(filename)){
+  result = gb_file_remove(to_cstring(filename));
+ }
+ return result;
+}
+function b32
+move_file(Stringz from, Stringz to){
+ remove_file(to);
+ b32 result = gb_file_move(to_cstring(from), to_cstring(to));
+ return result;
 }
 inline b32 
-copy_file(String from_filename, String to_filename, b32 fail_if_exists)
-{
- u8 buffer[512];
- Arena arena = make_static_arena(buffer, 512);
- char *from = to_cstring(&arena, from_filename);
- char *to = to_cstring(&arena, to_filename);
- return gb_file_copy(from, to, fail_if_exists);
-}
-
-function b32
-remove_file(String filename){
- u8 buffer[512];
- Arena arena = make_static_arena(buffer, 512);
- char *filenamec = to_cstring(&arena, filename);
- return gb_file_remove(filenamec);
+copy_file(Stringz from, Stringz to, b32 fail_if_exists){
+ return gb_file_copy(to_cstring(from), to_cstring(to), fail_if_exists);
 }
 #if OS_WINDOWS
 function b32
@@ -4877,7 +4886,7 @@ create_directory(Stringz path){
 }
 function b32
 create_directory(String path){
- Scratch_Block scratch;
+ Scratch_Block scratch(get_thread_context(), 0);
  Stringz pathz = to_stringz(scratch, path);
  return create_directory(pathz);
 }
@@ -4892,7 +4901,7 @@ open_or_create_file(Stringz name, char *mode){
  FILE *file = open_file(name, mode);
  if(!file){
   if(errno == ENOENT){
-   create_directory(path_dirname(name));
+   create_directory(path_dir(name));
    open_file(name, mode);
   }
  }
@@ -4914,29 +4923,10 @@ path_is_directory(Stringz path){
 }
 #endif
 
-function b32
-write_entire_file(String filename, void *data, u64 size){
- Scratch_Block scratch;
- 
- b32 result = false;
- gbFile file_value = {}; gbFile *file = &file_value;
- char *filename_c = to_cstring(scratch, filename);
- gbFileError err = gb_file_open_mode(file, gbFileMode_Write, filename_c);
- if(err == gbFileError_None){
-  result = gb_file_write(file, data, size);
- }
- gb_file_close(file);
- return result;
-}
-force_inline b32
-write_entire_file(String filename, String data){
- return write_entire_file(filename, data.str, data.size);
-}
-
 function Stringz
 read_entire_file_handle(Arena *arena, FILE *file){
  Stringz result = {};
- if(file != 0){
+ if(file){
   fseek(file, 0, SEEK_END);
   u64 size = ftell(file);
   char *mem = push_array(arena, char, size+1);
@@ -4951,33 +4941,27 @@ function Stringz
 read_entire_file(Arena *arena, Stringz filename){
  Stringz result = {};
  FILE *file = open_file(filename, "rb");
- if(file){
-  result = read_entire_file_handle(arena, file);
-  close_file(file);
- }
+ result = read_entire_file_handle(arena, file);
+ close_file(file);
  return(result);
 }
 
 //~ Printer
-
-enum Printer_Type
-{
+typedef i32 Print_Function(void *userdata, char *format, va_list args);
+enum Printer_Type {
  Printer_Type_None,
  Printer_Type_Buffer,
  Printer_Type_FILE,
  Printer_Type_Generic,
 };
-
-typedef void Print_Function(void *userdata, char *format, va_list args);
-
 struct Printer{
  Printer_Type type;
  b32 print_separator_before_anything_else;
  String separator;
+ i32 byte_pos;
  union{
   struct{
    u8  *base;
-   i32  used;
    i32  cap;
   };
   FILE *FILE;
@@ -5030,9 +5014,9 @@ printer_get_string(Printer &p){
  if(p.type==Printer_Type_Buffer){
   Stringz string = {
    .str  = p.base,
-   .size = (u64)p.used,
+   .size = (u64)p.byte_pos,
   };
-  p.base[p.used++] = 0;  //NOTE nil-termination
+  p.base[p.byte_pos++] = 0;  //NOTE nil-termination
   return string;
  }else{
   invalid_code_path;
@@ -5042,8 +5026,8 @@ printer_get_string(Printer &p){
 inline void
 printer_delete(Printer &p){
  kv_assert(p.type == Printer_Type_Buffer);
- kv_assert(p.used > 0);
- p.used--;
+ kv_assert(p.byte_pos > 0);
+ p.byte_pos--;
 }
 
 //-NOTE: "Hey, would you like variadic macros that actually works?"
@@ -5060,21 +5044,22 @@ printer_delete(Printer &p){
 //-NOTE Base print function overloads
 function void
 print_format2v(Printer &p, char *format, va_list args){
+ i32 written = 0;
  switch(p.type){
   case Printer_Type_Buffer:{
-   i32 remaining = p.cap-p.used;
-   i32 written = vsnprintf((char *)(p.base+p.used), remaining, format, args);
+   i32 remaining = p.cap-p.byte_pos;
+   written = vsnprintf((char *)(p.base+p.byte_pos), remaining, format, args);
    kv_assert(written >= 0 && written < remaining);
-   p.used += written;
   }break;
   case Printer_Type_FILE:{
-   vfprintf(p.FILE, format, args);
+   written = vfprintf(p.FILE, format, args);
   }break;
   case Printer_Type_Generic:{
-   p.print_function(p.userdata, format, args);
+   written = p.print_function(p.userdata, format, args);
   }break;
   invalid_default_case;
  }
+ p.byte_pos += written;
 }
 //NOTE(kv) omg totally unnecessary
 function void

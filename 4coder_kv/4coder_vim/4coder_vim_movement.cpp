@@ -1,5 +1,8 @@
 #include "4coder_vim_helper.cpp"
 
+function void
+right_adjust_view(App *app);
+
 VIM_COMMAND_SIG(vim_begin_line){
 	Vim_Motion_Block vim_motion_block(app);
 	right_adjust_view(app);

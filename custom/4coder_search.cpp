@@ -161,7 +161,7 @@ kv_fuzzy_search_backward(App *app, Buffer_ID buffer, i64 end_pos, String needle)
 #endif
 
 function void
-print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Match_List matches)
+print_string_match_list_to_buffer(App *app, String pattern, Buffer_ID out_buffer_id, String_Match_List matches)
 {
  Scratch_Block scratch(app);
  clear_buffer(app, out_buffer_id);
@@ -189,7 +189,7 @@ print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Matc
      }
      end_temp(buffer_name_restore_point);
      current_buffer   = match->buffer;
-     current_filename = push_buffer_filename(app, scratch, current_buffer);
+     current_filename = push_buffer_filepath(app, scratch, current_buffer);
      if (current_filename.size == 0) {
       current_filename = push_buffer_unique_name(app, scratch, current_buffer);
      }
@@ -200,15 +200,15 @@ print_string_match_list_to_buffer(App *app, Buffer_ID out_buffer_id, String_Matc
      Temp_Memory line_temp = begin_temp(scratch);
      String full_line_str = push_buffer_line(app, scratch, current_buffer, cursor.line);
      String line_str = string_skip_chop_whitespace(full_line_str);
-     insertf(&out, "%.*s:%d:%d: %.*s\n",
-             string_expand(current_filename), cursor.line, cursor.col,
-             string_expand(line_str));
-     end_temp(line_temp);
+                    insertf(&out, "%.*s:%d:%d: %.*s\n",
+                            string_expand(current_filename), cursor.line, cursor.col,
+                            string_expand(line_str));
+                    end_temp(line_temp);
+                }
+            }
+        }
     }
-   }
-  }
- }
- else { insertf(&out, "no matches"); }
+    else { insertf(&out, "no matches for '%.*s'", strexpand(pattern)); }
  
  end_buffer_insertion(&out);
 }
@@ -227,7 +227,12 @@ print_all_matches_all_buffers(App *app, String8_Array match_patterns, String_Mat
     Scratch_Block scratch(app);
     String_Match_List matches = find_all_matches_all_buffers(app, scratch, match_patterns, must_have_flags, must_not_have_flags);
     kv_filter_match_list(app, &matches, out_buffer);
-    print_string_match_list_to_buffer(app, out_buffer, matches);
+    String pattern = empty_string;
+    //TODO(kv) Hacky
+    if(match_patterns.count > 0){
+        pattern = match_patterns.strings[0];
+    }
+    print_string_match_list_to_buffer(app, pattern, out_buffer, matches);
 }
 
 function void

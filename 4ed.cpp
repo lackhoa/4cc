@@ -336,7 +336,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
  Models *models = (Models*)base_ptr;
  
  Mutex_Lock file_order_lock(models->working_set.mutex);
- Scratch_Block scratch(tctx);
+ Scratch_Block scratch(tctx,0);
  
  models->next_animate_delay = max_u32;
  models->animate_next_frame = false;

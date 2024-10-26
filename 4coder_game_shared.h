@@ -158,9 +158,9 @@ struct Image_Load_Info {
 };
 #endif
 
-global_const i32 GAME_VIEWPORT_COUNT = 3;
-global_const i32 MAIN_VIEWPORT_ID    = 1;
-global_const String DRIVER_FILE_NAME = strlit("driver.kc");
+#define GAME_VIEWPORT_COUNT 3
+global i32 MAIN_VIEWPORT_ID    = 1;
+global String DRIVER_FILE_NAME = strlit("driver.kc");
 
 #if !AD_IS_DRIVER
 //-NOTE: game API functions (NOTE: The API is quite simple so let's just macro for now)
@@ -271,31 +271,17 @@ pack_modifiers(Key_Code *mods, u32 count)
  }
  return result;
 }
-
 //-
 #if !AD_IS_DRIVER
 inline Scratch_Block::Scratch_Block(App *app){
- Thread_Context *t = this->tctx = get_thread_context(app);
- this->arena = tctx_reserve(t);
- this->temp = begin_temp(this->arena);
+ init_scratch_block(this,app->tctx,0,0);
 }
-
 inline Scratch_Block::Scratch_Block(App *app, Arena *a1){
- Thread_Context *t = this->tctx = get_thread_context(app);
- this->arena = tctx_reserve(t, a1);
- this->temp = begin_temp(this->arena);
+ init_scratch_block(this,app->tctx,&a1,1);
 }
-
 inline Scratch_Block::Scratch_Block(App *app, Arena *a1, Arena *a2){
- Thread_Context *t = this->tctx = get_thread_context(app);
- this->arena = tctx_reserve(t, a1, a2);
- this->temp = begin_temp(this->arena);
-}
-
-inline Scratch_Block::Scratch_Block(App *app, Arena *a1, Arena *a2, Arena *a3){
- Thread_Context *t = this->tctx = get_thread_context(app);
- this->arena = tctx_reserve(t, a1, a2, a3);
- this->temp = begin_temp(this->arena);
+ Arena *conflicts[] = {a1,a2};
+ init_scratch_block(this,app->tctx,conflicts,alen(conflicts));
 }
 #endif
 //-

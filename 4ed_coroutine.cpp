@@ -34,7 +34,7 @@ coroutine_main(void *ptr){
     tctx_info.coroutine = me;
     
     Thread_Context tctx_ = {};
-    thread_ctx_init(&tctx_, ThreadKind_MainCoroutine,
+    thread_context_init(&tctx_, ThreadKind_MainCoroutine,
                     get_base_allocator_system(), get_base_allocator_system());
     tctx_.user_data = &tctx_info;
     me->tctx = &tctx_;

@@ -106,13 +106,28 @@ enum{
 
 typedef u32 API_Check_Flag;
 enum{
-    APICheck_ReportMissingAPI = 1,
-    APICheck_ReportExtraAPI = 2,
-    APICheck_ReportMismatchAPI = 4,
+ APICheck_ReportMissingAPI = 1,
+ APICheck_ReportExtraAPI = 2,
+ APICheck_ReportMismatchAPI = 4,
 };
 enum{
-    APICheck_ReportAll = APICheck_ReportMissingAPI|APICheck_ReportExtraAPI|APICheck_ReportMismatchAPI,
+ APICheck_ReportAll = APICheck_ReportMissingAPI|APICheck_ReportExtraAPI|APICheck_ReportMismatchAPI,
 };
+//~
+function API_Definition *
+begin_api(Arena *arena, char *name);
 
-// BOTTOM
+function API_Param*
+api_param(Arena *arena, API_Call *call, char *type_name, char *name);
+
+function API_Call*
+api_call_with_location(Arena *arena, API_Definition *api, String name, String type, String location);
+
+function API_Call*
+api_call_with_location(Arena *arena, API_Definition *api, char *name, char *type, char *location);
+
+#define api_call(arena, api, name, type) \
+api_call_with_location((arena), (api), (name), (type), filename_line_number)
+
+//-BOTTOM
 

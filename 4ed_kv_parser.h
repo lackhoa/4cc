@@ -26,7 +26,7 @@ struct EP_Scope{
 struct Ed_Parser{
  b32 ok_;
  b32 recoverable;
- Scan_Direction scan_direction;
+ Scan_Direction direction;
  Token_Iterator it;
  Arena *string_arena;
  Token_Iterator original_token_it;
@@ -76,25 +76,26 @@ function String ep_print_token(Ed_Parser *p);
 function String ep_print_given_token(Arena *arena, Ed_Parser *p, Token *token);
 //-
 struct Ed_Parser_Recovery{
- Ed_Parser recovery;
+ Ed_Parser saved_parser;
  Ed_Parser *pointer;
  //-
  inline ~Ed_Parser_Recovery(){
   if(not pointer->ok_){
-   *pointer = recovery;
+   *pointer = saved_parser;
   }
-  //NOTE(kv) Restore the recoverable status
-  pointer->recoverable = recovery.recoverable;
+  //NOTE(kv) Restore recoverable, even if you don't fail.
+  pointer->recoverable = saved_parser.recoverable;
  }
 };
 function Ed_Parser_Recovery
-make_ed_parser_recovery(Ed_Parser *pointer){
+ed_parser_recovery_begin(Ed_Parser *pointer){
  Ed_Parser_Recovery recovery = {};
- recovery.recovery = *pointer;
+ recovery.saved_parser = *pointer;
  recovery.pointer  = pointer;
  pointer->recoverable = true;
  return recovery;
 }
+//NOTE(kv) Sadly this cannot be a defer block, because we need to store the recovery on the stack!
 #define ep_recovery_block(parser_pointer) \
-Ed_Parser_Recovery line_unique_var = make_ed_parser_recovery(parser_pointer);
+Ed_Parser_Recovery line_unique_var = ed_parser_recovery_begin(parser_pointer);
 //-

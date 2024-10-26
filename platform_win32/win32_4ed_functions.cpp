@@ -9,13 +9,13 @@
 
 function b32
 system_file_can_be_made(Arena *scratch, u8 *filename){
-    HANDLE file = CreateFile_utf8(scratch, filename, FILE_APPEND_DATA, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-    b32 result = false;
-    if (file != INVALID_HANDLE_VALUE){
-        CloseHandle(file);
-        result = true;
-    }
-    return(result);
+ HANDLE file = CreateFile_utf8(scratch, filename, FILE_APPEND_DATA, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+ b32 result = false;
+ if (file != INVALID_HANDLE_VALUE){
+  CloseHandle(file);
+  result = true;
+ }
+ return(result);
 }
 
 //
@@ -23,12 +23,11 @@ system_file_can_be_made(Arena *scratch, u8 *filename){
 //
 
 struct Memory_Annotation_Tracker_Node{
-    Memory_Annotation_Tracker_Node *next;
-    Memory_Annotation_Tracker_Node *prev;
-    String location;
-    u64 size;
+ Memory_Annotation_Tracker_Node *next;
+ Memory_Annotation_Tracker_Node *prev;
+ String location;
+ u64 size;
 };
-
 struct Memory_Annotation_Tracker{
  Memory_Annotation_Tracker_Node *first;
  Memory_Annotation_Tracker_Node *last;
@@ -37,57 +36,81 @@ struct Memory_Annotation_Tracker{
 
 global Memory_Annotation_Tracker memory_tracker = {};
 global CRITICAL_SECTION memory_tracker_mutex;
+global const usize win32_memory_header_size = 64;
+static_assert(sizeof(Memory_Annotation_Tracker_Node) <= win32_memory_header_size);
+static_assert(win32_memory_header_size % 64 == 0);
 
-function void *
-win32_memory_allocate_extended(void *base, u64 size, String location)
-{
- u64 allocated_size = size + sizeof(Memory_Annotation_Tracker_Node);
- void *memory;
+function
+system_memory_allocate_at_least_sig(){
+ //-NOTE(kv)
+ //  I really tried to make ASAN happen with VirtualAlloc,
+ //  but ran into transient bugs, and then I figured out that the instrumentation
+ //  that malloc provides has to be replicated here as well
+ //  probably easy, but meh, I'll just use malloc...
+ //-
+ //NOTE(kv) The logic for computing the allocated size is exactly like alignment.
+ usize granularity_size = KB(64);
+ usize granularity_mask = granularity_size-1;
+ usize allocated_size = (wanted_size +
+                         win32_memory_header_size);
+ allocated_size = (allocated_size+granularity_mask) & (~granularity_mask);
  
 #if ASAN_ON
- memory = malloc(allocated_size);  //NOTE(kv): VirtualAlloc isn't intercepted -> use malloc to save some energy
- block_zero(memory, allocated_size);
+ void *memory0 = malloc(allocated_size);
+ block_zero(memory0, allocated_size);
 #else
- memory = VirtualAlloc(base, (SIZE_T)allocated_size,
-                       MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
+ void *base = 0;  //NOTE(kv) We don't control the base address yet!
+ void *memory0 = VirtualAlloc(base, (SIZE_T)allocated_size,
+                              MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
 #endif
  
- auto node = cast(Memory_Annotation_Tracker_Node*)memory;
- {// TODO(kv): Somehow when we use malloc-base allocator, we don't do any of this... :>
-  EnterCriticalSection(&memory_tracker_mutex);
-  zdll_push_back(memory_tracker.first, memory_tracker.last, node);
-  memory_tracker.count += 1;
-  LeaveCriticalSection(&memory_tracker_mutex);
+ u8 *memory = (u8 *)memory0;
+ usize usable_size = allocated_size - win32_memory_header_size;
+ u8 *usable_base = memory + win32_memory_header_size;
+ {
+  Memory_Annotation_Tracker_Node *node = cast(Memory_Annotation_Tracker_Node *)memory;
+  {// TODO(kv): When we use malloc-based allocator, we don't do any of this... :>
+   EnterCriticalSection(&memory_tracker_mutex);
+   zdll_push_back(memory_tracker.first, memory_tracker.last, node);
+   memory_tracker.count += 1;
+   LeaveCriticalSection(&memory_tracker_mutex);
+  }
+  node->location = location;
+  node->size     = allocated_size;
  }
- node->location = location;
- node->size = size;
- return(node + 1);
+ *usable_size_out = usable_size;
+ return usable_base;
 }
-
-function void
-win32_memory_free_extended(void *ptr)
-{
- auto node = (Memory_Annotation_Tracker_Node*)ptr - 1;
+function
+system_memory_allocate_exact_sig(){
+ usize usable_size;
+ void *usable_base0 = system_memory_allocate_at_least(size, location, &usable_size);
+ u8 *usable_base = (u8 *)usable_base0;
+ kv_assert(usable_size >= size);
+#if ASAN_ON
+ //NOTE(kv) Do NOT over-allocate if we're debugging memory.
+ ASAN_POISON_MEMORY_REGION(usable_base+size, usable_size-size);
+#endif
+ return usable_base;
+}
+function
+system_memory_free_sig(){
+ u8 *usable_base = (u8 *)memory0;
+ Memory_Annotation_Tracker_Node *tracker = ((Memory_Annotation_Tracker_Node *)
+                                            (usable_base - win32_memory_header_size));
+ usize allocated_size = tracker->size;
  {
   EnterCriticalSection(&memory_tracker_mutex);
-  zdll_remove(memory_tracker.first, memory_tracker.last, node);
+  zdll_remove(memory_tracker.first, memory_tracker.last, tracker);
   memory_tracker.count -= 1;
   LeaveCriticalSection(&memory_tracker_mutex);
  }
 #if ASAN_ON
- free(node);
+ free(tracker);
 #else
- VirtualFree(node, 0, MEM_RELEASE);
+ VirtualFree(tracker, 0, MEM_RELEASE);
 #endif
 }
-
-function
-system_memory_allocate_sig()
-{
- // NOTE(kv): Calling malloc because I'm too lazy to wrap VirtualAlloc!
- return(win32_memory_allocate_extended(0, size, location));
-}
-
 function
 system_memory_set_protection_sig(){
     DWORD protect = 0;
@@ -110,12 +133,6 @@ system_memory_set_protection_sig(){
     b32 result = VirtualProtect(node, (SIZE_T)size, protect, &old_protect);
     return(result);
 }
-
-function
-system_memory_free_sig(){
-    win32_memory_free_extended(ptr);
-}
-
 function
 system_memory_annotation_sig(){
     Memory_Annotation result = {};
@@ -161,50 +178,49 @@ get_home_directory(Arena *arena)
 }
 
 api(ed) function String
-system_get_path(Arena* arena, System_Path_Code path_code)
-{
-    String8 result = {};
-    switch (path_code)
+system_get_path(Arena* arena, System_Path_Code path_code){
+ String8 result = {};
+ switch (path_code)
+ {
+  case SystemPath_CurrentDirectory:
+  {
+   DWORD size = GetCurrentDirectory_utf8(arena, 0, 0);
+   u8 *out = push_array(arena, u8, size);
+   size = GetCurrentDirectory_utf8(arena, size, out);
+   result = SCu8(out, size);
+  }break;
+  
+  case SystemPath_BinaryDirectory:
+  {
+   local_persist b32 has_stashed_4ed_path = false;
+   if(!has_stashed_4ed_path)
+   {
+    has_stashed_4ed_path = true;
+    local_const i1 binary_path_capacity = KB(1);
+    u8 *memory = (u8*)system_memory_allocate_exact(binary_path_capacity, strlit(filename_line_number));
+    i1 size = GetModuleFileName_utf8(arena, 0, memory, binary_path_capacity);
+    Assert(size <= binary_path_capacity - 1);
+    win32vars.binary_path = SCu8(memory, size);
+    win32vars.binary_path = path_dir(win32vars.binary_path);
+    win32vars.binary_path.str[win32vars.binary_path.size] = 0;
+   }
+   result = push_stringz(arena, win32vars.binary_path);
+  }break;
+  
+  case SystemPath_UserDirectory:
+  {
+   if (w32_override_user_directory.size == 0)
+   {
+    String8 home = get_home_directory(arena);
+    if (home.str)
     {
-        case SystemPath_CurrentDirectory:
-        {
-            DWORD size = GetCurrentDirectory_utf8(arena, 0, 0);
-            u8 *out = push_array(arena, u8, size);
-            size = GetCurrentDirectory_utf8(arena, size, out);
-            result = SCu8(out, size);
-        }break;
-        
-        case SystemPath_BinaryDirectory:
-        {
-            local_persist b32 has_stashed_4ed_path = false;
-            if (!has_stashed_4ed_path)
-            {
-                has_stashed_4ed_path = true;
-                local_const i1 binary_path_capacity = KB(32);
-                u8 *memory = (u8*)system_memory_allocate(binary_path_capacity, strlit(filename_line_number));
-                i1 size = GetModuleFileName_utf8(arena, 0, memory, binary_path_capacity);
-                Assert(size <= binary_path_capacity - 1);
-                win32vars.binary_path = SCu8(memory, size);
-                win32vars.binary_path = path_dirname(win32vars.binary_path);
-                win32vars.binary_path.str[win32vars.binary_path.size] = 0;
-            }
-            result = push_stringz(arena, win32vars.binary_path);
-        }break;
-
-        case SystemPath_UserDirectory:
-        {
-          if (w32_override_user_directory.size == 0)
-          {
-            String8 home = get_home_directory(arena);
-            if (home.str)
-            {
-              result = push_stringfz(arena, "%.*s\\4coder\\", string_expand(home));
-            }
-          }
-          else result = w32_override_user_directory;
-        }break;
+     result = push_stringfz(arena, "%.*s\\4coder\\", string_expand(home));
     }
-    return(result);
+   }
+   else result = w32_override_user_directory;
+  }break;
+ }
+ return(result);
 }
 
 //
@@ -528,7 +544,7 @@ color_picker_hook(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
             Color_Picker *picker = (Color_Picker*)win32_params->lCustData;
             SetWindowLongPtr(Window, GWLP_USERDATA, (LONG_PTR)LParam);
             
-            Scratch_Block scratch(win32vars.tctx);
+            Scratch_Block scratch(win32vars.tctx,0);
             String_u16 temp = string_u16_from_string_u8(scratch, picker->title, StringFill_NullTerminate);
             SetWindowTextW(Window, (LPCWSTR)temp.str);
         } break;
@@ -619,7 +635,7 @@ color_picker_thread(LPVOID Param)
         *picker->finished = true;
     }
     
-    system_memory_free(picker, sizeof(*picker));
+    system_memory_free(picker);
     
     return(0);
 }
@@ -630,7 +646,7 @@ system_open_color_picker_sig(){
     // NOTE(casey): Because this is going to be used by a semi-permanent thread, we need to
     // copy it to system memory where it can live as long as it wants, no matter what we do
     // over here on the 4coder threads.
-    Color_Picker *perm = (Color_Picker*)system_memory_allocate(sizeof(Color_Picker), strlit(filename_line_number));
+    Color_Picker *perm = (Color_Picker*)system_memory_allocate_exact(sizeof(Color_Picker), strlit(filename_line_number));
     *perm = *picker;
     
     HANDLE ThreadHandle = CreateThread(0, 0, color_picker_thread, perm, 0, 0);

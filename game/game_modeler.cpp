@@ -108,17 +108,15 @@ get_fill_by_linum(Modeler &m, i1 linum){
 //-
 function void
 send_vert_func(Painter &p, String name, v3 pos, i1 linum){
- if(p.sending_data){
+ if(p.sending_data and is_left(p)){
   Modeler &m = *p.modeler;
-  if(is_left(p)){
-   Vertex_Ref existing = get_vertex_by_linum(m, linum);
-   Vertex_Data *vertex = (existing.index.v ? existing.vertex :
-                          &m.vertices.push_zero());
-   vertex->name    = name;
-   vertex->pos     = pos;
-   vertex->bone_id = current_bone(p)->id;
-   vertex->linum   = linum;
-  }
+  Vertex_Ref existing = get_vertex_by_linum(m, linum);
+  Vertex_Data *vertex = (existing.index.v ? existing.vertex :
+                         &m.vertices.push_zero());
+  vertex->name    = name;
+  vertex->pos     = pos;
+  vertex->bone_id = current_bone(p)->id;
+  vertex->linum   = linum;
  }
 }
 //-

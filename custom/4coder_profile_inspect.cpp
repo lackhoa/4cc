@@ -882,7 +882,7 @@ profile_inspect__left_click(App *app, View_ID view,
             View_ID target_view = view;
             target_view = get_other_primary_view(app, target_view, Access_Always, true);
             String location = insp->location_jump_hovered;
-            jump_to_location(app, target_view, location);
+            jump_to_location_parsed(app, target_view, location);
         }
     }
     else{

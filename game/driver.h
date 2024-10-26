@@ -3,19 +3,7 @@
 #include "4coder_game_shared.h"
 #include "game_colors.cpp"
 #include "ad_debug.h"
-
-struct Camera_Data  // IMPORTANT: @Serialized
-{
-#define X_Camera_Data(X) \
-X(v1,distance) \
-X(v1,phi)      \
-X(v1,theta)    \
-X(v1,roll)     \
-X(v3,pan)      \
-X(v3,pivot)    \
- 
- X_Camera_Data(X_Field_Type_Name)
-};
+#include "ad_file_formats.gen.h"
 
 struct Bezier{
  v3 e[4];
@@ -96,9 +84,7 @@ struct Camera {
   };
  };
  
-#define X(type,name) type name;
- X_Camera_Data(X)
-#undef X
+ Camera_Data_Embed;
  
  v1 focal_length;
  v1 near_clip;
@@ -108,16 +94,11 @@ struct Camera {
 function void
 setup_camera(Camera *camera, Camera_Data *data) {
  *camera = {};
+ camera->Camera_Data = *data;
  
  camera->near_clip    = 1*centimeter;
  camera->far_clip     = 10.f;
  camera->focal_length = 0.6169f;
- 
- // TODO We can just block copy here
-#define X(type,name)   camera->name = data->name;
- X_Camera_Data(X)
-#undef X
- 
  camera->transform = (/*mat4i_translate(data->pan) * */
                       mat4i_rotate_tpr(data->theta, data->phi, data->roll, data->pivot) *
                       mat4i_translate(data->pivot+V3z(data->distance)));

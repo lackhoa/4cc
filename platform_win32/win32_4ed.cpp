@@ -42,6 +42,7 @@
 #include "4coder_search_list.h"
 #include "4ed.h"
 
+#define STATIC_LINK_API
 #include "generated/system_api.cpp"
 #include "generated/font_api.cpp"
 
@@ -173,6 +174,7 @@ struct Win32_Vars
  Win32_Input_Chunk input_chunk;
  b8 lctrl_lalt_is_altgr;
  b8 got_useful_event;
+ b32 window_is_active;
  
  Key_Mode key_mode;
  HKL kl_universal;
@@ -298,8 +300,7 @@ handle_type_ptr(void *ptr){
 
 ////////////////////////////////
 
-function SYSTEM_LOAD_LIBRARY_RETURN
-system_load_library(SYSTEM_LOAD_LIBRARY_PARAMS)
+function system_load_library_sig()
 {
     HMODULE lib = LoadLibrary_utf8String(scratch, filename);
     b32 result = false;
@@ -311,15 +312,13 @@ system_load_library(SYSTEM_LOAD_LIBRARY_PARAMS)
     return(result);
 }
 
-function SYSTEM_RELEASE_LIBRARY_RETURN
-system_release_library(SYSTEM_RELEASE_LIBRARY_PARAMS)
+function system_release_library_sig()
 {
     HMODULE lib = (HMODULE)handle_type(handle);
     return(FreeLibrary(lib));
 }
 
-function SYSTEM_GET_PROC_RETURN
-system_get_proc(SYSTEM_GET_PROC_PARAMS)
+function system_get_proc_sig()
 {
  HMODULE lib = (HMODULE)handle_type(handle);
  return((Void_Func*)(GetProcAddress(lib, proc_name)));
@@ -888,7 +887,7 @@ win32_alloc_object(Win32_Object_Kind kind)
  if (result == 0)
  {
   i32 count = 512;
-  Win32_Object *objects = (Win32_Object*)system_memory_allocate(count*sizeof(Win32_Object), filename_linum);
+  Win32_Object *objects = (Win32_Object*)system_memory_allocate_exact(count*sizeof(Win32_Object), filename_linum);
   objects[0].node.prev = &win32vars.free_win32_objects;
   win32vars.free_win32_objects.next = &objects[0].node;
   for (i32 i = 1; i < count; i += 1){
@@ -1188,7 +1187,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    breakhere;
   }
   
-  Scratch_Block scratch(win32vars.tctx);
+  Scratch_Block scratch(win32vars.tctx,0);
   
   i32 window_index = 0;
   for_i32(index,0,WINDOW_COUNT) {
@@ -1201,11 +1200,13 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   
   switch (uMsg)
   {
+   case WM_ACTIVATE:{
+    win32vars.window_is_active = (wParam != 0);
+   }break;
    case WM_MENUCHAR:
    {
     result = (MNC_CLOSE << 16);
    }break;
-   
    case WM_SYSKEYDOWN:
    case WM_SYSKEYUP:
    case WM_KEYDOWN:
@@ -1796,7 +1797,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  // NOTE(allen): context setup
  Thread_Context _tctx = {};
- thread_ctx_init(&_tctx, ThreadKind_Main, get_base_allocator_system(), get_base_allocator_system());
+ thread_context_init(&_tctx, ThreadKind_Main, get_base_allocator_system(), get_base_allocator_system());
  
  block_zero_struct(&win32vars);
  win32vars.tctx = &_tctx;
@@ -1854,7 +1855,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  Plat_Settings plat_settings = {};
  void *base_ptr = 0;
  {
-  Scratch_Block scratch(win32vars.tctx);
+  Scratch_Block scratch(win32vars.tctx,0);
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
   string_mod_replace_character(curdir, '\\', '/');
   char **files = 0;
@@ -1888,12 +1889,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  log_os(" getting initial settings...\n");
  RECT window_rect = {};
- if (plat_settings.set_window_size)
+ if(plat_settings.set_window_size)
  {// NOTE(kv): setting negative position for window_rect doesn't work
   window_rect.right  = plat_settings.window_w;
   window_rect.bottom = plat_settings.window_h;
- } else {
-  window_rect.right = 800;
+ }else{
+  window_rect.right  = 800;
   window_rect.bottom = 600;
  }
  AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, false);
@@ -1979,7 +1980,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  log_os("Initializing 4ed core...\n");
  {
-  Scratch_Block scratch(win32vars.tctx);
+  Scratch_Block scratch(win32vars.tctx,0);
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
   string_mod_replace_character(curdir, '\\', '/');
   app_init(win32vars.tctx, base_ptr, curdir);
@@ -2148,7 +2149,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   // TODO(allen): CROSS REFERENCE WITH LINUX SPECIAL CODE "TIC898989"
   Win32_Input_Chunk &input_chunk = win32vars.input_chunk;
   
-  Scratch_Block scratch(win32vars.tctx);
+  Scratch_Block scratch(win32vars.tctx,0);
   Application_Step_Input input = {};
   
   input.first_step = win32vars.first;
@@ -2169,6 +2170,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   input.trying_to_kill = input_chunk.trans.trying_to_kill;
   input.hot_prim_id = hot_prim_id;
+  input.window_is_active = win32vars.window_is_active;
   
   // TODO(allen): Not really appropriate to round trip this all the way to the OS layer, redo this system.
   // NOTE(allen): Ask the Core About Exiting if We Have an Exit Signal

@@ -1767,7 +1767,7 @@ main(int argc, char **argv)
     // NOTE(allen): context setup
     {
         Base_Allocator* alloc = get_base_allocator_system();
-        thread_ctx_init(&linuxvars.tctx, ThreadKind_Main, alloc, alloc);
+        thread_context_init(&linuxvars.tctx, ThreadKind_Main, alloc, alloc);
     }
     
     API_VTable_system system_vtable = {};

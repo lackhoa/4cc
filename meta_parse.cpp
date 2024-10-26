@@ -1,5 +1,5 @@
 function Ed_Parser
-m_parser_from_token_list(Arena *arena, String string, Token_List &token_list){
+m_parser_from_token_list(String string, Token_List &token_list){
  Token_Iterator token_it = make_token_iterator(token_iterator(0, &token_list));
  Ed_Parser parser = make_ep_from_string(string, token_it);
  return parser;
@@ -7,7 +7,7 @@ m_parser_from_token_list(Arena *arena, String string, Token_List &token_list){
 function Ed_Parser
 m_parser_from_string(Arena *arena, String string){
  Token_List token_list = lex_full_input_cpp(arena, string);
- return m_parser_from_token_list(arena, string, token_list);
+ return m_parser_from_token_list(string, token_list);
 }
 function void
 parse_type_and_name(Ed_Parser *p, Parsed_Type *otype, String *oname){
@@ -41,7 +41,7 @@ parse_struct_member(Ed_Parser *p){
 }
 function M_Struct_Member
 struct_member_from_string(String string){
- Scratch_Block scratch;
+ Scratch_Block scratch(get_thread_context(), 0);
  Ed_Parser parser = m_parser_from_string(scratch, string);
  return parse_struct_member(&parser);
 }
@@ -61,10 +61,11 @@ parse_struct_body(Arena *arena, Ed_Parser *p){
  return result;
 }
 inline M_Struct_Members
-parse_struct_body(Arena *a, char *string){
- Scratch_Block scratch;
+parse_struct_body(Arena *arena, char *string){
+ Scratch_Block scratch(get_thread_context(), arena);
  Ed_Parser parser = m_parser_from_string(scratch, SCu8(string));
- return parse_struct_body(a, &parser);
+ M_Struct_Members result = parse_struct_body(arena, &parser);
+ return result;
 }
 
 inline void
@@ -82,7 +83,7 @@ meta_maybe_key(Ed_Parser *p, String key){
  return result;
 }
 function b32
-test_char_in(Ed_Parser *p, String terminators){
+k_test_char(Ed_Parser *p, String terminators){
  String chr = ep_print_token(p);
  if(chr.count == 1){
   for_i32(i,0,i32(terminators.count)){
@@ -98,6 +99,39 @@ k_string_from_token_to_current(Ed_Parser *p, Token *token_start){
  String start = ep_print_given_token(p, token_start);
  String end   = ep_print_token(p);
  String result = {start.str, u64(end.str - start.str)};
+ return result;
+}
+function char
+k_eat_until_char(Ed_Parser *p, String terminators){
+ char result = 0;
+ {
+  while(!result && p->ok_){
+   Scratch_Block scratch(get_thread_context(),0);
+   String token = ep_print_token(scratch, p);//TODO(kv) OMG this is bad!
+   b32 should_eat = true;
+   if(token.len == 1){
+    char char0 = token.str[0];
+    if(ep__char_in_string_new(terminators, char0)){
+     result = char0;
+     should_eat = false;
+    }else{
+     u8 closer = get_matching_group_closer(char0);
+     if(closer){
+      ep_eat_token(p);
+      k_eat_until_char(p, String{&closer, 1});
+     }else{
+      u8 opener = get_matching_group_opener(char0);
+      if(opener){//NOTE(kv) Encountered unbalanced group closer, we should stop!
+       p->fail();
+      }
+     }
+    }
+   }
+   if(should_eat){
+    ep_eat_token(p);
+   }
+  }
+ }
  return result;
 }
 //-

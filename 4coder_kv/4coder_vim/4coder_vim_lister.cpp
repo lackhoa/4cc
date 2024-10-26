@@ -461,15 +461,17 @@ vim_run_lister(App *app, Lister *lister)
       }else{ handled = false; }
      } break;
 					
-					case Key_Code_Return:{
+     case Key_Code_Return:{
 						void *user_data = 0;
 						if(in_range_exclusive(0, lister->raw_item_index, lister->options.count)){
 							user_data = lister_get_user_data(lister, lister->raw_item_index);
 							block_copy(dest, lister->highlighted_node->string.str, lister->highlighted_node->string.size);
 							vim_bottom_text.size = base_size + lister->highlighted_node->string.size;
 						}
-						lister_activate(app, lister, user_data, false);
-						result = ListerActivation_Finished;
+      //NOTE(kv) "user_data" could be 0, and it would still be meaningful
+      //  such as creating a new file, in the "open file" lister
+      lister_activate(app, lister, user_data, false);
+      result = ListerActivation_Finished;
 					} break;
 					
 					case Key_Code_Backspace:{
@@ -485,7 +487,7 @@ vim_run_lister(App *app, Lister *lister)
 						if(lister->handlers.navigate != 0){
 							i32 delta = (in.event.key.code == Key_Code_Up ? -1 : 1);
 							lister->handlers.navigate(app, view, lister, delta*col_num);
-						}else if(lister->handlers.key_stroke != 0){
+      }else if(lister->handlers.key_stroke != 0){
 							result = lister->handlers.key_stroke(app);
 						}else{ handled = false; }
 					} break;
@@ -541,13 +543,13 @@ vim_run_lister(App *app, Lister *lister)
 		Vec2_f32 mouse_pos = V2(mouse_state.p);
 		if(mouse_state.press_l){
 			void *clicked = vim_lister_user_data_at_p(app, view, lister, mouse_pos, col_num);
-			if(clicked){
-				lister_activate(app, lister, clicked, true);
-				result = ListerActivation_Finished;
-				do_invalidate = false;
-				view_enqueue_command_function(app, view, vim_change_lister_view_back);
-			}
-		}
+   if(clicked){
+    lister_activate(app, lister, clicked, true);
+    result = ListerActivation_Finished;
+    do_invalidate = false;
+    view_enqueue_command_function(app, view, vim_change_lister_view_back);
+   }
+  }
 		
   if(result == ListerActivation_ContinueAndRefresh){
    lister_call_refresh_handler(app, lister);

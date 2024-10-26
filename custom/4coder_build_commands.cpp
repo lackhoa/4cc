@@ -8,14 +8,14 @@ static String8
 push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
 {
     String8 result = {};
-    String8 filename = push_buffer_filename(app, arena, buffer);
+    String8 filename = push_buffer_filepath(app, arena, buffer);
     Temp_Memory restore_point = begin_temp(arena);
     String8 base_name = push_buffer_base_name(app, arena, buffer);
     b32 is_match = string_match(filename, base_name);
  end_temp(restore_point);
  if ( !is_match )
  {
-  result = push_stringz(arena, path_dirname(filename));
+  result = push_stringz(arena, path_dir(filename));
  }
  return(result);
 }
@@ -91,7 +91,7 @@ standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, ch
     if (result)
     {
         // NOTE(allen): Build
-        String8 path = path_dirname(full_file_path);
+        String8 path = path_dir(full_file_path);
         String8 command = push_stringfz(scratch, "\"%.*s/%.*s\" %s",
                                        string_expand(path),
                                        string_expand(cmd_string),
@@ -185,8 +185,8 @@ set_fancy_compilation_buffer_font(App *app)
 inline String8
 push_buffer_dirname(App *app, Arena *arena, Buffer_ID buffer)
 {
- String8 filename = push_buffer_filename(app, arena, buffer);
- return path_dirname(filename);
+ String8 filename = push_buffer_filepath(app, arena, buffer);
+ return path_dir(filename);
 }
 
 
@@ -231,7 +231,7 @@ kv_build_normal(App *app)
  
  // NOTE: ;build_filename_hack
  Scratch_Block scratch(app);
- String filename = push_buffer_filename(app, scratch, buffer);
+ String filename = push_buffer_filepath(app, scratch, buffer);
  String arg = push_stringfz(scratch, "--file %.*s", string_expand(filename));
  
  build_in_bottom_view(app, (char *)arg.str);

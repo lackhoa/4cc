@@ -250,7 +250,7 @@ api_param(arena, call, "Arena*", "out");
 api_param(arena, call, "Buffer_ID", "buffer_id");
 }
 {
-API_Call *call = api_call_with_location(arena, result, strlit("push_buffer_filename"), strlit("String"), strlit(""));
+API_Call *call = api_call_with_location(arena, result, strlit("push_buffer_filepath"), strlit("String"), strlit(""));
 api_param(arena, call, "App*", "app");
 api_param(arena, call, "Arena*", "arena");
 api_param(arena, call, "Buffer_ID", "buffer_id");

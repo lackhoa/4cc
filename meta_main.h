@@ -15,4 +15,5 @@ struct Meta_Parsed_File{
  Token_List token_list;
 };
 #define meta_logf(...) if(meta_logging_level){ printf(__VA_ARGS__); }
+function void meta_process_ast(Statement_Root *root);
 //-

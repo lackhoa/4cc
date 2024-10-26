@@ -677,25 +677,38 @@ CUSTOM_DOC("Toggles the left margin line numbers.")
 CUSTOM_COMMAND_SIG(exit_4coder)
 CUSTOM_DOC("Attempts to close 4coder.")
 {
-    send_exit_signal(app);
+ send_exit_signal(app);
 }
 
 ////////////////////////////////
 
 CUSTOM_COMMAND_SIG(goto_line)
-CUSTOM_DOC("Queries the user for a number, and jumps the cursor to the corresponding line.")
-{
-    Query_Bar_Group group(app);
-    u8 string_space[256];
-    Query_Bar bar = {};
-    bar.prompt = strlit("Goto Line: ");
-    bar.string = SCu8(string_space, (u64)0);
-    bar.string_capacity = sizeof(string_space);
-    if (query_user_number(app, &bar)){
-        i1 line_number = (i1)string_to_u64(bar.string, 10);
-        View_ID view = get_active_view(app, Access_ReadVisible);
-        view_set_cursor_and_preferred_x(app, view, seek_line_col(line_number, 0));
-    }
+CUSTOM_DOC("Queries the user for a number, and jumps the cursor to the corresponding line."){
+ Query_Bar_Group group(app);
+ u8 string_space[256];
+ Query_Bar bar = {};
+ bar.prompt = strlit("Goto Line: ");
+ bar.string = SCu8(string_space, (u64)0);
+ bar.string_capacity = sizeof(string_space);
+ if (query_user_number(app, &bar)){
+  i1 line_number = (i1)string_to_u64(bar.string, 10);
+  View_ID view = get_active_view(app, Access_ReadVisible);
+  view_set_cursor_and_preferred_x(app, view, seek_line_col(line_number, 0));
+ }
+}
+CUSTOM_COMMAND_SIG(goto_pos)
+CUSTOM_DOC("jump to byte position"){
+ Query_Bar_Group group(app);
+ u8 string_space[256];
+ Query_Bar bar = {};
+ bar.prompt = strlit("Goto pos: ");
+ bar.string = SCu8(string_space, (u64)0);
+ bar.string_capacity = sizeof(string_space);
+ if(query_user_number(app, &bar)){
+  i1 pos = (i1)string_to_u64(bar.string, 10);
+  View_ID view = get_active_view(app, Access_ReadVisible);
+  view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ }
 }
 
 inline void
@@ -877,7 +890,7 @@ isearch(App *app, Scan_Direction start_scan, i64 first_pos,
                 case Scan_Forward:
                 {
                     i64 new_pos = 0;
-                    seek_string_insensitive_forward(app, buffer, pos - 1, 0, bar.string, &new_pos);
+                    new_pos = seek_string_insensitive_forward(app, buffer, pos - 1, 0, bar.string);
                     if (new_pos < buffer_size){
                         pos = new_pos;
                         match_size = bar.string.size;
@@ -887,7 +900,7 @@ isearch(App *app, Scan_Direction start_scan, i64 first_pos,
                 case Scan_Backward:
                 {
                     i64 new_pos = 0;
-                    seek_string_insensitive_backward(app, buffer, pos + 1, 0, bar.string, &new_pos);
+                    new_pos = seek_string_insensitive_backward(app, buffer, pos + 1, 0, bar.string);
                     if (new_pos >= 0){
                         pos = new_pos;
                         match_size = bar.string.size;
@@ -901,7 +914,7 @@ isearch(App *app, Scan_Direction start_scan, i64 first_pos,
                 case Scan_Forward:
                 {
                     i64 new_pos = 0;
-                    seek_string_insensitive_forward(app, buffer, pos, 0, bar.string, &new_pos);
+                    new_pos = seek_string_insensitive_forward(app, buffer, pos, 0, bar.string);
                     if (new_pos < buffer_size){
                         pos = new_pos;
                         match_size = bar.string.size;
@@ -911,7 +924,7 @@ isearch(App *app, Scan_Direction start_scan, i64 first_pos,
                 case Scan_Backward:
                 {
                     i64 new_pos = 0;
-                    seek_string_insensitive_backward(app, buffer, pos, 0, bar.string, &new_pos);
+                    new_pos = seek_string_insensitive_backward(app, buffer, pos, 0, bar.string);
                     if (new_pos >= 0){
                         pos = new_pos;
                         match_size = bar.string.size;
@@ -1054,42 +1067,41 @@ CUSTOM_DOC("Replace (current buffer only)")
 
 function void
 query_replace_base(App *app, View_ID view, Buffer_ID buffer_id, i64 pos, String r, String w){
-    i64 new_pos = 0;
-    seek_string_forward(app, buffer_id, pos - 1, 0, r, &new_pos);
-    
-    User_Input in = {};
-    for (;;){
-        Range_i64 match = Ii64(new_pos, new_pos + r.size);
-        isearch__update_highlight(app, view, match);
-        
-        in = get_next_input(app, EventProperty_AnyKey, EventProperty_MouseButton);
-        if (in.abort || match_key_code(&in, Key_Code_Escape) || !is_unmodified_key(&in.event)){
-            break;
-        }
-        
-        i64 size = buffer_get_size(app, buffer_id);
-        if (match.max <= size &&
-            (match_key_code(&in, Key_Code_Y) ||
-             match_key_code(&in, Key_Code_Return) ||
-             match_key_code(&in, Key_Code_Tab))){
-            buffer_replace_range(app, buffer_id, match, w);
-            pos = match.start + w.size;
-        }
-        else{
-            pos = match.max;
-        }
-        
-        seek_string_forward(app, buffer_id, pos, 0, r, &new_pos);
-        center_view(app);  // @modified(kv): scroll the darn thing into view so I can see what's being replaced
-    }
-    
-    view_disable_highlight_range(app, view);
-    
-    if (in.abort){
-        return;
-    }
-    
-    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ i64 new_pos = seek_string_forward(app, buffer_id, pos - 1, 0, r);
+ 
+ User_Input in = {};
+ for (;;){
+  Range_i64 match = Ii64(new_pos, new_pos + r.size);
+  isearch__update_highlight(app, view, match);
+  
+  in = get_next_input(app, EventProperty_AnyKey, EventProperty_MouseButton);
+  if (in.abort || match_key_code(&in, Key_Code_Escape) || !is_unmodified_key(&in.event)){
+   break;
+  }
+  
+  i64 size = buffer_get_size(app, buffer_id);
+  if (match.max <= size &&
+      (match_key_code(&in, Key_Code_Y) ||
+       match_key_code(&in, Key_Code_Return) ||
+       match_key_code(&in, Key_Code_Tab))){
+   buffer_replace_range(app, buffer_id, match, w);
+   pos = match.start + w.size;
+  }
+  else{
+   pos = match.max;
+  }
+  
+  new_pos = seek_string_forward(app, buffer_id, pos, 0, r);
+  center_view(app);  // @modified(kv): scroll the darn thing into view so I can see what's being replaced
+ }
+ 
+ view_disable_highlight_range(app, view);
+ 
+ if (in.abort){
+  return;
+ }
+ 
+ view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
 function void
@@ -1211,7 +1223,7 @@ CUSTOM_DOC("Read from the top of the point stack and jump there; if already ther
 function void
 delete_file_base(App *app, String filename, Buffer_ID buffer_id)
 {
-    String8 path = path_dirname(filename);
+    String8 path = path_dir(filename);
     Scratch_Block scratch(app);
     List_String list = {};
 #if OS_WINDOWS
@@ -1233,7 +1245,7 @@ CUSTOM_DOC("Deletes the file of the current buffer if 4coder has the appropriate
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Scratch_Block scratch(app);
-    String8 filename = push_buffer_filename(app, scratch, buffer);
+    String8 filename = push_buffer_filepath(app, scratch, buffer);
     if (filename.size > 0){
         Query_Bar_Group group(app);
         Query_Bar bar = {};
@@ -1286,15 +1298,15 @@ CUSTOM_DOC("Queries the user for a file name and saves the contents of the curre
     Query_Bar bar = {};
     bar.prompt = push_stringfz(scratch, "Save '%.*s' to: ", string_expand(buffer_name));
     bar.string = SCu8(name_space, (u64)0);
-    bar.string_capacity = sizeof(name_space);
-    if (query_user_string(app, &bar)){
-        if (bar.string.size != 0){
-            List_String new_filename_list = {};
-            string_list_push(scratch, &new_filename_list, push_hot_directory(app, scratch));
-            string_list_push(scratch, &new_filename_list, bar.string);
-            String new_filename = string_list_flatten(scratch, new_filename_list);
-            if (buffer_save(app, buffer, new_filename, BufferSave_IgnoreDirtyFlag)){
-                Buffer_ID new_buffer = create_buffer(app, new_filename, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
+ bar.string_capacity = sizeof(name_space);
+ if (query_user_string(app, &bar)){
+  if (bar.string.size != 0){
+   List_String new_filename_list = {};
+   string_list_push(scratch, &new_filename_list, push_hot_directory(app, scratch));
+   string_list_push(scratch, &new_filename_list, bar.string);
+   String new_filename = string_list_flatten(scratch, new_filename_list);
+   if (buffer_save(app, buffer, new_filename, BufferSave_IgnoreDirtyFlag)){
+    Buffer_ID new_buffer = create_buffer(app, new_filename, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
                 if (new_buffer != 0 && new_buffer != buffer){
                     buffer_kill(app, buffer, BufferKill_AlwaysKill);
                     view_set_buffer(app, view, new_buffer, 0);
@@ -1312,7 +1324,7 @@ CUSTOM_DOC("Queries the user for a new name and renames the file of the current 
     
     Scratch_Block scratch(app);
     
-    String filename = push_buffer_filename(app, scratch, buffer);
+    String filename = push_buffer_filepath(app, scratch, buffer);
     if (filename.size > 0){
         // Query the user
         Query_Bar_Group group(app);
@@ -1412,14 +1424,15 @@ CUSTOM_DOC("Delete the line the on which the cursor sits.")
     range.end = clamp_max(range.end, size);
     if (range_size(range) == 0 ||
         buffer_get_char(app, buffer, range.end - 1) != '\n'){
-        range.start -= 1;
-        range.first = clamp_min(0, range.first);
-    }
-    buffer_replace_range(app, buffer, range, strlit(""));
+  range.start -= 1;
+  range.first = clamp_min(0, range.first);
+ }
+ buffer_replace_range(app, buffer, range, strlit(""));
 }
 
 ////////////////////////////////
 
+void open_file_in_quotes(App *app);
 CUSTOM_COMMAND_SIG(open_file_in_quotes)
 CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to open the corresponding file.")
 {
@@ -1435,76 +1448,76 @@ CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to op
         
         String8 quoted_name = push_buffer_range(app, scratch, buffer, range);
         
-        String8 filename = push_buffer_filename(app, scratch, buffer);
-        String8 path = path_dirname(filename);
+        String8 filename = push_buffer_filepath(app, scratch, buffer);
+        String8 dir = path_dir(filename);
         
-        if (character_is_slash(string_get_character(path, path.size - 1)))
+        if (character_is_slash(string_get_character(dir, dir.size - 1)))
         {
-            path = string_chop(path, 1);
+            dir = string_chop(dir, 1);
         }
         
-        String8 new_filename = push_stringfz(scratch, "%.*s/%.*s", string_expand(path), string_expand(quoted_name));
+        String8 new_filename = push_stringfz(scratch, "%.*s/%.*s", string_expand(dir), string_expand(quoted_name));
         
         view = get_other_primary_view(app, view, Access_Always, true);
         if (view != 0){
             if (view_open_file(app, view, new_filename, true)){
-                view_set_active(app, view);
-            }
-        }
-    }
+    view_set_active(app, view);
+   }
+  }
+ }
 }
 
 function b32
 get_cpp_matching_file(App *app, Buffer_ID buffer, Buffer_ID *buffer_out)
 {
-    b32 result = false;
-    Scratch_Block scratch(app);
-    String filename = push_buffer_filename(app, scratch, buffer);
-    if (filename.size > 0)
-    {
-        String extension = path_extension(filename);
-        String new_extensions[2] = {};
-        i1 new_extensions_count = 0;
-        if (string_match(extension, strlit("cpp")) || string_match(extension, strlit("cc"))){
-            new_extensions[0] = strlit("h");
-            new_extensions[1] = strlit("hpp");
-            new_extensions_count = 2;
-        }
-        else if (string_match(extension, strlit("c"))){
-            new_extensions[0] = strlit("h");
-            new_extensions_count = 1;
-        }
-        else if (string_match(extension, strlit("h"))){
-            new_extensions[0] = strlit("cpp");
-            new_extensions[1] = strlit("c");
-            new_extensions_count = 2;
-        }
-        else if (string_match(extension, strlit("hpp"))){
-            new_extensions[0] = strlit("cpp");
-            new_extensions_count = 1;
-        }
-        
-        String file_without_extension = path_stem(filename);
-        for (i1 i = 0; i < new_extensions_count; i += 1){
-            Temp_Memory temp = begin_temp(scratch);
-            String8 new_extension = new_extensions[i];
-            String8 new_filename = push_stringfz(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
-            if (open_editing_file(app, buffer_out, new_filename, false, true)){
-                result = true;
-                break;
-            }
-            end_temp(temp);
-        }
-        
-        if (!result && new_extensions_count > 0){
-            String8 new_filename = push_stringfz(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extensions[0]));
-            if (open_editing_file(app, buffer_out, new_filename, false, false)){
-                result = true;
-            }
-        }
-    }
-    
-    return(result);
+ b32 result = false;
+ Scratch_Block scratch(app);
+ String path = push_buffer_filepath(app, scratch, buffer);
+ if (path.size > 0)
+ {
+  String extension = path_extension(path);
+  String new_extensions[2] = {};
+  i1 new_extensions_count = 0;
+  if (string_match(extension, strlit("cpp")) || string_match(extension, strlit("cc"))){
+   new_extensions[0] = strlit("h");
+   new_extensions[1] = strlit("hpp");
+   new_extensions_count = 2;
+  }
+  else if (string_match(extension, strlit("c"))){
+   new_extensions[0] = strlit("h");
+   new_extensions_count = 1;
+  }
+  else if (string_match(extension, strlit("h"))){
+   new_extensions[0] = strlit("cpp");
+   new_extensions[1] = strlit("c");
+   new_extensions_count = 2;
+  }
+  else if (string_match(extension, strlit("hpp"))){
+   new_extensions[0] = strlit("cpp");
+   new_extensions_count = 1;
+  }
+  
+  String path_no_extension0 = path_no_extension(path);
+  for (i1 i = 0; i < new_extensions_count; i += 1){
+   Temp_Memory temp = begin_temp(scratch);
+   String8 new_extension = new_extensions[i];
+   String8 new_filename = push_stringfz(scratch, "%.*s.%.*s", string_expand(path_no_extension0), string_expand(new_extension));
+   if (open_editing_file(app, buffer_out, new_filename, false, true)){
+    result = true;
+    break;
+   }
+   end_temp(temp);
+  }
+  
+  if (!result && new_extensions_count > 0){
+   String8 new_filename = push_stringfz(scratch, "%.*s.%.*s", string_expand(path_no_extension0), string_expand(new_extensions[0]));
+   if (open_editing_file(app, buffer_out, new_filename, false, false)){
+    result = true;
+   }
+  }
+ }
+ 
+ return(result);
 }
 
 CUSTOM_COMMAND_SIG(open_matching_file_cpp)
@@ -1589,19 +1602,19 @@ CUSTOM_DOC("Change to the most recently used buffer in this view - or to the top
 CUSTOM_COMMAND_SIG(kill_buffer)
 CUSTOM_DOC("Kills the current buffer.")
 {
- View_ID view = get_active_view(app, Access_ReadVisible);
- Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
- try_buffer_kill(app, buffer, view, 0);
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    try_buffer_kill(app, buffer, view, 0);
 }
 
-//CUSTOM_DOC("Saves the current buffer.")
-function void
-save_current_buffer(App *app)
+void save_current_buffer(App *app);
+CUSTOM_COMMAND_SIG(save_current_buffer)
+CUSTOM_DOC("Saves the current buffer.")
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
     Scratch_Block scratch(app);
-    String filename = push_buffer_filename(app, scratch, buffer);
+    String filename = push_buffer_filepath(app, scratch, buffer);
     buffer_save(app, buffer, filename, 0);
 }
 

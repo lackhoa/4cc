@@ -692,7 +692,7 @@ push_buffer_unique_name(App *app, Arena *out, Buffer_ID buffer_id){
 }
 
 api(custom) function String
-push_buffer_filename(App *app, Arena *arena, Buffer_ID buffer_id)
+push_buffer_filepath(App *app, Arena *arena, Buffer_ID buffer_id)
 {
  Models *models = (Models*)app->cmd_context;
  Editing_File *file = imp_get_file(models, buffer_id);
@@ -903,7 +903,7 @@ buffer_save(App *app, Buffer_ID buffer_id, String filename, Buffer_Save_Flag fla
         
         if (!skip_save){
             Thread_Context *tctx = app->tctx;
-            Scratch_Block scratch(tctx);
+            Scratch_Block scratch(tctx,0);
             String name = push_stringz(scratch, filename);
             save_file_to_name(tctx, models, file, name.str);
             result = true;
@@ -985,7 +985,7 @@ buffer_reopen(App *app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
     Thread_Context *tctx = app->tctx;
-    Scratch_Block scratch(tctx);
+    Scratch_Block scratch(tctx,0);
     Editing_File *file = imp_get_file(models, buffer_id);
     Buffer_Reopen_Result result = BufferReopenResult_Failed;
     if (api_check_buffer(file)){
@@ -3481,11 +3481,12 @@ fui_editor_ui_loop(App *app)
  return writeback;
 }
 
-api(ed) function void
+api(ed) function Buffer_ID
 view_set_buffer_named(App *app, View_ID view, String8 name)
 {
  Buffer_ID buffer = create_buffer(app, name, 0);
  view_set_buffer(app, view, buffer, 0);
+ return buffer;
 }
 
 api(ed) function Buffer_Seek
@@ -3610,5 +3611,9 @@ get_current_line_number(App *app){
  i64 line = get_line_number_from_pos(app, buffer, view_get_cursor_pos(app, view));
  return line;
 }
-
+api(custom) function b32
+os_window_is_active(App *app){
+ Models *models = (Models *)app->cmd_context;
+ return models->input->window_is_active;
+}
 //-BOTTOM

@@ -84,7 +84,7 @@ prj_close_files_with_ext(App *app, String8Array extension_array)
             
             if (extension_array.count > 0){
                 Temp_Memory name_temp = begin_temp(scratch);
-                String8 filename = push_buffer_filename(app, scratch, buffer);
+                String8 filename = push_buffer_filepath(app, scratch, buffer);
                 is_match = false;
                 if (filename.size > 0){
                     String8 extension = path_extension(filename);
@@ -502,7 +502,7 @@ prj_full_file_path_from_project(Arena *arena, Variable_Handle project){
 function String8
 prj_path_from_project(Arena *arena, Variable_Handle project){
     String8 project_full_path = prj_full_file_path_from_project(arena, project);
-    String8 project_dir = path_dirname(project_full_path);
+    String8 project_dir = path_dir(project_full_path);
     return(project_dir);
 }
 
@@ -579,8 +579,9 @@ concat_path(Arena *arena, String a, String b)
  return result;
 }
 
-CUSTOM_COMMAND_SIG(load_project)
-CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to load it.  Looks in parent directories until a project file is found or there are no more parents.")
+//CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to load it.  Looks in parent directories until a project file is found or there are no more parents.")
+function void
+load_project(App *app)
 {
  // TODO(allen): compress this _thoughtfully_
  

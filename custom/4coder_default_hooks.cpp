@@ -314,13 +314,13 @@ BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
                     Temp_Memory_Block temp(scratch);
                     String uniqueifier = {};
                     
-                    String8 filename = path_dirname(conflict->filename);
+                    String8 filename = path_dir(conflict->filename);
                     if (filename.size > 0){
                         filename = string_chop(filename, 1);
                         u8 *end = filename.str + filename.size;
                         b32 past_the_end = false;
                         for (i32 j = 0; j < x; ++j){
-                            filename = path_dirname(filename);
+                            filename = path_dir(filename);
                             if (j + 1 < x){
                                 filename = string_chop(filename, 1);
                             }
@@ -503,7 +503,7 @@ BUFFER_HOOK_SIG(default_begin_buffer)
  Scratch_Block scratch(app);
  
  b32 treat_as_code = false;
- String filename = push_buffer_filename(app, scratch, buffer_id);
+ String filename = push_buffer_filepath(app, scratch, buffer_id);
  if (filename.size > 0){
   String treat_as_code_string = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
   String_Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code_string);
