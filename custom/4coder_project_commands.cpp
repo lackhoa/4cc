@@ -83,7 +83,7 @@ prj_close_files_with_ext(App *app, String8Array extension_array)
             b32 is_match = true;
             
             if (extension_array.count > 0){
-                Temp_Memory name_temp = begin_temp(scratch);
+                Temp_Memory name_temp = begin_temp_memory(scratch);
                 String8 filename = push_buffer_filepath(app, scratch, buffer);
                 is_match = false;
                 if (filename.size > 0){
@@ -95,7 +95,7 @@ prj_close_files_with_ext(App *app, String8Array extension_array)
                         }
                     }
                 }
-                end_temp(name_temp);
+                end_temp_memory(name_temp);
             }
             
             if (is_match){

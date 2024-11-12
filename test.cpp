@@ -1,13 +1,9 @@
 #include <stdio.h>
-char s[2];
+#include <assert.h>
+
 int main () {
- printf("1\n");
- printf("2\n");
- printf("3\n");
- printf("4\n");
- s[2] = 0;
- printf("5\n");
- printf("6\n");
- printf("7\n");
+ char *file1 = __builtin_FILE();
+ char *file2 = __builtin_FILE();
+ assert(file1 == file2);
  return 0;
 }

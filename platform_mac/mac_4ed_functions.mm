@@ -145,7 +145,7 @@ system_get_file_list_sig(){
 
             // NOTE(yuval): Get file attributes
             {
-                Temp_Memory temp = begin_temp(arena);
+                Temp_Memory temp = begin_temp_memory(arena);
 
                 b32 append_slash = false;
                 u64 file_path_size = directory.size + file_name.size;
@@ -172,7 +172,7 @@ system_get_file_list_sig(){
 
                 info->attributes = mac_file_attributes_from_path(file_path);
 
-                end_temp(temp);
+                end_temp_memory(temp);
             }
         }
 
@@ -195,7 +195,7 @@ system_get_file_list_sig(){
 
 function
 system_quick_file_attributes_sig(){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
 
     char *c_file_name = push_array(scratch, char, file_name.size + 1);
     block_copy(c_file_name, file_name.str, file_name.size);
@@ -203,7 +203,7 @@ system_quick_file_attributes_sig(){
 
     File_Attributes result = mac_file_attributes_from_path(c_file_name);
 
-    end_temp(temp);
+    end_temp_memory(temp);
 
     return(result);
 }
@@ -326,7 +326,7 @@ system_load_library_sig(){
 
     // NOTE(yuval): Open library handle
     {
-        Temp_Memory temp = begin_temp(scratch);
+        Temp_Memory temp = begin_temp_memory(scratch);
 
         char *c_file_name = push_array(scratch, char, file_name.size + 1);
         block_copy(c_file_name, file_name.str, file_name.size);
@@ -335,7 +335,7 @@ system_load_library_sig(){
         lib = dlopen(c_file_name, RTLD_LAZY | RTLD_GLOBAL);
         const char *error = dlerror();
 
-        end_temp(temp);
+        end_temp_memory(temp);
     }
 
     if (lib){

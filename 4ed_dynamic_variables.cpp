@@ -11,7 +11,7 @@
 
 function void
 managed_ids_init(Base_Allocator *allocator, Managed_ID_Set *set){
-    set->arena = make_arena(allocator, KB(4));
+    set->arena = make_arena(KB(4));
     set->name_to_group_table = make_table_Data_u64(allocator, 20);
 }
 
@@ -22,47 +22,47 @@ managed_ids_group_highest_id(Managed_ID_Set *set, String group_name){
     Table_Lookup lookup = table_lookup(&set->name_to_group_table, data);
     if (lookup.found_match){
         u64 val = 0;
-        table_read(&set->name_to_group_table, lookup, &val);
-        Managed_ID_Group *group = (Managed_ID_Group*)IntAsPtr(val);
-        result = group->id_counter - 1;
-    }
-    return(result);
+  table_read(&set->name_to_group_table, lookup, &val);
+  Managed_ID_Group *group = (Managed_ID_Group*)IntAsPtr(val);
+  result = group->id_counter - 1;
+ }
+ return(result);
 }
 
 function Managed_ID
 managed_ids_declare(Managed_ID_Set *set, String group_name, String name){
-    Managed_ID_Group *group = 0;
-    {
-        String data = make_data(group_name.str, group_name.size);
-        Table_Lookup lookup = table_lookup(&set->name_to_group_table, data);
-        if (lookup.found_match){
-            u64 val = 0;
-            table_read(&set->name_to_group_table, lookup, &val);
-            group = (Managed_ID_Group*)IntAsPtr(val);
-        }
-        else{
-            group = push_array(&set->arena, Managed_ID_Group, 1);
-            group->id_counter = 1;
-            group->name_to_id_table = make_table_Data_u64(set->arena.base_allocator, 50);
-            data = push_string(&set->arena, data);
-            table_insert(&set->name_to_group_table, data, PtrAsInt(group));
-        }
-    }
-    Managed_ID result = 0;
-    {
-        String data = make_data(name.str, name.size);
-        Table_Lookup lookup = table_lookup(&group->name_to_id_table, data);
-        if (lookup.found_match){
-            table_read(&group->name_to_id_table, lookup, &result);
-        }
-        else{
-            result = group->id_counter;
-            group->id_counter += 1;
-            data = push_string(&set->arena, data);
-            table_insert(&group->name_to_id_table, data, result);
-        }
-    }
-    return(result);
+ Managed_ID_Group *group = 0;
+ {
+  String data = make_data(group_name.str, group_name.size);
+  Table_Lookup lookup = table_lookup(&set->name_to_group_table, data);
+  if (lookup.found_match){
+   u64 val = 0;
+   table_read(&set->name_to_group_table, lookup, &val);
+   group = (Managed_ID_Group*)IntAsPtr(val);
+  }
+  else{
+   group = push_array(&set->arena, Managed_ID_Group, 1);
+   group->id_counter = 1;
+   group->name_to_id_table = make_table_Data_u64(&malloc_base_allocator, 50);
+   data = push_string(&set->arena, data);
+   table_insert(&set->name_to_group_table, data, PtrAsInt(group));
+  }
+ }
+ Managed_ID result = 0;
+ {
+  String data = make_data(name.str, name.size);
+  Table_Lookup lookup = table_lookup(&group->name_to_id_table, data);
+  if (lookup.found_match){
+   table_read(&group->name_to_id_table, lookup, &result);
+  }
+  else{
+   result = group->id_counter;
+   group->id_counter += 1;
+   data = push_string(&set->arena, data);
+   table_insert(&group->name_to_id_table, data, result);
+  }
+ }
+ return(result);
 }
 
 function Managed_ID
@@ -92,7 +92,7 @@ managed_ids_get(Managed_ID_Set *set, String group_name, String name){
 
 function void
 dynamic_variable_block_init(Base_Allocator *allocator, Dynamic_Variable_Block *block){
-    block->arena = make_arena(allocator, KB(4));
+    block->arena = make_arena(KB(4));
     block->id_to_data_table = make_table_u64_Data(allocator, 20);
 }
 
@@ -120,49 +120,48 @@ dynamic_variable_erase(Dynamic_Variable_Block *block, Managed_ID id){
 
 function void
 lifetime_allocator_init(Base_Allocator *base_allocator, Lifetime_Allocator *lifetime_allocator){
-    block_zero_struct(lifetime_allocator);
-    lifetime_allocator->allocator = base_allocator;
-    lifetime_allocator->node_arena = make_arena(base_allocator, KB(4));
-    lifetime_allocator->key_table = make_table_Data_u64(base_allocator, 100);
-    lifetime_allocator->key_check_table = make_table_u64_u64(base_allocator, 100);
-    lifetime_allocator->scope_id_to_scope_ptr_table = make_table_u64_u64(base_allocator, 100);
+ block_zero_struct(lifetime_allocator);
+ lifetime_allocator->allocator = base_allocator;
+ lifetime_allocator->node_arena = make_arena(KB(4));
+ lifetime_allocator->key_table = make_table_Data_u64(base_allocator, 100);
+ lifetime_allocator->key_check_table = make_table_u64_u64(base_allocator, 100);
+ lifetime_allocator->scope_id_to_scope_ptr_table = make_table_u64_u64(base_allocator, 100);
 }
 
 ////////////////////////////////
 
 function void
 dynamic_workspace_init(Lifetime_Allocator *lifetime_allocator, i1 user_type, void *user_back_ptr, Dynamic_Workspace *workspace){
-    block_zero_struct(workspace);
-    heap_init(&workspace->heap, lifetime_allocator->allocator);
-    workspace->heap_wrapper = base_allocator_on_heap(&workspace->heap);
-    workspace->object_id_to_object_ptr = make_table_u64_u64(&workspace->heap_wrapper, 10);
-    dynamic_variable_block_init(&workspace->heap_wrapper, &workspace->var_block);
-    if (lifetime_allocator->scope_id_counter == 0){
-        lifetime_allocator->scope_id_counter = 1;
-    }
-    workspace->scope_id = lifetime_allocator->scope_id_counter++;
-    table_insert(&lifetime_allocator->scope_id_to_scope_ptr_table,
-                 workspace->scope_id, (u64)PtrAsInt(workspace));
-    workspace->user_type = user_type;
-    workspace->user_back_ptr = user_back_ptr;
+ block_zero_struct(workspace);
+ heap_init(&workspace->heap/*, lifetime_allocator->allocator*/);
+ workspace->heap_wrapper = base_allocator_on_heap(&workspace->heap);
+ workspace->object_id_to_object_ptr = make_table_u64_u64(&workspace->heap_wrapper, 10);
+ dynamic_variable_block_init(&workspace->heap_wrapper, &workspace->var_block);
+ if (lifetime_allocator->scope_id_counter == 0){
+  lifetime_allocator->scope_id_counter = 1;
+ }
+ workspace->scope_id = lifetime_allocator->scope_id_counter++;
+ table_insert(&lifetime_allocator->scope_id_to_scope_ptr_table,
+              workspace->scope_id, (u64)PtrAsInt(workspace));
+ workspace->user_type = user_type;
+ workspace->user_back_ptr = user_back_ptr;
 }
 
 function void
 dynamic_workspace_free(Lifetime_Allocator *lifetime_allocator, Dynamic_Workspace *workspace){
-    table_erase(&lifetime_allocator->scope_id_to_scope_ptr_table, workspace->scope_id);
-    heap_free_all(&workspace->heap);
+ table_erase(&lifetime_allocator->scope_id_to_scope_ptr_table, workspace->scope_id);
+ heap_free_all(&workspace->heap);
 }
 
 function void
 dynamic_workspace_clear_contents(Dynamic_Workspace *workspace){
-    Base_Allocator *base_allocator = heap_get_base_allocator(&workspace->heap);
-    heap_free_all(&workspace->heap);
-    heap_init(&workspace->heap, base_allocator);
-    workspace->heap_wrapper = base_allocator_on_heap(&workspace->heap);
-    workspace->object_id_to_object_ptr = make_table_u64_u64(&workspace->heap_wrapper, 10);
-    dynamic_variable_block_init(&workspace->heap_wrapper, &workspace->var_block);
-    block_zero_struct(&workspace->buffer_markers_list);
-    workspace->total_marker_count = 0;
+ heap_free_all(&workspace->heap);
+ heap_init(&workspace->heap);
+ workspace->heap_wrapper = base_allocator_on_heap(&workspace->heap);
+ workspace->object_id_to_object_ptr = make_table_u64_u64(&workspace->heap_wrapper, 10);
+ dynamic_variable_block_init(&workspace->heap_wrapper, &workspace->var_block);
+ block_zero_struct(&workspace->buffer_markers_list);
+ workspace->total_marker_count = 0;
 }
 
 function u32

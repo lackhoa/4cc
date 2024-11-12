@@ -45,7 +45,7 @@
 
 function void
 kvInitShiftedTable(){
- Base_Allocator *base = get_base_allocator_system();
+ Base_Allocator *base = get_default_allocator();
  shifted_version_of_characters = make_table_u64_u64(base, 32);
  
 #define INSERT(CHAR1, CHAR2) table_insert(&shifted_version_of_characters, CHAR1, CHAR2)
@@ -160,7 +160,7 @@ startup_panels_and_files(App *app)
 #define FILE_VAR "startup_file"
  String file1 = def_get_config_string(scratch, FILE_VAR "1");
  String file2 = def_get_config_string(scratch, FILE_VAR "2");
- String file3 = def_get_config_string(scratch, FILE_VAR "3");
+ //String file3 = def_get_config_string(scratch, FILE_VAR "3");
  String file4 = def_get_config_string(scratch, FILE_VAR "4");
 #undef FILE_VAR
  
@@ -193,9 +193,9 @@ startup_panels_and_files(App *app)
   {
    bottom_view = open_view(app, view1, ViewSplit_Bottom);
    new_view_settings(app, bottom_view);
-   Buffer_ID buffer = view_get_buffer(app, bottom_view, Access_Always);
-   Face_ID face_id = get_face_id(app, buffer);
-   Face_Metrics metrics = get_face_metrics(app, face_id);
+   //Buffer_ID buffer = view_get_buffer(app, bottom_view, Access_Always);
+   //Face_ID face_id = get_face_id(app, buffer);
+   //Face_Metrics metrics = get_face_metrics(app, face_id);
    //view_set_split_pixel_size(app, bottom_view, (i32)(metrics.line_height*4.f));
    view_set_passive(app, bottom_view, true);
    global_bottom_view = bottom_view;
@@ -745,7 +745,6 @@ kv_custom_layer_init(App *app)
   ed_api_fill_vtable(&const_ed_api);
   String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
   GAME_DLL_PATH = pjoin(&global_permanent_arena, binary_dir, "game.dll");
-  b32 loaded;
  }
 }
 

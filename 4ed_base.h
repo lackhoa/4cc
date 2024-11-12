@@ -2668,7 +2668,9 @@ function f32
 range_side(Range_f32 a, Side side){
  return(side == Side_Min?a.min:a.max);
 }
-
 //~
-
+inline Base_Allocator *
+get_default_allocator(){
+ return &malloc_base_allocator;
+}
 //~ EOF

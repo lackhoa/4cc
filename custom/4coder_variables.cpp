@@ -15,15 +15,15 @@ global String_ID vars_string_id_counter = 0;
 function void
 _vars_init(void)
 {
-    local_persist b32 did_init = false;
-    if (!did_init)
-    {
-        did_init = true;
-        Base_Allocator *base = get_base_allocator_system();
-        vars_arena = make_arena(base);
-        vars_string_to_id = make_table_Data_u64(base, 100);
-        vars_id_to_string = make_table_u64_Data(base, 100);
-    }
+ local_persist b32 did_init = false;
+ if (!did_init)
+ {
+  did_init = true;
+  Base_Allocator *base = get_default_allocator();
+  vars_arena = make_arena();
+  vars_string_to_id = make_table_Data_u64(base, 100);
+  vars_id_to_string = make_table_u64_Data(base, 100);
+ }
 }
 
 function String_ID

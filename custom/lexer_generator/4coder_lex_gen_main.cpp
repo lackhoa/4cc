@@ -654,7 +654,7 @@ smi_field_pin_sub__recursive(Arena *arena, Field_Pin_List a, Field_Pin_List *lis
     }
     else{
         b32 has_conflicts = false;
-        Temp_Memory restore_point = begin_temp(arena);
+        Temp_Memory restore_point = begin_temp_memory(arena);
         Field_Pin_List *new_list = smi_field_pin_list_copy(arena, a);
         for (Field_Pin *pin = growing_list.first;
              pin != 0;
@@ -665,7 +665,7 @@ smi_field_pin_sub__recursive(Arena *arena, Field_Pin_List a, Field_Pin_List *lis
                  a_pin = a_pin->next){
                 if (pin->flag == a_pin->flag){
                     if (pin->value == a_pin->value){
-                        end_temp(restore_point);
+                        end_temp_memory(restore_point);
                         has_conflicts = true;
                         goto double_break;
                     }
@@ -732,7 +732,7 @@ smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
              b_list != 0;
              b_list = b_list->next){
             b32 has_conflicts = false;
-            Temp_Memory restore_point = begin_temp(arena);
+            Temp_Memory restore_point = begin_temp_memory(arena);
             Field_Pin_List *new_list = smi_field_pin_list_copy(arena, *a_list);
             for (Field_Pin *b_pin = b_list->first;
                  b_pin != 0;
@@ -743,7 +743,7 @@ smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
                      pin = pin->next){
                     if (pin->flag == pin->flag){
                         if (pin->value != pin->value){
-                            end_temp(restore_point);
+                            end_temp_memory(restore_point);
                             has_conflicts = true;
                             goto double_break;
                         }
@@ -771,7 +771,7 @@ smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
 
 function b32
 smi_field_set_match(Arena *scratch, Field_Set a, Field_Set b){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     b32 result = false;
     Field_Set sub = smi_field_set_subtract(scratch, a, b);
     if (sub.count == 0){
@@ -780,7 +780,7 @@ smi_field_set_match(Arena *scratch, Field_Set a, Field_Set b){
             result = true;
         }
     }
-    end_temp(temp);
+    end_temp_memory(temp);
     return(result);
 }
 
@@ -850,7 +850,7 @@ function Input_Set
 smi_input_set_subtract(Arena *arena, Input_Set a, Input_Set b){
     Input_Set result = {};
     if (a.count > 0){
-        Temp_Memory restore_point = begin_temp(arena);
+        Temp_Memory restore_point = begin_temp_memory(arena);
         result = smi_input_set_copy(arena, a);
         for (i1 i = 0; i < result.count; i += 1){
             b32 is_subtracted = false;
@@ -867,7 +867,7 @@ smi_input_set_subtract(Arena *arena, Input_Set a, Input_Set b){
             }
         }
         if (a.count == 0){
-            end_temp(restore_point);
+            end_temp_memory(restore_point);
             block_zero_struct(&result);
         }
     }
@@ -878,7 +878,7 @@ function Input_Set
 smi_input_set_intersect(Arena *arena, Input_Set a, Input_Set b){
     Input_Set result = {};
     if (a.count > 0 && b.count > 0){
-        Temp_Memory restore_point = begin_temp(arena);
+        Temp_Memory restore_point = begin_temp_memory(arena);
         result = smi_input_set_copy(arena, a);
         for (i1 i = 0; i < result.count; i += 1){
             b32 is_shared = false;
@@ -895,7 +895,7 @@ smi_input_set_intersect(Arena *arena, Input_Set a, Input_Set b){
             }
         }
         if (result.count == 0){
-            end_temp(restore_point);
+            end_temp_memory(restore_point);
             block_zero_struct(&result);
         }
     }
@@ -2529,10 +2529,10 @@ opt_merge_redundant_transitions_in_each_state(Lexer_Primary_Context *ctx){
 
 function b32
 opt_condition_set_is_subset(Arena *scratch, Condition_Set sub, Condition_Set super){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     Condition_Set left_over = smi_condition_set_subtract(scratch, sub, super);
     b32 result = (left_over.count == 0);
-    end_temp(temp);
+    end_temp_memory(temp);
     return(result);
 }
 
@@ -2773,7 +2773,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
         f32 accumulated_error = 0;
         for (;;){
             u64 seed = random_u64_dirty();
-            Temp_Memory restore_point = begin_temp(arena);
+            Temp_Memory restore_point = begin_temp_memory(arena);
             Keyword_Layout layout = opt_key_layout(arena, keywords, slot_count, seed);
             accumulated_error += layout.iterations_per_lookup;
             
@@ -2784,7 +2784,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
                 }
             }
             else{
-                end_temp(restore_point);
+                end_temp_memory(restore_point);
             }
             if (accumulated_error >= accumulated_error_threshold){
                 break;
@@ -2800,7 +2800,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
         u64 accumulated_error = 0;
         for (;;){
             u64 seed = random_u64_dirty();
-            Temp_Memory restore_point = begin_temp(arena);
+            Temp_Memory restore_point = begin_temp_memory(arena);
             Keyword_Layout layout = opt_key_layout(arena, keywords, slot_count, seed);
             
             u64 adjusted_error_score = (layout.max_single_error_score + acceptable_max_single_error - 1)/acceptable_max_single_error;
@@ -2817,7 +2817,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
                 }
             }
             else{
-                end_temp(restore_point);
+                end_temp_memory(restore_point);
             }
             if (accumulated_error >= accumulated_max_single_error_threshold){
                 break;
@@ -2925,7 +2925,7 @@ opt_grouped_input_handlers(Arena *arena, Transition *first_trans){
     i1 size_of_biggest = 0;
     
     for (u16 i = 0; i <= 255; i += 1){
-        Temp_Memory restore_point = begin_temp(arena);
+        Temp_Memory restore_point = begin_temp_memory(arena);
         Partial_Transition_List list = {};
         for (Transition *trans = first_trans;
              trans != 0;
@@ -2952,7 +2952,7 @@ opt_grouped_input_handlers(Arena *arena, Transition *first_trans){
         }
         
         if (matching_group != 0){
-            end_temp(restore_point);
+            end_temp_memory(restore_point);
         }
         else{
             matching_group = push_array_zero(arena, Grouped_Input_Handler, 1);
@@ -2994,7 +2994,7 @@ debug_print_states(Lexer_Primary_Context *ctx){
 
 function void
 debug_print_transitions(Arena *scratch, Lexer_Model model){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     
     i1 field_bit_width = model.flags.count;
     char *field_memory = push_array(scratch, char, field_bit_width);
@@ -3123,7 +3123,7 @@ debug_print_transitions(Arena *scratch, Lexer_Model model){
         }
     }
     
-    end_temp(temp);
+    end_temp_memory(temp);
 }
 
 function void
@@ -3162,7 +3162,7 @@ gen_token_full_name(Arena *arena, String base_name){
 
 function void
 gen_tokens(Arena *scratch, Token_Kind_Set tokens, FILE *out){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     i1 counter = 0;
     fprintf(out, "typedef u16 Token_" LANG_NAME_CAMEL_STR "_Kind;\n");
     fprintf(out, "enum{\n");
@@ -3183,12 +3183,12 @@ gen_tokens(Arena *scratch, Token_Kind_Set tokens, FILE *out){
         fprintf(out, "\"%.*s\",\n", string_expand(node->name));
     }
     fprintf(out, "};\n");
-    end_temp(temp);
+    end_temp_memory(temp);
 }
 
 function void
 gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, FILE *out){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     Keyword_Layout key_layout = opt_key_layout(scratch, keywords);
     
     fprintf(out, "u64 " LANG_NAME_LOWER_STR "_%.*s_hash_array[%d] = {\n",
@@ -3238,7 +3238,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
             fprintf(out, "{0, 0},\n");
         }
         else{
-            Temp_Memory temp2 = begin_temp(scratch);
+            Temp_Memory temp2 = begin_temp_memory(scratch);
             Keyword *keyword = key_layout.slots[i];
             String name = keyword->name;
             
@@ -3250,7 +3250,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
             Token_Kind_Node *token_node = (Token_Kind_Node*)IntAsPtr(val);
             
             fprintf(out, "{%u, %s},\n", token_node->base_kind, full_token_name);
-            end_temp(temp2);
+            end_temp_memory(temp2);
         }
     }
     fprintf(out, "};\n");
@@ -3260,7 +3260,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
     fprintf(out, "u64 " LANG_NAME_LOWER_STR "_%.*s_seed = 0x%016llx;\n",
             string_expand(keywords.pretty_name), key_layout.seed);
     
-    end_temp(temp);
+    end_temp_memory(temp);
 }
 
 function void
@@ -3375,11 +3375,11 @@ gen_emit__fill_token_base_kind(Token_Kind_Set tokens, String name, FILE *out){
 
 function void
 gen_emit__direct(Arena *scratch, Token_Kind_Set tokens, String base_name, FILE *out){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     char *token_full_name = gen_token_full_name(scratch, base_name);
     fprintf(out, "token.sub_kind = %s;\n", token_full_name);
     gen_emit__fill_token_base_kind(tokens, base_name, out);
-    end_temp(temp);
+    end_temp_memory(temp);
 }
 
 function Action_Context
@@ -3528,13 +3528,13 @@ gen_SLOW_action_list__cont_flow(Arena *scratch, Token_Kind_Set tokens, Flag_Set 
                     for (Emit_Check *emit_check = emit->emit_checks.first;
                          emit_check != 0;
                          emit_check = emit_check->next){
-                        Temp_Memory temp = begin_temp(scratch);
+                        Temp_Memory temp = begin_temp_memory(scratch);
                         char *emit_check_full_name = gen_token_full_name(scratch, emit_check->emit_check);
                         fprintf(out, "case %s:\n", emit_check_full_name);
                         fprintf(out, "{\n");
                         gen_action__set_flag(emit_check->flag, emit_check->value, out);
                         fprintf(out, "}break;\n");
-                        end_temp(temp);
+                        end_temp_memory(temp);
                     }
                     fprintf(out, "}\n");
                 }
@@ -3607,7 +3607,7 @@ gen_flag_fill_lookup__cont_flow(Flag_Bucket *bucket){
 
 function void
 gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_Model model, FILE *out){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     
     model = opt_copy_model(scratch, model);
     
@@ -3892,7 +3892,7 @@ gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_M
     fprintf(out, "return(list);\n");
     fprintf(out, "}\n");
     
-    end_temp(temp);
+    end_temp_memory(temp);
 }
 
 ////////////////////////////////

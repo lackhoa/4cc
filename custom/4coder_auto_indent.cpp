@@ -467,12 +467,11 @@ auto_indent_line_at_cursor(App *app)
 function void vim_normal_mode(App *app);
 
 function void
-auto_indent_range(App *app)
-{
+auto_indent_range(App *app){
  View_ID view = get_active_view(app, Access_ReadWriteVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
  Range_i64 range = get_view_range(app, view);
- b32 result = auto_indent_buffer(app, buffer, range);
+ auto_indent_buffer(app, buffer, range);
  move_past_lead_whitespace(app, view, buffer);
  vim_normal_mode(app);
 }

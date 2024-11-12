@@ -240,7 +240,7 @@ error(Reader *reader, i64 pos, u8 *msg){
 }
 
 static Temp_Read
-begin_temp_read(Reader *reader){
+begin_temp_memory_read(Reader *reader){
     Temp_Read temp = {};
     temp.reader = reader;
     temp.pos = reader->ptr;
@@ -248,7 +248,7 @@ begin_temp_read(Reader *reader){
 }
 
 static void
-end_temp_read(Temp_Read temp){
+end_temp_memory_read(Temp_Read temp){
     temp.reader->ptr = temp.pos;
 }
 
@@ -336,11 +336,11 @@ require_key_identifier(Reader *reader, String string, i64 *opt_pos_out){
     }
     
     if (!success){
-        Temp_Memory temp = begin_temp(reader->error_arena);
+        Temp_Memory temp = begin_temp_memory(reader->error_arena);
         String error_string = push_stringfz(reader->error_arena, "expected to find '%.*s'",
                                                        string.size, string.str);
         error(reader, token.pos, error_string.str);
-  end_temp(temp);
+  end_temp_memory(temp);
  }
  
  return(success);
@@ -696,7 +696,7 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
             if (!HasFlag(token.flags, TokenBaseFlag_PreprocessorBody)){
                 String lexeme = token_str(text, token);
                 if (string_match(lexeme, strlit("CUSTOM_DOC"))){
-                    Temp_Read temp_read = begin_temp_read(reader);
+                    Temp_Read temp_read = begin_temp_memory_read(reader);
                 
                 b32 found_start_pos = false;
                 for (i1 R = 0; R < 12; ++R){
@@ -714,19 +714,19 @@ parse_text(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, u8 *source_nam
                 }
                 
                 if (!found_start_pos){
-                    end_temp_read(temp_read);
+                    end_temp_memory_read(temp_read);
                 }
                 else{
                     if (!parse_documented_command(arena, entry_arrays, reader)){
-                        end_temp_read(temp_read);
+                        end_temp_memory_read(temp_read);
                     }
                 }
                 }
                 else if (string_match(lexeme, strlit("CUSTOM_ID"))){
-                    Temp_Read temp_read = begin_temp_read(reader);
+                    Temp_Read temp_read = begin_temp_memory_read(reader);
                     prev_token(reader);
                     if (!parse_custom_id(arena, entry_arrays, reader)){
-                        end_temp_read(temp_read);
+                        end_temp_memory_read(temp_read);
                     }
                 }
             }
@@ -763,10 +763,10 @@ parse_files_by_pattern(Arena *arena, Meta_Command_Entry_Arrays *entry_arrays, Fi
   Cross_Platform_File_Info *info = &list.info[i];
   
   String_Const_Any info_name = SCany(info->name, info->len);
-  Temp_Memory temp = begin_temp(arena);
+  Temp_Memory temp = begin_temp_memory(arena);
   String info_name_ascii = string_u8_from_any(arena, info_name);
   b32 is_generated = string_match(info_name_ascii, strlit("4coder_generated"));
-  end_temp(temp);
+  end_temp_memory(temp);
   
   if (info->is_folder && is_generated){
    continue;
@@ -901,7 +901,7 @@ main(int argc, char **argv){
   for (i1 i = 0; i < entry_count; ++i){
    Meta_Command_Entry *entry = entries[i];
    
-   Temp_Memory temp = begin_temp(arena);
+   Temp_Memory temp = begin_temp_memory(arena);
    
    String source_name = SCu8((char *)entry->source_name);
    String printable = string_replace(arena, source_name,
@@ -925,7 +925,7 @@ main(int argc, char **argv){
            printable.str,
            (i1)source_name.size,
            entry->line_number);
-   end_temp(temp);
+   end_temp_memory(temp);
   }
   fprintf(cmd_out, "};\n");
   

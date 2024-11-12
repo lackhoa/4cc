@@ -358,7 +358,7 @@ buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range)
 #if 0
 function i64
 buffer_count_newlines(Arena *scratch, Gap_Buffer *buffer, i64 start, i64 end){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     List_String list = buffer_get_chunks(scratch, buffer);
     buffer_chunks_clamp(&list, Ii64(start, end));
     
@@ -375,7 +375,7 @@ buffer_count_newlines(Arena *scratch, Gap_Buffer *buffer, i64 start, i64 end){
         }
     }
     
-    end_temp(temp);
+    end_temp_memory(temp);
     
     return(count);
 }
@@ -403,7 +403,7 @@ buffer_measure_starts__write(Gap_Buffer *buffer, i64 pos){
 
 function void
 buffer_measure_starts(Arena *scratch, Gap_Buffer *buffer){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     List_String list = buffer_get_chunks(scratch, buffer);
     buffer->line_start_count = 0;
     buffer_measure_starts__write(buffer, 0);
@@ -421,7 +421,7 @@ buffer_measure_starts(Arena *scratch, Gap_Buffer *buffer){
         }
     }
     buffer_measure_starts__write(buffer, buffer_size(buffer));
-    end_temp(temp);
+    end_temp_memory(temp);
 }
 
 function i64

@@ -26,8 +26,8 @@ log_string(String str){
         string_list_push(&global_log.arena, &global_log.list, push_stringz(&global_log.arena, str));
         system_mutex_release(global_log.mutex);
         result = true;
-    }
-    return(result);
+ }
+ return(result);
 }
 
 function void
@@ -35,23 +35,23 @@ output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, Str
 
 function b32
 log_flush(Thread_Context *tctx, Models *models){
-    b32 result = false;
-    
-    system_mutex_acquire(global_log.mutex);
-    global_log.disabled_thread_id = system_thread_get_id();
-    
-    if (global_log.list.total_size > 0){
-        String text = string_list_flatten(&global_log.arena, global_log.list);
-        output_file_append(tctx, models, models->log_buffer, text);
-        result = true;
-    }
-    arena_clear(&global_log.arena);
-    block_zero_struct(&global_log.list);
-    
-    global_log.disabled_thread_id = 0;
-    system_mutex_release(global_log.mutex);
-    
-    return(result);
+ b32 result = false;
+ 
+ system_mutex_acquire(global_log.mutex);
+ global_log.disabled_thread_id = system_thread_get_id();
+ 
+ if (global_log.list.total_size > 0){
+  String text = string_list_flatten(&global_log.arena, global_log.list);
+  output_file_append(tctx, models, models->log_buffer, text);
+  result = true;
+ }
+ arena_clear2(&global_log.arena);
+ block_zero_struct(&global_log.list);
+ 
+ global_log.disabled_thread_id = 0;
+ system_mutex_release(global_log.mutex);
+ 
+ return(result);
 }
 
 // BOTTOM

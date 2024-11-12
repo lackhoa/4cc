@@ -91,8 +91,6 @@ vim_lister_file__backspace(App *app){
 		lister_update_filtered_list(app, lister);
 	}
 }
-
-
 function Lister_Activation_Code
 vim_lister__write_character__file_path(App *app){
 	Lister_Activation_Code result = ListerActivation_Continue;
@@ -153,8 +151,6 @@ vim_convert_lister_result_to_filename_result(Lister_Result l_result){
 	
 	return(result);
 }
-
-
 function f32 vim_lister_get_block_height(f32 line_height){ return 1.5f*line_height; }
 
 function void*
@@ -206,7 +202,7 @@ calc_col_row(App *app, Lister *lister)
 	return Vec2_i32{col_num, row_num};
 }
 
-#define SCREW_THIS_JUST_KISS 1
+#define SCREW_THIS_JUST_KISS 1  //NOTE(kv) I don't approve of this message!
 // TODO(BYP): Be more rigorous here. I'm sure there are off-by-1's and other incorrect assumptions
 function void
 vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
@@ -388,8 +384,7 @@ vim_run_lister(App *app, Lister *lister)
  View_ID view = get_this_ctx_view(app, Access_Always);
  vim_lister_view_id = view;
 #if VIM_USE_BOTTOM_LISTER
- Scratch_Block scratch(app);
- lister->filter_restore_point = begin_temp(lister->arena);
+ lister->filter_restore_point = begin_temp_memory(lister->arena);
  lister_update_filtered_list(app, lister);
  
  vim_use_bottom_cursor = true;

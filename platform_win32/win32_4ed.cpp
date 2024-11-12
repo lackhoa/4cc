@@ -475,28 +475,18 @@ system_get_clipboard_sig()
 }
 
 function
-system_post_clipboard_sig()
-{
-    Arena *arena = &win32vars.clip_post_arena;
-    if (arena->base_allocator == 0)
-    {
-        *arena = make_arena_system();
-    }
-    else
-    {
-        arena_clear(arena);
-    }
-    win32vars.clip_post.str = push_array(arena, u8, str.size + 1);
-    if (win32vars.clip_post.str != 0)
-    {
-        block_copy(win32vars.clip_post.str, str.str, str.size);
-        win32vars.clip_post.str[str.size] = 0;
-        win32vars.clip_post.size = str.size;
-    }
-    else
-    {
-        log_os("Failed to allocate buffer for clipboard post (%d)\n", (i32)str.size + 1);
-    }
+system_post_clipboard_sig() {
+ Arena *arena = &win32vars.clip_post_arena;
+ arena_clear2(arena);
+ win32vars.clip_post.str = push_array(arena, u8, str.size + 1);
+ if (win32vars.clip_post.str != 0)
+ {
+  block_copy(win32vars.clip_post.str, str.str, str.size);
+  win32vars.clip_post.str[str.size] = 0;
+  win32vars.clip_post.size = str.size;
+ } else {
+  log_os("Failed to allocate buffer for clipboard post (%d)\n", (i32)str.size + 1);
+ }
 }
 
 function
@@ -522,7 +512,7 @@ system_cli_call_sig()
     char cmd[] = "c:\\windows\\system32\\cmd.exe";
     char *env_variables = 0;
     
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     String cmd_arg = push_stringfz(scratch, "/C %s", script);
     
     b32 success = false;
@@ -584,7 +574,7 @@ system_cli_call_sig()
         // TODO(allen): failed CreatePipe
     }
     
-    end_temp(temp);
+    end_temp_memory(temp);
     
     return(success);
 }
@@ -887,7 +877,7 @@ win32_alloc_object(Win32_Object_Kind kind)
  if (result == 0)
  {
   i32 count = 512;
-  Win32_Object *objects = (Win32_Object*)system_memory_allocate_exact(count*sizeof(Win32_Object), filename_linum);
+  Win32_Object *objects = (Win32_Object*)malloc(count*sizeof(Win32_Object));
   objects[0].node.prev = &win32vars.free_win32_objects;
   win32vars.free_win32_objects.next = &objects[0].node;
   for (i32 i = 1; i < count; i += 1){
@@ -1720,7 +1710,7 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles) {
   
   if(0) {
    const GLubyte *version = glGetString(GL_VERSION);
-   breakhere;
+   (void)version;
   }
  }
  
@@ -1778,9 +1768,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 {
  i32 argc = __argc;
  char **argv = __argv;
- 
  // NOTE(allen): someone get my shit togeth :(er for me
- 
  for (i32 i = 0; i < argc; i += 1){
   String arg = SCu8(argv[i]);
   printf("arg[%d]: %.*s\n", i, string_expand(arg));
@@ -1789,18 +1777,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
  }
  
- log_os("Logging startup...\n");
- 
- log_os("Initializing thread context...\n");
- 
- InitializeCriticalSection(&memory_tracker_mutex);
- 
  // NOTE(allen): context setup
- Thread_Context _tctx = {};
- thread_context_init(&_tctx, ThreadKind_Main, get_base_allocator_system(), get_base_allocator_system());
+ log_os("Initializing thread context...\n");
+ InitializeCriticalSection(&memory_tracker_mutex);
+ thread_context_init(&global_thread_context, ThreadKind_Main,
+                     get_default_allocator(), get_default_allocator());
  
- block_zero_struct(&win32vars);
- win32vars.tctx = &_tctx;
+ win32vars = {};
+ win32vars.tctx = &global_thread_context;
  
  log_os("Filling API v-tables...\n");
  API_VTable_system system_vtable = {};
@@ -1851,9 +1835,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  // NOTE(allen): init & command line parameters
  log_os("Parsing command line...\n");
- 
  Plat_Settings plat_settings = {};
- void *base_ptr = 0;
+ Models *base_ptr = 0;
  {
   Scratch_Block scratch(win32vars.tctx,0);
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
@@ -1974,10 +1957,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32vars.usecond_per_count = 1.f;
  }
  
- //
- // App init
- //
- 
+ //~App init
  log_os("Initializing 4ed core...\n");
  {
   Scratch_Block scratch(win32vars.tctx,0);
@@ -1986,12 +1966,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   app_init(win32vars.tctx, base_ptr, curdir);
  }
  
- {//-NOTE: DearImgui init
+ {//-DearImgui init
   IMGUI_CHECKVERSION();
   win32_imgui_init();
  }
  
- //-Main loop
+ //~Main loop
  log_os("Starting main loop...\n");
  
  b32 keep_running = true;
@@ -2017,10 +1997,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  v1 work_seconds = 0.f;
  u32 work_cycles = 0;
  u32 hot_prim_id = 0;
- bool show_demo_window = true;
+ //bool show_demo_window = true;
  while ( keep_running )
  {//-NOTE The main loop
-  arena_clear(&win32vars.frame_arena);
+  arena_clear2(&win32vars.frame_arena);
   block_zero_struct(&win32vars.input_chunk.trans);
   win32vars.active_key_stroke = 0;
   win32vars.active_text_input = 0;

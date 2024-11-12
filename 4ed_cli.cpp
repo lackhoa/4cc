@@ -11,7 +11,7 @@
 
 function void
 child_process_container_init(Base_Allocator *allocator, Child_Process_Container *container){
-    container->arena = make_arena(allocator);
+    container->arena = make_arena();
     dll_init_sentinel(&container->child_process_active_list);
     dll_init_sentinel(&container->child_process_free_list);
     container->active_child_process_count = 0;
@@ -22,7 +22,7 @@ child_process_container_init(Base_Allocator *allocator, Child_Process_Container 
 
 function void
 child_process_container_release(Child_Process_Container *container, Models *models){
-    arena_clear(&container->arena);
+    arena_free(&container->arena);
     table_free(&container->id_to_ptr_table);
     block_zero_struct(container);
 }

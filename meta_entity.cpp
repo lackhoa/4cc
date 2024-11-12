@@ -198,6 +198,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
     for_i32(p0_p3_index,0,2){
      b32 is_p0 = p0_p3_index==0;
      b32 is_p3 = p0_p3_index==1;
+     (void)is_p3;
      String endpoint_name = is_p0 ? strlit("p0") : strlit("p3");
      p<"function Vertex_Index\n"<
       "get_"<endpoint_name<"_index_or_zero(Curve_Data &curve)";

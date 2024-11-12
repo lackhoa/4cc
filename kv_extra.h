@@ -1,48 +1,19 @@
 //-
 thread_global Thread_Context global_thread_context;
 
-function Thread_Context *
-get_thread_context(){
- return &global_thread_context;
-}
-function void
-thread_context_init(Thread_Context *tctx, Thread_Kind kind, Base_Allocator *allocator,
-                    Base_Allocator *prof_allocator){
- block_zero_struct(tctx);
- tctx->kind       = kind;
- tctx->allocator  = allocator;
- tctx->node_arena = make_arena(allocator, KB(4));
- if(prof_allocator){
-  tctx->prof_allocator  = prof_allocator;
-  tctx->prof_id_counter = 1;
-  tctx->prof_arena      = make_arena(prof_allocator, KB(16));
- }
-}
-function void
-thread_context_destroy(Thread_Context *tctx){
- for (Arena_Node *node = tctx->used_first;
-      node != 0;
-      node = node->next){
-  arena_clear(&node->arena);
- }
- arena_clear(&tctx->node_arena);
- block_zero_struct(tctx);
- //TODO(kv) Hello? What about prof_allocator?
- //  we don't ever call this function anyway?
-}
 function Arena_Node *
 tctx__alloc_arena_node(Thread_Context *tctx){
- Arena_Node *result = push_array(&tctx->node_arena, Arena_Node, 1, true);
- result->arena = make_arena(tctx->allocator, MB(1));
+ Arena_Node *result = push_array(&tctx->node_arena, Arena_Node, 1, push_zero());
+ result->arena = make_arena(MB(1));
  return(result);
 }
-function Arena*
-tctx_reserve(Thread_Context *tctx, Arena **conflicts, i32 conflict_count){
+function Arena *
+tctx_reserve_arena(Thread_Context *tctx, Arena **conflicts, i32 conflict_count){
  Arena_Node *node = tctx->used_first;
  for(; node != 0; node = node->next){
   //-Find non-conflicting arena
   b32 conflicted = false;
-  for_i32(conflict_index,0,conflict_count){
+   for_i32(conflict_index,0,conflict_count){
    if(&node->arena == conflicts[conflict_index]){
     conflicted = true;
     break;
@@ -61,9 +32,47 @@ tctx_reserve(Thread_Context *tctx, Arena **conflicts, i32 conflict_count){
  return(&node->arena);
 }
 function void
-tctx_release(Thread_Context *tctx, Arena *arena){
+tctx_release_arena(Thread_Context *tctx, Arena *arena){
  Arena_Node *node = CastFromMember(Arena_Node, arena, arena);
  node->ref_counter -= 1;
+}
+function Thread_Context *
+get_thread_context(){
+ return &global_thread_context;
+}
+//todo(kv) Make another thread context for shared code
+function void
+thread_context_init(Thread_Context *tctx, Thread_Kind kind,
+                    Base_Allocator *allocator,
+                    Base_Allocator *prof_allocator=0){
+ //tctx->allocator = allocator;
+ if(kind == ThreadKind_Main){
+  //-Some arena constants
+  usize page_size = system_page_size();
+  default_arena_commit_step   = round_up_to_pow2(page_size, KB(4));
+  default_arena_decommit_step = round_up_to_pow2(page_size, MB(64));
+ }
+ block_zero_struct(tctx);
+ tctx->kind       = kind;
+ tctx->node_arena = make_arena(KB(4));
+ 
+ if(prof_allocator){
+  tctx->prof_allocator  = prof_allocator;
+  tctx->prof_id_counter = 1;
+  tctx->prof_arena      = make_arena(KB(16));
+ }
+}
+function void
+thread_context_destroy(Thread_Context *tctx){
+ for (Arena_Node *node = tctx->used_first;
+      node != 0;
+      node = node->next){
+  arena_free(&node->arena);
+ }
+ arena_free(&tctx->node_arena);
+ block_zero_struct(tctx);
+ //TODO(kv) Hello? What about prof_allocator?
+ //  we don't ever call this function anyway?
 }
 //~
 #define heap__sent_init(s) (s)->next=(s)->prev=(s)
@@ -101,8 +110,8 @@ heap_assert_good(Heap *heap){
 #endif
 
 function void
-heap_init(Heap *heap, Base_Allocator *allocator){
- heap->arena_ = make_arena(allocator);
+heap_init(Heap *heap){
+ heap->arena_ = make_arena();
  heap->arena = &heap->arena_;
  heap__sent_init(&heap->in_order);
  heap__sent_init(&heap->free_nodes);
@@ -119,15 +128,10 @@ heap_init(Heap *heap, Arena *arena){
  heap->total_space = 0;
 }
 
-function Base_Allocator*
-heap_get_base_allocator(Heap *heap){
- return(heap->arena->base_allocator);
-}
-
 function void
 heap_free_all(Heap *heap){
  if (heap->arena == &heap->arena_){
-  arena_clear(heap->arena);
+  arena_free(heap->arena);
  }
  block_zero_struct(heap);
 }
@@ -497,9 +501,7 @@ starts_with(String str, char prefix) {
 #define starts_with_lit(string,prefix) starts_with(string, strlit(prefix))
 
 #define string_match_lit(a,b)  string_match(a,strlit(b))
-
 //-
-
 function String
 push_stringfv(Arena *arena, char *format, va_list args, b32 zero_terminated)
 {
@@ -719,4 +721,10 @@ gb_sort(void *base_, isize count, isize size, Compare_Function compare){
 #undef GB__SORT_POP
 #define gb_sort_array(array, count, compare) \
 gb_sort(array, count, gb_size_of(*(array)), compare)
-//~eof
+//-
+template<class T>
+struct DLL_Node{
+ T *next;
+ T *prev;
+};
+//~EOF

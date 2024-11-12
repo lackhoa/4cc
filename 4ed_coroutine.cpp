@@ -19,51 +19,51 @@ coroutine__pass_control(Coroutine *me, Coroutine *other,
     other->state = CoroutineState_Active;
     me->sys->active = other;
     system_condition_variable_signal(other->cv);
-    if (control == CoroutinePassControl_BlockMe){
-        for (;me->state != CoroutineState_Active;){
-            system_condition_variable_wait(me->cv, me->sys->lock);
-        }
-    }
+ if (control == CoroutinePassControl_BlockMe){
+  for (;me->state != CoroutineState_Active;){
+   system_condition_variable_wait(me->cv, me->sys->lock);
+  }
+ }
 }
 
 function void
 coroutine_main(void *ptr){
-    Coroutine *me = (Coroutine*)ptr;
-    
-    Thread_Context_Extra_Info tctx_info = {};
-    tctx_info.coroutine = me;
-    
-    Thread_Context tctx_ = {};
-    thread_context_init(&tctx_, ThreadKind_MainCoroutine,
-                    get_base_allocator_system(), get_base_allocator_system());
-    tctx_.user_data = &tctx_info;
-    me->tctx = &tctx_;
-    
-    // NOTE(allen): Init handshake
-    Assert(me->state == CoroutineState_Dead);
-    system_mutex_acquire(me->sys->lock);
-    me->sys->did_init = true;
-    system_condition_variable_signal(me->sys->init_cv);
-    
-    for (;;){
-        // NOTE(allen): Wait until someone wakes us up, then go into our procedure.
-        for (;me->state != CoroutineState_Active;){
-            system_condition_variable_wait(me->cv, me->sys->lock);
-        }
-        Assert(me->type != CoroutineType_Root);
-        Assert(me->yield_ctx != 0);
-        Assert(me->func != 0);
-        
-        me->func(me);
-        
-        // NOTE(allen): Wake up the caller and set this coroutine back to being dead.
-        Coroutine *other = me->yield_ctx;
-        Assert(other != 0);
-        Assert(other->state == CoroutineState_Waiting);
-        
-        coroutine__pass_control(me, other, CoroutineState_Dead, CoroutinePassControl_ExitMe);
-        me->func = 0;
-    }
+ Coroutine *me = (Coroutine*)ptr;
+ 
+ Thread_Context_Extra_Info tctx_info = {};
+ tctx_info.coroutine = me;
+ 
+ Thread_Context tctx_ = {};
+ thread_context_init(&tctx_, ThreadKind_MainCoroutine,
+                     &malloc_base_allocator, &malloc_base_allocator);
+ tctx_.user_data = &tctx_info;
+ me->tctx = &tctx_;
+ 
+ // NOTE(allen): Init handshake
+ Assert(me->state == CoroutineState_Dead);
+ system_mutex_acquire(me->sys->lock);
+ me->sys->did_init = true;
+ system_condition_variable_signal(me->sys->init_cv);
+ 
+ for (;;){
+  // NOTE(allen): Wait until someone wakes us up, then go into our procedure.
+  for (;me->state != CoroutineState_Active;){
+   system_condition_variable_wait(me->cv, me->sys->lock);
+  }
+  Assert(me->type != CoroutineType_Root);
+  Assert(me->yield_ctx != 0);
+  Assert(me->func != 0);
+  
+  me->func(me);
+  
+  // NOTE(allen): Wake up the caller and set this coroutine back to being dead.
+  Coroutine *other = me->yield_ctx;
+  Assert(other != 0);
+  Assert(other->state == CoroutineState_Waiting);
+  
+  coroutine__pass_control(me, other, CoroutineState_Dead, CoroutinePassControl_ExitMe);
+  me->func = 0;
+ }
 }
 
 function void

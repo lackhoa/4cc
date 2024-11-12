@@ -39,40 +39,6 @@ get_thread_context(App *app){
 }
 
 api(custom)
-typedef u32 File_Attribute_Flag;
-enum{
- FileAttribute_IsDirectory = 1,
-};
-
-api(custom)
-struct File_Attributes{
- u64 size;
- u64 last_write_time;
- File_Attribute_Flag flags;
-};
-
-api(custom)
-struct File_Info{
- File_Info *next;
- String filename;
- File_Attributes attributes;
-};
-
-api(custom)
-struct File_List{
- File_Info **infos;
- u32 count;
-};
-
-typedef i1 System_Path_Code;
-enum
-{
- SystemPath_CurrentDirectory,
- SystemPath_BinaryDirectory,
- SystemPath_UserDirectory,
-};
-
-api(custom)
 struct Frame_Info{
  i1 index;
  v1 literal_dt;

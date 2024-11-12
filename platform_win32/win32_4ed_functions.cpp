@@ -33,83 +33,89 @@ struct Memory_Annotation_Tracker{
  Memory_Annotation_Tracker_Node *last;
  i1 count;
 };
+function usize
+win32_get_page_size(){
+ SYSTEM_INFO info;
+ GetSystemInfo(&info);
+ return info.dwPageSize;
+}
+global usize win32_page_size = win32_get_page_size();
 
+function usize
+system_page_size(){
+ return win32_page_size;
+}
 global Memory_Annotation_Tracker memory_tracker = {};
 global CRITICAL_SECTION memory_tracker_mutex;
-global const usize win32_memory_header_size = 64;
-static_assert(sizeof(Memory_Annotation_Tracker_Node) <= win32_memory_header_size);
-static_assert(win32_memory_header_size % 64 == 0);
+/*static_assert(sizeof(Memory_Annotation_Tracker_Node) <= win32_memory_header_size);
+static_assert(win32_memory_header_size % 64 == 0);*/
 
-function
-system_memory_allocate_at_least_sig(){
+function void *
+system_memory_reserve(usize wanted_size, String location){
  //-NOTE(kv)
  //  I really tried to make ASAN happen with VirtualAlloc,
- //  but ran into transient bugs, and then I figured out that the instrumentation
- //  that malloc provides has to be replicated here as well
- //  probably easy, but meh, I'll just use malloc...
+ //  but realized that we do need sparse allocation if we to catch bugs.
  //-
  //NOTE(kv) The logic for computing the allocated size is exactly like alignment.
- usize granularity_size = KB(64);
- usize granularity_mask = granularity_size-1;
- usize allocated_size = (wanted_size +
-                         win32_memory_header_size);
- allocated_size = (allocated_size+granularity_mask) & (~granularity_mask);
+ usize granularity = KB(64);  //TODO(kv) This number is from Raymond Chen, but idk how to query for it?
+ usize page_size = system_page_size();
+ usize reserve_size = wanted_size + page_size;
+ reserve_size = round_up_to_pow2(granularity, reserve_size);
  
-#if ASAN_ON
- void *memory0 = malloc(allocated_size);
- block_zero(memory0, allocated_size);
-#else
- void *base = 0;  //NOTE(kv) We don't control the base address yet!
- void *memory0 = VirtualAlloc(base, (SIZE_T)allocated_size,
-                              MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
-#endif
+ u8 *os_memory = (u8 *)VirtualAlloc(0, reserve_size, MEM_RESERVE, PAGE_READWRITE);
+ VirtualAlloc(os_memory, page_size, MEM_COMMIT, PAGE_READWRITE);  //NOTE Commit the header
  
- u8 *memory = (u8 *)memory0;
- usize usable_size = allocated_size - win32_memory_header_size;
- u8 *usable_base = memory + win32_memory_header_size;
  {
-  Memory_Annotation_Tracker_Node *node = cast(Memory_Annotation_Tracker_Node *)memory;
-  {// TODO(kv): When we use malloc-based allocator, we don't do any of this... :>
+  Memory_Annotation_Tracker_Node *node = cast(Memory_Annotation_Tracker_Node *)os_memory;
+  {// TODO(kv): What are we doing here?
+   //  When we use malloc-based allocator, we don't do any of this!
    EnterCriticalSection(&memory_tracker_mutex);
-   zdll_push_back(memory_tracker.first, memory_tracker.last, node);
+   //zdll_push_back(memory_tracker.first, memory_tracker.last, node);
+   Memory_Annotation_Tracker_Node *first = memory_tracker.first;
+   Memory_Annotation_Tracker_Node *last  = memory_tracker.last;
+   if(first == 0){
+    node->next = node->prev = 0;
+    memory_tracker.first = memory_tracker.last = node;
+   }else{
+    node->prev = last;
+    node->next = 0;
+    last->next = node;
+    memory_tracker.last = node;
+   }
    memory_tracker.count += 1;
    LeaveCriticalSection(&memory_tracker_mutex);
   }
   node->location = location;
-  node->size     = allocated_size;
+  node->size     = reserve_size;
  }
- *usable_size_out = usable_size;
- return usable_base;
+ u8 *app_memory = os_memory + page_size;
+ return app_memory;
 }
-function
-system_memory_allocate_exact_sig(){
- usize usable_size;
- void *usable_base0 = system_memory_allocate_at_least(size, location, &usable_size);
- u8 *usable_base = (u8 *)usable_base0;
- kv_assert(usable_size >= size);
-#if ASAN_ON
- //NOTE(kv) Do NOT over-allocate if we're debugging memory.
- ASAN_POISON_MEMORY_REGION(usable_base+size, usable_size-size);
-#endif
- return usable_base;
-}
-function
-system_memory_free_sig(){
- u8 *usable_base = (u8 *)memory0;
- Memory_Annotation_Tracker_Node *tracker = ((Memory_Annotation_Tracker_Node *)
-                                            (usable_base - win32_memory_header_size));
- usize allocated_size = tracker->size;
- {
-  EnterCriticalSection(&memory_tracker_mutex);
-  zdll_remove(memory_tracker.first, memory_tracker.last, tracker);
-  memory_tracker.count -= 1;
-  LeaveCriticalSection(&memory_tracker_mutex);
+function void
+system_memory_free(void *app_memory){
+ if(app_memory != 0){
+  //NOTE(kv) Free memory we've reserved (NOT often called).
+  u8 *os_memory = (u8 *)app_memory - system_page_size();
+  {
+   Memory_Annotation_Tracker_Node *tracker = (Memory_Annotation_Tracker_Node *)os_memory;
+   EnterCriticalSection(&memory_tracker_mutex);
+   zdll_remove(memory_tracker.first, memory_tracker.last, tracker);
+   memory_tracker.count -= 1;
+   LeaveCriticalSection(&memory_tracker_mutex);
+  }
+  b32 ok = VirtualFree(os_memory, 0, MEM_RELEASE);
+  kv_assert(ok);
  }
-#if ASAN_ON
- free(tracker);
-#else
- VirtualFree(tracker, 0, MEM_RELEASE);
-#endif
+}
+function b32
+system_memory_commit(void *base, usize size){
+ void *memory = VirtualAlloc(base, size, MEM_COMMIT, PAGE_READWRITE);
+ return (memory != 0);
+}
+function void
+system_memory_decommit(void *base, usize size){
+ b32 ok = VirtualFree(base, size, MEM_DECOMMIT);
+ kv_assert(ok);
 }
 function
 system_memory_set_protection_sig(){
@@ -197,7 +203,7 @@ system_get_path(Arena* arena, System_Path_Code path_code){
    {
     has_stashed_4ed_path = true;
     local_const i1 binary_path_capacity = KB(1);
-    u8 *memory = (u8*)system_memory_allocate_exact(binary_path_capacity, strlit(filename_line_number));
+    u8 *memory = (u8*)malloc(binary_path_capacity);
     i1 size = GetModuleFileName_utf8(arena, 0, memory, binary_path_capacity);
     Assert(size <= binary_path_capacity - 1);
     win32vars.binary_path = SCu8(memory, size);
@@ -596,61 +602,60 @@ color_picker_hook(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
             OutputDebugStringW((LPWSTR)Temp);
 #endif
         } break;
-    }
-    
-    return(result);
+ }
+ 
+ return(result);
 }
 
 // TODO(allen): review
 function DWORD WINAPI
-color_picker_thread(LPVOID Param)
-{
-    Color_Picker *picker = (Color_Picker*)Param;
-    
-    ARGB_Color color = 0;
-    if (picker->dest){
-        color = *picker->dest;
-    }
-    
-    COLORREF custom_colors[16] = {};
-    
-    CHOOSECOLORW win32_params = {};
-    win32_params.lStructSize = sizeof(win32_params);
-    win32_params.hInstance = win32vars.window_handles[0];
-    win32_params.rgbResult = swap_r_and_b(color) & 0xffffff;
-    win32_params.lpCustColors = custom_colors;
-    win32_params.Flags = CC_RGBINIT | CC_FULLOPEN | CC_ANYCOLOR | CC_ENABLEHOOK;
-    win32_params.lCustData = (LPARAM)picker;
-    win32_params.lpfnHook = color_picker_hook;
-    
-    if (ChooseColorW(&win32_params)){
-        color = int_color_from_colorref(win32_params.rgbResult, color);
-    }
-    
-    if(picker->dest){
-        *picker->dest = color;
-    }
-    
-    if (picker->finished){
-        *picker->finished = true;
-    }
-    
-    system_memory_free(picker);
-    
-    return(0);
+color_picker_thread(LPVOID Param){
+ Color_Picker *picker = (Color_Picker*)Param;
+ 
+ ARGB_Color color = 0;
+ if (picker->dest){
+  color = *picker->dest;
+ }
+ 
+ COLORREF custom_colors[16] = {};
+ 
+ CHOOSECOLORW win32_params = {};
+ win32_params.lStructSize = sizeof(win32_params);
+ win32_params.hInstance = win32vars.window_handles[0];
+ win32_params.rgbResult = swap_r_and_b(color) & 0xffffff;
+ win32_params.lpCustColors = custom_colors;
+ win32_params.Flags = CC_RGBINIT | CC_FULLOPEN | CC_ANYCOLOR | CC_ENABLEHOOK;
+ win32_params.lCustData = (LPARAM)picker;
+ win32_params.lpfnHook = color_picker_hook;
+ 
+ if (ChooseColorW(&win32_params)){
+  color = int_color_from_colorref(win32_params.rgbResult, color);
+ }
+ 
+ if(picker->dest){
+  *picker->dest = color;
+ }
+ 
+ if (picker->finished){
+  *picker->finished = true;
+ }
+ 
+ free(picker);
+ 
+ return(0);
 }
 
 function
 system_open_color_picker_sig(){
-    // TODO(allen): review
-    // NOTE(casey): Because this is going to be used by a semi-permanent thread, we need to
-    // copy it to system memory where it can live as long as it wants, no matter what we do
-    // over here on the 4coder threads.
-    Color_Picker *perm = (Color_Picker*)system_memory_allocate_exact(sizeof(Color_Picker), strlit(filename_line_number));
-    *perm = *picker;
-    
-    HANDLE ThreadHandle = CreateThread(0, 0, color_picker_thread, perm, 0, 0);
-    CloseHandle(ThreadHandle);
+ // TODO(allen): review
+ // NOTE(casey): Because this is going to be used by a semi-permanent thread, we need to
+ // copy it to system memory where it can live as long as it wants, no matter what we do
+ // over here on the 4coder threads.
+ Color_Picker *perm = (Color_Picker*)malloc(sizeof(Color_Picker));
+ *perm = *picker;
+ 
+ HANDLE ThreadHandle = CreateThread(0, 0, color_picker_thread, perm, 0, 0);
+ CloseHandle(ThreadHandle);
 }
 
 function
@@ -659,4 +664,3 @@ system_get_screen_scale_factor_sig(){
 }
 
 // BOTTOM
-

@@ -2339,6 +2339,7 @@ inline b32 gb_file_copy(char const *existing_filename, char const *new_filename,
  if (!result)
  {
   DWORD last_error = GetLastError();
+  (void)last_error;
  }
 	gb_free(a, w_new);
 	gb_free(a, w_old);
@@ -2359,7 +2360,8 @@ b32 gb_file_move(char const *existing_filename, char const *new_filename) {
 	if (w_new != NULL) {
 		result = MoveFileW(w_old, w_new);
 	}
-    DWORD error = GetLastError();
+ DWORD error = GetLastError();
+ (void)error;
 	gb_free(a, w_new);
 	gb_free(a, w_old);
 	return result;

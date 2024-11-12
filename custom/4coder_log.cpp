@@ -23,29 +23,29 @@ log_event(Arena *arena, String event_name, String src_name, i1 line_number, i1 b
     if (buffer != 0){
         string_list_pushf(arena, &list, " [buffer=%d]", buffer);
     }
-    if (view != 0){
-        string_list_pushf(arena, &list, " [view=%d]", view);
-    }
-    string_list_push(arena, &list, strlit("\n"));
-    return(string_list_flatten(arena, list));
+ if (view != 0){
+  string_list_pushf(arena, &list, " [view=%d]", view);
+ }
+ string_list_push(arena, &list, strlit("\n"));
+ return(string_list_flatten(arena, list));
 }
 
 #define LogEventStr(log_call, arena, B, V, T, E) \
-Stmnt(Temp_Memory temp_LOG = begin_temp(arena); \
+Stmnt(Temp_Memory temp_LOG = begin_temp_memory(arena); \
 String M = log_event(arena, E, \
 strlit(__FILE__), \
 __LINE__, (B), (V), (T));    \
 log_call; \
-end_temp(temp_LOG); )
+end_temp_memory(temp_LOG); )
 
 #define LogEventLit(log_call, arena, B, V, T, Elit) \
 LogEventStr(log_call, arena, (B), (V), (T), strlit(Elit))
 
 #define LogEventF(log_call, arena, B, V, T, Ef, ...) \
-Stmnt(Temp_Memory temp_LOG_F = begin_temp(arena); \
+Stmnt(Temp_Memory temp_LOG_F = begin_temp_memory(arena); \
 String E = push_stringfz(arena, Ef, __VA_ARGS__); \
 LogEventStr(log_call, arena, B, V, T, E); \
-end_temp(temp_LOG_F); )
+end_temp_memory(temp_LOG_F); )
 
 #endif
 

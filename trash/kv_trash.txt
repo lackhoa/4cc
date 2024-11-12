@@ -622,5 +622,36 @@ system_memory_free_sig(){
  ASAN_POISON_MEMORY_REGION(tracker, allocated_size);
 }
 
+#if 0
+  if(result.str == 0){
+   //-Dynamically grow
+   Base_Allocator *allocator = arena_get_allocator(arena);
+#if ASAN_ON
+   // NOTE(kv): alignment+redzone
+   umm max_allocation_waste = 256;
+#else
+   umm max_allocation_waste = 0;  // NOTE(kv): Assuming the cursor doesn't mess with us
+#endif
+   umm min_cursor_size = size + max_allocation_waste;
+   {// NOTE(kv): Make a new cursor
+    u64 usable_size = clamp_min(min_cursor_size, arena->chunk_size);
+    String memory = base_allocate_function(allocator, usable_size+sizeof(Memory_Cursor), location);
+    // NOTE(kv): Tricky business: put the cursor in its own memory
+    cursor = cast(Memory_Cursor *)memory.str;
+    // NOTE(kv): We keep the base at the first useful address
+    //   rather than the first allocated address, so it's cleaner.
+    *cursor = make_cursor(cursor+1, usable_size);
+    sll_stack_push(arena->cursor, cursor);
+    ASAN_POISON_MEMORY_REGION(cursor+1, usable_size);
+    //NOTE(kv): [cursor, cursor+1] is usable memory, but when you push something on,
+    //  There will be poison to the left of it, aka to the right of the cursor.
+    //  So the cursor is safely protected from underwrites. (see cursor_push)
+   }
+   
+   result = cursor_push(cursor, size, location, align_pow2);
+  }
+#endif
+
+
 
 //

@@ -29,21 +29,19 @@ ed_build_level    = 0
 imgui_build_level = 2
 lexer_build_level = 2
 ed_meta_build_level = 1
+ed_optimized = True;
 #
-asan_on = 0
+asan_on = 1
 COMPILE_GAME_WITH_MSVC = 1
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
 AD_PROFILE = 0
 KV_SLOW    = 0
-STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the reload itself
+STOP_DEBUGGING_BEFORE_BUILD = 0  #NOTE(kv) uncheck when you wanna debug the reload itself
 
 # Configuration end ############################
 default_build_level = 0
-
-if asan_on:
-    COMPILE_GAME_WITH_MSVC = 1
 
 pjoin = os.path.join
 
@@ -57,6 +55,8 @@ build_level = args.full
 SHIP_MODE = 1-DEBUG_MODE
 if SHIP_MODE:
     asan_on = 0
+if asan_on:
+    COMPILE_GAME_WITH_MSVC = 1
 
 HOME = os.path.expanduser("~")
 OUTDIR=pjoin(HOME, '4coder')
@@ -77,8 +77,8 @@ warning_list = [
     #"-Werror", "-Wextra",
     "-Wimplicit-int-float-conversion",
     "-Wshadow",
-
-    "-Wno-unused-variable",
+    "-Wno-unused-const-variable",
+    #"-Wno-unused-variable",
     "-Wno-unused-but-set-variable",
     "-Wno-write-strings",
     "-Wno-null-dereference",
@@ -237,7 +237,8 @@ class Compiler(Enum):
 def run_compiler(compiler, input_files, output_file, debug_mode=True,
                  compiler_flags="", linker_flags="",
                  compile_only=False, link_only=False,
-                 no_ccache=False, exit_on_failure=True, no_warnings=False):
+                 no_ccache=False, exit_on_failure=True,
+                 no_warnings=False, optimized=False):
     global asan_on
     # NOTE: if asan is on then you have to use Cl
     if asan_on:
@@ -246,6 +247,8 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
         # No reason to use clang if not for easier debugging
         compiler = Compiler.Cl
         no_ccache = True
+    if optimized:
+        compiler = compiler.Cl
 
     is_clang = compiler == Compiler.ClangCl
     is_msvc  = compiler == Compiler.Cl
@@ -260,10 +263,12 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
 
     debug_flag = ""
     if debug_mode:
-        debug_flag = "-Zi -Ob1"  # NOTE "-Zi" means that you produce a separate pdb fie
+        debug_flag = "-Zi"  # NOTE "-Zi" means that you produce a separate pdb fie
     compiler_flags += f" {debug_flag}"
 
     optimization = "-Od" if debug_mode else "-O2"
+    if optimized:
+        optimization = "-O2"
     compiler_flags += f" {optimization}"
 
     maybe_ccache = "ccache"
@@ -299,7 +304,8 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
         compiler_flags += f" {CPP_VERSION} -Zc:strictStrings- -D_CRT_SECURE_NO_WARNINGS -FC"
 
     if is_msvc:
-        warnings = " -wd4200 -wd4201 -wd4100 -wd4101 -wd4189 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244"
+        unused_var = "-wd4189"
+        warnings = " -wd4200 -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
     if is_clang:
         warnings = CLANG_WARNINGS
     if not no_warnings:

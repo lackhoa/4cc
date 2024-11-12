@@ -214,7 +214,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         }
         
         face->advance_map.codepoint_to_index =
-            ft__get_codepoint_index_map(arena->base_allocator, ft_face);
+            ft__get_codepoint_index_map(get_default_allocator(), ft_face);
         u16 index_count =
             codepoint_index_map_count(&face->advance_map.codepoint_to_index);
         face->advance_map.index_count = index_count;

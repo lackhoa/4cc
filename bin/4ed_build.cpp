@@ -694,10 +694,10 @@ package(Arena *arena, char *cdir, Tier_Code tier, Arch_Code arch)
     
     char *tier_name = tier_names[tier];
     u32 flags = base_flags | tier_flags(tier);
-    Temp_Memory temp = begin_temp(arena);
+    Temp_Memory temp = begin_temp_memory(arena);
     char *current_dist_tier = fm_str(arena, ".." SLASH "current_dist_", tier_name);
     package_for_arch(arena, arch, cdir, build_dir, pack_dir, tier, tier_name, current_dist_tier, flags, dist_files, ArrayCount(dist_files));
-    end_temp(temp);
+    end_temp_memory(temp);
 }
 
 int main(int argc, char **argv)

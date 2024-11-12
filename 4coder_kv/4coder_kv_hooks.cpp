@@ -83,7 +83,6 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
  *eol_setting = setting;
  
  // NOTE(allen): Decide buffer settings
- b32 wrap_lines = false;  // NOTE(kv): vim doesn't allow line wrap (in "vim_begin_buffer")
  b32 use_lexer = false;
  if(treat_as_code)
  {

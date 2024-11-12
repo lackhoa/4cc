@@ -183,10 +183,10 @@ print_positions_buffered(App *app, Buffer_Insertion *out, Buffer_ID buffer, Func
                         insertc(out, ' ');
                     }
                     
-                    Temp_Memory token_temp = begin_temp(scratch);
+                    Temp_Memory token_temp = begin_temp_memory(scratch);
                     String lexeme = push_token_lexeme(app, scratch, buffer, token);
                     insert_string(out, lexeme);
-                    end_temp(token_temp);
+                    end_temp_memory(token_temp);
                     
                     prev_token = *token;
                 }

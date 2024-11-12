@@ -202,7 +202,7 @@ function void
 file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String val, File_Attributes attributes) {
  Scratch_Block scratch(tctx,0);
  
- Base_Allocator *allocator = tctx->allocator;
+ Base_Allocator *allocator = &malloc_base_allocator;
  block_zero_struct(&file->state);
  buffer_init(&file->state.buffer, val.str, val.size, allocator);
  
@@ -220,19 +220,19 @@ file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file
  file->lifetime_object = lifetime_alloc_object(&models->lifetime_allocator, DynamicWorkspace_Buffer, file);
  history_init(tctx, models, &file->state.history);
  
- file->state.cached_layouts_arena = make_arena(allocator);
+ file->state.cached_layouts_arena = make_arena();
  file->state.line_layout_table = make_table_Data_u64(allocator, 500);
  
  file->settings.is_initialized = true;
  
  {
-  Temp_Memory temp = begin_temp(scratch);
+  Temp_Memory temp = begin_temp_memory(scratch);
   String name = SCu8(file->unique_name.name_space, file->unique_name.name_size);
   name = string_escape(scratch, name);
   LogEventF(log_string(M), scratch, file->id, 0, system_thread_get_id(),
             "init file [lwt=0x%llx] [name=\"%.*s\"]",
             attributes.last_write_time, string_expand(name));
-  end_temp(temp);
+  end_temp_memory(temp);
  }
  
  ////////////////////////////////
@@ -259,7 +259,7 @@ file_free(Thread_Context *tctx, Models *models, Editing_File *file){
     
     history_free(tctx, &file->state.history);
     
-    arena_clear(&file->state.cached_layouts_arena);
+    arena_free(&file->state.cached_layouts_arena);
     table_free(&file->state.line_layout_table);
 }
 
@@ -328,7 +328,7 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
 
 function void
 file_clear_layout_cache(Editing_File *file){
-    arena_clear(&file->state.cached_layouts_arena);
+    arena_clear2(&file->state.cached_layouts_arena);
     table_clear(&file->state.line_layout_table);
 }
 

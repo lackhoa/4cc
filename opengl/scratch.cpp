@@ -1,38 +1,16 @@
-enum Operator_Type{
- Op_Plus,
- Op_Mult,
-};
-struct Expression_Operator{
- Operator_Type kind;
- Expression *left;
- Expression *right;
-};
-enum Expression_Kind{
- Expression_Type_Operator,
- Expression_Type_Number,
-};
-struct Expression{
- Expression_Kind kind;
- union{
-  Expression_Operator op;
-  i32 number;
- };
-};
-int main(){
- Expression e1 = {};
- e1.kind = Expression_Type_Operator;
- Expression left = {.kind=Expression_Type_Number};
- {
-  left.number = 1;
- }
- Expression right = {};;
- {
-  right.kind = Expression_Type_Operator;
-  right.op = Op_Mul;
-  Expression right_left  = {.kind=Expression_Type_Number, .number=2,};
-  Expression right_right = {.kind=Expression_Type_Number, .number=3,};
- }
- e1.op.left = left;
- e1.op.right = right;
+//-
+this value is written to, when it shouldn't
+{*}&working_set.active_file_sentinel.next.next
+is exactly equal to memory_tracker.last
+
+when the file was allocated, the node is 0x265D5AE0000
+
+
+
+```
+void bar(){
+ /*breakpoint*/foo()
 }
+```
+
 //-

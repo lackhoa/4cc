@@ -9,10 +9,10 @@ push_build_directory_at_file(App *app, Arena *arena, Buffer_ID buffer)
 {
     String8 result = {};
     String8 filename = push_buffer_filepath(app, arena, buffer);
-    Temp_Memory restore_point = begin_temp(arena);
+    Temp_Memory restore_point = begin_temp_memory(arena);
     String8 base_name = push_buffer_base_name(app, arena, buffer);
     b32 is_match = string_match(filename, base_name);
- end_temp(restore_point);
+ end_temp_memory(restore_point);
  if ( !is_match )
  {
   result = push_stringz(arena, path_dir(filename));

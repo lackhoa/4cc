@@ -155,10 +155,10 @@ function Models*
 models_init(void)
 {
  Arena arena = make_arena_system();
- Models *models = push_array_zero(&arena, Models, 1);
+ Models *models = push_struct(&arena, Models, push_zero());
  models->arena_value = arena;
  models->arena       = &models->arena_value;
- heap_init(&models->heap, get_base_allocator_system());
+ heap_init(&models->heap);
  return(models);
 }
 
@@ -169,7 +169,7 @@ app_get_logger(void)
     return(log_string);
 }
 
-function void *
+function Models *
 app_read_command_line(Thread_Context *tctx,
                       String current_directory,
                       Plat_Settings *plat_settings,
@@ -178,14 +178,14 @@ app_read_command_line(Thread_Context *tctx,
                       i32 argc,
                       char **argv)
 {
-    Models *models = models_init();
-    App_Settings *settings = &models->settings;
-    block_zero_struct(settings);
-    if (argc > 1){
-        init_command_line_settings(&models->settings, plat_settings, argc, argv);
-    }
-    *files = models->settings.init_files;
-    *file_count = &models->settings.init_files_count;
+ Models *models = models_init();
+ App_Settings *settings = &models->settings;
+ block_zero_struct(settings);
+ if (argc > 1){
+  init_command_line_settings(&models->settings, plat_settings, argc, argv);
+ }
+ *files = models->settings.init_files;
+ *file_count = &models->settings.init_files_count;
  return(models);
 }
 
@@ -193,17 +193,15 @@ app_read_command_line(Thread_Context *tctx,
 extern "C" void custom_layer_init(App *app);
 
 function u64
-file_mtime(String filename)
-{
- Arena arena = make_arena_malloc();
- File_Attributes attr = system_quick_file_attributes(&arena, filename);
+file_mtime(String filename){
+ Scratch_Block scratch(get_thread_context(), 0);
+ File_Attributes attr = system_quick_file_attributes(scratch, filename);
  return attr.last_write_time;
 }
 
 function void 
-app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
+app_init(Thread_Context *tctx, Models *models, String current_directory)
 {
- Models *models = (Models*)base_ptr;
  models->keep_playing = true;
  models->hard_exit = false;
  
@@ -212,7 +210,7 @@ app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
  
  profile_init(&models->profile_list);
  
- managed_ids_init(tctx->allocator, &models->managed_id_set);
+ managed_ids_init(get_default_allocator(), &models->managed_id_set);
  
  // NOTE(allen): coroutines
  coroutine_system_init(&models->coroutines);
@@ -242,7 +240,7 @@ app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
   }
  }
  
- lifetime_allocator_init(tctx->allocator, &models->lifetime_allocator);
+ lifetime_allocator_init(get_default_allocator(), &models->lifetime_allocator);
  dynamic_workspace_init(&models->lifetime_allocator, DynamicWorkspace_Global, 0, &models->dynamic_workspace);
  
  // NOTE(allen): file setup
@@ -279,7 +277,7 @@ app_init(Thread_Context *tctx, void *base_ptr, String current_directory)
  
  // NOTE(allen): miscellaneous init
  hot_directory_init(arena, &models->hot_directory, current_directory);
- child_process_container_init(tctx->allocator, &models->child_processes);
+ child_process_container_init(get_default_allocator(), &models->child_processes);
  models->period_wakeup_timer = system_wake_up_timer_create();
  
  // NOTE(allen): custom layer init
@@ -690,7 +688,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   }
  }
  
- arena_clear(&models->virtual_event_arena);
+ arena_clear2(&models->virtual_event_arena);
  models->free_virtual_event = 0;
  models->first_virtual_event = 0;
  models->last_virtual_event = 0;

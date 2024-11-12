@@ -60,7 +60,7 @@ layout_item_list_finish(Layout_Item_List *list, f32 bottom_padding){
 function void
 layout_write(Arena *arena, Layout_Item_List *list, Face_ID face, i64 index, u32 codepoint, Layout_Item_Flag flags, Rect_f32 rect, f32 padded_y1)
 {
- Temp_Memory restore_point = begin_temp(arena);
+ Temp_Memory restore_point = begin_temp_memory(arena);
  Layout_Item *item = push_array(arena, Layout_Item, 1);
  Layout_Item_Block *block = list->last;
  if (block != 0)
@@ -80,7 +80,7 @@ layout_write(Arena *arena, Layout_Item_List *list, Face_ID face, i64 index, u32 
  }
  if (block == 0)
  {
-  end_temp(restore_point);
+  end_temp_memory(restore_point);
   block = push_array(arena, Layout_Item_Block, 1);
   item  = push_array(arena, Layout_Item, 1);
   sll_queue_push(list->first, list->last, block);

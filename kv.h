@@ -130,6 +130,7 @@ typedef float v1;
 #define not !
 
 #define cast_to_var(type, variable, value)  type variable = (type)value
+#define cast_to(variable, value)            variable = mytypeof(variable)(value)
 
 #define PP_Concat(arg1, arg2)   PP_Concat1(arg1, arg2)
 #define PP_Concat1(arg1, arg2)  PP_Concat2(arg1, arg2)
@@ -334,8 +335,8 @@ kv_atan2(v1 y, v1 x)
 
 struct bit_scan_result
 {
-    b32 found;
-    u32 index;
+ b32 found;
+ u32 index;
 };
 
 inline bit_scan_result
@@ -346,21 +347,21 @@ findLeastSignificantSetBit(u32 mask)
 #if COMPILER_MSVC
  result.found = _BitScanForward((unsigned long *)&result.index, mask);
 #elif COMPILER_LLVM
-    if (mask != 0)
-    {
-        result.found = true;
-        result.index = __builtin_ctz(mask);
-    }
+ if (mask != 0)
+ {
+  result.found = true;
+  result.index = __builtin_ctz(mask);
+ }
 #else
-    for (u32 index = 0;
-         index < 32;
-         index++)
-    {
-        if((mask & (1 << index)) != 0)
-        {
-            result.found = true;
-            result.index = index;
-            return result;
+ for (u32 index = 0;
+      index < 32;
+      index++)
+ {
+  if((mask & (1 << index)) != 0)
+  {
+   result.found = true;
+   result.index = index;
+   return result;
   }
  }
 #endif
@@ -1081,9 +1082,7 @@ almost_equal(v1 a, v1 b, v1 epsilon=1e-6)
 }
 
 force_inline b32 
-almost_equal(v3 a, v3 b, v1 epsilon=1e-6)
-{
- v3 d = a - b;
+almost_equal(v3 a, v3 b, v1 epsilon=1e-6) {
  for_i32(i,0,3) {
   if ( !almost_equal(a[i],b[i],epsilon) ) {
    return false;
@@ -1771,10 +1770,10 @@ enum{
 #define NotImplemented AssertMessage("not implemented")
 #define DontCompile NoSeriouslyDontCompile
 
-#define KB(x) ((x) << 10)
-#define MB(x) ((x) << 20)
-#define GB(x) ((x) << 30)
-#define TB(x) (((u64)x) << 40)
+#define KB(x) ((x) * 1024LL)
+#define MB(x) (KB(x) * 1024LL)
+#define GB(x) (MB(x) * 1024LL)
+#define TB(x) (GB(x) * 1024LL)
 
 #define Thousand(x) ((x)*1000)
 #define Million(x)  ((x)*1000000)
@@ -2021,26 +2020,30 @@ union SNode{
 
 #define sll_stack_push_(h,n) n->next=h,h=n
 #define sll_stack_pop_(h) h=h=h->next
-#define sll_queue_push_multiple_(f,l,ff,ll) if(ll){if(f){l->next=ff;}else{f=ff;}l=ll;l->next=0;}
+#define sll_queue_push_multiple_(f,l,ff,ll) \
+if(ll){if(f){l->next=ff;}else{f=ff;} l=ll;l->next=0;}
 #define sll_queue_push_(f,l,n) sll_queue_push_multiple_(f,l,n,n)
 #define sll_queue_pop_(f,l) if (f==l) { f=l=0; } else { f=f->next; }
 
-#define sll_stack_push(head,new_item) (sll_stack_push_((head),(new_item)))
+#define sll_stack_push(head,node) (sll_stack_push_((head),(node)))
 #define sll_stack_pop(h) (sll_stack_pop_((h)))
 #define sll_queue_push_multiple(f,l,ff,ll) Stmnt( sll_queue_push_multiple_((f),(l),(ff),(ll)) )
 // NOTE(kv): pretty sure "queue_push" means "push_last"
-#define sll_queue_push(first,last,new_item) \
-Stmnt( sll_queue_push_((first),(last),(new_item)) )
+#define sll_queue_push(first,last,node) \
+Stmnt( sll_queue_push_((first),(last),(node)) )
 #define sll_queue_pop(f,l) Stmnt( sll_queue_pop_((f),(l)) )
 
-#define zdll_push_back_NP_(f,l,n,next,prev) ((f==0)?(n->next=n->prev=0,f=l=n):(n->prev=l,n->next=0,l->next=n,l=n))
+#define zdll_push_back_NP_(first,last,node,next,prev) \
+((first==0) ? (node->next=node->prev=0, first=last=node): \
+(node->prev=last, node->next=0, last->next=node, last=node))
+
 #define zdll_remove_back_NP_(f,l,next,prev) ((f==l)?(f=l=0):(l->prev->next=0,l=l->prev))
 #define zdll_remove_NP_(f,l,n,next,prev)       \
 ((l==n)?(zdll_remove_back_NP_(f,l,next,prev))  \
 :(f==n)?(zdll_remove_back_NP_(l,f,prev,next)) \
 :       (dll_remove_NP_(n,n,next,prev)))
 
-#define zdll_push_back(f,l,n) zdll_push_back_NP_((f),(l),(n),next,prev)
+#define zdll_push_back(first,last,node) zdll_push_back_NP_((first),(last),(node),next,prev)
 #define zdll_push_front(f,l,n) zdll_push_back_NP_((l),(f),(n),prev,next)
 #define zdll_remove_back(f,l) zdll_remove_back_NP_((f),(l),next,prev)
 #define zdll_remove_front(f,l) zdll_remove_back_NP_((l),(f),prev,next)
@@ -2196,15 +2199,14 @@ enum Base_Allocator_Type {
 };
 typedef void *Allocator_Reserve_Signature(void *user_data, u64 size, u64 *size_out, String location);
 typedef void  Allocator_Commit_Signature(void *user_data, void *ptr, u64 size);
-typedef void  Allocator_Uncommit_Signature(void *user_data, void *ptr, u64 size);
+typedef void  Allocator_Decommit_Signature(void *user_data, void *ptr, u64 size);
 typedef void  Allocator_Free_Signature(void *user_data, void *ptr);
 typedef void  Allocator_Set_Access_Signature(void *user_data, void *ptr, u64 size, Access_Flag flags);
 // NOTE: Allocator function pointers (Can't used in reloadable code :<)
-struct Base_Allocator_Generic
-{
+struct Base_Allocator_Generic{
  Allocator_Reserve_Signature    *reserve;
  Allocator_Commit_Signature     *commit;
- Allocator_Uncommit_Signature   *uncommit;
+ Allocator_Decommit_Signature   *decommit;
  Allocator_Free_Signature       *free;
  Allocator_Set_Access_Signature *set_access;
  void *userdata;
@@ -2222,25 +2224,45 @@ struct Base_Allocator
   // malloc-based allocators don't need anything
  };
 };
+//~Arena
+#include "sanitizer/asan_interface.h"
+#if defined(__has_feature)
+#    if __has_feature(address_sanitizer) // this is clang
+#        define __SANITIZE_ADDRESS__
+#    endif
+#endif
+//
+#ifdef __SANITIZE_ADDRESS__
+#    define ASAN_ON 1
+#else
+#    define ASAN_ON 0
+#endif
 
-// NOTE(kv): Cursors are static arenas
-// TODO(kv): We really should just bake them into arenas
-struct Memory_Cursor
-{
- Memory_Cursor *next;
- u8 *base;  // TODO(kv): Maybe we can use flexible array?
- u64 used_;
- u64 cap;
+#if ASAN_ON
+struct Arena_ASAN_Tracker{
+ Arena_ASAN_Tracker *prev;
+ usize size;
 };
+#endif
+
 struct Arena{
- Base_Allocator *base_allocator;
- Memory_Cursor  *cursor;
- u64 chunk_size;
+#if ASAN_ON
+ Arena_ASAN_Tracker *last_allocation;  //NOTE(kv) "last" chronologically
+#else
+ usize commit_step;
+ u8 *base;
+ usize used_;
+ usize cap;
+ usize committed;
+#endif
 };
 struct Temp_Memory{
  Arena *arena;
- Memory_Cursor *cursor;
+#if ASAN_ON
+ Arena_ASAN_Tracker *saved_tracker;
+#else
  u64 used;
+#endif
 };
 // NOTE(kv): beware of using global variables in hot-reloaded code!!!
 global Base_Allocator malloc_base_allocator = {
@@ -2293,10 +2315,11 @@ struct Arena_Node{
  i32 ref_counter;
 };
 
-struct Thread_Context {
+struct Thread_Context{
  Thread_Kind kind;
- Base_Allocator *allocator;
+ //Base_Allocator *allocator;
  Arena node_arena;
+ 
  Arena_Node *used_first;
  Arena_Node *used_last;
  
@@ -2309,8 +2332,6 @@ struct Thread_Context {
  
  void *user_data;
 };
-
-
 
 ////////////////////////////////
 
@@ -3381,20 +3402,7 @@ string_concat(String_u8 *dst, String src)
 #define string_expand(s) (i32)(s).size, (char*)(s).str
 #define strexpand string_expand
 
-
 #define filename_linum strlit(filename_line_number)
-
-//~Arena
-#include "sanitizer/asan_interface.h"
-#if defined(__has_feature)
-#    if __has_feature(address_sanitizer) // this is clang
-#        define __SANITIZE_ADDRESS__
-#    endif
-#endif
-//
-#ifdef __SANITIZE_ADDRESS__
-#    define ASAN_ON 1
-#endif
 
 function void*
 base_reserve__noop(void *user_data, u64 size, u64 *size_out, String location){
@@ -3404,7 +3412,7 @@ base_reserve__noop(void *user_data, u64 size, u64 *size_out, String location){
 function void
 base_commit__noop(void *user_data, void *ptr, u64 size){}
 function void
-base_uncommit__noop(void *user_data, void *ptr, u64 size){}
+base_decommit__noop(void *user_data, void *ptr, u64 size){}
 function void
 base_free__noop(void *user_data, void *ptr){}
 function void
@@ -3413,14 +3421,14 @@ base_set_access__noop(void *user_data, void *ptr, u64 size, Access_Flag flags){}
 function Base_Allocator
 make_base_allocator_generic(Allocator_Reserve_Signature *func_reserve,
                             Allocator_Commit_Signature  *func_commit,
-                            Allocator_Uncommit_Signature *func_uncommit,
+                            Allocator_Decommit_Signature *func_decommit,
                             Allocator_Free_Signature     *func_free,
                             Allocator_Set_Access_Signature *func_set_access,
                             void *userdata)
-{
+{//nono don't make too many functions man!
  if (func_reserve    == 0){ func_reserve    = base_reserve__noop; }
  if (func_commit     == 0){ func_commit     = base_commit__noop; }
- if (func_uncommit   == 0){ func_uncommit   = base_uncommit__noop; }
+ if (func_decommit   == 0){ func_decommit   = base_decommit__noop; }
  if (func_free       == 0){ func_free       = base_free__noop; }
  if (func_set_access == 0){ func_set_access = base_set_access__noop; }
  Base_Allocator result = {
@@ -3428,7 +3436,7 @@ make_base_allocator_generic(Allocator_Reserve_Signature *func_reserve,
   .generic={
    .reserve   =func_reserve,
    .commit    =func_commit,
-   .uncommit  =func_uncommit,
+   .decommit  =func_decommit,
    .free      =func_free,
    .set_access=func_set_access,
    .userdata  =userdata,
@@ -3436,34 +3444,53 @@ make_base_allocator_generic(Allocator_Reserve_Signature *func_reserve,
  };
  return(result);
 }
+//-
+struct Push_Params{
+ b32 zero;
+ u32 alignment;
+};
+inline Push_Params
+make_default_arena_push_params(){
+ Push_Params result = {};
+ result.zero = false;  //todo(kv) Change this to true!
+ return result;
+}
+Push_Params default_push_params = make_default_arena_push_params();
+
+inline Push_Params
+push_zero(Push_Params params=default_push_params){
+ params.zero = true;
+ return params;
+}
+function u8 *
+arena_push(Arena *arena, usize size, usize alignment, String location,
+           Push_Params params=default_push_params);
 
 function String
-arena_push(Arena *arena, usize size, String location, u32 align_pow2);
-
-function String
-base_allocate_function(Base_Allocator *allocator, u64 size, String debug_location)
+base_allocate_function(Base_Allocator *allocator, u64 size, String location)
 {// @todo_leak_check
  String result = {};
+ result.size = size;
  
  switch(allocator->type)
  {
   case Allocator_Generic:
   {
    auto &a = allocator->generic;
-   // TODO(kv): Just do one call and simplify this allocator interface?
-   result.str = (u8 *)a.reserve(a.userdata, size, &result.size, debug_location);
+   //TODO(kv): Just do one call and simplify this allocator interface!
+   //  There is no other allocator that can reserve and commit separately anyway!
+   result.str = (u8 *)a.reserve(a.userdata, size, &result.size, location);
    a.commit(a.userdata, result.str, result.size);
   }break;
   
   case Allocator_Arena:
   {// NOTE(kv): This is a cyclic dependency situation.
-   result = arena_push(allocator->arena, size, debug_location, 3);
+   result.str = arena_push(allocator->arena, size, 8, location);
   }break;
   
   case Allocator_Malloc:
   {
    result.str  = (u8 *)malloc(size);
-   result.size = size;
   }break;
   
   invalid_default_case;
@@ -3494,223 +3521,276 @@ base_free(Base_Allocator *allocator, void *ptr, umm optional_size=0)
   } 
  }
 }
-inline void
-free_cursor(Base_Allocator *allocator, Memory_Cursor *cursor)
-{
- base_free(allocator, cursor);
-}
 
 // TODO(kv): Does anyone actually care about the returned size? And why do they care?
 #define base_allocate2(a,s)      base_allocate_function((a), (s), filename_linum)
 #define base_allocate(a,s)       base_allocate2(a,s).str
 #define base_array_loc(a,T,c,l) (T*)(base_allocate_function((a), sizeof(T)*(c), (l)).str)
 #define base_array(a,T,c)       base_array_loc(a,T,c, filename_linum)
-
 //-
+xfunction usize system_page_size();
+xfunction void *system_memory_reserve(usize size, String location);
+xfunction void  system_memory_free(void *base);
+xfunction b32   system_memory_commit(void *base, usize size);
+xfunction void  system_memory_decommit(void *base, usize size);
 
+#if 0
 inline Memory_Cursor
-make_cursor(void *base, u64 cap)
-{
-    Memory_Cursor cursor = {.base=(u8*)base, .cap=cap};
-    return(cursor);
+make_cursor(void *base, u64 cap){
+ Memory_Cursor cursor = {.base=(u8*)base, .cap=cap};
+ return(cursor);
 }
 inline Memory_Cursor
-make_cursor(String data) {
+make_cursor(String data){
  return(make_cursor(data.str, data.size));
 }
 inline Memory_Cursor
-make_cursor(Base_Allocator *allocator, u64 size)
-{
+make_cursor(Base_Allocator *allocator, u64 size){
  String memory = base_allocate2(allocator, size);
  return(make_cursor(memory));
 }
-function String
-cursor_push(Memory_Cursor *cursor, usize size, String location, u32 align_pow2)
-{// TODO(kv): This allocation is not optimal yet in non-asan builds.
- kv_assert(align_pow2 <= 3);  //NOTE(kv): don't support simd rn
-#if ASAN_ON
- // NOTE(kv): we want a poisoned region to the left of the
- //   unpoisoned allocation region, then the allocation has to
- //   begin on an 8-byte boundary.
- macro_clamp_min(align_pow2, 3);
-#endif
- 
- String result = {};
- usize align_size = 1ULL << align_pow2;
- usize align_mask = align_size-1;
- u8 *current_pos = cursor->base+cursor->used_;
- 
- // NOTE(kv): "redzone_size" doesn't include alignment
-#if ASAN_ON
- usize redzone_size = 128;
 #else
- usize redzone_size = 0;
 #endif
- 
- usize pos_umm = usize(current_pos) + redzone_size;
- pos_umm = (pos_umm + align_mask) & (~align_mask);
- u8 *pos = cast(u8*)(pos_umm);
- usize new_used = (pos+size)-cursor->base;
- if (new_used <= cursor->cap)
- {
-  cursor->used_ = new_used;
-  result = {(u8*)pos, size};
-  kv_assert((usize(pos) & align_mask) == 0);
-  kv_assert((usize(pos) & 7)          == 0);
-  // NOTE(kv): Unpoisoned region has to start 8-byte aligned,
-  // which is this case right here (with the redzone being on the left).
-  ASAN_UNPOISON_MEMORY_REGION(pos, size);
- }
- return(result);
+function u64
+round_up_to_pow2(u64 pow2_value, u64 input){
+ u64 mask = pow2_value - 1;
+ u64 result = (input + mask) & (~mask);
+ return result;
 }
 function void
-cursor_pop(Memory_Cursor *cursor, u64 size)
-{
- kv_assert(cursor->used_ >= size);
- cursor->used_ -= size;
- ASAN_POISON_MEMORY_REGION(cursor->base+cursor->used_, size);
+round_up_to_pow2(u64 pow2_value, u64 *input){
+ u64 mask = pow2_value - 1;
+ *input = (*input + mask) & (~mask);
 }
-inline void
-cursor_pop_to(Memory_Cursor *cursor, umm used)
-{
- cursor_pop(cursor, cursor->used_-used);
+function u64
+round_down_to_pow2(u64 pow2_value, u64 input){
+ u64 mask = pow2_value - 1;
+ u64 result = (input) & (~mask);
+ return result;
 }
+global usize default_arena_commit_step;
+global usize default_arena_decommit_step;
 
 function Arena
-make_arena(Base_Allocator *allocator, u64 chunk_size=KB(32)){
- Arena arena = {allocator, 0, chunk_size};
+make_arena(u64 commit_step=KB(4)){
+ Arena arena = {};
+#if !ASAN_ON
+ arena.commit_step = round_up_to_pow2(default_arena_commit_step, commit_step);
+#endif
  return(arena);
 }
-function Base_Allocator *
-arena_get_allocator(Arena *arena){
- Base_Allocator *result = arena->base_allocator;
- if(not result){
-  result = &malloc_base_allocator;
+inline Arena
+make_arena_system(u64 commit_step=KB(4)){
+ return make_arena(commit_step);
+}
+//-
+function u8 *
+arena_push_inner(Arena *arena, usize size, usize alignment,
+                 String location){
+ u8 *pos = 0;
+ if(size > 0)
+ {
+  if(ASAN_ON){
+   macro_clamp_min(alignment, 8);
+  }
+  usize align_mask = alignment-1;
+#if ASAN_ON
+  {
+   if(alignment > 8){
+    //NOTE(kv) _aligned_malloc will help here
+    todo_incomplete;
+   }
+   usize tracker_size = sizeof(Arena_ASAN_Tracker);
+   Arena_ASAN_Tracker *tracker;
+   cast_to(tracker, malloc(tracker_size + size));
+   tracker->prev = arena->last_allocation;
+   tracker->size = size;
+   arena->last_allocation = tracker;
+   pos = (u8 *)(tracker + 1);
+   ASAN_POISON_MEMORY_REGION(tracker, tracker_size);
+  }
+#else
+  {//-non-asan
+   if(arena->commit_step == 0){
+    arena->commit_step = default_arena_commit_step;
+   }
+   if(arena->base == 0){
+    //-Reserve memory from OS
+    //TODO(kv) If I reserve tons of memory, it starts getting glitchy,
+    //  idk why but it means we have to treat big arenas specially.
+    usize arena_reserve_size = MB(256);
+    u8 *memory = (u8 *)system_memory_reserve(arena_reserve_size, location);
+    arena->cap = arena_reserve_size;
+    arena->base = memory;
+   }
+   u8 *current_pos = arena->base + arena->used_;
+   
+   umm pos_umm = umm(current_pos);
+   pos_umm = (pos_umm + align_mask) & (~align_mask);
+   pos = cast(u8*)(pos_umm);
+   {
+    usize new_used = (pos+size)-arena->base;
+    kv_assert(new_used <= arena->cap);
+    if(new_used > arena->committed){
+     //-Commit more
+     usize commit_size = round_up_to_pow2(arena->commit_step, new_used - arena->committed);
+     u8 *commit_pointer = arena->base + arena->committed;
+     b32 commit_result = system_memory_commit(commit_pointer, commit_size);
+     kv_assert(commit_result);
+     arena->committed += commit_size;
+    }
+    kv_assert(new_used <= arena->committed);
+    arena->used_ = new_used;
+   }
+  }
+#endif
+  
+  kv_assert(pos);
+  kv_assert((usize(pos) & align_mask) == 0);
+ }
+ return(pos);
+}
+function u8 *
+arena_push(Arena *arena, usize size, usize alignment, String location,
+           Push_Params params){
+ u8 *result = arena_push_inner(arena, size, alignment, location);
+ if(params.zero){
+  block_zero(result, size);
  }
  return result;
 }
-function Arena
-make_arena_malloc(u64 chunk_size=KB(16)){
- return(make_arena(&malloc_base_allocator, chunk_size));
+function void
+arena_pop(Arena *arena, usize size){
+#if ASAN_ON
+ {
+  usize last_allocation_size = 0;
+  Arena_ASAN_Tracker *tracker = arena->last_allocation;
+  {
+   ASAN_UNPOISON_MEMORY_REGION(tracker, sizeof(*tracker));
+   last_allocation_size = tracker->size;
+   ASAN_POISON_MEMORY_REGION(tracker, sizeof(*tracker));
+  }
+  kv_assert(size <= last_allocation_size);
+  u8 *usable_base = (u8 *)(tracker + 1);
+  ASAN_POISON_MEMORY_REGION(usable_base + last_allocation_size - size, size);
+ }
+#else
+ {
+  kv_assert(size <= arena->used_);
+  arena->used_ -= size;
+  {//-Maybe decommit
+   usize commit_excess = arena->committed - arena->used_;
+   usize decommit_step = default_arena_decommit_step; //@tweak
+   usize decommit_size = round_down_to_pow2(decommit_step, commit_excess);
+   if(decommit_size){
+    system_memory_decommit(arena->base +  arena->committed, decommit_size);
+   }
+  }
+ }
+#endif
 }
 
-function String
-arena_push(Arena *arena, usize size, String location, u32 align_pow2)
-{
- kv_assert(align_pow2 <= 3);  //NOTE(kv): don't support simd rn
- String result = {};
- if(size > 0)
- {
-  Memory_Cursor *cursor = arena->cursor;
-  if(cursor){
-   result = cursor_push(cursor, size, location, align_pow2);
-  }
-  
-  if(result.str == 0){
-   //-Dynamically grow
-   Base_Allocator *allocator = arena_get_allocator(arena);
 #if ASAN_ON
-   // NOTE(kv): alignment+redzone
-   umm max_allocation_waste = 256;
-#else
-   umm max_allocation_waste = 0;  // NOTE(kv): Assuming the cursor doesn't mess with us
-#endif
-   umm min_cursor_size = size + max_allocation_waste;
-   {// NOTE(kv): Make a new cursor
-    u64 usable_size = clamp_min(min_cursor_size, arena->chunk_size);
-    String memory = base_allocate_function(allocator, usable_size+sizeof(Memory_Cursor), location);
-    // NOTE(kv): Tricky business: put the cursor in its own memory
-    cursor = cast(Memory_Cursor *)memory.str;
-    // NOTE(kv): We keep the base at the first useful address
-    //   rather than the first allocated address, so it's cleaner.
-    *cursor = make_cursor(cursor+1, usable_size);
-    sll_stack_push(arena->cursor, cursor);
-    ASAN_POISON_MEMORY_REGION(cursor+1, usable_size);
-    // NOTE(kv): cursor+1 is usable memory, but when you push something on,
-    //   There will be poison to the left (see cursor_push),
-    //   so asan can detect somebody overwriting the cursor.
-   }
-   
-   result = cursor_push(cursor, size, location, align_pow2);
+inline void
+arena_pop_to(Arena *arena, Arena_ASAN_Tracker *to_tracker){
+ while(true){
+  Arena_ASAN_Tracker *tracker = arena->last_allocation;
+  if(tracker == to_tracker){
+   break;
+  }else{
+   ASAN_UNPOISON_MEMORY_REGION(tracker, sizeof(*tracker));
+   arena->last_allocation = tracker->prev;
+   free(tracker);
   }
-  kv_assert(result.str);
- }
- return(result);
-}
-//
-function void
-arena_pop(Arena *arena, u64 size)
-{
- Memory_Cursor *cursor = arena->cursor;
- if (size >= cursor->used_) {
-  // NOTE(kv): we can't handle this, because alignment complicates the calculus
-  invalid_code_path;
- } else {
-  cursor_pop(cursor, size);
  }
 }
-//
+#else
+inline void
+arena_pop_to(Arena *arena, umm used){
+ kv_assert(arena->used_ >= used);
+ arena_pop(arena, arena->used_ - used);
+}
+#endif
+
 function Temp_Memory
-begin_temp(Arena *arena)
-{
- Memory_Cursor *cursor = arena->cursor;
- Temp_Memory temp = {
-  .arena  = arena,
-  .cursor = cursor,
-  .used   = (cursor == 0 ? 0 : cursor->used_),
- };
+begin_temp_memory(Arena *arena){
+ Temp_Memory temp = {};
+ temp.arena  = arena;
+#if ASAN_ON
+ temp.saved_tracker = arena->last_allocation;
+#else
+ temp.used = arena->used_;
+#endif
  return(temp);
 }
 function void
-end_temp(Temp_Memory temp){
+end_temp_memory(Temp_Memory temp){
  Arena *arena = temp.arena;
- Base_Allocator *allocator = arena_get_allocator(arena);
- Memory_Cursor *cursor = arena->cursor;
- for (Memory_Cursor *prev = 0;
-      cursor != temp.cursor && cursor != 0;
-      cursor = prev)
- {
-  prev = cursor->next;
-  free_cursor(allocator, cursor);
- }
- arena->cursor = cursor;
- if (cursor != 0)
- {
-  if(temp.used > 0){
-   cursor_pop(cursor, cursor->used_ - temp.used);
-  }else{// TODO(kv): This should never happen, right?
-   // Why would a cursor exist when it's empty?
-   arena->cursor = cursor->next;
-   free_cursor(allocator, cursor);
-  }
- }
+#if ASAN_ON
+ arena_pop_to(arena, temp.saved_tracker);
+#else
+ arena_pop_to(arena, temp.used);
+#endif
 }
 function void
-arena_clear(Arena *arena){
- Temp_Memory temp = {arena, 0, 0};
- end_temp(temp);
+arena_free(Arena *arena){
+#if ASAN_ON
+ Arena_ASAN_Tracker *null_tracker = 0;
+ arena_pop_to(arena, null_tracker);
+#else
+ system_memory_free(arena->base);
+#endif
+}
+function void
+arena_clear2(Arena *arena){
+ //NOTE(kv) This call is supposed to be more "light-weight",
+ //  it doesn't necessarily involve a system call.
+#if ASAN_ON
+ arena_free(arena);
+#else
+ arena_pop_to(arena, 0);
+#endif
 }
 //-
-function void*
-linalloc_wrap(String8 data, b32 zero=false) {
- if (zero) { block_zero(data.str, data.size); }
- return(data.str);
+#if 0
+function u8 *
+linalloc_wrap(void *data, usize size, b32 zero=false){
+ if(zero){ block_zero(data, size); }
+ return((u8 *)data);
 }
-function void*
-linalloc_wrap_write(String8 data, u64 size, void *src)
-{
- block_copy(data.str, src, clamp_max(data.size, size));
- return(data.str);
+#endif
+function u8 *
+linalloc_wrap_write(void *dest, void *src, usize size){
+ block_copy(dest, src, size);
+ return((u8 *)dest);
 }
-#define push_size(a,s,...)        (u8 *)linalloc_wrap(arena_push(a, s, filename_linum, 3), __VA_ARGS__)
-#define push_struct(a,T,...)      (T*)push_size(a,sizeof(T),__VA_ARGS__)
-#define push_array(a,T,c,...)     (T*)push_size(a, sizeof(T)*(c), __VA_ARGS__)
-#define push_array_zero(a,T,c)    push_array(a,T,c,true)
-#define push_array_copy(a,T,c,s)  ((T*)linalloc_wrap_write(arena_push(a, sizeof(T)*(c), filename_linum, 3), sizeof(T)*(c), (s)))
-#define pop_array(a,T,c)          (arena_pop((a), sizeof(T)*(c)))
+function u8 *
+push_copy_function(Arena *arena, void *source, usize size, usize alignment,
+                   String location){
+ u8 *dest = arena_push(arena, size, alignment, location);
+ block_copy(dest, source, size);
+ return dest;
+}
+#define push_size(arena,size,alignment, ...) \
+arena_push(arena, size, alignment, filename_linum, ##__VA_ARGS__)
+
+#define push_array(arena,T,count,...) \
+(T*)push_size(arena, sizeof(T)*(count), alignof(T), ##__VA_ARGS__)
+
+#define push_struct(arena,T,...)         push_array(arena,T,1,##__VA_ARGS__)
+#define push_array_zero(arena,T,count)   push_array(arena,T,count,push_zero())
+
+#define push_copy(arena, size, source, alignment) \
+linalloc_wrap_write(push_size(arena, size, alignment), source, size)
+
+#define push_array_copy(arena,T,count,source) \
+(T *)push_copy(arena, count*sizeof(T), source, alignof(T))
+
+#define pop_array(arena,T,count)   arena_pop(arena, sizeof(T)*(count))
+
 template<class T>
-inline T
-*push_value(Arena *arena, const T &value){
+inline T *
+push_value(Arena *arena, const T &value){
  T *pointer = push_struct(arena, T);
  *pointer = value;
  return pointer;
@@ -3722,13 +3802,13 @@ struct Temp_Memory_Block{
   this->temp = temp;
  }
  Temp_Memory_Block(Arena *arena){
-  this->temp = begin_temp(arena);
+  this->temp = begin_temp_memory(arena);
  }
  ~Temp_Memory_Block(){
-  end_temp(this->temp);
+  end_temp_memory(this->temp);
  }
  void restore(void){
-  end_temp(this->temp);
+  end_temp_memory(this->temp);
  }
 };
 //-
@@ -4446,17 +4526,21 @@ struct arrayof{
 };
 template<class T>
 inline void
-init_static(arrayof<T> &array, Arena *arena, i32 cap, b32 zero=false){
+init_static(arrayof<T> &array, Arena *arena, i32 cap,
+            Push_Params params=default_push_params){
  array = {
   .cap        = cap,
   .fixed_size = true,
-  .items      = push_array(arena, T, cap, zero),
+  .items      = push_array(arena, T, cap, params),
  };
 }
 template<class T>
 inline arrayof<T>
-static_array(Arena *arena, i32 cap, b32 zero=false){
- arrayof<T> array; init_static(array, arena, cap, zero); return array;
+static_array(Arena *arena, i32 cap,
+             Push_Params params=default_push_params){
+ arrayof<T> array;
+ init_static(array, arena, cap, params);
+ return array;
 }
 
 template<class T>
@@ -4649,6 +4733,10 @@ struct Scratch_Block{
  Scratch_Block(struct Thread_Context *tctx, Arena *a1);
  Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2);
  
+ Scratch_Block();
+ Scratch_Block(Arena *a1);
+ Scratch_Block(Arena *a1, Arena *a2);
+ 
  Scratch_Block(struct App *app);
  Scratch_Block(struct App *app, Arena *a1);
  Scratch_Block(struct App *app, Arena *a1, Arena *a2);
@@ -4663,8 +4751,8 @@ function void
 init_scratch_block(Scratch_Block *scratch, Thread_Context *t,
                    Arena **conflicts, i32 conflict_count){
  scratch->tctx = t;
- scratch->arena = tctx_reserve(t, conflicts, conflict_count);
- scratch->temp = begin_temp(scratch->arena);
+ scratch->arena = tctx_reserve_arena(t, conflicts, conflict_count);
+ scratch->temp = begin_temp_memory(scratch->arena);
 }
 //-
 Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1){
@@ -4674,7 +4762,6 @@ Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1, Arena *a2){
  Arena *conflicts[] = {a1, a2};
  init_scratch_block(this, t, conflicts, alen(conflicts));
 }
-#if 0
 //NOTE(kv) Temporarily nerfing these one,
 //  since previously we made a "child arena" thing,
 //  which was dumb because you could just use a Temp_Memory_Block for that!
@@ -4687,17 +4774,21 @@ Scratch_Block::Scratch_Block(Arena *conflict){
  Thread_Context *t = get_thread_context();
  init_scratch_block(this, t, &conflict, 1);
 }
-#endif
+Scratch_Block::Scratch_Block(Arena *a1, Arena *a2){
+ Thread_Context *t = get_thread_context();
+ Arena *conflicts[] = {a1, a2};
+ init_scratch_block(this, t, conflicts, alen(conflicts));
+}
 
 Scratch_Block::~Scratch_Block() {
- end_temp(this->temp);
+ end_temp_memory(this->temp);
  if (this->tctx) {
-  tctx_release(this->tctx, this->arena);
+  tctx_release_arena(this->tctx, this->arena);
  }
 }
 inline void
 Scratch_Block::restore(void){
- end_temp(this->temp);
+ end_temp_memory(this->temp);
 }
 //-
 function Base_Allocator
@@ -4735,32 +4826,7 @@ base_reserve__arena(void *userdata, u64 size, u64 *size_out, String location)
  u8 *result = push_array(arena, u8, size);
  return result;
 }
-
-//-
-
-// IMPORTANT(kv): This is for my use only,
-// it can't grow so don't pass it around
-function Arena
-make_static_arena(u8 *memory, u64 size)
-{
- auto cursor = cast(Memory_Cursor *)memory;
- *cursor = make_cursor(cursor+1, size);
- Arena result = {
-  .cursor    = cursor,
- };
- return result;
-}
-
-function Arena
-sub_arena_static(Arena *arena, usize size)
-{
- u8 *memory = push_array(arena, u8, size);
- Arena result = make_static_arena(memory, size);
- return result;
-}
-
 //~
-
 function Stringz
 push_stringz(Arena *arena, String src){
  Stringz string = {};
@@ -4897,7 +4963,6 @@ open_file(Stringz name, char *mode){
 }
 function FILE *
 open_or_create_file(Stringz name, char *mode){
- char *cname = to_cstring(name);
  FILE *file = open_file(name, mode);
  if(!file){
   if(errno == ENOENT){
@@ -4995,7 +5060,7 @@ inline Printer
 make_printer_buffer(Arena *arena, i32 cap){
  Printer result = {
   .type = Printer_Type_Buffer,
-  .base = (u8*)push_size(arena, (usize)cap),
+  .base = (u8*)push_size(arena, (usize)cap, 1),
   .cap  = cap,
  };
  return result;
@@ -5091,7 +5156,6 @@ inline void print(Printer &p, u32 u)   { print_format(p, "%u", u); }
 inline void print(Printer &p, i64 ld)  { print_format(p, "%ld", ld); }
 inline void print(Printer &p, u64 lu)  { print_format(p, "%lu", lu); }
 //-
-
 // NOTE(kv): This is an absolutely ridiculous hack
 template <class T>
 inline Printer &
@@ -5105,9 +5169,7 @@ operator<(Printer &p, T object){
  print(p, object);
  return p;
 }
-
 //-
-
 inline void
 begin_struct(Printer &p, char *name){
  print(p, "(");
@@ -5140,15 +5202,12 @@ Type_##type,\
 &value_pointer->name)
 
 function void
-print_float_trimmed(Printer &p, v1 value)
-{
- // NOTE: there's some delete action going on, so we have to make a temp buffer
- u8 buf[256];
- Arena temp = make_static_arena(buf, sizeof(buf));
- String result = push_stringf(&temp, "%.4ff", value);
+print_float_trimmed(Printer &p, v1 value){
+ //NOTE(kv) there's some delete action going on, so we have to make a temp buffer
+ Scratch_Block scratch(get_thread_context(),0);
+ String result = push_stringf(scratch, "%.4ff", value);
  // NOTE: trim trailing zeros
- while (result.len > 0)
- {
+ while (result.len > 0){
   if (result.str[result.len-2] == '0') { result.len -= 1; }
   else { break; }
  }
@@ -5191,7 +5250,6 @@ print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
   {
    i1 *v = (i1*)value0;
    i1 count = get_basic_type_info(type).size / 4;
-   const i1 max_count = 4;
    
    if (wrapped) { print(p, "I"); print(p, count); print(p, "("); }
    for_i32(index,0,count) {

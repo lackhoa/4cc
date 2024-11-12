@@ -6,43 +6,43 @@
 
 function void
 profile_init(Profile_Global_List *list){
-    list->mutex = system_mutex_make();
-    list->node_arena = make_arena_system(KB(4));
-    list->disable_bits = ProfileEnable_UserBit;
+ list->mutex = system_mutex_make();
+ list->node_arena = make_arena_system();
+ list->disable_bits = ProfileEnable_UserBit;
 }
 
 function Profile_Thread*
 prof__get_thread(Profile_Global_List *list, i1 thread_id){
-    Profile_Thread *result = 0;
-    for (Profile_Thread *node = list->first_thread;
-         node != 0;
-         node = node->next){
-        if (thread_id == node->thread_id){
-            result = node;
-            break;
-        }
-    }
-    if (result == 0){
-        result = push_array(&list->node_arena, Profile_Thread, 1, true);
-        sll_queue_push(list->first_thread, list->last_thread, result);
-        list->thread_count += 1;
-        result->thread_id = thread_id;
-    }
-    return(result);
+ Profile_Thread *result = 0;
+ for(Profile_Thread *node = list->first_thread;
+     node != 0;
+     node = node->next){
+  if(thread_id == node->thread_id){
+   result = node;
+   break;
+  }
+ }
+ if(result == 0){
+  result = push_array(&list->node_arena, Profile_Thread, 1, push_zero());
+  sll_queue_push(list->first_thread, list->last_thread, result);
+  list->thread_count += 1;
+  result->thread_id = thread_id;
+ }
+ return(result);
 }
 
 function void
 profile_clear(Profile_Global_List *list){
-    Mutex_Lock lock(list->mutex);
-    for (Arena_Node *node = list->first_arena;
-         node != 0;
-         node = node->next){
-        arena_clear(&node->arena);
-    }
-    list->first_arena = 0;
-    list->last_arena = 0;
-    
- arena_clear(&list->node_arena);
+ Mutex_Lock lock(list->mutex);
+ for (Arena_Node *node = list->first_arena;
+      node != 0;
+      node = node->next){
+  arena_free(&node->arena);
+ }
+ list->first_arena = 0;
+ list->last_arena = 0;
+ 
+ arena_free(&list->node_arena);
  list->first_thread = 0;
  list->last_thread = 0;
  list->thread_count = 0;
@@ -59,22 +59,20 @@ profile_thread_flush(Thread_Context *tctx, Profile_Global_List *list)
    Arena_Node* node = push_array(&list->node_arena, Arena_Node, 1);
    sll_queue_push(list->first_arena, list->last_arena, node);
    node->arena = tctx->prof_arena;
-   tctx->prof_arena = make_arena_system(KB(16));
+   tctx->prof_arena = make_arena(KB(16));
    
    if (tctx->prof_first != 0){
     if (thread->first_record == 0){
      thread->first_record = tctx->prof_first;
      thread->last_record = tctx->prof_last;
-    }
-    else{
+    }else{
      thread->last_record->next = tctx->prof_first;
      thread->last_record = tctx->prof_last;
     }
     thread->record_count += tctx->prof_record_count;
    }
-  }
-  else{
-   arena_clear(&tctx->prof_arena);
+  }else{
+   arena_clear2(&tctx->prof_arena);
   }
   tctx->prof_record_count = 0;
   tctx->prof_first = 0;

@@ -10,7 +10,8 @@
 
 #define GET_VIEW_AND_BUFFER \
 View_ID   view = get_active_view(app, Access_ReadVisible); \
-Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible)
+Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible); \
+(void)view; (void)buffer
 
 #define HISTORY_GROUP_SCOPE \
   History_Group history_group = history_group_begin(app, buffer); \
@@ -1054,12 +1055,12 @@ push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range){
  String result = {};
  i64 length = range_size(range);
  if(length > 0){
-  Temp_Memory restore_point = begin_temp(arena);
+  Temp_Memory restore_point = begin_temp_memory(arena);
   u8 *memory = push_array(arena, u8, length);
   if(buffer_read_range(app, buffer, range, memory)){
    result = SCu8(memory, length);
   }else{
-   end_temp(restore_point);
+   end_temp_memory(restore_point);
   }
  }
  return(result);
@@ -2157,7 +2158,7 @@ search_up_path(Arena *arena, String start_path, String filename){
   {
    path = string_chop(path, 1);
   }
-  Temp_Memory temp = begin_temp(arena);
+  Temp_Memory temp = begin_temp_memory(arena);
   Stringz full_path = push_stringfz(arena, "%.*s/%.*s",
                                     string_expand(path),
                                     string_expand(filename));
@@ -2165,7 +2166,7 @@ search_up_path(Arena *arena, String start_path, String filename){
    result = full_path;
    break;
   }else{
-   end_temp(temp);
+   end_temp_memory(temp);
    path = path_dir(path);
   }
  }

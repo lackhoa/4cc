@@ -28,6 +28,7 @@
 #include "4coder_kv_debug.h"
 #include "4coder_token.h"
 #include "4coder_events.h"
+#include "4coder_system_types.h"
 
 #if ED_API_USER
 #    define DYNAMIC_LINK_API

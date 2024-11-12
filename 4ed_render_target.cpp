@@ -56,7 +56,7 @@ new_render_entry(Render_Entry_Type type)
  if ( !render_group_is_game(group) ) {
   kv_assert(group->entry_count == 0);
  }
- Render_Entry *entry = push_struct(&state.arena, Render_Entry, true);
+ Render_Entry *entry = push_struct(&state.arena, Render_Entry, push_zero());
  entry->type = type;
  sll_queue_push(group->entry_first, group->entry_last, entry);
  group->entry_count++;
@@ -68,7 +68,7 @@ draw_new_group(Render_Target *target)
 {
  auto &state = render_state;
  Render_Config *last_config = target_last_config(target);
- Render_Group *group = push_struct(&state.arena, Render_Group, true);
+ Render_Group *group = push_struct(&state.arena, Render_Group, push_zero());
  sll_queue_push(state.group_first, state.group_last, group);
  state.group_count++;
  
@@ -216,7 +216,7 @@ function void
 begin_frame(void *font_set)
 {
  auto &state = render_state;
- arena_clear(&render_state.arena);
+ arena_clear2(&render_state.arena);
  state.group_first = 0;
  state.group_last  = 0;
  state.face_id     = 0;

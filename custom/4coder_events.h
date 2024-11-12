@@ -52,8 +52,6 @@ struct Input_Modifier_Set
     Key_Code *mods;
     i32 count;
 };
-
-
 struct Input_Modifier_Set_Fixed{
  Key_Code mods[Input_MaxModifierCount];
  i32 count;

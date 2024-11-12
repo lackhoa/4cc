@@ -50,48 +50,45 @@ font_set__alloc_face_slot(Font_Set *set){
     if (set->free_face_slots == 0){
         result = push_array(&set->arena, Font_Face_Slot, 1);
     }
-    else{
-        result = set->free_face_slots;
-        sll_stack_pop(set->free_face_slots);
-    }
-    return(result);
+ else{
+  result = set->free_face_slots;
+  sll_stack_pop(set->free_face_slots);
+ }
+ return(result);
 }
 
 function void
 font_set__free_face_slot(Font_Set *set, Font_Face_Slot *slot){
-    if (slot->arena.base_allocator != 0){
-        table_free(&slot->face->advance_map.codepoint_to_index.table);
-        arena_clear(&slot->arena);
-    }
-    block_zero_struct(slot);
-    sll_stack_push(set->free_face_slots, slot);
+ table_free(&slot->face->advance_map.codepoint_to_index.table);
+ arena_free(&slot->arena);
+ block_zero_struct(slot);
+ sll_stack_push(set->free_face_slots, slot);
 }
 
 function void
 font_set_init(Font_Set *set){
-    block_zero_struct(set);
-    set->arena = make_arena_system();
-    set->next_id_counter = 1;
-    set->id_to_slot_table = make_table_u64_u64(set->arena.base_allocator, 40);
-    set->scale_factor = system_get_screen_scale_factor();
+ block_zero_struct(set);
+ set->arena = make_arena_system();
+ set->next_id_counter = 1;
+ set->id_to_slot_table = make_table_u64_u64(&malloc_base_allocator, 40);
+ set->scale_factor = system_get_screen_scale_factor();
 }
 
 function Face*
 font_set_new_face(Font_Set *set, Face_Description *description){
-    Arena arena = make_arena_system();
-    Face *face = font_make_face(&arena, description, set->scale_factor);
-    if (face != 0){
-        Font_Face_Slot *slot = font_set__alloc_face_slot(set);
-        slot->arena = arena;
-        slot->face = face;
-        Face_ID new_id = font_set__alloc_face_id(set);
-        face->id = new_id;
-        table_insert(&set->id_to_slot_table, new_id, (u64)slot);
-    }
-    else{
-        arena_clear(&arena);
-    }
-    return(face);
+ Arena arena = make_arena_system();
+ Face *face = font_make_face(&arena, description, set->scale_factor);
+ if (face != 0){
+  Font_Face_Slot *slot = font_set__alloc_face_slot(set);
+  slot->arena = arena;
+  slot->face = face;
+  Face_ID new_id = font_set__alloc_face_id(set);
+  face->id = new_id;
+  table_insert(&set->id_to_slot_table, new_id, (u64)slot);
+ }else{
+  arena_free(&arena);
+ }
+ return(face);
 }
 
 function Font_Face_Slot*
@@ -153,7 +150,7 @@ font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
         Arena arena = make_arena_system();
         Face *face = font_make_face(&arena, description, set->scale_factor);
         if (face != 0){
-            arena_clear(&slot->arena);
+            arena_clear2(&slot->arena);
             slot->arena = arena;
             slot->face = face;
             face->version_number = version_number + 1;
@@ -161,7 +158,7 @@ font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
             result = true;
         }
         else{
-            arena_clear(&arena);
+            arena_clear2(&arena);
         }
     }
     return(result);

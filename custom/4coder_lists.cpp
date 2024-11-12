@@ -315,7 +315,7 @@ generate_hot_directory_file_list(App *app, Lister *lister)
 {
  Scratch_Block scratch(app, lister->arena);
  
- Temp_Memory temp = begin_temp(lister->arena);
+ Temp_Memory temp = begin_temp_memory(lister->arena);
  String hot = push_hot_directory(app, lister->arena);
  if (!character_is_slash(string_get_character(hot, hot.size - 1))){
   hot = push_stringfz(lister->arena, "%.*s/", string_expand(hot));
@@ -324,7 +324,7 @@ generate_hot_directory_file_list(App *app, Lister *lister)
  lister_set_key(lister, path_filename(hot));
  
  File_List file_list = system_get_file_list(scratch, hot);
- end_temp(temp);
+ end_temp_memory(temp);
  
  File_Info **one_past_last = file_list.infos + file_list.count;
  
@@ -354,13 +354,13 @@ generate_hot_directory_file_list(App *app, Lister *lister)
    Buffer_ID buffer = {};
    
    {
-    Temp_Memory path_temp = begin_temp(lister->arena);
+    Temp_Memory path_temp = begin_temp_memory(lister->arena);
     List_String list = {};
     string_list_push(lister->arena, &list, hot);
     string_list_push_overlap(lister->arena, &list, '/', (**info).filename);
     String full_file_path = string_list_flatten(lister->arena, list);
     buffer = get_buffer_by_filename(app, full_file_path, Access_Always);
-    end_temp(path_temp);
+    end_temp_memory(path_temp);
    }
    
    if (buffer != 0){

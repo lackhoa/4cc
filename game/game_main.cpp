@@ -768,7 +768,7 @@ game_reload(game_reload_params)
  }
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
-  state->dll_temp_memory = begin_temp(dll_arena);
+  state->dll_temp_memory = begin_temp_memory(dll_arena);
   // TODO(kv): This trickery means that we do need "static arena".
   push_struct(dll_arena, u8);  // @fui_ensure_nonzero_offset ;fui_ensure_arena_cursor_exists
   
@@ -791,7 +791,7 @@ game_reload(game_reload_params)
 }
 function game_shutdown_return
 game_shutdown(game_shutdown_params){
- end_temp(state->dll_temp_memory);
+ end_temp_memory(state->dll_temp_memory);
  thread_context_destroy(&global_thread_context);
 }
 //~

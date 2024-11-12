@@ -278,7 +278,7 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
  if (is_first_pass) { geometry_shader = glCreateShader(GL_GEOMETRY_SHADER); }
  GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
  {
-  Arena arena_value = make_arena_malloc();
+  Arena arena_value = make_arena();//nono uhm hello?
   Arena *arena = &arena_value;
   
   char *header = ogl_shared_header;
@@ -559,7 +559,6 @@ ogl_read_primitive_id()
   {
    glBindFramebuffer(GL_READ_FRAMEBUFFER, prim_id_framebuffer);
    glReadBuffer(GL_COLOR_ATTACHMENT0);
-   rect2i box = Ri32(group->clip_box);
    glReadPixels(0,0,
                 1,1,
                 GL_RED_INTEGER, GL_UNSIGNED_INT,
@@ -940,7 +939,6 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     }
     
     //
-    mat4 object_transform = mat4_identity;
     mat4 screen_from_world;
     OGL_Program_State state_value = {.group = group};
     auto state = &state_value;

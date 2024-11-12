@@ -32,7 +32,7 @@ def_search_get_full_path(Arena *arena, List_String *list, String relative)
 {
     String result = {};
     
-    Temp_Memory temp = begin_temp(arena);
+    Temp_Memory temp = begin_temp_memory(arena);
     
     u8 slash = '/';
     
@@ -53,7 +53,7 @@ def_search_get_full_path(Arena *arena, List_String *list, String relative)
             break;
         }
         
-        end_temp(temp);
+        end_temp_memory(temp);
     }
     
     return(result);

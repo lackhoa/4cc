@@ -190,7 +190,7 @@ F4_Index_ClearFile(F4_Index_File *file){
       note = note->next_sibling){
    _F4_Index_FreeNoteTree(note);
   }
-  arena_clear(&file->arena);
+  arena_free(&file->arena);
   file->first_note = file->last_note = 0;
  }
 }

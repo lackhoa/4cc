@@ -190,14 +190,14 @@ vim_init(App *app){
 	foreach(i, ArrayCount(vim_buffer_peek_list)){
 		Assert(vim_buffer_peek_list[i].buffer_id.name != 0);
 	}
-
+ 
 	vim_register_copy(&vim_registers.small_delete, empty_string);
 	vim_register_copy(&vim_registers.insert, empty_string);
 	for(i1 i=i1(vim_registers.digit - vim_registers.r); i<ArrayCount(vim_registers.r); i++){
 		vim_registers.r[i].flags |= REGISTER_ReadOnly;
 	}
-
-	Base_Allocator *base = get_base_allocator_system();
+ 
+	Base_Allocator *base = get_default_allocator();
 	foreach(i,ArrayCount(vim_maps)){
 		vim_maps[i] = make_table_u64_u64(base, 100);
 	}

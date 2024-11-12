@@ -73,7 +73,7 @@ encode(Arena *arena, char *str){
 
 static char*
 unencode(Arena *arena, Filename_Character *str, int32_t len){
-    Temp_Memory temp = begin_temp(arena);
+    Temp_Memory temp = begin_temp_memory(arena);
     char *out = push_array(arena, char, len + 1);
     
     if (out == 0){
@@ -87,7 +87,7 @@ unencode(Arena *arena, Filename_Character *str, int32_t len){
         }
         else{
             out = 0;
-            end_temp(temp);
+            end_temp_memory(temp);
             break;
         }
     }
@@ -220,7 +220,7 @@ get_file_list(Arena *arena, Filename_Character *pattern, File_Filter *filter)
     FindClose(search);
     
     Cross_Platform_File_List list = {};
-    Temp_Memory part_reset = begin_temp(arena);
+    Temp_Memory part_reset = begin_temp_memory(arena);
     
     int32_t rounded_char_size = (character_count*sizeof(Filename_Character) + 7)&(~7);
     int32_t memsize = rounded_char_size + file_count*sizeof(Cross_Platform_File_Info);
@@ -260,7 +260,7 @@ get_file_list(Arena *arena, Filename_Character *pattern, File_Filter *filter)
             if (name[0] != '.' && (is_folder || filter(name, size))){
                 if (info_ptr + 1 > info_ptr_end || char_ptr + size + 1 > char_ptr_end){
                     memset(&list, 0, sizeof(list));
-                    end_temp(part_reset);
+                    end_temp_memory(part_reset);
                     FindClose(search);
                     return(list);
                 }
@@ -388,7 +388,7 @@ get_file_list(Arena *arena, Filename_Character *pattern, File_Filter *filter){
     }
     
     Cross_Platform_File_List list = {};
-    Temp_Memory part_reset = begin_temp(arena);
+    Temp_Memory part_reset = begin_temp_memory(arena);
     
     int32_t rounded_char_size = (character_count*sizeof(Filename_Character) + 7)&(~7);
     int32_t memsize = rounded_char_size + file_count*sizeof(Cross_Platform_File_Info);
@@ -434,7 +434,7 @@ get_file_list(Arena *arena, Filename_Character *pattern, File_Filter *filter){
         if (name[0] != '.' && (is_folder || filter(name, size))){
             if (info_ptr + 1 > info_ptr_end || char_ptr + size + 1 > char_ptr_end){
                 memset(&list, 0, sizeof(list));
-                end_temp(part_reset);
+                end_temp_memory(part_reset);
                 closedir(dir_handle);
                 return(list);
             }

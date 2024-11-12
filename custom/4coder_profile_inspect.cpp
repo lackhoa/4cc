@@ -502,375 +502,375 @@ profile_memory_sort_by_count(Memory_Bucket **buckets, i1 first, i1 one_past_last
                 j += 1;
             }
         }
-        macro_swap(buckets[j], buckets[pivot]);
-        profile_memory_sort_by_count(buckets, first, j);
-        profile_memory_sort_by_count(buckets, j + 1, one_past_last);
-    }
+  macro_swap(buckets[j], buckets[pivot]);
+  profile_memory_sort_by_count(buckets, first, j);
+  profile_memory_sort_by_count(buckets, j + 1, one_past_last);
+ }
 }
 
 
 function void
 profile_render(App *app, Frame_Info frame_info, View_ID view){
-    Scratch_Block scratch(app);
-    
-    Rect_f32 region = draw_background_and_margin(app, view);
-    Rect_f32 prev_clip = draw_set_clip(app, region);
-    
-    Face_ID face_id = get_face_id(app, 0);
-    // TODO(allen): share this shit
-    Face_Metrics metrics = get_face_metrics(app, face_id);
-    f32 line_height = metrics.line_height;
-    f32 normal_advance = metrics.normal_advance;
-    f32 block_height = line_height*2.f;
-    f32 x_padding = normal_advance*1.5f;
-    f32 x_half_padding = x_padding*0.5f;
-    
-    Mouse_State mouse = get_mouse_state(app);
-    Vec2_f32 m_p = V2(mouse.p);
-    
-    Profile_Inspection *inspect = &global_profile_inspection;
-    
-    if (inspect->thread_count == 0){
-        Fancy_String *fstr = push_fancy_string(scratch, 0, fcolor_id(defcolor_pop2),
-                                               strlit("no profile data"));
-        f32 width = get_fancy_string_width(app, face_id, fstr);
-        Vec2_f32 view_center = (region.p0 + region.p1)*0.5f;
-        Vec2_f32 half_dim = V2(width, line_height)*0.5f;
-        Vec2_f32 p = view_center - half_dim;
-        draw_fancy_string(app, face_id, fcolor_zero(), fstr, p);
+ Scratch_Block scratch(app);
+ 
+ Rect_f32 region = draw_background_and_margin(app, view);
+ Rect_f32 prev_clip = draw_set_clip(app, region);
+ 
+ Face_ID face_id = get_face_id(app, 0);
+ // TODO(allen): share this shit
+ Face_Metrics metrics = get_face_metrics(app, face_id);
+ f32 line_height = metrics.line_height;
+ f32 normal_advance = metrics.normal_advance;
+ f32 block_height = line_height*2.f;
+ f32 x_padding = normal_advance*1.5f;
+ f32 x_half_padding = x_padding*0.5f;
+ 
+ Mouse_State mouse = get_mouse_state(app);
+ Vec2_f32 m_p = V2(mouse.p);
+ 
+ Profile_Inspection *inspect = &global_profile_inspection;
+ 
+ if (inspect->thread_count == 0){
+  Fancy_String *fstr = push_fancy_string(scratch, 0, fcolor_id(defcolor_pop2),
+                                         strlit("no profile data"));
+  f32 width = get_fancy_string_width(app, face_id, fstr);
+  Vec2_f32 view_center = (region.p0 + region.p1)*0.5f;
+  Vec2_f32 half_dim = V2(width, line_height)*0.5f;
+  Vec2_f32 p = view_center - half_dim;
+  draw_fancy_string(app, face_id, fcolor_zero(), fstr, p);
+ }
+ else{
+  rect2_Pair tabs_body = rect_split_top_bottom(region, line_height + 2.f);
+  Range_f32 tabs_y = rect_range_y(tabs_body.min);
+  
+  inspect->tab_id_hovered = ProfileInspectTab_None;
+  block_zero_struct(&inspect->full_name_hovered);
+  inspect->unique_counter_hovered = 0;
+  block_zero_struct(&inspect->location_jump_hovered);
+  inspect->hover_thread = 0;
+  inspect->hover_slot = 0;
+  inspect->hover_node = 0;
+  
+  // NOTE(allen): tabs
+  {
+   f32 y = (tabs_y.min + tabs_y.max - line_height)*0.5f;
+   f32 x = region.x0;
+   
+   Tab_State tab_state = {};
+   tab_state.p = V2(x, y);
+   tab_state.tabs_y = tabs_y;
+   tab_state.face_id = face_id;
+   tab_state.x_half_padding = x_half_padding;
+   tab_state.m_p = m_p;
+   
+   draw_rect_fcolor(app, tabs_body.min, 0.f, fcolor_id(defcolor_margin_hover));
+   
+   if (inspect->tab_id == ProfileInspectTab_None){
+    inspect->tab_id = ProfileInspectTab_Threads;
+   }
+   
+   profile_draw_tab(app, &tab_state, inspect,
+                    strlit("threads"),
+                    ProfileInspectTab_Threads);
+   
+   if (inspect->slot_count > 0){
+    profile_draw_tab(app, &tab_state, inspect,
+                     strlit("blocks"),
+                     ProfileInspectTab_Blocks);
+   }
+   
+   if (inspect->error_count > 0){
+    profile_draw_tab(app, &tab_state, inspect,
+                     strlit("errors"),
+                     ProfileInspectTab_Errors);
+   }
+   
+   profile_draw_tab(app, &tab_state, inspect,
+                    strlit("memory"),
+                    ProfileInspectTab_Memory);
+   
+   if (inspect->tab_id == ProfileInspectTab_Selection){
+    String string = {};
+    if (inspect->selected_thread != 0){
+     String name = inspect->selected_thread->name;
+     string = push_stringfz(scratch, "%.*s (%d)",
+                            string_expand(name),
+                            inspect->selected_thread->thread_id);
+    }
+    else if (inspect->selected_slot != 0){
+     String name = inspect->selected_slot->name;
+     string = push_stringfz(scratch, "block %.*s",
+                            string_expand(name));
+    }
+    else if (inspect->selected_node != 0){
+     String name = profile_node_name(inspect->selected_node);
+     string = push_stringfz(scratch, "node %.*s",
+                            string_expand(name));
     }
     else{
-        rect2_Pair tabs_body = rect_split_top_bottom(region, line_height + 2.f);
-        Range_f32 tabs_y = rect_range_y(tabs_body.min);
-        
-        inspect->tab_id_hovered = ProfileInspectTab_None;
-        block_zero_struct(&inspect->full_name_hovered);
-        inspect->unique_counter_hovered = 0;
-        block_zero_struct(&inspect->location_jump_hovered);
-        inspect->hover_thread = 0;
-        inspect->hover_slot = 0;
-        inspect->hover_node = 0;
-        
-        // NOTE(allen): tabs
-        {
-            f32 y = (tabs_y.min + tabs_y.max - line_height)*0.5f;
-            f32 x = region.x0;
-            
-            Tab_State tab_state = {};
-            tab_state.p = V2(x, y);
-            tab_state.tabs_y = tabs_y;
-            tab_state.face_id = face_id;
-            tab_state.x_half_padding = x_half_padding;
-            tab_state.m_p = m_p;
-            
-            draw_rect_fcolor(app, tabs_body.min, 0.f, fcolor_id(defcolor_margin_hover));
-            
-            if (inspect->tab_id == ProfileInspectTab_None){
-                inspect->tab_id = ProfileInspectTab_Threads;
-            }
-            
-            profile_draw_tab(app, &tab_state, inspect,
-                             strlit("threads"),
-                             ProfileInspectTab_Threads);
-            
-            if (inspect->slot_count > 0){
-                profile_draw_tab(app, &tab_state, inspect,
-                                 strlit("blocks"),
-                                 ProfileInspectTab_Blocks);
-            }
-            
-            if (inspect->error_count > 0){
-                profile_draw_tab(app, &tab_state, inspect,
-                                 strlit("errors"),
-                                 ProfileInspectTab_Errors);
-            }
-            
-            profile_draw_tab(app, &tab_state, inspect,
-                             strlit("memory"),
-                             ProfileInspectTab_Memory);
-            
-            if (inspect->tab_id == ProfileInspectTab_Selection){
-                String string = {};
-                if (inspect->selected_thread != 0){
-                    String name = inspect->selected_thread->name;
-                    string = push_stringfz(scratch, "%.*s (%d)",
-                                             string_expand(name),
-                                             inspect->selected_thread->thread_id);
-                }
-                else if (inspect->selected_slot != 0){
-                    String name = inspect->selected_slot->name;
-                    string = push_stringfz(scratch, "block %.*s",
-                                             string_expand(name));
-                }
-                else if (inspect->selected_node != 0){
-                    String name = profile_node_name(inspect->selected_node);
-                    string = push_stringfz(scratch, "node %.*s",
-                                             string_expand(name));
-                }
-                else{
-                    inspect->tab_id = ProfileInspectTab_Threads;
-                }
-                if (string.str != 0){
-                    profile_draw_tab(app, &tab_state, inspect,
-                                     string, ProfileInspectTab_Selection);
-                }
-            }
-        }
-        
-        draw_set_clip(app, tabs_body.max);
-        switch (inspect->tab_id){
-            case ProfileInspectTab_Threads:
-            {
-                Range_f32 x = rect_range_x(tabs_body.max);
-                f32 y_pos = tabs_body.max.y0;
-                i1 count = inspect->thread_count;
-                Profile_Inspection_Thread *thread = inspect->threads;
-                for (i1 i = 0; i < count; i += 1, thread += 1){
-                    Range_f32 y = If32_size(y_pos, block_height);
-                    
-                    Fancy_Line list = {};
-                    push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop1),
-                                       "%-20.*s (%6d) ",
-                                       string_expand(thread->name),
-                                       thread->thread_id);
-                    
-                    f32 active_time = ((f32)thread->active_time)/1000000.f;
-                    push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop2),
-                                       "active time %11.9f",
-                                       active_time);
-                    
-                    Vec2_f32 p = V2(x.min + x_half_padding,
-                                       (y.min + y.max - line_height)*0.5f);
-                    draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
-                    
-                    Rect_f32 box = Rf32(x, y);
-                    FColor margin = fcolor_id(defcolor_margin);
-                    if (rect_contains_point(box, m_p)){
-                        inspect->hover_thread = thread;
-                        margin = fcolor_id(defcolor_margin_hover);
-                    }
-                    draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin), 0);
-                    
-                    y_pos = y.max;
-                    if (y_pos >= tabs_body.max.y1){
-                        break;
-                    }
-                }
-            }break;
-            
-            case ProfileInspectTab_Blocks:
-            {
-                Range_f32 x = rect_range_x(tabs_body.max);
-                f32 y_pos = tabs_body.max.y0;
-                for (Profile_Slot *node = inspect->first_slot;
-                     node != 0;
-                     node = node->next){
-                    Range_f32 y = If32_size(y_pos, block_height);
-                    
-                    u32 name_width = 45;
-                    b32 name_too_long = (node->name.size > name_width);
-                    Fancy_Line list = {};
-                    push_fancy_string_fixed(scratch, &list, fcolor_id(defcolor_pop1),
-                                            node->name, name_width);
-                    
-                    if (node->corrupted_time){
-                        push_fancy_string(scratch, &list, fcolor_id(defcolor_pop2),
-                                          strlit("timing error "));
-                    }
-                    else{
-                        push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop2),
-                                           "%11.9fs ",
-                                           ((f32)node->total_time)/1000000.f);
-                    }
-                    
-                    push_fancy_stringf(scratch, &list, fcolor_id(defcolor_keyword),
-                                       "hit # %5d", node->hit_count);
-                    
-                    Vec2_f32 p = V2(x.min + x_half_padding,
-                                       (y.min + y.max - line_height)*0.5f);
-                    draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
-                    
-                    Rect_f32 box = Rf32(x, y);
-                    FColor margin = fcolor_id(defcolor_margin);
-                    if (rect_contains_point(box, m_p)){
-                        if (name_too_long){
-                            inspect->full_name_hovered = node->name;
-                        }
-                        inspect->location_jump_hovered = node->location;
-                        inspect->hover_slot = node;
-                        margin = fcolor_id(defcolor_margin_hover);
-                    }
-                    draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin),0);
-                    
-                    y_pos = y.max;
-                    if (y_pos >= tabs_body.max.y1){
-                        break;
-                    }
-                }
-            }break;
-            
-            case ProfileInspectTab_Errors:
-            {
-                draw_set_clip(app, tabs_body.max);
-                Range_f32 x = rect_range_x(tabs_body.max);
-                f32 y_pos = tabs_body.max.y0;
-                for (Profile_Error *node = inspect->first_error;
-                     node != 0;
-                     node = node->next){
-                    Range_f32 y = If32_size(y_pos, block_height);
-                    
-                    Fancy_Line list = {};
-                    push_fancy_string(scratch, &list, fcolor_id(defcolor_pop2),
-                                      node->message);
-                    
-                    Vec2_f32 p = V2(x.min + x_half_padding,
-                                       (y.min + y.max - line_height)*0.5f);
-                    draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
-                    
-                    Rect_f32 box = Rf32(x, y);
-                    FColor margin = fcolor_id(defcolor_margin);
-                    if (rect_contains_point(box, m_p)){
-                        inspect->location_jump_hovered = node->location;
-                        margin = fcolor_id(defcolor_margin_hover);
-                    }
-                    draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin),0);
-                    
-                    y_pos = y.max;
-                    if (y_pos >= tabs_body.max.y1){
-                        break;
-                    }
-                }
-            }break;
-            
-            case ProfileInspectTab_Memory:
-            {
-                draw_set_clip(app, tabs_body.max);
-                Range_f32 x = rect_range_x(tabs_body.max);
-                f32 y_pos = tabs_body.max.y0;
-                Memory_Annotation annotation = system_memory_annotation(scratch);
-                
-                Base_Allocator *allocator = get_base_allocator_system();
-                
-                Memory_Bucket *first_bucket = 0;
-                Memory_Bucket *last_bucket = 0;
-                i1 bucket_count = 0;
-                Table_Data_u64 table = make_table_Data_u64(allocator, 100);
-                
-                for (Memory_Annotation_Node *node = annotation.first, *next = 0;
-                     node != 0;
-                     node = next){
-                    next = node->next;
-                    String key = make_data(node->location.str, node->location.size);
-                    Table_Lookup lookup = table_lookup(&table, key);
-                    Memory_Bucket *bucket = 0;
-                    if (lookup.found_match){
-                        u64 val = 0;
-                        table_read(&table, lookup, &val);
-                        bucket = (Memory_Bucket*)IntAsPtr(val);
-                    }
-                    else{
-                        bucket = push_array_zero(scratch, Memory_Bucket, 1);
-                        sll_queue_push(first_bucket, last_bucket, bucket);
-                        bucket_count += 1;
-                        bucket->location = node->location;
-                        table_insert(&table, key, PtrAsInt(bucket));
-                    }
-                    sll_queue_push(bucket->annotation.first, bucket->annotation.last, node);
-                    bucket->annotation.count += 1;
-                    bucket->total_memory += node->size;
-                }
-                
-                Memory_Bucket **buckets = push_array(scratch, Memory_Bucket*, bucket_count);
-                i1 counter = 0;
-                for (Memory_Bucket *node = first_bucket;
-                     node != 0;
-                     node = node->next){
-                    buckets[counter] = node;
-                    counter += 1;
-                }
-                
-                profile_memory_sort_by_count(buckets, 0, bucket_count);
-                
-                for (i1 i = bucket_count - 1; i >= 0; i -= 1){
-                    Memory_Bucket *node = buckets[i];
-                    Range_f32 y = If32_size(y_pos, block_height);
-                    
-                    Fancy_Line list = {};
-                    push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop2), "[%12llu] / %6d ",
-                                       node->total_memory, node->annotation.count);
-                    push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop1), "%.*s",
-                                       string_expand(node->location));
-                    
-                    Vec2_f32 p = V2(x.min + x_half_padding,
-                                       (y.min + y.max - line_height)*0.5f);
-                    draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
-                    
-                    Rect_f32 box = Rf32(x, y);
-                    FColor margin = fcolor_id(defcolor_margin);
-                    if (rect_contains_point(box, m_p)){
-                        inspect->location_jump_hovered = node->location;
-                        margin = fcolor_id(defcolor_margin_hover);
-                    }
-                    
-                    y_pos = y.max;
-                    if (y_pos >= tabs_body.max.y1){
-                        break;
-                    }
-                }
-                
-                table_free(&table);
-            }break;
-            
-            case ProfileInspectTab_Selection:
-            {
-                if (inspect->selected_thread != 0){
-                    profile_draw_node(app, view, face_id,
-                                      &inspect->selected_thread->root, tabs_body.max,
-                                      inspect, m_p);
-                }
-                else if (inspect->selected_slot != 0){
-                    
-                }
-                else if (inspect->selected_node != 0){
-                    profile_draw_node(app, view, face_id,
-                                      inspect->selected_node, tabs_body.max,
-                                      inspect, m_p);
-                }
-            }break;
-        }
-        
-        if (!rect_contains_point(region, m_p)){
-            // NOTE(allen): don't draw tool tip when the mouse doesn't hover in our view
-        }
-        else if (inspect->tab_id_hovered != ProfileInspectTab_None){
-            // NOTE(allen): no tool tip for tabs
-        }
-        else{
-            Fancy_Block block = {};
-            FColor text_color = fcolor_change_alpha(f_white, 0.5f);
-            FColor back_color = fcolor_change_alpha(f_black, 0.5f);
-            
-            if (inspect->full_name_hovered.size > 0){
-                Fancy_Line *line = push_fancy_line(scratch, &block, text_color);
-                push_fancy_stringf(scratch, line, "%.*s",
-                                   string_expand(inspect->full_name_hovered));
-                if (inspect->unique_counter_hovered > 0){
-                    push_fancy_stringf(scratch, line, text_color, 0.5f, 0.f,
-                                       "#%4llu", inspect->unique_counter_hovered);
-                }
-            }
-            if (inspect->location_jump_hovered.size > 0){
-                Fancy_Line *line = push_fancy_line(scratch, &block, text_color);
-                push_fancy_stringf(scratch, line, "[shift] '%.*s'",
-                                   string_expand(inspect->location_jump_hovered));
-            }
-            
-            draw_tool_tip(app, face_id, &block, m_p, region,
-                          x_padding, x_half_padding, back_color);
-        }
+     inspect->tab_id = ProfileInspectTab_Threads;
+    }
+    if (string.str != 0){
+     profile_draw_tab(app, &tab_state, inspect,
+                      string, ProfileInspectTab_Selection);
+    }
+   }
+  }
+  
+  draw_set_clip(app, tabs_body.max);
+  switch (inspect->tab_id){
+   case ProfileInspectTab_Threads:
+   {
+    Range_f32 x = rect_range_x(tabs_body.max);
+    f32 y_pos = tabs_body.max.y0;
+    i1 count = inspect->thread_count;
+    Profile_Inspection_Thread *thread = inspect->threads;
+    for (i1 i = 0; i < count; i += 1, thread += 1){
+     Range_f32 y = If32_size(y_pos, block_height);
+     
+     Fancy_Line list = {};
+     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop1),
+                        "%-20.*s (%6d) ",
+                        string_expand(thread->name),
+                        thread->thread_id);
+     
+     f32 active_time = ((f32)thread->active_time)/1000000.f;
+     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop2),
+                        "active time %11.9f",
+                        active_time);
+     
+     Vec2_f32 p = V2(x.min + x_half_padding,
+                     (y.min + y.max - line_height)*0.5f);
+     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
+     
+     Rect_f32 box = Rf32(x, y);
+     FColor margin = fcolor_id(defcolor_margin);
+     if (rect_contains_point(box, m_p)){
+      inspect->hover_thread = thread;
+      margin = fcolor_id(defcolor_margin_hover);
+     }
+     draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin), 0);
+     
+     y_pos = y.max;
+     if (y_pos >= tabs_body.max.y1){
+      break;
+     }
+    }
+   }break;
+   
+   case ProfileInspectTab_Blocks:
+   {
+    Range_f32 x = rect_range_x(tabs_body.max);
+    f32 y_pos = tabs_body.max.y0;
+    for (Profile_Slot *node = inspect->first_slot;
+         node != 0;
+         node = node->next){
+     Range_f32 y = If32_size(y_pos, block_height);
+     
+     u32 name_width = 45;
+     b32 name_too_long = (node->name.size > name_width);
+     Fancy_Line list = {};
+     push_fancy_string_fixed(scratch, &list, fcolor_id(defcolor_pop1),
+                             node->name, name_width);
+     
+     if (node->corrupted_time){
+      push_fancy_string(scratch, &list, fcolor_id(defcolor_pop2),
+                        strlit("timing error "));
+     }
+     else{
+      push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop2),
+                         "%11.9fs ",
+                         ((f32)node->total_time)/1000000.f);
+     }
+     
+     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_keyword),
+                        "hit # %5d", node->hit_count);
+     
+     Vec2_f32 p = V2(x.min + x_half_padding,
+                     (y.min + y.max - line_height)*0.5f);
+     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
+     
+     Rect_f32 box = Rf32(x, y);
+     FColor margin = fcolor_id(defcolor_margin);
+     if (rect_contains_point(box, m_p)){
+      if (name_too_long){
+       inspect->full_name_hovered = node->name;
+      }
+      inspect->location_jump_hovered = node->location;
+      inspect->hover_slot = node;
+      margin = fcolor_id(defcolor_margin_hover);
+     }
+     draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin),0);
+     
+     y_pos = y.max;
+     if (y_pos >= tabs_body.max.y1){
+      break;
+     }
+    }
+   }break;
+   
+   case ProfileInspectTab_Errors:
+   {
+    draw_set_clip(app, tabs_body.max);
+    Range_f32 x = rect_range_x(tabs_body.max);
+    f32 y_pos = tabs_body.max.y0;
+    for (Profile_Error *node = inspect->first_error;
+         node != 0;
+         node = node->next){
+     Range_f32 y = If32_size(y_pos, block_height);
+     
+     Fancy_Line list = {};
+     push_fancy_string(scratch, &list, fcolor_id(defcolor_pop2),
+                       node->message);
+     
+     Vec2_f32 p = V2(x.min + x_half_padding,
+                     (y.min + y.max - line_height)*0.5f);
+     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
+     
+     Rect_f32 box = Rf32(x, y);
+     FColor margin = fcolor_id(defcolor_margin);
+     if (rect_contains_point(box, m_p)){
+      inspect->location_jump_hovered = node->location;
+      margin = fcolor_id(defcolor_margin_hover);
+     }
+     draw_rect_outline(app, box, 6.f, 3.f, fcolor_resolve(margin),0);
+     
+     y_pos = y.max;
+     if (y_pos >= tabs_body.max.y1){
+      break;
+     }
+    }
+   }break;
+   
+   case ProfileInspectTab_Memory:
+   {
+    draw_set_clip(app, tabs_body.max);
+    Range_f32 x = rect_range_x(tabs_body.max);
+    f32 y_pos = tabs_body.max.y0;
+    Memory_Annotation annotation = system_memory_annotation(scratch);
+    
+    Base_Allocator *allocator = get_default_allocator();
+    
+    Memory_Bucket *first_bucket = 0;
+    Memory_Bucket *last_bucket = 0;
+    i1 bucket_count = 0;
+    Table_Data_u64 table = make_table_Data_u64(allocator, 100);
+    
+    for (Memory_Annotation_Node *node = annotation.first, *next = 0;
+         node != 0;
+         node = next){
+     next = node->next;
+     String key = make_data(node->location.str, node->location.size);
+     Table_Lookup lookup = table_lookup(&table, key);
+     Memory_Bucket *bucket = 0;
+     if (lookup.found_match){
+      u64 val = 0;
+      table_read(&table, lookup, &val);
+      bucket = (Memory_Bucket*)IntAsPtr(val);
+     }
+     else{
+      bucket = push_array_zero(scratch, Memory_Bucket, 1);
+      sll_queue_push(first_bucket, last_bucket, bucket);
+      bucket_count += 1;
+      bucket->location = node->location;
+      table_insert(&table, key, PtrAsInt(bucket));
+     }
+     sll_queue_push(bucket->annotation.first, bucket->annotation.last, node);
+     bucket->annotation.count += 1;
+     bucket->total_memory += node->size;
     }
     
-    draw_set_clip(app, prev_clip);
+    Memory_Bucket **buckets = push_array(scratch, Memory_Bucket*, bucket_count);
+    i1 counter = 0;
+    for (Memory_Bucket *node = first_bucket;
+         node != 0;
+         node = node->next){
+     buckets[counter] = node;
+     counter += 1;
+    }
+    
+    profile_memory_sort_by_count(buckets, 0, bucket_count);
+    
+    for (i1 i = bucket_count - 1; i >= 0; i -= 1){
+     Memory_Bucket *node = buckets[i];
+     Range_f32 y = If32_size(y_pos, block_height);
+     
+     Fancy_Line list = {};
+     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop2), "[%12llu] / %6d ",
+                        node->total_memory, node->annotation.count);
+     push_fancy_stringf(scratch, &list, fcolor_id(defcolor_pop1), "%.*s",
+                        string_expand(node->location));
+     
+     Vec2_f32 p = V2(x.min + x_half_padding,
+                     (y.min + y.max - line_height)*0.5f);
+     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
+     
+     Rect_f32 box = Rf32(x, y);
+     FColor margin = fcolor_id(defcolor_margin);
+     if (rect_contains_point(box, m_p)){
+      inspect->location_jump_hovered = node->location;
+      margin = fcolor_id(defcolor_margin_hover);
+     }
+     
+     y_pos = y.max;
+     if (y_pos >= tabs_body.max.y1){
+      break;
+     }
+    }
+    
+    table_free(&table);
+   }break;
+   
+   case ProfileInspectTab_Selection:
+   {
+    if (inspect->selected_thread != 0){
+     profile_draw_node(app, view, face_id,
+                       &inspect->selected_thread->root, tabs_body.max,
+                       inspect, m_p);
+    }
+    else if (inspect->selected_slot != 0){
+     
+    }
+    else if (inspect->selected_node != 0){
+     profile_draw_node(app, view, face_id,
+                       inspect->selected_node, tabs_body.max,
+                       inspect, m_p);
+    }
+   }break;
+  }
+  
+  if (!rect_contains_point(region, m_p)){
+   // NOTE(allen): don't draw tool tip when the mouse doesn't hover in our view
+  }
+  else if (inspect->tab_id_hovered != ProfileInspectTab_None){
+   // NOTE(allen): no tool tip for tabs
+  }
+  else{
+   Fancy_Block block = {};
+   FColor text_color = fcolor_change_alpha(f_white, 0.5f);
+   FColor back_color = fcolor_change_alpha(f_black, 0.5f);
+   
+   if (inspect->full_name_hovered.size > 0){
+    Fancy_Line *line = push_fancy_line(scratch, &block, text_color);
+    push_fancy_stringf(scratch, line, "%.*s",
+                       string_expand(inspect->full_name_hovered));
+    if (inspect->unique_counter_hovered > 0){
+     push_fancy_stringf(scratch, line, text_color, 0.5f, 0.f,
+                        "#%4llu", inspect->unique_counter_hovered);
+    }
+   }
+   if (inspect->location_jump_hovered.size > 0){
+    Fancy_Line *line = push_fancy_line(scratch, &block, text_color);
+    push_fancy_stringf(scratch, line, "[shift] '%.*s'",
+                       string_expand(inspect->location_jump_hovered));
+   }
+   
+   draw_tool_tip(app, face_id, &block, m_p, region,
+                 x_padding, x_half_padding, back_color);
+  }
+ }
+ 
+ draw_set_clip(app, prev_clip);
 }
 
 

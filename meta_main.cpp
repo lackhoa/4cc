@@ -20,6 +20,7 @@
 #include "meta_main.h"
 
 #include "4ed_api_definition.cpp"
+#include "meta_os.cpp"
 #include "meta_parse.cpp"
 #include "4ed_system_api.cpp"
 #include "4ed_api_parser.cpp"

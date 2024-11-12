@@ -201,10 +201,10 @@ multi_paste_range(App *app, View_ID view, Range_i64 range, i1 paste_count, b32 o
         if (buffer != 0){
             i64 total_size = 0;
             for (i1 paste_index = 0; paste_index < paste_count; ++paste_index){
-                Temp_Memory temp = begin_temp(scratch);
+                Temp_Memory temp = begin_temp_memory(scratch);
                 String8 string = push_clipboard_index_inner(scratch, 0, paste_index);
                 total_size += string.size + 1;
-                end_temp(temp);
+                end_temp_memory(temp);
             }
             total_size -= 1;
             

@@ -121,7 +121,6 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
   default_post_command(app, scope);
  }
 }
-
 //NOTE(kv) This function actually does... thing.
 //  IDK what but the editor crashes if you don't call it
 function void
@@ -159,7 +158,7 @@ code_index_update_tick(App *app){
 }
 function void
 default_tick(App *app, Frame_Info frame_info){
- arena_clear(&global_frame_arena);
+ arena_clear2(&global_frame_arena);
  code_index_update_tick(app);
  if(tick_all_fade_ranges(app, frame_info.animation_dt)){
   animate_in_n_milliseconds(app, 0);
@@ -430,7 +429,7 @@ parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
         release_global_frame_mutex(app);
     }
     else{
-        arena_clear(&arena);
+        arena_free(&arena);
     }
 }
 

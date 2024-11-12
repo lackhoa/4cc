@@ -89,13 +89,12 @@ vim_to_pattern_inner(App *app, b32 backward)
 
 function void
 vim_start_search_inner(App *app, Scan_Direction start_direction) {
-    vim_state.identifier_search_mode = false;
+ vim_state.identifier_search_mode = false;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	if(!buffer_exists(app, buffer)){ return; }
-    
-    vim_push_jump(app, view);
-	i64 buffer_size = buffer_get_size(app, buffer);
+ 
+ vim_push_jump(app, view);
  
 	Vec2_f32 old_margin = {};
 	Vec2_f32 old_push_in = {};

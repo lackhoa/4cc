@@ -598,12 +598,12 @@ function Config*
 config_parse(App *app, Arena *arena, String8 filename, String8 data, Token_Array array)
 {
     ProfileScope(app, "config parse");
-    Temp_Memory restore_point = begin_temp(arena);
+    Temp_Memory restore_point = begin_temp_memory(arena);
     Config_Parser p = config_parser_init(arena, filename, data, array);
     Config *config = config_parser_top(&p);
     if (config == 0)
     {
-        end_temp(restore_point);
+        end_temp_memory(restore_point);
     }
     return(config);
 }
@@ -612,14 +612,14 @@ function Config*
 config_from_text(App *app, Arena *arena, String8 filename, String8 data)
 {
     Config *parsed = 0;
-    Temp_Memory restore_point = begin_temp(arena);
+    Temp_Memory restore_point = begin_temp_memory(arena);
     Token_Array array = token_array_from_text(app, arena, data);
     if (array.tokens != 0)
     {
         parsed = config_parse(app, arena, filename, data, array);
         if (parsed == 0)
         {
-            end_temp(restore_point);
+            end_temp_memory(restore_point);
         }
     }
     return(parsed);
@@ -1532,7 +1532,7 @@ function void
 load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 override_hinting){
     Scratch_Block scratch(app, out_arena);
     
-    arena_clear(out_arena);
+    arena_clear2(out_arena);
     
     Config *parsed = 0;
     FILE *file = def_search_normal_fopen(scratch, "config.4coder", "rb");

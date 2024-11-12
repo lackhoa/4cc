@@ -154,7 +154,6 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
 {
  ProfileScope(app, "render caller");
  b32 view_active = view_is_active(app, view);
- i1 monitor = hax_guess_which_monitor_the_view_is_in(app, view);
  
  rect2 clip      = view_get_screen_rect(app, view);
  rect2 prev_clip = draw_set_clip(app, clip);
@@ -163,7 +162,6 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  Face_ID face_id = get_face_id(app, buffer);
  Face_Metrics face_metrics = get_face_metrics(app, face_id);
  v1 line_height = face_metrics.line_height;
- v1 digit_advance = face_metrics.decimal_digit_advance;
  
  if (vim_lister_running)
  {// NOTE(kv) Watch out for the vim bottom lister!

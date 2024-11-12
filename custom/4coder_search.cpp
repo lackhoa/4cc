@@ -169,7 +169,7 @@ print_string_match_list_to_buffer(App *app, String pattern, Buffer_ID out_buffer
  buffer_set_setting(app, out_buffer_id, BufferSetting_ReadOnly, true);
  buffer_set_setting(app, out_buffer_id, BufferSetting_RecordsHistory, false);
  
- Temp_Memory buffer_name_restore_point = begin_temp(scratch);
+ Temp_Memory buffer_name_restore_point = begin_temp_memory(scratch);
  String current_filename = {};
  Buffer_ID current_buffer = 0;
  
@@ -187,7 +187,7 @@ print_string_match_list_to_buffer(App *app, String pattern, Buffer_ID out_buffer
      {// NOTE(kv): Space between different buffers
       insertc(&out, '\n');
      }
-     end_temp(buffer_name_restore_point);
+     end_temp_memory(buffer_name_restore_point);
      current_buffer   = match->buffer;
      current_filename = push_buffer_filepath(app, scratch, current_buffer);
      if (current_filename.size == 0) {
@@ -197,13 +197,13 @@ print_string_match_list_to_buffer(App *app, String pattern, Buffer_ID out_buffer
     
     Buffer_Cursor cursor = buffer_compute_cursor(app, current_buffer, seek_pos(match->range.first));
     {
-     Temp_Memory line_temp = begin_temp(scratch);
+     Temp_Memory line_temp = begin_temp_memory(scratch);
      String full_line_str = push_buffer_line(app, scratch, current_buffer, cursor.line);
      String line_str = string_skip_chop_whitespace(full_line_str);
                     insertf(&out, "%.*s:%d:%d: %.*s\n",
                             string_expand(current_filename), cursor.line, cursor.col,
                             string_expand(line_str));
-                    end_temp(line_temp);
+                    end_temp_memory(line_temp);
                 }
             }
         }
@@ -446,9 +446,9 @@ word_complete_iter_init__inner(Buffer_ID buffer, String needle, Range_i64 range,
     App *app = iter->app;
     Arena *arena = iter->arena;
     
-    Base_Allocator *allocator = get_base_allocator_system();
+    Base_Allocator *allocator = get_default_allocator();
     if (iter->already_used_table.allocator != 0){
-        end_temp(iter->arena_restore);
+        end_temp_memory(iter->arena_restore);
         table_clear(&iter->already_used_table);
     }
     
@@ -456,7 +456,7 @@ word_complete_iter_init__inner(Buffer_ID buffer, String needle, Range_i64 range,
     iter->app = app;
     iter->arena = arena;
     
-    iter->arena_restore = begin_temp(arena);
+    iter->arena_restore = begin_temp_memory(arena);
     iter->needle = push_stringz(arena, needle);
     iter->first_buffer = buffer;
     iter->current_buffer = buffer;

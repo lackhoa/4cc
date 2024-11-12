@@ -385,9 +385,9 @@ expand_bottom_view(App *app)
 function void
 collapse_bottom_view(App *app)
 {
- Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
- Face_ID face_id = get_face_id(app, buffer);
- Face_Metrics metrics = get_face_metrics(app, face_id);
+ //Buffer_ID buffer = view_get_buffer(app, global_bottom_view, Access_Always);
+ //Face_ID face_id = get_face_id(app, buffer);
+ //Face_Metrics metrics = get_face_metrics(app, face_id);
  view_set_split_pixel_size(app, global_bottom_view,
                            /*(i1)(metrics.line_height*4.f)*/
                            0);
@@ -487,12 +487,12 @@ save_all_dirty_buffers_with_postfix(App *app, String postfix){
          buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible)){
         Dirty_State dirty = buffer_get_dirty_state(app, buffer);
         if (dirty == DirtyState_UnsavedChanges){
-            Temp_Memory temp = begin_temp(scratch);
+            Temp_Memory temp = begin_temp_memory(scratch);
             String8 filename = push_buffer_filepath(app, scratch, buffer);
             if (string_match(string_postfix(filename, postfix.size), postfix)){
                 buffer_save(app, buffer, filename, 0);
             }
-            end_temp(temp);
+            end_temp_memory(temp);
         }
     }
 }
@@ -605,21 +605,15 @@ CUSTOM_DOC("Loads all the theme files in the current hot directory.")
     
     Scratch_Block scratch(app);
     String path = push_hot_directory(app, scratch);
-    load_folder_of_themes_into_live_set(app, path);
+ load_folder_of_themes_into_live_set(app, path);
 }
 
 CUSTOM_COMMAND_SIG(clear_all_themes)
 CUSTOM_DOC("Clear the theme list")
 {
-    if (global_theme_arena.base_allocator == 0){
-        global_theme_arena = make_arena_system();
-    }
-    else{
-        arena_clear(&global_theme_arena);
-    }
-    
-    block_zero_struct(&global_theme_list);
-    set_default_color_scheme(app);
+ arena_clear2(&global_theme_arena);
+ block_zero_struct(&global_theme_list);
+ set_default_color_scheme(app);
 }
 
 ////////////////////////////////
@@ -808,9 +802,8 @@ buffer_modified_set_init(void){
     Buffer_Modified_Set *set = &global_buffer_modified_set;
     
     block_zero_struct(set);
-    Base_Allocator *allocator = get_base_allocator_system();
-    set->arena = make_arena(allocator);
-    set->id_to_node = make_table_u64_u64(allocator, 100);
+    set->arena = make_arena();
+    set->id_to_node = make_table_u64_u64(get_default_allocator(), 100);
 }
 
 function Buffer_Modified_Node*
@@ -973,14 +966,14 @@ function void
 clipboard_init(Base_Allocator *allocator, u32 history_depth, Clipboard *clipboard_out){
     u64 memsize = sizeof(String)*history_depth;
     memsize = round_up_u64(memsize, KB(4));
-    clipboard_out->arena = make_arena(allocator, memsize);
+    clipboard_out->arena = make_arena(memsize);
     clipboard_init_empty(clipboard_out, history_depth);
 }
 
 function void
 clipboard_clear(Clipboard *clipboard)
 {
-    arena_clear(&clipboard->arena);
+    arena_clear2(&clipboard->arena);
     clipboard_init_empty(clipboard, clipboard->clip_capacity);
 }
 
@@ -1080,20 +1073,20 @@ initialize_managed_id_metadata(App *app);
 function void
 default_framework_init(App *app)
 {
-    Thread_Context *tctx = get_thread_context(app);
-    async_task_handler_init(app, &global_async_system);
-    clipboard_init(get_base_allocator_system(), /*history_depth*/ 64, &global_clipboard0);
-    code_index_init();
-    buffer_modified_set_init();
-    Profile_Global_List *list = get_core_profile_list(app);
-    ProfileThreadName(tctx, list, strlit("main"));
-    initialize_managed_id_metadata(app);
-    set_default_color_scheme(app);
-    heap_init(&global_heap, tctx->allocator);
+ Thread_Context *tctx = get_thread_context(app);
+ async_task_handler_init(app, &global_async_system);
+ clipboard_init(get_default_allocator(), /*history_depth*/ 64, &global_clipboard0);
+ code_index_init();
+ buffer_modified_set_init();
+ Profile_Global_List *list = get_core_profile_list(app);
+ ProfileThreadName(tctx, list, strlit("main"));
+ initialize_managed_id_metadata(app);
+ set_default_color_scheme(app);
+ heap_init(&global_heap);
 	global_permanent_arena = make_arena_system();
-    global_frame_arena     = make_arena_system();
-    global_config_arena    = make_arena_system();
-    fade_range_arena       = make_arena_system(KB(8));
+ global_frame_arena     = make_arena_system();
+ global_config_arena    = make_arena_system();
+ fade_range_arena       = make_arena_system(KB(8));
 }
 
 ////////////////////////////////

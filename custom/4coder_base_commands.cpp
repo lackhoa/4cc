@@ -178,7 +178,6 @@ CUSTOM_COMMAND_SIG(click_set_cursor_and_mark)
 CUSTOM_DOC("Sets the cursor position and mark to the mouse position.")
 {
  View_ID view = get_active_view(app, Access_ReadVisible);
- Render_Target *target = draw_get_target(app);
  Mouse_State mouse = get_mouse_state(app);
  i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
  view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
@@ -1499,14 +1498,14 @@ get_cpp_matching_file(App *app, Buffer_ID buffer, Buffer_ID *buffer_out)
   
   String path_no_extension0 = path_no_extension(path);
   for (i1 i = 0; i < new_extensions_count; i += 1){
-   Temp_Memory temp = begin_temp(scratch);
+   Temp_Memory temp = begin_temp_memory(scratch);
    String8 new_extension = new_extensions[i];
    String8 new_filename = push_stringfz(scratch, "%.*s.%.*s", string_expand(path_no_extension0), string_expand(new_extension));
    if (open_editing_file(app, buffer_out, new_filename, false, true)){
     result = true;
     break;
    }
-   end_temp(temp);
+   end_temp_memory(temp);
   }
   
   if (!result && new_extensions_count > 0){

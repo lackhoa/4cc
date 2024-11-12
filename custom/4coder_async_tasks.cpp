@@ -63,7 +63,7 @@ async_free_node(Async_System *async_system, Async_Node *node){
 
 function void
 async_task_thread(void *thread_ptr){
-    Base_Allocator *allocator = get_base_allocator_system();
+    Base_Allocator *allocator = &malloc_base_allocator;
     
     Thread_Context_Extra_Info tctx_info = {};
     tctx_info.async_thread = thread_ptr;
@@ -138,7 +138,7 @@ function void
 async_task_handler_init(App *app, Async_System *async_system){
     block_zero_struct(async_system);
     async_system->cmd_context = app->cmd_context;
-    async_system->node_arena = make_arena_system(KB(4));
+    async_system->node_arena = make_arena_system();
     heap_init(&async_system->node_heap, &async_system->node_arena);
     async_system->mutex = system_mutex_make();
     async_system->cv = system_condition_variable_make();

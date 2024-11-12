@@ -253,7 +253,6 @@ maybe_update_game(App *app, Frame_Info frame)
     .debug_camera_on  =global_debug_camera_on,
     .mouse            =get_mouse_state(app),
    };
-   rect2 clip_boxes[GAME_VIEWPORT_COUNT];
    Image_Load_Info image_load_info = get_image_load_info();
    auto update = game->game_update(ed_game_state_pointer, app, active_viewport_id, input, image_load_info);
    if (update.should_animate_next_frame) { animate_next_frame(app); }

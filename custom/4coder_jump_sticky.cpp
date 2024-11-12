@@ -134,7 +134,7 @@ init_marker_list(App *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
    total_jump_count += range_size(range);
   }
   
-  Temp_Memory marker_temp = begin_temp(scratch);
+  Temp_Memory marker_temp = begin_temp_memory(scratch);
   Marker *markers = push_array(scratch, Marker, total_jump_count);
   Buffer_ID target_buffer_id = 0;
   u32 marker_index = 0;
@@ -163,7 +163,7 @@ init_marker_list(App *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
   Managed_Object marker_handle = alloc_buffer_markers_on_buffer(app, target_buffer_id, total_jump_count, &scope);
   managed_object_store_data(app, marker_handle, 0, total_jump_count, markers);
   
-  end_temp(marker_temp);
+  end_temp_memory(marker_temp);
   
   Assert(managed_object_get_item_size(app, marker_handle) == sizeof(Marker));
   Assert(managed_object_get_item_count(app, marker_handle) == total_jump_count);
@@ -256,12 +256,12 @@ function Sticky_Jump_Stored*
 get_all_stored_jumps_from_list(App *app, Arena *arena, Marker_List *list){
     Sticky_Jump_Stored *stored = 0;
     if (list != 0){
-        Temp_Memory restore_point = begin_temp(arena);
+        Temp_Memory restore_point = begin_temp_memory(arena);
         stored = push_array(arena, Sticky_Jump_Stored, list->jump_count);
         if (stored != 0){
             if (!managed_object_load_data(app, list->jump_array, 0, list->jump_count, stored)){
                 stored = 0;
-                end_temp(restore_point);
+                end_temp_memory(restore_point);
             }
         }
     }

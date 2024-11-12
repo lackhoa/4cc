@@ -13,10 +13,10 @@
 
 function HANDLE
 CreateFile_utf8(Arena *scratch, u8 *name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES security, DWORD creation, DWORD flags, HANDLE template_file){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
     HANDLE result = CreateFileW((LPWSTR)name_16.str, access, share, security, creation, flags, template_file);
-    end_temp(temp);
+    end_temp_memory(temp);
     return(result);
 }
 
@@ -29,7 +29,7 @@ GetFinalPathNameByHandle_utf8(Arena *scratch, HANDLE file, u8 *file_path_out, DW
         result *= 2;
     }
     else{
-        Temp_Memory temp = begin_temp(scratch);
+        Temp_Memory temp = begin_temp_memory(scratch);
         
         u32 path_16_max = KB(32);
         u16 *path_16 = push_array(scratch, u16, path_16_max);
@@ -49,7 +49,7 @@ GetFinalPathNameByHandle_utf8(Arena *scratch, HANDLE file, u8 *file_path_out, DW
             }
         }
         
-        end_temp(temp);
+        end_temp_memory(temp);
     }
     
     return(result);
@@ -57,26 +57,26 @@ GetFinalPathNameByHandle_utf8(Arena *scratch, HANDLE file, u8 *file_path_out, DW
 
 function HANDLE
 FindFirstFile_utf8(Arena *scratch, u8 *name, LPWIN32_FIND_DATAW find_data){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
     HANDLE result = FindFirstFileW((LPWSTR)name_16.str, find_data);
-    end_temp(temp);
+    end_temp_memory(temp);
     return(result);
 }
 
 function DWORD
 GetFileAttributes_utf8(Arena *scratch, u8 *name){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
     DWORD result = GetFileAttributesW((LPWSTR)name_16.str);
-    end_temp(temp);
+    end_temp_memory(temp);
     return(result);
 }
 
 function DWORD
 GetModuleFileName_utf8(Arena *scratch, HMODULE module, u8 *file_out, DWORD max)
 {
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     u32 file_16_max = KB(40);
     u16 *file_16 = push_array(scratch, u16, file_16_max);
     DWORD file_16_len = GetModuleFileNameW(module, (LPWSTR)file_16, file_16_max);
@@ -87,19 +87,19 @@ GetModuleFileName_utf8(Arena *scratch, HMODULE module, u8 *file_out, DWORD max)
         block_copy(file_out, file_8.str, file_8.size + 1);
         result = (DWORD)file_8.size;
     }
-    end_temp(temp);
+    end_temp_memory(temp);
     return(result);
 }
 
 function BOOL
 CreateProcess_utf8(Arena *scratch, u8 *app_name, u8 *command, LPSECURITY_ATTRIBUTES security, LPSECURITY_ATTRIBUTES thread, BOOL inherit_handles, DWORD creation, LPVOID environment, u8 *curdir, LPSTARTUPINFOW startup, LPPROCESS_INFORMATION process)
 {
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     String_u16 app_name_16 = string_u16_from_string_u8(scratch, SCu8(app_name), StringFill_NullTerminate);
     String_u16 command_16 = string_u16_from_string_u8(scratch, SCu8(command), StringFill_NullTerminate);
  String_u16 curdir_16 = string_u16_from_string_u8(scratch, SCu8(curdir), StringFill_NullTerminate);
  BOOL result = CreateProcessW((LPWSTR)app_name_16.str, (LPWSTR)command_16.str, security, thread, inherit_handles, creation, environment, (LPWSTR)curdir_16.str, startup, process);
- end_temp(temp);
+ end_temp_memory(temp);
  return(result);
 }
 
@@ -110,7 +110,7 @@ GetCurrentDirectory_utf8(Arena *arena, DWORD max, u8 *buffer)
  
  if (buffer != 0)
  {
-  Temp_Memory temp = begin_temp(arena);
+  Temp_Memory temp = begin_temp_memory(arena);
   DWORD buffer_16_len = GetCurrentDirectoryW(0,0);
   u16 *buffer_16 = push_array(arena, u16, buffer_16_len);
   GetCurrentDirectoryW(buffer_16_len, (LPWSTR)buffer_16);
@@ -124,7 +124,7 @@ GetCurrentDirectory_utf8(Arena *arena, DWORD max, u8 *buffer)
   {
    result = (DWORD)curdir_8.size + 1;
   }
-  end_temp(temp);
+  end_temp_memory(temp);
  }
  else
  {
@@ -137,21 +137,21 @@ GetCurrentDirectory_utf8(Arena *arena, DWORD max, u8 *buffer)
 
 function int
 MessageBox_utf8(Arena *scratch, HWND owner, u8 *text, u8 *caption, UINT type){
- Temp_Memory temp = begin_temp(scratch);
+ Temp_Memory temp = begin_temp_memory(scratch);
  String_u16 text_16 = string_u16_from_string_u8(scratch, SCu8(text), StringFill_NullTerminate);
  String_u16 caption_16 = string_u16_from_string_u8(scratch, SCu8(caption), StringFill_NullTerminate);
  int result = MessageBoxW(owner, (LPWSTR)text_16.str, (LPWSTR)caption_16.str, type);
- end_temp(temp);
+ end_temp_memory(temp);
  return(result);
 }
 
 #if 0
 function BOOL
 SetWindowText_utf8(Arena *scratch, HWND window, u8 *string){
- Temp_Memory temp = begin_temp(scratch);
+ Temp_Memory temp = begin_temp_memory(scratch);
  String_u16 string_16 = string_u16_from_string_u8(scratch, SCu8(string), StringFill_NullTerminate);
  BOOL result = SetWindowTextW(window, (LPWSTR)string_16.str);
- end_temp(temp);
+ end_temp_memory(temp);
  return(result);
 }
 #endif
@@ -159,20 +159,20 @@ SetWindowText_utf8(Arena *scratch, HWND window, u8 *string){
 function BOOL
 GetFileAttributesEx_utf8String(Arena *scratch, String8 file_name, GET_FILEEX_INFO_LEVELS info_level_id, LPVOID file_info)
 {
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     String_u16 string_16 = string_u16_from_string_u8(scratch, file_name, StringFill_NullTerminate);
     BOOL result = GetFileAttributesExW((LPWSTR)string_16.str, info_level_id, file_info);
-    end_temp(temp);
+    end_temp_memory(temp);
     return(result);
 }
 
 function HMODULE
 LoadLibrary_utf8String(Arena *scratch, String name)
 {
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     String_u16 string_16 = string_u16_from_string_u8(scratch, name, StringFill_NullTerminate);
     HMODULE result = LoadLibraryW((LPWSTR)string_16.str);
-    end_temp(temp);
+    end_temp_memory(temp);
     return(result);
 }
 

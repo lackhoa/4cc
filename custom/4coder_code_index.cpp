@@ -72,8 +72,8 @@ code_index_note_from_string(String string)
 function void
 code_index_init(void){
   global_code_index.mutex = system_mutex_make();
-  global_code_index.node_arena = make_arena_system(KB(4));
-  global_code_index.buffer_to_index_file = make_table_u64_u64(global_code_index.node_arena.base_allocator, 500);
+  global_code_index.node_arena = make_arena_system();
+  global_code_index.buffer_to_index_file = make_table_u64_u64(get_default_allocator(), 500);
 }
 
 function Code_Index_File_Storage*
@@ -174,7 +174,7 @@ code_index_set_file(Buffer_ID buffer, Arena arena, Code_Index_File *index){
   table_read(&global_code_index.buffer_to_index_file, lookup, &val);
   storage = (Code_Index_File_Storage*)IntAsPtr(val);
   code_index__clear_file(storage->file);
-  arena_clear(&storage->arena);
+  arena_free(&storage->arena);
  }
  else{
   storage = code_index__alloc_storage();
@@ -196,7 +196,7 @@ code_index_erase_file(Buffer_ID buffer){
     
     code_index__clear_file(storage->file);
     
-    arena_clear(&storage->arena);
+    arena_free(&storage->arena);
     table_erase(&global_code_index.buffer_to_index_file, lookup);
     code_index__free_storage(storage);
   }

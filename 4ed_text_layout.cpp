@@ -13,7 +13,7 @@ function void
 text_layout_init(Thread_Context *tctx, Text_Layout_Container *container){
  block_zero_struct(container);
  container->node_arena = make_arena_system();
- container->table = make_table_u64_u64(tctx->allocator, 20);
+ container->table = make_table_u64_u64(get_default_allocator(), 20);
 }
 
 function Text_Layout*
@@ -29,10 +29,9 @@ text_layout_new__alloc_layout(Text_Layout_Container *container)
 }
 
 function void
-text_layout_release(Thread_Context *tctx, Models *models, Text_Layout_Container *container, Text_Layout *layout)
-{
+text_layout_release(Thread_Context *tctx, Models *models, Text_Layout_Container *container, Text_Layout *layout){
  Arena arena = *layout->arena;
- arena_clear(&arena);
+ arena_free(&arena);
  sll_stack_push(container->free_nodes, layout);
 }
 

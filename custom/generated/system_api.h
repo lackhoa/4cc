@@ -47,9 +47,10 @@
 #define system_condition_variable_wait_sig() void system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex)
 #define system_condition_variable_signal_sig() void system_condition_variable_signal(System_Condition_Variable cv)
 #define system_condition_variable_free_sig() void system_condition_variable_free(System_Condition_Variable cv)
-#define system_memory_allocate_at_least_sig() void* system_memory_allocate_at_least(usize wanted_size, String location, usize *usable_size_out)
-#define system_memory_allocate_exact_sig() void* system_memory_allocate_exact(usize size, String location)
-#define system_memory_free_sig() void system_memory_free(void* memory0)
+#define system_memory_reserve_sig() void * system_memory_reserve(usize wanted_size, String location)
+#define system_memory_free_sig() void system_memory_free(void * base)
+#define system_memory_commit_sig() b32 system_memory_commit(void * base, usize size)
+#define system_memory_decommit_sig() void system_memory_decommit(void * base, usize size)
 #define system_memory_set_protection_sig() b32 system_memory_set_protection(void* ptr, u64 size, u32 flags)
 #define system_memory_annotation_sig() Memory_Annotation system_memory_annotation(Arena* arena)
 #define system_show_mouse_cursor_sig() void system_show_mouse_cursor(i1 show)
@@ -103,9 +104,10 @@ typedef System_Condition_Variable system_condition_variable_make_type(void);
 typedef void system_condition_variable_wait_type(System_Condition_Variable cv, System_Mutex mutex);
 typedef void system_condition_variable_signal_type(System_Condition_Variable cv);
 typedef void system_condition_variable_free_type(System_Condition_Variable cv);
-typedef void* system_memory_allocate_at_least_type(usize wanted_size, String location, usize *usable_size_out);
-typedef void* system_memory_allocate_exact_type(usize size, String location);
-typedef void system_memory_free_type(void* memory0);
+typedef void * system_memory_reserve_type(usize wanted_size, String location);
+typedef void system_memory_free_type(void * base);
+typedef b32 system_memory_commit_type(void * base, usize size);
+typedef void system_memory_decommit_type(void * base, usize size);
 typedef b32 system_memory_set_protection_type(void* ptr, u64 size, u32 flags);
 typedef Memory_Annotation system_memory_annotation_type(Arena* arena);
 typedef void system_show_mouse_cursor_type(i1 show);
@@ -160,9 +162,10 @@ system_condition_variable_make_type *condition_variable_make;
 system_condition_variable_wait_type *condition_variable_wait;
 system_condition_variable_signal_type *condition_variable_signal;
 system_condition_variable_free_type *condition_variable_free;
-system_memory_allocate_at_least_type *memory_allocate_at_least;
-system_memory_allocate_exact_type *memory_allocate_exact;
+system_memory_reserve_type *memory_reserve;
 system_memory_free_type *memory_free;
+system_memory_commit_type *memory_commit;
+system_memory_decommit_type *memory_decommit;
 system_memory_set_protection_type *memory_set_protection;
 system_memory_annotation_type *memory_annotation;
 system_show_mouse_cursor_type *show_mouse_cursor;
@@ -218,9 +221,10 @@ function System_Condition_Variable system_condition_variable_make(void);
 function void system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex);
 function void system_condition_variable_signal(System_Condition_Variable cv);
 function void system_condition_variable_free(System_Condition_Variable cv);
-function void* system_memory_allocate_at_least(usize wanted_size, String location, usize *usable_size_out);
-function void* system_memory_allocate_exact(usize size, String location);
-function void system_memory_free(void* memory0);
+function void * system_memory_reserve(usize wanted_size, String location);
+function void system_memory_free(void * base);
+function b32 system_memory_commit(void * base, usize size);
+function void system_memory_decommit(void * base, usize size);
 function b32 system_memory_set_protection(void* ptr, u64 size, u32 flags);
 function Memory_Annotation system_memory_annotation(Arena* arena);
 function void system_show_mouse_cursor(i1 show);
@@ -279,9 +283,10 @@ STORAGE_CLASS system_condition_variable_make_type *system_condition_variable_mak
 STORAGE_CLASS system_condition_variable_wait_type *system_condition_variable_wait;
 STORAGE_CLASS system_condition_variable_signal_type *system_condition_variable_signal;
 STORAGE_CLASS system_condition_variable_free_type *system_condition_variable_free;
-STORAGE_CLASS system_memory_allocate_at_least_type *system_memory_allocate_at_least;
-STORAGE_CLASS system_memory_allocate_exact_type *system_memory_allocate_exact;
+STORAGE_CLASS system_memory_reserve_type *system_memory_reserve;
 STORAGE_CLASS system_memory_free_type *system_memory_free;
+STORAGE_CLASS system_memory_commit_type *system_memory_commit;
+STORAGE_CLASS system_memory_decommit_type *system_memory_decommit;
 STORAGE_CLASS system_memory_set_protection_type *system_memory_set_protection;
 STORAGE_CLASS system_memory_annotation_type *system_memory_annotation;
 STORAGE_CLASS system_show_mouse_cursor_type *system_show_mouse_cursor;

@@ -84,7 +84,7 @@ begin_lister(App *app, Arena *arena){
     View_ID view = get_this_ctx_view(app, Access_Always);
     result.prev = view_set_lister(app, view, lister);
     result.current = lister;
-    lister->restore_all_point = begin_temp(lister->arena);
+    lister->restore_all_point = begin_temp_memory(lister->arena);
     View_Context ctx = view_current_context(app, view);
     lister_set_map(lister, ctx.mapping, ctx.map_id);
     return(result);
@@ -440,7 +440,7 @@ lister_update_filtered_list(App *app, Lister *lister){
   filtered.substring_matches,
  };
  
- end_temp(lister->filter_restore_point);
+ end_temp_memory(lister->filter_restore_point);
  
  i1 total_count = 0;
  for_u32(array_index, 0, ArrayCount(node_ptr_arrays)){
@@ -468,7 +468,7 @@ function void
 lister_call_refresh_handler(App *app, Lister *lister){
     if (lister->handlers.refresh != 0){
         lister->handlers.refresh(app, lister);
-        lister->filter_restore_point = begin_temp(lister->arena);
+        lister->filter_restore_point = begin_temp_memory(lister->arena);
         lister_update_filtered_list(app, lister);
     }
 }
@@ -519,7 +519,7 @@ lister_user_data_at_p(App *app, View_ID view, Lister *lister, Vec2_f32 m_p){
 #if 1
 function Lister_Result
 run_lister(App *app, Lister *lister){
-    lister->filter_restore_point = begin_temp(lister->arena);
+    lister->filter_restore_point = begin_temp_memory(lister->arena);
     lister_update_filtered_list(app, lister);
     
     View_ID view = get_this_ctx_view(app, Access_Always);
@@ -749,7 +749,7 @@ lister_prealloced(String string){
 
 function void
 lister_begin_new_item_set(App *app, Lister *lister){
- end_temp(lister->restore_all_point);
+ end_temp_memory(lister->restore_all_point);
  block_zero_struct(&lister->options);
  block_zero_struct(&lister->filtered);
 }

@@ -1,0 +1,19 @@
+#if 0
+//TODO(kv) Never do this! Just malloc man!
+function
+system_memory_allocate_exact_sig(){
+ usize usable_size;
+ void *usable_base0 = system_memory_allocate_at_least(size, location, &usable_size);
+ u8 *usable_base = (u8 *)usable_base0;
+ kv_assert(usable_size >= size);
+#if ASAN_ON
+ //NOTE(kv) Do NOT over-allocate if we're debugging memory.
+ ASAN_POISON_MEMORY_REGION(usable_base+size, usable_size-size);
+#endif
+ return usable_base;
+}
+#endif
+
+
+
+//

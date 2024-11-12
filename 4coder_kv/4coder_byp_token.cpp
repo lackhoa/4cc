@@ -110,7 +110,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
 	ARGB_Color function_color = fcolor_resolve(fcolor_id(defcolor_function));
 	ARGB_Color type_color     = fcolor_resolve(fcolor_id(defcolor_type));
 	ARGB_Color macro_color    = fcolor_resolve(fcolor_id(defcolor_macro));
-	ARGB_Color back_color     = fcolor_resolve(fcolor_id(defcolor_back));
+	//ARGB_Color back_color     = fcolor_resolve(fcolor_id(defcolor_back));
  ARGB_Color constant_color = fcolor_resolve(fcolor_id(defcolor_int_constant));
 	ARGB_Color cursor_tok_color = byp_get_token_color_cpp(*cursor_token);
  

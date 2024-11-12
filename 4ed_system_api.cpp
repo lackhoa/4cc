@@ -263,19 +263,23 @@ make_system_api(Arena *arena){
  }
  
  {
-  API_Call *call = api_call(arena, api, "memory_allocate_at_least", "void*");
+  API_Call *call = api_call(arena, api, "memory_reserve", "void *");
   api_param(arena, call, "usize",  "wanted_size");
-  api_param(arena, call, "String", "location");
-  api_param(arena, call, "usize", "*usable_size_out");
- }
- {
-  API_Call *call = api_call(arena, api, "memory_allocate_exact", "void*");
-  api_param(arena, call, "usize",  "size");
   api_param(arena, call, "String", "location");
  }
  {
   API_Call *call = api_call(arena, api, "memory_free", "void");
-  api_param(arena, call, "void*", "memory0");
+  api_param(arena, call, "void *",  "base");
+ }
+ {
+  API_Call *call = api_call(arena, api, "memory_commit", "b32");
+  api_param(arena, call, "void *", "base");
+  api_param(arena, call, "usize",  "size");
+ }
+ {
+  API_Call *call = api_call(arena, api, "memory_decommit", "void");
+  api_param(arena, call, "void *", "base");
+  api_param(arena, call, "usize",  "size");
  }
  {
   API_Call *call = api_call(arena, api, "memory_set_protection", "b32");

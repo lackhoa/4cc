@@ -22,21 +22,21 @@ global_const u32 table_erased_u32_key = max_u32;
 
 function Table_u64_u64
 make_table_u64_u64__inner(Base_Allocator *allocator, u32 slot_count, String location){
-    Table_u64_u64 table = {};
-    table.allocator = allocator;
-    slot_count = clamp_min(8, slot_count);
-    String mem = base_allocate_function(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
-    block_zero(mem.str, mem.size);
-    table.memory = mem.str;
-    table.keys = (u64*)table.memory;
-    table.vals = (u64*)(table.keys + slot_count);
-    table.slot_count = slot_count;
-    table.used_count = 0;
-    table.dirty_count = 0;
-    return(table);
+ Table_u64_u64 table = {};
+ table.allocator = allocator;
+ slot_count = clamp_min(8, slot_count);
+ String mem = base_allocate_function(allocator, slot_count*(sizeof(*table.keys) + sizeof(*table.vals)), location);
+ block_zero(mem.str, mem.size);
+ table.memory = mem.str;
+ table.keys = (u64*)table.memory;
+ table.vals = (u64*)(table.keys + slot_count);
+ table.slot_count = slot_count;
+ table.used_count = 0;
+ table.dirty_count = 0;
+ return(table);
 }
 
-#define make_table_u64_u64(a,s) make_table_u64_u64__inner((a),(s),filename_linum)
+#define make_table_u64_u64(a,s) make_table_u64_u64__inner((a), (s),filename_linum)
 
 function void
 table_free(Table_u64_u64 *table){

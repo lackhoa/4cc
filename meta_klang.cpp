@@ -37,6 +37,7 @@ function Meta_Expression
 k_parse_expression(Arena *arena, Ed_Parser *p, String terminators){
  Meta_Expression result = {};
  Token *token0 = ep_get_token(p);
+ (void)token0;
  String token0_string = ep_print_token(p);
  {
   ep_recovery_block(p);
@@ -217,7 +218,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
 }
 function Statement_Head *
 k_parse_statement_to_arena(Arena *arena, Klang_Parser *p){
- Statement_Union* statement = push_struct(arena, Statement_Union, true);
+ Statement_Union* statement = push_struct(arena, Statement_Union, push_zero());
  k_parse_statement_to_pointer(arena, p, statement);
  return &statement->head;
 }

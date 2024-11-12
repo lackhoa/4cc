@@ -843,18 +843,18 @@ buffer_set_setting(App *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64
                 history_free(app->tctx, &file->state.history);
             }
             
-        }
-    }
-    
-    return(result);
+  }
+ }
+ 
+ return(result);
 }
 
 api(custom) function Managed_Scope
 buffer_get_managed_scope(App *app, Buffer_ID buffer_id)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    Managed_Scope result = 0;
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ Managed_Scope result = 0;
  if (api_check_buffer(file)){
   result = file_get_managed_scope(file);
  }

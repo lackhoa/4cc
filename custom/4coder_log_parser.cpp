@@ -155,132 +155,132 @@ log_parse__get_or_make_list_tag_name(Log_Parse *parse, Log_Tag *tag){
         table_read(&parse->tag_name_to_event_list_table, lookup, &val);
         result = (Log_Event_List*)IntAsPtr(val);
     }
-    else{
-        result = push_array_zero(parse->arena, Log_Event_List, 1);
-        table_insert(&parse->tag_name_to_event_list_table, tag->name, (u64)PtrAsInt(result));
-    }
-    return(result);
+ else{
+  result = push_array_zero(parse->arena, Log_Event_List, 1);
+  table_insert(&parse->tag_name_to_event_list_table, tag->name, (u64)PtrAsInt(result));
+ }
+ return(result);
 }
 
 function Log_Parse
 make_log_parse(Arena *arena, String source){
-    Log_Parse parse = {};
-    parse.arena = arena;
-    parse.string_id_counter = 1;
-    parse.string_to_id_table = make_table_Data_u64(arena->base_allocator, 500);
-    parse.id_to_string_table = make_table_u64_Data(arena->base_allocator, 500);
+ Log_Parse parse = {};
+ parse.arena = arena;
+ parse.string_id_counter = 1;
+ parse.string_to_id_table = make_table_Data_u64(get_default_allocator(), 500);
+ parse.id_to_string_table = make_table_u64_Data(get_default_allocator(), 500);
+ 
+ for (;source.size > 0;){
+  u64 end_of_line = string_find_first(source, '\n');
+  String line = string_prefix(source, end_of_line);
+  line = string_skip_chop_whitespace(line);
+  source = string_skip(source, end_of_line + 1);
+  
+  String src_filename = {};
+  String src_line_number = {};
+  b32 got_source_position = false;
+  
+  String whole_line = line;
+  
+  {
+   u64 colon1 = string_find_first(line, ':');
+   src_filename = string_prefix(line, colon1);
+   line = string_skip(line, colon1 + 1);
+   
+   u64 colon2 = string_find_first(line, ':');
+   src_line_number = string_prefix(line, colon2);
+   line = string_skip(line, colon2 + 1);
+   
+   if (string_is_integer(src_line_number, 10)){
+    got_source_position = true;
+   }
+  }
+  
+  if (!got_source_position){
+   line = whole_line;
+   
+   u64 colon0 = string_find_first(line, ':');
+   u64 colon1 = string_find_first(line, colon0 + 1, ':');
+   src_filename = string_prefix(line, colon1);
+   line = string_skip(line, colon1 + 1);
+   
+   u64 colon2 = string_find_first(line, ':');
+   src_line_number = string_prefix(line, colon2);
+   line = string_skip(line, colon2 + 1);
+   
+   if (string_is_integer(src_line_number, 10)){
+    got_source_position = true;
+   }
+  }
+  
+  if (got_source_position){
+   u64 bracket_open = string_find_first(line, '[');
+   String event_name = string_prefix(line, bracket_open);
+   event_name = string_skip_chop_whitespace(event_name);
+   line = string_skip(line, bracket_open + 1);
+   
+   Log_Event *event = log_parse__event(&parse,
+                                       src_filename, src_line_number, event_name);
+   
+   for (;line.size > 0;){
+    u64 bracket_close = string_find_first(line, ']');
+    String tag = string_prefix(line, bracket_close);
+    line = string_skip(line, bracket_close + 1);
+    bracket_open = string_find_first(line, '[');
+    line = string_skip(line, bracket_open + 1);
     
-    for (;source.size > 0;){
-        u64 end_of_line = string_find_first(source, '\n');
-        String line = string_prefix(source, end_of_line);
-        line = string_skip_chop_whitespace(line);
-        source = string_skip(source, end_of_line + 1);
-        
-        String src_filename = {};
-        String src_line_number = {};
-        b32 got_source_position = false;
-        
-        String whole_line = line;
-        
-        {
-            u64 colon1 = string_find_first(line, ':');
-            src_filename = string_prefix(line, colon1);
-            line = string_skip(line, colon1 + 1);
-            
-            u64 colon2 = string_find_first(line, ':');
-            src_line_number = string_prefix(line, colon2);
-            line = string_skip(line, colon2 + 1);
-            
-            if (string_is_integer(src_line_number, 10)){
-                got_source_position = true;
-            }
-        }
-        
-        if (!got_source_position){
-            line = whole_line;
-            
-            u64 colon0 = string_find_first(line, ':');
-            u64 colon1 = string_find_first(line, colon0 + 1, ':');
-            src_filename = string_prefix(line, colon1);
-            line = string_skip(line, colon1 + 1);
-            
-            u64 colon2 = string_find_first(line, ':');
-            src_line_number = string_prefix(line, colon2);
-            line = string_skip(line, colon2 + 1);
-            
-            if (string_is_integer(src_line_number, 10)){
-                got_source_position = true;
-            }
-        }
-        
-        if (got_source_position){
-            u64 bracket_open = string_find_first(line, '[');
-            String event_name = string_prefix(line, bracket_open);
-            event_name = string_skip_chop_whitespace(event_name);
-            line = string_skip(line, bracket_open + 1);
-            
-            Log_Event *event = log_parse__event(&parse,
-                                                src_filename, src_line_number, event_name);
-            
-            for (;line.size > 0;){
-                u64 bracket_close = string_find_first(line, ']');
-                String tag = string_prefix(line, bracket_close);
-                line = string_skip(line, bracket_close + 1);
-                bracket_open = string_find_first(line, '[');
-                line = string_skip(line, bracket_open + 1);
-                
-                u64 equal_sign = string_find_first(tag, '=');
-                String tag_name = string_prefix(tag, equal_sign);
-                String tag_contents = string_skip(tag, equal_sign + 1);
-                
-                log_parse__tag(&parse, event, tag_name, tag_contents);
-            }
-        }
-    }
+    u64 equal_sign = string_find_first(tag, '=');
+    String tag_name = string_prefix(tag, equal_sign);
+    String tag_contents = string_skip(tag, equal_sign + 1);
     
-    ////////////////////////////////
-    
-    // NOTE(allen): fill acceleration structures
-    
-    parse.tag_value_to_event_list_table = make_table_Data_u64(arena->base_allocator, Thousand(1));
-    parse.tag_name_to_event_list_table = make_table_u64_u64(arena->base_allocator, 100);
-    
-    for (Log_Event *event = parse.first_event;
-         event != 0;
-         event = event->next){
-        for (Log_Tag *tag = event->first_tag;
-             tag != 0;
-             tag = tag->next){
-            {
-                Log_Event_List *list = log_parse__get_or_make_list_tag_value(&parse, tag);
-                Log_Event_Ptr_Node *node = push_array(arena, Log_Event_Ptr_Node, 1);
-                sll_queue_push(list->first, list->last, node);
-                list->count += 1;
-                node->event = event;
-            }
-            {
-                Log_Event_List *list = log_parse__get_or_make_list_tag_name(&parse, tag);
-                Log_Event_Ptr_Node *node = push_array(arena, Log_Event_Ptr_Node, 1);
-                sll_queue_push(list->first, list->last, node);
-                list->count += 1;
-                node->event = event;
-            }
-        }
-    }
-    
-    for (Log_Event *event = parse.first_event;
-         event != 0;
-         event = event->next){
-        i32 slot_count = event->tag_count*3/2;
-        event->tag_name_to_tag_ptr_table = make_table_u64_u64(arena->base_allocator, slot_count);
-        for (Log_Tag *tag = event->first_tag;
-             tag != 0;
-             tag = tag->next){
-            table_insert(&event->tag_name_to_tag_ptr_table, tag->name, (u64)PtrAsInt(tag));
-        }
-    }
-    
-    return(parse);
+    log_parse__tag(&parse, event, tag_name, tag_contents);
+   }
+  }
+ }
+ 
+ ////////////////////////////////
+ 
+ // NOTE(allen): fill acceleration structures
+ 
+ parse.tag_value_to_event_list_table = make_table_Data_u64(get_default_allocator(), Thousand(1));
+ parse.tag_name_to_event_list_table = make_table_u64_u64(get_default_allocator(), 100);
+ 
+ for (Log_Event *event = parse.first_event;
+      event != 0;
+      event = event->next){
+  for (Log_Tag *tag = event->first_tag;
+       tag != 0;
+       tag = tag->next){
+   {
+    Log_Event_List *list = log_parse__get_or_make_list_tag_value(&parse, tag);
+    Log_Event_Ptr_Node *node = push_array(arena, Log_Event_Ptr_Node, 1);
+    sll_queue_push(list->first, list->last, node);
+    list->count += 1;
+    node->event = event;
+   }
+   {
+    Log_Event_List *list = log_parse__get_or_make_list_tag_name(&parse, tag);
+    Log_Event_Ptr_Node *node = push_array(arena, Log_Event_Ptr_Node, 1);
+    sll_queue_push(list->first, list->last, node);
+    list->count += 1;
+    node->event = event;
+   }
+  }
+ }
+ 
+ for (Log_Event *event = parse.first_event;
+      event != 0;
+      event = event->next){
+  i32 slot_count = event->tag_count*3/2;
+  event->tag_name_to_tag_ptr_table = make_table_u64_u64(get_default_allocator(), slot_count);
+  for (Log_Tag *tag = event->first_tag;
+       tag != 0;
+       tag = tag->next){
+   table_insert(&event->tag_name_to_tag_ptr_table, tag->name, (u64)PtrAsInt(tag));
+  }
+ }
+ 
+ return(parse);
 }
 
 ////////////////////////////////
@@ -324,7 +324,7 @@ log_events_sort_by_tag__inner(Log_Event **events, Log_Sort_Key *keys, i32 first,
 
 function void
 log_events_sort_by_tag(Arena *scratch, Log_Event_Ptr_Array array, u64 tag_name){
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory temp = begin_temp_memory(scratch);
     Log_Sort_Key *keys = push_array(scratch, Log_Sort_Key, array.count);
     for (i32 i = 0; i < array.count; i += 1){
         Log_Event *event = array.events[i];
@@ -344,7 +344,7 @@ log_events_sort_by_tag(Arena *scratch, Log_Event_Ptr_Array array, u64 tag_name){
     
     log_events_sort_by_tag__inner(array.events, keys, 0, array.count);
     
-    end_temp(temp);
+    end_temp_memory(temp);
 }
 
 function Log_Event_Ptr_Array
@@ -432,11 +432,11 @@ function void
 log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
     if (log_parse.arena != 0){
         if (log_graph.holding_temp){
-            end_temp(log_graph.temp);
+            end_temp_memory(log_graph.temp);
         }
         block_zero_struct(&log_graph);
         log_graph.holding_temp = true;
-        log_graph.temp = begin_temp(&log_arena);
+        log_graph.temp = begin_temp_memory(&log_arena);
         log_graph.layout_region = layout_region;
         log_graph.face_id = face_id;
         log_graph.filter_alter_counter = log_filter_set.alter_counter;
@@ -629,11 +629,7 @@ log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
 
 function void
 log_parse_fill(App *app, Buffer_ID buffer){
-    if (log_arena.base_allocator == 0){
-        log_arena = make_arena_system();
-    }
-    
-    arena_clear(&log_arena);
+    arena_clear2(&log_arena);
     block_zero_struct(&log_graph);
     log_filter_set_init(&log_filter_set);
     log_filter_set_init(&log_preview_set);

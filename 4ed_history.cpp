@@ -134,7 +134,7 @@ function void
 history_init(Thread_Context *tctx, Models *models, History *history){
     history->activated = true;
     history->arena = make_arena_system();
-    heap_init(&history->heap, tctx->allocator);
+    heap_init(&history->heap);
     history->heap_wrapper = base_allocator_on_heap(&history->heap);
     dll_init_sentinel(&history->free_records);
     dll_init_sentinel(&history->records);
@@ -150,7 +150,7 @@ history_is_activated(History *history){
 function void
 history_free(Thread_Context *tctx, History *history){
     if (history->activated){
-        arena_clear(&history->arena);
+        arena_clear2(&history->arena);
         heap_free_all(&history->heap);
         block_zero_struct(history);
     }
@@ -253,7 +253,7 @@ history_record_edit(Global_History *global_history, History *history, Gap_Buffer
   Record *new_record = history__allocate_record(history);
   history__stash_record(history, new_record);
   
-  new_record->restore_point = begin_temp(&history->arena);
+  new_record->restore_point = begin_temp_memory(&history->arena);
   if (pos_before_edit >= 0) {
    new_record->pos_before_edit = pos_before_edit;
   } else {
@@ -286,7 +286,7 @@ history_dump_records_after_index(History *history, i1 index){
             Assert(first_node_to_clear != sentinel);
             
             Record *first_record_to_clear = CastFromMember(Record, node, first_node_to_clear);
-            end_temp(first_record_to_clear->restore_point);
+            end_temp_memory(first_record_to_clear->restore_point);
             
             Node *last_node_to_clear = sentinel->prev;
             
@@ -319,7 +319,7 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
         if (right->kind == RecordKind_Single && left->kind == RecordKind_Single){
             b32 do_merge = false;
             
-            Temp_Memory temp = begin_temp(scratch);
+            Temp_Memory temp = begin_temp_memory(scratch);
             
             String merged_forward = {};
             String merged_backward = {};
@@ -350,7 +350,7 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
             }
             
             if (do_merge){
-                end_temp(left->restore_point);
+                end_temp_memory(left->restore_point);
                 
                 left->edit_number = right->edit_number;
                 left->single.first = merged_first;
@@ -361,7 +361,7 @@ history__optimize_group(Arena *scratch, History *history, Record *record){
                 record->group.count -= 1;
             }
             
-            end_temp(temp);
+            end_temp_memory(temp);
         }
         else{
             break;

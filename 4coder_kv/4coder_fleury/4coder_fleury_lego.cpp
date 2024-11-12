@@ -28,7 +28,7 @@ _F4_Lego_Initialize(F4_Lego *lego)
     {
         memset(lego, 0, sizeof(*lego));
         lego->initialized = 1;
-        lego->arena = make_arena(get_base_allocator_system());
+        lego->arena = make_arena(&base_allocator_system);
     }
 }
 

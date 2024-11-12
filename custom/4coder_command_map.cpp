@@ -104,13 +104,13 @@ mapping_init(Thread_Context *tctx, Mapping *mapping){
     mapping->node_arena = make_arena_system();
     heap_init(&mapping->heap, &mapping->node_arena);
     mapping->heap_wrapper = base_allocator_on_heap(&mapping->heap);
-    mapping->id_to_map = make_table_u64_u64(tctx->allocator, 10);
+    mapping->id_to_map = make_table_u64_u64(&malloc_base_allocator, 10);
     mapping->id_counter = 1;
 }
 
 function void
 mapping_release(Thread_Context *tctx, Mapping *mapping){
-    arena_clear(&mapping->node_arena);
+    arena_free(&mapping->node_arena);
     table_free(&mapping->id_to_map);
 }
 
@@ -118,7 +118,7 @@ function void
 map__init(Mapping *mapping, Command_Map *map, Command_Map_ID id){
     block_zero_struct(map);
     map->id = id;
-    map->node_arena = make_arena(&mapping->heap_wrapper, KB(2));
+    map->node_arena = make_arena();
     map->event_code_to_binding_list = make_table_u64_u64(&mapping->heap_wrapper, 100);
     map->cmd_to_binding_trigger = make_table_u64_u64(&mapping->heap_wrapper, 100);
 }
@@ -167,7 +167,7 @@ mapping_release_map(Mapping *mapping, Command_Map *map){
         mapping->free_lists = map->list_first;
     }
     table_free(&map->event_code_to_binding_list);
-    arena_clear(&map->node_arena);
+    arena_free(&map->node_arena);
 }
 
 ////////////////////////////////

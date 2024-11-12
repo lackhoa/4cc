@@ -1,4 +1,4 @@
-//NOTE Generated at C:\Users\vodan\4ed\code/meta_klang.cpp:512:
+//NOTE Generated at C:\Users\vodan\4ed\code\meta_klang.cpp:513:
 // NOTE: source: C:\Users\vodan\4ed\code\game\ad_file_formats.kh
 #pragma once
 //-
@@ -10,10 +10,10 @@ v1 roll;
 v3 pan;
 v3 pivot;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
 struct Camera_Data;
 function Type_Info
-get_type_info_Camera_Data();//  C:\Users\vodan\4ed\code/meta_print.cpp:176:
+get_type_info_Camera_Data();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
 function Type_Info
 get_type_info_Camera_Data()
 {
@@ -36,15 +36,15 @@ result.members[4] = {.type=member_type, .name=strlit("pan"), .offset=offsetof(Ca
 result.members[5] = {.type=member_type, .name=strlit("pivot"), .offset=offsetof(Camera_Data, pivot)};
 }return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:85:
+//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
 global_decl Type_Info Type_Info_Camera_Data;
-//  C:\Users\vodan\4ed\code/meta_print.cpp:92:
+//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
 xglobal Type_Info Type_Info_Camera_Data = get_type_info_Camera_Data();
 
-function Type_Info &type_info_from_pointer(Camera_Data*pointer){return Type_Info_Camera_Data;}//  C:\Users\vodan\4ed\code/meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Camera_Data*pointer){return Type_Info_Camera_Data;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
 function void
 read_Camera_Data(Data_Reader &r, Camera_Data &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
 function void
 read_Camera_Data(Data_Reader &r, Camera_Data &pointer)
 {
@@ -100,7 +100,7 @@ pointer.pivot = m_pivot;
 
 eat_char(p, '}');
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:499:
+//  C:\Users\vodan\4ed\code\meta_print.cpp:499:
 #define Camera_Data_Embed \
  union\
 {\

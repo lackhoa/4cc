@@ -489,7 +489,7 @@ view_set_file(Thread_Context *tctx, Models *models, View *view, Editing_File *fi
 
 function void
 view_push_context(View *view, View_Context *ctx){
-    Temp_Memory pop_me = begin_temp(&view->node_arena);
+    Temp_Memory pop_me = begin_temp_memory(&view->node_arena);
     View_Context_Node *node = push_array_zero(&view->node_arena, View_Context_Node, 1);
     sll_stack_push(view->ctx, node);
     node->pop_me = pop_me;
@@ -509,7 +509,7 @@ view_pop_context(View *view){
     View_Context_Node *node = view->ctx;
     if (node != 0 && node->next != 0){
         sll_stack_pop(view->ctx);
-        end_temp(node->pop_me);
+        end_temp_memory(node->pop_me);
     }
 }
 

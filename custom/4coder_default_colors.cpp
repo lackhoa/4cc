@@ -165,11 +165,6 @@ make_color_table(App *app, Arena *arena)
 function void
 set_default_color_scheme(App *app)
 {
-    if (global_theme_arena.base_allocator == 0)
-    {
-        global_theme_arena = make_arena_system();
-    }
-    
     Arena *arena = &global_theme_arena;
     
     default_color_table = make_color_table(app, arena);

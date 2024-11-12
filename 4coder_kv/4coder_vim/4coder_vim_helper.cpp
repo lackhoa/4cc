@@ -245,9 +245,6 @@ vim_visual_insert_inner(App *app, View_ID view, Buffer_ID buffer){
 	vim_visual_insert_after = false;
 	vim_history_group = history_group_begin(app, buffer);
 	
-	// NOTE: For Visual Block multi-line responsiveness, temporarily turn off virtual whitespace and line wrapping
-	Managed_Scope scope = buffer_get_managed_scope(app, buffer);
-	
 	//vim_enter_insert_mode(app);
 	vim_state.mode = VIM_Visual_Insert;
 }

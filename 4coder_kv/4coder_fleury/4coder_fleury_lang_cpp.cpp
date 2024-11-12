@@ -220,7 +220,7 @@ function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
   Token *name = 0;
   Token *base_type = 0;
   F4_Index_Note *containing_struct = 0;
-  F4_Index_Note *note = 0;
+  //F4_Index_Note *note = 0;
   
   if(0){}
   

@@ -171,7 +171,6 @@ kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos){
    result = get_token_range(cur_token);
   }else{
    //-Normal groups (surrounded by group characters)
-   u8 current_char = buffer_get_char(app, buffer, pos);
    Ed_Parser parser_value = make_ed_parser_at_cursor(app);
    Ed_Parser *parser = &parser_value;
    char closer_char = 0;
@@ -567,7 +566,6 @@ function void
 cmd_handle_q_visual(App *app){
  GET_VIEW_AND_BUFFER;
  Scratch_Block scratch(app);
- i64 curpos = view_get_cursor_pos(app, view);
  
  auto scan_function = [&](Scan_Direction direction) -> Token *{
   Token *end_token = 0;
@@ -1179,7 +1177,6 @@ view_goto_first_search_position(App *app, View_ID view, String8 needle)
 function void 
 close_panel(App *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
     change_active_primary_view(app);
     toggle_split_panel(app);
 }
@@ -1466,8 +1463,7 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
   arrayof<Range_i64> list; init_dynamic(list, scratch);
   push_buffer_range(app, scratch, buffer, nest);
   ep_eat_token(p);  //NOTE group opener
-  Range_i64 sentinel_range = {};
-  Range_i64 *current_range = &sentinel_range;
+  //Range_i64 sentinel_range = {};
   while(p->ok_){
    if(Token *token = ep_get_token(p)){
     if(token->pos >= nest.max){
@@ -1686,8 +1682,7 @@ jump_between_meta_and_generated_code(App *app){
 }
 function void
 cmd_handle_8_normal(App *app){
- View_ID view = get_active_view(app, Access_ReadVisible);
- i64 curpos = view_get_cursor_pos(app, view);
+ //View_ID view = get_active_view(app, Access_ReadVisible);
  write_text(app, strlit("*"), false);
 }
 //~EOF

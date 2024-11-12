@@ -11,92 +11,87 @@
 
 function void
 working_set_file_default_settings(Working_Set *working_set, Editing_File *file){
-    block_zero_struct(&file->settings);
+ block_zero_struct(&file->settings);
 }
-
 ////////////////////////////////
-
 function void
 file_change_notification_check(Arena *scratch, Working_Set *working_set, Editing_File *file){
-    if (file->canon.name_size > 0 && !file->settings.unimportant){
-        String name = SCu8(file->canon.name_space, file->canon.name_size);
-        File_Attributes attributes = system_quick_file_attributes(scratch, name);
-        if ((attributes.last_write_time > file->attributes.last_write_time) ||
-            (attributes.last_write_time == 0 && file->attributes.last_write_time > 0)){
-            if (file->state.save_state == FileSaveState_SavedWaitingForNotification){
-                file->state.save_state = FileSaveState_Normal;
-                file->attributes = attributes;
-            }
-            else{
-                file_add_dirty_flag(file, DirtyState_UnloadedChanges);
-                if (file->external_mod_node.next == 0){
-                    LogEventF(log_string(M), &working_set->arena, file->id, 0, system_thread_get_id(),
-                              "external modification [lwt=0x%llx]", attributes.last_write_time);
-                    dll_insert_back(&working_set->has_external_mod_sentinel, &file->external_mod_node);
-                    system_signal_step(0);
-                }
-            }
-        }
-        file->attributes = attributes;
+ if (file->canon.name_size > 0 && !file->settings.unimportant){
+  String name = SCu8(file->canon.name_space, file->canon.name_size);
+  File_Attributes attributes = system_quick_file_attributes(scratch, name);
+  if ((attributes.last_write_time > file->attributes.last_write_time) ||
+      (attributes.last_write_time == 0 && file->attributes.last_write_time > 0)){
+   if (file->state.save_state == FileSaveState_SavedWaitingForNotification){
+    file->state.save_state = FileSaveState_Normal;
+    file->attributes = attributes;
+   }
+   else{
+    file_add_dirty_flag(file, DirtyState_UnloadedChanges);
+    if (file->external_mod_node.next == 0){
+     LogEventF(log_string(M), &working_set->arena , file->id, 0, system_thread_get_id(),
+               "external modification [lwt=0x%llx]", attributes.last_write_time);
+     dll_insert_back(&working_set->has_external_mod_sentinel, &file->external_mod_node);
+     system_signal_step(0);
     }
+   }
+  }
+  file->attributes = attributes;
+ }
 }
 
 function void
 file_change_notification_thread_main(void *ptr){
-    Models *models = (Models*)ptr;
-    Arena arena = make_arena_system();
-    Working_Set *working_set = &models->working_set;
-    for (;;){
-        system_sleep(Thousand(250));
-        Mutex_Lock lock(working_set->mutex);
-        if (working_set->active_file_count > 0){
-            i1 check_count = working_set->active_file_count/16;
-            check_count = clamp_between(1, check_count, 100);
-            Node *used = &working_set->active_file_sentinel;
-            Node *node = working_set->sync_check_iterator;
-            if (node == 0 || node == used){
-                node = used->next;
-            }
-            for (i1 i = 0; i < check_count; i += 1){
-                Editing_File *file = CastFromMember(Editing_File, main_chain_node, node);
-                node = node->next;
-                if (node == used){
-                    node = node->next;
-                }
-                file_change_notification_check(&arena, working_set, file);
-            }
-            working_set->sync_check_iterator = node;
-        }
+ Models *models = (Models*)ptr;
+ Arena arena = make_arena_system();
+ Working_Set *working_set = &models->working_set;
+ for (;;){
+  system_sleep(Thousand(250));
+  Mutex_Lock lock(working_set->mutex);
+  if (working_set->active_file_count > 0){
+   i1 check_count = working_set->active_file_count/16;
+   check_count = clamp_between(1, check_count, 100);
+   Node *used = &working_set->active_file_sentinel;
+   Node *node = working_set->sync_check_iterator;
+   if (node == 0 || node == used){
+    node = used->next;
+   }
+   for (i1 i = 0; i < check_count; i += 1){
+    Editing_File *file = CastFromMember(Editing_File, main_chain_node, node);
+    node = node->next;
+    if (node == used){
+     node = node->next;
     }
+    file_change_notification_check(&arena, working_set, file);
+   }
+   working_set->sync_check_iterator = node;
+  }
+ }
 }
-
 ////////////////////////////////
-
-
 function Editing_File*
 working_set_allocate_file(Working_Set *working_set, Lifetime_Allocator *lifetime_allocator){
-    Editing_File *file = working_set->free_files;
-    if (file == 0){
-        file = push_array(&working_set->arena, Editing_File, 1);
-    }
-    else{
-        sll_stack_pop(working_set->free_files);
-    }
-    block_zero_struct(file);
-    
-    dll_insert_back(&working_set->active_file_sentinel, &file->main_chain_node);
-    dll_insert_back(&working_set->touch_order_sentinel, &file->touch_node);
-    working_set->active_file_count += 1;
-    
-    file->id = working_set->id_counter;
-    working_set->id_counter += 1;
-    
-    working_set_file_default_settings(working_set, file);
-    
-    table_insert(&working_set->id_to_ptr_table,
-                 (u64)file->id, (u64)(PtrAsInt(file)));
-    
-    return(file);
+ Editing_File *file = working_set->free_files;
+ if (file == 0){
+  file = push_array(&working_set->arena, Editing_File, 1);
+ }
+ else{
+  sll_stack_pop(working_set->free_files);
+ }
+ block_zero_struct(file);
+ 
+ dll_insert_back(&working_set->active_file_sentinel, &file->main_chain_node);
+ dll_insert_back(&working_set->touch_order_sentinel, &file->touch_node);
+ working_set->active_file_count += 1;
+ 
+ file->id = working_set->id_counter;
+ working_set->id_counter += 1;
+ 
+ working_set_file_default_settings(working_set, file);
+ 
+ table_insert(&working_set->id_to_ptr_table,
+              (u64)file->id, (u64)(PtrAsInt(file)));
+ 
+ return(file);
 }
 
 function void
@@ -134,7 +129,7 @@ working_set_init(Models *models, Working_Set *working_set){
     dll_init_sentinel(&working_set->touch_order_sentinel);
     
     local_const i1 slot_count = 128;
-    Base_Allocator *allocator = get_base_allocator_system();
+    Base_Allocator *allocator = &malloc_base_allocator;
     working_set->id_to_ptr_table = make_table_u64_u64(allocator, slot_count);
     working_set->canon_table = make_table_Data_u64(allocator, slot_count);
     working_set->name_table = make_table_Data_u64(allocator, slot_count);
@@ -269,12 +264,12 @@ working_set_clipboard_index(Working_Set *working, i1 index){
 function b32
 get_canon_name(Arena *scratch, String filename, Editing_File_Name *canon_name)
 {
-    Temp_Memory temp = begin_temp(scratch);
+ Temp_Memory temp = begin_temp_memory(scratch);
     String canonical = system_get_canonical(scratch, filename);
     u64 size = Min(sizeof(canon_name->name_space), canonical.size);
     block_copy(canon_name->name_space, canonical.str, size);
     canon_name->name_size = size;
-    end_temp(temp);
+    end_temp_memory(temp);
     filename_terminate(canon_name);
     return(canon_name->name_size > 0);
 }
@@ -304,9 +299,9 @@ buffer_unbind_file(Working_Set *working_set, Editing_File *file){
 function b32
 buffer_name_has_conflict(Working_Set *working_set, String base_name){
     b32 hit_conflict = false;
-    Node *used_nodes = &working_set->active_file_sentinel;
-    for (Node *node = used_nodes->next;
-         node != used_nodes;
+    Node *sentinel = &working_set->active_file_sentinel;
+    for (Node *node = sentinel->next;
+         node != sentinel;
          node = node->next){
         Editing_File *file_ptr = CastFromMember(Editing_File, main_chain_node, node);
         if (file_ptr && string_match(base_name, string_from_filename(&file_ptr->unique_name))){
@@ -330,12 +325,12 @@ buffer_resolve_name_low_level(Arena *scratch, Working_Set *working_set, Editing_
         if (hit_conflict){
             file_x += 1;
             string.size = original_size;
-            Temp_Memory temp = begin_temp(scratch);
+            Temp_Memory temp = begin_temp_memory(scratch);
             String int_str = string_from_integer(scratch, file_x, 10);
             string_concat(&string, strlit(" ("));
             string_concat(&string, int_str);
             string_concat(&string, strlit(")"));
-            end_temp(temp);
+            end_temp_memory(temp);
         }
     }
     name->name_size = string.size;
@@ -368,109 +363,110 @@ buffer_bind_name_low_level(Arena *scratch, Working_Set *working_set, Editing_Fil
 
 function void
 buffer_unbind_name_low_level(Working_Set *working_set, Editing_File *file){
-    Assert(file->base_name.name_size != 0);
-    Assert(file->unique_name.name_size != 0);
-    working_set_remove_name(working_set, string_from_filename(&file->unique_name));
-    file->base_name.name_size = 0;
-    file->unique_name.name_size = 0;
+ Assert(file->base_name.name_size != 0);
+ Assert(file->unique_name.name_size != 0);
+ working_set_remove_name(working_set, string_from_filename(&file->unique_name));
+ file->base_name.name_size = 0;
+ file->unique_name.name_size = 0;
 }
 
 function void
 buffer_bind_name(Thread_Context *tctx, Models *models, Arena *scratch, Working_Set *working_set, Editing_File *file, String base_name){
-    Temp_Memory temp = begin_temp(scratch);
-    
-    // List of conflict files.
-    struct Node_Ptr{
-        Node_Ptr *next;
-        Editing_File *file_ptr;
-    };
-    Node_Ptr *conflict_first = 0;
-    Node_Ptr *conflict_last = 0;
-    i1 conflict_count = 0;
-    
-    {
-        Node_Ptr *node = push_array(scratch, Node_Ptr, 1);
-        sll_queue_push(conflict_first, conflict_last, node);
-        node->file_ptr = file;
-        conflict_count += 1;
-    }
-    
-    Node *used_nodes = &working_set->active_file_sentinel;
-    for (Node *node = used_nodes->next;
-         node != used_nodes;
-         node = node->next){
-        Editing_File *file_ptr = CastFromMember(Editing_File, main_chain_node, node);
-        if (file_ptr != 0 && string_match(base_name, string_from_filename(&file_ptr->base_name))){
-            Node_Ptr *new_node = push_array(scratch, Node_Ptr, 1);
-            sll_queue_push(conflict_first, conflict_last, new_node);
-            new_node->file_ptr = file_ptr;
-            conflict_count += 1;
-        }
-    }
-    
-    // Fill conflict array.
-    Buffer_Name_Conflict_Entry *conflicts = push_array(scratch, Buffer_Name_Conflict_Entry, conflict_count);
-    
-    {
-        i1 i = 0;
-        for (Node_Ptr *node = conflict_first;
-             node != 0;
-             node = node->next, i += 1){
-            Editing_File *file_ptr = node->file_ptr;
-            Buffer_Name_Conflict_Entry *entry = &conflicts[i];
-            entry->buffer_id = file_ptr->id;
-            
-            entry->filename = push_stringz(scratch, string_from_filename(&file_ptr->canon));
-            entry->base_name = push_stringz(scratch, base_name);
-            
-            String b = base_name;
-            if (i > 0){
-                b = string_from_filename(&file_ptr->unique_name);
-            }
-            u64 unique_name_capacity = 256;
-            u8 *unique_name_buffer = push_array(scratch, u8, unique_name_capacity);
-            Assert(b.size <= unique_name_capacity);
-            block_copy(unique_name_buffer, b.str, b.size);
-            entry->unique_name_in_out = unique_name_buffer;
-            entry->unique_name_len_in_out = b.size;
-            entry->unique_name_capacity = unique_name_capacity;
-        }
-    }
-    
-    // Get user's resolution data.
-    if (models->buffer_name_resolver != 0){
-        App app = {};
-        app.tctx = tctx;
-        app.cmd_context = models;
-        models->buffer_name_resolver(&app, conflicts, conflict_count);
-    }
-    
-    // Re-bind all of the files
-    {
-        i1 i = 0;
-        for (Node_Ptr *node = conflict_first;
-             node != 0;
-             node = node->next, i += 1){
-            Editing_File *file_ptr = node->file_ptr;
-            if (file_ptr->unique_name.name_size > 0){
-                buffer_unbind_name_low_level(working_set, file_ptr);
-            }
-        }
-    }
-    
-    {
-        i1 i = 0;
-        for (Node_Ptr *node = conflict_first;
-             node != 0;
-             node = node->next, i += 1){
-            Editing_File *file_ptr = node->file_ptr;
-            Buffer_Name_Conflict_Entry *entry = &conflicts[i];
-            String unique_name = SCu8(entry->unique_name_in_out, entry->unique_name_len_in_out);
-            buffer_bind_name_low_level(scratch, working_set, file_ptr, base_name, unique_name);
-        }
-    }
-    
-    end_temp(temp);
+ Temp_Memory temp = begin_temp_memory(scratch);
+ 
+ // List of conflict files.
+ struct Node_Ptr{
+  Node_Ptr *next;
+  Editing_File *file_ptr;
+ };
+ Node_Ptr *conflict_first = 0;
+ Node_Ptr *conflict_last = 0;
+ i1 conflict_count = 0;
+ 
+ {
+  Node_Ptr *node = push_array(scratch, Node_Ptr, 1);
+  sll_queue_push(conflict_first, conflict_last, node);
+  node->file_ptr = file;
+  conflict_count += 1;
+ }
+ {
+  Node *sentinel = &working_set->active_file_sentinel;
+  for(Node *node = sentinel->next;
+      node != sentinel;
+      node = node->next){
+   Editing_File *file_ptr = CastFromMember(Editing_File, main_chain_node, node);
+   if (file_ptr != 0 && string_match(base_name, string_from_filename(&file_ptr->base_name))){
+    Node_Ptr *new_node = push_array(scratch, Node_Ptr, 1);
+    sll_queue_push(conflict_first, conflict_last, new_node);
+    new_node->file_ptr = file_ptr;
+    conflict_count += 1;
+   }
+  }
+ }
+ 
+ // Fill conflict array.
+ Buffer_Name_Conflict_Entry *conflicts = push_array(scratch, Buffer_Name_Conflict_Entry, conflict_count);
+ 
+ {
+  i1 i = 0;
+  for (Node_Ptr *node = conflict_first;
+       node != 0;
+       node = node->next, i += 1){
+   Editing_File *file_ptr = node->file_ptr;
+   Buffer_Name_Conflict_Entry *entry = &conflicts[i];
+   entry->buffer_id = file_ptr->id;
+   
+   entry->filename = push_stringz(scratch, string_from_filename(&file_ptr->canon));
+   entry->base_name = push_stringz(scratch, base_name);
+   
+   String b = base_name;
+   if (i > 0){
+    b = string_from_filename(&file_ptr->unique_name);
+   }
+   u64 unique_name_capacity = 256;
+   u8 *unique_name_buffer = push_array(scratch, u8, unique_name_capacity);
+   Assert(b.size <= unique_name_capacity);
+   block_copy(unique_name_buffer, b.str, b.size);
+   entry->unique_name_in_out = unique_name_buffer;
+   entry->unique_name_len_in_out = b.size;
+   entry->unique_name_capacity = unique_name_capacity;
+  }
+ }
+ 
+ // Get user's resolution data.
+ if (models->buffer_name_resolver != 0){
+  App app = {};
+  app.tctx = tctx;
+  app.cmd_context = models;
+  models->buffer_name_resolver(&app, conflicts, conflict_count);
+ }
+ 
+ // Re-bind all of the files
+ {
+  i1 i = 0;
+  for (Node_Ptr *node = conflict_first;
+       node != 0;
+       node = node->next, i += 1){
+   Editing_File *file_ptr = node->file_ptr;
+   if (file_ptr->unique_name.name_size > 0){
+    buffer_unbind_name_low_level(working_set, file_ptr);
+   }
+  }
+ }
+ 
+ {
+  i1 i = 0;
+  for (Node_Ptr *node = conflict_first;
+       node != 0;
+       node = node->next, i += 1){
+   Editing_File *file_ptr = node->file_ptr;
+   Buffer_Name_Conflict_Entry *entry = &conflicts[i];
+   String unique_name = SCu8(entry->unique_name_in_out, entry->unique_name_len_in_out);
+   buffer_bind_name_low_level(scratch, working_set, file_ptr, base_name, unique_name);
+  }
+ }
+ 
+ end_temp_memory(temp);
 }
 
 ////////////////////////////////
