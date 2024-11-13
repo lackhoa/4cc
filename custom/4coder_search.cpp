@@ -561,7 +561,7 @@ word_complete_get_shared_iter(App *app){
     local_persist b32 first_call = true;
     if (first_call){
         first_call = false;
-        completion_arena = make_arena_system();
+        completion_arena = make_arena();
     }
     it.app = app;
     it.arena = &completion_arena;

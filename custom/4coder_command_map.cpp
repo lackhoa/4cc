@@ -101,7 +101,7 @@ map__get_or_make_list(Mapping *mapping, Command_Map *map, u64 key){
 function void
 mapping_init(Thread_Context *tctx, Mapping *mapping){
     block_zero_struct(mapping);
-    mapping->node_arena = make_arena_system();
+    mapping->node_arena = make_arena();
     heap_init(&mapping->heap, &mapping->node_arena);
     mapping->heap_wrapper = base_allocator_on_heap(&mapping->heap);
     mapping->id_to_map = make_table_u64_u64(&malloc_base_allocator, 10);

@@ -629,7 +629,7 @@ log_graph_fill(App *app, Rect_f32 layout_region, Face_ID face_id){
 
 function void
 log_parse_fill(App *app, Buffer_ID buffer){
-    arena_clear2(&log_arena);
+    arena_clear(&log_arena);
     block_zero_struct(&log_graph);
     log_filter_set_init(&log_filter_set);
     log_filter_set_init(&log_preview_set);

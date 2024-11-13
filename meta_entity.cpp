@@ -3,7 +3,7 @@ push_entity_variant_inner(arrayof<Union_Variant> *variants, Union_Variant &varia
  Arena *arena = &meta_permanent_arena;
  variant.enum_name   = strcat(arena, "Curve_Type_", variant.name);
  variant.struct_name = strcat(arena, "Curve_",      variant.name);
- variants->push(variant);
+ variants->push_value(variant);
  if(variant.enum_value >= max_entity_enum){
   max_entity_enum = variant.enum_value+1;
  }
@@ -17,13 +17,13 @@ push_curve_variant_with_endpoints(Arena *arena, arrayof<Union_Variant> *variants
  variant.name = name;
  variant.name_lower = name_lower;
  {
-  Scratch_Block scratch(get_thread_context(), arena);
+  Scratch_Block scratch;
   M_Struct_Members &members = variant.struct_members;
   Ed_Parser parser = m_parser_from_string(scratch, struct_members);
   members = parse_struct_body(arena, &parser);
   {
    members.push_first(struct_member_from_string("Vertex_Index p0"));
-   members.push(struct_member_from_string("Vertex_Index p3"));
+   members.push_value(struct_member_from_string("Vertex_Index p3"));
   }
  }
  push_entity_variant_inner(variants, variant);
@@ -38,7 +38,7 @@ push_entity_variant(Arena *arena, arrayof<Union_Variant> *variants,
  variant.name = name;
  variant.name_lower = name_lower;
  {
-  Scratch_Block scratch(get_thread_context(), arena);
+  Scratch_Block scratch;
   Ed_Parser parser = m_parser_from_string(scratch, struct_members);
   variant.struct_members = parse_struct_body(arena, &parser);
  }
@@ -51,7 +51,7 @@ entity_variant_is_curve(Union_Variant &variant){
 }
 function void
 generate_entity_types(Printer &printer){
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  arrayof<Union_Variant> variants = {};
  //-NOTE @data of the variants
  //TODO(kv) I'd just pass the whole thing as a string, and be done with it!
@@ -234,7 +234,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
      init_dynamic(list, scratch);
      for_i32(im,0,variant.struct_members.count){
       auto &member = variant.struct_members[im];
-      list.push(member.name);
+      list.push_value(member.name);
      }
      print_comma_separated(p,list);
     };

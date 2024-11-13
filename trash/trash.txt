@@ -652,6 +652,41 @@ system_memory_free_sig(){
   }
 #endif
 
+function Arena_Node *
+tctx__alloc_arena_node(Thread_Context *tctx){
+ Arena_Node *result = push_array(&tctx->node_arena, Arena_Node, 1, push_zero());
+ result->arena = make_arena(MB(1));
+ return(result);
+}
+function Arena *
+tctx_reserve_arena(Thread_Context *tctx, Arena **conflicts, i32 conflict_count){
+ Arena_Node *node = tctx->used_first;
+ for(; node != 0; node = node->next){
+  //-Find non-conflicting arena
+  b32 conflicted = false;
+   for_i32(conflict_index,0,conflict_count){
+   if(&node->arena == conflicts[conflict_index]){
+    conflicted = true;
+    break;
+   }
+  }
+  if(not conflicted){
+   break;
+  }
+ }
+ if(node == 0){
+  //-If not found, make a new arena
+  node = tctx__alloc_arena_node(tctx);
+  zdll_push_back(tctx->used_first, tctx->used_last, node);
+ }
+ node->ref_counter += 1;
+ return(&node->arena);
+}
+function void
+tctx_release_arena(Thread_Context *tctx, Arena *arena){
+ Arena_Node *node = CastFromMember(Arena_Node, arena, arena);
+ node->ref_counter -= 1;
+}
 
 
 //

@@ -7,9 +7,16 @@
 #if SILLY_IMGUI_PARTY
 #  include "imgui_function.h"
 #endif
+#if SILLY_IMGUI_PARTY
+#include "silly.cpp"
+#endif
+
 //~
 #define AD_IS_FRAMEWORK 1
+
+#define KV_H_NO_GLOBAL_ARENA_CHUNK_STORE
 #include "kv.h"
+
 #define AD_IS_GAME 1
 #define ED_API_USER 1
 #define ED_API_USER_STORE_GLOBAL 1
@@ -29,11 +36,13 @@
 #include "ad_serialize.h"
 
 #include "game_draw.cpp"
+
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 
 #define DYNAMIC_LINK_API
 #include "custom/generated/ed_api.cpp"
+
 #include "game_modeler.cpp"
 #include "generated/send_bez.gen.cpp"
 
@@ -61,10 +70,6 @@
 X_GAME_API_FUNCTIONS(X)
 //
 #undef X
-
-#if SILLY_IMGUI_PARTY
-#include "silly.cpp"
-#endif
 
 function b32
 just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
@@ -597,7 +602,7 @@ game_render(game_render_params){
  Painter &pa = painter;
  pa = {};
  slider_cycle_counter = 0;
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  Viewport *viewport = &state->viewports[viewport_id-1];
  
  i32 scale_down_pow2 = fval(0); // ;scale_down_slider
@@ -640,7 +645,7 @@ game_render(game_render_params){
    config->meter_to_pixel  = meter_to_pixel;
   }
   //TODO(kv) Why can't the game understand scratch blocks?
-  Scratch_Block render_scratch(get_thread_context(), scratch);
+  Scratch_Block render_scratch;
 /*  if(pa.sending_data){
    mo.vertices.set_count(1);
    mo.curves.  set_count(1);
@@ -674,20 +679,25 @@ game_render(game_render_params){
   }
  }
 }
+function void
+import_api_from_editor(API_VTable_ed *ed_api){
+ ed_api_read_vtable(ed_api);
+#if 0
+ {//-Functions that are already in use kv.h
+  get_arena_chunk = get_arena_chunk_exported;
+  free_arena_chunk = free_arena_chunk_exported;
+ }
+#endif
+}
 function game_init_return
 game_init(game_init_params)
 {
- {// API import
-  ed_api_read_vtable(ed_api);
- }
- {
-  thread_context_init(&global_thread_context,ThreadKind_Main,&malloc_base_allocator,0);
- }
+ import_api_from_editor(ed_api);
  //@game_bootstrap_arena_zero_initialized
- Game_State *state = push_struct(bootstrap_arena, Game_State);
+ Game_State *state = push_struct(bootstrap_arena, Game_State, push_zero());
  state->malloc = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
  state->permanent_arena = *bootstrap_arena;
- state->dll_arena = make_arena(&state->malloc, MB(1));
+ state->dll_arena = make_arena(MB(1));
  Arena *arena = &state->permanent_arena;
  {//-;init_modeler
   Modeler &m = state->modeler;
@@ -698,18 +708,18 @@ game_init(game_init_params)
   init_static(m.bones,     arena, 128);
   init_static(m.bones,     arena, 128);
   init_static(m.line_cparams,arena, 128);
-  m.bones.push(Bone{.xform=mat4i_identity});
+  m.bones.push_value(Bone{.xform=mat4i_identity});
   {
    Common_Line_Params cp = {};
    cp.radius_mult      = 1.f;
    cp.nslice_per_meter = 2.2988f * 100.f;
-   m.line_cparams.push(cp);
+   m.line_cparams.push_value(cp);
   }
   {
    Modeler_History &h = m.history;
    // NOTE(kv): We might want to erase entire edit history (or part of it),
    //  so we'll allocate items from an arena for now (maybe make a heap later).
-   h.arena     = make_arena(&state->malloc);
+   h.arena     = make_arena();
    h.inited    = true;
    h.allocator = make_arena_base_allocator(&h.arena);
   }
@@ -724,15 +734,15 @@ game_init(game_init_params)
   state->manual_save_path = pjoin(arena, state->save_dir, "manual.ad");
   
   {// NOTE: Load state
-   state->data_load_arena = make_arena(&state->malloc);
-   Stringz nono_autosave_path = pjoin(arena, state->save_dir, "text.kv");
-   game_load(state, app, nono_autosave_path);
+   state->data_load_arena = make_arena();
+   Stringz todo_autosave_path = pjoin(arena, state->save_dir, "text.kv");
+   game_load(state, app, todo_autosave_path);
   }
  }
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {//;frame_arena_init
   Viewport *viewport = &state->viewports[viewport_index];
-  viewport->render_arena = make_arena(&state->malloc);
+  viewport->render_arena = make_arena();
   viewport->index = viewport_index;
  }
  {
@@ -763,9 +773,7 @@ function game_reload_return
 game_reload(game_reload_params)
 {// Game_State
  meta_init();
- {// API import
-  ed_api_read_vtable(ed_api);
- }
+ import_api_from_editor(ed_api);
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
   state->dll_temp_memory = begin_temp_memory(dll_arena);
@@ -792,7 +800,6 @@ game_reload(game_reload_params)
 function game_shutdown_return
 game_shutdown(game_shutdown_params){
  end_temp_memory(state->dll_temp_memory);
- thread_context_destroy(&global_thread_context);
 }
 //~
 function b32
@@ -900,7 +907,7 @@ update_camera_distance(v1 distance, i1 delta_level) {
 
 function game_send_command_return
 game_send_command(game_send_command_params) {
- state->command_queue.push(command_name);
+ state->command_queue.push_value(command_name);
 }
 
 function void
@@ -1059,9 +1066,9 @@ game_update(game_update_params){
   {// NOTE: Fill command lister
    auto &cmds = game_commands;
    cmds.count = 0;
-   cmds.push(strlit("save_manual"));
-   cmds.push(strlit("load_manual"));  
-   cmds.push(strlit("revert"));  
+   cmds.push_value(strlit("save_manual"));
+   cmds.push_value(strlit("load_manual"));  
+   cmds.push_value(strlit("revert"));  
   }
  }
  
@@ -1175,7 +1182,7 @@ game_update(game_update_params){
   for_i32(code, 1, Key_Code_COUNT){
    if (input->key_states[code] &&
        input->key_state_changes[code] > 0){
-    key_strokes.push((Key_Code) code);
+    key_strokes.push_value((Key_Code) code);
    }
   }
  }
@@ -1273,7 +1280,7 @@ game_update(game_update_params){
       case S|Key_Code_0:{ cam->roll = {}; }break;
       //NOTE(kv) Reverting is just.so.useful for debugging!
       //TODO(kv) Pushing strings is dangerous! Since the game might restart.
-      case S|Key_Code_U:{ state->command_queue.push(strlit("revert")); }break;
+      case S|Key_Code_U:{ state->command_queue.push_value(strlit("revert")); }break;
       case C|Key_Code_R:{ modeler_redo(modeler); }break;
       case M|Key_Code_0:{ cam->pan = {}; }break;
       //NOTE(kv) Set camera frontal
@@ -1378,7 +1385,7 @@ game_update(game_update_params){
      init_static(influenced_verts, scratch, m->active_prims.count);
      for_i32(index,0,m->active_prims.count) {
       Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
-      influenced_verts.push(vi);
+      influenced_verts.push_value(vi);
      }
      
      Modeler_Edit edit = Modeler_Edit{
@@ -1502,13 +1509,13 @@ game_update(game_update_params){
   }
  }
  //~
- if (input->debug_camera_on) {
+ if(input->debug_camera_on) {
   auto cam = update_target_cam;
   DEBUG_NAME("camera(theta,phi,distance)", V3(cam->theta, cam->phi, cam->distance));
   DEBUG_NAME("camera(pan)", cam->pan);
  }
  
- for_i32(index, 0, GAME_VIEWPORT_COUNT) {
+ for_i32(index, 0, GAME_VIEWPORT_COUNT){
   // NOTE: Set viewport presets to useful values
   Viewport *viewport = &state->viewports[index];
   
@@ -1545,7 +1552,7 @@ game_update(game_update_params){
      ImGui::EndCombo();
     }
     ImGui::End();
-   } else {
+   }else{
     if (fbool(0)){
      ImGui::ShowDemoWindow(0);
     }
@@ -1553,8 +1560,7 @@ game_update(game_update_params){
   }
  }
  
- {
-  // TODO: Have a better error reporting story
+ {// TODO: Have a better error reporting story
   // Like, how do we turn these off? With a clear command?
   if (state->load_failed) { DEBUG_TEXT("Load failed!"); }
   if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
@@ -1578,5 +1584,4 @@ game_update(game_update_params){
   .game_commands            =game_commands,
  };
 }
-
 //~EOF

@@ -1,51 +1,47 @@
-//NOTE Generated at C:\Users\vodan\4ed\code\meta_klang.cpp:513:
+//NOTE File created programmatically by C:\Users\vodan\4ed\code/meta_klang.cpp:513:
 // NOTE: source: C:\Users\vodan\4ed\code\game\driver.kh
 #pragma once
 //-Generated: driver.gen.h
 typedef u32 argb;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:466:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:462:
 function Type_Info
-get_type_info_argb();//  C:\Users\vodan\4ed\code\meta_print.cpp:470:
+get_type_info_argb();//  C:\Users\vodan\4ed\code/meta_print.cpp:466:
 function Type_Info
 get_type_info_argb(){Type_Info result = Type_Info_u32;
 result.name = strlit("argb");
-return result;}//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_argb;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_argb = get_type_info_argb();
+return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_argb;
 
-//  C:\Users\vodan\4ed\code\meta_print.cpp:483:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:479:
 function void
 read_argb(Data_Reader &r, argb &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:488:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:484:
 function void
 read_argb(Data_Reader &r, argb &pointer){read_u32(r, pointer);};
 typedef i1 b32;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:466:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:462:
 function Type_Info
-get_type_info_b32();//  C:\Users\vodan\4ed\code\meta_print.cpp:470:
+get_type_info_b32();//  C:\Users\vodan\4ed\code/meta_print.cpp:466:
 function Type_Info
 get_type_info_b32(){Type_Info result = Type_Info_i1;
 result.name = strlit("b32");
-return result;}//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_b32;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_b32 = get_type_info_b32();
+return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_b32;
 
-//  C:\Users\vodan\4ed\code\meta_print.cpp:483:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:479:
 function void
 read_b32(Data_Reader &r, b32 &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:488:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:484:
 function void
 read_b32(Data_Reader &r, b32 &pointer){read_i1(r, pointer);};
 struct Vertex_Index{
 i1 v;
 };
 inline b32 operator==(Vertex_Index a, Vertex_Index b){ return a.v==b.v; }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
 struct Vertex_Index;
 function Type_Info
-get_type_info_Vertex_Index();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
+get_type_info_Vertex_Index();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
 function Type_Info
 get_type_info_Vertex_Index()
 {
@@ -58,15 +54,13 @@ result.members.set_count(1);
 result.members[0] = {.type=member_type, .name=strlit("v"), .offset=offsetof(Vertex_Index, v)};
 }return result;
 }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Vertex_Index;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Vertex_Index = get_type_info_Vertex_Index();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Vertex_Index;
 
-function Type_Info &type_info_from_pointer(Vertex_Index*pointer){return Type_Info_Vertex_Index;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Vertex_Index*pointer){return Type_Info_Vertex_Index;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
 function void
 read_Vertex_Index(Data_Reader &r, Vertex_Index &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
 function void
 read_Vertex_Index(Data_Reader &r, Vertex_Index &pointer)
 {
@@ -87,10 +81,10 @@ struct Curve_Index{
 i1 v;
 };
 inline b32 operator==(Curve_Index a, Curve_Index b){ return a.v==b.v; }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
 struct Curve_Index;
 function Type_Info
-get_type_info_Curve_Index();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
+get_type_info_Curve_Index();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
 function Type_Info
 get_type_info_Curve_Index()
 {
@@ -103,15 +97,13 @@ result.members.set_count(1);
 result.members[0] = {.type=member_type, .name=strlit("v"), .offset=offsetof(Curve_Index, v)};
 }return result;
 }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Curve_Index;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Curve_Index = get_type_info_Curve_Index();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Index;
 
-function Type_Info &type_info_from_pointer(Curve_Index*pointer){return Type_Info_Curve_Index;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Curve_Index*pointer){return Type_Info_Curve_Index;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
 function void
 read_Curve_Index(Data_Reader &r, Curve_Index &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
 function void
 read_Curve_Index(Data_Reader &r, Curve_Index &pointer)
 {
@@ -132,10 +124,10 @@ struct Fill_Index{
 i1 v;
 };
 inline b32 operator==(Fill_Index a, Fill_Index b){ return a.v==b.v; }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
 struct Fill_Index;
 function Type_Info
-get_type_info_Fill_Index();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
+get_type_info_Fill_Index();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
 function Type_Info
 get_type_info_Fill_Index()
 {
@@ -148,15 +140,13 @@ result.members.set_count(1);
 result.members[0] = {.type=member_type, .name=strlit("v"), .offset=offsetof(Fill_Index, v)};
 }return result;
 }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Fill_Index;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Fill_Index = get_type_info_Fill_Index();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Fill_Index;
 
-function Type_Info &type_info_from_pointer(Fill_Index*pointer){return Type_Info_Fill_Index;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Fill_Index*pointer){return Type_Info_Fill_Index;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
 function void
 read_Fill_Index(Data_Reader &r, Fill_Index &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
 function void
 read_Fill_Index(Data_Reader &r, Fill_Index &pointer)
 {
@@ -173,7 +163,7 @@ pointer.v = m_v;
 eat_char(p, '}');
 }
 ;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:396:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:392:
 enum Bone_Type{Bone_None = 0,
 Bone_Head = 1,
 Bone_Arm = 2,
@@ -186,9 +176,9 @@ Bone_References = 8,
 Bone_Hand = 9,
 Bone_Thumb = 10,
 Bone_Pelvis = 11,
-Bone_Eyeball = 12,};//  C:\Users\vodan\4ed\code\meta_print.cpp:411:
+Bone_Eyeball = 12,};//  C:\Users\vodan\4ed\code/meta_print.cpp:407:
 function Type_Info
-get_type_info_Bone_Type();//  C:\Users\vodan\4ed\code\meta_print.cpp:415:
+get_type_info_Bone_Type();//  C:\Users\vodan\4ed\code/meta_print.cpp:411:
 function Type_Info
 get_type_info_Bone_Type(){Type_Info result = {};
 result.name = strlit("Bone_Type");
@@ -208,15 +198,13 @@ result.enum_members[9] = {.name=strlit("Bone_Hand"), .value=Bone_Hand};
 result.enum_members[10] = {.name=strlit("Bone_Thumb"), .value=Bone_Thumb};
 result.enum_members[11] = {.name=strlit("Bone_Pelvis"), .value=Bone_Pelvis};
 result.enum_members[12] = {.name=strlit("Bone_Eyeball"), .value=Bone_Eyeball};
-return result;}//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Bone_Type;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Bone_Type = get_type_info_Bone_Type();
+return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Bone_Type;
 
-function Type_Info &type_info_from_pointer(Bone_Type*pointer){return Type_Info_Bone_Type;}//  C:\Users\vodan\4ed\code\meta_print.cpp:439:
+function Type_Info &type_info_from_pointer(Bone_Type*pointer){return Type_Info_Bone_Type;}//  C:\Users\vodan\4ed\code/meta_print.cpp:435:
 function void
 read_Bone_Type(Data_Reader &r, Bone_Type &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:444:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:440:
 function void
 read_Bone_Type(Data_Reader &r, Bone_Type &pointer){STB_Parser *p = r.parser;
 i32 integer = eat_i1(p);
@@ -227,10 +215,10 @@ struct Bone_ID{
 Bone_Type type;
 i1 id;
 };
-//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
 struct Bone_ID;
 function Type_Info
-get_type_info_Bone_ID();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
+get_type_info_Bone_ID();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
 function Type_Info
 get_type_info_Bone_ID()
 {
@@ -245,15 +233,13 @@ result.members[0] = {.type=member_type, .name=strlit("type"), .offset=offsetof(B
 result.members[1] = {.type=member_type, .name=strlit("id"), .offset=offsetof(Bone_ID, id)};
 }return result;
 }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Bone_ID;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Bone_ID = get_type_info_Bone_ID();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Bone_ID;
 
-function Type_Info &type_info_from_pointer(Bone_ID*pointer){return Type_Info_Bone_ID;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Bone_ID*pointer){return Type_Info_Bone_ID;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
 function void
 read_Bone_ID(Data_Reader &r, Bone_ID &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
 function void
 read_Bone_ID(Data_Reader &r, Bone_ID &pointer)
 {
@@ -279,24 +265,22 @@ eat_char(p, '}');
 }
 ;
 typedef u32 Line_Flags;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:466:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:462:
 function Type_Info
-get_type_info_Line_Flags();//  C:\Users\vodan\4ed\code\meta_print.cpp:470:
+get_type_info_Line_Flags();//  C:\Users\vodan\4ed\code/meta_print.cpp:466:
 function Type_Info
 get_type_info_Line_Flags(){Type_Info result = Type_Info_u32;
 result.name = strlit("Line_Flags");
-return result;}//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Line_Flags;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Line_Flags = get_type_info_Line_Flags();
+return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Line_Flags;
 
-//  C:\Users\vodan\4ed\code\meta_print.cpp:483:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:479:
 function void
 read_Line_Flags(Data_Reader &r, Line_Flags &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:488:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:484:
 function void
 read_Line_Flags(Data_Reader &r, Line_Flags &pointer){read_u32(r, pointer);};
-//  C:\Users\vodan\4ed\code\meta_print.cpp:396:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:392:
 enum {Line_Overlay = 1,
 Line_Straight = 2,
 Line_No_SymX = 4,};;
@@ -309,10 +293,10 @@ Line_Flags flags;
 v4 radii;
 i1 linum;
 };
-//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
 struct Common_Line_Params;
 function Type_Info
-get_type_info_Common_Line_Params();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
+get_type_info_Common_Line_Params();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
 function Type_Info
 get_type_info_Common_Line_Params()
 {
@@ -337,15 +321,13 @@ result.members[5] = {.type=member_type, .name=strlit("radii"), .offset=offsetof(
 result.members[6] = {.type=member_type, .name=strlit("linum"), .offset=offsetof(Common_Line_Params, linum), .unserialized=true};
 }return result;
 }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Common_Line_Params;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Common_Line_Params = get_type_info_Common_Line_Params();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Common_Line_Params;
 
-function Type_Info &type_info_from_pointer(Common_Line_Params*pointer){return Type_Info_Common_Line_Params;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Common_Line_Params*pointer){return Type_Info_Common_Line_Params;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
 function void
 read_Common_Line_Params(Data_Reader &r, Common_Line_Params &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
 function void
 read_Common_Line_Params(Data_Reader &r, Common_Line_Params &pointer)
 {
@@ -403,31 +385,29 @@ eat_char(p, '}');
 }
 ;
 typedef u32 Poly_Flags;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:466:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:462:
 function Type_Info
-get_type_info_Poly_Flags();//  C:\Users\vodan\4ed\code\meta_print.cpp:470:
+get_type_info_Poly_Flags();//  C:\Users\vodan\4ed\code/meta_print.cpp:466:
 function Type_Info
 get_type_info_Poly_Flags(){Type_Info result = Type_Info_u32;
 result.name = strlit("Poly_Flags");
-return result;}//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Poly_Flags;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Poly_Flags = get_type_info_Poly_Flags();
+return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Poly_Flags;
 
-//  C:\Users\vodan\4ed\code\meta_print.cpp:483:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:479:
 function void
 read_Poly_Flags(Data_Reader &r, Poly_Flags &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:488:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:484:
 function void
 read_Poly_Flags(Data_Reader &r, Poly_Flags &pointer){read_u32(r, pointer);};
 struct Fill_Params{
 argb color;
 Poly_Flags flags;
 };
-//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
 struct Fill_Params;
 function Type_Info
-get_type_info_Fill_Params();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
+get_type_info_Fill_Params();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
 function Type_Info
 get_type_info_Fill_Params()
 {
@@ -442,15 +422,13 @@ result.members[0] = {.type=member_type, .name=strlit("color"), .offset=offsetof(
 result.members[1] = {.type=member_type, .name=strlit("flags"), .offset=offsetof(Fill_Params, flags)};
 }return result;
 }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Fill_Params;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Fill_Params = get_type_info_Fill_Params();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Fill_Params;
 
-function Type_Info &type_info_from_pointer(Fill_Params*pointer){return Type_Info_Fill_Params;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Fill_Params*pointer){return Type_Info_Fill_Params;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
 function void
 read_Fill_Params(Data_Reader &r, Fill_Params &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
 function void
 read_Fill_Params(Data_Reader &r, Fill_Params &pointer)
 {
@@ -483,10 +461,10 @@ v3 unit_normal;
 v1 alignment_min;
 Fill_Params fill;
 };
-//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
 struct Line_Params;
 function Type_Info
-get_type_info_Line_Params();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
+get_type_info_Line_Params();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
 function Type_Info
 get_type_info_Line_Params()
 {
@@ -509,15 +487,13 @@ result.members[4] = {.type=member_type, .name=strlit("alignment_min"), .offset=o
 result.members[5] = {.type=member_type, .name=strlit("fill"), .offset=offsetof(Line_Params, fill)};
 }return result;
 }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Line_Params;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Line_Params = get_type_info_Line_Params();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Line_Params;
 
-function Type_Info &type_info_from_pointer(Line_Params*pointer){return Type_Info_Line_Params;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Line_Params*pointer){return Type_Info_Line_Params;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
 function void
 read_Line_Params(Data_Reader &r, Line_Params &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
 function void
 read_Line_Params(Data_Reader &r, Line_Params &pointer)
 {
@@ -574,7 +550,7 @@ pointer.fill = m_fill;
 eat_char(p, '}');
 }
 ;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:396:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:392:
 enum {Poly_Shaded = 1,
 Poly_Line = 2,
 Poly_Overlay = 4,};;
@@ -582,10 +558,10 @@ struct Common_Line_Params_Index{
 i1 v;
 };
 inline b32 operator==(Common_Line_Params_Index a, Common_Line_Params_Index b){ return a.v==b.v; }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:171:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
 struct Common_Line_Params_Index;
 function Type_Info
-get_type_info_Common_Line_Params_Index();//  C:\Users\vodan\4ed\code\meta_print.cpp:176:
+get_type_info_Common_Line_Params_Index();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
 function Type_Info
 get_type_info_Common_Line_Params_Index()
 {
@@ -598,15 +574,13 @@ result.members.set_count(1);
 result.members[0] = {.type=member_type, .name=strlit("v"), .offset=offsetof(Common_Line_Params_Index, v)};
 }return result;
 }
-//  C:\Users\vodan\4ed\code\meta_print.cpp:85:
-global_decl Type_Info Type_Info_Common_Line_Params_Index;
-//  C:\Users\vodan\4ed\code\meta_print.cpp:92:
-xglobal Type_Info Type_Info_Common_Line_Params_Index = get_type_info_Common_Line_Params_Index();
+//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
+global Type_Info Type_Info_Common_Line_Params_Index;
 
-function Type_Info &type_info_from_pointer(Common_Line_Params_Index*pointer){return Type_Info_Common_Line_Params_Index;}//  C:\Users\vodan\4ed\code\meta_print.cpp:242:
+function Type_Info &type_info_from_pointer(Common_Line_Params_Index*pointer){return Type_Info_Common_Line_Params_Index;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
 function void
 read_Common_Line_Params_Index(Data_Reader &r, Common_Line_Params_Index &pointer);
-//  C:\Users\vodan\4ed\code\meta_print.cpp:247:
+//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
 function void
 read_Common_Line_Params_Index(Data_Reader &r, Common_Line_Params_Index &pointer)
 {

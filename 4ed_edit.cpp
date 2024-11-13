@@ -117,7 +117,7 @@ edit_fix_markers(Thread_Context *tctx, Models *models, Editing_File *file, Batch
     }
     cursor_max += total_marker_count;
     
-    Scratch_Block scratch(tctx,0);
+    Scratch_Block scratch;
     
     Cursor_With_Index *cursors = push_array(scratch, Cursor_With_Index, cursor_max);
     Cursor_With_Index *r_cursors = push_array(scratch, Cursor_With_Index, cursor_max);
@@ -408,7 +408,7 @@ edit_merge_history_range(Thread_Context *tctx, Models *models, Editing_File *fil
                         }break;
                     }
                 }
-                Scratch_Block scratch(tctx,0);
+                Scratch_Block scratch;
                 history_merge_records(scratch, history, first_index, last_index);
                 if (current_index >= last_index){
                     current_index -= (last_index - first_index);
@@ -535,7 +535,7 @@ create_file(Thread_Context *tctx, Models *models, String8 filename, Buffer_Creat
   Working_Set *working_set = &models->working_set;
   Heap *heap = &models->heap;
   
-  Scratch_Block scratch(tctx,0);
+  Scratch_Block scratch;
   
   Editing_File *file = 0;
   b32 do_empty_buffer = false;

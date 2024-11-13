@@ -13,8 +13,13 @@
 #include <string.h>
 #include <math.h>
 
-//~Compilers
+//~ IMPORTANT Fundamental types, idioms
+//-Compilers
 //-NOTE(kv) Allow overwriting compiler (for e.g clang-cl)
+#if !defined(KV_H_IS_METAPROGRAM)
+#  define KV_H_IS_METAPROGRAM 0
+#endif
+
 #if !defined(COMPILER_MSVC)
 #  define COMPILER_MSVC 0
 #endif
@@ -43,10 +48,6 @@
 #  endif
 #endif
 
-//~ Unorganized
-//~ END Unorganized
-
-//~ IMPORTANT Fundamental types, idioms
 #if defined(__cplusplus)
 #  define EXTERN_C_BEGIN extern "C" {
 #  define EXTERN_C_END   }
@@ -95,11 +96,13 @@ typedef  int64_t i64;
 
 typedef i32       i1;
 typedef int8_t    b8;
-typedef int32_t   b32;
 typedef uintptr_t umm; // NOTE(kv): "umm" stands for "memory model"
 typedef i64       imm;
 typedef size_t    usize;
 typedef ptrdiff_t isize;
+
+typedef i32   b32;
+typedef i64   b64;
 
 typedef float r32;
 typedef float f32;
@@ -113,32 +116,38 @@ typedef float v1;
 #define global_decl   extern //NOTE(kv) Global var that is not intended to exported, but forward-declared (C doesn't let us forward-declare global???)
 #define xglobal              //NOTE(kv) exported variable
 
+#define PP_Concat(arg1, arg2)   PP_Concat1(arg1, arg2)
+#define PP_Concat1(arg1, arg2)  PP_Concat2(arg1, arg2)
+#define PP_Concat2(arg1, arg2)  arg1##arg2
 #define line_unique_var   PP_Concat(i, __LINE__)
-#define count_unique_var    PP_Concat(i, __COUNT__)
+#define count_unique_var  PP_Concat(i, __COUNT__)
+#define stringify_(a) #a
+#define stringify(a) stringify_(a)
 
 #define for_i1(VAR, MIN, MAX)  for(i32 VAR=MIN; VAR<MAX; VAR++)
 #define for_i32  for_i1
-//#define for_i32_test(VAR, INITIAL, FINAL, TEST)  for(i32 VAR=INITIAL; VAR<FINAL && TEST; VAR++)
 #define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_inc(TYPE, VAR, INITIAL, FINAL)  for(TYPE VAR=INITIAL; VAR<FINAL; VAR++)
 #define for_repeat(TIMES) for_i32(line_unique_var,0,TIMES)
 
+#define alen(array) (isize)(sizeof(array) / sizeof((array)[0]))
+
 #define and &&
 #define or  ||
 #define not !
 
-#define cast_to_var(type, variable, value)  type variable = (type)value
-#define cast_to(variable, value)            variable = mytypeof(variable)(value)
+#define macro_clamp_min(VAR, VAL)   if (VAR < VAL) VAR = VAL
+#define macro_clamp_max(VAR, VAL)   if (VAR > VAL) VAR = VAL
 
-#define PP_Concat(arg1, arg2)   PP_Concat1(arg1, arg2)
-#define PP_Concat1(arg1, arg2)  PP_Concat2(arg1, arg2)
-#define PP_Concat2(arg1, arg2)  arg1##arg2
+struct File_Line
+{
+ char *file;
+ u32  line;
+};
 
-//~
-
-//~stb_ds
+//~stb_ds TODO(kv) Remove this junk!
 #define STB_DEFINE
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -154,6 +163,10 @@ typedef float v1;
 #undef GB_IMPLEMENTATION
 //~
 
+#define implies(a,b)  !a || b
+#define cast_to_var(type, variable, value)  type variable = (type)value
+#define cast_to(variable, value)            variable = mytypeof(variable)(value)
+
 #if COMPILER_LLVM
 #    define PACK_BEGIN
 #    define PACK_END    __attribute__((packed));  //NOTE: semicolon placement
@@ -162,13 +175,11 @@ typedef float v1;
 #    define PACK_END    ; __pragma( pack(pop))
 #endif
 
-
 #ifdef KV_NO_FORCE_INLINE
 # define force_inline inline
 #else
 # define force_inline inline
 #endif
-
 
 /* Intrinsics */
 
@@ -328,44 +339,45 @@ kv_atan2(v1 y, v1 x)
 #if COMPILER_MSVC
     v1 result = atan2f(y, x);
 #else
-    v1 result = __builtin_atan2f(y, x);
+ v1 result = __builtin_atan2f(y, x);
 #endif
-    return(result);
+ return(result);
 }
 
-struct bit_scan_result
-{
- b32 found;
- u32 index;
-};
-
-inline bit_scan_result
-findLeastSignificantSetBit(u32 mask)
-{
- bit_scan_result result = {};
- 
+inline i64
+find_least_significant_set_bit(u64 mask){
+ i64 result = 0;
+ if(mask == 0){
+  result = -1;
+ }else{
 #if COMPILER_MSVC
- result.found = _BitScanForward((unsigned long *)&result.index, mask);
-#elif COMPILER_LLVM
- if (mask != 0)
- {
-  result.found = true;
-  result.index = __builtin_ctz(mask);
- }
-#else
- for (u32 index = 0;
-      index < 32;
-      index++)
- {
-  if((mask & (1 << index)) != 0)
   {
-   result.found = true;
-   result.index = index;
-   return result;
+   _BitScanForward64((unsigned long *)&result, mask);
   }
- }
+#else
+  {
+   result = __builtin_ctzll(mask);
+  }
 #endif
- 
+ }
+ return result;
+}
+inline i64
+find_most_significant_set_bit(u64 mask){
+ i64 result = 0;
+ if(mask == 0){
+  result = -1;
+ }else{
+#if COMPILER_MSVC
+  {
+   _BitScanReverse64((unsigned long *)&result, mask);
+  }
+#else
+  {
+   result = 63-__builtin_clzll(mask);
+  }
+#endif
+ }
  return result;
 }
 
@@ -389,16 +401,15 @@ inline u32
 rotateLeft(u32 value, i32 rotateAmount)
 {
 #if COMPILER_MSVC
-    u32 result = _rotl(value, rotateAmount);
+ u32 result = _rotl(value, rotateAmount);
 #elif COMPILER_LLVM
-    u32 result = __builtin_rotateleft32(value, rotateAmount);
+ u32 result = __builtin_rotateleft32(value, rotateAmount);
 #else
-    i32 r = rotateAmount & 31;
-    u32 result = (value << r) | (value >> (32 - r));
+ i32 r = rotateAmount & 31;
+ u32 result = (value << r) | (value >> (32 - r));
 #endif
-    return result;
+ return result;
 }
-
 inline u32
 rotateRight(u32 value, i32 rotateAmount)
 {
@@ -483,7 +494,28 @@ inline i32 safeTruncateToInt32(u64 value)
  return (i32)value;
 }
 
-#define alen(array) (isize)(sizeof(array) / sizeof((array)[0]))
+//-
+#define filename_linum strlit(filename_line_number)
+
+#if KV_INTERNAL
+#define debug_location_defparams \
+, \
+const char *debug_file=__builtin_FILE(), \
+i32 debug_line=__builtin_LINE()
+
+#define debug_location_params \
+, \
+const char *debug_file, \
+i32 debug_line
+
+#define debug_location_args \
+, debug_file, debug_line
+#else
+#define debug_location_defparams
+#define debug_location_params
+#define debug_location_args
+#endif
+//-
 
 // source: https://groups.google.com/g/comp.std.c/c/d-6Mj5Lko_s
 // NOTE: Doesn't work with MSVC, idk why man!
@@ -574,8 +606,6 @@ inline void *kv_xmalloc(size_t size) {
 #define TAU32 6.28318530717958647692f
 
 #define macro_clamp(min,var,max)    if (var < min) { var = min; } else if (var > max) { var = max; }
-#define macro_clamp_min(VAR, VAL)   if (VAR < VAL) VAR = VAL
-#define macro_clamp_max(VAR, VAL)   if (VAR > VAL) VAR = VAL
 #define macro_clamp01(var)          macro_clamp(0.f,var,1.f)
 #define macro_clamp01i(var)         macro_clamp(0,var,1)
 
@@ -838,7 +868,6 @@ operator-(v3 v)
     result.z = -v.z;
     return result;
 }
-
 force_inline v3
 operator*(v1 c, v3 v)
 {
@@ -847,7 +876,6 @@ operator*(v1 c, v3 v)
  v.z *= c;
  return v;
 }
-
 force_inline v3
 operator*(v3 v, f32 c)
 {
@@ -1646,59 +1674,15 @@ mat4::operator[](i32 i)
 #define OS_SLASH '/'
 #endif
 
-#if defined(JUST_GUESS_INTS)
-typedef signed char i8;
-typedef signed short i16;
-typedef signed int i32;
-typedef signed long long i64;
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long u64;
-#else
-#include <stdint.h>
-
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-#endif
-
-typedef i8 b8;
-typedef i32 b32;
-typedef i64 b64;
-
-typedef float f32;
-typedef double f64;
-
 typedef void Void_Func(void);
 
 typedef i32 Generated_Group;
 enum{
-  GeneratedGroup_Core,
-  GeneratedGroup_Custom
+ GeneratedGroup_Core,
+ GeneratedGroup_Custom
 };
 
-#define glue_(a,b) a##b
-#define glue(a,b) glue_(a,b)
-
-#define stringify_(a) #a
-#define stringify(a) stringify_(a)
-
-#if 0  // NOTE: not sure what this is for?
-#if COMPILER_CL
-#define __VA_OPT__(x)
-#endif
-#endif
-
-#define function static
-#define api(x)
+#define api(...)
 
 #define local_const  static const
 #define global_const static const  // TODO(kv) Just say "global const" man! The language already helped you do it!
@@ -1714,12 +1698,6 @@ enum{
 
 #define PtrDif(a,b) ((u8*)(a) - (u8*)(b))
 
-// @Experiment(kv) : Pointer to integer exploits
-//
-// NOTE(kv): compiler doesn't like this version
-// #define PtrAsInt(a) PtrDif(a,0)
-// #define IntAsPtr(a) (void*)( ((u8*)0) + a )
-//
 #define PtrAsInt(a) (uptr)(a)
 #define IntAsPtr(a) (void*)((uptr)(a))
 
@@ -1764,7 +1742,6 @@ enum{
 #  define StaticAssert(c)
 #endif
 
-#define implies(a,b)  !a || b
 #define AssertImplies(a,b) Assert(!(a) || (b))
 #define InvalidPath AssertMessage("invalid path")
 #define NotImplemented AssertMessage("not implemented")
@@ -2188,27 +2165,19 @@ enum{
  Access_Read = 0x2,
  Access_Visible = 0x4,
 };
-
-////////////////////////////////
-
+//-
 enum Base_Allocator_Type {
  Allocator_None,
  Allocator_Generic,
  Allocator_Malloc,
  Allocator_Arena,
 };
-typedef void *Allocator_Reserve_Signature(void *user_data, u64 size, u64 *size_out, String location);
-typedef void  Allocator_Commit_Signature(void *user_data, void *ptr, u64 size);
-typedef void  Allocator_Decommit_Signature(void *user_data, void *ptr, u64 size);
+typedef void *Allocator_Reserve_Signature(void *user_data, u64 size, u64 *size_out);
 typedef void  Allocator_Free_Signature(void *user_data, void *ptr);
-typedef void  Allocator_Set_Access_Signature(void *user_data, void *ptr, u64 size, Access_Flag flags);
-// NOTE: Allocator function pointers (Can't used in reloadable code :<)
+
 struct Base_Allocator_Generic{
- Allocator_Reserve_Signature    *reserve;
- Allocator_Commit_Signature     *commit;
- Allocator_Decommit_Signature   *decommit;
- Allocator_Free_Signature       *free;
- Allocator_Set_Access_Signature *set_access;
+ Allocator_Reserve_Signature *allocate;
+ Allocator_Free_Signature    *free;
  void *userdata;
 };
 
@@ -2238,140 +2207,29 @@ struct Base_Allocator
 #    define ASAN_ON 0
 #endif
 
-#if ASAN_ON
-struct Arena_ASAN_Tracker{
- Arena_ASAN_Tracker *prev;
- usize size;
-};
-#endif
-
-struct Arena{
-#if ASAN_ON
- Arena_ASAN_Tracker *last_allocation;  //NOTE(kv) "last" chronologically
-#else
- usize commit_step;
- u8 *base;
- usize used_;
- usize cap;
- usize committed;
-#endif
-};
-struct Temp_Memory{
- Arena *arena;
-#if ASAN_ON
- Arena_ASAN_Tracker *saved_tracker;
-#else
- u64 used;
-#endif
-};
-// NOTE(kv): beware of using global variables in hot-reloaded code!!!
 global Base_Allocator malloc_base_allocator = {
  .type = Allocator_Malloc
 };
+function u8 *
+kv_malloc(usize size){
+ u8 *result = (u8 *)malloc(size);
+ return result;
+}
+function void
+kv_free(void *pointer){
+ if(pointer){
+  free(pointer);
+ }
+}
+xfunction usize system_page_size();
+xfunction u8   *system_memory_reserve(usize size);
+xfunction void  system_memory_free(void *base);
+xfunction b32   system_memory_commit(void *base, usize size);
+xfunction void  system_memory_decommit(void *base, usize size);
+//~
+//-
 
-////////////////////////////////
-
-typedef u64 Profile_ID;
-struct Profile_Record{
-  Profile_Record *next;
-  Profile_ID id;
-  u64 time;
-  String location;
-  String name;
-};
-
-struct Profile_Thread{
-  Profile_Thread *next;
-  Profile_Record *first_record;
-  Profile_Record *last_record;
-  i32 record_count;
-  i32 thread_id;
-  String name;
-};
-
-typedef u32 Profile_Enable_Flag;
-enum{
-  ProfileEnable_UserBit    = 0x1,
-  ProfileEnable_InspectBit = 0x2,
-};
-
-// NOTE(allen): full definition in 4coder_profile.h, due to dependency on System_Mutex.
-struct Profile_Global_List;
-
-////////////////////////////////
-
-typedef i32 Thread_Kind;
-enum{
- ThreadKind_None = 0,
- ThreadKind_Main,
- ThreadKind_MainCoroutine,
- ThreadKind_AsyncTasks,
-};
-
-struct Arena_Node{
- Arena_Node *next;
- Arena_Node *prev;
- Arena arena;
- i32 ref_counter;
-};
-
-struct Thread_Context{
- Thread_Kind kind;
- //Base_Allocator *allocator;
- Arena node_arena;
- 
- Arena_Node *used_first;
- Arena_Node *used_last;
- 
- Base_Allocator *prof_allocator;
- Profile_ID prof_id_counter;
- Arena prof_arena;
- Profile_Record *prof_first;
- Profile_Record *prof_last;
- i32 prof_record_count;
- 
- void *user_data;
-};
-
-////////////////////////////////
-
-struct Heap_Basic_Node{
-  Heap_Basic_Node *next;
-  Heap_Basic_Node *prev;
-};
-
-struct Heap_Node{
-  union{
-    struct{
-      Heap_Basic_Node order;
-      Heap_Basic_Node alloc;
-      u64 size;
-    };
-    u8 force_size__[64];
-  };
-};
-
-struct Heap{
-  Arena arena_;
-  Arena *arena;
-  Heap_Basic_Node in_order;
-  Heap_Basic_Node free_nodes;
-  u64 used_space;
-  u64 total_space;
-};
-
-//////////////////////////////////////////////////
-// 4coder_base_types.cpp
-
-/*
- * 4coder base types
- * NOTE(kv): color in v4 is RGBA, but when packed it is [register:ARGB -> memory:BGRA]
- * Idk why, but it is what it is.
- */
-
-// NOTE: these are inline functions anyway?
-
-#define BODY { x += b-1; x -= x%b; return(x); }
+#define BODY     x += b-1; x -= x%b; return(x); 
 inline u32 round_up_u32(u32 x, u32 b) {BODY}
 inline u64 round_up_u64(u64 x, u64 b) {BODY}
 inline i32 round_up_i32(i32 x, i32 b) {BODY}
@@ -3336,8 +3194,8 @@ range_distance(Range_f32 a, Range_f32 b){
         if (a.max < b.min){
             result = b.min - a.max;
         }
-        else{
-            result = a.min - b.max;
+  else{
+   result = a.min - b.max;
   }
  }
  return(result);
@@ -3401,98 +3259,60 @@ string_concat(String_u8 *dst, String src)
 
 #define string_expand(s) (i32)(s).size, (char*)(s).str
 #define strexpand string_expand
-
-#define filename_linum strlit(filename_line_number)
-
+//-
 function void*
-base_reserve__noop(void *user_data, u64 size, u64 *size_out, String location){
+base_reserve__noop(void *user_data, u64 size, u64 *size_out){
     *size_out = 0;
     return(0);
 }
 function void
-base_commit__noop(void *user_data, void *ptr, u64 size){}
-function void
-base_decommit__noop(void *user_data, void *ptr, u64 size){}
-function void
 base_free__noop(void *user_data, void *ptr){}
-function void
-base_set_access__noop(void *user_data, void *ptr, u64 size, Access_Flag flags){}
 
 function Base_Allocator
-make_base_allocator_generic(Allocator_Reserve_Signature *func_reserve,
-                            Allocator_Commit_Signature  *func_commit,
-                            Allocator_Decommit_Signature *func_decommit,
+make_base_allocator_generic(Allocator_Reserve_Signature *func_allocate,
                             Allocator_Free_Signature     *func_free,
-                            Allocator_Set_Access_Signature *func_set_access,
                             void *userdata)
-{//nono don't make too many functions man!
- if (func_reserve    == 0){ func_reserve    = base_reserve__noop; }
- if (func_commit     == 0){ func_commit     = base_commit__noop; }
- if (func_decommit   == 0){ func_decommit   = base_decommit__noop; }
- if (func_free       == 0){ func_free       = base_free__noop; }
- if (func_set_access == 0){ func_set_access = base_set_access__noop; }
+{
+ if(func_allocate    == 0){ func_allocate  = base_reserve__noop; }
+ if(func_free       == 0) { func_free      = base_free__noop; }
  Base_Allocator result = {
   .type=Allocator_Generic,
   .generic={
-   .reserve   =func_reserve,
-   .commit    =func_commit,
-   .decommit  =func_decommit,
-   .free      =func_free,
-   .set_access=func_set_access,
-   .userdata  =userdata,
+   .allocate=func_allocate,
+   .free    =func_free,
+   .userdata=userdata,
   },
  };
  return(result);
 }
 //-
-struct Push_Params{
- b32 zero;
- u32 alignment;
-};
-inline Push_Params
-make_default_arena_push_params(){
- Push_Params result = {};
- result.zero = false;  //todo(kv) Change this to true!
- return result;
-}
-Push_Params default_push_params = make_default_arena_push_params();
+#include "ad_debug_interface.h"
+#include "kv_memory.h"
 
-inline Push_Params
-push_zero(Push_Params params=default_push_params){
- params.zero = true;
- return params;
-}
 function u8 *
-arena_push(Arena *arena, usize size, usize alignment, String location,
-           Push_Params params=default_push_params);
-
-function String
-base_allocate_function(Base_Allocator *allocator, u64 size, String location)
+base_allocate(Base_Allocator *allocator, u64 size,
+              memory_file_line_defparams)
 {// @todo_leak_check
- String result = {};
- result.size = size;
+ u8 *result = {};
  
  switch(allocator->type)
  {
   case Allocator_Generic:
   {
    auto &a = allocator->generic;
-   //TODO(kv): Just do one call and simplify this allocator interface!
-   //  There is no other allocator that can reserve and commit separately anyway!
-   result.str = (u8 *)a.reserve(a.userdata, size, &result.size, location);
-   a.commit(a.userdata, result.str, result.size);
+   usize result_size;
+   result = (u8 *)a.allocate(a.userdata, size, &result_size);
+   //a.commit(a.userdata, result, size);
   }break;
-  
   case Allocator_Arena:
   {// NOTE(kv): This is a cyclic dependency situation.
-   result.str = arena_push(allocator->arena, size, 8, location);
+   result = arena_push(allocator->arena, size, 8, default_push_params,
+                       file_line);
   }break;
-  
   case Allocator_Malloc:
   {
-   result.str  = (u8 *)malloc(size);
+   result = kv_malloc(size);
   }break;
-  
   invalid_default_case;
  }
  
@@ -3523,301 +3343,16 @@ base_free(Base_Allocator *allocator, void *ptr, umm optional_size=0)
 }
 
 // TODO(kv): Does anyone actually care about the returned size? And why do they care?
-#define base_allocate2(a,s)      base_allocate_function((a), (s), filename_linum)
-#define base_allocate(a,s)       base_allocate2(a,s).str
-#define base_array_loc(a,T,c,l) (T*)(base_allocate_function((a), sizeof(T)*(c), (l)).str)
-#define base_array(a,T,c)       base_array_loc(a,T,c, filename_linum)
-//-
-xfunction usize system_page_size();
-xfunction void *system_memory_reserve(usize size, String location);
-xfunction void  system_memory_free(void *base);
-xfunction b32   system_memory_commit(void *base, usize size);
-xfunction void  system_memory_decommit(void *base, usize size);
+#define base_array(a,T,count) \
+(T*)(base_allocate(a, sizeof(T)*(count)))
+//~
 
-#if 0
-inline Memory_Cursor
-make_cursor(void *base, u64 cap){
- Memory_Cursor cursor = {.base=(u8*)base, .cap=cap};
- return(cursor);
-}
-inline Memory_Cursor
-make_cursor(String data){
- return(make_cursor(data.str, data.size));
-}
-inline Memory_Cursor
-make_cursor(Base_Allocator *allocator, u64 size){
- String memory = base_allocate2(allocator, size);
- return(make_cursor(memory));
-}
-#else
-#endif
-function u64
-round_up_to_pow2(u64 pow2_value, u64 input){
- u64 mask = pow2_value - 1;
- u64 result = (input + mask) & (~mask);
- return result;
-}
-function void
-round_up_to_pow2(u64 pow2_value, u64 *input){
- u64 mask = pow2_value - 1;
- *input = (*input + mask) & (~mask);
-}
-function u64
-round_down_to_pow2(u64 pow2_value, u64 input){
- u64 mask = pow2_value - 1;
- u64 result = (input) & (~mask);
- return result;
-}
-global usize default_arena_commit_step;
-global usize default_arena_decommit_step;
-
-function Arena
-make_arena(u64 commit_step=KB(4)){
- Arena arena = {};
-#if !ASAN_ON
- arena.commit_step = round_up_to_pow2(default_arena_commit_step, commit_step);
-#endif
- return(arena);
-}
-inline Arena
-make_arena_system(u64 commit_step=KB(4)){
- return make_arena(commit_step);
-}
-//-
-function u8 *
-arena_push_inner(Arena *arena, usize size, usize alignment,
-                 String location){
- u8 *pos = 0;
- if(size > 0)
- {
-  if(ASAN_ON){
-   macro_clamp_min(alignment, 8);
-  }
-  usize align_mask = alignment-1;
-#if ASAN_ON
-  {
-   if(alignment > 8){
-    //NOTE(kv) _aligned_malloc will help here
-    todo_incomplete;
-   }
-   usize tracker_size = sizeof(Arena_ASAN_Tracker);
-   Arena_ASAN_Tracker *tracker;
-   cast_to(tracker, malloc(tracker_size + size));
-   tracker->prev = arena->last_allocation;
-   tracker->size = size;
-   arena->last_allocation = tracker;
-   pos = (u8 *)(tracker + 1);
-   ASAN_POISON_MEMORY_REGION(tracker, tracker_size);
-  }
-#else
-  {//-non-asan
-   if(arena->commit_step == 0){
-    arena->commit_step = default_arena_commit_step;
-   }
-   if(arena->base == 0){
-    //-Reserve memory from OS
-    //TODO(kv) If I reserve tons of memory, it starts getting glitchy,
-    //  idk why but it means we have to treat big arenas specially.
-    usize arena_reserve_size = MB(256);
-    u8 *memory = (u8 *)system_memory_reserve(arena_reserve_size, location);
-    arena->cap = arena_reserve_size;
-    arena->base = memory;
-   }
-   u8 *current_pos = arena->base + arena->used_;
-   
-   umm pos_umm = umm(current_pos);
-   pos_umm = (pos_umm + align_mask) & (~align_mask);
-   pos = cast(u8*)(pos_umm);
-   {
-    usize new_used = (pos+size)-arena->base;
-    kv_assert(new_used <= arena->cap);
-    if(new_used > arena->committed){
-     //-Commit more
-     usize commit_size = round_up_to_pow2(arena->commit_step, new_used - arena->committed);
-     u8 *commit_pointer = arena->base + arena->committed;
-     b32 commit_result = system_memory_commit(commit_pointer, commit_size);
-     kv_assert(commit_result);
-     arena->committed += commit_size;
-    }
-    kv_assert(new_used <= arena->committed);
-    arena->used_ = new_used;
-   }
-  }
-#endif
-  
-  kv_assert(pos);
-  kv_assert((usize(pos) & align_mask) == 0);
- }
- return(pos);
-}
-function u8 *
-arena_push(Arena *arena, usize size, usize alignment, String location,
-           Push_Params params){
- u8 *result = arena_push_inner(arena, size, alignment, location);
- if(params.zero){
-  block_zero(result, size);
- }
- return result;
-}
-function void
-arena_pop(Arena *arena, usize size){
-#if ASAN_ON
- {
-  usize last_allocation_size = 0;
-  Arena_ASAN_Tracker *tracker = arena->last_allocation;
-  {
-   ASAN_UNPOISON_MEMORY_REGION(tracker, sizeof(*tracker));
-   last_allocation_size = tracker->size;
-   ASAN_POISON_MEMORY_REGION(tracker, sizeof(*tracker));
-  }
-  kv_assert(size <= last_allocation_size);
-  u8 *usable_base = (u8 *)(tracker + 1);
-  ASAN_POISON_MEMORY_REGION(usable_base + last_allocation_size - size, size);
- }
-#else
- {
-  kv_assert(size <= arena->used_);
-  arena->used_ -= size;
-  {//-Maybe decommit
-   usize commit_excess = arena->committed - arena->used_;
-   usize decommit_step = default_arena_decommit_step; //@tweak
-   usize decommit_size = round_down_to_pow2(decommit_step, commit_excess);
-   if(decommit_size){
-    system_memory_decommit(arena->base +  arena->committed, decommit_size);
-   }
-  }
- }
-#endif
-}
-
-#if ASAN_ON
-inline void
-arena_pop_to(Arena *arena, Arena_ASAN_Tracker *to_tracker){
- while(true){
-  Arena_ASAN_Tracker *tracker = arena->last_allocation;
-  if(tracker == to_tracker){
-   break;
-  }else{
-   ASAN_UNPOISON_MEMORY_REGION(tracker, sizeof(*tracker));
-   arena->last_allocation = tracker->prev;
-   free(tracker);
-  }
- }
-}
-#else
-inline void
-arena_pop_to(Arena *arena, umm used){
- kv_assert(arena->used_ >= used);
- arena_pop(arena, arena->used_ - used);
-}
-#endif
-
-function Temp_Memory
-begin_temp_memory(Arena *arena){
- Temp_Memory temp = {};
- temp.arena  = arena;
-#if ASAN_ON
- temp.saved_tracker = arena->last_allocation;
-#else
- temp.used = arena->used_;
-#endif
- return(temp);
-}
-function void
-end_temp_memory(Temp_Memory temp){
- Arena *arena = temp.arena;
-#if ASAN_ON
- arena_pop_to(arena, temp.saved_tracker);
-#else
- arena_pop_to(arena, temp.used);
-#endif
-}
-function void
-arena_free(Arena *arena){
-#if ASAN_ON
- Arena_ASAN_Tracker *null_tracker = 0;
- arena_pop_to(arena, null_tracker);
-#else
- system_memory_free(arena->base);
-#endif
-}
-function void
-arena_clear2(Arena *arena){
- //NOTE(kv) This call is supposed to be more "light-weight",
- //  it doesn't necessarily involve a system call.
-#if ASAN_ON
- arena_free(arena);
-#else
- arena_pop_to(arena, 0);
-#endif
-}
-//-
-#if 0
-function u8 *
-linalloc_wrap(void *data, usize size, b32 zero=false){
- if(zero){ block_zero(data, size); }
- return((u8 *)data);
-}
-#endif
-function u8 *
-linalloc_wrap_write(void *dest, void *src, usize size){
- block_copy(dest, src, size);
- return((u8 *)dest);
-}
-function u8 *
-push_copy_function(Arena *arena, void *source, usize size, usize alignment,
-                   String location){
- u8 *dest = arena_push(arena, size, alignment, location);
- block_copy(dest, source, size);
- return dest;
-}
-#define push_size(arena,size,alignment, ...) \
-arena_push(arena, size, alignment, filename_linum, ##__VA_ARGS__)
-
-#define push_array(arena,T,count,...) \
-(T*)push_size(arena, sizeof(T)*(count), alignof(T), ##__VA_ARGS__)
-
-#define push_struct(arena,T,...)         push_array(arena,T,1,##__VA_ARGS__)
-#define push_array_zero(arena,T,count)   push_array(arena,T,count,push_zero())
-
-#define push_copy(arena, size, source, alignment) \
-linalloc_wrap_write(push_size(arena, size, alignment), source, size)
-
-#define push_array_copy(arena,T,count,source) \
-(T *)push_copy(arena, count*sizeof(T), source, alignof(T))
-
-#define pop_array(arena,T,count)   arena_pop(arena, sizeof(T)*(count))
-
-template<class T>
-inline T *
-push_value(Arena *arena, const T &value){
- T *pointer = push_struct(arena, T);
- *pointer = value;
- return pointer;
-}
-struct Temp_Memory_Block{
- Temp_Memory temp;
- //-
- Temp_Memory_Block(Temp_Memory temp){
-  this->temp = temp;
- }
- Temp_Memory_Block(Arena *arena){
-  this->temp = begin_temp_memory(arena);
- }
- ~Temp_Memory_Block(){
-  end_temp_memory(this->temp);
- }
- void restore(void){
-  end_temp_memory(this->temp);
- }
-};
 //-
 //NOTE(kv) "defer_block" courtesy of Ryan Fleury.
 #define defer_block(STARTUP, SHUTDOWN) \
 for(int line_unique_var = ((STARTUP), 0); \
 !line_unique_var; \
 line_unique_var++, (SHUTDOWN))
-
 
 ////////////////////////////////
 
@@ -3826,7 +3361,6 @@ line_unique_var++, (SHUTDOWN))
 #endif
 
 //-
-
 
 force_inline v2 V2(v1 value) { return v2{repeat2(value)}; }
 force_inline v3 V3(v1 value) { return v3{repeat3(value)}; }
@@ -4427,7 +3961,7 @@ remove_translation(mat4 result){
  return result;
 }
 
-//~NOTE: array
+//~NOTE: Array
 // NOTE(kv): Can be zero-inited -> GOOD!
 //TODO(kv) Please don't templatize so much code!
 template<class T>
@@ -4436,7 +3970,6 @@ struct arrayof{
  i1 cap;
  b32 fixed_size;
  T *items;
- // NOTE(kv): Optional allocator to grow
  Base_Allocator *allocator;
  
  //-
@@ -4446,18 +3979,21 @@ struct arrayof{
   return items[index];
  }
  inline T& operator[](i32 index){ return get(index); }
- inline T& last() { return items[count-1]; }
+ inline T &last() {
+  kv_assert(count > 0);
+  return items[count-1];
+ }
  
- void set_cap_(i32 new_cap)
+ void set_cap_inner(i32 new_cap, DEBUG_MEMORY_File_Line file_line)
  {// NOTE(kv): Can only grow for now
-  if (new_cap > cap)
+  if(new_cap > cap)
   {
    kv_assert(!fixed_size);
-   Base_Allocator *used_allocator = allocator;;
+   Base_Allocator *used_allocator = allocator;
    // NOTE(kv): get malloc allocator here to avoid the "stale pointer" problem.
    if(not used_allocator) used_allocator = &malloc_base_allocator;
    T *old_items = items;
-   items = cast(T *)base_allocate(used_allocator, new_cap*sizeof(T));
+   items = cast(T *)base_allocate(used_allocator, new_cap*sizeof(T), file_line);
    block_copy(items, old_items, count*sizeof(T));
    // NOTE(kv): to free 100% of the space we allocated with the arena allocator,
    //   We'd have to store the allocated size too. But I don't really care.
@@ -4465,7 +4001,7 @@ struct arrayof{
    cap = new_cap;
   }
  }
- void set_cap_min(i1 cap_min)
+ void set_cap_min(i1 cap_min, memory_file_line_defparams)
  {// TODO(kv): This grow logic is wonky: there are two cases:
   // 1. Natural growth: doubling
   // 2. User-dictated growth: just set the cap to the dictated value
@@ -4476,27 +4012,30 @@ struct arrayof{
    } else {
     new_cap = macro_min(cap_min, 2*cap);
    }
-   set_cap_(new_cap);
+   set_cap_inner(new_cap, file_line);
   }
  }
- void set_count(i32 new_count) {
+ void set_count(i32 new_count, memory_file_line_defparams){
   kv_assert(new_count >= 0);
-  set_cap_min(new_count);
+  set_cap_min(new_count, file_line);
   count = new_count;
   kv_assert(count <= cap);
  }
  
- inline void pop() {
+ inline void pop(){
   set_count(count-1);
  }
- inline T& push(const T& item){
-  set_count(count+1);
-  T &result = last();
-  result = item;
-  return result;
+ inline T *push(memory_file_line_defparams){
+  set_count(count+1, file_line);
+  return items + (count-1);
  }
- inline T& push_first(const T& new_item){
-  set_count(count+1);
+ inline T *push_value(const T& value, memory_file_line_defparams){
+  T *item = push(file_line);
+  *item = value;
+  return item;
+ }
+ inline T& push_first(const T& new_item, memory_file_line_defparams){
+  set_count(count+1, file_line);
   for(i32 index=count-1;
       index >= 1;
       index--){
@@ -4505,14 +4044,9 @@ struct arrayof{
   items[0] = new_item;
   return items[0];
  }
- inline T &push2(){
-  set_count(count+1);
-  return last();
- }
- inline T &push_zero(){
-  set_count(count+1);
-  T &result = last();
-  result = {};
+ inline T *push_zero(memory_file_line_defparams){
+  T *result = push(file_line);
+  *result = {};
   return result;
  }
  
@@ -4615,20 +4149,17 @@ push_unique(arrayof<T> &array, T const&item)
 {
  T *result = 0;
  b32 ok = true;
- 
- for_i1(index,0,array.count) {
-  if (array.items[index] == item) {
+ for_i1(index,0,array.count){
+  if(array.items[index] == item){
    ok = false;
    break;
   }
  }
- 
  if(ok){
-  result = &array.push(item);
+  result = array.push_value(item);
  }
  return result;
 }
-
 //~
 struct Type_Info;
 struct I_Struct_Member{
@@ -4704,9 +4235,6 @@ get_basic_type_size(Basic_Type type)
 }
 
 //~
-
-
-
 force_inline u32
 AtomicAddU32AndReturnOriginal(u32 volatile *Value, u32 Addend)
 {
@@ -4716,79 +4244,36 @@ AtomicAddU32AndReturnOriginal(u32 volatile *Value, u32 Addend)
 }
 //-
 struct Scratch_Block{
- Thread_Context *tctx;
- Arena *arena;
- Temp_Memory temp;
+ Arena arena;
  //-
  //NOTE(kv) Deleting implicit copy constructor: This is why C++ is garbage!
  Scratch_Block(const Scratch_Block&) = delete;
-#if 0
- Scratch_Block();
-#endif
  
  //TODO(kv) Passing in the thread context is deprecated,
  //  because you could grab a "thread_global"
- //NOTE(kv): You need to put the arena name here, it's far too dangerous to ignore the conflict arena.
- //Scratch_Block(struct Thread_Context *tctx);
- Scratch_Block(struct Thread_Context *tctx, Arena *a1);
- Scratch_Block(struct Thread_Context *tctx, Arena *a1, Arena *a2);
- 
  Scratch_Block();
- Scratch_Block(Arena *a1);
- Scratch_Block(Arena *a1, Arena *a2);
  
+ //@deprecated
+ Scratch_Block(Arena *a1);
  Scratch_Block(struct App *app);
- Scratch_Block(struct App *app, Arena *a1);
- Scratch_Block(struct App *app, Arena *a1, Arena *a2);
+ Scratch_Block(struct App *app, Arena *a1);  //@deprecated
  
  ~Scratch_Block();
  
- operator Arena*(){ return this->arena; }
- void restore(void);
+ operator Arena*(){ return &this->arena; }
 };
 //-
 function void
-init_scratch_block(Scratch_Block *scratch, Thread_Context *t,
-                   Arena **conflicts, i32 conflict_count){
- scratch->tctx = t;
- scratch->arena = tctx_reserve_arena(t, conflicts, conflict_count);
- scratch->temp = begin_temp_memory(scratch->arena);
+init_scratch_block(Scratch_Block *scratch){
+ scratch->arena = make_arena();
 }
-//-
-Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1){
- init_scratch_block(this, t, &a1, 1);
-}
-Scratch_Block::Scratch_Block(Thread_Context *t, Arena *a1, Arena *a2){
- Arena *conflicts[] = {a1, a2};
- init_scratch_block(this, t, conflicts, alen(conflicts));
-}
-//NOTE(kv) Temporarily nerfing these one,
-//  since previously we made a "child arena" thing,
-//  which was dumb because you could just use a Temp_Memory_Block for that!
-//  Also I never took into account the arena aliasing thing.
+//NOTE(kv) Hoist the constructor out so that I can share the code
+//  between different constructors like, you know, a regular function.
 Scratch_Block::Scratch_Block(){
- Thread_Context *t = get_thread_context();
- init_scratch_block(this, t, 0, 0);
+ init_scratch_block(this);
 }
-Scratch_Block::Scratch_Block(Arena *conflict){
- Thread_Context *t = get_thread_context();
- init_scratch_block(this, t, &conflict, 1);
-}
-Scratch_Block::Scratch_Block(Arena *a1, Arena *a2){
- Thread_Context *t = get_thread_context();
- Arena *conflicts[] = {a1, a2};
- init_scratch_block(this, t, conflicts, alen(conflicts));
-}
-
 Scratch_Block::~Scratch_Block() {
- end_temp_memory(this->temp);
- if (this->tctx) {
-  tctx_release_arena(this->tctx, this->arena);
- }
-}
-inline void
-Scratch_Block::restore(void){
- end_temp_memory(this->temp);
+ arena_free(&this->arena);
 }
 //-
 function Base_Allocator
@@ -4813,12 +4298,7 @@ enum Container_Flag {
  Container_Sorted  = 0x2,
 };
 typedef u32 Container_Flags;
-
-
-
-
 //-
-
 function void *
 base_reserve__arena(void *userdata, u64 size, u64 *size_out, String location)
 {// @todo_leak_check
@@ -4952,7 +4432,7 @@ create_directory(Stringz path){
 }
 function b32
 create_directory(String path){
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  Stringz pathz = to_stringz(scratch, path);
  return create_directory(pathz);
 }
@@ -5020,6 +4500,7 @@ enum Printer_Type {
  Printer_Type_Generic,
 };
 struct Printer{
+ b32 has_error;
  Printer_Type type;
  b32 print_separator_before_anything_else;
  String separator;
@@ -5204,7 +4685,7 @@ Type_##type,\
 function void
 print_float_trimmed(Printer &p, v1 value){
  //NOTE(kv) there's some delete action going on, so we have to make a temp buffer
- Scratch_Block scratch(get_thread_context(),0);
+ Scratch_Block scratch;
  String result = push_stringf(scratch, "%.4ff", value);
  // NOTE: trim trailing zeros
  while (result.len > 0){
@@ -5429,19 +4910,18 @@ init(bucket_array<T> &array, Arena *arena, i1 bucket_size)
 #endif
 
 //-
-
 struct File_Name_Data {
  String name;
  String data;
 };
-
-#define introspect(...)
+/*#define introspect(...)
 #define meta_tag(...)
 #define meta_added(...)
 #define meta_removed(...)
 #define meta_unserialized
 #define tagged_by(discriminator)
 #define m_variant(tag)  //NOTE(kv) Use to tag union member with the variant it corresponds to
-
-
+*/
+//~
+#undef KV_H_IS_METAPROGRAM
 //~EOF

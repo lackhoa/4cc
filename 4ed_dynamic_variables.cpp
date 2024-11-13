@@ -388,14 +388,15 @@ lifetime_sort_and_dedup_object_set(Lifetime_Object **ptr_array, i1 count){
     for (i1 i = 1; i < count; i += 1, ptr_read += 1){
         if (ptr_read[-1] < ptr_read[0]){
             *ptr_write = *ptr_read;
-            ptr_write += 1;
-        }
-    }
-    return((i1)(ptr_write - ptr_array));
+   ptr_write += 1;
+  }
+ }
+ return((i1)(ptr_write - ptr_array));
 }
 
 function Lifetime_Key*
-lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Object **object_ptr_array, i1 count){
+lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, Lifetime_Object **object_ptr_array, i1 count)
+{
     {
         String key_data = lifetime__key_as_data(object_ptr_array, count);
         Table_Lookup lookup = table_lookup(&lifetime_allocator->key_table, key_data);
@@ -425,8 +426,8 @@ lifetime_get_or_create_intersection_key(Lifetime_Allocator *lifetime_allocator, 
     
     // Initialize
     u64 new_memory_size = sizeof(Lifetime_Object*)*count;
-    String new_memory = base_allocate2(lifetime_allocator->allocator, new_memory_size);
-    new_key->members = (Lifetime_Object**)new_memory.str;
+    u8 *new_memory = base_allocate(lifetime_allocator->allocator, new_memory_size);
+    new_key->members = (Lifetime_Object**)new_memory;
     block_copy_count(new_key->members, object_ptr_array, count);
     new_key->count = count;
     dynamic_workspace_init(lifetime_allocator,
@@ -470,8 +471,8 @@ get_dynamic_object_memory_ptr(Managed_Object_Standard_Header *header){
 function Managed_Object
 managed_object_alloc_managed_memory(Dynamic_Workspace *workspace, i1 item_size, i1 count, void **ptr_out){
     i1 size = item_size*count;
-    String new_memory = base_allocate2(&workspace->heap_wrapper, sizeof(Managed_Memory_Header) + size);
-    void *ptr = new_memory.str;
+    u8 *new_memory = base_allocate(&workspace->heap_wrapper, sizeof(Managed_Memory_Header) + size);
+    void *ptr = new_memory;
     Managed_Memory_Header *header = (Managed_Memory_Header*)ptr;
     header->std_header.type = ManagedObjectType_Memory;
     header->std_header.item_size = item_size;
@@ -486,8 +487,8 @@ managed_object_alloc_managed_memory(Dynamic_Workspace *workspace, i1 item_size, 
 function Managed_Object
 managed_object_alloc_buffer_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id, i1 count, Marker **markers_out){
     i1 size = count*sizeof(Marker);
-    String new_memory = base_allocate2(&workspace->heap_wrapper, size + sizeof(Managed_Buffer_Markers_Header));
-    void *ptr = new_memory.str;
+    u8 *new_memory = base_allocate(&workspace->heap_wrapper, size + sizeof(Managed_Buffer_Markers_Header));
+    void *ptr = new_memory;
     Managed_Buffer_Markers_Header *header = (Managed_Buffer_Markers_Header*)ptr;
     header->std_header.type = ManagedObjectType_Markers;
     header->std_header.item_size = sizeof(Marker);

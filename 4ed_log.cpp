@@ -14,7 +14,7 @@ global Log global_log = {};
 function void
 log_init(void){
     global_log.mutex = system_mutex_make();
-    global_log.arena = make_arena_system();
+    global_log.arena = make_arena();
 }
 
 function b32
@@ -45,7 +45,7 @@ log_flush(Thread_Context *tctx, Models *models){
   output_file_append(tctx, models, models->log_buffer, text);
   result = true;
  }
- arena_clear2(&global_log.arena);
+ arena_clear(&global_log.arena);
  block_zero_struct(&global_log.list);
  
  global_log.disabled_thread_id = 0;

@@ -486,7 +486,7 @@ kv_vim_bindings(App *app)
  BIND(V|MAP,   vim_block_swap,                  (S|Key_Code_O));
  
  BIND(N|MAP, cmd_handle_8_normal,                  Key_Code_8);
- BIND(N|MAP, vim_search_identifier,     SUB_G     ,Key_Code_8);
+ BIND(N|MAP, vim_search_identifier,              C|Key_Code_N);
  BIND(N|MAP, vim_clear_search,          SUB_Leader,Key_Code_Space);
  BIND(N|MAP, vim_start_search_forward,             Key_Code_ForwardSlash);
  BIND(N|MAP, vim_start_search_backward,         (S|Key_Code_ForwardSlash));
@@ -561,11 +561,16 @@ kv_vim_bindings(App *app)
  BIND(N|  MAP,  quick_swap_buffer,        M|Key_Code_Comma);
  BIND(N|0|MAP,  kv_do_t,                    Key_Code_T);
  BIND(N|0|MAP,  kv_do_T,                  S|Key_Code_T);
- // NOTE(kv): remedy
+ // NOTE(kv): debugger
+#if 0
+ BIND(N|0|MAP,  raddbg_add_breakpoint,      Key_Code_F9);
+ BIND(N|0|MAP,  raddbg_stop_debugging,    S|Key_Code_F5);
+ BIND(N|0|MAP,  raddbg_run_to_cursor,     C|Key_Code_F10);
+#else
  BIND(N|0|MAP,  remedy_add_breakpoint,      Key_Code_F9);
- BIND(N|0|MAP,  remedy_start_debugging,     Key_Code_F5);
  BIND(N|0|MAP,  remedy_stop_debugging,    S|Key_Code_F5);
  BIND(N|0|MAP,  remedy_run_to_cursor,     C|Key_Code_F10);
+#endif
  // NOTE(kv): build
  BIND(N|MAP,  kv_build_normal,               M|Key_Code_M);
  BIND(N|MAP,  kv_build_run_only,           C|M|Key_Code_M);

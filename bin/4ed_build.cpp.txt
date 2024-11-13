@@ -423,7 +423,6 @@ FOREIGN "/x86/libfreetype-mac.a"
 function void
 build(Arena *arena, u32 flags, u32 arch, char *code_path, char **code_files, char *out_path, char *out_file, char **defines, char **exports, char **inc_folders)
 {
-  // bookmark: split the build step out for ccache
   Build_Line compile;
   {
     fm_init_build_line(&compile);

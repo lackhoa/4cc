@@ -7,7 +7,6 @@
 function void
 profile_init(Profile_Global_List *list){
  list->mutex = system_mutex_make();
- list->node_arena = make_arena_system();
  list->disable_bits = ProfileEnable_UserBit;
 }
 
@@ -34,13 +33,13 @@ prof__get_thread(Profile_Global_List *list, i1 thread_id){
 function void
 profile_clear(Profile_Global_List *list){
  Mutex_Lock lock(list->mutex);
- for (Arena_Node *node = list->first_arena;
+ /*for (Arena_Node *node = list->first_arena;
       node != 0;
       node = node->next){
   arena_free(&node->arena);
- }
- list->first_arena = 0;
- list->last_arena = 0;
+ }*/
+ /*list->first_arena = 0;
+ list->last_arena = 0;*/
  
  arena_free(&list->node_arena);
  list->first_thread = 0;
@@ -51,17 +50,17 @@ profile_clear(Profile_Global_List *list){
 function void
 profile_thread_flush(Thread_Context *tctx, Profile_Global_List *list)
 {
- if (tctx->prof_record_count > 0){
+ if(tctx->prof_record_count > 0){
   Mutex_Lock lock(list->mutex);
   if (list->disable_bits == 0){
    Profile_Thread* thread = prof__get_thread(list, system_thread_get_id());
    
-   Arena_Node* node = push_array(&list->node_arena, Arena_Node, 1);
+   /*Arena_Node* node = push_array(&list->node_arena, Arena_Node, 1);
    sll_queue_push(list->first_arena, list->last_arena, node);
-   node->arena = tctx->prof_arena;
+   node->arena = tctx->prof_arena;*/
    tctx->prof_arena = make_arena(KB(16));
    
-   if (tctx->prof_first != 0){
+   if(tctx->prof_first != 0){
     if (thread->first_record == 0){
      thread->first_record = tctx->prof_first;
      thread->last_record = tctx->prof_last;
@@ -72,7 +71,7 @@ profile_thread_flush(Thread_Context *tctx, Profile_Global_List *list)
     thread->record_count += tctx->prof_record_count;
    }
   }else{
-   arena_clear2(&tctx->prof_arena);
+   arena_clear(&tctx->prof_arena);
   }
   tctx->prof_record_count = 0;
   tctx->prof_first = 0;

@@ -112,7 +112,7 @@ send_vert_func(Painter &p, String name, v3 pos, i1 linum){
   Modeler &m = *p.modeler;
   Vertex_Ref existing = get_vertex_by_linum(m, linum);
   Vertex_Data *vertex = (existing.index.v ? existing.vertex :
-                         &m.vertices.push_zero());
+                         m.vertices.push_zero());
   vertex->name    = name;
   vertex->pos     = pos;
   vertex->bone_id = current_bone(p)->id;
@@ -129,7 +129,7 @@ send_bez_func(String name, Curve_Type type, const Curve_Union &data,
   if(is_left(p)){
    Curve_Ref existing = get_curve_by_linum(m, linum);
    Curve_Data *curve = (existing.index.v ? existing.curve :
-                        &m.curves.push_zero());
+                        m.curves.push_zero());
    curve->cparams  = current_line_cparams_index();
    kv_assert(curve->cparams.v >= 0 and
              curve->cparams.v <  m.line_cparams.count);

@@ -65,13 +65,15 @@
 #include "win32_gl.h"
 
 #include "4ed_app_target.cpp"
+#include "ad_debug.h"
+#include "ad_debug.cpp"
 
 ////////////////////////////////
 
 #define FPS 60
-global_const v1 frame_seconds  = (1.f / v1(FPS));
-global_const v1 frame_useconds = v1(1e6 * frame_seconds);
-global_const v1 frame_nseconds = v1(1e9 * frame_seconds);
+global const v1 frame_seconds  = (1.f / v1(FPS));
+global const v1 frame_useconds = v1(1e6 * frame_seconds);
+global const v1 frame_nseconds = v1(1e9 * frame_seconds);
 
 global b32 log_os_enabled = false;
 #define log_os(...) \
@@ -400,7 +402,7 @@ system_set_key_mode_sig(){
 
 function String8
 win32_read_clipboard_contents(Thread_Context *tctx, Arena *arena) {
- Scratch_Block scratch(tctx, arena);
+ Scratch_Block scratch;
  String8 result = {};
  if (OpenClipboard(win32vars.window_handles[0])) {
   b32 got_result = false;
@@ -477,7 +479,7 @@ system_get_clipboard_sig()
 function
 system_post_clipboard_sig() {
  Arena *arena = &win32vars.clip_post_arena;
- arena_clear2(arena);
+ arena_clear(arena);
  win32vars.clip_post.str = push_array(arena, u8, str.size + 1);
  if (win32vars.clip_post.str != 0)
  {
@@ -1177,7 +1179,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    breakhere;
   }
   
-  Scratch_Block scratch(win32vars.tctx,0);
+  Scratch_Block scratch;
   
   i32 window_index = 0;
   for_i32(index,0,WINDOW_COUNT) {
@@ -1782,6 +1784,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  InitializeCriticalSection(&memory_tracker_mutex);
  thread_context_init(&global_thread_context, ThreadKind_Main,
                      get_default_allocator(), get_default_allocator());
+ memory_debug_state.mutex = system_mutex_make();
  
  win32vars = {};
  win32vars.tctx = &global_thread_context;
@@ -1799,9 +1802,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  log_os("Setting up memory management...\n");
  
  // NOTE(allen): memory
- win32vars.frame_arena = make_arena_system();
+ win32vars.frame_arena = make_arena();
  // TODO(allen): *arena;
- render_state.arena = make_arena_system(KB(256));
+ render_state.arena = make_arena(KB(256));
  
  win32vars.cursor_show = MouseCursorShow_Always;
  win32vars.prev_cursor_show = MouseCursorShow_Always;
@@ -1838,7 +1841,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  Plat_Settings plat_settings = {};
  Models *base_ptr = 0;
  {
-  Scratch_Block scratch(win32vars.tctx,0);
+  Scratch_Block scratch;
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
   string_mod_replace_character(curdir, '\\', '/');
   char **files = 0;
@@ -1960,7 +1963,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  //~App init
  log_os("Initializing 4ed core...\n");
  {
-  Scratch_Block scratch(win32vars.tctx,0);
+  Scratch_Block scratch;
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
   string_mod_replace_character(curdir, '\\', '/');
   app_init(win32vars.tctx, base_ptr, curdir);
@@ -1997,10 +2000,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  v1 work_seconds = 0.f;
  u32 work_cycles = 0;
  u32 hot_prim_id = 0;
- //bool show_demo_window = true;
- while ( keep_running )
+ while(keep_running)
  {//-NOTE The main loop
-  arena_clear2(&win32vars.frame_arena);
+  arena_clear(&win32vars.frame_arena);
   block_zero_struct(&win32vars.input_chunk.trans);
   win32vars.active_key_stroke = 0;
   win32vars.active_text_input = 0;
@@ -2033,12 +2035,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     
     if (got_message)
     {
-     if (msg.message == WM_QUIT)
-     {
+     if (msg.message == WM_QUIT) {
       keep_running = false;
-     }
-     else
-     {
+     } else {
       b32 treat_normally = true;
       if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN)
       {
@@ -2129,7 +2128,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   // TODO(allen): CROSS REFERENCE WITH LINUX SPECIAL CODE "TIC898989"
   Win32_Input_Chunk &input_chunk = win32vars.input_chunk;
   
-  Scratch_Block scratch(win32vars.tctx,0);
+  Scratch_Block scratch;
   Application_Step_Input input = {};
   
   input.first_step = win32vars.first;
@@ -2170,7 +2169,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32vars.clip_post.size = 0;
   
   // NOTE(allen): Application Core Update
-  win32_imgui_new_frame();  // NOTE(kv): this new frame must be after input processing
+  win32_imgui_new_frame();  // NOTE(kv): This new frame must be after input processing
+  {
+   bool open = true;
+   ImGui::Begin("test window from win32_4ed.cpp");
+   ImGui::SmallButton("small button from the win32_ed.cpp");
+   ImGui::End();
+  }
   Application_Step_Result step_result = app_step(win32vars.tctx, base_ptr, &input);
   
   // NOTE(allen): Finish the Loop
@@ -2226,9 +2231,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     ogl_render(input.mouse.p, window_index);
     
     if (window_index == 0) {
-     if (auto game = get_game_code()) {
+     if(Game_API *game = get_game_code()){
       // NOTE: imgui render
-      auto draw_data = ImGui::GetDrawData();
+      ImDrawData* draw_data = ImGui::GetDrawData();
       ImGui_ImplOpenGL3_RenderDrawData(draw_data);
      }
     }

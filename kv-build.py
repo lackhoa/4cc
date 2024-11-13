@@ -17,30 +17,33 @@ parser.add_argument('--release', action="store_true")
 args = parser.parse_args()
 if args.release:
     args.full = True
-run_only     = args.action == 'run'
+run_only = args.action == 'run'
 #hotload_game = "driver.kc" in args.file  # @build_filename_hack
 hotload_game = False
 
-# NOTE: Configuration begin #########################
+################ NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-meta_build_level  = 0
-game_build_level  = 1
-ed_build_level    = 0
-imgui_build_level = 2
-lexer_build_level = 2
+working_on_metaprogram = 1
+working_on_editor      = 1
+working_on_game    = 0
+imgui_build_level   = 2
 ed_meta_build_level = 1
-ed_optimized = True;
+lexer_build_level   = 2
 #
-asan_on = 1
+asan_on = 0
 COMPILE_GAME_WITH_MSVC = 1
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
 AD_PROFILE = 0
 KV_SLOW    = 0
-STOP_DEBUGGING_BEFORE_BUILD = 0  #NOTE(kv) uncheck when you wanna debug the reload itself
+STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the reload itself
+OPTIMIZE_EDITOR = 0
 
-# Configuration end ############################
+############## Configuration end ############################
+if args.release:
+    working_on_editor = 1
+
 default_build_level = 0
 
 pjoin = os.path.join
@@ -51,7 +54,8 @@ def meets_level(level):
 
 DEBUG_MODE = 0 if args.release else 1
 build_level = default_build_level
-build_level = args.full
+if args.full:
+    build_level = 1
 SHIP_MODE = 1-DEBUG_MODE
 if SHIP_MODE:
     asan_on = 0
@@ -70,7 +74,6 @@ OS_MAC = int(not OS_WINDOWS)
 DOT_DLL=".dll" if OS_WINDOWS else ".so"
 DOT_EXE='.exe' if OS_WINDOWS else ''
 DOT_OBJ='.obj' if OS_WINDOWS else '.o'
-remedybg = f"remedybg.exe"
 CPP_VERSION      = "-std:c++20"
 
 warning_list = [
@@ -78,7 +81,8 @@ warning_list = [
     "-Wimplicit-int-float-conversion",
     "-Wshadow",
     "-Wno-unused-const-variable",
-    #"-Wno-unused-variable",
+    "-Wno-unused-variable",
+    "-Wno-unused-label",
     "-Wno-unused-but-set-variable",
     "-Wno-write-strings",
     "-Wno-null-dereference",
@@ -94,7 +98,6 @@ warning_list = [
     "-Wno-deprecated-anon-enum-enum-conversion",
 ]
 CLANG_WARNINGS = ' '.join(warning_list)
-
 
 def mkdir_p(path):
     os.makedirs(path, exist_ok=True)
@@ -136,6 +139,9 @@ def symlink_force(src, dst):
     mkdir_p( os.path.dirname(dst) )
     os.symlink(src, dst)
 
+def replace_file(source_path, dest_path):
+    os.replace(source_path, dest_path)
+
 script_failed = False
 
 def run(command, exit_on_failure=True, update_env={}):
@@ -166,7 +172,7 @@ def run(command, exit_on_failure=True, update_env={}):
         global script_failed
         script_failed = True
         if exit_on_failure:
-            exit(1)
+            raise Exception("command failed")
 
     return process
 
@@ -234,27 +240,31 @@ class Compiler(Enum):
     Cl    = 2
 
 # NOTE: parameters are just suggestions
-def run_compiler(compiler, input_files, output_file, debug_mode=True,
+def run_compiler(compiler, input_files, output_file,
+                 debug_symbol=True, optimized=False,
                  compiler_flags="", linker_flags="",
                  compile_only=False, link_only=False,
-                 no_ccache=False, exit_on_failure=True,
-                 no_warnings=False, optimized=False):
+                 use_ccache=False, exit_on_failure=True,
+                 no_warnings=False):
     global asan_on
     # NOTE: if asan is on then you have to use Cl
     if asan_on:
+        # NOTE(kv) If you turn asan on, then we're debugging EVERYTHING
         compiler = Compiler.Cl
-    if not debug_mode:
+        debug_symbol = True
+        optimized = False
+
+    if optimized:
+        debug_symbol = False
+
+    if not debug_symbol:
         # No reason to use clang if not for easier debugging
         compiler = Compiler.Cl
-        no_ccache = True
-    if optimized:
-        compiler = compiler.Cl
+        use_ccache = False
 
     is_clang = compiler == Compiler.ClangCl
     is_msvc  = compiler == Compiler.Cl
     assert(is_clang or is_msvc)
-    if asan_on:
-        debug_mode = True
 
     compiler_exe = "clang-cl" if is_clang else "cl"
     if is_clang:
@@ -262,17 +272,17 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
         compiler_flags += " -DCOMPILER_LLVM"
 
     debug_flag = ""
-    if debug_mode:
+    if debug_symbol:
         debug_flag = "-Zi"  # NOTE "-Zi" means that you produce a separate pdb fie
     compiler_flags += f" {debug_flag}"
 
-    optimization = "-Od" if debug_mode else "-O2"
+    optimization = "-Od"
     if optimized:
         optimization = "-O2"
     compiler_flags += f" {optimization}"
 
     maybe_ccache = "ccache"
-    if no_ccache or (not compile_only) or asan_on:
+    if (not use_ccache) or (not compile_only) or asan_on:
         maybe_ccache = ""
 
     if output_file != "":
@@ -287,7 +297,7 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
     asan_flag = "-fsanitize=address" if asan_on else ""
 
     if not compile_only:
-        if debug_mode:
+        if debug_symbol:
             linker_flags += " -DEBUG"
 
     if asan_on:
@@ -305,7 +315,7 @@ def run_compiler(compiler, input_files, output_file, debug_mode=True,
 
     if is_msvc:
         unused_var = "-wd4189"
-        warnings = " -wd4200 -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
+        warnings = f" -wd4200 -wd4146 {unused_var} -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
     if is_clang:
         warnings = CLANG_WARNINGS
     if not no_warnings:
@@ -332,23 +342,22 @@ def autogen():
         
         if meets_level(lexer_build_level):
             print('Lexer: Generate (one-time thing)')
-            LEXER_GEN = f"skm_lexer_gen{DOT_EXE}"
-            run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), LEXER_GEN, 
+            #TODO(kv) There should just be one program to generate all the lexer things!
+            run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",
                          compiler_flags=compiler_flags)
             #
             print('running lexer generator')
             mkdir_p(f'{CODE_KV}/generated')
-            run(f'{LEXER_GEN} {CODE_KV}/generated')
+            run(f'skm_lexer_gen.exe {CODE_KV}/generated')
             run_compiler(Compiler.ClangCl, pjoin(CUSTOM,"languages",'4coder_cpp_lexer_gen.cpp'), "cpp_lexer_gen.exe",
                          compiler_flags=compiler_flags)
             run(f'cpp_lexer_gen.exe {CUSTOM}/generated')
             
-        print('4coder API parser/generator')
-        if meets_level(meta_build_level):
-            run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "",
-                         compiler_flags=compiler_flags, compile_only=True)
-            run_compiler(Compiler.ClangCl, f"meta_main.obj", "ad_meta.exe",
-                         link_only=True)
+        print('Metaprogram')
+        if True:
+            run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
+                         compiler_flags=compiler_flags,
+                         debug_symbol = working_on_metaprogram)
             run(f"ad_meta {CODE}")
 
         if meets_level(ed_meta_build_level):
@@ -377,7 +386,6 @@ def build_game():
             MSVC_COMPILE_FLAGS = f"{INCLUDES} {SYMBOLS}"
             # NOTE: Compile the driver and the framework
             run_compiler(cl_or_clang_cl, f'{GAME_MAIN} {space_join(imgui_object_files)}', f"game{DOT_DLL}",
-                         debug_mode=(not FRAMEWORK_OPTIMIZE_ON),
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",
                          linker_flags="-DLL -export:game_api_export")
 
@@ -393,7 +401,8 @@ try:
 
     if run_only:
         if OS_WINDOWS:
-            run(f"{remedybg} start-debugging")
+            run(f"remedybg start-debugging")
+            #run(f"raddbg --ipc run")
         else:
             run(pjoin(OUTDIR, f'4ed{DOT_EXE}'))
     else:
@@ -401,7 +410,8 @@ try:
 
         # NOTE(kv): remedy stop debugging
         if OS_WINDOWS and STOP_DEBUGGING_BEFORE_BUILD:
-            run(f"{remedybg} stop-debugging")
+            run(f"remedybg stop-debugging")
+            #run(f"raddbg --ipc kill_all")
 
         INCLUDES=f'-I{CODE} -I{CODE}/libs -I{CODE}/libs/imgui -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/generated -I{CODE}/game/generated'
         #
@@ -441,27 +451,27 @@ try:
                 for file in (imgui_files + imgui_backend_files):
                     # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
                     run_compiler(Compiler.ClangCl, file, "",
-                                 debug_mode=DEBUG_MODE,
+                                 debug_symbol=DEBUG_MODE,
                                  compiler_flags=f"{imgui_config} -I{imgui_dir} -I{CODE}",
                                  compile_only=True, no_warnings=True)
 
-            if meets_level(ed_build_level):
+            if working_on_editor:
                 print('========Producing 4ed========')
-                ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
-                run_compiler(Compiler.ClangCl, PLATFORM_CPP,
-                             ed_obj, debug_mode=DEBUG_MODE,
-                             compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                             compile_only=True, no_ccache=True)
-    
-                # NOTE(kv): Linking 4coder
-                USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
+                if SHIP_MODE:
+                    replace_file(f"{BINARY_NAME}{DOT_EXE}", f"{BINARY_NAME}.bkp{DOT_EXE}")
+                #ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
                 imgui_backend_object_files = [f"imgui_impl_win32{DOT_OBJ}", f"imgui_impl_opengl3{DOT_OBJ}"]
-                run_compiler(Compiler.ClangCl,
-                             f"{ed_obj} {space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}",
-                             f"{BINARY_NAME}{DOT_EXE}", debug_mode=DEBUG_MODE,
+                imgui_objs = f"{space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}"
+                run_compiler(Compiler.ClangCl, f"{PLATFORM_CPP} {imgui_objs}",
+                             f"{BINARY_NAME}{DOT_EXE}", debug_symbol=DEBUG_MODE,
+                             compiler_flags=f"{INCLUDES} {SYMBOLS}",
                              linker_flags=f"{LINKED_LIBS}",
-                             link_only=True,
+                             optimized=OPTIMIZE_EDITOR or SHIP_MODE,
                              exit_on_failure=False)
+                #USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
+                # NOTE Rollback
+                if script_failed and SHIP_MODE:
+                    replace_file(f"{BINARY_NAME}.bkp{DOT_EXE}", f"{BINARY_NAME}{DOT_EXE}")
 
             # NOTE: shipping shaders
             if SHIP_MODE:
@@ -469,7 +479,7 @@ try:
                 mkdir_p(OPENGL_OUTDIR)
                 for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
                     shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
-        if meets_level(game_build_level) and (not args.release):
+        if working_on_game and (not args.release):
             build_game()
 
         if SHIP_MODE:

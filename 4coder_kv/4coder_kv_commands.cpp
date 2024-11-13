@@ -1105,7 +1105,7 @@ CUSTOM_DOC("configure your editor!")
     set_buffer_named(app, strlit("~/4ed/code/4coder_kv/4coder_kv.cpp"));
 }
 
-// todo: We don't wanna bind to a buffer, maybe?
+// TODO(kv): We don't wanna bind to a buffer for some command.
 function void kv_system_command(App *app, String8 cmd)
 {
  GET_VIEW_AND_BUFFER;
@@ -1114,41 +1114,59 @@ function void kv_system_command(App *app, String8 cmd)
  exec_system_command(app, global_bottom_view, standard_build_compilation_buffer_identifier,
                      dir, cmd, standard_build_exec_flags);
 }
-
-VIM_COMMAND_SIG(remedy_add_breakpoint)
-{
+//~
+function void
+remedy_add_breakpoint(App *app) {
  GET_VIEW_AND_BUFFER;
  Scratch_Block temp(app);
- String8 filename = push_buffer_filepath(app, temp, buffer);
+ String filename = push_buffer_filepath(app, temp, buffer);
  i64 linum = get_current_line_number(app);
- String8 cmd = push_stringfz(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
+ String cmd = push_stringfz(temp, "remedybg.exe add-breakpoint-at-file %.*s %lld",
                              string_expand(filename), linum);
  kv_system_command(app, cmd);
 }
-
-VIM_COMMAND_SIG(remedy_start_debugging)
-{
-    String8 cmd = str8_lit("remedybg.exe start-debugging");
-    kv_system_command(app, cmd);
+function void
+remedy_stop_debugging(App *app) {
+ String cmd = str8_lit("remedybg.exe stop-debugging");
+ kv_system_command(app, cmd);
 }
-
-VIM_COMMAND_SIG(remedy_stop_debugging)
-{
-    String8 cmd = str8_lit("remedybg.exe stop-debugging");
-    kv_system_command(app, cmd);
+function void
+remedy_run_to_cursor(App *app) {
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block temp(app);
+ String filename = push_buffer_filepath(app, temp, buffer);
+ i64 linum = get_current_line_number(app);
+ String cmd = push_stringfz(temp, "remedybg.exe run-to-cursor %.*s %lld",
+                            string_expand(filename), linum);
+ kv_system_command(app, cmd);
 }
-
-VIM_COMMAND_SIG(remedy_run_to_cursor)
-{
-    GET_VIEW_AND_BUFFER;
-    Scratch_Block temp(app);
-    String8 filename = push_buffer_filepath(app, temp, buffer);
-    i64 linum = get_current_line_number(app);
-    String8 cmd = push_stringfz(temp, "remedybg.exe run-to-cursor %.*s %lld",
-                               string_expand(filename), linum);
-    kv_system_command(app, cmd);
+//-
+function void
+raddbg_add_breakpoint(App *app) {
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block temp(app);
+ String filename = push_buffer_filepath(app, temp, buffer);
+ i64 linum = get_current_line_number(app);
+ String cmd = push_stringfz(temp, "raddbg --ipc add_breakpoint %.*s:%lld",
+                            string_expand(filename), linum);
+ kv_system_command(app, cmd);
 }
-
+function void
+raddbg_stop_debugging(App *app) {
+ String cmd = str8_lit("raddbg --ipc kill_all");
+ kv_system_command(app, cmd);
+}
+function void
+raddbg_run_to_cursor(App *app) {
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block temp(app);
+ String filename = push_buffer_filepath(app, temp, buffer);
+ i64 linum = get_current_line_number(app);
+ String cmd = push_stringfz(temp, "raddbg --ipc run_to_cursor %.*s:%lld",
+                            string_expand(filename), linum);
+ kv_system_command(app, cmd);
+}
+//~
 function void
 clipboard_pop_command(App *app)
 {
@@ -1454,7 +1472,7 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
  Scratch_Block scratch(app);
  GET_VIEW_AND_BUFFER;
  i64 curpos = view_get_cursor_pos(app, view);
- //nono uh oh, this wouldn't work if the parameter is a group?
+ //TODO(kv) Uh oh, this wouldn't work if the parameter is a group?
  Range_i64 nest = kv_find_current_nest(app, buffer, curpos);
  if(nest.max){
   Token_Iterator_Array token_it = get_token_it_at_pos(app, buffer, nest.min);
@@ -1469,11 +1487,11 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
     if(token->pos >= nest.max){
      break;
     }else{
-     Range_i64 &item = list.push_zero();
-     item.min = token->pos;
+     Range_i64 *item = list.push_zero();
+     item->min = token->pos;
      ep_eat_until_char(p, strlit(",)]}"));
      if(Token *end_token = ep_get_token(p)){
-      item.max = end_token->pos;
+      item->max = end_token->pos;
      }
      ep_eat_token(p);
     }

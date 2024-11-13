@@ -23,43 +23,43 @@ struct Table_u64_u64{
 };
 
 struct Table_u32_u16{
-    Base_Allocator *allocator;
-    void *memory;
-    u32 *keys;
-    u16 *vals;
-    u32 slot_count;
-    u32 used_count;
-    u32 dirty_count;
+ Base_Allocator *allocator;
+ void *memory;
+ u32 *keys;
+ u16 *vals;
+ u32 slot_count;
+ u32 used_count;
+ u32 dirty_count;
 };
 
 struct Table_Data_u64{
-    Base_Allocator *allocator;
-    void *memory;
-    u64 *hashes;
-    String *keys;
-    u64 *vals;
-    u32 slot_count;
-    u32 used_count;
-    u32 dirty_count;
+ Base_Allocator *allocator;
+ void *memory;
+ u64 *hashes;
+ String *keys;
+ u64 *vals;
+ u32 slot_count;
+ u32 used_count;
+ u32 dirty_count;
 };
 
 struct Table_u64_Data{
-    Base_Allocator *allocator;
-    void *memory;
-    u64 *keys;
-    String *vals;
-    u32 slot_count;
-    u32 used_count;
-    u32 dirty_count;
+ Base_Allocator *allocator;
+ void *memory;
+ u64 *keys;
+ String *vals;
+ u32 slot_count;
+ u32 used_count;
+ u32 dirty_count;
 };
 
 struct Table_Data_Data{
-    Base_Allocator *allocator;
-    void *memory;
-    u64 *hashes;
-    String *keys;
-    String *vals;
-    u32 slot_count;
-    u32 used_count;
-    u32 dirty_count;
+ Base_Allocator *allocator;
+ void *memory;
+ u64 *hashes;
+ String *keys;
+ String *vals;
+ u32 slot_count;
+ u32 used_count;
+ u32 dirty_count;
 };

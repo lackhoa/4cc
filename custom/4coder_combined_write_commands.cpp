@@ -73,36 +73,6 @@ CUSTOM_DOC("Surround the range between the cursor and mark with an '#if 0' and a
  place_begin_and_end_on_own_lines(app, "#if 0", "#else\n#endif");
 }
 
-CUSTOM_COMMAND_SIG(write_todo)
-CUSTOM_DOC("At the cursor, insert a '// TODO' comment, includes user name if it was specified in config.4coder.")
-{
-    write_named_comment_string(app, "TODO");
-}
-
-CUSTOM_COMMAND_SIG(write_hack)
-CUSTOM_DOC("At the cursor, insert a '// HACK' comment, includes user name if it was specified in config.4coder.")
-{
-    write_named_comment_string(app, "HACK");
-}
-
-CUSTOM_COMMAND_SIG(write_note)
-CUSTOM_DOC("At the cursor, insert a '// NOTE' comment, includes user name if it was specified in config.4coder.")
-{
-    write_named_comment_string(app, "NOTE");
-}
-
-CUSTOM_COMMAND_SIG(write_block)
-CUSTOM_DOC("At the cursor, insert a block comment.")
-{
-    place_begin_and_end_on_own_lines(app, "/* ", " */");
-}
-
-CUSTOM_COMMAND_SIG(write_zero_struct)
-CUSTOM_DOC("At the cursor, insert a ' = {};'.")
-{
-    write_string(app, strlit(" = {};"));
-}
-
 function i64
 get_start_of_line_at_cursor(App *app, View_ID view, Buffer_ID buffer){
     i64 pos = view_get_cursor_pos(app, view);

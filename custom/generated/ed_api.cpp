@@ -4,6 +4,8 @@
 #if defined(STATIC_LINK_API)
 function void
 ed_api_fill_vtable(API_VTable_ed *vtable){
+vtable->get_arena_chunk = get_arena_chunk;
+vtable->free_arena_chunk = free_arena_chunk;
 vtable->buffer_replace_range = buffer_replace_range;
 vtable->push_buffer_base_name = push_buffer_base_name;
 vtable->get_active_view = get_active_view;
@@ -44,12 +46,18 @@ vtable->token_it_inc = token_it_inc;
 vtable->token_it_dec = token_it_dec;
 vtable->set_y_up = set_y_up;
 vtable->draw_new_group = draw_new_group;
+vtable->DEBUG_register_arena_chunk = DEBUG_register_arena_chunk;
+vtable->DEBUG_free_arena_chunk = DEBUG_free_arena_chunk;
+vtable->DEBUG_arena_chunk_push = DEBUG_arena_chunk_push;
+vtable->DEBUG_arena_chunk_truncate = DEBUG_arena_chunk_truncate;
 }
 #undef STATIC_LINK_API
 #endif
 #if defined(DYNAMIC_LINK_API)
 function void
 ed_api_read_vtable(API_VTable_ed *vtable){
+get_arena_chunk = vtable->get_arena_chunk;
+free_arena_chunk = vtable->free_arena_chunk;
 buffer_replace_range = vtable->buffer_replace_range;
 push_buffer_base_name = vtable->push_buffer_base_name;
 get_active_view = vtable->get_active_view;
@@ -90,6 +98,10 @@ token_it_inc = vtable->token_it_inc;
 token_it_dec = vtable->token_it_dec;
 set_y_up = vtable->set_y_up;
 draw_new_group = vtable->draw_new_group;
+DEBUG_register_arena_chunk = vtable->DEBUG_register_arena_chunk;
+DEBUG_free_arena_chunk = vtable->DEBUG_free_arena_chunk;
+DEBUG_arena_chunk_push = vtable->DEBUG_arena_chunk_push;
+DEBUG_arena_chunk_truncate = vtable->DEBUG_arena_chunk_truncate;
 }
 #undef DYNAMIC_LINK_API
 #endif

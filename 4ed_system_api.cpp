@@ -263,9 +263,8 @@ make_system_api(Arena *arena){
  }
  
  {
-  API_Call *call = api_call(arena, api, "memory_reserve", "void *");
+  API_Call *call = api_call(arena, api, "memory_reserve", "u8 *");
   api_param(arena, call, "usize",  "wanted_size");
-  api_param(arena, call, "String", "location");
  }
  {
   API_Call *call = api_call(arena, api, "memory_free", "void");

@@ -12,12 +12,10 @@ slider_value_size(Fui_Slider *slider) {
 global Fui_Slider *fui_active_slider;
 global String      fui_active_slider_string;
 
-PACK_BEGIN
 struct Line_Map_Entry {
- u32 linum;
- u32 offset;  // NOTE: We only have 65k of data, but can expand by enforcing alignment.
-}
-PACK_END
+ i32 linum;
+ Fui_Slider *slider;
+};
 //
 global Line_Map_Entry *line_map;
 //global Arena *slider_store;
@@ -25,14 +23,11 @@ global Arena *dll_arena;
 
 //-The Slow Path
 
-PACK_BEGIN
-struct Slow_Line_Map_Entry
-{
+struct Slow_Line_Map_Entry{
  String file;
- u16 linum;
- u32 offset;
-}
-PACK_END;
+ i32 linum;
+ Fui_Slider *slider;
+};
 
 struct Slow_Line_Map{
  i32 cap;
@@ -46,13 +41,6 @@ function fui_is_active_return
 fui_is_active(fui_is_active_params) {
  return fui_active_slider != 0;
 }
-
-inline u8 *
-get_slider_store_base()
-{// @fui_ensure_arena_cursor_exists
- return dll_arena->cursor->base;
-}
-
 //~
 //@GetSlider
 void *
@@ -62,20 +50,19 @@ fast_fval_inner(Basic_Type type, void *init_value,
  void *result = 0;
  u64 cycle_start = gb_rdtsc();
  
- u8 *store_base = get_slider_store_base();
- u32 offset = line_map[linum].offset;
- Fui_Slider *slider;
+ Fui_Slider *slider = line_map[linum].slider;
  // @fui_ensure_nonzero_offset
- if( offset != 0 )
+ if( slider != 0 )
  {
-  slider = cast(Fui_Slider *)(store_base + offset);
   result = slider+1;
  }
  else
  {//NOTE: Not found -> add new slider to the store
   i32 value_size = get_basic_type_size(type);
-  slider = cast(Fui_Slider *)(push_size(dll_arena, sizeof(Fui_Slider)+value_size));
-  line_map[linum].offset = cast_u64_to_u32(cast(u8 *)(slider) - store_base);
+  slider = cast(Fui_Slider *)(push_size(dll_arena,
+                                        sizeof(Fui_Slider)+value_size,
+                                        alignof(Fui_Slider)));
+  line_map[linum].slider = slider;
   
   b32 is_vertex = (options.flags & Slider_Vertex);
   b32 is_vector = (options.flags & Slider_Vector);
@@ -109,7 +96,7 @@ slow_fval_inner(Basic_Type type, void *init_value,
  u64 cycle_start = gb_rdtsc();
  auto &map   = slow_line_map;
  auto &store = dll_arena;
- u32 offset = 0;
+ Fui_Slider *slider = 0;
  
  String file = SCu8(file_c);
  for_i32(index,0,map.count)
@@ -120,30 +107,28 @@ slow_fval_inner(Basic_Type type, void *init_value,
   if (entry.file  == file &&
       entry.linum == linum)
   {
-   offset = entry.offset;
+   slider = entry.slider;
    break;
   }
  }
  
- u8 *store_base = get_slider_store_base();
- Fui_Slider *slider;
- if( offset != 0 )  // @fui_ensure_nonzero_offset
+ if(slider)
  {
-  slider = cast(Fui_Slider *)(store_base + offset);
   result = slider+1;
  }
  else
- {//NOTE: Not found
+ {//-Not found
   i32 value_size = get_basic_type_size(type);
-  u8 *slider_u8 = push_array(store, u8, sizeof(Fui_Slider)+value_size);
+  slider = cast(Fui_Slider*)push_size(store,
+                                      sizeof(Fui_Slider) + value_size,
+                                      alignof(Fui_Slider));
   map.map[map.count++] = Slow_Line_Map_Entry{
    .file   = file,
-   .linum  = cast(u16)(linum),
-   .offset = cast_u64_to_u32(slider_u8 - store_base),
+   .linum  = linum,
+   .slider = slider,
   };
   kv_assert(map.count < map.cap);
   
-  slider = cast(Fui_Slider *)slider_u8;
   *slider = Fui_Slider{
    .type    = type, 
    .options = options,
@@ -169,11 +154,7 @@ function Fui_Slider *
 fui_get_slider_external(String file, i32 linum){
  Fui_Slider *slider = 0;
  if(filename_match(file, DRIVER_FILE_NAME)){
-  u32 offset = line_map[linum].offset;
-  if(offset != 0){
-   u8 *store_base = get_slider_store_base();
-   slider = cast(Fui_Slider *)(store_base + offset);
-  }
+  slider = line_map[linum].slider;
  }else{
   auto &map = slow_line_map;
   u32 offset = 0;
@@ -181,13 +162,9 @@ fui_get_slider_external(String file, i32 linum){
    Slow_Line_Map_Entry entry = map.map[index];
    if(filename_match(entry.file, file) &&
       entry.linum == linum){
-    offset = entry.offset;
+    slider = entry.slider;
     break;
    }
-  }
-  if(offset != 0){
-   u8 *store_base = get_slider_store_base();
-   slider = cast(Fui_Slider *)(store_base + offset);
   }
  }
  return slider;

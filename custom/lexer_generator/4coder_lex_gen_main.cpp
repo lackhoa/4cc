@@ -10,16 +10,15 @@
 
 #include "kv.h"
 #include "4ed_base.h"
-// #include "4coder_base_types.h"
 #include "4coder_table.h"
 #include "4coder_token.h"
 #include "pcg_basic.h"
 
-// #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
 #include "4coder_hash_functions.cpp"
 #include "4coder_table.cpp"
+#include "meta_os.cpp"
 #include "pcg_basic.c"
 
 #define LANG_NAME_LOWER_STR stringify(LANG_NAME_LOWER)
@@ -28,11 +27,6 @@
 ////////////////////////////////
 
 // NOTE(allen): PRIMARY MODEL
-
-// TODO(kv): revisit
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction" 
-#pragma clang diagnostic ignored "-Wgnu-null-pointer-arithmetic"
 
 struct Token_Kind_Node{
     Token_Kind_Node *next;
@@ -419,7 +413,7 @@ struct Character_Set{
 function void
 smi_primary_init(Base_Allocator *allocator, Lexer_Primary_Context *ctx){
     ctx->allocator = allocator;
-    ctx->arena = make_arena(allocator);
+    ctx->arena = make_arena();
     ctx->model.root = 0;
     ctx->tokens.name_to_ptr = make_table_Data_u64(allocator, 400);
 }
@@ -720,8 +714,6 @@ smi_field_set_subtract(Arena *arena, Field_Set a, Field_Set b){
     return(result);
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare"
 function Field_Set
 smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
     Field_Set result = {};
@@ -741,12 +733,12 @@ smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
                 for (Field_Pin *pin = new_list->first;
                      pin != 0;
                      pin = pin->next){
-                    if (pin->flag == pin->flag){
-                        if (pin->value != pin->value){
+                    /*if(pin->flag == pin->flag)*/{
+                        /*if(pin->value != pin->value){
                             end_temp_memory(restore_point);
                             has_conflicts = true;
                             goto double_break;
-                        }
+                        }*/
                         is_duplicate = true;
                         break;
                     }
@@ -767,7 +759,6 @@ smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
     }
     return(result);
 }
-#pragma clang diagnostic pop
 
 function b32
 smi_field_set_match(Arena *scratch, Field_Set a, Field_Set b){
@@ -2015,104 +2006,104 @@ opt_copy_emit_rule(Arena *arena, Emit_Rule *emit, Table_u64_u64 old_to_new){
     for (Emit_Handler *handler = emit->first;
          handler != 0;
          handler = handler->next){
-        Emit_Handler *new_handler = push_array_copy(arena, Emit_Handler, 1, handler);
-        sll_queue_push(new_emit->first, new_emit->last, new_handler);
-        new_handler->flag_check = opt_flag_fixup(handler->flag_check, old_to_new);
-    }
-    return(new_emit);
+  Emit_Handler *new_handler = push_array_copy(arena, Emit_Handler, 1, handler);
+  sll_queue_push(new_emit->first, new_emit->last, new_handler);
+  new_handler->flag_check = opt_flag_fixup(handler->flag_check, old_to_new);
+ }
+ return(new_emit);
 }
 
 function Lexer_Model
 opt_copy_model(Arena *arena, Lexer_Model model){
-    Lexer_Model result = {};
-    
-    i1 pointer_count = model.states.count + model.flags.count;
-    Table_u64_u64 old_to_new = make_table_u64_u64(arena->base_allocator, pointer_count*2);
-    Table_u64_u64 new_to_old = make_table_u64_u64(arena->base_allocator, pointer_count*2);
-    
-    for (Flag *flag = model.flags.first;
-         flag != 0;
-         flag = flag->next){
-        Flag *new_flag = push_array_zero(arena, Flag, 1);
-        sll_queue_push(result.flags.first, result.flags.last, new_flag);
-        result.flags.count += 1;
-        new_flag->reset_rule = flag->reset_rule;
-        new_flag->emit_flags = flag->emit_flags;
-        new_flag->emit_sub_flags = flag->emit_sub_flags;
-        table_insert(&old_to_new, (u64)PtrAsInt(flag), (u64)PtrAsInt(new_flag));
-        table_insert(&new_to_old, (u64)PtrAsInt(new_flag), (u64)PtrAsInt(flag));
+ Lexer_Model result = {};
+ 
+ i1 pointer_count = model.states.count + model.flags.count;
+ Table_u64_u64 old_to_new = make_table_u64_u64(&malloc_base_allocator, pointer_count*2);
+ Table_u64_u64 new_to_old = make_table_u64_u64(&malloc_base_allocator, pointer_count*2);
+ 
+ for (Flag *flag = model.flags.first;
+      flag != 0;
+      flag = flag->next){
+  Flag *new_flag = push_array_zero(arena, Flag, 1);
+  sll_queue_push(result.flags.first, result.flags.last, new_flag);
+  result.flags.count += 1;
+  new_flag->reset_rule = flag->reset_rule;
+  new_flag->emit_flags = flag->emit_flags;
+  new_flag->emit_sub_flags = flag->emit_sub_flags;
+  table_insert(&old_to_new, (u64)PtrAsInt(flag), (u64)PtrAsInt(new_flag));
+  table_insert(&new_to_old, (u64)PtrAsInt(new_flag), (u64)PtrAsInt(flag));
+ }
+ 
+ for (State *state = model.states.first;
+      state != 0;
+      state = state->next){
+  State *new_state = push_array_zero(arena, State, 1);
+  sll_queue_push(result.states.first, result.states.last, new_state);
+  result.states.count += 1;
+  table_insert(&old_to_new, (u64)PtrAsInt(state), (u64)PtrAsInt(new_state));
+  table_insert(&new_to_old, (u64)PtrAsInt(new_state), (u64)PtrAsInt(state));
+  new_state->pretty_name = push_stringz(arena, state->pretty_name);
+ }
+ 
+ for (State *new_state = result.states.first;
+      new_state != 0;
+      new_state = new_state->next){
+  Table_Lookup lookup = table_lookup(&new_to_old, (u64)PtrAsInt(new_state));
+  Assert(lookup.found_match);
+  State *state = 0;
+  u64 val = 0;
+  table_read(&new_to_old, lookup, &val);
+  state = (State*)(IntAsPtr(val));
+  
+  for (Transition *trans = state->transitions.first;
+       trans != 0;
+       trans = trans->next){
+   Transition *new_trans = push_array_zero(arena, Transition, 1);
+   zdll_push_back(new_state->transitions.first, new_state->transitions.last, new_trans);
+   new_state->transitions.count += 1;
+   new_trans->parent_state = new_state;
+   new_trans->condition = opt_copy_condition(arena, trans->condition, old_to_new);
+   new_trans->activation_actions = opt_copy_action_list(arena, trans->activation_actions);
+   for (Action *action = new_trans->activation_actions.first;
+        action != 0;
+        action = action->next){
+    switch (action->kind){
+     case ActionKind_SetFlag:
+     {
+      action->set_flag.flag = opt_flag_fixup(action->set_flag.flag, old_to_new);
+     }break;
+     
+     case ActionKind_Emit:
+     {
+      action->emit_rule = opt_copy_emit_rule(arena, action->emit_rule, old_to_new);
+     }break;
     }
-    
-    for (State *state = model.states.first;
-         state != 0;
-         state = state->next){
-        State *new_state = push_array_zero(arena, State, 1);
-        sll_queue_push(result.states.first, result.states.last, new_state);
-        result.states.count += 1;
-        table_insert(&old_to_new, (u64)PtrAsInt(state), (u64)PtrAsInt(new_state));
-        table_insert(&new_to_old, (u64)PtrAsInt(new_state), (u64)PtrAsInt(state));
-        new_state->pretty_name = push_stringz(arena, state->pretty_name);
-    }
-    
-    for (State *new_state = result.states.first;
-         new_state != 0;
-         new_state = new_state->next){
-        Table_Lookup lookup = table_lookup(&new_to_old, (u64)PtrAsInt(new_state));
-        Assert(lookup.found_match);
-        State *state = 0;
-        u64 val = 0;
-        table_read(&new_to_old, lookup, &val);
-        state = (State*)(IntAsPtr(val));
-        
-        for (Transition *trans = state->transitions.first;
-             trans != 0;
-             trans = trans->next){
-            Transition *new_trans = push_array_zero(arena, Transition, 1);
-            zdll_push_back(new_state->transitions.first, new_state->transitions.last, new_trans);
-            new_state->transitions.count += 1;
-            new_trans->parent_state = new_state;
-            new_trans->condition = opt_copy_condition(arena, trans->condition, old_to_new);
-            new_trans->activation_actions = opt_copy_action_list(arena, trans->activation_actions);
-            for (Action *action = new_trans->activation_actions.first;
-                 action != 0;
-                 action = action->next){
-                switch (action->kind){
-                    case ActionKind_SetFlag:
-                    {
-                        action->set_flag.flag = opt_flag_fixup(action->set_flag.flag, old_to_new);
-                    }break;
-                    
-                    case ActionKind_Emit:
-                    {
-                        action->emit_rule = opt_copy_emit_rule(arena, action->emit_rule, old_to_new);
-                    }break;
-                }
-            }
-            
-            lookup = table_lookup(&old_to_new, (u64)PtrAsInt(trans->dst_state));
-            Assert(lookup.found_match);
-            
-            State *new_dst_state = 0;
-            table_read(&old_to_new, lookup, &val);
-            new_dst_state = (State*)(IntAsPtr(val));
-            
-            new_trans->dst_state = new_dst_state;
-        }
-    }
-    
-    table_free(&old_to_new);
-    table_free(&new_to_old);
-    
-    for (State *state = model.states.first, *new_state = result.states.first;
-         state != 0 && new_state != 0;
-         state = state->next, new_state = new_state->next){
-        if (model.root == state){
-            result.root = new_state;
-            break;
-        }
-    }
-    Assert(result.root);
-    return(result);
+   }
+   
+   lookup = table_lookup(&old_to_new, (u64)PtrAsInt(trans->dst_state));
+   Assert(lookup.found_match);
+   
+   State *new_dst_state = 0;
+   table_read(&old_to_new, lookup, &val);
+   new_dst_state = (State*)(IntAsPtr(val));
+   
+   new_trans->dst_state = new_dst_state;
+  }
+ }
+ 
+ table_free(&old_to_new);
+ table_free(&new_to_old);
+ 
+ for (State *state = model.states.first, *new_state = result.states.first;
+      state != 0 && new_state != 0;
+      state = state->next, new_state = new_state->next){
+  if (model.root == state){
+   result.root = new_state;
+   break;
+  }
+ }
+ Assert(result.root);
+ return(result);
 }
 
 function void
@@ -3929,7 +3920,7 @@ int main(int argc, char **argv){
 
     pcg32_srandom(time(0), time(0));
     
-    Base_Allocator *allocator = get_allocator_malloc();
+    Base_Allocator *allocator = &malloc_base_allocator;
     sm_helper_init(allocator);
     
     build_language_model();
@@ -3992,7 +3983,7 @@ int main(int argc, char **argv){
     // NOTE(allen): Arrange input files and output files
     
     String path_to_self = strlit(__FILE__);
-    path_to_self = path_dirname(path_to_self);
+    path_to_self = path_dir(path_to_self);
     
     String hand_written_h_name = push_stringfz(&ctx->arena,
                                                           "%.*s4coder_lex_gen_hand_written.h",
@@ -4072,8 +4063,6 @@ int main(int argc, char **argv){
     // Feature: Temporally chunked input
     return(0);
 }
-
-#pragma clang diagnostic pop  // #pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
 
 // BOTTOM
 

@@ -104,7 +104,7 @@ function b32
 child_process_call(Thread_Context *tctx, Models *models, String path, String command, Child_Process_ID *id_out)
 {
  b32 result = false;
- Scratch_Block scratch(tctx,0);
+ Scratch_Block scratch;
  String path_n    = push_stringz(scratch, path);
  String command_n = push_stringz(scratch, command);
  CLI_Handles cli_handles = {};

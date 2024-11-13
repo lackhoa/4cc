@@ -31,8 +31,8 @@
 #endif
 
 // [0,1]
-#ifndef VIM_USE_REIGSTER_BUFFER
-#define VIM_USE_REIGSTER_BUFFER 1
+#ifndef VIM_USE_REGISTER_BUFFER
+#define VIM_USE_REGISTER_BUFFER 0
 #endif
 
 // [0,1]

@@ -275,14 +275,10 @@ pack_modifiers(Key_Code *mods, u32 count)
 //-
 #if !AD_IS_DRIVER
 inline Scratch_Block::Scratch_Block(App *app){
- init_scratch_block(this,app->tctx,0,0);
+ init_scratch_block(this);
 }
 inline Scratch_Block::Scratch_Block(App *app, Arena *a1){
- init_scratch_block(this,app->tctx,&a1,1);
-}
-inline Scratch_Block::Scratch_Block(App *app, Arena *a1, Arena *a2){
- Arena *conflicts[] = {a1,a2};
- init_scratch_block(this,app->tctx,conflicts,alen(conflicts));
+ init_scratch_block(this);
 }
 #endif
 //-

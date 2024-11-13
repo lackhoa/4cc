@@ -12,7 +12,7 @@
 function void
 text_layout_init(Thread_Context *tctx, Text_Layout_Container *container){
  block_zero_struct(container);
- container->node_arena = make_arena_system();
+ container->node_arena = make_arena();
  container->table = make_table_u64_u64(get_default_allocator(), 20);
 }
 

@@ -29,8 +29,8 @@ history__push_back_record_ptr(Base_Allocator *allocator, Record_Ptr_Lookup_Table
 {
  if (lookup->records == 0 || lookup->count == lookup->max){
   i1 new_max = clamp_min(1024, lookup->max*2);
-  String new_memory = base_allocate2(allocator, sizeof(Record*)*new_max);
-  Record **new_records = (Record**)new_memory.str;
+  u8 *new_memory = base_allocate(allocator, sizeof(Record*)*new_max);
+  Record **new_records = (Record**)new_memory;
   block_copy(new_records, lookup->records, sizeof(*new_records)*lookup->count);
   if (lookup->records != 0){
    base_free(allocator, lookup->records);
@@ -85,8 +85,8 @@ history__allocate_record(History *history)
     Node *new_node = sentinel->next;
     if (new_node == sentinel){
         i1 new_record_count = 1024;
-        String new_memory = base_allocate2(&history->heap_wrapper, sizeof(Record)*new_record_count);
-        void *memory = new_memory.str;
+        u8 *new_memory = base_allocate(&history->heap_wrapper, sizeof(Record)*new_record_count);
+        void *memory = new_memory;
         
         Record *new_record = (Record*)memory;
         sentinel->next = &new_record->node;
@@ -133,7 +133,7 @@ global_history_adjust_edit_grouping_counter(Global_History *global_history, i1 a
 function void
 history_init(Thread_Context *tctx, Models *models, History *history){
     history->activated = true;
-    history->arena = make_arena_system();
+    history->arena = make_arena();
     heap_init(&history->heap);
     history->heap_wrapper = base_allocator_on_heap(&history->heap);
     dll_init_sentinel(&history->free_records);
@@ -150,7 +150,7 @@ history_is_activated(History *history){
 function void
 history_free(Thread_Context *tctx, History *history){
     if (history->activated){
-        arena_clear2(&history->arena);
+        arena_clear(&history->arena);
         heap_free_all(&history->heap);
         block_zero_struct(history);
     }

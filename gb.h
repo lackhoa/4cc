@@ -234,9 +234,6 @@ GB_STATIC_ASSERT(sizeof(u16) == 2);
 GB_STATIC_ASSERT(sizeof(u32) == 4);
 GB_STATIC_ASSERT(sizeof(u64) == 8);
 
-typedef size_t    usize;
-typedef ptrdiff_t isize;
-
 GB_STATIC_ASSERT(sizeof(usize) == sizeof(isize));
 
 // NOTE(bill): (u)intptr is only here for semantic reasons really as this library will only support 32/64 bit OSes.
@@ -275,7 +272,6 @@ typedef i1 Rune; // NOTE(bill): Unicode codepoint
 
 typedef i8  b8;
 typedef i16 b16;
-typedef i1  b32; // NOTE(bill): Prefer this!!!
 
 // NOTE(bill): Get true and false
 #if !defined(__cplusplus)

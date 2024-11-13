@@ -19,11 +19,11 @@
 #endif
 
 #define ProfileBlock(T,N) \
-Profile_Block glue(profile_block_, __LINE__) \
+Profile_Block PP_Concat(profile_block_, __LINE__) \
 ((T), strlit(N), strlit(filename_line_number))
 
 #define ProfileScope(T,N) \
-Profile_Scope_Block glue(profile_block_, __LINE__) \
+Profile_Scope_Block PP_Concat(profile_block_, __LINE__) \
 ((T), strlit(N), strlit(filename_line_number))
 
 #define ProfileBlockNamed(T,N,M) \
@@ -37,11 +37,11 @@ Profile_Scope_Block M \
 
 
 #define ProfileTLBlock(T,L,N) \
-Profile_Block glue(profile_block_, __LINE__) \
+Profile_Block PP_Concat(profile_block_, __LINE__) \
 ((T), (L), strlit(N), strlit(filename_line_number))
 
 #define ProfileTLScope(T,L,N) \
-Profile_Scope_Block glue(profile_block_, __LINE__) \
+Profile_Scope_Block PP_Concat(profile_block_, __LINE__) \
 ((T), (L), strlit(N), strlit(filename_line_number))
 
 #define ProfileTLBlockNamed(T,L,N,M) \

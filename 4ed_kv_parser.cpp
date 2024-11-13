@@ -38,7 +38,7 @@ ep_get_token_location(Ed_Parser *p, Token *input_token){
   result.column = i1(token->pos - begin_line_pos);
   if(token->kind == TokenBaseKind_Whitespace){
    // NOTE: Increase line number
-   Scratch_Block scratch(get_thread_context(), 0);
+   Scratch_Block scratch;
    String token_string = ep_print_given_token(scratch, p, token);
    for_i1 (index,0,i1(token_string.len)){
     if(token_string.str[index] == '\n'){
@@ -199,7 +199,7 @@ ep_eat_token(Ed_Parser *p){
  }
 }
 function void
-ep_eat_token_all(Ed_Parser *p){
+ep_eat_token_inc_all(Ed_Parser *p){
  if(p->ok_){
   switch(p->Token_Gen_Type){
    case TG_String:
@@ -225,7 +225,7 @@ struct Parse_Number_Result{
 //  with arbitrary expressions (like f.ex "pi-0.5f").
 function Parse_Number_Result
 ep_number(Ed_Parser *p){
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  f64 sign = 1;
  Token *token = ep_get_token(p);
  if(token){
@@ -257,7 +257,7 @@ ep_number(Ed_Parser *p){
 }
 function i1
 ep_i1(Ed_Parser *p){
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  i1 sign = 1;
  Token *token = ep_get_token(p);
  if(token){
@@ -337,7 +337,7 @@ function b32
 ep_test_id(Ed_Parser *p, String string){
  b32 result = false;
  if (p->ok_){
-  Scratch_Block scratch(get_thread_context(), 0);
+  Scratch_Block scratch;
   String token = ep_print_token(scratch, p);
   result = string_match(token, string);
  }
@@ -363,7 +363,8 @@ function String
 ep_maybe_id(Ed_Parser *p){
  String result = {};
  if(Token *token = ep_get_token(p)){
-  if(token->kind == TokenBaseKind_Identifier){
+  if(token->kind == TokenBaseKind_Identifier or
+     token->kind == TokenBaseKind_Keyword){
    result = ep_print_token(p->string_arena, p);
    ep_eat_token(p);
   }
@@ -376,7 +377,7 @@ ep_test_preprocessor(Ed_Parser *p, String string){
  b32 result = false;
  Token *token = ep_get_token(p);
  if(p->ok_ && token->kind == TokenBaseKind_Preprocessor){
-  Scratch_Block scratch(get_thread_context(), 0);
+  Scratch_Block scratch;
   String token_str = ep_print_token(scratch, p);
   token_str.str++; token_str.size--;  // skip the pound
   token_str = string_skip_whitespace(token_str);
@@ -409,7 +410,7 @@ ep_id(Ed_Parser *p, String test_id){
  p->set_ok(kind == TokenBaseKind_Identifier ||
            kind == TokenBaseKind_Keyword);
  {
-  Scratch_Block scratch(get_thread_context(), 0);
+  Scratch_Block scratch;
   String string = ep_print_token(scratch, p);
   p->set_ok(string == test_id);
  }
@@ -452,7 +453,7 @@ ep__char_in_string_new(String chars, char chr){
 }
 function b32
 ep_test_char(Ed_Parser *p, char c){
- Scratch_Block scratch(get_thread_context(), 0);  // @slow, also sometimes the arena isn't necessary
+ Scratch_Block scratch;  // @slow, also sometimes the arena isn't necessary
  String string = ep_print_token(scratch, p);
  return (string.len == 1 &&
          string.str[0] == c);
@@ -475,7 +476,7 @@ function char
 ep_eat_until_char(Ed_Parser *p, String terminators){
  char result = 0;
  while(!result && p->ok_){
-  Scratch_Block scratch(get_thread_context(), 0);
+  Scratch_Block scratch;
   String token = ep_print_token(scratch, p);//TODO(kv) OMG this is bad!
   b32 should_eat = true;
   if(token.len == 1){

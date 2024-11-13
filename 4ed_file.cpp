@@ -148,7 +148,7 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
         
         Gap_Buffer *buffer = &file->state.buffer;
         
-        Scratch_Block scratch(tctx,0);
+        Scratch_Block scratch;
         
         if (!using_actual_filename){
             String s_filename = SCu8(filename);
@@ -190,9 +190,7 @@ file_compute_cursor(Editing_File *file, Buffer_Seek seek){
  }
  return(result);
 }
-
 ////////////////////////////////
-
 function Layout_Function*
 file_get_layout_func(Editing_File *file){
  return(file->settings.layout_func);
@@ -200,7 +198,7 @@ file_get_layout_func(Editing_File *file){
 
 function void
 file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String val, File_Attributes attributes) {
- Scratch_Block scratch(tctx,0);
+ Scratch_Block scratch;
  
  Base_Allocator *allocator = &malloc_base_allocator;
  block_zero_struct(&file->state);
@@ -289,9 +287,8 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
                      b32 *found_match=0)
 {
  Layout_Item_List result = {};
- 
  i64 line_count = buffer_line_count(&file->state.buffer);
- if (1 <= linum && linum <= line_count) {
+ if(1 <= linum && linum <= line_count){
   Line_Layout_Key key = {
    .face_id             = face->id,
    .face_version_number = face->version_number,
@@ -299,36 +296,36 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
    .line_number         = linum,
   };
   String key_data = make_data_struct(&key);
-  Table_Lookup lookup = table_lookup(&file->state.line_layout_table, key_data);
-  if (found_match) {
+  Table_Data_u64 *table = &file->state.line_layout_table;
+  Table_Lookup lookup = table_lookup(table, key_data);
+  if(found_match){
    *found_match = lookup.found_match;
   }
   
   Layout_Item_List *list = 0;
-  if (lookup.found_match) {
+  if(lookup.found_match){
    u64 val = 0;
-   table_read(&file->state.line_layout_table, lookup, &val);
-   list = (Layout_Item_List*)IntAsPtr(val);
-  } else {
-   Arena *cached_layouts_arena = &file->state.cached_layouts_arena;
-   list = push_struct(cached_layouts_arena, Layout_Item_List);
+   table_read(table, lookup, &val);
+   list = (Layout_Item_List *)IntAsPtr(val);
+  }else{
+   //-No match
+   Arena *cache_arena = &file->state.cached_layouts_arena;
    Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, linum);
-   
    App app = {.tctx = tctx, .cmd_context = models};
-   *list = layout_func(&app, cached_layouts_arena,
+   list = push_struct(cache_arena, Layout_Item_List);
+   *list = layout_func(&app, cache_arena,
                        file->id, line_range, face->id, width);
-   key_data = push_string(cached_layouts_arena, key_data);
-   table_insert(&file->state.line_layout_table, key_data, (u64)PtrAsInt(list));
+   key_data = push_string(cache_arena, key_data);
+   table_insert(table, key_data, (u64)PtrAsInt(list));
   }
   block_copy_struct(&result, list);
  }
- 
  return(result);
 }
 
 function void
 file_clear_layout_cache(Editing_File *file){
-    arena_clear2(&file->state.cached_layouts_arena);
+    arena_clear(&file->state.cached_layouts_arena);
     table_clear(&file->state.line_layout_table);
 }
 

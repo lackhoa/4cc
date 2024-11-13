@@ -42,7 +42,7 @@ file_change_notification_check(Arena *scratch, Working_Set *working_set, Editing
 function void
 file_change_notification_thread_main(void *ptr){
  Models *models = (Models*)ptr;
- Arena arena = make_arena_system();
+ Arena arena = make_arena();
  Working_Set *working_set = &models->working_set;
  for (;;){
   system_sleep(Thousand(250));
@@ -121,7 +121,7 @@ working_set_get_file(Working_Set *working_set, Buffer_ID id)
 function void
 working_set_init(Models *models, Working_Set *working_set){
     block_zero_struct(working_set);
-    working_set->arena = make_arena_system();
+    working_set->arena = make_arena();
     
     working_set->id_counter = 1;
     

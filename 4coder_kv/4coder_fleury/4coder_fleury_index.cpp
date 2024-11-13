@@ -8,7 +8,7 @@ function void
 F4_Index_Initialize(void)
 {
     global_f4_index.mutex = system_mutex_make();
-    global_f4_index.arena = make_arena_system(KB(16));
+    global_f4_index.arena = make_arena(KB(16));
 }
 
 function void
@@ -89,7 +89,7 @@ F4_Index_LookupOrMakeFile(App *app, Buffer_ID buffer)
             result->hash_next = global_f4_index.file_table[slot];
             global_f4_index.file_table[slot] = result;
             result->buffer = buffer;
-            result->arena = make_arena_system(KB(16));
+            result->arena = make_arena(KB(16));
         }
  }
  

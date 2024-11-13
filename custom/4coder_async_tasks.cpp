@@ -138,7 +138,7 @@ function void
 async_task_handler_init(App *app, Async_System *async_system){
     block_zero_struct(async_system);
     async_system->cmd_context = app->cmd_context;
-    async_system->node_arena = make_arena_system();
+    async_system->node_arena = make_arena();
     heap_init(&async_system->node_heap, &async_system->node_arena);
     async_system->mutex = system_mutex_make();
     async_system->cv = system_condition_variable_make();

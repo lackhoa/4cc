@@ -2026,7 +2026,7 @@ compute_bones_from_pose(Modeler *m, Arena *scratch, Pose *pose){
  arrayof<Bone *>stack;
  init_static(stack, scratch, 16);
  Bone null_bone = {.xform=mat4i_identity};
- stack.push(&null_bone);
+ stack.push_value(&null_bone);
 #define bone_blockm(...) \
 defer_block(push_bone_inner(*m, stack, lr_index, __VA_ARGS__), stack.pop())
  
@@ -2181,7 +2181,7 @@ driver_animate(driver_animate_params){
  {//-Animation
   // TODO: this crashes when arena is empty, since our static areana is janky!
   Temp_Memory_Block temp(scratch);
-  Movie_Shot *shot = push_struct(scratch, Movie_Shot, true);
+  Movie_Shot *shot = push_struct(scratch, Movie_Shot, push_zero());
   shot->anime_time = anime_time;
   {//NOTE: ;set_movie_shot
    i32 sel = fvali(2);
@@ -2268,7 +2268,7 @@ render_movie(render_movie_params){
   p.ignore_alignment_min = viz_level!=0;
   init_static(p.bone_stack, arena, 16);
   auto &bones = get_bones(m);
-  p.bone_stack.push(&bones[0]);
+  p.bone_stack.push_value(&bones[0]);
   push_view_vector(&p, v3{});
  }
  //~

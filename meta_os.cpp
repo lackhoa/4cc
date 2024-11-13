@@ -5,8 +5,8 @@ system_page_size(){
  GetSystemInfo(&info);
  return info.dwPageSize;
 }
-function void *
-system_memory_reserve(usize size, String location){
+function u8 *
+system_memory_reserve(usize size){
  usize granularity = KB(64);  //TODO(kv) This number is from Raymond Chen, but idk how to query for it?
  usize reserve_size = size;
  reserve_size = round_up_to_pow2(granularity, reserve_size);

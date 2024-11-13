@@ -30,6 +30,7 @@ struct Fui_Slider{
   Fui_Options options;  // 5
   struct { FUI_OPTIONS(X); };
  };
+ //NOTE(kv) Slider value comes after, but we gotta make sure alignment is correct.
 };
 
 xfunction void *

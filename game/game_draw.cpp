@@ -131,7 +131,7 @@ fill3_inner2(v3 points[3],
              linum_defparam){
  if(is_poly_enabled()){
   set_linum;
-  const i32 npoints=3;
+  //const i32 npoints=3;
   Poly_Flags flags = params.flags;
   v1 depth_offset = painter.fill_depth_offset;
   poly3_inner(points, params.color, depth_offset, flags);
@@ -375,8 +375,6 @@ draw_bezier_inner(const v3 P[4], Common_Line_Params &cparams, Line_Params &param
   
   v1 interval = 1.0f / (v1)nslices;
   
-  Vertex_Type vertex_type = Vertex_Poly; //@temp
-  
   argb color = cparams.color;
   //NOTE: the hot color is deferred to the triangle filling routine
   
@@ -459,7 +457,6 @@ draw_cparams(const v3 P[4], Common_Line_Params &cparams, Line_Params params, lin
   ok = alignment > params.alignment_min;
  }
  if(ok){
-  const i32 npoints = 4;
   // NOTE: Processing parameters
   draw_bezier_inner(P, cparams, params);
  }

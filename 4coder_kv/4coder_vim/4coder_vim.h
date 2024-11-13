@@ -76,7 +76,7 @@ global i1 vim_buffer_peek_index;
 
 global Vim_Buffer_Peek_Entry vim_default_peek_list[] = {
 	{ buffer_identifier(compilation_buffer_name), 1.f, 1.f },
-#if VIM_USE_REIGSTER_BUFFER
+#if VIM_USE_REGISTER_BUFFER
 	{ buffer_identifier(strlit("*registers*")),   1.f, 1.f },
 #endif
 	{ buffer_identifier(strlit("*messages*")),    1.f, 1.f },
@@ -114,17 +114,18 @@ function void vim_reset_state(){
 
 /// byp: If you _really_ want to change dynamic register allocation, go for it
 #ifndef VIM_GROW_RATE
-#define VIM_GROW_RATE(S) (Max(u64(128), u64(2*(S))))
+#    define VIM_GROW_RATE(S) (Max(u64(128), u64(2*(S))))
 #endif
 
 function b32
 vim_realloc_string(String_u8 *src, u64 size){
-	String new_data = base_allocate2(&vim_state.alloc, VIM_GROW_RATE(size));
-	if(new_data.size == 0){ return false; }
-	block_copy(new_data.str, src->str, src->size);
+ size = VIM_GROW_RATE(size);
+	u8 *new_data = base_allocate(&vim_state.alloc, size);
+	if(not new_data){ return false; }
+	block_copy(new_data, src->str, src->size);
 	base_free(&vim_state.alloc, src->str);
-	src->str = new_data.str;
-	src->cap = new_data.size;
+	src->str = new_data;
+	src->cap = size;
 	return true;
 }
 

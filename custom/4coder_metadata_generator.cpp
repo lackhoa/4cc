@@ -14,6 +14,7 @@
 
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
+#include "meta_os.cpp"
 
 #include "4coder_token.cpp"
 #include "generated/lexer_cpp.cpp"
@@ -823,7 +824,7 @@ main(int argc, char **argv){
   show_usage(argc, argv);
  }
  
- Arena arena_ = make_arena_malloc(MB(1));
+ Arena arena_ = make_arena(MB(1));
  Arena *arena = &arena_;
  
  String out_directory = SCu8(argv[2]);

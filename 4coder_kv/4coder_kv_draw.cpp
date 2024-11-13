@@ -292,7 +292,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
    {
     b64 show_whitespace = false;
     view_get_setting(app, view, ViewSetting_ShowWhitespace, &show_whitespace);
-    if(show_whitespace) {
+    if(show_whitespace){
      if(token_array.tokens == 0)
       draw_whitespace_highlight(app, buffer, text_layout_id, cursor_roundness);
      else

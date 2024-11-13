@@ -351,7 +351,7 @@ buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range)
    }
   }
  }
- arena_pop(arena, memory_opl - ptr);
+ arena_pop_size(arena, memory_opl - ptr);
  return(SCu8(memory, ptr));
 }
 
@@ -385,8 +385,8 @@ function void
 buffer_starts__ensure_max_size(Gap_Buffer *buffer, i64 max_size){
     if (max_size > buffer->line_start_max){
         i64 new_max = round_up_i64(max_size*2, KB(1));
-        String memory = base_allocate2(buffer->allocator, sizeof(*buffer->line_starts)*new_max);
-        i64 *new_line_starts = (i64*)memory.str;
+        u8 *memory = base_allocate(buffer->allocator, sizeof(*buffer->line_starts)*new_max);
+        i64 *new_line_starts = (i64*)memory;
         block_copy_count(new_line_starts, buffer->line_starts, buffer->line_start_count);
         buffer->line_start_max = new_max;
         base_free(buffer->allocator, buffer->line_starts);
@@ -501,7 +501,7 @@ fill_line_starts(i64 *lines_starts, String string, i64 text_base){
 
 function void
 buffer_remeasure_starts(Thread_Context *tctx, Gap_Buffer *buffer, Batch_Edit *batch){
-    Scratch_Block scratch(tctx,0);
+    Scratch_Block scratch;
     
     i64 line_start_count = buffer_line_count(buffer) + 1;
     

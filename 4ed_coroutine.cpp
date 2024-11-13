@@ -82,7 +82,7 @@ coroutine_sub_init(Coroutine *co, Coroutine_Group *sys){
 
 function void
 coroutine_system_init(Coroutine_Group *sys){
-    sys->arena = make_arena_system();
+    sys->arena = make_arena();
     
     Coroutine *root = &sys->root;
     

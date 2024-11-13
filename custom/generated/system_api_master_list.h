@@ -47,7 +47,7 @@ api(system) function System_Condition_Variable condition_variable_make(void);
 api(system) function void condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex);
 api(system) function void condition_variable_signal(System_Condition_Variable cv);
 api(system) function void condition_variable_free(System_Condition_Variable cv);
-api(system) function void * memory_reserve(usize wanted_size, String location);
+api(system) function u8 * memory_reserve(usize wanted_size);
 api(system) function void memory_free(void * base);
 api(system) function b32 memory_commit(void * base, usize size);
 api(system) function void memory_decommit(void * base, usize size);

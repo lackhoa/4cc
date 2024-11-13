@@ -138,7 +138,7 @@ vim_init(App *app){
 		default_color_table.arrays[defcolor_vim_chord_error]      = default_color_table.arrays[defcolor_special_character];
 	}
 
-#if VIM_USE_REIGSTER_BUFFER
+#if VIM_USE_REGISTER_BUFFER
 	Buffer_ID reg_buffer = create_buffer(app, strlit("*registers*"),
 										 BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew);
 	buffer_set_setting(app, reg_buffer, BufferSetting_ReadOnly, true);
@@ -146,7 +146,7 @@ vim_init(App *app){
 	buffer_set_setting(app, reg_buffer, BufferSetting_Unimportant, true);
 #endif
  
-	vim_state.arena = make_arena_system();
+	vim_state.arena = make_arena();
 	heap_init(&vim_state.heap, &vim_state.arena);
 	vim_state.alloc = base_allocator_on_heap(&vim_state.heap);
  

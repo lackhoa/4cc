@@ -47,7 +47,7 @@
 #define system_condition_variable_wait_sig() void system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex)
 #define system_condition_variable_signal_sig() void system_condition_variable_signal(System_Condition_Variable cv)
 #define system_condition_variable_free_sig() void system_condition_variable_free(System_Condition_Variable cv)
-#define system_memory_reserve_sig() void * system_memory_reserve(usize wanted_size, String location)
+#define system_memory_reserve_sig() u8 * system_memory_reserve(usize wanted_size)
 #define system_memory_free_sig() void system_memory_free(void * base)
 #define system_memory_commit_sig() b32 system_memory_commit(void * base, usize size)
 #define system_memory_decommit_sig() void system_memory_decommit(void * base, usize size)
@@ -104,7 +104,7 @@ typedef System_Condition_Variable system_condition_variable_make_type(void);
 typedef void system_condition_variable_wait_type(System_Condition_Variable cv, System_Mutex mutex);
 typedef void system_condition_variable_signal_type(System_Condition_Variable cv);
 typedef void system_condition_variable_free_type(System_Condition_Variable cv);
-typedef void * system_memory_reserve_type(usize wanted_size, String location);
+typedef u8 * system_memory_reserve_type(usize wanted_size);
 typedef void system_memory_free_type(void * base);
 typedef b32 system_memory_commit_type(void * base, usize size);
 typedef void system_memory_decommit_type(void * base, usize size);
@@ -221,7 +221,7 @@ function System_Condition_Variable system_condition_variable_make(void);
 function void system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex);
 function void system_condition_variable_signal(System_Condition_Variable cv);
 function void system_condition_variable_free(System_Condition_Variable cv);
-function void * system_memory_reserve(usize wanted_size, String location);
+function u8 * system_memory_reserve(usize wanted_size);
 function void system_memory_free(void * base);
 function b32 system_memory_commit(void * base, usize size);
 function void system_memory_decommit(void * base, usize size);

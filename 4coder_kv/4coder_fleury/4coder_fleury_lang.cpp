@@ -42,7 +42,7 @@ _F4_RegisterLanguage(String name,
     if(f4_langs.initialized == 0)
     {
         f4_langs.initialized = 1;
-        f4_langs.arena = make_arena_system(KB(16));
+        f4_langs.arena = make_arena(KB(16));
     }
     
     F4_Language *language = 0;

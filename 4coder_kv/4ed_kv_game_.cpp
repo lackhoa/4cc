@@ -86,7 +86,7 @@ init_game(App *app)
  // NOTE: Old static allocation code
  //u64 memsize = MB(256);
  //u8 *game_memory = cast(u8 *)system_memory_allocate(memsize, strlit("game memory"));
- Arena bootstrap_arena = make_arena_system(MB(1));
+ Arena bootstrap_arena = make_arena(MB(1));
  auto game = get_game_code();
  Game_ImGui_State imgui_state;
  {
@@ -149,17 +149,17 @@ load_latest_game_code(App *app, b32 *out_loaded)
       local_persist gbDllHandle library = {};
       
       ok = copy_file(GAME_DLL_PATH, temp_path, false);
-      if (!ok) { vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
+      if(!ok){ vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
       
-      if (ok) {
-       // NOTE(kv): We want to still display old game DLL for as long as possible, until load has succeeded.
-       // So we can compare change results better and avoid black screens.
-       gbDllHandle new_library = gb_dll_load( to_cstring(scratch, temp_path) );
+      if(ok){
+       //NOTE(kv): We want to still display old game DLL for as long as possible,
+       //  So we can compare change results better and avoid black screens.
+       gbDllHandle new_library = gb_dll_load( to_cstring(temp_path) );
        ok = (new_library != 0);
-       if (!ok) { vim_set_bottom_text_lit("failed to load dll"); }
+       if(!ok){ vim_set_bottom_text_lit("failed to load dll"); }
        
-       if (ok) {
-        if (auto game = get_game_code()){
+       if(ok){
+        if(auto game = get_game_code()){
          game->game_shutdown(ed_game_state_pointer);
         }
 #if AD_SHUTDOWN_IMGUI
@@ -240,6 +240,7 @@ maybe_update_game(App *app, Frame_Info frame)
   load_latest_game_code(app, &loaded);
   if (loaded) { vim_set_bottom_text_lit("Game code reloaded"); }
   
+#if 0//nono
   Game_API *game = get_game_code();
   if (game){
    Scratch_Block scratch(app);
@@ -260,12 +261,14 @@ maybe_update_game(App *app, Frame_Info frame)
    
    block_zero_array(global_game_key_state_changes);
   }
+#endif
  }
 }
 
 function void
 render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame, rect2 clip_box)
 {
+#if 0//nono
  if (game_on_ro &&
      (viewport == MAIN_VIEWPORT_ID || global_auxiliary_viewports_on))
  {
@@ -282,6 +285,7 @@ render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame, rec
    }
   }
  }
+#endif
 }
 
 function void

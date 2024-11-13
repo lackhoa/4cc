@@ -71,7 +71,7 @@ right_adjust_view(App *app){
 	view_set_buffer_scroll(app, view, scroll, SetBufferScroll_NoCursorChange);
 }
 
-#if VIM_USE_REIGSTER_BUFFER
+#if VIM_USE_REGISTER_BUFFER
 CUSTOM_COMMAND_SIG(reg)
 CUSTOM_DOC("Vim: Display registers"){
 	vim_show_buffer_peek = 0;

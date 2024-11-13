@@ -2673,4 +2673,309 @@ inline Base_Allocator *
 get_default_allocator(){
  return &malloc_base_allocator;
 }
-//~ EOF
+////////////////////////////////
+typedef u64 Profile_ID;
+struct Profile_Record{
+ Profile_Record *next;
+ Profile_ID id;
+ u64 time;
+ String location;
+ String name;
+};
+
+struct Profile_Thread{
+ Profile_Thread *next;
+ Profile_Record *first_record;
+ Profile_Record *last_record;
+ i32 record_count;
+ i32 thread_id;
+ String name;
+};
+
+typedef u32 Profile_Enable_Flag;
+enum{
+ ProfileEnable_UserBit    = 0x1,
+ ProfileEnable_InspectBit = 0x2,
+};
+
+// NOTE(allen): full definition in 4coder_profile.h, due to dependency on System_Mutex.
+struct Profile_Global_List;
+
+typedef i32 Thread_Kind;
+enum{
+ ThreadKind_None = 0,
+ ThreadKind_Main,
+ ThreadKind_MainCoroutine,
+ ThreadKind_AsyncTasks,
+};
+
+//-
+struct Thread_Context{
+ Thread_Kind kind;
+ 
+ Base_Allocator *prof_allocator;
+ Profile_ID prof_id_counter;
+ Arena prof_arena;
+ Profile_Record *prof_first;
+ Profile_Record *prof_last;
+ i32 prof_record_count;
+ 
+ void *user_data;
+};
+function void
+thread_context_init(Thread_Context *tctx, Thread_Kind kind,
+                    Base_Allocator *allocator,
+                    Base_Allocator *prof_allocator){
+ if(kind == ThreadKind_Main){
+  //-
+ }
+ block_zero_struct(tctx);
+ tctx->kind       = kind;
+ 
+ tctx->prof_allocator  = prof_allocator;
+ tctx->prof_id_counter = 1;
+ tctx->prof_arena      = make_arena(KB(16));
+}
+function void
+thread_context_destroy(Thread_Context *tctx){
+#if !ASAN_ON
+ arena_chunk_store_destroy();
+#endif
+ block_zero_struct(tctx);
+ //TODO(kv) Hello? What about prof_allocator?
+ //  we don't ever call this function anyway?
+}
+thread_global Thread_Context global_thread_context;
+
+function Thread_Context *
+get_thread_context(){
+ return &global_thread_context;
+}
+struct App  {
+ Thread_Context *tctx;
+ void *cmd_context;
+};
+typedef App Application_Links;  // NOTE: has to be here for the 4coder meta-generator.
+
+api(custom) function Thread_Context*
+get_thread_context(App *app){
+ return(app->tctx);
+}
+//-
+struct Heap_Basic_Node{
+ Heap_Basic_Node *next;
+ Heap_Basic_Node *prev;
+};
+struct Heap_Node{
+ union{
+  struct{
+   Heap_Basic_Node order;
+   Heap_Basic_Node alloc;
+   u64 size;
+  };
+  u8 force_size__[64];
+ };
+};
+struct Heap{
+ Arena arena_;
+ Arena *arena;
+ Heap_Basic_Node in_order;
+ Heap_Basic_Node free_nodes;
+ u64 used_space;
+ u64 total_space;
+};
+//~
+#define heap__sent_init(s) (s)->next=(s)->prev=(s)
+#define heap__insert_next(p,n) ((n)->next=(p)->next,(n)->prev=(p),(n)->next->prev=(n),(p)->next=(n))
+#define heap__insert_prev(p,n) ((n)->prev=(p)->prev,(n)->next=(p),(n)->prev->next=(n),(p)->prev=(n))
+#define heap__remove(n) ((n)->next->prev=(n)->prev,(n)->prev->next=(n)->next)
+
+#if defined(DO_HEAP_CHECKS)
+function void
+heap_assert_good(Heap *heap){
+ if (heap->in_order.next != 0){
+  Assert(heap->in_order.prev != 0);
+  Assert(heap->free_nodes.next != 0);
+  Assert(heap->free_nodes.prev != 0);
+  for (Heap_Basic_Node *node = &heap->in_order;;){
+   Assert(node->next->prev == node);
+   Assert(node->prev->next == node);
+   node = node->next;
+   if (node == &heap->in_order){
+    break;
+   }
+  }
+  for (Heap_Basic_Node *node = &heap->free_nodes;;){
+   Assert(node->next->prev == node);
+   Assert(node->prev->next == node);
+   node = node->next;
+   if (node == &heap->free_nodes){
+    break;
+   }
+  }
+ }
+}
+#else
+#define heap_assert_good(heap) ((void)(heap))
+#endif
+
+function void
+heap_init(Heap *heap){
+ heap->arena_ = make_arena();
+ heap->arena = &heap->arena_;
+ heap__sent_init(&heap->in_order);
+ heap__sent_init(&heap->free_nodes);
+ heap->used_space = 0;
+ heap->total_space = 0;
+}
+
+function void
+heap_init(Heap *heap, Arena *arena){
+ heap->arena = arena;
+ heap__sent_init(&heap->in_order);
+ heap__sent_init(&heap->free_nodes);
+ heap->used_space = 0;
+ heap->total_space = 0;
+}
+
+function void
+heap_free_all(Heap *heap){
+ if (heap->arena == &heap->arena_){
+  arena_free(heap->arena);
+ }
+ block_zero_struct(heap);
+}
+
+function void
+heap__extend(Heap *heap, void *memory, u64 size){
+ heap_assert_good(heap);
+ if (size >= sizeof(Heap_Node)){
+  Heap_Node *new_node = (Heap_Node*)memory;
+  heap__insert_prev(&heap->in_order, &new_node->order);
+  heap__insert_next(&heap->free_nodes, &new_node->alloc);
+  new_node->size = size - sizeof(*new_node);
+  heap->total_space += size;
+ }
+ heap_assert_good(heap);
+}
+
+function void
+heap__extend_automatic(Heap *heap, u64 size){
+ void *memory = push_array(heap->arena, u8, size);
+ heap__extend(heap, memory, size);
+}
+
+function void*
+heap__reserve_chunk(Heap *heap, Heap_Node *node, u64 size){
+ u8 *ptr = (u8*)(node + 1);
+ Assert(node->size >= size);
+ u64 left_over_size = node->size - size;
+ if (left_over_size > sizeof(*node)){
+  u64 new_node_size = left_over_size - sizeof(*node);
+  Heap_Node *new_node = (Heap_Node*)(ptr + size);
+  heap__insert_next(&node->order, &new_node->order);
+  heap__insert_next(&node->alloc, &new_node->alloc);
+  new_node->size = new_node_size;
+ }
+ heap__remove(&node->alloc);
+ node->alloc.next = 0;
+ node->alloc.prev = 0;
+ node->size = size;
+ heap->used_space += sizeof(*node) + size;
+ return(ptr);
+}
+
+function void*
+heap_allocate(Heap *heap, u64 size)
+{
+ b32 first_try = true;
+ for (;;)
+ {
+  if (heap->in_order.next != 0)
+  {
+   heap_assert_good(heap);
+   u64 aligned_size = (size + sizeof(Heap_Node) - 1);
+   aligned_size = aligned_size - (aligned_size%sizeof(Heap_Node));
+   for (Heap_Basic_Node *n = heap->free_nodes.next;
+        n != &heap->free_nodes;
+        n = n->next){
+    Heap_Node *node = CastFromMember(Heap_Node, alloc, n);
+    if (node->size >= aligned_size){
+     void *ptr = heap__reserve_chunk(heap, node, aligned_size);
+     heap_assert_good(heap);
+     return(ptr);
+    }
+   }
+   heap_assert_good(heap);
+  }
+  
+  if (first_try){
+   u64 extension_size = clamp_min(KB(64), size*2);
+   heap__extend_automatic(heap, extension_size);
+   first_try = false;
+  }
+  else{
+   break;
+  }
+ }
+ return(0);
+}
+
+function void
+heap__merge(Heap *heap, Heap_Node *l, Heap_Node *r){
+ if (&l->order != &heap->in_order && &r->order != &heap->in_order &&
+     l->alloc.next != 0 && l->alloc.prev != 0 &&
+     r->alloc.next != 0 && r->alloc.prev != 0){
+  u8 *ptr = (u8*)(l + 1) + l->size;
+  if (PtrDif(ptr, r) == 0){
+   heap__remove(&r->order);
+   heap__remove(&r->alloc);
+   heap__remove(&l->alloc);
+   l->size += r->size + sizeof(*r);
+   heap__insert_next(&heap->free_nodes, &l->alloc);
+  }
+ }
+}
+
+function void
+heap_free(Heap *heap, void *memory){
+ if (heap->in_order.next != 0 && memory != 0){
+  Heap_Node *node = ((Heap_Node*)memory) - 1;
+  Assert(node->alloc.next == 0);
+  Assert(node->alloc.prev == 0);
+  heap->used_space -= sizeof(*node) + node->size;
+  heap_assert_good(heap);
+  heap__insert_next(&heap->free_nodes, &node->alloc);
+  heap_assert_good(heap);
+  heap__merge(heap, node, CastFromMember(Heap_Node, order, node->order.next));
+  heap_assert_good(heap);
+  heap__merge(heap, CastFromMember(Heap_Node, order, node->order.prev), node);
+  heap_assert_good(heap);
+ }
+}
+
+#define heap_array(heap, T, c) (T*)(heap_allocate((heap), sizeof(T)*(c)))
+
+////////////////////////////////
+
+function void*
+base_allocate__heap(void *user_data, u64 size, u64 *size_out){
+ Heap *heap = (Heap*)user_data;
+ void *memory = heap_allocate(heap, size);
+ *size_out = size;
+ return(memory);
+}
+
+function void
+base_free__heap(void *user_data, void *ptr){
+ Heap *heap = (Heap*)user_data;
+ heap_free(heap, ptr);
+}
+
+function Base_Allocator
+base_allocator_on_heap(Heap *heap){
+ Base_Allocator result = make_base_allocator_generic(base_allocate__heap, base_free__heap, heap);
+ return(result);
+}
+
+//~EOF

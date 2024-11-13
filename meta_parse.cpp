@@ -41,7 +41,7 @@ parse_struct_member(Ed_Parser *p){
 }
 function M_Struct_Member
 struct_member_from_string(String string){
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  Ed_Parser parser = m_parser_from_string(scratch, string);
  return parse_struct_member(&parser);
 }
@@ -55,14 +55,14 @@ parse_struct_body(Arena *arena, Ed_Parser *p){
  init_dynamic(result, arena);
  m_brace_open(p);
  while(p->ok_ && !m_maybe_brace_close(p)){
-  M_Struct_Member *member = &result.push_zero();
+  M_Struct_Member *member = result.push_zero();
   parse_struct_member(p, member);
  }
  return result;
 }
 inline M_Struct_Members
 parse_struct_body(Arena *arena, char *string){
- Scratch_Block scratch(get_thread_context(), arena);
+ Scratch_Block scratch;
  Ed_Parser parser = m_parser_from_string(scratch, SCu8(string));
  M_Struct_Members result = parse_struct_body(arena, &parser);
  return result;
@@ -106,7 +106,7 @@ k_eat_until_char(Ed_Parser *p, String terminators){
  char result = 0;
  {
   while(!result && p->ok_){
-   Scratch_Block scratch(get_thread_context(),0);
+   Scratch_Block scratch;
    String token = ep_print_token(scratch, p);//TODO(kv) OMG this is bad!
    b32 should_eat = true;
    if(token.len == 1){

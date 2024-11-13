@@ -2,7 +2,7 @@
 
 #include "4coder_game_shared.h"
 #include "game_colors.cpp"
-#include "ad_debug.h"
+#include "game_debug.h"
 #include "ad_file_formats.gen.h"
 
 struct Bezier{
@@ -360,12 +360,12 @@ push_bone_inner(Modeler &m, arrayof<Bone *> &stack,
  Bone *bone = &get_bone(m, id, is_right);
  if(bone->id.type == 0){
   auto &bones = get_bones(m);
-  bone = &bones.push_zero();
+  bone = bones.push_zero();
   bone->id       = id;
   bone->is_right = is_right;
   bone->xform    = mom * mom_from_kid; 
  }
- stack.push(bone);
+ stack.push_value(bone);
 }
 inline void
 push_bone_inner(Modeler &m, arrayof<Bone *> &stack, b32 is_right,
@@ -376,7 +376,7 @@ function void
 push_bone(Painter *p, Bone_ID id, v3 center={}){
  auto m  = p->modeler;
  Bone &bone = get_bone(*m, id, p->is_right);
- p->bone_stack.push(&bone);
+ p->bone_stack.push_value(&bone);
  set_bone_transform(bone.xform);
 }
 inline void
@@ -418,16 +418,15 @@ push_line_cparams(Common_Line_Params &value, i1 linum=__builtin_LINE()){
  auto &list = get_line_cparams_list(m);
  Common_Line_Params *address = &get_line_cparams(m, linum);
  if(address == &list[0]){// not found
-  address = &list.push(value);
-  address->linum = linum;
+  value.linum = linum;
+  list.push_value(value);
  }
- painter.line_cparams_stack.push(address);
+ painter.line_cparams_stack.push_value(address);
  use_line_cparams(value);
 }
 function void
 pop_line_cparams(){
  auto &p = painter;
- Modeler &m = *p.modeler;
  p.line_cparams_stack.pop();
  use_line_cparams(*p.line_cparams_stack.last());
 }

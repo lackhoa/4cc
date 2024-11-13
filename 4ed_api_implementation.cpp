@@ -18,6 +18,12 @@ NOTE(kv): description of this file
 
 #include "4coder_game_shared.h"
 
+api(ed) function Arena_Chunk *
+get_arena_chunk(usize size);
+
+api(ed) function void
+free_arena_chunk(Arena_Chunk *chunk);
+
 function void
 output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value){
  i64 end = buffer_size(&file->state.buffer);
@@ -903,7 +909,7 @@ buffer_save(App *app, Buffer_ID buffer_id, String filename, Buffer_Save_Flag fla
         
         if (!skip_save){
             Thread_Context *tctx = app->tctx;
-            Scratch_Block scratch(tctx,0);
+            Scratch_Block scratch;
             String name = push_stringz(scratch, filename);
             save_file_to_name(tctx, models, file, name.str);
             result = true;
@@ -985,7 +991,7 @@ buffer_reopen(App *app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
     Thread_Context *tctx = app->tctx;
-    Scratch_Block scratch(tctx,0);
+    Scratch_Block scratch;
     Editing_File *file = imp_get_file(models, buffer_id);
     Buffer_Reopen_Result result = BufferReopenResult_Failed;
     if (api_check_buffer(file)){
@@ -2976,7 +2982,7 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
   Range_i64 visible_range = Ii64(buffer_get_first_pos_from_line_number(buffer, visible_line_range.min),
                                  buffer_get_last_pos_from_line_number (buffer, line_number)+1);
   
-  Arena arena = make_arena_system();
+  Arena arena = make_arena();
   Arena *arena_ptr = push_struct(&arena, Arena);
   *arena_ptr = arena;
   i64 item_count = range_size(visible_range);
@@ -3506,49 +3512,6 @@ push_image(Render_Target *target, char *filename, v3 o, v3 x, v3 y, argb color, 
  entry->image = push_struct(&render_state.arena, Render_Entry_Image);
  *entry->image = {filename, o,x,y, color, prim_id};
 }
-
-#if 0
-// TODO(kv) Axe this from the API, just pass it in bro!
-function rect2
-draw_get_clip(void) {
- rect2 result = {};
- auto &state = render_state;
- if (state.group_last) {
-  result = state.group_last->clip_box;
- }
- return result;
-}
-#endif
-
-//TODO(kv) Pretty sure we shouldn't pass a config here?
-//  Because we wanna add more information as we go.
-//  But the main PITA is the "y_up" situation.
-//  We can't change it just like that, the clip_box is also involved.
-#if 0
-/*api(ed)*/ function Render_Config *
-//draw_new_group(Render_Target *target, Render_Config *config)
-{
- auto &state = render_state;
- Render_Group *last_group = state.group_last;
- if (last_group) {
-  if (config->clip_box.min==v2{} &&
-      config->clip_box.max==v2{}) {
-   if (last_group->y_up == config->y_up) {
-    config->clip_box = last_group->clip_box;
-   } else {
-    // NOTE(kv) Fun times changing the clip box (we probably don't even use this path)
-    rect2 new_clip_box = last_group->clip_box;
-    new_clip_box.y0 = (v1)target->height - last_group->clip_box.y1;
-    new_clip_box.y1 = (v1)target->height - last_group->clip_box.y0;
-    config->clip_box = new_clip_box;
-   }
-  }
- }
- 
- return draw__new_group(target, config);
-}
-#endif
-
 function b32
 view_contains_mouse(App *app, View_ID view)
 {

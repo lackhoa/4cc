@@ -97,7 +97,7 @@ typedef u32 Widget_ID;
  state->curve_widgets = curves;
 }
 
-{// bookmark: The eye experiment
+{
  hl_block;
  v2 A0 = fval2(-0.1f, 0.f);
  v2 B0 = fval2(0.15f, 0.08f);

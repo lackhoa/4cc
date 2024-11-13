@@ -154,7 +154,7 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
 function Models*
 models_init(void)
 {
- Arena arena = make_arena_system();
+ Arena arena = make_arena();
  Models *models = push_struct(&arena, Models, push_zero());
  models->arena_value = arena;
  models->arena       = &models->arena_value;
@@ -194,7 +194,7 @@ extern "C" void custom_layer_init(App *app);
 
 function u64
 file_mtime(String filename){
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  File_Attributes attr = system_quick_file_attributes(scratch, filename);
  return attr.last_write_time;
 }
@@ -206,7 +206,7 @@ app_init(Thread_Context *tctx, Models *models, String current_directory)
  models->hard_exit = false;
  
  // models->config_api = api;
- models->virtual_event_arena = make_arena_system();
+ models->virtual_event_arena = make_arena();
  
  profile_init(&models->profile_list);
  
@@ -253,7 +253,7 @@ app_init(Thread_Context *tctx, Models *models, String current_directory)
  
  // NOTE(allen): style setup
  {
-  Scratch_Block scratch(tctx, arena);
+  Scratch_Block scratch;
   
   String8 binary_path = system_get_path(scratch, SystemPath_BinaryDirectory);
   String8 full_path = push_stringfz(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
@@ -291,7 +291,7 @@ app_init(Thread_Context *tctx, Models *models, String current_directory)
   { str8_lit("*messages*"), &models->message_buffer , true , },
   { str8_lit("*scratch*") , &models->scratch_buffer , false, },
   { str8_lit("*log*")     , &models->log_buffer     , true , },
-  { str8_lit("*keyboard*"), &models->keyboard_buffer, true , },
+  //{ str8_lit("*keyboard*"), &models->keyboard_buffer, true , },
  };
  
  Buffer_Hook_Function *begin_buffer_func = models->begin_buffer;
@@ -328,13 +328,18 @@ app_init(Thread_Context *tctx, Models *models, String current_directory)
 function void
 file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file);
 
+function void
+render_debug_gui()
+{
+ ImGui::SmallButton("debug system goes here!");
+}
 function Application_Step_Result 
 app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
 {
  Models *models = (Models*)base_ptr;
  
  Mutex_Lock file_order_lock(models->working_set.mutex);
- Scratch_Block scratch(tctx,0);
+ Scratch_Block scratch;
  
  models->next_animate_delay = max_u32;
  models->animate_next_frame = false;
@@ -545,7 +550,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
    begin_buffer_func(&app, models->message_buffer->id);
    begin_buffer_func(&app, models->scratch_buffer->id);
    begin_buffer_func(&app, models->log_buffer->id);
-   begin_buffer_func(&app, models->keyboard_buffer->id);
+   //begin_buffer_func(&app, models->keyboard_buffer->id);
   }
  }
  
@@ -587,6 +592,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
     continue;
    }
    
+#if 0
    // NOTE(allen): record to keyboard history
    if (simulated_input->kind == InputEventKind_KeyStroke ||
        simulated_input->kind == InputEventKind_KeyRelease ||
@@ -595,6 +601,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
     String key_line = stringize_keyboard_event(scratch, simulated_input);
     output_file_append(tctx, models, models->keyboard_buffer, key_line);
    }
+#else
+#endif
   }
   
   b32 event_was_handled = false;
@@ -688,7 +696,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   }
  }
  
- arena_clear2(&models->virtual_event_arena);
+ arena_clear(&models->virtual_event_arena);
  models->free_virtual_event = 0;
  models->first_virtual_event = 0;
  models->last_virtual_event = 0;
@@ -882,7 +890,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
  models->animated_last_frame = app_result.animating;
  models->frame_counter += 1;
  
- // NOTE(kv): Load all images
+ //render_debug_gui();
  
  // end-of-app_step
  return(app_result);

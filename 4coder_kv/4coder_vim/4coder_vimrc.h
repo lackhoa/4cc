@@ -7,7 +7,7 @@ CUSTOM_ID(colors, defcolor_vim_chord_error);
 
 #define VIM_DO_ANIMATE                 1
 #define VIM_USE_TRADITIONAL_CHORDS     0
-#define VIM_USE_REIGSTER_BUFFER        1
+#define VIM_USE_REGISTER_BUFFER        0
 
 typedef u32 BYP_Vim_Request;
 enum {

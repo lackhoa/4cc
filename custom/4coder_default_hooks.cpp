@@ -135,7 +135,7 @@ code_index_update_tick(App *app){
   String contents = push_whole_buffer(app, scratch, buffer_id);
   Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
   if(tokens.count){
-   Arena arena = make_arena_system(KB(16));
+   Arena arena = make_arena(KB(16));
    auto index = push_array_zero(&arena, Code_Index_File, 1);
    index->buffer = buffer_id;
    
@@ -158,7 +158,7 @@ code_index_update_tick(App *app){
 }
 function void
 default_tick(App *app, Frame_Info frame_info){
- arena_clear2(&global_frame_arena);
+ arena_clear(&global_frame_arena);
  code_index_update_tick(app);
  if(tick_all_fade_ranges(app, frame_info.animation_dt)){
   animate_in_n_milliseconds(app, 0);
@@ -401,7 +401,7 @@ parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
     App *app = actx->app;
     ProfileBlock(app, "async parse");
     
-    Arena arena = make_arena_system(KB(16));
+    Arena arena = make_arena(KB(16));
     Code_Index_File *index = push_array_zero(&arena, Code_Index_File, 1);
     index->buffer = buffer_id;
     

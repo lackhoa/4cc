@@ -13,7 +13,6 @@ struct Printer_Pair{
  Meta_Printer h;
  Meta_Printer c;
 };
-inline b32 okp(Printer &p){ return p.FILE != 0; }
 inline b32 okp(Printer_Pair &ps){ return ps.h.FILE && ps.c.FILE; }
 inline void close_file(Printer &p){ close_file(p.FILE); }
 inline void close_pair(Printer_Pair &ps){ close_file(ps.h.FILE); close_file(ps.c.FILE); }
@@ -85,6 +84,6 @@ add_to_source_map(Source_Map &source_map, Printer &printer, i32 source_pos){
  Source_Map_Entry entry;
  entry.source_pos = source_pos;
  entry.gen_pos = printer.byte_pos;
- source_map.push(entry);
+ source_map.push_value(entry);
 }
 //-

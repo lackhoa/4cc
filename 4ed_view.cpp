@@ -595,7 +595,7 @@ view_init(Thread_Context *tctx, Models *models, View *view, Editing_File *initia
           Custom_Command_Function *event_context_base){
     view_set_file(tctx, models, view, initial_buffer);
     
-    view->node_arena = make_arena_system();
+    view->node_arena = make_arena();
     
     View_Context first_ctx = {};
     first_ctx.render_caller = models->render_caller;

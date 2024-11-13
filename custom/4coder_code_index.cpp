@@ -72,7 +72,7 @@ code_index_note_from_string(String string)
 function void
 code_index_init(void){
   global_code_index.mutex = system_mutex_make();
-  global_code_index.node_arena = make_arena_system();
+  global_code_index.node_arena = make_arena();
   global_code_index.buffer_to_index_file = make_table_u64_u64(get_default_allocator(), 500);
 }
 

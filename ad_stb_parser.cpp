@@ -95,14 +95,14 @@ force_inline String
 eat_id(STB_Parser *p, String id={})
 {
  String result = {};
- if (id == String{})
- {
+ if(id == String{}) {
   p->set_ok(p->stb.token == CLEX_id);
-  result = push_string(p->string_arena, p->stb.string_value);
+  char *string = p->stb.string_value;
+  u64 len = strlen(string);
+  result.str = push_array_copy(p->string_arena, u8, len, string);
+  result.len = len;
   eat_token(p);
- }
- else
- {
+ } else {
   p->set_ok(maybe_id(p, id));
  }
  return result;

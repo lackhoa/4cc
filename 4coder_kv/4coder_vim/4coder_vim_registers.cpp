@@ -6,7 +6,7 @@
 function void
 vim_update_registers(App *app)
 {
-#if VIM_USE_REIGSTER_BUFFER
+#if VIM_USE_REGISTER_BUFFER
 	Buffer_ID buffer = buffer_identifier_to_id(app, buffer_identifier(strlit("*registers*")));
 	i64 buffer_size = buffer_get_size(app, buffer);
 

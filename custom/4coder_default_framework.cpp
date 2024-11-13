@@ -542,36 +542,6 @@ CUSTOM_DOC("Sets the edit mode to 4coder original.")
     fcoder_mode = FCoderMode_Original;
 }
 
-CUSTOM_COMMAND_SIG(set_mode_to_notepad_like)
-CUSTOM_DOC("Sets the edit mode to Notepad like.")
-{
-    begin_notepad_mode(app);
-}
-
-CUSTOM_COMMAND_SIG(toggle_highlight_line_at_cursor)
-CUSTOM_DOC("Toggles the line highlight at the cursor.")
-{
-    String_ID key = vars_intern_lit("highlight_line_at_cursor");
-    b32 val = def_get_config_b32(key);
-    def_set_config_b32(key, !val);
-}
-
-CUSTOM_COMMAND_SIG(toggle_highlight_enclosing_scopes)
-CUSTOM_DOC("In code files scopes surrounding the cursor are highlighted with distinguishing colors.")
-{
-    String_ID key = vars_intern_lit("use_scope_highlight");
-    b32 val = def_get_config_b32(key);
-    def_set_config_b32(key, !val);
-}
-
-CUSTOM_COMMAND_SIG(toggle_paren_matching_helper)
-CUSTOM_DOC("In code files matching parentheses pairs are colored with distinguishing colors.")
-{
-    String_ID key = vars_intern_lit("use_paren_helper");
-    b32 val = def_get_config_b32(key);
-    def_set_config_b32(key, !val);
-}
-
 CUSTOM_COMMAND_SIG(toggle_fullscreen)
 CUSTOM_DOC("Toggle fullscreen mode on or off.  The change(s) do not take effect until the next frame.")
 {
@@ -611,7 +581,7 @@ CUSTOM_DOC("Loads all the theme files in the current hot directory.")
 CUSTOM_COMMAND_SIG(clear_all_themes)
 CUSTOM_DOC("Clear the theme list")
 {
- arena_clear2(&global_theme_arena);
+ arena_clear(&global_theme_arena);
  block_zero_struct(&global_theme_list);
  set_default_color_scheme(app);
 }
@@ -973,7 +943,7 @@ clipboard_init(Base_Allocator *allocator, u32 history_depth, Clipboard *clipboar
 function void
 clipboard_clear(Clipboard *clipboard)
 {
-    arena_clear2(&clipboard->arena);
+    arena_clear(&clipboard->arena);
     clipboard_init_empty(clipboard, clipboard->clip_capacity);
 }
 
@@ -1083,10 +1053,10 @@ default_framework_init(App *app)
  initialize_managed_id_metadata(app);
  set_default_color_scheme(app);
  heap_init(&global_heap);
-	global_permanent_arena = make_arena_system();
- global_frame_arena     = make_arena_system();
- global_config_arena    = make_arena_system();
- fade_range_arena       = make_arena_system(KB(8));
+	global_permanent_arena = make_arena();
+ global_frame_arena     = make_arena();
+ global_config_arena    = make_arena();
+ fade_range_arena       = make_arena(KB(8));
 }
 
 ////////////////////////////////

@@ -2,15 +2,17 @@
 function Meta_Printer
 m_open_file_to_write(Stringz filename,
                      const char *call_file=__builtin_FILE(),
-                     u32 call_line=__builtin_LINE()){
+                     u32 call_line=__builtin_LINE())
+{
  Meta_Printer p = {};
  FILE *file = open_or_create_file(filename, "wb");
  if(file){
   meta_logf("Writing to file %.*s\n", strexpand(filename));
   (Printer&)p = make_printer_file(file);
-  p<"//NOTE Generated at "<call_file<':'<call_line<":\n";
+  p<"//NOTE File created programmatically by "<call_file<':'<call_line<":\n";
  }else{
-  meta_logf("Failed to open file %.*s\n with errno: %d", strexpand(filename), errno);
+  p.has_error = true;
+  meta_logf("Failed to open file %.*s\n with errno: %d\n", strexpand(filename), errno);
  }
  return p;
 }
@@ -18,7 +20,7 @@ function Printer_Pair
 m_open_files_to_write(String base_path,
                       const char *call_file=__builtin_FILE(),
                       u32 call_line=__builtin_LINE()){
- Scratch_Block scratch(get_thread_context(),0);
+ Scratch_Block scratch;
  Stringz outname_c, outname_h;
  {
   Printer p = make_printer_buffer(scratch, base_path.len+3);
@@ -55,14 +57,14 @@ m_get_type_names(String type_name){
  
  //Note(kv) not found
  auto arena = &meta_permanent_arena;
- Meta_Type_Names &new_item = store.push2();
- new_item = {
+ Meta_Type_Names *new_item = store.push();
+ *new_item = {
   .type_name          = push_string(arena, type_name),
   .info_function_name = push_stringf(arena, "get_type_info_%.*s", string_expand(type_name)),
   .global_info_name   = push_stringf(arena, "Type_Info_%.*s", string_expand(type_name)),
   .read_function_name = push_stringf(arena, "read_%.*s", string_expand(type_name)),
  };
- return new_item;
+ return *new_item;
 }
 inline String
 get_type_global_info_name(String type_name){
@@ -76,28 +78,22 @@ inline String
 get_type_info_function_name(String type_name){
  return m_get_type_names(type_name).info_function_name;
 }
-
+//TODO(kv) We're not printing out the type info,
+//  because that uses arena and we're messing with shared memory arenas.
 function void
 print_type_meta_shared(Printer &p, String type_name, b32 is_typedef=false){
  String type_global_var = get_type_global_info_name  (type_name);
- String function_name   = get_type_info_function_name(type_name);
  {
-  m_location;
-  //NOTE ("The global type info variable")
-  p<<"global_decl Type_Info "<<type_global_var<<";\n";
- }
- {
-  {//TODO(kv) Oh my God, we have to change these to function calls
-   //  because for some goddamn reason I can't forward declare global vars in C goddamn it!.
+  {
    m_location;
-   p<<"xglobal Type_Info "<<type_global_var<<" = "<<function_name<<"();\n\n";
+   p<"global Type_Info "<type_global_var<";\n\n";
   }
   if(!is_typedef)
   {
    // NOTE: Overload to automatically get the type info from a pointer of that type
-   p<<"function Type_Info &type_info_from_pointer("<<type_name<<"*pointer)";
+   p<"function Type_Info &type_info_from_pointer("<type_name<"*pointer)";
    m_braces{
-    p<<"return "<<type_global_var<<";";
+    p<"return "<type_global_var<";";
    }
   }
  }
@@ -163,7 +159,7 @@ print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_pac
 function void
 print_struct_meta(Printer &p, String type_name,
                   M_Struct_Members &members){
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
 #define brace_block  p < "\n{\n"; defer( p < "\n}\n"; );
  {//-NOTE ("Function to generate the type info")
   String function_name = get_type_info_function_name(type_name);
@@ -197,7 +193,7 @@ print_struct_meta(Printer &p, String type_name,
        {//-Member type
         if(member.type.kind == Parsed_Type_Array){
          //NOTE(kv) Array type -> Must create it on the fly
-         print(p, "Type_Info *member_type = push_struct(global_meta_arena, Type_Info, true);\n");
+         print(p, "Type_Info *member_type = push_struct(global_meta_arena, Type_Info, push_zero());\n");
          String item_type_info = get_type_global_info_name(member.type.name);
          //NOTE(kv) Made-up array type name
          print_format(p, "member_type->name = strlit(\"%.*s[%d]\");\n",
@@ -512,7 +508,7 @@ print_struct_embed(Printer &p, String type_name,
 }
 function void
 print_i1_wrapper(Printer &p, String type_name){
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  M_Struct_Members members = parse_struct_body(scratch, "{ i1 v; }");
  {
   print_struct(p, type_name, members);

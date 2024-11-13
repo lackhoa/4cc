@@ -110,7 +110,7 @@ struct Models
  Editing_File *message_buffer;
  Editing_File *scratch_buffer;
  Editing_File *log_buffer;
- Editing_File *keyboard_buffer;
+ //Editing_File *keyboard_buffer;
  
  Hot_Directory hot_directory;
  

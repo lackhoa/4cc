@@ -239,7 +239,7 @@ function void
 generate_header(API_Definition *api, Stringz source_name, API_Generation_Flag flags, FILE *out)
 {
  fprintf(out, "//source: %.*s\n", strexpand(source_name));
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  for (API_Call *call = api->first_call;
       call != 0;
       call = call->next)
@@ -361,7 +361,7 @@ function void
 generate_cpp(API_Definition *api, Stringz source_name, API_Generation_Flag flags, FILE *out)
 {//NOTE(kv): vtable
  fprintf(out, "//source: %.*s\n", strexpand(source_name));
- Scratch_Block scratch(get_thread_context(), 0); 
+ Scratch_Block scratch; 
  {// NOTE(kv): fill vtable
   fprintf(out, "#if defined(STATIC_LINK_API)\n");
   fprintf(out, "function void\n");
@@ -402,47 +402,6 @@ generate_cpp(API_Definition *api, Stringz source_name, API_Generation_Flag flags
  }
 }
 
-/*
-function void
-generate_constructor(Arena *scratch, API_Definition *api, API_Generation_Flag flags, FILE *out){
-    fprintf(out, "function API_Definition*\n");
-    fprintf(out, "%.*s_api_construct(Arena *arena){\n",
-            string_expand(api->name));
-    fprintf(out, "API_Definition *result = begin_api(arena, \"%.*s\");\n",
-            string_expand(api->name));
-    
-    for (API_Call *call = api->first_call;
-         call != 0;
-         call = call->next){
-        fprintf(out, "{\n");
-        fprintf(out, "API_Call *call = api_call_with_location(arena, result, "
-                "strlit(\"%.*s\"), "
-                "strlit(\"%.*s\"), "
-                "strlit(\"\"));\n",
-                string_expand(call->name),
-                string_expand(call->return_type));
-        
-        if (call->params.count == 0){
-            fprintf(out, "(void)call;\n");
-        }
-        else{
-            for (API_Param *param = call->params.first;
-                 param != 0;
-                 param = param->next){
-                fprintf(out, "api_param(arena, call, \"%.*s\", \"%.*s\");\n",
-                        string_expand(param->type_name),
-                        string_expand(param->name));
-            }
-        }
-        
-        fprintf(out, "}\n");
-    }
-    
- fprintf(out, "return(result);\n");
- fprintf(out, "}\n");
-}
-*/
-
 ////////////////////////////////
 
 function b32
@@ -451,7 +410,7 @@ api_definition_generate_api_includes(API_Definition *api,
                                      Generated_Group group,
                                      API_Generation_Flag flags)
 {
- Scratch_Block scratch(get_thread_context(), 0);
+ Scratch_Block scratch;
  // NOTE(allen): Arrange output files
  
  String path_to_self = strlit(__FILE__);
@@ -466,8 +425,8 @@ api_definition_generate_api_includes(API_Definition *api,
  const i1 filecount = 3;
  Generated_File genfiles[filecount] = {};
  Generated_File &gen_master  = genfiles[0];
- Generated_File &gen_h   = genfiles[1];
- Generated_File &gen_cpp = genfiles[2];
+ Generated_File &gen_h       = genfiles[1];
+ Generated_File &gen_cpp     = genfiles[2];
  //Generated_File &gen_con = genfiles[3];
  
  String dir = {};

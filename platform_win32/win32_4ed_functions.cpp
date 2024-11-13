@@ -50,8 +50,8 @@ global CRITICAL_SECTION memory_tracker_mutex;
 /*static_assert(sizeof(Memory_Annotation_Tracker_Node) <= win32_memory_header_size);
 static_assert(win32_memory_header_size % 64 == 0);*/
 
-function void *
-system_memory_reserve(usize wanted_size, String location){
+function u8 *
+system_memory_reserve(usize wanted_size){
  //-NOTE(kv)
  //  I really tried to make ASAN happen with VirtualAlloc,
  //  but realized that we do need sparse allocation if we to catch bugs.
@@ -85,7 +85,7 @@ system_memory_reserve(usize wanted_size, String location){
    memory_tracker.count += 1;
    LeaveCriticalSection(&memory_tracker_mutex);
   }
-  node->location = location;
+  //node->location = location;  TODO(kv) reinstate this sometimes
   node->size     = reserve_size;
  }
  u8 *app_memory = os_memory + page_size;
@@ -550,7 +550,7 @@ color_picker_hook(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
             Color_Picker *picker = (Color_Picker*)win32_params->lCustData;
             SetWindowLongPtr(Window, GWLP_USERDATA, (LONG_PTR)LParam);
             
-            Scratch_Block scratch(win32vars.tctx,0);
+            Scratch_Block scratch;
             String_u16 temp = string_u16_from_string_u8(scratch, picker->title, StringFill_NullTerminate);
             SetWindowTextW(Window, (LPCWSTR)temp.str);
         } break;

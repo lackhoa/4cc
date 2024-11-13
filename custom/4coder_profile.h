@@ -8,14 +8,15 @@
 #define FCODER_PROFILE_H
 
 struct Profile_Global_List{
-    System_Mutex mutex;
-    Arena node_arena;
-    Arena_Node *first_arena;
-    Arena_Node *last_arena;
-    Profile_Thread *first_thread;
-    Profile_Thread *last_thread;
-    i1 thread_count;
-    Profile_Enable_Flag disable_bits;
+ System_Mutex mutex;
+ Arena node_arena;
+ /*
+ Arena_Node *first_arena;
+ Arena_Node *last_arena;*/
+ Profile_Thread *first_thread;
+ Profile_Thread *last_thread;
+ i1 thread_count;
+ Profile_Enable_Flag disable_bits;
 };
 
 struct Profile_Block{

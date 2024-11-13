@@ -57,7 +57,7 @@ hot_directory_fixup(Hot_Directory *hot_directory){
 function void
 hot_directory_set(Hot_Directory *hot_directory, String str)
 {
-    arena_clear2(&hot_directory->arena);
+    arena_clear(&hot_directory->arena);
     hot_directory->string    = push_stringz(&hot_directory->arena, str);
     hot_directory->canonical = system_get_canonical(&hot_directory->arena, str);
     hot_directory->file_list = system_get_file_list(&hot_directory->arena, hot_directory->canonical);
@@ -73,7 +73,7 @@ hot_directory_reload(Arena *scratch, Hot_Directory *hot_directory){
 
 function void
 hot_directory_init(Arena *scratch, Hot_Directory *hot_directory, String directory){
-    hot_directory->arena = make_arena_system();
+    hot_directory->arena = make_arena();
     Temp_Memory temp = begin_temp_memory(scratch);
     String dir = directory;
     if (!character_is_slash(string_get_character(directory, directory.size - 1))){

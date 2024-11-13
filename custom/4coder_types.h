@@ -1,12 +1,5 @@
 #pragma once
 
-struct App 
-{
- Thread_Context *tctx;
- void *cmd_context;
-};
-typedef App Application_Links;  // NOTE: has to be here for the 4coder meta-generator.
-
 api(custom)
 typedef i1 View_ID;
 
@@ -32,11 +25,6 @@ struct Mouse_State{
   struct{ i1 x; i1 y; };
  };
 };
-
-api(custom) function Thread_Context*
-get_thread_context(App *app){
- return(app->tctx);
-}
 
 api(custom)
 struct Frame_Info{
@@ -743,6 +731,4 @@ struct Process_State{
 typedef void Audio_Mix_Sources_Function(void *ctx, f32 *buffer, u32 sample_count);
 typedef void Audio_Mix_Destination_Function(i16 *dst, f32 *src, u32 sample_count);
 #endif
-
-
 //~

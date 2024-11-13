@@ -25,7 +25,7 @@ k_parse_preprocessor(Ed_Parser *p){
  while(true){
   Token *token = ep_get_token(p);
   if(token->flags & TokenBaseFlag_PreprocessorBody){
-   ep_eat_token_all(p);
+   ep_eat_token_inc_all(p);
   }else{ break; }
  }
  ep_skip_comments_and_spaces(p);
@@ -50,7 +50,7 @@ k_parse_expression(Arena *arena, Ed_Parser *p, String terminators){
     init_dynamic(call.arguments, arena);
     while(p->ok_ and (not ep_maybe_char(p, ')'))){
      Meta_Expression argument = k_parse_expression(arena, p, strlit(",)"));
-     call.arguments.push(argument);
+     call.arguments.push_value(argument);
      if(ep_maybe_char(p, ')')){ break; }
      else{ ep_char(p, ','); }
     }
@@ -145,7 +145,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
    {//-cases
     ep_char(p, '{');
     while(p->ok_ && not ep_maybe_char(p, '}')){
-     Switch_Case *case0 = &switch0->cases.push_zero();
+     Switch_Case *case0 = switch0->cases.push_zero();
      ep_id(p, strlit("case"));
      case0->expression = k_parse_expression(arena, p, strlit(":"));
      ep_char(p, ':');
@@ -169,7 +169,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
    ep_char(p, '(');
    while(p->ok_ && not ep_maybe_char(p, ')')){
     //-Cached items
-    Cache_Item *cache_item = &cache0->cache_items.push_zero();
+    Cache_Item *cache_item = cache0->cache_items.push_zero();
     parse_type_and_name(p, &cache_item->type, &cache_item->name);
     ep_char(p, '=');
     cache_item->rhs = k_parse_expression(arena, p, strlit(";"));
@@ -179,7 +179,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
     cache0->body = k_parse_statement_to_arena(arena, p);
    }
    //-Remember this statement so we can print out the metadata later
-   p->cache_list.push(cache0);
+   p->cache_list.push_value(cache0);
   }else{
    //-Declaration?
    ep_recovery_block(p);
@@ -230,7 +230,7 @@ k_parse_statement_block(Arena *arena, Klang_Parser *p){
  ep_skip_semicolons(p);
  while(p->ok_ and (not ep_maybe_char(p,'}'))){
   //-Statement
-  k_parse_statement_to_pointer(arena, p, &statements.push_zero());
+  k_parse_statement_to_pointer(arena, p, statements.push_zero());
   ep_skip_semicolons(p);
  }
  return statements;
@@ -239,18 +239,19 @@ function void
 k_process_top_level(Arena *arena,
                     Klang_Parser *p, Meta_Printer &printer_gen,
                     /*out*/ Statement_Root *root){
- Scratch_Block scratch_loop(get_thread_context(), arena);
+ Scratch_Block scratch_loop;
  while(p->ok_){
   //-NOTE(kv): Parsing loop
   Temp_Memory_Block temp_loop(scratch_loop);
-  {//-When we read a newline, print a newline back out
+  {//-whitespace token
    while(true){
     Token *token = ep_get_token(p);
-    if(token->kind == TokenBaseKind_Whitespace ||
-       token->kind == TokenBaseKind_Comment ||
-       token->kind == TokenBaseKind_StatementClose){
+    if(token->kind == TokenBaseKind_Whitespace or
+       token->kind == TokenBaseKind_Comment or
+       token->kind == TokenBaseKind_StatementClose)
+    {
      ep_print_token(printer_gen, p);
-     ep_eat_token_all(p);
+     ep_eat_token_inc_all(p);
     }else{
      break;
     }
@@ -289,26 +290,25 @@ k_process_top_level(Arena *arena,
    ep_char(p, '{');
    while(p->ok_ && !m_maybe_brace_close(p)){
     // NOTE: Field
-    M_Struct_Member &member = members.push2();
-    member = {};
+    M_Struct_Member *member = members.push_zero();
     
     if(ep_maybe_id(p, "meta_removed")){
      //-meta_removed
      ep_char(p, '(');
      {
-      parse_struct_member(p, &member);
+      parse_struct_member(p, member);
      }
      if(meta_maybe_key(p, strlit("added"))){
-      member.version_added = ep_id(p);
+      member->version_added = ep_id(p);
       ep_maybe_char(p, ',');
      }
      {
       meta_parse_key(p, strlit("removed"));
-      member.version_removed = ep_id(p);
+      member->version_removed = ep_id(p);
       ep_maybe_char(p, ',');
      }
      if ( meta_maybe_key(p, strlit("default")) ) {
-      member.default_value = ep_capture_until_char(p, ')');
+      member->default_value = ep_capture_until_char(p, ')');
      } else {
       ep_char(p,')');
      }
@@ -320,19 +320,19 @@ k_process_top_level(Arena *arena,
       while(p->ok_ && !ep_maybe_char(p, ')')){
        ep_maybe_char(p, ',');
        if(meta_maybe_key(p, strlit("added"))){
-        member.version_added = ep_id(p);
+        member->version_added = ep_id(p);
        }else if(meta_maybe_key(p, strlit("default"))){
         //TODO(kv): support arbitrary expression in parens
-        member.default_value = ep_print_token(p);
+        member->default_value = ep_print_token(p);
         ep_eat_token(p);
        }else{ p->fail(); }
       }
      }else if(ep_maybe_id(p, "meta_unserialized")){
-      member.unserialized = true;
+      member->unserialized = true;
      }
      ep_skip_semicolons(p);
      
-     parse_struct_member(p, &member);
+     parse_struct_member(p, member);
     }
    }
    
@@ -354,9 +354,9 @@ k_process_top_level(Arena *arena,
    m_brace_open(p);
    while(p->ok_ && !m_maybe_brace_close(p)){
     //NOTE(kv) Enum value
-    enum_names.push(ep_id(p));
+    enum_names.push_value(ep_id(p));
     ep_char(p, '=');
-    enum_vals.push(ep_i1(p));
+    enum_vals.push_value(ep_i1(p));
     ep_eat_until_char_simple(p, ',');  // NOTE(kv) The ending comma is optional, but I don't care.
    }
    
@@ -386,7 +386,7 @@ k_process_top_level(Arena *arena,
      break;
     }else{
      ep_print_token(printer_gen, p);
-     ep_eat_token_all(p);
+     ep_eat_token_inc_all(p);
     }
    }
   }else if(token0_string == strlit("xfunction") ||
@@ -402,7 +402,7 @@ k_process_top_level(Arena *arena,
    mpa_parens{
     parameters = ep_capture_until_char(p,')');
    }
-   Statement_Union *func0 = &root->top_levels.push_zero();
+   Statement_Union *func0 = root->top_levels.push_zero();
    cast_to_var(Statement_Function *, func, func0);
    {//-Body
     func->kind = Statement_Kind_Function;
@@ -476,8 +476,9 @@ k_process_top_level(Arena *arena,
 }
 function b32
 k_process_file(Arena *arena, Meta_Parsed_File source,
-               /*out*/ Statement_Root *root){
- Scratch_Block scratch(get_thread_context(), arena);
+               /*out*/ Statement_Root *root)
+{
+ Scratch_Block scratch;
  *root = {};
  root->kind = Statement_Kind_Root;
  root->source_path=source.name;
@@ -489,9 +490,8 @@ k_process_file(Arena *arena, Meta_Parsed_File source,
  {//-filepath business
   Stringz gen_path;
   {
-   String path = source.name;
-   String gen_dir = pjoin(scratch, path_dir(path), "generated");
-   String filename = path_filename(path);
+   String gen_dir = pjoin(scratch, path_dir(source.name), "generated");
+   String filename = path_filename(source.name);
    String stem = path_stem(filename);
    String extension = path_extension(filename);
    b32 is_kh = extension == strlit("kh");
@@ -516,7 +516,7 @@ k_process_file(Arena *arena, Meta_Parsed_File source,
   }
  }
  init_dynamic(printer_gen.source_map, arena, 256);
- b32 ok = okp(printer_gen);
+ b32 ok = not printer_gen.has_error;
  Klang_Parser klang_parser = {};
  Klang_Parser *p = &klang_parser;
  {
@@ -572,30 +572,25 @@ k_print_struct_meta(Printer &p, K_Struct struc){
 }
 
 function b32
-klang_main(arrayof<Meta_Parsed_File> source_files){
- b32 ok = true;
- for_i1(index,0,source_files.count){
-  Scratch_Block file_scratch(get_thread_context(), 0);
-  Meta_Parsed_File &source_file = source_files[index];
+klang_main(Meta_Parsed_File source_file){
+ b32 ok = source_file.ok;
+ if(ok){
   {//-Test file
    b32 is_test_file = path_filename(source_file.name) == "test.kc";
    if(DEBUG_parse_test_file){
     if(not is_test_file){
-     continue;
+     return true;
     }
    }else if(is_test_file){
-    continue;
+    return true;
    }
   }
-  String extension = path_extension(source_file.name);
-  if(extension == strlit("kh") ||
-     extension == strlit("kc")){
-   Statement_Root root;
-   ok = k_process_file(file_scratch, source_file, &root);
-   if(ok){
-    meta_process_ast(&root);
-   }
-   if(!ok){ break; }
+  
+  Scratch_Block file_scratch;
+  Statement_Root root = {};
+  ok = k_process_file(file_scratch, source_file, &root);
+  if(ok){
+   meta_process_ast(&root);
   }
  }
  return ok;

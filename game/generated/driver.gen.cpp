@@ -1,4 +1,4 @@
-//NOTE Generated at C:\Users\vodan\4ed\code\meta_klang.cpp:513:
+//NOTE File created programmatically by C:\Users\vodan\4ed\code/meta_klang.cpp:513:
 // NOTE: source: C:\Users\vodan\4ed\code\game\driver.kc
 #pragma once
 //@generates driver.gen.cpp
@@ -726,7 +726,7 @@ macro_pelvis(export_);
 #undef export_
  
 return pelvis_obj;}
-//  C:\Users\vodan\4ed\code\meta_klang.cpp:434:
+//  C:\Users\vodan\4ed\code/meta_klang.cpp:434:
 struct Cache_Storage_34797{
 b32 cache_initialized;
 v1 tblink;
@@ -1527,7 +1527,7 @@ thumb_kbot = V3(0.2669f, -2.6071f, -0.2208f);
 arrayof<Bone *>stack;
 init_static(stack, scratch, 16);
 Bone null_bone = {.xform=mat4i_identity};
-stack.push(&null_bone);
+stack.push_value(&null_bone);
 #define bone_blockm(...) \
 defer_block(push_bone_inner(*m, stack, lr_index, __VA_ARGS__), stack.pop())
  
@@ -1665,7 +1665,7 @@ driver_animate(driver_animate_params){
 Pose pose;
 {
 Temp_Memory_Block temp(scratch);
-Movie_Shot *shot = push_struct(scratch, Movie_Shot, true);
+Movie_Shot *shot = push_struct(scratch, Movie_Shot, push_zero());
 shot->anime_time = anime_time;
 {
 i32 sel = fvali(2);
@@ -1747,7 +1747,7 @@ p.ignore_radii         = viz_level!=0;
 p.ignore_alignment_min = viz_level!=0;
 init_static(p.bone_stack, arena, 16);
 auto &bones = get_bones(m);
-p.bone_stack.push(&bones[0]);
+p.bone_stack.push_value(&bones[0]);
 push_view_vector(&p, v3{});
 }
 render_character(pose, anime_time);

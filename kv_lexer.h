@@ -138,7 +138,7 @@ kv_eat_line(Lexer *lex)
 inline b32
 lexer_newline_encountered(Lexer *lex)
 {
-    b32 result = lex->newline_encountered;
-    lex->newline_encountered = false;
-    return result;
+ b32 result = lex->newline_encountered;
+ lex->newline_encountered = false;
+ return result;
 }

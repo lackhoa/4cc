@@ -216,7 +216,7 @@ function void
 begin_frame(void *font_set)
 {
  auto &state = render_state;
- arena_clear2(&render_state.arena);
+ arena_clear(&render_state.arena);
  state.group_first = 0;
  state.group_last  = 0;
  state.face_id     = 0;
