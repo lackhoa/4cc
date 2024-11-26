@@ -903,8 +903,8 @@ ogl_render(i2 mousep_ydown, i32 window_id)
      dst_dimy = cast(i32)dst_dim.y;
     }
     
-    macro_clamp_min(dstx, 0);     macro_clamp_min(dsty, 0);
-    macro_clamp_min(dst_dimx, 0); macro_clamp_min(dst_dimy, 0);
+    ClampBot(dstx, 0);     ClampBot(dsty, 0);
+    ClampBot(dst_dimx, 0); ClampBot(dst_dimy, 0);
    }
    
    if( is_game )

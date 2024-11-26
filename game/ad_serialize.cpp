@@ -18,16 +18,12 @@ read_enum(Type_Info &type, void *pointer){
  block_copy(&dst, pointer, type.size);
  return dst;
 }
-//TODO(kv) Handle write failure!
+//-
 function b32
 serialize_state(FILE *file, Game_State *state)
 {
  Writer writer_value = make_writer(file);
  Writer *writer = &writer_value;
- /*u32 debug_counter = 0;
- #define write_debug_counter \
- write_lvalue(writer, debug_counter); \
- debug_counter++;*/
  
  //NOTE(kv) We also write the nil terminator, so that dumb tools can pick it up.
 #define write_debug_string(string) \
@@ -47,8 +43,10 @@ write_size(writer, string, sizeof(string))
   }
   {//-Camera
    write_debug_string("cameras");
+   
    i32 camera_count = GAME_VIEWPORT_COUNT;
    write_lvalue(writer, camera_count);
+   
    for_i32(camera_index, 0, GAME_VIEWPORT_COUNT){
     Camera_Data *cam = &state->viewports[camera_index].target_camera;
     write_binary(writer, cam);
@@ -144,5 +142,4 @@ write_binary_func(Writer *writer, Type_Info *type, void *void_pointer){
   invalid_default_case;
  }
 }
-
 //-

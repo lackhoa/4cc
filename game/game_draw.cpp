@@ -364,14 +364,14 @@ draw_bezier_inner(const v3 P[4], Common_Line_Params &cparams, Line_Params &param
    
    i32 MAX_NSLICES = 128;
    if(nslices > MAX_NSLICES){ DEBUG_VALUE(nslices); }
-   macro_clamp_max(nslices, MAX_NSLICES);
+   ClampTop(nslices, MAX_NSLICES);
   }
   
   Poly_Flags poly_flags = Poly_Line;
   if (flags & Line_Overlay) { poly_flags |= Poly_Overlay; }
   
   v1 radius_threshold = 0.1065f*millimeter;
-  macro_clamp_min(radius_threshold, 0.f);
+  ClampBot(radius_threshold, 0.f);
   
   v1 interval = 1.0f / (v1)nslices;
   
@@ -505,8 +505,8 @@ draw_line(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
 }
 force_inline ARGB_Color
 argb_gray(v1 value){
- macro_clamp_min(value,0.0f);
- macro_clamp_max(value,1.0f);
+ ClampBot(value,0.0f);
+ ClampTop(value,1.0f);
  return argb_pack(v4{repeat3(value),1});
 }
 

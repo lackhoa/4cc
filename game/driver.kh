@@ -29,7 +29,8 @@ enum{
  Line_Straight = 0x2,
  Line_No_SymX  = 0x4,
 };
-struct Common_Line_Params{
+struct Common_Line_Params
+{
  v1 radius_mult;  // NOTE(kv) Temporary measure
  v1 nslice_per_meter;
  argb color;

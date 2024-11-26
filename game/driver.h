@@ -1,6 +1,5 @@
 #pragma once
 
-#include "4coder_game_shared.h"
 #include "game_colors.cpp"
 #include "game_debug.h"
 #include "ad_file_formats.gen.h"
@@ -419,7 +418,7 @@ push_line_cparams(Common_Line_Params &value, i1 linum=__builtin_LINE()){
  Common_Line_Params *address = &get_line_cparams(m, linum);
  if(address == &list[0]){// not found
   value.linum = linum;
-  list.push_value(value);
+  address = list.push_value(value);
  }
  painter.line_cparams_stack.push_value(address);
  use_line_cparams(value);

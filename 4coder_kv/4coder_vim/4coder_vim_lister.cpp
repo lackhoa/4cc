@@ -202,7 +202,7 @@ calc_col_row(App *app, Lister *lister)
 	return Vec2_i32{col_num, row_num};
 }
 
-#define SCREW_THIS_JUST_KISS 1  //NOTE(kv) I don't approve of this message!
+#define SCREW_THIS_JUST_KISS 1
 // TODO(BYP): Be more rigorous here. I'm sure there are off-by-1's and other incorrect assumptions
 function void
 vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
@@ -212,15 +212,17 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
  Lister *lister = view_get_lister(app, view);
  if (lister == 0) { return; }
  
- rect2 clip      = hax_get_main_monitor_rectangle(app);
- rect2 prev_clip = draw_set_clip(app, clip);
+ rect2 clip = global_get_screen_rectangle(app);
+ /*rect2 clip      = hax_get_main_monitor_rectangle(app);
+ rect2 prev_clip = draw_set_clip(app, clip);*/
  
  Face_ID face_id = get_face_id(app, 0);
  Face_Metrics metrics = get_face_metrics(app, face_id);
  f32 line_height = metrics.line_height;
  f32 max_advance = metrics.max_advance;
  f32 block_height = vim_lister_get_block_height(line_height);
- f32 max_lister_height = rect_height(clip)*VIM_LISTER_MAX_RATIO - 2.f*line_height;
+ //NOTE(kv) "block_height" is actually row height (probably?)
+ f32 max_lister_height = macro_min(2.0f*block_height, rect_height(clip) - 2.f*line_height);
 	
  u64 max_name_size = 0;
  Range_i32 lister_range = Ii32(VIM_LISTER_RANGE);
@@ -366,7 +368,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
   draw_rect_fcolor(app, rect, 0.f, get_item_margin_color(UIHighlight_Active));
 	}
 	
-	draw_set_clip(app, prev_clip);
+	//draw_set_clip(app, prev_clip);
 }
 
 function void vim_change_lister_view_back(App *app){

@@ -13,26 +13,32 @@
 #define XListHelper(X, N)  X(graphics_##N, graphics_##N##_return, (graphics_##N##_params))
 
 #define XList(X)  \
-    XListHelper(X, get_texture)  \
-    XListHelper(X, fill_texture) \
+XListHelper(X, get_texture)  \
+XListHelper(X, fill_texture) \
 
 // typedef
-XList(XTypedef);
+#define X(N,R,P)              typedef R N##_type P;
+XList(X);
+#undef X
 
 struct API_VTable_graphics
 {
-    XList(XPointer)
+#define X(N,R,P)              N##_type *N;
+ XList(X)
+#undef X
 };
 
 #if defined(STATIC_LINK_API)
 
-XList(XInternalFunction)
+#define X(N,R,P)     function N##_type N;
+XList(X)
+#undef X
 
 function void
 graphics_api_fill_vtable(API_VTable_graphics *vtable)
 {
     vtable->graphics_get_texture      = graphics_get_texture;
-    vtable->graphics_fill_texture     = graphics_fill_texture;
+ vtable->graphics_fill_texture     = graphics_fill_texture;
 }
 
 
@@ -40,7 +46,9 @@ graphics_api_fill_vtable(API_VTable_graphics *vtable)
 
 #elif defined(DYNAMIC_LINK_API)
 //
-XList(XGlobalPointer);
+#define X(N,R,P)        global N##_type *N;
+XList(X);
+#undef X
 
 function void
 graphics_api_read_vtable(API_VTable_graphics *vtable)

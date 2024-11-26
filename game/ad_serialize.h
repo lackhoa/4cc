@@ -25,6 +25,6 @@ write_binary_func(Writer *writer, Type_Info *type, void *void_pointer);
 write_size(writer, &lvalue, sizeof(lvalue))
 
 #define write_binary(writer, POINTER) \
-write_binary_func(writer, &type_info_from_pointer(POINTER), POINTER)
+write_binary_func(writer, type_info_from_pointer(POINTER), POINTER)
 
 //-

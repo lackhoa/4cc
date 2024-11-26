@@ -81,10 +81,10 @@ vim_to_pattern_inner(App *app, b32 backward)
  i64 new_pos = vim_pattern_inner_v(app, seek_flags);
  if(new_pos > 0 && new_pos != buffer_size) {
   vim_push_jump(app, view);
-        Vim_Motion_Block vim_motion_block(app);
-        view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
-    }
-    //vim_scroll_screen_mid(app);  // kv: If we don't scroll, the cursor will be lost
+  Vim_Motion_Block vim_motion_block(app);
+  view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
+ }
+ //vim_scroll_screen_mid(app);  // kv: If we don't scroll, the cursor will be lost
 }
 
 function void

@@ -150,7 +150,7 @@ function void
 render_hand(Forearm forearm_obj){
  vertex_block("hand");
  radius_scale_block(fval(0.5038f));
- lp_block(nslice_per_meter, fval(5.9797f) * 100.f);
+ lp_block(nslice_per_meter, 5.9797f * 100.f);
  
  mat4i &ot       = p_current_world_from_bone();
  mat4i &forearmT = p_mom_bone_xform();
@@ -1026,8 +1026,8 @@ render_pelvis(){
  return pelvis_obj;
 }
 function void
-render_eyes(Pose &pose){
- cache(v1 tblink = pose.tblink;){
+render_eyes(Pose *pose){
+ cache(v1 tblink = pose->tblink;){
   //-
   // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
   // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
@@ -1152,7 +1152,11 @@ render_eyes(Pose &pose){
 function Head
 render_head(Pose *pose, v1 animation_time)
 {// NOTE: The ;head + face
- lp_block(nslice_per_meter, (4.1128f) * 100.f);//NOTE: crank up the lod
+ Common_Line_Params cparams = current_line_cparams();
+ cparams.nslice_per_meter = 4.1128f * 100.f;
+ push_line_cparams(cparams);
+ defer(pop_line_cparams());
+ //lp_block(nslice_per_meter, 4.1128f * 100.f);//NOTE: crank up the lod
  const v1 head_unit = 1.f+square_root(2);
  
  b32 show_loomis_ball = fbool(0);
@@ -1875,7 +1879,7 @@ render_character(Pose *pose, v1 animation_time){
   {
    bone_block(Bone_Head);
    head = render_head(pose, animation_time);
-   render_eyes(*pose);
+   render_eyes(pose);
   }
   Pelvis pelvis_obj;
   {
@@ -1887,7 +1891,7 @@ render_character(Pose *pose, v1 animation_time){
   {
    set_in_block(painter.painting_disabled,
                 !show_body || painter.painting_disabled);
-   torso_obj= render_torso(pose, pelvis_obj, head);
+   torso_obj = render_torso(pose, pelvis_obj, head);
   }
   v3 elbow_offset = (V3(0.0107f, -1.864f, -0.1208f));
   v3 elbow_up_out = elbow_offset+(V3(0.0527f, 0.9446f, -0.2298f));

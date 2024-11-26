@@ -1,5 +1,4 @@
-#pragma once
-
+//-
 global u32 autodraw_data_magic = 'adda';
 typedef u32 Data_Version;
 enum{
@@ -16,22 +15,30 @@ enum{
  Version_OPL,
  Version_Inf                 = 0xFFFF,
 };
-global Data_Version Version_Current = Data_Version(Version_OPL-1);
+global Data_Version Version_Current = (Data_Version)(Version_OPL-1);
 
-struct Data_Reader{
+struct Data_Reader
+{
+ b32 ok;
  Data_Version read_version;
- STB_Parser *parser;
+ u8 *base;
+ u8 *pos;
+ u8 *end_pos;
 };
 
 // NOTE: ;read_basic_types
-#define X(T) \
-force_inline void \
-read_##T(Data_Reader &r, T &DST)  \
-{ DST = eat_##T(r.parser) ; }
-//
-X_Basic_Types(X)
-//
-#undef X
+function void
+read_binary_size(Data_Reader &r, usize size, void *dst)
+{
+ if(r.end_pos - r.pos < isize(size)){
+  //NOTE not enough data left
+  r.ok = false;
+ }
+ if(r.ok){
+  block_copy(dst, r.pos, size);
+  r.pos += size;
+ }
+}
 
 global Arena global_meta_arena_value;
 global Arena *global_meta_arena = &global_meta_arena_value;

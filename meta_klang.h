@@ -38,7 +38,8 @@ make_type_array(String name, i32 count){
  return result;
 }
 //-
-struct M_Struct_Member{
+struct M_Struct_Member
+{
  String name;
  Parsed_Type type;
  String version_added;

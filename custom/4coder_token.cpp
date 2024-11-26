@@ -97,14 +97,16 @@ token_index_from_pos(Token_Array *tokens, u64 pos){
 
 function Token*
 token_from_pos(Token *tokens, i64 count, i64 pos){
-    i64 index = token_index_from_pos(tokens, count, pos);
-    return(tokens + index);
+ Token *result = &stub_token;
+ if(tokens){
+  i64 index = token_index_from_pos(tokens, count, pos);
+  result = tokens + index;
+ }
+ return result;
 }
-
 function Token*
 token_from_pos(Token_Array *tokens, u64 pos){
- i64 index = token_index_from_pos(tokens, pos);
- return(tokens->tokens + index);
+ return token_from_pos(tokens->tokens, tokens->count, pos);
 }
 
 ////////////////////////////////

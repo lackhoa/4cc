@@ -63,7 +63,7 @@ defer_block( \
 ((p < ")"), end_separator(p)))
 #define m_braces2(p)   defer_block((p < "{"), (p < "}"))
 #define m_braces       m_braces2(p)
-#define m_braces_newline defer_block((p < "{\n"), (p < "\n}"))
+#define m_braces_newline defer_block((p < "{\n"), (p < "\n}\n"))
 #define m_braces_sm    defer_block((p < "{"), (p < "};"))
 #define m_macro_braces defer_block((p < "\\\n{\\\n"), (p < "\\\n}\\\n"))
 #define m_macro_braces_sm  defer_block((p < "\\\n{\\\n"), (p < "\\\n};\\\n"))

@@ -60,9 +60,9 @@ m_get_type_names(String type_name){
  Meta_Type_Names *new_item = store.push();
  *new_item = {
   .type_name          = push_string(arena, type_name),
-  .info_function_name = push_stringf(arena, "get_type_info_%.*s", string_expand(type_name)),
-  .global_info_name   = push_stringf(arena, "Type_Info_%.*s", string_expand(type_name)),
-  .read_function_name = push_stringf(arena, "read_%.*s", string_expand(type_name)),
+  .info_function_name = push_stringf(arena, "get_type_info_%.*s", strexpand(type_name)),
+  .global_info_name   = push_stringf(arena, "Type_Info_%.*s",     strexpand(type_name)),
+  .read_function_name = push_stringf(arena, "read_binary_%.*s",   strexpand(type_name)),
  };
  return *new_item;
 }
@@ -81,41 +81,40 @@ get_type_info_function_name(String type_name){
 //TODO(kv) We're not printing out the type info,
 //  because that uses arena and we're messing with shared memory arenas.
 function void
-print_type_meta_shared(Printer &p, String type_name, b32 is_typedef=false){
- String type_global_var = get_type_global_info_name  (type_name);
- {
-  {
-   m_location;
-   p<"global Type_Info "<type_global_var<";\n\n";
-  }
-  if(!is_typedef)
-  {
-   // NOTE: Overload to automatically get the type info from a pointer of that type
-   p<"function Type_Info &type_info_from_pointer("<type_name<"*pointer)";
-   m_braces{
-    p<"return "<type_global_var<";";
-   }
+print_type_meta_shared(Printer &p, String type_name, b32 is_typedef=false)
+{
+ String type_global_var = get_type_global_info_name(type_name);
+ {//TODO(kv) Let's see if this explodes...
+  m_location;
+  print_format(p, "global Type_Info %.*s = get_type_info_%.*s();\n\n",
+               strexpand(type_global_var), strexpand(type_name));
+ }
+ if(!is_typedef){
+  // NOTE: Overload to automatically get the type info from a pointer of that type
+  p<"function Type_Info *type_info_from_pointer("<type_name<"*pointer)";
+  m_braces_newline{
+   p < "return &" < type_global_var < ";";
   }
  }
 }
 function void
 print_type_read_function_prototype(Printer &p, String type_name){
- p<<"function void\n";
- p<<get_type_read_function_name(type_name)<<
-  "(Data_Reader &r, " << type_name << " &pointer)";
+ p < "function void\n";
+ p < get_type_read_function_name(type_name) <
+  "(Data_Reader &r, " < type_name < " *dst)";
 }
 function void
 print_union_read_function_prototype(Printer &p, String type_name, String discriminator_type){
- p<<"function void\n"<<
-  get_type_read_function_name(type_name)<<
-  "(Data_Reader &r, "<<
-  type_name<<" &pointer, "<<
-  discriminator_type<<" variant"<<")";
+ p <"function void\n" <
+  get_type_read_function_name(type_name) <
+  "(Data_Reader &r, " <
+  type_name <" *dst, " <
+  discriminator_type <" variant" <")";
 }
 function void
 print_type_info_function_prototype(Printer &p, String type_name){
  String function_name = get_type_info_function_name(type_name);
- p<<"function Type_Info\n"<<function_name<<"()";
+ p <"function Type_Info\n" <function_name <"()";
 }
 function void
 print_type_and_name(Printer &p, Parsed_Type &type, String name){
@@ -158,161 +157,145 @@ print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_pac
 }
 function void
 print_struct_meta(Printer &p, String type_name,
-                  M_Struct_Members &members){
+                  M_Struct_Members &members)
+{
  Scratch_Block scratch;
-#define brace_block  p < "\n{\n"; defer( p < "\n}\n"; );
  {//-NOTE ("Function to generate the type info")
   String function_name = get_type_info_function_name(type_name);
-  {//NOTE .h
-   m_location;
-   p<"struct "<type_name<";\n";
-   p<"function Type_Info\n"<function_name<"();";
-  }
-  {//NOTE .cpp
-   m_location;
-   p<"function Type_Info\n"<function_name<"()";
-   {brace_block;
-    p<"Type_Info result = {};\n";
-    p<"result.name = "<enclosed_in_strlit(type_name) < ";\n";
-    p<"result.size = sizeof("<type_name<");\n";
-    p<"result.kind = I_Type_Kind_Struct;\n";
-    // NOTE(kv) Computing member count
-    i32 member_count = 0;
-    for_i32(raw_member_index,0,members.count){
-     if(!member_was_removed(members.get(raw_member_index))){
-      member_count++;
-     }
+  m_location;
+  p<"function Type_Info\n"<function_name<"()";
+  m_braces_newline{
+   p<"Type_Info result = {};\n";
+   p<"result.name = "<enclosed_in_strlit(type_name) < ";\n";
+   p<"result.size = sizeof("<type_name<");\n";
+   p<"result.kind = I_Type_Kind_Struct;\n";
+   // NOTE(kv) Computing member count
+   i32 member_count = 0;
+   for_i32(raw_member_index,0,members.count){
+    if(not member_was_removed(members.get(raw_member_index))){
+     member_count++;
     }
-    
-    p < "result.members.set_count(" < member_count < ");\n";
-    i32 member_index = 0;
-    for_i1(raw_member_index,0,members.count){
-     M_Struct_Member &member = members.get(raw_member_index);
-     if(!member_was_removed(member)){
-      m_braces{
-       {//-Member type
-        if(member.type.kind == Parsed_Type_Array){
-         //NOTE(kv) Array type -> Must create it on the fly
-         print(p, "Type_Info *member_type = push_struct(global_meta_arena, Type_Info, push_zero());\n");
-         String item_type_info = get_type_global_info_name(member.type.name);
-         //NOTE(kv) Made-up array type name
-         print_format(p, "member_type->name = strlit(\"%.*s[%d]\");\n",
-                      strexpand(member.type.name), member.type.count);
-         print_format(p, "member_type->kind = I_Type_Kind_Array;\n");
-         print_format(p, "member_type->size = %d * %.*s.size;\n",
-                      member.type.count, strexpand(item_type_info));
-         print_format(p, "member_type->array_item_type = & %.*s;\n",
-                      strexpand(item_type_info));
-         print_format(p, "member_type->count = %d;\n", member.type.count);
-        }else{
-         //NOTE(kv) Normal type
-         print_format(p, "Type_Info *member_type = & %.*s;\n",
-                      strexpand(get_type_global_info_name(member.type.name)));
-        }
-       }
-       p<"result.members["<member_index<"] = "<
-        "{.type=member_type"<
-        ", .name="<enclosed_in_strlit(member.name)<
-        ", .offset=offsetof("<type_name<", "<member.name<")";
-       if(member.discriminator.len){
-        p<", .discriminator_offset=offsetof("<type_name<", "<member.discriminator<")";
-       }
-       if(member.unserialized){
-        p<", .unserialized=true";
-       }
-       p<"};\n";
-      }
-      member_index++;
-     }
-    }
-    
-    p < "return result;";
    }
-  } 
+   
+   p < "result.members.set_count(" < member_count < ");\n";
+   i32 member_index = 0;
+   for_i1(raw_member_index,0,members.count){
+    M_Struct_Member &member = members.get(raw_member_index);
+    if(not member_was_removed(member)){
+     m_braces_newline{
+      {//-Member type
+       if(member.type.kind == Parsed_Type_Array){
+        //NOTE(kv) Array type -> Must create it on the fly
+        //TODO(kv) Just use malloc, because arenas might be exist yet...
+        //  maybe we can make another arena type that works off a static pool?
+        print(p, "local_persist Type_Info member_type_value;\n");
+        print(p, "Type_Info *member_type = &member_type_value;\n");
+        print(p, "*member_type = {};\n");
+        String item_type_info = get_type_global_info_name(member.type.name);
+        //NOTE(kv) Made-up array type name
+        print_format(p, "member_type->name = strlit(\"%.*s[%d]\");\n",
+                     strexpand(member.type.name), member.type.count);
+        print_format(p, "member_type->kind = I_Type_Kind_Array;\n");
+        print_format(p, "member_type->size = %d * %.*s.size;\n",
+                     member.type.count, strexpand(item_type_info));
+        print_format(p, "member_type->array_item_type = & %.*s;\n",
+                     strexpand(item_type_info));
+        print_format(p, "member_type->count = %d;\n", member.type.count);
+       }else{
+        //NOTE(kv) Normal type
+        print_format(p, "Type_Info *member_type = & %.*s;\n",
+                     strexpand(get_type_global_info_name(member.type.name)));
+       }
+      }
+      p<"result.members["<member_index<"] = "<
+       "{.type=member_type"<
+       ", .name="<enclosed_in_strlit(member.name)<
+       ", .offset=offsetof("<type_name<", "<member.name<")";
+      if(member.discriminator.len){
+       p<", .discriminator_offset=offsetof("<type_name<", "<member.discriminator<")";
+      }
+      if(member.unserialized){
+       p<", .unserialized=true";
+      }
+      p<"};";
+     }
+     member_index++;
+    }
+   }
+   
+   p < "return result;";
+  }
  }
  
  print_type_meta_shared(p, type_name);
  
- {//-NOTE: ;meta_read_struct
-  {//- .h
-   m_location;
-   print_type_read_function_prototype(p,type_name);
-   p<";\n";
-  }
-  {//- .cpp
-   m_location;
-   print_type_read_function_prototype(p,type_name);
-   {brace_block;
-    p < "STB_Parser *p = r.parser;\n";
-    
-    p < "eat_char(p, '{');\n";
-    for_i1(member_index,0,members.count){
-     M_Struct_Member &member = members.get(member_index);
-     if(!member.unserialized){
-      String version_added = member.version_added;
-      b32 has_version_added = version_added.len != 0;
-      if (!has_version_added) { version_added = strlit("0"); }
-      String version_removed = member.version_removed;
-      b32 has_version_removed = version_removed.len != 0;
-      if (!has_version_removed) { version_removed = strlit("Version_Inf"); }
-      String default_value = member.default_value;
-      b32 has_default = default_value.len != 0;
-      if (!has_default) { default_value = strlit("{}"); }
-      
-      b32 member_currently_exists = !has_version_removed;
-      //NOTE(kv) Mangle the name so that we don't have conflict with other local vars.
-      String varname = push_stringf(scratch, "m_%.*s", string_expand(member.name));
-      
-      {//NOTE(kv) Make a local variable to store the value, for
-       //  1. convenience, and
-       //  2. the struct might not have that member anymore,
-       //     but we may need that value for conversion purpose.
-       print_type_and_name(p, member.type, varname);
-       p<" = "<default_value<";\n";
-      }
-      
-      if (has_version_added || has_version_removed)
-      {// NOTE(kv) Only read if the data has that member.
-       p<"if ( in_range_exclusive("<
-        version_added<", r.read_version, "< version_removed<") )";
-      }
-      {//NOTE(kv) Read data to the local var
-       brace_block;
-       p < "eat_id(p, " < enclosed_in_strlit(member.name) < ");\n";
-       //NOTE(kv) cheese!
-       String read_function = get_type_read_function_name(member.type.name);
-       b32 has_disciminator = member.discriminator.len != 0;
-       if(has_disciminator){
-        p<read_function<"(r, "<varname<", pointer."<member.discriminator<");";
-       }else{
-        if(member.type.kind == Parsed_Type_Array){
-         //-Read array
-         p < "eat_char(p, '{');";
-         for_i32(i,0,member.type.count){
-          p<read_function<"(r, "<varname<"["<i<"]);";
-         }
-         p < "eat_char(p, '}');";
-        }else{
-         //-Read normal type (NOTE(kv) We still don't handle pointer, I don't even know how to)
-         p<read_function<"(r, "<varname<");";
-        }
-       }
-      }
-      if(member_currently_exists){
-       //NOTE(kv) Assign the local var to the dest struct member.
+ {//-;meta_read_struct
+  //NOTE(kv) metaprogramming is weird and janky, but deserializign at runtime
+  //  has its runtime cost, and we have to expose the RTTI data which is only
+  //  used for this very purpose.
+  m_location;
+  print_type_read_function_prototype(p,type_name);
+  m_braces_newline{
+   for_i1(member_index,0,members.count){
+    M_Struct_Member &member = members.get(member_index);
+    if(not member.unserialized){
+     String version_added = member.version_added;
+     b32 has_version_added = version_added.len != 0;
+     if(!has_version_added){ version_added = strlit("0"); }
+     String version_removed = member.version_removed;
+     b32 has_version_removed = version_removed.len != 0;
+     if(!has_version_removed){ version_removed = strlit("Version_Inf"); }
+     String default_value = member.default_value;
+     b32 has_default = default_value.len != 0;
+     if(!has_default){ default_value = strlit("{}"); }
+     
+     b32 member_currently_exists = !has_version_removed;
+     //NOTE(kv) Mangle the name so that we don't have conflict with other local vars.
+     String varname = push_stringf(scratch, "m_%.*s", strexpand(member.name));
+     
+     {//NOTE(kv) Make a local variable to store the value, for
+      //  1. convenience, and
+      //  2. the struct might not have that member anymore,
+      //     but we may need that value for conversion purpose.
+      print_type_and_name(p, member.type, varname);
+      p<" = "<default_value<";\n";
+     }
+     
+     if(has_version_added || has_version_removed)
+     {// NOTE(kv) Only read if the data has that member.
+      p < "if ( in_range_exclusive(" <
+       version_added < ", r.read_version, " < version_removed < ") )";
+     }
+     m_braces_newline{//NOTE(kv) Read data to the local var
+      //NOTE(kv) cheese!
+      String read_function = get_type_read_function_name(member.type.name);
+      b32 has_disciminator = member.discriminator.len != 0;
+      if(has_disciminator){
+       p<read_function<"(r, &"<varname<", dst->"<member.discriminator<");";
+      }else{
        if(member.type.kind == Parsed_Type_Array){
-        p<"copy_array_dst(pointer."<member.name<", "<varname<");\n\n";
+        //-Read array
+        for_i32(i,0,member.type.count){
+         p < read_function < "(r, &" < varname < "["<i<"]);";
+        }
        }else{
-        p<"pointer."<member.name<" = "<varname<";\n\n";
+        //-Read normal type
+        p<read_function<"(r, &"<varname<");";
        }
       }
      }
+     if(member_currently_exists){
+      //NOTE(kv) Assign the local var to the dest struct member.
+      if(member.type.kind == Parsed_Type_Array){
+       p<"copy_array_dst(dst->"<member.name<", "<varname<");\n\n";
+      }else{
+       p<"dst->"<member.name<" = "<varname<";\n\n";
+      }
+     }
     }
-    p < "eat_char(p, '}');";
    }
   }
  }
-#undef brace_block
 }
 function void
 print_union_meta(Printer &p, String type_name,
@@ -358,14 +341,9 @@ print_union_meta(Printer &p, String type_name,
   {
    m_location;
    print_union_read_function_prototype(p,type_name,discriminator_type);
-   p<";\n";
-  }
-  {
-   m_location;
-   print_union_read_function_prototype(p,type_name,discriminator_type);
    
-   {brace_block;
-    p<"STB_Parser *p = r.parser;\n";
+   {
+    brace_block;
     //NOTE(kv) When we add/remove union members, this is gonna get complicated,
     //  but right now I don't care.
     p<"switch(variant)";
@@ -375,7 +353,7 @@ print_union_meta(Printer &p, String type_name,
       p<"case "<variant.enum_name<":";
       {brace_block;
        p<get_type_read_function_name(variant.struct_name)<
-        "(r, "<"pointer."<variant.name_lower<");\n"<
+        "(r, "<"&dst->"<variant.name_lower<");\n"<
         "break;";
       }
      }
@@ -390,11 +368,11 @@ print_enum(Printer &p, String type_name,
            arrayof<String> &enum_names,
            arrayof<i32>    &enum_vals){
  m_location;
- p<<"enum "<<type_name;
+ p <"enum " <type_name;
  m_braces_sm{
   for_i32(ei,0,enum_names.count){
-   if(ei!=0){ p<<"\n"; }
-   p<<enum_names[ei]<<" = "<<enum_vals[ei]<<",";
+   if(ei!=0){ p <"\n"; }
+   p <enum_names[ei] <" = " <enum_vals[ei] <",";
   }
  }
 }
@@ -405,25 +383,25 @@ print_enum_meta(Printer &p, String type_name,
   String function_name = get_type_info_function_name(type_name);
   {//NOTE .h
    m_location;
-   p<<"function Type_Info\n"<<function_name<<"();";
+   p <"function Type_Info\n" <function_name <"();";
   }
   {//NOTE .cpp
    m_location;
-   p<<"function Type_Info\n"<<function_name<<"()";
+   p <"function Type_Info\n" <function_name <"()";
    m_braces{
-    p<<"Type_Info result = {};\n";
-    p<<"result.name = "<<enclosed_in_strlit(type_name)<<";\n";
-    p<<"result.size = sizeof("<<type_name<<");\n";
-    p<<"result.kind = I_Type_Kind_Enum;\n";
-    p<<"result.enum_members.set_count("<<enum_names.count<<");\n";
+    p <"Type_Info result = {};\n";
+    p <"result.name = " <enclosed_in_strlit(type_name) <";\n";
+    p <"result.size = sizeof(" <type_name <");\n";
+    p <"result.kind = I_Type_Kind_Enum;\n";
+    p <"result.enum_members.set_count(" <enum_names.count <");\n";
     for_i1(enum_index,0,enum_names.count){
      String name = enum_names.get(enum_index);
-     p<<"result.enum_members["<<enum_index<<"] = "<<
-      "{.name="<<enclosed_in_strlit(name)<<", "<<
-      ".value="<<name<<  //NOTE(kv) Let the compiler fill out the value.
+     p <"result.enum_members[" <enum_index <"] = " <
+      "{.name=" <enclosed_in_strlit(name) <", " <
+      ".value=" <name <  //NOTE(kv) Let the compiler fill out the value.
       "};\n";
     }
-    p<<"return result;";
+    p <"return result;";
    }
   }
  }
@@ -434,30 +412,30 @@ print_enum_meta(Printer &p, String type_name,
   {
    m_location;
    print_type_read_function_prototype(p,type_name);
-   p<<";\n";
+   p <";\n";
   }
   {
    m_location;
    print_type_read_function_prototype(p,type_name);
-   m_braces{
-    p << "STB_Parser *p = r.parser;\n";
+   m_braces_newline{
     // NOTE(kv): @meta_introspect_enum_size
     //   If the type size is too BIG, we'll read past from wrong address.
-    p << "i32 integer = eat_i1(p);\n" <<
-     "pointer = *(" << type_name << "*)(&integer);";
+    p < "i32 integer;" < "\n" <
+     "read_binary_i1(r, &integer);" < "\n" <
+     "*dst = *("  < type_name  < "*)(&integer);";
    }
   }
  }
  
  {// NOTE ;meta_introspect_enum_size
-  p << "static_assert( sizeof(" << type_name << ") <= sizeof(i32) );\n\n";
+  p  < "static_assert( sizeof("  < type_name  < ") <= sizeof(i32) );\n\n";
  }
 }
 function void
 print_typedef_meta(Printer &p, String type_name, String typedef_to){
  {//-Function to generate type info
   String function_name = get_type_info_function_name(type_name);
-#define PROTOTYPE  p<"function Type_Info\n"<function_name<"()"
+#define PROTOTYPE  p < "function Type_Info\n" < function_name < "()"
   {
    m_location;
    PROTOTYPE<";";
@@ -484,7 +462,7 @@ print_typedef_meta(Printer &p, String type_name, String typedef_to){
    m_location;
    print_type_read_function_prototype(p,type_name);
    m_braces{
-    p<get_type_read_function_name(typedef_to)<"(r, pointer);";
+    p < get_type_read_function_name(typedef_to) < "(r, dst);";
    }
   }
  }
@@ -493,9 +471,9 @@ function void
 print_struct_embed(Printer &p, String type_name,
                    arrayof<M_Struct_Member> &members){
  m_location;
- p<<"#define "<<type_name<<"_Embed \\\n union";
+ p <"#define " <type_name <"_Embed \\\n union";
  m_macro_braces_sm{
-  p<<"struct";
+  p <"struct";
   m_macro_braces_sm{
    for_i1(imem, 0, members.count){
     auto &member = members[imem];
@@ -503,7 +481,7 @@ print_struct_embed(Printer &p, String type_name,
     p<";\\\n";
    }
   }
-  p<<type_name<<" "<<type_name<<";";
+  p <type_name <" " <type_name <";";
  }
 }
 function void
@@ -512,7 +490,7 @@ print_i1_wrapper(Printer &p, String type_name){
  M_Struct_Members members = parse_struct_body(scratch, "{ i1 v; }");
  {
   print_struct(p, type_name, members);
-  p<<"inline b32 operator==("<<type_name<<" a, "<<type_name<<" b)"<<
+  p <"inline b32 operator==(" <type_name <" a, " <type_name <" b)" <
    "{ return a.v==b.v; }\n";
  }
  print_struct_meta(p, type_name, members);

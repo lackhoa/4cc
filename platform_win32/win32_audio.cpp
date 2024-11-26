@@ -10,13 +10,13 @@ global volatile u32 win32_audio_serving = 0;
 function void
 win32_audio_begin_ticket_mutex(void)
 {
-    u32 Ticket = AtomicAddU32AndReturnOriginal(&win32_audio_ticket, 1);
+    u32 Ticket = atomic_add_u32_and_return_original(&win32_audio_ticket, 1);
     while(Ticket != win32_audio_serving) {_mm_pause();}
 }
 function void
 win32_audio_end_ticket_mutex(void)
 {
-    AtomicAddU32AndReturnOriginal(&win32_audio_serving, 1);
+    atomic_add_u32_and_return_original(&win32_audio_serving, 1);
 }
 
 ////////////////////////////////

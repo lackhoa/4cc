@@ -180,7 +180,7 @@ kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos){
    {//-forward
     if(token_is_group_opener(cur_token)){
      //move inside the group, if we're at the start of it
-     ep_eat_token(parser);
+     ep_eat(parser);
     }
     closer_char = ep_eat_until_char(parser, strlit("}])"));
     closer_pos  = ep_get_pos(parser);
@@ -190,7 +190,7 @@ kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos){
     //NOTE(kv) If the forward succeeded, then the parser should be at
     //  the group closer, so we'll avoid it on the way back.
     parser->direction = Scan_Backward;
-    ep_eat_token(parser);
+    ep_eat(parser);
     char opener_char = get_matching_group_opener(closer_char);
     found_nest = ep_eat_until_char(parser, String{(u8 *)&opener_char, 1});
     opener_pos = ep_get_pos(parser);
@@ -218,7 +218,7 @@ kv_sexpr_up(App *app){
    String closer_string = ep_print_token(scratch, &parser);
    u8 closer = closer_string.data[0];
    u8 opener = get_matching_group_opener(closer);
-   ep_eat_token(&parser);  //NOTE eat past the group closer
+   ep_eat(&parser);  //NOTE eat past the group closer
    char do_jump = ep_eat_until_char(&parser, opener);
    if(do_jump){
     i64 goto_pos = ep_get_pos(&parser);
@@ -233,10 +233,10 @@ kv_sexpr_up(App *app){
    if(token->kind == TokenBaseKind_LiteralString){
     if(view_get_cursor_pos(app, view) == token->pos){
      //-We're standing right at the string -> back up
-     ep_eat_token(&parser);
+     ep_eat(&parser);
     }
    }else if(token_is_group_opener(token)){
-    ep_eat_token(&parser);
+    ep_eat(&parser);
    }
   }
   {//-jump
@@ -271,7 +271,6 @@ kv_sexpr_down(App *app){
  }
  while ( tkarr_inc(&token_it) );
 }
-
 
 function b32
 if_preprocessor_movement(App *app, Scan_Direction scan_direction){
@@ -317,7 +316,7 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction){
     break;
    }
    
-   ep_eat_token(p);
+   ep_eat(p);
   }
   if(p->ok_){
    kv_goto_token(app, ep_get_token(p));
@@ -330,72 +329,79 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction){
 function void 
 kv_sexpr_right(App *app){
  Token_Iterator_Array token_it = get_token_it_at_cursor(app);
- if ( token_it.tokens ) {
+ if(token_it.tokens){
   View_ID view = get_active_view(app, Access_ReadVisible);
   vim_push_jump(app, view);
-  if(!if_preprocessor_movement(app, Scan_Forward)){
+  b32 jumped = if_preprocessor_movement(app, Scan_Forward);
+  if(not jumped)
+  {
    i32 nest = 0;
+   i64 curpos = view_get_cursor_pos(app, view);
    do{
     Token *token = tkarr_read(&token_it);
-    if(token->kind == TokenBaseKind_LiteralString)
-    {// NOTE: goto end of string
-     if(nest == 0){
-      i64 token_end = get_token_range(token).end;
-      kv_goto_pos(app, view, token_end);
-      break;
-     }
-    }else if(token_is_group_opener(token)){
+    if(token_is_group_opener(token)){
      nest += 1;
     }else if(token_is_group_closer(token)){
      nest -= 1;
      if(nest <= 0){
-      kv_goto_token(app, token);
-      if(nest == 0){ move_right(app); }
-      break;
+      if(token->pos != curpos){
+       kv_goto_token(app, token);
+       break;
+      }else{
+       nest = 0;
+      }
+     }
+    }else{
+     if(nest == 0){
+      i64 token_max = get_token_range(token).end - 1;
+      if(token_max != curpos){
+       // NOTE: Goto end of token
+       kv_goto_pos(app, view, token_max);
+       break;
+      }
      }
     }
    }while(tkarr_inc(&token_it));
   }
  }
 }
-
 function void
-kv_sexpr_left(App *app) {
- if ( if_preprocessor_movement(app, Scan_Backward) == 0 )
+kv_sexpr_left(App *app){
+ b32 jumped = if_preprocessor_movement(app, Scan_Backward);
+ if(not jumped)
  {
-  Token_Iterator_Array token_it = get_token_it_at_cursor(app, -1);
+  Token_Iterator_Array token_it = get_token_it_at_cursor(app);
   Token *token = tkarr_read(&token_it);
-  if (token)
+  if(token)
   {
    View_ID view = get_active_view(app, Access_ReadVisible);
    vim_push_jump(app, view);
    i32 nest = 0;
-   do
-   {
+   i32 curpos = view_get_cursor_pos(app, view);
+   do{
     token = tkarr_read(&token_it);
-    if (token->kind == TokenBaseKind_LiteralString)
-    {
-     if (nest == 0)
-     {
-      kv_goto_token(app, token);
-      break;
-     }
-    }
-    else if (token_is_group_opener(token))
-    {
+    if(token_is_group_opener(token)){
      nest -= 1;
-     if (nest <= 0)
-     {
-      kv_goto_token(app, token);
-      if (nest < 0) { move_right(app); }
-      break;
+     if(nest <= 0){
+      if(token->pos != curpos){
+       kv_goto_token(app, token);
+       break;
+      }else{
+       nest = 0;
+      }
+     }
+    }else if(token_is_group_closer(token)) {
+     nest += 1;
+    }else{
+     if(nest == 0){
+      if(token->pos != curpos){
+       // NOTE: Goto begin of token
+       kv_goto_pos(app, view, token->pos);
+       break;
+      }
      }
     }
-    else if (token_is_group_closer(token))
-    {
-     nest += 1;
-    }
-   } while ( tkarr_dec(&token_it) );
+   }while(tkarr_dec(&token_it));
   }
  }
 }
@@ -404,7 +410,6 @@ VIM_COMMAND_SIG(kv_sexpr_end)
 {
  kv_sexpr_up(app);
  kv_sexpr_right(app);
- move_left(app);
  move_left(app);
 }
 
@@ -588,7 +593,7 @@ cmd_handle_q_visual(App *app){
    }
    if(passes){
     end_token = test_token;
-    ep_eat_token(parser);
+    ep_eat(parser);
    }else{
     break;
    }
@@ -1264,7 +1269,7 @@ quick_align_command(App *app)
     // NOTE: find the right-most equal sign
     for_i64 (index, 0, arrlen(lines))
     {
-        macro_clamp_min(rightmost_equal_sign, lines[index].equal_sign_pos);
+        ClampBot(rightmost_equal_sign, lines[index].equal_sign_pos);
     }
     // NOTE: Then go back and fix up our lines from end to beginning
     u8 space_buffer[256];
@@ -1480,7 +1485,7 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
   Ed_Parser *p = &parser;
   arrayof<Range_i64> list; init_dynamic(list, scratch);
   push_buffer_range(app, scratch, buffer, nest);
-  ep_eat_token(p);  //NOTE group opener
+  ep_eat(p);  //NOTE group opener
   //Range_i64 sentinel_range = {};
   while(p->ok_){
    if(Token *token = ep_get_token(p)){
@@ -1493,7 +1498,7 @@ move_parameter_left_or_right(App* app, b32 move_rightp){
      if(Token *end_token = ep_get_token(p)){
       item->max = end_token->pos;
      }
-     ep_eat_token(p);
+     ep_eat(p);
     }
    }else{ break; }
   }
@@ -1584,7 +1589,7 @@ jump_between_meta_and_generated_code(App *app){
   i32 line_max = get_line_side_pos_from_pos(app, buffer, curpos, Side_Max);
   i32 first_non_white = buffer_seek_character_class_change_1_0(app, buffer, &character_predicate_whitespace, Scan_Forward, line_min);
   if(first_non_white <= line_max){
-   macro_clamp_min(curpos, first_non_white);
+   ClampBot(curpos, first_non_white);
   }
  }
  auto open_file_at_pos = [&](String path, i32 pos) -> void{
@@ -1697,6 +1702,12 @@ jump_between_meta_and_generated_code(App *app){
    vim_set_bottom_text_lit("Can't find map file.");
   }
  }
+}
+function void
+jump_between_meta_and_generated_code_other_panel(App *app)
+{
+ view_buffer_other_panel(app);
+ jump_between_meta_and_generated_code(app);
 }
 function void
 cmd_handle_8_normal(App *app){

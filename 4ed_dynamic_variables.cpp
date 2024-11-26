@@ -131,7 +131,8 @@ lifetime_allocator_init(Base_Allocator *base_allocator, Lifetime_Allocator *life
 ////////////////////////////////
 
 function void
-dynamic_workspace_init(Lifetime_Allocator *lifetime_allocator, i1 user_type, void *user_back_ptr, Dynamic_Workspace *workspace){
+dynamic_workspace_init(Lifetime_Allocator *lifetime_allocator, i1 user_type, void *user_back_ptr, Dynamic_Workspace *workspace)
+{
  block_zero_struct(workspace);
  heap_init(&workspace->heap/*, lifetime_allocator->allocator*/);
  workspace->heap_wrapper = base_allocator_on_heap(&workspace->heap);

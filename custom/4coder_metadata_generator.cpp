@@ -7,6 +7,7 @@
 #define COMMAND_METADATA_OUT "generated/command_metadata.h"
 #define ID_METADATA_OUT "generated/managed_id_metadata.cpp"
 
+#define KV_DEBUG_MEMORY 0
 #include "kv.h"
 #include "4ed_base.h"
 #include "4coder_token.h"

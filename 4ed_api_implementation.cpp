@@ -16,14 +16,6 @@ NOTE(kv): description of this file
  Sure, I don't see why not...
 */
 
-#include "4coder_game_shared.h"
-
-api(ed) function Arena_Chunk *
-get_arena_chunk(usize size);
-
-api(ed) function void
-free_arena_chunk(Arena_Chunk *chunk);
-
 function void
 output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value){
  i64 end = buffer_size(&file->state.buffer);
@@ -37,17 +29,17 @@ file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file)
 {
     Assert(file != 0);
     i64 pos = buffer_size(&file->state.buffer);
-    Layout *layout = &models->layout;
-    for (Panel *panel = layout_get_first_open_panel(layout);
-         panel != 0;
-         panel = layout_get_next_open_panel(layout, panel)){
-        View *view = panel->view;
-        if (view->file != file){
-            continue;
-        }
-        view_set_cursor(tctx, models, view, pos);
-        view->mark = pos;
-    }
+ Layout *layout = &models->layout;
+ for (Panel *panel = layout_get_first_open_panel(layout);
+      panel != 0;
+      panel = layout_get_next_open_panel(layout, panel)){
+  View *view = panel->view;
+  if (view->file != file){
+   continue;
+  }
+  view_set_cursor_inner(tctx, models, view, pos);
+  view->mark = pos;
+ }
 }
 
 ////////////////////////////////
@@ -295,8 +287,8 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
      (range.first <= range.opl))
  {
   i64 size = buffer_size(&file->state.buffer);
-  macro_clamp_min(range.first, 0);
-  macro_clamp_max(range.opl, size);
+  ClampBot(range.first, 0);
+  ClampTop(range.opl, size);
   Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
   edit_single(app->tctx, models, file, range, string, behaviors);
   result = true;
@@ -980,82 +972,82 @@ buffer_kill(App *app, Buffer_ID buffer_id, Buffer_Kill_Flag flags)
             }
         }
         else{
-            result = BufferKillResult_Unkillable;
-        }
-    }
-    return(result);
+   result = BufferKillResult_Unkillable;
+  }
+ }
+ return(result);
 }
 
 api(custom) function Buffer_Reopen_Result
 buffer_reopen(App *app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags)
 {
-    Models *models = (Models*)app->cmd_context;
-    Thread_Context *tctx = app->tctx;
-    Scratch_Block scratch;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    Buffer_Reopen_Result result = BufferReopenResult_Failed;
-    if (api_check_buffer(file)){
-        if (file->canon.name_size > 0){
-            Plat_Handle handle = {};
-            if (system_load_handle(scratch, (char*)file->canon.name_space, &handle)){
-                File_Attributes attributes = system_load_attributes(handle);
-                
-                char *file_memory = push_array(scratch, char, (i32)attributes.size);
-                
-                if (file_memory != 0){
-                    if (system_load_file(handle, file_memory, (i32)attributes.size)){
-                        system_load_close(handle);
-                        
-                        // TODO(allen): try(perform a diff maybe apply edits in reopen)
-                        
-                        i32 line_numbers[16];
-                        i32 column_numbers[16];
-                        View *vptrs[16];
-                        i32 vptr_count = 0;
-                        
-                        Layout *layout = &models->layout;
-                        for (Panel *panel = layout_get_first_open_panel(layout);
-                             panel != 0;
-                             panel = layout_get_next_open_panel(layout, panel)){
-                            View *view_it = panel->view;
-                            if (view_it->file == file){
-                                vptrs[vptr_count] = view_it;
-                                File_Edit_Positions edit_pos = view_get_edit_pos(view_it);
-                                Buffer_Cursor cursor = file_compute_cursor(view_it->file, seek_pos(edit_pos.cursor_pos));
-                                line_numbers[vptr_count]   = (i32)cursor.line;
-                                column_numbers[vptr_count] = (i32)cursor.col;
-                                view_it->file = models->scratch_buffer;
-                                ++vptr_count;
-                            }
-                        }
-                        
-                        Working_Set *working_set = &models->working_set;
-                        file_free(tctx, models, file);
-                        working_set_file_default_settings(working_set, file);
-                        file_create_from_string(tctx, models, file, SCu8(file_memory, attributes.size), attributes);
-                        
-                        for (i32 i = 0; i < vptr_count; ++i){
-                            view_set_file(tctx, models, vptrs[i], file);
-                            
-                            vptrs[i]->file = file;
-                            i64 line = line_numbers[i];
-                            i64 col = column_numbers[i];
-                            Buffer_Cursor cursor = file_compute_cursor(file, seek_line_col(line, col));
-                            view_set_cursor(tctx, models, vptrs[i], cursor.pos);
-                        }
-                        result = BufferReopenResult_Reopened;
-                    }
-                    else{
-                        system_load_close(handle);
-                    }
-                }
-                else{
-                    system_load_close(handle);
-                }
-            }
-        }
+ Models *models = (Models*)app->cmd_context;
+ Thread_Context *tctx = app->tctx;
+ Scratch_Block scratch;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ Buffer_Reopen_Result result = BufferReopenResult_Failed;
+ if (api_check_buffer(file)){
+  if (file->canon.name_size > 0){
+   Plat_Handle handle = {};
+   if (system_load_handle(scratch, (char*)file->canon.name_space, &handle)){
+    File_Attributes attributes = system_load_attributes(handle);
+    
+    char *file_memory = push_array(scratch, char, (i32)attributes.size);
+    
+    if (file_memory != 0){
+     if (system_load_file(handle, file_memory, (i32)attributes.size)){
+      system_load_close(handle);
+      
+      // TODO(allen): try(perform a diff maybe apply edits in reopen)
+      
+      i32 line_numbers[16];
+      i32 column_numbers[16];
+      View *vptrs[16];
+      i32 vptr_count = 0;
+      
+      Layout *layout = &models->layout;
+      for (Panel *panel = layout_get_first_open_panel(layout);
+           panel != 0;
+           panel = layout_get_next_open_panel(layout, panel)){
+       View *view_it = panel->view;
+       if (view_it->file == file){
+        vptrs[vptr_count] = view_it;
+        File_Edit_Positions edit_pos = view_get_edit_pos(view_it);
+        Buffer_Cursor cursor = file_compute_cursor(view_it->file, seek_pos(edit_pos.cursor_pos));
+        line_numbers[vptr_count]   = (i32)cursor.line;
+        column_numbers[vptr_count] = (i32)cursor.col;
+        view_it->file = models->scratch_buffer;
+        ++vptr_count;
+       }
+      }
+      
+      Working_Set *working_set = &models->working_set;
+      file_free(tctx, models, file);
+      working_set_file_default_settings(working_set, file);
+      file_create_from_string(tctx, models, file, SCu8(file_memory, attributes.size), attributes);
+      
+      for (i32 i = 0; i < vptr_count; ++i){
+       view_set_file(tctx, models, vptrs[i], file);
+       
+       vptrs[i]->file = file;
+       i64 line = line_numbers[i];
+       i64 col = column_numbers[i];
+       Buffer_Cursor cursor = file_compute_cursor(file, seek_line_col(line, col));
+       view_set_cursor_inner(tctx, models, vptrs[i], cursor.pos);
+      }
+      result = BufferReopenResult_Reopened;
+     }
+     else{
+      system_load_close(handle);
+     }
     }
-    return(result);
+    else{
+     system_load_close(handle);
+    }
+   }
+  }
+ }
+ return(result);
 }
 
 api(custom) function File_Attributes
@@ -1642,7 +1634,7 @@ view_set_cursor(App *app, View_ID view_id, Buffer_Seek seek){
   Assert(file != 0);
   if (api_check_buffer(file)){
    Buffer_Cursor cursor = file_compute_cursor(file, seek);
-   view_set_cursor(app->tctx, models, view, cursor.pos);
+   view_set_cursor_inner(app->tctx, models, view, cursor.pos);
    result = true;
   }
  }

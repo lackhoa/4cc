@@ -13,139 +13,7 @@
 #include <string.h>
 #include <math.h>
 
-//~ IMPORTANT Fundamental types, idioms
-//-Compilers
-//-NOTE(kv) Allow overwriting compiler (for e.g clang-cl)
-#if !defined(KV_H_IS_METAPROGRAM)
-#  define KV_H_IS_METAPROGRAM 0
-#endif
-
-#if !defined(COMPILER_MSVC)
-#  define COMPILER_MSVC 0
-#endif
-
-#if !defined(COMPILER_LLVM)
-#  define COMPILER_LLVM 0
-#endif
-
-#if !defined(COMPILER_GCC)
-#  define COMPILER_GCC 0
-#endif
-//-
-
-#if !(COMPILER_LLVM || COMPILER_MSVC || COMPILER_GCC)
-#  if __llvm__
-#    undef  COMPILER_LLVM
-#    define COMPILER_LLVM 1
-#  elif defined(__GNUC__) 
-#    undef  COMPILER_GCC 1
-#    define COMPILER_GCC 1
-#  elif _MSC_VER
-#    undef  COMPILER_MSVC
-#    define COMPILER_MSVC 1
-#  else
-#    error Compiler not recognized!
-#  endif
-#endif
-
-#if defined(__cplusplus)
-#  define EXTERN_C_BEGIN extern "C" {
-#  define EXTERN_C_END   }
-#else
-#  define EXTERN_C_BEGIN
-#  define EXTERN_C_END
-#endif
-
-#if COMPILER_MSVC
-#  define thread_global __declspec(thread)
-#elif COMPILER_LLVM
-#  define thread_global __thread
-#elif COMPILER_GCC
-#  define thread_global __thread
-#endif
-
-#if defined(GB_COMPILER_MSVC)
-#if _MSC_VER < 1300
-typedef unsigned char     u8;
-typedef   signed char     i8;
-typedef unsigned short   u16;
-typedef   signed short   i16;
-typedef unsigned int     u32;
-typedef   signed int     i32;
-#else
-typedef unsigned __int8   u8;
-typedef   signed __int8   i8;
-typedef unsigned __int16 u16;
-typedef   signed __int16 i16;
-typedef unsigned __int32 u32;
-typedef   signed __int32 i32;
-#endif
-typedef unsigned __int64 u64;
-typedef   signed __int64 i64;
-#else
-#include <stdint.h>
-typedef uint8_t   u8;
-typedef  int8_t   i8;
-typedef uint16_t u16;
-typedef  int16_t i16;
-typedef uint32_t u32;
-typedef int32_t  i32;
-typedef uint64_t u64;
-typedef  int64_t i64;
-#endif
-
-typedef i32       i1;
-typedef int8_t    b8;
-typedef uintptr_t umm; // NOTE(kv): "umm" stands for "memory model"
-typedef i64       imm;
-typedef size_t    usize;
-typedef ptrdiff_t isize;
-
-typedef i32   b32;
-typedef i64   b64;
-
-typedef float r32;
-typedef float f32;
-typedef double f64;
-typedef float v1;
-
-#define function      static
-#define xfunction             //NOTE(kv) exported function
-#define local_persist static
-#define global        static
-#define global_decl   extern //NOTE(kv) Global var that is not intended to exported, but forward-declared (C doesn't let us forward-declare global???)
-#define xglobal              //NOTE(kv) exported variable
-
-#define PP_Concat(arg1, arg2)   PP_Concat1(arg1, arg2)
-#define PP_Concat1(arg1, arg2)  PP_Concat2(arg1, arg2)
-#define PP_Concat2(arg1, arg2)  arg1##arg2
-#define line_unique_var   PP_Concat(i, __LINE__)
-#define count_unique_var  PP_Concat(i, __COUNT__)
-#define stringify_(a) #a
-#define stringify(a) stringify_(a)
-
-#define for_i1(VAR, MIN, MAX)  for(i32 VAR=MIN; VAR<MAX; VAR++)
-#define for_i32  for_i1
-#define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_inc(TYPE, VAR, INITIAL, FINAL)  for(TYPE VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_repeat(TIMES) for_i32(line_unique_var,0,TIMES)
-
-#define alen(array) (isize)(sizeof(array) / sizeof((array)[0]))
-
-#define and &&
-#define or  ||
-#define not !
-
-#define macro_clamp_min(VAR, VAL)   if (VAR < VAL) VAR = VAL
-#define macro_clamp_max(VAR, VAL)   if (VAR > VAL) VAR = VAL
-
-struct File_Line
-{
- char *file;
- u32  line;
-};
+#include "kv_fundamental.h"
 
 //~stb_ds TODO(kv) Remove this junk!
 #define STB_DEFINE
@@ -161,6 +29,8 @@ struct File_Line
 #define function static
 #undef GB_STATIC
 #undef GB_IMPLEMENTATION
+//~
+#include "stb_sprintf.h"
 //~
 
 #define implies(a,b)  !a || b
@@ -337,37 +207,33 @@ force_inline v1
 kv_atan2(v1 y, v1 x)
 {
 #if COMPILER_MSVC
-    v1 result = atan2f(y, x);
+ v1 result = atan2f(y, x);
 #else
  v1 result = __builtin_atan2f(y, x);
 #endif
  return(result);
 }
 
-inline i64
-find_least_significant_set_bit(u64 mask){
- i64 result = 0;
- if(mask == 0){
-  result = -1;
- }else{
+force_inline u64
+find_least_significant_set_bit(u64 mask)
+{
+ u64 result = 0;
 #if COMPILER_MSVC
-  {
-   _BitScanForward64((unsigned long *)&result, mask);
-  }
-#else
-  {
-   result = __builtin_ctzll(mask);
-  }
-#endif
+ {
+  _BitScanForward64((unsigned long *)&result, mask);
  }
+#else
+ {
+  result = __builtin_ctzll(mask);
+ }
+#endif
  return result;
 }
-inline i64
-find_most_significant_set_bit(u64 mask){
- i64 result = 0;
- if(mask == 0){
-  result = -1;
- }else{
+force_inline u64
+find_most_significant_set_bit(u64 mask)
+{
+ u64 result = 0;
+ {
 #if COMPILER_MSVC
   {
    _BitScanReverse64((unsigned long *)&result, mask);
@@ -382,7 +248,8 @@ find_most_significant_set_bit(u64 mask){
 }
 
 force_inline v1
-absolute(v1 x){
+absolute(v1 x)
+{
 #if COMPILER_MSVC
  v1 result = (v1)fabs(x);
 #else
@@ -522,11 +389,6 @@ i32 debug_line
 #define PP_ARG_N(_1,_2,_3,_4,_5,_6,_7,_8,N,...) N
 #define PP_NARG(...) PP_ARG_N(__VA_ARGS__,8,7,6,5,4,3,2,1,0)
 
-#if COMPILER_MSVC
-#    define mytypeof decltype
-#else
-#    define mytypeof __typeof__
-#endif
 
 #define macro_min(a, b) ((a < b) ? a : b)
 #define macro_max(a, b) ((a < b) ? b : a)
@@ -538,6 +400,10 @@ i32 debug_line
 #define kv_function_typedef(N) typedef N##_return N##_type(N##_params)
 #define kv_function_declare(N) N##_return N(N##_params)
 #define kv_function_pointer(N) N##_type *N
+
+#define x_function_typedef(N)  kv_function_typedef(N);
+#define x_function_declare(N)  kv_function_declare(N);
+#define x_function_pointer(N)  kv_function_pointer(N);
 
 /* MARK: End of String */
 
@@ -1222,8 +1088,8 @@ inline v2 get_radius(rect2 rect) { return 0.5f*(rect.max - rect.min); }
 inline rect2
 rect2_center_radius(v2 center, v2 radius)
 {
- macro_clamp_min(radius.x,0);
- macro_clamp_min(radius.y,0);
+ ClampBot(radius.x,0);
+ ClampBot(radius.y,0);
  rect2 result;
  result.min = center - radius;
  result.max = center + radius;
@@ -1390,13 +1256,6 @@ i4::operator[](i32 index)
 #define kvAssert     kv_assert
 /* Old names > */
 
-
-// X macros //////////////////////////////////
-#define XTypedef(N,R,P)              typedef R N##_type P;
-#define XPointer(N,R,P)              N##_type *N;
-#define XGlobalPointer(N,R,P)        global N##_type *N;
-#define XInternalFunction(N,R,P)     function N##_type N;
-#define X_Field_Type_Name(type,name) type name;
 
 // Bitmap //////////////////////////////////////
 
@@ -2113,13 +1972,6 @@ typedef u32 argb;
 
 ////////////////////////////////
 
-struct String{
- union{u8 *str, *data; };
- union{ u64 size, len, length, count; };
- u8 &operator[](i32 index){
-  return str[index];
- }
-};
 typedef String String8;  // @Deprecated
 
 //NOTE(kv) nil-terminated string (cutnpaste)
@@ -2165,34 +2017,6 @@ enum{
  Access_Read = 0x2,
  Access_Visible = 0x4,
 };
-//-
-enum Base_Allocator_Type {
- Allocator_None,
- Allocator_Generic,
- Allocator_Malloc,
- Allocator_Arena,
-};
-typedef void *Allocator_Reserve_Signature(void *user_data, u64 size, u64 *size_out);
-typedef void  Allocator_Free_Signature(void *user_data, void *ptr);
-
-struct Base_Allocator_Generic{
- Allocator_Reserve_Signature *allocate;
- Allocator_Free_Signature    *free;
- void *userdata;
-};
-
-struct Base_Allocator
-{
- Base_Allocator_Type type;
- union
- {
-  struct Arena *arena;
-  // or
-  Base_Allocator_Generic generic;
-  // or
-  // malloc-based allocators don't need anything
- };
-};
 //~Arena
 #include "sanitizer/asan_interface.h"
 #if defined(__has_feature)
@@ -2207,9 +2031,6 @@ struct Base_Allocator
 #    define ASAN_ON 0
 #endif
 
-global Base_Allocator malloc_base_allocator = {
- .type = Allocator_Malloc
-};
 function u8 *
 kv_malloc(usize size){
  u8 *result = (u8 *)malloc(size);
@@ -3260,16 +3081,148 @@ string_concat(String_u8 *dst, String src)
 #define string_expand(s) (i32)(s).size, (char*)(s).str
 #define strexpand string_expand
 //-
+#if OS_LINUX
+#  include <immintrin.h>
+#elif OS_MAC
+#  include <immintrin.h>
+#else
+#  include <intrin.h>
+#endif
+
+#if COMPILER_MSVC
+#define CompletePreviousReadsBeforeFutureReads _ReadBarrier()
+#define CompletePreviousWritesBeforeFutureWrites _WriteBarrier()
+//NOTE(kv) These functions by default will return the original value
+//  Because what else do they return?
+force_inline u32
+atomic_add_u32(u32 volatile *Value, u32 Addend)
+{
+ u32 Result = _InterlockedExchangeAdd((long volatile*)Value, (long)Addend);
+ return(Result);
+}
+force_inline u64
+atomic_add_u64(u64 volatile *Value, u64 Addend)
+{
+ u64 Result = _InterlockedExchangeAdd64((__int64 volatile *)Value, Addend);
+ return(Result);
+}
+force_inline u32
+atomic_compare_exchange_u32(u32 volatile *Value, u32 New, u32 Expected)
+{
+ u32 Result = _InterlockedCompareExchange((long volatile *)Value, New, Expected);
+ return(Result);
+}
+force_inline u64
+atomic_exchange_u64(u64 volatile *Value, u64 New)
+{
+ u64 Result = _InterlockedExchange64((__int64 volatile *)Value, New);
+ return(Result);
+}
+#endif//-MSVC
+#if COMPILER_LLVM
+#define CompletePreviousReadsBeforeFutureReads asm volatile("" ::: "memory")
+#define CompletePreviousWritesBeforeFutureWrites asm volatile("" ::: "memory")
+force_inline u32
+atomic_add_u32(u32 volatile *Value, u32 Addend)
+{
+ u32 Result = __sync_fetch_and_add(Value, Addend);
+ return(Result);
+}
+force_inline u64
+atomic_add_u64(u64 volatile *Value, u64 Addend)
+{
+ u64 Result = __sync_fetch_and_add(Value, Addend);
+ return(Result);
+}
+force_inline u32
+atomic_compare_exchange_u32(u32 volatile *Value, u32 New, u32 Expected)
+{
+ u32 Result = __sync_val_compare_and_swap(Value, Expected, New);
+ return(Result);
+}
+force_inline u64
+atomic_exchange_u64(u64 volatile *Value, u64 New)
+{
+ u64 Result = __sync_lock_test_and_set(Value, New);
+ return(Result);
+}
+#endif//-LLVM
+
+struct Ticket_Mutex{
+ volatile u64 serving;
+ volatile u64 next_ticket;
+};
+force_inline void
+acquire_ticket_mutex(Ticket_Mutex *mutex)
+{
+ u64 ticket = atomic_add_u64(&mutex->next_ticket, 1);
+ while(mutex->serving != ticket);
+}
+force_inline void
+release_ticket_mutex(Ticket_Mutex *mutex)
+{
+ CompletePreviousWritesBeforeFutureWrites;
+ mutex->serving += 1;
+}
+//-
+#if defined(KV_H_NO_GLOBAL_ARENA_CHUNK_STORE)
+#  define KV_GLOBAL_ARENA_CHUNK_STORE 0
+#endif
+#if !defined(KV_GLOBAL_ARENA_CHUNK_STORE)
+#  define KV_GLOBAL_ARENA_CHUNK_STORE 1
+#endif
+
+#if !KV_H_IS_METAPROGRAM  //NOTE(kv) You can't generate the code if you're the generator.
+#  include "generated/kv_memory.gen.h"
+#endif
+
+//NOTE(kv) We'll just include the debug files,
+//  since it defines the symbols that get compiled out for us.
+#include "ad_debug_interface.h"
+
+#include "kv_memory.h"
+//-
+enum Base_Allocator_Type {
+ Allocator_None,
+ Allocator_Generic,
+ Allocator_Malloc,
+ Allocator_Arena,
+};
+typedef void *Allocator_Allocate_Signature(void *user_data, u64 size, u64 *size_out, DEBUG_File_Line file_line);
+typedef void  Allocator_Free_Signature(void *user_data, void *ptr);
+
+struct Base_Allocator_Generic{
+ Allocator_Allocate_Signature *allocate;
+ Allocator_Free_Signature    *free;
+ void *userdata;
+};
+
+struct Base_Allocator
+{
+ Base_Allocator_Type type;
+ union
+ {
+  struct Arena *arena;
+  // or
+  Base_Allocator_Generic generic;
+  // or
+  // malloc-based allocators don't need anything
+ };
+};
 function void*
-base_reserve__noop(void *user_data, u64 size, u64 *size_out){
-    *size_out = 0;
-    return(0);
+base_reserve__noop(void *user_data, u64 size, u64 *size_out, DEBUG_File_Line file_line)
+{
+ *size_out = 0;
+ return(0);
 }
 function void
 base_free__noop(void *user_data, void *ptr){}
 
+global Base_Allocator malloc_base_allocator = {
+ .type = Allocator_Malloc
+};
 function Base_Allocator
-make_base_allocator_generic(Allocator_Reserve_Signature *func_allocate,
+make_base_allocator_generic(Allocator_Allocate_Signature *func_allocate,
                             Allocator_Free_Signature     *func_free,
                             void *userdata)
 {
@@ -3285,13 +3238,9 @@ make_base_allocator_generic(Allocator_Reserve_Signature *func_allocate,
  };
  return(result);
 }
-//-
-#include "ad_debug_interface.h"
-#include "kv_memory.h"
-
 function u8 *
 base_allocate(Base_Allocator *allocator, u64 size,
-              memory_file_line_defparams)
+              DEBUG_file_line_defparams)
 {// @todo_leak_check
  u8 *result = {};
  
@@ -3301,13 +3250,11 @@ base_allocate(Base_Allocator *allocator, u64 size,
   {
    auto &a = allocator->generic;
    usize result_size;
-   result = (u8 *)a.allocate(a.userdata, size, &result_size);
-   //a.commit(a.userdata, result, size);
+   result = (u8 *)a.allocate(a.userdata, size, &result_size, file_line);
   }break;
   case Allocator_Arena:
   {// NOTE(kv): This is a cyclic dependency situation.
-   result = arena_push(allocator->arena, size, 8, default_push_params,
-                       file_line);
+   result = arena_push(allocator->arena, size, 8, default_push_params, file_line);
   }break;
   case Allocator_Malloc:
   {
@@ -3984,7 +3931,7 @@ struct arrayof{
   return items[count-1];
  }
  
- void set_cap_inner(i32 new_cap, DEBUG_MEMORY_File_Line file_line)
+ void set_cap_inner(i32 new_cap, DEBUG_File_Line file_line)
  {// NOTE(kv): Can only grow for now
   if(new_cap > cap)
   {
@@ -4001,7 +3948,7 @@ struct arrayof{
    cap = new_cap;
   }
  }
- void set_cap_min(i1 cap_min, memory_file_line_defparams)
+ void set_cap_min(i1 cap_min, DEBUG_file_line_defparams)
  {// TODO(kv): This grow logic is wonky: there are two cases:
   // 1. Natural growth: doubling
   // 2. User-dictated growth: just set the cap to the dictated value
@@ -4015,7 +3962,7 @@ struct arrayof{
    set_cap_inner(new_cap, file_line);
   }
  }
- void set_count(i32 new_count, memory_file_line_defparams){
+ void set_count(i32 new_count, DEBUG_file_line_defparams){
   kv_assert(new_count >= 0);
   set_cap_min(new_count, file_line);
   count = new_count;
@@ -4025,16 +3972,16 @@ struct arrayof{
  inline void pop(){
   set_count(count-1);
  }
- inline T *push(memory_file_line_defparams){
+ inline T *push(DEBUG_file_line_defparams){
   set_count(count+1, file_line);
   return items + (count-1);
  }
- inline T *push_value(const T& value, memory_file_line_defparams){
+ inline T *push_value(const T& value, DEBUG_file_line_defparams){
   T *item = push(file_line);
   *item = value;
   return item;
  }
- inline T& push_first(const T& new_item, memory_file_line_defparams){
+ inline T& push_first(const T& new_item, DEBUG_file_line_defparams){
   set_count(count+1, file_line);
   for(i32 index=count-1;
       index >= 1;
@@ -4044,7 +3991,7 @@ struct arrayof{
   items[0] = new_item;
   return items[0];
  }
- inline T *push_zero(memory_file_line_defparams){
+ inline T *push_zero(DEBUG_file_line_defparams){
   T *result = push(file_line);
   *result = {};
   return result;
@@ -4116,30 +4063,7 @@ inline arrayof<T>
 dynamic_array(Arena *arena, i1 initial_size=0){
  arrayof<T> array; init_dynamic(array, arena, initial_size); return array;
 }
-
-#define X_Basic_Types(X)  \
-X(v1) X(v2) X(v3) X(v4)   \
-X(i1) X(i2) X(i3) X(i4)   \
-X(String) X(u32)   \
-
-enum Basic_Type
-{
- Basic_Type_None = 0,
-#define X(T) Basic_Type_##T,
- X_Basic_Types(X)
-#undef X
- Basic_Type_Count,
-};
-
-#if 0
-function Basic_Type basic_type_from_pointer(T *pointer);
-#endif
-//
-#define X(T) \
-function Basic_Type basic_type_from_pointer(T *pointer) \
-{ return Basic_Type_##T; }
-X_Basic_Types(X)
-#undef X
+//~
 
 #if !AD_IS_DRIVER
 
@@ -4161,96 +4085,12 @@ push_unique(arrayof<T> &array, T const&item)
  return result;
 }
 //~
-struct Type_Info;
-struct I_Struct_Member{
- Type_Info *type;
- String name;
- u32    offset;
- u32    discriminator_offset;  //NOTE(kv) union only
- b32    unserialized;
-};
-struct I_Union_Member{
- Type_Info *type;
- String name;
- i32 variant;
-};
-struct I_Enum_Member{
- String name;
- i32    value;
-};
-//NOTE(kv) If you have a better name, I'm all ears man!
-enum I_Type_Kind{
- I_Type_Kind_None = 0,
- I_Type_Kind_Basic,
- I_Type_Kind_Struct,
- I_Type_Kind_Union,
- I_Type_Kind_Enum,
- I_Type_Kind_Array,
-};
-struct Type_Info{
- String name;
- i1     size;
- I_Type_Kind kind;
- i32 count;
- union{
-  Basic_Type Basic_Type;
-  arrayof<I_Struct_Member> members;
-  struct{
-   Type_Info *discriminator_type;
-   arrayof<I_Union_Member> union_members;
-  };
-  arrayof<I_Enum_Member> enum_members;
-  Type_Info *array_item_type;
- };
-};
-
-#define X(T)                 \
-Type_Info {                  \
-.name=strlit(#T),            \
-.size=i1(sizeof(T)),         \
-.kind=I_Type_Kind_Basic,     \
-.Basic_Type=Basic_Type_##T,  \
-},                           \
-//
-global Type_Info basic_types_info[Basic_Type_Count+1] = {
- Type_Info{},
- X_Basic_Types(X)
-};
-#undef X
-
-#define X(T)   global Type_Info &PP_Concat(Type_Info_, T) = basic_types_info[Basic_Type_##T];
-X_Basic_Types(X)
-#undef X
-
-inline Type_Info &
-get_basic_type_info(Basic_Type type)
-{
- return basic_types_info[type];
-}
-//
-inline i1
-get_basic_type_size(Basic_Type type)
-{
- return (i1)basic_types_info[type].size;
-}
-
-//~
-force_inline u32
-AtomicAddU32AndReturnOriginal(u32 volatile *Value, u32 Addend)
-{
- // NOTE(casey): Returns the original value _prior_ to adding
- u32 Result = _InterlockedExchangeAdd((long volatile*)Value, (long)Addend);
- return(Result);
-}
-//-
 struct Scratch_Block{
  Arena arena;
  //-
  //NOTE(kv) Deleting implicit copy constructor: This is why C++ is garbage!
  Scratch_Block(const Scratch_Block&) = delete;
  
- //TODO(kv) Passing in the thread context is deprecated,
- //  because you could grab a "thread_global"
  Scratch_Block();
  
  //@deprecated
@@ -4290,8 +4130,6 @@ push_arena_base_allocator(Arena *arena){
  *alloc = make_arena_base_allocator(arena);
  return alloc;
 }
-
-
 //~NOTE: Templated array
 enum Container_Flag {
  Container_Unique  = 0x1,
@@ -4651,146 +4489,6 @@ operator<(Printer &p, T object){
  return p;
 }
 //-
-inline void
-begin_struct(Printer &p, char *name){
- print(p, "(");
- print(p, name);
- print(p, "{ ");
-}
-//
-inline void
-end_struct(Printer &p){
- print(p, "})");
-}
-
-function void
-print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped);
-
-function void
-print_fieldf(Printer &p, Basic_Type type, char *name, void *value){
- print(p, ".");
- print(p, name);
- print(p, "=");
- print_code(p,type,value,/*wrapped*/true);
- print(p, ", ");
-}
-
-#define print_field(printer, type, value_pointer, name)\
-print_fieldf(\
-printer,\
-Type_##type,\
-#name,\
-&value_pointer->name)
-
-function void
-print_float_trimmed(Printer &p, v1 value){
- //NOTE(kv) there's some delete action going on, so we have to make a temp buffer
- Scratch_Block scratch;
- String result = push_stringf(scratch, "%.4ff", value);
- // NOTE: trim trailing zeros
- while (result.len > 0){
-  if (result.str[result.len-2] == '0') { result.len -= 1; }
-  else { break; }
- }
- result.str[result.len-1] = 'f';
- print(p, result);
-}
-
-function void
-print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
-{
- switch(type)
- {
-  case Basic_Type_v1:
-  case Basic_Type_v2:
-  case Basic_Type_v3:
-  case Basic_Type_v4:
-  {
-   v1 *values = cast(v1*)value0;
-   i1 count = get_basic_type_size(type) / 4;
-   if (count == 1) {
-    print_float_trimmed(p, *values);
-   } else {
-    if (wrapped) { print(p,"V"); print(p,count); print(p,"("); }
-    for_i32(index,0,count) {
-     if (index != 0) { print(p, ", "); }
-     print_float_trimmed(p, values[index]);
-    }
-    if (wrapped) { print(p, ")"); }
-   }
-  }break;
-  
-  case Basic_Type_i1:
-  {
-   i1 v = *(i1*)value0;
-   print(p, v);
-  }break;
-  case Basic_Type_i2:
-  case Basic_Type_i3:
-  case Basic_Type_i4:
-  {
-   i1 *v = (i1*)value0;
-   i1 count = get_basic_type_info(type).size / 4;
-   
-   if (wrapped) { print(p, "I"); print(p, count); print(p, "("); }
-   for_i32(index,0,count) {
-    if (index != 0) { print(p, ","); }
-    print(p, v[index]);
-   }
-   if (wrapped) { print(p, ")"); }
-  }break;
-  
-  invalid_default_case;
- }
-}
-
-inline void print_nspaces(Printer &p, i1 n){ for_repeat(n) { print(p, " "); } }
-
-function void
-write_basic_type(Printer &p, Basic_Type type, void *value0)
-{
- switch(type){
-  //-Floats
-  case Basic_Type_v1:
-  case Basic_Type_v2:
-  case Basic_Type_v3:
-  case Basic_Type_v4:
-  {
-   v1 *values = cast(v1*)value0;
-   i1 count = get_basic_type_size(type) / 4;
-   if (count == 1) {
-    print_float_trimmed(p, *values);
-   } else {
-    for_i32(index,0,count) {
-     if (index != 0) { print(p, " "); }
-     print_float_trimmed(p, values[index]);
-    }
-   }
-  }break;
-  
-  //-Integers
-  case Basic_Type_i1:
-  case Basic_Type_i2:
-  case Basic_Type_i3:
-  case Basic_Type_i4:
-  {
-   i1 *v = (i1*)value0;
-   i1 count = get_basic_type_size(type) / 4;
-   
-   for_i32(index,0,count) {
-    if (index != 0) { print(p, " "); }
-    print(p, v[index]);
-   }
-  }break;
-  
-  //-
-  case Basic_Type_String: { print(p, *(String*)value0); }break;
-  case Basic_Type_u32:    { print(p, *(u32*)value0);    }break;
-  
-  invalid_default_case;
- }
-}
-
 //~NOTE(kv): bucket array
 
 #if 0
@@ -4910,18 +4608,16 @@ init(bucket_array<T> &array, Arena *arena, i1 bucket_size)
 #endif
 
 //-
-struct File_Name_Data {
+struct File_Name_Data{
  String name;
  String data;
 };
-/*#define introspect(...)
-#define meta_tag(...)
-#define meta_added(...)
-#define meta_removed(...)
-#define meta_unserialized
-#define tagged_by(discriminator)
-#define m_variant(tag)  //NOTE(kv) Use to tag union member with the variant it corresponds to
-*/
+
+#if 0
+#define meta_table
+#define gen_file
+#define gen_for
+#endif
 //~
 #undef KV_H_IS_METAPROGRAM
 //~EOF

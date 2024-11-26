@@ -1,4 +1,4 @@
-//NOTE File created programmatically by C:\Users\vodan\4ed\code/meta_klang.cpp:513:
+//NOTE File created programmatically by C:\Users\vodan\4ed\code\meta_klang.cpp:513:
 // NOTE: source: C:\Users\vodan\4ed\code\game\driver.kc
 #pragma once
 //@generates driver.gen.cpp
@@ -147,7 +147,7 @@ render_hand(Forearm forearm_obj){
 
 vertex_block("hand");
 radius_scale_block(fval(0.5038f));
-lp_block(nslice_per_meter, fval(5.9797f) * 100.f);
+lp_block(nslice_per_meter, 5.9797f * 100.f);
 mat4i &ot       = p_current_world_from_bone();
 mat4i &forearmT = p_mom_bone_xform();
 Forearm forearm;
@@ -726,23 +726,24 @@ macro_pelvis(export_);
 #undef export_
  
 return pelvis_obj;}
-//  C:\Users\vodan\4ed\code/meta_klang.cpp:434:
-struct Cache_Storage_34797{
+//  C:\Users\vodan\4ed\code\meta_klang.cpp:434:
+struct Cache_Storage_34791{
 b32 cache_initialized;
 v1 tblink;
 };
-global Cache_Storage_34797 cache_storage_34797;
+global Cache_Storage_34791 cache_storage_34791;
 function void
-render_eyes(Pose &pose){
+render_eyes(Pose *pose){
 
-v1 tblink = pose.tblink;
-if(not cache_storage_34797.cache_initialized or
-not(tblink == cache_storage_34797.tblink &&
+v1 tblink = pose->tblink;
+if(not cache_storage_34791.cache_initialized or
+not(tblink == cache_storage_34791.tblink &&
 true)){
 {
-cache_storage_34797.cache_initialized = true;
-cache_storage_34797.tblink = tblink;
+cache_storage_34791.cache_initialized = true;
+cache_storage_34791.tblink = tblink;
 }
+
 {
 v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
 v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
@@ -839,11 +840,15 @@ fill3(nose_root_backL, eye_in, nose_rootL);
 fill3(nose_root_backL, nose_wing, eye_in);
 fill3(eye_out, cheek_up, brow_out);
 }
-}}
+}
+}
 function Head
 render_head(Pose *pose, v1 animation_time){
 
-lp_block(nslice_per_meter, (4.1128f) * 100.f);
+Common_Line_Params cparams = current_line_cparams();
+cparams.nslice_per_meter = 4.1128f * 100.f;
+push_line_cparams(cparams);
+defer(pop_line_cparams());
 const v1 head_unit = 1.f+square_root(2);
 b32 show_loomis_ball = fbool(0);
 if(level2){
@@ -1387,7 +1392,7 @@ Head head;
 {
 bone_block(Bone_Head);
 head = render_head(pose, animation_time);
-render_eyes(*pose);
+render_eyes(pose);
 }
 Pelvis pelvis_obj;
 {

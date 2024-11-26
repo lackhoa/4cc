@@ -22,7 +22,7 @@ global_const u32 table_erased_u32_key = max_u32;
 
 function Table_u64_u64
 make_table_u64_u64(Base_Allocator *allocator, u32 slot_count,
-                   memory_file_line_defparams){
+                   DEBUG_file_line_defparams){
  Table_u64_u64 table = {};
  table.allocator = allocator;
  slot_count = clamp_min(8, slot_count);
@@ -192,7 +192,7 @@ table_clear(Table_u64_u64 *table){
 
 function Table_u32_u16
 make_table_u32_u16(Base_Allocator *allocator, u32 slot_count,
-                   memory_file_line_defparams){
+                   DEBUG_file_line_defparams){
  Table_u32_u16 table = {};
  table.allocator = allocator;
  slot_count = clamp_min(8, slot_count);
@@ -355,7 +355,7 @@ table_clear(Table_u32_u16 *table){
 
 function Table_Data_u64
 make_table_Data_u64(Base_Allocator *allocator, u32 slot_count,
-                    memory_file_line_defparams)
+                    DEBUG_file_line_defparams)
 {
  Table_Data_u64 table = {};
  table.allocator = allocator;
@@ -535,7 +535,7 @@ table_clear(Table_Data_u64 *table){
 
 function Table_u64_Data
 make_table_u64_Data(Base_Allocator *allocator, u32 slot_count,
-                    memory_file_line_defparams){
+                    DEBUG_file_line_defparams){
  Table_u64_Data table = {};
  table.allocator = allocator;
  slot_count = clamp_min(8, slot_count);
@@ -704,7 +704,7 @@ table_clear(Table_u64_Data *table){
 
 function Table_Data_Data
 make_table_Data_Data(Base_Allocator *allocator, u32 slot_count,
-                     memory_file_line_defparams)
+                     DEBUG_file_line_defparams)
 {
  Table_Data_Data table = {};
  table.allocator = allocator;

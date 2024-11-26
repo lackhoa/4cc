@@ -1,45 +1,9 @@
 //~NOTE(kv) Basic memory stuff like arenas
-#ifndef KV_DEBUG_MEMORY
-#  if KV_INTERNAL && !KV_H_IS_METAPROGRAM
-#    define KV_DEBUG_MEMORY 1
-#  else
-#    define KV_DEBUG_MEMORY 0
-#  endif
-#endif
-
 #if KV_DEBUG_MEMORY
 #  define DEBUG_MEMORY_ONLY(...) __VA_ARGS__
 #else
 #  define DEBUG_MEMORY_ONLY
 #endif
-
-#if !KV_H_IS_METAPROGRAM  //NOTE You can't generate the code, if you're the generator
-#  include "generated/kv_memory.gen.h"
-#endif
-
-#if KV_DEBUG_MEMORY
-typedef File_Line DEBUG_MEMORY_File_Line;
-#else
-struct DEBUG_MEMORY_File_Line {};
-#endif
-
-#if KV_DEBUG_MEMORY
-function DEBUG_MEMORY_File_Line
-DEBUG_MEMORY_file_line(const char *file=__builtin_FILE(),
-                       u32 line=__builtin_LINE())
-{
- return {(char *)file,line};
-}
-#else
-function DEBUG_MEMORY_File_Line
-DEBUG_MEMORY_file_line()
-{
- return {};
-}
-#endif
-
-#define memory_file_line_defparams \
-DEBUG_MEMORY_File_Line file_line=DEBUG_MEMORY_file_line()
 
 //-
 function u64
@@ -90,7 +54,6 @@ push_zero(Push_Params params=default_push_params){
  return params;
 }
 
-
 #if ASAN_ON
 struct Arena_ASAN_Tracker{
  Arena_ASAN_Tracker *prev;
@@ -101,10 +64,10 @@ struct Arena_ASAN_Tracker{
 struct Arena_Chunk{
  union{
   Arena_Chunk *prev;
-  Arena_Chunk *next;
+  Arena_Chunk *next_free;
  };
  usize pos;
- usize cap;
+ usize size;
 };
 inline u8 *
 arena_chunk_get_base(Arena_Chunk *chunk){
@@ -131,90 +94,135 @@ struct Temp_Memory{
 #endif
 };
 
-#if ASAN_ON
-//-Doing monkey business because we don't have these functions when ASAN is on
-struct Arena_Chunk;
-struct Arena_Chunk_Bin;
-function Arena_Chunk* get_arena_chunk(usize size){ return 0; }
-function void free_arena_chunk(Arena_Chunk *chunk){}
-//
-#else
+#if !ASAN_ON
 struct Arena_Chunk_Bin{
- u8 *base;
- usize committed;
- usize reserved;
- Arena_Chunk *free_chunk;
- u32 committed_chunk_count;//NOTE(kv) redundant information
+ Arena_Chunk *first_free;
 };
+global const u32 ARENA_CHUNK_BIN_COUNT = 20;
+//NOTE(kv) This is like a mini-arena.
 struct Arena_Chunk_Store{
- Arena_Chunk_Bin bins[20];
+ Arena_Chunk_Bin bins[ARENA_CHUNK_BIN_COUNT];
+ u8 *base;
+ usize pos;
+ usize committed;
+ usize total_free;  //NOTE(kv) Just a debug counter
+ 
+ Ticket_Mutex mutex;
+};
+struct Thread_Arena_Chunk_Store{
+ Arena_Chunk_Bin bins[ARENA_CHUNK_BIN_COUNT];
+ usize total_free;
+ b32 registered;
 };
 
-#if defined(KV_H_NO_GLOBAL_ARENA_CHUNK_STORE)
-//NOTE(kv) These calls are dynamic so that arena chunks can be shared between DLLs.
-//NOTE(kv) We use "global_decl" so that if you define the globals via a metaprogram,
-//  you don't run into trouble.
-global_decl Arena_Chunk *(*get_arena_chunk)(usize size);
-global_decl void (*free_arena_chunk)(Arena_Chunk *chunk);
-#else
-thread_global Arena_Chunk_Store arena_chunk_store;
+#if KV_GLOBAL_ARENA_CHUNK_STORE
+global Arena_Chunk_Store global_arena_chunk_store;
+thread_local Thread_Arena_Chunk_Store thread_arena_chunk_store;
 
-function void
-arena_chunk_store_destroy(){
- Arena_Chunk_Store *store = &arena_chunk_store;
- for_i32(bin_index, 0, alen(store->bins)){
-  Arena_Chunk_Bin *bin = &store->bins[bin_index];
-  system_memory_free(bin->base);
- }
-}
-function Arena_Chunk_Bin *
-get_arena_chunk_bin_by_size(usize size){
- i64 size_log = find_most_significant_set_bit(size);
- i64 bin_index = size_log - 12;
- Arena_Chunk_Store *store = &arena_chunk_store;
- kv_assert(bin_index >= 0 and
-           bin_index < alen(store->bins));
- Arena_Chunk_Bin *bin = &store->bins[bin_index];
- return bin;
+function u32
+get_arena_chunk_bin_index_by_size(usize size){
+ u32 size_log = (u32)find_most_significant_set_bit(size);
+ u32 bin_index = size_log - 12;
+ kv_assert(bin_index < ARENA_CHUNK_BIN_COUNT);
+ return bin_index;
 }
 function Arena_Chunk *
-get_arena_chunk(usize size){
- macro_clamp_min(size, KB(4));
- Arena_Chunk_Bin *bin = get_arena_chunk_bin_by_size(size);
- if(not bin->free_chunk){
-  //-Allocate new chunks
-  if(bin->base == 0){
-   //-Reserve memory
-   bin->base = system_memory_reserve(GB(4));
+get_arena_chunk(usize size)
+{
+ Thread_Arena_Chunk_Store *local_store = &thread_arena_chunk_store;
+ ClampBot(size, KB(4));
+ u32 bin_index = get_arena_chunk_bin_index_by_size(size);
+ Arena_Chunk_Bin *bin = local_store->bins + bin_index;
+ Arena_Chunk *chunk = bin->first_free;
+ if(chunk){
+  //-In thread-local bin -> win!
+  bin->first_free = chunk->next_free;
+  chunk->next_free = 0;
+  local_store->total_free -= size;
+ }else{
+  //-Not in thread-local bin
+  Arena_Chunk_Store *store = &global_arena_chunk_store;
+  //NOTE(kv) Fun: we could make a system that doesn't wait at all.
+  acquire_ticket_mutex(&store->mutex);
+  bin = store->bins + bin_index;
+  chunk = bin->first_free;
+  if(chunk){
+   //-in global bin -> less great
+   bin->first_free = chunk->next_free;
+   chunk->next_free = 0;
+   store->total_free -= size;
+  }else{
+   //-Gotta get a new chunk -> worst!
+   usize chunk_pos = store->pos;
+   if(store->base == 0){
+    //-Reserve memory from OS
+    store->base = system_memory_reserve(GB(8));
+   }
+   usize chunk_size_total = sizeof(Arena_Chunk) + size;
+   store->pos = chunk_pos + chunk_size_total;
+   if(store->pos > store->committed){
+    //-Commit more memory
+    u8 *commit_base = store->base + store->committed;
+    usize commit_size = MB(128);
+    ClampBot(commit_size, chunk_size_total);  //NOTE(kv) Actual constraint
+    system_memory_commit(commit_base, commit_size);
+    store->committed += commit_size;
+   }
+   kv_assert(store->pos <= store->committed);
+   {//-Initialize the new chunk
+    chunk = (Arena_Chunk *)(store->base + chunk_pos);
+    chunk->size = size;
+   }
   }
-  u8 *commit_base = bin->base + bin->committed;
-  usize chunk_size_total = sizeof(Arena_Chunk) + size;
-  //NOTE(kv) At least double the current amount amount
-  usize commit_size = macro_max(bin->committed, chunk_size_total);
-  system_memory_commit(commit_base, commit_size);
-  bin->committed += commit_size;
-  kv_assert(commit_size % chunk_size_total == 0);
-  usize new_chunk_count = commit_size / chunk_size_total;
-  bin->committed_chunk_count += (u32)new_chunk_count;
-  for_inc(usize, chunk_index, 0, new_chunk_count){
-   //-Initialize the new chunks
-   Arena_Chunk *new_chunk = (Arena_Chunk *)(commit_base + chunk_size_total * chunk_index);
-   new_chunk->cap = size;
-   new_chunk->next = bin->free_chunk;
-   bin->free_chunk = new_chunk;
-  }
+  release_ticket_mutex(&store->mutex);
  }
- Arena_Chunk *chunk = bin->free_chunk;
- bin->free_chunk = chunk->next;
- chunk->next = 0;
  return chunk;
 }
 function void
+move_free_thread_local_chunks_to_global(){
+ Thread_Arena_Chunk_Store *store = &thread_arena_chunk_store;
+ Arena_Chunk_Store *global_store = &global_arena_chunk_store;
+ acquire_ticket_mutex(&global_store->mutex);
+ for_u32(bin_index, 0, ARENA_CHUNK_BIN_COUNT){
+  Arena_Chunk_Bin *bin = store->bins + bin_index;
+  Arena_Chunk_Bin *global_bin = global_store->bins + bin_index;
+  
+  Arena_Chunk *last_free = 0;
+  u32 free_count = 0;
+  for(Arena_Chunk *chunk = bin->first_free;
+      chunk;
+      chunk = chunk->next_free)
+  {
+   last_free = chunk;
+   free_count++;
+  }
+  
+  if(last_free){
+   last_free->next_free = global_bin->first_free;
+   global_bin->first_free = bin->first_free;
+   bin->first_free = 0;
+   global_store->total_free += free_count * last_free->size;
+  }
+ }
+ store->total_free = 0;
+ release_ticket_mutex(&global_store->mutex);
+}
+function void
 free_arena_chunk(Arena_Chunk *chunk){
- chunk->pos = 0;
- Arena_Chunk_Bin *bin = get_arena_chunk_bin_by_size(chunk->cap);
- chunk->next = bin->free_chunk;
- bin->free_chunk = chunk;
+ Thread_Arena_Chunk_Store *store = &thread_arena_chunk_store;
+ {//-Free the chunk
+  chunk->pos = 0;
+  u32 bin_index = get_arena_chunk_bin_index_by_size(chunk->size);
+  Arena_Chunk_Bin *bin = store->bins +  bin_index;
+  chunk->next_free = bin->first_free;
+  bin->first_free = chunk;
+  store->total_free += chunk->size;
+ }
+ const usize thread_free_threshold = MB(16);
+ if(store->total_free > thread_free_threshold){
+  //-slow path: release chunks for other threads
+  move_free_thread_local_chunks_to_global();
+ }
 }
 #endif
 #endif//-!ASAN_ON
@@ -228,10 +236,13 @@ make_arena(u64 chunk_size=KB(4)){
  return(arena);
 }
 //-
+#if KV_GLOBAL_ARENA_CHUNK_STORE
+
 #if !ASAN_ON
 function u8 *
 arena_chunk_push(Arena_Chunk *chunk, usize size, usize alignment,
-                 DEBUG_MEMORY_File_Line file_line){
+                 DEBUG_File_Line file_line)
+{
  u8 *result_mem = 0;
  if(chunk){
   u8 *chunk_base = (u8 *)(chunk+1);
@@ -239,27 +250,26 @@ arena_chunk_push(Arena_Chunk *chunk, usize size, usize alignment,
   round_up_to_pow2(alignment, &mem_umm);
   u8 *aligned_mem = (u8 *)(mem_umm);
   usize new_pos = (aligned_mem + size) - chunk_base;
-  if(new_pos <= chunk->cap){
+  if(new_pos <= chunk->size){
    //-Has enough space left in chunk
    result_mem = aligned_mem;
    chunk->pos = new_pos;
-#if KV_DEBUG_MEMORY
    DEBUG_arena_chunk_push(chunk, result_mem - chunk_base, size, file_line);
-#endif
   }
  }
  return result_mem;
 }
 #endif
+
 function u8 *
 arena_push_inner(Arena *arena, usize size, usize alignment,
-                 DEBUG_MEMORY_File_Line file_line)
+                 DEBUG_File_Line file_line)
 {
  u8 *pos = 0;
  if(size > 0)
  {
   if(ASAN_ON){
-   macro_clamp_min(alignment, 8);
+   ClampBot(alignment, 8);
   }
   usize align_mask = alignment-1;
 #if ASAN_ON
@@ -286,18 +296,16 @@ arena_push_inner(Arena *arena, usize size, usize alignment,
    {//-Need new chunk (slow path)
     usize new_chunk_size;
     {
-     macro_clamp_min(arena->chunk_size, KB(4));
+     ClampBot(arena->chunk_size, KB(4));
      new_chunk_size = arena->chunk_size;
      arena->chunk_size *= 2;
      usize min_chunk_size = round_up_to_next_pow2(size + alignment);
-     macro_clamp_min(new_chunk_size, min_chunk_size);
+     ClampBot(new_chunk_size, min_chunk_size);
     }
     Arena_Chunk *chunk = get_arena_chunk(new_chunk_size);
     chunk->prev = arena->last_chunk;
     arena->last_chunk = chunk;
-#if KV_DEBUG_MEMORY
     DEBUG_register_arena_chunk(chunk, file_line);
-#endif
     pos = arena_chunk_push(chunk, size, alignment, file_line);
    }
   }
@@ -307,17 +315,6 @@ arena_push_inner(Arena *arena, usize size, usize alignment,
   kv_assert((umm(pos) & align_mask) == 0);
  }
  return(pos);
-}
-function u8 *
-arena_push(Arena *arena, usize size, usize alignment,
-           Push_Params params=default_push_params,
-           memory_file_line_defparams)
-{
- u8 *result = arena_push_inner(arena, size, alignment, file_line);
- if(params.zero){
-  block_zero(result, size);
- }
- return result;
 }
 function void
 arena_pop_size(Arena *arena, usize size)
@@ -405,6 +402,26 @@ arena_pop_to(Arena *arena, Arena_Chunk *to_chunk, umm to_pos)
 }
 #endif
 
+#else//-not KV_GLOBAL_ARENA_CHUNK_STORE
+memory_functions_xlist(x_wrap_function_pointer);
+#endif
+
+force_inline Push_Params
+push_default()
+{
+ return default_push_params;
+}
+function u8 *
+arena_push(Arena *arena, usize size, usize alignment,
+           Push_Params params=default_push_params,
+           DEBUG_file_line_defparams)
+{
+ u8 *result = arena_push_inner(arena, size, alignment, file_line);
+ if(params.zero){
+  block_zero(result, size);
+ }
+ return result;
+}
 function Temp_Memory
 begin_temp_memory(Arena *arena)
 {

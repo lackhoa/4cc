@@ -182,13 +182,13 @@ perspective_project(Painter *p, v3 worldP)
  
  if ((tmax0 < tminv[1] || tmaxv[1] < tmin0) == false)
  {// xy ranges overlap
-  macro_clamp_min(tmin0, tminv[1]);
-  macro_clamp_max(tmax0, tmaxv[1]);
+  ClampBot(tmin0, tminv[1]);
+  ClampTop(tmax0, tmaxv[1]);
   
   if ((tmax0 < tminv[2] || tmaxv[2] < tmin0) == false)
   {// xy common range overlaps with z
-   macro_clamp_min(tmin0, tminv[2]);
-   macro_clamp_max(tmax0, tmaxv[2]);
+   ClampBot(tmin0, tminv[2]);
+   ClampTop(tmax0, tmaxv[2]);
    
    if (lower_bound < tmin0) { hit_time = tmin0; }
    else                     { hit_time = tmax0; }
@@ -806,7 +806,7 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
    v4 control_point_transformed = view_objectT*V4(P[index],1.f);
    radius *= (camera->focal_length / control_point_transformed.w);
    
-   macro_clamp_min(max_radius, radius);
+   ClampBot(max_radius, radius);
   }
   
   if (max_radius > 1e-5)
@@ -822,7 +822,7 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
   for_i1(index,0,4) 
   {//NOTE: We rely on maximum radius, because there are cases where the user supplies radius 0, to fade the line out
    v1 radius = params->radii[index];
-   macro_clamp_min(max_radius, radius);
+   ClampBot(max_radius, radius);
   }
   
   if (max_radius > 1e-5)
@@ -834,13 +834,13 @@ csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
   else { nslices = 0; }
 #endif
   
-  macro_clamp_min(nslices, 16);
+  ClampBot(nslices, 16);
   i1 MAX_NSLICES = 256;
   if (nslices > 2*MAX_NSLICES)
   {
    DEBUG_VALUE(nslices);
   }
-  macro_clamp_max(nslices, MAX_NSLICES);
+  ClampTop(nslices, MAX_NSLICES);
  }
  v1 interval = 1.0f / (v1)nslices;
  

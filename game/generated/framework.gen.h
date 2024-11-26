@@ -1,4 +1,4 @@
-//NOTE File created programmatically by C:\Users\vodan\4ed\code/meta_klang.cpp:513:
+//NOTE File created programmatically by C:\Users\vodan\4ed\code\meta_klang.cpp:513:
 // NOTE: source: C:\Users\vodan\4ed\code\game\framework.kh
 #pragma once
 //-
@@ -13,68 +13,63 @@ Bone_ID bone_id;
 v3 pos;
 i1 linum;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Vertex_Data;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Vertex_Data();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Vertex_Data()
-{
+get_type_info_Vertex_Data(){
 Type_Info result = {};
 result.name = strlit("Vertex_Data");
 result.size = sizeof(Vertex_Data);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(4);
-{Type_Info *member_type = & Type_Info_String;
+{
+Type_Info *member_type = & Type_Info_String;
 result.members[0] = {.type=member_type, .name=strlit("name"), .offset=offsetof(Vertex_Data, name)};
-}{Type_Info *member_type = & Type_Info_Bone_ID;
+}
+{
+Type_Info *member_type = & Type_Info_Bone_ID;
 result.members[1] = {.type=member_type, .name=strlit("bone_id"), .offset=offsetof(Vertex_Data, bone_id)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[2] = {.type=member_type, .name=strlit("pos"), .offset=offsetof(Vertex_Data, pos)};
-}{Type_Info *member_type = & Type_Info_i1;
+}
+{
+Type_Info *member_type = & Type_Info_i1;
 result.members[3] = {.type=member_type, .name=strlit("linum"), .offset=offsetof(Vertex_Data, linum), .unserialized=true};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Vertex_Data;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Vertex_Data = get_type_info_Vertex_Data();
 
-function Type_Info &type_info_from_pointer(Vertex_Data*pointer){return Type_Info_Vertex_Data;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Vertex_Data*pointer){
+return &Type_Info_Vertex_Data;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Vertex_Data(Data_Reader &r, Vertex_Data &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Vertex_Data(Data_Reader &r, Vertex_Data &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Vertex_Data(Data_Reader &r, Vertex_Data *dst){
 String m_name = {};
-
 {
-eat_id(p, strlit("name"));
-read_String(r, m_name);
+read_binary_String(r, &m_name);
 }
-pointer.name = m_name;
+dst->name = m_name;
 
 Bone_ID m_bone_id = {};
-
 {
-eat_id(p, strlit("bone_id"));
-read_Bone_ID(r, m_bone_id);
+read_binary_Bone_ID(r, &m_bone_id);
 }
-pointer.bone_id = m_bone_id;
+dst->bone_id = m_bone_id;
 
 v3 m_pos = {};
-
 {
-eat_id(p, strlit("pos"));
-read_v3(r, m_pos);
+read_binary_v3(r, &m_pos);
 }
-pointer.pos = m_pos;
+dst->pos = m_pos;
 
-eat_char(p, '}');
+
 }
 ;
-//  C:\Users\vodan\4ed\code/meta_print.cpp:392:
+//  C:\Users\vodan\4ed\code\meta_print.cpp:370:
 enum Curve_Type{Curve_Type_v3v2 = 11,
 Curve_Type_Parabola = 1,
 Curve_Type_Offset = 2,
@@ -89,9 +84,9 @@ Curve_Type_Lerp = 9,
 Curve_Type_Circle = 32,
 Curve_Type_Fill3 = 33,
 Curve_Type_Fill_Bez = 34,
-Curve_Type_Fill_DBez = 35,};//  C:\Users\vodan\4ed\code/meta_print.cpp:407:
+Curve_Type_Fill_DBez = 35,};//  C:\Users\vodan\4ed\code\meta_print.cpp:385:
 function Type_Info
-get_type_info_Curve_Type();//  C:\Users\vodan\4ed\code/meta_print.cpp:411:
+get_type_info_Curve_Type();//  C:\Users\vodan\4ed\code\meta_print.cpp:389:
 function Type_Info
 get_type_info_Curve_Type(){Type_Info result = {};
 result.name = strlit("Curve_Type");
@@ -113,233 +108,218 @@ result.enum_members[11] = {.name=strlit("Curve_Type_Circle"), .value=Curve_Type_
 result.enum_members[12] = {.name=strlit("Curve_Type_Fill3"), .value=Curve_Type_Fill3};
 result.enum_members[13] = {.name=strlit("Curve_Type_Fill_Bez"), .value=Curve_Type_Fill_Bez};
 result.enum_members[14] = {.name=strlit("Curve_Type_Fill_DBez"), .value=Curve_Type_Fill_DBez};
-return result;}//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Type;
+return result;}//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Type = get_type_info_Curve_Type();
 
-function Type_Info &type_info_from_pointer(Curve_Type*pointer){return Type_Info_Curve_Type;}//  C:\Users\vodan\4ed\code/meta_print.cpp:435:
+function Type_Info *type_info_from_pointer(Curve_Type*pointer){
+return &Type_Info_Curve_Type;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:413:
 function void
-read_Curve_Type(Data_Reader &r, Curve_Type &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:440:
+read_binary_Curve_Type(Data_Reader &r, Curve_Type *dst);
+//  C:\Users\vodan\4ed\code\meta_print.cpp:418:
 function void
-read_Curve_Type(Data_Reader &r, Curve_Type &pointer){STB_Parser *p = r.parser;
-i32 integer = eat_i1(p);
-pointer = *(Curve_Type*)(&integer);}static_assert( sizeof(Curve_Type) <= sizeof(i32) );
+read_binary_Curve_Type(Data_Reader &r, Curve_Type *dst){
+i32 integer;
+read_binary_i1(r, &integer);
+*dst = *(Curve_Type*)(&integer);
+}
+static_assert( sizeof(Curve_Type) <= sizeof(i32) );
 
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_v3v2{
 Vertex_Index p0;
 v3 d0;
 v2 d3;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_v3v2;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_v3v2();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_v3v2()
-{
+get_type_info_Curve_v3v2(){
 Type_Info result = {};
 result.name = strlit("Curve_v3v2");
 result.size = sizeof(Curve_v3v2);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(4);
-{Type_Info *member_type = & Type_Info_Vertex_Index;
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[0] = {.type=member_type, .name=strlit("p0"), .offset=offsetof(Curve_v3v2, p0)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[1] = {.type=member_type, .name=strlit("d0"), .offset=offsetof(Curve_v3v2, d0)};
-}{Type_Info *member_type = & Type_Info_v2;
+}
+{
+Type_Info *member_type = & Type_Info_v2;
 result.members[2] = {.type=member_type, .name=strlit("d3"), .offset=offsetof(Curve_v3v2, d3)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[3] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_v3v2, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_v3v2;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_v3v2 = get_type_info_Curve_v3v2();
 
-function Type_Info &type_info_from_pointer(Curve_v3v2*pointer){return Type_Info_Curve_v3v2;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_v3v2*pointer){
+return &Type_Info_Curve_v3v2;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_v3v2(Data_Reader &r, Curve_v3v2 &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_v3v2(Data_Reader &r, Curve_v3v2 &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_v3v2(Data_Reader &r, Curve_v3v2 *dst){
 Vertex_Index m_p0 = {};
-
 {
-eat_id(p, strlit("p0"));
-read_Vertex_Index(r, m_p0);
+read_binary_Vertex_Index(r, &m_p0);
 }
-pointer.p0 = m_p0;
+dst->p0 = m_p0;
 
 v3 m_d0 = {};
-
 {
-eat_id(p, strlit("d0"));
-read_v3(r, m_d0);
+read_binary_v3(r, &m_d0);
 }
-pointer.d0 = m_d0;
+dst->d0 = m_d0;
 
 v2 m_d3 = {};
-
 {
-eat_id(p, strlit("d3"));
-read_v2(r, m_d3);
+read_binary_v2(r, &m_d3);
 }
-pointer.d3 = m_d3;
+dst->d3 = m_d3;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Parabola{
 Vertex_Index p0;
 v3 d;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Parabola;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Parabola();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Parabola()
-{
+get_type_info_Curve_Parabola(){
 Type_Info result = {};
 result.name = strlit("Curve_Parabola");
 result.size = sizeof(Curve_Parabola);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(3);
-{Type_Info *member_type = & Type_Info_Vertex_Index;
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[0] = {.type=member_type, .name=strlit("p0"), .offset=offsetof(Curve_Parabola, p0)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[1] = {.type=member_type, .name=strlit("d"), .offset=offsetof(Curve_Parabola, d)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[2] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_Parabola, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Parabola;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Parabola = get_type_info_Curve_Parabola();
 
-function Type_Info &type_info_from_pointer(Curve_Parabola*pointer){return Type_Info_Curve_Parabola;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Parabola*pointer){
+return &Type_Info_Curve_Parabola;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Parabola(Data_Reader &r, Curve_Parabola &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Parabola(Data_Reader &r, Curve_Parabola &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Parabola(Data_Reader &r, Curve_Parabola *dst){
 Vertex_Index m_p0 = {};
-
 {
-eat_id(p, strlit("p0"));
-read_Vertex_Index(r, m_p0);
+read_binary_Vertex_Index(r, &m_p0);
 }
-pointer.p0 = m_p0;
+dst->p0 = m_p0;
 
 v3 m_d = {};
-
 {
-eat_id(p, strlit("d"));
-read_v3(r, m_d);
+read_binary_v3(r, &m_d);
 }
-pointer.d = m_d;
+dst->d = m_d;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Offset{
 Vertex_Index p0;
 v3 d0;
 v3 d3;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Offset;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Offset();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Offset()
-{
+get_type_info_Curve_Offset(){
 Type_Info result = {};
 result.name = strlit("Curve_Offset");
 result.size = sizeof(Curve_Offset);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(4);
-{Type_Info *member_type = & Type_Info_Vertex_Index;
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[0] = {.type=member_type, .name=strlit("p0"), .offset=offsetof(Curve_Offset, p0)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[1] = {.type=member_type, .name=strlit("d0"), .offset=offsetof(Curve_Offset, d0)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[2] = {.type=member_type, .name=strlit("d3"), .offset=offsetof(Curve_Offset, d3)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[3] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_Offset, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Offset;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Offset = get_type_info_Curve_Offset();
 
-function Type_Info &type_info_from_pointer(Curve_Offset*pointer){return Type_Info_Curve_Offset;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Offset*pointer){
+return &Type_Info_Curve_Offset;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Offset(Data_Reader &r, Curve_Offset &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Offset(Data_Reader &r, Curve_Offset &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Offset(Data_Reader &r, Curve_Offset *dst){
 Vertex_Index m_p0 = {};
-
 {
-eat_id(p, strlit("p0"));
-read_Vertex_Index(r, m_p0);
+read_binary_Vertex_Index(r, &m_p0);
 }
-pointer.p0 = m_p0;
+dst->p0 = m_p0;
 
 v3 m_d0 = {};
-
 {
-eat_id(p, strlit("d0"));
-read_v3(r, m_d0);
+read_binary_v3(r, &m_d0);
 }
-pointer.d0 = m_d0;
+dst->d0 = m_d0;
 
 v3 m_d3 = {};
-
 {
-eat_id(p, strlit("d3"));
-read_v3(r, m_d3);
+read_binary_v3(r, &m_d3);
 }
-pointer.d3 = m_d3;
+dst->d3 = m_d3;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Unit{
 Vertex_Index p0;
 v2 d0;
@@ -347,717 +327,635 @@ v2 d3;
 v3 unit_y;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Unit;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Unit();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Unit()
-{
+get_type_info_Curve_Unit(){
 Type_Info result = {};
 result.name = strlit("Curve_Unit");
 result.size = sizeof(Curve_Unit);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(5);
-{Type_Info *member_type = & Type_Info_Vertex_Index;
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[0] = {.type=member_type, .name=strlit("p0"), .offset=offsetof(Curve_Unit, p0)};
-}{Type_Info *member_type = & Type_Info_v2;
+}
+{
+Type_Info *member_type = & Type_Info_v2;
 result.members[1] = {.type=member_type, .name=strlit("d0"), .offset=offsetof(Curve_Unit, d0)};
-}{Type_Info *member_type = & Type_Info_v2;
+}
+{
+Type_Info *member_type = & Type_Info_v2;
 result.members[2] = {.type=member_type, .name=strlit("d3"), .offset=offsetof(Curve_Unit, d3)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[3] = {.type=member_type, .name=strlit("unit_y"), .offset=offsetof(Curve_Unit, unit_y)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[4] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_Unit, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Unit;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Unit = get_type_info_Curve_Unit();
 
-function Type_Info &type_info_from_pointer(Curve_Unit*pointer){return Type_Info_Curve_Unit;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Unit*pointer){
+return &Type_Info_Curve_Unit;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Unit(Data_Reader &r, Curve_Unit &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Unit(Data_Reader &r, Curve_Unit &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Unit(Data_Reader &r, Curve_Unit *dst){
 Vertex_Index m_p0 = {};
-
 {
-eat_id(p, strlit("p0"));
-read_Vertex_Index(r, m_p0);
+read_binary_Vertex_Index(r, &m_p0);
 }
-pointer.p0 = m_p0;
+dst->p0 = m_p0;
 
 v2 m_d0 = {};
-
 {
-eat_id(p, strlit("d0"));
-read_v2(r, m_d0);
+read_binary_v2(r, &m_d0);
 }
-pointer.d0 = m_d0;
+dst->d0 = m_d0;
 
 v2 m_d3 = {};
-
 {
-eat_id(p, strlit("d3"));
-read_v2(r, m_d3);
+read_binary_v2(r, &m_d3);
 }
-pointer.d3 = m_d3;
+dst->d3 = m_d3;
 
 v3 m_unit_y = {};
-
 {
-eat_id(p, strlit("unit_y"));
-read_v3(r, m_unit_y);
+read_binary_v3(r, &m_unit_y);
 }
-pointer.unit_y = m_unit_y;
+dst->unit_y = m_unit_y;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Unit2{
 Vertex_Index p0;
 v4 d0d3;
 v3 unit_y;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Unit2;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Unit2();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Unit2()
-{
+get_type_info_Curve_Unit2(){
 Type_Info result = {};
 result.name = strlit("Curve_Unit2");
 result.size = sizeof(Curve_Unit2);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(4);
-{Type_Info *member_type = & Type_Info_Vertex_Index;
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[0] = {.type=member_type, .name=strlit("p0"), .offset=offsetof(Curve_Unit2, p0)};
-}{Type_Info *member_type = & Type_Info_v4;
+}
+{
+Type_Info *member_type = & Type_Info_v4;
 result.members[1] = {.type=member_type, .name=strlit("d0d3"), .offset=offsetof(Curve_Unit2, d0d3)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[2] = {.type=member_type, .name=strlit("unit_y"), .offset=offsetof(Curve_Unit2, unit_y)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[3] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_Unit2, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Unit2;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Unit2 = get_type_info_Curve_Unit2();
 
-function Type_Info &type_info_from_pointer(Curve_Unit2*pointer){return Type_Info_Curve_Unit2;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Unit2*pointer){
+return &Type_Info_Curve_Unit2;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Unit2(Data_Reader &r, Curve_Unit2 &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Unit2(Data_Reader &r, Curve_Unit2 &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Unit2(Data_Reader &r, Curve_Unit2 *dst){
 Vertex_Index m_p0 = {};
-
 {
-eat_id(p, strlit("p0"));
-read_Vertex_Index(r, m_p0);
+read_binary_Vertex_Index(r, &m_p0);
 }
-pointer.p0 = m_p0;
+dst->p0 = m_p0;
 
 v4 m_d0d3 = {};
-
 {
-eat_id(p, strlit("d0d3"));
-read_v4(r, m_d0d3);
+read_binary_v4(r, &m_d0d3);
 }
-pointer.d0d3 = m_d0d3;
+dst->d0d3 = m_d0d3;
 
 v3 m_unit_y = {};
-
 {
-eat_id(p, strlit("unit_y"));
-read_v3(r, m_unit_y);
+read_binary_v3(r, &m_unit_y);
 }
-pointer.unit_y = m_unit_y;
+dst->unit_y = m_unit_y;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Line{
 Vertex_Index p0;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Line;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Line();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Line()
-{
+get_type_info_Curve_Line(){
 Type_Info result = {};
 result.name = strlit("Curve_Line");
 result.size = sizeof(Curve_Line);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(2);
-{Type_Info *member_type = & Type_Info_Vertex_Index;
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[0] = {.type=member_type, .name=strlit("p0"), .offset=offsetof(Curve_Line, p0)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[1] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_Line, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Line;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Line = get_type_info_Curve_Line();
 
-function Type_Info &type_info_from_pointer(Curve_Line*pointer){return Type_Info_Curve_Line;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Line*pointer){
+return &Type_Info_Curve_Line;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Line(Data_Reader &r, Curve_Line &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Line(Data_Reader &r, Curve_Line &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Line(Data_Reader &r, Curve_Line *dst){
 Vertex_Index m_p0 = {};
-
 {
-eat_id(p, strlit("p0"));
-read_Vertex_Index(r, m_p0);
+read_binary_Vertex_Index(r, &m_p0);
 }
-pointer.p0 = m_p0;
+dst->p0 = m_p0;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Bezd_Old{
 Vertex_Index p0;
 v3 d0;
 v2 d3;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Bezd_Old;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Bezd_Old();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Bezd_Old()
-{
+get_type_info_Curve_Bezd_Old(){
 Type_Info result = {};
 result.name = strlit("Curve_Bezd_Old");
 result.size = sizeof(Curve_Bezd_Old);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(4);
-{Type_Info *member_type = & Type_Info_Vertex_Index;
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[0] = {.type=member_type, .name=strlit("p0"), .offset=offsetof(Curve_Bezd_Old, p0)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[1] = {.type=member_type, .name=strlit("d0"), .offset=offsetof(Curve_Bezd_Old, d0)};
-}{Type_Info *member_type = & Type_Info_v2;
+}
+{
+Type_Info *member_type = & Type_Info_v2;
 result.members[2] = {.type=member_type, .name=strlit("d3"), .offset=offsetof(Curve_Bezd_Old, d3)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[3] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_Bezd_Old, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Bezd_Old;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Bezd_Old = get_type_info_Curve_Bezd_Old();
 
-function Type_Info &type_info_from_pointer(Curve_Bezd_Old*pointer){return Type_Info_Curve_Bezd_Old;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Bezd_Old*pointer){
+return &Type_Info_Curve_Bezd_Old;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Bezd_Old(Data_Reader &r, Curve_Bezd_Old &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Bezd_Old(Data_Reader &r, Curve_Bezd_Old &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Bezd_Old(Data_Reader &r, Curve_Bezd_Old *dst){
 Vertex_Index m_p0 = {};
-
 {
-eat_id(p, strlit("p0"));
-read_Vertex_Index(r, m_p0);
+read_binary_Vertex_Index(r, &m_p0);
 }
-pointer.p0 = m_p0;
+dst->p0 = m_p0;
 
 v3 m_d0 = {};
-
 {
-eat_id(p, strlit("d0"));
-read_v3(r, m_d0);
+read_binary_v3(r, &m_d0);
 }
-pointer.d0 = m_d0;
+dst->d0 = m_d0;
 
 v2 m_d3 = {};
-
 {
-eat_id(p, strlit("d3"));
-read_v2(r, m_d3);
+read_binary_v2(r, &m_d3);
 }
-pointer.d3 = m_d3;
+dst->d3 = m_d3;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Raw{
 Vertex_Index p0;
 v3 p1;
 v3 p2;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Raw;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Raw();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Raw()
-{
+get_type_info_Curve_Raw(){
 Type_Info result = {};
 result.name = strlit("Curve_Raw");
 result.size = sizeof(Curve_Raw);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(4);
-{Type_Info *member_type = & Type_Info_Vertex_Index;
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[0] = {.type=member_type, .name=strlit("p0"), .offset=offsetof(Curve_Raw, p0)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[1] = {.type=member_type, .name=strlit("p1"), .offset=offsetof(Curve_Raw, p1)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[2] = {.type=member_type, .name=strlit("p2"), .offset=offsetof(Curve_Raw, p2)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[3] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_Raw, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Raw;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Raw = get_type_info_Curve_Raw();
 
-function Type_Info &type_info_from_pointer(Curve_Raw*pointer){return Type_Info_Curve_Raw;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Raw*pointer){
+return &Type_Info_Curve_Raw;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Raw(Data_Reader &r, Curve_Raw &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Raw(Data_Reader &r, Curve_Raw &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Raw(Data_Reader &r, Curve_Raw *dst){
 Vertex_Index m_p0 = {};
-
 {
-eat_id(p, strlit("p0"));
-read_Vertex_Index(r, m_p0);
+read_binary_Vertex_Index(r, &m_p0);
 }
-pointer.p0 = m_p0;
+dst->p0 = m_p0;
 
 v3 m_p1 = {};
-
 {
-eat_id(p, strlit("p1"));
-read_v3(r, m_p1);
+read_binary_v3(r, &m_p1);
 }
-pointer.p1 = m_p1;
+dst->p1 = m_p1;
 
 v3 m_p2 = {};
-
 {
-eat_id(p, strlit("p2"));
-read_v3(r, m_p2);
+read_binary_v3(r, &m_p2);
 }
-pointer.p2 = m_p2;
+dst->p2 = m_p2;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_C2{
 Curve_Index ref;
 v3 d3;
 Vertex_Index p3;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_C2;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_C2();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_C2()
-{
+get_type_info_Curve_C2(){
 Type_Info result = {};
 result.name = strlit("Curve_C2");
 result.size = sizeof(Curve_C2);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(3);
-{Type_Info *member_type = & Type_Info_Curve_Index;
+{
+Type_Info *member_type = & Type_Info_Curve_Index;
 result.members[0] = {.type=member_type, .name=strlit("ref"), .offset=offsetof(Curve_C2, ref)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[1] = {.type=member_type, .name=strlit("d3"), .offset=offsetof(Curve_C2, d3)};
-}{Type_Info *member_type = & Type_Info_Vertex_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Vertex_Index;
 result.members[2] = {.type=member_type, .name=strlit("p3"), .offset=offsetof(Curve_C2, p3)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_C2;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_C2 = get_type_info_Curve_C2();
 
-function Type_Info &type_info_from_pointer(Curve_C2*pointer){return Type_Info_Curve_C2;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_C2*pointer){
+return &Type_Info_Curve_C2;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_C2(Data_Reader &r, Curve_C2 &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_C2(Data_Reader &r, Curve_C2 &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_C2(Data_Reader &r, Curve_C2 *dst){
 Curve_Index m_ref = {};
-
 {
-eat_id(p, strlit("ref"));
-read_Curve_Index(r, m_ref);
+read_binary_Curve_Index(r, &m_ref);
 }
-pointer.ref = m_ref;
+dst->ref = m_ref;
 
 v3 m_d3 = {};
-
 {
-eat_id(p, strlit("d3"));
-read_v3(r, m_d3);
+read_binary_v3(r, &m_d3);
 }
-pointer.d3 = m_d3;
+dst->d3 = m_d3;
 
 Vertex_Index m_p3 = {};
-
 {
-eat_id(p, strlit("p3"));
-read_Vertex_Index(r, m_p3);
+read_binary_Vertex_Index(r, &m_p3);
 }
-pointer.p3 = m_p3;
+dst->p3 = m_p3;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_NegateX{
 Curve_Index ref;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_NegateX;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_NegateX();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_NegateX()
-{
+get_type_info_Curve_NegateX(){
 Type_Info result = {};
 result.name = strlit("Curve_NegateX");
 result.size = sizeof(Curve_NegateX);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(1);
-{Type_Info *member_type = & Type_Info_Curve_Index;
+{
+Type_Info *member_type = & Type_Info_Curve_Index;
 result.members[0] = {.type=member_type, .name=strlit("ref"), .offset=offsetof(Curve_NegateX, ref)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_NegateX;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_NegateX = get_type_info_Curve_NegateX();
 
-function Type_Info &type_info_from_pointer(Curve_NegateX*pointer){return Type_Info_Curve_NegateX;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_NegateX*pointer){
+return &Type_Info_Curve_NegateX;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_NegateX(Data_Reader &r, Curve_NegateX &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_NegateX(Data_Reader &r, Curve_NegateX &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_NegateX(Data_Reader &r, Curve_NegateX *dst){
 Curve_Index m_ref = {};
-
 {
-eat_id(p, strlit("ref"));
-read_Curve_Index(r, m_ref);
+read_binary_Curve_Index(r, &m_ref);
 }
-pointer.ref = m_ref;
+dst->ref = m_ref;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Lerp{
 Curve_Index begin;
 Curve_Index end;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Lerp;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Lerp();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Lerp()
-{
+get_type_info_Curve_Lerp(){
 Type_Info result = {};
 result.name = strlit("Curve_Lerp");
 result.size = sizeof(Curve_Lerp);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(2);
-{Type_Info *member_type = & Type_Info_Curve_Index;
+{
+Type_Info *member_type = & Type_Info_Curve_Index;
 result.members[0] = {.type=member_type, .name=strlit("begin"), .offset=offsetof(Curve_Lerp, begin)};
-}{Type_Info *member_type = & Type_Info_Curve_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Curve_Index;
 result.members[1] = {.type=member_type, .name=strlit("end"), .offset=offsetof(Curve_Lerp, end)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Lerp;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Lerp = get_type_info_Curve_Lerp();
 
-function Type_Info &type_info_from_pointer(Curve_Lerp*pointer){return Type_Info_Curve_Lerp;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Lerp*pointer){
+return &Type_Info_Curve_Lerp;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Lerp(Data_Reader &r, Curve_Lerp &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Lerp(Data_Reader &r, Curve_Lerp &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Lerp(Data_Reader &r, Curve_Lerp *dst){
 Curve_Index m_begin = {};
-
 {
-eat_id(p, strlit("begin"));
-read_Curve_Index(r, m_begin);
+read_binary_Curve_Index(r, &m_begin);
 }
-pointer.begin = m_begin;
+dst->begin = m_begin;
 
 Curve_Index m_end = {};
-
 {
-eat_id(p, strlit("end"));
-read_Curve_Index(r, m_end);
+read_binary_Curve_Index(r, &m_end);
 }
-pointer.end = m_end;
+dst->end = m_end;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Circle{
 v3 center;
 v3 normal;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Circle;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Circle();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Circle()
-{
+get_type_info_Curve_Circle(){
 Type_Info result = {};
 result.name = strlit("Curve_Circle");
 result.size = sizeof(Curve_Circle);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(2);
-{Type_Info *member_type = & Type_Info_v3;
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[0] = {.type=member_type, .name=strlit("center"), .offset=offsetof(Curve_Circle, center)};
-}{Type_Info *member_type = & Type_Info_v3;
+}
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[1] = {.type=member_type, .name=strlit("normal"), .offset=offsetof(Curve_Circle, normal)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Circle;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Circle = get_type_info_Curve_Circle();
 
-function Type_Info &type_info_from_pointer(Curve_Circle*pointer){return Type_Info_Curve_Circle;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Circle*pointer){
+return &Type_Info_Curve_Circle;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Circle(Data_Reader &r, Curve_Circle &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Circle(Data_Reader &r, Curve_Circle &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Circle(Data_Reader &r, Curve_Circle *dst){
 v3 m_center = {};
-
 {
-eat_id(p, strlit("center"));
-read_v3(r, m_center);
+read_binary_v3(r, &m_center);
 }
-pointer.center = m_center;
+dst->center = m_center;
 
 v3 m_normal = {};
-
 {
-eat_id(p, strlit("normal"));
-read_v3(r, m_normal);
+read_binary_v3(r, &m_normal);
 }
-pointer.normal = m_normal;
+dst->normal = m_normal;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Fill3{
 Vertex_Index verts[3];
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Fill3;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Fill3();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Fill3()
-{
+get_type_info_Curve_Fill3(){
 Type_Info result = {};
 result.name = strlit("Curve_Fill3");
 result.size = sizeof(Curve_Fill3);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(1);
-{Type_Info *member_type = push_struct(global_meta_arena, Type_Info, push_zero());
+{
+local_persist Type_Info member_type_value;
+Type_Info *member_type = &member_type_value;
+*member_type = {};
 member_type->name = strlit("Vertex_Index[3]");
 member_type->kind = I_Type_Kind_Array;
 member_type->size = 3 * Type_Info_Vertex_Index.size;
 member_type->array_item_type = & Type_Info_Vertex_Index;
 member_type->count = 3;
 result.members[0] = {.type=member_type, .name=strlit("verts"), .offset=offsetof(Curve_Fill3, verts)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Fill3;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Fill3 = get_type_info_Curve_Fill3();
 
-function Type_Info &type_info_from_pointer(Curve_Fill3*pointer){return Type_Info_Curve_Fill3;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Fill3*pointer){
+return &Type_Info_Curve_Fill3;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Fill3(Data_Reader &r, Curve_Fill3 &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Fill3(Data_Reader &r, Curve_Fill3 &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Fill3(Data_Reader &r, Curve_Fill3 *dst){
 Vertex_Index m_verts[3] = {};
-
 {
-eat_id(p, strlit("verts"));
-eat_char(p, '{');read_Vertex_Index(r, m_verts[0]);read_Vertex_Index(r, m_verts[1]);read_Vertex_Index(r, m_verts[2]);eat_char(p, '}');
+read_binary_Vertex_Index(r, &m_verts[0]);read_binary_Vertex_Index(r, &m_verts[1]);read_binary_Vertex_Index(r, &m_verts[2]);
 }
-copy_array_dst(pointer.verts, m_verts);
+copy_array_dst(dst->verts, m_verts);
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Fill_Bez{
 Curve_Index curve;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Fill_Bez;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Fill_Bez();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Fill_Bez()
-{
+get_type_info_Curve_Fill_Bez(){
 Type_Info result = {};
 result.name = strlit("Curve_Fill_Bez");
 result.size = sizeof(Curve_Fill_Bez);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(1);
-{Type_Info *member_type = & Type_Info_Curve_Index;
+{
+Type_Info *member_type = & Type_Info_Curve_Index;
 result.members[0] = {.type=member_type, .name=strlit("curve"), .offset=offsetof(Curve_Fill_Bez, curve)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Fill_Bez;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Fill_Bez = get_type_info_Curve_Fill_Bez();
 
-function Type_Info &type_info_from_pointer(Curve_Fill_Bez*pointer){return Type_Info_Curve_Fill_Bez;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Fill_Bez*pointer){
+return &Type_Info_Curve_Fill_Bez;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Fill_Bez(Data_Reader &r, Curve_Fill_Bez &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Fill_Bez(Data_Reader &r, Curve_Fill_Bez &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Fill_Bez(Data_Reader &r, Curve_Fill_Bez *dst){
 Curve_Index m_curve = {};
-
 {
-eat_id(p, strlit("curve"));
-read_Curve_Index(r, m_curve);
+read_binary_Curve_Index(r, &m_curve);
 }
-pointer.curve = m_curve;
+dst->curve = m_curve;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:111:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:111:
 struct Curve_Fill_DBez{
 Curve_Index curve1;
 Curve_Index curve2;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Fill_DBez;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Fill_DBez();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Fill_DBez()
-{
+get_type_info_Curve_Fill_DBez(){
 Type_Info result = {};
 result.name = strlit("Curve_Fill_DBez");
 result.size = sizeof(Curve_Fill_DBez);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(2);
-{Type_Info *member_type = & Type_Info_Curve_Index;
+{
+Type_Info *member_type = & Type_Info_Curve_Index;
 result.members[0] = {.type=member_type, .name=strlit("curve1"), .offset=offsetof(Curve_Fill_DBez, curve1)};
-}{Type_Info *member_type = & Type_Info_Curve_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Curve_Index;
 result.members[1] = {.type=member_type, .name=strlit("curve2"), .offset=offsetof(Curve_Fill_DBez, curve2)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Fill_DBez;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Fill_DBez = get_type_info_Curve_Fill_DBez();
 
-function Type_Info &type_info_from_pointer(Curve_Fill_DBez*pointer){return Type_Info_Curve_Fill_DBez;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Fill_DBez*pointer){
+return &Type_Info_Curve_Fill_DBez;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Fill_DBez(Data_Reader &r, Curve_Fill_DBez &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Fill_DBez(Data_Reader &r, Curve_Fill_DBez &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Fill_DBez(Data_Reader &r, Curve_Fill_DBez *dst){
 Curve_Index m_curve1 = {};
-
 {
-eat_id(p, strlit("curve1"));
-read_Curve_Index(r, m_curve1);
+read_binary_Curve_Index(r, &m_curve1);
 }
-pointer.curve1 = m_curve1;
+dst->curve1 = m_curve1;
 
 Curve_Index m_curve2 = {};
-
 {
-eat_id(p, strlit("curve2"));
-read_Curve_Index(r, m_curve2);
+read_binary_Curve_Index(r, &m_curve2);
 }
-pointer.curve2 = m_curve2;
+dst->curve2 = m_curve2;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:120:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:120:
 union Curve_Union{Curve_v3v2 v3v2;
 Curve_Parabola parabola;
 Curve_Offset offset;
@@ -1072,11 +970,11 @@ Curve_Lerp lerp;
 Curve_Circle circle;
 Curve_Fill3 fill3;
 Curve_Fill_Bez fill_bez;
-Curve_Fill_DBez fill_dbez;};//  C:\Users\vodan\4ed\code/meta_print.cpp:324:
+Curve_Fill_DBez fill_dbez;};//  C:\Users\vodan\4ed\code\meta_print.cpp:307:
 union Curve_Union;
 function Type_Info
 get_type_info_Curve_Union();
-//  C:\Users\vodan\4ed\code/meta_print.cpp:330:
+//  C:\Users\vodan\4ed\code\meta_print.cpp:313:
 function Type_Info
 get_type_info_Curve_Union()
 {
@@ -1103,99 +1001,98 @@ result.union_members[13] = {.type=&Type_Info_Curve_Fill_Bez, .name=strlit("Fill_
 result.union_members[14] = {.type=&Type_Info_Curve_Fill_DBez, .name=strlit("Fill_DBez"), .variant=Curve_Type_Fill_DBez};
 return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Union;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Union = get_type_info_Curve_Union();
 
-function Type_Info &type_info_from_pointer(Curve_Union*pointer){return Type_Info_Curve_Union;}//  C:\Users\vodan\4ed\code/meta_print.cpp:359:
+function Type_Info *type_info_from_pointer(Curve_Union*pointer){
+return &Type_Info_Curve_Union;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:342:
 function void
-read_Curve_Union(Data_Reader &r, Curve_Union &pointer, Curve_Type variant);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:364:
-function void
-read_Curve_Union(Data_Reader &r, Curve_Union &pointer, Curve_Type variant)
+read_binary_Curve_Union(Data_Reader &r, Curve_Union *dst, Curve_Type variant)
 {
-STB_Parser *p = r.parser;
 switch(variant)
 {
 case Curve_Type_v3v2:
 {
-read_Curve_v3v2(r, pointer.v3v2);
+read_binary_Curve_v3v2(r, &dst->v3v2);
 break;
 }
 case Curve_Type_Parabola:
 {
-read_Curve_Parabola(r, pointer.parabola);
+read_binary_Curve_Parabola(r, &dst->parabola);
 break;
 }
 case Curve_Type_Offset:
 {
-read_Curve_Offset(r, pointer.offset);
+read_binary_Curve_Offset(r, &dst->offset);
 break;
 }
 case Curve_Type_Unit:
 {
-read_Curve_Unit(r, pointer.unit);
+read_binary_Curve_Unit(r, &dst->unit);
 break;
 }
 case Curve_Type_Unit2:
 {
-read_Curve_Unit2(r, pointer.unit2);
+read_binary_Curve_Unit2(r, &dst->unit2);
 break;
 }
 case Curve_Type_Line:
 {
-read_Curve_Line(r, pointer.line);
+read_binary_Curve_Line(r, &dst->line);
 break;
 }
 case Curve_Type_Bezd_Old:
 {
-read_Curve_Bezd_Old(r, pointer.bezd_old);
+read_binary_Curve_Bezd_Old(r, &dst->bezd_old);
 break;
 }
 case Curve_Type_Raw:
 {
-read_Curve_Raw(r, pointer.raw);
+read_binary_Curve_Raw(r, &dst->raw);
 break;
 }
 case Curve_Type_C2:
 {
-read_Curve_C2(r, pointer.c2);
+read_binary_Curve_C2(r, &dst->c2);
 break;
 }
 case Curve_Type_NegateX:
 {
-read_Curve_NegateX(r, pointer.negateX);
+read_binary_Curve_NegateX(r, &dst->negateX);
 break;
 }
 case Curve_Type_Lerp:
 {
-read_Curve_Lerp(r, pointer.lerp);
+read_binary_Curve_Lerp(r, &dst->lerp);
 break;
 }
 case Curve_Type_Circle:
 {
-read_Curve_Circle(r, pointer.circle);
+read_binary_Curve_Circle(r, &dst->circle);
 break;
 }
 case Curve_Type_Fill3:
 {
-read_Curve_Fill3(r, pointer.fill3);
+read_binary_Curve_Fill3(r, &dst->fill3);
 break;
 }
 case Curve_Type_Fill_Bez:
 {
-read_Curve_Fill_Bez(r, pointer.fill_bez);
+read_binary_Curve_Fill_Bez(r, &dst->fill_bez);
 break;
 }
 case Curve_Type_Fill_DBez:
 {
-read_Curve_Fill_DBez(r, pointer.fill_dbez);
+read_binary_Curve_Fill_DBez(r, &dst->fill_dbez);
 break;
 }
 
 }
 
 }
-//  C:\Users\vodan\4ed\code/meta_entity.cpp:139:
+//  C:\Users\vodan\4ed\code\meta_entity.cpp:139:
 global Entity_Type_Info entity_variant_info_table[36];
 function void
 init_entity_type_info_table(){
@@ -1228,125 +1125,120 @@ argb fill_color;
 Fill_Params fill_params;
 i1 linum;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Curve_Data;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Curve_Data();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Curve_Data()
-{
+get_type_info_Curve_Data(){
 Type_Info result = {};
 result.name = strlit("Curve_Data");
 result.size = sizeof(Curve_Data);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(10);
-{Type_Info *member_type = & Type_Info_String;
+{
+Type_Info *member_type = & Type_Info_String;
 result.members[0] = {.type=member_type, .name=strlit("name"), .offset=offsetof(Curve_Data, name)};
-}{Type_Info *member_type = & Type_Info_Bone_ID;
+}
+{
+Type_Info *member_type = & Type_Info_Bone_ID;
 result.members[1] = {.type=member_type, .name=strlit("bone_id"), .offset=offsetof(Curve_Data, bone_id)};
-}{Type_Info *member_type = & Type_Info_b32;
+}
+{
+Type_Info *member_type = & Type_Info_b32;
 result.members[2] = {.type=member_type, .name=strlit("symx"), .offset=offsetof(Curve_Data, symx)};
-}{Type_Info *member_type = & Type_Info_Curve_Type;
+}
+{
+Type_Info *member_type = & Type_Info_Curve_Type;
 result.members[3] = {.type=member_type, .name=strlit("type"), .offset=offsetof(Curve_Data, type)};
-}{Type_Info *member_type = & Type_Info_Curve_Union;
+}
+{
+Type_Info *member_type = & Type_Info_Curve_Union;
 result.members[4] = {.type=member_type, .name=strlit("data"), .offset=offsetof(Curve_Data, data), .discriminator_offset=offsetof(Curve_Data, type)};
-}{Type_Info *member_type = & Type_Info_Line_Params;
+}
+{
+Type_Info *member_type = & Type_Info_Line_Params;
 result.members[5] = {.type=member_type, .name=strlit("params"), .offset=offsetof(Curve_Data, params)};
-}{Type_Info *member_type = & Type_Info_Common_Line_Params_Index;
+}
+{
+Type_Info *member_type = & Type_Info_Common_Line_Params_Index;
 result.members[6] = {.type=member_type, .name=strlit("cparams"), .offset=offsetof(Curve_Data, cparams)};
-}{Type_Info *member_type = & Type_Info_argb;
+}
+{
+Type_Info *member_type = & Type_Info_argb;
 result.members[7] = {.type=member_type, .name=strlit("fill_color"), .offset=offsetof(Curve_Data, fill_color)};
-}{Type_Info *member_type = & Type_Info_Fill_Params;
+}
+{
+Type_Info *member_type = & Type_Info_Fill_Params;
 result.members[8] = {.type=member_type, .name=strlit("fill_params"), .offset=offsetof(Curve_Data, fill_params)};
-}{Type_Info *member_type = & Type_Info_i1;
+}
+{
+Type_Info *member_type = & Type_Info_i1;
 result.members[9] = {.type=member_type, .name=strlit("linum"), .offset=offsetof(Curve_Data, linum), .unserialized=true};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Curve_Data;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Curve_Data = get_type_info_Curve_Data();
 
-function Type_Info &type_info_from_pointer(Curve_Data*pointer){return Type_Info_Curve_Data;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Curve_Data*pointer){
+return &Type_Info_Curve_Data;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Curve_Data(Data_Reader &r, Curve_Data &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Curve_Data(Data_Reader &r, Curve_Data &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Curve_Data(Data_Reader &r, Curve_Data *dst){
 String m_name = {};
-
 {
-eat_id(p, strlit("name"));
-read_String(r, m_name);
+read_binary_String(r, &m_name);
 }
-pointer.name = m_name;
+dst->name = m_name;
 
 Bone_ID m_bone_id = {};
-
 {
-eat_id(p, strlit("bone_id"));
-read_Bone_ID(r, m_bone_id);
+read_binary_Bone_ID(r, &m_bone_id);
 }
-pointer.bone_id = m_bone_id;
+dst->bone_id = m_bone_id;
 
 b32 m_symx = {};
-
 {
-eat_id(p, strlit("symx"));
-read_b32(r, m_symx);
+read_binary_b32(r, &m_symx);
 }
-pointer.symx = m_symx;
+dst->symx = m_symx;
 
 Curve_Type m_type = {};
-
 {
-eat_id(p, strlit("type"));
-read_Curve_Type(r, m_type);
+read_binary_Curve_Type(r, &m_type);
 }
-pointer.type = m_type;
+dst->type = m_type;
 
 Curve_Union m_data = {};
-
 {
-eat_id(p, strlit("data"));
-read_Curve_Union(r, m_data, pointer.type);
+read_binary_Curve_Union(r, &m_data, dst->type);
 }
-pointer.data = m_data;
+dst->data = m_data;
 
 Line_Params m_params = {};
-
 {
-eat_id(p, strlit("params"));
-read_Line_Params(r, m_params);
+read_binary_Line_Params(r, &m_params);
 }
-pointer.params = m_params;
+dst->params = m_params;
 
 Common_Line_Params_Index m_cparams = {};
-
 {
-eat_id(p, strlit("cparams"));
-read_Common_Line_Params_Index(r, m_cparams);
+read_binary_Common_Line_Params_Index(r, &m_cparams);
 }
-pointer.cparams = m_cparams;
+dst->cparams = m_cparams;
 
 argb m_fill_color = {};
-
 {
-eat_id(p, strlit("fill_color"));
-read_argb(r, m_fill_color);
+read_binary_argb(r, &m_fill_color);
 }
-pointer.fill_color = m_fill_color;
+dst->fill_color = m_fill_color;
 
 Fill_Params m_fill_params = {};
-
 {
-eat_id(p, strlit("fill_params"));
-read_Fill_Params(r, m_fill_params);
+read_binary_Fill_Params(r, &m_fill_params);
 }
-pointer.fill_params = m_fill_params;
+dst->fill_params = m_fill_params;
 
-eat_char(p, '}');
+
 }
 ;
 //-
@@ -1354,108 +1246,94 @@ struct Keyboard_Cursor{
 v3 pos;
 v1 vel;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Keyboard_Cursor;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Keyboard_Cursor();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Keyboard_Cursor()
-{
+get_type_info_Keyboard_Cursor(){
 Type_Info result = {};
 result.name = strlit("Keyboard_Cursor");
 result.size = sizeof(Keyboard_Cursor);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(2);
-{Type_Info *member_type = & Type_Info_v3;
+{
+Type_Info *member_type = & Type_Info_v3;
 result.members[0] = {.type=member_type, .name=strlit("pos"), .offset=offsetof(Keyboard_Cursor, pos)};
-}{Type_Info *member_type = & Type_Info_v1;
+}
+{
+Type_Info *member_type = & Type_Info_v1;
 result.members[1] = {.type=member_type, .name=strlit("vel"), .offset=offsetof(Keyboard_Cursor, vel)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Keyboard_Cursor;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Keyboard_Cursor = get_type_info_Keyboard_Cursor();
 
-function Type_Info &type_info_from_pointer(Keyboard_Cursor*pointer){return Type_Info_Keyboard_Cursor;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Keyboard_Cursor*pointer){
+return &Type_Info_Keyboard_Cursor;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Keyboard_Cursor(Data_Reader &r, Keyboard_Cursor &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Keyboard_Cursor(Data_Reader &r, Keyboard_Cursor &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Keyboard_Cursor(Data_Reader &r, Keyboard_Cursor *dst){
 v3 m_pos = {};
-
 {
-eat_id(p, strlit("pos"));
-read_v3(r, m_pos);
+read_binary_v3(r, &m_pos);
 }
-pointer.pos = m_pos;
+dst->pos = m_pos;
 
 v1 m_vel = {};
-
 {
-eat_id(p, strlit("vel"));
-read_v1(r, m_vel);
+read_binary_v1(r, &m_vel);
 }
-pointer.vel = m_vel;
+dst->vel = m_vel;
 
-eat_char(p, '}');
+
 }
 ;
 struct Serialized_State{
 Keyboard_Cursor kb_cursor;
 b32 references_full_alpha;
 };
-//  C:\Users\vodan\4ed\code/meta_print.cpp:167:
-struct Serialized_State;
+//  C:\Users\vodan\4ed\code\meta_print.cpp:165:
 function Type_Info
-get_type_info_Serialized_State();//  C:\Users\vodan\4ed\code/meta_print.cpp:172:
-function Type_Info
-get_type_info_Serialized_State()
-{
+get_type_info_Serialized_State(){
 Type_Info result = {};
 result.name = strlit("Serialized_State");
 result.size = sizeof(Serialized_State);
 result.kind = I_Type_Kind_Struct;
 result.members.set_count(2);
-{Type_Info *member_type = & Type_Info_Keyboard_Cursor;
+{
+Type_Info *member_type = & Type_Info_Keyboard_Cursor;
 result.members[0] = {.type=member_type, .name=strlit("kb_cursor"), .offset=offsetof(Serialized_State, kb_cursor)};
-}{Type_Info *member_type = & Type_Info_b32;
+}
+{
+Type_Info *member_type = & Type_Info_b32;
 result.members[1] = {.type=member_type, .name=strlit("references_full_alpha"), .offset=offsetof(Serialized_State, references_full_alpha)};
-}return result;
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:88:
-global Type_Info Type_Info_Serialized_State;
+return result;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:88:
+global Type_Info Type_Info_Serialized_State = get_type_info_Serialized_State();
 
-function Type_Info &type_info_from_pointer(Serialized_State*pointer){return Type_Info_Serialized_State;}//  C:\Users\vodan\4ed\code/meta_print.cpp:238:
+function Type_Info *type_info_from_pointer(Serialized_State*pointer){
+return &Type_Info_Serialized_State;
+}
+//  C:\Users\vodan\4ed\code\meta_print.cpp:236:
 function void
-read_Serialized_State(Data_Reader &r, Serialized_State &pointer);
-//  C:\Users\vodan\4ed\code/meta_print.cpp:243:
-function void
-read_Serialized_State(Data_Reader &r, Serialized_State &pointer)
-{
-STB_Parser *p = r.parser;
-eat_char(p, '{');
+read_binary_Serialized_State(Data_Reader &r, Serialized_State *dst){
 Keyboard_Cursor m_kb_cursor = {};
-
 {
-eat_id(p, strlit("kb_cursor"));
-read_Keyboard_Cursor(r, m_kb_cursor);
+read_binary_Keyboard_Cursor(r, &m_kb_cursor);
 }
-pointer.kb_cursor = m_kb_cursor;
+dst->kb_cursor = m_kb_cursor;
 
 b32 m_references_full_alpha = {};
-
 {
-eat_id(p, strlit("references_full_alpha"));
-read_b32(r, m_references_full_alpha);
+read_binary_b32(r, &m_references_full_alpha);
 }
-pointer.references_full_alpha = m_references_full_alpha;
+dst->references_full_alpha = m_references_full_alpha;
 
-eat_char(p, '}');
+
 }
-//  C:\Users\vodan\4ed\code/meta_print.cpp:495:
+//  C:\Users\vodan\4ed\code\meta_print.cpp:473:
 #define Serialized_State_Embed \
  union\
 {\

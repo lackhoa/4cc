@@ -279,16 +279,16 @@ view_zero_scroll(App *app, View_ID view){
 
 function Vec2_f32
 view_relative_xy_of_pos(App *app, View_ID view, i64 base_line, i64 pos){
-    Rect_f32 rect = view_relative_box_of_pos(app, view, base_line, pos);
-    return(rect_center(rect));
+ Rect_f32 rect = view_relative_box_of_pos(app, view, base_line, pos);
+ return(rect_center(rect));
 }
 
 function void
 view_set_cursor_and_preferred_x(App *app, View_ID view, Buffer_Seek seek){
-    view_set_cursor(app, view, seek);
-    Buffer_Cursor cursor = view_compute_cursor(app, view, seek);
-    Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, cursor.pos);
-    view_set_preferred_x(app, view, p.x);
+ view_set_cursor(app, view, seek);
+ Buffer_Cursor cursor = view_compute_cursor(app, view, seek);
+ Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, cursor.pos);
+ view_set_preferred_x(app, view, p.x);
 }
 
 inline void kv_goto_pos(App *app, View_ID view, i64 pos)

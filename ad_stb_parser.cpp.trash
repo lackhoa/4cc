@@ -242,7 +242,6 @@ T value = eat_##T(p); \
 block_copy(pointer, &value, get_basic_type_size(type)); \
 } break;
   //
-  X_Basic_Types(X)
 #undef X
  }
 }

@@ -486,7 +486,8 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
  if ((vim_lister_view_id == 0) &&
      vim_show_buffer_peek && 
      (rect_height(back_rect) > 0.f))
- {/// NOTE(BYP): This is kinda a hacky pseudo-view
+ {//note(kv) I have no idea what this is, not the bottom lister
+  // NOTE(BYP): This is kinda a hacky pseudo-view
   Vim_Buffer_Peek_Entry *entry = vim_buffer_peek_list + vim_buffer_peek_index;
   Buffer_Identifier buffer_iden = entry->buffer_id;
   Buffer_ID buffer = buffer_identifier_to_id(app, buffer_iden);
@@ -520,7 +521,7 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
  
  v2 bot_right = {region.x1 - 4.f - char_wid*vim_keystroke_text.size, main_monitor_bot_left.y};
  FColor chord_color = fcolor_id(defcolor_vim_chord_unresolved);
- if (vim_state.chord_resolved)
+ if(vim_state.chord_resolved)
  {
   chord_color = (vim_state.chord_resolved & bit_2 ?
                  fcolor_id(defcolor_vim_chord_error) :
@@ -530,7 +531,7 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
  
  if (arrlen(DEBUG_entries) > 0 && 
      DEBUG_draw_hud_p)
- {// Debug HUD
+ {//-Debug HUD
   i1 line_count = (i1)arrlen(DEBUG_entries);
   rect2_Pair pair = rect_split_top_bottom_neg(main_monitor_region, v1(line_count)*line_height);
   rect2 clip = pair.max;

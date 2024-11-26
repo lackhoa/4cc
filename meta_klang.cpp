@@ -25,7 +25,7 @@ k_parse_preprocessor(Ed_Parser *p){
  while(true){
   Token *token = ep_get_token(p);
   if(token->flags & TokenBaseFlag_PreprocessorBody){
-   ep_eat_token_inc_all(p);
+   ep_eat_inc_all(p);
   }else{ break; }
  }
  ep_skip_comments_and_spaces(p);
@@ -106,7 +106,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
           token0->kind == TokenBaseKind_Keyword){
   if(is_header_keyword(token0_string)){
    //-Header and body
-   ep_eat_token(p);
+   ep_eat(p);
    statement0->head.kind = Statement_Kind_Header_And_Body;
    cast_to_var(Statement_Header_And_Body *, header_body, statement0);
    if(ep_maybe_char(p, '(')){
@@ -118,7 +118,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
    header_body->body = k_parse_statement_to_arena(arena, p);
   }else if(token0_string == strlit("if")){
    //-If
-   ep_eat_token(p);
+   ep_eat(p);
    statement0->head.kind = Statement_Kind_If;
    cast_to_var(Statement_If *, if0, statement0);
    {//-condition
@@ -251,7 +251,7 @@ k_process_top_level(Arena *arena,
        token->kind == TokenBaseKind_StatementClose)
     {
      ep_print_token(printer_gen, p);
-     ep_eat_token_inc_all(p);
+     ep_eat_inc_all(p);
     }else{
      break;
     }
@@ -277,7 +277,7 @@ k_process_top_level(Arena *arena,
     }else{
      p->fail();
     }
-    ep_eat_token(p);
+    ep_eat(p);
    }
   }
   
@@ -324,7 +324,7 @@ k_process_top_level(Arena *arena,
        }else if(meta_maybe_key(p, strlit("default"))){
         //TODO(kv): support arbitrary expression in parens
         member->default_value = ep_print_token(p);
-        ep_eat_token(p);
+        ep_eat(p);
        }else{ p->fail(); }
       }
      }else if(ep_maybe_id(p, "meta_unserialized")){
@@ -386,7 +386,7 @@ k_process_top_level(Arena *arena,
      break;
     }else{
      ep_print_token(printer_gen, p);
-     ep_eat_token_inc_all(p);
+     ep_eat_inc_all(p);
     }
    }
   }else if(token0_string == strlit("xfunction") ||
@@ -394,7 +394,7 @@ k_process_top_level(Arena *arena,
            token0_string == strlit("inline")){
    //-Function
    init_dynamic(p->cache_list, scratch_loop);  //TODO(kv) This seems like "action at a distance"
-   ep_eat_token(p);
+   ep_eat(p);
    String return_type = ep_id(p);  //TODO(kv) cheese!
    String function_name = ep_id(p);
    ep_scope_block(p, function_name, token0);

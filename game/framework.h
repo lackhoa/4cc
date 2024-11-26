@@ -51,4 +51,53 @@ struct Game_State{
  b8 __padding[64];
 };
 
+inline void print_nspaces(Printer &p, i1 n){ for_repeat(n) { print(p, " "); } }
+
+function void
+write_basic_type(Printer &p, Basic_Type type, void *value0)
+{
+ switch(type){
+  //-Floats
+  case Basic_Type_v1:
+  case Basic_Type_v2:
+  case Basic_Type_v3:
+  case Basic_Type_v4:
+  {
+   v1 *values = cast(v1*)value0;
+   i1 count = get_basic_type_size(type) / 4;
+   if (count == 1) {
+    print_float_trimmed(p, *values);
+   } else {
+    for_i32(index,0,count) {
+     if (index != 0) { print(p, " "); }
+     print_float_trimmed(p, values[index]);
+    }
+   }
+  }break;
+  
+  //-Integers
+  case Basic_Type_i1:
+  case Basic_Type_i2:
+  case Basic_Type_i3:
+  case Basic_Type_i4:
+  {
+   i1 *v = (i1*)value0;
+   i1 count = get_basic_type_size(type) / 4;
+   
+   for_i32(index,0,count) {
+    if (index != 0) { print(p, " "); }
+    print(p, v[index]);
+   }
+  }break;
+  
+  //-
+  case Basic_Type_String: { print(p, *(String*)value0); }break;
+  case Basic_Type_u32:    { print(p, *(u32*)value0);    }break;
+  
+  invalid_default_case;
+ }
+}
+
+
+
 //-EOF

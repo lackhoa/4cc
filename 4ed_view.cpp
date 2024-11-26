@@ -134,8 +134,8 @@ view_get_edit_pos(View *view){
 
 function void
 view_set_edit_pos(View *view, File_Edit_Positions edit_pos){
- macro_clamp_min(edit_pos.scroll.position.line_number, 1);
- macro_clamp_min(edit_pos.scroll.target.line_number,   1);
+ ClampBot(edit_pos.scroll.position.line_number, 1);
+ ClampBot(edit_pos.scroll.target.line_number,   1);
  view->edit_pos_ = edit_pos;
  view->file->state.edit_pos_most_recent = edit_pos;
 }
@@ -144,22 +144,22 @@ view_set_edit_pos(View *view, File_Edit_Positions edit_pos){
 
 function Rect_f32
 view_get_buffer_rect(Thread_Context *tctx, Models *models, View *view){
-    Rect_f32 region = Rf32(view->panel->rect_full);
-    if (models->buffer_region != 0){
-        Rect_f32 rect = region;
-        Rect_f32 sub_region = Rf32(V2(0, 0), get_dim(rect));
-        App app = {};
-        app.tctx = tctx;
-        app.cmd_context = models;
-        sub_region = models->buffer_region(&app, view_get_id(&models->view_set, view), sub_region);
-        region.p0 = rect.p0 + sub_region.p0;
-        region.p1 = rect.p0 + sub_region.p1;
-        region.x1 = clamp_max(region.x1, rect.x1);
-        region.y1 = clamp_max(region.y1, rect.y1);
-        region.x0 = clamp_max(region.x0, region.x1);
-        region.y0 = clamp_max(region.y0, region.y1);
-    }
-    return(region);
+ Rect_f32 region = Rf32(view->panel->rect_full);
+ if(models->buffer_region != 0){
+  Rect_f32 rect = region;
+  Rect_f32 sub_region = Rf32(V2(0, 0), get_dim(rect));
+  App app = {};
+  app.tctx = tctx;
+  app.cmd_context = models;
+  sub_region = models->buffer_region(&app, view_get_id(&models->view_set, view), sub_region);
+  region.p0 = rect.p0 + sub_region.p0;
+  region.p1 = rect.p0 + sub_region.p1;
+  region.x1 = clamp_max(region.x1, rect.x1);
+  region.y1 = clamp_max(region.y1, rect.y1);
+  region.x0 = clamp_max(region.x0, region.x1);
+  region.y0 = clamp_max(region.y0, region.y1);
+ }
+ return(region);
 }
 
 function f32
@@ -351,14 +351,14 @@ view_move_view_to_cursor(Thread_Context *tctx, Models *models, View *view, Buffe
  v2 push_in = view->cursor_push_in_multiplier;
  
  v2 lim_dim = view_dim*0.45f;
- macro_clamp_max(margin.x, lim_dim.x);
- macro_clamp_max(margin.y, lim_dim.y);
+ ClampTop(margin.x, lim_dim.x);
+ ClampTop(margin.y, lim_dim.y);
  
  v2 push_in_lim_dim = hadamard(lim_dim, V2(1.f/line_height, 1.f/normal_advance)) - margin;
-	macro_clamp_min(push_in_lim_dim.x, 0);
-	macro_clamp_min(push_in_lim_dim.y, 0);
- macro_clamp_max(push_in.x, push_in_lim_dim.x);
- macro_clamp_max(push_in.y, push_in_lim_dim.y);
+	ClampBot(push_in_lim_dim.x, 0);
+	ClampBot(push_in_lim_dim.y, 0);
+ ClampTop(push_in.x, push_in_lim_dim.x);
+ ClampTop(push_in.y, push_in_lim_dim.y);
  
  v2 target_p_relative = {};
  if(p.y < margin.y){
@@ -419,12 +419,13 @@ view_move_cursor_to_view(Thread_Context *tctx, Models *models, View *view, Buffe
 }
 
 function void
-view_set_cursor(Thread_Context *tctx, Models *models, View *view, i64 pos){
+view_set_cursor_inner(Thread_Context *tctx, Models *models, View *view, i64 pos){
  File_Edit_Positions edit_pos = view_get_edit_pos(view);
  file_edit_positions_set_cursor(&edit_pos, pos);
  view_set_edit_pos(view, edit_pos);
  Buffer_Scroll scroll = edit_pos.scroll;
- if(view_move_view_to_cursor(tctx, models, view, &scroll)){
+ b32 move_res = view_move_view_to_cursor(tctx, models, view, &scroll);
+ if(move_res){
   edit_pos.scroll = scroll;
   view_set_edit_pos(view, edit_pos);
  }
@@ -789,16 +790,16 @@ file_is_viewed(Layout *layout, Editing_File *file){
 
 function void
 adjust_views_looking_at_file_to_new_cursor(Thread_Context *tctx, Models *models, Editing_File *file){
-    Layout *layout = &models->layout;
-    for (Panel *panel = layout_get_first_open_panel(layout);
-         panel != 0;
-         panel = layout_get_next_open_panel(layout, panel)){
-        View *view = panel->view;
-        if (view->file == file){
-            File_Edit_Positions edit_pos = view_get_edit_pos(view);
-            view_set_cursor(tctx, models, view, edit_pos.cursor_pos);
-        }
-    }
+ Layout *layout = &models->layout;
+ for (Panel *panel = layout_get_first_open_panel(layout);
+      panel != 0;
+      panel = layout_get_next_open_panel(layout, panel)){
+  View *view = panel->view;
+  if (view->file == file){
+   File_Edit_Positions edit_pos = view_get_edit_pos(view);
+   view_set_cursor_inner(tctx, models, view, edit_pos.cursor_pos);
+  }
+ }
 }
 
 function void

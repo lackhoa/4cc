@@ -227,8 +227,88 @@ fui_string_is_slider(String at_string)
          starts_with_lit(at_string, "fbool") ||
          false);
 }
-
 //-
+function void
+print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped);
+
+function void
+print_fieldf(Printer &p, Basic_Type type, char *name, void *value){
+ print(p, ".");
+ print(p, name);
+ print(p, "=");
+ print_code(p,type,value,/*wrapped*/true);
+ print(p, ", ");
+}
+
+#define print_field(printer, type, value_pointer, name)\
+print_fieldf(\
+printer,\
+Type_##type,\
+#name,\
+&value_pointer->name)
+
+function void
+print_float_trimmed(Printer &p, v1 value){
+ //NOTE(kv) there's some delete action going on, so we have to make a temp buffer
+ Scratch_Block scratch;
+ String result = push_stringf(scratch, "%.4ff", value);
+ // NOTE: trim trailing zeros
+ while (result.len > 0){
+  if (result.str[result.len-2] == '0') { result.len -= 1; }
+  else { break; }
+ }
+ result.str[result.len-1] = 'f';
+ print(p, result);
+}
+
+function void
+print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
+{
+ switch(type)
+ {
+  case Basic_Type_v1:
+  case Basic_Type_v2:
+  case Basic_Type_v3:
+  case Basic_Type_v4:
+  {
+   v1 *values = cast(v1*)value0;
+   i1 count = get_basic_type_size(type) / 4;
+   if (count == 1) {
+    print_float_trimmed(p, *values);
+   } else {
+    if (wrapped) { print(p,"V"); print(p,count); print(p,"("); }
+    for_i32(index,0,count) {
+     if (index != 0) { print(p, ", "); }
+     print_float_trimmed(p, values[index]);
+    }
+    if (wrapped) { print(p, ")"); }
+   }
+  }break;
+  
+  case Basic_Type_i1:
+  {
+   i1 v = *(i1*)value0;
+   print(p, v);
+  }break;
+  case Basic_Type_i2:
+  case Basic_Type_i3:
+  case Basic_Type_i4:
+  {
+   i1 *v = (i1*)value0;
+   i1 count = get_basic_type_size(type) / 4;
+   
+   if (wrapped) { print(p, "I"); print(p, count); print(p, "("); }
+   for_i32(index,0,count) {
+    if (index != 0) { print(p, ","); }
+    print(p, v[index]);
+   }
+   if (wrapped) { print(p, ")"); }
+  }break;
+  
+  invalid_default_case;
+ }
+}
+
 
 function String
 fui_push_slider_value(Arena *arena, Fui_Slider *slider)
@@ -318,10 +398,10 @@ fui_handle_slider(fui_handle_slider_params) {
      for_i32(index,0,component_count){
       if(index<component_count-1){
        ep_eat_until_char(p, strlit(","));
-       ep_eat_token(p);
+       ep_eat(p);
       }else{
        ep_eat_until_char(p, strlit(")"));
-       ep_eat_token(p);
+       ep_eat(p);
       }
      }
     }

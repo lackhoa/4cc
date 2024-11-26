@@ -1,0 +1,86 @@
+//NOTE File created programmatically by C:\Users\vodan\4ed\code\meta_template.cpp:313:
+//NOTE Source template: C:\Users\vodan\4ed\code\game\basic_types.kt
+
+ global Type_Info basic_types_info[Basic_Type_Count+1] = {
+  Type_Info{},
+     Type_Info{
+    .name=strlit("v1"),
+    .size=i1(sizeof(v1)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_v1,
+   },
+     Type_Info{
+    .name=strlit("v2"),
+    .size=i1(sizeof(v2)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_v2,
+   },
+     Type_Info{
+    .name=strlit("v3"),
+    .size=i1(sizeof(v3)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_v3,
+   },
+     Type_Info{
+    .name=strlit("v4"),
+    .size=i1(sizeof(v4)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_v4,
+   },
+     Type_Info{
+    .name=strlit("i1"),
+    .size=i1(sizeof(i1)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_i1,
+   },
+     Type_Info{
+    .name=strlit("i2"),
+    .size=i1(sizeof(i2)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_i2,
+   },
+     Type_Info{
+    .name=strlit("i3"),
+    .size=i1(sizeof(i3)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_i3,
+   },
+     Type_Info{
+    .name=strlit("i4"),
+    .size=i1(sizeof(i4)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_i4,
+   },
+     Type_Info{
+    .name=strlit("String"),
+    .size=i1(sizeof(String)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_String,
+   },
+     Type_Info{
+    .name=strlit("u32"),
+    .size=i1(sizeof(u32)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_u32,
+   },
+     Type_Info{
+    .name=strlit("u64"),
+    .size=i1(sizeof(u64)),
+    .kind=I_Type_Kind_Basic,
+    .Basic_Type=Basic_Type_u64,
+   },
+  
+ };
+ 
+   global Type_Info Type_Info_v1 = basic_types_info[Basic_Type_v1];
+   global Type_Info Type_Info_v2 = basic_types_info[Basic_Type_v2];
+   global Type_Info Type_Info_v3 = basic_types_info[Basic_Type_v3];
+   global Type_Info Type_Info_v4 = basic_types_info[Basic_Type_v4];
+   global Type_Info Type_Info_i1 = basic_types_info[Basic_Type_i1];
+   global Type_Info Type_Info_i2 = basic_types_info[Basic_Type_i2];
+   global Type_Info Type_Info_i3 = basic_types_info[Basic_Type_i3];
+   global Type_Info Type_Info_i4 = basic_types_info[Basic_Type_i4];
+   global Type_Info Type_Info_String = basic_types_info[Basic_Type_String];
+   global Type_Info Type_Info_u32 = basic_types_info[Basic_Type_u32];
+   global Type_Info Type_Info_u64 = basic_types_info[Basic_Type_u64];
+ 

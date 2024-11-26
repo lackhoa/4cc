@@ -2,27 +2,18 @@
 // NOTE(allen): Default Mixer Helpers
 
 // TODO(allen): intrinsics wrappers
-#if OS_LINUX
-#include <immintrin.h>
-#define _InterlockedExchangeAdd __sync_fetch_and_add
-#elif OS_MAC
-#include <immintrin.h>
-#define _InterlockedExchangeAdd __sync_fetch_and_add
-#else
-#include <intrin.h>
-#endif
 
 function void
 def_audio_begin_ticket_mutex(Audio_System *Crunky)
 {
- u32 Ticket = AtomicAddU32AndReturnOriginal(&Crunky->ticket, 1);
+ u32 Ticket = atomic_add_u32_and_return_original(&Crunky->ticket, 1);
  while(Ticket != Crunky->serving) {_mm_pause();}
 }
 
 function void
 def_audio_end_ticket_mutex(Audio_System *Crunky)
 {
- AtomicAddU32AndReturnOriginal(&Crunky->serving, 1);
+ atomic_add_u32_and_return_original(&Crunky->serving, 1);
 }
 
 

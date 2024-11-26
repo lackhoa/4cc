@@ -1,3 +1,8 @@
+#if !KV_DEBUG_MEMORY
+#  define DEBUG_end_frame(...)
+#endif
+
+#if KV_DEBUG_MEMORY
 //NOTE(kv) Just like in hmh, arenas can be moved around,
 //  only the arena chunks are stable. So we rely on them to identify arenas.
 struct Debug_Allocation
@@ -10,8 +15,9 @@ struct Debug_Arena_Chunk
   Debug_Arena_Chunk *prev;
   Debug_Arena_Chunk *next_free;
  };
- struct Arena_Chunk *real_chunk;
+ void *real_chunk;
  Debug_Allocation *last_allocation;
+ usize size;
 };
 struct Debug_Arena
 {
@@ -22,18 +28,46 @@ struct Debug_Arena
  File_Line file_line;
  Debug_Arena_Chunk *last_chunk;
 };
+enum Debug_Event_Type{
+ Debug_Event_None,
+ Debug_Event_Register_Arena_Chunk,
+ Debug_Event_Free_Arena_Chunk,
+};
+struct Debug_Event
+{
+ Debug_Event_Type type;
+ u16 thread_index;
+ File_Line file_line;
+ 
+ void *chunk_address;
+ usize chunk_size;
+ void *chunk_prev;
+};
+#define DEBUG_EVENT_ARRAY_COUNT 65536
+#define MAX_THREAD_COUNT 16
 struct Debug_State
 {
- /*Debug_Event *events;
- u32 event_count;
- u32 event_cap;*/
  Arena arena;
- System_Mutex mutex;
- //
+ Ticket_Mutex mutex;
+ 
+ u32 thread_count;
+ Thread_Arena_Chunk_Store *chunk_stores[MAX_THREAD_COUNT];
+ u32 event_index_written[MAX_THREAD_COUNT];
+ 
+ volatile u32 event_index_to_write;
+ volatile u32 event_index_to_read;
+ Debug_Event events[DEBUG_EVENT_ARRAY_COUNT];
+ 
  Debug_Arena *first_arena;
  Debug_Arena *first_free_arena;
  Debug_Arena_Chunk *first_free_chunk;
  Debug_Allocation *first_free_allocation;
 };
 global Debug_State memory_debug_state;
+thread_local i32 debug_thread_index = -1;
+
+function void
+DEBUG_end_frame();
+#endif//-KV_DEBUG_MEMORY
+
 //-

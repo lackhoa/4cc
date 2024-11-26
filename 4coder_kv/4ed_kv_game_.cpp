@@ -7,6 +7,7 @@ global Stringz GAME_DLL_PATH;
 struct Game_DLL { u64 mtime; u32 temp_index; };
 global Game_DLL current_game_dll;
 global API_VTable_ed const_ed_api;
+global API_VTable_ed_new const_ed_api_new;
 global b32 global_game_dll_lock;
 global b32 global_game_enabled = true;  // NOTE: Prevent crash
 global b32 global_auxiliary_viewports_on;
@@ -15,19 +16,16 @@ global b32 global_debug_camera_on;
 function b32 
 turn_game_on() 
 {
- if (global_game_enabled)
- {
+ if (global_game_enabled) {
   game_on_ro = true;
   return true;
- }
- else 
- { 
+ } else  { 
   vim_set_bottom_text_lit("game is currently disabled!");
   return false;
  }
 }
-
-force_inline void turn_game_off()
+force_inline void
+turn_game_off()
 {
  game_on_ro = false;
 }
@@ -36,10 +34,9 @@ function void
 toggle_the_game(App *app)
 {
  if (game_on_ro) { turn_game_off(); }
- else                         { turn_game_on(); }
+ else            { turn_game_on(); }
  
- if (game_on_ro)
- {
+ if (game_on_ro) {
   View_ID view = get_active_view(app, Access_Always);
   if ( is_view_to_the_right(app, view) )
   {// NOTE: switch to the left
@@ -95,8 +92,8 @@ init_game(App *app)
                                &imgui_state.free_func,
                                &imgui_state.user_data);
  }
- ed_game_state_pointer = game->game_init(&bootstrap_arena, &const_ed_api, app,
-                                         imgui_state);
+ ed_game_state_pointer = game->game_init(&bootstrap_arena, &const_ed_api, &const_ed_api_new,
+                                         app, imgui_state);
  
  //@ReferenceImages
  stbi_set_flip_vertically_on_load(true);
@@ -105,8 +102,8 @@ init_game(App *app)
 function void win32_imgui_reinit(void);
 
 function void
-reload_game(Game_API &game) {
- game.game_reload(ed_game_state_pointer, &const_ed_api, false);
+reload_game(Game_API &game){
+ game.game_reload(ed_game_state_pointer, &const_ed_api, &const_ed_api_new, false);
 }
 
 // TODO(kv): The "delete old file" operation sometimes fail on us, 
@@ -114,7 +111,7 @@ reload_game(Game_API &game) {
 function b32
 load_latest_game_code(App *app, b32 *out_loaded)
 {// NOTE(kv): Load dynamc game code
- if (game_on_ro) {
+ if(game_on_ro){
   Scratch_Block scratch(app);
   b32 loaded = false;
   b32 ok = true;
@@ -122,11 +119,12 @@ load_latest_game_code(App *app, b32 *out_loaded)
   if ( !global_game_dll_lock )
   {
    u64 mtime1 = file_mtime(GAME_DLL_PATH);
-   if (( ok = mtime1 != 0 ))
+   ok = mtime1 != 0;
+   if(ok)
    {
     String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-    b32 lock_file_exists = file_mtime( pjoin(scratch, binary_dir, "game_dll.lock") ) > 0;
-    if (!lock_file_exists)
+    b32 lock_file_exists = file_mtime(pjoin(scratch, binary_dir, "game_dll.lock")) > 0;
+    if(!lock_file_exists)
     {
 #if KV_INTERNAL
 # define TEMP_DLL_PREFIX "dev_"
@@ -166,10 +164,10 @@ load_latest_game_code(App *app, b32 *out_loaded)
         win32_imgui_reinit();
 #endif
         
-        if (library)
-        {
+        if(library){
          b32 unload_ok = gb_dll_unload(library);
          if (!unload_ok) { vim_set_bottom_text_lit("failed to unload old dll"); }
+         global_dll_reloaded_so_watch_out_for_debug_strings = true;
         }
         
         library = new_library;
@@ -235,12 +233,11 @@ function Image_Load_Info get_image_load_info(void);
 function void
 maybe_update_game(App *app, Frame_Info frame)
 {
- if (game_on_ro){
+ if(game_on_ro){
   b32 loaded;
   load_latest_game_code(app, &loaded);
   if (loaded) { vim_set_bottom_text_lit("Game code reloaded"); }
   
-#if 0//nono
   Game_API *game = get_game_code();
   if (game){
    Scratch_Block scratch(app);
@@ -261,14 +258,11 @@ maybe_update_game(App *app, Frame_Info frame)
    
    block_zero_array(global_game_key_state_changes);
   }
-#endif
  }
 }
-
 function void
 render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame, rect2 clip_box)
 {
-#if 0//nono
  if (game_on_ro &&
      (viewport == MAIN_VIEWPORT_ID || global_auxiliary_viewports_on))
  {
@@ -285,7 +279,6 @@ render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame, rec
    }
   }
  }
-#endif
 }
 
 function void

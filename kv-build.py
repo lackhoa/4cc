@@ -23,9 +23,9 @@ hotload_game = False
 
 ################ NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-working_on_metaprogram = 1
+working_on_metaprogram = 0
 working_on_editor      = 1
-working_on_game    = 0
+working_on_game        = 1
 imgui_build_level   = 2
 ed_meta_build_level = 1
 lexer_build_level   = 2
@@ -37,7 +37,7 @@ FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
 AD_PROFILE = 0
 KV_SLOW    = 0
-STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the reload itself
+#STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the reload itself
 OPTIMIZE_EDITOR = 0
 
 ############## Configuration end ############################
@@ -311,7 +311,7 @@ def run_compiler(compiler, input_files, output_file,
     if is_clang:
         compiler_flags += f" {CPP_VERSION} -D_CRT_SECURE_NO_WARNINGS -FC"
     if is_msvc:
-        compiler_flags += f" {CPP_VERSION} -Zc:strictStrings- -D_CRT_SECURE_NO_WARNINGS -FC"
+        compiler_flags += f" {CPP_VERSION} -Ob1 -Zc:strictStrings- -D_CRT_SECURE_NO_WARNINGS -FC"
 
     if is_msvc:
         unused_var = "-wd4189"
@@ -330,13 +330,15 @@ def run_compiler(compiler, input_files, output_file,
 "
     run(command, exit_on_failure)
 
+base_includes = f"-I{CODE} -I{CODE}/libs"
+
 def autogen():
     CUSTOM=f'{FCODER_ROOT}/code/custom'
     BUILD_DIR = pjoin(CUSTOM, "build")
     #rm_rf(BUILD_DIR)
     mkdir_p(BUILD_DIR)
     with pushd(BUILD_DIR):
-        INCLUDES=f'-I{CUSTOM} -I{CODE}'
+        INCLUDES=f'{base_includes} -I{CUSTOM}'
         SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={KV_SLOW}'
         compiler_flags=f"{SYMBOLS} {INCLUDES}"
         
@@ -409,11 +411,11 @@ try:
         #-NOTE(kv): Compile the project---------------------------
 
         # NOTE(kv): remedy stop debugging
-        if OS_WINDOWS and STOP_DEBUGGING_BEFORE_BUILD:
-            run(f"remedybg stop-debugging")
+        #if OS_WINDOWS and STOP_DEBUGGING_BEFORE_BUILD:
+            #run(f"remedybg stop-debugging")
             #run(f"raddbg --ipc kill_all")
 
-        INCLUDES=f'-I{CODE} -I{CODE}/libs -I{CODE}/libs/imgui -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/generated -I{CODE}/game/generated'
+        INCLUDES=f'{base_includes} -I{CODE}/libs/imgui -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/generated -I{CODE}/game/generated'
         #
         COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
         SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DAD_PROFILE={AD_PROFILE} -DKV_INTERNAL={DEBUG_MODE} -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
@@ -450,9 +452,9 @@ try:
             if meets_level(imgui_build_level):
                 for file in (imgui_files + imgui_backend_files):
                     # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
-                    run_compiler(Compiler.ClangCl, file, "",
+                    run_compiler(Compiler.Cl, file, "",
                                  debug_symbol=DEBUG_MODE,
-                                 compiler_flags=f"{imgui_config} -I{imgui_dir} -I{CODE}",
+                                 compiler_flags=f"{imgui_config} -I{imgui_dir} {base_includes}",
                                  compile_only=True, no_warnings=True)
 
             if working_on_editor:

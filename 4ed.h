@@ -7,8 +7,6 @@
  *
  */
 
-#pragma once
-
 #define MAX_VIEWS 16
 
 struct Plat_Settings
@@ -60,3 +58,6 @@ struct Application_Step_Input
 
 typedef b32 Log_Function(String str);
 typedef Log_Function *App_Get_Logger(void);
+
+global b32 global_dll_reloaded_so_watch_out_for_debug_strings;
+//-/

@@ -1,5 +1,3 @@
-#pragma once
-
 global Game_State *ed_game_state_pointer;
 global b32 game_on_ro;
 global arrayof<String> received_game_commands;

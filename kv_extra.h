@@ -23,6 +23,11 @@ string_match(String a, String b){
  return(a.size == b.size &&
         block_match(a.str, b.str, a.size));
 }
+inline b32
+string_match(String a, char b){
+ return(a.size == 1 &&
+        a.str[0] == (u8)b);
+}
 //
 force_inline bool
 operator==(String a, String b){
@@ -445,9 +450,57 @@ gb_sort(void *base_, isize count, isize size, Compare_Function compare){
 #define gb_sort_array(array, count, compare) \
 gb_sort(array, count, gb_size_of(*(array)), compare)
 //-
-template<class T>
-struct DLL_Node{
- T *next;
- T *prev;
+//NOTE(kv) f32 is enough because its range is HUGE.
+//  Also we don't need that much precision for anything.
+struct Sort_Entry
+{
+ i32 index;
+ f32 key;
 };
+function void
+small_insertion_sort(Sort_Entry *input, i32 input_count,
+                     Sort_Entry *output, i32 output_count)
+{
+ kv_assert(output_count <= input_count);
+ if(output_count > 0)
+ {
+  //NOTE bootstrap
+  output[0] = input[0];
+  i32 filled_count = 1;
+  
+  for_i32(input_index, 1, input_count)
+  {//-Looping over the input (could use binary search, but the list is small so who cares)
+   Sort_Entry entry = input[input_index];
+   b32 add_entry = false;
+   if(filled_count < output_count){
+    filled_count++;
+    add_entry = true;
+   }else{
+    add_entry = entry.key < output[filled_count-1].key;
+   }
+   
+   if(add_entry)
+   {//NOTE This item is in!
+    for(i32 output_index = filled_count-2;
+        output_index >= 0;
+        output_index--)
+    {
+     if(entry.key < output[output_index].key){
+      //NOTE Slide over
+      output[output_index+1] = output[output_index];
+      if(output_index == 0){
+       //NOTE This is the new smallest value
+       output[0] = entry;
+      }
+     }else{
+      //NOTE We found the place for this entry
+      output[output_index+1] = entry;
+      break;
+     }
+    }
+   }
+  }
+ }
+}
+//-
 //~EOF

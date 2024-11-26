@@ -177,13 +177,13 @@ ep_print_token(Printer &printer, Ed_Parser *p){
  }
 }
 function i64
-ep_get_pos(Ed_Parser *p) {
+ep_get_pos(Ed_Parser *p){
  if (Token *token = ep_get_token(p)) {
   return token->pos;
  } else { return 0; }
 }
 function void
-ep_eat_token(Ed_Parser *p){
+ep_eat(Ed_Parser *p){
  if(p->ok_){
   switch(p->Token_Gen_Type){
    case TG_String:
@@ -199,7 +199,7 @@ ep_eat_token(Ed_Parser *p){
  }
 }
 function void
-ep_eat_token_inc_all(Ed_Parser *p){
+ep_eat_inc_all(Ed_Parser *p){
  if(p->ok_){
   switch(p->Token_Gen_Type){
    case TG_String:
@@ -238,7 +238,7 @@ ep_number(Ed_Parser *p){
     p->set_ok(false);
    }
    
-   ep_eat_token(p);
+   ep_eat(p);
    token = ep_get_token(p);
   }
  }
@@ -270,7 +270,7 @@ ep_i1(Ed_Parser *p){
     p->fail();
    }
    
-   ep_eat_token(p);
+   ep_eat(p);
    token = ep_get_token(p);
   }
  }
@@ -279,7 +279,7 @@ ep_i1(Ed_Parser *p){
  if(p->ok_){
   String8 string = ep_print_token(scratch, p);
   result = i1(sign * str_to_i64(string, 0, 0));
-  ep_eat_token(p);
+  ep_eat(p);
  }
  return result;
 }
@@ -309,7 +309,7 @@ ep_eat_kind(Ed_Parser *p, Token_Base_Kind kind){
  if (token) {
   p->set_ok(token->kind == kind);
  }
- ep_eat_token(p);
+ ep_eat(p);
 }
 
 function b32
@@ -317,7 +317,7 @@ ep_maybe_kind(Ed_Parser *p, Token_Base_Kind kind){
  b32 result = false;
  Token *token = ep_get_token(p);
  result = (token->kind == kind);
- if(result){ ep_eat_token(p); }
+ if(result){ ep_eat(p); }
  return result;
 }
 function b32
@@ -351,7 +351,7 @@ ep_test_id(Ed_Parser *p, char *string){
 function b32
 ep_maybe_id(Ed_Parser *p, String string){
  b32 result = ep_test_id(p, string);
- if (result) { ep_eat_token(p); }
+ if (result) { ep_eat(p); }
  return result;
 }
 force_inline b32
@@ -366,7 +366,7 @@ ep_maybe_id(Ed_Parser *p){
   if(token->kind == TokenBaseKind_Identifier or
      token->kind == TokenBaseKind_Keyword){
    result = ep_print_token(p->string_arena, p);
-   ep_eat_token(p);
+   ep_eat(p);
   }
  }
  return result;
@@ -389,7 +389,7 @@ function b32
 ep_maybe_preprocessor(Ed_Parser *p, String string) {
  b32 result = ep_test_preprocessor(p, string);
  if(result){
-  ep_eat_token(p);
+  ep_eat(p);
  }
  return result;
 }
@@ -414,7 +414,7 @@ ep_id(Ed_Parser *p, String test_id){
   String string = ep_print_token(scratch, p);
   p->set_ok(string == test_id);
  }
- ep_eat_token(p);
+ ep_eat(p);
  return result;
 }
 function String
@@ -426,7 +426,7 @@ ep_id(Ed_Parser *p){
  if(p->ok_){
   result = ep_print_token(p);
  }
- ep_eat_token(p);
+ ep_eat(p);
  return result;
 }
 //-
@@ -462,7 +462,7 @@ function b32
 ep_maybe_char(Ed_Parser *p, char c){
  b32 result = ep_test_char(p, c);
  if (result) {
-  ep_eat_token(p);
+  ep_eat(p);
  }
  return result;
 }
@@ -489,21 +489,21 @@ ep_eat_until_char(Ed_Parser *p, String terminators){
      //-forward
      u8 closer = get_matching_group_closer(char0);
      if(closer){
-      ep_eat_token(p);
+      ep_eat(p);
       ep_eat_until_char(p, String{&closer, 1});
      }
     }else{
      //-backward
      u8 opener = get_matching_group_opener(char0);
      if(opener){
-      ep_eat_token(p);
+      ep_eat(p);
       ep_eat_until_char(p, String{&opener, 1});
      }
     }
    }
   }
   if(should_eat){
-   ep_eat_token(p);
+   ep_eat(p);
   }
  }
  return result;
@@ -541,7 +541,7 @@ ep_eat_until_char_simple(Ed_Parser *p, char c){
   if(ep_maybe_char(p, c)){
    break;
   }else{
-   ep_eat_token(p);
+   ep_eat(p);
   }
  }
 }
@@ -557,7 +557,7 @@ ep_skip_comments_and_spaces(Ed_Parser *p){
  Token *token = ep_get_token(p);
  if(token->kind == TokenBaseKind_Comment ||
     token->kind == TokenBaseKind_Whitespace){
-  ep_eat_token(p);
+  ep_eat(p);
  }
 }
 //-

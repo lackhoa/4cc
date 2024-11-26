@@ -193,7 +193,8 @@ app_read_command_line(Thread_Context *tctx,
 extern "C" void custom_layer_init(App *app);
 
 function u64
-file_mtime(String filename){
+file_mtime(String filename)
+{
  Scratch_Block scratch;
  File_Attributes attr = system_quick_file_attributes(scratch, filename);
  return attr.last_write_time;
@@ -323,16 +324,14 @@ app_init(Thread_Context *tctx, Models *models, String current_directory)
   View *new_view = live_set_alloc_view(&models->lifetime_allocator, &models->view_set, panel);
   view_init(tctx, models, new_view, models->scratch_buffer, models->view_event_handler);
  }
+ 
+ //NOTE(kv) Don't focus on any window, please!
+ ImGui::SetWindowFocus(0);
 }
 
 function void
 file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file);
 
-function void
-render_debug_gui()
-{
- ImGui::SmallButton("debug system goes here!");
-}
 function Application_Step_Result 
 app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
 {
@@ -890,7 +889,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
  models->animated_last_frame = app_result.animating;
  models->frame_counter += 1;
  
- //render_debug_gui();
+ DEBUG_end_frame();
+ global_dll_reloaded_so_watch_out_for_debug_strings = false;
  
  // end-of-app_step
  return(app_result);

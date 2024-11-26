@@ -3,8 +3,6 @@
 // to fill the editor vtable for the game,
 // The game can then export its vtable to the editor.
 
-#pragma once
-
 #if ED_API_USER
 #    if ED_API_USER_STORE_GLOBAL  // NOTE: store function pointers here
 #        define ED_FUNCTION(N) kv_function_typedef(N); kv_function_pointer(N);
@@ -163,14 +161,34 @@ struct Image_Load_Info {
 global i32 MAIN_VIEWPORT_ID    = 1;
 global String DRIVER_FILE_NAME = strlit("driver.kc");
 
+struct API_VTable_ed_new{
+ memory_functions_xlist(x_wrap_function_pointer);
+};
+#if ED_API_USER
+function void
+ed_api_read_vtable_new(API_VTable_ed_new *table){
+#define x_read(N) N = table->N;
+ memory_functions_xlist(x_read);
+#undef x_read
+}
+#else
+function void
+ed_api_fill_vtable_new(API_VTable_ed_new *table){
+#define x_fill(N) table->N = N;
+ memory_functions_xlist(x_fill);
+#undef x_fill
+}
+#endif
+
 #if !AD_IS_DRIVER
 //-NOTE: game API functions (NOTE: The API is quite simple so let's just macro for now)
 #define game_reload_return void
-#define game_reload_params struct Game_State *state, API_VTable_ed *ed_api, b32 first_time
+#define game_reload_params \
+struct Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time
 // @game_bootstrap_arena_zero_initialized
 #define game_init_return struct Game_State *
 #define game_init_params \
-Arena *bootstrap_arena, API_VTable_ed *ed_api, App *app, \
+Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, App *app, \
 Game_ImGui_State &imgui_state
 //
 #define game_shutdown_return void
@@ -222,16 +240,12 @@ X(game_last_preset)         \
 X(is_event_handled_by_game) \
 X(game_send_command)        \
 
-#define X(N) kv_function_typedef(N);
-    X_GAME_API_FUNCTIONS(X);
-#undef X
+X_GAME_API_FUNCTIONS(x_function_typedef);
 
 struct Game_API
 {
  b32 is_valid;
-#define X(N) N##_type *N;
- X_GAME_API_FUNCTIONS(X);
-#undef X
+ X_GAME_API_FUNCTIONS(x_function_pointer);
 };
 
 #define game_api_export_return void

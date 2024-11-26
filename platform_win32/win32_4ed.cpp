@@ -26,6 +26,7 @@
 #include "4coder_table.h"
 #include "4coder_types.h"
 #include "4coder_default_colors.h"
+#include "ad_debug.h"
 
 #include "4coder_system_types.h"
 #define STATIC_LINK_API
@@ -40,7 +41,6 @@
 #include "4ed_font_set.h"
 #include "4ed_render_target.h"
 #include "4coder_search_list.h"
-#include "4ed.h"
 
 #define STATIC_LINK_API
 #include "generated/system_api.cpp"
@@ -65,7 +65,6 @@
 #include "win32_gl.h"
 
 #include "4ed_app_target.cpp"
-#include "ad_debug.h"
 #include "ad_debug.cpp"
 
 ////////////////////////////////
@@ -1784,7 +1783,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  InitializeCriticalSection(&memory_tracker_mutex);
  thread_context_init(&global_thread_context, ThreadKind_Main,
                      get_default_allocator(), get_default_allocator());
- memory_debug_state.mutex = system_mutex_make();
  
  win32vars = {};
  win32vars.tctx = &global_thread_context;
@@ -1950,14 +1948,18 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  LARGE_INTEGER f;
  if (QueryPerformanceFrequency(&f)){
   win32vars.usecond_per_count = 1000000.f/(f32)f.QuadPart;
- }
- else{
+ }else{
   // NOTE(allen): Just guess.
   win32vars.usecond_per_count = 1.f;
   log_os(" load failed, guessing usecond_per_count = 1\n");
  }
- if (win32vars.usecond_per_count <= 0.f){
+ if(win32vars.usecond_per_count <= 0.f){
   win32vars.usecond_per_count = 1.f;
+ }
+ 
+ {//~DearImgui init
+  IMGUI_CHECKVERSION();
+  win32_imgui_init();
  }
  
  //~App init
@@ -1967,11 +1969,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
   string_mod_replace_character(curdir, '\\', '/');
   app_init(win32vars.tctx, base_ptr, curdir);
- }
- 
- {//-DearImgui init
-  IMGUI_CHECKVERSION();
-  win32_imgui_init();
  }
  
  //~Main loop
@@ -2170,12 +2167,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   // NOTE(allen): Application Core Update
   win32_imgui_new_frame();  // NOTE(kv): This new frame must be after input processing
-  {
-   bool open = true;
-   ImGui::Begin("test window from win32_4ed.cpp");
-   ImGui::SmallButton("small button from the win32_ed.cpp");
-   ImGui::End();
-  }
   Application_Step_Result step_result = app_step(win32vars.tctx, base_ptr, &input);
   
   // NOTE(allen): Finish the Loop
@@ -2225,22 +2216,19 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   {//~NOTE(allen): render
    ImGui::Render();
-   for_i32(window_index, 0, WINDOW_COUNT) {
+   for_i32(window_index, 0, WINDOW_COUNT){
     // Activate OpenGL context for device context where we'll be drawing
     win32_wgl_make_current(window_index);
     ogl_render(input.mouse.p, window_index);
     
-    if (window_index == 0) {
-     if(Game_API *game = get_game_code()){
-      // NOTE: imgui render
-      ImDrawData* draw_data = ImGui::GetDrawData();
-      ImGui_ImplOpenGL3_RenderDrawData(draw_data);
-     }
+    if(window_index == 0){
+     // NOTE: imgui render
+     ImDrawData* draw_data = ImGui::GetDrawData();
+     ImGui_ImplOpenGL3_RenderDrawData(draw_data);
     }
    }
    
-   for_i32(window_index, 0, WINDOW_COUNT)
-   {
+   for_i32(window_index, 0, WINDOW_COUNT){
     //win32_log("Swap framebuffer!");
     SwapBuffers( win32vars.device_contexts[window_index] );
    }

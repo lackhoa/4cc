@@ -303,7 +303,8 @@ inline mat4i& p_current_world_from_bone(){
  return current_world_from_bone(painter); }
 
 inline void
-push_hl(argb color=0, i1 linum=__builtin_LINE()){
+push_hl(argb color=0, i1 linum=__builtin_LINE())
+{
  if(color == 0){color = srgb_to_linear(0XFFDBA50F);}
  Common_Line_Params cparams = current_line_cparams();
  cparams.flags |= Line_Overlay|Line_No_SymX;
@@ -314,7 +315,8 @@ push_hl(argb color=0, i1 linum=__builtin_LINE()){
 inline void pop_hl(){ pop_line_cparams(); }
 
 inline Line_Params
-profile_visible(v1 min, i1 linum=__builtin_LINE()){
+profile_visible(v1 min)
+{
  Line_Params result = painter.line_params;
  result.unit_normal = V3x(1.0f);
  result.alignment_min = min;

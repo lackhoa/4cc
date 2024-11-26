@@ -117,7 +117,7 @@ k_eat_until_char(Ed_Parser *p, String terminators){
     }else{
      u8 closer = get_matching_group_closer(char0);
      if(closer){
-      ep_eat_token(p);
+      ep_eat(p);
       k_eat_until_char(p, String{&closer, 1});
      }else{
       u8 opener = get_matching_group_opener(char0);
@@ -128,7 +128,7 @@ k_eat_until_char(Ed_Parser *p, String terminators){
     }
    }
    if(should_eat){
-    ep_eat_token(p);
+    ep_eat(p);
    }
   }
  }

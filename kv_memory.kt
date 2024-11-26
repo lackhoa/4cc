@@ -1,15 +1,41 @@
 //-NOTE Generated: C:/Users/vodan/4ed/code/generated/kv_memory.gen.h
-meta_table(name, return, params) debug_memory_functions
+meta_table(return, name, params) memory_functions
 {
- register_arena_chunk void `(Arena_Chunk *chunk, File_Line file_line),
- free_arena_chunk     void `(Arena_Chunk *chunk),
- arena_chunk_push     void `(Arena_Chunk *chunk, usize pos_in_chunk, usize size, File_Line file_line),
- arena_chunk_truncate void `(Arena_Chunk *chunk),
+ `(u8 *) arena_push_inner `(Arena *arena, usize size, usize alignment, DEBUG_File_Line file_line),
+ void    arena_pop_size   `(Arena *arena, usize size),
+ void    arena_pop_to     `(Arena *arena, Arena_Chunk *to_chunk, umm to_pos),
+}
+meta_table(return, name, params) debug_memory_functions
+{
+ void DEBUG_register_arena_chunk `(Arena_Chunk *chunk, File_Line file_line),
+ void DEBUG_free_arena_chunk     `(Arena_Chunk *chunk),
+ void DEBUG_arena_chunk_push     `(Arena_Chunk *chunk, usize pos_in_chunk, usize size, File_Line file_line),
+ void DEBUG_arena_chunk_truncate `(Arena_Chunk *chunk),
 }
 
-gen_for(debug_memory_functions)
+gen_file "kv_memory.gen.h"
 {
-#define DEBUG_`(name)__return `(return)
-#define DEBUG_`(name)__params `(params)
+ gen_for(memory_functions)
+ {
+#define `(name)__return `return
+#define `(name)__params `params
+ }
+ gen_for(debug_memory_functions)
+ {
+#define `(name)__return `return
+#define `(name)__params `params
+ }
+ //-
+#define memory_functions_xlist(X) \
+gen_for(memory_functions)
+ {
+  X(`name) \
+ }
+ 
+#define debug_memory_functions_xlist(X) \
+gen_for(debug_memory_functions)
+ {
+  X(`name) \
+ }
 }
 //-

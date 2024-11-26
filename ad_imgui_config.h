@@ -1,5 +1,6 @@
 #pragma once
 
 #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+#define IMGUI_USE_STB_SPRINTF
 
 //~

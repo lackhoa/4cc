@@ -941,14 +941,7 @@ SCany(String_Const_u32 str){
  string.s_u32 = str;
  return(string);
 }
-
-function String_Const_char string_empty = {"", 0};
-
-
 //~
-
-////////////////////////////////
-
 function b32
 character_is_basic_ascii(char c){
  return(' ' <= c && c <= '~');
@@ -2736,16 +2729,7 @@ thread_context_init(Thread_Context *tctx, Thread_Kind kind,
  tctx->prof_id_counter = 1;
  tctx->prof_arena      = make_arena(KB(16));
 }
-function void
-thread_context_destroy(Thread_Context *tctx){
-#if !ASAN_ON
- arena_chunk_store_destroy();
-#endif
- block_zero_struct(tctx);
- //TODO(kv) Hello? What about prof_allocator?
- //  we don't ever call this function anyway?
-}
-thread_global Thread_Context global_thread_context;
+thread_local Thread_Context global_thread_context;
 
 function Thread_Context *
 get_thread_context(){
@@ -2860,8 +2844,8 @@ heap__extend(Heap *heap, void *memory, u64 size){
 }
 
 function void
-heap__extend_automatic(Heap *heap, u64 size){
- void *memory = push_array(heap->arena, u8, size);
+heap__extend_automatic(Heap *heap, u64 size, DEBUG_File_Line file_line){
+ void *memory = push_array(heap->arena, u8, size, push_default(), file_line);
  heap__extend(heap, memory, size);
 }
 
@@ -2886,7 +2870,7 @@ heap__reserve_chunk(Heap *heap, Heap_Node *node, u64 size){
 }
 
 function void*
-heap_allocate(Heap *heap, u64 size)
+heap_allocate(Heap *heap, u64 size, DEBUG_File_Line file_line=DEBUG_file_line())
 {
  b32 first_try = true;
  for (;;)
@@ -2911,7 +2895,7 @@ heap_allocate(Heap *heap, u64 size)
   
   if (first_try){
    u64 extension_size = clamp_min(KB(64), size*2);
-   heap__extend_automatic(heap, extension_size);
+   heap__extend_automatic(heap, extension_size, file_line);
    first_try = false;
   }
   else{
@@ -2959,9 +2943,11 @@ heap_free(Heap *heap, void *memory){
 ////////////////////////////////
 
 function void*
-base_allocate__heap(void *user_data, u64 size, u64 *size_out){
+base_allocate__heap(void *user_data, u64 size, u64 *size_out,
+                    DEBUG_File_Line file_line=DEBUG_file_line())
+{
  Heap *heap = (Heap*)user_data;
- void *memory = heap_allocate(heap, size);
+ void *memory = heap_allocate(heap, size, file_line);
  *size_out = size;
  return(memory);
 }

@@ -29,13 +29,15 @@ function Vertex_Ref
 get_vertex_from_var(Modeler &m, String name, i32 linum){
  Vertex_Ref result = {};
  i32 closest_linum = 0;
- for(auto vi=m.vertices.count-1;
+ for(i32 vi=m.vertices.count-1;
      vi >= 1;
-     vi--){
+     vi--)
+ {
   Vertex_Data &vertex = m.vertices[vi];
   if(vertex.linum < linum and
      vertex.linum > closest_linum and
-     vertex.name == name){
+     vertex.name == name)
+  {
    closest_linum = vertex.linum;
    result.index = {vi};
    result.vertex = &vertex;

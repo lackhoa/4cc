@@ -1,14 +1,14 @@
 #define SILLY_IMGUI_PARTY 0
-#define IMGUI_USER_CONFIG "ad_imgui_config.h"
 #if SILLY_IMGUI_PARTY
 #  define IMGUI_DEFINE_MATH_OPERATORS // Access to math operators
 #endif
+#define IMGUI_USER_CONFIG "ad_imgui_config.h"
 #include "imgui/imgui.h"
 #if SILLY_IMGUI_PARTY
 #  include "imgui_function.h"
 #endif
 #if SILLY_IMGUI_PARTY
-#include "silly.cpp"
+#  include "silly.cpp"
 #endif
 
 //~
@@ -24,9 +24,10 @@
 #include "4coder_game_shared.h"
 #define ED_PARSER_BUFFER 1
 #include "4ed_kv_parser.cpp"
-#include "ad_stb_parser.cpp"
+#include "runtime_type_info.h"
 
-#include "framework_data.h"
+#include "ad_data.h"
+#include "generated/basic_types_read.gen.h"
 
 #include "generated/driver.gen.h"
 #include "driver.h"
@@ -118,11 +119,11 @@ camera_data_equal(Camera_Data *a, Camera_Data *b) {
 function v1
 animate_value(v1 start, v1 end, v1 dt, v1 difference_multiplier, v1 min_speed)
 {
- macro_clamp_min(min_speed, 0.f);
+ ClampBot(min_speed, 0.f);
  v1 abs_difference = absolute(end-start);
  v1 abs_delta = abs_difference * difference_multiplier;
- macro_clamp_min(abs_delta, min_speed*dt);
- macro_clamp_max(abs_delta, abs_difference);
+ ClampBot(abs_delta, min_speed*dt);
+ ClampTop(abs_delta, abs_difference);
  
  v1 result = (end > start) ? (start+abs_delta) : (start-abs_delta);
  return result;
@@ -250,13 +251,13 @@ print_data_func(PRINTER, &type_info_from_pointer(POINTER), POINTER)
 //~
 //-
 function i32
-enum_index_from_pointer(Type_Info &type, void *pointer0){
+enum_index_from_pointer(Type_Info *type, void *pointer0){
  u8* pointer = (u8*)pointer0;
  i32 value;
- block_copy(&value, pointer, type.size);
+ block_copy(&value, pointer, type->size);
  i32 result = {};
- for_i32 (index, 0, type.enum_members.count) {
-  I_Enum_Member enum_it = type.enum_members[index];
+ for_i32 (index, 0, type->enum_members.count) {
+  I_Enum_Member enum_it = type->enum_members[index];
   if (enum_it.value == value) {
    result = index;
    break;
@@ -265,9 +266,9 @@ enum_index_from_pointer(Type_Info &type, void *pointer0){
  return result;
 }
 function String
-enum_name_from_pointer(Type_Info &type, void *pointer0) {
+enum_name_from_pointer(Type_Info *type, void *pointer0){
  i32 enum_index = enum_index_from_pointer(type, pointer0);
- return type.enum_members[enum_index].name;
+ return type->enum_members[enum_index].name;
 }
 #define enum_index_from_value(value) \
 enum_index_from_pointer(type_info_from_pointer(&value), &value)
@@ -276,21 +277,21 @@ enum_index_from_pointer(type_info_from_pointer(&value), &value)
 enum_name_from_value(type_info_from_pointer(&value), &value)
 
 function void
-pretty_print_func(Printer &p, Type_Info &type, void *void_pointer) {
+pretty_print_func(Printer &p, Type_Info *type, void *void_pointer) {
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
- switch(type.kind){
+ switch(type->kind){
   case I_Type_Kind_Basic:{
-   write_basic_type(p, type.Basic_Type, pointer);
+   write_basic_type(p, type->Basic_Type, pointer);
   }break;
   
   case I_Type_Kind_Struct:{
    p << "{\n";
-   for_i1(member_index, 0, type.members.count) {
-    I_Struct_Member &member = type.members[member_index];
+   for_i1(member_index, 0, type->members.count) {
+    I_Struct_Member &member = type->members[member_index];
     p << member.name << " ";
     u8 *member_pointer = pointer+member.offset;
-    pretty_print_func(p, *member.type, member_pointer);
+    pretty_print_func(p, member.type, member_pointer);
     p << newline;
    }
    p << "}\n";
@@ -311,18 +312,30 @@ inline Camera_Data*
 get_target_camera(Game_State *state, i32 viewport_index){
  return &state->viewports[viewport_index].target_camera;
 }
-
+function void
+read_debug_string(Data_Reader &r, Stringz string)
+{
+ usize size = string.size+1;
+ if(r.end_pos - r.pos < isize(size)){
+  r.ok = false;
+ }
+ if(r.ok){
+  r.ok = block_match(r.pos, string.str, size);
+  r.pos += size;
+ }
+}
 function b32
-game_load(Game_State *state, App *app, Stringz filename){
- // IMPORTANT(kv) This function overwrites edit history.
+game_load(Game_State *state, App *app, Stringz filename)
+{// IMPORTANT(kv) This function overwrites edit history.
  b32 ok = true;
  Scratch_Block scratch(app);
  
- String read_string = {};
- if(ok){
-  read_string = read_entire_file(scratch, filename);
-  ok = read_string.len > 0;
-  if(!ok){
+ String file_data = {};
+ {//-kv Read the whole file into memory, because the file isn't gonna be big
+  //  if it was big, we wouldn't have enough memory to handle it anyway.
+  file_data = read_entire_file(scratch, filename);
+  ok = file_data.len > 0;
+  if(not ok){
    print_message(app, strlit("Game load: can't read the file!\n"));
   }
  }
@@ -331,37 +344,36 @@ game_load(Game_State *state, App *app, Stringz filename){
   //-;deserialize
   Arena *load_arena = &state->data_load_arena;
   arena_clear(load_arena);
-  STB_Parser parser = new_parser(read_string, load_arena, 128);
-  STB_Parser *p = &parser;
-  Data_Reader r = {.parser = p};
+  
+  Data_Reader r = {};
+  r.ok      = true;
+  r.base    = file_data.data;
+  r.pos     = r.base;
+  r.end_pos = r.base + file_data.size;
   
   {
-#define brace_begin  eat_char(p, '{')
-#define brace_end    eat_char(p, '}')
-#define brace_block  brace_begin; defer( brace_end; )
-   eat_id(p, "version");
-   r.read_version = cast(Data_Version)eat_i1(p);
+   u32 magic = read_binary_u32(r);
+   if(magic != autodraw_data_magic){
+    r.ok = false;
+   }
+   r.read_version = read_binary_u32(r);
+   u64 timestamp = read_binary_u64(r);
+   
    {
-    eat_id(p, "cameras");
-    {
-     brace_block;
-     Camera_Data cameras[GAME_VIEWPORT_COUNT];
-     for_i32(cam_index,0,GAME_VIEWPORT_COUNT){
-      Camera_Data *cam = &state->viewports[cam_index].target_camera;
-      brace_block;
-      //TODO(kv) temporary hack
-      eat_id(p, "distance"); cam->distance = eat_v1(p);
-      eat_id(p, "phi");      cam->phi      = eat_v1(p);
-      eat_id(p, "theta");    cam->theta    = eat_v1(p);
-      eat_id(p, "roll");     cam->roll     = eat_v1(p);
-      eat_id(p, "pan");      cam->pan      = eat_v3(p);
-      eat_id(p, "pivot");    cam->pivot    = eat_v3(p);
-     }
+    read_debug_string(r, strlit("cameras"));
+    
+    i32 camera_count;
+    read_binary_i1(r, &camera_count);
+    ClampTop(camera_count, GAME_VIEWPORT_COUNT);
+    
+    for_i32(cam_index, 0, camera_count){
+     Camera_Data *cam = &state->viewports[cam_index].target_camera;
+     read_binary_Camera_Data(r, cam);
     }
    }
-   if(r.read_version >= Version_Add_Cursor){
-    eat_id(p, "Serialized_State");
-    read_Serialized_State(r,state->Serialized_State);
+   {
+    read_debug_string(r, strlit("Serialized_State"));
+    read_binary_Serialized_State(r, &state->Serialized_State);
    }
 #if 0
    if(r.read_version >= Version_We_So_Back)
@@ -376,9 +388,6 @@ game_load(Game_State *state, App *app, Stringz filename){
        break;
       }
       Vertex_Data &v = m.vertices.push2();
-      /*eat_char(p,'{');
-      eat_until_char(p, '}');
-      eat_char(p,'}');*/
       read_Vertex_Data(r,v);
      }
     }
@@ -395,29 +404,25 @@ game_load(Game_State *state, App *app, Stringz filename){
     }
    }
 #endif
-   
-#undef brace_begin
-#undef brace_end
-#undef brace_block
+   {
+    read_debug_string(r, strlit("EOF"));
+   }
   }
   
-  ok = p->ok_;
+  ok = r.ok;
   if(!ok){
-   printf_message(app, "Game load: deserialization failed at %d:%d!\n",
-                  p->fail_location.line_number, p->fail_location.line_offset);
+   printf_message(app, "Game load: deserialization failed\n");
   }
  }
  
- state->load_failed = !ok; 
+ state->load_failed = !ok;
  return ok;
 }
 function void
 revert_from_autosave(Game_State *state, App *app){
  game_load(state, app, state->autosave_path);
 }
-
 //~
-
 function Bone &
 get_right_bone(Modeler &m, Bone &bone){
  Bone *result = 0;
@@ -608,7 +613,7 @@ game_render(game_render_params){
  i32 scale_down_pow2 = fval(0); // ;scale_down_slider
  v1 meter_to_pixel;
  {
-  macro_clamp_min(scale_down_pow2, 0);
+  ClampBot(scale_down_pow2, 0);
   v1 render_scale = 1.f;
   for_i32 (it,0,scale_down_pow2) { render_scale *= 0.5f; }
   v1 default_meter_to_pixel = 4050.6329f;
@@ -680,19 +685,14 @@ game_render(game_render_params){
  }
 }
 function void
-import_api_from_editor(API_VTable_ed *ed_api){
+import_api_from_editor(API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new){
  ed_api_read_vtable(ed_api);
-#if 0
- {//-Functions that are already in use kv.h
-  get_arena_chunk = get_arena_chunk_exported;
-  free_arena_chunk = free_arena_chunk_exported;
- }
-#endif
+ ed_api_read_vtable_new(ed_api_new);
 }
 function game_init_return
 game_init(game_init_params)
 {
- import_api_from_editor(ed_api);
+ import_api_from_editor(ed_api, ed_api_new);
  //@game_bootstrap_arena_zero_initialized
  Game_State *state = push_struct(bootstrap_arena, Game_State, push_zero());
  state->malloc = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
@@ -723,7 +723,6 @@ game_init(game_init_params)
    h.inited    = true;
    h.allocator = make_arena_base_allocator(&h.arena);
   }
-  clear_modeling_data(m);
  }
  {// NOTE: Save/Load business load_game
   Scratch_Block scratch(app);
@@ -735,8 +734,9 @@ game_init(game_init_params)
   
   {// NOTE: Load state
    state->data_load_arena = make_arena();
-   Stringz todo_autosave_path = pjoin(arena, state->save_dir, "text.kv");
-   game_load(state, app, todo_autosave_path);
+   //Stringz autosave_path = pjoin(arena, state->save_dir, "text.kv");
+   Stringz autosave_path = state->autosave_path;
+   game_load(state, app, autosave_path);
   }
  }
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
@@ -761,7 +761,7 @@ game_init(game_init_params)
   state->imgui_state = imgui_state;
  }
  {//-IMPORTANT: Reload is a part of init
-  game_reload(state, ed_api, true);
+  game_reload(state, ed_api, ed_api_new, true);
  }
  return state;
 }
@@ -773,7 +773,10 @@ function game_reload_return
 game_reload(game_reload_params)
 {// Game_State
  meta_init();
- import_api_from_editor(ed_api);
+ import_api_from_editor(ed_api, ed_api_new);
+ {//-Modeler reload
+  clear_modeling_data(state->modeler);
+ }
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
   state->dll_temp_memory = begin_temp_memory(dll_arena);
@@ -822,9 +825,9 @@ game_save(Game_State *state, App *app, b32 is_manual)
   }else{
    const char *filename_base = is_manual ? "manual" : "auto";
    Stringz backup_path = push_stringfz(scratch, "%.*s/%s_%.*s.kv",
-                                      string_expand(backup_dir),
-                                      filename_base,
-                                      string_expand(time_string));
+                                       string_expand(backup_dir),
+                                       filename_base,
+                                       string_expand(time_string));
    ok = copy_file(outpath, backup_path, true);
    state->has_done_backup = ok;
   }
@@ -1009,7 +1012,8 @@ set_camera_frontal_or_profile(Camera_Data &cam){
 }
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
 function game_update_return
-game_update(game_update_params){
+game_update(game_update_params)
+{
 #if SILLY_IMGUI_PARTY 
  FxTestBed();
 #endif
@@ -1023,7 +1027,7 @@ game_update(game_update_params){
  b32 game_or_fui_active = (game_active || fui_active);
  
  b32 should_animate_next_frame = false;
- if (game_or_fui_active) {
+ if(game_or_fui_active){
   should_animate_next_frame = true;
  }
  
@@ -1034,7 +1038,7 @@ game_update(game_update_params){
  Camera_Data *update_target_cam = get_target_camera(state, update_viewport_index);
  
  Game_Input input_value = {};
- (Game_Input_Public&) input_value = input_public;
+ (Game_Input_Public &)input_value = input_public;
  Game_Input *input = &input_value;
  v1 dt = input->frame.animation_dt;
  {
@@ -1484,7 +1488,7 @@ game_update(game_update_params){
     v1 new_vel = cursor.vel + dt*acc;
     v1 max_vel = zoom*0.1f*fval(1.0625f);
     if (shifted){ max_vel *= 10.f; }
-    macro_clamp_max(new_vel, max_vel);
+    ClampTop(new_vel, max_vel);
     v3 delta = 0.5f*(cursor.vel+new_vel)*dt*dir;
     cursor.pos += delta;
     cursor.vel = new_vel;
@@ -1498,8 +1502,8 @@ game_update(game_update_params){
     {
      auto &p = cursor_view;
      auto &r = radius_view;
-     macro_clamp_min(p.x, -r.x); macro_clamp_min(p.y, -r.y);
-     macro_clamp_max(p.x, +r.x); macro_clamp_max(p.y, +r.y);
+     ClampBot(p.x, -r.x); ClampBot(p.y, -r.y);
+     ClampTop(p.x, +r.x); ClampTop(p.y, +r.y);
     }
     v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
     v3 cursor_cam = V3(absolute(cursor_camz / cam.focal_length) * cursor_view,
@@ -1543,9 +1547,9 @@ game_update(game_update_params){
      for_i32(enum_index, 0, type.enum_members.count) {
       b32 is_selected = (enum_index == curve_type_index);
       char *name = to_cstring(scratch, type.enum_members[enum_index].name);
-      if (ImGui::Selectable(name, is_selected)){
+      if(ImGui::Selectable(name, is_selected)){
       }
-      if (is_selected){
+      if(is_selected){
        ImGui::SetItemDefaultFocus();
       }
      }

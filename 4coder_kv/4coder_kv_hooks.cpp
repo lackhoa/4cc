@@ -102,11 +102,22 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
  // no meaning for return
  return(0);
 }
-
 BUFFER_EDIT_RANGE_SIG(kv_buffer_edit_range)
 {
-  // NOTE(kv): Fleury
-  F4_BufferEditRange(app, buffer_id, new_range, old_cursor_range);
-  // NOTE(kv): vim
-  return 0;
+ // NOTE(kv): Fleury
+ F4_BufferEditRange(app, buffer_id, new_range, old_cursor_range);
+ // NOTE(kv): vim
+ return 0;
+} 
+function Rect_f32
+kv_buffer_region_hook(App *app, View_ID view, Rect_f32 region)
+{
+ Buffer_ID buffer = view_get_buffer(app, view, 0);
+ Face_ID face_id = get_face_id(app, buffer);
+ Face_Metrics face_metrics = get_face_metrics(app, face_id);
+ v1 line_height = face_metrics.line_height;
+ v1 vim_bottom_reserve_height = 4.f*line_height;
+ region.y1 -= vim_bottom_reserve_height;
+ return region;
 }
+//-
