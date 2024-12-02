@@ -325,7 +325,6 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction){
  }
  return result;
 }
-
 function void 
 kv_sexpr_right(App *app){
  Token_Iterator_Array token_it = get_token_it_at_cursor(app);
@@ -345,11 +344,12 @@ kv_sexpr_right(App *app){
      nest -= 1;
      if(nest <= 0){
       if(token->pos != curpos){
-       kv_goto_token(app, token);
+       i64 pos = token->pos;
+       if(nest < 0){ pos -= 1; }
+       kv_goto_pos(app, view, pos);
        break;
-      }else{
-       nest = 0;
       }
+      nest = 0;
      }
     }else{
      if(nest == 0){
@@ -384,11 +384,12 @@ kv_sexpr_left(App *app){
      nest -= 1;
      if(nest <= 0){
       if(token->pos != curpos){
-       kv_goto_token(app, token);
+       i64 pos = token->pos;
+       if(nest < 0){ pos += 1; }
+       kv_goto_pos(app, view, pos);
        break;
-      }else{
-       nest = 0;
       }
+      nest = 0;
      }
     }else if(token_is_group_closer(token)) {
      nest += 1;
@@ -1713,5 +1714,10 @@ function void
 cmd_handle_8_normal(App *app){
  //View_ID view = get_active_view(app, Access_ReadVisible);
  write_text(app, strlit("*"), false);
+}
+function void
+cmd_open_message_buffer(App *app)
+{
+ set_buffer_named(app, strlit("*messages*"));
 }
 //~EOF

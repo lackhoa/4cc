@@ -24,7 +24,7 @@ hotload_game = False
 ################ NOTE: Configuration begin #########################
 # NOTE(kv) Build level
 working_on_metaprogram = 0
-working_on_editor      = 1
+working_on_editor      = 0
 working_on_game        = 1
 imgui_build_level   = 2
 ed_meta_build_level = 1
@@ -311,7 +311,9 @@ def run_compiler(compiler, input_files, output_file,
     if is_clang:
         compiler_flags += f" {CPP_VERSION} -D_CRT_SECURE_NO_WARNINGS -FC"
     if is_msvc:
-        compiler_flags += f" {CPP_VERSION} -Ob1 -Zc:strictStrings- -D_CRT_SECURE_NO_WARNINGS -FC"
+        compiler_flags += f" {CPP_VERSION} -Zc:strictStrings- -D_CRT_SECURE_NO_WARNINGS -FC"
+        if not optimized:
+            compiler_flags += f" -Ob1"
 
     if is_msvc:
         unused_var = "-wd4189"

@@ -172,7 +172,7 @@ game_viewport_update(game_viewport_update_params){
  return should_animate_next_frame;
 }
 
-inline v1 
+inline v1
 round_to_multiple_of(v1 value, v1 n) {
  v1 result = roundv1(value / n) * n;
  return result;
@@ -357,6 +357,7 @@ game_load(Game_State *state, App *app, Stringz filename)
     r.ok = false;
    }
    r.read_version = read_binary_u32(r);
+   printf_message(app, "read version: %u\n", r.read_version);
    u64 timestamp = read_binary_u64(r);
    
    {
@@ -375,35 +376,30 @@ game_load(Game_State *state, App *app, Stringz filename)
     read_debug_string(r, strlit("Serialized_State"));
     read_binary_Serialized_State(r, &state->Serialized_State);
    }
-#if 0
-   if(r.read_version >= Version_We_So_Back)
    {//-Modeling
-    Modeler &m = state->modeler;
+    Modeler *m = &state->modeler;
     clear_modeling_data(m);
+    
+    if(r.read_version >= Version_Binary_Vertex)
     {//-Vertices
-     eat_id(p, "vertices");
-     brace_begin;
-     while(p->ok_){
-      if(maybe_char(p, '}')){
-       break;
-      }
-      Vertex_Data &v = m.vertices.push2();
-      read_Vertex_Data(r,v);
+     read_debug_string(r, strlit("vertices"));
+     i32 vertex_count;
+     read_binary_i1(r, &vertex_count);
+     m->vertices.set_cap_min(vertex_count+16);
+     for_i32(vertex_index, 0, vertex_count){
+      Vertex_Data *v = m->vertices.push();
+      read_binary_Vertex_Data(r, v);
      }
     }
-    {//-Curves
-     eat_id(p, "beziers");
-     brace_begin;
-     while(p->ok_){
-      if(maybe_char(p, '}')){
-       break;
-      }
-      Curve_Data &b = m.curves.push2();
-      read_Curve_Data(r,b);
-     }
+    
+#if 0
+    if(0){//-Curves
+     read_debug_string(p, strlit("entities"));
+     Curve_Data &b = m->curves.push2();
+     read_binary_Curve_Data(r,b);
     }
-   }
 #endif
+   }
    {
     read_debug_string(r, strlit("EOF"));
    }
@@ -411,8 +407,12 @@ game_load(Game_State *state, App *app, Stringz filename)
   
   ok = r.ok;
   if(!ok){
-   printf_message(app, "Game load: deserialization failed\n");
+   printf_message(app, "ERROR: Game load: deserialization failed\n");
   }
+ }
+ 
+ if(ok){
+  printf_message(app, "Game load succeeded\n");
  }
  
  state->load_failed = !ok;
@@ -734,9 +734,7 @@ game_init(game_init_params)
   
   {// NOTE: Load state
    state->data_load_arena = make_arena();
-   //Stringz autosave_path = pjoin(arena, state->save_dir, "text.kv");
-   Stringz autosave_path = state->autosave_path;
-   game_load(state, app, autosave_path);
+   game_load(state, app, state->autosave_path);
   }
  }
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
@@ -775,7 +773,7 @@ game_reload(game_reload_params)
  meta_init();
  import_api_from_editor(ed_api, ed_api_new);
  {//-Modeler reload
-  clear_modeling_data(state->modeler);
+  clear_modeling_data(&state->modeler);
  }
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
@@ -805,6 +803,20 @@ game_shutdown(game_shutdown_params){
  end_temp_memory(state->dll_temp_memory);
 }
 //~
+function String
+time_format(char *buf, i32 bufsize, char *format)
+{
+ String result = {};
+ time_t rawtime;
+ time(&rawtime);
+ struct tm *timeinfo = localtime(&rawtime);
+ size_t strftime_result = strftime(buf, bufsize, format, timeinfo);
+ if (strftime_result != 0)
+ {
+  result = SCu8(buf);
+ }
+ return result;
+}
 function b32
 game_save(Game_State *state, App *app, b32 is_manual)
 {// NOTE: save and backup logic
@@ -824,7 +836,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
    ok = false;
   }else{
    const char *filename_base = is_manual ? "manual" : "auto";
-   Stringz backup_path = push_stringfz(scratch, "%.*s/%s_%.*s.kv",
+   Stringz backup_path = push_stringfz(scratch, "%.*s/%s_%.*s.ad",
                                        string_expand(backup_dir),
                                        filename_base,
                                        string_expand(time_string));
@@ -832,7 +844,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
    state->has_done_backup = ok;
   }
   
-  if (ok)
+  if(ok)
   {// NOTE: cycle out old backup files
    // TODO: Maybe treat manual backups differently? idk man!
    File_List backup_files = system_get_file_list(scratch, backup_dir);

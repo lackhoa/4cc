@@ -318,7 +318,7 @@ edits_can_be_merged(Modeler_Edit &edit1, Modeler_Edit &edit2)
 }
 
 function void
-modeler__reset_edit(Modeler *m) {
+modeler__reset_edit(Modeler *m){
  //NOTE(kv) If you wanna unselect vertices, this is your chance!
 }
 function void
@@ -341,12 +341,11 @@ selecting_vertex(Modeler *m){
  return type_from_prim_id(selected_prim_id(m)) == Prim_Vertex;
 }
 function void
-clear_modeling_data(Modeler &m){
- m.vertices.set_count(1);
- m.curves.  set_count(1);
- //m.fills.   set_count(1);
- m.bones.   set_count(1);
- clear_edit_history(&m.history);
+clear_modeling_data(Modeler *m){
+ m->vertices.set_count(1);
+ m->curves.  set_count(1);
+ m->bones.   set_count(1);
+ clear_edit_history(&m->history);
 }
 function void
 compute_active_prims(Modeler *m)

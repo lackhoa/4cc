@@ -1,3 +1,4 @@
+typedef unsigned char u8;
 typedef long i32;
 typedef QWORD i64;
 typedef unsigned long u32;
@@ -6,8 +7,15 @@ typedef float f32;
 typedef float v1;
 typedef float v3[3];
 typedef i32 b32;
+typedef i32 i1;
 
-void eat_string(string expected_string){
+typedef struct{
+ u32 size;
+ u8  str[size];
+} String;
+
+void eat_string(string expected_string)
+{
  local i64 current_pos = FTell();
  local string read_string = ReadString(current_pos);
  if(read_string != expected_string){
@@ -49,6 +57,35 @@ struct Serialized_State{
 };
 eat_string("Serialized_State");
 Serialized_State serialized_state;
+
+enum Bone_Type{
+ Bone_None           = 0,
+ Bone_Head           = 1,
+ Bone_Arm            = 2,
+ Bone_Forearm        = 3,
+ Bone_Bottom_Phalanx = 4,
+ Bone_Mid_Phalanx    = 5,
+ Bone_Top_Phalanx    = 6,
+ Bone_Torso          = 7,
+ Bone_References     = 8,
+ Bone_Hand           = 9,
+ Bone_Thumb          = 10,
+ Bone_Pelvis         = 11,
+ Bone_Eyeball        = 12,
+};
+struct Bone_ID{
+ Bone_Type type;
+ i1        id;
+};
+typedef struct {
+ String name;
+ Bone_ID bone_id;
+ v3 pos;
+} Vertex_Data <optimize=false>;
+
+eat_string("vertices");
+i32 vertex_count;
+Vertex_Data vertices[vertex_count];
 
 eat_string("EOF");
 //-

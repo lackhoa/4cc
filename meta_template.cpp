@@ -95,6 +95,8 @@ template_gen_for(arrayof<T_Table> *tables, Ed_Parser *parser,
  Scratch_Block for_loop_scratch;
  arrayof<Template_Node> for_loop_nodes;
  init_dynamic(for_loop_nodes, for_loop_scratch, 16);
+ arrayof<String> exclude_list;
+ init_dynamic(exclude_list, for_loop_scratch, 8);
  
  T_Table *loop_table;
  {
@@ -104,6 +106,22 @@ template_gen_for(arrayof<T_Table> *tables, Ed_Parser *parser,
   if(not loop_table){
    parser->fail();
   }
+  
+  if(ep_maybe_id(parser, strlit("except"))){
+   //NOTE excluding elements (made-up syntax)
+   ep_char(parser, '(');
+   while(parser->ok_ and
+         not ep_maybe_char(parser, ')'))
+   {
+    String item = ep_id(parser);
+    exclude_list.push_value(item);
+    if(not ep_maybe_char(parser, ',')){
+     ep_char(parser, ')');
+     break;
+    }
+   }
+  }
+  
   ep_char(parser, ')');
  }
  
@@ -120,26 +138,40 @@ template_gen_for(arrayof<T_Table> *tables, Ed_Parser *parser,
      nest_level == 0)
   {//-End the loop
    ep_eat_inc_all(parser);
-   {//-Print stuff out
+   {//NOTE Print stuff out
     for_i32(iteration, 0, loop_table->items.count){
      String *item = loop_table->items[iteration];
-     for_i32(node_index, 0, for_loop_nodes.count){
-      Template_Node *node = for_loop_nodes.items + node_index;
-      if(node->text.count){
-       //-Text
-       String text = node->text;
-       if(node_index == 0 and
-          text.str[0] == '\n')
-       {
-        text.str++;
-        text.count--;
+     
+     b32 excluded = false;
+     for_i32(exclude_index, 0, exclude_list.count){
+      //NOTE(kv) The convention is "first field is the identifier".
+      kv_assert(get_field_count(loop_table) > 0);
+      String test_field = item[0];
+      if(test_field == exclude_list[exclude_index]){
+       excluded = true;
+       break;
+      }
+     }
+     
+     if(not excluded){
+      for_i32(node_index, 0, for_loop_nodes.count){
+       Template_Node *node = for_loop_nodes.items + node_index;
+       if(node->text.count){
+        //-Text
+        String text = node->text;
+        if(node_index == 0 and
+           text.str[0] == '\n')
+        {
+         text.str++;
+         text.count--;
+        }
+        printer < text;
+       }else{
+        //-Variable
+        if(node->quoted){ printer < '"'; }
+        printer < item[node->field_index];
+        if(node->quoted){ printer < '"'; }
        }
-       printer < text;
-      }else{
-       //-Variable
-       if(node->quoted){ printer < '"'; }
-       printer < item[node->field_index];
-       if(node->quoted){ printer < '"'; }
       }
      }
     }

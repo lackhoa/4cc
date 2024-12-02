@@ -147,7 +147,8 @@ send_vert(name);
 #define X_comma_list(NAME)              NAME,
 //~
 function void
-render_hand(Forearm forearm_obj){
+render_hand(Forearm forearm_obj)
+{
  vertex_block("hand");
  radius_scale_block(fval(0.5038f));
  lp_block(nslice_per_meter, 5.9797f * 100.f);
@@ -159,7 +160,7 @@ render_hand(Forearm forearm_obj){
  import_vertices(forearm.verts, forearm_obj.verts, ot, forearmT, forearm_vert_count);
  
  // NOTE: The "palm_base" moves along with the hand
- vv(palm_base_in, (V3(-0.0476f, -2.6071f, -0.2208f)));
+ vv(palm_base_in, V3(-0.0476f, -2.6071f, -0.2208f));
  indicate(thumb_kbot);
  Bez palm_base_line = bez_unit(thumb_kbot, V2(0.f, 0.3416f),
                                V2(0,0),
@@ -173,7 +174,7 @@ render_hand(Forearm forearm_obj){
                V3(-0.8552f, 0.f, -0.5183f),
                kline_in),
       lp(I4(8,0,3,1)));
- vv(thumb_palm_conn, (V3(0.3704f, -3.0096f, -0.3481f)));
+ vv(thumb_palm_conn, V3(0.3704f, -3.0096f, -0.3481f));
  draw(bez_v3v2(thumb_kbot, V3(),
                V2(0,0), thumb_palm_conn));
  {// NOTE: Thumb

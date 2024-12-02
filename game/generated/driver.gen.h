@@ -196,6 +196,7 @@ read_binary_i1(r, &integer);
 static_assert( sizeof(Bone_Type) <= sizeof(i32) );
 
 ;
+//TODO(kv) enums are 4 bytes by default, and we don't really want that!
 struct Bone_ID{
 Bone_Type type;
 i1 id;

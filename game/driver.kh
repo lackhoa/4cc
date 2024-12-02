@@ -19,6 +19,7 @@ enum Bone_Type{
  Bone_Pelvis         = 11,
  Bone_Eyeball        = 12,
 };
+//TODO(kv) enums are 4 bytes by default, and we don't really want that!
 struct Bone_ID{
  Bone_Type type;
  i1        id;

@@ -17,7 +17,8 @@ NOTE(kv): description of this file
 */
 
 function void
-output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value){
+output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value)
+{
  i64 end = buffer_size(&file->state.buffer);
  Edit_Behaviors behaviors = {};
  behaviors.pos_before_edit = end;
@@ -2478,7 +2479,7 @@ print_message(App *app, String message)
 {
  Models *models = (Models*)app->cmd_context;
  Editing_File *file = models->message_buffer;
- if (file != 0){
+ if(file != 0){
   output_file_append(app->tctx, models, file, message);
   file_cursor_to_end(app->tctx, models, file);
  }

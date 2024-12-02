@@ -1091,6 +1091,4 @@ struct CSG_Tree
     fwrite(preamble_text.str, preamble_text.size, 1, file);
    }
   }
-
-
 //~eof

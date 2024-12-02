@@ -1,6 +1,13 @@
-//NOTE File created programmatically by C:\Users\vodan\4ed\code\meta_template.cpp:313:
+//NOTE File created programmatically by C:\Users\vodan\4ed\code\meta_template.cpp:345:
 //NOTE Source template: C:\Users\vodan\4ed\code\game\basic_types.kt
 
+ function void
+  read_binary_String(Data_Reader &r, String *dst)
+ {
+  read_binary_size(r, sizeof(u32), &dst->count);
+  read_binary_size(r, dst->count, dst->str);
+ }
+ 
    force_inline void
    read_binary_v1(Data_Reader &r, v1 *dst)
   {
@@ -103,19 +110,6 @@
   {
    i4 dst;
    read_binary_size(r, sizeof(i4), &dst);
-   return dst;
-  }
-   force_inline void
-   read_binary_String(Data_Reader &r, String *dst)
-  {
-   read_binary_size(r, sizeof(String), dst);
-  }
-  
-  force_inline String
-   read_binary_String(Data_Reader &r)
-  {
-   String dst;
-   read_binary_size(r, sizeof(String), &dst);
    return dst;
   }
    force_inline void

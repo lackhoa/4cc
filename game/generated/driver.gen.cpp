@@ -152,13 +152,13 @@ mat4i &ot       = p_current_world_from_bone();
 mat4i &forearmT = p_mom_bone_xform();
 Forearm forearm;
 import_vertices(forearm.verts, forearm_obj.verts, ot, forearmT, forearm_vert_count);
-vv(palm_base_in, (V3(-0.0476f, -2.6071f, -0.2208f)));
+vv(palm_base_in, V3(-0.0476f, -2.6071f, -0.2208f));
 indicate(thumb_kbot);
 Bez palm_base_line = bez_unit(thumb_kbot, V2(0.f, 0.3416f), V2(0, 0), V3y(-1), palm_base_in);
 draw(palm_base_line, lp(I4(2, 2, 4, 8)));
 bezier_sample(palm_base_line, (0.5f));
 draw(bez_unit(palm_base_in, V2(-0.1358f, 0.5181f), V2(0.3399f, 0.2818f), V3(-0.8552f, 0.f, -0.5183f), kline_in), lp(I4(8, 0, 3, 1)));
-vv(thumb_palm_conn, (V3(0.3704f, -3.0096f, -0.3481f)));
+vv(thumb_palm_conn, V3(0.3704f, -3.0096f, -0.3481f));
 draw(bez_v3v2(thumb_kbot, V3(), V2(0, 0), thumb_palm_conn));
 {
 bone_block(Bone_Thumb);
@@ -727,21 +727,21 @@ macro_pelvis(export_);
  
 return pelvis_obj;}
 //  C:\Users\vodan\4ed\code\meta_klang.cpp:434:
-struct Cache_Storage_34791{
+struct Cache_Storage_34788{
 b32 cache_initialized;
 v1 tblink;
 };
-global Cache_Storage_34791 cache_storage_34791;
+global Cache_Storage_34788 cache_storage_34788;
 function void
 render_eyes(Pose *pose){
 
 v1 tblink = pose->tblink;
-if(not cache_storage_34791.cache_initialized or
-not(tblink == cache_storage_34791.tblink &&
+if(not cache_storage_34788.cache_initialized or
+not(tblink == cache_storage_34788.tblink &&
 true)){
 {
-cache_storage_34791.cache_initialized = true;
-cache_storage_34791.tblink = tblink;
+cache_storage_34788.cache_initialized = true;
+cache_storage_34788.tblink = tblink;
 }
 
 {

@@ -386,6 +386,7 @@ kv_vim_bindings(App *app)
  
  
  //-NOTE: SUB_G
+ BIND(N|MAP, cmd_open_message_buffer, SUB_G,   Key_Code_M);
  BIND(N|MAP, kv_open_note_file,       SUB_G,   Key_Code_N);
  BIND(N|MAP, kv_handle_g_f,           SUB_G,   Key_Code_F);
  BIND(N|MAP, toggle_the_game,         SUB_G,   Key_Code_O);
