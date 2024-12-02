@@ -281,12 +281,12 @@ api_parse_source__structure(Arena *arena, String source_name, String source, API
  return(result);
 }
 
-force_inline b32
+kv_inline b32
 api_parse_source__struct(Arena *arena, String source_name, String source, Token_Iterator *token_it, arrayof<String> api_names, API_Definition_List *list){
  return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Struct, token_it, api_names, list));
 }
 
-force_inline b32
+kv_inline b32
 api_parse_source__union(Arena *arena, String source_name, String source, Token_Iterator *token_it, arrayof<String> api_names, API_Definition_List *list){
  return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Union, token_it, api_names, list));
 }

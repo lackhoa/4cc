@@ -1,26 +1,21 @@
 function v3
 fvert_function(v3 init_value, Fui_Options opts, i32 line=__builtin_LINE()){
  opts = fopts_add_flags(opts, Slider_Vertex);
- v3 result = fval(init_value, opts, line);
+ v3 result = fval_text(init_value, opts, line);
  return result;
 }
 
 #define fvert(value, ...)   fvert_function( (value), fopts(__VA_ARGS__) )
 
 //-NOTE: Annotations
-#define fvertx(value)    V3x(fval(value))
-#define fverty(value)    V3y(fval(value))
-#define fvertz(value)    V3z(fval(value))
-
 #define fvec(value, ...) \
-fval( (value), fopts_add_flags(fopts(__VA_ARGS__), Slider_Vector) )
-#define fvecx(value)      V3x(fval(value))
-#define fvecy(value)      V3y(fval(value))
-#define fvecz(value)      V3z(fval(value))
+fval_text( (value), fopts_add_flags(fopts(__VA_ARGS__), Slider_Vector) )
+#define fvecx(value)      V3x(fval_text(value))
+#define fvecy(value)      V3y(fval_text(value))
+#define fvecz(value)      V3z(fval_text(value))
 
 #define fdir fvec  // NOTE: Not influenced by scale.
 //- End annotation
-#define fvert3(x,y,z,...) fvert(V3(x,y,z), __VA_ARGS__)
 #define funit(value)      fvert(value, Slider_Camera_Aligned|Slider_NOZ)
 
 #define fkeyframe(nframes, value)  add_keyframe(ani, fval2i(nframes, value))
@@ -47,9 +42,9 @@ defer(pop_line_cparams());
 #define indicate(vertex,...)  indicate_vertex(#vertex, vertex, __VA_ARGS__)
 #define indicate0(vertex,...) indicate(vertex,0,__VA_ARGS__)
 
-global_const Slider clampx = Slider_Clamp_X;
-global_const Slider clampy = Slider_Clamp_Y;
-global_const Slider clampz = Slider_Clamp_Z;
+global Slider_Flag clampx = Slider_Clamp_X;
+global Slider_Flag clampy = Slider_Clamp_Y;
+global Slider_Flag clampz = Slider_Clamp_Z;
 
 inline void
 circular_arc_helper(mat4 const&transform, v3 dst[4], v2 src[4]){
@@ -133,7 +128,7 @@ perspective_project_non_hyperbolic(Camera *camera, v3 worldP){
  result.z   = depth;
  return result;
 }
-force_inline Line_Params
+kv_inline Line_Params
 lp_alignment_min(v1 min){
  Line_Params result = painter.line_params;
  result.alignment_min = min;
@@ -221,17 +216,17 @@ global_const Fui_Options f20th = Fui_Options{0, 0.05f};
 global_const Fui_Options f10th = Fui_Options{0, 0.1f};
 global_const Fui_Options f10s  = Fui_Options{0, 10.f};
 
-force_inline Fui_Options
+kv_inline Fui_Options
 fscale(v1 delta_scale){
  Fui_Options result = {};
  result.delta_scale = delta_scale;
  return result;
 }
-force_inline Bezier
+kv_inline Bezier
 reverse(Bezier B){
  return {B[3], B[2], B[1], B[0]};
 }
-force_inline v3
+kv_inline v3
 reflect_origin(v3 origin, v3 point){
  return origin-(point-origin);
 }
@@ -334,4 +329,8 @@ inline mat4i &
 get_bone_xform(Bone_Type type){
  return get_bone_xform(type, painter.lr_index);
 }
+
+#define read_slider_at_index(index) \
+(void *)(global_sliders[index] + 1)
+
 //~ EOF;

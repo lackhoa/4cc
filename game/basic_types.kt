@@ -30,22 +30,30 @@ gen_file "basic_types.gen.h"
 gen_file "basic_types_read.gen.h"
 {
  function void
-  read_binary_String(Data_Reader &r, String *dst)
+  read_binary_String(Binary_Reader *r, String *dst)
  {
   read_binary_size(r, sizeof(u32), &dst->count);
-  read_binary_size(r, dst->count, dst->str);
+  //NOTE(kv) ultra piggy! Just point to the file!
+  dst->str = r->pos;
+  
+  if(r->end_pos - r->pos < isize(dst->count)){
+   r->ok = false;
+  }
+  if(r->ok){
+   r->pos += dst->count;
+  }
  }
  
  gen_for(basic_types except(String))
  {
-  force_inline void
-   read_binary_`T(Data_Reader &r, `T *dst)
+  kv_inline void
+   read_binary_`T(Binary_Reader *r, `T *dst)
   {
    read_binary_size(r, sizeof(`T), dst);
   }
   
-  force_inline `T
-   read_binary_`T(Data_Reader &r)
+  kv_inline `T
+   read_binary_`T(Binary_Reader *r)
   {
    `T dst;
    read_binary_size(r, sizeof(`T), &dst);

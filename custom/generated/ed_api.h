@@ -3,6 +3,8 @@
 //source: UNKNOWN
 #define ed_buffer_replace_range_sig() b32 ed_buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string)
 #define ed_push_buffer_base_name_sig() String8 ed_push_buffer_base_name(App* app, Arena* arena, Buffer_ID buffer_id)
+#define ed_get_code_directory_sig() String ed_get_code_directory(App* app)
+#define ed_push_buffer_filepath_sig() String ed_push_buffer_filepath(App* app, Arena* arena, Buffer_ID buffer_id)
 #define ed_get_active_view_sig() View_ID ed_get_active_view(App* app, Access_Flag access)
 #define ed_view_get_buffer_sig() Buffer_ID ed_view_get_buffer(App* app, View_ID view_id, Access_Flag access)
 #define ed_view_get_cursor_pos_sig() i64 ed_view_get_cursor_pos(App* app, View_ID view_id)
@@ -21,6 +23,7 @@
 #define ed_draw__push_vertices_sig() void ed_draw__push_vertices(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type)
 #define ed_push_object_transform_to_target_sig() void ed_push_object_transform_to_target(Render_Target* target, mat4* transform)
 #define ed_get_token_it_on_current_line_sig() Token_Iterator_Array ed_get_token_it_on_current_line(App* app, Buffer_ID buffer, i64* line_end_pos)
+#define ed_get_token_it_at_pos_sig() Token_Iterator_Array ed_get_token_it_at_pos(App* app, Buffer_ID buffer, i64 pos)
 #define ed_fui_editor_ui_loop_sig() b32 ed_fui_editor_ui_loop(App* app)
 #define ed_view_set_buffer_named_sig() Buffer_ID ed_view_set_buffer_named(App* app, View_ID view, String8 name)
 #define ed_seek_line_col_sig() Buffer_Seek ed_seek_line_col(i64 line, i64 col)
@@ -43,6 +46,8 @@
 #define ed_draw_new_group_sig() Render_Config* ed_draw_new_group(Render_Target* target)
 typedef b32 ed_buffer_replace_range_type(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
 typedef String8 ed_push_buffer_base_name_type(App* app, Arena* arena, Buffer_ID buffer_id);
+typedef String ed_get_code_directory_type(App* app);
+typedef String ed_push_buffer_filepath_type(App* app, Arena* arena, Buffer_ID buffer_id);
 typedef View_ID ed_get_active_view_type(App* app, Access_Flag access);
 typedef Buffer_ID ed_view_get_buffer_type(App* app, View_ID view_id, Access_Flag access);
 typedef i64 ed_view_get_cursor_pos_type(App* app, View_ID view_id);
@@ -61,6 +66,7 @@ typedef User_Input ed_get_next_input_type(App* app, Event_Property use_flags, Ev
 typedef void ed_draw__push_vertices_type(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type);
 typedef void ed_push_object_transform_to_target_type(Render_Target* target, mat4* transform);
 typedef Token_Iterator_Array ed_get_token_it_on_current_line_type(App* app, Buffer_ID buffer, i64* line_end_pos);
+typedef Token_Iterator_Array ed_get_token_it_at_pos_type(App* app, Buffer_ID buffer, i64 pos);
 typedef b32 ed_fui_editor_ui_loop_type(App* app);
 typedef Buffer_ID ed_view_set_buffer_named_type(App* app, View_ID view, String8 name);
 typedef Buffer_Seek ed_seek_line_col_type(i64 line, i64 col);
@@ -84,6 +90,8 @@ typedef Render_Config* ed_draw_new_group_type(Render_Target* target);
 struct API_VTable_ed{
 ed_buffer_replace_range_type *buffer_replace_range;
 ed_push_buffer_base_name_type *push_buffer_base_name;
+ed_get_code_directory_type *get_code_directory;
+ed_push_buffer_filepath_type *push_buffer_filepath;
 ed_get_active_view_type *get_active_view;
 ed_view_get_buffer_type *view_get_buffer;
 ed_view_get_cursor_pos_type *view_get_cursor_pos;
@@ -102,6 +110,7 @@ ed_get_next_input_type *get_next_input;
 ed_draw__push_vertices_type *draw__push_vertices;
 ed_push_object_transform_to_target_type *push_object_transform_to_target;
 ed_get_token_it_on_current_line_type *get_token_it_on_current_line;
+ed_get_token_it_at_pos_type *get_token_it_at_pos;
 ed_fui_editor_ui_loop_type *fui_editor_ui_loop;
 ed_view_set_buffer_named_type *view_set_buffer_named;
 ed_seek_line_col_type *seek_line_col;
@@ -126,6 +135,8 @@ ed_draw_new_group_type *draw_new_group;
 #if defined(STATIC_LINK_API)
 function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
 function String8 push_buffer_base_name(App* app, Arena* arena, Buffer_ID buffer_id);
+function String get_code_directory(App* app);
+function String push_buffer_filepath(App* app, Arena* arena, Buffer_ID buffer_id);
 function View_ID get_active_view(App* app, Access_Flag access);
 function Buffer_ID view_get_buffer(App* app, View_ID view_id, Access_Flag access);
 function i64 view_get_cursor_pos(App* app, View_ID view_id);
@@ -144,6 +155,7 @@ function User_Input get_next_input(App* app, Event_Property use_flags, Event_Pro
 function void draw__push_vertices(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type);
 function void push_object_transform_to_target(Render_Target* target, mat4* transform);
 function Token_Iterator_Array get_token_it_on_current_line(App* app, Buffer_ID buffer, i64* line_end_pos);
+function Token_Iterator_Array get_token_it_at_pos(App* app, Buffer_ID buffer, i64 pos);
 function b32 fui_editor_ui_loop(App* app);
 function Buffer_ID view_set_buffer_named(App* app, View_ID view, String8 name);
 function Buffer_Seek seek_line_col(i64 line, i64 col);
@@ -171,6 +183,8 @@ function Render_Config* draw_new_group(Render_Target* target);
 #endif
 STORAGE_CLASS ed_buffer_replace_range_type *buffer_replace_range;
 STORAGE_CLASS ed_push_buffer_base_name_type *push_buffer_base_name;
+STORAGE_CLASS ed_get_code_directory_type *get_code_directory;
+STORAGE_CLASS ed_push_buffer_filepath_type *push_buffer_filepath;
 STORAGE_CLASS ed_get_active_view_type *get_active_view;
 STORAGE_CLASS ed_view_get_buffer_type *view_get_buffer;
 STORAGE_CLASS ed_view_get_cursor_pos_type *view_get_cursor_pos;
@@ -189,6 +203,7 @@ STORAGE_CLASS ed_get_next_input_type *get_next_input;
 STORAGE_CLASS ed_draw__push_vertices_type *draw__push_vertices;
 STORAGE_CLASS ed_push_object_transform_to_target_type *push_object_transform_to_target;
 STORAGE_CLASS ed_get_token_it_on_current_line_type *get_token_it_on_current_line;
+STORAGE_CLASS ed_get_token_it_at_pos_type *get_token_it_at_pos;
 STORAGE_CLASS ed_fui_editor_ui_loop_type *fui_editor_ui_loop;
 STORAGE_CLASS ed_view_set_buffer_named_type *view_set_buffer_named;
 STORAGE_CLASS ed_seek_line_col_type *seek_line_col;

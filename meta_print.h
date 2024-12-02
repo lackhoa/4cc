@@ -80,10 +80,10 @@ mline(Printer &p){
  p < "\n";
 }
 inline void
-add_to_source_map(Source_Map &source_map, Printer &printer, i32 source_pos){
+add_to_source_map(Source_Map &source_map, Printer &printer, usize source_pos){
  Source_Map_Entry entry;
- entry.source_pos = source_pos;
- entry.gen_pos = printer.byte_pos;
+ entry.source_pos = (i32)source_pos;
+ entry.gen_pos    = (i32)printer.byte_pos;
  source_map.push_value(entry);
 }
 //-

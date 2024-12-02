@@ -1,5 +1,3 @@
-#pragma once
-
 global b8 global_game_key_states       [Key_Code_COUNT];
 global u8 global_game_key_state_changes[Key_Code_COUNT];
 
@@ -16,29 +14,33 @@ global b32 global_debug_camera_on;
 function b32 
 turn_game_on() 
 {
- if (global_game_enabled) {
+ if(global_game_enabled){
   game_on_ro = true;
   return true;
- } else  { 
+ }else{ 
   vim_set_bottom_text_lit("game is currently disabled!");
   return false;
  }
 }
-force_inline void
+kv_inline void
 turn_game_off()
 {
  game_on_ro = false;
 }
 
 function void
-toggle_the_game(App *app)
+toggle_game_cmd(App *app)
 {
- if (game_on_ro) { turn_game_off(); }
- else            { turn_game_on(); }
+ if(game_render_on){
+  game_render_on = false;
+ }else{
+  turn_game_on();
+  game_render_on = true;
+ }
  
- if (game_on_ro) {
+ if(game_render_on){
   View_ID view = get_active_view(app, Access_Always);
-  if ( is_view_to_the_right(app, view) )
+  if(is_view_to_the_right(app, view))
   {// NOTE: switch to the left
    view = get_other_primary_view(app, view, Access_Always, true);
   }
@@ -75,7 +77,6 @@ CUSTOM_DOC("")
 {
  global_debug_camera_on = !global_debug_camera_on;
 }
-
 function void
 init_game(App *app)
 {
@@ -123,7 +124,7 @@ load_latest_game_code(App *app, b32 *out_loaded)
    if(ok)
    {
     String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-    b32 lock_file_exists = file_mtime(pjoin(scratch, binary_dir, "game_dll.lock")) > 0;
+    b32 lock_file_exists = file_mtime(pjoin(scratch, binary_dir, strlit("game_dll.lock"))) > 0;
     if(!lock_file_exists)
     {
 #if KV_INTERNAL
@@ -131,8 +132,8 @@ load_latest_game_code(App *app, b32 *out_loaded)
 #else
 # define TEMP_DLL_PREFIX ""
 #endif
-     Stringz GAME2_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game2.dll");
-     Stringz GAME3_DLL = pjoin(scratch, binary_dir, TEMP_DLL_PREFIX "game3.dll");
+     Stringz GAME2_DLL = pjoin(scratch, binary_dir, strlit(TEMP_DLL_PREFIX "game2.dll"));
+     Stringz GAME3_DLL = pjoin(scratch, binary_dir, strlit(TEMP_DLL_PREFIX "game3.dll"));
 #undef TEMP_DLL_PREFIX
      
      b32 never_loaded_before = (current_game_dll.mtime == 0);
@@ -172,12 +173,13 @@ load_latest_game_code(App *app, b32 *out_loaded)
         
         library = new_library;
         
-        auto &game = game_code_ro;
-        auto game_api_export = (game_api_export_type *)gb_dll_proc_address(library, "game_api_export");
+        Game_API &game = game_code_ro;
+        wrap_function_pointer(game_api_export);
+        cast_to(game_api_export, gb_dll_proc_address(library, "game_api_export"));
         game_api_export(game);
-        if ( never_loaded_before ) {
+        if(never_loaded_before){
          init_game(app);
-        } else {
+        }else{
          // NOTE: "game_reload" is itself reloaded... not sure how that'd be useful
          reload_game(game);
         }
@@ -221,7 +223,7 @@ view_viewport_id(App *app, View_ID view)
  return buffer_viewport_id(app, buffer);
 }
 
-force_inline i32
+kv_inline i32
 get_active_game_viewport_id(App *app)
 {
  Buffer_ID buffer = get_active_buffer(app);
@@ -263,24 +265,22 @@ maybe_update_game(App *app, Frame_Info frame)
 function void
 render_game(App *app, Render_Target *target, i32 viewport, Frame_Info frame, rect2 clip_box)
 {
- if (game_on_ro &&
-     (viewport == MAIN_VIEWPORT_ID || global_auxiliary_viewports_on))
+ Game_API *game = get_game_code();
+ if(game and
+    game_render_on and
+    (viewport == MAIN_VIEWPORT_ID || global_auxiliary_viewports_on))
  {
-  Game_API *game = get_game_code();
-  if(game){
-   b32 should_animate_next_frame = game->game_viewport_update(ed_game_state_pointer, viewport, frame.animation_dt);
-   if(should_animate_next_frame){ animate_next_frame(app); }
-   Render_Config *old_config = target_last_config(target);
-   game->game_render(ed_game_state_pointer, app, target, viewport,
-                     get_mouse_state(app), clip_box);
-   {
-    Render_Config *config = draw_new_group(target);
-    if(old_config){ *config = *old_config; }
-   }
+  b32 should_animate_next_frame = game->game_viewport_update(ed_game_state_pointer, viewport, frame.animation_dt);
+  if(should_animate_next_frame){ animate_next_frame(app); }
+  Render_Config *old_config = target_last_config(target);
+  game->game_render(ed_game_state_pointer, app, target, viewport,
+                    get_mouse_state(app), clip_box);
+  {
+   Render_Config *config = draw_new_group(target);
+   if(old_config){ *config = *old_config; }
   }
  }
 }
-
 function void
 command_game_set_preset(App *app)
 {
@@ -298,18 +298,14 @@ command_game_set_preset(App *app)
   }
  }
 }
-
 function void
 command_game_last_preset(App *app)
 {
- auto game = get_game_code();
- if ( game )
+ Game_API *game = get_game_code();
+ if(game)
  {
   i32 viewport_id = get_active_game_viewport_id(app);
   game->game_last_preset(ed_game_state_pointer, viewport_id);
  }
 }
-
-
-
 //~ NOTE: EOF

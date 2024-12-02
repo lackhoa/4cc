@@ -9,8 +9,6 @@
 
 // NOTE(kv): view ad_stb_parser.cpp
 
-#include "4ed_kv_parser.h"
-
 //-
 function Token *ep__get_token_please(Ed_Parser *p);
 function i1
@@ -58,50 +56,6 @@ ep_get_fail_location(Ed_Parser *p){
 inline Line_Column
 ep_get_scope_location(Ed_Parser *p){
  return ep_get_token_location(p, p->scope_.start_location);
-}
-//-Constructors
-#if ED_PARSER_BUFFER
-function Ed_Parser
-make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
-                    Arena *string_arena=0,
-                    Scan_Direction direction=Scan_Forward){
- b32 ok;
- if(it.kind == TokenIterator_Array){
-  ok = it.array.count;
- }else if(it.kind == TokenIterator_List){
-  ok = it.list.node_count;
- }else{
-  invalid_code_path;
- }
- Ed_Parser result = {
-  .ok_               = ok,
-  .direction         = direction,
-  .it                = it,
-  .string_arena      = string_arena,
-  .original_token_it = it,
-  .Token_Gen_Type    = TG_Buffer,
-  .Token_Gen_Buffer  = {
-   .app   =app,
-   .buffer=buffer,
-  },
- };
- return result;
-}
-#endif
-function Ed_Parser
-make_ep_from_string(String string, Token_Iterator const&it){
- Ed_Parser result = {
-  .ok_               = true,
-  .direction    = Scan_Forward,
-  .it                = it,
-  .original_token_it = it,
-  .Token_Gen_Type    = TG_String,
-  .Token_Gen_String  = {
-   .source=string,
-  },
- };
- result.scope_.start_location = &stub_token;
- return result;
 }
 //-
 inline Token *
@@ -343,7 +297,7 @@ ep_test_id(Ed_Parser *p, String string){
  }
  return result;
 }
-force_inline b32
+kv_inline b32
 ep_test_id(Ed_Parser *p, char *string){
  String s = SCu8(string);
  return ep_test_id(p, s);
@@ -354,7 +308,7 @@ ep_maybe_id(Ed_Parser *p, String string){
  if (result) { ep_eat(p); }
  return result;
 }
-force_inline b32
+kv_inline b32
 ep_maybe_id(Ed_Parser *p, char *string){
  String s = SCu8(string);
  return ep_maybe_id(p, s);

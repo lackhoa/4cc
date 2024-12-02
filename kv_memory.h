@@ -38,7 +38,6 @@ round_down_to_pow2(u64 pow2_value, u64 input){
 //-
 struct Push_Params{
  b32 zero;
- u32 alignment;
 };
 inline Push_Params
 make_default_arena_push_params(){
@@ -406,13 +405,13 @@ arena_pop_to(Arena *arena, Arena_Chunk *to_chunk, umm to_pos)
 memory_functions_xlist(x_wrap_function_pointer);
 #endif
 
-force_inline Push_Params
+kv_inline Push_Params
 push_default()
 {
  return default_push_params;
 }
 function u8 *
-arena_push(Arena *arena, usize size, usize alignment,
+arena_push(Arena *arena, usize size, usize alignment=8,
            Push_Params params=default_push_params,
            DEBUG_file_line_defparams)
 {
@@ -471,13 +470,13 @@ linalloc_wrap_write(void *dest, void *src, usize size){
  block_copy(dest, src, size);
  return((u8 *)dest);
 }
-#define push_size(arena,size,alignment, ...) \
-arena_push(arena, size, alignment, ##__VA_ARGS__)
+#define push_size arena_push
 
 #define push_array(arena,T,count,...) \
-(T*)push_size(arena, sizeof(T)*(count), alignof(T), ##__VA_ARGS__)
+(T*)arena_push(arena, sizeof(T)*(count), alignof(T), ##__VA_ARGS__)
 
-#define push_struct(arena,T,...)         push_array(arena,T,1,##__VA_ARGS__)
+#define push_struct(arena,T,...)  push_array(arena,T,1,##__VA_ARGS__)
+
 #define push_array_zero(arena,T,count)   push_array(arena,T,count,push_zero())
 
 #define push_copy(arena, size, source, alignment) \

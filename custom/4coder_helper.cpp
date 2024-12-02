@@ -8,11 +8,6 @@
 
 // TOP
 
-#define GET_VIEW_AND_BUFFER \
-View_ID   view = get_active_view(app, Access_ReadVisible); \
-Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible); \
-(void)view; (void)buffer
-
 #define HISTORY_GROUP_SCOPE \
   History_Group history_group = history_group_begin(app, buffer); \
   defer( history_group_end(history_group) );
@@ -55,30 +50,29 @@ get_command_metadata_from_name(String name){
     Command_Metadata *candidate = fcoder_metacmd_table;
     for (i32 i = 0; i < ArrayCountSigned(fcoder_metacmd_table); i += 1, candidate += 1){
         if (string_match(SCu8(candidate->name, candidate->name_len), name)){
-            result = candidate;
-            break;
-        }
-    }
-    return(result);
-}
-
-////////////////////////////////
-
-function Token_Array
-get_token_array_from_buffer(App *app, Buffer_ID buffer){
-    Token_Array result = {};
-    Managed_Scope scope = buffer_get_managed_scope(app, buffer);
-    Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
-    if (lex_task_ptr != 0){
-        async_task_wait(app, &global_async_system, *lex_task_ptr);
-    }
-    Token_Array *ptr = scope_attachment(app, scope, attachment_tokens, Token_Array);
-    if (ptr != 0){
-        result = *ptr;
-    }
+   result = candidate;
+   break;
+  }
+ }
  return(result);
 }
 
+////////////////////////////////
+function Token_Array
+get_token_array_from_buffer(App *app, Buffer_ID buffer)
+{
+ Token_Array result = {};
+ Managed_Scope scope = buffer_get_managed_scope(app, buffer);
+ Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
+ if (lex_task_ptr != 0){
+  async_task_wait(app, &global_async_system, *lex_task_ptr);
+ }
+ Token_Array *ptr = scope_attachment(app, scope, attachment_tokens, Token_Array);
+ if (ptr != 0){
+  result = *ptr;
+ }
+ return(result);
+}
 function Token *
 kv_token_at_cursor(App *app, i64 delta=0)
 {
@@ -88,11 +82,6 @@ kv_token_at_cursor(App *app, i64 delta=0)
  return token_from_pos(&tokens, pos);
 }
 
-function Token_Iterator_Array
-get_token_it_at_pos(App *app, Buffer_ID buffer, i64 pos){
- Token_Array tokens = get_token_array_from_buffer(app, buffer);
- return tkarr_at_pos(0, &tokens, pos);
-}
 function Token_Iterator_Array
 get_token_it_at_cursor(App *app, i64 delta=0){
  GET_VIEW_AND_BUFFER;

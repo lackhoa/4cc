@@ -46,9 +46,9 @@ struct Type_Info{
 
 #include "generated/basic_types_info.gen.h"
 
-inline i1
+inline usize
 get_basic_type_size(Basic_Type type)
 {
- return (i1)basic_types_info[type].size;
+ return basic_types_info[type].size;
 }
 //-

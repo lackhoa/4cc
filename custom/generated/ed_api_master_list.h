@@ -3,6 +3,8 @@
 //source: UNKNOWN
 api(ed) function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
 api(ed) function String8 push_buffer_base_name(App* app, Arena* arena, Buffer_ID buffer_id);
+api(ed) function String get_code_directory(App* app);
+api(ed) function String push_buffer_filepath(App* app, Arena* arena, Buffer_ID buffer_id);
 api(ed) function View_ID get_active_view(App* app, Access_Flag access);
 api(ed) function Buffer_ID view_get_buffer(App* app, View_ID view_id, Access_Flag access);
 api(ed) function i64 view_get_cursor_pos(App* app, View_ID view_id);
@@ -21,6 +23,7 @@ api(ed) function User_Input get_next_input(App* app, Event_Property use_flags, E
 api(ed) function void draw__push_vertices(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type);
 api(ed) function void push_object_transform_to_target(Render_Target* target, mat4* transform);
 api(ed) function Token_Iterator_Array get_token_it_on_current_line(App* app, Buffer_ID buffer, i64* line_end_pos);
+api(ed) function Token_Iterator_Array get_token_it_at_pos(App* app, Buffer_ID buffer, i64 pos);
 api(ed) function b32 fui_editor_ui_loop(App* app);
 api(ed) function Buffer_ID view_set_buffer_named(App* app, View_ID view, String8 name);
 api(ed) function Buffer_Seek seek_line_col(i64 line, i64 col);

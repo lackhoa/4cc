@@ -62,14 +62,14 @@ function i64
 token_index_from_pos(Token *tokens, i64 count, i64 pos){
  i64 result = 0;
  if (count > 0){
-        if (pos >= tokens[count - 1].pos){
-            result = count - 1;
-        }
-        else if (pos <= tokens[0].pos){
-            result = 0;
-        }
-        else{
-            i64 first = 0;
+  if (pos >= tokens[count - 1].pos){
+   result = count - 1;
+  }
+  else if (pos <= tokens[0].pos){
+   result = 0;
+  }
+  else{
+   i64 first = 0;
    i64 one_past_last = count;
    for (;;){
     i64 index = (first + one_past_last) >> 1;

@@ -93,7 +93,7 @@ FX (ImDrawList* d, V2 a, V2 b, V2 s, ImVec4 m, float t)
 }
 #undef V2*/
 
-#elif 1
+/*#elif 1
 
 #define V2 ImVec2
 struct v2pair{ V2 first; V2 second; };
@@ -152,7 +152,7 @@ void FX(ImDrawList* d,V2 a,V2 b,V2 s,ImVec4 mouse,float t)
 	}
 }
 #undef V2
-#endif
+#endif*/
 
 function void
 FxTestBed()

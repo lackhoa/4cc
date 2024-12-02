@@ -890,7 +890,7 @@ function String_Const_char
 SCchar(String str){
  return(SCchar((char*)str.str, str.size));
 }
-force_inline String
+kv_inline String
 SCu8(String_Const_char str){
  return(SCu8((u8*)str.str, str.size));
 }

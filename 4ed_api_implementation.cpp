@@ -28,8 +28,8 @@ output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, Str
 function void
 file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file)
 {
-    Assert(file != 0);
-    i64 pos = buffer_size(&file->state.buffer);
+ Assert(file != 0);
+ i64 pos = buffer_size(&file->state.buffer);
  Layout *layout = &models->layout;
  for (Panel *panel = layout_get_first_open_panel(layout);
       panel != 0;
@@ -82,26 +82,26 @@ api_check_view(View *view, Access_Flag access){
 
 function b32
 is_running_coroutine(App *app){
-    Thread_Context *tctx = app->tctx;
-    Thread_Context_Extra_Info *info = (Thread_Context_Extra_Info*)tctx->user_data;
-    return(info->coroutine != 0);
+ Thread_Context *tctx = app->tctx;
+ Thread_Context_Extra_Info *info = (Thread_Context_Extra_Info*)tctx->user_data;
+ return(info->coroutine != 0);
 }
 
 api(custom) function b32
 global_set_setting(App *app, Global_Setting_ID setting, i64 value){
-    Models *models = (Models*)app->cmd_context;
-    b32 result = true;
-    switch (setting){
-        case GlobalSetting_LAltLCtrlIsAltGr:
-        {
-            models->settings.lctrl_lalt_is_altgr = (b32)(value != 0);
-        }break;
-        default:
-        {
-            result = false;
-        }break;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ b32 result = true;
+ switch (setting){
+  case GlobalSetting_LAltLCtrlIsAltGr:
+  {
+   models->settings.lctrl_lalt_is_altgr = (b32)(value != 0);
+  }break;
+  default:
+  {
+   result = false;
+  }break;
+ }
+ return(result);
 }
 
 api(custom) function rect2
@@ -681,16 +681,27 @@ push_buffer_base_name(App *app, Arena *arena, Buffer_ID buffer_id)
 
 api(custom) function String
 push_buffer_unique_name(App *app, Arena *out, Buffer_ID buffer_id){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    String result = {};
-    if (api_check_buffer(file)){
-        result = push_stringz(out, string_from_filename(&file->unique_name));
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ String result = {};
+ if (api_check_buffer(file)){
+  result = push_stringz(out, string_from_filename(&file->unique_name));
+ }
+ return(result);
 }
-
-api(custom) function String
+api(ed) function String
+get_code_directory(App *app)
+{
+ local_persist String code_dir = {};
+ if(not code_dir.count){
+  Models *models = (Models *)app->cmd_context;
+  Scratch_Block scratch;
+  code_dir = def_get_config_string(scratch, strlit("code_dir"));
+  code_dir = system_get_canonical(models->arena, code_dir);
+ }
+ return code_dir;
+}
+api(ed custom) function String
 push_buffer_filepath(App *app, Arena *arena, Buffer_ID buffer_id)
 {
  Models *models = (Models*)app->cmd_context;
@@ -3453,6 +3464,12 @@ get_token_it_on_current_line(App *app, Buffer_ID buffer, i64 *line_end_pos)
  i64 max_pos = get_line_end_pos(app, buffer, line_number);
  *line_end_pos = max_pos;
  return result;
+}
+api(ed) function Token_Iterator_Array
+get_token_it_at_pos(App *app, Buffer_ID buffer, i64 pos)
+{
+ Token_Array tokens = get_token_array_from_buffer(app, buffer);
+ return tkarr_at_pos(0, &tokens, pos);
 }
 
 api(ed) function b32

@@ -389,7 +389,7 @@ kv_vim_bindings(App *app)
  BIND(N|MAP, cmd_open_message_buffer, SUB_G,   Key_Code_M);
  BIND(N|MAP, kv_open_note_file,       SUB_G,   Key_Code_N);
  BIND(N|MAP, kv_handle_g_f,           SUB_G,   Key_Code_F);
- BIND(N|MAP, toggle_the_game,         SUB_G,   Key_Code_O);
+ BIND(N|MAP, toggle_game_cmd,         SUB_G,   Key_Code_O);
  BIND(N|MAP, toggle_game_auxiliary_viewports, SUB_G, S|Key_Code_O);
  BIND(N|V|MAP, vim_file_top,          SUB_G,   Key_Code_G);
  BIND(N|0|MAP, vim_switch_lister,     SUB_G,   Key_Code_B);
@@ -500,10 +500,7 @@ kv_vim_bindings(App *app)
  /// Screen Adjust Binds
  BIND(N|V|MAP, vim_half_page_up,                 (C|Key_Code_B));
  BIND(N|V|MAP, vim_half_page_down,               (C|Key_Code_F));
- BIND(N|V|MAP, vim_line_down,               (C|S|Key_Code_Y));
- BIND(N|V|MAP, vim_line_down,                     (C|Key_Code_Y));
- BIND(N|V|MAP, vim_line_up,                 (C|S|Key_Code_E));
- BIND(N|V|MAP, vim_line_up,                       (C|Key_Code_E));
+ BIND(N|MAP,   cmd_expand_snippet,                  (C|Key_Code_E));
  BIND(N|V|MAP, vim_scroll_screen_top,         SUB_Z,   Key_Code_T);
  BIND(N|V|MAP, vim_scroll_screen_mid,         SUB_Z,   Key_Code_Z);
  BIND(N|V|MAP, vim_scroll_screen_bot,         SUB_Z,   Key_Code_B);
@@ -753,7 +750,7 @@ kv_custom_layer_init(App *app)
   ed_api_fill_vtable(&const_ed_api);
   ed_api_fill_vtable_new(&const_ed_api_new);
   String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-  GAME_DLL_PATH = pjoin(&global_permanent_arena, binary_dir, "game.dll");
+  GAME_DLL_PATH = pjoin(&global_permanent_arena, binary_dir, strlit("game.dll"));
  }
 }
 

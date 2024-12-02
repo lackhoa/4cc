@@ -1,7 +1,7 @@
 //~NOTE: Utilities for building csg trees 
 // @game_optimization ~/4ed/code/kv-build.py
 
-force_inline CSG_Tree *
+kv_inline CSG_Tree *
 csg_push_tree(CSG_Type type)
 {
  CSG_Tree *tree = push_struct_zero(viewport_frame_arena, CSG_Tree);
@@ -18,7 +18,7 @@ csg_push_tree(CSG_Type type)
  return tree;
 }
 
-force_inline v1
+kv_inline v1
 get_object_scale()
 {
  // @object_uniform_scale
@@ -79,7 +79,7 @@ csg_box(v3 center, v3 radius)
 #if 0
 // NOTE: I anticipate we wouldn't actually use rotation (relative to objects) that much,
 // but still, objects do rotate...
-force_inline CSG_Tree *
+kv_inline CSG_Tree *
 csg_box(v3 center, v3 radius)
 {
  return csg_box(center, mat3_identity, radius);
@@ -97,11 +97,11 @@ csg_union(CSG_Tree *l, CSG_Tree *r)
 }
 
 //~NOTE: Operations
-force_inline v1
+kv_inline v1
 sd_intersect(v1 d1, v1 d2){
  return macro_max(d1, d2);
 }
-force_inline v1
+kv_inline v1
 sd_union(v1 d1, v1 d2){
  return macro_min(d1, d2);
 }

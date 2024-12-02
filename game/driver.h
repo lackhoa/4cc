@@ -6,7 +6,7 @@
 
 struct Bezier{
  v3 e[4];
- force_inline operator v3 *() { return e; };
+ kv_inline operator v3 *() { return e; };
 };
 typedef Bezier Bez;
 
@@ -260,9 +260,6 @@ inline mat4i& current_world_from_bone(Painter &p){
 inline b32 is_right(Painter &p=painter){ return p.is_right; }
 inline b32 is_left (Painter &p=painter){ return !p.is_right; }
 //-
-
-//#include "game_draw.cpp"
-
 // NOTE: Name,Denom
 #define X_Pose_Fields(X) \
 X(thead_theta, 6) \
@@ -279,10 +276,28 @@ struct Pose{
  X_Pose_Fields(X);
 #undef X
 };
-//-
+//~
 //NOTE(kv) You can only send one vert on one line
+#define sending_vertices 0
+
 #define send_vert(NAME)  send_vert_func(painter, strlit(#NAME), NAME)
 
+#define old_vv(NAME, VAL, ...) \
+v3 NAME = VAL; \
+send_vert(NAME);
+
+#define data_vv(NAME, ...) \
+v3 NAME = vertex_from_name(painter.modeler, strlit(#NAME)).vertex->pos
+
+#define data_va(NAME, ...) \
+NAME = vertex_from_name(painter.modeler, strlit(#NAME)).vertex->pos
+
+/*//TODO(kv) @incomplete We're not storing the fact that it is a sampling vertex
+#define vv_sample(name, curve, t, ...) \
+v3 name = bezier_sample(curve, t); \
+send_vert(name);*/
+
+//-
 #define driver_animate_params Modeler *m, Arena *scratch, v1 anime_time
 xfunction Pose driver_animate(driver_animate_params);
 

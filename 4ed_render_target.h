@@ -120,7 +120,7 @@ struct Render_Group {
  };
 };
 
-force_inline b32
+kv_inline b32
 render_group_is_game(Render_Group *group) {
  return group->viewport_id != 0;
 }

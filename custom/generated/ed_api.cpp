@@ -6,6 +6,8 @@ function void
 ed_api_fill_vtable(API_VTable_ed *vtable){
 vtable->buffer_replace_range = buffer_replace_range;
 vtable->push_buffer_base_name = push_buffer_base_name;
+vtable->get_code_directory = get_code_directory;
+vtable->push_buffer_filepath = push_buffer_filepath;
 vtable->get_active_view = get_active_view;
 vtable->view_get_buffer = view_get_buffer;
 vtable->view_get_cursor_pos = view_get_cursor_pos;
@@ -24,6 +26,7 @@ vtable->get_next_input = get_next_input;
 vtable->draw__push_vertices = draw__push_vertices;
 vtable->push_object_transform_to_target = push_object_transform_to_target;
 vtable->get_token_it_on_current_line = get_token_it_on_current_line;
+vtable->get_token_it_at_pos = get_token_it_at_pos;
 vtable->fui_editor_ui_loop = fui_editor_ui_loop;
 vtable->view_set_buffer_named = view_set_buffer_named;
 vtable->seek_line_col = seek_line_col;
@@ -52,6 +55,8 @@ function void
 ed_api_read_vtable(API_VTable_ed *vtable){
 buffer_replace_range = vtable->buffer_replace_range;
 push_buffer_base_name = vtable->push_buffer_base_name;
+get_code_directory = vtable->get_code_directory;
+push_buffer_filepath = vtable->push_buffer_filepath;
 get_active_view = vtable->get_active_view;
 view_get_buffer = vtable->view_get_buffer;
 view_get_cursor_pos = vtable->view_get_cursor_pos;
@@ -70,6 +75,7 @@ get_next_input = vtable->get_next_input;
 draw__push_vertices = vtable->draw__push_vertices;
 push_object_transform_to_target = vtable->push_object_transform_to_target;
 get_token_it_on_current_line = vtable->get_token_it_on_current_line;
+get_token_it_at_pos = vtable->get_token_it_at_pos;
 fui_editor_ui_loop = vtable->fui_editor_ui_loop;
 view_set_buffer_named = vtable->view_set_buffer_named;
 seek_line_col = vtable->seek_line_col;

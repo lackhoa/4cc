@@ -64,7 +64,7 @@ write_basic_type(Printer &p, Basic_Type type, void *value0)
   case Basic_Type_v4:
   {
    v1 *values = cast(v1*)value0;
-   i1 count = get_basic_type_size(type) / 4;
+   i1 count = i1(get_basic_type_size(type) / 4);
    if (count == 1) {
     print_float_trimmed(p, *values);
    } else {
@@ -82,7 +82,7 @@ write_basic_type(Printer &p, Basic_Type type, void *value0)
   case Basic_Type_i4:
   {
    i1 *v = (i1*)value0;
-   i1 count = get_basic_type_size(type) / 4;
+   i1 count = i1(get_basic_type_size(type) / 4);
    
    for_i32(index,0,count) {
     if (index != 0) { print(p, " "); }

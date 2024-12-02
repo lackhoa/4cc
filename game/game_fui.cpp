@@ -3,8 +3,8 @@
 global b32 fui_v4_zw_active;
 global u32 slider_cycle_counter;
 
-force_inline i32
-slider_value_size(Fui_Slider *slider) {
+kv_inline usize
+slider_value_size(Fui_Slider *slider){
  return(get_basic_type_size(slider->type));
 }
 
@@ -12,7 +12,7 @@ slider_value_size(Fui_Slider *slider) {
 global Fui_Slider *fui_active_slider;
 global String      fui_active_slider_string;
 
-struct Line_Map_Entry {
+struct Line_Map_Entry{
  i32 linum;
  Fui_Slider *slider;
 };
@@ -37,8 +37,8 @@ struct Slow_Line_Map{
 global Slow_Line_Map slow_line_map;
 //global Arena *slow_slider_store;
 
-function fui_is_active_return
-fui_is_active(fui_is_active_params) {
+function fui_is_active__return
+fui_is_active(fui_is_active__params) {
  return fui_active_slider != 0;
 }
 //~
@@ -52,21 +52,19 @@ fast_fval_inner(Basic_Type type, void *init_value,
  
  Fui_Slider *slider = line_map[linum].slider;
  // @fui_ensure_nonzero_offset
- if( slider != 0 )
+ if(slider != 0)
  {
   result = slider+1;
  }
  else
  {//NOTE: Not found -> add new slider to the store
-  i32 value_size = get_basic_type_size(type);
-  slider = cast(Fui_Slider *)(push_size(dll_arena,
-                                        sizeof(Fui_Slider)+value_size,
-                                        alignof(Fui_Slider)));
+  usize value_size = get_basic_type_size(type);
+  slider = cast(Fui_Slider *)(push_size(dll_arena, sizeof(Fui_Slider)+value_size));
   line_map[linum].slider = slider;
   
   b32 is_vertex = (options.flags & Slider_Vertex);
   b32 is_vector = (options.flags & Slider_Vector);
-  if (is_vertex || is_vector) {
+  if (is_vertex || is_vector){
    options.flags |= Slider_Camera_Aligned;
    if(options.delta_scale == 0.f) {
     options.delta_scale = default_fvert_delta_scale;
@@ -94,8 +92,7 @@ slow_fval_inner(Basic_Type type, void *init_value,
 {
  void *result = 0;
  u64 cycle_start = gb_rdtsc();
- auto &map   = slow_line_map;
- auto &store = dll_arena;
+ Slow_Line_Map &map = slow_line_map;
  Fui_Slider *slider = 0;
  
  String file = SCu8(file_c);
@@ -118,10 +115,8 @@ slow_fval_inner(Basic_Type type, void *init_value,
  }
  else
  {//-Not found
-  i32 value_size = get_basic_type_size(type);
-  slider = cast(Fui_Slider*)push_size(store,
-                                      sizeof(Fui_Slider) + value_size,
-                                      alignof(Fui_Slider));
+  usize value_size = get_basic_type_size(type);
+  slider = cast(Fui_Slider*)push_size(dll_arena, sizeof(Fui_Slider) + value_size);
   map.map[map.count++] = Slow_Line_Map_Entry{
    .file   = file,
    .linum  = linum,
@@ -184,7 +179,7 @@ function void
 fui_save_value(Fui_Slider *slider)
 {
  void *value = slider+1;
- i32 size = slider_value_size(slider);
+ usize size = slider_value_size(slider);
  block_copy(global_fui_saved_value, value, size);
 }
 
@@ -192,7 +187,7 @@ function void
 fui_restore_value(Fui_Slider *slider)
 {
  void *value = slider+1;
- i32 size = slider_value_size(slider);
+ usize size = slider_value_size(slider);
  block_copy(value, global_fui_saved_value, size);
 }
 
@@ -272,7 +267,7 @@ print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
   case Basic_Type_v4:
   {
    v1 *values = cast(v1*)value0;
-   i1 count = get_basic_type_size(type) / 4;
+   i1 count = i1(get_basic_type_size(type) / 4);
    if (count == 1) {
     print_float_trimmed(p, *values);
    } else {
@@ -295,7 +290,7 @@ print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
   case Basic_Type_i4:
   {
    i1 *v = (i1*)value0;
-   i1 count = get_basic_type_size(type) / 4;
+   i1 count = i1(get_basic_type_size(type) / 4);
    
    if (wrapped) { print(p, "I"); print(p, count); print(p, "("); }
    for_i32(index,0,count) {
@@ -362,8 +357,9 @@ fui_at_slider_p(App *app, Buffer_ID buffer, Token_Iterator_Array *it_out)
  return result;
 }
 
-function fui_handle_slider_return
-fui_handle_slider(fui_handle_slider_params) {
+function fui_handle_slider__return
+fui_handle_slider(fui_handle_slider__params)
+{
  b32 result = false;
  
  Token_Iterator_Array tk_value; 
@@ -434,5 +430,66 @@ fui_handle_slider(fui_handle_slider_params) {
   }
  }
  return result;
+}
+//-
+global u32 fui_editor_magic = 'fui_';
+
+function i64
+get_millisecond_unix_timestamp()
+{
+#if OS_WINDOWS
+ FILETIME filetime;
+ GetSystemTimeAsFileTime(&filetime); //returns ticks in UTC
+ 
+ LARGE_INTEGER li;
+ li.LowPart  = filetime.dwLowDateTime;
+ li.HighPart = filetime.dwHighDateTime;
+ 
+ // Convert ticks since into seconds
+ i64 UNIX_TIME_START = 0x019DB1DED53E8000; // NOTE January 1, 1970 (start of Unix epoch) in "ticks"
+ i64 result = (li.QuadPart - UNIX_TIME_START) / Thousand(10);  // NOTE 1 tick = 100 nanoseconds
+ return result;
+#endif
+ 
+ // NOTE Use "gettimeofday" for linux
+}
+function u64
+get_slider_index()
+{//NOTE(kv) Since one frame is 16ms, we'll never get past millisecond
+ i64 result = get_millisecond_unix_timestamp();
+ return (u64)result;
+}
+function fui_generate_slider__return
+fui_generate_slider(fui_generate_slider__params)
+{
+ Scratch_Block scratch;
+ GET_VIEW_AND_BUFFER;
+ b32 ok = true;
+ b32 at_fval = false;
+ Range_i64 range;
+ {
+  Ed_Parser parser_value = make_ed_parser_at_cursor(app);
+  Ed_Parser *parser = &parser_value;
+  Token *token0 = ep_get_token(parser);
+  ep_id(parser, strlit("fval"));
+  at_fval = parser->ok_;
+  range.min = token0->pos;
+  range.max = token0->pos + token0->size;
+ }
+ 
+ b32 changed = false;
+ if(at_fval){
+  u64 slider_index = get_slider_index();
+  if(ok){
+   String replacement = push_stringf(scratch, "_fval_(%zu)", slider_index);
+   buffer_replace_range(app, buffer, range, replacement);
+   changed = true;
+  }
+ }
+ 
+ if(not ok){
+  vim_set_bottom_text(strlit("ERROR!"));
+ }
+ return changed;
 }
 //~

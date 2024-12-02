@@ -18,12 +18,10 @@ args = parser.parse_args()
 if args.release:
     args.full = True
 run_only = args.action == 'run'
-#hotload_game = "driver.kc" in args.file  # @build_filename_hack
-hotload_game = False
 
 ################ NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-working_on_metaprogram = 0
+working_on_metaprogram = 1
 working_on_editor      = 0
 working_on_game        = 1
 imgui_build_level   = 2
@@ -429,7 +427,7 @@ try:
         imgui_object_files  = [f"{get_file_stem(file)}{DOT_OBJ}" 
                                for file in imgui_cpp_basenames]
 
-        if (not hotload_game) and (not TRACE_COMPILE_TIME):
+        if (not TRACE_COMPILE_TIME):
             # NOTE(kv): cleanup build dir (TODO: arrange our build output directory so we don't have to do manual cleaning crap)
             if build_level >= 1:
                 delete_all_pdb_files(OUTDIR)
@@ -491,7 +489,6 @@ try:
             symlink_force(pjoin(CODE_KV, "config.4coder"),   pjoin(OUTDIR, "config.4coder"))
             symlink_force(pjoin(CODE_KV, "theme-kv.4coder"), pjoin(OUTDIR, 'themes', "theme-kv.4coder"))
             symlink_force(pjoin(CODE, "project.4coder"),     pjoin(OUTDIR, "project.4coder"))
-            symlink_force(pjoin(CODE, "data"),               pjoin(OUTDIR, "data"))
 
 except Exception as e:
     print(f'Error: {e}')

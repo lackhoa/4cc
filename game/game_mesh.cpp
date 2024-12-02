@@ -38,7 +38,7 @@ plane_segment_intersect(v3 n, v1 d, v3 p0, v3 p1)
  return result;
 }
 
-force_inline b32
+kv_inline b32
 is_outside_plane(v3 n, v1 d, v3 p)
 {
  return (dot(p, n) + d) >= 0.f;

@@ -4,11 +4,6 @@ struct T_Table{
  arrayof<String>   field_names;
  arrayof<String *> items;
 };
-struct Template_Node{
- String text;
- i32 field_index;
- b32 quoted;
-};
 function i32
 get_field_count(T_Table *table){
  return (table->field_names.count);
@@ -273,12 +268,12 @@ template_main(Meta_Parsed_File source)
  Scratch_Block file_arena;
  b32 ok = true;
  //Meta_Printer printer;
- Stringz out_dir = pjoin(file_arena, path_dir(source.name), "generated");
+ Stringz out_dir = pjoin(file_arena, path_dir(source.name), strlit("generated"));
  
  Ed_Parser parser_value = m_parser_from_token_list(source.data, source.token_list);
  Ed_Parser *parser = &parser_value;
  arrayof<T_Table> tables;
- init_dynamic(tables, file_arena, 128);
+ init_dynamic(tables, file_arena, 16);
  
  b32 parsing = true;
  while(parsing)

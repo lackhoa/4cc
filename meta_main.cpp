@@ -13,6 +13,7 @@
 #include "4coder_malloc_allocator.cpp"
 #include "4coder_token.cpp"
 #include "generated/lexer_cpp.cpp"
+#include "4ed_kv_parser.h"
 #include "4ed_kv_parser.cpp"
 
 #include "meta_print.h"
@@ -20,6 +21,7 @@
 #include "meta_klang.h"
 #include "meta_entity.h"
 #include "meta_main.h"
+#include "meta_template.h"
 
 #include "4ed_api_definition.cpp"
 #include "meta_os.cpp"
@@ -104,7 +106,8 @@ list_files_in_dir(Arena *arena, arrayof<Stringz> &outfiles, char *path,
 }
 //-
 function void
-meta_process_ast(Statement_Root *root){
+meta_process_ast(Statement_Root *root)
+{
  kv_assert(root->kind == Statement_Kind_Root);
  if(DEBUG_vv_name){
   //-Vertex check
@@ -160,10 +163,13 @@ meta_process_ast(Statement_Root *root){
       //-Expression
       cast_to_var(Statement_Expression*, statement_expression, statement);
       Meta_Expression &expr = statement_expression->expression;
-      if(expr.kind == Expression_Kind_Function_Call){
+      if(expr.kind == Expression_Kind_Call){
        Expression_Function_Call &call = expr.function_call;
        if(call.function_name == strlit("vv") or
-          call.function_name == strlit("va")){
+          call.function_name == strlit("va") or
+          call.function_name == strlit("vv_sample") or
+          call.function_name == strlit("send_vert"))
+       {
         //-Is vertex
         String vertex_name = call.arguments[0].identifier;
         {
@@ -255,19 +261,19 @@ main(i32 argc, char **argv)
  b32 ok = true;
  Arena *scratch = &meta_permanent_arena;
  command_name = argv[0];
- char *code_dir = "";
+ Stringz code_dir = empty_string;
  if(argc < 2){
   printf("Usage: %s <code_dir>\n", command_name);
   ok = false;
  }else{
-  code_dir = argv[1];
+  code_dir = SCu8(argv[1]);
  }
  
  {
   //;meta_dirs_init
-  meta_dirs.code     = SCu8(code_dir);
-  meta_dirs.game     = pjoin(scratch, meta_dirs.code, "game");
-  meta_dirs.game_gen = pjoin(scratch, meta_dirs.game, "generated");
+  meta_dirs.code     = code_dir;
+  meta_dirs.game     = pjoin(scratch, meta_dirs.code, strlit("game"));
+  meta_dirs.game_gen = pjoin(scratch, meta_dirs.game, strlit("generated"));
  }
  
  if(ok)
@@ -285,7 +291,7 @@ main(i32 argc, char **argv)
    API_Definition_List list = {};
    for_i1(i,0,alen(api_paths0)){
     //-Build the API definition list
-    Stringz api_path = pjoin(api_scratch, code_dir, api_paths0[i]);
+    Stringz api_path = pjoin(api_scratch, code_dir, SCu8(api_paths0[i]));
     Meta_Parsed_File file = lex_file(api_scratch, api_path);
     api_parser_parse_file(api_scratch, file, &list);
    }
@@ -293,36 +299,44 @@ main(i32 argc, char **argv)
    ok = ok and api_parser_generate(&list);
   }
   
-  {//-My languages
-   arrayof<Stringz> all_paths = {};
-   init_dynamic(all_paths, &malloc_base_allocator, 64);
-   List_File_Params params = {.predicate=is_klang_or_template_file};
-   ok = ok and list_files_in_dir(scratch, all_paths, code_dir, params);
-   ok = ok and list_files_in_dir(scratch, all_paths, to_cstring(meta_dirs.game), params);
-   if(not ok){
-    fprintf(stderr, "failed to list files\n");
+  arrayof<Stringz> all_paths = {};
+  init_dynamic(all_paths, &malloc_base_allocator, 64);
+  List_File_Params params = {.predicate=is_klang_or_template_file};
+  ok = ok and list_files_in_dir(scratch, all_paths, to_cstring(code_dir), params);
+  ok = ok and list_files_in_dir(scratch, all_paths, to_cstring(meta_dirs.game), params);
+  if(not ok){
+   fprintf(stderr, "failed to list files\n");
+  }
+  
+  for_i32(path_index, 0, all_paths.count){
+   //-template files
+   if(not ok){ break; }
+   
+   Stringz path = all_paths[path_index];
+   if(is_template_file(path)){
+    Meta_Parsed_File parsed_file = lex_file(scratch, path);
+    ok = ok and template_main(parsed_file);
    }
+  }
+  
+  {//-klang
+   Scratch_Block klang_arena;
+   arrayof<K_Slider> sliders;
+   init_dynamic(sliders, klang_arena, 512);
    
    for_i32(path_index, 0, all_paths.count){
-    //-klang
+    //-Parsing all the files
     if(not ok){ break; }
     
     Stringz path = all_paths[path_index];
     if(is_klang_file(path)){
      Meta_Parsed_File parsed_file = lex_file(scratch, path);
-     ok = ok and klang_main(parsed_file);
+     ok = ok and klang_main(klang_arena, parsed_file, &sliders);
     }
    }
    
-   for_i32(path_index, 0, all_paths.count){
-    //-template file
-    if(not ok){ break; }
-    
-    Stringz path = all_paths[path_index];
-    if(is_template_file(path)){
-     Meta_Parsed_File parsed_file = lex_file(scratch, path);
-     ok = ok and template_main(parsed_file);
-    }
+   if(ok){
+    klang_print_sliders(sliders.items, sliders.count);
    }
   }
  }

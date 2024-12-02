@@ -29,19 +29,19 @@ string_match(String a, char b){
         a.str[0] == (u8)b);
 }
 //
-force_inline bool
+kv_inline bool
 operator==(String a, String b){
  return string_match(a,b);
 }
-force_inline bool
+kv_inline bool
 operator==(String a, const char *b){
  return a == SCu8(b);
 }
-force_inline bool
+kv_inline bool
 operator==(String a, char b){
  return a.count == 1 && *a.str == b;
 }
-force_inline b32
+kv_inline b32
 char_is_whitespace(u8 c){
  return(c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\f' || c == '\v');
 }
@@ -86,7 +86,7 @@ function b32
 character_is_slash(char c){
  return((c == '/') || (c == '\\'));
 }
-force_inline b32 character_is_slash(u8 c){ return(character_is_slash(char(c))); }
+kv_inline b32 character_is_slash(u8 c){ return(character_is_slash(char(c))); }
 
 function u64
 string_find_first_slash(String str){
@@ -173,12 +173,12 @@ inline String
 SCu8(u8 *str, u8 *one_past_last){
  return(SCu8(str, (u64)(one_past_last - str)));
 }
-force_inline String
+kv_inline String
 SCu8(char *str, u64 length){
  return(SCu8((u8*)str, length));
 }
 //
-force_inline String
+kv_inline String
 SCu8(char *first, char *one_past_last){
  return(SCu8((u8*)first, (u8*)one_past_last));
 }

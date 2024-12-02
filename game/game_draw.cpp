@@ -229,7 +229,7 @@ bez_unit(v3 p0, v2 d0, v2 d3, v3 unit_y, v3 p3){
  }
  return bez_raw(p0, p1, p2, p3);
 }
-force_inline Bezier
+kv_inline Bezier
 bez_unit2(v3 p0, v4 d0d3, v3 unit_y, v3 p3){
  return bez_unit(p0, d0d3.xy, d0d3.zw, unit_y, p3);
 }
@@ -467,7 +467,7 @@ draw(const v3 P0[4], Line_Params params, linum_defparam){
  return draw_cparams(P0,current_line_cparams(),params,linum);
 }
 // NOTE: Line
-force_inline Bezier
+kv_inline Bezier
 bez_line(v3 a, v3 b){
  return Bezier{
   a,
@@ -476,41 +476,41 @@ bez_line(v3 a, v3 b){
   b
  };
 }
-force_inline void
+kv_inline void
 draw(Bezier b, v4 radii, linum_defparam){
  Line_Params params = painter.line_params;
  params.radii = radii;
  draw(b, params, linum);
 }
-force_inline void
+kv_inline void
 draw(Bezier b, i4 radii, linum_defparam){
  Line_Params params = painter.line_params;
  params.radii = i2f6(radii);
  draw(b, params, linum);
 }
 // NOTE: omit params
-force_inline void
+kv_inline void
 draw(Bezier b, linum_defparam){
  draw(b, painter.line_params, linum);
 }
 // NOTE: straight line
-force_inline void
+kv_inline void
 draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  draw(bez_line(a,b), params, linum);
 }
-force_inline void
+kv_inline void
 draw_line(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  params.flags |= Line_Straight;
  draw(bez_line(a,b), params, linum);
 }
-force_inline ARGB_Color
+kv_inline ARGB_Color
 argb_gray(v1 value){
  ClampBot(value,0.0f);
  ClampTop(value,1.0f);
  return argb_pack(v4{repeat3(value),1});
 }
 
-force_inline v4
+kv_inline v4
 v4_gray(v1 value) {
  return v4{repeat3(value),1};
 }
@@ -611,7 +611,7 @@ fill_dbez_inner(const v3 P[4], const v3 Q[4], argb color){
   fill_bezier_inner_2(points, points+4, color, p->fill_depth_offset, p->viz_level);
  }
 }
-force_inline void
+kv_inline void
 fill_dbez(Bezier const&b1, Bezier const&b2, argb color=0, linum_defparam){
  set_linum;
  fill_dbez_inner(b1.e, b2.e, color);
@@ -627,7 +627,7 @@ fill_dbez(v3 a, v3 b, Bezier const&bezier, argb color=0, linum_defparam){
  };
  fill_dbez_inner(ab, bezier.e, color);
 }
-force_inline void
+kv_inline void
 fill_bez(Bezier const&bezier, argb color=0, linum_defparam){
  fill_dbez(bezier.e[0], bezier.e[3], bezier, color, linum);
 }
@@ -690,7 +690,7 @@ fill_patch(v3 P0[4], v3 P1[4],
  copy_array_dst(P[3], P3);
  fill_patch(P, color);
 }
-force_inline void
+kv_inline void
 fill3_symx(v3 a, v3 b, linum_defparam){
  symx_off;
  fill3(a,b,negateX(b),fp(),linum);
@@ -724,7 +724,7 @@ draw_box(mat4 const&transform, linum_defparam) {
  v3 P = O+x+y+z;
  draw(bez_line(P,P-x), 0); draw(bez_line(P,P-y), 0); draw(bez_line(P,P-z), 0);
 }
-force_inline Patch
+kv_inline Patch
 patch(Bezier const&p0, Bezier const&p1, Bezier const&p2, Bezier const&p3) {
  Patch result;
  copy_array_dst(result.e[0], p0.e);
@@ -734,19 +734,19 @@ patch(Bezier const&p0, Bezier const&p1, Bezier const&p2, Bezier const&p3) {
  return result;
 }
 
-force_inline Patch
+kv_inline Patch
 patch_symx(Bezier const&P0, Bezier const&P1) {
  Bezier N0 = negateX(P0);
  Bezier N1 = negateX(P1);
  return patch(P0, P1, N1, N0);
 }
-force_inline v4
+kv_inline v4
 big_to_small() {
  v1 big   = 1.f;
  v1 small = 0.5f;
  return V4(big, big, small, small);
 }
-force_inline v4
+kv_inline v4
 small_to_big() {
  v1 big   = 1.f;
  v1 small = 0.5f;
@@ -759,13 +759,13 @@ lp(v1 alignment_min, i4 radii={}){
  result.radii         = i2f6(radii);
  return result;
 }
-force_inline void
+kv_inline void
 duo_line(v3 a, v3 b, v3 c, linum_defparam){
  set_linum;
  draw(bez_line(a,b), lp(small_to_big()), 0);
  draw(bez_line(b,c), lp(big_to_small()), 0);
 }
-force_inline void
+kv_inline void
 duo_line(v3 array[3], linum_defparam){
  set_linum;
  duo_line(array[0], array[1], array[2], 0);

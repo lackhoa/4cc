@@ -50,3 +50,20 @@ CUSTOM_DOC("a utility to combat file corruption")
  
  close_file(outfile);
 }
+
+ if(ep_maybe_id(parser, strlit("wrap_function"))){
+  ep_char(parser, '(');
+  String function_name = ep_id(parser);
+  Token *last_token = ep_get_token(parser);
+  ep_char(parser, ')');
+  if(parser->ok_){
+   String replacement = push_stringf(scratch, "%.*s__return\n%.*s(%.*s__params)",
+                                     strexpand(function_name),
+                                     strexpand(function_name),
+                                     strexpand(function_name));
+   Range_i64 range = {token0->pos, last_token->pos+1};
+   buffer_replace_range(app, buffer, range, replacement);
+  }
+ }
+
+///

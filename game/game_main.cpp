@@ -22,8 +22,6 @@
 #define ED_API_USER_STORE_GLOBAL 1
 #define AD_IS_DRIVER 0
 #include "4coder_game_shared.h"
-#define ED_PARSER_BUFFER 1
-#include "4ed_kv_parser.cpp"
 #include "runtime_type_info.h"
 
 #include "ad_data.h"
@@ -38,6 +36,7 @@
 
 #include "game_draw.cpp"
 
+#include "4ed_kv_parser.cpp"
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 
@@ -48,16 +47,17 @@
 #include "generated/send_bez.gen.cpp"
 
 #include "framework.h"
+#include "sliders.h"
 #include "game_api.cpp"
 
-#pragma push_macro("fval")
-#undef fval
-#define fval fast_fval
+#pragma push_macro("fval_text")
+#undef fval_text
+#define fval_text fast_fval
 #include "game_anime.cpp"
 #include "game_utils.cpp"
 #include "game_body.cpp"
 #include "generated/driver.gen.cpp"
-#pragma pop_macro("fval")
+#pragma pop_macro("fval_text")
 
 #include "ad_serialize.cpp"
 
@@ -66,7 +66,7 @@
   1. Colors are in linear space (todo precision loss if passed as u32)
  */
 
-#define X(N) function N##_return N(N##_params);
+#define X(N) function wrap_function(N);
 // Note: forward declare
 X_GAME_API_FUNCTIONS(X)
 //
@@ -78,7 +78,7 @@ just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
          (input->key_state_changes[keycode] > 0) &&
          (input->active_mods == modifiers));
 }
-force_inline b32
+kv_inline b32
 key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
  return ((input->key_states[keycode]) &&
          (input->active_mods == modifiers));
@@ -99,8 +99,9 @@ key_direction(Game_Input *input, Key_Mods wanted_mods,
  }
  return result;
 }
-DLL_EXPORT game_api_export_return 
-game_api_export(game_api_export_params) {
+DLL_EXPORT game_api_export__return
+game_api_export(game_api_export__params)
+{
  api.is_valid = true;
 #define X(N) api.N = N;
  X_GAME_API_FUNCTIONS(X)
@@ -112,7 +113,7 @@ get_viewport_index(i32 viewport_id) {
     kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
     return (viewport_id - 1);
 }
-force_inline b32
+kv_inline b32
 camera_data_equal(Camera_Data *a, Camera_Data *b) {
  return block_match(a, b, sizeof(Camera_Data));
 }
@@ -157,8 +158,8 @@ current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.1f, MIN_SPEED
  return animation_ended;
 }
 // TODO: Merge this with game_update, come on why are there two calls instead of one?
-function game_viewport_update_return
-game_viewport_update(game_viewport_update_params){
+function game_viewport_update__return
+game_viewport_update(game_viewport_update__params){
  b32 should_animate_next_frame = false;
  i32 viewport_index = get_viewport_index(viewport_id);
  Viewport *viewport = &state->viewports[viewport_index];
@@ -308,32 +309,34 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer) {
 #define pretty_print(PRINTER, POINTER) \
 pretty_print_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
 
-inline Camera_Data*
+inline Camera_Data *
 get_target_camera(Game_State *state, i32 viewport_index){
  return &state->viewports[viewport_index].target_camera;
 }
 function void
-read_debug_string(Data_Reader &r, Stringz string)
+read_debug_string(Binary_Reader *r, Stringz string)
 {
  usize size = string.size+1;
- if(r.end_pos - r.pos < isize(size)){
-  r.ok = false;
+ if(r->end_pos - r->pos < isize(size)){
+  r->ok = false;
  }
- if(r.ok){
-  r.ok = block_match(r.pos, string.str, size);
-  r.pos += size;
+ if(r->ok){
+  r->ok = block_match(r->pos, string.str, size);
+  r->pos += size;
  }
 }
 function b32
 game_load(Game_State *state, App *app, Stringz filename)
 {// IMPORTANT(kv) This function overwrites edit history.
  b32 ok = true;
- Scratch_Block scratch(app);
+ 
+ Arena *load_arena = &state->data_load_arena;
+ arena_clear(load_arena);
  
  String file_data = {};
- {//-kv Read the whole file into memory, because the file isn't gonna be big
-  //  if it was big, we wouldn't have enough memory to handle it anyway.
-  file_data = read_entire_file(scratch, filename);
+ {//NOTE(kv) Read the whole file into memory, because we won't have large files.
+  //  Plus it makes string handling more convenient.
+  file_data = read_entire_file(load_arena, filename);
   ok = file_data.len > 0;
   if(not ok){
    print_message(app, strlit("Game load: can't read the file!\n"));
@@ -342,22 +345,16 @@ game_load(Game_State *state, App *app, Stringz filename)
  
  if(ok){
   //-;deserialize
-  Arena *load_arena = &state->data_load_arena;
-  arena_clear(load_arena);
-  
-  Data_Reader r = {};
-  r.ok      = true;
-  r.base    = file_data.data;
-  r.pos     = r.base;
-  r.end_pos = r.base + file_data.size;
+  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
+  Binary_Reader *r = &reader;
   
   {
    u32 magic = read_binary_u32(r);
    if(magic != autodraw_data_magic){
-    r.ok = false;
+    r->ok = false;
    }
-   r.read_version = read_binary_u32(r);
-   printf_message(app, "read version: %u\n", r.read_version);
+   r->read_version = read_binary_u32(r);
+   printf_message(app, "read version: %u\n", r->read_version);
    u64 timestamp = read_binary_u64(r);
    
    {
@@ -380,7 +377,7 @@ game_load(Game_State *state, App *app, Stringz filename)
     Modeler *m = &state->modeler;
     clear_modeling_data(m);
     
-    if(r.read_version >= Version_Binary_Vertex)
+    if(r->read_version >= Version_Binary_Vertex)
     {//-Vertices
      read_debug_string(r, strlit("vertices"));
      i32 vertex_count;
@@ -405,7 +402,7 @@ game_load(Game_State *state, App *app, Stringz filename)
    }
   }
   
-  ok = r.ok;
+  ok = r->ok;
   if(!ok){
    printf_message(app, "ERROR: Game load: deserialization failed\n");
   }
@@ -413,6 +410,26 @@ game_load(Game_State *state, App *app, Stringz filename)
  
  if(ok){
   printf_message(app, "Game load succeeded\n");
+ }
+ 
+ {
+  Modeler *m = &state->modeler;
+  for_i32(i, 1, m->vertices.count-1){
+   for_i32(j, i+1, m->vertices.count){
+    String a = m->vertices[i].name;
+    String b = m->vertices[j].name;
+    if(a == b){
+     ok = false;
+     printf_message(app, "ERROR: Conflicting vertex names found in save file!\n");
+     break;
+    }
+   }
+   if(not ok) break;
+  }
+  
+  if(sending_vertices){
+   m->vertices.count = 1;
+  }
  }
  
  state->load_failed = !ok;
@@ -601,8 +618,8 @@ render_data(Modeler &m){
 #endif
 }
 //TODO(kv) @cleanup We wanna change this from update+render to update_and_render
-function game_render_return
-game_render(game_render_params){
+function game_render__return
+game_render(game_render__params){
  Modeler &mo = state->modeler;
  Painter &pa = painter;
  pa = {};
@@ -610,7 +627,7 @@ game_render(game_render_params){
  Scratch_Block scratch;
  Viewport *viewport = &state->viewports[viewport_id-1];
  
- i32 scale_down_pow2 = fval(0); // ;scale_down_slider
+ i32 scale_down_pow2 = fval_text(0); // ;scale_down_slider
  v1 meter_to_pixel;
  {
   ClampBot(scale_down_pow2, 0);
@@ -689,8 +706,8 @@ import_api_from_editor(API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new){
  ed_api_read_vtable(ed_api);
  ed_api_read_vtable_new(ed_api_new);
 }
-function game_init_return
-game_init(game_init_params)
+function game_init__return
+game_init(game_init__params)
 {
  import_api_from_editor(ed_api, ed_api_new);
  //@game_bootstrap_arena_zero_initialized
@@ -725,12 +742,11 @@ game_init(game_init_params)
   }
  }
  {// NOTE: Save/Load business load_game
-  Scratch_Block scratch(app);
-  String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-  state->save_dir         = pjoin(arena, binary_dir, "data");
-  state->backup_dir       = pjoin(arena, state->save_dir, "backups");
-  state->autosave_path    = pjoin(arena, state->save_dir, "autosave.ad");
-  state->manual_save_path = pjoin(arena, state->save_dir, "manual.ad");
+  String code_dir = get_code_directory(app);
+  state->save_dir         = pjoin(arena, code_dir, strlit("data"));
+  state->backup_dir       = pjoin(arena, state->save_dir, strlit("backups"));
+  state->autosave_path    = pjoin(arena, state->save_dir, strlit("autosave.ad"));
+  state->manual_save_path = pjoin(arena, state->save_dir, strlit("manual.ad"));
   
   {// NOTE: Load state
    state->data_load_arena = make_arena();
@@ -767,13 +783,18 @@ function void
 meta_init(){
  init_entity_type_info_table();
 }
-function game_reload_return
-game_reload(game_reload_params)
+function game_reload__return
+game_reload(game_reload__params)
 {// Game_State
  meta_init();
  import_api_from_editor(ed_api, ed_api_new);
  {//-Modeler reload
-  clear_modeling_data(&state->modeler);
+  Modeler *m = &state->modeler;
+  if(sending_vertices){
+   m->vertices.set_count(1);
+  }
+  m->curves.set_count(1);
+  m->bones.set_count(1);
  }
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
@@ -786,20 +807,19 @@ game_reload(game_reload_params)
   //-
   slow_line_map       = state->slow_line_map;
   slow_line_map.count = 0;
+  
+  create_sliders(dll_arena);
  }
  {//-NOTE: Dear ImGui reload
   IMGUI_CHECKVERSION();
-  
-  {
-   auto &imgui = state->imgui_state;
-   ImGui::SetCurrentContext(imgui.ctx);
-   ImGui::SetAllocatorFunctions(imgui.alloc_func, imgui.free_func, imgui.user_data);
-  }
+  auto &imgui = state->imgui_state;
+  ImGui::SetCurrentContext(imgui.ctx);
+  ImGui::SetAllocatorFunctions(imgui.alloc_func, imgui.free_func, imgui.user_data);
  }
  state->sending_data = true;
 }
-function game_shutdown_return
-game_shutdown(game_shutdown_params){
+function game_shutdown__return
+game_shutdown(game_shutdown__params){
  end_temp_memory(state->dll_temp_memory);
 }
 //~
@@ -872,8 +892,8 @@ game_save(Game_State *state, App *app, b32 is_manual)
   }
  }
  {
-  Stringz temp_path = pjoin(scratch, state->save_dir, "temp_file.ad");
-  Stringz old_path = pjoin(scratch, state->save_dir, "temp_old_file.ad");
+  Stringz temp_path = pjoin(scratch, state->save_dir, strlit("temp_file.ad"));
+  Stringz old_path  = pjoin(scratch, state->save_dir, strlit("temp_old_file.ad"));
   if(ok)
   {//-serialize to temp file
    FILE *temp_outfile = open_file(temp_path, "wb");
@@ -884,6 +904,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
    close_file(temp_outfile);
   }
   b32 moved_to_old_path = false;
+  //TODO(kv) are we overdoing this? we already have backup logic, why do we care if this fails?
   if(ok){
    //-fail-safe setup
    if(file_exists(outpath)){
@@ -914,14 +935,14 @@ game_save(Game_State *state, App *app, b32 is_manual)
 // NOTE(kv): Can you believe we used to have complicated crap like "distance_level"?
 // There is no "distance_level", fool! There's only distance!
 inline v1
-update_camera_distance(v1 distance, i1 delta_level) {
+update_camera_distance(v1 distance, i1 delta_level){
  const v1 mult = 1.3f;
  distance *= integer_power(mult, delta_level);
  return distance;
 }
 
-function game_send_command_return
-game_send_command(game_send_command_params) {
+function game_send_command__return
+game_send_command(game_send_command__params) {
  state->command_queue.push_value(command_name);
 }
 
@@ -1023,8 +1044,8 @@ set_camera_frontal_or_profile(Camera_Data &cam){
  }
 }
 // TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
-function game_update_return
-game_update(game_update_params)
+function game_update__return
+game_update(game_update__params)
 {
 #if SILLY_IMGUI_PARTY 
  FxTestBed();
@@ -1160,7 +1181,7 @@ game_update(game_update_params)
   }
   if(active_buffer_name == DRIVER_FILE_NAME){
    i64 linum = get_current_line_number2(app, view_id, buffer);
-   Modeler &m = *modeler;
+   Modeler *m = modeler;
    Vertex_Ref v = get_vertex_by_linum(m,linum);
    if(v.vertex){
     hot_prim_id = prim_id_from_vertex_index(v.index);
@@ -1495,10 +1516,10 @@ game_update(game_update_params)
     v3 dir = noz( mat4vec(cam.world_from_cam, V3(dir_v2)) );
     v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
     v1 zoom = absolute(cursor_camz/cam.focal_length);
-    v1 acc = zoom * 0.1f * fval(2.0423f);
+    v1 acc = zoom * 0.1f * fval_text(2.0423f);
     if (shifted){ acc *= 10.f; }
     v1 new_vel = cursor.vel + dt*acc;
-    v1 max_vel = zoom*0.1f*fval(1.0625f);
+    v1 max_vel = zoom*0.1f*fval_text(1.0625f);
     if (shifted){ max_vel *= 10.f; }
     ClampTop(new_vel, max_vel);
     v3 delta = 0.5f*(cursor.vel+new_vel)*dt*dir;

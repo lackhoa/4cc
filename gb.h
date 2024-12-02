@@ -1273,10 +1273,6 @@ gb_memmove(void *dest, void const *source, isize n) {
 	u8 *d = cast(u8 *)dest;
 	u8 const *s = cast(u8 const *)source;
  
-	if (dest == NULL) {
-		return NULL;
-	}
- 
 	if (d == s) {
 		return d;
 	}
@@ -2296,7 +2292,8 @@ inline b32 gb_file_exists(char const *name) {
 #endif
 
 #if defined(GB_SYSTEM_WINDOWS)
-gbFileTime gb_file_last_write_time(char const *filepath) {
+function gbFileTime
+gb_file_last_write_time(char const *filepath) {
 	ULARGE_INTEGER li = {};
 	FILETIME last_write_time = {};
 	WIN32_FILE_ATTRIBUTE_DATA data = {};
@@ -2311,14 +2308,15 @@ gbFileTime gb_file_last_write_time(char const *filepath) {
 		last_write_time = data.ftLastWriteTime;
 	}
 	gb_free(a, w_text);
-
+ 
 	li.LowPart = last_write_time.dwLowDateTime;
 	li.HighPart = last_write_time.dwHighDateTime;
 	return cast(gbFileTime)li.QuadPart;
 }
 
 
-inline b32 gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
+function b32
+gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
 	wchar_t *w_old = NULL;
 	wchar_t *w_new = NULL;
 	gbAllocator a = gb_heap_allocator();
@@ -2342,7 +2340,9 @@ inline b32 gb_file_copy(char const *existing_filename, char const *new_filename,
 	return result;
 }
 
-b32 gb_file_move(char const *existing_filename, char const *new_filename) {
+function b32
+gb_file_move(char const *existing_filename, char const *new_filename)
+{
 	wchar_t *w_old = NULL;
 	wchar_t *w_new = NULL;
 	gbAllocator a = gb_heap_allocator();
@@ -2363,7 +2363,8 @@ b32 gb_file_move(char const *existing_filename, char const *new_filename) {
 	return result;
 }
 
-b32 gb_file_remove(char const *filename){
+function b32
+gb_file_remove(char const *filename){
 	wchar_t *w_filename = NULL;
 	gbAllocator a = gb_heap_allocator();
 	b32 result = false;
@@ -2376,21 +2377,23 @@ b32 gb_file_remove(char const *filename){
 	return result;
 }
 
-#else
+#else//-Windows
 
-gbFileTime gb_file_last_write_time(char const *filepath) {
+function gbFileTime
+gb_file_last_write_time(char const *filepath) {
 	time_t result = 0;
 	struct stat file_stat;
 
 	if (stat(filepath, &file_stat) == 0) {
 		result = file_stat.st_mtime;
 	}
-
+ 
 	return cast(gbFileTime)result;
 }
 
 
-inline b32 gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
+function b32
+gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
 #if defined(GB_SYSTEM_OSX)
 	return copyfile(existing_filename, new_filename, NULL, COPYFILE_DATA) == 0;
 #else
@@ -2410,14 +2413,14 @@ inline b32 gb_file_copy(char const *existing_filename, char const *new_filename,
 #endif
 }
 
-b32 gb_file_move(char const *existing_filename, char const *new_filename) {
+function b32 gb_file_move(char const *existing_filename, char const *new_filename) {
 	if (link(existing_filename, new_filename) == 0) {
 		return unlink(existing_filename) != -1;
 	}
 	return false;
 }
 
-b32 gb_file_remove(char const *filename) {
+function b32 gb_file_remove(char const *filename) {
 #if defined(GB_SYSTEM_OSX)
 	return unlink(filename) != -1;
 #else

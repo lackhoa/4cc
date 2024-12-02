@@ -1,12 +1,5 @@
 /* NOTE(kv): This file is for miscellaneous commands */
 
-function Ed_Parser
-make_ed_parser_at_cursor(App *app, Scan_Direction direction=Scan_Forward){
- GET_VIEW_AND_BUFFER;
- Token_Iterator_Array token_it = get_token_it_at_cursor(app);
- Ed_Parser result = make_ep_from_buffer(app, buffer, token_it, 0, direction);
- return result;
-}
 global Table_u64_u64 shifted_version_of_characters;
 VIM_COMMAND_SIG(kv_shift_character) {
  GET_VIEW_AND_BUFFER;
@@ -60,8 +53,6 @@ VIM_REQUEST_SIG(byp_apply_uncomment){
 		}
 	}
 }
-
-
 inline void 
 byp_make_vim_request(App *app, BYP_Vim_Request request)
 {
@@ -1364,7 +1355,7 @@ CUSTOM_DOC("")
 }
 
 function void
-handle_tab_normal_mode(App *app) {
+handle_tab_normal_mode(App *app){
  GET_VIEW_AND_BUFFER;
     
  b32 try_indent = false;
@@ -1374,7 +1365,7 @@ handle_tab_normal_mode(App *app) {
   try_indent = auto_indent_line_at_cursor(app);
  }
  
- if(!try_indent){
+ if(not try_indent){
   change_active_primary_view(app);
  }
 }
@@ -1382,16 +1373,7 @@ handle_tab_normal_mode(App *app) {
 function void
 handle_space_command(App *app)
 {
-#if 0
- if (game_on_ro)
- {
-  i1 viewport_id = get_active_game_viewport_id(app);
-  global_game_code.game_last_preset(ed_game_state_pointer, viewport_id);
- }
- //else if ( get_active_game_viewport_id(app) ) { turn_game_on(); }
- else
-#endif
-  write_space_command(app);
+ write_space_command(app);
 }
 
 function void
@@ -1654,7 +1636,7 @@ jump_between_meta_and_generated_code(App *app){
   }
  }else{
   //-Generator -> Generated
-  String gen_dir = pjoin(scratch, buffer_dir, "generated");
+  String gen_dir = pjoin(scratch, buffer_dir, strlit("generated"));
   Stringz map_file_path;
   {
    Printer p = make_printer_buffer(scratch, 256);
@@ -1719,5 +1701,38 @@ function void
 cmd_open_message_buffer(App *app)
 {
  set_buffer_named(app, strlit("*messages*"));
+}
+function void
+cmd_expand_snippet(App *app)
+{
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block scratch;
+ Ed_Parser parser_value = make_ed_parser_at_cursor(app);
+ Ed_Parser *parser = &parser_value;
+ parser->string_arena = scratch;
+ 
+ b32 done = false;
+ 
+ Game_API *game = get_game_code();
+ if(game){
+  done = game->fui_generate_slider(app);
+ }
+ 
+ if(not done){
+  //-Editor
+  Token *token0 = ep_get_token(parser);
+  if(ep_maybe_id(parser, strlit("funwrap"))){
+   Token *last_token = ep_get_token(parser);
+   String function_name = ep_id(parser);
+   if(parser->ok_){
+    String replacement = push_stringf(scratch, "%.*s__return\n%.*s(%.*s__params)",
+                                      strexpand(function_name),
+                                      strexpand(function_name),
+                                      strexpand(function_name));
+    Range_i64 range = {token0->pos, last_token->pos + last_token->size};
+    buffer_replace_range(app, buffer, range, replacement);
+   }
+  }
+ }
 }
 //~EOF

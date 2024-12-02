@@ -152,11 +152,11 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
   }
  }
  {//-Transitional functions (aggravation: 100%)
-  auto member_is_ref = [&](M_Struct_Member &member)->b32{
+  auto_lambda member_is_ref = [&](M_Struct_Member &member)->b32{
    return (member.type.name==strlit("Vertex_Index") ||
            member.type.name==strlit("Curve_Index"));
   };
-  auto print_members_type_name = [&](Printer &p, Union_Variant &variant)->void{
+  auto_lambda print_members_type_name = [&](Printer &p, Union_Variant &variant)->void{
    //-NOTE Must call this within separator block!
    for_i32(im,0,variant.struct_members.count){
     M_Struct_Member &member = variant.struct_members[im];
@@ -175,7 +175,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
     separator(p);
    }
   };
-  auto print_prototype = [&](Printer &p, Union_Variant &variant, b32 is_declaration)->void{
+  auto_lambda print_prototype = [&](Printer &p, Union_Variant &variant, b32 is_declaration)->void{
    p<"function void\n"<"send_bez_"<variant.name_lower;
    m_parens{
     separator_block(p, ", "){
@@ -192,7 +192,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    }
   };
   {//-Header
-   Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, "send_bez.gen.h"));
+   Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, strlit("send_bez.gen.h")));
    {//-get_p0_index_or_zero / get_p3_index_or_zero
     m_location;
     for_i32(p0_p3_index,0,2){
@@ -356,13 +356,13 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    close_file(p);
   }
   {//-Implementation
-   Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, "send_bez.gen.cpp"));
+   Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, strlit("send_bez.gen.cpp")));
    m_location;
    for_i1(variant_index,0,variants.count){
     Union_Variant &variant = variants[variant_index];
     if(variant.name != "Fill3"){
      print_prototype(p, variant, false); m_braces_newline{
-      p<"Modeler &m = *painter.modeler;\n";
+      p<"Modeler *m = painter.modeler;\n";
       //-Fetch all the references
       for_i32(member_index,0,variant.struct_members.count){
        M_Struct_Member &member = variant.struct_members[member_index];

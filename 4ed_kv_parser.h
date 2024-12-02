@@ -98,4 +98,48 @@ ed_parser_recovery_begin(Ed_Parser *pointer){
 //NOTE(kv) Sadly this cannot be a defer block, because we need to store the recovery on the stack!
 #define ep_recovery_block(parser_pointer) \
 Ed_Parser_Recovery line_unique_var = ed_parser_recovery_begin(parser_pointer);
+//-Constructors
+#if ED_PARSER_BUFFER
+function Ed_Parser
+make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
+                    Arena *string_arena=0,
+                    Scan_Direction direction=Scan_Forward){
+ b32 ok;
+ if(it.kind == TokenIterator_Array){
+  ok = it.array.count;
+ }else if(it.kind == TokenIterator_List){
+  ok = it.list.node_count;
+ }else{
+  invalid_code_path;
+ }
+ Ed_Parser result = {
+  .ok_               = ok,
+  .direction         = direction,
+  .it                = it,
+  .string_arena      = string_arena,
+  .original_token_it = it,
+  .Token_Gen_Type    = TG_Buffer,
+  .Token_Gen_Buffer  = {
+   .app   =app,
+   .buffer=buffer,
+  },
+ };
+ return result;
+}
+#endif
+function Ed_Parser
+make_ep_from_string(String string, Token_Iterator const&it){
+ Ed_Parser result = {
+  .ok_               = true,
+  .direction    = Scan_Forward,
+  .it                = it,
+  .original_token_it = it,
+  .Token_Gen_Type    = TG_String,
+  .Token_Gen_String  = {
+   .source=string,
+  },
+ };
+ result.scope_.start_location = &stub_token;
+ return result;
+}
 //-

@@ -242,21 +242,19 @@ kv_view_input_handler(App *app)
    
    update_game_key_states(&input.event);
    
-   b32 is_game_buffer;
-   {
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    is_game_buffer = buffer_viewport_id(app, buffer);
-   }
-   
    b32 handled = false;
    
-   auto game = get_game_code();
-   if ( game )
+   if(vim_state.mode != VIM_Insert)
    {
-    handled = game->is_event_handled_by_game(app, &input.event, is_game_buffer);
+    Game_API *game = get_game_code();
+    if(game){
+     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+     b32 is_game_buffer = buffer_viewport_id(app, buffer);
+     handled = game->is_event_handled_by_game(app, &input.event, is_game_buffer, game_render_on);
+    }
    }
    
-   if (!handled)
+   if(!handled)
    {// NOTE: The normal text editor
     handled = kv_handle_vim_keyboard_input(app, &input.event);
    }

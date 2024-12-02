@@ -72,7 +72,8 @@ user_name = "khoa";
 // Keyboard AltGr setting
 lalt_lctrl_is_altgr = false;
 
-startup_hot_directory = "~/4ed/code";
+code_dir = "~/4ed/code";
+startup_hot_directory = code_dir;
 
 // NOTE(kv): Quick startup file setting
 game_buffer = "*game*";
@@ -88,6 +89,6 @@ startup_file2 = game_file;
 
 DEBUG_draw_hud_p = true;
 dev_double_panel = true;
-dev_disable_game_on_startup = true;
+dev_disable_game_on_startup = false;
 
 //~

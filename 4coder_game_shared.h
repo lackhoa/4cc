@@ -22,9 +22,10 @@
 #include "kv.h"
 #include "4coder_types.h"
 #include "4ed_render_target.h"
-#include "game/fui_ed_api.h"
 #include "4coder_kv_debug.h"
 #include "4coder_token.h"
+#define ED_PARSER_BUFFER 1
+#include "4ed_kv_parser.h"
 #include "4coder_events.h"
 #include "4coder_system_types.h"
 
@@ -122,7 +123,7 @@ DEBUG_VALUE_inner(char *scope, char *name, v3 v, argb color=0)
 }
 
 inline void
-DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0) {
+DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0){
  Debug_Entry entry = {};
  entry.scope=scope;
  entry.name=name;
@@ -130,10 +131,7 @@ DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0) {
  entry.color=color;
  DEBUG_send_entry(entry);
 }
-
-
 //~ NOTE: Game
-
 #if !AD_IS_DRIVER
 struct Game_Input_Public{
  Key_Mods active_mods;
@@ -181,46 +179,62 @@ ed_api_fill_vtable_new(API_VTable_ed_new *table){
 #endif
 
 #if !AD_IS_DRIVER
+struct Game_State;
+
+#define fui_is_active__return b32
+#define fui_is_active__params void
+//
+#define fui_push_active_slider_value__return String
+#define fui_push_active_slider_value__params Arena *arena
+//
+#define fui_at_slider_p__return i64
+#define fui_at_slider_p__params App *app, Buffer_ID buffer, Token_Iterator_Array *it_out
+//
+#define fui_handle_slider__return b32
+#define fui_handle_slider__params App *app, Buffer_ID buffer, String filename, i1 line_number
+//
+#define fui_generate_slider__return b32
+#define fui_generate_slider__params App *app
+
 //-NOTE: game API functions (NOTE: The API is quite simple so let's just macro for now)
-#define game_reload_return void
-#define game_reload_params \
-struct Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time
+#define game_reload__return void
+#define game_reload__params \
+Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time
 // @game_bootstrap_arena_zero_initialized
-#define game_init_return struct Game_State *
-#define game_init_params \
+#define game_init__return Game_State *
+#define game_init__params \
 Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, App *app, \
 Game_ImGui_State &imgui_state
 //
-#define game_shutdown_return void
-#define game_shutdown_params Game_State *state
+#define game_shutdown__return void
+#define game_shutdown__params Game_State *state
 //
-struct game_update_return {
+struct game_update__return {
  b32 should_animate_next_frame;
  arrayof<String> game_commands;
 };
-#define game_update_params \
+#define game_update__params \
 Game_State *state, App *app, i1 active_viewport_id, \
 Game_Input_Public &input_public, Image_Load_Info image_load_info
 //
-#define game_render_return void
-#define game_render_params Game_State *state, App *app, Render_Target *target, i1 viewport_id, Mouse_State mouse, rect2 clip_box
+#define game_render__return void
+#define game_render__params Game_State *state, App *app, Render_Target *target, i1 viewport_id, Mouse_State mouse, rect2 clip_box
 //
-#define game_viewport_update_return b32
-#define game_viewport_update_params Game_State *state, i1 viewport_id, v1 dt
+#define game_viewport_update__return b32
+#define game_viewport_update__params Game_State *state, i1 viewport_id, v1 dt
 // TODO(kv): @cleanup These API calls are not needed,
 // just let the game handle keyboard events by itself!
-#define game_set_preset_return void
-#define game_set_preset_params Game_State *state, i1 viewport_id, i1 preset
+#define game_set_preset__return void
+#define game_set_preset__params Game_State *state, i1 viewport_id, i1 preset
 //
-#define game_last_preset_return void
-#define game_last_preset_params Game_State *state, i1 viewport_id
+#define game_last_preset__return void
+#define game_last_preset__params Game_State *state, i1 viewport_id
 //
-#define is_event_handled_by_game_return  b32
-#define is_event_handled_by_game_params  App *app, Input_Event *event, b32 game_hot
+#define is_event_handled_by_game__return  b32
+#define is_event_handled_by_game__params  App *app, Input_Event *event, b32 game_hot, b32 game_rendered
 //
-#define game_send_command_return void
-#define game_send_command_params Game_State *state, String command_name
-//
+#define game_send_command__return void
+#define game_send_command__params Game_State *state, String command_name
 
 //-Game API function
 
@@ -235,12 +249,11 @@ X(fui_is_active)            \
 X(fui_at_slider_p)          \
 X(fui_push_active_slider_value) \
 X(fui_handle_slider)        \
+X(fui_generate_slider)      \
 X(game_set_preset)          \
 X(game_last_preset)         \
 X(is_event_handled_by_game) \
 X(game_send_command)        \
-
-X_GAME_API_FUNCTIONS(x_function_typedef);
 
 struct Game_API
 {
@@ -248,9 +261,8 @@ struct Game_API
  X_GAME_API_FUNCTIONS(x_function_pointer);
 };
 
-#define game_api_export_return void
-#define game_api_export_params Game_API &api
-typedef game_api_export_return game_api_export_type(game_api_export_params);
+#define game_api_export__return void
+#define game_api_export__params Game_API &api
 #endif
 
 //~
@@ -305,4 +317,17 @@ get_active_buffer(App *app){
 
 #define vim_set_bottom_text_lit(msg) vim_set_bottom_text(strlit(msg))
 
+#define GET_VIEW_AND_BUFFER \
+View_ID   view = get_active_view(app, Access_ReadVisible); \
+Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible); \
+(void)view; (void)buffer
+
+function Ed_Parser
+make_ed_parser_at_cursor(App *app, Scan_Direction direction=Scan_Forward){
+ GET_VIEW_AND_BUFFER;
+ i64 curpos = view_get_cursor_pos(app, view);
+ Token_Iterator_Array token_it = get_token_it_at_pos(app, buffer, curpos);
+ Ed_Parser result = make_ep_from_buffer(app, buffer, token_it, 0, direction);
+ return result;
+}
 //~

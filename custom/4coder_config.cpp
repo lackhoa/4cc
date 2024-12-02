@@ -875,16 +875,18 @@ def_set_config_b32(String_ID key, b32 val){
 
 function String8
 def_get_config_string(Arena *arena, String_ID key){
-    Variable_Handle var = def_get_config_var(key);
-    String result = vars_string_from_var(arena, var);
-    return(result);
+ Variable_Handle var = def_get_config_var(key);
+ String result = vars_string_from_var(arena, var);
+ return(result);
 }
-
 inline String8 
-def_get_config_string(Arena *arena, char *key)
-{
-    // NOTE(kv): a bit slow but who cares
-    return def_get_config_string(arena, vars_intern(SCu8(key)));
+def_get_config_string(Arena *arena, String key) {
+ return def_get_config_string(arena, vars_intern(key));
+}
+inline String8 
+def_get_config_string(Arena *arena, char *key) {
+ // NOTE(kv): a bit slow but who cares
+ return def_get_config_string(arena, vars_intern(SCu8(key)));
 }
 
 function void

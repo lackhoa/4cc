@@ -59,7 +59,7 @@ enum Expression_Kind{
  Expression_Kind_None = 0,
  Expression_Kind_Unknown,
  Expression_Kind_Assignment,
- Expression_Kind_Function_Call,
+ Expression_Kind_Call,
  Expression_Kind_Identifier,
  Expression_Kind_If,
  Expression_Kind_Loop,
@@ -135,6 +135,7 @@ struct Statement_Switch : Statement_Head{
 };
 
 typedef Statement_Declaration Cache_Item;
+
 struct Statement_Cache : Statement_Head{
  i32 id;
  arrayof<Cache_Item> cache_items;
@@ -196,15 +197,29 @@ struct K_Struct{
 function void
 k_print_struct(Printer &p, K_Struct struc);
 //-
-struct Klang_Parser : Ed_Parser{
- arrayof<Statement_Cache*> cache_list;
+struct K_Slider
+{
+ String type;
+ String value;
+};
+struct Klang_Parser : Ed_Parser
+{
+ arrayof<Statement_Cache*> function_cache_list;
  Statement_Head *current_statement;
+ arrayof<K_Slider> *sliders;
 };
 //-
 function Meta_Statements
 k_parse_statement_block(Arena *arena, Klang_Parser *p);
+
 function void
 k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p, Statement_Union *statement);
-function Statement_Head *
-k_parse_statement_to_arena(Arena *arena, Klang_Parser *p);
+
+inline Statement_Head *
+k_parse_statement_to_arena(Arena *arena, Klang_Parser *p)
+{
+ Statement_Union *statement = push_struct(arena, Statement_Union, push_zero());
+ k_parse_statement_to_pointer(arena, p, statement);
+ return &statement->head;
+}
 //-

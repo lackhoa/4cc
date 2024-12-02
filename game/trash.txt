@@ -269,14 +269,14 @@ struct Hit_Result
  v3 n;
 };
 
-force_inline Hit_Type
+kv_inline Hit_Type
 classify_hit(v3 rd, v1 t, v3 n)
 {
  return ((t == 0.f)         ? CSG_Miss :
          (dot(rd, n) > 0.f) ? CSG_Exit : CSG_Enter);
 }
 
-force_inline b32
+kv_inline b32
 is_exiting(v3 rd, v3 n)
 {
  return dot(rd, n) > 0.f;
@@ -1091,4 +1091,52 @@ struct CSG_Tree
     fwrite(preamble_text.str, preamble_text.size, 1, file);
    }
   }
+
+  {//-Interact with the data file
+   String code_dir = get_code_directory(app);
+   //NOTE(kv) The file containing slider index is different from the file containing
+   //  the slider data. Because two editors can read the same file and omg it'll be annoying.
+   Stringz fui_file_path = pjoin(scratch, code_dir, strlit("data"), strlit("autodraw.fui"));
+   b32 created;
+   {
+    FILE *fui_file = open_or_create_file(fui_file_path, "wb", &created);
+    String file_data = read_entire_file_handle(scratch, fui_file);
+    
+    ok = ok and (fui_file != 0);
+    if(ok and not created){
+     //NOTE File exists
+     Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
+     u32 magic_read = read_binary_u32(&reader);
+     if(magic_read != fui_editor_magic){
+      reader.ok = false;
+     }
+     u32 version = read_binary_u32(&reader);
+     next_index = read_binary_u32(&reader);
+     ok = ok and reader.ok;
+    }
+    
+    close_file(fui_file);
+   }
+   
+   if(ok){
+    Stringz fui_file_path_tmp = push_stringfz(scratch, "%s.tmp", to_cstring(fui_file_path));
+    FILE *fui_file_tmp = open_or_create_file(fui_file_path_tmp, "wb");
+    Writer writer_value = make_writer(fui_file_tmp);
+    Writer *writer = &writer_value;
+    write_lvalue(writer, fui_editor_magic);
+    u32 version = 1;
+    write_lvalue(writer, version);
+    
+    write_lvalue(writer, next_index+1);
+    
+    if(not created){
+     remove_file(fui_file_path);
+    }
+    move_file(file_fui_path_tmp, fui_file_path);
+    close_file(fui_file_tmp);
+    ok = ok and writer->ok;
+   }
+  }
+
+
 //~eof

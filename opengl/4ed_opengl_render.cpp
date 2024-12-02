@@ -58,7 +58,7 @@ ogl__check_error()
 #endif
 }
 
-force_inline b32
+kv_inline b32
 ogl__index_valid(GLuint index)
 {
  return index != (GLuint)-1;

@@ -147,13 +147,13 @@ draw_rect_outline(App *app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color c
  draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
 
-force_inline void
+kv_inline void
 draw_rect_outline2(App *app, rect2 rect, v1 thickness, ARGB_Color color)
 {
     draw_rect_outline(app, rect, 0, thickness, color, 0);
 }
 
-force_inline void
+kv_inline void
 draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
 {
     rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
@@ -168,7 +168,7 @@ draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, 
     draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
 
-force_inline void
+kv_inline void
 draw_rect(App *app, rect2 rect, v1 roundness, ARGB_Color color, v1 depth)
 {
     v2 dim = get_dim(rect);
@@ -176,20 +176,20 @@ draw_rect(App *app, rect2 rect, v1 roundness, ARGB_Color color, v1 depth)
     draw_rect_outline(app, rect, roundness, thickness, color, depth);
 }
 
-force_inline void
+kv_inline void
 draw_rect2(App *app, rect2 rect, ARGB_Color color)
 {
     draw_rect(app, rect, 0, color, 0);
 }
 
-force_inline void
+kv_inline void
 ed_draw_disk(App *app, v3 center, v1 radius, ARGB_Color color)
 {
     rect2 square = rect2_center_radius(center.xy, V2(radius, radius));
     draw_rect(app, square, radius, color, center.z);
 }
 
-force_inline void
+kv_inline void
 draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
 {
  draw_circle(app, V3(center,0), radius, color, thickness);

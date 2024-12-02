@@ -27,7 +27,7 @@ begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, u8 *me
 
 function Buffer_Insertion
 begin_buffer_insertion_at_buffered2(App *app, Buffer_ID buffer_id, i64 at, Arena *arena, u64 buffer_cap) {
- u8 *memory = push_size(arena, buffer_cap, 8);
+ u8 *memory = push_size(arena, buffer_cap);
  return(begin_buffer_insertion_at_buffered(app, buffer_id, at, memory, buffer_cap));
 }
 

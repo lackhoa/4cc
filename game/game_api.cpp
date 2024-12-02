@@ -1,5 +1,5 @@
-function game_set_preset_return
-game_set_preset(game_set_preset_params){
+function game_set_preset__return
+game_set_preset(game_set_preset__params){
  if (viewport_id <= 0) { viewport_id = 1; }
  i1 viewport_index = viewport_id - 1;
  Viewport *viewport = &state->viewports[viewport_index];
@@ -7,16 +7,16 @@ game_set_preset(game_set_preset_params){
  viewport->preset      = preset;
 }
 
-function game_last_preset_return
-game_last_preset(game_last_preset_params){
+function game_last_preset__return
+game_last_preset(game_last_preset__params){
  if (viewport_id <= 0) { viewport_id = 1; }
  i1 viewport_index = viewport_id - 1;
  Viewport *viewport = &state->viewports[viewport_index];
  macro_swap(viewport->preset, viewport->last_preset);
 }
 
-function is_event_handled_by_game_return
-is_event_handled_by_game(is_event_handled_by_game_params)
+function is_event_handled_by_game__return
+is_event_handled_by_game(is_event_handled_by_game__params)
 {
  b32 result = false;
  if (event->kind == InputEventKind_KeyStroke)
@@ -27,6 +27,7 @@ is_event_handled_by_game(is_event_handled_by_game_params)
 #define MATCH(CODE) (mods == 0 && code == Key_Code_##CODE)
 #define MATCH_MOD(MOD, CODE)  \
 ( (mods == Key_Mod_##MOD) && (code == Key_Code_##CODE) )
+  
   if (game_hot)
   {
    result = !(MATCH(Tab) ||
@@ -38,8 +39,9 @@ is_event_handled_by_game(is_event_handled_by_game_params)
               (mods == 0 && (Key_Code_0 <= code) && (code <= Key_Code_9)) ||
               false);
   }
-  else
-  {// NOTE: control when game is NOT hot (i.e game view not active)
+  
+  if(not game_hot and game_rendered)
+  {
    result = (MATCH(Space) ||
              MATCH(Q));
   }
@@ -51,12 +53,11 @@ is_event_handled_by_game(is_event_handled_by_game_params)
   //NOTE: We're supposed to detect if the mouse is within the game view,
   // and handle if we're inside, but I'm too lazy ;>
   u32 hot_prim = get_hot_prim_id();
-  if( hot_prim ) {
+  if(hot_prim){
    result = true;
   }
  }
  
  return result;
 }
-
 //~

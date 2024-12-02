@@ -28,7 +28,7 @@ hsv_to_srgb(v1 h, v1 s, v1 v)
  return rgb;
 }
 
-force_inline v3 
+kv_inline v3 
 hsv_to_srgb(v3 hsv)
 {
  return hsv_to_srgb(v3_expand(hsv));
@@ -42,18 +42,18 @@ srgb_to_linear(v4 input)
  input.b = srgb_to_linear1(input.b);
  return input;
 }
-force_inline argb
+kv_inline argb
 srgb_to_linear(argb input)
 {
  v4 value = argb_unpack(input);
  return argb_pack( srgb_to_linear(value) );
 }
-force_inline v4
+kv_inline v4
 srgb_to_linear(v3 input)
 {
  return srgb_to_linear( V4(input,1.0f) );
 }
-force_inline v4
+kv_inline v4
 srgb_to_linear(v1 r, v1 g, v1 b)
 {
  return srgb_to_linear( V4(r,g,b,1.0f) );
