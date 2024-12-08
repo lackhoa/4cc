@@ -38,7 +38,7 @@ plane_segment_intersect(v3 n, v1 d, v3 p0, v3 p1)
  return result;
 }
 
-kv_inline b32
+myinline b32
 is_outside_plane(v3 n, v1 d, v3 p)
 {
  return (dot(p, n) + d) >= 0.f;
@@ -212,7 +212,7 @@ global Mesh the_box_mesh;
 function void
 make_meshes(Arena *arena)
 {
- arena_clear(arena);
+ arena_free(arena);
  {// NOTE: box
   const i1 vertex_count = 8;
   v3 vertices[vertex_count];

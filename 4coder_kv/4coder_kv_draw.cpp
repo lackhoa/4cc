@@ -231,8 +231,9 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
   rect2 prev_clip2 = draw_set_clip(app, clip);
   defer( draw_set_clip(app, prev_clip2); );
   
-  Scratch_Block scratch(app);
-  if (i1 viewport = buffer_viewport_id(app, buffer)){
+  i1 viewport = buffer_viewport_id(app, buffer);
+  b32 is_game = viewport != 0;
+  if(is_game){
    Render_Target *target = get_view_render_target(app, view);
    render_game(app, target, viewport, frame, clip);
   }else{
@@ -259,9 +260,9 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
    }
    
    Token_Array token_array = get_token_array_from_buffer(app, buffer);
-   if(token_array.tokens) {
+   if(token_array.tokens){
     byp_draw_token_colors(app, view, buffer, text_layout_id);
-   } else {
+   }else{
     paint_text_color_fcolor(app, text_layout_id, visible_range, fcolor_id(defcolor_text_default));
    }
    
@@ -310,10 +311,13 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
    draw_text_layout_default(app, text_layout_id);  // NOTE: this highlights the @Notes
    F4_RenderDividerComments(app, buffer, view, text_layout_id);
    
-   fui_draw_slider(app, buffer, clip);
+   if(view_is_active(app, view)){
+    fui_draw_slider(app, clip);
+   }
   }
  }
  
  text_layout_free(app, text_layout_id);
  draw_set_clip(app, prev_clip);
 }
+//-

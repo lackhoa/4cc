@@ -269,14 +269,14 @@ struct Hit_Result
  v3 n;
 };
 
-kv_inline Hit_Type
+myinline Hit_Type
 classify_hit(v3 rd, v1 t, v3 n)
 {
  return ((t == 0.f)         ? CSG_Miss :
          (dot(rd, n) > 0.f) ? CSG_Exit : CSG_Enter);
 }
 
-kv_inline b32
+myinline b32
 is_exiting(v3 rd, v3 n)
 {
  return dot(rd, n) > 0.f;
@@ -428,162 +428,6 @@ hit_test(v3 rd, CSG_Tree *tree, v1 lower_bound /*@tmin_exclusive*/)
   return {hit_time, hit_normal};
  }
 }
-
-// @call_csg_render
-function void
-csg_render(Render_Group *group, v2 dst_dim, argb *csg_buffer)
-{
- v1 default_fvert_delta_scale = 0.1f;
- argb ball_color = argb_blue;
- 
- i1 W = clamp_between(0, cast(i1)(dst_dim.x), 1920);  // @dim_round_down
- i1 H = clamp_between(0, cast(i1)(dst_dim.y), 1080);
- 
- //NOTE: Clear the framebuffer
- block_zero( csg_buffer, W*H*sizeof(argb) );
- 
- v1 far_clip = group->far_clip;
- v1 focal_length = group->focal_length;
- v1 pixel_to_meter = 1.f / group->meter_to_pixel;
- 
- CSG_Group *csg_group = global_csg_group;
- CSG_Tree *csg_tree = 0;
- {//NOTE: CSG tree pre-pass
-  for(CSG_Tree *tree = csg_group->first;
-      tree;
-      tree = tree->next)
-  {
-   if (csg_tree)
-   {
-    CSG_Tree *new_tree = push_struct_zero(viewport_frame_arena, CSG_Tree);
-    new_tree->type = (tree->negated) ? CSG_Subtract : CSG_Union;
-    new_tree->l = csg_tree;
-    new_tree->r = tree;
-    
-    csg_tree = new_tree;
-   }
-   else
-   {
-    csg_tree = tree;
-   }
-  }
- }
- 
- v4 main_color = argb_unpack(argb_silver);
- 
- //~IMPORTANT: Danger zone! Mega loop!
- for_i1(py,0,H)
- {
-  for_i1(px,0,W)
-  {
-   v3 rd;
-   {//note compute rd
-    v1 filmx = pixel_to_meter*(v1(px) - 0.5f*v1(W) + 0.5f);
-    v1 filmy = pixel_to_meter*(v1(py) - 0.5f*v1(H) + 0.5f);
-    v3 pixel_camera_space = V3(filmx, filmy, -focal_length);
-    rd = noz(pixel_camera_space);
-   }
-   
-   v1 time = 0.f;
-   v3 hit_normal = V3();
-   v1 tmin = group->near_clip;
-   {// note: compute hit time
-    CSG_Tree *tree = csg_tree;
-    CSG_Stack stack = {};
-    Temp_Memory_Block temp(viewport_frame_arena); //@speed
-    CSG_Type current_op = CSG_NULL;
-    Hit_Result hit = hit_test(rd, tree, tmin);
-    time = hit.t;
-    hit_normal = hit.n;
-    
-#if 0
-    while(tree)
-    {
-     if (is_op)
-     {//NOTE: Operation
-      CSG_Stack_Entry *entry = push_struct_zero(viewport_frame_arena, CSG_Stack_Entry);
-      entry->operation = tree->type;
-      entry->next_arg = tree->arg2;
-      sll_stack_push(stack.first, entry);
-      
-      tree = tree->arg1;
-     }
-     else
-     {//NOTE: Primitive
-      b32 hit_exiting = false;
-      v1 hit_normal = V3();
-      
-      Hit_Type hit_status;
-      {//note: compute hit status
-       if ((min_time < time) && (time < far_clip))
-       {
-        hit_status = (dot(hit_normal, rd) > 0.f) ? CSG_Exit : CSG_Enter;
-       }
-       else { hit_status = CSG_Miss; }
-      }
-      
-      tree = 0;
-      while(CSG_Stack_Entry *head = stack.first)
-      {
-       if (head->next_arg) 
-       {//NOTE: Compute other arg
-        head->arg1_time = time;
-        head->arg1_normal = hit_normal;
-        tree = head->next_arg;
-        head->next_arg = 0;
-        head->arg1_hit_status = hit_status;
-        break;
-       }
-       else
-       {//NOTE: resolve operation
-        b32 const hl = head->arg1_hit_status;
-        b32 const hr = hit_status;
-        v1 const tl = head->arg1_time;
-        v1 const tr = time;
-        if (action in )
-         CSG_Action *actions = csg_union_table[hl][hr];
-        if ((retl in actions) || (retl_if_closer in actions && (tl <= tr)))
-        {
-         tr = tl;
-         Nr = Nl;
-        }
-        if ((retr in actions) || (retr_if_closer in actions && (tr < tl)))
-        {
-         if (flipr in actions) { Nr = -Nr; }
-         tl = tr;
-         Nl = Nr;
-        }
-        else if ((loopl in actions) || (loopl_if_closer in actions && tl <= tr))
-        {
-         tmin = tl;
-        }
-        
-        time = macro_min(head->arg1_time, time);
-        
-        sll_stack_pop(stack.first);
-       }
-      }
-     }
-    }
-#endif
-   }
-   
-   argb color = 0;
-   if ((time > tmin) && (time < far_clip)) // NOTE: near-far clipping
-   {// ;csg_shading  TODO: hacky lighting... probably inaccurate
-    v1 darkness_fuzz = 0.0f;
-    v4 colorv = main_color;
-    colorv.rgb *= lerp(darkness_fuzz, absolute(hit_normal.z), 1.f);
-    color = argb_pack(colorv);
-   }
-   
-   {// Write it out
-    csg_buffer[py*W + px] = color;
-   }
-  }
- }
-}
-#endif
 
 #if 0
 
@@ -1137,6 +981,65 @@ struct CSG_Tree
     ok = ok and writer->ok;
    }
   }
+
+function i64
+get_millisecond_unix_timestamp()
+{
+#if OS_WINDOWS
+ FILETIME filetime;
+ GetSystemTimeAsFileTime(&filetime); //returns ticks in UTC
+ 
+ LARGE_INTEGER li;
+ li.LowPart  = filetime.dwLowDateTime;
+ li.HighPart = filetime.dwHighDateTime;
+ 
+ // Convert ticks since into seconds
+ i64 UNIX_TIME_START = 0x019DB1DED53E8000; // NOTE January 1, 1970 (start of Unix epoch) in "ticks"
+ i64 result = (li.QuadPart - UNIX_TIME_START) / Thousand(10);  // NOTE 1 tick = 100 nanoseconds
+ return result;
+#endif
+ 
+ // NOTE Use "gettimeofday" for linux
+}
+function u64
+get_slider_index()
+{//NOTE(kv) Since one frame is 16ms, we'll never get past millisecond
+ i64 result = get_millisecond_unix_timestamp();
+ return (u64)result;
+}
+function fui_generate_slider__return
+fui_generate_slider(fui_generate_slider__params)
+{
+ Scratch_Block scratch;
+ GET_VIEW_AND_BUFFER;
+ b32 ok = true;
+ b32 at_fval = false;
+ Range_i64 range;
+ {
+  Ed_Parser parser_value = make_ed_parser_at_cursor(app);
+  Ed_Parser *parser = &parser_value;
+  Token *token0 = ep_get_token(parser);
+  ep_id(parser, strlit("fval"));
+  at_fval = parser->ok_;
+  range.min = token0->pos;
+  range.max = token0->pos + token0->size;
+ }
+ 
+ b32 changed = false;
+ if(at_fval){
+  u64 slider_index = get_slider_index();
+  if(ok){
+   String replacement = push_stringf(scratch, "_fval_(%zu)", slider_index);
+   buffer_replace_range(app, buffer, range, replacement);
+   changed = true;
+  }
+ }
+ 
+ if(not ok){
+  vim_set_bottom_text(strlit("ERROR!"));
+ }
+ return changed;
+}
 
 
 //~eof

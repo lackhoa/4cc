@@ -148,7 +148,7 @@ send_vert_func(Painter &p, String name, v3 pos, i1 linum){
    }
    vertex->name    = name;
    vertex->pos     = pos;
-   vertex->bone_id = current_bone(p)->id;
+   vertex->bone_id = current_bone(&p)->id;
    vertex->linum   = linum;
   }
  }
@@ -156,9 +156,11 @@ send_vert_func(Painter &p, String name, v3 pos, i1 linum){
 //-
 function void
 send_bez_func(String name, Curve_Type type, const Curve_Union &data,
-              Line_Params params, i1 linum){
+              Line_Params params, i1 linum)
+{
  Painter &p = painter;
- if(p.sending_data){
+ if(p.sending_data)
+ {
   Modeler *m = p.modeler;
   if(is_left(p)){
    Curve_Ref existing = get_curve_by_linum(m, linum);
@@ -166,13 +168,13 @@ send_bez_func(String name, Curve_Type type, const Curve_Union &data,
                         m->curves.push_zero());
    curve->cparams  = current_line_cparams_index();
    kv_assert(curve->cparams.v >= 0 and
-             curve->cparams.v <  m->line_cparams.count);
+             u32(curve->cparams.v) < array_count(m->line_cparams));
    curve->type    = type;
    curve->name    = name;
    curve->data    = data;
    curve->params  = params;
    curve->linum   = linum;
-   curve->bone_id = current_bone(p)->id;
+   curve->bone_id = current_bone(&p)->id;
    curve->symx = p.symx;
   }
  }
@@ -247,7 +249,7 @@ clear_edit_history(Modeler_History *h){
  // NOTE(kv): so when we clear, the plan is to just wipe out the memory, and re-initialize everything.
  // NOTE(kv): Later we can make multiple arena pools, and free those.
  if(h->inited){
-  arena_clear(&h->arena);
+  arena_free(&h->arena);
   init_dynamic(h->edit_stack, &h->allocator, 128);
  }
 }
@@ -373,10 +375,11 @@ selecting_vertex(Modeler *m){
  return type_from_prim_id(selected_prim_id(m)) == Prim_Vertex;
 }
 function void
-clear_modeling_data(Modeler *m){
+clear_modeling_data(Modeler *m)
+{
  m->vertices.set_count(1);
  m->curves.  set_count(1);
- m->bones.   set_count(1);
+ array_set_count(m->bones, 1);
  clear_edit_history(&m->history);
 }
 function void
@@ -416,10 +419,10 @@ clear_selection(Modeler *m){
  m->selected_prim_ro   = 0;
  m->active_prims.count = 0;
 }
-xfunction arrayof<Bone> &get_bones(Modeler &m){ return m.bones; }
+xfunction Bone *get_bones(Modeler *m){ return m->bones; }
 //-
-xfunction arrayof<Common_Line_Params> &
-get_line_cparams_list(Modeler &m){
- return m.line_cparams;
+xfunction Common_Line_Params *
+get_line_cparams_list(Modeler *m){
+ return m->line_cparams;
 }
 //~EOF

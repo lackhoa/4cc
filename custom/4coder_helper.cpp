@@ -486,7 +486,7 @@ get_line_side_pos_from_pos(App *app, Buffer_ID buffer, i64 pos, Side side){
 }
 function i64
 get_line_start_pos_from_pos(App *app, Buffer_ID buffer, i64 pos){
-    return(get_line_side_pos_from_pos(app, buffer, pos, Side_Min));
+ return(get_line_side_pos_from_pos(app, buffer, pos, Side_Min));
 }
 function i64
 get_line_end_pos_from_pos(App *app, Buffer_ID buffer, i64 pos){

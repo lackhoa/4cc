@@ -60,7 +60,7 @@ system_memory_reserve(usize wanted_size){
  usize granularity = KB(64);  //TODO(kv) This number is from Raymond Chen, but idk how to query for it?
  usize page_size = system_page_size();
  usize reserve_size = wanted_size + page_size;
- reserve_size = round_up_to_pow2(granularity, reserve_size);
+ reserve_size = align_pow2(granularity, reserve_size);
  
  u8 *os_memory = (u8 *)VirtualAlloc(0, reserve_size, MEM_RESERVE, PAGE_READWRITE);
  VirtualAlloc(os_memory, page_size, MEM_COMMIT, PAGE_READWRITE);  //NOTE Commit the header

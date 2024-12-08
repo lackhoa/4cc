@@ -158,7 +158,7 @@ code_index_update_tick(App *app){
 }
 function void
 default_tick(App *app, Frame_Info frame_info){
- arena_clear(&global_frame_arena);
+ arena_free(&global_frame_arena);
  code_index_update_tick(app);
  if(tick_all_fade_ranges(app, frame_info.animation_dt)){
   animate_in_n_milliseconds(app, 0);

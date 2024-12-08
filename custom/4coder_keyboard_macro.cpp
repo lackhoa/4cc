@@ -6,7 +6,8 @@
 
 function Buffer_ID
 get_keyboard_log_buffer(App *app){
-    return(get_buffer_by_name(app, strlit("*keyboard*"), Access_Always));
+ Models *models = (Models *)app->cmd_context;
+ return models->keyboard_buffer->id;
 }
 
 function void

@@ -7,13 +7,13 @@
 
 //-
 function u64
-round_up_to_pow2(u64 pow2_value, u64 input){
+align_pow2(u64 pow2_value, u64 input){
  u64 mask = pow2_value - 1;
  u64 result = (input + mask) & (~mask);
  return result;
 }
 function void
-round_up_to_pow2(u64 pow2_value, u64 *input){
+align_pow2(u64 pow2_value, u64 *input){
  u64 mask = pow2_value - 1;
  *input = (*input + mask) & (~mask);
 }
@@ -79,7 +79,7 @@ struct Arena
 #if ASAN_ON
  Arena_ASAN_Tracker *last_allocation;  //NOTE(kv) "last" chronologically
 #else
- usize chunk_size;
+ usize default_chunk_size;
  Arena_Chunk *last_chunk;
 #endif
 };
@@ -151,16 +151,16 @@ get_arena_chunk(usize size)
    chunk->next_free = 0;
    store->total_free -= size;
   }else{
-   //-Gotta get a new chunk -> worst!
+   //-Gotta grab a new chunk from OS -> worst!
    usize chunk_pos = store->pos;
    if(store->base == 0){
-    //-Reserve memory from OS
+    //NOTE Reserve memory from OS
     store->base = system_memory_reserve(GB(8));
    }
    usize chunk_size_total = sizeof(Arena_Chunk) + size;
    store->pos = chunk_pos + chunk_size_total;
    if(store->pos > store->committed){
-    //-Commit more memory
+    //NOTE Commit more memory
     u8 *commit_base = store->base + store->committed;
     usize commit_size = MB(128);
     ClampBot(commit_size, chunk_size_total);  //NOTE(kv) Actual constraint
@@ -168,7 +168,7 @@ get_arena_chunk(usize size)
     store->committed += commit_size;
    }
    kv_assert(store->pos <= store->committed);
-   {//-Initialize the new chunk
+   {//NOTE Initialize the new chunk
     chunk = (Arena_Chunk *)(store->base + chunk_pos);
     chunk->size = size;
    }
@@ -178,7 +178,8 @@ get_arena_chunk(usize size)
  return chunk;
 }
 function void
-move_free_thread_local_chunks_to_global(){
+move_free_thread_local_chunks_to_global()
+{
  Thread_Arena_Chunk_Store *store = &thread_arena_chunk_store;
  Arena_Chunk_Store *global_store = &global_arena_chunk_store;
  acquire_ticket_mutex(&global_store->mutex);
@@ -230,7 +231,7 @@ function Arena
 make_arena(u64 chunk_size=KB(4)){
  Arena arena = {};
 #if !ASAN_ON
- arena.chunk_size = chunk_size;
+ arena.default_chunk_size = chunk_size;
 #endif
  return(arena);
 }
@@ -246,7 +247,7 @@ arena_chunk_push(Arena_Chunk *chunk, usize size, usize alignment,
  if(chunk){
   u8 *chunk_base = (u8 *)(chunk+1);
   umm mem_umm = umm(chunk_base + chunk->pos);
-  round_up_to_pow2(alignment, &mem_umm);
+  align_pow2(alignment, &mem_umm);
   u8 *aligned_mem = (u8 *)(mem_umm);
   usize new_pos = (aligned_mem + size) - chunk_base;
   if(new_pos <= chunk->size){
@@ -264,7 +265,7 @@ function u8 *
 arena_push_inner(Arena *arena, usize size, usize alignment,
                  DEBUG_File_Line file_line)
 {
- u8 *pos = 0;
+ u8 *result = 0;
  if(size > 0)
  {
   if(ASAN_ON){
@@ -283,37 +284,43 @@ arena_push_inner(Arena *arena, usize size, usize alignment,
    tracker->prev = arena->last_allocation;
    tracker->size = size;
    arena->last_allocation = tracker;
-   pos = (u8 *)(tracker + 1);
+   result = (u8 *)(tracker + 1);
    ASAN_POISON_MEMORY_REGION(tracker, tracker_size);
   }
 #else
   {//-Non-asan
    {//-First try (fast path)
-    pos = arena_chunk_push(arena->last_chunk, size, alignment, file_line);
+    result = arena_chunk_push(arena->last_chunk, size, alignment, file_line);
    }
-   if(pos == 0)
+   if(result == 0)
    {//-Need new chunk (slow path)
     usize new_chunk_size;
     {
-     ClampBot(arena->chunk_size, KB(4));
-     new_chunk_size = arena->chunk_size;
-     arena->chunk_size *= 2;
-     usize min_chunk_size = round_up_to_next_pow2(size + alignment);
-     ClampBot(new_chunk_size, min_chunk_size);
+     if(arena->last_chunk){
+      new_chunk_size = arena->last_chunk->size << 1;
+     }else{
+      new_chunk_size = arena->default_chunk_size;
+      ClampBot(new_chunk_size, KB(4));
+     }
+     
+     usize min_chunk_size = size + alignment;
+     if(new_chunk_size < min_chunk_size){
+      new_chunk_size = round_up_to_next_pow2(min_chunk_size);
+     }
     }
     Arena_Chunk *chunk = get_arena_chunk(new_chunk_size);
     chunk->prev = arena->last_chunk;
     arena->last_chunk = chunk;
     DEBUG_register_arena_chunk(chunk, file_line);
-    pos = arena_chunk_push(chunk, size, alignment, file_line);
+    result = arena_chunk_push(chunk, size, alignment, file_line);
    }
   }
 #endif
   
-  kv_assert(pos);
-  kv_assert((umm(pos) & align_mask) == 0);
+  kv_assert(result);
+  kv_assert((umm(result) & align_mask) == 0);
  }
- return(pos);
+ return(result);
 }
 function void
 arena_pop_size(Arena *arena, usize size)
@@ -371,7 +378,6 @@ arena_free_last_chunk(Arena *arena)
   
   //NOTE(kv) Should have kept arena->chunk_size constant,
   //  then view the chunk size from the last chunk. Oh well...
-  arena->chunk_size /= 2LL;
   arena->last_chunk = chunk->prev;
   free_arena_chunk(chunk);
  }
@@ -387,11 +393,10 @@ arena_pop_to(Arena *arena, Arena_Chunk *to_chunk, umm to_pos)
    arena_free_last_chunk(arena);
   }
  }
+ 
  kv_assert(to_chunk == arena->last_chunk);
- if(to_pos == 0){
-  //-Empty chunk -> free it!
-  arena_free_last_chunk(arena);
- }else{
+ if(to_chunk)
+ {//NOTE Truncate last chunk
   kv_assert(to_pos <= to_chunk->pos);
   to_chunk->pos = to_pos;
 #if KV_DEBUG_MEMORY
@@ -405,7 +410,7 @@ arena_pop_to(Arena *arena, Arena_Chunk *to_chunk, umm to_pos)
 memory_functions_xlist(x_wrap_function_pointer);
 #endif
 
-kv_inline Push_Params
+myinline Push_Params
 push_default()
 {
  return default_push_params;
@@ -461,7 +466,8 @@ arena_clear(Arena *arena){
 #if ASAN_ON
  arena_free(arena);
 #else
- arena_free(arena);
+ //NOTE(kv) We don't want to free the last chunk.
+ arena_pop_to(arena, arena->last_chunk, 0);
 #endif
 }
 //-
@@ -471,11 +477,13 @@ linalloc_wrap_write(void *dest, void *src, usize size){
  return((u8 *)dest);
 }
 #define push_size arena_push
+#define push_size_zero(arena, size) \
+arena_push(arena, size, 8, push_zero())
 
 #define push_array(arena,T,count,...) \
 (T*)arena_push(arena, sizeof(T)*(count), alignof(T), ##__VA_ARGS__)
 
-#define push_struct(arena,T,...)  push_array(arena,T,1,##__VA_ARGS__)
+#define push_struct(arena,T,...)   push_array(arena,T,1,##__VA_ARGS__)
 
 #define push_array_zero(arena,T,count)   push_array(arena,T,count,push_zero())
 
@@ -487,27 +495,34 @@ linalloc_wrap_write(push_size(arena, size, alignment), source, size)
 
 #define pop_array(arena,T,count)   arena_pop_size(arena, sizeof(T)*(count))
 
+//TODO(kv) I'm so suspicious of anything template-related...
+//  but maybe with inlining, it's fine? Gah!
 template<class T>
-inline T *
+myinline T *
 push_value(Arena *arena, const T &value){
  T *pointer = push_struct(arena, T);
  *pointer = value;
  return pointer;
 }
+//IMPORTANT(kv) I don't use this mechanism anymore when arenas are so cheap.
+//  Just make a new arena, then call clear at the start/end of the loop.
+//  That way we don't accidentally push onto an arena while in a temp block.
 struct Temp_Memory_Block{
  Temp_Memory temp;
  //-
- Temp_Memory_Block(Temp_Memory temp){
+ myinline Temp_Memory_Block(Temp_Memory temp){
   this->temp = temp;
  }
- Temp_Memory_Block(Arena *arena){
+ myinline Temp_Memory_Block(Arena *arena){
   this->temp = begin_temp_memory(arena);
  }
- ~Temp_Memory_Block(){
+ myinline ~Temp_Memory_Block(){
   end_temp_memory(this->temp);
  }
- void restore(void){
+ myinline void restore(void){
   end_temp_memory(this->temp);
  }
 };
+
+thread_local Arena thread_permanent_arena;
 //-

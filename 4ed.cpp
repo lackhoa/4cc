@@ -292,7 +292,7 @@ app_init(Thread_Context *tctx, Models *models, String current_directory)
   { str8_lit("*messages*"), &models->message_buffer , true , },
   { str8_lit("*scratch*") , &models->scratch_buffer , false, },
   { str8_lit("*log*")     , &models->log_buffer     , true , },
-  //{ str8_lit("*keyboard*"), &models->keyboard_buffer, true , },
+  { str8_lit("*keyboard*"), &models->keyboard_buffer, true , },
  };
  
  Buffer_Hook_Function *begin_buffer_func = models->begin_buffer;
@@ -549,7 +549,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
    begin_buffer_func(&app, models->message_buffer->id);
    begin_buffer_func(&app, models->scratch_buffer->id);
    begin_buffer_func(&app, models->log_buffer->id);
-   //begin_buffer_func(&app, models->keyboard_buffer->id);
+   begin_buffer_func(&app, models->keyboard_buffer->id);
   }
  }
  
@@ -591,7 +591,6 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
     continue;
    }
    
-#if 0
    // NOTE(allen): record to keyboard history
    if (simulated_input->kind == InputEventKind_KeyStroke ||
        simulated_input->kind == InputEventKind_KeyRelease ||
@@ -600,8 +599,6 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
     String key_line = stringize_keyboard_event(scratch, simulated_input);
     output_file_append(tctx, models, models->keyboard_buffer, key_line);
    }
-#else
-#endif
   }
   
   b32 event_was_handled = false;
@@ -695,7 +692,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   }
  }
  
- arena_clear(&models->virtual_event_arena);
+ arena_free(&models->virtual_event_arena);
  models->free_virtual_event = 0;
  models->first_virtual_event = 0;
  models->last_virtual_event = 0;

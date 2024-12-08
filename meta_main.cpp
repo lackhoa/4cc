@@ -7,6 +7,7 @@
 
 #include "4coder_token.h"
 #include "generated/lexer_cpp.h"
+#include "4ed_base.h"
 #include "4ed_api_definition.h"
 
 #include "4coder_stringf.cpp"
@@ -164,14 +165,15 @@ meta_process_ast(Statement_Root *root)
       cast_to_var(Statement_Expression*, statement_expression, statement);
       Meta_Expression &expr = statement_expression->expression;
       if(expr.kind == Expression_Kind_Call){
-       Expression_Function_Call &call = expr.function_call;
-       if(call.function_name == strlit("vv") or
-          call.function_name == strlit("va") or
-          call.function_name == strlit("vv_sample") or
-          call.function_name == strlit("send_vert"))
+       Expression_Call *call = &expr.call;
+       String function_name = get_function_name(call);
+       if(function_name == strlit("vv") or
+          function_name == strlit("va") or
+          function_name == strlit("vv_sample") or
+          function_name == strlit("send_vert"))
        {
         //-Is vertex
-        String vertex_name = call.arguments[0].identifier;
+        String vertex_name = call->arguments[0].as_string;
         {
          Statement_Head *test = statement->mom;
          while(test){
@@ -260,10 +262,11 @@ main(i32 argc, char **argv)
 {
  b32 ok = true;
  Arena *scratch = &meta_permanent_arena;
- command_name = argv[0];
+ 
+ meta_command_name = argv[0];
  Stringz code_dir = empty_string;
  if(argc < 2){
-  printf("Usage: %s <code_dir>\n", command_name);
+  printf("Usage: %s <code_dir>\n", meta_command_name);
   ok = false;
  }else{
   code_dir = SCu8(argv[1]);

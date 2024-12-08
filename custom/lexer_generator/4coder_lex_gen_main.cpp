@@ -5,9 +5,10 @@
 // TOP
 
 #if !defined(LANG_NAME_LOWER) || !defined(LANG_NAME_CAMEL)
-#error 4coder_lex_get_main.cpp not correctly included.
+#  error 4coder_lex_get_main.cpp not correctly included.
 #endif
 
+#define KV_H_IS_METAPROGRAM 1
 #include "kv.h"
 #include "4ed_base.h"
 #include "4coder_table.h"
@@ -1237,34 +1238,37 @@ sm_direct_token_kind(char *str){
 
 function Operator_Set*
 sm_begin_op_set(void){
-    Operator_Set *set = push_array_zero(helper_ctx.arena, Operator_Set, 1);
-    set->lexeme_to_ptr = make_table_Data_u64(helper_ctx.primary_ctx.allocator, 100);
-    helper_ctx.selected_op_set = set;
-    return(set);
+ Operator_Set *set = push_array_zero(helper_ctx.arena, Operator_Set, 1);
+ set->lexeme_to_ptr = make_table_Data_u64(helper_ctx.primary_ctx.allocator, 100);
+ helper_ctx.selected_op_set = set;
+ return(set);
 }
 
 function b32
 sm_op(String lexeme, String name){
-    b32 result = false;
-    Operator_Set *set = helper_ctx.selected_op_set;
-    Table_Lookup lookup = table_lookup(&set->lexeme_to_ptr, make_data(lexeme.str, lexeme.size));
-    if (!lookup.found_match){
-        if (smi_try_add_token(&helper_ctx.primary_ctx, name, helper_ctx.selected_base_kind)){
-            Operator *op = push_array_zero(helper_ctx.arena, Operator, 1);
-            op->name = push_stringz(helper_ctx.arena, name);
-            op->op = push_stringz(helper_ctx.arena, lexeme);
-            table_insert(&set->lexeme_to_ptr, make_data(op->op.str, op->op.size), (u64)PtrAsInt(op));
-            sll_queue_push(set->first, set->last, op);
-            set->count += 1;
-            result = true;
-        }
-    }
-    return(result);
+ b32 result = false;
+ Operator_Set *set = helper_ctx.selected_op_set;
+ Table_Lookup lookup = table_lookup(&set->lexeme_to_ptr, make_data(lexeme.str, lexeme.size));
+ //NOTE(kv) This condition means that we only allow one lexeme to map to one operator.
+ if (!lookup.found_match){
+  if (smi_try_add_token(&helper_ctx.primary_ctx, name, helper_ctx.selected_base_kind)){
+   Operator *op = push_array_zero(helper_ctx.arena, Operator, 1);
+   op->name = push_stringz(helper_ctx.arena, name);
+   op->op = push_stringz(helper_ctx.arena, lexeme);
+   table_insert(&set->lexeme_to_ptr, make_data(op->op.str, op->op.size), (u64)PtrAsInt(op));
+   sll_queue_push(set->first, set->last, op);
+   set->count += 1;
+   result = true;
+  }
+ }
+ return(result);
 }
 
 function b32
-sm_op(char *lexeme, char *name){
-    return(sm_op(SCu8(lexeme), SCu8(name)));
+sm_op(char *lexeme0, char *name0){
+ String lexeme = SCu8(lexeme0);
+ String name = SCu8(name0);
+ return(sm_op(lexeme, name));
 }
 
 function b32

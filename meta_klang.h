@@ -1,42 +1,22 @@
-#pragma once
-const b32 DEBUG_vv_name = 0;
-const b32 DEBUG_parse_test_file = 0;
+//-
+global b32 DEBUG_vv_name = 0;
+global b32 DEBUG_parse_test_file = 0;  // test.kc
 //-
 enum Parsed_Type_Kind{
- Parsed_Type_None,
- Parsed_Type_Named,
- Parsed_Type_Pointer,
+ Parsed_Type_Pointer = 0,  //NOTE(kv) Deliberately zero.
  Parsed_Type_Array,
 };
 //NOTE(kv) Cheesy type!!!
 struct Parsed_Type{
  Parsed_Type_Kind kind;
  String name;
- i32    count; // NOTE either pointer count, or array count
+ u32    pointer_count;
+ 
+ //NOTE(kv) We're supposed to know the array count at compile time,
+ //  only problem is we don't actually compile, so sometimes we just... don't know.
+ u32    array_count;
+ String array_count_str;
 };
-inline Parsed_Type
-make_type_named(String name){
- Parsed_Type result = {};
- result.kind = Parsed_Type_Named;
- result.name = name;
- return result;
-}
-inline Parsed_Type
-make_type_pointer(String name, i32 count){
- Parsed_Type result = {};
- result.kind  = Parsed_Type_Pointer;
- result.name  = name;
- result.count = count;
- return result;
-}
-inline Parsed_Type
-make_type_array(String name, i32 count){
- Parsed_Type result = {};
- result.kind  = Parsed_Type_Array;
- result.name  = name;
- result.count = count;
- return result;
-}
 //-
 struct M_Struct_Member
 {
@@ -49,41 +29,122 @@ struct M_Struct_Member
  b32    unserialized;
 };
 typedef arrayof<M_Struct_Member> M_Struct_Members;
-inline b32
+myinline b32
 member_was_removed(M_Struct_Member &member){
  return member.version_removed.len != 0;
 }
 //-
 struct Meta_Expression;
+struct Compound_Item;
+
 enum Expression_Kind{
  Expression_Kind_None = 0,
  Expression_Kind_Unknown,
- Expression_Kind_Assignment,
+ Expression_Kind_String,
+ Expression_Kind_Unary,
+ Expression_Kind_Binary,
  Expression_Kind_Call,
+ Expression_Kind_Array_Subscript,
  Expression_Kind_Identifier,
- Expression_Kind_If,
- Expression_Kind_Loop,
  Expression_Kind_Float,  //NOTE(kv) Support double too, why not?
  Expression_Kind_Int,
+ Expression_Kind_Compound,
 };
-struct Expression_Assignment{
- String          lhs;
+//-
+enum Unary_Operator{
+ Unary_Char_End_ = 128,
+ 
+ Postfix_Increment, // a++
+ Postfix_Decrement, // a--
+ 
+ Unary_Named_End_ = 256,
+};
+function b32
+is_prefix(Unary_Operator op)
+{
+ switch(op)
+ {
+  case Postfix_Increment: 
+  case Postfix_Decrement:
+  return false;
+ }
+ return true;
+}
+myinline char *
+op_to_cstring(Unary_Operator *op)
+{
+ return (char *)op;
+}
+function String
+to_string(Unary_Operator *op)
+{
+ u32 u32_op = u32(*op);
+ if(u32_op < Unary_Char_End_ or
+    u32_op >= Unary_Named_End_)
+ {
+  char *cstring = op_to_cstring(op);
+  return SCu8(cstring);
+ }else{
+  switch(*op) {
+   case Postfix_Increment: return SCu8("++");
+   case Postfix_Decrement: return SCu8("--");
+  }
+ }
+ 
+ invalid_code_path;
+ return {};
+}
+//-
+typedef u32 Binary_Operator;
+
+#define PP_SingleQuote(x) ((#x)[0])
+#define binary_op_xlist(X) \
+X(not) X(and) X(or) \
+X(->) X(+=)
+
+myinline char *
+op_to_cstring(Binary_Operator *op)
+{
+ return (char *)op;
+}
+myinline String
+to_string(Binary_Operator *op)
+{
+ char *op2 = op_to_cstring(op);
+ return SCu8(op2);
+}
+//-
+struct Expression_Unary{
+ Unary_Operator op;
+ Meta_Expression *argument;
+};
+struct Expression_Binary{
+ Binary_Operator op;
+ Meta_Expression *lhs;
  Meta_Expression *rhs;
 };
-struct Expression_Function_Call{
- String function_name;
+struct Expression_Call{
+ Meta_Expression *func;
  arrayof<Meta_Expression> arguments;
+};
+struct Expression_Array_Subscript{
+ Meta_Expression *array;
+ Meta_Expression *index;
 };
 struct Meta_Expression{
  Expression_Kind kind;
+ String as_string;
  union{
-  Expression_Assignment assignment;
-  Expression_Function_Call function_call;
-  String int_value;
-  String float_value;
-  String identifier;
-  String unknown;
+  arrayof<Compound_Item> compound_items;
+  Expression_Call   call;
+  Expression_Unary  unary;
+  Expression_Binary binary;
+  Expression_Array_Subscript array_subscript;
  };
+};
+struct Compound_Item{
+ String key;
+ Meta_Expression value;
 };
 Meta_Expression stub_expression = {};
 //-
@@ -201,13 +262,151 @@ struct K_Slider
 {
  String type;
  String value;
+ String options;
+ 
+ u32 pos;
+ u32 size;
 };
 struct Klang_Parser : Ed_Parser
 {
  arrayof<Statement_Cache*> function_cache_list;
  Statement_Head *current_statement;
  arrayof<K_Slider> *sliders;
+ Arena *arena;
 };
+//-
+//NOTE(kv) Larger value = Binds weaker (unintuitive), but it's what the table says
+//  Table: https://en.cppreference.com/w/c/language/operator_precedence
+enum Precedence
+{
+ Precedence_None = 0,
+ 
+ Precedence_Dot_Arrow,
+ Precedence_Unary,
+ 
+ Precedence_Mul_Div,
+ Precedence_Add_Sub,
+ 
+ Precedence_Less_Than,
+ Precedence_LogicalEqual,
+ 
+ Precedence_BitwiseAnd,
+ Precedence_BitwiseOr,
+ 
+ Precedence_LogicalAnd,
+ Precedence_LogicalOr,
+ 
+ Precedence_Assignment,
+ 
+ Precedence_Max,
+};
+
+function u32
+op_to_u32_little_endian_inner(u32 op)
+{
+ u8 *op_array = (u8 *)&op;
+ u32 last_index = 0;
+ for_u32(i, 1, 4){
+  if(op_array[i] != 0){
+   last_index = i;
+  }
+ }
+ 
+ u32 result = 0;
+ u8 *result_array = (u8 *)&result;
+ for_u32(i, 0, last_index+1){
+  result_array[i] = op_array[last_index-i];
+ }
+ return result;
+}
+myinline u32
+op_to_u32_little_endian(Unary_Operator op)
+{
+ return op_to_u32_little_endian_inner(op);
+}
+myinline u32
+op_to_u32_little_endian(Binary_Operator op)
+{
+ return op_to_u32_little_endian_inner(op);
+}
+
+function Precedence
+precedence_of(Unary_Operator op)
+{
+ u32 op_u32 = op_to_u32_little_endian(op);
+ switch(op_u32)
+ {
+  case Postfix_Increment:
+  case Postfix_Decrement:
+  return Precedence_Dot_Arrow;
+  
+  case '++':
+  case '--':
+  case '+':
+  case '-':
+  case '*':
+  case '!':
+  case 'not':
+  case '~':
+  case '&':
+  return Precedence_Unary;
+ }
+ return {};
+}
+function Precedence
+precedence_of(Binary_Operator op)
+{
+ u32 op_u32 = op_to_u32_little_endian(op);
+ switch(op_u32)
+ {
+  case '.':
+  case '->':
+  return Precedence_Dot_Arrow;
+  
+  case '*':
+  case '/':
+  case '%':
+  return Precedence_Mul_Div;
+  
+  case '+':
+  case '-':
+  return Precedence_Add_Sub;
+  
+  case '<':
+  case '<=':
+  case '>':
+  case '>=':
+  return Precedence_Less_Than;
+  
+  case '==':
+  case '!=':
+  return Precedence_LogicalEqual;
+  
+  case '&':
+  return Precedence_BitwiseAnd;
+  
+  case '|':
+  return Precedence_BitwiseOr;
+  
+  case '&&':
+  case 'and':
+  return Precedence_LogicalAnd;
+  
+  case '||':
+  case 'or':
+  return Precedence_LogicalOr;
+  
+  case '=':
+  case '+=':
+  case '-=':
+  case '*=':
+  case '/=':
+  case '|=':
+  case '&=':
+  return Precedence_Assignment;
+ }
+ return {};
+}
 //-
 function Meta_Statements
 k_parse_statement_block(Arena *arena, Klang_Parser *p);
@@ -215,11 +414,20 @@ k_parse_statement_block(Arena *arena, Klang_Parser *p);
 function void
 k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p, Statement_Union *statement);
 
-inline Statement_Head *
+myinline Statement_Head *
 k_parse_statement_to_arena(Arena *arena, Klang_Parser *p)
 {
  Statement_Union *statement = push_struct(arena, Statement_Union, push_zero());
  k_parse_statement_to_pointer(arena, p, statement);
  return &statement->head;
+}
+function M_Struct_Members
+parse_struct_body(Arena *arena, char *string);
+
+myinline String
+get_function_name(Expression_Call *call)
+{
+ String result = call->func->as_string;
+ return result;
 }
 //-

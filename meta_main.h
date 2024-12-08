@@ -1,6 +1,6 @@
 #pragma once
 
-global char *command_name;
+global char *meta_command_name;
 global i1 meta_logging_level = 0;
 global Arena meta_permanent_arena = make_arena();
 struct Meta_Directories{

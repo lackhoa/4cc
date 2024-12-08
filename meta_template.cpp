@@ -270,7 +270,7 @@ template_main(Meta_Parsed_File source)
  //Meta_Printer printer;
  Stringz out_dir = pjoin(file_arena, path_dir(source.name), strlit("generated"));
  
- Ed_Parser parser_value = m_parser_from_token_list(source.data, source.token_list);
+ Ed_Parser parser_value = ed_parser_from_token_list(source.data, source.token_list);
  Ed_Parser *parser = &parser_value;
  arrayof<T_Table> tables;
  init_dynamic(tables, file_arena, 16);
@@ -313,20 +313,74 @@ template_main(Meta_Parsed_File source)
          not ep_maybe_char(parser, '}'))
    {//-Table items
     String *item = push_array(file_arena, String, field_count);
+    table->items.push_value(item);
     for_i32(field_index, 0, field_count){
      item[field_index] = template_parse_string(parser);
     }
-    table->items.push_value(item);
     if(not ep_maybe_char(parser, ',')){
      ep_char(parser, '}');
     }
+   }
+  }else if(ep_maybe_id(parser, strlit("api"))){
+   //-api table
+   T_Table *table = tables.push_zero();
+   table->field_names.set_count(3);
+   table->field_names[0] = strlit("name");
+   table->field_names[1] = strlit("return");
+   table->field_names[2] = strlit("params");
+   
+   table->name = ep_id(parser);
+   
+   init_dynamic(table->items, file_arena, 16);
+   ep_char(parser, '{');
+   while(parser->ok_ and
+         not ep_maybe_char(parser, '}'))
+   {//-Function signatures
+    String *signature = push_array(file_arena, String, 3);
+    table->items.push_value(signature);
+    
+    String return_type;
+    {
+     Token *return_start = ep_get_token(parser);
+     ep_id(parser);
+     Token *return_end = return_start;
+     while(true){
+      Token *test = ep_get_token(parser);
+      String str = ep_print_token(parser, test);
+      if(str == '*'){
+       return_end = test;
+       ep_eat(parser);
+      }else{
+       break;
+      }
+     }
+     
+     i64 return_type_size = return_end->pos + return_end->size - return_start->pos;
+     kv_assert(return_type_size > 0);
+     return_type = String{
+      parser->source.str + return_start->pos,
+      u64(return_type_size),
+     };
+    }
+    
+    String function_name = ep_id(parser);
+    
+    ep_char(parser, '(');
+    String parameters = ep_capture_until_char(parser, ')');
+    ep_char(parser, ')');
+    
+    signature[0] = function_name;
+    signature[1] = return_type;
+    signature[2] = parameters;
+    
+    ep_char(parser, ';');
    }
   }else if(ep_maybe_id(parser, strlit("gen_file"))){
    Token *filename_token = ep_get_token(parser);
    parser->set_ok(filename_token->kind == TokenBaseKind_LiteralString);
    ep_eat(parser);
    
-   String filename = ep_print_given_token(parser, filename_token);
+   String filename = ep_print_token(parser, filename_token);
    kv_assert(filename.len >= 2);
    filename.str++;
    filename.len -= 2;
@@ -340,7 +394,7 @@ template_main(Meta_Parsed_File source)
    Meta_Printer printer = m_open_file_to_write(out_path);
    printer < "//NOTE Source template: " < source.name < "\n";
    template_codegen_mode(&tables, parser, printer);
-   if(printer.has_error){
+   if(printer.error){
     ok = false;
    }
    close_file(printer);

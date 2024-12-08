@@ -1,15 +1,5 @@
-#define SILLY_IMGUI_PARTY 0
-#if SILLY_IMGUI_PARTY
-#  define IMGUI_DEFINE_MATH_OPERATORS // Access to math operators
-#endif
 #define IMGUI_USER_CONFIG "ad_imgui_config.h"
 #include "imgui/imgui.h"
-#if SILLY_IMGUI_PARTY
-#  include "imgui_function.h"
-#endif
-#if SILLY_IMGUI_PARTY
-#  include "silly.cpp"
-#endif
 
 //~
 #define AD_IS_FRAMEWORK 1
@@ -33,10 +23,13 @@
 #include "generated/send_bez.gen.h"
 #include "game_modeler.h"
 #include "ad_serialize.h"
+#include "game_fui.h"
 
 #include "game_draw.cpp"
 
 #include "4ed_kv_parser.cpp"
+#include "framework.h"
+
 #define FUI_FAST_PATH 0
 #include "game_fui.cpp"
 
@@ -46,18 +39,12 @@
 #include "game_modeler.cpp"
 #include "generated/send_bez.gen.cpp"
 
-#include "framework.h"
-#include "sliders.h"
 #include "game_api.cpp"
 
-#pragma push_macro("fval_text")
-#undef fval_text
-#define fval_text fast_fval
 #include "game_anime.cpp"
 #include "game_utils.cpp"
 #include "game_body.cpp"
 #include "generated/driver.gen.cpp"
-#pragma pop_macro("fval_text")
 
 #include "ad_serialize.cpp"
 
@@ -68,7 +55,7 @@
 
 #define X(N) function wrap_function(N);
 // Note: forward declare
-X_GAME_API_FUNCTIONS(X)
+game_api_xlist(X)
 //
 #undef X
 
@@ -78,7 +65,7 @@ just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
          (input->key_state_changes[keycode] > 0) &&
          (input->active_mods == modifiers));
 }
-kv_inline b32
+myinline b32
 key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
  return ((input->key_states[keycode]) &&
          (input->active_mods == modifiers));
@@ -104,7 +91,7 @@ game_api_export(game_api_export__params)
 {
  api.is_valid = true;
 #define X(N) api.N = N;
- X_GAME_API_FUNCTIONS(X)
+ game_api_xlist(X)
 #undef X
 }
 global i32 MAIN_VIEWPORT_INDEX = MAIN_VIEWPORT_ID - 1;
@@ -113,7 +100,7 @@ get_viewport_index(i32 viewport_id) {
     kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
     return (viewport_id - 1);
 }
-kv_inline b32
+myinline b32
 camera_data_equal(Camera_Data *a, Camera_Data *b) {
  return block_match(a, b, sizeof(Camera_Data));
 }
@@ -199,6 +186,50 @@ print_data_union(Printer &p, Type_Info *type,
    print_data_func(p, union_member.type, pointer);
    break;
   }
+ }
+}
+function void
+write_basic_type(Printer &p, Basic_Type type, void *value0)
+{
+ switch(type){
+  //-Floats
+  case Basic_Type_v1:
+  case Basic_Type_v2:
+  case Basic_Type_v3:
+  case Basic_Type_v4:
+  {
+   v1 *values = cast(v1*)value0;
+   i1 count = i1(get_basic_type_size(type) / 4);
+   if (count == 1) {
+    print_float_trimmed(p, *values);
+   } else {
+    for_i32(index,0,count) {
+     if (index != 0) { print(p, " "); }
+     print_float_trimmed(p, values[index]);
+    }
+   }
+  }break;
+  
+  //-Integers
+  case Basic_Type_i1:
+  case Basic_Type_i2:
+  case Basic_Type_i3:
+  case Basic_Type_i4:
+  {
+   i1 *v = (i1*)value0;
+   i1 count = i1(get_basic_type_size(type) / 4);
+   
+   for_i32(index,0,count) {
+    if (index != 0) { print(p, " "); }
+    print(p, v[index]);
+   }
+  }break;
+  
+  //-
+  case Basic_Type_String: { print(p, *(String*)value0); }break;
+  case Basic_Type_u32:    { print(p, *(u32*)value0);    }break;
+  
+  invalid_default_case;
  }
 }
 function void
@@ -331,7 +362,7 @@ game_load(Game_State *state, App *app, Stringz filename)
  b32 ok = true;
  
  Arena *load_arena = &state->data_load_arena;
- arena_clear(load_arena);
+ arena_free(load_arena);
  
  String file_data = {};
  {//NOTE(kv) Read the whole file into memory, because we won't have large files.
@@ -447,7 +478,7 @@ get_right_bone(Modeler &m, Bone &bone){
  if(bone.is_right){
   result = &bone;
  }else{
-  for_i32(bone_index, 0, m.bones.count){
+  for_u32(bone_index, 0, array_count(m.bones)){
    auto &boneR = m.bones[bone_index];
    if(boneR.is_right &&
       boneR.id == bone.id){
@@ -462,14 +493,14 @@ get_right_bone(Modeler &m, Bone &bone){
 //  which side of the body it is on (because the endpoints can belong to different bones).
 //  It feels wonky because this is an animation problem we have yet to "solve".
 function Bez
-compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
+compute_curve_from_data(Modeler *m, Curve_Data &curve, b32 lr){
  Bez result;
  Bone_ID curve_bone_id = curve.bone_id;
- Bone &curve_bone = get_bone(m,curve_bone_id,lr);
- mat4i &curve_xform = curve_bone.xform;
+ Bone *curve_bone = get_bone(m,curve_bone_id,lr);
+ mat4i &curve_xform = curve_bone->xform;
 #define curve_vec(vec)  mat4vec(curve_xform, vec)
- Vertex_Data &ve0 = m.vertices[get_p0_index_or_zero(curve).v];
- Vertex_Data &ve3 = m.vertices[get_p3_index_or_zero(curve).v];
+ Vertex_Data &ve0 = m->vertices[get_p0_index_or_zero(curve).v];
+ Vertex_Data &ve3 = m->vertices[get_p3_index_or_zero(curve).v];
  if(curve.type == Curve_Type_Unit){
   //NOTE(kv) Has to preserve the wrong logic here, omg!
   //  could be wrong in some cases with differing coframes, but I don't care!
@@ -479,8 +510,8 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
   result = bez_unit(p0, data.d0, data.d3, data.unit_y, p3);
   result = curve_xform*result;
  }else{
-  v3 p0 = get_bone(m,ve0.bone_id,lr).xform * ve0.pos;
-  v3 p3 = get_bone(m,ve3.bone_id,lr).xform * ve3.pos;
+  v3 p0 = get_bone(m,ve0.bone_id,lr)->xform * ve0.pos;
+  v3 p3 = get_bone(m,ve3.bone_id,lr)->xform * ve3.pos;
   switch(curve.type){
    case Curve_Type_v3v2:{
     auto &data = curve.data.v3v2;
@@ -491,7 +522,7 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
    }break;
    case Curve_Type_C2:{
     auto &data = curve.data.c2;
-    Curve_Data &refd = m.curves[data.ref.v];
+    Curve_Data &refd = m->curves[data.ref.v];
     Bez ref = compute_curve_from_data(m, refd, lr);
     result = bez_c2(ref, curve_vec(data.d3), p3);
    }break;
@@ -516,15 +547,15 @@ compute_curve_from_data(Modeler &m, Curve_Data &curve, b32 lr){
    }break;
    case Curve_Type_NegateX:{
     auto &data = curve.data.negateX;
-    Curve_Data &refd = m.curves[data.ref.v];
+    Curve_Data &refd = m->curves[data.ref.v];
     Bez ref = compute_curve_from_data(m, refd, lr);
     result = negateX(ref);
    }break;
    case Curve_Type_Lerp:{
     auto &data = curve.data.lerp;
     v1 t = 0.0f;//todo(kv) incomplete
-    Bez begin_data = compute_curve_from_data(m, m.curves[data.begin.v], lr);
-    Bez end_data   = compute_curve_from_data(m, m.curves[data.end.v], lr);
+    Bez begin_data = compute_curve_from_data(m, m->curves[data.begin.v], lr);
+    Bez end_data   = compute_curve_from_data(m, m->curves[data.end.v], lr);
     result = bez_lerp(begin_data, t, end_data);
    }break;
    case Curve_Type_Raw:{
@@ -546,28 +577,29 @@ entity_is_curve(Curve_Data &entity){
  return entity_variant_info_table[entity.type].is_curve;
 }
 function void
-render_data(Modeler &m){
+render_data(Modeler *m)
+{
  painter.is_right = 0;
- for_i32(vi,1,m.vertices.count){
+ for_i32(vi,1,m->vertices.count){
   //-Vertices
-  Vertex_Data &vert = m.vertices[vi];
-  Bone &bone = get_bone(m, vert.bone_id, 0);
+  Vertex_Data &vert = m->vertices[vi];
+  Bone *bone = get_bone(m, vert.bone_id, 0);
   u32 prim_id = prim_id_from_vertex_index({vi});
-  v3 pos = mat4vert(bone.xform, vert.pos);
+  v3 pos = mat4vert(bone->xform, vert.pos);
   argb inactive_color = argb_dark_green;
   indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
  }
- for_i32(ci,1,m.curves.count){
+ for_i32(ci,1,m->curves.count){
   //-Curves
-  Curve_Data &curve = m.curves[ci];
+  Curve_Data &curve = m->curves[ci];
   u32 prim_id = prim_id_from_curve_index({ci});
-  Common_Line_Params &cparams = m.line_cparams[curve.cparams.v];
+  Common_Line_Params *cparams = m->line_cparams + curve.cparams.v;
   for_i32(lr_index,0,2){
    if(implies(lr_index==1, curve.symx)){
     if(entity_is_curve(curve)){
      //-Curve
      set_in_block(painter.lr_index, lr_index);
-     Bez drawn = compute_curve_from_data(m,curve,lr_index);
+     Bez drawn = compute_curve_from_data(m, curve, lr_index);
      draw_cparams(drawn, cparams, curve.params, prim_id);
     }else{
      //-Fill
@@ -576,23 +608,23 @@ render_data(Modeler &m){
        v3 p[3];
        for_i32(vi,0,3){
         i1 vert_index = curve.data.fill3.verts[vi].v;
-        Vertex_Data &vert = m.vertices[vert_index];
-        Bone &bone = get_bone(m, vert.bone_id, lr_index);
-        p[vi] = bone.xform*vert.pos;
+        Vertex_Data &vert = m->vertices[vert_index];
+        Bone *bone = get_bone(m, vert.bone_id, lr_index);
+        p[vi] = bone->xform*vert.pos;
        }
        set_in_block(painter.lr_index, lr_index);
        fill3_inner2(p,curve.fill_params,prim_id);
       }break;
       case Curve_Type_Fill_Bez:{
        auto &data = curve.data.fill_bez;
-       Curve_Data &curve_data = m.curves[data.curve.v];
+       Curve_Data &curve_data = m->curves[data.curve.v];
        Bezier curve_ = compute_curve_from_data(m,curve_data,lr_index);
        fill_bez(curve_,0,prim_id);
       }break;
       case Curve_Type_Fill_DBez:{
        auto &data = curve.data.fill_dbez;
-       Curve_Data &curve1_data = m.curves[data.curve1.v];
-       Curve_Data &curve2_data = m.curves[data.curve2.v];
+       Curve_Data &curve1_data = m->curves[data.curve1.v];
+       Curve_Data &curve2_data = m->curves[data.curve2.v];
        Bezier curve1 = compute_curve_from_data(m,curve1_data,lr_index);
        Bezier curve2 = compute_curve_from_data(m,curve2_data,lr_index);
        fill_dbez(curve1,curve2,0,prim_id);
@@ -618,16 +650,18 @@ render_data(Modeler &m){
 #endif
 }
 //TODO(kv) @cleanup We wanna change this from update+render to update_and_render
-function game_render__return
-game_render(game_render__params){
- Modeler &mo = state->modeler;
+function void
+game_render(Game_State *state, App *app, Render_Target *target,
+            i1 viewport_id, Mouse_State mouse, rect2 clip_box)
+{
+ Modeler *mo = &state->modeler;
  Painter &pa = painter;
  pa = {};
  slider_cycle_counter = 0;
  Scratch_Block scratch;
  Viewport *viewport = &state->viewports[viewport_id-1];
  
- i32 scale_down_pow2 = fval_text(0); // ;scale_down_slider
+ i32 scale_down_pow2 = (0); // ;scale_down_slider
  v1 meter_to_pixel;
  {
   ClampBot(scale_down_pow2, 0);
@@ -648,15 +682,15 @@ game_render(game_render__params){
   b32 camera_frontal=almost_equal(absolute(camera->z.z), 1.f, 1e-2f);
   b32 camera_profile=almost_equal(absolute(camera->z.x), 1.f, 1e-2f);
   b32 orthographic = pa.show_grid and (camera_frontal or camera_profile);
-  if(fbool(0)){orthographic = pa.show_grid;}
-  if(fbool(0)){orthographic = true;}
+  if((0)){orthographic = pa.show_grid;}
+  if((0)){orthographic = true;}
   pa.view_from_world = get_view_from_world(camera, orthographic);
  }
  pa.cursorp   = state->kb_cursor.pos;
  pa.cursor_on = state->kb_cursor_mode;
  pa.target    = target;
  pa.viewport  = viewport;
- pa.modeler   = &mo;
+ pa.modeler   = mo;
  pa.camera    = *camera;
  pa.sending_data = state->sending_data;
  {//-NOTE(kv) Drawing the movie
@@ -671,8 +705,8 @@ game_render(game_render__params){
 /*  if(pa.sending_data){
    mo.vertices.set_count(1);
    mo.curves.  set_count(1);
-   mo.fills.   set_count(1);
-  }*/
+     mo.fills.   set_count(1);
+    }*/
   render_movie(scratch, render_scratch,
                config, state->references_full_alpha,
                &state->pose, state->anime_time);
@@ -687,7 +721,7 @@ game_render(game_render__params){
   v1 cursor_dist = lengthof(camera->cam_from_world * state->kb_cursor.pos);
   v1 radius = 4*millimeter;
   radius *= cursor_dist / camera->focal_length;
-  if (fbool(0)){ radius *= 10.f; }
+  if ((0)){ radius *= 10.f; }
   v3 points[] = { v3{}, V3(-1,-1,0), V3(+1,-1,0), };
   for_i32(i,0,3){
    points[i] = (state->kb_cursor.pos +
@@ -721,16 +755,14 @@ game_init(game_init__params)
   //NOTE(kv) when you refer to something make sure it doesn't move!
   init_static(m.vertices,  arena, 4096);
   init_static(m.curves,    arena, 512);
-  //init_static(m.fills,     arena, 512);
-  init_static(m.bones,     arena, 128);
-  init_static(m.bones,     arena, 128);
-  init_static(m.line_cparams,arena, 128);
-  m.bones.push_value(Bone{.xform=mat4i_identity});
+  m.bones = make_array(arena, Bone, 128);
+  m.line_cparams = make_array(arena, Common_Line_Params, 128);
+  array_push_value(m.bones, Bone{.xform=mat4i_identity});
   {
    Common_Line_Params cp = {};
    cp.radius_mult      = 1.f;
    cp.nslice_per_meter = 2.2988f * 100.f;
-   m.line_cparams.push_value(cp);
+   array_push_value(m.line_cparams, cp);
   }
   {
    Modeler_History &h = m.history;
@@ -783,8 +815,8 @@ function void
 meta_init(){
  init_entity_type_info_table();
 }
-function game_reload__return
-game_reload(game_reload__params)
+function void
+game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time)
 {// Game_State
  meta_init();
  import_api_from_editor(ed_api, ed_api_new);
@@ -794,7 +826,7 @@ game_reload(game_reload__params)
    m->vertices.set_count(1);
   }
   m->curves.set_count(1);
-  m->bones.set_count(1);
+  array_set_count(m->bones, 1);
  }
  {//NOTE: ;FUI_reload
   dll_arena = &state->dll_arena;
@@ -817,6 +849,7 @@ game_reload(game_reload__params)
   ImGui::SetAllocatorFunctions(imgui.alloc_func, imgui.free_func, imgui.user_data);
  }
  state->sending_data = true;
+ init_dynamic(state->unsynced_files, dll_arena);
 }
 function game_shutdown__return
 game_shutdown(game_shutdown__params){
@@ -871,7 +904,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
    u32 max_backup = 128;
    if (backup_files.count > max_backup)
    {
-    u64 oldest_mtime = U64_MAX;
+    u64 oldest_mtime = u64_max;
     Stringz file_to_delete = empty_string;
     File_Info **opl = backup_files.infos + backup_files.count;
     for (File_Info **backup = backup_files.infos;
@@ -992,14 +1025,14 @@ update_pan(Camera_Data *cam, Game_Input *input){
                      delta_pan.y * computed_cam.y);
 }
 inline b32
-fui_slider_is_discrete(Fui_Slider *slider){
+fui_slider_is_discrete(Slider *slider){
  return (slider->type == Basic_Type_i1 || 
          slider->type == Basic_Type_i2 ||
          slider->type == Basic_Type_i3 ||
          slider->type == Basic_Type_i4);
 }
 inline b32
-fui_slider_is_continuous(Fui_Slider *slider){
+fui_slider_is_continuous(Slider *slider){
  return !fui_slider_is_discrete(slider);
 }
 //-
@@ -1111,26 +1144,26 @@ game_update(game_update__params)
  
  {
   state->anime_time = state->time;
-  state->pose = driver_animate(modeler, scratch, state->anime_time);
+  state->pose = driver_animate(modeler, state->anime_time);
  }
  
  if(state->kb_cursor_mode){
   v3 curpos = state->kb_cursor.pos;
-  Modeler &m = *modeler;
+  Modeler *m = modeler;
   v1 min_lensq = max_f32;
-  for_i32(vi,1,m.vertices.count){
+  for_i32(vi,1,m->vertices.count){
    //-Closest vertex
-   Vertex_Data &v = m.vertices[vi];
-   Bone &bone = get_bone(m, v.bone_id, false);
-   v1 l = lensq(curpos - bone.xform*v.pos);
+   Vertex_Data &v = m->vertices[vi];
+   Bone *bone = get_bone(m, v.bone_id, false);
+   v1 l = lensq(curpos - bone->xform * v.pos);
    if(l < min_lensq){
     min_lensq = l;
     hot_prim_id = prim_id_from_vertex_index(Vertex_Index{vi});
    }
   }
-  for_i32(ci,1,m.curves.count){
+  for_i32(ci,1,m->curves.count){
    //-Closest curve
-   Curve_Data &c = m.curves[ci];
+   Curve_Data &c = m->curves[ci];
    if(c.type == Curve_Type_Fill_DBez){
     int x = 5;
    }
@@ -1337,10 +1370,10 @@ game_update(game_update__params)
     update_pan(cam, input);
    }else if(mods==0 && is_v4_key(keycode)){
     //NOTE(kv) Update discrete slider
-    Fui_Slider *slider = fui_active_slider;
+    Slider *slider = fui_active_slider;
     if(fui_slider_is_discrete(slider)){
      i4 value;
-     block_copy(&value, slider+1, slider_value_size(slider));
+     block_copy(&value, get_slider_value(slider), slider_value_size(slider));
      for_i32(index,0,4){
       value.e[index] += i32(input_dir[index]);
      }
@@ -1349,7 +1382,7 @@ game_update(game_update__params)
        macro_clamp01i(value.e[index])
       }
      }
-     block_copy(slider+1, &value, slider_value_size(slider));
+     block_copy(get_slider_value(slider), &value, slider_value_size(slider));
     }
    }else{
     switch(code){
@@ -1366,12 +1399,12 @@ game_update(game_update__params)
   //-NOTE(kv) Handling continuous directional input
   if (fui_active){
    //NOTE(kv) ;UpdateFuislider
-   Fui_Slider *slider = fui_active_slider;
+   Slider *slider = fui_active_slider;
    if (fui_slider_is_continuous(slider)){
     // NOTE(kv) we copy the slider value out, pretend it's a v4
     // operate on it, and put it back in again.
     v4 value;
-    block_copy(&value, slider+1, slider_value_size(slider));
+    block_copy(&value, get_slider_value(slider), slider_value_size(slider));
     if (mods == 0 || mods == Key_Mod_Sft){
      if (input_dir.y != 0.f &&
          slider->type == Basic_Type_v1){
@@ -1400,7 +1433,7 @@ game_update(game_update__params)
       }
      }
     }
-    block_copy(slider+1, &value, slider_value_size(slider));
+    block_copy(get_slider_value(slider), &value, slider_value_size(slider));
    }
   }else if(game_active){
    if (u32 sel_prim = selected_prim_id(modeler)){
@@ -1516,10 +1549,10 @@ game_update(game_update__params)
     v3 dir = noz( mat4vec(cam.world_from_cam, V3(dir_v2)) );
     v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
     v1 zoom = absolute(cursor_camz/cam.focal_length);
-    v1 acc = zoom * 0.1f * fval_text(2.0423f);
+    v1 acc = zoom * 0.1f * (2.0423f);
     if (shifted){ acc *= 10.f; }
     v1 new_vel = cursor.vel + dt*acc;
-    v1 max_vel = zoom*0.1f*fval_text(1.0625f);
+    v1 max_vel = zoom*0.1f*(1.0625f);
     if (shifted){ max_vel *= 10.f; }
     ClampTop(new_vel, max_vel);
     v3 delta = 0.5f*(cursor.vel+new_vel)*dt*dir;
@@ -1590,7 +1623,7 @@ game_update(game_update__params)
     }
     ImGui::End();
    }else{
-    if (fbool(0)){
+    if ((0)){
      ImGui::ShowDemoWindow(0);
     }
    }
@@ -1610,7 +1643,7 @@ game_update(game_update__params)
    DEBUG_NAME("work ms", input->frame.work_seconds * 1e3f);
   }
   
-  if(fbool(0)){
+  if((0)){
    DEBUG_VALUE(image_load_info.image_count);
    DEBUG_VALUE(image_load_info.failure_count);
   }

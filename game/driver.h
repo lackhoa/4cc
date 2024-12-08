@@ -2,11 +2,11 @@
 
 #include "game_colors.cpp"
 #include "game_debug.h"
-#include "ad_file_formats.gen.h"
+#include "generated/ad_file_formats.gen.h"
 
 struct Bezier{
  v3 e[4];
- kv_inline operator v3 *() { return e; };
+ myinline operator v3 *() { return e; };
 };
 typedef Bezier Bez;
 
@@ -184,7 +184,8 @@ struct Bone{
 
 struct Viewport;
 struct Modeler;
-struct Painter{
+struct Painter
+{
  //NOTE(kv) This is a convenient global store.
  //NOTE(kv) See @init_painter
  //-misc
@@ -211,11 +212,11 @@ struct Painter{
  Modeler *modeler;
  b32 show_grid;
  argb shade_color;
- arrayof<Common_Line_Params *> line_cparams_stack;
+ Common_Line_Params **line_cparams_stack;
  b32 sending_data;
  
  union{ b32 is_right; b32 lr_index; };
- arrayof<Bone*> bone_stack;
+ Bone **bone_stack;
  
  i32 view_vector_count;
  v3  view_vector_stack[16];
@@ -246,19 +247,23 @@ lp_invisible(){
  return result;
 }
 
-global const argb hot_color      = argb_lightness(argb_silver, 0.5f);
-global const argb hot_color2     = argb_yellow;
-global const argb selected_color = argb_red;
-global const v1 default_line_radius_unit = 1.728125f * millimeter;
+global argb hot_color      = argb_lightness(argb_silver, 0.5f);
+global argb hot_color2     = argb_yellow;
+global argb selected_color = argb_red;
+global v1 default_line_radius_unit = 1.728125f * millimeter;
 
 //-
-inline Bone *current_bone(Painter &p){ return p.bone_stack.last(); }
-inline mat4i& current_world_from_bone(Painter &p){
- return current_bone(p)->xform;
+myinline Bone *
+current_bone(Painter *p) {
+ return array_last(p->bone_stack);
+}
+myinline mat4i *
+current_world_from_bone(Painter *p){
+ return &current_bone(p)->xform;
 }
 
-inline b32 is_right(Painter &p=painter){ return p.is_right; }
-inline b32 is_left (Painter &p=painter){ return !p.is_right; }
+myinline b32 is_right(Painter &p=painter){ return p.is_right; }
+myinline b32 is_left (Painter &p=painter){ return !p.is_right; }
 //-
 // NOTE: Name,Denom
 #define X_Pose_Fields(X) \
@@ -298,16 +303,11 @@ v3 name = bezier_sample(curve, t); \
 send_vert(name);*/
 
 //-
-#define driver_animate_params Modeler *m, Arena *scratch, v1 anime_time
-xfunction Pose driver_animate(driver_animate_params);
+xfunction Pose driver_animate(Modeler *m, v1 anime_time);
 
 //TODO(kv) Maybe put the majority of this in the painter?
-#define render_movie_params \
-Arena *arena, Arena *scratch, Render_Config *render_config, \
-b32 references_full_alpha, \
-Pose *pose, v1 anime_time
-
-xfunction void render_movie(render_movie_params);
+xfunction void render_movie(Arena *arena, Arena *scratch, Render_Config *render_config,
+                            b32 references_full_alpha, Pose *pose, v1 anime_time);
 xfunction void driver_update(Viewport *viewports);
 
 function void
@@ -324,7 +324,7 @@ camera_world_position(Camera *camera){
 }
 function v3
 camera_object_position(Painter *p){
- v3 result = (current_world_from_bone(*p).inv *
+ v3 result = (current_world_from_bone(p)->inv *
               camera_world_position(&painter.camera));
  return result;
 }
@@ -349,49 +349,57 @@ pop_view_vector(Painter *p){
 push_view_vector(&painter, center); \
 defer(pop_view_vector(&painter));
 
-xfunction arrayof<Bone> &get_bones(Modeler &m);
-function Bone &
-get_bone(Modeler &m, Bone_ID id, b32 is_right){
- auto &bones = get_bones(m);
- for_i32(index,0,bones.count){
-  Bone &bone = bones[index];
-  if(bone.id       == id &&
-     bone.is_right == is_right){
+xfunction Bone *get_bones(Modeler *m);
+function Bone *
+get_bone(Modeler *m, Bone_ID id, b32 is_right)
+{
+ Bone *bones = get_bones(m);
+ for_u32(index, 0, array_count(bones))
+ {
+  Bone *bone = &bones[index];
+  if(bone->id       == id and
+     bone->is_right == is_right){
    return bone;
   }
  }
- return bones[0];
+ return &bones[0];
 }
-inline Bone &
-get_bone(Modeler &m, Bone_Type type, b32 is_right){
+myinline Bone *
+get_bone(Modeler *m, Bone_Type type, b32 is_right)
+{
  return get_bone(m, make_bone_id(type), is_right);
 }
 function void
-push_bone_inner(Modeler &m, arrayof<Bone *> &stack,
+push_bone_inner(Modeler *m, Bone **stack,
                 b32 is_right,
-                Bone_ID id, mat4i const&mom_from_kid){
- mat4i &mom = stack.last()->xform;
- Bone *bone = &get_bone(m, id, is_right);
+                Bone_ID id, mat4i const&mom_from_kid)
+{
+ mat4i mom = array_last(stack)->xform;
+ Bone *bone = get_bone(m, id, is_right);
  if(bone->id.type == 0){
-  auto &bones = get_bones(m);
-  bone = bones.push_zero();
+  Bone *bones = get_bones(m);
+  bone = array_push(bones);
+  *bone = {};
   bone->id       = id;
   bone->is_right = is_right;
-  bone->xform    = mom * mom_from_kid; 
+  bone->xform    = matmul(mom, mom_from_kid);
  }
- stack.push_value(bone);
+ *array_push(stack) = bone;
 }
 inline void
-push_bone_inner(Modeler &m, arrayof<Bone *> &stack, b32 is_right,
-                Bone_Type type, mat4i const&mom_from_kid) {
- push_bone_inner(m,stack,is_right,make_bone_id(type),mom_from_kid);
+push_bone_inner(Modeler *m, Bone **stack, b32 is_right,
+                Bone_Type type, mat4i const&mom_from_kid)
+{
+ push_bone_inner(m, stack, is_right, make_bone_id(type), mom_from_kid);
 }
+
 function void
-push_bone(Painter *p, Bone_ID id, v3 center={}){
- auto m  = p->modeler;
- Bone &bone = get_bone(*m, id, p->is_right);
- p->bone_stack.push_value(&bone);
- set_bone_transform(bone.xform);
+push_bone(Painter *p, Bone_ID id, v3 center={})
+{
+ Modeler *m  = p->modeler;
+ Bone *bone = get_bone(m, id, p->is_right);
+ *array_push(p->bone_stack) = bone;
+ set_bone_transform(bone->xform);
 }
 inline void
 push_bone(Painter *p, Bone_Type type, v3 center={}) {
@@ -399,19 +407,19 @@ push_bone(Painter *p, Bone_Type type, v3 center={}) {
 }
 function void
 pop_bone(Painter *p){
- p->bone_stack.pop();
- mat4i &parent = current_world_from_bone(*p);
- set_bone_transform(parent);
+ array_pop(p->bone_stack);
+ mat4i *parent = current_world_from_bone(p);
+ set_bone_transform(*parent);
 }
-#define bone_block(id) push_bone(&painter, id); defer(pop_bone(&painter););
+#define bone_block(id)  push_bone(&painter, id); defer(pop_bone(&painter););
 //-
-xfunction arrayof<Common_Line_Params> &
-get_line_cparams_list(Modeler &m);
+xfunction Common_Line_Params *
+get_line_cparams_list(Modeler *m);
 
 function Common_Line_Params&
-get_line_cparams(Modeler &m, i1 linum){
- auto &list = get_line_cparams_list(m);
- for_i32(i,0,list.count){
+get_line_cparams(Modeler *m, i1 linum){
+ Common_Line_Params *list = get_line_cparams_list(m);
+ for_u32(i,0,array_count(list)){
   auto &cparams = list[i];
   if(cparams.linum == linum){ return cparams; }
  }
@@ -428,32 +436,33 @@ current_line_cparams_index();
 
 function void
 push_line_cparams(Common_Line_Params &value, i1 linum=__builtin_LINE()){
- Modeler &m = *painter.modeler;
- auto &list = get_line_cparams_list(m);
+ Modeler *m = painter.modeler;
+ Common_Line_Params *list = get_line_cparams_list(m);
  Common_Line_Params *address = &get_line_cparams(m, linum);
  if(address == &list[0]){// not found
   value.linum = linum;
-  address = list.push_value(value);
+  array_push_value(list, value);
+  address = array_lastp(list);
  }
- painter.line_cparams_stack.push_value(address);
+ array_push_value(painter.line_cparams_stack, address);
  use_line_cparams(value);
 }
 function void
 pop_line_cparams(){
- auto &p = painter;
- p.line_cparams_stack.pop();
- use_line_cparams(*p.line_cparams_stack.last());
+ Painter *p = &painter;
+ array_pop(p->line_cparams_stack);
+ use_line_cparams(*array_last(p->line_cparams_stack));
 }
-inline Common_Line_Params&
+inline Common_Line_Params *
 current_line_cparams(){
- return *painter.line_cparams_stack.last();
+ return array_last(painter.line_cparams_stack);
 }
 inline Common_Line_Params_Index
 current_line_cparams_index(){
  //NOTE(kv) This "index" business is so ridiculous,... but we gotta pull through
  Common_Line_Params_Index result;
- Common_Line_Params *base = &get_line_cparams_list(*painter.modeler)[0];
- result.v = &current_line_cparams() - base;
+ Common_Line_Params *base = get_line_cparams_list(painter.modeler);
+ result.v = current_line_cparams() - base;
  return result;
 }
 //~

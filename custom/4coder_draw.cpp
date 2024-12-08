@@ -2,7 +2,7 @@
 4coder_draw.cpp - Layout and rendering implementation of standard UI pieces (including buffers)
 */
 
-// TOP @alksdjfasldkfjasdlfkj
+// TOP
 
 function void
 draw_text_layout_default(App *app, Text_Layout_ID layout_id)

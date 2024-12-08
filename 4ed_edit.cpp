@@ -17,21 +17,25 @@ pre_edit_state_change(Models *models, Editing_File *file){
 function void
 pre_edit_history_prep(Editing_File *file, Edit_Behaviors behaviors){
     if (!behaviors.do_not_post_to_history){
-        history_dump_records_after_index(&file->state.history,
-                                         file->state.current_record_index);
-    }
+  history_dump_records_after_index(&file->state.history,
+                                   file->state.current_record_index);
+ }
 }
 
 function void
 post_edit_call_hook(Thread_Context *tctx, Models *models, Editing_File *file,
-                    Range_i64 new_range, Range_Cursor old_cursor_range){
-    // NOTE(allen): edit range hook
-    if (models->buffer_edit_range != 0){
-        App app = {};
-        app.tctx = tctx;
-        app.cmd_context = models;
-        models->buffer_edit_range(&app, file->id, new_range, old_cursor_range);
-    }
+                    Range_i64 new_range, Range_Cursor old_cursor_range)
+{
+ //NOTE(kv) Just to see if this ever triggers.
+ kv_assert(new_range.min == old_cursor_range.min.pos);
+ 
+ // NOTE(allen): edit range hook
+ if (models->buffer_edit_range != 0){
+  App app = {};
+  app.tctx = tctx;
+  app.cmd_context = models;
+  models->buffer_edit_range(&app, file->id, new_range, old_cursor_range);
+ }
 }
 
 function void

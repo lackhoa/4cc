@@ -150,7 +150,7 @@ font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
         Arena arena = make_arena();
         Face *face = font_make_face(&arena, description, set->scale_factor);
         if (face != 0){
-            arena_clear(&slot->arena);
+            arena_free(&slot->arena);
             slot->arena = arena;
             slot->face = face;
             face->version_number = version_number + 1;
@@ -158,7 +158,7 @@ font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
             result = true;
         }
         else{
-            arena_clear(&arena);
+            arena_free(&arena);
         }
     }
     return(result);

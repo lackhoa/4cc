@@ -1,3 +1,4 @@
+//-
 struct Type_Info;
 struct I_Struct_Member
 {
@@ -46,7 +47,7 @@ struct Type_Info{
 
 #include "generated/basic_types_info.gen.h"
 
-inline usize
+myinline usize
 get_basic_type_size(Basic_Type type)
 {
  return basic_types_info[type].size;

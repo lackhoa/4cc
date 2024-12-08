@@ -33,8 +33,8 @@ struct Modeler  // see @init_modeler
 {//-Data
  Arena data_arena;
  //  For transition it does have some utility: referring to the last vertex with this name.
- arrayof<Bone> bones;
- arrayof<Common_Line_Params> line_cparams;
+ Bone *bones;
+ Common_Line_Params *line_cparams;
  
  //NOTE(kv) Do we need really need these arrays?
  arrayof<Vertex_Data> vertices;

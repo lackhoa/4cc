@@ -17,7 +17,7 @@ build_language_model(void){
  smh_set_base_character_names();
  smh_typical_tokens();
  
- // CPP Names
+ // NOTE(kv) English names for characters (look at lexer_cpp.h)
  sm_char_name('!', "Not");
  sm_char_name('&', "And");
  sm_char_name('|', "Or");
@@ -87,15 +87,18 @@ build_language_model(void){
  sm_op("{");
  sm_select_base_kind(TokenBaseKind_ScopeClose);
  sm_op("}");
+ 
  sm_select_base_kind(TokenBaseKind_ParenOpen);
  sm_op("(");
  sm_op("[");
  sm_select_base_kind(TokenBaseKind_ParenClose);
  sm_op(")");
  sm_op("]");
+ 
  sm_select_base_kind(TokenBaseKind_StatementClose);
  sm_op(";");
  sm_op(":");
+ 
  sm_select_base_kind(TokenBaseKind_Operator);
  sm_op("...");
  
@@ -161,6 +164,14 @@ build_language_model(void){
  Keyword_Set *main_keys = sm_begin_key_set("main_keys");
  
  sm_select_base_kind(TokenBaseKind_Keyword);
+ 
+ //NOTE(kv) Alternative operators. These are keywords because they're alphanumeric,
+ //  which fall into the "word" category, and you have to change the state machine
+ //  to make it work, and  do I look like I have time to do that?
+ sm_key("NotAlt", "not");
+ sm_key("AndAlt", "and");
+ sm_key("OrAlt",  "or");
+ 
  sm_key("Auto");
  sm_key("Void");
  sm_key("Bool");

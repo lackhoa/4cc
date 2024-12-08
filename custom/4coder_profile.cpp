@@ -71,7 +71,7 @@ profile_thread_flush(Thread_Context *tctx, Profile_Global_List *list)
     thread->record_count += tctx->prof_record_count;
    }
   }else{
-   arena_clear(&tctx->prof_arena);
+   arena_free(&tctx->prof_arena);
   }
   tctx->prof_record_count = 0;
   tctx->prof_first = 0;

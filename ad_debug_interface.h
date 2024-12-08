@@ -6,7 +6,7 @@
 
 #if KV_INTERNAL
 typedef File_Line DEBUG_File_Line;
-function DEBUG_File_Line
+myinline DEBUG_File_Line
 DEBUG_file_line(const char *file=__builtin_FILE(),
                 u32 line=__builtin_LINE())
 {

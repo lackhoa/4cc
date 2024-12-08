@@ -967,42 +967,35 @@ function void vim_move_selection(App *app, Scan_Direction direction){
 VIM_COMMAND_SIG(vim_move_selection_up){   vim_move_selection(app, Scan_Backward); }
 VIM_COMMAND_SIG(vim_move_selection_down){ vim_move_selection(app, Scan_Forward); }
 
-
-function i1 vim_macro_index(u8 c){
-	return((character_to_lower(c) - 'a') + 26*in_range_exclusive('A', c, 'Z'+1));
+function void
+vim_toggle_macro(App *app)
+{
+ Buffer_ID log_buffer = get_keyboard_log_buffer(app);
+ if(vim_state.macro_char){
+  //-Record end
+  i64 end = buffer_get_size(app, log_buffer);
+  Buffer_Cursor cursor = buffer_compute_cursor(app, log_buffer, seek_pos(end));
+  Buffer_Cursor back_cursor = buffer_compute_cursor(app, log_buffer, seek_line_col(cursor.line - 1, 1));
+  
+  vim_macro_range.max = back_cursor.pos;
+  vim_state.macro_char = 0;
+ }else{
+  //-Record begin
+  vim_state.macro_char = 1;
+  vim_macro_range.min = buffer_get_size(app, log_buffer);
+ }
 }
-
-VIM_COMMAND_SIG(vim_toggle_macro){
-	if(vim_state.macro_char){
-		Buffer_ID buffer = get_keyboard_log_buffer(app);
-		i64 end = buffer_get_size(app, buffer);
-		Buffer_Cursor cursor = buffer_compute_cursor(app, buffer, seek_pos(end));
-		Buffer_Cursor back_cursor = buffer_compute_cursor(app, buffer, seek_line_col(cursor.line - 1, 1));
-		vim_macros[vim_macro_index(vim_state.macro_char)].max = back_cursor.pos;
-		vim_state.macro_char = 0;
-	}else{
-		if(vim_state.macro_char){ return; }
-		u8 c = vim_query_user_key(app, strlit("-- SELECT MACRO TO RECORD --"));
-		if(in_range_exclusive('a', c, 'z'+1) || in_range_exclusive('A', c, 'Z'+1)){
-			vim_state.macro_char = c;
-			i1 index = vim_macro_index(c);
-			vim_macros[index].min = buffer_get_size(app, get_keyboard_log_buffer(app));
-		}
-	}
+function void
+vim_play_macro(App *app)
+{
+ Range_i64 range = vim_macro_range;
+ if(range.min == 0 || range.max == 0){
+  return;
+ }else{
+  Buffer_ID key_buffer = get_keyboard_log_buffer(app);
+  Scratch_Block scratch(app);
+  String macro = push_buffer_range(app, scratch, key_buffer, range);
+  keyboard_macro_play(app, macro);
+ }
 }
-
-VIM_COMMAND_SIG(vim_play_macro){
-	u8 c = vim_query_user_key(app, strlit("-- SELECT MACRO TO PLAY --"));
-	if(c == '@'){ c = vim_state.prev_macro; }
-	if(in_range_exclusive('a', c, 'z'+1) || in_range_exclusive('A', c, 'Z'+1)){
-		i1 index = vim_macro_index(c);
-		Range_i64 range = vim_macros[index];
-		if(range.min == 0 || range.max == 0){ return; }
-		vim_state.prev_macro = c;
-
-		Buffer_ID key_buffer = get_keyboard_log_buffer(app);
-		Scratch_Block scratch(app);
-		String macro = push_buffer_range(app, scratch, key_buffer, range);
-		keyboard_macro_play(app, macro);
-	}
-}
+//-

@@ -9,10 +9,6 @@
 
 // TOP
 
-#pragma once
-
-#include "4ed_base.h"
-
 struct API_Param{
     API_Param *next;
     String type_name;

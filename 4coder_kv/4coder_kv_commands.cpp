@@ -527,8 +527,8 @@ cmd_closing_bracket_in_visual_mode(App *app)
 VIM_COMMAND_SIG(kv_void_command) { return; }
 
 VIM_COMMAND_SIG(kv_vim_normal_mode) {
-    vim_normal_mode(app);
-    arrsetlen(kv_quail_keystroke_buffer, 0);
+ vim_normal_mode(app);
+ kv_quail_keystroke_buffer.count = 0;
 }
 function void
 vim_enter_visual_mode(){
@@ -578,7 +578,7 @@ cmd_handle_q_visual(App *app){
     expecting_identifier = false;
    }else{
     if(test_token->kind == TokenBaseKind_Operator){
-     String test_string = ep_print_given_token(scratch, parser, test_token);
+     String test_string = ep_print_token(scratch, parser, test_token);
      passes = (test_string == "." or test_string == "->");
     }
     expecting_identifier = true;
@@ -1223,70 +1223,71 @@ quick_align_command(App *app)
  GET_VIEW_AND_BUFFER;
  HISTORY_GROUP_SCOPE;
  Range_i64 the_range = view_get_selected_range(app, view);
-    Scratch_Block scratch(app);
-    the_range.min = get_line_start_pos_from_pos(app, buffer, the_range.min);
-    the_range.max = get_line_end_pos_from_pos(app, buffer, the_range.max);
-    String selected = push_buffer_range(app, scratch, buffer, the_range);
-    // NOTE: Figure out the lines
-    struct Line
+ Scratch_Block scratch(app);
+ the_range.min = get_line_start_pos_from_pos(app, buffer, the_range.min);
+ the_range.max = get_line_end_pos_from_pos(app, buffer, the_range.max);
+ String selected = push_buffer_range(app, scratch, buffer, the_range);
+ // NOTE: Figure out the lines
+ struct Line
+ {
+  i64 start;
+  i64 equal_sign_pos;
+ };
+ arrayof<Line> lines = {};
+ init_dynamic(lines, scratch, 32);
+ {
+  i64 pos = 0;
+  while (pos < range_size(the_range))
+  {
+   Line line = {};
+   line.start = pos;
+   line.equal_sign_pos = -1;
+   while (pos < range_size(the_range))
+   {
+    u8 chr = selected.str[pos];
+    if (chr == '=' && 
+        line.equal_sign_pos == -1)
     {
-        i64 start;
-        i64 equal_sign_pos;
-    };
-    Line *lines = 0;
-    {
-        i64 pos = 0;
-        while (pos < range_size(the_range))
-        {
-            Line line = {};
-            line.start = pos;
-            line.equal_sign_pos = -1;
-            while (pos < range_size(the_range))
-            {
-                u8 chr = selected.str[pos];
-                if (chr == '=' && 
-                    line.equal_sign_pos == -1)
-                {
-                    line.equal_sign_pos = pos - line.start;
-                }
-                pos++;
-                
-                if (chr == '\n')  break; 
-            }
-            arrpush(lines, line);
-        }
+     line.equal_sign_pos = pos - line.start;
     }
+    pos++;
     
-    i64 rightmost_equal_sign = 0;
-    // NOTE: find the right-most equal sign
-    for_i64 (index, 0, arrlen(lines))
-    {
-        ClampBot(rightmost_equal_sign, lines[index].equal_sign_pos);
-    }
-    // NOTE: Then go back and fix up our lines from end to beginning
-    u8 space_buffer[256];
-    block_fill_u8(space_buffer, 256, ' ');
-    for (i64 index=arrlen(lines)-1;
-         index >= 0;
-         index--)
-    {
-        Line *line = lines+index;
-        i64 nspaces = rightmost_equal_sign - line->equal_sign_pos;
-        if (line->equal_sign_pos >= 0 && 
-            nspaces > 0)
-        {
-            String spaces = { space_buffer, (u64)clamp_max(nspaces,256) };
-            i64 pos = the_range.start + line->start + line->equal_sign_pos;
+    if (chr == '\n')  break; 
+   }
+   lines.push_value(line);
+  }
+ }
+ 
+ i64 rightmost_equal_sign = 0;
+ // NOTE: find the right-most equal sign
+ for_i64(index, 0, lines.count)
+ {
+  ClampBot(rightmost_equal_sign, lines[index].equal_sign_pos);
+ }
+ // NOTE: Then go back and fix up our lines from end to beginning
+ u8 space_buffer[256];
+ block_fill_u8(space_buffer, 256, ' ');
+ for (i64 index=lines.count-1;
+      index >= 0;
+      index--)
+ {
+  Line *line = lines.items+index;
+  i64 nspaces = rightmost_equal_sign - line->equal_sign_pos;
+  if (line->equal_sign_pos >= 0 && 
+      nspaces > 0)
+  {
+   String spaces = { space_buffer, (u64)clamp_max(nspaces,256) };
+   i64 pos = the_range.start + line->start + line->equal_sign_pos;
    buffer_replace_range(app, buffer, Ii64(pos,pos), spaces);
   }
  }
 }
 
 function b32
-maybe_handle_fui(App *app, Buffer_ID buffer)
+maybe_handle_fui(App *app)
 {
  b32 result = false;
- if (game_on_ro)
+ if(game_on_ro)
  {
   // NOTE: When the tick doesn't run, we don't load the game code.
   // so we update the game code here so that it doesn't reach in the wrong part slider.
@@ -1294,13 +1295,10 @@ maybe_handle_fui(App *app, Buffer_ID buffer)
   load_latest_game_code(app, 0);
   
   Game_API *game = get_game_code();
-  if ( game )
+  if(game)
   {
    global_game_dll_lock = true;
-   Scratch_Block scratch(app);
-   String filename = push_buffer_filepath(app, scratch, buffer);
-   i32 line_number = (i32)get_current_line_number(app);
-   result = game->fui_handle_slider(app, buffer, filename, line_number);
+   result = game->fui_handle_slider(app);
    global_game_dll_lock = false;
   }
  }
@@ -1310,10 +1308,9 @@ maybe_handle_fui(App *app, Buffer_ID buffer)
 function void
 kv_handle_return_normal_mode(App *app)
 {
- View_ID view = get_active_view(app, Access_ReadVisible);
- Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ GET_VIEW_AND_BUFFER;
  if (buffer) { // Writable buffer
-  if(maybe_handle_fui(app, buffer)) { // pass
+  if(maybe_handle_fui(app)) { // pass
   }else{
    //NOTE(kv) Still not sure why "save_all_dirty_buffers" sometimes fails to save?
    Scratch_Block scratch(app);
@@ -1712,11 +1709,6 @@ cmd_expand_snippet(App *app)
  parser->string_arena = scratch;
  
  b32 done = false;
- 
- Game_API *game = get_game_code();
- if(game){
-  done = game->fui_generate_slider(app);
- }
  
  if(not done){
   //-Editor

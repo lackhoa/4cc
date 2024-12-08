@@ -325,7 +325,7 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
 
 function void
 file_clear_layout_cache(Editing_File *file){
-    arena_clear(&file->state.cached_layouts_arena);
+    arena_free(&file->state.cached_layouts_arena);
     table_clear(&file->state.line_layout_table);
 }
 

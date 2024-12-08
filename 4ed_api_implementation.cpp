@@ -199,7 +199,11 @@ get_buffer_next(App *app, Buffer_ID buffer_id, Access_Flag access)
  }
  return(result);
 }
-
+api(ed) function Range_i64
+get_line_range_from_pos(App *app, Buffer_ID buffer, i64 pos)
+{
+	return get_line_pos_range(app, buffer, get_line_number_from_pos(app, buffer, pos));
+}
 api(custom) function Buffer_ID
 get_buffer_by_name(App *app, String8 name, Access_Flag access)
 {
@@ -3144,7 +3148,6 @@ text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
       }
      }
     }
-    // kv_assert(found_item);
     
     Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
     result.p0 += shift;
@@ -3216,22 +3219,21 @@ draw_text_layout(App *app, Text_Layout_ID layout_id, ARGB_Color special_color, A
 api(custom) function void
 open_color_picker(App *app, Color_Picker *picker)
 {
-    if (picker->finished != 0){
-        *picker->finished = false;
-    }
-    system_open_color_picker(picker);
+ if (picker->finished != 0){
+  *picker->finished = false;
+ }
+ system_open_color_picker(picker);
 }
 
 api(custom) function void
 animate_in_n_milliseconds(App *app, u32 n)
 {
-    Models *models = (Models*)app->cmd_context;
-    if (n == 0){
-        models->animate_next_frame = true;
-    }
-    else{
-        models->next_animate_delay = Min(models->next_animate_delay, n);
-    }
+ Models *models = (Models*)app->cmd_context;
+ if(n == 0){
+  models->animate_next_frame = true;
+ }else{
+  models->next_animate_delay = Min(models->next_animate_delay, n);
+ }
 }
 
 api(custom) function String_Match_List
@@ -3323,7 +3325,7 @@ is_view_to_the_right(App *app, View_ID view)
 api(ed) function void
 DEBUG_send_entry(Debug_Entry entry)
 {
- arrput(DEBUG_entries, entry);
+ DEBUG_entries.push_value(entry);
 }
 
 api(ed) function Render_Target *

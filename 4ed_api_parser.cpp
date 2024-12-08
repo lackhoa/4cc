@@ -40,7 +40,6 @@ api_parse__match(Token_Iterator *it, Token_Cpp_Kind sub_kind){
  }
  return(match);
 }
-
 function b32
 api_parse__ident(Token_Iterator *it, String source, String *lexeme)
 {
@@ -49,9 +48,9 @@ api_parse__ident(Token_Iterator *it, String source, String *lexeme)
  if (token->kind == TokenBaseKind_Identifier ||
      token->kind == TokenBaseKind_Keyword)
  {
-  if (token_it_inc(it))
+  if(token_it_inc(it))
   {
-   *lexeme = string_substring(source, Ii64(token));
+   *lexeme = token_string_from_source(source, token);
    match = true;
   }
  }
@@ -65,7 +64,7 @@ api_parse__match_ident(Token_Iterator *it, String source, char *lexeme)
  Token *token = token_it_read(it);
  if ((token->kind == TokenBaseKind_Identifier ||
       token->kind == TokenBaseKind_Keyword) &&
-     string_match(SCu8(lexeme), string_substring(source, Ii64(token))))
+     string_match(SCu8(lexeme), token_string_from_source(source, token)))
  {
   if (token_it_inc(it)){
    match = true;
@@ -213,18 +212,19 @@ api_parse_source__function(Arena *arena, String source_name, String source, Toke
 }
 
 function String
-api_parse__restringize_token_range(Arena *arena, String source, Token *token, Token *token_end){
-    List_String list = {};
-    for (Token *t = token; t < token_end; t += 1){
-        if (t->kind == TokenBaseKind_Comment){
-            continue;
-        }
-        if (t->kind == TokenBaseKind_Whitespace){
-            // TODO(allen): if there is a newline, emit it, all other whitespace is managed automatically.
-            continue;
-        }
+api_parse__restringize_token_range(Arena *arena, String source, Token *token, Token *token_end)
+{
+ List_String list = {};
+ for (Token *t = token; t < token_end; t += 1){
+  if (t->kind == TokenBaseKind_Comment){
+   continue;
+  }
+  if (t->kind == TokenBaseKind_Whitespace){
+   // TODO(allen): if there is a newline, emit it, all other whitespace is managed automatically.
+   continue;
+  }
   
-  String str = string_substring(source, Ii64(t));
+  String str = token_string_from_source(source, t);
   string_list_push(arena, &list, str);
  }
  return(string_list_flatten(arena, list));
@@ -281,12 +281,12 @@ api_parse_source__structure(Arena *arena, String source_name, String source, API
  return(result);
 }
 
-kv_inline b32
+myinline b32
 api_parse_source__struct(Arena *arena, String source_name, String source, Token_Iterator *token_it, arrayof<String> api_names, API_Definition_List *list){
  return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Struct, token_it, api_names, list));
 }
 
-kv_inline b32
+myinline b32
 api_parse_source__union(Arena *arena, String source_name, String source, Token_Iterator *token_it, arrayof<String> api_names, API_Definition_List *list){
  return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Union, token_it, api_names, list));
 }

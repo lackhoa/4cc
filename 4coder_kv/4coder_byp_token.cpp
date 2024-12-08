@@ -80,15 +80,23 @@ byp_draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *
 		if(!tkarr_inc_all(&it)){ break; }
 	}
 }
-
+function rect2
+get_character_underline_rect(App *app, Text_Layout_ID layout, i64 pos)
+{
+ v1 highlight_thick = 2.0f;
+ Rect_f32 rect = text_layout_character_on_screen(app, layout, pos);
+ v2 dim = V2(rect.x1 - rect.x0, highlight_thick);
+ rect = Rf32_xy_wh(V2(rect.x0, rect.y1 - highlight_thick), dim);
+ return rect;
+}
 function void 
-byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID text_layout_id)
+byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID layout)
 {
  Token_Array token_array = get_token_array_from_buffer(app, buffer);
- Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
+ Range_i64 visible_range = text_layout_get_visible_range_(app, layout);
  
 	Scratch_Block scratch(app);
-	byp_draw_cpp_token_colors(app, text_layout_id, &token_array);
+	byp_draw_cpp_token_colors(app, layout, &token_array);
  
  i64 cursor_index = token_index_from_pos(&token_array, view_get_cursor_pos(app, view));
  Token_Iterator_Array it = token_iterator_index(0, token_array.tokens, token_array.count, cursor_index);
@@ -99,12 +107,13 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
  Rect_f32 cursor_tok_rect = {};
  Vec2_f32 tok_rect_dim = {};
  
+ v1 highlight_thick = 2.0f;
  if (do_cursor_tok_highlight) {
   token_string = push_token_lexeme(app, scratch, buffer, cursor_token);
-  cursor_tok_rect = text_layout_character_on_screen(app, text_layout_id, cursor_token->pos);
+  cursor_tok_rect = text_layout_character_on_screen(app, layout, cursor_token->pos);
   f32 tok_rect_dimx = f32(cursor_token->size) * rect_width(cursor_tok_rect);
-  tok_rect_dim = V2(tok_rect_dimx, 2.f);
-  cursor_tok_rect = Rf32_xy_wh(V2(cursor_tok_rect.x0, cursor_tok_rect.y1 - 2.f), tok_rect_dim);
+  tok_rect_dim = V2(tok_rect_dimx, highlight_thick);
+  cursor_tok_rect = Rf32_xy_wh(V2(cursor_tok_rect.x0, cursor_tok_rect.y1 - highlight_thick), tok_rect_dim);
 	}
  
 	ARGB_Color function_color = fcolor_resolve(fcolor_id(defcolor_function));
@@ -152,7 +161,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
       annot_range.max = j;
       if(annot_range.min != annot_range.max-1) {
        annot_range += token->pos;
-       paint_text_color(app, text_layout_id, annot_range, comment_pop_0);
+       paint_text_color(app, layout, annot_range, comment_pop_0);
       }
      }
     }
@@ -169,11 +178,12 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
    {str8lit("no""no"),      comment_pop_2},
    {str8lit("bookmark"),  comment_pop_2}
   };
-  draw_comment_highlights(app, buffer, text_layout_id, &token_array, pairs, ArrayCount(pairs));
+  draw_comment_highlights(app, buffer, layout, &token_array, pairs, ArrayCount(pairs));
  }
  
  it = tkarr_at_pos(0, &token_array, Max(0, visible_range.first-1));
- for (;;) {
+ 
+ for(;;){
   Token *token = tkarr_read(&it);
   if (token->pos > visible_range.max) {
    break;
@@ -183,8 +193,8 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
   //-NOTE(kv) Identifier highlight
   if(cursor_token->kind != TokenBaseKind_Keyword){
    if(string_match(lexeme, token_string)){
-    Rect_f32 cur_tok_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
-    cur_tok_rect = Rf32_xy_wh(V2(cur_tok_rect.x0, cur_tok_rect.y1 - 2.f), tok_rect_dim);
+    Rect_f32 cur_tok_rect = text_layout_character_on_screen(app, layout, token->pos);
+    cur_tok_rect = Rf32_xy_wh(V2(cur_tok_rect.x0, cur_tok_rect.y1 - highlight_thick), tok_rect_dim);
     draw_rect(app, cur_tok_rect, 5.f, cursor_tok_color, 0);
    }
   }
@@ -209,10 +219,33 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID t
     case F4_Index_NoteKind_Constant: color = constant_color; break;
    }
   }
-  if (color) paint_text_color(app, text_layout_id, Ii64_size(token->pos, token->size), color);
+  if (color) paint_text_color(app, layout, Ii64_size(token->pos, token->size), color);
   
   if (!tkarr_inc_non_whitespace(&it))
    break;
  }
+ 
  if (do_cursor_tok_highlight) { draw_rect(app, cursor_tok_rect, 5.f, cursor_tok_color, 0); }
+ 
+ {//-Highlight fui sliders
+  //TODO(kv) We probably wanna do this in the game!
+  Game_API *game = get_game_code();
+  if(game){
+   u32 end_index;
+   u32 begin_index = game->fui_get_sliders_in_range(app, buffer, RangeExpand(visible_range),
+                                                    &end_index);
+   for_u32(slider_index, begin_index, end_index){
+    Range_i64 slider_range = game->fui_get_slider_range(slider_index);
+    
+    rect2 rect = get_character_underline_rect(app, layout, slider_range.min);
+    rect.x1 += rect.x1 - rect.x0;
+    draw_rect(app, rect, 5.f, function_color, 0);
+    
+    rect = get_character_underline_rect(app, layout, slider_range.max-1);
+    rect.x0 -= rect.x1 - rect.x0;
+    draw_rect(app, rect, 5.f, function_color, 0);
+   }
+  }
+ }
 }
+//-

@@ -1,4 +1,108 @@
-#pragma once
+//-
+#include "4coder_types.h"
+
+function Range_i32
+Ii32(i32 a, i32 b){
+ Range_i32 interval = {a, b};
+ if (b < a){
+  interval.min = b;
+  interval.max = a;
+ }
+ return(interval);
+}
+function Range_i64
+Ii64(i64 a, i64 b){
+ Range_i64 interval = {a, b};
+ if (b < a){
+  interval.min = b;
+  interval.max = a;
+ }
+ return(interval);
+}
+function Range_u64
+Iu64(u64 a, u64 b){
+ Range_u64 interval = {a, b};
+ if (b < a){
+  interval.min = b;
+  interval.max = a;
+ }
+ return(interval);
+}
+
+function Range_f32
+If32(f32 a, f32 b){
+ Range_f32 interval = {a, b};
+ if(b < a){
+  interval.min = b;
+  interval.max = a;
+ }
+ return(interval);
+}
+
+function Range_i32
+Ii32_size(i32 pos, i32 size){
+ return(Ii32(pos, pos + size));
+}
+function Range_i64
+Ii64_size(i64 pos, i64 size){
+ return(Ii64(pos, pos + size));
+}
+function Range_u64
+Iu64_size(u64 pos, u64 size){
+ return(Iu64(pos, pos + size));
+}
+function Range_f32
+If32_size(f32 pos, f32 size){
+ return(If32(pos, pos + size));
+}
+
+function Range_i32
+Ii32(i32 a){
+ Range_i32 interval = {a, a};
+ return(interval);
+}
+function Range_i64
+Ii64(i64 a){
+ Range_i64 interval = {a, a};
+ return(interval);
+}
+function Range_u64
+Iu64(u64 a){
+ Range_u64 interval = {a, a};
+ return(interval);
+}
+function Range_f32
+If32(f32 a){
+ Range_f32 interval = {a, a};
+ return(interval);
+}
+
+function Range_i32
+Ii32(){
+ Range_i32 interval = {};
+ return(interval);
+}
+function Range_i64
+Ii64(){
+ Range_i64 interval = {};
+ return(interval);
+}
+function Range_u64
+Iu64(){
+ Range_u64 interval = {};
+ return(interval);
+}
+function Range_f32
+If32(){
+ Range_f32 interval = {};
+ return(interval);
+}
+
+function Range_u64
+Iu64(Range_i32 r){
+ return(Iu64(r.min, r.max));
+}
+
 
 function i32
 replace_range_shift(i32 replace_length, i32 insert_length){
@@ -518,6 +622,23 @@ rect_area(Rect_f32 r){
 }
 
 function b32
+range_overlap(Range_i32 a, Range_i32 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_i64 a, Range_i64 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_u64 a, Range_u64 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_f32 a, Range_f32 b){
+ return(a.min < b.max && b.min < a.max);
+}
+
+function b32
 rect_overlap(Rect_i32 a, Rect_i32 b){
  return(range_overlap(rect_range_x(a), rect_range_x(b)) &&
         range_overlap(rect_range_y(a), rect_range_y(b)));
@@ -890,7 +1011,7 @@ function String_Const_char
 SCchar(String str){
  return(SCchar((char*)str.str, str.size));
 }
-kv_inline String
+myinline String
 SCu8(String_Const_char str){
  return(SCu8((u8*)str.str, str.size));
 }
@@ -2735,7 +2856,7 @@ function Thread_Context *
 get_thread_context(){
  return &global_thread_context;
 }
-struct App  {
+struct App {
  Thread_Context *tctx;
  void *cmd_context;
 };
@@ -2962,6 +3083,391 @@ function Base_Allocator
 base_allocator_on_heap(Heap *heap){
  Base_Allocator result = make_base_allocator_generic(base_allocate__heap, base_free__heap, heap);
  return(result);
+}
+
+struct Range_i32_Array{
+ Range_i32 *ranges;
+ i32 count;
+};
+struct Range_i64_Array{
+ Range_i64 *ranges;
+ i32 count;
+};
+struct Range_u64_Array{
+ Range_u64 *ranges;
+ i32 count;
+};
+struct Range_f32_Array{
+ Range_f32 *ranges;
+ i32 count;
+};
+
+function void
+block_range_copy__inner(void *dst, void *src, Range_u64 range, i64 shift){
+ block_copy((u8*)dst + range.first + shift, (u8*)src + range.first, range.max - range.min);
+}
+
+function void
+block_range_copy__inner(void *dst, void *src, Range_u64 range, i64 shift, u64 item_size){
+ range.first *= item_size;
+ range.opl *= item_size;
+ shift *= item_size;
+ block_range_copy__inner(dst, src, range, shift);
+}
+
+#define block_range_copy(d,s,r,h) block_range_copy__inner((d),(s),Iu64(r),(i64)(h))
+#define block_range_copy_sized(d,s,r,h,i) block_range_copy__inner((d),(s),Iu64(r),(i64)(h),(i))
+#define block_range_copy_typed(d,s,r,h) block_range_copy_sized((d),(s),(r),(h),sizeof(*(d)))
+
+function void
+block_copy_array_dst_shift__inner(void *dst, void *src, u64 it_size, Range_i64 range, i64 shift){
+ u8 *dptr = (u8*)dst;
+ u8 *sptr = (u8*)src;
+ dptr += it_size*(range.first + shift);
+ sptr += it_size*range.first;
+ block_copy(dptr, sptr, (u64)(it_size*(range.opl - range.first)));
+}
+function void
+block_copy_array_dst_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range, i64 shift){
+ u8 *dptr = (u8*)dst;
+ u8 *sptr = (u8*)src;
+ dptr += it_size*(range.first + shift);
+ sptr += it_size*range.first;
+ block_copy(dptr, sptr, (u64)(it_size*(range.opl - range.first)));
+}
+
+#define block_copy_array_dst_shift(d,s,r,h) block_copy_array_dst_shift__inner((d),(s),sizeof(*(d)),(r),(h))
+
+global Range_i32 Ii32_neg_inf = {max_i32, min_i32};
+global Range_i64 Ii64_neg_inf = {max_i64, min_i64};
+global Range_u64 Iu64_neg_inf = {max_u64, 0};
+global Range_f32 If32_neg_inf = {max_f32, -max_f32};
+
+function bool
+operator==(Range_i32 a, Range_i32 b){
+ return(a.min == b.min && a.max == b.max);
+}
+function bool
+operator==(Range_i64 a, Range_i64 b){
+ return(a.min == b.min && a.max == b.max);
+}
+function bool
+operator==(Range_u64 a, Range_u64 b){
+ return(a.min == b.min && a.max == b.max);
+}
+function bool
+operator==(Range_f32 a, Range_f32 b){
+ return(a.min == b.min && a.max == b.max);
+}
+
+function Range_i32
+operator+(Range_i32 r, i32 s){
+ return(Ii32(r.min + s, r.max + s));
+}
+function Range_i64
+operator+(Range_i64 r, i64 s){
+ return(Ii64(r.min + s, r.max + s));
+}
+function Range_u64
+operator+(Range_u64 r, u64 s){
+ return(Iu64(r.min + s, r.max + s));
+}
+function Range_f32
+operator+(Range_f32 r, f32 s){
+ return(If32(r.min + s, r.max + s));
+}
+
+function Range_i32
+operator-(Range_i32 r, i32 s){
+ return(Ii32(r.min - s, r.max - s));
+}
+function Range_i64
+operator-(Range_i64 r, i64 s){
+ return(Ii64(r.min - s, r.max - s));
+}
+function Range_u64
+operator-(Range_u64 r, u64 s){
+ return(Iu64(r.min - s, r.max - s));
+}
+function Range_f32
+operator-(Range_f32 r, f32 s){
+ return(If32(r.min - s, r.max - s));
+}
+
+function Range_i32&
+operator+=(Range_i32 &r, i32 s){
+ r = r + s;
+ return(r);
+}
+function Range_i64&
+operator+=(Range_i64 &r, i64 s){
+ r = r + s;
+ return(r);
+}
+function Range_u64&
+operator+=(Range_u64 &r, u64 s){
+ r = r + s;
+ return(r);
+}
+function Range_f32&
+operator+=(Range_f32 &r, f32 s){
+ r = r + s;
+ return(r);
+}
+
+function Range_i32&
+operator-=(Range_i32 &r, i32 s){
+ r = r - s;
+ return(r);
+}
+function Range_i64&
+operator-=(Range_i64 &r, i64 s){
+ r = r - s;
+ return(r);
+}
+function Range_u64&
+operator-=(Range_u64 &r, u64 s){
+ r = r - s;
+ return(r);
+}
+function Range_f32&
+operator-=(Range_f32 &r, f32 s){
+ r = r - s;
+ return(r);
+}
+
+function Range_i32
+range_margin(Range_i32 range, i32 margin){
+ range.min += margin;
+ range.max += margin;
+ return(range);
+}
+function Range_i64
+range_margin(Range_i64 range, i64 margin){
+ range.min += margin;
+ range.max += margin;
+ return(range);
+}
+function Range_u64
+range_margin(Range_u64 range, u64 margin){
+ range.min += margin;
+ range.max += margin;
+ return(range);
+}
+function Range_f32
+range_margin(Range_f32 range, f32 margin){
+ range.min += margin;
+ range.max += margin;
+ return(range);
+}
+
+function Range_i32
+range_intersect(Range_i32 a, Range_i32 b){
+ Range_i32 result = {};
+ if (range_overlap(a, b)){
+  result = Ii32(Max(a.min, b.min), Min(a.max, b.max));
+ }
+ return(result);
+}
+function Range_i64
+range_intersect(Range_i64 a, Range_i64 b){
+ Range_i64 result = {};
+ if (range_overlap(a, b)){
+  result = Ii64(Max(a.min, b.min), Min(a.max, b.max));
+ }
+ return(result);
+}
+function Range_u64
+range_intersect(Range_u64 a, Range_u64 b){
+ Range_u64 result = {};
+ if (range_overlap(a, b)){
+  result = Iu64(Max(a.min, b.min), Min(a.max, b.max));
+ }
+ return(result);
+}
+function Range_f32
+range_intersect(Range_f32 a, Range_f32 b){
+ Range_f32 result = {};
+ if (range_overlap(a, b)){
+  result = If32(Max(a.min, b.min), Min(a.max, b.max));
+ }
+ return(result);
+}
+
+function Range_i32
+range_union(Range_i32 a, Range_i32 b){
+ return(Ii32(Min(a.min, b.min), Max(a.max, b.max)));
+}
+function Range_i64
+range_union(Range_i64 a, Range_i64 b){
+ return(Ii64(Min(a.min, b.min), Max(a.max, b.max)));
+}
+function Range_u64
+range_union(Range_u64 a, Range_u64 b){
+ return(Iu64(Min(a.min, b.min), Max(a.max, b.max)));
+}
+function Range_f32
+range_union(Range_f32 a, Range_f32 b){
+ return(If32(Min(a.min, b.min), Max(a.max, b.max)));
+}
+
+#define BODY  return(a.min <= p && p <= a.max);
+function b32 range_contains_inclusive(Range_i32 a, i32 p){ BODY }
+function b32 range_contains_inclusive(Range_i64 a, i64 p){ BODY }
+function b32 range_contains_inclusive(Range_u64 a, u64 p){ BODY }
+function b32 range_inclusive_contains(Range_f32 a, f32 p){ BODY }
+#undef BODY
+
+#define BODY return(a.min <= p && p < a.max);
+function b32 range_contains(Range_i32 a, i32 p){ BODY }
+function b32 range_contains(Range_i64 a, i64 p){ BODY }
+function b32 range_contains(Range_u64 a, u64 p){ BODY }
+function b32 range_contains(Range_f32 a, f32 p){ BODY }
+#undef BODY
+
+#define BODY  return(clamp_min(0, a.max - a.min + 1));
+function i32 range_size_inclusive(Range_i32 a) { BODY }
+function i64 range_size_inclusive(Range_i64 a) { BODY }
+function u64 range_size_inclusive(Range_u64 a) { BODY }
+function f32 range_size_inclusive(Range_f32 a) { BODY }
+#undef BODY
+
+function Range_i32 rectify(Range_i32 a){ return(Ii32(a.min, a.max)); }
+function Range_i64 rectify(Range_i64 a){ return(Ii64(a.min, a.max)); }
+function Range_u64 rectify(Range_u64 a){ return(Iu64(a.min, a.max)); }
+function Range_f32 rectify(Range_f32 a){ return(If32(a.min, a.max)); }
+
+function Range_i32
+range_clamp_size(Range_i32 a, i32 max_size){
+ i32 max = a.min + max_size;
+ a.max = clamp_max(a.max, max);
+ return(a);
+}
+function Range_i64
+range_clamp_size(Range_i64 a, i64 max_size){
+ i64 max = a.min + max_size;
+ a.max = clamp_max(a.max, max);
+ return(a);
+}
+function Range_u64
+range_clamp_size(Range_u64 a, u64 max_size){
+ u64 max = a.min + max_size;
+ a.max = clamp_max(a.max, max);
+ return(a);
+}
+function Range_f32
+range_clamp_size(Range_f32 a, f32 max_size){
+ f32 max = a.min + max_size;
+ a.max = clamp_max(a.max, max);
+ return(a);
+}
+
+function b32
+range_is_valid(Range_i32 a){
+ return(a.min <= a.max);
+}
+function b32
+range_is_valid(Range_i64 a){
+ return(a.min <= a.max);
+}
+function b32
+range_is_valid(Range_u64 a){
+ return(a.min <= a.max);
+}
+function b32
+range_is_valid(Range_f32 a){
+ return(a.min <= a.max);
+}
+
+function i32
+range_distance(Range_i32 a, Range_i32 b){
+ i32 result = 0;
+ if (!range_overlap(a, b)){
+  if (a.max < b.min){
+   result = b.min - a.max;
+  }
+  else{
+   result = a.min - b.max;
+  }
+ }
+ return(result);
+}
+function i64
+range_distance(Range_i64 a, Range_i64 b){
+ i64 result = 0;
+ if (!range_overlap(a, b)){
+  if (a.max < b.min){
+   result = b.min - a.max;
+  }
+  else{
+   result = a.min - b.max;
+  }
+ }
+ return(result);
+}
+function u64
+range_distance(Range_u64 a, Range_u64 b){
+ u64 result = 0;
+ if (!range_overlap(a, b)){
+  if (a.max < b.min){
+   result = b.min - a.max;
+  }
+  else{
+   result = a.min - b.max;
+  }
+ }
+ return(result);
+}
+function f32
+range_distance(Range_f32 a, Range_f32 b){
+ f32 result = 0;
+ if (!range_overlap(a, b)){
+  if (a.max < b.min){
+   result = b.min - a.max;
+  }
+  else{
+   result = a.min - b.max;
+  }
+ }
+ return(result);
+}
+
+function f32
+lerp(f32 t, Range_f32 x){
+ return(x.min + (x.max - x.min)*t);
+}
+
+function Range_f32
+unlerp(f32 a, Range_f32 x, f32 b)
+{
+ x.min = unlerp(a, x.min, b);
+ x.max = unlerp(a, x.max, b);
+ return(x);
+}
+
+function Range_f32
+lerp(f32 a, Range_f32 x, f32 b){
+ x.min = lerp(a, x.min, b);
+ x.max = lerp(a, x.max, b);
+ return(x);
+}
+
+function f32
+lerp(Range_f32 range, f32 t){
+ return(lerp(range.min, t, range.max));
+}
+
+function f32
+clamp_range(Range_f32 range, f32 x)
+{
+ return(clamp_between(range.min, x, range.max));
+}
+
+function String
+string_substring(String str, Range_i64 range)
+{
+ return SCu8(str.data+range.min,
+             str.data+range.max);
 }
 
 //~EOF

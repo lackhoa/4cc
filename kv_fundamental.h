@@ -41,15 +41,7 @@
 #  define EXTERN_C_END
 #endif
 
-/*#if COMPILER_MSVC
-#  define thread_local __declspec(thread)
-#elif COMPILER_LLVM
-#  define thread_local __thread
-#elif COMPILER_GCC
-#  define thread_local __thread
-#endif*/
-
-#if defined(GB_COMPILER_MSVC)
+#if defined(COMPILER_MSVC)
 #if _MSC_VER < 1300
 typedef unsigned char     u8;
 typedef   signed char     i8;
@@ -67,7 +59,7 @@ typedef   signed __int32 i32;
 #endif
 typedef unsigned __int64 u64;
 typedef   signed __int64 i64;
-#else
+#else//-msvc
 #include <stdint.h>
 typedef uint8_t   u8;
 typedef  int8_t   i8;
@@ -77,7 +69,7 @@ typedef uint32_t u32;
 typedef int32_t  i32;
 typedef uint64_t u64;
 typedef  int64_t i64;
-#endif
+#endif//-non msvc
 
 typedef i32       i1;
 typedef int8_t    b8;
@@ -93,6 +85,21 @@ typedef float r32;
 typedef float f32;
 typedef double f64;
 typedef float v1;
+
+#define U8_MAX 0xffu
+#define I8_MIN (-0x7f - 1)
+#define I8_MAX 0x7f
+
+#define U16_MIN 0u
+#define U16_MAX 0xffffu
+#define I16_MIN (-0x7fff - 1)
+#define I16_MAX 0x7fff
+
+#define F32_MIN 1.17549435e-38f
+#define F32_MAX 3.40282347e+38f
+
+#define F64_MIN 2.2250738585072014e-308
+#define F64_MAX 1.7976931348623157e+308
 
 #define function      static
 #define xfunction             //NOTE(kv) exported function
@@ -121,12 +128,13 @@ typedef float v1;
 #define x_wrap_function(NAME)           wrap_function(NAME);
 #define x_wrap_function_pointer(NAME)   wrap_function_pointer(NAME);
 
-#define for_i1(VAR, MIN, MAX)  for(i32 VAR=MIN; VAR<MAX; VAR++)
-#define for_i32  for_i1
-#define for_u32(VAR, INITIAL, FINAL)  for(u32 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_i64(VAR, INITIAL, FINAL)  for(i64 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_u64(VAR, INITIAL, FINAL)  for(u64 VAR=INITIAL; VAR<FINAL; VAR++)
-#define for_inc(TYPE, VAR, INITIAL, FINAL)  for(TYPE VAR=INITIAL; VAR<FINAL; VAR++)
+#define for_inc(TYPE, VAR, MIN, MAX)  for(TYPE VAR=MIN; VAR<MAX; VAR++)
+
+#define for_i32(VAR, MIN, MAX)  for_inc(i32, VAR,MIN,MAX)
+#define for_u32(VAR, MIN, MAX)  for_inc(u32, VAR,MIN,MAX)
+#define for_i64(VAR, MIN, MAX)  for_inc(i64, VAR,MIN,MAX)
+#define for_u64(VAR, MIN, MAX)  for_inc(u64, VAR,MIN,MAX)
+#define for_i1  for_i32
 #define for_repeat(TIMES) for_i32(line_unique_var,0,TIMES)
 
 #define alen(array) (isize)(sizeof(array) / sizeof((array)[0]))

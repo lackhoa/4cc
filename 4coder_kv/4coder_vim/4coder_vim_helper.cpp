@@ -64,11 +64,6 @@ function u8 character_toggle_case(u8 c){
 	i1 shift = ((2*character_is_upper(c)-1)*('a'-'A'));
 	return (c + u8((character_is_alpha(c) && c != '_')*shift));
 }
-
-function Range_i64 get_line_range_from_pos(App *app, Buffer_ID buffer, i64 pos){
-	return get_line_pos_range(app, buffer, get_line_number_from_pos(app, buffer, pos));
-}
-
 function void move_horizontal_lines(App *app, i1 count){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);

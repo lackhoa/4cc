@@ -19,7 +19,6 @@
 
 #define AD_SHUTDOWN_IMGUI 1  // NOTE(kv): Because I'm still not sure what this is for?
 
-#include "kv.h"
 #include "4coder_types.h"
 #include "4ed_render_target.h"
 #include "4coder_kv_debug.h"
@@ -181,84 +180,18 @@ ed_api_fill_vtable_new(API_VTable_ed_new *table){
 #if !AD_IS_DRIVER
 struct Game_State;
 
-#define fui_is_active__return b32
-#define fui_is_active__params void
-//
-#define fui_push_active_slider_value__return String
-#define fui_push_active_slider_value__params Arena *arena
-//
-#define fui_at_slider_p__return i64
-#define fui_at_slider_p__params App *app, Buffer_ID buffer, Token_Iterator_Array *it_out
-//
-#define fui_handle_slider__return b32
-#define fui_handle_slider__params App *app, Buffer_ID buffer, String filename, i1 line_number
-//
-#define fui_generate_slider__return b32
-#define fui_generate_slider__params App *app
-
-//-NOTE: game API functions (NOTE: The API is quite simple so let's just macro for now)
-#define game_reload__return void
-#define game_reload__params \
-Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time
-// @game_bootstrap_arena_zero_initialized
-#define game_init__return Game_State *
-#define game_init__params \
-Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, App *app, \
-Game_ImGui_State &imgui_state
-//
-#define game_shutdown__return void
-#define game_shutdown__params Game_State *state
-//
-struct game_update__return {
+struct game_update_return{
  b32 should_animate_next_frame;
  arrayof<String> game_commands;
 };
-#define game_update__params \
-Game_State *state, App *app, i1 active_viewport_id, \
-Game_Input_Public &input_public, Image_Load_Info image_load_info
-//
-#define game_render__return void
-#define game_render__params Game_State *state, App *app, Render_Target *target, i1 viewport_id, Mouse_State mouse, rect2 clip_box
-//
-#define game_viewport_update__return b32
-#define game_viewport_update__params Game_State *state, i1 viewport_id, v1 dt
-// TODO(kv): @cleanup These API calls are not needed,
-// just let the game handle keyboard events by itself!
-#define game_set_preset__return void
-#define game_set_preset__params Game_State *state, i1 viewport_id, i1 preset
-//
-#define game_last_preset__return void
-#define game_last_preset__params Game_State *state, i1 viewport_id
-//
-#define is_event_handled_by_game__return  b32
-#define is_event_handled_by_game__params  App *app, Input_Event *event, b32 game_hot, b32 game_rendered
-//
-#define game_send_command__return void
-#define game_send_command__params Game_State *state, String command_name
+
+#include "game/generated/game_api.gen.h"
 
 //-Game API function
-
-#define X_GAME_API_FUNCTIONS(X) \
-X(game_init)                \
-X(game_shutdown)            \
-X(game_update)              \
-X(game_viewport_update)     \
-X(game_render)              \
-X(game_reload)              \
-X(fui_is_active)            \
-X(fui_at_slider_p)          \
-X(fui_push_active_slider_value) \
-X(fui_handle_slider)        \
-X(fui_generate_slider)      \
-X(game_set_preset)          \
-X(game_last_preset)         \
-X(is_event_handled_by_game) \
-X(game_send_command)        \
-
 struct Game_API
 {
  b32 is_valid;
- X_GAME_API_FUNCTIONS(x_function_pointer);
+ game_api_xlist(x_function_pointer);
 };
 
 #define game_api_export__return void

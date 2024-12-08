@@ -22,60 +22,26 @@ v1 delta_scale;         \
  FUI_OPTIONS(X);
 };
 
-struct Fui_Slider
+struct Slider
 {
- Basic_Type  type;   // 4
+ Basic_Type type;
+ u32 pos;
+ u32 size;
+ u32 index;  //NOTE(kv) because I don't care
  union{
   Fui_Options options;  // 8
   struct { FUI_OPTIONS(X); };
  };
- //NOTE(kv) Slider value comes after, we gotta make sure alignment is correct.
 };
 
-xfunction void *
-fast_fval_inner(Basic_Type type, void *init_value,
-                i32 linum, Fui_Options options);
-xfunction void *
-slow_fval_inner(Basic_Type type, void *init_value,
-                char *file_c, i32 linum, Fui_Options options);
-
-template<class T>
-function T
-fast_fval(T init_value, Fui_Options options={}, i32 line=__builtin_LINE())
-{
- Basic_Type type = basic_type_from_pointer((T *)0);
- void *value = fast_fval_inner(type, cast(void*)(&init_value), line, options);
- return *(cast(T *)value);
-}
-
-template<class T>
-function T
-slow_fval(T init_value, Fui_Options options={},
-          const char *file=__builtin_FILE(), i32 line=__builtin_LINE())
-{
- Basic_Type type = basic_type_from_pointer((T *)0);
- void *value = slow_fval_inner(type, cast(void*)(&init_value), file, line, options);
- return *(cast(T *)value);
-}
-
-// NOTE: The "fval" macro switches between "fast" and "slow" version
-#define fval_text slow_fval
-
 //-
-#define fval2(x,y,...)      fval_text(V2(x,y),     ##__VA_ARGS__)
-#define fval3(x,y,z,...)    fval_text(V3(x,y,z),   ##__VA_ARGS__)
-#define fval4(x,y,z,w,...)  fval_text(V4(x,y,z,w), ##__VA_ARGS__)
-#define fvali               fval_text
-//NOTE: "c"=convert, "i"=integer, meaning convert integer to floats
-#define fci(...)            i2f6(fval_text(__VA_ARGS__))
-#define fval2i(x,y)         fval_text(I2(x,y))
-#define fval3i(x,y,z)       fval_text(I3(x,y,z))
-#define fval4i(x,y,z,w)     fval_text(I4(x,y,z,w))
-#define fbool(value)        fval_text(value, (Fui_Options{.flags=Slider_Clamp_01}))
-#define fval01              fbool
+#if 0
+#define fval
+#define fbool
+#endif
 //-
 
-kv_inline Fui_Options
+myinline Fui_Options
 fopts(u32 flags, v1 delta_scale)
 {
  Fui_Options result = {};
@@ -84,13 +50,13 @@ fopts(u32 flags, v1 delta_scale)
  return result;
 }
 
-kv_inline Fui_Options
+myinline Fui_Options
 fopts_add_flags(Fui_Options options, u32 flags){
  options.flags |= flags;
  return options;
 }
 
-kv_inline Fui_Options
+myinline Fui_Options
 fopts_add_delta_scale(Fui_Options options, v1 delta_scale){
  if(options.delta_scale == 0.f){
   options.delta_scale = delta_scale;
@@ -98,13 +64,52 @@ fopts_add_delta_scale(Fui_Options options, v1 delta_scale){
  return options;
 }
 
-kv_inline Fui_Options
+myinline Fui_Options
 fopts(u32 flags){
  Fui_Options result = {};
  result.flags=flags;
  return result;
 }
-kv_inline Fui_Options fopts(Fui_Options options) { return options; }
-kv_inline Fui_Options fopts() { return {}; }
+myinline Fui_Options fopts(Fui_Options options) { return options; }
+myinline Fui_Options fopts() { return {}; }
+
+//-The Slow Path
+struct Slow_Line_Map_Entry{
+ String file;
+ i32 linum;
+ Slider *slider;
+};
+
+struct Slow_Line_Map{
+ i32 cap;
+ i32 count;
+ struct Slow_Line_Map_Entry *map;
+};
+global Slow_Line_Map slow_line_map;
+
+global Fui_Options f20th = Fui_Options{0, 0.05f};
+global Fui_Options f10th = Fui_Options{0, 0.1f};
+global Fui_Options f10s  = Fui_Options{0, 10.f};
+
+//~ Statically generated sliders
+#include "generated/sliders0.gen.h"
+
+#if 0
+global Slider global_sliders[];
+#endif
+global Slider global_sliders[FUI_SLIDER_COUNT] = {
+#include "generated/slider_info.gen.h"
+};
+global void  *global_slider_values[FUI_SLIDER_COUNT];
+
+function void
+create_sliders(Arena *arena)
+{
+#include "generated/slider_values.gen.h"
+}
+
+//~
+#define ReadSlider(type, index) \
+*(type *)(global_slider_values[index])
 
 //~EOF

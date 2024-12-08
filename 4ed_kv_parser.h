@@ -17,7 +17,6 @@ struct Token_Gen_Buffer{
 };
 #endif //-ED_PARSER_BUFFER
 
-struct Token_Gen_String{ String source; };
 struct Line_Column{ i1 line; i1 column; };
 struct EP_Scope{
  Token *start_location;
@@ -38,11 +37,11 @@ struct Ed_Parser{
   Token_Gen_Buffer Token_Gen_Buffer;
 #endif
   // or
-  Token_Gen_String Token_Gen_String;
+  String source;
  };
  //-
  // NOTE(kv): We don't allow setting the value to true (I'm open for a better name)
- void set_ok(b32 value){
+ myinline void set_ok(b32 value){
   if(not value){
    ok_ = false;
    if(not recoverable){
@@ -50,7 +49,7 @@ struct Ed_Parser{
    }
   }
  }
- inline void fail() { set_ok(false); }
+ myinline void fail() { set_ok(false); }
 };
 //-
 function void
@@ -73,25 +72,28 @@ defer(ep_set_scope(parser, line_unique_var));
 function Token *ep_get_token(Ed_Parser *p);
 function String ep_print_token(Arena *arena, Ed_Parser *p);
 function String ep_print_token(Ed_Parser *p);
-function String ep_print_given_token(Arena *arena, Ed_Parser *p, Token *token);
+function String ep_print_token(Arena *arena, Ed_Parser *p, Token *token);
 //-
 struct Ed_Parser_Recovery{
  Ed_Parser saved_parser;
  Ed_Parser *pointer;
  //-
- inline ~Ed_Parser_Recovery(){
-  if(not pointer->ok_){
-   *pointer = saved_parser;
+ ~Ed_Parser_Recovery(){
+  if(pointer->recoverable){
+   //NOTE(kv) We allow hard failing by setting "recoverable" to false.
+   if(not pointer->ok_){
+    *pointer = saved_parser;
+   }
+   //NOTE(kv) Restore recoverable, even if you don't fail.
+   pointer->recoverable = saved_parser.recoverable;
   }
-  //NOTE(kv) Restore recoverable, even if you don't fail.
-  pointer->recoverable = saved_parser.recoverable;
  }
 };
 function Ed_Parser_Recovery
 ed_parser_recovery_begin(Ed_Parser *pointer){
  Ed_Parser_Recovery recovery = {};
  recovery.saved_parser = *pointer;
- recovery.pointer  = pointer;
+ recovery.pointer      = pointer;
  pointer->recoverable = true;
  return recovery;
 }
@@ -131,13 +133,11 @@ function Ed_Parser
 make_ep_from_string(String string, Token_Iterator const&it){
  Ed_Parser result = {
   .ok_               = true,
-  .direction    = Scan_Forward,
+  .direction         = Scan_Forward,
   .it                = it,
   .original_token_it = it,
   .Token_Gen_Type    = TG_String,
-  .Token_Gen_String  = {
-   .source=string,
-  },
+  .source            = string,
  };
  result.scope_.start_location = &stub_token;
  return result;

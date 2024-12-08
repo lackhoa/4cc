@@ -14,11 +14,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// #include "4coder_base_types.h"
 #include "4coder_version.h"
 #include "4coder_table.h"
 #include "4coder_events.h"
-#include "4coder_types.h"
+
+//NOTE(kv) So this file is included by the "4coder_kv.cpp" file,
+//  which we feed into the preprocessor.
+//  Which then is parsed and then the "custom commands" are pulled out.
+//#include "4coder_types.h"
+#include "custom_command_defines.h"
+
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
 #include "4coder_system_types.h"

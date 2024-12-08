@@ -1,0 +1,20 @@
+//NOTE(kv) This file is involved in some special proprocessing BS,
+//  so we need the "#prama once". This stupid system should definitely get cleaned up!
+#pragma once
+
+#if defined(CUSTOM_COMMAND_SIG) || defined(CUSTOM_UI_COMMAND_SIG) || defined(CUSTOM_DOC) || defined(CUSTOM_COMMAND)
+#  error Please do not define CUSTOM_COMMAND_SIG, CUSTOM_DOC, CUSTOM_UI_COMMAND_SIG, or CUSTOM_COMMAND
+#endif
+
+#if defined(META_PASS)
+#  define CUSTOM_COMMAND_SIG(name)    CUSTOM_COMMAND(name, __FILE__, __LINE__, Normal)
+#  define CUSTOM_UI_COMMAND_SIG(name) CUSTOM_COMMAND(name, __FILE__, __LINE__, UI)
+#  define CUSTOM_DOC(str)             CUSTOM_DOC(str)
+#  define CUSTOM_ID(group, name)      CUSTOM_ID(group, name)
+#else
+#  define CUSTOM_COMMAND_SIG(name)    void name(App *app)
+#  define CUSTOM_UI_COMMAND_SIG(name) void name(App *app)
+#  define CUSTOM_DOC(str)
+#  define CUSTOM_ID(group, name) global Managed_ID name;
+#endif
+//-

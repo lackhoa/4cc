@@ -28,7 +28,7 @@ global arrayof<Meta_Type_Names> meta_type_name_store;
 struct Enclosed_in_strlit{ String string; };
 function void
 print(Printer &p, Enclosed_in_strlit item){
- printn3(p, "strlit(\"", item.string, "\")");
+ p < "strlit(\"" < item.string < "\")";
 }
 inline Enclosed_in_strlit
 enclosed_in_strlit(String string){ return Enclosed_in_strlit{ string, }; }

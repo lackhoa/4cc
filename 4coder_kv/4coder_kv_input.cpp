@@ -1,14 +1,14 @@
 struct KvQuailEntry
 {
-  char *key;
-  char *insert;
-  i1   delete_before;
-  i1   delete_after;
-  i1   cursor_index;
+ char *key;
+ char *insert;
+ i1   delete_before;
+ i1   delete_after;
+ i1   cursor_index;
 };
 
-global KvQuailEntry *kv_quail_table;
-global char         *kv_quail_keystroke_buffer;
+global arrayof<KvQuailEntry> kv_quail_table;
+global arrayof<char>         kv_quail_keystroke_buffer;
 
 // NOTE(kv): If keys are overlapping, you have to push the shorter key first in
 // order to for the quail rule to work.
@@ -16,26 +16,36 @@ function void
 kv_quail_defrule(App *app, char *key, char *insert,
                  i1 delete_before, i1 delete_after, i1 cursor_index)
 {
- i1 entry_index = (i1)arrlen(kv_quail_table);
- // note: we keep the table sorted by key length, largest first, for overlapping keys.
+ arrayof<KvQuailEntry> *table = &kv_quail_table;
+ i1 entry_index = (i1)table->count;
+ // note: We keep the table sorted by key length, largest first, for overlapping keys.
  for (i1 table_index=0;
-      table_index < arrlen(kv_quail_table);
+      table_index < table->count;
       table_index++)
  {
-  char *existing_key = kv_quail_table[table_index].key;
+  char *existing_key = table->items[table_index].key;
   if(starts_with(SCu8(key), SCu8(existing_key))){
    entry_index = table_index;  // change insertion index so this rule matches first
    break;
   }
  }
+ 
  KvQuailEntry entry = {key, insert, delete_before, delete_after, cursor_index};
- arrins(kv_quail_table, entry_index, entry);
+ table->push();
+ for(i32 i=table->count-1;
+     i >= entry_index+1;
+     i--)
+ {
+  table->items[i] = table->items[i-1];
+ }
+ table->items[entry_index] = entry;
 }
 
 function b32
 kv_handle_text_insert(App *app, u8 character)
 {
- assert_defend(arrlen(kv_quail_keystroke_buffer) < 1024, 
+ arrayof<char> *keybuf = &kv_quail_keystroke_buffer;
+ assert_defend(keybuf->count < 1024, 
                {
                 print_message(app, SCu8("ERROR: 'kv_quail_keystroke_buffer' grown too big!"));
                 return false;
@@ -43,19 +53,18 @@ kv_handle_text_insert(App *app, u8 character)
  
  GET_VIEW_AND_BUFFER;
  
- char* &keybuf = kv_quail_keystroke_buffer;
  b32 substituted = false;
- arrput(keybuf, character);
+ keybuf->push_value(character);
  
  // loop to find a match in quail table
  for (i1 quail_index=0;
-      ( quail_index < arrlen(kv_quail_table) ) && ( !substituted );
+      ( quail_index < kv_quail_table.count ) && ( !substituted );
       quail_index++)
  {
   KvQuailEntry entry = kv_quail_table[quail_index];
   i1 keylen = (i1)strlen(entry.key);
   
-  char *keys = keybuf + arrlen(keybuf) - keylen;
+  char *keys = keybuf->items + keybuf->count - keylen;
   substituted = ( strncmp(keys, entry.key, keylen) == 0 );
   if (substituted)
   {
@@ -78,7 +87,6 @@ kv_handle_text_insert(App *app, u8 character)
  
  return substituted;
 }
-
 
 function b32
 kv_handle_vim_keyboard_input(App *app, Input_Event *event)
@@ -213,8 +221,9 @@ kv_view_input_handler(App *app)
  {
   Temp_Memory_Block temp(scratch);
   
-  if (input.event.kind == InputEventKind_KeyStroke)
+  if (input.event.kind == InputEventKind_KeyStroke){
    seconds_since_last_keystroke = 0;
+  }
   
 #if VIM_USE_BOTTOM_LISTER
   // Clicking on lister items outside of original view panel is a hack

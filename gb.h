@@ -282,56 +282,35 @@ typedef i16 b16;
 		#ifndef false
 		#define false (0 != 0)
 		#endif
-		typedef b8 bool;
-	#else
-		#include <stdbool.h>
-	#endif
+typedef b8 bool;
+#else
+#include <stdbool.h>
+#endif
 #endif
 
 // NOTE(bill): These do are not prefixed with gb because the types are not.
-#ifndef U8_MIN
-#define U8_MIN 0u
-#define U8_MAX 0xffu
-#define I8_MIN (-0x7f - 1)
-#define I8_MAX 0x7f
+#define u32_max 0xffffffffu
+#define i32_min (-0x7fffffff - 1)
+#define i32_max 0x7fffffff
 
-#define U16_MIN 0u
-#define U16_MAX 0xffffu
-#define I16_MIN (-0x7fff - 1)
-#define I16_MAX 0x7fff
-
-#define U32_MIN 0u
-#define U32_MAX 0xffffffffu
-#define I32_MIN (-0x7fffffff - 1)
-#define I32_MAX 0x7fffffff
-
-#define U64_MIN 0ull
-#define U64_MAX 0xffffffffffffffffull
-#define I64_MIN (-0x7fffffffffffffffll - 1)
-#define I64_MAX 0x7fffffffffffffffll
+#define u64_max 0xffffffffffffffffull
+#define i64_min (-0x7fffffffffffffffll - 1)
+#define i64_max 0x7fffffffffffffffll
 
 #if defined(GB_ARCH_32_BIT)
-	#define USIZE_MIX U32_MIN
-	#define USIZE_MAX U32_MAX
+	#define USIZE_MIX 0u
+	#define USIZE_MAX u32_max
 
 	#define ISIZE_MIX S32_MIN
 	#define ISIZE_MAX S32_MAX
 #elif defined(GB_ARCH_64_BIT)
-	#define USIZE_MIX U64_MIN
-	#define USIZE_MAX U64_MAX
+	#define USIZE_MIX 0ull
+	#define USIZE_MAX u64_max
 
-	#define ISIZE_MIX I64_MIN
-	#define ISIZE_MAX I64_MAX
+	#define ISIZE_MIX i64_min
+	#define ISIZE_MAX i64_max
 #else
 	#error Unknown architecture size. This library only supports 32 bit and 64 bit architectures.
-#endif
-
-#define F32_MIN 1.17549435e-38f
-#define F32_MAX 3.40282347e+38f
-
-#define F64_MIN 2.2250738585072014e-308
-#define F64_MAX 1.7976931348623157e+308
-
 #endif
 
 #ifndef NULL
@@ -1730,7 +1709,8 @@ inline isize gb_utf8_strlen(u8 const *str) {
 	return count;
 }
 
-inline isize gb_utf8_strnlen(u8 const *str, isize max_len) {
+function isize
+gb_utf8_strnlen(u8 const *str, isize max_len) {
 	isize count = 0;
 	for (; *str && max_len > 0; count++) {
 		u8 c = *str;
@@ -1748,8 +1728,16 @@ inline isize gb_utf8_strnlen(u8 const *str, isize max_len) {
 }
 function b32
 string_match(char *a, char *b){
- while(*a++ == *b++);
- return (*a == 0 && b == 0);
+ while(*a){
+  if(*a == *b){
+   a++;
+   b++;
+  }else{
+   break;
+  }
+ }
+ b32 result = *a ==0 and *b == 0;
+ return result;
 }
 // TODO(bill): Are these good enough for characters?
 gb_global char const gb__num_to_char_table[] =
@@ -2075,7 +2063,7 @@ function GB_FILE_SEEK_PROC(gb__win32_file_seek) {
 
 function GB_FILE_READ_AT_PROC(gb__win32_file_read) {
  b32 result = false;
- DWORD size_ = cast(DWORD)(size > I32_MAX ? I32_MAX : size);
+ DWORD size_ = cast(DWORD)(size > i32_max ? i32_max : size);
  DWORD bytes_read_;
  gb__win32_file_seek(fd, offset, gbSeekWhence_Begin, NULL);
  if (ReadFile(fd.p, buffer, size_, &bytes_read_, NULL)) {
@@ -2087,7 +2075,7 @@ function GB_FILE_READ_AT_PROC(gb__win32_file_read) {
 }
 
 	function GB_FILE_WRITE_AT_PROC(gb__win32_file_write) {
-		DWORD size_ = cast(DWORD)(size > I32_MAX ? I32_MAX : size);
+		DWORD size_ = cast(DWORD)(size > i32_max ? i32_max : size);
 		DWORD bytes_written_;
 		gb__win32_file_seek(fd, offset, gbSeekWhence_Begin, NULL);
 		if (WriteFile(fd.p, buffer, size_, &bytes_written_, NULL)) {

@@ -1,13 +1,3 @@
-function String
-get_identifier_at_cursor(Arena *arena, App *app, Buffer_ID buffer)
-{
- Token_Iterator_Array tk = get_token_it_at_cursor(app);
- if ( tk.tokens ) {
-  Token *token = tk.ptr;
-  return push_token_lexeme(app, arena, buffer, token);
- } else { return {}; }
-}
-
 function void
 fui_tick(App *app, Frame_Info frame_info)
 {
@@ -25,11 +15,11 @@ fui_tick(App *app, Frame_Info frame_info)
 }
 
 function void
-fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
+fui_draw_slider(App *app, rect2 region)
 {
  Game_API *game = get_game_code();
- if ( game ) {
-  if ( game->fui_at_slider_p(app, buffer, 0) ) {
+ if(game){
+  if(game->fui_at_slider_p(app)){
    v2 slider_radius = v2{50,50};
    v2 slider_dim    = 2 * slider_radius;
    v2 slider_origin = region.max - slider_radius;
@@ -46,6 +36,4 @@ fui_draw_slider(App *app, Buffer_ID buffer, rect2 region)
 }
 
 function void update_game_key_states(Input_Event *event);
-
-
 //~

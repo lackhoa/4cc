@@ -1,13 +1,11 @@
 //-NOTE(kv) Highest-level drawing functions
 //  We wanna share most of these functions with the driver.
-#pragma once
-
 framework_storage u32 bs_cycle_counter;
 
 struct Patch{
  v3 e[4][4];
  typedef v3 Array4x4[4][4];  // @stroustrup
- operator Array4x4&() { return e; } 
+ operator Array4x4&() { return e; }
 };
 
 #define set_linum       if (linum!=0) { painter.draw_prim_id = linum; }
@@ -174,6 +172,7 @@ bez_offset(v3 p0, v3 d0, v3 d3, v3 p3){
 //  Because look, if the length changes, so would the curve.
 //  There just isn't much point to specifying curves that look the same
 //  when the distance between the endpoints change.
+//  And it's slower and more complicated.
 function Bezier
 bez_v3v3(v3 p0, v3 d0, v3 d3, v3 p3){
  TIMED_BLOCK(bs_cycle_counter);
@@ -229,7 +228,7 @@ bez_unit(v3 p0, v2 d0, v2 d3, v3 unit_y, v3 p3){
  }
  return bez_raw(p0, p1, p2, p3);
 }
-kv_inline Bezier
+myinline Bezier
 bez_unit2(v3 p0, v4 d0d3, v3 unit_y, v3 p3){
  return bez_unit(p0, d0d3.xy, d0d3.zw, unit_y, p3);
 }
@@ -316,14 +315,14 @@ draw_disk_inner(v3 center, v1 radius, argb color,
  }
 }
 function void
-draw_bezier_inner(const v3 P[4], Common_Line_Params &cparams, Line_Params &params){
+draw_bezier_inner(const v3 P[4], Common_Line_Params *cparams, Line_Params &params){
  if(params.visibility > 0.f){
-  v1 depth_offset = cparams.depth_offset;
+  v1 depth_offset = cparams->depth_offset;
   v4 radii = params.radii;
-  if(radii == v4{}){ radii = cparams.radii; }
-  radii *= cparams.radius_mult * default_line_radius_unit;
+  if(radii == v4{}){ radii = cparams->radii; }
+  radii *= cparams->radius_mult * default_line_radius_unit;
   //NOTE(kv) we view zero as default, so whoever turns gets to stick it
-  Line_Flags flags = params.flags | cparams.flags;
+  Line_Flags flags = params.flags | cparams->flags;
   i32 nslices;
   if(flags & Line_Straight){
    radii = V4(radii[1]);  //note: don't wanna take radius from the tip
@@ -335,7 +334,7 @@ draw_bezier_inner(const v3 P[4], Common_Line_Params &cparams, Line_Params &param
    // and spaced out more when we look at them in 3D -> you'd underestimate the density in 2D
    Bezier P_transformed;
    {
-    const mat4 &transform = current_world_from_bone(painter);
+    mat4 &transform = *current_world_from_bone(&painter);
     for_i32(index,0,4)
     {
      P_transformed[index] = mat4vert_div(transform, P[index]);
@@ -360,7 +359,7 @@ draw_bezier_inner(const v3 P[4], Common_Line_Params &cparams, Line_Params &param
     }
    }
    
-   nslices = i32(cparams.nslice_per_meter * the_length)+1;
+   nslices = i32(cparams->nslice_per_meter * the_length)+1;
    
    i32 MAX_NSLICES = 128;
    if(nslices > MAX_NSLICES){ DEBUG_VALUE(nslices); }
@@ -375,7 +374,7 @@ draw_bezier_inner(const v3 P[4], Common_Line_Params &cparams, Line_Params &param
   
   v1 interval = 1.0f / (v1)nslices;
   
-  argb color = cparams.color;
+  argb color = cparams->color;
   //NOTE: the hot color is deferred to the triangle filling routine
   
   v3 last_sample = bezier_sample(P,-interval);  //NOTE: so we can calculate C and D at t=0
@@ -428,12 +427,12 @@ draw_bezier_inner(const v3 P[4], Common_Line_Params &cparams, Line_Params &param
  }
 }
 function b32
-draw_cparams(const v3 P[4], Common_Line_Params &cparams, Line_Params params, linum_defparam){
+draw_cparams(const v3 P[4], Common_Line_Params *cparams, Line_Params params, linum_defparam){
  set_linum;
- Painter &p = painter;
+ Painter *p = &painter;
  b32 ok = is_line_enabled();
  if(ok and
-    not p.ignore_alignment_min and
+    not p->ignore_alignment_min and
     u32(linum) != get_hot_prim_id()  and
     params.alignment_min > 0.f)
  {//-NOTE(kv) Alignment business
@@ -449,8 +448,8 @@ draw_cparams(const v3 P[4], Common_Line_Params &cparams, Line_Params params, lin
   v1 alignment;
   {
    v3 centroid = 0.5f*(A+D);  // NOTE: our curves are kinda straight most of the time, so I guess this works
-   mat4 &bone_from_world = current_world_from_bone(p).inv;
-   v3 camera_obj = bone_from_world * camera_world_position(&p.camera);
+   mat4 *bone_from_world = &current_world_from_bone(p)->inv;
+   v3 camera_obj = mat4vert(*bone_from_world, camera_world_position(&p->camera));
    v3 view_vector = noz(camera_obj - centroid);
    alignment = absolute(dot(normal,view_vector));
   }
@@ -463,11 +462,12 @@ draw_cparams(const v3 P[4], Common_Line_Params &cparams, Line_Params params, lin
  return ok;
 }
 function b32
-draw(const v3 P0[4], Line_Params params, linum_defparam){
- return draw_cparams(P0,current_line_cparams(),params,linum);
+draw(const v3 P0[4], Line_Params params, linum_defparam)
+{
+ return draw_cparams(P0, current_line_cparams(), params, linum);
 }
 // NOTE: Line
-kv_inline Bezier
+myinline Bezier
 bez_line(v3 a, v3 b){
  return Bezier{
   a,
@@ -476,41 +476,41 @@ bez_line(v3 a, v3 b){
   b
  };
 }
-kv_inline void
+myinline void
 draw(Bezier b, v4 radii, linum_defparam){
  Line_Params params = painter.line_params;
  params.radii = radii;
  draw(b, params, linum);
 }
-kv_inline void
+myinline void
 draw(Bezier b, i4 radii, linum_defparam){
  Line_Params params = painter.line_params;
  params.radii = i2f6(radii);
  draw(b, params, linum);
 }
 // NOTE: omit params
-kv_inline void
+myinline void
 draw(Bezier b, linum_defparam){
  draw(b, painter.line_params, linum);
 }
 // NOTE: straight line
-kv_inline void
+myinline void
 draw(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  draw(bez_line(a,b), params, linum);
 }
-kv_inline void
+myinline void
 draw_line(v3 a, v3 b, Line_Params params=painter.line_params, linum_defparam){
  params.flags |= Line_Straight;
  draw(bez_line(a,b), params, linum);
 }
-kv_inline ARGB_Color
+myinline ARGB_Color
 argb_gray(v1 value){
  ClampBot(value,0.0f);
  ClampTop(value,1.0f);
  return argb_pack(v4{repeat3(value),1});
 }
 
-kv_inline v4
+myinline v4
 v4_gray(v1 value) {
  return v4{repeat3(value),1};
 }
@@ -611,7 +611,7 @@ fill_dbez_inner(const v3 P[4], const v3 Q[4], argb color){
   fill_bezier_inner_2(points, points+4, color, p->fill_depth_offset, p->viz_level);
  }
 }
-kv_inline void
+myinline void
 fill_dbez(Bezier const&b1, Bezier const&b2, argb color=0, linum_defparam){
  set_linum;
  fill_dbez_inner(b1.e, b2.e, color);
@@ -627,7 +627,7 @@ fill_dbez(v3 a, v3 b, Bezier const&bezier, argb color=0, linum_defparam){
  };
  fill_dbez_inner(ab, bezier.e, color);
 }
-kv_inline void
+myinline void
 fill_bez(Bezier const&bezier, argb color=0, linum_defparam){
  fill_dbez(bezier.e[0], bezier.e[3], bezier, color, linum);
 }
@@ -690,7 +690,7 @@ fill_patch(v3 P0[4], v3 P1[4],
  copy_array_dst(P[3], P3);
  fill_patch(P, color);
 }
-kv_inline void
+myinline void
 fill3_symx(v3 a, v3 b, linum_defparam){
  symx_off;
  fill3(a,b,negateX(b),fp(),linum);
@@ -724,7 +724,7 @@ draw_box(mat4 const&transform, linum_defparam) {
  v3 P = O+x+y+z;
  draw(bez_line(P,P-x), 0); draw(bez_line(P,P-y), 0); draw(bez_line(P,P-z), 0);
 }
-kv_inline Patch
+myinline Patch
 patch(Bezier const&p0, Bezier const&p1, Bezier const&p2, Bezier const&p3) {
  Patch result;
  copy_array_dst(result.e[0], p0.e);
@@ -734,19 +734,19 @@ patch(Bezier const&p0, Bezier const&p1, Bezier const&p2, Bezier const&p3) {
  return result;
 }
 
-kv_inline Patch
+myinline Patch
 patch_symx(Bezier const&P0, Bezier const&P1) {
  Bezier N0 = negateX(P0);
  Bezier N1 = negateX(P1);
  return patch(P0, P1, N1, N0);
 }
-kv_inline v4
+myinline v4
 big_to_small() {
  v1 big   = 1.f;
  v1 small = 0.5f;
  return V4(big, big, small, small);
 }
-kv_inline v4
+myinline v4
 small_to_big() {
  v1 big   = 1.f;
  v1 small = 0.5f;
@@ -759,13 +759,13 @@ lp(v1 alignment_min, i4 radii={}){
  result.radii         = i2f6(radii);
  return result;
 }
-kv_inline void
+myinline void
 duo_line(v3 a, v3 b, v3 c, linum_defparam){
  set_linum;
  draw(bez_line(a,b), lp(small_to_big()), 0);
  draw(bez_line(b,c), lp(big_to_small()), 0);
 }
-kv_inline void
+myinline void
 duo_line(v3 array[3], linum_defparam){
  set_linum;
  duo_line(array[0], array[1], array[2], 0);
@@ -812,8 +812,8 @@ indicate_vertex(char *vertex_name, v3 pos,
   b32 should_draw = ((p.viz_level >= force_draw_level) || mouse_near);
   if(should_draw){//NOTE: Draw
    symx_off;
-   auto &cparams = current_line_cparams();
-   v1 depth_offset = cparams.depth_offset - 1*centimeter;
+   Common_Line_Params *cparams = current_line_cparams();
+   v1 depth_offset = cparams->depth_offset - 1*centimeter;
    u32 flags = 0;
    // NOTE: If lines are overlayed, so should indicators (I guess?)
    b32 line_overlay_on = (p.line_params.flags & Line_Overlay);

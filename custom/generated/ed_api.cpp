@@ -4,6 +4,7 @@
 #if defined(STATIC_LINK_API)
 function void
 ed_api_fill_vtable(API_VTable_ed *vtable){
+vtable->get_line_range_from_pos = get_line_range_from_pos;
 vtable->buffer_replace_range = buffer_replace_range;
 vtable->push_buffer_base_name = push_buffer_base_name;
 vtable->get_code_directory = get_code_directory;
@@ -53,6 +54,7 @@ vtable->draw_new_group = draw_new_group;
 #if defined(DYNAMIC_LINK_API)
 function void
 ed_api_read_vtable(API_VTable_ed *vtable){
+get_line_range_from_pos = vtable->get_line_range_from_pos;
 buffer_replace_range = vtable->buffer_replace_range;
 push_buffer_base_name = vtable->push_buffer_base_name;
 get_code_directory = vtable->get_code_directory;

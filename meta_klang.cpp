@@ -1,5 +1,5 @@
 //-Parsing utilities
-global const String header_keywords[] = {
+global String header_keywords[] = {
  strlit("while"),
  strlit("for"),
  strlit("for_i32"),
@@ -39,7 +39,11 @@ function String
 guess_expression_type(Meta_Expression *e)
 {
  String result = {};
- if(e->kind == Expression_Kind_Int){
+ if(e->kind == Expression_Kind_Unary){
+  result = guess_expression_type(e->unary.argument);
+ }else if(e->kind == Expression_Kind_Binary){
+  result = guess_expression_type(e->binary.lhs);
+ }else if(e->kind == Expression_Kind_Int){
   result = strlit("i1");
  }else if(e->kind == Expression_Kind_Float){
   result = strlit("v1");
@@ -47,7 +51,7 @@ guess_expression_type(Meta_Expression *e)
   //NOTE(kv) Using functions to describe data might not be a great idea,
   //  but C++ is kinda garbage when it comes to putting braces in macro, so idk dude...
   //  we can always change it later.
-  Expression_Function_Call *call = &e->function_call;
+  Expression_Call *call = &e->call;
   String keys[] = {
    strlit("V2"), strlit("V3"), strlit("V4"),
    strlit("I2"), strlit("I3"), strlit("I4"),
@@ -56,113 +60,385 @@ guess_expression_type(Meta_Expression *e)
    strlit("v2"), strlit("v3"), strlit("v4"),
    strlit("i2"), strlit("i3"), strlit("i4"),
   };
-  kv_assert(alen(keys) == alen(vals));
-   
+  static_assert(alen(keys) == alen(vals));
+  
   for_u32(i, 0, alen(keys)){
-   if(call->function_name == keys[i]){
-    result = vals[i];
-    break;
+   if(call->func->kind == Expression_Kind_Identifier){
+    if(call->func->as_string == keys[i]){
+     result = vals[i];
+     break;
+    }
    }
   }
  }
  return result;
 }
-function Meta_Expression
-k_parse_expression(Arena *arena, Klang_Parser *p, String terminators)
+function b32
+modify_ast2(Arena *arena, arrayof<K_Slider> *sliders,
+            Token *token0, Token *last_token,
+            Meta_Expression *result)
 {
+ b32 ok = true;
+ if(result->kind == Expression_Kind_Call){
+  Expression_Call *call = &result->call;
+  String func_name = get_function_name(call);
+  b32 is_fval  = func_name == strlit("fval");
+  b32 is_fbool = func_name == strlit("fbool");
+  b32 is_slider = (is_fval or is_fbool);
+  if(is_slider){
+   //-slider special handling
+   u32 arg_count = call->arguments.count;
+   if(arg_count != 1 and arg_count != 2){
+    ok = 0;
+   }
+   
+   if(ok){
+    u32 slider_index = sliders->count;
+    K_Slider *slider = sliders->push_zero();
+    {//NOTE Store slider so it can be printed out later
+     Meta_Expression *value_expr = &call->arguments[0];
+     slider->type = guess_expression_type(value_expr);
+     if(slider->type.count == 0){
+      ok = 0;
+     }
+     slider->value = print_expression(arena, value_expr);
+     slider->pos   = (u32)token0->pos;
+     slider->size  = last_token->pos + last_token->size - slider->pos;
+     
+     if(is_fval and arg_count == 2){
+      Meta_Expression *option_expr = &call->arguments[1];
+      slider->options = print_expression(arena, option_expr);
+     }
+     
+     if(is_fbool){
+      slider->options = strlit("{.flags=Slider_Clamp_01}");
+     }
+    }
+    
+    *result = {};
+    result->kind   = Expression_Kind_Unknown;
+    result->as_string = push_stringf(arena, "ReadSlider(%.*s, %u)",
+                                     strexpand(slider->type), slider_index);
+   }
+  }
+ }
+ return ok;
+}
+function void
+modify_ast(Klang_Parser *p, Token *token0, Meta_Expression *result)
+{
+ Token *last_token = ep_get_token_delta(p, -1);
+ b32 ok = modify_ast2(p->arena, p->sliders, token0, last_token, result);
+ if(not ok){
+  p->fail();
+  p->recoverable = false;  //TODO(kv) this is no good!
+ }
+}
+function Unary_Operator
+prefix_unary_operator_from_token(Token *token, String token_string)
+{
+ Unary_Operator op = {};
+ 
+ if(token->kind == TokenBaseKind_Operator or
+    token->sub_kind == TokenCppKind_NotAlt)
+ {
+  //NOTE(kv) This is prefix, so can be represented with string characters.
+  kv_assert(token_string.count < 4);
+  char *op_cstring = op_to_cstring(&op);
+  for_u32(i, 0, token_string.count){
+   op_cstring[i] = token_string[i];
+  }
+  
+  //NOTE Final precedence check
+  Precedence precedence = precedence_of(op);
+  if(precedence == 0){
+   op = {};
+  }
+ }
+ 
+ return op;
+}
+function void
+k_parse_expression2(Klang_Parser *p, Precedence max_precedence, String terminators,
+                    Meta_Expression *result);
+
+function void
+k_parse_compound_literal(Klang_Parser *p, Meta_Expression *result)
+{
+ result->kind = Expression_Kind_Compound;
+ init_dynamic(result->compound_items, p->arena);
+ 
+ while(p->ok_){
+  if(ep_maybe_char(p, '}')){
+   break;
+  }
+  Compound_Item *item = result->compound_items.push_zero();
+  k_parse_expression2(p, Precedence_Max, strlit(",}"), &item->value);
+  
+  if(not ep_maybe_char(p, ',')){
+   ep_char(p, '}');
+   break;
+  }
+ }
+}
+
+function void
+k_parse_expression2(Klang_Parser *p, Precedence max_precedence, String terminators,
+                    Meta_Expression *result)
+{
+ //TODO(kv) Cleanup terminators when we confirm that we don't need them.
+ Arena *arena = p->arena;
  Scratch_Block scratch;
- Meta_Expression result = {};
+ *result = {};
+ 
  Token *token0 = ep_get_token(p);
  String token0_string = ep_print_token(p);
  {
-  ep_recovery_block(p);
+  //ep_recovery_block(p);
+  Unary_Operator unary_op = prefix_unary_operator_from_token(token0, token0_string);
+  
   if(ep_maybe_kind(p, TokenBaseKind_Identifier)){
    //
-   if(ep_maybe_char(p, '(')){
-    //-Function call
-    result.kind = Expression_Kind_Call;
-    
-    Expression_Function_Call *call = &result.function_call;
-    call->function_name = token0_string;
-    init_dynamic(call->arguments, arena);
-    while(p->ok_ and (not ep_maybe_char(p, ')'))){
-     Meta_Expression argument = k_parse_expression(arena, p, strlit(",)"));
-     call->arguments.push_value(argument);
-     
-     if(ep_maybe_char(p, ')')) break; 
-     else ep_char(p, ','); 
-    }
-    
-    b32 is_fval = token0_string == strlit("fval");
-    if(is_fval){
-     //-fval special handling
-     if(call->arguments.count != 1){
-      p->fail();
-     }
-     if(p->ok_){
-      u32 slider_index = p->sliders->count;
-      K_Slider *slider = p->sliders->push_zero();
-      {//NOTE store slider so it can be printed out later
-       Meta_Expression *value_expr = &call->arguments[0];
-       slider->type  = guess_expression_type(value_expr);
-       if(slider->type.count == 0){ p->fail(); }
-       slider->value = print_expression(arena, value_expr);
-      }
-      
-      result = {};
-      result.kind    = Expression_Kind_Unknown;
-      result.unknown = push_stringf(arena, "*(%.*s *)read_slider_at_index(%u)",
-                                    strexpand(slider->type), slider_index);
-     }
-    }
-   }else if(ep_maybe_char(p, '=')){
-    //-Assignment
-    result.kind = Expression_Kind_Assignment;
-    Expression_Assignment &assignment = result.assignment;
-    assignment.lhs = token0_string;
-    assignment.rhs = push_value(arena, k_parse_expression(arena,p,terminators));
-   }else if(k_test_char(p, terminators)){
-    result.kind = Expression_Kind_Identifier;
-    result.identifier = token0_string;
+   if(ep_maybe_char(p, '{')){
+    //NOTE Brace initializer
+    k_parse_compound_literal(p, result);
+   }else{
+    result->kind = Expression_Kind_Identifier;
+    result->as_string = token0_string;
    }
-  }else if(ep_maybe_kind(p, TokenBaseKind_LiteralInteger)){
+   
+  }else if(unary_op != 0){
+   //-Unary prefix
+   ep_eat(p);
+   if(max_precedence > Precedence_Unary){
+    result->kind = Expression_Kind_Unary;
+    Expression_Unary *unary = &result->unary;
+    unary->op       = unary_op;
+    unary->argument = push_struct(arena, Meta_Expression);
+    k_parse_expression2(p, Precedence_Unary, terminators, unary->argument);
+   }else{
+    //NOTE(kv) Binary operators (except "." and "->") never binds
+    //  stronger than unary operators.
+    //  So if you hit this path, the user must have written something silly,
+    //  such as "foo->-5"
+    p->fail();
+   }
+  }else if(token0->kind == TokenBaseKind_LiteralString){
+   ep_eat(p);
+   result->kind      = Expression_Kind_String;
+   result->as_string = token0_string;
+  }else if(token0->kind == TokenBaseKind_LiteralInteger){
    //-Int
-   result.kind = Expression_Kind_Int;
-   result.int_value = token0_string;
-  }else if(ep_maybe_kind(p, TokenBaseKind_LiteralFloat)){
+   ep_eat(p);
+   result->kind      = Expression_Kind_Int;
+   result->as_string = token0_string;
+  }else if(token0->kind == TokenBaseKind_LiteralFloat){
    //-Float
-   result.kind = Expression_Kind_Float;
-   result.float_value = token0_string;
+   ep_eat(p);
+   result->kind   = Expression_Kind_Float;
+   result->as_string = token0_string;
+   
+  }else if(ep_maybe_char(p, '{')){
+   //-Compound literal: array, struct
+   k_parse_compound_literal(p, result);
   }
   
-  if(not k_test_char(p, terminators)){
-   //-If we're not at the terminator, then parsing has failed!
-   p->fail();
+  {//-Binary operator parse more
+   while(p->ok_)
+   {
+    modify_ast(p, token0, result);
+    
+    Token *op_token = ep_get_token(p);
+    String op_str = ep_print_token(p, op_token);
+    
+    if(op_str == '('){
+     //-Function call?
+     ep_eat(p);
+     
+     //NOTE The result so far is the function name (or pointer).
+     Meta_Expression *func = push_value(arena, *result);
+     
+     result->kind = Expression_Kind_Call;
+     Expression_Call *call = &result->call;
+     call->func = func;
+     
+     init_dynamic(call->arguments, arena);
+     while(p->ok_){
+      if(ep_maybe_char(p, ')')) break; 
+      
+      Meta_Expression *argument = call->arguments.push();
+      k_parse_expression2(p, Precedence_Max, strlit(",)"), argument);
+      
+      if(ep_maybe_char(p, ')')) break; 
+      else ep_char(p, ','); 
+     }
+    }else if(op_str == '['){
+     //-Array subscript
+     ep_eat(p);
+     
+     //NOTE The result so far is the array.
+     Meta_Expression *array = push_value(arena, *result);
+     
+     result->kind = Expression_Kind_Array_Subscript;
+     Expression_Array_Subscript *subscript = &result->array_subscript;
+     subscript->array = array;
+     
+     subscript->index = push_struct(arena, Meta_Expression);
+     k_parse_expression2(p, Precedence_Max, strlit("]"), subscript->index);
+     
+     ep_char(p, ']');
+    }else{
+     //-Binary operator
+     Binary_Operator op = 0;
+     Precedence op_precedence = {};
+     
+     b32 is_alternative_operator = false;
+     if(op_token->kind == TokenBaseKind_Operator or
+        op_token->sub_kind == TokenCppKind_AndAlt or
+        op_token->sub_kind == TokenCppKind_OrAlt)
+     {
+      //NOTE Copy operator string to op
+      kv_assert(op_str.size < 4);
+      char *op_chars = op_to_cstring(&op);
+      for_u32(i, 0, op_str.size){
+       op_chars[i] = op_str.str[i];
+      }
+      
+      op_precedence = precedence_of(op);
+      if(op_precedence >= max_precedence or
+         op_precedence == 0)
+      {
+       op = 0;
+      }
+     }
+     
+     if(op){
+      ep_eat(p);
+      
+      //NOTE Put the result so far in the lhs
+      Meta_Expression *lhs = push_value(arena, *result);
+      
+      *result = {.kind = Expression_Kind_Binary};
+      Expression_Binary *binary = &result->binary;
+      binary->op  = op;
+      binary->lhs = lhs;
+      binary->rhs = push_struct(arena, Meta_Expression);
+      k_parse_expression2(p, op_precedence, terminators, binary->rhs);
+     }else{
+      break;
+     }
+    }
+   }
   }
+  
+  /*  if(not k_test_char(p, terminators)){
+     //-If we're not at the terminator, then parsing has failed!
+     p->fail();
+    }*/
   if(not p->ok_){
-   result.kind = {};
+   result->kind = {};
   }
  }
- if(result.kind == 0){
-  //-NOTE Cheese: unknown expressions
-  result.kind    = Expression_Kind_Unknown;
-  result.unknown = ep_capture_until_char(p, terminators);
+ 
+ if(p->ok_){
+ }
+ 
+/* if(result->kind == 0){
+  //NOTE Cheese: unknown expressions
+  result->kind   = Expression_Kind_Unknown;
+  result->as_string = ep_capture_until_char(p, terminators);
+ }*/
+}
+myinline void
+k_parse_expression(Klang_Parser *p, String terminators, Meta_Expression *result)
+{
+ k_parse_expression2(p, Precedence_Max, terminators, result);
+}
+function void
+parse_type_and_name(Klang_Parser *p, Parsed_Type *otype, String *oname)
+{//NOTE(kv) We're cheesing the type HARD!
+ String type_name = ep_id(p);
+ *otype = {.name = type_name};
+ while(ep_maybe_char(p, '*')){
+  otype->pointer_count++;
+ }
+ *oname = ep_id(p);
+ if(otype->pointer_count == 0){
+  if(ep_maybe_char(p, '[')){
+   otype->kind = Parsed_Type_Array;
+   
+   //TODO(kv) Bad news! Count could be an expression.
+   //  We know that it is a constant but gotta do some funky crap,
+   //  because our parser is just not there yet!
+   //  Also, we don't have arena to print anything,
+   //  but idk sometimes we invent things new expressions... It's annoying!
+   Meta_Expression *count = push_struct(p->arena, Meta_Expression);
+   k_parse_expression(p, strlit("]"), count);
+   otype->array_count_str = print_expression(p->arena, count);
+   otype->array_count     = (u32)string_to_u64(otype->array_count_str, 10);
+   
+   ep_char(p, ']');
+  }
+ }
+}
+function void
+parse_struct_member(Klang_Parser *p, M_Struct_Member *omember)
+{
+ if(ep_maybe_id(p, "tagged_by")){
+  mpa_parens{ omember->discriminator = ep_id(p); }
+ }
+ parse_type_and_name(p, &omember->type, &omember->name);
+ ep_skip_semicolons(p);
+}
+myinline M_Struct_Member
+parse_struct_member(Klang_Parser *p){
+ M_Struct_Member member = {};
+ parse_struct_member(p, &member);
+ return member;
+}
+myinline M_Struct_Member
+struct_member_from_string(String string){
+ Scratch_Block scratch;
+ Klang_Parser parser = {};
+ (Ed_Parser &)parser = ed_parser_from_string(scratch, string);
+ return parse_struct_member(&parser);
+}
+myinline M_Struct_Member
+struct_member_from_string(char *cstring){
+ return struct_member_from_string(SCu8(cstring));
+}
+function M_Struct_Members
+parse_struct_body(Arena *arena, Klang_Parser *p){
+ M_Struct_Members result;
+ init_dynamic(result, arena);
+ m_brace_open(p);
+ while(p->ok_ && !m_maybe_brace_close(p)){
+  M_Struct_Member *member = result.push_zero();
+  parse_struct_member(p, member);
  }
  return result;
 }
+function M_Struct_Members
+parse_struct_body(Arena *arena, char *string){
+ Scratch_Block scratch;
+ Klang_Parser parser = k_parser_from_string(scratch, SCu8(string));
+ M_Struct_Members result = parse_struct_body(arena, &parser);
+ return result;
+}
+
 function void
 k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
-                             /*out*/Statement_Union *statement0)
+                             /*out*/Statement_Union *ostatement)
 {
  Token *token0 = ep_get_token(p);
- statement0->head.pos = token0->pos;
- statement0->head.mom = p->current_statement;
- set_in_block(p->current_statement, &statement0->head);
- String token0_string = ep_print_given_token(p, token0);
+ ostatement->head.pos = token0->pos;
+ ostatement->head.mom = p->current_statement;
+ set_in_block(p->current_statement, &ostatement->head);
+ String token0_string = ep_print_token(p, token0);
  if(token0->kind == TokenBaseKind_Preprocessor){
   //-Preprocessor
-  statement0->head.kind    = Statement_Kind_Unknown;
-  cast_to_var(Statement_Unknown *, unknown, statement0);
+  ostatement->head.kind    = Statement_Kind_Unknown;
+  cast_to_var(Statement_Unknown *, unknown, ostatement);
   unknown->unknown = k_parse_preprocessor(p);
  }else if(token0->kind == TokenBaseKind_Identifier ||
           token0->kind == TokenBaseKind_Keyword)
@@ -170,8 +446,8 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
   if(is_header_keyword(token0_string)){
    //-Header and body
    ep_eat(p);
-   statement0->head.kind = Statement_Kind_Header_And_Body;
-   cast_to_var(Statement_Header_And_Body *, header_body, statement0);
+   ostatement->head.kind = Statement_Kind_Header_And_Body;
+   cast_to_var(Statement_Header_And_Body *, header_body, ostatement);
    if(ep_maybe_char(p, '(')){
     //NOTE optional parameters
     k_eat_until_char(p, strlit(")"));
@@ -182,11 +458,11 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
   }else if(token0_string == strlit("if")){
    //-If
    ep_eat(p);
-   statement0->head.kind = Statement_Kind_If;
-   cast_to_var(Statement_If *, if0, statement0);
+   ostatement->head.kind = Statement_Kind_If;
+   cast_to_var(Statement_If *, if0, ostatement);
    {//-condition
     ep_char(p, '(');
-    if0->condition = k_parse_expression(arena, p, strlit(")"));
+    k_parse_expression(p, strlit(")"), &if0->condition);
     ep_char(p, ')');
    }
    {//-body
@@ -198,11 +474,11 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
    }
   }else if(ep_maybe_id(p, strlit("switch"))){
    //-switch
-   statement0->head.kind = Statement_Kind_Switch;
-   cast_to_var(Statement_Switch *, switch0, statement0);
+   ostatement->head.kind = Statement_Kind_Switch;
+   cast_to_var(Statement_Switch *, switch0, ostatement);
    {//-expression
     ep_char(p, '(');
-    switch0->expression = k_parse_expression(arena, p, strlit(")"));
+    k_parse_expression(p, strlit(")"), &switch0->expression);
     ep_char(p, ')');
    }
    {//-cases
@@ -210,7 +486,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
     while(p->ok_ && not ep_maybe_char(p, '}')){
      Switch_Case *case0 = switch0->cases.push_zero();
      ep_id(p, strlit("case"));
-     case0->expression = k_parse_expression(arena, p, strlit(":"));
+     k_parse_expression(p, strlit(":"), &case0->expression);
      ep_char(p, ':');
      k_parse_statement_to_pointer(arena, p, &case0->body);
      case0->break_after = ep_maybe_id(p, strlit("break"));
@@ -219,14 +495,14 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
    }
   }else if(ep_maybe_id(p, strlit("return"))){
    //-Return
-   statement0->head.kind = Statement_Kind_Return;
-   cast_to_var(Statement_Return *, return0, statement0);
-   return0->return0 = k_parse_expression(arena, p, strlit(";"));
+   ostatement->head.kind = Statement_Kind_Return;
+   cast_to_var(Statement_Return *, return0, ostatement);
+   k_parse_expression(p, strlit(";"), &return0->return0);
    ep_char(p,';');
   }else if(ep_maybe_id(p, strlit("cache"))){
    //-cache
-   statement0->head.kind = Statement_Kind_Cache;
-   cast_to_var(Statement_Cache *, cache0, statement0);
+   ostatement->head.kind = Statement_Kind_Cache;
+   cast_to_var(Statement_Cache *, cache0, ostatement);
    cache0->id = i32(token0->pos);
    init_dynamic(cache0->cache_items, arena);
    ep_char(p, '(');
@@ -235,7 +511,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
     Cache_Item *cache_item = cache0->cache_items.push_zero();
     parse_type_and_name(p, &cache_item->type, &cache_item->name);
     ep_char(p, '=');
-    cache_item->rhs = k_parse_expression(arena, p, strlit(";"));
+    k_parse_expression(p, strlit(";"), &cache_item->rhs);
     ep_char(p, ';');
    }
    {//-Cached computation
@@ -246,36 +522,36 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
   }else{
    //-Declaration?
    ep_recovery_block(p);
-   {
-    statement0->head.kind = Statement_Kind_Declaration;
-    cast_to_var(Statement_Declaration *, decl, statement0);
-    parse_type_and_name(p, &decl->type, &decl->name);
-    if(ep_maybe_char(p,'=')){
-     //-Declaration and assignment
-     decl->rhs = k_parse_expression(arena, p, strlit(";"));
-    }
-    ep_char(p,';');
+   
+   ostatement->head.kind = Statement_Kind_Declaration;
+   cast_to_var(Statement_Declaration *, decl, ostatement);
+   parse_type_and_name(p, &decl->type, &decl->name);
+   if(ep_maybe_char(p,'=')){
+    //-Declaration and assignment
+    k_parse_expression(p, strlit(";"), &decl->rhs);
    }
+   ep_char(p,';');
+   
    if(not p->ok_){
-    statement0->head.kind = Statement_Kind_None;
+    ostatement->head.kind = Statement_Kind_None;
    }
   }
  }else if(token0->kind == TokenBaseKind_ScopeOpen){
   //-Block
-  statement0->head.kind  = Statement_Kind_Block;
-  cast_to_var(Statement_Block*, block, statement0);
+  ostatement->head.kind  = Statement_Kind_Block;
+  cast_to_var(Statement_Block*, block, ostatement);
   block->block = k_parse_statement_block(arena, p);
  }else if(token0->kind == TokenBaseKind_StatementClose){
-  statement0->head.kind = Statement_Kind_Empty;
+  ostatement->head.kind = Statement_Kind_Empty;
  }
- if(not statement0->head.kind){
+ if(not ostatement->head.kind){
   //-Defaults to expressions
   //NOTE(kv) Warning: sometimes we use macro, forget a semicolon,
   //  and it parses until the end of the file.
   ep_scope_block(p, token0_string, token0);
-  statement0->head.kind = Statement_Kind_Expression;
-  cast_to_var(Statement_Expression*, expr, statement0);
-  expr->expression = k_parse_expression(arena, p, strlit(";"));
+  ostatement->head.kind = Statement_Kind_Expression;
+  cast_to_var(Statement_Expression*, expr, ostatement);
+  k_parse_expression(p, strlit(";"), &expr->expression);
   ep_char(p, ';');
  }
 }
@@ -451,10 +727,11 @@ k_process_top_level(Arena *arena,
   }else if(token0_string == strlit("xfunction") or
            token0_string == strlit("function") or
            token0_string == strlit("inline") or
-           token0_string == strlit("kv_inline"))
+           token0_string == strlit("myinline"))
   {//-Function
    init_dynamic(p->function_cache_list, scratch_top);  //@tune
    ep_eat(p);
+   
    String return_type = ep_id(p);  //TODO(kv) cheese!
    String function_name = ep_id(p);
    ep_scope_block(p, function_name, token0);
@@ -509,8 +786,8 @@ k_process_top_level(Arena *arena,
      m_braces2(printer_gen){
       mline(printer_gen);
       for_i32(statement_index,0,func->body.count){
-       mline(printer_gen);
        print(printer_gen, func->body[statement_index].head);
+       mline(printer_gen);
       }
      }
      mline(printer_gen);
@@ -576,14 +853,15 @@ k_process_file(Arena *arena, Meta_Parsed_File source, arrayof<K_Slider> *sliders
   }
  }
  init_dynamic(printer_gen.source_map, file_arena, 256);
- b32 ok = not printer_gen.has_error;
+ b32 ok = not printer_gen.error;
  Klang_Parser klang_parser = {};
  Klang_Parser *parser = &klang_parser;
  {
   Ed_Parser *ed_parser = parser;
-  *ed_parser = m_parser_from_token_list(source.data, source.token_list);
+  *ed_parser = ed_parser_from_token_list(source.data, source.token_list);
   parser->current_statement = root;
-  parser->sliders = sliders;
+  parser->sliders           = sliders;
+  parser->arena             = arena;
  }
  {
   k_process_top_level(arena, parser, printer_gen, root);
@@ -658,54 +936,4 @@ struct String_Mapping{
  String key;
  String val;
 };
-function void
-print_template(Printer &printer, String format, String *args, u32 argc)
-{
- u32 current_arg = 0;
- for_u32(i, 0, format.count){
-  u8 c = format.str[i];
-  b32 is_percent = (c == '%');
-  if(is_percent){
-   u32 arg_index = current_arg++;
-   kv_assert(arg_index < argc);
-   String arg = args[arg_index];
-   print(printer, arg);
-  }else{
-   print(printer, c);
-  }
- }
- kv_assert(current_arg == argc);
-}
-function b32
-klang_print_sliders(K_Slider *sliders, u32 slider_count)
-{
- Scratch_Block scratch;
- b32 ok = true;
- 
- char *create_slider_template_c = R"CODE(
-{
- Basic_Type type = Basic_Type_%;
- usize size = sizeof(Fui_Slider) + get_basic_type_size(type);
- global_sliders[%] = cast(Fui_Slider*)arena_push(arena, size, alignof(Fui_Slider), push_zero());
- Fui_Slider *slider = global_sliders[%];
- slider->type = type;
- % *value = cast(%*)(slider+1);
- *value = %;
-})CODE";
- String create_slider_template = SCu8(create_slider_template_c);
- 
- Stringz slider_file_path = pjoin(scratch, meta_dirs.game_gen, strlit("sliders.gen.h"));
- Meta_Printer printer = m_open_file_to_write(slider_file_path);
- 
- for_u32(slider_index, 0, slider_count){
-  K_Slider *slider = sliders + slider_index;
-  String type = slider->type;
-  String slider_index_str = to_string(scratch, slider_index);
-  String vars[] = {type, slider_index_str, slider_index_str, type, type, slider->value};
-  print_template(printer, create_slider_template, ArrayAndCount(vars));
- }
- 
- ok = ok and not printer.has_error;
- return ok;
-}
 //-

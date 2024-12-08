@@ -22,7 +22,7 @@ turn_game_on()
   return false;
  }
 }
-kv_inline void
+myinline void
 turn_game_off()
 {
  game_on_ro = false;
@@ -223,7 +223,7 @@ view_viewport_id(App *app, View_ID view)
  return buffer_viewport_id(app, buffer);
 }
 
-kv_inline i32
+myinline i32
 get_active_game_viewport_id(App *app)
 {
  Buffer_ID buffer = get_active_buffer(app);

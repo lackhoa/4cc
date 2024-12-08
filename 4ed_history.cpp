@@ -150,7 +150,7 @@ history_is_activated(History *history){
 function void
 history_free(Thread_Context *tctx, History *history){
     if (history->activated){
-        arena_clear(&history->arena);
+        arena_free(&history->arena);
         heap_free_all(&history->heap);
         block_zero_struct(history);
     }

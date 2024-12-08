@@ -106,9 +106,14 @@ BUFFER_EDIT_RANGE_SIG(kv_buffer_edit_range)
 {
  // NOTE(kv): Fleury
  F4_BufferEditRange(app, buffer_id, new_range, old_cursor_range);
- // NOTE(kv): vim
+ 
+ Game_API *game = get_game_code();
+ if(game){
+  game->game_buffer_edit_range(ed_game_state_pointer, app, buffer_id, new_range, old_cursor_range);
+ }
+ 
  return 0;
-} 
+}
 function Rect_f32
 kv_buffer_region_hook(App *app, View_ID view, Rect_f32 region)
 {
@@ -119,5 +124,104 @@ kv_buffer_region_hook(App *app, View_ID view, Rect_f32 region)
  v1 vim_bottom_reserve_height = 4.f*line_height;
  region.y1 -= vim_bottom_reserve_height;
  return region;
+}
+function void
+kv_tick(App *app, Frame_Info frame)
+{
+ Scratch_Block scratch(app);
+ DEBUG_entries.count = 0;
+ 
+ // NOTE(kv): F4
+ F4_Index_Tick(app);
+ 
+ // NOTE(kv): Default tick stuff from the 4th dimension:
+ default_tick(app, frame);
+ 
+ // NOTE(kv): vim
+ vim_animate_filebar(app, frame);
+ vim_animate_cursor(app, frame);
+ vim_cursor_blink++;
+ 
+ fui_tick(app, frame);
+ 
+ {// NOTE: build step
+  Buffer_ID bottom_buffer = view_get_buffer(app, global_bottom_view, Access_Always);
+  Child_Process_ID procid = buffer_get_attached_child_process(app, bottom_buffer);
+  Process_State state = child_process_get_state(app, procid);
+  local_persist b32 is_building = false;
+  if (state.updating)
+  {
+   is_building = true;
+  }
+  else if (is_building)
+  {
+   is_building = false;
+   if (state.return_code == 0)
+   {
+    vim_set_bottom_text(strlit("Build successful!"));
+   }
+   else
+   {
+    vim_set_bottom_text(strlit("Build failed!"));
+   }
+  }
+ }
+ 
+ seconds_since_last_keystroke += frame.literal_dt;
+ 
+ {// NOTE(kv): autosave / reload
+  local_persist v1 seconds_since_last_autosave = 0;
+  seconds_since_last_autosave += frame.literal_dt;
+  v1 AUTOSAVE_PERIOD_SECONDS = 5.0f;
+  
+  if(seconds_since_last_keystroke > AUTOSAVE_PERIOD_SECONDS and
+     seconds_since_last_autosave > AUTOSAVE_PERIOD_SECONDS)
+  {
+   seconds_since_last_autosave = 0;
+  }
+  b32 should_autosave = seconds_since_last_autosave == 0;
+  
+  u32 saved_count = 0;
+  u32 reloaded_count = 0;
+  {
+   ProfileScope(app, "save all dirty buffers");
+   for(Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
+       buffer != 0;
+       buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))
+   {
+    switch(buffer_get_dirty_state(app, buffer))
+    {
+     case DirtyState_UnsavedChanges:
+     {
+      if(should_autosave){
+       saved_count++;
+       String filename = push_buffer_filepath(app, scratch, buffer);
+       buffer_save(app, buffer, filename, 0);
+      }
+     }break;
+     
+     case DirtyState_UnloadedChanges:
+     {
+      reloaded_count++;
+      buffer_reopen(app, buffer, 0);
+      String filename = push_buffer_filepath(app, scratch, buffer);
+     }break;
+    }
+   }
+  }
+  if(saved_count){
+   String msg = push_stringf(scratch, "auto-saved %u buffers", saved_count);
+   vim_set_bottom_text(msg);
+   
+  }else if(reloaded_count){
+   String msg = push_stringf(scratch, "auto-reloaded %u buffers", reloaded_count);
+   vim_set_bottom_text(msg);
+  }
+  
+  animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));
+ }
+ 
+ // TODO: We only update on "tick", which means that the game won't be updated if there's no animation?
+ maybe_update_game(app, frame);
 }
 //-

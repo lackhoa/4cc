@@ -1,0 +1,108 @@
+//~ Static array, C style
+struct Static_Array
+{
+ u32 count;
+ u32 cap;
+ u32 item_size;
+};
+
+#define make_array(arena, T, init_cap) \
+(T *)array__make(arena, sizeof(T), init_cap, false);
+
+#define array_push(items_ptr)   (mytypeof(*items_ptr))array__push(items_ptr)
+
+//NOTE(kv) The array is the items pointer, not the header.
+//  Because we need a way to let the brain-dead C compiler
+//  know the item type.
+
+#define array_last(array)       array_items(array)[array_count(array) - 1]
+//-
+myinline Static_Array *
+array__header(void *array)
+{
+ return (Static_Array *)(array) - 1;
+}
+myinline void *
+array__items(Static_Array *items)
+{
+ return (void *)(items + 1);
+}
+
+myinline u32
+array_count(void *array)
+{
+ Static_Array *header = array__header(array);
+ return header->count;
+}
+function Static_Array *
+array__set_cap(Static_Array *header, usize new_cap)
+{
+ if(header->cap < new_cap)
+ {
+  usize new_size = sizeof(Static_Array) + (new_cap * header->item_size);
+  Static_Array *new_header = (Static_Array *)push_size(header->arena, new_size);
+  usize old_size = header->cap * header->item_size;
+  block_copy(new_header, header, old_size);
+  
+  header = new_header;
+  header->cap = u32(new_cap);
+ }
+ return header;
+}
+function void *
+array__make(Arena *arena, usize item_size, usize init_cap, b32 fixed_size)
+{
+ Static_Array *header = push_struct(arena, Static_Array);
+ *header = {};
+ header->arena     = arena;
+ header->item_size = u32(item_size);
+ header = array__set_cap(header, init_cap);
+ 
+ if(fixed_size){
+  header->arena = 0;
+ }
+ 
+ void *items = array__items(header);
+ return items;
+}
+function Static_Array *
+array__set_count(Static_Array *header, u32 count)
+{
+ header = array__set_cap(header, count);
+ header->count = count;
+ kv_assert(header->count <= header->cap);
+ return header;
+}
+function void *
+array__push_2(Static_Array **out_header)
+{
+ Static_Array *header = *out_header;
+ if(header->cap < header->count+1){
+  //NOTE Grow array
+  u32 new_count = header->cap * 2;
+  ClampBot(new_count, 4);
+  header = array__set_count(header, new_count);
+  *out_header = header;
+ }
+ 
+ u8 *items = (u8 *)array__items(header);
+ void *new_item = items + header->item_size*(header->count - 1);
+ return new_item;
+}
+function void *
+array__push(void *array)
+{
+ Static_Array *header = array__header(array);
+ void *new_item = array__push_2(&header);
+ 
+ return new_item;
+}
+function void
+array_pop(void *items)
+{
+ Static_Array *header = array__header(items);
+ kv_assert(header->count > 0);
+ header->count--;
+}
+//-
+///

@@ -2,8 +2,6 @@
   NOTE(kv): This is the most basic file, containing things EVERYONE needs.
 */
 
-#pragma once
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <float.h>
@@ -15,12 +13,6 @@
 
 #include "kv_fundamental.h"
 
-//~stb_ds TODO(kv) Remove this junk!
-#define STB_DEFINE
-#define STB_DS_IMPLEMENTATION
-#include "stb_ds.h"
-#undef STB_DEFINE
-#undef STB_DS_IMPLEMENTATION
 //~gb
 #define GB_IMPLEMENTATION
 #define GB_STATIC
@@ -33,7 +25,7 @@
 #include "stb_sprintf.h"
 //~
 
-#define implies(a,b)  !a || b
+#define implies(a,b)  !(a) || b
 #define cast_to_var(type, variable, value)  type variable = (type)value
 #define cast_to(variable, value)            variable = (mytypeof(variable))(value)
 
@@ -46,14 +38,18 @@
 #endif
 
 #ifdef KV_NO_FORCE_INLINE
-# define kv_inline inline
+#  define myinline inline
 #else
-# define kv_inline inline
+#  if COMPILER_MSVC
+#    define myinline __forceinline
+#  else
+#    define myinline __attribute__ ((__always_inline__))
+#  endif
 #endif
 
 /* Intrinsics */
 
-kv_inline void
+myinline void
 block_zero(void *mem, u64 size)
 {
 #if AD_IS_DRIVER
@@ -64,33 +60,33 @@ block_zero(void *mem, u64 size)
 }
 
 #if !AD_IS_DRIVER
-kv_inline void
+myinline void
 block_fill_ones(void *mem, u64 size)
 {
  gb_memset(mem, 0xff, size);
 }
 #endif
 
-kv_inline i32
+myinline i32
 absoslute(i32 in)
 {
     return ((in >= 0) ? in : -in);
 }
 
-kv_inline v1
+myinline v1
 squared(f32 x)
 {
     f32 result = x*x;
     return result;
 }
 
-kv_inline v1 
+myinline v1 
 cubed(v1 value)
 {
  return value*value*value;
 }
 
-kv_inline v1
+myinline v1
 square_root(f32 x)
 {
 #if COMPILER_MSVC
@@ -102,7 +98,7 @@ square_root(f32 x)
 }
 
 // TODO: These are real bad! Should only be one simd instruction. Watch hmh 379 for details.
-kv_inline v1
+myinline v1
 roundv1(v1 Real32)
 {
 #if COMPILER_MSVC
@@ -113,7 +109,7 @@ roundv1(v1 Real32)
  return(Result);
 }
 
-kv_inline v1
+myinline v1
 log_with_base(v1 base, v1 input)
 {
  v1 result = logf(input) / logf(base);
@@ -137,14 +133,14 @@ integer_power(v1 base, i1 exponent)
  return result;
 }
 
-kv_inline i32
+myinline i32
 round_to_integer(v1 value)
 {
  return i32(value+0.5f);
 }
 
-// TODO @Cleanup kv_inline all these functions
-kv_inline v1
+// TODO @Cleanup myinline all these functions
+myinline v1
 floorv1(v1 value)
 {
 #if COMPILER_MSVC
@@ -166,14 +162,14 @@ ceilv1(v1 value)
     return(Result);
 }
 
-kv_inline v1
+myinline v1
 cycle01(v1 value)
 {
  v1 result = value - floorv1(value);
  return result;
 }
 
-kv_inline v1
+myinline v1
 cycle01_positive(v1 value)
 {
  v1 result = value - v1(i32(value));
@@ -192,7 +188,7 @@ kv_sin(v1 angle)
     return(result);
 }
 
-kv_inline v1
+myinline v1
 kv_cos(v1 angle)
 {
 #if COMPILER_MSVC
@@ -203,7 +199,7 @@ kv_cos(v1 angle)
     return(result);
 }
 
-kv_inline v1
+myinline v1
 kv_atan2(v1 y, v1 x)
 {
 #if COMPILER_MSVC
@@ -214,7 +210,7 @@ kv_atan2(v1 y, v1 x)
  return(result);
 }
 
-kv_inline u64
+myinline u64
 find_least_significant_set_bit(u64 mask)
 {
  u64 result = 0;
@@ -229,7 +225,7 @@ find_least_significant_set_bit(u64 mask)
 #endif
  return result;
 }
-kv_inline u64
+myinline u64
 find_most_significant_set_bit(u64 mask)
 {
  u64 result = 0;
@@ -247,7 +243,7 @@ find_most_significant_set_bit(u64 mask)
  return result;
 }
 
-kv_inline v1
+myinline v1
 absolute(v1 x)
 {
 #if COMPILER_MSVC
@@ -257,7 +253,7 @@ absolute(v1 x)
 #endif
  return result;
 }
-kv_inline i32
+myinline i32
 absolute(i32 x)
 {
  i32 result = (x >= 0) ? x : -x;
@@ -473,19 +469,19 @@ inline void *kv_xmalloc(size_t size) {
 #define macro_clamp01(var)          macro_clamp(0.f,var,1.f)
 #define macro_clamp01i(var)         macro_clamp(0,var,1)
 
-kv_inline v1
+myinline v1
 bilateral(v1 r)
 {
     return (r * 2.0f) - 1.0f;
 }
 
-kv_inline v1
+myinline v1
 unilateral(v1 r)
 {
     return (r * 0.5f) + 0.5f;
 }
 
-kv_inline v1
+myinline v1
 lerp(v1 a, v1 t, v1 b)
 {
     v1 result = a + t*(b - a);
@@ -518,7 +514,7 @@ union v2
  v1 operator[](i32);
 };
 
-kv_inline v1
+myinline v1
 v2::operator[](i32 index)
 {
  return v[index];
@@ -537,7 +533,7 @@ operator==(v2 u, v2 v)
     return result;
 }
 
-kv_inline v2
+myinline v2
 operator+(v2 u, v2 v)
 {
     v2 result;
@@ -546,7 +542,7 @@ operator+(v2 u, v2 v)
     return result;
 }
 
-kv_inline v1
+myinline v1
 lerp(v2 ab, v1 t)
 {
  return lerp(ab[0], t, ab[1]);
@@ -562,14 +558,14 @@ operator-(v2 u, v2 v)
     return result;
 }
 
-kv_inline v2
+myinline v2
 operator-=(v2 &v, v2 u)
 {
     v = v - u;
     return v;
 }
 
-kv_inline v2
+myinline v2
 operator-(v2 v)
 {
  v2 result;
@@ -587,7 +583,7 @@ operator*(v1 c, v2 v)
  return result;
 }
 
-kv_inline v2 operator*(v2 v, v1 c) { return c*v; }
+myinline v2 operator*(v2 v, v1 c) { return c*v; }
 inline v2 operator/(v2 v, v2 u) { return {v.x / u.x, v.y / u.y}; }
 inline void operator*=(v2 &v, v1 c) { v = c*v; }
 inline v2 operator/(v2 v, v1 c) { return v2{v.x / c, v.y / c}; }
@@ -611,7 +607,7 @@ project_on(v2 onto, v2 v)
     return result;
 }
 
-kv_inline v2
+myinline v2
 hadamard(v2 v, v2 u)
 {
     v2 result;
@@ -632,9 +628,9 @@ noz(v2 v)  // normalize or zero
  return result;
 }
 
-kv_inline v2 perp(v2 v) { return v2{-v.y, v.x}; }
+myinline v2 perp(v2 v) { return v2{-v.y, v.x}; }
 
-kv_inline v2 bilateral(v2 v)  { return v2{bilateral(v.x), bilateral(v.y)}; }
+myinline v2 bilateral(v2 v)  { return v2{bilateral(v.x), bilateral(v.y)}; }
 
 // ;v3
 
@@ -646,7 +642,7 @@ union v3{
  v1 e[3];
  v1 v[3];
  
- kv_inline v1 &operator[](i32 index) {return v[index];}
+ myinline v1 &operator[](i32 index) {return v[index];}
 };
 
 
@@ -655,10 +651,10 @@ absolute(v3 v){
  for_i32(index,0,3){ v[index] = absolute(v[index]); };
  return v;
 }
-kv_inline v3 V3(v2 xy)       { return v3{.xy=xy}; }
-kv_inline v3 V3(v2 xy, v1 z) { return v3{.xy=xy, .xy_z=z}; }
-kv_inline v3 yzx(v3 v) { return v3{v.y, v.z, v.x}; }
-kv_inline v3 zxy(v3 v) { return v3{v.z, v.x, v.y}; }
+myinline v3 V3(v2 xy)       { return v3{.xy=xy}; }
+myinline v3 V3(v2 xy, v1 z) { return v3{.xy=xy, .xy_z=z}; }
+myinline v3 yzx(v3 v) { return v3{v.y, v.z, v.x}; }
+myinline v3 zxy(v3 v) { return v3{v.z, v.x, v.y}; }
 inline v3 min(v3 a, v3 b){ return v3{min(a.x,b.x),min(a.y,b.y),min(a.z,b.z),}; }
 inline v3 max(v3 a, v3 b){ return v3{max(a.x,b.x),max(a.y,b.y),max(a.z,b.z),}; }
 inline v3 min(v3 a, v1 b){ return min(a,v3{repeat3(b)}); }
@@ -723,7 +719,7 @@ operator-=(v3 &v, v3 u)
     return v;
 }
 
-kv_inline v3
+myinline v3
 operator-(v3 v)
 {
     v3 result;
@@ -732,7 +728,7 @@ operator-(v3 v)
     result.z = -v.z;
     return result;
 }
-kv_inline v3
+myinline v3
 operator*(v1 c, v3 v)
 {
  v.x *= c;
@@ -740,21 +736,21 @@ operator*(v1 c, v3 v)
  v.z *= c;
  return v;
 }
-kv_inline v3
+myinline v3
 operator*(v3 v, f32 c)
 {
  v3 result = c*v;
  return result;
 }
 
-kv_inline v3 &
+myinline v3 &
 operator*=(v3 &v, f32 c)
 {
     v = c * v;
     return v;
 }
 
-kv_inline v3
+myinline v3
 operator/(v3 v, f32 c)
 {
     v3 result;
@@ -796,12 +792,12 @@ hadamard(v3 v, v3 u)
  result.z = v.z*u.z;
  return result;
 }
-kv_inline v3 
+myinline v3 
 operator*(v3 u, v3 v)
 {
  return hadamard(u,v);
 }
-kv_inline v3 
+myinline v3 
 operator/(v3 u, v3 v)
 {
  return v3{u.x/v.x,
@@ -859,32 +855,32 @@ union v4
 };
 
 
-kv_inline v3
+myinline v3
 V3(v1 x, v1 y, v1 z)
 {
  return v3{x, y, z};
 }
-kv_inline v4
+myinline v4
 V4(v1 x, v1 y, v1 z, v1 w)
 {
  return v4{x, y, z, w};
 }
-kv_inline v4
+myinline v4
 vert4(v1 x, v1 y, v1 z)
 {
  return v4{x, y, z, 1.f};
 }
-kv_inline v4
+myinline v4
 V4_symmetric(v1 x, v1 y)
 {
  return v4{x,y,y,x};
 }
-kv_inline v4
+myinline v4
 V4_symmetric(v2 xy)
 {
  return V4_symmetric(xy.x,xy.y);
 }
-kv_inline v4
+myinline v4
 V4(v3 xyz, v1 w)
 {
  v4 v;
@@ -892,7 +888,7 @@ V4(v3 xyz, v1 w)
  v.w   = w;
  return v;
 }
-kv_inline v4
+myinline v4
 cast_V4(v3 xyz)
 {
  v4 v = {};
@@ -900,13 +896,13 @@ cast_V4(v3 xyz)
  return v;
 }
 
-kv_inline v1 &
+myinline v1 &
 v4::operator[](i32 index)
 {
  return v[index];
 }
 
-kv_inline v3
+myinline v3
 operator /(v1 n, v3 d)
 {
  return V3(n/d.x, n/d.y, n/d.z);
@@ -967,13 +963,13 @@ operator-(v4 u, v4 v)
  return result;
 }
 
-kv_inline b32 
+myinline b32 
 almost_equal(v1 a, v1 b, v1 epsilon=1e-6)
 {
  return absolute(a - b) < epsilon;
 }
 
-kv_inline b32 
+myinline b32 
 almost_equal(v3 a, v3 b, v1 epsilon=1e-6) {
  for_i32(i,0,3) {
   if ( !almost_equal(a[i],b[i],epsilon) ) {
@@ -992,7 +988,7 @@ lerp(v4 a, f32 t, v4 b)
     return result;
 }
 
-kv_inline void
+myinline void
 operator+=(v3 &v, v3 u)
 {
     v = u + v;
@@ -1201,13 +1197,13 @@ union i2
  
  i32 operator[](i32);
 };
-kv_inline i32
+myinline i32
 i2::operator[](i32 index)
 {
  return e[index];
 }
 
-kv_inline v2
+myinline v2
 V2(i2 v)
 {
  return {(f32)v.x, (f32)v.y};
@@ -1221,13 +1217,13 @@ union i3{
  
  i32 operator[](i32);
 };
-kv_inline i32
+myinline i32
 i3::operator[](i32 index)
 {
  return e[index];
 }
 
-kv_inline i3
+myinline i3
 operator-(i3 v)
 {
  v.x = -v.x;
@@ -1243,7 +1239,7 @@ union i4{
  
  i32 &operator[](i32);
 };
-kv_inline i32&
+myinline i32&
 i4::operator[](i32 index)
 {
  return e[index];
@@ -1263,7 +1259,6 @@ struct Loaded_Bitmap
   i2  dim;
   i32 pitch;
 };
-
 function v4
 linearToSrgb(v4 linear)
 {
@@ -1274,21 +1269,21 @@ linearToSrgb(v4 linear)
     result.a = linear.a;
     return result;
 }
-
 function u32
 pack_sRGBA(v4 color)
 {
   // linear to srgb
   color.r = square_root(color.r);
   color.g = square_root(color.g);
-  color.b = square_root(color.b);
-  u32 result = ((u32)(color.a*255.0f + 0.5f) << 24
-                | (u32)(color.b*255.0f + 0.5f) << 16
-                | (u32)(color.g*255.0f + 0.5f) << 8
-                | (u32)(color.r*255.0f + 0.5f));
-  return result;
+ color.b = square_root(color.b);
+ u32 result = ((u32)(color.a*255.0f + 0.5f) << 24
+               | (u32)(color.b*255.0f + 0.5f) << 16
+               | (u32)(color.g*255.0f + 0.5f) << 8
+               | (u32)(color.r*255.0f + 0.5f));
+ return result;
 }
 
+//
 union mat3
 {
  v3 rows[3];
@@ -1301,15 +1296,14 @@ union mat4
  v1 e[4][4];
  v1* operator[](i32 i);
 };
-///
 struct mat4i
 {
  union { mat4 forward; mat4 m; };
  union { mat4 inverse; mat4 inv; };
- kv_inline operator mat4&() { return forward; }  // @ClangSafe
+ myinline operator mat4&() { return forward; }  // @ClangSafe
 };
 
-kv_inline v1
+myinline v1
 get_xscale(mat4 const&mat)
 {
  return lengthof(mat.rows[0].xyz);
@@ -1328,7 +1322,7 @@ global mat4 mat4_identity = {{
   0,0,0,1,
  }};
 
-kv_inline b32 
+myinline b32 
 almost_equal(mat4 const&a, mat4 const&b)
 {
  for_i32(i,0,4)
@@ -1341,7 +1335,7 @@ almost_equal(mat4 const&a, mat4 const&b)
  return true;
 }
 
-kv_inline v1 *
+myinline v1 *
 mat4::operator[](i32 i)
 {
  return e[i];
@@ -1688,7 +1682,6 @@ global_const f64 epsilon_f64 = 1.11022302462515650e-16;
 
 ////////////////////////////////
 
-#if 1
 global_const u32 bit_1  = 0x00000001;
 global_const u32 bit_2  = 0x00000002;
 global_const u32 bit_3  = 0x00000004;
@@ -1819,7 +1812,6 @@ global_const u64 bitmask_60 = 0x0fffffffffffffff;
 global_const u64 bitmask_61 = 0x1fffffffffffffff;
 global_const u64 bitmask_62 = 0x3fffffffffffffff;
 global_const u64 bitmask_63 = 0x7fffffffffffffff;
-#endif
 
 ////////////////////////////////
 
@@ -1892,44 +1884,6 @@ typedef i2 Vec2_i32;
 typedef i3 Vec3_i32;
 typedef v3 Vec3_f32;
 
-union Range_i32 {
- struct{ i32 min; i32 max; };
- struct{ i32 start; i32 end; };
- struct{ i32 first; i32 opl; };
-};
-union Range_i64 {
- struct{ i64 min; i64 max; };
- struct{ i64 start; i64 end; };
- struct{ i64 first; i64 opl; };
-};
-union Range_u64 {
- struct{ u64 min; u64 max; };
- struct{ u64 start; u64 end; };
- struct{ u64 first; u64 opl; };
-};
-union Range_f32 {
- struct{ f32 min; f32 max; };
- struct{ f32 start; f32 end; };
- struct{ f32 first; f32 opl; };
-};
-
-struct Range_i32_Array{
-  Range_i32 *ranges;
-  i32 count;
-};
-struct Range_i64_Array{
-  Range_i64 *ranges;
-  i32 count;
-};
-struct Range_u64_Array{
-  Range_u64 *ranges;
-  i32 count;
-};
-struct Range_f32_Array{
-  Range_f32 *ranges;
-  i32 count;
-};
-
 union rect2i {
     struct{
         i32 x0;
@@ -1976,7 +1930,7 @@ typedef String String8;  // @Deprecated
 struct Stringz{
  union{u8 *str, *data; };
  union{ u64 size, len, length, count; };
- operator String&(){ return *(String*)this; }
+ myinline operator String&(){ return *(String*)this; }
 };
 inline char *
 to_cstring(Stringz string){
@@ -2084,7 +2038,6 @@ block_copy_non_overlap(void *dst, const void *src, u64 size)
 #endif
 }
 
-#if !AD_IS_DRIVER
 ////////////////////////////////
 #define make_data_struct(s) make_data((s), sizeof(*(s)))
 
@@ -2104,13 +2057,13 @@ block_fill_ones(String8 data){
     block_fill_ones(data.str, data.size);
 }
 
-kv_inline i32
+myinline i32
 block_compare(void *a, void *b, u64 size)
 {
     return gb_memcompare(a, b, size);
 }
 
-kv_inline b32
+myinline b32
 block_match(void *a, void *b, u64 size)
 {
     return (block_compare(a,b,size) == 0);
@@ -2147,44 +2100,6 @@ block_fill_u64(void *a, u64 size, u64 val)
   *ptr = val;
  }
 }
-
-
-function void
-block_range_copy__inner(void *dst, void *src, Range_u64 range, i64 shift){
-    block_copy((u8*)dst + range.first + shift, (u8*)src + range.first, range.max - range.min);
-}
-
-function void
-block_range_copy__inner(void *dst, void *src, Range_u64 range, i64 shift, u64 item_size){
-    range.first *= item_size;
-    range.opl *= item_size;
-    shift *= item_size;
-    block_range_copy__inner(dst, src, range, shift);
-}
-
-#define block_range_copy(d,s,r,h) block_range_copy__inner((d),(s),Iu64(r),(i64)(h))
-#define block_range_copy_sized(d,s,r,h,i) block_range_copy__inner((d),(s),Iu64(r),(i64)(h),(i))
-#define block_range_copy_typed(d,s,r,h) block_range_copy_sized((d),(s),(r),(h),sizeof(*(d)))
-
-function void
-block_copy_array_dst_shift__inner(void *dst, void *src, u64 it_size, Range_i64 range, i64 shift){
-    u8 *dptr = (u8*)dst;
-    u8 *sptr = (u8*)src;
-    dptr += it_size*(range.first + shift);
-    sptr += it_size*range.first;
-    block_copy(dptr, sptr, (u64)(it_size*(range.opl - range.first)));
-}
-function void
-block_copy_array_dst_shift__inner(void *dst, void *src, u64 it_size, Range_i32 range, i64 shift){
-    u8 *dptr = (u8*)dst;
- u8 *sptr = (u8*)src;
- dptr += it_size*(range.first + shift);
- sptr += it_size*range.first;
- block_copy(dptr, sptr, (u64)(it_size*(range.opl - range.first)));
-}
-
-#define block_copy_array_dst_shift(d,s,r,h) block_copy_array_dst_shift__inner((d),(s),sizeof(*(d)),(r),(h))
-#endif
 
 //TODO(kv) What is with all the "block"?
 #define block_zero_struct(p) block_zero((p), sizeof(*(p)))
@@ -2231,20 +2146,20 @@ inline v1 arccos(v1 v01){ return acosf(v01) / TAU32; }
 
 ////////////////////////////////
 
-kv_inline i2 I2(i32 x, i32 y) { return {x, y}; }
-kv_inline i3 I3(i32 x, i32 y, i32 z) { return {x, y, z}; }
-kv_inline i4 I4(i32 x, i32 y, i32 z, i32 w) { return {x, y, z, w}; }
-kv_inline i4 I4() { return {}; }
-kv_inline i4 I4(i32 x) { return i4{repeat4(x)}; }
+myinline i2 I2(i32 x, i32 y) { return {x, y}; }
+myinline i3 I3(i32 x, i32 y, i32 z) { return {x, y, z}; }
+myinline i4 I4(i32 x, i32 y, i32 z, i32 w) { return {x, y, z, w}; }
+myinline i4 I4() { return {}; }
+myinline i4 I4(i32 x) { return i4{repeat4(x)}; }
 
-kv_inline v2
+myinline v2
 V2(v1 x, v1 y)
 {
  v2 v = {x, y};
  return(v);
 }
 
-kv_inline v2
+myinline v2
 cast_V2(i32 x, i32 y)
 {
  v2 v = {(v1)x, (v1)y};
@@ -2252,24 +2167,24 @@ cast_V2(i32 x, i32 y)
 }
 //
 
-kv_inline i2
+myinline i2
 I2(i2 o)
 {
     return(I2((i32)o.x, (i32)o.y));
 }
-kv_inline v3
+myinline v3
 V3(i3 o)
 {
     return(V3((f32)o.x, (f32)o.y, (f32)o.z));
 }
 
-kv_inline Vec2_i32
+myinline Vec2_i32
 operator+(Vec2_i32 a, Vec2_i32 b){
  a.x += b.x;
  a.y += b.y;
  return(a);
 }
-kv_inline i2&
+myinline i2&
 operator+=(i2 &a, i2 b){
  a.x += b.x;
  a.y += b.y;
@@ -2465,29 +2380,17 @@ near_zero(Vec4_f32 p){ return(near_zero(p, epsilon_f32)); }
 
 ////////////////////////////////
 
-function f32
-lerp(f32 t, Range_f32 x){
-    return(x.min + (x.max - x.min)*t);
-}
-
-#if 0
-function i32
-lerp(i32 a, f32 t, i32 b){
-    return((i32)(lerp((f32)a, t, (f32)b)));
-}
-#endif
-
 function Vec2_f32
 lerp(Vec2_f32 a, f32 t, Vec2_f32 b){
     return(a + (b-a)*t);
 }
 
-kv_inline v3
+myinline v3
 lerp(v3 a, v1 t, v3 b){
     return(a + (b-a)*t);
 }
 
-kv_inline v1
+myinline v1
 unlerp(v1 a, v1 x, v1 b)
 {
  v1 r = 0.f;
@@ -2498,14 +2401,14 @@ unlerp(v1 a, v1 x, v1 b)
  return(r);
 }
 
-kv_inline v1
+myinline v1
 clamp01(v1 v)
 {
  macro_clamp01(v);
  return v;
 }
 
-kv_inline v1
+myinline v1
 unlerp01(v1 a, v1 v, v1 b)
 {
  return clamp01( unlerp(a,v,b) );
@@ -2523,32 +2426,6 @@ smoothstep(v1 a, v1 x, v1 b)
  else { return 0.f; }
 }
 
-function Range_f32
-unlerp(f32 a, Range_f32 x, f32 b)
-{
-    x.min = unlerp(a, x.min, b);
-    x.max = unlerp(a, x.max, b);
-    return(x);
-}
-
-function Range_f32
-lerp(f32 a, Range_f32 x, f32 b){
-    x.min = lerp(a, x.min, b);
-    x.max = lerp(a, x.max, b);
-    return(x);
-}
-
-function f32
-lerp(Range_f32 range, f32 t){
-    return(lerp(range.min, t, range.max));
-}
-
-function f32
-clamp_range(Range_f32 range, f32 x)
-{
-    return(clamp_between(range.min, x, range.max));
-}
-
 ////////////////////////////////
 
 function bool
@@ -2557,7 +2434,7 @@ operator==(Rect_i32 a, Rect_i32 b){
 }
 function bool
 operator==(Rect_f32 a, Rect_f32 b){
-    return(a.p0 == b.p0 && a.p1 == b.p1);
+ return(a.p0 == b.p0 && a.p1 == b.p1);
 }
 
 function Vec2_f32
@@ -2592,432 +2469,10 @@ argb_pack(v4 color)
 function ARGB_Color
 color_blend(ARGB_Color a, f32 t, ARGB_Color b)
 {
-    Vec4_f32 av = argb_unpack(a);
-    Vec4_f32 bv = argb_unpack(b);
-    Vec4_f32 v = lerp(av, t, bv);
-    return(argb_pack(v));
-}
-
-////////////////////////////////
-
-function Range_i32
-Ii32(i32 a, i32 b){
-    Range_i32 interval = {a, b};
-    if (b < a){
-        interval.min = b;
-        interval.max = a;
-    }
-    return(interval);
-}
-function Range_i64
-Ii64(i64 a, i64 b){
-    Range_i64 interval = {a, b};
-    if (b < a){
-        interval.min = b;
-        interval.max = a;
-    }
-    return(interval);
-}
-function Range_u64
-Iu64(u64 a, u64 b){
- Range_u64 interval = {a, b};
- if (b < a){
-  interval.min = b;
-  interval.max = a;
- }
- return(interval);
-}
-
-function Range_f32
-If32(f32 a, f32 b){
- Range_f32 interval = {a, b};
- if(b < a){
-  interval.min = b;
-  interval.max = a;
- }
- return(interval);
-}
-
-function Range_i32
-Ii32_size(i32 pos, i32 size){
- return(Ii32(pos, pos + size));
-}
-function Range_i64
-Ii64_size(i64 pos, i64 size){
-    return(Ii64(pos, pos + size));
-}
-function Range_u64
-Iu64_size(u64 pos, u64 size){
-    return(Iu64(pos, pos + size));
-}
-function Range_f32
-If32_size(f32 pos, f32 size){
-    return(If32(pos, pos + size));
-}
-
-function Range_i32
-Ii32(i32 a){
-    Range_i32 interval = {a, a};
-    return(interval);
-}
-function Range_i64
-Ii64(i64 a){
-    Range_i64 interval = {a, a};
-    return(interval);
-}
-function Range_u64
-Iu64(u64 a){
-    Range_u64 interval = {a, a};
-    return(interval);
-}
-function Range_f32
-If32(f32 a){
-    Range_f32 interval = {a, a};
-    return(interval);
-}
-
-function Range_i32
-Ii32(){
- Range_i32 interval = {};
- return(interval);
-}
-function Range_i64
-Ii64(){
-    Range_i64 interval = {};
-    return(interval);
-}
-function Range_u64
-Iu64(){
-    Range_u64 interval = {};
-    return(interval);
-}
-function Range_f32
-If32(){
-    Range_f32 interval = {};
-    return(interval);
-}
-
-function Range_u64
-Iu64(Range_i32 r){
-    return(Iu64(r.min, r.max));
-}
-
-global Range_i32 Ii32_neg_inf = {max_i32, min_i32};
-global Range_i64 Ii64_neg_inf = {max_i64, min_i64};
-global Range_u64 Iu64_neg_inf = {max_u64, 0};
-global Range_f32 If32_neg_inf = {max_f32, -max_f32};
-
-function bool
-operator==(Range_i32 a, Range_i32 b){
-    return(a.min == b.min && a.max == b.max);
-}
-function bool
-operator==(Range_i64 a, Range_i64 b){
-    return(a.min == b.min && a.max == b.max);
-}
-function bool
-operator==(Range_u64 a, Range_u64 b){
-    return(a.min == b.min && a.max == b.max);
-}
-function bool
-operator==(Range_f32 a, Range_f32 b){
-    return(a.min == b.min && a.max == b.max);
-}
-
-function Range_i32
-operator+(Range_i32 r, i32 s){
-    return(Ii32(r.min + s, r.max + s));
-}
-function Range_i64
-operator+(Range_i64 r, i64 s){
-    return(Ii64(r.min + s, r.max + s));
-}
-function Range_u64
-operator+(Range_u64 r, u64 s){
-    return(Iu64(r.min + s, r.max + s));
-}
-function Range_f32
-operator+(Range_f32 r, f32 s){
-    return(If32(r.min + s, r.max + s));
-}
-
-function Range_i32
-operator-(Range_i32 r, i32 s){
-    return(Ii32(r.min - s, r.max - s));
-}
-function Range_i64
-operator-(Range_i64 r, i64 s){
-    return(Ii64(r.min - s, r.max - s));
-}
-function Range_u64
-operator-(Range_u64 r, u64 s){
-    return(Iu64(r.min - s, r.max - s));
-}
-function Range_f32
-operator-(Range_f32 r, f32 s){
-    return(If32(r.min - s, r.max - s));
-}
-
-function Range_i32&
-operator+=(Range_i32 &r, i32 s){
-    r = r + s;
-    return(r);
-}
-function Range_i64&
-operator+=(Range_i64 &r, i64 s){
-    r = r + s;
-    return(r);
-}
-function Range_u64&
-operator+=(Range_u64 &r, u64 s){
-    r = r + s;
-    return(r);
-}
-function Range_f32&
-operator+=(Range_f32 &r, f32 s){
-    r = r + s;
-    return(r);
-}
-
-function Range_i32&
-operator-=(Range_i32 &r, i32 s){
-    r = r - s;
-    return(r);
-}
-function Range_i64&
-operator-=(Range_i64 &r, i64 s){
-    r = r - s;
-    return(r);
-}
-function Range_u64&
-operator-=(Range_u64 &r, u64 s){
-    r = r - s;
-    return(r);
-}
-function Range_f32&
-operator-=(Range_f32 &r, f32 s){
-    r = r - s;
-    return(r);
-}
-
-function Range_i32
-range_margin(Range_i32 range, i32 margin){
-    range.min += margin;
-    range.max += margin;
-    return(range);
-}
-function Range_i64
-range_margin(Range_i64 range, i64 margin){
-    range.min += margin;
-    range.max += margin;
-    return(range);
-}
-function Range_u64
-range_margin(Range_u64 range, u64 margin){
-    range.min += margin;
-    range.max += margin;
-    return(range);
-}
-function Range_f32
-range_margin(Range_f32 range, f32 margin){
-    range.min += margin;
-    range.max += margin;
-    return(range);
-}
-
-function b32
-range_overlap(Range_i32 a, Range_i32 b){
-    return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_i64 a, Range_i64 b){
-    return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_u64 a, Range_u64 b){
- return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_f32 a, Range_f32 b){
- return(a.min < b.max && b.min < a.max);
-}
-
-function Range_i32
-range_intersect(Range_i32 a, Range_i32 b){
-    Range_i32 result = {};
-    if (range_overlap(a, b)){
-        result = Ii32(Max(a.min, b.min), Min(a.max, b.max));
-    }
-    return(result);
-}
-function Range_i64
-range_intersect(Range_i64 a, Range_i64 b){
-    Range_i64 result = {};
-    if (range_overlap(a, b)){
-        result = Ii64(Max(a.min, b.min), Min(a.max, b.max));
-    }
-    return(result);
-}
-function Range_u64
-range_intersect(Range_u64 a, Range_u64 b){
-    Range_u64 result = {};
-    if (range_overlap(a, b)){
-        result = Iu64(Max(a.min, b.min), Min(a.max, b.max));
-    }
-    return(result);
-}
-function Range_f32
-range_intersect(Range_f32 a, Range_f32 b){
-    Range_f32 result = {};
-    if (range_overlap(a, b)){
-        result = If32(Max(a.min, b.min), Min(a.max, b.max));
-    }
-    return(result);
-}
-
-function Range_i32
-range_union(Range_i32 a, Range_i32 b){
-    return(Ii32(Min(a.min, b.min), Max(a.max, b.max)));
-}
-function Range_i64
-range_union(Range_i64 a, Range_i64 b){
-    return(Ii64(Min(a.min, b.min), Max(a.max, b.max)));
-}
-function Range_u64
-range_union(Range_u64 a, Range_u64 b){
- return(Iu64(Min(a.min, b.min), Max(a.max, b.max)));
-}
-function Range_f32
-range_union(Range_f32 a, Range_f32 b){
- return(If32(Min(a.min, b.min), Max(a.max, b.max)));
-}
-
-#define BODY  return(a.min <= p && p <= a.max);
-function b32 range_contains_inclusive(Range_i32 a, i32 p){ BODY }
-function b32 range_contains_inclusive(Range_i64 a, i64 p){ BODY }
-function b32 range_contains_inclusive(Range_u64 a, u64 p){ BODY }
-function b32 range_inclusive_contains(Range_f32 a, f32 p){ BODY }
-#undef BODY
-
-#define BODY return(a.min <= p && p < a.max);
-function b32 range_contains(Range_i32 a, i32 p){ BODY }
-function b32 range_contains(Range_i64 a, i64 p){ BODY }
-function b32 range_contains(Range_u64 a, u64 p){ BODY }
-function b32 range_contains(Range_f32 a, f32 p){ BODY }
-#undef BODY
-
-#define BODY  return(clamp_min(0, a.max - a.min));
-function i32 range_size(Range_i32 a){ BODY; }
-function i64 range_size(Range_i64 a){ BODY; }
-function u64 range_size(Range_u64 a){ BODY; }
-function f32 range_size(Range_f32 a){ BODY; }
-#undef BODY
-
-#define BODY  return(clamp_min(0, a.max - a.min + 1));
-function i32 range_size_inclusive(Range_i32 a) { BODY }
-function i64 range_size_inclusive(Range_i64 a) { BODY }
-function u64 range_size_inclusive(Range_u64 a) { BODY }
-function f32 range_size_inclusive(Range_f32 a) { BODY }
-#undef BODY
-
-function Range_i32 rectify(Range_i32 a){ return(Ii32(a.min, a.max)); }
-function Range_i64 rectify(Range_i64 a){ return(Ii64(a.min, a.max)); }
-function Range_u64 rectify(Range_u64 a){ return(Iu64(a.min, a.max)); }
-function Range_f32 rectify(Range_f32 a){ return(If32(a.min, a.max)); }
-
-function Range_i32
-range_clamp_size(Range_i32 a, i32 max_size){
-    i32 max = a.min + max_size;
-    a.max = clamp_max(a.max, max);
-    return(a);
-}
-function Range_i64
-range_clamp_size(Range_i64 a, i64 max_size){
-    i64 max = a.min + max_size;
-    a.max = clamp_max(a.max, max);
-    return(a);
-}
-function Range_u64
-range_clamp_size(Range_u64 a, u64 max_size){
-    u64 max = a.min + max_size;
-    a.max = clamp_max(a.max, max);
-    return(a);
-}
-function Range_f32
-range_clamp_size(Range_f32 a, f32 max_size){
-    f32 max = a.min + max_size;
-    a.max = clamp_max(a.max, max);
-    return(a);
-}
-
-function b32
-range_is_valid(Range_i32 a){
-    return(a.min <= a.max);
-}
-function b32
-range_is_valid(Range_i64 a){
-    return(a.min <= a.max);
-}
-function b32
-range_is_valid(Range_u64 a){
-    return(a.min <= a.max);
-}
-function b32
-range_is_valid(Range_f32 a){
-    return(a.min <= a.max);
-}
-
-function i32
-range_distance(Range_i32 a, Range_i32 b){
-    i32 result = 0;
-    if (!range_overlap(a, b)){
-        if (a.max < b.min){
-            result = b.min - a.max;
-        }
-        else{
-            result = a.min - b.max;
-        }
-    }
-    return(result);
-}
-function i64
-range_distance(Range_i64 a, Range_i64 b){
-    i64 result = 0;
-    if (!range_overlap(a, b)){
-        if (a.max < b.min){
-            result = b.min - a.max;
-        }
-        else{
-            result = a.min - b.max;
-        }
-    }
-    return(result);
-}
-function u64
-range_distance(Range_u64 a, Range_u64 b){
-    u64 result = 0;
-    if (!range_overlap(a, b)){
-        if (a.max < b.min){
-            result = b.min - a.max;
-        }
-        else{
-            result = a.min - b.max;
-        }
-    }
-    return(result);
-}
-function f32
-range_distance(Range_f32 a, Range_f32 b){
-    f32 result = 0;
-    if (!range_overlap(a, b)){
-        if (a.max < b.min){
-            result = b.min - a.max;
-        }
-  else{
-   result = a.min - b.max;
-  }
- }
- return(result);
+ Vec4_f32 av = argb_unpack(a);
+ Vec4_f32 bv = argb_unpack(b);
+ Vec4_f32 v = lerp(av, t, bv);
+ return(argb_pack(v));
 }
 
 ////////////////////////////////
@@ -3031,18 +2486,20 @@ cstring_length(u8 *str){
  return(length);
 }
 //
-inline u64 cstring_length(char *str) {
+myinline u64
+cstring_length(char *str) {
  return cstring_length((u8 *)str);
 }
 
 global Stringz empty_string = {(u8*)"", 0};
-inline String  SCu8()                  { return empty_string; }
-inline String  SCu8(char &c)           { return {(u8*)&c, 1}; }
-inline String  SCu8(u8 *str, u64 size) { return {str, size}; }
-inline Stringz SCu8z(u8 *str, u64 size){ return {str, size}; }
-inline Stringz SCu8(u8 *str)           { return {(u8 *)str, cstring_length(str)}; }
-inline Stringz SCu8(char *str)         { return {(u8 *)str, cstring_length(str)}; }
-inline Stringz SCu8(const char *str)   { return {(u8 *)str, cstring_length((char *)str)}; }
+myinline String  SCu8()                  { return empty_string; }
+//TODO(kv) Character-string should point to a table
+myinline String  SCu8(char &c)           { return {(u8*)&c, 1}; }
+myinline String  SCu8(u8 *str, u64 size) { return {str, size}; }
+myinline Stringz SCu8z(u8 *str, u64 size){ return {str, size}; }
+myinline Stringz SCu8(u8 *str)           { return {(u8 *)str, cstring_length(str)}; }
+myinline Stringz SCu8(char *str)         { return {(u8 *)str, cstring_length(str)}; }
+myinline Stringz SCu8(const char *str)   { return {(u8 *)str, cstring_length((char *)str)}; }
 //-
 struct String_u8 {
  union {
@@ -3054,7 +2511,6 @@ struct String_u8 {
  };
  u64 cap;
 };
-#if !AD_IS_DRIVER
 function b32
 string_concat(String_u8 *dst, String src)
 {
@@ -3068,7 +2524,6 @@ string_concat(String_u8 *dst, String src)
  dst->size += copy_size;
  return(result);
 }
-#endif
 
 #define string_litexpr(s) SCchar((s), sizeof(s) - 1)
 //NOTE(kv) sizeof takes into account the null terminator, for some reason.
@@ -3092,25 +2547,25 @@ string_concat(String_u8 *dst, String src)
 #define CompletePreviousWritesBeforeFutureWrites _WriteBarrier()
 //NOTE(kv) These functions by default will return the original value
 //  Because what else do they return?
-kv_inline u32
+myinline u32
 atomic_add_u32(u32 volatile *Value, u32 Addend)
 {
  u32 Result = _InterlockedExchangeAdd((long volatile*)Value, (long)Addend);
  return(Result);
 }
-kv_inline u64
+myinline u64
 atomic_add_u64(u64 volatile *Value, u64 Addend)
 {
  u64 Result = _InterlockedExchangeAdd64((__int64 volatile *)Value, Addend);
  return(Result);
 }
-kv_inline u32
+myinline u32
 atomic_compare_exchange_u32(u32 volatile *Value, u32 New, u32 Expected)
 {
  u32 Result = _InterlockedCompareExchange((long volatile *)Value, New, Expected);
  return(Result);
 }
-kv_inline u64
+myinline u64
 atomic_exchange_u64(u64 volatile *Value, u64 New)
 {
  u64 Result = _InterlockedExchange64((__int64 volatile *)Value, New);
@@ -3120,25 +2575,25 @@ atomic_exchange_u64(u64 volatile *Value, u64 New)
 #if COMPILER_LLVM
 #define CompletePreviousReadsBeforeFutureReads asm volatile("" ::: "memory")
 #define CompletePreviousWritesBeforeFutureWrites asm volatile("" ::: "memory")
-kv_inline u32
+myinline u32
 atomic_add_u32(u32 volatile *Value, u32 Addend)
 {
  u32 Result = __sync_fetch_and_add(Value, Addend);
  return(Result);
 }
-kv_inline u64
+myinline u64
 atomic_add_u64(u64 volatile *Value, u64 Addend)
 {
  u64 Result = __sync_fetch_and_add(Value, Addend);
  return(Result);
 }
-kv_inline u32
+myinline u32
 atomic_compare_exchange_u32(u32 volatile *Value, u32 New, u32 Expected)
 {
  u32 Result = __sync_val_compare_and_swap(Value, Expected, New);
  return(Result);
 }
-kv_inline u64
+myinline u64
 atomic_exchange_u64(u64 volatile *Value, u64 New)
 {
  u64 Result = __sync_lock_test_and_set(Value, New);
@@ -3150,13 +2605,13 @@ struct Ticket_Mutex{
  volatile u64 serving;
  volatile u64 next_ticket;
 };
-kv_inline void
+myinline void
 acquire_ticket_mutex(Ticket_Mutex *mutex)
 {
  u64 ticket = atomic_add_u64(&mutex->next_ticket, 1);
  while(mutex->serving != ticket);
 }
-kv_inline void
+myinline void
 release_ticket_mutex(Ticket_Mutex *mutex)
 {
  CompletePreviousWritesBeforeFutureWrites;
@@ -3179,6 +2634,8 @@ release_ticket_mutex(Ticket_Mutex *mutex)
 #include "ad_debug_interface.h"
 
 #include "kv_memory.h"
+
+#include "ad_array.h"
 //-
 enum Base_Allocator_Type {
  Allocator_None,
@@ -3307,12 +2764,12 @@ line_unique_var++, (SHUTDOWN))
 
 //-
 
-kv_inline v2 V2(v1 value) { return v2{repeat2(value)}; }
-kv_inline v3 V3(v1 value) { return v3{repeat3(value)}; }
-kv_inline v4 V4(v1 value) { return v4{repeat4(value)}; }
-kv_inline v2 V2() { return v2{}; }
-kv_inline v3 V3() { return v3{}; }
-kv_inline v4 V4() { return v4{}; }
+myinline v2 V2(v1 value) { return v2{repeat2(value)}; }
+myinline v3 V3(v1 value) { return v3{repeat3(value)}; }
+myinline v4 V4(v1 value) { return v4{repeat4(value)}; }
+myinline v2 V2() { return v2{}; }
+myinline v3 V3() { return v3{}; }
+myinline v4 V4() { return v4{}; }
 
 inline v1
 dot(v4 const v, v4 const u)
@@ -3364,8 +2821,7 @@ operator*(mat4 const&matrix, v4 v)
 }
 
 function mat4
-mat4mul(mat4 const*A, mat4 const*B)
-{
+matmul(mat4 const*A, mat4 const*B) {
  mat4 R = {};
  for_i32(r,0,4) // NOTE(casey): Rows (of A)
  {
@@ -3379,13 +2835,17 @@ mat4mul(mat4 const*A, mat4 const*B)
  }
  return(R);
 }
-
+myinline mat4
+matmul(mat4 const&A, mat4 const&B)
+{
+ return matmul(&A,&B);
+}
 //NOTE: This actually allows us to "pass by value"
 // And clang actually does the right optimization in debug, which is refreshing.
-kv_inline mat4
+myinline mat4
 operator*(mat4 const&A, mat4 const&B)
 {
- return mat4mul(&A,&B);
+ return matmul(&A,&B);
 }
 
 inline mat3
@@ -3399,26 +2859,26 @@ to_mat3(mat4 const&m)
  return result;
 }
 
-kv_inline v3
+myinline v3
 mat4vert_div(mat4 const&A, v3 v)
 {
  v4 Av = A * V4(v,1.f);
  return Av.xyz / Av.w;
 }
-kv_inline v3
+myinline v3
 mat4vert(mat4 const&A, v3 v)
 {
  v4 Av = A * V4(v, 1.f);
  return Av.xyz;
 }
 // IMPORTANT IMPORTANT IMPORTANT: I am a bad person! But there's no way around it!
-kv_inline v3
+myinline v3
 operator*(mat4 const&A, v3 v)
 {
 return mat4vert(A,v);
 }
 
-kv_inline v3
+myinline v3
 mat4vec(mat4 const&A, v3 v)
 {
  v4 result = A * V4(v,0.f);
@@ -3445,19 +2905,19 @@ mat4_scales(v1 sx, v1 sy, v1 sz)
  return result;
 }
 
-kv_inline mat4
+myinline mat4
 mat4_scales(v3 scales)
 {
  return mat4_scales(v3_expand(scales));
 }
 
-kv_inline mat4
+myinline mat4
 mat4_scale(v1 s)
 {
  return mat4_scales(V3(s));
 }
 
-kv_inline mat4i
+myinline mat4i
 mat4i_scales(v3 s)
 {
  mat4i result;
@@ -3466,13 +2926,13 @@ mat4i_scales(v3 s)
  return result;
 }
 
-kv_inline mat4i
+myinline mat4i
 mat4i_scales(v1 sx, v1 sy, v1 sz)
 {
  return mat4i_scales(V3(sx,sy,sz));
 }
 
-kv_inline mat4i
+myinline mat4i
 mat4i_scale(v1 s)
 {
  mat4i result;
@@ -3532,13 +2992,13 @@ get_column(mat4 const&m, i32 index)
  return result;
 }
 
-kv_inline v3
+myinline v3
 get_translation(mat4 const&mat)
 {
  return get_column(mat, 3).xyz;
 }
 
-kv_inline mat3
+myinline mat3
 mat3_scale(v1 s)
 {
  mat3 result = {{
@@ -3549,7 +3009,7 @@ mat3_scale(v1 s)
  return result;
 }
 
-kv_inline v3
+myinline v3
 operator*(mat3 const&m, v3 v)
 {
  return matvmul3(m,v);
@@ -3618,7 +3078,7 @@ mat4_translate(v3 vector)
  return result;
 }
 
-kv_inline mat4i
+myinline mat4i
 mat4i_translate(v3 vector)
 {
  mat4i result;
@@ -3718,7 +3178,7 @@ mat4i_rotateZ(v1 turn, v3 pivot={})
 
 //////////////////////////////////////////////////
 
-kv_inline mat4i
+myinline mat4i
 mat4i_rotate(mat3 rot)
 {
  mat4i result;
@@ -3727,31 +3187,41 @@ mat4i_rotate(mat3 rot)
  return result;
 }
 
-//NOTE: Compose transformations
-kv_inline mat4i
-operator*(mat4i const& A, mat4i const& B)
+function mat4i
+matmul(mat4i const*A, mat4i const*B)
 {
  mat4i result;
- result.forward = A.forward * B.forward;
- result.inverse = B.inverse * A.inverse;
+ result.forward = matmul(&A->forward, &B->forward);
+ result.inverse = matmul(&B->inverse, &A->inverse);
  return result;
 }
+myinline mat4i
+matmul(mat4i const& A, mat4i const& B)
+{
+ return matmul(&A, &B);
+}
+//NOTE: Compose transformations
+myinline mat4i
+operator*(mat4i const& A, mat4i const& B)
+{
+ return matmul(&A, &B);
+}
 
-kv_inline v2 arm2(v1 turn)
+myinline v2 arm2(v1 turn)
 {
  return v2{cosine(turn), sine(turn)};
 }
 
-kv_inline v3 V3x(v1 x) { v3 result = {}; result.x=x; return result; }
-kv_inline v3 V3y(v1 y) { v3 result = {}; result.y=y; return result;  }
-kv_inline v3 V3z(v1 z) { v3 result = {}; result.z=z; return result; }
-kv_inline v3 setx(v3 v, v1 x) { v.x=x; return v; }
-kv_inline v3 sety(v3 v, v1 y) { v.y=y; return v; }
-kv_inline v3 setz(v3 v, v1 z) { v.z=z; return v; }
-kv_inline v3 addx(v3 v, v1 x) { v.x+=x; return v; }
-kv_inline v3 addy(v3 v, v1 y) { v.y+=y; return v; }
-kv_inline v3 addz(v3 v, v1 z) { v.z+=z; return v; }
-kv_inline v3 zeroX(v3 value) { value.x=0; return value; };
+myinline v3 V3x(v1 x) { v3 result = {}; result.x=x; return result; }
+myinline v3 V3y(v1 y) { v3 result = {}; result.y=y; return result;  }
+myinline v3 V3z(v1 z) { v3 result = {}; result.z=z; return result; }
+myinline v3 setx(v3 v, v1 x) { v.x=x; return v; }
+myinline v3 sety(v3 v, v1 y) { v.y=y; return v; }
+myinline v3 setz(v3 v, v1 z) { v.z=z; return v; }
+myinline v3 addx(v3 v, v1 x) { v.x+=x; return v; }
+myinline v3 addy(v3 v, v1 y) { v.y+=y; return v; }
+myinline v3 addz(v3 v, v1 z) { v.z+=z; return v; }
+myinline v3 zeroX(v3 value) { value.x=0; return value; };
 
 inline v1 srgb_to_linear1(v1 x)
 {
@@ -3769,7 +3239,7 @@ inline v1 linear_to_srgb1(v1 x)
  return(r);
 }
 
-kv_inline v3 
+myinline v3 
 clamp01(v3 v)
 {
  for_i32(i,0,3)
@@ -3789,9 +3259,9 @@ auto PP_Concat(old_value, __LINE__) = variable; variable = value; defer(variable
 #define add_in_block(variable, value) \
 set_in_block(variable, variable+value)
 
-kv_inline v1 i2f6 (i32 integer) { return v1(integer) / 6.f; }
-kv_inline v1 i2f(i32 integer, v1 div) { return v1(integer) / div; }
-kv_inline v4
+myinline v1 i2f6 (i32 integer) { return v1(integer) / 6.f; }
+myinline v1 i2f(i32 integer, v1 div) { return v1(integer) / div; }
+myinline v4
 i2f6(i4 vi)
 {
  v4 result;
@@ -3800,14 +3270,14 @@ i2f6(i4 vi)
 }
 
 
-kv_inline v1
+myinline v1
 step(v1 edge, v1 x)
 {
  return (x < edge) ? 0.f : 1.f;
 }
 
 
-kv_inline v3
+myinline v3
 step(v3 edge, v3 v)
 {
  return V3(step(edge.x, v.x),
@@ -3815,7 +3285,7 @@ step(v3 edge, v3 v)
            step(edge.z, v.z));
 }
 
-kv_inline i1
+myinline i1
 signof(i1 x)
 {
  return (x == 0 ? 0 :
@@ -3823,14 +3293,14 @@ signof(i1 x)
          -1);
 }
 
-kv_inline v1
+myinline v1
 signof(v1 x)
 {
  return (x == 0.f ? 0.f :
          x > 0.f  ? 1.f :
          -1.f);
 }
-kv_inline v3
+myinline v3
 signof(v3 v)
 {
  return V3(signof(v.x),
@@ -3882,7 +3352,7 @@ global_const mat4 mat4_negateX = {{
   0,0,0,1,
  }};
 
-kv_inline v3 
+myinline v3 
 negateX(v3 vert){
  return V3(-vert.x, vert.y, vert.z);
 }
@@ -4098,19 +3568,19 @@ struct Scratch_Block{
  
  ~Scratch_Block();
  
- operator Arena*(){ return &this->arena; }
+ myinline operator Arena*(){ return &this->arena; }
 };
 //-
-function void
+myinline void
 init_scratch_block(Scratch_Block *scratch){
  scratch->arena = make_arena();
 }
 //NOTE(kv) Hoist the constructor out so that I can share the code
 //  between different constructors like, you know, a regular function.
-Scratch_Block::Scratch_Block(){
+myinline Scratch_Block::Scratch_Block(){
  init_scratch_block(this);
 }
-Scratch_Block::~Scratch_Block() {
+myinline Scratch_Block::~Scratch_Block() {
  arena_free(&this->arena);
 }
 //-
@@ -4157,7 +3627,7 @@ to_stringz(Arena *a, String s){
  return push_stringz(a,s);
 }
 //
-kv_inline char *
+myinline char *
 to_cstring(Arena *arena, String8 string){
  String8 result = push_stringz(arena, string);
  return (char *)result.str;
@@ -4213,11 +3683,11 @@ strcat(Arena *arena, String a, char *b){
  return push_stringf(arena, "%.*s%s", strexpand(a), b);
 }
 
-kv_inline String
+myinline String
 to_string(Arena *arena, i32 value){
  return push_stringfz(arena, "%d", value);
 }
-kv_inline String
+myinline String
 to_string(Arena *arena, u32 value){
  return push_stringfz(arena, "%u", value);
 }
@@ -4343,7 +3813,7 @@ enum Printer_Type{
  Printer_Type_Generic,
 };
 struct Printer{
- b32 has_error;
+ b32 error;
  Printer_Type type;
  b32 print_separator_before_anything_else;
  String separator;
@@ -4424,17 +3894,12 @@ printer_delete(Printer &p){
  kv_assert(p.byte_pos > 0);
  p.byte_pos--;
 }
+//-
+#define print_parens_block(printer) \
+defer_block(print(printer, '('), print(printer, ')'))
 
-//-NOTE: "Hey, would you like variadic macros that actually works?"
-
-#define printn2(p,x,y)       print(p,x); print(p,y);
-#define printn3(p,x,y,z)     print(p,x); print(p,y); print(p,z);
-#define printn4(p,x,y,z,w)   print(p,x); print(p,y); print(p,z); print(p,w);
-#define printn5(p,x,...)     print(p,x); printn4(p,__VA_ARGS__);
-#define printn6(p,x,...)     print(p,x); printn5(p,__VA_ARGS__);
-#define printn7(p,x,...)     print(p,x); printn6(p,__VA_ARGS__);
-#define printn8(p,x,...)     print(p,x); printn7(p,__VA_ARGS__);
-#define printn9(p,x,...)     print(p,x); printn8(p,__VA_ARGS__);
+#define print_brace_block(printer) \
+defer_block(print(printer, '{'), print(printer, '}'))
 
 //-NOTE Base print function overloads
 function void
@@ -4476,16 +3941,16 @@ print_format(Printer &p, char *format, ...){
  va_end(args);
 }
 //~Printing different types
-kv_inline void print(Printer &p, const char *cstring) { print_format(p, "%s", cstring); }
-kv_inline void print(Printer &p, String string){
+myinline void print(Printer &p, const char *cstring) { print_format(p, "%s", cstring); }
+myinline void print(Printer &p, String string){
  print_format(p, "%.*s", strexpand(string));
 }
-kv_inline void print(Printer &p, char c)  { print_format(p, "%c", c); }
-kv_inline void print(Printer &p, u8   c)  { print_format(p, "%c", c); }
-kv_inline void print(Printer &p, i32 d)   { print_format(p, "%d", d); }
-kv_inline void print(Printer &p, u32 u)   { print_format(p, "%u", u); }
-kv_inline void print(Printer &p, i64 ld)  { print_format(p, "%zd", ld); }
-kv_inline void print(Printer &p, u64 lu)  { print_format(p, "%zu", lu); }
+myinline void print(Printer &p, char c)  { print_format(p, "%c", c); }
+myinline void print(Printer &p, u8   c)  { print_format(p, "%c", c); }
+myinline void print(Printer &p, i32 d)   { print_format(p, "%d", d); }
+myinline void print(Printer &p, u32 u)   { print_format(p, "%u", u); }
+myinline void print(Printer &p, i64 ld)  { print_format(p, "%zd", ld); }
+myinline void print(Printer &p, u64 lu)  { print_format(p, "%zu", lu); }
 //-
 // NOTE(kv): This is an absolutely ridiculous hack
 template <class T>
@@ -4512,12 +3977,17 @@ make_writer(FILE *file){
  result.file = file;
  return result;
 }
-inline void
+function void
 write_size(Writer *writer, void *data, usize size){
  if(writer->ok){
   usize result = fwrite(data, size, 1, writer->file);
   writer->ok = result != 0;
  }
+}
+myinline void
+write_size(Writer *writer, const char *data, usize size)
+{//NOTE fuck you clang
+ write_size(writer, (void *)data, size);
 }
 
 #define write_lvalue(writer, lvalue) \

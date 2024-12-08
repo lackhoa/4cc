@@ -71,7 +71,7 @@ write_text_input(App *app) {
  write_text(app, insert, true);
 }
 
-kv_inline void
+myinline void
 write_space_command(App *app) {
  write_text(app, strlit(" "), false);
 }

@@ -120,7 +120,7 @@ struct Token_Iterator{
  };
 };
 //-
-inline Token_Iterator
+myinline Token_Iterator
 make_token_iterator(Token_Iterator_Array const&it){
  Token_Iterator result = {};
  result.kind = TokenIterator_Array;
@@ -128,7 +128,7 @@ make_token_iterator(Token_Iterator_Array const&it){
  return(result);
 }
 //
-inline Token_Iterator
+myinline Token_Iterator
 make_token_iterator(Token_Iterator_List const&it){
  Token_Iterator result = {};
  result.kind = TokenIterator_List;
@@ -136,22 +136,18 @@ make_token_iterator(Token_Iterator_List const&it){
  return(result);
 }
 
-inline Token_Iterator_Array::operator Token_Iterator() {
+myinline Token_Iterator_Array::operator Token_Iterator() {
  return make_token_iterator(*this); 
 }
-inline Token_Iterator_List::operator Token_Iterator() {
+myinline Token_Iterator_List::operator Token_Iterator() {
  return make_token_iterator(*this); 
 }
 //-
 
-inline Range_i64
-Ii64(Token *token)
+myinline String
+token_string_from_source(String source, Token *token)
 {
- if (token) {
-  return Ii64_size(token->pos, token->size);
- } else {
-  return {};
- }
+ String result = {source.data+token->pos, (u64)token->size};
+ return result;
 }
-
 // BOTTOM

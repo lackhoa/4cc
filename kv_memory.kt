@@ -1,4 +1,4 @@
-//-NOTE Generated: C:/Users/vodan/4ed/code/generated/kv_memory.gen.h
+//-NOTE Generates: C:/Users/vodan/4ed/code/generated/kv_memory.gen.h
 meta_table(return, name, params) memory_functions
 {
  `(u8 *) arena_push_inner `(Arena *arena, usize size, usize alignment, DEBUG_File_Line file_line),

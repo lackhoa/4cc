@@ -34,15 +34,14 @@ struct Loaded_Image
  GLuint texture;
 };
 //
-global Loaded_Image *loaded_images;
+global arrayof<Loaded_Image> loaded_images;
 global i32 image_load_failure_count;
 
 function Image_Load_Info
 get_image_load_info(void) 
 {
- return Image_Load_Info
- {
-  i32(arrlen(loaded_images)),
+ return Image_Load_Info {
+  i32(loaded_images.count),
   image_load_failure_count,
  };
 }
@@ -58,7 +57,7 @@ ogl__check_error()
 #endif
 }
 
-kv_inline b32
+myinline b32
 ogl__index_valid(GLuint index)
 {
  return index != (GLuint)-1;
@@ -631,7 +630,7 @@ ogl__render_images(Render_Group *group, b32 render_primitive_id)
    Render_Entry_Image *entry = entry0->image;
    b32 bound_texture = false;
    i2 dim = {};
-   for_i32(image_index, 0, arrlen(loaded_images))
+   for_i32(image_index, 0, loaded_images.count)
    {
     Loaded_Image *loaded_image = &loaded_images[image_index];
     if ( string_match(loaded_image->filename, entry->filename) )
@@ -667,8 +666,8 @@ ogl__render_images(Render_Group *group, b32 render_primitive_id)
                          GL_RGB, GL_UNSIGNED_BYTE,
                          data);
      free(data);  // NOTE: multiple sources saying this alright
-     arrpush(loaded_images, new_image);
-     kv_assert(arrlen(loaded_images) < 128);
+     loaded_images.push_value(new_image);
+     kv_assert(loaded_images.count < 128);  //NOTE(kv) Just a soft cap
     }
    }
    

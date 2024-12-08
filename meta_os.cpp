@@ -9,7 +9,7 @@ function u8 *
 system_memory_reserve(usize size){
  usize granularity = KB(64);  //TODO(kv) This number is from Raymond Chen, but idk how to query for it?
  usize reserve_size = size;
- reserve_size = round_up_to_pow2(granularity, reserve_size);
+ reserve_size = align_pow2(granularity, reserve_size);
  
  u8 *memory = (u8 *)VirtualAlloc(0, reserve_size, MEM_RESERVE, PAGE_READWRITE);
  return memory;

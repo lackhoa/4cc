@@ -12,10 +12,8 @@
 #define REMOVE_OLD_STRING
 #define ED_CORRUPTION_CHECK 1
 
-#include "4ed_base.h"
 #include "4coder_version.h"
 #include "4coder_table.h"
-#include "4coder_types.h"
 #include "4coder_events.h"
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
@@ -75,21 +73,14 @@
 #include "4coder_profile.cpp"
 #include "4coder_profile_static_enable.cpp"
 #include "4coder_hash_functions.cpp"
-//#include "4coder_table.cpp"
 #include "4coder_log.cpp"
 #include "4coder_buffer_seek_constructors.cpp"
 #include "4coder_command_map.cpp"
 #include "4coder_codepoint_map.cpp"
 
 #include "4coder_token.cpp"
+#include "4coder_token2.cpp"
 #include "generated/lexer_cpp.cpp"
-
-//#include "4ed_api_definition.cpp"
-//#include "generated/custom_api_constructor.cpp"
-//#include "4ed_api_parser.cpp"
-//#include "4coder_doc_content_types.cpp"
-//#include "docs/4ed_doc_helper.cpp"
-//#include "docs/4ed_doc_custom_api.cpp"
 
 #include "4ed_log.cpp"
 #include "4ed_coroutine.cpp"

@@ -115,29 +115,39 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 		case LineEndingKind_CRLF:  { string_concat(&str, strlit("crlf")); } break;
 	}
 	
-	
-	Vec2_f32 p = V2(title_rect.x1 + 4.5f*char_wid, bar.y0 + 3.f);
-	p = draw_string(app, face_id, str.string, p, base_color);
+	Vec2_f32 draw_p = V2(title_rect.x1 + 4.5f*char_wid, bar.y0 + 3.f);
+	draw_p = draw_string(app, face_id, str.string, draw_p, base_color);
 	
 	str = Su8(space, 0, 5);
 	Dirty_State dirty = buffer_get_dirty_state(app, buffer);
 	if(dirty != 0){
 		string_concat(&str, strlit(" ["));
-		if(HasFlag(dirty, DirtyState_UnsavedChanges))
+		if(HasFlag(dirty, DirtyState_UnsavedChanges)){
 			string_concat(&str, strlit("+"));
-		if(HasFlag(dirty, DirtyState_UnloadedChanges))
+  }
+		if(HasFlag(dirty, DirtyState_UnloadedChanges)){
 			string_concat(&str, strlit("!"));
+  }
 		string_concat(&str, strlit("]"));
-		draw_string(app, face_id, str.string, p, pop2_color);
+		draw_p = draw_string(app, face_id, str.string, draw_p, pop2_color);
 	}
+ 
+ Game_API *game = get_game_code();
+ if(game){
+  b32 synced = game->fui_is_buffer_synced(ed_game_state_pointer, app, buffer);
+  if(not synced){
+   u32 color = 0xFF587898;
+   draw_p = draw_string(app, face_id, strlit("[!]"), draw_p, color);
+  }
+ }
 	
-	p.x = Max(p.x + 5.f*char_wid, bar.x1 - char_wid*15.f);
-	draw_string(app, face_id, push_stringfz(scratch, "%d,%d", cursor.line, cursor.col), p, base_color);
+	draw_p.x = Max(draw_p.x + 5.f*char_wid, bar.x1 - char_wid*15.f);
+	draw_string(app, face_id, push_stringfz(scratch, "%d,%d", cursor.line, cursor.col), draw_p, base_color);
 	
-	p.x = bar.x0 + 2.f;
-	draw_string(app, face_id, unique_name, p, base_color);
+	draw_p.x = bar.x0 + 2.f;
+	draw_string(app, face_id, unique_name, draw_p, base_color);
 	
-	p.x = bar.x1 - char_wid*3.5f;
+	draw_p.x = bar.x1 - char_wid*3.5f;
 	i64 buffer_size = buffer_get_size(app, buffer);
 	String PosText;
 	if(cursor_position == 0){
@@ -147,7 +157,7 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 	}else{
 		PosText = push_stringfz(scratch, "%d%%", i64(100.L*cast(f64)cursor_position/(f64)(buffer_size)));
 	}
-	draw_string(app, face_id, PosText, p, base_color);
+	draw_string(app, face_id, PosText, draw_p, base_color);
 }
 
 // NOTE(kv): This is the in-buffer search highlight (like with "/")
@@ -529,10 +539,10 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
  }
  draw_string(app, face_id, vim_keystroke_text.string, bot_right, chord_color);
  
- if (arrlen(DEBUG_entries) > 0 && 
+ if (DEBUG_entries.count > 0 && 
      DEBUG_draw_hud_p)
  {//-Debug HUD
-  i1 line_count = (i1)arrlen(DEBUG_entries);
+  i1 line_count = (i1)DEBUG_entries.count;
   rect2_Pair pair = rect_split_top_bottom_neg(main_monitor_region, v1(line_count)*line_height);
   rect2 clip = pair.max;
   clip.x0 += 0.5f*(clip.x1 - clip.x0);

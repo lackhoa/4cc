@@ -1,40 +1,23 @@
-function v3
-fvert_function(v3 init_value, Fui_Options opts, i32 line=__builtin_LINE()){
- opts = fopts_add_flags(opts, Slider_Vertex);
- v3 result = fval_text(init_value, opts, line);
- return result;
-}
-
-#define fvert(value, ...)   fvert_function( (value), fopts(__VA_ARGS__) )
-
-//-NOTE: Annotations
-#define fvec(value, ...) \
-fval_text( (value), fopts_add_flags(fopts(__VA_ARGS__), Slider_Vector) )
-#define fvecx(value)      V3x(fval_text(value))
-#define fvecy(value)      V3y(fval_text(value))
-#define fvecz(value)      V3z(fval_text(value))
-
-#define fdir fvec  // NOTE: Not influenced by scale.
-//- End annotation
-#define funit(value)      fvert(value, Slider_Camera_Aligned|Slider_NOZ)
-
-#define fkeyframe(nframes, value)  add_keyframe(ani, fval2i(nframes, value))
-#define fhsv(h,s,v) argb_pack(srgb_to_linear(hsv_to_srgb(fval3(h,s,v))))
+//-
+//#define fvec(value) fval( (value), {.flags=Slider_Vector} )
+//#define fdir fvec  // NOTE: Not influenced by scale.
+//#define funit(value)      fvec(value, Slider_Camera_Aligned|Slider_NOZ)
+//#define fhsv(h,s,v) argb_pack(srgb_to_linear(hsv_to_srgb(fval3(h,s,v))))
 
 #define radius_scale_block(multiplier) \
-Common_Line_Params line_unique_var = current_line_cparams(); \
+Common_Line_Params line_unique_var = *current_line_cparams(); \
 line_unique_var.radius_mult *= multiplier; \
 push_line_cparams(line_unique_var); \
 defer(pop_line_cparams());
 
 #define line_color_lightness(scale) \
-Common_Line_Params line_unique_var = current_line_cparams(); \
+Common_Line_Params line_unique_var = *current_line_cparams(); \
 line_unique_var.color = argb_lightness(line_unique_var.color, scale); \
 push_line_cparams(line_unique_var); \
 defer(pop_line_cparams());
 
 #define lp_block(FIELD, value) \
-Common_Line_Params line_unique_var = current_line_cparams(); \
+Common_Line_Params line_unique_var = *current_line_cparams(); \
 line_unique_var.FIELD = value; \
 push_line_cparams(line_unique_var); \
 defer(pop_line_cparams());
@@ -128,7 +111,7 @@ perspective_project_non_hyperbolic(Camera *camera, v3 worldP){
  result.z   = depth;
  return result;
 }
-kv_inline Line_Params
+myinline Line_Params
 lp_alignment_min(v1 min){
  Line_Params result = painter.line_params;
  result.alignment_min = min;
@@ -155,17 +138,21 @@ plane_transform(mat4 const&mat, v3 n, v1 d)
 
 //~
 
-function mat4i &
+function mat4i *
 mom_bone_xform(Painter *p){
- auto &stack = p->bone_stack;
- return stack[stack.count-2]->xform;
+ Bone **stack = p->bone_stack;
+ return &array_get(stack, array_count(stack)-2)->xform;
 }
-inline mat4i& p_mom_bone_xform(){ return mom_bone_xform(&painter); }
+myinline mat4i *
+p_mom_bone_xform(){ return mom_bone_xform(&painter); }
+
 function mat4
 from_parent(){
  //NOTE(kv) If we just stored the relative offset, we wouldn't need this.
- auto p = &painter;
- return current_world_from_bone(*p).inverse * mom_bone_xform(p);
+ Painter *p = &painter;
+ mat4 *mom_world_from_bone = &mom_bone_xform(p)->forward;
+ mat4 *bone_from_world = &current_world_from_bone(p)->inverse;
+ return matmul(bone_from_world, mom_world_from_bone);
 }
 
 //~
@@ -212,21 +199,17 @@ bezier_tangent(Bezier bezier, v1 t)
 }
 #endif
 
-global_const Fui_Options f20th = Fui_Options{0, 0.05f};
-global_const Fui_Options f10th = Fui_Options{0, 0.1f};
-global_const Fui_Options f10s  = Fui_Options{0, 10.f};
-
-kv_inline Fui_Options
+myinline Fui_Options
 fscale(v1 delta_scale){
  Fui_Options result = {};
  result.delta_scale = delta_scale;
  return result;
 }
-kv_inline Bezier
+myinline Bezier
 reverse(Bezier B){
  return {B[3], B[2], B[1], B[0]};
 }
-kv_inline v3
+myinline v3
 reflect_origin(v3 origin, v3 point){
  return origin-(point-origin);
 }
@@ -294,14 +277,16 @@ trs_pivot_transform(v3 translate, mat4i const&rotate, v1 scale,
                  * mat4i_translate(-object_space_pivot));
  return result;
 }
-inline mat4i& p_current_world_from_bone(){
- return current_world_from_bone(painter); }
+myinline mat4i *
+p_current_world_from_bone() {
+ return current_world_from_bone(&painter);
+}
 
 inline void
 push_hl(argb color=0, i1 linum=__builtin_LINE())
 {
  if(color == 0){color = srgb_to_linear(0XFFDBA50F);}
- Common_Line_Params cparams = current_line_cparams();
+ Common_Line_Params cparams = *current_line_cparams();
  cparams.flags |= Line_Overlay|Line_No_SymX;
  cparams.color = color;
  cparams.radii = i2f6(I4(3,3,3,3));
@@ -321,16 +306,13 @@ inline Line_Params
 profile_visible_transition(v1 min){
  return profile_visible(cosine(min*0.25f));
 }
-inline mat4i &
+inline mat4i *
 get_bone_xform(Bone_Type type, i1 lr_index){
- return get_bone(*painter.modeler, type, lr_index).xform;
+ return &get_bone(painter.modeler, type, lr_index)->xform;
 }
-inline mat4i &
+inline mat4i *
 get_bone_xform(Bone_Type type){
  return get_bone_xform(type, painter.lr_index);
 }
-
-#define read_slider_at_index(index) \
-(void *)(global_sliders[index] + 1)
 
 //~ EOF;

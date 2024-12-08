@@ -14,17 +14,17 @@
 #include "imgui/backends/imgui_impl_win32.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
-#include "kv.h"
-#include "4ed_base.h"
-
 #include <stdio.h>
 
 #include "4coder_game_shared.h"
+#include "4ed_base.h"
 #include "4coder_version.h"
 #include "4coder_events.h"
 
 #include "4coder_table.h"
-#include "4coder_types.h"
+
+//TODO(kv) Hello, why are these here?
+#include "custom_command_defines.h"
 #include "4coder_default_colors.h"
 #include "ad_debug.h"
 
@@ -478,7 +478,7 @@ system_get_clipboard_sig()
 function
 system_post_clipboard_sig() {
  Arena *arena = &win32vars.clip_post_arena;
- arena_clear(arena);
+ arena_free(arena);
  win32vars.clip_post.str = push_array(arena, u8, str.size + 1);
  if (win32vars.clip_post.str != 0)
  {

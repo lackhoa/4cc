@@ -238,7 +238,7 @@ add_keyframe(Animation *ani, i32 nframes, i32 value)
  }
 }
 
-kv_inline void 
+myinline void 
 add_keyframe(Animation *ani, i2 args)
 {
  add_keyframe(ani, args[0], args[1]);

@@ -581,7 +581,7 @@ CUSTOM_DOC("Loads all the theme files in the current hot directory.")
 CUSTOM_COMMAND_SIG(clear_all_themes)
 CUSTOM_DOC("Clear the theme list")
 {
- arena_clear(&global_theme_arena);
+ arena_free(&global_theme_arena);
  block_zero_struct(&global_theme_list);
  set_default_color_scheme(app);
 }
@@ -943,7 +943,7 @@ clipboard_init(Base_Allocator *allocator, u32 history_depth, Clipboard *clipboar
 function void
 clipboard_clear(Clipboard *clipboard)
 {
-    arena_clear(&clipboard->arena);
+    arena_free(&clipboard->arena);
     clipboard_init_empty(clipboard, clipboard->clip_capacity);
 }
 

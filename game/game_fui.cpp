@@ -1,194 +1,216 @@
-#include "game_fui.h"
-
 global b32 fui_v4_zw_active;
 global u32 slider_cycle_counter;
 
-kv_inline usize
-slider_value_size(Fui_Slider *slider){
- return(get_basic_type_size(slider->type));
+struct Sliders{
+ union{
+  Slider *sliders;
+  Slider *items;
+ };
+ u32 count;
+};
+
+myinline usize
+slider_value_size(u32 index){
+ usize result = get_basic_type_size(global_sliders[index].type);
+ return(result);
+}
+myinline usize
+slider_value_size(Slider *slider){
+ usize result = get_basic_type_size(slider->type);
+ return(result);
+}
+myinline void *
+get_slider_value(Slider *slider){
+ return global_slider_values[slider->index];
 }
 
-// todo: Put these in a struct
-global Fui_Slider *fui_active_slider;
-global String      fui_active_slider_string;
+global Slider *fui_active_slider;
 
 struct Line_Map_Entry{
  i32 linum;
- Fui_Slider *slider;
+ Slider *slider;
 };
 //
 global Line_Map_Entry *line_map;
 //global Arena *slider_store;
-global Arena *dll_arena;
+global Arena *dll_arena;  //TODO(kv) Yo, why is this thing global?
 
-//-The Slow Path
-
-struct Slow_Line_Map_Entry{
- String file;
- i32 linum;
- Fui_Slider *slider;
-};
-
-struct Slow_Line_Map{
- i32 cap;
- i32 count;
- struct Slow_Line_Map_Entry *map;
-};
-global Slow_Line_Map slow_line_map;
-//global Arena *slow_slider_store;
-
-function fui_is_active__return
-fui_is_active(fui_is_active__params) {
+function b32
+fui_is_active(){
  return fui_active_slider != 0;
 }
 //~
 //@GetSlider
-void *
-fast_fval_inner(Basic_Type type, void *init_value,
-                i32 linum, Fui_Options options)
-{
- void *result = 0;
- u64 cycle_start = gb_rdtsc();
- 
- Fui_Slider *slider = line_map[linum].slider;
- // @fui_ensure_nonzero_offset
- if(slider != 0)
- {
-  result = slider+1;
- }
- else
- {//NOTE: Not found -> add new slider to the store
-  usize value_size = get_basic_type_size(type);
-  slider = cast(Fui_Slider *)(push_size(dll_arena, sizeof(Fui_Slider)+value_size));
-  line_map[linum].slider = slider;
-  
-  b32 is_vertex = (options.flags & Slider_Vertex);
-  b32 is_vector = (options.flags & Slider_Vector);
-  if (is_vertex || is_vector){
-   options.flags |= Slider_Camera_Aligned;
-   if(options.delta_scale == 0.f) {
-    options.delta_scale = default_fvert_delta_scale;
-   }
-  }
-  
-  *slider = Fui_Slider{
-   .type    = type, 
-   .options = options,
-  };
-  result = slider+1;
-  block_copy(result, init_value, value_size);
- }
- 
- u64 cycle_end = gb_rdtsc();
- slider_cycle_counter += u32(cycle_end-cycle_start);
- return result;
-}
-
-//@GetSlider
-function void *
-slow_fval_inner(Basic_Type type, void *init_value,
-                const char *file_c, i32 linum,
-                Fui_Options options)
-{
- void *result = 0;
- u64 cycle_start = gb_rdtsc();
- Slow_Line_Map &map = slow_line_map;
- Fui_Slider *slider = 0;
- 
- String file = SCu8(file_c);
- for_i32(index,0,map.count)
- {
-  // NOTE: In the init call, we put a string pointer in the linemap,
-  // in later calls, we pass in the same pointer -> match -> win.
-  Slow_Line_Map_Entry entry = map.map[index];
-  if (entry.file  == file &&
-      entry.linum == linum)
-  {
-   slider = entry.slider;
-   break;
-  }
- }
- 
- if(slider)
- {
-  result = slider+1;
- }
- else
- {//-Not found
-  usize value_size = get_basic_type_size(type);
-  slider = cast(Fui_Slider*)push_size(dll_arena, sizeof(Fui_Slider) + value_size);
-  map.map[map.count++] = Slow_Line_Map_Entry{
-   .file   = file,
-   .linum  = linum,
-   .slider = slider,
-  };
-  kv_assert(map.count < map.cap);
-  
-  *slider = Fui_Slider{
-   .type    = type, 
-   .options = options,
-  };
-  
-  result = slider+1;
-  block_copy(result, init_value, value_size);
- }
- 
- u64 cycle_end = gb_rdtsc();
- slider_cycle_counter += u32(cycle_end-cycle_start);
- return result;
-}
 //-
-inline b32 
-filename_match(String a0, String b0) {
+function b32 
+filename_match(String a0, String b0){
  String a = path_filename(a0);
  String b = path_filename(b0);
  return string_match(a,b);
 }
-//@GetSlider
-function Fui_Slider *
-fui_get_slider_external(String file, i32 linum){
- Fui_Slider *slider = 0;
- if(filename_match(file, DRIVER_FILE_NAME)){
-  slider = line_map[linum].slider;
- }else{
-  auto &map = slow_line_map;
-  u32 offset = 0;
-  for_i32(index,0,map.count){
-   Slow_Line_Map_Entry entry = map.map[index];
-   if(filename_match(entry.file, file) &&
-      entry.linum == linum){
-    slider = entry.slider;
+function Sliders
+get_sliders_for_file(String file)
+{//NOTE(kv) Let's have a convention that file names are all that matters,
+ //  since I don't wanna have to deal with canonicalizing paths,
+ //  which is complicated and doesn't help me much.
+ Sliders result = {};
+ if(filename_match(file, DRIVER_FILE_NAME))
+ {
+  result.sliders = global_sliders;
+  result.count   = alen(global_sliders);
+ }
+ return result;
+}
+function Sliders
+get_sliders_for_buffer(App *app, Buffer_ID buffer)
+{//TODO(kv) Don't return anything if we're not synced?
+ Scratch_Block scratch;
+ String file = push_buffer_filepath(app, scratch, buffer);
+ return get_sliders_for_file(file);
+}
+function u32
+get_min_touched_slider(Sliders sliders, i64 left, i64 right)
+{
+ u32 result_index = u32_max;
+ u32 start = 0;
+ u32 end   = sliders.count;
+ while(start < end){
+  
+  u32 index = start + (end-start) / 2;
+  Slider *slider = sliders.sliders+index;
+  
+  b32 range_is_before = right <= slider->pos;
+  b32 range_is_after  = left >= slider->pos + slider->size;
+  if(range_is_before){
+   
+   end = index;
+  }else if(range_is_after){
+   
+   start = index + 1;
+  }else{
+   //NOTE Touched
+   b32 left_slider_is_touched = false;
+   if(index != 0){
+    Slider *left_slider = sliders.sliders+index-1;
+    //NOTE(kv) Since this one is touched, the one to the left is touched
+    //  only if it is touched on the right.
+    left_slider_is_touched = left_slider->pos + left_slider->size > left;
+   }
+   if(left_slider_is_touched){
+    end = index;
+   }else{
+    result_index = index;
     break;
    }
   }
  }
- return slider;
+ return result_index;
 }
-function Fui_Slider *
+function Slider *
+get_slider_at_pos(Sliders sliders, i64 pos)
+{
+ Slider *result = 0;
+ u32 index = get_min_touched_slider(sliders, pos, pos+1);
+ if(index != u32_max){
+  result = global_sliders + index;
+ }
+ return result;
+}
+myinline b32
+slider_overlaps_range(Slider *slider, i64 begin, i64 end)
+{
+ b32 slider_is_to_the_left  = slider->pos + slider->size < begin;
+ b32 slider_is_to_the_right = slider->pos >= end;
+ return not (slider_is_to_the_left or slider_is_to_the_right);
+}
+function u32
+get_touched_sliders(Sliders sliders, i64 pos_begin, i64 pos_end,
+                    u32 *out_end_index)
+{
+ u32 begin_index = get_min_touched_slider(sliders, pos_begin, pos_end);
+ u32 end_index = begin_index;
+ if(begin_index != u32_max){
+  end_index = begin_index+1;
+  //NOTE Check sliders to the right
+  for_u32(index, begin_index+1, alen(global_sliders)){
+   Slider *slider = global_sliders + index;
+   if(slider_overlaps_range(slider, pos_begin, pos_end)){
+    end_index = index+1;
+   }else{
+    break;
+   }
+  }
+ }
+ 
+ *out_end_index = end_index;
+ return begin_index;
+}
+function u32
+fui_get_sliders_in_range(App *app, Buffer_ID buffer,
+                         i64 pos_begin, i64 pos_end,
+                         u32 *out_end_index)
+{
+ Sliders sliders = get_sliders_for_buffer(app, buffer);
+ u32 result = get_touched_sliders(sliders, pos_begin, pos_end,
+                                  out_end_index);
+ return result;
+}
+function Range_i64
+fui_get_slider_range(u32 index)
+{
+ Slider *slider = global_sliders + index;
+ return {slider->pos, slider->pos + slider->size};
+}
+function Slider *
+get_hot_slider_under_cursor(App *app)
+{
+ Scratch_Block scratch;
+ GET_VIEW_AND_BUFFER;
+ String file = push_buffer_filepath(app, scratch, buffer);
+ i64 curpos = view_get_cursor_pos(app, view);
+ 
+ Sliders sliders = get_sliders_for_file(file);
+ Slider *result = get_slider_at_pos(sliders, curpos);
+ if(not result){
+  //NOTE Expand to the whole line.
+  Range_i64 line_range = get_line_range_from_pos(app, buffer, curpos);
+  u32 end;
+  u32 begin = get_touched_sliders(sliders, RangeExpand(line_range), &end);
+  if((begin != u32_max) and (end == begin+1)){
+   result = sliders.sliders+begin;
+  }
+ }
+ return result;
+}
+function b32
+fui_at_slider_p(App *app)
+{
+ Slider *slider = get_hot_slider_under_cursor(app);
+ return slider != 0;
+}
+function Slider *
 fui_get_active_slider(void) { return fui_active_slider; }
 function void
-fui_set_active_slider(Fui_Slider *slider, String string) {
- fui_active_slider        = slider;
- fui_active_slider_string = string;
+fui_set_active_slider(Slider *slider) {
+ fui_active_slider = slider;
 }
 //-
-global const i32 MAX_SLIDER_VALUE_SIZE = 32;
-global u8 global_fui_saved_value[MAX_SLIDER_VALUE_SIZE];  //TODO: why is this a global?
+global const u32 MAX_SLIDER_VALUE_SIZE = 32;
+global u8 global_fui_saved_value[MAX_SLIDER_VALUE_SIZE];  //TODO(kv) why is this a global?
 
 function void
-fui_save_value(Fui_Slider *slider)
+fui_save_value(u32 index)
 {
- void *value = slider+1;
- usize size = slider_value_size(slider);
- block_copy(global_fui_saved_value, value, size);
+ void *src = global_slider_values[index];
+ usize size = slider_value_size(index);
+ block_copy(global_fui_saved_value, src, size);
 }
-
 function void
-fui_restore_value(Fui_Slider *slider)
+fui_restore_value(u32 index)
 {
- void *value = slider+1;
- usize size = slider_value_size(slider);
- block_copy(value, global_fui_saved_value, size);
+ void *dst = global_slider_values[index];
+ usize size = slider_value_size(index);
+ block_copy(dst, global_fui_saved_value, size);
 }
 
 function b32
@@ -206,7 +228,6 @@ fui_is_wrapped_slider(String at_string)
          string_match_lit(at_string, "fvecz") ||
          string_match_lit(at_string, "fcam") ||
          string_match_lit(at_string, "funit") ||
-         string_match_lit(at_string, "fci") ||
          false);
 }
 
@@ -217,7 +238,6 @@ fui_string_is_slider(String at_string)
  return (fui_is_wrapped_slider(at_string)     ||
          starts_with_lit(at_string, "fval")   ||
          starts_with_lit(at_string, "fvert")  ||
-         starts_with_lit(at_string, "fkeyframe")  ||
          starts_with_lit(at_string, "fhsv")  ||
          starts_with_lit(at_string, "fbool") ||
          false);
@@ -303,193 +323,141 @@ print_code(Printer &p, Basic_Type type, void *value0, b32 wrapped)
   invalid_default_case;
  }
 }
-
-
 function String
-fui_push_slider_value(Arena *arena, Fui_Slider *slider)
+fui_print_slider(Arena *arena, Slider *slider)
 {
- String at_string = fui_active_slider_string;
- void *value0 = slider+1;
+ void *value = global_slider_values[slider->index];
+ Printer printer = make_printer_buffer(arena, 128);
  
- b32 wrapped = fui_is_wrapped_slider(at_string);
- Basic_Type type = slider->type;
- i32 cap = 128;
- Printer printer = make_printer_buffer(arena, cap);
- print_code(printer, type, value0, wrapped);
+ //TODO(kv) We'll print back everything about the slider, with options and whatever.
+ print(printer, strlit("fval"));
+ print_parens_block(printer){
+  print_code(printer, slider->type, value, true);
+ }
+ 
  String result = printer_get_string(printer);
  return result;
 }
-
-#define fui_push_active_slider_value_return String
-#define fui_push_active_slider_value_params Arena *arena
-
-function fui_push_active_slider_value_return
-fui_push_active_slider_value(fui_push_active_slider_value_params)
+function String
+fui_push_active_slider_value(Arena *arena)
 {
  String result = {};
- if (fui_active_slider)
- {
-  result = fui_push_slider_value(arena, fui_active_slider);
+ if(fui_active_slider) {
+  result = fui_print_slider(arena, fui_active_slider);
  }
  return result;
 }
-
-function i64
-fui_at_slider_p(App *app, Buffer_ID buffer, Token_Iterator_Array *it_out)
+function b32
+fui_handle_slider(App *app)
 {
- i64 result = 0;
- Scratch_Block scratch(app);
- i64 max_pos = 0;
- Token_Iterator_Array it_value = get_token_it_on_current_line(app, buffer, &max_pos);
- Token_Iterator_Array *it = &it_value;
- 
- Token *token = tkarr_read(it);
- while(result == 0 &&
-       token       &&
-       token->pos < max_pos)
- {
-  String at_string = push_token_lexeme(app, scratch, buffer, token);
-  if ( fui_string_is_slider(at_string) ) { result = token->pos; }
-  else { token = tkarr_inc(it); }
- }
- 
- if (it_out) { *it_out = it_value; }
- return result;
-}
-
-function fui_handle_slider__return
-fui_handle_slider(fui_handle_slider__params)
-{
+ GET_VIEW_AND_BUFFER;
  b32 result = false;
+ Scratch_Block scratch;
  
- Token_Iterator_Array tk_value; 
- i64 slider_pos = fui_at_slider_p(app, buffer, &tk_value);
- String at_string = {};
- if(slider_pos){
-  Scratch_Block scratch(app);
+ Slider *slider = get_hot_slider_under_cursor(app);
+ if(slider){
+  result = true;
+  fui_save_value(slider->index);
+  fui_set_active_slider(slider);
   
-  Range_i64 slider_value_range = {};
-  Fui_Slider *slider = fui_get_slider_external(filename, line_number);
-  if(slider){
-   b32 parse_ok = false;
-   {// NOTE(kv): Parsing
-    Ed_Parser parser_value = make_ep_from_buffer(app, buffer, tk_value);
-    Ed_Parser *p = &parser_value;
-    at_string = ep_print_token(scratch, p);
-    ep_eat_kind(p, TokenBaseKind_Identifier);
-    ep_char(p, '(');
-    // NOTE: At value
-    slider_value_range.min = ep_get_pos(p);
-    {
-     i32 component_count = 1;
-     if(!(fui_is_wrapped_slider(at_string))){
-      switch(slider->type){
-       case Basic_Type_v2: case Basic_Type_i2: { component_count = 2; }break;
-       case Basic_Type_v3: case Basic_Type_i3: { component_count = 3; }break;
-       case Basic_Type_v4: case Basic_Type_i4: { component_count = 4; }break;
-       default: { component_count = 1; }break;
-      }
+  b32 writeback = fui_editor_ui_loop(app);
+  if(writeback)
+  {// NOTE save the results
+   String slider_string = fui_print_slider(scratch, slider);
+   Range_i64 slider_range = {slider->pos, slider->pos + slider->size};
+   buffer_replace_range(app, buffer, slider_range, slider_string);
+  }else{
+   fui_restore_value(slider->index);
+  }
+  
+  fui_set_active_slider(0);
+  fui_v4_zw_active = false;
+ }
+ return result;
+}
+function b32
+is_buffer_synced(Game_State *state, String filename)
+{
+ b32 result = true;
+ arrayof<String> *unsynced_files = &state->unsynced_files;
+ for_i32(i, 0, unsynced_files->count){
+  if(unsynced_files->items[i] == filename){
+   result = false;
+   break;
+  }
+ }
+ return result;
+}
+function void
+game_buffer_edit_range(Game_State *state,
+                       App *app, Buffer_ID buffer,
+                       Range_i64 new_range, Range_Cursor old_range)
+{
+ i64 old_min = old_range.min.pos;
+ i64 old_max = old_range.max.pos;
+ i64 edit_delta = range_size(new_range) - (old_max - old_min);
+ Scratch_Block scratch;
+ Sliders sliders = get_sliders_for_buffer(app, buffer);
+ if(sliders.count and
+    edit_delta != 0)
+ {
+  kv_assert(new_range.min == old_min);
+  String filename = push_buffer_filepath(app, scratch, buffer);
+  filename = path_filename(filename);
+  
+  b32 was_synced = is_buffer_synced(state, filename);
+  if(was_synced){
+   //-Hopefully resync this buffer!
+   b32 resynced = false;
+   
+   u32 touch_end;
+   u32 touch_begin = get_touched_sliders(sliders, old_min, old_max, &touch_end);
+   u32 touch_count = touch_end - touch_begin;
+   
+   u32 min_shift_index = -1;
+   
+   if(touch_count == 0){
+    resynced = true;
+    min_shift_index = get_min_touched_slider(sliders, old_min, i64_max);
+    
+   }else if(touch_count == 1){
+    
+    Slider *slider0 = sliders.items+touch_begin;
+    if(old_min >= slider0->pos and
+       old_max <= slider0->pos + slider0->size)
+    {//NOTE The edit touches one slider on the right,
+     //  meaning that it is a modification to the slider.
+     i64 new_size = slider0->size + edit_delta;
+     if(new_size > 0){
+      slider0->size = new_size;
+      min_shift_index = touch_begin+1;
+      resynced = true;
      }
-     
-     for_i32(index,0,component_count){
-      if(index<component_count-1){
-       ep_eat_until_char(p, strlit(","));
-       ep_eat(p);
-      }else{
-       ep_eat_until_char(p, strlit(")"));
-       ep_eat(p);
-      }
-     }
-    }
-    parse_ok = p->ok_;
-    if (p->ok_){
-     slider_value_range.max = ep_get_token_delta(p,-1)->pos;
     }
    }
    
-   if (parse_ok) {
-    fui_save_value(slider);
-    fui_set_active_slider(slider, at_string);
-    //NOTE
-    b32 writeback = fui_editor_ui_loop(app);
-    
-    if (writeback)
-    {// NOTE(kv): save the results
-     String value_string = fui_push_slider_value(scratch, slider);
-     buffer_replace_range(app, buffer, slider_value_range, value_string);
-    }
-    else 
-    {
-     fui_restore_value(slider);
-    }
-    
-    result = true;
-    fui_set_active_slider(0,String{});
-    fui_v4_zw_active = false;
+   //-Shifting stuff
+   for_u32(slider_index, min_shift_index, sliders.count){
+    Slider *slider = sliders.sliders+slider_index;
+    i64 new_pos = slider->pos + edit_delta;
+    kv_assert(new_pos >= 0);
+    slider->pos = new_pos;
+   }
+   
+   if(not resynced){
+    //-All hope is lost...
+    filename = push_string(&state->dll_arena, filename);
+    state->unsynced_files.push_value(filename);
    }
   }
  }
- return result;
 }
-//-
-global u32 fui_editor_magic = 'fui_';
-
-function i64
-get_millisecond_unix_timestamp()
-{
-#if OS_WINDOWS
- FILETIME filetime;
- GetSystemTimeAsFileTime(&filetime); //returns ticks in UTC
- 
- LARGE_INTEGER li;
- li.LowPart  = filetime.dwLowDateTime;
- li.HighPart = filetime.dwHighDateTime;
- 
- // Convert ticks since into seconds
- i64 UNIX_TIME_START = 0x019DB1DED53E8000; // NOTE January 1, 1970 (start of Unix epoch) in "ticks"
- i64 result = (li.QuadPart - UNIX_TIME_START) / Thousand(10);  // NOTE 1 tick = 100 nanoseconds
- return result;
-#endif
- 
- // NOTE Use "gettimeofday" for linux
-}
-function u64
-get_slider_index()
-{//NOTE(kv) Since one frame is 16ms, we'll never get past millisecond
- i64 result = get_millisecond_unix_timestamp();
- return (u64)result;
-}
-function fui_generate_slider__return
-fui_generate_slider(fui_generate_slider__params)
+function b32
+fui_is_buffer_synced(Game_State *state, App *app, Buffer_ID buffer)
 {
  Scratch_Block scratch;
- GET_VIEW_AND_BUFFER;
- b32 ok = true;
- b32 at_fval = false;
- Range_i64 range;
- {
-  Ed_Parser parser_value = make_ed_parser_at_cursor(app);
-  Ed_Parser *parser = &parser_value;
-  Token *token0 = ep_get_token(parser);
-  ep_id(parser, strlit("fval"));
-  at_fval = parser->ok_;
-  range.min = token0->pos;
-  range.max = token0->pos + token0->size;
- }
- 
- b32 changed = false;
- if(at_fval){
-  u64 slider_index = get_slider_index();
-  if(ok){
-   String replacement = push_stringf(scratch, "_fval_(%zu)", slider_index);
-   buffer_replace_range(app, buffer, range, replacement);
-   changed = true;
-  }
- }
- 
- if(not ok){
-  vim_set_bottom_text(strlit("ERROR!"));
- }
- return changed;
+ String filename = push_buffer_filepath(app, scratch, buffer);
+ filename = path_filename(filename);
+ return is_buffer_synced(state, filename);
 }
 //~

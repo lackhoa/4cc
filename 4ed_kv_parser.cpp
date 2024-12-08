@@ -37,7 +37,7 @@ ep_get_token_location(Ed_Parser *p, Token *input_token){
   if(token->kind == TokenBaseKind_Whitespace){
    // NOTE: Increase line number
    Scratch_Block scratch;
-   String token_string = ep_print_given_token(scratch, p, token);
+   String token_string = ep_print_token(scratch, p, token);
    for_i1 (index,0,i1(token_string.len)){
     if(token_string.str[index] == '\n'){
      result.line++;
@@ -75,19 +75,19 @@ ep_get_token(Ed_Parser *p){
 }
 function Token *
 ep_get_token_delta(Ed_Parser *p, i32 delta){
- Token *result = 0;
+ Token *result = &stub_token;
  if(delta < 0){
   i32 inverse_delta = -delta;
-  for_repeat(inverse_delta) { token_it_dec(&p->it); }
+  for_repeat(inverse_delta){ token_it_dec(&p->it); }
   result = ep_get_token(p);
-  for_repeat(inverse_delta) { token_it_inc(&p->it); }
+  for_repeat(inverse_delta){ token_it_inc(&p->it); }
  }else{
   todo_incomplete;
  }
  return result;
 }
 function String
-ep_print_given_token(Arena *arena, Ed_Parser *p, Token *token){
+ep_print_token(Arena *arena, Ed_Parser *p, Token *token){
  String result = {};
  if (token) {
   switch(p->Token_Gen_Type) {
@@ -98,22 +98,38 @@ ep_print_given_token(Arena *arena, Ed_Parser *p, Token *token){
    }break;
 #endif
    case TG_String:{
-    result = string_substring(p->Token_Gen_String.source, Ii64(token));
+    String source = p->source;
+    result = token_string_from_source(source, token);
    } break;
    invalid_default_case;
   }
  }
  return result;
 }
+function String
+ep_print_token_range(Ed_Parser *p, Token *token0, Token *token1)
+{
+ String result = {};
+ if(token1->pos >= token0->pos){
+  switch(p->Token_Gen_Type){
+   case TG_String:{
+    result.str  = p->source.str + token0->pos;
+    result.size = token1->pos + token1->size - token0->pos;
+   }break;
+   invalid_default_case;
+  }
+ }
+ return result;
+}
 inline String
-ep_print_given_token(Ed_Parser *p, Token *token){
- return ep_print_given_token(p->string_arena,p,token);
+ep_print_token(Ed_Parser *p, Token *token){
+ return ep_print_token(p->string_arena,p,token);
 }
 function String
 ep_print_token(Arena *arena, Ed_Parser *p){
  if(arena==0){ arena=p->string_arena; }
  Token *token = ep_get_token(p);
- return ep_print_given_token(arena, p, token);
+ return ep_print_token(arena, p, token);
 }
 inline String
 ep_print_token(Ed_Parser *p){ return ep_print_token(p->string_arena, p); }
@@ -124,7 +140,9 @@ ep_print_token(Printer &printer, Ed_Parser *p){
  if(token){
   switch(p->Token_Gen_Type){
    case TG_String:{
-    printer < string_substring(p->Token_Gen_String.source, Ii64(token));
+    String source = p->source;
+    String result = token_string_from_source(source, token);
+    printer < result;
    }break;
    invalid_default_case;
   }
@@ -297,7 +315,7 @@ ep_test_id(Ed_Parser *p, String string){
  }
  return result;
 }
-kv_inline b32
+myinline b32
 ep_test_id(Ed_Parser *p, char *string){
  String s = SCu8(string);
  return ep_test_id(p, s);
@@ -308,7 +326,7 @@ ep_maybe_id(Ed_Parser *p, String string){
  if (result) { ep_eat(p); }
  return result;
 }
-kv_inline b32
+myinline b32
 ep_maybe_id(Ed_Parser *p, char *string){
  String s = SCu8(string);
  return ep_maybe_id(p, s);
@@ -479,8 +497,8 @@ ep_capture_until_char(Ed_Parser *p, String terminators){
    // NOTE(kv): The last token is one token to the left of the terminator
    Token *last_token = ep_get_token_delta(p, -1);
    i64 last_pos = last_token->pos + last_token->size;
-   result = string_substring(p->Token_Gen_String.source,
-                             Ii64(first_token->pos, last_pos));
+   result.data = p->source.data + first_token->pos;
+   result.size = last_pos - first_token->pos;
   }
  }
  return result;

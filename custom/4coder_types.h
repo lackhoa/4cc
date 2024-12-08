@@ -1,11 +1,39 @@
 #pragma once
 
+union Range_i32 {
+ struct{ i32 min; i32 max; };
+ struct{ i32 start; i32 end; };
+ struct{ i32 first; i32 opl; };
+};
+union Range_i64 {
+ struct{ i64 min; i64 max; };
+ struct{ i64 start; i64 end; };
+ struct{ i64 first; i64 opl; };
+};
+union Range_u64 {
+ struct{ u64 min; u64 max; };
+ struct{ u64 start; u64 end; };
+ struct{ u64 first; u64 opl; };
+};
+union Range_f32 {
+ struct{ f32 min; f32 max; };
+ struct{ f32 start; f32 end; };
+ struct{ f32 first; f32 opl; };
+};
+#define RangeExpand(range) range.min, range.max
+
+#define BODY  return(clamp_min(0, a.max - a.min));
+function i32 range_size(Range_i32 a){ BODY; }
+function i64 range_size(Range_i64 a){ BODY; }
+function u64 range_size(Range_u64 a){ BODY; }
+function f32 range_size(Range_f32 a){ BODY; }
+#undef BODY
+
 api(custom)
 typedef i1 View_ID;
 
 api(custom)
 typedef i1 Buffer_ID;
-
 
 api(custom)
 typedef u32 Face_ID;
@@ -62,6 +90,30 @@ struct Buffer_Seek
  };
 };
 
+api(custom)
+struct Buffer_Cursor
+{
+ i64 pos;
+ i64 line;
+ i64 col;
+};
+
+api(custom)
+union Range_Cursor{
+ struct{
+  Buffer_Cursor min;
+  Buffer_Cursor max;
+ };
+ struct{
+  Buffer_Cursor start;
+  Buffer_Cursor end;
+ };
+ struct{
+  Buffer_Cursor first;
+  Buffer_Cursor one_past_last;
+ };
+};
+
 #if !AD_IS_GAME
 api(custom)
 struct Face_Metrics{
@@ -98,28 +150,12 @@ union FColor{
     struct{
         ID_Color id;
         u8 sub_index;
-        u8 padding_;
-    };
+  u8 padding_;
+ };
 };
 
 api(custom)
 typedef u64 Managed_ID;
-
-#if defined(CUSTOM_COMMAND_SIG) || defined(CUSTOM_UI_COMMAND_SIG) || defined(CUSTOM_DOC) || defined(CUSTOM_COMMAND)
-#error Please do not define CUSTOM_COMMAND_SIG, CUSTOM_DOC, CUSTOM_UI_COMMAND_SIG, or CUSTOM_COMMAND
-#endif
-
-#if defined(META_PASS)
-#define CUSTOM_COMMAND_SIG(name)    CUSTOM_COMMAND(name, __FILE__, __LINE__, Normal)
-#define CUSTOM_UI_COMMAND_SIG(name) CUSTOM_COMMAND(name, __FILE__, __LINE__, UI)
-#define CUSTOM_DOC(str)             CUSTOM_DOC(str)
-#define CUSTOM_ID(group, name)      CUSTOM_ID(group, name)
-#else
-#define CUSTOM_COMMAND_SIG(name)    void name(App *app)
-#define CUSTOM_UI_COMMAND_SIG(name) void name(App *app)
-#define CUSTOM_DOC(str)
-#define CUSTOM_ID(group, name) global Managed_ID name;
-#endif
 
 // NOTE: Dummy buffers so we can use the same commands to switch to the rendered game
 #define GAME_BUFFER_COUNT 3
@@ -389,30 +425,6 @@ struct Basic_Scroll
 };
 
 api(custom)
-struct Buffer_Cursor
-{
-    i64 pos;
-    i64 line;
-    i64 col;
-};
-
-api(custom)
-union Range_Cursor{
-    struct{
-        Buffer_Cursor min;
-        Buffer_Cursor max;
-    };
-    struct{
-        Buffer_Cursor start;
-        Buffer_Cursor end;
-    };
-    struct{
-        Buffer_Cursor first;
-        Buffer_Cursor one_past_last;
-    };
-};
-
-api(custom)
 struct Marker{
     i64 pos;
     b32 lean_right;
@@ -612,8 +624,10 @@ typedef i1 Buffer_Hook_Function(App *app, Buffer_ID buffer_id);
 
 api(custom)
 typedef i1 Buffer_Edit_Range_Function(App *app, Buffer_ID buffer_id,
-                                       Range_i64 new_range, Range_Cursor old_range);
-#define BUFFER_EDIT_RANGE_SIG(name) i1 name(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range)
+                                      Range_i64 new_range, Range_Cursor old_range);
+
+#define BUFFER_EDIT_RANGE_SIG(name) \
+i1 name(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range)
 
 api(custom)
 typedef Vec2_f32 Delta_Rule_Function(Vec2_f32 pending, b32 is_new_target, f32 dt, void *data);

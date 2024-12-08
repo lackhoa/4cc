@@ -21,7 +21,8 @@ run_only = args.action == 'run'
 
 ################ NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-working_on_metaprogram = 1
+skip_compiling_metaprogram = 0
+working_on_metaprogram = 0
 working_on_editor      = 0
 working_on_game        = 1
 imgui_build_level   = 2
@@ -29,7 +30,6 @@ ed_meta_build_level = 1
 lexer_build_level   = 2
 #
 asan_on = 0
-COMPILE_GAME_WITH_MSVC = 1
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
@@ -39,6 +39,9 @@ KV_SLOW    = 0
 OPTIMIZE_EDITOR = 0
 
 ############## Configuration end ############################
+if skip_compiling_metaprogram:
+    print("!!!WARNING!!! skip_compiling_metaprogram")
+
 if args.release:
     working_on_editor = 1
 
@@ -57,8 +60,6 @@ if args.full:
 SHIP_MODE = 1-DEBUG_MODE
 if SHIP_MODE:
     asan_on = 0
-if asan_on:
-    COMPILE_GAME_WITH_MSVC = 1
 
 HOME = os.path.expanduser("~")
 OUTDIR=pjoin(HOME, '4coder')
@@ -94,6 +95,7 @@ warning_list = [
     "-Wno-backslash-newline-escape",
     "-Wno-deprecated-enum-enum-conversion",
     "-Wno-deprecated-anon-enum-enum-conversion",
+    "-Wno-multichar"
 ]
 CLANG_WARNINGS = ' '.join(warning_list)
 
@@ -137,8 +139,9 @@ def symlink_force(src, dst):
     mkdir_p( os.path.dirname(dst) )
     os.symlink(src, dst)
 
-def replace_file(source_path, dest_path):
-    os.replace(source_path, dest_path)
+def replace_file(source, dest):
+    if(os.path.exists(source)):
+        os.replace(source, dest)
 
 script_failed = False
 
@@ -258,7 +261,6 @@ def run_compiler(compiler, input_files, output_file,
     if not debug_symbol:
         # No reason to use clang if not for easier debugging
         compiler = Compiler.Cl
-        use_ccache = False
 
     is_clang = compiler == Compiler.ClangCl
     is_msvc  = compiler == Compiler.Cl
@@ -315,7 +317,9 @@ def run_compiler(compiler, input_files, output_file,
 
     if is_msvc:
         unused_var = "-wd4189"
-        warnings = f" -wd4200 -wd4146 {unused_var} -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
+        signed_unsigned_mismatch = "-wd4245"
+        enum_freedom = "-wd4063"
+        warnings = f" -wd4200 -wd4146 {enum_freedom} {signed_unsigned_mismatch} {unused_var} -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
     if is_clang:
         warnings = CLANG_WARNINGS
     if not no_warnings:
@@ -335,7 +339,6 @@ base_includes = f"-I{CODE} -I{CODE}/libs"
 def autogen():
     CUSTOM=f'{FCODER_ROOT}/code/custom'
     BUILD_DIR = pjoin(CUSTOM, "build")
-    #rm_rf(BUILD_DIR)
     mkdir_p(BUILD_DIR)
     with pushd(BUILD_DIR):
         INCLUDES=f'{base_includes} -I{CUSTOM}'
@@ -355,12 +358,12 @@ def autogen():
                          compiler_flags=compiler_flags)
             run(f'cpp_lexer_gen.exe {CUSTOM}/generated')
             
-        print('Metaprogram')
-        if True:
+        print('====Metaprogram====')
+        if not skip_compiling_metaprogram:
             run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
                          compiler_flags=compiler_flags,
-                         debug_symbol = working_on_metaprogram)
-            run(f"ad_meta {CODE}")
+                         debug_symbol=working_on_metaprogram)
+        run(f"ad_meta {CODE}")
 
         if meets_level(ed_meta_build_level):
             meta_macros="-DMETA_PASS"
@@ -384,10 +387,8 @@ def build_game():
             # NOTE: ftime-trace only works with "-c"
             run(f'clang++ -c {pjoin(CODE, "game", "game_main.cpp")}  {INCLUDES} {SYMBOLS} -Od -ftime-trace')
         else:
-            cl_or_clang_cl = Compiler.Cl if COMPILE_GAME_WITH_MSVC else Compiler.ClangCl
-            MSVC_COMPILE_FLAGS = f"{INCLUDES} {SYMBOLS}"
             # NOTE: Compile the driver and the framework
-            run_compiler(cl_or_clang_cl, f'{GAME_MAIN} {space_join(imgui_object_files)}', f"game{DOT_DLL}",
+            run_compiler(Compiler.ClangCl, f'{GAME_MAIN} {space_join(imgui_object_files)}', f"game{DOT_DLL}",
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",
                          linker_flags="-DLL -export:game_api_export")
 
@@ -415,7 +416,7 @@ try:
             #run(f"remedybg stop-debugging")
             #run(f"raddbg --ipc kill_all")
 
-        INCLUDES=f'{base_includes} -I{CODE}/libs/imgui -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv -I{CODE}/generated -I{CODE}/game/generated'
+        INCLUDES=f'{base_includes} -I{CODE}/libs/imgui -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv'
         #
         COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
         SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DAD_PROFILE={AD_PROFILE} -DKV_INTERNAL={DEBUG_MODE} -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS

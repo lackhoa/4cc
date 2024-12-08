@@ -14,12 +14,12 @@ push_curve_variant_with_endpoints(Arena *arena, arrayof<Union_Variant> *variants
                                   String struct_members){
  Union_Variant variant = {};
  variant.enum_value = enum_value;
- variant.name = name;
+ variant.name       = name;
  variant.name_lower = name_lower;
  {
   Scratch_Block scratch;
   M_Struct_Members &members = variant.struct_members;
-  Ed_Parser parser = m_parser_from_string(scratch, struct_members);
+  Klang_Parser parser = k_parser_from_string(scratch, struct_members);
   members = parse_struct_body(arena, &parser);
   {
    members.push_first(struct_member_from_string("Vertex_Index p0"));
@@ -32,14 +32,15 @@ push_curve_variant_with_endpoints(Arena *arena, arrayof<Union_Variant> *variants
 function void
 push_entity_variant(Arena *arena, arrayof<Union_Variant> *variants,
                     i32 enum_value, String name, String name_lower,
-                    String struct_members, M_Entity_Variant_Info type_info){
+                    String struct_members, M_Entity_Variant_Info type_info)
+{
  Union_Variant variant = {};
  variant.enum_value = enum_value;
  variant.name = name;
  variant.name_lower = name_lower;
  {
   Scratch_Block scratch;
-  Ed_Parser parser = m_parser_from_string(scratch, struct_members);
+  Klang_Parser parser = k_parser_from_string(scratch, struct_members);
   variant.struct_members = parse_struct_body(arena, &parser);
  }
  push_entity_variant_inner(variants, variant);
@@ -152,17 +153,17 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
   }
  }
  {//-Transitional functions (aggravation: 100%)
-  auto_lambda member_is_ref = [&](M_Struct_Member &member)->b32{
+  auto member_is_ref = [&](M_Struct_Member &member)->b32{
    return (member.type.name==strlit("Vertex_Index") ||
            member.type.name==strlit("Curve_Index"));
   };
-  auto_lambda print_members_type_name = [&](Printer &p, Union_Variant &variant)->void{
+  auto print_members_type_name = [&](Printer &p, Union_Variant &variant)->void{
    //-NOTE Must call this within separator block!
    for_i32(im,0,variant.struct_members.count){
     M_Struct_Member &member = variant.struct_members[im];
     if(member_is_ref(member)){
      if(member.type.kind == Parsed_Type_Array){
-      for_i32(array_index,0,member.type.count){
+      for_u32(array_index,0,member.type.array_count){
        p<"String "<member.name<array_index;
        separator(p);
       }
@@ -175,7 +176,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
     separator(p);
    }
   };
-  auto_lambda print_prototype = [&](Printer &p, Union_Variant &variant, b32 is_declaration)->void{
+  auto print_prototype = [&](Printer &p, Union_Variant &variant, b32 is_declaration)->void{
    p<"function void\n"<"send_bez_"<variant.name_lower;
    m_parens{
     separator_block(p, ", "){
@@ -287,7 +288,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
          for_i32(im,0,variant.struct_members.count){
           M_Struct_Member &member = variant.struct_members[im];
           if(member.type.kind == Parsed_Type_Array){
-           for_i32(array_index, 0, member.type.count){
+           for_u32(array_index, 0, member.type.array_count){
             p < member.name < array_index; separator(p);
            }
           }else{
@@ -306,7 +307,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
           auto &member = variant.struct_members[im]; 
           if(member_is_ref(member)){
            if(member.type.kind == Parsed_Type_Array){
-            for_i32(array_index,0,member.type.count){
+            for_u32(array_index, 0, member.type.array_count){
              print_format(p, "strlit(#%.*s%d)", string_expand(member.name), array_index);
              separator(p);
             }

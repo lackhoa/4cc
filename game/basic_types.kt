@@ -46,13 +46,13 @@ gen_file "basic_types_read.gen.h"
  
  gen_for(basic_types except(String))
  {
-  kv_inline void
+  myinline void
    read_binary_`T(Binary_Reader *r, `T *dst)
   {
    read_binary_size(r, sizeof(`T), dst);
   }
   
-  kv_inline `T
+  myinline `T
    read_binary_`T(Binary_Reader *r)
   {
    `T dst;
