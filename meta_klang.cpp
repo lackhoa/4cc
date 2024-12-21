@@ -435,7 +435,14 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
  ostatement->head.mom = p->current_statement;
  set_in_block(p->current_statement, &ostatement->head);
  String token0_string = ep_print_token(p, token0);
- if(token0->kind == TokenBaseKind_Preprocessor){
+ if(token0_string == strlit("no_parse")){
+  ostatement->head.kind  = Statement_Kind_Unknown;
+  
+  ep_eat(p);
+  ep_char(p, '{');
+  ostatement->unknown.unknown = ep_capture_until_char(p, '}');
+  ep_char(p, '}');
+ }else if(token0->kind == TokenBaseKind_Preprocessor){
   //-Preprocessor
   ostatement->head.kind    = Statement_Kind_Unknown;
   cast_to_var(Statement_Unknown *, unknown, ostatement);
@@ -618,6 +625,11 @@ k_process_top_level(Arena *arena,
   
   if(token0->kind == TokenBaseKind_EOF){
    break;
+  }else if(ep_maybe_id(p, "no_parse")){
+   ep_char(p, '{');
+   String code = ep_capture_until_char(p, '}');
+   print(printer_gen, code);
+   ep_char(p, '}');
   }else if(ep_maybe_id(p, "struct")){
    //-parse struct
    arrayof<M_Struct_Member> members = {};
@@ -727,7 +739,9 @@ k_process_top_level(Arena *arena,
   }else if(token0_string == strlit("xfunction") or
            token0_string == strlit("function") or
            token0_string == strlit("inline") or
-           token0_string == strlit("myinline"))
+           token0_string == strlit("myinline") or
+           token0_string == strlit("dll_export") or
+           false)
   {//-Function
    init_dynamic(p->function_cache_list, scratch_top);  //@tune
    ep_eat(p);
@@ -741,10 +755,16 @@ k_process_top_level(Arena *arena,
    }
    Statement_Union *func0 = root->top_levels.push_zero();
    cast_to_var(Statement_Function *, func, func0);
-   {//-Body
+   if(ep_maybe_char(p, ';')){
+    //-Forward declaration
+    func->kind = Statement_Kind_Function;
+   }else{
+    //-Body
     func->kind = Statement_Kind_Function;
     func->body = k_parse_statement_block(arena, p);
+    func->has_body = true;
    }
+   
    if(p->ok_)
    {//-Print
     {//-Caches
@@ -773,7 +793,7 @@ k_process_top_level(Arena *arena,
       print_cache_storage(printer_gen, cache0);
      }
     }
-    {//-Prototype
+    {//-Print prototype
      add_to_source_map(printer_gen.source_map, printer_gen, token0->pos);
      printer_gen<token0_string<" "<return_type;
      mline(printer_gen);
@@ -782,7 +802,7 @@ k_process_top_level(Arena *arena,
       printer_gen<parameters;
      }
     }
-    {//-Print body
+    if(func->has_body){//-Print body
      m_braces2(printer_gen){
       mline(printer_gen);
       for_i32(statement_index,0,func->body.count){
@@ -791,6 +811,8 @@ k_process_top_level(Arena *arena,
       }
      }
      mline(printer_gen);
+    }else{//-declaration
+     print(printer_gen, ";\n\n");
     }
    }
   }else if(ep_maybe_id(p, "i1_wrapper")){

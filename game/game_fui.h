@@ -73,40 +73,15 @@ fopts(u32 flags){
 myinline Fui_Options fopts(Fui_Options options) { return options; }
 myinline Fui_Options fopts() { return {}; }
 
-//-The Slow Path
-struct Slow_Line_Map_Entry{
- String file;
- i32 linum;
- Slider *slider;
-};
-
-struct Slow_Line_Map{
- i32 cap;
- i32 count;
- struct Slow_Line_Map_Entry *map;
-};
-global Slow_Line_Map slow_line_map;
-
 global Fui_Options f20th = Fui_Options{0, 0.05f};
 global Fui_Options f10th = Fui_Options{0, 0.1f};
 global Fui_Options f10s  = Fui_Options{0, 10.f};
 
 //~ Statically generated sliders
-#include "generated/sliders0.gen.h"
-
 #if 0
 global Slider global_sliders[];
 #endif
-global Slider global_sliders[FUI_SLIDER_COUNT] = {
-#include "generated/slider_info.gen.h"
-};
-global void  *global_slider_values[FUI_SLIDER_COUNT];
-
-function void
-create_sliders(Arena *arena)
-{
-#include "generated/slider_values.gen.h"
-}
+#include "generated/sliders0.gen.h"
 
 //~
 #define ReadSlider(type, index) \

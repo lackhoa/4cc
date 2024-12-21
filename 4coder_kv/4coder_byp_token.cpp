@@ -105,7 +105,7 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID l
  
  String token_string = {};
  Rect_f32 cursor_tok_rect = {};
- Vec2_f32 tok_rect_dim = {};
+ v2 tok_rect_dim = {};
  
  v1 highlight_thick = 2.0f;
  if (do_cursor_tok_highlight) {

@@ -26,15 +26,6 @@ get_slider_value(Slider *slider){
 
 global Slider *fui_active_slider;
 
-struct Line_Map_Entry{
- i32 linum;
- Slider *slider;
-};
-//
-global Line_Map_Entry *line_map;
-//global Arena *slider_store;
-global Arena *dll_arena;  //TODO(kv) Yo, why is this thing global?
-
 function b32
 fui_is_active(){
  return fui_active_slider != 0;

@@ -16,7 +16,7 @@ function void F4_WholeScreenRender(App *app, Frame_Info frame_info);
 function BUFFER_EDIT_RANGE_SIG(F4_BufferEditRange);
 function DELTA_RULE_SIG(F4_DeltaRule)
 {
-    Vec2_f32 *velocity = (Vec2_f32*)data;
+    v2 *velocity = (v2*)data;
     if(velocity->x == 0.f)
     {
         velocity->x = 1.f;

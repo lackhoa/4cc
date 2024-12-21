@@ -22,8 +22,8 @@ vim_draw_visual_mode(App *app, View_ID view, Buffer_ID buffer, Face_ID face_id, 
 			ARGB_Color helper_color = fcolor_resolve(fcolor_id(defcolor_mark));
 			for(i64 i=test_line_min; i<=test_line_max; i++){
 				if(line_is_valid_and_blank(app, buffer, i) && i != line_min && i != line_max){ continue; }
-				Vec2_f32 min_point = block_rect.p0 + V2(0, line_advance*(f32)(i-line_min));
-				Vec2_f32 max_point = min_point + V2(wid,0);
+				v2 min_point = block_rect.p0 + V2(0, line_advance*(f32)(i-line_min));
+				v2 max_point = min_point + V2(wid,0);
 				i64 min_pos = view_pos_from_xy(app, view, min_point);
 				i64 max_pos = view_pos_from_xy(app, view, max_point);
 				paint_text_color(app, text_layout_id, Ii64(min_pos, max_pos), text_color);
@@ -115,7 +115,7 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 		case LineEndingKind_CRLF:  { string_concat(&str, strlit("crlf")); } break;
 	}
 	
-	Vec2_f32 draw_p = V2(title_rect.x1 + 4.5f*char_wid, bar.y0 + 3.f);
+	v2 draw_p = V2(title_rect.x1 + 4.5f*char_wid, bar.y0 + 3.f);
 	draw_p = draw_string(app, face_id, str.string, draw_p, base_color);
 	
 	str = Su8(space, 0, 5);
@@ -313,7 +313,7 @@ vim_draw_rel_line_number_margin(App *app, View_ID view, Buffer_ID buffer, Face_I
 	small_digit++;
 	
 	Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, cur_line);
-	Vec2_f32 p = V2(margin.x0, line_y.min);
+	v2 p = V2(margin.x0, line_y.min);
 	
 	// NOTE(BYP): This assumes background is darker than font color
 	FColor text_color = fcolor_id(defcolor_line_numbers_text);
@@ -401,7 +401,7 @@ vim_draw_line_number_margin(App *app, View_ID view, Buffer_ID buffer, Face_ID fa
 	}
 	
 	Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, cur_line);
-	Vec2_f32 p = V2(margin.x0, line_y.min);
+	v2 p = V2(margin.x0, line_y.min);
 	
 	// NOTE(BYP): This assumes background is darker than font color
 	FColor text_color = fcolor_id(defcolor_line_numbers_text);

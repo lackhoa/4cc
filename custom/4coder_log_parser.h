@@ -168,7 +168,7 @@ struct Log_Graph{
     f32 max_y_scroll;
     Log_Event *selected_event;
     b32 has_unused_click;
-    Vec2_f32 unused_click;
+    v2 unused_click;
 };
 
 #endif

@@ -207,6 +207,7 @@ struct Statement_Root : Statement_Head{
  Meta_Statements top_levels;
 };
 struct Statement_Function : Statement_Head{
+ b32 has_body;
  Meta_Statements body;
 };
 struct Statement_Unknown : Statement_Head{

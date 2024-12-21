@@ -113,13 +113,13 @@ perspective_project_non_hyperbolic(Camera *camera, v3 worldP){
 }
 myinline Line_Params
 lp_alignment_min(v1 min){
- Line_Params result = painter.line_params;
+ Line_Params result = painter->line_params;
  result.alignment_min = min;
  return result;
 }
 function void
 debug_view_vector(i1 linum=__builtin_LINE()){
- v3 camera_obj = camera_object_position(&painter);
+ v3 camera_obj = camera_object_position(painter);
  v3 view_vector = get_view_vector();
  v3 object_center = camera_obj + view_vector;
  indicate_vertex("view_center", object_center, 0, linum);
@@ -144,12 +144,12 @@ mom_bone_xform(Painter *p){
  return &array_get(stack, array_count(stack)-2)->xform;
 }
 myinline mat4i *
-p_mom_bone_xform(){ return mom_bone_xform(&painter); }
+p_mom_bone_xform(){ return mom_bone_xform(painter); }
 
 function mat4
 from_parent(){
  //NOTE(kv) If we just stored the relative offset, we wouldn't need this.
- Painter *p = &painter;
+ Painter *p = painter;
  mat4 *mom_world_from_bone = &mom_bone_xform(p)->forward;
  mat4 *bone_from_world = &current_world_from_bone(p)->inverse;
  return matmul(bone_from_world, mom_world_from_bone);
@@ -215,9 +215,9 @@ reflect_origin(v3 origin, v3 point){
 }
 inline i1
 get_preset(){
- return painter.viewport->preset;
+ return painter->viewport->preset;
 }
-inline v3 get_camz() { return painter.camera.z; }
+inline v3 get_camz() { return painter->camera.z; }
 inline b32 camera_is_right() {
  return(almost_equal(get_camz().x, -1.f, 1e-2f));
 }
@@ -279,7 +279,7 @@ trs_pivot_transform(v3 translate, mat4i const&rotate, v1 scale,
 }
 myinline mat4i *
 p_current_world_from_bone() {
- return current_world_from_bone(&painter);
+ return current_world_from_bone(painter);
 }
 
 inline void
@@ -297,7 +297,7 @@ inline void pop_hl(){ pop_line_cparams(); }
 inline Line_Params
 profile_visible(v1 min)
 {
- Line_Params result = painter.line_params;
+ Line_Params result = painter->line_params;
  result.unit_normal = V3x(1.0f);
  result.alignment_min = min;
  return result;
@@ -308,11 +308,11 @@ profile_visible_transition(v1 min){
 }
 inline mat4i *
 get_bone_xform(Bone_Type type, i1 lr_index){
- return &get_bone(painter.modeler, type, lr_index)->xform;
+ return &get_bone(painter->modeler, type, lr_index)->xform;
 }
 inline mat4i *
 get_bone_xform(Bone_Type type){
- return get_bone_xform(type, painter.lr_index);
+ return get_bone_xform(type, painter->lr_index);
 }
 
 //~ EOF;

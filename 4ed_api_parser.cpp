@@ -343,10 +343,7 @@ api_parser_generate(API_Definition_List *list)
      node = node->next)
  {
   if (!ok) { break; }
-  ok = api_definition_generate_api_includes(node,
-                                            strlit("UNKNOWN"),
-                                            GeneratedGroup_Custom,
-                                            APIGeneration_NoAPINameOnCallables);
+  ok = api_definition_generate_api_includes(node, strlit("UNKNOWN"), GeneratedGroup_Custom, 0);
  }
  return ok;
 }

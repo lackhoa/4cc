@@ -49,17 +49,17 @@ CREDITS
 EXTERN_C_BEGIN
 
 #if defined(__cplusplus)
-	#define GB_EXTERN extern "C"
+#	define GB_EXTERN extern "C"
 #else
-	#define GB_EXTERN extern
+#	define GB_EXTERN extern
 #endif
 
 #if defined(_WIN32)
-	#define DLL_EXPORT GB_EXTERN __declspec(dllexport)
-	#define DLL_IMPORT GB_EXTERN __declspec(dllimport)
+#	define dll_export GB_EXTERN __declspec(dllexport)
+#	define DLL_IMPORT GB_EXTERN __declspec(dllimport)
 #else
-	#define DLL_EXPORT GB_EXTERN __attribute__((visibility("default")))
-	#define DLL_IMPORT GB_EXTERN
+#	define dll_export GB_EXTERN __attribute__((visibility("default")))
+#	define DLL_IMPORT GB_EXTERN
 #endif
 
 // NOTE(bill): Redefine for DLL, etc.
@@ -161,46 +161,6 @@ EXTERN_C_BEGIN
 #include <stdarg.h>
 #endif
 
-#if !AD_IS_DRIVER
-#if defined(GB_SYSTEM_WINDOWS)
-	#if !defined(GB_NO_WINDOWS_H)
-		#define NOMINMAX            1
-		#define WIN32_LEAN_AND_MEAN 1
-		#define WIN32_MEAN_AND_LEAN 1
-		#define VC_EXTRALEAN        1
-		#include <windows.h>
-		#undef NOMINMAX
-		#undef WIN32_LEAN_AND_MEAN
-		#undef WIN32_MEAN_AND_LEAN
-		#undef VC_EXTRALEAN
-	#endif
-
-	#include <malloc.h> // NOTE(bill): _aligned_*()
-	#include <intrin.h>
-#else
-	#include <dlfcn.h>
-	#include <errno.h>
-	#include <fcntl.h>
-	#include <pthread.h>
-	#ifndef _IOSC11_SOURCE
-	#define _IOSC11_SOURCE
-	#endif
-	#include <stdlib.h> // NOTE(bill): malloc on linux
-	#include <sys/mman.h>
-	#if !defined(GB_SYSTEM_OSX)
-		#include <sys/sendfile.h>
-	#endif
-	#include <sys/stat.h>
-	#include <sys/time.h>
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
-
-#if defined(GB_CPU_X86)
-#  include <xmmintrin.h>
-#endif
-#endif
-#endif
 
 #if defined(GB_SYSTEM_OSX)
 	#include <mach/mach.h>
@@ -570,7 +530,6 @@ GB_DEF void gb_assert_handler(char const *prefix, char const *condition, char co
 
 
 
-#if !AD_IS_DRIVER
 ////////////////////////////////////////////////////////////////
 //
 // Memory
@@ -595,14 +554,13 @@ GB_DEF void gb_zero_size(void *ptr, isize size);
 #define     gb_zero_array(a, count) gb_zero_size((a), gb_size_of(*(a))*count)
 #endif
 
-GB_DEF void *      gb_memcopy   (void *dest, void const *source, isize size);
-GB_DEF void *      gb_memmove   (void *dest, void const *source, isize size);
+GB_DEF void        gb_memcopy   (void *dest, void const *source, isize size);
+GB_DEF void        gb_memmove   (void *dest, void const *source, isize size);
 GB_DEF void *      gb_memset    (void *data, u8 byte_value, isize size);
 GB_DEF i1         gb_memcompare(void const *s1, void const *s2, isize size);
 GB_DEF void        gb_memswap   (void *i, void *j, isize size);
 GB_DEF void const *gb_memchr    (void const *data, u8 byte_value, isize size);
 GB_DEF void const *gb_memrchr   (void const *data, u8 byte_value, isize size);
-#endif
 
 
 #ifndef gb_memcopy_array_dst
@@ -877,7 +835,6 @@ GB_DEF void *gb_resize_align(gbAllocator a, void *ptr, isize old_size, isize new
 GB_DEF void *gb_alloc_copy      (gbAllocator a, void const *src, isize size);
 GB_DEF void *gb_alloc_copy_align(gbAllocator a, void const *src, isize size, isize alignment);
 GB_DEF char *gb_alloc_str       (gbAllocator a, char const *str);
-GB_DEF char *gb_alloc_str_len   (gbAllocator a, char const *str, isize len);
 
 
 // NOTE(bill): These are very useful and the type cast has saved me from numerous bugs
@@ -910,15 +867,6 @@ gb_heap_allocator(void) {
 	return a;
 }
 #endif
-
-
-
-
-
-
-
-
-
 
 
 ////////////////////////////////////////////////////////////////
@@ -1079,12 +1027,12 @@ GB_DEF isize gb_snprintf   (char *str, isize n, char const *fmt, ...) GB_PRINTF_
 //
 //
 
-typedef void *gbDllHandle;
+typedef void *DLL_Handle;
 typedef void (*gbDllProc)(void);
 
-GB_DEF gbDllHandle gb_dll_load        (char const *filepath);
-GB_DEF b32         gb_dll_unload      (gbDllHandle dll);
-GB_DEF gbDllProc   gb_dll_proc_address(gbDllHandle dll, char const *proc_name);
+GB_DEF DLL_Handle gb_dll_load        (char const *filepath);
+GB_DEF b32         gb_dll_unload      (DLL_Handle dll);
+GB_DEF gbDllProc   gb_dll_proc_address(DLL_Handle dll, char const *proc_name);
 
 
 ////////////////////////////////////////////////////////////////
@@ -1195,7 +1143,7 @@ GB_ALLOCATOR_PROC(gb_heap_allocator_proc) {
 #define GB__HIGHS       (GB__ONES * (U8_MAX/2+1))
 #define GB__HAS_ZERO(x) ((x)-GB__ONES & ~(x) & GB__HIGHS)
 
-#if !AD_IS_DRIVER
+//-
 b32 gb_is_power_of_two(isize x) {
 	if (x <= 0)
 		return false;
@@ -1219,21 +1167,24 @@ inline void const *gb_pointer_add_const(void const *ptr, isize bytes)       { re
 inline void const *gb_pointer_sub_const(void const *ptr, isize bytes)       { return cast(void const *)(cast(u8 const *)ptr - bytes); }
 inline isize       gb_pointer_diff     (void const *begin, void const *end) { return cast(isize)(cast(u8 const *)end - cast(u8 const *)begin); }
 
-inline void gb_zero_size(void *ptr, isize size) { gb_memset(ptr, 0, size); }
+myinline void gb_zero_size(void *ptr, isize size) { gb_memset(ptr, 0, size); }
 
-
+#if AD_HAS_INTRINSIC
 #if COMPILER_MSVC
-#pragma intrinsic(__movsb)
+#  pragma intrinsic(__movsb)
+#endif
 #endif
 
-function void *
-gb_memcopy(void *dest, void const *source, isize n) {
-	if (dest == NULL) { return NULL; }
+#if AD_HAS_INTRINSIC
+function void
+gb_memcopy(void *dest, void const *source, isize n)
+{
+	if (dest == NULL) { return; }
  
 #if defined(_MSC_VER)
 	// TODO(bill): Is this good enough?
 	__movsb(cast(u8 *)dest, cast(u8 *)source, n);
-// #elif defined(GB_SYSTEM_OSX) || defined(GB_SYSTEM_UNIX)
+ // #elif defined(GB_SYSTEM_OSX) || defined(GB_SYSTEM_UNIX)
 	// NOTE(zangent): I assume there's a reason this isn't being used elsewhere,
 	//   but casting pointers as arguments to an __asm__ call is considered an
 	//   error on MacOS and (I think) Linux
@@ -1243,17 +1194,26 @@ gb_memcopy(void *dest, void const *source, isize n) {
 #elif defined(GB_CPU_X86)
 	void *dest_copy = dest;
 	__asm__ __volatile__("rep movsb" : "+D"(dest_copy), "+S"(source), "+c"(n) : : "memory");
+#else
+#  error "Not supported"
 #endif
- 
-	return dest;
 }
-function void *
+#elif !AD_HAS_INTRINSIC
+function void
+gb_memcopy(void *dest, void const *source, isize n)
+{
+ if(dest == 0) { return; }
+ memcpy(dest, source, n);
+}
+#endif
+
+function void
 gb_memmove(void *dest, void const *source, isize n) {
 	u8 *d = cast(u8 *)dest;
 	u8 const *s = cast(u8 const *)source;
  
 	if (d == s) {
-		return d;
+		return;
 	}
 	if (s+n <= d || d+n <= s) { // NOTE(bill): Non-overlapping
 		return gb_memcopy(d, s, n);
@@ -1262,7 +1222,7 @@ gb_memmove(void *dest, void const *source, isize n) {
 	if (d < s) {
 		if (cast(uintptr)s % gb_size_of(isize) == cast(uintptr)d % gb_size_of(isize)) {
 			while (cast(uintptr)d % gb_size_of(isize)) {
-				if (!n--) return dest;
+				if (!n--) return;
 				*d++ = *s++;
 			}
 			while (n>=gb_size_of(isize)) {
@@ -1277,7 +1237,7 @@ gb_memmove(void *dest, void const *source, isize n) {
 		if ((cast(uintptr)s % gb_size_of(isize)) == (cast(uintptr)d % gb_size_of(isize))) {
 			while (cast(uintptr)(d+n) % gb_size_of(isize)) {
 				if (!n--)
-					return dest;
+					return;
 				d[n] = s[n];
 			}
 			while (n >= gb_size_of(isize)) {
@@ -1287,11 +1247,10 @@ gb_memmove(void *dest, void const *source, isize n) {
 		}
 		while (n) n--, d[n] = s[n];
 	}
- 
-	return dest;
 }
 function void *
-gb_memset(void *dest, u8 c, isize n) {
+gb_memset(void *dest, u8 c, isize n)
+{
 	u8 *s = cast(u8 *)dest;
 	isize k;
 	u32 c32 = ((u32)-1)/255 * c;
@@ -1360,24 +1319,6 @@ gb_memset(void *dest, u8 c, isize n) {
 	return dest;
 }
 
-function i1
-gb_memcompare(void const *s1, void const *s2, isize size) {
-	// TODO(bill): Heavily optimize
-	u8 const *s1p8 = cast(u8 const *)s1;
-	u8 const *s2p8 = cast(u8 const *)s2;
-
-	if (s1 == NULL || s2 == NULL) {
-		return 0;
-	}
-
-	while (size--) {
-		if (*s1p8 != *s2p8) {
-			return (*s1p8 - *s2p8);
-		}
-		s1p8++, s2p8++;
-	}
-	return 0;
-}
 function void
 gb_memswap(void *i, void *j, isize size) {
 	if (i == j) return;
@@ -1412,7 +1353,7 @@ gb_memswap(void *i, void *j, isize size) {
 	}
 }
 
-function const void
+/*function const void
 *gb_memchr(void const *data, u8 c, isize n) {
 	u8 const *s = cast(u8 const *)data;
 	while ((cast(uintptr)s & (sizeof(usize)-1)) &&
@@ -1444,62 +1385,14 @@ void const *gb_memrchr(void const *data, u8 c, isize n) {
 			return cast(void const *)(s + n);
 	}
 	return NULL;
-}
-
-
+}*/
 
 inline void *gb_alloc_align (gbAllocator a, isize size, isize alignment)                                { return a.proc(a.data, gbAllocation_Alloc, size, alignment, NULL, 0, GB_DEFAULT_ALLOCATOR_FLAGS); }
 inline void *gb_alloc       (gbAllocator a, isize size)                                                 { return gb_alloc_align(a, size, GB_DEFAULT_MEMORY_ALIGNMENT); }
 inline void  gb_free        (gbAllocator a, void *ptr)                                                  { if (ptr != NULL) a.proc(a.data, gbAllocation_Free, 0, 0, ptr, 0, GB_DEFAULT_ALLOCATOR_FLAGS); }
 inline void  gb_free_all    (gbAllocator a)                                                             { a.proc(a.data, gbAllocation_FreeAll, 0, 0, NULL, 0, GB_DEFAULT_ALLOCATOR_FLAGS); }
-inline void *gb_resize      (gbAllocator a, void *ptr, isize old_size, isize new_size)                  { return gb_resize_align(a, ptr, old_size, new_size, GB_DEFAULT_MEMORY_ALIGNMENT); }
 inline void *gb_resize_align(gbAllocator a, void *ptr, isize old_size, isize new_size, isize alignment) { return a.proc(a.data, gbAllocation_Resize, new_size, alignment, ptr, old_size, GB_DEFAULT_ALLOCATOR_FLAGS); }
-
-inline void *gb_alloc_copy      (gbAllocator a, void const *src, isize size) {
-	return gb_memcopy(gb_alloc(a, size), src, size);
-}
-inline void *gb_alloc_copy_align(gbAllocator a, void const *src, isize size, isize alignment) {
-	return gb_memcopy(gb_alloc_align(a, size, alignment), src, size);
-}
-
-inline char *gb_alloc_str(gbAllocator a, char const *str) {
-	return gb_alloc_str_len(a, str, strlen(str));
-}
-
-inline char *gb_alloc_str_len(gbAllocator a, char const *str, isize len) {
-	char *result;
-	result = cast(char *)gb_alloc_copy(a, str, len+1);
-	result[len] = '\0';
-	return result;
-}
-
-
-inline void *gb_default_resize_align(gbAllocator a, void *old_memory, isize old_size, isize new_size, isize alignment) {
-	if (!old_memory) return gb_alloc_align(a, new_size, alignment);
-
-	if (new_size == 0) {
-		gb_free(a, old_memory);
-		return NULL;
-	}
-
-	if (new_size < old_size)
-		new_size = old_size;
-
-	if (old_size == new_size) {
-		return old_memory;
-	} else {
-		void *new_memory = gb_alloc_align(a, new_size, alignment);
-		if (!new_memory) return NULL;
-		gb_memmove(new_memory, old_memory, gb_min(new_size, old_size));
-		gb_free(a, old_memory);
-		return new_memory;
-	}
-}
-#endif
-
-
-
-
+//-
 
 #if !AD_IS_DRIVER
 ////////////////////////////////////////////////////////////////
@@ -2444,88 +2337,27 @@ inline b32 gb_path_is_root(char const *path) {
 	return result;
 }
 
-#if !defined(_WINDOWS_) && defined(GB_SYSTEM_WINDOWS)
-DLL_IMPORT DWORD WINAPI GetFullPathNameA(char const *lpFileName, DWORD nBufferLength, char *lpBuffer, char **lpFilePart);
-DLL_IMPORT DWORD WINAPI GetFullPathNameW(wchar_t const *lpFileName, DWORD nBufferLength, wchar_t *lpBuffer, wchar_t **lpFilePart);
-#endif
-
-function char *
-gb_path_get_full_name(gbAllocator a, char const *path) {
-#if defined(GB_SYSTEM_WINDOWS)
-// TODO(bill): Make UTF-8
-	wchar_t *w_path = NULL;
-	wchar_t *w_fullpath = NULL;
-	isize w_len = 0;
-	isize new_len = 0;
-	isize new_len1 = 0;
-	char *new_path = 0;
-	w_path = gb__alloc_utf8_to_ucs2(gb_heap_allocator(), path, NULL);
-	if (w_path == NULL) {
-		return NULL;
-	}
-	w_len = GetFullPathNameW(w_path, 0, NULL, NULL);
-	if (w_len == 0) {
-		return NULL;
-	}
-	w_fullpath = gb_alloc_array(gb_heap_allocator(), wchar_t, w_len+1);
-	GetFullPathNameW(w_path, cast(int)w_len, w_fullpath, NULL);
-	w_fullpath[w_len] = 0;
-	gb_free(gb_heap_allocator(), w_path);
-
-	new_len = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, w_fullpath, cast(int)w_len, NULL, 0, NULL, NULL);
-	if (new_len == 0) {
-		gb_free(gb_heap_allocator(), w_fullpath);
-		return NULL;
-	}
-	new_path = gb_alloc_array(a, char, new_len+1);
-	new_len1 = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, w_fullpath, cast(int)w_len, new_path, cast(int)new_len, NULL, NULL);
-	if (new_len1 == 0) {
-		gb_free(gb_heap_allocator(), w_fullpath);
-		gb_free(a, new_path);
-		return NULL;
-	}
-	new_path[new_len] = 0;
-	return new_path;
-#else
-	char *p, *result, *fullpath = NULL;
-	isize len;
-	p = realpath(path, NULL);
-	fullpath = p;
-	if (p == NULL) {
-		// NOTE(bill): File does not exist
-		fullpath = cast(char *)path;
-	}
-
-	len = strlen(fullpath);
-
-	result = gb_alloc_array(a, char, len + 1);
-	gb_memmove(result, fullpath, len);
-	result[len] = 0;
-	free(p);
-
-	return result;
-#endif
-}
-
 //~DLL Handling
 
 #if defined(GB_SYSTEM_WINDOWS)
 
-gbDllHandle gb_dll_load(char const *filepath) {
-	return cast(gbDllHandle)LoadLibraryA(filepath);
+myinline DLL_Handle
+gb_dll_load(char const *filepath) {
+	return cast(DLL_Handle)LoadLibraryA(filepath);
 }
-inline b32       gb_dll_unload      (gbDllHandle dll)                        { return FreeLibrary(cast(HMODULE)dll); }
-inline gbDllProc gb_dll_proc_address(gbDllHandle dll, char const *proc_name) { return cast(gbDllProc)GetProcAddress(cast(HMODULE)dll, proc_name); }
+myinline b32       gb_dll_unload      (DLL_Handle dll)                        { return FreeLibrary(cast(HMODULE)dll); }
+myinline gbDllProc gb_dll_proc_address(DLL_Handle dll, char const *proc_name) { return cast(gbDllProc)GetProcAddress(cast(HMODULE)dll, proc_name); }
 
 #else // POSIX
 
-gbDllHandle gb_dll_load(char const *filepath) {
+myinline DLL_Handle
+gb_dll_load(char const *filepath) {
 	// TODO(bill): Should this be RTLD_LOCAL?
-	return cast(gbDllHandle)dlopen(filepath, RTLD_LAZY|RTLD_GLOBAL);
+	return cast(DLL_Handle)dlopen(filepath, RTLD_LAZY|RTLD_GLOBAL);
 }
 
-inline b32       gb_dll_unload      (gbDllHandle dll)                        { return !dlclose(dll); }
-inline gbDllProc gb_dll_proc_address(gbDllHandle dll, char const *proc_name) { return cast(gbDllProc)dlsym(dll, proc_name); }
+myinline b32       gb_dll_unload      (DLL_Handle dll)                        { return !dlclose(dll); }
+myinline gbDllProc gb_dll_proc_address(DLL_Handle dll, char const *proc_name) { return cast(gbDllProc)dlsym(dll, proc_name); }
 
 #endif
 
@@ -2588,8 +2420,6 @@ inline isize gb_count_set_bits(u64 mask) {
 	return count;
 }
 #endif
-
-
 
 #if COMPILER_MSVC
 #pragma warning(pop)

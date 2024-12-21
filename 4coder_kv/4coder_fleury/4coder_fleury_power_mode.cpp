@@ -127,7 +127,7 @@ F4_PowerMode_Particle(f32 x, f32 y, f32 velocity_x, f32 velocity_y, f32 decay_ra
     return result;
 }
 
-function Vec2_f32
+function v2
 F4_PowerMode_CameraOffsetFromView(App *app, View_ID view)
 {
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -135,7 +135,7 @@ F4_PowerMode_CameraOffsetFromView(App *app, View_ID view)
     Face_ID face = get_face_id(app, buffer);
     Face_Metrics metrics = get_face_metrics(app, face);
     
-    Vec2_f32 v =
+    v2 v =
     {
         scroll.position.pixel_shift.x,
         scroll.position.pixel_shift.y + scroll.position.line_number*metrics.line_height,
@@ -149,7 +149,7 @@ F4_PowerMode_Spawn(App *app, View_ID view, u8 character)
 {
     if(F4_PowerMode_IsEnabled())
     {
-        Vec2_f32 camera = F4_PowerMode_CameraOffsetFromView(app, view);
+        v2 camera = F4_PowerMode_CameraOffsetFromView(app, view);
         
         for(int i = 0; i < 60; ++i)
         {

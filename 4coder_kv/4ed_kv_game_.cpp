@@ -112,81 +112,80 @@ reload_game(Game_API &game){
 function b32
 load_latest_game_code(App *app, b32 *out_loaded)
 {// NOTE(kv): Load dynamc game code
- if(game_on_ro){
-  Scratch_Block scratch(app);
+ if(game_on_ro)
+ {
+  Scratch_Block scratch;
   b32 loaded = false;
   b32 ok = true;
   
   if ( !global_game_dll_lock )
   {
-   u64 mtime1 = file_mtime(GAME_DLL_PATH);
-   ok = mtime1 != 0;
-   if(ok)
+   String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+   b32 lock_file_exists = file_mtime(pjoin(scratch, binary_dir, strlit("game_dll.lock"))) > 0;
+   if(!lock_file_exists)
    {
-    String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-    b32 lock_file_exists = file_mtime(pjoin(scratch, binary_dir, strlit("game_dll.lock"))) > 0;
-    if(!lock_file_exists)
-    {
 #if KV_INTERNAL
-# define TEMP_DLL_PREFIX "dev_"
+# define PREFIX "dev_"
 #else
-# define TEMP_DLL_PREFIX ""
+# define PREFIX ""
 #endif
-     Stringz GAME2_DLL = pjoin(scratch, binary_dir, strlit(TEMP_DLL_PREFIX "game2.dll"));
-     Stringz GAME3_DLL = pjoin(scratch, binary_dir, strlit(TEMP_DLL_PREFIX "game3.dll"));
-#undef TEMP_DLL_PREFIX
+    Stringz DLL2 = pjoin(scratch, binary_dir, strlit(PREFIX "game2.dll"));
+    Stringz DLL3 = pjoin(scratch, binary_dir, strlit(PREFIX "game3.dll"));
+#undef PREFIX
+    
+    b32 never_loaded_before = (current_game_dll.mtime == 0);
+    u64 mtime_on_disk = file_mtime(GAME_DLL_PATH);
+    ok = ok and (mtime_on_disk != 0);
+    if(current_game_dll.mtime < mtime_on_disk)
+    {// NOTE: We have new game code
+     // NOTE(kv): Ping-pong temp DLL, to avoid hiccups
+     u32 temp_index = 2;
+     if (current_game_dll.temp_index == 2) { temp_index = 3; }
      
-     b32 never_loaded_before = (current_game_dll.mtime == 0);
-     if (never_loaded_before || 
-         (current_game_dll.mtime < mtime1))
-     {// NOTE: We have new game code
-      // NOTE(kv): Ping-pong temp DLL, to avoid hiccups
-      u32 temp_index = 2;
-      if (current_game_dll.temp_index == 2) { temp_index = 3; }
-      
-      Stringz temp_path = (temp_index == 2) ? GAME2_DLL : GAME3_DLL;
-      local_persist gbDllHandle library = {};
-      
-      ok = copy_file(GAME_DLL_PATH, temp_path, false);
-      if(!ok){ vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
+     Stringz temp_path = (temp_index == 2) ? DLL2 : DLL3;
+     //NOTE(kv) Copy and not move because next run we might not have the code
+     //  Plus debug+release 4coders might be running at the same time.
+     ok = ok and copy_file(GAME_DLL_PATH, temp_path, false);
+     if(!ok){ vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
+     
+     if(ok){
+      //NOTE(kv): We want to still display old game DLL for as long as possible,
+      //  So we can compare change results better and avoid black screens.
+      DLL_Handle new_library = gb_dll_load( to_cstring(temp_path) );
+      ok = (new_library != 0);
+      if(!ok){ vim_set_bottom_text_lit("failed to load dll"); }
       
       if(ok){
-       //NOTE(kv): We want to still display old game DLL for as long as possible,
-       //  So we can compare change results better and avoid black screens.
-       gbDllHandle new_library = gb_dll_load( to_cstring(temp_path) );
-       ok = (new_library != 0);
-       if(!ok){ vim_set_bottom_text_lit("failed to load dll"); }
-       
-       if(ok){
-        if(auto game = get_game_code()){
-         game->game_shutdown(ed_game_state_pointer);
-        }
-#if AD_SHUTDOWN_IMGUI
-        win32_imgui_reinit();
-#endif
-        
-        if(library){
-         b32 unload_ok = gb_dll_unload(library);
-         if (!unload_ok) { vim_set_bottom_text_lit("failed to unload old dll"); }
-         global_dll_reloaded_so_watch_out_for_debug_strings = true;
-        }
-        
-        library = new_library;
-        
-        Game_API &game = game_code_ro;
-        wrap_function_pointer(game_api_export);
-        cast_to(game_api_export, gb_dll_proc_address(library, "game_api_export"));
-        game_api_export(game);
-        if(never_loaded_before){
-         init_game(app);
-        }else{
-         // NOTE: "game_reload" is itself reloaded... not sure how that'd be useful
-         reload_game(game);
-        }
-        
-        current_game_dll = { mtime1, temp_index };
-        loaded = true;
+       if(auto game = get_game_code()){
+        game->game_shutdown(ed_game_state_pointer);
+        game->is_valid = 0;
        }
+#if AD_SHUTDOWN_IMGUI
+       win32_imgui_reinit();
+#endif
+       
+       local_persist DLL_Handle library = {};
+       if(library){
+        b32 unload_ok = gb_dll_unload(library);
+        if (!unload_ok) { vim_set_bottom_text_lit("failed to unload old dll"); }
+        global_dll_reloaded_so_watch_out_for_debug_strings = true;
+       }
+       
+       library = new_library;
+       
+       Game_API &game = game_code_ro;
+       void (*game_api_export)(Game_API *);
+       cast_to(game_api_export, gb_dll_proc_address(library, "game_api_export"));
+       game_api_export(&game);
+       if(never_loaded_before){
+        init_game(app);
+       }else{
+        // NOTE: "game_reload" is itself reloaded... not sure how that'd be useful
+        reload_game(game);
+       }
+       
+       current_game_dll = { mtime_on_disk, temp_index };
+       loaded = true;
       }
      }
     }

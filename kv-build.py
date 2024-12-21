@@ -21,8 +21,7 @@ run_only = args.action == 'run'
 
 ################ NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-skip_compiling_metaprogram = 0
-working_on_metaprogram = 0
+working_on_metaprogram = 1
 working_on_editor      = 0
 working_on_game        = 1
 imgui_build_level   = 2
@@ -37,9 +36,16 @@ AD_PROFILE = 0
 KV_SLOW    = 0
 #STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the reload itself
 OPTIMIZE_EDITOR = 0
+HOTLOAD_DRIVER = os.path.basename(args.file) == 'driver.kc'
 
 ############## Configuration end ############################
-if skip_compiling_metaprogram:
+if HOTLOAD_DRIVER:
+    print("[hotload driver]")
+
+if args.full:
+    working_on_metaprogram = True
+
+if not working_on_metaprogram:
     print("!!!WARNING!!! skip_compiling_metaprogram")
 
 if args.release:
@@ -312,7 +318,7 @@ def run_compiler(compiler, input_files, output_file,
         compiler_flags += f" {CPP_VERSION} -D_CRT_SECURE_NO_WARNINGS -FC"
     if is_msvc:
         compiler_flags += f" {CPP_VERSION} -Zc:strictStrings- -D_CRT_SECURE_NO_WARNINGS -FC"
-        if not optimized:
+        if not optimized and not HOTLOAD_DRIVER:
             compiler_flags += f" -Ob1"
 
     if is_msvc:
@@ -359,10 +365,10 @@ def autogen():
             run(f'cpp_lexer_gen.exe {CUSTOM}/generated')
             
         print('====Metaprogram====')
-        if not skip_compiling_metaprogram:
+        if working_on_metaprogram:
             run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
                          compiler_flags=compiler_flags,
-                         debug_symbol=working_on_metaprogram)
+                         debug_symbol=True)
         run(f"ad_meta {CODE}")
 
         if meets_level(ed_meta_build_level):
@@ -379,18 +385,23 @@ def autogen():
 def build_game():
     try:  # NOTE: Compiling the game
         with open("game_dll.lock", "w") as file:
-            file.write("this is a lock file\n")
-        print(f'========Producing game{DOT_DLL}========')
+            file.write("This is a lock file\n")
+        print(f'========Producing game DLL========')
         DOT_LIB=".lib"
-        GAME_MAIN = pjoin(CODE, "game", "game_main.cpp")
-        if TRACE_COMPILE_TIME:
-            # NOTE: ftime-trace only works with "-c"
-            run(f'clang++ -c {pjoin(CODE, "game", "game_main.cpp")}  {INCLUDES} {SYMBOLS} -Od -ftime-trace')
-        else:
-            # NOTE: Compile the driver and the framework
+        GAME_DIR = pjoin(CODE, "game")
+        # NOTE: Compile the framework
+        if not HOTLOAD_DRIVER:
+            GAME_MAIN = pjoin(GAME_DIR, "game_main.cpp")
             run_compiler(Compiler.ClangCl, f'{GAME_MAIN} {space_join(imgui_object_files)}', f"game{DOT_DLL}",
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",
                          linker_flags="-DLL -export:game_api_export")
+        # Compile the game
+        DRIVER_MAIN = pjoin(GAME_DIR, "generated", "driver.gen.cpp")
+        run_compiler(Compiler.ClangCl, f'{DRIVER_MAIN}', f"driver{DOT_DLL}",
+                     compiler_flags=f"{INCLUDES} -I{GAME_DIR} {SYMBOLS}",
+                     debug_symbol=not HOTLOAD_DRIVER, # NOTE(kv) Debug symbols stripping will become important later
+                     no_warnings=HOTLOAD_DRIVER,
+                     linker_flags="-DLL -export:driver_api_export")
 
     finally:
         os.remove("game_dll.lock")
@@ -428,60 +439,60 @@ try:
         imgui_object_files  = [f"{get_file_stem(file)}{DOT_OBJ}" 
                                for file in imgui_cpp_basenames]
 
-        if (not TRACE_COMPILE_TIME):
-            # NOTE(kv): cleanup build dir (TODO: arrange our build output directory so we don't have to do manual cleaning crap)
-            if build_level >= 1:
-                delete_all_pdb_files(OUTDIR)
+        # NOTE(kv): cleanup build dir (TODO: arrange our build output directory so we don't have to do manual cleaning crap)
+        if build_level >= 1:
+            delete_all_pdb_files(OUTDIR)
 
-            autogen()
+        autogen()
 
-            # NOTE: Editor build
-            if OS_WINDOWS:
-                PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
-                WINDOWS_LIBS = "user32.lib winmm.lib gdi32.lib comdlg32.lib userenv.lib"
-                FREETYPE_LIB = f"{NON_SOURCE}/foreign/x64/freetype.lib"
-                LINKED_LIBS=f"{FREETYPE_LIB} {WINDOWS_LIBS} opengl32.lib {NON_SOURCE}/res/icon.res"
-            else:
-                PLATFORM_CPP = f"{CODE}/platform_mac/mac_4ed.mm"
-                LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
-            # NOTE Add "-fms-runtime-lib=dll_dbg" to call with debug crt
+        # NOTE: Editor build
+        if OS_WINDOWS:
+            PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
+            WINDOWS_LIBS = "user32.lib winmm.lib gdi32.lib comdlg32.lib userenv.lib"
+            FREETYPE_LIB = f"{NON_SOURCE}/foreign/x64/freetype.lib"
+            LINKED_LIBS=f"{FREETYPE_LIB} {WINDOWS_LIBS} opengl32.lib {NON_SOURCE}/res/icon.res"
+        else:
+            PLATFORM_CPP = f"{CODE}/platform_mac/mac_4ed.mm"
+            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
+        # NOTE Add "-fms-runtime-lib=dll_dbg" to call with debug crt
 
-            # NOTE Compiling DearImgui
-            imgui_files = [pjoin(imgui_dir, f) for f in imgui_cpp_basenames]
-            imgui_backend_files = [f"{imgui_dir}/backends/imgui_impl_win32.cpp", f"{imgui_dir}/backends/imgui_impl_opengl3.cpp"]
-            imgui_config = '-DIMGUI_USER_CONFIG=\\"ad_imgui_config.h\\"'
-            if meets_level(imgui_build_level):
-                for file in (imgui_files + imgui_backend_files):
-                    # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
-                    run_compiler(Compiler.Cl, file, "",
-                                 debug_symbol=DEBUG_MODE,
-                                 compiler_flags=f"{imgui_config} -I{imgui_dir} {base_includes}",
-                                 compile_only=True, no_warnings=True)
+        # NOTE Compiling DearImgui
+        imgui_files = [pjoin(imgui_dir, f) for f in imgui_cpp_basenames]
+        imgui_backend_files = [f"{imgui_dir}/backends/imgui_impl_win32.cpp", f"{imgui_dir}/backends/imgui_impl_opengl3.cpp"]
+        imgui_config = '-DIMGUI_USER_CONFIG=\\"ad_imgui_config.h\\"'
+        if meets_level(imgui_build_level):
+            for file in (imgui_files + imgui_backend_files):
+                # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
+                run_compiler(Compiler.Cl, file, "",
+                             debug_symbol=DEBUG_MODE,
+                             compiler_flags=f"{imgui_config} -I{imgui_dir} {base_includes}",
+                             compile_only=True, no_warnings=True)
 
-            if working_on_editor:
-                print('========Producing 4ed========')
-                if SHIP_MODE:
-                    replace_file(f"{BINARY_NAME}{DOT_EXE}", f"{BINARY_NAME}.bkp{DOT_EXE}")
-                #ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
-                imgui_backend_object_files = [f"imgui_impl_win32{DOT_OBJ}", f"imgui_impl_opengl3{DOT_OBJ}"]
-                imgui_objs = f"{space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}"
-                run_compiler(Compiler.ClangCl, f"{PLATFORM_CPP} {imgui_objs}",
-                             f"{BINARY_NAME}{DOT_EXE}", debug_symbol=DEBUG_MODE,
-                             compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                             linker_flags=f"{LINKED_LIBS}",
-                             optimized=OPTIMIZE_EDITOR or SHIP_MODE,
-                             exit_on_failure=False)
-                #USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
-                # NOTE Rollback
-                if script_failed and SHIP_MODE:
-                    replace_file(f"{BINARY_NAME}.bkp{DOT_EXE}", f"{BINARY_NAME}{DOT_EXE}")
-
-            # NOTE: shipping shaders
+        if working_on_editor:
+            print('========Producing 4ed========')
             if SHIP_MODE:
-                OPENGL_OUTDIR = pjoin(OUTDIR, "opengl")
-                mkdir_p(OPENGL_OUTDIR)
-                for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
-                    shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
+                replace_file(f"{BINARY_NAME}{DOT_EXE}", f"{BINARY_NAME}.bkp{DOT_EXE}")
+            #ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
+            imgui_backend_object_files = [f"imgui_impl_win32{DOT_OBJ}", f"imgui_impl_opengl3{DOT_OBJ}"]
+            imgui_objs = f"{space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}"
+            run_compiler(Compiler.ClangCl, f"{PLATFORM_CPP} {imgui_objs}",
+                         f"{BINARY_NAME}{DOT_EXE}", debug_symbol=not SHIP_MODE,
+                         compiler_flags=f"{INCLUDES} {SYMBOLS}",
+                         linker_flags=f"{LINKED_LIBS}",
+                         optimized=OPTIMIZE_EDITOR or SHIP_MODE,
+                         exit_on_failure=False)
+            #USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
+            # NOTE Rollback
+            if script_failed and SHIP_MODE:
+                replace_file(f"{BINARY_NAME}.bkp{DOT_EXE}", f"{BINARY_NAME}{DOT_EXE}")
+
+        # NOTE: shipping shaders
+        if SHIP_MODE:
+            OPENGL_OUTDIR = pjoin(OUTDIR, "opengl")
+            mkdir_p(OPENGL_OUTDIR)
+            for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
+                shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
+
         if working_on_game and (not args.release):
             build_game()
 

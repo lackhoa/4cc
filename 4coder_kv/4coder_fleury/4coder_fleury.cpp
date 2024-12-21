@@ -475,7 +475,7 @@ void fleury_custom_layer_init(App *app)
         set_custom_hook(app, HookID_WholeScreenRenderCaller, F4_WholeScreenRender);
         set_custom_hook(app, HookID_DeltaRule,               F4_DeltaRule);
         set_custom_hook(app, HookID_BufferEditRange,         F4_BufferEditRange);
-        set_custom_hook_memory_size(app, HookID_DeltaRule, delta_ctx_size(sizeof(Vec2_f32)));
+        set_custom_hook_memory_size(app, HookID_DeltaRule, delta_ctx_size(sizeof(v2)));
     }
     
     // NOTE(rjf): Set up mapping.

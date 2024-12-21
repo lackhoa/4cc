@@ -83,7 +83,8 @@ get_type_info_function_name(String type_name){
 function void
 print_type_meta_shared(Printer &p, String type_name, b32 is_typedef=false)
 {
- String type_global_var = get_type_global_info_name(type_name);
+ m_meta_only(p);
+  String type_global_var = get_type_global_info_name(type_name);
  {//TODO(kv) Let's see if this explodes...
   m_location;
   print_format(p, "global Type_Info %.*s = get_type_info_%.*s();\n\n",
@@ -153,12 +154,16 @@ print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_pac
  p<";";
  mline(p);
 }
+
+
 function void
 print_struct_meta(Printer &p, String type_name,
                   M_Struct_Members &members)
 {
  Scratch_Block scratch;
- {//-NOTE ("Function to generate the type info")
+ {
+  m_meta_only(p);
+  //-NOTE ("Function to generate the type info")
   String function_name = get_type_info_function_name(type_name);
   m_location;
   p<"function Type_Info\n"<function_name<"()";
@@ -228,6 +233,7 @@ print_struct_meta(Printer &p, String type_name,
  print_type_meta_shared(p, type_name);
  
  {//-;meta_read_struct
+  m_meta_only(p);
   //NOTE(kv) metaprogramming is weird and janky, but deserializign at runtime
   //  has its runtime cost, and we have to expose the RTTI data which is only
   //  used for this very purpose.
@@ -298,7 +304,9 @@ print_struct_meta(Printer &p, String type_name,
 function void
 print_union_meta(Printer &p, String type_name,
                  arrayof<Union_Variant> *variants,
-                 String discriminator_type){
+                 String discriminator_type)
+{
+ m_meta_only(p);
 #define brace_block  p < "\n{\n"; defer( p < "\n}\n"; );
  {//-Function to generate the type info
   {
@@ -373,10 +381,13 @@ print_enum(Printer &p, String type_name,
    p <enum_names[ei] <" = " <enum_vals[ei] <",";
   }
  }
+ print(p, "\n");
 }
 function void
 print_enum_meta(Printer &p, String type_name,
-                arrayof<String> &enum_names){
+                arrayof<String> &enum_names)
+{
+ m_meta_only(p);
  {//-NOTE: ("Function to generate the type info")
   String function_name = get_type_info_function_name(type_name);
   {//NOTE .h
@@ -386,7 +397,7 @@ print_enum_meta(Printer &p, String type_name,
   {//NOTE .cpp
    m_location;
    p <"function Type_Info\n" <function_name <"()";
-   m_braces{
+   m_braces_newline{
     p <"Type_Info result = {};\n";
     p <"result.name = " <enclosed_in_strlit(type_name) <";\n";
     p <"result.size = sizeof(" <type_name <");\n";
@@ -430,7 +441,9 @@ print_enum_meta(Printer &p, String type_name,
  }
 }
 function void
-print_typedef_meta(Printer &p, String type_name, String typedef_to){
+print_typedef_meta(Printer &p, String type_name, String typedef_to)
+{
+ m_meta_only(p);
  {//-Function to generate type info
   String function_name = get_type_info_function_name(type_name);
 #define PROTOTYPE  p < "function Type_Info\n" < function_name < "()"
@@ -441,10 +454,10 @@ print_typedef_meta(Printer &p, String type_name, String typedef_to){
   {
    m_location;
    PROTOTYPE;
-   m_braces{
+   m_braces_newline{
     p<"Type_Info result = "<get_type_global_info_name(typedef_to)<";\n";
     p<"result.name = "<enclosed_in_strlit(type_name)<";\n";
-    p < "return result;";
+    p < "return result;\n";
    }
   }
 #undef PROTOTYPE
@@ -459,7 +472,7 @@ print_typedef_meta(Printer &p, String type_name, String typedef_to){
   {
    m_location;
    print_type_read_function_prototype(p,type_name);
-   m_braces{
+   m_braces_newline{
     p < get_type_read_function_name(typedef_to) < "(r, dst);";
    }
   }
@@ -759,70 +772,72 @@ klang_print_sliders(K_Slider *sliders, u32 slider_count)
  Scratch_Block scratch;
  b32 ok = true;
  
- {//-Information at the front
-  Stringz outpath = pjoin(scratch, meta_dirs.game_gen, strlit("sliders0.gen.h"));
-  Meta_Printer printer = m_open_file_to_write(outpath);
-  print_format(printer, "#define FUI_SLIDER_COUNT %u\n", slider_count);
-  close_file(printer);
- }
+ //-Information at the front
+ Stringz outpath = pjoin(scratch, meta_dirs.game_gen, strlit("sliders0.gen.h"));
+ Meta_Printer printer = m_open_file_to_write(outpath);
+ 
+ print_format(printer, "#define FUI_SLIDER_COUNT %u\n", slider_count);
  
  {//-The infos
-  Stringz outpath = pjoin(scratch, meta_dirs.game_gen, strlit("slider_info.gen.h"));
-  Meta_Printer printer = m_open_file_to_write(outpath);
-  
-  char *create_slider_info_c = R"CODE(
-{.type = Basic_Type_%, .pos = %, .size = %, .index = %, .options = %},)CODE";
-  String create_slider_info = SCu8(create_slider_info_c);
-  
-  Scratch_Block scratch_loop;
-  for_u32(slider_index, 0, slider_count)
+  print(printer, "global Slider global_sliders[FUI_SLIDER_COUNT] = {\n");
   {
-   K_Slider *slider = sliders + slider_index;
+   char *create_slider_info_c = R"CODE(
+ {.type = Basic_Type_%, .pos = %, .size = %, .index = %, .options = %},)CODE";
+   String create_slider_info = SCu8(create_slider_info_c);
+   
+   Scratch_Block scratch_loop;
+   for_u32(slider_index, 0, slider_count)
+   {
+    K_Slider *slider = sliders + slider_index;
 #define S(whatever) to_string(scratch_loop, whatever)
-   String options = slider->options;
-   if(options.count == 0){
-    options = strlit("{}");
-   }
-   String vars[] = {
-    slider->type, S(slider->pos), S(slider->size), S(slider_index), options
-   };
+    String options = slider->options;
+    if(options.count == 0){
+     options = strlit("{}");
+    }
+    String vars[] = {
+     slider->type, S(slider->pos), S(slider->size), S(slider_index), options
+    };
 #undef S
-   PrintTemplate(printer, create_slider_info, vars);
-   arena_clear(scratch_loop);
+    PrintTemplate(printer, create_slider_info, vars);
+    arena_clear(scratch_loop);
+   }
   }
-  close_file(printer);
+  print(printer, "};\n\n");
  }
  
  {//-The meat
-  //TODO(kv) Certainly we could compress this gargantuan block of code.
-  //  which would help reduce both compile time and startup time.
+  print(printer, "global void *global_slider_values[FUI_SLIDER_COUNT];\n\n");
   
-  Stringz outpath = pjoin(scratch, meta_dirs.game_gen, strlit("slider_values.gen.h"));
-  Meta_Printer printer = m_open_file_to_write(outpath);
+  print(printer, "function void\n");
+  print(printer, "create_sliders(Arena *arena)\n");
   
-  char *create_slider_template_c = R"CODE(
-global_slider_values[%] = push_value(arena, %(%));
-)CODE";
-  String create_slider_template = SCu8(create_slider_template_c);
-  
-  Scratch_Block scratch_loop;
-  for_u32(slider_index_int, 0, slider_count)
+  print(printer, "{\n");
   {
-   K_Slider *slider = sliders + slider_index_int;
-   String type = slider->type;
+   char *create_slider_template_c =
+   R"CODE(global_slider_values[%] = push_value(arena, %(%));
+   )CODE";
+   String create_slider_template = SCu8(create_slider_template_c);
+   
+   Scratch_Block scratch_loop;
+   for_u32(slider_index_int, 0, slider_count)
+   {
+    K_Slider *slider = sliders + slider_index_int;
+    String type = slider->type;
 #define S(whatever) to_string(scratch_loop, whatever)
-   String slider_index = S(slider_index_int);
-   String vars[] = {
-    slider_index, type, slider->value,
-   };
+    String slider_index = S(slider_index_int);
+    String vars[] = {
+     slider_index, type, slider->value,
+    };
 #undef S
-   PrintTemplate(printer, create_slider_template, vars);
-   arena_clear(scratch_loop);
+    PrintTemplate(printer, create_slider_template, vars);
+    arena_clear(scratch_loop);
+   }
   }
-  kv_assert(not printer.error);
-  close_file(printer);
+  print(printer, "}\n");
  }
  
+ kv_assert(not printer.error);
+ close_file(printer);
  return ok;
 }
 //-

@@ -21,14 +21,14 @@
 #define custom_buffer_seek_character_class_sig() String_Match custom_buffer_seek_character_class(App* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos)
 #define custom_buffer_line_y_difference_sig() f32 custom_buffer_line_y_difference(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b)
 #define custom_buffer_line_shift_y_sig() Line_Shift_Vertical custom_buffer_line_shift_y(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line, f32 y_shift)
-#define custom_buffer_pos_at_relative_xy_sig() i64 custom_buffer_pos_at_relative_xy(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, Vec2_f32 relative_xy)
+#define custom_buffer_pos_at_relative_xy_sig() i64 custom_buffer_pos_at_relative_xy(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, v2 relative_xy)
 #define custom_buffer_relative_box_of_pos_sig() Rect_f32 custom_buffer_relative_box_of_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos)
 #define custom_buffer_padded_box_of_pos_sig() Rect_f32 custom_buffer_padded_box_of_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos)
 #define custom_buffer_relative_character_from_pos_sig() i64 custom_buffer_relative_character_from_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos)
 #define custom_buffer_pos_from_relative_character_sig() i64 custom_buffer_pos_from_relative_character(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 relative_character)
 #define custom_view_line_y_difference_sig() f32 custom_view_line_y_difference(App* app, View_ID view_id, i64 line_a, i64 line_b)
 #define custom_view_line_shift_y_sig() Line_Shift_Vertical custom_view_line_shift_y(App* app, View_ID view_id, i64 line, f32 y_shift)
-#define custom_view_pos_at_relative_xy_sig() i64 custom_view_pos_at_relative_xy(App* app, View_ID view_id, i64 base_line, Vec2_f32 relative_xy)
+#define custom_view_pos_at_relative_xy_sig() i64 custom_view_pos_at_relative_xy(App* app, View_ID view_id, i64 base_line, v2 relative_xy)
 #define custom_view_relative_box_of_pos_sig() Rect_f32 custom_view_relative_box_of_pos(App* app, View_ID view_id, i64 base_line, i64 pos)
 #define custom_view_padded_box_of_pos_sig() Rect_f32 custom_view_padded_box_of_pos(App* app, View_ID view_id, i64 base_line, i64 pos)
 #define custom_view_relative_character_from_pos_sig() i64 custom_view_relative_character_from_pos(App* app, View_ID view_id, i64 base_line, i64 pos)
@@ -85,8 +85,8 @@
 #define custom_view_get_managed_scope_sig() Managed_Scope custom_view_get_managed_scope(App* app, View_ID view_id)
 #define custom_buffer_compute_cursor_sig() Buffer_Cursor custom_buffer_compute_cursor(App* app, Buffer_ID buffer, Buffer_Seek seek)
 #define custom_view_compute_cursor_sig() Buffer_Cursor custom_view_compute_cursor(App* app, View_ID view_id, Buffer_Seek seek)
-#define custom_view_set_camera_bounds_sig() b32 custom_view_set_camera_bounds(App* app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push_in_multiplier)
-#define custom_view_get_camera_bounds_sig() b32 custom_view_get_camera_bounds(App* app, View_ID view_id, Vec2_f32* margin, Vec2_f32* push_in_multiplier)
+#define custom_view_set_camera_bounds_sig() b32 custom_view_set_camera_bounds(App* app, View_ID view_id, v2 margin, v2 push_in_multiplier)
+#define custom_view_get_camera_bounds_sig() b32 custom_view_get_camera_bounds(App* app, View_ID view_id, v2* margin, v2* push_in_multiplier)
 #define custom_view_set_cursor_sig() b32 custom_view_set_cursor(App* app, View_ID view_id, Buffer_Seek seek)
 #define custom_view_set_buffer_scroll_sig() b32 custom_view_set_buffer_scroll(App* app, View_ID view_id, Buffer_Scroll scroll, Set_Buffer_Scroll_Rule rule)
 #define custom_view_set_mark_sig() b32 custom_view_set_mark(App* app, View_ID view_id, Buffer_Seek seek)
@@ -181,368 +181,550 @@
 #define custom_get_current_line_number_sig() i64 custom_get_current_line_number(App* app)
 #define custom_os_window_is_active_sig() b32 custom_os_window_is_active(App* app)
 #define custom_draw_rect_outline_sig() void custom_draw_rect_outline(App* app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth)
-typedef b32 custom_global_set_setting_type(App* app, Global_Setting_ID setting, i64 value);
-typedef rect2 custom_global_get_screen_rectangle_type(App* app);
-typedef Child_Process_ID custom_create_child_process_type(App* app, String path, String command);
-typedef b32 custom_child_process_set_target_buffer_type(App* app, Child_Process_ID child_process_id, Buffer_ID buffer_id, Child_Process_Set_Target_Flags flags);
-typedef Child_Process_ID custom_buffer_get_attached_child_process_type(App* app, Buffer_ID buffer_id);
-typedef Buffer_ID custom_child_process_get_attached_buffer_type(App* app, Child_Process_ID child_process_id);
-typedef Process_State custom_child_process_get_state_type(App* app, Child_Process_ID child_process_id);
-typedef b32 custom_enqueue_virtual_event_type(App* app, Input_Event* event);
-typedef i32 custom_get_buffer_count_type(App* app);
-typedef Buffer_ID custom_get_buffer_next_type(App* app, Buffer_ID buffer_id, Access_Flag access);
-typedef Buffer_ID custom_get_buffer_by_name_type(App* app, String8 name, Access_Flag access);
-typedef Buffer_ID custom_get_buffer_by_filename_type(App* app, String filename, Access_Flag access);
-typedef b32 custom_is_buffer_limited_edit_type(App* app, Buffer_ID buffer_id);
-typedef b32 custom_buffer_read_range_type(App* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
-typedef b32 custom_buffer_replace_range_type(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
-typedef b32 custom_buffer_batch_edit_type(App* app, Buffer_ID buffer_id, Batch_Edit* batch);
-typedef String_Match custom_buffer_seek_string_type(App* app, Buffer_ID buffer, String8 needle, Scan_Direction direction, i64 start_pos, b32 case_sensitive);
-typedef String_Match custom_buffer_seek_character_class_type(App* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos);
-typedef f32 custom_buffer_line_y_difference_type(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b);
-typedef Line_Shift_Vertical custom_buffer_line_shift_y_type(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line, f32 y_shift);
-typedef i64 custom_buffer_pos_at_relative_xy_type(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, Vec2_f32 relative_xy);
-typedef Rect_f32 custom_buffer_relative_box_of_pos_type(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
-typedef Rect_f32 custom_buffer_padded_box_of_pos_type(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
-typedef i64 custom_buffer_relative_character_from_pos_type(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
-typedef i64 custom_buffer_pos_from_relative_character_type(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 relative_character);
-typedef f32 custom_view_line_y_difference_type(App* app, View_ID view_id, i64 line_a, i64 line_b);
-typedef Line_Shift_Vertical custom_view_line_shift_y_type(App* app, View_ID view_id, i64 line, f32 y_shift);
-typedef i64 custom_view_pos_at_relative_xy_type(App* app, View_ID view_id, i64 base_line, Vec2_f32 relative_xy);
-typedef Rect_f32 custom_view_relative_box_of_pos_type(App* app, View_ID view_id, i64 base_line, i64 pos);
-typedef Rect_f32 custom_view_padded_box_of_pos_type(App* app, View_ID view_id, i64 base_line, i64 pos);
-typedef i64 custom_view_relative_character_from_pos_type(App* app, View_ID view_id, i64 base_line, i64 pos);
-typedef i64 custom_view_pos_from_relative_character_type(App* app, View_ID view_id, i64 base_line, i64 character);
-typedef b32 custom_buffer_exists_type(App* app, Buffer_ID buffer_id);
-typedef Access_Flag custom_buffer_get_access_flags_type(App* app, Buffer_ID buffer_id);
-typedef i64 custom_buffer_get_size_type(App* app, Buffer_ID buffer_id);
-typedef i64 custom_buffer_get_line_count_type(App* app, Buffer_ID buffer_id);
-typedef String8 custom_push_buffer_base_name_type(App* app, Arena* arena, Buffer_ID buffer_id);
-typedef String custom_push_buffer_unique_name_type(App* app, Arena* out, Buffer_ID buffer_id);
-typedef String custom_push_buffer_filepath_type(App* app, Arena* arena, Buffer_ID buffer_id);
-typedef Dirty_State custom_buffer_get_dirty_state_type(App* app, Buffer_ID buffer_id);
-typedef b32 custom_buffer_set_dirty_state_type(App* app, Buffer_ID buffer_id, Dirty_State dirty_state);
-typedef b32 custom_buffer_set_layout_type(App* app, Buffer_ID buffer_id, Layout_Function* layout_func);
-typedef b32 custom_buffer_clear_layout_cache_type(App* app, Buffer_ID buffer_id);
-typedef Layout_Function* custom_buffer_get_layout_type(App* app, Buffer_ID buffer_id);
-typedef b32 custom_buffer_get_setting_type(App* app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64* value_out);
-typedef b32 custom_buffer_set_setting_type(App* app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value);
-typedef Managed_Scope custom_buffer_get_managed_scope_type(App* app, Buffer_ID buffer_id);
-typedef b32 custom_buffer_send_end_signal_type(App* app, Buffer_ID buffer_id);
-typedef Buffer_ID custom_create_buffer_type(App* app, String filename, Buffer_Create_Flag flags);
-typedef b32 custom_buffer_save_type(App* app, Buffer_ID buffer_id, String filename, Buffer_Save_Flag flags);
-typedef Buffer_Kill_Result custom_buffer_kill_type(App* app, Buffer_ID buffer_id, Buffer_Kill_Flag flags);
-typedef Buffer_Reopen_Result custom_buffer_reopen_type(App* app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags);
-typedef File_Attributes custom_buffer_get_file_attributes_type(App* app, Buffer_ID buffer_id);
-typedef View_ID custom_get_view_next_type(App* app, View_ID view_id, Access_Flag access);
-typedef View_ID custom_get_view_prev_type(App* app, View_ID view_id, Access_Flag access);
-typedef View_ID custom_get_this_ctx_view_type(App* app, Access_Flag access);
-typedef View_ID custom_get_active_view_type(App* app, Access_Flag access);
-typedef b32 custom_view_exists_type(App* app, View_ID view_id);
-typedef Buffer_ID custom_view_get_buffer_type(App* app, View_ID view_id, Access_Flag access);
-typedef i64 custom_view_get_cursor_pos_type(App* app, View_ID view_id);
-typedef i64 custom_view_get_mark_pos_type(App* app, View_ID view_id);
-typedef f32 custom_view_get_preferred_x_type(App* app, View_ID view_id);
-typedef b32 custom_view_set_preferred_x_type(App* app, View_ID view_id, f32 x);
-typedef Rect_f32 custom_view_get_screen_rect_type(App* app, View_ID view_id);
-typedef Panel_ID custom_view_get_panel_type(App* app, View_ID view_id);
-typedef View_ID custom_panel_get_view_type(App* app, Panel_ID panel_id, Access_Flag access);
-typedef b32 custom_panel_is_split_type(App* app, Panel_ID panel_id);
-typedef b32 custom_panel_is_leaf_type(App* app, Panel_ID panel_id);
-typedef b32 custom_panel_split_type(App* app, Panel_ID panel_id, Dimension split_dim);
-typedef b32 custom_panel_set_split_type(App* app, Panel_ID panel_id, Panel_Split_Kind kind, f32 t);
-typedef b32 custom_panel_swap_children_type(App* app, Panel_ID panel_id);
-typedef Panel_ID custom_panel_get_root_type(App* app);
-typedef Panel_ID custom_panel_get_parent_type(App* app, Panel_ID panel_id);
-typedef Panel_ID custom_panel_get_child_type(App* app, Panel_ID panel_id, Side which_child);
-typedef b32 custom_view_close_type(App* app, View_ID view_id);
-typedef Rect_f32 custom_view_get_buffer_region_type(App* app, View_ID view_id);
-typedef Buffer_Scroll custom_view_get_buffer_scroll_type(App* app, View_ID view_id);
-typedef b32 custom_view_set_active_type(App* app, View_ID view_id);
-typedef b32 custom_view_enqueue_command_function_type(App* app, View_ID view_id, Custom_Command_Function* custom_func);
-typedef b32 custom_view_get_setting_type(App* app, View_ID view_id, View_Setting_ID setting, i64* value_out);
-typedef b32 custom_view_set_setting_type(App* app, View_ID view_id, View_Setting_ID setting, i64 value);
-typedef Managed_Scope custom_view_get_managed_scope_type(App* app, View_ID view_id);
-typedef Buffer_Cursor custom_buffer_compute_cursor_type(App* app, Buffer_ID buffer, Buffer_Seek seek);
-typedef Buffer_Cursor custom_view_compute_cursor_type(App* app, View_ID view_id, Buffer_Seek seek);
-typedef b32 custom_view_set_camera_bounds_type(App* app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push_in_multiplier);
-typedef b32 custom_view_get_camera_bounds_type(App* app, View_ID view_id, Vec2_f32* margin, Vec2_f32* push_in_multiplier);
-typedef b32 custom_view_set_cursor_type(App* app, View_ID view_id, Buffer_Seek seek);
-typedef b32 custom_view_set_buffer_scroll_type(App* app, View_ID view_id, Buffer_Scroll scroll, Set_Buffer_Scroll_Rule rule);
-typedef b32 custom_view_set_mark_type(App* app, View_ID view_id, Buffer_Seek seek);
-typedef b32 custom_view_quit_ui_type(App* app, View_ID view_id);
-typedef b32 custom_view_set_buffer_type(App* app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags);
-typedef b32 custom_view_push_context_type(App* app, View_ID view_id, View_Context* ctx);
-typedef b32 custom_view_pop_context_type(App* app, View_ID view_id);
-typedef b32 custom_view_alter_context_type(App* app, View_ID view_id, View_Context* ctx);
-typedef View_Context custom_view_current_context_type(App* app, View_ID view_id);
-typedef String custom_view_current_context_hook_memory_type(App* app, View_ID view_id, Hook_ID hook_id);
-typedef Managed_Scope custom_create_user_managed_scope_type(App* app);
-typedef b32 custom_destroy_user_managed_scope_type(App* app, Managed_Scope scope);
-typedef Managed_Scope custom_get_global_managed_scope_type(App* app);
-typedef Managed_Scope custom_get_managed_scope_with_multiple_dependencies_type(App* app, Managed_Scope* scopes, i32 count);
-typedef b32 custom_managed_scope_clear_contents_type(App* app, Managed_Scope scope);
-typedef b32 custom_managed_scope_clear_self_all_dependent_scopes_type(App* app, Managed_Scope scope);
-typedef Base_Allocator* custom_managed_scope_allocator_type(App* app, Managed_Scope scope);
-typedef u64 custom_managed_id_group_highest_id_type(App* app, String group);
-typedef Managed_ID custom_managed_id_declare_type(App* app, String group, String name);
-typedef Managed_ID custom_managed_id_get_type(App* app, String group, String name);
-typedef void* custom_managed_scope_get_attachment_type(App* app, Managed_Scope scope, Managed_ID id, u64 size);
-typedef b32 custom_managed_scope_attachment_erase_type(App* app, Managed_Scope scope, Managed_ID id);
-typedef Managed_Object custom_alloc_managed_memory_in_scope_type(App* app, Managed_Scope scope, i32 item_size, i32 count);
-typedef Managed_Object custom_alloc_buffer_markers_on_buffer_type(App* app, Buffer_ID buffer_id, i32 count, Managed_Scope* optional_extra_scope);
-typedef u32 custom_managed_object_get_item_size_type(App* app, Managed_Object object);
-typedef u32 custom_managed_object_get_item_count_type(App* app, Managed_Object object);
-typedef void* custom_managed_object_get_pointer_type(App* app, Managed_Object object);
-typedef Managed_Prim_Type custom_managed_object_get_type_type(App* app, Managed_Object object);
-typedef Managed_Scope custom_managed_object_get_containing_scope_type(App* app, Managed_Object object);
-typedef b32 custom_managed_object_free_type(App* app, Managed_Object object);
-typedef b32 custom_managed_object_store_data_type(App* app, Managed_Object object, u32 first_index, u32 count, void* mem);
-typedef b32 custom_managed_object_load_data_type(App* app, Managed_Object object, u32 first_index, u32 count, void* mem_out);
-typedef User_Input custom_get_next_input_raw_type(App* app);
-typedef i64 custom_get_current_input_sequence_number_type(App* app);
-typedef User_Input custom_get_current_input_type(App* app);
-typedef void custom_set_current_input_type(App* app, User_Input* input);
-typedef void custom_leave_current_input_unhandled_type(App* app);
-typedef void custom_set_custom_hook_func_type(App* app, Hook_ID hook_id, Void_Func* func_ptr);
-typedef Void_Func* custom_get_custom_hook_type(App* app, Hook_ID hook_id);
-typedef b32 custom_set_custom_hook_memory_size_type(App* app, Hook_ID hook_id, u64 size);
-typedef Mouse_State custom_get_mouse_state_type(App* app);
-typedef b32 custom_get_active_query_bars_type(App* app, View_ID view_id, i32 max_result_count, Query_Bar_Ptr_Array* array_out);
-typedef b32 custom_start_query_bar_type(App* app, Query_Bar* bar, u32 flags);
-typedef void custom_end_query_bar_type(App* app, Query_Bar* bar, u32 flags);
-typedef void custom_clear_all_query_bars_type(App* app, View_ID view_id);
-typedef void custom_print_message_type(App* app, String message);
-typedef b32 custom_log_string_type(App* app, String str);
-typedef Face_ID custom_get_largest_face_id_type(App* app);
-typedef b32 custom_set_global_face_type(App* app, Face_ID id);
-typedef History_Record_Index custom_buffer_history_get_max_record_index_type(App* app, Buffer_ID buffer_id);
-typedef Record_Info custom_buffer_history_get_record_info_type(App* app, Buffer_ID buffer_id, History_Record_Index index);
-typedef Record_Info custom_buffer_history_get_group_sub_record_type(App* app, Buffer_ID buffer_id, History_Record_Index index, i32 sub_index);
-typedef History_Record_Index custom_buffer_history_get_current_state_index_type(App* app, Buffer_ID buffer_id);
-typedef b32 custom_buffer_history_set_current_state_index_type(App* app, Buffer_ID buffer_id, History_Record_Index index);
-typedef b32 custom_buffer_history_merge_record_range_type(App* app, Buffer_ID buffer_id, History_Record_Index first_index, History_Record_Index last_index, Record_Merge_Flag flags);
-typedef b32 custom_buffer_history_clear_after_current_state_type(App* app, Buffer_ID buffer_id);
-typedef void custom_global_history_edit_group_begin_type(App* app);
-typedef void custom_global_history_edit_group_end_type(App* app);
-typedef b32 custom_buffer_set_face_type(App* app, Buffer_ID buffer_id, Face_ID id);
-typedef Face_Description custom_get_face_description_type(App* app, Face_ID face_id);
-typedef Face_Metrics custom_get_face_metrics_type(App* app, Face_ID face_id);
-typedef Face_Advance_Map custom_get_face_advance_map_type(App* app, Face_ID face_id);
-typedef Face_ID custom_get_face_id_type(App* app, Buffer_ID buffer_id);
-typedef Face_ID custom_try_create_new_face_type(App* app, Face_Description* description);
-typedef b32 custom_try_modify_face_type(App* app, Face_ID id, Face_Description* description);
-typedef b32 custom_try_release_face_type(App* app, Face_ID id, Face_ID replacement_id);
-typedef String8 custom_push_hot_directory_type(App* app, Arena* arena);
-typedef void custom_set_hot_directory_type(App* app, String8 string);
-typedef void custom_send_exit_signal_type(App* app);
-typedef void custom_hard_exit_type(App* app);
-typedef void custom_set_window_title_type(App* app, String8 title);
-typedef void custom_acquire_global_frame_mutex_type(App* app);
-typedef void custom_release_global_frame_mutex_type(App* app);
-typedef v2 custom_draw_string_oriented_type(App* app, Face_ID font_id, ARGB_Color color, String8 str, v2 point, u32 flags, v2 delta);
-typedef f32 custom_get_string_advance_type(App* app, Face_ID font_id, String str);
-typedef Rect_f32 custom_draw_set_clip_type(App* app, Rect_f32 new_clip);
-typedef Text_Layout_ID custom_text_layout_create_type(App* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point);
-typedef Rect_f32 custom_text_layout_region_type(App* app, Text_Layout_ID text_layout_id);
-typedef Buffer_ID custom_text_layout_get_buffer_type(App* app, Text_Layout_ID text_layout_id);
-typedef Range_i64 custom_text_layout_get_visible_range__type(App* app, Text_Layout_ID text_layout_id);
-typedef Range_f32 custom_text_layout_line_on_screen_type(App* app, Text_Layout_ID layout_id, i64 line_number);
-typedef Rect_f32 custom_text_layout_character_on_screen_type(App* app, Text_Layout_ID layout_id, i64 pos);
-typedef void custom_paint_text_color_type(App* app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color);
-typedef void custom_paint_text_color_blend_type(App* app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color, f32 blend);
-typedef b32 custom_text_layout_free_type(App* app, Text_Layout_ID text_layout_id);
-typedef void custom_draw_text_layout_type(App* app, Text_Layout_ID layout_id, ARGB_Color special_color, ARGB_Color ghost_color);
-typedef void custom_open_color_picker_type(App* app, Color_Picker* picker);
-typedef void custom_animate_in_n_milliseconds_type(App* app, u32 n);
-typedef String_Match_List custom_buffer_find_all_matches_type(App* app, Arena* arena, Buffer_ID buffer, i32 string_id, Range_i64 range, String needle, Character_Predicate* predicate, Scan_Direction direction, b32 case_sensitive);
-typedef Profile_Global_List* custom_get_core_profile_list_type(App* app);
-typedef i64 custom_get_current_line_number2_type(App* app, View_ID view, Buffer_ID buffer);
-typedef i64 custom_get_current_line_number_type(App* app);
-typedef b32 custom_os_window_is_active_type(App* app);
-typedef void custom_draw_rect_outline_type(App* app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth);
+#define global_set_setting__return b32
+#define global_set_setting__params App* app, Global_Setting_ID setting, i64 value
+#define global_get_screen_rectangle__return rect2
+#define global_get_screen_rectangle__params App* app
+#define create_child_process__return Child_Process_ID
+#define create_child_process__params App* app, String path, String command
+#define child_process_set_target_buffer__return b32
+#define child_process_set_target_buffer__params App* app, Child_Process_ID child_process_id, Buffer_ID buffer_id, Child_Process_Set_Target_Flags flags
+#define buffer_get_attached_child_process__return Child_Process_ID
+#define buffer_get_attached_child_process__params App* app, Buffer_ID buffer_id
+#define child_process_get_attached_buffer__return Buffer_ID
+#define child_process_get_attached_buffer__params App* app, Child_Process_ID child_process_id
+#define child_process_get_state__return Process_State
+#define child_process_get_state__params App* app, Child_Process_ID child_process_id
+#define enqueue_virtual_event__return b32
+#define enqueue_virtual_event__params App* app, Input_Event* event
+#define get_buffer_count__return i32
+#define get_buffer_count__params App* app
+#define get_buffer_next__return Buffer_ID
+#define get_buffer_next__params App* app, Buffer_ID buffer_id, Access_Flag access
+#define get_buffer_by_name__return Buffer_ID
+#define get_buffer_by_name__params App* app, String8 name, Access_Flag access
+#define get_buffer_by_filename__return Buffer_ID
+#define get_buffer_by_filename__params App* app, String filename, Access_Flag access
+#define is_buffer_limited_edit__return b32
+#define is_buffer_limited_edit__params App* app, Buffer_ID buffer_id
+#define buffer_read_range__return b32
+#define buffer_read_range__params App* app, Buffer_ID buffer_id, Range_i64 range, u8* out
+#define buffer_replace_range__return b32
+#define buffer_replace_range__params App* app, Buffer_ID buffer_id, Range_i64 range, String string
+#define buffer_batch_edit__return b32
+#define buffer_batch_edit__params App* app, Buffer_ID buffer_id, Batch_Edit* batch
+#define buffer_seek_string__return String_Match
+#define buffer_seek_string__params App* app, Buffer_ID buffer, String8 needle, Scan_Direction direction, i64 start_pos, b32 case_sensitive
+#define buffer_seek_character_class__return String_Match
+#define buffer_seek_character_class__params App* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos
+#define buffer_line_y_difference__return f32
+#define buffer_line_y_difference__params App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b
+#define buffer_line_shift_y__return Line_Shift_Vertical
+#define buffer_line_shift_y__params App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line, f32 y_shift
+#define buffer_pos_at_relative_xy__return i64
+#define buffer_pos_at_relative_xy__params App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, v2 relative_xy
+#define buffer_relative_box_of_pos__return Rect_f32
+#define buffer_relative_box_of_pos__params App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos
+#define buffer_padded_box_of_pos__return Rect_f32
+#define buffer_padded_box_of_pos__params App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos
+#define buffer_relative_character_from_pos__return i64
+#define buffer_relative_character_from_pos__params App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos
+#define buffer_pos_from_relative_character__return i64
+#define buffer_pos_from_relative_character__params App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 relative_character
+#define view_line_y_difference__return f32
+#define view_line_y_difference__params App* app, View_ID view_id, i64 line_a, i64 line_b
+#define view_line_shift_y__return Line_Shift_Vertical
+#define view_line_shift_y__params App* app, View_ID view_id, i64 line, f32 y_shift
+#define view_pos_at_relative_xy__return i64
+#define view_pos_at_relative_xy__params App* app, View_ID view_id, i64 base_line, v2 relative_xy
+#define view_relative_box_of_pos__return Rect_f32
+#define view_relative_box_of_pos__params App* app, View_ID view_id, i64 base_line, i64 pos
+#define view_padded_box_of_pos__return Rect_f32
+#define view_padded_box_of_pos__params App* app, View_ID view_id, i64 base_line, i64 pos
+#define view_relative_character_from_pos__return i64
+#define view_relative_character_from_pos__params App* app, View_ID view_id, i64 base_line, i64 pos
+#define view_pos_from_relative_character__return i64
+#define view_pos_from_relative_character__params App* app, View_ID view_id, i64 base_line, i64 character
+#define buffer_exists__return b32
+#define buffer_exists__params App* app, Buffer_ID buffer_id
+#define buffer_get_access_flags__return Access_Flag
+#define buffer_get_access_flags__params App* app, Buffer_ID buffer_id
+#define buffer_get_size__return i64
+#define buffer_get_size__params App* app, Buffer_ID buffer_id
+#define buffer_get_line_count__return i64
+#define buffer_get_line_count__params App* app, Buffer_ID buffer_id
+#define push_buffer_base_name__return String8
+#define push_buffer_base_name__params App* app, Arena* arena, Buffer_ID buffer_id
+#define push_buffer_unique_name__return String
+#define push_buffer_unique_name__params App* app, Arena* out, Buffer_ID buffer_id
+#define push_buffer_filepath__return String
+#define push_buffer_filepath__params App* app, Arena* arena, Buffer_ID buffer_id
+#define buffer_get_dirty_state__return Dirty_State
+#define buffer_get_dirty_state__params App* app, Buffer_ID buffer_id
+#define buffer_set_dirty_state__return b32
+#define buffer_set_dirty_state__params App* app, Buffer_ID buffer_id, Dirty_State dirty_state
+#define buffer_set_layout__return b32
+#define buffer_set_layout__params App* app, Buffer_ID buffer_id, Layout_Function* layout_func
+#define buffer_clear_layout_cache__return b32
+#define buffer_clear_layout_cache__params App* app, Buffer_ID buffer_id
+#define buffer_get_layout__return Layout_Function*
+#define buffer_get_layout__params App* app, Buffer_ID buffer_id
+#define buffer_get_setting__return b32
+#define buffer_get_setting__params App* app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64* value_out
+#define buffer_set_setting__return b32
+#define buffer_set_setting__params App* app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value
+#define buffer_get_managed_scope__return Managed_Scope
+#define buffer_get_managed_scope__params App* app, Buffer_ID buffer_id
+#define buffer_send_end_signal__return b32
+#define buffer_send_end_signal__params App* app, Buffer_ID buffer_id
+#define create_buffer__return Buffer_ID
+#define create_buffer__params App* app, String filename, Buffer_Create_Flag flags
+#define buffer_save__return b32
+#define buffer_save__params App* app, Buffer_ID buffer_id, String filename, Buffer_Save_Flag flags
+#define buffer_kill__return Buffer_Kill_Result
+#define buffer_kill__params App* app, Buffer_ID buffer_id, Buffer_Kill_Flag flags
+#define buffer_reopen__return Buffer_Reopen_Result
+#define buffer_reopen__params App* app, Buffer_ID buffer_id, Buffer_Reopen_Flag flags
+#define buffer_get_file_attributes__return File_Attributes
+#define buffer_get_file_attributes__params App* app, Buffer_ID buffer_id
+#define get_view_next__return View_ID
+#define get_view_next__params App* app, View_ID view_id, Access_Flag access
+#define get_view_prev__return View_ID
+#define get_view_prev__params App* app, View_ID view_id, Access_Flag access
+#define get_this_ctx_view__return View_ID
+#define get_this_ctx_view__params App* app, Access_Flag access
+#define get_active_view__return View_ID
+#define get_active_view__params App* app, Access_Flag access
+#define view_exists__return b32
+#define view_exists__params App* app, View_ID view_id
+#define view_get_buffer__return Buffer_ID
+#define view_get_buffer__params App* app, View_ID view_id, Access_Flag access
+#define view_get_cursor_pos__return i64
+#define view_get_cursor_pos__params App* app, View_ID view_id
+#define view_get_mark_pos__return i64
+#define view_get_mark_pos__params App* app, View_ID view_id
+#define view_get_preferred_x__return f32
+#define view_get_preferred_x__params App* app, View_ID view_id
+#define view_set_preferred_x__return b32
+#define view_set_preferred_x__params App* app, View_ID view_id, f32 x
+#define view_get_screen_rect__return Rect_f32
+#define view_get_screen_rect__params App* app, View_ID view_id
+#define view_get_panel__return Panel_ID
+#define view_get_panel__params App* app, View_ID view_id
+#define panel_get_view__return View_ID
+#define panel_get_view__params App* app, Panel_ID panel_id, Access_Flag access
+#define panel_is_split__return b32
+#define panel_is_split__params App* app, Panel_ID panel_id
+#define panel_is_leaf__return b32
+#define panel_is_leaf__params App* app, Panel_ID panel_id
+#define panel_split__return b32
+#define panel_split__params App* app, Panel_ID panel_id, Dimension split_dim
+#define panel_set_split__return b32
+#define panel_set_split__params App* app, Panel_ID panel_id, Panel_Split_Kind kind, f32 t
+#define panel_swap_children__return b32
+#define panel_swap_children__params App* app, Panel_ID panel_id
+#define panel_get_root__return Panel_ID
+#define panel_get_root__params App* app
+#define panel_get_parent__return Panel_ID
+#define panel_get_parent__params App* app, Panel_ID panel_id
+#define panel_get_child__return Panel_ID
+#define panel_get_child__params App* app, Panel_ID panel_id, Side which_child
+#define view_close__return b32
+#define view_close__params App* app, View_ID view_id
+#define view_get_buffer_region__return Rect_f32
+#define view_get_buffer_region__params App* app, View_ID view_id
+#define view_get_buffer_scroll__return Buffer_Scroll
+#define view_get_buffer_scroll__params App* app, View_ID view_id
+#define view_set_active__return b32
+#define view_set_active__params App* app, View_ID view_id
+#define view_enqueue_command_function__return b32
+#define view_enqueue_command_function__params App* app, View_ID view_id, Custom_Command_Function* custom_func
+#define view_get_setting__return b32
+#define view_get_setting__params App* app, View_ID view_id, View_Setting_ID setting, i64* value_out
+#define view_set_setting__return b32
+#define view_set_setting__params App* app, View_ID view_id, View_Setting_ID setting, i64 value
+#define view_get_managed_scope__return Managed_Scope
+#define view_get_managed_scope__params App* app, View_ID view_id
+#define buffer_compute_cursor__return Buffer_Cursor
+#define buffer_compute_cursor__params App* app, Buffer_ID buffer, Buffer_Seek seek
+#define view_compute_cursor__return Buffer_Cursor
+#define view_compute_cursor__params App* app, View_ID view_id, Buffer_Seek seek
+#define view_set_camera_bounds__return b32
+#define view_set_camera_bounds__params App* app, View_ID view_id, v2 margin, v2 push_in_multiplier
+#define view_get_camera_bounds__return b32
+#define view_get_camera_bounds__params App* app, View_ID view_id, v2* margin, v2* push_in_multiplier
+#define view_set_cursor__return b32
+#define view_set_cursor__params App* app, View_ID view_id, Buffer_Seek seek
+#define view_set_buffer_scroll__return b32
+#define view_set_buffer_scroll__params App* app, View_ID view_id, Buffer_Scroll scroll, Set_Buffer_Scroll_Rule rule
+#define view_set_mark__return b32
+#define view_set_mark__params App* app, View_ID view_id, Buffer_Seek seek
+#define view_quit_ui__return b32
+#define view_quit_ui__params App* app, View_ID view_id
+#define view_set_buffer__return b32
+#define view_set_buffer__params App* app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags
+#define view_push_context__return b32
+#define view_push_context__params App* app, View_ID view_id, View_Context* ctx
+#define view_pop_context__return b32
+#define view_pop_context__params App* app, View_ID view_id
+#define view_alter_context__return b32
+#define view_alter_context__params App* app, View_ID view_id, View_Context* ctx
+#define view_current_context__return View_Context
+#define view_current_context__params App* app, View_ID view_id
+#define view_current_context_hook_memory__return String
+#define view_current_context_hook_memory__params App* app, View_ID view_id, Hook_ID hook_id
+#define create_user_managed_scope__return Managed_Scope
+#define create_user_managed_scope__params App* app
+#define destroy_user_managed_scope__return b32
+#define destroy_user_managed_scope__params App* app, Managed_Scope scope
+#define get_global_managed_scope__return Managed_Scope
+#define get_global_managed_scope__params App* app
+#define get_managed_scope_with_multiple_dependencies__return Managed_Scope
+#define get_managed_scope_with_multiple_dependencies__params App* app, Managed_Scope* scopes, i32 count
+#define managed_scope_clear_contents__return b32
+#define managed_scope_clear_contents__params App* app, Managed_Scope scope
+#define managed_scope_clear_self_all_dependent_scopes__return b32
+#define managed_scope_clear_self_all_dependent_scopes__params App* app, Managed_Scope scope
+#define managed_scope_allocator__return Base_Allocator*
+#define managed_scope_allocator__params App* app, Managed_Scope scope
+#define managed_id_group_highest_id__return u64
+#define managed_id_group_highest_id__params App* app, String group
+#define managed_id_declare__return Managed_ID
+#define managed_id_declare__params App* app, String group, String name
+#define managed_id_get__return Managed_ID
+#define managed_id_get__params App* app, String group, String name
+#define managed_scope_get_attachment__return void*
+#define managed_scope_get_attachment__params App* app, Managed_Scope scope, Managed_ID id, u64 size
+#define managed_scope_attachment_erase__return b32
+#define managed_scope_attachment_erase__params App* app, Managed_Scope scope, Managed_ID id
+#define alloc_managed_memory_in_scope__return Managed_Object
+#define alloc_managed_memory_in_scope__params App* app, Managed_Scope scope, i32 item_size, i32 count
+#define alloc_buffer_markers_on_buffer__return Managed_Object
+#define alloc_buffer_markers_on_buffer__params App* app, Buffer_ID buffer_id, i32 count, Managed_Scope* optional_extra_scope
+#define managed_object_get_item_size__return u32
+#define managed_object_get_item_size__params App* app, Managed_Object object
+#define managed_object_get_item_count__return u32
+#define managed_object_get_item_count__params App* app, Managed_Object object
+#define managed_object_get_pointer__return void*
+#define managed_object_get_pointer__params App* app, Managed_Object object
+#define managed_object_get_type__return Managed_Prim_Type
+#define managed_object_get_type__params App* app, Managed_Object object
+#define managed_object_get_containing_scope__return Managed_Scope
+#define managed_object_get_containing_scope__params App* app, Managed_Object object
+#define managed_object_free__return b32
+#define managed_object_free__params App* app, Managed_Object object
+#define managed_object_store_data__return b32
+#define managed_object_store_data__params App* app, Managed_Object object, u32 first_index, u32 count, void* mem
+#define managed_object_load_data__return b32
+#define managed_object_load_data__params App* app, Managed_Object object, u32 first_index, u32 count, void* mem_out
+#define get_next_input_raw__return User_Input
+#define get_next_input_raw__params App* app
+#define get_current_input_sequence_number__return i64
+#define get_current_input_sequence_number__params App* app
+#define get_current_input__return User_Input
+#define get_current_input__params App* app
+#define set_current_input__return void
+#define set_current_input__params App* app, User_Input* input
+#define leave_current_input_unhandled__return void
+#define leave_current_input_unhandled__params App* app
+#define set_custom_hook_func__return void
+#define set_custom_hook_func__params App* app, Hook_ID hook_id, Void_Func* func_ptr
+#define get_custom_hook__return Void_Func*
+#define get_custom_hook__params App* app, Hook_ID hook_id
+#define set_custom_hook_memory_size__return b32
+#define set_custom_hook_memory_size__params App* app, Hook_ID hook_id, u64 size
+#define get_mouse_state__return Mouse_State
+#define get_mouse_state__params App* app
+#define get_active_query_bars__return b32
+#define get_active_query_bars__params App* app, View_ID view_id, i32 max_result_count, Query_Bar_Ptr_Array* array_out
+#define start_query_bar__return b32
+#define start_query_bar__params App* app, Query_Bar* bar, u32 flags
+#define end_query_bar__return void
+#define end_query_bar__params App* app, Query_Bar* bar, u32 flags
+#define clear_all_query_bars__return void
+#define clear_all_query_bars__params App* app, View_ID view_id
+#define print_message__return void
+#define print_message__params App* app, String message
+#define log_string__return b32
+#define log_string__params App* app, String str
+#define get_largest_face_id__return Face_ID
+#define get_largest_face_id__params App* app
+#define set_global_face__return b32
+#define set_global_face__params App* app, Face_ID id
+#define buffer_history_get_max_record_index__return History_Record_Index
+#define buffer_history_get_max_record_index__params App* app, Buffer_ID buffer_id
+#define buffer_history_get_record_info__return Record_Info
+#define buffer_history_get_record_info__params App* app, Buffer_ID buffer_id, History_Record_Index index
+#define buffer_history_get_group_sub_record__return Record_Info
+#define buffer_history_get_group_sub_record__params App* app, Buffer_ID buffer_id, History_Record_Index index, i32 sub_index
+#define buffer_history_get_current_state_index__return History_Record_Index
+#define buffer_history_get_current_state_index__params App* app, Buffer_ID buffer_id
+#define buffer_history_set_current_state_index__return b32
+#define buffer_history_set_current_state_index__params App* app, Buffer_ID buffer_id, History_Record_Index index
+#define buffer_history_merge_record_range__return b32
+#define buffer_history_merge_record_range__params App* app, Buffer_ID buffer_id, History_Record_Index first_index, History_Record_Index last_index, Record_Merge_Flag flags
+#define buffer_history_clear_after_current_state__return b32
+#define buffer_history_clear_after_current_state__params App* app, Buffer_ID buffer_id
+#define global_history_edit_group_begin__return void
+#define global_history_edit_group_begin__params App* app
+#define global_history_edit_group_end__return void
+#define global_history_edit_group_end__params App* app
+#define buffer_set_face__return b32
+#define buffer_set_face__params App* app, Buffer_ID buffer_id, Face_ID id
+#define get_face_description__return Face_Description
+#define get_face_description__params App* app, Face_ID face_id
+#define get_face_metrics__return Face_Metrics
+#define get_face_metrics__params App* app, Face_ID face_id
+#define get_face_advance_map__return Face_Advance_Map
+#define get_face_advance_map__params App* app, Face_ID face_id
+#define get_face_id__return Face_ID
+#define get_face_id__params App* app, Buffer_ID buffer_id
+#define try_create_new_face__return Face_ID
+#define try_create_new_face__params App* app, Face_Description* description
+#define try_modify_face__return b32
+#define try_modify_face__params App* app, Face_ID id, Face_Description* description
+#define try_release_face__return b32
+#define try_release_face__params App* app, Face_ID id, Face_ID replacement_id
+#define push_hot_directory__return String8
+#define push_hot_directory__params App* app, Arena* arena
+#define set_hot_directory__return void
+#define set_hot_directory__params App* app, String8 string
+#define send_exit_signal__return void
+#define send_exit_signal__params App* app
+#define hard_exit__return void
+#define hard_exit__params App* app
+#define set_window_title__return void
+#define set_window_title__params App* app, String8 title
+#define acquire_global_frame_mutex__return void
+#define acquire_global_frame_mutex__params App* app
+#define release_global_frame_mutex__return void
+#define release_global_frame_mutex__params App* app
+#define draw_string_oriented__return v2
+#define draw_string_oriented__params App* app, Face_ID font_id, ARGB_Color color, String8 str, v2 point, u32 flags, v2 delta
+#define get_string_advance__return f32
+#define get_string_advance__params App* app, Face_ID font_id, String str
+#define draw_set_clip__return Rect_f32
+#define draw_set_clip__params App* app, Rect_f32 new_clip
+#define text_layout_create__return Text_Layout_ID
+#define text_layout_create__params App* app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point buffer_point
+#define text_layout_region__return Rect_f32
+#define text_layout_region__params App* app, Text_Layout_ID text_layout_id
+#define text_layout_get_buffer__return Buffer_ID
+#define text_layout_get_buffer__params App* app, Text_Layout_ID text_layout_id
+#define text_layout_get_visible_range___return Range_i64
+#define text_layout_get_visible_range___params App* app, Text_Layout_ID text_layout_id
+#define text_layout_line_on_screen__return Range_f32
+#define text_layout_line_on_screen__params App* app, Text_Layout_ID layout_id, i64 line_number
+#define text_layout_character_on_screen__return Rect_f32
+#define text_layout_character_on_screen__params App* app, Text_Layout_ID layout_id, i64 pos
+#define paint_text_color__return void
+#define paint_text_color__params App* app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color
+#define paint_text_color_blend__return void
+#define paint_text_color_blend__params App* app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color color, f32 blend
+#define text_layout_free__return b32
+#define text_layout_free__params App* app, Text_Layout_ID text_layout_id
+#define draw_text_layout__return void
+#define draw_text_layout__params App* app, Text_Layout_ID layout_id, ARGB_Color special_color, ARGB_Color ghost_color
+#define open_color_picker__return void
+#define open_color_picker__params App* app, Color_Picker* picker
+#define animate_in_n_milliseconds__return void
+#define animate_in_n_milliseconds__params App* app, u32 n
+#define buffer_find_all_matches__return String_Match_List
+#define buffer_find_all_matches__params App* app, Arena* arena, Buffer_ID buffer, i32 string_id, Range_i64 range, String needle, Character_Predicate* predicate, Scan_Direction direction, b32 case_sensitive
+#define get_core_profile_list__return Profile_Global_List*
+#define get_core_profile_list__params App* app
+#define get_current_line_number2__return i64
+#define get_current_line_number2__params App* app, View_ID view, Buffer_ID buffer
+#define get_current_line_number__return i64
+#define get_current_line_number__params App* app
+#define os_window_is_active__return b32
+#define os_window_is_active__params App* app
+#define draw_rect_outline__return void
+#define draw_rect_outline__params App* app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth
+#if defined(STATIC_LINK_API) || defined(DYNAMIC_LINK_API)
 struct API_VTable_custom{
-custom_global_set_setting_type *global_set_setting;
-custom_global_get_screen_rectangle_type *global_get_screen_rectangle;
-custom_create_child_process_type *create_child_process;
-custom_child_process_set_target_buffer_type *child_process_set_target_buffer;
-custom_buffer_get_attached_child_process_type *buffer_get_attached_child_process;
-custom_child_process_get_attached_buffer_type *child_process_get_attached_buffer;
-custom_child_process_get_state_type *child_process_get_state;
-custom_enqueue_virtual_event_type *enqueue_virtual_event;
-custom_get_buffer_count_type *get_buffer_count;
-custom_get_buffer_next_type *get_buffer_next;
-custom_get_buffer_by_name_type *get_buffer_by_name;
-custom_get_buffer_by_filename_type *get_buffer_by_filename;
-custom_is_buffer_limited_edit_type *is_buffer_limited_edit;
-custom_buffer_read_range_type *buffer_read_range;
-custom_buffer_replace_range_type *buffer_replace_range;
-custom_buffer_batch_edit_type *buffer_batch_edit;
-custom_buffer_seek_string_type *buffer_seek_string;
-custom_buffer_seek_character_class_type *buffer_seek_character_class;
-custom_buffer_line_y_difference_type *buffer_line_y_difference;
-custom_buffer_line_shift_y_type *buffer_line_shift_y;
-custom_buffer_pos_at_relative_xy_type *buffer_pos_at_relative_xy;
-custom_buffer_relative_box_of_pos_type *buffer_relative_box_of_pos;
-custom_buffer_padded_box_of_pos_type *buffer_padded_box_of_pos;
-custom_buffer_relative_character_from_pos_type *buffer_relative_character_from_pos;
-custom_buffer_pos_from_relative_character_type *buffer_pos_from_relative_character;
-custom_view_line_y_difference_type *view_line_y_difference;
-custom_view_line_shift_y_type *view_line_shift_y;
-custom_view_pos_at_relative_xy_type *view_pos_at_relative_xy;
-custom_view_relative_box_of_pos_type *view_relative_box_of_pos;
-custom_view_padded_box_of_pos_type *view_padded_box_of_pos;
-custom_view_relative_character_from_pos_type *view_relative_character_from_pos;
-custom_view_pos_from_relative_character_type *view_pos_from_relative_character;
-custom_buffer_exists_type *buffer_exists;
-custom_buffer_get_access_flags_type *buffer_get_access_flags;
-custom_buffer_get_size_type *buffer_get_size;
-custom_buffer_get_line_count_type *buffer_get_line_count;
-custom_push_buffer_base_name_type *push_buffer_base_name;
-custom_push_buffer_unique_name_type *push_buffer_unique_name;
-custom_push_buffer_filepath_type *push_buffer_filepath;
-custom_buffer_get_dirty_state_type *buffer_get_dirty_state;
-custom_buffer_set_dirty_state_type *buffer_set_dirty_state;
-custom_buffer_set_layout_type *buffer_set_layout;
-custom_buffer_clear_layout_cache_type *buffer_clear_layout_cache;
-custom_buffer_get_layout_type *buffer_get_layout;
-custom_buffer_get_setting_type *buffer_get_setting;
-custom_buffer_set_setting_type *buffer_set_setting;
-custom_buffer_get_managed_scope_type *buffer_get_managed_scope;
-custom_buffer_send_end_signal_type *buffer_send_end_signal;
-custom_create_buffer_type *create_buffer;
-custom_buffer_save_type *buffer_save;
-custom_buffer_kill_type *buffer_kill;
-custom_buffer_reopen_type *buffer_reopen;
-custom_buffer_get_file_attributes_type *buffer_get_file_attributes;
-custom_get_view_next_type *get_view_next;
-custom_get_view_prev_type *get_view_prev;
-custom_get_this_ctx_view_type *get_this_ctx_view;
-custom_get_active_view_type *get_active_view;
-custom_view_exists_type *view_exists;
-custom_view_get_buffer_type *view_get_buffer;
-custom_view_get_cursor_pos_type *view_get_cursor_pos;
-custom_view_get_mark_pos_type *view_get_mark_pos;
-custom_view_get_preferred_x_type *view_get_preferred_x;
-custom_view_set_preferred_x_type *view_set_preferred_x;
-custom_view_get_screen_rect_type *view_get_screen_rect;
-custom_view_get_panel_type *view_get_panel;
-custom_panel_get_view_type *panel_get_view;
-custom_panel_is_split_type *panel_is_split;
-custom_panel_is_leaf_type *panel_is_leaf;
-custom_panel_split_type *panel_split;
-custom_panel_set_split_type *panel_set_split;
-custom_panel_swap_children_type *panel_swap_children;
-custom_panel_get_root_type *panel_get_root;
-custom_panel_get_parent_type *panel_get_parent;
-custom_panel_get_child_type *panel_get_child;
-custom_view_close_type *view_close;
-custom_view_get_buffer_region_type *view_get_buffer_region;
-custom_view_get_buffer_scroll_type *view_get_buffer_scroll;
-custom_view_set_active_type *view_set_active;
-custom_view_enqueue_command_function_type *view_enqueue_command_function;
-custom_view_get_setting_type *view_get_setting;
-custom_view_set_setting_type *view_set_setting;
-custom_view_get_managed_scope_type *view_get_managed_scope;
-custom_buffer_compute_cursor_type *buffer_compute_cursor;
-custom_view_compute_cursor_type *view_compute_cursor;
-custom_view_set_camera_bounds_type *view_set_camera_bounds;
-custom_view_get_camera_bounds_type *view_get_camera_bounds;
-custom_view_set_cursor_type *view_set_cursor;
-custom_view_set_buffer_scroll_type *view_set_buffer_scroll;
-custom_view_set_mark_type *view_set_mark;
-custom_view_quit_ui_type *view_quit_ui;
-custom_view_set_buffer_type *view_set_buffer;
-custom_view_push_context_type *view_push_context;
-custom_view_pop_context_type *view_pop_context;
-custom_view_alter_context_type *view_alter_context;
-custom_view_current_context_type *view_current_context;
-custom_view_current_context_hook_memory_type *view_current_context_hook_memory;
-custom_create_user_managed_scope_type *create_user_managed_scope;
-custom_destroy_user_managed_scope_type *destroy_user_managed_scope;
-custom_get_global_managed_scope_type *get_global_managed_scope;
-custom_get_managed_scope_with_multiple_dependencies_type *get_managed_scope_with_multiple_dependencies;
-custom_managed_scope_clear_contents_type *managed_scope_clear_contents;
-custom_managed_scope_clear_self_all_dependent_scopes_type *managed_scope_clear_self_all_dependent_scopes;
-custom_managed_scope_allocator_type *managed_scope_allocator;
-custom_managed_id_group_highest_id_type *managed_id_group_highest_id;
-custom_managed_id_declare_type *managed_id_declare;
-custom_managed_id_get_type *managed_id_get;
-custom_managed_scope_get_attachment_type *managed_scope_get_attachment;
-custom_managed_scope_attachment_erase_type *managed_scope_attachment_erase;
-custom_alloc_managed_memory_in_scope_type *alloc_managed_memory_in_scope;
-custom_alloc_buffer_markers_on_buffer_type *alloc_buffer_markers_on_buffer;
-custom_managed_object_get_item_size_type *managed_object_get_item_size;
-custom_managed_object_get_item_count_type *managed_object_get_item_count;
-custom_managed_object_get_pointer_type *managed_object_get_pointer;
-custom_managed_object_get_type_type *managed_object_get_type;
-custom_managed_object_get_containing_scope_type *managed_object_get_containing_scope;
-custom_managed_object_free_type *managed_object_free;
-custom_managed_object_store_data_type *managed_object_store_data;
-custom_managed_object_load_data_type *managed_object_load_data;
-custom_get_next_input_raw_type *get_next_input_raw;
-custom_get_current_input_sequence_number_type *get_current_input_sequence_number;
-custom_get_current_input_type *get_current_input;
-custom_set_current_input_type *set_current_input;
-custom_leave_current_input_unhandled_type *leave_current_input_unhandled;
-custom_set_custom_hook_func_type *set_custom_hook_func;
-custom_get_custom_hook_type *get_custom_hook;
-custom_set_custom_hook_memory_size_type *set_custom_hook_memory_size;
-custom_get_mouse_state_type *get_mouse_state;
-custom_get_active_query_bars_type *get_active_query_bars;
-custom_start_query_bar_type *start_query_bar;
-custom_end_query_bar_type *end_query_bar;
-custom_clear_all_query_bars_type *clear_all_query_bars;
-custom_print_message_type *print_message;
-custom_log_string_type *log_string;
-custom_get_largest_face_id_type *get_largest_face_id;
-custom_set_global_face_type *set_global_face;
-custom_buffer_history_get_max_record_index_type *buffer_history_get_max_record_index;
-custom_buffer_history_get_record_info_type *buffer_history_get_record_info;
-custom_buffer_history_get_group_sub_record_type *buffer_history_get_group_sub_record;
-custom_buffer_history_get_current_state_index_type *buffer_history_get_current_state_index;
-custom_buffer_history_set_current_state_index_type *buffer_history_set_current_state_index;
-custom_buffer_history_merge_record_range_type *buffer_history_merge_record_range;
-custom_buffer_history_clear_after_current_state_type *buffer_history_clear_after_current_state;
-custom_global_history_edit_group_begin_type *global_history_edit_group_begin;
-custom_global_history_edit_group_end_type *global_history_edit_group_end;
-custom_buffer_set_face_type *buffer_set_face;
-custom_get_face_description_type *get_face_description;
-custom_get_face_metrics_type *get_face_metrics;
-custom_get_face_advance_map_type *get_face_advance_map;
-custom_get_face_id_type *get_face_id;
-custom_try_create_new_face_type *try_create_new_face;
-custom_try_modify_face_type *try_modify_face;
-custom_try_release_face_type *try_release_face;
-custom_push_hot_directory_type *push_hot_directory;
-custom_set_hot_directory_type *set_hot_directory;
-custom_send_exit_signal_type *send_exit_signal;
-custom_hard_exit_type *hard_exit;
-custom_set_window_title_type *set_window_title;
-custom_acquire_global_frame_mutex_type *acquire_global_frame_mutex;
-custom_release_global_frame_mutex_type *release_global_frame_mutex;
-custom_draw_string_oriented_type *draw_string_oriented;
-custom_get_string_advance_type *get_string_advance;
-custom_draw_set_clip_type *draw_set_clip;
-custom_text_layout_create_type *text_layout_create;
-custom_text_layout_region_type *text_layout_region;
-custom_text_layout_get_buffer_type *text_layout_get_buffer;
-custom_text_layout_get_visible_range__type *text_layout_get_visible_range_;
-custom_text_layout_line_on_screen_type *text_layout_line_on_screen;
-custom_text_layout_character_on_screen_type *text_layout_character_on_screen;
-custom_paint_text_color_type *paint_text_color;
-custom_paint_text_color_blend_type *paint_text_color_blend;
-custom_text_layout_free_type *text_layout_free;
-custom_draw_text_layout_type *draw_text_layout;
-custom_open_color_picker_type *open_color_picker;
-custom_animate_in_n_milliseconds_type *animate_in_n_milliseconds;
-custom_buffer_find_all_matches_type *buffer_find_all_matches;
-custom_get_core_profile_list_type *get_core_profile_list;
-custom_get_current_line_number2_type *get_current_line_number2;
-custom_get_current_line_number_type *get_current_line_number;
-custom_os_window_is_active_type *os_window_is_active;
-custom_draw_rect_outline_type *draw_rect_outline;
+wrap_function_pointer(global_set_setting);
+wrap_function_pointer(global_get_screen_rectangle);
+wrap_function_pointer(create_child_process);
+wrap_function_pointer(child_process_set_target_buffer);
+wrap_function_pointer(buffer_get_attached_child_process);
+wrap_function_pointer(child_process_get_attached_buffer);
+wrap_function_pointer(child_process_get_state);
+wrap_function_pointer(enqueue_virtual_event);
+wrap_function_pointer(get_buffer_count);
+wrap_function_pointer(get_buffer_next);
+wrap_function_pointer(get_buffer_by_name);
+wrap_function_pointer(get_buffer_by_filename);
+wrap_function_pointer(is_buffer_limited_edit);
+wrap_function_pointer(buffer_read_range);
+wrap_function_pointer(buffer_replace_range);
+wrap_function_pointer(buffer_batch_edit);
+wrap_function_pointer(buffer_seek_string);
+wrap_function_pointer(buffer_seek_character_class);
+wrap_function_pointer(buffer_line_y_difference);
+wrap_function_pointer(buffer_line_shift_y);
+wrap_function_pointer(buffer_pos_at_relative_xy);
+wrap_function_pointer(buffer_relative_box_of_pos);
+wrap_function_pointer(buffer_padded_box_of_pos);
+wrap_function_pointer(buffer_relative_character_from_pos);
+wrap_function_pointer(buffer_pos_from_relative_character);
+wrap_function_pointer(view_line_y_difference);
+wrap_function_pointer(view_line_shift_y);
+wrap_function_pointer(view_pos_at_relative_xy);
+wrap_function_pointer(view_relative_box_of_pos);
+wrap_function_pointer(view_padded_box_of_pos);
+wrap_function_pointer(view_relative_character_from_pos);
+wrap_function_pointer(view_pos_from_relative_character);
+wrap_function_pointer(buffer_exists);
+wrap_function_pointer(buffer_get_access_flags);
+wrap_function_pointer(buffer_get_size);
+wrap_function_pointer(buffer_get_line_count);
+wrap_function_pointer(push_buffer_base_name);
+wrap_function_pointer(push_buffer_unique_name);
+wrap_function_pointer(push_buffer_filepath);
+wrap_function_pointer(buffer_get_dirty_state);
+wrap_function_pointer(buffer_set_dirty_state);
+wrap_function_pointer(buffer_set_layout);
+wrap_function_pointer(buffer_clear_layout_cache);
+wrap_function_pointer(buffer_get_layout);
+wrap_function_pointer(buffer_get_setting);
+wrap_function_pointer(buffer_set_setting);
+wrap_function_pointer(buffer_get_managed_scope);
+wrap_function_pointer(buffer_send_end_signal);
+wrap_function_pointer(create_buffer);
+wrap_function_pointer(buffer_save);
+wrap_function_pointer(buffer_kill);
+wrap_function_pointer(buffer_reopen);
+wrap_function_pointer(buffer_get_file_attributes);
+wrap_function_pointer(get_view_next);
+wrap_function_pointer(get_view_prev);
+wrap_function_pointer(get_this_ctx_view);
+wrap_function_pointer(get_active_view);
+wrap_function_pointer(view_exists);
+wrap_function_pointer(view_get_buffer);
+wrap_function_pointer(view_get_cursor_pos);
+wrap_function_pointer(view_get_mark_pos);
+wrap_function_pointer(view_get_preferred_x);
+wrap_function_pointer(view_set_preferred_x);
+wrap_function_pointer(view_get_screen_rect);
+wrap_function_pointer(view_get_panel);
+wrap_function_pointer(panel_get_view);
+wrap_function_pointer(panel_is_split);
+wrap_function_pointer(panel_is_leaf);
+wrap_function_pointer(panel_split);
+wrap_function_pointer(panel_set_split);
+wrap_function_pointer(panel_swap_children);
+wrap_function_pointer(panel_get_root);
+wrap_function_pointer(panel_get_parent);
+wrap_function_pointer(panel_get_child);
+wrap_function_pointer(view_close);
+wrap_function_pointer(view_get_buffer_region);
+wrap_function_pointer(view_get_buffer_scroll);
+wrap_function_pointer(view_set_active);
+wrap_function_pointer(view_enqueue_command_function);
+wrap_function_pointer(view_get_setting);
+wrap_function_pointer(view_set_setting);
+wrap_function_pointer(view_get_managed_scope);
+wrap_function_pointer(buffer_compute_cursor);
+wrap_function_pointer(view_compute_cursor);
+wrap_function_pointer(view_set_camera_bounds);
+wrap_function_pointer(view_get_camera_bounds);
+wrap_function_pointer(view_set_cursor);
+wrap_function_pointer(view_set_buffer_scroll);
+wrap_function_pointer(view_set_mark);
+wrap_function_pointer(view_quit_ui);
+wrap_function_pointer(view_set_buffer);
+wrap_function_pointer(view_push_context);
+wrap_function_pointer(view_pop_context);
+wrap_function_pointer(view_alter_context);
+wrap_function_pointer(view_current_context);
+wrap_function_pointer(view_current_context_hook_memory);
+wrap_function_pointer(create_user_managed_scope);
+wrap_function_pointer(destroy_user_managed_scope);
+wrap_function_pointer(get_global_managed_scope);
+wrap_function_pointer(get_managed_scope_with_multiple_dependencies);
+wrap_function_pointer(managed_scope_clear_contents);
+wrap_function_pointer(managed_scope_clear_self_all_dependent_scopes);
+wrap_function_pointer(managed_scope_allocator);
+wrap_function_pointer(managed_id_group_highest_id);
+wrap_function_pointer(managed_id_declare);
+wrap_function_pointer(managed_id_get);
+wrap_function_pointer(managed_scope_get_attachment);
+wrap_function_pointer(managed_scope_attachment_erase);
+wrap_function_pointer(alloc_managed_memory_in_scope);
+wrap_function_pointer(alloc_buffer_markers_on_buffer);
+wrap_function_pointer(managed_object_get_item_size);
+wrap_function_pointer(managed_object_get_item_count);
+wrap_function_pointer(managed_object_get_pointer);
+wrap_function_pointer(managed_object_get_type);
+wrap_function_pointer(managed_object_get_containing_scope);
+wrap_function_pointer(managed_object_free);
+wrap_function_pointer(managed_object_store_data);
+wrap_function_pointer(managed_object_load_data);
+wrap_function_pointer(get_next_input_raw);
+wrap_function_pointer(get_current_input_sequence_number);
+wrap_function_pointer(get_current_input);
+wrap_function_pointer(set_current_input);
+wrap_function_pointer(leave_current_input_unhandled);
+wrap_function_pointer(set_custom_hook_func);
+wrap_function_pointer(get_custom_hook);
+wrap_function_pointer(set_custom_hook_memory_size);
+wrap_function_pointer(get_mouse_state);
+wrap_function_pointer(get_active_query_bars);
+wrap_function_pointer(start_query_bar);
+wrap_function_pointer(end_query_bar);
+wrap_function_pointer(clear_all_query_bars);
+wrap_function_pointer(print_message);
+wrap_function_pointer(log_string);
+wrap_function_pointer(get_largest_face_id);
+wrap_function_pointer(set_global_face);
+wrap_function_pointer(buffer_history_get_max_record_index);
+wrap_function_pointer(buffer_history_get_record_info);
+wrap_function_pointer(buffer_history_get_group_sub_record);
+wrap_function_pointer(buffer_history_get_current_state_index);
+wrap_function_pointer(buffer_history_set_current_state_index);
+wrap_function_pointer(buffer_history_merge_record_range);
+wrap_function_pointer(buffer_history_clear_after_current_state);
+wrap_function_pointer(global_history_edit_group_begin);
+wrap_function_pointer(global_history_edit_group_end);
+wrap_function_pointer(buffer_set_face);
+wrap_function_pointer(get_face_description);
+wrap_function_pointer(get_face_metrics);
+wrap_function_pointer(get_face_advance_map);
+wrap_function_pointer(get_face_id);
+wrap_function_pointer(try_create_new_face);
+wrap_function_pointer(try_modify_face);
+wrap_function_pointer(try_release_face);
+wrap_function_pointer(push_hot_directory);
+wrap_function_pointer(set_hot_directory);
+wrap_function_pointer(send_exit_signal);
+wrap_function_pointer(hard_exit);
+wrap_function_pointer(set_window_title);
+wrap_function_pointer(acquire_global_frame_mutex);
+wrap_function_pointer(release_global_frame_mutex);
+wrap_function_pointer(draw_string_oriented);
+wrap_function_pointer(get_string_advance);
+wrap_function_pointer(draw_set_clip);
+wrap_function_pointer(text_layout_create);
+wrap_function_pointer(text_layout_region);
+wrap_function_pointer(text_layout_get_buffer);
+wrap_function_pointer(text_layout_get_visible_range_);
+wrap_function_pointer(text_layout_line_on_screen);
+wrap_function_pointer(text_layout_character_on_screen);
+wrap_function_pointer(paint_text_color);
+wrap_function_pointer(paint_text_color_blend);
+wrap_function_pointer(text_layout_free);
+wrap_function_pointer(draw_text_layout);
+wrap_function_pointer(open_color_picker);
+wrap_function_pointer(animate_in_n_milliseconds);
+wrap_function_pointer(buffer_find_all_matches);
+wrap_function_pointer(get_core_profile_list);
+wrap_function_pointer(get_current_line_number2);
+wrap_function_pointer(get_current_line_number);
+wrap_function_pointer(os_window_is_active);
+wrap_function_pointer(draw_rect_outline);
 };
+#endif
 #if defined(STATIC_LINK_API)
 function b32 global_set_setting(App* app, Global_Setting_ID setting, i64 value);
 function rect2 global_get_screen_rectangle(App* app);
@@ -564,14 +746,14 @@ function String_Match buffer_seek_string(App* app, Buffer_ID buffer, String8 nee
 function String_Match buffer_seek_character_class(App* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos);
 function f32 buffer_line_y_difference(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b);
 function Line_Shift_Vertical buffer_line_shift_y(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line, f32 y_shift);
-function i64 buffer_pos_at_relative_xy(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, Vec2_f32 relative_xy);
+function i64 buffer_pos_at_relative_xy(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, v2 relative_xy);
 function Rect_f32 buffer_relative_box_of_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
 function Rect_f32 buffer_padded_box_of_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
 function i64 buffer_relative_character_from_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
 function i64 buffer_pos_from_relative_character(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 relative_character);
 function f32 view_line_y_difference(App* app, View_ID view_id, i64 line_a, i64 line_b);
 function Line_Shift_Vertical view_line_shift_y(App* app, View_ID view_id, i64 line, f32 y_shift);
-function i64 view_pos_at_relative_xy(App* app, View_ID view_id, i64 base_line, Vec2_f32 relative_xy);
+function i64 view_pos_at_relative_xy(App* app, View_ID view_id, i64 base_line, v2 relative_xy);
 function Rect_f32 view_relative_box_of_pos(App* app, View_ID view_id, i64 base_line, i64 pos);
 function Rect_f32 view_padded_box_of_pos(App* app, View_ID view_id, i64 base_line, i64 pos);
 function i64 view_relative_character_from_pos(App* app, View_ID view_id, i64 base_line, i64 pos);
@@ -628,8 +810,8 @@ function b32 view_set_setting(App* app, View_ID view_id, View_Setting_ID setting
 function Managed_Scope view_get_managed_scope(App* app, View_ID view_id);
 function Buffer_Cursor buffer_compute_cursor(App* app, Buffer_ID buffer, Buffer_Seek seek);
 function Buffer_Cursor view_compute_cursor(App* app, View_ID view_id, Buffer_Seek seek);
-function b32 view_set_camera_bounds(App* app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push_in_multiplier);
-function b32 view_get_camera_bounds(App* app, View_ID view_id, Vec2_f32* margin, Vec2_f32* push_in_multiplier);
+function b32 view_set_camera_bounds(App* app, View_ID view_id, v2 margin, v2 push_in_multiplier);
+function b32 view_get_camera_bounds(App* app, View_ID view_id, v2* margin, v2* push_in_multiplier);
 function b32 view_set_cursor(App* app, View_ID view_id, Buffer_Seek seek);
 function b32 view_set_buffer_scroll(App* app, View_ID view_id, Buffer_Scroll scroll, Set_Buffer_Scroll_Rule rule);
 function b32 view_set_mark(App* app, View_ID view_id, Buffer_Seek seek);
@@ -729,186 +911,186 @@ function void draw_rect_outline(App* app, rect2 rect, v1 roundness, v1 thickness
 #ifndef STORAGE_CLASS
 #define STORAGE_CLASS global
 #endif
-STORAGE_CLASS custom_global_set_setting_type *global_set_setting;
-STORAGE_CLASS custom_global_get_screen_rectangle_type *global_get_screen_rectangle;
-STORAGE_CLASS custom_create_child_process_type *create_child_process;
-STORAGE_CLASS custom_child_process_set_target_buffer_type *child_process_set_target_buffer;
-STORAGE_CLASS custom_buffer_get_attached_child_process_type *buffer_get_attached_child_process;
-STORAGE_CLASS custom_child_process_get_attached_buffer_type *child_process_get_attached_buffer;
-STORAGE_CLASS custom_child_process_get_state_type *child_process_get_state;
-STORAGE_CLASS custom_enqueue_virtual_event_type *enqueue_virtual_event;
-STORAGE_CLASS custom_get_buffer_count_type *get_buffer_count;
-STORAGE_CLASS custom_get_buffer_next_type *get_buffer_next;
-STORAGE_CLASS custom_get_buffer_by_name_type *get_buffer_by_name;
-STORAGE_CLASS custom_get_buffer_by_filename_type *get_buffer_by_filename;
-STORAGE_CLASS custom_is_buffer_limited_edit_type *is_buffer_limited_edit;
-STORAGE_CLASS custom_buffer_read_range_type *buffer_read_range;
-STORAGE_CLASS custom_buffer_replace_range_type *buffer_replace_range;
-STORAGE_CLASS custom_buffer_batch_edit_type *buffer_batch_edit;
-STORAGE_CLASS custom_buffer_seek_string_type *buffer_seek_string;
-STORAGE_CLASS custom_buffer_seek_character_class_type *buffer_seek_character_class;
-STORAGE_CLASS custom_buffer_line_y_difference_type *buffer_line_y_difference;
-STORAGE_CLASS custom_buffer_line_shift_y_type *buffer_line_shift_y;
-STORAGE_CLASS custom_buffer_pos_at_relative_xy_type *buffer_pos_at_relative_xy;
-STORAGE_CLASS custom_buffer_relative_box_of_pos_type *buffer_relative_box_of_pos;
-STORAGE_CLASS custom_buffer_padded_box_of_pos_type *buffer_padded_box_of_pos;
-STORAGE_CLASS custom_buffer_relative_character_from_pos_type *buffer_relative_character_from_pos;
-STORAGE_CLASS custom_buffer_pos_from_relative_character_type *buffer_pos_from_relative_character;
-STORAGE_CLASS custom_view_line_y_difference_type *view_line_y_difference;
-STORAGE_CLASS custom_view_line_shift_y_type *view_line_shift_y;
-STORAGE_CLASS custom_view_pos_at_relative_xy_type *view_pos_at_relative_xy;
-STORAGE_CLASS custom_view_relative_box_of_pos_type *view_relative_box_of_pos;
-STORAGE_CLASS custom_view_padded_box_of_pos_type *view_padded_box_of_pos;
-STORAGE_CLASS custom_view_relative_character_from_pos_type *view_relative_character_from_pos;
-STORAGE_CLASS custom_view_pos_from_relative_character_type *view_pos_from_relative_character;
-STORAGE_CLASS custom_buffer_exists_type *buffer_exists;
-STORAGE_CLASS custom_buffer_get_access_flags_type *buffer_get_access_flags;
-STORAGE_CLASS custom_buffer_get_size_type *buffer_get_size;
-STORAGE_CLASS custom_buffer_get_line_count_type *buffer_get_line_count;
-STORAGE_CLASS custom_push_buffer_base_name_type *push_buffer_base_name;
-STORAGE_CLASS custom_push_buffer_unique_name_type *push_buffer_unique_name;
-STORAGE_CLASS custom_push_buffer_filepath_type *push_buffer_filepath;
-STORAGE_CLASS custom_buffer_get_dirty_state_type *buffer_get_dirty_state;
-STORAGE_CLASS custom_buffer_set_dirty_state_type *buffer_set_dirty_state;
-STORAGE_CLASS custom_buffer_set_layout_type *buffer_set_layout;
-STORAGE_CLASS custom_buffer_clear_layout_cache_type *buffer_clear_layout_cache;
-STORAGE_CLASS custom_buffer_get_layout_type *buffer_get_layout;
-STORAGE_CLASS custom_buffer_get_setting_type *buffer_get_setting;
-STORAGE_CLASS custom_buffer_set_setting_type *buffer_set_setting;
-STORAGE_CLASS custom_buffer_get_managed_scope_type *buffer_get_managed_scope;
-STORAGE_CLASS custom_buffer_send_end_signal_type *buffer_send_end_signal;
-STORAGE_CLASS custom_create_buffer_type *create_buffer;
-STORAGE_CLASS custom_buffer_save_type *buffer_save;
-STORAGE_CLASS custom_buffer_kill_type *buffer_kill;
-STORAGE_CLASS custom_buffer_reopen_type *buffer_reopen;
-STORAGE_CLASS custom_buffer_get_file_attributes_type *buffer_get_file_attributes;
-STORAGE_CLASS custom_get_view_next_type *get_view_next;
-STORAGE_CLASS custom_get_view_prev_type *get_view_prev;
-STORAGE_CLASS custom_get_this_ctx_view_type *get_this_ctx_view;
-STORAGE_CLASS custom_get_active_view_type *get_active_view;
-STORAGE_CLASS custom_view_exists_type *view_exists;
-STORAGE_CLASS custom_view_get_buffer_type *view_get_buffer;
-STORAGE_CLASS custom_view_get_cursor_pos_type *view_get_cursor_pos;
-STORAGE_CLASS custom_view_get_mark_pos_type *view_get_mark_pos;
-STORAGE_CLASS custom_view_get_preferred_x_type *view_get_preferred_x;
-STORAGE_CLASS custom_view_set_preferred_x_type *view_set_preferred_x;
-STORAGE_CLASS custom_view_get_screen_rect_type *view_get_screen_rect;
-STORAGE_CLASS custom_view_get_panel_type *view_get_panel;
-STORAGE_CLASS custom_panel_get_view_type *panel_get_view;
-STORAGE_CLASS custom_panel_is_split_type *panel_is_split;
-STORAGE_CLASS custom_panel_is_leaf_type *panel_is_leaf;
-STORAGE_CLASS custom_panel_split_type *panel_split;
-STORAGE_CLASS custom_panel_set_split_type *panel_set_split;
-STORAGE_CLASS custom_panel_swap_children_type *panel_swap_children;
-STORAGE_CLASS custom_panel_get_root_type *panel_get_root;
-STORAGE_CLASS custom_panel_get_parent_type *panel_get_parent;
-STORAGE_CLASS custom_panel_get_child_type *panel_get_child;
-STORAGE_CLASS custom_view_close_type *view_close;
-STORAGE_CLASS custom_view_get_buffer_region_type *view_get_buffer_region;
-STORAGE_CLASS custom_view_get_buffer_scroll_type *view_get_buffer_scroll;
-STORAGE_CLASS custom_view_set_active_type *view_set_active;
-STORAGE_CLASS custom_view_enqueue_command_function_type *view_enqueue_command_function;
-STORAGE_CLASS custom_view_get_setting_type *view_get_setting;
-STORAGE_CLASS custom_view_set_setting_type *view_set_setting;
-STORAGE_CLASS custom_view_get_managed_scope_type *view_get_managed_scope;
-STORAGE_CLASS custom_buffer_compute_cursor_type *buffer_compute_cursor;
-STORAGE_CLASS custom_view_compute_cursor_type *view_compute_cursor;
-STORAGE_CLASS custom_view_set_camera_bounds_type *view_set_camera_bounds;
-STORAGE_CLASS custom_view_get_camera_bounds_type *view_get_camera_bounds;
-STORAGE_CLASS custom_view_set_cursor_type *view_set_cursor;
-STORAGE_CLASS custom_view_set_buffer_scroll_type *view_set_buffer_scroll;
-STORAGE_CLASS custom_view_set_mark_type *view_set_mark;
-STORAGE_CLASS custom_view_quit_ui_type *view_quit_ui;
-STORAGE_CLASS custom_view_set_buffer_type *view_set_buffer;
-STORAGE_CLASS custom_view_push_context_type *view_push_context;
-STORAGE_CLASS custom_view_pop_context_type *view_pop_context;
-STORAGE_CLASS custom_view_alter_context_type *view_alter_context;
-STORAGE_CLASS custom_view_current_context_type *view_current_context;
-STORAGE_CLASS custom_view_current_context_hook_memory_type *view_current_context_hook_memory;
-STORAGE_CLASS custom_create_user_managed_scope_type *create_user_managed_scope;
-STORAGE_CLASS custom_destroy_user_managed_scope_type *destroy_user_managed_scope;
-STORAGE_CLASS custom_get_global_managed_scope_type *get_global_managed_scope;
-STORAGE_CLASS custom_get_managed_scope_with_multiple_dependencies_type *get_managed_scope_with_multiple_dependencies;
-STORAGE_CLASS custom_managed_scope_clear_contents_type *managed_scope_clear_contents;
-STORAGE_CLASS custom_managed_scope_clear_self_all_dependent_scopes_type *managed_scope_clear_self_all_dependent_scopes;
-STORAGE_CLASS custom_managed_scope_allocator_type *managed_scope_allocator;
-STORAGE_CLASS custom_managed_id_group_highest_id_type *managed_id_group_highest_id;
-STORAGE_CLASS custom_managed_id_declare_type *managed_id_declare;
-STORAGE_CLASS custom_managed_id_get_type *managed_id_get;
-STORAGE_CLASS custom_managed_scope_get_attachment_type *managed_scope_get_attachment;
-STORAGE_CLASS custom_managed_scope_attachment_erase_type *managed_scope_attachment_erase;
-STORAGE_CLASS custom_alloc_managed_memory_in_scope_type *alloc_managed_memory_in_scope;
-STORAGE_CLASS custom_alloc_buffer_markers_on_buffer_type *alloc_buffer_markers_on_buffer;
-STORAGE_CLASS custom_managed_object_get_item_size_type *managed_object_get_item_size;
-STORAGE_CLASS custom_managed_object_get_item_count_type *managed_object_get_item_count;
-STORAGE_CLASS custom_managed_object_get_pointer_type *managed_object_get_pointer;
-STORAGE_CLASS custom_managed_object_get_type_type *managed_object_get_type;
-STORAGE_CLASS custom_managed_object_get_containing_scope_type *managed_object_get_containing_scope;
-STORAGE_CLASS custom_managed_object_free_type *managed_object_free;
-STORAGE_CLASS custom_managed_object_store_data_type *managed_object_store_data;
-STORAGE_CLASS custom_managed_object_load_data_type *managed_object_load_data;
-STORAGE_CLASS custom_get_next_input_raw_type *get_next_input_raw;
-STORAGE_CLASS custom_get_current_input_sequence_number_type *get_current_input_sequence_number;
-STORAGE_CLASS custom_get_current_input_type *get_current_input;
-STORAGE_CLASS custom_set_current_input_type *set_current_input;
-STORAGE_CLASS custom_leave_current_input_unhandled_type *leave_current_input_unhandled;
-STORAGE_CLASS custom_set_custom_hook_func_type *set_custom_hook_func;
-STORAGE_CLASS custom_get_custom_hook_type *get_custom_hook;
-STORAGE_CLASS custom_set_custom_hook_memory_size_type *set_custom_hook_memory_size;
-STORAGE_CLASS custom_get_mouse_state_type *get_mouse_state;
-STORAGE_CLASS custom_get_active_query_bars_type *get_active_query_bars;
-STORAGE_CLASS custom_start_query_bar_type *start_query_bar;
-STORAGE_CLASS custom_end_query_bar_type *end_query_bar;
-STORAGE_CLASS custom_clear_all_query_bars_type *clear_all_query_bars;
-STORAGE_CLASS custom_print_message_type *print_message;
-STORAGE_CLASS custom_log_string_type *log_string;
-STORAGE_CLASS custom_get_largest_face_id_type *get_largest_face_id;
-STORAGE_CLASS custom_set_global_face_type *set_global_face;
-STORAGE_CLASS custom_buffer_history_get_max_record_index_type *buffer_history_get_max_record_index;
-STORAGE_CLASS custom_buffer_history_get_record_info_type *buffer_history_get_record_info;
-STORAGE_CLASS custom_buffer_history_get_group_sub_record_type *buffer_history_get_group_sub_record;
-STORAGE_CLASS custom_buffer_history_get_current_state_index_type *buffer_history_get_current_state_index;
-STORAGE_CLASS custom_buffer_history_set_current_state_index_type *buffer_history_set_current_state_index;
-STORAGE_CLASS custom_buffer_history_merge_record_range_type *buffer_history_merge_record_range;
-STORAGE_CLASS custom_buffer_history_clear_after_current_state_type *buffer_history_clear_after_current_state;
-STORAGE_CLASS custom_global_history_edit_group_begin_type *global_history_edit_group_begin;
-STORAGE_CLASS custom_global_history_edit_group_end_type *global_history_edit_group_end;
-STORAGE_CLASS custom_buffer_set_face_type *buffer_set_face;
-STORAGE_CLASS custom_get_face_description_type *get_face_description;
-STORAGE_CLASS custom_get_face_metrics_type *get_face_metrics;
-STORAGE_CLASS custom_get_face_advance_map_type *get_face_advance_map;
-STORAGE_CLASS custom_get_face_id_type *get_face_id;
-STORAGE_CLASS custom_try_create_new_face_type *try_create_new_face;
-STORAGE_CLASS custom_try_modify_face_type *try_modify_face;
-STORAGE_CLASS custom_try_release_face_type *try_release_face;
-STORAGE_CLASS custom_push_hot_directory_type *push_hot_directory;
-STORAGE_CLASS custom_set_hot_directory_type *set_hot_directory;
-STORAGE_CLASS custom_send_exit_signal_type *send_exit_signal;
-STORAGE_CLASS custom_hard_exit_type *hard_exit;
-STORAGE_CLASS custom_set_window_title_type *set_window_title;
-STORAGE_CLASS custom_acquire_global_frame_mutex_type *acquire_global_frame_mutex;
-STORAGE_CLASS custom_release_global_frame_mutex_type *release_global_frame_mutex;
-STORAGE_CLASS custom_draw_string_oriented_type *draw_string_oriented;
-STORAGE_CLASS custom_get_string_advance_type *get_string_advance;
-STORAGE_CLASS custom_draw_set_clip_type *draw_set_clip;
-STORAGE_CLASS custom_text_layout_create_type *text_layout_create;
-STORAGE_CLASS custom_text_layout_region_type *text_layout_region;
-STORAGE_CLASS custom_text_layout_get_buffer_type *text_layout_get_buffer;
-STORAGE_CLASS custom_text_layout_get_visible_range__type *text_layout_get_visible_range_;
-STORAGE_CLASS custom_text_layout_line_on_screen_type *text_layout_line_on_screen;
-STORAGE_CLASS custom_text_layout_character_on_screen_type *text_layout_character_on_screen;
-STORAGE_CLASS custom_paint_text_color_type *paint_text_color;
-STORAGE_CLASS custom_paint_text_color_blend_type *paint_text_color_blend;
-STORAGE_CLASS custom_text_layout_free_type *text_layout_free;
-STORAGE_CLASS custom_draw_text_layout_type *draw_text_layout;
-STORAGE_CLASS custom_open_color_picker_type *open_color_picker;
-STORAGE_CLASS custom_animate_in_n_milliseconds_type *animate_in_n_milliseconds;
-STORAGE_CLASS custom_buffer_find_all_matches_type *buffer_find_all_matches;
-STORAGE_CLASS custom_get_core_profile_list_type *get_core_profile_list;
-STORAGE_CLASS custom_get_current_line_number2_type *get_current_line_number2;
-STORAGE_CLASS custom_get_current_line_number_type *get_current_line_number;
-STORAGE_CLASS custom_os_window_is_active_type *os_window_is_active;
-STORAGE_CLASS custom_draw_rect_outline_type *draw_rect_outline;
+STORAGE_CLASS wrap_function_pointer(global_set_setting);
+STORAGE_CLASS wrap_function_pointer(global_get_screen_rectangle);
+STORAGE_CLASS wrap_function_pointer(create_child_process);
+STORAGE_CLASS wrap_function_pointer(child_process_set_target_buffer);
+STORAGE_CLASS wrap_function_pointer(buffer_get_attached_child_process);
+STORAGE_CLASS wrap_function_pointer(child_process_get_attached_buffer);
+STORAGE_CLASS wrap_function_pointer(child_process_get_state);
+STORAGE_CLASS wrap_function_pointer(enqueue_virtual_event);
+STORAGE_CLASS wrap_function_pointer(get_buffer_count);
+STORAGE_CLASS wrap_function_pointer(get_buffer_next);
+STORAGE_CLASS wrap_function_pointer(get_buffer_by_name);
+STORAGE_CLASS wrap_function_pointer(get_buffer_by_filename);
+STORAGE_CLASS wrap_function_pointer(is_buffer_limited_edit);
+STORAGE_CLASS wrap_function_pointer(buffer_read_range);
+STORAGE_CLASS wrap_function_pointer(buffer_replace_range);
+STORAGE_CLASS wrap_function_pointer(buffer_batch_edit);
+STORAGE_CLASS wrap_function_pointer(buffer_seek_string);
+STORAGE_CLASS wrap_function_pointer(buffer_seek_character_class);
+STORAGE_CLASS wrap_function_pointer(buffer_line_y_difference);
+STORAGE_CLASS wrap_function_pointer(buffer_line_shift_y);
+STORAGE_CLASS wrap_function_pointer(buffer_pos_at_relative_xy);
+STORAGE_CLASS wrap_function_pointer(buffer_relative_box_of_pos);
+STORAGE_CLASS wrap_function_pointer(buffer_padded_box_of_pos);
+STORAGE_CLASS wrap_function_pointer(buffer_relative_character_from_pos);
+STORAGE_CLASS wrap_function_pointer(buffer_pos_from_relative_character);
+STORAGE_CLASS wrap_function_pointer(view_line_y_difference);
+STORAGE_CLASS wrap_function_pointer(view_line_shift_y);
+STORAGE_CLASS wrap_function_pointer(view_pos_at_relative_xy);
+STORAGE_CLASS wrap_function_pointer(view_relative_box_of_pos);
+STORAGE_CLASS wrap_function_pointer(view_padded_box_of_pos);
+STORAGE_CLASS wrap_function_pointer(view_relative_character_from_pos);
+STORAGE_CLASS wrap_function_pointer(view_pos_from_relative_character);
+STORAGE_CLASS wrap_function_pointer(buffer_exists);
+STORAGE_CLASS wrap_function_pointer(buffer_get_access_flags);
+STORAGE_CLASS wrap_function_pointer(buffer_get_size);
+STORAGE_CLASS wrap_function_pointer(buffer_get_line_count);
+STORAGE_CLASS wrap_function_pointer(push_buffer_base_name);
+STORAGE_CLASS wrap_function_pointer(push_buffer_unique_name);
+STORAGE_CLASS wrap_function_pointer(push_buffer_filepath);
+STORAGE_CLASS wrap_function_pointer(buffer_get_dirty_state);
+STORAGE_CLASS wrap_function_pointer(buffer_set_dirty_state);
+STORAGE_CLASS wrap_function_pointer(buffer_set_layout);
+STORAGE_CLASS wrap_function_pointer(buffer_clear_layout_cache);
+STORAGE_CLASS wrap_function_pointer(buffer_get_layout);
+STORAGE_CLASS wrap_function_pointer(buffer_get_setting);
+STORAGE_CLASS wrap_function_pointer(buffer_set_setting);
+STORAGE_CLASS wrap_function_pointer(buffer_get_managed_scope);
+STORAGE_CLASS wrap_function_pointer(buffer_send_end_signal);
+STORAGE_CLASS wrap_function_pointer(create_buffer);
+STORAGE_CLASS wrap_function_pointer(buffer_save);
+STORAGE_CLASS wrap_function_pointer(buffer_kill);
+STORAGE_CLASS wrap_function_pointer(buffer_reopen);
+STORAGE_CLASS wrap_function_pointer(buffer_get_file_attributes);
+STORAGE_CLASS wrap_function_pointer(get_view_next);
+STORAGE_CLASS wrap_function_pointer(get_view_prev);
+STORAGE_CLASS wrap_function_pointer(get_this_ctx_view);
+STORAGE_CLASS wrap_function_pointer(get_active_view);
+STORAGE_CLASS wrap_function_pointer(view_exists);
+STORAGE_CLASS wrap_function_pointer(view_get_buffer);
+STORAGE_CLASS wrap_function_pointer(view_get_cursor_pos);
+STORAGE_CLASS wrap_function_pointer(view_get_mark_pos);
+STORAGE_CLASS wrap_function_pointer(view_get_preferred_x);
+STORAGE_CLASS wrap_function_pointer(view_set_preferred_x);
+STORAGE_CLASS wrap_function_pointer(view_get_screen_rect);
+STORAGE_CLASS wrap_function_pointer(view_get_panel);
+STORAGE_CLASS wrap_function_pointer(panel_get_view);
+STORAGE_CLASS wrap_function_pointer(panel_is_split);
+STORAGE_CLASS wrap_function_pointer(panel_is_leaf);
+STORAGE_CLASS wrap_function_pointer(panel_split);
+STORAGE_CLASS wrap_function_pointer(panel_set_split);
+STORAGE_CLASS wrap_function_pointer(panel_swap_children);
+STORAGE_CLASS wrap_function_pointer(panel_get_root);
+STORAGE_CLASS wrap_function_pointer(panel_get_parent);
+STORAGE_CLASS wrap_function_pointer(panel_get_child);
+STORAGE_CLASS wrap_function_pointer(view_close);
+STORAGE_CLASS wrap_function_pointer(view_get_buffer_region);
+STORAGE_CLASS wrap_function_pointer(view_get_buffer_scroll);
+STORAGE_CLASS wrap_function_pointer(view_set_active);
+STORAGE_CLASS wrap_function_pointer(view_enqueue_command_function);
+STORAGE_CLASS wrap_function_pointer(view_get_setting);
+STORAGE_CLASS wrap_function_pointer(view_set_setting);
+STORAGE_CLASS wrap_function_pointer(view_get_managed_scope);
+STORAGE_CLASS wrap_function_pointer(buffer_compute_cursor);
+STORAGE_CLASS wrap_function_pointer(view_compute_cursor);
+STORAGE_CLASS wrap_function_pointer(view_set_camera_bounds);
+STORAGE_CLASS wrap_function_pointer(view_get_camera_bounds);
+STORAGE_CLASS wrap_function_pointer(view_set_cursor);
+STORAGE_CLASS wrap_function_pointer(view_set_buffer_scroll);
+STORAGE_CLASS wrap_function_pointer(view_set_mark);
+STORAGE_CLASS wrap_function_pointer(view_quit_ui);
+STORAGE_CLASS wrap_function_pointer(view_set_buffer);
+STORAGE_CLASS wrap_function_pointer(view_push_context);
+STORAGE_CLASS wrap_function_pointer(view_pop_context);
+STORAGE_CLASS wrap_function_pointer(view_alter_context);
+STORAGE_CLASS wrap_function_pointer(view_current_context);
+STORAGE_CLASS wrap_function_pointer(view_current_context_hook_memory);
+STORAGE_CLASS wrap_function_pointer(create_user_managed_scope);
+STORAGE_CLASS wrap_function_pointer(destroy_user_managed_scope);
+STORAGE_CLASS wrap_function_pointer(get_global_managed_scope);
+STORAGE_CLASS wrap_function_pointer(get_managed_scope_with_multiple_dependencies);
+STORAGE_CLASS wrap_function_pointer(managed_scope_clear_contents);
+STORAGE_CLASS wrap_function_pointer(managed_scope_clear_self_all_dependent_scopes);
+STORAGE_CLASS wrap_function_pointer(managed_scope_allocator);
+STORAGE_CLASS wrap_function_pointer(managed_id_group_highest_id);
+STORAGE_CLASS wrap_function_pointer(managed_id_declare);
+STORAGE_CLASS wrap_function_pointer(managed_id_get);
+STORAGE_CLASS wrap_function_pointer(managed_scope_get_attachment);
+STORAGE_CLASS wrap_function_pointer(managed_scope_attachment_erase);
+STORAGE_CLASS wrap_function_pointer(alloc_managed_memory_in_scope);
+STORAGE_CLASS wrap_function_pointer(alloc_buffer_markers_on_buffer);
+STORAGE_CLASS wrap_function_pointer(managed_object_get_item_size);
+STORAGE_CLASS wrap_function_pointer(managed_object_get_item_count);
+STORAGE_CLASS wrap_function_pointer(managed_object_get_pointer);
+STORAGE_CLASS wrap_function_pointer(managed_object_get_type);
+STORAGE_CLASS wrap_function_pointer(managed_object_get_containing_scope);
+STORAGE_CLASS wrap_function_pointer(managed_object_free);
+STORAGE_CLASS wrap_function_pointer(managed_object_store_data);
+STORAGE_CLASS wrap_function_pointer(managed_object_load_data);
+STORAGE_CLASS wrap_function_pointer(get_next_input_raw);
+STORAGE_CLASS wrap_function_pointer(get_current_input_sequence_number);
+STORAGE_CLASS wrap_function_pointer(get_current_input);
+STORAGE_CLASS wrap_function_pointer(set_current_input);
+STORAGE_CLASS wrap_function_pointer(leave_current_input_unhandled);
+STORAGE_CLASS wrap_function_pointer(set_custom_hook_func);
+STORAGE_CLASS wrap_function_pointer(get_custom_hook);
+STORAGE_CLASS wrap_function_pointer(set_custom_hook_memory_size);
+STORAGE_CLASS wrap_function_pointer(get_mouse_state);
+STORAGE_CLASS wrap_function_pointer(get_active_query_bars);
+STORAGE_CLASS wrap_function_pointer(start_query_bar);
+STORAGE_CLASS wrap_function_pointer(end_query_bar);
+STORAGE_CLASS wrap_function_pointer(clear_all_query_bars);
+STORAGE_CLASS wrap_function_pointer(print_message);
+STORAGE_CLASS wrap_function_pointer(log_string);
+STORAGE_CLASS wrap_function_pointer(get_largest_face_id);
+STORAGE_CLASS wrap_function_pointer(set_global_face);
+STORAGE_CLASS wrap_function_pointer(buffer_history_get_max_record_index);
+STORAGE_CLASS wrap_function_pointer(buffer_history_get_record_info);
+STORAGE_CLASS wrap_function_pointer(buffer_history_get_group_sub_record);
+STORAGE_CLASS wrap_function_pointer(buffer_history_get_current_state_index);
+STORAGE_CLASS wrap_function_pointer(buffer_history_set_current_state_index);
+STORAGE_CLASS wrap_function_pointer(buffer_history_merge_record_range);
+STORAGE_CLASS wrap_function_pointer(buffer_history_clear_after_current_state);
+STORAGE_CLASS wrap_function_pointer(global_history_edit_group_begin);
+STORAGE_CLASS wrap_function_pointer(global_history_edit_group_end);
+STORAGE_CLASS wrap_function_pointer(buffer_set_face);
+STORAGE_CLASS wrap_function_pointer(get_face_description);
+STORAGE_CLASS wrap_function_pointer(get_face_metrics);
+STORAGE_CLASS wrap_function_pointer(get_face_advance_map);
+STORAGE_CLASS wrap_function_pointer(get_face_id);
+STORAGE_CLASS wrap_function_pointer(try_create_new_face);
+STORAGE_CLASS wrap_function_pointer(try_modify_face);
+STORAGE_CLASS wrap_function_pointer(try_release_face);
+STORAGE_CLASS wrap_function_pointer(push_hot_directory);
+STORAGE_CLASS wrap_function_pointer(set_hot_directory);
+STORAGE_CLASS wrap_function_pointer(send_exit_signal);
+STORAGE_CLASS wrap_function_pointer(hard_exit);
+STORAGE_CLASS wrap_function_pointer(set_window_title);
+STORAGE_CLASS wrap_function_pointer(acquire_global_frame_mutex);
+STORAGE_CLASS wrap_function_pointer(release_global_frame_mutex);
+STORAGE_CLASS wrap_function_pointer(draw_string_oriented);
+STORAGE_CLASS wrap_function_pointer(get_string_advance);
+STORAGE_CLASS wrap_function_pointer(draw_set_clip);
+STORAGE_CLASS wrap_function_pointer(text_layout_create);
+STORAGE_CLASS wrap_function_pointer(text_layout_region);
+STORAGE_CLASS wrap_function_pointer(text_layout_get_buffer);
+STORAGE_CLASS wrap_function_pointer(text_layout_get_visible_range_);
+STORAGE_CLASS wrap_function_pointer(text_layout_line_on_screen);
+STORAGE_CLASS wrap_function_pointer(text_layout_character_on_screen);
+STORAGE_CLASS wrap_function_pointer(paint_text_color);
+STORAGE_CLASS wrap_function_pointer(paint_text_color_blend);
+STORAGE_CLASS wrap_function_pointer(text_layout_free);
+STORAGE_CLASS wrap_function_pointer(draw_text_layout);
+STORAGE_CLASS wrap_function_pointer(open_color_picker);
+STORAGE_CLASS wrap_function_pointer(animate_in_n_milliseconds);
+STORAGE_CLASS wrap_function_pointer(buffer_find_all_matches);
+STORAGE_CLASS wrap_function_pointer(get_core_profile_list);
+STORAGE_CLASS wrap_function_pointer(get_current_line_number2);
+STORAGE_CLASS wrap_function_pointer(get_current_line_number);
+STORAGE_CLASS wrap_function_pointer(os_window_is_active);
+STORAGE_CLASS wrap_function_pointer(draw_rect_outline);
 #undef DYNAMIC_LINK_API
 #undef STORAGE_CLASS
 #endif

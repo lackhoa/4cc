@@ -123,11 +123,11 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
     p<"union "<type_name;
     m_braces_sm{
      for_i32(i,0,variants.count){
-      if(i!=0){ p<"\n"; }
       auto &variant = variants.get(i);
-      p<variant.struct_name<" "<variant.name_lower<";";
+      p<variant.struct_name<" "<variant.name_lower<";\n";
      }
     }
+    print(p, "\n");
    }
   }
   {//-Meta
@@ -196,6 +196,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, strlit("send_bez.gen.h")));
    {//-get_p0_index_or_zero / get_p3_index_or_zero
     m_location;
+    print(p, "#if AD_IS_FRAMEWORK\n");
     for_i32(p0_p3_index,0,2){
      b32 is_p0 = p0_p3_index==0;
      b32 is_p3 = p0_p3_index==1;
@@ -203,7 +204,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
      String endpoint_name = is_p0 ? strlit("p0") : strlit("p3");
      p<"function Vertex_Index\n"<
       "get_"<endpoint_name<"_index_or_zero(Curve_Data &curve)";
-     m_braces{
+     m_braces_newline{
       p<"switch(curve.type)";
       m_braces{
        for_i32(variant_index,0,variants.count){
@@ -226,7 +227,9 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
       p<"return {};";
      }
     }
+    print(p, "#endif\n");
    }
+   
    m_location;
    for_i1(variant_index,0,variants.count){
     Union_Variant &variant = variants[variant_index];
@@ -239,7 +242,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
      }
      print_comma_separated(p,list);
     };
-    {//-Send function
+    if(0){//-Send function
      m_location;
      {//-The main send function
       print_prototype(p, variant, true);
@@ -282,45 +285,49 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
       for_i32(is_bs, 0, 2){
        b32 is_bn = !is_bs;
        p<"#define "<(is_bs?"bs_":"bn_")<variant.name_lower;
-       m_parens{
-        separator_block(p, ", "){
-         if(is_bn){ p < "name"; separator(p); };
-         for_i32(im,0,variant.struct_members.count){
-          M_Struct_Member &member = variant.struct_members[im];
-          if(member.type.kind == Parsed_Type_Array){
-           for_u32(array_index, 0, member.type.array_count){
-            p < member.name < array_index; separator(p);
-           }
-          }else{
-           p < member.name; separator(p);
-          }
-         }
-         p<"..."; separator(p);
-        }
-       }
-       p<"\\\n";
-       p<"send_bez_"<variant.name_lower;
-       m_parens{
-        separator_block(p, ", "){
-         p < (is_bn?"strlit(#name)" : "strlit(\"l\")"); separator(p);
-         for_i32(im,0,variant.struct_members.count){
-          auto &member = variant.struct_members[im]; 
-          if(member_is_ref(member)){
+       if(0){
+        m_parens{
+         separator_block(p, ", "){
+          if(is_bn){ p < "name"; separator(p); };
+          for_i32(im,0,variant.struct_members.count){
+           M_Struct_Member &member = variant.struct_members[im];
            if(member.type.kind == Parsed_Type_Array){
             for_u32(array_index, 0, member.type.array_count){
-             print_format(p, "strlit(#%.*s%d)", string_expand(member.name), array_index);
-             separator(p);
+             p < member.name < array_index; separator(p);
             }
            }else{
-            p<"strlit(#"<member.name<")";
+            p < member.name; separator(p);
            }
-          }else{
-           p<member.name;
           }
-          separator(p);
+          p<"..."; separator(p);
          }
-         p < "__VA_ARGS__"; separator(p);
         }
+        p<"\\\n";
+        p<"send_bez_"<variant.name_lower;
+        m_parens{
+         separator_block(p, ", "){
+          p < (is_bn?"strlit(#name)" : "strlit(\"l\")"); separator(p);
+          for_i32(im,0,variant.struct_members.count){
+           auto &member = variant.struct_members[im]; 
+           if(member_is_ref(member)){
+            if(member.type.kind == Parsed_Type_Array){
+             for_u32(array_index, 0, member.type.array_count){
+              print_format(p, "strlit(#%.*s%d)", string_expand(member.name), array_index);
+              separator(p);
+             }
+            }else{
+             p<"strlit(#"<member.name<")";
+            }
+           }else{
+            p<member.name;
+           }
+           separator(p);
+          }
+          p < "__VA_ARGS__"; separator(p);
+         }
+        }
+       }else{
+        print(p, "(...)");
        }
        p<"\n";
       }
@@ -363,7 +370,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
     Union_Variant &variant = variants[variant_index];
     if(variant.name != "Fill3"){
      print_prototype(p, variant, false); m_braces_newline{
-      p<"Modeler *m = painter.modeler;\n";
+      p<"Modeler *m = painter->modeler;\n";
       //-Fetch all the references
       for_i32(member_index,0,variant.struct_members.count){
        M_Struct_Member &member = variant.struct_members[member_index];

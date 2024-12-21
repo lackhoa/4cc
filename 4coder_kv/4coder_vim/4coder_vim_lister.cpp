@@ -154,7 +154,7 @@ vim_convert_lister_result_to_filename_result(Lister_Result l_result){
 function f32 vim_lister_get_block_height(f32 line_height){ return 1.5f*line_height; }
 
 function void*
-vim_lister_user_data_at_p(App *app, View_ID view, Lister *lister, Vec2_f32 m_p, i32 col_num){
+vim_lister_user_data_at_p(App *app, View_ID view, Lister *lister, v2 m_p, i32 col_num){
 	Rect_f32 region = vim_get_bottom_rect(app);
 	f32 line_height = get_face_metrics(app, get_face_id(app, 0)).line_height;
 	f32 block_height = vim_lister_get_block_height(line_height);
@@ -259,7 +259,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
 	draw_set_clip(app, clip);
 	
 	Mouse_State mouse = get_mouse_state(app);
-	Vec2_f32 m_p = V2(mouse.p);
+	v2 m_p = V2(mouse.p);
 	
 	// NOTE(allen): auto scroll to the item if the flag is set.
 	f32 scroll_y = lister->scroll.position.y;
@@ -291,7 +291,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
 	lister->scroll.target.y = clamp_range(scroll_range, lister->scroll.target.y);
 	lister->scroll.target.x = 0.f;
 	
-	Vec2_f32_Delta_Result delta = delta_apply(app, view, frame_info.animation_dt, lister->scroll);
+	v2_Delta_Result delta = delta_apply(app, view, frame_info.animation_dt, lister->scroll);
 	lister->scroll.position = delta.p;
 	if(delta.still_animating){ animate_in_n_milliseconds(app, 0); }
 	
@@ -355,7 +355,7 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
   u64 index = string_find_last(node->status, '\n');
   push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), string_prefix(node->status, index));
 		
-  Vec2_f32 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
+  v2 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
   draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
  }
  f32 x_padding = metrics.normal_advance;
@@ -537,7 +537,7 @@ vim_run_lister(App *app, Lister *lister)
 		
 		// NOTE: This is a bit of a hack to make clicking the lister not change views
 		Mouse_State mouse_state = get_mouse_state(app);
-		Vec2_f32 mouse_pos = V2(mouse_state.p);
+		v2 mouse_pos = V2(mouse_state.p);
 		if(mouse_state.press_l){
 			void *clicked = vim_lister_user_data_at_p(app, view, lister, mouse_pos, col_num);
    if(clicked){

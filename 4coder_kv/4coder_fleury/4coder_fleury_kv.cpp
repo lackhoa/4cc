@@ -23,7 +23,7 @@ IsFileReadable(String path)
 
 function DELTA_RULE_SIG(F4_DeltaRule_lite)
 {
-    Vec2_f32 *velocity = (Vec2_f32*)data;
+    v2 *velocity = (v2*)data;
     if(velocity->x == 0.f)
     {
         velocity->x = 1.f;

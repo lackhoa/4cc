@@ -219,7 +219,7 @@ lr_tb_write_byte_with_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32
  u32 lo = ((u32)byte     )&0xF;
  u32 hi = ((u32)byte >> 4)&0xF;
  
- Vec2_f32 p = vars->p;
+ v2 p = vars->p;
  p.x = ceilv1(p.x);
  f32 next_x = p.x + metrics->byte_sub_advances[0];
  f32 text_y = vars->text_y;
@@ -247,7 +247,7 @@ lr_tb_write_byte(LefRig_TopBot_Layout_Vars *vars, Face_ID face,
 }
 
 function void
-lr_tb_write_blank_dim(LefRig_TopBot_Layout_Vars *vars, Face_ID face, Vec2_f32 dim,
+lr_tb_write_blank_dim(LefRig_TopBot_Layout_Vars *vars, Face_ID face, v2 dim,
                       Arena *arena, Layout_Item_List *list, i64 index)
 {
  layout_write(arena, list, face, index, ' ', 0, Rf32_xy_wh(vars->p, dim), vars->line_y);

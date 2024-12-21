@@ -86,4 +86,8 @@ add_to_source_map(Source_Map &source_map, Printer &printer, usize source_pos){
  entry.gen_pos    = (i32)printer.byte_pos;
  source_map.push_value(entry);
 }
+
+#define m_meta_only(p) \
+print(p, "#if WANT_TYPE_INFO\n"); defer(print(p, "#endif\n"))
+
 //-

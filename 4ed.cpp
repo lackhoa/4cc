@@ -192,14 +192,6 @@ app_read_command_line(Thread_Context *tctx,
 // TODO(kv): move this somewhere better
 extern "C" void custom_layer_init(App *app);
 
-function u64
-file_mtime(String filename)
-{
- Scratch_Block scratch;
- File_Attributes attr = system_quick_file_attributes(scratch, filename);
- return attr.last_write_time;
-}
-
 function void 
 app_init(Thread_Context *tctx, Models *models, String current_directory)
 {

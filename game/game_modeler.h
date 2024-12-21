@@ -39,7 +39,6 @@ struct Modeler  // see @init_modeler
  //NOTE(kv) Do we need really need these arrays?
  arrayof<Vertex_Data> vertices;
  arrayof<Curve_Data>  curves;
- //arrayof<Fill_Data>   fills;
  
  //-NOTE: Editor
  u32 selected_prim_ro;  // todo: There could be multiple selected obj?

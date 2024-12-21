@@ -162,7 +162,7 @@ clipboard_collection_render(Application_Links *app, Frame_Info frame_info, View_
 {
     Scratch_Block scratch(app);
     Rect_f32 region = draw_background_and_margin(app, view);
-    Vec2_f32 mid_p = (region.p1 + region.p0)*0.5f;
+    v2 mid_p = (region.p1 + region.p0)*0.5f;
     
     Fancy_Block message = {};
     Fancy_Line *line = push_fancy_line(scratch, &message);
@@ -179,8 +179,8 @@ clipboard_collection_render(Application_Links *app, Frame_Info frame_info, View_
     }
     
     Face_ID face_id = get_face_id(app, 0);
-    Vec2_f32 dim = get_fancy_block_dim(app, face_id, &message);
-    Vec2_f32 half_dim = dim*0.5f;
+    v2 dim = get_fancy_block_dim(app, face_id, &message);
+    v2 half_dim = dim*0.5f;
     draw_fancy_block(app, face_id, fcolor_zero(), &message, mid_p - half_dim);
 }
 

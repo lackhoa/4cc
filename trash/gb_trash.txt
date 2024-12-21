@@ -1288,7 +1288,7 @@ typedef struct gbPlatform {
 			i1         major;
 			i1         minor;
 			b16         core, compatible;
-			gbDllHandle dll_handle;
+			DLL_Handle dll_handle;
 		} opengl;
   
 		// NOTE(bill): Software rendering
@@ -1855,7 +1855,7 @@ b32 gb__platform_init(gbPlatform *p, char const *window_title, gbVideoMode mode,
  
 	{ // Load XInput
 		// TODO(bill): What other dlls should I look for?
-		gbDllHandle xinput_library = gb_dll_load("xinput1_4.dll");
+		DLL_Handle xinput_library = gb_dll_load("xinput1_4.dll");
 		p->xinput.get_state = gbXInputGetState_Stub;
 		p->xinput.set_state = gbXInputSetState_Stub;
   

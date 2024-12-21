@@ -20,6 +20,7 @@
 #define AD_SHUTDOWN_IMGUI 1  // NOTE(kv): Because I'm still not sure what this is for?
 
 #include "4coder_types.h"
+#include "kv_math.h"
 #include "4ed_render_target.h"
 #include "4coder_kv_debug.h"
 #include "4coder_token.h"
@@ -41,97 +42,9 @@
 #include "custom/generated/ed_api.h"
 
 //~NOTE: 4ed API
-
+#include "debug_value.h"
 //TODO: clean this garbage pile up, please!
-inline void
-DEBUG_VALUE_inner(char *scope, char *name, rect2 value, argb color=0)
-{
- Debug_Entry entry = {};
- entry.scope=scope;
- entry.name =name;
- entry.value=value.v4_value;
- entry.color=color;
- DEBUG_send_entry(entry);
-}
-
-inline void
-DEBUG_VALUE_inner(char *scope, char *name, i1 value, argb color=0)
-{
- Debug_Entry entry = {};
- entry.scope=scope;
- entry.name =name;
- entry.value.x=(f32)value;
- entry.color=color;
- DEBUG_send_entry(entry);
-}
-
-inline void
-DEBUG_VALUE_inner(char *scope, char *name, u32 value, argb color=0)
-{
- Debug_Entry entry = {};
- entry.scope=scope;
- entry.name=name;
- entry.value.x=(f32)value;
- entry.color=color;
- DEBUG_send_entry(entry);
-}
-
-inline void
-DEBUG_VALUE_inner(char *scope, char *name, i2 value, argb color=0)
-{
- Debug_Entry entry = {};
- entry.scope=scope;
- entry.name=name;
- entry.value.xy=V2(value);
- entry.color=color;
- DEBUG_send_entry(entry);
-}
-
-inline void
-DEBUG_VALUE_inner(char *scope, char *name, v1 value, argb color=0)
-{
- Debug_Entry entry = {};
- entry.scope=scope;
- entry.name=name;
- entry.value.x=value;
- entry.color=color;
- DEBUG_send_entry(entry);
-}
-
-inline void
-DEBUG_VALUE_inner(char *scope, char *name, v2 value, argb color=0)
-{
- Debug_Entry entry = {};
- entry.scope=scope;
- entry.name=name;
- entry.value.xy=value;
- entry.color=color;
- DEBUG_send_entry(entry);
-}
-
-inline void
-DEBUG_VALUE_inner(char *scope, char *name, v3 v, argb color=0)
-{
- v4 value = cast_V4(v);
- Debug_Entry entry = {};
- entry.scope=scope;
- entry.name=name;
- entry.value=value;
- entry.color=color;
- DEBUG_send_entry(entry);
-}
-
-inline void
-DEBUG_VALUE_inner(char *scope, char *name, v4 v, argb color=0){
- Debug_Entry entry = {};
- entry.scope=scope;
- entry.name=name;
- entry.value=v;
- entry.color=color;
- DEBUG_send_entry(entry);
-}
 //~ NOTE: Game
-#if !AD_IS_DRIVER
 struct Game_Input_Public{
  Key_Mods active_mods;
  b8      *key_states;
@@ -152,14 +65,15 @@ struct Image_Load_Info {
  i32 image_count;
  i32 failure_count;
 };
-#endif
 
 #define GAME_VIEWPORT_COUNT 3
 global i32 MAIN_VIEWPORT_ID    = 1;
 global String DRIVER_FILE_NAME = strlit("driver.kc");
 
 struct API_VTable_ed_new{
- memory_functions_xlist(x_wrap_function_pointer);
+#define X(N) wrap_function_pointer(N);
+ memory_functions_xlist(X);
+#undef X
 };
 #if ED_API_USER
 function void
@@ -193,9 +107,6 @@ struct Game_API
  b32 is_valid;
  game_api_xlist(x_function_pointer);
 };
-
-#define game_api_export__return void
-#define game_api_export__params Game_API &api
 #endif
 
 //~

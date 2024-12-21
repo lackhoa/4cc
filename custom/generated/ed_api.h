@@ -45,96 +45,142 @@
 #define ed_token_it_dec_sig() Token* ed_token_it_dec(Token_Iterator* it)
 #define ed_set_y_up_sig() void ed_set_y_up(Render_Target* target, Render_Config* config)
 #define ed_draw_new_group_sig() Render_Config* ed_draw_new_group(Render_Target* target)
-typedef Range_i64 ed_get_line_range_from_pos_type(App* app, Buffer_ID buffer, i64 pos);
-typedef b32 ed_buffer_replace_range_type(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
-typedef String8 ed_push_buffer_base_name_type(App* app, Arena* arena, Buffer_ID buffer_id);
-typedef String ed_get_code_directory_type(App* app);
-typedef String ed_push_buffer_filepath_type(App* app, Arena* arena, Buffer_ID buffer_id);
-typedef View_ID ed_get_active_view_type(App* app, Access_Flag access);
-typedef Buffer_ID ed_view_get_buffer_type(App* app, View_ID view_id, Access_Flag access);
-typedef i64 ed_view_get_cursor_pos_type(App* app, View_ID view_id);
-typedef b32 ed_view_set_cursor_type(App* app, View_ID view_id, Buffer_Seek seek);
-typedef void ed_print_message_type(App* app, String message);
-typedef v2 ed_draw_string_oriented_type(App* app, Face_ID font_id, ARGB_Color color, String8 str, v2 point, u32 flags, v2 delta);
-typedef f32 ed_get_string_advance_type(App* app, Face_ID font_id, String str);
-typedef View_ID ed_get_other_primary_view_type(App* app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail);
-typedef b32 ed_is_view_to_the_right_type(App* app, View_ID view);
-typedef void ed_DEBUG_send_entry_type(Debug_Entry entry);
-typedef Render_Target* ed_draw_get_target_type(App* app);
-typedef void ed_vim_set_bottom_text_type(String msg);
-typedef void ed_change_active_primary_view_type(App* app);
-typedef String ed_push_token_lexeme_type(App* app, Arena* arena, Buffer_ID buffer, Token* token);
-typedef User_Input ed_get_next_input_type(App* app, Event_Property use_flags, Event_Property abort_flags);
-typedef void ed_draw__push_vertices_type(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type);
-typedef void ed_push_object_transform_to_target_type(Render_Target* target, mat4* transform);
-typedef Token_Iterator_Array ed_get_token_it_on_current_line_type(App* app, Buffer_ID buffer, i64* line_end_pos);
-typedef Token_Iterator_Array ed_get_token_it_at_pos_type(App* app, Buffer_ID buffer, i64 pos);
-typedef b32 ed_fui_editor_ui_loop_type(App* app);
-typedef Buffer_ID ed_view_set_buffer_named_type(App* app, View_ID view, String8 name);
-typedef Buffer_Seek ed_seek_line_col_type(i64 line, i64 col);
-typedef void ed_push_image_type(Render_Target* target, char* filename, v3 o, v3 x, v3 y, argb color, u32 prim_id);
-typedef void ed_switch_to_mouse_panel_type(App* app);
-typedef i1 ed_mouse_viewport_id_type(App* app);
-typedef b32 ed_get_confirmation_from_user_type(App* app, String query);
-typedef i64 ed_get_current_line_number2_type(App* app, View_ID view, Buffer_ID buffer);
-typedef i64 ed_get_current_line_number_type(App* app);
-typedef String ed_system_get_path_type(Arena* arena, System_Path_Code path_code);
-typedef File_List ed_system_get_file_list_type(Arena* arena, String directory);
-typedef Token* ed_tkarr_read_type(Token_Iterator_Array* it);
-typedef Token* ed_tkarr_inc_type(Token_Iterator_Array* it);
-typedef Token* ed_token_it_read_type(Token_Iterator* it);
-typedef Token* ed_token_it_inc_all_type(Token_Iterator* it);
-typedef Token* ed_token_it_dec_all_type(Token_Iterator* it);
-typedef Token* ed_token_it_inc_type(Token_Iterator* it);
-typedef Token* ed_token_it_dec_type(Token_Iterator* it);
-typedef void ed_set_y_up_type(Render_Target* target, Render_Config* config);
-typedef Render_Config* ed_draw_new_group_type(Render_Target* target);
+#define get_line_range_from_pos__return Range_i64
+#define get_line_range_from_pos__params App* app, Buffer_ID buffer, i64 pos
+#define buffer_replace_range__return b32
+#define buffer_replace_range__params App* app, Buffer_ID buffer_id, Range_i64 range, String string
+#define push_buffer_base_name__return String8
+#define push_buffer_base_name__params App* app, Arena* arena, Buffer_ID buffer_id
+#define get_code_directory__return String
+#define get_code_directory__params App* app
+#define push_buffer_filepath__return String
+#define push_buffer_filepath__params App* app, Arena* arena, Buffer_ID buffer_id
+#define get_active_view__return View_ID
+#define get_active_view__params App* app, Access_Flag access
+#define view_get_buffer__return Buffer_ID
+#define view_get_buffer__params App* app, View_ID view_id, Access_Flag access
+#define view_get_cursor_pos__return i64
+#define view_get_cursor_pos__params App* app, View_ID view_id
+#define view_set_cursor__return b32
+#define view_set_cursor__params App* app, View_ID view_id, Buffer_Seek seek
+#define print_message__return void
+#define print_message__params App* app, String message
+#define draw_string_oriented__return v2
+#define draw_string_oriented__params App* app, Face_ID font_id, ARGB_Color color, String8 str, v2 point, u32 flags, v2 delta
+#define get_string_advance__return f32
+#define get_string_advance__params App* app, Face_ID font_id, String str
+#define get_other_primary_view__return View_ID
+#define get_other_primary_view__params App* app, View_ID start_view, Access_Flag access, b32 vsplit_if_fail
+#define is_view_to_the_right__return b32
+#define is_view_to_the_right__params App* app, View_ID view
+#define DEBUG_send_entry__return void
+#define DEBUG_send_entry__params Debug_Entry entry
+#define draw_get_target__return Render_Target*
+#define draw_get_target__params App* app
+#define vim_set_bottom_text__return void
+#define vim_set_bottom_text__params String msg
+#define change_active_primary_view__return void
+#define change_active_primary_view__params App* app
+#define push_token_lexeme__return String
+#define push_token_lexeme__params App* app, Arena* arena, Buffer_ID buffer, Token* token
+#define get_next_input__return User_Input
+#define get_next_input__params App* app, Event_Property use_flags, Event_Property abort_flags
+#define draw__push_vertices__return void
+#define draw__push_vertices__params Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type
+#define push_object_transform_to_target__return void
+#define push_object_transform_to_target__params Render_Target* target, mat4* transform
+#define get_token_it_on_current_line__return Token_Iterator_Array
+#define get_token_it_on_current_line__params App* app, Buffer_ID buffer, i64* line_end_pos
+#define get_token_it_at_pos__return Token_Iterator_Array
+#define get_token_it_at_pos__params App* app, Buffer_ID buffer, i64 pos
+#define fui_editor_ui_loop__return b32
+#define fui_editor_ui_loop__params App* app
+#define view_set_buffer_named__return Buffer_ID
+#define view_set_buffer_named__params App* app, View_ID view, String8 name
+#define seek_line_col__return Buffer_Seek
+#define seek_line_col__params i64 line, i64 col
+#define push_image__return void
+#define push_image__params Render_Target* target, char* filename, v3 o, v3 x, v3 y, argb color, u32 prim_id
+#define switch_to_mouse_panel__return void
+#define switch_to_mouse_panel__params App* app
+#define mouse_viewport_id__return i1
+#define mouse_viewport_id__params App* app
+#define get_confirmation_from_user__return b32
+#define get_confirmation_from_user__params App* app, String query
+#define get_current_line_number2__return i64
+#define get_current_line_number2__params App* app, View_ID view, Buffer_ID buffer
+#define get_current_line_number__return i64
+#define get_current_line_number__params App* app
+#define system_get_path__return String
+#define system_get_path__params Arena* arena, System_Path_Code path_code
+#define system_get_file_list__return File_List
+#define system_get_file_list__params Arena* arena, String directory
+#define tkarr_read__return Token*
+#define tkarr_read__params Token_Iterator_Array* it
+#define tkarr_inc__return Token*
+#define tkarr_inc__params Token_Iterator_Array* it
+#define token_it_read__return Token*
+#define token_it_read__params Token_Iterator* it
+#define token_it_inc_all__return Token*
+#define token_it_inc_all__params Token_Iterator* it
+#define token_it_dec_all__return Token*
+#define token_it_dec_all__params Token_Iterator* it
+#define token_it_inc__return Token*
+#define token_it_inc__params Token_Iterator* it
+#define token_it_dec__return Token*
+#define token_it_dec__params Token_Iterator* it
+#define set_y_up__return void
+#define set_y_up__params Render_Target* target, Render_Config* config
+#define draw_new_group__return Render_Config*
+#define draw_new_group__params Render_Target* target
+#if defined(STATIC_LINK_API) || defined(DYNAMIC_LINK_API)
 struct API_VTable_ed{
-ed_get_line_range_from_pos_type *get_line_range_from_pos;
-ed_buffer_replace_range_type *buffer_replace_range;
-ed_push_buffer_base_name_type *push_buffer_base_name;
-ed_get_code_directory_type *get_code_directory;
-ed_push_buffer_filepath_type *push_buffer_filepath;
-ed_get_active_view_type *get_active_view;
-ed_view_get_buffer_type *view_get_buffer;
-ed_view_get_cursor_pos_type *view_get_cursor_pos;
-ed_view_set_cursor_type *view_set_cursor;
-ed_print_message_type *print_message;
-ed_draw_string_oriented_type *draw_string_oriented;
-ed_get_string_advance_type *get_string_advance;
-ed_get_other_primary_view_type *get_other_primary_view;
-ed_is_view_to_the_right_type *is_view_to_the_right;
-ed_DEBUG_send_entry_type *DEBUG_send_entry;
-ed_draw_get_target_type *draw_get_target;
-ed_vim_set_bottom_text_type *vim_set_bottom_text;
-ed_change_active_primary_view_type *change_active_primary_view;
-ed_push_token_lexeme_type *push_token_lexeme;
-ed_get_next_input_type *get_next_input;
-ed_draw__push_vertices_type *draw__push_vertices;
-ed_push_object_transform_to_target_type *push_object_transform_to_target;
-ed_get_token_it_on_current_line_type *get_token_it_on_current_line;
-ed_get_token_it_at_pos_type *get_token_it_at_pos;
-ed_fui_editor_ui_loop_type *fui_editor_ui_loop;
-ed_view_set_buffer_named_type *view_set_buffer_named;
-ed_seek_line_col_type *seek_line_col;
-ed_push_image_type *push_image;
-ed_switch_to_mouse_panel_type *switch_to_mouse_panel;
-ed_mouse_viewport_id_type *mouse_viewport_id;
-ed_get_confirmation_from_user_type *get_confirmation_from_user;
-ed_get_current_line_number2_type *get_current_line_number2;
-ed_get_current_line_number_type *get_current_line_number;
-ed_system_get_path_type *system_get_path;
-ed_system_get_file_list_type *system_get_file_list;
-ed_tkarr_read_type *tkarr_read;
-ed_tkarr_inc_type *tkarr_inc;
-ed_token_it_read_type *token_it_read;
-ed_token_it_inc_all_type *token_it_inc_all;
-ed_token_it_dec_all_type *token_it_dec_all;
-ed_token_it_inc_type *token_it_inc;
-ed_token_it_dec_type *token_it_dec;
-ed_set_y_up_type *set_y_up;
-ed_draw_new_group_type *draw_new_group;
+wrap_function_pointer(get_line_range_from_pos);
+wrap_function_pointer(buffer_replace_range);
+wrap_function_pointer(push_buffer_base_name);
+wrap_function_pointer(get_code_directory);
+wrap_function_pointer(push_buffer_filepath);
+wrap_function_pointer(get_active_view);
+wrap_function_pointer(view_get_buffer);
+wrap_function_pointer(view_get_cursor_pos);
+wrap_function_pointer(view_set_cursor);
+wrap_function_pointer(print_message);
+wrap_function_pointer(draw_string_oriented);
+wrap_function_pointer(get_string_advance);
+wrap_function_pointer(get_other_primary_view);
+wrap_function_pointer(is_view_to_the_right);
+wrap_function_pointer(DEBUG_send_entry);
+wrap_function_pointer(draw_get_target);
+wrap_function_pointer(vim_set_bottom_text);
+wrap_function_pointer(change_active_primary_view);
+wrap_function_pointer(push_token_lexeme);
+wrap_function_pointer(get_next_input);
+wrap_function_pointer(draw__push_vertices);
+wrap_function_pointer(push_object_transform_to_target);
+wrap_function_pointer(get_token_it_on_current_line);
+wrap_function_pointer(get_token_it_at_pos);
+wrap_function_pointer(fui_editor_ui_loop);
+wrap_function_pointer(view_set_buffer_named);
+wrap_function_pointer(seek_line_col);
+wrap_function_pointer(push_image);
+wrap_function_pointer(switch_to_mouse_panel);
+wrap_function_pointer(mouse_viewport_id);
+wrap_function_pointer(get_confirmation_from_user);
+wrap_function_pointer(get_current_line_number2);
+wrap_function_pointer(get_current_line_number);
+wrap_function_pointer(system_get_path);
+wrap_function_pointer(system_get_file_list);
+wrap_function_pointer(tkarr_read);
+wrap_function_pointer(tkarr_inc);
+wrap_function_pointer(token_it_read);
+wrap_function_pointer(token_it_inc_all);
+wrap_function_pointer(token_it_dec_all);
+wrap_function_pointer(token_it_inc);
+wrap_function_pointer(token_it_dec);
+wrap_function_pointer(set_y_up);
+wrap_function_pointer(draw_new_group);
 };
+#endif
 #if defined(STATIC_LINK_API)
 function Range_i64 get_line_range_from_pos(App* app, Buffer_ID buffer, i64 pos);
 function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
@@ -185,50 +231,50 @@ function Render_Config* draw_new_group(Render_Target* target);
 #ifndef STORAGE_CLASS
 #define STORAGE_CLASS global
 #endif
-STORAGE_CLASS ed_get_line_range_from_pos_type *get_line_range_from_pos;
-STORAGE_CLASS ed_buffer_replace_range_type *buffer_replace_range;
-STORAGE_CLASS ed_push_buffer_base_name_type *push_buffer_base_name;
-STORAGE_CLASS ed_get_code_directory_type *get_code_directory;
-STORAGE_CLASS ed_push_buffer_filepath_type *push_buffer_filepath;
-STORAGE_CLASS ed_get_active_view_type *get_active_view;
-STORAGE_CLASS ed_view_get_buffer_type *view_get_buffer;
-STORAGE_CLASS ed_view_get_cursor_pos_type *view_get_cursor_pos;
-STORAGE_CLASS ed_view_set_cursor_type *view_set_cursor;
-STORAGE_CLASS ed_print_message_type *print_message;
-STORAGE_CLASS ed_draw_string_oriented_type *draw_string_oriented;
-STORAGE_CLASS ed_get_string_advance_type *get_string_advance;
-STORAGE_CLASS ed_get_other_primary_view_type *get_other_primary_view;
-STORAGE_CLASS ed_is_view_to_the_right_type *is_view_to_the_right;
-STORAGE_CLASS ed_DEBUG_send_entry_type *DEBUG_send_entry;
-STORAGE_CLASS ed_draw_get_target_type *draw_get_target;
-STORAGE_CLASS ed_vim_set_bottom_text_type *vim_set_bottom_text;
-STORAGE_CLASS ed_change_active_primary_view_type *change_active_primary_view;
-STORAGE_CLASS ed_push_token_lexeme_type *push_token_lexeme;
-STORAGE_CLASS ed_get_next_input_type *get_next_input;
-STORAGE_CLASS ed_draw__push_vertices_type *draw__push_vertices;
-STORAGE_CLASS ed_push_object_transform_to_target_type *push_object_transform_to_target;
-STORAGE_CLASS ed_get_token_it_on_current_line_type *get_token_it_on_current_line;
-STORAGE_CLASS ed_get_token_it_at_pos_type *get_token_it_at_pos;
-STORAGE_CLASS ed_fui_editor_ui_loop_type *fui_editor_ui_loop;
-STORAGE_CLASS ed_view_set_buffer_named_type *view_set_buffer_named;
-STORAGE_CLASS ed_seek_line_col_type *seek_line_col;
-STORAGE_CLASS ed_push_image_type *push_image;
-STORAGE_CLASS ed_switch_to_mouse_panel_type *switch_to_mouse_panel;
-STORAGE_CLASS ed_mouse_viewport_id_type *mouse_viewport_id;
-STORAGE_CLASS ed_get_confirmation_from_user_type *get_confirmation_from_user;
-STORAGE_CLASS ed_get_current_line_number2_type *get_current_line_number2;
-STORAGE_CLASS ed_get_current_line_number_type *get_current_line_number;
-STORAGE_CLASS ed_system_get_path_type *system_get_path;
-STORAGE_CLASS ed_system_get_file_list_type *system_get_file_list;
-STORAGE_CLASS ed_tkarr_read_type *tkarr_read;
-STORAGE_CLASS ed_tkarr_inc_type *tkarr_inc;
-STORAGE_CLASS ed_token_it_read_type *token_it_read;
-STORAGE_CLASS ed_token_it_inc_all_type *token_it_inc_all;
-STORAGE_CLASS ed_token_it_dec_all_type *token_it_dec_all;
-STORAGE_CLASS ed_token_it_inc_type *token_it_inc;
-STORAGE_CLASS ed_token_it_dec_type *token_it_dec;
-STORAGE_CLASS ed_set_y_up_type *set_y_up;
-STORAGE_CLASS ed_draw_new_group_type *draw_new_group;
+STORAGE_CLASS wrap_function_pointer(get_line_range_from_pos);
+STORAGE_CLASS wrap_function_pointer(buffer_replace_range);
+STORAGE_CLASS wrap_function_pointer(push_buffer_base_name);
+STORAGE_CLASS wrap_function_pointer(get_code_directory);
+STORAGE_CLASS wrap_function_pointer(push_buffer_filepath);
+STORAGE_CLASS wrap_function_pointer(get_active_view);
+STORAGE_CLASS wrap_function_pointer(view_get_buffer);
+STORAGE_CLASS wrap_function_pointer(view_get_cursor_pos);
+STORAGE_CLASS wrap_function_pointer(view_set_cursor);
+STORAGE_CLASS wrap_function_pointer(print_message);
+STORAGE_CLASS wrap_function_pointer(draw_string_oriented);
+STORAGE_CLASS wrap_function_pointer(get_string_advance);
+STORAGE_CLASS wrap_function_pointer(get_other_primary_view);
+STORAGE_CLASS wrap_function_pointer(is_view_to_the_right);
+STORAGE_CLASS wrap_function_pointer(DEBUG_send_entry);
+STORAGE_CLASS wrap_function_pointer(draw_get_target);
+STORAGE_CLASS wrap_function_pointer(vim_set_bottom_text);
+STORAGE_CLASS wrap_function_pointer(change_active_primary_view);
+STORAGE_CLASS wrap_function_pointer(push_token_lexeme);
+STORAGE_CLASS wrap_function_pointer(get_next_input);
+STORAGE_CLASS wrap_function_pointer(draw__push_vertices);
+STORAGE_CLASS wrap_function_pointer(push_object_transform_to_target);
+STORAGE_CLASS wrap_function_pointer(get_token_it_on_current_line);
+STORAGE_CLASS wrap_function_pointer(get_token_it_at_pos);
+STORAGE_CLASS wrap_function_pointer(fui_editor_ui_loop);
+STORAGE_CLASS wrap_function_pointer(view_set_buffer_named);
+STORAGE_CLASS wrap_function_pointer(seek_line_col);
+STORAGE_CLASS wrap_function_pointer(push_image);
+STORAGE_CLASS wrap_function_pointer(switch_to_mouse_panel);
+STORAGE_CLASS wrap_function_pointer(mouse_viewport_id);
+STORAGE_CLASS wrap_function_pointer(get_confirmation_from_user);
+STORAGE_CLASS wrap_function_pointer(get_current_line_number2);
+STORAGE_CLASS wrap_function_pointer(get_current_line_number);
+STORAGE_CLASS wrap_function_pointer(system_get_path);
+STORAGE_CLASS wrap_function_pointer(system_get_file_list);
+STORAGE_CLASS wrap_function_pointer(tkarr_read);
+STORAGE_CLASS wrap_function_pointer(tkarr_inc);
+STORAGE_CLASS wrap_function_pointer(token_it_read);
+STORAGE_CLASS wrap_function_pointer(token_it_inc_all);
+STORAGE_CLASS wrap_function_pointer(token_it_dec_all);
+STORAGE_CLASS wrap_function_pointer(token_it_inc);
+STORAGE_CLASS wrap_function_pointer(token_it_dec);
+STORAGE_CLASS wrap_function_pointer(set_y_up);
+STORAGE_CLASS wrap_function_pointer(draw_new_group);
 #undef DYNAMIC_LINK_API
 #undef STORAGE_CLASS
 #endif

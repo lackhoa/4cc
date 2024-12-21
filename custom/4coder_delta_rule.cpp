@@ -25,7 +25,7 @@ delta_apply(App *app, View_ID view,
             Delta_Rule_Function *func, String delta_ctx,
             f32 dt, Buffer_Point position, Buffer_Point target){
     Buffer_Point_Delta_Result result = {};
-    Vec2_f32 pending = view_point_difference(app, view, target, position);
+    v2 pending = view_point_difference(app, view, target, position);
     if (!near_zero(pending, 0.5f)){
         Delta_Context_Header *ctx = delta_ctx_get_header(delta_ctx);
         b32 is_new_target = false;
@@ -34,7 +34,7 @@ delta_apply(App *app, View_ID view,
             is_new_target = true;
         }
         void *rule_data = delta_ctx_get_user_data(delta_ctx);
-        Vec2_f32 partial = func(pending, is_new_target, dt, rule_data);
+        v2 partial = func(pending, is_new_target, dt, rule_data);
         
         // NOTE(allen): clamp partial into the box from the origin
         // to the pending delta.
@@ -78,12 +78,12 @@ delta_apply(App *app, View_ID view,
                        dt, scroll.position, scroll.target));
 }
 
-function Vec2_f32_Delta_Result
+function v2_Delta_Result
 delta_apply(App *app, View_ID view,
             Delta_Rule_Function *func, String delta_ctx,
-            f32 dt, Vec2_f32 position, Vec2_f32 target){
-    Vec2_f32_Delta_Result result = {};
-    Vec2_f32 pending = target - position;
+            f32 dt, v2 position, v2 target){
+    v2_Delta_Result result = {};
+    v2 pending = target - position;
     if (!near_zero(pending, 0.5f)){
         Delta_Context_Header *ctx = delta_ctx_get_header(delta_ctx);
         b32 is_new_target = false;
@@ -92,7 +92,7 @@ delta_apply(App *app, View_ID view,
             is_new_target = true;
         }
         void *rule_data = delta_ctx_get_user_data(delta_ctx);
-        Vec2_f32 partial = func(pending, is_new_target, dt, rule_data);
+        v2 partial = func(pending, is_new_target, dt, rule_data);
         
         // NOTE(allen): clamp partial into the box from the origin
         // to the pending delta.
@@ -110,7 +110,7 @@ delta_apply(App *app, View_ID view,
     return(result);
 }
 
-function Vec2_f32_Delta_Result
+function v2_Delta_Result
 delta_apply(App *app, View_ID view,
             Delta_Rule_Function *func, String delta_ctx,
             f32 dt, Basic_Scroll scroll){
@@ -118,16 +118,16 @@ delta_apply(App *app, View_ID view,
                        dt, scroll.position, scroll.target));
 }
 
-function Vec2_f32_Delta_Result
+function v2_Delta_Result
 delta_apply(App *app, View_ID view,
-            f32 dt, Vec2_f32 position, Vec2_f32 target){
+            f32 dt, v2 position, v2 target){
     View_Context ctx = view_current_context(app, view);
     String delta_ctx = view_current_context_hook_memory(app, view, HookID_DeltaRule);
     return(delta_apply(app, view, ctx.delta_rule, delta_ctx,
                        dt, position, target));
 }
 
-function Vec2_f32_Delta_Result
+function v2_Delta_Result
 delta_apply(App *app, View_ID view,
             f32 dt, Basic_Scroll scroll){
     View_Context ctx = view_current_context(app, view);
@@ -165,7 +165,7 @@ smooth_camera_step(f32 target, f32 v, f32 S, f32 T){
     return(step);
 }
 DELTA_RULE_SIG(original_delta){
-    Vec2_f32 *velocity = (Vec2_f32*)data;
+    v2 *velocity = (v2*)data;
     if (velocity->x == 0.f){
         velocity->x = 1.f;
         velocity->y = 1.f;
@@ -175,7 +175,7 @@ DELTA_RULE_SIG(original_delta){
     *velocity = V2(step_x.v, step_y.v);
     return(V2(step_x.p, step_y.p));
 }
-global_const u64 original_delta_memory_size = sizeof(Vec2_f32);
+global_const u64 original_delta_memory_size = sizeof(v2);
 
 DELTA_RULE_SIG(snap_delta){
     return(pending);
@@ -203,7 +203,7 @@ DELTA_RULE_SIG(fixed_time_cubic_delta){
         *t += step;
     }
     *t = clamp_between(0.f, *t, 1.f);
-    Vec2_f32 result = pending;
+    v2 result = pending;
     if (*t < 1.f){
         f32 prev_x = cubic_reinterpolate(prev_t);
         f32 x = cubic_reinterpolate(*t);

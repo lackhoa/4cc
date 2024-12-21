@@ -4,18 +4,18 @@
 
 // TOP
 
-function Vec2_f32
-panel_space_from_screen_space(Vec2_f32 p, Vec2_f32 file_region_p0){
+function v2
+panel_space_from_screen_space(v2 p, v2 file_region_p0){
     return(p - file_region_p0);
 }
 
-function Vec2_f32
-get_mouse_position_in_panel_space(Mouse_State mouse, Vec2_f32 file_region_p0){
+function v2
+get_mouse_position_in_panel_space(Mouse_State mouse, v2 file_region_p0){
     return(panel_space_from_screen_space(V2(mouse.p), file_region_p0));
 }
 
-function Vec2_f32
-get_mouse_position_in_panel_space(App *app, Vec2_f32 file_region_p0){
+function v2
+get_mouse_position_in_panel_space(App *app, v2 file_region_p0){
     return(get_mouse_position_in_panel_space(get_mouse_state(app), file_region_p0));
 }
 
@@ -221,7 +221,7 @@ lister_render(App *app, Frame_Info frame_info, View_ID view){
     }
     
     {
-        Vec2_f32 p = V2(text_field_rect.x0 + 3.f, text_field_rect.y0);
+        v2 p = V2(text_field_rect.x0 + 3.f, text_field_rect.y0);
         Fancy_Line text_field = {};
         push_fancy_string(scratch, &text_field, fcolor_id(defcolor_pop1),
                           lister->query.string);
@@ -280,7 +280,7 @@ lister_render(App *app, Frame_Info frame_info, View_ID view){
     lister->scroll.target.y = clamp_range(scroll_range, lister->scroll.target.y);
     lister->scroll.target.x = 0.f;
     
-    Vec2_f32_Delta_Result delta = delta_apply(app, view,
+    v2_Delta_Result delta = delta_apply(app, view,
                                               frame_info.animation_dt, lister->scroll);
     lister->scroll.position = delta.p;
     if (delta.still_animating){
@@ -332,7 +332,7 @@ lister_render(App *app, Frame_Info frame_info, View_ID view){
         push_fancy_stringf(scratch, &line, " ");
         push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), node->status);
         
-        Vec2_f32 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
+        v2 p = item_inner.p0 + V2(3.f, (block_height - line_height)*0.5f);
   draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
  }
  
@@ -481,7 +481,7 @@ lister_activate(App *app, Lister *lister, void *user_data, b32 mouse){
 }
 
 function void*
-lister_user_data_at_p(App *app, View_ID view, Lister *lister, Vec2_f32 m_p){
+lister_user_data_at_p(App *app, View_ID view, Lister *lister, v2 m_p){
     Rect_f32 region = view_get_screen_rect(app, view);
     // TODO(allen): eliminate this. bad bad bad bad :(
     region = rect_inner(region, 3.f);

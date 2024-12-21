@@ -207,7 +207,7 @@ view_line_y_difference(Thread_Context *tctx, Models *models, View *view,
 
 function i64
 view_pos_at_relative_xy(Thread_Context *tctx, Models *models, View *view,
-                        i64 base_line, Vec2_f32 relative_xy){
+                        i64 base_line, v2 relative_xy){
     Editing_File *file = view->file;
     Face *face = file_get_face(models, file);
     f32 width = view_width(tctx, models, view);
@@ -227,7 +227,7 @@ view_relative_box_of_pos(Thread_Context *tctx, Models *models, View *view,
                                     layout_func, width, face, base_line, pos));
 }
 
-function Vec2_f32
+function v2
 view_relative_xy_of_pos(Thread_Context *tctx, Models *models, View *view,
                         i64 base_line, i64 pos){
     Rect_f32 rect = view_relative_box_of_pos(tctx, models, view, base_line, pos);
@@ -256,7 +256,7 @@ view_normalize_buffer_point(Thread_Context *tctx, Models *models, View *view,
                                        layout_func, width, face, point));
 }
 
-function Vec2_f32
+function v2
 view_buffer_point_difference(Thread_Context *tctx, Models *models, View *view,
                              Buffer_Point a, Buffer_Point b){
     Editing_File *file = view->file;
@@ -269,7 +269,7 @@ view_buffer_point_difference(Thread_Context *tctx, Models *models, View *view,
 
 function Buffer_Point
 view_move_buffer_point(Thread_Context *tctx, Models *models, View *view,
-                       Buffer_Point buffer_point, Vec2_f32 delta){
+                       Buffer_Point buffer_point, v2 delta){
     delta += buffer_point.pixel_shift;
     Line_Shift_Vertical shift = view_line_shift_y(tctx, models, view, buffer_point.line_number, delta.y);
     buffer_point.line_number = shift.line;
@@ -384,11 +384,11 @@ view_move_cursor_to_view(Thread_Context *tctx, Models *models, View *view, Buffe
     Editing_File *file = view->file;
     Face *face = file_get_face(models, file);
     Rect_f32 rect = view_get_buffer_rect(tctx, models, view);
-    Vec2_f32 view_dim = get_dim(rect);
+    v2 view_dim = get_dim(rect);
     
     Layout_Function *layout_func = file_get_layout_func(file);
     
-    Vec2_f32 p = file_relative_xy_of_pos(tctx, models, file,
+    v2 p = file_relative_xy_of_pos(tctx, models, file,
                                          layout_func, view_dim.x, face,
                                          scroll.target.line_number, *pos_in_out);
     p -= scroll.target.pixel_shift;
@@ -446,7 +446,7 @@ view_set_cursor_and_scroll(Thread_Context *tctx, Models *models, View *view, i64
     File_Edit_Positions edit_pos = view_get_edit_pos(view);
     file_edit_positions_set_cursor(&edit_pos, pos);
     Buffer_Cursor cursor = view_compute_cursor(view, seek_pos(pos));
-    Vec2_f32 p = view_relative_xy_of_pos(tctx, models, view, cursor.line, pos);
+    v2 p = view_relative_xy_of_pos(tctx, models, view, cursor.line, pos);
     view->preferred_x = p.x;
     file_edit_positions_set_scroll(&edit_pos, scroll);
     edit_pos.last_set_type = EditPos_None;
@@ -480,7 +480,7 @@ view_set_file(Thread_Context *tctx, Models *models, View *view, Editing_File *fi
     view_set_edit_pos(view, edit_pos);
     view->mark = edit_pos.cursor_pos;
     Buffer_Cursor cursor = view_compute_cursor(view, seek_pos(edit_pos.cursor_pos));
-    Vec2_f32 p = view_relative_xy_of_pos(tctx, models, view, cursor.line, edit_pos.cursor_pos);
+    v2 p = view_relative_xy_of_pos(tctx, models, view, cursor.line, edit_pos.cursor_pos);
     view->preferred_x = p.x;
     
     models->layout.panel_state_dirty = true;

@@ -58,122 +58,181 @@
 #define system_is_fullscreen_sig() b32 system_is_fullscreen(void)
 #define system_get_keyboard_modifiers_sig() Input_Modifier_Set system_get_keyboard_modifiers(Arena* arena)
 #define system_set_key_mode_sig() void system_set_key_mode(Key_Mode mode)
-typedef void system_error_box_type(char* msg);
-typedef String system_get_path_type(Arena* arena, System_Path_Code path_code);
-typedef String system_get_canonical_type(Arena* arena, String name);
-typedef File_List system_get_file_list_type(Arena* arena, String directory);
-typedef File_Attributes system_quick_file_attributes_type(Arena* scratch, String filename);
-typedef b32 system_load_handle_type(Arena* scratch, char* filename, Plat_Handle* out);
-typedef File_Attributes system_load_attributes_type(Plat_Handle handle);
-typedef b32 system_load_file_type(Plat_Handle handle, char* buffer, u32 size);
-typedef b32 system_load_close_type(Plat_Handle handle);
-typedef File_Attributes system_save_file_type(Arena* scratch, char* filename, String data);
-typedef b32 system_load_library_type(Arena* scratch, String filename, System_Library* out);
-typedef b32 system_release_library_type(System_Library handle);
-typedef Void_Func* system_get_proc_type(System_Library handle, char* proc_name);
-typedef u64 system_time_usecond_type(void);
-typedef Date_Time system_now_date_time_universal_type(void);
-typedef Date_Time system_local_date_time_from_universal_type(Date_Time* date_time);
-typedef Date_Time system_universal_date_time_from_local_type(Date_Time* date_time);
-typedef Plat_Handle system_wake_up_timer_create_type(void);
-typedef void system_wake_up_timer_release_type(Plat_Handle handle);
-typedef void system_wake_up_timer_set_type(Plat_Handle handle, u32 time_milliseconds);
-typedef void system_signal_step_type(u32 code);
-typedef void system_sleep_type(u64 microseconds);
-typedef String system_get_clipboard_type(Arena* arena, i1 index);
-typedef void system_post_clipboard_type(String str, i1 index);
-typedef void system_set_clipboard_catch_all_type(b32 enabled);
-typedef b32 system_get_clipboard_catch_all_type(void);
-typedef b32 system_cli_call_type(Arena* scratch, char* path, char* script, CLI_Handles* cli_out);
-typedef void system_cli_begin_update_type(CLI_Handles* cli);
-typedef b32 system_cli_update_step_type(CLI_Handles* cli, char* dest, u32 max, u32* amount);
-typedef b32 system_cli_end_update_type(CLI_Handles* cli);
-typedef void system_open_color_picker_type(Color_Picker* picker);
-typedef f32 system_get_screen_scale_factor_type(void);
-typedef System_Thread system_thread_launch_type(Thread_Function* proc, void* ptr);
-typedef void system_thread_join_type(System_Thread thread);
-typedef void system_thread_free_type(System_Thread thread);
-typedef i1 system_thread_get_id_type(void);
-typedef void system_acquire_global_frame_mutex_type(Thread_Context* tctx);
-typedef void system_release_global_frame_mutex_type(Thread_Context* tctx);
-typedef System_Mutex system_mutex_make_type(void);
-typedef void system_mutex_acquire_type(System_Mutex mutex);
-typedef void system_mutex_release_type(System_Mutex mutex);
-typedef void system_mutex_free_type(System_Mutex mutex);
-typedef System_Condition_Variable system_condition_variable_make_type(void);
-typedef void system_condition_variable_wait_type(System_Condition_Variable cv, System_Mutex mutex);
-typedef void system_condition_variable_signal_type(System_Condition_Variable cv);
-typedef void system_condition_variable_free_type(System_Condition_Variable cv);
-typedef u8 * system_memory_reserve_type(usize wanted_size);
-typedef void system_memory_free_type(void * base);
-typedef b32 system_memory_commit_type(void * base, usize size);
-typedef void system_memory_decommit_type(void * base, usize size);
-typedef b32 system_memory_set_protection_type(void* ptr, u64 size, u32 flags);
-typedef Memory_Annotation system_memory_annotation_type(Arena* arena);
-typedef void system_show_mouse_cursor_type(i1 show);
-typedef b32 system_set_fullscreen_type(b32 full_screen);
-typedef b32 system_is_fullscreen_type(void);
-typedef Input_Modifier_Set system_get_keyboard_modifiers_type(Arena* arena);
-typedef void system_set_key_mode_type(Key_Mode mode);
+#define system_error_box__return void
+#define system_error_box__params char* msg
+#define system_get_path__return String
+#define system_get_path__params Arena* arena, System_Path_Code path_code
+#define system_get_canonical__return String
+#define system_get_canonical__params Arena* arena, String name
+#define system_get_file_list__return File_List
+#define system_get_file_list__params Arena* arena, String directory
+#define system_quick_file_attributes__return File_Attributes
+#define system_quick_file_attributes__params Arena* scratch, String filename
+#define system_load_handle__return b32
+#define system_load_handle__params Arena* scratch, char* filename, Plat_Handle* out
+#define system_load_attributes__return File_Attributes
+#define system_load_attributes__params Plat_Handle handle
+#define system_load_file__return b32
+#define system_load_file__params Plat_Handle handle, char* buffer, u32 size
+#define system_load_close__return b32
+#define system_load_close__params Plat_Handle handle
+#define system_save_file__return File_Attributes
+#define system_save_file__params Arena* scratch, char* filename, String data
+#define system_load_library__return b32
+#define system_load_library__params Arena* scratch, String filename, System_Library* out
+#define system_release_library__return b32
+#define system_release_library__params System_Library handle
+#define system_get_proc__return Void_Func*
+#define system_get_proc__params System_Library handle, char* proc_name
+#define system_time_usecond__return u64
+#define system_time_usecond__params void
+#define system_now_date_time_universal__return Date_Time
+#define system_now_date_time_universal__params void
+#define system_local_date_time_from_universal__return Date_Time
+#define system_local_date_time_from_universal__params Date_Time* date_time
+#define system_universal_date_time_from_local__return Date_Time
+#define system_universal_date_time_from_local__params Date_Time* date_time
+#define system_wake_up_timer_create__return Plat_Handle
+#define system_wake_up_timer_create__params void
+#define system_wake_up_timer_release__return void
+#define system_wake_up_timer_release__params Plat_Handle handle
+#define system_wake_up_timer_set__return void
+#define system_wake_up_timer_set__params Plat_Handle handle, u32 time_milliseconds
+#define system_signal_step__return void
+#define system_signal_step__params u32 code
+#define system_sleep__return void
+#define system_sleep__params u64 microseconds
+#define system_get_clipboard__return String
+#define system_get_clipboard__params Arena* arena, i1 index
+#define system_post_clipboard__return void
+#define system_post_clipboard__params String str, i1 index
+#define system_set_clipboard_catch_all__return void
+#define system_set_clipboard_catch_all__params b32 enabled
+#define system_get_clipboard_catch_all__return b32
+#define system_get_clipboard_catch_all__params void
+#define system_cli_call__return b32
+#define system_cli_call__params Arena* scratch, char* path, char* script, CLI_Handles* cli_out
+#define system_cli_begin_update__return void
+#define system_cli_begin_update__params CLI_Handles* cli
+#define system_cli_update_step__return b32
+#define system_cli_update_step__params CLI_Handles* cli, char* dest, u32 max, u32* amount
+#define system_cli_end_update__return b32
+#define system_cli_end_update__params CLI_Handles* cli
+#define system_open_color_picker__return void
+#define system_open_color_picker__params Color_Picker* picker
+#define system_get_screen_scale_factor__return f32
+#define system_get_screen_scale_factor__params void
+#define system_thread_launch__return System_Thread
+#define system_thread_launch__params Thread_Function* proc, void* ptr
+#define system_thread_join__return void
+#define system_thread_join__params System_Thread thread
+#define system_thread_free__return void
+#define system_thread_free__params System_Thread thread
+#define system_thread_get_id__return i1
+#define system_thread_get_id__params void
+#define system_acquire_global_frame_mutex__return void
+#define system_acquire_global_frame_mutex__params Thread_Context* tctx
+#define system_release_global_frame_mutex__return void
+#define system_release_global_frame_mutex__params Thread_Context* tctx
+#define system_mutex_make__return System_Mutex
+#define system_mutex_make__params void
+#define system_mutex_acquire__return void
+#define system_mutex_acquire__params System_Mutex mutex
+#define system_mutex_release__return void
+#define system_mutex_release__params System_Mutex mutex
+#define system_mutex_free__return void
+#define system_mutex_free__params System_Mutex mutex
+#define system_condition_variable_make__return System_Condition_Variable
+#define system_condition_variable_make__params void
+#define system_condition_variable_wait__return void
+#define system_condition_variable_wait__params System_Condition_Variable cv, System_Mutex mutex
+#define system_condition_variable_signal__return void
+#define system_condition_variable_signal__params System_Condition_Variable cv
+#define system_condition_variable_free__return void
+#define system_condition_variable_free__params System_Condition_Variable cv
+#define system_memory_reserve__return u8 *
+#define system_memory_reserve__params usize wanted_size
+#define system_memory_free__return void
+#define system_memory_free__params void * base
+#define system_memory_commit__return b32
+#define system_memory_commit__params void * base, usize size
+#define system_memory_decommit__return void
+#define system_memory_decommit__params void * base, usize size
+#define system_memory_set_protection__return b32
+#define system_memory_set_protection__params void* ptr, u64 size, u32 flags
+#define system_memory_annotation__return Memory_Annotation
+#define system_memory_annotation__params Arena* arena
+#define system_show_mouse_cursor__return void
+#define system_show_mouse_cursor__params i1 show
+#define system_set_fullscreen__return b32
+#define system_set_fullscreen__params b32 full_screen
+#define system_is_fullscreen__return b32
+#define system_is_fullscreen__params void
+#define system_get_keyboard_modifiers__return Input_Modifier_Set
+#define system_get_keyboard_modifiers__params Arena* arena
+#define system_set_key_mode__return void
+#define system_set_key_mode__params Key_Mode mode
+#if defined(STATIC_LINK_API) || defined(DYNAMIC_LINK_API)
 struct API_VTable_system{
-system_error_box_type *error_box;
-system_get_path_type *get_path;
-system_get_canonical_type *get_canonical;
-system_get_file_list_type *get_file_list;
-system_quick_file_attributes_type *quick_file_attributes;
-system_load_handle_type *load_handle;
-system_load_attributes_type *load_attributes;
-system_load_file_type *load_file;
-system_load_close_type *load_close;
-system_save_file_type *save_file;
-system_load_library_type *load_library;
-system_release_library_type *release_library;
-system_get_proc_type *get_proc;
-system_time_usecond_type *time_usecond;
-system_now_date_time_universal_type *now_date_time_universal;
-system_local_date_time_from_universal_type *local_date_time_from_universal;
-system_universal_date_time_from_local_type *universal_date_time_from_local;
-system_wake_up_timer_create_type *wake_up_timer_create;
-system_wake_up_timer_release_type *wake_up_timer_release;
-system_wake_up_timer_set_type *wake_up_timer_set;
-system_signal_step_type *signal_step;
-system_sleep_type *sleep;
-system_get_clipboard_type *get_clipboard;
-system_post_clipboard_type *post_clipboard;
-system_set_clipboard_catch_all_type *set_clipboard_catch_all;
-system_get_clipboard_catch_all_type *get_clipboard_catch_all;
-system_cli_call_type *cli_call;
-system_cli_begin_update_type *cli_begin_update;
-system_cli_update_step_type *cli_update_step;
-system_cli_end_update_type *cli_end_update;
-system_open_color_picker_type *open_color_picker;
-system_get_screen_scale_factor_type *get_screen_scale_factor;
-system_thread_launch_type *thread_launch;
-system_thread_join_type *thread_join;
-system_thread_free_type *thread_free;
-system_thread_get_id_type *thread_get_id;
-system_acquire_global_frame_mutex_type *acquire_global_frame_mutex;
-system_release_global_frame_mutex_type *release_global_frame_mutex;
-system_mutex_make_type *mutex_make;
-system_mutex_acquire_type *mutex_acquire;
-system_mutex_release_type *mutex_release;
-system_mutex_free_type *mutex_free;
-system_condition_variable_make_type *condition_variable_make;
-system_condition_variable_wait_type *condition_variable_wait;
-system_condition_variable_signal_type *condition_variable_signal;
-system_condition_variable_free_type *condition_variable_free;
-system_memory_reserve_type *memory_reserve;
-system_memory_free_type *memory_free;
-system_memory_commit_type *memory_commit;
-system_memory_decommit_type *memory_decommit;
-system_memory_set_protection_type *memory_set_protection;
-system_memory_annotation_type *memory_annotation;
-system_show_mouse_cursor_type *show_mouse_cursor;
-system_set_fullscreen_type *set_fullscreen;
-system_is_fullscreen_type *is_fullscreen;
-system_get_keyboard_modifiers_type *get_keyboard_modifiers;
-system_set_key_mode_type *set_key_mode;
+wrap_function_pointer(system_error_box);
+wrap_function_pointer(system_get_path);
+wrap_function_pointer(system_get_canonical);
+wrap_function_pointer(system_get_file_list);
+wrap_function_pointer(system_quick_file_attributes);
+wrap_function_pointer(system_load_handle);
+wrap_function_pointer(system_load_attributes);
+wrap_function_pointer(system_load_file);
+wrap_function_pointer(system_load_close);
+wrap_function_pointer(system_save_file);
+wrap_function_pointer(system_load_library);
+wrap_function_pointer(system_release_library);
+wrap_function_pointer(system_get_proc);
+wrap_function_pointer(system_time_usecond);
+wrap_function_pointer(system_now_date_time_universal);
+wrap_function_pointer(system_local_date_time_from_universal);
+wrap_function_pointer(system_universal_date_time_from_local);
+wrap_function_pointer(system_wake_up_timer_create);
+wrap_function_pointer(system_wake_up_timer_release);
+wrap_function_pointer(system_wake_up_timer_set);
+wrap_function_pointer(system_signal_step);
+wrap_function_pointer(system_sleep);
+wrap_function_pointer(system_get_clipboard);
+wrap_function_pointer(system_post_clipboard);
+wrap_function_pointer(system_set_clipboard_catch_all);
+wrap_function_pointer(system_get_clipboard_catch_all);
+wrap_function_pointer(system_cli_call);
+wrap_function_pointer(system_cli_begin_update);
+wrap_function_pointer(system_cli_update_step);
+wrap_function_pointer(system_cli_end_update);
+wrap_function_pointer(system_open_color_picker);
+wrap_function_pointer(system_get_screen_scale_factor);
+wrap_function_pointer(system_thread_launch);
+wrap_function_pointer(system_thread_join);
+wrap_function_pointer(system_thread_free);
+wrap_function_pointer(system_thread_get_id);
+wrap_function_pointer(system_acquire_global_frame_mutex);
+wrap_function_pointer(system_release_global_frame_mutex);
+wrap_function_pointer(system_mutex_make);
+wrap_function_pointer(system_mutex_acquire);
+wrap_function_pointer(system_mutex_release);
+wrap_function_pointer(system_mutex_free);
+wrap_function_pointer(system_condition_variable_make);
+wrap_function_pointer(system_condition_variable_wait);
+wrap_function_pointer(system_condition_variable_signal);
+wrap_function_pointer(system_condition_variable_free);
+wrap_function_pointer(system_memory_reserve);
+wrap_function_pointer(system_memory_free);
+wrap_function_pointer(system_memory_commit);
+wrap_function_pointer(system_memory_decommit);
+wrap_function_pointer(system_memory_set_protection);
+wrap_function_pointer(system_memory_annotation);
+wrap_function_pointer(system_show_mouse_cursor);
+wrap_function_pointer(system_set_fullscreen);
+wrap_function_pointer(system_is_fullscreen);
+wrap_function_pointer(system_get_keyboard_modifiers);
+wrap_function_pointer(system_set_key_mode);
 };
+#endif
 #if defined(STATIC_LINK_API)
 function void system_error_box(char* msg);
 function String system_get_path(Arena* arena, System_Path_Code path_code);
@@ -237,63 +296,63 @@ function void system_set_key_mode(Key_Mode mode);
 #ifndef STORAGE_CLASS
 #define STORAGE_CLASS global
 #endif
-STORAGE_CLASS system_error_box_type *system_error_box;
-STORAGE_CLASS system_get_path_type *system_get_path;
-STORAGE_CLASS system_get_canonical_type *system_get_canonical;
-STORAGE_CLASS system_get_file_list_type *system_get_file_list;
-STORAGE_CLASS system_quick_file_attributes_type *system_quick_file_attributes;
-STORAGE_CLASS system_load_handle_type *system_load_handle;
-STORAGE_CLASS system_load_attributes_type *system_load_attributes;
-STORAGE_CLASS system_load_file_type *system_load_file;
-STORAGE_CLASS system_load_close_type *system_load_close;
-STORAGE_CLASS system_save_file_type *system_save_file;
-STORAGE_CLASS system_load_library_type *system_load_library;
-STORAGE_CLASS system_release_library_type *system_release_library;
-STORAGE_CLASS system_get_proc_type *system_get_proc;
-STORAGE_CLASS system_time_usecond_type *system_time_usecond;
-STORAGE_CLASS system_now_date_time_universal_type *system_now_date_time_universal;
-STORAGE_CLASS system_local_date_time_from_universal_type *system_local_date_time_from_universal;
-STORAGE_CLASS system_universal_date_time_from_local_type *system_universal_date_time_from_local;
-STORAGE_CLASS system_wake_up_timer_create_type *system_wake_up_timer_create;
-STORAGE_CLASS system_wake_up_timer_release_type *system_wake_up_timer_release;
-STORAGE_CLASS system_wake_up_timer_set_type *system_wake_up_timer_set;
-STORAGE_CLASS system_signal_step_type *system_signal_step;
-STORAGE_CLASS system_sleep_type *system_sleep;
-STORAGE_CLASS system_get_clipboard_type *system_get_clipboard;
-STORAGE_CLASS system_post_clipboard_type *system_post_clipboard;
-STORAGE_CLASS system_set_clipboard_catch_all_type *system_set_clipboard_catch_all;
-STORAGE_CLASS system_get_clipboard_catch_all_type *system_get_clipboard_catch_all;
-STORAGE_CLASS system_cli_call_type *system_cli_call;
-STORAGE_CLASS system_cli_begin_update_type *system_cli_begin_update;
-STORAGE_CLASS system_cli_update_step_type *system_cli_update_step;
-STORAGE_CLASS system_cli_end_update_type *system_cli_end_update;
-STORAGE_CLASS system_open_color_picker_type *system_open_color_picker;
-STORAGE_CLASS system_get_screen_scale_factor_type *system_get_screen_scale_factor;
-STORAGE_CLASS system_thread_launch_type *system_thread_launch;
-STORAGE_CLASS system_thread_join_type *system_thread_join;
-STORAGE_CLASS system_thread_free_type *system_thread_free;
-STORAGE_CLASS system_thread_get_id_type *system_thread_get_id;
-STORAGE_CLASS system_acquire_global_frame_mutex_type *system_acquire_global_frame_mutex;
-STORAGE_CLASS system_release_global_frame_mutex_type *system_release_global_frame_mutex;
-STORAGE_CLASS system_mutex_make_type *system_mutex_make;
-STORAGE_CLASS system_mutex_acquire_type *system_mutex_acquire;
-STORAGE_CLASS system_mutex_release_type *system_mutex_release;
-STORAGE_CLASS system_mutex_free_type *system_mutex_free;
-STORAGE_CLASS system_condition_variable_make_type *system_condition_variable_make;
-STORAGE_CLASS system_condition_variable_wait_type *system_condition_variable_wait;
-STORAGE_CLASS system_condition_variable_signal_type *system_condition_variable_signal;
-STORAGE_CLASS system_condition_variable_free_type *system_condition_variable_free;
-STORAGE_CLASS system_memory_reserve_type *system_memory_reserve;
-STORAGE_CLASS system_memory_free_type *system_memory_free;
-STORAGE_CLASS system_memory_commit_type *system_memory_commit;
-STORAGE_CLASS system_memory_decommit_type *system_memory_decommit;
-STORAGE_CLASS system_memory_set_protection_type *system_memory_set_protection;
-STORAGE_CLASS system_memory_annotation_type *system_memory_annotation;
-STORAGE_CLASS system_show_mouse_cursor_type *system_show_mouse_cursor;
-STORAGE_CLASS system_set_fullscreen_type *system_set_fullscreen;
-STORAGE_CLASS system_is_fullscreen_type *system_is_fullscreen;
-STORAGE_CLASS system_get_keyboard_modifiers_type *system_get_keyboard_modifiers;
-STORAGE_CLASS system_set_key_mode_type *system_set_key_mode;
+STORAGE_CLASS wrap_function_pointer(system_error_box);
+STORAGE_CLASS wrap_function_pointer(system_get_path);
+STORAGE_CLASS wrap_function_pointer(system_get_canonical);
+STORAGE_CLASS wrap_function_pointer(system_get_file_list);
+STORAGE_CLASS wrap_function_pointer(system_quick_file_attributes);
+STORAGE_CLASS wrap_function_pointer(system_load_handle);
+STORAGE_CLASS wrap_function_pointer(system_load_attributes);
+STORAGE_CLASS wrap_function_pointer(system_load_file);
+STORAGE_CLASS wrap_function_pointer(system_load_close);
+STORAGE_CLASS wrap_function_pointer(system_save_file);
+STORAGE_CLASS wrap_function_pointer(system_load_library);
+STORAGE_CLASS wrap_function_pointer(system_release_library);
+STORAGE_CLASS wrap_function_pointer(system_get_proc);
+STORAGE_CLASS wrap_function_pointer(system_time_usecond);
+STORAGE_CLASS wrap_function_pointer(system_now_date_time_universal);
+STORAGE_CLASS wrap_function_pointer(system_local_date_time_from_universal);
+STORAGE_CLASS wrap_function_pointer(system_universal_date_time_from_local);
+STORAGE_CLASS wrap_function_pointer(system_wake_up_timer_create);
+STORAGE_CLASS wrap_function_pointer(system_wake_up_timer_release);
+STORAGE_CLASS wrap_function_pointer(system_wake_up_timer_set);
+STORAGE_CLASS wrap_function_pointer(system_signal_step);
+STORAGE_CLASS wrap_function_pointer(system_sleep);
+STORAGE_CLASS wrap_function_pointer(system_get_clipboard);
+STORAGE_CLASS wrap_function_pointer(system_post_clipboard);
+STORAGE_CLASS wrap_function_pointer(system_set_clipboard_catch_all);
+STORAGE_CLASS wrap_function_pointer(system_get_clipboard_catch_all);
+STORAGE_CLASS wrap_function_pointer(system_cli_call);
+STORAGE_CLASS wrap_function_pointer(system_cli_begin_update);
+STORAGE_CLASS wrap_function_pointer(system_cli_update_step);
+STORAGE_CLASS wrap_function_pointer(system_cli_end_update);
+STORAGE_CLASS wrap_function_pointer(system_open_color_picker);
+STORAGE_CLASS wrap_function_pointer(system_get_screen_scale_factor);
+STORAGE_CLASS wrap_function_pointer(system_thread_launch);
+STORAGE_CLASS wrap_function_pointer(system_thread_join);
+STORAGE_CLASS wrap_function_pointer(system_thread_free);
+STORAGE_CLASS wrap_function_pointer(system_thread_get_id);
+STORAGE_CLASS wrap_function_pointer(system_acquire_global_frame_mutex);
+STORAGE_CLASS wrap_function_pointer(system_release_global_frame_mutex);
+STORAGE_CLASS wrap_function_pointer(system_mutex_make);
+STORAGE_CLASS wrap_function_pointer(system_mutex_acquire);
+STORAGE_CLASS wrap_function_pointer(system_mutex_release);
+STORAGE_CLASS wrap_function_pointer(system_mutex_free);
+STORAGE_CLASS wrap_function_pointer(system_condition_variable_make);
+STORAGE_CLASS wrap_function_pointer(system_condition_variable_wait);
+STORAGE_CLASS wrap_function_pointer(system_condition_variable_signal);
+STORAGE_CLASS wrap_function_pointer(system_condition_variable_free);
+STORAGE_CLASS wrap_function_pointer(system_memory_reserve);
+STORAGE_CLASS wrap_function_pointer(system_memory_free);
+STORAGE_CLASS wrap_function_pointer(system_memory_commit);
+STORAGE_CLASS wrap_function_pointer(system_memory_decommit);
+STORAGE_CLASS wrap_function_pointer(system_memory_set_protection);
+STORAGE_CLASS wrap_function_pointer(system_memory_annotation);
+STORAGE_CLASS wrap_function_pointer(system_show_mouse_cursor);
+STORAGE_CLASS wrap_function_pointer(system_set_fullscreen);
+STORAGE_CLASS wrap_function_pointer(system_is_fullscreen);
+STORAGE_CLASS wrap_function_pointer(system_get_keyboard_modifiers);
+STORAGE_CLASS wrap_function_pointer(system_set_key_mode);
 #undef DYNAMIC_LINK_API
 #undef STORAGE_CLASS
 #endif

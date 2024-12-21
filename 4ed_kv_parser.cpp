@@ -495,8 +495,8 @@ ep_capture_until_char(Ed_Parser *p, String terminators){
   char res = ep_eat_until_char(p, terminators);
   if(res){
    // NOTE(kv): The last token is one token to the left of the terminator
-   Token *last_token = ep_get_token_delta(p, -1);
-   i64 last_pos = last_token->pos + last_token->size;
+   Token *last_token = ep_get_token(p);
+   i64 last_pos = last_token->pos;
    result.data = p->source.data + first_token->pos;
    result.size = last_pos - first_token->pos;
   }

@@ -16,8 +16,18 @@
 
 #include <stdio.h>
 
+#include "kv.h"
 #include "4coder_game_shared.h"
 #include "4ed_base.h"
+
+function Range_f32
+unlerp(f32 a, Range_f32 x, f32 b)
+{
+ x.min = unlerp(a, x.min, b);
+ x.max = unlerp(a, x.max, b);
+ return(x);
+}
+
 #include "4coder_version.h"
 #include "4coder_events.h"
 

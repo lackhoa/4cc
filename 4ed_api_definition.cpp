@@ -132,12 +132,12 @@ api_get_type(API_Definition *api, String name){
     for (API_Type *type = api->first_type;
          type != 0;
          type = type->next){
-        if (string_match(type->name, name)){
-            result = type;
-            break;
-        }
-    }
-    return(result);
+  if (string_match(type->name, name)){
+   result = type;
+   break;
+  }
+ }
+ return(result);
 }
 
 function b32
@@ -190,15 +190,11 @@ api_type_match(API_Type *a, API_Type *b){
 #include "4coder_stringf.cpp"
 
 function String
-api_get_callable_name(Arena *arena, String api_name, String name, API_Generation_Flag flags){
- String result = {};
- if (HasFlag(flags, APIGeneration_NoAPINameOnCallables)){
-  result = push_stringfz(arena, "%.*s", string_expand(name));
- }
- else{
-  result = push_stringfz(arena, "%.*s_%.*s",
-                         string_expand(api_name),
-                         string_expand(name));
+api_get_callable_name(Arena *arena, String api_name, String name, API_Generation_Flag flags)
+{
+ String result = name;
+ if(flags & APIGeneration_PrefixCallables){
+  result = push_stringfz(arena, "%.*s_%.*s", strexpand(api_name), strexpand(name));
  }
  return(result);
 }
@@ -238,28 +234,34 @@ generate_api_master_list(API_Definition *api, Stringz source_name, API_Generatio
 function void
 generate_header(API_Definition *api, Stringz source_name, API_Generation_Flag flags, FILE *out)
 {
- fprintf(out, "//source: %.*s\n", strexpand(source_name));
  Scratch_Block scratch;
+ 
+ String api_prefix = {};
+ b32 has_prefix = flags & APIGeneration_PrefixCallables;
+ if(has_prefix){
+  api_prefix = push_stringf(scratch, "%.*s_", strexpand(api->name));
+ }
+ 
+ fprintf(out, "//source: %.*s\n", strexpand(source_name));
  for (API_Call *call = api->first_call;
       call != 0;
       call = call->next)
- {
+ {//-the weird signature wrapper (not used)
   fprintf(out, "#define %.*s_%.*s_sig() %.*s %.*s_%.*s(",
-          string_expand(api->name),
-          string_expand(call->name),
-          string_expand(call->return_type),
-          string_expand(api->name),
-          string_expand(call->name));
+          strexpand(api->name),
+          strexpand(call->name),
+          strexpand(call->return_type),
+          strexpand(api->name),
+          strexpand(call->name));
   if (call->params.count == 0){
    fprintf(out, "void");
-  }
-  else{
+  }else{
    for (API_Param *param = call->params.first;
         param != 0;
         param = param->next){
     fprintf(out, "%.*s %.*s",
-            string_expand(param->type_name),
-            string_expand(param->name));
+            strexpand(param->type_name),
+            strexpand(param->name));
     if (param->next != 0){
      fprintf(out, ", ");
     }
@@ -272,40 +274,45 @@ generate_header(API_Definition *api, Stringz source_name, API_Generation_Flag fl
       call != 0;
       call = call->next)
  {
-  fprintf(out, "typedef %.*s %.*s_%.*s_type(",
-          string_expand(call->return_type),
-          string_expand(api->name),
-          string_expand(call->name));
-  if (call->params.count == 0){
-   fprintf(out, "void");
-  }
-  else{
-   for (API_Param *param = call->params.first;
+  fprintf(out, "#define %.*s%.*s__return %.*s\n",
+          strexpand(api_prefix),
+          strexpand(call->name),
+          strexpand(call->return_type));
+  {//-Params
+   fprintf(out, "#define %.*s%.*s__params ",
+           strexpand(api_prefix), strexpand(call->name));
+   if(call->params.count == 0){
+    fprintf(out, "void");
+   }else{
+    for(API_Param *param = call->params.first;
         param != 0;
-        param = param->next){
-    fprintf(out, "%.*s %.*s",
-            string_expand(param->type_name),
-            string_expand(param->name));
-    if (param->next != 0){
-     fprintf(out, ", ");
+        param = param->next)
+    {
+     fprintf(out, "%.*s %.*s",
+             strexpand(param->type_name),
+             strexpand(param->name));
+     if (param->next != 0){
+      fprintf(out, ", ");
+     }
     }
    }
+   fprintf(out, "\n");
   }
-  fprintf(out, ");\n");
  }
  
- fprintf(out, "struct API_VTable_%.*s{\n", string_expand(api->name));
- for (API_Call *call = api->first_call;
-      call != 0;
-      call = call->next){
-  fprintf(out, "%.*s_%.*s_type *",
-          string_expand(api->name),
-          string_expand(call->name));
-  fprintf(out, "%.*s",
-          string_expand(call->name));
-  fprintf(out, ";\n");
+ {//-vtable struct
+  fprintf(out, "#if defined(STATIC_LINK_API) || defined(DYNAMIC_LINK_API)\n");
+  fprintf(out, "struct API_VTable_%.*s{\n", strexpand(api->name));
+  for (API_Call *call = api->first_call;
+       call != 0;
+       call = call->next)
+  {
+   fprintf(out, "wrap_function_pointer(%.*s%.*s);\n",
+           strexpand(api_prefix), strexpand(call->name));
+  }
+  fprintf(out, "};\n");
+  fprintf(out, "#endif\n");
  }
- fprintf(out, "};\n");
  
  fprintf(out, "#if defined(STATIC_LINK_API)\n");
  {
@@ -314,8 +321,8 @@ generate_header(API_Definition *api, Stringz source_name, API_Generation_Flag fl
        call = call->next){
    String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
    fprintf(out, "function %.*s %.*s(",
-           string_expand(call->return_type),
-           string_expand(callable_name));
+           strexpand(call->return_type),
+           strexpand(callable_name));
    if (call->params.count == 0){
     fprintf(out, "void");
    }
@@ -324,8 +331,8 @@ generate_header(API_Definition *api, Stringz source_name, API_Generation_Flag fl
          param != 0;
          param = param->next){
      fprintf(out, "%.*s %.*s",
-             string_expand(param->type_name),
-             string_expand(param->name));
+             strexpand(param->type_name),
+             strexpand(param->name));
      if (param->next != 0){
       fprintf(out, ", ");
      }
@@ -347,10 +354,8 @@ generate_header(API_Definition *api, Stringz source_name, API_Generation_Flag fl
        call = call->next)
   {
    String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
-   fprintf(out, "STORAGE_CLASS %.*s_%.*s_type *%.*s;\n",
-           string_expand(api->name),
-           string_expand(call->name),
-           string_expand(callable_name));
+   fprintf(out, "STORAGE_CLASS wrap_function_pointer(%.*s);\n",
+           strexpand(callable_name));
   }
  }
  fprintf(out, "#undef DYNAMIC_LINK_API\n");
@@ -366,15 +371,15 @@ generate_cpp(API_Definition *api, Stringz source_name, API_Generation_Flag flags
   fprintf(out, "#if defined(STATIC_LINK_API)\n");
   fprintf(out, "function void\n");
   fprintf(out, "%.*s_api_fill_vtable(API_VTable_%.*s *vtable){\n",
-          string_expand(api->name),
-          string_expand(api->name));
+          strexpand(api->name),
+          strexpand(api->name));
   for (API_Call *call = api->first_call;
        call != 0;
        call = call->next)
   {
    String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
    fprintf(out, "vtable->%.*s = %.*s;\n",
-           string_expand(call->name),
+           string_expand(callable_name),
            string_expand(callable_name));
   }
   fprintf(out, "}\n");
@@ -394,7 +399,7 @@ generate_cpp(API_Definition *api, Stringz source_name, API_Generation_Flag flags
    String callable_name = api_get_callable_name(scratch, api->name, call->name, flags);
    fprintf(out, "%.*s = vtable->%.*s;\n",
            string_expand(callable_name),
-           string_expand(call->name));
+           string_expand(callable_name));
   }
   fprintf(out, "}\n");
   fprintf(out, "#undef DYNAMIC_LINK_API\n");

@@ -155,7 +155,7 @@ CUSTOM_DOC("Sets the left size of the view near the x position of the cursor.")
     View_ID view = get_active_view(app, Access_ReadVisible);
     i64 pos = view_get_cursor_pos(app, view);
  Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
- Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, pos);
+ v2 p = view_relative_xy_of_pos(app, view, cursor.line, pos);
  Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
  scroll.target.pixel_shift.x = clamp_min(0.f, p.x - 30.f);
  view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
@@ -244,7 +244,7 @@ move_vertical_pixels(App *app, View_ID view, f32 pixels)
  i64 pos = view_get_cursor_pos(app, view);
  Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
  Rect_f32 r = view_padded_box_of_pos(app, view, cursor.line, pos);
- Vec2_f32 p = {};
+ v2 p = {};
  p.x = view_get_preferred_x(app, view);
  if(pixels > 0.f){
   p.y = r.y1 + pixels;
@@ -748,11 +748,11 @@ isearch(App *app, Scan_Direction start_scan, i64 first_pos,
         return;
     }
     
-    Vec2_f32 old_margin = {};
-    Vec2_f32 old_push_in = {};
+    v2 old_margin = {};
+    v2 old_push_in = {};
     view_get_camera_bounds(app, view, &old_margin, &old_push_in);
     
-    Vec2_f32 margin = old_margin;
+    v2 margin = old_margin;
     margin.y = clamp_min(200.f, margin.y);
     view_set_camera_bounds(app, view, margin, old_push_in);
     

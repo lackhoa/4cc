@@ -234,8 +234,8 @@ begin_frame(void *font_set)
 ////////////////////////////////
 
 function void
-draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
-                ARGB_Color color, Glyph_Flag flags, Vec2_f32 x_axis)
+draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, v2 p,
+                ARGB_Color color, Glyph_Flag flags, v2 x_axis)
 {
  draw__set_face_id(face->id);
  
@@ -257,13 +257,13 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
  vertices[2].uvw = V3(uv.x0, uv.y1, bounds.w);
  vertices[5].uvw = V3(uv.x1, uv.y1, bounds.w);
  
- Vec2_f32 y_axis = V2(-x_axis.y, x_axis.x);
- Vec2_f32 x_min = bounds.xy_off.x0*x_axis;
- Vec2_f32 x_max = bounds.xy_off.x1*x_axis;
- Vec2_f32 y_min = bounds.xy_off.y0*y_axis;
- Vec2_f32 y_max = bounds.xy_off.y1*y_axis;
- Vec2_f32 p_x_min = p + x_min;
- Vec2_f32 p_x_max = p + x_max;
+ v2 y_axis = V2(-x_axis.y, x_axis.x);
+ v2 x_min = bounds.xy_off.x0*x_axis;
+ v2 x_max = bounds.xy_off.x1*x_axis;
+ v2 y_min = bounds.xy_off.y0*y_axis;
+ v2 y_max = bounds.xy_off.y1*y_axis;
+ v2 p_x_min = p + x_min;
+ v2 p_x_max = p + x_max;
  vertices[0].xy = p_x_min + y_min;
  vertices[1].xy = p_x_max + y_min;
  vertices[2].xy = p_x_min + y_max;
@@ -282,8 +282,8 @@ draw_font_glyph(Render_Target *target, Face *face, u32 codepoint, Vec2_f32 p,
 
 ////////////////////////////////
 
-function Vec2_f32
-floor_v2(Vec2_f32 point)
+function v2
+floor_v2(v2 point)
 {
     point.x = floorv1(point.x);
     point.y = floorv1(point.y);
@@ -349,7 +349,7 @@ draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
                         cs[1] = ch;
                         cs[2] = cl;
                         
-                        Vec2_f32 pp = point;
+                        v2 pp = point;
                         for (u32 j = 0; j < 3; ++j){
                             draw_font_glyph(target, face, cs[j], pp, color, flags, delta);
                             pp += delta*byte_sub_advances[j];
@@ -366,17 +366,17 @@ draw_string_inner(Render_Target *target, Face *face, String8 string, v2 point,
 }
 
 function f32
-draw_string(Render_Target *target, Face *face, String string, Vec2_f32 point, u32 color){
+draw_string(Render_Target *target, Face *face, String string, v2 point, u32 color){
     return(draw_string_inner(target, face, string, point, color, 0, V2(1.f, 0.f)));
 }
 
 function f32
-draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color, u32 flags, Vec2_f32 delta){
+draw_string(Render_Target *target, Face *face, u8 *str, v2 point, u32 color, u32 flags, v2 delta){
     return(draw_string_inner(target, face, SCu8(str), point, color, flags, delta));
 }
 
 function f32
-draw_string(Render_Target *target, Face *face, u8 *str, Vec2_f32 point, u32 color){
+draw_string(Render_Target *target, Face *face, u8 *str, v2 point, u32 color){
     return(draw_string_inner(target, face, SCu8(str), point, color, 0, V2(1.f, 0.f)));
 }
 

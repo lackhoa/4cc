@@ -410,7 +410,7 @@ file_line_y_difference(Thread_Context *tctx, Models *models, Editing_File *file,
 function i64
 file_pos_at_relative_xy(Thread_Context *tctx, Models *models, Editing_File *file,
                         Layout_Function *layout_func, f32 width, Face *face,
-                        i64 base_line, Vec2_f32 relative_xy){
+                        i64 base_line, v2 relative_xy){
     Line_Shift_Vertical shift = file_line_shift_y(tctx, models, file, layout_func, width, face, base_line, relative_xy.y);
     relative_xy.y -= shift.y_delta;
     Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, shift.line);
@@ -432,7 +432,7 @@ file_relative_box_of_pos(Thread_Context *tctx, Models *models, Editing_File *fil
     return(result);
 }
 
-function Vec2_f32
+function v2
 file_relative_xy_of_pos(Thread_Context *tctx, Models *models, Editing_File *file,
                         Layout_Function *layout_func, f32 width, Face *face,
                         i64 base_line, i64 pos){
@@ -467,12 +467,12 @@ file_normalize_buffer_point(Thread_Context *tctx, Models *models, Editing_File *
     return(point);
 }
 
-function Vec2_f32
+function v2
 file_buffer_point_difference(Thread_Context *tctx, Models *models, Editing_File *file,
                              Layout_Function *layout_func, f32 width, Face *face,
                              Buffer_Point a, Buffer_Point b){
     f32 y_difference = file_line_y_difference(tctx, models, file, layout_func, width, face, a.line_number, b.line_number);
-    Vec2_f32 result = a.pixel_shift - b.pixel_shift;
+    v2 result = a.pixel_shift - b.pixel_shift;
     result.y += y_difference;
     return(result);
 }

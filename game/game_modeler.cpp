@@ -131,24 +131,18 @@ get_fill_by_linum(Modeler &m, i1 linum){
 #endif
 //-
 function void
-send_vert_func(Painter &p, String name, v3 pos, i1 linum){
+send_vert_func(Painter *p, String name, v3 pos, i1 linum){
  if(sending_vertices){
-  if(p.sending_data and is_left(p)){
-   Modeler *m = p.modeler;
+  if(p->sending_data and is_left(p)){
+   Modeler *m = p->modeler;
    Vertex_Ref existing = vertex_from_name(m, name);
    Vertex_Data *vertex = existing.vertex;
    if(not existing.index.v){
-    /*if(0){
-     for_i32(test_index, 1, m->vertices.count){
-      String test_name = m->vertices[test_index].name;
-      kv_assert(name != test_name);
-     }
-    }*/
     vertex = m->vertices.push_zero();
    }
    vertex->name    = name;
    vertex->pos     = pos;
-   vertex->bone_id = current_bone(&p)->id;
+   vertex->bone_id = current_bone(p)->id;
    vertex->linum   = linum;
   }
  }
@@ -158,10 +152,10 @@ function void
 send_bez_func(String name, Curve_Type type, const Curve_Union &data,
               Line_Params params, i1 linum)
 {
- Painter &p = painter;
- if(p.sending_data)
+ Painter *p = painter;
+ if(p->sending_data)
  {
-  Modeler *m = p.modeler;
+  Modeler *m = p->modeler;
   if(is_left(p)){
    Curve_Ref existing = get_curve_by_linum(m, linum);
    Curve_Data *curve = (existing.index.v ? existing.curve :
@@ -174,16 +168,16 @@ send_bez_func(String name, Curve_Type type, const Curve_Union &data,
    curve->data    = data;
    curve->params  = params;
    curve->linum   = linum;
-   curve->bone_id = current_bone(&p)->id;
-   curve->symx = p.symx;
+   curve->bone_id = current_bone(p)->id;
+   curve->symx = p->symx;
   }
  }
 }
 //-Fill situation
 function void
 send_bez_fill3(String name, String verts[3], Line_Params params, i32 linum){
- Painter &p = painter;
- Modeler *m = p.modeler;
+ Painter *p = painter;
+ Modeler *m = p->modeler;
  Curve_Union data = {};
  for_i32(i,0,3){
   Vertex_Index vi = get_vertex_from_var(m, verts[i], linum).index;
@@ -419,10 +413,14 @@ clear_selection(Modeler *m){
  m->selected_prim_ro   = 0;
  m->active_prims.count = 0;
 }
-xfunction Bone *get_bones(Modeler *m){ return m->bones; }
 //-
-xfunction Common_Line_Params *
+function Common_Line_Params *
 get_line_cparams_list(Modeler *m){
  return m->line_cparams;
+}
+function Bone *
+get_bones(Modeler *m)
+{
+ return m->bones;
 }
 //~EOF

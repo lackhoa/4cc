@@ -662,8 +662,8 @@ get_fancy_string_text_height__inner(App *app, Face_ID face, Fancy_String *string
     return(result);
 }
 
-function Vec2_f32
-draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *first_string, Vec2_f32 p, u32 flags, Vec2_f32 delta)
+function v2
+draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *first_string, v2 p, u32 flags, v2 delta)
 {
     f32 base_line = 0.f;
     for (Fancy_String *string = first_string;
@@ -682,7 +682,7 @@ draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *firs
         }
     }
     
-    Vec2_f32 down_delta = V2(-delta.y, delta.x);
+    v2 down_delta = V2(-delta.y, delta.x);
     for (Fancy_String *string = first_string;
          string != 0;
          string = string->next)
@@ -701,12 +701,12 @@ draw_fancy_string__inner(App *app, Face_ID face, FColor fore, Fancy_String *firs
             Face_Metrics metrics = get_face_metrics(app, use_face);
             f32 down_shift = (base_line - metrics.ascent);
             down_shift = clamp_min(0.f, down_shift);
-            Vec2_f32 p_shift = down_shift*down_delta;
-            Vec2_f32 p_shifted = p + p_shift;
+            v2 p_shift = down_shift*down_delta;
+            v2 p_shifted = p + p_shift;
             
             if (fcolor_is_valid(use_fore))
             {
-                Vec2_f32 margin_delta = delta*metrics.normal_advance;
+                v2 margin_delta = delta*metrics.normal_advance;
                 p_shifted += margin_delta*string->pre_margin;
                 p_shifted = draw_string_oriented(app, use_face, use_argb, string->value, p_shifted, flags, delta);
                 p_shifted += margin_delta*string->post_margin;
@@ -754,22 +754,22 @@ get_fancy_string_text_height(App *app, Face_ID face,
     return(result);
 }
 
-function Vec2_f32
+function v2
 get_fancy_string_dim(App *app, Face_ID face, Fancy_String *string){
     Fancy_String *next = string->next;
     string->next = 0;
-    Vec2_f32 result = V2(get_fancy_string_width__inner(app, face, string),
+    v2 result = V2(get_fancy_string_width__inner(app, face, string),
                             get_fancy_string_height__inner(app, face, string));
     string->next = next;
     return(result);
 }
 
-function Vec2_f32
+function v2
 draw_fancy_string(App *app, Face_ID face, FColor fore,
-                  Fancy_String *string, Vec2_f32 p, u32 flags, Vec2_f32 delta){
+                  Fancy_String *string, v2 p, u32 flags, v2 delta){
     Fancy_String *next = string->next;
     string->next = 0;
-    Vec2_f32 result = draw_fancy_string__inner(app, face, fore, string, p, flags, delta);
+    v2 result = draw_fancy_string__inner(app, face, fore, string, p, flags, delta);
     string->next = next;
     return(result);
 }
@@ -810,9 +810,9 @@ get_fancy_line_text_height(App *app, Face_ID face, Fancy_Line *line){
     return(result);
 }
 
-function Vec2_f32
+function v2
 get_fancy_line_dim(App *app, Face_ID face, Fancy_Line *line){
-    Vec2_f32 result = {};
+    v2 result = {};
     if (line != 0){
         if (line->face != 0){
             face = line->face;
@@ -822,10 +822,10 @@ get_fancy_line_dim(App *app, Face_ID face, Fancy_Line *line){
     return(result);
 }
 
-function Vec2_f32
+function v2
 draw_fancy_line(App *app, Face_ID face, FColor fore,
-                Fancy_Line *line, Vec2_f32 p, u32 flags, Vec2_f32 delta){
-    Vec2_f32 result = {};
+                Fancy_Line *line, v2 p, u32 flags, v2 delta){
+    v2 result = {};
     if (line != 0){
         if (line->face != 0)
         {
@@ -863,9 +863,9 @@ get_fancy_block_height(App *app, Face_ID face, Fancy_Block *block){
     return(height);
 }
 
-function Vec2_f32
+function v2
 get_fancy_block_dim(App *app, Face_ID face, Fancy_Block *block){
-    Vec2_f32 result = {};
+    v2 result = {};
     result.x = get_fancy_block_width(app, face, block);
     result.y = get_fancy_block_height(app, face, block);
     return(result);
@@ -873,7 +873,7 @@ get_fancy_block_dim(App *app, Face_ID face, Fancy_Block *block){
 
 function void
 draw_fancy_block(App *app, Face_ID face, FColor fore,
-                 Fancy_Block *block, Vec2_f32 p, u32 flags, Vec2_f32 delta){
+                 Fancy_Block *block, v2 p, u32 flags, v2 delta){
     for (Fancy_Line *node = block->first;
          node != 0;
          node = node->next){
@@ -882,26 +882,26 @@ draw_fancy_block(App *app, Face_ID face, FColor fore,
     }
 }
 
-function Vec2_f32
+function v2
 draw_fancy_string(App *app, Face_ID face, FColor fore,
-                  Fancy_String *string, Vec2_f32 p){
+                  Fancy_String *string, v2 p){
     return(draw_fancy_string(app, face, fore, string, p, 0, V2(1.f, 0.f)));
 }
 
-function Vec2_f32
-draw_fancy_string(App *app, Fancy_String *string, Vec2_f32 p){
+function v2
+draw_fancy_string(App *app, Fancy_String *string, v2 p){
     return(draw_fancy_string(app, 0, fcolor_zero(), string, p, 0, V2(1.f, 0.f)));
 }
 
-function Vec2_f32
+function v2
 draw_fancy_line(App *app, Face_ID face, FColor fore,
-                Fancy_Line *line, Vec2_f32 p){
+                Fancy_Line *line, v2 p){
     return(draw_fancy_line(app, face, fore, line, p, 0, V2(1.f, 0.f)));
 }
 
 function void
 draw_fancy_block(App *app, Face_ID face, FColor fore,
-                 Fancy_Block *block, Vec2_f32 p)
+                 Fancy_Block *block, v2 p)
 {
     draw_fancy_block(app, face, fore, block, p, 0, V2(1.f, 0.f));
 }

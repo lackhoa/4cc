@@ -242,8 +242,8 @@ VIM_COMMAND_SIG(vim_block_swap){
 	i64 c = view_get_cursor_pos(app, view);
 	i64 m = view_get_mark_pos(app, view);
 	i64 line = get_line_number_from_pos(app, buffer, c);
-	Vec2_f32 c_p = view_relative_xy_of_pos(app, view, line, c);
-	Vec2_f32 m_p = view_relative_xy_of_pos(app, view, line, m);
+	v2 c_p = view_relative_xy_of_pos(app, view, line, c);
+	v2 m_p = view_relative_xy_of_pos(app, view, line, m);
 	macro_swap(c_p.x, m_p.x);
 	c = view_pos_at_relative_xy(app, view, line, c_p);
 	m = view_pos_at_relative_xy(app, view, line, m_p);

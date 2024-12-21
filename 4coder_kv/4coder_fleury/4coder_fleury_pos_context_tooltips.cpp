@@ -4,15 +4,15 @@
 #include "4coder_fleury_lang.cpp"
 #include "4coder_fleury_render_helpers.cpp"
 
-function Vec2_f32
+function v2
 _F4_PosContext_RenderDefinitionTokens(App *app, Face_ID face,
                                       String backing_string,
                                       Token_Array tokens, b32 do_render,
-                                      int highlight_arg, Vec2_f32 text_position,
+                                      int highlight_arg, v2 text_position,
                                       f32 max_x)
 {
     Scratch_Block scratch(app);
-    Vec2_f32 starting_text_pos = text_position;
+    v2 starting_text_pos = text_position;
     Face_Metrics metrics = get_face_metrics(app, face);
     
     Token_Iterator_Array it = token_it_at_pos(0, &tokens, 0);
@@ -53,7 +53,7 @@ _F4_PosContext_RenderDefinitionTokens(App *app, Face_ID face,
     highlight = 1;
    }
    
-   Vec2_f32 start_pos = text_position;
+   v2 start_pos = text_position;
    String token_string = string_substring(backing_string,
                                                             Ii64(token->pos, token->pos+token->size));
             f32 string_advance = get_string_advance(app, face, token_string);
@@ -114,7 +114,7 @@ F4_PosContext_Render(App *app, View_ID view, Buffer_ID buffer,
             render_at_cursor = 0;
         }
         
-        Vec2_f32 tooltip_position =
+        v2 tooltip_position =
         {
             global_cursor_rect.x0,
             global_cursor_rect.y1,
@@ -175,9 +175,9 @@ F4_PosContext_Render(App *app, View_ID view, Buffer_ID buffer,
                     
                     // NOTE(rjf): Calculate needed size for this tooltip.
                     f32 max_x = view_rect.x1-view_rect.x0;
-                    Vec2_f32 end_draw_position = _F4_PosContext_RenderDefinitionTokens(app, face, definition_string, definition_tokens,
+                    v2 end_draw_position = _F4_PosContext_RenderDefinitionTokens(app, face, definition_string, definition_tokens,
                                                                                        false, 0, V2f32(0, 0), max_x);
-                    Vec2_f32 needed_size =
+                    v2 needed_size =
                     {
                         (end_draw_position.y > 0) ? max_x : end_draw_position.x,
                         end_draw_position.y,
@@ -207,7 +207,7 @@ F4_PosContext_Render(App *app, View_ID view, Buffer_ID buffer,
                     
                     // NOTE(rjf): Render tokens of definition
                     {
-                        Vec2_f32 text_position =
+                        v2 text_position =
                         {
                             draw_rect.x0 + padding,
                             draw_rect.y0 + padding,
@@ -250,7 +250,7 @@ F4_PosContext_Render(App *app, View_ID view, Buffer_ID buffer,
                         
                         String member_string = push_buffer_range(app, scratch, note->file->buffer, member_range);
                         
-                        Vec2_f32 needed_size = { get_string_advance(app, face, member_string), 0, };
+                        v2 needed_size = { get_string_advance(app, face, member_string), 0, };
                         Rect_f32 draw_rect =
                         {
                             tooltip_position.x,

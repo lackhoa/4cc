@@ -30,7 +30,7 @@ C4_RenderCursorSymbolThingy(App *app, Rect_f32 rect,
     {
         Rect_f32 start_top, start_side, start_bottom;
         
-		Vec2_f32 start_p = {rect.x0, rect.y0};
+		v2 start_p = {rect.x0, rect.y0};
         
         start_top.x0 = start_p.x + thickness;
         start_top.x1 = start_p.x + bracket_width;
@@ -56,7 +56,7 @@ C4_RenderCursorSymbolThingy(App *app, Rect_f32 rect,
 	{
 		Rect_f32 end_top, end_side, end_bottom;
         
-		Vec2_f32 end_p = {rect.x0, rect.y0};
+		v2 end_p = {rect.x0, rect.y0};
         
 		end_top.x0 = end_p.x;
 		end_top.x1 = end_p.x - bracket_width;
@@ -439,7 +439,7 @@ F4_RenderMarkAnnotation(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
                 start_line.size -= 1;
             }
             
-            Vec2_f32 draw_pos =
+            v2 draw_pos =
             {
                 view_rect.x0 + 30,
                 global_cursor_rect.y0,

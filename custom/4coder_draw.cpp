@@ -57,13 +57,13 @@ get_panel_margin_color(i32 level){
     return(margin);
 }
 
-function Vec2_f32
-draw_string(App *app, Face_ID font_id, String string, Vec2_f32 p, ARGB_Color color){
+function v2
+draw_string(App *app, Face_ID font_id, String string, v2 p, ARGB_Color color){
     return(draw_string_oriented(app, font_id, color, string, p, 0, V2(1.f, 0.f)));
 }
 
-function Vec2_f32
-draw_string(App *app, Face_ID font_id, String string, Vec2_f32 p, FColor color)
+function v2
+draw_string(App *app, Face_ID font_id, String string, v2 p, FColor color)
 {
     ARGB_Color argb = fcolor_resolve(color);
     return(draw_string(app, font_id, string, p, argb));
@@ -328,7 +328,7 @@ draw_file_bar(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect
         push_fancy_string(scratch, &list, pop2_color, str.string);
     }
     
-    Vec2_f32 p = bar.p0 + V2(2.f, 2.f);
+    v2 p = bar.p0 + V2(2.f, 2.f);
     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
 }
 
@@ -338,7 +338,7 @@ draw_query_bar(App *app, Query_Bar *query_bar, Face_ID face_id, Rect_f32 bar){
  Fancy_Line list = {};
  push_fancy_string(scratch, &list, fcolor_id(defcolor_pop1)        , query_bar->prompt);
  push_fancy_string(scratch, &list, fcolor_id(defcolor_text_default), query_bar->string);
- Vec2_f32 p = bar.p0 + V2(2.f, 2.f);
+ v2 p = bar.p0 + V2(2.f, 2.f);
  draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
 }
 
@@ -386,7 +386,7 @@ draw_line_number_margin(App *app, View_ID view_id, Buffer_ID buffer, Face_ID fac
  for (;line_number < one_past_last_line_number &&
       line_number < line_count;){
   Range_f32 line_y = text_layout_line_on_screen(app, text_layout_id, line_number);
-  Vec2_f32 p = V2(margin.x0, line_y.min);
+  v2 p = V2(margin.x0, line_y.min);
   
   fill_fancy_string(&fstring, 0, line_color, 0, 0, digit_string);
   draw_fancy_string(app, face_id, fcolor_zero(), &fstring, p);
@@ -434,7 +434,7 @@ draw_fps_hud(App *app, Frame_Info frame_info, Face_ID face_id, Rect_f32 rect)
     draw_rect_fcolor(app, rect, 0.f, f_black);
     draw_rect_outline(app, rect, 0.f, 1.f, fcolor_resolve(f_white), 0);
     
-    Vec2_f32 p = rect.p0;
+    v2 p = rect.p0;
     
     Scratch_Block scratch(app);
     
@@ -868,11 +868,11 @@ draw_notepad_style_cursor_highlight(App *app, View_ID view_id,
 ////////////////////////////////
 
 function Rect_f32
-get_contained_box_near_point(Rect_f32 container, Vec2_f32 p, Vec2_f32 box_dims){
-    Vec2_f32 container_dims = get_dim(container);
+get_contained_box_near_point(Rect_f32 container, v2 p, v2 box_dims){
+    v2 container_dims = get_dim(container);
     box_dims.x = clamp_max(box_dims.x, container_dims.x);
     box_dims.y = clamp_max(box_dims.y, container_dims.y);
-    Vec2_f32 q = p + V2(-20.f, 22.f);
+    v2 q = p + V2(-20.f, 22.f);
     if (q.x + box_dims.x > container.x1){
         q.x = container.x1 - box_dims.x;
     }
@@ -887,11 +887,11 @@ get_contained_box_near_point(Rect_f32 container, Vec2_f32 p, Vec2_f32 box_dims){
 
 function Rect_f32
 draw_tool_tip(App *app, Face_ID face, Fancy_Block *block,
-              Vec2_f32 p, Rect_f32 region, f32 x_padding, f32 x_half_padding,
+              v2 p, Rect_f32 region, f32 x_padding, f32 x_half_padding,
               FColor back_color){
     Rect_f32 box = Rf32(p, p);
     if (block->line_count > 0){
-        Vec2_f32 dims = get_fancy_block_dim(app, face, block);
+        v2 dims = get_fancy_block_dim(app, face, block);
         dims += V2(x_padding, 2.f);
         box = get_contained_box_near_point(region, p, dims);
         box.x0 = roundv1(box.x0);
@@ -909,11 +909,11 @@ draw_tool_tip(App *app, Face_ID face, Fancy_Block *block,
 
 function Rect_f32
 draw_drop_down(App *app, Face_ID face, Fancy_Block *block,
-               Vec2_f32 p, Rect_f32 region, f32 x_padding, f32 x_half_padding,
+               v2 p, Rect_f32 region, f32 x_padding, f32 x_half_padding,
                FColor outline_color, FColor back_color){
     Rect_f32 box = Rf32(p, p);
     if (block->line_count > 0){
-        Vec2_f32 dims = get_fancy_block_dim(app, face, block);
+        v2 dims = get_fancy_block_dim(app, face, block);
         dims += V2(x_padding, 4.f);
         box = get_contained_box_near_point(region, p, dims);
         box.x0 = roundv1(box.x0);
@@ -931,7 +931,7 @@ draw_drop_down(App *app, Face_ID face, Fancy_Block *block,
 }
 
 function b32
-draw_button(App *app, Rect_f32 rect, Vec2_f32 mouse_p, Face_ID face, String text){
+draw_button(App *app, Rect_f32 rect, v2 mouse_p, Face_ID face, String text){
     b32 hovered = false;
     if (rect_contains_point(rect, mouse_p)){
         hovered = true;
@@ -944,8 +944,8 @@ draw_button(App *app, Rect_f32 rect, Vec2_f32 mouse_p, Face_ID face, String text
     
     Scratch_Block scratch(app);
     Fancy_String *fancy = push_fancy_string(scratch, 0, face, fcolor_id(defcolor_text_default), text);
-    Vec2_f32 dim = get_fancy_string_dim(app, 0, fancy);
-    Vec2_f32 p = (rect.p0 + rect.p1 - dim)*0.5f;
+    v2 dim = get_fancy_string_dim(app, 0, fancy);
+    v2 p = (rect.p0 + rect.p1 - dim)*0.5f;
     draw_fancy_string(app, fancy, p);
     
     return(hovered);

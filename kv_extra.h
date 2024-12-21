@@ -2,14 +2,14 @@
 
 ////////////////////////////////
 
-function String8
+myinline String8
 push_data(Arena *arena, u64 size){
  String result = {};
  result.str = push_array(arena, u8, size);
  result.size = size;
  return(result);
 }
-function String
+myinline String
 push_string(Arena *arena, String data){
  String8 result = {
   .str = push_array_copy(arena, u8, data.len, data.str),
@@ -44,6 +44,18 @@ operator==(String a, char b){
 myinline b32
 char_is_whitespace(u8 c){
  return(c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\f' || c == '\v');
+}
+function u64
+string_find_first_non_whitespace(String str){
+ u64 i = 0;
+ for (;i < str.size && char_is_whitespace(str.str[i]); i += 1);
+ return(i);
+}
+function String
+string_skip_whitespace(String str){
+ u64 f = string_find_first_non_whitespace(str);
+ str = string_skip(str, f);
+ return(str);
 }
 inline u8
 get_matching_group_closer(u8 c){
@@ -223,32 +235,6 @@ starts_with(String str, char prefix) {
 
 #define string_match_lit(a,b)  string_match(a,strlit(b))
 //-
-function String
-push_stringfv(Arena *arena, char *format, va_list args, b32 zero_terminated)
-{
- va_list args2;
- va_copy(args2, args);
- 
- i32 pushed_size = vsnprintf(0, 0, format, args);
- // NOTE(kv): vsnprintf is always terminated, and it won't print unless you reserve the buffer for nil-termination
- pushed_size++;
- 
- String result = push_data(arena, pushed_size);
- vsnprintf((char*)result.str, (size_t)result.size, format, args2);
- 
- result.size -= 1;
- if (zero_terminated)
- {
-  result.str[result.size] = 0;
- }
- else
- {// NOTE: Enable string concatenation
-  // NOTE(kv): This is legal since the string has gotta be contiguous
-  arena_pop_size(arena, 1);
- }
- 
- return(result);
-}
 
 inline u32
 cast_u64_to_u32(u64 u){

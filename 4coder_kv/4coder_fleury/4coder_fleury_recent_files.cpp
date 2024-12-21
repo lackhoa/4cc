@@ -65,7 +65,7 @@ F4_RecentFiles_Render(App *app, View_ID view, Face_ID face)
     
     if(state != 0)
     {
-        Vec2_f32 p = view_rect.p0;
+        v2 p = view_rect.p0;
         for(int i = 0; i < state->recent_buffer_count; i += 1)
         {
             Buffer_ID buffer = state->recent_buffers[i];

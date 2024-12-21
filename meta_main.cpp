@@ -5,11 +5,13 @@
 #define KV_H_IS_METAPROGRAM 1
 #include "kv.h"
 
+//NOTE(kv) not needed but whatevs
+#include "kv_math.h"
+
 #include "4coder_token.h"
 #include "generated/lexer_cpp.h"
 #include "4ed_base.h"
 #include "4ed_api_definition.h"
-
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
 #include "4coder_token.cpp"
@@ -347,7 +349,8 @@ main(i32 argc, char **argv)
  {//-System api
   Scratch_Block scratch_api;
   API_Definition *api = make_system_api(scratch_api);
-  api_definition_generate_api_includes(api, strlit("4ed_system_api.cpp"), GeneratedGroup_Custom, 0);
+  api_definition_generate_api_includes(api, strlit("4ed_system_api.cpp"),
+                                       GeneratedGroup_Custom, APIGeneration_PrefixCallables);
  }
  
  i32 exit_code = !ok;

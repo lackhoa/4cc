@@ -9,14 +9,14 @@
 
 union Delta_Context_Header{
     Buffer_Point point;
-    Vec2_f32 p;
+    v2 p;
 };
 struct Buffer_Point_Delta_Result{
     Buffer_Point point;
     b32 still_animating;
 };
-struct Vec2_f32_Delta_Result{
-    Vec2_f32 p;
+struct v2_Delta_Result{
+    v2 p;
     b32 still_animating;
 };
 

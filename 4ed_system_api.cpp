@@ -12,7 +12,8 @@
 //#include "4ed_api_definition_main.cpp"
 
 function API_Definition *
-make_system_api(Arena *arena){
+make_system_api(Arena *arena)
+{
  API_Definition *api = begin_api(arena, "system");
  
  {
@@ -96,6 +97,7 @@ make_system_api(Arena *arena){
  if(0){
   api_call(arena, api, "now_time", "u64");
  }
+ 
  {
   api_call(arena, api, "time_usecond", "u64");
  }

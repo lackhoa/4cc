@@ -22,6 +22,7 @@ union Range_f32 {
 };
 #define RangeExpand(range) range.min, range.max
 
+
 #define BODY  return(clamp_min(0, a.max - a.min));
 function i32 range_size(Range_i32 a){ BODY; }
 function i64 range_size(Range_i64 a){ BODY; }
@@ -420,8 +421,8 @@ struct Buffer_Scroll{
 api(custom)
 struct Basic_Scroll
 {
-    Vec2_f32 position;
-    Vec2_f32 target;
+    v2 position;
+    v2 target;
 };
 
 api(custom)
@@ -630,8 +631,8 @@ typedef i1 Buffer_Edit_Range_Function(App *app, Buffer_ID buffer_id,
 i1 name(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range)
 
 api(custom)
-typedef Vec2_f32 Delta_Rule_Function(Vec2_f32 pending, b32 is_new_target, f32 dt, void *data);
-#define DELTA_RULE_SIG(name) Vec2_f32 name(Vec2_f32 pending, b32 is_new_target, f32 dt, void *data)
+typedef v2 Delta_Rule_Function(v2 pending, b32 is_new_target, f32 dt, void *data);
+#define DELTA_RULE_SIG(name) v2 name(v2 pending, b32 is_new_target, f32 dt, void *data)
 
 api(custom)
 typedef Rect_f32 Buffer_Region_Function(App *app, View_ID view_id, Rect_f32 region);
@@ -745,4 +746,5 @@ struct Process_State{
 typedef void Audio_Mix_Sources_Function(void *ctx, f32 *buffer, u32 sample_count);
 typedef void Audio_Mix_Destination_Function(i16 *dst, f32 *src, u32 sample_count);
 #endif
+
 //~

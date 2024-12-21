@@ -463,7 +463,7 @@ Ri32(Vec2_i32 p0, Vec2_i32 p1){
  return(rect);
 }
 function Rect_f32
-Rf32(Vec2_f32 p0, Vec2_f32 p1){
+Rf32(v2 p0, v2 p1){
  Rect_f32 rect = {p0.x, p0.y, p1.x, p1.y};
  return(rect);
 }
@@ -496,7 +496,7 @@ Ri32_xy_wh(Vec2_i32 p0, Vec2_i32 d){
  return(rect);
 }
 function Rect_f32
-Rf32_xy_wh(Vec2_f32 p0, Vec2_f32 d){
+Rf32_xy_wh(v2 p0, v2 d){
  Rect_f32 rect = {p0.x, p0.y, p0.x + d.x, p0.y + d.y};
  return(rect);
 }
@@ -530,7 +530,7 @@ rect_contains_point(Rect_i32 a, Vec2_i32 b){
  return(a.x0 <= b.x && b.x < a.x1 && a.y0 <= b.y && b.y < a.y1);
 }
 function b32
-rect_contains_point(Rect_f32 a, Vec2_f32 b){
+rect_contains_point(Rect_f32 a, v2 b){
  return(a.x0 <= b.x && b.x < a.x1 && a.y0 <= b.y && b.y < a.y1);
 }
 
@@ -551,12 +551,6 @@ rect_inner(Rect_f32 r, f32 m){
  return(r);
 }
 
-function Vec2_i32
-rect2i_dim(Rect_i32 r)
-{
- Vec2_i32 v = {r.x1 - r.x0, r.y1 - r.y0};
- return(v);
-}
 function Range_i32
 rect_x(Rect_i32 r){
  return(Ii32(r.x0, r.x1));
@@ -590,10 +584,6 @@ rect_height(Rect_f32 r){
  return(r.y1 - r.y0);
 }
 
-function Vec2_i32
-rect_center(Rect_i32 r){
- return((r.p0 + r.p1)/2);
-}
 
 function Range_i32
 rect_range_x(Rect_i32 r){
@@ -649,15 +639,6 @@ rect_overlap(Rect_f32 a, Rect_f32 b){
         range_overlap(rect_range_y(a), rect_range_y(b)));
 }
 
-function Vec2_i32
-rect2_half_dim(Rect_i32 r){
- return(rect2i_dim(r)/2);
-}
-function Vec2_f32
-rect2_half_dim(Rect_f32 r){
- return(get_dim(r)*0.5f);
-}
-
 function Rect_i32
 rect_intersect(Rect_i32 a, Rect_i32 b){
  a.x0 = Max(a.x0, b.x0);
@@ -697,6 +678,19 @@ rect_union(Rect_f32 a, Rect_f32 b){
 
 ////////////////////////////////
 
+union rect2_Pair{
+ struct{
+  Rect_f32 a;
+  Rect_f32 b;
+ };
+ struct{
+  Rect_f32 min;
+  Rect_f32 max;
+ };
+ struct{
+  Rect_f32 e[2];
+ };
+};
 function rect2_Pair
 rect_split_top_bottom__inner(Rect_f32 rect, f32 y){
  y = clamp_between(rect.y0, y, rect.y1);
@@ -3437,13 +3431,6 @@ lerp(f32 t, Range_f32 x){
  return(x.min + (x.max - x.min)*t);
 }
 
-function Range_f32
-unlerp(f32 a, Range_f32 x, f32 b)
-{
- x.min = unlerp(a, x.min, b);
- x.max = unlerp(a, x.max, b);
- return(x);
-}
 
 function Range_f32
 lerp(f32 a, Range_f32 x, f32 b){

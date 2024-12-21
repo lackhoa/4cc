@@ -26,13 +26,13 @@ struct API_Call{
     String name;
     String return_type;
     String location_string;
-    API_Param_List params;
+ API_Param_List params;
 };
 
 typedef i1 API_Type_Structure_Kind;
 enum{
-    APITypeStructureKind_Struct,
-    APITypeStructureKind_Union,
+ APITypeStructureKind_Struct,
+ APITypeStructureKind_Union,
 };
 struct API_Type_Structure{
     API_Type_Structure_Kind kind;
@@ -90,14 +90,14 @@ struct API_Definition{
 };
 
 struct API_Definition_List{
-    API_Definition *first;
-    API_Definition *last;
-    i1 count;
+ API_Definition *first;
+ API_Definition *last;
+ i1 count;
 };
 
 typedef u32 API_Generation_Flag;
 enum{
-    APIGeneration_NoAPINameOnCallables = 1,
+ APIGeneration_PrefixCallables = 1,
 };
 
 typedef u32 API_Check_Flag;

@@ -36,8 +36,8 @@ global b32 vim_show_block_helper = true;
 #define ACTIVE_BLINK(b) (!(((b) / 20) & 0x1))
 global b32 vim_use_bottom_cursor;
 global u64 vim_cursor_blink;
-global Vec2_f32 vim_nxt_cursor_pos;
-global Vec2_f32 vim_cur_cursor_pos;
+global v2 vim_nxt_cursor_pos;
+global v2 vim_cur_cursor_pos;
 
 global View_ID vim_lister_view_id;
 

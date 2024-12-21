@@ -94,6 +94,7 @@ struct Temp_Memory{
 };
 
 #if !ASAN_ON
+#if KV_GLOBAL_ARENA_CHUNK_STORE
 struct Arena_Chunk_Bin{
  Arena_Chunk *first_free;
 };
@@ -114,7 +115,6 @@ struct Thread_Arena_Chunk_Store{
  b32 registered;
 };
 
-#if KV_GLOBAL_ARENA_CHUNK_STORE
 global Arena_Chunk_Store global_arena_chunk_store;
 thread_local Thread_Arena_Chunk_Store thread_arena_chunk_store;
 
@@ -406,8 +406,12 @@ arena_pop_to(Arena *arena, Arena_Chunk *to_chunk, umm to_pos)
 }
 #endif
 
-#else//-not KV_GLOBAL_ARENA_CHUNK_STORE
-memory_functions_xlist(x_wrap_function_pointer);
+#endif
+
+#if !KV_GLOBAL_ARENA_CHUNK_STORE
+#  define X(N) global_decl wrap_function_pointer(N);
+memory_functions_xlist(X);
+#  undef X
 #endif
 
 myinline Push_Params

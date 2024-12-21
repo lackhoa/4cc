@@ -21,14 +21,14 @@ api(custom) function String_Match buffer_seek_string(App* app, Buffer_ID buffer,
 api(custom) function String_Match buffer_seek_character_class(App* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos);
 api(custom) function f32 buffer_line_y_difference(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b);
 api(custom) function Line_Shift_Vertical buffer_line_shift_y(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line, f32 y_shift);
-api(custom) function i64 buffer_pos_at_relative_xy(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, Vec2_f32 relative_xy);
+api(custom) function i64 buffer_pos_at_relative_xy(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, v2 relative_xy);
 api(custom) function Rect_f32 buffer_relative_box_of_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
 api(custom) function Rect_f32 buffer_padded_box_of_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
 api(custom) function i64 buffer_relative_character_from_pos(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 pos);
 api(custom) function i64 buffer_pos_from_relative_character(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 base_line, i64 relative_character);
 api(custom) function f32 view_line_y_difference(App* app, View_ID view_id, i64 line_a, i64 line_b);
 api(custom) function Line_Shift_Vertical view_line_shift_y(App* app, View_ID view_id, i64 line, f32 y_shift);
-api(custom) function i64 view_pos_at_relative_xy(App* app, View_ID view_id, i64 base_line, Vec2_f32 relative_xy);
+api(custom) function i64 view_pos_at_relative_xy(App* app, View_ID view_id, i64 base_line, v2 relative_xy);
 api(custom) function Rect_f32 view_relative_box_of_pos(App* app, View_ID view_id, i64 base_line, i64 pos);
 api(custom) function Rect_f32 view_padded_box_of_pos(App* app, View_ID view_id, i64 base_line, i64 pos);
 api(custom) function i64 view_relative_character_from_pos(App* app, View_ID view_id, i64 base_line, i64 pos);
@@ -85,8 +85,8 @@ api(custom) function b32 view_set_setting(App* app, View_ID view_id, View_Settin
 api(custom) function Managed_Scope view_get_managed_scope(App* app, View_ID view_id);
 api(custom) function Buffer_Cursor buffer_compute_cursor(App* app, Buffer_ID buffer, Buffer_Seek seek);
 api(custom) function Buffer_Cursor view_compute_cursor(App* app, View_ID view_id, Buffer_Seek seek);
-api(custom) function b32 view_set_camera_bounds(App* app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push_in_multiplier);
-api(custom) function b32 view_get_camera_bounds(App* app, View_ID view_id, Vec2_f32* margin, Vec2_f32* push_in_multiplier);
+api(custom) function b32 view_set_camera_bounds(App* app, View_ID view_id, v2 margin, v2 push_in_multiplier);
+api(custom) function b32 view_get_camera_bounds(App* app, View_ID view_id, v2* margin, v2* push_in_multiplier);
 api(custom) function b32 view_set_cursor(App* app, View_ID view_id, Buffer_Seek seek);
 api(custom) function b32 view_set_buffer_scroll(App* app, View_ID view_id, Buffer_Scroll scroll, Set_Buffer_Scroll_Rule rule);
 api(custom) function b32 view_set_mark(App* app, View_ID view_id, Buffer_Seek seek);

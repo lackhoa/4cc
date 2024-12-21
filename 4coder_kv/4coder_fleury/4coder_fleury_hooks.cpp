@@ -397,7 +397,7 @@ F4_DrawFileBar(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rec
     push_fancy_string(scratch, &list, base_color, S8Lit(" Syntax Mode: "));
     push_fancy_string(scratch, &list, base_color, F4_SyntaxOptionString());
     
-    Vec2_f32 p = bar.p0 + V2f32(2.f, 2.f);
+    v2 p = bar.p0 + V2f32(2.f, 2.f);
     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
     
     if(!def_get_config_b32(vars_intern_lit("f4_disable_progress_bar")))

@@ -5,7 +5,7 @@
 // TOP
 
 function i64
-layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
+layout_nearest_pos_to_xy(Layout_Item_List list, v2 p){
     i64 closest_match = 0;
     if (p.y < 0.f){
         closest_match = list.manifested_index_range.min;

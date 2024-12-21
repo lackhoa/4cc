@@ -96,11 +96,11 @@ vim_start_search_inner(App *app, Scan_Direction start_direction) {
  
  vim_push_jump(app, view);
  
-	Vec2_f32 old_margin = {};
-	Vec2_f32 old_push_in = {};
+	v2 old_margin = {};
+	v2 old_push_in = {};
 	view_get_camera_bounds(app, view, &old_margin, &old_push_in);
  
-	Vec2_f32 margin = old_margin;
+	v2 margin = old_margin;
 	margin.y = clamp_min(200.f, margin.y);
 	view_set_camera_bounds(app, view, margin, old_push_in);
  

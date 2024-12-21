@@ -1,14 +1,83 @@
-#pragma once
-
+//-
 #include "game_colors.cpp"
 #include "game_debug.h"
 #include "generated/ad_file_formats.gen.h"
+#include "generated/driver.gen.h"
+#include "4coder_kv_debug.h"
+
+//-
+struct Viewport;
+struct Modeler;
+struct Render_Target;
+struct Render_Config;
+//-
 
 struct Bezier{
  v3 e[4];
  myinline operator v3 *() { return e; };
 };
 typedef Bezier Bez;
+
+function v3
+bezier_sample(const v3 P[4], v1 u){
+ v1 U = 1-u;
+ return (1*cubed(U)      *P[0] +
+         3*(u)*squared(U)*P[1] +
+         3*squared(u)*(U)*P[2] +
+         1*cubed(u)      *P[3]);
+}
+function v1
+bezier_sample(v4 P, v1 u){
+ v1 U = 1-u;
+ return (1*cubed(U)      *P.v[0] +
+         3*(u)*squared(U)*P.v[1] +
+         3*squared(u)*(U)*P.v[2] +
+         1*cubed(u)      *P.v[3]);
+}
+// NOTE: Actually bernstein basis
+function v1
+cubic_bernstein(i32 index, v1 t){
+ v1 factor = v1((index == 1 || index == 2) ? 3 : 1);
+ v1 result = factor * integer_power(t,index) * integer_power(1.f-t, 3-index);
+ return result;
+}
+// NOTE: Actually bernstein basis
+function v1
+quad_bernstein(i32 index, v1 t){
+ v1 result = (index==0 ? squared(1-t) :
+              index==1 ? 2*(1-t)*t :
+              squared(t));
+ return result;
+}
+inline Bezier
+negateX(Bezier line){
+ for_i32(i,0,4) { line[i].x = -line[i].x; }
+ return line;
+}
+myinline Bezier
+bez_negateX(Bezier line){ return negateX(line); }
+
+function Bez
+operator*(mat4 transform, Bez bezier)
+{
+ Bez result;
+ for_i32(index,0,4) { result[index] = transform*bezier[index]; }
+ return result;
+}
+
+struct Patch{
+ v3 e[4][4];
+ typedef v3 Array4x4[4][4];  // @stroustrup
+ operator Array4x4&() { return e; }
+};
+function Bezier
+get_column(Patch const&surface, i32 col){
+ Bezier result;
+ for_i32(index,0,4) {
+  result[index] = surface.e[index][col];
+ }
+ return result;
+}
 
 //~ id system
 // NOTE(kv): Entities are either drawn by code or data.
@@ -142,19 +211,9 @@ get_view_from_world(Camera *camera, b32 orthographic) {
  return result;
 }
 
-//-
-#if AD_IS_FRAMEWORK
-#    define framework_storage xglobal
-#else
-#    define framework_storage extern
-#endif
-
 //~;game_config
-framework_storage i1  bezier_poly_nslice;
-framework_storage b32 debug_frame_time_on;
-//~
-framework_storage u32 draw_cycle_counter;
-framework_storage v1  default_fvert_delta_scale;
+global i1  bezier_poly_nslice = 16;
+
 struct Viewport{
  i1 index;  //NOTE(kv) Redundant data
  i1 preset;
@@ -182,13 +241,12 @@ struct Bone{
  v3      center;
 };
 
-struct Viewport;
-struct Modeler;
 struct Painter
 {
  //NOTE(kv) This is a convenient global store.
  //NOTE(kv) See @init_painter
  //-misc
+ u32 hot_prim_id;
  Render_Target *target;
  Viewport *viewport;
  v3 cursorp;
@@ -209,11 +267,17 @@ struct Painter
  b32 ignore_alignment_min;
  b32 painting_disabled;
  u32 draw_prim_id;
+ 
  Modeler *modeler;
+ Bone *bones;
+ Common_Line_Params *line_cparams;
+ 
  b32 show_grid;
  argb shade_color;
  Common_Line_Params **line_cparams_stack;
  b32 sending_data;
+ b32 references_full_alpha;
+ argb background_color;
  
  union{ b32 is_right; b32 lr_index; };
  Bone **bone_stack;
@@ -221,28 +285,37 @@ struct Painter
  i32 view_vector_count;
  v3  view_vector_stack[16];
 };
-framework_storage Painter painter;  // see @init_painter
-function Line_Params lp(){ return painter.line_params; }
+
+global Painter *painter;  // see @init_painter
+
+myinline u32 get_hot_prim_id(){ return painter->hot_prim_id; }
+myinline b32 is_poly_enabled(){
+ return (painter->painting_disabled == false);
+}
+myinline b32 is_line_enabled(){
+ return painter->painting_disabled == false;
+}
+myinline Line_Params lp(){ return painter->line_params; }
 function Fill_Params fp(argb color=0){
- Fill_Params result = painter.line_params.fill;
+ Fill_Params result = painter->line_params.fill;
  if(color){result.color = color;}
  return result;
 }
 inline Line_Params
 lp(v4 radii){
- Line_Params result=painter.line_params;
+ Line_Params result=painter->line_params;
  result.radii = radii;
  return result;
 }
 inline Line_Params
 lp(i4 radii){
- Line_Params result = painter.line_params;
+ Line_Params result = painter->line_params;
  result.radii = i2f6(radii);
  return result;
 }
 inline Line_Params
 lp_invisible(){
- Line_Params result = painter.line_params;
+ Line_Params result = painter->line_params;
  result.visibility = 0.0f;
  return result;
 }
@@ -262,8 +335,8 @@ current_world_from_bone(Painter *p){
  return &current_bone(p)->xform;
 }
 
-myinline b32 is_right(Painter &p=painter){ return p.is_right; }
-myinline b32 is_left (Painter &p=painter){ return !p.is_right; }
+myinline b32 is_right(Painter *p=painter){ return p->is_right; }
+myinline b32 is_left (Painter *p=painter){ return !p->is_right; }
 //-
 // NOTE: Name,Denom
 #define X_Pose_Fields(X) \
@@ -285,39 +358,69 @@ struct Pose{
 //NOTE(kv) You can only send one vert on one line
 #define sending_vertices 0
 
-#define send_vert(NAME)  send_vert_func(painter, strlit(#NAME), NAME)
+#define send_vert(NAME)  //send_vert_func(painter, strlit(#NAME), NAME)
 
 #define old_vv(NAME, VAL, ...) \
 v3 NAME = VAL; \
-send_vert(NAME);
+send_vert(NAME)
 
+#define old_va(NAME, VAL, ...) \
+NAME = VAL;
+send_vert(NAME)
+
+/*
 #define data_vv(NAME, ...) \
-v3 NAME = vertex_from_name(painter.modeler, strlit(#NAME)).vertex->pos
+v3 NAME = vertex_from_name(painter->modeler, strlit(#NAME)).vertex->pos
 
 #define data_va(NAME, ...) \
-NAME = vertex_from_name(painter.modeler, strlit(#NAME)).vertex->pos
-
-/*//TODO(kv) @incomplete We're not storing the fact that it is a sampling vertex
-#define vv_sample(name, curve, t, ...) \
-v3 name = bezier_sample(curve, t); \
-send_vert(name);*/
+NAME = vertex_from_name(painter->modeler, strlit(#NAME)).vertex->pos
+*/
 
 //-
-xfunction Pose driver_animate(Modeler *m, v1 anime_time);
+//~
+#include "generated/framework_api.gen.h"
 
-//TODO(kv) Maybe put the majority of this in the painter?
-xfunction void render_movie(Arena *arena, Arena *scratch, Render_Config *render_config,
-                            b32 references_full_alpha, Pose *pose, v1 anime_time);
-xfunction void driver_update(Viewport *viewports);
+struct Framework_API
+{
+ b32 valid;
+#define X(N) wrap_function_pointer(N);
+ framework_api_xlist(X)
+#undef X
+};
+//-
+#include "generated/driver_api.gen.h"
 
+struct Driver_API
+{
+ b32 is_valid;
+#define X(N) wrap_function_pointer(N);
+ driver_api_xlist(X)
+#undef X
+};
+
+//~
+#if AD_IS_DRIVER
+#define X(N)  global wrap_function_pointer(N);
+framework_api_xlist(X)
+#undef X
+#endif
+
+#if AD_IS_FRAMEWORK
+#define X(N)  function wrap_function(N);
+framework_api_xlist_1(X)
+#undef X
+#endif
+
+//-
 function void
-set_bone_transform(mat4i const&transform) {
- Painter *p = &painter;
+set_bone_transform(mat4i const&transform)
+{
+ Painter *p = painter;
  p->cam_from_boneT = invert(p->camera.transform) * transform;
  push_object_transform_to_target(p->target, cast(mat4*)&transform.m);
 }
 
-inline v3
+myinline v3
 camera_world_position(Camera *camera){
  v3 result = mat4vert(camera->world_from_cam, V3());
  return result;
@@ -325,7 +428,7 @@ camera_world_position(Camera *camera){
 function v3
 camera_object_position(Painter *p){
  v3 result = (current_world_from_bone(p)->inv *
-              camera_world_position(&painter.camera));
+              camera_world_position(&painter->camera));
  return result;
 }
 function void
@@ -335,10 +438,9 @@ push_view_vector(Painter *p, v3 object_center){
  p->view_vector_stack[p->view_vector_count++] = view_vector;
  kv_assert(p->view_vector_count < alen(p->view_vector_stack));
 }
-//-
 inline v3
 get_view_vector(){
- return painter.view_vector_stack[painter.view_vector_count-1];
+ return painter->view_vector_stack[painter->view_vector_count-1];
 }
 inline void
 pop_view_vector(Painter *p){
@@ -346,10 +448,9 @@ pop_view_vector(Painter *p){
  kv_assert(p->view_vector_count > 0);
 }
 #define view_vector_block(center) \
-push_view_vector(&painter, center); \
-defer(pop_view_vector(&painter));
+push_view_vector(painter, center); \
+defer(pop_view_vector(painter));
 
-xfunction Bone *get_bones(Modeler *m);
 function Bone *
 get_bone(Modeler *m, Bone_ID id, b32 is_right)
 {
@@ -401,8 +502,9 @@ push_bone(Painter *p, Bone_ID id, v3 center={})
  *array_push(p->bone_stack) = bone;
  set_bone_transform(bone->xform);
 }
-inline void
-push_bone(Painter *p, Bone_Type type, v3 center={}) {
+myinline void
+push_bone(Painter *p, Bone_Type type, v3 center={})
+{
  return push_bone(p, make_bone_id(type), center);
 }
 function void
@@ -411,14 +513,13 @@ pop_bone(Painter *p){
  mat4i *parent = current_world_from_bone(p);
  set_bone_transform(*parent);
 }
-#define bone_block(id)  push_bone(&painter, id); defer(pop_bone(&painter););
+#define bone_block(id)  push_bone(painter, id); defer(pop_bone(painter););
 //-
-xfunction Common_Line_Params *
-get_line_cparams_list(Modeler *m);
 
 function Common_Line_Params&
-get_line_cparams(Modeler *m, i1 linum){
- Common_Line_Params *list = get_line_cparams_list(m);
+get_line_cparams(i1 linum)
+{
+ Common_Line_Params *list = painter->line_cparams;
  for_u32(i,0,array_count(list)){
   auto &cparams = list[i];
   if(cparams.linum == linum){ return cparams; }
@@ -427,7 +528,7 @@ get_line_cparams(Modeler *m, i1 linum){
 }
 function void
 use_line_cparams(Common_Line_Params &cparams){
- Line_Params &params = painter.line_params;
+ Line_Params &params = painter->line_params;
  params.flags = cparams.flags;
  params.radii = cparams.radii;
 }
@@ -436,33 +537,33 @@ current_line_cparams_index();
 
 function void
 push_line_cparams(Common_Line_Params &value, i1 linum=__builtin_LINE()){
- Modeler *m = painter.modeler;
- Common_Line_Params *list = get_line_cparams_list(m);
- Common_Line_Params *address = &get_line_cparams(m, linum);
+ Modeler *m = painter->modeler;
+ Common_Line_Params *list = painter->line_cparams;
+ Common_Line_Params *address = &get_line_cparams(linum);
  if(address == &list[0]){// not found
   value.linum = linum;
   array_push_value(list, value);
   address = array_lastp(list);
  }
- array_push_value(painter.line_cparams_stack, address);
+ array_push_value(painter->line_cparams_stack, address);
  use_line_cparams(value);
 }
 function void
 pop_line_cparams(){
- Painter *p = &painter;
+ Painter *p = painter;
  array_pop(p->line_cparams_stack);
  use_line_cparams(*array_last(p->line_cparams_stack));
 }
 inline Common_Line_Params *
 current_line_cparams(){
- return array_last(painter.line_cparams_stack);
+ return array_last(painter->line_cparams_stack);
 }
 inline Common_Line_Params_Index
 current_line_cparams_index(){
  //NOTE(kv) This "index" business is so ridiculous,... but we gotta pull through
  Common_Line_Params_Index result;
- Common_Line_Params *base = get_line_cparams_list(painter.modeler);
+ Common_Line_Params *base = painter->line_cparams;
  result.v = current_line_cparams() - base;
  return result;
 }
-//~
+//-

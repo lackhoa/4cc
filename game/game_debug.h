@@ -1,8 +1,6 @@
 #pragma once
 //-TODO(kv) This code should be integrated in "the system"
-#if AD_IS_DRIVER
-u64 ad_rdtsc(void);
-#else  // NOTE: Framework
+#if AD_IS_FRAMEWORK
 extern inline u64 ad_rdtsc(void) { return __rdtsc(); }
 #endif
 

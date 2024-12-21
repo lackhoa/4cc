@@ -30,7 +30,7 @@ function void F4_PowerMode_CharacterPressed(void);
 function Particle *
 F4_PowerMode_Particle(f32 x, f32 y, f32 velocity_x, f32 velocity_y, f32 decay_rate, ARGB_Color color,
                       f32 roundness, f32 scale, String str);
-function Vec2_f32 F4_PowerMode_CameraOffsetFromView(App *app, View_ID view);
+function v2 F4_PowerMode_CameraOffsetFromView(App *app, View_ID view);
 function void F4_PowerMode_Spawn(App *app, View_ID view, u8 character);
 function void F4_PowerMode_Tick(App *app, Frame_Info frame_info);
 function void F4_PowerMode_RenderBuffer(App *app, View_ID view, Face_ID face, Frame_Info frame_info);

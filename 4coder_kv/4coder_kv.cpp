@@ -645,7 +645,7 @@ kv_custom_layer_init(App *app)
  set_custom_hook(app, HookID_ViewEventHandler, kv_view_input_handler);
  set_custom_hook(app, HookID_DeltaRule,        F4_DeltaRule_lite);
  set_custom_hook(app, HookID_BufferRegion,     kv_buffer_region_hook);
- set_custom_hook_memory_size(app, HookID_DeltaRule, delta_ctx_size(sizeof(Vec2_f32)));
+ set_custom_hook_memory_size(app, HookID_DeltaRule, delta_ctx_size(sizeof(v2)));
  
  Thread_Context *tctx = get_thread_context(app);
  mapping_init(tctx, &framework_mapping);
@@ -667,7 +667,7 @@ kv_custom_layer_init(App *app)
   ed_api_fill_vtable(&const_ed_api);
   ed_api_fill_vtable_new(&const_ed_api_new);
   String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
-  GAME_DLL_PATH = pjoin(&global_permanent_arena, binary_dir, strlit("game.dll"));
+  GAME_DLL_PATH = pjoin(&thread_permanent_arena, binary_dir, strlit("game.dll"));
  }
 }
 

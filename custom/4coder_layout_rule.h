@@ -18,9 +18,9 @@ struct LefRig_TopBot_Layout_Vars{
     f32 tab_width;
     f32 line_to_text_shift;
     
-    Vec2_f32 blank_dim;
+    v2 blank_dim;
     
-    Vec2_f32 p;
+    v2 p;
     f32 line_y;
     f32 text_y;
     f32 width;

@@ -465,7 +465,7 @@ buffer_line_shift_y(App *app, Buffer_ID buffer_id,
 api(custom) function i64
 buffer_pos_at_relative_xy(App *app, Buffer_ID buffer_id,
                           f32 width, Face_ID face_id,
-                          i64 base_line, Vec2_f32 relative_xy){
+                          i64 base_line, v2 relative_xy){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     i64 result = -1;
@@ -576,7 +576,7 @@ view_line_shift_y(App *app, View_ID view_id, i64 line, f32 y_shift){
 }
 
 api(custom) function i64
-view_pos_at_relative_xy(App *app, View_ID view_id, i64 base_line, Vec2_f32 relative_xy){
+view_pos_at_relative_xy(App *app, View_ID view_id, i64 base_line, v2 relative_xy){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
     i64 result = -1;
@@ -1610,7 +1610,7 @@ view_compute_cursor(App *app, View_ID view_id, Buffer_Seek seek) {
 }
 
 api(custom) function b32
-view_set_camera_bounds(App *app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push_in_multiplier)
+view_set_camera_bounds(App *app, View_ID view_id, v2 margin, v2 push_in_multiplier)
 {
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
@@ -1628,7 +1628,7 @@ view_set_camera_bounds(App *app, View_ID view_id, Vec2_f32 margin, Vec2_f32 push
 }
 
 api(custom) function b32
-view_get_camera_bounds(App *app, View_ID view_id, Vec2_f32 *margin, Vec2_f32 *push_in_multiplier){
+view_get_camera_bounds(App *app, View_ID view_id, v2 *margin, v2 *push_in_multiplier){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
     b32 result = false;
@@ -2921,7 +2921,7 @@ api(custom ed) function v2
 draw_string_oriented(App *app, Face_ID font_id, ARGB_Color color,
                      String8 str, v2 point, u32 flags, v2 delta)
 {
- Vec2_f32 result = point;
+ v2 result = point;
  Models *models = (Models*)app->cmd_context;
  Face *face = font_set_face_from_id(&models->font_set, font_id);
  if (models->target == 0)
@@ -3149,7 +3149,7 @@ text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
      }
     }
     
-    Vec2_f32 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
+    v2 shift = V2(rect.x0, rect.y0 + y) - layout->point.pixel_shift;
     result.p0 += shift;
     result.p1 += shift;
    }

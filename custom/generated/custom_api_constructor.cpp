@@ -130,7 +130,7 @@ api_param(arena, call, "Buffer_ID", "buffer_id");
 api_param(arena, call, "f32", "width");
 api_param(arena, call, "Face_ID", "face_id");
 api_param(arena, call, "i64", "base_line");
-api_param(arena, call, "Vec2_f32", "relative_xy");
+api_param(arena, call, "v2", "relative_xy");
 }
 {
 API_Call *call = api_call_with_location(arena, result, strlit("buffer_relative_box_of_pos"), strlit("Rect_f32"), strlit(""));
@@ -187,7 +187,7 @@ API_Call *call = api_call_with_location(arena, result, strlit("view_pos_at_relat
 api_param(arena, call, "App*", "app");
 api_param(arena, call, "View_ID", "view_id");
 api_param(arena, call, "i64", "base_line");
-api_param(arena, call, "Vec2_f32", "relative_xy");
+api_param(arena, call, "v2", "relative_xy");
 }
 {
 API_Call *call = api_call_with_location(arena, result, strlit("view_relative_box_of_pos"), strlit("Rect_f32"), strlit(""));
@@ -505,15 +505,15 @@ api_param(arena, call, "Buffer_Seek", "seek");
 API_Call *call = api_call_with_location(arena, result, strlit("view_set_camera_bounds"), strlit("b32"), strlit(""));
 api_param(arena, call, "App*", "app");
 api_param(arena, call, "View_ID", "view_id");
-api_param(arena, call, "Vec2_f32", "margin");
-api_param(arena, call, "Vec2_f32", "push_in_multiplier");
+api_param(arena, call, "v2", "margin");
+api_param(arena, call, "v2", "push_in_multiplier");
 }
 {
 API_Call *call = api_call_with_location(arena, result, strlit("view_get_camera_bounds"), strlit("b32"), strlit(""));
 api_param(arena, call, "App*", "app");
 api_param(arena, call, "View_ID", "view_id");
-api_param(arena, call, "Vec2_f32*", "margin");
-api_param(arena, call, "Vec2_f32*", "push_in_multiplier");
+api_param(arena, call, "v2*", "margin");
+api_param(arena, call, "v2*", "push_in_multiplier");
 }
 {
 API_Call *call = api_call_with_location(arena, result, strlit("view_set_cursor"), strlit("b32"), strlit(""));

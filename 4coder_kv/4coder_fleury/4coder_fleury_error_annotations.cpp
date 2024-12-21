@@ -102,7 +102,7 @@ F4_RenderErrorAnnotations(App *app, Buffer_ID buffer,
                     if(range_size(y) > 0.f)
                     {
                         Rect_f32 region = text_layout_region(app, text_layout_id);
-                        Vec2_f32 draw_position =
+                        v2 draw_position =
                         {
                             region.x1 - metrics.max_advance*jump_line.size -
                                 (y.max-y.min)/2 - metrics.line_height/2,

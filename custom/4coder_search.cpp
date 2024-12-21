@@ -668,7 +668,7 @@ word_complete_menu_render(App *app, Frame_Info frame_info, View_ID view){
         Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
         Buffer_Point buffer_point = scroll.position;
         i64 pos = view_get_cursor_pos(app, view);
-        Vec2_f32 cursor_p = view_relative_xy_of_pos(app, view, buffer_point.line_number, pos);
+        v2 cursor_p = view_relative_xy_of_pos(app, view, buffer_point.line_number, pos);
         cursor_p -= buffer_point.pixel_shift;
         cursor_p += region.p0;
         
