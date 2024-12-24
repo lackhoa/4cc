@@ -7,8 +7,8 @@ struct KvQuailEntry
  i1   cursor_index;
 };
 
-global arrayof<KvQuailEntry> kv_quail_table;
-global arrayof<char>         kv_quail_keystroke_buffer;
+global darray(KvQuailEntry) kv_quail_table;
+global darray(char)         kv_quail_keystroke_buffer;
 
 // NOTE(kv): If keys are overlapping, you have to push the shorter key first in
 // order to for the quail rule to work.
@@ -16,7 +16,7 @@ function void
 kv_quail_defrule(App *app, char *key, char *insert,
                  i1 delete_before, i1 delete_after, i1 cursor_index)
 {
- arrayof<KvQuailEntry> *table = &kv_quail_table;
+ darray(KvQuailEntry) *table = &kv_quail_table;
  i1 entry_index = (i1)table->count;
  // note: We keep the table sorted by key length, largest first, for overlapping keys.
  for (i1 table_index=0;
@@ -42,9 +42,9 @@ kv_quail_defrule(App *app, char *key, char *insert,
 }
 
 function b32
-kv_handle_text_insert(App *app, u8 character)
+kv_handle_text_insert(App_Cmd *app, u8 character)
 {
- arrayof<char> *keybuf = &kv_quail_keystroke_buffer;
+ darray(char) *keybuf = &kv_quail_keystroke_buffer;
  assert_defend(keybuf->count < 1024, 
                {
                 print_message(app, SCu8("ERROR: 'kv_quail_keystroke_buffer' grown too big!"));
@@ -89,8 +89,10 @@ kv_handle_text_insert(App *app, u8 character)
 }
 
 function b32
-kv_handle_vim_keyboard_input(App *app, Input_Event *event)
+kv_handle_vim_keyboard_input(App *app0, Input_Event *event)
 {
+ App_Cmd app_value = app_cmd_automated(app0);
+ App_Cmd *app      = &app_value;
  ProfileScope(app, "kv_handle_keyboard_input");
  
  if (vim_state.mode == VIM_Replace)
@@ -207,18 +209,21 @@ update_game_key_states(Input_Event *event)
 }
 
 function void
-kv_view_input_handler(App *app)
+kv_view_input_handler(App *app0)
 {
- Scratch_Block scratch(app);
- default_input_handler_init(app, scratch);
+ Scratch_Block scratch(app0);
+ default_input_handler_init(app0, scratch);
  
- View_ID view = get_this_ctx_view(app, Access_Always);
- Managed_Scope scope = view_get_managed_scope(app, view);
+ View_ID view = get_this_ctx_view(app0, Access_Always);
+ Managed_Scope scope = view_get_managed_scope(app0, view);
  
- for (User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
-      !input.abort;
-      input  = get_next_input(app, EventPropertyGroup_Any, 0))
+ for(User_Input input = get_next_input(app0, EventPropertyGroup_Any, 0);
+     !input.abort;
+     input  = get_next_input(app0, EventPropertyGroup_Any, 0))
  {
+  App_Cmd app_value = app_cmd_event(app0, &input.event);
+  App_Cmd *app = &app_value;
+  
   Temp_Memory_Block temp(scratch);
   
   if (input.event.kind == InputEventKind_KeyStroke){
@@ -259,7 +264,7 @@ kv_view_input_handler(App *app)
     if(game){
      Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
      b32 is_game_buffer = buffer_viewport_id(app, buffer);
-     handled = game->is_event_handled_by_game(app, &input.event, is_game_buffer, game_render_on);
+     handled = game->is_event_handled_by_game(ed_game_state_pointer, app, &input.event, is_game_buffer, game_render_on);
     }
    }
    
@@ -297,20 +302,20 @@ kv_view_input_handler(App *app)
 }
 
 function void 
-kv_newline_and_indent(App *app)
+kv_newline_and_indent(App_Cmd *app)
 {
-    GET_VIEW_AND_BUFFER;
-    HISTORY_GROUP_SCOPE;
-    write_text(app, str8lit("\n"), true);
-    
-    i64 curpos = view_get_cursor_pos(app, view);
-    u8 character = buffer_get_char(app, buffer, curpos);
-    if (character == /*{*/'}')
-    {// NOTE: Handling for brace
-        write_text(app, str8lit("\n"), true);
-        auto_indent_line_at_cursor(app);
-        move_vertical_lines(app, -1);
-    }
-    
-    auto_indent_line_at_cursor(app);
+ GET_VIEW_AND_BUFFER;
+ HISTORY_GROUP_SCOPE;
+ write_text(app, str8lit("\n"), true);
+ 
+ i64 curpos = view_get_cursor_pos(app, view);
+ u8 character = buffer_get_char(app, buffer, curpos);
+ if (character == /*{*/'}')
+ {// NOTE: Handling for brace
+  write_text(app, str8lit("\n"), true);
+  auto_indent_line_at_cursor(app);
+  move_vertical_lines(app, -1);
+ }
+ 
+ auto_indent_line_at_cursor(app);
 }

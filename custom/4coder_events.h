@@ -4,11 +4,9 @@
 
 #pragma once
 
-typedef void Custom_Command_Function(App *app);
-
 typedef u32 Mouse_Code;
 typedef u32 Core_Code;
-#include "generated/4coder_event_codes.h"
+#include "generated_old/4coder_event_codes.h"
 
 typedef u32 Input_Event_Kind;
 enum{
@@ -50,16 +48,17 @@ global_const i32 Input_MaxModifierCount = 8;
 struct Input_Modifier_Set
 {
     Key_Code *mods;
-    i32 count;
+ i32 count;
 };
 struct Input_Modifier_Set_Fixed{
  Key_Code mods[Input_MaxModifierCount];
  i32 count;
 };
 
-struct Input_Event{
+struct Input_Event
+{
  Input_Event_Kind kind;
- b32 virtual_event;
+ b32 is_virtual;
  union{
   struct{
    String string;

@@ -40,7 +40,8 @@ file_change_notification_check(Arena *scratch, Working_Set *working_set, Editing
 }
 
 function void
-file_change_notification_thread_main(void *ptr){
+file_change_notification_thread_main(void *ptr)
+{
  Models *models = (Models*)ptr;
  Arena arena = make_arena();
  Working_Set *working_set = &models->working_set;
@@ -120,23 +121,23 @@ working_set_get_file(Working_Set *working_set, Buffer_ID id)
 
 function void
 working_set_init(Models *models, Working_Set *working_set){
-    block_zero_struct(working_set);
-    working_set->arena = make_arena();
-    
-    working_set->id_counter = 1;
-    
-    dll_init_sentinel(&working_set->active_file_sentinel);
-    dll_init_sentinel(&working_set->touch_order_sentinel);
-    
-    local_const i1 slot_count = 128;
-    Base_Allocator *allocator = &malloc_base_allocator;
-    working_set->id_to_ptr_table = make_table_u64_u64(allocator, slot_count);
-    working_set->canon_table = make_table_Data_u64(allocator, slot_count);
-    working_set->name_table = make_table_Data_u64(allocator, slot_count);
-    
-    dll_init_sentinel(&working_set->has_external_mod_sentinel);
-    working_set->mutex = system_mutex_make();
-    working_set->file_change_thread = system_thread_launch(file_change_notification_thread_main, models);
+ block_zero_struct(working_set);
+ working_set->arena = make_arena();
+ 
+ working_set->id_counter = 1;
+ 
+ dll_init_sentinel(&working_set->active_file_sentinel);
+ dll_init_sentinel(&working_set->touch_order_sentinel);
+ 
+ local_const i1 slot_count = 128;
+ Base_Allocator *allocator = &malloc_base_allocator;
+ working_set->id_to_ptr_table = make_table_u64_u64(allocator, slot_count);
+ working_set->canon_table = make_table_Data_u64(allocator, slot_count);
+ working_set->name_table = make_table_Data_u64(allocator, slot_count);
+ 
+ dll_init_sentinel(&working_set->has_external_mod_sentinel);
+ working_set->mutex = system_mutex_make();
+ working_set->file_change_thread = system_thread_launch(file_change_notification_thread_main, models);
 }
 
 function Editing_File*

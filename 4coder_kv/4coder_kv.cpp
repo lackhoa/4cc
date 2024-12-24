@@ -40,7 +40,7 @@
 #endif
 
 #if !defined(META_PASS)
-#    include "generated/managed_id_metadata.cpp"  // from Mr. Allen 4th
+#  include "generated/init_custom_id.gen.cpp"
 #endif
 
 function void
@@ -153,7 +153,7 @@ kv_4coder_initialize(App *app)
 }
 
 function void
-startup_panels_and_files(App *app)
+startup_panels_and_files(App_Cmd *app)
 {
  Scratch_Block scratch(app);
  
@@ -288,8 +288,8 @@ initialize_stylist_fonts(App *app)
  }
 }
 
-function void 
-kv_startup(App *app)
+function void
+kv_startup(App_Cmd *app)
 {
  ProfileScope(app, "kv_startup");
  Scratch_Block temp(app);
@@ -314,7 +314,6 @@ kv_startup(App *app)
  
  {// NOTE(kv): Create special buffers.
   Buffer_Create_Flag create_flags = BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew;
-  create_special_buffer(app, str8lit("*calc*"),       create_flags, BufferSetting_Unimportant);
   create_special_buffer(app, compilation_buffer_name, create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
   for_i32 (index,0,GAME_BUFFER_COUNT)
   {
@@ -396,8 +395,8 @@ kv_vim_bindings(App *app)
  BIND(N|0|MAP, vim_switch_lister,     SUB_G,   Key_Code_B);
  BIND(N|V|MAP, kv_toggle_cpp_comment, SUB_G,   Key_Code_C);
  
- BIND(N|MAP, undo,                                Key_Code_U);
- BIND(N|MAP, redo,                              C|Key_Code_R);
+ BIND(N|MAP, undo_all_buffers,                    Key_Code_U);
+ BIND(N|MAP, redo_all_buffers,                  C|Key_Code_R);
  BIND(N|MAP, swap_panels,                       C|Key_Code_S);
  BIND(N|MAP, vim_next_4coder_jump,              M|Key_Code_N);
  BIND(N|MAP, vim_prev_4coder_jump,              M|Key_Code_P);
@@ -422,10 +421,11 @@ kv_vim_bindings(App *app)
  BIND(N|V|MAP, vim_submode_z,       Key_Code_Z);
  BIND(N|V|MAP, vim_submode_leader,  leader);
  
- BIND(N|MAP,   vim_last_command,             Key_Code_Period);
+ BIND(N|MAP,   vim_repeat_last_command,      Key_Code_Period);
  BIND(N|V|MAP, vim_request_yank,             Key_Code_Y);
  BIND(N|V|MAP, vim_request_delete,           Key_Code_D);
- BIND(N|V|MAP, vim_request_change,           Key_Code_C);
+ BIND(N|0|MAP, kv_handle_c_normal,           Key_Code_C);
+ BIND(0|V|MAP, vim_request_change,           Key_Code_C);
  BIND(N|V|MAP, vim_delete_end,             S|Key_Code_D);
  BIND(N|V|MAP, vim_change_end,             S|Key_Code_C);
  BIND(N|V|MAP, vim_yank_end,               S|Key_Code_Y);
@@ -510,7 +510,7 @@ kv_vim_bindings(App *app)
  BIND(N|V|MAP, vim_set_mark,                         Key_Code_M);
  BIND(N|0|MAP, vim_goto_mark,                        Key_Code_Quote);
  BIND(N|V|MAP, vim_toggle_macro,                   S|Key_Code_Q);
- BIND(N|V|MAP, vim_play_macro,                     S|Key_Code_2);
+ BIND(N|V|MAP, keyboard_macro_replay,              S|Key_Code_2);
  BIND(N|MAP,   open_matching_file_cpp,               Key_Code_F12);
  BIND(N|MAP,   open_matching_file_cpp_other_panel, M|Key_Code_F12);
  BIND(N,       jump_between_meta_and_generated_code, Key_Code_4);
@@ -618,11 +618,13 @@ function Tick_Function kv_tick;
 function void 
 kv_custom_layer_init(App *app)
 {
+ Scratch_Block scratch;
+ 
  default_framework_init(app);
  set_all_default_hooks(app);
  
- vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 0] = { buffer_identifier(strlit("*scratch*")), 1.f, 1.f };
- vim_buffer_peek_list[ArrayCount(vim_default_peek_list) + 1] = { buffer_identifier(strlit("todo.txt")),  1.f, 1.f };
+ vim_buffer_peek_list[alen(vim_default_peek_list) + 0] = { buffer_identifier(strlit("*scratch*")), 1.f, 1.f };
+ vim_buffer_peek_list[alen(vim_default_peek_list) + 1] = { buffer_identifier(strlit("todo.txt")),  1.f, 1.f };
  vim_request_vtable[(u32)VIM_REQUEST_COUNT + (u32)BYP_REQUEST_Title]     = byp_apply_title;
  vim_request_vtable[(u32)VIM_REQUEST_COUNT + (u32)BYP_REQUEST_Comment]   = byp_apply_comment;
  vim_request_vtable[(u32)VIM_REQUEST_COUNT + (u32)BYP_REQUEST_UnComment] = byp_apply_uncomment;
@@ -662,7 +664,6 @@ kv_custom_layer_init(App *app)
  F4_RegisterLanguages();
  
  {// NOTE: Game stuff
-  Scratch_Block scratch(app);
   // Export ed_api
   ed_api_fill_vtable(&const_ed_api);
   ed_api_fill_vtable_new(&const_ed_api_new);
@@ -671,7 +672,7 @@ kv_custom_layer_init(App *app)
  }
 }
 
-extern "C" void
+function void
 custom_layer_init(App *app)
 {
 #if USE_LAYER_kv
@@ -693,4 +694,14 @@ custom_layer_init(App *app)
 #elif USE_LAYER_default
  default_custom_layer_init(app);
 #endif
+ 
+ /* Scratch_Block scratch;
+  for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+       buffer != 0;
+       buffer = get_buffer_next(app, buffer, Access_Always))
+  {
+   String buffer_name = push_buffer_base_name(app, scratch, buffer);
+   breakhere;
+  }*/
 }
+//-

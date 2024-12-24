@@ -275,13 +275,15 @@ ep_get_kind(Ed_Parser *p){
  return result;
 }
 
-function void
-ep_eat_kind(Ed_Parser *p, Token_Base_Kind kind){
+function Token *
+ep_eat_kind(Ed_Parser *p, Token_Base_Kind kind)
+{
  Token *token = ep_get_token(p);
  if (token) {
   p->set_ok(token->kind == kind);
  }
  ep_eat(p);
+ return token;
 }
 
 function b32

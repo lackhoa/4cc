@@ -46,7 +46,8 @@ vim_lister__backspace(App *app){
 
 
 function void
-vim_lister_file__backspace(App *app){
+vim_lister_file__backspace(App *app)
+{
 	View_ID view = get_this_ctx_view(app, Access_Always);
 	Lister *lister = view_get_lister(app, view);
 	if(lister){
@@ -118,9 +119,10 @@ vim_lister__write_character__file_path(App *app){
 }
 
 function void
-vim_lister_set_default_handlers(Lister *lister){
+vim_lister_set_default_handlers(Lister *lister)
+{
 	Lister_Handlers handlers = lister_get_default_handlers();
-	handlers.backspace = vim_lister__backspace;
+	handlers.backspace = wrap_custom_command(vim_lister__backspace);
 	lister_set_handlers(lister, &handlers);
 }
 
@@ -379,25 +381,25 @@ function void vim_change_lister_view_back(App *app){
 global b32 vim_lister_running;
 
 function Lister_Result
-vim_run_lister(App *app, Lister *lister)
+vim_run_lister(App *app0, Lister *lister)
 {
  vim_lister_running = true;
  Lister_Result ret;
- View_ID view = get_this_ctx_view(app, Access_Always);
+ View_ID view = get_this_ctx_view(app0, Access_Always);
  vim_lister_view_id = view;
 #if VIM_USE_BOTTOM_LISTER
  lister->filter_restore_point = begin_temp_memory(lister->arena);
- lister_update_filtered_list(app, lister);
+ lister_update_filtered_list(app0, lister);
  
  vim_use_bottom_cursor = true;
  bool do_invalidate = true;
  vim_show_buffer_peek = false;
 	
- View_Context ctx = view_current_context(app, view);
+ View_Context ctx = view_current_context(app0, view);
  
  ctx.render_caller = vim_lister_render;
  ctx.hides_buffer = false;
- View_Context_Block ctx_block(app, view, &ctx);
+ View_Context_Block ctx_block(app0, view, &ctx);
 	
 	u8 *dest;
 	dest = vim_bottom_text.str + vim_bottom_text.size;
@@ -406,17 +408,17 @@ vim_run_lister(App *app, Lister *lister)
 	
 	User_Input in = {};
 	for(;;){
-  Vec2_i32 col_row = calc_col_row(app, lister);
+  Vec2_i32 col_row = calc_col_row(app0, lister);
   i32 col_num = col_row.x;
   i32 visible_count = col_row.x*col_row.y;
   block_copy(dest, lister->text_field.str, lister->text_field.size);
   vim_bottom_text.size = after_size + lister->text_field.size;
-  animate_in_n_milliseconds(app, 0);
+  animate_in_n_milliseconds(app0, 0);
 		
   Lister_Activation_Code result = ListerActivation_Continue;
   b32 handled = true;
 		
-  in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
+  in = get_next_input(app0, EventPropertyGroup_Any, EventProperty_Escape);
   if(in.abort){
    block_zero_struct(&lister->out);
    lister->out.canceled = true;
@@ -434,13 +436,17 @@ vim_run_lister(App *app, Lister *lister)
     set->mods[set->count++] = Key_Code_Shift;
    }
   }
+  
+  b32 automated = in.event.is_virtual;
+  App_Cmd appc_value = app_cmd(app0, automated);
+  App_Cmd *app = &appc_value;
 		
-  switch(in.event.kind){
-			
+  switch(in.event.kind)
+  {
    case InputEventKind_TextInsert:{
     vim_cursor_blink = 0;
     if(lister->handlers.write_character != 0){
-     result = lister->handlers.write_character(app);
+     result = lister->handlers.write_character(app0);
     }
    } break;
 			
@@ -544,7 +550,7 @@ vim_run_lister(App *app, Lister *lister)
     lister_activate(app, lister, clicked, true);
     result = ListerActivation_Finished;
     do_invalidate = false;
-    view_enqueue_command_function(app, view, vim_change_lister_view_back);
+    view_enqueue_command_function(app, view, wrap_custom_command(vim_change_lister_view_back));
    }
   }
 		
@@ -571,19 +577,17 @@ vim_run_lister(App *app, Lister *lister)
  {
   String command_name = string_substring(vim_bottom_text.string, Ii64(base_size,vim_bottom_text.size));
   vim_register_copy(&vim_registers.command, command_name);
-  vim_update_registers(app);
+  vim_update_registers(app0);
  }
  
  ret = lister->out;
 #else
- ret = run_lister(app, lister);
+ ret = run_lister(app0, lister);
 #endif
  vim_lister_view_id = 0;
  vim_lister_running = false;
  return ret;
 }
-
-
 function Lister_Result
 vim_run_lister_with_refresh_handler(App *app, Arena *arena, String query, Lister_Handlers handlers){
 	Lister_Result result = {};
@@ -607,7 +611,7 @@ vim_get_filename_from_user(App *app, Arena *arena, String query, View_ID view){
 	Lister_Handlers handlers = lister_get_default_handlers();
 	handlers.refresh = generate_hot_directory_file_list;
 	handlers.write_character = vim_lister__write_character__file_path;
-	handlers.backspace = vim_lister_file__backspace;
+	handlers.backspace = wrap_custom_command(vim_lister_file__backspace);
 	
 	vim_reset_bottom_text();
 	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, arena, query, handlers);

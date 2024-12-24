@@ -15,8 +15,8 @@ api(custom) function Buffer_ID get_buffer_by_name(App* app, String8 name, Access
 api(custom) function Buffer_ID get_buffer_by_filename(App* app, String filename, Access_Flag access);
 api(custom) function b32 is_buffer_limited_edit(App* app, Buffer_ID buffer_id);
 api(custom) function b32 buffer_read_range(App* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
-api(custom) function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
-api(custom) function b32 buffer_batch_edit(App* app, Buffer_ID buffer_id, Batch_Edit* batch);
+api(custom) function b32 buffer_replace_range(App_Cmd* app, Buffer_ID buffer_id, Range_i64 range, String string);
+api(custom) function b32 buffer_batch_edit(App_Cmd* app, Buffer_ID buffer_id, Batch_Edit* batch);
 api(custom) function String_Match buffer_seek_string(App* app, Buffer_ID buffer, String8 needle, Scan_Direction direction, i64 start_pos, b32 case_sensitive);
 api(custom) function String_Match buffer_seek_character_class(App* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos);
 api(custom) function f32 buffer_line_y_difference(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b);

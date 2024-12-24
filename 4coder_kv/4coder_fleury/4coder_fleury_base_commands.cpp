@@ -153,56 +153,57 @@ F4_JumpToLocation(App *app, View_ID view, Buffer_ID buffer, i64 pos)
     set_view_to_location(app, view, buffer, seek);
     
     if (auto_center_after_jumps)
-    {
-        center_view(app);
-    }
-    view_set_cursor(app, view, seek);
-    view_set_mark(app, view, seek);
+ {
+  center_view(app);
+ }
+ view_set_cursor(app, view, seek);
+ view_set_mark(app, view, seek);
 }
 
-CUSTOM_UI_COMMAND_SIG(f4_search_for_definition__project_wide)
-CUSTOM_DOC("List all definitions in the index and jump to the one selected by the user.")
+function void
+f4_search_for_definition__project_wide(App_Cmd *app)
 {
-    char *query = "Index (Project):";
-    
-    Scratch_Block scratch(app);
-    Lister_Block lister(app, scratch);
-    lister_set_query(lister, query);
-    lister_set_default_handlers(lister);
-    
-    F4_Index_Lock();
-    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-         buffer != 0;
-         buffer = get_buffer_next(app, buffer, Access_Always))
-    {
-        F4_Index_File *file = F4_Index_LookupFile(app, buffer);
-        if(file != 0)
-        {
-            for(F4_Index_Note *note = file->first_note; note; note = note->next_sibling)
-            {
-                _F4_PushListerOptionForNote(app, scratch, lister, note);
-            }
-        }
-    }
-    F4_Index_Unlock();
-    
-    Lister_Result l_result = run_lister(app, lister);
-    Tiny_Jump result = {};
-    if (!l_result.canceled && l_result.user_data != 0)
-    {
-        block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
-    }
-    
-    if (result.buffer != 0)
-    {
-        View_ID view = get_this_ctx_view(app, Access_Always);
-        point_stack_push_view_cursor(app, view);
-        F4_JumpToLocation(app, view, result.buffer, result.pos);
-    }
+ char *query = "Index (Project):";
+ 
+ Scratch_Block scratch(app);
+ Lister_Block lister(app, scratch);
+ lister_set_query(lister, query);
+ lister_set_default_handlers(lister);
+ 
+ F4_Index_Lock();
+ for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+      buffer != 0;
+      buffer = get_buffer_next(app, buffer, Access_Always))
+ {
+  F4_Index_File *file = F4_Index_LookupFile(app, buffer);
+  if(file != 0)
+  {
+   for(F4_Index_Note *note = file->first_note; note; note = note->next_sibling)
+   {
+    _F4_PushListerOptionForNote(app, scratch, lister, note);
+   }
+  }
+ }
+ F4_Index_Unlock();
+ 
+ Lister_Result l_result = run_lister(app, lister);
+ Tiny_Jump result = {};
+ if (!l_result.canceled && l_result.user_data != 0)
+ {
+  block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
+ }
+ 
+ if (result.buffer != 0)
+ {
+  View_ID view = get_this_ctx_view(app, Access_Always);
+  point_stack_push_view_cursor(app, view);
+  F4_JumpToLocation(app, view, result.buffer, result.pos);
+ }
 }
 
-CUSTOM_UI_COMMAND_SIG(f4_search_for_definition__current_file)
-CUSTOM_DOC("List all definitions in the current file and jump to the one selected by the user.")
+function void
+f4_search_for_definition__current_file(App_Cmd *app)
+
 {
     char *query = "Index (File):";
     
@@ -291,15 +292,16 @@ CUSTOM_DOC("Moves the cursor between the open/close brace/paren/bracket of the c
         }
         else
         {
-            pos = nearest_range.min;
-        }
-        view_set_cursor(app, view, seek_pos(pos));
-        no_mark_snap_to_cursor_if_shift(app, view);
-    }
+   pos = nearest_range.min;
+  }
+  view_set_cursor(app, view, seek_pos(pos));
+  no_mark_snap_to_cursor_if_shift(app, view);
+ }
 }
 
-CUSTOM_UI_COMMAND_SIG(f4_open_project)
-CUSTOM_DOC("Open a project by navigating to the project file.")
+function void
+f4_open_project(App_Cmd *app)
+
 {
     for(;;)
     {
@@ -979,16 +981,17 @@ F4_GetFileNameFromUser_Project(App *app, Arena *arena, String query, View_ID vie
             path = string_remove_front_of_path(l_result.text_field);
         }
         if (character_is_slash(string_get_character(path, path.size - 1))){
-            path = string_chop(path, 1);
-        }
-        result.path_in_text_field = path;
-    }
-    
-    return(result);
+   path = string_chop(path, 1);
+  }
+  result.path_in_text_field = path;
+ }
+ 
+ return(result);
 }
 
-CUSTOM_UI_COMMAND_SIG(f4_interactive_open_or_new_in_project)
-CUSTOM_DOC("Interactively open a file out of the file system, filtered to files only in the project.")
+function void
+f4_interactive_open_or_new_in_project(App_Cmd *app)
+
 {
     for(;;)
     {

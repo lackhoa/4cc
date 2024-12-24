@@ -43,35 +43,36 @@ models_push_virtual_event(Models *models, Input_Event *event){
         node = push_array(&models->virtual_event_arena, Model_Input_Event_Node, 1);
     }
     else{
-        sll_stack_pop(models->free_virtual_event);
-    }
-    sll_queue_push(models->first_virtual_event, models->last_virtual_event, node);
-    node->event = copy_input_event(&models->virtual_event_arena, event);
+  sll_stack_pop(models->free_virtual_event);
+ }
+ sll_queue_push(models->first_virtual_event, models->last_virtual_event, node);
+ node->event = copy_input_event(&models->virtual_event_arena, event);
 }
 
 function Input_Event
-models_pop_virtual_event(Arena *arena, Models *models){
-    Input_Event result = {};
-    if (models->first_virtual_event != 0){
-        Model_Input_Event_Node *node = models->first_virtual_event;
-        result = copy_input_event(arena, &node->event);
-        sll_queue_pop(models->first_virtual_event, models->last_virtual_event);
-        sll_stack_push(models->free_virtual_event, node);
-    }
-    return(result);
+models_pop_virtual_event(Arena *arena, Models *models)
+{
+ Input_Event result = {};
+ if (models->first_virtual_event != 0){
+  Model_Input_Event_Node *node = models->first_virtual_event;
+  result = copy_input_event(arena, &node->event);
+  sll_queue_pop(models->first_virtual_event, models->last_virtual_event);
+  sll_stack_push(models->free_virtual_event, node);
+ }
+ return(result);
 }
 
 function void
 models_push_wind_down(Models *models, Coroutine *co){
-    Model_Wind_Down_Co *node = models->free_wind_downs;
-    if (node != 0){
-        sll_stack_pop(models->free_wind_downs);
-    }
-    else{
-        node = push_array(models->arena, Model_Wind_Down_Co, 1);
-    }
-    sll_stack_push(models->wind_down_stack, node);
-    node->co = co;
+ Model_Wind_Down_Co *node = models->free_wind_downs;
+ if (node != 0){
+  sll_stack_pop(models->free_wind_downs);
+ }
+ else{
+  node = push_array(models->arena, Model_Wind_Down_Co, 1);
+ }
+ sll_stack_push(models->wind_down_stack, node);
+ node->co = co;
 }
 
 // BOTTOM

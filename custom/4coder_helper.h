@@ -144,14 +144,14 @@ struct Indent_Info
 ////////////////////////////////
 
 struct Sort_Pair_i32{
-    i32 index;
-    i32 key;
+ i32 index;
+ i32 key;
 };
 
 ////////////////////////////////
 
 struct History_Group{
-    App *app;
+ App *app;
     Buffer_ID buffer;
     History_Record_Index first;
 };

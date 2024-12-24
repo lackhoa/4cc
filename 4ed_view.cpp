@@ -569,7 +569,7 @@ co_handle_request(Thread_Context *tctx, Models *models, Coroutine *co, Co_Out *o
  return(result);
 }
 
-function Coroutine*
+function Coroutine *
 co_run(Thread_Context *tctx, Models *models, Coroutine *co, Co_In *in, Co_Out *out)
 {
  Coroutine *result = coroutine_run(&models->coroutines, co, in, out);
@@ -580,41 +580,45 @@ co_run(Thread_Context *tctx, Models *models, Coroutine *co, Co_In *in, Co_Out *o
 }
 
 function void
-view_event_context_base__inner(Coroutine *coroutine){
-    Co_In *in = (Co_In*)coroutine->in;
-    Models *models = in->models;
-    Custom_Command_Function *event_context_base = in->event_context_base;
-    Assert(event_context_base != 0);
-    App app = {};
-    app.tctx = coroutine->tctx;
-    app.cmd_context = models;
-    event_context_base(&app);
+view_event_context_base__inner(Coroutine *coroutine)
+{
+ Co_In *in = (Co_In*)coroutine->in;
+ Models *models = in->models;
+ Custom_Command_Function *event_context_base = in->event_context_base;
+ Assert(event_context_base != 0);
+ App_Cmd app = {};
+ app.tctx        = coroutine->tctx;
+ app.cmd_context = models;
+ app.automated   = coroutine->automated;
+ event_context_base(&app);
 }
 
 function void
 view_init(Thread_Context *tctx, Models *models, View *view, Editing_File *initial_buffer,
-          Custom_Command_Function *event_context_base){
-    view_set_file(tctx, models, view, initial_buffer);
-    
-    view->node_arena = make_arena();
-    
-    View_Context first_ctx = {};
-    first_ctx.render_caller = models->render_caller;
-    first_ctx.delta_rule = models->delta_rule;
-    first_ctx.delta_rule_memory_size = models->delta_rule_memory_size;
-    view_push_context(view, &first_ctx);
-    
-    view->cursor_margin = V2(0.f, 0.f);
-    view->cursor_push_in_multiplier = V2(1.5f, 1.5f);
-    
-    view->co = coroutine_create(&models->coroutines, view_event_context_base__inner);
-    view->co->user_data = view;
-    Co_In in = {};
-    in.models = models;
-    in.event_context_base = event_context_base;
-    view->co = co_run(tctx, models, view->co, &in, &view->co_out);
-    // TODO(allen): deal with this kind of problem!
-    Assert(view->co != 0);
+          Custom_Command_Function *event_context_base)
+{
+ view_set_file(tctx, models, view, initial_buffer);
+ 
+ view->node_arena = make_arena();
+ 
+ View_Context first_ctx = {};
+ first_ctx.render_caller = models->render_caller;
+ first_ctx.delta_rule = models->delta_rule;
+ first_ctx.delta_rule_memory_size = models->delta_rule_memory_size;
+ view_push_context(view, &first_ctx);
+ 
+ view->cursor_margin = V2(0.f, 0.f);
+ view->cursor_push_in_multiplier = V2(1.5f, 1.5f);
+ 
+ b32 automated = true;
+ view->co = coroutine_create(&models->coroutines, view_event_context_base__inner, automated);
+ view->co->user_data = view;
+ Co_In in = {};
+ in.models = models;
+ in.event_context_base = event_context_base;
+ view->co = co_run(tctx, models, view->co, &in, &view->co_out);
+ // TODO(allen): deal with this kind of problem!
+ Assert(view->co != 0);
 }
 
 // TODO(allen): This doesn't make any sense!!!!!! COROUTINE SHUTDOWN? VIEW CLOSING? WADAFUQ?
@@ -641,35 +645,36 @@ view_check_co_exited(Models *models, View *view){
         // exited from it's event handler.  We should probably
         // have a failsafe restarter for the event handler when
         // this happens.
-        Assert(result);
-    }
+  Assert(result);
+ }
 }
 
 // TODO(allen): This is dumb. Let's rethink view cleanup strategy.
 
 function void
-co_single_abort(Thread_Context *tctx, Models *models, View *view){
-    Coroutine *co = view->co;
-    Co_In in = {};
-    in.user_input.abort = true;
-    view->co = co_run(tctx, models, co, &in, &view->co_out);
-    view_check_co_exited(models, view);
+co_single_abort(Thread_Context *tctx, Models *models, View *view)
+{
+ Coroutine *co = view->co;
+ Co_In in = {};
+ in.user_input.abort = true;
+ view->co = co_run(tctx, models, co, &in, &view->co_out);
+ view_check_co_exited(models, view);
 }
 
 function void
 co_full_abort(Thread_Context *tctx, Models *models, View *view){
-    Coroutine *co = view->co;
-    Co_In in = {};
-    in.user_input.abort = true;
-    for (u32 j = 0; j < 100 && co != 0; ++j){
-        co  = co_run(tctx, models, co, &in, &view->co_out);
-    }
-    if (co != 0){
-        App app = {};
-        app.tctx = tctx;
-        app.cmd_context = models;
+ Coroutine *co = view->co;
+ Co_In in = {};
+ in.user_input.abort = true;
+ for (u32 j = 0; j < 100 && co != 0; ++j){
+  co  = co_run(tctx, models, co, &in, &view->co_out);
+ }
+ if (co != 0){
+  App app = {};
+  app.tctx = tctx;
+  app.cmd_context = models;
 #define M "SERIOUS ERROR: full stack abort did not complete"
-        print_message(&app, strlit(M));
+  print_message(&app, strlit(M));
 #undef M
  }
  view->co = 0;

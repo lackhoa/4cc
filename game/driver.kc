@@ -22,7 +22,6 @@
 #include "game_utils.cpp"
 //-
 // Select animation: @set_movie_shot
-//-
 #define cache
 #define cached
 //-
@@ -77,7 +76,7 @@ driver_reload(Framework_API *framework_api)
  framework_api_xlist(X);
 #undef X
  
- create_sliders(&driver_dll_arena);
+ init_sliders(&driver_dll_arena);
 }
 function void
 driver_shutdown(void)
@@ -1252,132 +1251,129 @@ render_pelvis(){
 function void
 render_eyes(Pose *pose)
 {
- //TODO(kv) This cache is totally wrong, we depend on lots of global variables.
- cache(v1 tblink = pose->tblink;){
-  //-
-  // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
-  // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
-  v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
-  v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
-  mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
-  // TODO: Having a mini-coordinate system seems over-engineered to me... but idk man!
-  // I think we've managed to dig ourselves out of that situation almost?
-  // because we can use eye_in - eye_out to establish a coord frame
-  old_vv(eye_in, eyeT*V3(-0.0282f, 0.f, -0.1236f));
-  v1 loomis_eye_inZ = faceZ - loomis_unit/3.f;
-  WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
-  
-  b32 show_eye_guideline = painter->show_grid;
-  if(level1 || show_eye_guideline){
-   hl_block;
-   if(level1){ draw(bez_line(eye_in, nose_rootL)); }
-  }
-  old_vv(eye_out, eye_in + V3(2.f * eye_in.x+(-0.03f), 0, -0.154f));
-  if(level1){ hl_block; draw_line(eye_out, brow_out); }
-  old_vv(es_up_in, bezier_sample(brow_ridge, 0.3668f));
-  Bezier eye_up_line = bez_bezd_old(eye_in, 
-                                    V3(0.0814f, 0.3741f, 0.2401f),
-                                    V2(0.0159f, 0.3341f),
-                                    eye_out);
-  fill(es_up_in, eye_up_line);
-  argb eye_in_shade = painter->shade_color;
-  fill3(nose_rootL, eye_in, es_up_in, 
-        fp(eye_in_shade));
-  //-
-  v4 eye_up_line_radii;
-  v4 eye_low_line_radii;
-  {//TODO(kv) Depends on t -> Cannot be captured by static data!
-   v1 eye_in_radius  = lerp(V2(0.0137f, -0.0006f), tblink);
-   v1 eye_out_radius = lerp(V2(0.4791f, 0.17f), tblink);
-   v1 eye0_radius = lerp(V2(0.6426f, 0.499f), tblink);
-   v1 eye1_radius = lerp(V2(0.f, 0.6154f), tblink);
-   eye_up_line_radii= V4(eye_in_radius, eye0_radius, eye1_radius, eye_out_radius);
-   eye_low_line_radii= eye_up_line_radii;
-   eye_low_line_radii[1] = 0.0555f;
-  }
-  //-
-  bb_bezd_old(eye_low_line,
-              eye_in, 
-              V3(0.1735f, -0.2094f, 0.1663f), 
-              V2(0.117f, 0.2053f), 
-              eye_out,
-              eye_low_line_radii);
-  {
-   old_vv(eye_low_patch, lerp(eye_in, 0.4768f, cheek_low));
-   fill(eye_low_patch, eye_low_line);
-   fill3(eye_low_patch, eye_out, cheek_low);
-   fill3(eye_out, brow_out, es_up_in);
-  }
-  {// NOTE: Blinking animation control
-   bb_raw(eye_up_line_now,
-          eye_in, 
-          lerp(eye_up_line[1], tblink, eye_low_line[1]),
-          lerp(eye_up_line[2], tblink, eye_low_line[2]),
-          eye_out,
-          eye_up_line_radii);
-   // NOTE: The eyelid
-   fill_dbez(eye_up_line, eye_up_line_now, eye_in_shade);
-  }
-  {//~NOTE: Eyeball
-   bone_block(Bone_Eyeball);
-   {//-Eyeball visualization
-    b32 show_eyeball = get_preset() == 2;
-    if(show_eyeball){
-     hl_block;
-     v4 eyeball_radii;
-     {
-      v1 big   = 0.5f;
-      v1 small = 0.25f;
-      eyeball_radii = V4(big,small,small,big);
-     }
-     bs_circle(V3(),V3z(1),eyeball_radii);  // NOTE: A prime meridian
-     bs_circle(V3(),V3x(1),eyeball_radii);
-    }
-   }
-   {//-Iris (featuring Mr. Depth Offset Hack)
-    lp_block(nslice_per_meter, 128.f*(7.6378f));
-    v1 iris_depth_offset = painter->fill_depth_offset + 1*centimeter;
-    lp_block(depth_offset, current_line_cparams()->depth_offset+iris_depth_offset);
-    add_in_block(painter->fill_depth_offset, iris_depth_offset);
-    
-    {
-     //NOTE: https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
-     // so iris radius is [0.5, 0.6] that of eyeball
-     mat4 irisRelT;
-     v1 iris_radius     = 0.4934f;
-     v3 iris_rel_center = V3z(square_root(1-squared(iris_radius)));
-     v4 iris_radii;
-     {
-      v1 big   = 0.5f;
-      v1 small = 0.25f;
-      iris_radii = V4(big,small,small,big);
-     }
-     bs_circle(iris_rel_center, V3z(iris_radius), iris_radii);
-    }
-   }
-   
-   {//-NOTE: Checking
-    for_i32(index,0,2){
-     Bez line;
-     if(index==0) line = eye_up_line;
-     else         line = eye_low_line;
-     
-     Eye_Min_Distance_Result result =
-      get_eye_min_distance(eyeball_center, eyeball_radius, line);
-     if(result.min_distance < 0){
-      DEBUG_VALUE(result.min_distance/millimeter);
-      indicate(result.closest_point, 0);
-     }
-    }
-   }
-  }
-  
-  // NOTE: These fills are most dubious...
-  fill3(nose_wing, cheek_low, eye_in);
-  fill3(nose_root_backL, eye_in, nose_rootL);
-  fill3(nose_root_backL, nose_wing, eye_in);
-  fill3(eye_out, cheek_up, brow_out);
+ // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
+ // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
+ v1 tblink = pose->tblink;
+ v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
+ v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
+ mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
+ // TODO: Having a mini-coordinate system seems over-engineered to me... but idk man!
+ // I think we've managed to dig ourselves out of that situation almost?
+ // because we can use eye_in - eye_out to establish a coord frame
+ old_vv(eye_in, eyeT*V3(-0.0282f, 0.f, -0.1236f));
+ v1 loomis_eye_inZ = faceZ - loomis_unit/3.f;
+ WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
+ 
+ b32 show_eye_guideline = painter->show_grid;
+ if(level1 || show_eye_guideline){
+  hl_block;
+  if(level1){ draw(bez_line(eye_in, nose_rootL)); }
  }
+ old_vv(eye_out, eye_in + V3(2.f * eye_in.x+(-0.03f), 0, -0.154f));
+ if(level1){ hl_block; draw_line(eye_out, brow_out); }
+ old_vv(es_up_in, bezier_sample(brow_ridge, 0.3668f));
+ Bezier eye_up_line = bez_bezd_old(eye_in, 
+                                   V3(0.0814f, 0.3741f, 0.2401f),
+                                   V2(0.0159f, 0.3341f),
+                                   eye_out);
+ fill(es_up_in, eye_up_line);
+ argb eye_in_shade = painter->shade_color;
+ fill3(nose_rootL, eye_in, es_up_in, 
+       fp(eye_in_shade));
+ //-
+ v4 eye_up_line_radii;
+ v4 eye_low_line_radii;
+ {//TODO(kv) Depends on t -> Cannot be captured by static data!
+  v1 eye_in_radius  = lerp(V2(0.0137f, -0.0006f), tblink);
+  v1 eye_out_radius = lerp(V2(0.4791f, 0.17f), tblink);
+  v1 eye0_radius = lerp(V2(0.6426f, 0.499f), tblink);
+  v1 eye1_radius = lerp(V2(0.f, 0.6154f), tblink);
+  eye_up_line_radii= V4(eye_in_radius, eye0_radius, eye1_radius, eye_out_radius);
+  eye_low_line_radii= eye_up_line_radii;
+  eye_low_line_radii[1] = 0.0555f;
+ }
+ //-
+ bb_bezd_old(eye_low_line,
+             eye_in, 
+             V3(0.1735f, -0.2094f, 0.1663f), 
+             V2(0.117f, 0.2053f), 
+             eye_out,
+             eye_low_line_radii);
+ {
+  old_vv(eye_low_patch, lerp(eye_in, 0.4768f, cheek_low));
+  fill(eye_low_patch, eye_low_line);
+  fill3(eye_low_patch, eye_out, cheek_low);
+  fill3(eye_out, brow_out, es_up_in);
+ }
+ {// NOTE: Blinking animation control
+  bb_raw(eye_up_line_now,
+         eye_in, 
+         lerp(eye_up_line[1], tblink, eye_low_line[1]),
+         lerp(eye_up_line[2], tblink, eye_low_line[2]),
+         eye_out,
+         eye_up_line_radii);
+  // NOTE: The eyelid
+  fill_dbez(eye_up_line, eye_up_line_now, eye_in_shade);
+ }
+ {//~NOTE: Eyeball
+  bone_block(Bone_Eyeball);
+  {//-Eyeball visualization
+   b32 show_eyeball = get_preset() == 2;
+   if(show_eyeball){
+    hl_block;
+    v4 eyeball_radii;
+    {
+     v1 big   = 0.5f;
+     v1 small = 0.25f;
+     eyeball_radii = V4(big,small,small,big);
+    }
+    bs_circle(V3(),V3z(1),eyeball_radii);  // NOTE: A prime meridian
+    bs_circle(V3(),V3x(1),eyeball_radii);
+   }
+  }
+  {//-Iris (featuring Mr. Depth Offset Hack)
+   lp_block(nslice_per_meter, 128.f*(7.6378f));
+   v1 iris_depth_offset = painter->fill_depth_offset + 1*centimeter;
+   lp_block(depth_offset, current_line_cparams()->depth_offset+iris_depth_offset);
+   add_in_block(painter->fill_depth_offset, iris_depth_offset);
+   
+   {
+    //NOTE: https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
+    // so iris radius is [0.5, 0.6] that of eyeball
+    mat4 irisRelT;
+    v1 iris_radius     = 0.4934f;
+    v3 iris_rel_center = V3z(square_root(1-squared(iris_radius)));
+    v4 iris_radii;
+    {
+     v1 big   = 0.5f;
+     v1 small = 0.25f;
+     iris_radii = V4(big,small,small,big);
+    }
+    bs_circle(iris_rel_center, V3z(iris_radius), iris_radii);
+   }
+  }
+  
+  {//-NOTE: Checking
+   for_i32(index,0,2){
+    Bez line;
+    if(index==0) line = eye_up_line;
+    else         line = eye_low_line;
+    
+    Eye_Min_Distance_Result result =
+     get_eye_min_distance(eyeball_center, eyeball_radius, line);
+    if(result.min_distance < 0){
+     DEBUG_VALUE(result.min_distance/millimeter);
+     indicate(result.closest_point, 0);
+    }
+   }
+  }
+ }
+ 
+ // NOTE: These fills are most dubious...
+ fill3(nose_wing, cheek_low, eye_in);
+ fill3(nose_root_backL, eye_in, nose_rootL);
+ fill3(nose_root_backL, nose_wing, eye_in);
+ fill3(eye_out, cheek_up, brow_out);
 }
 function Head
 render_head(Pose *pose, v1 animation_time)

@@ -403,7 +403,7 @@ draw_cparams(const v3 P[4], Common_Line_Params *cparams, Line_Params params, lin
  b32 ok = is_line_enabled();
  if(ok and
     not p->ignore_alignment_min and
-    u32(linum) != get_hot_prim_id()  and
+    u32(linum) != painter->hot_prim_id  and
     params.alignment_min > 0.f)
  {//-NOTE(kv) Alignment business
   v3 A = P[0];
@@ -664,7 +664,7 @@ function void
 draw_image(char *filename, v3 o, v3 x, v3 y, v1 alpha=1.f, v3 color={1,1,1},
            linum_defparam)
 {
- if(get_hot_prim_id() == u32(linum))
+ if(painter->hot_prim_id == u32(linum))
  {// NOTE: tint it
   color = V3(1.f, 1.f, 0.f)*color;
  }
@@ -707,7 +707,7 @@ indicate_vertex(char *vertex_name, v3 pos,
    mouse_near = dist < squared(3*centimeter);
   }
   
-  b32 mouse_on_top = (prim_id == get_hot_prim_id());
+  b32 mouse_on_top = (prim_id == painter->hot_prim_id);
   
   b32 should_draw = ((p->viz_level >= force_draw_level) || mouse_near);
   if(should_draw){//NOTE: Draw

@@ -34,7 +34,7 @@ struct Loaded_Image
  GLuint texture;
 };
 //
-global arrayof<Loaded_Image> loaded_images;
+global darray(Loaded_Image) loaded_images;
 global i32 image_load_failure_count;
 
 function Image_Load_Info

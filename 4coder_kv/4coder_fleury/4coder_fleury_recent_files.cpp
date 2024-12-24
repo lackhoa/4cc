@@ -1,7 +1,7 @@
 
 #include "4coder_fleury_ubiquitous.h"
 
-CUSTOM_ID(attachment, f4_recentfiles_viewstate);
+global Managed_ID f4_recentfiles_viewstate; //attachment
 
 struct F4_RecentFiles_ViewState
 {
@@ -70,15 +70,16 @@ F4_RecentFiles_Render(App *app, View_ID view, Face_ID face)
         {
             Buffer_ID buffer = state->recent_buffers[i];
             String string = push_buffer_unique_name(app, scratch, buffer);
-            draw_string(app, face, string, p, 0xffffffff);
-            p.y += metrics.line_height;
-        }
-    }
+   draw_string(app, face, string, p, 0xffffffff);
+   p.y += metrics.line_height;
+  }
+ }
 #endif
 }
 
-CUSTOM_UI_COMMAND_SIG(f4_recent_files_menu)
-CUSTOM_DOC("Lists the recent files used in the current panel.")
+function void
+f4_recent_files_menu(App_Cmd *app)
+
 {
     View_ID view = get_active_view(app, Access_Read);
     Managed_Scope scope = view_get_managed_scope(app, view);

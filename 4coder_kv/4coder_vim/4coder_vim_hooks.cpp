@@ -4,15 +4,16 @@
 function void
 vim_file_save(App *app, Buffer_ID buffer_id)
 {
-    Scratch_Block scratch(app);
-    String8 unique_name = push_buffer_unique_name(app, scratch, buffer_id);
-    i64 line_count = buffer_get_line_count(app, buffer_id);
-    i64 bytes = buffer_get_size(app, buffer_id);
-    String8 msg = push_stringfz(scratch, "\"%.*s\"  %dL, %dC written", string_expand(unique_name), line_count, bytes);
-    vim_set_bottom_text(msg);
+ Scratch_Block scratch(app);
+ String8 unique_name = push_buffer_unique_name(app, scratch, buffer_id);
+ i64 line_count = buffer_get_line_count(app, buffer_id);
+ i64 bytes = buffer_get_size(app, buffer_id);
+ String8 msg = push_stringfz(scratch, "\"%.*s\"  %dL, %dC written", string_expand(unique_name), line_count, bytes);
+ vim_set_bottom_text(msg);
 }
 
-BUFFER_HOOK_SIG(vim_file_save_hook)
+function i32
+vim_file_save_hook(App *app, Buffer_ID buffer_id)
 {
 	default_file_save(app, buffer_id);
 	vim_file_save(app, buffer_id);
@@ -35,7 +36,8 @@ vim_view_change_buffer(App *app, View_ID view_id, Buffer_ID old_buffer_id, Buffe
  vim_set_file_register(app, new_buffer_id);
 }
 
-BUFFER_HOOK_SIG(vim_begin_buffer)
+function i32
+vim_begin_buffer(App *app, Buffer_ID buffer_id)
 {
 	ProfileScope(app, "vim begin buffer");
  
@@ -88,13 +90,13 @@ vim_animate_cursor(App *app, Frame_Info frame_info){
 }
 
 BUFFER_EDIT_RANGE_SIG(vim_buffer_edit_range){
-	default_buffer_edit_range(app, buffer_id, new_range, old_cursor_range);
+	default_buffer_edit_range(app, buffer_id, new_range, old_cursor_range, automated);
 	// TODO(BYP): Update marks here as well
 	return 0;
 }
 
-CUSTOM_COMMAND_SIG(vim_try_exit)
-CUSTOM_DOC("Vim command for responding to a try-exit event")
+function void
+vim_try_exit(App_Cmd *app)
 {
 	User_Input input = get_current_input(app);
 	if( match_core_code(&input, CoreCode_TryExit) )

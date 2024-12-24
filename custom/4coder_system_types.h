@@ -19,6 +19,7 @@ typedef Plat_Handle System_Library;
 typedef Plat_Handle System_Thread;
 typedef Plat_Handle System_Mutex;
 typedef Plat_Handle System_Condition_Variable;
+struct Coroutine;
 typedef void Thread_Function(void *ptr);
 struct CLI_Handles{
  Plat_Handle proc;

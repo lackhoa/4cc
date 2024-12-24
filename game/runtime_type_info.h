@@ -35,12 +35,12 @@ struct Type_Info{
  i32 count;
  union{
   Basic_Type Basic_Type;
-  arrayof<I_Struct_Member> members;
+  darray(I_Struct_Member) members;
   struct{
    Type_Info *discriminator_type;
-   arrayof<I_Union_Member> union_members;
+   darray(I_Union_Member) union_members;
   };
-  arrayof<I_Enum_Member> enum_members;
+  darray(I_Enum_Member) enum_members;
   Type_Info *array_item_type;
  };
 };

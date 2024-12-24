@@ -35,22 +35,23 @@ struct Lister_Node_List{
 };
 
 struct Lister_Node_Ptr_Array{
-    Lister_Node **node_ptrs;
-    i1 count;
+ Lister_Node **node_ptrs;
+ i1 count;
 };
 
 typedef Lister_Activation_Code Lister_Write_Character_Function(App *app);
 typedef Lister_Activation_Code Lister_Key_Stroke_Function(App *app);
-typedef void Lister_Navigate_Function(App *app,
+typedef void Lister_Navigate_Function(App_Cmd *app,
                                       View_ID view, struct Lister *lister,
                                       i1 index_delta);
 
-struct Lister_Handlers{
-    Lister_Regenerate_List_Function_Type *refresh;
-    Lister_Write_Character_Function *write_character;
-    Custom_Command_Function *backspace;
-    Lister_Navigate_Function *navigate;
-    Lister_Key_Stroke_Function *key_stroke;
+struct Lister_Handlers
+{
+ Lister_Regenerate_List_Function_Type *refresh;
+ Lister_Write_Character_Function *write_character;
+ Custom_Command_Function *backspace;
+ Lister_Navigate_Function *navigate;
+ Lister_Key_Stroke_Function *key_stroke;
 };
 
 struct Lister_Result{

@@ -750,22 +750,22 @@ map_set_binding_lv(Mapping *mapping, Command_Map *map,
 #if MAP_METADATA_ONLY
 function void
 map_set_binding_l(Mapping *mapping, Command_Map *map, char *name, u32 code1, u32 code2, ...){
-    va_list args;
-    va_start(args, code2);
-    Command_Binding binding = {};
-    binding.name = name;
-    map_set_binding_lv(mapping, map, binding, code1, code2, args);
-    va_end(args);
+ va_list args;
+ va_start(args, code2);
+ Command_Binding binding = {};
+ binding.name = name;
+ map_set_binding_lv(mapping, map, binding, code1, code2, args);
+ va_end(args);
 }
 #else
 function void
 map_set_binding_l(Mapping *mapping, Command_Map *map, Custom_Command_Function *custom, u32 code1, u32 code2, ...){
-    va_list args;
-    va_start(args, code2);
-    Command_Binding binding = {};
-    binding.custom = custom;
-    map_set_binding_lv(mapping, map, binding, code1, code2, args);
-    va_end(args);
+ va_list args;
+ va_start(args, code2);
+ Command_Binding binding = {};
+ binding.custom = custom;
+ map_set_binding_lv(mapping, map, binding, code1, code2, args);
+ va_end(args);
 }
 #endif
 

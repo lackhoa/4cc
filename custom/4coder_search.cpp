@@ -164,8 +164,9 @@ function void
 print_string_match_list_to_buffer(App *app, String pattern, Buffer_ID out_buffer_id, String_Match_List matches)
 {
  Scratch_Block scratch(app);
- clear_buffer(app, out_buffer_id);
- Buffer_Insertion out = begin_buffer_insertion_at_buffered2(app, out_buffer_id, 0, scratch, KB(64));
+ App_Cmd app2 = app_cmd_automated(app);
+ clear_buffer(&app2, out_buffer_id);
+ Buffer_Insertion out = begin_buffer_insertion_at_buffered2(&app2, out_buffer_id, 0, scratch, KB(64));
  buffer_set_setting(app, out_buffer_id, BufferSetting_ReadOnly, true);
  buffer_set_setting(app, out_buffer_id, BufferSetting_RecordsHistory, false);
  
@@ -238,15 +239,15 @@ print_all_matches_all_buffers(App *app, String8_Array match_patterns, String_Mat
 function void
 print_all_matches_all_buffers(App *app, String8 pattern, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, Buffer_ID out_buffer_id)
 {
-    String8_Array array = {&pattern, 1};
-    print_all_matches_all_buffers(app, array, must_have_flags, must_not_have_flags, out_buffer_id);
+ String8_Array array = {&pattern, 1};
+ print_all_matches_all_buffers(app, array, must_have_flags, must_not_have_flags, out_buffer_id);
 }
 
 function String
-query_user_list_needle(App *app, Arena *arena)
+query_user_list_needle(App_Cmd *app, Arena *arena)
 {
-    u8 *space = push_array(arena, u8, KB(1));
-    return(get_query_string(app, "List Locations For: ", space, KB(1)));
+ u8 *space = push_array(arena, u8, KB(1));
+ return(get_query_string(app, "List Locations For: ", space, KB(1)));
 }
 
 function String_Array
@@ -268,54 +269,54 @@ user_list_definition_array(App *app, Arena *arena, String base_needle)
         result.vals[i++] = (push_stringfz(arena, "union %.*s {"  , string_expand(base_needle)));
         result.vals[i++] = (push_stringfz(arena, "enum %.*s{"    , string_expand(base_needle)));
         result.vals[i++] = (push_stringfz(arena, "enum %.*s\n{"  , string_expand(base_needle)));
-        result.vals[i++] = (push_stringfz(arena, "enum %.*s\r\n{"  , string_expand(base_needle)));
-        result.vals[i++] = (push_stringfz(arena, "enum %.*s {"   , string_expand(base_needle)));
-        Assert(i == result.count);
-    }
-    return(result);
+  result.vals[i++] = (push_stringfz(arena, "enum %.*s\r\n{"  , string_expand(base_needle)));
+  result.vals[i++] = (push_stringfz(arena, "enum %.*s {"   , string_expand(base_needle)));
+  Assert(i == result.count);
+ }
+ return(result);
 }
 
 function String_Array
-query_user_list_definition_needle(App *app, Arena *arena){
-    u8 *space = push_array(arena, u8, KB(1));
-    String base_needle = get_query_string(app, "List Definitions For: ", space, KB(1));
-    return(user_list_definition_array(app, arena, base_needle));
+query_user_list_definition_needle(App_Cmd *app, Arena *arena){
+ u8 *space = push_array(arena, u8, KB(1));
+ String base_needle = get_query_string(app, "List Definitions For: ", space, KB(1));
+ return(user_list_definition_array(app, arena, base_needle));
 }
 
 function void
 list_all_locations__generic(App *app, String8_Array needle, List_All_Locations_Flag flags)
 {
-    if (needle.count > 0)
-    {
-        String_Match_Flag must_have_flags = 0;
-        String_Match_Flag must_not_have_flags = 0;
-        if (HasFlag(flags, ListAllLocationsFlag_CaseSensitive))
-        {
-            AddFlag(must_have_flags, StringMatch_CaseSensitive);
-        }
-        if (!HasFlag(flags, ListAllLocationsFlag_MatchSubstring))
-        {
-            AddFlag(must_not_have_flags, StringMatch_LeftSideSloppy);
-            AddFlag(must_not_have_flags, StringMatch_RightSideSloppy);
-        }
-       
-        Buffer_ID search_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
-        print_all_matches_all_buffers(app, needle, must_have_flags, must_not_have_flags, search_buffer);
-        lock_jump_buffer(app, search_buffer_name);
-    }
+ if (needle.count > 0)
+ {
+  String_Match_Flag must_have_flags = 0;
+  String_Match_Flag must_not_have_flags = 0;
+  if (HasFlag(flags, ListAllLocationsFlag_CaseSensitive))
+  {
+   AddFlag(must_have_flags, StringMatch_CaseSensitive);
+  }
+  if (!HasFlag(flags, ListAllLocationsFlag_MatchSubstring))
+  {
+   AddFlag(must_not_have_flags, StringMatch_LeftSideSloppy);
+   AddFlag(must_not_have_flags, StringMatch_RightSideSloppy);
+  }
+  
+  Buffer_ID search_buffer = maybe_create_buffer_and_clear_by_name(app, search_buffer_name, global_bottom_view);
+  print_all_matches_all_buffers(app, needle, must_have_flags, must_not_have_flags, search_buffer);
+  lock_jump_buffer(app, search_buffer_name);
+ }
 }
 
 function void
 list_all_locations__generic(App *app, String needle, List_All_Locations_Flag flags)
 {
-    if (needle.size != 0){
-        String_Array array = {&needle, 1};
-        list_all_locations__generic(app, array, flags);
-    }
+ if (needle.size != 0){
+  String_Array array = {&needle, 1};
+  list_all_locations__generic(app, array, flags);
+ }
 }
 
 function void
-list_all_locations__generic_query(App *app, List_All_Locations_Flag flags){
+list_all_locations__generic_query(App_Cmd *app, List_All_Locations_Flag flags){
     Scratch_Block scratch(app);
     u8 *space = push_array(scratch, u8, KB(1));
     String needle = get_query_string(app, "List Locations For: ", space, KB(1));
@@ -332,31 +333,31 @@ list_all_locations__generic_identifier(App *app, List_All_Locations_Flag flags)
 
 function void
 list_all_locations__generic_view_range(App *app, List_All_Locations_Flag flags){
-    Scratch_Block scratch(app);
-    String needle = push_view_range_string(app, scratch);
-    list_all_locations__generic(app, needle, flags);
+ Scratch_Block scratch(app);
+ String needle = push_view_range_string(app, scratch);
+ list_all_locations__generic(app, needle, flags);
 }
 
-CUSTOM_COMMAND_SIG(list_all_locations)
-CUSTOM_DOC("Queries the user for a string and lists all exact case-sensitive matches found in all open buffers.")
+function void
+list_all_locations(App_Cmd *app)
 {
-    list_all_locations__generic_query(app, ListAllLocationsFlag_CaseSensitive);
+ list_all_locations__generic_query(app, ListAllLocationsFlag_CaseSensitive);
 }
 
-CUSTOM_COMMAND_SIG(list_all_substring_locations)
-CUSTOM_DOC("Queries the user for a string and lists all case-sensitive substring matches found in all open buffers.")
+function void
+list_all_substring_locations(App_Cmd *app)
 {
-    list_all_locations__generic_query(app, ListAllLocationsFlag_CaseSensitive|ListAllLocationsFlag_MatchSubstring);
+ list_all_locations__generic_query(app, ListAllLocationsFlag_CaseSensitive|ListAllLocationsFlag_MatchSubstring);
 }
 
-CUSTOM_COMMAND_SIG(list_all_locations_case_insensitive)
-CUSTOM_DOC("Queries the user for a string and lists all exact case-insensitive matches found in all open buffers.")
+function void
+list_all_locations_case_insensitive(App_Cmd *app)
 {
-    list_all_locations__generic_query(app, 0);
+ list_all_locations__generic_query(app, 0);
 }
 
-CUSTOM_COMMAND_SIG(list_all_substring_locations_case_insensitive)
-CUSTOM_DOC("Queries the user for a string and lists all case-insensitive substring matches found in all open buffers.")
+function void
+list_all_substring_locations_case_insensitive(App_Cmd *app)
 {
     list_all_locations__generic_query(app, ListAllLocationsFlag_MatchSubstring);
 }
@@ -561,15 +562,15 @@ word_complete_get_shared_iter(App *app){
     local_persist b32 first_call = true;
     if (first_call){
         first_call = false;
-        completion_arena = make_arena();
-    }
-    it.app = app;
-    it.arena = &completion_arena;
-    return(&it);
+  completion_arena = make_arena();
+ }
+ it.app = app;
+ it.arena = &completion_arena;
+ return(&it);
 }
 
-CUSTOM_COMMAND_SIG(word_complete)
-CUSTOM_DOC("Iteratively tries completing the word to the left of the cursor with other words in open buffers that have the same prefix string.")
+function void
+word_complete(App_Cmd *app)
 {
     ProfileScope(app, "word complete");
     
@@ -674,148 +675,149 @@ word_complete_menu_render(App *app, Frame_Info frame_info, View_ID view){
         
         Face_Metrics metrics = get_face_metrics(app, face);
         f32 x_padding = metrics.normal_advance;
-        f32 x_half_padding = x_padding*0.5f;
-        
-        draw_drop_down(app, face, &block, cursor_p, region, x_padding, x_half_padding,
-                       fcolor_id(defcolor_margin_hover), fcolor_id(defcolor_back));
-    }
+  f32 x_half_padding = x_padding*0.5f;
+  
+  draw_drop_down(app, face, &block, cursor_p, region, x_padding, x_half_padding,
+                 fcolor_id(defcolor_margin_hover), fcolor_id(defcolor_back));
+ }
 }
 
 function Edit
-get_word_complete_from_user_drop_down(App *app){
-    View_ID view = get_this_ctx_view(app, Access_Always);
-    View_Context ctx = view_current_context(app, view);
-    Render_Caller_Function *prev_render_caller = ctx.render_caller;
+get_word_complete_from_user_drop_down(App_Cmd *app)
+{
+ View_ID view = get_this_ctx_view(app, Access_Always);
+ View_Context ctx = view_current_context(app, view);
+ Render_Caller_Function *prev_render_caller = ctx.render_caller;
+ 
+ Edit result = {};
+ 
+ Word_Complete_Iterator *it = word_complete_get_shared_iter(app);
+ 
+ i64 pos = view_get_cursor_pos(app, view);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ Range_i64 range = get_word_complete_needle_range(app, buffer, pos);
+ if (range_size(range) != 0){
+  word_complete_iter_init(buffer, range, it);
+  Word_Complete_Menu menu = make_word_complete_menu(prev_render_caller, it);
+  word_complete_menu_next(&menu);
+  
+  ctx.render_caller = word_complete_menu_render;
+  View_Context_Block ctx_block(app, view, &ctx);
+  
+  Managed_Scope scope = view_get_managed_scope(app, view);
+  Word_Complete_Menu **menu_ptr = scope_attachment(app, scope, view_word_complete_menu, Word_Complete_Menu*);
+  *menu_ptr = &menu;
+  
+  b32 keep_looping_menu = true;
+  for (;keep_looping_menu;){
+   User_Input in = get_next_input(app, EventPropertyGroup_Any,
+                                  EventProperty_Escape);
+   if (in.abort){
+    break;
+   }
+   
+   b32 handled = true;
+   switch (in.event.kind){
+    case InputEventKind_TextInsert:
+    {
+     write_text_input(app);
+     pos = view_get_cursor_pos(app, view);
+     range = get_word_complete_needle_range(app, buffer, pos);
+     if (range_size(range) == 0){
+      keep_looping_menu = false;
+     }
+     else{
+      word_complete_iter_init(buffer, range, it);
+      menu = make_word_complete_menu(prev_render_caller, it);
+      word_complete_menu_next(&menu);
+      if (menu.count == 0){
+       keep_looping_menu = false;
+      }
+     }
+    }break;
     
-    Edit result = {};
-    
-    Word_Complete_Iterator *it = word_complete_get_shared_iter(app);
-    
-    i64 pos = view_get_cursor_pos(app, view);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    Range_i64 range = get_word_complete_needle_range(app, buffer, pos);
-    if (range_size(range) != 0){
+    case InputEventKind_KeyStroke:
+    {
+     switch (in.event.key.code){
+      case Key_Code_Return:
+      {
+       result.text = menu.options[0];
+       result.range = range;
+       keep_looping_menu = false;
+      }break;
+      
+      case Key_Code_Tab:
+      {
+       word_complete_menu_next(&menu);
+      }break;
+      
+      case Key_Code_F1:
+      case Key_Code_F2:
+      case Key_Code_F3:
+      case Key_Code_F4:
+      case Key_Code_F5:
+      case Key_Code_F6:
+      case Key_Code_F7:
+      case Key_Code_F8:
+      {
+       i1 index = (in.event.key.code - Key_Code_F1);
+       result.text = menu.options[index];
+       result.range = range;
+       keep_looping_menu = false;
+      }break;
+      
+      case Key_Code_Backspace:
+      {
+       backspace_char(app);
+       pos = view_get_cursor_pos(app, view);
+       range = get_word_complete_needle_range(app, buffer, pos);
+       if (range_size(range) == 0){
+        keep_looping_menu = false;
+       }
+       else{
         word_complete_iter_init(buffer, range, it);
-        Word_Complete_Menu menu = make_word_complete_menu(prev_render_caller, it);
+        menu = make_word_complete_menu(prev_render_caller, it);
         word_complete_menu_next(&menu);
-        
-        ctx.render_caller = word_complete_menu_render;
-        View_Context_Block ctx_block(app, view, &ctx);
-        
-        Managed_Scope scope = view_get_managed_scope(app, view);
-        Word_Complete_Menu **menu_ptr = scope_attachment(app, scope, view_word_complete_menu, Word_Complete_Menu*);
-        *menu_ptr = &menu;
-        
-        b32 keep_looping_menu = true;
-        for (;keep_looping_menu;){
-            User_Input in = get_next_input(app, EventPropertyGroup_Any,
-                                           EventProperty_Escape);
-            if (in.abort){
-                break;
-            }
-            
-            b32 handled = true;
-            switch (in.event.kind){
-                case InputEventKind_TextInsert:
-                {
-                    write_text_input(app);
-                    pos = view_get_cursor_pos(app, view);
-                    range = get_word_complete_needle_range(app, buffer, pos);
-                    if (range_size(range) == 0){
-                        keep_looping_menu = false;
-                    }
-                    else{
-                        word_complete_iter_init(buffer, range, it);
-                        menu = make_word_complete_menu(prev_render_caller, it);
-                        word_complete_menu_next(&menu);
-                        if (menu.count == 0){
-                            keep_looping_menu = false;
-                        }
-                    }
-                }break;
-                
-                case InputEventKind_KeyStroke:
-                {
-                    switch (in.event.key.code){
-                        case Key_Code_Return:
-                        {
-                            result.text = menu.options[0];
-                            result.range = range;
-                            keep_looping_menu = false;
-                        }break;
-                        
-                        case Key_Code_Tab:
-                        {
-                            word_complete_menu_next(&menu);
-                        }break;
-                        
-                        case Key_Code_F1:
-                        case Key_Code_F2:
-                        case Key_Code_F3:
-                        case Key_Code_F4:
-                        case Key_Code_F5:
-                        case Key_Code_F6:
-                        case Key_Code_F7:
-                        case Key_Code_F8:
-                        {
-                            i1 index = (in.event.key.code - Key_Code_F1);
-                            result.text = menu.options[index];
-                            result.range = range;
-                            keep_looping_menu = false;
-                        }break;
-                        
-                        case Key_Code_Backspace:
-                        {
-                            backspace_char(app);
-                            pos = view_get_cursor_pos(app, view);
-                            range = get_word_complete_needle_range(app, buffer, pos);
-                            if (range_size(range) == 0){
-                                keep_looping_menu = false;
-                            }
-                            else{
-                                word_complete_iter_init(buffer, range, it);
-                                menu = make_word_complete_menu(prev_render_caller, it);
-                                word_complete_menu_next(&menu);
-                                if (menu.count == 0){
-                                    keep_looping_menu = false;
-                                }
-                            }
-                        }break;
-                        
-                        default:
-                        {
-                            leave_current_input_unhandled(app);
-                        }break;
-                    }
-                }break;
-                
-                case InputEventKind_MouseButton:
-                {
-                    leave_current_input_unhandled(app);
-                    keep_looping_menu = false;
-                }break;
-                
-                default:
-                {
-                    handled = false;
-                }break;
-            }
-            
-            if (!handled){
-                leave_current_input_unhandled(app);
-            }
+        if (menu.count == 0){
+         keep_looping_menu = false;
         }
-        
-        scope = view_get_managed_scope(app, view);
-        menu_ptr = scope_attachment(app, scope, view_word_complete_menu, Word_Complete_Menu*);
-        *menu_ptr = 0;
-    }
+       }
+      }break;
+      
+      default:
+      {
+       leave_current_input_unhandled(app);
+      }break;
+     }
+    }break;
     
-    return(result);
+    case InputEventKind_MouseButton:
+    {
+     leave_current_input_unhandled(app);
+     keep_looping_menu = false;
+    }break;
+    
+    default:
+    {
+     handled = false;
+    }break;
+   }
+   
+   if (!handled){
+    leave_current_input_unhandled(app);
+   }
+  }
+  
+  scope = view_get_managed_scope(app, view);
+  menu_ptr = scope_attachment(app, scope, view_word_complete_menu, Word_Complete_Menu*);
+  *menu_ptr = 0;
+ }
+ 
+ return(result);
 }
 
-CUSTOM_COMMAND_SIG(word_complete_drop_down)
-CUSTOM_DOC("Word complete with drop down menu.")
+function void
+word_complete_drop_down(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);

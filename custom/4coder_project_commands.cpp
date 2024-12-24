@@ -383,66 +383,67 @@ prj_stringize_project(App *app, Arena *arena, Variable_Handle project, String8Li
 function void
 prj_exec_command(App *app, Variable_Handle cmd_var)
 {
-    Scratch_Block scratch(app);
-    
-    String_ID os_id = vars_intern_lit(OS_NAME);
-    
-    String8 cmd = vars_string_from_var(scratch, vars_read_key(cmd_var, os_id));
-    if (cmd.size > 0){
-        String_ID out_id = vars_intern_lit("out");
-        String_ID footer_panel_id = vars_intern_lit("footer_panel");
-        String_ID save_dirty_files_id = vars_intern_lit("save_dirty_files");
-        String_ID cursor_at_end_id = vars_intern_lit("cursor_at_end");
-        
-        b32 save_dirty_files = vars_b32_from_var(vars_read_key(cmd_var, save_dirty_files_id));
-        if (save_dirty_files){
-            save_all_dirty_buffers(app);
-        }
-        
-        u32 flags = CLI_OverlapWithConflict|CLI_SendEndSignal;
-        b32 cursor_at_end = vars_b32_from_var(vars_read_key(cmd_var, cursor_at_end_id));
-        if (cursor_at_end){
-            flags |= CLI_CursorAtEnd;
-        }
-        
-        View_ID view = 0;
-        Buffer_Identifier buffer_id = {};
-        b32 set_fancy_font = false;
-        String8 out = vars_string_from_var(scratch, vars_read_key(cmd_var, out_id));
-        if (out.size > 0){
-            buffer_id = buffer_identifier(out);
-            
-            b32 footer_panel = vars_b32_from_var(vars_read_key(cmd_var, footer_panel_id));
-            if (footer_panel){
-                view = global_bottom_view;
-                if (string_match(out, compilation_buffer_name)){
-                    set_fancy_font = true;
-                }
-            }
-            else{
-                Buffer_ID buffer = buffer_identifier_to_id(app, buffer_id);
-                view = get_first_view_with_buffer(app, buffer);
-                if (view == 0){
-                    view = get_active_view(app, Access_Always);
-                }
-            }
-            
-            block_zero_struct(&prev_location);
-            lock_jump_buffer(app, out);
-        }
-        else{
-            // TODO(allen): fix the exec_system_command call so it can take a null buffer_id.
-            buffer_id = buffer_identifier(strlit("*dump*"));
-        }
-        
-        Variable_Handle command_list_var = vars_parent(cmd_var);
-        Variable_Handle prj_var = vars_parent(command_list_var);
-        String8 prj_dir = prj_path_from_project(scratch, prj_var);
-        exec_system_command(app, view, buffer_id, prj_dir, cmd, flags);
-        if (set_fancy_font){
-            set_fancy_compilation_buffer_font(app);
-        }
+ Scratch_Block scratch(app);
+ 
+ String_ID os_id = vars_intern_lit(OS_NAME);
+ 
+ String8 cmd = vars_string_from_var(scratch, vars_read_key(cmd_var, os_id));
+ if (cmd.size > 0){
+  String_ID out_id = vars_intern_lit("out");
+  String_ID footer_panel_id = vars_intern_lit("footer_panel");
+  String_ID save_dirty_files_id = vars_intern_lit("save_dirty_files");
+  String_ID cursor_at_end_id = vars_intern_lit("cursor_at_end");
+  
+  b32 save_dirty_files = vars_b32_from_var(vars_read_key(cmd_var, save_dirty_files_id));
+  if(save_dirty_files){
+   App_Cmd app2 = app_cmd_automated(app);
+   save_all_dirty_buffers(&app2);
+  }
+  
+  u32 flags = CLI_OverlapWithConflict|CLI_SendEndSignal;
+  b32 cursor_at_end = vars_b32_from_var(vars_read_key(cmd_var, cursor_at_end_id));
+  if (cursor_at_end){
+   flags |= CLI_CursorAtEnd;
+  }
+  
+  View_ID view = 0;
+  Buffer_Identifier buffer_id = {};
+  b32 set_fancy_font = false;
+  String8 out = vars_string_from_var(scratch, vars_read_key(cmd_var, out_id));
+  if (out.size > 0){
+   buffer_id = buffer_identifier(out);
+   
+   b32 footer_panel = vars_b32_from_var(vars_read_key(cmd_var, footer_panel_id));
+   if (footer_panel){
+    view = global_bottom_view;
+    if (string_match(out, compilation_buffer_name)){
+     set_fancy_font = true;
     }
+   }
+   else{
+    Buffer_ID buffer = buffer_identifier_to_id(app, buffer_id);
+    view = get_first_view_with_buffer(app, buffer);
+    if (view == 0){
+     view = get_active_view(app, Access_Always);
+    }
+   }
+   
+   block_zero_struct(&prev_location);
+   lock_jump_buffer(app, out);
+  }
+  else{
+   // TODO(allen): fix the exec_system_command call so it can take a null buffer_id.
+   buffer_id = buffer_identifier(strlit("*dump*"));
+  }
+  
+  Variable_Handle command_list_var = vars_parent(cmd_var);
+  Variable_Handle prj_var = vars_parent(command_list_var);
+  String8 prj_dir = prj_path_from_project(scratch, prj_var);
+  exec_system_command(app, view, buffer_id, prj_dir, cmd, flags);
+  if (set_fancy_font){
+   set_fancy_compilation_buffer_font(app);
+  }
+ }
 }
 
 function Variable_Handle
@@ -501,13 +502,13 @@ prj_full_file_path_from_project(Arena *arena, Variable_Handle project){
 
 function String8
 prj_path_from_project(Arena *arena, Variable_Handle project){
-    String8 project_full_path = prj_full_file_path_from_project(arena, project);
-    String8 project_dir = path_dir(project_full_path);
-    return(project_dir);
+ String8 project_full_path = prj_full_file_path_from_project(arena, project);
+ String8 project_dir = path_dir(project_full_path);
+ return(project_dir);
 }
 
 function Variable_Handle
-prj_cmd_from_user(App *app, Variable_Handle prj_var, String8 query){
+prj_cmd_from_user(App_Cmd *app, Variable_Handle prj_var, String8 query){
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, query);
@@ -534,15 +535,15 @@ prj_cmd_from_user(App *app, Variable_Handle prj_var, String8 query){
             result.ptr = (Variable*)l_result.user_data;
         }
     }
-    
-    return(result);
+ 
+ return(result);
 }
 
 ////////////////////////////////
 // NOTE(allen): Commands
 
-CUSTOM_COMMAND_SIG(close_all_code)
-CUSTOM_DOC("Closes any buffer with a filename ending with an extension configured to be recognized as a code file type.")
+function void 
+close_all_code(App_Cmd *app)
 {
  Scratch_Block scratch(app);
  String8 treat_as_code = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
@@ -550,17 +551,17 @@ CUSTOM_DOC("Closes any buffer with a filename ending with an extension configure
  prj_close_files_with_ext(app, extensions);
 }
 
-CUSTOM_COMMAND_SIG(open_all_code)
-CUSTOM_DOC("Open all code in the current directory. File types are determined by extensions. An extension is considered code based on the extensions specified in 4coder.config.")
+function void 
+open_all_code(App_Cmd *app)
 {
-    Scratch_Block scratch(app);
-    String8 treat_as_code = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
-    String8Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code);
-    prj_open_all_files_with_ext_in_hot(app, extensions, 0);
+ Scratch_Block scratch(app);
+ String8 treat_as_code = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
+ String8Array extensions = parse_extension_line_to_extension_list(app, scratch, treat_as_code);
+ prj_open_all_files_with_ext_in_hot(app, extensions, 0);
 }
 
-CUSTOM_COMMAND_SIG(open_all_code_recursive)
-CUSTOM_DOC("Works as open_all_code but also runs in all subdirectories.")
+function void 
+open_all_code_recursive(App_Cmd *app)
 {
  Scratch_Block scratch(app);
  String8 treat_as_code = def_get_config_string(scratch, vars_intern_lit("treat_as_code"));
@@ -581,7 +582,7 @@ concat_path(Arena *arena, String a, String b)
 
 //CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to load it.  Looks in parent directories until a project file is found or there are no more parents.")
 function void
-load_project(App *app)
+load_project(App_Cmd *app)
 {
  // TODO(allen): compress this _thoughtfully_
  
@@ -663,7 +664,7 @@ load_project(App *app)
  
  Prj_Pattern_List whitelist = prj_pattern_list_from_var(scratch, whitelist_var);
  Prj_Pattern_List blacklist = prj_pattern_list_from_var(scratch, blacklist_var);
- arrayof<String> limited_edit_list = {};
+ darray(String) limited_edit_list = {};
  {// NOTE: Get limited edit stuff
   i1 limited_edit_count = 0;
   for ( Vars_Children(child_var, limited_edit_paths_var) ) {
@@ -730,18 +731,18 @@ load_project(App *app)
  }
 }
 
-CUSTOM_COMMAND_SIG(load_project_current_dir)
-CUSTOM_DOC("Looks for a project.4coder file in the current directory and tries to load it.  Looks in parent directories until a project file is found or there are no more parents.")
+function void 
+load_project_current_dir(App_Cmd *app)
 {
-  GET_VIEW_AND_BUFFER;
-  Scratch_Block scratch(app);
-  String8 dirname = push_buffer_dirname(app, scratch, buffer);
-  set_hot_directory(app, dirname);
-  load_project(app);
+ GET_VIEW_AND_BUFFER;
+ Scratch_Block scratch(app);
+ String8 dirname = push_buffer_dirname(app, scratch, buffer);
+ set_hot_directory(app, dirname);
+ load_project(app);
 }
 
-CUSTOM_COMMAND_SIG(project_fkey_command)
-CUSTOM_DOC("Run an 'fkey command' configured in a project.4coder file.  Determines the index of the 'fkey command' by which function key or numeric key was pressed to trigger the command.")
+function void 
+project_fkey_command(App_Cmd *app)
 {
     ProfileScope(app, "project fkey command");
     User_Input input = get_current_input(app);
@@ -759,15 +760,15 @@ CUSTOM_DOC("Run an 'fkey command' configured in a project.4coder file.  Determin
         else if (input.event.key.code == Key_Code_0){
             ind = 9;
             got_ind = true;
-        }
-        if (got_ind){
-            prj_exec_command_fkey_index(app, ind);
-        }
-    }
+  }
+  if (got_ind){
+   prj_exec_command_fkey_index(app, ind);
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(project_go_to_root_directory)
-CUSTOM_DOC("Changes 4coder's hot directory to the root directory of the currently loaded project. With no loaded project nothing hapepns.")
+function void 
+project_go_to_root_directory(App_Cmd *app)
 {
  Scratch_Block scratch(app);
  Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_intern_lit("prj_config"));
@@ -777,8 +778,8 @@ CUSTOM_DOC("Changes 4coder's hot directory to the root directory of the currentl
  }
 }
 
-CUSTOM_COMMAND_SIG(project_command_lister)
-CUSTOM_DOC("Open a lister of all commands in the currently loaded project.")
+function void 
+project_command_lister(App_Cmd *app)
 {
  Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_intern_lit("prj_config"));
  Variable_Handle prj_cmd = prj_cmd_from_user(app, prj_var, strlit("Command:"));
@@ -787,8 +788,8 @@ CUSTOM_DOC("Open a lister of all commands in the currently loaded project.")
  }
 }
 
-CUSTOM_COMMAND_SIG(project_reprint)
-CUSTOM_DOC("Prints the current project to the file it was loaded from; prints in the most recent project file version")
+function void 
+project_reprint(App_Cmd *app)
 {
     Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_intern_lit("prj_config"));
     if (!vars_is_nil(prj_var)){
@@ -818,105 +819,105 @@ CUSTOM_DOC("Prints the current project to the file it was loaded from; prints in
             if (buffer != 0){
                 buffer_reopen(app, buffer, 0);
             }
-            else{
-                create_buffer(app, prj_full_path, 0);
-            }
-        }
-    }
+   else{
+    create_buffer(app, prj_full_path, 0);
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(project_command_F1)
-CUSTOM_DOC("Run the command with index 1")
+function void 
+project_command_F1(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 0);
+ prj_exec_command_fkey_index(app, 0);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F2)
-CUSTOM_DOC("Run the command with index 2")
+function void 
+project_command_F2(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 1);
+ prj_exec_command_fkey_index(app, 1);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F3)
-CUSTOM_DOC("Run the command with index 3")
+function void 
+project_command_F3(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 2);
+ prj_exec_command_fkey_index(app, 2);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F4)
-CUSTOM_DOC("Run the command with index 4")
+function void 
+project_command_F4(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 3);
+ prj_exec_command_fkey_index(app, 3);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F5)
-CUSTOM_DOC("Run the command with index 5")
+function void 
+project_command_F5(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 4);
+ prj_exec_command_fkey_index(app, 4);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F6)
-CUSTOM_DOC("Run the command with index 6")
+function void 
+project_command_F6(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 5);
+ prj_exec_command_fkey_index(app, 5);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F7)
-CUSTOM_DOC("Run the command with index 7")
+function void 
+project_command_F7(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 6);
+ prj_exec_command_fkey_index(app, 6);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F8)
-CUSTOM_DOC("Run the command with index 8")
+function void 
+project_command_F8(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 7);
+ prj_exec_command_fkey_index(app, 7);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F9)
-CUSTOM_DOC("Run the command with index 9")
+function void 
+project_command_F9(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 8);
+ prj_exec_command_fkey_index(app, 8);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F10)
-CUSTOM_DOC("Run the command with index 10")
+function void 
+project_command_F10(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 9);
+ prj_exec_command_fkey_index(app, 9);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F11)
-CUSTOM_DOC("Run the command with index 11")
+function void 
+project_command_F11(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 10);
+ prj_exec_command_fkey_index(app, 10);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F12)
-CUSTOM_DOC("Run the command with index 12")
+function void 
+project_command_F12(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 11);
+ prj_exec_command_fkey_index(app, 11);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F13)
-CUSTOM_DOC("Run the command with index 13")
+function void 
+project_command_F13(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 12);
+ prj_exec_command_fkey_index(app, 12);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F14)
-CUSTOM_DOC("Run the command with index 14")
+function void 
+project_command_F14(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 13);
+ prj_exec_command_fkey_index(app, 13);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F15)
-CUSTOM_DOC("Run the command with index 15")
+function void 
+project_command_F15(App_Cmd *app)
 {
-    prj_exec_command_fkey_index(app, 14);
+ prj_exec_command_fkey_index(app, 14);
 }
 
-CUSTOM_COMMAND_SIG(project_command_F16)
-CUSTOM_DOC("Run the command with index 16")
+function void 
+project_command_F16(App_Cmd *app)
 {
     prj_exec_command_fkey_index(app, 15);
 }

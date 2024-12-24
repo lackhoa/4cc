@@ -46,110 +46,132 @@ case Curve_Type_Fill_DBez: return {};
 #define bs_v3v2(...)
 #define bb_v3v2(name, p0, d0, d3, p3, ...)\
 bn_v3v2(name, p0, d0, d3, p3, __VA_ARGS__); \
-Bez name = bez_v3v2(p0, d0, d3, p3);
+Bez name = bez_v3v2(p0, d0, d3, p3);\
+draw(name, __VA_ARGS__)
 #define ba_v3v2(name, p0, d0, d3, p3, ...)\
 bn_v3v2(name, p0, d0, d3, p3, __VA_ARGS__); \
-name = bez_v3v2(p0, d0, d3, p3);
+name = bez_v3v2(p0, d0, d3, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_parabola(...)
 #define bs_parabola(...)
 #define bb_parabola(name, p0, d, p3, ...)\
 bn_parabola(name, p0, d, p3, __VA_ARGS__); \
-Bez name = bez_parabola(p0, d, p3);
+Bez name = bez_parabola(p0, d, p3);\
+draw(name, __VA_ARGS__)
 #define ba_parabola(name, p0, d, p3, ...)\
 bn_parabola(name, p0, d, p3, __VA_ARGS__); \
-name = bez_parabola(p0, d, p3);
+name = bez_parabola(p0, d, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_offset(...)
 #define bs_offset(...)
 #define bb_offset(name, p0, d0, d3, p3, ...)\
 bn_offset(name, p0, d0, d3, p3, __VA_ARGS__); \
-Bez name = bez_offset(p0, d0, d3, p3);
+Bez name = bez_offset(p0, d0, d3, p3);\
+draw(name, __VA_ARGS__)
 #define ba_offset(name, p0, d0, d3, p3, ...)\
 bn_offset(name, p0, d0, d3, p3, __VA_ARGS__); \
-name = bez_offset(p0, d0, d3, p3);
+name = bez_offset(p0, d0, d3, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_unit(...)
 #define bs_unit(...)
 #define bb_unit(name, p0, d0, d3, unit_y, p3, ...)\
 bn_unit(name, p0, d0, d3, unit_y, p3, __VA_ARGS__); \
-Bez name = bez_unit(p0, d0, d3, unit_y, p3);
+Bez name = bez_unit(p0, d0, d3, unit_y, p3);\
+draw(name, __VA_ARGS__)
 #define ba_unit(name, p0, d0, d3, unit_y, p3, ...)\
 bn_unit(name, p0, d0, d3, unit_y, p3, __VA_ARGS__); \
-name = bez_unit(p0, d0, d3, unit_y, p3);
+name = bez_unit(p0, d0, d3, unit_y, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_unit2(...)
 #define bs_unit2(...)
 #define bb_unit2(name, p0, d0d3, unit_y, p3, ...)\
 bn_unit2(name, p0, d0d3, unit_y, p3, __VA_ARGS__); \
-Bez name = bez_unit2(p0, d0d3, unit_y, p3);
+Bez name = bez_unit2(p0, d0d3, unit_y, p3);\
+draw(name, __VA_ARGS__)
 #define ba_unit2(name, p0, d0d3, unit_y, p3, ...)\
 bn_unit2(name, p0, d0d3, unit_y, p3, __VA_ARGS__); \
-name = bez_unit2(p0, d0d3, unit_y, p3);
+name = bez_unit2(p0, d0d3, unit_y, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_line(...)
 #define bs_line(...)
 #define bb_line(name, p0, p3, ...)\
 bn_line(name, p0, p3, __VA_ARGS__); \
-Bez name = bez_line(p0, p3);
+Bez name = bez_line(p0, p3);\
+draw(name, __VA_ARGS__)
 #define ba_line(name, p0, p3, ...)\
 bn_line(name, p0, p3, __VA_ARGS__); \
-name = bez_line(p0, p3);
+name = bez_line(p0, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_bezd_old(...)
 #define bs_bezd_old(...)
 #define bb_bezd_old(name, p0, d0, d3, p3, ...)\
 bn_bezd_old(name, p0, d0, d3, p3, __VA_ARGS__); \
-Bez name = bez_bezd_old(p0, d0, d3, p3);
+Bez name = bez_bezd_old(p0, d0, d3, p3);\
+draw(name, __VA_ARGS__)
 #define ba_bezd_old(name, p0, d0, d3, p3, ...)\
 bn_bezd_old(name, p0, d0, d3, p3, __VA_ARGS__); \
-name = bez_bezd_old(p0, d0, d3, p3);
+name = bez_bezd_old(p0, d0, d3, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_raw(...)
 #define bs_raw(...)
 #define bb_raw(name, p0, p1, p2, p3, ...)\
 bn_raw(name, p0, p1, p2, p3, __VA_ARGS__); \
-Bez name = bez_raw(p0, p1, p2, p3);
+Bez name = bez_raw(p0, p1, p2, p3);\
+draw(name, __VA_ARGS__)
 #define ba_raw(name, p0, p1, p2, p3, ...)\
 bn_raw(name, p0, p1, p2, p3, __VA_ARGS__); \
-name = bez_raw(p0, p1, p2, p3);
+name = bez_raw(p0, p1, p2, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_c2(...)
 #define bs_c2(...)
 #define bb_c2(name, ref, d3, p3, ...)\
 bn_c2(name, ref, d3, p3, __VA_ARGS__); \
-Bez name = bez_c2(ref, d3, p3);
+Bez name = bez_c2(ref, d3, p3);\
+draw(name, __VA_ARGS__)
 #define ba_c2(name, ref, d3, p3, ...)\
 bn_c2(name, ref, d3, p3, __VA_ARGS__); \
-name = bez_c2(ref, d3, p3);
+name = bez_c2(ref, d3, p3);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_negateX(...)
 #define bs_negateX(...)
 #define bb_negateX(name, ref, ...)\
 bn_negateX(name, ref, __VA_ARGS__); \
-Bez name = bez_negateX(ref);
+Bez name = bez_negateX(ref);\
+draw(name, __VA_ARGS__)
 #define ba_negateX(name, ref, ...)\
 bn_negateX(name, ref, __VA_ARGS__); \
-name = bez_negateX(ref);
+name = bez_negateX(ref);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_lerp(...)
 #define bs_lerp(...)
 #define bb_lerp(name, begin, end, ...)\
 bn_lerp(name, begin, end, __VA_ARGS__); \
-Bez name = bez_lerp(begin, end);
+Bez name = bez_lerp(begin, end);\
+draw(name, __VA_ARGS__)
 #define ba_lerp(name, begin, end, ...)\
 bn_lerp(name, begin, end, __VA_ARGS__); \
-name = bez_lerp(begin, end);
+name = bez_lerp(begin, end);\
+draw(name, __VA_ARGS__)
 
 //  C:\Users\vodan\4ed\code/meta_entity.cpp:283:
 #define bn_circle(...)

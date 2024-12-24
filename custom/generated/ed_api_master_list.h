@@ -2,7 +2,7 @@
 
 //source: UNKNOWN
 api(ed) function Range_i64 get_line_range_from_pos(App* app, Buffer_ID buffer, i64 pos);
-api(ed) function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
+api(ed) function b32 buffer_replace_range(App_Cmd* app, Buffer_ID buffer_id, Range_i64 range, String string);
 api(ed) function String8 push_buffer_base_name(App* app, Arena* arena, Buffer_ID buffer_id);
 api(ed) function String get_code_directory(App* app);
 api(ed) function String push_buffer_filepath(App* app, Arena* arena, Buffer_ID buffer_id);

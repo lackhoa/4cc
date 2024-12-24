@@ -8,7 +8,7 @@
 
 struct Buffer_Insertion
 {
- App *app;
+ App_Cmd *app;
  Buffer_ID buffer;
  i64 at;
  b32 buffering;

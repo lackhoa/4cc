@@ -29,7 +29,7 @@ turn_game_off()
 }
 
 function void
-toggle_game_cmd(App *app)
+toggle_game_cmd(App_Cmd *app)
 {
  if(game_render_on){
   game_render_on = false;
@@ -49,7 +49,7 @@ toggle_game_cmd(App *app)
 }
 
 function void 
-toggle_game_auxiliary_viewports(App *app)
+toggle_game_auxiliary_viewports(App_Cmd *app)
 {
  global_auxiliary_viewports_on = !global_auxiliary_viewports_on;
  if (global_auxiliary_viewports_on)
@@ -58,23 +58,19 @@ toggle_game_auxiliary_viewports(App *app)
  }
 }
 
-CUSTOM_COMMAND_SIG(game_enable)
-CUSTOM_DOC("")
-{
+function void 
+game_enable(App_Cmd *app){
  global_game_enabled = true;
 }
 
-CUSTOM_COMMAND_SIG(game_disable)
-CUSTOM_DOC("")
-{
+function void 
+game_disable(App_Cmd *app){
  global_game_enabled = false;
  turn_game_off();
 }
 
-void debug_camera_on(App *app);
-CUSTOM_COMMAND_SIG(debug_camera_on)
-CUSTOM_DOC("")
-{
+function void 
+debug_camera_on(App_Cmd *app){
  global_debug_camera_on = !global_debug_camera_on;
 }
 function void

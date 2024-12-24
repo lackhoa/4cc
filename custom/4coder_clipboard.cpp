@@ -4,8 +4,8 @@
 
 // TOP
 
-CUSTOM_COMMAND_SIG(clipboard_record_clip)
-CUSTOM_DOC("In response to a new clipboard contents events, saves the new clip onto the clipboard history")
+function void
+clipboard_record_clip(App_Cmd *app)
 {
     User_Input in = get_current_input(app);
     if (in.event.kind == InputEventKind_Core &&
@@ -39,35 +39,35 @@ clipboard_update_history_from_system(App *app, i1 clipboard_id)
     {
         clipboard_post_function_only(clipboard_id, string);
         result = true;
-    }
-    return(result);
+ }
+ return(result);
 }
 
 global List_String clipboard_collection_list = {};
 
 
-CUSTOM_COMMAND_SIG(copy)
-CUSTOM_DOC("Copy the text in the range from the cursor to the mark onto the clipboard.")
+function void
+copy(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    Range_i64 range = get_view_range(app, view);
-    clipboard_post_buffer_range(app, 0, buffer, range);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ Range_i64 range = get_view_range(app, view);
+ clipboard_post_buffer_range(app, 0, buffer, range);
 }
 
-CUSTOM_COMMAND_SIG(cut)
-CUSTOM_DOC("Cut the text in the range from the cursor to the mark onto the clipboard.")
+function void
+cut(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    Range_i64 range = get_view_range(app, view);
-    if (clipboard_post_buffer_range(app, 0, buffer, range)){
-        buffer_replace_range(app, buffer, range, empty_string);
-    }
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ Range_i64 range = get_view_range(app, view);
+ if (clipboard_post_buffer_range(app, 0, buffer, range)){
+  buffer_replace_range(app, buffer, range, empty_string);
+ }
 }
 
-CUSTOM_COMMAND_SIG(paste)
-CUSTOM_DOC("At the cursor, insert the text at the top of the clipboard.")
+function void
+paste(App_Cmd *app)
 {
     clipboard_update_history_from_system(app, 0);
     i1 count = clipboard_count(0);
@@ -96,15 +96,15 @@ CUSTOM_DOC("At the cursor, insert the text at the top of the clipboard.")
                 view_set_mark(app, view, seek_pos(pos));
                 view_set_cursor_and_preferred_x(app, view, seek_pos(pos + (i1)string.size));
                 
-                ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
-                buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, string.size), argb);
-            }
-        }
-    }
+    ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
+    buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, string.size), argb);
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(paste_next)
-CUSTOM_DOC("If the previous command was paste or paste_next, replaces the paste range with the next text down on the clipboard, otherwise operates as the paste command.")
+function void
+paste_next(App_Cmd *app)
 {
     Scratch_Block scratch(app);
     
@@ -143,15 +143,15 @@ CUSTOM_DOC("If the previous command was paste or paste_next, replaces the paste 
             }
             else{
                 paste(app);
-            }
-        }
-    }
+   }
+  }
+ }
 }
 
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(multi_paste)
-CUSTOM_DOC("Paste multiple entries from the clipboard at once")
+function void
+multi_paste(App_Cmd *app)
 {
     Scratch_Block scratch(app);
     
@@ -184,127 +184,129 @@ CUSTOM_DOC("Paste multiple entries from the clipboard at once")
                 ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
                 buffer_post_fade(app, buffer, 0.667f, Ii64(range.max + 1, range.max + insert_string.size), argb);
             }
-            else{
-                paste(app);
-            }
-        }
-    }
+   else{
+    paste(app);
+   }
+  }
+ }
 }
 
 function Range_i64
-multi_paste_range(App *app, View_ID view, Range_i64 range, i1 paste_count, b32 old_to_new){
-    Scratch_Block scratch(app);
-    
-    Range_i64 finish_range = range;
-    if (paste_count >= 1){
-        Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-        if (buffer != 0){
-            i64 total_size = 0;
-            for (i1 paste_index = 0; paste_index < paste_count; ++paste_index){
-                Temp_Memory temp = begin_temp_memory(scratch);
-                String8 string = push_clipboard_index_inner(scratch, 0, paste_index);
-                total_size += string.size + 1;
-                end_temp_memory(temp);
-            }
-            total_size -= 1;
-            
-            i1 first = paste_count - 1;
-            i1 one_past_last = -1;
-            i1 step = -1;
-            if (!old_to_new){
-                first = 0;
-                one_past_last = paste_count;
-                step = 1;
-            }
-            
-            List_String list = {};
-            
-            for (i1 paste_index = first; paste_index != one_past_last; paste_index += step){
-                if (paste_index != first){
-                    string_list_push(scratch, &list, SCu8("\n", 1));
-                }
-                String string = push_clipboard_index_inner(scratch, 0, paste_index);
-                if (string.size > 0){
-                    string_list_push(scratch, &list, string);
-                }
-            }
-            
-            String flattened = string_list_flatten(scratch, list);
-            
-            buffer_replace_range(app, buffer, range, flattened);
-            i64 pos = range.min;
-            finish_range.min = pos;
-            finish_range.max = pos + total_size;
-            view_set_mark(app, view, seek_pos(finish_range.min));
-            view_set_cursor_and_preferred_x(app, view, seek_pos(finish_range.max));
-            
-            ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
-            buffer_post_fade(app, buffer, 0.667f, finish_range, argb);
-        }
+multi_paste_range(App_Cmd *app, View_ID view, Range_i64 range, i1 paste_count, b32 old_to_new)
+{
+ Scratch_Block scratch(app);
+ 
+ Range_i64 finish_range = range;
+ if (paste_count >= 1){
+  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+  if (buffer != 0){
+   i64 total_size = 0;
+   for (i1 paste_index = 0; paste_index < paste_count; ++paste_index){
+    Temp_Memory temp = begin_temp_memory(scratch);
+    String8 string = push_clipboard_index_inner(scratch, 0, paste_index);
+    total_size += string.size + 1;
+    end_temp_memory(temp);
+   }
+   total_size -= 1;
+   
+   i1 first = paste_count - 1;
+   i1 one_past_last = -1;
+   i1 step = -1;
+   if (!old_to_new){
+    first = 0;
+    one_past_last = paste_count;
+    step = 1;
+   }
+   
+   List_String list = {};
+   
+   for (i1 paste_index = first; paste_index != one_past_last; paste_index += step){
+    if (paste_index != first){
+     string_list_push(scratch, &list, SCu8("\n", 1));
     }
-    return(finish_range);
+    String string = push_clipboard_index_inner(scratch, 0, paste_index);
+    if (string.size > 0){
+     string_list_push(scratch, &list, string);
+    }
+   }
+   
+   String flattened = string_list_flatten(scratch, list);
+   
+   buffer_replace_range(app, buffer, range, flattened);
+   i64 pos = range.min;
+   finish_range.min = pos;
+   finish_range.max = pos + total_size;
+   view_set_mark(app, view, seek_pos(finish_range.min));
+   view_set_cursor_and_preferred_x(app, view, seek_pos(finish_range.max));
+   
+   ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
+   buffer_post_fade(app, buffer, 0.667f, finish_range, argb);
+  }
+ }
+ return(finish_range);
 }
 
 function void
-multi_paste_interactive_up_down(App *app, i1 paste_count, i1 clip_count){
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    i64 pos = view_get_cursor_pos(app, view);
-    b32 old_to_new = true;
-    Range_i64 range = multi_paste_range(app, view, Ii64(pos), paste_count, old_to_new);
-    
-    Query_Bar_Group group(app);
-    Query_Bar bar = {};
-    bar.prompt = strlit("Up and Down to condense and expand paste stages; R to reverse order; Return to finish; Escape to abort.");
-    if (start_query_bar(app, &bar, 0) == 0) return;
-    
-    User_Input in = {};
-    for (;;){
-        in = get_next_input(app, EventProperty_AnyKey, EventProperty_Escape);
-        if (in.abort) break;
-        
-        b32 did_modify = false;
-        if (match_key_code(&in, Key_Code_Up)){
-            if (paste_count > 1){
-                --paste_count;
-                did_modify = true;
-            }
-        }
-        else if (match_key_code(&in, Key_Code_Down)){
-            if (paste_count < clip_count){
-                ++paste_count;
-                did_modify = true;
-            }
-        }
-        else if (match_key_code(&in, Key_Code_R)){
-            old_to_new = !old_to_new;
-            did_modify = true;
-        }
-        else if (match_key_code(&in, Key_Code_Return)){
-            break;
-        }
-        
-        if (did_modify){
-            range = multi_paste_range(app, view, range, paste_count, old_to_new);
-        }
-    }
-    
-    if (in.abort){
-        Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-        buffer_replace_range(app, buffer, range, SCu8(""));
-    }
-}
-
-CUSTOM_COMMAND_SIG(multi_paste_interactive)
-CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled with arrow keys")
+multi_paste_interactive_up_down(App_Cmd *app, i1 paste_count, i1 clip_count)
 {
-    i1 clip_count = clipboard_count(0);
-    if (clip_count > 0){
-        multi_paste_interactive_up_down(app, 1, clip_count);
-    }
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ i64 pos = view_get_cursor_pos(app, view);
+ b32 old_to_new = true;
+ Range_i64 range = multi_paste_range(app, view, Ii64(pos), paste_count, old_to_new);
+ 
+ Query_Bar_Group group(app);
+ Query_Bar bar = {};
+ bar.prompt = strlit("Up and Down to condense and expand paste stages; R to reverse order; Return to finish; Escape to abort.");
+ if (start_query_bar(app, &bar, 0) == 0) return;
+ 
+ User_Input in = {};
+ for (;;){
+  in = get_next_input(app, EventProperty_AnyKey, EventProperty_Escape);
+  if (in.abort) break;
+  
+  b32 did_modify = false;
+  if (match_key_code(&in, Key_Code_Up)){
+   if (paste_count > 1){
+    --paste_count;
+    did_modify = true;
+   }
+  }
+  else if (match_key_code(&in, Key_Code_Down)){
+   if (paste_count < clip_count){
+    ++paste_count;
+    did_modify = true;
+   }
+  }
+  else if (match_key_code(&in, Key_Code_R)){
+   old_to_new = !old_to_new;
+   did_modify = true;
+  }
+  else if (match_key_code(&in, Key_Code_Return)){
+   break;
+  }
+  
+  if (did_modify){
+   range = multi_paste_range(app, view, range, paste_count, old_to_new);
+  }
+ }
+ 
+ if (in.abort){
+  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+  buffer_replace_range(app, buffer, range, SCu8(""));
+ }
 }
 
-CUSTOM_COMMAND_SIG(multi_paste_interactive_quick)
-CUSTOM_DOC("Paste multiple lines from the clipboard history, controlled by inputing the number of lines to paste")
+function void
+multi_paste_interactive(App_Cmd *app)
+{
+ i1 clip_count = clipboard_count(0);
+ if (clip_count > 0){
+  multi_paste_interactive_up_down(app, 1, clip_count);
+ }
+}
+
+function void
+multi_paste_interactive_quick(App_Cmd *app)
 {
     i1 clip_count = clipboard_count(0);
     if (clip_count > 0){

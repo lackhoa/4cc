@@ -1,4 +1,4 @@
-defcolor_base         = 0xff9F5E4A;
+defcolor_base         = 0xff9F5E4A;  //NOTE type color
 defcolor_text_default = 0xFF787878;
 defcolor_function     = 0xFF587898;
 defcolor_keyword      = 0xFF998963;

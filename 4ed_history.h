@@ -17,23 +17,29 @@ struct Record_Batch_Slot{
  i1 first;
 };
 
-struct Record{
-    Node node;
-    Temp_Memory restore_point;
-    i64 pos_before_edit;
-    i1 edit_number;
-    Record_Kind kind;
-    union{
-        struct{
-            String forward_text;
-            String backward_text;
-            i64 first;
-        } single;
-        struct{
-            Node children;
-            i1 count;
-        } group;
-    };
+struct Record_Node{
+ Record_Node *next;
+ Record_Node *prev;
+};
+struct Record
+{
+ Record_Node node;
+ Temp_Memory restore_point;
+ i64 pos_before_edit;
+ i1 edit_number;
+ Record_Kind kind;
+ union{
+  struct{
+   String forward_text;
+   String backward_text;
+   i64 first;
+  } single;
+  struct{
+   Record_Node children;
+   i1 count;
+  } group;
+ };
+ b32 automated;
 };
 
 struct Record_Ptr_Lookup_Table{
@@ -47,8 +53,8 @@ struct History{
  Arena arena;
  Heap heap;
  Base_Allocator heap_wrapper;
- Node free_records;
- Node records;
+ Record_Node free_records;
+ Record_Node records;
  i1 record_count;
  Record_Ptr_Lookup_Table record_lookup;
 };

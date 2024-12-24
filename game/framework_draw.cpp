@@ -13,7 +13,7 @@ poly3_inner_2(v3 points[3], argb color,
  for_i32(i,0,3){ vertices[i].pos = points[i]; }
  // TODO(kv): @Speed The caller should be in charge of passing the color in!
  u32 prim_id = p->draw_prim_id;
- b32 is_hot      = prim_id == get_hot_prim_id();
+ b32 is_hot      = prim_id == painter->hot_prim_id;
  b32 is_selected = prim_id == selected_prim_id(p->modeler);
  b32 is_active   = is_prim_id_active(p->modeler, prim_id);
  // TODO(kv): @cleanup wtf is this code?

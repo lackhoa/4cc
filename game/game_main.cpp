@@ -53,12 +53,12 @@
 
 #define X(N) function wrap_function(N);
 // Note: Forward declare
-game_api_xlist(X)
+game_api_xlist(X);
 //
 #undef X
 
 #define X(N) global wrap_function_pointer(N);
-memory_functions_xlist(X)
+memory_functions_xlist(X);
 #undef X
 
 //NOTE(kv) temporary
@@ -151,8 +151,9 @@ current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.1f, MIN_SPEED
  return animation_ended;
 }
 // TODO: Merge this with game_update, come on why are there two calls instead of one?
-function game_viewport_update__return
-game_viewport_update(game_viewport_update__params){
+function b32
+game_viewport_update(Game_State *state, i1 viewport_id, v1 dt)
+{
  b32 should_animate_next_frame = false;
  i32 viewport_index = get_viewport_index(viewport_id);
  Viewport *viewport = &state->viewports[viewport_index];
@@ -839,9 +840,6 @@ game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_
   m->curves.set_count(1);
   array_set_count(m->bones, 1);
  }
- {//NOTE: ;FUI_reload
-  create_sliders(dll_arena);
- }
  {//-NOTE: Dear ImGui reload
   IMGUI_CHECKVERSION();
   auto &imgui = state->imgui_state;
@@ -1160,7 +1158,7 @@ function game_update_return
 game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Public &input_public, Image_Load_Info image_load_info)
 {
  b32 should_animate_next_frame = false;
- arrayof<String> game_commands = {};
+ darray(String) game_commands = {};
  
  Driver_API *driver = &state->driver_api;
  b32 loaded;
@@ -1198,7 +1196,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   //NOTE(kv) If you wanna load states, then do it first and foremost.
   {//~ NOTE: Game commands
    {// NOTE: Process commands
-    arrayof<String> &queue = state->command_queue;
+    darray(String) &queue = state->command_queue;
     for_i1(ci,0,queue.count){
 #define MATCH(NAME)    queue[ci] == strlit(NAME)
      if(0){
@@ -1330,7 +1328,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   //NOTE(kv) Cheesy single keyboard event per-frame,
   // since we're not a fighting game, it'd probably work ok anyway.
   // but it's very dumb because we already had events.
-  arrayof<Key_Code> key_strokes;
+  darray(Key_Code) key_strokes;
   {
    init_dynamic(key_strokes, &scratch_allocator);
    for_i32(code, 1, Key_Code_COUNT){
@@ -1387,7 +1385,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
        }break;
        case Key_Code_Return:{
         auto m = modeler;
-        Prim_XID hot_xid = prim_xid_from_id(get_hot_prim_id());
+        Prim_XID hot_xid = prim_xid_from_id(hot_prim_id);
         if(transitioning_from_code){
          if(hot_xid.type){
           //NOTE(kv) drawn by data
@@ -1535,7 +1533,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
       v1 velocity = 0.2f;
       v3 delta = velocity * dt * direction;
       
-      arrayof<Vertex_Index> influenced_verts;
+      darray(Vertex_Index) influenced_verts;
       init_static(influenced_verts, scratch, m->active_prims.count);
       for_i32(index,0,m->active_prims.count) {
        Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
@@ -1585,17 +1583,16 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   
   if(input->mouse.press_l){
    // NOTE: Left click handling
-   u32 hot_prim = get_hot_prim_id();
-   if (hot_prim){
-    if(prim_id_is_data(hot_prim)){
+   if (hot_prim_id){
+    if(prim_id_is_data(hot_prim_id)){
      // NOTE: Drawn by data -> change selected obj id
      auto &m = modeler;
-     select_primitive(m, hot_prim);
+     select_primitive(m, hot_prim_id);
      m->change_uncommitted = false;
      switch_to_mouse_panel(app);
     }else{
      // NOTE: Drawn by code -> jump to code
-     g_jump_to_line(app, hot_prim);
+     g_jump_to_line(app, hot_prim_id);
     }
    }
   }
@@ -1719,13 +1716,13 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   }
   
   {
-   if(1){
+   if(0){
     DEBUG_NAME("work cycles", input->frame.work_cycles);
     DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
     DEBUG_NAME("work ms", input->frame.work_seconds * 1e3f);
    }
    
-   if((0)){
+   if(0){
     DEBUG_VALUE(image_load_info.image_count);
     DEBUG_VALUE(image_load_info.failure_count);
    }

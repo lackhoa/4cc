@@ -7,8 +7,8 @@ customization writers.
 
 // tags: history; group
 // example-of: History_Group; history_group_begin; history_group_end
-CUSTOM_COMMAND_SIG(double_backspace)
-CUSTOM_DOC("Example of history group helpers")
+function void
+double_backspace(App_Cmd *app)
 {
  /* History_Group is a wrapper around the history API that makes it easy to
 group any series of edits into a single undo/redo record in the buffer's history.
@@ -26,8 +26,8 @@ will be merged, including all edits from function and command calls. */
 
 // tags: query; bar
 // example-of: Query_Bar
-CUSTOM_COMMAND_SIG(play_with_a_counter)
-CUSTOM_DOC("Example of query bar")
+function void
+play_with_a_counter(App_Cmd *app)
 {
  /* Query bars make a quick lightweight display of a single line of text for interactive
 commands, while still showing the buffer. Query bars are convenient because they don't
@@ -87,8 +87,8 @@ up this command and we get a chance to modify the bar again. */
 
 // tags: input; loop
 // example-of: get_next_input; leave_current_input_unhandled
-CUSTOM_COMMAND_SIG(display_key_codes)
-CUSTOM_DOC("Example of input handling loop")
+function void
+display_key_codes(App_Cmd *app)
 {
  /* In the 4coder custom layer, inputs are handled by a view context. A view context is a
 thread that hands off control with the main thread of the 4coder core. When a command is
@@ -134,8 +134,8 @@ isn't happening, so command bindings don't trigger unless you trigger them yours
 
 // tags: text; input
 // example-of: get_next_input; leave_current_input_unhandled; to_writable
-CUSTOM_COMMAND_SIG(display_text_input)
-CUSTOM_DOC("Example of to_writable and leave_current_input_unhandled")
+function void
+display_text_input(App_Cmd *app)
 {
  /* In the 4coder custom layer, inputs are handled by a view context. A view context is a
 thread that hands off control with the main thread of the 4coder core. When a command is
@@ -177,8 +177,8 @@ as unhandled, we ensure we get text input events. */
 #if 0
 global Audio_Control the_music_control = {};
 
-CUSTOM_COMMAND_SIG(music_start)
-CUSTOM_DOC("Starts the music.")
+function void
+music_start(App_Cmd *app)
 {
  local_persist Audio_Clip the_music_clip = {};
  if (the_music_clip.sample_count == 0){
@@ -198,14 +198,14 @@ CUSTOM_DOC("Starts the music.")
  }
 }
 
-CUSTOM_COMMAND_SIG(music_stop)
-CUSTOM_DOC("Stops the music.")
+function void
+music_stop(App_Cmd *app)
 {
  def_audio_stop(&the_music_control);
 }
 
-CUSTOM_COMMAND_SIG(hit_sfx)
-CUSTOM_DOC("Play the hit sound effect")
+function void
+hit_sfx(App_Cmd *app)
 {
  local_persist Audio_Clip the_hit_clip = {};
  if (the_hit_clip.sample_count == 0){

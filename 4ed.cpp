@@ -189,8 +189,7 @@ app_read_command_line(Thread_Context *tctx,
  return(models);
 }
 
-// TODO(kv): move this somewhere better
-extern "C" void custom_layer_init(App *app);
+function void custom_layer_init(App *app);
 
 function void 
 app_init(Thread_Context *tctx, Models *models, String current_directory)
@@ -380,7 +379,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
    {
     if (file != 0 && amount > 0)
     {
-     output_file_append(tctx, models, file, SCu8(dest, amount));
+     b32 automated = true;
+     output_file_append(tctx, models, file, SCu8(dest, amount), automated);
     }
    }
    
@@ -389,7 +389,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
     if (file != 0)
     {
      String str = push_stringfz(scratch, "exited with code %d", cli->exit);
-     output_file_append(tctx, models, file, str);
+     b32 automated = true;
+     output_file_append(tctx, models, file, str, automated);
     }
     processes_to_free[processes_to_free_count++] = child_process;
     child_process_set_return_code(models, child_processes, child_process->id, cli->exit);
@@ -506,9 +507,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   }
  }
  
- // NOTE(allen): First frame initialization
  if (input->first_step)
- {
+ {// NOTE(allen): First frame initialization
   Temp_Memory_Block temp(scratch);
   
   String_Array filenames = {};
@@ -569,11 +569,10 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   Input_Event *simulated_input = 0;
   Input_Event virtual_event = models_pop_virtual_event(scratch, models);
   if (virtual_event.kind != InputEventKind_None){
-   virtual_event.virtual_event = true;
+   virtual_event.is_virtual = true;
    simulated_input = &virtual_event;
-  }
-  else{
-   if (input_node == 0){
+  }else{
+   if(input_node == 0){
     break;
    }
    input_node_next = input_node->next;
@@ -589,7 +588,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
        simulated_input->kind == InputEventKind_TextInsert){
     Temp_Memory_Block temp_key_line(scratch);
     String key_line = stringize_keyboard_event(scratch, simulated_input);
-    output_file_append(tctx, models, models->keyboard_buffer, key_line);
+    b32 automated = true;
+    output_file_append(tctx, models, models->keyboard_buffer, key_line, automated);
    }
   }
   

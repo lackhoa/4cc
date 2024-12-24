@@ -14,9 +14,9 @@ game_last_preset(game_last_preset__params){
  Viewport *viewport = &state->viewports[viewport_index];
  macro_swap(viewport->preset, viewport->last_preset);
 }
-
-function is_event_handled_by_game__return
-is_event_handled_by_game(is_event_handled_by_game__params)
+function b32
+is_event_handled_by_game(Game_State *state, App *app,
+                         Input_Event *event, b32 game_hot, b32 game_rendered)
 {
  b32 result = false;
  if (event->kind == InputEventKind_KeyStroke)
@@ -28,7 +28,7 @@ is_event_handled_by_game(is_event_handled_by_game__params)
 #define MATCH_MOD(MOD, CODE)  \
 ( (mods == Key_Mod_##MOD) && (code == Key_Code_##CODE) )
   
-  if (game_hot)
+  if(game_hot)
   {
    result = !(MATCH(Tab) ||
               MATCH(Semicolon) ||
@@ -40,7 +40,7 @@ is_event_handled_by_game(is_event_handled_by_game__params)
               false);
   }
   
-  if(not game_hot and game_rendered)
+  if(not(game_hot) and game_rendered)
   {
    result = (MATCH(Space) ||
              MATCH(Q));
@@ -51,8 +51,8 @@ is_event_handled_by_game(is_event_handled_by_game__params)
  else if (event->kind == InputEventKind_MouseButton)
  {
   //NOTE: We're supposed to detect if the mouse is within the game view,
-  // and handle if we're inside, but I'm too lazy ;>
-  u32 hot_prim = get_hot_prim_id();
+  // and handle if we're inside, but I'm too lazy :>
+  u32 hot_prim = state->hot_prim_id;
   if(hot_prim){
    result = true;
   }

@@ -31,7 +31,7 @@ log_string(String str){
 }
 
 function void
-output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value);
+output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value, b32 automated);
 
 function b32
 log_flush(Thread_Context *tctx, Models *models){
@@ -42,7 +42,8 @@ log_flush(Thread_Context *tctx, Models *models){
  
  if (global_log.list.total_size > 0){
   String text = string_list_flatten(&global_log.arena, global_log.list);
-  output_file_append(tctx, models, models->log_buffer, text);
+  b32 automated = true;
+  output_file_append(tctx, models, models->log_buffer, text, automated);
   result = true;
  }
  arena_free(&global_log.arena);

@@ -6,16 +6,13 @@
 
 // NOTE(BYP): Used in vim_request_vtable
 #define VIM_REQUEST_RETURN void
-#define VIM_REQUEST_PARAMS App *app, View_ID view, Buffer_ID buffer, Range_i64 range
+#define VIM_REQUEST_PARAMS App_Cmd *app, View_ID view, Buffer_ID buffer, Range_i64 range
 #define VIM_REQUEST_SIG(name) VIM_REQUEST_RETURN name(VIM_REQUEST_PARAMS)
 typedef VIM_REQUEST_SIG(Vim_Apply_Request);
 
 // NOTE(BYP): Used in vim_text_object_vtable
 #define VIM_TEXT_OBJECT_SIG(name) Range_i64 name(App *app, Buffer_ID buffer, i64 cursor_pos)
 typedef Range_i64 Vim_Text_Object_Func(App *app, Buffer_ID buffer, i64 cursor_pos);
-
-// NOTE: Same as CUSTOM_COMMAND_SIG but won't clutter command lister
-#define VIM_COMMAND_SIG(name) function void name(App *app)
 
 struct Vim_Text_Object{
 	u8 character;

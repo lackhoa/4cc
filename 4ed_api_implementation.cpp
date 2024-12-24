@@ -17,11 +17,12 @@ NOTE(kv): description of this file
 */
 
 function void
-output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value)
+output_file_append(Thread_Context *tctx, Models *models, Editing_File *file, String value, b32 automated)
 {
  i64 end = buffer_size(&file->state.buffer);
- Edit_Behaviors behaviors = {};
+ Edit_Behaviors2 behaviors = {};
  behaviors.pos_before_edit = end;
+ behaviors.automated = automated;
  edit_single(tctx, models, file, Ii64(end), value, behaviors);
 }
 
@@ -207,15 +208,15 @@ get_line_range_from_pos(App *app, Buffer_ID buffer, i64 pos)
 api(custom) function Buffer_ID
 get_buffer_by_name(App *app, String8 name, Access_Flag access)
 {
-    Models *models = (Models*)app->cmd_context;
-    Working_Set *working_set = &models->working_set;
-    Editing_File *file = working_set_contains_name(working_set, name);
-    Buffer_ID result = 0;
-    if ( api_check_buffer(file, access) )
-    {
-        result = file->id;
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Working_Set *working_set = &models->working_set;
+ Editing_File *file = working_set_contains_name(working_set, name);
+ Buffer_ID result = 0;
+ if ( api_check_buffer(file, access) )
+ {
+  result = file->id;
+ }
+ return(result);
 }
 
 api(custom) function Buffer_ID
@@ -266,26 +267,28 @@ buffer_read_range(App *app, Buffer_ID buffer_id, Range_i64 range, u8 *out)
  return(result);
 }
 
-function Edit_Behaviors
-get_active_edit_behaviors(Models *models, Editing_File *file){
+function Edit_Behaviors2
+get_active_edit_behaviors(Models *models, Editing_File *file, b32 automated)
+{
  Panel *panel = layout_get_active_panel(&models->layout);
  Assert(panel != 0);
  View *view = panel->view;
  Assert(view != 0);
- Edit_Behaviors behaviors = {};
- if (view->file == file){
+ Edit_Behaviors2 behaviors = {};
+ behaviors.automated = automated;
+ if(view->file == file){
   behaviors.pos_before_edit = view->edit_pos_.cursor_pos;
- }
- else{
+ }else{
   behaviors.pos_before_edit = -1;
  }
  return(behaviors);
 }
 
 api(custom ed) function b32
-buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String string)
+buffer_replace_range(App_Cmd *app, Buffer_ID buffer_id, Range_i64 range, String string)
 {
  Models *models = (Models*)app->cmd_context;
+ 
  Editing_File *file = imp_get_file(models, buffer_id);
  b32 result = false;
  if (api_check_buffer(file) &&
@@ -294,7 +297,7 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
   i64 size = buffer_size(&file->state.buffer);
   ClampBot(range.first, 0);
   ClampTop(range.opl, size);
-  Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
+  Edit_Behaviors2 behaviors = get_active_edit_behaviors(models, file, app->automated);
   edit_single(app->tctx, models, file, range, string, behaviors);
   result = true;
  }
@@ -302,13 +305,13 @@ buffer_replace_range(App *app, Buffer_ID buffer_id, Range_i64 range, String stri
 }
 
 api(custom) function b32
-buffer_batch_edit(App *app, Buffer_ID buffer_id, Batch_Edit *batch)
+buffer_batch_edit(App_Cmd *app, Buffer_ID buffer_id, Batch_Edit *batch)
 {
  Models *models = (Models*)app->cmd_context;
  Editing_File *file = imp_get_file(models, buffer_id);
  b32 result = false;
  if (api_check_buffer(file)) {
-  Edit_Behaviors behaviors = get_active_edit_behaviors(models, file);
+  Edit_Behaviors2 behaviors = get_active_edit_behaviors(models, file, app->automated);
   result = edit_batch(app->tctx, models, file, batch, behaviors);
  }
  return(result);
@@ -1158,7 +1161,7 @@ get_this_ctx_view(App *app, Access_Flag access)
  Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
  View_ID result = 0;
  if (tctx_info->coroutine != 0){
-  Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
+  Coroutine *coroutine = tctx_info->coroutine;
   View *view = (View*)coroutine->user_data;
   if (view != 0){
    result = view_get_id(&models->view_set, view);
@@ -2179,72 +2182,72 @@ managed_object_free(App *app, Managed_Object object)
     Dynamic_Workspace *workspace = get_dynamic_workspace(models, hi_id);
     b32 result = false;
     if (workspace != 0){
-        result = managed_object_free(workspace, object);
-    }
-    return(result);
+  result = managed_object_free(workspace, object);
+ }
+ return(result);
 }
 
 // TODO(allen): ELIMINATE STORE & LOAD
 api(custom) function b32
 managed_object_store_data(App *app, Managed_Object object, u32 first_index, u32 count, void *mem)
 {
-    Models *models = (Models*)app->cmd_context;
-    Managed_Object_Ptr_And_Workspace object_ptrs = get_dynamic_object_ptrs(models, object);
-    u8 *ptr = get_dynamic_object_memory_ptr(object_ptrs.header);
-    b32 result = false;
-    if (ptr != 0){
-        u32 item_count = object_ptrs.header->count;
-        if (0 <= first_index && first_index + count <= item_count){
-            u32 item_size = object_ptrs.header->item_size;
-            block_copy(ptr + first_index*item_size, mem, count*item_size);
-            heap_assert_good(&object_ptrs.workspace->heap);
-            result = true;
-        }
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Managed_Object_Ptr_And_Workspace object_ptrs = get_dynamic_object_ptrs(models, object);
+ u8 *ptr = get_dynamic_object_memory_ptr(object_ptrs.header);
+ b32 result = false;
+ if (ptr != 0){
+  u32 item_count = object_ptrs.header->count;
+  if (0 <= first_index && first_index + count <= item_count){
+   u32 item_size = object_ptrs.header->item_size;
+   block_copy(ptr + first_index*item_size, mem, count*item_size);
+   heap_assert_good(&object_ptrs.workspace->heap);
+   result = true;
+  }
+ }
+ return(result);
 }
 
 api(custom) function b32
 managed_object_load_data(App *app, Managed_Object object, u32 first_index, u32 count, void *mem_out)
 {
-    Models *models = (Models*)app->cmd_context;
-    Managed_Object_Ptr_And_Workspace object_ptrs = get_dynamic_object_ptrs(models, object);
-    u8 *ptr = get_dynamic_object_memory_ptr(object_ptrs.header);
-    b32 result = false;
-    if (ptr != 0){
-        u32 item_count = object_ptrs.header->count;
-        if (0 <= first_index && first_index + count <= item_count){
-            u32 item_size = object_ptrs.header->item_size;
-            block_copy(mem_out, ptr + first_index*item_size, count*item_size);
-            heap_assert_good(&object_ptrs.workspace->heap);
-            result = true;
-        }
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Managed_Object_Ptr_And_Workspace object_ptrs = get_dynamic_object_ptrs(models, object);
+ u8 *ptr = get_dynamic_object_memory_ptr(object_ptrs.header);
+ b32 result = false;
+ if (ptr != 0){
+  u32 item_count = object_ptrs.header->count;
+  if (0 <= first_index && first_index + count <= item_count){
+   u32 item_size = object_ptrs.header->item_size;
+   block_copy(mem_out, ptr + first_index*item_size, count*item_size);
+   heap_assert_good(&object_ptrs.workspace->heap);
+   result = true;
+  }
+ }
+ return(result);
 }
 
 api(custom) function User_Input
 get_next_input_raw(App *app)
 {
-    Thread_Context *tctx = app->tctx;
-    Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
-    User_Input result = {};
-    if (tctx_info->coroutine != 0)
-    {
-        Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
-        Co_Out *out = (Co_Out*)coroutine->out;
-        out->request = CoRequest_None;
-        coroutine_yield(coroutine);
-        Co_In *in = (Co_In*)coroutine->in;
-        result = in->user_input;
-    }
-    else
-    {
+ Thread_Context *tctx = app->tctx;
+ Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
+ User_Input result = {};
+ if (tctx_info->coroutine != 0)
+ {
+  Coroutine *coroutine = tctx_info->coroutine;
+  Co_Out *out = coroutine->out;
+  out->request = CoRequest_None;
+  coroutine_yield(coroutine);
+  Co_In *in = coroutine->in;
+  result = in->user_input;
+ }
+ else
+ {
 #define M "ERROR: get_next_input called in a hook that may not make calls to blocking APIs"
-        print_message(app, strlit(M));
+  print_message(app, strlit(M));
 #undef M
-    }
-    return(result);
+ }
+ return(result);
 }
 
 api(custom) function i64
@@ -2495,7 +2498,8 @@ print_message(App *app, String message)
  Models *models = (Models*)app->cmd_context;
  Editing_File *file = models->message_buffer;
  if(file != 0){
-  output_file_append(app->tctx, models, file, message);
+  b32 automated = true;
+  output_file_append(app->tctx, models, file, message, automated);
   file_cursor_to_end(app->tctx, models, file);
  }
 }
@@ -2590,40 +2594,41 @@ buffer_history_get_record_info(App *app, Buffer_ID buffer_id, History_Record_Ind
 }
 
 api(custom) function Record_Info
-buffer_history_get_group_sub_record(App *app, Buffer_ID buffer_id, History_Record_Index index, i32 sub_index){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    Record_Info result = {};
-    if (api_check_buffer(file)){
-        History *history = &file->state.history;
-        if (history_is_activated(history)){
-            i32 max_index = history_get_record_count(history);
-            if (0 <= index && index <= max_index){
-                if (0 < index){
-                    Record *record = history_get_record(history, index);
-                    if (record->kind == RecordKind_Group){
-                        record = history_get_sub_record(record, sub_index + 1);
-                        if (record != 0){
-                            buffer_history__fill_record_info(record, &result);
-                        }
-                        else{
-                            result.error = RecordError_SubIndexOutOfBounds;
-                        }
-                    }
-                    else{
-                        result.error = RecordError_WrongRecordTypeAtIndex;
-                    }
-                }
-                else{
-                    result.error = RecordError_InitialStateDummyRecord;
-                }
-            }
-            else{
-                result.error = RecordError_IndexOutOfBounds;
-            }
-        }
-        else{
-            result.error = RecordError_NoHistoryAttached;
+buffer_history_get_group_sub_record(App *app, Buffer_ID buffer_id, History_Record_Index index, i32 sub_index)
+{
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ Record_Info result = {};
+ if (api_check_buffer(file)){
+  History *history = &file->state.history;
+  if (history_is_activated(history)){
+   i32 max_index = history_get_record_count(history);
+   if (0 <= index && index <= max_index){
+    if (0 < index){
+     Record *record = history_get_record(history, index);
+     if (record->kind == RecordKind_Group){
+      record = history_get_sub_record(record, sub_index + 1);
+      if (record != 0){
+       buffer_history__fill_record_info(record, &result);
+      }
+      else{
+       result.error = RecordError_SubIndexOutOfBounds;
+      }
+     }
+     else{
+      result.error = RecordError_WrongRecordTypeAtIndex;
+     }
+    }
+    else{
+     result.error = RecordError_InitialStateDummyRecord;
+    }
+   }
+   else{
+    result.error = RecordError_IndexOutOfBounds;
+   }
+  }
+  else{
+   result.error = RecordError_NoHistoryAttached;
   }
  }
  else{
@@ -2637,36 +2642,38 @@ buffer_history_get_current_state_index(App *app, Buffer_ID buffer_id){
     Models *models = (Models*)app->cmd_context;
     Editing_File *file = imp_get_file(models, buffer_id);
     History_Record_Index result = 0;
-    if (api_check_buffer(file) && history_is_activated(&file->state.history)){
-        result = file_get_current_record_index(file);
-    }
-    return(result);
+ if (api_check_buffer(file) && history_is_activated(&file->state.history)){
+  result = file_get_current_record_index(file);
+ }
+ return(result);
 }
 
 api(custom) function b32
-buffer_history_set_current_state_index(App *app, Buffer_ID buffer_id, History_Record_Index index){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file) && history_is_activated(&file->state.history)){
-        i32 max_index = history_get_record_count(&file->state.history);
-        if (0 <= index && index <= max_index){
-            edit_change_current_history_state(app->tctx, models, file, index);
-            result = true;
-        }
-    }
-    return(result);
+buffer_history_set_current_state_index(App *app, Buffer_ID buffer_id, History_Record_Index index)
+{
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if (api_check_buffer(file) && history_is_activated(&file->state.history)){
+  i32 max_index = history_get_record_count(&file->state.history);
+  if (0 <= index && index <= max_index){
+   edit_change_current_history_state(app->tctx, models, file, index);
+   result = true;
+  }
+ }
+ return(result);
 }
 
 api(custom) function b32
-buffer_history_merge_record_range(App *app, Buffer_ID buffer_id, History_Record_Index first_index, History_Record_Index last_index, Record_Merge_Flag flags){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if (api_check_buffer(file)){
-        result = edit_merge_history_range(app->tctx, models, file, first_index, last_index, flags);
-    }
-    return(result);
+buffer_history_merge_record_range(App *app, Buffer_ID buffer_id, History_Record_Index first_index, History_Record_Index last_index, Record_Merge_Flag flags)
+{
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if (api_check_buffer(file)){
+  result = edit_merge_history_range(app->tctx, models, file, first_index, last_index, flags);
+ }
+ return(result);
 }
 
 api(custom) function b32
@@ -2781,13 +2788,13 @@ try_create_new_face(App *app, Face_Description *description)
     Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
     Face_ID result = 0;
     if (tctx_info != 0 && tctx_info->coroutine != 0){
-        Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
+        Coroutine *coroutine = tctx_info->coroutine;
         Assert(coroutine != 0);
-        Co_Out *out = (Co_Out*)coroutine->out;
+        Co_Out *out = coroutine->out;
         out->request = CoRequest_NewFontFace;
         out->face_description = description;
         coroutine_yield(coroutine);
-        Co_In *in = (Co_In*)coroutine->in;
+        Co_In *in = coroutine->in;
         result = in->face_id;
     }
     else if (tctx_info != 0){
@@ -2796,37 +2803,37 @@ try_create_new_face(App *app, Face_Description *description)
     else{
         Face *new_face = font_set_new_face(&models->font_set, description);
         if (new_face != 0){
-            result = new_face->id;
-        }
-    }
-    return(result);
+   result = new_face->id;
+  }
+ }
+ return(result);
 }
 
 api(custom) function b32
 try_modify_face(App *app, Face_ID id, Face_Description *description)
 {
-    Models *models = (Models*)app->cmd_context;
-    Thread_Context *tctx = app->tctx;
-    Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
-    b32 result = false;
-    if (tctx_info != 0 && tctx_info->coroutine != 0){
-        Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
-        Assert(coroutine != 0);
-        Co_Out *out = (Co_Out*)coroutine->out;
-        out->request = CoRequest_ModifyFace;
-        out->face_description = description;
-        out->face_id = id;
-        coroutine_yield(coroutine);
-        Co_In *in = (Co_In*)coroutine->in;
-        result = in->success;
-    }
-    else if (tctx_info != 0){
-        // This API does nothing when called from an async thread.
-    }
-    else{
-        result = font_set_modify_face(&models->font_set, id, description);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Thread_Context *tctx = app->tctx;
+ Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
+ b32 result = false;
+ if(tctx_info != 0 && tctx_info->coroutine != 0)
+ {
+  Coroutine *coroutine = tctx_info->coroutine;
+  Assert(coroutine != 0);
+  Co_Out *out = coroutine->out;
+  out->request = CoRequest_ModifyFace;
+  out->face_description = description;
+  out->face_id = id;
+  coroutine_yield(coroutine);
+  Co_In *in = (Co_In*)coroutine->in;
+  result = in->success;
+  
+ } else if (tctx_info != 0){
+  // This API does nothing when called from an async thread.
+ } else{
+  result = font_set_modify_face(&models->font_set, id, description);
+ }
+ return(result);
 }
 
 api(custom) function b32
@@ -2875,44 +2882,43 @@ set_window_title(App *app, String8 title)
 {
     Models *models = (Models*)app->cmd_context;
     models->has_new_title = true;
-    u64 cap_before_null = (u64)(models->title_capacity - 1);
-    u64 copy_size = clamp_max(title.size, cap_before_null);
-    block_copy(models->title_space, title.str, copy_size);
-    models->title_space[copy_size] = 0;
+ u64 cap_before_null = (u64)(models->title_capacity - 1);
+ u64 copy_size = clamp_max(title.size, cap_before_null);
+ block_copy(models->title_space, title.str, copy_size);
+ models->title_space[copy_size] = 0;
 }
 
 api(custom) function void
 acquire_global_frame_mutex(App *app)
 {
-    Thread_Context *tctx = app->tctx;
-    Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
-    if (tctx_info != 0 && tctx_info->coroutine != 0){
-        Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
-        Assert(coroutine != 0);
-        Co_Out *out = (Co_Out*)coroutine->out;
-        out->request = CoRequest_AcquireGlobalFrameMutex;
-        coroutine_yield(coroutine);
-    }
-    else{
-        system_acquire_global_frame_mutex(tctx);
-    }
+ Thread_Context *tctx = app->tctx;
+ Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
+ if (tctx_info != 0 && tctx_info->coroutine != 0){
+  Coroutine *coroutine = tctx_info->coroutine;
+  Assert(coroutine != 0);
+  Co_Out *out = coroutine->out;
+  out->request = CoRequest_AcquireGlobalFrameMutex;
+  coroutine_yield(coroutine);
+ }
+ else{
+  system_acquire_global_frame_mutex(tctx);
+ }
 }
 
 api(custom) function void
 release_global_frame_mutex(App *app)
 {
-    Thread_Context *tctx = app->tctx;
-    Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
-    if (tctx_info != 0 && tctx_info->coroutine != 0){
-        Coroutine *coroutine = (Coroutine*)tctx_info->coroutine;
-        Assert(coroutine != 0);
-        Co_Out *out = (Co_Out*)coroutine->out;
-        out->request = CoRequest_ReleaseGlobalFrameMutex;
-        coroutine_yield(coroutine);
-    }
-    else{
-        system_release_global_frame_mutex(tctx);
-    }
+ Thread_Context *tctx = app->tctx;
+ Thread_Context_Extra_Info *tctx_info = (Thread_Context_Extra_Info*)tctx->user_data;
+ if (tctx_info != 0 && tctx_info->coroutine != 0){
+  Coroutine *coroutine = tctx_info->coroutine;
+  Assert(coroutine != 0);
+  Co_Out *out = coroutine->out;
+  out->request = CoRequest_ReleaseGlobalFrameMutex;
+  coroutine_yield(coroutine);
+ } else{
+  system_release_global_frame_mutex(tctx);
+ }
 }
 
 ////////////////////////////////

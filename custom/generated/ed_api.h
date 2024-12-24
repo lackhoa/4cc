@@ -2,7 +2,7 @@
 
 //source: UNKNOWN
 #define ed_get_line_range_from_pos_sig() Range_i64 ed_get_line_range_from_pos(App* app, Buffer_ID buffer, i64 pos)
-#define ed_buffer_replace_range_sig() b32 ed_buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string)
+#define ed_buffer_replace_range_sig() b32 ed_buffer_replace_range(App_Cmd* app, Buffer_ID buffer_id, Range_i64 range, String string)
 #define ed_push_buffer_base_name_sig() String8 ed_push_buffer_base_name(App* app, Arena* arena, Buffer_ID buffer_id)
 #define ed_get_code_directory_sig() String ed_get_code_directory(App* app)
 #define ed_push_buffer_filepath_sig() String ed_push_buffer_filepath(App* app, Arena* arena, Buffer_ID buffer_id)
@@ -48,7 +48,7 @@
 #define get_line_range_from_pos__return Range_i64
 #define get_line_range_from_pos__params App* app, Buffer_ID buffer, i64 pos
 #define buffer_replace_range__return b32
-#define buffer_replace_range__params App* app, Buffer_ID buffer_id, Range_i64 range, String string
+#define buffer_replace_range__params App_Cmd* app, Buffer_ID buffer_id, Range_i64 range, String string
 #define push_buffer_base_name__return String8
 #define push_buffer_base_name__params App* app, Arena* arena, Buffer_ID buffer_id
 #define get_code_directory__return String
@@ -183,7 +183,7 @@ wrap_function_pointer(draw_new_group);
 #endif
 #if defined(STATIC_LINK_API)
 function Range_i64 get_line_range_from_pos(App* app, Buffer_ID buffer, i64 pos);
-function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
+function b32 buffer_replace_range(App_Cmd* app, Buffer_ID buffer_id, Range_i64 range, String string);
 function String8 push_buffer_base_name(App* app, Arena* arena, Buffer_ID buffer_id);
 function String get_code_directory(App* app);
 function String push_buffer_filepath(App* app, Arena* arena, Buffer_ID buffer_id);

@@ -1,11 +1,12 @@
-BUFFER_HOOK_SIG(kv_file_save)
+function i32
+kv_file_save(App_Cmd *app, Buffer_ID buffer_id)
 {
-  default_file_save(app, buffer_id);
-  vim_file_save(app, buffer_id);
+ default_file_save(app, buffer_id);
+ vim_file_save(app, buffer_id);
  return 0;
 }
-
-BUFFER_HOOK_SIG(kv_new_file)
+function i32
+kv_new_file(App_Cmd *app, Buffer_ID buffer_id)
 {
 	Scratch_Block scratch(app);
 	String filename = push_buffer_base_name(app, scratch, buffer_id);
@@ -21,9 +22,8 @@ BUFFER_HOOK_SIG(kv_new_file)
  
 	return 0;
 }
-
-
-BUFFER_HOOK_SIG(kv_begin_buffer)
+function i32
+kv_begin_buffer(App_Cmd *app, Buffer_ID buffer_id)
 {
  ProfileScope(app, "[kv] Begin Buffer");
  
@@ -48,15 +48,6 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
      break;
     }
    }
-  }
- }
- 
- // NOTE(rjf): Treat as code for *calc* buffers.
- if(treat_as_code == false)
- {
-  if(string_match(buffer_name, strlit("*calc*")))
-  {
-   treat_as_code = true;
   }
  }
  
@@ -105,13 +96,11 @@ BUFFER_HOOK_SIG(kv_begin_buffer)
 BUFFER_EDIT_RANGE_SIG(kv_buffer_edit_range)
 {
  // NOTE(kv): Fleury
- F4_BufferEditRange(app, buffer_id, new_range, old_cursor_range);
- 
+ F4_BufferEditRange(app, buffer_id, new_range, old_cursor_range, automated);
  Game_API *game = get_game_code();
  if(game){
   game->game_buffer_edit_range(ed_game_state_pointer, app, buffer_id, new_range, old_cursor_range);
  }
- 
  return 0;
 }
 function Rect_f32
@@ -144,29 +133,6 @@ kv_tick(App *app, Frame_Info frame)
  
  fui_tick(app, frame);
  
- {// NOTE: build step
-  Buffer_ID bottom_buffer = view_get_buffer(app, global_bottom_view, Access_Always);
-  Child_Process_ID procid = buffer_get_attached_child_process(app, bottom_buffer);
-  Process_State state = child_process_get_state(app, procid);
-  local_persist b32 is_building = false;
-  if (state.updating)
-  {
-   is_building = true;
-  }
-  else if (is_building)
-  {
-   is_building = false;
-   if (state.return_code == 0)
-   {
-    vim_set_bottom_text(strlit("Build successful!"));
-   }
-   else
-   {
-    vim_set_bottom_text(strlit("Build failed!"));
-   }
-  }
- }
- 
  seconds_since_last_keystroke += frame.literal_dt;
  
  {// NOTE(kv): autosave / reload
@@ -194,17 +160,20 @@ kv_tick(App *app, Frame_Info frame)
      case DirtyState_UnsavedChanges:
      {
       if(should_autosave){
-       saved_count++;
        String filename = push_buffer_filepath(app, scratch, buffer);
-       buffer_save(app, buffer, filename, 0);
+       b32 res = buffer_save(app, buffer, filename, 0);
+       if(res){
+        saved_count++;
+       }
       }
      }break;
      
      case DirtyState_UnloadedChanges:
      {
-      reloaded_count++;
-      buffer_reopen(app, buffer, 0);
-      String filename = push_buffer_filepath(app, scratch, buffer);
+      Buffer_Reopen_Result res = buffer_reopen(app, buffer, 0);
+      if(res == BufferReopenResult_Reopened){
+       reloaded_count++;
+      }
      }break;
     }
    }

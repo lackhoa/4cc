@@ -5,31 +5,31 @@
 
 #include "4coder_fleury_ubiquitous.h"
 
-CUSTOM_ID(colors, fleury_color_syntax_crap);
-CUSTOM_ID(colors, fleury_color_operators);
-CUSTOM_ID(colors, fleury_color_inactive_pane_overlay);
-CUSTOM_ID(colors, fleury_color_inactive_pane_background);
-CUSTOM_ID(colors, fleury_color_file_progress_bar);
-CUSTOM_ID(colors, fleury_color_brace_highlight);
-CUSTOM_ID(colors, fleury_color_brace_line);
-CUSTOM_ID(colors, fleury_color_brace_annotation);
-CUSTOM_ID(colors, fleury_color_index_sum_type);
-CUSTOM_ID(colors, fleury_color_index_product_type);
-CUSTOM_ID(colors, fleury_color_index_function);
-CUSTOM_ID(colors, fleury_color_index_macro);
-CUSTOM_ID(colors, fleury_color_index_constant);
-CUSTOM_ID(colors, fleury_color_index_comment_tag);
-CUSTOM_ID(colors, fleury_color_index_decl);
-CUSTOM_ID(colors, fleury_color_cursor_macro);
-CUSTOM_ID(colors, fleury_color_cursor_power_mode);
-CUSTOM_ID(colors, fleury_color_cursor_inactive);
-CUSTOM_ID(colors, fleury_color_plot_cycle);
-CUSTOM_ID(colors, fleury_color_token_highlight);
-CUSTOM_ID(colors, fleury_color_token_minor_highlight);
-CUSTOM_ID(colors, fleury_color_comment_user_name);
-CUSTOM_ID(colors, fleury_color_lego_grab);
-CUSTOM_ID(colors, fleury_color_lego_splat);
-CUSTOM_ID(colors, fleury_color_error_annotation);
+global Managed_ID fleury_color_syntax_crap; //colors
+global Managed_ID fleury_color_operators; //colors
+global Managed_ID fleury_color_inactive_pane_overlay; //colors
+global Managed_ID fleury_color_inactive_pane_background; //colors
+global Managed_ID fleury_color_file_progress_bar; //colors
+global Managed_ID fleury_color_brace_highlight; //colors
+global Managed_ID fleury_color_brace_line; //colors
+global Managed_ID fleury_color_brace_annotation; //colors
+global Managed_ID fleury_color_index_sum_type; //colors
+global Managed_ID fleury_color_index_product_type; //colors
+global Managed_ID fleury_color_index_function; //colors
+global Managed_ID fleury_color_index_macro; //colors
+global Managed_ID fleury_color_index_constant; //colors
+global Managed_ID fleury_color_index_comment_tag; //colors
+global Managed_ID fleury_color_index_decl; //colors
+global Managed_ID fleury_color_cursor_macro; //colors
+global Managed_ID fleury_color_cursor_power_mode; //colors
+global Managed_ID fleury_color_cursor_inactive; //colors
+global Managed_ID fleury_color_plot_cycle; //colors
+global Managed_ID fleury_color_token_highlight; //colors
+global Managed_ID fleury_color_token_minor_highlight; //colors
+global Managed_ID fleury_color_comment_user_name; //colors
+global Managed_ID fleury_color_lego_grab; //colors
+global Managed_ID fleury_color_lego_splat; //colors
+global Managed_ID fleury_color_error_annotation; //colors
 
 static ARGB_Color F4_ARGBFromID(Color_Table table, Managed_ID id, int subindex);
 static ARGB_Color F4_ARGBFromID(Color_Table table, Managed_ID id);

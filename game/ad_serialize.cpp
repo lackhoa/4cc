@@ -11,7 +11,7 @@ write_binary_union(Writer *writer, Type_Info *type,
  kv_assert(type->kind == I_Type_Kind_Union);
  i32 variant = read_enum(*type->discriminator_type, pvariant);
  
- arrayof<I_Union_Member> &union_members = type->union_members;
+ darray(I_Union_Member) &union_members = type->union_members;
  for_i32(index,0,union_members.count){
   I_Union_Member &member = union_members[index];
   if(member.variant == variant){

@@ -3,7 +3,7 @@
 
 #pragma once
 
-global arrayof<Debug_Entry> DEBUG_entries;
+global darray(Debug_Entry) DEBUG_entries;
 global b32 DEBUG_draw_hud_p = true;
 
 function void
@@ -44,8 +44,8 @@ DEBUG_draw_hud(App *app, Face_ID face_id, Rect_f32 rect)
 
 // NOTE(kv): It's annoying to have different command sets for different builds,
 //           so let's have the same commands for both.
-CUSTOM_COMMAND_SIG(DEBUG_draw_hud_toggle)
-CUSTOM_DOC("toggle debug hud")
+function void
+DEBUG_draw_hud_toggle(App_Cmd *app)
 {
     DEBUG_draw_hud_p ^= 1;
 }

@@ -93,7 +93,7 @@ vim_block_copy(App *app, View_ID view, Buffer_ID buffer, Range_i64 range, Vim_Re
 
 
 function void
-vim_block_paste(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
+vim_block_paste(App_Cmd *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 {
 	i64 cursor_pos = view_get_cursor_pos(app, view);
 
@@ -131,14 +131,15 @@ vim_block_paste(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 		ARGB_Color argb = fcolor_resolve(fcolor_id(defcolor_paste));
 		buffer_post_fade(app, buffer, 0.667f, Ii64_size(pos, range_size(sub)), argb);
 	}
-
+ 
 	history_group_end(group);
-
-
+ 
+ 
 	vim_default_register();
 }
 function void
-vim_block_edit(App *app, View_ID view, Buffer_ID buffer, Range_i64 range){
+vim_block_edit(App_Cmd *app, View_ID view, Buffer_ID buffer, Range_i64 range)
+{
 	Vim_Params *params = &vim_state.params;
 	if(params->request == REQUEST_Yank ||
 	   params->request == REQUEST_Change ||
@@ -174,15 +175,16 @@ vim_block_edit(App *app, View_ID view, Buffer_ID buffer, Range_i64 range){
 		if(!rect_contains_point(block_rect, min_p) || !rect_contains_point(block_rect, max_p)){ continue; }
 
 		Range_i64 line_range = Ii64(min_pos, max_pos+1);
-
+  
 		vim_request_vtable[params->request](app, view, buffer, line_range);
 	}
-
+ 
 	history_group_end(group);
 }
 
 function void
-vim_visual_insert_char(App *app, View_ID view, Buffer_ID buffer, u8 character){
+vim_visual_insert_char(App_Cmd *app, View_ID view, Buffer_ID buffer, u8 character)
+{
 	History_Group group = history_group_begin(app, buffer);
 
 	Range_i64 range = get_view_range(app, view);

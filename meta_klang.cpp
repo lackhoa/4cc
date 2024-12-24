@@ -74,7 +74,7 @@ guess_expression_type(Meta_Expression *e)
  return result;
 }
 function b32
-modify_ast2(Arena *arena, arrayof<K_Slider> *sliders,
+modify_ast2(Arena *arena, darray(K_Slider) *sliders,
             Token *token0, Token *last_token,
             Meta_Expression *result)
 {
@@ -525,7 +525,7 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
     cache0->body = k_parse_statement_to_arena(arena, p);
    }
    //-Remember this statement so we can print out the metadata later
-   p->function_cache_list.push_value(cache0);
+   //p->function_cache_list.push_value(cache0);
   }else{
    //-Declaration?
    ep_recovery_block(p);
@@ -632,7 +632,7 @@ k_process_top_level(Arena *arena,
    ep_char(p, '}');
   }else if(ep_maybe_id(p, "struct")){
    //-parse struct
-   arrayof<M_Struct_Member> members = {};
+   darray(M_Struct_Member) members = {};
    String type_name = ep_id(p);
    ep_char(p, '{');
    while(p->ok_ && !m_maybe_brace_close(p)){
@@ -695,8 +695,8 @@ k_process_top_level(Arena *arena,
    todo_incomplete;
   }else if(ep_maybe_id(p, "enum")){
    //-Enum
-   arrayof<String> enum_names = {};
-   arrayof<i1> enum_vals      = {};
+   darray(String) enum_names = {};
+   darray(i1) enum_vals      = {};
    String type_name = ep_maybe_id(p);
    m_brace_open(p);
    while(p->ok_ && !m_maybe_brace_close(p)){
@@ -743,7 +743,7 @@ k_process_top_level(Arena *arena,
            token0_string == strlit("dll_export") or
            false)
   {//-Function
-   init_dynamic(p->function_cache_list, scratch_top);  //@tune
+   //init_dynamic(p->function_cache_list, scratch_top);  //@tune
    ep_eat(p);
    
    String return_type = ep_id(p);  //TODO(kv) cheese!
@@ -767,7 +767,7 @@ k_process_top_level(Arena *arena,
    
    if(p->ok_)
    {//-Print
-    {//-Caches
+/*    {//-Caches
      auto print_cache_storage = [](Meta_Printer &printer, Statement_Cache &cache0)->void{
       {//-The struct
        printer < "struct Cache_Storage_" < cache0.id;
@@ -792,7 +792,7 @@ k_process_top_level(Arena *arena,
       m_locationp(printer_gen);
       print_cache_storage(printer_gen, cache0);
      }
-    }
+    }*/
     {//-Print prototype
      add_to_source_map(printer_gen.source_map, printer_gen, token0->pos);
      printer_gen<token0_string<" "<return_type;
@@ -835,7 +835,7 @@ k_process_top_level(Arena *arena,
  }
 }
 function b32
-k_process_file(Arena *arena, Meta_Parsed_File source, arrayof<K_Slider> *sliders,
+k_process_file(Arena *arena, Lexed_File source, darray(K_Slider) *sliders,
                /*out*/ Statement_Root *root)
 {
  Scratch_Block file_arena;
@@ -934,7 +934,7 @@ k_print_struct_meta(Printer &p, K_Struct struc){
  print_struct_meta(p, struc.name, struc.members);
 }
 function b32
-klang_main(Arena *arena, Meta_Parsed_File source_file, arrayof<K_Slider> *sliders)
+klang_main(Arena *arena, Lexed_File source_file, darray(K_Slider) *sliders)
 {
  {//-Test file
   b32 is_test_file = path_filename(source_file.name) == "test.kc";

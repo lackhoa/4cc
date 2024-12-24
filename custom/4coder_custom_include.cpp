@@ -22,15 +22,13 @@
 //  which we feed into the preprocessor.
 //  Which then is parsed and then the "custom commands" are pulled out.
 //#include "4coder_types.h"
-#include "custom_command_defines.h"
+//#include "custom_command_defines.h"
 
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
 #include "4coder_system_types.h"
-/*#define DYNAMIC_LINK_API
-#include "generated/system_api.h"*/
 #if !defined(META_PASS)
-#include "generated/command_metadata.h"
+#  include "generated/command_metadata.gen.h"
 #endif
 
 #include "4coder_token.h"
@@ -121,7 +119,6 @@
 #include "4coder_function_list.cpp"
 #include "4coder_scope_commands.cpp"
 #include "4coder_combined_write_commands.cpp"
-//#include "4coder_miblo_numbers.cpp"
 #include "4coder_profile_inspect.cpp"
 /*
 #include "4coder_doc_content_types.cpp"

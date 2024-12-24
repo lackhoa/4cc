@@ -11,12 +11,12 @@
 
 function void
 pre_edit_state_change(Models *models, Editing_File *file){
-    file_add_dirty_flag(file, DirtyState_UnsavedChanges);
+ file_add_dirty_flag(file, DirtyState_UnsavedChanges);
 }
 
 function void
-pre_edit_history_prep(Editing_File *file, Edit_Behaviors behaviors){
-    if (!behaviors.do_not_post_to_history){
+pre_edit_history_prep(Editing_File *file, Edit_Behaviors2 behaviors){
+ if (!behaviors.no_post_to_history){
   history_dump_records_after_index(&file->state.history,
                                    file->state.current_record_index);
  }
@@ -24,17 +24,24 @@ pre_edit_history_prep(Editing_File *file, Edit_Behaviors behaviors){
 
 function void
 post_edit_call_hook(Thread_Context *tctx, Models *models, Editing_File *file,
-                    Range_i64 new_range, Range_Cursor old_cursor_range)
+                    Range_i64 new_range, Range_Cursor old_cursor_range,
+                    b32 automated)
 {
- //NOTE(kv) Just to see if this ever triggers.
+ //NOTE(kv) Just wanna see if this ever triggers.
  kv_assert(new_range.min == old_cursor_range.min.pos);
  
+ if(not human_has_edited_after_macro){
+  if(not automated){
+   human_has_edited_after_macro = true;
+  }
+ }
+ 
  // NOTE(allen): edit range hook
- if (models->buffer_edit_range != 0){
+ if(models->buffer_edit_range != 0){
   App app = {};
   app.tctx = tctx;
   app.cmd_context = models;
-  models->buffer_edit_range(&app, file->id, new_range, old_cursor_range);
+  models->buffer_edit_range(&app, file->id, new_range, old_cursor_range, automated);
  }
 }
 
@@ -228,14 +235,8 @@ file_end_file(Thread_Context *tctx, Models *models, Editing_File *file){
 
 function void
 edit__apply(Thread_Context *tctx, Models *models, Editing_File *file,
-            Range_i64 range, String string, Edit_Behaviors behaviors)
+            Range_i64 range, String string, Edit_Behaviors2 behaviors)
 {
-#if ED_CORRUPTION_CHECK
- if (!file->settings.unimportant) {
-  breakhere;
- }
-#endif
- 
  Edit edit = {.text=string, .range=range};
  
  Gap_Buffer *buffer = &file->state.buffer;
@@ -244,11 +245,11 @@ edit__apply(Thread_Context *tctx, Models *models, Editing_File *file,
  Assert(edit.range.opl <= buffer_size(buffer));
  
  // NOTE(allen): history update
- if (!behaviors.do_not_post_to_history)
+ if (!behaviors.no_post_to_history)
  {
   ProfileTLBlock(tctx, &models->profile_list, "edit apply history");
   history_record_edit(&models->global_history, &file->state.history, buffer,
-                      behaviors.pos_before_edit, edit);
+                      behaviors.pos_before_edit, edit, behaviors.automated);
   file->state.current_record_index =
    history_get_record_count(&file->state.history);
  }
@@ -262,7 +263,7 @@ edit__apply(Thread_Context *tctx, Models *models, Editing_File *file,
 
 function void
 edit_single(Thread_Context *tctx, Models *models, Editing_File *file,
-            Range_i64 range, String string, Edit_Behaviors behaviors)
+            Range_i64 range, String string, Edit_Behaviors2 behaviors)
 {
  Range_Cursor cursor_range = {};
  cursor_range.min = file_compute_cursor(file, seek_pos(range.min));
@@ -280,150 +281,164 @@ edit_single(Thread_Context *tctx, Models *models, Editing_File *file,
  batch.edit.range = range;
  
  edit_fix_markers(tctx, models, file, &batch);
- post_edit_call_hook(tctx, models, file, Ii64_size(range.first, string.size), cursor_range);
+ post_edit_call_hook(tctx, models, file, Ii64_size(range.first, string.size), cursor_range, behaviors.automated);
 }
 
 function void
-edit__apply_record_forward(Thread_Context *tctx, Models *models, Editing_File *file, Record *record, Edit_Behaviors behaviors_prototype){
-    // NOTE(allen): // NOTE(allen): // NOTE(allen): // NOTE(allen): // NOTE(allen):
-    // Whenever you change this also change the backward version!
-    
-    switch (record->kind){
-        case RecordKind_Single:
-        {
-            String str = record->single.forward_text;
-            Range_i64 range = Ii64(record->single.first, record->single.first + record->single.backward_text.size);
-            edit_single(tctx, models, file, range, str, behaviors_prototype);
-        }break;
-        
-        case RecordKind_Group:
-        {
-            Node *sentinel = &record->group.children;
-            for (Node *node = sentinel->next;
-                 node != sentinel;
-                 node = node->next){
-                Record *sub_record = CastFromMember(Record, node, node);
-                edit__apply_record_forward(tctx, models, file, sub_record, behaviors_prototype);
-            }
-        }break;
-        
-        default:
-        {
-            InvalidPath;
-        }break;
-    }
+edit__apply_record_forward(Thread_Context *tctx, Models *models, Editing_File *file,
+                           Record *record, b32 no_post_to_history)
+{
+ // NOTE(allen): // NOTE(allen): // NOTE(allen): // NOTE(allen): // NOTE(allen):
+ // Whenever you change this also change the backward version!
+ 
+ switch (record->kind)
+ {
+  case RecordKind_Single:
+  {
+   String str = record->single.forward_text;
+   Range_i64 range = Ii64(record->single.first, record->single.first + record->single.backward_text.size);
+   Edit_Behaviors2 behaviors = {};
+   behaviors.no_post_to_history = no_post_to_history;
+   behaviors.pos_before_edit    = record->pos_before_edit;
+   behaviors.automated          = record->automated;
+   edit_single(tctx, models, file, range, str, behaviors);
+  }break;
+  
+  case RecordKind_Group:
+  {
+   Record_Node *sentinel = &record->group.children;
+   for(Record_Node *node = sentinel->next;
+       node != sentinel;
+       node = node->next)
+   {
+    Record *sub_record = CastFromMember(Record, node, node);
+    edit__apply_record_forward(tctx, models, file, sub_record, no_post_to_history);
+   }
+  }break;
+  
+  default: { InvalidPath; }break;
+ }
 }
 
 function void
-edit__apply_record_backward(Thread_Context *tctx, Models *models, Editing_File *file, Record *record, Edit_Behaviors behaviors_prototype){
-    // NOTE(allen): // NOTE(allen): // NOTE(allen): // NOTE(allen): // NOTE(allen):
-    // Whenever you change this also change the forward version!
-    
-    switch (record->kind){
-        case RecordKind_Single:
-        {
-            String str = record->single.backward_text;
-            Range_i64 range = Ii64(record->single.first, record->single.first + record->single.forward_text.size);
-            edit_single(tctx, models, file, range, str, behaviors_prototype);
-        }break;
-        
-        case RecordKind_Group:
-        {
-            Node *sentinel = &record->group.children;
-            for (Node *node = sentinel->prev;
-                 node != sentinel;
-                 node = node->prev){
-                Record *sub_record = CastFromMember(Record, node, node);
-                edit__apply_record_backward(tctx, models, file, sub_record, behaviors_prototype);
-            }
-        }break;
-        
-        default:
-        {
-            InvalidPath;
-        }break;
-    }
+edit__apply_record_backward(Thread_Context *tctx, Models *models, Editing_File *file,
+                            Record *record, b32 no_post_to_history)
+{
+ // NOTE(allen): // NOTE(allen): // NOTE(allen): // NOTE(allen): // NOTE(allen):
+ // Whenever you change this also change the forward version!
+ 
+ switch (record->kind){
+  case RecordKind_Single:
+  {
+   String str = record->single.backward_text;
+   Range_i64 range = Ii64(record->single.first, record->single.first + record->single.forward_text.size);
+   Edit_Behaviors2 behaviors = {};
+   behaviors.no_post_to_history = no_post_to_history;
+   behaviors.pos_before_edit    = record->pos_before_edit;
+   behaviors.automated          = record->automated;
+   edit_single(tctx, models, file, range, str, behaviors);
+  }break;
+  
+  case RecordKind_Group:
+  {
+   Record_Node *sentinel = &record->group.children;
+   for (Record_Node *node = sentinel->prev;
+        node != sentinel;
+        node = node->prev)
+   {
+    Record *sub_record = CastFromMember(Record, node, node);
+    edit__apply_record_backward(tctx, models, file, sub_record, no_post_to_history);
+   }
+  }break;
+  
+  default:
+  {
+   InvalidPath;
+  }break;
+ }
 }
 
 function void
-edit_change_current_history_state(Thread_Context *tctx, Models *models, Editing_File *file, i1 target_index){
-    History *history = &file->state.history;
-    if (history->activated && file->state.current_record_index != target_index){
-        Assert(0 <= target_index && target_index <= history->record_count);
-        
-        i1 current = file->state.current_record_index;
-        Record *record = history_get_record(history, current);
-        Assert(record != 0);
-        Record *dummy_record = history_get_dummy_record(history);
-        
-        Edit_Behaviors behaviors_prototype = {};
-        behaviors_prototype.do_not_post_to_history = true;
-        behaviors_prototype.pos_before_edit = -1;
-        
-        if (current < target_index){
-            do{
-                current += 1;
-                record = CastFromMember(Record, node, record->node.next);
-                Assert(record != dummy_record);
-                edit__apply_record_forward(tctx, models, file, record, behaviors_prototype);
-            } while (current != target_index);
-        }
-        else{
-            do{
-                Assert(record != dummy_record);
-                edit__apply_record_backward(tctx, models, file, record, behaviors_prototype);
-                current -= 1;
-                record = CastFromMember(Record, node, record->node.prev);
-            } while (current != target_index);
-        }
-        
-        file->state.current_record_index = current;
-    }
+edit_change_current_history_state(Thread_Context *tctx, Models *models, Editing_File *file, i1 target_index)
+{
+ History *history = &file->state.history;
+ if(history->activated &&
+    file->state.current_record_index != target_index)
+ {
+  Assert(0 <= target_index && target_index <= history->record_count);
+  
+  i1 current = file->state.current_record_index;
+  Record *record = history_get_record(history, current);
+  Assert(record != 0);
+  Record *dummy_record = history_get_dummy_record(history);
+  b32 no_post_to_history = true;
+  if(current < target_index){
+   //note forward
+   do{
+    current += 1;
+    record = CastFromMember(Record, node, record->node.next);
+    Assert(record != dummy_record);
+    edit__apply_record_forward(tctx, models, file, record, no_post_to_history);
+   } while (current != target_index);
+  }else{
+   do{
+    Assert(record != dummy_record);
+    edit__apply_record_backward(tctx, models, file, record, no_post_to_history);
+    current -= 1;
+    record = CastFromMember(Record, node, record->node.prev);
+   } while (current != target_index);
+  }
+  
+  file->state.current_record_index = current;
+ }
 }
 
 function b32
-edit_merge_history_range(Thread_Context *tctx, Models *models, Editing_File *file, History_Record_Index first_index, History_Record_Index last_index, Record_Merge_Flag flags){
-    b32 result = false;
-    History *history = &file->state.history;
-    if (history_is_activated(history)){
-        i1 max_index = history_get_record_count(history);
-        first_index = clamp_min(1, first_index);
-        if (first_index <= last_index && last_index <= max_index){
-            if (first_index < last_index){
-                i1 current_index = file->state.current_record_index;
-                if (first_index <= current_index && current_index < last_index){
-                    u32 in_range_handler = (flags & bitmask_2);
-                    switch (in_range_handler){
-                        case RecordMergeFlag_StateInRange_MoveStateForward:
-                        {
-                            edit_change_current_history_state(tctx, models, file, last_index);
-                            current_index = last_index;
-                        }break;
-                        
-                        case RecordMergeFlag_StateInRange_MoveStateBackward:
-                        {
-                            edit_change_current_history_state(tctx, models, file, first_index);
-                            current_index = first_index;
-                        }break;
-                        
-                        case RecordMergeFlag_StateInRange_ErrorOut:
-                        {
-                            goto done;
-                        }break;
-                    }
-                }
-                Scratch_Block scratch;
-                history_merge_records(scratch, history, first_index, last_index);
-                if (current_index >= last_index){
-                    current_index -= (last_index - first_index);
-                }
-                file->state.current_record_index = current_index;
-            }
-            result = true;
-        }
+edit_merge_history_range(Thread_Context *tctx, Models *models, Editing_File *file,
+                         History_Record_Index first_index, History_Record_Index last_index,
+                         Record_Merge_Flag flags)
+{
+ b32 result = false;
+ History *history = &file->state.history;
+ if (history_is_activated(history)){
+  i1 max_index = history_get_record_count(history);
+  first_index = clamp_min(1, first_index);
+  if (first_index <= last_index && last_index <= max_index){
+   if (first_index < last_index){
+    i1 current_index = file->state.current_record_index;
+    if (first_index <= current_index && current_index < last_index){
+     u32 in_range_handler = (flags & bitmask_2);
+     switch (in_range_handler){
+      case RecordMergeFlag_StateInRange_MoveStateForward:
+      {
+       edit_change_current_history_state(tctx, models, file, last_index);
+       current_index = last_index;
+      }break;
+      
+      case RecordMergeFlag_StateInRange_MoveStateBackward:
+      {
+       edit_change_current_history_state(tctx, models, file, first_index);
+       current_index = first_index;
+      }break;
+      
+      case RecordMergeFlag_StateInRange_ErrorOut:
+      {
+       goto done;
+      }break;
+     }
     }
-    done:;
-    return(result);
+    Scratch_Block scratch;
+    history_merge_records(scratch, history, first_index, last_index);
+    if (current_index >= last_index){
+     current_index -= (last_index - first_index);
+    }
+    file->state.current_record_index = current_index;
+   }
+   result = true;
+  }
+ }
+ done:;
+ return(result);
 }
 
 function b32
@@ -444,7 +459,7 @@ edit_batch_check(Thread_Context *tctx, Profile_Global_List *list, Batch_Edit *ba
 
 function b32
 edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
-           Batch_Edit *batch, Edit_Behaviors behaviors)
+           Batch_Edit *batch, Edit_Behaviors2 behaviors)
 {
  b32 result = true;
  if ( batch ) {
@@ -500,8 +515,7 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
         edit_range.first <= edit_range.opl &&
         edit_range.opl <= size)
     {
-     edit__apply(tctx, models, file, edit_range, insert_string,
-                 behaviors);
+     edit__apply(tctx, models, file, edit_range, insert_string, behaviors);
      shift += replace_range_shift(edit_range, insert_string.size);
     } else {
      result = false;
@@ -521,7 +535,7 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
    
    file_clear_layout_cache(file);
    edit_fix_markers(tctx, models, file, batch);
-   post_edit_call_hook(tctx, models, file, new_range, cursor_range);
+   post_edit_call_hook(tctx, models, file, new_range, cursor_range, behaviors.automated);
   }
  }
  return(result);
@@ -646,7 +660,8 @@ create_file(Thread_Context *tctx, Models *models, String8 filename, Buffer_Creat
    if (HasFlag(flags, BufferCreate_AlwaysNew)) {
     i64 size = buffer_size(&file->state.buffer);
     if (size > 0) {
-     Edit_Behaviors behaviors = {};
+     Edit_Behaviors2 behaviors = {};
+     behaviors.automated = true;
      edit_single(tctx, models, file, Ii64(0, size), strlit(""), behaviors);
      if (has_canon_name) {
       buffer_is_for_new_file = true;

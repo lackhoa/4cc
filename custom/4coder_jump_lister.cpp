@@ -6,8 +6,8 @@
 
 
 function Jump_Lister_Result
-get_jump_index_from_user(App *app, Marker_List *list,
-                         String query){
+get_jump_index_from_user(App_Cmd *app, Marker_List *list, String query)
+{
     Jump_Lister_Result result = {};
     if (list != 0){
         Scratch_Block scratch(app);
@@ -30,35 +30,36 @@ get_jump_index_from_user(App *app, Marker_List *list,
         Lister_Result l_result = run_lister(app, lister);
         if (!l_result.canceled){
             result.success = true;
-            result.index = (i1)PtrAsInt(l_result.user_data);
-        }
-    }
-    
-    return(result);
+   result.index = (i1)PtrAsInt(l_result.user_data);
+  }
+ }
+ 
+ return(result);
 }
 
 function Jump_Lister_Result
-get_jump_index_from_user(App *app, Marker_List *list, char *query){
-    return(get_jump_index_from_user(app, list, SCu8(query)));
+get_jump_index_from_user(App_Cmd *app, Marker_List *list, char *query){
+ return(get_jump_index_from_user(app, list, SCu8(query)));
 }
 
 function void
-jump_to_jump_lister_result(App *app, View_ID view,
-                           Marker_List *list, Jump_Lister_Result *jump){
-    if (jump->success){
-        ID_Pos_Jump_Location location = {};
-        if (get_jump_from_list(app, list, jump->index, &location)){
-            Buffer_ID jump_dst_buffer = {};
-            if (get_jump_buffer(app, &jump_dst_buffer, &location)){
-                view_set_active(app, view);
-                jump_to_location(app, view, jump_dst_buffer, location);
-            }
-        }
-    }
+jump_to_jump_lister_result(App_Cmd *app, View_ID view,
+                           Marker_List *list, Jump_Lister_Result *jump)
+{
+ if (jump->success){
+  ID_Pos_Jump_Location location = get_jump_from_list(app, list, jump->index);
+  if(is_valid(location)){
+   Buffer_ID jump_dst_buffer = {};
+   if (get_jump_buffer(app, &jump_dst_buffer, &location)){
+    view_set_active(app, view);
+    jump_to_location(app, view, jump_dst_buffer, location);
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(view_jump_list_with_lister)
-CUSTOM_DOC("When executed on a buffer with jumps, creates a persistent lister for all the jumps")
+function void
+view_jump_list_with_lister(App_Cmd *app)
 {
     Heap *heap = &global_heap;
     View_ID view = get_active_view(app, Access_Always);

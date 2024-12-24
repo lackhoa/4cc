@@ -1,10 +1,10 @@
 global Game_State *ed_game_state_pointer;
 global b32 game_on_ro;
 global b32 game_render_on;
-global arrayof<String> received_game_commands;
+global darray(String) received_game_commands;
 global Game_API game_code_ro;
 
-inline Game_API *
+function Game_API *
 get_game_code()
 {// NOTE: whether we wanna allow the game to receive call when it is off
  Game_API *result = 0;

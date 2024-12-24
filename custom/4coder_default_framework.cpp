@@ -179,54 +179,56 @@ get_prev_view_looped_primary_panels(App *app, View_ID start_view_id, Access_Flag
 
 function void
 call_after_ctx_shutdown(App *app, View_ID view, Custom_Command_Function *func){
-    view_enqueue_command_function(app, view, func);
+ view_enqueue_command_function(app, view, func);
 }
 
 function Fallback_Dispatch_Result
-fallback_command_dispatch(App *app, Mapping *mapping, Command_Map *map,
-                          User_Input *in){
-    Fallback_Dispatch_Result result = {};
-    if (mapping != 0 && map != 0){
-        Command_Binding binding = map_get_binding_recursive(mapping, map, &in->event);
-        if (binding.custom != 0){
-            Command_Metadata *metadata = get_command_metadata(binding.custom);
-            if (metadata != 0){
-                if (metadata->is_ui){
-                    result.code = FallbackDispatch_DelayedUICall;
-                    result.func = binding.custom;
-                }
-                else{
-                    binding.custom(app);
-                    result.code = FallbackDispatch_DidCall;
-                }
-            }
-            else{
-                binding.custom(app);
-                result.code = FallbackDispatch_DidCall;
-            }
-        }
+fallback_command_dispatch(App_Cmd *app, Mapping *mapping, Command_Map *map,
+                          User_Input *in)
+{
+ Fallback_Dispatch_Result result = {};
+ if (mapping != 0 && map != 0){
+  Command_Binding binding = map_get_binding_recursive(mapping, map, &in->event);
+  if (binding.custom != 0){
+   Command_Metadata *metadata = get_command_metadata(binding.custom);
+   if (metadata != 0){
+    if (metadata->is_ui){
+     result.code = FallbackDispatch_DelayedUICall;
+     result.func = binding.custom;
     }
-    return(result);
+    else{
+     binding.custom(app);
+     result.code = FallbackDispatch_DidCall;
+    }
+   }
+   else{
+    binding.custom(app);
+    result.code = FallbackDispatch_DidCall;
+   }
+  }
+ }
+ return(result);
 }
 
 function b32
-ui_fallback_command_dispatch(App *app, View_ID view,
-                             Mapping *mapping, Command_Map *map, User_Input *in){
-    b32 result = false;
-    Fallback_Dispatch_Result disp_result =
-        fallback_command_dispatch(app, mapping, map, in);
-    if (disp_result.code == FallbackDispatch_DelayedUICall){
-        call_after_ctx_shutdown(app, view, disp_result.func);
-        result = true;
-    }
-    if (disp_result.code == FallbackDispatch_Unhandled){
-        leave_current_input_unhandled(app);
-    }
-    return(result);
+ui_fallback_command_dispatch(App_Cmd *app, View_ID view,
+                             Mapping *mapping, Command_Map *map, User_Input *in)
+{
+ b32 result = false;
+ Fallback_Dispatch_Result disp_result =
+  fallback_command_dispatch(app, mapping, map, in);
+ if (disp_result.code == FallbackDispatch_DelayedUICall){
+  call_after_ctx_shutdown(app, view, disp_result.func);
+  result = true;
+ }
+ if (disp_result.code == FallbackDispatch_Unhandled){
+  leave_current_input_unhandled(app);
+ }
+ return(result);
 }
 
 function b32
-ui_fallback_command_dispatch(App *app, View_ID view, User_Input *in){
+ui_fallback_command_dispatch(App_Cmd *app, View_ID view, User_Input *in){
     b32 result = false;
     View_Context ctx = view_current_context(app, view);
     if (ctx.mapping != 0){
@@ -413,26 +415,24 @@ toggle_bottom_view_command(App *app)
  }
 }
 
-function void open_panel_vsplit(App *app);
-CUSTOM_DOC("Create a new panel by vertically splitting the active panel.")
-CUSTOM_COMMAND_SIG(open_panel_vsplit)
+function void
+open_panel_vsplit(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    View_ID new_view = open_view(app, view, ViewSplit_Right);
-    new_view_settings(app, new_view);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    view_set_buffer(app, new_view, buffer, 0);
+ View_ID view = get_active_view(app, Access_Always);
+ View_ID new_view = open_view(app, view, ViewSplit_Right);
+ new_view_settings(app, new_view);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ view_set_buffer(app, new_view, buffer, 0);
 }
 
-function void open_panel_hsplit(App *app);
-CUSTOM_DOC("Create a new panel by horizontally splitting the active panel.")
-CUSTOM_COMMAND_SIG(open_panel_hsplit)
+function void
+open_panel_hsplit(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    View_ID new_view = open_view(app, view, ViewSplit_Bottom);
-    new_view_settings(app, new_view);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    view_set_buffer(app, new_view, buffer, 0);
+ View_ID view = get_active_view(app, Access_Always);
+ View_ID new_view = open_view(app, view, ViewSplit_Bottom);
+ new_view_settings(app, new_view);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ view_set_buffer(app, new_view, buffer, 0);
 }
 
 ////////////////////////////////
@@ -442,38 +442,39 @@ CUSTOM_COMMAND_SIG(open_panel_hsplit)
 function Buffer_ID
 maybe_create_buffer_and_clear_by_name(App *app, String8 name_string, View_ID default_target_view)
 {
-    Buffer_ID search_buffer = get_buffer_by_name(app, name_string, Access_Always);
-    if (search_buffer != 0)
-    {
-        buffer_set_setting(app, search_buffer, BufferSetting_ReadOnly, true);
-        
-        View_ID target_view = default_target_view;
-        
-        View_ID view_with_buffer_already_open = get_first_view_with_buffer(app, search_buffer);
-        if (view_with_buffer_already_open != 0)
-        {
-            target_view = view_with_buffer_already_open;
-            // TODO(allen): there needs to be something like
-            // view_exit_to_base_context(app, target_view);
-            //view_end_ui_mode(app, target_view);
-        }
-        else
-        {
-            view_set_buffer(app, target_view, search_buffer, 0);
-        }
-        
-        clear_buffer(app, search_buffer);
-        buffer_send_end_signal(app, search_buffer);
-    }
-    else
-    {
-        search_buffer = create_buffer(app, name_string, BufferCreate_AlwaysNew);
-        buffer_set_setting(app, search_buffer, BufferSetting_Unimportant, true);
-        buffer_set_setting(app, search_buffer, BufferSetting_ReadOnly, true);
-        view_set_buffer(app, default_target_view, search_buffer, 0);
-    }
-    
-    return(search_buffer);
+ Buffer_ID search_buffer = get_buffer_by_name(app, name_string, Access_Always);
+ if (search_buffer != 0)
+ {
+  buffer_set_setting(app, search_buffer, BufferSetting_ReadOnly, true);
+  
+  View_ID target_view = default_target_view;
+  
+  View_ID view_with_buffer_already_open = get_first_view_with_buffer(app, search_buffer);
+  if (view_with_buffer_already_open != 0)
+  {
+   target_view = view_with_buffer_already_open;
+   // TODO(allen): there needs to be something like
+   // view_exit_to_base_context(app, target_view);
+   //view_end_ui_mode(app, target_view);
+  }
+  else
+  {
+   view_set_buffer(app, target_view, search_buffer, 0);
+  }
+  
+  App_Cmd app2 = app_cmd_automated(app);
+  clear_buffer(&app2, search_buffer);
+  buffer_send_end_signal(app, search_buffer);
+ }
+ else
+ {
+  search_buffer = create_buffer(app, name_string, BufferCreate_AlwaysNew);
+  buffer_set_setting(app, search_buffer, BufferSetting_Unimportant, true);
+  buffer_set_setting(app, search_buffer, BufferSetting_ReadOnly, true);
+  view_set_buffer(app, default_target_view, search_buffer, 0);
+ }
+ 
+ return(search_buffer);
 }
 
 ////////////////////////////////
@@ -489,97 +490,97 @@ save_all_dirty_buffers_with_postfix(App *app, String postfix){
         if (dirty == DirtyState_UnsavedChanges){
             Temp_Memory temp = begin_temp_memory(scratch);
             String8 filename = push_buffer_filepath(app, scratch, buffer);
-            if (string_match(string_postfix(filename, postfix.size), postfix)){
-                buffer_save(app, buffer, filename, 0);
-            }
-            end_temp_memory(temp);
-        }
-    }
+   if (string_match(string_postfix(filename, postfix.size), postfix)){
+    buffer_save(app, buffer, filename, 0);
+   }
+   end_temp_memory(temp);
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(save_all_dirty_buffers)
-CUSTOM_DOC("Saves all buffers marked dirty (showing the '*' indicator).")
+function void
+save_all_dirty_buffers(App_Cmd *app)
 {
-    String empty = {};
-    save_all_dirty_buffers_with_postfix(app, empty);
+ String empty = {};
+ save_all_dirty_buffers_with_postfix(app, empty);
 }
 
 ////////////////////////////////
 
 function void
 set_mouse_suppression(b32 suppress){
-    if (suppress){
-        suppressing_mouse = true;
-        system_show_mouse_cursor(MouseCursorShow_Never);
-    }
-    else{
-        suppressing_mouse = false;
-        system_show_mouse_cursor(MouseCursorShow_Always);
-    }
+ if (suppress){
+  suppressing_mouse = true;
+  system_show_mouse_cursor(MouseCursorShow_Never);
+ }
+ else{
+  suppressing_mouse = false;
+  system_show_mouse_cursor(MouseCursorShow_Always);
+ }
 }
 
-CUSTOM_COMMAND_SIG(suppress_mouse)
-CUSTOM_DOC("Hides the mouse and causes all mosue input (clicks, position, wheel) to be ignored.")
+function void 
+suppress_mouse(App_Cmd *app)
 {
-    set_mouse_suppression(true);
+ set_mouse_suppression(true);
 }
 
-CUSTOM_COMMAND_SIG(allow_mouse)
-CUSTOM_DOC("Shows the mouse and causes all mouse input to be processed normally.")
+function void 
+allow_mouse(App_Cmd *app)
 {
-    set_mouse_suppression(false);
+ set_mouse_suppression(false);
 }
 
-CUSTOM_COMMAND_SIG(toggle_mouse)
-CUSTOM_DOC("Toggles the mouse suppression mode, see suppress_mouse and allow_mouse.")
+function void 
+toggle_mouse(App_Cmd *app)
 {
-    set_mouse_suppression(!suppressing_mouse);
+ set_mouse_suppression(!suppressing_mouse);
 }
 
-CUSTOM_COMMAND_SIG(set_mode_to_original)
-CUSTOM_DOC("Sets the edit mode to 4coder original.")
+function void 
+set_mode_to_original(App_Cmd *app)
 {
-    fcoder_mode = FCoderMode_Original;
+ fcoder_mode = FCoderMode_Original;
 }
 
-CUSTOM_COMMAND_SIG(toggle_fullscreen)
-CUSTOM_DOC("Toggle fullscreen mode on or off.  The change(s) do not take effect until the next frame.")
+function void 
+toggle_fullscreen(App_Cmd *app)
 {
-    system_set_fullscreen(!system_is_fullscreen());
+ system_set_fullscreen(!system_is_fullscreen());
 }
 
-CUSTOM_COMMAND_SIG(load_themes_default_folder)
-CUSTOM_DOC("Loads all the theme files in the default theme folder.")
+function void
+load_themes_default_folder(App_Cmd *app)
+{
+ String fcoder_extension = strlit(".4coder");
+ save_all_dirty_buffers_with_postfix(app, fcoder_extension);
+ 
+ Scratch_Block scratch(app);
+ String8List list = {};
+ def_search_normal_load_list(scratch, &list);
+ 
+ for (String8Node *node = list.first;
+      node != 0;
+      node = node->next){
+  String8 folder_path = node->string;
+  String8 themes_path = push_stringfz(scratch, "%.*sthemes", string_expand(folder_path));
+  load_folder_of_themes_into_live_set(app, themes_path);
+ }
+}
+
+function void 
+load_themes_hot_directory(App_Cmd *app)
 {
     String fcoder_extension = strlit(".4coder");
-    save_all_dirty_buffers_with_postfix(app, fcoder_extension);
-    
-    Scratch_Block scratch(app);
-    String8List list = {};
-    def_search_normal_load_list(scratch, &list);
-    
-    for (String8Node *node = list.first;
-         node != 0;
-         node = node->next){
-        String8 folder_path = node->string;
-        String8 themes_path = push_stringfz(scratch, "%.*sthemes", string_expand(folder_path));
-        load_folder_of_themes_into_live_set(app, themes_path);
-    }
-}
-
-CUSTOM_COMMAND_SIG(load_themes_hot_directory)
-CUSTOM_DOC("Loads all the theme files in the current hot directory.")
-{
-    String fcoder_extension = strlit(".4coder");
-    save_all_dirty_buffers_with_postfix(app, fcoder_extension);
-    
-    Scratch_Block scratch(app);
-    String path = push_hot_directory(app, scratch);
+ save_all_dirty_buffers_with_postfix(app, fcoder_extension);
+ 
+ Scratch_Block scratch(app);
+ String path = push_hot_directory(app, scratch);
  load_folder_of_themes_into_live_set(app, path);
 }
 
-CUSTOM_COMMAND_SIG(clear_all_themes)
-CUSTOM_DOC("Clear the theme list")
+function void 
+clear_all_themes(App_Cmd *app)
 {
  arena_free(&global_theme_arena);
  block_zero_struct(&global_theme_list);
@@ -588,31 +589,32 @@ CUSTOM_DOC("Clear the theme list")
 
 ////////////////////////////////
 
-function void write_text_input(App *app);
+function void write_text_input(App_Cmd *app);
 
 function void
-setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id){
-    MappingScope();
-    SelectMapping(mapping);
-    
-    SelectMap(global_id);
-    //BindCore(default_startup, CoreCode_Startup);
-    BindCore(default_try_exit, CoreCode_TryExit);
-    BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
-    BindMouseWheel(mouse_wheel_scroll);
-    BindMouseWheel(mouse_wheel_change_face_size, Key_Code_Control);
-    
-    SelectMap(file_id);
-    ParentMap(global_id);
-    BindTextInput(write_text_input);
-    BindMouse(click_set_cursor_and_mark, MouseCode_Left);
-    BindMouseRelease(click_set_cursor, MouseCode_Left);
-    BindCore(click_set_cursor_and_mark, CoreCode_ClickActivateView);
-    BindMouseMove(click_set_cursor_if_lbutton);
-    
-    SelectMap(code_id);
-    ParentMap(file_id);
-    BindTextInput(write_text_and_auto_indent);
+setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id)
+{
+ MappingScope();
+ SelectMapping(mapping);
+ 
+ SelectMap(global_id);
+ //BindCore(default_startup, CoreCode_Startup);
+ BindCore(default_try_exit, CoreCode_TryExit);
+ BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
+ BindMouseWheel(mouse_wheel_scroll);
+ BindMouseWheel(mouse_wheel_change_face_size, Key_Code_Control);
+ 
+ SelectMap(file_id);
+ ParentMap(global_id);
+ BindTextInput(write_text_input);
+ BindMouse(click_set_cursor_and_mark, MouseCode_Left);
+ BindMouseRelease(click_set_cursor, MouseCode_Left);
+ BindCore(click_set_cursor_and_mark, CoreCode_ClickActivateView);
+ BindMouseMove(click_set_cursor_if_lbutton);
+ 
+ SelectMap(code_id);
+ ParentMap(file_id);
+ BindTextInput(write_text_and_auto_indent);
 }
 
 function void
@@ -691,29 +693,29 @@ default_4coder_initialize(App *app, String_Array filenames){
 
 function void
 default_4coder_initialize(App *app){
-    Face_Description command_line_description = get_face_description(app, 0);
-    String_Array filenames = {};
-    default_4coder_initialize(app, filenames, command_line_description.parameters.pt_size, command_line_description.parameters.hinting);
+ Face_Description command_line_description = get_face_description(app, 0);
+ String_Array filenames = {};
+ default_4coder_initialize(app, filenames, command_line_description.parameters.pt_size, command_line_description.parameters.hinting);
 }
 
-function void
-default_4coder_side_by_side_panels(App *app,
-                                   Buffer_Identifier left, Buffer_Identifier right){
-    Buffer_ID left_id = buffer_identifier_to_id(app, left);
-    Buffer_ID right_id = buffer_identifier_to_id(app, right);
-    
-    // Left Panel
-    View_ID view = get_active_view(app, Access_Always);
-    new_view_settings(app, view);
-    view_set_buffer(app, view, left_id, 0);
-    
-    // Right Panel
-    open_panel_vsplit(app);
-    View_ID right_view = get_active_view(app, Access_Always);
-    view_set_buffer(app, right_view, right_id, 0);
-    
-    // Restore Active to Left
-    view_set_active(app, view);
+/*function void
+default_4coder_side_by_side_panels(App *app, Buffer_Identifier left, Buffer_Identifier right)
+{
+ Buffer_ID left_id = buffer_identifier_to_id(app, left);
+ Buffer_ID right_id = buffer_identifier_to_id(app, right);
+ 
+ // Left Panel
+ View_ID view = get_active_view(app, Access_Always);
+ new_view_settings(app, view);
+ view_set_buffer(app, view, left_id, 0);
+ 
+ // Right Panel
+ open_panel_vsplit(app);
+ View_ID right_view = get_active_view(app, Access_Always);
+ view_set_buffer(app, right_view, right_id, 0);
+ 
+ // Restore Active to Left
+ view_set_active(app, view);
 }
 
 function void
@@ -740,7 +742,7 @@ function void
 default_4coder_side_by_side_panels(App *app){
     String_Array filenames = {};
     default_4coder_side_by_side_panels(app, filenames);
-}
+}*/
 
 function void
 default_4coder_one_panel(App *app, Buffer_Identifier buffer){
@@ -858,51 +860,54 @@ buffer_post_fade(App *app, Buffer_ID buffer_id, f32 seconds, Range_i64 range, AR
     buffer_fade_ranges.count += 1;
     fade_range->buffer_id = buffer_id;
     fade_range->t = seconds;
-    fade_range->full_t = seconds;
-    fade_range->range = range;
-    fade_range->color = color;
-    return(fade_range);
+ fade_range->full_t = seconds;
+ fade_range->range = range;
+ fade_range->color = color;
+ return(fade_range);
 }
 
 function void
-buffer_shift_fade_ranges(Buffer_ID buffer_id, i64 shift_after_p, i64 shift_amount){
-    for (Fade_Range *node = buffer_fade_ranges.first;
-         node != 0;
-         node = node->next){
-        if (node->buffer_id == buffer_id){
-            if (node->range.min >= shift_after_p){
-                node->range.min += shift_amount;
-                node->range.max += shift_amount;
-            }
-            else if (node->range.max >= shift_after_p){
-                node->range.max += shift_amount;
-            }
-        }
-    }
+buffer_shift_fade_ranges(Buffer_ID buffer_id, i64 shift_after_p, i64 shift_amount)
+{
+ for (Fade_Range *node = buffer_fade_ranges.first;
+      node != 0;
+      node = node->next){
+  if (node->buffer_id == buffer_id){
+   if (node->range.min >= shift_after_p){
+    node->range.min += shift_amount;
+    node->range.max += shift_amount;
+   }
+   else if (node->range.max >= shift_after_p){
+    node->range.max += shift_amount;
+   }
+  }
+ }
 }
 
 function b32
-tick_all_fade_ranges(App *app, f32 t){
-    Fade_Range **prev_next = &buffer_fade_ranges.first;
-    for (Fade_Range *node = buffer_fade_ranges.first, *next = 0;
-         node != 0;
-         node = next){
-        next = node->next;
-        node->t -= t;
-        if (node->t <= 0.f){
-            if (node->finish_call != 0){
-                node->finish_call(app, node);
-            }
-            *prev_next = next;
-            free_fade_range(node);
-            buffer_fade_ranges.count -= 1;
-        }
-        else{
-            prev_next = &node->next;
-            buffer_fade_ranges.last = node;
-        }
-    }
-    return(buffer_fade_ranges.count > 0);
+tick_all_fade_ranges(App *app, f32 t)
+{
+ Fade_Range **prev_next = &buffer_fade_ranges.first;
+ for (Fade_Range *node = buffer_fade_ranges.first, *next = 0;
+      node != 0;
+      node = next)
+ {
+  next = node->next;
+  node->t -= t;
+  if (node->t <= 0.f){
+   if (node->finish_call != 0){
+    node->finish_call(app, node);
+   }
+   *prev_next = next;
+   free_fade_range(node);
+   buffer_fade_ranges.count -= 1;
+  }
+  else{
+   prev_next = &node->next;
+   buffer_fade_ranges.last = node;
+  }
+ }
+ return(buffer_fade_ranges.count > 0);
 }
 
 function void
@@ -1031,7 +1036,7 @@ clipboard_count(i1 clipboard_id)
 function String8
 push_clipboard_index_inner(Arena *arena, i1 clipboard_id, i1 item_index)
 {
-    return(push_clipboard_index_inner(arena, &global_clipboard0, item_index));
+ return(push_clipboard_index_inner(arena, &global_clipboard0, item_index));
 }
 
 

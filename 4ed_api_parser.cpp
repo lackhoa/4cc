@@ -98,7 +98,7 @@ api_parse_add_param(Arena *arena, API_Param_List *list, String type, i1 star_cou
 
 function void
 api_parse_add_function(Arena *arena, API_Definition_List *list,
-                       arrayof<String> api_names, String func_name,
+                       darray(String) api_names, String func_name,
                        String type, i1 star_counter, API_Param_List param_list,
                        String location)
 {
@@ -113,7 +113,7 @@ api_parse_add_function(Arena *arena, API_Definition_List *list,
 
 function void
 api_parse_add_structure(Arena *arena, API_Definition_List *list,
-                        arrayof<String> api_names, API_Type_Structure_Kind kind,
+                        darray(String) api_names, API_Type_Structure_Kind kind,
                         String name, List_String member_list,
                         String definition, String location)
 {
@@ -147,7 +147,7 @@ api_parse_location(Arena *arena, String source_name, String source, u8 *pos){
 }
 
 function b32
-api_parse_source__function(Arena *arena, String source_name, String source, Token_Iterator *token_it, arrayof<String> api_names, API_Definition_List *list)
+api_parse_source__function(Arena *arena, String source_name, String source, Token_Iterator *token_it, darray(String) api_names, API_Definition_List *list)
 {
  //NOTE(kv): Doesn't support macro-as-parameter because it parses parameters,
  // not sure if we wanna add it?
@@ -231,7 +231,7 @@ api_parse__restringize_token_range(Arena *arena, String source, Token *token, To
 }
 
 function b32
-api_parse_source__structure(Arena *arena, String source_name, String source, API_Type_Structure_Kind kind, Token_Iterator *token_it, arrayof<String> api_names, API_Definition_List *list)
+api_parse_source__structure(Arena *arena, String source_name, String source, API_Type_Structure_Kind kind, Token_Iterator *token_it, darray(String) api_names, API_Definition_List *list)
 {
     b32 result = false;
     String name = {};
@@ -282,12 +282,12 @@ api_parse_source__structure(Arena *arena, String source_name, String source, API
 }
 
 myinline b32
-api_parse_source__struct(Arena *arena, String source_name, String source, Token_Iterator *token_it, arrayof<String> api_names, API_Definition_List *list){
+api_parse_source__struct(Arena *arena, String source_name, String source, Token_Iterator *token_it, darray(String) api_names, API_Definition_List *list){
  return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Struct, token_it, api_names, list));
 }
 
 myinline b32
-api_parse_source__union(Arena *arena, String source_name, String source, Token_Iterator *token_it, arrayof<String> api_names, API_Definition_List *list){
+api_parse_source__union(Arena *arena, String source_name, String source, Token_Iterator *token_it, darray(String) api_names, API_Definition_List *list){
  return(api_parse_source__structure(arena, source_name, source, APITypeStructureKind_Union, token_it, api_names, list));
 }
 
@@ -305,7 +305,7 @@ api_parse_source_add_to_list(Arena *arena, String source_name, String source, To
    //-api
    const i1 api_cap = 8;
    String buffer[api_cap];
-   arrayof<String> api_names = static_array(buffer, api_cap);
+   darray(String) api_names = static_array(buffer, api_cap);
    if(api_parse__match(&token_it, TokenCppKind_ParenOp)) {
     String name;
     while(api_parse__ident(&token_it, source, &name)) {
@@ -330,7 +330,7 @@ api_parse_source_add_to_list(Arena *arena, String source_name, String source, To
  }
 }
 function void
-api_parser_parse_file(Arena *arena, Meta_Parsed_File source_file, API_Definition_List *list){
+api_parser_parse_file(Arena *arena, Lexed_File source_file, API_Definition_List *list){
  api_parse_source_add_to_list(arena, source_file.name, source_file.data,
                               source_file.token_list, list);
 }

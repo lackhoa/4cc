@@ -36,11 +36,11 @@ enum App_State{
 struct Model_View_Command_Function{
     Model_View_Command_Function *next;
     Custom_Command_Function *custom_func;
-    View_ID view_id;
+ View_ID view_id;
 };
 
 struct Model_Input_Event_Node{
-    Model_Input_Event_Node *next;
+ Model_Input_Event_Node *next;
  Input_Event event;
 };
 
@@ -144,7 +144,9 @@ struct Models
  
  b8 in_render_mode;
  
+ //-Miscellaneous
  Render_Target *target;
+ u64 edit_counter;
 };
 
 ////////////////////////////////

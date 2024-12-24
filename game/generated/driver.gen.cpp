@@ -24,7 +24,6 @@
 #include "game_utils.cpp"
 //-
 // Select animation: @set_movie_shot
-//-
 #define cache
 #define cached
 //-
@@ -78,7 +77,7 @@ framework_api_xlist(X);
 #undef X
  
  
-create_sliders(&driver_dll_arena);
+init_sliders(&driver_dll_arena);
 }
 function void
 driver_shutdown(void){
@@ -907,24 +906,9 @@ macro_pelvis(export_);
  
 return pelvis_obj;
 }
-//  C:\Users\vodan\4ed\code/meta_klang.cpp:792:
-struct Cache_Storage_42410{
-b32 cache_initialized;
-v1 tblink;
-};
-global Cache_Storage_42410 cache_storage_42410;
 function void
 render_eyes(Pose *pose){
 v1 tblink = pose->tblink;
-if(not cache_storage_42410.cache_initialized or
-not(tblink == cache_storage_42410.tblink &&
-true)){
-{
-cache_storage_42410.cache_initialized = true;
-cache_storage_42410.tblink = tblink;
-}
-
-{
 v3 eyeO = V3(0.1953f, -0.2348f, 0.8954f);
 v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
 mat4i eyeT = mat4i_translate(eyeO) * mat4i_scales(eye_scale);
@@ -1020,9 +1004,6 @@ fill3(nose_wing, cheek_low, eye_in);
 fill3(nose_root_backL, eye_in, nose_rootL);
 fill3(nose_root_backL, nose_wing, eye_in);
 fill3(eye_out, cheek_up, brow_out);
-}
-}
-
 }
 function Head
 render_head(Pose *pose, v1 animation_time){

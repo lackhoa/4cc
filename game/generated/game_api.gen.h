@@ -47,7 +47,7 @@
 #define game_last_preset__params Game_State *state, i1 viewport_id
   
  #define is_event_handled_by_game__return b32
-#define is_event_handled_by_game__params App *app, Input_Event *event, b32 game_hot, b32 game_rendered
+#define is_event_handled_by_game__params Game_State *state, App *app, Input_Event *event, b32 game_hot, b32 game_rendered
   
  #define game_send_command__return void
 #define game_send_command__params Game_State *state, String command_name

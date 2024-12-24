@@ -561,7 +561,8 @@ F4_Render(App *app, Frame_Info frame_info, View_ID view_id)
 
 //~ NOTE(rjf): Begin buffer hook
 
-function BUFFER_HOOK_SIG(F4_BeginBuffer)
+function i32
+F4_BeginBuffer(App *app, Buffer_ID buffer_id)
 {
  ProfileScope(app, "[Fleury] Begin Buffer");
  

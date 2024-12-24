@@ -48,12 +48,13 @@ vim__fill_command_lister(Arena *arena, Lister *lister, i1 *command_ids, i1 comma
 		}
   
 		String key_bind = string_list_flatten(arena, list);
-		String description = SCu8(meta_cmd.description);
+		//String description = SCu8(meta_cmd.description);
+		String description = {};
 		String status = push_stringfz(arena, "%.*s\n%.*s", string_expand(key_bind), string_expand(description));
   
   auto *cmd = push_struct(arena, Game_Or_Custom_Command);
   *cmd = {.ok=true, .is_game_command=false, .custom_command=meta_cmd.proc};
-		lister_add_item(lister, SCu8(meta_cmd.name), status, cmd, 0);
+		lister_add_item(lister, meta_cmd.name, status, cmd, 0);
 	}
 }
 
@@ -234,8 +235,9 @@ vim_query_create_folder(App *app, String folder_name){
  return(did_create_folder);
 }
 
-CUSTOM_UI_COMMAND_SIG(vim_interactive_open_or_new)
-CUSTOM_DOC("Interactively open a file out of the file system.")
+function void
+vim_interactive_open_or_new(App_Cmd *app)
+
 {
 	for(;;)
   {
@@ -283,8 +285,9 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
 }
 
 
-CUSTOM_UI_COMMAND_SIG(vim_theme_lister)
-CUSTOM_DOC("Opens an interactive list of all registered themes.")
+function void
+vim_theme_lister(App_Cmd *app)
+
 {
 	Color_Table_List *color_table_list = &global_theme_list;
 
@@ -304,19 +307,20 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 	string_concat(&vim_bottom_text, strlit("Theme:"));
 #endif
 	Lister_Result l_result = vim_run_lister(app, lister);
-
+ 
 	Color_Table *result = 0;
 	if(!l_result.canceled){ result = (Color_Table*)l_result.user_data; }
-
+ 
 	if(result != 0){ active_color_table = *result; }
 }
 
-CUSTOM_UI_COMMAND_SIG(vim_switch_lister)
-CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
+function void
+vim_switch_lister(App_Cmd *app)
+
 {
 	Lister_Handlers handlers = lister_get_default_handlers();
 	handlers.refresh = generate_all_buffers_list;
-	handlers.backspace = vim_lister__backspace;
+	handlers.backspace = wrap_custom_command(vim_lister__backspace);
 	Scratch_Block scratch(app);
 #if VIM_USE_BOTTOM_LISTER
 	vim_reset_bottom_text();
@@ -374,8 +378,9 @@ vim_get_jump_index_from_user(App *app, Marker_List *list, char *query)
 }
 
 
-CUSTOM_UI_COMMAND_SIG(vim_list_all_functions_current_buffer_lister)
-CUSTOM_DOC("Creates a lister of locations that look like function definitions and declarations in the buffer.")
+function void
+vim_list_all_functions_current_buffer_lister(App_Cmd *app)
+
 {
 	Heap *heap = &global_heap;
 	View_ID view = get_active_view(app, Access_ReadVisible);
@@ -392,16 +397,17 @@ CUSTOM_DOC("Creates a lister of locations that look like function definitions an
 	}
 }
 
-CUSTOM_UI_COMMAND_SIG(vim_proj_cmd_lister)
-CUSTOM_DOC("Opens an interactive list of all project commands.")
+function void
+vim_proj_cmd_lister(App_Cmd *app)
+
 {
 	Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_intern_lit("prj_config"));
-
+ 
 	Scratch_Block scratch(app);
 	Lister_Block lister(app, scratch);
-
+ 
 	Lister_Handlers handlers = lister_get_default_handlers();
-	handlers.backspace = vim_lister__backspace;
+	handlers.backspace = wrap_custom_command(vim_lister__backspace);
 	lister_set_handlers(lister, &handlers);
 
 	vim_reset_bottom_text();
@@ -436,7 +442,7 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 }
 
 function void 
-vim_jump_navigate(App *app, View_ID view, Lister *lister, i1 index_delta)
+vim_jump_navigate(App_Cmd *app, View_ID view, Lister *lister, i1 index_delta)
 {
 	lister__navigate__default(app, view, lister, index_delta);
 
@@ -451,8 +457,9 @@ vim_jump_navigate(App *app, View_ID view, Lister *lister, i1 index_delta)
 }
 
 // TODO(BYP): Jump lister crashed on many entries
-CUSTOM_UI_COMMAND_SIG(vim_jump_lister)
-CUSTOM_DOC("Opens an interactive lists of the views jumps")
+function void
+vim_jump_lister(App_Cmd *app)
+
 {
 	Scratch_Block scratch(app);
 	Lister_Block lister(app, scratch);
@@ -532,7 +539,7 @@ vim_try_buffer_kill(App *app){
 }
 
 function b32
-vim_do_4coder_close_user_check(App *app, View_ID view){
+vim_do_4coder_close_user_check(App_Cmd *app, View_ID view){
 	Scratch_Block scratch(app);
 	Lister_Choice_List list = {};
 	lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
@@ -600,14 +607,16 @@ vim_reload_external_changes_lister(App *app, Buffer_ID buffer){
 #define M "External changes have been detected. Reload buffer from file?"
 	Lister_Choice *choice = vim_get_choice_from_user(app, strlit(M), list);
 #undef M
-
+ 
 	if(choice != 0 && choice->user_data){
 		buffer_reopen(app, buffer, 0);
 	}
 }
 
 // NOTE(BYP): This hook isn't officially supported by core (it will false positive) it was just fun to write
-CUSTOM_COMMAND_SIG(vim_file_externally_modified){
+function void
+vim_file_externally_modified(App_Cmd *app)
+{
 	User_Input input = get_current_input(app);
 	if( match_core_code(&input, CoreCode_FileExternallyModified) ){
 		print_message(app, input.event.core.string);

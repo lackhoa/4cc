@@ -207,8 +207,10 @@ vim_init(App *app){
 // TODO(BYP): Paste/registers and tab-completion (very unlikely with current implementation)
 // If it's a pressing feature switch to the more standard (less responsive) implementation
 function b32
-vim_handle_visual_insert_mode(App *app, Input_Event *event)
+vim_handle_visual_insert_mode(App *app0, Input_Event *event)
 {
+ App_Cmd app_value = app_cmd_event(app0, event);
+ App_Cmd *app = &app_value;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
  
@@ -265,13 +267,16 @@ vim_handle_visual_insert_mode(App *app, Input_Event *event)
 		count++;
 		return true;
 	}
-
+ 
 	event->kind = InputEventKind_None;
 	return false;
 }
 
 function b32
-vim_handle_replace_mode(App *app, Input_Event *event){
+vim_handle_replace_mode(App *app0, Input_Event *event)
+{
+ App_Cmd app_value = app_cmd_event(app0, event);
+ App_Cmd *app = &app_value;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	if(event->kind == InputEventKind_KeyStroke){
@@ -284,7 +289,7 @@ vim_handle_replace_mode(App *app, Input_Event *event){
 			if(has_modifier(event, Key_Code_Control)){
 				i64 cursor_pos = view_get_cursor_pos(app, view);
 				while(cursor_pos != view_get_mark_pos(app, view) &&
-					  !char_is_whitespace(buffer_get_char(app, buffer, cursor_pos-1)))
+          !char_is_whitespace(buffer_get_char(app, buffer, cursor_pos-1)))
 				{
 					undo(app);
 					cursor_pos = view_get_cursor_pos(app, view);

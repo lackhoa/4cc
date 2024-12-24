@@ -9,7 +9,7 @@ struct Meta_Directories{
  Stringz game_gen;
 };
 global Meta_Directories meta_dirs;  //@meta_dirs_init
-struct Meta_Parsed_File{
+struct Lexed_File{
  String name;
  String data;
  Token_List token_list;

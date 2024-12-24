@@ -82,7 +82,7 @@
 #include "stb_sprintf.h"
 //~
 
-#define implies(a,b)  !(a) || b
+#define implies(a,b)  !(a) || (b)
 #define cast_to_var(type, variable, value)  type variable = (type)value
 #define cast_to(variable, value)            variable = (mytypeof(variable))(value)
 #define cast_assign(variable, value)        variable = (mytypeof(variable))(value)
@@ -1488,9 +1488,12 @@ set_in_block(variable, variable+value)
 
 //~NOTE: Array
 // NOTE(kv): Can be zero-inited -> GOOD!
+//NOTE(kv) Because I hate the terrible template syntax
+#define darray(T) Dynamic_Array<T>
 //TODO(kv) Please don't templatize so much code!
 template<class T>
-struct arrayof{
+struct Dynamic_Array
+{
  i1 count;
  i1 cap;
  b32 fixed_size;
@@ -1575,17 +1578,18 @@ struct arrayof{
   return result;
  }
  
- arrayof<T> copy(Arena *arena) {
-  arrayof<T> result = *this;
+ darray(T) copy(Arena *arena) {
+  darray(T) result = *this;
   result.items = push_array(arena, T, count);
   umm size = count*sizeof(T);
   block_copy(result.items, items, size);
   return result;
  }
 };
+
 template<class T>
 inline void
-init_static(arrayof<T> &array, Arena *arena, i32 cap,
+init_static(darray(T) &array, Arena *arena, i32 cap,
             Push_Params params=default_push_params){
  array = {
   .cap        = cap,
@@ -1594,17 +1598,17 @@ init_static(arrayof<T> &array, Arena *arena, i32 cap,
  };
 }
 template<class T>
-inline arrayof<T>
+inline darray(T)
 static_array(Arena *arena, i32 cap,
              Push_Params params=default_push_params){
- arrayof<T> array;
+ darray(T) array;
  init_static(array, arena, cap, params);
  return array;
 }
 
 template<class T>
 inline void
-init_static(arrayof<T> &array, T *backing_buffer, i32 cap){
+init_static(darray(T) &array, T *backing_buffer, i32 cap){
  array = {
   .cap        = cap,
   .fixed_size = true,
@@ -1612,40 +1616,33 @@ init_static(arrayof<T> &array, T *backing_buffer, i32 cap){
  };
 }
 template<class T>
-inline arrayof<T>
+inline darray(T)
 static_array(T *backing_buffer, i32 cap){
- arrayof<T> array; init_static(array, backing_buffer, cap); return array;
+ darray(T) array;
+ init_static(array, backing_buffer, cap);
+ return array;
 }
 template<class T>
 inline void
-init_dynamic(arrayof<T> &array, Base_Allocator *allocator, i1 initial_size=0){
+init_dynamic(darray(T) &array, Base_Allocator *allocator, i1 initial_size=0){
  array = { .allocator = allocator };
  array.set_cap_min(initial_size);
-}
-template<class T>
-inline arrayof<T>
-dynamic_array(Base_Allocator *allocator, i1 initial_size=0){
- arrayof<T> array; init_dynamic(array, allocator, initial_size); return array;
 }
 
 function Base_Allocator *
 push_arena_base_allocator(Arena *arena);
+
 template<class T>
 inline void
-init_dynamic(arrayof<T> &array, Arena *arena, i1 initial_size=0){
+init_dynamic(darray(T) &array, Arena *arena, i1 initial_size=0){
  auto alloc = push_arena_base_allocator(arena);
  init_dynamic<T>(array, alloc, initial_size);
-}
-template<class T>
-inline arrayof<T>
-dynamic_array(Arena *arena, i1 initial_size=0){
- arrayof<T> array; init_dynamic(array, arena, initial_size); return array;
 }
 //~
 
 template<class T>
 function T *
-push_unique(arrayof<T> &array, T const&item)
+push_unique(darray(T) &array, T const&item)
 {
  T *result = 0;
  b32 ok = true;

@@ -5,7 +5,7 @@
 // TOP
 
 function Buffer_Insertion
-begin_buffer_insertion_at(App *app, Buffer_ID buffer_id, i64 at)
+begin_buffer_insertion_at(App_Cmd *app, Buffer_ID buffer_id, i64 at)
 {
  Buffer_Insertion result = {
   .app    = app,
@@ -16,7 +16,7 @@ begin_buffer_insertion_at(App *app, Buffer_ID buffer_id, i64 at)
 }
 
 function Buffer_Insertion
-begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, u8 *memory, umm cap)
+begin_buffer_insertion_at_buffered(App_Cmd *app, Buffer_ID buffer_id, i64 at, u8 *memory, umm cap)
 {
  Buffer_Insertion result = begin_buffer_insertion_at(app, buffer_id, at);
  result.buffering = true;
@@ -26,13 +26,13 @@ begin_buffer_insertion_at_buffered(App *app, Buffer_ID buffer_id, i64 at, u8 *me
 }
 
 function Buffer_Insertion
-begin_buffer_insertion_at_buffered2(App *app, Buffer_ID buffer_id, i64 at, Arena *arena, u64 buffer_cap) {
+begin_buffer_insertion_at_buffered2(App_Cmd *app, Buffer_ID buffer_id, i64 at, Arena *arena, u64 buffer_cap) {
  u8 *memory = push_size(arena, buffer_cap);
  return(begin_buffer_insertion_at_buffered(app, buffer_id, at, memory, buffer_cap));
 }
 
 function Buffer_Insertion
-begin_buffer_insertion(App *app){
+begin_buffer_insertion(App_Cmd *app){
  View_ID view = get_active_view(app, Access_Always);
  Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
  i64 cursor_pos = view_get_cursor_pos(app, view);

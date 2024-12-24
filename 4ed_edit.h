@@ -9,15 +9,18 @@
 
 // TOP
 
-#if !defined(FRED_EDIT_H)
-#define FRED_EDIT_H
+#pragma once
 
 struct Edit_Behaviors{
-    b32 do_not_post_to_history;
-    i64 pos_before_edit;
+ b32 no_post_to_history;
+ i64 pos_before_edit;
+};
+struct Edit_Behaviors2{
+ b32 no_post_to_history;
+ i64 pos_before_edit;
+ b32 automated;
 };
 
-#endif
+global b32 human_has_edited_after_macro;
 
 // BOTTOM
-

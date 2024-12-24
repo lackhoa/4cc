@@ -34,7 +34,7 @@ unlerp(f32 a, Range_f32 x, f32 b)
 #include "4coder_table.h"
 
 //TODO(kv) Hello, why are these here?
-#include "custom_command_defines.h"
+//#include "custom_command_defines.h"
 #include "4coder_default_colors.h"
 #include "ad_debug.h"
 

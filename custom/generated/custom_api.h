@@ -15,8 +15,8 @@
 #define custom_get_buffer_by_filename_sig() Buffer_ID custom_get_buffer_by_filename(App* app, String filename, Access_Flag access)
 #define custom_is_buffer_limited_edit_sig() b32 custom_is_buffer_limited_edit(App* app, Buffer_ID buffer_id)
 #define custom_buffer_read_range_sig() b32 custom_buffer_read_range(App* app, Buffer_ID buffer_id, Range_i64 range, u8* out)
-#define custom_buffer_replace_range_sig() b32 custom_buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string)
-#define custom_buffer_batch_edit_sig() b32 custom_buffer_batch_edit(App* app, Buffer_ID buffer_id, Batch_Edit* batch)
+#define custom_buffer_replace_range_sig() b32 custom_buffer_replace_range(App_Cmd* app, Buffer_ID buffer_id, Range_i64 range, String string)
+#define custom_buffer_batch_edit_sig() b32 custom_buffer_batch_edit(App_Cmd* app, Buffer_ID buffer_id, Batch_Edit* batch)
 #define custom_buffer_seek_string_sig() String_Match custom_buffer_seek_string(App* app, Buffer_ID buffer, String8 needle, Scan_Direction direction, i64 start_pos, b32 case_sensitive)
 #define custom_buffer_seek_character_class_sig() String_Match custom_buffer_seek_character_class(App* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos)
 #define custom_buffer_line_y_difference_sig() f32 custom_buffer_line_y_difference(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b)
@@ -210,9 +210,9 @@
 #define buffer_read_range__return b32
 #define buffer_read_range__params App* app, Buffer_ID buffer_id, Range_i64 range, u8* out
 #define buffer_replace_range__return b32
-#define buffer_replace_range__params App* app, Buffer_ID buffer_id, Range_i64 range, String string
+#define buffer_replace_range__params App_Cmd* app, Buffer_ID buffer_id, Range_i64 range, String string
 #define buffer_batch_edit__return b32
-#define buffer_batch_edit__params App* app, Buffer_ID buffer_id, Batch_Edit* batch
+#define buffer_batch_edit__params App_Cmd* app, Buffer_ID buffer_id, Batch_Edit* batch
 #define buffer_seek_string__return String_Match
 #define buffer_seek_string__params App* app, Buffer_ID buffer, String8 needle, Scan_Direction direction, i64 start_pos, b32 case_sensitive
 #define buffer_seek_character_class__return String_Match
@@ -740,8 +740,8 @@ function Buffer_ID get_buffer_by_name(App* app, String8 name, Access_Flag access
 function Buffer_ID get_buffer_by_filename(App* app, String filename, Access_Flag access);
 function b32 is_buffer_limited_edit(App* app, Buffer_ID buffer_id);
 function b32 buffer_read_range(App* app, Buffer_ID buffer_id, Range_i64 range, u8* out);
-function b32 buffer_replace_range(App* app, Buffer_ID buffer_id, Range_i64 range, String string);
-function b32 buffer_batch_edit(App* app, Buffer_ID buffer_id, Batch_Edit* batch);
+function b32 buffer_replace_range(App_Cmd* app, Buffer_ID buffer_id, Range_i64 range, String string);
+function b32 buffer_batch_edit(App_Cmd* app, Buffer_ID buffer_id, Batch_Edit* batch);
 function String_Match buffer_seek_string(App* app, Buffer_ID buffer, String8 needle, Scan_Direction direction, i64 start_pos, b32 case_sensitive);
 function String_Match buffer_seek_character_class(App* app, Buffer_ID buffer, Character_Predicate* predicate, Scan_Direction direction, i64 start_pos);
 function f32 buffer_line_y_difference(App* app, Buffer_ID buffer_id, f32 width, Face_ID face_id, i64 line_a, i64 line_b);

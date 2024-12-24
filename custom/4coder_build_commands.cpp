@@ -71,39 +71,39 @@ function void
 vim_set_bottom_text(String msg);
 
 function b32
-standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, char *command_args)
+standard_search_and_build_from_dir(App_Cmd *app, View_ID view, String8 start_dir, char *command_args)
 {
  Scratch_Block scratch(app);
  
  // NOTE(allen): Search
-    String8 full_file_path = {};
-    String8 cmd_string  = {};
-    for (u32 i = 0; i < ArrayCount(standard_build_filename_array); i += 1)
-    {
-        full_file_path = search_up_path(scratch, start_dir, standard_build_filename_array[i]);
-        if (full_file_path.size > 0){
-            cmd_string = standard_build_cmd_string_array[i];
-            break;
-        }
-    }
-    
-    b32 result = (full_file_path.size > 0);
-    if (result)
-    {
-        // NOTE(allen): Build
-        String8 path = path_dir(full_file_path);
-        String8 command = push_stringfz(scratch, "\"%.*s/%.*s\" %s",
-                                       string_expand(path),
-                                       string_expand(cmd_string),
-                                       command_args);
-        b32 auto_save = def_get_config_b32(vars_intern_lit("automatically_save_changes_on_build"));
-        if (auto_save)
-        {
-            save_all_dirty_buffers(app);
-        }
-        standard_build_exec_command(app, view, path, command);
-        vim_set_bottom_text(push_stringfz(scratch, "Building with: %.*s\n", string_expand(full_file_path)));
-    }
+ String8 full_file_path = {};
+ String8 cmd_string  = {};
+ for (u32 i = 0; i < ArrayCount(standard_build_filename_array); i += 1)
+ {
+  full_file_path = search_up_path(scratch, start_dir, standard_build_filename_array[i]);
+  if (full_file_path.size > 0){
+   cmd_string = standard_build_cmd_string_array[i];
+   break;
+  }
+ }
+ 
+ b32 result = (full_file_path.size > 0);
+ if (result)
+ {
+  // NOTE(allen): Build
+  String8 path = path_dir(full_file_path);
+  String8 command = push_stringfz(scratch, "\"%.*s/%.*s\" %s",
+                                  string_expand(path),
+                                  string_expand(cmd_string),
+                                  command_args);
+  b32 auto_save = def_get_config_b32(vars_intern_lit("automatically_save_changes_on_build"));
+  if (auto_save)
+  {
+   save_all_dirty_buffers(app);
+  }
+  standard_build_exec_command(app, view, path, command);
+  vim_set_bottom_text(push_stringfz(scratch, "Building with: %.*s\n", string_expand(full_file_path)));
+ }
  
  return(result);
 }
@@ -111,7 +111,7 @@ standard_search_and_build_from_dir(App *app, View_ID view, String8 start_dir, ch
 // NOTE(allen): This searches first using the active file's directory,
 // then if no build script is found, it searches from 4coders hot directory.
 function void
-standard_search_and_build(App *app, View_ID view, Buffer_ID active_buffer, char *command_args)
+standard_search_and_build(App_Cmd *app, View_ID view, Buffer_ID active_buffer, char *command_args)
 {
  Scratch_Block scratch(app);
  b32 did_build = false;
@@ -188,10 +188,8 @@ push_buffer_dirname(App *app, Arena *arena, Buffer_ID buffer)
  String8 filename = push_buffer_filepath(app, arena, buffer);
  return path_dir(filename);
 }
-
-
 function void 
-build_in_bottom_view(App *app, char *command_args)
+build_in_bottom_view(App_Cmd *app, char *command_args)
 {
  View_ID   view   = get_active_view(app, Access_Always);
  Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -217,15 +215,15 @@ kv_search_build_file_from_dir(Arena *arena, String start_dir)
     {
         full_file_path = search_up_path(arena, start_dir, standard_build_filename_array[i]);
         if (full_file_path.size > 0)
-        {
-            break;
+  {
+   break;
   }
  }
  return full_file_path;
 }
 
 function void 
-kv_build_normal(App *app)
+kv_build_normal(App_Cmd *app)
 {
  GET_VIEW_AND_BUFFER;
  
@@ -238,13 +236,13 @@ kv_build_normal(App *app)
 }
 
 function void
-kv_build_run_only(App *app)
+kv_build_run_only(App_Cmd *app)
 {
  build_in_bottom_view(app, "--action run");
 }
 
 function void 
-kv_build_full_rebuild(App *app)
+kv_build_full_rebuild(App_Cmd *app)
 {
  build_in_bottom_view(app, "--full");
 }

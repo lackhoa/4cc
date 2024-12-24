@@ -8,10 +8,10 @@ enum Modeler_Edit_Type{
  ME_Count,
 };
 struct Modeler_Edit;
-typedef arrayof<Modeler_Edit> Edit_Group;
+typedef darray(Modeler_Edit) Edit_Group;
 
 struct Vert_Move{
- arrayof<Vertex_Index> verts;
+ darray(Vertex_Index) verts;
  v3 delta;
 };
 struct Modeler_Edit{
@@ -25,7 +25,7 @@ struct Modeler_History{
  Arena arena;
  b32 inited;
  Base_Allocator allocator;
- arrayof<Modeler_Edit> edit_stack;
+ darray(Modeler_Edit) edit_stack;
  i1 redo_index;
 };
 //-
@@ -37,14 +37,14 @@ struct Modeler  // see @init_modeler
  Common_Line_Params *line_cparams;
  
  //NOTE(kv) Do we need really need these arrays?
- arrayof<Vertex_Data> vertices;
- arrayof<Curve_Data>  curves;
+ darray(Vertex_Data) vertices;
+ darray(Curve_Data)  curves;
  
  //-NOTE: Editor
  u32 selected_prim_ro;  // todo: There could be multiple selected obj?
  b32 change_uncommitted;
  b32 selection_spanning;
- arrayof<u32> active_prims;
+ darray(u32) active_prims;
  Modeler_History history;
 };
 //-NOTE: Vertex

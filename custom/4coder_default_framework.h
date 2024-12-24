@@ -22,7 +22,7 @@ enum{
 struct ID_Line_Column_Jump_Location{
     Buffer_ID buffer_id;
     i32 line;
-    i32 column;
+ i32 column;
 };
 typedef ID_Line_Column_Jump_Location ID_Based_Jump_Location;
 
@@ -30,6 +30,12 @@ struct ID_Pos_Jump_Location{
  Buffer_ID buffer_id;
  i64 pos;
 };
+
+myinline b32
+is_valid(ID_Pos_Jump_Location location)
+{
+ return location.buffer_id != 0;
+}
 
 struct Name_Line_Column_Location{
  String file;
@@ -87,10 +93,10 @@ typedef void View_Render_Hook(App *app, View_ID view, Frame_Info frame_info, Rec
 ////////////////////////////////
 
 function b32
-do_buffer_kill_user_check(App *app, Buffer_ID buffer, View_ID view);
+do_buffer_kill_user_check(App_Cmd *app, Buffer_ID buffer, View_ID view);
 
 function b32
-do_4coder_close_user_check(App *app, View_ID view);
+do_4coder_close_user_check(App_Cmd *app, View_ID view);
 
 ////////////////////////////////
 
@@ -102,25 +108,25 @@ struct Buffer_Modified_Node{
 
 struct Buffer_Modified_Set{
     Arena arena;
-    Buffer_Modified_Node *free;
-    Buffer_Modified_Node *first;
-    Buffer_Modified_Node *last;
-    Table_u64_u64 id_to_node;
+ Buffer_Modified_Node *free;
+ Buffer_Modified_Node *first;
+ Buffer_Modified_Node *last;
+ Table_u64_u64 id_to_node;
 };
 
 ////////////////////////////////
 
 struct Fade_Range{
-    Fade_Range *next;
-    Buffer_ID buffer_id;
-    f32 t;
-    f32 full_t;
-    ARGB_Color color;
-    b32 negate_fade_direction;
-    Range_i64 range;
-    
-    void (*finish_call)(App *app, struct Fade_Range *range);
-    void *opaque[4];
+ Fade_Range *next;
+ Buffer_ID buffer_id;
+ f32 t;
+ f32 full_t;
+ ARGB_Color color;
+ b32 negate_fade_direction;
+ Range_i64 range;
+ 
+ void (*finish_call)(App *app, struct Fade_Range *range);
+ void *opaque[4];
 };
 
 struct Fade_Range_List{

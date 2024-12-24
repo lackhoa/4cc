@@ -370,7 +370,7 @@ function b32
 is_buffer_synced(Game_State *state, String filename)
 {
  b32 result = true;
- arrayof<String> *unsynced_files = &state->unsynced_files;
+ darray(String )*unsynced_files = &state->unsynced_files;
  for_i32(i, 0, unsynced_files->count){
   if(unsynced_files->items[i] == filename){
    result = false;

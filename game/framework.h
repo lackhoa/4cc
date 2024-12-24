@@ -36,14 +36,14 @@ struct Game_State
  Viewport viewports[GAME_VIEWPORT_COUNT];
  b32 save_failed;
  b32 load_failed;
- arrayof<String> command_queue;
+ darray(String )command_queue;
  Game_ImGui_State imgui_state;
  b32 kb_cursor_mode;
  Serialized_State_Embed;
  Pose pose;//todo(kv) What is this?
  v1 anime_time;
  b32 sending_data;
- arrayof<String> unsynced_files;
+ darray(String )unsynced_files;
  Driver_API driver_api;
  u32 hot_prim_id;
  Driver_DLL driver_dll;

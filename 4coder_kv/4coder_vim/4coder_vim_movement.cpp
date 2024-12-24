@@ -1,14 +1,16 @@
 #include "4coder_vim_helper.cpp"
 
 function void
-right_adjust_view(App *app);
+right_adjust_view(App_Cmd *app);
 
-VIM_COMMAND_SIG(vim_begin_line){
+function void 
+vim_begin_line(App_Cmd *app){
 	Vim_Motion_Block vim_motion_block(app);
 	right_adjust_view(app);
 }
 
-VIM_COMMAND_SIG(vim_line_start){
+function void 
+vim_line_start(App_Cmd *app){
 	Vim_Motion_Block vim_motion_block(app);
 	seek_beginning_of_line(app);
 }
@@ -28,7 +30,7 @@ line_last_nonwhite(App *app, Buffer_ID buffer, i64 pos)
 }
 
 function void
-vim_end_line(App *app)
+vim_end_line(App_Cmd *app)
 {
  Vim_Motion_Block vim_motion_block(app);
  View_ID view = get_active_view(app, Access_ReadVisible);
@@ -38,7 +40,8 @@ vim_end_line(App *app)
 	view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
 }
 
-function void vim_scroll_inner(App *app, f32 ratio){
+function void
+vim_scroll_inner(App_Cmd *app, f32 ratio){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	// vim_push_jump(app, view);  @modified(kv): this is just moving the screen, so why jump?
 	Vim_Motion_Block vim_motion_block(app);
@@ -57,7 +60,8 @@ function void vim_scroll_inner(App *app, f32 ratio){
 	no_mark_snap_to_cursor(app, view);
 }
 
-VIM_COMMAND_SIG(vim_file_top){
+function void 
+vim_file_top(App_Cmd *app){
 	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
 	Vim_Motion_Block vim_motion_block(app);
 	vim_state.params.edit_type = EDIT_LineWise;
@@ -66,7 +70,8 @@ VIM_COMMAND_SIG(vim_file_top){
 }
 
 
-VIM_COMMAND_SIG(vim_goto_line){
+function void 
+vim_goto_line(App_Cmd *app){
 	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
 	Vim_Motion_Block vim_motion_block(app);
 	vim_state.params.edit_type = EDIT_LineWise;
@@ -77,7 +82,8 @@ VIM_COMMAND_SIG(vim_goto_line){
 	}
 }
 
-VIM_COMMAND_SIG(vim_goto_column){
+function void 
+vim_goto_column(App_Cmd *app){
 	Vim_Motion_Block vim_motion_block(app);
 	if(vim_state.number == 0){ right_adjust_view(app); }
 	else{
@@ -89,7 +95,8 @@ VIM_COMMAND_SIG(vim_goto_column){
 	}
 }
 
-VIM_COMMAND_SIG(vim_percent_file){
+function void 
+vim_percent_file(App_Cmd *app){
 	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
 	Vim_Motion_Block vim_motion_block(app);
 	vim_state.params.edit_type = EDIT_LineWise;
@@ -103,7 +110,9 @@ VIM_COMMAND_SIG(vim_percent_file){
 }
 
 
-function void vim_screen_inner(App *app, f32 ratio, i32 offset){
+function void
+vim_screen_inner(App_Cmd *app, f32 ratio, i32 offset)
+{
 	Vim_Motion_Block vim_motion_block(app);
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -352,7 +361,9 @@ function b32 vim_seek_char_inner(App *app, Scan_Direction Scan){
 	return true;
 }
 
-function void vim_seek_char(App *app){
+function void
+vim_seek_char(App_Cmd *app)
+{
 	Vim_Motion_Block vim_motion_block(app);
 	b32 valid = true;
 	const i32 N = vim_consume_number();
@@ -362,13 +373,23 @@ function void vim_seek_char(App *app){
 		move_horizontal_lines(app, -vim_state.params.seek.direction);
 	}
 }
+//TODO(kv) C++ I hate you!!!
+typedef void Custom_Command_Function_2(App *app);
 
-VIM_COMMAND_SIG(vim_set_seek_char){
+function Custom_Command_Function*
+wrap_custom_command(Custom_Command_Function_2 command)
+{
+ return (Custom_Command_Function*)command;
+}
+function void
+vim_set_seek_char(App_Cmd *app)
+{
 	User_Input input = get_current_input(app);
-	if(input.event.kind == InputEventKind_KeyStroke){
+	if(input.event.kind == InputEventKind_KeyStroke)
+ {
 		vim_state.params.seek.clusivity = (input.event.key.code == Key_Code_T ? VIM_Exclusive : VIM_Inclusive);
 		vim_state.params.seek.direction = (has_modifier(&input.event, Key_Code_Shift) ? -1 : 1);
-
+  
 		u8 key = vim_query_user_key(app, strlit("-- SEEK NEXT --"));
 		if(key){
 			vim_state.params.seek.character = key;
@@ -378,7 +399,8 @@ VIM_COMMAND_SIG(vim_set_seek_char){
 	}
 }
 
-VIM_COMMAND_SIG(vim_seek_char_forward){
+function void 
+vim_seek_char_forward(App_Cmd *app){
 	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
 	Vim_Motion_Block vim_motion_block(app);
 	const i32 N = vim_consume_number();
@@ -388,7 +410,8 @@ VIM_COMMAND_SIG(vim_seek_char_forward){
 	}
 }
 
-VIM_COMMAND_SIG(vim_seek_char_backward){
+function void 
+vim_seek_char_backward(App_Cmd *app){
 	vim_push_jump(app, get_active_view(app, Access_ReadVisible));
 	Vim_Motion_Block vim_motion_block(app);
 	const i32 N = vim_consume_number();
@@ -567,8 +590,8 @@ VIM_TEXT_OBJECT_SIG(vim_scan_object_quotes){
 
 // NOTE(BYP): Default vim behavior for Visual Block on Text Objects is to do nothing.
 // I have chosen to ignore this, since it takes exactly no effort on my part to make it work.
-function void 
-vim_text_object(App *app)
+function void
+vim_text_object(App_Cmd *app)
 {
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -587,9 +610,9 @@ vim_text_object(App *app)
 			break;
 		}
 	}
-
+ 
 	if(!did_range){
-
+  
 		/// Scope objects
 		if(vim_character_can_bounce(character)){
 			u8 c = buffer_get_char(app, buffer, cursor_pos);
@@ -598,7 +621,7 @@ vim_text_object(App *app)
 				range = Ii64(vim_bounce_pair(app, buffer, cursor_pos, c), cursor_pos);
 			}else{
 				range = Ii64(vim_bounce_pair(app, buffer, cursor_pos, character),
-							 vim_bounce_pair(app, buffer, cursor_pos, b_character));
+                 vim_bounce_pair(app, buffer, cursor_pos, b_character));
 			}
 			if(vim_state.params.clusivity == VIM_Exclusive){
 				range.min++;
@@ -607,15 +630,15 @@ vim_text_object(App *app)
 				vim_state.params.clusivity = VIM_Inclusive;
 			}
 		}
-
+  
 		/// Quote objects
 		else if(character == '"' || character == '\''){
 			range = vim_scan_object_quotes(app, buffer, cursor_pos);
 		}
 	}
-
+ 
 	if(range.min && range.max)
-    {
+ {
 		vim_push_jump(app, view);
 		{
 			Vim_Motion_Block vim_motion_block(app, range.max);
@@ -625,8 +648,8 @@ vim_text_object(App *app)
 		}
 		vim_state.prev_params.clusivity = object_clusivity;
 	}
-    else
-    {
+ else
+ {
 		vim_reset_state();
 	}
 }

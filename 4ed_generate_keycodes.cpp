@@ -179,7 +179,7 @@ main(void){
     String path_to_self = strlit(__FILE__);
     path_to_self = string_remove_last_folder(path_to_self);
     String file_name =
-        push_u8_stringf(&arena, "%.*scustom/generated/4coder_event_codes.h",
+        push_u8_stringf(&arena, "%.*scustom/generated_old/4coder_event_codes.h",
                         string_expand(path_to_self));
     
     FILE *out = fopen((char*)file_name.str, "wb");

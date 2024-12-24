@@ -73,7 +73,6 @@ vim_draw_visual_mode(App *app, View_ID view, Buffer_ID buffer, Face_ID face_id, 
 		} break;
 	}
 }
-
 function void
 vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info, Face_ID face_id, Rect_f32 bar)
 {
@@ -120,7 +119,8 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
 	
 	str = Su8(space, 0, 5);
 	Dirty_State dirty = buffer_get_dirty_state(app, buffer);
-	if(dirty != 0){
+	if(dirty)
+ {
 		string_concat(&str, strlit(" ["));
 		if(HasFlag(dirty, DirtyState_UnsavedChanges)){
 			string_concat(&str, strlit("+"));
@@ -141,6 +141,36 @@ vim_draw_filebar(App *app, View_ID view, Buffer_ID buffer, Frame_Info frame_info
   }
  }
 	
+ if(view_active)
+ {//-Build status
+  if(not dirty)
+  {
+   Buffer_ID bottom_buffer = view_get_buffer(app, global_bottom_view, Access_Always);
+   Child_Process_ID procid = buffer_get_attached_child_process(app, bottom_buffer);
+   Process_State state = child_process_get_state(app, procid);
+   
+   if(state.valid){
+    u32 color = 0xff9F5E4A;
+    String string = strlit("");
+    
+    if(state.updating){
+     string = strlit("[...]");
+    }else{
+     if(state.return_code == 0){
+      //NOTE success
+      string = strlit("[ok]");
+      color = 0xFF128205;
+     }else{
+      //NOTE failure
+      string = strlit("[fail]");
+     }
+    }
+    
+    draw_p = draw_string(app, face_id, string, draw_p, color);
+   }
+  }
+ }
+ 
 	draw_p.x = Max(draw_p.x + 5.f*char_wid, bar.x1 - char_wid*15.f);
 	draw_string(app, face_id, push_stringfz(scratch, "%d,%d", cursor.line, cursor.col), draw_p, base_color);
 	

@@ -2850,11 +2850,35 @@ function Thread_Context *
 get_thread_context(){
  return &global_thread_context;
 }
-struct App {
+struct App
+{
  Thread_Context *tctx;
  void *cmd_context;
 };
+
 typedef App Application_Links;  // NOTE: has to be here for the 4coder meta-generator.
+
+//NOTE(kv) Omg, what am I doing?
+struct App_Cmd : App
+{
+ b32 automated;
+};
+myinline App_Cmd
+app_cmd(App *app, b32 automated)
+{
+ App_Cmd result = {};
+ (App &)result = *app;
+ result.automated = automated;
+ return result;
+}
+myinline App_Cmd
+app_cmd_automated(App *app)
+{
+ App_Cmd result = {};
+ (App &)result = *app;
+ result.automated = true;
+ return result;
+}
 
 api(custom) function Thread_Context*
 get_thread_context(App *app){

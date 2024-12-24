@@ -4,7 +4,7 @@ struct Source_Map_Entry{
  i32 source_pos;
  i32 gen_pos;
 };
-typedef arrayof<Source_Map_Entry> Source_Map;
+typedef darray(Source_Map_Entry) Source_Map;
 
 struct Meta_Printer : Printer{
  Source_Map source_map;
@@ -23,7 +23,7 @@ struct Meta_Type_Names{
  String global_info_name;
  String read_function_name;
 };
-global arrayof<Meta_Type_Names> meta_type_name_store;
+global darray(Meta_Type_Names) meta_type_name_store;
 
 struct Enclosed_in_strlit{ String string; };
 function void
@@ -48,7 +48,7 @@ print(Printer &p, Repeated_Printee item){
 }
 //-
 function void
-print_comma_separated(Printer &p, arrayof<String> list){
+print_comma_separated(Printer &p, darray(String) list){
  for_i32(i,0,list.count){
   if(i){ p<", "; }
   p<list.items[i];

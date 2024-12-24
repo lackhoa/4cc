@@ -1,8 +1,8 @@
 //-
 struct T_Table{
  String name;
- arrayof<String>   field_names;
- arrayof<String *> items;
+ darray(String)   field_names;
+ darray(String*) items;
 };
 function i32
 get_field_count(T_Table *table){
@@ -41,7 +41,7 @@ ep_id_inc_all(Ed_Parser *parser)
 }
 //-
 function T_Table *
-get_meta_list_by_name(arrayof<T_Table> *lists, String name)
+get_meta_list_by_name(darray(T_Table) *lists, String name)
 {
  T_Table *result = 0;
  for_i32(list_index, 0, lists->count){
@@ -83,14 +83,14 @@ ep_inc_all_skip_comments(Ed_Parser *parser)
 }
 //-
 function void
-template_gen_for(arrayof<T_Table> *tables, Ed_Parser *parser,
+template_gen_for(darray(T_Table) *tables, Ed_Parser *parser,
                  Meta_Printer &printer)
 {
  String for_loop_var_name = {};
  Scratch_Block for_loop_scratch;
- arrayof<Template_Node> for_loop_nodes;
+ darray(Template_Node) for_loop_nodes;
  init_dynamic(for_loop_nodes, for_loop_scratch, 16);
- arrayof<String> exclude_list;
+ darray(String) exclude_list;
  init_dynamic(exclude_list, for_loop_scratch, 8);
  
  T_Table *loop_table;
@@ -228,7 +228,7 @@ template_gen_for(arrayof<T_Table> *tables, Ed_Parser *parser,
  }
 }
 function void
-template_codegen_mode(arrayof<T_Table> *tables, Ed_Parser *parser, Meta_Printer &printer)
+template_codegen_mode(darray(T_Table) *tables, Ed_Parser *parser, Meta_Printer &printer)
 {
  ep_char_inc_all(parser, '{');
  
@@ -263,7 +263,7 @@ template_codegen_mode(arrayof<T_Table> *tables, Ed_Parser *parser, Meta_Printer 
  }
 }
 function b32
-template_main(Meta_Parsed_File source)
+template_main(Lexed_File source)
 {
  Scratch_Block file_arena;
  b32 ok = true;
@@ -272,7 +272,7 @@ template_main(Meta_Parsed_File source)
  
  Ed_Parser parser_value = ed_parser_from_token_list(source.data, source.token_list);
  Ed_Parser *parser = &parser_value;
- arrayof<T_Table> tables;
+ darray(T_Table) tables;
  init_dynamic(tables, file_arena, 16);
  
  b32 parsing = true;

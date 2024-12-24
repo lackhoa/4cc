@@ -5,32 +5,32 @@ the default 4coder behavior.
 
 // TOP
 
-CUSTOM_ID(attachment, view_rewrite_loc);
-CUSTOM_ID(attachment, view_next_rewrite_loc);
-CUSTOM_ID(attachment, view_paste_index_loc);
-CUSTOM_ID(attachment, view_is_passive_loc);
-CUSTOM_ID(attachment, view_snap_mark_to_cursor);
-CUSTOM_ID(attachment, view_ui_data);
-CUSTOM_ID(attachment, view_highlight_range);
-CUSTOM_ID(attachment, view_highlight_buffer);
-CUSTOM_ID(attachment, view_render_hook);
-CUSTOM_ID(attachment, view_word_complete_menu);
-CUSTOM_ID(attachment, view_lister_loc);
-CUSTOM_ID(attachment, view_previous_buffer);
+global Managed_ID view_rewrite_loc; //attachment
+global Managed_ID view_next_rewrite_loc; //attachment
+global Managed_ID view_paste_index_loc; //attachment
+global Managed_ID view_is_passive_loc; //attachment
+global Managed_ID view_snap_mark_to_cursor; //attachment
+global Managed_ID view_ui_data; //attachment
+global Managed_ID view_highlight_range; //attachment
+global Managed_ID view_highlight_buffer; //attachment
+global Managed_ID view_render_hook; //attachment
+global Managed_ID view_word_complete_menu; //attachment
+global Managed_ID view_lister_loc; //attachment
+global Managed_ID view_previous_buffer; //attachment
 
-CUSTOM_ID(attachment, buffer_map_id);
-CUSTOM_ID(attachment, buffer_eol_setting);
-CUSTOM_ID(attachment, buffer_lex_task);
+global Managed_ID buffer_map_id; //attachment
+global Managed_ID buffer_eol_setting; //attachment
+global Managed_ID buffer_lex_task; //attachment
 
-CUSTOM_ID(attachment, sticky_jump_marker_handle);
-CUSTOM_ID(attachment, attachment_tokens);
+global Managed_ID sticky_jump_marker_handle; //attachment
+global Managed_ID attachment_tokens; //attachment
 
 ////////////////////////////////
 
 #if 0
-CUSTOM_ID(command_map, mapid_global);
-CUSTOM_ID(command_map, mapid_file);
-CUSTOM_ID(command_map, mapid_code);
+global Managed_ID mapid_global; //command_map
+global Managed_ID mapid_file; //command_map
+global Managed_ID mapid_code; //command_map
 #endif
 
 ////////////////////////////////

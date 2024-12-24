@@ -9,35 +9,7 @@
 
 // TOP
 
-#if !defined(FRED_VIEW_H)
-#define FRED_VIEW_H
-
-struct Co_In{
-    union{
-        struct{
-            struct Models *models;
-            Custom_Command_Function *event_context_base;
-        };
-        User_Input user_input;
-        Face_ID face_id;
-        b32 success;
-    };
-};
-
-typedef i1 Co_Request;
-enum{
-    CoRequest_None = 0,
-    CoRequest_NewFontFace = 1,
-    CoRequest_ModifyFace = 2,
-    CoRequest_AcquireGlobalFrameMutex = 3,
-    CoRequest_ReleaseGlobalFrameMutex = 4,
-};
-
-struct Co_Out{
-    Co_Request request;
-    Face_Description *face_description;
-    Face_ID face_id;
-};
+#pragma once
 
 struct Query_Slot{
     Query_Slot *next;
@@ -95,7 +67,6 @@ struct Live_Views{
     i1 max;
 };
 
-#endif
 
 // BOTTOM
 

@@ -978,15 +978,15 @@ log_graph__click_jump_to_event_source(App *app, v2 m_p)
                 }
             }
         }
-        else{
-            log_graph.has_unused_click = true;
-            log_graph.unused_click = m_p;
-        }
-    }
+  else{
+   log_graph.has_unused_click = true;
+   log_graph.unused_click = m_p;
+  }
+ }
 }
 
-CUSTOM_UI_COMMAND_SIG(show_the_log_graph)
-CUSTOM_DOC("Parses *log* and displays the 'log graph' UI")
+function void
+show_the_log_graph(App_Cmd *app)
 {
     if (log_view != 0){
         return;

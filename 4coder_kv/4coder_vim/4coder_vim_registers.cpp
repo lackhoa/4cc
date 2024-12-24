@@ -109,15 +109,15 @@ vim_copy(App *app, Buffer_ID buffer, Range_i64 range, Vim_Register *reg)
 	if(0){}
 	else if (reg == &vim_registers.system)
     {
-        clipboard_post(0, reg->data.string); 
-    }
+  clipboard_post(0, reg->data.string); 
+ }
 	// else if(reg == &vim_registers.expression){ vim_eval_register(app, reg); }
-
+ 
 	vim_update_registers(app);
 }
 
 function void
-vim_paste_from_register(App *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
+vim_paste_from_register(App_Cmd *app, View_ID view, Buffer_ID buffer, Vim_Register *reg)
 {
  if(reg->edit_type == EDIT_Block)
  {
@@ -156,52 +156,6 @@ vim_paste_from_register(App *app, View_ID view, Buffer_ID buffer, Vim_Register *
   vim_default_register();
  }
 }
-
-/* @Nouse
-VIM_COMMAND_SIG(vim_select_register)
-{
-	vim_is_selecting_register = true;
-	u8 c = vim_query_user_key(app, strlit("-- SELECT REGISTER --"));
-	vim_is_selecting_register = false;
-	if(c == 0){ return; }
-	Vim_Register *reg = vim_state.params.selected_reg;
-	u32 append = 0;
-
-	if(0){}
-	else if(c == '_'){ reg = 0; }
-	else if(c == '"'){ reg = &vim_registers.unnamed;      }
-	else if(c == '/'){ reg = &vim_registers.search;       }
-	else if(c == '.'){ reg = &vim_registers.insert;       }
-	else if(c == ':'){ reg = &vim_registers.command;      }
-	else if(c == '='){ reg = &vim_registers.expression;   }
-	else if(c == '-'){ reg = &vim_registers.small_delete; }
-	else if(c == '%'){ reg = &vim_registers.file;         }
-	else if(c == '0'){ reg = &vim_registers.yank;         }
-	else if(c == '*'){ reg = &vim_registers.system;       }
-	else if(c == '+'){ reg = &vim_registers.system;       }
-	else if(in_range('1', c, '9'+1)){ reg = &vim_registers.cycle[c-'1']; }
-	else if(in_range('a', c, 'z'+1)){ reg = &vim_registers.named[c-'a']; }
-	else if(in_range('A', c, 'Z'+1)){ reg = &vim_registers.named[c-'A']; append = REGISTER_Append; }
-	else{ return; }
-
-	vim_state.params.selected_reg = reg;
-	if(reg){
-		reg->flags &= (~REGISTER_Append);
-		reg->flags |= append;
-	}
-
-	if(vim_state.mode == VIM_Insert){
-		if(reg){
-			View_ID view = get_active_view(app, Access_ReadVisible);
-			Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-			reg->flags &= (~REGISTER_Append);
-			vim_paste_from_register(app, view, buffer, reg);
-		}
-	}else{
-		vim_state.chord_resolved = false;
-	}
-}
-*/
 
 // TODO(BYP): Be more rigorous in debugging/validating correctness on this
 function void

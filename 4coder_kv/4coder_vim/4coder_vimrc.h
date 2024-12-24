@@ -1,9 +1,9 @@
 #pragma once
 
-CUSTOM_ID(colors, defcolor_vim_filebar_pop);
-CUSTOM_ID(colors, defcolor_vim_chord_text);
-CUSTOM_ID(colors, defcolor_vim_chord_unresolved);
-CUSTOM_ID(colors, defcolor_vim_chord_error);
+global Managed_ID defcolor_vim_filebar_pop; //colors
+global Managed_ID defcolor_vim_chord_text; //colors
+global Managed_ID defcolor_vim_chord_unresolved; //colors
+global Managed_ID defcolor_vim_chord_error; //colors
 
 #define VIM_DO_ANIMATE                 1
 #define VIM_USE_TRADITIONAL_CHORDS     0

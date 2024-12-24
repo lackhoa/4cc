@@ -59,7 +59,7 @@ struct Prj_Open_File_Config
 {
  Prj_Pattern_List whitelist;
  Prj_Pattern_List blacklist;
- arrayof<String>  limited_edit_list;
+ darray(String)  limited_edit_list;
  Prj_Open_File_Flags flags;
 };
 

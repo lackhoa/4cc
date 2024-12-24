@@ -288,7 +288,7 @@ struct Painter
 
 global Painter *painter;  // see @init_painter
 
-myinline u32 get_hot_prim_id(){ return painter->hot_prim_id; }
+//myinline u32 get_hot_prim_id(){ return painter->hot_prim_id; }
 myinline b32 is_poly_enabled(){
  return (painter->painting_disabled == false);
 }

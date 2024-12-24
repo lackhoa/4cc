@@ -1,5 +1,5 @@
 function void
-push_entity_variant_inner(arrayof<Union_Variant> *variants, Union_Variant &variant){
+push_entity_variant_inner(darray(Union_Variant) *variants, Union_Variant &variant){
  Arena *arena = &meta_permanent_arena;
  variant.enum_name   = strcat(arena, "Curve_Type_", variant.name);
  variant.struct_name = strcat(arena, "Curve_",      variant.name);
@@ -9,7 +9,7 @@ push_entity_variant_inner(arrayof<Union_Variant> *variants, Union_Variant &varia
  }
 }
 function void
-push_curve_variant_with_endpoints(Arena *arena, arrayof<Union_Variant> *variants,
+push_curve_variant_with_endpoints(Arena *arena, darray(Union_Variant) *variants,
                                   i32 enum_value, String name, String name_lower,
                                   String struct_members){
  Union_Variant variant = {};
@@ -30,7 +30,7 @@ push_curve_variant_with_endpoints(Arena *arena, arrayof<Union_Variant> *variants
  m_entity_variant_info_table[enum_value].is_curve = true;
 }
 function void
-push_entity_variant(Arena *arena, arrayof<Union_Variant> *variants,
+push_entity_variant(Arena *arena, darray(Union_Variant) *variants,
                     i32 enum_value, String name, String name_lower,
                     String struct_members, M_Entity_Variant_Info type_info)
 {
@@ -53,7 +53,7 @@ entity_variant_is_curve(Union_Variant &variant){
 function void
 generate_entity_types(Printer &printer){
  Scratch_Block scratch;
- arrayof<Union_Variant> variants = {};
+ darray(Union_Variant) variants = {};
  //-NOTE @data of the variants
  //TODO(kv) I'd just pass the whole thing as a string, and be done with it!
  //  making macros is just so.damn.messy!
@@ -234,7 +234,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    for_i1(variant_index,0,variants.count){
     Union_Variant &variant = variants[variant_index];
     auto member_names = [&]()->void{
-     arrayof<String> list;
+     darray(String) list;
      init_dynamic(list, scratch);
      for_i32(im,0,variant.struct_members.count){
       auto &member = variant.struct_members[im];
@@ -299,7 +299,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
             p < member.name; separator(p);
            }
           }
-          p<"..."; separator(p);
+          p < "..."; separator(p);
          }
         }
         p<"\\\n";
@@ -327,6 +327,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
          }
         }
        }else{
+        //-stub
         print(p, "(...)");
        }
        p<"\n";
@@ -334,7 +335,8 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
      }
      if(entity_variant_is_curve(variant))
      {//-bb_ba
-      for_i32(is_ba,0,2){
+      for_i32(is_ba,0,2)
+      {
        b32 is_bb = !is_ba;
        p<"#define "<(is_ba?"ba_":"bb_")<variant.name_lower;
        m_parens{//NOTE macro parameters
@@ -355,7 +357,8 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
        m_parens{//NOTE bezier curve calculation
         member_names();
        }
-       p<";\n";
+       p<";\\\n";
+       print(p, "draw(name, __VA_ARGS__)\n");
       }
      }
     }

@@ -6,7 +6,7 @@ moving the cursor, which work even without the default 4coder framework.
 // TOP
 
 function void
-write_text(App *app, String insert, b32 move_cursor)
+write_text(App_Cmd *app, String insert, b32 move_cursor)
 {
  ProfileScope(app, "write text");
  if (insert.str != 0 && insert.size > 0)
@@ -65,19 +65,19 @@ write_text(App *app, String insert, b32 move_cursor)
 }
 
 inline void 
-write_text_input(App *app) {
+write_text_input(App_Cmd *app) {
  User_Input in = get_current_input(app);
  String insert = to_writable(&in);
  write_text(app, insert, true);
 }
 
 myinline void
-write_space_command(App *app) {
+write_space_command(App_Cmd *app) {
  write_text(app, strlit(" "), false);
 }
 
-CUSTOM_COMMAND_SIG(delete_char)
-CUSTOM_DOC("Deletes the character to the right of the cursor.")
+function void
+delete_char(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     if (!if_view_has_highlighted_range_delete_range(app, view)){
@@ -86,15 +86,15 @@ CUSTOM_DOC("Deletes the character to the right of the cursor.")
         i64 buffer_size = buffer_get_size(app, buffer);
         if (0 <= start && start < buffer_size){
             Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(start));
-            i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
-            i64 end = view_pos_from_relative_character(app, view, cursor.line, character + 1);
-            buffer_replace_range(app, buffer, Ii64(start, end), empty_string);
-        }
-    }
+   i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
+   i64 end = view_pos_from_relative_character(app, view, cursor.line, character + 1);
+   buffer_replace_range(app, buffer, Ii64(start, end), empty_string);
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(backspace_char)
-CUSTOM_DOC("Deletes the character to the left of the cursor.")
+function void
+backspace_char(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     if (!if_view_has_highlighted_range_delete_range(app, view)){
@@ -105,55 +105,57 @@ CUSTOM_DOC("Deletes the character to the left of the cursor.")
             Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(end));
             i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
             i64 start = view_pos_from_relative_character(app, view, cursor.line, character - 1);
-            if (buffer_replace_range(app, buffer, Ii64(start, end), empty_string)){
-                view_set_cursor_and_preferred_x(app, view, seek_pos(start));
-            }
-        }
-    }
+   if (buffer_replace_range(app, buffer, Ii64(start, end), empty_string)){
+    view_set_cursor_and_preferred_x(app, view, seek_pos(start));
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(set_mark)
-CUSTOM_DOC("Sets the mark to the current position of the cursor.")
+function void
+set_mark(App_Cmd *app)
+
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    i64 pos = view_get_cursor_pos(app, view);
-    view_set_mark(app, view, seek_pos(pos));
-    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ i64 pos = view_get_cursor_pos(app, view);
+ view_set_mark(app, view, seek_pos(pos));
+ view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-CUSTOM_COMMAND_SIG(cursor_mark_swap)
-CUSTOM_DOC("Swaps the position of the cursor and the mark.")
+function void
+cursor_mark_swap(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     i64 cursor = view_get_cursor_pos(app, view);
     i64 mark = view_get_mark_pos(app, view);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(mark));
-    view_set_mark(app, view, seek_pos(cursor));
+ view_set_cursor_and_preferred_x(app, view, seek_pos(mark));
+ view_set_mark(app, view, seek_pos(cursor));
 }
 
 
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(center_view)
-CUSTOM_DOC("Centers the view vertically on the line on which the cursor sits.")
+function void
+center_view(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Rect_f32 region = view_get_buffer_region(app, view);
-    i64 pos = view_get_cursor_pos(app, view);
-    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
-    f32 view_height = rect_height(region);
-    Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-    scroll.target.line_number = cursor.line;
-    scroll.target.pixel_shift.y = -view_height*0.5f;
-    view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
-    no_mark_snap_to_cursor(app, view);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Rect_f32 region = view_get_buffer_region(app, view);
+ i64 pos = view_get_cursor_pos(app, view);
+ Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+ f32 view_height = rect_height(region);
+ Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+ scroll.target.line_number = cursor.line;
+ scroll.target.pixel_shift.y = -view_height*0.5f;
+ view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+ no_mark_snap_to_cursor(app, view);
 }
 
-CUSTOM_COMMAND_SIG(left_adjust_view)
-CUSTOM_DOC("Sets the left size of the view near the x position of the cursor.")
+function void
+left_adjust_view(App_Cmd *app)
+
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    i64 pos = view_get_cursor_pos(app, view);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ i64 pos = view_get_cursor_pos(app, view);
  Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
  v2 p = view_relative_xy_of_pos(app, view, cursor.line, pos);
  Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
@@ -174,8 +176,8 @@ set_buffer_named(App *app, String8 name)
 #if 0
 jump click_set_cursor_and_mark();
 #endif
-CUSTOM_COMMAND_SIG(click_set_cursor_and_mark)
-CUSTOM_DOC("Sets the cursor position and mark to the mouse position.")
+function void
+click_set_cursor_and_mark(App_Cmd *app)
 {
  View_ID view = get_active_view(app, Access_ReadVisible);
  Mouse_State mouse = get_mouse_state(app);
@@ -187,8 +189,8 @@ CUSTOM_DOC("Sets the cursor position and mark to the mouse position.")
 #if 0
 jump click_set_cursor();
 #endif
-CUSTOM_COMMAND_SIG(click_set_cursor)
-CUSTOM_DOC("Sets the cursor position to the mouse position.")
+function void
+click_set_cursor(App_Cmd *app)
 {
  View_ID view = get_active_view(app, Access_ReadVisible);
  Mouse_State mouse = get_mouse_state(app);
@@ -197,31 +199,31 @@ CUSTOM_DOC("Sets the cursor position to the mouse position.")
  no_mark_snap_to_cursor(app, view);
 }
 
-CUSTOM_COMMAND_SIG(click_set_cursor_if_lbutton)
-CUSTOM_DOC("If the mouse left button is pressed, sets the cursor position to the mouse position.")
+function void
+click_set_cursor_if_lbutton(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Mouse_State mouse = get_mouse_state(app);
-    if (mouse.l){
-        i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
-        view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
-    }
-    no_mark_snap_to_cursor(app, view);
-    set_next_rewrite(app, view, Rewrite_NoChange);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Mouse_State mouse = get_mouse_state(app);
+ if (mouse.l){
+  i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
+  view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ }
+ no_mark_snap_to_cursor(app, view);
+ set_next_rewrite(app, view, Rewrite_NoChange);
 }
 
-CUSTOM_COMMAND_SIG(click_set_mark)
-CUSTOM_DOC("Sets the mark position to the mouse position.")
+function void
+click_set_mark(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Mouse_State mouse = get_mouse_state(app);
-    i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
-    view_set_mark(app, view, seek_pos(pos));
-    no_mark_snap_to_cursor(app, view);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Mouse_State mouse = get_mouse_state(app);
+ i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
+ view_set_mark(app, view, seek_pos(pos));
+ no_mark_snap_to_cursor(app, view);
 }
 
-CUSTOM_COMMAND_SIG(mouse_wheel_scroll)
-CUSTOM_DOC("Reads the scroll wheel value from the mouse state and scrolls accordingly.")
+function void
+mouse_wheel_scroll(App_Cmd *app)
 {
  View_ID view = get_active_view(app, Access_ReadVisible);
  Mouse_State mouse = get_mouse_state(app);
@@ -283,54 +285,54 @@ move_vertical_lines(App *app, i64 lines){
 
 function f32
 get_page_jump(App *app, View_ID view){
-    Rect_f32 region = view_get_buffer_region(app, view);
-    return(rect_height(region)*.9f);
+ Rect_f32 region = view_get_buffer_region(app, view);
+ return(rect_height(region)*.9f);
 }
 
-CUSTOM_COMMAND_SIG(move_up)
-CUSTOM_DOC("Moves the cursor up one line.")
+function void
+move_up(App_Cmd *app)
 {
-    move_vertical_lines(app, -1);
+ move_vertical_lines(app, -1);
 }
 
-CUSTOM_COMMAND_SIG(move_down)
-CUSTOM_DOC("Moves the cursor down one line.")
+function void
+move_down(App_Cmd *app)
 {
-    move_vertical_lines(app, 1);
+ move_vertical_lines(app, 1);
 }
 
-CUSTOM_COMMAND_SIG(move_up_10)
-CUSTOM_DOC("Moves the cursor up ten lines.")
+function void
+move_up_10(App_Cmd *app)
 {
-    move_vertical_lines(app, -10);
+ move_vertical_lines(app, -10);
 }
 
-CUSTOM_COMMAND_SIG(move_down_10)
-CUSTOM_DOC("Moves the cursor down ten lines.")
+function void
+move_down_10(App_Cmd *app)
 {
-    move_vertical_lines(app, 10);
+ move_vertical_lines(app, 10);
 }
 
-CUSTOM_COMMAND_SIG(move_down_textual)
-CUSTOM_DOC("Moves down to the next line of actual text, regardless of line wrapping.")
+function void
+move_down_textual(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    i64 pos = view_get_cursor_pos(app, view);
-    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
-    i64 next_line = cursor.line + 1;
-    view_set_cursor_and_preferred_x(app, view, seek_line_col(next_line, 1));
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ i64 pos = view_get_cursor_pos(app, view);
+ Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+ i64 next_line = cursor.line + 1;
+ view_set_cursor_and_preferred_x(app, view, seek_line_col(next_line, 1));
 }
 
-CUSTOM_COMMAND_SIG(page_up)
-CUSTOM_DOC("Scrolls the view up one view height and moves the cursor up one view height.")
+function void
+page_up(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    f32 page_jump = get_page_jump(app, view);
-    move_vertical_pixels(app, -page_jump);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ f32 page_jump = get_page_jump(app, view);
+ move_vertical_pixels(app, -page_jump);
 }
 
-CUSTOM_COMMAND_SIG(page_down)
-CUSTOM_DOC("Scrolls the view down one view height and moves the cursor down one view height.")
+function void
+page_down(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     f32 page_jump = get_page_jump(app, view);
@@ -350,70 +352,70 @@ seek_blank_line(App *app, Scan_Direction direction, Position_Within_Line positio
         }break;
         case PositionWithinLine_End:
         {
-            new_pos = get_line_side_pos_from_pos(app, buffer, new_pos, Side_Max);
-        }break;
-    }
-    new_pos = view_get_character_legal_pos_from_pos(app, view, new_pos);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
-    no_mark_snap_to_cursor_if_shift(app, view);
+   new_pos = get_line_side_pos_from_pos(app, buffer, new_pos, Side_Max);
+  }break;
+ }
+ new_pos = view_get_character_legal_pos_from_pos(app, view, new_pos);
+ view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
+ no_mark_snap_to_cursor_if_shift(app, view);
 }
 
-CUSTOM_COMMAND_SIG(move_up_to_blank_line)
-CUSTOM_DOC("Seeks the cursor up to the next blank line.")
+function void
+move_up_to_blank_line(App_Cmd *app)
 {
-    seek_blank_line(app, Scan_Backward, PositionWithinLine_Start);
+ seek_blank_line(app, Scan_Backward, PositionWithinLine_Start);
 }
 
-CUSTOM_COMMAND_SIG(move_down_to_blank_line)
-CUSTOM_DOC("Seeks the cursor down to the next blank line.")
+function void
+move_down_to_blank_line(App_Cmd *app)
 {
-    seek_blank_line(app, Scan_Forward, PositionWithinLine_Start);
+ seek_blank_line(app, Scan_Forward, PositionWithinLine_Start);
 }
 
-CUSTOM_COMMAND_SIG(move_up_to_blank_line_skip_whitespace)
-CUSTOM_DOC("Seeks the cursor up to the next blank line and places it at the end of the line.")
+function void
+move_up_to_blank_line_skip_whitespace(App_Cmd *app)
 {
-    seek_blank_line(app, Scan_Backward, PositionWithinLine_SkipLeadingWhitespace);
+ seek_blank_line(app, Scan_Backward, PositionWithinLine_SkipLeadingWhitespace);
 }
 
-CUSTOM_COMMAND_SIG(move_down_to_blank_line_skip_whitespace)
-CUSTOM_DOC("Seeks the cursor down to the next blank line and places it at the end of the line.")
+function void
+move_down_to_blank_line_skip_whitespace(App_Cmd *app)
 {
-    seek_blank_line(app, Scan_Forward, PositionWithinLine_SkipLeadingWhitespace);
+ seek_blank_line(app, Scan_Forward, PositionWithinLine_SkipLeadingWhitespace);
 }
 
-CUSTOM_COMMAND_SIG(move_up_to_blank_line_end)
-CUSTOM_DOC("Seeks the cursor up to the next blank line and places it at the end of the line.")
+function void
+move_up_to_blank_line_end(App_Cmd *app)
 {
-    seek_blank_line(app, Scan_Backward, PositionWithinLine_End);
+ seek_blank_line(app, Scan_Backward, PositionWithinLine_End);
 }
 
-CUSTOM_COMMAND_SIG(move_down_to_blank_line_end)
-CUSTOM_DOC("Seeks the cursor down to the next blank line and places it at the end of the line.")
+function void
+move_down_to_blank_line_end(App_Cmd *app)
 {
-    seek_blank_line(app, Scan_Forward, PositionWithinLine_End);
+ seek_blank_line(app, Scan_Forward, PositionWithinLine_End);
 }
 
-CUSTOM_COMMAND_SIG(move_left)
-CUSTOM_DOC("Moves the cursor one character to the left.")
+function void
+move_left(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    view_set_cursor_by_character_delta(app, view, -1);
-    no_mark_snap_to_cursor_if_shift(app, view);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ view_set_cursor_by_character_delta(app, view, -1);
+ no_mark_snap_to_cursor_if_shift(app, view);
 }
 
-CUSTOM_COMMAND_SIG(move_right)
-CUSTOM_DOC("Moves the cursor one character to the right.")
+function void
+move_right(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    view_set_cursor_by_character_delta(app, view, 1);
-    no_mark_snap_to_cursor_if_shift(app, view);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ view_set_cursor_by_character_delta(app, view, 1);
+ no_mark_snap_to_cursor_if_shift(app, view);
 }
 
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(select_all)
-CUSTOM_DOC("Puts the cursor at the top of the file, and the mark at the bottom of the file.")
+function void
+select_all(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -427,147 +429,138 @@ CUSTOM_DOC("Puts the cursor at the top of the file, and the mark at the bottom o
 
 typedef i1 Clean_All_Lines_Mode;
 enum{
-    CleanAllLinesMode_RemoveBlankLines,
-    CleanAllLinesMode_LeaveBlankLines,
+ CleanAllLinesMode_RemoveBlankLines,
+ CleanAllLinesMode_LeaveBlankLines,
 };
 
 function void
-clean_all_lines_buffer(App *app, Buffer_ID buffer, Clean_All_Lines_Mode mode){
-    ProfileScope(app, "clean all lines");
-    Scratch_Block scratch(app);
-    Batch_Edit *batch_first = 0;
-    Batch_Edit *batch_last = 0;
-    
-    i64 line_count = buffer_get_line_count(app, buffer);
-    for (i64 line_number = 1; line_number <= line_count; line_number += 1){
-        i64 line_start = get_line_side_pos(app, buffer, line_number, Side_Min);
-        i64 line_end = get_line_side_pos(app, buffer, line_number, Side_Max);
-        u8 prev = buffer_get_char(app, buffer, line_end - 1);
-        b32 has_cr_character = false;
-        b32 has_tail_whitespace = false;
-        if (prev == '\r'){
-            has_cr_character = true;
-            if (line_end - 2 >= line_start){
-                prev = buffer_get_char(app, buffer, line_end - 2);
-                has_tail_whitespace = char_is_whitespace(prev);
-            }
-        }
-        else{
-            has_tail_whitespace = char_is_whitespace(prev);
-        }
-        if (has_tail_whitespace){
-            String line = push_buffer_range(app, scratch, buffer,
-                                                     Ii64(line_start, line_end));
-            if (line.size > 0){
-                i64 end_offset = line.size;
-                i64 i = line.size - 1;
-                if (has_cr_character){
-                    end_offset -= 1;
-                    i -= 1;
-                }
-                i64 start_offset = 0;
-                for (; i >= 0; i -= 1){
-                    if (!char_is_whitespace(line.str[i])){
-                        start_offset = i + 1;
-                        break;
-                    }
-                }
-                
-                if (mode == CleanAllLinesMode_RemoveBlankLines || start_offset > 0){
-                    i64 start = start_offset + line_start;
-                    i64 end   = end_offset   + line_start;
-                    
-                    Batch_Edit *batch = push_array(scratch, Batch_Edit, 1);
-                    sll_queue_push(batch_first, batch_last, batch);
-                    batch->edit.text = SCu8();
-                    batch->edit.range = Ii64(start, end);
-                }
-            }
-        }
+clean_all_lines_buffer(App_Cmd *app, Buffer_ID buffer, Clean_All_Lines_Mode mode)
+{
+ ProfileScope(app, "clean all lines");
+ Scratch_Block scratch(app);
+ Batch_Edit *batch_first = 0;
+ Batch_Edit *batch_last = 0;
+ 
+ i64 line_count = buffer_get_line_count(app, buffer);
+ for (i64 line_number = 1; line_number <= line_count; line_number += 1){
+  i64 line_start = get_line_side_pos(app, buffer, line_number, Side_Min);
+  i64 line_end = get_line_side_pos(app, buffer, line_number, Side_Max);
+  u8 prev = buffer_get_char(app, buffer, line_end - 1);
+  b32 has_cr_character = false;
+  b32 has_tail_whitespace = false;
+  if (prev == '\r'){
+   has_cr_character = true;
+   if (line_end - 2 >= line_start){
+    prev = buffer_get_char(app, buffer, line_end - 2);
+    has_tail_whitespace = char_is_whitespace(prev);
+   }
+  }
+  else{
+   has_tail_whitespace = char_is_whitespace(prev);
+  }
+  if (has_tail_whitespace){
+   String line = push_buffer_range(app, scratch, buffer,
+                                   Ii64(line_start, line_end));
+   if (line.size > 0){
+    i64 end_offset = line.size;
+    i64 i = line.size - 1;
+    if (has_cr_character){
+     end_offset -= 1;
+     i -= 1;
+    }
+    i64 start_offset = 0;
+    for (; i >= 0; i -= 1){
+     if (!char_is_whitespace(line.str[i])){
+      start_offset = i + 1;
+      break;
+     }
     }
     
-    if (batch_first != 0){
-        buffer_batch_edit(app, buffer, batch_first);
+    if (mode == CleanAllLinesMode_RemoveBlankLines || start_offset > 0){
+     i64 start = start_offset + line_start;
+     i64 end   = end_offset   + line_start;
+     
+     Batch_Edit *batch = push_array(scratch, Batch_Edit, 1);
+     sll_queue_push(batch_first, batch_last, batch);
+     batch->edit.text = SCu8();
+     batch->edit.range = Ii64(start, end);
     }
+   }
+  }
+ }
+ 
+ if (batch_first != 0){
+  buffer_batch_edit(app, buffer, batch_first);
+ }
 }
 
-CUSTOM_COMMAND_SIG(clean_all_lines)
-CUSTOM_DOC("Removes trailing whitespace from all lines and removes all blank lines in the current buffer.")
+function void
+clean_all_lines(App_Cmd *app)
+{
+ ProfileScope(app, "clean all lines");
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ clean_all_lines_buffer(app, buffer, CleanAllLinesMode_RemoveBlankLines);
+}
+
+function void
+clean_trailing_whitespace(App_Cmd *app)
 {
     ProfileScope(app, "clean all lines");
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    clean_all_lines_buffer(app, buffer, CleanAllLinesMode_RemoveBlankLines);
-}
-
-CUSTOM_COMMAND_SIG(clean_trailing_whitespace)
-CUSTOM_DOC("Removes trailing whitespace from all lines in the current buffer.")
-{
-    ProfileScope(app, "clean all lines");
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    clean_all_lines_buffer(app, buffer, CleanAllLinesMode_LeaveBlankLines);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ clean_all_lines_buffer(app, buffer, CleanAllLinesMode_LeaveBlankLines);
 }
 
 ////////////////////////////////
 
-#if 0
-CUSTOM_COMMAND_SIG(basic_change_active_primary_view)
-CUSTOM_DOC("Change the currently active panel, moving to the panel with the next highest view_id.  Will not skipe the build panel if it is open.")
-{
-    View_ID view = get_active_view(app, Access_Always);
-    get_next_view_looped_all_panels(app, view, Access_Always);
-    view_set_active(app, view);
-}
-#endif
-
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(show_scrollbar)
-CUSTOM_DOC("Sets the current view to show it's scrollbar.")
+function void 
+show_scrollbar(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    view_set_setting(app, view, ViewSetting_ShowScrollbar, true);
+ View_ID view = get_active_view(app, Access_Always);
+ view_set_setting(app, view, ViewSetting_ShowScrollbar, true);
 }
 
-CUSTOM_COMMAND_SIG(hide_scrollbar)
-CUSTOM_DOC("Sets the current view to hide it's scrollbar.")
+function void 
+hide_scrollbar(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    view_set_setting(app, view, ViewSetting_ShowScrollbar, false);
+ View_ID view = get_active_view(app, Access_Always);
+ view_set_setting(app, view, ViewSetting_ShowScrollbar, false);
 }
 
-CUSTOM_COMMAND_SIG(show_filebar)
-CUSTOM_DOC("Sets the current view to show it's filebar.")
+function void 
+show_filebar(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    view_set_setting(app, view, ViewSetting_ShowFileBar, true);
+ View_ID view = get_active_view(app, Access_Always);
+ view_set_setting(app, view, ViewSetting_ShowFileBar, true);
 }
 
-CUSTOM_COMMAND_SIG(hide_filebar)
-CUSTOM_DOC("Sets the current view to hide it's filebar.")
+function void 
+hide_filebar(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    view_set_setting(app, view, ViewSetting_ShowFileBar, false);
+ View_ID view = get_active_view(app, Access_Always);
+ view_set_setting(app, view, ViewSetting_ShowFileBar, false);
 }
 
-CUSTOM_COMMAND_SIG(toggle_filebar)
-CUSTOM_DOC("Toggles the visibility status of the current view's filebar.")
+function void 
+toggle_filebar(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    b64 value = false;
-    view_get_setting(app, view, ViewSetting_ShowFileBar, &value);
-    view_set_setting(app, view, ViewSetting_ShowFileBar, !value);
+ View_ID view = get_active_view(app, Access_Always);
+ b64 value = false;
+ view_get_setting(app, view, ViewSetting_ShowFileBar, &value);
+ view_set_setting(app, view, ViewSetting_ShowFileBar, !value);
 }
 
-CUSTOM_COMMAND_SIG(toggle_fps_meter)
-CUSTOM_DOC("Toggles the visibility of the FPS performance meter")
+function void 
+toggle_fps_meter(App_Cmd *app)
 {
-    show_fps_hud = !show_fps_hud;
+ show_fps_hud = !show_fps_hud;
 }
 
-CUSTOM_COMMAND_SIG(set_face_size)
-CUSTOM_DOC("Set face size of the face used by the current buffer.")
+function void 
+set_face_size(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -579,37 +572,37 @@ CUSTOM_DOC("Set face size of the face used by the current buffer.")
     Query_Bar bar = {};
     bar.prompt = strlit("Face Size: ");
     bar.string = SCu8(string_space, (u64)0);
-    bar.string_capacity = sizeof(string_space);
-    if (query_user_number(app, &bar, description.parameters.pt_size)){
-        description.parameters.pt_size = (u32)string_to_u64(bar.string, 10);
-        try_modify_face(app, face_id, &description);
-    }
+ bar.string_capacity = sizeof(string_space);
+ if (query_user_number(app, &bar, description.parameters.pt_size)){
+  description.parameters.pt_size = (u32)string_to_u64(bar.string, 10);
+  try_modify_face(app, face_id, &description);
+ }
 }
 
-CUSTOM_COMMAND_SIG(increase_face_size)
-CUSTOM_DOC("Increase the size of the face used by the current buffer.")
+function void 
+increase_face_size(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Face_ID face_id = get_face_id(app, buffer);
-    Face_Description description = get_face_description(app, face_id);
-    ++description.parameters.pt_size;
-    try_modify_face(app, face_id, &description);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ Face_ID face_id = get_face_id(app, buffer);
+ Face_Description description = get_face_description(app, face_id);
+ ++description.parameters.pt_size;
+ try_modify_face(app, face_id, &description);
 }
 
-CUSTOM_COMMAND_SIG(decrease_face_size)
-CUSTOM_DOC("Decrease the size of the face used by the current buffer.")
+function void 
+decrease_face_size(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Face_ID face_id = get_face_id(app, buffer);
-    Face_Description description = get_face_description(app, face_id);
-    --description.parameters.pt_size;
-    try_modify_face(app, face_id, &description);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ Face_ID face_id = get_face_id(app, buffer);
+ Face_Description description = get_face_description(app, face_id);
+ --description.parameters.pt_size;
+ try_modify_face(app, face_id, &description);
 }
 
-CUSTOM_COMMAND_SIG(set_face_size_this_buffer)
-CUSTOM_DOC("Set face size of the face used by the current buffer; if any other buffers are using the same face a new face is created so that only this buffer is effected")
+function void 
+set_face_size_this_buffer(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -632,15 +625,15 @@ CUSTOM_DOC("Set face size of the face used by the current buffer; if any other b
         Face_Description description = get_face_description(app, face_id);
         face_id = try_create_new_face(app, &description);
         if (face_id != 0){
-            buffer_set_face(app, buffer, face_id);
-        }
-    }
-    
-    set_face_size(app);
+   buffer_set_face(app, buffer, face_id);
+  }
+ }
+ 
+ set_face_size(app);
 }
 
-CUSTOM_COMMAND_SIG(mouse_wheel_change_face_size)
-CUSTOM_DOC("Reads the state of the mouse wheel and uses it to either increase or decrease the face size.")
+function void 
+mouse_wheel_change_face_size(App_Cmd *app)
 {
     local_persist u64 next_resize_time = 0;
     u64 now = system_time_usecond();
@@ -649,40 +642,41 @@ CUSTOM_DOC("Reads the state of the mouse wheel and uses it to either increase or
         Mouse_State mouse = get_mouse_state(app);
         if (mouse.wheel > 0){
             decrease_face_size(app);
-        }
-        else if (mouse.wheel < 0){
-            increase_face_size(app);
-        }
-    }
+  }
+  else if (mouse.wheel < 0){
+   increase_face_size(app);
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(toggle_show_whitespace)
-CUSTOM_DOC("Toggles the current buffer's whitespace visibility status.")
+function void 
+toggle_show_whitespace(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    b64 show_whitespace = false;
-    view_get_setting(app, view, ViewSetting_ShowWhitespace, &show_whitespace);
-    view_set_setting(app, view, ViewSetting_ShowWhitespace, !show_whitespace);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ b64 show_whitespace = false;
+ view_get_setting(app, view, ViewSetting_ShowWhitespace, &show_whitespace);
+ view_set_setting(app, view, ViewSetting_ShowWhitespace, !show_whitespace);
 }
 
-CUSTOM_COMMAND_SIG(toggle_line_numbers)
-CUSTOM_DOC("Toggles the left margin line numbers.")
+function void 
+toggle_line_numbers(App_Cmd *app)
 {
-    String_ID key = vars_intern_lit("show_line_number_margins");
-    b32 val = def_get_config_b32(key);
-    def_set_config_b32(key, !val);
+ String_ID key = vars_intern_lit("show_line_number_margins");
+ b32 val = def_get_config_b32(key);
+ def_set_config_b32(key, !val);
 }
 
-CUSTOM_COMMAND_SIG(exit_4coder)
-CUSTOM_DOC("Attempts to close 4coder.")
+function void 
+exit_4coder(App_Cmd *app)
 {
  send_exit_signal(app);
 }
 
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(goto_line)
-CUSTOM_DOC("Queries the user for a number, and jumps the cursor to the corresponding line."){
+function void 
+goto_line(App_Cmd *app)
+{
  Query_Bar_Group group(app);
  u8 string_space[256];
  Query_Bar bar = {};
@@ -695,8 +689,9 @@ CUSTOM_DOC("Queries the user for a number, and jumps the cursor to the correspon
   view_set_cursor_and_preferred_x(app, view, seek_line_col(line_number, 0));
  }
 }
-CUSTOM_COMMAND_SIG(goto_pos)
-CUSTOM_DOC("jump to byte position"){
+function void 
+goto_pos(App_Cmd *app)
+{
  Query_Bar_Group group(app);
  u8 string_space[256];
  Query_Bar bar = {};
@@ -719,281 +714,283 @@ view_goto_line_column(App *app, View_ID view, i64 linum, i64 colnum=0)
 inline void
 view_goto_pos(App *app, View_ID view, i64 pos)
 {
-    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-CUSTOM_COMMAND_SIG(search);
-CUSTOM_COMMAND_SIG(reverse_search);
+function void 
+search(App_Cmd *app);
 
 function void
 isearch__update_highlight(App *app, View_ID view, Range_i64 range){
-    view_set_highlight_range(app, view, range);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(range.start));
+ view_set_highlight_range(app, view, range);
+ view_set_cursor_and_preferred_x(app, view, seek_pos(range.start));
 }
 
 function void
-isearch(App *app, Scan_Direction start_scan, i64 first_pos,
-        String query_init){
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    if (!buffer_exists(app, buffer)){
-        return;
+isearch(App_Cmd *app, Scan_Direction start_scan, i64 first_pos,
+        String query_init)
+{
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ if (!buffer_exists(app, buffer)){
+  return;
+ }
+ 
+ i64 buffer_size = buffer_get_size(app, buffer);
+ 
+ Query_Bar_Group group(app);
+ Query_Bar bar = {};
+ if (start_query_bar(app, &bar, 0) == 0){
+  return;
+ }
+ 
+ v2 old_margin = {};
+ v2 old_push_in = {};
+ view_get_camera_bounds(app, view, &old_margin, &old_push_in);
+ 
+ v2 margin = old_margin;
+ margin.y = clamp_min(200.f, margin.y);
+ view_set_camera_bounds(app, view, margin, old_push_in);
+ 
+ Scan_Direction scan = start_scan;
+ i64 pos = first_pos;
+ 
+ u8 bar_string_space[256];
+ bar.string = SCu8(bar_string_space, query_init.size);
+ block_copy(bar.string.str, query_init.str, query_init.size);
+ 
+ String isearch_str = strlit("I-Search: ");
+ String rsearch_str = strlit("Reverse-I-Search: ");
+ 
+ u64 match_size = bar.string.size;
+ 
+ User_Input in = {};
+ for (;;){
+  switch (scan){
+   case Scan_Forward:
+   {
+    bar.prompt = isearch_str;
+   }break;
+   case Scan_Backward:
+   {
+    bar.prompt = rsearch_str;
+   }break;
+  }
+  isearch__update_highlight(app, view, Ii64_size(pos, match_size));
+  
+  in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
+  if (in.abort){
+   break;
+  }
+  
+  String string = to_writable(&in);
+  
+  b32 string_change = false;
+  if (match_key_code(&in, Key_Code_Return) ||
+      match_key_code(&in, Key_Code_Tab)){
+   Input_Modifier_Set *mods = &in.event.key.modifiers;
+   if (set_has_modifier(mods, Key_Code_Control)){
+    bar.string.size = cstring_length(previous_isearch_query);
+    block_copy(bar.string.str, previous_isearch_query, bar.string.size);
+   }
+   else{
+    u64 size = bar.string.size;
+    size = clamp_max(size, sizeof(previous_isearch_query) - 1);
+    block_copy(previous_isearch_query, bar.string.str, size);
+    previous_isearch_query[size] = 0;
+    break;
+   }
+  }
+  else if (string.str != 0 && string.size > 0){
+   String_u8 bar_string = Su8(bar.string, sizeof(bar_string_space));
+   string_concat(&bar_string, string);
+   bar.string = bar_string.string;
+   string_change = true;
+  }
+  else if (match_key_code(&in, Key_Code_Backspace)){
+   if (is_unmodified_key(&in.event)){
+    u64 old_bar_string_size = bar.string.size;
+    bar.string = backspace_utf8(bar.string);
+    string_change = (bar.string.size < old_bar_string_size);
+   }
+   else if (set_has_modifier(&in.event.key.modifiers, Key_Code_Control)){
+    if (bar.string.size > 0){
+     string_change = true;
+     bar.string.size = 0;
     }
-    
-    i64 buffer_size = buffer_get_size(app, buffer);
-    
-    Query_Bar_Group group(app);
-    Query_Bar bar = {};
-    if (start_query_bar(app, &bar, 0) == 0){
-        return;
+   }
+  }
+  
+  b32 do_scan_action = false;
+  b32 do_scroll_wheel = false;
+  Scan_Direction change_scan = scan;
+  if (!string_change){
+   if (match_key_code(&in, Key_Code_PageDown) ||
+       match_key_code(&in, Key_Code_Down)){
+    change_scan = Scan_Forward;
+    do_scan_action = true;
+   }
+   else if (match_key_code(&in, Key_Code_PageUp) ||
+            match_key_code(&in, Key_Code_Up)){
+    change_scan = Scan_Backward;
+    do_scan_action = true;
+   }
+   else if (match_key_code(&in, Key_Code_V) && 
+            input_has_modifier(&in, Key_Code_Control))
+   {
+    Scratch_Block scratch(app);
+    String8 clipboard_string = push_clipboard_index_inner(scratch, 0, 0);
+    if (clipboard_string.size)
+    {
+     String_u8 bar_string = Su8(bar.string, sizeof(bar_string_space));
+     string_concat(&bar_string, clipboard_string);
+     bar.string = bar_string.string;
+     string_change = true;
     }
-    
-    v2 old_margin = {};
-    v2 old_push_in = {};
-    view_get_camera_bounds(app, view, &old_margin, &old_push_in);
-    
-    v2 margin = old_margin;
-    margin.y = clamp_min(200.f, margin.y);
-    view_set_camera_bounds(app, view, margin, old_push_in);
-    
-    Scan_Direction scan = start_scan;
-    i64 pos = first_pos;
-    
-    u8 bar_string_space[256];
-    bar.string = SCu8(bar_string_space, query_init.size);
-    block_copy(bar.string.str, query_init.str, query_init.size);
-    
-    String isearch_str = strlit("I-Search: ");
-    String rsearch_str = strlit("Reverse-I-Search: ");
-    
-    u64 match_size = bar.string.size;
-    
-    User_Input in = {};
-    for (;;){
-        switch (scan){
-            case Scan_Forward:
-            {
-                bar.prompt = isearch_str;
-            }break;
-            case Scan_Backward:
-            {
-                bar.prompt = rsearch_str;
-            }break;
-        }
-        isearch__update_highlight(app, view, Ii64_size(pos, match_size));
-        
-        in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
-        if (in.abort){
-            break;
-        }
-        
-        String string = to_writable(&in);
-        
-        b32 string_change = false;
-        if (match_key_code(&in, Key_Code_Return) ||
-            match_key_code(&in, Key_Code_Tab)){
-            Input_Modifier_Set *mods = &in.event.key.modifiers;
-            if (set_has_modifier(mods, Key_Code_Control)){
-                bar.string.size = cstring_length(previous_isearch_query);
-                block_copy(bar.string.str, previous_isearch_query, bar.string.size);
-            }
-            else{
-                u64 size = bar.string.size;
-                size = clamp_max(size, sizeof(previous_isearch_query) - 1);
-                block_copy(previous_isearch_query, bar.string.str, size);
-                previous_isearch_query[size] = 0;
-                break;
-            }
-        }
-        else if (string.str != 0 && string.size > 0){
-            String_u8 bar_string = Su8(bar.string, sizeof(bar_string_space));
-            string_concat(&bar_string, string);
-            bar.string = bar_string.string;
-            string_change = true;
-        }
-        else if (match_key_code(&in, Key_Code_Backspace)){
-            if (is_unmodified_key(&in.event)){
-                u64 old_bar_string_size = bar.string.size;
-                bar.string = backspace_utf8(bar.string);
-                string_change = (bar.string.size < old_bar_string_size);
-            }
-            else if (set_has_modifier(&in.event.key.modifiers, Key_Code_Control)){
-                if (bar.string.size > 0){
-                    string_change = true;
-                    bar.string.size = 0;
-                }
-            }
-        }
-        
-        b32 do_scan_action = false;
-        b32 do_scroll_wheel = false;
-        Scan_Direction change_scan = scan;
-        if (!string_change){
-            if (match_key_code(&in, Key_Code_PageDown) ||
-                match_key_code(&in, Key_Code_Down)){
-                change_scan = Scan_Forward;
-                do_scan_action = true;
-            }
-            else if (match_key_code(&in, Key_Code_PageUp) ||
-                     match_key_code(&in, Key_Code_Up)){
-                change_scan = Scan_Backward;
-                do_scan_action = true;
-            }
-            else if (match_key_code(&in, Key_Code_V) && 
-                     input_has_modifier(&in, Key_Code_Control))
-            {
-                Scratch_Block scratch(app);
-                String8 clipboard_string = push_clipboard_index_inner(scratch, 0, 0);
-                if (clipboard_string.size)
-                {
-                    String_u8 bar_string = Su8(bar.string, sizeof(bar_string_space));
-                    string_concat(&bar_string, clipboard_string);
-                    bar.string = bar_string.string;
-                    string_change = true;
-                }
-            }
-            else{
-                // NOTE(allen): is the user trying to execute another command?
-                View_Context ctx = view_current_context(app, view);
-                Mapping *mapping = ctx.mapping;
-                Command_Map *map = mapping_get_map(mapping, ctx.map_id);
-                Command_Binding binding = map_get_binding_recursive(mapping, map, &in.event);
-                if (binding.custom != 0){
-                    if (binding.custom == search){
-                        change_scan = Scan_Forward;
-                        do_scan_action = true;
-                    }
-                    else if (binding.custom == reverse_search){
-                        change_scan = Scan_Backward;
-                        do_scan_action = true;
-                    }
-                    else{
-                        Command_Metadata *metadata = get_command_metadata(binding.custom);
-                        if (metadata != 0){
-                            if (metadata->is_ui){
-                                view_enqueue_command_function(app, view, binding.custom);
-                                break;
-                            }
-                        }
-                        binding.custom(app);
-                    }
-                }
-                else{
-                    leave_current_input_unhandled(app);
-                }
-            }
-        }
-        
-        if (string_change){
-            switch (scan){
-                case Scan_Forward:
-                {
-                    i64 new_pos = 0;
-                    new_pos = seek_string_insensitive_forward(app, buffer, pos - 1, 0, bar.string);
-                    if (new_pos < buffer_size){
-                        pos = new_pos;
-                        match_size = bar.string.size;
-                    }
-                }break;
-                
-                case Scan_Backward:
-                {
-                    i64 new_pos = 0;
-                    new_pos = seek_string_insensitive_backward(app, buffer, pos + 1, 0, bar.string);
-                    if (new_pos >= 0){
-                        pos = new_pos;
-                        match_size = bar.string.size;
-                    }
-                }break;
-            }
-        }
-        else if (do_scan_action){
-            scan = change_scan;
-            switch (scan){
-                case Scan_Forward:
-                {
-                    i64 new_pos = 0;
-                    new_pos = seek_string_insensitive_forward(app, buffer, pos, 0, bar.string);
-                    if (new_pos < buffer_size){
-                        pos = new_pos;
-                        match_size = bar.string.size;
-                    }
-                }break;
-                
-                case Scan_Backward:
-                {
-                    i64 new_pos = 0;
-                    new_pos = seek_string_insensitive_backward(app, buffer, pos, 0, bar.string);
-                    if (new_pos >= 0){
-                        pos = new_pos;
-                        match_size = bar.string.size;
-                    }
-                }break;
-            }
-        }
-        else if (do_scroll_wheel){
-            mouse_wheel_scroll(app);
-        }
+   }
+   else{
+    // NOTE(allen): is the user trying to execute another command?
+    View_Context ctx = view_current_context(app, view);
+    Mapping *mapping = ctx.mapping;
+    Command_Map *map = mapping_get_map(mapping, ctx.map_id);
+    Command_Binding binding = map_get_binding_recursive(mapping, map, &in.event);
+    if (binding.custom != 0){
+     if (binding.custom == search){
+      change_scan = Scan_Forward;
+      do_scan_action = true;
+     }
+     else if (binding.custom == reverse_search){
+      change_scan = Scan_Backward;
+      do_scan_action = true;
+     }
+     else{
+      Command_Metadata *metadata = get_command_metadata(binding.custom);
+      if (metadata != 0){
+       if (metadata->is_ui){
+        view_enqueue_command_function(app, view, binding.custom);
+        break;
+       }
+      }
+      binding.custom(app);
+     }
     }
-    
-    view_disable_highlight_range(app, view);
-    
-    if (in.abort){
-        u64 size = bar.string.size;
-        size = clamp_max(size, sizeof(previous_isearch_query) - 1);
-        block_copy(previous_isearch_query, bar.string.str, size);
-        previous_isearch_query[size] = 0;
-        view_set_cursor_and_preferred_x(app, view, seek_pos(first_pos));
+    else{
+     leave_current_input_unhandled(app);
     }
+   }
+  }
+  
+  if (string_change){
+   switch (scan){
+    case Scan_Forward:
+    {
+     i64 new_pos = 0;
+     new_pos = seek_string_insensitive_forward(app, buffer, pos - 1, 0, bar.string);
+     if (new_pos < buffer_size){
+      pos = new_pos;
+      match_size = bar.string.size;
+     }
+    }break;
     
-    view_set_camera_bounds(app, view, old_margin, old_push_in);
+    case Scan_Backward:
+    {
+     i64 new_pos = 0;
+     new_pos = seek_string_insensitive_backward(app, buffer, pos + 1, 0, bar.string);
+     if (new_pos >= 0){
+      pos = new_pos;
+      match_size = bar.string.size;
+     }
+    }break;
+   }
+  }
+  else if (do_scan_action){
+   scan = change_scan;
+   switch (scan){
+    case Scan_Forward:
+    {
+     i64 new_pos = 0;
+     new_pos = seek_string_insensitive_forward(app, buffer, pos, 0, bar.string);
+     if (new_pos < buffer_size){
+      pos = new_pos;
+      match_size = bar.string.size;
+     }
+    }break;
+    
+    case Scan_Backward:
+    {
+     i64 new_pos = 0;
+     new_pos = seek_string_insensitive_backward(app, buffer, pos, 0, bar.string);
+     if (new_pos >= 0){
+      pos = new_pos;
+      match_size = bar.string.size;
+     }
+    }break;
+   }
+  }
+  else if (do_scroll_wheel){
+   mouse_wheel_scroll(app);
+  }
+ }
+ 
+ view_disable_highlight_range(app, view);
+ 
+ if (in.abort){
+  u64 size = bar.string.size;
+  size = clamp_max(size, sizeof(previous_isearch_query) - 1);
+  block_copy(previous_isearch_query, bar.string.str, size);
+  previous_isearch_query[size] = 0;
+  view_set_cursor_and_preferred_x(app, view, seek_pos(first_pos));
+ }
+ 
+ view_set_camera_bounds(app, view, old_margin, old_push_in);
 }
 
 function void
-isearch(App *app, Scan_Direction start_scan, String query_init){
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    i64 pos = view_get_cursor_pos(app, view);;
-    isearch(app, start_scan, pos, query_init);
+isearch(App_Cmd *app, Scan_Direction start_scan, String query_init)
+{
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ i64 pos = view_get_cursor_pos(app, view);;
+ isearch(app, start_scan, pos, query_init);
 }
 
 function void
-isearch(App *app, Scan_Direction start_scan){
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    i64 pos = view_get_cursor_pos(app, view);;
-    isearch(app, start_scan, pos, SCu8());
+isearch(App_Cmd *app, Scan_Direction start_scan){
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ i64 pos = view_get_cursor_pos(app, view);;
+ isearch(app, start_scan, pos, SCu8());
 }
 
 function void
-isearch_identifier(App *app, Scan_Direction scan){
+isearch_identifier(App_Cmd *app, Scan_Direction scan){
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer_id = view_get_buffer(app, view, Access_ReadVisible);
-    i64 pos = view_get_cursor_pos(app, view);
-    Scratch_Block scratch(app);
-    Range_i64 range = enclose_pos_alnum_underscore(app, buffer_id, pos);
-    String query = push_buffer_range(app, scratch, buffer_id, range);
-    isearch(app, scan, range.first, query);
+ i64 pos = view_get_cursor_pos(app, view);
+ Scratch_Block scratch(app);
+ Range_i64 range = enclose_pos_alnum_underscore(app, buffer_id, pos);
+ String query = push_buffer_range(app, scratch, buffer_id, range);
+ isearch(app, scan, range.first, query);
 }
 
-CUSTOM_COMMAND_SIG(search)
-CUSTOM_DOC("Begins an incremental search down through the current buffer for a user specified string.")
+function void 
+search(App_Cmd *app)
 {
-    isearch(app, Scan_Forward);
+ isearch(app, Scan_Forward);
 }
 
-CUSTOM_COMMAND_SIG(reverse_search)
-CUSTOM_DOC("Begins an incremental search up through the current buffer for a user specified string.")
+function void 
+reverse_search(App_Cmd *app)
 {
-    isearch(app, Scan_Backward);
+ isearch(app, Scan_Backward);
 }
 
-CUSTOM_COMMAND_SIG(search_identifier)
-CUSTOM_DOC("Begins an incremental search down through the current buffer for the word or token under the cursor.")
+function void 
+search_identifier(App_Cmd *app)
 {
-    isearch_identifier(app, Scan_Forward);
+ isearch_identifier(app, Scan_Forward);
 }
 
-CUSTOM_COMMAND_SIG(reverse_search_identifier)
-CUSTOM_DOC("Begins an incremental search up through the current buffer for the word or token under the cursor.")
+function void 
+reverse_search_identifier(App_Cmd *app)
 {
  isearch_identifier(app, Scan_Backward);
 }
@@ -1017,7 +1014,7 @@ make_query_bar(Arena *arena, char *prompt, u64 string_capacity=KB(1))
 }
 
 function String_Pair
-query_user_replace_pair(App *app, Arena *arena)
+query_user_replace_pair(App_Cmd *app, Arena *arena)
 {
  Query_Bar replace = make_query_bar(arena, "Replace: ");
  Query_Bar with    = make_query_bar(arena, "With: ");
@@ -1037,26 +1034,27 @@ query_user_replace_pair(App *app, Arena *arena)
 // NOTE(allen): This is a bit of a hacky setup because of Query_Bar lifetimes.  This must be
 // called as the last operation of a command.
 function void
-replace_in_range_query_user(App *app, Buffer_ID buffer, Range_i64 range){
-    Scratch_Block scratch(app);
-    Query_Bar_Group group(app);
-    String_Pair pair = query_user_replace_pair(app, scratch);
-    if (pair.valid){
-        replace_in_range(app, buffer, range, pair.a, pair.b);
-    }
-}
-
-CUSTOM_COMMAND_SIG(replace_in_range)
-CUSTOM_DOC("Queries the user for a needle and string. Replaces all occurences of needle with string in the range between cursor and the mark in the active buffer.")
+replace_in_range_query_user(App_Cmd *app, Buffer_ID buffer, Range_i64 range)
 {
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    Range_i64 range = get_view_range(app, view);
-    replace_in_range_query_user(app, buffer, range);
+ Scratch_Block scratch(app);
+ Query_Bar_Group group(app);
+ String_Pair pair = query_user_replace_pair(app, scratch);
+ if (pair.valid){
+  replace_in_range(app, buffer, range, pair.a, pair.b);
+ }
 }
 
-CUSTOM_COMMAND_SIG(replace_in_buffer)
-CUSTOM_DOC("Replace (current buffer only)")
+function void 
+replace_in_range(App_Cmd *app)
+{
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ Range_i64 range = get_view_range(app, view);
+ replace_in_range_query_user(app, buffer, range);
+}
+
+function void 
+replace_in_buffer(App_Cmd *app)
 {
  View_ID view = get_active_view(app, Access_ReadWriteVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -1065,7 +1063,7 @@ CUSTOM_DOC("Replace (current buffer only)")
 }
 
 function void
-query_replace_base(App *app, View_ID view, Buffer_ID buffer_id, i64 pos, String r, String w){
+query_replace_base(App_Cmd *app, View_ID view, Buffer_ID buffer_id, i64 pos, String r, String w){
  i64 new_pos = seek_string_forward(app, buffer_id, pos - 1, 0, r);
  
  User_Input in = {};
@@ -1104,40 +1102,41 @@ query_replace_base(App *app, View_ID view, Buffer_ID buffer_id, i64 pos, String 
 }
 
 function void
-query_replace_parameter(App *app, String replace_str, i64 start_pos, b32 add_replace_query_bar){
-    Query_Bar_Group group(app);
-    Query_Bar replace = {};
-    replace.prompt = strlit("Replace: ");
-    replace.string = replace_str;
-    
-    if (add_replace_query_bar){
-        start_query_bar(app, &replace, 0);
-    }
-    
-    Query_Bar with = {};
-    u8 with_space[1024];
-    with.prompt = strlit("With: ");
-    with.string = SCu8(with_space, (u64)0);
-    with.string_capacity = sizeof(with_space);
-    
-    if (query_user_string(app, &with)){
-        String r = replace.string;
-        String w = with.string;
-        
-        View_ID view = get_active_view(app, Access_ReadVisible);
-        Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-        i64 pos = start_pos;
-        
-        Query_Bar bar = {};
-        bar.prompt = strlit("Replace? (y)es, (n)ext, (esc)\n");
-        start_query_bar(app, &bar, 0);
-        
-        query_replace_base(app, view, buffer, pos, r, w);
-    }
+query_replace_parameter(App_Cmd *app, String replace_str, i64 start_pos, b32 add_replace_query_bar)
+{
+ Query_Bar_Group group(app);
+ Query_Bar replace = {};
+ replace.prompt = strlit("Replace: ");
+ replace.string = replace_str;
+ 
+ if (add_replace_query_bar){
+  start_query_bar(app, &replace, 0);
+ }
+ 
+ Query_Bar with = {};
+ u8 with_space[1024];
+ with.prompt = strlit("With: ");
+ with.string = SCu8(with_space, (u64)0);
+ with.string_capacity = sizeof(with_space);
+ 
+ if (query_user_string(app, &with)){
+  String r = replace.string;
+  String w = with.string;
+  
+  View_ID view = get_active_view(app, Access_ReadVisible);
+  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+  i64 pos = start_pos;
+  
+  Query_Bar bar = {};
+  bar.prompt = strlit("Replace? (y)es, (n)ext, (esc)\n");
+  start_query_bar(app, &bar, 0);
+  
+  query_replace_base(app, view, buffer, pos, r, w);
+ }
 }
 
-CUSTOM_COMMAND_SIG(query_replace)
-CUSTOM_DOC("Queries the user for two strings, and incrementally replaces every occurence of the first string with the second string.")
+function void 
+query_replace(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -1150,15 +1149,15 @@ CUSTOM_DOC("Queries the user for two strings, and incrementally replaces every o
         replace.string_capacity = sizeof(replace_space);
         if (query_user_string(app, &replace)){
             if (replace.string.size > 0){
-                i64 pos = view_get_cursor_pos(app, view);
-                query_replace_parameter(app, replace.string, pos, false);
-            }
-        }
-    }
+    i64 pos = view_get_cursor_pos(app, view);
+    query_replace_parameter(app, replace.string, pos, false);
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(query_replace_identifier)
-CUSTOM_DOC("Queries the user for a string, and incrementally replace every occurence of the word or token found at the cursor with the specified string.")
+function void 
+query_replace_identifier(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -1166,15 +1165,15 @@ CUSTOM_DOC("Queries the user for a string, and incrementally replace every occur
         Scratch_Block scratch(app);
         i64 pos = view_get_cursor_pos(app, view);
         Range_i64 range = enclose_pos_alnum_underscore(app, buffer, pos);
-        String replace = push_buffer_range(app, scratch, buffer, range);
-        if (replace.size != 0){
-            query_replace_parameter(app, replace, range.min, true);
-        }
-    }
+  String replace = push_buffer_range(app, scratch, buffer, range);
+  if (replace.size != 0){
+   query_replace_parameter(app, replace, range.min, true);
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(query_replace_selection)
-CUSTOM_DOC("Queries the user for a string, and incrementally replace every occurence of the string found in the selected range with the specified string.")
+function void 
+query_replace_selection(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -1183,15 +1182,15 @@ CUSTOM_DOC("Queries the user for a string, and incrementally replace every occur
         Range_i64 range = get_view_range(app, view);
         String replace = push_buffer_range(app, scratch, buffer, range);
         if (replace.size != 0){
-            query_replace_parameter(app, replace, range.min, true);
-        }
-    }
+   query_replace_parameter(app, replace, range.min, true);
+  }
+ }
 }
 
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(jump_to_last_point)
-CUSTOM_DOC("Read from the top of the point stack and jump there; if already there pop the top and go to the next option")
+function void 
+jump_to_last_point(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Visible);
     if (view != 0){
@@ -1232,14 +1231,14 @@ delete_file_base(App *app, String filename, Buffer_ID buffer_id)
 #else
 #   error no delete file command for this platform
 #endif
-    string_list_pushf(scratch, &list, "\"%.*s\"", string_expand(filename));
-    String cmd = string_list_flatten(scratch, list, StringFill_NullTerminate);
-    exec_system_command(app, 0, buffer_identifier(0), path, cmd, 0);
-    buffer_kill(app, buffer_id, BufferKill_AlwaysKill);
+ string_list_pushf(scratch, &list, "\"%.*s\"", string_expand(filename));
+ String cmd = string_list_flatten(scratch, list, StringFill_NullTerminate);
+ exec_system_command(app, 0, buffer_identifier(0), path, cmd, 0);
+ buffer_kill(app, buffer_id, BufferKill_AlwaysKill);
 }
 
-CUSTOM_COMMAND_SIG(delete_file_query)
-CUSTOM_DOC("Deletes the file of the current buffer if 4coder has the appropriate access rights. Will ask the user for confirmation first.")
+function void 
+delete_file_query(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -1275,15 +1274,15 @@ CUSTOM_DOC("Deletes the file of the current buffer if 4coder has the appropriate
                         {
                             cancelled = true;
                         }break;
-                    }
-                }
-            }
-        }
+     }
     }
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(save_to_query)
-CUSTOM_DOC("Queries the user for a file name and saves the contents of the current buffer, altering the buffer's name too.")
+function void 
+save_to_query(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -1308,15 +1307,15 @@ CUSTOM_DOC("Queries the user for a file name and saves the contents of the curre
     Buffer_ID new_buffer = create_buffer(app, new_filename, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
                 if (new_buffer != 0 && new_buffer != buffer){
                     buffer_kill(app, buffer, BufferKill_AlwaysKill);
-                    view_set_buffer(app, view, new_buffer, 0);
-                }
-            }
-        }
+     view_set_buffer(app, view, new_buffer, 0);
     }
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(rename_file_query)
-CUSTOM_DOC("Queries the user for a new name and renames the file of the current buffer, altering the buffer's name too.")
+function void 
+rename_file_query(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -1343,15 +1342,15 @@ CUSTOM_DOC("Queries the user for a new name and renames the file of the current 
                 Buffer_ID new_buffer = create_buffer(app, new_filename, BufferCreate_NeverNew|BufferCreate_JustChangedFile);
                 if (new_buffer != 0 && new_buffer != buffer){
                     delete_file_base(app, filename, buffer);
-                    view_set_buffer(app, view, new_buffer, 0);
-                }
-            }
-        }
+     view_set_buffer(app, view, new_buffer, 0);
     }
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(make_directory_query)
-CUSTOM_DOC("Queries the user for a name and creates a new directory with the given name.")
+function void 
+make_directory_query(App_Cmd *app)
 {
     Scratch_Block scratch(app);
     
@@ -1367,51 +1366,51 @@ CUSTOM_DOC("Queries the user for a name and creates a new directory with the giv
     
     if (!query_user_string(app, &bar)) return;
     if (bar.string.size == 0) return;
-    
-    String cmd = push_stringfz(scratch, "mkdir %.*s", string_expand(bar.string));
-    exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
+ 
+ String cmd = push_stringfz(scratch, "mkdir %.*s", string_expand(bar.string));
+ exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
 }
 
 ////////////////////////////////
 
 function void
-current_view_move_line(App *app, Scan_Direction direction){
+current_view_move_line(App_Cmd *app, Scan_Direction direction){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    i64 pos = view_get_cursor_pos(app, view);
-    i64 line_number = get_line_number_from_pos(app, buffer, pos);
-    pos = move_line(app, buffer, line_number, direction);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ i64 pos = view_get_cursor_pos(app, view);
+ i64 line_number = get_line_number_from_pos(app, buffer, pos);
+ pos = move_line(app, buffer, line_number, direction);
+ view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-CUSTOM_COMMAND_SIG(move_line_up)
-CUSTOM_DOC("Swaps the line under the cursor with the line above it, and moves the cursor up with it.")
+function void 
+move_line_up(App_Cmd *app)
 {
-    current_view_move_line(app, Scan_Backward);
+ current_view_move_line(app, Scan_Backward);
 }
 
-CUSTOM_COMMAND_SIG(move_line_down)
-CUSTOM_DOC("Swaps the line under the cursor with the line below it, and moves the cursor down with it.")
+function void 
+move_line_down(App_Cmd *app)
 {
-    current_view_move_line(app, Scan_Forward);
+ current_view_move_line(app, Scan_Forward);
 }
 
-CUSTOM_COMMAND_SIG(duplicate_line)
-CUSTOM_DOC("Create a copy of the line on which the cursor sits.")
+function void 
+duplicate_line(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
     i64 pos = view_get_cursor_pos(app, view);
     i64 line = get_line_number_from_pos(app, buffer, pos);
-    Scratch_Block scratch(app);
-    String s = push_buffer_line(app, scratch, buffer, line);
-    s = push_stringfz(scratch, "%.*s\n", string_expand(s));
-    pos = get_line_side_pos(app, buffer, line, Side_Min);
-    buffer_replace_range(app, buffer, Ii64(pos), s);
+ Scratch_Block scratch(app);
+ String s = push_buffer_line(app, scratch, buffer, line);
+ s = push_stringfz(scratch, "%.*s\n", string_expand(s));
+ pos = get_line_side_pos(app, buffer, line, Side_Min);
+ buffer_replace_range(app, buffer, Ii64(pos), s);
 }
 
-CUSTOM_COMMAND_SIG(delete_line)
-CUSTOM_DOC("Delete the line the on which the cursor sits.")
+function void 
+delete_line(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -1431,9 +1430,8 @@ CUSTOM_DOC("Delete the line the on which the cursor sits.")
 
 ////////////////////////////////
 
-void open_file_in_quotes(App *app);
-CUSTOM_COMMAND_SIG(open_file_in_quotes)
-CUSTOM_DOC("Reads a filename from surrounding '\"' characters and attempts to open the corresponding file.")
+function void 
+open_file_in_quotes(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -1519,20 +1517,20 @@ get_cpp_matching_file(App *app, Buffer_ID buffer, Buffer_ID *buffer_out)
  return(result);
 }
 
-CUSTOM_COMMAND_SIG(open_matching_file_cpp)
-CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file.")
+function void 
+open_matching_file_cpp(App_Cmd *app)
 {
     View_ID view     = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Buffer_ID new_buffer = 0;
-    if ( get_cpp_matching_file(app, buffer, &new_buffer) )
-    {
-        view_set_buffer(app, view, new_buffer, 0);
-    }
+ Buffer_ID new_buffer = 0;
+ if ( get_cpp_matching_file(app, buffer, &new_buffer) )
+ {
+  view_set_buffer(app, view, new_buffer, 0);
+ }
 }
 
-CUSTOM_COMMAND_SIG(open_matching_file_cpp_other_panel)
-CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.")
+function void 
+open_matching_file_cpp_other_panel(App_Cmd *app)
 {
     View_ID view     = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -1549,15 +1547,15 @@ function void view_buffer_other_panel(App *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    i64 pos = view_get_cursor_pos(app, view);
-    change_active_primary_view(app);
-    view = get_active_view(app, Access_Always);
-    view_set_buffer(app, view, buffer, 0);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+ i64 pos = view_get_cursor_pos(app, view);
+ change_active_primary_view(app);
+ view = get_active_view(app, Access_Always);
+ view_set_buffer(app, view, buffer, 0);
+ view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
 }
 
-CUSTOM_COMMAND_SIG(swap_panels)
-CUSTOM_DOC("Swaps the active panel with it's sibling.")
+function void 
+swap_panels(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Always);
     Panel_ID panel = view_get_panel(app, view);
@@ -1571,15 +1569,15 @@ CUSTOM_DOC("Swaps the active panel with it's sibling.")
         
         if (!view_is_passive(app, view_1) && !view_is_passive(app, view_2)){
             panel_swap_children(app, parent);
-            break;
-        }
-        
-        parent = panel_get_parent(app, parent);
-    }
+   break;
+  }
+  
+  parent = panel_get_parent(app, parent);
+ }
 }
 
-CUSTOM_COMMAND_SIG(quick_swap_buffer)
-CUSTOM_DOC("Change to the most recently used buffer in this view - or to the top of the buffer stack if the most recent doesn't exist anymore")
+function void 
+quick_swap_buffer(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_Visible);
     Managed_Scope scope = view_get_managed_scope(app, view);
@@ -1591,365 +1589,302 @@ CUSTOM_DOC("Change to the most recently used buffer in this view - or to the top
         }
     }
     if (fallback){
-        Buffer_ID top_buffer = get_buffer_next(app, 0, Access_Always);
-        view_set_buffer(app, view, top_buffer, 0);
-    }
+  Buffer_ID top_buffer = get_buffer_next(app, 0, Access_Always);
+  view_set_buffer(app, view, top_buffer, 0);
+ }
 }
 
 ////////////////////////////////
 
-CUSTOM_COMMAND_SIG(kill_buffer)
-CUSTOM_DOC("Kills the current buffer.")
+function void 
+kill_buffer(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    try_buffer_kill(app, buffer, view, 0);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ try_buffer_kill(app, buffer, view, 0);
 }
 
 void save_current_buffer(App *app);
-CUSTOM_COMMAND_SIG(save_current_buffer)
-CUSTOM_DOC("Saves the current buffer.")
+function void 
+save_current_buffer(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    Scratch_Block scratch(app);
-    String filename = push_buffer_filepath(app, scratch, buffer);
-    buffer_save(app, buffer, filename, 0);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ Scratch_Block scratch(app);
+ String filename = push_buffer_filepath(app, scratch, buffer);
+ buffer_save(app, buffer, filename, 0);
 }
 
-CUSTOM_COMMAND_SIG(reopen)
-CUSTOM_DOC("Reopen the current buffer from the hard drive.")
+function void 
+reopen(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    buffer_reopen(app, buffer, 0);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ buffer_reopen(app, buffer, 0);
 }
 
 ////////////////////////////////
 
 function i64
-record_get_new_cursor_position_undo(App *app, Buffer_ID buffer_id, History_Record_Index index, Record_Info record){
-    i64 new_edit_position = record.pos_before_edit;
-#if 0
-    switch (record.kind){
-        default:
-        case RecordKind_Single:
-        {
-            new_edit_position = (i1)(record.single_first + record.single_string_backward.size);
-        }break;
-        case RecordKind_Group:
-        {
-            Record_Info sub_record = buffer_history_get_group_sub_record(app, buffer_id, index, 0);
-            new_edit_position = (i1)(sub_record.single_first + sub_record.single_string_backward.size);
-        }break;
-    }
-#endif
-    return(new_edit_position);
-}
-
-function i64
-record_get_new_cursor_position_undo(App *app, Buffer_ID buffer_id, History_Record_Index index){
-    Record_Info record = buffer_history_get_record_info(app, buffer_id, index);
-    return(record_get_new_cursor_position_undo(app, buffer_id, index, record));
-}
-
-function i64
-record_get_new_cursor_position_redo(App *app, Buffer_ID buffer_id, History_Record_Index index, Record_Info record)
+record_get_new_cursor_position_redo(App *app, Buffer_ID buffer_id, History_Record_Index index)
 {
-    i64 new_edit_position = 0;
-    switch (record.kind)
-    {
-        default:
-        case RecordKind_Single:
-        {
-            new_edit_position = record.single_first + record.single_string_forward.size;
-        }break;
-        case RecordKind_Group:
-        {
-            Record_Info sub_record = buffer_history_get_group_sub_record(app, buffer_id, index, record.group_count - 1);
-            new_edit_position = sub_record.single_first + sub_record.single_string_forward.size;
-        }break;
-    }
-    return((i1)(new_edit_position));
-}
-
-function i64
-record_get_new_cursor_position_redo(App *app, Buffer_ID buffer_id, History_Record_Index index){
-    Record_Info record = buffer_history_get_record_info(app, buffer_id, index);
-    return(record_get_new_cursor_position_redo(app, buffer_id, index, record));
+ Record_Info record = buffer_history_get_record_info(app, buffer_id, index);
+ if(record.kind == RecordKind_Group){
+  record = buffer_history_get_group_sub_record(app, buffer_id, index, record.group_count-1);
+ }
+ i64 result = record.single_first + record.single_string_forward.size;
+ return(result);
 }
 
 function void
 undo__fade_finish(App *app, Fade_Range *range){
-    Buffer_ID buffer = range->buffer_id;
-    History_Record_Index current = buffer_history_get_current_state_index(app, buffer);
-    if (current > 0){
-        buffer_history_set_current_state_index(app, buffer, current - 1);
-    }
+ Buffer_ID buffer = range->buffer_id;
+ History_Record_Index current = buffer_history_get_current_state_index(app, buffer);
+ if (current > 0){
+  buffer_history_set_current_state_index(app, buffer, current - 1);
+ }
 }
-
 function void
 undo__flush_fades(App *app, Buffer_ID buffer){
-    Fade_Range **prev_next = &buffer_fade_ranges.first;
-    for (Fade_Range *node = buffer_fade_ranges.first, *next = 0;
-         node != 0;
-         node = next){
-        next = node->next;
-        if (node->buffer_id == buffer &&
-            node->finish_call == undo__fade_finish){
-            undo__fade_finish(app, node);
-            *prev_next = next;
-            free_fade_range(node);
-            buffer_fade_ranges.count -= 1;
-        }
-        else{
-            prev_next = &node->next;
-            buffer_fade_ranges.last = node;
-        }
-    }
+ Fade_Range **prev_next = &buffer_fade_ranges.first;
+ for (Fade_Range *node = buffer_fade_ranges.first, *next = 0;
+      node != 0;
+      node = next){
+  next = node->next;
+  if (node->buffer_id == buffer &&
+      node->finish_call == undo__fade_finish){
+   undo__fade_finish(app, node);
+   *prev_next = next;
+   free_fade_range(node);
+   buffer_fade_ranges.count -= 1;
+  }
+  else{
+   prev_next = &node->next;
+   buffer_fade_ranges.last = node;
+  }
+ }
 }
-
-//CUSTOM_DOC("Advances backwards through the undo history of the current buffer.")
+function void
+undo(App_Cmd *app)
+{
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ undo__flush_fades(app, buffer);
+ 
+ History_Record_Index current = buffer_history_get_current_state_index(app, buffer);
+ if(current > 0){
+  Record_Info record = buffer_history_get_record_info(app, buffer, current);
+  i64 new_position = record.pos_before_edit;
+  
+  b32 do_immedite_undo = true;
+  f32 undo_fade_time = 0.33f;
+  b32 enable_undo_fade_out = def_get_config_b32(vars_intern_lit("enable_undo_fade_out"));
+  if (enable_undo_fade_out &&
+      undo_fade_time > 0.f &&
+      record.kind == RecordKind_Single &&
+      record.single_string_backward.size == 0){
+   b32 has_hard_character = false;
+   for (u64 i = 0; i < record.single_string_forward.size; i += 1){
+    if (!char_is_whitespace(record.single_string_forward.str[i])){
+     has_hard_character = true;
+     break;
+    }
+   }
+   if (has_hard_character){
+    Range_i64 range = Ii64_size(record.single_first, record.single_string_forward.size);
+    ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_undo)) & 0xFFFFFF;
+    Fade_Range *fade = buffer_post_fade(app, buffer, undo_fade_time, range, color);
+    fade->negate_fade_direction = true;
+    fade->finish_call = undo__fade_finish;
+    do_immedite_undo = false;
+    if (new_position > range.max){
+     new_position -= range_size(range);
+    }
+   }
+  }
+  
+  if (do_immedite_undo){
+   buffer_history_set_current_state_index(app, buffer, current - 1);
+   if (record.single_string_backward.size > 0){
+    Range_i64 range = Ii64_size(record.single_first, record.single_string_backward.size);
+    ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_undo));
+    buffer_post_fade(app, buffer, undo_fade_time, range, color);
+   }
+  }
+  
+  view_set_cursor_and_preferred_x(app, view, seek_pos(new_position));
+ }
+}
 function void 
-undo(App *app)
+redo(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    undo__flush_fades(app, buffer);
-    
-    History_Record_Index current = buffer_history_get_current_state_index(app, buffer);
-    if (current > 0){
-        Record_Info record = buffer_history_get_record_info(app, buffer, current);
-        i64 new_position = record_get_new_cursor_position_undo(app, buffer, current, record);
-        
-        b32 do_immedite_undo = true;
-        f32 undo_fade_time = 0.33f;
-        b32 enable_undo_fade_out = def_get_config_b32(vars_intern_lit("enable_undo_fade_out"));
-        if (enable_undo_fade_out &&
-            undo_fade_time > 0.f &&
-            record.kind == RecordKind_Single &&
-            record.single_string_backward.size == 0){
-            b32 has_hard_character = false;
-            for (u64 i = 0; i < record.single_string_forward.size; i += 1){
-                if (!char_is_whitespace(record.single_string_forward.str[i])){
-                    has_hard_character = true;
-                    break;
-                }
-            }
-            if (has_hard_character){
-                Range_i64 range = Ii64_size(record.single_first, record.single_string_forward.size);
-                ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_undo)) & 0xFFFFFF;
-                Fade_Range *fade = buffer_post_fade(app, buffer, undo_fade_time, range, color);
-                fade->negate_fade_direction = true;
-                fade->finish_call = undo__fade_finish;
-                do_immedite_undo = false;
-                if (new_position > range.max){
-                    new_position -= range_size(range);
-                }
-            }
-        }
-        
-        if (do_immedite_undo){
-            buffer_history_set_current_state_index(app, buffer, current - 1);
-            if (record.single_string_backward.size > 0){
-                Range_i64 range = Ii64_size(record.single_first, record.single_string_backward.size);
-                ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_undo));
-                buffer_post_fade(app, buffer, undo_fade_time, range, color);
-            }
-        }
-        
-        view_set_cursor_and_preferred_x(app, view, seek_pos(new_position));
-    }
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+ undo__flush_fades(app, buffer);
+ 
+ History_Record_Index current = buffer_history_get_current_state_index(app, buffer);
+ History_Record_Index max_index = buffer_history_get_max_record_index(app, buffer);
+ if (current < max_index)
+ {
+  Record_Info record = buffer_history_get_record_info(app, buffer, current+1);
+  
+  buffer_history_set_current_state_index(app, buffer, current + 1);
+  
+  if (record.single_string_forward.size > 0)
+  {
+   Range_i64 range = Ii64_size(record.single_first, record.single_string_forward.size);
+   ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_undo));
+   f32 undo_fade_time = 0.33f;
+   buffer_post_fade(app, buffer, undo_fade_time, range, color);
+  }
+  
+  i64 new_position = record_get_new_cursor_position_redo(app, buffer, current+1);
+  view_set_cursor_and_preferred_x(app, view, seek_pos(new_position));
+ }
 }
 
-//CUSTOM_DOC("Advances forwards through the undo history of the current buffer.")
+global u32 global_undo_access = Access_Write;
+//
+function void
+undo_all_buffers(App_Cmd *app)
+{//NOTE(kv) So we don't have a data structure for global undo...
+ Scratch_Block scratch(app);
+ i1 highest_edit_number = -1;
+ Buffer_ID first_buffer_match = 0;
+ Buffer_ID last_buffer_match = 0;
+ i1 match_count = 0;
+ u32 access = global_undo_access;
+ 
+ for(Buffer_ID buffer = get_buffer_next(app, 0, access);
+     buffer != 0;
+     buffer = get_buffer_next(app, buffer, access))
+ {
+  History_Record_Index index = buffer_history_get_current_state_index(app, buffer);
+  if(index > 0){
+   Record_Info record = buffer_history_get_record_info(app, buffer, index);
+   if(record.edit_number > highest_edit_number){
+    highest_edit_number = record.edit_number;
+    first_buffer_match = buffer;
+    last_buffer_match = buffer;
+    match_count = 1;
+   }else if(record.edit_number == highest_edit_number){
+    last_buffer_match = buffer;
+    match_count += 1;
+   }
+  }
+ }
+ 
+ Buffer_ID *match_buffers = push_array(scratch, Buffer_ID, match_count);
+ i64 *new_positions = push_array(scratch, i64, match_count);
+ match_count = 0;
+ 
+ if(highest_edit_number != -1)
+ {
+  for (Buffer_ID buffer = first_buffer_match;
+       buffer != 0;
+       buffer = get_buffer_next(app, buffer, access))
+  {
+   b32 did_match = false;
+   i64 new_edit_position = 0;
+   for(;;){
+    History_Record_Index index = buffer_history_get_current_state_index(app, buffer);
+    if(index > 0){
+     Record_Info record = buffer_history_get_record_info(app, buffer, index);
+     if(record.edit_number == highest_edit_number){
+      did_match = true;
+      new_edit_position = record.pos_before_edit;
+      buffer_history_set_current_state_index(app, buffer, index - 1);
+     }else{
+      break;
+     }
+    }else{
+     break;
+    }
+   }
+   if(did_match){
+    match_buffers[match_count] = buffer;
+    new_positions[match_count] = new_edit_position;
+    match_count += 1;
+   }
+   if(buffer == last_buffer_match){
+    break;
+   }
+  }
+ }
+ 
+ view_buffer_set(app, match_buffers, new_positions, match_count);
+}
 function void 
-redo(App *app)
+redo_all_buffers(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
-    undo__flush_fades(app, buffer);
-    
-    History_Record_Index current = buffer_history_get_current_state_index(app, buffer);
-    History_Record_Index max_index = buffer_history_get_max_record_index(app, buffer);
-    if (current < max_index)
-    {
-        Record_Info record = buffer_history_get_record_info(app, buffer, current);
-        
-        buffer_history_set_current_state_index(app, buffer, current + 1);
-        
-        if (record.single_string_forward.size > 0)
-        {
-            Range_i64 range = Ii64_size(record.single_first, record.single_string_forward.size);
-            ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_undo));
-            f32 undo_fade_time = 0.33f;
-            buffer_post_fade(app, buffer, undo_fade_time, range, color);
-        }
-       
-        // TODO(kv): There's a bug here!
-        //i64 new_position = record_get_new_cursor_position_redo(app, buffer, current + 1, record);
-        //view_set_cursor_and_preferred_x(app, view, seek_pos(new_position));
+ u32 access = global_undo_access;
+ Scratch_Block scratch(app);
+ 
+ i1 lowest_edit_number = 0x7FFFFFFF;
+ Buffer_ID first_buffer_match = 0;
+ Buffer_ID last_buffer_match = 0;
+ i1 match_count = 0;
+ 
+ {
+  for (Buffer_ID buffer = get_buffer_next(app, 0, access);
+       buffer != 0;
+       buffer = get_buffer_next(app, buffer, access)){
+   History_Record_Index max_index = buffer_history_get_max_record_index(app, buffer);
+   History_Record_Index index = buffer_history_get_current_state_index(app, buffer);
+   if (index < max_index){
+    Record_Info record = buffer_history_get_record_info(app, buffer, index + 1);
+    if (record.edit_number < lowest_edit_number){
+     lowest_edit_number = record.edit_number;
+     first_buffer_match = buffer;
+     last_buffer_match = buffer;
+     match_count = 1;
     }
+    else if (record.edit_number == lowest_edit_number){
+     last_buffer_match = buffer;
+     match_count += 1;
+    }
+   }
+  }
+ }
+ 
+ Buffer_ID *match_buffers = push_array(scratch, Buffer_ID, match_count);
+ i64 *new_positions = push_array(scratch, i64, match_count);
+ match_count = 0;
+ 
+ if (lowest_edit_number != -1){
+  for (Buffer_ID buffer = first_buffer_match;
+       buffer != 0;
+       buffer = get_buffer_next(app, buffer, access))
+  {
+   b32 did_match = false;
+   i64 new_edit_position = 0;
+   History_Record_Index max_index = buffer_history_get_max_record_index(app, buffer);
+   for (;;){
+    History_Record_Index index = buffer_history_get_current_state_index(app, buffer);
+    if (index < max_index){
+     Record_Info record = buffer_history_get_record_info(app, buffer, index + 1);
+     if (record.edit_number == lowest_edit_number){
+      did_match = true;
+      new_edit_position = record_get_new_cursor_position_redo(app, buffer, index+1);
+      buffer_history_set_current_state_index(app, buffer, index + 1);
+     } else{
+      break;
+     }
+    } else{
+     break;
+    }
+   }
+   if (did_match){
+    match_buffers[match_count] = buffer;
+    new_positions[match_count] = new_edit_position;
+    match_count += 1;
+   }
+   if (buffer == last_buffer_match){
+    break;
+   }
+  }
+ }
+ 
+ view_buffer_set(app, match_buffers, new_positions, match_count);
 }
-
-CUSTOM_COMMAND_SIG(undo_all_buffers)
-CUSTOM_DOC("Advances backward through the undo history in the buffer containing the most recent regular edit.")
-{
-    Scratch_Block scratch(app);
-    i1 highest_edit_number = -1;
-    Buffer_ID first_buffer_match = 0;
-    Buffer_ID last_buffer_match = 0;
-    i1 match_count = 0;
-    
-    {
-        for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-             buffer != 0;
-             buffer = get_buffer_next(app, buffer, Access_Always)){
-            History_Record_Index index = buffer_history_get_current_state_index(app, buffer);
-            if (index > 0){
-                Record_Info record = buffer_history_get_record_info(app, buffer, index);
-                if (record.edit_number > highest_edit_number){
-                    highest_edit_number = record.edit_number;
-                    first_buffer_match = buffer;
-                    last_buffer_match = buffer;
-                    match_count = 1;
-                }
-                else if (record.edit_number == highest_edit_number){
-                    last_buffer_match = buffer;
-                    match_count += 1;
-                }
-            }
-        }
-    }
-    
-    Buffer_ID *match_buffers = push_array(scratch, Buffer_ID, match_count);
-    i64 *new_positions = push_array(scratch, i64, match_count);
-    match_count = 0;
-    
-    if (highest_edit_number != -1){
-        for (Buffer_ID buffer = first_buffer_match;
-             buffer != 0;
-             buffer = get_buffer_next(app, buffer, Access_Always)){
-            b32 did_match = false;
-            i64 new_edit_position = 0;
-            for (;;){
-                History_Record_Index index = buffer_history_get_current_state_index(app, buffer);
-                if (index > 0){
-                    Record_Info record = buffer_history_get_record_info(app, buffer, index);
-                    if (record.edit_number == highest_edit_number){
-                        did_match = true;
-                        new_edit_position = record_get_new_cursor_position_undo(app, buffer, index, record);
-                        buffer_history_set_current_state_index(app, buffer, index - 1);
-                    }
-                    else{
-                        break;
-                    }
-                }
-                else{
-                    break;
-                }
-            }
-            if (did_match){
-                match_buffers[match_count] = buffer;
-                new_positions[match_count] = new_edit_position;
-                match_count += 1;
-            }
-            if (buffer == last_buffer_match){
-                break;
-            }
-        }
-    }
-    
-    view_buffer_set(app, match_buffers, new_positions, match_count);
-}
-
-CUSTOM_COMMAND_SIG(redo_all_buffers)
-CUSTOM_DOC("Advances forward through the undo history in the buffer containing the most recent regular edit.")
-{
-    Scratch_Block scratch(app);
-    
-    i1 lowest_edit_number = 0x7FFFFFFF;
-    Buffer_ID first_buffer_match = 0;
-    Buffer_ID last_buffer_match = 0;
-    i1 match_count = 0;
-    
-    {
-        for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-             buffer != 0;
-             buffer = get_buffer_next(app, buffer, Access_Always)){
-            History_Record_Index max_index = buffer_history_get_max_record_index(app, buffer);
-            History_Record_Index index = buffer_history_get_current_state_index(app, buffer);
-            if (index < max_index){
-                Record_Info record = buffer_history_get_record_info(app, buffer, index + 1);
-                if (record.edit_number < lowest_edit_number){
-                    lowest_edit_number = record.edit_number;
-                    first_buffer_match = buffer;
-                    last_buffer_match = buffer;
-                    match_count = 1;
-                }
-                else if (record.edit_number == lowest_edit_number){
-                    last_buffer_match = buffer;
-                    match_count += 1;
-                }
-            }
-        }
-    }
-    
-    Buffer_ID *match_buffers = push_array(scratch, Buffer_ID, match_count);
-    i64 *new_positions = push_array(scratch, i64, match_count);
-    match_count = 0;
-    
-    if (lowest_edit_number != -1){
-        for (Buffer_ID buffer = first_buffer_match;
-             buffer != 0;
-             buffer = get_buffer_next(app, buffer, Access_Always)){
-            b32 did_match = false;
-            i64 new_edit_position = 0;
-            History_Record_Index max_index = buffer_history_get_max_record_index(app, buffer);
-            for (;;){
-                History_Record_Index index = buffer_history_get_current_state_index(app, buffer);
-                if (index < max_index){
-                    Record_Info record = buffer_history_get_record_info(app, buffer, index + 1);
-                    if (record.edit_number == lowest_edit_number){
-                        did_match = true;
-                        new_edit_position = record_get_new_cursor_position_redo(app, buffer, index + 1, record);
-                        buffer_history_set_current_state_index(app, buffer, index + 1);
-                    }
-                    else{
-                        break;
-                    }
-                }
-                else{
-                    break;
-                }
-            }
-            if (did_match){
-                match_buffers[match_count] = buffer;
-                new_positions[match_count] = new_edit_position;
-                match_count += 1;
-            }
-            if (buffer == last_buffer_match){
-                break;
-            }
-        }
-    }
-    
-    view_buffer_set(app, match_buffers, new_positions, match_count);
-}
-
 ////////////////////////////////
-
-#if 0
-CUSTOM_COMMAND_SIG(default_file_externally_modified)
-CUSTOM_DOC("Notes the external modification of attached files by printing a message.")
-{
-    User_Input input = get_current_input(app);
-    if (match_core_code(&input, CoreCode_FileExternallyModified)){
-        Scratch_Block scratch(app);
-        Buffer_ID buffer_id = input.event.core.id;
-        String name = push_buffer_unique_name(app, scratch, buffer_id);
-        String str = push_stringfz(scratch, "Modified externally: %s\n", name.str);
-        print_message(app, str);
-    }
-}
-#endif

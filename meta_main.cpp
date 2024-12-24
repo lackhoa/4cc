@@ -62,7 +62,7 @@ struct List_File_Params{
  String_Predicate *predicate;
 };
 function b32
-list_files_in_dir(Arena *arena, arrayof<Stringz> &outfiles, char *path,
+list_files_in_dir(Arena *arena, darray(Stringz) &outfiles, char *path,
                   List_File_Params params)
 {
  b32 ok = true;
@@ -115,7 +115,7 @@ meta_process_ast(Statement_Root *root)
  if(DEBUG_vv_name){
   //-Vertex check
   Scratch_Block scratch;
-  arrayof<String> existing_names;
+  darray(String) existing_names;
   init_dynamic(existing_names, scratch, 200);
   
   struct Stack_Entry{
@@ -123,7 +123,7 @@ meta_process_ast(Statement_Root *root)
    i32 statement_count;
    i32 next_index;
   };
-  arrayof<Stack_Entry> stack;
+  darray(Stack_Entry) stack;
   init_dynamic(stack, scratch, 32);
   
   auto stack_push_block = [&](Meta_Statements *block){
@@ -241,10 +241,10 @@ test_read_map_file(Stringz path){
   }
  }
 }
-function Meta_Parsed_File
+function Lexed_File
 lex_file(Arena *arena, Stringz filename)
 {
- Meta_Parsed_File result = {};
+ Lexed_File result = {};
  FILE *file = open_file(filename, "rb");
  if(file){
   Stringz data = read_entire_file_handle(arena, file);
@@ -259,6 +259,180 @@ lex_file(Arena *arena, Stringz filename)
  }
  return result;
 }
+
+//~
+function String
+ep_string_literal(Ed_Parser *parser)
+{//NOTE(kv) There are bunch of string kinds, so this is not exhaustive.
+ String result = {};
+ Token *token = ep_eat_kind(parser, TokenBaseKind_LiteralString);
+ if(parser->ok_){
+  result = ep_print_token(parser);
+  result.str += 1;
+  result.len -= 2;
+  kv_assert(result.len >= 0);
+ }
+ return result;
+}
+function b32
+generate_4coder_custom()
+{
+ struct Meta_Custom_Command
+ {
+  String name;
+  String documentation;
+  b32 is_ui;
+ };
+ struct Meta_Custom_ID
+ {
+  String name;
+  String group;
+ };
+ 
+ b32 ok = true;
+ Scratch_Block scratch;
+ Stringz custom_dir = pjoin(scratch, meta_dirs.code, strlit("custom"));
+ Stringz custom_commands_path = pjoin(scratch, custom_dir, strlit("custom_command_list.h"));
+ Lexed_File source = lex_file(scratch, custom_commands_path);
+ 
+ darray(Meta_Custom_Command) commands;
+ init_dynamic(commands, scratch, 512);
+ 
+ darray(Meta_Custom_ID) custom_ids;
+ init_dynamic(custom_ids, scratch, 128);
+ 
+ {//-Parse
+  Ed_Parser parser_value = ed_parser_from_token_list(source.data, source.token_list);
+  Ed_Parser *parser = &parser_value;
+  ep_skip_comments_and_spaces(parser);
+  
+  {
+   ep_id(parser, strlit("normal_commands"));
+   ep_char(parser, '{');
+   while(parser->ok_){
+    if(ep_maybe_char(parser, '}')){
+     break;
+    }
+    Meta_Custom_Command *command = commands.push();
+    *command = {};
+    command->name = ep_id(parser);
+    command->documentation = ep_string_literal(parser);
+   }
+  }
+  {
+   ep_id(parser, strlit("ui_commands"));
+   ep_char(parser, '{');
+   while(parser->ok_)
+   {
+    if(ep_maybe_char(parser, '}')){
+     break;
+    }
+    Meta_Custom_Command *command = commands.push();
+    *command = {};
+    command->name = ep_id(parser);
+    command->documentation = ep_string_literal(parser);
+    command->is_ui = true;
+   }
+  }
+  
+  {//-custom id
+   ep_id(parser, strlit("custom_ids"));
+   ep_char(parser, '{');
+   while(parser->ok_)
+   {
+    if(ep_maybe_char(parser, '}')){
+     break;
+    }
+    Meta_Custom_ID *id = custom_ids.push();
+    id->name = ep_id(parser);
+    id->group = ep_id(parser);
+    ep_maybe_char(parser, ',');
+   }
+  }
+  
+  ok = ok and parser->ok_;
+  if(not parser->ok_){
+   Line_Column fail_location = ep_get_fail_location(parser);
+   printf("%.*s:%d:%d: parse error\n",
+          string_expand(source.name),
+          fail_location.line,
+          fail_location.column);
+  }
+ }
+ 
+ char *text;
+ if(ok)
+ {//-print commands
+  Stringz output_path = pjoin(scratch, custom_dir,
+                              strlit("generated"), strlit("command_metadata.gen.h"));
+  Meta_Printer printer = m_open_file_to_write(output_path);
+  {
+   print_format(printer, "#  define command_one_past_last_id %d\n", commands.count);
+   
+   for_i32(i, 0, commands.count){
+    Meta_Custom_Command *command = commands.items + i;
+    print_format(printer, "function void %.*s(App_Cmd *app);\n",
+                 strexpand(command->name));
+   }
+   
+   text = R"FOO(
+struct Command_Metadata{
+  Custom_Command_Function *proc;
+  b32 is_ui;
+  String name;
+};
+)FOO";
+   print(printer, text);
+   
+   print_format(printer, "static Command_Metadata fcoder_metacmd_table[%d] = ", commands.count);
+   {
+    print(printer, "{\n");
+    for_i32(i, 0, commands.count)
+    {
+     Meta_Custom_Command *command = commands.items + i;
+     print_format(printer, "{ .proc=%.*s, .is_ui=%d, .name=strlit(\"%.*s\") },\n",
+                  strexpand(command->name),
+                  command->is_ui,
+                  strexpand(command->name));
+    }
+    print(printer, "};\n");
+   }
+  }
+  ok = ok and not(printer.error);
+  close_file(printer);
+ }
+ 
+ {//-print custom ids
+  Stringz output_path = pjoin(scratch, custom_dir,
+                              strlit("generated"), strlit("init_custom_id.gen.cpp"));
+  Meta_Printer printer = m_open_file_to_write(output_path);
+  
+  text = R"FOO(
+function void
+initialize_managed_id_metadata(App *app)
+)FOO";
+  print(printer, text);
+  print_brace_block(printer){
+   print(printer, "\n");
+   print(printer,
+         "#define X(name, group) "
+         "name = managed_id_declare(app, strlit(#group), strlit(#name))\n");
+   for_i32(i, 0, custom_ids.count){
+    Meta_Custom_ID *id = custom_ids.items + i;
+    print_format(printer, "X(%.*s, %.*s);\n",
+                 strexpand(id->name), strexpand(id->group));
+   }
+   print(printer, "#undef X\n");
+   print(printer, "\n");
+  }
+  
+  ok = ok and not(printer.error);
+  close_file(printer);
+ }
+ return ok;
+}
+//~
+
 xfunction i32
 main(i32 argc, char **argv)
 {
@@ -297,14 +471,14 @@ main(i32 argc, char **argv)
    for_i1(i,0,alen(api_paths0)){
     //-Build the API definition list
     Stringz api_path = pjoin(api_scratch, code_dir, SCu8(api_paths0[i]));
-    Meta_Parsed_File file = lex_file(api_scratch, api_path);
+    Lexed_File file = lex_file(api_scratch, api_path);
     api_parser_parse_file(api_scratch, file, &list);
    }
    //-Generate includes
    ok = ok and api_parser_generate(&list);
   }
   
-  arrayof<Stringz> all_paths = {};
+  darray(Stringz) all_paths = {};
   init_dynamic(all_paths, &malloc_base_allocator, 64);
   List_File_Params params = {.predicate=is_klang_or_template_file};
   ok = ok and list_files_in_dir(scratch, all_paths, to_cstring(code_dir), params);
@@ -319,14 +493,14 @@ main(i32 argc, char **argv)
    
    Stringz path = all_paths[path_index];
    if(is_template_file(path)){
-    Meta_Parsed_File parsed_file = lex_file(scratch, path);
-    ok = ok and template_main(parsed_file);
+    Lexed_File lexed_file = lex_file(scratch, path);
+    ok = ok and template_main(lexed_file);
    }
   }
   
   {//-klang
    Scratch_Block klang_arena;
-   arrayof<K_Slider> sliders;
+   darray(K_Slider) sliders;
    init_dynamic(sliders, klang_arena, 512);
    
    for_i32(path_index, 0, all_paths.count){
@@ -335,8 +509,8 @@ main(i32 argc, char **argv)
     
     Stringz path = all_paths[path_index];
     if(is_klang_file(path)){
-     Meta_Parsed_File parsed_file = lex_file(scratch, path);
-     ok = ok and klang_main(klang_arena, parsed_file, &sliders);
+     Lexed_File lexed_file = lex_file(scratch, path);
+     ok = ok and klang_main(klang_arena, lexed_file, &sliders);
     }
    }
    
@@ -352,6 +526,8 @@ main(i32 argc, char **argv)
   api_definition_generate_api_includes(api, strlit("4ed_system_api.cpp"),
                                        GeneratedGroup_Custom, APIGeneration_PrefixCallables);
  }
+ 
+ ok = ok and generate_4coder_custom();
  
  i32 exit_code = !ok;
  fflush(stdout);

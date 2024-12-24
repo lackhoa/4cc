@@ -4,38 +4,9 @@
 
 // TOP
 
-#if 0
-CUSTOM_COMMAND_SIG(default_startup)
-CUSTOM_DOC("Default command for responding to a startup event")
-{
-    ProfileScope(app, "default startup");
-    User_Input input = get_current_input(app);
-    if ( match_core_code(&input, CoreCode_Startup) )
-    {
-        String8_Array filenames = input.event.core.filenames;
-        load_themes_default_folder(app);
-        default_4coder_initialize(app, filenames);
-        default_4coder_side_by_side_panels(app, filenames);
-        b32 auto_load = def_get_config_b32(vars_intern_lit("automatically_load_project"));
-        if (auto_load)
-        {
-            load_project(app);
-        }
-    }
-   
-    {
-        //def_audio_init();
-    }
-    
-    {
-        def_enable_virtual_whitespace = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
-        clear_all_layouts(app);
-    }
-}
-#endif
+function void
+default_try_exit(App_Cmd *app)
 
-CUSTOM_COMMAND_SIG(default_try_exit)
-CUSTOM_DOC("Default command for responding to a try-exit event")
 {
     User_Input input = get_current_input(app);
     if ( match_core_code(&input, CoreCode_TryExit) ){
@@ -72,15 +43,16 @@ default_implicit_map(App *app, String_ID lang, String_ID mode, Input_Event *even
     Command_Map_ID map_id = default_get_map_id(app, view);
     Command_Binding binding = map_get_binding_recursive(&framework_mapping, map_id, event);
     
-    // TODO(allen): map_id <-> map name?
+ // TODO(allen): map_id <-> map name?
  result.map = 0;
  result.command = binding.custom;
  
  return(result);
 }
 
-CUSTOM_COMMAND_SIG(default_view_input_handler)
-CUSTOM_DOC("Input consumption loop for default view behavior")
+function void
+default_view_input_handler(App_Cmd *app)
+
 {
  Scratch_Block scratch(app);
  default_input_handler_init(app, scratch);
@@ -495,7 +467,8 @@ do_full_lex_async(Async_Context *actx, String data){
  }
 }
 
-BUFFER_HOOK_SIG(default_begin_buffer)
+function i32
+default_begin_buffer(App *app, Buffer_ID buffer_id)
 {
  ProfileScope(app, "begin buffer");
  
@@ -612,85 +585,41 @@ BUFFER_HOOK_SIG(default_begin_buffer)
  return(0);
 }
 
-BUFFER_HOOK_SIG(default_new_file){
-    Scratch_Block scratch(app);
-    String filename = push_buffer_base_name(app, scratch, buffer_id);
-    if (!string_match(string_postfix(filename, 2), strlit(".h"))) {
-        return(0);
-    }
-    
-    List_String guard_list = {};
-    for (u64 i = 0; i < filename.size; ++i){
-        u8 c[2] = {};
-        u64 c_size = 1;
-        u8 ch = filename.str[i];
-        if ('A' <= ch && ch <= 'Z'){
-            c_size = 2;
-            c[0] = '_';
-            c[1] = ch;
-        }
-        else if ('0' <= ch && ch <= '9'){
-            c[0] = ch;
-        }
-        else if ('a' <= ch && ch <= 'z'){
-            c[0] = ch - ('a' - 'A');
-        }
-        else{
-            c[0] = '_';
-        }
-        String part = push_stringz(scratch, SCu8(c, c_size));
-        string_list_push(scratch, &guard_list, part);
-    }
-    String guard = string_list_flatten(scratch, guard_list);
-    
-    Date_Time date_time = system_now_date_time_universal();
-    date_time = system_local_date_time_from_universal(&date_time);
-    String date_string = date_time_format(scratch, "month day yyyy h:mimi ampm", &date_time);
-    
-    Buffer_Insertion insert = begin_buffer_insertion_at_buffered2(app, buffer_id, 0, scratch, KB(16));
-    insertf(&insert,
-            "/* date = %.*s */\n"
-            "\n",
-            string_expand(date_string));
-    insertf(&insert,
-            "#ifndef %.*s\n"
-            "#define %.*s\n"
-            "\n"
-            "#endif //%.*s\n",
-            string_expand(guard),
-            string_expand(guard),
-            string_expand(guard));
-    end_buffer_insertion(&insert);
-    
-    return(0);
+function i32
+default_new_file(App *app, Buffer_ID buffer_id){
+ return(0);
 }
 
-BUFFER_HOOK_SIG(default_file_save){
-    // buffer_id
-    ProfileScope(app, "default file save");
-    
-    b32 auto_indent = def_get_config_b32(vars_intern_lit("automatically_indent_text_on_save"));
-    b32 is_virtual = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
-    if (auto_indent && is_virtual){
-        auto_indent_buffer(app, buffer_id, buffer_range(app, buffer_id));
-    }
-    
-    Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
-    Line_Ending_Kind *eol = scope_attachment(app, scope, buffer_eol_setting,
-                                             Line_Ending_Kind);
-    switch (*eol){
-        case LineEndingKind_LF:
-        {
-            rewrite_lines_to_lf(app, buffer_id);
-        }break;
-        case LineEndingKind_CRLF:
-        {
-            rewrite_lines_to_crlf(app, buffer_id);
-        }break;
-    }
-    
-    // no meaning for return
-    return(0);
+function i32
+default_file_save(App *app0, Buffer_ID buffer_id)
+{
+ // buffer_id
+ App_Cmd app_value = app_cmd_automated(app0);
+ App_Cmd *app      = &app_value;
+ ProfileScope(app, "default file save");
+ 
+ b32 auto_indent = def_get_config_b32(vars_intern_lit("automatically_indent_text_on_save"));
+ b32 is_virtual = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
+ if (auto_indent && is_virtual){
+  auto_indent_buffer(app, buffer_id, buffer_range(app, buffer_id));
+ }
+ 
+ Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
+ Line_Ending_Kind *eol = scope_attachment(app, scope, buffer_eol_setting,
+                                          Line_Ending_Kind);
+ switch (*eol){
+  case LineEndingKind_LF:
+  {
+   rewrite_lines_to_lf(app, buffer_id);
+  }break;
+  case LineEndingKind_CRLF:
+  {
+   rewrite_lines_to_crlf(app, buffer_id);
+  }break;
+ }
+ 
+ // no meaning for return
+ return(0);
 }
 
 BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
@@ -796,15 +725,16 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
     }
     
     if (do_full_relex){
-        *lex_task_ptr = async_task_no_dep(&global_async_system, do_full_lex_async,
-                                          make_data_struct(&buffer_id));
-    }
-    
-    // no meaning for return
-    return(0);
+  *lex_task_ptr = async_task_no_dep(&global_async_system, do_full_lex_async,
+                                    make_data_struct(&buffer_id));
+ }
+ 
+ // no meaning for return
+ return(0);
 }
 
-BUFFER_HOOK_SIG(default_end_buffer){
+function i32
+default_end_buffer(App *app, Buffer_ID buffer_id){
     Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
     Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
     if (lex_task_ptr != 0){

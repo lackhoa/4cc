@@ -28,7 +28,7 @@ struct M_Struct_Member
  String discriminator;  //NOTE(kv) for union type only
  b32    unserialized;
 };
-typedef arrayof<M_Struct_Member> M_Struct_Members;
+typedef darray(M_Struct_Member) M_Struct_Members;
 myinline b32
 member_was_removed(M_Struct_Member &member){
  return member.version_removed.len != 0;
@@ -125,7 +125,7 @@ struct Expression_Binary{
 };
 struct Expression_Call{
  Meta_Expression *func;
- arrayof<Meta_Expression> arguments;
+ darray(Meta_Expression) arguments;
 };
 struct Expression_Array_Subscript{
  Meta_Expression *array;
@@ -135,7 +135,7 @@ struct Meta_Expression{
  Expression_Kind kind;
  String as_string;
  union{
-  arrayof<Compound_Item> compound_items;
+  darray(Compound_Item) compound_items;
   Expression_Call   call;
   Expression_Unary  unary;
   Expression_Binary binary;
@@ -170,7 +170,7 @@ struct Statement_Head{
  Statement_Kind kind;
  i32 pos;
 };
-typedef arrayof<Statement_Union> Meta_Statements;
+typedef darray(Statement_Union) Meta_Statements;
 
 struct Statement_Block:Statement_Head{
  Meta_Statements block;
@@ -192,14 +192,14 @@ struct Statement_If : Statement_Head{
 struct Switch_Case;
 struct Statement_Switch : Statement_Head{
  Meta_Expression expression;
- arrayof<Switch_Case> cases;
+ darray(Switch_Case) cases;
 };
 
 typedef Statement_Declaration Cache_Item;
 
 struct Statement_Cache : Statement_Head{
  i32 id;
- arrayof<Cache_Item> cache_items;
+ darray(Cache_Item) cache_items;
  Statement_Head *body;
 };
 struct Statement_Root : Statement_Head{
@@ -270,9 +270,8 @@ struct K_Slider
 };
 struct Klang_Parser : Ed_Parser
 {
- arrayof<Statement_Cache*> function_cache_list;
  Statement_Head *current_statement;
- arrayof<K_Slider> *sliders;
+ darray(K_Slider) *sliders;
  Arena *arena;
 };
 //-

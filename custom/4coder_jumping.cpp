@@ -261,17 +261,17 @@ set_view_to_location(App *app, View_ID view, Buffer_ID buffer, Buffer_Seek seek)
 }
 
 function void
-jump_to_location(App *app, View_ID view, Buffer_ID buffer,
-                  Name_Line_Column_Location location)
+jump_to_location(App_Cmd *app, View_ID view, Buffer_ID buffer,
+                 Name_Line_Column_Location location)
 {
  view_set_active(app, view);
  set_view_to_location(app, view, buffer, seek_location(location));
- if (auto_center_after_jumps){
+ if(auto_center_after_jumps){
   center_view(app);
  }
 }
 function void
-jump_to_location(App *app, View_ID view,
+jump_to_location(App_Cmd *app, View_ID view,
                  Name_Line_Column_Location location)
 {
  Buffer_ID buffer = 0;
@@ -280,7 +280,7 @@ jump_to_location(App *app, View_ID view,
  }
 }
 function void
-jump_to_location(App *app, View_ID view, Buffer_ID buffer, ID_Pos_Jump_Location location){
+jump_to_location(App_Cmd *app, View_ID view, Buffer_ID buffer, ID_Pos_Jump_Location location){
  view_set_active(app, view);
  set_view_to_location(app, view, buffer, seek_pos(location.pos));
  if (auto_center_after_jumps){
@@ -288,7 +288,7 @@ jump_to_location(App *app, View_ID view, Buffer_ID buffer, ID_Pos_Jump_Location 
  }
 }
 function void
-jump_to_location_parsed(App *app, View_ID view, String location){
+jump_to_location_parsed(App_Cmd *app, View_ID view, String location){
  Parsed_Jump jump = parse_jump_location(location);
  if (jump.success){
   jump_to_location(app, view, jump.location);

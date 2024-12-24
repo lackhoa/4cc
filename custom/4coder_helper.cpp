@@ -9,8 +9,8 @@
 // TOP
 
 #define HISTORY_GROUP_SCOPE \
-  History_Group history_group = history_group_begin(app, buffer); \
-  defer( history_group_end(history_group) );
+History_Group history_group = history_group_begin(app, buffer); \
+defer( history_group_end(history_group) );
 
 ////////////////////////////////
 
@@ -28,28 +28,28 @@ get_command_id(Custom_Command_Function *func)
         if (func == fcoder_metacmd_table[i].proc)
         {
             result = i;
-            break;
-        }
-    }
-    return(result);
+   break;
+  }
+ }
+ return(result);
 }
 
 function Command_Metadata*
 get_command_metadata(Custom_Command_Function *func){
-    Command_Metadata *result = 0;
-    i32 id = get_command_id(func);
-    if (id >= 0){
-        result = &fcoder_metacmd_table[id];
-    }
-    return(result);
+ Command_Metadata *result = 0;
+ i32 id = get_command_id(func);
+ if (id >= 0){
+  result = &fcoder_metacmd_table[id];
+ }
+ return(result);
 }
 
 function Command_Metadata*
 get_command_metadata_from_name(String name){
-    Command_Metadata *result = 0;
-    Command_Metadata *candidate = fcoder_metacmd_table;
-    for (i32 i = 0; i < ArrayCountSigned(fcoder_metacmd_table); i += 1, candidate += 1){
-        if (string_match(SCu8(candidate->name, candidate->name_len), name)){
+ Command_Metadata *result = 0;
+ Command_Metadata *candidate = fcoder_metacmd_table;
+ for (i32 i = 0; i < ArrayCountSigned(fcoder_metacmd_table); i += 1, candidate += 1){
+  if (string_match(candidate->name, name)){
    result = candidate;
    break;
   }
@@ -1361,19 +1361,20 @@ get_indent_info_line_number_and_start(App *app, Buffer_ID buffer, i64 line_numbe
 ////////////////////////////////
 
 function History_Group
-history_group_begin(App *app, Buffer_ID buffer){
-    History_Group group = {};
-    group.app = app;
-    group.buffer = buffer;
-    group.first = buffer_history_get_current_state_index(app, buffer);
-    group.first += 1;
-    return(group);
+history_group_begin(App *app, Buffer_ID buffer)
+{
+ History_Group group = {};
+ group.app = app;
+ group.buffer = buffer;
+ group.first = buffer_history_get_current_state_index(app, buffer);
+ group.first += 1;
+ return(group);
 }
-
 function void
-history_group_end(History_Group group){
-    History_Record_Index last = buffer_history_get_current_state_index(group.app, group.buffer);
-    if (group.first < last){
+history_group_end(History_Group group)
+{
+ History_Record_Index last = buffer_history_get_current_state_index(group.app, group.buffer);
+ if (group.first < last){
   buffer_history_merge_record_range(group.app, group.buffer, group.first, last, RecordMergeFlag_StateInRange_MoveStateForward);
  }
 }
@@ -1381,7 +1382,7 @@ history_group_end(History_Group group){
 ////////////////////////////////
 
 function void
-replace_in_range(App *app, Buffer_ID buffer, Range_i64 range, String needle, String string)
+replace_in_range(App_Cmd *app, Buffer_ID buffer, Range_i64 range, String needle, String string)
 {
  if (needle.len > 0)
  {
@@ -1403,7 +1404,7 @@ replace_in_range(App *app, Buffer_ID buffer, Range_i64 range, String needle, Str
 }
 
 function Range_i64
-swap_lines(App *app, Buffer_ID buffer, i64 line_1, i64 line_2){
+swap_lines(App_Cmd *app, Buffer_ID buffer, i64 line_1, i64 line_2){
     Range_i64 result = {};
     i64 line_count = buffer_get_line_count(app, buffer);
     if (1 <= line_1 && line_2 <= line_count){
@@ -1420,35 +1421,36 @@ swap_lines(App *app, Buffer_ID buffer, i64 line_1, i64 line_2){
         buffer_replace_range(app, buffer, range_1, text_2);
         history_group_end(group);
         
-        i64 shift = replace_range_shift(range_1, text_2.size);
-        result.min = range_1.min;
-        result.max = range_2.min + shift;
-    }
-    return(result);
+  i64 shift = replace_range_shift(range_1, text_2.size);
+  result.min = range_1.min;
+  result.max = range_2.min + shift;
+ }
+ return(result);
 }
 
 function i64
-move_line(App *app, Buffer_ID buffer, i64 line_number, Scan_Direction direction){
-    i64 line_1 = 0;
-    i64 line_2 = 0;
-    if (direction == Scan_Forward){
-        line_1 = line_number;
-        line_2 = line_number + 1;
-    }
-    else{
-        line_1 = line_number - 1;
-        line_2 = line_number;
-    }
-    Range_i64 line_starts = swap_lines(app, buffer, line_1, line_2);
-    i64 result = 0;
-    if (line_starts.min < line_starts.max){
-        if (direction == Scan_Forward){
-            result = line_starts.max;
-        }
-        else{
-            result = line_starts.min;
-        }
-    }
+move_line(App_Cmd *app, Buffer_ID buffer, i64 line_number, Scan_Direction direction)
+{
+ i64 line_1 = 0;
+ i64 line_2 = 0;
+ if (direction == Scan_Forward){
+  line_1 = line_number;
+  line_2 = line_number + 1;
+ }
+ else{
+  line_1 = line_number - 1;
+  line_2 = line_number;
+ }
+ Range_i64 line_starts = swap_lines(app, buffer, line_1, line_2);
+ i64 result = 0;
+ if (line_starts.min < line_starts.max){
+  if (direction == Scan_Forward){
+   result = line_starts.max;
+  }
+  else{
+   result = line_starts.min;
+  }
+ }
  else{
   result = get_line_side_pos(app, buffer, line_number, Side_Min);
  }
@@ -1456,7 +1458,7 @@ move_line(App *app, Buffer_ID buffer, i64 line_number, Scan_Direction direction)
 }
 
 function void
-clear_buffer(App *app, Buffer_ID buffer) {
+clear_buffer(App_Cmd *app, Buffer_ID buffer) {
  buffer_replace_range(app, buffer, buffer_range(app, buffer), strlit(""));
 }
 
@@ -1555,7 +1557,7 @@ Query_Bar_Group::Query_Bar_Group(App *app){
 
 Query_Bar_Group::Query_Bar_Group(App *app, View_ID view){
     this->app = app;
-    this->view = view;
+ this->view = view;
 }
 
 Query_Bar_Group::~Query_Bar_Group(){
@@ -1563,98 +1565,98 @@ Query_Bar_Group::~Query_Bar_Group(){
 }
 
 function b32
-query_user_general(App *app, Query_Bar *bar, b32 force_number, String init_string)
+query_user_general(App_Cmd *app, Query_Bar *bar, b32 force_number, String init_string)
 {
-    if (start_query_bar(app, bar, 0) == 0){
-        return(false);
+ if (start_query_bar(app, bar, 0) == 0){
+  return(false);
+ }
+ 
+ if (init_string.size > 0){
+  String_u8 string = Su8(bar->string.str, bar->string.size, bar->string_capacity);
+  string_concat(&string, init_string);
+  bar->string.size = string.string.size;
+ }
+ 
+ b32 success = true;
+ for (;;){
+  User_Input in = get_next_input(app, EventPropertyGroup_Any,
+                                 EventProperty_Escape|EventProperty_MouseButton);
+  if (in.abort){
+   success = false;
+   break;
+  }
+  
+  Scratch_Block scratch(app);
+  b32 good_insert = false;
+  String insert_string = to_writable(&in);
+  if (insert_string.str != 0 && insert_string.size > 0){
+   insert_string = string_replace(scratch, insert_string,
+                                  strlit("\n"),
+                                  strlit(""));
+   insert_string = string_replace(scratch, insert_string,
+                                  strlit("\t"),
+                                  strlit(""));
+   if (force_number){
+    if (string_is_integer(insert_string, 10)){
+     good_insert = true;
     }
-    
-    if (init_string.size > 0){
-        String_u8 string = Su8(bar->string.str, bar->string.size, bar->string_capacity);
-        string_concat(&string, init_string);
-        bar->string.size = string.string.size;
+   }
+   else{
+    good_insert = true;
+   }
+  }
+  
+  if (in.event.kind == InputEventKind_KeyStroke &&
+      (in.event.key.code == Key_Code_Return || in.event.key.code == Key_Code_Tab)){
+   break;
+  }
+  else if (in.event.kind == InputEventKind_KeyStroke &&
+           in.event.key.code == Key_Code_Backspace){
+   bar->string = backspace_utf8(bar->string);
+  }
+  else if (good_insert){
+   String_u8 string = Su8(bar->string.str, bar->string.size, bar->string_capacity);
+   string_concat(&string, insert_string);
+   bar->string.size = string.string.size;
+  }
+  else{
+   // NOTE(allen): is the user trying to execute another command?
+   View_ID view = get_this_ctx_view(app, Access_Always);
+   View_Context ctx = view_current_context(app, view);
+   Mapping *mapping = ctx.mapping;
+   Command_Map *map = mapping_get_map(mapping, ctx.map_id);
+   Command_Binding binding = map_get_binding_recursive(mapping, map, &in.event);
+   if (binding.custom != 0){
+    Command_Metadata *metadata = get_command_metadata(binding.custom);
+    if (metadata != 0){
+     if (metadata->is_ui){
+      view_enqueue_command_function(app, view, binding.custom);
+      break;
+     }
     }
-    
-    b32 success = true;
-    for (;;){
-        User_Input in = get_next_input(app, EventPropertyGroup_Any,
-                                       EventProperty_Escape|EventProperty_MouseButton);
-        if (in.abort){
-            success = false;
-            break;
-        }
-        
-        Scratch_Block scratch(app);
-        b32 good_insert = false;
-        String insert_string = to_writable(&in);
-        if (insert_string.str != 0 && insert_string.size > 0){
-            insert_string = string_replace(scratch, insert_string,
-                                           strlit("\n"),
-                                           strlit(""));
-            insert_string = string_replace(scratch, insert_string,
-                                           strlit("\t"),
-                                           strlit(""));
-            if (force_number){
-                if (string_is_integer(insert_string, 10)){
-                    good_insert = true;
-                }
-            }
-            else{
-                good_insert = true;
-            }
-        }
-        
-        if (in.event.kind == InputEventKind_KeyStroke &&
-            (in.event.key.code == Key_Code_Return || in.event.key.code == Key_Code_Tab)){
-            break;
-        }
-        else if (in.event.kind == InputEventKind_KeyStroke &&
-                 in.event.key.code == Key_Code_Backspace){
-            bar->string = backspace_utf8(bar->string);
-        }
-        else if (good_insert){
-            String_u8 string = Su8(bar->string.str, bar->string.size, bar->string_capacity);
-            string_concat(&string, insert_string);
-            bar->string.size = string.string.size;
-        }
-        else{
-            // NOTE(allen): is the user trying to execute another command?
-            View_ID view = get_this_ctx_view(app, Access_Always);
-            View_Context ctx = view_current_context(app, view);
-            Mapping *mapping = ctx.mapping;
-            Command_Map *map = mapping_get_map(mapping, ctx.map_id);
-            Command_Binding binding = map_get_binding_recursive(mapping, map, &in.event);
-            if (binding.custom != 0){
-                Command_Metadata *metadata = get_command_metadata(binding.custom);
-                if (metadata != 0){
-                    if (metadata->is_ui){
-                        view_enqueue_command_function(app, view, binding.custom);
-                        break;
-                    }
-                }
-                binding.custom(app);
-            }
-            else{
-                leave_current_input_unhandled(app);
-            }
-        }
-    }
-    
-    return(success);
+    binding.custom(app);
+   }
+   else{
+    leave_current_input_unhandled(app);
+   }
+  }
+ }
+ 
+ return(success);
 }
 
 function b32
-query_user_string(App *app, Query_Bar *bar){
-    return(query_user_general(app, bar, false, empty_string));
+query_user_string(App_Cmd *app, Query_Bar *bar){
+ return(query_user_general(app, bar, false, empty_string));
 }
 
 function b32
-query_user_number(App *app, Query_Bar *bar){
+query_user_number(App_Cmd *app, Query_Bar *bar){
     return(query_user_general(app, bar, true, empty_string));
 }
 
 function b32
-query_user_number(App *app, Query_Bar *bar, i32 x){
+query_user_number(App_Cmd *app, Query_Bar *bar, i32 x){
     Scratch_Block scratch(app);
     String string = push_stringfz(scratch, "%d", x);
     return(query_user_general(app, bar, true, string));
@@ -1728,7 +1730,7 @@ buffer_identifier_to_id_create_out_buffer(App *app, Buffer_Identifier buffer_id)
 ////////////////////////////////
 
 function void
-place_begin_and_end_on_own_lines(App *app, char *begin, char *end){
+place_begin_and_end_on_own_lines(App_Cmd *app, char *begin, char *end){
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
     
@@ -1996,37 +1998,38 @@ function View_ID
 get_prev_view_looped_all_panels(App *app, View_ID view_id, Access_Flag access){
     view_id = get_view_prev(app, view_id, access);
     if (view_id == 0){
-        view_id = get_view_prev(app, 0, access);
-    }
-    return(view_id);
+  view_id = get_view_prev(app, 0, access);
+ }
+ return(view_id);
 }
 
 ////////////////////////////////
 
 function Buffer_Kill_Result
-try_buffer_kill(App *app, Buffer_ID buffer, View_ID gui_view_id, Buffer_Kill_Flag flags){
-    Buffer_Kill_Result result = buffer_kill(app, buffer, flags);
-    if (result == BufferKillResult_Dirty){
-        if (do_buffer_kill_user_check(app, buffer, gui_view_id)){
-            result = buffer_kill(app, buffer, BufferKill_AlwaysKill);
-        }
-    }
-    return(result);
+try_buffer_kill(App_Cmd *app, Buffer_ID buffer, View_ID gui_view_id, Buffer_Kill_Flag flags){
+ Buffer_Kill_Result result = buffer_kill(app, buffer, flags);
+ if (result == BufferKillResult_Dirty){
+  if (do_buffer_kill_user_check(app, buffer, gui_view_id)){
+   result = buffer_kill(app, buffer, BufferKill_AlwaysKill);
+  }
+ }
+ return(result);
 }
 
 ////////////////////////////////
 
 function String
-get_query_string(App *app, char *query_str, u8 *string_space, i32 space_size){
-    Query_Bar_Group group(app);
-    Query_Bar bar = {};
-    bar.prompt = SCu8((u8*)query_str);
-    bar.string = SCu8(string_space, (u64)0);
-    bar.string_capacity = space_size;
-    if (!query_user_string(app, &bar)){
-        bar.string.size = 0;
-    }
-    return(bar.string);
+get_query_string(App_Cmd *app, char *query_str, u8 *string_space, i32 space_size)
+{
+ Query_Bar_Group group(app);
+ Query_Bar bar = {};
+ bar.prompt = SCu8((u8*)query_str);
+ bar.string = SCu8(string_space, (u64)0);
+ bar.string_capacity = space_size;
+ if (!query_user_string(app, &bar)){
+  bar.string.size = 0;
+ }
+ return(bar.string);
 }
 
 function Token*
@@ -2255,34 +2258,43 @@ function void
 no_mark_snap_to_cursor_if_shift(App *app, View_ID view_id)
 {
     Scratch_Block scratch(app);
-    Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
-    if (set_has_modifier(&mods, Key_Code_Shift))
-    {
-        no_mark_snap_to_cursor(app, view_id);
-    }
+ Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
+ if (set_has_modifier(&mods, Key_Code_Shift))
+ {
+  no_mark_snap_to_cursor(app, view_id);
+ }
 }
 
 function b32
 view_has_highlighted_range(App *app, View_ID view){
-    b32 result = false;
-    if (fcoder_mode == FCoderMode_NotepadLike){
-        i64 pos = view_get_cursor_pos(app, view);
-        i64 mark = view_get_mark_pos(app, view);
-        result = (pos != mark);
-    }
-    return(result);
+ b32 result = false;
+ if (fcoder_mode == FCoderMode_NotepadLike){
+  i64 pos = view_get_cursor_pos(app, view);
+  i64 mark = view_get_mark_pos(app, view);
+  result = (pos != mark);
+ }
+ return(result);
+}
+myinline App_Cmd
+app_cmd_event(App *app, Input_Event *event)
+{
+ App_Cmd result = {};
+ (App &)result = *app;
+ result.automated = event->is_virtual;
+ return result;
 }
 
 function b32
-if_view_has_highlighted_range_delete_range(App *app, View_ID view_id){
-    b32 result = false;
-    if (view_has_highlighted_range(app, view_id)){
-        Range_i64 range = get_view_range(app, view_id);
-        Buffer_ID buffer = view_get_buffer(app, view_id, Access_ReadWriteVisible);
-        buffer_replace_range(app, buffer, range, strlit(""));
-        result = true;
-    }
-    return(result);
+if_view_has_highlighted_range_delete_range(App_Cmd *app, View_ID view_id)
+{
+ b32 result = false;
+ if (view_has_highlighted_range(app, view_id)){
+  Range_i64 range = get_view_range(app, view_id);
+  Buffer_ID buffer = view_get_buffer(app, view_id, Access_ReadWriteVisible);
+  buffer_replace_range(app, buffer, range, strlit(""));
+  result = true;
+ }
+ return(result);
 }
 
 function void
@@ -2321,14 +2333,14 @@ seek_pos_of_visual_line(App *app, Side side)
  no_mark_snap_to_cursor_if_shift(app, view);
 }
 
-CUSTOM_COMMAND_SIG(seek_beginning_of_textual_line)
-CUSTOM_DOC("Seeks the cursor to the beginning of the line across all text.")
+function void
+seek_beginning_of_textual_line(App_Cmd *app)
 {
-    seek_pos_of_textual_line(app, Side_Min);
+ seek_pos_of_textual_line(app, Side_Min);
 }
 
-CUSTOM_COMMAND_SIG(seek_end_of_textual_line)
-CUSTOM_DOC("Seeks the cursor to the end of the line across all text.")
+function void
+seek_end_of_textual_line(App_Cmd *app)
 {
     seek_pos_of_textual_line(app, Side_Max);
 }
@@ -2336,25 +2348,27 @@ CUSTOM_DOC("Seeks the cursor to the end of the line across all text.")
 function void 
 seek_beginning_of_line(App *app)
 {
-    seek_pos_of_visual_line(app, Side_Min);
+ seek_pos_of_visual_line(app, Side_Min);
 }
 
 function void 
-seek_end_of_line(App *app)
+seek_end_of_line(App_Cmd *app)
 {
-    seek_pos_of_visual_line(app, Side_Max);
+ seek_pos_of_visual_line(app, Side_Max);
 }
 
-CUSTOM_COMMAND_SIG(goto_beginning_of_file)
-CUSTOM_DOC("Sets the cursor to the beginning of the file.")
+function void
+goto_beginning_of_file(App_Cmd *app)
+
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(0));
-    no_mark_snap_to_cursor_if_shift(app, view);
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ view_set_cursor_and_preferred_x(app, view, seek_pos(0));
+ no_mark_snap_to_cursor_if_shift(app, view);
 }
 
-CUSTOM_COMMAND_SIG(goto_end_of_file)
-CUSTOM_DOC("Sets the cursor to the end of the file.")
+function void
+goto_end_of_file(App_Cmd *app)
+
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer_id = view_get_buffer(app, view, Access_ReadVisible);
@@ -2552,26 +2566,29 @@ flags_system_command(Command_Line_Interface_Flag flags){
     if (!HasFlag(flags, CLI_OverlapWithConflict)){
         set_buffer_flags |= ChildProcessSet_FailIfBufferAlreadyAttachedToAProcess;
     }
-    if (HasFlag(flags, CLI_CursorAtEnd)){
-        set_buffer_flags |= ChildProcessSet_CursorAtEnd;
-    }
-    return(set_buffer_flags);
+ if (HasFlag(flags, CLI_CursorAtEnd)){
+  set_buffer_flags |= ChildProcessSet_CursorAtEnd;
+ }
+ return(set_buffer_flags);
 }
 
 function b32
-set_buffer_system_command(App *app, Child_Process_ID process, Buffer_ID buffer, Command_Line_Interface_Flag flags){
-    b32 result = false;
-    Child_Process_Set_Target_Flags set_buffer_flags = flags_system_command(flags);
-    if (child_process_set_target_buffer(app, process, buffer, set_buffer_flags)){
-        clear_buffer(app, buffer);
-        if (HasFlag(flags, CLI_SendEndSignal)){
-            buffer_send_end_signal(app, buffer);
-            
-            Buffer_Hook_Function *begin_buffer = (Buffer_Hook_Function*)get_custom_hook(app, HookID_BeginBuffer);
-            if (begin_buffer != 0){
-                begin_buffer(app, buffer);
-            }
-        }
+set_buffer_system_command(App *app, Child_Process_ID process, Buffer_ID buffer, Command_Line_Interface_Flag flags)
+{
+ b32 result = false;
+ Child_Process_Set_Target_Flags set_buffer_flags = flags_system_command(flags);
+ if(child_process_set_target_buffer(app, process, buffer, set_buffer_flags)){
+  b32 automated = true;
+  App_Cmd app2 = app_cmd(app, automated);
+  clear_buffer(&app2, buffer);
+  if(HasFlag(flags, CLI_SendEndSignal)){
+   buffer_send_end_signal(app, buffer);
+   
+   Buffer_Hook_Function *begin_buffer = (Buffer_Hook_Function*)get_custom_hook(app, HookID_BeginBuffer);
+   if (begin_buffer != 0){
+    begin_buffer(app, buffer);
+   }
+  }
   result = true;
  }
  return(result);

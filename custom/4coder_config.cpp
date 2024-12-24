@@ -1676,15 +1676,15 @@ load_folder_of_themes_into_live_set(App *app, String path){
                                                             string_expand(name));
                 load_theme_file_into_live_set(app, (char*)full_name.str);
             }
-        }
-    }
+  }
+ }
 }
 
 ////////////////////////////////
 // NOTE(allen): Commands
 
-CUSTOM_COMMAND_SIG(load_theme_current_buffer)
-CUSTOM_DOC("Parse the current buffer as a theme file and add the theme to the theme list. If the buffer has a .4coder postfix in it's name, it is removed when the name is saved.")
+function void
+load_theme_current_buffer(App_Cmd *app)
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -1721,15 +1721,15 @@ CUSTOM_DOC("Parse the current buffer as a theme file and add the theme to the th
             save_theme(color_table, name);
             
             Color_Table_Node *node = global_theme_list.last;
-            if (node != 0 && string_match(node->name, name)){
-                active_color_table = node->table;
-            }
-        }
-    }
+   if (node != 0 && string_match(node->name, name)){
+    active_color_table = node->table;
+   }
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(go_to_user_directory)
-CUSTOM_DOC("Go to the 4coder user directory")
+function void
+go_to_user_directory(App_Cmd *app)
 {
     Scratch_Block scratch(app);
     String hot = push_hot_directory(app, scratch);

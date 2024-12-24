@@ -875,84 +875,85 @@ profile_render(App *app, Frame_Info frame_info, View_ID view){
 
 
 function void
-profile_inspect__left_click(App *app, View_ID view,
-                            Profile_Inspection *insp, Input_Event *event){
-    if (has_modifier(event, Key_Code_Shift)){
-        if (insp->location_jump_hovered.size != 0){
-            View_ID target_view = view;
-            target_view = get_other_primary_view(app, target_view, Access_Always, true);
-            String location = insp->location_jump_hovered;
-            jump_to_location_parsed(app, target_view, location);
-        }
-    }
-    else{
-        if (insp->tab_id_hovered != ProfileInspectTab_None){
-            insp->tab_id = insp->tab_id_hovered;
-        }
-        else if (insp->hover_thread != 0){
-            profile_select_thread(insp, insp->hover_thread);
-        }
-        else if (insp->hover_slot != 0){
-            profile_select_slot(insp, insp->hover_slot);
-        }
-        else if (insp->hover_node != 0){
-            profile_select_node(insp, insp->hover_node);
-        }
-    }
+profile_inspect__left_click(App_Cmd *app, View_ID view,
+                            Profile_Inspection *insp, Input_Event *event)
+{
+ if (has_modifier(event, Key_Code_Shift)){
+  if (insp->location_jump_hovered.size != 0){
+   View_ID target_view = view;
+   target_view = get_other_primary_view(app, target_view, Access_Always, true);
+   String location = insp->location_jump_hovered;
+   jump_to_location_parsed(app, target_view, location);
+  }
+ }
+ else{
+  if (insp->tab_id_hovered != ProfileInspectTab_None){
+   insp->tab_id = insp->tab_id_hovered;
+  }
+  else if (insp->hover_thread != 0){
+   profile_select_thread(insp, insp->hover_thread);
+  }
+  else if (insp->hover_slot != 0){
+   profile_select_slot(insp, insp->hover_slot);
+  }
+  else if (insp->hover_node != 0){
+   profile_select_node(insp, insp->hover_node);
+  }
+ }
 }
 
-CUSTOM_UI_COMMAND_SIG(profile_inspect)
-CUSTOM_DOC("Inspect all currently collected profiling information in 4coder's self profiler.")
+function void
+profile_inspect(App_Cmd *app)
 {
-    Profile_Global_List *list = get_core_profile_list(app);
-    if (HasFlag(list->disable_bits, ProfileEnable_InspectBit)){
-        return;
+ Profile_Global_List *list = get_core_profile_list(app);
+ if (HasFlag(list->disable_bits, ProfileEnable_InspectBit)){
+  return;
+ }
+ 
+ profile_set_enabled(list, false, ProfileEnable_InspectBit);
+ 
+ Scratch_Block scratch(app);
+ global_profile_inspection = profile_parse(scratch, list);
+ Profile_Inspection *insp = &global_profile_inspection;
+ 
+ View_ID view = get_active_view(app, Access_Always);
+ View_Context ctx = view_current_context(app, view);
+ ctx.render_caller = profile_render;
+ ctx.hides_buffer = true;
+ View_Context_Block ctx_block(app, view, &ctx);
+ 
+ for (;;){
+  User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
+  if (in.abort){
+   break;
+  }
+  
+  b32 handled = true;
+  switch (in.event.kind){
+   case InputEventKind_MouseButton:
+   {
+    switch (in.event.mouse.code){
+     case MouseCode_Left:
+     {
+      profile_inspect__left_click(app, view, insp, &in.event);
+     }break;
     }
-    
-    profile_set_enabled(list, false, ProfileEnable_InspectBit);
-    
-    Scratch_Block scratch(app);
-    global_profile_inspection = profile_parse(scratch, list);
-    Profile_Inspection *insp = &global_profile_inspection;
-    
-    View_ID view = get_active_view(app, Access_Always);
-    View_Context ctx = view_current_context(app, view);
-    ctx.render_caller = profile_render;
-    ctx.hides_buffer = true;
-    View_Context_Block ctx_block(app, view, &ctx);
-    
-    for (;;){
-        User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
-        if (in.abort){
-            break;
-        }
-        
-        b32 handled = true;
-        switch (in.event.kind){
-            case InputEventKind_MouseButton:
-            {
-                switch (in.event.mouse.code){
-                    case MouseCode_Left:
-                    {
-                        profile_inspect__left_click(app, view, insp, &in.event);
-                    }break;
-                }
-            }break;
-            
-            default:
-            {
-                handled = false;
-            }break;
-        }
-        
-        if (!handled){
-            if (ui_fallback_command_dispatch(app, view, &in)){
-                break;
-            }
-        }
-    }
-    
-    profile_set_enabled(list, true, ProfileEnable_InspectBit);
+   }break;
+   
+   default:
+   {
+    handled = false;
+   }break;
+  }
+  
+  if (!handled){
+   if (ui_fallback_command_dispatch(app, view, &in)){
+    break;
+   }
+  }
+ }
+ 
+ profile_set_enabled(list, true, ProfileEnable_InspectBit);
 }
 
 // BOTTOM

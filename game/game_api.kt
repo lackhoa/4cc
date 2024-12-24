@@ -20,7 +20,7 @@ api ed_api
  // just let the game handle keyboard events by itself!
  void game_set_preset(Game_State *state, i1 viewport_id, i1 preset);
  void game_last_preset(Game_State *state, i1 viewport_id);
- b32 is_event_handled_by_game(App *app, Input_Event *event, b32 game_hot, b32 game_rendered);
+ b32 is_event_handled_by_game(Game_State *state, App *app, Input_Event *event, b32 game_hot, b32 game_rendered);
  void game_send_command(Game_State *state, String command_name);
  void game_buffer_edit_range(Game_State *state, App *app, Buffer_ID buffer, Range_i64 new_range, Range_Cursor old_cursor_range);
 }

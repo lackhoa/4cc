@@ -3,7 +3,7 @@
 #include "4coder_vim_include.h"
 
 #if !defined(META_PASS)
-#include "generated/managed_id_metadata.cpp"
+//#include "generated/managed_id_metadata.cpp"
 #endif
 
 VIM_TEXT_OBJECT_SIG(EXAMPLE_object_camel){
@@ -70,5 +70,7 @@ VIM_REQUEST_SIG(EXAMPLE_apply_rot13){
 	buffer_replace_range(app, buffer, range, text);
 	buffer_post_fade(app, buffer, 0.667f, range, fcolor_resolve(fcolor_id(defcolor_paste)));
 }
-VIM_COMMAND_SIG(EXAMPLE_request_title){ EXAMPLE_make_vim_request(app, EXAMPLE_REQUEST_Title); }
-VIM_COMMAND_SIG(EXAMPLE_request_rot13){ EXAMPLE_make_vim_request(app, EXAMPLE_REQUEST_Rot13); }
+function void 
+EXAMPLE_request_title(App_Cmd *app){ EXAMPLE_make_vim_request(app, EXAMPLE_REQUEST_Title); }
+function void 
+EXAMPLE_request_rot13(App_Cmd *app){ EXAMPLE_make_vim_request(app, EXAMPLE_REQUEST_Rot13); }

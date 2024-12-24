@@ -1,13 +1,13 @@
 #include "4coder_byp_token.h"
 #include "4coder_vim/4coder_vim_include.h"
 
-CUSTOM_ID(colors, defcolor_function);
-CUSTOM_ID(colors, defcolor_type);
-CUSTOM_ID(colors, defcolor_primitive);
-CUSTOM_ID(colors, defcolor_macro);
-CUSTOM_ID(colors, defcolor_control);
-CUSTOM_ID(colors, defcolor_struct);
-CUSTOM_ID(colors, defcolor_non_text);
+global Managed_ID defcolor_function; //colors
+global Managed_ID defcolor_type; //colors
+global Managed_ID defcolor_primitive; //colors
+global Managed_ID defcolor_macro; //colors
+global Managed_ID defcolor_control; //colors
+global Managed_ID defcolor_struct; //colors
+global Managed_ID defcolor_non_text; //colors
 
 function b32
 byp_highlight_token(Token_Base_Kind kind)

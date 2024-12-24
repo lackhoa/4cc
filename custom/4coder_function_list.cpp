@@ -205,8 +205,11 @@ print_positions_buffered(App *app, Buffer_Insertion *out, Buffer_ID buffer, Func
 }
 
 function void
-list_all_functions(App *app, Buffer_ID optional_target_buffer)
+list_all_functions(App *app0, Buffer_ID optional_target_buffer)
 {
+ App_Cmd app_value = app_cmd_automated(app0);
+ App_Cmd *app      = &app_value;
+ 
  // TODO(allen): Use create or switch to buffer and clear here?
  String decls_name = strlit("*decls*");
  Buffer_ID decls_buffer = get_buffer_by_name(app, decls_name, Access_Always);
@@ -215,8 +218,7 @@ list_all_functions(App *app, Buffer_ID optional_target_buffer)
   buffer_set_setting(app, decls_buffer, BufferSetting_Unimportant, true);
   buffer_set_setting(app, decls_buffer, BufferSetting_ReadOnly, true);
   //buffer_set_setting(app, decls_buffer, BufferSetting_WrapLine, false);
- }
- else{
+ }else{
   clear_buffer(app, decls_buffer);
   buffer_send_end_signal(app, decls_buffer);
  }
@@ -265,18 +267,19 @@ list_all_functions(App *app, Buffer_ID optional_target_buffer)
  lock_jump_buffer(app, decls_name);
 }
 
-CUSTOM_COMMAND_SIG(list_all_functions_current_buffer)
-CUSTOM_DOC("Creates a jump list of lines of the current buffer that appear to define or declare functions.")
+function void
+list_all_functions_current_buffer(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadVisible);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-    if (buffer != 0){
-        list_all_functions(app, buffer);
-    }
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ if (buffer != 0){
+  list_all_functions(app, buffer);
+ }
 }
 
-CUSTOM_UI_COMMAND_SIG(list_all_functions_current_buffer_lister)
-CUSTOM_DOC("Creates a lister of locations that look like function definitions and declarations in the buffer.")
+function void
+list_all_functions_current_buffer_lister(App_Cmd *app)
+
 {
     Heap *heap = &global_heap;
     View_ID view = get_active_view(app, Access_ReadVisible);
@@ -286,21 +289,21 @@ CUSTOM_DOC("Creates a lister of locations that look like function definitions an
         view = get_active_view(app, Access_Always);
         buffer = view_get_buffer(app, view, Access_Always);
         Marker_List *list = get_or_make_list_for_buffer(app, heap, buffer);
-        if (list != 0){
-            Jump_Lister_Result jump = get_jump_index_from_user(app, list, "Function:");
-            jump_to_jump_lister_result(app, view, list, &jump);
-        }
-    }
+  if (list != 0){
+   Jump_Lister_Result jump = get_jump_index_from_user(app, list, "Function:");
+   jump_to_jump_lister_result(app, view, list, &jump);
+  }
+ }
 }
 
-CUSTOM_COMMAND_SIG(list_all_functions_all_buffers)
-CUSTOM_DOC("Creates a jump list of lines from all buffers that appear to define or declare functions.")
+function void
+list_all_functions_all_buffers(App_Cmd *app)
 {
-    list_all_functions(app, 0);
+ list_all_functions(app, 0);
 }
 
-CUSTOM_UI_COMMAND_SIG(list_all_functions_all_buffers_lister)
-CUSTOM_DOC("Creates a lister of locations that look like function definitions and declarations all buffers.")
+function void
+list_all_functions_all_buffers_lister(App_Cmd *app)
 {
     Heap *heap = &global_heap;
     list_all_functions(app, 0);

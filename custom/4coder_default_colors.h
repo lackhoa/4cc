@@ -4,44 +4,44 @@
 
 #pragma once
 
-CUSTOM_ID(colors, defcolor_bar);
-CUSTOM_ID(colors, defcolor_base);
-CUSTOM_ID(colors, defcolor_pop1);
-CUSTOM_ID(colors, defcolor_pop2);
-CUSTOM_ID(colors, defcolor_back);
-CUSTOM_ID(colors, defcolor_margin);
-CUSTOM_ID(colors, defcolor_margin_hover);
-CUSTOM_ID(colors, defcolor_margin_active);
-CUSTOM_ID(colors, defcolor_list_item);
-CUSTOM_ID(colors, defcolor_list_item_hover);
-CUSTOM_ID(colors, defcolor_list_item_active);
-CUSTOM_ID(colors, defcolor_cursor);
-CUSTOM_ID(colors, defcolor_at_cursor);
-CUSTOM_ID(colors, defcolor_highlight_cursor_line);
-CUSTOM_ID(colors, defcolor_highlight);
-CUSTOM_ID(colors, defcolor_at_highlight);
-CUSTOM_ID(colors, defcolor_mark);
-CUSTOM_ID(colors, defcolor_text_default);
-CUSTOM_ID(colors, defcolor_comment);
-CUSTOM_ID(colors, defcolor_comment_pop);
-CUSTOM_ID(colors, defcolor_keyword);
-CUSTOM_ID(colors, defcolor_str_constant);
-CUSTOM_ID(colors, defcolor_char_constant);
-CUSTOM_ID(colors, defcolor_int_constant);
-CUSTOM_ID(colors, defcolor_float_constant);
-CUSTOM_ID(colors, defcolor_bool_constant);
-CUSTOM_ID(colors, defcolor_preproc);
-CUSTOM_ID(colors, defcolor_include);
-CUSTOM_ID(colors, defcolor_special_character);
-CUSTOM_ID(colors, defcolor_ghost_character);
-CUSTOM_ID(colors, defcolor_highlight_junk);
-CUSTOM_ID(colors, defcolor_highlight_white);
-CUSTOM_ID(colors, defcolor_paste);
-CUSTOM_ID(colors, defcolor_undo);
-CUSTOM_ID(colors, defcolor_back_cycle);
-CUSTOM_ID(colors, defcolor_text_cycle);
-CUSTOM_ID(colors, defcolor_line_numbers_back);
-CUSTOM_ID(colors, defcolor_line_numbers_text);
+global Managed_ID defcolor_bar; //colors
+global Managed_ID defcolor_base; //colors
+global Managed_ID defcolor_pop1; //colors
+global Managed_ID defcolor_pop2; //colors
+global Managed_ID defcolor_back; //colors
+global Managed_ID defcolor_margin; //colors
+global Managed_ID defcolor_margin_hover; //colors
+global Managed_ID defcolor_margin_active; //colors
+global Managed_ID defcolor_list_item; //colors
+global Managed_ID defcolor_list_item_hover; //colors
+global Managed_ID defcolor_list_item_active; //colors
+global Managed_ID defcolor_cursor; //colors
+global Managed_ID defcolor_at_cursor; //colors
+global Managed_ID defcolor_highlight_cursor_line; //colors
+global Managed_ID defcolor_highlight; //colors
+global Managed_ID defcolor_at_highlight; //colors
+global Managed_ID defcolor_mark; //colors
+global Managed_ID defcolor_text_default; //colors
+global Managed_ID defcolor_comment; //colors
+global Managed_ID defcolor_comment_pop; //colors
+global Managed_ID defcolor_keyword; //colors
+global Managed_ID defcolor_str_constant; //colors
+global Managed_ID defcolor_char_constant; //colors
+global Managed_ID defcolor_int_constant; //colors
+global Managed_ID defcolor_float_constant; //colors
+global Managed_ID defcolor_bool_constant; //colors
+global Managed_ID defcolor_preproc; //colors
+global Managed_ID defcolor_include; //colors
+global Managed_ID defcolor_special_character; //colors
+global Managed_ID defcolor_ghost_character; //colors
+global Managed_ID defcolor_highlight_junk; //colors
+global Managed_ID defcolor_highlight_white; //colors
+global Managed_ID defcolor_paste; //colors
+global Managed_ID defcolor_undo; //colors
+global Managed_ID defcolor_back_cycle; //colors
+global Managed_ID defcolor_text_cycle; //colors
+global Managed_ID defcolor_line_numbers_back; //colors
+global Managed_ID defcolor_line_numbers_text; //colors
 
 api(custom)
 struct Color_Array{

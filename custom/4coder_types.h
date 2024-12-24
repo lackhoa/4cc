@@ -1,5 +1,8 @@
 #pragma once
 
+struct App_Cmd;
+typedef void Custom_Command_Function(App_Cmd *app);
+
 union Range_i32 {
  struct{ i32 min; i32 max; };
  struct{ i32 start; i32 end; };
@@ -174,16 +177,18 @@ jump GAME_BUFFER_NAMES;
 
 api(custom)
 struct Codepoint_Index_Map{
-    b32 has_zero_index;
-    u16 zero_index;
-    u16 max_index;
-    Table_u32_u16 table;
+ b32 has_zero_index;
+ u16 zero_index;
+ u16 max_index;
+ Table_u32_u16 table;
 };
+
+struct Coroutine;
 
 api(custom)
 struct Thread_Context_Extra_Info{
-    void *coroutine;
-    void *async_thread;
+ Coroutine *coroutine;
+ void *async_thread;
 };
 
 ////////////////////////////////
@@ -539,19 +544,19 @@ enum{
 api(custom)
 typedef i1 Record_Error;
 enum{
-    RecordError_NoError,
-    RecordError_InvalidBuffer,
-    RecordError_NoHistoryAttached,
-    RecordError_IndexOutOfBounds,
-    RecordError_SubIndexOutOfBounds,
-    RecordError_InitialStateDummyRecord,
-    RecordError_WrongRecordTypeAtIndex,
+ RecordError_NoError,
+ RecordError_InvalidBuffer,
+ RecordError_NoHistoryAttached,
+ RecordError_IndexOutOfBounds,
+ RecordError_SubIndexOutOfBounds,
+ RecordError_InitialStateDummyRecord,
+ RecordError_WrongRecordTypeAtIndex,
 };
 
 api(custom)
 typedef u32 Record_Merge_Flag;
 enum{
-    RecordMergeFlag_StateInRange_MoveStateForward = 0x0,
+ RecordMergeFlag_StateInRange_MoveStateForward = 0x0,
  RecordMergeFlag_StateInRange_MoveStateBackward = 0x1,
  RecordMergeFlag_StateInRange_ErrorOut = 0x2,
 };
@@ -623,12 +628,11 @@ api(custom)
 typedef i1 Buffer_Hook_Function(App *app, Buffer_ID buffer_id);
 #define BUFFER_HOOK_SIG(name) i1 name(App *app, Buffer_ID buffer_id)
 
-api(custom)
-typedef i1 Buffer_Edit_Range_Function(App *app, Buffer_ID buffer_id,
-                                      Range_i64 new_range, Range_Cursor old_range);
-
 #define BUFFER_EDIT_RANGE_SIG(name) \
-i1 name(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range)
+i1 name(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range, b32 automated)
+
+api(custom)
+typedef BUFFER_EDIT_RANGE_SIG(Buffer_Edit_Range_Function);
 
 api(custom)
 typedef v2 Delta_Rule_Function(v2 pending, b32 is_new_target, f32 dt, void *data);

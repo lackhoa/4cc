@@ -663,15 +663,14 @@ F4_Index_Tick(App *app){
   F4_Parse_Buffer(app, buffer_id);
  }
 }
-void F4_Index_Reset(App *app);
-CUSTOM_COMMAND_SIG(F4_Index_Reset)
-CUSTOM_DOC("Reset the index")
+function void
+F4_Index_Reset(App_Cmd *app)
 {
- Scratch_Block scratch(app);
+ Scratch_Block scratch;
  Buffer_ID buffer = 0;
- while((buffer = get_buffer_next(app, buffer, 0))){
+ while((buffer = get_buffer_next(app, buffer, 0)))
+ {
   F4_Parse_Buffer(app, buffer);
  }
 }
-
 //-

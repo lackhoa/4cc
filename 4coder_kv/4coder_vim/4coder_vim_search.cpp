@@ -69,7 +69,7 @@ function void vim_in_pattern_inner(App *app, Buffer_Seek_String_Flags seek_flags
 */
 
 function void
-vim_to_pattern_inner(App *app, b32 backward)
+vim_to_pattern_inner(App_Cmd *app, b32 backward)
 {
  Buffer_Seek_String_Flags seek_flags = 0;
  if (backward) { seek_flags |= BufferSeekString_Backward; }
@@ -193,23 +193,26 @@ vim_start_search_inner(App *app, Scan_Direction start_direction) {
 	view_set_camera_bounds(app, view, old_margin, old_push_in);
 }
 
-VIM_COMMAND_SIG(vim_clear_search){
+function void 
+vim_clear_search(App_Cmd *app){
 	vim_registers.search.data.size = 0;
 	vim_registers.search.flags &= (~REGISTER_Set);
 	vim_update_registers(app);
 }
 
-VIM_COMMAND_SIG(vim_start_search_forward)  { vim_start_search_inner(app, Scan_Forward);  }
-VIM_COMMAND_SIG(vim_start_search_backward) { vim_start_search_inner(app, Scan_Backward); }
+function void 
+vim_start_search_forward(App_Cmd *app)  { vim_start_search_inner(app, Scan_Forward);  }
+function void 
+vim_start_search_backward(App_Cmd *app) { vim_start_search_inner(app, Scan_Backward); }
 
-VIM_COMMAND_SIG(vim_to_next_pattern){ vim_to_pattern_inner(app, false); }
-VIM_COMMAND_SIG(vim_to_prev_pattern){ vim_to_pattern_inner(app, true); }
-
-// VIM_COMMAND_SIG(vim_in_next_pattern){ vim_in_pattern_inner(app, 0); }
-// VIM_COMMAND_SIG(vim_in_prev_pattern){ vim_in_pattern_inner(app, BufferSeekString_Backward); }
+function void 
+vim_to_next_pattern(App_Cmd *app){ vim_to_pattern_inner(app, false); }
+function void 
+vim_to_prev_pattern(App_Cmd *app){ vim_to_pattern_inner(app, true); }
 
 function void
-vim_search_identifier(App *app){
+vim_search_identifier(App_Cmd *app)
+{
  vim_state.identifier_search_mode = true;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);

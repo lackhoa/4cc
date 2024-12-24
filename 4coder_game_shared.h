@@ -96,7 +96,7 @@ struct Game_State;
 
 struct game_update_return{
  b32 should_animate_next_frame;
- arrayof<String> game_commands;
+ darray(String) game_commands;
 };
 
 #include "game/generated/game_api.gen.h"
@@ -163,8 +163,7 @@ get_active_buffer(App *app){
 
 #define GET_VIEW_AND_BUFFER \
 View_ID   view = get_active_view(app, Access_ReadVisible); \
-Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible); \
-(void)view; (void)buffer
+Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 
 function Ed_Parser
 make_ed_parser_at_cursor(App *app, Scan_Direction direction=Scan_Forward){

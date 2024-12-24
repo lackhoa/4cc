@@ -21,11 +21,11 @@ run_only = args.action == 'run'
 
 ################ NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-working_on_metaprogram = 1
-working_on_editor      = 0
-working_on_game        = 1
+working_on_metaprogram = 0
+working_on_editor      = 1
+working_on_game        = 0
 imgui_build_level   = 2
-ed_meta_build_level = 1
+ed_meta_build_level = 69
 lexer_build_level   = 2
 #
 asan_on = 0
@@ -42,7 +42,7 @@ HOTLOAD_DRIVER = os.path.basename(args.file) == 'driver.kc'
 if HOTLOAD_DRIVER:
     print("[hotload driver]")
 
-if args.full:
+if args.full and not HOTLOAD_DRIVER:
     working_on_metaprogram = True
 
 if not working_on_metaprogram:
@@ -321,6 +321,12 @@ def run_compiler(compiler, input_files, output_file,
         if not optimized and not HOTLOAD_DRIVER:
             compiler_flags += f" -Ob1"
 
+    # Use full path
+    if is_clang:
+        compiler_flags += " -fdiagnostics-absolute-paths"
+    if is_msvc:
+        compiler_flags += " -FC"
+
     if is_msvc:
         unused_var = "-wd4189"
         signed_unsigned_mismatch = "-wd4245"
@@ -351,7 +357,7 @@ def autogen():
         SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={KV_SLOW}'
         compiler_flags=f"{SYMBOLS} {INCLUDES}"
         
-        if meets_level(lexer_build_level):
+        if meets_level(lexer_build_level) or args.full:
             print('Lexer: Generate (one-time thing)')
             #TODO(kv) There should just be one program to generate all the lexer things!
             run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",
@@ -371,7 +377,7 @@ def autogen():
                          debug_symbol=True)
         run(f"ad_meta {CODE}")
 
-        if meets_level(ed_meta_build_level):
+        if False and working_on_editor and meets_level(ed_meta_build_level):
             meta_macros="-DMETA_PASS"
             preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
             print('Editor metadata generator')
