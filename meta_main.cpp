@@ -25,6 +25,7 @@
 #include "meta_entity.h"
 #include "meta_main.h"
 #include "meta_template.h"
+#include "build_main.h"
 
 #include "4ed_api_definition.cpp"
 #include "meta_os.cpp"
@@ -35,9 +36,8 @@
 #include "meta_klang.cpp"
 #include "meta_entity.cpp"
 #include "meta_template.cpp"
+#include "build_main.cpp"
 //-
-typedef b32 String_Predicate(String path);
-
 function b32
 is_klang_file(String path)
 {
@@ -57,61 +57,11 @@ is_klang_or_template_file(String path)
  b32 result = is_klang_file(path) or is_template_file(path);
  return result;
 }
-struct List_File_Params{
- b32 recursive;
- String_Predicate *predicate;
-};
-function b32
-list_files_in_dir(Arena *arena, darray(Stringz) &outfiles, char *path,
-                  List_File_Params params)
-{
- b32 ok = true;
- WIN32_FIND_DATA fdFile;
- char buffer[2048];
- sprintf(buffer, "%s\\*.*", path);
- 
- HANDLE hFind = FindFirstFile(buffer, &fdFile);
- if(hFind == INVALID_HANDLE_VALUE){
-  printf("error: path not found '%s'\n", path);
-  ok = false;
- }
- 
- if(ok){
-  do{
-   if(strcmp(fdFile.cFileName, ".")  != 0 &&
-      strcmp(fdFile.cFileName, "..") != 0) {
-    sprintf(buffer, "%s\\%s", path, fdFile.cFileName);
-    
-    if(fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-     //NOTE(kv) this is a directory
-     if(params.recursive){
-      ok = list_files_in_dir(arena, outfiles, buffer, params);
-     }
-    }else{
-     //NOTE(kv) This is a file
-     Stringz file_path = SCu8(buffer);
-     b32 satisfies_predicate = true;
-     if(params.predicate){
-      satisfies_predicate = params.predicate(file_path);
-     }
-     if(satisfies_predicate){
-      char *copy = push_array_copy(arena, char, file_path.len+1, buffer);
-      outfiles.push_value(Stringz{(u8 *)copy, file_path.len});
-     }
-    }
-   }
-  }while(ok && FindNextFile(hFind, &fdFile));
-  
-  FindClose(hFind);
- }
- 
- return ok;
-}
 //-
 function void
-meta_process_ast(Statement_Root *root)
+meta_process_ast(Statement_Root root, String source_path)
 {
- kv_assert(root->kind == Statement_Kind_Root);
+ kv_assert(root.kind == Statement_Kind_Root);
  if(DEBUG_vv_name){
   //-Vertex check
   Scratch_Block scratch;
@@ -120,20 +70,21 @@ meta_process_ast(Statement_Root *root)
   
   struct Stack_Entry{
    Statement_Union *statements;  //TODO(kv) We could store Statement_Head here, but then only for one pointer
-   i32 statement_count;
-   i32 next_index;
+   u64 statement_count;
+   u32 next_index;
   };
   darray(Stack_Entry) stack;
   init_dynamic(stack, scratch, 32);
   
-  auto stack_push_block = [&](Meta_Statements *block){
-   stack.push_value({block->items, block->count, 0});
+  auto stack_push_block = [&](sarray(Statement_Union) *block){
+   Stack_Entry entry = {block->items, block->count, 0};
+   stack.push_value(entry);
   };
   auto stack_push_statement = [&](Statement_Head *statement){
    stack.push_value({cast(Statement_Union *)statement, 1, 0});
   };
   
-  stack_push_block(&root->top_levels);
+  stack_push_block(&root.top_levels);
   while(true){
    Statement_Head *statement = 0;
    {//-Pop the stack
@@ -182,7 +133,7 @@ meta_process_ast(Statement_Root *root)
           //-"if" check
           if(test->kind == Statement_Kind_If){
            printf("[kv]%.*s[%d] error: vertex used within if block\n",
-                  strexpand(root->source_path),
+                  strexpand(source_path),
                   statement->pos);
            break;
           }
@@ -191,11 +142,11 @@ meta_process_ast(Statement_Root *root)
         }
         {//-conflict check
          b32 conflict = false;
-         for_i32(existing_name_index,0,existing_names.count){
+         for_u32(existing_name_index,0,existing_names.count){
           if(vertex_name == existing_names[existing_name_index]){
            //-conflict
            printf("[kv]%.*s[%d]: error: conflicting name found: %.*s\n",
-                  strexpand(root->source_path),
+                  strexpand(source_path),
                   statement->pos,
                   strexpand(vertex_name));
            conflict = true;
@@ -215,30 +166,7 @@ meta_process_ast(Statement_Root *root)
     break;
    }
   }
-  printf("Total vertex count: %d\n", existing_names.count);
- }
-}
-function void
-test_read_map_file(Stringz path){
- Scratch_Block scratch;
- Stringz data = read_entire_file(scratch, path);
- u8 *pointer = data.str;
- Printer p = make_printer_file(stdout);
- {
-  p < "Magic value: " < String{(u8 *)pointer, 4} < "\n";
-  pointer += 4;
- }
- i32 count = *(i32 *)pointer;
- {
-  p < "count: " < count < "\n";
-  pointer += 4;
- }
- {
-  Source_Map_Entry *entry = (Source_Map_Entry *)pointer;
-  for_i32(index,0,count){
-   p < entry->source_pos < " -> " < entry->gen_pos < "\n";
-   entry++;
-  }
+  printf("Total vertex count: %zu\n", existing_names.count);
  }
 }
 function Lexed_File
@@ -259,7 +187,6 @@ lex_file(Arena *arena, Stringz filename)
  }
  return result;
 }
-
 //~
 function String
 ep_string_literal(Ed_Parser *parser)
@@ -291,8 +218,8 @@ generate_4coder_custom()
  
  b32 ok = true;
  Scratch_Block scratch;
- Stringz custom_dir = pjoin(scratch, meta_dirs.code, strlit("custom"));
- Stringz custom_commands_path = pjoin(scratch, custom_dir, strlit("custom_command_list.h"));
+ Stringz code_dir = meta_dirs.code;
+ Stringz custom_commands_path = pjoin(scratch, code_dir, strlit("custom_command_list.h"));
  Lexed_File source = lex_file(scratch, custom_commands_path);
  
  darray(Meta_Custom_Command) commands;
@@ -363,13 +290,13 @@ generate_4coder_custom()
  char *text;
  if(ok)
  {//-print commands
-  Stringz output_path = pjoin(scratch, custom_dir,
+  Stringz output_path = pjoin(scratch, code_dir,
                               strlit("generated"), strlit("command_metadata.gen.h"));
   Meta_Printer printer = m_open_file_to_write(output_path);
   {
    print_format(printer, "#  define command_one_past_last_id %d\n", commands.count);
    
-   for_i32(i, 0, commands.count){
+   for_u32(i, 0, commands.count){
     Meta_Custom_Command *command = commands.items + i;
     print_format(printer, "function void %.*s(App_Cmd *app);\n",
                  strexpand(command->name));
@@ -387,7 +314,7 @@ struct Command_Metadata{
    print_format(printer, "static Command_Metadata fcoder_metacmd_table[%d] = ", commands.count);
    {
     print(printer, "{\n");
-    for_i32(i, 0, commands.count)
+    for_u32(i, 0, commands.count)
     {
      Meta_Custom_Command *command = commands.items + i;
      print_format(printer, "{ .proc=%.*s, .is_ui=%d, .name=strlit(\"%.*s\") },\n",
@@ -399,11 +326,11 @@ struct Command_Metadata{
    }
   }
   ok = ok and not(printer.error);
-  close_file(printer);
+  close(printer);
  }
  
  {//-print custom ids
-  Stringz output_path = pjoin(scratch, custom_dir,
+  Stringz output_path = pjoin(scratch, code_dir,
                               strlit("generated"), strlit("init_custom_id.gen.cpp"));
   Meta_Printer printer = m_open_file_to_write(output_path);
   
@@ -417,7 +344,7 @@ initialize_managed_id_metadata(App *app)
    print(printer,
          "#define X(name, group) "
          "name = managed_id_declare(app, strlit(#group), strlit(#name))\n");
-   for_i32(i, 0, custom_ids.count){
+   for_u32(i, 0, custom_ids.count){
     Meta_Custom_ID *id = custom_ids.items + i;
     print_format(printer, "X(%.*s, %.*s);\n",
                  strexpand(id->name), strexpand(id->group));
@@ -427,31 +354,47 @@ initialize_managed_id_metadata(App *app)
   }
   
   ok = ok and not(printer.error);
-  close_file(printer);
+  close(printer);
  }
  return ok;
 }
 //~
+extern "C" BOOL CALL_CONVENTION
+GetUserProfileDirectoryA(HANDLE  hToken, LPSTR   lpProfileDir, LPDWORD lpcchSize);
 
+function Stringz
+get_home_directory_ansi(Arena *arena)
+{
+ HANDLE current_process_token = GetCurrentProcessToken();
+ DWORD size = 256;
+ u8 *buffer = push_array(arena, u8, size);
+ b32 ok = GetUserProfileDirectoryA(current_process_token, (char*)buffer, &size);
+ kv_assert(ok);
+ Stringz result = empty_string;
+ result.str   = buffer;
+ result.count = size-1;
+ return result;
+}
 xfunction i32
 main(i32 argc, char **argv)
 {
  b32 ok = true;
- Arena *scratch = &meta_permanent_arena;
+ Arena *scratch = &thread_permanent_arena;
  
- meta_command_name = argv[0];
- Stringz code_dir = empty_string;
- if(argc < 2){
-  printf("Usage: %s <code_dir>\n", meta_command_name);
-  ok = false;
- }else{
-  code_dir = SCu8(argv[1]);
+ //NOTE Convert args to our string
+ String *args = push_array(scratch, String, argc);
+ for_i32(i, 0, argc){
+  args[i] = SCu8(argv[i]);
  }
  
- {
-  //;meta_dirs_init
+ meta_command_name = argv[0];
+ Stringz code_dir;
+ {//;meta_dirs_init
+  String home_dir = get_home_directory_ansi(scratch);
+  code_dir = pjoin(scratch, home_dir, strlit("4ed"), strlit("code"));
   meta_dirs.code     = code_dir;
-  meta_dirs.game     = pjoin(scratch, meta_dirs.code, strlit("game"));
+  meta_dirs.code_gen = pjoin(scratch, code_dir, strlit("generated"));
+  meta_dirs.game     = pjoin(scratch, code_dir, strlit("game"));
   meta_dirs.game_gen = pjoin(scratch, meta_dirs.game, strlit("generated"));
  }
  
@@ -462,7 +405,7 @@ main(i32 argc, char **argv)
    char *api_paths0[] = {
     "4ed_api_implementation.cpp",
     "platform_win32/win32_4ed_functions.cpp",
-    "custom/4coder_token.cpp",
+    "4coder_token.cpp",
     "4coder_game_shared.h",
     "4ed_render_target.cpp",
     "ad_debug_interface.h",
@@ -478,16 +421,17 @@ main(i32 argc, char **argv)
    ok = ok and api_parser_generate(&list);
   }
   
-  darray(Stringz) all_paths = {};
-  init_dynamic(all_paths, &malloc_base_allocator, 64);
-  List_File_Params params = {.predicate=is_klang_or_template_file};
-  ok = ok and list_files_in_dir(scratch, all_paths, to_cstring(code_dir), params);
-  ok = ok and list_files_in_dir(scratch, all_paths, to_cstring(meta_dirs.game), params);
+  darray(Stringz) all_paths;
+  init_dynamic(all_paths, &thread_permanent_arena, 64);
+  ok = ok and list_files_in_dir(scratch, &all_paths, code_dir,
+                                No_Recursive, is_klang_or_template_file);
+  ok = ok and list_files_in_dir(scratch, &all_paths, meta_dirs.game,
+                                No_Recursive, is_klang_or_template_file);
   if(not ok){
    fprintf(stderr, "failed to list files\n");
   }
   
-  for_i32(path_index, 0, all_paths.count){
+  for_u32(path_index, 0, all_paths.count){
    //-template files
    if(not ok){ break; }
    
@@ -502,16 +446,37 @@ main(i32 argc, char **argv)
    Scratch_Block klang_arena;
    darray(K_Slider) sliders;
    init_dynamic(sliders, klang_arena, 512);
+   darray(String) type_info_list;
+   init_dynamic(type_info_list, klang_arena, 64);
    
-   for_i32(path_index, 0, all_paths.count){
+   for_u32(path_index, 0, all_paths.count){
     //-Parsing all the files
     if(not ok){ break; }
     
     Stringz path = all_paths[path_index];
     if(is_klang_file(path)){
      Lexed_File lexed_file = lex_file(scratch, path);
-     ok = ok and klang_main(klang_arena, lexed_file, &sliders);
+     ok = ok and klang_main(klang_arena, lexed_file, &sliders, &type_info_list);
     }
+   }
+   
+   {//-Print data that needs to be aggregated
+    //TODO(kv) So we're supporting the game only?
+    Stringz path = pjoin(scratch, meta_dirs.game_gen, strlit("meta_all.gen.cpp"));
+    Printer printer = m_open_file_to_write(path);
+    
+    print(printer, "function void\n");
+    print(printer, "make_all_type_info()\n");
+    print_brace_block(printer)
+    {
+     print(printer, "\n");
+     for_u32(i, 0, type_info_list.count){
+      String type = type_info_list.items[i];
+      print_format(printer, "Type_Info_%S = get_type_info_%S();\n", type, type);
+     }
+    }
+    
+    close(printer);
    }
    
    if(ok){
@@ -529,14 +494,14 @@ main(i32 argc, char **argv)
  
  ok = ok and generate_4coder_custom();
  
+ ok = ok and build_main(argc, args);
+ 
  i32 exit_code = !ok;
  fflush(stdout);
  if(!ok){
   breakhere;
  }
- if(0){
-  test_read_map_file(strlit("C:/Users/vodan/4ed/code/game/generated/driver.kc.map"));
- }
+ 
  return exit_code;
 }
 //~BOTTOM

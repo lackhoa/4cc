@@ -1,0 +1,140 @@
+
+#include "4coder_vim.cpp"
+
+function void
+vim_file_save(App *app, Buffer_ID buffer_id)
+{
+ Scratch_Block scratch(app);
+ String8 unique_name = push_buffer_unique_name(app, scratch, buffer_id);
+ i64 line_count = buffer_get_line_count(app, buffer_id);
+ i64 bytes = buffer_get_size(app, buffer_id);
+ String8 msg = push_stringf(scratch, "\"%.*s\"  %dL, %dC written", string_expand(unique_name), line_count, bytes);
+ vim_set_bottom_text(msg);
+}
+
+function i32
+vim_file_save_hook(App *app, Buffer_ID buffer_id)
+{
+	default_file_save(app, buffer_id);
+	vim_file_save(app, buffer_id);
+	return 0;
+}
+
+function void vim_set_file_register(App *app, Buffer_ID buffer)
+{
+    Scratch_Block scratch(app);
+    String8 unique_name = push_buffer_unique_name(app, scratch, buffer);
+    Vim_Register *reg = &vim_registers.file;
+    b32 valid = vim_register_copy(reg, unique_name);
+    if(!valid){ return; }
+    vim_update_registers(app);
+}
+
+function void
+vim_view_change_buffer(App *app, View_ID view_id, Buffer_ID old_buffer_id, Buffer_ID new_buffer_id)
+{
+ vim_set_file_register(app, new_buffer_id);
+}
+
+function i32
+vim_begin_buffer(App *app, Buffer_ID buffer_id)
+{
+	ProfileScope(app, "vim begin buffer");
+ 
+ Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
+ Vim_Prev_Visual *prev_visual = scope_attachment(app, scope, vim_buffer_prev_visual, Vim_Prev_Visual);
+ prev_visual->cursor_pos = prev_visual->mark_pos = 0;
+ 
+ i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
+ block_fill_u64(marks, 26*sizeof(i64), max_u64);
+ 
+ return 0;
+}
+
+function void
+vim_animate_filebar(App *app, Frame_Info frame_info)
+{
+#if VIM_DO_ANIMATE
+	f32 diff = vim_nxt_lister_offset - vim_cur_lister_offset;
+	if(fabs(diff) > 1.0f){
+		vim_cur_lister_offset += diff*frame_info.animation_dt*25.0f;
+		animate_in_n_milliseconds(app, 0);
+	}else{
+		vim_cur_lister_offset = vim_nxt_lister_offset;
+	}
+#else
+	vim_cur_lister_offset = vim_nxt_lister_offset;
+#endif
+}
+
+
+function void
+vim_animate_cursor(App *app, Frame_Info frame_info){
+#if VIM_DO_ANIMATE
+	v2 diff = vim_nxt_cursor_pos - vim_cur_cursor_pos;
+	if(fabs(diff.x) > 1.f){
+		vim_cur_cursor_pos.x += diff.x*frame_info.animation_dt*30.f;
+		animate_in_n_milliseconds(app, 0);
+	}else{
+		vim_cur_cursor_pos.x = vim_nxt_cursor_pos.x;
+	}
+	if(fabs(diff.y) > 1.f){
+		vim_cur_cursor_pos.y += diff.y*frame_info.animation_dt*30.f;
+		animate_in_n_milliseconds(app, 0);
+	}else{
+		vim_cur_cursor_pos.y = vim_nxt_cursor_pos.y;
+	}
+#else
+	vim_cur_cursor_pos = vim_nxt_cursor_pos;
+#endif
+}
+
+BUFFER_EDIT_RANGE_SIG(vim_buffer_edit_range){
+	default_buffer_edit_range(app, buffer_id, new_range, old_cursor_range, automated);
+	// TODO(BYP): Update marks here as well
+	return 0;
+}
+
+function void
+vim_try_exit(App_Cmd *app)
+{
+	User_Input input = get_current_input(app);
+	if( match_core_code(&input, CoreCode_TryExit) )
+ {
+  b32 do_exit = true;
+  
+#if !KV_INTERNAL
+  b32 user_confirmed = false;
+  View_ID view = get_active_view(app, Access_Always);
+  if(!allow_immediate_close_without_checking_for_changes)
+  {
+   b32 has_unsaved_changes = false;
+   for(Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+       buffer;
+       buffer = get_buffer_next(app, buffer, Access_Always))
+   {
+    Dirty_State dirty = buffer_get_dirty_state(app, buffer);
+    if( HasFlag(dirty, DirtyState_UnsavedChanges) ){
+     has_unsaved_changes = true;
+     break;
+    }
+   }
+   if(has_unsaved_changes)
+   {
+    do_exit = vim_do_4coder_close_user_check(app, view);
+    user_confirmed = true;
+   }
+  }
+  
+  if (!user_confirmed)
+  {
+   do_exit = vim_4coder_close_are_you_sure_check(app, view);
+  }
+#endif
+  
+  if(do_exit)
+  {
+   hard_exit(app);
+  }
+ }
+}

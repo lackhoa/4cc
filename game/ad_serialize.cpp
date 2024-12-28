@@ -12,7 +12,7 @@ write_binary_union(Writer *writer, Type_Info *type,
  i32 variant = read_enum(*type->discriminator_type, pvariant);
  
  darray(I_Union_Member) &union_members = type->union_members;
- for_i32(index,0,union_members.count){
+ for_u32(index,0,union_members.count){
   I_Union_Member &member = union_members[index];
   if(member.variant == variant){
    //NOTE(kv) pointer of member is the same as pointer to the union.
@@ -39,7 +39,7 @@ write_binary_func(Writer *writer, Type_Info *type, void *void_pointer)
    }
   }break;
   case I_Type_Kind_Struct:{
-   for_i32(member_index, 0, type->members.count){
+   for_u32(member_index, 0, type->members.count){
     I_Struct_Member &member = type->members[member_index];
     if(!member.unserialized){
      u8 *member_data = pointer+member.offset;
@@ -124,7 +124,7 @@ write_size(writer, string, sizeof(string))
     write_debug_string("entities");
     i32 curve_count = m.curves.count;
     write_lvalue(writer, curve_count);
-    for_i32(entity_index,0,m.curves.count){
+    for_u32(entity_index,0,m.curves.count){
      write_binary(writer, &m.curves[entity_index]);
     }
    }

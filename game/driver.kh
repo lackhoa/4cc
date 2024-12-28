@@ -1,9 +1,9 @@
 //-Generated: driver.gen.h
 typedef u32 argb;
 typedef i1  b32;
-i1_wrapper(Vertex_Index);
-i1_wrapper(Curve_Index);
-i1_wrapper(Fill_Index);
+u32_wrapper(Vertex_Index);
+u32_wrapper(Curve_Index);
+u32_wrapper(Fill_Index);
 enum Bone_Type{
  Bone_None           = 0,
  Bone_Head           = 1,
@@ -65,5 +65,5 @@ enum{
  Poly_Line    = 0x2,
  Poly_Overlay = 0x4,
 };
-i1_wrapper(Common_Line_Params_Index);
+u32_wrapper(Common_Line_Params_Index);
 //-

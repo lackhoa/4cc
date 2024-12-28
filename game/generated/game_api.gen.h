@@ -11,7 +11,7 @@
 #define fui_at_slider_p__params App *app
   
  #define fui_handle_slider__return b32
-#define fui_handle_slider__params App *app
+#define fui_handle_slider__params App_Cmd *app
   
  #define fui_get_sliders_in_range__return u32
 #define fui_get_sliders_in_range__params App *app, Buffer_ID buffer, i64 pos_begin, i64 pos_end, u32 *out_end_index

@@ -103,7 +103,7 @@ api_parse_add_function(Arena *arena, API_Definition_List *list,
                        String location)
 {
  type = api_parse__type_name_with_stars(arena, type, star_counter);
- for_i32(index,0,api_names.count)
+ for_u32(index,0,api_names.count)
  {
   API_Definition *api = api_get_api(arena, list, api_names[index]);
   API_Call *call = api_call_with_location(arena, api, func_name, type, location);
@@ -117,7 +117,7 @@ api_parse_add_structure(Arena *arena, API_Definition_List *list,
                         String name, List_String member_list,
                         String definition, String location)
 {
- for_i32(index,0,api_names.count)
+ for_u32(index,0,api_names.count)
  {
   API_Definition *api = api_get_api(arena, list, api_names[index]);
   api_type_structure_with_location(arena, api, kind, name, member_list, definition, location);
@@ -143,7 +143,7 @@ api_parse_location(Arena *arena, String source_name, String source, u8 *pos){
    ptr += 1;
   }
  }
- return(push_stringfz(arena, "%.*s:%d:%d:", string_expand(source_name), line_number, col_number));
+ return(push_stringf(arena, "%.*s:%d:%d:", string_expand(source_name), line_number, col_number));
 }
 
 function b32
@@ -305,7 +305,8 @@ api_parse_source_add_to_list(Arena *arena, String source_name, String source, To
    //-api
    const i1 api_cap = 8;
    String buffer[api_cap];
-   darray(String) api_names = static_array(buffer, api_cap);
+   darray(String) api_names;
+   init_static(api_names, buffer, api_cap);
    if(api_parse__match(&token_it, TokenCppKind_ParenOp)) {
     String name;
     while(api_parse__ident(&token_it, source, &name)) {

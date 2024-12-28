@@ -170,10 +170,9 @@ struct Statement_Head{
  Statement_Kind kind;
  i32 pos;
 };
-typedef darray(Statement_Union) Meta_Statements;
 
 struct Statement_Block:Statement_Head{
- Meta_Statements block;
+ darray(Statement_Union) block;
 };
 struct Statement_Declaration : Statement_Head{
  Parsed_Type     type;
@@ -203,12 +202,11 @@ struct Statement_Cache : Statement_Head{
  Statement_Head *body;
 };
 struct Statement_Root : Statement_Head{
- String source_path;
- Meta_Statements top_levels;
+ sarray(Statement_Union) top_levels;
 };
 struct Statement_Function : Statement_Head{
  b32 has_body;
- Meta_Statements body;
+ darray(Statement_Union) body;
 };
 struct Statement_Unknown : Statement_Head{
  String unknown;
@@ -408,7 +406,7 @@ precedence_of(Binary_Operator op)
  return {};
 }
 //-
-function Meta_Statements
+function darray(Statement_Union)
 k_parse_statement_block(Arena *arena, Klang_Parser *p);
 
 function void
@@ -430,4 +428,8 @@ get_function_name(Expression_Call *call)
  String result = call->func->as_string;
  return result;
 }
+struct String_Mapping{
+ String key;
+ String val;
+};
 //-

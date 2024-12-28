@@ -18,7 +18,7 @@ make_doc_function(Arena *arena, Doc_Cluster *cluster, API_Call *call){
     result.sig = new_doc_block(arena, result.page, "Signature");
     new_doc_block_jump(arena, result.page, result.sig);
     
-    String opener = push_stringfz(arena, "%.*s\n%.*s(",
+    String opener = push_stringf(arena, "%.*s\n%.*s(",
                                              string_expand(call->return_type),
                                              string_expand(call->name));
     

@@ -51,9 +51,9 @@ get_image_load_info(void)
 inline void
 ogl__check_error()
 {// NOTE(kv): Don't need this anymore if debug output works, this is just for sanity
-#if !SHIP_MODE
-    GLuint error = glGetError();
-    kv_assert(error == GL_NO_ERROR);
+#if KV_INTERNAL
+ GLuint error = glGetError();
+ kv_assert(error == GL_NO_ERROR);
 #endif
 }
 
@@ -290,11 +290,11 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
            (type == OGL_Second_Pass),
            (flags & OGL_Write_Primitive_ID));
   char *version_str = "#version 460\n";
-    
-#if SHIP_MODE
-# define SHADER_DIR "C:/Users/vodan/4coder/opengl/"
-#else
+  
+#if KV_INTERNAL
 # define SHADER_DIR "C:/Users/vodan/4ed/code/opengl/"
+#else
+# define SHADER_DIR "C:/Users/vodan/4coder/opengl/"
 #endif
   {
    char *vertex;
@@ -353,7 +353,7 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
    }
    glGetShaderInfoLog(fragment_shader, sizeof(fragment_errors), &ignore, fragment_errors);
    glGetProgramInfoLog(program, sizeof(program_errors), &ignore, program_errors);
-#if SHIP_MODE
+#if !KV_INTERNAL
    os_popup_error("Error", "Shader compilation failed.");
 #endif
    InvalidPath;
@@ -630,7 +630,7 @@ ogl__render_images(Render_Group *group, b32 render_primitive_id)
    Render_Entry_Image *entry = entry0->image;
    b32 bound_texture = false;
    i2 dim = {};
-   for_i32(image_index, 0, loaded_images.count)
+   for_u32(image_index, 0, loaded_images.count)
    {
     Loaded_Image *loaded_image = &loaded_images[image_index];
     if ( string_match(loaded_image->filename, entry->filename) )
@@ -726,7 +726,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
 #undef X
   
   {
-#if !SHIP_MODE
+#if KV_INTERNAL
    {
     i32 context_flags = 0;
     glGetIntegerv(GL_CONTEXT_FLAGS, &context_flags);

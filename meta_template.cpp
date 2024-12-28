@@ -44,7 +44,7 @@ function T_Table *
 get_meta_list_by_name(darray(T_Table) *lists, String name)
 {
  T_Table *result = 0;
- for_i32(list_index, 0, lists->count){
+ for_u32(list_index, 0, lists->count){
   result = &lists->items[list_index];
   if(result->name == name){
    break;
@@ -134,11 +134,11 @@ template_gen_for(darray(T_Table) *tables, Ed_Parser *parser,
   {//-End the loop
    ep_eat_inc_all(parser);
    {//NOTE Print stuff out
-    for_i32(iteration, 0, loop_table->items.count){
+    for_u32(iteration, 0, loop_table->items.count){
      String *item = loop_table->items[iteration];
      
      b32 excluded = false;
-     for_i32(exclude_index, 0, exclude_list.count){
+     for_u32(exclude_index, 0, exclude_list.count){
       //NOTE(kv) The convention is "first field is the identifier".
       kv_assert(get_field_count(loop_table) > 0);
       String test_field = item[0];
@@ -149,7 +149,7 @@ template_gen_for(darray(T_Table) *tables, Ed_Parser *parser,
      }
      
      if(not excluded){
-      for_i32(node_index, 0, for_loop_nodes.count){
+      for_u32(node_index, 0, for_loop_nodes.count){
        Template_Node *node = for_loop_nodes.items + node_index;
        if(node->text.count){
         //-Text
@@ -397,7 +397,7 @@ template_main(Lexed_File source)
    if(printer.error){
     ok = false;
    }
-   close_file(printer);
+   close(printer);
   }else{
    parser->fail();
   }

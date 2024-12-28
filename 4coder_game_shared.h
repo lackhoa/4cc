@@ -19,10 +19,9 @@
 
 #define AD_SHUTDOWN_IMGUI 1  // NOTE(kv): Because I'm still not sure what this is for?
 
-#include "4coder_types.h"
+#include "4coder_custom_types.h"
 #include "kv_math.h"
 #include "4ed_render_target.h"
-#include "4coder_kv_debug.h"
 #include "4coder_token.h"
 #define ED_PARSER_BUFFER 1
 #include "4ed_kv_parser.h"
@@ -39,11 +38,10 @@
 #else
 #    define STATIC_LINK_API
 #endif
-#include "custom/generated/ed_api.h"
+#include "generated/ed_api.h"
 
 //~NOTE: 4ed API
-#include "debug_value.h"
-//TODO: clean this garbage pile up, please!
+#include "4coder_debug_value.h"
 //~ NOTE: Game
 struct Game_Input_Public{
  Key_Mods active_mods;
@@ -119,7 +117,7 @@ printf_message(App *app, char *format, ...)
  va_start(args, format);
  
  Scratch_Block scratch(app);
- String string = push_stringfv(scratch, format, args, true);
+ String string = push_stringfv(scratch, format, args);
  print_message(app, string);
  
  va_end(args);
@@ -152,7 +150,6 @@ inline Scratch_Block::Scratch_Block(App *app, Arena *a1){
 }
 #endif
 //-
-
 inline Buffer_ID
 get_active_buffer(App *app){
  View_ID active_view = get_active_view(app, Access_Always);

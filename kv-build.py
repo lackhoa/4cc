@@ -6,7 +6,10 @@ import subprocess
 import time
 import shutil
 import argparse
+import sys
 from enum import Enum
+
+print(sys.argv)
 
 parser = argparse.ArgumentParser(prog='Autodraw build script')
 parser.add_argument('-a', '--action', type=str, default="build")
@@ -21,9 +24,9 @@ run_only = args.action == 'run'
 
 ################ NOTE: Configuration begin #########################
 # NOTE(kv) Build level
-working_on_metaprogram = 0
-working_on_editor      = 1
-working_on_game        = 0
+working_on_metaprogram = 1
+working_on_editor      = 0
+working_on_game        = 1
 imgui_build_level   = 2
 ed_meta_build_level = 69
 lexer_build_level   = 2
@@ -59,12 +62,11 @@ def meets_level(level):
     global build_level
     return build_level >= level
 
-DEBUG_MODE = 0 if args.release else 1
+DEV_BUILD = 0 if args.release else 1
 build_level = default_build_level
 if args.full:
     build_level = 1
-SHIP_MODE = 1-DEBUG_MODE
-if SHIP_MODE:
+if not DEV_BUILD:
     asan_on = 0
 
 HOME = os.path.expanduser("~")
@@ -72,7 +74,6 @@ OUTDIR=pjoin(HOME, '4coder')
 FCODER_ROOT=pjoin(HOME, '4ed')
 CODE=pjoin(FCODER_ROOT, "code")
 NON_SOURCE=pjoin(FCODER_ROOT, "4coder-non-source")
-CODE_KV = pjoin(CODE, '4coder_kv')
 OS_WINDOWS = int(os.name== "nt")
 OS_MAC = int(not OS_WINDOWS)
 
@@ -349,44 +350,29 @@ def run_compiler(compiler, input_files, output_file,
 base_includes = f"-I{CODE} -I{CODE}/libs"
 
 def autogen():
-    CUSTOM=f'{FCODER_ROOT}/code/custom'
-    BUILD_DIR = pjoin(CUSTOM, "build")
-    mkdir_p(BUILD_DIR)
-    with pushd(BUILD_DIR):
-        INCLUDES=f'{base_includes} -I{CUSTOM}'
-        SYMBOLS=f'-DOS_MAC={int(OS_MAC)} -DOS_WINDOWS={int(OS_WINDOWS)} -DOS_LINUX=0 -DKV_INTERNAL={DEBUG_MODE} -DKV_SLOW={KV_SLOW}'
-        compiler_flags=f"{SYMBOLS} {INCLUDES}"
+    INCLUDES=f'{base_includes}'
+    SYMBOLS=f'-DKV_INTERNAL={DEV_BUILD} -DKV_SLOW={KV_SLOW}'
+    compiler_flags=f"{SYMBOLS} {INCLUDES}"
+    
+    if meets_level(lexer_build_level) or args.full:
+        print('Lexer: Generate (one-time thing)')
+        #TODO(kv) There should just be one program to generate all the lexer things!
+        run_compiler(Compiler.ClangCl, pjoin(CODE, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",
+                     compiler_flags=compiler_flags)
+        #
+        print('running lexer generator')
+        mkdir_p(f'{CODE}/generated')
+        run(f'skm_lexer_gen.exe {CODE}/generated')
+        run_compiler(Compiler.ClangCl, pjoin(CODE,"languages",'4coder_cpp_lexer_gen.cpp'), "cpp_lexer_gen.exe",
+                     compiler_flags=compiler_flags)
+        run(f'cpp_lexer_gen.exe {CODE}/generated')
         
-        if meets_level(lexer_build_level) or args.full:
-            print('Lexer: Generate (one-time thing)')
-            #TODO(kv) There should just be one program to generate all the lexer things!
-            run_compiler(Compiler.ClangCl, pjoin(CODE_KV, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",
-                         compiler_flags=compiler_flags)
-            #
-            print('running lexer generator')
-            mkdir_p(f'{CODE_KV}/generated')
-            run(f'skm_lexer_gen.exe {CODE_KV}/generated')
-            run_compiler(Compiler.ClangCl, pjoin(CUSTOM,"languages",'4coder_cpp_lexer_gen.cpp'), "cpp_lexer_gen.exe",
-                         compiler_flags=compiler_flags)
-            run(f'cpp_lexer_gen.exe {CUSTOM}/generated')
-            
-        print('====Metaprogram====')
-        if working_on_metaprogram:
-            run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
-                         compiler_flags=compiler_flags,
-                         debug_symbol=True)
-        run(f"ad_meta {CODE}")
-
-        if False and working_on_editor and meets_level(ed_meta_build_level):
-            meta_macros="-DMETA_PASS"
-            preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
-            print('Editor metadata generator')
-            run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
-            run_compiler(Compiler.ClangCl, f"{CUSTOM}/4coder_metadata_generator.cpp", f"",
-                         compiler_flags=compiler_flags, compile_only=True)
-            run_compiler(Compiler.ClangCl, f"4coder_metadata_generator.obj", f"metadata_generator{DOT_EXE}",
-                         link_only=True)
-            run(f'metadata_generator -R "{CUSTOM}" {preproc_file}')
+    print('====Metaprogram====')
+    if working_on_metaprogram:
+        run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
+                     compiler_flags=compiler_flags, linker_flags="userenv.lib",
+                     debug_symbol=True)
+    run(f"ad_meta {" ".join(sys.argv[1:])}")
 
 def build_game():
     try:  # NOTE: Compiling the game
@@ -433,12 +419,12 @@ try:
             #run(f"remedybg stop-debugging")
             #run(f"raddbg --ipc kill_all")
 
-        INCLUDES=f'{base_includes} -I{CODE}/libs/imgui -I{CODE}/custom -I{NON_SOURCE}/foreign/freetype2 -I{CODE}/4coder_kv'
+        INCLUDES=f'{base_includes} -I{CODE}/libs/imgui -I{NON_SOURCE}/foreign/freetype2'
         #
-        COMMON_SYMBOLS=f"-DFRED_SUPER -DFTECH_64_BIT -DSHIP_MODE={1-DEBUG_MODE}"
-        SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DAD_PROFILE={AD_PROFILE} -DKV_INTERNAL={DEBUG_MODE} -DFRED_INTERNAL -DDO_CRAZY_EXPENSIVE_ASSERTS {COMMON_SYMBOLS}" if DEBUG_MODE else COMMON_SYMBOLS
+        COMMON_SYMBOLS=""
+        SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DKV_INTERNAL={DEV_BUILD} {COMMON_SYMBOLS}" if DEV_BUILD else COMMON_SYMBOLS
 
-        BINARY_NAME = "4ed" if DEBUG_MODE else "4ed_stable"
+        BINARY_NAME = "4ed" if DEV_BUILD else "4ed_stable"
 
         imgui_dir = f"{CODE}/libs/imgui"
         imgui_cpp_basenames = list_all_cpp_files_top_level(imgui_dir)
@@ -470,30 +456,30 @@ try:
             for file in (imgui_files + imgui_backend_files):
                 # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
                 run_compiler(Compiler.Cl, file, "",
-                             debug_symbol=DEBUG_MODE,
+                             debug_symbol=DEV_BUILD,
                              compiler_flags=f"{imgui_config} -I{imgui_dir} {base_includes}",
                              compile_only=True, no_warnings=True)
 
         if working_on_editor:
             print('========Producing 4ed========')
-            if SHIP_MODE:
+            if not DEV_BUILD:
                 replace_file(f"{BINARY_NAME}{DOT_EXE}", f"{BINARY_NAME}.bkp{DOT_EXE}")
             #ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
             imgui_backend_object_files = [f"imgui_impl_win32{DOT_OBJ}", f"imgui_impl_opengl3{DOT_OBJ}"]
             imgui_objs = f"{space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}"
             run_compiler(Compiler.ClangCl, f"{PLATFORM_CPP} {imgui_objs}",
-                         f"{BINARY_NAME}{DOT_EXE}", debug_symbol=not SHIP_MODE,
+                         f"{BINARY_NAME}{DOT_EXE}", debug_symbol=DEV_BUILD,
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",
                          linker_flags=f"{LINKED_LIBS}",
-                         optimized=OPTIMIZE_EDITOR or SHIP_MODE,
+                         optimized=OPTIMIZE_EDITOR or not DEV_BUILD,
                          exit_on_failure=False)
-            #USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEBUG_MODE else ""
+            #USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEV_BUILD else ""
             # NOTE Rollback
-            if script_failed and SHIP_MODE:
+            if script_failed and not DEV_BUILD:
                 replace_file(f"{BINARY_NAME}.bkp{DOT_EXE}", f"{BINARY_NAME}{DOT_EXE}")
 
         # NOTE: shipping shaders
-        if SHIP_MODE:
+        if not DEV_BUILD:
             OPENGL_OUTDIR = pjoin(OUTDIR, "opengl")
             mkdir_p(OPENGL_OUTDIR)
             for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
@@ -502,11 +488,11 @@ try:
         if working_on_game and (not args.release):
             build_game()
 
-        if SHIP_MODE:
+        if not DEV_BUILD:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")
-            symlink_force(pjoin(CODE_KV, "config.4coder"),   pjoin(OUTDIR, "config.4coder"))
-            symlink_force(pjoin(CODE_KV, "theme-kv.4coder"), pjoin(OUTDIR, 'themes', "theme-kv.4coder"))
-            symlink_force(pjoin(CODE, "project.4coder"),     pjoin(OUTDIR, "project.4coder"))
+            symlink_force(pjoin(CODE, "config.4coder"),   pjoin(OUTDIR, "config.4coder"))
+            symlink_force(pjoin(CODE, "theme-kv.4coder"), pjoin(OUTDIR, 'themes', "theme-kv.4coder"))
+            symlink_force(pjoin(CODE, "project.4coder"),  pjoin(OUTDIR, "project.4coder"))
 
 except Exception as e:
     print(f'Error: {e}')

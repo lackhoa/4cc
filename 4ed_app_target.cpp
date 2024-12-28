@@ -113,7 +113,7 @@
 #include "stb_image.h"
 
 #define STATIC_LINK_API
-#include "custom/generated/ed_api.cpp"
+#include "generated/ed_api.cpp"
 #include "4coder_kv.cpp"
 #include "4ed_api_implementation.cpp"
 

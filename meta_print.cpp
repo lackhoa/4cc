@@ -47,22 +47,23 @@ m_close_pair(Printer_Pair &ps){
 }
 //-
 function Meta_Type_Names &
-m_get_type_names(String type_name){
+m_get_type_names(String type_name)
+{
  auto &store = meta_type_name_store;
- for_i32(index,0,store.count){
+ for_u32(index,0,store.count){
   if(store[index].type_name == type_name){
    return store[index];
   }
  }
  
  //Note(kv) not found
- auto arena = &meta_permanent_arena;
+ Arena *arena = &thread_permanent_arena;
  Meta_Type_Names *new_item = store.push();
  *new_item = {
   .type_name          = push_string(arena, type_name),
-  .info_function_name = push_stringf(arena, "get_type_info_%.*s", strexpand(type_name)),
-  .global_info_name   = push_stringf(arena, "Type_Info_%.*s",     strexpand(type_name)),
-  .read_function_name = push_stringf(arena, "read_binary_%.*s",   strexpand(type_name)),
+  .info_function_name = push_stringf(arena, "get_type_info_%S", type_name),
+  .global_info_name   = push_stringf(arena, "Type_Info_%S",     type_name),
+  .read_function_name = push_stringf(arena, "read_binary_%S",   type_name),
  };
  return *new_item;
 }
@@ -84,11 +85,10 @@ function void
 print_type_meta_shared(Printer &p, String type_name, b32 is_typedef=false)
 {
  m_meta_only(p);
-  String type_global_var = get_type_global_info_name(type_name);
- {//TODO(kv) Let's see if this explodes...
+ String type_global_var = get_type_global_info_name(type_name);
+ {
   m_location;
-  print_format(p, "global Type_Info %.*s = get_type_info_%.*s();\n\n",
-               strexpand(type_global_var), strexpand(type_name));
+  print_format(p, "global Type_Info %S;\n\n", type_global_var);
  }
  if(!is_typedef){
   // NOTE: Overload to automatically get the type info from a pointer of that type
@@ -140,7 +140,7 @@ print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_pac
  p<"struct "<type_name;
  m_braces{
   mline(p);
-  for_i32(i,0,members.count){
+  for_u32(i,0,members.count){
    auto &member = members[i];
    if(!member_was_removed(member)){
     if(i!=0){ mline(p); }
@@ -157,8 +157,7 @@ print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_pac
 
 
 function void
-print_struct_meta(Printer &p, String type_name,
-                  M_Struct_Members &members)
+print_struct_meta(Printer &p, String type_name, M_Struct_Members &members)
 {
  Scratch_Block scratch;
  {
@@ -174,7 +173,7 @@ print_struct_meta(Printer &p, String type_name,
    p<"result.kind = I_Type_Kind_Struct;\n";
    // NOTE(kv) Computing member count
    i32 member_count = 0;
-   for_i32(raw_member_index,0,members.count){
+   for_u32(raw_member_index,0,members.count){
     if(not member_was_removed(members.get(raw_member_index))){
      member_count++;
     }
@@ -182,7 +181,7 @@ print_struct_meta(Printer &p, String type_name,
    
    p < "result.members.set_count(" < member_count < ");\n";
    i32 member_index = 0;
-   for_i1(raw_member_index,0,members.count){
+   for_u32(raw_member_index,0,members.count){
     M_Struct_Member &member = members.get(raw_member_index);
     if(not member_was_removed(member)){
      m_braces_newline{
@@ -240,7 +239,7 @@ print_struct_meta(Printer &p, String type_name,
   m_location;
   print_type_read_function_prototype(p,type_name);
   m_braces_newline{
-   for_i1(member_index,0,members.count){
+   for_u32(member_index,0,members.count){
     M_Struct_Member &member = members.get(member_index);
     if(not member.unserialized){
      String version_added = member.version_added;
@@ -326,7 +325,7 @@ print_union_meta(Printer &p, String type_name,
      "result.discriminator_type = &"<get_type_global_info_name(discriminator_type)<";\n";
     {
      p<"result.union_members.set_count("<variants->count<");\n";
-     for_i32(index,0,variants->count){
+     for_u32(index,0,variants->count){
       auto &variant = variants->get(index);
       String variant_type = get_type_global_info_name(variant.struct_name);
       p<"result.union_members["<index<"] = {"<
@@ -354,7 +353,7 @@ print_union_meta(Printer &p, String type_name,
     //  but right now I don't care.
     p<"switch(variant)";
     {brace_block;
-     for_i1(vi,0,variants->count){
+     for_u32(vi,0,variants->count){
       auto &variant = variants->get(vi);
       p<"case "<variant.enum_name<":";
       {brace_block;
@@ -376,7 +375,7 @@ print_enum(Printer &p, String type_name,
  m_location;
  p <"enum " <type_name;
  m_braces_sm{
-  for_i32(ei,0,enum_names.count){
+  for_u32(ei,0,enum_names.count){
    if(ei!=0){ p <"\n"; }
    p <enum_names[ei] <" = " <enum_vals[ei] <",";
   }
@@ -403,7 +402,7 @@ print_enum_meta(Printer &p, String type_name,
     p <"result.size = sizeof(" <type_name <");\n";
     p <"result.kind = I_Type_Kind_Enum;\n";
     p <"result.enum_members.set_count(" <enum_names.count <");\n";
-    for_i1(enum_index,0,enum_names.count){
+    for_u32(enum_index,0,enum_names.count){
      String name = enum_names.get(enum_index);
      p <"result.enum_members[" <enum_index <"] = " <
       "{.name=" <enclosed_in_strlit(name) <", " <
@@ -487,7 +486,7 @@ print_struct_embed(Printer &p, String type_name,
  m_macro_braces_sm{
   p <"struct";
   m_macro_braces_sm{
-   for_i1(imem, 0, members.count){
+   for_u32(imem, 0, members.count){
     auto &member = members[imem];
     print_struct_member(p, member);
     p<";\\\n";
@@ -497,19 +496,15 @@ print_struct_embed(Printer &p, String type_name,
  }
 }
 function void
-print_i1_wrapper(Printer &p, String type_name){
+print_u32_wrapper(Printer &p, String type_name){
  Scratch_Block scratch;
- M_Struct_Members members = parse_struct_body(scratch, "{ i1 v; }");
+ M_Struct_Members members = parse_struct_body(scratch, "{ u32 v; }");
  {
-  print_format(p, "struct %.*s { i1 v; };\n", strexpand(type_name));
+  print_format(p, "struct %.*s { u32 v; };\n", strexpand(type_name));
   p <"inline b32 operator==(" < type_name <" a, " < type_name <" b)" <
    "{ return a.v==b.v; }\n";
  }
  print_struct_meta(p, type_name, members);
-}
-myinline void
-print_i1_wrapper(Printer &p, char *type_name){
- print_i1_wrapper(p, SCu8(type_name));
 }
 //-
 function b32
@@ -582,7 +577,7 @@ print_expression2(Printer &p, Precedence outer_precedence, Meta_Expression *e){
    Expression_Call *call = &e->call;
    print_expression2(p, Precedence_Dot_Arrow, call->func);
    m_parens2(p){
-    for_i32(arg_index, 0, call->arguments.count){
+    for_u32(arg_index, 0, call->arguments.count){
      if(arg_index){ p<", "; }
      print_expression2(p, Precedence_Max, &call->arguments[arg_index]);
     }
@@ -599,7 +594,7 @@ print_expression2(Printer &p, Precedence outer_precedence, Meta_Expression *e){
   
   case Expression_Kind_Compound:{
    print_brace_block(p){
-    for_i32(i, 0, e->compound_items.count){
+    for_u32(i, 0, e->compound_items.count){
      
      if(i != 0){ print(p, strlit(", ")); }
      Compound_Item *item = e->compound_items.items + i;
@@ -638,7 +633,7 @@ print(Meta_Printer &p, Statement_Head &statement)
   case Statement_Kind_Block:{
    cast_to_var(Statement_Block &, block, statement);
    p < "{";
-   for_i32(statement_index,0,block.block.count){
+   for_u32(statement_index,0,block.block.count){
     p < "\n"; 
     print(p, (Statement_Head&)block.block[statement_index]);
    }
@@ -667,7 +662,7 @@ print(Meta_Printer &p, Statement_Head &statement)
    p < ")";
    {
     p < "{";
-    for_i32(case_index,0,switch0.cases.count){
+    for_u32(case_index,0,switch0.cases.count){
      Switch_Case &case0 = switch0.cases[case_index];
      p < "\ncase ";
      print_expression(p, &case0.expression);
@@ -693,7 +688,7 @@ print(Meta_Printer &p, Statement_Head &statement)
   case Statement_Kind_Cache:{
    cast_to_var(Statement_Cache &, cache0, statement);
 #define CACHE_NAME cache_storage_prefix<cache0.id
-   for_i32(item_index, 0, cache0.cache_items.count){
+   for_u32(item_index, 0, cache0.cache_items.count){
     //-Computing cache values
     Cache_Item &cache_item = cache0.cache_items[item_index];
     print_type_and_name(p, cache_item.type, cache_item.name);
@@ -705,7 +700,7 @@ print(Meta_Printer &p, Statement_Head &statement)
     //-Condition for a cache miss
     p<"not "<CACHE_NAME<".cache_initialized or\n";
     p<"not"; m_parens{
-     for_i32(item_index, 0, cache0.cache_items.count){
+     for_u32(item_index, 0, cache0.cache_items.count){
       String name = cache0.cache_items[item_index].name;
       p<name<" == "<CACHE_NAME<"."<name<" &&\n";
      }
@@ -716,7 +711,7 @@ print(Meta_Printer &p, Statement_Head &statement)
     //-Do computation if cache miss
     m_braces_newline{//-Recompute the cache
      p<CACHE_NAME<".cache_initialized = true;\n";
-     for_i32(item_index, 0, cache0.cache_items.count){
+     for_u32(item_index, 0, cache0.cache_items.count){
       if(item_index){ p<"\n"; }
       String name = cache0.cache_items[item_index].name;
       p<CACHE_NAME<"."<name<" = "<name<";";
@@ -838,7 +833,7 @@ klang_print_sliders(K_Slider *sliders, u32 slider_count)
  }
  
  kv_assert(not printer.error);
- close_file(printer);
+ close(printer);
  return ok;
 }
 //-

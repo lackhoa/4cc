@@ -1,6 +1,6 @@
 function void
 push_entity_variant_inner(darray(Union_Variant) *variants, Union_Variant &variant){
- Arena *arena = &meta_permanent_arena;
+ Arena *arena = &thread_permanent_arena;
  variant.enum_name   = strcat(arena, "Curve_Type_", variant.name);
  variant.struct_name = strcat(arena, "Curve_",      variant.name);
  variants->push_value(variant);
@@ -22,7 +22,7 @@ push_curve_variant_with_endpoints(Arena *arena, darray(Union_Variant) *variants,
   Klang_Parser parser = k_parser_from_string(scratch, struct_members);
   members = parse_struct_body(arena, &parser);
   {
-   members.push_first(struct_member_from_string("Vertex_Index p0"));
+   push_first(members, struct_member_from_string("Vertex_Index p0"));
    members.push_value(struct_member_from_string("Vertex_Index p3"));
   }
  }
@@ -95,19 +95,21 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
  String enum_type = strlit("Curve_Type");
  {//-NOTE ("Enum")
   //TODO(kv) array copy mega-annoyance!
-  auto enum_names = static_array<String>(scratch, variants.count);
+  darray(String) enum_names;
+  init_static(enum_names, scratch, variants.count);
   enum_names.set_count(variants.count);
-  for_i32(i,0,variants.count){ enum_names[i] = variants[i].enum_name; }
+  for_u32(i,0,variants.count){ enum_names[i] = variants[i].enum_name; }
   
-  auto enum_values = static_array<i32>(scratch, variants.count);
+  darray(i32) enum_values;
+  init_static(enum_values, scratch, variants.count);;
   enum_values.set_count(variants.count);
-  for_i32(i,0,variants.count){ enum_values[i] = variants[i].enum_value; }
+  for_u32(i,0,variants.count){ enum_values[i] = variants[i].enum_value; }
   
   print_enum(printer, enum_type, enum_names, enum_values);
   print_enum_meta(printer, enum_type, enum_names);
  }
  {//-NOTE "Data structure associated with each variant"
-  for_i32(i,0,variants.count){
+  for_u32(i,0,variants.count){
    auto *variant = &variants.get(i);
    m_locationp(printer);
    print_struct(printer, variant->struct_name, variant->struct_members);
@@ -122,7 +124,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    {//NOTE Code
     p<"union "<type_name;
     m_braces_sm{
-     for_i32(i,0,variants.count){
+     for_u32(i,0,variants.count){
       auto &variant = variants.get(i);
       p<variant.struct_name<" "<variant.name_lower<";\n";
      }
@@ -144,7 +146,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
   m_braces{
    p < "\n";
    p < "Entity_Type_Info *table = entity_variant_info_table;\n";
-   for_i32(variant_index,0,variants.count){
+   for_u32(variant_index,0,variants.count){
     i32 enum_value = variants[variant_index].enum_value;
     print_format(p, "table[%d].is_curve = %d;\n",
                  enum_value,
@@ -159,7 +161,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
   };
   auto print_members_type_name = [&](Printer &p, Union_Variant &variant)->void{
    //-NOTE Must call this within separator block!
-   for_i32(im,0,variant.struct_members.count){
+   for_u32(im,0,variant.struct_members.count){
     M_Struct_Member &member = variant.struct_members[im];
     if(member_is_ref(member)){
      if(member.type.kind == Parsed_Type_Array){
@@ -207,10 +209,10 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
      m_braces_newline{
       p<"switch(curve.type)";
       m_braces{
-       for_i32(variant_index,0,variants.count){
+       for_u32(variant_index,0,variants.count){
         Union_Variant &variant = variants[variant_index];
         b32 has_endpoint = false;
-        for_i32(member_index,0,variant.struct_members.count){
+        for_u32(member_index,0,variant.struct_members.count){
          M_Struct_Member &member = variant.struct_members[member_index];
          if(member.name == endpoint_name){
           has_endpoint = true;
@@ -231,12 +233,12 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    }
    
    m_location;
-   for_i1(variant_index,0,variants.count){
+   for_u32(variant_index,0,variants.count){
     Union_Variant &variant = variants[variant_index];
     auto member_names = [&]()->void{
      darray(String) list;
      init_dynamic(list, scratch);
-     for_i32(im,0,variant.struct_members.count){
+     for_u32(im,0,variant.struct_members.count){
       auto &member = variant.struct_members[im];
       list.push_value(member.name);
      }
@@ -289,7 +291,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
         m_parens{
          separator_block(p, ", "){
           if(is_bn){ p < "name"; separator(p); };
-          for_i32(im,0,variant.struct_members.count){
+          for_u32(im,0,variant.struct_members.count){
            M_Struct_Member &member = variant.struct_members[im];
            if(member.type.kind == Parsed_Type_Array){
             for_u32(array_index, 0, member.type.array_count){
@@ -307,7 +309,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
         m_parens{
          separator_block(p, ", "){
           p < (is_bn?"strlit(#name)" : "strlit(\"l\")"); separator(p);
-          for_i32(im,0,variant.struct_members.count){
+          for_u32(im,0,variant.struct_members.count){
            auto &member = variant.struct_members[im]; 
            if(member_is_ref(member)){
             if(member.type.kind == Parsed_Type_Array){
@@ -364,18 +366,18 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
     }
     p<"\n";
    }
-   close_file(p);
+   close(p);
   }
   {//-Implementation
    Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game_gen, strlit("send_bez.gen.cpp")));
    m_location;
-   for_i1(variant_index,0,variants.count){
+   for_u32(variant_index,0,variants.count){
     Union_Variant &variant = variants[variant_index];
     if(variant.name != "Fill3"){
      print_prototype(p, variant, false); m_braces_newline{
       p<"Modeler *m = painter->modeler;\n";
       //-Fetch all the references
-      for_i32(member_index,0,variant.struct_members.count){
+      for_u32(member_index,0,variant.struct_members.count){
        M_Struct_Member &member = variant.struct_members[member_index];
        b32 is_vertex = member.type.name == strlit("Vertex_Index");
        b32 is_curve  = member.type.name == strlit("Curve_Index");
@@ -388,7 +390,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
       }
       p<"Curve_Union data = "; m_braces_sm{
        p<"."<variant.name_lower<"= "; m_braces{
-        for_i32(member_index,0,variant.struct_members.count){
+        for_u32(member_index,0,variant.struct_members.count){
          M_Struct_Member &member = variant.struct_members[member_index];
          if(member_is_ref(member)){
           p<"."<member.name<"="<member.name<"_index"<", ";
@@ -406,7 +408,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
      }
     }
    }
-   close_file(p);
+   close(p);
   }
  }
 }

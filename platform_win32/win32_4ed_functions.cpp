@@ -17,22 +17,6 @@ system_file_can_be_made(Arena *scratch, u8 *filename){
  }
  return(result);
 }
-
-//
-// Memory
-//
-
-struct Memory_Annotation_Tracker_Node{
- Memory_Annotation_Tracker_Node *next;
- Memory_Annotation_Tracker_Node *prev;
- String location;
- u64 size;
-};
-struct Memory_Annotation_Tracker{
- Memory_Annotation_Tracker_Node *first;
- Memory_Annotation_Tracker_Node *last;
- i1 count;
-};
 function usize
 win32_get_page_size(){
  SYSTEM_INFO info;
@@ -45,64 +29,29 @@ function usize
 system_page_size(){
  return win32_page_size;
 }
-global Memory_Annotation_Tracker memory_tracker = {};
-global CRITICAL_SECTION memory_tracker_mutex;
 /*static_assert(sizeof(Memory_Annotation_Tracker_Node) <= win32_memory_header_size);
 static_assert(win32_memory_header_size % 64 == 0);*/
 
 function u8 *
-system_memory_reserve(usize wanted_size){
- //-NOTE(kv)
+system_memory_reserve(usize wanted_size)
+{//-NOTE(kv)
  //  I really tried to make ASAN happen with VirtualAlloc,
  //  but realized that we do need sparse allocation if we to catch bugs.
  //-
  //NOTE(kv) The logic for computing the allocated size is exactly like alignment.
  usize granularity = KB(64);  //TODO(kv) This number is from Raymond Chen, but idk how to query for it?
- usize page_size = system_page_size();
- usize reserve_size = wanted_size + page_size;
+ usize reserve_size = wanted_size;
  reserve_size = align_pow2(granularity, reserve_size);
- 
  u8 *os_memory = (u8 *)VirtualAlloc(0, reserve_size, MEM_RESERVE, PAGE_READWRITE);
- VirtualAlloc(os_memory, page_size, MEM_COMMIT, PAGE_READWRITE);  //NOTE Commit the header
- 
- {
-  Memory_Annotation_Tracker_Node *node = cast(Memory_Annotation_Tracker_Node *)os_memory;
-  {// TODO(kv): What are we doing here?
-   //  When we use malloc-based allocator, we don't do any of this!
-   EnterCriticalSection(&memory_tracker_mutex);
-   //zdll_push_back(memory_tracker.first, memory_tracker.last, node);
-   Memory_Annotation_Tracker_Node *first = memory_tracker.first;
-   Memory_Annotation_Tracker_Node *last  = memory_tracker.last;
-   if(first == 0){
-    node->next = node->prev = 0;
-    memory_tracker.first = memory_tracker.last = node;
-   }else{
-    node->prev = last;
-    node->next = 0;
-    last->next = node;
-    memory_tracker.last = node;
-   }
-   memory_tracker.count += 1;
-   LeaveCriticalSection(&memory_tracker_mutex);
-  }
-  //node->location = location;  TODO(kv) reinstate this sometimes
-  node->size     = reserve_size;
- }
- u8 *app_memory = os_memory + page_size;
+ u8 *app_memory = os_memory;
  return app_memory;
 }
 function void
-system_memory_free(void *app_memory){
- if(app_memory != 0){
-  //NOTE(kv) Free memory we've reserved (NOT often called).
-  u8 *os_memory = (u8 *)app_memory - system_page_size();
-  {
-   Memory_Annotation_Tracker_Node *tracker = (Memory_Annotation_Tracker_Node *)os_memory;
-   EnterCriticalSection(&memory_tracker_mutex);
-   zdll_remove(memory_tracker.first, memory_tracker.last, tracker);
-   memory_tracker.count -= 1;
-   LeaveCriticalSection(&memory_tracker_mutex);
-  }
+system_memory_free(void *app_memory)
+{//NOTE(kv) Free memory we've reserved (NOT often called).
+ if(app_memory != 0)
+ {
+  u8 *os_memory = (u8 *)app_memory;
   b32 ok = VirtualFree(os_memory, 0, MEM_RELEASE);
   kv_assert(ok);
  }
@@ -117,47 +66,6 @@ system_memory_decommit(void *base, usize size){
  b32 ok = VirtualFree(base, size, MEM_DECOMMIT);
  kv_assert(ok);
 }
-function
-system_memory_set_protection_sig(){
-    DWORD protect = 0;
-    
-    switch (flags & 0x7){
-        case 0:                                                   protect = PAGE_NOACCESS; break;
-        case MemProtect_Read:                                     protect = PAGE_READONLY; break;
-        case MemProtect_Write:                                    /* below */
-        case MemProtect_Write|MemProtect_Read:                    protect = PAGE_READWRITE; break;
-        case MemProtect_Execute:                                  protect = PAGE_EXECUTE; break;
-        case MemProtect_Execute|MemProtect_Read:                  protect = PAGE_EXECUTE_READ; break;
-        case MemProtect_Execute|MemProtect_Write:                 /* below */
-        case MemProtect_Execute|MemProtect_Write|MemProtect_Read: protect = PAGE_EXECUTE_READWRITE; break;
-    }
-    
-    Memory_Annotation_Tracker_Node *node = (Memory_Annotation_Tracker_Node*)ptr;
-    node -= 1;
-    
-    DWORD old_protect = 0;
-    b32 result = VirtualProtect(node, (SIZE_T)size, protect, &old_protect);
-    return(result);
-}
-function
-system_memory_annotation_sig(){
-    Memory_Annotation result = {};
-    EnterCriticalSection(&memory_tracker_mutex);
-    
-    for (Memory_Annotation_Tracker_Node *node = memory_tracker.first;
-         node != 0;
-         node = node->next){
-        Memory_Annotation_Node *r_node = push_array(arena, Memory_Annotation_Node, 1);
-        sll_queue_push(result.first, result.last, r_node);
-        result.count += 1;
-        r_node->location = node->location;
-        r_node->address = node + 1;
-        r_node->size = node->size;
-    }
-    
-    LeaveCriticalSection(&memory_tracker_mutex);
-    return(result);
-}
 
 //
 // 4ed path
@@ -168,14 +76,14 @@ GetUserProfileDirectoryW(HANDLE  hToken, LPWSTR  lpProfileDir, LPDWORD lpcchSize
 
 global String8 w32_override_user_directory = {};
 
-function String8
-get_home_directory(Arena *arena)
+function String
+get_home_directory_utf8(Arena *arena)
 {
  HANDLE current_process_token = GetCurrentProcessToken();
  DWORD size = 0;
  GetUserProfileDirectoryW(current_process_token, 0, &size);
  u16 *buffer_u16 = push_array(arena, u16, size);
- if (GetUserProfileDirectoryW(current_process_token, (WCHAR*)buffer_u16, &size))
+ if(GetUserProfileDirectoryW(current_process_token, (WCHAR*)buffer_u16, &size))
  {
   String8 result = string_u8_from_string_u16(arena, SCu16(buffer_u16, size), StringFill_NullTerminate).string;
   return result;
@@ -217,9 +125,9 @@ system_get_path(Arena* arena, System_Path_Code path_code){
   {
    if (w32_override_user_directory.size == 0)
    {
-    String8 home = get_home_directory(arena);
+    String8 home = get_home_directory_utf8(arena);
     if(home.str){
-     result = push_stringfz(arena, "%.*s\\4coder\\", string_expand(home));
+     result = push_stringf(arena, "%.*s\\4coder\\", string_expand(home));
     }
    }
    else result = w32_override_user_directory;
@@ -257,13 +165,13 @@ win32_remove_unc_prefix_characters(String path){
 function String8 
 expand_tilde(Arena *arena, String8 path)
 {
-  String8 result = path;
-  u8 char0 = string_get_character(path, 0);
-  u8 char1 = string_get_character(path, 1);
-  if (char0 == '~' && (char1 == '/' || char1 == '\\'))
-  {
-  String8 home = get_home_directory(arena);
-  result = push_stringfz(arena, "%.*s\\%.*s", string_expand(home), (i1)path.size-2, path.str+2);
+ String8 result = path;
+ u8 char0 = string_get_character(path, 0);
+ u8 char1 = string_get_character(path, 1);
+ if (char0 == '~' && (char1 == '/' || char1 == '\\'))
+ {
+  String8 home = get_home_directory_utf8(arena);
+  result = push_stringf(arena, "%.*s\\%.*s", string_expand(home), (i1)path.size-2, path.str+2);
  }
  return result;
 }
@@ -374,10 +282,10 @@ system_get_file_list(Arena* arena, String directory)
     File_List result = {};
     String search_pattern = {};
     if (character_is_slash(string_get_character(directory, directory.size - 1))){
-        search_pattern = push_stringfz(arena, "%.*s*", string_expand(directory));
+        search_pattern = push_stringf(arena, "%.*s*", string_expand(directory));
     }
     else{
-        search_pattern = push_stringfz(arena, "%.*s\\*", string_expand(directory));
+        search_pattern = push_stringf(arena, "%.*s\\*", string_expand(directory));
     }
     
     WIN32_FIND_DATAW find_data = {};

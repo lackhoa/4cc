@@ -339,9 +339,10 @@ fui_push_active_slider_value(Arena *arena)
  return result;
 }
 function b32
-fui_handle_slider(App *app)
+fui_handle_slider(App_Cmd *app)
 {
- GET_VIEW_AND_BUFFER;
+ View_ID   view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
  b32 result = false;
  Scratch_Block scratch;
  
@@ -371,7 +372,7 @@ is_buffer_synced(Game_State *state, String filename)
 {
  b32 result = true;
  darray(String )*unsynced_files = &state->unsynced_files;
- for_i32(i, 0, unsynced_files->count){
+ for_u32(i, 0, unsynced_files->count){
   if(unsynced_files->items[i] == filename){
    result = false;
    break;

@@ -288,7 +288,7 @@ typedef float v1;
 #define for_i1  for_i32
 #define for_repeat(TIMES) for_i32(line_unique_var,0,TIMES)
 
-#define alen(array) (isize)(sizeof(array) / sizeof((array)[0]))
+#define alen(array) (isize)(sizeof(array) / sizeof(*(array)))
 
 #define and &&
 #define or  ||

@@ -339,15 +339,15 @@ os_popup_error(char *title, char *message){
     NSString *message_string = [NSString stringWithUTF8String:message];
     [alert setMessageText:title_string];
     [alert setInformativeText:message_string];
-
-    [alert runModal];
-
-    exit(1);
+ 
+ [alert runModal];
+ 
+ exit(1);
 }
 
 ////////////////////////////////
 
-#if defined(FRED_INTERNAL)
+#if KV_INTERNAL
 function inline void
 mac_profile(char *name, u64 begin, u64 end){
     printf("%s Time: %fs\n", name, ((end - begin) / 1000000.0f));
@@ -910,7 +910,7 @@ mac_toggle_fullscreen(void){
     }
 
     mac_profile("Frame", prev_timer_start, mac_vars.timer_start);
-#if FRED_INTERNAL
+#if KV_INTERNAL
     printf("\n");
 #endif
 }

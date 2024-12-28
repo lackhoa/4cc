@@ -3,7 +3,7 @@ xfunction b32
 is_prim_id_active(Modeler *m, u32 prim_id){
  b32 result = false;
  auto &active_ids = m->active_prims;
- for_i1(index, 0, active_ids.count){
+ for_u32(index, 0, active_ids.count){
   if(prim_id == active_ids[index]){
    result = true;
    break;
@@ -14,14 +14,14 @@ is_prim_id_active(Modeler *m, u32 prim_id){
 inline Vertex_Index
 vertex_index_from_pointer(Modeler &m, Vertex_Data *pointer){
  if(pointer){
-  return {i32(pointer - m.vertices.items)};
+  return {u32(pointer - m.vertices.items)};
  }
  return {};
 }
 inline Curve_Index
 curve_index_from_pointer(Modeler &m, Curve_Data *pointer) {
  if(pointer){
-  return {i32(pointer - m.curves.items)};
+  return {u32(pointer - m.curves.items)};
  }
  return {};
 }
@@ -30,7 +30,7 @@ function Vertex_Ref
 vertex_from_name(Modeler *m, String name)
 {
  Vertex_Ref result = {};
- for_i32(vertex_index, 1, m->vertices.count){
+ for_u32(vertex_index, 1, m->vertices.count){
   Vertex_Data *vertex = m->vertices.items + vertex_index;
   if(vertex->name == name){
    result.vertex = vertex;
@@ -57,7 +57,7 @@ get_vertex_from_var(Modeler *m, String name, i32 linum)
       vertex.name == name)
    {
     closest_linum = vertex.linum;
-    result.index = {vi};
+    result.index = {u32(vi)};
     result.vertex = &vertex;
    }
   }
@@ -70,10 +70,10 @@ get_vertex_from_var(Modeler *m, String name, i32 linum)
 function Vertex_Ref
 get_vertex_by_linum(Modeler *m, i1 linum){
  Vertex_Ref result = {};
- for_i32(vi, 1, m->vertices.count){
+ for_u32(vi, 1, m->vertices.count){
   Vertex_Data *vertex = &m->vertices[vi];
   if(vertex->linum == linum){
-   result.index = {vi};
+   result.index = {(vi)};
    result.vertex = vertex;
    break;
   }
@@ -83,10 +83,10 @@ get_vertex_by_linum(Modeler *m, i1 linum){
 function Curve_Ref
 get_curve_by_linum(Modeler *m, i1 linum){
  Curve_Ref result = {};
- for_i32(i,1,m->curves.count){
+ for_u32(i,1,m->curves.count){
   Curve_Data *it = &m->curves[i];
   if(it->linum == linum){
-   result.index = {i};
+   result.index = {(i)};
    result.curve = it;
    break;
   }
@@ -99,13 +99,14 @@ get_curve_from_var(Modeler *m, String name, i32 linum){
  i32 closest_linum = 0;
  for(i1 ci=m->curves.count-1;
      ci >= 1;
-     ci--){
+     ci--)
+ {
   Curve_Data &curve = m->curves[ci];
   if(curve.linum < linum and
      curve.linum > closest_linum and
      curve.name == name){
    closest_linum = curve.linum;
-   result.index = {ci};
+   result.index = {u32(ci)};
    result.curve = &curve;
   }
  }
@@ -130,7 +131,7 @@ get_fill_by_linum(Modeler &m, i1 linum){
 #else
 #endif
 //-
-function void
+/*function void
 send_vert_func(Painter *p, String name, v3 pos, i1 linum){
  if(sending_vertices){
   if(p->sending_data and is_left(p)){
@@ -146,7 +147,7 @@ send_vert_func(Painter *p, String name, v3 pos, i1 linum){
    vertex->linum   = linum;
   }
  }
-}
+}*/
 //-
 function void
 send_bez_func(String name, Curve_Type type, const Curve_Union &data,
@@ -179,7 +180,8 @@ send_bez_fill3(String name, String verts[3], Line_Params params, i32 linum){
  Painter *p = painter;
  Modeler *m = p->modeler;
  Curve_Union data = {};
- for_i32(i,0,3){
+ for_i32(i,0,3)
+ {
   Vertex_Index vi = get_vertex_from_var(m, verts[i], linum).index;
   kv_assert(vi.v);
   data.fill3.verts[i] = vi;
@@ -244,7 +246,7 @@ clear_edit_history(Modeler_History *h){
  // NOTE(kv): Later we can make multiple arena pools, and free those.
  if(h->inited){
   arena_free(&h->arena);
-  init_dynamic(h->edit_stack, &h->allocator, 128);
+  init_dynamic(h->edit_stack, &h->arena, 128);
  }
 }
 function void
@@ -253,14 +255,14 @@ apply_edit_no_history(Modeler *m, Modeler_Edit &edit0, b32 redo) {
   case ME_Vert_Move: {
    auto &edit = edit0.Vert_Move;
    v3 delta = redo ? edit.delta : -edit.delta;
-   for_i1(index,0,edit.verts.count){
+   for_u32(index,0,edit.verts.count){
     i1 vi = edit.verts[index].v;
     m->vertices[vi].pos += delta;
    }
   }break;
   case ME_Edit_Group: {
    auto &edit = edit0.Edit_Group;
-   for_i1(index,0,edit.count){
+   for_u32(index,0,edit.count){
     apply_edit_no_history(m, edit[index], redo);
    }
   }break;
@@ -290,7 +292,7 @@ modeler_undo(Modeler *m) {
 
 inline b32
 can_redo(Modeler_History &h) {
- return (h.redo_index < h.edit_stack.count);
+ return (h.redo_index < i32(h.edit_stack.count));
 }
 //
 function void
@@ -332,7 +334,7 @@ edits_can_be_merged(Modeler_Edit &edit1, Modeler_Edit &edit2)
     Vert_Move &e2 = edit2.Vert_Move;
     if (e1.verts.count == e2.verts.count) {
      result = true;
-     for_i1(vi,0,e1.verts.count) {
+     for_u32(vi,0,e1.verts.count) {
       if (e1.verts[vi].v != e2.verts[vi].v) {
        result = false;
        break;
@@ -388,7 +390,7 @@ compute_active_prims(Modeler *m)
   if (sel_type == Prim_Vertex){
    Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
    Vertex_Data &sel = m->vertices[sel_index.v];
-   for_i32(cindex,1,m->curves.count){
+   for_u32(cindex,1,m->curves.count){
     Curve_Data &curve = m->curves[cindex];
     //TODO(kv) If the curve doesn't store its endpoint,
     //  do we need to trace the endpoint down?

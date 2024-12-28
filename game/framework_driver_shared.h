@@ -96,7 +96,7 @@ struct Prim_XID{
  Prim_Type type;
  i1        index;
 };
-inline i1
+inline u32
 index_from_prim_id(u32 id){
  if(prim_id_is_data(id)){ return (id & 0xFFFF); }
  return 0;

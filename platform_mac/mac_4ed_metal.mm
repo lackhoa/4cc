@@ -334,7 +334,7 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
 }
 
 - (void)drawInMTKView:(nonnull MTKView*)view{
-#if FRED_INTERNAL
+#if KV_INTERNAL
     [_capture_scope beginScope];
 #endif
     
@@ -495,7 +495,7 @@ metal_fill_texture(Metal_Renderer *renderer, u32 handle, Texture_Kind kind, Vec3
     // NOTE(yuval): Finalize rendering here and push the command buffer to the GPU
     [command_buffer commit];
     
-#if FRED_INTERNAL
+#if KV_INTERNAL
     [_capture_scope endScope];
 #endif
 }

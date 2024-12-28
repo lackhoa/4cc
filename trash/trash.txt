@@ -689,4 +689,15 @@ tctx_release_arena(Thread_Context *tctx, Arena *arena){
 }
 
 
+    if False and working_on_editor and meets_level(ed_meta_build_level):
+        meta_macros="-DMETA_PASS"
+        preproc_file=pjoin(BUILD_DIR, "4coder_command_metadata.i")
+        print('Editor metadata generator')
+        run(f'clang++ {meta_macros} {compiler_flags} "{CODE_KV}/4coder_kv.cpp" -E -o {preproc_file}')
+        run_compiler(Compiler.ClangCl, f"{CODE}/4coder_metadata_generator.cpp", f"",
+                     compiler_flags=compiler_flags, compile_only=True)
+        run_compiler(Compiler.ClangCl, f"4coder_metadata_generator.obj", f"metadata_generator{DOT_EXE}",
+                     link_only=True)
+        run(f'metadata_generator -R "{CODE}" {preproc_file}')
+
 //

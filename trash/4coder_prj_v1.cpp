@@ -339,7 +339,7 @@ prj_v1_to_v2(App *app, String8 dir, Config *parsed)
     Variable_Handle proj_var = vars_new_variable(vars_get_root(), project_id, vars_intern(parsed->filename));
     
     if (parsed->version != 0){
-        String8 version_str = push_stringfz(scratch, "%d", *parsed->version);
+        String8 version_str = push_stringf(scratch, "%d", *parsed->version);
         vars_new_variable(proj_var, version_id, vars_intern(version_str));
     }
     
@@ -365,7 +365,7 @@ prj_v1_to_v2(App *app, String8 dir, Config *parsed)
              node != 0;
              node = node->next, i += 1){
             String8 pattern_string = prj_v1_join_pattern_string(scratch, node->pattern.absolutes);
-            String_ID key = vars_intern(push_stringfz(scratch, "%d", i));
+            String_ID key = vars_intern(push_stringf(scratch, "%d", i));
             String_ID pattern_id = vars_intern(pattern_string);
             vars_new_variable(patterns, key, pattern_id);
         }
@@ -378,7 +378,7 @@ prj_v1_to_v2(App *app, String8 dir, Config *parsed)
         i1 count = project->load_path_array.count;
         Prj_V1_File_Load_Path *load_path = project->load_path_array.paths;
         for (i1 i = 0; i < count; i += 1, load_path += 1){
-            String_ID key = vars_intern(push_stringfz(scratch, "%d", i));
+            String_ID key = vars_intern(push_stringf(scratch, "%d", i));
             Variable_Handle path_var = vars_new_variable(os_var, key);
             vars_new_variable(path_var, path_id, vars_intern(load_path->path));
             vars_new_variable(path_var, recursive_id, load_path->recursive?true_id:false_id);
@@ -411,7 +411,7 @@ prj_v1_to_v2(App *app, String8 dir, Config *parsed)
                 Prj_V1_Command *cmd = project->command_array.commands + cmd_index;
                 if (cmd->name.size > 0){
                     String8 cmd_name = prj_v1_sanitize_string(scratch, cmd->name);
-                    String_ID key = vars_intern(push_stringfz(scratch, "F%d", i + 1));
+                    String_ID key = vars_intern(push_stringf(scratch, "F%d", i + 1));
                     String_ID val = vars_intern(cmd_name);
                     vars_new_variable(fkeys_var, key, val);
                 }

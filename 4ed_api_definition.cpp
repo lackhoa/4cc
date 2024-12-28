@@ -194,7 +194,7 @@ api_get_callable_name(Arena *arena, String api_name, String name, API_Generation
 {
  String result = name;
  if(flags & APIGeneration_PrefixCallables){
-  result = push_stringfz(arena, "%.*s_%.*s", strexpand(api_name), strexpand(name));
+  result = push_stringf(arena, "%.*s_%.*s", strexpand(api_name), strexpand(name));
  }
  return(result);
 }
@@ -434,18 +434,7 @@ api_definition_generate_api_includes(API_Definition *api,
  Generated_File &gen_cpp     = genfiles[2];
  //Generated_File &gen_con = genfiles[3];
  
- String dir = {};
- switch (group)
- {
-  case GeneratedGroup_Core:
-  {
-   dir = strlit("generated/");
-  }break;
-  case GeneratedGroup_Custom:
-  {
-   dir = strlit("custom/generated/");
-  }break;
- }
+ String dir = strlit("generated/");
  
  {
   char *formats[filecount] = {
@@ -458,10 +447,10 @@ api_definition_generate_api_includes(API_Definition *api,
   for_i32(index,0,filecount)
   {
    auto &it = genfiles[index];
-   it.name = push_stringfz(scratch, formats[index],
-                           string_expand(path_to_self),
-                           string_expand(dir),
-                           string_expand(api->name));
+   it.name = push_stringf(scratch, formats[index],
+                          string_expand(path_to_self),
+                          string_expand(dir),
+                          string_expand(api->name));
    meta_logf(format, it.name.str);
   }
  }

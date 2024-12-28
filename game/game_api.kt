@@ -1,10 +1,10 @@
 //-
-api ed_api
+api game_api
 {
  b32 fui_is_active(void);
  String fui_push_active_slider_value(Arena *arena);
  b32 fui_at_slider_p(App *app);
- b32 fui_handle_slider(App *app);
+ b32 fui_handle_slider(App_Cmd *app);
  u32 fui_get_sliders_in_range(App *app, Buffer_ID buffer, i64 pos_begin, i64 pos_end, u32 *out_end_index);
  Range_i64 fui_get_slider_range(u32 index);
  b32 fui_is_buffer_synced(Game_State *state, App *app, Buffer_ID buffer);
@@ -27,7 +27,7 @@ api ed_api
 
 gen_file "game_api.gen.h"
 {
- gen_for(ed_api)
+ gen_for(game_api)
  {
 #define `(name)__return `return
 #define `(name)__params `params
@@ -35,7 +35,7 @@ gen_file "game_api.gen.h"
  }
  
 #define game_api_xlist(X) \
-gen_for(ed_api)
+gen_for(game_api)
  {
   X(`name) \
  }

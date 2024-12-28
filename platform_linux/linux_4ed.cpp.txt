@@ -343,7 +343,7 @@ linux_compare_file_infos(File_Info** a, File_Info** b) {
         return a_hidden - b_hidden;
     }
     
-    // push_stringfz seems to null terminate
+    // push_stringf seems to null terminate
     return strcoll((char*)(*a)->file_name.str, (char*)(*b)->file_name.str);
 }
 

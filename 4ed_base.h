@@ -1,5 +1,5 @@
 //-
-#include "4coder_types.h"
+#include "4coder_custom_types.h"
 
 function Range_i32
 Ii32(i32 a, i32 b){
@@ -1915,7 +1915,7 @@ string_list_push(Arena *arena, List_String *list, String string){
  list->total_size += string.size;
 }
 
-#define string_list_push_lit(a,l,s) string_list_push((a), (l), string_litexpr(s))
+#define string_list_push_lit(a,l,s)    string_list_push((a), (l), string_litexpr(s))
 #define string_list_push_u8_lit(a,l,s) string_list_push((a), (l), strlit(s))
 
 function void
@@ -2009,16 +2009,16 @@ string_list_flatten(Arena *arena, List_String string){
 }
 
 function void
-string_list_pushfv(Arena *arena, List_String *list, char *format, va_list args, b32 zero_terminated)
+string_list_pushfv(Arena *arena, List_String *list, char *format, va_list args)
 {
- String string = push_stringfv(arena, format, args, zero_terminated);
+ String string = push_stringfv(arena, format, args);
  string_list_push(arena, list, string);
 }
 function void
 string_list_pushf(Arena *arena, List_String *list, char *format, ...){
  va_list args;
  va_start(args, format);
- string_list_pushfv(arena, list, format, args, true);
+ string_list_pushfv(arena, list, format, args);
  va_end(args);
 }
 
@@ -2347,7 +2347,8 @@ utf16_write(u16 *str, u32 codepoint){
 ////////////////////////////////
 
 function String_u8
-string_u8_from_string_u16(Arena *arena, String_Const_u16 string, String_Fill_Terminate_Rule rule){
+string_u8_from_string_u16(Arena *arena, String_Const_u16 string, String_Fill_Terminate_Rule rule)
+{
  String_u8 out = {};
  out.cap = string.size*3;
  if (rule == StringFill_NullTerminate){
@@ -2850,19 +2851,9 @@ function Thread_Context *
 get_thread_context(){
  return &global_thread_context;
 }
-struct App
-{
- Thread_Context *tctx;
- void *cmd_context;
-};
 
 typedef App Application_Links;  // NOTE: has to be here for the 4coder meta-generator.
 
-//NOTE(kv) Omg, what am I doing?
-struct App_Cmd : App
-{
- b32 automated;
-};
 myinline App_Cmd
 app_cmd(App *app, b32 automated)
 {

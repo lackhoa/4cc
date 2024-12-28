@@ -6,6 +6,7 @@
 #define AD_IS_FRAMEWORK 1
 
 #define KV_H_NO_GLOBAL_ARENA_CHUNK_STORE
+#define AD_STB_SPRINTF_IMPLEMENTATION 0
 #include "kv.h"
 
 #define AD_IS_GAME 1
@@ -34,7 +35,7 @@
 #include "game_fui.cpp"
 
 #define DYNAMIC_LINK_API
-#include "custom/generated/ed_api.cpp"
+#include "generated/ed_api.cpp"
 
 #include "game_modeler.cpp"
 #include "generated/send_bez.gen.cpp"
@@ -45,6 +46,7 @@
 #include "game_utils.cpp"
 
 #include "ad_serialize.cpp"
+#include "generated/meta_all.gen.cpp"
 
 /*
   IMPORTANT Rule for the renderer
@@ -186,7 +188,7 @@ print_data_union(Printer &p, Type_Info *type,
  i32 variant = read_enum(*type->discriminator_type, pvariant);
  
  auto &union_members = type->union_members;
- for_i32(index,0,union_members.count){
+ for_u32(index,0,union_members.count){
   auto &union_member = union_members[index];
   if (union_member.variant == variant) {
    //NOTE(kv) pointer of member is the same as pointer to the union.
@@ -249,7 +251,7 @@ print_data_func(Printer &p, Type_Info *type, void *void_pointer){
   }break;
   case I_Type_Kind_Struct:{
    p < "{\n";
-   for_i1(member_index, 0, type->members.count){
+   for_u32(member_index, 0, type->members.count){
     I_Struct_Member &member = type->members[member_index];
     if(!member.unserialized){
      p < member.name < " ";
@@ -295,7 +297,7 @@ enum_index_from_pointer(Type_Info *type, void *pointer0){
  i32 value;
  block_copy(&value, pointer, type->size);
  i32 result = {};
- for_i32 (index, 0, type->enum_members.count) {
+ for_u32(index, 0, type->enum_members.count) {
   I_Enum_Member enum_it = type->enum_members[index];
   if (enum_it.value == value) {
    result = index;
@@ -326,7 +328,7 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer) {
   
   case I_Type_Kind_Struct:{
    p << "{\n";
-   for_i1(member_index, 0, type->members.count) {
+   for_u32(member_index, 0, type->members.count) {
     I_Struct_Member &member = type->members[member_index];
     p << member.name << " ";
     u8 *member_pointer = pointer+member.offset;
@@ -452,8 +454,8 @@ game_load(Game_State *state, App *app, Stringz filename)
  
  {
   Modeler *m = &state->modeler;
-  for_i32(i, 1, m->vertices.count-1){
-   for_i32(j, i+1, m->vertices.count){
+  for_u32(i, 1, m->vertices.count-1){
+   for_u32(j, i+1, m->vertices.count){
     String a = m->vertices[i].name;
     String b = m->vertices[j].name;
     if(a == b){
@@ -587,19 +589,19 @@ function void
 render_data(Modeler *m)
 {
  painter->is_right = 0;
- for_i32(vi,1,m->vertices.count){
+ for_u32(vi,1,m->vertices.count){
   //-Vertices
   Vertex_Data &vert = m->vertices[vi];
   Bone *bone = get_bone(m, vert.bone_id, 0);
-  u32 prim_id = prim_id_from_vertex_index({vi});
+  u32 prim_id = prim_id_from_vertex_index({u32(vi)});
   v3 pos = mat4vert(bone->xform, vert.pos);
   argb inactive_color = argb_dark_green;
   indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
  }
- for_i32(ci,1,m->curves.count){
+ for_u32(ci,1,m->curves.count){
   //-Curves
   Curve_Data &curve = m->curves[ci];
-  u32 prim_id = prim_id_from_curve_index({ci});
+  u32 prim_id = prim_id_from_curve_index({u32(ci)});
   Common_Line_Params *cparams = m->line_cparams + curve.cparams.v;
   for_i32(lr_index,0,2){
    if(implies(lr_index==1, curve.symx)){
@@ -822,6 +824,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
 function void
 meta_init()
 {
+ make_all_type_info();
  init_entity_type_info_table();
 }
 function void
@@ -890,7 +893,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
    ok = false;
   }else{
    const char *filename_base = is_manual ? "manual" : "auto";
-   Stringz backup_path = push_stringfz(scratch, "%.*s/%s_%.*s.ad",
+   Stringz backup_path = push_stringf(scratch, "%.*s/%s_%.*s.ad",
                                        string_expand(backup_dir),
                                        filename_base,
                                        string_expand(time_string));
@@ -1167,7 +1170,6 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
  if(driver->is_valid)
  {
   Scratch_Block scratch(app);
-  Base_Allocator scratch_allocator = make_arena_base_allocator(scratch);
   
   Modeler *modeler = &state->modeler;
   b32 game_active = active_viewport_id != 0;
@@ -1197,7 +1199,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   {//~ NOTE: Game commands
    {// NOTE: Process commands
     darray(String) &queue = state->command_queue;
-    for_i1(ci,0,queue.count){
+    for_u32(ci,0,queue.count){
 #define MATCH(NAME)    queue[ci] == strlit(NAME)
      if(0){
      }else if(MATCH("save_manual")) {
@@ -1232,7 +1234,8 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
    v3 curpos = state->kb_cursor.pos;
    Modeler *m = modeler;
    v1 min_lensq = max_f32;
-   for_i32(vi,1,m->vertices.count){
+   for_u32(vi,1,m->vertices.count)
+   {
     //-Closest vertex
     Vertex_Data &v = m->vertices[vi];
     Bone *bone = get_bone(m, v.bone_id, false);
@@ -1242,7 +1245,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
      hot_prim_id = prim_id_from_vertex_index(Vertex_Index{vi});
     }
    }
-   for_i32(ci,1,m->curves.count){
+   for_u32(ci,1,m->curves.count){
     //-Closest curve
     Curve_Data &c = m->curves[ci];
     if(c.type == Curve_Type_Fill_DBez){
@@ -1274,7 +1277,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
      }
      if(l < min_lensq){
       min_lensq = l;
-      hot_prim_id = prim_id_from_curve_index(Curve_Index{ci});
+      hot_prim_id = prim_id_from_curve_index(Curve_Index{u32(ci)});
      }
     }
    }
@@ -1330,7 +1333,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   // but it's very dumb because we already had events.
   darray(Key_Code) key_strokes;
   {
-   init_dynamic(key_strokes, &scratch_allocator);
+   init_dynamic(key_strokes, scratch);
    for_i32(code, 1, Key_Code_COUNT){
     if (input->key_states[code] &&
         input->key_state_changes[code] > 0){
@@ -1341,7 +1344,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   
   b32 modeler_selecting = selected_prim_id(modeler);
   u32 mods = input->active_mods;
-  for_i32(key_stroke_index, 0, key_strokes.count){
+  for_u32(key_stroke_index, 0, key_strokes.count){
    //-NOTE(kv) Key bindings
    auto cam = update_target_cam;
    Key_Code keycode = key_strokes[key_stroke_index];
@@ -1535,7 +1538,7 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
       
       darray(Vertex_Index) influenced_verts;
       init_static(influenced_verts, scratch, m->active_prims.count);
-      for_i32(index,0,m->active_prims.count) {
+      for_u32(index,0,m->active_prims.count) {
        Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
        influenced_verts.push_value(vi);
       }
@@ -1685,11 +1688,11 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
      ImGui::Begin("curve data", 0);
      Curve_Data *curve = get_selected_curve(m);
      Type_Info type = Type_Info_Curve_Type;
-     i32 curve_type_index = enum_index_from_value(curve->type);
+     u32 curve_type_index = enum_index_from_value(curve->type);
      
      const char* combo_preview = to_cstring(scratch, type.enum_members[curve_type_index].name);
      if ( ImGui::BeginCombo("combo", combo_preview, 0) ) {
-      for_i32(enum_index, 0, type.enum_members.count) {
+      for_u32(enum_index, 0, type.enum_members.count) {
        b32 is_selected = (enum_index == curve_type_index);
        char *name = to_cstring(scratch, type.enum_members[enum_index].name);
        if(ImGui::Selectable(name, is_selected)){

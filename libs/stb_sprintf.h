@@ -180,9 +180,10 @@ PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 #endif
 
 #if defined(__has_attribute)
- #if __has_attribute(format)
-   #define STBSP__ATTRIBUTE_FORMAT(fmt,va) __attribute__((format(printf,fmt,va)))
- #endif
+# if __has_attribute(format)
+//NOTE(kv) We've added %S, so clang can't warn us anymore.
+//#   define STBSP__ATTRIBUTE_FORMAT(fmt,va) __attribute__((format(printf,fmt,va)))
+# endif
 #endif
 
 #ifndef STBSP__ATTRIBUTE_FORMAT

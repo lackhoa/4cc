@@ -282,16 +282,6 @@ make_system_api(Arena *arena)
   api_param(arena, call, "void *", "base");
   api_param(arena, call, "usize",  "size");
  }
- {
-  API_Call *call = api_call(arena, api, "memory_set_protection", "b32");
-  api_param(arena, call, "void*", "ptr");
-  api_param(arena, call, "u64", "size");
-  api_param(arena, call, "u32", "flags");
- }
- {
-  API_Call *call = api_call(arena, api, "memory_annotation", "Memory_Annotation");
-  api_param(arena, call, "Arena*", "arena");
- }
  
  {
   API_Call *call = api_call(arena, api, "show_mouse_cursor", "void");

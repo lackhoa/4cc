@@ -14,7 +14,7 @@ struct Printer_Pair{
  Meta_Printer c;
 };
 inline b32 okp(Printer_Pair &ps){ return ps.h.FILE && ps.c.FILE; }
-inline void close_file(Printer &p){ close_file(p.FILE); }
+inline void close(Printer &p){ close_file(p.FILE); }
 inline void close_pair(Printer_Pair &ps){ close_file(ps.h.FILE); close_file(ps.c.FILE); }
 
 struct Meta_Type_Names{
@@ -49,7 +49,7 @@ print(Printer &p, Repeated_Printee item){
 //-
 function void
 print_comma_separated(Printer &p, darray(String) list){
- for_i32(i,0,list.count){
+ for_u32(i,0,list.count){
   if(i){ p<", "; }
   p<list.items[i];
  }

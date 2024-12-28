@@ -14,8 +14,7 @@
 #include "imgui/backends/imgui_impl_win32.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
-#include <stdio.h>
-
+#define AD_STB_SPRINTF_IMPLEMENTATION 0
 #include "kv.h"
 #include "4coder_game_shared.h"
 #include "4ed_base.h"
@@ -33,9 +32,6 @@ unlerp(f32 a, Range_f32 x, f32 b)
 
 #include "4coder_table.h"
 
-//TODO(kv) Hello, why are these here?
-//#include "custom_command_defines.h"
-#include "4coder_default_colors.h"
 #include "ad_debug.h"
 
 #include "4coder_system_types.h"
@@ -46,7 +42,7 @@ unlerp(f32 a, Range_f32 x, f32 b)
 #define STATIC_LINK_API
 #include "graphics_api.h"
 #define STATIC_LINK_API
-#include "generated/font_api.h"
+#include "generated_old/font_api.h"
 
 #include "4ed_font_set.h"
 #include "4ed_render_target.h"
@@ -54,7 +50,7 @@ unlerp(f32 a, Range_f32 x, f32 b)
 
 #define STATIC_LINK_API
 #include "generated/system_api.cpp"
-#include "generated/font_api.cpp"
+#include "generated_old/font_api.cpp"
 
 #include "4coder_stringf.cpp"
 #include "4coder_events.cpp"
@@ -515,8 +511,8 @@ system_get_clipboard_catch_all_sig(){
 //
 
 // ;win32_system_cli_call
-function
-system_cli_call_sig()
+function b32
+system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out)
 {
     static_assert(sizeof(Plat_Handle) >= sizeof(HANDLE));
     
@@ -524,7 +520,7 @@ system_cli_call_sig()
     char *env_variables = 0;
     
     Temp_Memory temp = begin_temp_memory(scratch);
-    String cmd_arg = push_stringfz(scratch, "/C %s", script);
+    String cmd_arg = push_stringf(scratch, "/C %s", script);
     
     b32 success = false;
     
@@ -629,43 +625,44 @@ system_cli_update_step_sig(){
             Assert(max - pos == read_amount);
             loop->remaining_amount = remaining - (max - pos);
             pos = max;
-            break;
-        }
-    }
-    *amount = pos;
-    
-    return(has_more);
+   break;
+  }
+ }
+ *amount = pos;
+ 
+ return(has_more);
 }
 
-function
-system_cli_end_update_sig(){
-    b32 close_me = false;
-    HANDLE proc = *(HANDLE*)&cli->proc;
-    DWORD result = 0;
-    
-    if (WaitForSingleObject(proc, 0) == WAIT_OBJECT_0){
-        if (GetExitCodeProcess(proc, &result) == 0){
-            cli->exit = -1;
-        }
-        else{
-            cli->exit = (i32)result;
-        }
-        
-        close_me = true;
-        CloseHandle(*(HANDLE*)&cli->proc);
-        CloseHandle(*(HANDLE*)&cli->out_read);
-        CloseHandle(*(HANDLE*)&cli->out_write);
-        if (*(HANDLE*)&cli->in_read != INVALID_HANDLE_VALUE){
-            CloseHandle(*(HANDLE*)&cli->in_read);
-        }
-        if (*(HANDLE*)&cli->in_write != INVALID_HANDLE_VALUE){
-            CloseHandle(*(HANDLE*)&cli->in_write);
-        }
-        
-        --win32vars.running_cli;
-    }
-    
-    return(close_me);
+function b32
+system_cli_end_update(CLI_Handles* cli)
+{
+ b32 close_me = false;
+ HANDLE proc = *(HANDLE*)&cli->proc;
+ DWORD result = 0;
+ 
+ if (WaitForSingleObject(proc, 0) == WAIT_OBJECT_0){
+  if (GetExitCodeProcess(proc, &result) == 0){
+   cli->exit = -1;
+  }
+  else{
+   cli->exit = (i32)result;
+  }
+  
+  close_me = true;
+  CloseHandle(*(HANDLE*)&cli->proc);
+  CloseHandle(*(HANDLE*)&cli->out_read);
+  CloseHandle(*(HANDLE*)&cli->out_write);
+  if (*(HANDLE*)&cli->in_read != INVALID_HANDLE_VALUE){
+   CloseHandle(*(HANDLE*)&cli->in_read);
+  }
+  if (*(HANDLE*)&cli->in_write != INVALID_HANDLE_VALUE){
+   CloseHandle(*(HANDLE*)&cli->in_write);
+  }
+  
+  --win32vars.running_cli;
+ }
+ 
+ return(close_me);
 }
 
 function void
@@ -1693,7 +1690,7 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles) {
     // can do it after pixel format is set
     if (opengl_context == 0) {
      log_os(" creating graphics GL context...\n");
-     i32 debug_bit = (SHIP_MODE) ? 0 : WGL_CONTEXT_DEBUG_BIT_ARB;
+     i32 debug_bit = (KV_INTERNAL) ? WGL_CONTEXT_DEBUG_BIT_ARB : 0;
      i32 context_attrib_list[] = {
       /*0*/WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
       /*2*/WGL_CONTEXT_MINOR_VERSION_ARB, 6,
@@ -1790,7 +1787,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  // NOTE(allen): context setup
  log_os("Initializing thread context...\n");
- InitializeCriticalSection(&memory_tracker_mutex);
  thread_context_init(&global_thread_context, ThreadKind_Main,
                      get_default_allocator(), get_default_allocator());
  

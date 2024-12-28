@@ -248,18 +248,18 @@ Sys_Get_Canonical_Sig(system_get_canonical){
         }
     }
     if (write_p == path) *write_p++ = '/';
-    
-    if (max >= (write_p - path)){
-        memcpy(buffer, path, write_p - path);
-    }
-    else{
-        write_p = path;
-    }
-    
-#if defined(FRED_INTERNAL)
-    if (len != (write_p - path) || memcmp(filename, path, len) != 0){
-        //LOGF("[%.*s] -> [%.*s]\n", len, filename, (int)(write_p - path), path);
-    }
+ 
+ if (max >= (write_p - path)){
+  memcpy(buffer, path, write_p - path);
+ }
+ else{
+  write_p = path;
+ }
+ 
+#if KV_INTERNAL
+ if (len != (write_p - path) || memcmp(filename, path, len) != 0){
+  //LOGF("[%.*s] -> [%.*s]\n", len, filename, (int)(write_p - path), path);
+ }
 #endif
     
     u32 length = (i1)(write_p - path);

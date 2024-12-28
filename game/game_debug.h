@@ -1,10 +1,12 @@
 #pragma once
-//-TODO(kv) This code should be integrated in "the system"
+//-TODO(kv) Shouldn't we just expose __rdtsc directly?
 #if AD_IS_FRAMEWORK
-extern inline u64 ad_rdtsc(void) { return __rdtsc(); }
+function u64 ad_rdtsc(void){ return __rdtsc(); }
+#else
+global_decl u64 (*ad_rdtsc)(void);
 #endif
 
-#if AD_PROFILE
+#if KV_INTERNAL
 struct Timed_Block
 {
  u64 cycle_start;

@@ -562,11 +562,11 @@ k_parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
   ep_char(p, ';');
  }
 }
-function Meta_Statements
+function darray(Statement_Union)
 k_parse_statement_block(Arena *arena, Klang_Parser *p)
 {
  ep_char(p,'{');
- Meta_Statements statements;
+ darray(Statement_Union) statements;
  init_dynamic(statements, arena);
  ep_skip_semicolons(p);
  while(p->ok_ and (not ep_maybe_char(p,'}'))){
@@ -576,12 +576,15 @@ k_parse_statement_block(Arena *arena, Klang_Parser *p)
  }
  return statements;
 }
-function void
-k_process_top_level(Arena *arena,
-                    Klang_Parser *p, Meta_Printer &printer_gen,
-                    /*out*/ Statement_Root *root)
+function sarray(Statement_Union)
+k_process_top_level(Arena *arena, Klang_Parser *p, Meta_Printer &printer_gen,
+                    darray(String) *type_info_list)
 {
+ darray(Statement_Union) top_levels;
+ init_dynamic(top_levels, arena, 64);
+ 
  Scratch_Block scratch_top;
+ 
  while(p->ok_)
  {
   Temp_Memory_Block temp_loop(scratch_top);
@@ -603,6 +606,7 @@ k_process_top_level(Arena *arena,
   Token *token0 = ep_get_token(p);
   String token0_string = ep_print_token(scratch_top, p);
   ep_scope_block(p, strlit("top-level"), token0);
+  String type_name = {};
   b32 do_info  = true;
   b32 do_embed = false;
   b32 is_packed = false;
@@ -633,7 +637,7 @@ k_process_top_level(Arena *arena,
   }else if(ep_maybe_id(p, "struct")){
    //-parse struct
    darray(M_Struct_Member) members = {};
-   String type_name = ep_id(p);
+   type_name = ep_id(p);
    ep_char(p, '{');
    while(p->ok_ && !m_maybe_brace_close(p)){
     // NOTE: Field
@@ -697,7 +701,7 @@ k_process_top_level(Arena *arena,
    //-Enum
    darray(String) enum_names = {};
    darray(i1) enum_vals      = {};
-   String type_name = ep_maybe_id(p);
+   type_name = ep_maybe_id(p);
    m_brace_open(p);
    while(p->ok_ && !m_maybe_brace_close(p)){
     //NOTE(kv) Enum value
@@ -715,7 +719,7 @@ k_process_top_level(Arena *arena,
   }else if(ep_maybe_id(p, "typedef")){
    //-typedef
    String typedef_to = ep_id(p);
-   String type_name  = ep_id(p);
+   type_name  = ep_id(p);
    {
     printer_gen<"typedef "<typedef_to<" "<type_name<";\n";
    }
@@ -753,7 +757,7 @@ k_process_top_level(Arena *arena,
    mpa_parens{
     parameters = ep_capture_until_char(p,')');
    }
-   Statement_Union *func0 = root->top_levels.push_zero();
+   Statement_Union *func0 = top_levels.push_zero();
    cast_to_var(Statement_Function *, func, func0);
    if(ep_maybe_char(p, ';')){
     //-Forward declaration
@@ -805,7 +809,7 @@ k_process_top_level(Arena *arena,
     if(func->has_body){//-Print body
      m_braces2(printer_gen){
       mline(printer_gen);
-      for_i32(statement_index,0,func->body.count){
+      for_u32(statement_index,0,func->body.count){
        print(printer_gen, func->body[statement_index].head);
        mline(printer_gen);
       }
@@ -815,11 +819,11 @@ k_process_top_level(Arena *arena,
      print(printer_gen, ";\n\n");
     }
    }
-  }else if(ep_maybe_id(p, "i1_wrapper")){
-   //-i1_wrapper
+  }else if(ep_maybe_id(p, "u32_wrapper")){
+   //-u32_wrapper
    mpa_parens{
-    String type_name = ep_id(p);
-    print_i1_wrapper(printer_gen, type_name);
+    type_name = ep_id(p);
+    print_u32_wrapper(printer_gen, type_name);
    }
   }else if(ep_maybe_id(p, "unique")){
    //-One-off/miscellaneous stuff
@@ -831,18 +835,24 @@ k_process_top_level(Arena *arena,
   }else{
    p->fail();
   }
+  
+  if(type_name.count and do_info){
+   push(type_info_list, type_name);
+  }
+  
   kv_assert(not p->recoverable);
  }
+ return top_levels;
 }
 function b32
-k_process_file(Arena *arena, Lexed_File source, darray(K_Slider) *sliders,
-               /*out*/ Statement_Root *root)
+k_process_file(Arena *arena, Lexed_File source,
+               darray(K_Slider) *sliders, 
+               darray(String) *type_info_list,
+               Statement_Root *out_root)
 {
  Scratch_Block file_arena;
- *root = {};
- root->kind = Statement_Kind_Root;
- root->source_path = source.name;
- init_dynamic(root->top_levels, arena, 64);
+ Statement_Root root = {};
+ root.kind = Statement_Kind_Root;
  
  Meta_Printer printer_gen;
  Stringz map_file_path;
@@ -881,12 +891,12 @@ k_process_file(Arena *arena, Lexed_File source, darray(K_Slider) *sliders,
  {
   Ed_Parser *ed_parser = parser;
   *ed_parser = ed_parser_from_token_list(source.data, source.token_list);
-  parser->current_statement = root;
-  parser->sliders           = sliders;
+  parser->current_statement = &root;
+  parser->sliders           = sliders;  //NOTE(kv) Sliders is in the parser, because it could be everywhere.
   parser->arena             = arena;
  }
  {
-  k_process_top_level(arena, parser, printer_gen, root);
+  root.top_levels = k_process_top_level(arena, parser, printer_gen, type_info_list);
  }
  if(parser->ok_){
   {//-Print source map
@@ -921,7 +931,9 @@ k_process_file(Arena *arena, Lexed_File source, darray(K_Slider) *sliders,
          scope_location.line,
          scope_location.column);
  }
- close_file(printer_gen);
+ close(printer_gen);
+ 
+ *out_root           = root;
  return ok;
 }
 //-
@@ -934,7 +946,8 @@ k_print_struct_meta(Printer &p, K_Struct struc){
  print_struct_meta(p, struc.name, struc.members);
 }
 function b32
-klang_main(Arena *arena, Lexed_File source_file, darray(K_Slider) *sliders)
+klang_main(Arena *arena, Lexed_File source_file,
+           darray(K_Slider) *sliders, darray(String) *type_info_list)
 {
  {//-Test file
   b32 is_test_file = path_filename(source_file.name) == "test.kc";
@@ -948,14 +961,10 @@ klang_main(Arena *arena, Lexed_File source_file, darray(K_Slider) *sliders)
  }
  
  Statement_Root root;
- b32 ok = k_process_file(arena, source_file, sliders, &root);
+ b32 ok = k_process_file(arena, source_file, sliders, type_info_list, &root);
  if(ok){
-  meta_process_ast(&root);
+  meta_process_ast(root, source_file.name);
  }
  return ok;
 }
-struct String_Mapping{
- String key;
- String val;
-};
 //-

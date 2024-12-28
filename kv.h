@@ -9,7 +9,6 @@
 #include <stdio.h>  // printf, perror
 #include <cstdint>
 #include <string.h>
-#include <math.h>
 
 #if !defined(AD_HAS_OS_CODE)
 #  define AD_HAS_OS_CODE 1
@@ -79,6 +78,9 @@
 #undef GB_STATIC
 #undef GB_IMPLEMENTATION
 //~
+#if !defined(AD_STB_SPRINTF_IMPLEMENTATION) || AD_STB_SPRINTF_IMPLEMENTATION
+#  define STB_SPRINTF_IMPLEMENTATION
+#endif
 #include "stb_sprintf.h"
 //~
 
@@ -149,35 +151,6 @@ cubed(v1 value)
  return value*value*value;
 }
 
-myinline v1
-square_root(f32 x)
-{
-#if COMPILER_MSVC
-    v1 result = sqrtf(x);
-#else
-    v1 result = __builtin_sqrtf(x);
-#endif
-    return result;
-}
-
-// TODO: These are real bad! Should only be one simd instruction. Watch hmh 379 for details.
-myinline v1
-roundv1(v1 Real32)
-{
-#if COMPILER_MSVC
- v1 Result = roundf(Real32);
-#else
- v1 Result = __builtin_roundf(Real32);
-#endif
- return(Result);
-}
-
-myinline v1
-log_with_base(v1 base, v1 input)
-{
- v1 result = logf(input) / logf(base);
- return result;
-}
 
 // NOTE: Integer power
 function v1
@@ -202,75 +175,11 @@ round_to_integer(v1 value)
  return i32(value+0.5f);
 }
 
-// TODO @Cleanup myinline all these functions
-myinline v1
-floorv1(v1 value)
-{
-#if COMPILER_MSVC
-    v1 Result = floorf(value);
-#else
-    v1 Result = __builtin_floorf(value);
-#endif
-    return(Result);
-}
-
-inline v1
-ceilv1(v1 value)
-{
-#if COMPILER_MSVC
-    v1 Result = ceilf(value);
-#else
-    v1 Result = __builtin_ceilf(value);
-#endif
-    return(Result);
-}
-
-myinline v1
-cycle01(v1 value)
-{
- v1 result = value - floorv1(value);
- return result;
-}
-
 myinline v1
 cycle01_positive(v1 value)
 {
  v1 result = value - v1(i32(value));
  return result;
-}
-
-// NOTE: weird names to avoid name collision (haizz)
-inline v1
-kv_sin(v1 angle)
-{
-#if COMPILER_MSVC
-    v1 result = sinf(angle);
-#else
-    v1 result = __builtin_sinf(angle);
-#endif
-    return(result);
-}
-
-myinline v1
-kv_cos(v1 angle)
-{
-#if COMPILER_MSVC
-    v1 result = cosf(angle);
-#else
-    v1 result = __builtin_cosf(angle);
-#endif
-    return(result);
-}
-
-myinline v1
-kv_atan2(v1 y, v1 x)
-{
-#if COMPILER_MSVC
- v1 result = atan2f(y, x);
-#else
- v1 result = __builtin_atan2f(y, x);
-#endif
- return(result);
 }
 
 myinline u64
@@ -306,16 +215,6 @@ find_most_significant_set_bit(u64 mask)
  return result;
 }
 
-myinline v1
-absolute(v1 x)
-{
-#if COMPILER_MSVC
- v1 result = (v1)fabs(x);
-#else
- v1 result = (v1)__builtin_fabs(x);
-#endif
- return result;
-}
 myinline i32
 absolute(i32 x)
 {
@@ -564,14 +463,10 @@ unlerp_or_zero(v1 a, v1 v, v1 b)
 #define kvAssert     kv_assert
 /* Old names > */
 
-
-
-//
-
 //////////////////////////////////////////////////
 
-#if !defined(SHIP_MODE)
-#    define SHIP_MODE 0
+#if !defined(KV_INTERNAL)
+#  define KV_INTERNAL 0
 #endif
 
 ////////////////////////////////
@@ -594,9 +489,9 @@ unlerp_or_zero(v1 a, v1 v, v1 b)
 #endif
 
 #if OS_WINDOWS
-#define OS_SLASH '\\'
+#  define OS_SLASH '\\'
 #else
-#define OS_SLASH '/'
+#  define OS_SLASH '/'
 #endif
 
 typedef void Void_Func(void);
@@ -655,7 +550,7 @@ enum{
 #define StaticAssertDisambiguateAlways(c,d) char glue(__ignore__, glue(__LINE__, d))[(c)?1:-1];
 #define StaticAssertAlways(c) StaticAssertDisambiguateAlways(c,__default__)
 
-#if !SHIP_MODE
+#if KV_INTERNAL
 #  define Assert(c) AssertAlways(c)
 #  define AssertMessage(m) AssertMessageAlways(m)
 #  define StaticAssertDisambiguate(c,d) StaticAssertDisambiguateAlways(c,d)
@@ -1459,22 +1354,6 @@ line_unique_var++, (SHUTDOWN))
 
 //-
 
-inline v1 srgb_to_linear1(v1 x)
-{
- v1 r = ((x <= 0.04045f) ? 
-         x/12.92f : 
-         powf((x + 0.055f)/1.055f, 2.4f));
- return(r);
-}
-
-inline v1 linear_to_srgb1(v1 x)
-{
- v1 r = ((x <= 0.0031308) ? 
-         x*12.92f : 
-         powf(x, 1/2.4f)*1.055f - 0.055f);
- return(r);
-}
-
 #define scale_in_block(variable, multiplier) \
 variable *= multiplier; \
 defer(variable /= multiplier)
@@ -1487,90 +1366,84 @@ set_in_block(variable, variable+value)
 
 
 //~NOTE: Array
+template<class T>
+struct Static_Array2
+{
+ u64 count;
+ T  *items;
+};
+
+#define sarray(T) Static_Array2<T>
+
 // NOTE(kv): Can be zero-inited -> GOOD!
 //NOTE(kv) Because I hate the terrible template syntax
 #define darray(T) Dynamic_Array<T>
 //TODO(kv) Please don't templatize so much code!
 template<class T>
-struct Dynamic_Array
+struct Dynamic_Array : Static_Array2<T>
 {
- i1 count;
- i1 cap;
+ /*u64 count;
+ T *items;*/
+ u32 cap;
  b32 fixed_size;
- T *items;
- Base_Allocator *allocator;
- 
+ Arena *arena;
  //-
- 
- inline T& get(i32 index){
-  kv_assert(index>=0 and index<count);
-  return items[index];
+ myinline T& get(u32 index){
+  kv_assert(index < this->count);
+  return this->items[index];
  }
- inline T& operator[](i32 index){ return get(index); }
- inline T &last() {
-  kv_assert(count > 0);
-  return items[count-1];
+ myinline T& operator[](u32 index){ return get(index); }
+ myinline T &last() {
+  kv_assert(this->count > 0);
+  return this->items[this->count-1];
  }
  
- void set_cap_inner(i32 new_cap, DEBUG_File_Line file_line)
+ void set_cap_inner(u32 new_cap, DEBUG_File_Line file_line)
  {// NOTE(kv): Can only grow for now
   if(new_cap > cap)
   {
-   kv_assert(!fixed_size);
-   Base_Allocator *used_allocator = allocator;
-   // NOTE(kv): get malloc allocator here to avoid the "stale pointer" problem.
-   if(not used_allocator) used_allocator = &malloc_base_allocator;
-   T *old_items = items;
-   items = cast(T *)base_allocate(used_allocator, new_cap*sizeof(T), file_line);
-   block_copy(items, old_items, count*sizeof(T));
-   // NOTE(kv): to free 100% of the space we allocated with the arena allocator,
-   //   We'd have to store the allocated size too. But I don't really care.
-   base_free(used_allocator, old_items, cap*sizeof(T));
+   kv_assert(not fixed_size);
+   T *old_items = this->items;
+   
+   Arena *used_arena = arena;
+   if(not arena){ used_arena = &thread_permanent_arena; }
+   this->items = push_array(used_arena, T, new_cap, default_push_params, file_line);
+   
+   block_copy(this->items, old_items, this->count*sizeof(T));
    cap = new_cap;
   }
  }
- void set_cap_min(i1 cap_min, DEBUG_file_line_defparams)
- {// TODO(kv): This grow logic is wonky: there are two cases:
+ void set_cap_min(u32 cap_min, DEBUG_file_line_defparams)
+ {// NOTE(kv): Growth logic:
   // 1. Natural growth: doubling
   // 2. User-dictated growth: just set the cap to the dictated value
-  if (cap_min > cap) {
-   i32 new_cap = (cap == 0);
-   if (cap == 0) {
-    new_cap = cap_min;
-   } else {
+  if(cap_min > cap)
+  {
+   u32 new_cap = cap_min;
+   if(cap != 0){
     new_cap = macro_min(cap_min, 2*cap);
    }
    set_cap_inner(new_cap, file_line);
   }
  }
- void set_count(i32 new_count, DEBUG_file_line_defparams){
-  kv_assert(new_count >= 0);
+ void set_count(u32 new_count, DEBUG_file_line_defparams){
   set_cap_min(new_count, file_line);
-  count = new_count;
-  kv_assert(count <= cap);
+  this->count = new_count;
+  kv_assert(this->count <= cap);
  }
  
  inline void pop(){
-  set_count(count-1);
+  kv_assert(this->count > 0);
+  set_count(this->count - 1);
  }
  inline T *push(DEBUG_file_line_defparams){
-  set_count(count+1, file_line);
-  return items + (count-1);
+  set_count(this->count+1, file_line);
+  return this->items + (this->count-1);
  }
  inline T *push_value(const T& value, DEBUG_file_line_defparams){
   T *item = push(file_line);
   *item = value;
   return item;
- }
- inline T& push_first(const T& new_item, DEBUG_file_line_defparams){
-  set_count(count+1, file_line);
-  for(i32 index=count-1;
-      index >= 1;
-      index--){
-   items[index] = items[index-1];
-  }
-  items[0] = new_item;
-  return items[0];
  }
  inline T *push_zero(DEBUG_file_line_defparams){
   T *result = push(file_line);
@@ -1578,67 +1451,69 @@ struct Dynamic_Array
   return result;
  }
  
- darray(T) copy(Arena *arena) {
+ darray(T) copy(Arena *to_arena) {
   darray(T) result = *this;
-  result.items = push_array(arena, T, count);
-  umm size = count*sizeof(T);
-  block_copy(result.items, items, size);
+  result.items = push_array(to_arena, T, this->count);
+  umm size = this->count*sizeof(T);
+  block_copy(result.items, this->items, size);
   return result;
  }
 };
-
 template<class T>
 inline void
-init_static(darray(T) &array, Arena *arena, i32 cap,
-            Push_Params params=default_push_params){
- array = {
-  .cap        = cap,
-  .fixed_size = true,
-  .items      = push_array(arena, T, cap, params),
- };
-}
-template<class T>
-inline darray(T)
-static_array(Arena *arena, i32 cap,
-             Push_Params params=default_push_params){
- darray(T) array;
- init_static(array, arena, cap, params);
- return array;
-}
-
-template<class T>
-inline void
-init_static(darray(T) &array, T *backing_buffer, i32 cap){
- array = {
-  .cap        = cap,
-  .fixed_size = true,
-  .items      = backing_buffer,
- };
-}
-template<class T>
-inline darray(T)
-static_array(T *backing_buffer, i32 cap){
- darray(T) array;
- init_static(array, backing_buffer, cap);
- return array;
+init_static(darray(T) &array, Arena *arena, u64 cap,
+            Push_Params params=default_push_params)
+{
+ array = {};
+ array.cap        = cap;
+ array.fixed_size = true;
+ array.items      = push_array(arena, T, cap, params);
 }
 template<class T>
 inline void
-init_dynamic(darray(T) &array, Base_Allocator *allocator, i1 initial_size=0){
- array = { .allocator = allocator };
+init_static(darray(T) &array, T *backing_buffer, u64 cap)
+{
+ array = {};
+ array.cap        = cap;
+ array.fixed_size = true;
+ array.items      = backing_buffer;
+}
+template<class T>
+inline void
+init_dynamic(darray(T) &array, Arena *arena, u64 initial_size=0){
+ array = {};
+ array.arena = arena;
  array.set_cap_min(initial_size);
 }
-
-function Base_Allocator *
-push_arena_base_allocator(Arena *arena);
-
 template<class T>
-inline void
-init_dynamic(darray(T) &array, Arena *arena, i1 initial_size=0){
- auto alloc = push_arena_base_allocator(arena);
- init_dynamic<T>(array, alloc, initial_size);
+function void
+push(darray(T) &array, T const&item)
+{
+ array.push_value(item);
+}
+template<class T>
+function void
+push(darray(T) *array, T const&item)
+{
+ array->push_value(item);
+}
+template<class T>
+function void
+push_first(darray(T) &array, T const&new_item, DEBUG_file_line_defparams)
+{
+ u32 new_count = array.count+1;
+ array.set_count(new_count, file_line);
+ for(u32 index = new_count-1;
+     index >= 1;
+     index--)
+ {
+  array.items[index] = array.items[index-1];
+ }
+ array.items[0] = new_item;
 }
 //~
+function Base_Allocator *
+push_arena_base_allocator(Arena *arena);
 
 template<class T>
 function T *
@@ -1646,7 +1521,7 @@ push_unique(darray(T) &array, T const&item)
 {
  T *result = 0;
  b32 ok = true;
- for_i1(index,0,array.count){
+ for_u32(index,0,array.count){
   if(array.items[index] == item){
    ok = false;
    break;
@@ -1675,6 +1550,9 @@ struct Scratch_Block{
  
  myinline operator Arena*(){ return &this->arena; }
 };
+
+//NOTE(kv) In case I wanna try out another scheme.
+typedef Scratch_Block Scratch_Block_Fast;
 //-
 myinline void
 init_scratch_block(Scratch_Block *scratch){
@@ -1746,84 +1624,63 @@ enum{
 
 //~
 
-function String
-push_stringfv(Arena *arena, char *format, va_list args, b32 zero_terminated)
+function Stringz
+push_stringfv(Arena *arena, char *format, va_list args)
 {
  va_list args2;
  va_copy(args2, args);
  
- i32 pushed_size = vsnprintf(0, 0, format, args);
+ usize pushed_size = usize(stbsp_vsnprintf(0, 0, format, args));
  // NOTE(kv): vsnprintf is always terminated, and it won't print unless you reserve the buffer for nil-termination
- pushed_size++;
+ pushed_size += 1;
  
- String result;
- result.str = push_size(arena, pushed_size);
- result.size = pushed_size;
- vsnprintf((char*)result.str, (size_t)result.size, format, args2);
- 
- result.size -= 1;
- if (zero_terminated)
- {
-  result.str[result.size] = 0;
- }
- else
- {// NOTE: Enable string concatenation
-  // NOTE(kv): This is legal since the string has gotta be contiguous
-  arena_pop_size(arena, 1);
- }
+ Stringz result;
+ result.str  = push_size(arena, pushed_size);
+ result.size = pushed_size - 1;
+ stbsp_vsnprintf((char*)result.str, i32(pushed_size), format, args2);
  
  return(result);
 }
-function String
+function Stringz
 push_stringf(Arena *arena, char *format, ...)
 {
  va_list args;
  va_start(args, format);
- String result = push_stringfv(arena, format, args, false);
+ Stringz result = push_stringfv(arena, format, args);
  va_end(args);
  return(result);
 }
 //
-function Stringz
-push_stringfz(Arena *arena, char *format, ...)
-{
- va_list args;
- va_start(args, format);
- String result0 = push_stringfv(arena, format, args, true);
- Stringz result = *(Stringz*)&result0;
- va_end(args);
- return(result);
-}
-//TODO(kv) Hackjob to concat strings together, goddamn it dude!
-inline String
+//TODO(kv) Hackjob to concat strings together!
+myinline Stringz
 strcat(Arena *arena, char *a, String b){
  return push_stringf(arena, "%s%.*s", a, strexpand(b));
 }
-inline String
+myinline Stringz
 strcat(Arena *arena, String a, char *b){
  return push_stringf(arena, "%.*s%s", strexpand(a), b);
 }
 
-myinline String
+myinline Stringz
 to_string(Arena *arena, i32 value){
- return push_stringfz(arena, "%d", value);
+ return push_stringf(arena, "%d", value);
 }
-myinline String
+myinline Stringz
 to_string(Arena *arena, u32 value){
- return push_stringfz(arena, "%u", value);
+ return push_stringf(arena, "%u", value);
 }
 
 //~
 function Stringz
 pjoin(Arena *arena, String a, String b){
- return push_stringfz(arena, "%.*s%c%.*s", strexpand(a), OS_SLASH, strexpand(b));
+ return push_stringf(arena, "%.*s%c%.*s", strexpand(a), OS_SLASH, strexpand(b));
 }
 function Stringz
 pjoin(Arena *arena, String a, String b, String c){
- return push_stringfz(arena, "%.*s%c%.*s%c%.*s",
-                      strexpand(a), OS_SLASH,
-                      strexpand(b), OS_SLASH,
-                      strexpand(c));
+ return push_stringf(arena, "%.*s%c%.*s%c%.*s",
+                     strexpand(a), OS_SLASH,
+                     strexpand(b), OS_SLASH,
+                     strexpand(c));
 }
 //~
 #if AD_HAS_OS_CODE
@@ -1857,7 +1714,7 @@ copy_file(Stringz from, Stringz to, b32 fail_if_exists){
 }
 #if OS_WINDOWS
 function b32
-create_directory(Stringz path){
+mkdir_p(Stringz path){
  b32 ok = 1;
  if(!CreateDirectoryA(to_cstring(path),0)){
   DWORD error = GetLastError();
@@ -1868,12 +1725,13 @@ create_directory(Stringz path){
  return ok;
 }
 function b32
-create_directory(String path){
+mkdir_p(String path){
  Scratch_Block scratch;
  Stringz pathz = to_stringz(scratch, path);
- return create_directory(pathz);
+ return mkdir_p(pathz);
 }
 #endif
+
 inline FILE *
 open_file(Stringz name, char *mode){
  return fopen(to_cstring(name), mode);
@@ -1887,7 +1745,7 @@ open_or_create_file(Stringz name, char *mode, b32 *created=0)
  }
  if(file == 0){
   if(errno == ENOENT){
-   create_directory(path_dir(name));
+   mkdir_p(path_dir(name));
    open_file(name, mode);
   }
  }
@@ -1941,7 +1799,8 @@ enum Printer_Type{
  Printer_Type_FILE,
  Printer_Type_Generic,
 };
-struct Printer{
+struct Printer
+{
  b32 error;
  Printer_Type type;
  b32 print_separator_before_anything_else;
@@ -1960,18 +1819,18 @@ struct Printer{
  };
 };
 //-NOTE(kv) Brought to you by Meta-Programming needs
-inline void
+myinline void
 begin_separator(Printer &p, char *separator){
  p.print_separator_before_anything_else = false;
  p.separator = SCu8(separator);
 }
-inline void
+myinline void
 end_separator(Printer &p){
  p.print_separator_before_anything_else = false;
  p.separator = {};
 }
 //NOTE(kv) The separator signal
-function void
+myinline void
 separator(Printer &p){
  p.print_separator_before_anything_else = true;
 }
@@ -1979,7 +1838,7 @@ separator(Printer &p){
 defer_block(begin_separator(printer, separator), \
 end_separator(printer))
 //-
-inline Printer
+myinline Printer
 make_printer_buffer(u8 *buffer, usize cap){
  Printer result = {
   .type = Printer_Type_Buffer,
@@ -1988,13 +1847,13 @@ make_printer_buffer(u8 *buffer, usize cap){
  };
  return result;
 }
-inline Printer
+myinline Printer
 make_printer_buffer(Arena *arena, usize cap){
  u8 *buffer = arena_push(arena, cap, 1);
  Printer result = make_printer_buffer(buffer, cap);
  return result;
 }
-inline Printer
+myinline Printer
 make_printer_file(FILE *file){
  Printer result = {
   .type = Printer_Type_FILE,
@@ -2017,7 +1876,7 @@ printer_get_string(Printer &p){
   return {};
  }
 }
-inline void
+myinline void
 printer_delete(Printer &p){
  kv_assert(p.type == Printer_Type_Buffer);
  kv_assert(p.byte_pos > 0);
@@ -2030,18 +1889,42 @@ defer_block(print(printer, '('), print(printer, ')'))
 #define print_brace_block(printer) \
 defer_block(print(printer, '{'), print(printer, '}'))
 
+function usize
+my_vfprintf(FILE *file, char *format, va_list args)
+{
+ Scratch_Block_Fast scratch;
+ String string = push_stringfv(scratch, format, args);
+ 
+ int result2 = fputs((char *)string.str, file);
+ 
+ usize result = string.count;
+ if(result2 < 0){
+  result = 0;
+ }
+ return result;
+}
+function void
+myprintf(char *format, ...)
+{
+ va_list args;
+ va_start(args, format);
+ my_vfprintf(stdout, format, args);
+ va_end(args);
+}
 //-NOTE Base print function overloads
 function void
-print_format2v(Printer &p, char *format, va_list args){
- i32 written = 0;
+print_format2v(Printer &p, char *format, va_list args)
+{
+ usize written = 0;
  switch(p.type){
   case Printer_Type_Buffer:{
    usize remaining = p.cap-p.byte_pos;
-   written = vsnprintf((char *)(p.base+p.byte_pos), remaining, format, args);
-   kv_assert(usize(written) < remaining);
+   //TODO(kv) cast
+   written = (usize)stbsp_vsnprintf((char *)(p.base+p.byte_pos), i32(remaining), format, args);
+   kv_assert(written < remaining);
   }break;
   case Printer_Type_FILE:{
-   written = vfprintf(p.FILE, format, args);
+   written = my_vfprintf(p.FILE, format, args);
   }break;
   case Printer_Type_Generic:{
    written = p.print_function(p.userdata, format, args);
@@ -2059,7 +1942,8 @@ print_format2(Printer &p, char *format, ...){
  va_end(args);
 }
 function void
-print_format(Printer &p, char *format, ...){
+print_format(Printer &p, char *format, ...)
+{
  va_list args;
  va_start(args, format);
  if(p.print_separator_before_anything_else){
@@ -2376,12 +2260,33 @@ union rect2 {
 typedef rect2i Rect_i32;
 typedef rect2 Rect_f32;
 
+union Range_i32 {
+ struct{ i32 min; i32 max; };
+ struct{ i32 start; i32 end; };
+ struct{ i32 first; i32 opl; };
+};
+union Range_i64 {
+ struct{ i64 min; i64 max; };
+ struct{ i64 start; i64 end; };
+ struct{ i64 first; i64 opl; };
+};
+union Range_u64 {
+ struct{ u64 min; u64 max; };
+ struct{ u64 start; u64 end; };
+ struct{ u64 first; u64 opl; };
+};
+union Range_f32 {
+ struct{ f32 min; f32 max; };
+ struct{ f32 start; f32 end; };
+ struct{ f32 first; f32 opl; };
+};
+#define RangeExpand(range) range.min, range.max
 
 
 #if 0
-#define meta_table
-#define gen_file
-#define gen_for
+#  define meta_table
+#  define gen_file
+#  define gen_for
 #endif
 //~
 #undef KV_H_IS_METAPROGRAM

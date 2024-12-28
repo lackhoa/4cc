@@ -1,6 +1,119 @@
 #pragma once
-/* ;v2 */
 
+#include <math.h>
+
+myinline v1
+square_root(f32 x)
+{
+#if COMPILER_MSVC
+ v1 result = sqrtf(x);
+#else
+ v1 result = __builtin_sqrtf(x);
+#endif
+ return result;
+}
+// TODO: These are real bad! Should only be one simd instruction. Watch hmh 379 for details.
+myinline v1
+roundv1(v1 Real32)
+{
+#if COMPILER_MSVC
+ v1 Result = roundf(Real32);
+#else
+ v1 Result = __builtin_roundf(Real32);
+#endif
+ return(Result);
+}
+myinline v1
+floorv1(v1 value)
+{
+#if COMPILER_MSVC
+ v1 Result = floorf(value);
+#else
+ v1 Result = __builtin_floorf(value);
+#endif
+ return(Result);
+}
+
+inline v1
+ceilv1(v1 value)
+{
+#if COMPILER_MSVC
+ v1 Result = ceilf(value);
+#else
+ v1 Result = __builtin_ceilf(value);
+#endif
+ return(Result);
+}
+// NOTE: weird names to avoid name collision (haizz)
+myinline v1
+kv_sin(v1 angle)
+{
+#if COMPILER_MSVC
+ v1 result = sinf(angle);
+#else
+ v1 result = __builtin_sinf(angle);
+#endif
+ return(result);
+}
+myinline v1
+kv_cos(v1 angle)
+{
+#if COMPILER_MSVC
+ v1 result = cosf(angle);
+#else
+ v1 result = __builtin_cosf(angle);
+#endif
+ return(result);
+}
+myinline v1
+kv_atan2(v1 y, v1 x)
+{
+#if COMPILER_MSVC
+ v1 result = atan2f(y, x);
+#else
+ v1 result = __builtin_atan2f(y, x);
+#endif
+ return(result);
+}
+myinline v1
+absolute(v1 x)
+{
+#if COMPILER_MSVC
+ v1 result = (v1)fabs(x);
+#else
+ v1 result = (v1)__builtin_fabs(x);
+#endif
+ return result;
+}
+myinline v1
+cycle01(v1 value)
+{
+ v1 result = value - floorv1(value);
+ return result;
+}
+
+myinline v1
+log_with_base(v1 base, v1 input)
+{
+ v1 result = logf(input) / logf(base);
+ return result;
+}
+function v1
+srgb_to_linear1(v1 x)
+{
+ v1 r = ((x <= 0.04045f) ? 
+         x/12.92f : 
+         powf((x + 0.055f)/1.055f, 2.4f));
+ return(r);
+}
+function v1
+linear_to_srgb1(v1 x)
+{
+ v1 r = ((x <= 0.0031308) ? 
+         x*12.92f : 
+         powf(x, 1/2.4f)*1.055f - 0.055f);
+ return(r);
+}
 
 myinline v1
 v2::operator[](i32 index)

@@ -963,7 +963,7 @@ struct CSG_Tree
    }
    
    if(ok){
-    Stringz fui_file_path_tmp = push_stringfz(scratch, "%s.tmp", to_cstring(fui_file_path));
+    Stringz fui_file_path_tmp = push_stringf(scratch, "%s.tmp", to_cstring(fui_file_path));
     FILE *fui_file_tmp = open_or_create_file(fui_file_path_tmp, "wb");
     Writer writer_value = make_writer(fui_file_tmp);
     Writer *writer = &writer_value;

@@ -248,7 +248,7 @@ app_init(Thread_Context *tctx, Models *models, String current_directory)
   Scratch_Block scratch;
   
   String8 binary_path = system_get_path(scratch, SystemPath_BinaryDirectory);
-  String8 full_path = push_stringfz(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
+  String8 full_path = push_stringf(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
   
   Face_Description description = {};
   description.font.filename = full_path;
@@ -388,7 +388,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
    {
     if (file != 0)
     {
-     String str = push_stringfz(scratch, "exited with code %d", cli->exit);
+     String str = push_stringf(scratch, "exited with code %d", cli->exit);
      b32 automated = true;
      output_file_append(tctx, models, file, str, automated);
     }
