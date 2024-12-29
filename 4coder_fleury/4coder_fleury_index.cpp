@@ -20,15 +20,15 @@ F4_Index_Lock(void)
 function void
 F4_Index_Unlock(void)
 {
-    system_mutex_release(global_f4_index.mutex);
+ system_mutex_release(global_f4_index.mutex);
 }
 
 function u64
 _F4_Index_FileHash(App *app, Buffer_ID id)
 {
-    Scratch_Block scratch(app);
-    String8 unique_name = push_buffer_unique_name(app, scratch, id);
-    return table_hash_u8(unique_name.str, unique_name.size);
+ Scratch_Block scratch(app);
+ String8 unique_name = push_buffer_unique_name(app, scratch, id);
+ return table_hash_u8(unique_name.str, unique_name.size);
 }
 
 function F4_Index_File *
@@ -52,45 +52,48 @@ _F4_Index_LookupFile(App *app, u64 hash, Buffer_ID buffer)
 function F4_Index_File *
 F4_Index_LookupFile(App *app, Buffer_ID buffer)
 {
-    return _F4_Index_LookupFile(app, _F4_Index_FileHash(app, buffer), buffer);
+ return _F4_Index_LookupFile(app, _F4_Index_FileHash(app, buffer), buffer);
 }
 
 function F4_Index_File *
 F4_Index_LookupOrMakeFile(App *app, Buffer_ID buffer)
 {
-    F4_Index_File *result = 0;
-    u64 hash = _F4_Index_FileHash(app, buffer);
-    u64 slot = hash % ArrayCount(global_f4_index.file_table);
-    
-    // NOTE(rjf): Lookup case.
-    {
-        result = _F4_Index_LookupFile(app, hash, buffer);
-        if(result)
-        {
-            goto end;
-        }
-    }
-    
-    // NOTE(rjf): Make case.
-    {
-        if(global_f4_index.free_file)
-        {
-            result = global_f4_index.free_file;
-            global_f4_index.free_file = global_f4_index.free_file->hash_next;
-            memset(result, 0, sizeof(*result));
-        }
-        else
-        {
-            result = push_array_zero(&global_f4_index.arena, F4_Index_File, 1);
-        }
-        
-        if(result != 0)
-        {
-            result->hash_next = global_f4_index.file_table[slot];
-            global_f4_index.file_table[slot] = result;
-            result->buffer = buffer;
-            result->arena = make_arena(KB(16));
-        }
+ Scratch_Scope tmp;
+ F4_Index_File *result = 0;
+ u64 hash = _F4_Index_FileHash(app, buffer);
+ u64 slot = hash % ArrayCount(global_f4_index.file_table);
+ 
+ // NOTE(rjf): Lookup case.
+ {
+  result = _F4_Index_LookupFile(app, hash, buffer);
+  if(result)
+  {
+   goto end;
+  }
+ }
+ 
+ // NOTE(rjf): Make case.
+ {
+  if(global_f4_index.free_file)
+  {
+   result = global_f4_index.free_file;
+   global_f4_index.free_file = global_f4_index.free_file->hash_next;
+   memset(result, 0, sizeof(*result));
+  }
+  else
+  {
+   result = push_array0(&global_f4_index.arena, F4_Index_File, 1);
+  }
+  
+  if(result != 0)
+  {
+   String filepath = push_buffer_filepath(app, tmp, buffer);
+   result->is_generated = is_generated_file_name(filepath);
+   result->hash_next = global_f4_index.file_table[slot];
+   global_f4_index.file_table[slot] = result;
+   result->buffer = buffer;
+   result->arena = make_arena(KB(16));
+  }
  }
  
  end:;
@@ -231,101 +234,101 @@ F4_Index_AllocateNote(void)
     {
         result = global_f4_index.free_note;
         global_f4_index.free_note = global_f4_index.free_note->hash_next;
-        memset(result, 0, sizeof(*result));
-    }
-    else
-    {
-        result = push_array_zero(&global_f4_index.arena, F4_Index_Note, 1);
-    }
-    return result;
+  memset(result, 0, sizeof(*result));
+ }
+ else
+ {
+  result = push_array0(&global_f4_index.arena, F4_Index_Note, 1);
+ }
+ return result;
 }
 
 function void
 F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_range, F4_Index_NoteKind note_kind, F4_Index_NoteFlags note_flags)
 {
-    F4_Index_File *file = ctx->file;
-    F4_Index_Note *parent = ctx->active_parent;
-    String8 string = F4_Index_StringFromRange(ctx, name_range);
-    Range_i64 range = name_range;
-    
-    if(file)
+ F4_Index_File *file = ctx->file;
+ F4_Index_Note *parent = ctx->active_parent;
+ String8 string = F4_Index_StringFromRange(ctx, name_range);
+ Range_i64 range = name_range;
+ 
+ if(file)
+ {
+  u64 hash = table_hash_u8(string.str, string.size);
+  u64 slot = hash % ArrayCount(global_f4_index.note_table);
+  
+  // NOTE(rjf): Push to duplicate chain.
+  {
+   F4_Index_Note *list_head = F4_Index_LookupNote(string);
+   F4_Index_Note *list_tail = list_head;
+   for(F4_Index_Note *note2 = list_tail; 
+       note2; 
+       list_tail = note2, note2 = note->next);
+   
+   if(list_tail != 0)
+   {
+    list_tail->next = note;
+    note->prev = list_tail;
+    note->hash_next = 0;
+    note->hash_prev = 0;
+   }
+   else
+   {
+    note->hash_next = global_f4_index.note_table[slot];
+    if(global_f4_index.note_table[slot])
     {
-        u64 hash = table_hash_u8(string.str, string.size);
-        u64 slot = hash % ArrayCount(global_f4_index.note_table);
-        
-        // NOTE(rjf): Push to duplicate chain.
-        {
-            F4_Index_Note *list_head = F4_Index_LookupNote(string);
-            F4_Index_Note *list_tail = list_head;
-            for(F4_Index_Note *note2 = list_tail; 
-                note2; 
-                list_tail = note2, note2 = note->next);
-            
-            if(list_tail != 0)
-            {
-                list_tail->next = note;
-                note->prev = list_tail;
-                note->hash_next = 0;
-                note->hash_prev = 0;
-            }
-            else
-            {
-                note->hash_next = global_f4_index.note_table[slot];
-                if(global_f4_index.note_table[slot])
-                {
-                    global_f4_index.note_table[slot]->hash_prev = note;
-                }
-                global_f4_index.note_table[slot] = note;
-                note->hash_prev = 0;
-                note->prev = 0;
-            }
-        }
-        note->next = 0;
-        
-        // NOTE(rjf): Push to tree.
-        {
-            note->parent = parent;
-            if(parent)
-            {
-                note->prev_sibling = parent->last_child;
-                note->next_sibling = 0;
-                if(parent->last_child == 0)
-                {
-                    parent->first_child = parent->last_child = note;
-                }
-                else
-                {
-                    parent->last_child->next_sibling = note;
-                    parent->last_child = parent->last_child->next_sibling;
-                }
-            }
-            else
-            {
-                note->prev_sibling = file->last_note;
-                note->next_sibling = 0;
-                if(file->last_note == 0)
-                {
-                    file->first_note = file->last_note = note;
-                }
-                else
-                {
-                    file->last_note->next_sibling = note;
-                    file->last_note = file->last_note->next_sibling;
-                }
-            }
-        }
-        
-        // NOTE(rjf): Fill out data.
-        {
-            note->hash = hash;
-            note->string = push_stringz(&file->arena, string);
-            note->kind = note_kind;
-            note->flags = note_flags;
-            note->range = range;
-            note->file = file;
-            note->file_generation = file->generation;
-        }
+     global_f4_index.note_table[slot]->hash_prev = note;
     }
+    global_f4_index.note_table[slot] = note;
+    note->hash_prev = 0;
+    note->prev = 0;
+   }
+  }
+  note->next = 0;
+  
+  // NOTE(rjf): Push to tree.
+  {
+   note->parent = parent;
+   if(parent)
+   {
+    note->prev_sibling = parent->last_child;
+    note->next_sibling = 0;
+    if(parent->last_child == 0)
+    {
+     parent->first_child = parent->last_child = note;
+    }
+    else
+    {
+     parent->last_child->next_sibling = note;
+     parent->last_child = parent->last_child->next_sibling;
+    }
+   }
+   else
+   {
+    note->prev_sibling = file->last_note;
+    note->next_sibling = 0;
+    if(file->last_note == 0)
+    {
+     file->first_note = file->last_note = note;
+    }
+    else
+    {
+     file->last_note->next_sibling = note;
+     file->last_note = file->last_note->next_sibling;
+    }
+   }
+  }
+  
+  // NOTE(rjf): Fill out data.
+  {
+   note->hash = hash;
+   note->string = push_stringz(&file->arena, string);
+   note->kind = note_kind;
+   note->flags = note_flags;
+   note->range = range;
+   note->file = file;
+   note->file_generation = file->generation;
+  }
+ }
 }
 
 function F4_Index_Note *
@@ -419,41 +422,53 @@ F4_Index_RequireToken(F4_Index_ParseCtx *ctx, String8 string, F4_Index_TokenSkip
     }
     else
     {
-        ctx->done = 1;
-    }
-    if(result)
-    {
-        F4_Index_ParseCtx_Inc(ctx, flags);
-    }
-    return result;
+  ctx->done = 1;
+ }
+ if(result)
+ {
+  F4_Index_ParseCtx_Inc(ctx, flags);
+ }
+ return result;
 }
-
+myinline b32
+is_identifier_or_keyword(Token_Base_Kind kind)
+{
+ return ((kind == TokenBaseKind_Identifier) or
+         (kind == TokenBaseKind_Keyword));
+}
 function b32
 F4_Index_RequireTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **token_out, F4_Index_TokenSkipFlags flags)
 {
-    b32 result = 0;
-    Token *token = tkarr_read(&ctx->it);
-    if(token)
-    {
-        if(token->kind == kind)
-        {
-            result = 1;
-            if(token_out)
-            {
-                *token_out = token;
-            }
-        }
-    }
-    else
-    {
-        ctx->done = 1;
-    }
-    
-    if(result)
-    {
-        F4_Index_ParseCtx_Inc(ctx, flags);
-    }
-    return result;
+ b32 result = 0;
+ Token *token = tkarr_read(&ctx->it);
+ if(token)
+ {
+  b32 kind_match = token->kind == kind;
+  if(is_identifier_or_keyword(kind))
+  {// NOTE(kv) I mean, some keywords are like... types,
+   // so I don't see how it's useful
+   kind_match = is_identifier_or_keyword(token->kind);
+  }
+  
+  if(kind_match)
+  {
+   result = 1;
+   if(token_out)
+   {
+    *token_out = token;
+   }
+  }
+ }
+ else
+ {
+  ctx->done = 1;
+ }
+ 
+ if(result)
+ {
+  F4_Index_ParseCtx_Inc(ctx, flags);
+ }
+ return result;
 }
 
 function b32
@@ -494,32 +509,46 @@ F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String8 string)
         {
             result = 1;
         }
-    }
-    else ctx->done = 1;
-    
-    return result;
+ }
+ else ctx->done = 1;
+ 
+ return result;
 }
 
 function void
 F4_Index_ParseComment(F4_Index_ParseCtx *ctx, Token *token)
 {
-    String8 string = F4_Index_StringFromToken(ctx, token);
-    
-    for(u64 i = 0; i < string.size; i += 1)
+ String8 token_string = F4_Index_StringFromToken(ctx, token);
+ Range_i64 token_range = Ii64(token);
+ 
+ // NOTE(kv) Impose limit because we don't wanna parse commented-out code,
+ i64 parse_limit = minimum(8, token_string.count);
+ //i64 parse_limit = token_string.count;
+ for_i64(index_in_token, 0, parse_limit)
+ {
+  if(0){}
+  else if(token_string.str[index_in_token] == ';')
+  {//-identifier
+   Range_i64 ident_range_in_token = {index_in_token+1, range_size(token_range)};
+   for_i64(offset_in_token, ident_range_in_token.min, ident_range_in_token.max)
+   {
+    u8 chr = token_string.str[offset_in_token];
+    if(not character_is_alnum(chr))
     {
-        if(string.str[i] == '@')
-        {
-            Range_i64 range = Ii64(token);
-            range.min += i;
-            F4_Index_MakeNote(ctx, range, F4_Index_NoteKind_CommentTag, 0);
-            break;
-        }
-        else if(i+4 < string.size && 
-                string_match(S8Lit("TODO"), string_substring(string, Ii64(i, i + 4))))
-        {
-   Range_i64 range = Ii64(token);
-   range.min += i;
-   F4_Index_MakeNote(ctx, range, F4_Index_NoteKind_CommentToDo, 0);
+     ident_range_in_token.max = offset_in_token;
+     break;
+    }
+   }
+   
+   if(range_size(ident_range_in_token) > 0)
+   {
+    Range_i64 range_in_file = {
+     ident_range_in_token.min+token_range.min,
+     ident_range_in_token.max+token_range.min,
+    };
+    F4_Index_MakeNote(ctx, range_in_file, F4_Index_NoteKind_CommentIdentifier, 0);
+   }
+   break;
   }
  }
 }
@@ -546,25 +575,27 @@ F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc) {
  }
 }
 function void
-F4_Index_SkipOpTokens(F4_Index_ParseCtx *ctx) {
+F4_Index_SkipOpTokens(F4_Index_ParseCtx *ctx)
+{// NOTE(kv) This is for skipping eg asterisks
  int paren_nest = 0;
- for(;!ctx->done;) {
+ for(;!ctx->done;){
   Token *token = tkarr_read(&ctx->it);
-  if(token->kind == TokenBaseKind_ParenOpen) {
+  if(token->kind == TokenBaseKind_ParenOpen){
    paren_nest += 1;
-  } else if(token->kind == TokenBaseKind_ParenClose) {
+  }else if(token->kind == TokenBaseKind_ParenClose){
    paren_nest -= 1;
    if(paren_nest < 0) {
     paren_nest = 0;
    }
-  } else if(token->kind != TokenBaseKind_Operator && paren_nest == 0) {
+  }else if(token->kind != TokenBaseKind_Operator and paren_nest == 0){
    break;
   }
   F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
  }
 }
 function b32
-F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...) {
+F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...)
+{
  b32 parsed = 1;
  
  F4_Index_ParseCtx ctx_restore = *ctx;
@@ -572,24 +603,30 @@ F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...) {
  
  va_list args;
  va_start(args, fmt);
- for(int i = 0; fmt[i];) {
-  if(fmt[i] == '%') {
-   switch(fmt[i+1]) {
+ for(int i = 0; fmt[i];)
+ {
+  if(fmt[i] == '%')
+  {
+   switch(fmt[i+1])
+   {
     case 't': {
      char *cstring = va_arg(args, char *);
      String8 string = SCu8((u8 *)cstring, cstring_length(cstring));
      parsed = parsed && F4_Index_RequireToken(ctx, string, flags);
     }break;
+    
     case 'k': {
      Token_Base_Kind kind = (Token_Base_Kind)va_arg(args, int);
      Token **output_token = va_arg(args, Token **);
      parsed = parsed && F4_Index_RequireTokenKind(ctx, kind, output_token, flags);
     }break;
+    
     case 'b': {
      i16 kind = (i16)va_arg(args, int);
      Token **output_token = va_arg(args, Token **);
      parsed = parsed && F4_Index_RequireTokenSubKind(ctx, kind, output_token, flags);
     }break;
+    
     case 'n': {
      F4_Index_NoteKind kind = (F4_Index_NoteKind)va_arg(args, int);
      F4_Index_Note **output_note = va_arg(args, F4_Index_Note **);
@@ -615,12 +652,9 @@ F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...) {
       }
      }
     }break;
-    case 's': {
-     F4_Index_SkipSoftTokens(ctx, 0);
-    }break;
-    case 'o': {
-     F4_Index_SkipOpTokens(ctx);
-    }break;
+    
+    case 's': { F4_Index_SkipSoftTokens(ctx, 0); }break;
+    case 'o': { F4_Index_SkipOpTokens(ctx); }break;
     default: break;
    }
    i += 1;
@@ -637,8 +671,9 @@ F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...) {
  return parsed;
 }
 function void
-F4_Parse_Buffer(App *app, Buffer_ID buffer_id){
- Scratch_Block scratch(app);
+F4_Parse_Buffer(App *app, Buffer_ID buffer_id)
+{
+ Scratch_Block scratch;
  String contents = push_whole_buffer(app, scratch, buffer_id);
  Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
  if(tokens.count > 0){

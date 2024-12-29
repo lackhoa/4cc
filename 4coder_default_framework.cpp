@@ -7,23 +7,23 @@
 function void
 point_stack_push(App *app, Buffer_ID buffer, i64 pos)
 {
-    Managed_Object object = alloc_buffer_markers_on_buffer(app, buffer, 1, 0);
-    Marker *marker = (Marker*)managed_object_get_pointer(app, object);
-    marker->pos = pos;
-    marker->lean_right = false;
-    
-    i1 next_top = (point_stack.top + 1)%ArrayCount(point_stack.markers);
-    if (next_top == point_stack.bot){
-        Point_Stack_Slot *slot = &point_stack.markers[point_stack.bot];
-        managed_object_free(app, slot->object);
-        block_zero_struct(slot);
-        point_stack.bot = (point_stack.bot + 1)%ArrayCount(point_stack.markers);
-    }
-    
-    Point_Stack_Slot *slot = &point_stack.markers[point_stack.top];
-    slot->buffer = buffer;
-    slot->object = object;
-    point_stack.top = next_top;
+ Managed_Object object = alloc_buffer_positions_on_buffer(app, buffer, 1, 0);
+ Marked_Position *position = (Marked_Position*)managed_object_get_pointer(app, object);
+ position->pos = pos;
+ position->lean_right = false;
+ 
+ i1 next_top = (point_stack.top + 1)%ArrayCount(point_stack.markers);
+ if (next_top == point_stack.bot){
+  Point_Stack_Slot *slot = &point_stack.markers[point_stack.bot];
+  managed_object_free(app, slot->object);
+  block_zero_struct(slot);
+  point_stack.bot = (point_stack.bot + 1)%ArrayCount(point_stack.markers);
+ }
+ 
+ Point_Stack_Slot *slot = &point_stack.markers[point_stack.top];
+ slot->buffer = buffer;
+ slot->object = object;
+ point_stack.top = next_top;
 }
 
 function void
@@ -46,37 +46,37 @@ point_stack_pop(App *app){
             point_stack.top = ArrayCount(point_stack.markers) - 1;
         }
         Point_Stack_Slot *slot = &point_stack.markers[point_stack.top];
-        managed_object_free(app, slot->object);
-        block_zero_struct(slot);
-    }
-    return(result);
+  managed_object_free(app, slot->object);
+  block_zero_struct(slot);
+ }
+ return(result);
 }
 
 function b32
-point_stack_read_top(App *app, Buffer_ID *buffer_out, i64 *pos_out){
-    b32 result = false;
-    if (point_stack.top != point_stack.bot){
-        result = true;
-        i1 prev_top = point_stack.top;
-        if (prev_top > 0){
-            prev_top -= 1;
-        }
-        else{
-            prev_top = ArrayCount(point_stack.markers) - 1;
-        }
-        Point_Stack_Slot *slot = &point_stack.markers[prev_top];
-        Managed_Object object = slot->object;
-        Marker *marker = (Marker*)managed_object_get_pointer(app, object);
-        if (marker != 0){
-            *buffer_out = slot->buffer;
-            *pos_out = marker->pos;
-        }
-        else{
-            *buffer_out = 0;
-            *pos_out = 0;
-        }
-    }
-    return(result);
+point_stack_read_top(App *app, Buffer_ID *buffer_out, i64 *pos_out)
+{
+ b32 result = false;
+ if (point_stack.top != point_stack.bot){
+  result = true;
+  i1 prev_top = point_stack.top;
+  if (prev_top > 0){
+   prev_top -= 1;
+  }
+  else{
+   prev_top = ArrayCount(point_stack.markers) - 1;
+  }
+  Point_Stack_Slot *slot = &point_stack.markers[prev_top];
+  Managed_Object object = slot->object;
+  Marked_Position *position = (Marked_Position*)managed_object_get_pointer(app, object);
+  if (position != 0) {
+   *buffer_out = slot->buffer;
+   *pos_out = position->pos;
+  } else{
+   *buffer_out = 0;
+   *pos_out = 0;
+  }
+ }
+ return(result);
 }
 
 ////////////////////////////////
@@ -96,7 +96,7 @@ lock_jump_buffer(App *app, String8 name)
         locked_buffer = SCu8(locked_buffer_space, name.size);
         Scratch_Block scratch(app);
         String8 escaped = string_escape(scratch, name);
-        LogEventF(log_string(app, M), scratch, 0, 0, system_thread_get_id(),
+        LogEventF(log_string(M), scratch, 0, 0, system_thread_get_id(),
                   "lock jump buffer [name=\"%.*s\"]", string_expand(escaped));
     }
 }
@@ -316,7 +316,7 @@ function i1
 hax_guess_which_monitor_the_view_is_in(App *app, View_ID view)
 {
  rect2 clip = view_get_screen_rect(app, view);
- if ( in_range_inclusive(0, clip.x0, 1500) )
+ if ( in_range_inclusive(clip.x0, 0, 1500) )
   return 1;
  else 
   return 2;
@@ -919,7 +919,7 @@ clipboard_init_empty(Clipboard *clipboard, u32 history_depth)
     heap_init(&clipboard->heap, &clipboard->arena);
     clipboard->clip_index = 0;
     clipboard->clip_capacity = history_depth;
-    clipboard->clips = push_array_zero(&clipboard->arena, String, history_depth);
+    clipboard->clips = push_array0(&clipboard->arena, String, history_depth);
 }
 
 function void

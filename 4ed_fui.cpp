@@ -1,23 +1,22 @@
 function void
 fui_tick(App *app, Frame_Info frame_info)
 {
- Game_API *game = get_game_code();
- if (game) {
-  if ( game->fui_is_active() ) {
+ Game_API *game = get_game_code(Game_On);
+ if(game)
+ {
+  if(game->fui_is_active())
+  {
    animate_next_frame(app);
-   Scratch_Block scratch(app);
-   {// NOTE: Printing
-    String value_string = game->fui_push_active_slider_value(scratch);
-    vim_set_bottom_text(value_string);
-   }
+   Scratch_Block scratch;
+   String value_string = game->fui_push_active_slider_value(scratch);
+   vim_set_bottom_text(value_string);
   }
  }
 }
-
 function void
 fui_draw_slider(App *app, rect2 region)
 {
- Game_API *game = get_game_code();
+ Game_API *game = get_game_code(Game_On);
  if(game){
   if(game->fui_at_slider_p(app)){
    v2 slider_radius = v2{50,50};
@@ -34,6 +33,4 @@ fui_draw_slider(App *app, rect2 region)
   }
  }
 }
-
-function void update_game_key_states(Input_Event *event);
 //~

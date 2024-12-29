@@ -281,7 +281,7 @@ system_get_file_list(Arena* arena, String directory)
 {
     File_List result = {};
     String search_pattern = {};
-    if (character_is_slash(string_get_character(directory, directory.size - 1))){
+    if (is_file_slash(string_get_character(directory, directory.size - 1))){
         search_pattern = push_stringf(arena, "%.*s*", string_expand(directory));
     }
     else{

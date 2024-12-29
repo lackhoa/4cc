@@ -152,8 +152,8 @@ struct Sort_Pair_i32{
 
 struct History_Group{
  App *app;
-    Buffer_ID buffer;
-    History_Record_Index first;
+ Buffer_ID buffer;
+ History_Record_Index first;
 };
 
 ////////////////////////////////

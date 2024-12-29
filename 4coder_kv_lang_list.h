@@ -11,34 +11,34 @@
 function void
 F4_RegisterLanguages(void)
 {
-    // NOTE(rjf): C/C++
-    {
-        String extensions[] =
-        {
-            S8Lit("cpp"), S8Lit("cc"), S8Lit("c"), S8Lit("cxx"),
-            S8Lit("C"), S8Lit("h"), S8Lit("hpp"),
-        };
-        for(u32 i=0; i < ArrayCount(extensions); i += 1)
-        {
-            F4_RegisterLanguage(extensions[i],
-                                F4_CPP_IndexFile,
-                                lex_full_input_cpp_init,
-                                lex_full_input_cpp_breaks,
-                                F4_CPP_PosContext,
-                                F4_CPP_Highlight,
-                                Lex_State_Cpp);
-        }
-    }
-    
-    {
-        F4_RegisterLanguage(S8Lit("skm"),
-                            F4_Skm_IndexFile,
-                            lex_full_input_skm_init,
-                            lex_full_input_skm_breaks,
-                            F4_Skm_PosContext,
-                            F4_Skm_Highlight,
-                            Lex_State_Skm);
-    }
+ {// NOTE(rjf): C/C++
+  String extensions[] =
+  {
+   strlit("cpp"), strlit("cc"), strlit("c"), strlit("cxx"),
+   strlit("C"), strlit("h"), strlit("hpp"),
+   strlit("kc"), strlit("kh"), strlit("4coder"),
+  };
+  for(u32 i=0; i < ArrayCount(extensions); i += 1)
+  {
+   F4_RegisterLanguage(extensions[i],
+                       F4_CPP_IndexFile,
+                       lex_full_input_cpp_init,
+                       lex_full_input_cpp_breaks,
+                       F4_CPP_PosContext,
+                       F4_CPP_Highlight,
+                       Lex_State_Cpp);
+  }
+ }
+ 
+ {// NOTE skm
+  F4_RegisterLanguage(S8Lit("skm"),
+                      F4_Skm_IndexFile,
+                      lex_full_input_skm_init,
+                      lex_full_input_skm_breaks,
+                      F4_Skm_PosContext,
+                      F4_Skm_Highlight,
+                      Lex_State_Skm);
+ }
 }
 
 #endif //FCODER_FLEURY_LANG_LIST_H

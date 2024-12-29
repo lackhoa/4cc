@@ -1,15 +1,21 @@
 #pragma once
 
+api(custom)
+typedef u32 Text_Layout_ID;
+
 struct App
 {
  struct Thread_Context *tctx;
  void *cmd_context;
 };
-//NOTE(kv) C++ needs the base class to be defined, idk why???
+// NOTE(kv) C++ needs App to be defined,
+//  otw it won't allow App_Cmd to be a subclass of App.
+//  VERY GOOD OOP LANGUAGE!!!
 struct App_Cmd : App
 {
  b32 automated;
 };
+
 typedef void Custom_Command_Function(App_Cmd *app);
 
 #define BODY  return(clamp_min(0, a.max - a.min));
@@ -20,16 +26,26 @@ function f32 range_size(Range_f32 a){ BODY; }
 #undef BODY
 
 api(custom)
-typedef i1 View_ID;
+typedef i32 View_ID;
 
 api(custom)
-typedef i1 Buffer_ID;
+typedef i32 Buffer_ID;
 
 api(custom)
 typedef u32 Face_ID;
 
+struct Texture_Handle{ u32 v; };
+// NOTE Reserve zero, checked true on opengl
+// https://stackoverflow.com/questions/18193327/when-are-opengl-object-names-ever-zero-or-does-zero-ever-have-semantics
+myinline b32
+is_valid(Texture_Handle texture)
+{
+ return texture.v != 0;
+}
+
 api(custom)
-struct Mouse_State{
+struct Mouse_State
+{
  b8 l;
  b8 r;
  b8 press_l;
@@ -62,7 +78,7 @@ enum{
 };
 
 api(custom)
-typedef i1 Buffer_Seek_Type;
+typedef i32 Buffer_Seek_Type;
 enum
 {
  buffer_seek_pos,
@@ -138,26 +154,14 @@ union FColor{
     };
     ARGB_Color argb;
     struct{
-        ID_Color id;
-        u8 sub_index;
+  ID_Color id;
+  u8 sub_index;
   u8 padding_;
  };
 };
 
 api(custom)
 typedef u64 Managed_ID;
-
-// NOTE: Dummy buffers so we can use the same commands to switch to the rendered game
-#define GAME_BUFFER_COUNT 3
-global String GAME_BUFFER_NAMES[GAME_BUFFER_COUNT] =
-{
-    strlit("*game*"),
-    strlit("*game2*"),
-    strlit("*game3*"),
-};
-#if 0
-jump GAME_BUFFER_NAMES;
-#endif
 
 #include "4coder_table.h"
 
@@ -195,16 +199,13 @@ struct Color_Picker{
 ////////////////////////////////
 
 api(custom)
-typedef i1 Panel_ID;
-
-api(custom)
-typedef u32 Text_Layout_ID;
+typedef i32 Panel_ID;
 
 api(custom)
 typedef u32 Child_Process_ID;
 
 api(custom)
-typedef i1 UI_Highlight_Level;
+typedef i32 UI_Highlight_Level;
 enum{
     UIHighlight_None,
     UIHighlight_Hover,
@@ -247,7 +248,7 @@ enum{
 };
 
 api(custom)
-typedef i1 Wrap_Indicator_Mode;
+typedef i32 Wrap_Indicator_Mode;
 enum{
     WrapIndicator_Hide,
     WrapIndicator_Show_After_Line,
@@ -255,7 +256,7 @@ enum{
 };
 
 api(custom)
-typedef i1 Global_Setting_ID;
+typedef i32 Global_Setting_ID;
 enum{
     GlobalSetting_Null,
     GlobalSetting_LAltLCtrlIsAltGr,
@@ -277,7 +278,7 @@ struct Character_Predicate{
 };
 
 api(custom)
-typedef i1 View_Setting_ID;
+typedef i32 View_Setting_ID;
 enum{
  ViewSetting_Null,
  ViewSetting_ShowWhitespace,
@@ -331,7 +332,7 @@ enum{
 };
 
 api(custom)
-typedef i1 Dirty_State;
+typedef i32 Dirty_State;
 enum{
     DirtyState_UpToDate = 0,
     DirtyState_UnsavedChanges = 1,
@@ -355,14 +356,14 @@ enum{
 };
 
 api(custom)
-typedef i1 Mouse_Cursor_Show_Type;
+typedef i32 Mouse_Cursor_Show_Type;
 enum{
     MouseCursorShow_Never,
     MouseCursorShow_Always,
 };
 
 api(custom)
-typedef i1 View_Split_Position;
+typedef i32 View_Split_Position;
 enum{
     ViewSplit_Top,
     ViewSplit_Bottom,
@@ -371,7 +372,7 @@ enum{
 };
 
 api(custom)
-typedef i1 Panel_Split_Kind;
+typedef i32 Panel_Split_Kind;
 enum{
     PanelSplitKind_Ratio_Min = 0,
     PanelSplitKind_Ratio_Max = 1,
@@ -397,7 +398,7 @@ struct Buffer_Identifier{
 };
 
 api(custom)
-typedef i1 Set_Buffer_Scroll_Rule;
+typedef i32 Set_Buffer_Scroll_Rule;
 enum{
  SetBufferScroll_NoCursorChange,
  SetBufferScroll_SnapCursorIntoView,
@@ -412,18 +413,19 @@ struct Buffer_Scroll{
 api(custom)
 struct Basic_Scroll
 {
-    v2 position;
-    v2 target;
+ v2 position;
+ v2 target;
 };
 
 api(custom)
-struct Marker{
-    i64 pos;
-    b32 lean_right;
+struct Marked_Position
+{
+ i64 pos;
+ b32 lean_right;
 };
 
 api(custom)
-typedef i1 Managed_Prim_Type;
+typedef i32 Managed_Prim_Type;
 enum{
     ManagedObjectType_Error = 0,
     ManagedObjectType_Memory = 1,
@@ -521,14 +523,14 @@ struct Batch_Edit{
 };
 
 api(custom)
-typedef i1 Record_Kind;
+typedef i32 Record_Kind;
 enum{
  RecordKind_Single,
  RecordKind_Group,
 };
 
 api(custom)
-typedef i1 Record_Error;
+typedef i32 Record_Error;
 enum{
  RecordError_NoError,
  RecordError_InvalidBuffer,
@@ -546,9 +548,6 @@ enum{
  RecordMergeFlag_StateInRange_MoveStateBackward = 0x1,
  RecordMergeFlag_StateInRange_ErrorOut = 0x2,
 };
-
-api(custom)
-typedef i1 History_Record_Index;
 
 api(custom)
 struct Record_Info
@@ -573,7 +572,7 @@ struct Record_Info
 };
 
 api(custom)
-typedef i1 Hook_ID;
+typedef i32 Hook_ID;
 enum{
     HookID_Tick,
     HookID_RenderCaller,
@@ -593,7 +592,7 @@ enum{
 };
 
 api(custom)
-typedef i1 Hook_Function(App *app);
+typedef i32 Hook_Function(App *app);
 #define HOOK_SIG(name) i1 name(App *app)
 
 api(custom)
@@ -611,7 +610,7 @@ typedef void Buffer_Name_Resolver_Function(App *app, Buffer_Name_Conflict_Entry 
 #define BUFFER_NAME_RESOLVER_SIG(n) void n(App *app, Buffer_Name_Conflict_Entry *conflicts, i1 conflict_count)
 
 api(custom)
-typedef i1 Buffer_Hook_Function(App *app, Buffer_ID buffer_id);
+typedef i32 Buffer_Hook_Function(App *app, Buffer_ID buffer_id);
 #define BUFFER_HOOK_SIG(name) i1 name(App *app, Buffer_ID buffer_id)
 
 #define BUFFER_EDIT_RANGE_SIG(name) \

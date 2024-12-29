@@ -1,20 +1,26 @@
 //-
-
-////////////////////////////////
-
-myinline String8
-push_data(Arena *arena, u64 size){
+myinline String
+push_data(Arena *arena, u64 size)
+{
  String result = {};
  result.str = push_array(arena, u8, size);
  result.size = size;
  return(result);
 }
 myinline String
-push_string(Arena *arena, String data){
- String8 result = {
-  .str = push_array_copy(arena, u8, data.len, data.str),
-  .len = data.len,
- };
+push_string(Arena *arena, String data)
+{
+ Stringz result;
+ result.str   = push_array_copy(arena, u8, data.len, data.str);
+ result.count = data.len;
+ return(result);
+}
+myinline Stringz
+push_string(Arena *arena, Stringz data)
+{
+ Stringz result;
+ result.str   = push_array_copy(arena, u8, data.len+1, data.str);
+ result.count = data.len;
  return(result);
 }
 //
@@ -57,19 +63,29 @@ string_skip_whitespace(String str){
  str = string_skip(str, f);
  return(str);
 }
-inline u8
+function u8
 get_matching_group_closer(u8 c){
  if(c == '(') return ')';
  if(c == '[') return ']';
  if(c == '{') return '}';
  return 0;
 }
-inline u8
+function b32
+is_group_opener(u8 c)
+{
+ return get_matching_group_closer(c) != 0;
+}
+function u8
 get_matching_group_opener(u8 c){
  if(c == ')') return '(';
  if(c == ']') return '[';
  if(c == '}') return '{';
  return 0;
+}
+function b32
+is_group_closer(u8 c)
+{
+ return get_matching_group_opener(c) != 0;
 }
 
 function u64
@@ -93,24 +109,17 @@ string_find_last_non_whitespace(String str){
  for (;i >= 0 && char_is_whitespace(str.str[i]); i -= 1);
  return(i);
 }
-
-function b32
-character_is_slash(char c){
- return((c == '/') || (c == '\\'));
-}
-myinline b32 character_is_slash(u8 c){ return(character_is_slash(char(c))); }
-
 function u64
 string_find_first_slash(String str){
  u64 i = 0;
- for (;i < str.size && !character_is_slash(str.str[i]); i += 1);
+ for (;i < str.size && !is_file_slash(str.str[i]); i += 1);
  return(i);
 }
 function i64
 string_find_last_slash(String str){
  i64 size = (i64)str.size;
  i64 i = size - 1;
- for (;i >= 0 && !character_is_slash(str.str[i]); i -= 1);
+ for (;i >= 0 && !is_file_slash(str.str[i]); i -= 1);
  return(i);
 }
 function i64
@@ -128,25 +137,28 @@ string_prefix(String str, u64 size){
 }
 //-
 function String
-path_dir(String str){
+path_dir(String str)
+{
  if(str.size > 0){
   // NOTE(kv) Remove the last slash, if exists
   str.size -= 1;
  }
  i64 slash_pos = string_find_last_slash(str);
  String result = {.str=str.str};
- if(slash_pos >= 0){ result.size = slash_pos + 1; }
+ if(slash_pos >= 0){ result.size = slash_pos+1; }
  return result;
 }
 function String
-path_basename(String str){
+path_basename(String str)
+{
  if(str.count > 0 &&
     str.str[str.count-1]==OS_SLASH){
   //-NOTE(kv) remove last slash
   str.size -= 1;
  }
  i64 slash_pos = string_find_last_slash(str);
- if(slash_pos >= 0){
+ if(slash_pos >= 0)
+ {
   str = string_skip(str, slash_pos + 1);
  }
  return(str);
@@ -211,7 +223,7 @@ string_contains(String big, String small, i1 *first_match=0)
    if (big.str[index] == small.str[0])
    {
     String substring = {big.str+index, small.len};
-    if (substring == small)
+    if(substring == small)
     {
      result = true;
      if (first_match) { *first_match = index; }
@@ -482,4 +494,101 @@ small_insertion_sort(Sort_Entry *input, i32 input_count,
  }
 }
 //-
+function u32
+gb_murmur32_seed(void const *data, isize len, u32 seed)
+{
+	u32 const c1 = 0xcc9e2d51;
+	u32 const c2 = 0x1b873593;
+	u32 const r1 = 15;
+	u32 const r2 = 13;
+	u32 const m  = 5;
+	u32 const n  = 0xe6546b64;
+ 
+	isize i, nblocks = len / 4;
+	u32 hash = seed, k1 = 0;
+	u32 const *blocks = cast(u32 const*)data;
+	u8 const *tail = cast(u8 const *)(data) + nblocks*4;
+ 
+	for (i = 0; i < nblocks; i++) {
+		u32 k = blocks[i];
+		k *= c1;
+		k = (k << r1) | (k >> (32 - r1));
+		k *= c2;
+  
+		hash ^= k;
+		hash = ((hash << r2) | (hash >> (32 - r2))) * m + n;
+	}
+ 
+	switch (len & 3) {
+  case 3:
+		k1 ^= tail[2] << 16;
+  case 2:
+		k1 ^= tail[1] << 8;
+  case 1:
+		k1 ^= tail[0];
+  
+		k1 *= c1;
+		k1 = (k1 << r1) | (k1 >> (32 - r1));
+		k1 *= c2;
+		hash ^= k1;
+	}
+ 
+	hash ^= len;
+	hash ^= (hash >> 16);
+	hash *= 0x85ebca6b;
+	hash ^= (hash >> 13);
+	hash *= 0xc2b2ae35;
+	hash ^= (hash >> 16);
+ 
+	return hash;
+}
+function u64
+gb_murmur64_seed(void const *data_, isize len, u64 seed)
+{
+	u64 const m = 0xc6a4a7935bd1e995ULL;
+	i1 const r = 47;
+ 
+	u64 h = seed ^ (len * m);
+ 
+	u64 const *data = cast(u64 const *)data_;
+	u8  const *data2 = cast(u8 const *)data_;
+	u64 const* end = data + (len / 8);
+ 
+	while (data != end) {
+		u64 k = *data++;
+  
+		k *= m;
+		k ^= k >> r;
+		k *= m;
+  
+		h ^= k;
+		h *= m;
+	}
+ 
+	switch (len & 7) {
+  case 7: h ^= cast(u64)(data2[6]) << 48;
+  case 6: h ^= cast(u64)(data2[5]) << 40;
+  case 5: h ^= cast(u64)(data2[4]) << 32;
+  case 4: h ^= cast(u64)(data2[3]) << 24;
+  case 3: h ^= cast(u64)(data2[2]) << 16;
+  case 2: h ^= cast(u64)(data2[1]) << 8;
+  case 1: h ^= cast(u64)(data2[0]);
+		h *= m;
+	};
+ 
+	h ^= h >> r;
+	h *= m;
+	h ^= h >> r;
+ 
+	return h;
+}
+
+function u32
+gb_murmur32(void const *data, isize len) {
+ return gb_murmur32_seed(data, len, 0x9747b28c);
+}
+function u64
+gb_murmur64(void const *data, isize len) {
+ return gb_murmur64_seed(data, len, 0x9747b28c);
+}
 //~EOF

@@ -9,14 +9,14 @@
 
 function API_Definition*
 begin_api(Arena *arena, char *name){
-    API_Definition *api = push_array_zero(arena, API_Definition, 1);
+    API_Definition *api = push_array0(arena, API_Definition, 1);
     api->name = SCu8(name);
     return(api);
 }
 
 function API_Call*
 api_call_with_location(Arena *arena, API_Definition *api, String name, String type, String location){
-    API_Call *call = push_array_zero(arena, API_Call, 1);
+    API_Call *call = push_array0(arena, API_Call, 1);
     sll_queue_push(api->first_call, api->last_call, call);
     api->call_count += 1;
  call->name = name;
@@ -33,7 +33,7 @@ api_call_with_location(Arena *arena, API_Definition *api, char *name, char *type
 
 function API_Type*
 api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Structure_Kind kind, String name, List_String member_list, String definition, String location){
- API_Type *type = push_array_zero(arena, API_Type, 1);
+ API_Type *type = push_array0(arena, API_Type, 1);
  sll_queue_push(api->first_type, api->last_type, type);
  api->type_count += 1;
  type->kind = APITypeKind_Structure;
@@ -54,7 +54,7 @@ api_type_structure_with_location(Arena *arena, API_Definition *api, API_Type_Str
 
 function API_Param*
 api_param(Arena *arena, API_Call *call, char *type_name, char *name){
-    API_Param *param = push_array_zero(arena, API_Param, 1);
+    API_Param *param = push_array0(arena, API_Param, 1);
     sll_queue_push(call->params.first, call->params.last, param);
     call->params.count += 1;
     param->type_name = SCu8(type_name);
@@ -85,7 +85,7 @@ function API_Definition*
 api_get_api(Arena *arena, API_Definition_List *list, String name){
     API_Definition *result = api_get_api(list, name);
     if (result == 0){
-        result = push_array_zero(arena, API_Definition, 1);
+        result = push_array0(arena, API_Definition, 1);
         sll_queue_push(list->first, list->last, result);
         list->count += 1;
         result->name = name;
@@ -418,9 +418,6 @@ api_definition_generate_api_includes(API_Definition *api,
  Scratch_Block scratch;
  // NOTE(allen): Arrange output files
  
- String path_to_self = strlit(__FILE__);
- path_to_self = path_dir(path_to_self);
- 
  struct Generated_File
  {
   String name;
@@ -434,23 +431,18 @@ api_definition_generate_api_includes(API_Definition *api,
  Generated_File &gen_cpp     = genfiles[2];
  //Generated_File &gen_con = genfiles[3];
  
- String dir = strlit("generated/");
- 
  {
   char *formats[filecount] = {
-   "%.*s%.*s%.*s_api_master_list.h",
-   "%.*s%.*s%.*s_api.h",
-   "%.*s%.*s%.*s_api.cpp",
-   //"%.*s%.*s%.*s_api_constructor.cpp",
+   "%S_api_master_list.gen.h",
+   "%S_api.gen.h",
+   "%S_api.gen.cpp",
   };
   const char *format = "%s\n";
   for_i32(index,0,filecount)
   {
    auto &it = genfiles[index];
-   it.name = push_stringf(scratch, formats[index],
-                          string_expand(path_to_self),
-                          string_expand(dir),
-                          string_expand(api->name));
+   it.name = pjoin(scratch, meta_dirs.code,
+                   push_stringf(scratch, formats[index], api->name));
    meta_logf(format, it.name.str);
   }
  }
@@ -465,7 +457,7 @@ api_definition_generate_api_includes(API_Definition *api,
   }
   else
   {
-   printf("could not open output file: '%s'\n", it.name.str);
+   printf("api definition: could not open output file: '%s'\n", it.name.str);
    return(false);
   }
  }

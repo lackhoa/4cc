@@ -27,9 +27,7 @@
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
 #include "4coder_system_types.h"
-#if !defined(META_PASS)
-#  include "generated/command_metadata.gen.h"
-#endif
+#include "command_metadata.gen.h"
 
 #include "4coder_token.h"
 

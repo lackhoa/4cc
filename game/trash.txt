@@ -1041,5 +1041,104 @@ fui_generate_slider(fui_generate_slider__params)
  return changed;
 }
 
+else if(game_active){
+    if (u32 sel_prim = selected_prim_id(modeler)){
+     //-NOTE
+     Modeler *m = modeler;
+     Modeler_History &h = m->history;
+     if (get_selected_type(m) == Prim_Vertex){
+      // NOTE: Selecting a vertex
+      Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
+      v3 direction = key_direction(input, 0, false).xyz;
+      
+      // NOTE(kv): Update vertex position
+      direction.z = 0.f;
+      direction = noz( mat4vec(update_target_cam.world_from_cam, direction) );
+      v1 velocity = 0.2f;
+      v3 delta = velocity * dt * direction;
+      
+      darray(Vertex_Index) influenced_verts;
+      init_static(influenced_verts, scratch, m->active_prims.count);
+      for_i32(index,0,m->active_prims.count) {
+       Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
+       push(&influenced_verts, vi);
+      }
+      
+      Modeler_Edit edit = Modeler_Edit{
+       .type      = ME_Vert_Move,
+       .Vert_Move = {
+        .verts=influenced_verts,
+        .delta=delta,
+       },
+      };
+      {
+       b32 merged = false;
+       Modeler_Edit *current_edit = get_current_edit(h);
+       // NOTE(kv): edits_can_be_merged is a guardrail for now
+       if (current_edit &&
+           m->change_uncommitted &&
+           edits_can_be_merged(*current_edit, edit))
+       {
+        merged = true;
+        modeler_undo(m);
+        edit = *current_edit;
+        edit.Vert_Move.delta += delta;
+       }
+       if (!merged) {
+        edit.Vert_Move.verts = influenced_verts.copy(&h.arena);
+       }
+       apply_new_edit(m, edit);
+      }
+     }else if(get_selected_type(m) == Prim_Curve){
+#if 0
+      // NOTE(kv) Curve update stub
+      Curve_Data &sel = modeler.curves[sel_index0];
+      {
+       i32 direction = i32( key_direction(input, 0, true).x );
+       v1 delta = i2f6(direction);
+       if (delta != 0) { for_i32(index,0,4) { sel.radii[index] += delta; } }
+       DEBUG_VALUE(sel.radii);
+      }
+#endif
+     }
+    }
+   }
+
+#if 0
+  {//;update_modeler
+   auto m = &state->modeler;
+   auto &h = m->history;
+   {//-NOTE: Drawing GUI
+    if(get_selected_type(m) == Prim_Curve){
+     //;draw_curve_info
+     ImGui::Begin("curve data", 0);
+     Curve_Data *curve = get_selected_curve(m);
+     Type_Info type = Type_Info_Curve_Type;
+     i32 curve_type_index = enum_index_from_value(curve->type);
+     
+     const char* combo_preview = to_cstring(scratch, type.enum_members[curve_type_index].name);
+     if ( ImGui::BeginCombo("combo", combo_preview, 0) ) {
+      for_i32(enum_index, 0, type.enum_members.count) {
+       b32 is_selected = (enum_index == curve_type_index);
+       char *name = to_cstring(scratch, type.enum_members[enum_index].name);
+       if(ImGui::Selectable(name, is_selected)){
+       }
+       if(is_selected){
+        ImGui::SetItemDefaultFocus();
+       }
+      }
+      ImGui::EndCombo();
+     }
+     ImGui::End();
+    }else{
+     if ((0)){
+      ImGui::ShowDemoWindow(0);
+     }
+    }
+   }
+  }
+#endif
+
 
 //~eof
+

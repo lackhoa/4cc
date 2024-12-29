@@ -103,7 +103,7 @@ profile_set_enabled(Profile_Global_List *list, b32 value, Profile_Enable_Flag fl
 function void
 thread_profile_record__inner(Thread_Context *tctx, Profile_ID id, u64 time,
                              String name, String location){
-    Profile_Record *record = push_array_zero(&tctx->prof_arena, Profile_Record, 1);
+    Profile_Record *record = push_array0(&tctx->prof_arena, Profile_Record, 1);
     sll_queue_push(tctx->prof_first, tctx->prof_last, record);
     tctx->prof_record_count += 1;
     record->id = id;

@@ -1,6 +1,6 @@
 //-
-
 #define X_struct_member_v3(NAME, ...)   v3 NAME;
+
 union Head
 {
 #define macro_head(X) \
@@ -14,7 +14,7 @@ X(chin_middle) \
  v3 verts[];
 };
 //
-global_const i32 head_vert_count = (sizeof(Head) / sizeof(v3));
+global_const i32 head_vert_count = sizeof(Head) / sizeof(v3);
 
 union Pelvis
 {
@@ -55,7 +55,7 @@ X(delt_bot) \
 X(tricep_wedge) \
 X(brachio_a) \
 X(brachio_humerus) \
-X(brachio_humerus2) \
+X(brachialis_begin) \
 X(internal_condyle) \
 X(external_condyle) \
 //
@@ -83,13 +83,12 @@ global_const i32 forearm_vert_count = sizeof(Forearm) / sizeof(v3);
 //-
 
 function void
-import_vertices(v3 *dst, v3 const*src,
-                mat4i *dstT, mat4i *srcT,
+import_vertices(v3 *dst, mat4i &dstT, mat4i &srcT,
                 i32 vert_count)
 {
- mat4 to_local = matmul(dstT->inverse, srcT->forward);
+ mat4 to_local = matmul(dstT.inverse, srcT.forward);
  for_i32(index,0,vert_count){
-  dst[index] = mat4vert(to_local, src[index]);
+  dst[index] = mat4vert(to_local, dst[index]);
  }
 }
 //-

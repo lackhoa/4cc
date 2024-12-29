@@ -446,75 +446,6 @@ global String month_full_name[] = {
 
 ////////////////////////////////
 
-function Rect_i32
-Ri32(i32 x0, i32 y0, i32 x1, i32 y1){
- Rect_i32 rect = {x0, y0, x1, y1};
- return(rect);
-}
-function Rect_f32
-Rf32(f32 x0, f32 y0, f32 x1, f32 y1){
- Rect_f32 rect = {x0, y0, x1, y1};
- return(rect);
-}
-
-function Rect_i32
-Ri32(Vec2_i32 p0, Vec2_i32 p1){
- Rect_i32 rect = {p0.x, p0.y, p1.x, p1.y};
- return(rect);
-}
-function Rect_f32
-Rf32(v2 p0, v2 p1){
- Rect_f32 rect = {p0.x, p0.y, p1.x, p1.y};
- return(rect);
-}
-
-function Rect_i32
-Ri32(Rect_f32 o){
- Rect_i32 rect = {(i32)(o.x0), (i32)(o.y0), (i32)(o.x1), (i32)(o.y1)};
- return(rect);
-}
-function Rect_f32
-Rf32(Rect_i32 o){
- Rect_f32 rect = {(f32)(o.x0), (f32)(o.y0), (f32)(o.x1), (f32)(o.y1)};
- return(rect);
-}
-
-function Rect_i32
-Ri32_xy_wh(i32 x0, i32 y0, i32 w, i32 h){
- Rect_i32 rect = {x0, y0, x0 + w, y0 + h};
- return(rect);
-}
-function Rect_f32
-Rf32_xy_wh(f32 x0, f32 y0, f32 w, f32 h){
- Rect_f32 rect = {x0, y0, x0 + w, y0 + h};
- return(rect);
-}
-
-function Rect_i32
-Ri32_xy_wh(Vec2_i32 p0, Vec2_i32 d){
- Rect_i32 rect = {p0.x, p0.y, p0.x + d.x, p0.y + d.y};
- return(rect);
-}
-function Rect_f32
-Rf32_xy_wh(v2 p0, v2 d){
- Rect_f32 rect = {p0.x, p0.y, p0.x + d.x, p0.y + d.y};
- return(rect);
-}
-
-function Rect_i32
-Ri32(Range_i32 x, Range_i32 y){
- return(Ri32(x.min, y.min, x.max, y.max));
-}
-function Rect_f32
-Rf32(Range_f32 x, Range_f32 y){
- return(Rf32(x.min, y.min, x.max, y.max));
-}
-
-global_const Rect_f32 Rf32_infinity          = {-max_f32, -max_f32,  max_f32,  max_f32};
-global_const Rect_f32 Rf32_negative_infinity = { max_f32,  max_f32, -max_f32, -max_f32};
-
-global_const Rect_i32 Ri32_infinity          = {-max_i32, -max_i32,  max_i32,  max_i32};
-global_const Rect_i32 Ri32_negative_infinity = { max_i32,  max_i32, -max_i32, -max_i32};
 
 function b32
 rect_equals(Rect_i32 a, Rect_i32 b){
@@ -611,22 +542,6 @@ rect_area(Rect_f32 r){
  return((r.x1 - r.x0)*(r.y1 - r.y0));
 }
 
-function b32
-range_overlap(Range_i32 a, Range_i32 b){
- return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_i64 a, Range_i64 b){
- return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_u64 a, Range_u64 b){
- return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_f32 a, Range_f32 b){
- return(a.min < b.max && b.min < a.max);
-}
 
 function b32
 rect_overlap(Rect_i32 a, Rect_i32 b){
@@ -1073,16 +988,6 @@ function b32
 character_is_basic_ascii(u32 c){
  return(' ' <= c && c <= '~');
 }
-
-function b32
-character_is_slash(u16 c){
- return((c == '/') || (c == '\\'));
-}
-function b32
-character_is_slash(u32 c){
- return((c == '/') || (c == '\\'));
-}
-
 function b32
 character_is_upper(char c)
 {
@@ -1422,7 +1327,7 @@ string_looks_like_drive_letter(String string)
  if (string.size == 3 &&
      character_is_alpha(string.str[0]) &&
      string.str[1] == ':' &&
-     character_is_slash(string.str[2])){
+     is_file_slash(string.str[2])){
   result = true;
  }
  return(result);
@@ -1563,9 +1468,11 @@ string_match(String8 a, String8 b, String_Match_Rule rule)
 }
 
 function u64
-string_find_first(String str, String needle, String_Match_Rule rule){
+string_find_first(String str, String needle, String_Match_Rule rule)
+{
  u64 i = 0;
- if (needle.size > 0){
+ if(needle.size > 0)
+ {
   i = str.size;
   if (str.size >= needle.size){
    i = 0;
@@ -1622,7 +1529,6 @@ string_compare(String8 a, String8 b)
  return(result);
 }
 
-// @Deprecated Use "string_match"
 inline b32 string_equal(String8 a, String8 b) { return string_match(a,b); }
 
 inline b32
@@ -1965,19 +1871,24 @@ typedef String_Const_u16 String_u16_Mod_Function_Type(String_Const_u16 string);
 typedef String_Const_u32 String_u32_Mod_Function_Type(String_Const_u32 string);
 
 function String
-string_list_flatten(Arena *arena, List_String list, String_u8_Mod_Function_Type *mod, String separator, String_Separator_Flag separator_flags, String_Fill_Terminate_Rule rule){
- u64 term_padding = (rule == StringFill_NullTerminate)?(1):(0);b32 before_first = HasFlag(separator_flags, StringSeparator_BeforeFirst);
+string_list_flatten(Arena *arena, List_String list,
+                    String_u8_Mod_Function_Type *mod, String separator,
+                    String_Separator_Flag separator_flags, String_Fill_Terminate_Rule rule)
+{
+ u64 term_padding = (rule == StringFill_NullTerminate)?(1):(0);
+ b32 before_first = HasFlag(separator_flags, StringSeparator_BeforeFirst);
  b32 after_last = HasFlag(separator_flags, StringSeparator_AfterLast);
  u64 separator_size = separator.size*(list.node_count + before_first + after_last - 1);
  String_u8 string = string_u8_push(arena, list.total_size + separator_size + term_padding);
- if (before_first){
+ if(before_first){
   string_concat(&string, separator);
  }
  for (Node_String *node = list.first;
       node != 0;
-      node = node->next){
+      node = node->next)
+ {
   block_copy_count(string.str + string.size, node->string.str, node->string.size);
-  if (mod != 0){
+  if(mod != 0){
    mod(SCu8(string.str + string.size, node->string.size));
   }
   string.size += node->string.size;
@@ -2004,7 +1915,8 @@ string_list_flatten(Arena *arena, List_String string, String_Fill_Terminate_Rule
  return(string_list_flatten(arena, string, 0, SCu8(), 0, rule));
 }
 function String
-string_list_flatten(Arena *arena, List_String string){
+string_list_flatten(Arena *arena, List_String string)
+{
  return(string_list_flatten(arena, string, 0, SCu8(), 0, StringFill_NoTerminate));
 }
 
@@ -2697,10 +2609,10 @@ string_is_integer(String string, u32 radix){
 }
 
 function u64
-string_to_u64(String8 string, u32 radix)
+string_to_u64(String8 string, u32 radix=10)
 {
  u64 x = 0;
- if (radix <= 16)
+ if(radix <= 16)
  {
   for (u64 i = 0; i < string.size; i += 1)
   {
@@ -3466,10 +3378,34 @@ clamp_range(Range_f32 range, f32 x)
 }
 
 function String
+string_substring(String str, i64 min, i64 max)
+{
+ String result = {};
+ if(min <= max)
+ {
+  ClampBot(min, 0);
+  ClampTop(max, (i64)str.count);
+  result.str   = str.str + min;
+  result.count = max - min;
+ }
+ return result;
+}
+myinline String
 string_substring(String str, Range_i64 range)
 {
- return SCu8(str.data+range.min,
-             str.data+range.max);
+ return string_substring(str, RangeExpand(range));
 }
-
+function b32
+is_generated_file_name(String name)
+{
+ b32 is_generated = false;
+ {//NOTE Is the file generated?
+  i64 last_dot = string_find_last(name, '.');
+  if(last_dot != i64(name.count)){
+   String dot_gen = string_substring(name, last_dot-4, last_dot);
+   is_generated = (dot_gen == strlit(".gen"));
+  }
+ }
+ return is_generated;
+}
 //~EOF

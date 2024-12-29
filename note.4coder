@@ -1,0 +1,83 @@
+//-
+[// ;project_point_onto_plane How to project a point onto a plane?
+ // The plane equation is:
+ a x + b y + c z + d = 0
+ // Which means that all points (x,y,z) that evaluates to 0 will be on the plane
+ // Still doesn't tell us whether the point is on the plane or not
+ // How do we cast a ray onto a plane?
+ [// Well, we know when a line is normal to a plane
+  // the direction is right there in the equation
+  n = (a,b,c)]
+ [// Suppose the point is "P", and its projection on the plane is "Q", then
+  Q = P + (a,b,c)*t
+  [// What else do we know, "Q" is on the plane, so
+   a Q.x + b Q.y + c Q.z + d = 0
+   ]
+  [//Combining the equations
+   [a(P.x + a t) + b(P.y + b t) + c(P.z + c t) + d = 0
+    (a P.x + b P.y + c P.z) + (a a + b b + c c)t + d = 0
+    t = -(d + a P.x + b P.y + c P.z) / (aa+bb+cc)
+    t = -(d + dot(n, P)) / length_squared(n)
+    ]
+   [// So the distance is
+    distance = t * length(n)
+    distance = -(d + dot(n, P)) / length(n)
+    ]
+   ]
+  ]
+ ]
+
+[// ray triangle intersection
+ // from http://www.lighthouse3d.com/tutorials/maths/ray-triangle-intersection/ 
+ int rayIntersectsTriangle(v3 p, v3 ray_dir,
+                           v3 vert0, v3 vert1, v3 vert2)
+ {
+  v3 e1 = vert1-vert0;
+  v3 e2 = vert2-vert0;
+  
+  v3 h = cross(ray_dir,e2);
+  v1 a = dot(e1,h);
+  
+  if(absolute(a) < 0.00001)
+  {
+   return(false);
+  }
+  else
+  {
+   v1 f = 1/a;
+   v3 s = p-vert0;
+   v1 u = f * (dot(s,h));
+   
+   if (u < 0.0 || u > 1.0)
+   {
+    return(false);
+   }
+   else
+   {
+    v3 q = cross(s,e1);
+    v1 v = f * dot(ray_dir,q);
+    
+    if (v < 0.0 || u + v > 1.0)
+    {
+     return(false);
+    }
+    else
+    {// at this stage we can compute t to find out where
+     // the intersection point is on the line
+     t = f * dot(e2,q);
+     
+     if (t > 0.00001) // ray intersection
+     {
+      return(true);
+     }
+     else // this means that there is a line intersection
+     {
+      // but not a ray intersection
+      return (false);
+     }
+    }
+   }
+  }
+ }
+ ]
+//-

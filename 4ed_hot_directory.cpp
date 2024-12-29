@@ -12,8 +12,8 @@
 function void
 hot_directory_clean_end(Hot_Directory *hot_directory)
 {
-    String8 str = hot_directory->string;
-    if (!character_is_slash(string_get_character(str, str.size - 1)))
+ String8 str = hot_directory->string;
+ if (!is_file_slash(string_get_character(str, str.size - 1)))
     {
         hot_directory->string = path_dir(str);
     }
@@ -76,7 +76,7 @@ hot_directory_init(Arena *scratch, Hot_Directory *hot_directory, String director
     hot_directory->arena = make_arena();
     Temp_Memory temp = begin_temp_memory(scratch);
     String dir = directory;
-    if (!character_is_slash(string_get_character(directory, directory.size - 1))){
+    if (!is_file_slash(string_get_character(directory, directory.size - 1))){
         dir = push_stringf(scratch, "%.*s/", string_expand(directory));
     }
     hot_directory_set(hot_directory, dir);

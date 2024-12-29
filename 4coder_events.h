@@ -10,17 +10,18 @@ typedef u32 Core_Code;
 
 typedef u32 Input_Event_Kind;
 enum{
-    InputEventKind_None,
-    InputEventKind_TextInsert,
-    InputEventKind_KeyStroke,
-    InputEventKind_KeyRelease,
-    InputEventKind_MouseButton,
-    InputEventKind_MouseButtonRelease,
-    InputEventKind_MouseWheel,
-    InputEventKind_MouseMove,
-    InputEventKind_Core,
-    InputEventKind_CustomFunction,
-    
+ InputEventKind_None,
+ InputEventKind_TextInsert,
+ InputEventKind_KeyStroke,
+ InputEventKind_KeyRelease,
+ InputEventKind_MouseButton,
+ InputEventKind_MouseButtonRelease,
+ InputEventKind_MouseWheel,
+ InputEventKind_MouseMove,
+ InputEventKind_Core,
+ InputEventKind_CustomFunction,
+ InputEventKind_HistoryMerge,
+ 
  InputEventKind_COUNT,
 };
 
@@ -30,10 +31,10 @@ enum Key_Mod
 {
  Key_Mod_NULL = 0,
  Key_Mod_Ctl = bit_31,
-    Key_Mod_Sft = bit_30,
-    Key_Mod_Alt = bit_29,
-    Key_Mod_Cmd = bit_28,
-    Key_Mod_Mnu = bit_27,
+ Key_Mod_Sft = bit_30,
+ Key_Mod_Alt = bit_29,
+ Key_Mod_Cmd = bit_28,
+ Key_Mod_Mnu = bit_27,
 };
 
 typedef u32 Key_Flags;
@@ -47,7 +48,7 @@ global_const i32 Input_MaxModifierCount = 8;
 // TODO @Cleanup Please, this does not need to exist!
 struct Input_Modifier_Set
 {
-    Key_Code *mods;
+ Key_Code *mods;
  i32 count;
 };
 struct Input_Modifier_Set_Fixed{
@@ -55,15 +56,19 @@ struct Input_Modifier_Set_Fixed{
  i32 count;
 };
 
+api(custom)
+typedef i32 History_Record_Index;
+
 struct Input_Event
 {
  Input_Event_Kind kind;
  b32 is_virtual;
- union{
+ union
+ {
   struct{
    String string;
    
-   // used functionly
+   // used internally
    Input_Event *next_text;
    b32 blocked;
   } text;
@@ -72,7 +77,7 @@ struct Input_Event
    Key_Flags flags;
    Input_Modifier_Set modifiers;
    
-   // used functionly
+   // used internally
    Input_Event *first_dependent_text;
   } key;
   struct{
@@ -100,7 +105,13 @@ struct Input_Event
     };
    };
   } core;
+  
   Custom_Command_Function *custom_func;
+  
+  struct{
+   Buffer_ID history_buffer;
+   History_Record_Index history_first;
+  };
  };
 };
 

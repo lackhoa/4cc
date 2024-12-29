@@ -7,16 +7,17 @@
 
 enum F4_Index_NoteKind
 {
-    F4_Index_NoteKind_Null,
-    F4_Index_NoteKind_Scope,
-    F4_Index_NoteKind_Type,
-    F4_Index_NoteKind_Constant,
-    F4_Index_NoteKind_Function,
-    F4_Index_NoteKind_Decl,
-    F4_Index_NoteKind_Macro,
-    F4_Index_NoteKind_CommentTag,
-    F4_Index_NoteKind_CommentToDo,
-    F4_Index_NoteKind_COUNT
+ F4_Index_NoteKind_Null,
+ F4_Index_NoteKind_Scope,
+ F4_Index_NoteKind_Type,
+ F4_Index_NoteKind_Constant,
+ F4_Index_NoteKind_Function,
+ F4_Index_NoteKind_Decl,
+ F4_Index_NoteKind_Macro,
+ F4_Index_NoteKind_CommentTag,
+ F4_Index_NoteKind_CommentIdentifier,
+ F4_Index_NoteKind_CommentToDo,
+ F4_Index_NoteKind_COUNT
 };
 
 typedef u32 F4_Index_NoteFlags;
@@ -52,39 +53,40 @@ struct F4_Index_Note
 
 struct F4_Index_File
 {
-    F4_Index_File *hash_next;
-    Arena arena;
-    Buffer_ID buffer;
-    F4_Index_Note *first_note;
-    F4_Index_Note *last_note;
+ F4_Index_File *hash_next;
+ Arena arena;
+ Buffer_ID buffer;
+ F4_Index_Note *first_note;
+ F4_Index_Note *last_note;
 	int generation;
+ b32 is_generated;
 };
 
 struct F4_Index_State
 {
-    System_Mutex mutex;
-    Arena arena;
-    F4_Index_Note *note_table[16384];
+ System_Mutex mutex;
+ Arena arena;
+ F4_Index_Note *note_table[16384];
 	F4_Index_Note *free_note;
-    F4_Index_File *file_table[16384];
-    F4_Index_File *free_file;
+ F4_Index_File *file_table[16384];
+ F4_Index_File *free_file;
 };
 
 struct F4_Index_ParseCtx
 {
-    b32 done;
-    App *app;
-    F4_Index_File *file;
-    String8 string;
-    Token_Array tokens;
-    Token_Iterator_Array it;
-    F4_Index_Note *active_parent;
+ b32 done;
+ App *app;
+ F4_Index_File *file;
+ String8 string;
+ Token_Array tokens;
+ Token_Iterator_Array it;
+ F4_Index_Note *active_parent;
 };
 
 typedef u32 F4_Index_TokenSkipFlags;
 enum
 {
-    F4_Index_TokenSkipFlag_SkipWhitespace = (1<<0),
+ F4_Index_TokenSkipFlag_SkipWhitespace = (1<<0),
 };
 
 function void F4_Index_Initialize(void);

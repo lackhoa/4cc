@@ -45,7 +45,7 @@ build_language_model(void)
  
  darray(u8) text_chars_array;
  init_dynamic(text_chars_array, scratch, 128);
- for (i1 character=0; character < 128; character++) {
+ for (u8 character=0; character < 128; character++) {
   switch (character) {
    case 0:
    case '(': case '[': case '{':
@@ -53,10 +53,10 @@ build_language_model(void)
    case ' ': case '\r': case '\t': case '\f': case '\v': case '\n':
    {}break;
    
-   default: text_chars_array.push_value(character);
+   default: push(&text_chars_array, character);
   }
  }
- text_chars_array.push_value(0);
+ push(&text_chars_array, u8(0));
  u8 *text_chars = text_chars_array.items;
  
  char *whitespace_chars = " \r\t\f\v\n";

@@ -10,10 +10,15 @@
 #include <cstdint>
 #include <string.h>
 
+#if !defined(KV_IMPLEMENTATION)
+#  define KV_IMPLEMENTATION 1
+#endif
+
 #if !defined(AD_HAS_OS_CODE)
 #  define AD_HAS_OS_CODE 1
 #endif
 
+//TODO(kv) Deprecate this flag, just use precompiled header bro!
 #if !defined(AD_HAS_INTRINSIC)
 #  define AD_HAS_INTRINSIC 1
 #endif
@@ -81,10 +86,17 @@
 #if !defined(AD_STB_SPRINTF_IMPLEMENTATION) || AD_STB_SPRINTF_IMPLEMENTATION
 #  define STB_SPRINTF_IMPLEMENTATION
 #endif
+#if COMPILER_MSVC
+#  pragma warning(push)
+#  pragma warning(disable:4244)
+#endif
 #include "stb_sprintf.h"
+#if COMPILER_MSVC
+#  pragma warning(pop)
+#endif
 //~
 
-#define implies(a,b)  !(a) || (b)
+#define implies(a,b)  (!(a) || (b))
 #define cast_to_var(type, variable, value)  type variable = (type)value
 #define cast_to(variable, value)            variable = (mytypeof(variable))(value)
 #define cast_assign(variable, value)        variable = (mytypeof(variable))(value)
@@ -115,21 +127,14 @@
 myinline void
 block_zero(void *mem, u64 size)
 {
-#if AD_IS_DRIVER
- memset(mem, 0, size);
-#else
  gb_zero_size(mem, size);
-#endif
 }
+#define zero_struct(POINTER)     block_zero(POINTER, sizeof(*POINTER))
 
 myinline void
 block_fill_ones(void *mem, u64 size)
 {
-#if AD_IS_DRIVER
- memset(mem, 0xff, size);
-#else
  gb_memset(mem, 0xff, size);
-#endif
 }
 
 myinline i32
@@ -265,26 +270,6 @@ typedef intptr_t  iptr;
 global v1 millimeter = 0.001f;
 global v1 centimeter = 0.01f;
 
-#if COMPILER_MSVC
-#  define kv_fail __debugbreak()
-#else
-#  define kv_fail __builtin_trap()
-#endif
-
-#define kv_fail_ifnot(claim) do{if (!(claim)) { kv_fail; }} while(0)
-
-#if KV_INTERNAL
-#    define fail_in_debug  kv_fail
-#else
-#    define fail_in_debug
-#endif
-
-
-
-
-
-
-#define invalid_code_path   kv_fail
 
 #define todo_test_me        fail_in_debug
 #define todo_testme         fail_in_debug
@@ -294,23 +279,7 @@ global v1 centimeter = 0.01f;
 #define todo_implement      fail_in_debug
 #define todo_error_report
 
-#define invalid_default_case default: { invalid_code_path; };
-#define breakhere       do{ int please_break = 5; (void)please_break; }while(0)
 
-#if KV_INTERNAL
-#    define kv_assert                    kv_fail_ifnot
-#    define assert_defend(CLAIM, DEFEND) kv_fail_ifnot(CLAIM)
-#else
-#    define kv_assert(CLAIM)
-#    define assert_defend(CLAIM, DEFEND)   if (!(CLAIM))  { DEFEND; }
-#endif
-
-// TODO: Wouldn't all asserts make you slow? I guess this is like "slower".
-#if KV_SLOW
-#    define slow_assert kv_assert
-#else
-#    define slow_assert
-#endif
 
 inline i32 safeTruncateToInt32(u64 value)
 {
@@ -350,10 +319,11 @@ i32 debug_line
 
 #define macro_min(a, b) ((a < b) ? a : b)
 #define macro_max(a, b) ((a < b) ? b : a)
-#define minimum  macro_min // @ Deprecated
-#define maximum  macro_max // @ Deprecated
+#define minimum  macro_min
+#define maximum  macro_max
 
 #define toggle_boolean(VAR)  VAR = !(VAR)
+#define ToggleBoolean(VAR)  VAR = !(VAR)
 
 #define kv_function_declare(N) N##__return N(N##__params)
 #define kv_function_pointer(N) N##__return (*N)(N##__params)
@@ -417,8 +387,8 @@ inline void *kv_xmalloc(size_t size) {
 }
 
 #define breakable_block for (i32 __kv_breakable_block__=0; __kv_breakable_block__ == 0; __kv_breakable_block__++)
-#define in_range_exclusive(bot,mid,top) ((bot) <= (mid) && (mid) < (top))
-#define in_range_inclusive(bot,mid,top) ((bot) <= (mid) && (mid) <= (top))
+#define in_range_exclusive(value, bot, top) ((bot) <= (value) && (value) <  (top))
+#define in_range_inclusive(value, bot, top) ((bot) <= (value) && (value) <= (top))
 
 /* ;math */
 
@@ -858,14 +828,12 @@ typedef u32 argb;
 typedef String String8;  // @Deprecated
 
 //NOTE(kv) nil-terminated string (cutnpaste)
-struct Stringz{
- union{u8 *str, *data; };
- union{ u64 size, len, length, count; };
- myinline operator String&(){ return *(String*)this; }
+struct Stringz : String
+{
 };
-inline char *
+myinline char *
 to_cstring(Stringz string){
- char *result = "";
+ char *result = "";  //NOTE(kv) Allow zero-init
  if(string.len){
   result = (char *)string.str;
  }
@@ -950,22 +918,12 @@ make_data(void *memory, u64 size)
 myinline void
 block_copy(void *dst, const void *src, u64 size)
 {
-#if AD_IS_DRIVER
- memmove(dst, src, size);
-#else
- // NOTE(kv): Just have one function?
  gb_memmove(dst, src, size);
-#endif
 }
-
-inline void
+myinline void
 block_copy_non_overlap(void *dst, const void *src, u64 size)
 {
-#if AD_IS_DRIVER
- memcpy(dst, src, size);
-#else
  gb_memcopy(dst, src, size);
-#endif
 }
 
 ////////////////////////////////
@@ -978,16 +936,16 @@ block_copy_non_overlap(void *dst, const void *src, u64 size)
 
 ////////////////////////////////
 
-inline void
+myinline void
 block_zero(String8 data) {
  block_zero(data.str, data.size);
 }
-function void
+myinline void
 block_fill_ones(String8 data){
  block_fill_ones(data.str, data.size);
 }
 
-myinline i32
+function i32
 block_compare(void *s1, void *s2, u64 size)
 {
 	// TODO(bill): Heavily optimize
@@ -1006,11 +964,10 @@ block_compare(void *s1, void *s2, u64 size)
 	}
 	return 0;
 }
-
 myinline b32
 block_match(void *a, void *b, u64 size)
 {
-    return (block_compare(a,b,size) == 0);
+ return (block_compare(a,b,size) == 0);
 }
 
 inline void
@@ -1128,10 +1085,9 @@ string_concat(String_u8 *dst, String src)
 #define strexpand string_expand
 //-
 
-#if AD_HAS_INTRINSIC
 #if COMPILER_MSVC
-#define CompletePreviousReadsBeforeFutureReads _ReadBarrier()
-#define CompletePreviousWritesBeforeFutureWrites _WriteBarrier()
+#define CompletePastReadsBeforeFutureReads   _ReadBarrier()
+#define CompletePastWritesBeforeFutureWrites _WriteBarrier()
 //NOTE(kv) These functions by default will return the original value
 //  Because what else do they return?
 myinline u32
@@ -1161,8 +1117,8 @@ atomic_exchange_u64(u64 volatile *Value, u64 New)
 #endif
 //
 #if COMPILER_LLVM
-#define CompletePreviousReadsBeforeFutureReads asm volatile("" ::: "memory")
-#define CompletePreviousWritesBeforeFutureWrites asm volatile("" ::: "memory")
+#define CompletePastReadsBeforeFutureReads   asm volatile("" ::: "memory")
+#define CompletePastWritesBeforeFutureWrites asm volatile("" ::: "memory")
 myinline u32
 atomic_add_u32(u32 volatile *Value, u32 Addend)
 {
@@ -1184,12 +1140,26 @@ atomic_compare_exchange_u32(u32 volatile *Value, u32 New, u32 Expected)
 myinline u64
 atomic_exchange_u64(u64 volatile *Value, u64 New)
 {
- u64 Result = __sync_lock_test_and_set(Value, New);
- return(Result);
+    u64 Result = __sync_lock_test_and_set(Value, New);
+    return(Result);
 }
 #endif
+//
+myinline i32
+atomic_compare_exchange_i32(i32 volatile *Value, i32 New, i32 Expected)
+{//NOTE(kv) Add this variant because casting all the parameters is annoying.
+ u32 result = atomic_compare_exchange_u32((u32 volatile *)Value, (u32)New, (u32)Expected);
+ return (i32)result;
+}
+myinline i32
+atomic_add_i32(i32 volatile *Value, i32 Addend)
+{
+ u32 result = atomic_add_u32((u32 volatile *)Value, u32(Addend));
+ return i32(result);
+}
 
-struct Ticket_Mutex{
+struct Ticket_Mutex
+{
  volatile u64 serving;
  volatile u64 next_ticket;
 };
@@ -1202,10 +1172,9 @@ acquire_ticket_mutex(Ticket_Mutex *mutex)
 myinline void
 release_ticket_mutex(Ticket_Mutex *mutex)
 {
- CompletePreviousWritesBeforeFutureWrites;
+ CompletePastWritesBeforeFutureWrites;
  mutex->serving += 1;
 }
-#endif//AD_HAS_INTRINSIC
 
 //-
 #if defined(KV_H_NO_GLOBAL_ARENA_CHUNK_STORE)
@@ -1216,7 +1185,7 @@ release_ticket_mutex(Ticket_Mutex *mutex)
 #endif
 
 #if !KV_H_IS_METAPROGRAM  //NOTE(kv) You can't generate the code if you're the generator.
-#  include "generated/kv_memory.gen.h"
+#  include "kv_memory.gen.h"
 #endif
 
 //NOTE(kv) We'll just include the debug files,
@@ -1305,7 +1274,7 @@ base_allocate(Base_Allocator *allocator, u64 size,
   {
    result = kv_malloc(size);
   }break;
-  invalid_default_case;
+  InvalidDefaultCase;
  }
  
  return result;
@@ -1329,7 +1298,7 @@ base_free(Base_Allocator *allocator, void *ptr, umm optional_size=0)
    case Allocator_Malloc:{
     free(ptr);
    }break;
-   invalid_default_case;
+   InvalidDefaultCase;
   } 
  }
 }
@@ -1348,57 +1317,74 @@ line_unique_var++, (SHUTDOWN))
 
 ////////////////////////////////
 
+//~
+myinline b32
+is_file_slash(char c)
+{
+ return((c == '/') or (c == '\\'));
+}
+myinline b32
+is_file_slash(u8 c)
+{
+ return((c == '/') or (c == '\\'));
+}
+
 #if !AD_IS_DRIVER
 #    include "kv_extra.h"
 #endif
 
 //-
 
-#define scale_in_block(variable, multiplier) \
-variable *= multiplier; \
-defer(variable /= multiplier)
+#define SetInBlock(var, value) \
+auto line_unique_var = var; var = (value); defer(var = line_unique_var;)
 
-// TODO: This should be specialized to a 128 value or something
-#define set_in_block(variable, value) \
-auto PP_Concat(old_value, __LINE__) = variable; variable = value; defer(variable = PP_Concat(old_value,__LINE__);)
-#define add_in_block(variable, value) \
-set_in_block(variable, variable+value)
+#define scale_in_block(var, mult) \
+SetInBlock(var, var*mult) \
 
+#define add_in_block(var, addend) \
+SetInBlock(var, var+addend)
 
 //~NOTE: Array
 template<class T>
 struct Static_Array2
 {
- u64 count;
  T  *items;
+ i32 count;
+ 
+ myinline T &operator[](i32 index){ return items[index]; }
 };
 
 #define sarray(T) Static_Array2<T>
 
-// NOTE(kv): Can be zero-inited -> GOOD!
-//NOTE(kv) Because I hate the terrible template syntax
+template<class T>
+function void
+init(sarray(T) &array, Arena *arena, i32 count)
+{
+ array.count = count;
+ array.items = push_array(arena, T, count);
+}
+
+// NOTE(kv) Because I hate the terrible template syntax
 #define darray(T) Dynamic_Array<T>
+
+// NOTE(kv): Dynamic_Array can be zero-inited -> GOOD!
 //TODO(kv) Please don't templatize so much code!
 template<class T>
 struct Dynamic_Array : Static_Array2<T>
 {
- /*u64 count;
- T *items;*/
- u32 cap;
+ i32 cap;
+ // NOTE(kv) The fixed_sized capability is needed to make crappy stacks.
+ //  I've thought about moving it, but whatever man...
+ //  this data structure is supposed to be crappy anyway.
  b32 fixed_size;
  Arena *arena;
  //-
- myinline T& get(u32 index){
+ myinline T& get(i32 index) {
   kv_assert(index < this->count);
   return this->items[index];
  }
- myinline T& operator[](u32 index){ return get(index); }
- myinline T &last() {
-  kv_assert(this->count > 0);
-  return this->items[this->count-1];
- }
  
- void set_cap_inner(u32 new_cap, DEBUG_File_Line file_line)
+ void set_cap_inner(i32 new_cap, DEBUG_File_Line file_line)
  {// NOTE(kv): Can only grow for now
   if(new_cap > cap)
   {
@@ -1413,40 +1399,40 @@ struct Dynamic_Array : Static_Array2<T>
    cap = new_cap;
   }
  }
- void set_cap_min(u32 cap_min, DEBUG_file_line_defparams)
+ void set_cap_min(i32 cap_min, DEBUG_file_line_defparams)
  {// NOTE(kv): Growth logic:
   // 1. Natural growth: doubling
   // 2. User-dictated growth: just set the cap to the dictated value
   if(cap_min > cap)
   {
-   u32 new_cap = cap_min;
+   i32 new_cap = cap_min;
    if(cap != 0){
     new_cap = macro_min(cap_min, 2*cap);
    }
    set_cap_inner(new_cap, file_line);
   }
  }
- void set_count(u32 new_count, DEBUG_file_line_defparams){
+ void set_count(i32 new_count, DEBUG_file_line_defparams)
+ {
   set_cap_min(new_count, file_line);
   this->count = new_count;
   kv_assert(this->count <= cap);
  }
  
- inline void pop(){
+ inline void pop()
+ {
   kv_assert(this->count > 0);
   set_count(this->count - 1);
  }
- inline T *push(DEBUG_file_line_defparams){
+ inline T *push_nozero(DEBUG_file_line_defparams)
+ {
   set_count(this->count+1, file_line);
-  return this->items + (this->count-1);
+  T *result = this->items + (this->count-1);
+  return result;
  }
- inline T *push_value(const T& value, DEBUG_file_line_defparams){
-  T *item = push(file_line);
-  *item = value;
-  return item;
- }
- inline T *push_zero(DEBUG_file_line_defparams){
-  T *result = push(file_line);
+ inline T *push(DEBUG_file_line_defparams)
+ {
+  T *result = this->push_nozero(file_line);
   *result = {};
   return result;
  }
@@ -1459,9 +1445,27 @@ struct Dynamic_Array : Static_Array2<T>
   return result;
  }
 };
+
 template<class T>
-inline void
-init_static(darray(T) &array, Arena *arena, u64 cap,
+myinline T &
+get_last(darray(T) &array)
+{
+ kv_assert(array.count > 0);
+ return array[array.count-1];
+}
+
+template<class T>
+function void
+set_count(darray(T) *array, i32 new_count, DEBUG_file_line_defparams)
+{
+ array->set_count(new_count, file_line);
+}
+
+// NOTE(kv) Usually I don't like passing by reference,
+//  but maybe we can make exceptions for init functions?
+template<class T>
+function void
+init_static(darray(T) &array, Arena *arena, i32 cap,
             Push_Params params=default_push_params)
 {
  array = {};
@@ -1470,8 +1474,8 @@ init_static(darray(T) &array, Arena *arena, u64 cap,
  array.items      = push_array(arena, T, cap, params);
 }
 template<class T>
-inline void
-init_static(darray(T) &array, T *backing_buffer, u64 cap)
+function void
+init_static(darray(T) &array, T *backing_buffer, i32 cap)
 {
  array = {};
  array.cap        = cap;
@@ -1479,37 +1483,63 @@ init_static(darray(T) &array, T *backing_buffer, u64 cap)
  array.items      = backing_buffer;
 }
 template<class T>
-inline void
-init_dynamic(darray(T) &array, Arena *arena, u64 initial_size=0){
+function void
+init_dynamic(darray(T) &array, Arena *arena, i32 initial_size=0)
+{
  array = {};
  array.arena = arena;
  array.set_cap_min(initial_size);
 }
+
 template<class T>
-function void
-push(darray(T) &array, T const&item)
+myinline T *
+push(darray(T) *array, DEBUG_file_line_defparams)
 {
- array.push_value(item);
+ return array->push(file_line);
+}
+template<class T>
+function T *
+push(darray(T) *array, T const&value, DEBUG_file_line_defparams)
+{//note(kv) push value
+ T *item = push(array, file_line);
+ *item = value;
+ return item;
 }
 template<class T>
 function void
-push(darray(T) *array, T const&item)
+pop(darray(T) *array)
 {
- array->push_value(item);
+ kv_assert(array->count > 0);
+ array->count--;
 }
 template<class T>
 function void
-push_first(darray(T) &array, T const&new_item, DEBUG_file_line_defparams)
+insert_at(darray(T) *array, T const&new_item, i32 insert_index,
+          DEBUG_file_line_defparams)
 {
- u32 new_count = array.count+1;
- array.set_count(new_count, file_line);
- for(u32 index = new_count-1;
-     index >= 1;
+ i32 new_count = array->count+1;
+ set_count(array, new_count, file_line);
+ kv_assert(insert_index < new_count);
+ for(i32 index = new_count-1;
+     index >= insert_index+1;
      index--)
  {
-  array.items[index] = array.items[index-1];
+  array->items[index] = array->items[index-1];
  }
- array.items[0] = new_item;
+ array->items[insert_index] = new_item;
+}
+template<class T>
+function void
+push_first(darray(T) *array, T const&new_item, DEBUG_file_line_defparams)
+{
+ insert_at(array, new_item, 0, file_line);
+}
+
+//NOTE(kv) stroustrup!
+function void
+push(darray(String) *array, Stringz string)
+{
+ push(array, String(string));
 }
 //~
 function Base_Allocator *
@@ -1517,32 +1547,35 @@ push_arena_base_allocator(Arena *arena);
 
 template<class T>
 function T *
-push_unique(darray(T) &array, T const&item)
+push_unique(darray(T) *array, T const&item)
 {
  T *result = 0;
  b32 ok = true;
- for_u32(index,0,array.count){
-  if(array.items[index] == item){
+ for_i32(index,0,array->count){
+  if(array->items[index] == item){
    ok = false;
    break;
   }
  }
  if(ok){
-  result = array.push_value(item);
+  result = push(array, item);
  }
  return result;
 }
 //~
-struct Scratch_Block{
+// TODO(kv) Rename this to "Scratch_Auto"
+struct Scratch_Block
+{
  Arena arena;
  //-
  //NOTE(kv) Deleting implicit copy constructor: This is why C++ is garbage!
  Scratch_Block(const Scratch_Block&) = delete;
  
  Scratch_Block();
+ //NOTE(kv) Reserved for dual arena scheme.
+ Scratch_Block(Arena *conflict);
  
  //@deprecated
- Scratch_Block(Arena *a1);
  Scratch_Block(struct App *app);
  Scratch_Block(struct App *app, Arena *a1);  //@deprecated
  
@@ -1551,16 +1584,21 @@ struct Scratch_Block{
  myinline operator Arena*(){ return &this->arena; }
 };
 
-//NOTE(kv) In case I wanna try out another scheme.
-typedef Scratch_Block Scratch_Block_Fast;
-//-
+// NOTE(kv) Reserved for when I add Ryan's dual arena scheme.
+// The plan is to have a double-buffer situation.
+typedef Scratch_Block Scratch_Scope;
+
+//NOTE(kv) Hoist the constructor out so that I can share the code
+//  between different constructors like, you know, a regular function.
 myinline void
 init_scratch_block(Scratch_Block *scratch){
  scratch->arena = make_arena();
 }
-//NOTE(kv) Hoist the constructor out so that I can share the code
-//  between different constructors like, you know, a regular function.
+
 myinline Scratch_Block::Scratch_Block(){
+ init_scratch_block(this);
+}
+myinline Scratch_Block::Scratch_Block(Arena *conflict){
  init_scratch_block(this);
 }
 myinline Scratch_Block::~Scratch_Block() {
@@ -1611,7 +1649,8 @@ to_stringz(Arena *a, String s){
 }
 //
 myinline char *
-to_cstring(Arena *arena, String8 string){
+to_cstring(Arena *arena, String8 string)
+{
  String8 result = push_stringz(arena, string);
  return (char *)result.str;
 }
@@ -1653,12 +1692,23 @@ push_stringf(Arena *arena, char *format, ...)
 //
 //TODO(kv) Hackjob to concat strings together!
 myinline Stringz
+strcat(Arena *arena, String a, String b)
+{
+ Stringz result = {};
+ result.str = push_size(arena, a.count + b.count + 1);
+ result.count = a.count + b.count;
+ block_copy(result.str,           a.str, a.count);
+ block_copy(result.str + a.count, b.str, b.count);
+ *(result.str + result.count) = 0;
+ return result;
+}
+myinline Stringz
 strcat(Arena *arena, char *a, String b){
- return push_stringf(arena, "%s%.*s", a, strexpand(b));
+ return strcat(arena, SCu8(a), b);
 }
 myinline Stringz
 strcat(Arena *arena, String a, char *b){
- return push_stringf(arena, "%.*s%s", strexpand(a), b);
+ return strcat(arena, a, SCu8(b));
 }
 
 myinline Stringz
@@ -1671,19 +1721,33 @@ to_string(Arena *arena, u32 value){
 }
 
 //~
-function Stringz
-pjoin(Arena *arena, String a, String b){
- return push_stringf(arena, "%.*s%c%.*s", strexpand(a), OS_SLASH, strexpand(b));
-}
-function Stringz
-pjoin(Arena *arena, String a, String b, String c){
- return push_stringf(arena, "%.*s%c%.*s%c%.*s",
-                     strexpand(a), OS_SLASH,
-                     strexpand(b), OS_SLASH,
-                     strexpand(c));
-}
-//~
 #if AD_HAS_OS_CODE
+function Stringz
+pjoin(Arena *arena, String a, String b)
+{
+ char slash = OS_SLASH;
+ String joiner = {.str=(u8 *)&slash, .count=1};
+ if(is_file_slash(a[a.count-1]))
+ {
+  joiner = empty_string;
+ }
+ Stringz result = push_stringf(arena, "%S%S%S", a, joiner, b);
+ return result;
+}
+myinline Stringz
+pjoin(Arena *arena, String a, char *b)
+{// NOTE(kv) Sorry, due to popular request from the metaprogram, we want a cstring variant.
+ return pjoin(arena, a, SCu8(b));
+}
+myinline Stringz
+pjoin(Arena *arena, String a, String b, String c)
+{
+ Scratch_Scope tmp(arena);
+ Stringz result = pjoin(tmp, a, b);
+ result = pjoin(arena, result, c);
+ return result;
+}
+
 myinline b32
 file_exists(Stringz path)
 {
@@ -1708,8 +1772,9 @@ move_file(Stringz from, Stringz to){
  b32 result = gb_file_move(to_cstring(from), to_cstring(to));
  return result;
 }
-inline b32 
-copy_file(Stringz from, Stringz to, b32 fail_if_exists){
+myinline b32 
+copy_file(Stringz from, Stringz to, b32 fail_if_exists)
+{
  return gb_file_copy(to_cstring(from), to_cstring(to), fail_if_exists);
 }
 #if OS_WINDOWS
@@ -1732,7 +1797,7 @@ mkdir_p(String path){
 }
 #endif
 
-inline FILE *
+myinline FILE *
 open_file(Stringz name, char *mode){
  return fopen(to_cstring(name), mode);
 }
@@ -1761,31 +1826,56 @@ close_file(FILE *file)
 
 #if OS_WINDOWS
 function b32
-path_is_directory(Stringz path){
+path_is_directory(Stringz path)
+{
  DWORD attr = GetFileAttributes(to_cstring(path));
  return (attr & FILE_ATTRIBUTE_DIRECTORY);
 }
 #endif
 
 function Stringz
-read_entire_file_handle(Arena *arena, FILE *file){
- Stringz result = {};
- if(file){
-  fseek(file, 0, SEEK_END);
-  u64 size = ftell(file);
+read_file(Arena *arena, FILE *file, usize size)
+{
+ Stringz result = empty_string;
+ if(file)
+ {
   char *mem = push_array(arena, char, size+1);
-  fseek(file, 0, SEEK_SET);
-  fread(mem, 1, (size_t)size, file);
-  result = {(u8*)mem,size};
-  mem[size] = 0;// NOTE: null-termination
+  usize read_size = fread(mem, 1, (size_t)size, file);
+  if(read_size != size)
+  {
+   // TODO(kv) Error handling, hello?
+  }
+  else
+  {
+   mem[size] = 0;  // NOTE: null-termination
+   result = {(u8*)mem, size};
+  }
  }
  return(result);
 }
 function Stringz
-read_entire_file(Arena *arena, Stringz filename){
- Stringz result = {};
+read_file(Arena *arena, Stringz filename, usize size)
+{
  FILE *file = open_file(filename, "rb");
- result = read_entire_file_handle(arena, file);
+ Stringz result = read_file(arena, file, size);
+ close_file(file);
+ return result;
+}
+function Stringz
+read_entire_file(Arena *arena, FILE *file)
+{
+ fseek(file, 0, SEEK_END);
+ u64 size = ftell(file);
+ fseek(file, 0, SEEK_SET);
+ 
+ Stringz result = read_file(arena, file, size);
+ return result;
+}
+function Stringz
+read_entire_file(Arena *arena, Stringz filename)
+{
+ FILE *file = open_file(filename, "rb");
+ Stringz result = read_entire_file(arena, file);
  close_file(file);
  return(result);
 }
@@ -1793,6 +1883,7 @@ read_entire_file(Arena *arena, Stringz filename){
 
 //~ Printer
 typedef i32 Print_Function(void *userdata, char *format, va_list args);
+
 enum Printer_Type{
  Printer_Type_None,
  Printer_Type_Buffer,
@@ -1864,17 +1955,14 @@ make_printer_file(FILE *file){
 //-
 function Stringz
 printer_get_string(Printer &p){
+ Stringz result = {};
  if(p.type==Printer_Type_Buffer){
-  Stringz string = {
-   .str  = p.base,
-   .size = (u64)p.byte_pos,
-  };
+  result = { p.base, (u64)p.byte_pos };
   p.base[p.byte_pos++] = 0;  //NOTE nil-termination
-  return string;
  }else{
   invalid_code_path;
-  return {};
  }
+ return result;
 }
 myinline void
 printer_delete(Printer &p){
@@ -1883,16 +1971,16 @@ printer_delete(Printer &p){
  p.byte_pos--;
 }
 //-
-#define print_parens_block(printer) \
+#define PrintParens(printer) \
 defer_block(print(printer, '('), print(printer, ')'))
 
-#define print_brace_block(printer) \
+#define PrintBraces(printer) \
 defer_block(print(printer, '{'), print(printer, '}'))
 
 function usize
 my_vfprintf(FILE *file, char *format, va_list args)
 {
- Scratch_Block_Fast scratch;
+ Scratch_Scope scratch;
  String string = push_stringfv(scratch, format, args);
  
  int result2 = fputs((char *)string.str, file);
@@ -1929,7 +2017,7 @@ print_format2v(Printer &p, char *format, va_list args)
   case Printer_Type_Generic:{
    written = p.print_function(p.userdata, format, args);
   }break;
-  invalid_default_case;
+  InvalidDefaultCase;
  }
  p.byte_pos += written;
 }
@@ -2164,7 +2252,7 @@ union v2 {
  v1 e[2];
  v1 v[2];
  
- v1 operator[](i32);
+ myinline v1 &operator[](i32 index) {return v[index];}
 };
 union v3{
  struct { v1 x, y, z; };
@@ -2256,19 +2344,16 @@ union rect2 {
  v4 v4_value;
 };
 
-
 typedef rect2i Rect_i32;
 typedef rect2 Rect_f32;
 
-union Range_i32 {
- struct{ i32 min; i32 max; };
- struct{ i32 start; i32 end; };
- struct{ i32 first; i32 opl; };
+struct Range_i32 {
+ union{ i32 min,start,first,begin; };
+ union{ i32 max,end,opl; };
 };
-union Range_i64 {
- struct{ i64 min; i64 max; };
- struct{ i64 start; i64 end; };
- struct{ i64 first; i64 opl; };
+struct Range_i64 {
+ union{ i64 min,start,first,begin; };
+ union{ i64 max,end,opl; };
 };
 union Range_u64 {
  struct{ u64 min; u64 max; };
@@ -2278,10 +2363,26 @@ union Range_u64 {
 union Range_f32 {
  struct{ f32 min; f32 max; };
  struct{ f32 start; f32 end; };
- struct{ f32 first; f32 opl; };
+ struct{ f32 first; };
 };
 #define RangeExpand(range) range.min, range.max
 
+function b32
+range_overlap(Range_i32 a, Range_i32 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_i64 a, Range_i64 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_u64 a, Range_u64 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_f32 a, Range_f32 b){
+ return(a.min < b.max && b.min < a.max);
+}
 
 #if 0
 #  define meta_table

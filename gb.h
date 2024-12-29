@@ -342,7 +342,7 @@ typedef b8 bool;
 #endif
 
 #ifndef offsetof
-#define offsetof(Type, element) ((isize)&(((Type *)0)->element))
+#define offsetof(Type, member) ((isize)&(((Type *)0)->member))
 #endif
 
 #if defined(__cplusplus)
@@ -399,23 +399,29 @@ extern "C++" {
 // NOTE: C++11 (and above) only!
 //
 #if !defined(GB_NO_DEFER) && defined(__cplusplus) && ((defined(_MSC_VER) && _MSC_VER >= 1400) || (__cplusplus >= 201103L))
-extern "C++" {
+extern "C++"
+{
 	// NOTE(bill): Stupid fucking templates
 	template <typename T> struct gbRemoveReference       { typedef T Type; };
 	template <typename T> struct gbRemoveReference<T &>  { typedef T Type; };
 	template <typename T> struct gbRemoveReference<T &&> { typedef T Type; };
-
+ 
 	/// NOTE(bill): "Move" semantics - invented because the C++ committee are idiots (as a collective not as indiviuals (well a least some aren't))
 	template <typename T> inline T &&gb_forward(typename gbRemoveReference<T>::Type &t)  { return static_cast<T &&>(t); }
 	template <typename T> inline T &&gb_forward(typename gbRemoveReference<T>::Type &&t) { return static_cast<T &&>(t); }
 	template <typename T> inline T &&gb_move   (T &&t)                                   { return static_cast<typename gbRemoveReference<T>::Type &&>(t); }
 	template <typename F>
-	struct gbprivDefer {
+  struct gbprivDefer
+ {
 		F f;
 		gbprivDefer(F &&f) : f(gb_forward<F>(f)) {}
 		~gbprivDefer() { f(); }
 	};
-	template <typename F> gbprivDefer<F> gb__defer_func(F &&f) { return gbprivDefer<F>(gb_forward<F>(f)); }
+	template <typename F>
+  gbprivDefer<F> gb__defer_func(F &&f)
+ {
+  return gbprivDefer<F>(gb_forward<F>(f));
+ }
 
 	#define GB_DEFER_1(x, y) x##y
 	#define GB_DEFER_2(x, y) GB_DEFER_1(x, y)
@@ -595,7 +601,7 @@ GB_DEF void const *gb_memrchr   (void const *data, u8 byte_value, isize size);
 GB_DEF u64  gb_rdtsc       (void);
 GB_DEF f64  gb_time_now    (void); // NOTE(bill): This is only for relative time e.g. game loops
 GB_DEF u64  gb_utc_time_now(void); // NOTE(bill): Number of microseconds since 1601-01-01 UTC
-GB_DEF void gb_sleep_ms    (u32 ms);
+GB_DEF void sleep_ms    (u32 ms);
 
 
 // Atomics
@@ -938,7 +944,7 @@ typedef enum gbFileModeFlag {
 	gbFileMode_Modes = gbFileMode_Read | gbFileMode_Write | gbFileMode_Append | gbFileMode_Rw,
 } gbFileModeFlag;
 
-// NOTE(bill): Only used functionly and for the file operations
+// NOTE(bill): Only used internally and for the file operations
 typedef enum gbSeekWhenceType {
 	gbSeekWhence_Begin   = 0,
 	gbSeekWhence_Current = 1,
@@ -1017,8 +1023,8 @@ GB_DEF isize gb_printf_va     (char const *fmt, va_list va);
 GB_DEF isize gb_printf_err    (char const *fmt, ...) GB_PRINTF_ARGS(1);
 GB_DEF isize gb_printf_err_va (char const *fmt, va_list va);
 
-GB_DEF char *gb_bprintf    (char const *fmt, ...) GB_PRINTF_ARGS(1); // NOTE(bill): A locally persisting buffer is used functionly
-GB_DEF char *gb_bprintf_va (char const *fmt, va_list va);            // NOTE(bill): A locally persisting buffer is used functionly
+GB_DEF char *gb_bprintf    (char const *fmt, ...) GB_PRINTF_ARGS(1); // NOTE(bill): A locally persisting buffer is used internally
+GB_DEF char *gb_bprintf_va (char const *fmt, va_list va);            // NOTE(bill): A locally persisting buffer is used internally
 GB_DEF isize gb_snprintf   (char *str, isize n, char const *fmt, ...) GB_PRINTF_ARGS(3);
 
 ////////////////////////////////////////////////////////////////
@@ -1394,7 +1400,7 @@ inline void  gb_free_all    (gbAllocator a)                                     
 inline void *gb_resize_align(gbAllocator a, void *ptr, isize old_size, isize new_size, isize alignment) { return a.proc(a.data, gbAllocation_Resize, new_size, alignment, ptr, old_size, GB_DEFAULT_ALLOCATOR_FLAGS); }
 //-
 
-#if !AD_IS_DRIVER
+#if AD_HAS_OS_CODE
 ////////////////////////////////////////////////////////////////
 //
 // Time
@@ -1413,7 +1419,9 @@ inline u64 gb_rdtsc(void) {
 
 #if defined(GB_SYSTEM_WINDOWS)
 
-inline f64 gb_time_now(void) {
+function f64
+gb_time_now(void)
+{//note(kv) return seconds
  gb_local_persist LARGE_INTEGER win32_perf_count_freq = {};
  f64 result;
  LARGE_INTEGER counter;
@@ -1439,7 +1447,7 @@ inline u64 gb_utc_time_now(void) {
  return li.QuadPart/10;
 }
 
-inline void gb_sleep_ms(u32 ms) { Sleep(ms); }
+inline void sleep_ms(u32 ms) { Sleep(ms); }
 
 #else
 
@@ -1489,7 +1497,7 @@ inline u64 gb_utc_time_now(void) {
  return cast(u64)t.tv_sec * 1000000ull + t.tv_nsec/1000 + 11644473600000000ull;
 }
 
-inline void gb_sleep_ms(u32 ms) {
+inline void sleep_ms(u32 ms) {
  struct timespec req = {cast(time_t)ms/1000, cast(long)((ms%1000)*1000000)};
  struct timespec rem = {0, 0};
  nanosleep(&req, &rem);
@@ -2197,7 +2205,8 @@ gb_file_last_write_time(char const *filepath) {
 
 
 function b32
-gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
+gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists)
+{
 	wchar_t *w_old = NULL;
 	wchar_t *w_new = NULL;
 	gbAllocator a = gb_heap_allocator();
@@ -2211,11 +2220,6 @@ gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_i
 	if (w_new != NULL) {
 		result = CopyFileW(w_old, w_new, fail_if_exists);
 	}
- if (!result)
- {
-  DWORD last_error = GetLastError();
-  (void)last_error;
- }
 	gb_free(a, w_new);
 	gb_free(a, w_old);
 	return result;
@@ -2257,9 +2261,8 @@ gb_file_remove(char const *filename){
 	gb_free(a, w_filename);
 	return result;
 }
-
-#else//-Windows
-
+#else
+//-non Windows
 function gbFileTime
 gb_file_last_write_time(char const *filepath) {
 	time_t result = 0;
@@ -2274,14 +2277,15 @@ gb_file_last_write_time(char const *filepath) {
 
 
 function b32
-gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists) {
+gb_file_copy(char const *existing_filename, char const *new_filename, b32 fail_if_exists)
+{
 #if defined(GB_SYSTEM_OSX)
 	return copyfile(existing_filename, new_filename, NULL, COPYFILE_DATA) == 0;
 #else
 	isize size;
 	int existing_fd = open(existing_filename, O_RDONLY, 0);
 	int new_fd      = open(new_filename, O_WRONLY|O_CREAT, 0666);
-
+ 
 	struct stat stat_existing;
 	fstat(existing_fd, &stat_existing);
 
@@ -2342,8 +2346,10 @@ inline b32 gb_path_is_root(char const *path) {
 #if defined(GB_SYSTEM_WINDOWS)
 
 myinline DLL_Handle
-gb_dll_load(char const *filepath) {
-	return cast(DLL_Handle)LoadLibraryA(filepath);
+gb_dll_load(char const *filepath)
+{
+ DLL_Handle result = LoadLibraryA(filepath);
+	return result;
 }
 myinline b32       gb_dll_unload      (DLL_Handle dll)                        { return FreeLibrary(cast(HMODULE)dll); }
 myinline gbDllProc gb_dll_proc_address(DLL_Handle dll, char const *proc_name) { return cast(gbDllProc)GetProcAddress(cast(HMODULE)dll, proc_name); }

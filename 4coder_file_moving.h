@@ -620,7 +620,7 @@ fm__prepare(Arena *arena, i1 item_size, void *i1, va_list list){
         string_list_push(arena, &out_list, SCchar((char*)ln, size));
         ln = va_arg(list, void*);
     }
-    void *terminator = push_array_zero(arena, char, item_size);
+    void *terminator = push_array0(arena, char, item_size);
     string_list_push(arena, &out_list, SCchar((char*)terminator, item_size));
     String_Const_char result = string_list_flatten(arena, out_list);
     return(result.str);

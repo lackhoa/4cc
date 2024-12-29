@@ -76,7 +76,7 @@ lister_set_map(Lister *lister, Mapping *mapping, Command_Map_ID map){
 function Lister_Prev_Current
 begin_lister(App *app, Arena *arena){
     Lister_Prev_Current result = {};
-    Lister *lister = push_array_zero(arena, Lister, 1);
+    Lister *lister = push_array0(arena, Lister, 1);
     lister->arena = arena;
     lister->query = Su8(lister->query_space, 0, sizeof(lister->query_space));
     lister->text_field = Su8(lister->text_field_space, 0, sizeof(lister->text_field_space));
@@ -404,7 +404,7 @@ lister_get_filtered(Arena *arena, Lister *lister){
   auto compare = [](void *a0, void *b0)->i32{
    Lister_Node *a = *(Lister_Node **)a0;
    Lister_Node *b = *(Lister_Node **)b0;
-   return a->string.count - b->string.count;
+   return (i32)a->string.count - (i32)b->string.count;
   };
   gb_sort_array(filtered.substring_matches.node_ptrs,
                 filtered.substring_matches.count,

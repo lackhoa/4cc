@@ -34,7 +34,8 @@ file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file)
  Layout *layout = &models->layout;
  for (Panel *panel = layout_get_first_open_panel(layout);
       panel != 0;
-      panel = layout_get_next_open_panel(layout, panel)){
+      panel = layout_get_next_open_panel(layout, panel))
+ {
   View *view = panel->view;
   if (view->file != file){
    continue;
@@ -45,6 +46,7 @@ file_cursor_to_end(Thread_Context *tctx, Models *models, Editing_File *file)
 }
 
 ////////////////////////////////
+
 
 function b32
 access_test(Access_Flag object_flags, Access_Flag access_flags){
@@ -162,18 +164,21 @@ child_process_get_attached_buffer(App *app, Child_Process_ID child_process_id){
 
 api(custom) function Process_State
 child_process_get_state(App *app, Child_Process_ID child_process_id){
-    Models *models = (Models*)app->cmd_context;
-    return(child_process_get_state(&models->child_processes, child_process_id));
+ Models *models = (Models*)app->cmd_context;
+ return(child_process_get_state(&models->child_processes, child_process_id));
 }
 
 api(custom) function b32
-enqueue_virtual_event(App *app, Input_Event *event){
-    Models *models = (Models*)app->cmd_context;
-    b32 result = false;
-    if (InputEventKind_None < event->kind && event->kind < InputEventKind_COUNT){
-        models_push_virtual_event(models, event);
-    }
-    return(result);
+enqueue_virtual_event(App *app, Input_Event *event)
+{
+ Models *models = (Models*)app->cmd_context;
+ b32 result = false;
+ if (InputEventKind_None < event->kind &&
+     event->kind < InputEventKind_COUNT)
+ {
+  models_push_virtual_event(models, event);
+ }
+ return(result);
 }
 
 api(custom) function i32
@@ -205,6 +210,7 @@ get_line_range_from_pos(App *app, Buffer_ID buffer, i64 pos)
 {
 	return get_line_pos_range(app, buffer, get_line_number_from_pos(app, buffer, pos));
 }
+
 api(custom) function Buffer_ID
 get_buffer_by_name(App *app, String8 name, Access_Flag access)
 {
@@ -1880,94 +1886,98 @@ get_lifetime_object_from_workspace(Dynamic_Workspace *workspace){
         }break;
         default:
         {
-            InvalidPath;
-        }break;
-    }
-    return(result);
+   InvalidPath;
+  }break;
+ }
+ return(result);
 }
 
 api(custom) function Managed_Scope
 get_managed_scope_with_multiple_dependencies(App *app, Managed_Scope *scopes, i32 count)
 {
-    Models *models = (Models*)app->cmd_context;
-    Lifetime_Allocator *lifetime_allocator = &models->lifetime_allocator;
-    
-    Scratch_Block scratch(app);
-    
-    // TODO(allen): revisit this
-    struct Node_Ptr{
-        Node_Ptr *next;
-        Lifetime_Object *object_ptr;
-    };
-    
-    Node_Ptr *first = 0;
-    Node_Ptr *last = 0;
-    i32 member_count = 0;
-    
-    b32 filled_array = true;
-    for (i32 i = 0; i < count; i += 1){
-        Dynamic_Workspace *workspace = get_dynamic_workspace(models, scopes[i]);
-        if (workspace == 0){
-            filled_array = false;
-            break;
-        }
-        
-        switch (workspace->user_type){
-            case DynamicWorkspace_Global:
-            {
-                // NOTE(allen): (global_scope INTERSECT X) == X for all X, therefore we emit nothing when a global group is in the key list.
-            }break;
-            
-            case DynamicWorkspace_Unassociated:
-            case DynamicWorkspace_Buffer:
-            case DynamicWorkspace_View:
-            {
-                Lifetime_Object *object = get_lifetime_object_from_workspace(workspace);
-                Assert(object != 0);
-                Node_Ptr *new_node = push_array(scratch, Node_Ptr, 1);
-                sll_queue_push(first, last, new_node);
-                new_node->object_ptr = object;
-                member_count += 1;
-            }break;
-            
-            case DynamicWorkspace_Intersected:
-            {
-                Lifetime_Key *key = (Lifetime_Key*)workspace->user_back_ptr;
-                if (lifetime_key_check(lifetime_allocator, key)){
-                    i32 key_member_count = key->count;
-                    Lifetime_Object **key_member_ptr = key->members;
-                    for (i32 j = 0; j < key_member_count; j += 1, key_member_ptr += 1){
-                        Node_Ptr *new_node = push_array(scratch, Node_Ptr, 1);
-                        sll_queue_push(first, last, new_node);
-                        new_node->object_ptr = *key_member_ptr;
-                        member_count += 1;
-                    }
-                }
-            }break;
-            
-            default:
-            {
-                InvalidPath;
-            }break;
-        }
+ Models *models = (Models*)app->cmd_context;
+ Lifetime_Allocator *lifetime_allocator = &models->lifetime_allocator;
+ 
+ Scratch_Block scratch(app);
+ 
+ // TODO(allen): revisit this
+ struct Node_Ptr{
+  Node_Ptr *next;
+  Lifetime_Object *object_ptr;
+ };
+ 
+ Node_Ptr *first = 0;
+ Node_Ptr *last = 0;
+ i32 member_count = 0;
+ 
+ b32 filled_array = true;
+ for(i32 i = 0; i < count; i += 1)
+ {
+  Dynamic_Workspace *workspace = get_dynamic_workspace(models, scopes[i]);
+  if (workspace == 0){
+   filled_array = false;
+   break;
+  }
+  
+  switch(workspace->user_type)
+  {
+   case DynamicWorkspace_Global:
+   {
+    // NOTE(allen): (global_scope INTERSECT X) == X for all X, therefore we emit nothing when a global group is in the key list.
+   }break;
+   
+   case DynamicWorkspace_Unassociated:
+   case DynamicWorkspace_Buffer:
+   case DynamicWorkspace_View:
+   {
+    Lifetime_Object *object = get_lifetime_object_from_workspace(workspace);
+    Assert(object != 0);
+    Node_Ptr *new_node = push_array(scratch, Node_Ptr, 1);
+    sll_queue_push(first, last, new_node);
+    new_node->object_ptr = object;
+    member_count += 1;
+   }break;
+   
+   case DynamicWorkspace_Intersected:
+   {
+    Lifetime_Key *key = (Lifetime_Key*)workspace->user_back_ptr;
+    if (lifetime_key_check(lifetime_allocator, key)){
+     i32 key_member_count = key->count;
+     Lifetime_Object **key_member_ptr = key->members;
+     for (i32 j = 0; j < key_member_count; j += 1, key_member_ptr += 1){
+      Node_Ptr *new_node = push_array(scratch, Node_Ptr, 1);
+      sll_queue_push(first, last, new_node);
+      new_node->object_ptr = *key_member_ptr;
+      member_count += 1;
+     }
     }
-    
-    Managed_Scope result = 0;
-    if (filled_array){
-        Lifetime_Object **object_ptr_array = push_array(scratch, Lifetime_Object*, member_count);
-        i32 index = 0;
-        for (Node_Ptr *node = first;
-             node != 0;
-             node = node->next){
-            object_ptr_array[index] = node->object_ptr;
-            index += 1;
-        }
-        member_count = lifetime_sort_and_dedup_object_set(object_ptr_array, member_count);
-        Lifetime_Key *key = lifetime_get_or_create_intersection_key(lifetime_allocator, object_ptr_array, member_count);
-        result = (Managed_Scope)key->dynamic_workspace.scope_id;
-    }
-    
-    return(result);
+   }break;
+   
+   default:
+   {
+    InvalidPath;
+   }break;
+  }
+ }
+ 
+ Managed_Scope result = 0;
+ if(filled_array)
+ {
+  Lifetime_Object **object_ptr_array = push_array(scratch, Lifetime_Object*, member_count);
+  i32 index = 0;
+  for(Node_Ptr *node = first;
+      node != 0;
+      node = node->next)
+  {
+   object_ptr_array[index] = node->object_ptr;
+   index += 1;
+  }
+  member_count = lifetime_sort_and_dedup_object_set(object_ptr_array, member_count);
+  Lifetime_Key *key = lifetime_get_or_create_intersection_key(lifetime_allocator, object_ptr_array, member_count);
+  result = (Managed_Scope)key->dynamic_workspace.scope_id;
+ }
+ 
+ return(result);
 }
 
 api(custom) function b32
@@ -2061,58 +2071,64 @@ managed_scope_attachment_erase(App *app, Managed_Scope scope, Managed_ID id){
     b32 result = false;
     if (workspace != 0){
         Dynamic_Variable_Block *var_block = &workspace->var_block;
-        dynamic_variable_erase(var_block, id);
-        result = true;
-    }
-    return(result);
+  dynamic_variable_erase(var_block, id);
+  result = true;
+ }
+ return(result);
 }
 
 api(custom) function Managed_Object
 alloc_managed_memory_in_scope(App *app, Managed_Scope scope, i32 item_size, i32 count)
 {
-    Models *models = (Models*)app->cmd_context;
-    Dynamic_Workspace *workspace = get_dynamic_workspace(models, scope);
-    Managed_Object result = 0;
-    if (workspace != 0){
-        result = managed_object_alloc_managed_memory(workspace, item_size, count, 0);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Dynamic_Workspace *workspace = get_dynamic_workspace(models, scope);
+ Managed_Object result = 0;
+ if (workspace != 0){
+  result = managed_object_alloc_managed_memory(workspace, item_size, count, 0);
+ }
+ return(result);
 }
 
 api(custom) function Managed_Object
-alloc_buffer_markers_on_buffer(App *app, Buffer_ID buffer_id, i32 count, Managed_Scope *optional_extra_scope)
+alloc_buffer_positions_on_buffer(App *app, Buffer_ID buffer_id, i32 count, Managed_Scope *optional_extra_scope)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    Managed_Scope markers_scope = file_get_managed_scope(file);
-    if (optional_extra_scope != 0){
-        Managed_Object scope_array[2];
-        scope_array[0] = markers_scope;
-        scope_array[1] = *optional_extra_scope;
-        markers_scope = get_managed_scope_with_multiple_dependencies(app, scope_array, 2);
-    }
-    Dynamic_Workspace *workspace = get_dynamic_workspace(models, markers_scope);
-    Managed_Object result = 0;
-    if (workspace != 0){
-        result = managed_object_alloc_buffer_markers(workspace, buffer_id, count, 0);
-    }
-    return(result);
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ Managed_Scope file_scope = file_get_managed_scope(file);
+ Managed_Scope positions_scope;
+ if(optional_extra_scope != 0)
+ {
+  Managed_Object scope_array[2];
+  scope_array[0] = file_scope;
+  scope_array[1] = *optional_extra_scope;
+  positions_scope = get_managed_scope_with_multiple_dependencies(app, ArrayAndCount(scope_array));
+ }else{
+  positions_scope = file_scope;
+ }
+ 
+ Dynamic_Workspace *workspace = get_dynamic_workspace(models, positions_scope);
+ Managed_Object result = 0;
+ if(workspace != 0){
+  result = managed_object_alloc_buffer_positions(workspace, buffer_id, count, 0);
+ }
+ return(result);
 }
 
 function Managed_Object_Ptr_And_Workspace
-get_dynamic_object_ptrs(Models *models, Managed_Object object){
-    Managed_Object_Ptr_And_Workspace result = {};
-    u32 hi_id = (object >> 32)&max_u32;
-    Dynamic_Workspace *workspace = get_dynamic_workspace(models, hi_id);
-    if (workspace != 0){
-        u32 lo_id = object&max_u32;
-        Managed_Object_Standard_Header *header = (Managed_Object_Standard_Header*)dynamic_workspace_get_pointer(workspace, lo_id);
-        if (header != 0){
-            result.workspace = workspace;
-            result.header = header;
-        }
-    }
-    return(result);
+get_dynamic_object_ptrs(Models *models, Managed_Object object)
+{
+ Managed_Object_Ptr_And_Workspace result = {};
+ u32 hi_id = (object >> 32)&max_u32;
+ Dynamic_Workspace *workspace = get_dynamic_workspace(models, hi_id);
+ if (workspace != 0){
+  u32 lo_id = object&max_u32;
+  Managed_Object_Standard_Header *header = (Managed_Object_Standard_Header*)dynamic_workspace_get_pointer(workspace, lo_id);
+  if (header != 0){
+   result.workspace = workspace;
+   result.header = header;
+  }
+ }
+ return(result);
 }
 
 api(custom) function u32
@@ -2492,7 +2508,7 @@ clear_all_query_bars(App *app, View_ID view_id){
  }
 }
 
-api(custom ed) function void
+api(custom) function void
 print_message(App *app, String message)
 {
  Models *models = (Models*)app->cmd_context;
@@ -2503,11 +2519,24 @@ print_message(App *app, String message)
   file_cursor_to_end(app->tctx, models, file);
  }
 }
-
-api(custom) function b32
-log_string(App *app, String str){
-    return(log_string(str));
+function void
+printf_message(App *app, char *format, ...)
+{
+ va_list args;
+ va_start(args, format);
+ 
+ Scratch_Block scratch(app);
+ String string = push_stringfv(scratch, format, args);
+ print_message(app, string);
+ 
+ va_end(args);
 }
+
+api(ed) function void
+log_string_core(String str);
+
+api(ed) function void
+log_string_spam(String string);
 
 api(custom) function Face_ID
 get_largest_face_id(App *app)
@@ -2638,10 +2667,11 @@ buffer_history_get_group_sub_record(App *app, Buffer_ID buffer_id, History_Recor
 }
 
 api(custom) function History_Record_Index
-buffer_history_get_current_state_index(App *app, Buffer_ID buffer_id){
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    History_Record_Index result = 0;
+buffer_history_get_current_state_index(App *app, Buffer_ID buffer_id)
+{
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ History_Record_Index result = 0;
  if (api_check_buffer(file) && history_is_activated(&file->state.history)){
   result = file_get_current_record_index(file);
  }
@@ -2946,16 +2976,16 @@ draw_string_oriented(App *app, Face_ID font_id, ARGB_Color color,
 api(custom ed) function f32
 get_string_advance(App *app, Face_ID font_id, String str)
 {
-    Models *models = (Models*)app->cmd_context;
-    Face *face = font_set_face_from_id(&models->font_set, font_id);
-    return(font_string_width(models->target, face, str));
+ Models *models = (Models*)app->cmd_context;
+ Face *face = font_set_face_from_id(&models->font_set, font_id);
+ return(font_string_width(models->target, face, str));
 }
 
-api(custom) function Rect_f32
+api(custom ed) function Rect_f32
 draw_set_clip(App *app, Rect_f32 new_clip)
 {
  Models *models = (Models*)app->cmd_context;
- return( draw_set_clip(models->target, new_clip) );
+ return target_set_clip(models->target, new_clip);
 }
 
 api(custom) function Text_Layout_ID
@@ -3000,7 +3030,7 @@ text_layout_create(App *app, Buffer_ID buffer_id, Rect_f32 rect, Buffer_Point bu
   Arena *arena_ptr = push_struct(&arena, Arena);
   *arena_ptr = arena;
   i64 item_count = range_size(visible_range);
-  ARGB_Color *colors_array = push_array_zero(arena_ptr, ARGB_Color, item_count);
+  ARGB_Color *colors_array = push_array0(arena_ptr, ARGB_Color, item_count);
   result = text_layout_new(&models->text_layouts, arena_ptr, buffer_id, buffer_point,
                            visible_range, visible_line_range, rect, colors_array,
                            layout_func);
@@ -3030,12 +3060,14 @@ text_layout_get_buffer(App *app, Text_Layout_ID text_layout_id){
  return(result);
 }
 
-api(custom) function Range_i64
-text_layout_get_visible_range_(App *app, Text_Layout_ID text_layout_id) {
+api(custom ed) function Range_i64
+text_layout_get_visible_range(App *app, Text_Layout_ID text_layout_id)
+{
  Models *models = (Models*)app->cmd_context;
  Range_i64 result = {};
  Text_Layout *layout = text_layout_get(&models->text_layouts, text_layout_id);
- if (layout != 0) {
+ if(layout != 0)
+ {
   result = layout->visible_range;
  }
  return(result);
@@ -3087,7 +3119,7 @@ text_layout_line_on_screen(App *app, Text_Layout_ID layout_id, i64 line_number)
  return(result);
 }
 
-api(custom) function Rect_f32
+api(ed custom) function Rect_f32
 text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
 {
  Models *models = (Models*)app->cmd_context;
@@ -3331,7 +3363,7 @@ is_view_to_the_right(App *app, View_ID view)
 api(ed) function void
 DEBUG_send_entry(Debug_Entry entry)
 {
- DEBUG_entries.push_value(entry);
+ push(&DEBUG_entries, entry);
 }
 
 api(ed) function Render_Target *
@@ -3344,8 +3376,8 @@ draw_get_target(App *app)
 api(ed) function void 
 vim_set_bottom_text(String msg)
 {
- u32 copy_size = clamp_max((u32)msg.size, (u32)alen(vim_bottom_buffer));
- block_copy(vim_bottom_buffer, msg.str, copy_size);
+ isize copy_size = clamp_max(msg.size, vim_bottom_text.cap);
+ block_copy(vim_bottom_text.str, msg.str, copy_size);
  vim_bottom_text.size = copy_size;
 }
 
@@ -3418,7 +3450,7 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i1 count, Ve
    {
     case Vertex_Poly:    { list = &entry->vertex_list; }        break;
     case Vertex_Overlay: { list = &entry->vertex_list_overlay; }break;
-    invalid_default_case;
+    InvalidDefaultCase;
    }
   }
   
@@ -3456,7 +3488,7 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i1 count, Ve
  }
 }
 
-//TODO(kv): Our parser doesn't support "const" yet!
+//TODO(kv): Just pass the matrix, man...
 api(ed) function void
 push_object_transform_to_target(Render_Target *target, mat4 *transform)
 {
@@ -3479,32 +3511,6 @@ get_token_it_at_pos(App *app, Buffer_ID buffer, i64 pos)
  Token_Array tokens = get_token_array_from_buffer(app, buffer);
  return tkarr_at_pos(0, &tokens, pos);
 }
-
-api(ed) function b32
-fui_editor_ui_loop(App *app)
-{
- b32 writeback;
- for (;;)
- {// NOTE: UI loop
-  User_Input in = get_next_input(app, EventPropertyGroup_AnyKeyboardEvent, EventProperty_Escape);
-  if (in.abort)
-  {
-   writeback = false;
-   break;
-  }
-  else
-  {
-   update_game_key_states(&in.event);
-   if ( global_game_key_states[Key_Code_Return] )
-   {
-    writeback = true; 
-    break;
-   }
-  }
- }
- return writeback;
-}
-
 api(ed) function Buffer_ID
 view_set_buffer_named(App *app, View_ID view, String8 name)
 {
@@ -3522,13 +3528,31 @@ seek_line_col(i64 line, i64 col)
  result.col = col;
  return(result);
 }
+api(ed) function Buffer_Seek
+seek_pos(i64 pos)
+{
+ Buffer_Seek result;
+ result.type = buffer_seek_pos;
+ result.pos = pos;
+ return(result);
+}
 
 api(ed) function void
-push_image(Render_Target *target, char *filename, v3 o, v3 x, v3 y, argb color, u32 prim_id)
+push_image(Render_Target *target, Stringz image_file, v3 o, v3 x, v3 y, argb color)
 {
  Render_Entry *entry = new_render_entry(RET_Image);
  entry->image = push_struct(&render_state.arena, Render_Entry_Image);
- *entry->image = {filename, o,x,y, color, prim_id};
+ *entry->image = {image_file, o,x,y, color};
+}
+
+//TODO(kv) Our API is leaky all over the place
+function Texture_Handle
+ogl_load_image_from_file(Stringz filename, v2 *out_dim);
+
+api(ed) function Texture_Handle
+ed_load_image(Stringz filename, v2 *out_dim)
+{
+ return ogl_load_image_from_file(filename, out_dim);
 }
 function b32
 view_contains_mouse(App *app, View_ID view)

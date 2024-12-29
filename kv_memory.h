@@ -13,12 +13,14 @@ align_pow2(u64 pow2_value, u64 input){
  return result;
 }
 function void
-align_pow2(u64 pow2_value, u64 *input){
+align_pow2(u64 pow2_value, u64 *input)
+{
  u64 mask = pow2_value - 1;
  *input = (*input + mask) & (~mask);
 }
 function u64
-round_up_to_next_pow2(u64 value){
+round_up_to_next_pow2(u64 value)
+{
  u64 result = 1;
  if(value != 0){
   //NOTE(kv) In case it's already a power of two, knock it down.
@@ -36,19 +38,14 @@ round_down_to_pow2(u64 pow2_value, u64 input){
  return result;
 }
 //-
-struct Push_Params{
- b32 zero;
-};
-inline Push_Params
-make_default_arena_push_params(){
- Push_Params result = {};
- result.zero = false;
- return result;
-}
-Push_Params default_push_params = make_default_arena_push_params();
+struct Push_Params { b32 zero; };
+//NOTE(kv) I've tried to push zero by default, ultimately didn't like it.
+//  There are more place where you don't need to zero than you think.
+global Push_Params default_push_params = {.zero=false};
 
-inline Push_Params
-push_zero(Push_Params params=default_push_params){
+myinline Push_Params
+push_zero(Push_Params params=default_push_params)
+{
  params.zero = true;
  return params;
 }
@@ -68,10 +65,6 @@ struct Arena_Chunk{
  usize pos;
  usize size;
 };
-inline u8 *
-arena_chunk_get_base(Arena_Chunk *chunk){
- return (u8 *)(chunk + 1);
-}
 #endif
 
 struct Arena
@@ -83,7 +76,8 @@ struct Arena
  Arena_Chunk *last_chunk;
 #endif
 };
-struct Temp_Memory{
+struct Temp_Memory
+{
  Arena *arena;
 #if ASAN_ON
  Arena_ASAN_Tracker *saved_tracker;
@@ -447,7 +441,8 @@ begin_temp_memory(Arena *arena)
  return(temp);
 }
 function void
-end_temp_memory(Temp_Memory temp){
+end_temp_memory(Temp_Memory temp)
+{
  Arena *arena = temp.arena;
 #if ASAN_ON
  arena_pop_to(arena, temp.saved_tracker);
@@ -456,7 +451,8 @@ end_temp_memory(Temp_Memory temp){
 #endif
 }
 function void
-arena_free(Arena *arena){
+arena_free(Arena *arena)
+{
 #if ASAN_ON
  Arena_ASAN_Tracker *null_tracker = 0;
  arena_pop_to(arena, null_tracker);
@@ -465,12 +461,13 @@ arena_free(Arena *arena){
 #endif
 }
 function void
-arena_clear(Arena *arena){
- //NOTE(kv) This call is supposed to be more "light-weight" than arena-free.
+arena_clear(Arena *arena)
+{// NOTE(kv) This call is supposed to be more "light-weight" than arena-free.
+ // TODO(kv) Implement: it'd be cool if the arena can remember its size.
 #if ASAN_ON
  arena_free(arena);
 #else
- //NOTE(kv) We don't want to free the last chunk.
+ // NOTE(kv) We don't want to free the last chunk.
  arena_pop_to(arena, arena->last_chunk, 0);
 #endif
 }
@@ -487,9 +484,11 @@ arena_push(arena, size, 8, push_zero())
 #define push_array(arena,T,count,...) \
 (T*)arena_push(arena, sizeof(T)*(count), alignof(T), ##__VA_ARGS__)
 
-#define push_struct(arena,T,...)   push_array(arena,T,1,##__VA_ARGS__)
+#define push_struct(arena,T,...)   push_array(arena, T, 1, ##__VA_ARGS__)
 
-#define push_array_zero(arena,T,count)   push_array(arena,T,count,push_zero())
+#define push_struct0(arena, T)      push_struct(arena, T, push_zero())
+#define push_array0(arena,T,count)  push_array(arena, T, count, push_zero())
+#define push_array_zero             push_array0
 
 #define push_copy(arena, size, source, alignment) \
 linalloc_wrap_write(push_size(arena, size, alignment), source, size)
@@ -508,10 +507,14 @@ push_value(Arena *arena, const T &value){
  *pointer = value;
  return pointer;
 }
-//IMPORTANT(kv) I don't use this mechanism anymore when arenas are so cheap.
-//  Just make a new arena, then call clear at the start/end of the loop.
-//  That way we don't accidentally push onto an arena while in a temp block.
-struct Temp_Memory_Block{
+
+struct Temp_Memory_Block
+{
+ // IMPORTANT(kv) I don't use this mechanism anymore when arenas are so cheap.
+ // Just make a new arena, then call clear at the start/end of the loop.
+ // That way we don't accidentally push onto an arena while in a temp block.
+ // Yeah, if you call "break" out of the loop, then we "leak" some memory, big whoops!
+ // That arena should be a temp arena anyway.
  Temp_Memory temp;
  //-
  myinline Temp_Memory_Block(Temp_Memory temp){
@@ -528,5 +531,9 @@ struct Temp_Memory_Block{
  }
 };
 
-thread_local Arena thread_permanent_arena;
+//NOTE(kv) We use precompiled header,
+//  which would create another object file and will bark multiply defined symbol.
+//  I guess duplicating permanent arenas are cool,
+//  Since it's not the end of the world if we don't deduplicate them?
+global thread_local Arena thread_permanent_arena;
 //-

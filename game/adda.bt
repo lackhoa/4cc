@@ -35,57 +35,35 @@ if(magic != "adda"){
 //-
 time64_t file_timestamp;
 Printf("File timestamp: %s\n", Time64TToString(file_timestamp));
-eat_string("cameras");
-i32 camera_count;
-struct Camera_Data{
+
+struct Camera_Data
+{
  v1 distance;
  v1 phi;
  v1 theta;
  v1 roll;
- v3 pan;
  v3 pivot;
 };
-Camera_Data cameras[camera_count];
-
-struct Keyboard_Cursor{
+struct Saved_Viewport
+{
+ Camera_Data target_camera;
+ i32 preset;
+ i32 last_preset;
+};
+struct Keyboard_Cursor
+{
+ b32 on;
  v3 pos;
  v1 vel;
 };
-struct Serialized_State{
+struct Serialized_State
+{
  Keyboard_Cursor kb_cursor;
  b32 references_full_alpha;
+ Saved_Viewport saved_viewports[3];
 };
 eat_string("Serialized_State");
 Serialized_State serialized_state;
-
-enum Bone_Type{
- Bone_None           = 0,
- Bone_Head           = 1,
- Bone_Arm            = 2,
- Bone_Forearm        = 3,
- Bone_Bottom_Phalanx = 4,
- Bone_Mid_Phalanx    = 5,
- Bone_Top_Phalanx    = 6,
- Bone_Torso          = 7,
- Bone_References     = 8,
- Bone_Hand           = 9,
- Bone_Thumb          = 10,
- Bone_Pelvis         = 11,
- Bone_Eyeball        = 12,
-};
-struct Bone_ID{
- Bone_Type type;
- i1        id;
-};
-typedef struct {
- String name;
- Bone_ID bone_id;
- v3 pos;
-} Vertex_Data <optimize=false>;
-
-eat_string("vertices");
-i32 vertex_count;
-Vertex_Data vertices[vertex_count];
 
 eat_string("EOF");
 //-

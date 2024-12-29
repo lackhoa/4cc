@@ -2,10 +2,6 @@
 #include "4coder_vimrc.h"
 #include "4coder_vim_include.h"
 
-#if !defined(META_PASS)
-//#include "generated/managed_id_metadata.cpp"
-#endif
-
 VIM_TEXT_OBJECT_SIG(EXAMPLE_object_camel){
 	Range_i64 range = {};
 	Scratch_Block scratch(app);

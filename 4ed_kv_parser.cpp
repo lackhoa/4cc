@@ -65,26 +65,37 @@ ep__get_token_please(Ed_Parser *p){
  return token;
 }
 //NOTE(kv) If you get back a token, it will never be past the end
-inline Token *
-ep_get_token(Ed_Parser *p){
+myinline Token *
+ep_get_token(Ed_Parser *p)
+{
  Token *token = &stub_token;
- if(p->ok_){
+ if(p->ok_)
+ {
   token = ep__get_token_please(p);
  }
  return token;
 }
 function Token *
-ep_get_token_delta(Ed_Parser *p, i32 delta){
+ep_get_token_delta(Ed_Parser *p, i32 delta)
+{
  Token *result = &stub_token;
- if(delta < 0){
+ if(delta < 0)
+ {
   i32 inverse_delta = -delta;
   for_repeat(inverse_delta){ token_it_dec(&p->it); }
   result = ep_get_token(p);
   for_repeat(inverse_delta){ token_it_inc(&p->it); }
- }else{
+ }
+ else
+ {
   todo_incomplete;
  }
  return result;
+}
+myinline Token *
+ep_get_last_token(Ed_Parser *p)
+{
+ return ep_get_token_delta(p, -1);
 }
 function String
 ep_print_token(Arena *arena, Ed_Parser *p, Token *token){
@@ -101,7 +112,7 @@ ep_print_token(Arena *arena, Ed_Parser *p, Token *token){
     String source = p->source;
     result = token_string_from_source(source, token);
    } break;
-   invalid_default_case;
+   InvalidDefaultCase;
   }
  }
  return result;
@@ -110,18 +121,22 @@ function String
 ep_print_token_range(Ed_Parser *p, Token *token0, Token *token1)
 {
  String result = {};
- if(token1->pos >= token0->pos){
-  switch(p->Token_Gen_Type){
-   case TG_String:{
+ i64 end = token1->pos + token1->size;
+ if(end > token0->pos)
+ {
+  switch(p->Token_Gen_Type)
+  {
+   case TG_String:
+   {
     result.str  = p->source.str + token0->pos;
-    result.size = token1->pos + token1->size - token0->pos;
+    result.size = end - token0->pos;
    }break;
-   invalid_default_case;
+   InvalidDefaultCase;
   }
  }
  return result;
 }
-inline String
+myinline String
 ep_print_token(Ed_Parser *p, Token *token){
  return ep_print_token(p->string_arena,p,token);
 }
@@ -131,8 +146,9 @@ ep_print_token(Arena *arena, Ed_Parser *p){
  Token *token = ep_get_token(p);
  return ep_print_token(arena, p, token);
 }
-inline String
+myinline String
 ep_print_token(Ed_Parser *p){ return ep_print_token(p->string_arena, p); }
+
 function void
 ep_print_token(Printer &printer, Ed_Parser *p){
  //NOTE Print with a printer
@@ -144,7 +160,7 @@ ep_print_token(Printer &printer, Ed_Parser *p){
     String result = token_string_from_source(source, token);
     printer < result;
    }break;
-   invalid_default_case;
+   InvalidDefaultCase;
   }
  }
 }
@@ -166,7 +182,7 @@ ep_eat(Ed_Parser *p){
      p->set_ok(token_it_dec(&p->it) != 0);
     }
    }break;
-   invalid_default_case;
+   InvalidDefaultCase;
   }
  }
 }
@@ -182,7 +198,7 @@ ep_eat_inc_all(Ed_Parser *p){
      p->set_ok(token_it_dec_all(&p->it) != 0);
     }
    }break;
-   invalid_default_case;
+   InvalidDefaultCase;
   }
  }
 }
@@ -378,7 +394,8 @@ ep_eat_preprocessor(Ed_Parser *p, String string){
 //  such as preventing user from redefining keywords.
 //  Plus the syntax highlighter cares.
 function String
-ep_id(Ed_Parser *p, String test_id){
+ep_id(Ed_Parser *p, String test_id)
+{
  String result = {};
  auto kind = ep_get_kind(p);
  p->set_ok(kind == TokenBaseKind_Identifier ||
@@ -391,8 +408,10 @@ ep_id(Ed_Parser *p, String test_id){
  ep_eat(p);
  return result;
 }
+
 function String
-ep_id(Ed_Parser *p){
+ep_id(Ed_Parser *p)
+{
  String result = {};
  auto kind = ep_get_kind(p);
  p->set_ok(kind == TokenBaseKind_Identifier ||
@@ -445,13 +464,15 @@ ep_char(Ed_Parser *p, char c){
  p->set_ok( ep_maybe_char(p, c) );
 }
 //-
-//NOTE(kv) Excludes the nil terminator
+//NOTE(kv) Excludes the terminator
 function char
 ep_eat_until_char(Ed_Parser *p, String terminators){
  char result = 0;
- while(!result && p->ok_){
-  Scratch_Block scratch;
-  String token = ep_print_token(scratch, p);//TODO(kv) OMG this is bad!
+ Scratch_Block tmp;
+ while(!result && p->ok_)
+ {
+  arena_clear(tmp);
+  String token = ep_print_token(tmp, p);
   b32 should_eat = true;
   if(token.len == 1){
    char char0 = token.str[0];

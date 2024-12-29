@@ -15,7 +15,8 @@ enum Vertex_Type {
  Vertex_Overlay,
 };
 
-struct Render_Vertex {
+struct Render_Vertex
+{
  union { v3 pos; struct { v2 xy; v1 z; }; };
  union {
   union  { v3 uvw;    v2 uv; };
@@ -24,7 +25,6 @@ struct Render_Vertex {
  argb color;
  v1 half_thickness;
  v1 depth_offset;
- u32 prim_id;
 };
 
 struct Render_Vertex_Array_Node {
@@ -48,7 +48,7 @@ i1      viewport_id;      \
 rect2   clip_box;         \
 b32     y_up;          \
 argb    background;       \
-mat4    view_from_world;  \
+mat4    clip_from_world;  \
 mat4i   world_from_cam;   \
 v1      meter_to_pixel;   \
 v1      focal_length;     \
@@ -86,11 +86,9 @@ struct Render_Entry_Poly
 
 struct Render_Entry_Image
 {
- char *filename;
- //mat4 *object_transform;
+ Stringz filename;
  v3 o, x, y_info;  // "y_info" encodes both direction and scale
  argb  color;
- u32 prim_id;
 };
 
 //
@@ -105,7 +103,8 @@ struct Render_Entry {
  };
 };
 
-struct Render_Group {
+struct Render_Group
+{
  i32 window_id;
  Render_Group *next;
  
@@ -121,11 +120,12 @@ struct Render_Group {
 };
 
 myinline b32
-render_group_is_game(Render_Group *group) {
+render_group_is_game(Render_Group *group)
+{
  return group->viewport_id != 0;
 }
 
-// NOTE(kv): Render targets correspond to windows,
+// NOTE(kv) Render targets correspond to windows,
 // since we have multiple windows now.
 struct Render_Target
 {
@@ -169,4 +169,4 @@ struct Render_State
 #define draw_configure_return void
 #define draw_configure_params Render_Target *target, Render_Config *config
 
-//~
+//-

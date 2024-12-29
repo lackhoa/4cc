@@ -6,9 +6,7 @@ struct KvQuailEntry
  i1   delete_after;
  i1   cursor_index;
 };
-
 global darray(KvQuailEntry) kv_quail_table;
-global darray(char)         kv_quail_keystroke_buffer;
 
 // NOTE(kv): If keys are overlapping, you have to push the shorter key first in
 // order to for the quail rule to work.
@@ -19,7 +17,7 @@ kv_quail_defrule(App *app, char *key, char *insert,
  darray(KvQuailEntry) *table = &kv_quail_table;
  i1 entry_index = (i1)table->count;
  // note: We keep the table sorted by key length, largest first, for overlapping keys.
- for (u32 table_index=0;
+ for (i32 table_index=0;
       table_index < table->count;
       table_index++)
  {
@@ -41,46 +39,77 @@ kv_quail_defrule(App *app, char *key, char *insert,
  table->items[entry_index] = entry;
 }
 
+function void 
+kvInitQuailTable(App *app)
+{
+ init_dynamic(kv_quail_table, &thread_permanent_arena, 64);
+ 
+#define QUAIL_DEFRULE(KEY, VALUE) \
+kv_quail_defrule(app, KEY, VALUE, (i1)strlen(KEY)-1, 0, (i1)strlen(VALUE))
+ 
+ QUAIL_DEFRULE(",,", "_");
+ kv_quail_defrule(app, ",,,", "__", 1,0,2);
+ 
+ //
+ QUAIL_DEFRULE(",.", "->");
+ kv_quail_defrule(app, ",.,", "<>", 2,0,1);
+ //
+ kv_quail_defrule(app, "9", "()", 0,0,1);
+ kv_quail_defrule(app, "99", "9", 1,1,1);  // NOTE escape
+ //
+ kv_quail_defrule(app, "[", "[]", 0,0,1);
+ // {
+ kv_quail_defrule(app, "[[", "{}", 1,1,1);
+ QUAIL_DEFRULE("]]", "}");
+ //
+ kv_quail_defrule(app, "''", "\"\"", 1,0,1);
+ QUAIL_DEFRULE("leq", "<=");
+ QUAIL_DEFRULE("geq", ">=");
+ QUAIL_DEFRULE("neq", "!=");
+ 
+#undef QUAIL_DEFRULE
+}
+
 function b32
 kv_handle_text_insert(App_Cmd *app, u8 character)
 {
- darray(char) *keybuf = &kv_quail_keystroke_buffer;
- assert_defend(keybuf->count < 1024, 
-               {
-                print_message(app, SCu8("ERROR: 'kv_quail_keystroke_buffer' grown too big!"));
-                return false;
-               });
+ darray(char) &keybuf = kv_quail_keystroke_buffer;
+ kv_assert(keybuf.count < 1024);
  
  GET_VIEW_AND_BUFFER;
  
  b32 substituted = false;
- keybuf->push_value(character);
+ push(&kv_quail_keystroke_buffer, char(character));
  
- // loop to find a match in quail table
- for (u32 quail_index=0;
-      ( quail_index < kv_quail_table.count ) && ( !substituted );
-      quail_index++)
+ // NOTE loop to find a match in quail table
+ for(i32 quail_index=0;
+     ( quail_index < kv_quail_table.count ) and ( !substituted );
+     quail_index++)
  {
   KvQuailEntry entry = kv_quail_table[quail_index];
   i1 keylen = (i1)strlen(entry.key);
   
-  char *keys = keybuf->items + keybuf->count - keylen;
-  substituted = ( strncmp(keys, entry.key, keylen) == 0 );
-  if (substituted)
+  i32 keybuf_start_index = keybuf.count - keylen;
+  if(keybuf_start_index >= 0)
   {
-   // NOTE(kv): Edit buffer content
-   i64 pos = view_get_cursor_pos(app, view);
-   
-   Range_i64 range = { pos-entry.delete_before, pos + entry.delete_after };
-   buffer_replace_range(app, buffer, range, SCu8(entry.insert));
-   
-   // NOTE(kv): move cursor
-   move_horizontal_lines(app, entry.cursor_index);
-   
-   // NOTE: @Hack to indent the line open brace.
-   if (strncmp(keys, "[[", 2) == 0)
+   char *keys = keybuf.items + keybuf_start_index;
+   substituted = ( strncmp(keys, entry.key, keylen) == 0 );
+   if(substituted)
    {
-    auto_indent_line_at_cursor(app);
+    // NOTE(kv): Edit buffer content
+    i64 pos = view_get_cursor_pos(app, view);
+    
+    Range_i64 range = { pos-entry.delete_before, pos + entry.delete_after };
+    buffer_replace_range(app, buffer, range, SCu8(entry.insert));
+    
+    // NOTE(kv): move cursor
+    move_horizontal_lines(app, entry.cursor_index);
+    
+    // NOTE @Hack to indent the line open brace.
+    if(strncmp(keys, "[[", 2) == 0)
+    {
+     auto_indent_line_at_cursor(app);
+    }
    }
   }
  }
@@ -191,23 +220,6 @@ kv_handle_vim_keyboard_input(App *app0, Input_Event *event)
  }
  else return false;
 }
-
-// TODO(kv): This key tracking is inaccurate at least in the case when you alt+tab out of the app
-function void
-update_game_key_states(Input_Event *event)
-{
- b32 keydown = (event->kind == InputEventKind_KeyStroke);
- b32 keyup   = (event->kind == InputEventKind_KeyRelease);
- if (keydown || keyup) {
-  Key_Code keycode = event->key.code;
-  // NOTE: We have system_get_keyboard_modifiers to track modifier keys already
-  if ( !is_modifier_key(keycode) ) {
-   global_game_key_states       [keycode] = (b8)(keydown != 0);
-   global_game_key_state_changes[keycode]++;
-  }
- }
-}
-
 function void
 kv_view_input_handler(App *app0)
 {
@@ -246,7 +258,9 @@ kv_view_input_handler(App *app0)
   // NOTE(allen): Mouse Suppression
   Event_Property event_properties = get_event_properties(&input.event);
   b32 is_mouse_event = event_properties & EventPropertyGroup_AnyMouseEvent;
-  if (!(is_mouse_event && suppressing_mouse))
+  b32 suppressed = is_mouse_event && suppressing_mouse;
+  
+  if(not suppressed)
   {
    if (!is_mouse_event && (input.event.kind != InputEventKind_None))
    {
@@ -254,17 +268,16 @@ kv_view_input_handler(App *app0)
     vim_cursor_blink = 0;
    }
    
-   update_game_key_states(&input.event);
-   
    b32 handled = false;
    
    if(vim_state.mode != VIM_Insert)
    {
-    Game_API *game = get_game_code();
-    if(game){
+    Game_API *game = get_game_code(Game_On);
+    if(game)
+    {
      Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
      b32 is_game_buffer = buffer_viewport_id(app, buffer);
-     handled = game->is_event_handled_by_game(ed_game_state_pointer, app, &input.event, is_game_buffer, game_render_on);
+     handled = game->is_event_handled_by_game(ed_game_state_pointer, app, &input.event, is_game_buffer, is_game_rendering());
     }
    }
    
@@ -307,10 +320,11 @@ kv_newline_and_indent(App_Cmd *app)
  GET_VIEW_AND_BUFFER;
  HISTORY_GROUP_SCOPE;
  write_text(app, str8lit("\n"), true);
+ kv_quail_keystroke_buffer.count = 0;  // @Hack
  
  i64 curpos = view_get_cursor_pos(app, view);
  u8 character = buffer_get_char(app, buffer, curpos);
- if (character == /*{*/'}')
+ if (character == '}')
  {// NOTE: Handling for brace
   write_text(app, str8lit("\n"), true);
   auto_indent_line_at_cursor(app);

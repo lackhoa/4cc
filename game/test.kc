@@ -1,7 +1,9 @@
-// Generates: test.gen.cpp
-function Arm
-render_arm(Pose *pose, Torso *torso_obj, v3 elbow_up_out)
+//-@broken_link_on_purpose
+function void
+main()
 {
- should_flutter = i32(time0);
+ if(0);
+ else{ one=2; }
 }
+//-@broken_link_on_purpose_2
 //-

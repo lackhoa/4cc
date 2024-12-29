@@ -1,11 +1,11 @@
 //-
 [embed]
-struct Camera_Data{
+struct Camera_Data
+{
  v1 distance;
  v1 phi;
  v1 theta;
  v1 roll;
- v3 pan;
  v3 pivot;
 };
 //-

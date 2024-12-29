@@ -364,7 +364,7 @@ config_parser_lvalue(Config_Parser *p)
         macro_require(config_parser_eat_cpp_kind(p, TokenCppKind_BrackCl));
     }
     
-    Config_LValue *lvalue = push_array_zero(p->arena, Config_LValue, 1);
+    Config_LValue *lvalue = push_array0(p->arena, Config_LValue, 1);
     lvalue->identifier = identifier;
     lvalue->index = index;
     return(lvalue);
@@ -469,7 +469,7 @@ config_parser_rvalue(Config_Parser *p)
     {
         Config_LValue *l = config_parser_lvalue(p);
         macro_require(l != 0);
-        rvalue = push_array_zero(p->arena, Config_RValue, 1);
+        rvalue = push_array0(p->arena, Config_RValue, 1);
         rvalue->type = Config_RValue_Type_LValue;
         rvalue->lvalue = l;
     }
@@ -478,7 +478,7 @@ config_parser_rvalue(Config_Parser *p)
         config_parser_inc(p);
         Config_Compound *compound = config_parser_compound(p);
         macro_require(compound != 0);
-        rvalue = push_array_zero(p->arena, Config_RValue, 1);
+        rvalue = push_array0(p->arena, Config_RValue, 1);
         rvalue->type = Config_RValue_Type_Compound;
         rvalue->compound = compound;
     }
@@ -486,7 +486,7 @@ config_parser_rvalue(Config_Parser *p)
     {
         b32 b = config_parser_get_boolean(p);
         config_parser_inc(p);
-        rvalue = push_array_zero(p->arena, Config_RValue, 1);
+        rvalue = push_array0(p->arena, Config_RValue, 1);
         rvalue->type = Config_RValue_Type_Boolean;
         rvalue->boolean = b;
     }
@@ -494,7 +494,7 @@ config_parser_rvalue(Config_Parser *p)
     {
         Config_Integer value = config_parser_get_int(p);
         config_parser_inc(p);
-        rvalue = push_array_zero(p->arena, Config_RValue, 1);
+        rvalue = push_array0(p->arena, Config_RValue, 1);
         rvalue->type = Config_RValue_Type_Integer;
         if (value.is_signed)
         {
@@ -511,7 +511,7 @@ config_parser_rvalue(Config_Parser *p)
         config_parser_inc(p);
         s = string_chop(string_skip(s, 1), 1);
         String8 interpreted = string_interpret_escapes(p->arena, s);
-        rvalue = push_array_zero(p->arena, Config_RValue, 1);
+        rvalue = push_array0(p->arena, Config_RValue, 1);
         rvalue->type = Config_RValue_Type_String;
         rvalue->string = interpreted;
     }
@@ -557,7 +557,7 @@ config_parser_assignment(Config_Parser *p)
         return(0);
     }
     
-    Config_Assignment *assignment = push_array_zero(p->arena, Config_Assignment, 1);
+    Config_Assignment *assignment = push_array0(p->arena, Config_Assignment, 1);
     assignment->pos = pos;
     assignment->l = l;
     assignment->r = r;
@@ -1501,30 +1501,31 @@ theme_parse__buffer(App *app, Arena *arena, Buffer_ID buffer, Arena *color_arena
     Config *parsed = 0;
     if (contents.str != 0)
     {
-        String8 filename = push_buffer_filepath(app, arena, buffer);
-        parsed = theme_parse__data(app, arena, filename, contents, color_arena, color_table);
-    }
-    return(parsed);
+  String8 filename = push_buffer_filepath(app, arena, buffer);
+  parsed = theme_parse__data(app, arena, filename, contents, color_arena, color_table);
+ }
+ return(parsed);
 }
 
 function Config*
-theme_parse__filename(App *app, Arena *arena, char *filename, Arena *color_arena, Color_Table *color_table){
-    Config *parsed = 0;
+theme_parse__filename(App *app, Arena *arena, char *filename, Arena *color_arena, Color_Table *color_table)
+{
+ Config *parsed = 0;
 	FILE* file = fopen(filename, "rb");
-    if (file == 0){
-        file = def_search_normal_fopen(arena, filename, "rb");
-    }
-    if (file != 0){
-        String data = read_entire_file_handle(arena, file);
-        fclose(file);
-        parsed = theme_parse__data(app, arena, SCu8(filename), data, color_arena, color_table);
-    }
-    if (parsed == 0){
-        Scratch_Block scratch(app, arena);
-        String str = push_stringf(scratch, "Did not find %s, theme not loaded", filename);
-        print_message(app, str);
-    }
-    return(parsed);
+ if (file == 0){
+  file = def_search_normal_fopen(arena, filename, "rb");
+ }
+ if (file != 0){
+  String data = read_entire_file(arena, file);
+  fclose(file);
+  parsed = theme_parse__data(app, arena, SCu8(filename), data, color_arena, color_table);
+ }
+ if (parsed == 0){
+  Scratch_Block scratch(app, arena);
+  String str = push_stringf(scratch, "Did not find %s, theme not loaded", filename);
+  print_message(app, str);
+ }
+ return(parsed);
 }
 
 ////////////////////////////////
@@ -1539,7 +1540,7 @@ load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 ove
     Config *parsed = 0;
     FILE *file = def_search_normal_fopen(scratch, "config.4coder", "rb");
     if (file != 0){
-        String data = read_entire_file_handle(scratch, file);
+        String data = read_entire_file(scratch, file);
         fclose(file);
         if (data.str != 0){
             parsed = config_from_text(app, scratch, str8_lit("config.4coder"), data);

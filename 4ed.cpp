@@ -162,11 +162,12 @@ models_init(void)
  return(models);
 }
 
-function Log_Function*
+function Log_Function *
 app_get_logger(void)
-{
-    log_init();
-    return(log_string);
+{// TODO(kv) The log system relies the app code to append to files.
+ //  which is whatever. I mean it works so it's fine...
+ log_init();
+ return(log_string);
 }
 
 function Models *
@@ -548,7 +549,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
  // NOTE(allen): consume event stream
  Input_Event_Node *input_node = input_list.first;
  Input_Event_Node *input_node_next = 0;
- for (;; input_node = input_node_next){
+ for (;; input_node = input_node_next)
+ {
   // NOTE(allen): first handle any events coming from the view command
   // function queue
   Model_View_Command_Function cmd_func = models_pop_view_command_function(models);
@@ -585,7 +587,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
    // NOTE(allen): record to keyboard history
    if (simulated_input->kind == InputEventKind_KeyStroke ||
        simulated_input->kind == InputEventKind_KeyRelease ||
-       simulated_input->kind == InputEventKind_TextInsert){
+       simulated_input->kind == InputEventKind_TextInsert)
+   {
     Temp_Memory_Block temp_key_line(scratch);
     String key_line = stringize_keyboard_event(scratch, simulated_input);
     b32 automated = true;
@@ -600,28 +603,50 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   View *view = active_panel->view;
   Assert(view != 0);
   
-  switch (models->state){
+  switch(models->state)
+  {
    case APP_STATE_EDIT:
    {
-    typedef i32 Event_Consume_Rule;
     enum{
-     EventConsume_None,
-     EventConsume_BeginResize,
-     EventConsume_ClickChangeView,
      EventConsume_CustomCommand,
+     EventConsume_BeginResize,
+     //EventConsume_ClickChangeView,
     };
     
-    Event_Consume_Rule consume_rule = EventConsume_CustomCommand;
+    i32 consume_rule = EventConsume_CustomCommand;
     if (match_mouse_code(event, MouseCode_Left) && (divider_panel != 0)){
      consume_rule = EventConsume_BeginResize;
     }
-    else if (match_mouse_code(event, MouseCode_Left) &&
-             mouse_panel != 0 && mouse_panel != active_panel){
+#if 0
+    else if(match_mouse_code(event, MouseCode_Left) &&
+            mouse_panel != 0 && mouse_panel != active_panel){
      //;ClickChangeView
      //consume_rule = EventConsume_ClickChangeView;  // NOTE(kv): We're handling this ourselves in @kv_handle_left_click
     }
+#endif
     
-    switch (consume_rule){
+    switch(consume_rule)
+    {
+     case EventConsume_CustomCommand:
+     {
+      if(event->kind == InputEventKind_HistoryMerge)
+      {//NOTE(kv) My hack
+       event_was_handled = true;
+       Buffer_ID buffer = event->history_buffer;
+       App app = {};
+       app.cmd_context = models;
+       app.tctx = tctx;
+       History_Record_Index first = event->history_first;
+       History_Record_Index last = buffer_history_get_current_state_index(&app, buffer);
+       if(first < last)
+       {
+        buffer_history_merge_record_range(&app, buffer, first, last, RecordMergeFlag_StateInRange_MoveStateForward);
+       }
+      }else{
+       event_was_handled = co_send_event(tctx, models, view, event);
+      }
+     }break;
+     
      case EventConsume_BeginResize:
      {
       models->state = APP_STATE_RESIZING;
@@ -629,6 +654,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
       event_was_handled = true;
      }break;
      
+#if 0
      case EventConsume_ClickChangeView:
      {// ;ClickChangeViewHandling
       // NOTE(allen): run deactivate command
@@ -644,11 +670,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
       
       event_was_handled = true;
      }break;
-     
-     case EventConsume_CustomCommand:
-     {
-      event_was_handled = co_send_event(tctx, models, view, event);
-     }break;
+#endif
     }
    }break;
    
@@ -656,7 +678,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
    {
     Event_Property event_flags = get_event_properties(event);
     if (HasFlag(event_flags, EventProperty_AnyKey) ||
-        match_mouse_code_release(event, MouseCode_Left)){
+        match_mouse_code_release(event, MouseCode_Left))
+    {
      models->state = APP_STATE_EDIT;
     }
     else if (event->kind == InputEventKind_MouseMove)
@@ -668,16 +691,19 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
       i32 mouse_position = (split->vertical_split)?(mouse.x):(mouse.y);
       mouse_position = clamp_between(limits.min, mouse_position, limits.max);
       layout_set_split_absolute_position(layout, split, mouse_position);
+     } else {
+      models->state = APP_STATE_EDIT;
      }
-     else models->state = APP_STATE_EDIT;
     }
    }break;
   }
   
-  if (event_was_handled && event->kind == InputEventKind_KeyStroke){
+  if(event_was_handled && event->kind == InputEventKind_KeyStroke)
+  {
    for (Input_Event *dependent_text = event->key.first_dependent_text;
         dependent_text != 0;
-        dependent_text = dependent_text->text.next_text){
+        dependent_text = dependent_text->text.next_text)
+   {
     Assert(dependent_text->kind == InputEventKind_TextInsert);
     dependent_text->text.blocked = true;
    }
@@ -747,7 +773,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
  }
  
  // NOTE(allen): if the exit signal has been sent, run the exit hook.
- if (!models->keep_playing || input->trying_to_kill){
+ if(!models->keep_playing || input->trying_to_kill)
+ {
   co_send_core_event(tctx, models, CoreCode_TryExit);
   models->keep_playing = true;
  }
@@ -762,41 +789,40 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   frame.work_seconds = input->work_seconds;
   frame.hot_prim_id  = input->hot_prim_id;
   
-  App app = {};
-  app.tctx = tctx;
-  app.cmd_context = models;
-  
-  if (models->tick != 0)
-  {
-   models->tick(&app, frame);
-  }
-  
-  models->in_render_mode = true;
+  App app_value = {};
+  App *app = &app_value;
+  app->tctx = tctx;
+  app->cmd_context = models;
   
   Live_Views *live_views = &models->view_set;
-  for (Node *node = layout->open_panels.next;
-       node != &layout->open_panels;
-       node = node->next)
+  
+  if(models->tick != 0)
+  {
+   models->tick(app, frame);
+   maybe_update_game(app, frame);
+  }
+  
+  for(Node *node = layout->open_panels.next;
+      node != &layout->open_panels;
+      node = node->next)
   {
    Panel *panel = CastFromMember(Panel, node, node);
    View *view = panel->view;
    View_Context_Node *ctx = view->ctx;
-   if (ctx != 0)
+   if(ctx != 0)
    {
     Render_Caller_Function *render_caller = ctx->ctx.render_caller;
-    if (render_caller != 0)
+    if(render_caller != 0)
     {
-     render_caller(&app, frame, view_get_id(live_views, view));
+     render_caller(app, frame, view_get_id(live_views, view));
     }
    }
   }
   
-  if (models->whole_screen_render_caller != 0)
+  if(models->whole_screen_render_caller != 0)
   {
-   models->whole_screen_render_caller(&app, frame);
+   models->whole_screen_render_caller(app, frame);
   }
-  
-  models->in_render_mode = false;
  }
  
  // TODO(allen): This is dumb. Let's rethink view cleanup strategy.
@@ -878,8 +904,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
  models->animated_last_frame = app_result.animating;
  models->frame_counter += 1;
  
- DEBUG_end_frame();
- global_dll_reloaded_so_watch_out_for_debug_strings = false;
+ debug_end_frame();
+ reloaded_game_this_frame = false;
  
  // end-of-app_step
  return(app_result);

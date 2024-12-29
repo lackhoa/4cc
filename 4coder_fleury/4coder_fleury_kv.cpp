@@ -66,7 +66,7 @@ F4_DoFullLex_ASYNC_Inner(Async_Context *actx, Buffer_ID buffer_id)
     
     if(language != 0)
     {
-        void *lexing_state = push_array_zero(scratch, u8, language->lex_state_size);
+        void *lexing_state = push_array0(scratch, u8, language->lex_state_size);
         language->LexInit(lexing_state, contents);
         for(;;)
         {

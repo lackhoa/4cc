@@ -12,18 +12,7 @@
 
 #pragma once
 
-#include "4ed_render_target.h"
-
 global Render_State render_state;
-
-inline Render_Config *
-target_last_config(Render_Target *target) {
- if (render_state.group_last){
-  return &render_state.group_last->config;
- }else{
-  return &target->stub_config;
- }
-}
 
 inline Render_Target *
 get_render_target(i32 window_id) {
@@ -62,7 +51,16 @@ new_render_entry(Render_Entry_Type type)
  group->entry_count++;
  return entry;
 }
-
+api(ed) function Render_Config *
+target_last_config(Render_Target *target)
+{
+ Render_Config *result = &target->stub_config;
+ if(render_state.group_last)
+ {
+  result = &render_state.group_last->config;
+ }
+ return result;
+}
 api(ed) function Render_Config *
 draw_new_group(Render_Target *target)
 {
@@ -78,13 +76,12 @@ draw_new_group(Render_Target *target)
  group->face_id   = state.face_id;
  group->window_id = target->window_id;
  
- //if (!is_game){ new_render_entry(RET_Poly); }
  return &group->config;
 }
 
 function Render_Vertex_Array_Node*
 draw__extend_group_vertex_memory(Arena *arena, Render_Vertex_List *list, i1 size){
- Render_Vertex_Array_Node *node = push_array_zero(arena, Render_Vertex_Array_Node, 1);
+ Render_Vertex_Array_Node *node = push_array0(arena, Render_Vertex_Array_Node, 1);
  sll_queue_push(list->first, list->last, node);
  node->vertices = push_array(arena, Render_Vertex, size);
  node->vertex_max = size;
@@ -95,12 +92,15 @@ function void
 draw__set_face_id(Face_ID face_id)
 {
  auto &state = render_state;
- if (state.face_id != face_id) {
-  if (state.face_id != 0) {
-   // NOTE: Has existing face id
+ if (state.face_id != face_id)
+ {
+  if (state.face_id != 0)
+  {// NOTE: Has existing face id
    state.face_id = face_id;
    draw_new_group(get_render_target(0));
-  } else {
+  }
+  else
+  {
    // NOTE: No current face is set
    state.face_id = face_id;
    for (Render_Group *group = state.group_first;
@@ -140,7 +140,7 @@ draw_rect_outline_to_target(Render_Target *target, rect2 rect, v1 roundness, v1 
  draw__push_vertices(target, vertices, alen(vertices), type);
 }
 
-api(custom) function void
+api(ed) function void
 draw_rect_outline(App *app, rect2 rect, v1 roundness, v1 thickness, ARGB_Color color, v1 depth)
 {
  Render_Target *target = draw_get_target(app);
@@ -163,19 +163,10 @@ draw_circle(App *app, v3 center, v1 radius, ARGB_Color color, v1 thickness)
 function void
 draw_rect_to_target(Render_Target *target, rect2 rect, v1 roundness, u32 color, v1 depth=0)
 {
-    v2 dim = get_dim(rect);
-    v1 thickness = Max(dim.x, dim.y);
-    draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
+ v2 dim = get_dim(rect);
+ v1 thickness = Max(dim.x, dim.y);
+ draw_rect_outline_to_target(target, rect, roundness, thickness, color, depth);
 }
-
-myinline void
-draw_rect(App *app, rect2 rect, v1 roundness, ARGB_Color color, v1 depth)
-{
-    v2 dim = get_dim(rect);
-    v1 thickness = Max(dim.x, dim.y);
-    draw_rect_outline(app, rect, roundness, thickness, color, depth);
-}
-
 myinline void
 draw_rect2(App *app, rect2 rect, ARGB_Color color)
 {
@@ -196,16 +187,18 @@ draw_circle(App *app, v2 center, v1 radius, ARGB_Color color, v1 thickness)
 }
 
 //~
-function rect2
-draw_set_clip(Render_Target *target, rect2 clip_box)
+api(ed) function rect2
+target_set_clip(Render_Target *target, rect2 clip_box)
 {
  rect2 prev_clip = {};
  b32 same = false;
- if (Render_Group *group = render_state.group_last) {
+ if(Render_Group *group = render_state.group_last)
+ {
   prev_clip = group->clip_box;
   same = (group->clip_box == clip_box);
  }
- if (!same) {
+ if(!same)
+ {
   Render_Config *config = draw_new_group(target);
   config->clip_box = clip_box;
  }

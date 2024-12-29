@@ -2,6 +2,7 @@ defcolor_base         = 0xff9F5E4A;  //NOTE type color
 defcolor_text_default = 0xFF787878;
 defcolor_function     = 0xFF587898;
 defcolor_keyword      = 0xFF998963;
+defcolor_broken_link  = 0xFFC006C9;
 
 defcolor_comment      = 0xFF6a6b2f;
 
@@ -10,7 +11,7 @@ defcolor_non_text     = 0xFFabada8;  // NOTE(kv): parens, operators
 
 defcolor_comment_pop  = { 0xFF2A83a0, defcolor_base, defcolor_keyword };  // notes, todos, bookmark
 defcolor_type         = defcolor_base;
-defcolor_constant     = 0xFF128205;
+defcolor_constant     = 0xFF527225;
 
 defcolor_highlight_junk  = 0xFF3A0000;  // NOTE(kv): error highlight
 defcolor_highlight_white = 0x80003A3A;  // NOTE: search highlight
@@ -31,11 +32,12 @@ defcolor_highlight_cursor_line = 0xFF1E1E1E;
 defcolor_highlight             = 0xFF303040;
 defcolor_at_highlight          = 0xFFAA44AA;
 defcolor_mark                  = 0xFF494949;
-defcolor_str_constant          = defcolor_constant;
-defcolor_char_constant         = defcolor_constant;
-defcolor_int_constant          = defcolor_constant;
-defcolor_float_constant        = defcolor_constant;
-defcolor_bool_constant         = defcolor_constant;
+defcolor_constant_2            = 0xff4F7E2A;
+defcolor_str_constant          = defcolor_constant_2;
+defcolor_char_constant         = defcolor_constant_2;
+defcolor_int_constant          = defcolor_constant_2;
+defcolor_float_constant        = defcolor_constant_2;
+defcolor_bool_constant         = defcolor_constant_2;
 defcolor_preproc               = defcolor_keyword;
 defcolor_include               = defcolor_base;
 defcolor_special_character     = 0xFFFF0000;

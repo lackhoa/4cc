@@ -30,19 +30,20 @@ models_pop_view_command_function(Models *models){
         Model_View_Command_Function *node = models->first_view_cmd_func;
         result.custom_func = node->custom_func;
         result.view_id = node->view_id;
-        sll_queue_pop(models->first_view_cmd_func, models->last_view_cmd_func);
-        sll_stack_push(models->free_view_cmd_funcs, node);
-    }
-    return(result);
+  sll_queue_pop(models->first_view_cmd_func, models->last_view_cmd_func);
+  sll_stack_push(models->free_view_cmd_funcs, node);
+ }
+ return(result);
 }
 
 function void
-models_push_virtual_event(Models *models, Input_Event *event){
-    Model_Input_Event_Node *node = models->free_virtual_event;
-    if (node == 0){
-        node = push_array(&models->virtual_event_arena, Model_Input_Event_Node, 1);
-    }
-    else{
+models_push_virtual_event(Models *models, Input_Event *event)
+{
+ Model_Input_Event_Node *node = models->free_virtual_event;
+ if (node == 0){
+  node = push_array(&models->virtual_event_arena, Model_Input_Event_Node, 1);
+ }
+ else{
   sll_stack_pop(models->free_virtual_event);
  }
  sll_queue_push(models->first_virtual_event, models->last_virtual_event, node);

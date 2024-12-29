@@ -55,7 +55,7 @@ vim_lister_file__backspace(App *app)
 		if(input_has_modifier(&input, Key_Code_Control)){
 			if(input_has_modifier(&input, Key_Code_Shift)){
 				lister->text_field.size = 0;
-				while(!character_is_slash(lister->text_field.str[++lister->text_field.size])){}
+				while(!is_file_slash(lister->text_field.str[++lister->text_field.size])){}
 				++lister->text_field.size;
 				String_u8 temp = lister->text_field;
 				
@@ -64,7 +64,7 @@ vim_lister_file__backspace(App *app)
 				lister->text_field = temp;
 			}else{
 				String string = lister->text_field.string;
-				if(character_is_slash(string.str[string.size-1])){
+				if(is_file_slash(string.str[string.size-1])){
 					string.size--;
 					i64 slash_index = string_find_last_slash(string);
 					if(slash_index >= 0){
@@ -102,7 +102,7 @@ vim_lister__write_character__file_path(App *app){
 		String string = to_writable(&in);
 		if(string.str != 0 && string.size > 0){
 			lister_append_text_field(lister, string);
-			if(character_is_slash(string.str[0])){
+			if(is_file_slash(string.str[0])){
 				lister->out.text_field = lister->text_field.string;
                 result = ListerActivation_Finished;
 			}
@@ -135,7 +135,7 @@ vim_convert_lister_result_to_filename_result(Lister_Result l_result){
 	if(l_result.user_data != 0){
 		String name = SCu8((u8*)l_result.user_data);
 		result.filename_activated = name;
-		result.is_folder = character_is_slash(string_get_character(name, name.size - 1));
+		result.is_folder = is_file_slash(string_get_character(name, name.size - 1));
 	}
 	result.filename_in_text_field = path_filename(l_result.text_field);
 	
@@ -146,7 +146,7 @@ vim_convert_lister_result_to_filename_result(Lister_Result l_result){
 	}else{
 		path = string_remove_front_of_path(l_result.text_field);
 	}
-	if(character_is_slash(string_get_character(path, path.size-1))){
+	if(is_file_slash(string_get_character(path, path.size-1))){
 		path = string_chop(path, 1);
 	}
 	result.path_in_text_field = path;
@@ -165,7 +165,7 @@ vim_lister_user_data_at_p(App *app, View_ID view, Lister *lister, v2 m_p, i32 co
 	if(rect_contains_point(region, m_p)){
 		f32 y = m_p.y - region.y0 + lister->scroll.position.y;
 		i32 index = i32(m_p.x/block_width) + col_num*i32(y/block_height);
-		if(in_range_exclusive(0, index, lister->filtered.count)){
+		if(in_range_exclusive(index, 0, lister->filtered.count)){
 			return lister->filtered.node_ptrs[index]->user_data;
 		}
 	}
@@ -466,7 +466,7 @@ vim_run_lister(App *app0, Lister *lister)
 					
      case Key_Code_Return:{
 						void *user_data = 0;
-						if(in_range_exclusive(0, lister->raw_item_index, lister->options.count)){
+						if(in_range_exclusive(lister->raw_item_index, 0, lister->options.count)){
 							user_data = lister_get_user_data(lister, lister->raw_item_index);
 							block_copy(dest, lister->highlighted_node->string.str, lister->highlighted_node->string.size);
 							vim_bottom_text.size = base_size + lister->highlighted_node->string.size;

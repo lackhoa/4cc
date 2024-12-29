@@ -255,7 +255,7 @@ lister__write_character__file_path(App *app){
         String string = to_writable(&in);
         if (string.str != 0 && string.size > 0){
             lister_append_text_field(lister, string);
-            if (character_is_slash(string.str[0])){
+            if (is_file_slash(string.str[0])){
                 lister->out.text_field = lister->text_field.string;
                 result = ListerActivation_Finished;
             }
@@ -279,7 +279,7 @@ lister__backspace_text_field__file_path(App_Cmd *app){
   if (lister->text_field.size > 0){
    char last_char = lister->text_field.str[lister->text_field.size - 1];
    lister->text_field.string = backspace_utf8(lister->text_field.string);
-   if (character_is_slash(last_char)){
+   if (is_file_slash(last_char)){
     User_Input input = get_current_input(app);
     String8 text_field = lister->text_field.string;
     String8 new_hot = path_dir(text_field);
@@ -316,7 +316,7 @@ generate_hot_directory_file_list(App *app, Lister *lister)
  
  Temp_Memory temp = begin_temp_memory(lister->arena);
  String hot = push_hot_directory(app, lister->arena);
- if (!character_is_slash(string_get_character(hot, hot.size - 1))){
+ if (!is_file_slash(string_get_character(hot, hot.size - 1))){
   hot = push_stringf(lister->arena, "%.*s/", string_expand(hot));
  }
  lister_set_text_field(lister, hot);
@@ -404,7 +404,7 @@ get_filename_from_user(App_Cmd *app, Arena *arena, String query, View_ID view)
   if (l_result.user_data != 0){
    String name = SCu8((u8*)l_result.user_data);
    result.filename_activated = name;
-   result.is_folder = character_is_slash(string_get_character(name, name.size - 1));
+   result.is_folder = is_file_slash(string_get_character(name, name.size - 1));
   }
   result.filename_in_text_field = path_filename(l_result.text_field);
   
@@ -416,7 +416,7 @@ get_filename_from_user(App_Cmd *app, Arena *arena, String query, View_ID view)
   else{
    path = string_remove_front_of_path(l_result.text_field);
   }
-  if (character_is_slash(string_get_character(path, path.size - 1))){
+  if (is_file_slash(string_get_character(path, path.size - 1))){
    path = string_chop(path, 1);
   }
   result.path_in_text_field = path;
@@ -573,7 +573,7 @@ query_create_folder(App_Cmd *app, String folder_name){
                 String hot = push_hot_directory(app, scratch);
                 String fixed_folder_name = folder_name;
                 for (;fixed_folder_name.size > 0 &&
-                     character_is_slash(fixed_folder_name.str[fixed_folder_name.size - 1]);){
+                     is_file_slash(fixed_folder_name.str[fixed_folder_name.size - 1]);){
                     fixed_folder_name = string_chop(fixed_folder_name, 1);
                 }
                 if (fixed_folder_name.size > 0){
@@ -605,7 +605,7 @@ activate_open_or_new__generic(App *app, View_ID view,
     else{
         Scratch_Block scratch(app);
         String full_filename = {};
-        if (character_is_slash(string_get_character(path, path.size - 1))){
+        if (is_file_slash(string_get_character(path, path.size - 1))){
             path = string_chop(path, 1);
         }
         full_filename = push_stringf(scratch, "%.*s/%.*s", string_expand(path), string_expand(filename));
@@ -650,7 +650,7 @@ interactive_open_or_new(App_Cmd *app)
             continue;
         }
         
-        if (character_is_slash(filename.str[filename.size - 1])){
+        if (is_file_slash(filename.str[filename.size - 1])){
             File_Attributes attribs = system_quick_file_attributes(scratch, full_filename);
             if (HasFlag(attribs.flags, FileAttribute_IsDirectory)){
                 set_hot_directory(app, full_filename);
@@ -704,7 +704,7 @@ interactive_new(App_Cmd *app)
             continue;
         }
         
-        if (character_is_slash(filename.str[filename.size - 1])){
+        if (is_file_slash(filename.str[filename.size - 1])){
             File_Attributes attribs = system_quick_file_attributes(scratch, full_filename);
             if (HasFlag(attribs.flags, FileAttribute_IsDirectory)){
                 set_hot_directory(app, full_filename);
@@ -753,7 +753,7 @@ interactive_open(App_Cmd *app)
             continue;
         }
         
-        if (character_is_slash(filename.str[filename.size - 1])){
+        if (is_file_slash(filename.str[filename.size - 1])){
             File_Attributes attribs = system_quick_file_attributes(scratch, full_filename);
             if (HasFlag(attribs.flags, FileAttribute_IsDirectory)){
                 set_hot_directory(app, full_filename);

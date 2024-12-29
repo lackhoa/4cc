@@ -94,7 +94,7 @@ F4_Language_PosContext_PushData(Arena *arena,
 {
     F4_Language_PosContextData *first = *first_ptr;
     F4_Language_PosContextData *last = *last_ptr;
-    F4_Language_PosContextData *func = push_array_zero(arena, F4_Language_PosContextData, 1);
+    F4_Language_PosContextData *func = push_array0(arena, F4_Language_PosContextData, 1);
     func->relevant_note = note;
     func->query_token = query;
     func->argument_index = arg_index;
@@ -136,7 +136,7 @@ F4_Language_LexFullInput_NoBreaks(App *app, F4_Language *language, Arena *arena,
     if(language != 0)
     {
         Scratch_Block scratch(app, arena);
-        void *state = push_array_zero(scratch, u8, language->lex_state_size);
+        void *state = push_array0(scratch, u8, language->lex_state_size);
 		language->LexInit(state, text);
         language->LexFullInput(arena, &list, state, max_u64);
     }

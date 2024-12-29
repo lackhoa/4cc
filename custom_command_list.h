@@ -1,5 +1,11 @@
-//-NOTE(kv) All of the custom commands, gathered in one place
-normal_commands{
+//-
+// NOTE(kv) All of the custom commands, gathered in one place
+// ...also not really an h file.
+//-
+
+//;normal_commands
+normal_commands
+{
  F4_Index_Reset "Reset the index"
   delete_char "Deletes the character to the right of the cursor."
   backspace_char "Deletes the character to the left of the cursor."
@@ -75,7 +81,8 @@ normal_commands{
   set_current_dir_as_hot "set current dir as hot"
   init "configure your editor!"
   kv_miscellaneous_debug_command "just a placeholder command so I can test stuff"
-  file "kv copy file name"
+  file "open file"
+  copy_filename "kv copy file name"
   switch_to_game_panel "switch to game panel"
   kv_open_note_file "switch to my note file"
   kv_run "run the current script"
@@ -188,15 +195,19 @@ normal_commands{
   left_adjust_view "Sets the left size of the view near the x position of the cursor."
   move_left "Moves the cursor one character to the left."
   move_right "Moves the cursor one character to the right."
-  list_all_functions_current_buffer "Creates a jump list of lines of the current buffer that appear to define or declare functions."
+  //list_all_functions_current_buffer "Creates a jump list of lines of the current buffer that appear to define or declare functions."
   vim_try_exit "Vim command for responding to a try-exit event"
+  cmd_goto_random_position "go to random file position"
+  cmd_switch_dot_arrow ""
 }
-ui_commands {
+
+ui_commands
+{
  profile_inspect "Inspect all currently collected profiling information in 4coder's self profiler."
- vim_interactive_open_or_new "Interactively open a file out of the file system."
+  vim_interactive_open_or_new "Interactively open a file out of the file system."
   vim_theme_lister "Opens an interactive list of all registered themes."
-  vim_switch_lister "Opens an interactive list of all loaded buffers."
-  vim_list_all_functions_current_buffer_lister "Creates a lister of locations that look like function definitions and declarations in the buffer."
+  //vim_switch_lister "Opens an interactive list of all loaded buffers."
+  //vim_list_all_functions_current_buffer_lister "Creates a lister of locations that look like function definitions and declarations in the buffer."
   vim_proj_cmd_lister "Opens an interactive list of all project commands."
   vim_jump_lister "Opens an interactive lists of the views jumps"
   interactive_switch_buffer "Interactively switch to an open buffer."
@@ -211,12 +222,14 @@ ui_commands {
  f4_open_project "Open a project by navigating to the project file."
  f4_interactive_open_or_new_in_project "Interactively open a file out of the file system, filtered to files only in the project."*/
   //f4_recent_files_menu "Lists the recent files used in the current panel."
-  list_all_functions_current_buffer_lister "Creates a lister of locations that look like function definitions and declarations in the buffer."
-  list_all_functions_all_buffers_lister "Creates a lister of locations that look like function definitions and declarations all buffers."
-  list_all_functions_all_buffers "Creates a jump list of lines from all buffers that appear to define or declare functions."
+  //list_all_functions_current_buffer_lister "Creates a lister of locations that look like function definitions and declarations in the buffer."
+  //list_all_functions_all_buffers_lister "Creates a lister of locations that look like function definitions and declarations all buffers."
+  //list_all_functions_all_buffers "Creates a jump list of lines from all buffers that appear to define or declare functions."
   show_the_log_graph "Parses *log* and displays the 'log graph' UI"
 }
-custom_ids{
+
+custom_ids
+{
  defcolor_bar colors,
  defcolor_base colors,
  defcolor_pop1 colors,
@@ -270,7 +283,7 @@ custom_ids{
  buffer_map_id attachment,
  buffer_eol_setting attachment,
  buffer_lex_task attachment,
- sticky_jump_marker_handle attachment,
+ sticky_jump_positions_handle attachment,
  attachment_tokens attachment,
  defcolor_vim_filebar_pop colors,
  defcolor_vim_chord_text colors,
@@ -286,6 +299,7 @@ custom_ids{
  defcolor_control colors,
  defcolor_struct colors,
  defcolor_non_text colors,
+ defcolor_broken_link colors,
 }
 
 //~eof

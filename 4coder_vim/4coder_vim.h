@@ -14,8 +14,8 @@ global Vim_Text_Object vim_text_object_vtable[(i1)VIM_TEXT_OBJECT_COUNT + (i1)VI
 
 global Vim_Global_Mark vim_global_marks[26];
 
-global u8        vim_bottom_buffer[256];
-global String_u8 vim_bottom_text = Su8(vim_bottom_buffer, 0, ArrayCount(vim_bottom_buffer));
+global u8        vim_bottom_buffer_[256];
+global String_u8 vim_bottom_text = Su8(vim_bottom_buffer_, 0, ArrayCount(vim_bottom_buffer_));
 global bool vim_is_querying_user_key;
 
 global u8 vim_keystroke_buffer[64];
@@ -164,10 +164,10 @@ vim_get_register_char(Vim_Register *reg){
 	else if(reg == &r->command){      result = ':'; }
 	else if(reg == &r->file){         result = '%'; }
 	else if(reg == &r->expression){   result = '='; }
-	else if(in_range_exclusive(r->named, reg, r->named + ArrayCount(r->named))){
+	else if(in_range_exclusive(reg, r->named, r->named + ArrayCount(r->named))){
 		result = u8(i1('a') + i1(reg - r->named));
 	}
-	else if(in_range_exclusive(r->digit, reg, r->digit + ArrayCount(r->digit))){
+	else if(in_range_exclusive(reg, r->digit, r->digit + ArrayCount(r->digit))){
 		result = u8(i1('0') + i1(reg - r->digit));
 	}
 	return result;

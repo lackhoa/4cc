@@ -5,23 +5,29 @@ struct Key_Direction{
  b32 new_keypress;
 };
 
-struct Game_Input : Game_Input_Public{
+struct Game_Input : Game_Input_0
+{
  Key_Direction direction;
 };
 
-struct Driver_DLL
+struct Notebook_State
 {
- u64 mtime;
- u32 temp_index;
- DLL_Handle handle;
+ Texture_Handle texture;
 };
-//NOTE: The state is saved between reloads.
+
+struct Game_Transient_State
+{// NOTE see @game_reload
+ darray(Location) pinned_locations;
+ darray(Location) hot_locations;
+};
 struct Game_State
-{
- Base_Allocator malloc;
+{// NOTE The state that is saved between reloads.
+ // NOTE See also @game_init
  Arena permanent_arena;
  Arena data_load_arena;  // NOTE: cleared on data load
- Arena dll_arena;        // NOTE: cleared on dll reload
+ Arena frame_arena;
+ Arena model_frame_arena;
+ Arena driver_arena;
  
  b32 has_done_backup;
  String save_dir;
@@ -29,27 +35,38 @@ struct Game_State
  Stringz autosave_path;
  Stringz manual_save_path;
  
- //-NOTE: Misc
- Modeler modeler;
- v1 time;
+ union
+ {
+  Serialized_State_Embed;
+  Serialized_State serialized;
+ };
+ 
+ //-Public state (maybe put it in a different struct)
+ darray(Game_Command) command_queue;
+ 
+ //-Misc
+ Game_Transient_State *transient;
+ Model model;  // NOTE(kv) It's nice to retain some information here.
+ b32 sending_data;
+ Driver_API driver_api;
+ b32 is_dev_editor;
+ // NOTE(kv) Source time that is enough to hold the entirety of animation time (plus speedups).
+ v1 looping_time;
  b32 indicator_level;
  Viewport viewports[GAME_VIEWPORT_COUNT];
  b32 save_failed;
  b32 load_failed;
- darray(String )command_queue;
  Game_ImGui_State imgui_state;
- b32 kb_cursor_mode;
- Serialized_State_Embed;
- Pose pose;//todo(kv) What is this?
- v1 anime_time;
- b32 sending_data;
- darray(String )unsynced_files;
- Driver_API driver_api;
- u32 hot_prim_id;
- Driver_DLL driver_dll;
- 
- b8 __padding[64];
+ b32 stick_to_front;
 };
+
+// TODO(kv) Just hacking around the limitation of update & render being separate
+struct Game_Update_Result
+{
+ Pose pose;
+ v1 anim_time;
+};
+global Game_Update_Result game_update_result;
 
 myinline void print_nspaces(Printer &p, i1 n){ for_repeat(n) { print(p, " "); } }
 //-EOF

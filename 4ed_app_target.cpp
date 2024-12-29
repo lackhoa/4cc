@@ -18,19 +18,13 @@
 #include "4coder_doc_content_types.h"
 #include "4coder_default_colors.h"
 #define STATIC_LINK_API
-#include "generated/custom_api.h"
+#include "custom_api.gen.h"
 
 #include "4coder_string_match.h"
 #include "4coder_token.h"
 
 #include "4coder_system_types.h"
-//#define DYNAMIC_LINK_API
-//#include "generated/system_api.h"
 #include "4ed_font_interface.h"
-//#define DYNAMIC_LINK_API
-//#include "graphics_api.h"
-//#define DYNAMIC_LINK_API
-//#include "generated/font_api.h"
 
 #include "4coder_profile.h"
 #include "4coder_command_map.h"
@@ -56,10 +50,10 @@
 #include "4ed_edit.h"
 #include "4ed_text_layout.h"
 #include "4ed_font_set.h"
-#include "4ed_log.h"
+#include "4coder_log_core.h"
 #include "4ed_app_models.h"
 
-#include "generated/lexer_cpp.h"
+#include "lexer_cpp.gen.h"
 #include "4ed_api_definition.h"
 #include "docs/4ed_doc_helper.h"
 
@@ -74,15 +68,14 @@
 #include "4coder_profile_static_enable.cpp"
 #include "4coder_hash_functions.cpp"
 #include "4coder_log.cpp"
-#include "4coder_buffer_seek_constructors.cpp"
 #include "4coder_command_map.cpp"
 #include "4coder_codepoint_map.cpp"
 
 #include "4coder_token.cpp"
 #include "4coder_token2.cpp"
-#include "generated/lexer_cpp.cpp"
+#include "lexer_cpp.gen.cpp"
 
-#include "4ed_log.cpp"
+#include "4coder_log_core.cpp"
 #include "4ed_coroutine.cpp"
 #include "4ed_dynamic_variables.cpp"
 #include "4ed_font_set.cpp"
@@ -101,6 +94,7 @@
 #include "4ed_edit.cpp"
 #include "4ed_text_layout.cpp"
 
+#include "4coder_game.h"
 #include "4ed.cpp"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -113,7 +107,7 @@
 #include "stb_image.h"
 
 #define STATIC_LINK_API
-#include "generated/ed_api.cpp"
+#include "ed_api.gen.cpp"
 #include "4coder_kv.cpp"
 #include "4ed_api_implementation.cpp"
 

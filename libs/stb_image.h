@@ -314,7 +314,7 @@ RECENT REVISION HISTORY:
 // iPhone PNG support:
 //
 // We optionally support converting iPhone-formatted PNGs (which store
-// premultiplied BGRA) back to RGB, even though they're functionly encoded
+// premultiplied BGRA) back to RGB, even though they're internally encoded
 // differently. To enable this conversion, call
 // stbi_convert_iphone_png_to_rgb(1).
 //
@@ -1736,7 +1736,7 @@ static stbi__uint32 stbi__get32le(stbi__context *s)
 //
 //  generic converter from built-in img_n to req_comp
 //    individual types do this automatically as much as possible (e.g. jpeg
-//    does all cases functionly since it needs to colorspace convert anyway,
+//    does all cases internally since it needs to colorspace convert anyway,
 //    and it never has alpha, so very few cases ). png can automatically
 //    interleave an alpha=255 channel, but falls back to this for other cases
 //

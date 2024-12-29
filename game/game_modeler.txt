@@ -1,0 +1,190 @@
+//-
+//-NOTE: Edit history
+function void
+clear_edit_history(Modeler_History *h)
+{
+ // NOTE(kv): We wanna clear all history when we want to.
+ // NOTE(kv): so when we clear, the plan is to just wipe out the memory, and re-initialize everything.
+ // NOTE(kv): Later we can make multiple arena pools, and free those.
+ if(h->inited){
+  arena_free(&h->arena);
+  init_dynamic(h->edit_stack, &h->arena, 128);
+ }
+}
+function void
+apply_edit_no_history(Modeler *m, Modeler_Edit &edit0, b32 redo) {
+ //NOTE(kv) nerfed
+#if 0
+ switch(edit0.type) {
+  case ME_Vert_Move: {
+   auto &edit = edit0.Vert_Move;
+   v3 delta = redo ? edit.delta : -edit.delta;
+   for_i32(index,0,edit.verts.count){
+    i1 vi = edit.verts[index].v;
+    m->vertices[vi].pos += delta;
+   }
+  }break;
+  case ME_Edit_Group: {
+   auto &edit = edit0.Edit_Group;
+   for_i32(index,0,edit.count){
+    apply_edit_no_history(m, edit[index], redo);
+   }
+  }break;
+  InvalidDefaultCase;
+ }
+#endif
+}
+#if 0
+inline i1
+get_undo_index(Modeler_History &h) {
+ return h.redo_index-1;
+}
+inline b32
+can_undo(Modeler_History &h) {
+ b32 ok = (get_undo_index(h) >= 0);
+ return ok;
+}
+function b32
+modeler_undo(Modeler *m) {
+ auto &h = m->history;
+ i1 undo_index = h.redo_index - 1;
+ b32 ok = (undo_index >= 0);
+ if (ok) {
+  apply_edit_no_history(m, h.edit_stack[undo_index], false);
+  h.redo_index -= 1;
+ }
+ return ok;
+}
+
+inline b32
+can_redo(Modeler_History &h) {
+ return (h.redo_index < i32(h.edit_stack.count));
+}
+//
+function void
+modeler_redo(Modeler *m) {
+ auto &h = m->history;
+ apply_edit_no_history(m, h.edit_stack[h.redo_index], true);
+ h.redo_index += 1;
+}
+
+function void
+apply_new_edit(Modeler *m, Modeler_Edit &edit)
+{
+ auto &h = m->history;
+ h.edit_stack.count = h.redo_index;
+ h.edit_stack.set_count(h.redo_index+1);  // NOTE(kv): overwrite everything after the redo
+ h.edit_stack[h.redo_index] = edit;  // NOTE(kv): push the edit on top of the stack
+ modeler_redo(m);
+ m->change_uncommitted = true;
+}
+
+inline Modeler_Edit *
+get_current_edit(Modeler_History &h)
+{// NOTE: Sometimes the "current edit" doesn't exist yet
+ Modeler_Edit *result = 0;
+ if (can_undo(h)) {
+  result = &h.edit_stack[get_undo_index(h)];
+ }
+ return result;
+}
+
+function b32
+edits_can_be_merged(Modeler_Edit &edit1, Modeler_Edit &edit2)
+{
+ b32 result = false;
+ if (edit1.type == edit2.type) {
+  switch (edit1.type) {
+   case ME_Vert_Move: {
+    Vert_Move &e1 = edit1.Vert_Move;
+    Vert_Move &e2 = edit2.Vert_Move;
+    if (e1.verts.count == e2.verts.count) {
+     result = true;
+     for_i32(vi,0,e1.verts.count) {
+      if (e1.verts[vi].v != e2.verts[vi].v) {
+       result = false;
+       break;
+      }
+     }
+    }
+   } break;
+  }
+ }
+ return result;
+}
+
+function void
+modeler__reset_edit(Modeler *m){
+ //NOTE(kv) If you wanna unselect vertices, this is your chance!
+}
+function void
+modeler_exit_edit(Modeler *m) {
+ if(m->change_uncommitted) {
+  modeler__reset_edit(m);
+  m->change_uncommitted = false;
+ }
+}
+function void
+modeler_exit_edit_undo(Modeler *m){
+ if(m->change_uncommitted){
+  modeler__reset_edit(m);
+  modeler_undo(m);
+  m->change_uncommitted = false;
+ }
+}
+inline b32
+selecting_vertex(Modeler *m){
+ return type_from_prim_id(selected_prim_id(m)) == Prim_Vertex;
+}
+#endif
+function void
+clear_modeling_data(Modeler *m)
+{
+#if 0
+ m->vertices.set_count(1);
+ m->curves.  set_count(1);
+ clear_edit_history(&m->history);
+ array_set_count(m->bones, 1);
+#endif
+}
+#if 0
+function void
+compute_active_prims(Modeler *m)
+{
+ u32 sel_prim = m->selected_prim_ro;
+ m->active_prims.count = 0;
+ // NOTE(kv): selected object is always active.
+ push_unique(&m->active_prims, sel_prim);
+ if(m->selection_spanning){
+  Prim_Type sel_type = type_from_prim_id(sel_prim);
+  if (sel_type == Prim_Vertex){
+   Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
+   Vertex &sel = m->vertices[sel_index.v];
+   for_i32(cindex,1,m->curves.count){
+    Curve_Data &curve = m->curves[cindex];
+    //TODO(kv) If the curve doesn't store its endpoint,
+    //  do we need to trace the endpoint down?
+    Vertex_Index p0_index = get_p0_index_or_zero(curve);
+    Vertex_Index p3_index = get_p3_index_or_zero(curve);
+    if(sel_index == p0_index){
+     push_unique(&m->active_prims, prim_id_from_vertex_index(p0_index));
+    }else if(sel_index == p3_index){
+     push_unique(&m->active_prims, prim_id_from_vertex_index(p3_index));
+    }
+   }
+  }
+ }
+}
+inline void
+select_primitive(Modeler *m, u32 prim){
+ m->selected_prim_ro = prim;
+ compute_active_prims(m);
+}
+inline void
+clear_selection(Modeler *m){
+ m->selected_prim_ro   = 0;
+ m->active_prims.count = 0;
+}
+#endif
+//-
+//~EOF

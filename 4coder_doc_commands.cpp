@@ -62,7 +62,7 @@ doc_default_bindings(Arena *arena, i1 map_count, Mapping *mapping_array, char **
             i1 node_count = 0;
             
             if (map->text_input_command.name != 0){
-                Bind_Node *node = push_array_zero(arena, Bind_Node, 1);
+                Bind_Node *node = push_array0(arena, Bind_Node, 1);
                 sll_queue_push(first, last, node);
                 node_count += 1;
                 node->binding = map->text_input_command;
@@ -125,7 +125,7 @@ doc_default_bindings(Arena *arena, i1 map_count, Mapping *mapping_array, char **
                              snode = snode->next){
                             Command_Modified_Binding *mod_binding = CastFromMember(Command_Modified_Binding, order_node, snode);
                             
-                            Bind_Node *node = push_array_zero(arena, Bind_Node, 1);
+                            Bind_Node *node = push_array0(arena, Bind_Node, 1);
                             sll_queue_push(first, last, node);
                             node_count += 1;
                             node->kind = event_codes[j];
@@ -139,7 +139,7 @@ doc_default_bindings(Arena *arena, i1 map_count, Mapping *mapping_array, char **
             }
             
             Vec2_i1 table_dims = V2i1(2, node_count);
-            Doc_Content_List *vals = push_array_zero(arena, Doc_Content_List, table_dims.x*table_dims.y);
+            Doc_Content_List *vals = push_array0(arena, Doc_Content_List, table_dims.x*table_dims.y);
             Bind_Node *bnode = first;
             for (i1 y = 0; y < table_dims.y; y += 1, bnode = bnode->next){
                 Doc_Content_List *line = &vals[y*table_dims.x];

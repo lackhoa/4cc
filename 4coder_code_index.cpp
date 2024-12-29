@@ -80,7 +80,7 @@ function Code_Index_File_Storage*
 code_index__alloc_storage(void){
   Code_Index_File_Storage *result = global_code_index.free_storage;
   if (result == 0){
-    result = push_array_zero(&global_code_index.node_arena, Code_Index_File_Storage, 1);
+    result = push_array0(&global_code_index.node_arena, Code_Index_File_Storage, 1);
   }
   else{
     sll_stack_pop(global_code_index.free_storage);
@@ -106,7 +106,7 @@ code_index_push_nest(Code_Index_Nest_List *list, Code_Index_Nest *nest){
 function Code_Index_Nest_Ptr_Array
 code_index_nest_ptr_array_from_list(Arena *arena, Code_Index_Nest_List *list){
   Code_Index_Nest_Ptr_Array array = {};
-  array.ptrs = push_array_zero(arena, Code_Index_Nest*, list->count);
+  array.ptrs = push_array0(arena, Code_Index_Nest*, list->count);
   array.count = list->count;
   i1 counter = 0;
   for (Code_Index_Nest *node = list->first;
@@ -121,7 +121,7 @@ code_index_nest_ptr_array_from_list(Arena *arena, Code_Index_Nest_List *list){
 function Code_Index_Note_Ptr_Array
 code_index_note_ptr_array_from_list(Arena *arena, Code_Index_Note_List *list){
   Code_Index_Note_Ptr_Array array = {};
-  array.ptrs = push_array_zero(arena, Code_Index_Note*, list->count);
+  array.ptrs = push_array0(arena, Code_Index_Note*, list->count);
   array.count = list->count;
   i1 counter = 0;
   for (Code_Index_Note *node = list->first;
@@ -470,7 +470,7 @@ generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state);
 function Code_Index_Nest*
 generic_parse_statement(Code_Index_File *index, Generic_Parse_State *state){
   Token *token = tkarr_read(&state->it);
-  Code_Index_Nest *result = push_array_zero(state->arena, Code_Index_Nest, 1);
+  Code_Index_Nest *result = push_array0(state->arena, Code_Index_Nest, 1);
   result->kind = CodeIndexNest_Statement;
   result->open = Ii64(token->pos);
   result->close = Ii64(max_i64);
@@ -527,7 +527,7 @@ generic_parse_statement(Code_Index_File *index, Generic_Parse_State *state){
 function Code_Index_Nest*
 generic_parse_preprocessor(Code_Index_File *index, Generic_Parse_State *state){
   Token *token = tkarr_read(&state->it);
-  Code_Index_Nest *result = push_array_zero(state->arena, Code_Index_Nest, 1);
+  Code_Index_Nest *result = push_array0(state->arena, Code_Index_Nest, 1);
   result->kind = CodeIndexNest_Preprocessor;
   result->open = Ii64(token->pos);
   result->close = Ii64(max_i64);
@@ -591,7 +591,7 @@ generic_parse_preprocessor(Code_Index_File *index, Generic_Parse_State *state){
 function Code_Index_Nest*
 generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
   Token *token = tkarr_read(&state->it);
-  Code_Index_Nest *result = push_array_zero(state->arena, Code_Index_Nest, 1);
+  Code_Index_Nest *result = push_array0(state->arena, Code_Index_Nest, 1);
   result->kind = CodeIndexNest_Scope;
   result->open = Ii64(token);
   result->close = Ii64(max_i64);
@@ -671,7 +671,7 @@ generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
 function Code_Index_Nest*
 generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state){
   Token *token = tkarr_read(&state->it);
-  Code_Index_Nest *result = push_array_zero(state->arena, Code_Index_Nest, 1);
+  Code_Index_Nest *result = push_array0(state->arena, Code_Index_Nest, 1);
   result->kind = CodeIndexNest_Paren;
   result->open = Ii64(token);
   result->close = Ii64(max_i64);

@@ -69,28 +69,28 @@ argb_color_blend(ARGB_Color a, f32 at, ARGB_Color b, f32 bt)
     Vec4_f32 av = argb_unpack(a);
     Vec4_f32 bv = argb_unpack(b);
     Vec4_f32 value = at*av + bt*bv;
-    return(argb_pack(value));
+ return(argb_pack(value));
 }
 function ARGB_Color
 argb_color_blend(ARGB_Color a, f32 t, ARGB_Color b)
 {
-    return(argb_color_blend(a, 1.f - t, b, t));
+ return(argb_color_blend(a, 1.f - t, b, t));
 }
 
 function ARGB_Color
 fcolor_resolve(FColor color)
 {
-    ARGB_Color result = 0;
-    if (color.a_byte == 0)
-    {
-        if (color.id != 0)
-        {
-            result = finalize_color(color.id, color.sub_index);
-        }
-    }
-    else result = color.argb;
-    
-    return(result);
+ ARGB_Color result = 0;
+ if (color.a_byte == 0)
+ {
+  if (color.id != 0)
+  {
+   result = finalize_color(color.id, color.sub_index);
+  }
+ }
+ else result = color.argb;
+ 
+ return(result);
 }
 
 function void
@@ -164,7 +164,7 @@ fill_fancy_string(Fancy_String *ptr, Face_ID face, FColor fore, f32 pre_margin, 
 function Fancy_String*
 push_fancy_string(Arena *arena, Fancy_Line *line, Face_ID face, FColor fore,
                   f32 pre_margin, f32 post_margin, String value){
-    Fancy_String *result = push_array_zero(arena, Fancy_String, 1);
+    Fancy_String *result = push_array0(arena, Fancy_String, 1);
     fill_fancy_string(result, face, fore, pre_margin, post_margin, value);
     if (line != 0){
         push_fancy_string(line, result);
@@ -560,7 +560,7 @@ push_fancy_string_trunc(Arena *arena, Fancy_Line *line, String value,
 function Fancy_Line*
 push_fancy_line(Arena *arena, Fancy_Block *block, Face_ID face, FColor fore,
                 String text){
-    Fancy_Line *line = push_array_zero(arena, Fancy_Line, 1);
+    Fancy_Line *line = push_array0(arena, Fancy_Line, 1);
     line->face = face;
     line->fore = fore;
     if (text.size != 0){

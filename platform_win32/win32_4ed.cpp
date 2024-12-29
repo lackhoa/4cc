@@ -1,4 +1,4 @@
-/*
+/*#processed
  * Mr. 4th Dimention - Allen Webster
  *
  * 12.12.2014
@@ -6,8 +6,6 @@
  * Win32 layer for 4coder
  *
  */
-
-// TOP
 
 #define IMGUI_USER_CONFIG "ad_imgui_config.h"
 #include "imgui/imgui.h"
@@ -36,7 +34,7 @@ unlerp(f32 a, Range_f32 x, f32 b)
 
 #include "4coder_system_types.h"
 #define STATIC_LINK_API
-#include "generated/system_api.h"
+#include "system_api.gen.h"
 
 #include "4ed_font_interface.h"
 #define STATIC_LINK_API
@@ -49,7 +47,7 @@ unlerp(f32 a, Range_f32 x, f32 b)
 #include "4coder_search_list.h"
 
 #define STATIC_LINK_API
-#include "generated/system_api.cpp"
+#include "system_api.gen.cpp"
 #include "generated_old/font_api.cpp"
 
 #include "4coder_stringf.cpp"
@@ -1168,10 +1166,12 @@ function LRESULT CALLBACK
 win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
  LRESULT result = 0;
- if ( ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam) )
+ if(ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
  {// NOTE: imgui told us to not handle this event
   result = true;
- } else {
+ }
+ else
+ {
   b32 call_default_handler = false;
   b32 imgui_want_capture_mouse    = false;
   b32 imgui_want_capture_keyboard = false;
@@ -1210,69 +1210,83 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    case WM_KEYDOWN:
    case WM_KEYUP:
    {
-    if (imgui_want_capture_keyboard) {
+    b8 keyup   = HasFlag(lParam, bit_32);
+    b8 keydown = !keyup;
+    b8 is_right = HasFlag(lParam, bit_25);
+    
+    u64 vk = wParam;
+    
+    if (win32vars.key_mode == Key_Mode_Physical &&
+        !keycode_physical_translaion_is_wrong(vk))
+    {
+     UINT scan_code = ((lParam >> 16) & bitmask_8);
+     vk = MapVirtualKeyEx(scan_code, MAPVK_VSC_TO_VK_EX, win32vars.kl_universal);
+    }
+    
+    Input_Modifier_Set_Fixed *mods = &win32vars.input_chunk.pers.modifiers;
+    
+    Control_Keys *controls = &win32vars.input_chunk.pers.controls;
+    switch (vk)
+    {
+     case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
+     case VK_MENU:case VK_LMENU:case VK_RMENU:
+     {
+      switch (vk)
+      {
+       case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
+       {
+        if (is_right){ controls->r_ctrl = keydown; }
+        else         { controls->l_ctrl = keydown; }
+       }break;
+       case VK_MENU:case VK_LMENU:case VK_RMENU:
+       {
+        if (is_right){ controls->r_alt = keydown; }
+        else         { controls->l_alt = keydown; }
+       }break;
+      }
+     }break;
+    }
+    
+    b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
+    b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
+    if (win32vars.lctrl_lalt_is_altgr && controls->l_alt && controls->l_ctrl){
+     ctrl = false;
+     alt = false;
+    }
+    set_modifier(mods, Key_Code_Control, ctrl);
+    set_modifier(mods, Key_Code_Alt, alt);
+    
+    {
+     b8 shift = ((GetKeyState(VK_SHIFT) & bit_16) != 0);
+     set_modifier(mods, Key_Code_Shift, shift);
+    }
+    
+    Key_Code keycode = keycode_lookup_table[(u8)vk];
+    // NOTE: We have system_get_keyboard_modifiers to track modifier keys already
+    if(not is_modifier_key(keycode))
+    {//-Key state tracking (is this a bad idea?)
+     if(0){
+      Scratch_Block tmp;
+      char *keyname = key_code_name[keycode];
+      log_string(push_stringf(tmp, "key %s is %s", keyname, keyup ? "up" : "down"));
+     }
+     global_game_key_states[keycode] = b8(keydown);
+     global_game_key_state_changes[keycode]++;
+    }
+    
+    if(imgui_want_capture_keyboard){
+     //-imgui
      call_default_handler = true;
      win32vars.got_useful_event = true;
-    } else {
-     b8 release = HasFlag(lParam, bit_32);
-     b8 down = !release;
-     b8 is_right = HasFlag(lParam, bit_25);
-     
-     u64 vk = wParam;
-     
-     if (win32vars.key_mode == Key_Mode_Physical &&
-         !keycode_physical_translaion_is_wrong(vk))
-     {
-      UINT scan_code = ((lParam >> 16) & bitmask_8);
-      vk = MapVirtualKeyEx(scan_code, MAPVK_VSC_TO_VK_EX, win32vars.kl_universal);
-     }
-     
-     Input_Modifier_Set_Fixed *mods = &win32vars.input_chunk.pers.modifiers;
-     
-     Control_Keys *controls = &win32vars.input_chunk.pers.controls;
-     switch (vk)
-     {
-      case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
-      case VK_MENU:case VK_LMENU:case VK_RMENU:
-      {
-       switch (vk)
-       {
-        case VK_CONTROL:case VK_LCONTROL:case VK_RCONTROL:
-        {
-         if (is_right){ controls->r_ctrl = down; }
-         else         { controls->l_ctrl = down; }
-        }break;
-        case VK_MENU:case VK_LMENU:case VK_RMENU:
-        {
-         if (is_right){ controls->r_alt = down; }
-         else         { controls->l_alt = down; }
-        }break;
-       }
-      }break;
-     }
-     
-     b8 ctrl = (controls->r_ctrl || (controls->l_ctrl && !controls->r_alt));
-     b8 alt = (controls->l_alt || (controls->r_alt && !controls->l_ctrl));
-     if (win32vars.lctrl_lalt_is_altgr && controls->l_alt && controls->l_ctrl){
-      ctrl = false;
-      alt = false;
-     }
-     set_modifier(mods, Key_Code_Control, ctrl);
-     set_modifier(mods, Key_Code_Alt, alt);
-     
-     {
-      b8 shift = ((GetKeyState(VK_SHIFT) & bit_16) != 0);
-      set_modifier(mods, Key_Code_Shift, shift);
-     }
-     
-     Key_Code key = keycode_lookup_table[(u8)vk];
-     if (down) {
-      if (key != 0) {
-       add_modifier(mods, key);
+    }else{
+     //-We handle it
+     if (keydown) {
+      if (keycode != 0) {
+       add_modifier(mods, keycode);
        
        Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
        event->kind = InputEventKind_KeyStroke;
-       event->key.code = key;
+       event->key.code = keycode;
        event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
        win32vars.active_key_stroke = event;
        
@@ -1283,13 +1297,13 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       win32vars.active_text_input = 0;
       win32vars.got_useful_event = true;
       
-      if (key != 0) {
+      if (keycode != 0) {
        Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
        event->kind = InputEventKind_KeyRelease;
-       event->key.code = key;
+       event->key.code = keycode;
        event->key.modifiers = copy_modifier_set(&win32vars.frame_arena, mods);
        
-       remove_modifier(mods, key);
+       remove_modifier(mods, keycode);
       }
      }
     }
@@ -1749,14 +1763,15 @@ win32_imgui_init() {
 }
 
 function void
-win32_imgui_new_frame() {
+win32_imgui_new_frame()
+{
  ImGui_ImplOpenGL3_NewFrame();
  ImGui_ImplWin32_NewFrame();
  ImGui::NewFrame();
 }
-
 function void
-win32_imgui_reinit() {
+win32_imgui_reinit()
+{
  {//NOTE(kv) shutdown
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplWin32_Shutdown();
@@ -1838,6 +1853,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  // NOTE(allen): load core
  log_os("Loading 4ed core...\n");
  
+ // TODO(kv) Jeez man, so the platform calls the log functions.
  win32vars.log_string = app_get_logger();
  
  // NOTE(allen): init & command line parameters
@@ -2172,7 +2188,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32vars.clip_post.size = 0;
   
   // NOTE(allen): Application Core Update
-  win32_imgui_new_frame();  // NOTE(kv): This new frame must be after input processing
+  win32_imgui_new_frame();  // NOTE(kv) This new frame must be after input processing
   Application_Step_Result step_result = app_step(win32vars.tctx, base_ptr, &input);
   
   // NOTE(allen): Finish the Loop
@@ -2288,5 +2304,4 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 }
 
 #include "win32_utf8.cpp"
-
 //-

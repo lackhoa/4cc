@@ -56,9 +56,8 @@ struct Application_Step_Input
  b32 window_is_active;
 };
 
-typedef b32 Log_Function(String str);
+typedef void Log_Function(String str);
 typedef Log_Function *App_Get_Logger(void);
 
-//TODO(kv) Just copy the string, man!
-global b32 global_dll_reloaded_so_watch_out_for_debug_strings;
+global b32 reloaded_game_this_frame;
 //-/

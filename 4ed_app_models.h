@@ -142,8 +142,6 @@ struct Models
  User_Input current_input;
  b8 current_input_unhandled;
  
- b8 in_render_mode;
- 
  //-Miscellaneous
  Render_Target *target;
  u64 edit_counter;

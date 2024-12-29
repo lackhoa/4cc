@@ -58,7 +58,7 @@ copy(App_Cmd *app)
 function void
 cut(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_ReadWriteVisible);
+ View_ID view = get_active_view(app, Access_ReadWriteVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
  Range_i64 range = get_view_range(app, view);
  if (clipboard_post_buffer_range(app, 0, buffer, range)){

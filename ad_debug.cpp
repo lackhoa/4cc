@@ -1,10 +1,13 @@
+//-
+global char *debug_window_name = "DebugInfo";
+
 #if KV_DEBUG_MEMORY
 
 function i32
 debug_get_thread_index()
 {
  if(debug_thread_index == -1){
-  Debug_State *debug = &memory_debug_state;
+  Debug_State *debug = &global_debug_state;
   debug_thread_index = atomic_add_u32(&debug->thread_count, 1);
   debug->chunk_stores[debug_thread_index] = &thread_arena_chunk_store;
  }
@@ -20,7 +23,7 @@ function void
 push_debug_event(Debug_Event *event)
 {//NOTE(kv) Could make this function more efficeint by not passing in a value,.
  //  but it's too tedious and error prone.
- Debug_State *debug = &memory_debug_state;
+ Debug_State *debug = &global_debug_state;
  u32 index = debug->event_index_to_write;
  while(true){
   //TODO(kv) Only need an atomic add here, if we only store the modulo value.
@@ -41,11 +44,11 @@ push_debug_event(Debug_Event *event)
  kv_assert(debug->event_index_to_read != debug->event_index_to_write);
  
  i32 thread_index = debug_get_thread_index();
- event->thread_index = thread_index;
+ event->thread_index = (i16)thread_index;
  Debug_Event *result = debug->events + index;
  *result = *event;
  
- CompletePreviousWritesBeforeFutureWrites;
+ CompletePastWritesBeforeFutureWrites;
  debug->event_index_written[thread_index] = index;
 }
 
@@ -72,7 +75,7 @@ function void
 debug_register_arena_chunk(void *chunk_address, usize size, void *chunk_prev,
                            File_Line file_line)
 {
- Debug_State *debug = &memory_debug_state;
+ Debug_State *debug = &global_debug_state;
  
  Debug_Arena_Chunk *shadow_chunk = debug->first_free_chunk;
  if(shadow_chunk){
@@ -111,7 +114,7 @@ debug_register_arena_chunk(void *chunk_address, usize size, void *chunk_prev,
 function void
 debug_free_arena_chunk(void *chunk)
 {//NOTE(kv) Called before "chunk" is actually freed.
- Debug_State *debug = &memory_debug_state;
+ Debug_State *debug = &global_debug_state;
  Debug_Arena *shadow_arena = debug_get_arena_by_last_chunk(debug, chunk);
  Debug_Arena_Chunk *shadow_chunk = shadow_arena->last_chunk;
  shadow_arena->last_chunk = shadow_chunk->prev;
@@ -151,11 +154,11 @@ compare_wrapped_u32(u32 a, u32 b, u32 relative, u32 wrap_value)
 function void
 debug_collate_events()
 {
- Debug_State *debug = &memory_debug_state;
+ Debug_State *debug = &global_debug_state;
  u32 read_begin = debug->event_index_to_read;
  u32 read_end = debug->event_index_to_write;
  
- u32 total_events_read = 0;
+ i32 total_events_read = 0;
  for(u32 event_index = read_begin;
      event_index != read_end;
      event_index++)
@@ -181,7 +184,7 @@ debug_collate_events()
   }
  }
  debug->event_index_to_read = read_end;
- ImGui::Text("total events: %u", total_events_read);
+ debug->total_events_read = total_events_read;
 }
 //-
 function void
@@ -228,125 +231,142 @@ debug_arena_get_size(Debug_Arena *arena)
 function void
 debug_render_gui()
 {
- struct Arena_Entry{
-  Debug_Arena *arena;
-  usize size;
- };
- 
- Debug_State *debug = &memory_debug_state;
- Arena_Chunk_Store *global_store = &global_arena_chunk_store;
- Scratch_Block scratch;
- 
- if(0)
+ if(ImGui::CollapsingHeader("Memory"))
  {
-  const i32 input_count = 16;
-  f32 test_random[input_count] = {
-   79, 87, 100, 66,
-   69,7,88,6,
-   33,18,80,53,
-   31,14,70,17
+  struct Arena_Entry{
+   Debug_Arena *arena;
+   usize size;
   };
-  Sort_Entry *input = push_array(scratch, Sort_Entry, alen(test_random));
-  for_i32(index, 0, alen(test_random)){
-   input[index].index = index;
-   input[index].key = test_random[index];
+  
+  Debug_State *debug = &global_debug_state;
+  ImGui::Text("total events: %d", debug->total_events_read);
+  
+  Arena_Chunk_Store *global_store = &global_arena_chunk_store;
+  Scratch_Block scratch;
+  
+  if(0)
+  {
+   const i32 input_count = 16;
+   f32 test_random[input_count] = {
+    79, 87, 100, 66,
+    69,7,88,6,
+    33,18,80,53,
+    31,14,70,17
+   };
+   Sort_Entry *input = push_array(scratch, Sort_Entry, alen(test_random));
+   for_i32(index, 0, alen(test_random)){
+    input[index].index = index;
+    input[index].key = test_random[index];
+   }
+   
+   i32 output_count = 4;
+   Sort_Entry *output = push_array(scratch, Sort_Entry, output_count);
+   small_insertion_sort(input, input_count, output, output_count);
   }
   
-  i32 output_count = 4;
-  Sort_Entry *output = push_array(scratch, Sort_Entry, output_count);
-  small_insertion_sort(input, input_count, output, output_count);
- }
- 
- i32 arena_count = 0;
- for(Debug_Arena *arena = debug->first_arena;
-     arena;
-     arena = arena->next)
- {
-  arena_count++;
- }
- 
- usize total_used = 0;
- Sort_Entry *arena_sort_entries = push_array(scratch, Sort_Entry, arena_count);
- Arena_Entry *arena_entries = push_array(scratch, Arena_Entry, arena_count);
- {
-  i32 arena_index = 0;
+  i32 arena_count = 0;
   for(Debug_Arena *arena = debug->first_arena;
       arena;
       arena = arena->next)
-  {//-Gathering arena info into an array
-   usize arena_size = debug_arena_get_size(arena);
-   total_used += arena_size;
-   
-   {
-    Sort_Entry *entry = arena_sort_entries + arena_index;
-    entry->index = arena_index;
-    entry->key   = -(f32)arena_size;
-   }
-   
-   {
-    Arena_Entry *entry = arena_entries + arena_index;
-    entry->arena = arena;
-    entry->size = arena_size;
-   }
-   
-   arena_index++;
-  }
- }
- 
- usize global_free = 0;
- for_u32(bin_index, 0, ARENA_CHUNK_BIN_COUNT)
- {
-  Arena_Chunk_Bin *bin = &global_store->bins[bin_index];
-  for(Arena_Chunk *chunk = bin->first_free;
-      chunk;
-      chunk = chunk->next_free)
   {
-   global_free += chunk->size;
+   arena_count++;
   }
- }
- 
- ImGui::Text("arena count: %d", arena_count);
- 
- {//-top arenas
-  Sort_Entry top_arenas[8];
-  small_insertion_sort(arena_sort_entries, arena_count,
-                       top_arenas, alen(top_arenas));
-  for_i32(top_arena_index, 0, alen(top_arenas))
+  
+  usize total_used = 0;
+  Sort_Entry *arena_sort_entries = push_array(scratch, Sort_Entry, arena_count);
+  Arena_Entry *arena_entries = push_array(scratch, Arena_Entry, arena_count);
   {
-   i32 entry_index = top_arenas[top_arena_index].index;
-   Arena_Entry *entry = arena_entries + entry_index;
-   String arena_filename = empty_string;
-   if(not global_dll_reloaded_so_watch_out_for_debug_strings){
-    //TODO(kv) Well, we store filenames in persistent debug arenas,
-    //  so those also need to be copied somewhere if we want stuff to work.
-    //arena_filename = path_filename(SCu8(entry->arena->file_line.file));
+   i32 arena_index = 0;
+   for(Debug_Arena *arena = debug->first_arena;
+       arena;
+       arena = arena->next)
+   {//-Gathering arena info into an array
+    usize arena_size = debug_arena_get_size(arena);
+    total_used += arena_size;
+    
+    {
+     Sort_Entry *entry = arena_sort_entries + arena_index;
+     entry->index = arena_index;
+     entry->key   = -(f32)arena_size;
+    }
+    
+    {
+     Arena_Entry *entry = arena_entries + arena_index;
+     entry->arena = arena;
+     entry->size = arena_size;
+    }
+    
+    arena_index++;
    }
-   ImGui::Text("arena %S:%d: size: %_$I64u",
-               arena_filename,
-               entry->arena->file_line.line,
-               entry->size);
   }
- }
- ImGui::Text("total committed / used / free: %_$I64u / %_$I64u / %_$I64u",
-             global_store->committed, total_used, global_store->total_free);
- for_u32(store_index, 0, debug->thread_count)
- {
-  Thread_Arena_Chunk_Store *store = debug->chunk_stores[store_index];
-  ImGui::Text("thread free: %_$I64u", store->total_free);
+  
+  usize global_free = 0;
+  for_u32(bin_index, 0, ARENA_CHUNK_BIN_COUNT)
+  {
+   Arena_Chunk_Bin *bin = &global_store->bins[bin_index];
+   for(Arena_Chunk *chunk = bin->first_free;
+       chunk;
+       chunk = chunk->next_free)
+   {
+    global_free += chunk->size;
+   }
+  }
+  
+  ImGui::Text("arena count: %d", arena_count);
+  
+  {//-top arenas
+   Sort_Entry top_arenas[8];
+   small_insertion_sort(arena_sort_entries, arena_count,
+                        top_arenas, alen(top_arenas));
+   for_i32(top_arena_index, 0, alen(top_arenas))
+   {
+    i32 entry_index = top_arenas[top_arena_index].index;
+    Arena_Entry *entry = arena_entries + entry_index;
+    String arena_filename = empty_string;
+    ImGui::Text("arena %S:%d: size: %_$I64u",
+                arena_filename,
+                entry->arena->file_line.line,
+                entry->size);
+   }
+  }
+  ImGui::Text("total committed / used / free: %_$I64u / %_$I64u / %_$I64u",
+              global_store->committed, total_used, global_store->total_free);
+  for_u32(store_index, 0, debug->thread_count)
+  {
+   Thread_Arena_Chunk_Store *store = debug->chunk_stores[store_index];
+   ImGui::Text("thread free: %_$I64u", store->total_free);
+  }
  }
 }
 function void
 DEBUG_end_frame()
 {
- bool window_open = true;
- ImGui::Begin("debug", &window_open, ImGuiViewportFlags_NoFocusOnAppearing);
- 
  debug_collate_events();
  debug_render_gui();
- 
- ImGui::End();
- //TODO(kv) WHY does the "NoFocusOnAppearing" flag not work?
- ImGui::SetWindowFocus(0);
 }
 #endif//-KV_DEBUG_MEMORY
-//-
+
+function void
+debug_end_frame()
+{// TODO(kv) I don't know how to place the debug UI in release build,
+ // and I have no use case for it, so it's annoying!
+ // Originally I think to just pop up a window whenever something goes wrong.
+ bool window_open = true;
+ 
+ ImGuiWindowFlags flags = ImGuiWindowFlags_NoFocusOnAppearing;
+ if(KV_INTERNAL)
+ {
+  ImGui::Begin(debug_window_name, &window_open, flags);
+  DEBUG_end_frame();
+  ImGui::End();
+ }
+ 
+ {// NOTE(kv) The "NoFocusOnAppearing" doesn't work, so having to hack this in.
+  local_persist b32 is_first_frame = 1;
+  if(is_first_frame or reloaded_game_this_frame){
+   ImGui::SetWindowFocus(0);
+   is_first_frame = false;
+  }
+ }
+}
+//-EOF

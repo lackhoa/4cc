@@ -1,6 +1,7 @@
+//-#processed
 global GLuint DEFAULT_FRAMEBUFFER = 0;
 
-global GLint uniform_screen_from_world      = 0;
+global GLint uniform_clip_from_world   = 0;
 global GLint uniform_camera_axes         = 1;
 global GLint uniform_unused              = 2;
 global GLint uniform_object_transform    = 3;
@@ -8,8 +9,8 @@ global GLint uniform_meter_to_pixel      = 4;
 global GLint uniform_overlay             = 5;
 
 //~Vertex attributes
-// TODO: @Speed Still a hodge-podge of old vertex attributes.
-// TODO: Do we even want "depth_offset" as an attribute?
+// TODO #Speed Still a hodge-podge of old vertex attributes.
+// TODO Do we even want "depth_offset" as an attribute?
 
 global i32 VATTR_COUNT;
 
@@ -26,24 +27,22 @@ X_VERTEX_ATTRIBUTES(X)
 #undef X
 
 //~
-
 struct Loaded_Image
 {
- char  *filename;
- i2     dim;
+ String filename;
+ v2     dim;
  GLuint texture;
 };
 //
+#if 0
+global jump loaded_images;
+#endif
 global darray(Loaded_Image) loaded_images;
-global i32 image_load_failure_count;
 
 function Image_Load_Info
 get_image_load_info(void) 
 {
- return Image_Load_Info {
-  i32(loaded_images.count),
-  image_load_failure_count,
- };
+ return Image_Load_Info { loaded_images.count, 0 };
 }
 
 //~
@@ -152,7 +151,7 @@ ogl__error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsi
    // NOTE(allen): performance warning, do nothing.
   }break;
   
-  invalid_default_case;
+  InvalidDefaultCase;
  }
 }
 
@@ -169,7 +168,7 @@ R"foo(
 #define V3 vec3
 #define V4 vec4
 
-layout(location=0) uniform mat4 uniform_screen_from_world;
+layout(location=0) uniform mat4 uniform_clip_from_world;
 layout(location=1) uniform mat3 uniform_camera_axes;
 layout(location=2) uniform v1   uniform_unused;
 layout(location=3) uniform mat4 uniform_object_transform;
@@ -193,7 +192,7 @@ out v1 half_thickness;
 
 void main(void)
 {
-    gl_Position = uniform_screen_from_world * V4(vertex_pos, 1, 1);
+    gl_Position = uniform_clip_from_world * V4(vertex_pos, 1, 1);
     color.rgba = vertex_color.bgra;
 
     uvw = vertex_uvw;
@@ -406,7 +405,6 @@ ogl__vertex_attributes()
   glVertexAttribPointer(vattr_color, 4, GL_UNSIGNED_BYTE, GL_TRUE,  stride, OFFSET(color));
   glVertexAttribPointer(vattr_half_thickness, 1, GL_FLOAT, GL_FALSE, stride, OFFSET(half_thickness));
   glVertexAttribPointer(vattr_depth_offset,   1, GL_FLOAT, GL_FALSE, stride, OFFSET(depth_offset));
-  glVertexAttribIPointer(vattr_prim_id, 1, GL_UNSIGNED_INT, stride, OFFSET(prim_id));
 #undef OFFSET
  }
 }
@@ -419,15 +417,15 @@ ogl__uniform_mat4(GLint uniform, mat4 *mat) {
 // @Ugh The only reason why this function exist is because
 // every time you switch program, you gotta send it uniforms...
 function void
-ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *screen_from_world)
+ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *clip_from_world)
 {
  glUseProgram(program);
  Render_Group *group = s->group;
  
  {// NOTE: Uniforms
 #define ACTIVE(uniform)  ogl__is_uniform_active(program, #uniform)
-  if( ACTIVE(uniform_screen_from_world) ) {
-   ogl__uniform_mat4(uniform_screen_from_world, screen_from_world);
+  if( ACTIVE(uniform_clip_from_world) ) {
+   ogl__uniform_mat4(uniform_clip_from_world, clip_from_world);
   }
   if (program == ogl_program_image)
   {
@@ -460,7 +458,7 @@ ogl__begin_program_editor(Render_Target *target, Render_Group *group)
  glUseProgram(ogl_program_editor);
  
  {// NOTE: Uniforms
-  mat4 screen_transform;
+  mat4 to_clip;
   {
    v1 y_sign = (group->y_up) ? +1.f : -1.f;
    v2 dst_dim = V2(v1(target->width), v1(target->height));
@@ -470,7 +468,7 @@ ogl__begin_program_editor(Render_Target *target, Render_Group *group)
    v1 c = -1.0f;
    v1 d = -1.0f*y_sign;
    
-   screen_transform = {{
+   to_clip = {{
      a,0,0,c,
      0,b,0,d,
      0,0,1,0,
@@ -478,7 +476,7 @@ ogl__begin_program_editor(Render_Target *target, Render_Group *group)
     }};
   }
   
-  glUniformMatrix4fv(uniform_screen_from_world, 1, GL_TRUE, ogl_cast_mat4(&screen_transform));
+  glUniformMatrix4fv(uniform_clip_from_world, 1, GL_TRUE, ogl_cast_mat4(&to_clip));
  }
  
  ogl__vertex_attributes();
@@ -549,9 +547,9 @@ ogl_read_primitive_id()
  
  u32 result = 0;
  
- for (Render_Group *group = render_state.group_first;
-      group;
-      group = group->next)
+ for(Render_Group *group = render_state.group_first;
+     group;
+     group = group->next)
  {//NOTE: searching for main viewport (stupid!)
   if (group->viewport_id == 1)
   {
@@ -568,7 +566,6 @@ ogl_read_primitive_id()
  
  return result;
 }
-
 function void
 ogl__stream_draw(Render_Vertex_List *list)
 {
@@ -578,18 +575,15 @@ ogl__stream_draw(Render_Vertex_List *list)
   glDrawArrays(GL_TRIANGLES, 0, list->count);
  }
 }
-
 function void
 ogl__stream_draw(Render_Vertex *vertices, i32 count)
 {
- if (count)
+ if(count)
  {
   glBufferData(GL_ARRAY_BUFFER, count*sizeof(Render_Vertex), vertices, GL_STREAM_DRAW);
   glDrawArrays(GL_TRIANGLES, 0, count);
  }
 }
-
-
 function void
 ogl__render_entries(Render_Group *group)
 {
@@ -597,7 +591,7 @@ ogl__render_entries(Render_Group *group)
       entry; 
       entry = entry->next)
  {
-  if (entry->type == RET_Poly)
+  if(entry->type == RET_Poly)
   {
    {// normal stuff
     ogl__stream_draw(&entry->poly.vertex_list);
@@ -607,72 +601,125 @@ ogl__render_entries(Render_Group *group)
     ogl__stream_draw(&entry->poly.vertex_list_overlay);
     glUniform1i(uniform_overlay, false);
    }
-  }
-  else if (entry->type == RET_Object_Transform)
-  {
+  }else if(entry->type == RET_Object_Transform){
    ogl__uniform_mat4(uniform_object_transform, &entry->object_transform);
   }
  }
 }
-
+function i32
+filter_out_white_pixels(u8 *data, i32 image_width, i32 image_height)
+{//-Filtering out white pixels
+ i32 filtered_pixel_count = 0;
+ u8 *row = data;
+ for(i32 y=0; y < image_height; y++)
+ {
+  u32 *pixel = (u32 *)row;
+  for(i32 x=0; x < image_width; x++)
+  {
+   u32 value = *pixel;
+   v4 color;
+   color.a = v1((value >> 24) & 255);
+   color.r = v1((value >> 0)  & 255);
+   color.g = v1((value >> 8)  & 255);
+   color.b = v1((value >> 16) & 255);
+   v1 sum_of_color_components = color.r + color.g + color.b;
+   v1 cutoff_ratio = 0.95f;
+   v1 cutoff =  cutoff_ratio * (3 * 255.0f);
+   if(sum_of_color_components > cutoff)
+   {
+    filtered_pixel_count += 1;
+    *pixel = 0;
+   }
+   pixel += 1;
+  }
+  row += 4 * image_width;
+ }
+ 
+ return filtered_pixel_count;
+}
+function Texture_Handle
+ogl_load_image_from_file(Stringz filename, v2 *out_dim)
+{// TODO(kv) Binding texture is a wild-west in here
+ Texture_Handle texture = {};
+ v2 dim = {};
+ for_i32(image_index, 0, loaded_images.count)
+ {
+  Loaded_Image &image = loaded_images[image_index];
+  if(string_match(image.filename, filename))
+  {
+   texture.v = image.texture;
+   dim       = image.dim;
+   break;
+  }
+ }
+ 
+ if(not is_valid(texture))
+ {
+  u8 *data = 0;
+  i32 image_width;
+  i32 image_height;
+  {
+   int ncomp = 4;
+   data = stbi_load(to_cstring(filename), &image_width, &image_height, 0,ncomp);
+   dim = v2{v1(image_width), v1(image_height)};
+  }
+  
+  if(data)
+  {
+   if(0)
+   {//note(kv) nerfed due to it messing-up-my-image
+    i32 filtered_count = filter_out_white_pixels(data, image_width, image_height);
+    if(filtered_count){
+     log_string("filtered out %d bright pixels from image '%S' (out of %d)",
+                filtered_count, filename, image_width*image_height);
+    }
+   }
+   
+   filename = push_string(&thread_permanent_arena, filename);
+   Loaded_Image new_image = { .filename=filename, .dim=dim };
+   
+   glGenTextures(1, &new_image.texture);
+   glBindTexture(GL_TEXTURE_2D, new_image.texture);
+   glTexStorage2D_wrapper(GL_RGBA8, (i32)dim.x, (i32)dim.y);
+   glTextureSubImage2D(new_image.texture,
+                       /*level*/0,
+                       /*offset*/0,0,
+                       (i32)dim.x, (i32)dim.y,
+                       GL_RGBA, GL_UNSIGNED_BYTE,
+                       data);
+   
+   free(data);
+   push(&loaded_images, new_image);
+   texture.v = new_image.texture;
+  }
+ }
+ 
+ if(not is_valid(texture))
+ {
+  log_error("Failed to load image from file '%S'", filename);
+ }
+ 
+ *out_dim = dim;
+ return texture;
+}
 function void
 ogl__render_images(Render_Group *group, b32 render_primitive_id)
 {
  mat4 *current_object_transform = &mat4_identity;
- // @Speed We only have at most a few images on the screen at a time.
+ // TODO #Speed We only have at most a few images on the screen at a time.
  // sifting through all the entries might not be efficient.
  for(Render_Entry *entry0 = group->entry_first;
      entry0; 
      entry0 = entry0->next)
  {
-  if (entry0->type == RET_Image)
+  if(entry0->type == RET_Image)
   {
    Render_Entry_Image *entry = entry0->image;
-   b32 bound_texture = false;
-   i2 dim = {};
-   for_u32(image_index, 0, loaded_images.count)
+   v2 dim = {};
+   Texture_Handle texture = ogl_load_image_from_file(entry->filename, &dim);
+   if(is_valid(texture))
    {
-    Loaded_Image *loaded_image = &loaded_images[image_index];
-    if ( string_match(loaded_image->filename, entry->filename) )
-    {
-     glBindTextureUnit(0, loaded_image->texture);
-     bound_texture = true;
-     dim = loaded_image->dim;
-     break;
-    }
-   }
-   
-   if (bound_texture == false)
-   {// NOTE: Image not loaded yet
-    u8 *data = 0;
-    {
-     int ncomp = 3;
-     data = stbi_load(entry->filename, &dim.x,&dim.y, 0,ncomp);
-    }
-    if (data)
-    {
-     char *filename = (char*)malloc(strlen(entry->filename)+1);  // NOTE: no free, I don't care where these strings are
-     strcpy(filename, entry->filename);
-     
-     Loaded_Image new_image = { .filename=filename, .dim=dim };
-     glGenTextures(1, &new_image.texture);
-     glBindTexture(GL_TEXTURE_2D, new_image.texture);
-     bound_texture = true;
-     glTexStorage2D_wrapper(GL_RGB8, dim.x, dim.y);
-     glTextureSubImage2D(new_image.texture,
-                         /*level*/0,
-                         /*offset*/0,0,
-                         dim.x, dim.y,
-                         GL_RGB, GL_UNSIGNED_BYTE,
-                         data);
-     free(data);  // NOTE: multiple sources saying this alright
-     loaded_images.push_value(new_image);
-     kv_assert(loaded_images.count < 128);  //NOTE(kv) Just a soft cap
-    }
-   }
-   
-   if (bound_texture)
-   {
+    glBindTextureUnit(0, texture.v);
     ogl__uniform_mat4(uniform_object_transform, current_object_transform);
     
     v1 hw_ratio = v1(dim.y) / v1(dim.x);
@@ -687,29 +734,27 @@ ogl__render_images(Render_Group *group, b32 render_primitive_id)
     Render_Vertex C = { .pos=c, .uv=V2(1,1) };
     Render_Vertex D = { .pos=d, .uv=V2(0,1) };
     Render_Vertex vertices[6] = { A,B,C, A,C,D };
-    for_i32(index,0,alen(vertices)) {
-     vertices[index].color   = entry->color; 
-     vertices[index].prim_id = entry->prim_id; 
+    for_i32(index,0,alen(vertices)){
+     vertices[index].color = entry->color; 
     }
     ogl__stream_draw(vertices, alen(vertices));
    }
   } 
-  else if (entry0->type == RET_Object_Transform)
+  else if(entry0->type == RET_Object_Transform)
   {
    current_object_transform = &entry0->object_transform;
   }
  }
 }
-
 function void
 ogl_render(i2 mousep_ydown, i32 window_id)
 {
- //@HardCoded Allow one 1080p panel maximum
+ // NOTE #HardCoded Allow one 1080p panel maximum
  const i32 MAX_PANEL_DIMX = 1920;
  const i32 MAX_PANEL_DIMY = 1080;
  
  local_persist GLuint game_framebuffer;
- // NOTE: We use a different framebuffer because the default one doesn't let us attach any texture.
+ // NOTE We use a different framebuffer because the default one doesn't let us attach any texture.
  local_persist GLuint color0_texture;
  local_persist GLuint depth_texture;
  
@@ -877,22 +922,24 @@ ogl_render(i2 mousep_ydown, i32 window_id)
   if(group->entry_first){
    has_poly = (group->entry_first->poly.vertex_list.count > 0);
   };
-  if (target->window_id == window_id &&
-      (is_game || has_poly))
+  if(target->window_id == window_id and
+     (is_game || has_poly))
   {
    i32 dstx, dsty;
    i32 dst_dimx, dst_dimy;
    v2 dst_dim;
-   {// NOTE: get render dimensions
+   {// NOTE Get render dimensions
     rect2i box = Ri32(group->clip_box);
     dstx = box.x0;
-    dsty = box.y0; 
-    if (!group->y_up) { 
+    dsty = box.y0;
+    if(!group->y_up){
      dsty = target->height - box.y1;
     };  // NOTE; For editor
     dst_dim = V2(rect2i_dim(box));
     
-    {// NOTE: Handle scale down (TODO: Should've just let the game change the render surface, that would save us the trouble of computing render location at both places)
+    {// NOTE: Handle scale down
+     // (TODO: Should've just let the game change the render surface,
+     // that would save us the trouble of computing render location at both places)
      for_i32(it,0,group->scale_down_pow2) {
       dst_dim *= 0.5f;
      }
@@ -906,8 +953,8 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     ClampBot(dst_dimx, 0); ClampBot(dst_dimy, 0);
    }
    
-   if( is_game )
-   {//~NOTE: Render for the game!
+   if(is_game)
+   {//~Render for the game!
     b32 should_draw_prim_id = false;
     v2 view_mousep = {};
     if (group->viewport_id == 1 &&
@@ -916,9 +963,9 @@ ogl_render(i2 mousep_ydown, i32 window_id)
      i2 mousep = I2(mousep_ydown.x,
                     target->height - mousep_ydown.y);
      view_mousep = V2(mousep)-cast_V2(dstx,dsty);
-     b32 mouse_in_view = (view_mousep.x >= v1(dstx) &&
-                          view_mousep.y >= v1(dsty) &&
-                          view_mousep.x < dst_dim.x &&
+     b32 mouse_in_view = (view_mousep.x >= v1(dstx) and
+                          view_mousep.y >= v1(dsty) and
+                          view_mousep.x < dst_dim.x and
                           view_mousep.y < dst_dim.y);
      should_draw_prim_id = mouse_in_view;
     }
@@ -937,34 +984,22 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     }
     
     //
-    mat4 screen_from_world;
+    mat4 clip_from_world = group->clip_from_world;
     OGL_Program_State state_value = {.group = group};
     auto state = &state_value;
-    //state->object_transform = &object_transform;
     {
      state->camera_axes = to_mat3(group->world_from_cam);
-     {
-      mat4 screen_from_view;
-      {
-       // :viewport_alignment The center of the game viewport lines up with the center of the opengl viewport
-       v1 sx = 2.f*group->meter_to_pixel/dst_dim.x;
-       v1 sy = 2.f*group->meter_to_pixel/dst_dim.y;
-       screen_from_view = mat4_scales(sx,sy,1.f);
-      }
-      
-      screen_from_world = screen_from_view*group->view_from_world;  //NOTE: this view transform is different from the camera view transform, which is confusing?
-     }
     }
-    mat4 view_transform_offsetted_by_mousep;
-    if (should_draw_prim_id) {
-     //NOTE: We have to translate in NDC space
+    mat4 clip_from_world_offsetted_by_mousep;
+    if (should_draw_prim_id)
+    {
      mat4 translation = mat4_translate( -V3((2.f*view_mousep) / dst_dim, 0.f) );
-     view_transform_offsetted_by_mousep = translation*screen_from_world;
+     clip_from_world_offsetted_by_mousep = translation * clip_from_world;
     }
     
     {// NOTE: second pass
      {// NOTE: main rendering
-      ogl__begin_program(state, ogl_program_2, &screen_from_world);
+      ogl__begin_program(state, ogl_program_2, &clip_from_world);
       ogl__render_entries(group);
       ogl__end_program();
      }
@@ -975,7 +1010,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
       // TODO(kv): Am I dumb? Why modifying this state when it's always the same for this framebuffer?
       glDisable(GL_FRAMEBUFFER_SRGB);
       ogl__begin_program(state, ogl_program_2_prim_id,
-                         &view_transform_offsetted_by_mousep);
+                          &clip_from_world_offsetted_by_mousep);
       ogl__render_entries(group);
       ogl__end_program();
       glEnable(GL_FRAMEBUFFER_SRGB); 
@@ -985,7 +1020,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     
     {//-NOTE: Render @ReferenceImage
      {// NOTE: Actually rendering
-      ogl__begin_program(state, ogl_program_image, &screen_from_world);
+      ogl__begin_program(state, ogl_program_image, &clip_from_world);
       ogl__render_images(group, false);
       ogl__end_program();
      }
@@ -995,7 +1030,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
       glBindFramebuffer(GL_FRAMEBUFFER, prim_id_framebuffer);
       glDisable(GL_FRAMEBUFFER_SRGB); 
       ogl__begin_program(state, ogl_program_image_prim_id,
-                         &view_transform_offsetted_by_mousep);
+                         &clip_from_world_offsetted_by_mousep);
       ogl__render_images(group, true);
       ogl__end_program();
       glEnable(GL_FRAMEBUFFER_SRGB); 
@@ -1056,5 +1091,4 @@ ogl_render(i2 mousep_ydown, i32 window_id)
   }
  }
 }
-
 //~ EOF

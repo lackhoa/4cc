@@ -97,7 +97,7 @@ BUFFER_EDIT_RANGE_SIG(kv_buffer_edit_range)
 {
  // NOTE(kv): Fleury
  F4_BufferEditRange(app, buffer_id, new_range, old_cursor_range, automated);
- Game_API *game = get_game_code();
+ Game_API *game = get_game_code(Game_On);
  if(game){
   game->game_buffer_edit_range(ed_game_state_pointer, app, buffer_id, new_range, old_cursor_range);
  }
@@ -189,8 +189,5 @@ kv_tick(App *app, Frame_Info frame)
   
   animate_in_n_milliseconds(app, u32(1e3 * AUTOSAVE_PERIOD_SECONDS));
  }
- 
- // TODO: We only update on "tick", which means that the game won't be updated if there's no animation?
- maybe_update_game(app, frame);
 }
 //-

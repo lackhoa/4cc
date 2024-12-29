@@ -1,7 +1,8 @@
 //-
 global u32 autodraw_data_magic = 'adda';
 typedef u32 Data_Version;
-enum{
+enum
+{
  Version_Init                 = 7,
  Version_Add_Curve_Type       = 8,
  Version_Rename_Object_Index  = 9,
@@ -12,6 +13,11 @@ enum{
  Version_We_So_Back           = 14,
  Version_Binary               = 15,
  Version_Binary_Vertex        = 16,
+ Version_Remove_Binary_Again  = 17,
+ Version_Remove_Camera_Pan    = 18,
+ Version_AddCursorOn          = 19,
+ Version_AddViewport          = 20,
+ Version_AddReferencePreset   = 21,
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

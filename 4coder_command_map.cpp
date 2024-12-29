@@ -362,7 +362,7 @@ map__command_add_trigger(Command_Map *map, Command_Binding binding, Command_Trig
         Table_Lookup lookup = table_lookup(&map->cmd_to_binding_trigger, key);
         Command_Trigger_List *list = 0;
         if (!lookup.found_match){
-            list = push_array_zero(&map->node_arena, Command_Trigger_List, 1);
+            list = push_array0(&map->node_arena, Command_Trigger_List, 1);
             table_insert(&map->cmd_to_binding_trigger, key, (u64)(PtrAsInt(list)));
         }
         else{

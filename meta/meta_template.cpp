@@ -1,0 +1,397 @@
+//-
+struct T_Table
+{
+ String name;
+ darray(String) field_names;
+ darray(String*) items;
+};
+function i32
+get_field_count(T_Table *table)
+{
+ return (table->field_names.count);
+}
+//-
+function T_Table *
+get_meta_list_by_name(darray(T_Table) *lists, String name)
+{
+ T_Table *result = 0;
+ for_i32(list_index, 0, lists->count){
+  result = &lists->items[list_index];
+  if(result->name == name){
+   break;
+  }
+  result = 0;
+ }
+ return result;
+}
+//-
+function String
+template_parse_string(Ed_Parser *parser)
+{
+ String result = ep_maybe_id(parser);
+ 
+ if(not result.count){
+  //-The `(...) syntax that I definitely didn't make up
+  ep_char(parser, '`');
+  ep_char(parser, '(');
+  result = ep_capture_until_char(parser, ')');
+  ep_char(parser, ')');
+ }
+ return result;
+}
+function void
+ep_inc_all_skip_comments(Ed_Parser *parser)
+{
+ while(true)
+ {
+  Token *token0 = ep_get_token(parser);
+  if(token0->kind == TokenBaseKind_Comment){
+   ep_eat_inc_all(parser);
+  }else{
+   break;
+  }
+ }
+}
+//-
+function void
+template_gen_for(darray(T_Table) *tables, Ed_Parser *parser,
+                 Meta_Printer &printer)
+{
+ String for_loop_var_name = {};
+ Scratch_Block for_loop_scratch;
+ darray(Template_Node) for_loop_nodes;
+ init_dynamic(for_loop_nodes, for_loop_scratch, 16);
+ darray(String) exclude_list;
+ init_dynamic(exclude_list, for_loop_scratch, 8);
+ 
+ T_Table *loop_table;
+ {
+  ep_char(parser, '(');
+  String list_name = ep_id(parser);
+  loop_table = get_meta_list_by_name(tables, list_name);
+  if(not loop_table){
+   parser->fail();
+  }
+  
+  if(ep_maybe_id(parser, strlit("except"))){
+   //NOTE excluding elements (made-up syntax)
+   ep_char(parser, '(');
+   while(parser->ok_ and
+         not ep_maybe_char(parser, ')'))
+   {
+    String item = ep_id(parser);
+    push(&exclude_list, item);
+    if(not ep_maybe_char(parser, ',')){
+     ep_char(parser, ')');
+     break;
+    }
+   }
+  }
+  
+  ep_char(parser, ')');
+ }
+ 
+ ep_char_inc_all(parser, '{');
+ b32 parsing = parser->ok_;
+ i32 nest_level = 0;
+ while(parsing)
+ {
+  ep_inc_all_skip_comments(parser);
+  Token *token0 = ep_get_token(parser);
+  String token0_string = ep_print_token(parser);
+  
+  if(string_match(token0_string, '}') and
+     nest_level == 0)
+  {//-End the loop
+   ep_eat_inc_all(parser);
+   {//NOTE Print stuff out
+    for_i32(iteration, 0, loop_table->items.count){
+     String *item = loop_table->items[iteration];
+     
+     b32 excluded = false;
+     for_i32(exclude_index, 0, exclude_list.count){
+      //NOTE(kv) The convention is "first field is the identifier".
+      kv_assert(get_field_count(loop_table) > 0);
+      String test_field = item[0];
+      if(test_field == exclude_list[exclude_index]){
+       excluded = true;
+       break;
+      }
+     }
+     
+     if(not excluded){
+      for_i32(node_index, 0, for_loop_nodes.count){
+       Template_Node *node = for_loop_nodes.items + node_index;
+       if(node->text.count){
+        //-Text
+        String text = node->text;
+        if(node_index == 0 and
+           text.str[0] == '\n')
+        {
+         text.str++;
+         text.count--;
+        }
+        printer < text;
+       }else{
+        //-Variable
+        if(node->quoted){ printer < '"'; }
+        printer < item[node->field_index];
+        if(node->quoted){ printer < '"'; }
+       }
+      }
+     }
+    }
+   }
+   parsing = false;
+  }else if(string_match(token0_string, '`')){
+   //-loop variable
+   ep_eat(parser);
+   
+   Template_Node *node = for_loop_nodes.push();
+   String field_name;
+   if(ep_maybe_char(parser, '(')){
+    field_name = ep_id(parser);
+    ep_char_inc_all(parser, ')');
+   }else if(ep_maybe_id(parser, strlit("quotes"))){
+    node->quoted = true;
+    ep_char(parser, '(');
+    field_name = ep_id(parser);
+    ep_char_inc_all(parser, ')');
+   }else{
+    field_name = ep_id_inc_all(parser);
+   }
+   
+   b32 found_field = false;
+   for_i32(test_field_index,0,get_field_count(loop_table)){
+    if(loop_table->field_names[test_field_index] == field_name){
+     node->field_index = test_field_index;
+     found_field = true;
+     break;
+    }
+   }
+   if(not found_field){
+    parser->fail();
+   }
+  }else{
+   //-Other token
+   ep_eat_inc_all(parser);
+   
+   if(string_match(token0_string, '{')){
+    nest_level++;
+   }else if(string_match(token0_string, '}')){
+    nest_level--;
+   }
+   
+   Template_Node *last = 0;
+   if(for_loop_nodes.count){
+    last = &get_last(for_loop_nodes);
+   }
+   if(last and last->text.count){
+    //-merge the text
+    last->text.size += token0->size;
+   }else{
+    //-make a new text node
+    Template_Node *new_node = for_loop_nodes.push();
+    new_node->text = token0_string;
+   }
+  }
+  parsing = parsing and parser->ok_;
+ }
+}
+function void
+template_codegen_mode(darray(T_Table) *tables, Ed_Parser *parser, Meta_Printer &printer)
+{
+ ep_char_inc_all(parser, '{');
+ 
+ i32 nest_level = 0;
+ b32 parsing = parser->ok_;
+ while(parsing)
+ {//-Top level
+  ep_inc_all_skip_comments(parser);
+  Token *token0 = ep_get_token(parser);
+  String token0_string = ep_print_token(parser);
+  
+  if(string_match(token0_string, '}') and
+     nest_level == 0)
+  {//-End file gen
+   ep_eat_inc_all(parser);
+   parsing = false;
+  }else if(ep_maybe_id(parser, strlit("gen_for"))){
+   template_gen_for(tables, parser, printer);
+  }else{
+   //-Echo the token back out
+   ep_eat_inc_all(parser);
+   printer < token0_string;
+   
+   if(string_match(token0_string, '{')){
+    nest_level++;
+   }else if(string_match(token0_string, '}')){
+    nest_level--;
+   }
+  }
+  
+  parsing = parsing and parser->ok_;
+ }
+}
+function b32
+xx_template_main(Lexed_File source)
+{
+ Scratch_Block tmp_file;
+ b32 ok = true;
+ String out_dir = path_dir(source.path);
+ 
+ Ed_Parser parser_value = ed_parser_from_token_list(source.data, source.token_list);
+ Ed_Parser *p = &parser_value;
+ darray(T_Table) tables;
+ init_dynamic(tables, tmp_file, 16);
+ 
+ b32 parsing = true;
+ while(parsing)
+ {//-Top level
+  Token *token0 = ep_get_token(p);
+  while(token0->kind == TokenBaseKind_Whitespace or
+        token0->kind == TokenBaseKind_Comment)
+  {//-skip!
+   ep_eat(p);
+   token0 = ep_get_token(p);
+  }
+  String token0_string = ep_print_token(p);
+  
+  if(token0->kind == TokenBaseKind_EOF)
+  {
+   parsing = false;
+  }
+  else if(ep_maybe_id(p, strlit("meta_table")))
+  {//-table
+   T_Table *table = push(&tables);
+   {//-Fields
+    ep_char(p, '(');
+    while(p->ok_ and not ep_maybe_char(p, ')'))
+    {
+     String field_name = ep_id(p);
+     push(&table->field_names, field_name);
+     if(not ep_maybe_char(p, ','))
+     {
+      ep_char(p, ')');
+      break;
+     }
+    }
+   }
+   i32 field_count = get_field_count(table);
+   
+   table->name = ep_id(p);
+   
+   init_dynamic(table->items, tmp_file, 16);
+   ep_char(p, '{');
+   while(p->ok_ and
+         not ep_maybe_char(p, '}'))
+   {//-Table items
+    String *item = push_array(tmp_file, String, field_count);
+    push(&table->items, item);
+    for_i32(field_index, 0, field_count){
+     item[field_index] = template_parse_string(p);
+    }
+    if(not ep_maybe_char(p, ',')){
+     ep_char(p, '}');
+    }
+   }
+  }
+  else if(ep_maybe_id(p, strlit("api_table")))
+  {//-api table (NOTE "api" is taken, plus "api_table" is clearer, also I mean who cares)
+   T_Table *table = tables.push();
+   table->field_names.set_count(3);
+   table->field_names[0] = strlit("name");
+   table->field_names[1] = strlit("return");
+   table->field_names[2] = strlit("params");
+   
+   table->name = ep_id(p);
+   
+   init_dynamic(table->items, tmp_file, 16);
+   ep_char(p, '{');
+   while(p->ok_ and
+         not ep_maybe_char(p, '}'))
+   {//-Function signatures
+    String *signature = push_array(tmp_file, String, 3);
+    push(&table->items, signature);
+    
+    String return_type;
+    {
+     Token *return_start = ep_get_token(p);
+     ep_id(p);
+     Token *return_end = return_start;
+     while(true){
+      Token *test = ep_get_token(p);
+      String str = ep_print_token(p, test);
+      if(str == '*'){
+       return_end = test;
+       ep_eat(p);
+      }else{
+       break;
+      }
+     }
+     
+     i64 return_type_size = return_end->pos + return_end->size - return_start->pos;
+     kv_assert(return_type_size > 0);
+     return_type = String{
+      p->source.str + return_start->pos,
+      u64(return_type_size),
+     };
+    }
+    
+    String function_name = ep_id(p);
+    
+    ep_char(p, '(');
+    String parameters = ep_capture_until_char(p, ')');
+    ep_char(p, ')');
+    
+    signature[0] = function_name;
+    signature[1] = return_type;
+    signature[2] = parameters;
+    
+    ep_char(p, ';');
+   }
+  }
+  else if(ep_maybe_id(p, strlit("gen_file")))
+  {//-output to a different file
+   Token *filename_token = ep_get_token(p);
+   p->set_ok(filename_token->kind == TokenBaseKind_LiteralString);
+   ep_eat(p);
+   
+   String filename = ep_print_token(p, filename_token);
+   kv_assert(filename.len >= 2);
+   filename.str++;
+   filename.len -= 2;
+   
+   Stringz out_path;
+   {
+    Printer pr = make_printer_buffer(tmp_file, 256);
+    pr < out_dir < OS_SLASH < filename;
+    out_path = printer_get_string(pr);
+   }
+   Meta_Printer printer = {};
+   (Printer&)printer = m_open_file_to_write(out_path);
+   printer < "//NOTE Source template: " < source.path < "\n";
+   template_codegen_mode(&tables, p, printer);
+   if(printer.error){
+    ok = false;
+   }
+   close(printer);
+  }
+  else{ p->fail(); }
+  
+  parsing = parsing and p->ok_ and ok;
+ }
+ 
+ if(not p->ok_)
+ {
+  Line_Column fail_location = ep_get_fail_location(p);
+  printf("%.*s:%d:%d: parse error\n",
+         string_expand(source.path),
+         fail_location.line,
+         fail_location.column);
+ }
+ 
+ ok = ok and p->ok_;
+ return ok;
+}
+//-

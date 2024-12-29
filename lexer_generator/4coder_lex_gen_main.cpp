@@ -10,6 +10,7 @@
 
 #define KV_H_IS_METAPROGRAM 1
 #include "kv.h"
+#include "kv_math.h"
 #include "4ed_base.h"
 #include "4coder_table.h"
 #include "4coder_token.h"
@@ -750,7 +751,7 @@ smi_field_set_intersect(Arena *arena, Field_Set a, Field_Set b){
                     new_list->count += 1;
                 }
             }
-            double_break:;
+            //double_break:;
             
             if (!has_conflicts){
                 sll_queue_push(result.first, result.last, new_list);
@@ -4015,9 +4016,9 @@ int main(int argc, char **argv){
     String hand_written = file_read_all(&ctx->arena, hand_written_file);
     fclose(hand_written_file);
     
-    String out_h_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".h",
+    String out_h_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".gen.h",
                                                  string_expand(output_path));
-    String out_cpp_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".cpp",
+    String out_cpp_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".gen.cpp",
                                                    string_expand(output_path));
     
     FILE *out_h_file = fopen((char*)out_h_name.str, "wb");
@@ -4050,8 +4051,8 @@ int main(int argc, char **argv){
     fclose(out_h_file);
     fclose(out_cpp_file);
     
-    printf("%.*s:1:\n", string_expand(out_h_name));
-    printf("%.*s:1:\n", string_expand(out_cpp_name));
+    printf("%.*s\n", string_expand(out_h_name));
+    printf("%.*s\n", string_expand(out_cpp_name));
     
     // NOTE(allen): Simplifying the state machine
     // Isolate the state machine's parts into small L.U.T. then generate tables?

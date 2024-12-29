@@ -18,7 +18,7 @@ profile_parse_get_slot(Arena *arena, Profile_Inspection *insp,
         }
     }
     if (result == 0){
-        result = push_array_zero(arena, Profile_Slot, 1);
+        result = push_array0(arena, Profile_Slot, 1);
         sll_queue_push(insp->first_slot, insp->last_slot, result);
         insp->slot_count += 1;
         result->location = loc;
@@ -131,7 +131,7 @@ profile_parse(Arena *arena, Profile_Global_List *src){
     Profile_Inspection result = {};
     
     result.thread_count = src->thread_count;
-    result.threads = push_array_zero(arena, Profile_Inspection_Thread,
+    result.threads = push_array0(arena, Profile_Inspection_Thread,
                                      result.thread_count);
     
     i1 counter = 0;

@@ -29,7 +29,8 @@ struct View_Context_Node{
  void *delta_rule_memory;
 };
 
-struct View{
+struct View
+{
  View *next;
  View *prev;
  

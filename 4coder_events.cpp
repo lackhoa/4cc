@@ -290,61 +290,62 @@ push_input_event(Arena *arena, Input_List *list){
 function Input_Event*
 push_input_event(Arena *arena, Input_List *list, Input_Event *event){
     Input_Event_Node *node = push_array(arena, Input_Event_Node, 1);
-    block_copy_struct(&node->event, event);
-    sll_queue_push(list->first, list->last, node);
-    list->count += 1;
-    return(&node->event);
+ block_copy_struct(&node->event, event);
+ sll_queue_push(list->first, list->last, node);
+ list->count += 1;
+ return(&node->event);
 }
 
 function Input_Event
-copy_input_event(Arena *arena, Input_Event *event){
-    Input_Event result = *event;
-    switch (result.kind){
-        case InputEventKind_TextInsert:
-        {
-            result.text.string = push_stringz(arena, event->text.string);
-        }break;
-        
-        case InputEventKind_KeyStroke:
-        case InputEventKind_KeyRelease:
-        {
-            result.key.modifiers = copy_modifier_set(arena, &event->key.modifiers);
-        }break;
-        
-        case InputEventKind_MouseButton:
-        case InputEventKind_MouseButtonRelease:
-        {
-            result.mouse.modifiers = copy_modifier_set(arena, &event->mouse.modifiers);
-        }break;
-        
-        case InputEventKind_MouseWheel:
-        {
-            result.mouse_wheel.modifiers = copy_modifier_set(arena, &event->mouse_wheel.modifiers);
-        }break;
-        
-        case InputEventKind_MouseMove:
-        {
-            result.mouse_move.modifiers = copy_modifier_set(arena, &event->mouse_move.modifiers);
-        }break;
-        
-        case InputEventKind_Core:
-        {
-            switch (result.core.code){
-                case CoreCode_Startup:
-                {
-                    result.core.flag_strings = push_string_array_copy(arena, event->core.flag_strings);
-                    result.core.filenames = push_string_array_copy(arena, event->core.filenames);
-                }break;
-                
-                case CoreCode_FileExternallyModified:
-                case CoreCode_NewClipboardContents:
-                {
-                    result.core.string = push_stringz(arena, event->core.string);
-                }break;
-            }
-        }break;
-    }
-    return(result);
+copy_input_event(Arena *arena, Input_Event *event)
+{
+ Input_Event result = *event;
+ switch (result.kind){
+  case InputEventKind_TextInsert:
+  {
+   result.text.string = push_stringz(arena, event->text.string);
+  }break;
+  
+  case InputEventKind_KeyStroke:
+  case InputEventKind_KeyRelease:
+  {
+   result.key.modifiers = copy_modifier_set(arena, &event->key.modifiers);
+  }break;
+  
+  case InputEventKind_MouseButton:
+  case InputEventKind_MouseButtonRelease:
+  {
+   result.mouse.modifiers = copy_modifier_set(arena, &event->mouse.modifiers);
+  }break;
+  
+  case InputEventKind_MouseWheel:
+  {
+   result.mouse_wheel.modifiers = copy_modifier_set(arena, &event->mouse_wheel.modifiers);
+  }break;
+  
+  case InputEventKind_MouseMove:
+  {
+   result.mouse_move.modifiers = copy_modifier_set(arena, &event->mouse_move.modifiers);
+  }break;
+  
+  case InputEventKind_Core:
+  {
+   switch (result.core.code){
+    case CoreCode_Startup:
+    {
+     result.core.flag_strings = push_string_array_copy(arena, event->core.flag_strings);
+     result.core.filenames = push_string_array_copy(arena, event->core.filenames);
+    }break;
+    
+    case CoreCode_FileExternallyModified:
+    case CoreCode_NewClipboardContents:
+    {
+     result.core.string = push_stringz(arena, event->core.string);
+    }break;
+   }
+  }break;
+ }
+ return(result);
 }
 
 ////////////////////////////////

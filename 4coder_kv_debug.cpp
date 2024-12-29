@@ -34,7 +34,7 @@ DEBUG_draw_hud(App *app, Face_ID face_id, Rect_f32 rect)
  draw_rect_fcolor(app, rect, 0.f, fcolor_change_alpha(f_black, 0.3f));
  
  v2 at = rect.p0;
- for (u32 entry_index=0; 
+ for (i32 entry_index=0; 
       entry_index < DEBUG_entries.count;
       entry_index++)
  {

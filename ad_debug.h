@@ -1,9 +1,5 @@
-#if !KV_DEBUG_MEMORY
-#  define DEBUG_end_frame(...)
-#endif
-
 #if KV_DEBUG_MEMORY
-//NOTE(kv) Just like in hmh, arenas can be moved around,
+// NOTE(kv) Just like in hmh, arenas can be moved around,
 //  only the arena chunks are stable. So we rely on them to identify arenas.
 struct Debug_Allocation
 {
@@ -62,12 +58,18 @@ struct Debug_State
  Debug_Arena *first_free_arena;
  Debug_Arena_Chunk *first_free_chunk;
  Debug_Allocation *first_free_allocation;
+ 
+ i32 total_events_read;
 };
-global Debug_State memory_debug_state;
-thread_local i32 debug_thread_index = -1;
+global Debug_State global_debug_state;
 
-function void
-DEBUG_end_frame();
-#endif//-KV_DEBUG_MEMORY
+global thread_local i32 debug_thread_index = -1;
+//-KV_DEBUG_MEMORY
+#endif
 
+#if !KV_DEBUG_MEMORY
+#  define DEBUG_end_frame(...)
+#endif
+
+function void debug_end_frame();
 //-

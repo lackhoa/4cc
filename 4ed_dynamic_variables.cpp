@@ -478,31 +478,33 @@ managed_object_alloc_managed_memory(Dynamic_Workspace *workspace, i1 item_size, 
     header->std_header.type = ManagedObjectType_Memory;
     header->std_header.item_size = item_size;
     header->std_header.count = count;
-    if (ptr_out != 0){
-        *ptr_out = get_dynamic_object_memory_ptr(&header->std_header);
-    }
-    u32 id = dynamic_workspace_store_pointer(workspace, ptr);
-    return(((u64)workspace->scope_id << 32) | (u64)id);
+ if (ptr_out != 0){
+  *ptr_out = get_dynamic_object_memory_ptr(&header->std_header);
+ }
+ u32 id = dynamic_workspace_store_pointer(workspace, ptr);
+ return(((u64)workspace->scope_id << 32) | (u64)id);
 }
 
 function Managed_Object
-managed_object_alloc_buffer_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id, i1 count, Marker **markers_out){
-    i1 size = count*sizeof(Marker);
-    u8 *new_memory = base_allocate(&workspace->heap_wrapper, size + sizeof(Managed_Buffer_Markers_Header));
-    void *ptr = new_memory;
-    Managed_Buffer_Markers_Header *header = (Managed_Buffer_Markers_Header*)ptr;
-    header->std_header.type = ManagedObjectType_Markers;
-    header->std_header.item_size = sizeof(Marker);
-    header->std_header.count = count;
-    zdll_push_back(workspace->buffer_markers_list.first, workspace->buffer_markers_list.last, header);
-    workspace->buffer_markers_list.count += 1;
-    workspace->total_marker_count += count;
-    header->buffer_id = buffer_id;
-    if (markers_out != 0){
-        *markers_out = (Marker*)get_dynamic_object_memory_ptr(&header->std_header);
-    }
-    u32 id = dynamic_workspace_store_pointer(workspace, ptr);
-    return(((u64)workspace->scope_id << 32) | (u64)id);
+managed_object_alloc_buffer_positions(Dynamic_Workspace *workspace, Buffer_ID buffer_id, i1 count,
+                                      Marked_Position **markers_out)
+{
+ i1 size = count*sizeof(Marked_Position);
+ u8 *new_memory = base_allocate(&workspace->heap_wrapper, size + sizeof(Managed_Buffer_Markers_Header));
+ void *ptr = new_memory;
+ Managed_Buffer_Markers_Header *header = (Managed_Buffer_Markers_Header*)ptr;
+ header->std_header.type = ManagedObjectType_Markers;
+ header->std_header.item_size = sizeof(Marked_Position);
+ header->std_header.count = count;
+ zdll_push_back(workspace->buffer_markers_list.first, workspace->buffer_markers_list.last, header);
+ workspace->buffer_markers_list.count += 1;
+ workspace->total_marker_count += count;
+ header->buffer_id = buffer_id;
+ if(markers_out != 0){
+  *markers_out = (Marked_Position*)get_dynamic_object_memory_ptr(&header->std_header);
+ }
+ u32 id = dynamic_workspace_store_pointer(workspace, ptr);
+ return(((u64)workspace->scope_id << 32) | (u64)id);
 }
 
 function b32

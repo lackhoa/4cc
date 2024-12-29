@@ -1,0 +1,38 @@
+//-
+api_table game_api
+{
+ void game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time);
+ // @game_bootstrap_arena_zero_initialized
+ Game_State *game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, App *app, Game_ImGui_State &imgui_state, b32 is_dev_editor);
+ void game_shutdown(Game_State *state);
+ Game_Update_Return game_update(Game_Update_Params params);
+ b32 is_event_handled_by_game(Game_State *state, App *app, Input_Event *event, b32 game_hot, b32 game_rendered);
+ void game_send_command(Game_State *state, String command_name);
+ void game_buffer_edit_range(Game_State *state, App *app, Buffer_ID buffer, Range_i64 new_range, Range_Cursor old_cursor_range);
+ b32 game_handle_tab_normal_mode(App_Cmd *app);
+ //-FUI
+ b32 fui_is_active(void);
+ String fui_push_active_slider_value(Arena *arena);
+ b32 fui_at_slider_p(App *app);
+ b32 fui_handle_enter(Game_State *state, App_Cmd *app);
+ Range_i32 fui_get_sliders_in_range(App *app, Buffer_ID buffer, i64 pos_begin, i64 pos_end);
+ Range_i64 fui_get_slider_range(i32 index);
+ void fui_draw_over_text_buffer(App *app, Buffer_ID buffer, Text_Layout_ID layout);
+}
+
+generate
+{
+ gen_for(game_api)
+ {
+#define `(name)__return `return
+#define `(name)__params `params
+  
+ }
+ 
+#define game_api_xlist(X) \
+gen_for(game_api)
+ {
+  X(`name) \
+ }
+}
+//-

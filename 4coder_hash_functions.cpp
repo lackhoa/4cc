@@ -9,8 +9,7 @@
 
 // TOP
 
-#if !defined(FCODER_HASH_FUNCTIONS_CPP)
-#define FCODER_HASH_FUNCTIONS_CPP
+#pragma once
 
 static u64
 table_hash_u8(u8 *v, u64 size){
@@ -92,7 +91,4 @@ table_hash(void *v, i1 it_size, u64 size){
     return(hash);
 }
 
-#endif
-
 // BOTTOM
-

@@ -22,7 +22,8 @@ struct EP_Scope{
  Token *start_location;
  String name;
 };
-struct Ed_Parser{
+struct Ed_Parser
+{
  b32 ok_;
  b32 recoverable;
  Scan_Direction direction;
@@ -108,9 +109,9 @@ make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
                     Scan_Direction direction=Scan_Forward){
  b32 ok;
  if(it.kind == TokenIterator_Array){
-  ok = it.array.count;
+  ok = it.array.count != 0;
  }else if(it.kind == TokenIterator_List){
-  ok = it.list.node_count;
+  ok = it.list.node_count != 0;
  }else{
   invalid_code_path;
  }

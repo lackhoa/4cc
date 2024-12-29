@@ -66,10 +66,6 @@ standard_build_exec_command(App *app, View_ID view, String8 dir, String8 cmd)
                      dir, cmd,
                      standard_build_exec_flags);
 }
-
-function void 
-vim_set_bottom_text(String msg);
-
 function b32
 standard_search_and_build_from_dir(App_Cmd *app, View_ID view, String8 start_dir, char *command_args)
 {

@@ -1,0 +1,150 @@
+//-
+typedef u32 argb;
+typedef i1  b32;
+int_wrapper_type i32 Vertex_Index;
+int_wrapper_type i32 Curve_Index;
+int_wrapper_type i32 Fill_Index;
+enum Bone_Type
+{
+ Bone_None           = 0,
+ Bone_Head           = 1,
+ Bone_Arm            = 2,
+ Bone_Forearm        = 3,
+ Bone_Bottom_Phalanx = 4,
+ Bone_Mid_Phalanx    = 5,
+ Bone_Top_Phalanx    = 6,
+ Bone_Torso          = 7,
+ Bone_References     = 8,
+ Bone_Hand           = 9,
+ Bone_Thumb          = 10,
+ Bone_Pelvis         = 11,
+ Bone_Eyeball        = 12,
+ Bone_Test           = 13,
+ Bone_Camera         = 14,
+};
+// TODO(kv) Enums are 4 bytes by default, and we don't really want that!
+struct Bone_ID
+{
+ Bone_Type type;
+ i1        id;
+};
+
+typedef u32 Line_Flags;
+enum{
+ Line_Overlay   = 0x1,
+ Line_Straight  = 0x2,
+ Line_No_SymX   = 0x4,
+ Line_Invisible = 0x8,
+};
+typedef u32 FLP_Flags;
+enum{
+};
+struct FUI_Line_Params
+{// Mirrors @Line_Params
+ FLP_Flags fui_flags;
+ //-
+ v4 radii;
+ v4 lightness_additions;
+ 
+ Line_Flags line_flags;
+};
+
+enum Reference_Preset
+{// NOTE(kv) Do we need to serialize this? Yeah we do.
+ Preset_None = 0,
+ Preset_Back = 1,
+};
+//~Framework api
+api_table framework_api_1
+{
+ void poly3_inner(Poly3 points, argb c0, argb c1, argb c2, Poly_Flags flags);
+ void draw_bezier_inner(v3 P[4], Line_Params &params, argb base_color);
+}
+meta_table(name) framework_api_2
+{
+ push_object_transform_to_target,
+ DEBUG_send_entry,
+ push_image,
+}
+
+generate
+{
+ gen_for(framework_api_1)
+ {
+#define `(name)__return `return
+#define `(name)__params `params
+  
+ }
+ 
+#define framework_api_xlist_1(X) \
+gen_for(framework_api_1)
+ {
+  X(`name) \
+ }
+ 
+#define framework_api_xlist_2(X) \
+gen_for(framework_api_2)
+ {
+  X(`name) \
+ }
+ 
+#define framework_api_xlist(X) \
+framework_api_xlist_1(X) \
+framework_api_xlist_2(X) \
+memory_functions_xlist(X)
+}
+
+[noinfo]
+struct Reference_Image
+{
+ Stringz filename;
+ tvert center;
+ v1 width;
+ v1 alpha;
+ b32 reflected;
+};
+[noinfo]
+struct Reference_Preset_Data
+{
+ // NOTE @Camera_Data
+ v1 camera_phi;
+ v1 camera_theta;
+ Reference_Image image;
+ Pose pose;
+};
+
+api_table driver_api
+{
+ void driver_render(Arena *arena, Painter *painter);
+ void driver_update(Model *model, v1 anim_time);
+ void driver_shutdown(void);
+ void driver_update_tweaks();
+ Reference_Preset_Data driver_get_reference_preset_data(Reference_Preset preset);
+}
+
+generate
+{
+ gen_for(driver_api)
+ {
+#define `(name)__return `return
+#define `(name)__params `params
+  
+ }
+ 
+#define driver_api_xlist(X) \
+gen_for(driver_api)
+ {
+  X(`name) \
+ }
+}
+
+[embed]
+struct Saved_Viewport
+{
+ Camera_Data target_camera;
+ i32 preset;
+ i32 last_preset;
+ meta_added(added=Version_AddReferencePreset)
+  Reference_Preset reference_preset;
+};
+//-

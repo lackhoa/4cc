@@ -2,6 +2,80 @@
 
 #include <math.h>
 
+function Rect_i32
+Ri32(i32 x0, i32 y0, i32 x1, i32 y1){
+ Rect_i32 rect = {x0, y0, x1, y1};
+ return(rect);
+}
+function Rect_f32
+Rf32(f32 x0, f32 y0, f32 x1, f32 y1){
+ Rect_f32 rect = {x0, y0, x1, y1};
+ return(rect);
+}
+
+function Rect_i32
+Ri32(Vec2_i32 p0, Vec2_i32 p1){
+ Rect_i32 rect = {p0.x, p0.y, p1.x, p1.y};
+ return(rect);
+}
+function Rect_f32
+Rf32(v2 p0, v2 p1){
+ Rect_f32 rect = {p0.x, p0.y, p1.x, p1.y};
+ return(rect);
+}
+
+function Rect_i32
+Ri32(Rect_f32 o){
+ Rect_i32 rect = {(i32)(o.x0), (i32)(o.y0), (i32)(o.x1), (i32)(o.y1)};
+ return(rect);
+}
+function Rect_f32
+Rf32(Rect_i32 o){
+ Rect_f32 rect = {(f32)(o.x0), (f32)(o.y0), (f32)(o.x1), (f32)(o.y1)};
+ return(rect);
+}
+
+function Rect_i32
+Ri32_xy_wh(i32 x0, i32 y0, i32 w, i32 h)
+{
+ Rect_i32 rect = {x0, y0, x0 + w, y0 + h};
+ return(rect);
+}
+function Rect_f32
+Rf32_xy_wh(f32 x0, f32 y0, f32 w, f32 h)
+{
+ Rect_f32 rect = {x0, y0, x0 + w, y0 + h};
+ return(rect);
+}
+
+function Rect_i32
+Ri32_xy_wh(Vec2_i32 p0, Vec2_i32 d)
+{
+ Rect_i32 rect = {p0.x, p0.y, p0.x + d.x, p0.y + d.y};
+ return(rect);
+}
+function Rect_f32
+Rf32_xy_wh(v2 p0, v2 d){
+ Rect_f32 rect = {p0.x, p0.y, p0.x + d.x, p0.y + d.y};
+ return(rect);
+}
+
+function Rect_i32
+Ri32(Range_i32 x, Range_i32 y){
+ return(Ri32(x.min, y.min, x.max, y.max));
+}
+function Rect_f32
+Rf32(Range_f32 x, Range_f32 y){
+ return(Rf32(x.min, y.min, x.max, y.max));
+}
+
+global_const Rect_f32 Rf32_infinity          = {-max_f32, -max_f32,  max_f32,  max_f32};
+global_const Rect_f32 Rf32_negative_infinity = { max_f32,  max_f32, -max_f32, -max_f32};
+
+global_const Rect_i32 Ri32_infinity          = {-max_i32, -max_i32,  max_i32,  max_i32};
+global_const Rect_i32 Ri32_negative_infinity = { max_i32,  max_i32, -max_i32, -max_i32};
+
+
 myinline v1
 square_root(f32 x)
 {
@@ -87,7 +161,7 @@ absolute(v1 x)
 }
 myinline v1
 cycle01(v1 value)
-{
+{// NOTE(kv) handles negatives too, useful for hsv hue!
  v1 result = value - floorv1(value);
  return result;
 }
@@ -115,13 +189,8 @@ linear_to_srgb1(v1 x)
  return(r);
 }
 
-myinline v1
-v2::operator[](i32 index)
-{
- return v[index];
-}
-
-inline v2 v2_all(v1 input)
+myinline v2
+v2_all(v1 input)
 {
  return v2{input, input};
 }
@@ -189,8 +258,8 @@ inline v2 operator/(v2 v, v2 u) { return {v.x / u.x, v.y / u.y}; }
 inline void operator*=(v2 &v, v1 c) { v = c*v; }
 inline v2 operator/(v2 v, v1 c) { return v2{v.x / c, v.y / c}; }
 inline v1 dot(v2 v, v2 u) { return v.x*u.x + v.y*u.y; }
-inline v1 lensq(v2 v)    { return squared(v.x) + squared(v.y); }
-inline v1 lengthof(v2 v) { return square_root(lensq(v)); }
+inline v1 length_squared(v2 v)    { return squared(v.x) + squared(v.y); }
+inline v1 lengthof(v2 v) { return square_root(length_squared(v)); }
 
 inline v1
 projectLen(v2 onto, v2 v)
@@ -204,7 +273,7 @@ inline v2
 project_on(v2 onto, v2 v)
 {
  f32 innerProd = dot(onto, v);
- v2 result = (innerProd / lensq(onto)) * onto;
+ v2 result = (innerProd / length_squared(onto)) * onto;
  return result;
 }
 
@@ -220,7 +289,7 @@ hadamard(v2 v, v2 u)
 function v2
 noz(v2 v)  // normalize or zero
 {
- v1 lsq = lensq(v);
+ v1 lsq = length_squared(v);
  v2 result = {};
  if (lsq > 1e-8)
  {
@@ -233,10 +302,7 @@ myinline v2 perp(v2 v) { return v2{-v.y, v.x}; }
 
 myinline v2 bilateral(v2 v)  { return v2{bilateral(v.x), bilateral(v.y)}; }
 
-// ;v3
-
-
-
+//~ v3
 inline v3
 absolute(v3 v){
  for_i32(index,0,3){ v[index] = absolute(v[index]); };
@@ -397,7 +463,7 @@ operator/(v3 u, v3 v)
 }
 
 inline v1
-lensq(v3 v)
+length_squared(v3 v)
 {
  v1 result = squared(v.x) + squared(v.y) + squared(v.z);
  return result;
@@ -406,7 +472,7 @@ lensq(v3 v)
 inline v1
 lengthof(v3 v)
 {
- v1 result = square_root(lensq(v));
+ v1 result = square_root(length_squared(v));
  return result;
 }
 
@@ -414,7 +480,7 @@ inline v3
 project_on(v3 onto, v3 v)
 {
  v1 innerProd = dot(onto, v);
- v3 result = (innerProd / lensq(onto)) * onto;
+ v3 result = (innerProd / length_squared(onto)) * onto;
  return result;
 }
 
@@ -584,7 +650,7 @@ operator+=(v4 &v, v4 u)
 inline v3
 noz(v3 v)  // normalize or zero
 {
- v1 lsq = lensq(v);
+ v1 lsq = length_squared(v);
  v3 result = {};
  if (lsq > 1e-8) 
  {
@@ -595,7 +661,7 @@ noz(v3 v)  // normalize or zero
 }
 
 inline v1 
-lensq(v4 v)
+length_squared(v4 v)
 {
  return (v.x*v.x +
          v.y*v.y +
@@ -606,7 +672,7 @@ lensq(v4 v)
 inline v4
 noz(v4 v)
 {
- v1 lsq = lensq(v);
+ v1 lsq = length_squared(v);
  v4 result = {};
  if (lsq > squared(0.0001f)) 
  {
@@ -617,7 +683,7 @@ noz(v4 v)
 }
 
 
-// ;rect2
+//-rect2
 
 inline b32
 contains(rect2 rect, v2 point)
@@ -1187,7 +1253,7 @@ operator*(mat3 const&A, mat3 const&B)
 
 // NOTE: Everyone should get fired, for writing compilers that do stupid things.
 function v4
-operator*(mat4 const&matrix, v4 v)
+matvmul(mat4 const &matrix, v4 v)
 {
  v4 result = {};
  for_i32(r,0,4)
@@ -1199,9 +1265,15 @@ operator*(mat4 const&matrix, v4 v)
  }
  return result;
 }
+myinline v4
+operator*(mat4 const &matrix, v4 v)
+{
+ return matvmul(matrix, v);
+}
 
 function mat4
-matmul(mat4 const*A, mat4 const*B) {
+matmul(mat4 const*A, mat4 const*B)
+{
  mat4 R = {};
  for_i32(r,0,4) // NOTE(casey): Rows (of A)
  {
@@ -1251,6 +1323,11 @@ mat4vert(mat4 const&A, v3 v)
  v4 Av = A * V4(v, 1.f);
  return Av.xyz;
 }
+myinline void
+mat4vert(mat4 const&M, v3 *v)
+{
+ *v = mat4vert(M, *v);
+}
 // IMPORTANT IMPORTANT IMPORTANT: I am a bad person! But there's no way around it!
 myinline v3
 operator*(mat4 const&A, v3 v)
@@ -1267,8 +1344,8 @@ mat4vec(mat4 const&A, v3 v)
 
 global mat4i mat4i_identity = {mat4_identity, mat4_identity};
 
-function mat4i
-invert(mat4i const&in)
+myinline mat4i
+invert(mat4i const &in)
 {
  return mat4i{in.inverse, in.forward};
 }
@@ -1361,17 +1438,20 @@ mat4i_columns(v3 x, v3 y, v3 z, v3 w){
  return result;
 }
 
-function v4
-get_column(mat4 const&m, i32 index)
+myinline v4
+get_column(mat4 const &m, i32 index)
 {
  v4 result;
- for_i32(i,0,4)
- {
-  result[i] = m.e[i][index];
- }
+ for_i32(i,0,4){ result[i] = m.e[i][index]; }
  return result;
 }
-
+myinline v4
+get_row(mat4 const &m, i32 index)
+{
+ v4 result;
+ for_i32(i,0,4){ result[i] = m.e[index][i]; }
+ return result;
+}
 myinline v3
 get_translation(mat4 const&mat)
 {
@@ -1587,9 +1667,12 @@ operator*(mat4i const& A, mat4i const& B)
  return matmul(&A, &B);
 }
 
-myinline v2 arm2(v1 turn)
+myinline v2
+arm2(v1 turn)
 {
- return v2{cosine(turn), sine(turn)};
+ v1 c = cosine(turn);
+ v1 s = sine(turn);
+ return v2{c, s};
 }
 
 myinline v3 V3x(v1 x) { v3 result = {}; result.x=x; return result; }
@@ -1751,10 +1834,20 @@ function v4
 argb_unpack(ARGB_Color color)
 {
  v4 result;
- result.a = ((color >> 24) & 0xFF)/255.f;
- result.r = ((color >> 16) & 0xFF)/255.f;
- result.g = ((color >> 8)  & 0xFF)/255.f;
- result.b = ((color >> 0)  & 0xFF)/255.f;
+ result.a = ((color >> 24) & 255)/255.f;
+ result.r = ((color >> 16) & 255)/255.f;
+ result.g = ((color >> 8)  & 255)/255.f;
+ result.b = ((color >> 0)  & 255)/255.f;
+ return(result);
+}
+function v4
+argb_unpack_255(ARGB_Color color)
+{
+ v4 result;
+ result.a = v1((color >> 24) & 255);
+ result.r = v1((color >> 16) & 255);
+ result.g = v1((color >> 8)  & 255);
+ result.b = v1((color >> 0)  & 255);
  return(result);
 }
 

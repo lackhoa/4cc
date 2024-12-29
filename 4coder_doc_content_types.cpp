@@ -26,7 +26,7 @@ doc_date_now(void){
 
 function Doc_Content*
 doc_content_push(Arena *arena, Doc_Content_List *list, String text, Doc_Content_Emphasis emphasis){
-    Doc_Content *content = push_array_zero(arena, Doc_Content, 1);
+    Doc_Content *content = push_array0(arena, Doc_Content, 1);
     sll_queue_push(list->first, list->last, content);
     list->total_size += text.size;
     list->node_count += 1;
@@ -42,7 +42,7 @@ doc_content_push(Arena *arena, Doc_Content_List *list, String text){
 
 function void
 doc_code_list_push(Arena *arena, Doc_Code_Sample_List *list, String contents, Doc_Code_Language language){
-    Doc_Code_Sample *sample = push_array_zero(arena, Doc_Code_Sample, 1);
+    Doc_Code_Sample *sample = push_array0(arena, Doc_Code_Sample, 1);
     sll_queue_push(list->first, list->last, sample);
     list->count += 1;
     sample->contents = contents;
@@ -53,7 +53,7 @@ doc_code_list_push(Arena *arena, Doc_Code_Sample_List *list, String contents, Do
 
 function Doc_Cluster*
 new_doc_cluster(Arena *arena, char *title, char *name, Doc_Date *date){
-    Doc_Cluster *result = push_array_zero(arena, Doc_Cluster, 1);
+    Doc_Cluster *result = push_array0(arena, Doc_Cluster, 1);
     result->title = SCu8(title);
     result->name = SCu8(name);
     result->gen_date = *date;
@@ -68,7 +68,7 @@ new_doc_cluster(Arena *arena, char *title, char *name){
 
 function Doc_Page*
 new_doc_page(Arena *arena, Doc_Cluster *cluster, char *title, char *name){
-    Doc_Page *result = push_array_zero(arena, Doc_Page, 1);
+    Doc_Page *result = push_array0(arena, Doc_Page, 1);
     
     result->owner = cluster;
     sll_queue_push(cluster->first_page, cluster->last_page, result);
@@ -100,7 +100,7 @@ new_doc_page_function(Arena *arena, Doc_Cluster *cluster, String name){
 
  function Doc_Block*
 new_doc_block(Arena *arena, Doc_Page *page, char *name){
-    Doc_Block *result = push_array_zero(arena, Doc_Block, 1);
+    Doc_Block *result = push_array0(arena, Doc_Block, 1);
     result->owner = page;
     sll_queue_push(page->first_block, page->last_block, result);
     page->block_count += 1;
@@ -110,7 +110,7 @@ new_doc_block(Arena *arena, Doc_Page *page, char *name){
 
 function void
 new_doc_block_jump(Arena *arena, Doc_Page *page, Doc_Block *block){
-    Doc_Block_Ptr *node = push_array_zero(arena, Doc_Block_Ptr, 1);
+    Doc_Block_Ptr *node = push_array0(arena, Doc_Block_Ptr, 1);
     sll_queue_push(page->quick_jumps.first, page->quick_jumps.last, node);
     page->quick_jumps.count += 1;
     node->block = block;
@@ -118,7 +118,7 @@ new_doc_block_jump(Arena *arena, Doc_Page *page, Doc_Block *block){
 
 function Doc_Paragraph*
 new_doc_par(Arena *arena, Doc_Block *block){
-    Doc_Paragraph *result = push_array_zero(arena, Doc_Paragraph, 1);
+    Doc_Paragraph *result = push_array0(arena, Doc_Paragraph, 1);
     sll_queue_push(block->first_par, block->last_par, result);
     block->par_count += 1;
     return(result);
@@ -142,7 +142,7 @@ new_doc_par_table(Arena *arena, Doc_Block *block){
 
 function void
 doc_log(Arena *arena, Doc_Cluster *cluster, String string){
-    Doc_Log *log = push_array_zero(arena, Doc_Log, 1);
+    Doc_Log *log = push_array0(arena, Doc_Log, 1);
     sll_queue_push(cluster->first_log, cluster->last_log, log);
     log->content = string;
 }

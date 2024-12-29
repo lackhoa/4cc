@@ -11,14 +11,14 @@
 #include "kv.h"
 #include "4ed_base.h"
 #include "4coder_token.h"
-#include "generated/lexer_cpp.h"
+#include "lexer_cpp.h"
 
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
 #include "meta_os.cpp"
 
 #include "4coder_token.cpp"
-#include "generated/lexer_cpp.cpp"
+#include "lexer_cpp.cpp"
 
 #include "4coder_file.h"
 

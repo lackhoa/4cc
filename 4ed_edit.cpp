@@ -48,44 +48,47 @@ post_edit_call_hook(Thread_Context *tctx, Models *models, Editing_File *file,
 function void
 edit_fix_markers__write_workspace_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id,
                                           Cursor_With_Index *cursors, Cursor_With_Index *r_cursors,
-                                          i1 *cursor_count, i1 *r_cursor_count){
-    for (Managed_Buffer_Markers_Header *node = workspace->buffer_markers_list.first;
-         node != 0;
-         node = node->next){
-        if (node->buffer_id != buffer_id) continue;
-        Marker *markers = (Marker*)(node + 1);
-        Assert(sizeof(*markers) == node->std_header.item_size);
-        i1 count = node->std_header.count;
-        for (i1 i = 0; i < count; i += 1){
-            if (markers[i].lean_right){
-                write_cursor_with_index(r_cursors, r_cursor_count, markers[i].pos);
-            }
-            else{
-                write_cursor_with_index(cursors  , cursor_count  , markers[i].pos);
-            }
-        }
-    }
+                                          i1 *cursor_count, i1 *r_cursor_count)
+{
+ for (Managed_Buffer_Markers_Header *node = workspace->buffer_markers_list.first;
+      node != 0;
+      node = node->next)
+ {
+  if (node->buffer_id != buffer_id) continue;
+  Marked_Position *positions = (Marked_Position*)(node + 1);
+  Assert(sizeof(*positions) == node->std_header.item_size);
+  i1 count = node->std_header.count;
+  for (i1 i = 0; i < count; i += 1){
+   if (positions[i].lean_right){
+    write_cursor_with_index(r_cursors, r_cursor_count, positions[i].pos);
+   }
+   else{
+    write_cursor_with_index(cursors  , cursor_count  , positions[i].pos);
+   }
+  }
+ }
 }
 
 function void
 edit_fix_markers__read_workspace_markers(Dynamic_Workspace *workspace, Buffer_ID buffer_id,
                                          Cursor_With_Index *cursors, Cursor_With_Index *r_cursors, i1 *cursor_count, i1 *r_cursor_count){
-    for (Managed_Buffer_Markers_Header *node = workspace->buffer_markers_list.first;
-         node != 0;
-         node = node->next){
-        if (node->buffer_id != buffer_id) continue;
-        Marker *markers = (Marker*)(node + 1);
-        Assert(sizeof(*markers) == node->std_header.item_size);
-        i1 count = node->std_header.count;
-        for (i1 i = 0; i < count; i += 1){
-            if (markers[i].lean_right){
-                markers[i].pos = r_cursors[(*r_cursor_count)++].pos;
-            }
-            else{
-                markers[i].pos = cursors[(*cursor_count)++].pos;
-            }
-        }
-    }
+ for (Managed_Buffer_Markers_Header *node = workspace->buffer_markers_list.first;
+      node != 0;
+      node = node->next)
+ {
+  if (node->buffer_id != buffer_id) continue;
+  Marked_Position *markers = (Marked_Position*)(node + 1);
+  Assert(sizeof(*markers) == node->std_header.item_size);
+  i1 count = node->std_header.count;
+  for (i1 i = 0; i < count; i += 1){
+   if (markers[i].lean_right){
+    markers[i].pos = r_cursors[(*r_cursor_count)++].pos;
+   }
+   else{
+    markers[i].pos = cursors[(*cursor_count)++].pos;
+   }
+  }
+ }
 }
 
 function f32

@@ -96,19 +96,22 @@ default_view_input_handler(App_Cmd *app)
 //NOTE(kv) This function actually does... thing.
 //  IDK what but the editor crashes if you don't call it
 function void
-code_index_update_tick(App *app){
+code_index_update_tick(App *app)
+{
  Scratch_Block scratch(app);
  for (Buffer_Modified_Node *node = global_buffer_modified_set.first;
       node != 0;
-      node = node->next){
+      node = node->next)
+ {
   Temp_Memory_Block temp(scratch);
   Buffer_ID buffer_id = node->buffer;
   
   String contents = push_whole_buffer(app, scratch, buffer_id);
   Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
-  if(tokens.count){
+  if(tokens.count)
+  {
    Arena arena = make_arena(KB(16));
-   auto index = push_array_zero(&arena, Code_Index_File, 1);
+   auto index = push_array0(&arena, Code_Index_File, 1);
    index->buffer = buffer_id;
    
    Generic_Parse_State state = {};
@@ -374,7 +377,7 @@ parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
     ProfileBlock(app, "async parse");
     
     Arena arena = make_arena(KB(16));
-    Code_Index_File *index = push_array_zero(&arena, Code_Index_File, 1);
+    Code_Index_File *index = push_array0(&arena, Code_Index_File, 1);
     index->buffer = buffer_id;
     
     Generic_Parse_State state = {};

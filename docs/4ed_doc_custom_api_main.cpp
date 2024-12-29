@@ -11,7 +11,7 @@
 
 #include "4coder_base_types.h"
 #include "4coder_token.h"
-#include "generated/lexer_cpp.h"
+#include "lexer_cpp.gen.h"
 #include "../4ed_api_definition.h"
 #include "4coder_doc_content_types.h"
 #include "4ed_doc_helper.h"
@@ -20,7 +20,7 @@
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
 #include "4coder_token.cpp"
-#include "generated/lexer_cpp.cpp"
+#include "lexer_cpp.gen.cpp"
 #include "../4ed_api_definition.cpp"
 #include "../4ed_api_parser.cpp"
 #include "4coder_doc_content_types.cpp"

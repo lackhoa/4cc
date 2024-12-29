@@ -14,8 +14,11 @@ defer( history_group_end(history_group) );
 
 ////////////////////////////////
 
-#define scope_attachment(app,S,I,T) ((T*)managed_scope_get_attachment((app), (S), (I), sizeof(T)))
-#define set_custom_hook(app,ID,F) set_custom_hook_func((app),(ID),(Void_Func*)(F))
+#define scope_attachment(app,scope,id,T) \
+((T*)managed_scope_get_attachment(app, scope, id, sizeof(T)))
+
+#define set_custom_hook(app,ID,F) \
+set_custom_hook_func((app),(ID),(Void_Func*)(F))
 
 ////////////////////////////////
 
@@ -1055,7 +1058,8 @@ push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range){
  return(result);
 }
 function Range_i64
-get_selected_range(App *app){
+get_selected_range(App *app)
+{
  GET_VIEW_AND_BUFFER;
  i64 curpos = view_get_cursor_pos(app, view);
  i64 markpos = view_get_mark_pos(app, view);
@@ -1364,17 +1368,17 @@ function History_Group
 history_group_begin(App *app, Buffer_ID buffer)
 {
  History_Group group = {};
- group.app = app;
+ group.app    = app;
  group.buffer = buffer;
- group.first = buffer_history_get_current_state_index(app, buffer);
- group.first += 1;
+ group.first  = 1 + buffer_history_get_current_state_index(app, buffer);
  return(group);
 }
 function void
 history_group_end(History_Group group)
 {
  History_Record_Index last = buffer_history_get_current_state_index(group.app, group.buffer);
- if (group.first < last){
+ if(group.first < last)
+ {
   buffer_history_merge_record_range(group.app, group.buffer, group.first, last, RecordMergeFlag_StateInRange_MoveStateForward);
  }
 }
@@ -1861,30 +1865,32 @@ view_open_file(App *app, View_ID view, String8 filename, b32 never_new) {
 }
 
 function void
-view_disable_highlight_range(App *app, View_ID view){
-    Managed_Scope scope = view_get_managed_scope(app, view);
-    Managed_Object *highlight = scope_attachment(app, scope, view_highlight_range, Managed_Object);
-    if (*highlight != 0){
-        managed_object_free(app, *highlight);
-    }
-    managed_scope_attachment_erase(app, scope, view_highlight_range);
-    managed_scope_attachment_erase(app, scope, view_highlight_buffer);
+view_disable_highlight_range(App *app, View_ID view)
+{
+ Managed_Scope scope = view_get_managed_scope(app, view);
+ Managed_Object *highlight = scope_attachment(app, scope, view_highlight_range, Managed_Object);
+ if (*highlight != 0){
+  managed_object_free(app, *highlight);
+ }
+ managed_scope_attachment_erase(app, scope, view_highlight_range);
+ managed_scope_attachment_erase(app, scope, view_highlight_buffer);
 }
 
 function void
-view_set_highlight_range(App *app, View_ID view, Range_i64 range){
-    view_disable_highlight_range(app, view);
-    
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Managed_Scope scope = view_get_managed_scope(app, view);
-    Managed_Object *highlight = scope_attachment(app, scope, view_highlight_range, Managed_Object);
-    *highlight = alloc_buffer_markers_on_buffer(app, buffer, 2, &scope);
-    Marker markers[2] = {};
-    markers[0].pos = range.min;
-    markers[1].pos = range.max;
-    managed_object_store_data(app, *highlight, 0, 2, markers);
-    Buffer_ID *highlight_buffer = scope_attachment(app, scope, view_highlight_buffer, Buffer_ID);
-    *highlight_buffer = buffer;
+view_set_highlight_range(App *app, View_ID view, Range_i64 range)
+{
+ view_disable_highlight_range(app, view);
+ 
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ Managed_Scope scope = view_get_managed_scope(app, view);
+ Managed_Object *highlight = scope_attachment(app, scope, view_highlight_range, Managed_Object);
+ *highlight = alloc_buffer_positions_on_buffer(app, buffer, 2, &scope);
+ Marked_Position positions[2] = {};
+ positions[0].pos = range.min;
+ positions[1].pos = range.max;
+ managed_object_store_data(app, *highlight, 0, 2, positions);
+ Buffer_ID *highlight_buffer = scope_attachment(app, scope, view_highlight_buffer, Buffer_ID);
+ *highlight_buffer = buffer;
 }
 
 function void
@@ -2146,7 +2152,7 @@ search_up_path(Arena *arena, String start_path, String filename){
  for (;path.size > 0;)
  {
   char last_char = string_get_character(path, path.size - 1);
-  if (character_is_slash(last_char))
+  if (is_file_slash(last_char))
   {
    path = string_chop(path, 1);
   }
@@ -2747,7 +2753,7 @@ app_printer_function(void *userdata, char *format, va_list args){
  Scratch_Block scratch(app);
  String message = push_stringfv(scratch, format, args);
  print_message(app, message);
- return message.count;
+ return (i32)message.count;
 }
 
 inline Printer

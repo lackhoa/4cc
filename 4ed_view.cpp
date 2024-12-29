@@ -491,11 +491,11 @@ view_set_file(Thread_Context *tctx, Models *models, View *view, Editing_File *fi
 function void
 view_push_context(View *view, View_Context *ctx){
     Temp_Memory pop_me = begin_temp_memory(&view->node_arena);
-    View_Context_Node *node = push_array_zero(&view->node_arena, View_Context_Node, 1);
+    View_Context_Node *node = push_array0(&view->node_arena, View_Context_Node, 1);
     sll_stack_push(view->ctx, node);
     node->pop_me = pop_me;
     block_copy_struct(&node->ctx, ctx);
-    node->delta_rule_memory = push_array_zero(&view->node_arena, u8, ctx->delta_rule_memory_size);
+    node->delta_rule_memory = push_array0(&view->node_arena, u8, ctx->delta_rule_memory_size);
 }
 
 function void

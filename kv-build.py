@@ -1,5 +1,8 @@
 #!/usr/bin/env python3 -u
 
+# IMPORTANT This is to build the metaprogram. The "real" build logic is in
+# "meta_build.cpp"
+
 import os
 import pathlib
 import subprocess
@@ -23,36 +26,33 @@ if args.release:
 run_only = args.action == 'run'
 
 ################ NOTE: Configuration begin #########################
-# NOTE(kv) Build level
-working_on_metaprogram = 1
-working_on_editor      = 0
-working_on_game        = 1
-imgui_build_level   = 2
-ed_meta_build_level = 69
-lexer_build_level   = 2
+# NOTE(kv) What should we build?
+debug_metaprogram = 0
+do_build_editor   = 0
+do_build_game     = 1
+do_test_klang     = 0 # NOTE test.kc
+
+lexer_build_level = 1
+imgui_build_level = 2
 #
 asan_on = 0
 TRACE_COMPILE_TIME     = 0
 FORCE_INLINE_ON = 1
 FRAMEWORK_OPTIMIZE_ON = 0
 AD_PROFILE = 0
-KV_SLOW    = 0
-#STOP_DEBUGGING_BEFORE_BUILD = 1  #NOTE(kv) uncheck when you wanna debug the reload itself
+#STOP_DEBUGGING_BEFORE_BUILD = 1  # NOTE(kv) uncheck when you wanna debug the reload itself
 OPTIMIZE_EDITOR = 0
 HOTLOAD_DRIVER = os.path.basename(args.file) == 'driver.kc'
 
 ############## Configuration end ############################
+if do_test_klang:
+    debug_metaprogram = 1
+
 if HOTLOAD_DRIVER:
     print("[hotload driver]")
 
-if args.full and not HOTLOAD_DRIVER:
-    working_on_metaprogram = True
-
-if not working_on_metaprogram:
-    print("!!!WARNING!!! skip_compiling_metaprogram")
-
 if args.release:
-    working_on_editor = 1
+    do_editor = 1
 
 default_build_level = 0
 
@@ -62,7 +62,7 @@ def meets_level(level):
     global build_level
     return build_level >= level
 
-DEV_BUILD = 0 if args.release else 1
+DEV_BUILD = 0 if (args.release or HOTLOAD_DRIVER) else 1
 build_level = default_build_level
 if args.full:
     build_level = 1
@@ -262,9 +262,6 @@ def run_compiler(compiler, input_files, output_file,
         debug_symbol = True
         optimized = False
 
-    if optimized:
-        debug_symbol = False
-
     if not debug_symbol:
         # No reason to use clang if not for easier debugging
         compiler = Compiler.Cl
@@ -280,7 +277,7 @@ def run_compiler(compiler, input_files, output_file,
 
     debug_flag = ""
     if debug_symbol:
-        debug_flag = "-Zi"  # NOTE "-Zi" means that you produce a separate pdb fie
+        debug_flag = "-Z7"
     compiler_flags += f" {debug_flag}"
 
     optimization = "-Od"
@@ -332,7 +329,7 @@ def run_compiler(compiler, input_files, output_file,
         unused_var = "-wd4189"
         signed_unsigned_mismatch = "-wd4245"
         enum_freedom = "-wd4063"
-        warnings = f" -wd4200 -wd4146 {enum_freedom} {signed_unsigned_mismatch} {unused_var} -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
+        warnings = f" {enum_freedom} {signed_unsigned_mismatch} {unused_var} -wd4200 -wd4146 -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
     if is_clang:
         warnings = CLANG_WARNINGS
     if not no_warnings:
@@ -349,54 +346,41 @@ def run_compiler(compiler, input_files, output_file,
 
 base_includes = f"-I{CODE} -I{CODE}/libs"
 
-def autogen():
+def build_and_run_metaprogram():
     INCLUDES=f'{base_includes}'
-    SYMBOLS=f'-DKV_INTERNAL={DEV_BUILD} -DKV_SLOW={KV_SLOW}'
+    slow = debug_metaprogram
+    SYMBOLS=f'-DKV_INTERNAL=1'  # NOTE(kv) Don't turn this off, we need asserts!
     compiler_flags=f"{SYMBOLS} {INCLUDES}"
     
     if meets_level(lexer_build_level) or args.full:
         print('Lexer: Generate (one-time thing)')
         #TODO(kv) There should just be one program to generate all the lexer things!
-        run_compiler(Compiler.ClangCl, pjoin(CODE, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",
+        run_compiler(Compiler.Cl, pjoin(CODE, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",
                      compiler_flags=compiler_flags)
         #
         print('running lexer generator')
-        mkdir_p(f'{CODE}/generated')
-        run(f'skm_lexer_gen.exe {CODE}/generated')
-        run_compiler(Compiler.ClangCl, pjoin(CODE,"languages",'4coder_cpp_lexer_gen.cpp'), "cpp_lexer_gen.exe",
+        run(f'skm_lexer_gen.exe {CODE}')
+        run_compiler(Compiler.Cl, pjoin(CODE,"languages",'4coder_cpp_lexer_gen.cpp'), "cpp_lexer_gen.exe",
                      compiler_flags=compiler_flags)
-        run(f'cpp_lexer_gen.exe {CODE}/generated')
+        run(f'cpp_lexer_gen.exe {CODE}')
         
     print('====Metaprogram====')
-    if working_on_metaprogram:
-        run_compiler(Compiler.ClangCl, f"{CODE}/meta_main.cpp", "ad_meta.exe",
+    if not HOTLOAD_DRIVER:
+        compiler = Compiler.Cl
+        run_compiler(compiler, f"{CODE}/meta/meta_main.cpp", "ad_meta.exe",
                      compiler_flags=compiler_flags, linker_flags="userenv.lib",
-                     debug_symbol=True)
-    run(f"ad_meta {" ".join(sys.argv[1:])}")
-
-def build_game():
-    try:  # NOTE: Compiling the game
-        with open("game_dll.lock", "w") as file:
-            file.write("This is a lock file\n")
-        print(f'========Producing game DLL========')
-        DOT_LIB=".lib"
-        GAME_DIR = pjoin(CODE, "game")
-        # NOTE: Compile the framework
-        if not HOTLOAD_DRIVER:
-            GAME_MAIN = pjoin(GAME_DIR, "game_main.cpp")
-            run_compiler(Compiler.ClangCl, f'{GAME_MAIN} {space_join(imgui_object_files)}', f"game{DOT_DLL}",
-                         compiler_flags=f"{INCLUDES} {SYMBOLS}",
-                         linker_flags="-DLL -export:game_api_export")
-        # Compile the game
-        DRIVER_MAIN = pjoin(GAME_DIR, "generated", "driver.gen.cpp")
-        run_compiler(Compiler.ClangCl, f'{DRIVER_MAIN}', f"driver{DOT_DLL}",
-                     compiler_flags=f"{INCLUDES} -I{GAME_DIR} {SYMBOLS}",
-                     debug_symbol=not HOTLOAD_DRIVER, # NOTE(kv) Debug symbols stripping will become important later
-                     no_warnings=HOTLOAD_DRIVER,
-                     linker_flags="-DLL -export:driver_api_export")
-
-    finally:
-        os.remove("game_dll.lock")
+                     #optimized=True,  #NOTE(kv) Optimized build doesn't really improve that much (like 2x)
+                     debug_symbol=slow)
+    meta_config = ""
+    if do_build_editor:
+        meta_config += " --build-editor"
+    if do_build_game:
+        meta_config += " --build-game"
+    if asan_on:
+        meta_config += " --asan-on"
+    if do_test_klang:
+        meta_config += " --test-klang"
+    run(f"ad_meta {" ".join(sys.argv[1:])} {meta_config}")
 
 try:
     if asan_on:
@@ -421,8 +405,7 @@ try:
 
         INCLUDES=f'{base_includes} -I{CODE}/libs/imgui -I{NON_SOURCE}/foreign/freetype2'
         #
-        COMMON_SYMBOLS=""
-        SYMBOLS=f"-DKV_SLOW={KV_SLOW} -DKV_INTERNAL={DEV_BUILD} {COMMON_SYMBOLS}" if DEV_BUILD else COMMON_SYMBOLS
+        SYMBOLS=f"-DKV_INTERNAL={DEV_BUILD}"
 
         BINARY_NAME = "4ed" if DEV_BUILD else "4ed_stable"
 
@@ -435,19 +418,6 @@ try:
         if build_level >= 1:
             delete_all_pdb_files(OUTDIR)
 
-        autogen()
-
-        # NOTE: Editor build
-        if OS_WINDOWS:
-            PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
-            WINDOWS_LIBS = "user32.lib winmm.lib gdi32.lib comdlg32.lib userenv.lib"
-            FREETYPE_LIB = f"{NON_SOURCE}/foreign/x64/freetype.lib"
-            LINKED_LIBS=f"{FREETYPE_LIB} {WINDOWS_LIBS} opengl32.lib {NON_SOURCE}/res/icon.res"
-        else:
-            PLATFORM_CPP = f"{CODE}/platform_mac/mac_4ed.mm"
-            LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
-        # NOTE Add "-fms-runtime-lib=dll_dbg" to call with debug crt
-
         # NOTE Compiling DearImgui
         imgui_files = [pjoin(imgui_dir, f) for f in imgui_cpp_basenames]
         imgui_backend_files = [f"{imgui_dir}/backends/imgui_impl_win32.cpp", f"{imgui_dir}/backends/imgui_impl_opengl3.cpp"]
@@ -456,24 +426,35 @@ try:
             for file in (imgui_files + imgui_backend_files):
                 # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
                 run_compiler(Compiler.Cl, file, "",
-                             debug_symbol=DEV_BUILD,
+                             debug_symbol=True,
                              compiler_flags=f"{imgui_config} -I{imgui_dir} {base_includes}",
                              compile_only=True, no_warnings=True)
 
-        if working_on_editor:
+        build_and_run_metaprogram()
+
+        # NOTE: Editor build
+        PLATFORM_CPP = f"{CODE}/platform_win32/win32_4ed.cpp"
+        WINDOWS_LIBS = "user32.lib winmm.lib gdi32.lib comdlg32.lib userenv.lib"
+        FREETYPE_LIB = f"{NON_SOURCE}/foreign/x64/freetype.lib"
+        LINKED_LIBS=f"{FREETYPE_LIB} {WINDOWS_LIBS} opengl32.lib {NON_SOURCE}/res/icon.res"
+
+        if not HOTLOAD_DRIVER and False:
             print('========Producing 4ed========')
             if not DEV_BUILD:
                 replace_file(f"{BINARY_NAME}{DOT_EXE}", f"{BINARY_NAME}.bkp{DOT_EXE}")
             #ed_obj = f"{BINARY_NAME}{DOT_OBJ}"
             imgui_backend_object_files = [f"imgui_impl_win32{DOT_OBJ}", f"imgui_impl_opengl3{DOT_OBJ}"]
             imgui_objs = f"{space_join(imgui_object_files)} {space_join(imgui_backend_object_files)}"
-            run_compiler(Compiler.ClangCl, f"{PLATFORM_CPP} {imgui_objs}",
-                         f"{BINARY_NAME}{DOT_EXE}", debug_symbol=DEV_BUILD,
+            compiler = Compiler.ClangCl
+            if not DEV_BUILD:
+                compiler = Compiler.Cl
+            run_compiler(compiler, f"{PLATFORM_CPP} {imgui_objs}",
+                         f"{BINARY_NAME}{DOT_EXE}",
+                         debug_symbol=True,  #NOTE: Just keep it there, in case we crash!
                          compiler_flags=f"{INCLUDES} {SYMBOLS}",
                          linker_flags=f"{LINKED_LIBS}",
                          optimized=OPTIMIZE_EDITOR or not DEV_BUILD,
                          exit_on_failure=False)
-            #USE_DEBUG_CRT = "-Xlinker -nodefaultlib:libcmt -Xlinker -defaultlib:libcmtd" if DEV_BUILD else ""
             # NOTE Rollback
             if script_failed and not DEV_BUILD:
                 replace_file(f"{BINARY_NAME}.bkp{DOT_EXE}", f"{BINARY_NAME}{DOT_EXE}")
@@ -484,9 +465,6 @@ try:
             mkdir_p(OPENGL_OUTDIR)
             for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
                 shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
-
-        if working_on_game and (not args.release):
-            build_game()
 
         if not DEV_BUILD:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")

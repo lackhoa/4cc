@@ -1448,7 +1448,7 @@ open_file_in_quotes(App_Cmd *app)
         String8 filename = push_buffer_filepath(app, scratch, buffer);
         String8 dir = path_dir(filename);
         
-        if (character_is_slash(string_get_character(dir, dir.size - 1)))
+        if (is_file_slash(string_get_character(dir, dir.size - 1)))
         {
             dir = string_chop(dir, 1);
         }
@@ -1517,36 +1517,41 @@ get_cpp_matching_file(App *app, Buffer_ID buffer, Buffer_ID *buffer_out)
  return(result);
 }
 
+function void
+vim_push_jump(App *app, View_ID view);
+
 function void 
 open_matching_file_cpp(App_Cmd *app)
 {
-    View_ID view     = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ View_ID view     = get_active_view(app, Access_Always);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ //TODO(kv) Really gotta make a hook or something that does the push jump nonsense.
+ vim_push_jump(app, view);
  Buffer_ID new_buffer = 0;
  if ( get_cpp_matching_file(app, buffer, &new_buffer) )
  {
   view_set_buffer(app, view, new_buffer, 0);
  }
 }
-
 function void 
 open_matching_file_cpp_other_panel(App_Cmd *app)
 {
-    View_ID view     = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Buffer_ID new_buffer = 0;
-    if ( get_cpp_matching_file(app, buffer, &new_buffer) )
-    {
-        view = get_other_primary_view(app, view, Access_Always, true);
-        view_set_buffer(app, view, new_buffer, 0);
-        view_set_active(app, view);
-    }
+ View_ID view     = get_active_view(app, Access_Always);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ Buffer_ID new_buffer = 0;
+ if ( get_cpp_matching_file(app, buffer, &new_buffer) )
+ {
+  View_ID other_view = get_other_primary_view(app, view, Access_Always, true);
+  vim_push_jump(app, other_view);
+  view_set_buffer(app, other_view, new_buffer, 0);
+  view_set_active(app, other_view);
+ }
 }
 
 function void view_buffer_other_panel(App *app)
 {
-    View_ID view = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+ View_ID view = get_active_view(app, Access_Always);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
  i64 pos = view_get_cursor_pos(app, view);
  change_active_primary_view(app);
  view = get_active_view(app, Access_Always);
@@ -1579,16 +1584,16 @@ swap_panels(App_Cmd *app)
 function void 
 quick_swap_buffer(App_Cmd *app)
 {
-    View_ID view = get_active_view(app, Access_Visible);
-    Managed_Scope scope = view_get_managed_scope(app, view);
-    Buffer_ID *prev_buffer = scope_attachment(app, scope, view_previous_buffer, Buffer_ID);
-    b32 fallback = true;
-    if (prev_buffer != 0 && *prev_buffer != 0){
-        if (view_set_buffer(app, view, *prev_buffer, 0)){
-            fallback = false;
-        }
-    }
-    if (fallback){
+ View_ID view = get_active_view(app, Access_Visible);
+ Managed_Scope scope = view_get_managed_scope(app, view);
+ Buffer_ID *prev_buffer = scope_attachment(app, scope, view_previous_buffer, Buffer_ID);
+ b32 fallback = true;
+ if(prev_buffer != 0 and *prev_buffer != 0){
+  if(view_set_buffer(app, view, *prev_buffer, 0)){
+   fallback = false;
+  }
+ }
+ if(fallback){
   Buffer_ID top_buffer = get_buffer_next(app, 0, Access_Always);
   view_set_buffer(app, view, top_buffer, 0);
  }
@@ -1605,6 +1610,7 @@ kill_buffer(App_Cmd *app)
 }
 
 void save_current_buffer(App *app);
+
 function void 
 save_current_buffer(App_Cmd *app)
 {
@@ -1724,13 +1730,13 @@ redo(App_Cmd *app)
  
  History_Record_Index current = buffer_history_get_current_state_index(app, buffer);
  History_Record_Index max_index = buffer_history_get_max_record_index(app, buffer);
- if (current < max_index)
+ if(current < max_index)
  {
   Record_Info record = buffer_history_get_record_info(app, buffer, current+1);
   
   buffer_history_set_current_state_index(app, buffer, current + 1);
   
-  if (record.single_string_forward.size > 0)
+  if(record.single_string_forward.size > 0)
   {
    Range_i64 range = Ii64_size(record.single_first, record.single_string_forward.size);
    ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_undo));
@@ -1740,6 +1746,8 @@ redo(App_Cmd *app)
   
   i64 new_position = record_get_new_cursor_position_redo(app, buffer, current+1);
   view_set_cursor_and_preferred_x(app, view, seek_pos(new_position));
+ } else {
+  vim_set_bottom_text(strlit("nothing to redo!"));
  }
 }
 

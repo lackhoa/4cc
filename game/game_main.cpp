@@ -17,36 +17,31 @@
 #include "runtime_type_info.h"
 
 #include "ad_data.h"
-#include "generated/basic_types_read.gen.h"
+#include "basic_types_read.gen.h"
 
 #include "framework_driver_shared.h"
-#include "generated/framework.gen.h"
-#include "generated/send_bez.gen.h"
-#include "game_modeler.h"
+#include "framework.gen.h"
+#include "send_bez.gen.h"
 #include "ad_serialize.h"
 #include "game_fui.h"
+#include "framework_fui.h"
 
 #include "framework_draw.cpp"
-#include "game_draw.cpp"
 
 #include "4ed_kv_parser.cpp"
 #include "framework.h"
 
-#include "game_fui.cpp"
+#include "framework_fui.cpp"
 
 #define DYNAMIC_LINK_API
-#include "generated/ed_api.cpp"
+#include "ed_api.gen.cpp"
 
-#include "game_modeler.cpp"
-#include "generated/send_bez.gen.cpp"
-
-#include "game_api.cpp"
+#include "game_commands.cpp"
 
 #include "game_anime.cpp"
-#include "game_utils.cpp"
 
 #include "ad_serialize.cpp"
-#include "generated/meta_all.gen.cpp"
+#include "meta_all.gen.cpp"
 
 /*
   IMPORTANT Rule for the renderer
@@ -68,21 +63,25 @@ memory_functions_xlist(X);
 #define fbool fval
 
 function b32
-just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
+just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0)
+{
  return ((input->key_states       [keycode])     &&
          (input->key_state_changes[keycode] > 0) &&
          (input->active_mods == modifiers));
 }
 myinline b32
-key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0){
+key_is_down(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0)
+{
  return ((input->key_states[keycode]) &&
          (input->active_mods == modifiers));
 }
 function v4
 key_direction(Game_Input *input, Key_Mods wanted_mods,
-              b32 want_new_keypress, b32 *optional_shift=0) {
+              b32 want_new_keypress, b32 *optional_shift=0)
+{
  v4 result = {};
- if (implies(want_new_keypress, input->direction.new_keypress)) {
+ if (implies(want_new_keypress, input->direction.new_keypress))
+ {
   b32 mods_matched = (input->active_mods == wanted_mods);
   if (optional_shift) {
    *optional_shift = (input->active_mods == (wanted_mods|Key_Mod_Sft));
@@ -102,14 +101,18 @@ game_api_export(Game_API *api)
  game_api_xlist(X)
 #undef X
 }
+
 global i32 MAIN_VIEWPORT_INDEX = MAIN_VIEWPORT_ID - 1;
-inline i32
-get_viewport_index(i32 viewport_id) {
-    kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
-    return (viewport_id - 1);
+
+myinline i32
+get_viewport_index(Viewport_ID viewport_id)
+{
+ kv_assert(viewport_id <= GAME_VIEWPORT_COUNT);
+ return (viewport_id - 1);
 }
 myinline b32
-camera_data_equal(Camera_Data *a, Camera_Data *b) {
+camera_data_equal(Camera_Data *a, Camera_Data *b)
+{
  return block_match(a, b, sizeof(Camera_Data));
 }
 function v1
@@ -125,19 +128,23 @@ animate_value(v1 start, v1 end, v1 dt, v1 difference_multiplier, v1 min_speed)
  return result;
 }
 
-global v1 CAMERA_DISTANCE_STEP         = 5.f  *centimeter;
-global v1 CAMERA_PAN_STEP_PER_DISTANCE = 3.75f*centimeter;
+global Vertices global_vertices_p;
+
+global v1 CAMERA_DISTANCE_STEP         = 5.f * centimeter;
+global v1 CAMERA_PAN_STEP_PER_DISTANCE = 2.f * centimeter;
 
 function b32
-animate_camera(Camera_Data *current, Camera_Data *saved, v1 dt) {
+animate_camera(Camera_Data *current, Camera_Data *saved, v1 dt)
+{
  b32 animation_ended = camera_data_equal(current, saved);
  if ( animation_ended ) {
   saved->theta   = cycle01(saved->theta);
   current->theta = cycle01(current->theta);
- } else {
-  
+ }
+ else
+ {
 #define ANIMATE(FIELD, MIN_SPEED) \
-current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.1f, MIN_SPEED)
+current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.15f, MIN_SPEED)
   ANIMATE(theta,    0.004f);
   ANIMATE(phi,      0.004f);
   ANIMATE(distance, CAMERA_DISTANCE_STEP/3.0f);
@@ -147,26 +154,9 @@ current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.1f, MIN_SPEED
 #undef ANIMATE
   
   current->roll = saved->roll; // @Hack
-  current->pan  = saved->pan; // @Hack
  }
  
  return animation_ended;
-}
-// TODO: Merge this with game_update, come on why are there two calls instead of one?
-function b32
-game_viewport_update(Game_State *state, i1 viewport_id, v1 dt)
-{
- b32 should_animate_next_frame = false;
- i32 viewport_index = get_viewport_index(viewport_id);
- Viewport *viewport = &state->viewports[viewport_index];
- {// NOTE: camera animation
-  Camera_Data *target  = &viewport->target_camera;
-  Camera_Data *current = &viewport->camera;
-  b32 animation_ended = animate_camera(current, target, dt);
-  if ( !animation_ended ) { should_animate_next_frame = true; }
- }
- 
- return should_animate_next_frame;
 }
 
 inline v1
@@ -180,7 +170,8 @@ print_data_func(Printer &p, Type_Info *type, void *void_pointer);
 
 function void
 print_data_union(Printer &p, Type_Info *type,
-                 void *pointer0, void *pvariant0){
+                 void *pointer0, void *pvariant0)
+{
  kv_assert(type->kind == I_Type_Kind_Union);
  u8 *pointer = (u8*)pointer0;
  u8 *pvariant = (u8*)pvariant0;
@@ -188,7 +179,7 @@ print_data_union(Printer &p, Type_Info *type,
  i32 variant = read_enum(*type->discriminator_type, pvariant);
  
  auto &union_members = type->union_members;
- for_u32(index,0,union_members.count){
+ for_i32(index,0,union_members.count){
   auto &union_member = union_members[index];
   if (union_member.variant == variant) {
    //NOTE(kv) pointer of member is the same as pointer to the union.
@@ -238,11 +229,12 @@ write_basic_type(Printer &p, Basic_Type type, void *value0)
   case Basic_Type_String: { print(p, *(String*)value0); }break;
   case Basic_Type_u32:    { print(p, *(u32*)value0);    }break;
   
-  invalid_default_case;
+  InvalidDefaultCase;
  }
 }
 function void
-print_data_func(Printer &p, Type_Info *type, void *void_pointer){
+print_data_func(Printer &p, Type_Info *type, void *void_pointer)
+{
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
  switch(type->kind){
@@ -251,7 +243,7 @@ print_data_func(Printer &p, Type_Info *type, void *void_pointer){
   }break;
   case I_Type_Kind_Struct:{
    p < "{\n";
-   for_u32(member_index, 0, type->members.count){
+   for_i32(member_index, 0, type->members.count){
     I_Struct_Member &member = type->members[member_index];
     if(!member.unserialized){
      p < member.name < " ";
@@ -284,20 +276,20 @@ print_data_func(Printer &p, Type_Info *type, void *void_pointer){
    block_copy(&enum_value, pointer, type->size);
    p < enum_value;
   }break;
-  invalid_default_case;
+  InvalidDefaultCase;
  }
 }
 #define print_data(PRINTER, POINTER) \
 print_data_func(PRINTER, &type_info_from_pointer(POINTER), POINTER)
 //~
-//-
 function i32
-enum_index_from_pointer(Type_Info *type, void *pointer0){
+enum_index_from_pointer(Type_Info *type, void *pointer0)
+{
  u8* pointer = (u8*)pointer0;
  i32 value;
  block_copy(&value, pointer, type->size);
  i32 result = {};
- for_u32(index, 0, type->enum_members.count) {
+ for_i32(index, 0, type->enum_members.count) {
   I_Enum_Member enum_it = type->enum_members[index];
   if (enum_it.value == value) {
    result = index;
@@ -307,7 +299,8 @@ enum_index_from_pointer(Type_Info *type, void *pointer0){
  return result;
 }
 function String
-enum_name_from_pointer(Type_Info *type, void *pointer0){
+enum_name_from_pointer(Type_Info *type, void *pointer0)
+{
  i32 enum_index = enum_index_from_pointer(type, pointer0);
  return type->enum_members[enum_index].name;
 }
@@ -318,7 +311,8 @@ enum_index_from_pointer(type_info_from_pointer(&value), &value)
 enum_name_from_value(type_info_from_pointer(&value), &value)
 
 function void
-pretty_print_func(Printer &p, Type_Info *type, void *void_pointer) {
+pretty_print_func(Printer &p, Type_Info *type, void *void_pointer)
+{
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
  switch(type->kind){
@@ -328,7 +322,7 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer) {
   
   case I_Type_Kind_Struct:{
    p << "{\n";
-   for_u32(member_index, 0, type->members.count) {
+   for_i32(member_index, 0, type->members.count) {
     I_Struct_Member &member = type->members[member_index];
     p << member.name << " ";
     u8 *member_pointer = pointer+member.offset;
@@ -337,19 +331,21 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer) {
    }
    p << "}\n";
   }break;
+  
   case I_Type_Kind_Union:{
    p<<"<enum requires knowledge of the variant>";
   }break;
+  
   case I_Type_Kind_Enum:{
    p << enum_name_from_pointer(type, pointer);
   }break;
-  invalid_default_case;
+  InvalidDefaultCase;
  }
 }
 #define pretty_print(PRINTER, POINTER) \
 pretty_print_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
 
-inline Camera_Data *
+myinline Camera_Data *
 get_target_camera(Game_State *state, i32 viewport_index){
  return &state->viewports[viewport_index].target_camera;
 }
@@ -379,12 +375,12 @@ game_load(Game_State *state, App *app, Stringz filename)
   file_data = read_entire_file(load_arena, filename);
   ok = file_data.len > 0;
   if(not ok){
-   print_message(app, strlit("Game load: can't read the file!\n"));
+   log_error(strlit("Game load: can't read the file!"));
   }
  }
  
- if(ok){
-  //-;deserialize
+ if(ok)
+ {//-;deserialize
   Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
   Binary_Reader *r = &reader;
   
@@ -394,9 +390,10 @@ game_load(Game_State *state, App *app, Stringz filename)
     r->ok = false;
    }
    r->read_version = read_binary_u32(r);
-   printf_message(app, "read version: %u\n", r->read_version);
+   log_string("read version: %u", r->read_version);
    u64 timestamp = read_binary_u64(r);
    
+   if(r->read_version < Version_AddViewport)
    {
     read_debug_string(r, strlit("cameras"));
     
@@ -409,67 +406,31 @@ game_load(Game_State *state, App *app, Stringz filename)
      read_binary_Camera_Data(r, cam);
     }
    }
+   
    {
     read_debug_string(r, strlit("Serialized_State"));
-    read_binary_Serialized_State(r, &state->Serialized_State);
-   }
-   {//-Modeling
-    Modeler *m = &state->modeler;
-    clear_modeling_data(m);
-    
-    if(r->read_version >= Version_Binary_Vertex)
-    {//-Vertices
-     read_debug_string(r, strlit("vertices"));
-     i32 vertex_count;
-     read_binary_i1(r, &vertex_count);
-     m->vertices.set_cap_min(vertex_count+16);
-     for_i32(vertex_index, 0, vertex_count){
-      Vertex_Data *v = m->vertices.push();
-      read_binary_Vertex_Data(r, v);
+    read_binary_Serialized_State(r, &state->serialized);
+    if(r->read_version >= Version_AddViewport)
+    {
+     for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
+     {
+      Saved_Viewport &saved = state->serialized.saved_viewports[viewport_index];
+      state->viewports[viewport_index].saved = saved;
      }
     }
-    
-#if 0
-    if(0){//-Curves
-     read_debug_string(p, strlit("entities"));
-     Curve_Data &b = m->curves.push2();
-     read_binary_Curve_Data(r,b);
-    }
-#endif
    }
-   {
-    read_debug_string(r, strlit("EOF"));
-   }
+   
+   read_debug_string(r, strlit("EOF"));
   }
   
   ok = r->ok;
   if(!ok){
-   printf_message(app, "ERROR: Game load: deserialization failed\n");
+   log_error(strlit("Game load: deserialization failed"));
   }
  }
  
  if(ok){
-  printf_message(app, "Game load succeeded\n");
- }
- 
- {
-  Modeler *m = &state->modeler;
-  for_u32(i, 1, m->vertices.count-1){
-   for_u32(j, i+1, m->vertices.count){
-    String a = m->vertices[i].name;
-    String b = m->vertices[j].name;
-    if(a == b){
-     ok = false;
-     printf_message(app, "ERROR: Conflicting vertex names found in save file!\n");
-     break;
-    }
-   }
-   if(not ok) break;
-  }
-  
-  if(sending_vertices){
-   m->vertices.count = 1;
-  }
+  log_string(strlit("Game load succeeded"));
  }
  
  state->load_failed = !ok;
@@ -480,200 +441,137 @@ revert_from_autosave(Game_State *state, App *app){
  game_load(state, app, state->autosave_path);
 }
 //~
-function Bone &
-get_right_bone(Modeler &m, Bone &bone){
- Bone *result = 0;
- auto &p = painter;
- if(bone.is_right){
-  result = &bone;
- }else{
-  for_u32(bone_index, 0, array_count(m.bones)){
-   auto &boneR = m.bones[bone_index];
-   if(boneR.is_right &&
-      boneR.id == bone.id){
-    result = &boneR;
-    break;
-   }
-  }
- }
- return *result;
-}
-//NOTE(kv) Unfortunately a curve can look differently based on
-//  which side of the body it is on (because the endpoints can belong to different bones).
-//  It feels wonky because this is an animation problem we have yet to "solve".
-function Bez
-compute_curve_from_data(Modeler *m, Curve_Data &curve, b32 lr){
- Bez result;
- Bone_ID curve_bone_id = curve.bone_id;
- Bone *curve_bone = get_bone(m,curve_bone_id,lr);
- mat4i &curve_xform = curve_bone->xform;
-#define curve_vec(vec)  mat4vec(curve_xform, vec)
- Vertex_Data &ve0 = m->vertices[get_p0_index_or_zero(curve).v];
- Vertex_Data &ve3 = m->vertices[get_p3_index_or_zero(curve).v];
- if(curve.type == Curve_Type_Unit){
-  //NOTE(kv) Has to preserve the wrong logic here, omg!
-  //  could be wrong in some cases with differing coframes, but I don't care!
-  v3 p0 = ve0.pos;
-  v3 p3 = ve3.pos;
-  auto &data = curve.data.unit;
-  result = bez_unit(p0, data.d0, data.d3, data.unit_y, p3);
-  result = curve_xform*result;
- }else{
-  v3 p0 = get_bone(m,ve0.bone_id,lr)->xform * ve0.pos;
-  v3 p3 = get_bone(m,ve3.bone_id,lr)->xform * ve3.pos;
-  switch(curve.type){
-   case Curve_Type_v3v2:{
-    auto &data = curve.data.v3v2;
-    result = bez_v3v2(p0, curve_vec(data.d0), data.d3, p3);
-   }break;
-   case Curve_Type_Parabola:{
-    result = bez_parabola(p0, curve_vec(curve.data.parabola.d), p3);
-   }break;
-   case Curve_Type_C2:{
-    auto &data = curve.data.c2;
-    Curve_Data &refd = m->curves[data.ref.v];
-    Bez ref = compute_curve_from_data(m, refd, lr);
-    result = bez_c2(ref, curve_vec(data.d3), p3);
-   }break;
-   case Curve_Type_Unit:{
-    auto &data = curve.data.unit;
-    result = bez_unit(p0, data.d0, data.d3, noz(curve_vec(data.unit_y)), p3);
-   }break;
-   case Curve_Type_Unit2:{
-    auto &data = curve.data.unit2;
-    result = bez_unit2(p0, data.d0d3, noz(curve_vec(data.unit_y)), p3);
-   }break;
-   case Curve_Type_Line:{
-    result = bez_line(p0,p3);
-   }break;
-   case Curve_Type_Bezd_Old:{
-    auto &data = curve.data.bezd_old;
-    result = bez_bezd_old(p0,data.d0,data.d3,p3);
-   }break;
-   case Curve_Type_Offset:{
-    auto &data = curve.data.offset;
-    result = bez_offset(p0,curve_vec(data.d0),curve_vec(data.d3),p3);
-   }break;
-   case Curve_Type_NegateX:{
-    auto &data = curve.data.negateX;
-    Curve_Data &refd = m->curves[data.ref.v];
-    Bez ref = compute_curve_from_data(m, refd, lr);
-    result = negateX(ref);
-   }break;
-   case Curve_Type_Lerp:{
-    auto &data = curve.data.lerp;
-    v1 t = 0.0f;//todo(kv) incomplete
-    Bez begin_data = compute_curve_from_data(m, m->curves[data.begin.v], lr);
-    Bez end_data   = compute_curve_from_data(m, m->curves[data.end.v], lr);
-    result = bez_lerp(begin_data, t, end_data);
-   }break;
-   case Curve_Type_Raw:{
-    auto &data = curve.data.raw;
-    result = bez_raw(p0, curve_xform*data.p1, curve_xform*data.p2, p3);
-   }break;
-   case Curve_Type_Circle:{
-    auto &data = curve.data.circle;
-    result = bez_circle(curve_xform*data.center, curve_vec(data.normal));
-   }break;
-   invalid_default_case;
-  }
- }
- return result;
-#undef curve_vec
-}
 function b32
-entity_is_curve(Curve_Data &entity){
+entity_is_curve(Curve_Data &entity)
+{
  return entity_variant_info_table[entity.type].is_curve;
 }
-function void
-render_data(Modeler *m)
+function Camera
+setup_camera(Camera_Data const &data)
 {
- painter->is_right = 0;
- for_u32(vi,1,m->vertices.count){
-  //-Vertices
-  Vertex_Data &vert = m->vertices[vi];
-  Bone *bone = get_bone(m, vert.bone_id, 0);
-  u32 prim_id = prim_id_from_vertex_index({u32(vi)});
-  v3 pos = mat4vert(bone->xform, vert.pos);
-  argb inactive_color = argb_dark_green;
-  indicate_vertex("data", pos, 9000, false, inactive_color, prim_id);
- }
- for_u32(ci,1,m->curves.count){
-  //-Curves
-  Curve_Data &curve = m->curves[ci];
-  u32 prim_id = prim_id_from_curve_index({u32(ci)});
-  Common_Line_Params *cparams = m->line_cparams + curve.cparams.v;
-  for_i32(lr_index,0,2){
-   if(implies(lr_index==1, curve.symx)){
-    if(entity_is_curve(curve)){
-     //-Curve
-     set_in_block(painter->lr_index, lr_index);
-     Bez drawn = compute_curve_from_data(m, curve, lr_index);
-     draw_cparams(drawn, cparams, curve.params, prim_id);
-    }else{
-     //-Fill
-     switch(curve.type){
-      case Curve_Type_Fill3:{
-       v3 p[3];
-       for_i32(vi,0,3){
-        i1 vert_index = curve.data.fill3.verts[vi].v;
-        Vertex_Data &vert = m->vertices[vert_index];
-        Bone *bone = get_bone(m, vert.bone_id, lr_index);
-        p[vi] = bone->xform*vert.pos;
-       }
-       set_in_block(painter->lr_index, lr_index);
-       fill3_inner2(p,curve.fill_params,prim_id);
-      }break;
-      case Curve_Type_Fill_Bez:{
-       auto &data = curve.data.fill_bez;
-       Curve_Data &curve_data = m->curves[data.curve.v];
-       Bezier curve_ = compute_curve_from_data(m,curve_data,lr_index);
-       fill_bez(curve_,0,prim_id);
-      }break;
-      case Curve_Type_Fill_DBez:{
-       auto &data = curve.data.fill_dbez;
-       Curve_Data &curve1_data = m->curves[data.curve1.v];
-       Curve_Data &curve2_data = m->curves[data.curve2.v];
-       Bezier curve1 = compute_curve_from_data(m,curve1_data,lr_index);
-       Bezier curve2 = compute_curve_from_data(m,curve2_data,lr_index);
-       fill_dbez(curve1,curve2,0,prim_id);
-      }break;
-     }
-    }
-   }
-  }
- }
-#if 0
- for_i32(ti,1,m.fills.count){
-  //-Triangles
-  Fill_Data &fill = m.fills[ti];
-  u32 prim_id = prim_id_from_triangle_index({ti});
-  for_i32(lr_index,0,2){
-   if(fill.symx || lr_index==0){
-    switch(fill.type){
-     invalid_default_case;
-    }
-   }
-  }
- }
-#endif
+ Camera camera = {};
+ 
+ camera.near_clip    = 1*centimeter;
+ camera.far_clip     = 20.f;
+ camera.focal_length = tweaks->focal_length;
+ camera.world_from_camera = (mat4i_rotate_tpr(data.theta, data.phi, data.roll, data.pivot) *
+                     mat4i_translate(data.pivot+V3z(data.distance)));
+ return camera;
 }
-//TODO(kv) @cleanup We wanna change this from update+render to update_and_render
+function mat4
+get_clip_from_world(Camera const &camera, v2 clip_radius, b32 orthographic)
+{// NOTE(kv) We call this "clip space" by D3D terminology, opengl is probably the same
+ // https://learn.microsoft.com/en-us/windows/win32/dxtecharts/the-direct3d-transformation-pipeline
+ mat4 result;
+ v1 focal = camera.focal_length;
+ v1 n = camera.near_clip;
+ v1 f = camera.far_clip;
+ 
+ //NOTE: Compute the depth from z
+ //NOTE: revserse z
+ result = mat4{{
+   1,0, 0,0,
+   0,1, 0,0,
+   0,0,-1,0,
+   0,0, 0,1,
+  }} * camera.cam_from_world;
+ 
+ v1 a = focal/clip_radius.x - 1.f;
+ v1 b = focal/clip_radius.y - 1.f;
+ if (orthographic)
+ {//-View all objects as if they're at the origin
+  // NOTE(kv) We normalize the z dimension here, why?
+  v1 d = lengthof(camera_world_position(camera));
+  mat4 ortho = {{
+    a,0,0,0,
+    0,b,0,0,
+    0,0,2*d/(f-n), -d*(f+n)/(f-n),
+    0,0,0,d,
+   }};
+  result = ortho*result;
+ }
+ else
+ {//-Perspective
+  mat4 perspectiveT = {{
+    a,     0,  0,            0,
+    0,     b,  0,            0,
+    0,     0,  (n+f)/(f-n), -2*f*n/(f-n),
+    0,     0,  1,            0,
+   }};
+  result = perspectiveT*result;
+ }
+ return result;
+}
+function void
+convert_primitives_to_camera_space(Camera &camera)
+{
+ auto m = the_model;
+ if(not m->converted_primitives_to_camera_space)
+ {
+  Bone_ID cur_bone = {};
+  mat4 camera_from_bone = {};
+  mat4 camera_from_world = camera.cam_from_world;
+  
+  auto update_current_bone = [&](Bone_ID new_bone_id) -> void
+  {
+   if(new_bone_id != cur_bone)
+   {
+    Bone *bone = get_bone(new_bone_id);
+    cur_bone = bone->id;
+    camera_from_bone = matmul(camera_from_world, bone->world_from_bone);
+   }
+  };
+  
+  m->converted_primitives_to_camera_space = true;
+  
+  for_i32(i, 0, m->vertices.count)
+  {
+   Vertex &vertex = m->vertices[i];
+   update_current_bone(vertex.bone_id);
+   mat4vert(camera_from_bone, &vertex.pos);
+  }
+  
+  for_i32(iprim, 0, m->primitives.count)
+  {
+   Recorded_Primitive &primitive = m->primitives[iprim];
+   update_current_bone(primitive.bone_id);
+   switch(primitive.type)
+   {
+    case Primitive_Type_Curve:
+    {
+     mat4bez(camera_from_bone, &primitive.curve);
+    }break;
+    
+    case Primitive_Type_Poly3:
+    {
+     for_i32(i,0,3)
+     {
+      mat4vert(camera_from_bone, &primitive.poly3[i]);
+     }
+    }break;
+    
+    case Primitive_Type_Dual_Bezier:
+    {
+     mat4bez(camera_from_bone, &primitive.dual_bezier->P);
+     mat4bez(camera_from_bone, &primitive.dual_bezier->Q);
+    }break;
+   }
+  }
+ }
+}
 function void
 game_render(Game_State *state, App *app, Render_Target *target,
-            i1 viewport_id, Mouse_State mouse, rect2 clip_box)
+            i32 viewport_id, Mouse_State mouse, rect2 clip_box)
 {
  Driver_API *driver = &state->driver_api;
- if(driver->is_valid)
- {
-  draw_cycle_counter = 0;
-  Modeler *mo = &state->modeler;
-  
+ if(is_valid(driver))
+ {// ;init_painter
   Painter painter_value = {};
   painter = &painter_value;
-  
+  draw_cycle_counter = 0;
   slider_cycle_counter = 0;
-  Scratch_Block scratch;
+  
+  Scratch_Block tmp;
   Viewport *viewport = &state->viewports[viewport_id-1];
   
   i32 scale_down_pow2 = (0); // ;scale_down_slider
@@ -688,32 +586,28 @@ game_render(Game_State *state, App *app, Render_Target *target,
   v1 pixel_to_meter = 1.f / meter_to_pixel;
   viewport->clip_radius = pixel_to_meter*get_radius(clip_box);
   
-  Camera camera_value;
-  Camera *camera = &camera_value;
-  {// NOTE: camera
-   setup_camera(camera, &viewport->camera);
-  }
+  Camera camera = setup_camera(viewport->camera);
+  
+  painter->looping_time = state->looping_time;
+  painter->anim_time    = game_update_result.anim_time;
+  
+  painter->show_grid = viewport->preset >= 3;
   {
-   b32 camera_frontal=almost_equal(absolute(camera->z.z), 1.f, 1e-2f);
-   b32 camera_profile=almost_equal(absolute(camera->z.x), 1.f, 1e-2f);
+   b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
+   b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
    b32 orthographic = painter->show_grid and (camera_frontal or camera_profile);
-   if((0)){orthographic = painter->show_grid;}
-   if((0)){orthographic = true;}
-   painter->view_from_world = get_view_from_world(camera, orthographic);
+   painter->clip_from_world = get_clip_from_world(camera, viewport->clip_radius, orthographic);
   }
-  painter->cursorp      = state->kb_cursor.pos;
-  painter->cursor_on    = state->kb_cursor_mode;
   painter->target       = target;
-  painter->viewport     = viewport;
-  painter->modeler      = mo;
-  painter->bones        = mo->bones;
-  painter->line_cparams = mo->line_cparams;
-  painter->camera    = *camera;
+  painter->camera       = camera;
   painter->sending_data = state->sending_data;
   painter->references_full_alpha = state->references_full_alpha;
+  painter->hot_locations = state->transient->hot_locations;
+  painter->viewport = viewport;
   {
-   v3 background_hsv = fval(V3(0.069f, 0.0648f, 0.5466f));
-   v4 background_v4 = srgb_to_linear(hsv_to_srgb(background_hsv));
+   v4 background_v4;
+   background_v4.rgb = tweaks->background_rgb;
+   background_v4.a   = 1;
    painter->background_color = argb_pack(background_v4);
   }
   Render_Config *config = draw_new_group(target);
@@ -722,80 +616,119 @@ game_render(Game_State *state, App *app, Render_Target *target,
    config->scale_down_pow2 = scale_down_pow2;
    config->meter_to_pixel  = meter_to_pixel;
    config->viewport_id     = viewport->index+1;
-   config->view_from_world = painter->view_from_world;
-   config->world_from_cam  = camera->transform;
-   config->focal_length    = camera->focal_length;
-   config->near_clip       = camera->near_clip;
-   config->far_clip        = camera->far_clip;
+   config->clip_from_world = painter->clip_from_world;
+   config->world_from_cam  = camera.world_from_camera;
+   config->focal_length    = camera.focal_length;
+   config->near_clip       = camera.near_clip;
+   config->far_clip        = camera.far_clip;
    config->background      = painter->background_color;
   }
+  push_view_vector(tvert{});
   
-  {//-NOTE(kv) Drawing the movie
-   driver->render_movie(scratch, painter, &state->pose, state->anime_time);
+  {//-Drawing the movie
+   driver->driver_render(tmp, painter);
   }
-  //-NOTE
-  render_data(mo);
   
-  if(state->kb_cursor_mode &&
-     viewport_id == 1)
+  if(viewport_id == 1)
+  {//-Highlighted vertices
+   convert_primitives_to_camera_space(camera);
+   v3 cursor_camera = mat4vert(camera.cam_from_world, state->kb_cursor.pos);
+   Bone *camera_bone = make_bone(mk_bone_id(Bone_Camera), camera.world_from_camera);
+   bone_block(camera_bone->id);
+   for_i32(vi, 0, the_model->vertices.count)
+   {// NOTE(kv) Having to loop through vertices here because
+    // there are vertices that weren't submitted while rendering.
+    Vertex &vertex = the_model->vertices.items[vi];
+    Vertex_Info &info = driver_data.vertices_info.items[vertex.info_index];
+    argb color = argb_yellow;
+    v3 pos = vertex.pos;
+    {//TODO(kv) I'm NOT happy with overlays, I'd rather just have depth offset.
+     b32 draw_all_near_cursor = false;
+     b32 cursor_near = false;
+     if(draw_all_near_cursor)
+     {
+      v1 cursor_dist = length_squared(pos - cursor_camera);
+      cursor_near = cursor_dist < squared(3*centimeter);
+     }
+     
+     set_draw_location(info.location);
+     b32 is_hot = current_location_is_hot();
+     
+     b32 should_draw = (is_hot or
+                        painter->viz_level >= info.indicator_level or
+                        cursor_near);
+     if(should_draw)
+     {//NOTE Draw
+      Paint_Params &cparams = painter->params;
+      v1 depth_offset = cparams.line_depth_offset - 1*centimeter;
+      Poly_Flags flags = {};
+      // NOTE: If lines are overlayed, so are indicators
+      if(info.overlay or is_hot)
+      {
+       flags.v |= Poly_Overlay;
+      }
+      
+      if(is_hot)
+      {
+       color = (color == hot_color) ? hot_color2 : hot_color;
+      }
+      const v1 radius = 3*millimeter;
+      draw_disk(pos, radius, color, flags);
+     }
+     clear_draw_location();
+    }
+   }
+  }
+  
+  i32 active_viewport_id = get_active_game_viewport_id(app);
+  if(viewport_id == 1 and
+     active_viewport_id == 1 and
+     state->kb_cursor.on)
   {//NOTE(kv) ;draw_cursor
-   v1 cursor_dist = lengthof(camera->cam_from_world * state->kb_cursor.pos);
+   v1 cursor_dist = lengthof(camera.cam_from_world * state->kb_cursor.pos);
    v1 radius = 4*millimeter;
-   radius *= cursor_dist / camera->focal_length;
-   if ((0)){ radius *= 10.f; }
-   v3 points[] = { v3{}, V3(-1,-1,0), V3(+1,-1,0), };
-   for_i32(i,0,3){
-    points[i] = (state->kb_cursor.pos +
-                 radius*(points[i].x*camera->x +
-                         points[i].y*camera->y));
-   }
+   radius *= cursor_dist / camera.focal_length;
+   if(0){ radius *= 10.f; }
+   v3 points[3] = { v3{}, V3(-1,-1,0), V3(+1,-1,0), };
+   for_i32(i,0,3)
    {
-    Fill_Params params = {.flags=Poly_Overlay};
-    params.color = argb_blue;
-    fill3(points, params);
+    points[i] = (state->kb_cursor.pos +
+                 radius*(points[i].x*camera.x +
+                         points[i].y*camera.y));
    }
+   poly3_inner(mk_poly3(points), repeat3(argb_blue), {Poly_Overlay});
+  }
+  
+  if(state->is_dev_editor)
+  {
+   ImGui::Text("Render cycles: %_$I64u", painter->render_cycles);
+   ImGui::Text("Clipped curve / total: %d / %d",
+               painter->clipped_curve_count, painter->total_curve_count);
   }
  }
  painter = 0;
 }
 function void
-import_api_from_editor(API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new){
+import_api_from_editor(API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new)
+{
  ed_api_read_vtable(ed_api);
  ed_api_read_vtable_new(ed_api_new);
 }
 function Game_State *
 game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new,
-          App *app, Game_ImGui_State &imgui_state)
+          App *app, Game_ImGui_State &imgui_state, b32 is_dev_editor)
 {
  import_api_from_editor(ed_api, ed_api_new);
  //@game_bootstrap_arena_zero_initialized
- Game_State *state = push_struct(bootstrap_arena, Game_State, push_zero());
- state->malloc = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
+ Game_State *state = push_struct0(bootstrap_arena, Game_State);
+ state->is_dev_editor   = is_dev_editor;
+ //state->malloc          = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
  state->permanent_arena = *bootstrap_arena;
- state->dll_arena = make_arena(MB(1));
- Arena *arena = &state->permanent_arena;
- {//-;init_modeler
-  Modeler &m = state->modeler;
-  //NOTE(kv) when you refer to something make sure it doesn't move!
-  init_static(m.vertices,  arena, 4096);
-  init_static(m.curves,    arena, 512);
-  m.bones = make_array(arena, Bone, 128);
-  m.line_cparams = make_array(arena, Common_Line_Params, 128);
-  array_push_value(m.bones, Bone{.xform=mat4i_identity});
-  {
-   Common_Line_Params cp = {};
-   array_push_value(m.line_cparams, cp);
-  }
-  {
-   Modeler_History &h = m.history;
-   // NOTE(kv): We might want to erase entire edit history (or part of it),
-   //  so we'll allocate items from an arena for now (maybe make a heap later).
-   h.arena     = make_arena();
-   h.inited    = true;
-   h.allocator = make_arena_base_allocator(&h.arena);
-  }
- }
+ thread_permanent_arena = make_arena(MB(1));
+ state->stick_to_front  = true;
+ 
  {// NOTE: Save/Load business load_game
+  Arena *arena = &state->permanent_arena;
   String code_dir = get_code_directory(app);
   state->save_dir         = pjoin(arena, code_dir, strlit("data"));
   state->backup_dir       = pjoin(arena, state->save_dir, strlit("backups"));
@@ -829,35 +762,46 @@ meta_init()
 }
 function void
 game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time)
-{// Game_State
- Arena *dll_arena = &state->dll_arena;
- arena_clear(dll_arena);
- 
- meta_init();
+{
+ the_model = &state->model;
  import_api_from_editor(ed_api, ed_api_new);
- {//-Modeler reload
-  Modeler *m = &state->modeler;
-  if(sending_vertices){
-   m->vertices.set_count(1);
-  }
-  m->curves.set_count(1);
-  array_set_count(m->bones, 1);
+ state->sending_data = true;
+ 
+ if(not first_time)
+ {
+  thread_permanent_arena = make_arena(MB(1));
  }
+ Arena *dll_arena = &thread_permanent_arena;
+ 
+ {
+  Game_Transient_State *transient = push_struct0(dll_arena, Game_Transient_State);
+  state->transient = transient;
+  init_dynamic(transient->pinned_locations, dll_arena);
+  init_dynamic(transient->hot_locations, dll_arena);
+ }
+ 
+ tweaks = push_struct(dll_arena, Tweak_Variables);
+ meta_init();
+ 
  {//-NOTE: Dear ImGui reload
   IMGUI_CHECKVERSION();
   auto &imgui = state->imgui_state;
   ImGui::SetCurrentContext(imgui.ctx);
   ImGui::SetAllocatorFunctions(imgui.alloc_func, imgui.free_func, imgui.user_data);
  }
- state->sending_data = true;
- init_dynamic(state->unsynced_files, dll_arena);
 }
 function void
 game_shutdown(Game_State *state)
 {
- if(state->driver_dll.handle){
-  gb_dll_unload(state->driver_dll.handle);
+ // NOTE(kv) Just unload the driver, so it doesn't get messy next time.
+ Driver_API *driver = &state->driver_api;
+ if(is_valid(driver))
+ {
+  driver->driver_shutdown();
+  gb_dll_unload(driver->dll.handle);
+  driver->dll = {};
  }
+ arena_free(&thread_permanent_arena);
 }
 //~
 function String
@@ -868,7 +812,7 @@ time_format(char *buf, i32 bufsize, char *format)
  time(&rawtime);
  struct tm *timeinfo = localtime(&rawtime);
  size_t strftime_result = strftime(buf, bufsize, format, timeinfo);
- if (strftime_result != 0)
+ if(strftime_result != 0)
  {
   result = SCu8(buf);
  }
@@ -877,7 +821,7 @@ time_format(char *buf, i32 bufsize, char *format)
 function b32
 game_save(Game_State *state, App *app, b32 is_manual)
 {// NOTE: save and backup logic
- Scratch_Block scratch(app);
+ Scratch_Scope tmp;
  Stringz outpath = (is_manual ? state->manual_save_path :
                     state->autosave_path);
  String backup_dir = state->backup_dir;
@@ -888,23 +832,24 @@ game_save(Game_State *state, App *app, b32 is_manual)
  {//-Backup situation
   char buf[64];
   String time_string = time_format(buf, alen(buf), "%d_%m_%Y_%H_%M_%S");
-  if(time_string.len == 0){
-   print_message(app, str8lit("strftime failed... go figure that out!\n"));
+  if(time_string.len == 0)
+  {
+   log_error(strlit("strftime failed... go figure that out!"));
    ok = false;
-  }else{
+  }
+  else
+  {
    const char *filename_base = is_manual ? "manual" : "auto";
-   Stringz backup_path = push_stringf(scratch, "%.*s/%s_%.*s.ad",
-                                       string_expand(backup_dir),
-                                       filename_base,
-                                       string_expand(time_string));
+   Stringz backup_path = push_stringf(tmp, "%S/%s_%S.ad",
+                                      backup_dir, filename_base, time_string);
    ok = copy_file(outpath, backup_path, true);
    state->has_done_backup = ok;
   }
   
   if(ok)
-  {// NOTE: cycle out old backup files
-   // TODO: Maybe treat manual backups differently? idk man!
-   File_List backup_files = system_get_file_list(scratch, backup_dir);
+  {// NOTE Cycle out old backup files
+   // TODO Maybe treat manual backups differently? idk man!
+   File_List backup_files = system_get_file_list(tmp, backup_dir);
    u32 max_backup = 128;
    if (backup_files.count > max_backup)
    {
@@ -919,24 +864,27 @@ game_save(Game_State *state, App *app, b32 is_manual)
      if (attr.last_write_time < oldest_mtime)
      {
       oldest_mtime   = attr.last_write_time;
-      file_to_delete = pjoin(scratch, backup_dir, (*backup)->filename);
+      file_to_delete = pjoin(tmp, backup_dir, (*backup)->filename);
      }
     }
     b32 delete_ok = remove_file(file_to_delete);
-    if (delete_ok) printf_message(app, "INFO: deleted backup file %.*s because it's too old\n", string_expand(file_to_delete));
-    else           printf_message(app, "ERROR: failed to delete backup file %.*s\n", string_expand(file_to_delete));
+    if(delete_ok){
+     log_string("deleted backup file %S because it's too old", file_to_delete);
+    }else{
+     log_error("failed to delete backup file %S", file_to_delete);
+    }
    }
   }
  }
  {
-  Stringz temp_path = pjoin(scratch, state->save_dir, strlit("temp_file.ad"));
-  Stringz old_path  = pjoin(scratch, state->save_dir, strlit("temp_old_file.ad"));
+  Stringz temp_path = pjoin(tmp, state->save_dir, strlit("temp_file.ad"));
+  Stringz old_path  = pjoin(tmp, state->save_dir, strlit("temp_old_file.ad"));
   if(ok)
   {//-serialize to temp file
    FILE *temp_outfile = open_file(temp_path, "wb");
    ok = serialize_state(temp_outfile, state);
    if(not ok){
-    printf_message(app, "Failed to write to %.*s\n", strexpand(outpath));
+    log_error("Failed to write to %.*s", strexpand(outpath));
    }
    close_file(temp_outfile);
   }
@@ -949,11 +897,12 @@ game_save(Game_State *state, App *app, b32 is_manual)
     moved_to_old_path = ok;
    }
   }
-  if(ok){
-   //-rename the file
+  if(ok)
+  {//-rename the file
    ok = move_file(temp_path, outpath);
   }
-  if(not ok and moved_to_old_path){
+  if(not ok and moved_to_old_path)
+  {
    //-fail-safe recover
    move_file(old_path, outpath);
   }
@@ -971,30 +920,26 @@ game_save(Game_State *state, App *app, b32 is_manual)
 
 // NOTE(kv): Can you believe we used to have complicated crap like "distance_level"?
 // There is no "distance_level", fool! There's only distance!
-inline v1
+function v1
 update_camera_distance(v1 distance, i1 delta_level){
  const v1 mult = 1.3f;
  distance *= integer_power(mult, delta_level);
  return distance;
 }
-
-function game_send_command__return
-game_send_command(game_send_command__params) {
- state->command_queue.push_value(command_name);
-}
-
 function void
-compute_direction_helper(Game_Input *input, Key_Code key_code, i32 component, v1 value) {
- if (input->key_states[key_code] != 0){
+compute_direction_helper(Game_Input *input, Key_Code key_code, i32 component, v1 value)
+{
+ if(input->key_states[key_code] != 0)
+ {
   input->direction.dir.e[component] = value;
   input->direction.new_keypress = (input->key_state_changes[key_code] > 0);
  }
 }
-
 function void
 update_orbit(Camera_Data *cam, Key_Direction key_dir)
 {
- if (key_dir.new_keypress) {
+ if(key_dir.new_keypress)
+ {
   v3 dir = key_dir.dir.xyz;
   {//NOTE(kv) Zoom update
    i1 delta_distance_level = cast(i1)signof(dir.z);
@@ -1016,28 +961,18 @@ update_orbit(Camera_Data *cam, Key_Direction key_dir)
   }
  }
 }
-inline void
+myinline void
 update_orbit(Camera_Data *cam, Game_Input *input) {
  update_orbit(cam, input->direction);
 }
 function void
-update_pan(Camera_Data *cam, Game_Input *input){
+update_pan(Camera_Data *cam, Game_Input *input)
+{
  v1 step = CAMERA_PAN_STEP_PER_DISTANCE * cam->distance;
  v2 delta_pan = input->direction.dir.xy;
- Camera computed_cam; setup_camera(&computed_cam, cam);
+ Camera computed_cam = setup_camera(*cam);
  cam->pivot += step*(delta_pan.x * computed_cam.x + 
                      delta_pan.y * computed_cam.y);
-}
-inline b32
-fui_slider_is_discrete(Slider *slider){
- return (slider->type == Basic_Type_i1 || 
-         slider->type == Basic_Type_i2 ||
-         slider->type == Basic_Type_i3 ||
-         slider->type == Basic_Type_i4);
-}
-inline b32
-fui_slider_is_continuous(Slider *slider){
- return !fui_slider_is_discrete(slider);
 }
 //-
 #define V2_CASES \
@@ -1058,32 +993,71 @@ inline b32 is_v4_key(Key_Code code){ switch(code){ V4_CASES return true; } retur
 global_const b32 transitioning_from_code = true;
 
 function void
-g_jump_to_line(App *app, i1 linum){
+g_jump_to_pos(App *app, i64 pos)
+{
  // NOTE: Don't switch to the game panel, because the cursor should be in the code panel.
  View_ID view = get_active_view(app,0);
- if(!is_view_to_the_right(app, view)){
-  //NOTE(kv) Switch to the right view
+ if(!is_view_to_the_right(app, view))
+ {// NOTE(kv) Switch to the right view
   view = get_other_primary_view(app, view, Access_Always, true);
  }
  view_set_buffer_named(app, view, DRIVER_FILE_NAME);
- view_set_cursor(app, view, seek_line_col(linum, 0));
+ view_set_cursor(app, view, seek_pos(pos));
 }
 function void
-set_camera_frontal_or_profile(Camera_Data &cam)
-{
- if(cam.theta == 0 and cam.phi == 0){
-  // if frontal -> set to profile
-  cam.theta = .25f;
-  cam.phi   = 0;
- }else{
-  // set frontal
-  cam.theta = 0;
-  cam.phi   = 0;
+set_camera_frontal_or_profile(Camera_Data *cam, b32 *stick_to_front)
+{//bookmark: We need to remember what was the last thing we switched from.
+ b32 is_frontal = (cam->theta == 0 and cam->phi == 0);
+ b32 is_profile = (cam->theta == 0.25f and cam->phi == 0);
+ b32 is_back    = (cam->theta == 0.5f and cam->phi == 0);
+ 
+ if(is_frontal or is_back)
+ {// NOTE Set to profile
+  *stick_to_front = is_frontal;
+  cam->theta = 0.25f;
  }
+ else if(is_profile)
+ {// NOTE Exactly profile
+  if(*stick_to_front){
+   cam->theta = 0;
+  }else{
+   // stick to back
+   cam->theta = 0.5f;
+  }
+ }
+ else
+ {
+  b32 lean_to_back = (cam->theta >= 0.25f and
+                      cam->theta <  0.75f);
+  b32 lean_to_front = not lean_to_back;
+  if(lean_to_front)
+  {// set frontal
+   *stick_to_front = true;
+   cam->theta = 0;
+  }
+  else
+  {//set back
+   *stick_to_front = false;
+   cam->theta = 0.5f;
+  }
+ }
+ 
+ cam->phi = 0;
+}
+function void
+do_work_after_loading_driver(Game_State *state, Driver_API *driver)
+{// NOTE(kv) This system is so annoyingly complicated,
+ // with assumption about stuff being sorted...
+ driver_data = driver->data;
+ arena_clear(&state->driver_arena);
+ build_location_maps(&state->driver_arena);
+ fui_set_active_slider(0);
 }
 function b32
-load_latest_driver_code(Driver_DLL *dll, App *app, Driver_API *api, b32 *oloaded)
+load_latest_driver_code(Game_State *state, App *app, Driver_API *driver,
+                        b32 *oloaded)
 {
+ Driver_DLL *dll = &driver->dll;
  local_persist Framework_API framework_api;
  if(not framework_api.valid)
  {
@@ -1091,92 +1065,353 @@ load_latest_driver_code(Driver_DLL *dll, App *app, Driver_API *api, b32 *oloaded
   framework_api_xlist(X);
 #undef X
   framework_api.valid = true;
+  kv_assert(tweaks);
+  framework_api.tweaks = tweaks;
  }
  
  b32 ok = true;
- *oloaded = false;
- Scratch_Block scratch; 
- String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+ b32 loaded = false;
+ Scratch_Block tmp; 
+#define PJOIN(a, b) pjoin(tmp, a, b)
+ String binary_dir = system_get_path(tmp, SystemPath_BinaryDirectory);
  
- Stringz lock_file = pjoin(scratch, binary_dir, strlit("driver.lock"));
+ Stringz lock_file = PJOIN(binary_dir, strlit("driver.lock"));
  b32 lock_file_exists = file_exists(lock_file);
  if(not lock_file_exists)
  {
-#if KV_INTERNAL
-# define PREFIX "dev_"
-#else
-# define PREFIX ""
-#endif
-  Stringz DLL2 = pjoin(scratch, binary_dir, strlit(PREFIX "driver2.dll"));
-  Stringz DLL3 = pjoin(scratch, binary_dir, strlit(PREFIX "driver3.dll"));
-#undef PREFIX
-  
-  b32 never_loaded_before = (dll->mtime == 0);
-  Stringz DRIVER_DLL_PATH = pjoin(scratch, binary_dir, strlit("driver.dll"));
+  Stringz DRIVER_DLL_PATH = PJOIN(binary_dir, strlit("driver.dll"));
   u64 mtime_on_disk = file_mtime(DRIVER_DLL_PATH);
   ok = ok and (mtime_on_disk != 0);
   if(dll->mtime < mtime_on_disk)
   {//-We have new dll
-   u32 temp_index = 2;
-   if(dll->temp_index == 2) { temp_index = 3; }
-   
-   Stringz temp_path = (temp_index == 2) ? DLL2 : DLL3;
-   ok = ok and copy_file(DRIVER_DLL_PATH, temp_path, false);
-   if(not ok){ print_message(app, strlit("ERROR: failed to copy dll to a temp file")); }
+   b32 copied = false;
+   Stringz temp_path = {};
+   String prefix = {};
+   if(state->is_dev_editor){ prefix = strlit("dev_"); }
+   for_i32(temp_index, 0, 8)
+   {//NOTE(kv) Smooth-brained "retry until it works", because Windows sucks
+    temp_path = push_stringf(tmp, "%S/%Sdriver%d.dll", binary_dir, prefix, temp_index);
+    copied = copy_file(DRIVER_DLL_PATH, temp_path, false);
+    if(copied)
+    {
+     break;
+    }
+   }
+   if(not copied)
+   {
+    ok = false;
+    DWORD error = GetLastError();
+    String message = push_stringf(tmp, "failed to copy driver dll to temp file %S", temp_path);
+    log_error(message);
+   }
    
    DLL_Handle new_library = gb_dll_load(to_cstring(temp_path));
    ok = ok and (new_library != 0);
-   if(not ok){ print_message(app, strlit("ERROR: failed to load dll")); }
+   if(not ok){ log_error(strlit("failed to load dll")); }
    
-   if(new_library)
+   if(ok)
    {
     if(dll->handle)
     {//NOTE Shutdown running DLL
-     if(api->is_valid){
-      api->driver_shutdown();
-      api->is_valid = 0;
-     }
-     
+     driver->driver_shutdown();
      b32 unload_ok = gb_dll_unload(dll->handle);
-     if(not unload_ok){ print_message(app, strlit("ERROR: failed to unload old dll")); }
+     if(not unload_ok){ log_error(strlit("WARN: failed to unload old dll")); }
     }
     
-    void (*driver_api_export)(Driver_API *);
-    cast_assign(driver_api_export, gb_dll_proc_address(new_library, "driver_api_export"));
-    driver_api_export(api);
+    typedef void Entry_Type(Driver_API *, Framework_API *);
+    Entry_Type *driver_dll_entry = (Entry_Type *)gb_dll_proc_address(new_library, "driver_dll_entry");
+    driver_dll_entry(driver, &framework_api);
     
-    api->driver_reload(&framework_api);
-    
+    *dll = {};
     dll->handle     = new_library;
     dll->mtime      = mtime_on_disk;
-    dll->temp_index = temp_index;
-    *oloaded = true;
+    loaded = true;
    }
   }
  }
+ 
+ if(loaded) 
+ {
+  do_work_after_loading_driver(state, driver);
+ }
+ 
+ *oloaded = loaded;
  return ok;
+#undef PJOIN
 }
-// TODO: Input handling: how about we add a callback to look at all the events and report to the game if we would process them or not?
-function game_update_return
-game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Public &input_public, Image_Load_Info image_load_info)
+function ImVec2
+get_imgui_image_position_from_uv(ImVec2 image_pos, v2 image_size, v2 uv)
 {
+ ImVec2 pos = ImVec2(image_pos.x + uv.x*image_size.x,
+                     image_pos.y + (1.0f - uv.y)*image_size.y);
+ return pos;
+}
+function void
+show_image_preview(Image_Info &image)
+{
+ v2 image_size;
+ Texture_Handle texture = ed_load_image(image.filename, &image_size);
+ if(is_valid(texture))
+ {
+  ImGuiWindowFlags window_flags = (ImGuiWindowFlags_AlwaysAutoResize |
+                                   ImGuiWindowFlags_NoFocusOnAppearing);
+  ImGui::Begin("ImagePreview", 0, window_flags);
+  
+  u64 texture_u64 = texture.v;  // NOTE(kv) pedantic compiler
+  ImTextureID user_texture_id = ImTextureID(texture_u64);
+  ImVec2 im_image_size(image_size.x, image_size.y);
+  ImVec2 image_pos = ImGui::GetCursorScreenPos();
+  b32 has_marker = image.marker.type != 0;
+  ImVec4 tint = has_marker ? ImVec4(1,1,0,0.5f) : ImVec4(1,1,1,1);
+  ImGui::Image(user_texture_id, im_image_size, ImVec2(0,1), ImVec2(1,0), tint);
+  
+  if(has_marker)
+  {
+   ImDrawList* draw_list = ImGui::GetWindowDrawList();
+   ImGuiCol marker_color = ImGui::GetColorU32(ImGuiCol_CheckMark);
+   
+   switch(image.marker.type)
+   {
+    case Image_Marker_Point:
+    {// NOTE Draw marked uv
+     v1 radius = 4.0f;
+     v2 marked_uv = image.marker.point;
+     ImVec2 marked_pos = get_imgui_image_position_from_uv(image_pos, image_size, marked_uv);
+     draw_list->AddCircleFilled(marked_pos, radius, marker_color);
+    }break;
+    
+    case Image_Marker_Bezier:
+    {
+     Bez_v2 curve = image.marker.bezier;
+     const i32 npoints = 3;
+     ImVec2 points[npoints];
+     for_i32(i, 0, npoints){
+      points[i] = get_imgui_image_position_from_uv(image_pos, image_size, curve.e[i]);
+     }
+     float thickness = 2.f;
+     int num_segments = 16;
+     draw_list->AddBezierQuadratic(expand3(points), marker_color, thickness, num_segments);
+    }break;
+   }
+  }
+  
+  ImGui::End();
+ }
+}
+struct Plane
+{
+ v3 n;
+ v1 d;
+};
+function v3
+ray_plane_intersection(Plane plane, v3 ray_dir)
+{
+ v3 intersection;
+ return intersection;
+}
+function v1
+get_distance_squared_point_to_triangle(v3 test_point, Poly3 poly3)
+{
+ v1 dsq = f32_max;
+ //-Projection onto the curve
+ // View @project_point_onto_plane for more details of the projection math
+ v3 v01 = poly3[1]-poly3[0];
+ v3 v02 = poly3[2]-poly3[0];
+ v3 n = noz(cross(v01, v02));
+ if(n != v3{})
+ {
+  v1 d = -dot(poly3[0], n);
+  v1 t = -(d + dot(n, test_point));
+  v3 projection = test_point + t*n;  // NOTE this point is on the plane
+  
+  // TODO(kv) #speed this math sucks tremendously
+  v3 proj0 = projection - poly3[0];
+  v3 proj1 = projection - poly3[1];
+  v3 proj2 = projection - poly3[2];
+  v3 c01 = cross(proj0, proj1);
+  v3 c12 = cross(proj1, proj2);
+  v3 c20 = cross(proj2, proj0);
+  b32 projection_in_triangle = (dot(c01, c12) >= 0 and
+                                dot(c01, c20) >= 0);
+  if(projection_in_triangle)
+  {
+   dsq = squared(d + dot(test_point, n));
+  }
+ }
+ return dsq;
+}
+function Location
+find_primitive_closest_to_keyboard_cursor(Game_State *state)
+{
+ Camera camera = setup_camera(state->viewports[0].camera);
+ convert_primitives_to_camera_space(camera);
+ b32 fill_only = false;
+ if(state->viewports[0].preset == 1)
+ {
+  fill_only = true;
+ }
+ 
+ i32 const hit_test_bezier_poly_nslice = 8;
+ Location hot_location = {};
+ 
+ v3 curpos = mat4vert(camera.cam_from_world, state->kb_cursor.pos);
+ v1 min_lensq = max_f32;
+ 
+ if(not fill_only)
+ {
+  Vertices vertices = the_model->vertices;
+  for_i32(vi, 0, vertices.count)
+  {//-Closest vertices
+   Vertex &vertex = vertices.items[vi];
+   v1 l = length_squared(curpos - vertex.pos);
+   if(l < min_lensq)
+   {
+    min_lensq = l;
+    Vertex_Info &info = driver_data.vertices_info.items[vertex.info_index];
+    hot_location = info.location;
+   }
+  }
+ }
+ 
+ for_i32(ci,0,the_model->primitives.count)
+ {//-Closest primitive
+  Recorded_Primitive primitive = the_model->primitives[ci];
+  v1 dsq_to_prim = max_f32;
+  v3 projection = {};
+  switch(primitive.type)
+  {
+   case Primitive_Type_Curve:
+   {
+    if(not fill_only)
+    {
+     v3 *computed = primitive.curve;
+     v1 sd_squared;
+     {//-Convex box culling
+      v3 min_corner = V3(max_f32);
+      v3 max_corner = V3(min_f32);
+      for_i32(i,0,4)
+      {
+       min_corner = min(min_corner, computed[i]);
+       max_corner = max(max_corner, computed[i]);
+      }
+      v3 center = lerp(min_corner, 0.5f, max_corner);
+      v3 p = curpos-center;
+      v3 r = 0.5f*(max_corner-min_corner);
+      v3 q = absolute(p)-r;
+      sd_squared = length_squared(max(q,0.f));  // NOTE zero for anything inside, which is what we want
+     }
+     
+     if(sd_squared < min_lensq)
+     {
+      v1 l = max_f32;
+      const i32 test_segment_count = 8;
+      for_i1(iseg,1,test_segment_count)
+      {
+       //NOTE(kv) Don't need to test the endpoints, those are vertices.
+       v1 t = v1(iseg) / v1(test_segment_count);
+       v3 sample = bezier_sample(computed,t);
+       l = min(l,length_squared(curpos-sample));
+      }
+      dsq_to_prim = l;
+     }
+    }
+   }break;
+   
+   case Primitive_Type_Poly3:
+   {//-Projection onto the curve
+    // View "note.4coder" for more details of the projection math
+    Poly3 points = primitive.poly3;
+    dsq_to_prim = get_distance_squared_point_to_triangle(curpos, points);
+   }break;
+   
+   case Primitive_Type_Dual_Bezier:
+   {
+    Bezier P = primitive.dual_bezier->P;
+    Bezier Q = primitive.dual_bezier->Q;
+    i32 nslices = hit_test_bezier_poly_nslice;
+    v1 inv_nslices = 1.f / (v1)nslices;
+    v3 A0;
+    v3 B0;
+    for_i32(sample_index, 0, nslices+1)
+    {
+     v1 u = inv_nslices * (v1)sample_index;
+     v3 A = bezier_sample(P,u);
+     v3 B = bezier_sample(Q,u);
+     if(sample_index != 0)
+     {
+      v1 dsq1 = get_distance_squared_point_to_triangle(curpos, {A0, A, B0});
+      v1 dsq2 = get_distance_squared_point_to_triangle(curpos, {A, B, B0});
+      ClampTop(dsq_to_prim, dsq1);
+      ClampTop(dsq_to_prim, dsq2);
+     }
+     A0 = A;
+     B0 = B;
+    }
+   }break;
+  }
+  
+  v1 bias = 0.f;
+  switch(primitive.type)
+  {
+   case Primitive_Type_Curve: { bias = 0.f; } break;
+   default: { bias = 1.f*centimeter; }break;
+  }
+  // TODO(kv) I wanna just bias the distance, but only have the squared...
+  // NOTE(kv) Overflow doesn't happen small values (tested).
+  dsq_to_prim += squared(bias);
+  
+  if(dsq_to_prim < min_lensq)
+  {
+   min_lensq = dsq_to_prim;
+   hot_location = primitive.location;
+  }
+ }
+ DEBUG_VALUE(square_root(min_lensq));
+ return hot_location;
+}
+function void
+notebook_update(Notebook_State *state)
+{
+#if 0
+ ImGui::Begin("Notebook");
+ v2 dim = V2(128, 128);
+ if(state->texture)
+ {
+  
+ }
+ load_texture(dim);
+ ImGui::End();
+#endif
+}
+function Game_Update_Return
+game_update(Game_Update_Params params)
+{// @game_api, see also @maybe_update_game
+ Game_State *state = params.state;
+ App *app = params.app;
  b32 should_animate_next_frame = false;
+ arena_clear(&state->frame_arena);
+ //-
  darray(String) game_commands = {};
+ init_dynamic(game_commands, &state->frame_arena);
  
  Driver_API *driver = &state->driver_api;
- b32 loaded;
- load_latest_driver_code(&state->driver_dll, app, driver, &loaded);
- 
- if(driver->is_valid)
  {
-  Scratch_Block scratch(app);
+  b32 loaded;
+  load_latest_driver_code(state, app, driver, &loaded);
+ }
+ 
+ if(is_valid(driver))
+ {
+  Scratch_Block scratch;
   
-  Modeler *modeler = &state->modeler;
+  driver->driver_update_tweaks();
+  
+  b32 cursor_on = state->kb_cursor.on;
+  i32 active_viewport_id = get_active_game_viewport_id(app);
   b32 game_active = active_viewport_id != 0;
   b32 fui_active = fui_is_active();
-  b32 game_or_fui_active = (game_active || fui_active);
-  
-  if(game_or_fui_active){
+  if(game_active or fui_active)
+  {
    should_animate_next_frame = true;
   }
   
@@ -1184,137 +1419,161 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   kv_assert(active_viewport_id <= GAME_VIEWPORT_COUNT);
   i32 update_viewport_index = update_viewport_id - 1;
   Viewport *update_viewport = &state->viewports[update_viewport_index];
-  Camera_Data *update_target_cam = get_target_camera(state, update_viewport_index);
-  
-  Game_Input input_value = {};
-  (Game_Input_Public &)input_value = input_public;
-  Game_Input *input = &input_value;
-  v1 dt = input->frame.animation_dt;
+  Camera_Data *update_target_camera_data = get_target_camera(state, update_viewport_index);
+  // NOTE(kv) Let's just base all our calculation on the target camera,
+  // because most of the time the camera isn't moving.
+  // Diligently distinguishing *current* and *target* cameras
+  // wouldn't bring much benefit, it only complicates thing.
+  Camera update_target_camera = setup_camera(*update_target_camera_data);
+  if(0)
   {
-   state->time += dt;
-   if (state->time >= 1000.0f) { state->time -= 1000.0f; }
+   v3 camera_world_pos = get_world_pos(update_target_camera);
+   DEBUG_VALUE(camera_world_pos);
   }
   
-  //NOTE(kv) If you wanna load states, then do it first and foremost.
-  {//~ NOTE: Game commands
-   {// NOTE: Process commands
-    darray(String) &queue = state->command_queue;
-    for_u32(ci,0,queue.count){
-#define MATCH(NAME)    queue[ci] == strlit(NAME)
-     if(0){
-     }else if(MATCH("save_manual")) {
-      game_save(state, app, true);
-     }else if(MATCH("load_manual")) {
+  Game_Input input_value = {};
+  (Game_Input_0 &) input_value = params.input;
+  Game_Input *input = &input_value;
+  v1 dt = params.frame.animation_dt;
+  v1 literal_dt = params.frame.literal_dt;
+  {
+   state->looping_time += dt;
+   if(state->looping_time >= 1000.0f){ state->looping_time -= 1000.0f; }
+  }
+  
+  // TODO(kv) Should we have like a "state diff"?
+  // If we did, we could autosave much more confidently.
+  v1 AUTOSAVE_PERIOD_SECONDS = 60.0f;
+  local_persist v1 seconds_since_last_keystroke_2 = 0;
+  {// NOTE autosave
+   local_persist v1 seconds_since_last_autosave = 0.001f;
+   seconds_since_last_autosave += literal_dt;
+   seconds_since_last_keystroke_2 += literal_dt;
+   if(seconds_since_last_keystroke_2 > AUTOSAVE_PERIOD_SECONDS and
+      seconds_since_last_autosave > AUTOSAVE_PERIOD_SECONDS)
+   {
+    seconds_since_last_autosave = 0;
+   }
+   b32 should_autosave = seconds_since_last_autosave == 0;
+   if(should_autosave)
+   {
+    game_save(state, app, false);
+    vim_set_bottom_text(strlit("game auto-saved!"));
+   }
+  }
+  
+  Location hot_location = {};
+  if(cursor_on and game_active)
+  {
+   hot_location = find_primitive_closest_to_keyboard_cursor(state);
+  }
+  
+  {//-Work based on editor cursor position
+   View_ID view = get_active_view(app, Access_Always);
+   Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+   String active_buffer_name = push_buffer_base_name(app, scratch, buffer);
+   
+   if(active_buffer_name == DRIVER_FILE_NAME)  // TODO
+   {//;do_stuff_based_on_cursor_position
+    i32 file_index = 1;
+    i64 curpos = view_get_cursor_pos(app, view);
+    Location_Map &map = location_maps[file_index];
+    for(Location_Iterator it = iterate_touched_locations(file_index, {curpos, curpos+1});
+        it.entry;
+        advance(&it))
+    {
+     Location_Map_Entry entry = *it.entry;
+     switch(entry.type)
+     {
+      case Location_Type_Vertex:
+      case Location_Type_Drawn:
+      {//-Maybe make it hot
+       if(not is_valid(hot_location))
+       {
+        hot_location = {file_index, entry.range};
+       }
+      }break;
+      
+      case Location_Type_Text_Object:
+      {//-images preview
+       Text_Object &object = driver_data.text_objects[entry.index];
+       switch(object.kind)
+       {
+        case Text_Object_Image:
+        {
+         show_image_preview(object.image);
+        }break;
+       }
+      }break;
+     }
+    }
+   }
+  }
+  
+  Game_Transient_State *transient = state->transient;
+  transient->hot_locations.count = 0;
+  for_i32(i, 0, transient->pinned_locations.count)
+  {
+   push(&transient->hot_locations, transient->pinned_locations[i]);
+  }
+  push_unique(&transient->hot_locations, hot_location);
+  
+  {//-Game commands
+   // NOTE(kv) Commands are things that the editor send to the game.
+   
+   {//-Serve commands
+    darray(Game_Command) &queue = state->command_queue;
+    for_i32(command_index,0,queue.count)
+    {
+     Game_Command command = queue[command_index];
+#define MATCH(NAME)    command.name == strlit(NAME)
+     if(0);
+     else if(MATCH("save_manual"))
+     {
+      b32 ok = game_save(state, app, true);
+      if(ok)
+      {
+       copy_file(state->manual_save_path, state->autosave_path, false);
+      }
+     }
+     else if(MATCH("load_manual"))
+     {
       game_load(state, app, state->manual_save_path);
-     }else if(MATCH("revert")){
+     }
+     else if(MATCH("revert"))
+     {
       revert_from_autosave(state, app);
-     }else{
-      vim_set_bottom_text(strlit("game: cannot serve command"));
+     }
+     else if(MATCH("pin"))
+     {
+      if(is_valid(hot_location))
+      {
+       push_unique(&transient->pinned_locations, hot_location);
+      }
+     }
+     else if(MATCH("clear_pin"))
+     {// TODO(kv) I suspect we're gonna need UI to pin/clear specific things. Oh boy...
+      transient->pinned_locations.count = 0;
+     }
+     else
+     {
+      log_error("game: cannot serve command");
      }
 #undef MATCH
     }
     queue.count = 0;
    }
-   {// NOTE: Fill command lister
-    auto &cmds = game_commands;
+   
+   {//-Fill command lister
+    darray(String) &cmds = game_commands;
     cmds.count = 0;
-    cmds.push_value(strlit("save_manual"));
-    cmds.push_value(strlit("load_manual"));  
-    cmds.push_value(strlit("revert"));  
+    push(&cmds, strlit("save_manual"));
+    push(&cmds, strlit("load_manual"));  
+    push(&cmds, strlit("revert"));  
+    push(&cmds, strlit("pin"));  
+    push(&cmds, strlit("clear_pin"));  
    }
   }
-  
-  {
-   state->anime_time = state->time;
-   state->pose = driver->driver_update(modeler, state->anime_time);
-  }
-  
-  u32 hot_prim_id = 0;
-  if(state->kb_cursor_mode){
-   v3 curpos = state->kb_cursor.pos;
-   Modeler *m = modeler;
-   v1 min_lensq = max_f32;
-   for_u32(vi,1,m->vertices.count)
-   {
-    //-Closest vertex
-    Vertex_Data &v = m->vertices[vi];
-    Bone *bone = get_bone(m, v.bone_id, false);
-    v1 l = lensq(curpos - bone->xform * v.pos);
-    if(l < min_lensq){
-     min_lensq = l;
-     hot_prim_id = prim_id_from_vertex_index(Vertex_Index{vi});
-    }
-   }
-   for_u32(ci,1,m->curves.count){
-    //-Closest curve
-    Curve_Data &c = m->curves[ci];
-    if(c.type == Curve_Type_Fill_DBez){
-     int x = 5;
-    }
-    Bez computed = compute_curve_from_data(m, c, 0);
-    v1 sd_squared;
-    {//-Convex box culling
-     v3 min_corner = V3(max_f32);
-     v3 max_corner = V3(min_f32);
-     for_i32(i,0,4){
-      min_corner = min(min_corner, computed[i]);
-      max_corner = max(max_corner, computed[i]);
-     }
-     v3 center = lerp(min_corner, 0.5f, max_corner);
-     v3 p = curpos-center;
-     v3 r = 0.5f*(max_corner-min_corner);
-     v3 q = absolute(p)-r;
-     sd_squared = lensq(max(q,0.f));  //NOTE zero for anything inside, which is what we want
-    }
-    if(sd_squared < min_lensq){
-     v1 l = max_f32;
-     const i1 test_segment_count = 8;
-     for_i1(iseg,1,test_segment_count){
-      //NOTE(kv) Don't need to test the endpoints, those are vertices.
-      v1 t = v1(iseg) / v1(test_segment_count);
-      v3 sample = bezier_sample(computed,t);
-      l = min(l,lensq(curpos-sample));
-     }
-     if(l < min_lensq){
-      min_lensq = l;
-      hot_prim_id = prim_id_from_curve_index(Curve_Index{u32(ci)});
-     }
-    }
-   }
-  }else{
-   hot_prim_id = input->frame.hot_prim_id;
-  }
-  
-  if(!hot_prim_id){
-   //NOTE(kv) If there's nothing hot, then we select by editor cursor position
-   Buffer_ID buffer = get_active_buffer(app);
-   String active_buffer_name = push_buffer_base_name(app, scratch, buffer);
-   View_ID view_id = get_active_view(app,0);
-   if(active_buffer_name != DRIVER_FILE_NAME){
-    //note(kv) Retry with the other view 
-    view_id = get_other_primary_view(app, view_id, 0, false);
-    buffer = view_get_buffer(app, view_id, 0);
-    active_buffer_name = push_buffer_base_name(app, scratch, buffer);
-   }
-   if(active_buffer_name == DRIVER_FILE_NAME){
-    i64 linum = get_current_line_number2(app, view_id, buffer);
-    Modeler *m = modeler;
-    Vertex_Ref v = get_vertex_by_linum(m,linum);
-    if(v.vertex){
-     hot_prim_id = prim_id_from_vertex_index(v.index);
-    }else{
-     Curve_Ref c = get_curve_by_linum(m,linum);
-     if(c.curve){
-      hot_prim_id = prim_id_from_curve_index(c.index);
-     }
-    }
-    if(!hot_prim_id){
-     //NOTE(kv) If still no hot prim id found, just wing it! (might crash if we're not careful)
-     hot_prim_id = linum;
-    }
-   }
-  }
-  state->hot_prim_id = hot_prim_id;
   
   {//-Compute key direction
    compute_direction_helper(input, Key_Code_L, 0, +1);
@@ -1332,280 +1591,262 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
   // since we're not a fighting game, it'd probably work ok anyway.
   // but it's very dumb because we already had events.
   darray(Key_Code) key_strokes;
+  init_dynamic(key_strokes, scratch);
+  for_i32(code, 1, Key_Code_COUNT)
   {
-   init_dynamic(key_strokes, scratch);
-   for_i32(code, 1, Key_Code_COUNT){
-    if (input->key_states[code] &&
-        input->key_state_changes[code] > 0){
-     key_strokes.push_value((Key_Code) code);
-    }
+   if (input->key_states[code] &&
+       input->key_state_changes[code] > 0)
+   {
+    push(&key_strokes, (Key_Code)code);
    }
   }
   
-  b32 modeler_selecting = selected_prim_id(modeler);
+  if(key_strokes.count and game_active)
+  {
+   seconds_since_last_keystroke_2 = 0;
+  }
+  
   u32 mods = input->active_mods;
-  for_u32(key_stroke_index, 0, key_strokes.count){
-   //-NOTE(kv) Key bindings
-   auto cam = update_target_cam;
+  for_i32(key_stroke_index, 0, key_strokes.count)
+  {//-NOTE(kv) Key bindings
+   Camera &cam = update_target_camera;
+   Camera_Data *cam_data = update_target_camera_data;
    Key_Code keycode = key_strokes[key_stroke_index];
    u32 code = mods|keycode;
    const u32 S = Key_Mod_Sft;
    const u32 C = Key_Mod_Ctl;
    const u32 M = Key_Mod_Alt;
-   if(game_active){
-    if(modeler_selecting){
-     //-NOTE
-     auto m = modeler;
-     switch(code){
-      case Key_Code_Return:{ modeler_exit_edit(m); }break;
-      case Key_Code_Escape:{
-       if(m->change_uncommitted){
-        modeler_exit_edit_undo(m);
-       }else{
-        clear_selection(m);
-       }
-      }break;
-      case Key_Code_S:{
-       toggle_boolean(m->selection_spanning);
-       compute_active_prims(m);
-      }break;
-     }
-    }else if(state->kb_cursor_mode){
-     //-Cursor mode
-     if(mods==Key_Mod_Ctl && is_v3_key(keycode)){
-      update_orbit(cam, input);
-     }else if(mods==Key_Mod_Alt && is_v2_key(keycode)){
-      update_pan(cam, input); 
-     }else{
-      switch(code){
-       case Key_Code_A:{ set_camera_frontal_or_profile(*cam); }break;
-       case Key_Code_I: case Key_Code_O:{
-        update_orbit(cam, input);
-       }break;
-       case Key_Code_Escape:
-       case Key_Code_M:{
-        state->kb_cursor_mode=false;
-       }break;
-       case Key_Code_Return:{
-        auto m = modeler;
-        Prim_XID hot_xid = prim_xid_from_id(hot_prim_id);
-        if(transitioning_from_code){
-         if(hot_xid.type){
-          //NOTE(kv) drawn by data
-          if(hot_xid.type==Prim_Vertex){
-           Vertex_Data *vertex = &m->vertices[hot_xid.index];
-           g_jump_to_line(app, vertex->linum);
-          }else if(hot_xid.type==Prim_Curve){
-           Curve_Data *curve  = &m->curves[hot_xid.index];
-           g_jump_to_line(app, curve->linum);
-          }
-         }else{
-          g_jump_to_line(app, hot_xid.index);
-         }
-        }else{
-         //NOTE(kv) Normal editor behavior
-         state->kb_cursor_mode = false;
-         select_primitive(m, hot_xid.id);
-        }
-       }break;
-       //TODO(kv) @cleanup cutnpaste
-       //NOTE(kv) Set camera frontal
-       case C|M|Key_Code_K:{ cam->theta=0; cam->phi=0; }break;
-       //NOTE(kv) Set camera to the right
-       case C|M|Key_Code_L:{ cam->theta=.25f; cam->phi=0; }break;
-       //NOTE(kv) Set camera to the left
-       case C|M|Key_Code_H:{ cam->theta=-.25f; cam->phi=0; }break;
-      }
-     }
-    }else{
-     //-Normal mode
-     if((mods==C || mods==0) && is_v3_key(keycode)){
-      update_orbit(cam, input);
-     }else if (mods==M && is_v2_key(keycode)){
-      update_pan(cam, input);
-     }else{
-      switch(code){
-       case Key_Code_Return:{ game_save(state, app, false); }break;
-       case Key_Code_A:{ set_camera_frontal_or_profile(*cam); }break;
-       case Key_Code_M:{ state->kb_cursor_mode = true; }break;
-       case Key_Code_Q:{ toggle_boolean(state->references_full_alpha); }break;
-       case Key_Code_U:{ modeler_undo(modeler); }break;
-       case Key_Code_X:{ cam->theta *= -1.f; }break;
-       case Key_Code_Z:{ cam->theta = .5f - cam->theta; }break;
-       case S|Key_Code_0:{ cam->roll = {}; }break;
-       //NOTE(kv) Reverting is just.so.useful for debugging!
-       //TODO(kv) Pushing strings is dangerous! Since the game might restart.
-       case S|Key_Code_U:{ state->command_queue.push_value(strlit("revert")); }break;
-       case C|Key_Code_R:{ modeler_redo(modeler); }break;
-       case M|Key_Code_0:{ cam->pan = {}; }break;
-       //NOTE(kv) Set camera frontal
-       case C|M|Key_Code_K:{ cam->theta=0; cam->phi=0; }break;
-       //NOTE(kv) Set camera to the right
-       case C|M|Key_Code_L:{ cam->theta=.25f; cam->phi=0; }break;
-       //NOTE(kv) Set camera to the left
-       case C|M|Key_Code_H:{ cam->theta=-.25f; cam->phi=0; }break;
-      }
-     }
+   if(game_active)
+   {
+    if(mods==Key_Mod_Ctl and is_v3_key(keycode))
+    {
+     update_orbit(cam_data, input);
     }
-   }else if(fui_is_active()){
-    //-NOTE
-    if(mods==C && is_v3_key(keycode)){
-     update_orbit(cam, input);
-    }else if(mods==M && is_v2_key(keycode)){
-     update_pan(cam, input);
-    }else if(mods==0 && is_v4_key(keycode)){
-     //NOTE(kv) Update discrete slider
-     Slider *slider = fui_active_slider;
-     if(fui_slider_is_discrete(slider)){
-      i4 value;
-      block_copy(&value, get_slider_value(slider), slider_value_size(slider));
-      for_i32(index,0,4){
-       value.e[index] += i32(input_dir[index]);
-      }
-      if(slider->flags & Slider_Clamp_01){
-       for_i32(index,0,4) {
-        macro_clamp01i(value.e[index])
-       }
-      }
-      block_copy(get_slider_value(slider), &value, slider_value_size(slider));
-     }
-    }else{
-     switch(code){
-      case Key_Code_Tab:{ toggle_boolean(fui_v4_zw_active); }break;
-     }
+    else if(mods==Key_Mod_Alt and is_v2_key(keycode))
+    {
+     update_pan(cam_data, input); 
     }
-   }
-  }
-  
-  Camera update_cam = {};
-  setup_camera(&update_cam, update_target_cam);
-  
-  if(input_dir != v4{}){
-   //-NOTE(kv) Handling continuous directional input
-   if (fui_active){
-    //NOTE(kv) ;UpdateFuislider
-    Slider *slider = fui_active_slider;
-    if (fui_slider_is_continuous(slider)){
-     // NOTE(kv) we copy the slider value out, pretend it's a v4
-     // operate on it, and put it back in again.
-     v4 value;
-     block_copy(&value, get_slider_value(slider), slider_value_size(slider));
-     if (mods == 0 || mods == Key_Mod_Sft){
-      if (input_dir.y != 0.f &&
-          slider->type == Basic_Type_v1){
-       value.x = (input_dir.y > 0) ? 1.f : 0.f; 
-      }else{
-       if (fui_v4_zw_active &&
-           slider->type == Basic_Type_v4) {
-        input_dir.zw = input_dir.xy;
-        input_dir.xy = {};
-       }
-       if (slider->flags & Slider_Camera_Aligned) {
-        input_dir = noz( update_cam.world_from_cam*input_dir );
-       }
-       v1 delta_scale = slider->delta_scale;
-       if(delta_scale == 0){ delta_scale = 0.2f; }
-       v4 delta = delta_scale * dt * input_dir;
-       if(mods == Key_Mod_Sft){ delta *= 10.f; }
-       value += delta;
-       
-       if(slider->flags & Slider_Clamp_X) {value.x = 0;}
-       if(slider->flags & Slider_Clamp_Y) {value.y = 0;}
-       if(slider->flags & Slider_Clamp_Z) {value.z = 0;}
-       if(slider->flags & Slider_NOZ)     { value.xyz = noz(value.xyz); }
-       if(slider->flags & Slider_Clamp_01){
-        for_i32(index,0,4) { macro_clamp01(value.v[index]); }
-       }
-      }
-     }
-     block_copy(get_slider_value(slider), &value, slider_value_size(slider));
-    }
-   }else if(game_active){
-    if (u32 sel_prim = selected_prim_id(modeler)){
-     //-NOTE
-     Modeler *m = modeler;
-     Modeler_History &h = m->history;
-     if (get_selected_type(m) == Prim_Vertex){
-      // NOTE: Selecting a vertex
-      Vertex_Index sel_index = vertex_index_from_prim_id(sel_prim);
-      v3 direction = key_direction(input, 0, false).xyz;
-      
-      // NOTE(kv): Update vertex position
-      direction.z = 0.f;
-      direction = noz( mat4vec(update_cam.world_from_cam, direction) );
-      v1 velocity = 0.2f;
-      v3 delta = velocity * dt * direction;
-      
-      darray(Vertex_Index) influenced_verts;
-      init_static(influenced_verts, scratch, m->active_prims.count);
-      for_u32(index,0,m->active_prims.count) {
-       Vertex_Index vi = vertex_index_from_prim_id(m->active_prims[index]);
-       influenced_verts.push_value(vi);
-      }
-      
-      Modeler_Edit edit = Modeler_Edit{
-       .type      = ME_Vert_Move,
-       .Vert_Move = {
-        .verts=influenced_verts,
-        .delta=delta,
-       },
-      };
+    else
+    {//-Other keys
+     switch(code)
+     {
+      case Key_Code_L: case Key_Code_H:
+      case Key_Code_K: case Key_Code_J:
       {
-       b32 merged = false;
-       Modeler_Edit *current_edit = get_current_edit(h);
-       // NOTE(kv): edits_can_be_merged is a guardrail for now
-       if (current_edit &&
-           m->change_uncommitted &&
-           edits_can_be_merged(*current_edit, edit))
+       if(not cursor_on)
+       {// NOTE(kv) Cursor is updated separately, because it's continuous input.
+        update_orbit(cam_data, input);
+       }
+      }break;
+      
+      case Key_Code_0: case Key_Code_1: case Key_Code_2: case Key_Code_3: case Key_Code_4:
+      case Key_Code_5: case Key_Code_6: case Key_Code_7: case Key_Code_8: case Key_Code_9:
+      {
+       i32 preset = code - Key_Code_0;
+       game_set_preset(state, update_viewport_id, preset);
+      }break;
+      
+      case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
+      case Key_Code_M:     { state->kb_cursor.on = true; } break;
+      case Key_Code_Escape:{ state->kb_cursor.on = false; }break;
+      
+      case C|Key_Code_Return:{ game_save(state, app, false); }break;
+      case Key_Code_A:{
+       set_camera_frontal_or_profile(cam_data, &state->stick_to_front);
+      }break;
+      case Key_Code_Q:{ toggle_boolean(state->references_full_alpha); }break;
+      case Key_Code_X:{ cam_data->theta *= -1.f; }break;
+      case S|Key_Code_Z:{ cam_data->theta = .5f - cam_data->theta; }break;
+      case S|Key_Code_0:{ cam_data->roll = {}; }break;
+      //NOTE(kv) Reverting is just.so.useful for debugging!
+      //TODO(kv) Pushing strings is dangerous! Since the game might restart.
+      case S|Key_Code_U:
+      {
+       revert_from_autosave(state, app);
+      }break;
+      
+      //NOTE(kv) Set camera to the left
+      case C|M|Key_Code_H:{ cam_data->theta=-.25f; cam_data->phi=0; }break;
+      
+      case Key_Code_I:
+      case Key_Code_O:
+      {
+       update_orbit(cam_data, input);
+      }break;
+      
+      case Key_Code_Return:
+      {
+       if(is_valid(hot_location))
        {
-        merged = true;
-        modeler_undo(m);
-        edit = *current_edit;
-        edit.Vert_Move.delta += delta;
+        g_jump_to_pos(app, resolve_location(hot_location).min);
        }
-       if (!merged) {
-        edit.Vert_Move.verts = influenced_verts.copy(&h.arena);
-       }
-       apply_new_edit(m, edit);
-      }
-     }else if(get_selected_type(m) == Prim_Curve){
-#if 0
-      // NOTE(kv) Curve update stub
-      Curve_Data &sel = modeler.curves[sel_index0];
-      {
-       i1 direction = i1( key_direction(input, 0, true).x );
-       v1 delta = i2f6(direction);
-       if (delta != 0) { for_i32(index,0,4) { sel.radii[index] += delta; } }
-       DEBUG_VALUE(sel.radii);
-      }
-#endif
+      }break;
+      
+      case Key_Code_Z:{
+       v2 cursor_camera_xy = mat4vert(cam.cam_from_world, state->kb_cursor.pos).xy;
+       cam_data->pivot += (cursor_camera_xy.x * cam.x +
+                           cursor_camera_xy.y * cam.y);
+      }break;
      }
+    }
+   }
+   else if(fui_active)
+   {//-fui
+    if(mods==C && is_v3_key(keycode))
+    {
+     update_orbit(cam_data, input);
+    }
+    else if(mods==M && is_v2_key(keycode))
+    {
+     update_pan(cam_data, input);
+    }
+    else if(mods==0 && is_v4_key(keycode))
+    {//-Update discrete slider
+     v1 float_increment;
+     if(active_slider_is_discrete(&float_increment))
+     {
+      Active_Slider slider = fui_active_slider;
+      i4 value_int;
+      v4 value_float;
+      b32 is_float = float_increment != 0.f;
+      Data_And_Size data = active_slider_data();
+      block_copy(&value_int, data.data, data.size);
+      block_copy(&value_float, data.data, data.size);
+      for_i32(index,0,4)
+      {
+       value_int.e[index]   += i32(input_dir[index]);
+       value_float.e[index] += i32(input_dir[index]) * float_increment;
+      }
+      if(slider.data->flags & Slider_Clamp_01)
+      {
+       for_i32(index,0,4)
+       {
+        macro_clamp01i(value_int.e[index]);
+        macro_clamp01(value_float.e[index]);
+       }
+      }
+      if(is_float) {
+       block_copy(data.data, &value_float, data.size);
+      } else {
+       block_copy(data.data, &value_int, data.size);
+      }
+     }
+    }
+    else
+    {//-Other keys
+     switch(code)
+     {
+      case Key_Code_Tab:
+      {
+       Type_Info *type = get_slider_type_info(*fui_active_slider.data);
+       if(equal(type, type_info_of(FUI_Line_Params)))
+       {
+        i32 radii_index = member_index_of(FUI_Line_Params, radii);
+        i32 lightness_index = member_index_of(FUI_Line_Params, lightness_additions);
+        i32 active_index = fui_active_slider.active_member_index;
+        i32 new_index;
+        if(active_index == radii_index){
+         new_index = lightness_index;
+        }else{
+         new_index = radii_index;
+        }
+        fui_active_slider.active_member_index = new_index;
+       }
+      }break;
+     }
+    }
+   }
+   else
+   {//-We're somewhere in the editor
+    switch(code)
+    {
+     case Key_Code_Return:
+     {//-Button?
+      View_ID view = get_active_view(app, Access_Always);
+      Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+      i32 file = get_file_index_by_buffer(app, buffer);
+      i64 curpos = view_get_cursor_pos(app, view);
+      for(Location_Iterator it = iterate_touched_locations(file, { curpos, curpos+1 });
+          it.entry;
+          advance(&it))
+      {
+       if(it.entry->type == Location_Type_Text_Object)
+       {
+        Text_Object &object = driver_data.text_objects[it.entry->index];
+        if(object.kind == Text_Object_Preset)
+        {
+         Viewport &main_viewport = state->viewports[0];
+         main_viewport.reference_preset = object.preset;
+         Reference_Preset_Data preset_data =
+          driver->driver_get_reference_preset_data(object.preset);
+         // NOTE(kv) We update the camera *once*, but still let it fly afterwards.
+         update_target_camera_data->phi   = preset_data.camera_phi;
+         update_target_camera_data->theta = preset_data.camera_theta;
+         break;
+        }
+       }
+      }
+     }break;
     }
    }
   }
   
-  if(input->mouse.press_l){
-   // NOTE: Left click handling
-   if (hot_prim_id){
-    if(prim_id_is_data(hot_prim_id)){
-     // NOTE: Drawn by data -> change selected obj id
-     auto &m = modeler;
-     select_primitive(m, hot_prim_id);
-     m->change_uncommitted = false;
-     switch_to_mouse_panel(app);
-    }else{
-     // NOTE: Drawn by code -> jump to code
-     g_jump_to_line(app, hot_prim_id);
+  if(input_dir != v4{} and
+     fui_active and active_slider_is_continuous())
+  {//-Update continuous sliders
+   Active_Slider slider = fui_active_slider;
+   Type_Info *active_type = active_slider_member_type_info();
+   Data_And_Size data = active_slider_data();
+   // NOTE(kv) Pretend slider value it's a v4
+   v4 value;
+   block_copy(&value, data.data, data.size);
+   if(mods == 0 or mods == Key_Mod_Sft)
+   {
+    if(input_dir.y != 0.f and
+       active_type->Basic_Type == Basic_Type_v1)
+    {//-Special handling j-k to toggle values to 0 and 1
+     value.x = (input_dir.y > 0) ? 1.f : 0.f; 
+    }
+    else
+    {
+     Slider_Flags flags = slider.data->flags;
+     b32 is_camera_aligned = (flags & Slider_Vertex or
+                              flags & Slider_Vector);
+     if(is_camera_aligned)
+     {
+      input_dir.xyz = mat4vec(update_target_camera.world_from_cam, input_dir.xyz);
+     }
+     v1 delta_scale = slider.data->delta_scale;
+     if(delta_scale == 0){ delta_scale = 0.2f; }
+     v4 delta = delta_scale * dt * input_dir;
+     if(mods == Key_Mod_Sft){ delta *= 10.f; }
+     value += delta;
+     
+     if(flags & Slider_Clamp_X){value.x = 0;}
+     if(flags & Slider_Clamp_Y){value.y = 0;}
+     if(flags & Slider_Clamp_Z){value.z = 0;}
+     if(flags & Slider_NOZ)    { value.xyz = noz(value.xyz); }
+     if(flags & Slider_Clamp_01)
+     {
+      for_i32(index,0,4){ macro_clamp01(value.v[index]); }
+     }
     }
    }
+   block_copy(data.data, &value, data.size);
+  }
+  
+  if(params.mouse.press_l)
+  {// TODO(kv) Left click handling needs raycast logic
   }
   
   {
-   i1 wheel = signof(input->mouse.wheel);  // NOTE(kv): We have WEIRD +/-100 mouse wheel values, dunno whawt that means.
-   if (wheel){
-    i1 viewport_id = mouse_viewport_id(app);
-    if (viewport_id) {
-     i1 viewport_index = viewport_id-1;
+   i32 wheel = signof(params.mouse.wheel);  // NOTE(kv): We have WEIRD +/-100 mouse wheel values!
+   if(wheel)
+   {
+    i32 viewport_id = mouse_viewport_id(app);
+    if(viewport_id)
+    {
+     i32 viewport_index = viewport_id-1;
      Viewport &viewport = state->viewports[viewport_index];
      v1 &distance = viewport.target_camera.distance;
      distance = update_camera_distance(distance, wheel);
@@ -1613,102 +1854,115 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
    }
   }
   
-  {//-NOTE: Presets
-   if( just_pressed(input, Key_Code_Space) ) {
-    game_last_preset(state, update_viewport_id);
-   }
-  }
-  
-  if(game_active && state->kb_cursor_mode){
-   //-NOTE(kv) update cursor
+  if(game_active and cursor_on)
+  {//-NOTE(kv) update cursor
+   Camera &cam = update_target_camera;
+   Camera_Data *cam_data = update_target_camera_data;
    Keyboard_Cursor &cursor = state->kb_cursor;
    b32 shifted = 0;
    v2 dir_v2 = key_direction(input, 0, false, &shifted).xy;
-   if (dir_v2 == v2{}){
+   b32 cursor_moved = false;
+   if(dir_v2 == v2{})
+   {
     cursor.vel = {};  //NOTE(kv) stop immediately, we don't want skating
-   }else{
-    Camera cam;
-    setup_camera(&cam, &state->viewports[0].camera);
-    {//NOTE(kv) Movement
-     v3 dir = noz( mat4vec(cam.world_from_cam, V3(dir_v2)) );
-     v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
-     v1 zoom = absolute(cursor_camz/cam.focal_length);
-     v1 acc = zoom * 0.1f * (2.0423f);
-     if (shifted){ acc *= 10.f; }
-     v1 new_vel = cursor.vel + dt*acc;
-     v1 max_vel = zoom*0.1f*(1.0625f);
-     if (shifted){ max_vel *= 10.f; }
-     ClampTop(new_vel, max_vel);
-     v3 delta = 0.5f*(cursor.vel+new_vel)*dt*dir;
-     cursor.pos += delta;
-     cursor.vel = new_vel;
-    }
+   }
+   else
+   {//NOTE Moving
+    cursor_moved = true;
+    v3 dir = noz( mat4vec(cam.world_from_cam, V3(dir_v2)) );
+    v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
+    v1 zoom = absolute(cursor_camz / cam.focal_length);
+    v1 acc = zoom * 0.1f * (3.f);
+    v1 boost = 4.0f;
+    if(shifted){ acc *= boost; }
+    v1 new_vel = cursor.vel + dt*acc;
     
-    {//NOTE(kv) Clamping (Pretty Involved)
-     //TODO(kv) @bug We don't know if we're in orthographic mode
-     v2 cursor_view = mat4vert_div(get_view_from_world(&cam, false),
-                                   cursor.pos).xy;
-     v2 radius_view = state->viewports[0].clip_radius;
+    v1 max_vel = zoom*0.1f*2.f;
+    if(shifted){ max_vel *= boost; }
+    ClampTop(new_vel, max_vel);
+    
+    v3 delta = 0.5f*(cursor.vel+new_vel)*dt*dir;
+    cursor.pos += delta;
+    cursor.vel = new_vel;
+   }
+   
+   {//NOTE(kv) Clamping screen and cursor position (Pretty Involved)
+    //TODO(kv) @bug We assume orthographic mode
+    v3 cursor_cam = mat4vert(cam.cam_from_world, cursor.pos);
+    v2 radius_on_cam = 0.875f * update_viewport->clip_radius;
+    v1 zoom_ratio = absolute(cursor_cam.z / cam.focal_length);
+    v2 radius_at_cursor_z = zoom_ratio*radius_on_cam;
+    
+    if(cursor_moved)
+    {//-cursor dictates camera
+     v2 delta_in_cam = {};
+     for_i32(i,0,2)
      {
-      auto &p = cursor_view;
-      auto &r = radius_view;
-      ClampBot(p.x, -r.x); ClampBot(p.y, -r.y);
-      ClampTop(p.x, +r.x); ClampTop(p.y, +r.y);
+      v1 diff = absolute(cursor_cam[i]) - absolute(radius_at_cursor_z[i]);
+      if(diff > 0)
+      {
+       delta_in_cam[i] = signof(cursor_cam[i]) * diff;
+      }
      }
-     v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
-     v3 cursor_cam = V3(absolute(cursor_camz / cam.focal_length) * cursor_view,
-                        cursor_camz);
-     cursor.pos = (cam.world_from_cam * cursor_cam);
+     
+     cam_data->pivot += mat4vec(cam.world_from_cam, V3(delta_in_cam, 0));
+    }
+    else
+    {//-camera clamps cursor
+     if(0)
+     {// NOTE(kv) NO man, the point of having a cursor is that it doesn't move!
+      for_i32(i,0,2)
+      {
+       ClampBot(cursor_cam[i], -radius_at_cursor_z[i]);
+       ClampTop(cursor_cam[i], +radius_at_cursor_z[i]);
+      }
+      
+      cursor.pos = mat4vert(cam.world_from_cam, cursor_cam);
+     }
     }
    }
   }
   //~
-  if(input->debug_camera_on){
-   auto cam = update_target_cam;
-   DEBUG_NAME("camera(theta,phi,distance)", V3(cam->theta, cam->phi, cam->distance));
-   DEBUG_NAME("camera(pan)", cam->pan);
+  {//-driver update
+   {//;clear_model
+    auto m = the_model;
+    i32 vertex_cap = maximum(256, m->vertices.count);
+    i32 entity_cap = maximum(256, m->primitives.count);
+    
+    zero_struct(m);
+    Arena *frame_arena = &state->model_frame_arena;
+    arena_clear(frame_arena);
+    //-
+    m->frame_arena = frame_arena;
+    
+    init_dynamic(m->bones, frame_arena, 128);
+    Bone null_bone = {.world_from_bone=mat4i_identity};
+    push(&m->bones, null_bone);
+    init_dynamic(m->bone_stack, frame_arena, 16);
+    push(&m->bone_stack, m->bones.items+0);
+    
+    init_dynamic(m->vertices, frame_arena, vertex_cap);
+    init_dynamic(m->primitives, frame_arena, entity_cap);
+   }
+   
+   v1 anim_time = state->looping_time;
+   game_update_result.anim_time = anim_time;
+   driver->driver_update(the_model, anim_time);
   }
   
-  for_i32(index, 0, GAME_VIEWPORT_COUNT){
-   // NOTE: Set viewport presets to useful values
+  if(params.debug_camera_on)
+  {
+   Camera_Data &cam = *update_target_camera_data;
+   DEBUG_NAME("camera(theta,phi,distance)", V3(cam.theta, cam.phi, cam.distance));
+  }
+  
+  for_i32(index, 0, GAME_VIEWPORT_COUNT)
+  {// NOTE Set viewport presets to useful values
    Viewport *viewport = &state->viewports[index];
    
    if(viewport->preset == viewport->last_preset){
     if(viewport->preset == 0){ viewport->last_preset = 2; }
     else{ viewport->last_preset = 0; }
-   }
-  }
-  
-  {//;update_modeler
-   auto m = &state->modeler;
-   auto &h = m->history;
-   {//-NOTE: Drawing GUI
-    if(get_selected_type(m) == Prim_Curve){
-     //;draw_curve_info
-     ImGui::Begin("curve data", 0);
-     Curve_Data *curve = get_selected_curve(m);
-     Type_Info type = Type_Info_Curve_Type;
-     u32 curve_type_index = enum_index_from_value(curve->type);
-     
-     const char* combo_preview = to_cstring(scratch, type.enum_members[curve_type_index].name);
-     if ( ImGui::BeginCombo("combo", combo_preview, 0) ) {
-      for_u32(enum_index, 0, type.enum_members.count) {
-       b32 is_selected = (enum_index == curve_type_index);
-       char *name = to_cstring(scratch, type.enum_members[enum_index].name);
-       if(ImGui::Selectable(name, is_selected)){
-       }
-       if(is_selected){
-        ImGui::SetItemDefaultFocus();
-       }
-      }
-      ImGui::EndCombo();
-     }
-     ImGui::End();
-    }else{
-     if ((0)){
-      ImGui::ShowDemoWindow(0);
-     }
-    }
    }
   }
   
@@ -1718,23 +1972,78 @@ game_update(Game_State *state, App *app, i1 active_viewport_id, Game_Input_Publi
    if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
   }
   
+  if(0)
   {
-   if(0){
-    DEBUG_NAME("work cycles", input->frame.work_cycles);
-    DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
-    DEBUG_NAME("work ms", input->frame.work_seconds * 1e3f);
-   }
-   
-   if(0){
-    DEBUG_VALUE(image_load_info.image_count);
-    DEBUG_VALUE(image_load_info.failure_count);
+   DEBUG_NAME("work cycles", params.frame.work_cycles);
+   DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
+   DEBUG_NAME("work ms", params.frame.work_seconds * 1e3f);
+  }
+  
+  //show_image_preview(strlit("G:/My Drive/Art/arm medial.jpg"));
+  //show_image_preview(strlit("C://notarealfile"));
+  
+  if(fui_active)
+  {//-Show GUI for line params slider
+   Slider &slider = *fui_active_slider.data;
+   Type_Info *type = get_slider_type_info(slider);
+   if(equal(type, type_info_of(FUI_Line_Params)))
+   {
+    const char* items[] = { "radii", "lightness" };
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoFocusOnAppearing;
+    
+    ImGui::Begin("Line Params", 0, flags);
+    
+    if(0)
+    {//-Select attribute
+     static int current_item = 0;
+     ImGui::Combo("line attribute", &current_item, items, IM_ARRAYSIZE(items));
+     i32 member_index = get_member_index_by_name(type, SCu8(items[current_item]));
+     fui_active_slider.active_member_index = member_index;
+    }
+    
+    {//-General info
+     I_Struct_Member &active_member =
+      type->members[fui_active_slider.active_member_index];
+     ImGui::Text("Editing: %S", active_member.name);
+    }
+    ImGui::End();
    }
   }
+  
+  for_i32(index, 0, params.live_viewports.count)
+  {
+   Live_Viewport live_viewport = params.live_viewports[index];
+   {//-Animate viewport
+    i32 viewport_index = get_viewport_index(live_viewport.viewport);
+    Viewport *viewport = &state->viewports[viewport_index];
+    {// NOTE Camera animation
+     Camera_Data *target  = &viewport->target_camera;
+     Camera_Data *current = &viewport->camera;
+     b32 animation_ended = animate_camera(current, target, dt);
+     if(!animation_ended){ should_animate_next_frame = true; }
+    }
+   }
+   
+   {
+    rect2 clip_box = live_viewport.clip_box;
+    
+    Render_Config *old_config = target_last_config(live_viewport.target);
+    draw_set_clip(app, clip_box);
+    game_render(state, app, live_viewport.target, live_viewport.viewport, params.mouse, clip_box);
+    {
+     Render_Config *config = draw_new_group(live_viewport.target);
+     *config = *old_config; 
+    }
+   }
+  }
+  //-Driver is valid
  }
  
+ notebook_update(0);
+ 
  return{
-  .should_animate_next_frame=should_animate_next_frame,
-  .game_commands            =game_commands,
+  .should_animate_next_frame = should_animate_next_frame,
+  .game_commands             = game_commands,
  };
 }
 //~EOF

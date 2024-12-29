@@ -103,7 +103,7 @@ api_parse_add_function(Arena *arena, API_Definition_List *list,
                        String location)
 {
  type = api_parse__type_name_with_stars(arena, type, star_counter);
- for_u32(index,0,api_names.count)
+ for_i32(index,0,api_names.count)
  {
   API_Definition *api = api_get_api(arena, list, api_names[index]);
   API_Call *call = api_call_with_location(arena, api, func_name, type, location);
@@ -117,7 +117,7 @@ api_parse_add_structure(Arena *arena, API_Definition_List *list,
                         String name, List_String member_list,
                         String definition, String location)
 {
- for_u32(index,0,api_names.count)
+ for_i32(index,0,api_names.count)
  {
   API_Definition *api = api_get_api(arena, list, api_names[index]);
   api_type_structure_with_location(arena, api, kind, name, member_list, definition, location);
@@ -310,7 +310,7 @@ api_parse_source_add_to_list(Arena *arena, String source_name, String source, To
    if(api_parse__match(&token_it, TokenCppKind_ParenOp)) {
     String name;
     while(api_parse__ident(&token_it, source, &name)) {
-     api_names.push_value(name);
+     push(&api_names, name);
      if (api_parse__match(&token_it, TokenCppKind_ParenCl)) {
       break;
      }
@@ -332,7 +332,7 @@ api_parse_source_add_to_list(Arena *arena, String source_name, String source, To
 }
 function void
 api_parser_parse_file(Arena *arena, Lexed_File source_file, API_Definition_List *list){
- api_parse_source_add_to_list(arena, source_file.name, source_file.data,
+ api_parse_source_add_to_list(arena, source_file.path, source_file.data,
                               source_file.token_list, list);
 }
 function b32

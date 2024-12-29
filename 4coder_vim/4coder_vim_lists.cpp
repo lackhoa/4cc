@@ -1,5 +1,5 @@
 #include "4coder_vim_lister.cpp"
-#include "4ed_kv_game_.h"
+#include "4coder_game.h"
 
 struct Game_Or_Custom_Command
 {
@@ -17,9 +17,9 @@ vim__fill_command_lister(Arena *arena, Lister *lister, i1 *command_ids, i1 comma
 {
 	if(command_ids == 0){ command_id_count = command_one_past_last_id; }
  
- if ( game_on_ro )
+ if ( is_game_on() )
  {
-  for_u32(cmd_index,0,received_game_commands.count)
+  for_i32(cmd_index,0,received_game_commands.count)
   {
    auto &name = received_game_commands[cmd_index];
    auto *cmd = push_struct(arena, Game_Or_Custom_Command);
@@ -98,7 +98,7 @@ vim_command_mode(App *app)
   Game_Or_Custom_Command cmd = vim_get_command_from_user(app, 0, 0, &rule);
   if (cmd.ok) {
    if (cmd.is_game_command) {
-    auto game = get_game_code();
+    Game_API *game = get_game_code(Game_On);
     if (game) {
      game->game_send_command(ed_game_state_pointer, cmd.game_command);
     }
@@ -116,7 +116,7 @@ vim_generate_hot_directory_file_list(App *app, Lister *lister)
 
 	Temp_Memory temp = begin_temp_memory(lister->arena);
 	String hot = push_hot_directory(app, lister->arena);
-	if (!character_is_slash(string_get_character(hot, hot.size - 1))){
+	if (!is_file_slash(string_get_character(hot, hot.size - 1))){
 		hot = push_stringf(lister->arena, "%.*s/", string_expand(hot));
 	}
 	lister_set_text_field(lister, hot);
@@ -258,7 +258,7 @@ vim_interactive_open_or_new(App_Cmd *app)
 			continue;
 		}
 
-		if(character_is_slash(filename.str[filename.size - 1])){
+		if(is_file_slash(filename.str[filename.size - 1])){
 			File_Attributes attribs = system_quick_file_attributes(scratch, full_filename);
 			if(HasFlag(attribs.flags, FileAttribute_IsDirectory)){
 				set_hot_directory(app, full_filename);
@@ -315,8 +315,7 @@ vim_theme_lister(App_Cmd *app)
 }
 
 function void
-vim_switch_lister(App_Cmd *app)
-
+vim_switch_buffer_lister(App_Cmd *app)
 {
 	Lister_Handlers handlers = lister_get_default_handlers();
 	handlers.refresh = generate_all_buffers_list;
@@ -343,32 +342,32 @@ vim_get_jump_index_from_user(App *app, Marker_List *list,
 {
 	Jump_Lister_Result result = {};
 	if (list != 0)
-    {
+ {
 		Scratch_Block scratch(app);
 		Lister_Block lister(app, scratch);
 		lister_set_query(lister, query);
 		lister_set_default_handlers(lister);
-
-		Buffer_ID list_buffer = list->buffer_id;
-
+  
+		Buffer_ID list_buffer = list->jump_buffer;
+  
 		i1 option_count = list->jump_count;
 		Managed_Object stored_jumps = list->jump_array;
 		for (i1 i = 0; i < option_count; i += 1){
 			Sticky_Jump_Stored stored = {};
 			managed_object_load_data(app, stored_jumps, i, 1, &stored);
 			String line = push_buffer_line(app, scratch, list_buffer,
-													stored.list_line);
+                                  stored.list_line);
 			lister_add_item(lister, line, SCu8(), IntAsPtr(i), 0);
 		}
-
+  
 		Lister_Result l_result = vim_run_lister(app, lister);
 		if (!l_result.canceled){
 			result.success = true;
 			result.index = (i1)PtrAsInt(l_result.user_data);
-        }
-    }
-
-    return(result);
+  }
+ }
+ 
+ return(result);
 }
 
 function Jump_Lister_Result
@@ -377,29 +376,30 @@ vim_get_jump_index_from_user(App *app, Marker_List *list, char *query)
 	return(vim_get_jump_index_from_user(app, list, SCu8(query)));
 }
 
-
+#if 0
 function void
 vim_list_all_functions_current_buffer_lister(App_Cmd *app)
-
 {
 	Heap *heap = &global_heap;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-	if (buffer != 0){
+	if(buffer != 0)
+ {
 		list_all_functions(app, buffer);
 		view = get_active_view(app, Access_Always);
 		buffer = view_get_buffer(app, view, Access_Always);
 		Marker_List *list = get_or_make_list_for_buffer(app, heap, buffer);
-		if (list != 0){
+		if(list != 0)
+  {
 			Jump_Lister_Result jump = vim_get_jump_index_from_user(app, list, "Function:");
 			jump_to_jump_lister_result(app, view, list, &jump);
 		}
 	}
 }
+#endif
 
 function void
 vim_proj_cmd_lister(App_Cmd *app)
-
 {
 	Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_intern_lit("prj_config"));
  
@@ -449,7 +449,7 @@ vim_jump_navigate(App_Cmd *app, View_ID view, Lister *lister, i1 index_delta)
 	Managed_Scope scope = view_get_managed_scope(app, view);
 	Vim_Jump_List *jump_list = scope_attachment(app, scope, vim_view_jumps, Vim_Jump_List);
 	i1 index = i1(PtrAsInt(lister_get_user_data(lister, lister->raw_item_index)));
-	if(!in_range_exclusive(0, index, ArrayCount(jump_list->markers))){ return; }
+	if(!in_range_exclusive(index, 0, ArrayCount(jump_list->markers))){ return; }
 	Point_Stack_Slot *slot = &jump_list->markers[index];
 	view_set_buffer(app, view, slot->buffer, SetBuffer_KeepOriginalGUI);
 	view_set_cursor_and_preferred_x(app, view, seek_pos(slot->object));

@@ -352,7 +352,7 @@ draw_line_number_margin(App *app, View_ID view_id, Buffer_ID buffer, Face_ID fac
  Rect_f32 prev_clip = draw_set_clip(app, margin);
  draw_rect_fcolor(app, margin, 0.f, fcolor_id(defcolor_line_numbers_back));
  
- Range_i64 visible_range_ = text_layout_get_visible_range_(app, text_layout_id);
+ Range_i64 visible_range_ = text_layout_get_visible_range(app, text_layout_id);
  i64 line_count = buffer_get_line_count(app, buffer);
  i64 line_count_digit_count = digit_count_from_integer(line_count, 10);
  
@@ -528,7 +528,7 @@ get_token_color_cpp(Token token){
 
 function void
 draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *array) {
-    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
+    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     i64 first_index = token_index_from_pos(array, visible_range.first);
     Token_Iterator_Array it = token_iterator_index(0, array, first_index);
     for (;;){
@@ -547,7 +547,7 @@ draw_cpp_token_colors(App *app, Text_Layout_ID text_layout_id, Token_Array *arra
 
 function void
 draw_whitespace_highlight(App *app, Text_Layout_ID text_layout_id, Token_Array *array, f32 roundness){
-    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
+    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     i64 first_index = token_index_from_pos(array, visible_range.first);
     Token_Iterator_Array it = token_iterator_index(0, array, first_index);
     for (;;){
@@ -568,7 +568,7 @@ draw_whitespace_highlight(App *app, Text_Layout_ID text_layout_id, Token_Array *
 
 function void
 draw_whitespace_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness){
-    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
+    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     for (i64 i = visible_range.first; i < visible_range.opl;){
         u8 c = buffer_get_char(app, buffer, i);
         if (char_is_whitespace(c)){
@@ -585,58 +585,58 @@ draw_whitespace_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout
                                  fcolor_id(defcolor_highlight_white));
         }
         else{
-            i += 1;
-        }
-    }
+   i += 1;
+  }
+ }
 }
 
 function void
 draw_comment_highlights(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                         Token_Array *array, Comment_Highlight_Pair *pairs, i32 pair_count)
 {
-    Scratch_Block scratch(app);
-    Range_i64 visible_range = text_layout_get_visible_range_(app, text_layout_id);
-    i64 first_index = token_index_from_pos(array, visible_range.first);
-    Token_Iterator_Array it = token_iterator_index(buffer, array, first_index);
-    for (;;)
+ Scratch_Block scratch(app);
+ Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+ i64 first_index = token_index_from_pos(array, visible_range.first);
+ Token_Iterator_Array it = token_iterator_index(buffer, array, first_index);
+ for (;;)
+ {
+  Temp_Memory_Block temp(scratch);
+  Token *token = tkarr_read(&it);
+  if (token->pos >= visible_range.opl)
+  {
+   break;
+  }
+  String8 tail = {};
+  if ( token_it_check_and_get_lexeme(app, scratch, &it, TokenBaseKind_Comment, &tail) )
+  {
+   for (i64 index = token->pos;
+        tail.size > 0;
+        tail = string_skip(tail, 1), index += 1)
+   {
+    Comment_Highlight_Pair *pair = pairs;
+    for (i32 i = 0; 
+         i < pair_count; 
+         i += 1, pair += 1)
     {
-        Temp_Memory_Block temp(scratch);
-        Token *token = tkarr_read(&it);
-        if (token->pos >= visible_range.opl)
-        {
-            break;
-        }
-        String8 tail = {};
-        if ( token_it_check_and_get_lexeme(app, scratch, &it, TokenBaseKind_Comment, &tail) )
-        {
-            for (i64 index = token->pos;
-                 tail.size > 0;
-                 tail = string_skip(tail, 1), index += 1)
-            {
-                Comment_Highlight_Pair *pair = pairs;
-                for (i32 i = 0; 
-                     i < pair_count; 
-                     i += 1, pair += 1)
-                {
-                    u64 needle_size = pair->needle.size;
-                    if (needle_size > 0)
-                    {
-                        String8 prefix = string_prefix(tail, needle_size);
-                        if ( string_match(prefix, pair->needle, StringMatch_CaseInsensitive) )
-                        {
-                            Range_i64 range = Ii64_size(index, needle_size);
-                            paint_text_color(app, text_layout_id, range, pair->color);
-                            tail = string_skip(tail, needle_size - 1);
-                            index += needle_size - 1;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if ( !tkarr_inc_non_whitespace(&it) )
-            break;
+     u64 needle_size = pair->needle.size;
+     if (needle_size > 0)
+     {
+      String8 prefix = string_prefix(tail, needle_size);
+      if ( string_match(prefix, pair->needle, StringMatch_CaseInsensitive) )
+      {
+       Range_i64 range = Ii64_size(index, needle_size);
+       paint_text_color(app, text_layout_id, range, pair->color);
+       tail = string_skip(tail, needle_size - 1);
+       index += needle_size - 1;
+       break;
+      }
+     }
     }
+   }
+  }
+  if ( !tkarr_inc_non_whitespace(&it) )
+   break;
+ }
 }
 
 function Range_i64_Array
@@ -752,60 +752,56 @@ draw_paren_highlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
             }
         }
     }
-    draw_enclosures(app, text_layout_id, buffer,
-                    pos, FindNest_Paren, RangeHighlightKind_CharacterHighlight,
-                    0, 0, colors, color_count);
+ draw_enclosures(app, text_layout_id, buffer,
+                 pos, FindNest_Paren, RangeHighlightKind_CharacterHighlight,
+                 0, 0, colors, color_count);
 }
 
 function void
 draw_jump_highlights(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_id,
                      Buffer_ID jump_buffer, FColor line_color)
 {
-    if (jump_buffer == 0) return;
-    
-    Scratch_Block scratch(app);
-    
-    Managed_Scope scopes[2];
-    scopes[0] = buffer_get_managed_scope(app, jump_buffer);
-    scopes[1] = buffer_get_managed_scope(app, buffer);
-    Managed_Scope comp_scope = get_managed_scope_with_multiple_dependencies(app, scopes, ArrayCount(scopes));
-    Managed_Object *markers_object = scope_attachment(app, comp_scope, sticky_jump_marker_handle, Managed_Object);
-    
-    i32 count = managed_object_get_item_count(app, *markers_object);
-    Marker *markers = push_array(scratch, Marker, count);
-    managed_object_load_data(app, *markers_object, 0, count, markers);
-    for (i32 i = 0; i < count; i += 1)
-    {
-        i64 line_number = get_line_number_from_pos(app, buffer, markers[i].pos);
-        draw_line_highlight(app, text_layout_id, line_number, line_color);
-    }
+ if (jump_buffer == 0) return;
+ 
+ Scratch_Block scratch(app);
+ 
+ Managed_Object positions_object = get_positions_handle(app, jump_buffer, buffer);
+ 
+ i32 count = managed_object_get_item_count(app, positions_object);
+ Marked_Position *positions = push_array(scratch, Marked_Position, count);
+ managed_object_load_data(app, positions_object, 0, count, positions);
+ for (i32 i = 0; i < count; i += 1)
+ {
+  i64 line_number = get_line_number_from_pos(app, buffer, positions[i].pos);
+  draw_line_highlight(app, text_layout_id, line_number, line_color);
+ }
 }
 
 function b32
 draw_highlight_range(App *app, View_ID view_id,
                      Buffer_ID buffer, Text_Layout_ID text_layout_id,
-                     f32 roundness){
-    b32 has_highlight_range = false;
-    Managed_Scope scope = view_get_managed_scope(app, view_id);
-    Buffer_ID *highlight_buffer = scope_attachment(app, scope, view_highlight_buffer, Buffer_ID);
-    if (*highlight_buffer != 0){
-        if (*highlight_buffer != buffer){
-            view_disable_highlight_range(app, view_id);
-        }
-        else{
-            has_highlight_range = true;
-            Managed_Object *highlight = scope_attachment(app, scope, view_highlight_range, Managed_Object);
-            Marker marker_range[2];
-            if (managed_object_load_data(app, *highlight, 0, 2, marker_range)){
-                Range_i64 range = Ii64(marker_range[0].pos, marker_range[1].pos);
-                draw_character_block(app, text_layout_id, range, roundness,
-                                     fcolor_id(defcolor_highlight));
-                paint_text_color_fcolor(app, text_layout_id, range,
-                                        fcolor_id(defcolor_at_highlight));
-            }
-        }
-    }
-    return(has_highlight_range);
+                     f32 roundness)
+{
+ b32 has_highlight_range = false;
+ Managed_Scope scope = view_get_managed_scope(app, view_id);
+ Buffer_ID *highlight_buffer = scope_attachment(app, scope, view_highlight_buffer, Buffer_ID);
+ if (*highlight_buffer != 0){
+  if (*highlight_buffer != buffer){
+   view_disable_highlight_range(app, view_id);
+  }else{
+   has_highlight_range = true;
+   Managed_Object *highlight = scope_attachment(app, scope, view_highlight_range, Managed_Object);
+   Marked_Position marker_range[2];
+   if(managed_object_load_data(app, *highlight, 0, 2, marker_range)){
+    Range_i64 range = Ii64(marker_range[0].pos, marker_range[1].pos);
+    draw_character_block(app, text_layout_id, range, roundness,
+                         fcolor_id(defcolor_highlight));
+    paint_text_color_fcolor(app, text_layout_id, range,
+                            fcolor_id(defcolor_at_highlight));
+   }
+  }
+ }
+ return(has_highlight_range);
 }
 
 function i32

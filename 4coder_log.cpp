@@ -13,20 +13,20 @@
 #define FCODER_LOG_CPP
 
 function String
-log_event(Arena *arena, String event_name, String src_name, i1 line_number, i1 buffer, i1 view, i1 thread_id){
-    List_String list = {};
-    string_list_pushf(arena, &list, "%.*s:%d: %.*s",
-                      string_expand(src_name), line_number, string_expand(event_name));
-    if (thread_id != 0){
-        string_list_pushf(arena, &list, " [thread=%d]", thread_id);
-    }
-    if (buffer != 0){
-        string_list_pushf(arena, &list, " [buffer=%d]", buffer);
-    }
- if (view != 0){
+log_event(Arena *arena, String event_name, String src_name, i1 line_number, i1 buffer, i1 view, i1 thread_id)
+{
+ List_String list = {};
+ string_list_pushf(arena, &list, "%.*s:%d: %.*s",
+                   string_expand(src_name), line_number, string_expand(event_name));
+ if(thread_id != 0){
+  string_list_pushf(arena, &list, " [thread=%d]", thread_id);
+ }
+ if(buffer != 0){
+  string_list_pushf(arena, &list, " [buffer=%d]", buffer);
+ }
+ if(view != 0){
   string_list_pushf(arena, &list, " [view=%d]", view);
  }
- string_list_push(arena, &list, strlit("\n"));
  return(string_list_flatten(arena, list));
 }
 
@@ -50,4 +50,3 @@ end_temp_memory(temp_LOG_F); )
 #endif
 
 // BOTTOM
-

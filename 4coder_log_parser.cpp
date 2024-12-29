@@ -127,7 +127,7 @@ log_parse__get_or_make_list_tag_value(Log_Parse *parse, Log_Tag *tag){
         result = (Log_Event_List*)IntAsPtr(val);
     }
     else{
-        result = push_array_zero(parse->arena, Log_Event_List, 1);
+        result = push_array0(parse->arena, Log_Event_List, 1);
         table_insert(&parse->tag_value_to_event_list_table, push_string(parse->arena, data_key),
                      (u64)PtrAsInt(result));
     }
@@ -156,7 +156,7 @@ log_parse__get_or_make_list_tag_name(Log_Parse *parse, Log_Tag *tag){
         result = (Log_Event_List*)IntAsPtr(val);
     }
  else{
-  result = push_array_zero(parse->arena, Log_Event_List, 1);
+  result = push_array0(parse->arena, Log_Event_List, 1);
   table_insert(&parse->tag_name_to_event_list_table, tag->name, (u64)PtrAsInt(result));
  }
  return(result);

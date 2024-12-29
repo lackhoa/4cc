@@ -38,6 +38,8 @@ vim_normal_mode(App *app)
   //NOTE(kv) I have no idea why we clear the insert register,
   //  because we put it back later...
   vim_registers.insert.data.size = 0;
+  //TODO(kv) Don't we have to clear the quail state here?
+  kv_quail_keystroke_buffer.count = 0;
   
   Scratch_Block scratch(app);
   
@@ -362,7 +364,7 @@ vim_digit(App_Cmd *app){
 	User_Input input = get_current_input(app);
 	if(input.event.kind == InputEventKind_KeyStroke){
 		int digit = input.event.key.code - Key_Code_0;
-		if(in_range_exclusive(0, digit, 10)){
+		if(in_range_exclusive(digit, 0, 10)){
 			vim_state.number *= 10;
 			vim_state.number += digit;
 		}
@@ -680,7 +682,7 @@ vim_backspace_char_inner(App_Cmd *app, i1 offset)
   Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
   i64 pos = view_get_cursor_pos(app, view);
   i64 buffer_size = buffer_get_size(app, buffer);
-  if(in_range_exclusive(0, pos, buffer_size))
+  if(in_range_exclusive(pos, 0, buffer_size))
   {
    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
    i64 character = view_relative_character_from_pos(app, view, cursor.line, cursor.pos);
@@ -803,7 +805,7 @@ vim_set_mark(App_Cmd *app){
 	i64 pos = view_get_cursor_pos(app, view);
 	Scratch_Block scratch(app);
 	u8 character = vim_query_user_key(app, strlit("-- SET MARK NEXT --"));
-	if(in_range_exclusive('a', character, 'z'+1)){
+	if(in_range_exclusive(character, 'a', 'z'+1)){
 		Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 		i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
 		if(marks){
@@ -811,7 +813,7 @@ vim_set_mark(App_Cmd *app){
 			vim_set_bottom_text(push_stringf(scratch, "Mark %c set", character));
 		}
 	}
-	else if(in_range_exclusive('A', character, 'Z'+1)){
+	else if(in_range_exclusive(character, 'A', 'Z'+1)){
 		vim_global_marks[character-'A'] = {buffer_identifier(buffer), pos};
 		vim_set_bottom_text(push_stringf(scratch, "Global mark %c set", character));
 	}
@@ -828,7 +830,7 @@ vim_goto_mark(App_Cmd *app){
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	u8 c = vim_query_user_key(app, strlit("-- GOTO MARK NEXT --"));
-	if(in_range_exclusive('a', c, 'z'+1)){
+	if(in_range_exclusive(c, 'a', 'z'+1)){
 		Managed_Scope scope = buffer_get_managed_scope(app, buffer);
 		i64 *marks = (i64 *)managed_scope_get_attachment(app, scope, vim_buffer_marks, 26*sizeof(i64));
 		if(marks){
@@ -843,7 +845,7 @@ vim_goto_mark(App_Cmd *app){
 			}
 		}
 	}
-	else if(in_range_exclusive('A', c, 'Z'+1)){
+	else if(in_range_exclusive(c, 'A', 'Z'+1)){
 		vim_push_jump(app, view);
 		Vim_Global_Mark mark = vim_global_marks[c-'A'];
 		if(mark.buffer_id.id){

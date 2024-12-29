@@ -1,0 +1,83 @@
+//-
+function void
+movie_shot_blinking(Movie_Shot *shot)
+{
+ aset(teye_theta, 3);
+ arest(8);
+ aset(teye_theta, -2);
+ arest(1);
+ aset(teye_theta, -3);
+ arest(4);
+ 
+ aset(tblink, 1);
+ arest(1);
+ aset(tblink, 6);
+ arest(1);
+ aset(tblink, 6);
+ arest(1);
+ aset(tblink, 1);
+ aset(teye_theta, 0);
+ arest(1);
+ aset(tblink, 0);
+ arest(12);
+}
+function void
+movie_shot_arm(Movie_Shot *shot)
+{
+ asetf(tarm_abduct, 0.0211f);
+ if(fbool(0))
+ {
+  aset(tarm_bend, 11);
+ }
+ arest(6);
+}
+function void
+blink_2_frames(Movie_Shot *shot)
+{
+ aset(tblink, 1);
+ arest(1);
+ aset(tblink, 6);
+ arest(1);
+}
+function void
+open_eyes(Movie_Shot *shot)
+{
+ aset(tblink,0);
+}
+function void
+movie_shot_head_tilt(Movie_Shot *shot)
+{
+ {// NOTE: right tilt
+  aset(thead_theta, 0);
+  arest(2);
+  blink_2_frames(shot);
+  
+  aset(thead_theta, 1);
+  arest(1);
+  
+  aset(thead_theta, -6);
+  open_eyes(shot);
+  arest(6);
+ }
+ {// NOTE: up tilt
+  aset(thead_phi, -1);
+  arest(1);
+  aset(thead_phi, -2);
+  arest(6);
+  blink_2_frames(shot);
+ }
+ {// NOTE: left tilt
+  aset(thead_theta, -8);
+  aset(thead_phi,   -3);
+  arest(1);
+  aset(thead_theta, -7);
+  aset(thead_phi,   0);
+  arest(1);
+  aset(thead_theta, 4);  // NOTE: Need this in-between, otw it feels really jerky!
+  open_eyes(shot);
+  arest(1);
+ }
+ aset(thead_theta, 6); // rest
+ arest(8);
+}
+//-

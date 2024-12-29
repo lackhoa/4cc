@@ -1,11 +1,14 @@
 //-
 typedef u32 Slider_Flags;
-enum Slider_Flag
-{// NOTE: These are total hacks, man!
+enum
+{
  Slider_NULL           = 0,
- Slider_Camera_Aligned = bit_1,
+ //Slider_Camera_Aligned = bit_1,
+ 
+ //NOTE(kv) Are these really flags?
  Slider_Vertex         = bit_2,
  Slider_Vector         = bit_3,
+ 
  Slider_NOZ            = bit_4,
  Slider_Clamp_X        = bit_5,
  Slider_Clamp_Y        = bit_6,
@@ -15,32 +18,31 @@ enum Slider_Flag
 
 struct Fui_Options
 {
-#define FUI_OPTIONS(X)  \
-Slider_Flags flags;     \
-v1 delta_scale;         \
+#define FUI_OPTIONS(X) \
+Slider_Flags flags;    \
+v1 delta_scale;        \
  
  FUI_OPTIONS(X);
 };
 
+typedef i32 Type_Index;
+
+// NOTE(kv) Really should be called "controller" instead,
+// since multiple sliders is usually what we want... oh well!
 struct Slider
 {
- Basic_Type type;
- u32 pos;
- u32 size;
- u32 index;  //NOTE(kv) because I don't care
+ // NOTE(kv) @Memory Ideally there would only be a single type index.
+ Type_Index type;
+ 
+ Location location;
+ i32 index;  //NOTE(kv) Redundant, but I don't care rn
  union{
-  Fui_Options options;  // 8
+  Fui_Options options;
   struct { FUI_OPTIONS(X); };
  };
+ void *value;
 };
-
 //-
-#if 0
-#define fval
-#define fbool
-#endif
-//-
-
 myinline Fui_Options
 fopts(u32 flags, v1 delta_scale)
 {
@@ -65,7 +67,8 @@ fopts_add_delta_scale(Fui_Options options, v1 delta_scale){
 }
 
 myinline Fui_Options
-fopts(u32 flags){
+fopts(u32 flags)
+{
  Fui_Options result = {};
  result.flags=flags;
  return result;
@@ -77,14 +80,13 @@ global Fui_Options f20th = Fui_Options{0, 0.05f};
 global Fui_Options f10th = Fui_Options{0, 0.1f};
 global Fui_Options f10s  = Fui_Options{0, 10.f};
 
-//~ Statically generated sliders
-#if 0
-global Slider global_sliders[];
-#endif
-#include "generated/sliders0.gen.h"
+//-
+#define ReadSlider(TYPE, INDEX) \
+(*(TYPE *)global_sliders[INDEX].value)
 
-//~
-#define ReadSlider(type, index) \
-*(type *)(global_slider_values[index])
-
+// NOTE(kv) Pretty clever use of the assignment operator
+// NOTE(kv) You can put a static slider within a staic slider, pretty great! ;>
+#define ReadSliderRuntime(TYPE, INDEX, VALUE) \
+(*(TYPE *)global_sliders[INDEX].value = VALUE)
+//-
 //~EOF

@@ -149,7 +149,7 @@ prj_open_files_pattern_filter__rec(App *app, String path,
    }
    String full_path = push_stringf(scratch, "%.*s%.*s", string_expand(path), string_expand(filename));
    Buffer_Create_Flag buffer_create_flags = 0;
-   for_u32(index,0,config.limited_edit_list.count)
+   for_i32(index,0,config.limited_edit_list.count)
    {
     Temp_Memory_Block temp(scratch);
     String full_path_canon = system_get_canonical(scratch, full_path);
@@ -170,7 +170,7 @@ prj_open_files_pattern_filter(App *app, String dir, Prj_Open_File_Config config)
  ProfileScope(app, "open all files in directory pattern");
  Scratch_Block scratch(app);
  String directory = dir;
- if ( !character_is_slash(string_get_character(directory, directory.size-1)) )
+ if ( !is_file_slash(string_get_character(directory, directory.size-1)) )
  {
   directory = push_stringf(scratch, "%.*s/", string_expand(dir));
  }
@@ -183,7 +183,7 @@ prj_open_all_files_with_ext_in_hot(App *app, String8Array array, Prj_Open_File_F
  Scratch_Block scratch(app);
  String8 hot = push_hot_directory(app, scratch);
  String8 directory = hot;
- if (!character_is_slash(string_get_character(hot, hot.size - 1))) {
+ if (!is_file_slash(string_get_character(hot, hot.size - 1))) {
   directory = push_stringf(scratch, "%.*s/", string_expand(hot));
  }
  Prj_Open_File_Config config = {

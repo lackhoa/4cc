@@ -13,11 +13,7 @@ struct Pose_Field_Info{
  v1 denom;
 };
 //
-#if 0
-jump pose_field_info;
-#endif
-//
-global_const Pose_Field_Info pose_field_info[] = {
+global Pose_Field_Info pose_field_info[] = {
 #define X(NAME,DENOM) \
 Pose_Field_Info{ \
 .offset = i1(offsetof(Pose, NAME)), \
@@ -75,12 +71,9 @@ aset_func_int(Movie_Shot *shot, Pose_Field_Enum field, i1 value_int)
 #define aset(FIELD, VALUE)   aset_func_int(shot, PF_Enum_##FIELD, VALUE)
 #define asetf(FIELD, VALUE)  aset_func_float(shot, PF_Enum_##FIELD, VALUE)
 
-#define shot_function_return void
-#define shot_function_params Movie_Shot *shot
-//
-typedef shot_function_return Shot_Function(shot_function_params);
+typedef void Shot_Function(Movie_Shot *shot);
 
-//NOTE(kv): We don't zero the pose data,
+// NOTE(kv) We don't zero the pose data,
 // so we can play animations on top of each other.
 function void
 shot__init(Movie_Shot *shot, i1 requested_frame, Pose *updated_pose)

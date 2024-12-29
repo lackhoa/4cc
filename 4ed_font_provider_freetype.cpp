@@ -177,7 +177,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
     
     Face *face = 0;
     if (error == 0){
-        face = push_array_zero(arena, Face, 1);
+        face = push_array0(arena, Face, 1);
         
         u32 pt_size_unscaled = Max(description->parameters.pt_size, 8); 
         u32 pt_size = (u32)((f32)pt_size_unscaled*scale_factor);
@@ -218,7 +218,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         u16 index_count =
             codepoint_index_map_count(&face->advance_map.codepoint_to_index);
         face->advance_map.index_count = index_count;
-        face->advance_map.advance = push_array_zero(arena, f32, index_count);
+        face->advance_map.advance = push_array0(arena, f32, index_count);
         face->bounds = push_array(arena, Glyph_Bounds, index_count);
         
         Temp_Memory_Block temp_memory(arena);

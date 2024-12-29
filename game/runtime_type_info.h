@@ -26,14 +26,16 @@ enum I_Type_Kind{
  I_Type_Kind_Array,
 };
 
-#include "generated/basic_types.gen.h"
+#include "basic_types.gen.h"
 
-struct Type_Info{
+struct Type_Info
+{
  String name;
- i1     size;
+ i32    size;
  I_Type_Kind kind;
  i32 count;
- union{
+ union
+ {
   Basic_Type Basic_Type;
   darray(I_Struct_Member) members;
   struct{
@@ -45,11 +47,54 @@ struct Type_Info{
  };
 };
 
-#include "generated/basic_types_info.gen.h"
+#define type_info_of(TYPE) &Type_Info_##TYPE
 
+myinline b32
+equal(Type_Info *a, Type_Info *b)
+{
+ return a == b;
+}
+myinline b32
+is_basic_type(Type_Info *type)
+{
+ return type->kind == I_Type_Kind_Basic;
+}
+myinline b32
+is_struct(Type_Info *type)
+{
+ return type->kind == I_Type_Kind_Struct;
+}
+function i32
+get_member_index_by_name(Type_Info *type, String name)
+{
+ kv_assert(type->kind == I_Type_Kind_Struct);
+ for_i32(member_index, 0, type->members.count)
+ {
+  I_Struct_Member &member = type->members[member_index];
+  if(member.name == name)
+  {
+   return member_index;
+  }
+ }
+ InvalidCodePath;
+ return 0;
+}
+
+// NOTE we ensure that the member exists statically too!
+#define member_index_of(TYPE, MEMBER_NAME) \
+(void(((TYPE*)0)->MEMBER_NAME), \
+get_member_index_by_name(type_info_of(TYPE), strlit(#MEMBER_NAME)))
+
+#include "basic_types_info.gen.h"
+
+myinline Type_Info *
+type_info_from_basic_type(Basic_Type type)
+{
+ return &basic_types_info[type];
+}
 myinline usize
 get_basic_type_size(Basic_Type type)
 {
- return basic_types_info[type].size;
+ return type_info_from_basic_type(type)->size;
 }
 //-

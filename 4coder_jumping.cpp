@@ -75,14 +75,14 @@ parse_jump_location(String8 line)
   //NOTE(kv) Syntax: [kv_jump][FILE_PATH][BYTE_OFFSET]
   line = string_skip(line, kv_jump_magic.count);
   {//-file
-   i32 end_of_file_path = string_find_first(line, '[');
+   u64 end_of_file_path = string_find_first(line, '[');
    jump.location.file = string_prefix(line, end_of_file_path);
    line = string_skip(line, end_of_file_path+1);
   }
   {//-byte pos
-   i32 end_of_pos = string_find_first(line, ']');
+   u64 end_of_pos = string_find_first(line, ']');
    String pos_string = string_prefix(line, end_of_pos);
-   jump.location.pos = string_to_u64(pos_string, 10);
+   jump.location.pos = (i32)string_to_u64(pos_string, 10);
   }
   if(jump.location.pos){
    jump.success = true;
@@ -145,7 +145,7 @@ parse_jump_location(String8 line)
    
    u64 colon_pos1 = string_find_first(string_skip(line, start), ':') + start;
    if (line.size > colon_pos1 + 1){
-    if (character_is_slash(string_get_character(line, colon_pos1 + 1))){
+    if (is_file_slash(string_get_character(line, colon_pos1 + 1))){
      //NOTE(kv) This is just the colon in the path
      colon_pos1 = string_find_first(string_skip(line, colon_pos1 + 1), ':') + colon_pos1 + 1;
     }

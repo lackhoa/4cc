@@ -23,8 +23,7 @@ void main(void)
 {
  v4 world_pos = uniform_object_transform*V4(vattr_pos, 1.0);
  
- mat4 sfw = uniform_screen_from_world;
- gl_Position = sfw * world_pos;
+ gl_Position = uniform_clip_from_world * world_pos;
  
 #if IS_FIRST_PASS || IS_SECOND_PASS
  if (uniform_overlay) {
@@ -33,7 +32,7 @@ void main(void)
   v4 offsetted = world_pos;
   v3 camz = uniform_camera_axes[2];
   offsetted.xyz -= vattr_depth_offset * camz;
-  offsetted = sfw * offsetted;
+  offsetted = uniform_clip_from_world * offsetted;
   gl_Position.z = offsetted.z * gl_Position.w / offsetted.w;
  }
 #  if WRITE_PRIM_ID

@@ -241,16 +241,16 @@ typedef float v1;
 #define I8_MIN (-0x7f - 1)
 #define I8_MAX 0x7f
 
-#define U16_MIN 0u
-#define U16_MAX 0xffffu
-#define I16_MIN (-0x7fff - 1)
-#define I16_MAX 0x7fff
+#define u16_min 0u
+#define u16_max 0xffffu
+#define i16_min (-0x7fff - 1)
+#define i16_max 0x7fff
 
-#define F32_MIN 1.17549435e-38f
-#define F32_MAX 3.40282347e+38f
+#define f32_min 1.17549435e-38f
+#define f32_max 3.40282347e+38f
 
-#define F64_MIN 2.2250738585072014e-308
-#define F64_MAX 1.7976931348623157e+308
+#define f64_min 2.2250738585072014e-308
+#define f64_max 1.7976931348623157e+308
 
 #define function      static
 #define xfunction             //NOTE(kv) exported function
@@ -274,10 +274,35 @@ typedef float v1;
 #    define mytypeof __typeof__
 #endif
 
+#if COMPILER_MSVC
+#  define kv_fail __debugbreak()
+#else
+#  define kv_fail __builtin_trap()
+#endif
+
+#define kv_fail_ifnot(claim) do{if (!(claim)) { kv_fail; }} while(0)
+#if KV_INTERNAL
+#    define kv_assert                    kv_fail_ifnot
+#    define assert_defend(CLAIM, DEFEND) kv_fail_ifnot(CLAIM)
+#else
+#    define kv_assert(CLAIM)
+#    define assert_defend(CLAIM, DEFEND)   if (!(CLAIM))  { DEFEND; }
+#endif
+
+#if KV_INTERNAL
+#    define fail_in_debug  kv_fail
+#else
+#    define fail_in_debug
+#endif
+
+#define InvalidCodePath     fail_in_debug
+#define invalid_code_path   InvalidCodePath  //NOTE deprecated
+
+#define InvalidDefaultCase default: { invalid_code_path; };
+#define breakhere       do{ int please_break = 5; (void)please_break; }while(0)
+
 #define wrap_function(NAME)           NAME##__return NAME(NAME##__params)
 #define wrap_function_pointer(NAME)   NAME##__return (*NAME)(NAME##__params)
-/*#define x_wrap_function(NAME)           wrap_function(NAME);
-#define x_wrap_function_pointer(NAME)   wrap_function_pointer(NAME);*/
 
 #define for_inc(TYPE, VAR, MIN, MAX)  for(TYPE VAR=MIN; VAR<MAX; VAR++)
 
@@ -288,7 +313,13 @@ typedef float v1;
 #define for_i1  for_i32
 #define for_repeat(TIMES) for_i32(line_unique_var,0,TIMES)
 
-#define alen(array) (isize)(sizeof(array) / sizeof(*(array)))
+#define alen(array) isize(sizeof(array) / sizeof(*(array)))
+
+// NOTE(kv) I don't care if this isn't compiled out. My life is too short...
+myinline void assert_expr(b32 condition){ kv_assert(condition); }
+
+#define ArrayGetChecked(ARRAY, INDEX) \
+(assert_expr((INDEX) < alen(ARRAY)), ARRAY[INDEX])
 
 #define and &&
 #define or  ||
@@ -300,15 +331,16 @@ typedef float v1;
 struct String{
  union{u8 *str, *data; };
  union{ u64 size, len, length, count; };
- u8 &operator[](i32 index){
-  return str[index];
- }
+ u8 &operator[](i64 index){ return str[index]; }
 };
+typedef String Data_And_Size;
+
+myinline b32 is_empty(String s) { return s.count == 0; }
+myinline b32 not_empty(String s){ return s.count != 0; }
+
 struct File_Line
 {
  char *file;
  u32  line;
 };
-//-
-
 //-

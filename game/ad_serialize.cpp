@@ -12,7 +12,7 @@ write_binary_union(Writer *writer, Type_Info *type,
  i32 variant = read_enum(*type->discriminator_type, pvariant);
  
  darray(I_Union_Member) &union_members = type->union_members;
- for_u32(index,0,union_members.count){
+ for_i32(index,0,union_members.count){
   I_Union_Member &member = union_members[index];
   if(member.variant == variant){
    //NOTE(kv) pointer of member is the same as pointer to the union.
@@ -39,7 +39,7 @@ write_binary_func(Writer *writer, Type_Info *type, void *void_pointer)
    }
   }break;
   case I_Type_Kind_Struct:{
-   for_u32(member_index, 0, type->members.count){
+   for_i32(member_index, 0, type->members.count){
     I_Struct_Member &member = type->members[member_index];
     if(!member.unserialized){
      u8 *member_data = pointer+member.offset;
@@ -66,7 +66,7 @@ write_binary_func(Writer *writer, Type_Info *type, void *void_pointer)
    block_copy(&enum_value, pointer, type->size);
    write_lvalue(writer, enum_value);
   }break;
-  invalid_default_case;
+  InvalidDefaultCase;
  }
 }
 //-
@@ -92,46 +92,17 @@ write_size(writer, string, sizeof(string))
     write_lvalue(writer, time64);
    }
   }
-  {//-Camera
-   write_debug_string("cameras");
-   
-   i32 camera_count = GAME_VIEWPORT_COUNT;
-   write_lvalue(writer, camera_count);
-   
-   for_i32(camera_index, 0, GAME_VIEWPORT_COUNT){
-    Camera_Data *cam = &state->viewports[camera_index].target_camera;
-    write_binary(writer, cam);
-   }
-  }
   {//-Miscellaneous state
    write_debug_string("Serialized_State");
-   write_binary(writer, &state->Serialized_State);
-  }
-  {//-Modeler data
-   Modeler &m = state->modeler;
-   {//-Vertices
-    write_debug_string("vertices");
-    //NOTE(kv) Just in case we change the type of the count!
-    i32 vertex_count = m.vertices.count-1;
-    write_lvalue(writer, vertex_count);
-    for_i32(vi, 1, vertex_count+1){
-     write_binary(writer, &m.vertices[vi]);
-    }
+   for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
+   {
+    state->serialized.saved_viewports[viewport_index] =
+     state->viewports[viewport_index].saved;
    }
-   
-   if(0)
-   {//-Entities
-    write_debug_string("entities");
-    i32 curve_count = m.curves.count;
-    write_lvalue(writer, curve_count);
-    for_u32(entity_index,0,m.curves.count){
-     write_binary(writer, &m.curves[entity_index]);
-    }
-   }
+   write_binary(writer, &state->serialized);
   }
   write_debug_string("EOF");
  }
  return writer->ok;
 }
-
 //-

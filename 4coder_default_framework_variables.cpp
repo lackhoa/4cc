@@ -22,7 +22,7 @@ global Managed_ID buffer_map_id; //attachment
 global Managed_ID buffer_eol_setting; //attachment
 global Managed_ID buffer_lex_task; //attachment
 
-global Managed_ID sticky_jump_marker_handle; //attachment
+global Managed_ID sticky_jump_positions_handle; //attachment
 global Managed_ID attachment_tokens; //attachment
 
 ////////////////////////////////

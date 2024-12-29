@@ -2,21 +2,20 @@
 
 function v3 
 hue2rgb(v1 hue)
-{
- hue = cycle01(hue); //only use fractional part of hue, making it loop
- v1 r = absolute(hue * 6 - 3) - 1; //red
- v1 g = 2 - absolute(hue * 6 - 2); //green
- v1 b = 2 - absolute(hue * 6 - 4); //blue
- macro_clamp(0,r,1);
- macro_clamp(0,g,1);
- macro_clamp(0,b,1);
- v3 rgb = V3(r,g,b); //combine components
- return rgb;
+{// NOTE(kv) Source: https://www.ronja-tutorials.com/post/041-hsv-colorspace/
+ hue = 6 * cycle01(hue);
+ v1 r = absolute(hue - 3) - 1;
+ v1 g = 2 - absolute(hue - 2);
+ v1 b = 2 - absolute(hue - 4);
+ macro_clamp01(r);
+ macro_clamp01(g);
+ macro_clamp01(b);
+ return V3(r,g,b);
 }
 
 function v3 
 hsv_to_srgb(v1 h, v1 s, v1 v)
-{
+{// TODO(kv) Why is it "srgb" specifically?
  // hue
  v3 rgb = hue2rgb(h);
  for_i32(index,0,3)
@@ -75,12 +74,22 @@ linear_to_srgb(argb input)
  return argb_pack(value);
 }
 
+function v4
+argb_lightness(v4 color, v1 lightness)
+{
+ color.rgb *= lightness;
+ for_i32(i, 0, 3) {
+  ClampBot(color.e[i], 0.f);
+  ClampTop(color.e[i], 1.f);
+ }
+ return color;
+}
 function argb
 argb_lightness(argb color, v1 lightness)
-{
- v4 result = argb_unpack(color);
- result.rgb *= lightness;
- return argb_pack(result);
+{// NOTE Boy I really hate these...
+ v4 color_v4 = argb_unpack(color);
+ color_v4 = argb_lightness(color_v4, lightness);
+ return argb_pack(color_v4);
 }
 // NOTE: We now have the honor of converting colors to linear
 global argb argb_yellow      = srgb_to_linear(0xFF777700);
