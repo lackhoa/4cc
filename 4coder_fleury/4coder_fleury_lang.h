@@ -6,15 +6,15 @@
 struct F4_Index_ParseCtx;
 
 //~ NOTE(rjf): Indexes an entire file of a language and adds stuff to the code index.
-#define F4_LANGUAGE_INDEXFILE(name) void name(F4_Index_ParseCtx *ctx)
+#define F4_LANGUAGE_INDEXFILE(name)   void name(F4_Index_ParseCtx *ctx)
 typedef F4_LANGUAGE_INDEXFILE(F4_Language_IndexFile);
 
 //~ NOTE(rjf): Initializes lexer state.
-#define F4_LANGUAGE_LEXINIT(name) void name(void *state_ptr, String contents)
+#define F4_LANGUAGE_LEXINIT(name)     void name(void *state_ptr, Stringz contents)
 typedef F4_LANGUAGE_LEXINIT(F4_Language_LexInit);
 
 //~ NOTE(rjf): Lexes an entire file to produce tokens for the language (with breaks).
-#define F4_LANGUAGE_LEXFULLINPUT(name) b32 name(Arena *arena, Token_List *list, void *state_ptr, u64 max)
+#define F4_LANGUAGE_LEXFULLINPUT(name)    b32 name(Arena *arena, Token_List *list, void *state_ptr, u64 max)
 typedef F4_LANGUAGE_LEXFULLINPUT(F4_Language_LexFullInput);
 
 //~ NOTE(rjf): Figures out some language-specific contextual information given some

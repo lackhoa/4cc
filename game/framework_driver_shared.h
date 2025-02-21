@@ -1,23 +1,23 @@
 //-
-typedef v3 tvert;
-typedef v3 tvec;
-
 // NOTE: Name,Denom
 #define X_Pose_Fields(X) \
-X(thead_theta, 6) \
-X(thead_phi  , 6)  \
+X(thead_phi2, 6) \
+X(thead_theta2  , 6)  \
 X(thead_roll , 6)  \
 X(tblink     , 6)  \
-X(teye_theta , 6)  \
-X(teye_phi   , 6)  \
+X(teye_phi2, 6)  \
+X(teye_theta2   , 6)  \
 X(tarm_bend  , 18)  \
 X(tarm_abduct, 36)  \
 
-struct Pose{
+struct Pose
+{
 #define X(NAME,...)   v1 NAME;
  X_Pose_Fields(X);
 #undef X
 };
+
+typedef v3 tvec;
 
 #include "game_colors.cpp"
 #include "game_debug.h"
@@ -26,11 +26,85 @@ struct Pose{
 #include "4coder_kv_debug.h"
 #include "meta_game_shared.h"
 //-
+myinline tdim mkdim(v1 x){ return {x}; }
+
+myinline tvert mkvert(v1 x, v1 y, v1 z){ return {v3{x,y,z}}; }
+
+// TODO(kv) This function can be auto-generated.
+myinline tvert mkvert(v3 v){ return *(tvert*)&v; }
+
+myinline tvert mkvert(){ return {}; }
+myinline tvert mkvertx(v1 x){ tvert result = {}; result.x=x; return result; }
+myinline tvert mkverty(v1 y){ tvert result = {}; result.y=y; return result;  }
+myinline tvert mkvertz(v1 z){ tvert result = {}; result.z=z; return result; }
+
+// TODO(kv) deprecate these, just use "V3"
+myinline tvec mkvec(v1 x, v1 y, v1 z){ return v3{x,y,z}; }
+myinline tvec mkvec(v3 v){ return tvec(v); }
+myinline tvec mkvecx(v1 x){ return tvec{x,0,0}; }
+myinline tvec mkvecy(v1 y){ return tvec{0,y,0}; }
+myinline tvec mkvecz(v1 z){ return tvec{0,0,z}; }
+
+// NOTE(kv) Having different types has *some* benefit...
+myinline tvert
+operator *(mat4 const&mat, tvert vert)
+{
+ return mkvert(mat4vert(mat, vert.v));
+}
+myinline tvert
+operator +(tvert vert, tvec vec)
+{
+ return mkvert(vert.v + vec);
+}
+myinline void
+operator +=(tvert &vert, v3 offset)
+{
+ vert.v += offset;
+}
+myinline tvert
+operator -(tvert vert, tvec vec)
+{
+ return mkvert(vert.v - vec);
+}
+myinline tvec
+operator -(tvert a, tvert b)
+{// NOTE(kv) Delta vector between two vertices
+ return mkvec(a.v - b.v);
+}
+myinline tvert
+lerp(tvert a, v1 t, tvert b)
+{// NOTE(kv) Lerp between vertices
+ return mkvert(lerp(a.v, t, b.v));
+}
+myinline tvert
+negateX(tvert vert)
+{
+ vert.x = -vert.x;
+ return vert;
+}
+// NOTE(kv) You have to normalize it first, but ya know...
+// trying to be flexible here...
+myinline tnormal mk_normal(v3 v){ return {v}; };
+global tnormal normal_x = {V3x(1.f)};
+global tnormal normal_y = {V3y(1.f)};
+global tnormal normal_z = {V3z(1.f)};
+
+#define TypeInfoPointerList(X) \
+X(v1)  X(v2)  X(v3)  X(v4) \
+X(i1)  X(i2)  X(i3)  X(i4) \
+X(FUI_Line_Params) X(tdim) X(tvert) X(tnormal) \
+
+struct Type_Info_Pointers
+{
+#define X(T)      struct Type_Info *T;
+ TypeInfoPointerList(X)
+#undef X
+};
+//-
 struct Viewport;
 struct Modeler;
 struct Render_Target;
 struct Render_Config;
-//-
 
 struct Poly_Flags{ u32 v; };
 enum Poly_Flag
@@ -56,7 +130,7 @@ to_poly_flags(Fill_Flags flags)
 
 struct Fill_Params
 {
- // NOTE(kv) Singular color fills still kinda make sense for debugging/highlighting.
+ // NOTE(kv) Singular color fills still makes sense for debugging/highlighting.
  argb color;
  Fill_Flags flags;
 };
@@ -74,39 +148,44 @@ struct Line_Params
 };
 struct Paint_Params
 {
+ // NOTE(kv) "painting" is used f.ex for alignment checks,
+ // it MUST NOT disable sending data, because cursor selection still needs them.
+ b32 painting;
+ 
+ Line_Params line;
+ Fill_Params fill;
+ 
  v1 radius_mult;
  v1 nslice_per_meter;
  argb line_color;
  v1 line_depth_offset;
  v1 fill_depth_offset;
- 
- Line_Params line;
- Fill_Params fill;
 };
 
 struct Bezier
 {
- v3 e[4];
- myinline operator v3 *(){ return e; };
- myinline v3 &operator[](i32 index){ return e[index]; }
+ tvert e[4];
+ myinline operator tvert *(){ return e; };
+ myinline tvert &operator[](i32 index){ return e[index]; }
 };
 typedef Bezier Bez;
 
-template<class T>
-function T
-bezier_sample(T P[4], v1 u)
+template<class TYPE>
+function TYPE
+bezier_sample(TYPE P[4], v1 t)
 {
- v1 U = 1-u;
- return (1*cubed(U)      *P[0] +
-         3*(u)*squared(U)*P[1] +
-         3*squared(u)*(U)*P[2] +
-         1*cubed(u)      *P[3]);
+ v1 T = 1-t;
+ return (1*cubed(T)      *P[0] +
+         3*(t)*squared(T)*P[1] +
+         3*squared(t)*(T)*P[2] +
+         1*cubed(t)      *P[3]);
 }
-// note(kv) By the brilliance of C++, we have to do crap like this.
-myinline v3
-bezier_sample(Bezier bez, v1 u)
+// NOTE(kv) By the brilliance of C++, we have to do crap like this.
+myinline tvert
+bezier_sample(tvert *bez, v1 u)
 {
- return bezier_sample(bez.e, u);
+ v3 result = bezier_sample((v3 *)bez, u);
+ return mkvert(result);
 }
 myinline v1
 bezier_sample(v4 vec, v1 u)
@@ -116,7 +195,8 @@ bezier_sample(v4 vec, v1 u)
 
 // NOTE: Actually bernstein basis
 function v1
-cubic_bernstein(i32 index, v1 t){
+cubic_bernstein(i32 index, v1 t)
+{
  v1 factor = v1((index == 1 || index == 2) ? 3 : 1);
  v1 result = factor * integer_power(t,index) * integer_power(1.f-t, 3-index);
  return result;
@@ -129,9 +209,10 @@ quad_bernstein(i32 index, v1 t){
               squared(t));
  return result;
 }
-inline Bezier
-negateX(Bezier line){
- for_i32(i,0,4) { line[i].x = -line[i].x; }
+myinline Bezier
+negateX(Bezier line)
+{
+ for_i32(i,0,4){ line[i].x = -line[i].x; }
  return line;
 }
 myinline Bezier
@@ -143,7 +224,7 @@ mat4bez(mat4 const &mat, Bezier const &bez)
  Bezier result;
  for_i32(i, 0, 4)
  {
-  result[i] = mat4vert(mat, bez.e[i]);
+  result[i] = mat * bez.e[i];
  }
  return result;
 }
@@ -159,14 +240,16 @@ operator *(mat4 const &mat, Bezier const &bez)
 }
 
 struct Patch{
- v3 e[4][4];
- typedef v3 Array4x4[4][4];  // @stroustrup
+ tvert e[4][4];
+ typedef tvert Array4x4[4][4];  // #stroustrup
  operator Array4x4&() { return e; }
 };
 function Bezier
-get_column(Patch const&surface, i32 col){
+get_column(Patch const&surface, i32 col)
+{
  Bezier result;
- for_i32(index,0,4) {
+ for_i32(index,0,4)
+ {
   result[index] = surface.e[index][col];
  }
  return result;
@@ -184,7 +267,7 @@ enum Prim_Type : u8{
 inline Prim_Type type_from_prim_id(u32 id){ return Prim_Type(id >> 24); }
 inline b32 prim_id_is_data(u32 id){ return type_from_prim_id(id) != 0; }
 
-struct Prim_XID{
+/*struct Prim_XID{
  u32       id;
  Prim_Type type;
  i32       index;
@@ -201,18 +284,7 @@ prim_xid_from_id(u32 id){
  result.type  = type_from_prim_id(id);
  result.index = index_from_prim_id(id);
  return result;
-}
-//TODO(kv) this type bureaucracy needs to go!
-myinline u32
-prim_id_from_vertex_index(Vertex_Index i){
- u32 type = u32(Prim_Vertex) << 24;
- return (u32)(i.v) | type;
-}
-myinline u32
-prim_id_from_curve_index(Curve_Index i){
- u32 type = u32(Prim_Curve) << 24;
- return (u32)(i.v) | type;
-}
+}*/
 //~
 global char *global_debug_scope;
 #define vertex_block(NAME) SetInBlock(global_debug_scope, NAME)
@@ -373,11 +445,13 @@ struct Model
  darray(Recorded_Primitive) primitives;
 };
 struct Viewport
-{
+{// NOTE For init code, view @game_init
  i32 index;  // NOTE(kv) Redundant data
  Camera_Data camera;  // NOTE(kv) Current camera, as opposed to the target camera, which is serialized.
  Arena render_arena;
  v2 clip_radius;  // TODO(kv) @Cleanup This is due to "the issue" with separating update and render, cut it out!
+ v1 previous_phi_snap;
+ v1 current_phi_snap;
  
  union
  {
@@ -420,9 +494,6 @@ struct Painter
  i32 viz_level;
  b32 ignore_radii;
  b32 ignore_alignment_min;
- // NOTE(kv) "painting_disabled" is used f.ex for alignment checks,
- // it must not actually disable sending data, because we always want to know where things are.
- b32 painting_disabled;
  Viewport *viewport;
  b32 show_grid;
  argb shade_color;  // NOTE(kv) Useful enough to keep I guess.
@@ -516,6 +587,7 @@ struct Framework_API
 #undef X
  
  Tweak_Variables *tweaks;
+ Type_Info_Pointers types;
 };
 //-
 
@@ -611,7 +683,7 @@ is_valid(Driver_API *driver)
  return driver->dll.handle != 0;
 }
 
-global Driver_Data driver_data;
+global Driver_Data driver_data;  // see @driver_dll_entry
 
 function Range_i64
 resolve_location(i32 file, Range_i16 range)
@@ -649,11 +721,11 @@ set_bone_transform(mat4i const&world_from_bone)
  push_object_transform_to_target(p->target, cast(mat4*)&world_from_bone.m);
 }
 
-function v3
+function tvert
 camera_world_position(Camera const &camera)
 {// NOTE(kv) Don't even think about trying to get ahead by fetching the last row
  // of "cam_from_world", the 4x4 transform isn't invertible via transpose!
- v3 result = get_column(camera.world_from_cam, 3).xyz;
+ tvert result = mkvert(get_column(camera.world_from_cam, 3).xyz);
  return result;
 }
 function v3
@@ -664,7 +736,7 @@ camera_object_position()
  return result;
 }
 function void
-push_view_vector(tvert object_center)
+push_view_vector(v3 object_center)
 {
  Painter *p = painter;
  v3 camera_obj = camera_object_position();
@@ -734,7 +806,8 @@ pop_bone_painter()
  mat4i &parent = current_world_from_bone();
  set_bone_transform(parent);
 }
-#define bone_block(id)  push_bone_painter(id); defer(pop_bone_painter();)
+#define BoneBlock(id)  push_bone_painter(id); defer(pop_bone_painter();)
+#define BoneBlockApplied(from)    BoneBlock(from)
 //-
 
 #include "4coder_debug_value.h"

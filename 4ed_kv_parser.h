@@ -104,9 +104,10 @@ Ed_Parser_Recovery line_unique_var = ed_parser_recovery_begin(parser_pointer);
 //-Constructors
 #if ED_PARSER_BUFFER
 function Ed_Parser
-make_ep_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
-                    Arena *string_arena=0,
-                    Scan_Direction direction=Scan_Forward){
+ed_parser_from_buffer(App *app, Buffer_ID buffer, Token_Iterator const&it,
+                      Arena *string_arena=0,
+                      Scan_Direction direction=Scan_Forward)
+{
  b32 ok;
  if(it.kind == TokenIterator_Array){
   ok = it.array.count != 0;

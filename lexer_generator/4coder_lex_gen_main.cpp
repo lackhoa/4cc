@@ -40,7 +40,7 @@ struct Token_Kind_Node{
 struct Token_Kind_Set{
     Token_Kind_Node *first;
     Token_Kind_Node *last;
-    i1 count;
+    i32 count;
     Table_Data_u64 name_to_ptr;
 };
 
@@ -54,7 +54,7 @@ struct Keyword_Set{
     Keyword_Set *next;
     Keyword *first;
     Keyword *last;
-    i1 count;
+    i32 count;
     b32 has_fallback_token_kind;
     String fallback_name;
     Table_Data_u64 name_to_ptr;
@@ -65,7 +65,7 @@ struct Keyword_Set{
 struct Keyword_Set_List{
     Keyword_Set *first;
     Keyword_Set *last;
-    i1 count;
+    i32 count;
 };
 
 struct Keyword_Layout{
@@ -76,10 +76,10 @@ struct Keyword_Layout{
     u64 *hashes;
     u64 *contributed_error;
     Keyword **slots;
-    i1 slot_count;
+    i32 slot_count;
 };
 
-typedef i1 Flag_Reset_Rule;
+typedef i32 Flag_Reset_Rule;
 enum{
     FlagResetRule_AutoZero,
     FlagResetRule_KeepState,
@@ -94,18 +94,18 @@ struct Flag{
     
     b32 optimized_in;
     String base_name;
-    i1 number;
-    i1 index;
+    i32 number;
+    i32 index;
     u32 value;
 };
 
 struct Flag_Set{
     Flag *first;
     Flag *last;
-    i1 count;
+    i32 count;
 };
 
-typedef i1 Emit_Handler_Kind;
+typedef i32 Emit_Handler_Kind;
 enum{
     EmitHandlerKind_Direct,
     EmitHandlerKind_Keywords,
@@ -132,17 +132,17 @@ struct Emit_Check{
 struct Emit_Check_List{
     Emit_Check *first;
     Emit_Check *last;
-    i1 count;
+    i32 count;
 };
 
 struct Emit_Rule{
     Emit_Check_List emit_checks;
     Emit_Handler *first;
     Emit_Handler *last;
-    i1 count;
+    i32 count;
 };
 
-typedef i1 Action_Kind;
+typedef i32 Action_Kind;
 enum{
     ActionKind_SetFlag,
     ActionKind_ZeroFlags,
@@ -168,16 +168,16 @@ struct Action{
 struct Action_List{
     Action *first;
     Action *last;
-    i1 count;
+    i32 count;
 };
 
-typedef i1 Action_Context;
+typedef i32 Action_Context;
 enum{
     ActionContext_Normal,
     ActionContext_EndOfFile,
 };
 
-typedef i1 Transition_Consume_Rule;
+typedef i32 Transition_Consume_Rule;
 enum{
     Transition_Consume,
     Transition_NoConsume,
@@ -201,19 +201,19 @@ struct Field_Pin_List{
     // A list with nothing in it is _always_ the "full set".
     Field_Pin *first;
     Field_Pin *last;
-    i1 count;
+    i32 count;
 };
 
 struct Field_Set{
     // This set is the union of the set represented by each list.
     Field_Pin_List *first;
     Field_Pin_List *last;
-    i1 count;
+    i32 count;
 };
 
 struct Input_Set{
     u16 *inputs;
-    i1 count;
+    i32 count;
 };
 
 struct Condition_Node{
@@ -225,10 +225,10 @@ struct Condition_Node{
 struct Condition_Set{
     Condition_Node *first;
     Condition_Node *last;
-    i1 count;
+    i32 count;
 };
 
-typedef i1 Transition_Case_Kind;
+typedef i32 Transition_Case_Kind;
 enum{
     TransitionCaseKind_NONE,
     
@@ -262,7 +262,7 @@ struct Transition{
 struct Transition_List{
     Transition *first;
     Transition *last;
-    i1 count;
+    i32 count;
 };
 
 struct Transition_Ptr_Node{
@@ -273,25 +273,26 @@ struct Transition_Ptr_Node{
 struct Transition_Ptr_Set{
  Transition_Ptr_Node *first;
  Transition_Ptr_Node *last;
- i1 count;
+ i32 count;
 };
 
-struct State{
-    State *next;
-    Transition_List transitions;
-    String pretty_name;
-    
-    b32 optimized_in;
-    i1 number;
-    Transition_Ptr_Set back_references;
-    
-    Action_List on_entry_actions;
+struct State
+{
+ State *next;
+ Transition_List transitions;
+ String pretty_name;
+ 
+ b32 optimized_in;
+ i32 number;
+ Transition_Ptr_Set back_references;
+ 
+ Action_List on_entry_actions;
 };
 
 struct State_Set{
     State *first;
     State *last;
-    i1 count;
+    i32 count;
 };
 
 struct Lexer_Model{
@@ -319,13 +320,13 @@ struct Flag_Bucket{
     String pretty_name;
     Flag_Ptr_Node *first;
     Flag_Ptr_Node *last;
-    i1 max_bits;
-    i1 count;
+    i32 max_bits;
+    i32 count;
     
-    i1 number_of_variables;
+    i32 number_of_variables;
 };
 
-typedef i1 Flag_Bind_Property;
+typedef i32 Flag_Bind_Property;
 enum{
     FlagBindProperty_Free,
     FlagBindProperty_Bound,
@@ -346,14 +347,14 @@ struct Partial_Transition{
 struct Partial_Transition_List{
     Partial_Transition *first;
     Partial_Transition *last;
-    i1 count;
+    i32 count;
 };
 
 struct Grouped_Input_Handler{
     Grouped_Input_Handler *next;
     
     u8 inputs[256];
-    i1 input_count;
+    i32 input_count;
     b8 inputs_used[256];
     
     Partial_Transition_List partial_transitions;
@@ -362,7 +363,7 @@ struct Grouped_Input_Handler{
 struct Grouped_Input_Handler_List{
     Grouped_Input_Handler *first;
     Grouped_Input_Handler *last;
-    i1 count;
+    i32 count;
     
     Grouped_Input_Handler *group_with_biggest_input_set;
 };
@@ -380,7 +381,7 @@ struct Operator{
 struct Operator_Set{
     Operator *first;
     Operator *last;
-    i1 count;
+    i32 count;
     Table_Data_u64 lexeme_to_ptr;
 };
 
@@ -414,62 +415,69 @@ struct Character_Set{
 
 function void
 smi_primary_init(Base_Allocator *allocator, Lexer_Primary_Context *ctx){
-    ctx->allocator = allocator;
-    ctx->arena = make_arena();
-    ctx->model.root = 0;
-    ctx->tokens.name_to_ptr = make_table_Data_u64(allocator, 400);
+ ctx->allocator = allocator;
+ ctx->arena = make_arena();
+ ctx->model.root = 0;
+ ctx->tokens.name_to_ptr = make_table_Data_u64(allocator, 400);
 }
 
 function b32
-smi_try_add_token(Lexer_Primary_Context *ctx, String name, Token_Base_Kind base_kind){
-    b32 result = false;
-    Token_Kind_Set *set = &ctx->tokens;
-    Table_Lookup lookup = table_lookup(&set->name_to_ptr, make_data(name.str, name.size));
-    if (!lookup.found_match){
-        Token_Kind_Node *node = push_array_zero(&ctx->arena, Token_Kind_Node, 1);
-        node->name = push_stringz(&ctx->arena, name);
-        node->base_kind = base_kind;
-        table_insert(&set->name_to_ptr, make_data(node->name.str, node->name.size), (u64)PtrAsInt(node));
-        sll_queue_push(set->first, set->last, node);
-        set->count += 1;
-        result = true;
-    }
-    return(result);
+smi_try_add_token_kind(Lexer_Primary_Context *ctx, String name, Token_Base_Kind base_kind)
+{
+ b32 result = false;
+ Token_Kind_Set *set = &ctx->tokens;
+ Table_Lookup lookup = table_lookup(&set->name_to_ptr, make_data(name.str, name.size));
+ if(!lookup.found_match)
+ {
+  Token_Kind_Node *node = push_array_zero(&ctx->arena, Token_Kind_Node, 1);
+  node->name = push_stringz(&ctx->arena, name);
+  node->base_kind = base_kind;
+  
+  table_insert(&set->name_to_ptr, make_data(node->name.str, node->name.size), (u64)PtrAsInt(node));
+  sll_queue_push(set->first, set->last, node);
+  set->count += 1;
+  result = true;
+ }
+ return(result);
 }
 
 function b32
-smi_key(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, String lexeme, Token_Base_Kind base_kind){
-    b32 result = false;
-    Table_Lookup lookup = table_lookup(&set->name_to_ptr, make_data(name.str, name.size));
-    if (!lookup.found_match){
-        lookup = table_lookup(&set->lexeme_to_ptr, make_data(lexeme.str, lexeme.size));
-        if (!lookup.found_match){
-            if (smi_try_add_token(ctx, name, base_kind)){
-                Keyword *key = push_array_zero(&ctx->arena, Keyword, 1);
-                key->name = push_stringz(&ctx->arena, name);
-                key->lexeme = push_stringz(&ctx->arena, lexeme);
-                table_insert(&set->name_to_ptr, make_data(key->name.str, key->name.size), (u64)PtrAsInt(key));
-                table_insert(&set->lexeme_to_ptr, make_data(key->lexeme.str, key->lexeme.size), (u64)PtrAsInt(key));
-                sll_queue_push(set->first, set->last, key);
-                set->count += 1;
-                result = true;
-            }
-        }
-    }
-    return(result);
+smi_keyword(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, String lexeme, Token_Base_Kind base_kind)
+{
+ b32 result = false;
+ Table_Lookup lookup = table_lookup(&set->name_to_ptr, make_data(name.str, name.size));
+ if (!lookup.found_match){
+  lookup = table_lookup(&set->lexeme_to_ptr, make_data(lexeme.str, lexeme.size));
+  if (!lookup.found_match){
+   if (smi_try_add_token_kind(ctx, name, base_kind)){
+    Keyword *key = push_array_zero(&ctx->arena, Keyword, 1);
+    key->name = push_stringz(&ctx->arena, name);
+    key->lexeme = push_stringz(&ctx->arena, lexeme);
+    table_insert(&set->name_to_ptr, make_data(key->name.str, key->name.size), (u64)PtrAsInt(key));
+    table_insert(&set->lexeme_to_ptr, make_data(key->lexeme.str, key->lexeme.size), (u64)PtrAsInt(key));
+    sll_queue_push(set->first, set->last, key);
+    set->count += 1;
+    result = true;
+   }
+  }
+ }
+ return(result);
 }
 
 function b32
-smi_key_fallback(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, Token_Base_Kind base_kind){
-    b32 result = false;
-    if (!set->has_fallback_token_kind){
-        if (smi_try_add_token(ctx, name, base_kind)){
-            set->has_fallback_token_kind = true;
-            set->fallback_name = push_stringz(&ctx->arena, name);
-            result = true;
-        }
-    }
-    return(result);
+smi_keyword_fallback(Lexer_Primary_Context *ctx, Keyword_Set *set, String name, Token_Base_Kind base_kind)
+{
+ b32 result = false;
+ if(!set->has_fallback_token_kind)
+ {
+  if(smi_try_add_token_kind(ctx, name, base_kind))
+  {
+   set->has_fallback_token_kind = true;
+   set->fallback_name = push_stringz(&ctx->arena, name);
+   result = true;
+  }
+ }
+ return(result);
 }
 
 function State*
@@ -503,31 +511,34 @@ smi_emit_handler__inner(Arena *arena, Emit_Rule *rule, Emit_Handler_Kind kind, F
     handler->kind = kind;
     handler->flag_check = flag_check;
     if (rule != 0){
-        sll_queue_push(rule->first, rule->last, handler);
-        rule->count += 1;
-    }
-    return(handler);
+  sll_queue_push(rule->first, rule->last, handler);
+  rule->count += 1;
+ }
+ return(handler);
 }
 
 function Emit_Handler*
-smi_emit_handler(Arena *arena, Emit_Rule *rule, String name, Flag *flag_check){
-    Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_Direct, flag_check);
-    handler->token_name = name;
-    return(handler);
+smi_emit_handler(Arena *arena, Emit_Rule *rule, String name, Flag *flag_check)
+{
+ Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_Direct, flag_check);
+ handler->token_name = name;
+ return(handler);
 }
 
 function Emit_Handler*
-smi_emit_handler(Arena *arena, Emit_Rule *rule, Keyword_Set *set, Flag *flag_check){
-    Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_Keywords, flag_check);
-    handler->keywords = set;
-    return(handler);
+smi_emit_handler(Arena *arena, Emit_Rule *rule, Keyword_Set *set, Flag *flag_check)
+{
+ Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_Keywords, flag_check);
+ handler->keywords = set;
+ return(handler);
 }
 
 function Emit_Handler*
-smi_emit_handler_delim(Arena *arena, Emit_Rule *rule, Keyword_Set *set, Flag *flag_check){
-    Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_KeywordsDelim, flag_check);
-    handler->keywords = set;
-    return(handler);
+smi_emit_handler_delim(Arena *arena, Emit_Rule *rule, Keyword_Set *set, Flag *flag_check)
+{
+ Emit_Handler *handler = smi_emit_handler__inner(arena, rule, EmitHandlerKind_KeywordsDelim, flag_check);
+ handler->keywords = set;
+ return(handler);
 }
 
 function void
@@ -586,13 +597,13 @@ smi_append_emit(Arena *arena, Action_List *list, Emit_Rule *emit){
 #if 0
 function void
 CHECK_PIN_LIST(Field_Pin_List *list){
- i1 counter = 0;
+ i32 counter = 0;
  for (Field_Pin *pin = list->first;
       pin != 0;
       pin = pin->next){
   counter += 1;
  }
- Assert(counter == list->count);
+ kv_assert(counter == list->count);
 }
 #else
 #define CHECK_PIN_LIST(x)
@@ -845,9 +856,9 @@ smi_input_set_subtract(Arena *arena, Input_Set a, Input_Set b){
     if (a.count > 0){
         Temp_Memory restore_point = begin_temp_memory(arena);
         result = smi_input_set_copy(arena, a);
-        for (i1 i = 0; i < result.count; i += 1){
+        for (i32 i = 0; i < result.count; i += 1){
             b32 is_subtracted = false;
-            for (i1 j = 0; j < b.count; j += 1){
+            for (i32 j = 0; j < b.count; j += 1){
                 if (result.inputs[i] == b.inputs[j]){
                     is_subtracted = true;
                     break;
@@ -873,9 +884,9 @@ smi_input_set_intersect(Arena *arena, Input_Set a, Input_Set b){
     if (a.count > 0 && b.count > 0){
         Temp_Memory restore_point = begin_temp_memory(arena);
         result = smi_input_set_copy(arena, a);
-        for (i1 i = 0; i < result.count; i += 1){
+        for (i32 i = 0; i < result.count; i += 1){
             b32 is_shared = false;
-            for (i1 j = 0; j < b.count; j += 1){
+            for (i32 j = 0; j < b.count; j += 1){
                 if (result.inputs[i] == b.inputs[j]){
                     is_shared = true;
                     break;
@@ -902,9 +913,9 @@ smi_input_set_union(Arena *arena, Input_Set a, Input_Set b){
         result.inputs = push_array_zero(arena, u16, a.count + b.count);
         block_copy_count(result.inputs, a.inputs, a.count);
         result.count = a.count;
-        for (i1 i = 0; i < b.count; i += 1){
+        for (i32 i = 0; i < b.count; i += 1){
             b32 is_duplicate = false;
-            for (i1 j = 0; j < result.count; j += 1){
+            for (i32 j = 0; j < result.count; j += 1){
                 if (result.inputs[j] == b.inputs[i]){
                     is_duplicate = true;
                     break;
@@ -922,7 +933,7 @@ smi_input_set_union(Arena *arena, Input_Set a, Input_Set b){
 function Input_Set
 smi_input_set_construct(Arena *arena, String characters){
     Input_Set result = {};
-    result.count = (i1)characters.size;
+    result.count = (i32)characters.size;
     result.inputs = push_array_zero(arena, u16, result.count);
     for (u64 i = 0; i < characters.size; i += 1){
         result.inputs[i] = (u16)characters.str[i];
@@ -1125,57 +1136,59 @@ smi_condition(Arena *arena, Input_Set inputs, Field_Set fields){
 function Transition*
 smi_case(Lexer_Primary_Context *ctx, State *state,
          Transition_Case_Kind kind, String characters, Flag *flag_check,b32 flag_check_value,
-         State *dst, Transition_Consume_Rule consume_rule, Emit_Rule *emit){
-    Transition *transition = push_array_zero(&ctx->arena, Transition, 1);
-    transition->parent_state = state;
-    
-    switch (kind){
-        default:
-        {
-            transition->condition.kind = kind;
-        }break;
-        
-        case TransitionCaseKind_CharaterArray:
-        {
-            transition->condition.kind = TransitionCaseKind_ConditionSet;
-            Input_Set inputs = smi_input_set_construct(&ctx->arena, characters);
-            Field_Set fields = smi_field_set_construct(&ctx->arena,
-                                                       flag_check, flag_check_value);
-            transition->condition.condition_set = smi_condition(&ctx->arena, inputs, fields);
-        }break;
-        
-        case TransitionCaseKind_EOF:
-        {
-            transition->condition.kind = TransitionCaseKind_ConditionSet;
-            Input_Set inputs = smi_input_set_construct_eof(&ctx->arena);
-            Field_Set fields = smi_field_set_construct(&ctx->arena,
-                                                       flag_check, flag_check_value);
-            transition->condition.condition_set = smi_condition(&ctx->arena, inputs, fields);
-        }break;
-        
-        case TransitionCaseKind_Fallback:
-        {
-            transition->condition.kind = TransitionCaseKind_ConditionSet;
-            Input_Set inputs = smi_input_set_construct_fallback(&ctx->arena);
-            Field_Set fields = smi_field_set_construct(&ctx->arena,
-                                                       flag_check, flag_check_value);
-            transition->condition.condition_set = smi_condition(&ctx->arena, inputs, fields);
-        }break;
-    }
-    
-    transition->dst_state = dst;
-    
-    if (consume_rule == Transition_Consume){
-        smi_append_consume(&ctx->arena, &transition->activation_actions);
-    }
-    
-    if (emit != 0){
-        smi_append_emit(&ctx->arena, &transition->activation_actions, emit);
-    }
-    
-    zdll_push_back(state->transitions.first, state->transitions.last, transition);
-    state->transitions.count += 1;
-    return(transition);
+         State *dst, Transition_Consume_Rule consume_rule, Emit_Rule *emit)
+{
+ Transition *transition = push_array_zero(&ctx->arena, Transition, 1);
+ transition->parent_state = state;
+ 
+ switch (kind)
+ {
+  default:
+  {
+   transition->condition.kind = kind;
+  }break;
+  
+  case TransitionCaseKind_CharaterArray:
+  {
+   transition->condition.kind = TransitionCaseKind_ConditionSet;
+   Input_Set inputs = smi_input_set_construct(&ctx->arena, characters);
+   Field_Set fields = smi_field_set_construct(&ctx->arena,
+                                              flag_check, flag_check_value);
+   transition->condition.condition_set = smi_condition(&ctx->arena, inputs, fields);
+  }break;
+  
+  case TransitionCaseKind_EOF:
+  {
+   transition->condition.kind = TransitionCaseKind_ConditionSet;
+   Input_Set inputs = smi_input_set_construct_eof(&ctx->arena);
+   Field_Set fields = smi_field_set_construct(&ctx->arena,
+                                              flag_check, flag_check_value);
+   transition->condition.condition_set = smi_condition(&ctx->arena, inputs, fields);
+  }break;
+  
+  case TransitionCaseKind_Fallback:
+  {
+   transition->condition.kind = TransitionCaseKind_ConditionSet;
+   Input_Set inputs = smi_input_set_construct_fallback(&ctx->arena);
+   Field_Set fields = smi_field_set_construct(&ctx->arena,
+                                              flag_check, flag_check_value);
+   transition->condition.condition_set = smi_condition(&ctx->arena, inputs, fields);
+  }break;
+ }
+ 
+ transition->dst_state = dst;
+ 
+ if (consume_rule == Transition_Consume){
+  smi_append_consume(&ctx->arena, &transition->activation_actions);
+ }
+ 
+ if (emit != 0){
+  smi_append_emit(&ctx->arena, &transition->activation_actions, emit);
+ }
+ 
+ zdll_push_back(state->transitions.first, state->transitions.last, transition);
+ state->transitions.count += 1;
+ return(transition);
 }
 
 ////////////////////////////////
@@ -1224,17 +1237,23 @@ sm_select_key_set(Keyword_Set *set){
 
 function void
 sm_select_emit(Emit_Rule *emit){
-    helper_ctx.selected_emit_rule = emit;
+ helper_ctx.selected_emit_rule = emit;
 }
 
 function void
 sm_select_transition(Transition *transition){
-    helper_ctx.selected_transition = transition;
+ helper_ctx.selected_transition = transition;
 }
 
 function b32
-sm_direct_token_kind(char *str){
-    return(smi_try_add_token(&helper_ctx.primary_ctx, SCu8(str), helper_ctx.selected_base_kind));
+sm_direct_token_kind(Token_Base_Kind kind, char *name)
+{// NOTE(kv) I don't know what "direct" means...
+ return(smi_try_add_token_kind(&helper_ctx.primary_ctx, SCu8(name), kind));
+}
+function b32
+sm_direct_token_kind(char *name)
+{
+ return(sm_direct_token_kind(helper_ctx.selected_base_kind, name));
 }
 
 function Operator_Set*
@@ -1246,13 +1265,16 @@ sm_begin_op_set(void){
 }
 
 function b32
-sm_op(String lexeme, String name){
+sm_op(String lexeme, String name)
+{
  b32 result = false;
  Operator_Set *set = helper_ctx.selected_op_set;
  Table_Lookup lookup = table_lookup(&set->lexeme_to_ptr, make_data(lexeme.str, lexeme.size));
- //NOTE(kv) This condition means that we only allow one lexeme to map to one operator.
- if (!lookup.found_match){
-  if (smi_try_add_token(&helper_ctx.primary_ctx, name, helper_ctx.selected_base_kind)){
+ // NOTE(kv) This condition means that we only allow one lexeme to map to one operator.
+ if(!lookup.found_match)
+ {
+  if(smi_try_add_token_kind(&helper_ctx.primary_ctx, name, helper_ctx.selected_base_kind))
+  {
    Operator *op = push_array_zero(helper_ctx.arena, Operator, 1);
    op->name = push_stringz(helper_ctx.arena, name);
    op->op = push_stringz(helper_ctx.arena, lexeme);
@@ -1279,7 +1301,7 @@ sm_op(char *lexeme){
     for (u64 i = 0; i < l.size; i += 1){
         Table_Lookup lookup = table_lookup(&helper_ctx.char_to_name, l.str[i]);
         // If this fails first check that all the characters in the lexeme are named!
-        Assert(lookup.found_match);
+        kv_assert(lookup.found_match);
         String name_data = {};
         table_read(&helper_ctx.char_to_name, lookup, &name_data);
         string_list_push(helper_ctx.arena, &name_list, SCu8(name_data.str, name_data.size));
@@ -1303,35 +1325,35 @@ sm_begin_key_set(String pretty_name){
 
 function Keyword_Set*
 sm_begin_key_set(char *pretty_name){
-    return(sm_begin_key_set(SCu8(pretty_name)));
+ return(sm_begin_key_set(SCu8(pretty_name)));
 }
 
 function b32
-sm_key(String name, String lexeme){
-    return(smi_key(&helper_ctx.primary_ctx, helper_ctx.selected_key_set, name, lexeme, helper_ctx.selected_base_kind));
+sm_keyword(String name, String lexeme){
+ return(smi_keyword(&helper_ctx.primary_ctx, helper_ctx.selected_key_set, name, lexeme, helper_ctx.selected_base_kind));
 }
 
 function b32
-sm_key(char *str, char *lexeme){
-    return(sm_key(SCu8(str), SCu8(lexeme)));
+sm_keyword(char *str, char *lexeme){
+    return(sm_keyword(SCu8(str), SCu8(lexeme)));
 }
 
 function b32
-sm_key(char *str){
+sm_keyword(char *str){
     String name = SCu8(str);
     String lexeme = push_stringz(helper_ctx.arena,  name);
     lexeme = string_mod_lower(lexeme);
-    return(sm_key(name, lexeme));
+    return(sm_keyword(name, lexeme));
 }
 
 function b32
-sm_key_fallback(String name){
-    return(smi_key_fallback(&helper_ctx.primary_ctx, helper_ctx.selected_key_set, name, helper_ctx.selected_base_kind));
+sm_keyword_fallback(String name){
+    return(smi_keyword_fallback(&helper_ctx.primary_ctx, helper_ctx.selected_key_set, name, helper_ctx.selected_base_kind));
 }
 
 function b32
-sm_key_fallback(char *str){
-    return(sm_key_fallback(SCu8(str)));
+sm_keyword_fallback(char *str){
+    return(sm_keyword_fallback(SCu8(str)));
 }
 
 function State*
@@ -1348,7 +1370,7 @@ function State*
 sm_begin_state_machine(void){
     State *state = sm_add_state("root");
     // If this fails first check sm_begin_state_machine is only called once
-    Assert(helper_ctx.primary_ctx.model.root == 0);
+    kv_assert(helper_ctx.primary_ctx.model.root == 0);
     helper_ctx.primary_ctx.model.root = state;
     return(state);
 }
@@ -1365,30 +1387,34 @@ sm_flag_bind(Flag *flag, Token_Base_Kind emit_flags){
 
 function void
 sm_sub_flag_bind(Flag *flag, u16 emit_sub_flags){
-    flag->emit_sub_flags = emit_sub_flags;
+ flag->emit_sub_flags = emit_sub_flags;
 }
 
 function Emit_Rule*
-sm_emit_rule(void){
-    Emit_Rule *rule = smi_emit_rule(helper_ctx.arena);
-    helper_ctx.selected_emit_rule = rule;
-    return(rule);
+sm_emit_rule(void)
+{
+ Emit_Rule *rule = smi_emit_rule(helper_ctx.arena);
+ helper_ctx.selected_emit_rule = rule;
+ return(rule);
 }
 
+// NOTE(kv) I guess this means that we just emit a token.
+// See @gen_SLOW_action_list__cont_flow
 function void
-sm_emit_handler_direct(Flag *flag_check, String name){
-    Emit_Rule *rule = helper_ctx.selected_emit_rule;
-    smi_emit_handler(helper_ctx.arena, rule, name, flag_check);
+sm_emit_handler_direct(Flag *flag_check, String name)
+{
+ Emit_Rule *rule = helper_ctx.selected_emit_rule;
+ smi_emit_handler(helper_ctx.arena, rule, name, flag_check);
 }
-
 function void
-sm_emit_handler_direct(char *name){
-    sm_emit_handler_direct(0, SCu8(name));
+sm_emit_handler_direct(char *name)
+{
+ sm_emit_handler_direct(0, SCu8(name));
 }
-
 function void
-sm_emit_handler_direct(Flag *flag_check, char *name){
-    sm_emit_handler_direct(flag_check, SCu8(name));
+sm_emit_handler_direct(Flag *flag_check, char *name)
+{
+ sm_emit_handler_direct(flag_check, SCu8(name));
 }
 
 function void
@@ -1404,25 +1430,26 @@ sm_emit_handler_keys(Keyword_Set *set){
 
 function void
 sm_emit_handler_keys_delim(Flag *flag_check, Keyword_Set *set){
-    Emit_Rule *rule = helper_ctx.selected_emit_rule;
-    smi_emit_handler_delim(helper_ctx.arena, rule, set, flag_check);
+ Emit_Rule *rule = helper_ctx.selected_emit_rule;
+ smi_emit_handler_delim(helper_ctx.arena, rule, set, flag_check);
 }
 
 function void
 sm_emit_handler_keys_delim(Keyword_Set *set){
-    sm_emit_handler_keys_delim(0, set);
+ sm_emit_handler_keys_delim(0, set);
 }
 
 function Transition*
-sm_case(String str, Flag *flag_check, b32 flag_check_value, State *dst, Transition_Consume_Rule consume_rule, Emit_Rule *emit){
-    Transition *transition = smi_case(&helper_ctx.primary_ctx, helper_ctx.selected_state, TransitionCaseKind_CharaterArray, str,
-                                      flag_check, flag_check_value, dst, consume_rule, emit);
-    helper_ctx.selected_transition = transition;
-    return(transition);
+sm_case(String str, Flag *flag_check, b32 flag_check_value, State *dst, Transition_Consume_Rule consume_rule, Emit_Rule *emit)
+{
+ Transition *transition = smi_case(&helper_ctx.primary_ctx, helper_ctx.selected_state, TransitionCaseKind_CharaterArray, str,
+                                   flag_check, flag_check_value, dst, consume_rule, emit);
+ helper_ctx.selected_transition = transition;
+ return(transition);
 }
 function Transition*
 sm_case(Transition_Case_Kind kind, Flag *flag_check, b32 flag_check_value, State *dst, Transition_Consume_Rule consume_rule, Emit_Rule *emit){
-    Assert(kind != TransitionCaseKind_CharaterArray);
+    kv_assert(kind != TransitionCaseKind_CharaterArray);
     String str = {};
     Transition *transition = smi_case(&helper_ctx.primary_ctx, helper_ctx.selected_state, kind, str,
                                       flag_check, flag_check_value, dst, consume_rule, emit);
@@ -1632,7 +1659,7 @@ function void
 smo_remove_ops_with_prefix(Operator_Set *set, String prefix){
     Operator *first = 0;
     Operator *last = 0;
-    i1 count = 0;
+    i32 count = 0;
     
     for (Operator *node = set->first, *next = 0;
          node != 0;
@@ -1661,7 +1688,7 @@ function void
 smo_remove_ops_without_prefix(Operator_Set *set, String prefix){
     Operator *first = 0;
     Operator *last = 0;
-    i1 count = 0;
+    i32 count = 0;
     
     for (Operator *node = set->first, *next = 0;
          node != 0;
@@ -1745,117 +1772,130 @@ smo_char_set_get_array(Character_Set *set){
         if (c != table_empty_key && c != table_erased_key){
             result[index] = (u8)(c);
             index += 1;
-        }
-    }
-    result[count] = 0;
-    return(result);
+  }
+ }
+ result[count] = 0;
+ return(result);
 }
 
 function State*
-smo_op_set_lexer_root(Operator_Set *set, State *machine_root, String fallback_token_name){
-    Base_Allocator *allocator = helper_ctx.primary_ctx.allocator;
-    Table_Data_u64 string_to_state = make_table_Data_u64(allocator, set->count*8);
-    
-    State *root = sm_add_state("op root");
-    
-    for (Operator *node = set->first;
-         node != 0;
-         node = node->next){
-        String lexeme = node->op;
-        for (u64 i = 1; i < lexeme.size; i += 1){
-            String prefix = string_prefix(lexeme, i);
-            Table_Lookup lookup = table_lookup(&string_to_state, make_data(prefix.str, prefix.size));
-            if (!lookup.found_match){
-                State *state = sm_add_state("op stage");
-                State *parent = 0;
-                if (prefix.size == 1){
-                    parent = root;
-                }
-                else{
-                    lookup = table_lookup(&string_to_state, make_data(prefix.str, prefix.size - 1));
-                    Assert(lookup.found_match);
-                    u64 val = 0;
-                    table_read(&string_to_state, lookup, &val);
-                    parent = (State*)IntAsPtr(val);
-                }
-                u8 space[1];
-                space[0] = prefix.str[prefix.size - 1];
-                String string = {space, 1};
-                smi_case(&helper_ctx.primary_ctx, parent, TransitionCaseKind_CharaterArray, string, 0, 0, state, Transition_Consume, 0);
-                table_insert(&string_to_state, make_data(prefix.str, prefix.size), (u64)PtrAsInt(state));
-            }
-        }
-    }
-    
-    for (Operator *node = set->first;
-         node != 0;
-         node = node->next){
-        String lexeme = node->op;
-        Table_Lookup lookup = table_lookup(&string_to_state, make_data(lexeme.str, lexeme.size));
-        if (!lookup.found_match){
-            State *parent = 0;
-            if (lexeme.size == 1){
-                parent = root;
-            }
-            else{
-                lookup = table_lookup(&string_to_state, make_data(lexeme.str, lexeme.size - 1));
-                Assert(lookup.found_match);
-                u64 val = 0;
-                table_read(&string_to_state, lookup, &val);
-                parent = (State*)IntAsPtr(val);
-            }
-            u8 space[1];
-            space[0] = lexeme.str[lexeme.size - 1];
-            String string = {space, 1};
-            Emit_Rule *emit = smi_emit_rule(helper_ctx.arena);
-            smi_emit_handler(helper_ctx.arena, emit, node->name, 0);
-            smi_case(&helper_ctx.primary_ctx, parent, TransitionCaseKind_CharaterArray, string, 0, 0, machine_root, Transition_Consume, emit);
-        }
-    }
-    
-    for (Operator *node = set->first;
-         node != 0;
-         node = node->next){
-        String lexeme = node->op;
-        Table_Lookup lookup = table_lookup(&string_to_state, make_data(lexeme.str, lexeme.size));
-        if (lookup.found_match){
-            u64 val = 0;
-            table_read(&string_to_state, lookup, &val);
-            State *state = (State*)IntAsPtr(val);
-            String string = {};
-            Emit_Rule *emit = smi_emit_rule(helper_ctx.arena);
-            smi_emit_handler(helper_ctx.arena, emit, node->name, 0);
-            smi_case(&helper_ctx.primary_ctx, state, TransitionCaseKind_Fallback, string, 0, 0, machine_root, Transition_NoConsume, emit);
-        }
-    }
-    
+smo_op_set_lexer_root(Operator_Set *set, State *machine_root, String fallback_token_name)
+{
+ Base_Allocator *allocator = helper_ctx.primary_ctx.allocator;
+ Table_Data_u64 string_to_state = make_table_Data_u64(allocator, set->count*8);
+ 
+ State *root = sm_add_state("op root");
+ 
+ for (Operator *node = set->first;
+      node != 0;
+      node = node->next)
+ {
+  String lexeme = node->op;
+  for (u64 i = 1; i < lexeme.size; i += 1)
+  {
+   String prefix = string_prefix(lexeme, i);
+   Table_Lookup lookup = table_lookup(&string_to_state, make_data(prefix.str, prefix.size));
+   if (!lookup.found_match)
+   {
+    State *state = sm_add_state("op stage");
+    State *parent = 0;
+    if (prefix.size == 1)
     {
-        String zero_string = {};
-        Emit_Rule *emit = smi_emit_rule(helper_ctx.arena);
-        smi_emit_handler(helper_ctx.arena, emit, fallback_token_name, 0);
-        smi_case(&helper_ctx.primary_ctx, root, TransitionCaseKind_Fallback, zero_string, 0, 0, machine_root, Transition_NoConsume, emit);
+     parent = root;
     }
-    for (Operator *node = set->first;
-         node != 0;
-         node = node->next){
-        String lexeme = node->op;
-        for (u64 i = 1; i < lexeme.size; i += 1){
-            String prefix = string_prefix(lexeme, i);
-            Table_Lookup lookup = table_lookup(&string_to_state, make_data(prefix.str, prefix.size));
-            Assert(lookup.found_match);
-            u64 val = 0;
-            table_read(&string_to_state, lookup, &val);
-            State *state = (State*)IntAsPtr(val);
-            String string = {};
-            Emit_Rule *emit = smi_emit_rule(helper_ctx.arena);
-            smi_emit_handler(helper_ctx.arena, emit, fallback_token_name, 0);
-            smi_case(&helper_ctx.primary_ctx, state, TransitionCaseKind_Fallback, string, 0, 0, machine_root, Transition_NoConsume, emit);
-        }
+    else
+    {
+     lookup = table_lookup(&string_to_state, make_data(prefix.str, prefix.size - 1));
+     kv_assert(lookup.found_match);
+     u64 val = 0;
+     table_read(&string_to_state, lookup, &val);
+     parent = (State*)IntAsPtr(val);
     }
-    
-    table_free(&string_to_state);
-    
-    return(root);
+    u8 space[1];
+    space[0] = prefix.str[prefix.size - 1];
+    String string = {space, 1};
+    smi_case(&helper_ctx.primary_ctx, parent, TransitionCaseKind_CharaterArray, string, 0, 0, state, Transition_Consume, 0);
+    table_insert(&string_to_state, make_data(prefix.str, prefix.size), (u64)PtrAsInt(state));
+   }
+  }
+ }
+ 
+ for (Operator *node = set->first;
+      node != 0;
+      node = node->next)
+ {
+  String lexeme = node->op;
+  Table_Lookup lookup = table_lookup(&string_to_state, make_data(lexeme.str, lexeme.size));
+  if (!lookup.found_match)
+  {
+   State *parent = 0;
+   if (lexeme.size == 1)
+   {
+    parent = root;
+   }
+   else
+   {
+    lookup = table_lookup(&string_to_state, make_data(lexeme.str, lexeme.size - 1));
+    kv_assert(lookup.found_match);
+    u64 val = 0;
+    table_read(&string_to_state, lookup, &val);
+    parent = (State*)IntAsPtr(val);
+   }
+   u8 space[1];
+   space[0] = lexeme.str[lexeme.size - 1];
+   String string = {space, 1};
+   Emit_Rule *emit = smi_emit_rule(helper_ctx.arena);
+   smi_emit_handler(helper_ctx.arena, emit, node->name, 0);
+   smi_case(&helper_ctx.primary_ctx, parent, TransitionCaseKind_CharaterArray, string, 0, 0, machine_root, Transition_Consume, emit);
+  }
+ }
+ 
+ for (Operator *node = set->first;
+      node != 0;
+      node = node->next)
+ {
+  String lexeme = node->op;
+  Table_Lookup lookup = table_lookup(&string_to_state, make_data(lexeme.str, lexeme.size));
+  if (lookup.found_match){
+   u64 val = 0;
+   table_read(&string_to_state, lookup, &val);
+   State *state = (State*)IntAsPtr(val);
+   String string = {};
+   Emit_Rule *emit = smi_emit_rule(helper_ctx.arena);
+   smi_emit_handler(helper_ctx.arena, emit, node->name, 0);
+   smi_case(&helper_ctx.primary_ctx, state, TransitionCaseKind_Fallback, string, 0, 0, machine_root, Transition_NoConsume, emit);
+  }
+ }
+ 
+ {
+  String zero_string = {};
+  Emit_Rule *emit = smi_emit_rule(helper_ctx.arena);
+  smi_emit_handler(helper_ctx.arena, emit, fallback_token_name, 0);
+  smi_case(&helper_ctx.primary_ctx, root, TransitionCaseKind_Fallback, zero_string, 0, 0, machine_root, Transition_NoConsume, emit);
+ }
+ for (Operator *node = set->first;
+      node != 0;
+      node = node->next)
+ {
+  String lexeme = node->op;
+  for (u64 i = 1; i < lexeme.size; i += 1)
+  {
+   String prefix = string_prefix(lexeme, i);
+   Table_Lookup lookup = table_lookup(&string_to_state, make_data(prefix.str, prefix.size));
+   kv_assert(lookup.found_match);
+   u64 val = 0;
+   table_read(&string_to_state, lookup, &val);
+   State *state = (State*)IntAsPtr(val);
+   String string = {};
+   Emit_Rule *emit = smi_emit_rule(helper_ctx.arena);
+   smi_emit_handler(helper_ctx.arena, emit, fallback_token_name, 0);
+   smi_case(&helper_ctx.primary_ctx, state, TransitionCaseKind_Fallback, string, 0, 0, machine_root, Transition_NoConsume, emit);
+  }
+ }
+ 
+ table_free(&string_to_state);
+ 
+ return(root);
 }
 
 function State*
@@ -1870,54 +1910,54 @@ smo_op_set_lexer_root(Operator_Set *set, State *machine_root, char *fallback_tok
 // NOTE(allen): utf8 should be an u8 array with 129 slots.
 // This will fill it out to represent all characters above the ASCII range.
 function void
-smh_utf8_fill(u8 *utf8){
-    for (u16 i = 0; i < 128; i += 1){
-        utf8[i] = (u8)(i + 128);
-    }
-    utf8[128] = 0;
+smh_utf8_fill(u8 *utf8)
+{
+ for (u16 i = 0; i < 128; i += 1)
+ {
+  utf8[i] = (u8)(i + 128);
+ }
+ 
+ utf8[128] = 0;
 }
 
 function void
-smh_set_base_character_names(void){
-    sm_char_name('{', "BraceOp");
-    sm_char_name('}', "BraceCl");
-    sm_char_name('(', "ParenOp");
-    sm_char_name(')', "ParenCl");
-    sm_char_name('[', "BrackOp");
-    sm_char_name(']', "BrackCl");
-    sm_char_name('-', "Minus");
-    sm_char_name('+', "Plus");
-    sm_char_name('.', "Dot");
-    sm_char_name('!', "Bang");
-    sm_char_name('*', "Star");
-    sm_char_name(',', "Comma");
-    sm_char_name(':', "Colon");
-    sm_char_name(';', "Semicolon");
-    sm_char_name('@', "At");
-    sm_char_name('#', "Pound");
-    sm_char_name('$', "Dollar");
-    sm_char_name('%', "Percent");
-    sm_char_name('^', "Carrot");
-    sm_char_name('&', "Amp");
-    sm_char_name('=', "Eq");
-    sm_char_name('<', "Less");
-    sm_char_name('>', "Grtr");
-    sm_char_name('~', "Tilde");
-    sm_char_name('/', "Slash");
-    sm_char_name('?', "Question");
-    sm_char_name('|', "Pipe");
+smh_set_base_character_names(void)
+{
+ sm_char_name('{', "BraceOp");
+ sm_char_name('}', "BraceCl");
+ sm_char_name('(', "ParenOp");
+ sm_char_name(')', "ParenCl");
+ sm_char_name('[', "BrackOp");
+ sm_char_name(']', "BrackCl");
+ sm_char_name('-', "Minus");
+ sm_char_name('+', "Plus");
+ sm_char_name('.', "Dot");
+ sm_char_name('!', "Bang");
+ sm_char_name('*', "Star");
+ sm_char_name(',', "Comma");
+ sm_char_name(':', "Colon");
+ sm_char_name(';', "Semicolon");
+ sm_char_name('@', "At");
+ sm_char_name('#', "Pound");
+ sm_char_name('$', "Dollar");
+ sm_char_name('%', "Percent");
+ sm_char_name('^', "Carrot");
+ sm_char_name('&', "Amp");
+ sm_char_name('=', "Eq");
+ sm_char_name('<', "Less");
+ sm_char_name('>', "Grtr");
+ sm_char_name('~', "Tilde");
+ sm_char_name('/', "Slash");
+ sm_char_name('?', "Question");
+ sm_char_name('|', "Pipe");
 }
 
 function void
-smh_typical_tokens(void){
-    sm_select_base_kind(TokenBaseKind_EOF);
-    sm_direct_token_kind("EOF");
-    
-    sm_select_base_kind(TokenBaseKind_Whitespace);
-    sm_direct_token_kind("Whitespace");
-    
-    sm_select_base_kind(TokenBaseKind_LexError);
-    sm_direct_token_kind("LexError");
+smh_typical_token_kinds(void)
+{
+ sm_direct_token_kind(TokenBaseKind_EOF, "EOF");
+ sm_direct_token_kind(TokenBaseKind_Whitespace, "Whitespace");
+ sm_direct_token_kind(TokenBaseKind_LexError, "LexError");
 }
 
 ////////////////////////////////
@@ -1963,7 +2003,7 @@ opt_flag_fixup(Flag *old_flag, Table_u64_u64 old_to_new){
     Flag *result = 0;
     if (old_flag != 0){
         Table_Lookup lookup = table_lookup(&old_to_new, (u64)PtrAsInt(old_flag));
-        Assert(lookup.found_match);
+        kv_assert(lookup.found_match);
         u64 val = 0;
         table_read(&old_to_new, lookup, &val);
         result = (Flag*)IntAsPtr(val);
@@ -2022,7 +2062,7 @@ function Lexer_Model
 opt_copy_model(Arena *arena, Lexer_Model model){
  Lexer_Model result = {};
  
- i1 pointer_count = model.states.count + model.flags.count;
+ i32 pointer_count = model.states.count + model.flags.count;
  Table_u64_u64 old_to_new = make_table_u64_u64(&malloc_base_allocator, pointer_count*2);
  Table_u64_u64 new_to_old = make_table_u64_u64(&malloc_base_allocator, pointer_count*2);
  
@@ -2054,7 +2094,7 @@ opt_copy_model(Arena *arena, Lexer_Model model){
       new_state != 0;
       new_state = new_state->next){
   Table_Lookup lookup = table_lookup(&new_to_old, (u64)PtrAsInt(new_state));
-  Assert(lookup.found_match);
+  kv_assert(lookup.found_match);
   State *state = 0;
   u64 val = 0;
   table_read(&new_to_old, lookup, &val);
@@ -2086,7 +2126,7 @@ opt_copy_model(Arena *arena, Lexer_Model model){
    }
    
    lookup = table_lookup(&old_to_new, (u64)PtrAsInt(trans->dst_state));
-   Assert(lookup.found_match);
+   kv_assert(lookup.found_match);
    
    State *new_dst_state = 0;
    table_read(&old_to_new, lookup, &val);
@@ -2107,57 +2147,65 @@ opt_copy_model(Arena *arena, Lexer_Model model){
    break;
   }
  }
- Assert(result.root);
+ kv_assert(result.root);
  return(result);
 }
 
 function void
-opt_simplify_transitions(Lexer_Primary_Context *ctx){
-    for (State *state = ctx->model.states.first;
-         state != 0;
-         state = state->next){
-        Transition_List *transitions = &state->transitions;
-        
-        b32 is_delim_match = false;
-        if (transitions->first->condition.kind == TransitionCaseKind_DelimMatch){
-            is_delim_match = true;
-        }
-        
-        if (!is_delim_match){
-            Transition *first = 0;
-            Transition *last = 0;
-            i1 count = 0;
-            
-            for (Transition *trans = transitions->first, *next = 0;
-                 trans != 0;
-                 trans = next){
-                next = trans->next;
-                Transition_Case condition = trans->condition;
-                Assert(condition.kind == TransitionCaseKind_ConditionSet);
-                Condition_Set condition_set = condition.condition_set;
-                for (Transition *prev_trans = first;
-                     prev_trans != 0;
-                     prev_trans = prev_trans->next){
-                    Transition_Case prev_condition = prev_trans->condition;
-                    condition_set = smi_condition_set_subtract(&ctx->arena,
-                                                               condition_set,
-                                                               prev_condition.condition_set);
-                    if (condition_set.count == 0){
-                        break;
-                    }
-                }
-                if (condition_set.count != 0){
-                    trans->condition.condition_set = condition_set;
-                    zdll_push_back(first, last, trans);
-                    count += 1;
-                }
-            }
-            
-            transitions->first = first;
-            transitions->last = last;
-            transitions->count = count;
-        }
+opt_simplify_transitions(Lexer_Primary_Context *ctx)
+{
+ for (State *state = ctx->model.states.first;
+      state != 0;
+      state = state->next)
+ {
+  Transition_List *transitions = &state->transitions;
+  
+  if(transitions->first)
+  {
+   b32 is_delim_match = false;
+   if(transitions->first->condition.kind == TransitionCaseKind_DelimMatch)
+   {
+    is_delim_match = true;
+   }
+   
+   if(!is_delim_match)
+   {
+    Transition *first = 0;
+    Transition *last = 0;
+    i32 count = 0;
+    
+    for (Transition *trans = transitions->first, *next = 0;
+         trans != 0;
+         trans = next)
+    {
+     next = trans->next;
+     Transition_Case condition = trans->condition;
+     kv_assert(condition.kind == TransitionCaseKind_ConditionSet);
+     Condition_Set condition_set = condition.condition_set;
+     for (Transition *prev_trans = first;
+          prev_trans != 0;
+          prev_trans = prev_trans->next){
+      Transition_Case prev_condition = prev_trans->condition;
+      condition_set = smi_condition_set_subtract(&ctx->arena,
+                                                 condition_set,
+                                                 prev_condition.condition_set);
+      if (condition_set.count == 0){
+       break;
+      }
+     }
+     if (condition_set.count != 0){
+      trans->condition.condition_set = condition_set;
+      zdll_push_back(first, last, trans);
+      count += 1;
+     }
     }
+    
+    transitions->first = first;
+    transitions->last = last;
+    transitions->count = count;
+   }
+  }
+ }
 }
 
 function void
@@ -2182,7 +2230,7 @@ function void
 opt_discard_all_excluded_states(Lexer_Primary_Context *ctx){
     State *first = 0;
     State *last = 0;
-    i1 count = 0;
+    i32 count = 0;
     for (State *state = ctx->model.states.first, *next = 0;
          state != 0;
          state = next){
@@ -2272,24 +2320,26 @@ opt_transfer_state_actions_to_transitions(Lexer_Primary_Context *ctx){
 
 function void
 opt_flags_set_numbers(Lexer_Model model){
-    i1 number = 0;
+    i32 number = 0;
     for (Flag *flag = model.flags.first;
          flag != 0;
-         flag = flag->next){
-        flag->number = number;
-        number += 1;
-    }
+      flag = flag->next){
+  flag->number = number;
+  number += 1;
+ }
 }
 
 function void
-opt_states_set_numbers(Lexer_Model model){
-    i1 number = 1;
-    for (State *state = model.states.first;
-         state != 0;
-         state = state->next){
-        state->number = number;
-        number += 1;
-    }
+opt_states_set_numbers(Lexer_Model model)
+{
+ i32 number = 1;
+ for(State *state = model.states.first;
+     state != 0;
+     state = state->next)
+ {
+  state->number = number;
+  number += 1;
+ }
 }
 
 function void
@@ -2485,7 +2535,7 @@ opt_merge_redundant_transitions_in_each_state(Lexer_Primary_Context *ctx){
         
         Transition *first = 0;
         Transition *last = 0;
-        i1 count = 0;
+        i32 count = 0;
         
         for (Transition *trans = transitions->first, *next = 0;
              trans != 0;
@@ -2504,8 +2554,8 @@ opt_merge_redundant_transitions_in_each_state(Lexer_Primary_Context *ctx){
             }
             
             if (merge_trans != 0){
-                Assert(trans->condition.kind == TransitionCaseKind_ConditionSet);
-                Assert(merge_trans->condition.kind == TransitionCaseKind_ConditionSet);
+                kv_assert(trans->condition.kind == TransitionCaseKind_ConditionSet);
+                kv_assert(merge_trans->condition.kind == TransitionCaseKind_ConditionSet);
                 merge_trans->condition.condition_set =
                     smi_condition_set_union(&ctx->arena,
                                             trans->condition.condition_set,
@@ -2545,12 +2595,12 @@ opt_remove_peeks_without_creating_transition_splits(Lexer_Primary_Context *ctx){
         for (Transition *trans = transitions->first;
              trans != 0;
              trans = trans->next){
-            i1 step_counter = 0;
+            i32 step_counter = 0;
             for (;!opt_action_list_contains_consume(trans->activation_actions);
                  step_counter += 1){
                 // NOTE(allen): Hitting this (most likely) indicates a peek cycle
                 // that wasn't caught by type checking.
-                Assert(step_counter < ctx->model.states.count);
+                kv_assert(step_counter < ctx->model.states.count);
                 
                 b32 found_action_extension = false;
                 State *dst_state = trans->dst_state;
@@ -2603,7 +2653,7 @@ opt_remove_peeks_into_single_entry_point_states(Lexer_Primary_Context *ctx){
                 
                 Transition *first = 0;
                 Transition *last = 0;
-                i1 count = 0;
+                i32 count = 0;
                 
                 for (Transition *trans = state->transitions.first, *next = 0;
                      trans != 0;
@@ -2621,7 +2671,7 @@ opt_remove_peeks_into_single_entry_point_states(Lexer_Primary_Context *ctx){
                     }
                 }
                 
-                Assert(count != 0);
+                kv_assert(count != 0);
                 if (src_trans->prev != 0){
                     src_trans->prev->next = first;
                 }
@@ -2655,7 +2705,7 @@ opt_condition_is_eof_only(Transition_Case condition){
 }
 
 function Keyword_Layout
-opt_key_layout(Arena *arena, Keyword_Set keywords, i1 slot_count, u64 seed){
+opt_key_layout(Arena *arena, Keyword_Set keywords, i32 slot_count, u64 seed){
  Keyword_Layout layout = {};
  slot_count = clamp_min(keywords.count + 1, slot_count);
  layout.seed = seed;
@@ -2667,8 +2717,8 @@ opt_key_layout(Arena *arena, Keyword_Set keywords, i1 slot_count, u64 seed){
       keyword != 0;
       keyword = keyword->next){
   u64 hash = lexeme_hash(seed, keyword->lexeme.str, keyword->lexeme.size);
-  i1 first_index = (hash%slot_count);
-  i1 index = first_index;
+  i32 first_index = (hash%slot_count);
+  i32 index = first_index;
   
   Keyword *keyword_insert = keyword;
   u64 contributed_error = 0;
@@ -2697,9 +2747,9 @@ opt_key_layout(Arena *arena, Keyword_Set keywords, i1 slot_count, u64 seed){
    }
   }
  }
- i1 max_run_length = 0;
- i1 run_length = 0;
- for (i1 i = 0; i < slot_count; i += 1){
+ i32 max_run_length = 0;
+ i32 run_length = 0;
+ for (i32 i = 0; i < slot_count; i += 1){
   if (layout.slots[i] == 0){
    run_length = 0;
   }
@@ -2709,8 +2759,8 @@ opt_key_layout(Arena *arena, Keyword_Set keywords, i1 slot_count, u64 seed){
    max_run_length = Max(max_run_length, run_length);
   }
  }
- i1 total_run_length = run_length;
- for (i1 i = 0; i < slot_count; i += 1){
+ i32 total_run_length = run_length;
+ for (i32 i = 0; i < slot_count; i += 1){
   if (layout.slots[i] == 0){
    break;
   }
@@ -2735,7 +2785,7 @@ random_u64_dirty(void){
 #if 0
 function Keyword_Layout
 opt_key_layout(Arena *arena, Keyword_Set keywords){
-    i1 slot_count = keywords.count*2;
+    i32 slot_count = keywords.count*2;
     u64 seed = random_u64_dirty();
     return(opt_key_layout(arena, keywords, slot_count, seed));
 }
@@ -2743,7 +2793,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
 
 function Keyword_Layout
 opt_key_layout(Arena *arena, Keyword_Set keywords){
-    i1 init_slot_count = keywords.count + 1;
+    i32 init_slot_count = keywords.count + 1;
     if (keywords.count == 1){
         init_slot_count = 1;
     }
@@ -2764,7 +2814,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
     
     Keyword_Layout best_layout = {};
     best_layout.iterations_per_lookup = max_f32;
-    i1 slot_count = init_slot_count;
+    i32 slot_count = init_slot_count;
     for (;; slot_count += 1){
         f32 accumulated_error = 0;
         for (;;){
@@ -2831,7 +2881,7 @@ opt_key_layout(Arena *arena, Keyword_Set keywords){
 function b32
 opt__input_set_contains(Input_Set set, u16 x){
     b32 result = false;
-    for (i1 i = 0; i < set.count; i += 1){
+    for (i32 i = 0; i < set.count; i += 1){
         if (set.inputs[i] == x){
             result = true;
             break;
@@ -2915,10 +2965,10 @@ function Grouped_Input_Handler_List
 opt_grouped_input_handlers(Arena *arena, Transition *first_trans){
     Grouped_Input_Handler_List result = {};
     
-    Assert(first_trans->condition.kind == TransitionCaseKind_ConditionSet);
+    kv_assert(first_trans->condition.kind == TransitionCaseKind_ConditionSet);
     
     Grouped_Input_Handler *biggest_group = 0;
-    i1 size_of_biggest = 0;
+    i32 size_of_biggest = 0;
     
     for (u16 i = 0; i <= 255; i += 1){
         Temp_Memory restore_point = begin_temp_memory(arena);
@@ -2926,7 +2976,7 @@ opt_grouped_input_handlers(Arena *arena, Transition *first_trans){
         for (Transition *trans = first_trans;
              trans != 0;
              trans = trans->next){
-            Assert(trans->condition.kind == TransitionCaseKind_ConditionSet);
+            kv_assert(trans->condition.kind == TransitionCaseKind_ConditionSet);
             Condition_Set condition_set = trans->condition.condition_set;
             for (Condition_Node *node = condition_set.first;
                  node != 0;
@@ -2973,7 +3023,7 @@ opt_grouped_input_handlers(Arena *arena, Transition *first_trans){
 function void
 debug_print_states(Lexer_Primary_Context *ctx){
     printf("Number of States: %d\n", ctx->model.states.count);
-    i1 transition_count = 0;
+    i32 transition_count = 0;
     for (State *state = ctx->model.states.first;
          state != 0;
          state = state->next){
@@ -2992,11 +3042,11 @@ function void
 debug_print_transitions(Arena *scratch, Lexer_Model model){
     Temp_Memory temp = begin_temp_memory(scratch);
     
-    i1 field_bit_width = model.flags.count;
+    i32 field_bit_width = model.flags.count;
     char *field_memory = push_array(scratch, char, field_bit_width);
     
     printf("Number of States: %d\n", model.states.count);
-    i1 transition_count = 0;
+    i32 transition_count = 0;
     for (State *state = model.states.first;
          state != 0;
          state = state->next){
@@ -3027,8 +3077,8 @@ debug_print_transitions(Arena *scratch, Lexer_Model model){
                     if (node->inputs.count < 10){
                         b32 all_printable = true;
                         char ascii[30];
-                        i1 j = 0;
-                        for (i1 i = 0; i < node->inputs.count; i += 1){
+                        i32 j = 0;
+                        for (i32 i = 0; i < node->inputs.count; i += 1){
                             b32 is_ascii = character_is_basic_ascii(node->inputs.inputs[i]);
                             b32 is_eof = (node->inputs.inputs[i] == smi_eof);
                             if (!(is_ascii || is_eof)){
@@ -3063,7 +3113,7 @@ debug_print_transitions(Arena *scratch, Lexer_Model model){
                         for (Field_Pin *pin = pins->first;
                              pin != 0;
                              pin = pin->next){
-                            i1 flag_number = pin->flag->number;
+                            i32 flag_number = pin->flag->number;
                             field_memory[flag_number] = pin->value?'1':'0';
                         }
                         printf("%.*s", field_bit_width, field_memory);
@@ -3073,7 +3123,7 @@ debug_print_transitions(Arena *scratch, Lexer_Model model){
                     }
                     printf("))");
                     if (node->next != 0){
-                        printf(" union\n\t%.*s", (i1)(sizeof(transition_on) - 1),
+                        printf(" union\n\t%.*s", (i32)(sizeof(transition_on) - 1),
                                "                                            ");
                     }
                 }
@@ -3128,14 +3178,14 @@ debug_print_transitions(Lexer_Primary_Context *ctx){
 }
 
 function void
-debug_print_keyword_table_metrics(Keyword_Layout key_layout, i1 keyword_count){
+debug_print_keyword_table_metrics(Keyword_Layout key_layout, i32 keyword_count){
     printf("used count: %d\n", keyword_count);
     printf("slot count: %d\n", key_layout.slot_count);
     printf("table load factor: %f\n", (f32)keyword_count/(f32)key_layout.slot_count);
     printf("error score: %llu\n", key_layout.error_score);
     printf("error per lookup: %f\n", key_layout.iterations_per_lookup);
     printf("max single error score: %llu\n", key_layout.max_single_error_score);
-    for (i1 i = 0; i < key_layout.slot_count; i += 1){
+    for (i32 i = 0; i < key_layout.slot_count; i += 1){
         Keyword *keyword = key_layout.slots[i];
         if (keyword == 0){
             printf("[%d] -> <null>\n", i);
@@ -3159,7 +3209,7 @@ gen_token_full_name(Arena *arena, String base_name){
 function void
 gen_tokens(Arena *scratch, Token_Kind_Set tokens, FILE *out){
     Temp_Memory temp = begin_temp_memory(scratch);
-    i1 counter = 0;
+    i32 counter = 0;
     fprintf(out, "typedef u16 Token_" LANG_NAME_CAMEL_STR "_Kind;\n");
     fprintf(out, "enum{\n");
     for (Token_Kind_Node *node = tokens.first;
@@ -3189,7 +3239,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
     
     fprintf(out, "u64 " LANG_NAME_LOWER_STR "_%.*s_hash_array[%d] = {\n",
             string_expand(keywords.pretty_name), key_layout.slot_count);
-    for (i1 i = 0; i < key_layout.slot_count; i += 1){
+    for (i32 i = 0; i < key_layout.slot_count; i += 1){
         if (key_layout.slots[i] == 0){
             fprintf(out, "0x%016x,", 0);
         }
@@ -3202,7 +3252,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
     }
     fprintf(out, "};\n");
     
-    for (i1 i = 0; i < key_layout.slot_count; i += 1){
+    for (i32 i = 0; i < key_layout.slot_count; i += 1){
         if (key_layout.slots[i] != 0){
             fprintf(out, "u8 " LANG_NAME_LOWER_STR "_%.*s_key_array_%d[] = {",
                     string_expand(keywords.pretty_name), i);
@@ -3216,7 +3266,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
     
     fprintf(out, "String " LANG_NAME_LOWER_STR "_%.*s_key_array[%d] = {\n",
             string_expand(keywords.pretty_name), key_layout.slot_count);
-    for (i1 i = 0; i < key_layout.slot_count; i += 1){
+    for (i32 i = 0; i < key_layout.slot_count; i += 1){
         if (key_layout.slots[i] == 0){
             fprintf(out, "{0, 0},\n");
         }
@@ -3229,7 +3279,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
     
     fprintf(out, "Lexeme_Table_Value " LANG_NAME_LOWER_STR "_%.*s_value_array[%d] = {\n",
             string_expand(keywords.pretty_name), key_layout.slot_count);
-    for (i1 i = 0; i < key_layout.slot_count; i += 1){
+    for (i32 i = 0; i < key_layout.slot_count; i += 1){
         if (key_layout.slots[i] == 0){
             fprintf(out, "{0, 0},\n");
         }
@@ -3240,7 +3290,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
             
             char *full_token_name = gen_token_full_name(scratch, name);
             Table_Lookup lookup = table_lookup(&tokens.name_to_ptr, make_data(name.str, name.size));
-            Assert(lookup.found_match);
+            kv_assert(lookup.found_match);
             u64 val = 0;
             table_read(&tokens.name_to_ptr, lookup, &val);
             Token_Kind_Node *token_node = (Token_Kind_Node*)IntAsPtr(val);
@@ -3251,7 +3301,7 @@ gen_keyword_table(Arena *scratch, Token_Kind_Set tokens, Keyword_Set keywords, F
     }
     fprintf(out, "};\n");
     
-    fprintf(out, "i1 " LANG_NAME_LOWER_STR "_%.*s_slot_count = %d;\n",
+    fprintf(out, "i32 " LANG_NAME_LOWER_STR "_%.*s_slot_count = %d;\n",
             string_expand(keywords.pretty_name), key_layout.slot_count);
     fprintf(out, "u64 " LANG_NAME_LOWER_STR "_%.*s_seed = 0x%016llx;\n",
             string_expand(keywords.pretty_name), key_layout.seed);
@@ -3360,7 +3410,7 @@ gen_emit__fill_token_flags(Flag_Set flags, Flag_Bucket_Set bucket_set, FILE *out
 function void
 gen_emit__fill_token_base_kind(Token_Kind_Set tokens, String name, FILE *out){
     Table_Lookup lookup = table_lookup(&tokens.name_to_ptr, make_data(name.str, name.size));
-    Assert(lookup.found_match);
+    kv_assert(lookup.found_match);
     u64 val = 0;
     table_read(&tokens.name_to_ptr, lookup, &val);
     Token_Kind_Node *node = (Token_Kind_Node*)IntAsPtr(val);
@@ -3374,188 +3424,188 @@ gen_emit__direct(Arena *scratch, Token_Kind_Set tokens, String base_name, FILE *
     Temp_Memory temp = begin_temp_memory(scratch);
     char *token_full_name = gen_token_full_name(scratch, base_name);
     fprintf(out, "token.sub_kind = %s;\n", token_full_name);
-    gen_emit__fill_token_base_kind(tokens, base_name, out);
-    end_temp_memory(temp);
+ gen_emit__fill_token_base_kind(tokens, base_name, out);
+ end_temp_memory(temp);
 }
 
 function Action_Context
 gen_SLOW_action_list__cont_flow(Arena *scratch, Token_Kind_Set tokens, Flag_Set flags,
                                 Flag_Bucket_Set bucket_set, Action_List action_list,
-                                Action_Context context, FILE *out){
-    Action_Context result_context = ActionContext_Normal;
-    for (Action *action = action_list.first;
-         action != 0;
-         action = action->next){
-        switch (action->kind){
-            case ActionKind_SetFlag:
-            {
-                gen_action__set_flag(action->set_flag.flag, action->set_flag.value, out);
-            }break;
-            
-            case ActionKind_ZeroFlags:
-            {
-                for (i1 i = 0; i < FlagBindProperty_COUNT; i += 1){
-                    Flag_Bucket *bucket = &bucket_set.buckets[i][FlagResetRule_AutoZero];
-                    for (i1 j = 0; j < bucket->number_of_variables; j += 1){
-                        fprintf(out, "state.%.*s%d = 0;\n", string_expand(bucket->pretty_name), j);
-                    }
-                }
-            }break;
-            
-            case ActionKind_DelimMarkFirst:
-            {
-                fprintf(out, "state.delim_first = state.ptr;\n");
-            }break;
-            
-            case ActionKind_DelimMarkOnePastLast:
-            {
-                fprintf(out, "state.delim_one_past_last = state.ptr;\n");
-            }break;
-            
-            case ActionKind_Consume:
-            {
-                if (context != ActionContext_EndOfFile){
-                    fprintf(out, "state.ptr += 1;\n");
-                }
-                else{
-                    result_context = ActionContext_EndOfFile;
-                }
-            }break;
-            
-            case ActionKind_Emit:
-            {
-                Emit_Rule *emit = action->emit_rule;
-                
-                fprintf(out, "{\n");
-                fprintf(out, "Token token = {};\n");
-                
-                fprintf(out, "token.pos = (i64)(state.emit_ptr - state.base);\n");
-                fprintf(out, "token.size = (i64)(state.ptr - state.emit_ptr);\n");
-                
-                gen_emit__fill_token_flags(flags, bucket_set, out);
-                
-                fprintf(out, "do{\n");
-                b32 keep_looping = true;
-                for (Emit_Handler *handler = emit->first;
-                     handler != 0 && keep_looping;
-                     handler = handler->next){
-                    if (handler->flag_check != 0){
-                        fprintf(out, "if (");
-                        gen_flag_check__cont_flow(handler->flag_check, true, out);
-                        fprintf(out, "){\n");
-                    }
-                    
-                    switch (handler->kind){
-                        case EmitHandlerKind_Direct:
-                        {
-                            gen_emit__direct(scratch, tokens, handler->token_name, out);
-                            if (handler->flag_check != 0){
-                                fprintf(out, "break;\n");
-                            }
-                            keep_looping = false;
-                        }break;
-                        
-                        case EmitHandlerKind_Keywords:
-                        {
-                            Keyword_Set *keywords = handler->keywords;
-                            fprintf(out, "Lexeme_Table_Lookup lookup = "
-                                    "lexeme_table_lookup("
-                                    LANG_NAME_LOWER_STR "_%.*s_hash_array, "
-                                    LANG_NAME_LOWER_STR "_%.*s_key_array, "
-                                    LANG_NAME_LOWER_STR "_%.*s_value_array, "
-                                    LANG_NAME_LOWER_STR "_%.*s_slot_count, "
-                                    LANG_NAME_LOWER_STR "_%.*s_seed, "
-                                    "state.emit_ptr, token.size);\n",
-                                    string_expand(keywords->pretty_name),
-                                    string_expand(keywords->pretty_name),
-                                    string_expand(keywords->pretty_name),
-                                    string_expand(keywords->pretty_name),
-                                    string_expand(keywords->pretty_name));
-                            fprintf(out, "if (lookup.found_match){\n");
-                            fprintf(out, "token.kind = lookup.base_kind;\n");
-                            fprintf(out, "token.sub_kind = lookup.sub_kind;\n");
-                            fprintf(out, "break;\n");
-                            fprintf(out, "}\n");
-                            if (handler->keywords->has_fallback_token_kind){
-                                gen_emit__direct(scratch, tokens,
-                                                 keywords->fallback_name, out);
-                                keep_looping = false;
-                            }
-                        }break;
-                        
-                        case EmitHandlerKind_KeywordsDelim:
-                        {
-                            Keyword_Set *keywords = handler->keywords;
-                            fprintf(out, "Lexeme_Table_Lookup lookup = "
-                                    "lexeme_table_lookup("
-                                    LANG_NAME_LOWER_STR "_%.*s_hash_array, "
-                                    LANG_NAME_LOWER_STR "_%.*s_key_array, "
-                                    LANG_NAME_LOWER_STR "_%.*s_value_array, "
-                                    LANG_NAME_LOWER_STR "_%.*s_slot_count, "
-                                    LANG_NAME_LOWER_STR "_%.*s_seed, "
-                                    "state.delim_first, (state.delim_one_past_last - state.delim_first));\n",
-                                    string_expand(keywords->pretty_name),
-                                    string_expand(keywords->pretty_name),
-                                    string_expand(keywords->pretty_name),
-                                    string_expand(keywords->pretty_name),
-                                    string_expand(keywords->pretty_name));
-                            fprintf(out, "if (lookup.found_match){\n");
-                            fprintf(out, "token.kind = lookup.base_kind;\n");
-                            fprintf(out, "token.sub_kind = lookup.sub_kind;\n");
-                            fprintf(out, "break;\n");
-                            fprintf(out, "}\n");
-                            if (handler->keywords->has_fallback_token_kind){
-                                gen_emit__direct(scratch, tokens,
-                                                 keywords->fallback_name, out);
-                                keep_looping = false;
-                            }
-                        }break;
-                    }
-                    
-                    if (handler->flag_check != 0){
-                        fprintf(out, "}\n");
-                        keep_looping = true;
-                    }
-                }
-                fprintf(out, "}while(0);\n");
-                
-                if (emit->emit_checks.count > 0){
-                    fprintf(out, "switch (token.sub_kind){\n");
-                    for (Emit_Check *emit_check = emit->emit_checks.first;
-                         emit_check != 0;
-                         emit_check = emit_check->next){
-                        Temp_Memory temp = begin_temp_memory(scratch);
-                        char *emit_check_full_name = gen_token_full_name(scratch, emit_check->emit_check);
-                        fprintf(out, "case %s:\n", emit_check_full_name);
-                        fprintf(out, "{\n");
-                        gen_action__set_flag(emit_check->flag, emit_check->value, out);
-                        fprintf(out, "}break;\n");
-                        end_temp_memory(temp);
-                    }
-                    fprintf(out, "}\n");
-                }
-                
-                fprintf(out, "token_list_push(arena, list, &token);\n");
-                fprintf(out, "emit_counter += 1;\n");
-                fprintf(out, "state.emit_ptr = state.ptr;\n");
-                if (context != ActionContext_EndOfFile){
-                    fprintf(out, "if (emit_counter == max){\n");
-                    fprintf(out, "goto end;\n");
-                    fprintf(out, "}\n");
-                }
-                fprintf(out, "}\n");
-            }break;
-        }
+                                Action_Context context, FILE *out)
+{
+ Action_Context result_context = ActionContext_Normal;
+ for (Action *action = action_list.first;
+      action != 0;
+      action = action->next)
+ {
+  switch (action->kind)
+  {
+   case ActionKind_SetFlag:
+   {
+    gen_action__set_flag(action->set_flag.flag, action->set_flag.value, out);
+   }break;
+   
+   case ActionKind_ZeroFlags:
+   {
+    for (i32 i = 0; i < FlagBindProperty_COUNT; i += 1){
+     Flag_Bucket *bucket = &bucket_set.buckets[i][FlagResetRule_AutoZero];
+     for (i32 j = 0; j < bucket->number_of_variables; j += 1){
+      fprintf(out, "state.%.*s%d = 0;\n", string_expand(bucket->pretty_name), j);
+     }
     }
-    return(result_context);
+   }break;
+   
+   case ActionKind_DelimMarkFirst:
+   {
+    fprintf(out, "state.delim_first = state.ptr;\n");
+   }break;
+   
+   case ActionKind_DelimMarkOnePastLast:
+   {
+    fprintf(out, "state.delim_one_past_last = state.ptr;\n");
+   }break;
+   
+   case ActionKind_Consume:
+   {
+    if (context != ActionContext_EndOfFile){
+     fprintf(out, "state.ptr += 1;\n");
+    }
+    else{
+     result_context = ActionContext_EndOfFile;
+    }
+   }break;
+   
+   case ActionKind_Emit:
+   {
+    Emit_Rule *emit = action->emit_rule;
+    
+    fprintf(out, "{\n");
+    fprintf(out, cstrcode(Token token = state_emit_token();\n));
+    
+    gen_emit__fill_token_flags(flags, bucket_set, out);
+    
+    fprintf(out, "do{\n");
+    b32 keep_looping = true;
+    for (Emit_Handler *handler = emit->first;
+         handler != 0 && keep_looping;
+         handler = handler->next){
+     if (handler->flag_check != 0){
+      fprintf(out, "if (");
+      gen_flag_check__cont_flow(handler->flag_check, true, out);
+      fprintf(out, "){\n");
+     }
+     
+     switch (handler->kind){
+      case EmitHandlerKind_Direct:
+      {
+       gen_emit__direct(scratch, tokens, handler->token_name, out);
+       if (handler->flag_check != 0){
+        fprintf(out, "break;\n");
+       }
+       keep_looping = false;
+      }break;
+      
+      case EmitHandlerKind_Keywords:
+      {
+       Keyword_Set *keywords = handler->keywords;
+       fprintf(out, "Lexeme_Table_Lookup lookup = "
+               "lexeme_table_lookup("
+               LANG_NAME_LOWER_STR "_%.*s_hash_array, "
+               LANG_NAME_LOWER_STR "_%.*s_key_array, "
+               LANG_NAME_LOWER_STR "_%.*s_value_array, "
+               LANG_NAME_LOWER_STR "_%.*s_slot_count, "
+               LANG_NAME_LOWER_STR "_%.*s_seed, "
+               "state.emit_ptr, token.size);\n",
+               string_expand(keywords->pretty_name),
+               string_expand(keywords->pretty_name),
+               string_expand(keywords->pretty_name),
+               string_expand(keywords->pretty_name),
+               string_expand(keywords->pretty_name));
+       fprintf(out, "if (lookup.found_match){\n");
+       fprintf(out, "token.kind = lookup.base_kind;\n");
+       fprintf(out, "token.sub_kind = lookup.sub_kind;\n");
+       fprintf(out, "break;\n");
+       fprintf(out, "}\n");
+       if (handler->keywords->has_fallback_token_kind){
+        gen_emit__direct(scratch, tokens,
+                         keywords->fallback_name, out);
+        keep_looping = false;
+       }
+      }break;
+      
+      case EmitHandlerKind_KeywordsDelim:
+      {
+       Keyword_Set *keywords = handler->keywords;
+       fprintf(out, "Lexeme_Table_Lookup lookup = "
+               "lexeme_table_lookup("
+               LANG_NAME_LOWER_STR "_%.*s_hash_array, "
+               LANG_NAME_LOWER_STR "_%.*s_key_array, "
+               LANG_NAME_LOWER_STR "_%.*s_value_array, "
+               LANG_NAME_LOWER_STR "_%.*s_slot_count, "
+               LANG_NAME_LOWER_STR "_%.*s_seed, "
+               "state.delim_first, (state.delim_one_past_last - state.delim_first));\n",
+               string_expand(keywords->pretty_name),
+               string_expand(keywords->pretty_name),
+               string_expand(keywords->pretty_name),
+               string_expand(keywords->pretty_name),
+               string_expand(keywords->pretty_name));
+       fprintf(out, "if (lookup.found_match){\n");
+       fprintf(out, "token.kind = lookup.base_kind;\n");
+       fprintf(out, "token.sub_kind = lookup.sub_kind;\n");
+       fprintf(out, "break;\n");
+       fprintf(out, "}\n");
+       if (handler->keywords->has_fallback_token_kind){
+        gen_emit__direct(scratch, tokens,
+                         keywords->fallback_name, out);
+        keep_looping = false;
+       }
+      }break;
+     }
+     
+     if (handler->flag_check != 0){
+      fprintf(out, "}\n");
+      keep_looping = true;
+     }
+    }
+    fprintf(out, "}while(0);\n");
+    
+    if (emit->emit_checks.count > 0){
+     fprintf(out, "switch (token.sub_kind){\n");
+     for (Emit_Check *emit_check = emit->emit_checks.first;
+          emit_check != 0;
+          emit_check = emit_check->next){
+      Temp_Memory temp = begin_temp_memory(scratch);
+      char *emit_check_full_name = gen_token_full_name(scratch, emit_check->emit_check);
+      fprintf(out, "case %s:\n", emit_check_full_name);
+      fprintf(out, "{\n");
+      gen_action__set_flag(emit_check->flag, emit_check->value, out);
+      fprintf(out, "}break;\n");
+      end_temp_memory(temp);
+     }
+     fprintf(out, "}\n");
+    }
+    
+    fprintf(out, "token_list_push(arena, list, &token);\n");
+    fprintf(out, "emit_counter += 1;\n");
+    fprintf(out, "state.emit_ptr = state.ptr;\n");
+    if (context != ActionContext_EndOfFile){
+     fprintf(out, "if (emit_counter == max){\n");
+     fprintf(out, "goto end;\n");
+     fprintf(out, "}\n");
+    }
+    fprintf(out, "}\n");
+   }break;
+  }
+ }
+ return(result_context);
 }
 
 function void
 gen_flag_declarations__cont_flow(Flag_Bucket *bucket, FILE *out){
-    i1 max_bits = bucket->max_bits;
-    i1 number_of_flag_variables = (bucket->count + max_bits - 1)/max_bits;
+    i32 max_bits = bucket->max_bits;
+    i32 number_of_flag_variables = (bucket->count + max_bits - 1)/max_bits;
     String pretty_name = bucket->pretty_name;
-    for (i1 i = 0; i < number_of_flag_variables; i += 1){
+    for (i32 i = 0; i < number_of_flag_variables; i += 1){
         fprintf(out, "u%d %.*s%d;\n", max_bits, string_expand(pretty_name), i);
     }
     bucket->number_of_variables = number_of_flag_variables;
@@ -3563,10 +3613,10 @@ gen_flag_declarations__cont_flow(Flag_Bucket *bucket, FILE *out){
 
 function void
 gen_flag_init__cont_flow(Flag_Bucket *bucket, FILE *out){
-    i1 max_bits = bucket->max_bits;
-    i1 number_of_flag_variables = (bucket->count + max_bits - 1)/max_bits;
+    i32 max_bits = bucket->max_bits;
+    i32 number_of_flag_variables = (bucket->count + max_bits - 1)/max_bits;
     String pretty_name = bucket->pretty_name;
-    for (i1 i = 0; i < number_of_flag_variables; i += 1){
+    for (i32 i = 0; i < number_of_flag_variables; i += 1){
         fprintf(out, "state_ptr->%.*s%d = 0;\n", string_expand(pretty_name), i);
     }
     bucket->number_of_variables = number_of_flag_variables;
@@ -3574,7 +3624,7 @@ gen_flag_init__cont_flow(Flag_Bucket *bucket, FILE *out){
 
 function void
 gen_bound_flag_fill_lookup__cont_flow(Flag_Bucket *bucket){
-    i1 counter = 0;
+    i32 counter = 0;
     for (Flag_Ptr_Node *node = bucket->first;
          node != 0;
          node = node->next, counter += 1){
@@ -3588,307 +3638,325 @@ gen_bound_flag_fill_lookup__cont_flow(Flag_Bucket *bucket){
 
 function void
 gen_flag_fill_lookup__cont_flow(Flag_Bucket *bucket){
-    i1 max_bits = bucket->max_bits;
-    i1 counter = 0;
+    i32 max_bits = bucket->max_bits;
+    i32 counter = 0;
     for (Flag_Ptr_Node *node = bucket->first;
          node != 0;
          node = node->next, counter += 1){
         Flag *flag = node->flag;
         flag->base_name = bucket->pretty_name;
-        flag->number = counter;
-        flag->index = counter/max_bits;
-        flag->value = (1 << (counter % max_bits));
-    }
+  flag->number = counter;
+  flag->index = counter/max_bits;
+  flag->value = (1 << (counter % max_bits));
+ }
 }
 
 function void
-gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_Model model, FILE *out){
-    Temp_Memory temp = begin_temp_memory(scratch);
+gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_Model model, FILE *out)
+{
+ Temp_Memory temp = begin_temp_memory(scratch);
+ 
+ model = opt_copy_model(scratch, model);
+ 
+ opt_flags_set_numbers(model);
+ opt_states_set_numbers(model);
+ 
+ Input_Set cut_inputs = smi_input_set_construct_eof(scratch);
+ Field_Set cut_fields = smi_field_set_construct(scratch);
+ Condition_Set cut_set = smi_condition(scratch, cut_inputs, cut_fields);
+ 
+ // Split EOFs and insert at beginning
+ for (State *state = model.states.first;
+      state != 0;
+      state = state->next)
+ {
+  Transition_List *transitions = &state->transitions;
+  if (transitions->first->condition.kind == TransitionCaseKind_ConditionSet){
+   Transition *first = 0;
+   Transition *last = 0;
+   i32 count = 0;
+   
+   for (Transition *trans = transitions->first, *next = 0;
+        trans != 0;
+        trans = next){
+    next = trans->next;
     
-    model = opt_copy_model(scratch, model);
-    
-    opt_flags_set_numbers(model);
-    opt_states_set_numbers(model);
-    
-    Input_Set cut_inputs = smi_input_set_construct_eof(scratch);
-    Field_Set cut_fields = smi_field_set_construct(scratch);
-    Condition_Set cut_set = smi_condition(scratch, cut_inputs, cut_fields);
-    
-    // Split EOFs and insert at beginning
-    for (State *state = model.states.first;
-         state != 0;
-         state = state->next){
-        Transition_List *transitions = &state->transitions;
-        if (transitions->first->condition.kind == TransitionCaseKind_ConditionSet){
-            Transition *first = 0;
-            Transition *last = 0;
-            i1 count = 0;
-            
-            for (Transition *trans = transitions->first, *next = 0;
-                 trans != 0;
-                 trans = next){
-                next = trans->next;
-                
-                Assert(trans->condition.kind == TransitionCaseKind_ConditionSet);
-                Condition_Set original = trans->condition.condition_set;
-                Condition_Set condition_int = smi_condition_set_intersect(scratch, original, cut_set);
-                if (condition_int.count == 0){
-                    zdll_push_back(first, last, trans);
-                    count += 1;
-                }
-                else{
-                    trans->condition.condition_set = condition_int;
-                    zdll_push_front(first, last, trans);
-                    count += 1;
-                    
-                    Condition_Set condition_sub = smi_condition_set_subtract(scratch, original, cut_set);
-                    if (condition_sub.count > 0){
-                        Transition *new_trans = push_array(scratch, Transition, 1);
-                        zdll_push_back(first, last, new_trans);
-                        count += 1;
-                        new_trans->parent_state = state;
-                        new_trans->condition.kind = TransitionCaseKind_ConditionSet;
-                        new_trans->condition.condition_set = condition_sub;
-                        new_trans->activation_actions = opt_copy_action_list(scratch, trans->activation_actions);
-                        new_trans->dst_state = trans->dst_state;
-                    }
-                }
-            }
-            
-            state->transitions.first = first;
-            state->transitions.last = last;
-            state->transitions.count = count;
-        }
+    kv_assert(trans->condition.kind == TransitionCaseKind_ConditionSet);
+    Condition_Set original = trans->condition.condition_set;
+    Condition_Set condition_int = smi_condition_set_intersect(scratch, original, cut_set);
+    if (condition_int.count == 0){
+     zdll_push_back(first, last, trans);
+     count += 1;
     }
-    
-    Flag_Bucket_Set bucket_set = {};
-    bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_AutoZero].pretty_name = strlit("flags_ZF");
-    bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_AutoZero].max_bits = 32;
-    bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_KeepState].pretty_name = strlit("flags_KF");
-    bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_KeepState].max_bits = 32;
-    bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_AutoZero].pretty_name = strlit("flags_ZB");
-    bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_AutoZero].max_bits = 16;
-    bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_KeepState].pretty_name = strlit("flags_KB");
-    bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_KeepState].max_bits = 16;
-    
-    for (Flag *flag = model.flags.first;
-         flag != 0;
-         flag = flag->next){
-        Flag_Reset_Rule reset_rule = flag->reset_rule;
-        Flag_Bind_Property bind_property =
-            (flag->emit_flags != 0)?FlagBindProperty_Bound:FlagBindProperty_Free;
-        
-        Flag_Bucket *bucket = &bucket_set.buckets[bind_property][reset_rule];
-        Flag_Ptr_Node *node = push_array(scratch, Flag_Ptr_Node, 1);
-        sll_queue_push(bucket->first, bucket->last, node);
-        bucket->count += 1;
-        node->flag = flag;
+    else{
+     trans->condition.condition_set = condition_int;
+     zdll_push_front(first, last, trans);
+     count += 1;
+     
+     Condition_Set condition_sub = smi_condition_set_subtract(scratch, original, cut_set);
+     if (condition_sub.count > 0){
+      Transition *new_trans = push_array(scratch, Transition, 1);
+      zdll_push_back(first, last, new_trans);
+      count += 1;
+      new_trans->parent_state = state;
+      new_trans->condition.kind = TransitionCaseKind_ConditionSet;
+      new_trans->condition.condition_set = condition_sub;
+      new_trans->activation_actions = opt_copy_action_list(scratch, trans->activation_actions);
+      new_trans->dst_state = trans->dst_state;
+     }
     }
+   }
+   
+   state->transitions.first = first;
+   state->transitions.last = last;
+   state->transitions.count = count;
+  }
+ }
+ 
+ Flag_Bucket_Set bucket_set = {};
+ bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_AutoZero].pretty_name = strlit("flags_ZF");
+ bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_AutoZero].max_bits = 32;
+ bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_KeepState].pretty_name = strlit("flags_KF");
+ bucket_set.buckets[FlagBindProperty_Free][FlagResetRule_KeepState].max_bits = 32;
+ bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_AutoZero].pretty_name = strlit("flags_ZB");
+ bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_AutoZero].max_bits = 16;
+ bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_KeepState].pretty_name = strlit("flags_KB");
+ bucket_set.buckets[FlagBindProperty_Bound][FlagResetRule_KeepState].max_bits = 16;
+ 
+ for (Flag *flag = model.flags.first;
+      flag != 0;
+      flag = flag->next){
+  Flag_Reset_Rule reset_rule = flag->reset_rule;
+  Flag_Bind_Property bind_property =
+  (flag->emit_flags != 0)?FlagBindProperty_Bound:FlagBindProperty_Free;
+  
+  Flag_Bucket *bucket = &bucket_set.buckets[bind_property][reset_rule];
+  Flag_Ptr_Node *node = push_array(scratch, Flag_Ptr_Node, 1);
+  sll_queue_push(bucket->first, bucket->last, node);
+  bucket->count += 1;
+  node->flag = flag;
+ }
+ 
+ for (i32 i = 0; i < FlagBindProperty_COUNT; i += 1){
+  for (i32 j = 0; j < FlagResetRule_COUNT; j += 1){
+   if (i == FlagBindProperty_Bound){
+    gen_bound_flag_fill_lookup__cont_flow(&bucket_set.buckets[i][j]);
+   }
+   else{
+    gen_flag_fill_lookup__cont_flow(&bucket_set.buckets[i][j]);
+   }
+  }
+ }
+ 
+ fprintf(out, "struct Lex_State_" LANG_NAME_CAMEL_STR "{\n");
+ for (i32 i = 0; i < FlagBindProperty_COUNT; i += 1){
+  for (i32 j = 0; j < FlagResetRule_COUNT; j += 1){
+   gen_flag_declarations__cont_flow(&bucket_set.buckets[i][j], out);
+  }
+ }
+ fprintf(out, "u8 *base;\n");
+ fprintf(out, "u8 *delim_first;\n");
+ fprintf(out, "u8 *delim_one_past_last;\n");
+ fprintf(out, "u8 *emit_ptr;\n");
+ fprintf(out, "u8 *ptr;\n");
+ fprintf(out, "u8 *opl_ptr;\n");
+ fprintf(out, "};\n");
+ 
+ fprintf(out, "function void\n");
+ char *init_function_name = "lex_full_input_" LANG_NAME_LOWER_STR "_init";
+ fprintf(out, cstrcode(%s(void *state_ptr0, Stringz input)) "{\n", init_function_name);
+ 
+ char *lex_state_type = "Lex_State_" LANG_NAME_CAMEL_STR;
+ 
+ fprintf(out, cstrcode(%s *state_ptr = (%s *)state_ptr0;\n),
+         lex_state_type, lex_state_type);
+ for (i32 i = 0; i < FlagBindProperty_COUNT; i += 1){
+  for (i32 j = 0; j < FlagResetRule_COUNT; j += 1){
+   gen_flag_init__cont_flow(&bucket_set.buckets[i][j], out);
+  }
+ }
+ fprintf(out, "state_ptr->base = input.str;\n");
+ fprintf(out, "state_ptr->delim_first = input.str;\n");
+ fprintf(out, "state_ptr->delim_one_past_last = input.str;\n");
+ fprintf(out, "state_ptr->emit_ptr = input.str;\n");
+ fprintf(out, "state_ptr->ptr = input.str;\n");
+ fprintf(out, "state_ptr->opl_ptr = input.str + input.size;\n");
+ fprintf(out, "}\n");
+ 
+ 
+ fprintf(out, "function b32\n");
+ fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_breaks("
+         "Arena *arena, Token_List *list, void *state_ptr0, u64 max){\n");
+ fprintf(out, cstrcode(%s *state_ptr = (%s *)state_ptr0;\n),
+         lex_state_type, lex_state_type);
+ fprintf(out, "b32 result = false;\n");
+ fprintf(out, "u64 emit_counter = 0;\n");
+ fprintf(out,  "%s state;\n", lex_state_type);
+ fprintf(out, "block_copy_struct(&state, state_ptr);\n");
+ 
+ fprintf(out, cstrcode(auto state_emit_token = [&]() -> Token {\n
+                         return Token{\n
+                         .pos = (i64)(state.emit_ptr - state.base),\n
+                         .size = (i64)(state.ptr - state.emit_ptr),\n
+                        };\n
+                       };\n));
+ 
+ for (State *state = model.states.first;
+      state != 0;
+      state = state->next)
+ {
+  fprintf(out, "{\n");
+  fprintf(out, "state_label_%d: // %.*s\n",
+          state->number, string_expand(state->pretty_name));
+  
+  Transition_List *transitions = &state->transitions;
+  Transition *trans = transitions->first;
+  
+  Transition_Case_Kind state_trans_kind = trans->condition.kind;
+  
+  switch (state_trans_kind){
+   default:
+   {
+    InvalidPath;
+   }break;
+   
+   case TransitionCaseKind_DelimMatch:
+   {
+    Transition *success_trans = trans;
+    Transition *failure_trans = trans->next;
+    kv_assert(failure_trans->condition.kind == TransitionCaseKind_DelimMatchFail);
     
-    for (i1 i = 0; i < FlagBindProperty_COUNT; i += 1){
-        for (i1 j = 0; j < FlagResetRule_COUNT; j += 1){
-            if (i == FlagBindProperty_Bound){
-                gen_bound_flag_fill_lookup__cont_flow(&bucket_set.buckets[i][j]);
-            }
-            else{
-                gen_flag_fill_lookup__cont_flow(&bucket_set.buckets[i][j]);
-            }
-        }
+    fprintf(out, "u64 delim_length = state.delim_one_past_last - state.delim_first;\n");
+    fprintf(out, "u64 parse_length = 0;\n");
+    fprintf(out, "for (;;){\n");
+    {
+     fprintf(out, "if (parse_length == delim_length){\n");
+     {
+      gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags, bucket_set,
+                                      success_trans->activation_actions, 
+                                      ActionContext_Normal, out);
+      gen_goto_dst_state__cont_flow(success_trans, ActionContext_Normal, out);
+     }
+     fprintf(out, "}\n");
+     fprintf(out, "if (state.ptr == state.opl_ptr){\n");
+     {
+      gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags, bucket_set,
+                                      failure_trans->activation_actions,
+                                      ActionContext_Normal, out);
+      gen_goto_dst_state__cont_flow(success_trans, ActionContext_Normal, out);
+     }
+     fprintf(out, "}\n");
+     
+     fprintf(out, "if (*state.ptr == state.delim_first[parse_length]){\n");
+     fprintf(out, "state.ptr += 1;\n");
+     fprintf(out, "parse_length += 1;\n");
+     fprintf(out, "}\n");
+     fprintf(out, "else{\n");
+     {
+      gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags, bucket_set,
+                                      failure_trans->activation_actions,
+                                      ActionContext_Normal, out);
+      gen_goto_dst_state__cont_flow(failure_trans, ActionContext_Normal, out);
+     }
+     fprintf(out, "}\n");
     }
-    
-    fprintf(out, "struct Lex_State_" LANG_NAME_CAMEL_STR "{\n");
-    for (i1 i = 0; i < FlagBindProperty_COUNT; i += 1){
-        for (i1 j = 0; j < FlagResetRule_COUNT; j += 1){
-            gen_flag_declarations__cont_flow(&bucket_set.buckets[i][j], out);
-        }
-    }
-    fprintf(out, "u8 *base;\n");
-    fprintf(out, "u8 *delim_first;\n");
-    fprintf(out, "u8 *delim_one_past_last;\n");
-    fprintf(out, "u8 *emit_ptr;\n");
-    fprintf(out, "u8 *ptr;\n");
-    fprintf(out, "u8 *opl_ptr;\n");
-    fprintf(out, "};\n");
-    
-    fprintf(out, "function void\n");
-    fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_init(Lex_State_"
-            LANG_NAME_CAMEL_STR " *state_ptr, String input){\n");
-    for (i1 i = 0; i < FlagBindProperty_COUNT; i += 1){
-        for (i1 j = 0; j < FlagResetRule_COUNT; j += 1){
-            gen_flag_init__cont_flow(&bucket_set.buckets[i][j], out);
-        }
-    }
-    fprintf(out, "state_ptr->base = input.str;\n");
-    fprintf(out, "state_ptr->delim_first = input.str;\n");
-    fprintf(out, "state_ptr->delim_one_past_last = input.str;\n");
-    fprintf(out, "state_ptr->emit_ptr = input.str;\n");
-    fprintf(out, "state_ptr->ptr = input.str;\n");
-    fprintf(out, "state_ptr->opl_ptr = input.str + input.size;\n");
     fprintf(out, "}\n");
-    
-    fprintf(out, "function b32\n");
-    fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_breaks("
-            "Arena *arena, Token_List *list, Lex_State_" LANG_NAME_CAMEL_STR " *state_ptr, u64 max){\n");
-    fprintf(out, "b32 result = false;\n");
-    fprintf(out, "u64 emit_counter = 0;\n");
-    fprintf(out, "Lex_State_" LANG_NAME_CAMEL_STR " state;\n");
-    fprintf(out, "block_copy_struct(&state, state_ptr);\n");
-    
-    for (State *state = model.states.first;
-         state != 0;
-         state = state->next){
-        fprintf(out, "{\n");
-        fprintf(out, "state_label_%d: // %.*s\n",
-                state->number, string_expand(state->pretty_name));
-        
-        Transition_List *transitions = &state->transitions;
-        Transition *trans = transitions->first;
-        
-        Transition_Case_Kind state_trans_kind = trans->condition.kind;
-        
-        switch (state_trans_kind){
-            default:
-            {
-                InvalidPath;
-            }break;
-            
-            case TransitionCaseKind_DelimMatch:
-            {
-                Transition *success_trans = trans;
-                Transition *failure_trans = trans->next;
-                Assert(failure_trans->condition.kind == TransitionCaseKind_DelimMatchFail);
-                
-                fprintf(out, "u64 delim_length = state.delim_one_past_last - state.delim_first;\n");
-                fprintf(out, "u64 parse_length = 0;\n");
-                fprintf(out, "for (;;){\n");
-                {
-                    fprintf(out, "if (parse_length == delim_length){\n");
-                    {
-                        gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags, bucket_set,
-                                                        success_trans->activation_actions, 
-                                                        ActionContext_Normal, out);
-                        gen_goto_dst_state__cont_flow(success_trans, ActionContext_Normal, out);
-                    }
-                    fprintf(out, "}\n");
-                    fprintf(out, "if (state.ptr == state.opl_ptr){\n");
-                    {
-                        gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags, bucket_set,
-                                                        failure_trans->activation_actions,
-                                                        ActionContext_Normal, out);
-                        gen_goto_dst_state__cont_flow(success_trans, ActionContext_Normal, out);
-                    }
-                    fprintf(out, "}\n");
-                    
-                    fprintf(out, "if (*state.ptr == state.delim_first[parse_length]){\n");
-                    fprintf(out, "state.ptr += 1;\n");
-                    fprintf(out, "parse_length += 1;\n");
-                    fprintf(out, "}\n");
-                    fprintf(out, "else{\n");
-                    {
-                        gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags, bucket_set,
-                                                        failure_trans->activation_actions,
-                                                        ActionContext_Normal, out);
-                        gen_goto_dst_state__cont_flow(failure_trans, ActionContext_Normal, out);
-                    }
-                    fprintf(out, "}\n");
-                }
-                fprintf(out, "}\n");
-            }break;
-            
-            case TransitionCaseKind_ConditionSet:
-            {
-                {
-                    fprintf(out, "if (state.ptr == state.opl_ptr){\n");
-                    for (;
-                         trans != 0;
-                         trans = trans->next){
-                        if (opt_condition_is_eof_only(trans->condition)){
-                            Assert(trans->condition.condition_set.count == 1);
-                            Condition_Node *node = trans->condition.condition_set.first;
-                            fprintf(out, "if (");
-                            gen_SLOW_field_set_check__cont_flow(node->fields, out);
-                            fprintf(out, "){\n");
-                            Action_Context action_ctx = ActionContext_EndOfFile;
-                            action_ctx = gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags,
-                                                                         bucket_set,
-                                                                         trans->activation_actions,
-                                                                         action_ctx, out);
-                            gen_goto_dst_state__cont_flow(trans, action_ctx, out);
-                            fprintf(out, "}\n");
-                        }
-                        else{
-                            break;
-                        }
-                    }
-                    fprintf(out, "}\n");
-                }
-                
-                Grouped_Input_Handler_List group_list = opt_grouped_input_handlers(scratch, trans);
-                
-                fprintf(out, "switch (*state.ptr){\n");
-                for (Grouped_Input_Handler *group = group_list.first;
-                     group != 0;
-                     group = group->next){
-                    
-                    if (group == group_list.group_with_biggest_input_set){
-                        fprintf(out, "default:\n");
-                    }
-                    else{
-                        i1 input_count = group->input_count;
-                        u8 *inputs = group->inputs;
-                        for (i1 i = 0; i < input_count; i += 1){
-                            fprintf(out, "case 0x%02x:", inputs[i]);
-                            if ((i % 7) == 6 || i + 1 == input_count){
-                                fprintf(out, "\n");
-                            }
-                        }
-                    }
-                    
-                    fprintf(out, "{\n");
-                    for (Partial_Transition *partial = group->partial_transitions.first;
-                         partial != 0;
-                         partial = partial->next){
-                        if (partial->next != 0){
-                            fprintf(out, "if (");
-                            gen_SLOW_field_set_check__cont_flow(partial->fields, out);
-                            fprintf(out, "){\n");
-                        }
-                        
-                        {
-                            gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags, bucket_set,
-                                                            partial->actions, ActionContext_Normal,
-                                                            out);
-                            gen_goto_state__cont_flow(partial->dst_state, ActionContext_Normal, out);
-                        }
-                        
-                        if (partial->next != 0){
-                            fprintf(out, "}\n");
-                        }
-                    }
-                    fprintf(out, "}break;\n");
-                }
-                fprintf(out, "}\n");
-            }break;
-        }
-        
-        fprintf(out, "}\n");
+   }break;
+   
+   case TransitionCaseKind_ConditionSet:
+   {
+    {
+     fprintf(out, "if (state.ptr == state.opl_ptr){\n");
+     for (;
+          trans != 0;
+          trans = trans->next){
+      if (opt_condition_is_eof_only(trans->condition)){
+       kv_assert(trans->condition.condition_set.count == 1);
+       Condition_Node *node = trans->condition.condition_set.first;
+       fprintf(out, "if (");
+       gen_SLOW_field_set_check__cont_flow(node->fields, out);
+       fprintf(out, "){\n");
+       Action_Context action_ctx = ActionContext_EndOfFile;
+       action_ctx = gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags,
+                                                    bucket_set,
+                                                    trans->activation_actions,
+                                                    action_ctx, out);
+       gen_goto_dst_state__cont_flow(trans, action_ctx, out);
+       fprintf(out, "}\n");
+      }
+      else{
+       break;
+      }
+     }
+     fprintf(out, "}\n");
     }
     
-    fprintf(out, "end:;\n");
-    fprintf(out, "block_copy_struct(state_ptr, &state);\n");
-    fprintf(out, "return(result);\n");
-    fprintf(out, "}\n");
+    Grouped_Input_Handler_List group_list = opt_grouped_input_handlers(scratch, trans);
     
-    fprintf(out, "function Token_List\n");
-    fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "(Arena *arena, String input){\n");
-    fprintf(out, "Lex_State_" LANG_NAME_CAMEL_STR " state = {};\n");
-    fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_init(&state, input);\n");
-    fprintf(out, "Token_List list = {};\n");
-    fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_breaks(arena, &list, &state, max_u64);\n");
-    fprintf(out, "return(list);\n");
+    fprintf(out, "switch (*state.ptr){\n");
+    for (Grouped_Input_Handler *group = group_list.first;
+         group != 0;
+         group = group->next){
+     
+     if (group == group_list.group_with_biggest_input_set){
+      fprintf(out, "default:\n");
+     }
+     else{
+      i32 input_count = group->input_count;
+      u8 *inputs = group->inputs;
+      for (i32 i = 0; i < input_count; i += 1){
+       fprintf(out, "case 0x%02x:", inputs[i]);
+       if ((i % 7) == 6 || i + 1 == input_count){
+        fprintf(out, "\n");
+       }
+      }
+     }
+     
+     fprintf(out, "{\n");
+     for (Partial_Transition *partial = group->partial_transitions.first;
+          partial != 0;
+          partial = partial->next){
+      if (partial->next != 0){
+       fprintf(out, "if (");
+       gen_SLOW_field_set_check__cont_flow(partial->fields, out);
+       fprintf(out, "){\n");
+      }
+      
+      {
+       gen_SLOW_action_list__cont_flow(scratch, tokens, model.flags, bucket_set,
+                                       partial->actions, ActionContext_Normal,
+                                       out);
+       gen_goto_state__cont_flow(partial->dst_state, ActionContext_Normal, out);
+      }
+      
+      if (partial->next != 0){
+       fprintf(out, "}\n");
+      }
+     }
+     fprintf(out, "}break;\n");
+    }
     fprintf(out, "}\n");
-    
-    end_temp_memory(temp);
+   }break;
+  }
+  
+  fprintf(out, "}\n");
+ }
+ 
+ fprintf(out, "end:;\n");
+ fprintf(out, "block_copy_struct(state_ptr, &state);\n");
+ fprintf(out, "return(result);\n");
+ fprintf(out, "}\n");
+ 
+ fprintf(out, "function Token_List\n");
+ fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "(Arena *arena, Stringz input){\n");
+ fprintf(out, "Lex_State_" LANG_NAME_CAMEL_STR " state = {};\n");
+ fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_init((void *)&state, input);\n");
+ fprintf(out, "Token_List list = {};\n");
+ fprintf(out, "lex_full_input_" LANG_NAME_LOWER_STR "_breaks(arena, &list, (void *)&state, max_u64);\n");
+ fprintf(out, "return(list);\n");
+ fprintf(out, "}\n");
+ 
+ end_temp_memory(temp);
 }
 
 ////////////////////////////////
@@ -3899,174 +3967,168 @@ gen_contiguous_control_flow_lexer(Arena *scratch, Token_Kind_Set tokens, Lexer_M
 function void
 build_language_model(void);
 
-function String
-file_read_all(Arena *arena, FILE *file){
-    String result = {};
-    fseek(file, 0, SEEK_END);
-    result.size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    result.str = push_array(arena, u8, result.size + 1);
-    fread(result.str, result.size, 1, file);
-    result.str[result.size] = 0;
-    return(result);
-}
-
-int main(int argc, char **argv){
-  String output_path;
-  {// handle input
-    if (argc != 2)
-    {
-      printf("error: we need one argument");
-      exit(1);
-    }
-
-    output_path = SCu8(argv[1]);
+xfunction int
+main(int argc, char **argv)
+{
+ String output_path;
+ {// handle input
+  if (argc != 2)
+  {
+   printf("error: we need one argument");
+   exit(1);
   }
-
-    pcg32_srandom(time(0), time(0));
-    
-    Base_Allocator *allocator = &malloc_base_allocator;
-    sm_helper_init(allocator);
-    
-    build_language_model();
-    
-    Lexer_Primary_Context *ctx = &helper_ctx.primary_ctx;
-    
-    // NOTE(allen): Type checking
-    // DelimMatch only with a single catch-all fallback, no peeks.
-    // Remove the declaration of states and flags?
-    // Flag bindings are one to one
-    
-    ////////////////////////////////
-    
-    // NOTE(allen): High level reorganization of state machine
-    
-    opt_set_auto_zero_flags_on_root(ctx);
-    opt_transfer_state_actions_to_transitions(ctx);
-    
-    ////////////////////////////////
-    
-    // NOTE(allen): High level optimization
-    
-    opt_simplify_transitions(ctx);
-    
-    opt_mark_all_states_excluded(ctx);
-    opt_include_reachable_states(ctx->model.root);
-    opt_discard_all_excluded_states(ctx);
-    
-    opt_merge_redundant_transitions_in_each_state(ctx);
-    
-    opt_skip_past_thunk_states(ctx);
-    
-    opt_mark_all_states_excluded(ctx);
-    opt_include_reachable_states(ctx->model.root);
-    opt_discard_all_excluded_states(ctx);
-    
-    opt_remove_peeks_without_creating_transition_splits(ctx);
-    
-    opt_mark_all_states_excluded(ctx);
-    opt_include_reachable_states(ctx->model.root);
-    opt_discard_all_excluded_states(ctx);
-    
-    opt_remove_peeks_into_single_entry_point_states(ctx);
-    
-    opt_discard_all_excluded_states(ctx);
-    
-    opt_states_set_numbers(ctx->model);
-    
-    ////////////////////////////////
-    
-    // NOTE(allen): Debug inspection of model
-    
-#if 0    
-    opt_flags_set_numbers(ctx->model);
-    debug_print_transitions(ctx);
+  
+  output_path = SCu8(argv[1]);
+ }
+ 
+ pcg32_srandom(time(0), time(0));
+ 
+ Base_Allocator *allocator = &malloc_base_allocator;
+ sm_helper_init(allocator);
+ 
+ build_language_model();
+ 
+ Lexer_Primary_Context *ctx = &helper_ctx.primary_ctx;
+ 
+ // NOTE(allen): Type checking
+ // DelimMatch only with a single catch-all fallback, no peeks.
+ // Remove the declaration of states and flags?
+ // Flag bindings are one to one
+ 
+ ////////////////////////////////
+ 
+ // NOTE(allen): High level reorganization of state machine
+ 
+ opt_set_auto_zero_flags_on_root(ctx);
+ opt_transfer_state_actions_to_transitions(ctx);
+ 
+ ////////////////////////////////
+ 
+ // NOTE(allen): High level optimization
+ 
+ opt_simplify_transitions(ctx);
+ 
+ opt_mark_all_states_excluded(ctx);
+ opt_include_reachable_states(ctx->model.root);
+ opt_discard_all_excluded_states(ctx);
+ 
+ opt_merge_redundant_transitions_in_each_state(ctx);
+ 
+ opt_skip_past_thunk_states(ctx);
+ 
+ opt_mark_all_states_excluded(ctx);
+ opt_include_reachable_states(ctx->model.root);
+ opt_discard_all_excluded_states(ctx);
+ 
+ opt_remove_peeks_without_creating_transition_splits(ctx);
+ 
+ opt_mark_all_states_excluded(ctx);
+ opt_include_reachable_states(ctx->model.root);
+ opt_discard_all_excluded_states(ctx);
+ 
+ opt_remove_peeks_into_single_entry_point_states(ctx);
+ 
+ opt_discard_all_excluded_states(ctx);
+ 
+ opt_states_set_numbers(ctx->model);
+ 
+ ////////////////////////////////
+ 
+ // NOTE(allen): Debug inspection of model
+#if 0
+ opt_flags_set_numbers(ctx->model);
+ debug_print_transitions(ctx);
 #endif
-    
-    ////////////////////////////////
-    
-    // NOTE(allen): Arrange input files and output files
-    
-    String path_to_self = strlit(__FILE__);
-    path_to_self = path_dir(path_to_self);
-    
-    String hand_written_h_name = push_stringf(&ctx->arena,
-                                                          "%.*s4coder_lex_gen_hand_written.h",
-                                                          string_expand(path_to_self));
-    String hand_written_name = push_stringf(&ctx->arena,
-                                                        "%.*s4coder_lex_gen_hand_written.cpp",
-                                                        string_expand(path_to_self));
-    
-    
-    FILE *hand_written_h_file = fopen((char*)hand_written_h_name.str, "rb");
-    if (hand_written_h_file == 0){
-        printf("error: could not open 4coder_lex_gen_hand_written.h\n");
-        exit(1);
-    }
-    
-    String hand_written_h = file_read_all(&ctx->arena, hand_written_h_file);
-    fclose(hand_written_h_file);
-    
-    FILE *hand_written_file = fopen((char*)hand_written_name.str  , "rb");
-    if (hand_written_file == 0){
-        printf("error: could not open 4coder_lex_gen_hand_written.cpp\n");
-        exit(1);
-    }
-    
-    String hand_written = file_read_all(&ctx->arena, hand_written_file);
-    fclose(hand_written_file);
-    
-    String out_h_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".gen.h",
-                                                 string_expand(output_path));
-    String out_cpp_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".gen.cpp",
-                                                   string_expand(output_path));
-    
-    FILE *out_h_file = fopen((char*)out_h_name.str, "wb");
-    if (out_h_file == 0){
-        printf("error: could not open output file %.*s\n", string_expand(out_h_name));
-        exit(1);
-    }
-    
-    FILE *out_cpp_file = fopen((char*)out_cpp_name.str, "wb");
-    if (out_cpp_file == 0){
-        printf("error: could not open output file %.*s\n", string_expand(out_cpp_name));
-        exit(1);
-    }
-    
-    ////////////////////////////////
-    
-    // NOTE(allen): Code generation
-    
-    fprintf(out_h_file, "%s\n", hand_written_h.str);
-    gen_tokens(&ctx->arena, ctx->tokens, out_h_file);
-    
-    fprintf(out_cpp_file, "%s\n", hand_written.str);
-    for (Keyword_Set *set = ctx->keywords.first;
-         set != 0;
-         set = set->next){
-        gen_keyword_table(&ctx->arena, ctx->tokens, *set, out_cpp_file);
-    }
-    gen_contiguous_control_flow_lexer(&ctx->arena, ctx->tokens, ctx->model, out_cpp_file);
-    
-    fclose(out_h_file);
-    fclose(out_cpp_file);
-    
-    printf("%.*s\n", string_expand(out_h_name));
-    printf("%.*s\n", string_expand(out_cpp_name));
-    
-    // NOTE(allen): Simplifying the state machine
-    // Isolate the state machine's parts into small L.U.T. then generate tables?
-    // If using L.U.T: Optimize all action lists that don't contain a "consume" action
-    
-    // NOTE(allen): State machine generation
-    // Implementation: Control Flow
-    // Feature: Fully Contiguous input
-    // 
-    // Implementation: L.U.T. Accelerated
-    // 
-    // Feature: Spatially chunked input
-    // Feature: Temporally chunked input
-    return(0);
+ 
+ ////////////////////////////////
+ 
+ // NOTE(allen): Arrange input files and output files
+ 
+ String path_to_self = strlit(__FILE__);
+ path_to_self = path_dir(path_to_self);
+ 
+ String hand_written_h;
+ String hand_written_cpp;
+ {//-
+  // NOTE(kv) Embedding content in the file instead of #include
+  // I don't oppose strongly to it, since it makes build easier.
+  String hand_written_h_name = push_stringf(&ctx->arena,
+                                            "%.*s4coder_lex_gen_hand_written.h",
+                                            string_expand(path_to_self));
+  String hand_written_name = push_stringf(&ctx->arena,
+                                          "%.*s4coder_lex_gen_hand_written.cpp",
+                                          string_expand(path_to_self));
+  
+  
+  FILE *hand_written_h_file = fopen((char*)hand_written_h_name.str, "rb");
+  if (hand_written_h_file == 0){
+   printf("error: could not open 4coder_lex_gen_hand_written.h\n");
+   exit(1);
+  }
+  
+  hand_written_h = read_entire_file(&ctx->arena, hand_written_h_file);
+  fclose(hand_written_h_file);
+  
+  FILE *hand_written_file = fopen((char*)hand_written_name.str  , "rb");
+  if (hand_written_file == 0){
+   printf("error: could not open 4coder_lex_gen_hand_written.cpp\n");
+   exit(1);
+  }
+  
+  hand_written_cpp = read_entire_file(&ctx->arena, hand_written_file);
+  fclose(hand_written_file);
+ }
+ 
+ String out_h_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".gen.h",
+                                  string_expand(output_path));
+ String out_cpp_name = push_stringf(&ctx->arena, "%.*s/lexer_" LANG_NAME_LOWER_STR ".gen.cpp",
+                                    string_expand(output_path));
+ 
+ FILE *out_h_file = fopen((char*)out_h_name.str, "wb");
+ if (out_h_file == 0){
+  printf("error: could not open output file %.*s\n", string_expand(out_h_name));
+  exit(1);
+ }
+ 
+ FILE *out_cpp_file = fopen((char*)out_cpp_name.str, "wb");
+ if (out_cpp_file == 0){
+  printf("error: could not open output file %.*s\n", string_expand(out_cpp_name));
+  exit(1);
+ }
+ 
+ //~NOTE(allen): Code generation
+ 
+ fprintf(out_h_file, "%s\n", hand_written_h.str);
+ gen_tokens(&ctx->arena, ctx->tokens, out_h_file);
+ 
+ fprintf(out_cpp_file, "%s\n", hand_written_cpp.str);
+ for (Keyword_Set *set = ctx->keywords.first;
+      set != 0;
+      set = set->next)
+ {
+  gen_keyword_table(&ctx->arena, ctx->tokens, *set, out_cpp_file);
+ }
+ gen_contiguous_control_flow_lexer(&ctx->arena, ctx->tokens, ctx->model, out_cpp_file);
+ 
+ fclose(out_h_file);
+ fclose(out_cpp_file);
+ 
+ printf("%.*s\n", string_expand(out_h_name));
+ printf("%.*s\n", string_expand(out_cpp_name));
+ 
+ // NOTE(allen): Simplifying the state machine
+ // Isolate the state machine's parts into small L.U.T. then generate tables?
+ // If using L.U.T: Optimize all action lists that don't contain a "consume" action
+ 
+ // NOTE(allen): State machine generation
+ // Implementation: Control Flow
+ // Feature: Fully Contiguous input
+ // 
+ // Implementation: L.U.T. Accelerated
+ // 
+ // Feature: Spatially chunked input
+ // Feature: Temporally chunked input
+ return(0);
 }
 
 // BOTTOM

@@ -4,10 +4,12 @@
 
 // TOP
 
-function void
-token_list_push(Arena *arena, Token_List *list, Token *token){
+function Token *
+token_list_push(Arena *arena, Token_List *list, Token *token)
+{
  Token_Block *block = list->last;
- if (block == 0 || block->count + 1 > block->max) {
+ if(block == 0 || block->count + 1 > block->max)
+ {
   block = push_array(arena, Token_Block, 1);
   block->next = 0;
   block->prev = 0;
@@ -18,9 +20,11 @@ token_list_push(Arena *arena, Token_List *list, Token *token){
   zdll_push_back(list->first, list->last, block);
   list->node_count += 1;
  }
- block_copy_struct(&block->tokens[block->count], token);
+ Token *result = &block->tokens[block->count];
+ *result = *token;
  block->count += 1;
  list->total_count += 1;
+ return result;
 }
 
 function void
@@ -195,13 +199,17 @@ tkarr_read(Token_Iterator_Array *it){
 }
 
 api(ed) function Token *
-tkarr_inc(Token_Iterator_Array *it){
+tkarr_inc(Token_Iterator_Array *it)
+{
  Token *result = 0;
  repeat:
- if ( tkarr_inc_all(it) ) {
+ if(tkarr_inc_all(it))
+ {
   Token *token = tkarr_read(it);
-  if (token != 0 && (token->kind == TokenBaseKind_Whitespace ||
-                     token->kind == TokenBaseKind_Comment)) {
+  if (token != 0 and
+      (token->kind == TokenBaseKind_Whitespace or
+       token->kind == TokenBaseKind_Comment))
+  {
    goto repeat;
   }
   result = token;
@@ -216,7 +224,7 @@ tkarr_dec(Token_Iterator_Array *it) {
  if(tkarr_dec_all(it)){
   Token *token = tkarr_read(it);
   if (token != 0 && (token->kind == TokenBaseKind_Whitespace ||
-                     token->kind == TokenBaseKind_Comment)){
+                         token->kind == TokenBaseKind_Comment)){
    goto repeat;
   }
   result = token;
@@ -225,18 +233,19 @@ tkarr_dec(Token_Iterator_Array *it) {
 }
 
 function Token *
-tkarr_inc_non_whitespace(Token_Iterator_Array *it){
-    Token *result = 0;
-    repeat:
-    if (tkarr_inc_all(it))
-    {
-        Token *token = tkarr_read(it);
-        if (token != 0 && token->kind == TokenBaseKind_Whitespace){
-            goto repeat;
-        }
-        result = token;
-    }
-    return(result);
+tkarr_inc_non_whitespace(Token_Iterator_Array *it)
+{
+ Token *result = 0;
+ repeat:
+ if (tkarr_inc_all(it))
+ {
+  Token *token = tkarr_read(it);
+  if (token != 0 && token->kind == TokenBaseKind_Whitespace){
+   goto repeat;
+  }
+  result = token;
+ }
+ return(result);
 }
 
 function Token *

@@ -15,6 +15,22 @@ struct App_Cmd : App
 {
  b32 automated;
 };
+myinline App_Cmd
+app_cmd(App *app, b32 automated)
+{
+ App_Cmd result = {};
+ (App &)result = *app;
+ result.automated = automated;
+ return result;
+}
+myinline App_Cmd
+app_cmd_automated(App *app)
+{
+ App_Cmd result = {};
+ (App &)result = *app;
+ result.automated = true;
+ return result;
+}
 
 typedef void Custom_Command_Function(App_Cmd *app);
 
@@ -53,16 +69,16 @@ struct Mouse_State
  b8 release_l;
  b8 release_r;
  b8 out_of_window;
- i1 wheel;
+ i32 wheel;
  union {
   i2 p;
-  struct{ i1 x; i1 y; };
+  struct{ i32 x; i32 y; };
  };
 };
 
 api(custom)
 struct Frame_Info{
- i1 index;
+ i32 index;
  v1 literal_dt;
  v1 animation_dt;
  u32 work_cycles;
@@ -258,18 +274,18 @@ enum{
 api(custom)
 typedef i32 Global_Setting_ID;
 enum{
-    GlobalSetting_Null,
-    GlobalSetting_LAltLCtrlIsAltGr,
+ GlobalSetting_Null,
+ GlobalSetting_LAltLCtrlIsAltGr,
 };
 
 api(custom)
-enum Buffer_Setting_ID
-{
-    BufferSetting_Null = 0x0,
-    BufferSetting_Unimportant = 0x1,
-    BufferSetting_ReadOnly = 0x2,
-    BufferSetting_RecordsHistory = 0x4,
-    BufferSetting_Unkillable = 0x8,
+typedef u32 Buffer_Setting_ID;
+enum {
+ BufferSetting_Unimportant    = 0x1,
+ BufferSetting_ReadOnly       = 0x2,
+ BufferSetting_RecordsHistory = 0x4,
+ BufferSetting_Unkillable     = 0x8,
+ BufferSetting_IsGame         = 0x10,
 };
 
 api(custom)
@@ -393,7 +409,7 @@ struct Parser_String_And_Type{
 api(custom)
 struct Buffer_Identifier{
     char *name;
-    i1 name_len;
+    i32 name_len;
     Buffer_ID id;
 };
 
@@ -462,7 +478,7 @@ struct Query_Bar{
 api(custom)
 struct Query_Bar_Ptr_Array{
     Query_Bar **ptrs;
-    i1 count;
+    i32 count;
 };
 
 api(custom)
@@ -555,7 +571,7 @@ struct Record_Info
  Record_Error error;
  Record_Kind kind;
  i64 pos_before_edit;
- i1 edit_number;
+ i32 edit_number;
  union
  {
   struct
@@ -566,7 +582,7 @@ struct Record_Info
   };
   struct
   {
-   i1 group_count;
+   i32 group_count;
   };
  };
 };
@@ -593,7 +609,7 @@ enum{
 
 api(custom)
 typedef i32 Hook_Function(App *app);
-#define HOOK_SIG(name) i1 name(App *app)
+#define HOOK_SIG(name) i32 name(App *app)
 
 api(custom)
 struct Buffer_Name_Conflict_Entry{
@@ -606,15 +622,15 @@ struct Buffer_Name_Conflict_Entry{
 };
 
 api(custom)
-typedef void Buffer_Name_Resolver_Function(App *app, Buffer_Name_Conflict_Entry *conflicts, i1 conflict_count);
-#define BUFFER_NAME_RESOLVER_SIG(n) void n(App *app, Buffer_Name_Conflict_Entry *conflicts, i1 conflict_count)
+typedef void Buffer_Name_Resolver_Function(App *app, Buffer_Name_Conflict_Entry *conflicts, i32 conflict_count);
+#define BUFFER_NAME_RESOLVER_SIG(n) void n(App *app, Buffer_Name_Conflict_Entry *conflicts, i32 conflict_count)
 
 api(custom)
 typedef i32 Buffer_Hook_Function(App *app, Buffer_ID buffer_id);
-#define BUFFER_HOOK_SIG(name) i1 name(App *app, Buffer_ID buffer_id)
+#define BUFFER_HOOK_SIG(name) i32 name(App *app, Buffer_ID buffer_id)
 
 #define BUFFER_EDIT_RANGE_SIG(name) \
-i1 name(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range, b32 automated)
+i32 name(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range, b32 automated)
 
 api(custom)
 typedef BUFFER_EDIT_RANGE_SIG(Buffer_Edit_Range_Function);
@@ -674,7 +690,7 @@ struct Layout_Item_List {
  Layout_Item_Block *last;
  i64 item_count;
  i64 character_count;
- i1 node_count;
+ i32 node_count;
  f32 height;
  f32 bottom_padding;
  Range_i64 input_index_range;
@@ -708,7 +724,7 @@ struct String_Match
 {
  String_Match *next;
  Buffer_ID buffer;
- i1 string_id;
+ i32 string_id;
  String_Match_Flag flags;
  Range_i64 range;
 };
@@ -717,7 +733,7 @@ api(custom)
 struct String_Match_List{
     String_Match *first;
     String_Match *last;
-    i1 count;
+    i32 count;
 };
 
 api(custom)

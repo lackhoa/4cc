@@ -1,6 +1,7 @@
 #pragma once
 
-struct Key_Direction{
+struct Key_Direction
+{
  v4  dir;
  b32 new_keypress;
 };
@@ -57,7 +58,6 @@ struct Game_State
  b32 save_failed;
  b32 load_failed;
  Game_ImGui_State imgui_state;
- b32 stick_to_front;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

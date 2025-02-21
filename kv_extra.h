@@ -187,7 +187,8 @@ path_no_extension(String path){
  return path;
 }
 function String
-path_stem(String path){
+path_stem(String path)
+{
  path = path_filename(path);
  path = path_no_extension(path);
  return(path);
@@ -375,7 +376,8 @@ stack_ptr -= 2; \
 } while (0)
 
 function void
-gb_sort(void *base_, isize count, isize size, Compare_Function compare){
+gb_sort(void *base_, isize count, isize size, Compare_Function compare)
+{
  // NOTE(bill): Uses quick sort for large arrays but insertion sort for small
  const i32 insert_sort_threshold = 8;
 	u8 *i, *j;
@@ -438,6 +440,7 @@ gb_sort(void *base_, isize count, isize size, Compare_Function compare){
 }
 #undef GB__SORT_PUSH
 #undef GB__SORT_POP
+
 #define gb_sort_array(array, count, compare) \
 gb_sort(array, count, gb_size_of(*(array)), compare)
 //-
@@ -583,12 +586,600 @@ gb_murmur64_seed(void const *data_, isize len, u64 seed)
 	return h;
 }
 
-function u32
-gb_murmur32(void const *data, isize len) {
+myinline u32
+gb_murmur32(void const *data, isize len)
+{
  return gb_murmur32_seed(data, len, 0x9747b28c);
 }
-function u64
-gb_murmur64(void const *data, isize len) {
+myinline u64
+gb_murmur64(void const *data, isize len)
+{
  return gb_murmur64_seed(data, len, 0x9747b28c);
 }
+//-
+
+function String
+time_format(Arena *arena, char *format)
+{// NOTE(kv) Don't pass crazy long format string in here please!
+ String result = {};
+ time_t rawtime;
+ time(&rawtime);
+ struct tm *timeinfo = localtime(&rawtime);
+ 
+ if(timeinfo)
+ {
+  Scratch_Scope tmp(arena);
+  i32 bufsize = 1024;
+  char *buf = (char *)push_size(tmp, bufsize);
+  size_t strftime_result = strftime(buf, bufsize, format, timeinfo);
+  if(strftime_result != 0)
+  {
+   String string = SCu8(buf);
+   result = push_string(arena, string);
+  }
+  else
+  {
+   bufsize *= 2;
+  }
+ }
+ 
+ return result;
+}
+//-
+typedef u32 File_Attribute_Flag;
+enum
+{
+ FileAttribute_IsDirectory = 1,
+};
+
+struct File_Attributes
+{
+ u64 size;
+ u64 last_write_time;
+ File_Attribute_Flag flags;
+};
+
+struct File_Info
+{
+ File_Info *next;
+ Stringz filename;
+ File_Attributes attributes;
+};
+
+struct File_List
+{
+ File_Info **infos;
+ u32 count;
+};
+
+function u8
+string_get_character(String str, u64 i)
+{
+ u8 r = 0;
+ if(i < str.size)
+ {
+  r = str.str[i];
+ }
+ return(r);
+}
+
+typedef i32 String_Fill_Terminate_Rule;
+enum{
+ StringFill_NoTerminate = 0,
+ StringFill_NullTerminate = 1,
+};
+
+function Stringz
+pjoin(Arena *arena, String a, String b)
+{
+ char slash = OS_SLASH;
+ String joiner = {.str=(u8 *)&slash, .count=1};
+ if(is_file_slash(a[a.count-1]))
+ {
+  joiner = empty_string;
+ }
+ Stringz result = push_stringf(arena, "%S%S%S", a, joiner, b);
+ return result;
+}
+myinline Stringz
+pjoin(Arena *arena, String a, char *b)
+{// NOTE(kv) Sorry, due to popular request from the metaprogram, we want a cstring variant.
+ return pjoin(arena, a, SCu8(b));
+}
+myinline Stringz
+pjoin(Arena *arena, String a, String b, String c)
+{
+ Scratch_Scope tmp(arena);
+ Stringz result = pjoin(tmp, a, b);
+ result = pjoin(arena, result, c);
+ return result;
+}
+
+myinline b32
+file_exists(Stringz path)
+{
+ return gb_file_exists(to_cstring(path));
+}
+myinline u64
+file_mtime(Stringz path)
+{
+ return gb_file_last_write_time(to_cstring(path));
+}
+function b32
+remove_file(Stringz path)
+{
+ b32 result = true;
+ if(file_exists(path))
+ {
+  result = gb_file_remove(to_cstring(path));
+ }
+ return result;
+}
+function b32
+move_file(Stringz from, Stringz to){
+ remove_file(to);
+ b32 result = gb_file_move(to_cstring(from), to_cstring(to));
+ return result;
+}
+myinline b32 
+copy_file(Stringz from, Stringz to, b32 fail_if_exists=0)
+{
+ return gb_file_copy(to_cstring(from), to_cstring(to), fail_if_exists);
+}
+
+#if OS_WINDOWS
+function b32
+mkdir_p(Stringz path)
+{
+ b32 ok = 1;
+ if(!CreateDirectoryA(to_cstring(path),0))
+ {
+  DWORD error = GetLastError();
+  if(error != ERROR_ALREADY_EXISTS){
+   ok = 0;
+  }
+ }
+ return ok;
+}
+function b32
+mkdir_p(String path)
+{
+ Scratch_Block scratch;
+ Stringz pathz = to_stringz(scratch, path);
+ return mkdir_p(pathz);
+}
+#endif
+
+myinline FILE *
+open_file(Stringz name, char *mode)
+{
+ return fopen(to_cstring(name), mode);
+}
+function FILE *
+open_or_create_file(Stringz name, char *mode, b32 *created=0)
+{
+ FILE *file = open_file(name, mode);
+ if(created){
+  *created = file == 0;
+ }
+ if(file == 0){
+  if(errno == ENOENT){
+   mkdir_p(path_dir(name));
+   open_file(name, mode);
+  }
+ }
+ return file;
+}
+inline void
+close_file(FILE *file)
+{// NOTE(kv): Turns out writing a wrapper is sometimes beneficial.
+ if(file != 0){
+  fclose(file);
+ }
+}
+
+#if OS_WINDOWS
+function b32
+path_is_directory(Stringz path)
+{
+ DWORD attr = GetFileAttributes(to_cstring(path));
+ return (attr & FILE_ATTRIBUTE_DIRECTORY);
+}
+#endif
+
+function Stringz
+read_file(Arena *arena, FILE *file, usize size)
+{
+ Stringz result = empty_string;
+ if(file)
+ {
+  char *mem = push_array(arena, char, size+1);
+  usize read_size = fread(mem, 1, (size_t)size, file);
+  if(read_size != size)
+  {
+   // TODO(kv) Error handling, hello?
+  }
+  else
+  {
+   mem[size] = 0;  // NOTE: null-termination
+   result = {(u8*)mem, size};
+  }
+ }
+ return(result);
+}
+function Stringz
+read_file(Arena *arena, Stringz filename, usize size)
+{
+ FILE *file = open_file(filename, "rb");
+ Stringz result = read_file(arena, file, size);
+ close_file(file);
+ return result;
+}
+function Stringz
+read_entire_file(Arena *arena, FILE *file)
+{
+ u64 size = 0;
+ if(file)
+ {
+  fseek(file, 0, SEEK_END);
+  size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+ }
+ Stringz result = read_file(arena, file, size);
+ return result;
+}
+function Stringz
+read_entire_file(Arena *arena, Stringz filename)
+{
+ FILE *file = open_file(filename, "rb");
+ Stringz result = read_entire_file(arena, file);
+ close_file(file);
+ return(result);
+}
+
+struct Character_Consume_Result
+{
+ u32 inc;
+ u32 codepoint;
+};
+
+global const u8 utf8_class[32] = {
+ 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5,
+};
+
+function Character_Consume_Result
+utf8_consume(u8 *str, u64 max)
+{
+ Character_Consume_Result result = {1, max_u32};
+ u8 byte = str[0];
+ u8 byte_class = utf8_class[byte >> 3];
+ switch (byte_class){
+  case 1:
+  {
+   result.codepoint = byte;
+  }break;
+  case 2:
+  {
+   if (1 < max){
+    u8 cont_byte = str[1];
+    if (utf8_class[cont_byte >> 3] == 0){
+     result.codepoint = (byte & bitmask_5) << 6;
+     result.codepoint |= (cont_byte & bitmask_6);
+     result.inc = 2;
+    }
+   }
+  }break;
+  case 3:
+  {
+   if (2 < max){
+    u8 cont_byte[2] = {str[1], str[2]};
+    if (utf8_class[cont_byte[0] >> 3] == 0 &&
+        utf8_class[cont_byte[1] >> 3] == 0){
+     result.codepoint = (byte & bitmask_4) << 12;
+     result.codepoint |= ((cont_byte[0] & bitmask_6) << 6);
+     result.codepoint |=  (cont_byte[1] & bitmask_6);
+     result.inc = 3;
+    }
+   }
+  }break;
+  case 4:
+  {
+   if (3 < max){
+    u8 cont_byte[3] = {str[1], str[2], str[3]};
+    if (utf8_class[cont_byte[0] >> 3] == 0 &&
+        utf8_class[cont_byte[1] >> 3] == 0 &&
+        utf8_class[cont_byte[2] >> 3] == 0){
+     result.codepoint = (byte & bitmask_3) << 18;
+     result.codepoint |= ((cont_byte[0] & bitmask_6) << 12);
+     result.codepoint |= ((cont_byte[1] & bitmask_6) <<  6);
+     result.codepoint |=  (cont_byte[2] & bitmask_6);
+     result.inc = 4;
+    }
+   }
+  }break;
+ }
+ return(result);
+}
+
+function u32
+utf8_write(u8 *str, u32 codepoint){
+ u32 inc = 0;
+ if (codepoint <= 0x7F){
+  str[0] = (u8)codepoint;
+  inc = 1;
+ }
+ else if (codepoint <= 0x7FF){
+  str[0] = (bitmask_2 << 6) | ((codepoint >> 6) & bitmask_5);
+  str[1] = bit_8 | (codepoint & bitmask_6);
+  inc = 2;
+ }
+ else if (codepoint <= 0xFFFF){
+  str[0] = (bitmask_3 << 5) | ((codepoint >> 12) & bitmask_4);
+  str[1] = bit_8 | ((codepoint >> 6) & bitmask_6);
+  str[2] = bit_8 | ( codepoint       & bitmask_6);
+  inc = 3;
+ }
+ else if (codepoint <= 0x10FFFF){
+  str[0] = (bitmask_4 << 3) | ((codepoint >> 18) & bitmask_3);
+  str[1] = bit_8 | ((codepoint >> 12) & bitmask_6);
+  str[2] = bit_8 | ((codepoint >>  6) & bitmask_6);
+  str[3] = bit_8 | ( codepoint        & bitmask_6);
+  inc = 4;
+ }
+ else{
+  str[0] = '?';
+  inc = 1;
+ }
+ return(inc);
+}
+
+function b32
+string_null_terminate(String_u8 *str)
+{
+ b32 result = false;
+ if (str->size < str->cap){
+  str->str[str->size] = 0;
+ }
+ return(result);
+}
+
+#if OS_WINDOWS
+struct String_Const_u16
+{
+ u16 *str;
+ u64 size;
+};
+
+struct String_u16
+{
+ union{
+  String_Const_u16 string;
+  struct{
+   u16 *str;
+   u64 size;
+  };
+ };
+ u64 cap;
+};
+
+function b32
+string_match(String_Const_u16 a, String_Const_u16 b)
+{
+ b32 result = false;
+ if (a.size == b.size){
+  result = true;
+  for (u64 i = 0; i < a.size; i += 1){
+   if (a.str[i] != b.str[i]){
+    result = false;
+    break;
+   }
+  }
+ }
+ return(result);
+}
+
+function Character_Consume_Result
+utf16_consume(u16 *str, u64 max)
+{
+ Character_Consume_Result result = {1, max_u32};
+ result.codepoint = str[0];
+ result.inc = 1;
+ if (0xD800 <= str[0] && str[0] < 0xDC00 && max > 1 && 0xDC00 <= str[1] && str[1] < 0xE000){
+  result.codepoint = ((str[0] - 0xD800) << 10) | (str[1] - 0xDC00);
+  result.inc = 2;
+ }
+ return(result);
+}
+
+function u32
+utf16_write(u16 *str, u32 codepoint){
+ u32 inc = 1;
+ if (codepoint == max_u32){
+  str[0] = (u16)'?';
+ }
+ else if (codepoint < 0x10000){
+  str[0] = (u16)codepoint;
+ }
+ else{
+  u32 v = codepoint - 0x10000;
+  str[0] = 0xD800 + (u16)(v >> 10);
+  str[1] = 0xDC00 + (v & bitmask_10);
+  inc = 2;
+ }
+ return(inc);
+}
+
+
+function u64
+win32_u64_from_u32_u32(u32 hi, u32 lo)
+{
+ return( (((u64)hi) << 32) | ((u64)lo) );
+}
+function u64
+win32_u64_from_filetime(FILETIME time)
+{
+ return(win32_u64_from_u32_u32(time.dwHighDateTime, time.dwLowDateTime));
+}
+function File_Attribute_Flag
+win32_convert_file_attribute_flags(DWORD dwFileAttributes)
+{
+ File_Attribute_Flag result = {};
+ MovFlag(dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY, result, FileAttribute_IsDirectory);
+ return(result);
+}
+function b32
+string_null_terminate(String_u16 *str)
+{
+ b32 result = false;
+ if (str->size < str->cap){
+  str->str[str->size] = 0;
+ }
+ return(result);
+}
+function String_u16
+string_u16_from_string_u8(Arena *arena, String string, String_Fill_Terminate_Rule rule)
+{
+ String_u16 out = {};
+ out.cap = string.size;
+ if (rule == StringFill_NullTerminate){
+  out.cap += 1;
+ }
+ out.str = push_array(arena, u16, out.cap);
+ u8 *ptr = string.str;
+ u8 *one_past_last = ptr + string.size;
+ u64 cap = string.size;
+ Character_Consume_Result consume;
+ for (;ptr < one_past_last; ptr += consume.inc, cap -= consume.inc){
+  consume = utf8_consume(ptr, cap);
+  out.size += utf16_write(out.str + out.size, consume.codepoint);
+ }
+ if (rule == StringFill_NullTerminate){
+  string_null_terminate(&out);
+ }
+ return(out);
+}
+function HANDLE
+FindFirstFile_utf8(Arena *scratch, u8 *name, LPWIN32_FIND_DATAW find_data)
+{
+ Temp_Memory temp = begin_temp_memory(scratch);
+ String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
+ HANDLE result = FindFirstFileW((LPWSTR)name_16.str, find_data);
+ end_temp_memory(temp);
+ return(result);
+}
+function u64
+cstring_length(u16 *str)
+{
+ u64 length = 0;
+ for(;str[length] != 0; length += 1);
+ return(length);
+}
+function String_Const_u16
+SCu16(u16 *str)
+{
+ u64 size = cstring_length(str);
+ String_Const_u16 string = {str, size};
+ return(string);
+}
+
+function String_Const_u16
+SCu16(u16 *str, u64 size){
+ String_Const_u16 string = {str, size};
+ return(string);
+}
+function String_Const_u16
+SCu16(wchar_t *str, u64 size){
+ return(SCu16((u16*)str, size));
+}
+function String_Const_u16
+SCu16(wchar_t *str){
+ return(SCu16((u16*)str));
+}
+
+function String_u8
+string_u8_from_string_u16(Arena *arena, String_Const_u16 string, String_Fill_Terminate_Rule rule)
+{
+ String_u8 out = {};
+ out.cap = string.size*3;
+ if (rule == StringFill_NullTerminate){
+  out.cap += 1;
+ }
+ out.str = push_array(arena, u8, out.cap);
+ u16 *ptr = string.str;
+ u16 *one_past_last = ptr + string.size;
+ u64 cap = string.size;
+ Character_Consume_Result consume;
+ for (;ptr < one_past_last; ptr += consume.inc, cap -= consume.inc){
+  consume = utf16_consume(ptr, cap);
+  out.size += utf8_write(out.str + out.size, consume.codepoint);
+ }
+ if (rule == StringFill_NullTerminate){
+  string_null_terminate(&out);
+ }
+ return(out);
+}
+
+function File_List
+get_file_list(Arena* arena, String directory)
+{// NOTE(kv) #copypasta
+ File_List result = {};
+ String search_pattern = {};
+ if(is_file_slash(string_get_character(directory, directory.size - 1)))
+ {
+  search_pattern = push_stringf(arena, "%.*s*", string_expand(directory));
+ }
+ else
+ {
+  search_pattern = push_stringf(arena, "%.*s\\*", string_expand(directory));
+ }
+ 
+ WIN32_FIND_DATAW find_data = {};
+ HANDLE search = FindFirstFile_utf8(arena, search_pattern.str, &find_data);
+ if (search != INVALID_HANDLE_VALUE)
+ {
+  File_Info *first = 0;
+  File_Info *last = 0;
+  i1 count = 0;
+  
+  for (;;)
+  {
+   String_Const_u16 filename_utf16 = SCu16(find_data.cFileName);
+   if (!(string_match(filename_utf16, string_u16_litexpr(L".")) ||
+         string_match(filename_utf16, string_u16_litexpr(L".."))))
+   {
+    String_u8 filename_ = string_u8_from_string_u16(arena, filename_utf16, StringFill_NullTerminate);
+    Stringz filename = Stringz(filename_.string);
+    
+    File_Info *info = push_array(arena, File_Info, 1);
+    sll_queue_push(first, last, info);
+    count += 1;
+    
+    info->filename = filename;
+    info->attributes.size = win32_u64_from_u32_u32(find_data.nFileSizeHigh,
+                                                   find_data.nFileSizeLow);
+    info->attributes.last_write_time = win32_u64_from_filetime(find_data.ftLastWriteTime);
+    info->attributes.flags = win32_convert_file_attribute_flags(find_data.dwFileAttributes);
+   }
+   if (!FindNextFileW(search, &find_data))
+   {
+    break;
+   }
+  }
+  
+  result.infos = push_array(arena, File_Info*, count);
+  result.count = count;
+  
+  i1 counter = 0;
+  for(File_Info *node = first;
+      node != 0;
+      node = node->next)
+  {
+   result.infos[counter] = node;
+   counter += 1;
+  }
+ }
+ 
+ return(result);
+}
+#endif
 //~EOF

@@ -86,6 +86,7 @@ struct Editing_File
  Node external_mod_node;
  Buffer_ID id;
  Editing_File_Settings settings;
+ Viewport_ID game_viewport_id;
  Editing_File_State state;
  File_Attributes attributes;  // NOTE(kv): System attributes
  Lifetime_Object *lifetime_object;

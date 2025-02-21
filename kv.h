@@ -57,9 +57,11 @@
 #		include <sys/stat.h>
 #		include <sys/time.h>
 #  include <sys/types.h>
-#  include <time.h>
 #  include <unistd.h>
 # endif
+
+#include <time.h>  // TODO(kv) why do we depend on this god-forsaken header?
+
 #endif
 
 #define function static
@@ -159,7 +161,7 @@ cubed(v1 value)
 
 // NOTE: Integer power
 function v1
-integer_power(v1 base, i1 exponent)
+integer_power(v1 base, i32 exponent)
 {
  v1 result = 1.f;
  if (exponent < 0)
@@ -390,9 +392,9 @@ inline void *kv_xmalloc(size_t size) {
 #define in_range_exclusive(value, bot, top) ((bot) <= (value) && (value) <  (top))
 #define in_range_inclusive(value, bot, top) ((bot) <= (value) && (value) <= (top))
 
-/* ;math */
+/* ;kv_h_math */
 
-/* ;scalar */
+/* ;kv_h_scalar */
 
 #define PI32  3.14159265359f
 #define TAU32 6.28318530717958647692f
@@ -550,7 +552,7 @@ enum{
 #define HasAllFlag(fi,fl) (((fi)&(fl))==(fl))
 #define AddFlag(fi,fl) ((fi)|=(fl))
 #define RemFlag(fi,fl) ((fi)&=(~(fl)))
-#define MovFlag(fi1,fl1,fi2,fl2) ((HasFlag(fi1,fl1))?(AddFlag(fi2,fl2)):(fi2))
+#define MovFlag(fi1,fl1,fi2,fl2) (HasFlag(fi1,fl1) ? AddFlag(fi2,fl2) : fi2)
 
 #define div_round_up_positive_(n,d) (n + d - 1)/d
 #define div_round_up_positive(n,d) (div_round_up_positive_((n),(d)))
@@ -784,7 +786,7 @@ union SNode{
 #define dll_remove_multiple(n1,n2) (dll_remove_multiple_((n1),(n2)))
 
 #define sll_stack_push_(h,n) n->next=h,h=n
-#define sll_stack_pop_(h) h=h=h->next
+#define sll_stack_pop_(h) h=h->next
 #define sll_queue_push_multiple_(f,l,ff,ll) \
 if(ll){if(f){l->next=ff;}else{f=ff;} l=ll;l->next=0;}
 #define sll_queue_push_(f,l,n) sll_queue_push_multiple_(f,l,n,n)
@@ -819,13 +821,12 @@ for(T *p_ = f; p_ != 0; p_ = p_->next){ Assert(p_->prev == 0 || p_->prev->next =
 
 ////////////////////////////////
 
-
 typedef u32 ARGB_Color;
 typedef u32 argb;
 
 ////////////////////////////////
 
-typedef String String8;  // @Deprecated
+typedef String String8;  // #Deprecated
 
 //NOTE(kv) nil-terminated string (cutnpaste)
 struct Stringz : String
@@ -1008,8 +1009,7 @@ block_fill_u64(void *a, u64 size, u64 val)
 #define block_zero_dynamic_array(p,c) block_zero((p), sizeof(*(p))*(c))
 
 #define block_copy_struct(d,s) block_copy((d), (s), sizeof(*(d)))
-//NOTE(kv) Due to C array being major ass, we don't know the size of arrays.
-//  This is not a language for content creation.
+// TODO(kv) Yeah this is not good code...
 #define copy_array_dst(d,s)  block_copy((d), (s), sizeof(d))
 #define copy_array_src(d,s)  block_copy((d), (s), sizeof(s))
 #define block_copy_count(d,s,c) block_copy((d), (s), sizeof(*(d))*(c))
@@ -1079,10 +1079,13 @@ string_concat(String_u8 *dst, String src)
 //NOTE(kv) sizeof takes into account the null terminator, for some reason.
 #define strlit(s)    SCu8z((u8*)(s), (u64)(sizeof(s) - 1))
 #define str8lit strlit
+#define strcode(...)      strlit(#__VA_ARGS__)
+
 #define string_u16_litexpr(s) SCu16((u16*)(s), (u64)(sizeof(s)/2 - 1))
 
 #define string_expand(s) (i32)(s).size, (char*)(s).str
 #define strexpand string_expand
+#define strexpand2(S) S.str, S.size
 //-
 
 #if COMPILER_MSVC
@@ -1140,8 +1143,8 @@ atomic_compare_exchange_u32(u32 volatile *Value, u32 New, u32 Expected)
 myinline u64
 atomic_exchange_u64(u64 volatile *Value, u64 New)
 {
-    u64 Result = __sync_lock_test_and_set(Value, New);
-    return(Result);
+ u64 Result = __sync_lock_test_and_set(Value, New);
+ return(Result);
 }
 #endif
 //
@@ -1240,8 +1243,8 @@ make_base_allocator_generic(Allocator_Allocate_Signature *func_allocate,
                             Allocator_Free_Signature     *func_free,
                             void *userdata)
 {
- if(func_allocate    == 0){ func_allocate  = base_reserve__noop; }
- if(func_free       == 0) { func_free      = base_free__noop; }
+ if(func_allocate == 0){ func_allocate  = base_reserve__noop; }
+ if(func_free     == 0){ func_free      = base_free__noop; }
  Base_Allocator result = {
   .type=Allocator_Generic,
   .generic={
@@ -1328,10 +1331,6 @@ is_file_slash(u8 c)
 {
  return((c == '/') or (c == '\\'));
 }
-
-#if !AD_IS_DRIVER
-#    include "kv_extra.h"
-#endif
 
 //-
 
@@ -1463,8 +1462,7 @@ set_count(darray(T) *array, i32 new_count, DEBUG_file_line_defparams)
 
 // NOTE(kv) Usually I don't like passing by reference,
 //  but maybe we can make exceptions for init functions?
-template<class T>
-function void
+template<class T> function void
 init_static(darray(T) &array, Arena *arena, i32 cap,
             Push_Params params=default_push_params)
 {
@@ -1473,8 +1471,7 @@ init_static(darray(T) &array, Arena *arena, i32 cap,
  array.fixed_size = true;
  array.items      = push_array(arena, T, cap, params);
 }
-template<class T>
-function void
+template<class T> function void
 init_static(darray(T) &array, T *backing_buffer, i32 cap)
 {
  array = {};
@@ -1482,8 +1479,7 @@ init_static(darray(T) &array, T *backing_buffer, i32 cap)
  array.fixed_size = true;
  array.items      = backing_buffer;
 }
-template<class T>
-function void
+template<class T> function void
 init_dynamic(darray(T) &array, Arena *arena, i32 initial_size=0)
 {
  array = {};
@@ -1491,29 +1487,25 @@ init_dynamic(darray(T) &array, Arena *arena, i32 initial_size=0)
  array.set_cap_min(initial_size);
 }
 
-template<class T>
-myinline T *
+template<class T> myinline T *
 push(darray(T) *array, DEBUG_file_line_defparams)
 {
  return array->push(file_line);
 }
-template<class T>
-function T *
+template<class T> function T *
 push(darray(T) *array, T const&value, DEBUG_file_line_defparams)
 {//note(kv) push value
- T *item = push(array, file_line);
+ T *item = array->push_nozero(file_line);
  *item = value;
  return item;
 }
-template<class T>
-function void
+template<class T> function void
 pop(darray(T) *array)
 {
  kv_assert(array->count > 0);
  array->count--;
 }
-template<class T>
-function void
+template<class T> function void
 insert_at(darray(T) *array, T const&new_item, i32 insert_index,
           DEBUG_file_line_defparams)
 {
@@ -1528,8 +1520,7 @@ insert_at(darray(T) *array, T const&new_item, i32 insert_index,
  }
  array->items[insert_index] = new_item;
 }
-template<class T>
-function void
+template<class T> function void
 push_first(darray(T) *array, T const&new_item, DEBUG_file_line_defparams)
 {
  insert_at(array, new_item, 0, file_line);
@@ -1635,7 +1626,8 @@ base_reserve__arena(void *userdata, u64 size, u64 *size_out, String location)
 }
 //~
 function Stringz
-push_stringz(Arena *arena, String src){
+push_stringz(Arena *arena, String src)
+{
  Stringz string = {};
  string.str = push_array(arena, u8, src.size + 1);
  string.size = src.size;
@@ -1643,8 +1635,9 @@ push_stringz(Arena *arena, String src){
  string.str[string.size] = 0;
  return(string);
 }
-inline Stringz
-to_stringz(Arena *a, String s){
+myinline Stringz
+to_stringz(Arena *a, String s)
+{
  return push_stringz(a,s);
 }
 //
@@ -1689,6 +1682,15 @@ push_stringf(Arena *arena, char *format, ...)
  va_end(args);
  return(result);
 }
+function Stringz
+push_stringf(Arena *arena, Stringz format, ...)
+{
+ va_list args;
+ va_start(args, format);
+ Stringz result = push_stringfv(arena, to_cstring(format), args);
+ va_end(args);
+ return(result);
+}
 //
 //TODO(kv) Hackjob to concat strings together!
 myinline Stringz
@@ -1721,165 +1723,6 @@ to_string(Arena *arena, u32 value){
 }
 
 //~
-#if AD_HAS_OS_CODE
-function Stringz
-pjoin(Arena *arena, String a, String b)
-{
- char slash = OS_SLASH;
- String joiner = {.str=(u8 *)&slash, .count=1};
- if(is_file_slash(a[a.count-1]))
- {
-  joiner = empty_string;
- }
- Stringz result = push_stringf(arena, "%S%S%S", a, joiner, b);
- return result;
-}
-myinline Stringz
-pjoin(Arena *arena, String a, char *b)
-{// NOTE(kv) Sorry, due to popular request from the metaprogram, we want a cstring variant.
- return pjoin(arena, a, SCu8(b));
-}
-myinline Stringz
-pjoin(Arena *arena, String a, String b, String c)
-{
- Scratch_Scope tmp(arena);
- Stringz result = pjoin(tmp, a, b);
- result = pjoin(arena, result, c);
- return result;
-}
-
-myinline b32
-file_exists(Stringz path)
-{
- return gb_file_exists(to_cstring(path));
-}
-myinline u64
-file_mtime(Stringz path)
-{
- return gb_file_last_write_time(to_cstring(path));
-}
-function b32
-remove_file(Stringz path){
- b32 result = true;
- if(file_exists(path)){
-  result = gb_file_remove(to_cstring(path));
- }
- return result;
-}
-function b32
-move_file(Stringz from, Stringz to){
- remove_file(to);
- b32 result = gb_file_move(to_cstring(from), to_cstring(to));
- return result;
-}
-myinline b32 
-copy_file(Stringz from, Stringz to, b32 fail_if_exists)
-{
- return gb_file_copy(to_cstring(from), to_cstring(to), fail_if_exists);
-}
-#if OS_WINDOWS
-function b32
-mkdir_p(Stringz path){
- b32 ok = 1;
- if(!CreateDirectoryA(to_cstring(path),0)){
-  DWORD error = GetLastError();
-  if(error != ERROR_ALREADY_EXISTS){
-   ok = 0;
-  }
- }
- return ok;
-}
-function b32
-mkdir_p(String path){
- Scratch_Block scratch;
- Stringz pathz = to_stringz(scratch, path);
- return mkdir_p(pathz);
-}
-#endif
-
-myinline FILE *
-open_file(Stringz name, char *mode){
- return fopen(to_cstring(name), mode);
-}
-function FILE *
-open_or_create_file(Stringz name, char *mode, b32 *created=0)
-{
- FILE *file = open_file(name, mode);
- if(created){
-  *created = file == 0;
- }
- if(file == 0){
-  if(errno == ENOENT){
-   mkdir_p(path_dir(name));
-   open_file(name, mode);
-  }
- }
- return file;
-}
-inline void
-close_file(FILE *file)
-{// NOTE(kv): Turns out writing a wrapper is sometimes beneficial.
- if(file != 0){
-  fclose(file);
- }
-}
-
-#if OS_WINDOWS
-function b32
-path_is_directory(Stringz path)
-{
- DWORD attr = GetFileAttributes(to_cstring(path));
- return (attr & FILE_ATTRIBUTE_DIRECTORY);
-}
-#endif
-
-function Stringz
-read_file(Arena *arena, FILE *file, usize size)
-{
- Stringz result = empty_string;
- if(file)
- {
-  char *mem = push_array(arena, char, size+1);
-  usize read_size = fread(mem, 1, (size_t)size, file);
-  if(read_size != size)
-  {
-   // TODO(kv) Error handling, hello?
-  }
-  else
-  {
-   mem[size] = 0;  // NOTE: null-termination
-   result = {(u8*)mem, size};
-  }
- }
- return(result);
-}
-function Stringz
-read_file(Arena *arena, Stringz filename, usize size)
-{
- FILE *file = open_file(filename, "rb");
- Stringz result = read_file(arena, file, size);
- close_file(file);
- return result;
-}
-function Stringz
-read_entire_file(Arena *arena, FILE *file)
-{
- fseek(file, 0, SEEK_END);
- u64 size = ftell(file);
- fseek(file, 0, SEEK_SET);
- 
- Stringz result = read_file(arena, file, size);
- return result;
-}
-function Stringz
-read_entire_file(Arena *arena, Stringz filename)
-{
- FILE *file = open_file(filename, "rb");
- Stringz result = read_entire_file(arena, file);
- close_file(file);
- return(result);
-}
-#endif
 
 //~ Printer
 typedef i32 Print_Function(void *userdata, char *format, va_list args);
@@ -1911,18 +1754,21 @@ struct Printer
 };
 //-NOTE(kv) Brought to you by Meta-Programming needs
 myinline void
-begin_separator(Printer &p, char *separator){
+begin_separator(Printer &p, char *separator)
+{
  p.print_separator_before_anything_else = false;
  p.separator = SCu8(separator);
 }
 myinline void
-end_separator(Printer &p){
+end_separator(Printer &p)
+{
  p.print_separator_before_anything_else = false;
  p.separator = {};
 }
 //NOTE(kv) The separator signal
 myinline void
-separator(Printer &p){
+separator(Printer &p)
+{
  p.print_separator_before_anything_else = true;
 }
 #define separator_block(printer, separator) \
@@ -1930,7 +1776,8 @@ defer_block(begin_separator(printer, separator), \
 end_separator(printer))
 //-
 myinline Printer
-make_printer_buffer(u8 *buffer, usize cap){
+make_printer_buffer(u8 *buffer, usize cap)
+{
  Printer result = {
   .type = Printer_Type_Buffer,
   .base = buffer,
@@ -1939,13 +1786,15 @@ make_printer_buffer(u8 *buffer, usize cap){
  return result;
 }
 myinline Printer
-make_printer_buffer(Arena *arena, usize cap){
+make_printer_buffer(Arena *arena, usize cap)
+{
  u8 *buffer = arena_push(arena, cap, 1);
  Printer result = make_printer_buffer(buffer, cap);
  return result;
 }
 myinline Printer
-make_printer_file(FILE *file){
+make_printer_file(FILE *file)
+{
  Printer result = {
   .type = Printer_Type_FILE,
   .FILE = file,
@@ -1999,6 +1848,15 @@ myprintf(char *format, ...)
  my_vfprintf(stdout, format, args);
  va_end(args);
 }
+function void
+myfprintf(FILE *file, char *format, ...)
+{
+ va_list args;
+ va_start(args, format);
+ my_vfprintf(file, format, args);
+ va_end(args);
+}
+
 //-NOTE Base print function overloads
 function void
 print_format2v(Printer &p, char *format, va_list args)
@@ -2023,29 +1881,42 @@ print_format2v(Printer &p, char *format, va_list args)
 }
 //NOTE(kv) omg totally unnecessary
 function void
-print_format2(Printer &p, char *format, ...){
+print_format_bootstrap(Printer &p, char *format, ...)
+{
  va_list args;
  va_start(args, format);
  print_format2v(p,format,args);
  va_end(args);
 }
 function void
+print_formatv(Printer &p, char *format, va_list args)
+{
+ if(p.print_separator_before_anything_else)
+ {
+  p.print_separator_before_anything_else = false;
+  print_format_bootstrap(p, "%.*s", strexpand(p.separator));
+ }
+ print_format2v(p, format, args);
+}
+function void
 print_format(Printer &p, char *format, ...)
 {
  va_list args;
  va_start(args, format);
- if(p.print_separator_before_anything_else){
-  p.print_separator_before_anything_else = false;
-  print_format2(p, "%.*s", strexpand(p.separator));
- }
- print_format2v(p, format, args);
+ print_formatv(p, format, args);
+ va_end(args);
+}
+function void
+print_format(Printer &p, Stringz format, ...)
+{
+ va_list args;
+ va_start(args, format);
+ print_formatv(p, to_cstring(format), args);
  va_end(args);
 }
 //~Printing different types
 myinline void print(Printer &p, const char *cstring) { print_format(p, "%s", cstring); }
-myinline void print(Printer &p, String string){
- print_format(p, "%.*s", strexpand(string));
-}
+myinline void print(Printer &p, String string) { print_format(p, "%.*s", strexpand(string)); }
 myinline void print(Printer &p, char c)  { print_format(p, "%c", c); }
 myinline void print(Printer &p, u8   c)  { print_format(p, "%c", c); }
 myinline void print(Printer &p, i32 d)   { print_format(p, "%d", d); }
@@ -2067,27 +1938,31 @@ operator<(Printer &p, T object){
  return p;
 }
 //-
-struct Writer{
+struct Writer
+{
  b32 ok;
  FILE *file;
 };
 function Writer
-make_writer(FILE *file){
+make_writer(FILE *file)
+{
  Writer result = {};
  result.ok   = file != 0;
  result.file = file;
  return result;
 }
 function void
-write_size(Writer *writer, void *data, usize size){
- if(writer->ok){
+write_size(Writer *writer, void *data, usize size)
+{
+ if(writer->ok)
+ {
   usize result = fwrite(data, size, 1, writer->file);
-  writer->ok = result != 0;
+  writer->ok = (result != 0);
  }
 }
 myinline void
 write_size(Writer *writer, const char *data, usize size)
-{//NOTE fuck you clang
+{// NOTE(kv) Damn you clang
  write_size(writer, (void *)data, size);
 }
 
@@ -2242,28 +2117,36 @@ init(bucket_array<T> &array, Arena *arena, i1 bucket_size)
 #endif
 
 //-
-struct File_Name_Data{
+struct File_Name_Data
+{
  String name;
- String data;
+ Stringz data;
 };
 //-
-union v2 {
+struct ImVec2;
+union v2
+{
  struct  { v1 x; v1 y; };
  v1 e[2];
  v1 v[2];
  
  myinline v1 &operator[](i32 index) {return v[index];}
+ operator ImVec2();
 };
-union v3{
- struct { v1 x, y, z; };
- struct { v1 r, g, b; };
- struct { v2 xy; v1 xy_z; };
- struct { v1 x_yz; v2 yz; };
- v1 e[3];
- v1 v[3];
- 
- myinline v1 &operator[](i32 index) {return v[index];}
+struct v3
+{
+ union
+ {
+  struct { v1 x, y, z; };
+  struct { v1 r, g, b; };
+  struct { v2 xy; };
+  struct { v1 x_yz; v2 yz; };
+  v1 e[3];
+  v1 v[3];
+ };
+ myinline v1 &operator[](i32 index){ return v[index]; }
 };
+struct ImVec4;
 union v4 
 {
  struct { v1 x, y, z, w; };
@@ -2277,6 +2160,8 @@ union v4
  v1 v[4];
  
  v1 &operator[](i32);
+ myinline operator v1 *(){ return e; };
+ operator struct ImVec4();
 };
 
 union i2
@@ -2347,6 +2232,16 @@ union rect2 {
 typedef rect2i Rect_i32;
 typedef rect2 Rect_f32;
 
+function Rect_f32
+rect_union(Rect_f32 a, Rect_f32 b)
+{
+ a.x0 = Min(a.x0, b.x0);
+ a.y0 = Min(a.y0, b.y0);
+ a.x1 = Max(a.x1, b.x1);
+ a.y1 = Max(a.y1, b.y1);
+ return(a);
+}
+
 struct Range_i32 {
  union{ i32 min,start,first,begin; };
  union{ i32 max,end,opl; };
@@ -2389,6 +2284,11 @@ range_overlap(Range_f32 a, Range_f32 b){
 #  define gen_file
 #  define gen_for
 #endif
+
+#if !AD_IS_DRIVER
+#  include "kv_extra.h"
+#endif
+
 //~
 #undef KV_H_IS_METAPROGRAM
 //~EOF

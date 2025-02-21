@@ -110,5 +110,6 @@
 #include "ed_api.gen.cpp"
 #include "4coder_kv.cpp"
 #include "4ed_api_implementation.cpp"
+#include "4ed_imgui_wrapper.cpp"
 
 // BOTTOM

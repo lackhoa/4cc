@@ -20,6 +20,7 @@ driver_shutdown(void)
 {// @driver_api
  arena_free(&driver_dll_arena);
 }
+
 dll_export void
 driver_dll_entry(Driver_API *driver, Framework_API *framework)
 {// @driver_api
@@ -54,6 +55,6 @@ driver_dll_entry(Driver_API *driver, Framework_API *framework)
  // NOTE(kv) The data is constant, so we just copy it over.
  driver->data = data;
  
- init_sliders(&driver_dll_arena);
+ init_sliders(&driver_dll_arena, framework->types);
 }
 //-

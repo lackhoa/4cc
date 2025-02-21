@@ -28,57 +28,9 @@ set_line_color_lightness(v1 lightness)
 #define clampy Slider_Clamp_Y
 #define clampz Slider_Clamp_Z
 
-inline void
-circular_arc_helper(mat4 const&transform, v3 dst[4], v2 src[4]){
- for_i32(index,0,4){
-  dst[index] = mat4vert(transform, V3(src[index].x, src[index].y, 0.f));
- }
-}
-struct v3_pair
-{
- union{v3 u,a,x;};
- union{v3 v,b,y;};
-};
 typedef v3_pair v6;
 //
-function v3_pair
-invent_uv(v3 n)
-{
- v3 u = (almost_equal(absolute(n.x), 1.f, 1e-4f) ?
-         cross(n, V3y(1.f)) :
-         cross(n, V3x(1.f)));
- u = noz(u);
- v3 v = cross(n,u);
- return v3_pair{u,v};
-}
-function Bez
-bez_circle(v3 center, v3 normal)
-{
- v1 a = 1.00005519f;
- v1 b = 0.55342686f;
- v1 c = 0.99873585f;
- v2 arc[4] = { V2(a,0.f),V2(c,b),V2(b,c),V2(0.f,a) };
- v1 radius = lengthof(normal);
- v3_pair xy = invent_uv(noz(normal));
- mat4 transform = mat4_columns(radius*xy.x, radius*xy.y, normal, center);
- 
- v3 arc1[4], arc2[4], arc3[4], arc4[4];
- circular_arc_helper(transform, arc1, arc);
- for_i32(index,0,4) {arc[index].x *= -1;}
- circular_arc_helper(transform, arc2, arc);
- for_i32(index,0,4) {arc[index].y *= -1;}
- circular_arc_helper(transform, arc3, arc);
- for_i32(index,0,4) {arc[index].x *= -1;}
- circular_arc_helper(transform, arc4, arc);
- 
- /*{
-  draw(bez_raw(arc1), params);
-  draw(bez_raw(arc2), params);
-  draw(bez_raw(arc3), params);
-  draw(bez_raw(arc4), params);
- }*/
- return bez_raw(arc1);  //TODO @incomplete What are you gonan do now?
-}
+
 #define WARN_DELTA(a, b, EPSILON) \
 if (absolute(a-b) > EPSILON) { DEBUG_NAME("WARN " #a "-" #b, (a-b)); }
 
@@ -106,15 +58,6 @@ get_eye_min_distance(v3 center, v1 radius, Bezier line)
  result.min_distance = square_root(min_lensq) - radius;
  return result;
 }
-/*function v3
-perspective_project_non_hyperbolic(Camera *camera, v3 worldP)
-{
- v3 result = (camera->cam_from_world * V4(worldP, 1.f)).xyz;
- v1 depth = camera->distance-result.z;
- result.xy *= (camera->focal_length / depth);
- result.z   = depth;
- return result;
-}*/
 
 global v1 const cos_45_degree = 1.f / square_root(2.f);
 
@@ -162,8 +105,8 @@ function v4
 plane_transform(mat4 const&mat, v3 n, v1 d)
 {
  v3 p0 = -d*n;
- v3_pair uv = invent_uv(n);
- v3 n1 = noz( cross(mat4vec(mat,uv.u), mat4vec(mat,uv.v)) );
+ v3_pair xy = invent_xy(n);
+ v3 n1 = noz( cross(mat4vec(mat,xy.u), mat4vec(mat,xy.v)) );
  v1 d1 = -dot(n1, mat4vert(mat, p0));
  return V4(n1,d1);
 }
@@ -177,7 +120,8 @@ mom_bone_xform()
 }
 
 function mat4
-from_parent(){
+from_parent()
+{
  //NOTE(kv) If we just stored the relative offset, we wouldn't need this.
  mat4 &mom_world_from_bone = mom_bone_xform().forward;
  mat4 &bone_from_world = current_world_from_bone().inverse;
@@ -229,7 +173,8 @@ bezier_tangent(Bezier bezier, v1 t)
 #endif
 
 myinline Fui_Options
-fscale(v1 delta_scale){
+fscale(v1 delta_scale)
+{
  Fui_Options result = {};
  result.delta_scale = delta_scale;
  return result;
@@ -341,19 +286,23 @@ push_hl(argb color=0)
 }
 
 myinline mat4i &
-get_bone_xform(Bone_ID id, i32 lr_index=is_right())
+get_world_from_bone(Bone_ID id, i32 lr_index=is_right())
 {
  return get_bone(id, lr_index)->world_from_bone;
 }
-
+myinline mat4i &
+get_world_from_bone(Bone_Type type, i32 lr_index=is_right())
+{
+ return get_world_from_bone(mk_bone_id(type), lr_index);
+}
 #define rebase(o, e) e
 
 // TODO(kv) Fold this into paint params block, too!
 #define ShowIf(condition) \
-SetInBlock(painter->painting_disabled, painter->painting_disabled or not(condition))
+SetInBlock(painter->params.painting, painter->params.painting and condition)
 
-#define ShowIf_2(condition) \
-SetInBlock(painter->painting_disabled, not(condition))
+#define ShowIf2(condition) \
+SetInBlock(painter->params.painting, condition)
 
 #define lp get_line_params
 #define fp get_fill_params
@@ -378,4 +327,12 @@ line_params_from_fui(FUI_Line_Params src)
  
  return result;
 }
+function void
+draw_reference_image_from_data(Reference_Image ref)
+{
+ v1 alpha = ref.alpha;
+ if(painter->references_full_alpha) { alpha = 1.0f; }
+ draw_image(ref.filename, ref.center, ref.x_axis, V3y(1.f), alpha);
+}
+
 //~ EOF

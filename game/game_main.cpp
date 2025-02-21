@@ -1,6 +1,3 @@
-#define IMGUI_USER_CONFIG "ad_imgui_config.h"
-#include "imgui/imgui.h"
-
 //~
 #define WANT_TYPE_INFO 1
 #define AD_IS_FRAMEWORK 1
@@ -8,6 +5,9 @@
 #define KV_H_NO_GLOBAL_ARENA_CHUNK_STORE
 #define AD_STB_SPRINTF_IMPLEMENTATION 0
 #include "kv.h"
+
+#define IMGUI_USER_CONFIG "ad_imgui_config.h"
+#include "imgui/imgui.h"
 
 #define AD_IS_GAME 1
 #define ED_API_USER 1
@@ -21,7 +21,6 @@
 
 #include "framework_driver_shared.h"
 #include "framework.gen.h"
-#include "send_bez.gen.h"
 #include "ad_serialize.h"
 #include "game_fui.h"
 #include "framework_fui.h"
@@ -42,11 +41,15 @@
 
 #include "ad_serialize.cpp"
 #include "meta_all.gen.cpp"
+#include "notebook.cpp"
 
+//#include "test_image.cpp"
 /*
   IMPORTANT Rule for the renderer
   1. Colors are in linear space (todo precision loss if passed as u32)
  */
+
+global b32 driver_enabled = 1;
 
 #define X(N) function wrap_function(N);
 // Note: Forward declare
@@ -58,9 +61,9 @@ game_api_xlist(X);
 memory_functions_xlist(X);
 #undef X
 
-//NOTE(kv) temporary
-#define fval(value, ...)   value
-#define fbool fval
+// NOTE(kv) temporary
+#define fv(value, ...) value
+#define fbool fv
 
 function b32
 just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0)
@@ -80,7 +83,7 @@ key_direction(Game_Input *input, Key_Mods wanted_mods,
               b32 want_new_keypress, b32 *optional_shift=0)
 {
  v4 result = {};
- if (implies(want_new_keypress, input->direction.new_keypress))
+ if(implies(want_new_keypress, input->direction.new_keypress))
  {
   b32 mods_matched = (input->active_mods == wanted_mods);
   if (optional_shift) {
@@ -137,23 +140,24 @@ function b32
 animate_camera(Camera_Data *current, Camera_Data *saved, v1 dt)
 {
  b32 animation_ended = camera_data_equal(current, saved);
- if ( animation_ended ) {
-  saved->theta   = cycle01(saved->theta);
-  current->theta = cycle01(current->theta);
+ if(animation_ended)
+ {
+  saved->phi   = cycle01(saved->phi);
+  current->phi = cycle01(current->phi);
  }
  else
  {
 #define ANIMATE(FIELD, MIN_SPEED) \
 current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.15f, MIN_SPEED)
-  ANIMATE(theta,    0.004f);
-  ANIMATE(phi,      0.004f);
+  ANIMATE(phi,    0.004f);
+  ANIMATE(theta,  0.004f);
   ANIMATE(distance, CAMERA_DISTANCE_STEP/3.0f);
   ANIMATE(pivot.x,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
   ANIMATE(pivot.y,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
   ANIMATE(pivot.z,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
 #undef ANIMATE
   
-  current->roll = saved->roll; // @Hack
+  current->roll = saved->roll; // #Hack
  }
  
  return animation_ended;
@@ -315,7 +319,8 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer)
 {
  char newline = '\n';
  u8 *pointer = cast(u8 *)void_pointer;
- switch(type->kind){
+ switch(type->kind)
+ {
   case I_Type_Kind_Basic:{
    write_basic_type(p, type->Basic_Type, pointer);
   }break;
@@ -339,6 +344,7 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer)
   case I_Type_Kind_Enum:{
    p << enum_name_from_pointer(type, pointer);
   }break;
+  
   InvalidDefaultCase;
  }
 }
@@ -346,7 +352,8 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer)
 pretty_print_func(PRINTER, type_info_from_pointer(POINTER), POINTER)
 
 myinline Camera_Data *
-get_target_camera(Game_State *state, i32 viewport_index){
+get_target_camera(Game_State *state, i32 viewport_index)
+{
  return &state->viewports[viewport_index].target_camera;
 }
 function void
@@ -441,11 +448,6 @@ revert_from_autosave(Game_State *state, App *app){
  game_load(state, app, state->autosave_path);
 }
 //~
-function b32
-entity_is_curve(Curve_Data &entity)
-{
- return entity_variant_info_table[entity.type].is_curve;
-}
 function Camera
 setup_camera(Camera_Data const &data)
 {
@@ -454,8 +456,8 @@ setup_camera(Camera_Data const &data)
  camera.near_clip    = 1*centimeter;
  camera.far_clip     = 20.f;
  camera.focal_length = tweaks->focal_length;
- camera.world_from_camera = (mat4i_rotate_tpr(data.theta, data.phi, data.roll, data.pivot) *
-                     mat4i_translate(data.pivot+V3z(data.distance)));
+ camera.world_from_camera = (mat4i_rotate_tpr(data.phi, data.theta, data.roll, data.pivot) *
+                             mat4i_translate(data.pivot+V3z(data.distance)));
  return camera;
 }
 function mat4
@@ -623,7 +625,7 @@ game_render(Game_State *state, App *app, Render_Target *target,
    config->far_clip        = camera.far_clip;
    config->background      = painter->background_color;
   }
-  push_view_vector(tvert{});
+  push_view_vector(tvert());
   
   {//-Drawing the movie
    driver->driver_render(tmp, painter);
@@ -634,7 +636,7 @@ game_render(Game_State *state, App *app, Render_Target *target,
    convert_primitives_to_camera_space(camera);
    v3 cursor_camera = mat4vert(camera.cam_from_world, state->kb_cursor.pos);
    Bone *camera_bone = make_bone(mk_bone_id(Bone_Camera), camera.world_from_camera);
-   bone_block(camera_bone->id);
+   BoneBlock(camera_bone->id);
    for_i32(vi, 0, the_model->vertices.count)
    {// NOTE(kv) Having to loop through vertices here because
     // there are vertices that weren't submitted while rendering.
@@ -673,7 +675,7 @@ game_render(Game_State *state, App *app, Render_Target *target,
        color = (color == hot_color) ? hot_color2 : hot_color;
       }
       const v1 radius = 3*millimeter;
-      draw_disk(pos, radius, color, flags);
+      draw_disk_camera_space(pos, radius, color, flags);
      }
      clear_draw_location();
     }
@@ -684,8 +686,8 @@ game_render(Game_State *state, App *app, Render_Target *target,
   if(viewport_id == 1 and
      active_viewport_id == 1 and
      state->kb_cursor.on)
-  {//NOTE(kv) ;draw_cursor
-   v1 cursor_dist = lengthof(camera.cam_from_world * state->kb_cursor.pos);
+  {// NOTE(kv) ;draw_cursor
+   v1 cursor_dist = lengthof(mat4vert(camera.cam_from_world, state->kb_cursor.pos));
    v1 radius = 4*millimeter;
    radius *= cursor_dist / camera.focal_length;
    if(0){ radius *= 10.f; }
@@ -701,9 +703,9 @@ game_render(Game_State *state, App *app, Render_Target *target,
   
   if(state->is_dev_editor)
   {
-   ImGui::Text("Render cycles: %_$I64u", painter->render_cycles);
-   ImGui::Text("Clipped curve / total: %d / %d",
-               painter->clipped_curve_count, painter->total_curve_count);
+   im_text("Render cycles: %_$I64u", painter->render_cycles);
+   im_text("Clipped curve / total: %d / %d",
+           painter->clipped_curve_count, painter->total_curve_count);
   }
  }
  painter = 0;
@@ -719,13 +721,10 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
           App *app, Game_ImGui_State &imgui_state, b32 is_dev_editor)
 {
  import_api_from_editor(ed_api, ed_api_new);
- //@game_bootstrap_arena_zero_initialized
  Game_State *state = push_struct0(bootstrap_arena, Game_State);
  state->is_dev_editor   = is_dev_editor;
- //state->malloc          = malloc_base_allocator;  // NOTE(kv): Stupid: can't use global vars on reloaded code!
  state->permanent_arena = *bootstrap_arena;
  thread_permanent_arena = make_arena(MB(1));
- state->stick_to_front  = true;
  
  {// NOTE: Save/Load business load_game
   Arena *arena = &state->permanent_arena;
@@ -741,10 +740,12 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
   }
  }
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
- {//;frame_arena_init
+ {// ;frame_arena_init
   Viewport *viewport = &state->viewports[viewport_index];
   viewport->render_arena = make_arena();
   viewport->index = viewport_index;
+  viewport->previous_phi_snap = -1.f;
+  viewport->current_phi_snap = -1.f;
  }
  {//-NOTE: Dear Imgui init
   state->imgui_state = imgui_state;
@@ -753,12 +754,6 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
   game_reload(state, ed_api, ed_api_new, true);
  }
  return state;
-}
-function void
-meta_init()
-{
- make_all_type_info();
- init_entity_type_info_table();
 }
 function void
 game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time)
@@ -781,7 +776,8 @@ game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_
  }
  
  tweaks = push_struct(dll_arena, Tweak_Variables);
- meta_init();
+ 
+ make_all_type_info();
  
  {//-NOTE: Dear ImGui reload
   IMGUI_CHECKVERSION();
@@ -804,23 +800,9 @@ game_shutdown(Game_State *state)
  arena_free(&thread_permanent_arena);
 }
 //~
-function String
-time_format(char *buf, i32 bufsize, char *format)
-{
- String result = {};
- time_t rawtime;
- time(&rawtime);
- struct tm *timeinfo = localtime(&rawtime);
- size_t strftime_result = strftime(buf, bufsize, format, timeinfo);
- if(strftime_result != 0)
- {
-  result = SCu8(buf);
- }
- return result;
-}
 function b32
 game_save(Game_State *state, App *app, b32 is_manual)
-{// NOTE: save and backup logic
+{// NOTE Save and backup logic
  Scratch_Scope tmp;
  Stringz outpath = (is_manual ? state->manual_save_path :
                     state->autosave_path);
@@ -830,11 +812,10 @@ game_save(Game_State *state, App *app, b32 is_manual)
  if(!state->has_done_backup &&
     gb_file_exists(to_cstring(outpath)))
  {//-Backup situation
-  char buf[64];
-  String time_string = time_format(buf, alen(buf), "%d_%m_%Y_%H_%M_%S");
+  String time_string = time_format(tmp, "%d_%m_%Y_%H_%M_%S");
   if(time_string.len == 0)
   {
-   log_error(strlit("strftime failed... go figure that out!"));
+   log_error("strftime failed... go figure that out!");
    ok = false;
   }
   else
@@ -861,7 +842,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
          backup++)
     {
      File_Attributes attr = (*backup)->attributes;
-     if (attr.last_write_time < oldest_mtime)
+     if(attr.last_write_time < oldest_mtime)
      {
       oldest_mtime   = attr.last_write_time;
       file_to_delete = pjoin(tmp, backup_dir, (*backup)->filename);
@@ -890,8 +871,8 @@ game_save(Game_State *state, App *app, b32 is_manual)
   }
   b32 moved_to_old_path = false;
   //TODO(kv) are we overdoing this? we already have backup logic, why do we care if this fails?
-  if(ok){
-   //-fail-safe setup
+  if(ok)
+  {//-fail-safe setup
    if(file_exists(outpath)){
     ok = move_file(outpath, old_path);
     moved_to_old_path = ok;
@@ -947,17 +928,17 @@ update_orbit(Camera_Data *cam, Key_Direction key_dir)
   }
   {//NOTE(kv) Orbit update
    v1 interval = 1.0f / 24.f;
-   v1 theta = roundv1(cam->theta / interval);
-   v1 phi   = roundv1(cam->phi   / interval);
+   v1 theta = roundv1(cam->phi / interval);
+   v1 phi   = roundv1(cam->theta   / interval);
    {
     v2 delta = dir.xy;
     theta += delta.x;
     phi   += delta.y;  // NOTE: pitch up when we go up
    }
    
-   cam->theta = theta * interval;
-   cam->phi   = phi   * interval;
-   macro_clamp(-0.25f, cam->phi, 0.25f);
+   cam->phi = theta * interval;
+   cam->theta   = phi   * interval;
+   macro_clamp(-0.25f, cam->theta, 0.25f);
   }
  }
 }
@@ -1005,44 +986,35 @@ g_jump_to_pos(App *app, i64 pos)
  view_set_cursor(app, view, seek_pos(pos));
 }
 function void
-set_camera_frontal_or_profile(Camera_Data *cam, b32 *stick_to_front)
-{//bookmark: We need to remember what was the last thing we switched from.
- b32 is_frontal = (cam->theta == 0 and cam->phi == 0);
- b32 is_profile = (cam->theta == 0.25f and cam->phi == 0);
- b32 is_back    = (cam->theta == 0.5f and cam->phi == 0);
+snap_camera(Camera_Data *cam, Viewport *viewport)
+{
+ v1 previous_phi_snap = viewport->previous_phi_snap;
+ v1 current_phi_snap  = viewport->current_phi_snap;
  
- if(is_frontal or is_back)
- {// NOTE Set to profile
-  *stick_to_front = is_frontal;
-  cam->theta = 0.25f;
- }
- else if(is_profile)
- {// NOTE Exactly profile
-  if(*stick_to_front){
-   cam->theta = 0;
-  }else{
-   // stick to back
-   cam->theta = 0.5f;
+ v1 phi4 = roundv1(cam->phi * 4.f);
+ // NOTE Initial snapping effort, would be so simple if it was this easy!
+ v1 new_phi = cycle01(phi4 * 0.25f);
+ 
+ if(cam->phi == new_phi)
+ {// NOTE We're already at a snap point
+  // NOTE -1.f is the sentinel written in @game_init
+  b32 previous_phi_snap_valid = previous_phi_snap != -1.f;
+  if(previous_phi_snap_valid)
+  {
+   new_phi = viewport->previous_phi_snap;
   }
- }
- else
- {
-  b32 lean_to_back = (cam->theta >= 0.25f and
-                      cam->theta <  0.75f);
-  b32 lean_to_front = not lean_to_back;
-  if(lean_to_front)
-  {// set frontal
-   *stick_to_front = true;
-   cam->theta = 0;
-  }
-  else
-  {//set back
-   *stick_to_front = false;
-   cam->theta = 0.5f;
-  }
+ } 
+ else if(new_phi == current_phi_snap)
+ {// NOTE Snapping to the current snap -> find another snap point,
+  // in the direction of the user movement.
+  v1 dir = signof(cam->phi - new_phi);
+  new_phi = cycle01(new_phi + 0.25f * dir);
  }
  
- cam->phi = 0;
+ viewport->previous_phi_snap = viewport->current_phi_snap;
+ viewport->current_phi_snap = new_phi;
+ cam->phi = new_phi;
+ cam->theta = 0;
 }
 function void
 do_work_after_loading_driver(Game_State *state, Driver_API *driver)
@@ -1067,6 +1039,12 @@ load_latest_driver_code(Game_State *state, App *app, Driver_API *driver,
   framework_api.valid = true;
   kv_assert(tweaks);
   framework_api.tweaks = tweaks;
+  framework_api.types = Type_Info_Pointers
+  {
+#define X(T)      .T = type_info_of(T),
+   TypeInfoPointerList(X)
+#undef X
+  };
  }
  
  b32 ok = true;
@@ -1155,7 +1133,7 @@ show_image_preview(Image_Info &image)
  {
   ImGuiWindowFlags window_flags = (ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoFocusOnAppearing);
-  ImGui::Begin("ImagePreview", 0, window_flags);
+  im_begin("ImagePreview", 0, window_flags);
   
   u64 texture_u64 = texture.v;  // NOTE(kv) pedantic compiler
   ImTextureID user_texture_id = ImTextureID(texture_u64);
@@ -1195,7 +1173,7 @@ show_image_preview(Image_Info &image)
    }
   }
   
-  ImGui::End();
+  im_end();
  }
 }
 struct Plane
@@ -1284,7 +1262,7 @@ find_primitive_closest_to_keyboard_cursor(Game_State *state)
    {
     if(not fill_only)
     {
-     v3 *computed = primitive.curve;
+     tvert *computed = primitive.curve;
      v1 sd_squared;
      {//-Convex box culling
       v3 min_corner = V3(max_f32);
@@ -1319,7 +1297,6 @@ find_primitive_closest_to_keyboard_cursor(Game_State *state)
    
    case Primitive_Type_Poly3:
    {//-Projection onto the curve
-    // View "note.4coder" for more details of the projection math
     Poly3 points = primitive.poly3;
     dsq_to_prim = get_distance_squared_point_to_triangle(curpos, points);
    }break;
@@ -1369,20 +1346,6 @@ find_primitive_closest_to_keyboard_cursor(Game_State *state)
  DEBUG_VALUE(square_root(min_lensq));
  return hot_location;
 }
-function void
-notebook_update(Notebook_State *state)
-{
-#if 0
- ImGui::Begin("Notebook");
- v2 dim = V2(128, 128);
- if(state->texture)
- {
-  
- }
- load_texture(dim);
- ImGui::End();
-#endif
-}
 function Game_Update_Return
 game_update(Game_Update_Params params)
 {// @game_api, see also @maybe_update_game
@@ -1395,22 +1358,22 @@ game_update(Game_Update_Params params)
  init_dynamic(game_commands, &state->frame_arena);
  
  Driver_API *driver = &state->driver_api;
+ if(driver_enabled)
  {
   b32 loaded;
   load_latest_driver_code(state, app, driver, &loaded);
  }
  
- if(is_valid(driver))
+ if(driver_enabled and is_valid(driver))
  {
-  Scratch_Block scratch;
+  Scratch_Block tmp;
   
   driver->driver_update_tweaks();
   
   b32 cursor_on = state->kb_cursor.on;
   i32 active_viewport_id = get_active_game_viewport_id(app);
   b32 game_active = active_viewport_id != 0;
-  b32 fui_active = fui_is_active();
-  if(game_active or fui_active)
+  if(game_active or fui_is_active())
   {
    should_animate_next_frame = true;
   }
@@ -1471,7 +1434,7 @@ game_update(Game_Update_Params params)
   {//-Work based on editor cursor position
    View_ID view = get_active_view(app, Access_Always);
    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-   String active_buffer_name = push_buffer_base_name(app, scratch, buffer);
+   String active_buffer_name = push_buffer_base_name(app, tmp, buffer);
    
    if(active_buffer_name == DRIVER_FILE_NAME)  // TODO
    {//;do_stuff_based_on_cursor_position
@@ -1555,6 +1518,10 @@ game_update(Game_Update_Params params)
      {// TODO(kv) I suspect we're gonna need UI to pin/clear specific things. Oh boy...
       transient->pinned_locations.count = 0;
      }
+     else if(MATCH("clear_preset"))
+     {
+      update_viewport->reference_preset = Preset_None;
+     }
      else
      {
       log_error("game: cannot serve command");
@@ -1572,6 +1539,7 @@ game_update(Game_Update_Params params)
     push(&cmds, strlit("revert"));  
     push(&cmds, strlit("pin"));  
     push(&cmds, strlit("clear_pin"));  
+    push(&cmds, strlit("clear_preset"));
    }
   }
   
@@ -1587,15 +1555,15 @@ game_update(Game_Update_Params params)
   }
   v4 input_dir = input->direction.dir;
   
-  //NOTE(kv) Cheesy single keyboard event per-frame,
+  // NOTE(kv) Cheesy single keyboard event per-frame,
   // since we're not a fighting game, it'd probably work ok anyway.
   // but it's very dumb because we already had events.
   darray(Key_Code) key_strokes;
-  init_dynamic(key_strokes, scratch);
+  init_dynamic(key_strokes, tmp);
   for_i32(code, 1, Key_Code_COUNT)
   {
-   if (input->key_states[code] &&
-       input->key_state_changes[code] > 0)
+   if(input->key_states[code] &&
+      input->key_state_changes[code] > 0)
    {
     push(&key_strokes, (Key_Code)code);
    }
@@ -1652,11 +1620,11 @@ game_update(Game_Update_Params params)
       
       case C|Key_Code_Return:{ game_save(state, app, false); }break;
       case Key_Code_A:{
-       set_camera_frontal_or_profile(cam_data, &state->stick_to_front);
+       snap_camera(cam_data, update_viewport);
       }break;
       case Key_Code_Q:{ toggle_boolean(state->references_full_alpha); }break;
-      case Key_Code_X:{ cam_data->theta *= -1.f; }break;
-      case S|Key_Code_Z:{ cam_data->theta = .5f - cam_data->theta; }break;
+      case Key_Code_X:{ cam_data->phi *= -1.f; }break;
+      case S|Key_Code_Z:{ cam_data->phi = .5f - cam_data->phi; }break;
       case S|Key_Code_0:{ cam_data->roll = {}; }break;
       //NOTE(kv) Reverting is just.so.useful for debugging!
       //TODO(kv) Pushing strings is dangerous! Since the game might restart.
@@ -1666,7 +1634,7 @@ game_update(Game_Update_Params params)
       }break;
       
       //NOTE(kv) Set camera to the left
-      case C|M|Key_Code_H:{ cam_data->theta=-.25f; cam_data->phi=0; }break;
+      case C|M|Key_Code_H:{ cam_data->phi=-.25f; cam_data->theta=0; }break;
       
       case Key_Code_I:
       case Key_Code_O:
@@ -1690,7 +1658,7 @@ game_update(Game_Update_Params params)
      }
     }
    }
-   else if(fui_active)
+   else if(fui_is_active())
    {//-fui
     if(mods==C && is_v3_key(keycode))
     {
@@ -1733,7 +1701,7 @@ game_update(Game_Update_Params params)
      }
     }
     else
-    {//-Other keys
+    {//-fui: Other keys
      switch(code)
      {
       case Key_Code_Tab:
@@ -1753,6 +1721,22 @@ game_update(Game_Update_Params params)
         fui_active_slider.active_member_index = new_index;
        }
       }break;
+      
+      case Key_Code_Return:
+      {// NOTE Save the results
+       String slider_string = fui_print_slider(tmp, *fui_active_slider.data);
+       Range_i64 slider_range = get_slider_range(*fui_active_slider.data);
+       Buffer_ID buffer = get_active_buffer(app);
+       App_Cmd app_cmd = app_cmd_automated(app);
+       buffer_replace_range(&app_cmd, buffer, slider_range, slider_string);
+       fui_set_active_slider(0);
+      }break;
+      
+      case Key_Code_Escape:
+      {
+       fui_restore_value(fui_active_slider.data);
+       fui_set_active_slider(0);
+      }break;
      }
     }
    }
@@ -1761,28 +1745,37 @@ game_update(Game_Update_Params params)
     switch(code)
     {
      case Key_Code_Return:
-     {//-Button?
+     {
       View_ID view = get_active_view(app, Access_Always);
       Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-      i32 file = get_file_index_by_buffer(app, buffer);
-      i64 curpos = view_get_cursor_pos(app, view);
-      for(Location_Iterator it = iterate_touched_locations(file, { curpos, curpos+1 });
-          it.entry;
-          advance(&it))
-      {
-       if(it.entry->type == Location_Type_Text_Object)
+      Slider *slider = get_hot_slider_under_cursor(app);
+      if(slider)
+      {//-Activate slider
+       fui_save_value(slider);
+       fui_set_active_slider(slider);
+      }
+      else
+      {//-Button?
+       i32 file = get_file_index_by_buffer(app, buffer);
+       i64 curpos = view_get_cursor_pos(app, view);
+       for(Location_Iterator it = iterate_touched_locations(file, { curpos, curpos+1 });
+           it.entry;
+           advance(&it))
        {
-        Text_Object &object = driver_data.text_objects[it.entry->index];
-        if(object.kind == Text_Object_Preset)
+        if(it.entry->type == Location_Type_Text_Object)
         {
-         Viewport &main_viewport = state->viewports[0];
-         main_viewport.reference_preset = object.preset;
-         Reference_Preset_Data preset_data =
+         Text_Object &object = driver_data.text_objects[it.entry->index];
+         if(object.kind == Text_Object_Preset)
+         {
+          Viewport &main_viewport = state->viewports[0];
+          main_viewport.reference_preset = object.preset;
+          Reference_Preset_Data preset_data =
           driver->driver_get_reference_preset_data(object.preset);
-         // NOTE(kv) We update the camera *once*, but still let it fly afterwards.
-         update_target_camera_data->phi   = preset_data.camera_phi;
-         update_target_camera_data->theta = preset_data.camera_theta;
-         break;
+          // NOTE(kv) We update the camera *once*, but still let it fly afterwards.
+          update_target_camera_data->theta = preset_data.camera_theta2;
+          update_target_camera_data->phi   = preset_data.camera_phi2;
+          break;
+         }
         }
        }
       }
@@ -1792,7 +1785,7 @@ game_update(Game_Update_Params params)
   }
   
   if(input_dir != v4{} and
-     fui_active and active_slider_is_continuous())
+     fui_is_active() and active_slider_is_continuous())
   {//-Update continuous sliders
    Active_Slider slider = fui_active_slider;
    Type_Info *active_type = active_slider_member_type_info();
@@ -1803,15 +1796,16 @@ game_update(Game_Update_Params params)
    if(mods == 0 or mods == Key_Mod_Sft)
    {
     if(input_dir.y != 0.f and
-       active_type->Basic_Type == Basic_Type_v1)
+       type_info_equals(strip_to_basic_type(active_type), v1))
     {//-Special handling j-k to toggle values to 0 and 1
      value.x = (input_dir.y > 0) ? 1.f : 0.f; 
     }
     else
     {
      Slider_Flags flags = slider.data->flags;
-     b32 is_camera_aligned = (flags & Slider_Vertex or
-                              flags & Slider_Vector);
+     b32 is_camera_aligned = (type_info_equals(active_type, tvert) or
+                              type_info_equals(active_type, tnormal) or
+                              type_info_equals(active_type, v3));
      if(is_camera_aligned)
      {
       input_dir.xyz = mat4vec(update_target_camera.world_from_cam, input_dir.xyz);
@@ -1825,7 +1819,7 @@ game_update(Game_Update_Params params)
      if(flags & Slider_Clamp_X){value.x = 0;}
      if(flags & Slider_Clamp_Y){value.y = 0;}
      if(flags & Slider_Clamp_Z){value.z = 0;}
-     if(flags & Slider_NOZ)    { value.xyz = noz(value.xyz); }
+     if(type_info_equals(active_type, tnormal)){ value.xyz = noz(value.xyz); }
      if(flags & Slider_Clamp_01)
      {
       for_i32(index,0,4){ macro_clamp01(value.v[index]); }
@@ -1840,7 +1834,7 @@ game_update(Game_Update_Params params)
   }
   
   {
-   i32 wheel = signof(params.mouse.wheel);  // NOTE(kv): We have WEIRD +/-100 mouse wheel values!
+   i32 wheel = signof(params.mouse.wheel);  // NOTE(kv) We have WEIRD +/-100 mouse wheel values!
    if(wheel)
    {
     i32 viewport_id = mouse_viewport_id(app);
@@ -1870,7 +1864,7 @@ game_update(Game_Update_Params params)
    {//NOTE Moving
     cursor_moved = true;
     v3 dir = noz( mat4vec(cam.world_from_cam, V3(dir_v2)) );
-    v1 cursor_camz = (cam.cam_from_world * cursor.pos).z;
+    v1 cursor_camz = mat4vert(cam.cam_from_world, cursor.pos).z;
     v1 zoom = absolute(cursor_camz / cam.focal_length);
     v1 acc = zoom * 0.1f * (3.f);
     v1 boost = 4.0f;
@@ -1887,7 +1881,7 @@ game_update(Game_Update_Params params)
    }
    
    {//NOTE(kv) Clamping screen and cursor position (Pretty Involved)
-    //TODO(kv) @bug We assume orthographic mode
+    //TODO(kv) #bug We assume orthographic mode
     v3 cursor_cam = mat4vert(cam.cam_from_world, cursor.pos);
     v2 radius_on_cam = 0.875f * update_viewport->clip_radius;
     v1 zoom_ratio = absolute(cursor_cam.z / cam.focal_length);
@@ -1906,19 +1900,6 @@ game_update(Game_Update_Params params)
      }
      
      cam_data->pivot += mat4vec(cam.world_from_cam, V3(delta_in_cam, 0));
-    }
-    else
-    {//-camera clamps cursor
-     if(0)
-     {// NOTE(kv) NO man, the point of having a cursor is that it doesn't move!
-      for_i32(i,0,2)
-      {
-       ClampBot(cursor_cam[i], -radius_at_cursor_z[i]);
-       ClampTop(cursor_cam[i], +radius_at_cursor_z[i]);
-      }
-      
-      cursor.pos = mat4vert(cam.world_from_cam, cursor_cam);
-     }
     }
    }
   }
@@ -1953,7 +1934,7 @@ game_update(Game_Update_Params params)
   if(params.debug_camera_on)
   {
    Camera_Data &cam = *update_target_camera_data;
-   DEBUG_NAME("camera(theta,phi,distance)", V3(cam.theta, cam.phi, cam.distance));
+   DEBUG_NAME("camera(theta,phi,distance)", V3(cam.phi, cam.theta, cam.distance));
   }
   
   for_i32(index, 0, GAME_VIEWPORT_COUNT)
@@ -1980,18 +1961,17 @@ game_update(Game_Update_Params params)
   }
   
   //show_image_preview(strlit("G:/My Drive/Art/arm medial.jpg"));
-  //show_image_preview(strlit("C://notarealfile"));
   
-  if(fui_active)
-  {//-Show GUI for line params slider
+  if(fui_is_active())
+  {//-Show GUI for FUI (rolls right off the tongue)
+   ImGuiWindowFlags flags = ImGuiWindowFlags_NoFocusOnAppearing;
+   im_begin("FUI", 0, flags);
+   
    Slider &slider = *fui_active_slider.data;
    Type_Info *type = get_slider_type_info(slider);
    if(equal(type, type_info_of(FUI_Line_Params)))
-   {
+   {//-line params
     const char* items[] = { "radii", "lightness" };
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoFocusOnAppearing;
-    
-    ImGui::Begin("Line Params", 0, flags);
     
     if(0)
     {//-Select attribute
@@ -2003,11 +1983,16 @@ game_update(Game_Update_Params params)
     
     {//-General info
      I_Struct_Member &active_member =
-      type->members[fui_active_slider.active_member_index];
-     ImGui::Text("Editing: %S", active_member.name);
+     type->members[fui_active_slider.active_member_index];
+     im_text("Editing: %S", active_member.name);
     }
-    ImGui::End();
    }
+   else
+   {//-Other types
+    String value_string = fui_push_active_slider_value(tmp);
+    im_text("%S", value_string);
+   }
+   im_end();
   }
   
   for_i32(index, 0, params.live_viewports.count)
@@ -2040,6 +2025,8 @@ game_update(Game_Update_Params params)
  }
  
  notebook_update(0);
+ 
+ //if(ImGui::Button("image test")) { do_image_test(); }
  
  return{
   .should_animate_next_frame = should_animate_next_frame,

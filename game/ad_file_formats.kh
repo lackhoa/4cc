@@ -1,10 +1,15 @@
 //-
-[embed]
+[info embed]
 struct Camera_Data
 {
+ // NOTE(kv) Our spherical coordinates convention is kind of like 
+ // the physics convention https://en.wikipedia.org/wiki/Spherical_coordinate_system
+ // The similarity is that phi is the rotation in xy plane,
+ // and theta is the angle to z axis.
+ // But we interpret the numbers differently, view @setup_camera for details.
  v1 distance;
- v1 phi;
  v1 theta;
+ v1 phi;
  v1 roll;
  v3 pivot;
 };

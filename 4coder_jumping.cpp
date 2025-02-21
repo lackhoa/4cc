@@ -1,4 +1,4 @@
-/*
+/*#processed
 4coder_jumping.cpp - Routines commonly used when writing code to jump to locations and seek through jump lists.
 */
 
@@ -70,24 +70,24 @@ parse_jump_location(String8 line)
  line = reduced_line;
  
  String kv_jump_magic = strlit("[kv]");
- if(starts_with(line, kv_jump_magic)){
-  //-NOTE(kv) I'm doing it my way!
-  //NOTE(kv) Syntax: [kv_jump][FILE_PATH][BYTE_OFFSET]
-  line = string_skip(line, kv_jump_magic.count);
+ if(starts_with(line, kv_jump_magic))
+ {//-kv jump @kv_jump_syntax
+  line = string_skip(line, kv_jump_magic.count + 1);
   {//-file
-   u64 end_of_file_path = string_find_first(line, '[');
+   u64 end_of_file_path = string_find_first(line, ']');
    jump.location.file = string_prefix(line, end_of_file_path);
-   line = string_skip(line, end_of_file_path+1);
+   line = string_skip(line, end_of_file_path+2);
   }
   {//-byte pos
    u64 end_of_pos = string_find_first(line, ']');
    String pos_string = string_prefix(line, end_of_pos);
    jump.location.pos = (i32)string_to_u64(pos_string, 10);
   }
-  if(jump.location.pos){
-   jump.success = true;
-  }
- }else{
+  
+  if(jump.location.pos){ jump.success = true; }
+ }
+ else
+ {//-Cooked-up syntax by other compilers
   u64 left_paren_pos = string_find_first(line, '(');
   u64 right_paren_pos = left_paren_pos + string_find_first(string_skip(line, left_paren_pos), ')');
   b32 is_ms_style = false;
@@ -154,7 +154,8 @@ parse_jump_location(String8 line)
    u64 colon_pos2 = string_find_first(string_skip(line, colon_pos1 + 1), ':') + colon_pos1 + 1;
    u64 colon_pos3 = string_find_first(string_skip(line, colon_pos2 + 1), ':') + colon_pos2 + 1;
    
-   if (colon_pos3 < line.size){
+   if(colon_pos3 < line.size)
+   {
     if (check_is_note(line, colon_pos3)){
      jump.sub_jump_note = true;
     }
@@ -169,7 +170,9 @@ parse_jump_location(String8 line)
      jump.location.column = (i1)string_to_u64(column_number, 10);
      jump.success = true;
     }
-   }else{
+   }
+   else
+   {
     if (colon_pos2 < line.size){
      if (check_is_note(line, colon_pos2)){
       jump.sub_jump_note = true;
@@ -191,10 +194,10 @@ parse_jump_location(String8 line)
   }
  }
  
- if (!jump.success){
+ if(not jump.success){
   block_zero_struct(&jump);
  }else{
-  jump.is_sub_jump = (jump.sub_jump_indented || jump.sub_jump_note);
+  jump.is_sub_jump = (jump.sub_jump_indented or jump.sub_jump_note);
  }
  return(jump);
 }

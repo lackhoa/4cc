@@ -620,55 +620,58 @@ buffer_get_last_pos_from_line_number(Gap_Buffer *buffer, i64 line_number) {
 }
 
 function Buffer_Cursor
-buffer_cursor_from_pos(Gap_Buffer *buffer, i64 pos){
-    i64 size = buffer_size(buffer);
-    pos = clamp_between(0, pos, size);
-    i64 line_index = buffer_get_line_index(buffer, pos);
-    
-    Buffer_Cursor result = {};
-    result.pos = pos;
-    result.line = line_index + 1;
-    result.col = pos - buffer->line_starts[line_index] + 1;
-    return(result);
+buffer_cursor_from_pos(Gap_Buffer *buffer, i64 pos)
+{
+ i64 size = buffer_size(buffer);
+ pos = clamp_between(0, pos, size);
+ i64 line_index = buffer_get_line_index(buffer, pos);
+ 
+ // NOTE(kv) Line/Column number is so weird, man...
+ Buffer_Cursor result = {};
+ result.pos  = pos;
+ result.line = line_index + 1;
+ result.col  = pos - buffer->line_starts[line_index] + 1;
+ return(result);
 }
 
 function Buffer_Cursor
-buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
-    i64 line_index = line - 1;
-    i64 line_count = buffer_line_count(buffer);
-    line_index = clamp_between(0, line_index, line_count - 1);
-    
-    i64 this_start = buffer->line_starts[line_index];
-    i64 max_col = (buffer->line_starts[line_index + 1] - this_start);
-    if (line_index + 1 == line_count){
-        max_col += 1;
-    }
-    max_col = clamp_min(1, max_col);
-    
-    if (col < 0){
-        if (-col > max_col){
-            col = 1;
-        }
-        else{
-            col = max_col + col + 1;
-        }
-    }
-    else if (col == 0){
-        col = 1;
-    }
-    else{
-        col = clamp_max(col, max_col);
-    }
-    Assert(col > 0);
-    i64 adjusted_pos = col - 1;
-    
-    i64 pos = this_start + adjusted_pos;
-    
-    Buffer_Cursor result = {};
-    result.pos = pos;
-    result.line = line_index + 1;
-    result.col = col;
-    return(result);
+buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col)
+{
+ i64 line_index = line - 1;
+ i64 line_count = buffer_line_count(buffer);
+ line_index = clamp_between(0, line_index, line_count - 1);
+ 
+ i64 this_start = buffer->line_starts[line_index];
+ i64 max_col = (buffer->line_starts[line_index + 1] - this_start);
+ if (line_index + 1 == line_count){
+  max_col += 1;
+ }
+ max_col = clamp_min(1, max_col);
+ 
+ if (col < 0){
+  if (-col > max_col){
+   col = 1;
+  }
+  else{
+   col = max_col + col + 1;
+  }
+ }
+ else if (col == 0){
+  col = 1;
+ }
+ else{
+  col = clamp_max(col, max_col);
+ }
+ Assert(col > 0);
+ i64 adjusted_pos = col - 1;
+ 
+ i64 pos = this_start + adjusted_pos;
+ 
+ Buffer_Cursor result = {};
+ result.pos = pos;
+ result.line = line_index + 1;
+ result.col = col;
+ return(result);
 }
 
 function String

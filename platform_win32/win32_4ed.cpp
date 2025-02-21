@@ -902,7 +902,8 @@ win32_alloc_object(Win32_Object_Kind kind)
 }
 
 function void
-win32_free_object(Win32_Object *object){
+win32_free_object(Win32_Object *object)
+{
     if (object->node.next != 0){
         dll_remove(&object->node);
     }
@@ -1185,7 +1186,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    breakhere;
   }
   
-  Scratch_Block scratch;
+  Scratch_Block tmp;
   
   i32 window_index = 0;
   for_i32(index,0,WINDOW_COUNT) {
@@ -1264,24 +1265,27 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     Key_Code keycode = keycode_lookup_table[(u8)vk];
     // NOTE: We have system_get_keyboard_modifiers to track modifier keys already
     if(not is_modifier_key(keycode))
-    {//-Key state tracking (is this a bad idea?)
-     if(0){
-      Scratch_Block tmp;
+    {//-Key state tracking
+     if(0)
+     {
       char *keyname = key_code_name[keycode];
       log_string(push_stringf(tmp, "key %s is %s", keyname, keyup ? "up" : "down"));
      }
      global_game_key_states[keycode] = b8(keydown);
-     global_game_key_state_changes[keycode]++;
+     //global_game_key_state_changes[keycode]++;
     }
     
-    if(imgui_want_capture_keyboard){
-     //-imgui
+    if(imgui_want_capture_keyboard)
+    {//-imgui
      call_default_handler = true;
      win32vars.got_useful_event = true;
-    }else{
-     //-We handle it
-     if (keydown) {
-      if (keycode != 0) {
+    }
+    else
+    {//-We handle it
+     if(keydown)
+     {
+      if(keycode != 0)
+      {
        add_modifier(mods, keycode);
        
        Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
@@ -1292,12 +1296,15 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
        
        win32vars.got_useful_event = true;
       }
-     } else {
+     }
+     else
+     {//-key up
       win32vars.active_key_stroke = 0;
       win32vars.active_text_input = 0;
       win32vars.got_useful_event = true;
       
-      if (keycode != 0) {
+      if(keycode != 0)
+      {
        Input_Event *event = push_input_event(&win32vars.frame_arena, &win32vars.input_chunk.trans.event_list);
        event->kind = InputEventKind_KeyRelease;
        event->key.code = keycode;
@@ -1482,7 +1489,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    {
     if (win32vars.clip_catch_all){
      win32vars.got_useful_event = true;
-     LogEventLit(win32vars.log_string(M), scratch, 0, 0, system_thread_get_id(),
+     LogEventLit(win32vars.log_string(M), tmp, 0, 0, system_thread_get_id(),
                  "new clipboard contents");
     }
    }break;

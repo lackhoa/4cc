@@ -280,10 +280,21 @@ typedef float v1;
 #  define kv_fail __builtin_trap()
 #endif
 
-#define kv_fail_ifnot(claim) do{if (!(claim)) { kv_fail; }} while(0)
+#include "stdio.h"  // TODO(kv) Sorry guys! We need it to print assertions
+
+// NOTE(kv) Provide rudimentary error message,
+// so we can use it as a poor man's error report in simple throw-away tools.
+#define kv_assert_inner(CLAIM) \
+do{ \
+if (!(CLAIM)){  \
+printf("%s:%d: error: assertion fired: %s", __FILE__, __LINE__, #CLAIM); \
+fflush(stdout); \
+kv_fail; \
+}} while(0)
+
 #if KV_INTERNAL
-#    define kv_assert                    kv_fail_ifnot
-#    define assert_defend(CLAIM, DEFEND) kv_fail_ifnot(CLAIM)
+#    define kv_assert                    kv_assert_inner
+#    define assert_defend(CLAIM, DEFEND) kv_assert_inner(CLAIM)
 #else
 #    define kv_assert(CLAIM)
 #    define assert_defend(CLAIM, DEFEND)   if (!(CLAIM))  { DEFEND; }
@@ -295,11 +306,11 @@ typedef float v1;
 #    define fail_in_debug
 #endif
 
-#define InvalidCodePath     fail_in_debug
-#define invalid_code_path   InvalidCodePath  //NOTE deprecated
+#define InvalidCodePath     kv_assert(0)
+#define invalid_code_path   InvalidCodePath  // NOTE deprecated
 
 #define InvalidDefaultCase default: { invalid_code_path; };
-#define breakhere       do{ int please_break = 5; (void)please_break; }while(0)
+#define breakhere          do{ int please_break = 5; (void)please_break; }while(0)
 
 #define wrap_function(NAME)           NAME##__return NAME(NAME##__params)
 #define wrap_function_pointer(NAME)   NAME##__return (*NAME)(NAME##__params)
@@ -343,4 +354,8 @@ struct File_Line
  char *file;
  u32  line;
 };
+
+#define cstrcode(...) #__VA_ARGS__
+#define stringize cstrcode
+typedef i32 Marker;
 //-

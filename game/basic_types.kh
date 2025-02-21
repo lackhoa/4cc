@@ -69,24 +69,29 @@ gen_file "basic_types_read.gen.h"
 
 gen_file "basic_types_info.gen.h"
 {
- global Type_Info basic_types_info[Basic_Type_Count+1] = {
-  Type_Info{},
+ gen_for(basic_types)
+ {
+  global Type_Info Type_Info_`T =
+  {
+   .name=strlit(`quotes(T)),
+   .size=i1(sizeof(`T)),
+   .kind=I_Type_Kind_Basic,
+   .Basic_Type=Basic_Type_`T,
+  };
+ }
+ 
+ global Type_Info dummy_type_info;
+ 
+ global Type_Info *basic_types_info[Basic_Type_Count+1] =
+ {
+  &dummy_type_info,
   gen_for(basic_types)
   {
-   Type_Info{
-    .name=strlit(`quotes(T)),
-    .size=i1(sizeof(`T)),
-    .kind=I_Type_Kind_Basic,
-    .Basic_Type=Basic_Type_`T,
-   },
+   &Type_Info_`T,
   }
  };
  
- gen_for(basic_types)
- {
-  global Type_Info Type_Info_`T = basic_types_info[Basic_Type_`T];
- }
-#define Type_Info_i32 Type_Info_i1
+#define Type_Info_i32   Type_Info_i1
 #define read_binary_i32 read_binary_i1
 }
 //-

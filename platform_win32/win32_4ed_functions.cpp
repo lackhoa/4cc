@@ -176,25 +176,25 @@ expand_tilde(Arena *arena, String8 path)
  return result;
 }
 
-// String system_get_canonical(Arena* arena, String name)
-function system_get_canonical_sig()
+function String
+system_get_canonical(Arena* arena, String name)
 {
  String8 result = {};
  b32 correct_format = false;
  u8 char0 = string_get_character(name, 0);
  u8 char1 = string_get_character(name, 1);
- if (char0 == '~' && (char1 == '/' || char1 == '\\'))
- { //NOTE(kv): expand tilde
+ if(char0 == '~' && (char1 == '/' || char1 == '\\'))
+ { // NOTE(kv): expand tilde
   correct_format = true;
   name = expand_tilde(arena, name);
  }
- else if ((character_is_alpha(char0) && (char1 == ':')) ||
-          string_match(string_prefix(name, 2), SCu8("\\\\")))
+ else if((character_is_alpha(char0) && (char1 == ':')) ||
+         string_match(string_prefix(name, 2), SCu8("\\\\")))
  {// NOTE(kv): normal Windows path with drive letter
   correct_format = true;
  }
  
- if (correct_format)
+ if(correct_format)
  {
   u8 *cname = push_array(arena, u8, name.size + 1);
   block_copy(cname, name.str, name.size);
@@ -203,18 +203,21 @@ function system_get_canonical_sig()
   HANDLE file = CreateFile_utf8(arena, cname, GENERIC_READ, 0, 0, OPEN_EXISTING,
                                 FILE_ATTRIBUTE_NORMAL, 0);
   
-  if (file != INVALID_HANDLE_VALUE){
+  if(file != INVALID_HANDLE_VALUE)
+  {
    DWORD capacity = GetFinalPathNameByHandle_utf8(arena, file, 0, 0, 0);
    u8 *buffer = push_array(arena, u8, capacity);
    DWORD length = GetFinalPathNameByHandle_utf8(arena, file, buffer, capacity, 0);
-   if (length > 0 && buffer[length - 1] == 0){
+   if(length > 0 && buffer[length - 1] == 0)
+   {
     length -= 1;
    }
    result = SCu8(buffer, length);
    result = win32_remove_unc_prefix_characters(result);
    CloseHandle(file);
   }
-  else{
+  else
+  {
    String8 path = string_remove_front_of_path(name);
    String8 front = path_filename(name);
    
@@ -246,24 +249,6 @@ function system_get_canonical_sig()
  }
  return(result);
 }
-
-function File_Attribute_Flag
-win32_convert_file_attribute_flags(DWORD dwFileAttributes){
-    File_Attribute_Flag result = {};
-    MovFlag(dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY, result, FileAttribute_IsDirectory);
-    return(result);
-}
-
-function u64
-win32_u64_from_u32_u32(u32 hi, u32 lo){
-    return( (((u64)hi) << 32) | ((u64)lo) );
-}
-
-function u64
-win32_u64_from_filetime(FILETIME time){
-    return(win32_u64_from_u32_u32(time.dwHighDateTime, time.dwLowDateTime));
-}
-
 function File_Attributes
 win32_file_attributes_from_HANDLE(HANDLE file)
 {
@@ -279,58 +264,61 @@ win32_file_attributes_from_HANDLE(HANDLE file)
 api(ed) function File_List
 system_get_file_list(Arena* arena, String directory)
 {
-    File_List result = {};
-    String search_pattern = {};
-    if (is_file_slash(string_get_character(directory, directory.size - 1))){
-        search_pattern = push_stringf(arena, "%.*s*", string_expand(directory));
-    }
-    else{
-        search_pattern = push_stringf(arena, "%.*s\\*", string_expand(directory));
-    }
+ File_List result = {};
+ String search_pattern = {};
+ if (is_file_slash(string_get_character(directory, directory.size - 1)))
+ {
+  search_pattern = push_stringf(arena, "%.*s*", string_expand(directory));
+ }
+ else
+ {
+  search_pattern = push_stringf(arena, "%.*s\\*", string_expand(directory));
+ }
+ 
+ WIN32_FIND_DATAW find_data = {};
+ HANDLE search = FindFirstFile_utf8(arena, search_pattern.str, &find_data);
+ if (search != INVALID_HANDLE_VALUE)
+ {
+  File_Info *first = 0;
+  File_Info *last = 0;
+  i1 count = 0;
+  
+  for (;;)
+  {
+   String_Const_u16 filename_utf16 = SCu16(find_data.cFileName);
+   if (!(string_match(filename_utf16, string_u16_litexpr(L".")) ||
+         string_match(filename_utf16, string_u16_litexpr(L".."))))
+   {
+    String filename0 = string_u8_from_string_u16(arena, filename_utf16,
+                                                 StringFill_NullTerminate).string;
+    Stringz filename = Stringz(filename0);
     
-    WIN32_FIND_DATAW find_data = {};
-    HANDLE search = FindFirstFile_utf8(arena, search_pattern.str, &find_data);
-    if (search != INVALID_HANDLE_VALUE)
-    {
-        File_Info *first = 0;
-        File_Info *last = 0;
-        i1 count = 0;
-        
-        for (;;)
-        {
-            String_Const_u16 filename_utf16 = SCu16(find_data.cFileName);
-            if (!(string_match(filename_utf16, string_u16_litexpr(L".")) ||
-                  string_match(filename_utf16, string_u16_litexpr(L".."))))
-            {
-                String filename = string_u8_from_string_u16(arena, filename_utf16,
-                                                                      StringFill_NullTerminate).string;
-                
-                File_Info *info = push_array(arena, File_Info, 1);
-                sll_queue_push(first, last, info);
-                count += 1;
-                
-                info->filename = filename;
-                info->attributes.size = win32_u64_from_u32_u32(find_data.nFileSizeHigh,
-                                                               find_data.nFileSizeLow);
-                info->attributes.last_write_time = win32_u64_from_filetime(find_data.ftLastWriteTime);
-                info->attributes.flags = win32_convert_file_attribute_flags(find_data.dwFileAttributes);
-            }
-            if (!FindNextFileW(search, &find_data))
-            {
-                break;
-            }
-        }
-        
-        result.infos = push_array(arena, File_Info*, count);
-        result.count = count;
-        
-        i1 counter = 0;
-        for (File_Info *node = first;
-             node != 0;
-             node = node->next)
-        {
-            result.infos[counter] = node;
-            counter += 1;
+    File_Info *info = push_array(arena, File_Info, 1);
+    sll_queue_push(first, last, info);
+    count += 1;
+    
+    info->filename = filename;
+    info->attributes.size = win32_u64_from_u32_u32(find_data.nFileSizeHigh,
+                                                   find_data.nFileSizeLow);
+    info->attributes.last_write_time = win32_u64_from_filetime(find_data.ftLastWriteTime);
+    info->attributes.flags = win32_convert_file_attribute_flags(find_data.dwFileAttributes);
+   }
+   if (!FindNextFileW(search, &find_data))
+   {
+    break;
+   }
+  }
+  
+  result.infos = push_array(arena, File_Info*, count);
+  result.count = count;
+  
+  i1 counter = 0;
+  for (File_Info *node = first;
+       node != 0;
+       node = node->next)
+  {
+   result.infos[counter] = node;
+   counter += 1;
   }
  }
  

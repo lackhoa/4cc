@@ -188,95 +188,98 @@ match_mouse_code_release(Input_Event *event, Mouse_Code code){
 
 function b32
 match_core_code(Input_Event *event, Core_Code code){
-    return(event->kind == InputEventKind_Core && event->core.code == code);
+ return(event->kind == InputEventKind_Core && event->core.code == code);
 }
 
 function Event_Property
-get_event_properties(Input_Event *event){
-    Event_Property flags = 0;
+get_event_properties(Input_Event *event)
+{
+ Event_Property flags = 0;
+ 
+ switch (event->kind)
+ {
+  case InputEventKind_TextInsert:
+  {
+   flags |= EventProperty_TextInsert;
+  }break;
+  
+  case InputEventKind_KeyStroke:
+  {
+   if(event->key.code == Key_Code_Escape)
+   {
+    flags |= EventProperty_Escape;
+   }
+   flags |= EventProperty_AnyKey;
+  }break;
+  
+  case InputEventKind_KeyRelease:
+  {
+   flags |= EventProperty_AnyKeyRelease;
+  }break;
+  
+  case InputEventKind_MouseButton:
+  {
+   flags |= EventProperty_MouseButton;
+  }break;
+  
+  case InputEventKind_MouseButtonRelease:
+  {
+   flags |= EventProperty_MouseRelease;
+  }break;
+  
+  case InputEventKind_MouseWheel:
+  {
+   flags |= EventProperty_MouseWheel;
+  }break;
+  
+  case InputEventKind_MouseMove:
+  {
+   flags |= EventProperty_MouseMove;
+  }break;
+  
+  case InputEventKind_Core:
+  {
+   switch (event->core.code){
+    case CoreCode_Animate:
+    {
+     flags |= EventProperty_Animate;
+    }break;
     
-    switch (event->kind){
-        case InputEventKind_TextInsert:
-        {
-            flags |= EventProperty_TextInsert;
-        }break;
-        
-        case InputEventKind_KeyStroke:
-        {
-            if (event->key.code == Key_Code_Escape){
-                flags |= EventProperty_Escape;
-            }
-            flags |= EventProperty_AnyKey;
-        }break;
-        
-        case InputEventKind_KeyRelease:
-        {
-            flags |= EventProperty_AnyKeyRelease;
-        }break;
-        
-        case InputEventKind_MouseButton:
-        {
-            flags |= EventProperty_MouseButton;
-        }break;
-        
-        case InputEventKind_MouseButtonRelease:
-        {
-            flags |= EventProperty_MouseRelease;
-        }break;
-        
-        case InputEventKind_MouseWheel:
-        {
-            flags |= EventProperty_MouseWheel;
-        }break;
-        
-        case InputEventKind_MouseMove:
-        {
-            flags |= EventProperty_MouseMove;
-        }break;
-        
-        case InputEventKind_Core:
-        {
-            switch (event->core.code){
-                case CoreCode_Animate:
-                {
-                    flags |= EventProperty_Animate;
-                }break;
-                
-                case CoreCode_ClickActivateView:
-                case CoreCode_ClickDeactivateView:
-                {
-                    flags |= EventProperty_ViewActivation;
-                }break;
-                
-                case CoreCode_FileExternallyModified:
-                {
-                    flags |= EventProperty_AnyFile;
-                }break;
-                
-                case CoreCode_Startup:
-                {
-                    flags |= EventProperty_Startup;
-                }break;
-                
-                case CoreCode_TryExit:
-                {
-                    flags |= EventProperty_Exit;
-                }break;
-                
-                case CoreCode_NewClipboardContents:
-                {
-                    flags |= EventProperty_Clipboard;
-                }break;
-            }
-        }break;
-        
-        case InputEventKind_CustomFunction:
-        {
-            flags |= EventProperty_CustomFunction;
-        }break;
-    }
+    case CoreCode_ClickActivateView:
+    case CoreCode_ClickDeactivateView:
+    {
+     flags |= EventProperty_ViewActivation;
+    }break;
     
-    return(flags);
+    case CoreCode_FileExternallyModified:
+    {
+     flags |= EventProperty_AnyFile;
+    }break;
+    
+    case CoreCode_Startup:
+    {
+     flags |= EventProperty_Startup;
+    }break;
+    
+    case CoreCode_TryExit:
+    {
+     flags |= EventProperty_Exit;
+    }break;
+    
+    case CoreCode_NewClipboardContents:
+    {
+     flags |= EventProperty_Clipboard;
+    }break;
+   }
+  }break;
+  
+  case InputEventKind_CustomFunction:
+  {
+   flags |= EventProperty_CustomFunction;
+  }break;
+ }
+ 
+ return(flags);
 }
 
 function Input_Event*

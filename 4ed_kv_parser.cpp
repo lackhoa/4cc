@@ -1,3 +1,4 @@
+//-#processed
 // NOTE(kv): This is yet another parser based on 4coder's tokenizer
 // Should it be a separate parser from the other one using STB_Parser?
 // Maybe: it has bidirectional parsing, it uses another token type,
@@ -52,6 +53,12 @@ inline Line_Column
 ep_get_fail_location(Ed_Parser *p){
  Token *token = ep__get_token_please(p);
  return ep_get_token_location(p, token);
+}
+myinline i64
+ep_get_fail_pos(Ed_Parser *p)
+{
+ Token *token = ep__get_token_please(p);
+ return token->pos;
 }
 inline Line_Column
 ep_get_scope_location(Ed_Parser *p){
@@ -150,8 +157,8 @@ myinline String
 ep_print_token(Ed_Parser *p){ return ep_print_token(p->string_arena, p); }
 
 function void
-ep_print_token(Printer &printer, Ed_Parser *p){
- //NOTE Print with a printer
+ep_print_token(Printer &printer, Ed_Parser *p)
+{//NOTE Print with a printer
  Token *token = ep_get_token(p);
  if(token){
   switch(p->Token_Gen_Type){
@@ -171,11 +178,15 @@ ep_get_pos(Ed_Parser *p){
  } else { return 0; }
 }
 function void
-ep_eat(Ed_Parser *p){
- if(p->ok_){
-  switch(p->Token_Gen_Type){
+ep_eat(Ed_Parser *p)
+{
+ if(p->ok_)
+ {
+  switch(p->Token_Gen_Type)
+  {
    case TG_String:
-   case TG_Buffer:{
+   case TG_Buffer:
+   {
     if(p->direction == Scan_Forward){
      p->set_ok(token_it_inc(&p->it) != 0);
     }else{
@@ -282,7 +293,8 @@ ep_maybe_number(Ed_Parser *p){
 }
 //-
 function Token_Base_Kind
-ep_get_kind(Ed_Parser *p){
+ep_get_kind(Ed_Parser *p)
+{
  Token_Base_Kind result = 0;
  Token *token = ep_get_token(p);
  if (token){
@@ -445,9 +457,10 @@ ep__char_in_string_new(String chars, char chr){
  return false;
 }
 function b32
-ep_test_char(Ed_Parser *p, char c){
- Scratch_Block scratch;  // @slow, also sometimes the arena isn't necessary
- String string = ep_print_token(scratch, p);
+ep_test_char(Ed_Parser *p, char c)
+{
+ Scratch_Block tmp;
+ String string = ep_print_token(tmp, p);
  return (string.len == 1 &&
          string.str[0] == c);
 }
@@ -531,27 +544,28 @@ ep_capture_until_char(Ed_Parser *p, char terminator){
  return ep_capture_until_char(p, SCu8(terminator));
 }
 function void
-ep_eat_until_char_simple(Ed_Parser *p, char c){
- while(p->ok_){
-  if(ep_maybe_char(p, c)){
-   break;
-  }else{
-   ep_eat(p);
-  }
+ep_eat_until_char_simple(Ed_Parser *p, char c)
+{
+ while(p->ok_)
+ {
+  if (ep_maybe_char(p, c)) break;
+  ep_eat(p);
  }
 }
 //-
-inline void
+myinline void
 ep_skip_semicolons(Ed_Parser *p)
 {//NOTE(kv) We may add semicolon for editor indentation.
  //todo(kv) maybe we can test the token kind for this?
- while(ep_maybe_kind(p, TokenBaseKind_StatementClose)){  }
+ while(ep_maybe_char(p, ';'));
 }
 function void
-ep_skip_comments_and_spaces(Ed_Parser *p){
+ep_skip_comments_and_spaces(Ed_Parser *p)
+{
  Token *token = ep_get_token(p);
- if(token->kind == TokenBaseKind_Comment ||
-    token->kind == TokenBaseKind_Whitespace){
+ if(token->kind == TokenBaseKind_Comment or
+    token->kind == TokenBaseKind_Whitespace)
+ {
   ep_eat(p);
  }
 }

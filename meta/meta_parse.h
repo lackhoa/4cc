@@ -51,7 +51,7 @@ ed_parser_from_token_list(String source, Token_List &token_list)
  return result;
 }
 function Ed_Parser
-ed_parser_from_string(Arena *arena, String string)
+ed_parser_from_string(Arena *arena, Stringz string)
 {
  Token_List token_list = lex_full_input_cpp(arena, string);
  return ed_parser_from_token_list(string, token_list);

@@ -26,9 +26,12 @@ void main(void)
  gl_Position = uniform_clip_from_world * world_pos;
  
 #if IS_FIRST_PASS || IS_SECOND_PASS
- if (uniform_overlay) {
+ if(uniform_overlay)
+ {
   gl_Position.z = -gl_Position.w;  //NOTE: z=-1 IS the near-clip plane, so the shader really is the right place to do this.
- } else {
+ }
+ else
+ {
   v4 offsetted = world_pos;
   v3 camz = uniform_camera_axes[2];
   offsetted.xyz -= vattr_depth_offset * camz;

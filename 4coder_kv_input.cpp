@@ -1,3 +1,4 @@
+//-#processed
 struct KvQuailEntry
 {
  char *key;
@@ -105,7 +106,7 @@ kv_handle_text_insert(App_Cmd *app, u8 character)
     // NOTE(kv): move cursor
     move_horizontal_lines(app, entry.cursor_index);
     
-    // NOTE @Hack to indent the line open brace.
+    // NOTE #Hack to indent the line open brace.
     if(strncmp(keys, "[[", 2) == 0)
     {
      auto_indent_line_at_cursor(app);
@@ -221,10 +222,21 @@ kv_handle_vim_keyboard_input(App *app0, Input_Event *event)
  else return false;
 }
 function void
+register_keyboard_event_to_the_game(Input_Event &event)
+{
+ if(event.kind == InputEventKind_KeyStroke or
+    event.kind == InputEventKind_KeyRelease)
+ {
+  // NOTE(kv) kinda messed up but ok...
+  Key_Code key = event.key.code;
+  global_game_key_state_changes[key]++;
+ }
+}
+function void
 kv_view_input_handler(App *app0)
 {
- Scratch_Block scratch(app0);
- default_input_handler_init(app0, scratch);
+ Scratch_Block tmp;
+ default_input_handler_init(app0, tmp);
  
  View_ID view = get_this_ctx_view(app0, Access_Always);
  Managed_Scope scope = view_get_managed_scope(app0, view);
@@ -233,19 +245,26 @@ kv_view_input_handler(App *app0)
      !input.abort;
      input  = get_next_input(app0, EventPropertyGroup_Any, 0))
  {
+  // NOTE(kv) IMPORTANT Guys, we need to fetch the view's buffer every time.
+  // Because the buffer CHANGES!
+  Buffer_ID buffer = view_get_buffer(app0, view, Access_Always);
+  b32 is_game_buffer = buffer_viewport_id(app0, buffer) != 0;
+  
   App_Cmd app_value = app_cmd_event(app0, &input.event);
   App_Cmd *app = &app_value;
+  Game_API *game = get_game_code(Game_On);
   
-  Temp_Memory_Block temp(scratch);
+  Temp_Memory_Block temp(tmp);
   
-  if (input.event.kind == InputEventKind_KeyStroke){
+  if(input.event.kind == InputEventKind_KeyStroke)
+  {
    seconds_since_last_keystroke = 0;
   }
   
 #if VIM_USE_BOTTOM_LISTER
   // Clicking on lister items outside of original view panel is a hack
-  if ((vim_lister_view_id != 0) && 
-      (view != vim_lister_view_id))
+  if((vim_lister_view_id != 0) and
+     (view != vim_lister_view_id))
   {
    view_set_active(app, vim_lister_view_id);
    leave_current_input_unhandled(app);
@@ -262,38 +281,46 @@ kv_view_input_handler(App *app0)
   
   if(not suppressed)
   {
-   if (!is_mouse_event && (input.event.kind != InputEventKind_None))
+   if(not is_mouse_event and (input.event.kind != InputEventKind_None))
    {
     vim_keystroke_text.size = 0;
     vim_cursor_blink = 0;
    }
    
-   b32 handled = false;
+   b32 handled = 0;
    
-   if(vim_state.mode != VIM_Insert)
+   if(game)
    {
-    Game_API *game = get_game_code(Game_On);
-    if(game)
+    if(not is_game_buffer and (vim_state.mode != VIM_Normal))
     {
-     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-     b32 is_game_buffer = buffer_viewport_id(app, buffer);
+     handled = 0;
+    }
+    else
+    {
      handled = game->is_event_handled_by_game(ed_game_state_pointer, app, &input.event, is_game_buffer, is_game_rendering());
+    }
+    
+    if(handled)
+    {
+     register_keyboard_event_to_the_game(input.event);
     }
    }
    
-   if(!handled)
+   if(not handled)
    {// NOTE: The normal text editor
     handled = kv_handle_vim_keyboard_input(app, &input.event);
    }
    
-   if ( !handled )
+   if(not handled)
    {
     // NOTE(allen): Get binding
-    if (implicit_map_function == 0)
+    if(implicit_map_function == 0)
+    {
      implicit_map_function = default_implicit_map;
+    }
     
     Implicit_Map_Result map_result = implicit_map_function(app, 0, 0, &input.event);
-    if ( map_result.command )
+    if(map_result.command)
     {
      // NOTE(allen): Run the command and pre/post command stuff
      default_pre_command(app, scope);
@@ -306,9 +333,13 @@ kv_view_input_handler(App *app0)
      
      ProfileScope(app, "after view input");
      default_post_command(app, scope);
+     handled = 1;
     }
-    else
-     leave_current_input_unhandled(app);
+   }
+   
+   if(not handled)
+   {
+    leave_current_input_unhandled(app);
    }
   }
  }
@@ -320,7 +351,7 @@ kv_newline_and_indent(App_Cmd *app)
  GET_VIEW_AND_BUFFER;
  HISTORY_GROUP_SCOPE;
  write_text(app, str8lit("\n"), true);
- kv_quail_keystroke_buffer.count = 0;  // @Hack
+ kv_quail_keystroke_buffer.count = 0;  // #Hack
  
  i64 curpos = view_get_cursor_pos(app, view);
  u8 character = buffer_get_char(app, buffer, curpos);
@@ -333,3 +364,4 @@ kv_newline_and_indent(App_Cmd *app)
  
  auto_indent_line_at_cursor(app);
 }
+//-

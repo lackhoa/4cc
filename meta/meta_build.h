@@ -99,5 +99,7 @@ struct Build_Shared
  String libs_dir;
  String imgui_dir;
  b32 asan_on;
+ b32 build_driver;
+ b32 no_force_inline;
 };
 //

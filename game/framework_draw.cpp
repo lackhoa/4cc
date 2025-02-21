@@ -52,8 +52,8 @@ poly3_inner(Poly3 points,
  draw__push_vertices(painter->target, ArrayAndCount(vertices), type);
 }
 function void
-draw_bezier_inner(v3 P[4], Line_Params &params, argb base_color)
-{// NOTE framework_driver_api.kt
+draw_bezier_inner(tvert P[4], Line_Params &params, argb base_color)
+{// NOTE @framework_api_1
  // NOTE(kv) I've thought about rendering in camera space,
  // but then we're gonna have to convert to camera space in our fills, too.
  // If you optimize for one case, you're gonna screw something else.
@@ -156,7 +156,7 @@ draw_bezier_inner(v3 P[4], Line_Params &params, argb base_color)
    Bezier P_camera;
    for_i32(index,0,4)
    {
-    P_camera[index] = mat4vert(painter->cam_from_bone, P[index]);
+    P_camera[index] = painter->cam_from_bone * P[index];
    }
    
    v1 length_projected = 0.f;
@@ -292,7 +292,7 @@ draw_bezier_inner(v3 P[4], Line_Params &params, argb base_color)
     {//-Draw the circular endpoints
      if(radius > radius_threshold)
      {
-      draw_disk(sample, radius, color, poly_flags);
+      draw_disk_camera_space(sample, radius, color, poly_flags);
      }
     }
     

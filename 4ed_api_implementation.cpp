@@ -1,19 +1,12 @@
 /*
 NOTE(kv): description of this file
-1. 4ed_api_parser_main.cpp parses this file to extract out the api info,
+1. @api_parsing parses this file to extract out the api info,
  it used to be the "custom" api but now we use the "ed" api,
  however we still have to support the "custom" api because we forward-declare the functions.
  because we don't have introspection
 
 2. This file is included at the end of the 4coder layer,
  then it can use everything
-
-3. Does it have to be a single file?
- No but I just don't wanna parse too many files, man!
- More files = more bugs, plus it's slower because the parser isn't incremental.
-
-4. Can't you just copy-paste the header here to make it leaner?
- Sure, I don't see why not...
 */
 
 function void
@@ -818,54 +811,53 @@ buffer_get_setting(App *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64
             }break;
             
             default:
-            {
-                result = false;
-            }break;
-        }
-    }
-    return(result);
+   {
+    result = false;
+   }break;
+  }
+ }
+ return(result);
 }
 
-// @Cleanup (kv) Oh come on! Why aren't the buffer settings also flags?
+// NOTE(kv) So Buffer_Setting_ID is a flag, and we set the value, got it!
 api(custom) function b32
 buffer_set_setting(App *app, Buffer_ID buffer_id, Buffer_Setting_ID setting, i64 value)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer_id);
-    b32 result = false;
-    if ( api_check_buffer(file) )
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer_id);
+ b32 result = false;
+ if(api_check_buffer(file))
+ {
+  result = false;
+  if(setting & BufferSetting_Unimportant)
+  {
+   result = true;
+   file_set_unimportant(file, (value != 0));
+  }
+  if(setting & BufferSetting_Unkillable)
+  {
+   result = true;
+   file->settings.unkillable = (value != 0);
+  }
+  if(setting & BufferSetting_ReadOnly)
+  {
+   result = true;
+   file->settings.read_only = (value != 0);
+  }
+  if(setting & BufferSetting_RecordsHistory)
+  {
+   result = true;
+   if(value)
+   {
+    if(not history_is_activated(&file->state.history))
     {
-        result = false;
-        if (setting & BufferSetting_Unimportant)
-        {
-            result = true;
-            file_set_unimportant(file, (value != 0));
-        }
-        if (setting & BufferSetting_Unkillable)
-        {
-            result = true;
-            file->settings.unkillable = (value != 0);
-        }
-        if (setting & BufferSetting_ReadOnly)
-        {
-            result = true;
-            file->settings.read_only = (value != 0);
-        }
-        if (setting & BufferSetting_RecordsHistory)
-        {
-            result = true;
-            if (value)
-            {
-                if ( !history_is_activated(&file->state.history) )
-                {
-                    history_init(app->tctx, models, &file->state.history);
-                }
-            }
-            else if ( history_is_activated(&file->state.history) )
-            {
-                history_free(app->tctx, &file->state.history);
-            }
-            
+     history_init(app->tctx, models, &file->state.history);
+    }
+   }
+   else if(history_is_activated(&file->state.history))
+   {
+    history_free(app->tctx, &file->state.history);
+   }
   }
  }
  
@@ -1484,8 +1476,18 @@ view_get_buffer_scroll(App *app, View_ID view_id){
  return(result);
 }
 
-i32 buffer_viewport_id(App *app, Buffer_ID buffer);
-b32 turn_game_on();
+api(ed) function Viewport_ID
+buffer_viewport_id(App *app, Buffer_ID buffer)
+{
+ Models *models = app_get_models(app);
+ i32 result = 0;
+ Editing_File *file = imp_get_file(models, buffer);
+ if(file)
+ {
+  result = file->game_viewport_id;
+ }
+ return result;
+}
 
 api(custom) function b32
 view_set_active(App *app, View_ID view_id)

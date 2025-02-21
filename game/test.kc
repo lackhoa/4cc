@@ -1,9 +1,8 @@
-//-@broken_link_on_purpose
+//-
 function void
-main()
+test_link()
 {
- if(0);
- else{ one=2; }
+ fv2(1,1) + fv2(2,2);
+ flp({});
 }
-//-@broken_link_on_purpose_2
 //-

@@ -414,7 +414,7 @@ ogl__uniform_mat4(GLint uniform, mat4 *mat) {
  glUniformMatrix4fv(uniform, 1, GL_TRUE, ogl_cast_mat4(mat));
 }
 
-// @Ugh The only reason why this function exist is because
+// #Ugh The only reason why this function exist is because
 // every time you switch program, you gotta send it uniforms...
 function void
 ogl__begin_program(OGL_Program_State *s, u32 program, mat4 *clip_from_world)
@@ -824,7 +824,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
    glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
    
    GLenum texture_target = GL_TEXTURE_2D_MULTISAMPLE;
-   GLsizei num_samples = 4;  //@Tweak: I literally don't see any difference between 4x and 8x
+   GLsizei num_samples = 4;  //#Tweak: I literally don't see any difference between 4x and 8x
    {//-Game texture
     glGenTextures(1, &color0_texture);
     glBindTexture(texture_target, color0_texture);
@@ -944,6 +944,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
       dst_dim *= 0.5f;
      }
      
+     // ;dim_round_down (todo lost the original note)
      // @dim_round_down
      dst_dimx = cast(i32)dst_dim.x;
      dst_dimy = cast(i32)dst_dim.y;
@@ -1018,14 +1019,14 @@ ogl_render(i2 mousep_ydown, i32 window_id)
      }
     }
     
-    {//-NOTE: Render @ReferenceImage
-     {// NOTE: Actually rendering
+    {//-Render images
+     {// NOTE Actually rendering
       ogl__begin_program(state, ogl_program_image, &clip_from_world);
       ogl__render_images(group, false);
       ogl__end_program();
      }
      
-     if (should_draw_prim_id)
+     if(should_draw_prim_id)
      {// NOTE: prim id
       glBindFramebuffer(GL_FRAMEBUFFER, prim_id_framebuffer);
       glDisable(GL_FRAMEBUFFER_SRGB); 
@@ -1037,7 +1038,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
       glBindFramebuffer(GL_FRAMEBUFFER, game_framebuffer);
      }
      
-     glBindTextureUnit(0, render_state.texture_bound_at_unit0); //NOTE: Set it back for Mr. Editor
+     glBindTextureUnit(0, render_state.texture_bound_at_unit0); // NOTE Set it back for Mr. Editor
     }
     
     {// NOTE: Blit game_texture -> default framebuffer :game_blit

@@ -1,7 +1,8 @@
+//-
 struct Template_Node
 {
  String text;
- i32 field_index;
+ union { i32 field_index, parameter_index; };
  b32 quoted;
 };
 //-

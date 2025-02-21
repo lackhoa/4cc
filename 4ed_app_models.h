@@ -113,6 +113,7 @@ struct Models
  Editing_File *keyboard_buffer;
  
  Hot_Directory hot_directory;
+ String library_dir;  // set in @load_project
  
  b8 keep_playing;
  b8 hard_exit;
@@ -145,6 +146,7 @@ struct Models
  //-Miscellaneous
  Render_Target *target;
  u64 edit_counter;
+ Buffer_ID game_buffers[GAME_BUFFER_COUNT];
 };
 
 ////////////////////////////////

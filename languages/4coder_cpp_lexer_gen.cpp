@@ -10,12 +10,13 @@
 #include "lexer_generator/4coder_lex_gen_main.cpp"
 
 function void
-build_language_model(void){
+build_language_model(void)
+{
  u8 utf8[129];
  smh_utf8_fill(utf8);
  
  smh_set_base_character_names();
- smh_typical_tokens();
+ smh_typical_token_kinds();
  
  // NOTE(kv) English names for characters (look at lexer_cpp.h)
  sm_char_name('!', "Not");
@@ -167,114 +168,112 @@ build_language_model(void){
  
  sm_select_base_kind(TokenBaseKind_Keyword);
  
- //NOTE(kv) Alternative operators. These are keywords because they're alphanumeric,
- //  which fall into the "word" category, and you have to change the state machine
- //  to make it work, and  do I look like I have time to do that?
- sm_key("NotAlt", "not");
- sm_key("AndAlt", "and");
- sm_key("OrAlt",  "or");
+ // NOTE(kv) Alternative operators. But they're actually keywords.
+ sm_keyword("NotAlt", "not");
+ sm_keyword("AndAlt", "and");
+ sm_keyword("OrAlt",  "or");
  
- sm_key("Auto");
- sm_key("Void");
- sm_key("Bool");
- sm_key("Char");
- sm_key("Int");
- sm_key("Float");
- sm_key("Double");
- sm_key("Long");
- sm_key("Short");
- sm_key("Unsigned");
- sm_key("Signed");
- sm_key("Const");
- sm_key("Volatile");
- sm_key("Asm");
- sm_key("Break");
- sm_key("Case");
- sm_key("Catch");
- sm_key("Continue");
- sm_key("Default");
- sm_key("Do");
- sm_key("Else");
- sm_key("For");
- sm_key("Goto");
- sm_key("If");
- sm_key("Return");
- sm_key("Switch");
- sm_key("Try");
- sm_key("While");
- sm_key("StaticAssert", "static_assert");
- sm_key("ConstCast", "const_cast");
- sm_key("DynamicCast", "dynamic_cast");
- sm_key("ReinterpretCast", "reinterpret_cast");
- sm_key("StaticCast", "static_cast");
- sm_key("Class");
- sm_key("Enum");
- sm_key("Struct");
- sm_key("Typedef");
- sm_key("Union");
- sm_key("Template");
- sm_key("Typename");
- sm_key("Friend");
- sm_key("Namespace");
- sm_key("Private");
- sm_key("Protected");
- sm_key("Public");
- sm_key("Using");
- sm_key("Extern");
- sm_key("Export");
- sm_key("Inline");
- sm_key("Static");
- sm_key("Virtual");
- sm_key("AlignAs");
- sm_key("Explicit");
- sm_key("NoExcept");
- sm_key("NullPtr");
- sm_key("Operator");
- sm_key("Register");
- sm_key("This");
- sm_key("ThreadLocal", "thread_local");
- sm_key("SizeOf");
- sm_key("AlignOf");
- sm_key("DeclType");
- sm_key("TypeID");
- sm_key("New");
- sm_key("Delete");
+ sm_keyword("Auto");
+ sm_keyword("Void");
+ sm_keyword("Bool");
+ sm_keyword("Char");
+ sm_keyword("Int");
+ sm_keyword("Float");
+ sm_keyword("Double");
+ sm_keyword("Long");
+ sm_keyword("Short");
+ sm_keyword("Unsigned");
+ sm_keyword("Signed");
+ sm_keyword("Const");
+ sm_keyword("Volatile");
+ sm_keyword("Asm");
+ sm_keyword("Break");
+ sm_keyword("Case");
+ sm_keyword("Catch");
+ sm_keyword("Continue");
+ sm_keyword("Default");
+ sm_keyword("Do");
+ sm_keyword("Else");
+ sm_keyword("For");
+ sm_keyword("Goto");
+ sm_keyword("If");
+ sm_keyword("Return");
+ sm_keyword("Switch");
+ sm_keyword("Try");
+ sm_keyword("While");
+ sm_keyword("StaticAssert", "static_assert");
+ sm_keyword("ConstCast", "const_cast");
+ sm_keyword("DynamicCast", "dynamic_cast");
+ sm_keyword("ReinterpretCast", "reinterpret_cast");
+ sm_keyword("StaticCast", "static_cast");
+ sm_keyword("Class");
+ sm_keyword("Enum");
+ sm_keyword("Struct");
+ sm_keyword("Typedef");
+ sm_keyword("Union");
+ sm_keyword("Template");
+ sm_keyword("Typename");
+ sm_keyword("Friend");
+ sm_keyword("Namespace");
+ sm_keyword("Private");
+ sm_keyword("Protected");
+ sm_keyword("Public");
+ sm_keyword("Using");
+ sm_keyword("Extern");
+ sm_keyword("Export");
+ sm_keyword("Inline");
+ sm_keyword("Static");
+ sm_keyword("Virtual");
+ sm_keyword("AlignAs");
+ sm_keyword("Explicit");
+ sm_keyword("NoExcept");
+ sm_keyword("NullPtr");
+ sm_keyword("Operator");
+ sm_keyword("Register");
+ sm_keyword("This");
+ sm_keyword("ThreadLocal", "thread_local");
+ sm_keyword("SizeOf");
+ sm_keyword("AlignOf");
+ sm_keyword("DeclType");
+ sm_keyword("TypeID");
+ sm_keyword("New");
+ sm_keyword("Delete");
  
  sm_select_base_kind(TokenBaseKind_LiteralInteger);
- sm_key("LiteralTrue", "true");
- sm_key("LiteralFalse", "false");
+ sm_keyword("LiteralTrue", "true");
+ sm_keyword("LiteralFalse", "false");
  
  sm_select_base_kind(TokenBaseKind_Identifier);
- sm_key_fallback("Identifier");
+ sm_keyword_fallback("Identifier");
  
  // CPP Preprocess Directives
  Keyword_Set *pp_directive_set = sm_begin_key_set("pp_directives");
  
  sm_select_base_kind(TokenBaseKind_Preprocessor);
- sm_key("PPInclude", "include");
- sm_key("PPVersion", "version");
- sm_key("PPDefine", "define");
- sm_key("PPUndef", "undef");
- sm_key("PPIf", "if");
- sm_key("PPIfDef", "ifdef");
- sm_key("PPIfNDef", "ifndef");
- sm_key("PPElse", "else");
- sm_key("PPElIf", "elif");
- sm_key("PPEndIf", "endif");
- sm_key("PPError", "error");
- sm_key("PPImport", "import");
- sm_key("PPUsing", "using");
- sm_key("PPLine", "line");
- sm_key("PPPragma", "pragma");
+ sm_keyword("PPInclude", "include");
+ sm_keyword("PPVersion", "version");
+ sm_keyword("PPDefine", "define");
+ sm_keyword("PPUndef", "undef");
+ sm_keyword("PPIf", "if");
+ sm_keyword("PPIfDef", "ifdef");
+ sm_keyword("PPIfNDef", "ifndef");
+ sm_keyword("PPElse", "else");
+ sm_keyword("PPElIf", "elif");
+ sm_keyword("PPEndIf", "endif");
+ sm_keyword("PPError", "error");
+ sm_keyword("PPImport", "import");
+ sm_keyword("PPUsing", "using");
+ sm_keyword("PPLine", "line");
+ sm_keyword("PPPragma", "pragma");
  
  sm_select_base_kind(TokenBaseKind_LexError);
- sm_key_fallback("PPUnknown");
+ sm_keyword_fallback("PPUnknown");
  
  // CPP Preprocess Keywords
  Keyword_Set *pp_keys = sm_begin_key_set("pp_keys");
  
  sm_select_base_kind(TokenBaseKind_Keyword);
- sm_key("PPDefined", "defined");
+ sm_keyword("PPDefined", "defined");
  
  // State Machine
  State *root = sm_begin_state_machine();
@@ -1155,4 +1154,3 @@ build_language_model(void){
 }
 
 // BOTTOM
-

@@ -38,7 +38,7 @@ k_string_from_token_to_current(Ed_Parser *p, Token *token_start)
 }
 function char
 k_eat_until_char(Ed_Parser *p, String terminators)
-{
+{// TODO(kv) what's the difference between this and @ep_eat_until_char?
  char result = 0;
  {
   while(!result && p->ok_){

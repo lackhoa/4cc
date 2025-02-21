@@ -1,26 +1,38 @@
 #pragma once
 
-global char *meta_command_name;
-global b32 hotload_driver;
+global Stringz meta_command_name;
 global i1 meta_logging_level = 0;
 
 struct Meta_Directories
-{
+{// @meta_dirs_init
  Stringz home;
  Stringz code;
  Stringz game;
+ Stringz backup;
 };
-global Meta_Directories meta_dirs;  //@meta_dirs_init
+struct Meta_Globals
+{
+ Meta_Directories dirs;
+ b32 testing;
+ b32 hotload_driver;
+};
+global Meta_Globals meta;
 
 struct Lexed_File
 {
- String path;
+ Stringz path;
  String data;
  Token_List token_list;
  b32 ok;
 };
 #define meta_logf(...) if(meta_logging_level){ printf(__VA_ARGS__); }
 function void meta_process_ast(Statement_Root root, String source_path);
+
+myinline Ed_Parser
+ed_parser_from_lexed_file(Lexed_File source)
+{
+ return ed_parser_from_token_list(source.data, source.token_list);
+}
 
 typedef b32 String_Predicate(String path);
 
@@ -109,13 +121,21 @@ is_klang_file(String path)
  return (extension == strlit("kh") or
          extension == strlit("kc"));
 }
+function b32
+is_skm_file(String path)
+{
+ String extension = path_extension(path);
+ return (extension == strlit("skm"));
+}
 function Lexed_File
 lex_file(Arena *arena, Stringz path)
 {
  Lexed_File result = {};
  Stringz data = read_entire_file(arena, path);
- Token_List token_list = lex_full_input_cpp(arena, data);
- result.ok        = true;
+ Token_List token_list = (is_skm_file(path) ?
+                          lex_full_input_skm(arena, data) :
+                          lex_full_input_cpp(arena, data));
+ result.ok        = 1;
  result.path      = path;
  result.data      = data;
  result.token_list= token_list;

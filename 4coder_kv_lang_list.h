@@ -16,8 +16,9 @@ F4_RegisterLanguages(void)
   {
    strlit("cpp"), strlit("cc"), strlit("c"), strlit("cxx"),
    strlit("C"), strlit("h"), strlit("hpp"),
-   strlit("kc"), strlit("kh"), strlit("4coder"),
+   strlit("kc"), strlit("kh"), 
   };
+  
   for(u32 i=0; i < ArrayCount(extensions); i += 1)
   {
    F4_RegisterLanguage(extensions[i],
@@ -30,9 +31,19 @@ F4_RegisterLanguages(void)
   }
  }
  
- {// NOTE skm
+ {//-4coder files
+  F4_RegisterLanguage(strlit("4coder"),
+                      F4_Note_IndexFile,
+                      lex_full_input_cpp_init,
+                      lex_full_input_cpp_breaks,
+                      F4_CPP_PosContext,
+                      F4_CPP_Highlight,
+                      Lex_State_Cpp);
+ }
+ 
+ {//-skm
   F4_RegisterLanguage(S8Lit("skm"),
-                      F4_Skm_IndexFile,
+                      F4_Note_IndexFile,
                       lex_full_input_skm_init,
                       lex_full_input_skm_breaks,
                       F4_Skm_PosContext,

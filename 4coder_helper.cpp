@@ -436,45 +436,47 @@ get_line_start_pos(App *app, Buffer_ID buffer, i64 line_number)
  return(get_line_side_pos(app, buffer, line_number, Side_Min));
 }
 
-
 // NOTE(allen): The position returned has the index of the terminating LF.
 // not one past the newline character.
 function Buffer_Cursor
-get_line_end(App *app, Buffer_ID buffer, i64 line_number){
+get_line_end(App *app, Buffer_ID buffer, i64 line_number)
+{
     return(get_line_side(app, buffer, line_number, Side_Max));
 }
 function i64
-get_line_end_pos(App *app, Buffer_ID buffer, i64 line_number){
-    return(get_line_side_pos(app, buffer, line_number, Side_Max));
+get_line_end_pos(App *app, Buffer_ID buffer, i64 line_number)
+{
+ return(get_line_side_pos(app, buffer, line_number, Side_Max));
 }
 
-// NOTE(allen): The range returned does not include the terminating LF or CRLF
 function Range_Cursor
-get_line_range(App *app, Buffer_ID buffer, i64 line_number){
-    b32 success = false;
-    Range_Cursor result = {};
-    result.start = get_line_start(app, buffer, line_number);
-    if (result.start.line != 0){
-        result.end = get_line_end(app, buffer, line_number);
-        if (result.end.line != 0){
-            success = true;
-        }
-    }
-    if (!success){
-        block_zero_struct(&result);
-    }
-    return(result);
+get_line_range(App *app, Buffer_ID buffer, i64 line_number)
+{
+ b32 success = false;
+ Range_Cursor result = {};
+ result.start = get_line_start(app, buffer, line_number);
+ if(result.start.line != 0)
+ {
+  result.end = get_line_end(app, buffer, line_number);
+  if(result.end.line != 0) { success = true; }
+ }
+ if(!success){ block_zero_struct(&result); }
+ return(result);
 }
 
 // NOTE(allen): The range returned does not include the terminating LF or CRLF
+// TODO(kv) Line ranges have gaps in them (because they don't include newlines).
+// and that sucks!
 function Range_i64
-get_line_pos_range(App *app, Buffer_ID buffer, i64 line_number){
-    Range_Cursor range = get_line_range(app, buffer, line_number);
-    Range_i64 result = {};
-    if (range.start.line != 0 && range.end.line != 0){
-        result = Ii64(range.start.pos, range.end.pos);
-    }
-    return(result);
+get_line_pos_range(App *app, Buffer_ID buffer, i64 line_number)
+{
+ Range_Cursor range = get_line_range(app, buffer, line_number);
+ Range_i64 result = {};
+ if (range.start.line != 0 && range.end.line != 0)
+ {
+  result = Ii64(range.start.pos, range.end.pos);
+ }
+ return(result);
 }
 
 function Range_i64
@@ -1042,16 +1044,22 @@ view_set_cursor_pos(App *app, View_ID view, i64 pos){
 
 ////////////////////////////////
 
-function String
-push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range){
- String result = {};
+function Stringz
+push_buffer_range(App *app, Arena *arena, Buffer_ID buffer, Range_i64 range)
+{
+ Stringz result = empty_string;
  i64 length = range_size(range);
- if(length > 0){
+ if(length > 0)
+ {
   Temp_Memory restore_point = begin_temp_memory(arena);
-  u8 *memory = push_array(arena, u8, length);
-  if(buffer_read_range(app, buffer, range, memory)){
-   result = SCu8(memory, length);
-  }else{
+  u8 *memory = push_array(arena, u8, length+1);
+  if(buffer_read_range(app, buffer, range, memory))
+  {
+   memory[length] = 0;
+   result = {memory, (u64)length};
+  }
+  else
+  {
    end_temp_memory(restore_point);
   }
  }
@@ -1101,9 +1109,10 @@ push_buffer_line(App *app, Arena *arena, Buffer_ID buffer, i64 line_number)
  return(string);
 }
 
-function String
-push_whole_buffer(App *app, Arena *arena, Buffer_ID buffer){
-    return(push_buffer_range(app, arena, buffer, buffer_range(app, buffer)));
+function Stringz
+push_whole_buffer(App *app, Arena *arena, Buffer_ID buffer)
+{
+ return(push_buffer_range(app, arena, buffer, buffer_range(app, buffer)));
 }
 
 function String
@@ -1331,25 +1340,18 @@ get_indent_info_range(App *app, Buffer_ID buffer, Range_i64 range, i32 tab_width
  for (u64 i = 0; i < s.size; i += 1)
  {
   u8 c = s.str[i];
-  if ( !char_is_whitespace(c) )
+  if (not char_is_whitespace(c))
   {
    info.is_blank = false;
    info.all_space = false;
    info.first_char_pos = range.start + (i64)i;
    break;
   }
-  if (c == ' ')
-  {
-   info.indent_pos += 1;
-  }
-  else
-  {
-   info.all_space = false;
-  }
-  if (c == '\t')
-  {
-   info.indent_pos += tab_width;
-  }
+  
+  if (c == ' ') { info.indent_pos += 1; }
+  else { info.all_space = false; }
+  
+  if (c == '\t') { info.indent_pos += tab_width; }
  }
  
  return(info);
@@ -2176,9 +2178,11 @@ read_entire_file_search_up_path(Arena *arena, String path, String filename)
 {
  File_Name_Data result = {};
  Stringz full_path = search_up_path(arena, path, filename);
- if (full_path.size > 0){
-  String data = read_entire_file(arena, full_path);
-  if(data.str){
+ if(full_path.size > 0)
+ {
+  Stringz data = read_entire_file(arena, full_path);
+  if(data.str)
+  {
    result.data = data;
    result.name = full_path;
   }

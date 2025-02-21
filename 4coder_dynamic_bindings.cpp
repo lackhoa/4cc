@@ -40,7 +40,7 @@ dynamic_binding_load_from_file(App *app, Mapping *mapping, String filename){
  }
  
  if (file != 0){
-  String data = read_entire_file(scratch, file);
+  Stringz data = read_entire_file(scratch, file);
   Config *parsed = config_from_text(app, scratch, filename, data);
 		fclose(file);
   

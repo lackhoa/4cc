@@ -1,9 +1,14 @@
-//-
-typedef u32 argb;
-typedef i1  b32;
-int_wrapper_type i32 Vertex_Index;
-int_wrapper_type i32 Curve_Index;
-int_wrapper_type i32 Fill_Index;
+//-NOTE See also "framework_driver_shared.h"
+[info] typedef u32 argb;
+[info] typedef i1  b32;
+
+[info] wrapper_type v1 tdim(constructor=mkdim);
+[info] wrapper_type v3 tvert(constructor=mkvert);
+[info] wrapper_type v3 tnormal(constructor=mk_normal);
+// NOTE(kv) We just leave @tvec as @v3
+// then other types just have to wrap v3, if they don't wanna be vector...
+// it's kinda weird, but what are you gonna do?
+
 enum Bone_Type
 {
  Bone_None           = 0,
@@ -29,6 +34,7 @@ struct Bone_ID
  i1        id;
 };
 
+[info]
 typedef u32 Line_Flags;
 enum{
  Line_Overlay   = 0x1,
@@ -36,9 +42,13 @@ enum{
  Line_No_SymX   = 0x4,
  Line_Invisible = 0x8,
 };
+
+[info]
 typedef u32 FLP_Flags;
 enum{
 };
+
+[info]
 struct FUI_Line_Params
 {// Mirrors @Line_Params
  FLP_Flags fui_flags;
@@ -49,16 +59,19 @@ struct FUI_Line_Params
  Line_Flags line_flags;
 };
 
+[info]
 enum Reference_Preset
-{// NOTE(kv) Do we need to serialize this? Yeah we do.
+{
  Preset_None = 0,
  Preset_Back = 1,
+ Preset_Arm_Profile = 2,
+ Preset_Eco_Skeleton = 3,
 };
 //~Framework api
 api_table framework_api_1
 {
  void poly3_inner(Poly3 points, argb c0, argb c1, argb c2, Poly_Flags flags);
- void draw_bezier_inner(v3 P[4], Line_Params &params, argb base_color);
+ void draw_bezier_inner(tvert P[4], Line_Params &params, argb base_color);
 }
 meta_table(name) framework_api_2
 {
@@ -94,21 +107,18 @@ framework_api_xlist_2(X) \
 memory_functions_xlist(X)
 }
 
-[noinfo]
 struct Reference_Image
 {
  Stringz filename;
  tvert center;
- v1 width;
+ tvec x_axis;
  v1 alpha;
- b32 reflected;
 };
-[noinfo]
 struct Reference_Preset_Data
 {
  // NOTE @Camera_Data
- v1 camera_phi;
- v1 camera_theta;
+ v1 camera_phi2;
+ v1 camera_theta2;
  Reference_Image image;
  Pose pose;
 };
@@ -138,7 +148,7 @@ gen_for(driver_api)
  }
 }
 
-[embed]
+[info embed]
 struct Saved_Viewport
 {
  Camera_Data target_camera;

@@ -68,7 +68,7 @@ parse_extension_line_to_extension_list(App *app, Arena *arena, String8 str)
 // NOTE(allen): Token Array
 
 function Token_Array
-token_array_from_text(App *app, Arena *arena, String8 data)
+token_array_from_text(App *app, Arena *arena, Stringz data)
 {
     ProfileScope(app, "token array from text");
     Token_List list = lex_full_input_cpp(arena, data);
@@ -609,7 +609,7 @@ config_parse(App *app, Arena *arena, String8 filename, String8 data, Token_Array
 }
 
 function Config*
-config_from_text(App *app, Arena *arena, String8 filename, String8 data)
+config_from_text(App *app, Arena *arena, String8 filename, Stringz data)
 {
     Config *parsed = 0;
     Temp_Memory restore_point = begin_temp_memory(arena);
@@ -1442,7 +1442,7 @@ change_mode(App *app, String mode){
 // TODO(allen): cleanup this mess some more
 
 function Config*
-theme_parse__data(App *app, Arena *arena, String8 filename, String8 data, Arena *color_arena, Color_Table *color_table)
+theme_parse__data(App *app, Arena *arena, String8 filename, Stringz data, Arena *color_arena, Color_Table *color_table)
 {
     Config *parsed = config_from_text(app, arena, filename, data);
     if (parsed != 0)
@@ -1488,19 +1488,19 @@ theme_parse__data(App *app, Arena *arena, String8 filename, String8 data, Arena 
                         color_table->arrays[id%color_table->count] = make_colors(color_arena, color_array, counter);
                     }
                 }
-            }
-        }
-    }
-    return(parsed);
+   }
+  }
+ }
+ return(parsed);
 }
 
 function Config*
 theme_parse__buffer(App *app, Arena *arena, Buffer_ID buffer, Arena *color_arena, Color_Table *color_table)
 {
-    String8 contents = push_whole_buffer(app, arena, buffer);
-    Config *parsed = 0;
-    if (contents.str != 0)
-    {
+ Stringz contents = push_whole_buffer(app, arena, buffer);
+ Config *parsed = 0;
+ if (contents.str != 0)
+ {
   String8 filename = push_buffer_filepath(app, arena, buffer);
   parsed = theme_parse__data(app, arena, filename, contents, color_arena, color_table);
  }
@@ -1516,7 +1516,7 @@ theme_parse__filename(App *app, Arena *arena, char *filename, Arena *color_arena
   file = def_search_normal_fopen(arena, filename, "rb");
  }
  if (file != 0){
-  String data = read_entire_file(arena, file);
+  Stringz data = read_entire_file(arena, file);
   fclose(file);
   parsed = theme_parse__data(app, arena, SCu8(filename), data, color_arena, color_table);
  }
@@ -1532,106 +1532,107 @@ theme_parse__filename(App *app, Arena *arena, char *filename, Arena *color_arena
 
 // TODO(allen): review this function
 function void
-load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 override_hinting){
-    Scratch_Block scratch(app, out_arena);
-    
-    arena_free(out_arena);
-    
-    Config *parsed = 0;
-    FILE *file = def_search_normal_fopen(scratch, "config.4coder", "rb");
-    if (file != 0){
-        String data = read_entire_file(scratch, file);
-        fclose(file);
-        if (data.str != 0){
-            parsed = config_from_text(app, scratch, str8_lit("config.4coder"), data);
-        }
-    } 
-    
-    if (parsed != 0){
-        // Errors
-        String error_text = config_stringize_errors(app, scratch, parsed);
-        if (error_text.str != 0){
-            print_message(app, strlit("trying to load config file:\n"));
-            print_message(app, error_text);
-        }
-        
-        // NOTE(allen): Save As Variables
-        if (error_text.str == 0)
-        {
-            // TODO(allen): this always applies to "def_config" need to get "usr_config" working too
-            Variable_Handle config_var = def_fill_var_from_config(app, vars_get_root(),
-                                                                  vars_intern_lit("def_config"),
-                                                                  parsed);
+load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 override_hinting)
+{
+ Scratch_Block scratch(app, out_arena);
+ 
+ arena_free(out_arena);
+ 
+ Config *parsed = 0;
+ FILE *file = def_search_normal_fopen(scratch, "config.4coder", "rb");
+ if (file != 0){
+  Stringz data = read_entire_file(scratch, file);
+  fclose(file);
+  if (data.str != 0){
+   parsed = config_from_text(app, scratch, str8_lit("config.4coder"), data);
+  }
+ } 
+ 
+ if (parsed != 0){
+  // Errors
+  String error_text = config_stringize_errors(app, scratch, parsed);
+  if (error_text.str != 0){
+   print_message(app, strlit("trying to load config file:\n"));
+   print_message(app, error_text);
+  }
+  
+  // NOTE(allen): Save As Variables
+  if (error_text.str == 0)
+  {
+   // TODO(allen): this always applies to "def_config" need to get "usr_config" working too
+   Variable_Handle config_var = def_fill_var_from_config(app, vars_get_root(),
+                                                         vars_intern_lit("def_config"),
+                                                         parsed);
 			vars_print(app, config_var);
-            print_message(app, strlit("\n"));
-        }
-    }
-    else{
-        print_message(app, strlit("Using default config:\n"));
-        Face_Description description = get_face_description(app, 0);
-        if (description.font.filename.str != 0){
-            def_set_config_string(vars_intern_lit("default_font_name"), description.font.filename);
-        }
-    }
-    
-    String default_font_name = def_get_config_string(scratch, vars_intern_lit("default_font_name"));
-    if (default_font_name.size == 0){
-        default_font_name = strlit("liberation-mono.ttf");
-    }
-    
-    // TODO(allen): this part seems especially weird now.
-    // We want these to be effected by evals of the config system,
-    // not by a state that gets evaled and saved *now*!!
-    
-    // Apply config
-    String mode = def_get_config_string(scratch, vars_intern_lit("mode"));
-    change_mode(app, mode);
-    
-    b32 lalt_lctrl_is_altgr = def_get_config_b32(vars_intern_lit("lalt_lctrl_is_altgr"));
-    global_set_setting(app, GlobalSetting_LAltLCtrlIsAltGr, lalt_lctrl_is_altgr);
-    
-    String default_theme_name = def_get_config_string(scratch, vars_intern_lit("default_theme_name"));
-    Color_Table *colors = get_color_table_by_name(default_theme_name);
-    set_active_color(colors);
-    
-    Face_Description description = {};
-    if (override_font_size != 0){
-        description.parameters.pt_size = override_font_size;
-    }
-    else{
-        description.parameters.pt_size = (i1)def_get_config_u64(app, vars_intern_lit("default_font_size"));
-    }
-    if (description.parameters.pt_size == 0){
-        description.parameters.pt_size = 12;
-    }
-    
-    b32 default_font_hinting = def_get_config_b32(vars_intern_lit("default_font_hinting"));
-    description.parameters.hinting = default_font_hinting || override_hinting;
-    
-    Face_Antialiasing_Mode aa_mode = FaceAntialiasingMode_8BitMono;
-    String8 aa_mode_string = def_get_config_string(scratch, vars_intern_lit("default_font_aa_mode"));
-    if (string_match(aa_mode_string, str8_lit("8bit"))){
-        aa_mode = FaceAntialiasingMode_8BitMono;
-    }
-    else if (string_match(aa_mode_string, str8_lit("1bit"))){
-        aa_mode = FaceAntialiasingMode_1BitMono;
-    }
-    description.parameters.aa_mode = aa_mode;
-    
-    description.font.filename = default_font_name;
-    if (!modify_global_face_by_description(app, description)){
-        String8 name_in_fonts_folder = push_stringf(scratch, "fonts/%.*s", string_expand(default_font_name));
-        description.font.filename = def_search_normal_full_path(scratch, name_in_fonts_folder);
-        modify_global_face_by_description(app, description);
-    }
-    
-    b32 bind_by_physical_key = def_get_config_b32(vars_intern_lit("bind_by_physical_key"));
-    if (bind_by_physical_key){
-        system_set_key_mode(Key_Mode_Physical);
-    }
-    else{
-        system_set_key_mode(Key_Mode_LanguageArranged);
-    }
+   print_message(app, strlit("\n"));
+  }
+ }
+ else{
+  print_message(app, strlit("Using default config:\n"));
+  Face_Description description = get_face_description(app, 0);
+  if (description.font.filename.str != 0){
+   def_set_config_string(vars_intern_lit("default_font_name"), description.font.filename);
+  }
+ }
+ 
+ String default_font_name = def_get_config_string(scratch, vars_intern_lit("default_font_name"));
+ if (default_font_name.size == 0){
+  default_font_name = strlit("liberation-mono.ttf");
+ }
+ 
+ // TODO(allen): this part seems especially weird now.
+ // We want these to be effected by evals of the config system,
+ // not by a state that gets evaled and saved *now*!!
+ 
+ // Apply config
+ String mode = def_get_config_string(scratch, vars_intern_lit("mode"));
+ change_mode(app, mode);
+ 
+ b32 lalt_lctrl_is_altgr = def_get_config_b32(vars_intern_lit("lalt_lctrl_is_altgr"));
+ global_set_setting(app, GlobalSetting_LAltLCtrlIsAltGr, lalt_lctrl_is_altgr);
+ 
+ String default_theme_name = def_get_config_string(scratch, vars_intern_lit("default_theme_name"));
+ Color_Table *colors = get_color_table_by_name(default_theme_name);
+ set_active_color(colors);
+ 
+ Face_Description description = {};
+ if (override_font_size != 0){
+  description.parameters.pt_size = override_font_size;
+ }
+ else{
+  description.parameters.pt_size = (i1)def_get_config_u64(app, vars_intern_lit("default_font_size"));
+ }
+ if (description.parameters.pt_size == 0){
+  description.parameters.pt_size = 12;
+ }
+ 
+ b32 default_font_hinting = def_get_config_b32(vars_intern_lit("default_font_hinting"));
+ description.parameters.hinting = default_font_hinting || override_hinting;
+ 
+ Face_Antialiasing_Mode aa_mode = FaceAntialiasingMode_8BitMono;
+ String8 aa_mode_string = def_get_config_string(scratch, vars_intern_lit("default_font_aa_mode"));
+ if (string_match(aa_mode_string, str8_lit("8bit"))){
+  aa_mode = FaceAntialiasingMode_8BitMono;
+ }
+ else if (string_match(aa_mode_string, str8_lit("1bit"))){
+  aa_mode = FaceAntialiasingMode_1BitMono;
+ }
+ description.parameters.aa_mode = aa_mode;
+ 
+ description.font.filename = default_font_name;
+ if (!modify_global_face_by_description(app, description)){
+  String8 name_in_fonts_folder = push_stringf(scratch, "fonts/%.*s", string_expand(default_font_name));
+  description.font.filename = def_search_normal_full_path(scratch, name_in_fonts_folder);
+  modify_global_face_by_description(app, description);
+ }
+ 
+ b32 bind_by_physical_key = def_get_config_b32(vars_intern_lit("bind_by_physical_key"));
+ if (bind_by_physical_key){
+  system_set_key_mode(Key_Mode_Physical);
+ }
+ else{
+  system_set_key_mode(Key_Mode_LanguageArranged);
+ }
 }
 
 function void

@@ -5,11 +5,11 @@ enum
  Slider_NULL           = 0,
  //Slider_Camera_Aligned = bit_1,
  
- //NOTE(kv) Are these really flags?
- Slider_Vertex         = bit_2,
- Slider_Vector         = bit_3,
+ // NOTE(kv) Are these really flags?
+ //Slider_Vertex         = bit_2,
+ //Slider_Vector         = bit_3,
+ //Slider_NOZ            = bit_4,  // NOTE(kv) NOZ are implied vectors... not sure what to feel about that.
  
- Slider_NOZ            = bit_4,
  Slider_Clamp_X        = bit_5,
  Slider_Clamp_Y        = bit_6,
  Slider_Clamp_Z        = bit_7,
@@ -31,8 +31,8 @@ typedef i32 Type_Index;
 // since multiple sliders is usually what we want... oh well!
 struct Slider
 {
- // NOTE(kv) @Memory Ideally there would only be a single type index.
- Type_Index type;
+ // TODO(kv) @Memory Ideally there would only be a single type index.
+ Type_Info *type;
  
  Location location;
  i32 index;  //NOTE(kv) Redundant, but I don't care rn
@@ -81,6 +81,8 @@ global Fui_Options f10th = Fui_Options{0, 0.1f};
 global Fui_Options f10s  = Fui_Options{0, 10.f};
 
 //-
+// NOTE(kv) @Slow We still have double-indirection,
+// first we gotta find where the slider is. Then read off the value pointer.
 #define ReadSlider(TYPE, INDEX) \
 (*(TYPE *)global_sliders[INDEX].value)
 

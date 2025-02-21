@@ -59,6 +59,7 @@ struct F4_Index_File
  F4_Index_Note *first_note;
  F4_Index_Note *last_note;
 	int generation;
+ b32 is_library;
  b32 is_generated;
 };
 
@@ -73,7 +74,7 @@ struct F4_Index_State
 };
 
 struct F4_Index_ParseCtx
-{
+{// See @F4_Index_LookupOrMakeFile
  b32 done;
  App *app;
  F4_Index_File *file;

@@ -47,11 +47,14 @@ global char *token_base_kind_names[] = {
 };
 
 typedef u16 Token_Base_Flag;
-enum{
+enum
+{
  TokenBaseFlag_PreprocessorBody = 1,
+ TokenBaseFlag_SkmCode          = 2,
 };
 
-struct Token{
+struct Token
+{
  i64 pos;
  i64 size;
  Token_Base_Kind kind;
@@ -59,10 +62,32 @@ struct Token{
  i16 sub_kind;
  u16 sub_flags;
 };
+
+myinline b32
+is_preprocessor_body(Token *token)
+{
+ return HasFlag(token->flags, TokenBaseFlag_PreprocessorBody);
+}
+
+myinline Range_i64
+get_token_range(Token *token)
+{
+ if (token)
+  return Range_i64{token->pos, token->pos + token->size};
+ else
+  return Range_i64{};
+}
+myinline Range_i64
+Ii64(Token *token)
+{
+ return get_token_range(token);
+}
+
+
 global Token stub_token = {}; // NOTE(kv): experimenting with ZII!
 struct Token_Pair{
- Token a;
- Token b;
+ union{ Token a, first, min; };
+ union{ Token b, last, max; };
 };
 struct Token_Array{
  Token *tokens;

@@ -33,7 +33,7 @@ mark_thickness = 2;
 lister_roundness = 20;
 
 // Code
-treat_as_code = ".cpp.c++.c.hpp.h.cc.cs.java.rs.glsl.m.mm.4coder.kv.kc.kt.kh.bt";
+treat_as_code = ".cpp.c++.c.hpp.h.cc.cs.java.rs.glsl.m.mm.4coder.kv.kc.kt.kh.bt.kw";
 enable_virtual_whitespace         = false;
 //virtual_whitespace_regular_indent = 4;
 enable_code_wrapping              = true;
@@ -73,6 +73,7 @@ user_name = "khoa";
 lalt_lctrl_is_altgr = false;
 
 code_dir = "~/4ed/code";
+library_dir = "~/4ed/code/libs";
 startup_hot_directory = code_dir;
 
 // NOTE(kv): Quick startup file setting

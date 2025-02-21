@@ -156,45 +156,54 @@ api_parse_source__function(Arena *arena, String source_name, String source, Toke
  i1 ret_type_star_counter = 0;
  String func_name = {};
  API_Param_List param_list = {};
- if (api_parse__ident(token_it, source, &ret_type)){
-  for (;api_parse__match(token_it, TokenCppKind_Star);){
+ if (api_parse__ident(token_it, source, &ret_type))
+ {
+  for(;api_parse__match(token_it, TokenCppKind_Star);)
+  {
    ret_type_star_counter += 1;
   }
-  if (api_parse__ident(token_it, source, &func_name)){
+  if(api_parse__ident(token_it, source, &func_name))
+  {
    //printf("Func name: %.*s\n", string_expand(func_name));
    
    if(api_parse__match(token_it, TokenCppKind_ParenOp)){
     b32 param_list_success = false;
     
-    for(;;){
+    for(;;)
+    {
      String type = {};
      i1 star_counter = 0;
      String name = {};
-     if(api_parse__match(token_it, TokenCppKind_ParenCl)){
+     if(api_parse__match(token_it, TokenCppKind_ParenCl))
+     {
       result = true;
       break;
-     }else{
-      //-Parameter
-      if(api_parse__ident(token_it, source, &type)){
-       //note type
-       for(;api_parse__match(token_it, TokenCppKind_Star);){
+     }
+     else
+     {//-Parameter
+      if(api_parse__ident(token_it, source, &type))
+      {//NOTE type
+       for(;api_parse__match(token_it, TokenCppKind_Star);)
+       {
         star_counter += 1;
        }
-       if(api_parse__ident(token_it, source, &name)){
-        //note name
+       if(api_parse__ident(token_it, source, &name))
+       {//NOTE name
         param_list_success = true;
-       }else{
-        break;
        }
-      }else{
-       break;
+       else{ break; }
       }
-      if(param_list_success){
+      else{ break; }
+      
+      if(param_list_success)
+      {
        api_parse_add_param(arena, &param_list, type, star_counter, name);
       }
       param_list_success = false;
-      if(not api_parse__match(token_it, TokenCppKind_Comma)){
-       if(api_parse__match(token_it, TokenCppKind_ParenCl)){
+      if(not api_parse__match(token_it, TokenCppKind_Comma))
+      {
+       if(api_parse__match(token_it, TokenCppKind_ParenCl))
+       {
         result = true;
        }
        break;

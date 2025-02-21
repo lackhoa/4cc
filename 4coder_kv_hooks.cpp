@@ -131,8 +131,6 @@ kv_tick(App *app, Frame_Info frame)
  vim_animate_cursor(app, frame);
  vim_cursor_blink++;
  
- fui_tick(app, frame);
- 
  seconds_since_last_keystroke += frame.literal_dt;
  
  {// NOTE(kv): autosave / reload

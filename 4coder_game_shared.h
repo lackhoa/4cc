@@ -17,8 +17,6 @@
 #    define AD_IS_EDITOR
 #endif
 
-#define AD_SHUTDOWN_IMGUI 1  // NOTE(kv): Because I'm still not sure what this is for?
-
 #include "4coder_custom_types.h"
 #include "kv_math.h"
 #include "4ed_render_target.h"
@@ -27,6 +25,8 @@
 #include "4ed_kv_parser.h"
 #include "4coder_events.h"
 #include "4coder_system_types.h"
+
+typedef i32 Viewport_ID;
 
 #if ED_API_USER
 #    define DYNAMIC_LINK_API
@@ -43,7 +43,6 @@
 //~NOTE: 4ed API
 #include "4coder_debug_value.h"
 //~ NOTE: Game
-typedef i32 Viewport_ID;
 
 struct Live_Viewport
 {
@@ -209,7 +208,7 @@ make_ed_parser_at_cursor(App *app, Scan_Direction direction=Scan_Forward)
  GET_VIEW_AND_BUFFER;
  i64 curpos = view_get_cursor_pos(app, view);
  Token_Iterator_Array token_it = get_token_it_at_pos(app, buffer, curpos);
- Ed_Parser result = make_ep_from_buffer(app, buffer, token_it, 0, direction);
+ Ed_Parser result = ed_parser_from_buffer(app, buffer, token_it, 0, direction);
  return result;
 }
 myinline Buffer_ID
@@ -221,32 +220,7 @@ get_active_buffer(App *app)
 
 // NOTE: Dummy buffers so we can use the same commands to switch to the rendered game
 #define GAME_BUFFER_COUNT 3
-#if 0
-jump GAME_BUFFER_NAMES;
-#endif
-global String GAME_BUFFER_NAMES[GAME_BUFFER_COUNT] =
-{
- strlit("*game*"),
- strlit("*game2*"),
- strlit("*game3*"),
-};
 
-function i32
-buffer_viewport_id(App *app, Buffer_ID buffer)
-{
- i1 result = 0;
- Scratch_Block scratch(app);
- String bufname = push_buffer_base_name(app, scratch, buffer);
- for_i32 (index,0,GAME_BUFFER_COUNT)
- {
-  if(string_match(bufname, GAME_BUFFER_NAMES[index]))
-  {
-   result = index+1;
-   break;
-  }
- }
- return result;
-}
 function i32
 get_active_game_viewport_id(App *app)
 {
@@ -261,5 +235,17 @@ draw_rect(App *app, rect2 rect, v1 roundness, ARGB_Color color, v1 depth)
  v1 thickness = Max(dim.x, dim.y);
  draw_rect_outline(app, rect, roundness, thickness, color, depth);
 }
+function void
+im_text(char* fmt, ...)
+{
+ va_list args;
+ va_start(args, fmt);
+ im_textv(fmt, args);
+ va_end(args);
+}
 
+myinline v2::operator ImVec2() { return *(ImVec2*)this; }
+myinline ImVec2::operator v2() { return *(v2*)this; }
+myinline v4::operator ImVec4() { return *(ImVec4*)this; }
+myinline ImVec4::operator v4() { return *(v4*)this; }
 //~

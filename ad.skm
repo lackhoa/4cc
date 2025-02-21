@@ -1,0 +1,872 @@
+//
+[Some tags (maybe upper case signifies tags?)
+ NOTE This is so that we can settle on the tag name,
+ and not invent new ones all the time
+ which would make things hard to grep for.
+ ;Slow
+ ;Memory
+ ;Bug
+ ;Brittle Things that aren't robust
+ ;Easy
+ ;Hard
+ ;Cleanup
+ ;Incomplete
+ ;HardCodedPath When you change PC, look out for these
+ ;When
+ ;NotUrgent
+ ;todo_leak_check
+ ]
+
+[;kv_jump_syntax (implemented in @parse_jump_location)
+ [kv][FILE_PATH][BYTE_OFFSET]
+ ]
+
+[;the_type_wrapper_debacle
+ // Example: we want something that exactly like a v3
+ // (with all the operators, members, etc.),
+ // but not quite a v3 (so we can't use it interchangeably with other types that also wrap v3)...
+ [// NOTE We want to cast it down to v3,
+  // so that functions expecting v3 can still work
+  // they still will return v3 though, so you still need conversion function to go back.
+  ]
+ [//Inheritance: you can't use it with integer types, grr...
+  /*But maybe thats not such a big deal?*/]
+ [//NOTE Well screw it, leave it at a wrapping struct, with user-defined conversion
+  //and provide convenient members as you go, thats the plan anyway!
+  ]
+ [//Constructor? Dont even think about it bro!
+  //"no appropriate default constructor available",
+  //every time you inherit, you need to type the default constructor again?
+  ]
+ ]
+
+[// ;project_point_onto_plane How to project a point onto a plane?
+ // The plane equation is
+ {
+  a x + b y + c z + d = 0
+ }
+ // In English: plug (x,y,z) in that equation, the point is on the plane
+ // iff that equation evaluates to 0.
+ 
+ // Or, if we say that the normal "n = (a,b,c)", we have a better form
+ {
+  dot(n, (x,y,z)) + d = 0
+ }
+ // This form is concise, but the other one shows how you can derive it from
+ // remembering that 3D planes are just one linear equation.
+ 
+ // Let's also assume that the normal is... normalized,
+ // you could just adjust "d" if it's not.
+ n_is_normalized
+ 
+ [// Suppose we have some point "P", its projection "Q" on the plane is found by
+  // casting a ray along the plane's normal,
+  // where it hits the plane will be the projection.
+  Q = P + t n
+  
+  // "Q" is on the plane, so it has to satisfy this equation
+  dot(n, Q) + d = 0
+  
+  Combining the equations gives
+  {
+   dot(n, P + t n) + d = 0
+   dot(n, P) + dot(n, t n) + d = 0
+   dot(n, P) + t dot(n, n) + d = 0
+   dot(n, P) + t + d = 0          [n_is_normalized]
+   t = -(d + dot(n, P))           // (Which kinda looks like the plane equation)
+   
+   distance = absolute(d + dot(n, P))
+  }
+  ]
+ ]
+
+[// ;ray_intersects_plane
+ // So there's this ray described by the tuple,
+ ray = (ray_P, ray_dir)
+ 
+ // And a plane described by
+ plane = (n, d)
+ 
+ Let's say the ray hits the plane at the point {Q} (NOTE if it ever does, it may not)
+ Since {Q} belongs to the ray
+ {
+  Q = ray_P + t ray_dir
+ }
+ {Q} also belongs to the plane
+ {
+  dot(n, Q) + d = 0;
+  dot(n, ray_P + t ray_dir) + d = 0;
+  dot(n, ray_P) + t dot(n, ray_dir) + d = 0;
+  t = -(d + dot(n, ray_P)) / dot(n, ray_dir);
+ }
+ ]
+
+[;cramers_rule
+ See @cramers_rule_test
+ The geometric interpretation is good enough for us
+ https://en.m.wikipedia.org/wiki/Cramer%27s_rule#Geometric_interpretation
+ ]
+
+[;ray_intersects_triangle
+ [High-level description
+  So there's this ray described by the tuple, { ray = (ray_P, ray_dir) }
+  and a triangle described by { triangle = (O, A, B) }
+  NOTE We make everything be relative to one corner of the triangle.
+  { O = [0,0,0] }
+  Because things are simpler that way.
+  And it lets us talk about {A} and {B} as vectors.
+  The question is, when does the ray hit the triangle?
+  
+  Let's say the ray hits the triangle at the point {Q} (note if it ever does, it may not)
+  {
+   Q = ray_P + t ray_dir
+  }
+  
+  {Q} can also be written as { Q = u A + v B }
+  
+  // {Q} is in the triangle when {u,v >= 0 and u+v <= 1}
+  
+  // Let's do the move when you combine the equations
+  ray_P + t ray_dir = u A + v B
+  // NOTE We can figure out {t} from "ray_intersects_plane",
+  // but we're not gonna use it.
+  
+  // The main insight is to rewrite it like this.
+  u A + v B + t (-ray_dir) = ray_P
+  // "A", "B" and "ray_dir" together form a coordinate system,
+  // once you can expression "ray_P" in that coordinate system,
+  // you can just read off "u" and "v".
+  
+  // Well, you might think just inverting this matrix
+  [A B -ray_dir]
+  // and we'd be good to go, but here's a thing:
+  // We only need to solve for one solution "ray_P".
+  // Inverting the matrix would mean solving for all possible solutions.
+  // @cramers_rule is more efficient for this (probably).
+  ]
+ 
+ There's this (non-vetted) code from
+ http://www.lighthouse3d.com/tutorials/maths/ray-triangle-intersection/ 
+ Source: Moller/Trumbore https://www.graphics.cornell.edu/pubs/1997/MT97.pdf
+ {
+  function b32
+   ray_intersects_triangle(v3 ray_P, v3 ray_dir,
+                           v3 O, v3 A, v3 B)
+  {
+   A -= O;
+   B -= O;
+   
+   v3 h = cross(ray_dir, B);
+   v1 det = dot(A, h);
+   
+   if(absolute(det) < 0.00001)
+   {// NOTE(kv) This happens when "h" is perpendicular to "A",
+    // which happens when "ray_dir" is perpendicular to the
+    // normal of the plane containing the triangle "(O,A,B)".
+    return(false);
+   }
+   else
+   {
+    ray_P -= O;
+    v1 det_inv = 1.f / det;
+    v1 u = det_inv * dot(ray_P, h);
+    
+    if(u < 0.f or u > 1.f)
+    {
+     return(false);
+    }
+    else
+    {
+     v3 q = cross(ray_P,A);
+     v1 v = det_inv * dot(ray_dir, q);
+     
+     if (v < 0.0 or u + v > 1.0)
+     {
+      return(false);
+     }
+     else
+     {// NOTE At this stage we can compute "t" to find out where
+      // the intersection point is on the line.
+      t = det_inv * dot(B,q);
+      
+      if(t > 0.00001)  // ray intersection
+      {
+       return(true);
+      }
+      else
+      {// NOTE This means that there is a line intersection
+       // but not a ray intersection
+       return (false);
+      }
+     }
+    }
+   }
+  }
+ }
+]
+
+[Apparently there is a reason why [barycentric combinations] make sense
+ {C = sum(i in [0,n], a__i B__i)}
+ where the {a__i} sum up 1
+ because {C} can be rewritten as a point-vector addition
+ {B__0 + sum(i in [1,n],  a__i (B__i - B__0))}
+ because
+ {
+  B__0 + sum(i in [1,n],  a__i (B__i - B__0))
+  // NOTE splitting out the sum
+  = B__0 + sum(i in [1,n], a__i B__i) - sum(i in [1,n], a__i) B__0
+  // modify the second sum
+  = B__0 + sum(i in [1,n], a__i B__i) - sum(i in [0,n], a__i) B__0 + a__0 B__0
+  // Hooray! We can simplify the second sum, and obtain our goal
+  = sum(i in [0,n], a__i B__i)
+ }
+ 
+ [Well what kind of vector is {sum(i in [1,n],  a__i (B__i - B__0))}?
+  the weights could also be zeros, in which case the vector is 0, and {C=B}
+  or, one of the weights could be one,
+  in which case the vector is {B[i] - B[0]}, and {C=B[i]}
+  ]
+]
+
+[The ratio discussion (doesn't seem intresting?)
+ What is a "ratio"? ratio is only defined for 3 collinear points
+ According to the book:
+ {ratio(a,b,c) = signed_distance(a,b) / signed_distance(b,c)}
+ I have no idea how you compute {signed_distance}.
+ But I'm guessing that it is like this
+ {ratio(a,b,c) = (b-a) / (c-b)}
+ [How are we supposed to do this divide? Well we can just take one dimension
+  {ratio(a,b,c) = (bx-ax) / (cx-bx)}
+  If {cx-bx = 0}, then choose to do it in {y}, and if all dimensions are zero,
+  the ratio is undefined anyway]
+ [NOTE So if {b} isn't in the middle of {a} and {c}, stuff is gonna be negative!]
+ [NOTE If we swap the endpoints, the ratio will be inverted
+  {ratio(c,b,a) = (b-c) / (a-b) = (c-a) / (b-a)
+   = 1 / ratio(a,b,c)}]
+ 
+ [#fact If {t} is the lerp coordinate of {b} with respect to {a,c}
+  meaning {b = (1-t)a + t c}
+  It follows that {ratio(a,b,c) = t / (1-t)}]
+ ]
+
+[;Menelaos_theorem @Menelaos_theorem_test
+ We have these points defined by this blossom notation
+ (which doesn't make sense yet, and the author totally failed to mention that)
+ {b[0,t] = lerp(b0,t,b1)
+  b[1,s] = lerp(b1,s,b2)
+  // etc.
+ }
+ Then we have these two points
+ {
+  b[s,t] = lerp(b[0,s], t, b[1,s])
+  b[t,s] = lerp(b[0,t], s, b[1,t])
+ }
+ Menelaos' theorem says that the two points above are equal
+ 
+ Well, we could just verify mechanically that these match
+ {
+  lerp(b[0,s], t, b[1,s])
+  = (1-t)(1-s)b0 + ((1-t)s + t(1-s))b1 + t s b2
+ }
+ {
+  lerp(b[0,t], s, b[1,t])
+  = (1-s)(1-t)b0 + ((1-s)t + s(1-t))b1 + s t b2
+ }
+ And they do, and that is an amazing fact!
+ 
+ Try varying {s} from 0 to 1, watch how {b[s,t]} moves.
+ ]
+
+[Affine map
+ [What is an affine map?
+  An affine map is a map that preserves barycentric combinations.
+  Meaning that if {x = w1 a1 +...+ wn an} and {w1+...+wn = 1}, then
+  {Phi(x) = w1 Phi(a1) +...+ wn Phi(an)}]
+ 
+ [[Affine maps from {R^3} to itself] of the form
+  { Phi(x) = A x + v } are affine maps
+  Proof: suppose that { sum(w__i = 1) }
+  {
+   // starting from Phi of an affine combination
+   Phi(sum(w__i x__i))
+   = (A sum(w__i x__i)) + v
+   // A is linear
+   = sum(w__i A x__i) + v
+   // Moving "v" into the sum is possible
+   = sum(w__i A x__i) + sum(w__i) v
+   = sum(w__i A x__i + w__i v)
+   = sum(w__i (A x__i + v))
+   = sum(w__i Phi(x__i))
+   // ending with an affine combination of Phi's
+  }
+  
+  [bookmark todo How would we prove the inverse of this statement?
+   Prompt for the chatbot
+   
+   In the book "Curves and Surfaces for CAGD", section 2.2, it says this
+   Let us now be more specific. In a given coordinate system, a point x is represented by a coordinate triple, which we also denote by x. An affine map now takes on the familiar form
+   { Phi(x) = Ax + v }
+   where {A} is a 3x3 matrix and {v} is a vector from {R^3}
+   
+   But there is no proof for this statement, where can I find the proof?
+   The inverse of that statement is proven right after, but the statement isn't proven.
+   Which leads me to believe that either it is too hard to include there, or it's obvious and I missed it somehow?
+   
+   
+   ]
+  ]
+ ]
+
+[;lerp_3_1
+ Claim: linear interpolation is an affine map of the real line into a straight line in {E^3}
+ 
+ 
+ If we want to claim that the linear interpolation between {a,b} above is an affine map,
+ what would we need to prove?
+ Suppose that {t = w1 t1 +...+ wn tn; w1+...+wn= 1}, then we need to show that
+ {lerp(a,t,b) = w1 lerp(a,t1,b) +...+ wn lerp(a,tn,b)}
+ It can be proven by simple algebraic manipulation
+ 
+ [We can show this ;lerp_t_thm
+  {lerp(lerp(a,x,b), t, lerp(a,y,b))
+   = lerp(a,lerp(x,t,y),b)}
+  because
+  {lerp(a,lerp(x,t,y),b)
+   = lerp(a, (1-t)x + t y, b)
+   = (1-t) lerp(a,x,b) + t lerp(a,y,b)
+   = lerp(lerp(a,x,b), t, lerp(a,y,b))}
+  ]
+ 
+ A fun, non-obvious corollary is:
+ {lerp(A, s t, B) = lerp(A, t, lerp(A, s, B))}
+]
+
+[;two_way_split Quick way to prove that something is an affine map
+ Suppose we have the two_way_split {Phi(w1 t1 + w2 t2) = w1 Phi(t1) + t2 Phi(t2)}
+ We can prove that {Phi} is an affine map
+ [Suppose we have {w1+w2+w3 = 1}
+  {Phi(w1 t1 + w2 t2 + w3 t3)
+   = Phi(w1 t1 + (w2+w3)(w2/(w2+w3) t2 + w3/(w2+w3) t3))
+   // applying two_way_split
+   = w1 Phi(t1) + (w2+w3) Phi(w2/(w2+w3) t2 + w3/(w2+w3) t3)
+   // applying two_way_split again
+   = w1 Phi(t1) + (w2+w3) (w2/(w2+w3) Phi(t2) + w3/(w2+w3) Phi(t3))
+   = w1 Phi(t1) +  w2 Phi(t2) + w3 Phi(t3) // #qed
+  }
+  ]
+ ]
+
+[Blossom
+ Referencing the function {b[t1,t2]} from @Menelaos_theorem
+ 
+ [;blossom_multiaffine
+  If {t1 = alpha r + beta s}, where {alpha+beta = 1}
+  Then we have this multiaffinity property:
+  {b[t1,t2]
+   = b[alpha r + beta s, t2]
+   = alpha b[r,t2] + beta b[s,t2]}
+  [Why? when you expand things out
+   {b[alpha r + beta s, t2]
+    = lerp(lerp(b0,t2,b1), (alpha r + beta s), lerp(b1,t2,b2))
+    = lerp(*, (alpha r + beta s), *)
+    = alpha lerp(*,r,*) + beta lerp(*,s,*)
+   }
+   Remember from @lerp_3_1 that {lerp} is an affine map, so yeah, that tracks]]
+ 
+ [Blossoming with permutation
+  [How do you really know that permutation works?
+   ie {b[t] == b[permute(t)]}]
+  [Let's solve that with an example,
+   suppose we have a cubic de Casteljau blossom {b[r,s,t]}
+   We can mutate it like so
+   {b[r,s,t]
+    = lerp(lerp(lerp(b0,r,b1),s,lerp(b1,r,b2)),
+           t,
+           lerp(lerp(b1,r,b2),s,lerp(b2,r,b3)))
+    = lerp(lerp(b01[r], s, b11[r]),
+           t,
+           lerp(b11[r], s, b21[r]))
+    // NOTE Invoking @Menelaos_theorem
+    = lerp(lerp(b01[r], t, b11[r]),
+           s,
+           lerp(b11[r], t, b21[r]))
+    = lerp(b02[r,t], s, b12[r,t])
+    = b[r,t,s]
+   }
+   ]
+  ]
+ 
+ [Special blossom arguments
+  [#done Writing control points in the de Casteljau process as blossoms
+   Each control point {bi} in the curve {b} can be written as
+   {bi = b[1 (repeated i times), 0 (repeated n-i times)]}
+   
+   [Why: We can write blossoming process in the triangle scheme as follows
+    (take cubic case) Suppose there are two 1's
+    {
+     b0 b1 b2 b2
+     b1 b2 b3
+     b2 b3
+     b3
+     // This checks out!
+     b2 = b[0,1,1]
+    }
+    ]
+   ]
+  
+  [We can write intermediate control points as blossoms
+   {
+    b0 b[t,0,0] b[t,t,0] b[t,t,t]
+    b1 b[t,0,1] b[t,t,1]
+    b2 b[t,1,1]
+    b3
+   }
+   [How it works: So we just lerp with {t} until we reach the desired column,
+    then sprinkle in some 1's to select the row, then the rest is 0's]
+   ]
+  ]
+]
+
+[;bezier_subdivision Ok so we have a bezier curve {b},
+ And we wanna obtain a subcurve {c} that works like this:
+ {c(t) = b(lerp(a,t,b)) = b(u)}
+ 
+ [Let's cheese it out a little and look at the results,
+  suppose we have a quadratic curve,
+  the answer would be this (name collision alert!)
+  {b[a,a], b[a,b], b[b,b]}
+  [note A way to remember this would be:
+   write the regular control points as blossoms {b[0,0], b[0,1], b[1,1]},
+   then convert {0,1} to {a,b}]
+  ]
+ 
+ [#done Let's do a cubic case just to be sure
+  {c = [b[a,a,a], b[a,a,b], b[a,b,b], b[b,b,b]]}
+  [Detour
+   NOTE Expressed in the language of the blossom
+   {b[a,a,a] = lerp(b[a,a,0], a, b[a,a,1])}
+   Therefore, you can just "factor out" the common blossom values
+   {
+    lerp(b[a,a,a], t, b[a,a,b])
+    = lerp(lerp(b[a,a,0], a, b[a,a,1]),
+           t,
+           lerp(b[a,a,0], b, b[a,a,1]))
+    = lerp(b[a,a,0], lerp(a,t,b), b[a,a,1])
+    = b[a,a,u]
+   }
+   ]
+  {
+   c(t) = sample([b[a,a,a], b[a,a,b], b[a,b,b], b[b,b,b]], t)
+   //NOTE Invoking de Casteljau's pyramid
+   = sample([b[a,a,u], b[a,b,u], b[b,b,u]], t)
+   = sample([b[a,u,u], b[b,u,u]], t)
+   = b[u,u,u] // #qed
+  }
+  ]
+]
+
+[;binomial_coefficients
+ {binom(n,i) = n C i = ?}
+ Ground rule: normal cases are {0 <= i <= n}
+ We know {n C 1 = n}
+ Well what about 2 {n C 2 = (n C 1)(n-1 C 1) / 2 = n(n-1) / 2}
+ Finally we have 3 {n C 3 = n(n-1)(n-2) / 3!}
+ 
+ Also we have this "theoretical" way of writing it:
+ {n C k = n! / ((n-k)! k!)}
+ 
+ [;Pascals_rule
+  It allows you to "decompose" by {n}
+  {(n C k) + (n C k+1) = n+1 C k+1}
+  or, if you wanna break down a larger choice
+  {n C k = (n-1 C k-1) + (n-1 C k)}
+  [#done How to remember why that's true?
+   [Choosing {k=3} items out of {n=6} items out of the list
+    {a b c d e f}
+    Can be broken down into a sum of these two:
+    1. The groups of 3 with {a} in them: there are {5 C 2} of them: {b c}, {b d} {e f}, etc.
+    2. The groups of 3 without {a} in them: there are {5 C 3} of them {b c d}, {b d e}, etc.
+    ]
+   [NOTE It's still not at all easy to remember, but at least that's an interpretation]
+   ]
+  [#done Proof
+   {(n C k) + (n C k+1)
+    = (n! / ((n-k)!    k!) +
+       n! / ((n-k-1)! (k+1)!))
+    = (n! (k+1) / ((n-k)! (k+1)!) +
+       n! (n-k) / ((n-k)! (k+1)!))
+    = (n+1)! / (((n+1)-(k+1))! (k+1)!)
+    = n+1 C k+1
+   }]
+  ]
+ 
+ [#done Wait, how do we get {n C 0 = 1}?
+  So if we follow @Pascals_rule, then
+  {n C 1 = (n-1 C 0) + (n-1 C 1)
+   -> n  = (n-1 C 0) + (n-1)
+   -> n-1 C 0 = 1
+  }]
+ 
+ [#done What about {n C -1 = 0}?
+  {n C 0 = (n-1 C -1) + (n-1 C 0)
+   -> 1 = (n-1 C -1) + 1
+   -> (n-1 C -1) = 0
+  }]
+ 
+ [What about {n C n+1 = 0}?
+  {(n C n) + (n C n+1) = n+1 C n+1
+   -> 1 + (n C n+1) = 1
+   -> (n C n+1) = 0  // #qed
+  }]
+ 
+ [NOTE People don't realize,
+  but there are a bunch of zeros outside of the Pascal triangle;
+  |NOTE (You can add to the top, see the Mathematica page)
+  | 0 0 1 0
+  |0 0 1 1 0
+  | 0 1 2 1 0
+  |0 1 3 3 1 0
+  ]
+ 
+ [;binomial_shift
+  We can decrement both {n} and {i} like this
+  { binom(n,i) = n/i binom(n-1, i-1) }
+  [Proof
+   {
+    i binom(n,i)
+    = i n! / ((n-i)! i!)
+    = n (n-1)! / (((n-1)-(i-1))! (i-1)!)
+    = n binom(n-1, i-1)
+   }
+   ]
+  ]
+ ]
+
+[;binomial_theorem
+ {(a+b)^n = (n C 0) a^0 b^n + (n-1 C 1) a^1 b^(n-1) +...+ (n C n) a^n b^0}
+ 
+ This can be proven by an informal argument:
+ In general, {a^i} appears {n C i} times in the expansion, because
+ {(a+b)^n = (a+b)(a+b)^(n-1)
+  = a(a+b)^(n-1) + b(a+b)^(n-1)}
+ 
+ {a^(i-1)} appears {n-1 C i-1} times in {(a+b)^(n-1)},
+ and {a^i} appears {n-1 C i} times in {(a+b)^(n-1)}
+ so in total, {a^i} appears {(n-1 C i-1) + (n-1 C i) = n C i} times
+ 
+ And the entire expansion is just a collection of these, so #qed.
+ ]
+
+[;Bernstein_polynomial
+ A bernstein polynomial is given by
+ {n B i = (n C i) (1-t)^(n-i) t^i}
+ 
+ [;bernstein_lerp They have this highly relevant property
+  { lerp(n B i+1, t, n B i) = n+1 B i+1 }
+  NOTE It even works when i=n, for example { t^4 = lerp(0, t, t^3) }
+  (NOTE When we say {B}, we mean {B(t)})
+  NOTE The ordering of the lerp arguments isn't intuitive!
+  
+  If you know @Pascals_rule, you know what's up
+  {lerp(8 B 5, t, 8 B 4)
+   = (1-t)(8 B 5) + t(8 B 4)
+   = ((1-t) (8 C 5) (1-t)^3 t^5 +
+      t     (8 C 4) (1-t)^4 t^4)
+   = ((8 C 5) (1-t)^4 t^5 +
+      (8 C 4) (1-t)^4 t^5)
+   // NOTE The polynomials lined up!
+   = (9 C 5) (1-t)^4 t^5
+   = 9 B 5
+  }
+  ]
+ 
+ [And with the @binomial_theorem, we can prove that
+  all bernstein polynomials for degree {n} sum up to 1
+  {n B 0 + n B 1 +...+ n B n = 1}
+  [NOTE Of course it does, since {b(t)} is a linear combination of the control points
+   per @Bezier_Bernstein, we need the coefficients to sum up to 1]]
+ ]
+
+[;Bezier_Bernstein
+ Formula for Bezier curves expressed as an affine combination of the control points
+ {b(t) = b[t times n] = sum(i in [0,n],
+                            B__i^n(t) b__i)}
+ 
+ [Intuitive elbow grease
+  So we need to prove that, say
+  {b2^3 = B0^3 b2 + B1^3 b3 + B2^3 b4 + B3^3 b5}
+  
+  [So let's just do it
+   {b2^3
+    = lerp(b2^2, t, b3^2)
+    // Induction hypothesis
+    = lerp(B0^2 b2 + B1^2 b3 + B2^2 b4,
+           t,
+           B0^2 b3 + B1^2 b4 + B2^2 b5)
+    = lerp((1-t)^2 b2 + B1^2 b3 + B2^2 b4,
+           t,
+           B0^2 b3 + B1^2 b4 + t^2 b5)
+    = (1-t)^3 b2 + lerp(B1^2 b3 + B2^2 b4, t, B0^2 b3 + B1^2 b4) + t^3 b5
+    // Using @bernstein_lerp
+    = B0^3 b2 + B1^2 b3 + B2^2 b4 + B3^3 b5  // #qed
+   }
+   // NOTE That wasn't a really good proof, even after I tried to make it shorter!
+   ]
+  ]
+ 
+ [NOTE This is a corollary of @Leibniz_formula]
+ ]
+
+[;Leibniz_formula Suppose {alpha+beta = 1}, we wanna prove that
+ {
+  b[(alpha r + beta s) times n]
+  = sum(i in [0,n],
+        (n C i) alpha^i beta^(n-i) b[r times i, s times n-i])
+ }
+ [NOTE This is basically @bezier_subdivision]
+ 
+ Suppose {n=3}
+ {
+  b[(alpha r + beta s) times 3] =
+  (1 alpha^0 beta^3 b[s,s,s] +
+   3 alpha^1 beta^2 b[r,s,s] +
+   3 alpha^2 beta^1 b[r,r,s] +
+   1 alpha^3 beta^0 b[r,r,r])
+ }
+ 
+ [Proof
+  The base case: {n=1}
+  {
+   b[(alpha r + beta s)]
+   = ((n C 0) alpha^0 beta^1 b[s] +
+      (n C 1) alpha^1 beta^0 b[r])
+   = beta b[s] + alpha b[r]
+   // which is true, so #qed
+  }
+  
+  NOTE We can decrease blossom degree like so (it's just a normal de Casteljau step)
+  {
+   b[t,t,t]
+   = ([b[t,0,0], b[t,0,1], b[t,1,1]])[t,t] = b[t][t,t]
+   = (b[t,t,0], b[t,t,1])[t]               = b[t,t][t] 
+  }
+  
+  The inductive case
+  {
+   b[(alpha r + beta s) times n+1]
+   = b[alpha r + beta s][(alpha r + beta s) times n]
+   // Inductive hypothesis
+   = sum(i in [0,n],
+         (n C i) alpha^i beta^(n-i) b[alpha r + beta s, r times i, s times n-i])
+   // Using @blossom_multiaffine
+   = sum(i in [0,n],
+         (n C i) alpha^(i+1) beta^(n-i)   b[r times i+1, s times n-i] +
+         (n C i) alpha^i     beta^(n-i+1) b[r times i, s times n-i+1]
+         )
+   [// NOTE Let's remind ourselves of the goal
+    sum(i in [0,n+1],
+        (n+1 C i) alpha^(i) beta^(n+1-i) b[r times i, s times n+1-i])
+    ]
+   // Split the sum out, adjust the first sum index
+   = (sum(i in [1,n+1],
+          (n C i-1) alpha^i beta^(n-i+1) b[r times i, s times n-i+1]) +
+      sum(i in [0,n],
+          (n C i) alpha^i beta^(n-i+1) b[r times i, s times n-i+1]))
+   // Tricky: We can let the indices run out-of-range (so that they match)
+   // all the expressions make sense, and the coefficients are zero (see @binomial_coefficients).
+   = (sum(i in [0,n+1],
+          (n C i-1) alpha^i beta^(n-i+1) b[r times i, s times n-i+1]) +
+      sum(i in [0,n+1],
+          (n C i) alpha^i beta^(n-i+1) b[r times i, s times n-i+1]))
+   // Combine with @Pascals_rule!
+   = sum(i in [0,n+1],
+         (n+1 C i) alpha^i beta^(n+1-i) b[r times i, s times n+1-i])
+   // #qed
+  }
+  ]
+ ]
+
+[Can you compute the intermediate control points
+ as an affine combination of the (original) control points?
+ {b__i^r(t) = sum(j in [0,r],
+                  B__j^r(t) b__(j+i))}
+ Of course, you're just doing the deCasteljau process on the slice {b[i:r+1]}
+ ]
+
+[Proof that {lerp} and {unlerp} on the same interval are inverse 
+ { f(u) = unlerp(a,u,b) = (u-a)/(b-a) }
+ { x(u) = lerp(a,u,b)   = (1-u)a + u b }
+ 
+ Then we have { f(x(u)) = x(f(u)) }
+ 
+ [Proof: I mean those are inverses because we can do algebra like this
+  {(e1)
+   t = f(u)
+   <-> t = (u-a)/(b-a)
+   <-> u = a + (b-a)t
+   <-> u = x(t)
+  }
+  
+  [NOTE The rest is generic to content of {f} and {x}
+   [Proof that { f(x(t)) == t }
+    If we set { u = x(t) }, due to {e1}, { t = f(u) }, so
+    { t = f(u) = f(x(t)) }]
+   
+   [Proof that { x(f(u)) == u } is the same deal!]]
+  ]
+ ]
+
+[Symmetry of Bezier curves
+ If we reverse the order of the control points,
+ obtaining { c = reverse(b) } what happens? 
+ 
+ [NOTE Lemma: { B__i^n(1-t) == B__(n-i)^n(t) }]
+ We can prove { b(t) = c(1-t) }
+ {
+  c(1-t)
+  = sum(i in [0,n],  B__i^n(1-t) c__i)
+  = sum(i in [0,n],  B__(n-i)^n(t) c__(n-i))
+  [Set j := n-i]
+  = sum(j in [0,n],  B__j^n(t) c__j)
+  = b(t)
+ }
+ ]
+
+[Invariance under barycentric combination
+ The weighted average (lerp) two of Bezier curves is another Bezier curve
+ {
+  (alpha b + beta c)(t)
+  = sum(i in [0,n],
+        B__i^n (alpha b__i + beta c__i))
+  = alpha b(t) + beta c(t)
+ }
+ ]
+
+[Linear precision
+ [Lemma: { sum(i in [0,n],  i B__i^n(t)) = n t }
+  Don't believe me? Try @linear_precision_identity_test
+  
+  [Proof... thanks to Grok, and the source that it ~~stole from~~ trained on
+   {
+    sum(i in [0,n],  i/n B__i^n(t))
+    = sum(i in [0,n],  i/n binom(n,i) (1-t)^(n-i) t^i)
+    // NOTE The term at i=0 doesn't do anything, so we can ignore it
+    = sum(i in [1,n],  i/n binom(n,i) (1-t)^(n-i) t^i)
+    // due to @binomial_shift
+    = sum(i in [1,n],  binom(n-1, i-1) (1-t)^(n-i) t^i)
+    // change i to i+1
+    = sum(i in [0,n-1],  binom(n-1, i) (1-t)^(n-1-i) t^(i+1))
+    = t sum(i in [0,n-1],  B__i^(n-1))
+    //... this is incredible!
+    = t
+   }
+   ]
+  
+  [A more straight-forward proof (source: me)
+   {
+    sum(i in [0,n],  i B__i^n(t))
+    // using @bernstein_lerp (the i=0 case doesn't matter)
+    = sum(i in [1,n],  i lerp(B__i^(n-1)(t),
+                              t,
+                              B__(i-1)^(n-1)(t)))
+    = ((1-t) sum(i in [1,n], i B__i    ^(n-1)(t)) +
+       t     sum(i in [1,n], i B__(i-1)^(n-1)(t)))
+    {// Detour on the first term
+     sum(i in [1,n], i B__i^(n-1)(t))
+     = sum(i in [1,n-1], i B__i^(n-1)(t)) + n B__n^(n-1)(t)
+     // second term is 0 :>, also i can run from 0 for the first term
+     = sum(i in [0,n-1], i B__i^(n-1)(t))
+     // using induction hypothesis
+     = (n-1) t
+    }
+    {// Detour on the second term!
+     sum(i in [1,n],  i B__(i-1)^(n-1)(t))
+     // change i to i+1
+     = sum(i in [0,n-1], (i+1) B__i^(n-1)(t))
+     // don't be afraid of the "i+1"
+     = sum(i in [0,n-1], (i B__i^(n-1)(t) +
+                          B__i^(n-1)(t)))
+     // using partition of unity, and induction hypothesis
+     = 1 + (n-1) t
+    }
+    // NOTE coming back
+    = (1-t) (n-1) t + t (1+(n-1)t)
+    = lerp((n-1) t, t, 1+(n-1)t)
+    = (n-1) t + t
+    = n t
+   }
+   ]
+  ]
+ 
+ [Suppose the control points {b__i} are uniformly distributed on the line segment {p,q}
+  { b__i = (1-i/n)p + i/n q; i in [0,n] }
+  Then what is the output?
+  {
+   b(t)
+   = sum(i in [0,n], B__i^n(t) b__i)
+   = sum(i in [0,n], B__i^n(t) ((1-i/n)p + i/n q))
+   // Using the insane identity above...
+   = (1-t)p + t q
+  }
+  ]
+ ]
+
+[todo So we know that lerp is an affine map, so we could apply it to a vector,
+ and the result would be... a vector.
+ We can compute it as follows
+ {
+  l(t) = lerp(a,t,b)
+  l(vec(v)) = l(v) - l(0) = l(v) - a
+ }
+ Can we prove that, for all {t}
+ {
+  l(vec(v))
+  = l(t+vec(v)) - l(t)
+  = l(v) - l(0)
+  = lerp(a,v,b) - a
+ }?
+ I mean it is true! Let's check
+ {
+  l(t+vec(v)) - l(t)
+  = (1-(t+v)) a + (t+v) b - ((1-t)a + t b)
+  = v(b-a)
+ }
+ {
+  l(v) - l(0)
+  = (1-v)a + v b - a
+  = v(b-a)
+ }
+ Ok, but why is it true? Seriously?
+ [We need to prove that all affine maps have this property, that is
+  { e1: Phi(t+vec(v)) - Phi(t) = Phi(s+vec(v)) - Phi(s) }
+  for all points points {t,s} and vector {vec(v)}
+  ]
+ [We define { Phi(vec(v)) } to be
+  {Phi(v) - Phi(0)}
+  where {v} is the point {0+vec(v)}, of course
+  ]
+ {
+  Phi(t+vec(v))
+  = Phi(t) + Phi(vec(v))
+  = Phi(t) + (Phi(v) - Phi(0))
+ }
+ Then it's kinda obvious why {e1} is true,
+ but todo it seems like we haven't proven anything...
+ 
+ todo Well, let's see whether that's true?
+ { lerp(a, t+vec(v), b) = lerp(a,t,b) + (lerp(a,v,b) - lerp(a,0,b)) }
+ important Well, we actually don't know why this is true!
+ Let's just try to do it
+ {
+  lerp(a,t,b) + (lerp(a,v,b) - lerp(a,0,b))
+  = (1-t)a + t b + ((1-v)a + v b - a)
+  = (1-t)a + t b + (-v a + v b)
+  = (1-(t+v)) a + (t+v) b
+ }
+ ]
+
+[Let {t} be a point and {v} be a vector in 1D space
+ We have { b[(t+vec(v))^(<n>)] = sum(i in [0,n],
+                                     b[t^(<n-i>), vec(v)^(<i>)]) }
+ ]
+//-

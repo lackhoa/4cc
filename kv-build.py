@@ -27,28 +27,29 @@ run_only = args.action == 'run'
 
 ################ NOTE: Configuration begin #########################
 # NOTE(kv) What should we build?
+hotload_driver    = 0
 debug_metaprogram = 0
 do_build_editor   = 0
-do_build_game     = 1
 do_test_klang     = 0 # NOTE test.kc
 
+do_build_game     = 1
+do_build_driver   = 1
 lexer_build_level = 1
 imgui_build_level = 2
+no_force_inline   = 0
 #
 asan_on = 0
-TRACE_COMPILE_TIME     = 0
-FORCE_INLINE_ON = 1
+TRACE_COMPILE_TIME = 0
 FRAMEWORK_OPTIMIZE_ON = 0
 AD_PROFILE = 0
 #STOP_DEBUGGING_BEFORE_BUILD = 1  # NOTE(kv) uncheck when you wanna debug the reload itself
 OPTIMIZE_EDITOR = 0
-HOTLOAD_DRIVER = os.path.basename(args.file) == 'driver.kc'
 
 ############## Configuration end ############################
 if do_test_klang:
     debug_metaprogram = 1
 
-if HOTLOAD_DRIVER:
+if hotload_driver:
     print("[hotload driver]")
 
 if args.release:
@@ -62,7 +63,7 @@ def meets_level(level):
     global build_level
     return build_level >= level
 
-DEV_BUILD = 0 if (args.release or HOTLOAD_DRIVER) else 1
+DEV_BUILD = 0 if (args.release) else 1
 build_level = default_build_level
 if args.full:
     build_level = 1
@@ -316,7 +317,7 @@ def run_compiler(compiler, input_files, output_file,
         compiler_flags += f" {CPP_VERSION} -D_CRT_SECURE_NO_WARNINGS -FC"
     if is_msvc:
         compiler_flags += f" {CPP_VERSION} -Zc:strictStrings- -D_CRT_SECURE_NO_WARNINGS -FC"
-        if not optimized and not HOTLOAD_DRIVER:
+        if not optimized and not hotload_driver:
             compiler_flags += f" -Ob1"
 
     # Use full path
@@ -354,18 +355,18 @@ def build_and_run_metaprogram():
     
     if meets_level(lexer_build_level) or args.full:
         print('Lexer: Generate (one-time thing)')
-        #TODO(kv) There should just be one program to generate all the lexer things!
-        run_compiler(Compiler.Cl, pjoin(CODE, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",
-                     compiler_flags=compiler_flags)
+        # TODO(kv) There should just be one program to generate all the lexer things!
+        # run_compiler(Compiler.Cl, pjoin(CODE, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",
+        #              compiler_flags=compiler_flags)
         #
-        print('running lexer generator')
-        run(f'skm_lexer_gen.exe {CODE}')
+        # print('running lexer generator')
+        # run(f'skm_lexer_gen.exe {CODE}')
         run_compiler(Compiler.Cl, pjoin(CODE,"languages",'4coder_cpp_lexer_gen.cpp'), "cpp_lexer_gen.exe",
                      compiler_flags=compiler_flags)
         run(f'cpp_lexer_gen.exe {CODE}')
         
     print('====Metaprogram====')
-    if not HOTLOAD_DRIVER:
+    if not hotload_driver:
         compiler = Compiler.Cl
         run_compiler(compiler, f"{CODE}/meta/meta_main.cpp", "ad_meta.exe",
                      compiler_flags=compiler_flags, linker_flags="userenv.lib",
@@ -380,6 +381,12 @@ def build_and_run_metaprogram():
         meta_config += " --asan-on"
     if do_test_klang:
         meta_config += " --test-klang"
+    if hotload_driver:
+        meta_config += " --hotload-driver"
+    if do_build_driver:
+        meta_config += " --build_driver"
+    if no_force_inline:
+        meta_config += " --no-force-inline"
     run(f"ad_meta {" ".join(sys.argv[1:])} {meta_config}")
 
 try:
@@ -438,7 +445,7 @@ try:
         FREETYPE_LIB = f"{NON_SOURCE}/foreign/x64/freetype.lib"
         LINKED_LIBS=f"{FREETYPE_LIB} {WINDOWS_LIBS} opengl32.lib {NON_SOURCE}/res/icon.res"
 
-        if not HOTLOAD_DRIVER and False:
+        if not hotload_driver and False:
             print('========Producing 4ed========')
             if not DEV_BUILD:
                 replace_file(f"{BINARY_NAME}{DOT_EXE}", f"{BINARY_NAME}.bkp{DOT_EXE}")
@@ -466,7 +473,7 @@ try:
             for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
                 shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
 
-        if not DEV_BUILD:
+        if args.release:
             print("NOTE: Setup symlinks, because my life just is complicated like that!")
             symlink_force(pjoin(CODE, "config.4coder"),   pjoin(OUTDIR, "config.4coder"))
             symlink_force(pjoin(CODE, "theme-kv.4coder"), pjoin(OUTDIR, 'themes', "theme-kv.4coder"))

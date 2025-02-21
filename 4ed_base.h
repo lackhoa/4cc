@@ -179,11 +179,6 @@ struct u64_Array{
 
 ////////////////////////////////
 
-typedef i32 String_Fill_Terminate_Rule;
-enum{
- StringFill_NoTerminate = 0,
- StringFill_NullTerminate = 1,
-};
 typedef u32 String_Separator_Flag;
 enum{
  StringSeparator_NoFlags = 0,
@@ -203,10 +198,6 @@ struct String_Const_char{
  u64 size;
 };
 
-struct String_Const_u16{
- u16 *str;
- u64 size;
-};
 struct String_Const_u32{
  u32 *str;
  u64 size;
@@ -328,17 +319,6 @@ struct String_char{
  };
  u64 cap;
 };
-struct String_u16
-{
- union{
-  String_Const_u16 string;
-  struct{
-   u16 *str;
-   u64 size;
-  };
- };
- u64 cap;
-};
 struct String_u32{
  union{
   String_Const_u32 string;
@@ -372,10 +352,6 @@ enum{
  LineEndingKind_CRLF,
 };
 
-struct Character_Consume_Result{
- u32 inc;
- u32 codepoint;
-};
 
 global u32 surrogate_min = 0xD800;
 global u32 surrogate_max = 0xDFFF;
@@ -582,14 +558,6 @@ rect_intersect(Rect_f32 a, Rect_f32 b){
  a.y0 = Min(a.y0, a.y1);
  return(a);
 }
-function Rect_f32
-rect_union(Rect_f32 a, Rect_f32 b){
- a.x0 = Min(a.x0, b.x0);
- a.y0 = Min(a.y0, b.y0);
- a.x1 = Max(a.x1, b.x1);
- a.y1 = Max(a.y1, b.y1);
- return(a);
-}
 
 ////////////////////////////////
 
@@ -756,12 +724,6 @@ Su8(u8 *str){
  return(string);
 }
 function u64
-cstring_length(u16 *str){
- u64 length = 0;
- for (;str[length] != 0; length += 1);
- return(length);
-}
-function u64
 cstring_length(u32 *str){
  u64 length = 0;
  for (;str[length] != 0; length += 1);
@@ -832,11 +794,6 @@ SCchar(char *str, u64 size){
  String_Const_char string = {str, size};
  return(string);
 }
-function String_Const_u16
-SCu16(u16 *str, u64 size){
- String_Const_u16 string = {str, size};
- return(string);
-}
 function String_Const_u32
 SCu32(u32 *str, u64 size){
  String_Const_u32 string = {str, size};
@@ -886,12 +843,6 @@ SCchar(char *str){
  String_Const_char string = {str, size};
  return(string);
 }
-function String_Const_u16
-SCu16(u16 *str){
- u64 size = cstring_length(str);
- String_Const_u16 string = {str, size};
- return(string);
-}
 function String_Const_u32
 SCu32(u32 *str){
  u64 size = cstring_length(str);
@@ -926,14 +877,6 @@ SCu8(String_Const_char str){
 }
 
 
-function String_Const_u16
-SCu16(wchar_t *str, u64 size){
- return(SCu16((u16*)str, size));
-}
-function String_Const_u16
-SCu16(wchar_t *str){
- return(SCu16((u16*)str));
-}
 
 function String_Const_Any
 SCany(void *str, String_Encoding encoding){
@@ -1175,7 +1118,7 @@ character_is_base64(u32 c){
 
 function b32
 character_is_alpha(char c){
- return( (('a' <= c) && (c <= 'z')) || (('A' <= c) && (c <= 'Z')) || c == '_');
+ return (('a' <= c) && (c <= 'z')) or (('A' <= c) && (c <= 'Z')) or c == '_';
 }
 function b32
 character_is_alpha(u8 c){
@@ -1237,14 +1180,6 @@ character_is_alnum_unicode(u32 c){
 function char
 string_get_character(String_Const_char str, u64 i){
  char r = 0;
- if (i < str.size){
-  r = str.str[i];
- }
- return(r);
-}
-function u8
-string_get_character(String str, u64 i){
- u8 r = 0;
  if (i < str.size){
   r = str.str[i];
  }
@@ -1388,20 +1323,6 @@ string_match(String_Const_char a, String_Const_char b)
   result = true;
   for (u64 i = 0; i < a.size; i += 1)
   {
-   if (a.str[i] != b.str[i]){
-    result = false;
-    break;
-   }
-  }
- }
- return(result);
-}
-function b32
-string_match(String_Const_u16 a, String_Const_u16 b){
- b32 result = false;
- if (a.size == b.size){
-  result = true;
-  for (u64 i = 0; i < a.size; i += 1){
    if (a.str[i] != b.str[i]){
     result = false;
     break;
@@ -1635,22 +1556,6 @@ string_concat_character(String_u32 *dst, u32 c){
 
 function b32
 string_null_terminate(String_char *str){
- b32 result = false;
- if (str->size < str->cap){
-  str->str[str->size] = 0;
- }
- return(result);
-}
-function b32
-string_null_terminate(String_u8 *str){
- b32 result = false;
- if (str->size < str->cap){
-  str->str[str->size] = 0;
- }
- return(result);
-}
-function b32
-string_null_terminate(String_u16 *str){
  b32 result = false;
  if (str->size < str->cap){
   str->str[str->size] = 0;
@@ -2137,172 +2042,6 @@ string_u8_from_string_char(Arena *arena, String_Const_char string, String_Fill_T
 
 ////////////////////////////////
 
-global_const u8 utf8_class[32] = {
- 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5,
-};
-
-function Character_Consume_Result
-utf8_consume(u8 *str, u64 max) {
- Character_Consume_Result result = {1, max_u32};
- u8 byte = str[0];
- u8 byte_class = utf8_class[byte >> 3];
- switch (byte_class){
-  case 1:
-  {
-   result.codepoint = byte;
-  }break;
-  case 2:
-  {
-   if (1 < max){
-    u8 cont_byte = str[1];
-    if (utf8_class[cont_byte >> 3] == 0){
-     result.codepoint = (byte & bitmask_5) << 6;
-     result.codepoint |= (cont_byte & bitmask_6);
-     result.inc = 2;
-    }
-   }
-  }break;
-  case 3:
-  {
-   if (2 < max){
-    u8 cont_byte[2] = {str[1], str[2]};
-    if (utf8_class[cont_byte[0] >> 3] == 0 &&
-        utf8_class[cont_byte[1] >> 3] == 0){
-     result.codepoint = (byte & bitmask_4) << 12;
-     result.codepoint |= ((cont_byte[0] & bitmask_6) << 6);
-     result.codepoint |=  (cont_byte[1] & bitmask_6);
-     result.inc = 3;
-    }
-   }
-  }break;
-  case 4:
-  {
-   if (3 < max){
-    u8 cont_byte[3] = {str[1], str[2], str[3]};
-    if (utf8_class[cont_byte[0] >> 3] == 0 &&
-        utf8_class[cont_byte[1] >> 3] == 0 &&
-        utf8_class[cont_byte[2] >> 3] == 0){
-     result.codepoint = (byte & bitmask_3) << 18;
-     result.codepoint |= ((cont_byte[0] & bitmask_6) << 12);
-     result.codepoint |= ((cont_byte[1] & bitmask_6) <<  6);
-     result.codepoint |=  (cont_byte[2] & bitmask_6);
-     result.inc = 4;
-    }
-   }
-  }break;
- }
- return(result);
-}
-
-function Character_Consume_Result
-utf16_consume(u16 *str, u64 max){
- Character_Consume_Result result = {1, max_u32};
- result.codepoint = str[0];
- result.inc = 1;
- if (0xD800 <= str[0] && str[0] < 0xDC00 && max > 1 && 0xDC00 <= str[1] && str[1] < 0xE000){
-  result.codepoint = ((str[0] - 0xD800) << 10) | (str[1] - 0xDC00);
-  result.inc = 2;
- }
- return(result);
-}
-
-function u32
-utf8_write(u8 *str, u32 codepoint){
- u32 inc = 0;
- if (codepoint <= 0x7F){
-  str[0] = (u8)codepoint;
-  inc = 1;
- }
- else if (codepoint <= 0x7FF){
-  str[0] = (bitmask_2 << 6) | ((codepoint >> 6) & bitmask_5);
-  str[1] = bit_8 | (codepoint & bitmask_6);
-  inc = 2;
- }
- else if (codepoint <= 0xFFFF){
-  str[0] = (bitmask_3 << 5) | ((codepoint >> 12) & bitmask_4);
-  str[1] = bit_8 | ((codepoint >> 6) & bitmask_6);
-  str[2] = bit_8 | ( codepoint       & bitmask_6);
-  inc = 3;
- }
- else if (codepoint <= 0x10FFFF){
-  str[0] = (bitmask_4 << 3) | ((codepoint >> 18) & bitmask_3);
-  str[1] = bit_8 | ((codepoint >> 12) & bitmask_6);
-  str[2] = bit_8 | ((codepoint >>  6) & bitmask_6);
-  str[3] = bit_8 | ( codepoint        & bitmask_6);
-  inc = 4;
- }
- else{
-  str[0] = '?';
-  inc = 1;
- }
- return(inc);
-}
-
-function u32
-utf16_write(u16 *str, u32 codepoint){
- u32 inc = 1;
- if (codepoint == max_u32){
-  str[0] = (u16)'?';
- }
- else if (codepoint < 0x10000){
-  str[0] = (u16)codepoint;
- }
- else{
-  u32 v = codepoint - 0x10000;
-  str[0] = 0xD800 + (u16)(v >> 10);
-  str[1] = 0xDC00 + (v & bitmask_10);
-  inc = 2;
- }
- return(inc);
-}
-
-////////////////////////////////
-
-function String_u8
-string_u8_from_string_u16(Arena *arena, String_Const_u16 string, String_Fill_Terminate_Rule rule)
-{
- String_u8 out = {};
- out.cap = string.size*3;
- if (rule == StringFill_NullTerminate){
-  out.cap += 1;
- }
- out.str = push_array(arena, u8, out.cap);
- u16 *ptr = string.str;
- u16 *one_past_last = ptr + string.size;
- u64 cap = string.size;
- Character_Consume_Result consume;
- for (;ptr < one_past_last; ptr += consume.inc, cap -= consume.inc){
-  consume = utf16_consume(ptr, cap);
-  out.size += utf8_write(out.str + out.size, consume.codepoint);
- }
- if (rule == StringFill_NullTerminate){
-  string_null_terminate(&out);
- }
- return(out);
-}
-
-function String_u16
-string_u16_from_string_u8(Arena *arena, String string, String_Fill_Terminate_Rule rule){
- String_u16 out = {};
- out.cap = string.size;
- if (rule == StringFill_NullTerminate){
-  out.cap += 1;
- }
- out.str = push_array(arena, u16, out.cap);
- u8 *ptr = string.str;
- u8 *one_past_last = ptr + string.size;
- u64 cap = string.size;
- Character_Consume_Result consume;
- for (;ptr < one_past_last; ptr += consume.inc, cap -= consume.inc){
-  consume = utf8_consume(ptr, cap);
-  out.size += utf16_write(out.str + out.size, consume.codepoint);
- }
- if (rule == StringFill_NullTerminate){
-  string_null_terminate(&out);
- }
- return(out);
-}
-
 function String_u8
 string_u8_from_string_u32(Arena *arena, String_Const_u32 string, String_Fill_Terminate_Rule rule){
  String_u8 out = {};
@@ -2766,25 +2505,9 @@ get_thread_context(){
 
 typedef App Application_Links;  // NOTE: has to be here for the 4coder meta-generator.
 
-myinline App_Cmd
-app_cmd(App *app, b32 automated)
-{
- App_Cmd result = {};
- (App &)result = *app;
- result.automated = automated;
- return result;
-}
-myinline App_Cmd
-app_cmd_automated(App *app)
-{
- App_Cmd result = {};
- (App &)result = *app;
- result.automated = true;
- return result;
-}
-
 api(custom) function Thread_Context*
-get_thread_context(App *app){
+get_thread_context(App *app)
+{
  return(app->tctx);
 }
 //-

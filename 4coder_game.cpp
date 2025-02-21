@@ -1,4 +1,4 @@
-//-
+//-#processed
 global b8 global_game_key_states       [Key_Code_COUNT];
 global u8 global_game_key_state_changes[Key_Code_COUNT];
 
@@ -16,38 +16,63 @@ function b32
 turn_game_on() 
 {
  b32 result = false;
- if(global_game_enabled){
+ if(global_game_enabled)
+ {
   game_status = Game_On;
   result = true;
- }else{ 
+ }
+ else
+ { 
   vim_set_bottom_text_lit("game is currently disabled!");
  }
  return result;
 }
+function void turn_game_on(App_Cmd *app) { turn_game_on(); }
+
 myinline void
 turn_game_off()
 {
  game_status = Game_Off;
 }
+function void turn_game_off(App_Cmd *app) { turn_game_off(); }
+
+function Buffer_ID
+get_game_buffer(App *app, Viewport_ID viewport)
+{
+ Models *models = app_get_models(app);
+ Buffer_ID result = 0;
+ i32 index = viewport-1;
+ if(index >= 0 and index < GAME_BUFFER_COUNT)
+ {
+  result = models->game_buffers[index];
+ }
+ return result;
+}
 function void
 toggle_game_cmd(App_Cmd *app)
-{
- if(game_status >= Game_Rendering){
+{// TODO(kv) Can we get rid of the "rendering" crap?
+ // I mean we could just make a command to hide the game viewport -> no rendering.
+ if(game_status >= Game_Rendering)
+ {
   game_status = Game_On;
- }else{
+ }
+ else
+ {
   b32 turned_on = turn_game_on();
-  if(turned_on){
+  if(turned_on)
+  {
    game_status = Game_Rendering;
   }
  }
  
- if(game_status >= Game_Rendering){
+ if(game_status >= Game_Rendering)
+ {
   View_ID view = get_active_view(app, Access_Always);
   if(is_view_to_the_right(app, view))
   {// NOTE: switch to the left
    view = get_other_primary_view(app, view, Access_Always, true);
   }
-  view_set_buffer_named(app, view, GAME_BUFFER_NAMES[0]);
+  view_set_buffer(app, view, get_game_buffer(app, 1), 0);
  }
 }
 
@@ -62,24 +87,25 @@ toggle_game_auxiliary_viewports(App_Cmd *app)
 }
 
 function void 
-game_enable(App_Cmd *app){
+game_enable(App_Cmd *app)
+{
  global_game_enabled = true;
 }
-
 function void 
-game_disable(App_Cmd *app){
+game_disable(App_Cmd *app)
+{
  global_game_enabled = false;
  turn_game_off();
 }
 
 function void 
-debug_camera_on(App_Cmd *app){
+debug_camera_on(App_Cmd *app)
+{
  global_debug_camera_on = !global_debug_camera_on;
 }
 function void
 init_game(App *app)
 {
- // IMPORTANT: ;game_bootstrap_arena_zero_initialized
  Arena bootstrap_arena = make_arena(MB(1));
  Game_API *game = get_game_code(Game_On);
  Game_ImGui_State imgui_state;
@@ -93,7 +119,7 @@ init_game(App *app)
  ed_game_state_pointer = game->game_init(&bootstrap_arena, &const_ed_api, &const_ed_api_new,
                                          app, imgui_state, is_dev_editor);
  
- //@ReferenceImages
+ // NOTE for reference images
  stbi_set_flip_vertically_on_load(true);
 }
 
@@ -162,9 +188,12 @@ load_latest_game_code(App *app, b32 *out_loaded)
         game->game_shutdown(ed_game_state_pointer);
         game->is_valid = 0;
        }
-#if AD_SHUTDOWN_IMGUI
-       win32_imgui_reinit();
-#endif
+       // win32_imgui_reinit(); TODO(kv) Do we really need to do this crap? Why do I gotta shut down anything?
+       {
+        ImGui::Begin("track imgui crash");
+        ImGui::Text("reloaded!");  // TODO(kv) ;track_GetCurrentWindow_crash If this assertion fails, then the doc is wrong.
+        ImGui::End();
+       }
        
        local_persist DLL_Handle library = {};
        if(library){
@@ -210,11 +239,6 @@ view_viewport_id(App *app, View_ID view)
 
 function Image_Load_Info get_image_load_info(void);
 
-myinline Models *
-app_get_models(App *app)
-{
- return (Models *)app->cmd_context;
-}
 function void
 maybe_update_game(App *app, Frame_Info frame)
 {

@@ -44,40 +44,64 @@ current_location_is_hot()
  return result;
 }
 myinline b32
-is_fill_enabled()
+is_painting_enabled()
 {
- return (painter->painting_disabled == false or
-         current_location_is_hot());
+ return (painter->params.painting or
+         (current_location_is_hot() and is_left()));
 }
-myinline b32
-is_line_enabled()
-{
- return (painter->painting_disabled == false or
-         current_location_is_hot());
-}
+myinline b32 is_fill_enabled(){ return is_painting_enabled(); }
+myinline b32 is_line_enabled(){ return is_painting_enabled(); }
 //-
-// NOTE See also @framework_draw
+// NOTE used in @draw_bezier_inner
 function void
-draw_disk(v3 center, v1 radius, argb color, Poly_Flags flags)
-{// @Speed LOD
- if(radius > 0.f)
+draw_disk_camera_space(v3 center, v1 radius_camera_space,
+                       argb color, Poly_Flags flags, i32 nslice=8)
+{
+ // @Slow LOD
+ if(radius_camera_space > 0.f)
  {
-  i32 const CIRCLE_NSLICE = 8;
-  i32 nslices = CIRCLE_NSLICE;  //NOTE: @Tested Minimum should be 8
-  v1 interval = 1.f / v1(nslices);
+  v1 interval = 1.f / v1(nslice);
   v3 last_sample;
-  for_i32(index, 0, nslices+1)
+  for_i32(index, 0, nslice+1)
   {
    v1 angle = interval * v1(index);
-   v2 arm = radius*arm2(angle);
+   v2 arm = radius_camera_space*arm2(angle);
    mat4 &bone_from_cam = painter->cam_from_bone.inverse;
-   v3 sample = center + mat4vec(bone_from_cam, V3(arm, 0.f));//@slow
+   v3 sample = center + mat4vec(bone_from_cam, V3(arm, 0.f));  // @Slow
    if(index!=0)
    {
     poly3_inner({center, last_sample, sample},
                 repeat3(color), flags);
    }
    last_sample = sample;
+  }
+ }
+}
+function void
+fill_disk(v3 center, tdim radius_bone_space, Fill_Params params=get_fill_params())
+{
+ if(is_fill_enabled())
+ {
+  Poly_Flags flags = to_poly_flags(params.flags);
+  i32 nslice = 16;  // note(kv) just testing man
+  {
+   v1 interval = 1.f / v1(nslice);
+   v3 last_sample;
+   for_i32(index, 0, nslice+1)
+   {
+    v1 angle = interval * v1(index);
+    v2 arm = arm2(angle);
+    mat4 &bone_from_cam = painter->cam_from_bone.inverse;
+    v3 vector = mat4vec(bone_from_cam, V3(arm, 0.f));
+    vector = radius_bone_space.v * noz(vector);
+    v3 sample = center + vector;  // @Slow
+    if(index!=0)
+    {
+     poly3_inner({center, last_sample, sample},
+                 repeat3(params.color), flags);
+    }
+    last_sample = sample;
+   }
   }
  }
 }
@@ -89,7 +113,7 @@ poly4_inner(v3 p0, v3 p1, v3 p2, v3 p3,
  poly3_inner({p0,p2,p3}, repeat3(c0), flags);
 }
 function void
-fill_patch(const v3 P[4][4], Fill_Params params=get_fill_params())
+fill_patch(tvert P[4][4], Fill_Params params=get_fill_params())
 {
  if(is_fill_enabled())
  {
@@ -206,15 +230,18 @@ fill3(v3 p0, v3 p1, v3 p2,
 }
 //-
 myinline Bezier
-bez_raw(v3 p0, v3 p1, v3 p2, v3 p3){
+bez_raw(v3 p0, v3 p1, v3 p2, v3 p3)
+{
  return Bezier{ p0,p1,p2,p3 };
 }
 myinline Bezier
-bez_raw(v3 P[4]){
+bez_raw(v3 P[4])
+{
  return Bezier{ P[0],P[1],P[2],P[3] };
 }
 myinline Bezier
-bez_offset(v3 p0, v3 d0, v3 d3, v3 p3){
+bez_offset(v3 p0, v3 d0, v3 d3, v3 p3)
+{
  return bez_raw(macro_control_points(p0,d0,d3,p3) );
 }
 
@@ -300,7 +327,7 @@ bezd_len(v3 p0, v3 d0, v2 d3, v3 p3)
  return bez_v3v2(p0, d0, d3, p3);
 }
 //NOTE: Planar curve (with v3 control point, BUT it doesn't automatically adjust d3)
-// @deprecated
+// #deprecated
 function Bezier
 bez_bezd_old(v3 p0, v3 d0, v2 d3, v3 p3)
 {
@@ -318,12 +345,12 @@ bez_bezd_old(v3 p0, v3 d0, v2 d3, v3 p3)
 }
 // NOTE: No length adjustment, non-planar
 function Bezier 
-bez_c2(Bez const&ref, v3 d3, v3 p3)
+bez_c2(Bez const&ref, tvec d3, tvert p3)
 {
  TIMED_BLOCK(bs_cycle_counter);
- v3 p0 = ref.e[3];
- v3 p1 = p0 + (ref.e[3] - ref.e[2]);
- v3 p2 = 0.5f*(p3+p1) + d3;
+ tvert p0 = ref.e[3];
+ tvert p1 = p0 + (ref.e[3] - ref.e[2]);
+ tvert p2 = mkvert(0.5f*(v3(p3)+v3(p1))) + d3;
  return bez_raw(p0,p1,p2,p3);
 }
 function v4
@@ -339,7 +366,7 @@ radii_c2(v4 ref, v2 d_p3)
  return V4(p0,p1,p2,p3);
 }
 function void
-draw_bezier(v3 P[4], Line_Params params)
+draw_bezier(tvert P[4], Line_Params params)
 {
  {//-send data
   Recorded_Primitive primitive = {.type = Primitive_Type_Curve};
@@ -373,10 +400,10 @@ draw_bezier(v3 P[4], Line_Params params)
                             params.alignment_min > 0.f);
   if(do_check_alignment)
   {//-NOTE(kv) Alignment business
-   v3 A = P[0];
-   v3 B = P[1];
-   v3 C = P[2];
-   v3 D = P[3];
+   tvert A = P[0];
+   tvert B = P[1];
+   tvert C = P[2];
+   tvert D = P[3];
    // NOTE(kv) The normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
    v3 normal = noz(cross(B-A, D-A));
    if(normal != v3{})
@@ -434,11 +461,11 @@ draw(Bezier b, i4 radii){
 }
 // NOTE: Straight line
 function void
-draw_line(v3 a, v3 b,
-          Line_Params params=get_line_params())
-{// NOTE(kv) Don't do fancy footwork in here, since the bezier logic is so crazy!
+draw_line(v3 a, v3 b, Line_Params params=get_line_params())
+{// NOTE(kv) Don't do fancy footwork in here,
+ // since the bezier logic is so crazy!
  params.flags |= Line_Straight;
- Bez bez = bez_line(a,b);
+ Bezier bez = bez_line(a,b);
  draw_bezier(bez, params);
 }
 //~
@@ -481,9 +508,8 @@ get_triangle_normal(v3 a, v3 b, v3 c)
 }
 
 function void
-fill_dual_bez(v3 const P[4], v3 const Q[4], Fill_Params params=get_fill_params())
-{// NOTE(kv) "const" because we wanna convert from const bezier curves to this.
- // it's very, very annoying
+fill_dual_bez(tvert P[4], tvert Q[4], Fill_Params params=get_fill_params())
+{
  {//-Sending data
   Recorded_Primitive primitive = {.type=Primitive_Type_Dual_Bezier};
   primitive.dual_bezier = push_struct(the_model->frame_arena, Dual_Bezier);
@@ -517,8 +543,8 @@ fill_dual_bez(v3 const P[4], v3 const Q[4], Fill_Params params=get_fill_params()
    for_i32(sample_index, 0, nslices+1)
    {
     v1 u = inv_nslices * (v1)sample_index;
-    v3 A = bezier_sample(P,u);
-    v3 B = bezier_sample(Q,u);
+    tvert A = bezier_sample(P,u);
+    tvert B = bezier_sample(Q,u);
     if(sample_index > 0)
     {
      poly4_inner(A0,B0,B,A, params.color, flags);
@@ -530,17 +556,17 @@ fill_dual_bez(v3 const P[4], v3 const Q[4], Fill_Params params=get_fill_params()
  }
 }
 function void
-fill_point_bez(v3 O, Bezier const&bezier, Fill_Params params=get_fill_params())
+fill_point_bez(tvert O, Bezier const&bezier, Fill_Params params=get_fill_params())
 {
- Bez dummy;
- for_i32(i, 0, 4){ dummy[i] = O; }
- fill_dual_bez(dummy.e, bezier.e, params);
+ Bezier dummy;
+ for_i32(i,0,4){ dummy[i] = O; }
+ fill_dual_bez(dummy.e, (tvert *)bezier.e, params);
 }
 myinline void
-fill_line_bez(v3 a, v3 b, Bezier const&bezier, Fill_Params params=get_fill_params())
+fill_line_bez(tvert a, tvert b, Bezier const&bezier, Fill_Params params=get_fill_params())
 {
  Bez ab = bez_line(a,b);
- fill_dual_bez(ab.e, bezier.e, params);
+ fill_dual_bez(ab.e, (tvert *)bezier.e, params);
 }
 myinline void
 fill_bez(Bezier const&bezier, Fill_Params params=get_fill_params())
@@ -548,11 +574,11 @@ fill_bez(Bezier const&bezier, Fill_Params params=get_fill_params())
  fill_line_bez(bezier.e[0], bezier.e[3], bezier, params);
 }
 function void
-fill_patch(v3 P0[4], v3 P1[4],
-           v3 P2[4], v3 P3[4],
+fill_patch(tvert P0[4], tvert P1[4],
+           tvert P2[4], tvert P3[4],
            Fill_Params params=get_fill_params())
 {
- v3 P[4][4];
+ tvert P[4][4];
  copy_array_dst(P[0], P0);
  copy_array_dst(P[1], P1);
  copy_array_dst(P[2], P2);
@@ -576,7 +602,7 @@ fill4_symx(v3 a, v3 b)
  }
 }
 function void 
-fill_fan(v3 A, v3 verts[], i32 vert_count,
+fill_fan(tvert A, tvert verts[], i32 vert_count,
          Fill_Params params=get_fill_params())
 {
  for_i32(index, 0, vert_count-1)
@@ -601,6 +627,12 @@ fill4_culled(v3 p0, v3 p1, v3 p2, v3 p3,
  return filled;
 }
 function void
+fill_sphere(v3 center, tdim radius, Fill_Params params=get_fill_params())
+{// NOTE Wait, is a sphere, or just a disk?
+ fill_disk(center, radius, params);
+}
+#if 0
+function void
 fill_hiding_box(v3 P000, v3 x, v3 y, v3 z)
 {// NOTE(kv) Filling a box, with the normals inverted
  v3 P100 = P000+x;
@@ -624,7 +656,6 @@ fill_hiding_box(v3 P000, v3 x, v3 y, v3 z)
   fill4(P010, P110, P111, P011);
  }
 }
-#if 0
 function void
 draw_box(mat4 const&transform)
 {
@@ -716,11 +747,13 @@ draw_image(Stringz image_file,
  argb argb_color = argb_pack( V4(color,alpha) );
  push_image(painter->target, image_file, o,x,y,argb_color);
 }
-function Bez
-bez_lerp(Bez &begin, v1 t, Bez &end){
- Bez result;
- for_i32(index,0,4){
-  result[index] = lerp(begin[index], t, end[index]);
+function Bezier
+bez_lerp(Bezier &begin, v1 t, Bezier &end)
+{// NOTE(kv) I guess we can do this?
+ Bezier result;
+ for_i32(index,0,4)
+ {
+  result[index] = mkvert(lerp(begin[index], t, end[index]));
  }
  return result;
 }
@@ -744,5 +777,104 @@ bez_v2_offset(v2 a, v2 a_offset, v2 b)
  result.e[1] = a + a_offset;
  result.e[2] = b;
  return result;
+}
+struct v3_pair
+{
+ union{v3 u,a,x;};
+ union{v3 v,b,y;};
+};
+function v3_pair
+invent_xy(v3 z)
+{
+ v3 x;
+ b32 z_is_close_to_y = almost_equal(absolute(z.y), 1.f, 1e-8f);
+ if(z_is_close_to_y)
+ {
+  x = V3x(1.f);
+ }
+ else
+ {// NOTE y is the up vector
+  v3 up_vector = V3y(1);
+  x = noz(cross(up_vector, z));
+ }
+ 
+ v3 y = cross(z,x);
+ return v3_pair{x,y};
+}
+function void
+split_bezier(v4 p, v1 tsplit, v4 *left, v4 *right)
+{// NOTE Return the curve from t=0 to t="split"
+ // NOTE(kv) The way it works is explained by the de Casteljau algorithm
+ // (which works by literally splitting the curve).
+ // but I don't understand why the de Casteljau algorithm works either so :>
+ v1 P01 = lerp(p[0], tsplit, p[1]);
+ v1 P12 = lerp(p[1], tsplit, p[2]);
+ v1 L2 = lerp(P01, tsplit, P12);
+ v1 P = bezier_sample(p, tsplit);  // NOTE The last point is obviously on the original curve
+ *left = {p[0], P01, L2, P};
+ 
+ v1 P23 = lerp(p[2], tsplit, p[3]);
+ v1 R1 = lerp(P12, tsplit, P23);
+ *right = {P, R1, P23, p[3]};
+}
+function void
+draw_circle(v3 center, tnormal unit_normal, tdim radius,
+            Line_Params params=get_line_params())
+{
+ v1 a = 1.00005519f;
+ v1 b = 0.55342686f;
+ v1 c = 0.99873585f;
+ v2 arc0v2[4] = { {a,0}, {c,b}, {b,c}, {0,a} };
+ v2 arc1v2[4], arc2v2[4], arc3v2[4];
+ for_i32(i,0,4)
+ {
+  arc1v2[i] = perp(arc0v2[i]);
+  arc2v2[i] = perp(arc1v2[i]);
+  arc3v2[i] = perp(arc2v2[i]);
+ }
+ 
+ v3_pair xy = invent_xy(unit_normal);
+ mat4 transform = mat4_columns(radius*xy.x, radius*xy.y, radius*unit_normal, center);
+ 
+ auto circular_arc_helper = [&]( v3 dst[4], v2 source[4])
+ {
+  for_i32(index,0,4)
+  {
+   v2 src = source[index];
+   dst[index] = mat4vert(transform, V3(src.x, src.y, 0.f));
+  }
+ };
+ 
+ v3 arc0[4], arc1[4], arc2[4], arc3[4];
+ circular_arc_helper(arc0, arc0v2);
+ 
+ circular_arc_helper(arc1, arc1v2);
+ circular_arc_helper(arc2, arc2v2);
+ circular_arc_helper(arc3, arc3v2);
+ 
+ v4 radii_list[4];
+ {
+  v4 radii_first_half, radii_second_half;
+  split_bezier(params.radii, 0.5f, &radii_first_half, &radii_second_half);
+  split_bezier(radii_first_half,  0.5f, &radii_list[0], &radii_list[1]);
+  split_bezier(radii_second_half, 0.5f, &radii_list[2], &radii_list[3]);
+ }
+ 
+ params.radii = radii_list[0];
+ draw(bez_raw(arc0), params);
+ 
+ params.radii = radii_list[1];
+ draw(bez_raw(arc1), params);
+ 
+ params.radii = radii_list[2];
+ draw(bez_raw(arc2), params);
+ 
+ params.radii = radii_list[3];
+ draw(bez_raw(arc3), params);
+}
+function void
+draw_circle(v3 center, tnormal unit_normal, tdim radius, v4 radii)
+{
+ draw_circle(center, unit_normal, radius, get_line_params(radii));
 }
 //-

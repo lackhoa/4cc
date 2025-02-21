@@ -168,11 +168,11 @@ function void
 prj_open_files_pattern_filter(App *app, String dir, Prj_Open_File_Config config)
 {
  ProfileScope(app, "open all files in directory pattern");
- Scratch_Block scratch(app);
+ Scratch_Block tmp;
  String directory = dir;
- if ( !is_file_slash(string_get_character(directory, directory.size-1)) )
+ if( !is_file_slash(string_get_character(directory, directory.size-1)) )
  {
-  directory = push_stringf(scratch, "%.*s/", string_expand(dir));
+  directory = push_stringf(tmp, "%.*s/", string_expand(dir));
  }
  prj_open_files_pattern_filter__rec(app, directory, config);
 }
@@ -580,6 +580,25 @@ concat_path(Arena *arena, String a, String b)
  return result;
 }
 
+myinline Models *
+app_get_models(App *app)
+{
+ return (Models *)app->cmd_context;
+}
+
+function String
+chop_trailing_slashes(String string)
+{
+ while(string.count > 0)
+ {
+  if(is_file_slash(string[string.count-1]))
+  {
+   string.count--;
+  }
+  else { break; }
+ }
+ return string;
+}
 //CUSTOM_DOC("Looks for a project.4coder file in the hot directory and tries to load it.  Looks in parent directories until a project file is found or there are no more parents.")
 function void
 load_project(App_Cmd *app)
@@ -588,11 +607,11 @@ load_project(App_Cmd *app)
  
  ProfileScope(app, "load project");
  save_all_dirty_buffers(app);
- Scratch_Block scratch(app);
+ Scratch_Block tmp;
  
  // NOTE(allen): Load the project file from the hot directory, as advertised
- String8 hot_dir = push_hot_directory(app, scratch);
- File_Name_Data dump = read_entire_file_search_up_path(scratch, hot_dir, str8lit("project.4coder"));
+ String8 hot_dir = push_hot_directory(app, tmp);
+ File_Name_Data dump = read_entire_file_search_up_path(tmp, hot_dir, str8lit("project.4coder"));
  
  if (dump.data.str == 0)
  {
@@ -604,10 +623,10 @@ load_project(App_Cmd *app)
  Variable_Handle prj_var = vars_get_nil();
  if (dump.data.str != 0)
  {
-  Token_Array array = token_array_from_text(app, scratch, dump.data);
+  Token_Array array = token_array_from_text(app, tmp, dump.data);
   if (array.tokens != 0)
   {
-   config = config_parse(app, scratch, dump.name, dump.data, array);
+   config = config_parse(app, tmp, dump.name, dump.data, array);
    if (config != 0)
    {
     i1 version = 0;
@@ -639,7 +658,7 @@ load_project(App_Cmd *app)
  // NOTE(allen): Print Errors
  if (config != 0)
  {
-  String8 error_text = config_stringize_errors(app, scratch, config);
+  String8 error_text = config_stringize_errors(app, tmp, config);
   if (error_text.size > 0)
   {
    print_message(app, strlit("Project errors:\n"));
@@ -648,7 +667,7 @@ load_project(App_Cmd *app)
   }
  }
  
- String8 project_dir = prj_path_from_project(scratch, prj_var);
+ String8 project_dir = prj_path_from_project(tmp, prj_var);
  
  // NOTE(allen): Open All Project Files
  Variable_Handle load_paths_var    = vars_read_key(prj_var, vars_intern_lit("load_paths"));
@@ -662,27 +681,26 @@ load_project(App_Cmd *app)
  Variable_Handle blacklist_var = vars_read_key(prj_var, vars_intern_lit("blacklist_patterns"));
  Variable_Handle limited_edit_paths_var = vars_read_key(prj_var, vars_intern_lit("limited_edit_paths"));
  
- Prj_Pattern_List whitelist = prj_pattern_list_from_var(scratch, whitelist_var);
- Prj_Pattern_List blacklist = prj_pattern_list_from_var(scratch, blacklist_var);
+ Prj_Pattern_List whitelist = prj_pattern_list_from_var(tmp, whitelist_var);
+ Prj_Pattern_List blacklist = prj_pattern_list_from_var(tmp, blacklist_var);
  darray(String) limited_edit_list = {};
  {// NOTE: Get limited edit stuff
   i1 limited_edit_count = 0;
   for ( Vars_Children(child_var, limited_edit_paths_var) ) {
    limited_edit_count++;
   }
-  init_static(limited_edit_list, scratch, limited_edit_count);
+  init_static(limited_edit_list, tmp, limited_edit_count);
   limited_edit_list.set_count(limited_edit_count);
   
   i1 limited_edit_index = 0;
   for ( Vars_Children(child_var, limited_edit_paths_var) )
   {
    String &item = limited_edit_list[limited_edit_index++];
-   String relpath = vars_string_from_var(scratch, child_var);
-   item = concat_path(scratch, project_dir, relpath);
-   item = system_get_canonical(scratch, item);
+   String relpath = vars_string_from_var(tmp, child_var);
+   item = concat_path(tmp, project_dir, relpath);
+   item = system_get_canonical(tmp, item);
   }
  }
- 
  
  for (Variable_Handle load_path_var = vars_first_child(load_paths_os_var);
       !vars_is_nil(load_path_var);
@@ -692,14 +710,14 @@ load_project(App_Cmd *app)
   Variable_Handle recursive_var = vars_read_key(load_path_var, recursive_id);
   Variable_Handle relative_var = vars_read_key(load_path_var, relative_id);
   
-  String8 path = vars_string_from_var(scratch, path_var);
+  String8 path = vars_string_from_var(tmp, path_var);
   b32 recursive = vars_b32_from_var(recursive_var);
   b32 relative  = vars_b32_from_var(relative_var);
   
   // NOTE(kv): system_get_canonical seems to not like relative path, 
   // but we only need it to expand tilde anyway so it doesn't matter in the relative path case
   if (!relative) {
-   path = system_get_canonical(scratch, path);
+   path = system_get_canonical(tmp, path);
   }
   
   u32 flags = 0;
@@ -708,8 +726,9 @@ load_project(App_Cmd *app)
   }
   
   String8 file_dir = path;
-  if (relative) {
-   file_dir = concat_path(scratch, project_dir, path);
+  if(relative)
+  {
+   file_dir = concat_path(tmp, project_dir, path);
   }
   
   prj_open_files_pattern_filter(app, file_dir, {
@@ -725,9 +744,21 @@ load_project(App_Cmd *app)
  String_ID proj_name_id = vars_string_id_from_var(proj_name_var);
  if (proj_name_id != 0)
  {
-  String8 proj_name = vars_push_string(scratch, proj_name_id);
-  String8 title = push_stringf(scratch, "4coder project: %.*s", string_expand(proj_name));
+  String8 proj_name = vars_push_string(tmp, proj_name_id);
+  String8 title = push_stringf(tmp, "4coder project: %.*s", string_expand(proj_name));
   set_window_title(app, title);
+ }
+ 
+ {//-Library dir
+  Models *models = app_get_models(app);
+  String library_dir = def_get_config_string(tmp, vars_intern_lit("library_dir"));
+  if(library_dir.count != 0)
+  {// TODO(kv) We only have one library dir, for now.
+   // Ultimately you need one for each project.
+   library_dir = system_get_canonical(models->arena, library_dir);
+   library_dir = chop_trailing_slashes(library_dir);
+   models->library_dir = library_dir;
+  }
  }
 }
 

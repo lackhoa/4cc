@@ -88,7 +88,8 @@ vim_to_pattern_inner(App_Cmd *app, b32 backward)
 }
 
 function void
-vim_start_search_inner(App *app, Scan_Direction start_direction) {
+vim_start_search_inner(App *app, Scan_Direction start_direction)
+{
  vim_state.identifier_search_mode = false;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -201,9 +202,15 @@ vim_clear_search(App_Cmd *app){
 }
 
 function void 
-vim_start_search_forward(App_Cmd *app)  { vim_start_search_inner(app, Scan_Forward);  }
+vim_start_search_forward(App_Cmd *app)
+{
+ vim_start_search_inner(app, Scan_Forward); 
+}
 function void 
-vim_start_search_backward(App_Cmd *app) { vim_start_search_inner(app, Scan_Backward); }
+vim_start_search_backward(App_Cmd *app)
+{
+ vim_start_search_inner(app, Scan_Backward);
+}
 
 function void 
 vim_to_next_pattern(App_Cmd *app){ vim_to_pattern_inner(app, false); }

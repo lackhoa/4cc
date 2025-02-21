@@ -14,14 +14,14 @@
  [The radius of the small circle is the same as the y division, which is 1/sqrt(2)]
  ]
 
-[@done Chin, nose y]
-[@done head-neck junction z]
-[@maybe Jaw z]
-[@maybe Ear z]
+[#done Chin, nose y]
+[#done head-neck junction z]
+[#maybe Jaw z]
+[#maybe Ear z]
 [Cranium
- [@done The head back z]]
+ [#done The head back z]]
 [todo Ear size in z]
-[trapezius_head @approved yz]
+[trapezius_head #approved yz]
 
 [NOTE About where the deltoid connects
  [The Manga Materials one has the deltoid connecting much higher up

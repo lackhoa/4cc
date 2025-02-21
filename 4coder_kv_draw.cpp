@@ -340,14 +340,14 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID l
      b32 is_ref = tail.str[i] == '@';
      b32 is_tag = tail.str[i] == '#';
      b32 is_id  = tail.str[i] == ';';
-     if(is_ref or is_tag)
+     if(is_ref or is_tag or is_id)
      {
       Range_i64 annot_range = Ii64(i);
       {
        i1 j=i+1;
        for(; j < token->size; j++)
        {
-        if(!character_is_alnum(tail.str[j]) )
+        if(not character_is_alnum(tail.str[j]))
         {
          break;
         }
@@ -365,6 +365,10 @@ byp_draw_token_colors(App *app, View_ID view, Buffer_ID buffer, Text_Layout_ID l
         String annot_string = push_buffer_range(app, tmp, buffer, id_range);
         annot_color = get_identifier_color_default_to_zero(annot_string);
         if(annot_color == 0){ annot_color = broken_link_color; }
+       }
+       else if(is_id)
+       {
+        annot_color = constant_color;
        }
        
        paint_text_color(app, layout, id_range, annot_color);
@@ -478,7 +482,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  clip = vim_draw_query_bars(app, clip, view, face_id);
  
  if( view != global_bottom_view )
- {// Draw file bar
+ {// NOTE Draw file bar
   rect2_Pair pair = layout_file_bar_on_bot(clip, line_height);
   vim_draw_filebar(app, view, buffer, frame, face_id, pair.b);
   clip = pair.a;
@@ -632,11 +636,6 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
    paint_fade_ranges(app, text_layout_id, buffer);
    draw_text_layout_default(app, text_layout_id);  // NOTE: this highlights the @Notes
    F4_RenderDividerComments(app, buffer, view, text_layout_id);
-   
-   if(view_is_active(app, view))
-   {
-    fui_draw_slider(app, clip);
-   }
    
    text_layout_free(app, text_layout_id);
   }

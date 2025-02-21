@@ -1,6 +1,6 @@
 //-
-global b32 DEBUG_vv_name = 0;
-//-
+// TODO(kv) Why did I name this language "klang?" Totally not gonna backfire later!
+
 enum Parsed_Type_Kind{
  Parsed_Type_Pointer = 0,  //NOTE(kv) Deliberately zero.
  Parsed_Type_Array,
@@ -41,7 +41,6 @@ member_was_removed(M_Struct_Member &member){
  return member.version_removed.len != 0;
 }
 //-
-struct Meta_Expression;
 struct Compound_Item;
 
 enum Expression_Kind
@@ -107,6 +106,7 @@ to_string(Unary_Operator *op)
 typedef u32 Binary_Operator;
 
 #define PP_SingleQuote(x) ((#x)[0])
+
 #define binary_op_xlist(X) \
 X(not) X(and) X(or) \
 X(->) X(+=)
@@ -123,6 +123,7 @@ to_string(Binary_Operator *op)
  return SCu8(op2);
 }
 //-
+struct Meta_Expression;
 struct Expression_Unary
 {
  Unary_Operator op;
@@ -323,7 +324,7 @@ struct Meta_Vertex
 };
 struct Driver_Collected
 {// NOTE see @klang_main
- darray(i32)             locations;
+ darray(i32)          locations;
  darray(M_Text_Range) text_ranges;
  
  darray(Meta_Slider) sliders;
@@ -335,7 +336,7 @@ struct Klang_Parser : Ed_Parser
  Statement_Head *current_statement;
  Driver_Collected *driver;
  Arena *arena;
- b32 do_modify;
+ b32 do_generate_cpp;
 };
 //-
 // NOTE(kv) Larger value = Binds weaker (unintuitive), but it's what the table says
@@ -504,7 +505,7 @@ parse_statement_to_arena(Arena *arena, Klang_Parser *p)
  return &statement->head;
 }
 function M_Struct_Members
-parse_struct_body(Arena *arena, String string);
+parse_struct_body(Arena *arena, Stringz string);
 
 myinline String
 get_function_name(Expression_Call *call)
@@ -512,34 +513,54 @@ get_function_name(Expression_Call *call)
  String result = call->func->as_string;
  return result;
 }
-struct String_Mapping{
+struct String_Mapping
+{
  String key;
  String val;
 };
 
 function void
-parse_expression_2(Klang_Parser *p, Precedence max_precedence,
+parse_expression(Klang_Parser *p, Precedence max_precedence,
+                 Meta_Expression *result);
+function b32
+modify_expression(Arena *arena, Meta_Expression *result);
+
+function b32
+to_cpp_expression(Arena *arena, Driver_Collected *driver,
                   Meta_Expression *result);
-myinline void
-parse_expression(Klang_Parser *p, Meta_Expression *result)
+function void
+parse_expression_full(Klang_Parser *p, Precedence max_precedence,
+                      Meta_Expression *result)
 {
- parse_expression_2(p, Precedence_Max, result);
+ parse_expression(p, max_precedence, result);
+ b32 ok = modify_expression(p->arena, result);
+ if(ok and p->do_generate_cpp)
+ {
+  ok = to_cpp_expression(p->arena, p->driver, result);
+ }
+ if(not ok){ p->fail(); }
+}
+myinline void
+parse_expression_full(Klang_Parser *p, Meta_Expression *result)
+{
+ parse_expression_full(p, Precedence_Max, result);
 }
 function Klang_Parser
-k_parser_from_string(Arena *arena, String string)
+k_parser_from_string(Arena *arena, Stringz string)
 {
  Klang_Parser parser = {};
  (Ed_Parser &)parser = ed_parser_from_string(arena, string);
  parser.arena = arena;
  return parser;
 }
-function void
-parse_expression_from_string(Arena *arena, String string,
-                             Meta_Expression *result, Range_i32 actual_range)
-{// NOTE(kv) We parse the expression, without modification,
- // no collecting driver info.
- Klang_Parser parser = k_parser_from_string(arena, string);
- parse_expression(&parser, result);
- result->range = actual_range;
+function b32
+is_function_keyword(String string)
+{
+ return (string == strlit("xfunction")  or
+         string == strlit("function")   or
+         string == strlit("inline")     or
+         string == strlit("myinline")   or
+         string == strlit("dll_export") or
+         false);
 }
 //-

@@ -402,64 +402,65 @@ parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
         code_index_unlock();
         buffer_clear_layout_cache(app, buffer_id);
         release_global_frame_mutex(app);
-    }
-    else{
-        arena_free(&arena);
-    }
+ }
+ else{
+  arena_free(&arena);
+ }
 }
 
 function void
-do_full_lex_async__inner(Async_Context *actx, Buffer_ID buffer_id){
-    App *app = actx->app;
-    ProfileScope(app, "async lex");
-    Scratch_Block scratch(app);
-    
-    String contents = {};
-    {
-        ProfileBlock(app, "async lex contents (before mutex)");
-        acquire_global_frame_mutex(app);
-        ProfileBlock(app, "async lex contents (after mutex)");
-        contents = push_whole_buffer(app, scratch, buffer_id);
-        release_global_frame_mutex(app);
-    }
-    
-    i32 limit_factor = 10000;
-    
-    Token_List list = {};
-    b32 canceled = false;
-    
-    Lex_State_Cpp state = {};
-    lex_full_input_cpp_init(&state, contents);
-    for (;;){
-        ProfileBlock(app, "async lex block");
-        if (lex_full_input_cpp_breaks(scratch, &list, &state, limit_factor)){
-            break;
-        }
-        if (async_check_canceled(actx)){
-            canceled = true;
-            break;
-        }
-    }
-    
-    if (!canceled){
-        ProfileBlock(app, "async lex save results (before mutex)");
-        acquire_global_frame_mutex(app);
-        ProfileBlock(app, "async lex save results (after mutex)");
-        Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
-        if (scope != 0){
-            Base_Allocator *allocator = managed_scope_allocator(app, scope);
-            Token_Array *tokens_ptr = scope_attachment(app, scope, attachment_tokens, Token_Array);
-            base_free(allocator, tokens_ptr->tokens);
-            Token_Array tokens = {};
-            tokens.tokens = base_array(allocator, Token, list.total_count);
-            tokens.count = list.total_count;
-            tokens.max = list.total_count;
-            token_fill_memory_from_list(tokens.tokens, &list);
-            block_copy_struct(tokens_ptr, &tokens);
-        }
-        buffer_mark_as_modified(buffer_id);
-        release_global_frame_mutex(app);
-    }
+do_full_lex_async__inner(Async_Context *actx, Buffer_ID buffer_id)
+{
+ App *app = actx->app;
+ ProfileScope(app, "async lex");
+ Scratch_Block scratch(app);
+ 
+ Stringz contents = empty_string;
+ {
+  ProfileBlock(app, "async lex contents (before mutex)");
+  acquire_global_frame_mutex(app);
+  ProfileBlock(app, "async lex contents (after mutex)");
+  contents = push_whole_buffer(app, scratch, buffer_id);
+  release_global_frame_mutex(app);
+ }
+ 
+ i32 limit_factor = 10000;
+ 
+ Token_List list = {};
+ b32 canceled = false;
+ 
+ Lex_State_Cpp state = {};
+ lex_full_input_cpp_init(&state, contents);
+ for (;;){
+  ProfileBlock(app, "async lex block");
+  if (lex_full_input_cpp_breaks(scratch, &list, &state, limit_factor)){
+   break;
+  }
+  if (async_check_canceled(actx)){
+   canceled = true;
+   break;
+  }
+ }
+ 
+ if (!canceled){
+  ProfileBlock(app, "async lex save results (before mutex)");
+  acquire_global_frame_mutex(app);
+  ProfileBlock(app, "async lex save results (after mutex)");
+  Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
+  if (scope != 0){
+   Base_Allocator *allocator = managed_scope_allocator(app, scope);
+   Token_Array *tokens_ptr = scope_attachment(app, scope, attachment_tokens, Token_Array);
+   base_free(allocator, tokens_ptr->tokens);
+   Token_Array tokens = {};
+   tokens.tokens = base_array(allocator, Token, list.total_count);
+   tokens.count = list.total_count;
+   tokens.max = list.total_count;
+   token_fill_memory_from_list(tokens.tokens, &list);
+   block_copy_struct(tokens_ptr, &tokens);
+  }
+  buffer_mark_as_modified(buffer_id);
+  release_global_frame_mutex(app);
+ }
 }
 
 function void
@@ -676,7 +677,7 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
             Token *token_resync = ptr->tokens + token_index_resync_guess;
             
             Range_i64 relex_range = Ii64(token_first->pos, token_resync->pos + token_resync->size + text_shift);
-            String partial_text = push_buffer_range(app, scratch, buffer_id, relex_range);
+            Stringz partial_text = push_buffer_range(app, scratch, buffer_id, relex_range);
             
             Token_List relex_list = lex_full_input_cpp(scratch, partial_text);
             if (relex_range.opl < buffer_get_size(app, buffer_id)){

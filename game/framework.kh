@@ -1,43 +1,24 @@
 //-
-[noinfo]
 struct Entity_Type_Info
 {
  b32 is_curve;
 };
 //-
-unique Curve_Type;
-
-[noinfo]
-struct Curve_Data
-{
- String name;
- Bone_ID bone_id;
- b32 symx;
- Curve_Type type;
- tagged_by(type) Curve_Union data;
- Line_Params params;
- //-Fill stuff
- argb fill_color;  //TODO(kv) color override, darn it!
- Fill_Params  fill_params;
- //-
- meta_unserialized i1 linum;
-};
-//-
+[info]
 struct Keyboard_Cursor
 {
- meta_added(added=Version_AddCursorOn) b32 on;
+ b32 on;
  v3 pos;
  v1 vel;
 };
 
-[embed]
+[info embed]
 struct Serialized_State
 {
  Keyboard_Cursor kb_cursor;
  b32 references_full_alpha;
  
  // NOTE(kv) Tbh we don't have to care about more than 3 viewports.
- meta_added(added=Version_AddViewport);
  Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];
 };
 //-

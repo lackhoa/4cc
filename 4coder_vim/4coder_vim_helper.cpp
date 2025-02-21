@@ -67,7 +67,11 @@ function u8 character_toggle_case(u8 c){
 	i1 shift = ((2*character_is_upper(c)-1)*('a'-'A'));
 	return (c + u8((character_is_alpha(c) && c != '_')*shift));
 }
-function void move_horizontal_lines(App *app, i1 count){
+function void
+move_horizontal_lines(App *app, i1 count)
+{// TODO(kv) We have a bug here when we set the cursor to the last line.
+ // It involves over-clamping in a part of the code that I don't understand!
+ // So I guess this bug is a resident sleeper...
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
 	i64 pos = view_get_cursor_pos(app, view);
@@ -77,7 +81,9 @@ function void move_horizontal_lines(App *app, i1 count){
 	view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos));
 }
 
-function void seek_one_past_end(App *app){
+function void
+seek_one_past_end(App *app)
+{
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	i64 pos = view_get_cursor_pos(app, view);
 	i64 line = view_compute_cursor(app, view, seek_pos(pos)).line;

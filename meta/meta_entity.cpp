@@ -12,7 +12,7 @@ push_entity_variant_inner(darray(Union_Variant) *variants, Union_Variant &varian
 function void
 push_curve_variant_with_endpoints(Arena *arena, darray(Union_Variant) *variants,
                                   i32 enum_value, String name, String name_lower,
-                                  String struct_members)
+                                  Stringz struct_members)
 {
  Union_Variant variant = {};
  variant.enum_value = enum_value;
@@ -34,7 +34,7 @@ push_curve_variant_with_endpoints(Arena *arena, darray(Union_Variant) *variants,
 function void
 push_entity_variant(Arena *arena, darray(Union_Variant) *variants,
                     i32 enum_value, String name, String name_lower,
-                    String struct_members, M_Entity_Variant_Info type_info)
+                    Stringz struct_members, M_Entity_Variant_Info type_info)
 {
  Union_Variant variant = {};
  variant.enum_value = enum_value;
@@ -53,10 +53,12 @@ entity_variant_is_curve(Union_Variant &variant){
  return m_entity_variant_info_table[variant.enum_value].is_curve;
 }
 function void
-generate_entity_types(Printer &printer){
+generate_entity_types(Printer &printer)
+{
+#if 0
  Scratch_Block scratch;
  darray(Union_Variant) variants = {};
- //-NOTE @data of the variants
+ //-NOTE #data of the variants
  //TODO(kv) I'd just pass the whole thing as a string, and be done with it!
  //  making macros is just so.damn.messy!
 #define X(enum_value, name, name_lower, struct_members) \
@@ -198,7 +200,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    }
   };
   {//-Header
-   Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game, strlit("send_bez.gen.h")));
+   Printer p = m_open_file_to_write(pjoin(scratch, meta.dirs.game, strlit("send_bez.gen.h")));
    {//-get_p0_index_or_zero / get_p3_index_or_zero
     m_location;
     print(p, "#if AD_IS_FRAMEWORK\n");
@@ -374,7 +376,7 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    close(p);
   }
   {//-Implementation
-   Printer p = m_open_file_to_write(pjoin(scratch, meta_dirs.game, strlit("send_bez.gen.cpp")));
+   Printer p = m_open_file_to_write(pjoin(scratch, meta.dirs.game, strlit("send_bez.gen.cpp")));
    m_location;
    for_i32(variant_index,0,variants.count){
     Union_Variant &variant = variants[variant_index];
@@ -416,5 +418,6 @@ strlit(#name), strlit(#name_lower), strlit(#struct_members), info_empty)
    close(p);
   }
  }
+#endif
 }
 //-

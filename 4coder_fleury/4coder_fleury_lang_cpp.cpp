@@ -252,20 +252,23 @@ F4_CPP_ParseEnumBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx)
  }
 }
 
-function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
+function void
+F4_CPP_IndexFile(F4_Index_ParseCtx *ctx)
 {
- if(0){
+ if(0)
+ {
   Scratch_Block tmp;
   if(push_buffer_base_name(ctx->app, tmp, ctx->file->buffer) == strlit("test.cpp"))
   {
    breakhere;
   }
  }
+ 
  int scope_nest = 0;
  
- for(b32 handled = 0; !ctx->done;)
+ for(;!ctx->done;)
  {
-  handled = 0;
+  b32 handled = 0;
   
   Token *dummy_token = 0;
   Token *name = 0;
@@ -546,6 +549,27 @@ function F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
  }
 }
 
+function void
+F4_Note_IndexFile(F4_Index_ParseCtx *ctx)
+{// Index for note files
+ while(not ctx->done)
+ {
+  Token *name = 0;
+  b32 handled = 0;
+  if(0);
+  else if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Comment, &name))
+  {
+   handled = 1;
+   F4_Index_ParseComment(ctx, name);
+  }
+  
+  if(not handled)
+  {
+   F4_Index_ParseCtx_Inc(ctx, 0);
+  }
+ }
+}
+
 function F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
 {
     int count = 0;
@@ -633,6 +657,4 @@ function F4_LANGUAGE_POSCONTEXT(F4_CPP_PosContext)
     return first;
 }
 
-function F4_LANGUAGE_HIGHLIGHT(F4_CPP_Highlight)
-{
-}
+function F4_LANGUAGE_HIGHLIGHT(F4_CPP_Highlight) { }

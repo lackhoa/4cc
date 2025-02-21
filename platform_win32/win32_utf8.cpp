@@ -14,54 +14,46 @@
 function HANDLE
 CreateFile_utf8(Arena *scratch, u8 *name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES security, DWORD creation, DWORD flags, HANDLE template_file){
     Temp_Memory temp = begin_temp_memory(scratch);
-    String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
-    HANDLE result = CreateFileW((LPWSTR)name_16.str, access, share, security, creation, flags, template_file);
-    end_temp_memory(temp);
-    return(result);
+ String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
+ HANDLE result = CreateFileW((LPWSTR)name_16.str, access, share, security, creation, flags, template_file);
+ end_temp_memory(temp);
+ return(result);
 }
 
 function DWORD
-GetFinalPathNameByHandle_utf8(Arena *scratch, HANDLE file, u8 *file_path_out, DWORD path_max, DWORD flags){
-    DWORD result = 0;
-    
-    if (file_path_out == 0){
-        result = GetFinalPathNameByHandleW(file, 0, 0, flags);
-        result *= 2;
-    }
-    else{
-        Temp_Memory temp = begin_temp_memory(scratch);
-        
-        u32 path_16_max = KB(32);
-        u16 *path_16 = push_array(scratch, u16, path_16_max);
-        
-        DWORD length_16 = GetFinalPathNameByHandleW(file, (LPWSTR)path_16, path_16_max, flags);
-        
-        if (length_16 != 0 && length_16 < path_16_max){
-            b32 convert_error = false;
-            String_Const_u16 path_16_str = SCu16(path_16, length_16);
-            String_u8 path_8 = string_u8_from_string_u16(scratch, path_16_str, StringFill_NullTerminate);
-            if (path_8.size + 1 <= path_max && !convert_error){
-                block_copy(file_path_out, path_8.str, path_8.size + 1);
-                result = (DWORD)path_8.size;
-            }
-            else{
-                result = (DWORD)path_8.size + 1;
-            }
-        }
-        
-        end_temp_memory(temp);
-    }
-    
-    return(result);
-}
-
-function HANDLE
-FindFirstFile_utf8(Arena *scratch, u8 *name, LPWIN32_FIND_DATAW find_data){
-    Temp_Memory temp = begin_temp_memory(scratch);
-    String_u16 name_16 = string_u16_from_string_u8(scratch, SCu8(name), StringFill_NullTerminate);
-    HANDLE result = FindFirstFileW((LPWSTR)name_16.str, find_data);
-    end_temp_memory(temp);
-    return(result);
+GetFinalPathNameByHandle_utf8(Arena *scratch, HANDLE file, u8 *file_path_out, DWORD path_max, DWORD flags)
+{
+ DWORD result = 0;
+ 
+ if (file_path_out == 0){
+  result = GetFinalPathNameByHandleW(file, 0, 0, flags);
+  result *= 2;
+ }
+ else{
+  Temp_Memory temp = begin_temp_memory(scratch);
+  
+  u32 path_16_max = KB(32);
+  u16 *path_16 = push_array(scratch, u16, path_16_max);
+  
+  DWORD length_16 = GetFinalPathNameByHandleW(file, (LPWSTR)path_16, path_16_max, flags);
+  
+  if (length_16 != 0 && length_16 < path_16_max){
+   b32 convert_error = false;
+   String_Const_u16 path_16_str = SCu16(path_16, length_16);
+   String_u8 path_8 = string_u8_from_string_u16(scratch, path_16_str, StringFill_NullTerminate);
+   if (path_8.size + 1 <= path_max && !convert_error){
+    block_copy(file_path_out, path_8.str, path_8.size + 1);
+    result = (DWORD)path_8.size;
+   }
+   else{
+    result = (DWORD)path_8.size + 1;
+   }
+  }
+  
+  end_temp_memory(temp);
+ }
+ 
+ return(result);
 }
 
 function DWORD

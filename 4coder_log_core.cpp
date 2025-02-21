@@ -59,7 +59,7 @@ log_string_spam(String string)
   {
    sarray(Log_Spam_Entry) spam_list = global_log.spam_list;
    for_i32(i, 0, spam_list.count)
-   {//NOTE(kv) Not gonna be many entries here.
+   {// NOTE(kv) Not gonna be many entries here.
     Log_Spam_Entry *test = spam_list.items + i;
     if(test->hash == hash)
     {

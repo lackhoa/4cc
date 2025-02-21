@@ -46,7 +46,7 @@ _F4_Index_LookupFile(App *app, u64 hash, Buffer_ID buffer)
             break;
         }
     }
-    return result;
+ return result;
 }
 
 function F4_Index_File *
@@ -54,7 +54,17 @@ F4_Index_LookupFile(App *app, Buffer_ID buffer)
 {
  return _F4_Index_LookupFile(app, _F4_Index_FileHash(app, buffer), buffer);
 }
-
+function b32
+is_library_file_path(App *app, String path)
+{
+ Scratch_Scope tmp;
+ String dir = path_dir(path);
+ dir = system_get_canonical(tmp, dir);
+ Models *models = app_get_models(app);
+ 
+ b32 result = string_contains(dir, models->library_dir);
+ return result;
+}
 function F4_Index_File *
 F4_Index_LookupOrMakeFile(App *app, Buffer_ID buffer)
 {
@@ -89,6 +99,7 @@ F4_Index_LookupOrMakeFile(App *app, Buffer_ID buffer)
   {
    String filepath = push_buffer_filepath(app, tmp, buffer);
    result->is_generated = is_generated_file_name(filepath);
+   result->is_library = is_library_file_path(app, filepath);
    result->hash_next = global_f4_index.file_table[slot];
    global_f4_index.file_table[slot] = result;
    result->buffer = buffer;
@@ -334,27 +345,27 @@ F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_
 function F4_Index_Note *
 F4_Index_MakeNote(F4_Index_ParseCtx *ctx, Range_i64 name_range, F4_Index_NoteKind note_kind, F4_Index_NoteFlags note_flags)
 {
-    F4_Index_Note *result = F4_Index_AllocateNote();
-    F4_Index_InsertNote(ctx, result, name_range, note_kind, note_flags);
-    return result;
+ F4_Index_Note *result = F4_Index_AllocateNote();
+ F4_Index_InsertNote(ctx, result, name_range, note_kind, note_flags);
+ return result;
 }
 
 function void
 _F4_Index_Parse(App *app, F4_Index_File *file, String8 string, Token_Array tokens, F4_Language *language)
 {
-    F4_Index_ParseCtx ctx =
-    {
-        .done=false,
-        .app=app,
-        .file=file,
-        .string=string,
-        .tokens=tokens,
-        .it=tkarr_at_pos(0, &ctx.tokens, 0),
-    };
-    if(language != 0)
-    {
-        language->IndexFile(&ctx);
-    }
+ F4_Index_ParseCtx ctx =
+ {
+  .done=false,
+  .app=app,
+  .file=file,
+  .string=string,
+  .tokens=tokens,
+  .it=tkarr_at_pos(0, &ctx.tokens, 0),
+ };
+ if(language != 0)
+ {
+  language->IndexFile(&ctx);
+ }
 }
 
 function void
@@ -508,7 +519,7 @@ F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String8 string)
         if (string_match(string, token_string))
         {
             result = 1;
-        }
+  }
  }
  else ctx->done = 1;
  
@@ -518,37 +529,36 @@ F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String8 string)
 function void
 F4_Index_ParseComment(F4_Index_ParseCtx *ctx, Token *token)
 {
- String8 token_string = F4_Index_StringFromToken(ctx, token);
- Range_i64 token_range = Ii64(token);
- 
- // NOTE(kv) Impose limit because we don't wanna parse commented-out code,
- i64 parse_limit = minimum(8, token_string.count);
- //i64 parse_limit = token_string.count;
- for_i64(index_in_token, 0, parse_limit)
+ if(not ctx->file->is_library)
  {
-  if(0){}
-  else if(token_string.str[index_in_token] == ';')
-  {//-identifier
-   Range_i64 ident_range_in_token = {index_in_token+1, range_size(token_range)};
-   for_i64(offset_in_token, ident_range_in_token.min, ident_range_in_token.max)
-   {
-    u8 chr = token_string.str[offset_in_token];
-    if(not character_is_alnum(chr))
+  String8 token_string = F4_Index_StringFromToken(ctx, token);
+  Range_i64 token_range = Ii64(token);
+  
+  for_i64(index_in_token, 0, (i64)token_string.count)
+  {
+   if(0);
+   else if(token_string.str[index_in_token] == ';')
+   {//-comment note
+    Range_i64 ident_range_in_token = {index_in_token+1, range_size(token_range)};
+    for_i64(offset_in_token, ident_range_in_token.min, ident_range_in_token.max)
     {
-     ident_range_in_token.max = offset_in_token;
-     break;
+     u8 chr = token_string.str[offset_in_token];
+     if(not character_is_alnum(chr))
+     {
+      ident_range_in_token.max = offset_in_token;
+      break;
+     }
+    }
+    
+    if(range_size(ident_range_in_token) > 0)
+    {
+     Range_i64 range_in_file = {
+      ident_range_in_token.min+token_range.min,
+      ident_range_in_token.max+token_range.min,
+     };
+     F4_Index_MakeNote(ctx, range_in_file, F4_Index_NoteKind_CommentIdentifier, 0);
     }
    }
-   
-   if(range_size(ident_range_in_token) > 0)
-   {
-    Range_i64 range_in_file = {
-     ident_range_in_token.min+token_range.min,
-     ident_range_in_token.max+token_range.min,
-    };
-    F4_Index_MakeNote(ctx, range_in_file, F4_Index_NoteKind_CommentIdentifier, 0);
-   }
-   break;
   }
  }
 }

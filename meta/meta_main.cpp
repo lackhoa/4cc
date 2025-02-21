@@ -8,15 +8,16 @@
 // NOTE(kv) not needed but whatevs
 #include "kv_math.h"
 
+#include "4coder_system_types.h"
 #include "meta_game_shared.h"
 #include "4coder_token.h"
 #include "lexer_cpp.gen.h"
 #include "4ed_base.h"
 #include "4ed_api_definition.h"
 #include "4coder_stringf.cpp"
-#include "4coder_malloc_allocator.cpp"
 #include "4coder_token.cpp"
 #include "lexer_cpp.gen.cpp"
+#include "lexer_skm.cpp"
 #include "4ed_kv_parser.h"
 #include "4ed_kv_parser.cpp"
 
@@ -37,6 +38,7 @@
 #include "meta_template.cpp"
 #include "meta_klang.cpp"
 #include "meta_entity.cpp"
+#include "meta_links.cpp"
 #include "meta_build.cpp"
 //-
 myinline b32
@@ -56,8 +58,8 @@ function void
 meta_process_ast(Statement_Root root, String source_path)
 {
  kv_assert(root.kind == Statement_Kind_Root);
- if(DEBUG_vv_name)
- {//-Vertex check
+ if(0)
+ {//-Vertex check (archived)
   Scratch_Block scratch;
   darray(String) existing_names;
   init_dynamic(existing_names, scratch, 200);
@@ -168,7 +170,7 @@ generate_4coder_custom()
  
  b32 ok = true;
  Scratch_Block scratch;
- Stringz code_dir = meta_dirs.code;
+ Stringz code_dir = meta.dirs.code;
  Stringz custom_data_path = pjoin(scratch, code_dir, strlit("custom_command_list.h"));
  Lexed_File source = lex_file(scratch, custom_data_path);
  
@@ -336,75 +338,67 @@ array_contains(sarray(String) array, String item)
  }
  return false;
 }
-
-typedef String Text_Link;
-typedef String Text_Note;
-
-struct Link_Processor_State
-{
- darray(Text_Link) links;
- darray(Text_Note) notes;
-};
-
 function void
-collect_all_links(Link_Processor_State *state, Lexed_File file)
+meta_delete_old_backups()
 {
- Ed_Parser parser_value = ed_parser_from_token_list(file.data, file.token_list);
- Ed_Parser *parser = &parser_value;
- while(parser->ok_)
+ Scratch_Scope tmp;
+ auto compare_oldest_first = [](void *a0, void *b0) -> i32
  {
-  Token *token = ep_get_token(parser);
-  if(token->kind == TokenBaseKind_Comment)
-  {
-   String token_string = ep_print_token(parser, token);
-   for(u8 *character = &token_string[0];
-       character < token_string.str + token_string.count;
-       )
-   {
-    u8 c0 = *character++;
-    if(c0 == '@')
-    {
-     u8 *link_begin = character;
-     while(character_is_alnum(*character)){ character++; }
-     u8 *link_end = character;
-     Text_Link new_link = {.str=link_begin, .count=u64(link_end-link_begin)};
-     push(&state->links, new_link);
-    }
-   }
+  i32 result = 0;
+  File_Info *a = (File_Info *)a0;
+  File_Info *b = (File_Info *)b0;
+  u64 atime = a->attributes.last_write_time;
+  u64 btime = b->attributes.last_write_time;
+  if(atime < btime)
+  {// NOTE a is older, meaning that it should come first
+   result = -1;
   }
-  ep_eat_inc_all(parser);
+  else if(atime > btime)
+  {
+   result = 1;
+  }
+  return result;
+ };
+ 
+ i32 const cleanup_threshold = 128;  // note threshold that triggers cleanup
+ i32 const cleanup_target = 256;  // note count after cleanup
+ 
+ File_List file_list = get_file_list(tmp, meta.dirs.backup);
+ if(file_list.count > cleanup_threshold)
+ {
+  i32 clean_count = i32(file_list.count) - cleanup_target;
+  myprintf("Cleaning up %d files\n", clean_count);
+  
+  gb_sort_array(file_list.infos, file_list.count, compare_oldest_first);
+  for_i32(i, 0, clean_count)
+  {
+   File_Info *file_info = file_list.infos[i];
+   Stringz path = pjoin(tmp, meta.dirs.backup, file_info->filename);
+   remove_file(path);
+  }
  }
 }
-xfunction i32
-main(i32 arg_count, char **argv)
-{
+function b32
+main_normal(String *args, i32 arg_count)
+{// NOTE(kv) Normal build, you know the kind where you press Alt-M and it does... things?
  f64 meta_start_time = gb_time_now();
- if(0)
- {// todo asan test!
-  char buffer[128];
-  stbsp_sprintf(buffer, "%s", "asan test!");
- }
  
- b32 ok = true;
+ b32 ok = 1;
  Arena *tmp = &thread_permanent_arena;
- tmp->default_chunk_size = MB(64);
- 
- // NOTE Convert args to our string
- String *args = push_array(tmp, String, arg_count);
- for_i32(i, 0, arg_count)
- {
-  args[i] = SCu8(argv[i]);
- }
- 
- b32 test_klang = false;
  String caller_file = {};
  for_i32(argi, 1, arg_count)
  {
   String arg = args[argi];
   if(arg == "--test-klang")
   {
-   test_klang = true;
+   meta.testing = true;
+   myprintf("[meta] IMPORTANT: Testing mode\n");
    break;
+  }
+  else if(arg == "--hotload-driver")
+  {
+   meta.hotload_driver = 1;
+   myprintf("[meta] IMPORTANT: Hotload driver\n");
   }
   else if(arg == "--file")
   {
@@ -416,20 +410,21 @@ main(i32 arg_count, char **argv)
   }
  }
  
- if(path_filename(caller_file) == strlit("driver.kc"))
- {
-  hotload_driver = true;
- }
- 
- meta_command_name = argv[0];
  Stringz code_dir;
  {//;meta_dirs_init
   Stringz home_dir = get_home_directory_ansi(tmp);
+  // @HardCodedPath
   code_dir = pjoin(tmp, home_dir, strlit("4ed"), strlit("code"));
-  meta_dirs.home = home_dir;
-  meta_dirs.code = code_dir;
-  meta_dirs.game = pjoin(tmp, code_dir, strlit("game"));
+  meta.dirs.home   = home_dir;
+  meta.dirs.code   = code_dir;
+  meta.dirs.game   = pjoin(tmp, code_dir, "game");
+  meta.dirs.backup = pjoin(tmp, code_dir, "backups");
+  
+  b32 ok2 = mkdir_p(meta.dirs.backup);
+  kv_assert(ok2);
  }
+ 
+ meta_delete_old_backups();
  
  sarray(Lexed_File) all_files = {};
  {//-IMPORTANT Lex ALL THE FILES
@@ -437,9 +432,10 @@ main(i32 arg_count, char **argv)
   init_dynamic(all_paths, tmp, 512);
   
   Stringz directories_whose_files_are_all_processed[] = {
-   meta_dirs.game,
-   pjoin(tmp, meta_dirs.code, "meta"),  // NOTE(kv) Nothing stops the metaprogram from having references
+   meta.dirs.game,
+   pjoin(tmp, meta.dirs.code, "meta"),  // NOTE(kv) Nothing stops the metaprogram using links.
   };
+  
   Stringz black_listed_paths[] = {
    pjoin(tmp, code_dir, strlit("libs")),
    pjoin(tmp, code_dir, strlit("ship_files")),
@@ -449,11 +445,11 @@ main(i32 arg_count, char **argv)
   {
    String extension = path_extension(path);
    b32 result = is_klang_file(path);
-   if(not hotload_driver)
+   if(not meta.hotload_driver)
    {
     result = result or (extension == "h" or
                         extension == "cpp" or
-                        extension == "4coder");
+                        extension == "skm");
    }
    return result;
   };
@@ -471,18 +467,28 @@ main(i32 arg_count, char **argv)
     arena_clear(tmp2);
     Stringz path = all_paths[i];
     String dirname = path_dir(path);
+    if(dirname.count > 0 and 
+       is_file_slash(dirname[dirname.count-1]))
+    {// #hack
+     dirname.count--;
+    }
     
-    b32 processed = false;
-    if(test_klang)
+    b32 processed = 0;
+    b32 is_test_file = path_filename(path) == "test.kc";
+    if(meta.testing)
     {
-     processed = path_filename(path) == "test.kc";
+     processed = is_test_file;
+    }
+    else if(is_test_file)
+    {
+     processed = 0;
     }
     else
     {
      processed = not is_cpp_file(path);
      processed = processed or
-      array_contains({ ArrayAndCount(directories_whose_files_are_all_processed) },
-                     dirname);
+     array_contains({ ArrayAndCount(directories_whose_files_are_all_processed) },
+                    dirname);
      
      if(not processed)
      {// NOTE Look for process marker
@@ -505,6 +511,9 @@ main(i32 arg_count, char **argv)
   }
   
   myprintf("Lexed file count: %d\n", all_paths.count);
+#if 0
+  for_i32(path_index, 0, all_paths.count){ myprintf("path: %S\n", all_paths[path_index]); }
+#endif
   
   {//-Lex
    init(all_files, tmp, all_paths.count);
@@ -519,29 +528,54 @@ main(i32 arg_count, char **argv)
   }
  }
  
- if(ok)
- {//-Processing links
+ if(ok and not meta.hotload_driver)
+ {//-;link_processor_call
   Scratch_Block links_tmp;
-  Link_Processor_State state_value = {};
-  Link_Processor_State *state = &state_value;
-  init_dynamic(state->links, links_tmp, 256);
+  sarray(Link_Table_Node *) table;
+  init(table, links_tmp, 4096);
   
   for_i32(file_index, 0, all_files.count)
   {
+   if(not ok) break;
    Lexed_File file = all_files[file_index];
-   collect_all_links(state, file);
+   ok = ok and collect_links_and_notes(links_tmp, table, file);
   }
   
-  /* bookmark collecting the links
-   for_i32(link_index, 0, state->links.count)
+  if(ok)
+  {
+   i32 broken_link_count = 0;
+   i32 total_link_count = 0;
+   myprintf("Broken links: \n");
+   for_i32(entry_index, 0, table.count)
+   {
+    for(Link_Table_Node *node = table[entry_index];
+        node;
+        node = node->next_in_hash)
     {
-     Text_Link link = state->links[link_index];
-     myprintf("link: %S\n", String(link));
-    }*/
+     if(not node->is_note)
+     {
+      broken_link_count++;
+      String filepath = node->example_location.filepath;
+      i64 position = node->example_location.position;
+      // @kv_jump_syntax
+      myprintf("[kv][%S][%lld] %S\n", filepath, position, node->value);
+     }
+     total_link_count++;
+    }
+   }
+   myprintf("\n");
+   
+   if(broken_link_count > 0)
+   {
+    myprintf("Broken link count: %d\n", broken_link_count);
+    myprintf("Total link/note count: %d\n", total_link_count);
+    ok = 0;
+   }
+  }
  }
  
  if(ok)
- {//-API parsing
+ {//-;api_parsing
   Scratch_Block api_tmp;
   char *api_paths0[] = {
    "4ed_api_implementation.cpp",
@@ -550,42 +584,24 @@ main(i32 arg_count, char **argv)
    "4coder_game_shared.h",
    "4ed_render_target.cpp",
    "ad_debug_interface.h",
+   "4ed_imgui_wrapper.cpp",
   };
   API_Definition_List list = {};
-  for_i1(i,0,alen(api_paths0))
+  for_i32(i,0,alen(api_paths0))
   {//-Build the API definition list
-   Stringz api_path = pjoin(api_tmp, code_dir, SCu8(api_paths0[i]));
+   String filename = SCu8(api_paths0[i]);
+   Stringz api_path = pjoin(api_tmp, code_dir, filename);
    Lexed_File file = lex_file(api_tmp, api_path);
+   kv_assert(file.data.count > 0);  // todo #hack
    api_parser_parse_file(api_tmp, file, &list);
   }
   //-Generate includes
   ok = ok and api_parser_generate(&list);
  }
  
- if(not ok)
- {
-  fprintf(stderr, "failed to list files\n");
- }
+ ok = ok and klang_main(all_files);
  
- if(0)
- {
-  if(not hotload_driver)
-  {
-   for_i32(file_index, 0, all_files.count)
-   {//-Template files
-    if(not ok){ break; }
-    
-    if(is_template_file(all_files[file_index].path))
-    {
-     ok = ok and xx_template_main(all_files[file_index]);
-    }
-   }
-  }
- }
- 
- ok = ok and klang_main(all_files, test_klang);
- 
- if(not hotload_driver)
+ if(not meta.hotload_driver)
  {//-System api
   Scratch_Block scratch_api;
   API_Definition *api = make_system_api(scratch_api);
@@ -593,7 +609,7 @@ main(i32 arg_count, char **argv)
                                        GeneratedGroup_Custom, APIGeneration_PrefixCallables);
  }
  
- if(not hotload_driver)
+ if(not meta.hotload_driver)
  {
   ok = ok and generate_4coder_custom();
  }
@@ -601,9 +617,89 @@ main(i32 arg_count, char **argv)
  myprintf("Total meta time: %f\n", gb_time_now() - meta_start_time);
  fflush(stdout);
  
- if(not test_klang)
+ if(not meta.testing)
  {
   ok = ok and build_main(arg_count, args);
+ }
+ 
+ return ok;
+}
+function b32
+filter_narration(Stringz input_path)
+{
+ Arena *tmp = &thread_permanent_arena;
+ 
+ // NOTE Parser
+ Lexed_File lexed_file = lex_file(tmp, input_path);
+ Ed_Parser parser_ = ed_parser_from_lexed_file(lexed_file);
+ Ed_Parser *parser = &parser_;
+ 
+ // NOTE Printer
+ Stringz output_path = pjoin(tmp, path_dir(input_path),
+                             strcat(tmp, "out_", path_filename(input_path)));
+ myprintf("Writing to file %S\n", output_path);
+ FILE *out_file = open_or_create_file(output_path, "wb");
+ kv_assert(out_file);
+ Printer printer = make_printer_file(out_file);
+ 
+ b32 parsing = 1;
+ i32 ignore_nest = 0;
+ while(parsing)
+ {
+  Token *token0 = ep_get_token(parser);
+  String token0_string = ep_print_token(parser, token0);
+  if(token0->kind == TokenBaseKind_EOF)
+  {
+   parsing = 0;
+  }
+  // NOTE(kv) We can't escape brackets, but probably won't matter.
+  else if(token0_string == '[')
+  {
+   if(ignore_nest > 0){ ignore_nest++; }
+  }
+  else if(token0_string == ']')
+  {
+   if(ignore_nest > 0){ ignore_nest--; }
+  }
+  else if(starts_with(token0_string, '@'))
+  {// NOTE(kv) All tags are eliminated.
+   // Also we have to put tags in separate tokens somehow, which works for now.
+   ignore_nest = 1;
+  }
+  else if(ignore_nest == 0)
+  {
+   print(printer, token0_string);
+  }
+  
+  if(parsing)
+  {
+   ep_eat_inc_all(parser);
+  }
+ }
+ 
+ kv_assert(not printer.error);
+ close_file(out_file);
+ return 1;
+}
+xfunction i32
+main(i32 arg_count, char **argv)
+{
+ Arena *tmp = &thread_permanent_arena;
+ tmp->default_chunk_size = MB(64);
+ 
+ Stringz *args = push_array(tmp, Stringz, arg_count);
+ meta_command_name = args[0];
+ for_i32(i, 0, arg_count){ args[i] = SCu8(argv[i]); }
+ 
+ b32 ok = 1;
+ if(arg_count == 3 and
+    args[1] == "filter_narration")
+ {
+  ok = filter_narration(args[2]);
+ }
+ else
+ {
+  ok = main_normal(args, arg_count);
  }
  
  //-

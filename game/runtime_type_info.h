@@ -17,13 +17,15 @@ struct I_Enum_Member{
  String name;
  i32    value;
 };
-enum I_Type_Kind{
+enum I_Type_Kind
+{
  I_Type_Kind_None = 0,
  I_Type_Kind_Basic,
  I_Type_Kind_Struct,
  I_Type_Kind_Union,
  I_Type_Kind_Enum,
  I_Type_Kind_Array,
+ I_Type_Kind_Wrapper,
 };
 
 #include "basic_types.gen.h"
@@ -38,22 +40,30 @@ struct Type_Info
  {
   Basic_Type Basic_Type;
   darray(I_Struct_Member) members;
-  struct{
+  struct
+  {// NOTE Union
    Type_Info *discriminator_type;
    darray(I_Union_Member) union_members;
   };
   darray(I_Enum_Member) enum_members;
   Type_Info *array_item_type;
+  struct
+  {// NOTE Wrapper type
+   String constructor;
+   Type_Info *wrapped_type;
+  };
  };
 };
 
-#define type_info_of(TYPE) &Type_Info_##TYPE
+#define type_info_of(TYPE)       &Type_Info_##TYPE
 
 myinline b32
 equal(Type_Info *a, Type_Info *b)
 {
  return a == b;
 }
+#define type_info_equals(T, C)         equal(T, type_info_of(C))
+
 myinline b32
 is_basic_type(Type_Info *type)
 {
@@ -90,7 +100,7 @@ get_member_index_by_name(type_info_of(TYPE), strlit(#MEMBER_NAME)))
 myinline Type_Info *
 type_info_from_basic_type(Basic_Type type)
 {
- return &basic_types_info[type];
+ return basic_types_info[type];
 }
 myinline usize
 get_basic_type_size(Basic_Type type)

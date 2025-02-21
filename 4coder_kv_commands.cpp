@@ -289,7 +289,7 @@ if_preprocessor_movement(App *app, Scan_Direction scan_direction)
  if(token_it.tokens)
  {
   Scratch_Block scratch(app);
-  Ed_Parser p_value = make_ep_from_buffer(app, buffer, token_it, 0, scan_direction);
+  Ed_Parser p_value = ed_parser_from_buffer(app, buffer, token_it, 0, scan_direction);
   Ed_Parser *p = &p_value;
   i1 nest_level = 0;
   if(!ep_maybe_preprocessor(p, str8lit("else")) &&
@@ -1052,7 +1052,8 @@ kv_open_note_file(App_Cmd *app)
 function void 
 switch_to_game_panel(App_Cmd *app)
 {
- set_buffer_named(app, GAME_BUFFER_NAMES[0]);
+ View_ID view = get_active_view(app, 0);
+ view_set_buffer(app, view, get_game_buffer(app, 1), 0);
 }
 
 function void 
@@ -1372,6 +1373,7 @@ quick_align_command(App_Cmd *app)
  }
 }
 
+#if 0
 function b32
 maybe_handle_fui(App_Cmd *app)
 {
@@ -1391,6 +1393,7 @@ maybe_handle_fui(App_Cmd *app)
  }
  return result;
 }
+#endif
 
 function void
 kv_handle_return_normal_mode(App_Cmd *app)
@@ -1398,26 +1401,17 @@ kv_handle_return_normal_mode(App_Cmd *app)
  View_ID   view   = get_active_view(app, Access_ReadVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
  if(buffer)
- {
-  // Writable buffer
-  if(maybe_handle_fui(app))
-  {
-   // pass
-  }
-  else
-  {
-   //NOTE(kv) Still not sure why "save_all_dirty_buffers" sometimes fails to save?
-   Scratch_Block scratch(app);
-   String filename = push_buffer_filepath(app, scratch, buffer);
-   buffer_save(app, buffer, filename, 0);
-   save_all_dirty_buffers(app);
-  }
+ {// NOTE(kv) Still not sure why "save_all_dirty_buffers" sometimes fails to save?
+  Scratch_Block scratch;
+  String filename = push_buffer_filepath(app, scratch, buffer);
+  buffer_save(app, buffer, filename, 0);
+  save_all_dirty_buffers(app);
  }
  else
  {
   buffer = view_get_buffer(app, view, Access_ReadVisible);
-  if (buffer) {
-   // Readonly buffer
+  if(buffer) 
+  {// NOTE Readonly buffer
    vim_push_jump(app, get_active_view(app, Access_ReadVisible));
    goto_jump_at_cursor(app);
    lock_jump_buffer(app, buffer);
@@ -1566,7 +1560,7 @@ move_parameter_left_or_right(App_Cmd* app, b32 move_rightp)
  if(nest.max)
  {
   Token_Iterator_Array token_it = get_token_it_at_pos(app, buffer, nest.min);
-  Ed_Parser parser = make_ep_from_buffer(app, buffer, token_it);
+  Ed_Parser parser = ed_parser_from_buffer(app, buffer, token_it);
   Ed_Parser *p = &parser;
   darray(Range_i64) list; init_dynamic(list, scratch);
   push_buffer_range(app, scratch, buffer, nest);

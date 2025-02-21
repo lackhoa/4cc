@@ -30,18 +30,11 @@ fui_get_slider_range(i32 index)
  return get_slider_range(slider);
 }
 //-
-function Type_Info *
-type_info_from_index(Type_Index type0)
-{
- Type_Info *result = (type0 < Basic_Type_Count
-                      ? type_info_from_basic_type((Basic_Type)type0)
-                      : type_info_of(FUI_Line_Params));
- return result;
-}
 myinline Type_Info *
 get_slider_type_info(Slider &slider)
 {
- return type_info_from_index(slider.type);
+ //return type_info_from_index(slider.type);
+ return slider.type;
 }
 function Type_Info *
 active_slider_member_type_info()
@@ -54,16 +47,25 @@ active_slider_member_type_info()
   I_Struct_Member &active_member = type_info->members[slider.active_member_index];
   result = active_member.type;
  }
- else if(is_basic_type(type_info))
+ else
  {
   result = type_info;
  }
- else{ InvalidCodePath; }
  
- kv_assert(is_basic_type(result));
  return result;
 }
-myinline Data_And_Size
+myinline Type_Info *
+strip_to_basic_type(Type_Info *input)
+{
+ Type_Info *result = input;
+ if(result->kind == I_Type_Kind_Wrapper)
+ {
+  result = input->wrapped_type;
+ }
+ kv_assert(result->kind == I_Type_Kind_Basic);
+ return result;
+}
+function Data_And_Size
 active_slider_data()
 {
  auto slider = fui_active_slider;
@@ -75,13 +77,11 @@ active_slider_data()
   result.data = (u8 *)slider.data->value + active_member.offset;
   result.size = active_member.type->size;
  }
- else if(is_basic_type(type_info))
+ else
  {
   result.data = (u8 *)slider.data->value;
   result.size = type_info->size;
  }
- else{ InvalidCodePath; }
- 
  return(result);
 }
 function b32
@@ -90,15 +90,15 @@ active_slider_is_discrete(v1 *out_float_increment)
  *out_float_increment = 0.f;
  Active_Slider slider = fui_active_slider;
  Type_Info *type = get_slider_type_info(*slider.data);
- if(equal(type, type_info_of(FUI_Line_Params)))
+ if(type_info_equals(type, FUI_Line_Params))
  {
   i32 member_index = slider.active_member_index;
-  if(member_index == get_member_index_by_name(type, strlit("radii")))
+  if(member_index == get_member_index_by_name(type, strcode(radii)))
   {
    *out_float_increment = 1.f / 6.f;
    return true;
   }
-  else if(member_index == get_member_index_by_name(type, strlit("lightness")))
+  else if(member_index == get_member_index_by_name(type, strcode(lightness)))
   {
    *out_float_increment = 1.f / 2.f;
    return true;
@@ -107,7 +107,7 @@ active_slider_is_discrete(v1 *out_float_increment)
  else
  {
   Type_Info *memtype = active_slider_member_type_info();
-  switch(memtype->Basic_Type)
+  switch(strip_to_basic_type(memtype)->Basic_Type)
   {
    case Basic_Type_i1:
    case Basic_Type_i2:
@@ -238,7 +238,13 @@ build_location_maps(Arena *arena)
       
       case Location_Type_Slider:
       {
-       candidate->range = sliders[candidate->index].location.range;
+       Slider &slider = sliders[candidate->index];
+       candidate->range = slider.location.range;
+       Type_Info *slider_type = get_slider_type_info(slider);
+       if(type_info_equals(slider_type, FUI_Line_Params))
+       {
+        breakhere;
+       }
       }break;
       
       InvalidDefaultCase;
@@ -317,7 +323,8 @@ get_min_touched_location(i32 file, Range_i64 range)
   else if(range.min >= tested.max)
   {// range_is_after_tested
    start = index + 1;
-   while(start < end and map[start].parent_location == index)
+   while(start < end and
+         (map[start].parent_location != 0))
    {
     start++;
    }
@@ -607,46 +614,54 @@ print_code(Printer &p, Type_Info *type, void *value, b32 wrapped)
    }
   }
  }
+ else if(type->kind == I_Type_Kind_Wrapper)
+ {
+  print(p, type->constructor);
+  PrintParens(p)
+  {
+   print_code(p, type->wrapped_type, value, 1);
+  }
+ }
  else { InvalidCodePath; }
 }
 function String
 fui_print_slider(Arena *arena, Slider &slider)
 {// NOTE(kv) Print the slider (value+option) as code, as pretty as we can.
  Printer printer = make_printer_buffer(arena, 128);
- String op = strlit("fval");
+ String op = strcode(fv);
  
- b32 is_vertex = slider.flags & Slider_Vertex;
- b32 is_vector = slider.flags & Slider_Vector;
  b32 wrapped = true;
  Type_Info *type = get_slider_type_info(slider);
  b32 is_line_params = type->name == Type_Info_FUI_Line_Params.name;
- if(is_vertex or is_vector)
- {
-  op = (is_vertex ? strlit("fvert") : strlit("fvec"));
-  wrapped = false;
- }
- else if(type->name == strlit("v2") and
+ if(0);
+ //
+ else if(type_info_equals(type, v2) and
          slider.flags == 0)
  {
-  op = strlit("fv2");
+  op = strcode(fv2);
   wrapped = false;
  }
  else if(is_line_params)
  {
-  op = strlit("flp");
+  op = strcode(flp);
   wrapped = false;
  }
- else if(type->name == "i1" and
-         (slider.flags & Slider_Clamp_01))
+ else if(type_info_equals(type, i1) and
+         (slider.flags == Slider_Clamp_01))
  {
-  op = strlit("fbool");
+  op = strcode(fbool);
  }
- 
  //-Actual printing
  print(printer, op);
  PrintParens(printer)
  {
   print_code(printer, type, slider.value, wrapped);
+  if(op == strcode(fv) and
+     slider.flags != 0)
+  {// NOTE(kv) Currently we don't use more slider attributes,
+   // so checking flags only is fine.
+   print_format(printer, ", %S", strlit("TODO CANNOT PRINT FLAGS YET"));
+  }
  }
  
  String result = printer_get_string(printer);
@@ -654,7 +669,7 @@ fui_print_slider(Arena *arena, Slider &slider)
 }
 function String
 fui_push_active_slider_value(Arena *arena)
-{// NOTE(kv) game_api.kt
+{// NOTE(kv) @game_api
  String result = {};
  if(fui_active_slider.data)
  {
@@ -671,59 +686,6 @@ function void
 game_send_command(Game_State *state, String command_name)
 {// @game_api
  game_send_command(state, {.name=command_name});
-}
-function b32
-fui_handle_enter(Game_State *state, App_Cmd *app)
-{// @game_api
- // NOTE(kv) So the editor calls this,
- // in response to a user pressing a slider (if it even is a slider).
- 
- // TODO(kv) The reason why this is a callback is because of my stupidity.
- // It should just be a normal thing that it done when the game updates.
- 
- View_ID view = get_active_view(app, Access_ReadVisible);
- Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
- b32 result = false;
- Scratch_Block tmp;
- 
- Slider *slider = get_hot_slider_under_cursor(app);
- if(slider)
- {//-Slider
-  result = true;
-  {//-slider is controlled over multiple frames
-   fui_save_value(slider);
-   fui_set_active_slider(slider);
-   b32 writeback = false;
-   for(;;)
-   {//-UI loop
-    // NOTE(kv) Hide the input from 4coder, and pass input to the game.
-    User_Input in = get_next_input(app, EventPropertyGroup_AnyKeyboardEvent, EventProperty_Escape);
-    if(in.abort)
-    {
-     break;
-    }
-    else if(in.event.kind == InputEventKind_KeyStroke and
-            in.event.key.code == Key_Code_Return)
-    {
-     writeback = true; 
-     break;
-    }
-   }
-   if(writeback)
-   {// NOTE save the results
-    String slider_string = fui_print_slider(tmp, *slider);
-    Range_i64 slider_range = get_slider_range(*slider);
-    buffer_replace_range(app, buffer, slider_range, slider_string);
-   }
-   else
-   {
-    fui_restore_value(slider);
-   }
-  }
-  
-  fui_set_active_slider(0);
- }
- return result;
 }
 
 function void
@@ -764,7 +726,7 @@ fui_draw_over_text_buffer(App *app, Buffer_ID buffer, Text_Layout_ID layout)
  [&](i64 pos) -> rect2
  {
   v1 highlight_thick = 2.0f;
-  Rect_f32 rect = text_layout_character_on_screen(app, layout, pos);
+  rect2 rect = text_layout_character_on_screen(app, layout, pos);
   v2 dim = V2(rect.x1 - rect.x0, highlight_thick);
   rect = Rf32_xy_wh(V2(rect.x0, rect.y1 - highlight_thick), dim);
   return rect;
@@ -772,21 +734,41 @@ fui_draw_over_text_buffer(App *app, Buffer_ID buffer, Text_Layout_ID layout)
  
  Range_i64 visible_range = text_layout_get_visible_range(app, layout);
  i32 file = get_file_index_by_buffer(app, buffer);
- ARGB_Color function_color = 0xFF587898;
+ ARGB_Color underline_color = 0x99587898;
+ ARGB_Color hot_color_ = underline_color | 0xFF000000;
+ Range_i64 hot_range = {};
+ {
+  Slider *slider = get_hot_slider_under_cursor(app);
+  if(slider)
+  {
+   hot_range = resolve_location(slider->location);
+  }
+ }
  for(Location_Iterator it = iterate_touched_locations(file, visible_range);
      it.entry;
      advance(&it))
  {
   Range_i64 highlight_range = it.entry_range;
-  
-  // NOTE(kv) gotta underline two characters, otherwise it's too to see.
-  rect2 rect = get_character_underline_rect(highlight_range.min);
-  rect.x1 += rect.x1 - rect.x0;
-  draw_rect(app, rect, 5.f, function_color, 0);
-  
-  rect = get_character_underline_rect(highlight_range.max-1);
-  rect.x0 -= rect.x1 - rect.x0;
-  draw_rect(app, rect, 5.f, function_color, 0);
+  b32 is_hot = (highlight_range.min == hot_range.min);
+  argb highlight_color = (is_hot ? hot_color_ : underline_color);
+  if(is_hot)
+  {
+   rect2 rect0 = text_layout_character_on_screen(app, layout, highlight_range.min);
+   rect2 rect1 = text_layout_character_on_screen(app, layout, highlight_range.max-1);
+   rect2 rect = rect_union(rect0, rect1);
+   draw_rect_outline(app, rect, 5.f, 2.f, highlight_color, 0);
+  }
+  else
+  {
+   // NOTE(kv) Gotta underline two characters, otherwise it's too hard to see.
+   rect2 rect = get_character_underline_rect(highlight_range.min);
+   rect.x1 += rect.x1 - rect.x0;
+   draw_rect(app, rect, 5.f, highlight_color, 0);
+   
+   rect = get_character_underline_rect(highlight_range.max-1);
+   rect.x0 -= rect.x1 - rect.x0;
+   draw_rect(app, rect, 5.f, highlight_color, 0);
+  }
  }
 }
 //~

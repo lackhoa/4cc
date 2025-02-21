@@ -1,5 +1,5 @@
 //-
-#define X_struct_member_v3(NAME, ...)   v3 NAME;
+#define XStructMemberTvert(NAME, ...)   tvert NAME;
 
 union Head
 {
@@ -10,11 +10,11 @@ X(head_neck_junction) \
 X(trapezius_head) \
 X(chin_middle) \
 //
- struct{ macro_head(X_struct_member_v3); };
- v3 verts[];
+ struct{ macro_head(XStructMemberTvert); };
+ tvert verts[];
 };
 //
-global_const i32 head_vert_count = sizeof(Head) / sizeof(v3);
+global_const i32 head_vert_count = sizeof(Head) / sizeof(tvert);
 
 union Pelvis
 {
@@ -22,11 +22,11 @@ union Pelvis
 X(navel) \
 X(bikini_up_back) \
 //
- struct { macro_pelvis(X_struct_member_v3) };
- v3 verts[];
+ struct { macro_pelvis(XStructMemberTvert) };
+ tvert verts[];
 };
 //
-global_const i32 pelvis_vert_count = sizeof(Pelvis) / sizeof(v3);
+global_const i32 pelvis_vert_count = sizeof(Pelvis) / sizeof(tvert);
 
 union Torso
 {
@@ -38,11 +38,11 @@ X(pectoral_torso) \
 X(latis_arm)     \
 X(scap_sock_bot) \
 //
- struct { macro_torso(X_struct_member_v3) };
- v3 verts[];
+ struct { macro_torso(XStructMemberTvert) };
+ tvert verts[];
 };
 //
-global_const i32 torso_vert_count = sizeof(Torso) / sizeof(v3);
+global_const i32 torso_vert_count = sizeof(Torso) / sizeof(tvert);
 
 union Arm
 {
@@ -59,11 +59,11 @@ X(brachialis_begin) \
 X(internal_condyle) \
 X(external_condyle) \
 //
- struct { macro_arm(X_struct_member_v3) };
- v3 verts[];
+ struct { macro_arm(XStructMemberTvert) };
+ tvert verts[];
 };
 //
-global_const i32 arm_vert_count = sizeof(Arm) / sizeof(v3);
+global_const i32 arm_vert_count = sizeof(Arm) / sizeof(tvert);
 
 union Forearm
 {
@@ -72,23 +72,24 @@ X(radius_bump) \
 X(middle_finger_meeter) \
 X(palm_in) \
 //
- struct { macro_forearm(X_struct_member_v3) };
- v3 verts[];
+ struct { macro_forearm(XStructMemberTvert) };
+ tvert verts[];
 };
 //
-global_const i32 forearm_vert_count = sizeof(Forearm) / sizeof(v3);
+global_const i32 forearm_vert_count = sizeof(Forearm) / sizeof(tvert);
 
-#undef X_struct_member_v3
+#undef XStructMemberTvert
 
 //-
 
 function void
-import_vertices(v3 *dst, mat4i &dstT, mat4i &srcT,
+import_vertices(tvert *dst, mat4i &dstT, mat4i &srcT,
                 i32 vert_count)
 {
- mat4 to_local = matmul(dstT.inverse, srcT.forward);
- for_i32(index,0,vert_count){
-  dst[index] = mat4vert(to_local, dst[index]);
+ mat4 to_local = dstT.inverse * srcT.forward;
+ for_i32(index,0,vert_count)
+ {
+  dst[index] = to_local * dst[index];
  }
 }
 //-

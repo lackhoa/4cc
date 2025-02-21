@@ -3,4 +3,5 @@ vc120.pdb
 .DS_Store
 *.dSYM
 data/backups/*
+backups/*
 dont_check_in/*

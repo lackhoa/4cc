@@ -1,8 +1,8 @@
 // ~/4ed/code/4coder_kv/config.4coder
 // ~/4ed/code/4coder_kv/4coder_kv_commands.cpp
 
-// TODO(kv): remember this file is processed by the meta-generator.
-//           particularly the command metadata is required for the code to compile (and it's depressing).
+#define ED_PARSER_BUFFER 1
+#include "4ed_kv_parser.cpp"
 #include "4coder_custom_include.cpp"
 
 #include "4coder_kv_debug.cpp"
@@ -12,11 +12,7 @@ global darray(char) kv_quail_keystroke_buffer;  // TODO(kv) Why is this thing ev
 
 #include "4coder_vim/4coder_vim_include.h"
 
-#define ED_PARSER_BUFFER 1
-#include "4ed_kv_parser.cpp"
-
 #include "4coder_game.cpp"
-#include "4ed_fui.cpp"
 #include "4coder_kv_input.cpp"
 #include "4coder_kv_commands.cpp"
 #include "4coder_kv_hooks.cpp"
@@ -135,7 +131,7 @@ kv_default_bindings(Mapping *mapping) {
  ParentMap(file_id);
 }
 
-inline Buffer_ID 
+function Buffer_ID 
 create_special_buffer(App *app, String name, Buffer_Create_Flag create_flags, Buffer_Setting_ID buffer_flags)
 {
  Buffer_ID buffer = create_buffer(app, name, create_flags);
@@ -315,9 +311,22 @@ kv_startup(App_Cmd *app)
  {// NOTE(kv): Create special buffers.
   Buffer_Create_Flag create_flags = BufferCreate_NeverAttachToFile|BufferCreate_AlwaysNew;
   create_special_buffer(app, compilation_buffer_name, create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
-  for_i32 (index,0,GAME_BUFFER_COUNT)
+  String GAME_BUFFER_NAMES[GAME_BUFFER_COUNT] = {
+   strlit("*game*"),
+   strlit("*game2*"),
+   strlit("*game3*"),
+  };
+  Models *models = app_get_models(app);
+  for_i32(index,0,GAME_BUFFER_COUNT)
   {
-   create_special_buffer(app, GAME_BUFFER_NAMES[index], create_flags, (Buffer_Setting_ID)(BufferSetting_Unimportant|BufferSetting_ReadOnly));
+   Buffer_Setting_ID setting = (BufferSetting_Unimportant |
+                                BufferSetting_ReadOnly    |
+                                BufferSetting_IsGame);
+   Buffer_ID buffer = create_special_buffer(app, GAME_BUFFER_NAMES[index], create_flags, setting);
+   models->game_buffers[index] = buffer;
+   Editing_File *file = imp_get_file(models, buffer);
+   file->game_viewport_id = index+1;
+   breakhere;
   }
  }
  
@@ -331,7 +340,6 @@ kv_startup(App_Cmd *app)
  }
 #endif
 }
-
 
 // ;binding
 function void 
@@ -445,7 +453,7 @@ kv_vim_bindings(App *app)
  BIND(N|0, kv_jump_ultimate,                   Key_Code_F);
  BIND(N|0, kv_jump_ultimate_other_panel,     M|Key_Code_F);
  BIND(0|V, vim_set_seek_char,                  Key_Code_F);
- BIND(N|V, vim_half_page_up,                   Key_Code_LeftBracket);
+ BIND(N|0, vim_half_page_up,                   Key_Code_LeftBracket);
  BIND(N|0, vim_half_page_down,                 Key_Code_RightBracket);
  //BIND(N|V, vim_screen_top,                  (S|Key_Code_H));
  //BIND(N|V, vim_screen_bot,                  (S|Key_Code_L));
@@ -463,7 +471,7 @@ kv_vim_bindings(App *app)
  BIND(N, vim_prev_jump,                     (C|Key_Code_O));
  BIND(N, vim_next_jump,                     (C|Key_Code_I));
  
- /// Screen Adjust Binds
+ // Screen Adjust Binds
  BIND(N|V, vim_half_page_up,                 (C|Key_Code_B));
  BIND(N|V, vim_half_page_down,               (C|Key_Code_F));
  BIND(N,   cmd_expand_snippet,                  (C|Key_Code_E));
@@ -471,7 +479,7 @@ kv_vim_bindings(App *app)
  BIND(N|V, vim_scroll_screen_mid,         SUB_Z,   Key_Code_Z);
  BIND(N|V, vim_scroll_screen_bot,         SUB_Z,   Key_Code_B);
  
- /// Miscellaneous Binds
+ // Miscellaneous Binds
  BIND(N|V, vim_set_mark,                         Key_Code_M);
  BIND(N|0, vim_goto_mark,                        Key_Code_Quote);
  BIND(N|V, vim_toggle_macro,                   S|Key_Code_Q);
@@ -509,8 +517,7 @@ kv_vim_bindings(App *app)
  BIND(V,   kv_surround_paren,                 Key_Code_0);
  BIND(V,   kv_surround_paren_spaced,          Key_Code_9);
  BIND(V,   cmd_closing_bracket_in_visual_mode,Key_Code_RightBracket);
- //BIND(V,   kv_surround_brace_spaced,        M|Key_Code_LeftBracket);
- BIND(V,   kv_surround_brace,               M|Key_Code_RightBracket);
+ BIND(V,   kv_surround_brace,                 Key_Code_LeftBracket);
  BIND(V,   kv_surround_double_quote,          Key_Code_Quote);
  BIND(N|V,     kv_surround_brace_special,       M|Key_Code_LeftBracket)
  BIND(N,   kv_delete_surrounding_groupers,  M|Key_Code_RightBracket);
@@ -663,14 +670,5 @@ custom_layer_init(App *app)
 #elif USE_LAYER_default
  default_custom_layer_init(app);
 #endif
- 
- /* Scratch_Block scratch;
-  for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
-       buffer != 0;
-       buffer = get_buffer_next(app, buffer, Access_Always))
-  {
-   String buffer_name = push_buffer_base_name(app, scratch, buffer);
-   breakhere;
-  }*/
 }
 //-

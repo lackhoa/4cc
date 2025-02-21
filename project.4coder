@@ -17,10 +17,10 @@ patterns = {
  "*.kc",
  "*.kt",
  "*.bt",
+ "*.skm",
 };
 blacklist_patterns = {
  ".*",
- "*.skm",
  "kv_trash*",
  "*4coder_command_metadata.i",
 };

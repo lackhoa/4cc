@@ -308,8 +308,8 @@ absolute(v3 v){
  for_i32(index,0,3){ v[index] = absolute(v[index]); };
  return v;
 }
-myinline v3 V3(v2 xy)       { return v3{.xy=xy}; }
-myinline v3 V3(v2 xy, v1 z) { return v3{.xy=xy, .xy_z=z}; }
+myinline v3 V3(v2 xy)       { v3 result = {}; result.xy = xy; return result; }
+myinline v3 V3(v2 xy, v1 z) { v3 result = {}; result.xy = xy; result.z = z; return result; }
 myinline v3 yzx(v3 v) { return v3{v.y, v.z, v.x}; }
 myinline v3 zxy(v3 v) { return v3{v.z, v.x, v.y}; }
 inline v3 min(v3 a, v3 b){ return v3{min(a.x,b.x),min(a.y,b.y),min(a.z,b.z),}; }
@@ -433,8 +433,9 @@ cross(v3 v, v3 u)
 }
 
 
-// todo: pick better name for this thing?
-inline v1
+// NOTE(kv) I'm really failing to pick a good name for this thing.
+// It's not determinant, it's not wedge product. I guess this is the best name we've got!
+myinline v1
 cross2d(v2 u, v2 v)
 {
  return u.x*v.y - u.y*v.x;
@@ -633,18 +634,16 @@ operator+=(v3 &v, v3 u)
  v = u + v;
 }
 
-inline v2 &
+myinline void
 operator+=(v2 &v, v2 u)
 {
  v = u + v;
- return v;
 }
 
-inline v4 &
+myinline void
 operator+=(v4 &v, v4 u)
 {
  v = u + v;
- return v;
 }
 
 inline v3
@@ -803,9 +802,6 @@ getBarycentricCoordinate(rect3 rect, v3 pos)
 
 typedef i32 i1;
 
-// ;i2 ;i3
-
-
 myinline v2
 V2(i2 v)
 {
@@ -843,13 +839,13 @@ union mat4
 {
  v4 rows[4];
  v1 e[4][4];
- v1* operator[](i32 i);
+ myinline v1* operator[](i32 i){ return e[i]; }
 };
 struct mat4i
 {
  union { mat4 forward; mat4 m; };
  union { mat4 inverse; mat4 inv; };
- myinline operator mat4&() { return forward; }  // @ClangSafe
+ myinline operator mat4&() { return forward; }  // #ClangSafe
 };
 
 myinline v1
@@ -859,9 +855,9 @@ get_xscale(mat4 const&mat)
 }
 
 global mat3 mat3_identity = {{
-  1,0,0,
-  0,1,0,
-  0,0,1,
+  {1,0,0,},
+  {0,1,0,},
+  {0,0,1,},
  }};
 
 global mat4 mat4_identity = {{
@@ -884,11 +880,6 @@ almost_equal(mat4 const&a, mat4 const&b)
  return true;
 }
 
-myinline v1 *
-mat4::operator[](i32 i)
-{
- return e[i];
-}
 
 function f32
 abs_f32(f32 x)
@@ -1253,14 +1244,14 @@ operator*(mat3 const&A, mat3 const&B)
 
 // NOTE: Everyone should get fired, for writing compilers that do stupid things.
 function v4
-matvmul(mat4 const &matrix, v4 v)
+matvmul(mat4 const &A, v4 v)
 {
  v4 result = {};
  for_i32(r,0,4)
  {
   for_i32(i,0,4)
   {
-   result.v[r] += matrix.e[r][i] * v.v[i];
+   result.v[r] += A.e[r][i] * v.v[i];
   }
  }
  return result;
@@ -1328,12 +1319,14 @@ mat4vert(mat4 const&M, v3 *v)
 {
  *v = mat4vert(M, *v);
 }
+#if 0
 // IMPORTANT IMPORTANT IMPORTANT: I am a bad person! But there's no way around it!
 myinline v3
 operator*(mat4 const&A, v3 v)
 {
  return mat4vert(A,v);
 }
+#endif
 
 myinline v3
 mat4vec(mat4 const&A, v3 v)
@@ -1462,9 +1455,9 @@ myinline mat3
 mat3_scale(v1 s)
 {
  mat3 result = {{
-   s,0,0,
-   0,s,0,
-   0,0,s,
+   {s,0,0,},
+   {0,s,0,},
+   {0,0,s,},
   }};
  return result;
 }
@@ -1679,11 +1672,11 @@ myinline v3 V3x(v1 x) { v3 result = {}; result.x=x; return result; }
 myinline v3 V3y(v1 y) { v3 result = {}; result.y=y; return result;  }
 myinline v3 V3z(v1 z) { v3 result = {}; result.z=z; return result; }
 myinline v3 setx(v3 v, v1 x) { v.x=x; return v; }
-myinline v3 sety(v3 v, v1 y) { v.y=y; return v; }
-myinline v3 setz(v3 v, v1 z) { v.z=z; return v; }
-myinline v3 addx(v3 v, v1 x) { v.x+=x; return v; }
-myinline v3 addy(v3 v, v1 y) { v.y+=y; return v; }
-myinline v3 addz(v3 v, v1 z) { v.z+=z; return v; }
+template<class T> myinline T sety(T v, v1 y){ v.y=y; return v; }
+template<class T> myinline T setz(T v, v1 z){ v.z=z; return v; }
+template<class T> myinline T addx(T v, v1 x){ v.x+=x; return v; }
+template<class T> myinline T addy(T v, v1 y) { v.y+=y; return v; }
+template<class T> myinline T addz(T v, v1 z) { v.z+=z; return v; }
 myinline v3 zeroX(v3 value) { value.x=0; return value; };
 
 myinline v1 i2f6 (i32 integer) { return v1(integer) / 6.f; }
@@ -1735,25 +1728,25 @@ signof(v3 v)
 
 
 function mat4i
-mat4i_rotate_tpr(v1 theta, v1 phi, v1 roll, v3 pivot={})
+mat4i_rotate_tpr(v1 phi, v1 theta, v1 roll, v3 pivot={})
 {// NOTE: Roll around z, then rotate around x, then rotate around y
  // NOTE Weird, in the inverse, we want to the roll_inv *last*
  // and so we endup doing the roll *first* in the forward direction.
  
- phi  *= -1.f;  // NOTE: But the rotation axes are "mirrored" since we want camera control to be intuitive
+ theta  *= -1.f;  // NOTE: But the rotation axes are "mirrored" since we want camera control to be intuitive
  roll *= -1.f;
  
  mat4i result;
  {
-  v1 ct = cosine(theta);
-  v1 st = sine  (theta);
   v1 cp = cosine(phi);
   v1 sp = sine  (phi);
+  v1 ct = cosine(theta);
+  v1 st = sine  (theta);
   //NOTE: we're just doing a matmul by ourselves here, for reasons.
   result.inverse = {{
-    ct,     0,   -st,    0,
-    sp*st,  cp,   ct*sp, 0,
-    cp*st, -sp,   cp*ct, 0,
+    cp,     0,   -sp,    0,
+    st*sp,  ct,   cp*st, 0,
+    ct*sp, -st,   ct*cp, 0,
     0,      0,    0,     1,}};
  }
  
@@ -1764,10 +1757,11 @@ mat4i_rotate_tpr(v1 theta, v1 phi, v1 roll, v3 pivot={})
  return result;
 }
 
-inline v3
-tpr_point(v1 theta, v1 phi)
+function v3
+tpr_point(v1 phi, v1 theta)
 {
- return mat4i_rotate_tpr(theta,phi,0,V3()) * V3(0,0,1);
+ return mat4vert(mat4i_rotate_tpr(phi, theta, 0, v3{}),
+                 V3(0,0,1));
 }
 
 global_const mat4 mat4_negateX = {{
@@ -1782,19 +1776,22 @@ negateX(v3 vert){
  return V3(-vert.x, vert.y, vert.z);
 }
 //NOTE(kv) I think this is like multiple by a negateX matrix on the right.
-inline mat4
-negateX(mat4 mat){
+function mat4
+negateX(mat4 mat)
+{
  for_i32(row,0,4) { mat.e[row][0] *= -1.f; }
  return mat;
 }
-inline mat4i
-negateX(mat4i mat){
+function mat4i
+negateX(mat4i mat)
+{
  for_i32(row,0,4){ mat.forward.e[row][0] *= -1.f; }
  for_i32(col,0,4){ mat.inverse.e[0][col] *= -1.f; }
  return mat;
 }
 function mat4
-remove_translation(mat4 result){
+remove_translation(mat4 result)
+{
  result[0][3] = 0.f;
  result[1][3] = 0.f;
  result[2][3] = 0.f;

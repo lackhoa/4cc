@@ -1,6 +1,8 @@
 //-
-// NOTE(kv) The only way to build your code, is with more code
+// NOTE(kv) The only way to build your code is with more code.
 //-
+Build_Shared build_shared;
+
 function b32
 is_c_or_cpp_file(String path)
 {
@@ -151,7 +153,9 @@ run_compiler(Compiler compiler, Build_Params params)
    //note not optimized
    push(&cmd, strlit("-Od"));
    //NOTE(kv) Force inline so debugging will be easier.
-   if(not params.no_force_inline){
+   if(not build_shared.no_force_inline and
+      not params.no_force_inline)
+   {
     push(&cmd, strlit("-Ob1"));
    }
   }
@@ -284,9 +288,9 @@ build_editor(Thread_Info info, void *arg)
 {
  Scratch_Block tmp;
  b32 ok = true;
- Build_Shared s = *(Build_Shared *)arg;
- Meta_Directories dirs = meta_dirs;
- Stringz FCODER_ROOT = pjoin(tmp, meta_dirs.home, strlit("4ed"));
+ Build_Shared s = build_shared;
+ Meta_Directories dirs = meta.dirs;
+ Stringz FCODER_ROOT = pjoin(tmp, meta.dirs.home, strlit("4ed"));
  Stringz NON_SOURCE = pjoin(tmp, FCODER_ROOT, strlit("4coder-non-source"));
  
  String binary_stem = s.release_editor ? strlit("4ed_stable") : strlit("4ed");
@@ -348,8 +352,8 @@ build_framework(Thread_Info info, void *arg)
 {
  Scratch_Block tmp;
  b32 ok = true;
- Meta_Directories dirs = meta_dirs;
- Build_Shared s = *(Build_Shared *)arg;
+ Meta_Directories dirs = meta.dirs;
+ Build_Shared s = build_shared;
  
  Build_Params params = build_parameters();
  
@@ -405,14 +409,15 @@ build_main(i32 arg_count, String *args)
  
  if(0)
  {//-Thread test
-  for_i32(i, 0, 16){
+  for_i32(i, 0, 16)
+  {
    i32 *arg = push_value(tmp, i);
    push_work(&queue, print_number_function, arg);
   }
  }
  
- Meta_Directories dirs = meta_dirs;
- Build_Shared s = {};
+ Meta_Directories dirs = meta.dirs;
+ Build_Shared &s = build_shared;
  b32 do_build_editor = false;
  b32 do_build_game   = false;
  
@@ -420,10 +425,12 @@ build_main(i32 arg_count, String *args)
  {//-Script arguments
   String arg = args[argi];
   if(0);
-  else if(arg == "--release")      { s.release_editor  = true; }
-  else if(arg == "--build-editor") { do_build_editor   = true; }
-  else if(arg == "--build-game")   { do_build_game     = true; }
-  else if(arg == "--asan-on")      { s.asan_on         = true; }
+  else if(arg == "--build_driver") { s.build_driver = 1; }
+  else if(arg == "--release")      { s.release_editor  = 1; }
+  else if(arg == "--build-editor") { do_build_editor   = 1; }
+  else if(arg == "--build-game")   { do_build_game     = 1; }
+  else if(arg == "--asan-on")      { s.asan_on         = 1; }
+  else if(arg == "--no-force-inline"){ s.no_force_inline = 1; }
  }
  
  if(s.release_editor){ do_build_editor = true; }
@@ -431,7 +438,7 @@ build_main(i32 arg_count, String *args)
  // NOTE Disable hotload to track bugs
  //s.hotload_driver = false;
  
- if(hotload_driver)
+ if(meta.hotload_driver)
  {
   do_build_game = true;
   do_build_editor = false;
@@ -501,7 +508,7 @@ build_main(i32 arg_count, String *args)
  
  if(do_build_editor)
  {
-  push_work(&queue, build_editor, &s);
+  push_work(&queue, build_editor, 0);
  }
  
  if(do_build_game)
@@ -509,11 +516,12 @@ build_main(i32 arg_count, String *args)
   b32 DEV_BUILD = true;
   Stringz GAME_DIR = dirs.game;
   
-  if(not hotload_driver)
+  if(not meta.hotload_driver)
   {// NOTE Framework
-   push_work(&queue, build_framework, &s);
+   push_work(&queue, build_framework, 0);
   }
   
+  if(s.build_driver)
   {//-Driver
    Build_Params common = build_parameters();
    {// NOTE Common build params
@@ -524,7 +532,7 @@ build_main(i32 arg_count, String *args)
    
    Stringz precompiled_header = strlit("driver_precompiled.h");
    
-   if(not hotload_driver)
+   if(not meta.hotload_driver)
    {//-Precompiled header
     Build_Params params = common;
     params.compile_only = true;
@@ -541,15 +549,15 @@ build_main(i32 arg_count, String *args)
     Build_Params params = common;
     String DRIVER_MAIN = pjoin(tmp, GAME_DIR, strlit("driver_main.cpp"));
     add_input_file(params, DRIVER_MAIN);
-    //push(params.compiler_args, strlit("-GF"));//NOTE(kv) String deduplication, but we don't need it!
+    //push(params.compiler_args, strlit("-GF"));  //NOTE(kv) String deduplication, but we don't need it!
     
-    if(hotload_driver){
+    if(meta.hotload_driver){
      add_input_file(params, strlit("driver_precompiled.obj"));
      add_input_file(params, strcat(tmp, strlit("-Yu"), precompiled_header));
     }
     
     params.output = strlit("driver.dll");
-    if(hotload_driver)
+    if(meta.hotload_driver)
     {// NOTE(kv) We don't actually know that inlining is faster or not.
      params.no_force_inline = true;
      params.no_debug_info   = true;

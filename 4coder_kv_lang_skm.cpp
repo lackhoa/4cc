@@ -1,6 +1,5 @@
-
-#include "lexer_skm.gen.h"
-#include "lexer_skm.gen.cpp"
+//
+#include "lexer_skm.cpp"
 #include "4coder_fleury/4coder_fleury_index.cpp"
 #include "4coder_fleury/4coder_fleury_lang.cpp"
 
