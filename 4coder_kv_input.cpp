@@ -297,7 +297,7 @@ kv_view_input_handler(App *app0)
     }
     else
     {
-     handled = game->is_event_handled_by_game(ed_game_state_pointer, app, &input.event, is_game_buffer, is_game_rendering());
+     handled = game->is_event_handled_by_game(ed_game_state_pointer, app, &input.event, is_game_buffer);
     }
     
     if(handled)

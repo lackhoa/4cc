@@ -21,4 +21,5 @@ struct Serialized_State
  // NOTE(kv) Tbh we don't have to care about more than 3 viewports.
  Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];
 };
+
 //-

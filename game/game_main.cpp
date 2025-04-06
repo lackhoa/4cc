@@ -23,6 +23,8 @@
 #include "framework.gen.h"
 #include "ad_serialize.h"
 #include "game_fui.h"
+#include "game_fui_data.gen.h"
+#include "game_fui_data.gen.cpp"
 #include "framework_fui.h"
 
 #include "framework_draw.cpp"
@@ -36,20 +38,19 @@
 #include "ed_api.gen.cpp"
 
 #include "game_commands.cpp"
-
 #include "game_anime.cpp"
 
 #include "ad_serialize.cpp"
 #include "meta_all.gen.cpp"
-#include "notebook.cpp"
+
+#include "notebook_main.cpp"
+#include "game_config.gen.cpp"
 
 //#include "test_image.cpp"
 /*
-  IMPORTANT Rule for the renderer
-  1. Colors are in linear space (todo precision loss if passed as u32)
- */
-
-global b32 driver_enabled = 1;
+IMPORTANT Rule for the renderer
+1. Colors are in linear space (todo precision loss if passed as u32)
+*/
 
 #define X(N) function wrap_function(N);
 // Note: Forward declare
@@ -62,8 +63,8 @@ memory_functions_xlist(X);
 #undef X
 
 // NOTE(kv) temporary
-#define fv(value, ...) value
-#define fbool fv
+/*#define fv(value, ...) value
+#define fbool fv*/
 
 function b32
 just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0)
@@ -562,8 +563,8 @@ convert_primitives_to_camera_space(Camera &camera)
  }
 }
 function void
-game_render(Game_State *state, App *app, Render_Target *target,
-            i32 viewport_id, Mouse_State mouse, rect2 clip_box)
+call_driver_render(Game_State *state, App *app, Render_Target *target,
+                   i32 viewport_id, Mouse_State mouse, rect2 clip_box)
 {
  Driver_API *driver = &state->driver_api;
  if(is_valid(driver))
@@ -640,9 +641,9 @@ game_render(Game_State *state, App *app, Render_Target *target,
    for_i32(vi, 0, the_model->vertices.count)
    {// NOTE(kv) Having to loop through vertices here because
     // there are vertices that weren't submitted while rendering.
-    Vertex &vertex = the_model->vertices.items[vi];
-    Vertex_Info &info = driver_data.vertices_info.items[vertex.info_index];
-    argb color = argb_yellow;
+    Vertex &vertex = the_model->vertices[vi];
+    Vertex_Info &info = driver_data.vertices_info[vertex.info_index];
+    argb color = linear_argb_yellow;
     v3 pos = vertex.pos;
     {//TODO(kv) I'm NOT happy with overlays, I'd rather just have depth offset.
      b32 draw_all_near_cursor = false;
@@ -698,7 +699,7 @@ game_render(Game_State *state, App *app, Render_Target *target,
                  radius*(points[i].x*camera.x +
                          points[i].y*camera.y));
    }
-   poly3_inner(mk_poly3(points), repeat3(argb_blue), {Poly_Overlay});
+   poly3_inner(mk_poly3(points), repeat3(linear_argb_blue), {Poly_Overlay});
   }
   
   if(state->is_dev_editor)
@@ -755,6 +756,13 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
  }
  return state;
 }
+
+global Type_Info_Pointers type_info_pointers = {
+#define X(T)   .T = type_info_of(T),
+ TypeInfoPointerList(X)
+#undef X
+};
+
 function void
 game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, b32 first_time)
 {
@@ -785,6 +793,9 @@ game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_
   ImGui::SetCurrentContext(imgui.ctx);
   ImGui::SetAllocatorFunctions(imgui.alloc_func, imgui.free_func, imgui.user_data);
  }
+ 
+ init_sliders(type_info_pointers);
+ build_location_maps(dll_arena, 0);
 }
 function void
 game_shutdown(Game_State *state)
@@ -1018,11 +1029,11 @@ snap_camera(Camera_Data *cam, Viewport *viewport)
 }
 function void
 do_work_after_loading_driver(Game_State *state, Driver_API *driver)
-{// NOTE(kv) This system is so annoyingly complicated,
- // with assumption about stuff being sorted...
- driver_data = driver->data;
+{
+ driver_data = *driver->data;
+ 
  arena_clear(&state->driver_arena);
- build_location_maps(&state->driver_arena);
+ build_location_maps(&state->driver_arena, 1);
  fui_set_active_slider(0);
 }
 function b32
@@ -1039,12 +1050,7 @@ load_latest_driver_code(Game_State *state, App *app, Driver_API *driver,
   framework_api.valid = true;
   kv_assert(tweaks);
   framework_api.tweaks = tweaks;
-  framework_api.types = Type_Info_Pointers
-  {
-#define X(T)      .T = type_info_of(T),
-   TypeInfoPointerList(X)
-#undef X
-  };
+  framework_api.types = type_info_pointers;
  }
  
  b32 ok = true;
@@ -1141,7 +1147,7 @@ show_image_preview(Image_Info &image)
   ImVec2 image_pos = ImGui::GetCursorScreenPos();
   b32 has_marker = image.marker.type != 0;
   ImVec4 tint = has_marker ? ImVec4(1,1,0,0.5f) : ImVec4(1,1,1,1);
-  ImGui::Image(user_texture_id, im_image_size, ImVec2(0,1), ImVec2(1,0), tint);
+  ImGui::ImageWithBg(user_texture_id, im_image_size, ImVec2(0,1), ImVec2(1,0), V4(), tint);
   
   if(has_marker)
   {
@@ -1245,7 +1251,7 @@ find_primitive_closest_to_keyboard_cursor(Game_State *state)
    if(l < min_lensq)
    {
     min_lensq = l;
-    Vertex_Info &info = driver_data.vertices_info.items[vertex.info_index];
+    Vertex_Info &info = driver_data.vertices_info[vertex.info_index];
     hot_location = info.location;
    }
   }
@@ -1349,6 +1355,8 @@ find_primitive_closest_to_keyboard_cursor(Game_State *state)
 function Game_Update_Return
 game_update(Game_Update_Params params)
 {// @game_api, see also @maybe_update_game
+ Scratch_Block tmp;
+ update_game_config();
  Game_State *state = params.state;
  App *app = params.app;
  b32 should_animate_next_frame = false;
@@ -1357,23 +1365,71 @@ game_update(Game_Update_Params params)
  darray(String) game_commands = {};
  init_dynamic(game_commands, &state->frame_arena);
  
+ Game_Input input_value = {};
+ (Game_Input_0 &) input_value = params.input;
+ Game_Input *input = &input_value;
+ v1 dt = params.frame.animation_dt;
+ v1 literal_dt = params.frame.literal_dt;
+ 
+ {
+  state->looping_time += dt;
+  if(state->looping_time >= 1000.0f){ state->looping_time -= 1000.0f; }
+ }
+ 
+ {//-Compute key direction
+  compute_direction_helper(input, Key_Code_L, 0, +1);
+  compute_direction_helper(input, Key_Code_H, 0, -1);
+  compute_direction_helper(input, Key_Code_K, 1, +1);
+  compute_direction_helper(input, Key_Code_J, 1, -1);
+  compute_direction_helper(input, Key_Code_O, 2, +1);
+  compute_direction_helper(input, Key_Code_I, 2, -1);
+  compute_direction_helper(input, Key_Code_Period, 3, +1);
+  compute_direction_helper(input, Key_Code_Comma,  3, -1);
+ }
+ v4 input_dir = input->direction.dir;
+ 
+ // NOTE(kv) Cheesy single keyboard event per-frame,
+ // since we're not a fighting game, it'd probably work ok anyway.
+ // but it's very dumb because we already had events.
+ darray(Key_Code) key_strokes;
+ init_dynamic(key_strokes, tmp);
+ for_i32(code, 1, Key_Code_COUNT)
+ {
+  if(input->key_states[code] &&
+     input->key_state_changes[code] > 0)
+  {
+   push(&key_strokes, (Key_Code)code);
+  }
+ }
+ 
  Driver_API *driver = &state->driver_api;
  if(driver_enabled)
  {
   b32 loaded;
   load_latest_driver_code(state, app, driver, &loaded);
  }
- 
- if(driver_enabled and is_valid(driver))
+ b32 driver_on = driver_enabled and is_valid(driver);
+ //if(driver_on)
  {
-  Scratch_Block tmp;
-  
-  driver->driver_update_tweaks();
+  if(driver_on)
+  {
+   driver->driver_update_tweaks();
+   
+   if(params.game_was_turned_on_this_frame)
+   {
+    View_ID view = get_active_view(app, Access_Always);
+    if(is_view_to_the_right(app, view))
+    {// NOTE: switch to the left
+     view = get_other_primary_view(app, view, Access_Always, true);
+    }
+    view_set_buffer(app, view, get_game_buffer(app, 1), 0);
+   }
+  }
   
   b32 cursor_on = state->kb_cursor.on;
   i32 active_viewport_id = get_active_game_viewport_id(app);
-  b32 game_active = active_viewport_id != 0;
-  if(game_active or fui_is_active())
+  b32 in_viewport = driver_on and active_viewport_id != 0;
+  if(in_viewport or fui_is_active())
   {
    should_animate_next_frame = true;
   }
@@ -1392,16 +1448,6 @@ game_update(Game_Update_Params params)
   {
    v3 camera_world_pos = get_world_pos(update_target_camera);
    DEBUG_VALUE(camera_world_pos);
-  }
-  
-  Game_Input input_value = {};
-  (Game_Input_0 &) input_value = params.input;
-  Game_Input *input = &input_value;
-  v1 dt = params.frame.animation_dt;
-  v1 literal_dt = params.frame.literal_dt;
-  {
-   state->looping_time += dt;
-   if(state->looping_time >= 1000.0f){ state->looping_time -= 1000.0f; }
   }
   
   // TODO(kv) Should we have like a "state diff"?
@@ -1426,7 +1472,7 @@ game_update(Game_Update_Params params)
   }
   
   Location hot_location = {};
-  if(cursor_on and game_active)
+  if(cursor_on and in_viewport)
   {
    hot_location = find_primitive_closest_to_keyboard_cursor(state);
   }
@@ -1434,40 +1480,47 @@ game_update(Game_Update_Params params)
   {//-Work based on editor cursor position
    View_ID view = get_active_view(app, Access_Always);
    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-   String active_buffer_name = push_buffer_base_name(app, tmp, buffer);
-   
-   if(active_buffer_name == DRIVER_FILE_NAME)  // TODO
+   FUI_File file = get_fui_file_by_buffer(app, buffer);
    {//;do_stuff_based_on_cursor_position
-    i32 file_index = 1;
     i64 curpos = view_get_cursor_pos(app, view);
-    Location_Map &map = location_maps[file_index];
-    for(Location_Iterator it = iterate_touched_locations(file_index, {curpos, curpos+1});
+    Location_Map map = get_location_map(file);
+    for(Location_Iterator it = iterate_touched_locations(file, {curpos, curpos+1});
         it.entry;
         advance(&it))
     {
      Location_Map_Entry entry = *it.entry;
+     b32 maybe_make_it_hot = 0;
      switch(entry.type)
      {
       case Location_Type_Vertex:
-      case Location_Type_Drawn:
       {//-Maybe make it hot
-       if(not is_valid(hot_location))
-       {
-        hot_location = {file_index, entry.range};
-       }
+       maybe_make_it_hot = 1;
       }break;
       
       case Location_Type_Text_Object:
       {//-images preview
-       Text_Object &object = driver_data.text_objects[entry.index];
+       Text_Object &object = get_fui_file(file).text_objects[entry.index_in_file];
        switch(object.kind)
        {
+        case Text_Object_Drawn:
+        {
+         maybe_make_it_hot = 1;
+        }break;
+        
         case Text_Object_Image:
         {
          show_image_preview(object.image);
         }break;
        }
       }break;
+     }
+     
+     if(maybe_make_it_hot)
+     {
+      if(not is_valid(hot_location))
+      {
+       hot_location = {file, entry.range};
+      }
      }
     }
    }
@@ -1531,6 +1584,7 @@ game_update(Game_Update_Params params)
     queue.count = 0;
    }
    
+   if(driver_on)
    {//-Fill command lister
     darray(String) &cmds = game_commands;
     cmds.count = 0;
@@ -1543,33 +1597,7 @@ game_update(Game_Update_Params params)
    }
   }
   
-  {//-Compute key direction
-   compute_direction_helper(input, Key_Code_L, 0, +1);
-   compute_direction_helper(input, Key_Code_H, 0, -1);
-   compute_direction_helper(input, Key_Code_K, 1, +1);
-   compute_direction_helper(input, Key_Code_J, 1, -1);
-   compute_direction_helper(input, Key_Code_O, 2, +1);
-   compute_direction_helper(input, Key_Code_I, 2, -1);
-   compute_direction_helper(input, Key_Code_Period, 3, +1);
-   compute_direction_helper(input, Key_Code_Comma,  3, -1);
-  }
-  v4 input_dir = input->direction.dir;
-  
-  // NOTE(kv) Cheesy single keyboard event per-frame,
-  // since we're not a fighting game, it'd probably work ok anyway.
-  // but it's very dumb because we already had events.
-  darray(Key_Code) key_strokes;
-  init_dynamic(key_strokes, tmp);
-  for_i32(code, 1, Key_Code_COUNT)
-  {
-   if(input->key_states[code] &&
-      input->key_state_changes[code] > 0)
-   {
-    push(&key_strokes, (Key_Code)code);
-   }
-  }
-  
-  if(key_strokes.count and game_active)
+  if(key_strokes.count and in_viewport)
   {
    seconds_since_last_keystroke_2 = 0;
   }
@@ -1584,7 +1612,7 @@ game_update(Game_Update_Params params)
    const u32 S = Key_Mod_Sft;
    const u32 C = Key_Mod_Ctl;
    const u32 M = Key_Mod_Alt;
-   if(game_active)
+   if(in_viewport)
    {
     if(mods==Key_Mod_Ctl and is_v3_key(keycode))
     {
@@ -1754,9 +1782,9 @@ game_update(Game_Update_Params params)
        fui_save_value(slider);
        fui_set_active_slider(slider);
       }
-      else
+      else if(driver_on)
       {//-Button?
-       i32 file = get_file_index_by_buffer(app, buffer);
+       FUI_File file = get_fui_file_by_buffer(app, buffer);
        i64 curpos = view_get_cursor_pos(app, view);
        for(Location_Iterator it = iterate_touched_locations(file, { curpos, curpos+1 });
            it.entry;
@@ -1764,13 +1792,15 @@ game_update(Game_Update_Params params)
        {
         if(it.entry->type == Location_Type_Text_Object)
         {
-         Text_Object &object = driver_data.text_objects[it.entry->index];
+         Text_Object &object = get_fui_file(file).text_objects[it.entry->index_in_file];
          if(object.kind == Text_Object_Preset)
          {
           Viewport &main_viewport = state->viewports[0];
           main_viewport.reference_preset = object.preset;
+          
           Reference_Preset_Data preset_data =
           driver->driver_get_reference_preset_data(object.preset);
+          
           // NOTE(kv) We update the camera *once*, but still let it fly afterwards.
           update_target_camera_data->theta = preset_data.camera_theta2;
           update_target_camera_data->phi   = preset_data.camera_phi2;
@@ -1848,7 +1878,7 @@ game_update(Game_Update_Params params)
    }
   }
   
-  if(game_active and cursor_on)
+  if(in_viewport and cursor_on)
   {//-NOTE(kv) update cursor
    Camera &cam = update_target_camera;
    Camera_Data *cam_data = update_target_camera_data;
@@ -1904,32 +1934,6 @@ game_update(Game_Update_Params params)
    }
   }
   //~
-  {//-driver update
-   {//;clear_model
-    auto m = the_model;
-    i32 vertex_cap = maximum(256, m->vertices.count);
-    i32 entity_cap = maximum(256, m->primitives.count);
-    
-    zero_struct(m);
-    Arena *frame_arena = &state->model_frame_arena;
-    arena_clear(frame_arena);
-    //-
-    m->frame_arena = frame_arena;
-    
-    init_dynamic(m->bones, frame_arena, 128);
-    Bone null_bone = {.world_from_bone=mat4i_identity};
-    push(&m->bones, null_bone);
-    init_dynamic(m->bone_stack, frame_arena, 16);
-    push(&m->bone_stack, m->bones.items+0);
-    
-    init_dynamic(m->vertices, frame_arena, vertex_cap);
-    init_dynamic(m->primitives, frame_arena, entity_cap);
-   }
-   
-   v1 anim_time = state->looping_time;
-   game_update_result.anim_time = anim_time;
-   driver->driver_update(the_model, anim_time);
-  }
   
   if(params.debug_camera_on)
   {
@@ -1994,9 +1998,39 @@ game_update(Game_Update_Params params)
    }
    im_end();
   }
+ }
+ 
+ if(driver_on)
+ {
+  {//-driver update
+   {//;clear_model
+    auto m = the_model;
+    i32 vertex_cap = maximum(256, m->vertices.count);
+    i32 entity_cap = maximum(256, m->primitives.count);
+    
+    zero_struct(m);
+    Arena *frame_arena = &state->model_frame_arena;
+    arena_clear(frame_arena);
+    //-
+    m->frame_arena = frame_arena;
+    
+    init_dynamic(m->bones, frame_arena, 128);
+    Bone null_bone = {.world_from_bone=mat4i_identity};
+    push(&m->bones, null_bone);
+    init_dynamic(m->bone_stack, frame_arena, 16);
+    push(&m->bone_stack, m->bones.items+0);
+    
+    init_dynamic(m->vertices, frame_arena, vertex_cap);
+    init_dynamic(m->primitives, frame_arena, entity_cap);
+   }
+   
+   v1 anim_time = state->looping_time;
+   game_update_result.anim_time = anim_time;
+   driver->driver_update(the_model, anim_time);
+  }
   
   for_i32(index, 0, params.live_viewports.count)
-  {
+  {//-Rendering
    Live_Viewport live_viewport = params.live_viewports[index];
    {//-Animate viewport
     i32 viewport_index = get_viewport_index(live_viewport.viewport);
@@ -2014,19 +2048,16 @@ game_update(Game_Update_Params params)
     
     Render_Config *old_config = target_last_config(live_viewport.target);
     draw_set_clip(app, clip_box);
-    game_render(state, app, live_viewport.target, live_viewport.viewport, params.mouse, clip_box);
+    call_driver_render(state, app, live_viewport.target, live_viewport.viewport, params.mouse, clip_box);
     {
      Render_Config *config = draw_new_group(live_viewport.target);
      *config = *old_config; 
     }
    }
   }
-  //-Driver is valid
  }
  
  notebook_update(0);
- 
- //if(ImGui::Button("image test")) { do_image_test(); }
  
  return{
   .should_animate_next_frame = should_animate_next_frame,

@@ -249,7 +249,7 @@ app_init(Thread_Context *tctx, Models *models, String current_directory)
   Scratch_Block scratch;
   
   String8 binary_path = system_get_path(scratch, SystemPath_BinaryDirectory);
-  String8 full_path = push_stringf(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
+  Stringz full_path = push_stringf(arena, "%.*sfonts/liberation-mono.ttf", string_expand(binary_path));
   
   Face_Description description = {};
   description.font.filename = full_path;

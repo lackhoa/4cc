@@ -34,7 +34,7 @@ poly3_inner(Poly3 points,
  
  if(current_location_is_hot())
  {
-  for_i32(i, 0, 3){ colors[i] = hot_color; }
+  for_i32(i,0,3){ colors[i] = hot_color; }
   is_overlay = true;
  }
  

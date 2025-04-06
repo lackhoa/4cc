@@ -215,8 +215,6 @@ vim_lister_render(App *app, Frame_Info frame_info, View_ID view)
  if (lister == 0) { return; }
  
  rect2 clip = global_get_screen_rectangle(app);
- /*rect2 clip      = hax_get_main_monitor_rectangle(app);
- rect2 prev_clip = draw_set_clip(app, clip);*/
  
  Face_ID face_id = get_face_id(app, 0);
  Face_Metrics metrics = get_face_metrics(app, face_id);

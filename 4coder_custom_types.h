@@ -15,6 +15,12 @@ struct App_Cmd : App
 {
  b32 automated;
 };
+struct Models;
+myinline Models *
+app_get_models(App *app)
+{
+ return (Models *)app->cmd_context;
+}
 myinline App_Cmd
 app_cmd(App *app, b32 automated)
 {
@@ -134,6 +140,12 @@ union Range_Cursor{
   Buffer_Cursor first;
   Buffer_Cursor one_past_last;
  };
+};
+
+api(custom)
+typedef u32 Set_Buffer_Flag;
+enum{
+ SetBuffer_KeepOriginalGUI = 0x1
 };
 
 #if !AD_IS_GAME
@@ -365,11 +377,6 @@ enum{
     CLI_SendEndSignal       = 0x8,
 };
 
-api(custom)
-typedef u32 Set_Buffer_Flag;
-enum{
-    SetBuffer_KeepOriginalGUI = 0x1
-};
 
 api(custom)
 typedef i32 Mouse_Cursor_Show_Type;

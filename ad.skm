@@ -281,50 +281,128 @@
  [What is an affine map?
   An affine map is a map that preserves barycentric combinations.
   Meaning that if {x = w1 a1 +...+ wn an} and {w1+...+wn = 1}, then
-  {Phi(x) = w1 Phi(a1) +...+ wn Phi(an)}]
+  { Phi(x) = w1 Phi(a1) +...+ wn Phi(an) }]
+ ]
+
+[;affine_map_vector Affine maps works on vectors
+ So let's say map {Phi} is defined on points
+ Define map on vectors to be { (Phi_vector): Phi(vec(a)) = Phi(a) - Phi(O) },
+ where {O} is the domain origin.
  
- [[Affine maps from {R^3} to itself] of the form
-  { Phi(x) = A x + v } are affine maps
-  Proof: suppose that { sum(w__i = 1) }
+ [{L1}
+  The ratio of the triple {[O : O + c vec(a) : O + vec(a)]}
+  has the same ratio as {[Phi(O) : Phi(O + c vec(a)) : Phi(a)]}
+  and since { O + c vec(a) = (1-c)O + c(a) }
+  So { Phi(O + c vec(a)) = (1-c) Phi(O) + c Phi(a) }
+  ]
+ 
+ [{scalar_mult_works}: Can we prove that { Phi(c vec(a)) = c Phi(vec(a)) }?
+  let's expand it out
+  { c Phi(vec(a)) = c (Phi(a) - Phi(O)) }
   {
-   // starting from Phi of an affine combination
-   Phi(sum(w__i x__i))
-   = (A sum(w__i x__i)) + v
-   // A is linear
-   = sum(w__i A x__i) + v
-   // Moving "v" into the sum is possible
-   = sum(w__i A x__i) + sum(w__i) v
-   = sum(w__i A x__i + w__i v)
-   = sum(w__i (A x__i + v))
-   = sum(w__i Phi(x__i))
-   // ending with an affine combination of Phi's
+   Phi(c vec(a))
+   = Phi(O + c vec(a)) - Phi(O)
+   using (L1)
+   = (1-c) Phi(O) + c Phi(a) - Phi(O)
+   = c (Phi(a) - Phi(O))
+  }
+  #qed
+  ]
+ 
+ [{vector_add_works} We can prove that
+  { Phi(vec(a) + vec(b)) = Phi(vec(a)) + Phi(vec(b)) }
+  [{L2}: Since { O + vec(a)+vec(b) = (0.5 (O + 2 vec(a)) +
+                                      0.5 (O + 2 vec(b))) },
+   we have {
+    Phi(O + vec(a)+vec(b))
+    = (0.5 Phi(O + 2 vec(a)) +
+       0.5 Phi(O + 2 vec(b)))
+   }
+   ]
+  {
+   Phi(vec(a) + vec(b))
+   = Phi(O + vec(a) + vec(b)) - Phi(O)
+   using (L2)
+   = 0.5(Phi(O + 2 vec(a)) + Phi(O + 2 vec(b))) - Phi(O)
+   = 0.5(Phi(O + 2 vec(a)) - Phi(O) +
+         Phi(O + 2 vec(b)) - Phi(O))
+   using (Phi_vector)
+   = 0.5 (Phi(2 vec(a)) + Phi(2 vec(b)))
+   using (scalar_mult_works)
+   = Phi(vec(a)) + Phi(vec(b))  // #qed
+  }
+  ]
+ 
+ [;fact_336 #done Can we prove that { Phi(t + vec(v)) = Phi(t) + Phi(vec(v)) } ?
+  Like everything else, it's harder than you'd think
+  
+  {(L337):
+   Phi(O) + Phi(vec(t))
+   using (Phi_vector)
+   = Phi(O) + (Phi(t) - Phi(O))
+   = Phi(t)
   }
   
-  [bookmark todo How would we prove the inverse of this statement?
-   Prompt for the chatbot
-   
-   In the book "Curves and Surfaces for CAGD", section 2.2, it says this
-   Let us now be more specific. In a given coordinate system, a point x is represented by a coordinate triple, which we also denote by x. An affine map now takes on the familiar form
-   { Phi(x) = Ax + v }
-   where {A} is a 3x3 matrix and {v} is a vector from {R^3}
-   
-   But there is no proof for this statement, where can I find the proof?
-   The inverse of that statement is proven right after, but the statement isn't proven.
-   Which leads me to believe that either it is too hard to include there, or it's obvious and I missed it somehow?
-   
-   
-   ]
+  {
+   Phi(t) + Phi(vec(v))
+   = Phi(O) + Phi(vec(t)) + Phi(vec(v))
+  }
+  
+  {
+   Phi(t + vec(v))
+   = Phi(O + vec(t) + vec(v))
+   using (L337)
+   = Phi(O) + Phi(vec(t) + vec(v))
+   using (vector_add_works)
+   = Phi(O) + Phi(vec(t)) + Phi(vec(v))
+  }
+  ]
+ ]
+
+[;affine_map_R3 [Affine maps from {R^3} to itself] of the form
+ { Phi(x) = A x + v } are affine maps
+ Proof: suppose that { sum(w__i = 1) }
+ {
+  // starting from Phi of an affine combination
+  Phi(sum(w__i x__i))
+  = (A sum(w__i x__i)) + v
+  // A is linear
+  = sum(w__i A x__i) + v
+  // Moving "v" into the sum is possible
+  = sum(w__i A x__i) + sum(w__i) v
+  = sum(w__i A x__i + w__i v)
+  = sum(w__i (A x__i + v))
+  = sum(w__i Phi(x__i))
+  // ending with an affine combination of Phi's
+ }
+ 
+ [We also have the converse
+  If {Phi : R^3 -> R^3} is an affine map,
+  prove that { Phi(x) = A x + Phi(O) },
+  where {O} is the origin
+  
+  We have
+  {
+   Phi(c vec(x))
+   = Phi((1-c) vec(O) + c vec(x))
+   // Thanks to property of the affine maps
+   = (1-c) Phi(vec(O)) + c Phi(vec(x))
+   = (1-c)v + c Phi(vec(x))
+  }
+  
+  [Ok, back to proving that affine maps have the form {A x + v},
+   Yeah, @affine_map_vector shows that affine maps are linear maps on vectors (that's the {A} part),
+   then for points, {v = Phi(O)}, so #qed]
   ]
  ]
 
 [;lerp_3_1
  Claim: linear interpolation is an affine map of the real line into a straight line in {E^3}
  
- 
  If we want to claim that the linear interpolation between {a,b} above is an affine map,
  what would we need to prove?
- Suppose that {t = w1 t1 +...+ wn tn; w1+...+wn= 1}, then we need to show that
- {lerp(a,t,b) = w1 lerp(a,t1,b) +...+ wn lerp(a,tn,b)}
+ Suppose that {t = sum(w t); sum(w) = 1}, then we need to show that
+ { lerp(a,t,b) = w1 lerp(a,t1,b) +...+ wn lerp(a,tn,b) }
  It can be proven by simple algebraic manipulation
  
  [We can show this ;lerp_t_thm
@@ -373,26 +451,33 @@
    }
    Remember from @lerp_3_1 that {lerp} is an affine map, so yeah, that tracks]]
  
- [Blossoming with permutation
-  [How do you really know that permutation works?
-   ie {b[t] == b[permute(t)]}]
+ [;blossom_with_permutation
+  How do you really know that permutation works?
+  ie {b[t] == b[permute(t)]}
   [Let's solve that with an example,
    suppose we have a cubic de Casteljau blossom {b[r,s,t]}
    We can mutate it like so
-   {b[r,s,t]
-    = lerp(lerp(lerp(b0,r,b1),s,lerp(b1,r,b2)),
+   {
+    b[r,s,t]
+    = lerp(b[0,r,s], t,
+           b[1,r,s])
+    // NOTE You can then permute r,s, using recursion.
+    //      We won't do that here.
+    = lerp(lerp(b[0,0,r], s, b[0,1,r]),
            t,
-           lerp(lerp(b1,r,b2),s,lerp(b2,r,b3)))
-    = lerp(lerp(b01[r], s, b11[r]),
-           t,
-           lerp(b11[r], s, b21[r]))
+           lerp(b[0,1,r], s, b[1,1,r]))
     // NOTE Invoking @Menelaos_theorem
-    = lerp(lerp(b01[r], t, b11[r]),
+    = lerp(lerp(b[0,0,r], t, b[0,1,r]),
            s,
-           lerp(b11[r], t, b21[r]))
-    = lerp(b02[r,t], s, b12[r,t])
+           lerp(b[0,1,r], t, b[1,1,r]))
+    = lerp(b[0,r,t], s, b[1,r,t])
     = b[r,t,s]
    }
+   
+   [NOTE {b[0,r,s]} really means blossoming on the first 3 items
+    so {b[0,r,s] = [b__0, b__1, b__2][r,s]}.
+    Similarly {b[1,r,s]} means blossoming on the last 3 items.
+    So that's how we can invoke induction]
    ]
   ]
  
@@ -463,102 +548,9 @@
    = b[u,u,u] // #qed
   }
   ]
-]
-
-[;binomial_coefficients
- {binom(n,i) = n C i = ?}
- Ground rule: normal cases are {0 <= i <= n}
- We know {n C 1 = n}
- Well what about 2 {n C 2 = (n C 1)(n-1 C 1) / 2 = n(n-1) / 2}
- Finally we have 3 {n C 3 = n(n-1)(n-2) / 3!}
- 
- Also we have this "theoretical" way of writing it:
- {n C k = n! / ((n-k)! k!)}
- 
- [;Pascals_rule
-  It allows you to "decompose" by {n}
-  {(n C k) + (n C k+1) = n+1 C k+1}
-  or, if you wanna break down a larger choice
-  {n C k = (n-1 C k-1) + (n-1 C k)}
-  [#done How to remember why that's true?
-   [Choosing {k=3} items out of {n=6} items out of the list
-    {a b c d e f}
-    Can be broken down into a sum of these two:
-    1. The groups of 3 with {a} in them: there are {5 C 2} of them: {b c}, {b d} {e f}, etc.
-    2. The groups of 3 without {a} in them: there are {5 C 3} of them {b c d}, {b d e}, etc.
-    ]
-   [NOTE It's still not at all easy to remember, but at least that's an interpretation]
-   ]
-  [#done Proof
-   {(n C k) + (n C k+1)
-    = (n! / ((n-k)!    k!) +
-       n! / ((n-k-1)! (k+1)!))
-    = (n! (k+1) / ((n-k)! (k+1)!) +
-       n! (n-k) / ((n-k)! (k+1)!))
-    = (n+1)! / (((n+1)-(k+1))! (k+1)!)
-    = n+1 C k+1
-   }]
-  ]
- 
- [#done Wait, how do we get {n C 0 = 1}?
-  So if we follow @Pascals_rule, then
-  {n C 1 = (n-1 C 0) + (n-1 C 1)
-   -> n  = (n-1 C 0) + (n-1)
-   -> n-1 C 0 = 1
-  }]
- 
- [#done What about {n C -1 = 0}?
-  {n C 0 = (n-1 C -1) + (n-1 C 0)
-   -> 1 = (n-1 C -1) + 1
-   -> (n-1 C -1) = 0
-  }]
- 
- [What about {n C n+1 = 0}?
-  {(n C n) + (n C n+1) = n+1 C n+1
-   -> 1 + (n C n+1) = 1
-   -> (n C n+1) = 0  // #qed
-  }]
- 
- [NOTE People don't realize,
-  but there are a bunch of zeros outside of the Pascal triangle;
-  |NOTE (You can add to the top, see the Mathematica page)
-  | 0 0 1 0
-  |0 0 1 1 0
-  | 0 1 2 1 0
-  |0 1 3 3 1 0
-  ]
- 
- [;binomial_shift
-  We can decrement both {n} and {i} like this
-  { binom(n,i) = n/i binom(n-1, i-1) }
-  [Proof
-   {
-    i binom(n,i)
-    = i n! / ((n-i)! i!)
-    = n (n-1)! / (((n-1)-(i-1))! (i-1)!)
-    = n binom(n-1, i-1)
-   }
-   ]
-  ]
  ]
 
-[;binomial_theorem
- {(a+b)^n = (n C 0) a^0 b^n + (n-1 C 1) a^1 b^(n-1) +...+ (n C n) a^n b^0}
- 
- This can be proven by an informal argument:
- In general, {a^i} appears {n C i} times in the expansion, because
- {(a+b)^n = (a+b)(a+b)^(n-1)
-  = a(a+b)^(n-1) + b(a+b)^(n-1)}
- 
- {a^(i-1)} appears {n-1 C i-1} times in {(a+b)^(n-1)},
- and {a^i} appears {n-1 C i} times in {(a+b)^(n-1)}
- so in total, {a^i} appears {(n-1 C i-1) + (n-1 C i) = n C i} times
- 
- And the entire expansion is just a collection of these, so #qed.
- ]
-
-[;Bernstein_polynomial
- A bernstein polynomial is given by
+[A bernstein polynomial is given by
  {n B i = (n C i) (1-t)^(n-i) t^i}
  
  [;bernstein_lerp They have this highly relevant property
@@ -621,11 +613,11 @@
  {
   b[(alpha r + beta s) times n]
   = sum(i in [0,n],
-        (n C i) alpha^i beta^(n-i) b[r times i, s times n-i])
+        binom(n,i) alpha^i beta^(n-i) b[r times i, s times n-i])
  }
  [NOTE This is basically @bezier_subdivision]
  
- Suppose {n=3}
+ Example: suppose {n=3}
  {
   b[(alpha r + beta s) times 3] =
   (1 alpha^0 beta^3 b[s,s,s] +
@@ -655,7 +647,7 @@
   {
    b[(alpha r + beta s) times n+1]
    = b[alpha r + beta s][(alpha r + beta s) times n]
-   // Inductive hypothesis
+   // Induction hypothesis
    = sum(i in [0,n],
          (n C i) alpha^i beta^(n-i) b[alpha r + beta s, r times i, s times n-i])
    // Using @blossom_multiaffine
@@ -693,7 +685,7 @@
  Of course, you're just doing the deCasteljau process on the slice {b[i:r+1]}
  ]
 
-[Proof that {lerp} and {unlerp} on the same interval are inverse 
+[Proof that {lerp} and {unlerp} on the same interval are inverses
  { f(u) = unlerp(a,u,b) = (u-a)/(b-a) }
  { x(u) = lerp(a,u,b)   = (1-u)a + u b }
  
@@ -720,16 +712,12 @@
  If we reverse the order of the control points,
  obtaining { c = reverse(b) } what happens? 
  
- [NOTE Lemma: { B__i^n(1-t) == B__(n-i)^n(t) }]
- We can prove { b(t) = c(1-t) }
- {
-  c(1-t)
-  = sum(i in [0,n],  B__i^n(1-t) c__i)
-  = sum(i in [0,n],  B__(n-i)^n(t) c__(n-i))
-  [Set j := n-i]
-  = sum(j in [0,n],  B__j^n(t) c__j)
-  = b(t)
- }
+ We can prove { (eq_5_11): b(t) = c(1-t) }
+ 
+ [#done It follows directly from this Lemma:
+  { B__i^n(1-t) == B__(n-i)^n(t) }
+  because { B__i^n = binom(n,i) t^i (1-t)^(n-i) }
+  ]
  ]
 
 [Invariance under barycentric combination
@@ -811,62 +799,554 @@
   ]
  ]
 
-[todo So we know that lerp is an affine map, so we could apply it to a vector,
+[So we know that lerp is an affine map, so we could apply it to a vector,
  and the result would be... a vector.
+ See @affine_map_R3 for reason why you can do this
  We can compute it as follows
  {
-  l(t) = lerp(a,t,b)
-  l(vec(v)) = l(v) - l(0) = l(v) - a
+  l(t)      = lerp(a,t,b)
+  l(vec(v)) = l(v) - l(0) = (b-a)v
  }
- Can we prove that, for all {t}
- {
-  l(vec(v))
-  = l(t+vec(v)) - l(t)
-  = l(v) - l(0)
-  = lerp(a,v,b) - a
- }?
- I mean it is true! Let's check
- {
-  l(t+vec(v)) - l(t)
-  = (1-(t+v)) a + (t+v) b - ((1-t)a + t b)
-  = v(b-a)
- }
- {
-  l(v) - l(0)
-  = (1-v)a + v b - a
-  = v(b-a)
- }
- Ok, but why is it true? Seriously?
- [We need to prove that all affine maps have this property, that is
-  { e1: Phi(t+vec(v)) - Phi(t) = Phi(s+vec(v)) - Phi(s) }
-  for all points points {t,s} and vector {vec(v)}
-  ]
- [We define { Phi(vec(v)) } to be
-  {Phi(v) - Phi(0)}
-  where {v} is the point {0+vec(v)}, of course
-  ]
- {
-  Phi(t+vec(v))
-  = Phi(t) + Phi(vec(v))
-  = Phi(t) + (Phi(v) - Phi(0))
- }
- Then it's kinda obvious why {e1} is true,
- but todo it seems like we haven't proven anything...
- 
- todo Well, let's see whether that's true?
- { lerp(a, t+vec(v), b) = lerp(a,t,b) + (lerp(a,v,b) - lerp(a,0,b)) }
- important Well, we actually don't know why this is true!
- Let's just try to do it
- {
-  lerp(a,t,b) + (lerp(a,v,b) - lerp(a,0,b))
-  = (1-t)a + t b + ((1-v)a + v b - a)
-  = (1-t)a + t b + (-v a + v b)
-  = (1-(t+v)) a + (t+v) b
- }
+ In hindsight, it is obvious because { l(t) = (b-a)t + a },
+ which is of the linear-transform-and-offset form,
+ like all affine maps. But I wasn't thinking about that.
  ]
 
-[Let {t} be a point and {v} be a vector in 1D space
+[;Blossom_Vector Blossoms with vector argument
+ If the blossomer sees a vector {vec(v)},
+ We define the result to be the standard vector extension you saw in @affine_map_vector
+ {
+  b[vec(v),s,t]
+  = lerp(b[0,s,t], vec(v), b[1,s,t])
+  = lerp(b[0,s,t], v-0, b[1,s,t])
+  = b[v,s,t] - b[0,s,t]  // @affine_map_vector
+ }
+ i.e it's just the same linear interpolation (with vector argument),
+ 
+ [We have this fact
+  {lerp_vector_fact:
+   lerp(a-b, t, c-d)
+   = (1-t)(a-b) + t(c-d)
+   = (1-t)a + t c - ((1-t)b + t d)
+   = lerp(a,t,c) - lerp(b,t,d)
+  }
+  ]
+ 
+ {symmetry_one_vector}
+ If {vec(v)} was the second argument, we could still promote it to be the first
+ {
+  b[s, vec(v)]
+  = lerp(b[0,vec(v)], s, b[1,vec(v)])
+  = lerp(b[0,v] - b[0,0], s,
+         b[1,v] - b[1,0])
+  using(lerp_vector_fact)
+  = lerp(b[0,v],s,b[1,v]) - lerp(b[0,0],s,b[1,0])
+  = b[s,v] - b[s,0]
+  = b[vec(v),s]
+ }
+ 
+ [#done What if the vector argument was somewhere else?
+  What if there are multiple vector arguments?
+  
+  We can just look at the first argument, and go along the way
+  { b[vec(v),*] = b[v,*] - b[0,*] }
+  [#done_kinda We have to establish the type of the output
+   The output type is either a point or a vector
+   If at least one argument is a vector, the result is a vector
+   [1. If the first argument is a vector, then the result is a subtraction. Cases:
+    1a. Both operands are points, then the result is a vector
+    2a. Both operands are vectors, then the result is a vector
+    NOTE There is no case in which one is a vector and the other is point,
+    because both blossoms have the same arguments]
+   [2. If the first argument is a point, the result is a lerp. Cases:
+    1a. Both operands are points, the result is a point
+    2a. Both operands are vectors, the result is a vector
+    Again, there's no mixing vectors and points
+    ]
+   ]
+  ]
+ 
+ [#done {symmetry_two_vectors} We can swap two vectors
+  {
+   b[vec(v), vec(w)]
+   = b[v, vec(w)] - b[0, vec(w)]
+   using (symmetry_one_vector)
+   = b[v,w] - b[v,0] - b[0,w] + b[0,0]
+   = b[v,w] - b[0,w] - (b[v,0] - b[0,0])
+   = b[w, vec(v)] - (b[0, vec(v)])
+   = b[vec(w), vec(v)]
+  }
+  ]
+ 
+ [What if we have a mixed bag of vectors and points in a blossom?
+  #done Can we permute them? Check @Blossom_Vector_Test
+  [Proof: Using the same proof scheme as @blossom_with_permutation,
+   combined with {symmetry_two_vectors} and {symmetry_one_vector}
+   [NOTE An interesting thing that arises is where you encounter this
+    {
+     b[vec(v), t, vec(w)]
+     = lerp(b[0][t,vec(w)],
+            vec(v),
+            b[1][t,vec(w)])
+     = lerp(lerp(b[0,0][vec(w)],
+                 t,
+                 b[0,1][vec(w)]),
+            vec(v),
+            lerp(b[0,1][vec(w)],
+                 t,
+                 b[1,1][vec(w)]))
+    }
+    
+    What is this expression supposed to represent?
+    It is a blossom of {b[vec(w)]}, which is a list of 3 vectors.
+    So it is a blossoming of vectors.
+    ]
+   ]
+  ]
+ 
+ [Example: if we denote {vec(1)} to be the 1D unit vector
+  { b[vec(1), s,t] = b[1,s,t] - b[0,s,t] = b[3,s,t] - b[2,s,t] }
+  
+  How about two arguments
+  {
+   b[vec(1), vec(1)]
+   = b[1,vec(1)] - b[0,vec(1)]
+   = (b[1,1] - b[1,0]) - (b[1,0] - b[0,0])
+   = b[1,1] - 2 b[1,0] + b[0,0]
+  }
+  NOTE All the coefficients sum up to 0, so it's a vector!
+  what kind of a vector is it? I don't know...
+  [Let's test: what if we vary the vector? @Blossom_Vector_Test]
+  
+  The zero vector case is not very interesting: { b[vec(0), s,t] = vec(0) }
+  ]
+ ]
+
+[;thm_5_15 Let {t} be a point and {vec(v)} be a vector in 1D space
  We have { b[(t+vec(v))^(<n>)] = sum(i in [0,n],
-                                     b[t^(<n-i>), vec(v)^(<i>)]) }
+                                     binom(n,i) b[t^(<n-i>), vec(v)^(<i>)]) }
+ @thm_5_15_test Tested!
+ 
+ [{L1024} { b[t+vec(v),*] = b[t,*] + b[vec(v),*] },
+  due to the affine nature of lerp (more at @fact_336)]
+ 
+ [Ok let's do the computation "by-hand"
+  { b[t+vec(v), t+vec(v)] }
+  {
+   rhs
+   = (1 b[vec(v),vec(v)] +
+      2 b[t,vec(v)] +
+      1 b[t,t])
+   = (b[vec(v),vec(v)] + b[t,vec(v)]) + (b[t,vec(v)] + b[t,t])
+   = b[t+vec(v), vec(v)] + b[t,t+vec(v)]
+   = b[t+vec(v), t+vec(v)]
+  }
+  ]
+ 
+ [Refer to @Leibniz_formula for the ideas of this proof
+  {
+   b[t+vec(v) times n+1]
+   = b[t+vec(v)][t+vec(v) times n]
+   // Induction hypothesis
+   = sum(i in [0,n],
+         binom(n,i) b[t+vec(v), t times n-i, vec(v) times i])
+   using (L1024)
+   = (sum(i in [0,n], binom(n,i) b[t times n+1-i, vec(v) times i]) +
+      sum(i in [0,n], binom(n,i) b[t times n-i, vec(v) times i+1]))
+   // massaging the second sum: i -> i-1
+   = (sum(i in [0,n], binom(n,i) b[t times n+1-i, vec(v) times i]) +
+      sum(i in [1,n+1], binom(n,i-1) b[t times n+1-i, vec(v) times i]))
+   // Massaging the sum ranges so they match
+   = (sum(i in [0,n+1], binom(n,i)   b[t times n+1-i, vec(v) times i]) +
+      sum(i in [0,n+1], binom(n,i-1) b[t times n+1-i, vec(v) times i]))
+   // Collapsing them back
+   = sum(i in [0,n+1], binom(n+1,i) b[t times n+1-i, vec(v) times i])
+   // #qed
+  }
+  ]
+ 
+ [NOTE In the CAGD book, I bet money that the author didn't really prove this.
+  Leibniz's formula does NOT cover this case!
+  He probably plugged in {alpha=beta=1} and called it a day...
+  ]
+ ]
+
+[#done Pseudolocal control
+ The bernstein polynomial {B__i^n} (the weight of the control point {b__i})
+ has one only one maximum, and attains it at {t = i/n}
+ { B__i^n(t) = binom(n,i) (1-t)^(n-i) t^i }
+ What's the derivative of this thing?
+ {
+  diff(B__i^n(t), t)
+  = binom(n,i) diff((1-t)^(n-i) t^i, t)
+  // NOTE Drop the useless binomial scale
+  diff((1-t)^(n-i) t^i, t)
+  = (1-t)^(n-i) diff(t^i, t) + t^i diff((1-t)^(n-i), t)
+  = (1-t)^(n-i) i t^(i-1) + t^i diff((1-t)^(n-i), t)
+ }
+ 
+ [Rusty with calculus much? what is this?
+  { diff((1-t)^(n-i), t) }
+  Suppose {u = (1-t)}
+  then the chain rule says that
+  {
+   diff((1-t)^(n-i), t)
+   = diff(u^(n-i), u) diff(1-t, t)
+   = (n-i) u^(n-i-1) * (-1)
+   = (i-n) (1-t)^(n-i-1)
+  }
+  ]
+ 
+ so we can get back to the differentiation
+ {
+  diff((1-t)^(n-i) t^i, t)
+  = i (1-t)^(n-i) t^(i-1) + (i-n) (1-t)^(n-i-1) t^i
+  = (1-t)^(n-i-1) t^(i-1) (i (1-t) + (i-n) t)
+  = (1-t)^(n-i-1) t^(i-1) (i - n t)
+ }
+ The {i - n t} factor is the key: the rest is always positive,
+ so the sign of this derivative is that of {i - n t},
+ it is positive on {[0,i/n]}, and negative on {[i/n,1]}
+ ]
+
+[;bezier_derivative The derivative of the curve {x(t) = b^n(t)} is defined as
+ {
+  diff(x,t)
+  = lim(vec(h) -> vec(0),
+        frac(1, abs(vec(h))) (x(t+vec(h)) - x(t)))
+ }
+ 
+ [NOTE Again, I don't understand the {abs(vec(h))} notation
+  I think it's probably just signed? So it's just {h}, loosely speaking
+  [Also, we write it that way so it's easier to parse]]
+ 
+ Invoking @thm_5_15, we have
+ {
+  diff(x,t)
+  = lim(vec(h) -> vec(0),
+        (1 / abs(vec(h)))
+        (sum(i in [0,n],
+             binom(n,i) b[t^(<n-i>), vec(v)^(<i>)])
+         - b[t^(<n>)]))
+ }
+ For {i=0}, two terms {b[t^(<n>)]} cancel (the "point" part),
+ leaving us with the vector part
+ {
+  diff(x,t)
+  = lim(vec(h) -> vec(0),
+        (1 / abs(vec(h)))
+        (sum(i in [1,n],
+             binom(n,i) b[t^(<n-i>), vec(h)^(<i>)])))
+  // Expanding things out
+  = lim(vec(h) -> vec(0),
+        (1 / abs(vec(h)))
+        (n b[t^(<n-1>), vec(h)] +
+         binom(n,2) b[t^(<n-2>), vec(h), vec(h)] +
+         ...))
+ }
+ Notice that {x lerp(a, vec(v), b) = lerp(a, x v, b)},
+ because {lerp} is an affine map, it preserves scale.
+ So when we put {1/abs(vec(h))} into play
+ {
+  diff(x, t)
+  = lim(vec(h) -> vec(0),
+        (n b[t^(<n-1>), vec(h) / abs(vec(h))] +
+         binom(n,2) b[t^(<n-2>), vec(h) / abs(vec(h)), vec(h)] +
+         ...))
+ }
+ 
+ We observe that {vec(h) / abs(vec(h)) = vec(1)}.
+ Also when {vec(h)} goes to {vec(0)},
+ {binom(n,2) b[t^(<n-2>), vec(h) / abs(vec(h)), vec(h)]} goes to zero
+ (because {lerp(vec(*), vec(0), vec(*)) = vec(0)}).
+ Same goes for all the terms after that, so we have
+ 
+ { (eq_5_17)
+  diff(x,t) = n b[t times n-1, vec(1)] }
+ [Tested in @bezier_derivative_test]
+ 
+ [NOTE In the cubic case,
+  At {t=0}, the derivative is 3 times {b__1 - b__0}
+  At {t=1}, the derivative is 3 times {b__3 - b__2}]
+ 
+ [We can interpret {eq_5_17} in two ways,
+  the first way is to perform one de Casteljau step with {vec(1)},
+  and then {n-1} steps with {t}, as an equation
+  {
+   newton_diff(x,t) = n sum(j in [0,n-1],
+                            B__j^(n-1)(t) (b__(j+1) - b__j))
+  }
+  We can simply it using the forward difference operator {Delta}
+  {
+   newton_diff(x,t) = n sum(j in [0,n-1],
+                            B__j^(n-1)(t) Delta b__j);
+   Delta b__j in bb(R)^3
+  }
+  
+  {Delta b__j} (called the "hodograph") is a curve of degree {n-1},
+  consisting of vectors.
+  NOTE I just realized that vector lives in {bb(R)^3}, points in {E^3}
+  
+  [NOTE The hodograph does not change if you translate the original curve {b}]
+  ]
+ 
+ [For the second interpretation
+  First we do {n-1} de Casteljau steps with {t},
+  then we subtract the first remaining points from the second
+  { newton_diff(x,t) = n (b__1^(n-1)(t) - b__0^(n-1)(t)) }
+  ]
+ ]
+
+[
+ {(eq_5_10)
+  
+  B__i^n(0) = (i == 0)
+  B__i^n(1) = (i == n)
+ }
+ where {(a == b)} returns 1 for {a = b}, 0 otherwise (just like computer code)
+ 
+ Why: recall the definition of the Bernstein polynomials
+ { B__i^n(t) = binom(n,i) t^i (1-t)^(n-i) }
+ so anything having {t} (i.e {i > 0}) would vanish, except { B__0^n(0) = 1 }
+ ]
+
+[;bezier_higher_derivative
+ [#done Higher derivatives follow the same pattern in @bezier_derivative
+  {eq_5_21:
+   x^((r))(t) = falling_factorial(n,r) b[t times n-r, vec(1) times r] }
+  
+  How do to see that? {eq_5_17} serves as the base case,
+  { x^((1))(t) = falling_factorial(n,1) b[t times n-1, vec(1)] }
+  
+  Then the inductive step is as follows (example for {r=1}, but easily generalized)
+  {
+   x^((2))(t)
+   = diff(x^((1))(t), t)
+   = diff(n b[t times n-1, vec(1)](t), t)
+   // NOTE b[vec(1)] is just another curve of degree n-1.
+   = diff(n b[vec(1)][t times n-1](t), t)
+   = n diff(b[vec(1)][t times n-1](t), t)
+   // NOTE Applying the base step
+   = n (n-1) diff(b[vec(1), vec(1), t times n-2](t), t)
+   // #qed
+  }
+  ]
+ 
+ [To compute these higher derivatives from Bezier points,
+  we first generalize the forward difference operator {Delta},
+  the [iterated forward difference iterator {Delta^r}] is defined by
+  {
+   0. Delta^0 b__j     = b__j
+   1. Delta^(r+1) b__j = Delta^r b__(j+1) - Delta^r b__j
+  }
+  
+  [Let's study the expanded coefficients
+   {
+    Delta^0 b__0 = b__0
+    Delta^1 b__0 = b__1 - b__0  // NOTE agrees with our previous definition
+    Delta^2 b__0 = b__2 - 2 b__1 + b__0
+    Delta^3 b__0 = b__3 - 3 b__2 + 3 b__1 - b__0
+   }
+   The coefficients form a Pascal-like triangle
+   
+   How do you write down this pattern?
+   {(eq_5_23):
+    Delta^r b__0 = sum__(j=0)^r (-1)^(r-j) binom(r,j) b__j }
+   
+   Let's prove it!
+   { Delta^(r+1) b__0 = Delta^r b__1 - Delta^r b__0
+    = (sum__(j=0)^r (-1)^(r-j) binom(r,j) b__(j+1)
+       - sum__(j=0)^r (-1)^(r-j) binom(r,j) b__j)
+    // Massage the first sum j -> j-1
+    = (sum__(j=1)^(r+1) (-1)^(r-(j-1)) binom(r,(j-1)) b__(j-1+1)
+       - sum__(j=0)^r (-1)^(r-j) binom(r,j) b__j)
+    // Actually the first sum could start at j=0
+    // Also flip the sign of the second sum
+    = (sum__(j=0)^(r+1) (-1)^(r+1-j) binom(r,j-1) b__j
+       +
+       sum__(j=0)^r (-1)^(r+1-j) binom(r,j) b__j)
+    // The second sum could run to j=r+1
+    = (sum__(j=0)^(r+1) (-1)^(r+1-j) binom(r,j-1) b__j
+       +
+       sum__(j=0)^(r+1) (-1)^(r+1-j) binom(r,j) b__j)
+    // Ok, let's combine the sums! (Using @Pascals_rule)
+    = sum__(j=0)^(r+1) (-1)^(r+1-j) binom(r+1,j) b__j
+   }
+   ]
+  ]
+ 
+ [#done The {r}-th derivative of a Bezier curve is now given by
+  {eq_5_24:
+   
+   x^((r))(t) =
+   falling_factorial(n,r) sum__(j=0)^(n-r) B__j^(n-r)(t) Delta^r b__j
+  }
+  
+  Ok just what is that? For {r=1}
+  {
+   newton_diff(x,t)
+   = n sum__(j=0)^(n-1) B__j^(n-1)(t) Delta b__j
+  }
+  
+  So according to {eq_5_21}, we only need to prove that 
+  { b[t times n-r, vec(1) times r] =
+   sum__(j=0)^(n-r) B__j^(n-r)(t) Delta^r b__j }
+  
+  Which is true if { (b[vec(1) times r])__j = Delta^r b__j }
+  [Well let's see,
+   1. { b[vec(1)]__j = b__(j+1) - b__j = Delta b__j }, true!
+   2. { b[vec(1) times 2] = b[vec(1)]__(j+1) - b[vec(1)]__j
+    = Delta b__(j+1) - Delta b__j }, true!
+   ]
+  so yeah, #qed
+  ]
+ 
+ [{eq_5_25:}
+  When {t=0}, we have according to {eq_5_24} and {eq_5_10}
+  { x^((r))(0) = falling_factorial(n,r) Delta^r b__0 }
+  Similarly for {t=1}
+  { x^((r))(1) = falling_factorial(n,r) Delta^r b__(n-r) }
+  
+  Another way to see this: { b[vec(1)] times r } leaves you with the list
+  { [Delta^r b__0, Delta^r b__1, ... Delta^r b__(r-n)] }
+  and recall that the Bezier curve interpolates the endpoints.
+  
+  The r-th derivative of a Bezier curve at an endpoint depends only on the r+1
+  points near that endpoint.
+  For {r=0}, we retrieve the endpoint interpolation property.
+  ]
+ 
+ [@Taylor_series situation
+  This is the Taylor series of {x(t)} centered at 0
+  { x(t) = sum__(i=0)^n frac(1,i!) x^((i))(0) t^i }
+  
+  We know how {x^((i))(0)} works from {eq_5_25}, plugging that in
+  {eq_5_27
+   x(t) = sum__(i=0)^n binom(n,i) Delta^i b__0 t^i }
+  [NOTE Tested at @eq_5_27_test]
+  
+  NOTE This is called the "monomial" form, because there's only {t^i},
+  whereas the Bernstein polynomial contains also {(1-t)^(n-i)}
+  
+  [#done Just for fun, let's equate directly {eq_5_27} and @Bezier_Bernstein
+   (turned out it wasn't really fun...)
+   {
+    sum__(i=0)^n binom(n,i) Delta^i b__0 t^i
+    vs.
+    sum__(i=0)^n B__i^n(t) b__i
+   }
+   
+   Well, expanding the [forward difference] is the move...
+   (induction on {n} won't work)
+   {
+    sum__(i=0)^n binom(n,i) Delta^i b__0 t^i
+    = sum__(i=0)^n binom(n,i) (sum__(j=0)^i (-1)^(i-j) binom(i,j) b__j) t^i
+    
+    = sum__(i=0)^n (sum__(j=0)^n (-1)^(i-j) binom(n,i) t^i binom(i,j) b__j)
+    // Switch place the variables (transposing the table of i,j)
+    = sum__(j=0)^n (sum__(i=0)^n (-1)^(i-j) binom(n,i) binom(i,j) t^i) b__j
+    // to be continued...
+   }
+   Let's focus solely on the coefficients of {b__j}
+   {
+    sum__(i=0)^n (-1)^(i-j) binom(n,i) binom(i,j) t^i
+    // actually i only runs from j
+    = sum__(i=j)^n (-1)^(i-j) binom(n,i) binom(i,j) t^i
+    // using @binomial_chain_rule
+    = sum__(i=j)^n (-1)^(i-j) binom(n,j) binom(n-j,i-j) t^i
+    = binom(n,j) sum__(i=j)^n (-1)^(i-j) binom(n-j,i-j) t^i
+    // change the range of i
+    = binom(n,j) sum__(i=0)^(n-j) (-1)^(i) binom(n-j,i) t^(i+j)
+    = binom(n,j) t^j (sum__(i=0)^(n-j) (-t)^i binom(n-j,i))
+    {// Simple application of the @binomial_theorem gives...
+     (1-t)^n = sum__(i=0)^n binom(n,i) (-t)^i
+    }
+    = binom(n,j) t^j (1-t)^(n-j)
+    = B__j^n(t)
+   }
+   and that's our familiar Bernstein polynomial... it's been a long road, but #qed.
+   ]
+  ]
+ ]
+
+[If {x(t)} is defined over an interval {[a,b]}, {eq_5_17} becomes
+ { eq_5_28: frac(d x, d t) = frac(n,b-a) b[frac(t-a, b-a) times n-1, vec(1)] }
+ 
+ Rephrase: Suppose { t = a+(b-a)u } and {x = b^n(u)},
+ Meaning that the curve {b(t)} interpolates
+ the first control point when {t=a -> u=0},
+ and the last control point at {t=b -> u=1}.
+ 
+ From @bezier_derivative We already have
+ { frac(d x, d u) = n b[u times n-1, vec(1)] }
+ So according to the @chain_rule,
+ {
+  frac(d x, d t) = frac(d x, d u) frac(d u, d t)
+  { frac(d u, d t) = frac(1,(b-a)) }
+  -> frac(d x, d t) = frac(n,b-a) b[u times n-1, vec(1)]
+ }
+ Tested in @test_5_28
+ [NOTE If I understood the statement correctly, then it is wrong!
+  However I'm not sure... without context there really is no way to know]
+ ]
+
+[We already know that the Bezier curve defined
+ over the interval {[0,c]} (meaning that { c(t) = b(t c) })
+ has control points
+ { c__i = b__0^i(c) }
+ 
+ What can we say about the curve defined over the interval {[c,1]}?
+ Well let's call that curve {e}, by definition
+ { e(t) = b(lerp(c,t,1)) = b((1-t)c + t) }
+ we will prove
+ { e__j = b__j^(n-j) }
+ 
+ [#fail By the book: Because of the symmetry property {eq_5_11}
+  it follows that the control vertices of the part
+  corresponding to {[c,1]} (let's call that {e})
+  are given by the {b__j^(n-j)}
+  [NOTE I don't believe it! Prove it!]]
+ 
+ [#done Can we even prove this property with what we know?
+  Suppose we have a cubic curve {b}, then {e} would be
+  {
+   e = [b[c,c,c], b[c,c,1], b[c,1,1], b[1,1,1]]
+   = [b__0^3, b__1^2, b__2^1, b__3^0]
+   -> e__j = b__j^(n-j)
+  }
+  ]
+ 
+ [What can we say about the curve defined over the interval {[1,d]}?
+  We know that
+  { d__j = [1 times n-j, d times j] = b__(n-j)^j
+   == e__(n-j) }
+  Yeah that checks out! The symmetric property of {eq_5_11}!
+  And actually that's also another way you can prove the symmetric property]
+ ]
+
+[Blossom and polar
+ Let {p__1 = b[t__1]}, that is, {b} after one de Casteljau step
+ { p__1(t)
+  = sum(i in [0,n-1],
+        B__i^(n-1)(t) (1-t__1)b__i + (t__1 b__(i+1)))
+  = (sum(i in [0,n-1],
+         B__i^(n-1)(t) ((1-t__1)b__i + (t__1 b__(i+1)) - b__i^1(t))) +
+     sum(i in [0,n-1],
+         B__i^(n-1)(t) b__i^1(t)))
+  = (sum(i in [0,n-1],
+         B__i^(n-1)(t) ((1-t__1)b__i + t__1 b__(i+1) -
+                        ((1-t)b__i + t b__(i+1)))) +
+     b(t))
+  // NOTE(kv) Long algebra here...
+  = ((t__1 - t) sum(i in [0,n-1],
+                    B__i^(n-1)(t) (b__(i+1) - b__i)) +
+     b(t))
+ }
+ Therefore, (pingback to {eq_5_17})
+ { (eq_5_31)
+  p__1(t) = b(t) + frac(t__1-t, n) frac(d b(t), d t)
+ }
+ The polynomial {p__1} is called the [first polar] of {b(t)} with respect to {t__1}
+ You can this working at @figure_polar_form
  ]
 //-

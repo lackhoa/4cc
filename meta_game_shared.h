@@ -2,6 +2,7 @@
 enum Text_Object_Kind
 {// NOTE See @Text_Object and @M_Text_Object
  Text_Object_None,
+ Text_Object_Drawn,
  Text_Object_Image,
  Text_Object_Preset,
  
@@ -9,6 +10,7 @@ enum Text_Object_Kind
 };
 global String text_object_kind_names[] = {
  strlit(""),
+ strlit("Drawn"),
  strlit("Image"),
  strlit("Preset"),
 };

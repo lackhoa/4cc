@@ -58,7 +58,7 @@ default_theme_name = "theme-kv";
 
 // Font
 default_font_name    = "liberation-mono.ttf";
-default_font_size    = 18;
+default_font_size    = 17;
 default_font_hinting = false;
 
 // aa modes:
@@ -78,7 +78,7 @@ startup_hot_directory = code_dir;
 
 // NOTE(kv): Quick startup file setting
 game_buffer = "*game*";
-game_file   = "C:/Users/vodan/4ed/code/game/driver.kc";
+game_file   = "C:/Users/vodan/4ed/code/game/driver/driver.kc";
 //
 
 startup_file1 = game_buffer;

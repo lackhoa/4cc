@@ -346,8 +346,6 @@ struct Bone
  v3      center;
 };
 
-// NOTE(kv) We wanna pass Text_Range around a lot, and compare it as ID.
-//  So let's keep it small.
 struct Range_i16
 {
  union{ i16 min,begin; };
@@ -358,18 +356,26 @@ operator==(Range_i16 a, Range_i16 b)
 {
  return block_match(&a, &b, sizeof(a));
 }
+struct FUI_File
+{
+ i16 is_driver;
+ i16 index;
+};
 struct Location
 {
- i32 file;
+ FUI_File file;
  Range_i16 range;
 };
 // NOTE(kv) Take care of padding, so we can compare values with block comparison.
 static_assert(sizeof(Location) == 8);
 
+// NOTE(kv) The reason why we have @Unresolved_Location,
+// is because we don't know that the marker indexes are
+// when we have to emit @set_draw_location_unresolved.
 struct Unresolved_Location
 {
  i16 file;
- i16 range_index;
+ i16 text_object_index_in_file;
 };
 myinline b32
 is_valid(Unresolved_Location a)
@@ -385,7 +391,7 @@ operator==(Location a, Location b)
 myinline b32
 is_valid(Location location)
 {
- return location.file != 0;
+ return location.file.index != 0;
 }
 struct Vertex
 {
@@ -539,8 +545,8 @@ lp_invisible()
  return result;
 }
 
-global argb hot_color  = argb_lightness(argb_red, 0.75f);
-global argb hot_color2 = argb_yellow;
+global argb hot_color  = argb_lightness(linear_argb_red, 0.75f);
+global argb hot_color2 = linear_argb_yellow;
 //global argb selected_color = argb_red;
 global v1 default_line_radius_unit = 1.728125f * millimeter;
 
@@ -621,7 +627,8 @@ myinline Image_Marker
 mk_image_marker(v2 bezier[3])
 {
  Image_Marker result = {.type=Image_Marker_Bezier};
- for_i32(i, 0, 3){
+ for_i32(i, 0, 3)
+ {
   result.bezier[i] = bezier[i];
  }
  return result;
@@ -633,7 +640,7 @@ struct Image_Info
 };
 struct Text_Object
 {
- Location location;
+ Range_i16 location;
  Text_Object_Kind kind;
  
  union {
@@ -654,28 +661,38 @@ struct Driver_DLL
  u64 mtime;
 };
 
-typedef sarray(i32) Positions_In_File;
-typedef sarray(Positions_In_File) Marked_Positions;
 typedef Range_i16 Marker_Pair;
 
-struct Driver_Data
+struct FUI_File_Data
 {
- b32 valid;
- Marked_Positions marked_positions;
- Sliders sliders;
+ i32 index;
+ String name;
+ 
+ sarray(i32) marked_positions;
+ 
  sarray(Text_Object) text_objects;
- sarray(sarray(Marker_Pair)) marker_pairs;
+ sarray(Slider) sliders;
  sarray(Vertex_Info) vertices_info;
 };
+
+struct Driver_Data
+{// NOTE See @driver_dll_entry and @do_work_after_loading_driver
+ b32 valid;
+ sarray(FUI_File_Data) files;
+ sarray(Vertex_Info) vertices_info;
+};
+
+global Driver_Data driver_data;  // see @driver_dll_entry
+
 struct Driver_API
-{// see driver_dll_entry
+{// NOTE see @driver_dll_entry
  Driver_DLL dll;
  
 #define X(N) wrap_function_pointer(N);
  driver_api_xlist(X)
 #undef X
  
- Driver_Data data;
+ Driver_Data *data;
 };
 myinline b32
 is_valid(Driver_API *driver)
@@ -683,22 +700,6 @@ is_valid(Driver_API *driver)
  return driver->dll.handle != 0;
 }
 
-global Driver_Data driver_data;  // see @driver_dll_entry
-
-function Range_i64
-resolve_location(i32 file, Range_i16 range)
-{
- Positions_In_File positions = driver_data.marked_positions.items[file];
- Range_i64 result = {};
- result.min = positions.items[range.min];
- result.max = positions.items[range.max];
- return result;
-}
-myinline Range_i64
-resolve_location(Location location)
-{
- return resolve_location(location.file, location.range);
-}
 //~
 #if AD_IS_DRIVER
 #define X(N)  global wrap_function_pointer(N);

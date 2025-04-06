@@ -455,9 +455,6 @@ kv_vim_bindings(App *app)
  BIND(0|V, vim_set_seek_char,                  Key_Code_F);
  BIND(N|0, vim_half_page_up,                   Key_Code_LeftBracket);
  BIND(N|0, vim_half_page_down,                 Key_Code_RightBracket);
- //BIND(N|V, vim_screen_top,                  (S|Key_Code_H));
- //BIND(N|V, vim_screen_bot,                  (S|Key_Code_L));
- //BIND(N|V, vim_screen_mid,                  (S|Key_Code_M));
  BIND(V,   cursor_mark_swap,                   Key_Code_O);
  BIND(V,   vim_block_swap,                  (S|Key_Code_O));
  

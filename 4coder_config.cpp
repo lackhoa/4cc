@@ -883,7 +883,7 @@ inline String8
 def_get_config_string(Arena *arena, String key) {
  return def_get_config_string(arena, vars_intern(key));
 }
-inline String8 
+inline String8
 def_get_config_string(Arena *arena, char *key) {
  // NOTE(kv): a bit slow but who cares
  return def_get_config_string(arena, vars_intern(SCu8(key)));
@@ -1548,7 +1548,8 @@ load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 ove
   }
  } 
  
- if (parsed != 0){
+ if(parsed != 0)
+ {
   // Errors
   String error_text = config_stringize_errors(app, scratch, parsed);
   if (error_text.str != 0){
@@ -1567,7 +1568,8 @@ load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 ove
    print_message(app, strlit("\n"));
   }
  }
- else{
+ else
+ {
   print_message(app, strlit("Using default config:\n"));
   Face_Description description = get_face_description(app, 0);
   if (description.font.filename.str != 0){
@@ -1621,7 +1623,7 @@ load_config_and_apply(App *app, Arena *out_arena, i1 override_font_size, b32 ove
  
  description.font.filename = default_font_name;
  if (!modify_global_face_by_description(app, description)){
-  String8 name_in_fonts_folder = push_stringf(scratch, "fonts/%.*s", string_expand(default_font_name));
+  String8 name_in_fonts_folder = push_stringf(scratch, "fonts/%S", default_font_name);
   description.font.filename = def_search_normal_full_path(scratch, name_in_fonts_folder);
   modify_global_face_by_description(app, description);
  }

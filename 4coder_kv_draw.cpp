@@ -533,14 +533,6 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
   rect2 pre_buffer_clip = draw_set_clip(app, clip);
   defer( draw_set_clip(app, pre_buffer_clip); );
   
-#if 0
-  if(is_game)
-  {
-   Render_Target *target = get_view_render_target(app, view);
-   render_game(app, target, viewport, frame, clip);
-  }
-#endif
-  
   if(not is_game)
   {
    Buffer_Point buffer_point = scroll.position;
@@ -597,7 +589,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
     b32 is_skm = false;
     {
      F4_Language *language = F4_LanguageFromBuffer(app, buffer);
-     F4_Language *skm_lang = F4_LanguageFromString(SCu8("skm"));
+     F4_Language *skm_lang = F4_LanguageFromExtension(SCu8("skm"));
      is_skm = (language == skm_lang);
     }
     Color_Array colors = finalize_color_array(defcolor_text_cycle);

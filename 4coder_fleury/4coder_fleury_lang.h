@@ -44,15 +44,16 @@ typedef F4_LANGUAGE_HIGHLIGHT(F4_Language_Highlight);
 
 struct F4_Language
 {
-    F4_Language *next;
-    u64 hash;
-    String name;
-    u64 lex_state_size;
-    F4_Language_IndexFile            *IndexFile;
-    F4_Language_LexInit              *LexInit;
-    F4_Language_LexFullInput         *LexFullInput;
-    F4_Language_PosContext           *PosContext;
-    F4_Language_Highlight            *Highlight;
+ String name;
+ F4_Language *next;
+ u64 hash;
+ String extension;
+ u64 lex_state_size;
+ F4_Language_IndexFile            *IndexFile;
+ F4_Language_LexInit              *LexInit;
+ F4_Language_LexFullInput         *LexFullInput;
+ F4_Language_PosContext           *PosContext;
+ F4_Language_Highlight            *Highlight;
 };
 
 struct F4_Language_State
@@ -61,5 +62,8 @@ struct F4_Language_State
     Arena arena;
     F4_Language *language_table[4096];
 };
+
+function F4_Language *
+F4_LanguageFromBuffer(App *app, Buffer_ID buffer);
 
 #endif // FCODER_FLEURY_LANG_H

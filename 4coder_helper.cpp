@@ -392,12 +392,6 @@ is_valid_line_range(App *app, Buffer_ID buffer_id, Range_i64 range){
 }
 
 function i64
-get_line_number_from_pos(App *app, Buffer_ID buffer, i64 pos){
-    Buffer_Cursor cursor = buffer_compute_cursor(app, buffer, seek_pos(pos));
-    return(cursor.line);
-}
-
-function i64
 buffer_get_character_legal_pos_from_pos(App *app, Buffer_ID buffer, f32 width, Face_ID face, i64 pos){
     Buffer_Cursor cursor = buffer_compute_cursor(app, buffer, seek_pos(pos));
     i64 character = buffer_relative_character_from_pos(app, buffer, width, face, cursor.line, pos);
@@ -441,7 +435,7 @@ get_line_start_pos(App *app, Buffer_ID buffer, i64 line_number)
 function Buffer_Cursor
 get_line_end(App *app, Buffer_ID buffer, i64 line_number)
 {
-    return(get_line_side(app, buffer, line_number, Side_Max));
+ return(get_line_side(app, buffer, line_number, Side_Max));
 }
 function i64
 get_line_end_pos(App *app, Buffer_ID buffer, i64 line_number)
@@ -476,6 +470,30 @@ get_line_pos_range(App *app, Buffer_ID buffer, i64 line_number)
  {
   result = Ii64(range.start.pos, range.end.pos);
  }
+ return(result);
+}
+// NOTE(kv) My sane version that does what you want.
+function Range_i64
+kv_get_line_pos_range(App *app, Buffer_ID buffer, i64 line_number)
+{
+ Range_i64 result = {};
+ i64 max_line = buffer_get_line_count(app, buffer);
+ if(1 <= line_number and
+    line_number <= max_line)
+ {
+  result.start = get_line_start_pos(app, buffer, line_number);
+  
+  if(line_number == max_line)
+  {
+   result.end = buffer_get_size(app, buffer);
+  }
+  else
+  {
+   result.end = get_line_start_pos(app, buffer, line_number+1);
+   kv_assert(result.end != 0);
+  }
+ }
+ 
  return(result);
 }
 

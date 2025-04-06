@@ -6,7 +6,6 @@ enum Game_Status
 {
  Game_Off,
  Game_On,
- Game_Rendering,
 };
 global Game_Status game_status;
 
@@ -14,7 +13,6 @@ global sarray(String) received_game_commands;
 global Game_API game_code_ro;
 
 myinline b32 is_game_on() { return game_status >= Game_On; }
-myinline b32 is_game_rendering() { return game_status >= Game_Rendering; }
 
 function Game_API *
 get_game_code(Game_Status min_status)

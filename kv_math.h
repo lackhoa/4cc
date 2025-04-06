@@ -218,7 +218,6 @@ lerp(v2 ab, v1 t)
  return lerp(ab[0], t, ab[1]);
 }
 
-
 myinline v2
 operator-(v2 u, v2 v)
 {
@@ -610,22 +609,16 @@ almost_equal(v1 a, v1 b, v1 epsilon=1e-6)
 }
 
 myinline b32 
-almost_equal(v3 a, v3 b, v1 epsilon=1e-6) {
- for_i32(i,0,3) {
-  if ( !almost_equal(a[i],b[i],epsilon) ) {
+almost_equal(v3 a, v3 b, v1 epsilon=1e-6)
+{
+ for_i32(i,0,3)
+ {
+  if ( !almost_equal(a[i],b[i],epsilon) )
+  {
    return false;
   }
  }
  return true;
-}
-
-
-inline v4
-lerp(v4 a, f32 t, v4 b)
-{
- v4 result;
- result = a + t*(b - a);
- return result;
 }
 
 myinline void
@@ -1142,18 +1135,9 @@ near_zero(Vec4_f32 p){ return(near_zero(p, epsilon_f32)); }
 
 ////////////////////////////////
 
-function v2
-lerp(v2 a, f32 t, v2 b){
- return(a + (b-a)*t);
-}
-
-myinline v3
-lerp(v3 a, v1 t, v3 b){
- return(a + (b-a)*t);
-}
-
 function v1
-unlerp(v1 a, v1 x, v1 b) {
+unlerp(v1 a, v1 x, v1 b)
+{
  v1 r = 0.f;
  if (b != a) {
   r = (x - a)/(b - a);
@@ -1804,6 +1788,26 @@ struct Loaded_Bitmap
  i2  dim;
  i32 pitch;
 };
+function ARGB_Color
+argb_pack(v4 color)
+{
+ ARGB_Color result =
+ ((u8)(color.a*255.f + 0.5f) << 24) |
+ ((u8)(color.r*255.f + 0.5f) << 16) |
+ ((u8)(color.g*255.f + 0.5f) <<  8) |
+ ((u8)(color.b*255.f + 0.5f) <<  0);
+ return(result);
+}
+function ARGB_Color
+abgr_pack(v4 color)
+{
+ ARGB_Color result =
+ ((u8)(color.a*255.f + 0.5f) << 24) |
+ ((u8)(color.b*255.f + 0.5f) << 16) |
+ ((u8)(color.g*255.f + 0.5f) <<  8) |
+ ((u8)(color.r*255.f + 0.5f) <<  0);
+ return(result);
+}
 function v4
 linearToSrgb(v4 linear)
 {
@@ -1814,17 +1818,22 @@ linearToSrgb(v4 linear)
  result.a = linear.a;
  return result;
 }
-function u32
+function argb
 pack_sRGBA(v4 color)
-{
- // linear to srgb
+{// NOTE linear to srgb
  color.r = square_root(color.r);
  color.g = square_root(color.g);
  color.b = square_root(color.b);
- u32 result = ((u32)(color.a*255.0f + 0.5f) << 24
-               | (u32)(color.b*255.0f + 0.5f) << 16
-               | (u32)(color.g*255.0f + 0.5f) << 8
-               | (u32)(color.r*255.0f + 0.5f));
+ argb result = argb_pack(color);
+ return result;
+}
+function abgr
+pack_sABGR(v4 color)
+{
+ color.r = square_root(color.r);
+ color.g = square_root(color.g);
+ color.b = square_root(color.b);
+ abgr result = abgr_pack(color);
  return result;
 }
 function v4
@@ -1845,17 +1854,6 @@ argb_unpack_255(ARGB_Color color)
  result.r = v1((color >> 16) & 255);
  result.g = v1((color >> 8)  & 255);
  result.b = v1((color >> 0)  & 255);
- return(result);
-}
-
-function ARGB_Color
-argb_pack(v4 color)
-{
- ARGB_Color result =
- ((u8)(color.a*255) << 24) |
- ((u8)(color.r*255) << 16) |
- ((u8)(color.g*255) << 8) |
- ((u8)(color.b*255) << 0);
  return(result);
 }
 

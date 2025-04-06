@@ -256,7 +256,7 @@ typedef float v1;
 #define xfunction             //NOTE(kv) exported function
 #define local_persist static
 #define global        static
-#define global_decl   extern //NOTE(kv) Global var that is not intended to exported, but forward-declared (C doesn't let us forward-declare global???)
+#define global_decl   extern //NOTE(kv) Global variable that is forward-declared (C doesn't let us forward-declare static variable, so it must be "extern")
 #define xglobal              //NOTE(kv) exported variable
 #define auto_lambda   auto
 
@@ -322,7 +322,12 @@ kv_fail; \
 #define for_i64(VAR, MIN, MAX)  for_inc(i64, VAR,MIN,MAX)
 #define for_u64(VAR, MIN, MAX)  for_inc(u64, VAR,MIN,MAX)
 #define for_i1  for_i32
-#define for_repeat(TIMES) for_i32(line_unique_var,0,TIMES)
+#define for_repeat(TIMES)       for_i32(line_unique_var,0,TIMES)
+
+#define for_each(VAR, ARRAY) \
+for(auto *VAR = ARRAY.items; \
+/**/VAR < ARRAY.items + ARRAY.count; \
+/**/VAR++)
 
 #define alen(array) isize(sizeof(array) / sizeof(*(array)))
 

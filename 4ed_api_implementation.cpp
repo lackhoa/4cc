@@ -1597,7 +1597,7 @@ view_get_managed_scope(App *app, View_ID view_id)
  return(result);
 }
 
-api(custom) function Buffer_Cursor
+api(ed custom) function Buffer_Cursor
 buffer_compute_cursor(App *app, Buffer_ID buffer, Buffer_Seek seek)
 {
     Models *models = (Models*)app->cmd_context;
@@ -1735,7 +1735,7 @@ view_quit_ui(App *app, View_ID view_id){
     return(result);
 }
 
-api(custom) function b32
+api(custom ed) function b32
 view_set_buffer(App *app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags)
 {
     Models *models = (Models*)app->cmd_context;
@@ -2773,9 +2773,11 @@ get_face_metrics(App *app, Face_ID face_id)
 {
  Models *models = (Models*)app->cmd_context;
  Face_Metrics result = {};
- if (face_id != 0){
+ if(face_id != 0)
+ {
   Face *face = font_set_face_from_id(&models->font_set, face_id);
-  if (face != 0){
+  if(face != 0)
+  {
    result = face->metrics;
   }
  }
@@ -2860,9 +2862,12 @@ try_modify_face(App *app, Face_ID id, Face_Description *description)
   Co_In *in = (Co_In*)coroutine->in;
   result = in->success;
   
- } else if (tctx_info != 0){
-  // This API does nothing when called from an async thread.
- } else{
+ }
+ else if (tctx_info != 0)
+ {// This API does nothing when called from an async thread.
+ }
+ else
+ {
   result = font_set_modify_face(&models->font_set, id, description);
  }
  return(result);
@@ -3127,15 +3132,16 @@ text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
  Models *models = (Models*)app->cmd_context;
  Rect_f32 result = {};
  Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
- if (layout != 0 && 
-     range_contains(layout->visible_range, pos))
+ if(layout and range_contains(layout->visible_range, pos))
  {
   Editing_File *file = imp_get_file(models, layout->buffer_id);
-  if ( api_check_buffer(file) ) {
+  if(api_check_buffer(file))
+  {
    Gap_Buffer *buffer = &file->state.buffer;
    i64 line_number = buffer_get_line_index(buffer, pos) + 1;
    
-   if ( range_contains(layout->visible_line_range, line_number) ) {
+   if(range_contains(layout->visible_line_range, line_number))
+   {
     Rect_f32 rect = layout->rect;
     f32 width = rect_width(rect);
     Face *face = file_get_face(models, file);
@@ -3144,8 +3150,9 @@ text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
     
     f32 y = 0.f;
     Layout_Item_List line = {};
-    for (i64 line_number_it = layout->visible_line_range.first;;
-         line_number_it += 1)
+    for (i64 line_number_it = layout->visible_line_range.first;
+         ;
+         line_number_it++)
     {
      line = file_get_line_layout(app->tctx, models, file,
                                  layout_func, width, face,
@@ -3161,26 +3168,22 @@ text_layout_character_on_screen(App *app, Text_Layout_ID layout_id, i64 pos)
     // need to accelerate the (pos -> item) lookup within a single
     // Buffer_Layout_Item_List.
     result = Rf32_negative_infinity;
-    b32 found_item = false;
     for (Layout_Item_Block *block = line.first;
-         block != 0;
+         block;
          block = block->next)
     {
      i64 count = block->item_count;
      Layout_Item *item_ptr = block->items;
      for (i32 i = 0; 
           i < count; 
-          i += 1, item_ptr += 1)
+          i++, item_ptr++)
      {
-      if ( HasFlag(item_ptr->flags, LayoutItemFlag_Ghost_Character) )
-      {
-       continue;
-      }
+      if ( HasFlag(item_ptr->flags, LayoutItemFlag_Ghost_Character) ) { continue; }
+      
       i64 index = item_ptr->index;
       if (index == pos)
       {
        result = rect_union(result, item_ptr->rect);
-       found_item = true;
       }
       else if (index > pos)
       {
@@ -3203,7 +3206,8 @@ paint_text_color(App *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color
 {
  Models *models = (Models*)app->cmd_context;
  Text_Layout *layout = text_layout_get(&models->text_layouts, layout_id);
- if (layout != 0) {
+ if(layout != 0)
+ {
   i64 visible_min = layout->visible_range.min;
   range.min = clamp_min(range.min, visible_min);
   range.max = clamp_max(range.max, layout->visible_range.max);
@@ -3211,7 +3215,10 @@ paint_text_color(App *app, Text_Layout_ID layout_id, Range_i64 range, ARGB_Color
   range.min -= visible_min;
   range.max -= visible_min;
   ARGB_Color *color_ptr = layout->item_colors + range.min;
-  for (i64 i = range.min; i < range.max; i += 1, color_ptr += 1) {
+  for (i64 i = range.min;
+       i < range.max;
+       i += 1, color_ptr += 1)
+  {
    *color_ptr = color;
   }
  }

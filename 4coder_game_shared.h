@@ -30,14 +30,12 @@ typedef i32 Viewport_ID;
 
 #if ED_API_USER
 #    define DYNAMIC_LINK_API
-#    if AD_IS_DRIVER
-#        define STORAGE_CLASS extern
-#    else
-#        define STORAGE_CLASS xglobal
-#    endif
+#    define STORAGE_CLASS xglobal
 #else
 #    define STATIC_LINK_API
 #endif
+
+
 #include "ed_api.gen.h"
 
 //~NOTE: 4ed API
@@ -65,6 +63,7 @@ struct Game_Update_Params
  Frame_Info frame;
  b32 debug_camera_on;
  sarray(Live_Viewport) live_viewports;
+ b32 game_was_turned_on_this_frame;
 };
 
 struct Game_ImGui_State {
@@ -106,7 +105,7 @@ ed_api_fill_vtable_new(API_VTable_ed_new *table){
 }
 #endif
 
-#if !AD_IS_DRIVER
+#if 1
 struct Game_State;
 
 struct Game_Update_Return
@@ -132,7 +131,7 @@ log_string(String string)
  log_string_core(string);
 }
 
-#if !AD_IS_DRIVER
+#if 1
 // NOTE(kv) Log functions need to be quick and nimble,
 //  we don't wanna be writing poems when logging errors.
 function void
@@ -186,7 +185,7 @@ pack_modifiers(Key_Code *mods, u32 count)
  return result;
 }
 //-
-#if !AD_IS_DRIVER
+#if 1
 inline Scratch_Block::Scratch_Block(App *app){
  init_scratch_block(this);
 }
@@ -248,4 +247,11 @@ myinline v2::operator ImVec2() { return *(ImVec2*)this; }
 myinline ImVec2::operator v2() { return *(v2*)this; }
 myinline v4::operator ImVec4() { return *(ImVec4*)this; }
 myinline ImVec4::operator v4() { return *(v4*)this; }
+
+function i64
+get_line_number_from_pos(App *app, Buffer_ID buffer, i64 pos)
+{
+ Buffer_Cursor cursor = buffer_compute_cursor(app, buffer, seek_pos(pos));
+ return(cursor.line);
+}
 //~

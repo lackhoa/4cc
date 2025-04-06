@@ -61,7 +61,7 @@ F4_DoFullLex_ASYNC_Inner(Async_Context *actx, Buffer_ID buffer_id)
     // NOTE(rjf): Fall back to C++ if we don't have a proper language.
     if(language == 0)
     {
-        language = F4_LanguageFromString(S8Lit("cpp"));
+        language = F4_LanguageFromExtension(S8Lit("cpp"));
     }
     
     if(language != 0)
@@ -179,7 +179,7 @@ F4_BufferEditRange(App *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cur
    // NOTE(rjf): Fall back to C++ if we don't have a proper language.
    if(language == 0)
    {
-    language = F4_LanguageFromString(S8Lit("cpp"));
+    language = F4_LanguageFromExtension(S8Lit("cpp"));
    }
    Token_List relex_list = F4_Language_LexFullInput_NoBreaks(app, language, scratch, partial_text);
    //~

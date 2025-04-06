@@ -7,20 +7,10 @@ push_data(Arena *arena, u64 size)
  result.size = size;
  return(result);
 }
-myinline String
+myinline Stringz
 push_string(Arena *arena, String data)
 {
- Stringz result;
- result.str   = push_array_copy(arena, u8, data.len, data.str);
- result.count = data.len;
- return(result);
-}
-myinline Stringz
-push_string(Arena *arena, Stringz data)
-{
- Stringz result;
- result.str   = push_array_copy(arena, u8, data.len+1, data.str);
- result.count = data.len;
+ Stringz result = push_stringf(arena, "%S", data);
  return(result);
 }
 //
@@ -136,6 +126,107 @@ string_prefix(String str, u64 size){
  return(str);
 }
 //-
+struct Node_String
+{
+ Node_String *next;
+ String string;
+};
+struct List_String
+{
+ Node_String *first;
+ Node_String *last;
+ u64 total_size;
+ i32 node_count;
+};
+function u64
+string_find_first(String str, u64 start_pos, u8 c)
+{
+ u64 i = start_pos;
+ for (;i < str.size && c != str.str[i]; i += 1);
+ return(i);
+}
+function u64
+string_find_first(String str, u8 c)
+{
+ return(string_find_first(str, 0, c));
+}
+function void
+string_list_push(List_String *list, Node_String *node)
+{
+ sll_queue_push(list->first, list->last, node);
+ list->node_count += 1;
+ list->total_size += node->string.size;
+}
+
+function void
+string_list_push(Arena *arena, List_String *list, String string)
+{
+ Node_String *node = push_array(arena, Node_String, 1);
+ sll_queue_push(list->first, list->last, node);
+ node->string = string;
+ list->node_count += 1;
+ list->total_size += string.size;
+}
+
+#define string_list_push_lit(a,l,s)    string_list_push((a), (l), string_litexpr(s))
+#define string_list_push_u8_lit(a,l,s) string_list_push((a), (l), strlit(s))
+
+function void
+string_list_push(List_String *list, List_String *src_list){
+ sll_queue_push_multiple(list->first, list->last, src_list->first, src_list->last);
+ list->node_count += src_list->node_count;
+ list->total_size += src_list->total_size;
+ block_zero_array(src_list);
+}
+
+function List_String
+string_split(Arena *arena, String string, u8 *split_characters, i32 split_character_count)
+{
+ List_String list = {};
+ for(;;)
+ {
+  u64 i = string.size;
+  String prefix = string;
+  for_i32(j,0,split_character_count)
+  {
+   u64 pos = string_find_first(prefix, split_characters[j]);
+   prefix = string_prefix(prefix, pos);
+   i = Min(i, pos);
+  }
+  if(prefix.size > 0)
+  {
+   string_list_push(arena, &list, prefix);
+  }
+  string = string_skip(string, i + 1);
+  if (string.size == 0){ break; }
+ }
+ return(list);
+}
+//-
+function List_String
+path_split(Arena *arena, String path)
+{
+ return string_split(arena, path, (u8 *)"/\\", 2);
+}
+function b32
+path_contains(String path, String name)
+{
+ b32 result = 0;
+ Scratch_Scope tmp;
+ List_String split = path_split(tmp, path);
+ for(Node_String *node = split.first;
+     node != 0;
+     node = node->next)
+ {
+  if(node->string == name)
+  {
+   result = 1;
+   break;
+  }
+ }
+ return result;
+}
+
 function String
 path_dir(String str)
 {

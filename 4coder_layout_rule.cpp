@@ -4,47 +4,16 @@
 
 // TOP
 
-function Layout_Reflex
-get_layout_reflex(Layout_Item_List *list, Buffer_ID buffer, f32 width, Face_ID face){
- Layout_Reflex reflex = {};
- reflex.list = list;
- reflex.buffer = buffer;
- reflex.width = width;
- reflex.face = face;
- return(reflex);
-}
-
-function Rect_f32
-layout_reflex_get_rect(App *app, Layout_Reflex *reflex, i64 pos, b32 *unresolved_dependence){
- Rect_f32 rect = {};
- pos = clamp_min(0, pos);
- if (range_contains(reflex->list->input_index_range, pos)){
-  if (range_contains(reflex->list->manifested_index_range, pos)){
-   rect = layout_box_of_pos(*reflex->list, pos);
-   *unresolved_dependence = false;
-  }
-  else{
-   *unresolved_dependence = true;
-  }
- }
- else{
-  Buffer_Cursor cursor = buffer_compute_cursor(app, reflex->buffer, seek_pos(pos));
-  rect = buffer_relative_box_of_pos(app, reflex->buffer, reflex->width, reflex->face, cursor.line, cursor.pos);
-  *unresolved_dependence = false;
- }
- return(rect);
-}
-
-////////////////////////////////
-
 function i64
-layout_index_from_ptr(u8 *ptr, u8 *string_base, i64 index_base) {
+layout_index_from_ptr(u8 *ptr, u8 *string_base, i64 index_base)
+{
  i64 result = (i64)(ptr - string_base) + index_base;
  return(result);
 }
 
 function Layout_Item_List
-get_empty_item_list(Range_i64 input_range){
+get_empty_item_list(Range_i64 input_range)
+{
  Layout_Item_List list = {};
  list.input_index_range = input_range;
  list.manifested_index_range = Ii64_neg_inf;
@@ -52,22 +21,25 @@ get_empty_item_list(Range_i64 input_range){
 }
 
 function void
-layout_item_list_finish(Layout_Item_List *list, f32 bottom_padding){
+layout_item_list_finish(Layout_Item_List *list, f32 bottom_padding)
+{
  list->bottom_padding = bottom_padding;
  list->height += bottom_padding;
 }
 
 function void
-layout_write(Arena *arena, Layout_Item_List *list, Face_ID face, i64 index, u32 codepoint, Layout_Item_Flag flags, Rect_f32 rect, f32 padded_y1)
+layout_write(Layout_State *layout, i64 index, u32 codepoint, Layout_Item_Flag flags, Rect_f32 rect, f32 padded_y1)
 {
+ Arena *arena = layout->arena;
+ Layout_Item_List *list = &layout->list;
  Temp_Memory restore_point = begin_temp_memory(arena);
  Layout_Item *item;
  Layout_Item_Block *block;
  {//NOTE(kv) Trying to extend the existing block.
   block = list->last;
-  item = push_array(arena, Layout_Item, 1, push_zero());
+  item = push_struct0(arena, Layout_Item);
   if (block != 0) {
-   if (block->face != face) {
+   if (block->face != layout->face) {
     block = 0;
    } else if (block->items + block->item_count == item) {
     block->item_count += 1;
@@ -76,8 +48,9 @@ layout_write(Arena *arena, Layout_Item_List *list, Face_ID face, i64 index, u32 
    }
   }
  }
- if (block == 0) {
-  //-New block
+ 
+ if (block == 0)
+ { // NOTE(kv) New block
   end_temp_memory(restore_point);
   block = push_array(arena, Layout_Item_Block, 1, push_zero());
   item  = push_array(arena, Layout_Item, 1, push_zero());
@@ -85,7 +58,7 @@ layout_write(Arena *arena, Layout_Item_List *list, Face_ID face, i64 index, u32 
   list->node_count += 1;
   block->items = item;
   block->item_count = 1;
-  block->face = face;
+  block->face = layout->face;
  }
  
  list->item_count += 1;
@@ -147,147 +120,124 @@ newline_layout_consume_finish(Newline_Layout_Vars &vars){
 
 ////
 
-function LefRig_TopBot_Layout_Vars
-get_lr_tb_layout_vars(Face_Advance_Map *advance_map, Face_Metrics *metrics, f32 tab_width, f32 width){
- f32 text_height = metrics->text_height;
- f32 line_height = metrics->line_height;
- 
- LefRig_TopBot_Layout_Vars result = {};
- result.advance_map = advance_map;
- result.metrics = metrics;
- result.tab_width = tab_width;
- result.line_to_text_shift = text_height - line_height;
- 
- result.blank_dim = V2(metrics->space_advance, text_height);
- 
- result.line_y = line_height;
- result.text_y = text_height;
- result.width = width;
- return(result);
+function b32
+lr_tb_crosses_width(Layout_State *layout, f32 advance, f32 width){
+ return(layout->p.x + advance > width);
 }
 
 function b32
-lr_tb_crosses_width(LefRig_TopBot_Layout_Vars *vars, f32 advance, f32 width){
- return(vars->p.x + advance > width);
-}
-
-function b32
-lr_tb_crosses_width(LefRig_TopBot_Layout_Vars *vars, f32 advance){
- return(vars->p.x + advance > vars->width);
+lr_tb_crosses_width(Layout_State *layout, f32 advance){
+ return(layout->p.x + advance > layout->width);
 }
 
 function f32
-lr_tb_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, u32 codepoint) {
- return(font_get_glyph_advance(vars->advance_map, vars->metrics, codepoint, vars->tab_width));
+lr_tb_advance(Layout_State *layout, u32 codepoint)
+{
+ return(font_get_glyph_advance(layout->advance_map, layout->metrics, codepoint, layout->tab_width));
 }
 
 function void
-lr_tb_write_with_advance_with_flags(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32 advance, Arena *arena, Layout_Item_List *list, i64 index, u32 codepoint, Layout_Item_Flag flags)
+lr_tb_write_with_advance(Layout_State *layout, f32 advance, i64 index, u32 codepoint,
+                         b32 do_math_script)
 {
- if (codepoint == '\t') {
-  codepoint = ' ';
+ if (codepoint == '\t') { codepoint = ' '; }
+ 
+ layout->p.x = ceilv1(layout->p.x);
+ f32 next_x = layout->p.x + advance;
+ rect2 rect =  Rf32(layout->p, V2(next_x, layout->text_y));
+ if(do_math_script)
+ {
+  if(index % 2)
+  {
+   v2 shift = V2(0.f, 10.f);
+   rect.min -= shift;
+   rect.max -= shift;
+  }
  }
- vars->p.x = ceilv1(vars->p.x);
- f32 next_x = vars->p.x + advance;
- layout_write(arena, list, face, index, codepoint, flags, Rf32(vars->p, V2(next_x, vars->text_y)), vars->line_y);
- vars->p.x = next_x;
-}
-
-function void
-lr_tb_write_with_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32 advance, Arena *arena, Layout_Item_List *list, i64 index, u32 codepoint)
-{
- lr_tb_write_with_advance_with_flags(vars, face, advance, arena, list, index, codepoint, 0);
-}
-
-function void
-lr_tb_write(LefRig_TopBot_Layout_Vars *vars, Face_ID face, Arena *arena, Layout_Item_List *list, i64 index, u32 codepoint){
- f32 advance = lr_tb_advance(vars, face, codepoint);
- lr_tb_write_with_advance(vars, face, advance, arena, list, index, codepoint);
+ layout_write(layout, index, codepoint, /*flags*/0, rect, layout->line_y);
+ layout->p.x = next_x;
 }
 
 function f32
-lr_tb_advance_byte(LefRig_TopBot_Layout_Vars *vars){
- return(vars->metrics->byte_advance);
+lr_tb_advance_byte(Layout_State *layout)
+{
+ return(layout->metrics->byte_advance);
 }
 
 function void
-lr_tb_write_byte_with_advance(LefRig_TopBot_Layout_Vars *vars, Face_ID face, f32 advance, Arena *arena, Layout_Item_List *list, i64 index, u8 byte)
+lr_tb_write_byte_with_advance(Layout_State *layout, f32 advance, i64 index, u8 byte)
 {
- Face_Metrics *metrics = vars->metrics;
+ Face_Metrics *metrics = layout->metrics;
  
- f32 final_next_x = vars->p.x + advance;
+ f32 final_next_x = layout->p.x + advance;
  u32 lo = ((u32)byte     )&0xF;
  u32 hi = ((u32)byte >> 4)&0xF;
  
- v2 p = vars->p;
+ v2 p = layout->p;
  p.x = ceilv1(p.x);
  f32 next_x = p.x + metrics->byte_sub_advances[0];
- f32 text_y = vars->text_y;
+ f32 text_y = layout->text_y;
  
  Layout_Item_Flag flags = LayoutItemFlag_Special_Character;
- layout_write(arena, list, face, index, '\\', flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+ layout_write(layout, index, '\\', flags, Rf32(p, V2(next_x, text_y)), layout->line_y);
  p.x = next_x;
  
  flags = LayoutItemFlag_Ghost_Character;
  next_x += metrics->byte_sub_advances[1];
- layout_write(arena, list, face, index, integer_symbols[hi], flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+ layout_write(layout, index, integer_symbols[hi], flags, Rf32(p, V2(next_x, text_y)), layout->line_y);
  p.x = next_x;
  next_x += metrics->byte_sub_advances[2];
- layout_write(arena, list, face, index, integer_symbols[lo], flags, Rf32(p, V2(next_x, text_y)), vars->line_y);
+ layout_write(layout, index, integer_symbols[lo], flags, Rf32(p, V2(next_x, text_y)), layout->line_y);
  
- vars->p.x = final_next_x;
+ layout->p.x = final_next_x;
 }
 
 function void
-lr_tb_write_byte(LefRig_TopBot_Layout_Vars *vars, Face_ID face,
-                 Arena *arena, Layout_Item_List *list, i64 index, u8 byte)
+lr_tb_write_byte(Layout_State *layout, i64 index, u8 byte)
 {
- lr_tb_write_byte_with_advance(vars, face, vars->metrics->byte_advance,
-                               arena, list, index, byte);
+ lr_tb_write_byte_with_advance(layout, layout->metrics->byte_advance, index, byte);
 }
 
 function void
-lr_tb_write_blank_dim(LefRig_TopBot_Layout_Vars *vars, Face_ID face, v2 dim,
-                      Arena *arena, Layout_Item_List *list, i64 index)
+lr_tb_write_blank_dim(Layout_State *layout, v2 dim, i64 index)
 {
- layout_write(arena, list, face, index, ' ', 0, Rf32_xy_wh(vars->p, dim), vars->line_y);
- vars->p.x += dim.x;
+ layout_write(layout, index, ' ', 0, Rf32_xy_wh(layout->p, dim), layout->line_y);
+ layout->p.x += dim.x;
 }
 
 function void
-lr_tb_write_blank(LefRig_TopBot_Layout_Vars *vars, Face_ID face,
-                  Arena *arena, Layout_Item_List *list, i64 index)
+lr_tb_write_blank(Layout_State *layout, i64 index)
 {
- lr_tb_write_blank_dim(vars, face, vars->blank_dim, arena, list, index);
+ lr_tb_write_blank_dim(layout, layout->blank_dim, index);
 }
 
 function void
-lr_tb_next_line(LefRig_TopBot_Layout_Vars *vars)
+lr_tb_next_line(Layout_State *layout)
 {
- vars->p.x = 0.f;
- vars->p.y = vars->line_y;
- vars->line_y += vars->metrics->line_height;
- vars->text_y = vars->line_y + vars->line_to_text_shift;
+ layout->p.x = 0.f;
+ layout->p.y = layout->line_y;
+ layout->line_y += layout->metrics->line_height;
+ layout->text_y = layout->line_y + layout->line_to_text_shift;
 }
 
 function void
-lr_tb_next_line_padded(LefRig_TopBot_Layout_Vars *vars, f32 top, f32 bot)
+lr_tb_next_line_padded(Layout_State *layout, f32 top, f32 bot)
 {
- vars->p.x = 0.f;
- vars->p.y = vars->line_y + top;
- vars->line_y += top + vars->metrics->line_height;
- vars->text_y = vars->line_y + vars->line_to_text_shift;
- vars->line_y += bot;
+ layout->p.x = 0.f;
+ layout->p.y = layout->line_y + top;
+ layout->line_y += top + layout->metrics->line_height;
+ layout->text_y = layout->line_y + layout->line_to_text_shift;
+ layout->line_y += bot;
 }
 
 function void
-lr_tb_advance_x_without_item(LefRig_TopBot_Layout_Vars *vars, f32 advance){
- vars->p.x += advance;
+lr_tb_advance_x_without_item(Layout_State *layout, f32 advance){
+ layout->p.x += advance;
 }
 
 function void
-lr_tb_align_rightward(LefRig_TopBot_Layout_Vars *vars, f32 align_x){
- vars->p.x = clamp_min(align_x, vars->p.x);
+lr_tb_align_rightward(Layout_State *layout, f32 align_x){
+ layout->p.x = clamp_min(align_x, layout->p.x);
 }
 
 ////////////////////////////////
@@ -296,8 +246,6 @@ function Layout_Item_List
 layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer,
                  Range_i64 range, Face_ID face, f32 width)
 {
- Layout_Item_List list = get_empty_item_list(range);
- 
  Scratch_Block scratch(app);
  String text = push_buffer_range(app, scratch, buffer, range);
  
@@ -305,64 +253,114 @@ layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer,
  Face_Metrics metrics = get_face_metrics(app, face);
  u64 tab_width = def_get_config_u64(app, vars_intern_lit("default_tab_width"));
  tab_width = clamp_min(1, tab_width);
- LefRig_TopBot_Layout_Vars pos_vars = get_lr_tb_layout_vars(&advance_map, &metrics, (f32)tab_width, width);
+ Layout_State layout = {};
  
- if (text.size == 0) {
-  lr_tb_write_blank(&pos_vars, face, arena, &list, range.first);
- } else {
+ {
+  F4_Language *language = F4_LanguageFromBuffer(app, buffer);
+  if(language)
+  {
+   layout.is_math_layout = language->name == strlit("skm");
+  }
+  
+  f32 text_height = metrics.text_height;
+  f32 line_height = metrics.line_height;
+  
+  layout.list = get_empty_item_list(range);
+  layout.arena = arena;
+  layout.advance_map = &advance_map;
+  layout.face = face;
+  layout.metrics = &metrics;
+  layout.tab_width = (f32)tab_width;
+  layout.line_to_text_shift = text_height - line_height;
+  
+  layout.blank_dim = V2(metrics.space_advance, text_height);
+  
+  layout.line_y = line_height;
+  layout.text_y = text_height;
+  layout.width = width;
+ }
+ 
+ if(text.size == 0)
+ {
+  lr_tb_write_blank(&layout, range.first);
+ }
+ else
+ {
+  Token_Iterator_Array tokens = get_token_it_at_pos(app, buffer, range.min);
+  
   Newline_Layout_Vars newline_vars = get_newline_layout_vars();
   u8 *ptr = text.str;
   u8 *end_ptr = ptr + text.size;
-  for (;ptr < end_ptr;) {
+  while(ptr < end_ptr)
+  {
    Character_Consume_Result consume = utf8_consume(ptr, (u64)(end_ptr - ptr));
    i64 index = layout_index_from_ptr(ptr, text.str, range.first);
    kv_assert(index < range.max);
    
-   switch (consume.codepoint) {
-    case '\t':
-    case ' ': {
-     newline_layout_consume_default(newline_vars);
-     f32 advance = lr_tb_advance(&pos_vars, face, consume.codepoint);
-     lr_tb_write_with_advance(&pos_vars, face, advance, arena, &list, index, consume.codepoint);
-    }break;
-    
-    case '\r': {
+   switch(consume.codepoint)
+   {
+    case '\r':
+    {
      newline_layout_consume_CR(newline_vars, index);
     }break;
     
-    case '\n': {
+    case '\n':
+    {
      i64 newline_index = newline_layout_consume_LF(newline_vars, index);
-     lr_tb_write_blank(&pos_vars, face, arena, &list, newline_index);
-     lr_tb_next_line(&pos_vars);
+     lr_tb_write_blank(&layout, newline_index);
+     lr_tb_next_line(&layout);
     }break;
     
-    case max_u32: {
+    case max_u32:
+    {
      newline_layout_consume_default(newline_vars);
-     lr_tb_write_byte(&pos_vars, face, arena, &list, index, *ptr);
+     lr_tb_write_byte(&layout, index, *ptr);
     }break;
     
-    default: {
+    default:
+    {
+     b32 do_math_script = 0;
+     if(layout.is_math_layout)
+     {
+      Token *token = tkarr_read(&tokens);
+      while(token and index >= (token->pos + token->size))
+      {
+       token = tkarr_inc_all(&tokens);
+      }
+      //
+      if(not (token and (index >= token->pos and
+                         index <  token->pos+token->size)))
+      {
+       token = &stub_token;
+      }
+      
+      do_math_script = token->flags & TokenBaseFlag_SkmCode;
+     }
+     
      newline_layout_consume_default(newline_vars);
-     lr_tb_write(&pos_vars, face, arena, &list, index, consume.codepoint);
+     f32 advance = lr_tb_advance(&layout, consume.codepoint);
+     lr_tb_write_with_advance(&layout, advance, index, consume.codepoint, do_math_script);
     }break;
    }
    
    ptr += consume.inc;
   }
+  
   kv_assert(ptr-text.str == range_size(range));
   
-  if ( newline_layout_consume_finish(newline_vars) ) {
+  if(newline_layout_consume_finish(newline_vars))
+  {
    i64 index = layout_index_from_ptr(ptr, text.str, range.first);
-   // NOTE(kv): original code got out of range here
-   if (index < range.max) {
-    lr_tb_write_blank(&pos_vars, face, arena, &list, index);
+   if (index < range.max)
+   {// NOTE(kv): original code got out of range here
+    lr_tb_write_blank(&layout, index);
    }
   }
  }
  
- layout_item_list_finish(&list, -pos_vars.line_to_text_shift);
+ layout_item_list_finish(&layout.list, -layout.line_to_text_shift);
  
- return(list);
+ return(layout.list);
 }
 
 function Layout_Item_List

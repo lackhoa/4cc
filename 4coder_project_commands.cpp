@@ -580,11 +580,6 @@ concat_path(Arena *arena, String a, String b)
  return result;
 }
 
-myinline Models *
-app_get_models(App *app)
-{
- return (Models *)app->cmd_context;
-}
 
 function String
 chop_trailing_slashes(String string)

@@ -55,6 +55,7 @@
 #include "4coder_profile_inspect.h"
 //#include "4coder_tutorial.h"
 #include "4coder_search_list.h"
+#include "4coder_fleury/4coder_fleury_lang.h"
 
 ////////////////////////////////
 

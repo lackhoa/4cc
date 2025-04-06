@@ -82,9 +82,16 @@ face_id_from_description(App *app, Face_Description *description){
 }
 
 function b32
-modify_global_face_by_description(App *app, Face_Description description){
-    Face_ID face_id = get_face_id(app, 0);
-    return(try_modify_face(app, face_id, &description));
+modify_global_face_by_description(App *app, Face_Description description)
+{
+ Face_ID face_id = get_face_id(app, 0);
+ Models *models = app_get_models(app);
+ b32 result = try_modify_face(app, face_id, &description);
+ if(result)
+ {
+  models->modified_global_face_path = push_stringf(&thread_permanent_arena, "%S", description.font.filename);
+ }
+ return result;
 }
 
 function void

@@ -57,7 +57,6 @@ is_klang_or_template_file(String path)
 function void
 meta_process_ast(Statement_Root root, String source_path)
 {
- kv_assert(root.kind == Statement_Kind_Root);
  if(0)
  {//-Vertex check (archived)
   Scratch_Block scratch;
@@ -73,24 +72,30 @@ meta_process_ast(Statement_Root root, String source_path)
   darray(Stack_Entry) stack;
   init_dynamic(stack, scratch, 32);
   
-  auto stack_push_block = [&](sarray(Meta_Statement) *block){
+  auto stack_push_block = [&](sarray(Meta_Statement) *block)
+  {
    Stack_Entry entry = {block->items, block->count, 0};
    push(&stack, entry);
   };
-  auto stack_push_statement = [&](Statement_Head *statement){
-   push(&stack, {cast(Meta_Statement *)statement, 1, 0});
+  auto stack_push_statement = [&](Meta_Statement *statement)
+  {
+   push(&stack, {statement, 1, 0});
   };
   
   stack_push_block(&root.top_levels);
   while(true)
   {
-   Statement_Head *statement = 0;
+   Meta_Statement *statement = 0;
    {//-Pop the stack
-    while(not statement and stack.count > 0){
+    while(not statement and stack.count > 0)
+    {
      Stack_Entry *last = &get_last(stack);
-     if(last->next_index < last->statement_count){
-      statement = &last->statements[last->next_index++].head;
-     }else{
+     if(last->next_index < last->statement_count)
+     {
+      statement = &last->statements[last->next_index++];
+     }
+     else
+     {
       stack.pop();
      }
     }
@@ -99,26 +104,22 @@ meta_process_ast(Statement_Root root, String source_path)
    {
     if(statement->kind == Statement_Kind_Function)
     {//-Function
-     cast_to_var(Statement_Function*, func, statement);
-     stack_push_block(&func->body);
+     stack_push_block(&statement->function0.body);
     }
     else if(statement->kind == Statement_Kind_Block)
     {//-Block
-     cast_to_var(Statement_Block *, block, statement);
-     stack_push_block(&block->block);
+     stack_push_block(&statement->block);
     }
     else if(statement->kind == Statement_Kind_If)
     {//-If
-     cast_to_var(Statement_If *, if0, statement);
-     stack_push_statement(if0->else0);
-     stack_push_statement(if0->body);
+     stack_push_statement(statement->if0.else0);
+     stack_push_statement(statement->if0.body);
     }
     else
     {//-Leaf
      if(statement->kind == Statement_Kind_Expression)
      {//-Expression
-      cast_to_var(Statement_Expression*, statement_expression, statement);
-      Meta_Expression &expr = statement_expression->expression;
+      Meta_Expression &expr = statement->expression;
       if(expr.kind == Expression_Kind_Call)
       {
        Expression_Call *call = &expr.call;
@@ -246,33 +247,33 @@ generate_4coder_custom()
   Stringz output_path = pjoin(scratch, code_dir, strlit("command_metadata.gen.h"));
   Meta_Printer printer = m_open_file_to_write(output_path, custom_data_path);
   {
-   print_format(printer, "#  define command_one_past_last_id %d\n", commands.count);
+   printf(printer, "#  define command_one_past_last_id %d\n", commands.count);
    
    for_i32(i, 0, commands.count){
     Meta_Custom_Command *command = commands.items + i;
-    print_format(printer, "function void %.*s(App_Cmd *app);\n",
-                 strexpand(command->name));
+    printf(printer, "function void %.*s(App_Cmd *app);\n",
+           strexpand(command->name));
    }
    
    text = R"FOO(
-struct Command_Metadata{
-  Custom_Command_Function *proc;
-  b32 is_ui;
-  String name;
-};
-)FOO";
+   struct Command_Metadata{
+   Custom_Command_Function *proc;
+   b32 is_ui;
+   String name;
+   };
+   )FOO";
    print(printer, text);
    
-   print_format(printer, "static Command_Metadata fcoder_metacmd_table[%d] = ", commands.count);
+   printf(printer, "static Command_Metadata fcoder_metacmd_table[%d] = ", commands.count);
    {
     print(printer, "{\n");
     for_i32(i, 0, commands.count)
     {
      Meta_Custom_Command *command = commands.items + i;
-     print_format(printer, "{ .proc=%.*s, .is_ui=%d, .name=strlit(\"%.*s\") },\n",
-                  strexpand(command->name),
-                  command->is_ui,
-                  strexpand(command->name));
+     printf(printer, "{ .proc=%.*s, .is_ui=%d, .name=strlit(\"%.*s\") },\n",
+            strexpand(command->name),
+            command->is_ui,
+            strexpand(command->name));
     }
     print(printer, "};\n");
    }
@@ -286,19 +287,20 @@ struct Command_Metadata{
   Meta_Printer printer = m_open_file_to_write(output_path, custom_data_path);
   
   text = R"FOO(
-function void
-initialize_managed_id_metadata(App *app)
-)FOO";
+  function void
+  initialize_managed_id_metadata(App *app)
+  )FOO";
   print(printer, text);
-  PrintBraces(printer){
+  {
+   PrintBraces(printer);
    print(printer, "\n");
    print(printer,
          "#define X(name, group) "
          "name = managed_id_declare(app, strlit(#group), strlit(#name))\n");
    for_i32(i, 0, custom_ids.count){
     Meta_Custom_ID *id = custom_ids.items + i;
-    print_format(printer, "X(%.*s, %.*s);\n",
-                 strexpand(id->name), strexpand(id->group));
+    printf(printer, "X(%.*s, %.*s);\n",
+           strexpand(id->name), strexpand(id->group));
    }
    print(printer, "#undef X\n");
    print(printer, "\n");
@@ -418,6 +420,7 @@ main_normal(String *args, i32 arg_count)
   meta.dirs.home   = home_dir;
   meta.dirs.code   = code_dir;
   meta.dirs.game   = pjoin(tmp, code_dir, "game");
+  meta.dirs.driver = pjoin(tmp, meta.dirs.game, "driver");
   meta.dirs.backup = pjoin(tmp, code_dir, "backups");
   
   b32 ok2 = mkdir_p(meta.dirs.backup);
@@ -431,8 +434,10 @@ main_normal(String *args, i32 arg_count)
   darray(Stringz) all_paths;
   init_dynamic(all_paths, tmp, 512);
   
+  // TODO(kv) Hm, how about nested dir though?
   Stringz directories_whose_files_are_all_processed[] = {
    meta.dirs.game,
+   meta.dirs.driver,
    pjoin(tmp, meta.dirs.code, "meta"),  // NOTE(kv) Nothing stops the metaprogram using links.
   };
   
@@ -516,7 +521,7 @@ main_normal(String *args, i32 arg_count)
 #endif
   
   {//-Lex
-   init(all_files, tmp, all_paths.count);
+   init_static(all_files, tmp, all_paths.count);
    
    f64 start_time = gb_time_now();
    for_i32(i, 0, all_paths.count)
@@ -532,7 +537,7 @@ main_normal(String *args, i32 arg_count)
  {//-;link_processor_call
   Scratch_Block links_tmp;
   sarray(Link_Table_Node *) table;
-  init(table, links_tmp, 4096);
+  init_static(table, links_tmp, 4096);
   
   for_i32(file_index, 0, all_files.count)
   {
@@ -585,6 +590,7 @@ main_normal(String *args, i32 arg_count)
    "4ed_render_target.cpp",
    "ad_debug_interface.h",
    "4ed_imgui_wrapper.cpp",
+   "4coder_game.cpp",
   };
   API_Definition_List list = {};
   for_i32(i,0,alen(api_paths0))

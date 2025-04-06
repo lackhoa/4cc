@@ -7,9 +7,10 @@ resolve_range(Unresolved_Location location)
  if(is_valid(location))
  {// NOTE(kv) We might wanna pass null location in,
   // to test, or when we don't have instrumentation.
-  result.file = location.file;
-  sarray(Marker_Pair) ranges = driver_data.marker_pairs[location.file];
-  result.range = ranges[location.range_index];
+  i32 index = location.text_object_index_in_file;
+  i16 file_index = location.file;
+  Range_i16 range = driver_data.files[file_index].text_objects[index].location;
+  result = {{1, file_index}, range};
  }
  return result;
 }
@@ -27,7 +28,7 @@ set_draw_location(Location location)
  }
 }
 myinline void
-set_draw_location(Unresolved_Location location0)
+set_draw_location_unresolved(Unresolved_Location location0)
 {
  set_draw_location(resolve_range(location0));
 }
@@ -43,6 +44,7 @@ current_location_is_hot()
  b32 result = painter->current_location_is_hot;
  return result;
 }
+//-
 myinline b32
 is_painting_enabled()
 {

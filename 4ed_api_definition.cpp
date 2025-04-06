@@ -437,7 +437,7 @@ api_definition_generate_api_includes(API_Definition *api,
    "%S_api.gen.h",
    "%S_api.gen.cpp",
   };
-  const char *format = "%s\n";
+  char *format = "%s\n";
   for_i32(index,0,filecount)
   {
    auto &it = genfiles[index];

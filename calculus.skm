@@ -1,0 +1,31 @@
+//
+[;Taylor_series
+ Let {f(x)} have derivatives of all order at {x=c},
+ The Taylor series of {f(x)} centered at {c} is
+ { f(x) = sum__(i=0)^infty frac(1,i!) f^((i))(c) (x-c)^i }
+ 
+ [todo The taylor series of a any polynomial is the polynomial itself
+  [For example, for the polynomial { f(x) = x^3 + 2 x^2 + 3 x + 1 }, let's say {c=0}
+   { f^((0))(0) = 1 }, which is the constant term
+   { f^((1))(0) = (x => 3 x^2 + 4 x + 3)(0) = 3 }, which is the linear coefficient
+   { f^((2))(0) = (x => 6 x + 4)(0) = 4 }, which is the quadratic coefficient, multiplied by 2
+   { f^((3))(0) = (x => 6)(0) = 4 }, which is the cubic coefficient, multiplied by 6
+   
+   so you can see how the {frac(1,i!)} plays into this whole story]
+  
+  [todo What about for arbitrary center {c}?
+   ]
+  ]
+ ]
+
+[;chain_rule
+ {
+  diff(f circ g)(x)
+  = diff(f)(g(x)) diff(g)(x)
+ }
+ another way to say it
+ {
+  frac(dz,dx) = frac(dz,dy) frac(dy,dx)
+ }
+ ]
+//

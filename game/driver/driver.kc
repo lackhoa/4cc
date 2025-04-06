@@ -430,7 +430,7 @@ render_hand(Forearm forearm)
    v3 vec = finger_vecs[ifinger];
    v3 xvec = V3x(0.0367f);
    
-   tvert kmid = (k+0.5f*vec);
+   tvert kmid = k+0.5f*vec;
    tvert ikmid = kmid-xvec;
    tvert okmid = kmid+xvec;
    
@@ -496,7 +496,7 @@ function void
 set_skeleton_params()
 {
  auto &params = painter->params;
- params.line_color = argb_yellow;
+ params.line_color = linear_argb_yellow;
  // NOTE(kv) Offseting skeleton to overlay it on top of body is complete jank,
  // because it can be near clipped. What we *really* want is layers.
  // NOTE(kv) But funnily, our fov is very short,
@@ -518,7 +518,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
  
  if(painter->show_grid or get_reference_preset() == Preset_Eco_Skeleton)
  {//-Diagramming
-  hl_block_color(argb_dark_blue);
+  hl_block_color(linear_argb_dark_blue);
   draw(bez_line(arm_rotation_pivot, arm_rotation_pivot + fv3(0.f, -3.4844f, 0.f)));
  }
  
@@ -1435,14 +1435,14 @@ render_eyes(Pose &pose)
 function void
 render_grid()
 {
- hl_block_color(argb_dark_blue);
+ hl_block_color(linear_argb_dark_blue);
  v1 head_unit = 1.f+square_root(2);
  
  b32 camera_frontal = almost_equal(absolute(painter->camera.z.z), 1.f, 1e-2f);
  b32 camera_profile = almost_equal(absolute(painter->camera.z.x), 1.f, 1e-2f);
  
  {//NOTE: Grid lines for the face
-  hl_block_color(argb_blue);
+  hl_block_color(linear_argb_blue);
   PaintBlock;
   scale_line_radius(0.33f);
   
@@ -1512,7 +1512,7 @@ render_grid()
    
    {//NOTE: Where the shoulder should be
     PaintBlock;
-    painter->params.line_color = argb_blue;
+    painter->params.line_color = linear_argb_blue;
     v1 y = (-2.2334f);
     draw_line(V3(0.f, y, 0.f), V3(0.7f*head_unit, y, 0.f));
    }
@@ -1538,7 +1538,7 @@ render_grid()
  if(fbool(1))
  {//NOTE: Head unit body proportions markers (we've got 6 heads!)
   PaintBlock;
-  painter->params.line_color = argb_red;
+  painter->params.line_color = linear_argb_red;
   if (camera_frontal)
   {//NOTE
    v1 r = 0.5f*head_unit;
@@ -2134,9 +2134,9 @@ render_head(Pose &pose)
  if(show_loomis_ball and is_left())
  {
   PaintBlock;
-  hl_block_color(argb_dark_blue);
+  hl_block_color(linear_argb_dark_blue);
   //NOTE: The face
-  if(painter->show_grid){ painter->params.line_color = argb_silver; }
+  if(painter->show_grid){ painter->params.line_color = linear_argb_silver; }
   {// NOTE: Loomis The side circle
    draw_circle(loomis_side_center, normal_x, loomis_side_radius);
   }
@@ -2304,47 +2304,9 @@ show_reference_images()
  }
 }
 //~
-function Pose
-driver_animate(v1 anim_time)
-{
- Movie_Shot shot_value = {};
- Movie_Shot *shot = &shot_value;
- shot->anime_time = anim_time;
- // NOTE(kv) Can't live without my blink animation, man!
- b32 do_blink = true;
- 
- Reference_Preset preset = get_reference_preset();
- if(preset != 0)
- {//-Has preset -> fix the pose
-  shot->out_pose = driver_get_reference_preset_data(preset).pose;
- }
- else
- {// ;set_movie_shot
-  i32 sel = fv(1);
-  if(0);
-  else if(sel == 0)
-  {
-   do_blink = false;
-   shot_go(shot, movie_shot_head_tilt);
-  }
-  else if(sel == 1)
-  {// NOTE Test playing two animations simultaneously.
-   shot_go(shot, movie_shot_arm);
-  }
- }
- 
- if(do_blink)
- {
-  shot_go(shot, movie_shot_blinking);
- }
- 
- Pose pose = shot->out_pose;
- return pose;
-}
-//~
 function void
 driver_render(Arena *tmp, Painter *painter0)
-{// NOTE @driver_api, see also @game_render
+{// NOTE @driver_api, see also @call_driver_render
  painter = painter0;
  
  //-Animate once per viewport
@@ -2387,7 +2349,7 @@ driver_render(Arena *tmp, Painter *painter0)
    //argb default_line_color = argb_gray(srgb_to_linear1(0.3389f));
    // ;default_line_color
    argb default_line_color = argb_gray(fv(0.03f));
-   if(level1){default_line_color = argb_dark_blue;} // because otw blends in too much with the shading
+   if(level1){default_line_color = linear_argb_dark_blue;} // because otw blends in too much with the shading
    pp.line_color = default_line_color;
   }
   p->viz_level            = viz_level;
@@ -2410,7 +2372,7 @@ driver_render(Arena *tmp, Painter *painter0)
  if(fbool(0))
  {// NOTE Test rotation, again
   BoneBlock(mk_bone_id(Bone_References));
-  hl_block_color(argb_blue);
+  hl_block_color(linear_argb_blue);
   
   tvert a = mkvert(0,0,0);
   tvert b = mkvert(1,0,0);
@@ -2444,19 +2406,6 @@ driver_render(Arena *tmp, Painter *painter0)
    vv0_overlay(pivot);
    draw(bez_line(a,b));
    draw(bez_line(a,c));
-  }
- }
- 
- if(fbool(1))
- {// Blog demo!
-  BoneBlock(Bone_Head);
-  /*if(fbool(1))
-  {
-  draw_circle(fvert(0,0,0), normal_z, fdim(1.f));
-  }*/
-  if(fbool(0))
-  {// just undo :>>>
-   draw_circle(fv(mkvert(V3(0.05f, -0.4035f, 0.f))), normal_z, fv(mkdim(0.7263f)));
   }
  }
  

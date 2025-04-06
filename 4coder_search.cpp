@@ -11,7 +11,7 @@ function String8_Array
 kv_string_split_wildcards(Arena *arena, String8 string)
 {
   String8_Array array = {};
-  List_String list = string_split(arena, string, (u8*)" ", 2);
+  List_String list = string_split(arena, string, (u8*)" ", 1);
   array.count   = list.node_count;
   array.strings = push_array(arena, String, array.count);
   i64 index = 0;

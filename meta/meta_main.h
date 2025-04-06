@@ -9,7 +9,8 @@ struct Meta_Directories
  Stringz code;
  Stringz game;
  Stringz backup;
-};
+ Stringz driver;
+ };
 struct Meta_Globals
 {
  Meta_Directories dirs;
@@ -25,7 +26,8 @@ struct Lexed_File
  Token_List token_list;
  b32 ok;
 };
-#define meta_logf(...) if(meta_logging_level){ printf(__VA_ARGS__); }
+#define meta_logf(...) if(meta_logging_level){ myprintf(__VA_ARGS__); }
+
 function void meta_process_ast(Statement_Root root, String source_path);
 
 myinline Ed_Parser

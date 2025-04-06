@@ -176,16 +176,17 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
 ////////////////////////////////
 
 function Buffer_Cursor
-file_compute_cursor(Editing_File *file, Buffer_Seek seek){
-    Buffer_Cursor result = {};
-    switch (seek.type){
-        case buffer_seek_pos:
-        {
-            result = buffer_cursor_from_pos(&file->state.buffer, seek.pos);
-        }break;
-        case buffer_seek_line_col:
-        {
-            result = buffer_cursor_from_line_col(&file->state.buffer, seek.line, seek.col);
+file_compute_cursor(Editing_File *file, Buffer_Seek seek)
+{
+ Buffer_Cursor result = {};
+ switch (seek.type){
+  case buffer_seek_pos:
+  {
+   result = buffer_cursor_from_pos(&file->state.buffer, seek.pos);
+  }break;
+  case buffer_seek_line_col:
+  {
+   result = buffer_cursor_from_line_col(&file->state.buffer, seek.line, seek.col);
   }break;
  }
  return(result);
@@ -288,7 +289,8 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
 {
  Layout_Item_List result = {};
  i64 line_count = buffer_line_count(&file->state.buffer);
- if(1 <= linum && linum <= line_count){
+ if(1 <= linum && linum <= line_count)
+ {
   Line_Layout_Key key = {
    .face_id             = face->id,
    .face_version_number = face->version_number,
@@ -298,17 +300,20 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
   String key_data = make_data_struct(&key);
   Table_Data_u64 *table = &file->state.line_layout_table;
   Table_Lookup lookup = table_lookup(table, key_data);
-  if(found_match){
+  if(found_match)
+  {
    *found_match = lookup.found_match;
   }
   
   Layout_Item_List *list = 0;
-  if(lookup.found_match){
+  if(lookup.found_match)
+  {
    u64 val = 0;
    table_read(table, lookup, &val);
    list = (Layout_Item_List *)IntAsPtr(val);
-  }else{
-   //-No match
+  }
+  else
+  {//-No match
    Arena *cache_arena = &file->state.cached_layouts_arena;
    Range_i64 line_range = buffer_get_pos_range_from_line_number(&file->state.buffer, linum);
    App app = {.tctx = tctx, .cmd_context = models};

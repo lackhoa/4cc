@@ -10,7 +10,9 @@
 #define ed_view_get_buffer_sig() Buffer_ID ed_view_get_buffer(App* app, View_ID view_id, Access_Flag access)
 #define ed_view_get_cursor_pos_sig() i64 ed_view_get_cursor_pos(App* app, View_ID view_id)
 #define ed_buffer_viewport_id_sig() Viewport_ID ed_buffer_viewport_id(App* app, Buffer_ID buffer)
+#define ed_buffer_compute_cursor_sig() Buffer_Cursor ed_buffer_compute_cursor(App* app, Buffer_ID buffer, Buffer_Seek seek)
 #define ed_view_set_cursor_sig() b32 ed_view_set_cursor(App* app, View_ID view_id, Buffer_Seek seek)
+#define ed_view_set_buffer_sig() b32 ed_view_set_buffer(App* app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags)
 #define ed_log_string_core_sig() void ed_log_string_core(String str)
 #define ed_log_string_spam_sig() void ed_log_string_spam(String string)
 #define ed_draw_string_oriented_sig() v2 ed_draw_string_oriented(App* app, Face_ID font_id, ARGB_Color color, String8 str, v2 point, u32 flags, v2 delta)
@@ -57,7 +59,7 @@
 #define ed_im_begin_sig() b32 ed_im_begin(char* name, b32* p_open, ImGuiWindowFlags flags)
 #define ed_im_end_sig() void ed_im_end(void)
 #define ed_im_textv_sig() void ed_im_textv(char* fmt, va_list args)
-#define ed_im_image_sig() void ed_im_image(ImTextureID user_texture_id, v2 image_size, v2 uv0, v2 uv1, v4 tint_col, v4 border_col)
+#define ed_get_game_buffer_sig() Buffer_ID ed_get_game_buffer(App* app, Viewport_ID viewport)
 #define get_line_range_from_pos__return Range_i64
 #define get_line_range_from_pos__params App* app, Buffer_ID buffer, i64 pos
 #define buffer_replace_range__return b32
@@ -76,8 +78,12 @@
 #define view_get_cursor_pos__params App* app, View_ID view_id
 #define buffer_viewport_id__return Viewport_ID
 #define buffer_viewport_id__params App* app, Buffer_ID buffer
+#define buffer_compute_cursor__return Buffer_Cursor
+#define buffer_compute_cursor__params App* app, Buffer_ID buffer, Buffer_Seek seek
 #define view_set_cursor__return b32
 #define view_set_cursor__params App* app, View_ID view_id, Buffer_Seek seek
+#define view_set_buffer__return b32
+#define view_set_buffer__params App* app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags
 #define log_string_core__return void
 #define log_string_core__params String str
 #define log_string_spam__return void
@@ -170,8 +176,8 @@
 #define im_end__params void
 #define im_textv__return void
 #define im_textv__params char* fmt, va_list args
-#define im_image__return void
-#define im_image__params ImTextureID user_texture_id, v2 image_size, v2 uv0, v2 uv1, v4 tint_col, v4 border_col
+#define get_game_buffer__return Buffer_ID
+#define get_game_buffer__params App* app, Viewport_ID viewport
 #if defined(STATIC_LINK_API) || defined(DYNAMIC_LINK_API)
 struct API_VTable_ed{
 wrap_function_pointer(get_line_range_from_pos);
@@ -183,7 +189,9 @@ wrap_function_pointer(get_active_view);
 wrap_function_pointer(view_get_buffer);
 wrap_function_pointer(view_get_cursor_pos);
 wrap_function_pointer(buffer_viewport_id);
+wrap_function_pointer(buffer_compute_cursor);
 wrap_function_pointer(view_set_cursor);
+wrap_function_pointer(view_set_buffer);
 wrap_function_pointer(log_string_core);
 wrap_function_pointer(log_string_spam);
 wrap_function_pointer(draw_string_oriented);
@@ -230,7 +238,7 @@ wrap_function_pointer(target_set_clip);
 wrap_function_pointer(im_begin);
 wrap_function_pointer(im_end);
 wrap_function_pointer(im_textv);
-wrap_function_pointer(im_image);
+wrap_function_pointer(get_game_buffer);
 };
 #endif
 #if defined(STATIC_LINK_API)
@@ -243,7 +251,9 @@ function View_ID get_active_view(App* app, Access_Flag access);
 function Buffer_ID view_get_buffer(App* app, View_ID view_id, Access_Flag access);
 function i64 view_get_cursor_pos(App* app, View_ID view_id);
 function Viewport_ID buffer_viewport_id(App* app, Buffer_ID buffer);
+function Buffer_Cursor buffer_compute_cursor(App* app, Buffer_ID buffer, Buffer_Seek seek);
 function b32 view_set_cursor(App* app, View_ID view_id, Buffer_Seek seek);
+function b32 view_set_buffer(App* app, View_ID view_id, Buffer_ID buffer_id, Set_Buffer_Flag flags);
 function void log_string_core(String str);
 function void log_string_spam(String string);
 function v2 draw_string_oriented(App* app, Face_ID font_id, ARGB_Color color, String8 str, v2 point, u32 flags, v2 delta);
@@ -290,7 +300,7 @@ function rect2 target_set_clip(Render_Target* target, rect2 clip_box);
 function b32 im_begin(char* name, b32* p_open, ImGuiWindowFlags flags);
 function void im_end(void);
 function void im_textv(char* fmt, va_list args);
-function void im_image(ImTextureID user_texture_id, v2 image_size, v2 uv0, v2 uv1, v4 tint_col, v4 border_col);
+function Buffer_ID get_game_buffer(App* app, Viewport_ID viewport);
 #undef STATIC_LINK_API
 #elif defined(DYNAMIC_LINK_API)
 #ifndef STORAGE_CLASS
@@ -305,7 +315,9 @@ STORAGE_CLASS wrap_function_pointer(get_active_view);
 STORAGE_CLASS wrap_function_pointer(view_get_buffer);
 STORAGE_CLASS wrap_function_pointer(view_get_cursor_pos);
 STORAGE_CLASS wrap_function_pointer(buffer_viewport_id);
+STORAGE_CLASS wrap_function_pointer(buffer_compute_cursor);
 STORAGE_CLASS wrap_function_pointer(view_set_cursor);
+STORAGE_CLASS wrap_function_pointer(view_set_buffer);
 STORAGE_CLASS wrap_function_pointer(log_string_core);
 STORAGE_CLASS wrap_function_pointer(log_string_spam);
 STORAGE_CLASS wrap_function_pointer(draw_string_oriented);
@@ -352,7 +364,7 @@ STORAGE_CLASS wrap_function_pointer(target_set_clip);
 STORAGE_CLASS wrap_function_pointer(im_begin);
 STORAGE_CLASS wrap_function_pointer(im_end);
 STORAGE_CLASS wrap_function_pointer(im_textv);
-STORAGE_CLASS wrap_function_pointer(im_image);
+STORAGE_CLASS wrap_function_pointer(get_game_buffer);
 #undef DYNAMIC_LINK_API
 #undef STORAGE_CLASS
 #endif

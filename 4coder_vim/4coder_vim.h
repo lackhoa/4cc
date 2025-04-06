@@ -44,25 +44,26 @@ global View_ID vim_lister_view_id;
 global v1 vim_nxt_lister_offset;
 global v1 vim_cur_lister_offset;
 
-function rect2
+/*function rect2
 hax_get_main_monitor_rectangle(App *app)
 {
-    rect2 result = global_get_screen_rectangle(app);
-    v2 dim = get_dim(result);
-    if ( dim.x > 1920 )
-    {
-        dim.x -= 1920;
-        result.x0 += 1920;
-    }
-    return result;
-}
+ rect2 result = (app);
+ v2 dim = get_dim(result);
+ if ( dim.x > 1920 )
+ {
+  dim.x -= 1920;
+  result.x0 += 1920;
+ }
+ return result;
+}*/
 
-function rect2 vim_get_bottom_rect(App *app)
+function rect2
+vim_get_bottom_rect(App *app)
 {
-    rect2 result = hax_get_main_monitor_rectangle(app);
-    result.y1 -= 2.f*get_face_metrics(app, get_face_id(app, 0)).line_height;
-    result.y0 = result.y1 - vim_cur_lister_offset;
-    return result;
+ rect2 result = global_get_screen_rectangle(app);
+ result.y1 -= 2.f*get_face_metrics(app, get_face_id(app, 0)).line_height;
+ result.y0 = result.y1 - vim_cur_lister_offset;
+ return result;
 }
 
 struct Vim_Buffer_Peek_Entry{

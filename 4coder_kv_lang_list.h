@@ -21,7 +21,8 @@ F4_RegisterLanguages(void)
   
   for(u32 i=0; i < ArrayCount(extensions); i += 1)
   {
-   F4_RegisterLanguage(extensions[i],
+   F4_RegisterLanguage(strlit("cpp"),
+                       extensions[i],
                        F4_CPP_IndexFile,
                        lex_full_input_cpp_init,
                        lex_full_input_cpp_breaks,
@@ -33,6 +34,7 @@ F4_RegisterLanguages(void)
  
  {//-4coder files
   F4_RegisterLanguage(strlit("4coder"),
+                      strlit("4coder"),
                       F4_Note_IndexFile,
                       lex_full_input_cpp_init,
                       lex_full_input_cpp_breaks,
@@ -42,7 +44,8 @@ F4_RegisterLanguages(void)
  }
  
  {//-skm
-  F4_RegisterLanguage(S8Lit("skm"),
+  F4_RegisterLanguage(strlit("skm"),
+                      S8Lit("skm"),
                       F4_Note_IndexFile,
                       lex_full_input_skm_init,
                       lex_full_input_skm_breaks,

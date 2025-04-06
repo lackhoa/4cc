@@ -258,10 +258,6 @@ struct Node_String_Const_char{
  Node_String_Const_char *next;
  String_Const_char string;
 };
-struct Node_String{
- Node_String *next;
- String string;
-};
 struct Node_String_Const_u16{
  Node_String_Const_u16 *next;
  String_Const_u16 string;
@@ -273,12 +269,6 @@ struct Node_String_Const_u32{
 struct List_String_Const_char{
  Node_String_Const_char *first;
  Node_String_Const_char *last;
- u64 total_size;
- i32 node_count;
-};
-struct List_String{
- Node_String *first;
- Node_String *last;
  u64 total_size;
  i32 node_count;
 };
@@ -1234,13 +1224,8 @@ string_chop(String str, u64 n){
 
 
 function u64
-string_find_first(String_Const_char str, u64 start_pos, char c){
- u64 i = start_pos;
- for (;i < str.size && c != str.str[i]; i += 1);
- return(i);
-}
-function u64
-string_find_first(String str, u64 start_pos, u8 c){
+string_find_first(String_Const_char str, u64 start_pos, char c)
+{
  u64 i = start_pos;
  for (;i < str.size && c != str.str[i]; i += 1);
  return(i);
@@ -1248,10 +1233,6 @@ string_find_first(String str, u64 start_pos, u8 c){
 
 function u64
 string_find_first(String_Const_char str, char c){
- return(string_find_first(str, 0, c));
-}
-function u64
-string_find_first(String str, u8 c){
  return(string_find_first(str, 0, c));
 }
 
@@ -1709,33 +1690,6 @@ push_stringz(Arena *arena, u64 size, String_Const_Any src){
  return(string);
 }
 
-function void
-string_list_push(List_String *list, Node_String *node)
-{
- sll_queue_push(list->first, list->last, node);
- list->node_count += 1;
- list->total_size += node->string.size;
-}
-
-function void
-string_list_push(Arena *arena, List_String *list, String string){
- Node_String *node = push_array(arena, Node_String, 1);
- sll_queue_push(list->first, list->last, node);
- node->string = string;
- list->node_count += 1;
- list->total_size += string.size;
-}
-
-#define string_list_push_lit(a,l,s)    string_list_push((a), (l), string_litexpr(s))
-#define string_list_push_u8_lit(a,l,s) string_list_push((a), (l), strlit(s))
-
-function void
-string_list_push(List_String *list, List_String *src_list){
- sll_queue_push_multiple(list->first, list->last, src_list->first, src_list->last);
- list->node_count += src_list->node_count;
- list->total_size += src_list->total_size;
- block_zero_array(src_list);
-}
 
 function void
 string_list_push_overlap(Arena *arena, List_String *list, u8 overlap, String string)
@@ -1839,27 +1793,6 @@ string_list_pushf(Arena *arena, List_String *list, char *format, ...){
  va_end(args);
 }
 
-function List_String
-string_split(Arena *arena, String string, u8 *split_characters, i32 split_character_count){
- List_String list = {};
- for (;;){
-  u64 i = string.size;
-  String prefix = string;
-  for (i32 j = 0; j < split_character_count; j += 1){
-   u64 pos = string_find_first(prefix, split_characters[j]);
-   prefix = string_prefix(prefix, pos);
-   i = Min(i, pos);
-  }
-  if (prefix.size > 0){
-   string_list_push(arena, &list, prefix);
-  }
-  string = string_skip(string, i + 1);
-  if (string.size == 0){
-   break;
-  }
- }
- return(list);
-}
 
 function List_String
 string_split_needle(Arena *arena, String string, String needle){

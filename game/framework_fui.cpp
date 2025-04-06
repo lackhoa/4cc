@@ -2,12 +2,30 @@
 function sarray(Location_Map)
 init_location_maps()
 {
- static Location_Map maps[1] = {};
+ local_persist Location_Map maps[1] = {};
  sarray(Location_Map) result = {maps, 1};
  return result;
 }
 // @build_location_maps
-sarray(Location_Map) location_maps = init_location_maps();
+struct Location_Maps
+{
+ sarray(Location_Map) game;
+ sarray(Location_Map) driver;
+};
+
+global Location_Maps location_maps = {
+ .game   = init_location_maps(),
+ .driver = init_location_maps(),
+};
+
+function Location_Map
+get_location_map(FUI_File file)
+{
+ sarray(Location_Map) maps = (file.is_driver ?
+                              location_maps.driver :
+                              location_maps.game);
+ return maps[file.index];
+}
 
 global u32 slider_cycle_counter;
 global Active_Slider fui_active_slider;
@@ -23,17 +41,10 @@ get_slider_range(Slider &slider)
 {
  return resolve_location(slider.location);
 }
-function Range_i64
-fui_get_slider_range(i32 index)
-{
- Slider &slider = driver_data.sliders[index];
- return get_slider_range(slider);
-}
 //-
 myinline Type_Info *
 get_slider_type_info(Slider &slider)
 {
- //return type_info_from_index(slider.type);
  return slider.type;
 }
 function Type_Info *
@@ -133,27 +144,41 @@ filename_match(String a0, String b0)
  String b = path_filename(b0);
  return string_match(a,b);
 }
-function i32
-get_file_index_by_name(String path)
+
+global String NOTEBOOK_FILE_NAME = strlit("notebook.cpp");
+
+function b32
+is_driver_file_path(String path)
+{
+ String filename = path_filename(path);
+ return starts_with(filename, strlit("driver"));
+}
+
+function FUI_File
+get_fui_file_by_name(String path)
 {// NOTE(kv) Let's have a convention that file names are all that matters,
  // since I don't wanna have to deal with canonicalizing paths,
  // which is complicated and doesn't help me much.
- i32 result = 0;
- if(driver_data.valid)
+ FUI_File result = {};
+ result.is_driver = (i16)is_driver_file_path(path);
+ auto files = get_file_array(result);
+ String filename = path_filename(path);
+ for_i32(file_index, 1, files.count)
  {
-  if(filename_match(path, DRIVER_FILE_NAME))
-  {// @Incomplete
-   result = 1;
+  if(filename == files[file_index].name)
+  {
+   result.index = (i16)file_index;
+   break;
   }
  }
  return result;
 }
-function i32
-get_file_index_by_buffer(App *app, Buffer_ID buffer)
+function FUI_File
+get_fui_file_by_buffer(App *app, Buffer_ID buffer)
 {
  Scratch_Scope tmp;
  String path = push_buffer_filepath(app, tmp, buffer);
- return get_file_index_by_name(path);
+ return get_fui_file_by_name(path);
 }
 
 function i16
@@ -164,24 +189,26 @@ safe_cast_i16(i64 value)
 }
 
 function void
-build_location_maps(Arena *arena)
+build_location_maps(Arena *arena, b32 is_driver)
 {
+ // TODO(kv) This program currently requires that all of the input arrays
+ // be arranged in the correct source-code order, which is dumb.
+ // How should we fix it? Well... maybe it just gets kinda ugly?
+ sarray(FUI_File_Data) files = is_driver ? driver_data.files : game_files;
+ sarray(Location_Map) &maps = is_driver ? location_maps.driver : location_maps.game;
+ 
  Scratch_Block tmp;
- sarray(Location_Map) &maps = location_maps;
- maps.count = 2;
- maps.items = push_array0(arena, Location_Map, maps.count);
- {//-Do one file
-  // NOTE piggy stuff!
-  darray(Location_Map_Entry*) active_ranges;
-  init_dynamic(active_ranges, tmp, 4);
-  
-  i32 file_index = 1;
+ // TODO(kv) @Incomplete
+ init_zero(maps, arena, files.count);
+ 
+ for_i32(file_index, 1, files.count)
+ {//-NOTE One file
+  FUI_File_Data &file = files[file_index];
   Location_Map map = {};
   //-Map already zeroed
-  sarray(Vertex_Info) vertices = driver_data.vertices_info;
-  sarray(Text_Object) text_objects = driver_data.text_objects;
-  sarray(Marker_Pair) pairs    = driver_data.marker_pairs[file_index];
-  Sliders             sliders  = driver_data.sliders;
+  sarray(Vertex_Info) vertices     = file.vertices_info;
+  sarray(Text_Object) text_objects = file.text_objects;
+  sarray(Slider)      sliders      = file.sliders;
   struct Type
   {
    Location_Type type;
@@ -189,19 +216,21 @@ build_location_maps(Arena *arena)
    i32 count;
   };
   Type types[] = {
-   {.type=Location_Type_Vertex,    .count=vertices.count},
-   {.type=Location_Type_Drawn,     .count=pairs.count},
+   {.type=Location_Type_Vertex,      .count=vertices.count},
    {.type=Location_Type_Text_Object, .count=text_objects.count},
-   {.type=Location_Type_Slider,    .count=sliders.count}
+   {.type=Location_Type_Slider,      .count=sliders.count}
   };
   const i32 type_count = alen(types);
+  
+  darray(Location_Map_Entry*) active_ranges;
+  init_dynamic(active_ranges, tmp, type_count);
   
   for_i32(type_index, 0, type_count)
   {
    map.count += types[type_index].count;
   }
-  map.count += 1;  // NOTE for the null location
-  map.items = push_array(arena, Location_Map_Entry, map.count);
+  map.count += 1;  // NOTE For the null location
+  init_static(map, arena, map.count);
   map[0] = {};
   
   for_i32(entry_index, 1, map.count)
@@ -212,39 +241,30 @@ build_location_maps(Arena *arena)
     Location_Map_Entry *candidate = candidates + type_index;
     // NOTE candidate zeroed
     Type type = types[type_index];
-    candidate->type      = types[type_index].type;
+    candidate->type      = type.type;
     candidate->range.min = i16_max;
-    candidate->index     = (i16)types[type_index].index;
-    if(candidate->index < type.count)
+    candidate->index_in_file     = type.index;
+    if(candidate->index_in_file < type.count)
     {
      switch(candidate->type)
      {
       case Location_Type_Vertex:
       {
-       Vertex_Info &vertex = vertices[candidate->index];
+       Vertex_Info &vertex = vertices[candidate->index_in_file];
        candidate->range = vertex.location.range;
       }break;
       
       case Location_Type_Text_Object:
       {
-       Text_Object &object = text_objects[candidate->index];
-       candidate->range = object.location.range;
-      }break;
-      
-      case Location_Type_Drawn:
-      {
-       candidate->range = pairs[candidate->index];
+       Text_Object &object = text_objects[candidate->index_in_file];
+       candidate->range = object.location;
       }break;
       
       case Location_Type_Slider:
       {
-       Slider &slider = sliders[candidate->index];
+       Slider &slider = sliders[candidate->index_in_file];
        candidate->range = slider.location.range;
        Type_Info *slider_type = get_slider_type_info(slider);
-       if(type_info_equals(slider_type, FUI_Line_Params))
-       {
-        breakhere;
-       }
       }break;
       
       InvalidDefaultCase;
@@ -300,9 +320,9 @@ build_location_maps(Arena *arena)
  }
 }
 function i32
-get_min_touched_location(i32 file, Range_i64 range)
+get_min_touched_location(FUI_File file, Range_i64 range)
 {
- Location_Map map = location_maps[file];
+ Location_Map map = get_location_map(file);
  i32 result_entry_index = map.count;
  i32 start = 1;
  i32 end   = map.count;
@@ -359,9 +379,9 @@ get_min_touched_location(i32 file, Range_i64 range)
  return result_entry_index;
 }
 function Location_Iterator
-iterate_touched_locations(i32 file, Range_i64 range)
+iterate_touched_locations(FUI_File file, Range_i64 range)
 {// NOTE(kv) As per the convention: returns empty range when no touch.
- Location_Map map = location_maps[file];
+ Location_Map map = get_location_map(file);
  Location_Iterator it = {};
  it.iterator_range = range;
  it.file = file;
@@ -376,8 +396,8 @@ iterate_touched_locations(i32 file, Range_i64 range)
 function void
 advance(Location_Iterator *it)
 {
- i32 file = it->file;
- Location_Map map = location_maps[file];
+ FUI_File file = it->file;
+ Location_Map map = get_location_map(file);
  Range_i64 test_range = it->iterator_range;
  Location_Map_Entry *max_entry = map.items + map.count;
  
@@ -402,8 +422,31 @@ advance(Location_Iterator *it)
  it->entry = next_entry;
  it->entry_range = next_range;
 }
+function b32
+is_driver_file(i32 file)
+{// todo @Incomplete
+ b32 result = 0;
+ if(file == 1)
+ {
+  result = 1;
+ }
+ return result;
+}
+
+//-
+struct Slider_Slot
+{
+ Slider_Slot *next;
+ Slider slider;
+};
+
+#define SLOW_SLIDER_SLOT_COUNT 1024
+
+global Slider_Slot slow_sliders[SLOW_SLIDER_SLOT_COUNT];
+//-
+
 function Slider *
-get_slider_at_pos(i32 file, i64 pos)
+get_slider_at_pos(App *app, Buffer_ID buffer, FUI_File file, i64 pos)
 {
  Slider *result = 0;
  i32 slider_index = -1;
@@ -413,19 +456,20 @@ get_slider_at_pos(i32 file, i64 pos)
  {
   if(it.entry->type == Location_Type_Slider)
   {
-   slider_index = it.entry->index;
+   slider_index = it.entry->index_in_file;
    break;
   }
  }
  
  if(slider_index != -1)
  {
-  result = driver_data.sliders.items + slider_index;
+  result = &get_fui_file(file).sliders[slider_index];
  }
+ 
  return result;
 }
 function Range_i32
-get_touched_sliders(i32 file, Range_i64 range)
+get_touched_sliders(FUI_File file, Range_i64 range)
 {// NOTE(kv) The returned range is slider indices
  Range_i32 result = {};
  for(Location_Iterator it = iterate_touched_locations(file, range);
@@ -434,43 +478,29 @@ get_touched_sliders(i32 file, Range_i64 range)
  {
   if(it.entry->type == Location_Type_Slider)
   {
-   if(result.min == 0){ result.min = it.entry->index; }
-   result.max = it.entry->index + 1;
+   if(result.min == 0){ result.min = it.entry->index_in_file; }
+   result.max = it.entry->index_in_file + 1;
   }
  }
- return result;
-}
-function Range_i32
-fui_get_sliders_in_range(App *app, Buffer_ID buffer,
-                         i64 pos_begin, i64 pos_end)
-{// NOTE See @game_api
- i32 file = get_file_index_by_buffer(app, buffer);
- Range_i32 result = get_touched_sliders(file, {pos_begin, pos_end});
  return result;
 }
 function Slider *
 get_hot_slider_under_cursor(App *app)
 {
  GET_VIEW_AND_BUFFER;
- i32 file_index = get_file_index_by_buffer(app, buffer);
+ FUI_File file = get_fui_file_by_buffer(app, buffer);
  i64 curpos = view_get_cursor_pos(app, view);
- Slider *result = get_slider_at_pos(file_index, curpos);
+ Slider *result = get_slider_at_pos(app, buffer, file, curpos);
  if(not result)
  {// NOTE Expand to the whole line.
   Range_i64 line_range = get_line_range_from_pos(app, buffer, curpos);
-  Range_i32 touched = get_touched_sliders(file_index, line_range);
+  Range_i32 touched = get_touched_sliders(file, line_range);
   if(range_size(touched) > 0)
   {
-   result = driver_data.sliders.items + touched.min;
+   result = get_fui_file(file).sliders.items + touched.min;
   }
  }
  return result;
-}
-function b32
-fui_at_slider_p(App *app)
-{
- Slider *slider = get_hot_slider_under_cursor(app);
- return slider != 0;
 }
 function void
 fui_set_active_slider(Slider *slider)
@@ -516,7 +546,8 @@ print_float_trimmed(Printer &p, v1 value)
  Scratch_Block scratch;
  String result = push_stringf(scratch, "%.4ff", value);
  // NOTE: trim trailing zeros
- while (result.len > 0){
+ while (result.len > 0)
+ {
   if (result.str[result.len-2] == '0') { result.len -= 1; }
   else { break; }
  }
@@ -597,8 +628,8 @@ print_code(Printer &p, Type_Info *type, void *value, b32 wrapped)
  else if(is_struct(type))
  {
   // TODO(kv) Is there a "wrapped" version? Like putting a type at the start?
-  PrintBraces(p)
   {
+   PrintBraces(p);
    b32 first_member_printed = true;
    for_i32(member_index, 0, type->members.count)
    {
@@ -608,7 +639,7 @@ print_code(Printer &p, Type_Info *type, void *value, b32 wrapped)
     {
      if(not first_member_printed){ print(p, ", "); }
      first_member_printed = false;
-     print_format(p, ".%S = ", member_info.name);
+     printf(p, ".%S = ", member_info.name);
      print_code(p, member_info.type, member_data.data, true);
     }
    }
@@ -617,8 +648,8 @@ print_code(Printer &p, Type_Info *type, void *value, b32 wrapped)
  else if(type->kind == I_Type_Kind_Wrapper)
  {
   print(p, type->constructor);
-  PrintParens(p)
   {
+   PrintParens(p);
    print_code(p, type->wrapped_type, value, 1);
   }
  }
@@ -653,14 +684,14 @@ fui_print_slider(Arena *arena, Slider &slider)
  }
  //-Actual printing
  print(printer, op);
- PrintParens(printer)
  {
+  PrintParens(printer);
   print_code(printer, type, slider.value, wrapped);
   if(op == strcode(fv) and
      slider.flags != 0)
   {// NOTE(kv) Currently we don't use more slider attributes,
    // so checking flags only is fine.
-   print_format(printer, ", %S", strlit("TODO CANNOT PRINT FLAGS YET"));
+   printf(printer, ", %S", strlit("TODO CANNOT PRINT FLAGS YET"));
   }
  }
  
@@ -689,19 +720,19 @@ game_send_command(Game_State *state, String command_name)
 }
 
 function void
-fixup_markers(i32 file_index, i64 edit_begin, i64 edit_delta)
+fixup_markers(FUI_File file, i64 edit_begin, i64 edit_delta)
 {
- sarray(i32) positions = driver_data.marked_positions[file_index];
+ sarray(i32) positions = get_fui_file(file).marked_positions;
  for(i32 position_index=positions.count-1;
      position_index >= 0;
      position_index--)
  {
   i32 *position = &positions[position_index];
-  if(*position > edit_begin){
+  if(*position > edit_begin)
+  {
    *position += (i32)edit_delta;
-  }else{
-   break;
   }
+  else { break; }
  }
 }
 function void
@@ -713,11 +744,8 @@ game_buffer_edit_range(Game_State *state,
  i64 old_max = old_range.max.pos;
  i64 edit_delta = range_size(new_range) - (old_max - old_min);
  kv_assert(new_range.min == old_min);
- i32 file_index = get_file_index_by_buffer(app, buffer);
- if(file_index != 0)
- {
-  fixup_markers(file_index, old_min, edit_delta);
- }
+ FUI_File file = get_fui_file_by_buffer(app, buffer);
+ fixup_markers(file, old_min, edit_delta);
 }
 function void
 fui_draw_over_text_buffer(App *app, Buffer_ID buffer, Text_Layout_ID layout)
@@ -733,7 +761,8 @@ fui_draw_over_text_buffer(App *app, Buffer_ID buffer, Text_Layout_ID layout)
  };
  
  Range_i64 visible_range = text_layout_get_visible_range(app, layout);
- i32 file = get_file_index_by_buffer(app, buffer);
+ FUI_File file = get_fui_file_by_buffer(app, buffer);
+ 
  ARGB_Color underline_color = 0x99587898;
  ARGB_Color hot_color_ = underline_color | 0xFF000000;
  Range_i64 hot_range = {};

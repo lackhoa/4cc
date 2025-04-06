@@ -7,18 +7,20 @@
 global F4_Language_State f4_langs = {};
 
 function F4_Language *
-F4_LanguageFromString(String name)
+F4_LanguageFromExtension(String extension)
 {
-    F4_Language *result = 0;
-    if(f4_langs.initialized)
-    {
-        u64 hash = table_hash_u8(name.str, name.size);
-        u64 slot = hash % ArrayCount(f4_langs.language_table);
-        for(F4_Language *l = f4_langs.language_table[slot]; l; l = l->next)
-        {
-            if(l->hash == hash && string_match(l->name, name))
-            {
-                result = l;
+ F4_Language *result = 0;
+ if(f4_langs.initialized)
+ {
+  u64 hash = table_hash_u8(extension.str, extension.size);
+  u64 slot = hash % ArrayCount(f4_langs.language_table);
+  for(F4_Language *l = f4_langs.language_table[slot];
+      l;
+      l = l->next)
+  {
+   if(l->hash == hash && string_match(l->extension, extension))
+   {
+    result = l;
     break;
    }
   }
@@ -26,12 +28,13 @@ F4_LanguageFromString(String name)
  return result;
 }
 
-#define F4_RegisterLanguage(name, IndexFile, LexInit, LexFullInput, PosContext, Highlight, lex_state_type) \
-_F4_RegisterLanguage(name, IndexFile, LexInit, LexFullInput, \
+#define F4_RegisterLanguage(name, extension, IndexFile, LexInit, LexFullInput, PosContext, Highlight, lex_state_type) \
+_F4_RegisterLanguage(name, extension, IndexFile, LexInit, LexFullInput, \
 (F4_Language_PosContext *)PosContext, (F4_Language_Highlight *)Highlight, sizeof(lex_state_type))
 
 function void
 _F4_RegisterLanguage(String name,
+                     String extension,
                      F4_Language_IndexFile          *IndexFile,
                      F4_Language_LexInit            *LexInit,
                      F4_Language_LexFullInput       *LexFullInput,
@@ -45,25 +48,18 @@ _F4_RegisterLanguage(String name,
   f4_langs.arena = make_arena(KB(16));
  }
  
- F4_Language *language = 0;
- u64 hash = table_hash_u8(name.str, name.size);
- u64 slot = hash % ArrayCount(f4_langs.language_table);
- for(F4_Language *l = f4_langs.language_table[slot]; l; l = l->next)
- {
-  if(l->hash == hash && string_match(l->name, name))
-  {
-   language = l;
-   break;
-  }
- }
+ F4_Language *language = F4_LanguageFromExtension(extension);
  
  if(language == 0)
  {
+  u64 hash = table_hash_u8(extension.str, extension.size);
+  u64 slot = hash % ArrayCount(f4_langs.language_table);
   language = push_array(&f4_langs.arena, F4_Language, 1);
+  language->name = name;
   language->next = f4_langs.language_table[slot];
   f4_langs.language_table[slot] = language;
   language->hash = hash;
-  language->name = push_stringz(&f4_langs.arena, name);
+  language->extension = push_stringz(&f4_langs.arena, extension);
   language->lex_state_size     = lex_state_size;
   language->IndexFile          = IndexFile;
   language->LexInit            = LexInit;
@@ -76,12 +72,12 @@ _F4_RegisterLanguage(String name,
 function F4_Language *
 F4_LanguageFromBuffer(App *app, Buffer_ID buffer)
 {
-    F4_Language *language = 0;
-    Scratch_Block scratch(app);
-    String8 filename = push_buffer_filepath(app, scratch, buffer);
-    String8 extension = path_extension(filename);
-    language = F4_LanguageFromString(extension);
-    return language;
+ F4_Language *language = 0;
+ Scratch_Block scratch(app);
+ String8 filename = push_buffer_filepath(app, scratch, buffer);
+ String8 extension = path_extension(filename);
+ language = F4_LanguageFromExtension(extension);
+ return language;
 }
 
 function void

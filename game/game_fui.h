@@ -35,7 +35,7 @@ struct Slider
  Type_Info *type;
  
  Location location;
- i32 index;  //NOTE(kv) Redundant, but I don't care rn
+ //i32 index;  //NOTE(kv) Redundant, but I don't care rn
  union{
   Fui_Options options;
   struct { FUI_OPTIONS(X); };
@@ -81,14 +81,12 @@ global Fui_Options f10th = Fui_Options{0, 0.1f};
 global Fui_Options f10s  = Fui_Options{0, 10.f};
 
 //-
-// NOTE(kv) @Slow We still have double-indirection,
-// first we gotta find where the slider is. Then read off the value pointer.
-#define ReadSlider(TYPE, INDEX) \
-(*(TYPE *)global_sliders[INDEX].value)
+#define ReadSlider(INDEX) \
+slider_values.v_##INDEX
 
 // NOTE(kv) Pretty clever use of the assignment operator
-// NOTE(kv) You can put a static slider within a staic slider, pretty great! ;>
-#define ReadSliderRuntime(TYPE, INDEX, VALUE) \
-(*(TYPE *)global_sliders[INDEX].value = VALUE)
+// NOTE(kv) You can put a static slider within a static slider, pretty great! ;>
+#define ReadSliderRuntime(INDEX, VALUE) \
+(ReadSlider(INDEX) = VALUE)
 //-
 //~EOF

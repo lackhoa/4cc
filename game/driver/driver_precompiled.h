@@ -18,9 +18,15 @@
 #include "game_anime.cpp"
 #include "driver_utils.cpp"
 
-myinline Slider
-mk_slider_(Type_Info *type, i32 file, i16 begin, i16 end, i32 index, Fui_Options options)
+/*myinline Slider
+mk_slider_(Type_Info *type, i32 file, i16 begin, i16 end,
+           Fui_Options options, void *value)
 {
- return {.type=type, .location={file,{begin,end}}, .index=index, .options=options};
-}
+ return {
+  .type     = type,
+  .location = {file,{begin,end}},
+  .options  = options,
+  .value    = value,
+ };
+}*/
 //

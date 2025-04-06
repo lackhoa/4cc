@@ -287,13 +287,13 @@ typedef b8 bool;
 
 // TODO(bill): Is this enough to get inline working?
 #if !defined(__cplusplus)
-	#if defined(_MSC_VER) && _MSC_VER <= 1800
-	#define inline __inline
-	#elif !defined(__STDC_VERSION__)
-	#define inline __inline__
-	#else
-	#define inline
-	#endif
+#	if defined(_MSC_VER) && _MSC_VER <= 1800
+#	 define inline __inline
+#	elif !defined(__STDC_VERSION__)
+#	 define inline __inline__
+#	else
+#	 define inline
+#	endif
 #endif
 
 #if !defined(gb_restrict)

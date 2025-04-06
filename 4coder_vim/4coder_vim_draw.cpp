@@ -213,9 +213,11 @@ vim_draw_search_highlight(App *app, View_ID view, Buffer_ID buffer, Text_Layout_
 function void
 vim_draw_cursor(App *app, View_ID view, b32 is_active_view, Buffer_ID buffer, Text_Layout_ID text_layout_id, f32 roundness, f32 thickness)
 {
- if(os_window_is_active(app)){
+ if(os_window_is_active(app))
+ {
   if(is_active_view &&
-     vim_state.mode == VIM_Visual_Insert){
+     vim_state.mode == VIM_Visual_Insert)
+  {
    Range_i64 range = get_view_range(app, view);
    Rect_f32 block_rect = vim_get_abs_block_rect(app, view, buffer, text_layout_id, range);
    
@@ -236,8 +238,6 @@ vim_draw_cursor(App *app, View_ID view, b32 is_active_view, Buffer_ID buffer, Te
     if(is_active_view && vim_lister_view_id == 0)
     {
      Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, cursor_pos);
-     // animate_in_n_milliseconds(app, 1000);  // @modified(kv)
-     // if(ACTIVE_BLINK(vim_cursor_blink) && !vim_is_selecting_register) @modified(kv)
      {
       if(vim_state.mode == VIM_Insert){ rect = rect_split_top_bottom_neg(rect, 5.f).b; }
       if(rect.p1 != V2(0,0)){
@@ -464,7 +464,6 @@ function void
 vim_draw_whole_screen(App *app, Frame_Info frame_info)
 {
  rect2 region = global_get_screen_rectangle(app);
- rect2 main_monitor_region = hax_get_main_monitor_rectangle(app);
  draw_set_clip(app, region);
  
  Face_ID face_id = get_face_id(app, 0);
@@ -493,13 +492,12 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
   }
  }
  
- v2 main_monitor_bot_left = V2(main_monitor_region.x0 + 4.f, 
-                               main_monitor_region.y1 - 1.5f*line_height);
- if(1)
+ v2 main_monitor_bot_left = V2(region.x0 + 4.f, 
+                               region.y1 - 1.5f*line_height);
  {// NOTE: Draw bottom text
   //NOTE ;vim_bottom_text_height
   draw_rect2(app, rect_split_top_bottom_neg(region, 2.f*line_height).b, back_color);
-  if (vim_use_bottom_cursor)
+  if(vim_use_bottom_cursor)
   {// NOTE(kv): bottom text in lister situation
    v2 p = draw_string(app, face_id, vim_bottom_text.string, main_monitor_bot_left, finalize_color(defcolor_text_default, 0));
    {
@@ -564,7 +562,7 @@ vim_draw_whole_screen(App *app, Frame_Info frame_info)
      DEBUG_draw_hud_p)
  {//-Debug HUD
   i1 line_count = (i1)DEBUG_entries.count;
-  rect2_Pair pair = rect_split_top_bottom_neg(main_monitor_region, v1(line_count)*line_height);
+  rect2_Pair pair = rect_split_top_bottom_neg(region, v1(line_count)*line_height);
   rect2 clip = pair.max;
   clip.x0 += 0.5f*(clip.x1 - clip.x0);
   DEBUG_draw_hud(app, face_id, clip);

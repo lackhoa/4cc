@@ -1757,11 +1757,21 @@ win32_wgl_make_current(i1 window_index)
 }
 
 function void
-win32_imgui_init() {
+win32_imgui_init()
+{
  ImGui::CreateContext(0);
  ImGui::StyleColorsDark();
+ 
+ ImGuiIO& io = ImGui::GetIO();
+ 
+ // NOTE(kv) Scale according to DPI
+ ImGuiStyle &style = ImGui::GetStyle();
+ style.ScaleAllSizes(win32vars.screen_scale_factor);
+ 
+ // NOTE(kv) I believe @ad_dear_imgui_font
+ io.FontGlobalScale = win32vars.screen_scale_factor;
+ 
  {// NOTE(kv): At least DockingEnable has to be set before the first frame.
-  ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;   // Enable Keyboard Controls
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;       // Enable Docking
  }
@@ -1822,8 +1832,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  API_VTable_graphics graphics_vtable = {};
  graphics_api_fill_vtable(&graphics_vtable);
  
- API_VTable_font font_vtable = {};
- font_api_fill_vtable(&font_vtable);
+ /*API_VTable_font font_vtable = {};
+ font_api_fill_vtable(&font_vtable);*/
  
  log_os("Setting up memory management...\n");
  
@@ -1844,7 +1854,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  InitializeConditionVariable(&win32vars.thread_launch_cv);
  
  log_os("Setting up DPI awareness...\n");
- 
  SetProcessDPIAware();
  
  {
@@ -1866,14 +1875,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  // NOTE(allen): init & command line parameters
  log_os("Parsing command line...\n");
  Plat_Settings plat_settings = {};
- Models *base_ptr = 0;
+ Models *models = 0;
  {
   Scratch_Block scratch;
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
   string_mod_replace_character(curdir, '\\', '/');
   char **files = 0;
   i32 *file_count = 0;
-  base_ptr = app_read_command_line(win32vars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
+  models = app_read_command_line(win32vars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
   {
    i32 end = *file_count;
    i32 i = 0, j = 0;
@@ -1997,7 +2006,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   Scratch_Block scratch;
   String curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
   string_mod_replace_character(curdir, '\\', '/');
-  app_init(win32vars.tctx, base_ptr, curdir);
+  app_init(win32vars.tctx, models, curdir);
  }
  
  //~Main loop
@@ -2026,6 +2035,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  v1 work_seconds = 0.f;
  u32 work_cycles = 0;
  u32 hot_prim_id = 0;
+ ImFont *im_font = 0;
  while(keep_running)
  {//-NOTE The main loop
   arena_clear(&win32vars.frame_arena);
@@ -2194,9 +2204,33 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   win32vars.clip_post.size = 0;
   
-  // NOTE(allen): Application Core Update
+  //~NOTE(allen): Application Core Update
+  
+  b32 modified_global_font = (models->modified_global_face_path.size != 0);
+  
+  if(modified_global_font)
+  {
+   if(0)
+   {// NOTE(kv) ;ad_dear_imgui_font
+    // IMPORTANT(kv) Well, this code should work but it makes dear imgui render some bs?
+    // but I think we're supposed to upload the texture to the GPU ourselves.
+    // But then why isn't there any freaking docs to do this?
+    // TODO(kv) Hacking the font here... we need to sync this with the editor's font.
+    ImGuiIO& io = ImGui::GetIO();
+    v1 font_size_px = win32vars.screen_scale_factor * 17.f;
+    char *font_file = to_cstring(models->modified_global_face_path);
+    im_font = io.Fonts->AddFontFromFileTTF(font_file, font_size_px, NULL, io.Fonts->GetGlyphRangesDefault());
+    io.Fonts->Build();
+    io.FontDefault = im_font;
+    models->modified_global_face_path = {};
+   }
+  }
+  
   win32_imgui_new_frame();  // NOTE(kv) This new frame must be after input processing
-  Application_Step_Result step_result = app_step(win32vars.tctx, base_ptr, &input);
+  
+  ImGui::PushFont(im_font);
+  
+  Application_Step_Result step_result = app_step(win32vars.tctx, models, &input);
   
   // NOTE(allen): Finish the Loop
   if (step_result.perform_kill) {
@@ -2244,8 +2278,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32vars.lctrl_lalt_is_altgr = (b8)step_result.lctrl_lalt_is_altgr;
   
   {//~NOTE(allen): render
+   ImGui::PopFont();
    ImGui::Render();
-   for_i32(window_index, 0, WINDOW_COUNT){
+   
+   for_i32(window_index, 0, WINDOW_COUNT)
+   {
     // Activate OpenGL context for device context where we'll be drawing
     win32_wgl_make_current(window_index);
     ogl_render(input.mouse.p, window_index);

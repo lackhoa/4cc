@@ -43,7 +43,8 @@ srgb_to_linear(v4 input)
 }
 myinline argb
 srgb_to_linear(argb input)
-{
+{// TODO(kv) This doesn't make any sense at all!
+ // if you're using packed colors, you have to use srgb!
  v4 value = argb_unpack(input);
  return argb_pack( srgb_to_linear(value) );
 }
@@ -78,32 +79,46 @@ function v4
 argb_lightness(v4 color, v1 lightness)
 {
  color.rgb *= lightness;
- for_i32(i, 0, 3) {
+ for_i32(i, 0, 3)
+ {
   ClampBot(color.e[i], 0.f);
   ClampTop(color.e[i], 1.f);
  }
  return color;
 }
 function argb
-argb_lightness(argb color, v1 lightness)
+argb_lightness(argb linear_color, v1 lightness)
 {// NOTE Boy I really hate these...
- v4 color_v4 = argb_unpack(color);
+ v4 color_v4 = argb_unpack(linear_color);
  color_v4 = argb_lightness(color_v4, lightness);
  return argb_pack(color_v4);
 }
+function v4
+mk_v4_rgb(v1 r, v1 g, v1 b)
+{
+ v4 result;
+ result.r = r;
+ result.g = g;
+ result.b = b;
+ result.a = 1.f;
+ return result;
+}
 // NOTE: We now have the honor of converting colors to linear
-global argb argb_yellow      = srgb_to_linear(0xFF777700);
-global argb argb_dim_red     = srgb_to_linear(0xFF886666);
-global argb argb_red         = argb_pack(srgb_to_linear(hsv_to_srgb(V3(0.f, 0.5739f, 0.4987f))));
-global argb argb_green       = argb_pack({0,.5,0,1});
-global argb argb_dark_green  = srgb_to_linear(0xff006400);
-global argb argb_blue        = srgb_to_linear(0xFF586890);
+// TODO(kv) If we're gonna use linear color, just use v4!
+global argb linear_argb_yellow      = srgb_to_linear(0xFF777700);
+global argb sargb_bright_yellow = 0xFF998963;
+global argb linear_argb_dim_red     = srgb_to_linear(0xFF886666);
+global argb linear_argb_red         = argb_pack(srgb_to_linear(hsv_to_srgb(V3(0.f, 0.5739f, 0.4987f))));
+global argb linear_argb_green       = argb_pack({0,.5,0,1});
+global argb linear_argb_dark_green  = srgb_to_linear(0xff006400);
+global argb linear_argb_blue        = srgb_to_linear(0xFF586890);
+global argb sargb_bright_blue = 0xFF798999;
 global argb argb_black       = 0xff000000;
-global v4  v4_white          = {1,1,1,1};
+global v4   v4_white         = {1,1,1,1};
 global argb argb_white       = 0xffffffff;
-global argb argb_marble_srgb = 0xFFacaeb5;
-global argb argb_marble      = srgb_to_linear(argb_marble_srgb);
-global argb argb_silver      = argb_lightness(argb_marble, 0.8723f);
-global argb argb_dark_blue   = srgb_to_linear(0xFF282c38);
+global argb argb_marble = 0xFFacaeb5;
+global argb linear_argb_marble    = srgb_to_linear(argb_marble);
+global argb linear_argb_silver    = argb_lightness(argb_marble, 0.8723f);
+global argb linear_argb_dark_blue = srgb_to_linear(0xFF282c38);
 
 //~ eof

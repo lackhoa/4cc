@@ -1,34 +1,53 @@
 //-
 // TODO(kv) Why did I name this language "klang?" Totally not gonna backfire later!
 
-enum Parsed_Type_Kind{
+enum Parsed_Type_Kind
+{
  Parsed_Type_Pointer = 0,  //NOTE(kv) Deliberately zero.
  Parsed_Type_Array,
  Parsed_Type_Reference,
+ Parsed_Type_Function,
 };
 typedef u32 Parsed_Type_Flags;
 enum
 {
  Parsed_Type_IsConst = 1,
 };
+struct Type_And_Name;
 //NOTE(kv) Cheesy type!!!
 struct Parsed_Type
 {
  Parsed_Type_Kind kind;
  String name;
- u32    pointer_count;
+ u32 pointer_count;
  Parsed_Type_Flags flags;
  
- //NOTE(kv) We're supposed to know the array count at compile time,
- //  only problem is we don't actually compile, so sometimes we just... don't know.
+ // NOTE(kv) Function type (for lambdas, which we don't care much about right now)
+ Parsed_Type *return_type;
+ String parameters;
+ 
+ // NOTE(kv) We're supposed to know the array count at compile time,
+ // only problem is we don't actually compile, so sometimes we just... don't know.
  String array_count;
  i32 array_count_int;
+};
+struct Type_And_Name
+{
+ Parsed_Type type;
+ String name;
 };
 //-
 struct M_Struct_Member
 {
- String name;
- Parsed_Type type;
+ union
+ {
+  Type_And_Name type_and_name;
+  struct
+  {
+   Parsed_Type type;
+   String name;
+  };
+ };
  String version_added;
  String version_removed;
  String default_value;
@@ -170,7 +189,8 @@ struct Compound_Item
 };
 Meta_Expression stub_expression = {};
 //-
-union Meta_Statement;
+struct Meta_Statement;
+
 enum Statement_Kind
 {
  Statement_Kind_None = 0,
@@ -188,79 +208,93 @@ enum Statement_Kind
  Statement_Kind_Root,
  Statement_Kind_Function,
 };
-struct Statement_Head
-{
- Statement_Head *mom;
- Statement_Kind kind;
- i32 pos;
-};
 
-struct Statement_Block : Statement_Head
+typedef sarray(Meta_Statement) Statement_Block;
+
+struct Statement_Declaration 
 {
- sarray(Meta_Statement) block;
-};
-struct Statement_Declaration : Statement_Head
-{
- Parsed_Type     type;
- String          name;
+ union
+ {
+  Type_And_Name type_and_name;
+  struct
+  {
+   Parsed_Type type;
+   String      name;
+  };
+ };
  Meta_Expression rhs;  // NOTE Optional assignment
 };
-struct Statement_Header_And_Body : Statement_Head{
- String header;  //NOTE(kv): optional
- Statement_Head *body;
+struct Statement_Header_And_Body 
+{
+ String header;  // NOTE(kv): optional
+ Meta_Statement *body;
 };
-struct Statement_If : Statement_Head{
+struct Statement_If 
+{
  Meta_Expression condition;
- Statement_Head  *body;
- Statement_Head  *else0;
+ Meta_Statement *body;
+ Meta_Statement *else0;
 };
 struct Switch_Case;
-struct Statement_Switch : Statement_Head{
+struct Statement_Switch 
+{
  Meta_Expression expression;
  darray(Switch_Case) cases;
 };
 
 typedef Statement_Declaration Cache_Item;
 
-struct Statement_Cache : Statement_Head{
- i32 id;
- darray(Cache_Item) cache_items;
- Statement_Head *body;
-};
-struct Statement_Root : Statement_Head{
+struct Statement_Root 
+{
  sarray(Meta_Statement) top_levels;
 };
-struct Statement_Function : Statement_Head{
+struct Statement_Function 
+{
+ union
+ {
+  Type_And_Name type_and_name;
+  struct
+  {
+   Parsed_Type type;
+   String name;
+  };
+ };
  b32 has_body;
  sarray(Meta_Statement) body;
 };
-struct Statement_Misc : Statement_Head
+struct Statement_Misc 
 {
  String as_string;
 };
-struct Statement_Return : Statement_Head{
- Meta_Expression return0;
-};
-struct Statement_Expression : Statement_Head{
- Meta_Expression expression;
-};
-union Meta_Statement
+struct Statement_Head
 {
- Statement_Head head;
- //-
- Statement_Misc            misc;
- Statement_Expression      expression;
- Statement_Block           block;
- Statement_Header_And_Body header_and_body;
- Statement_Declaration     declaration;
- Statement_Return          return0;
- Statement_If              if0;
- Statement_Switch          switch0;
- Statement_Cache           cache0;
- //-Top-level things
- Statement_Root     root;
- Statement_Function function0;
+ Statement_Head *mom;
+ Statement_Kind kind;
+ i32 pos;
 };
+// NOTE(kv) The statement union
+struct Meta_Statement : Statement_Head
+{
+ union
+ {
+  Statement_Declaration dummy;
+  
+  Statement_Declaration     declaration;
+  Statement_Switch          switch0;
+  Meta_Expression           expression;
+  Statement_Function        function0;
+  Statement_Misc            misc;
+  Statement_Block           block;
+  Statement_Header_And_Body header_and_body;
+  Meta_Expression           return0;
+  Statement_If              if0;
+  //-Top-level things
+  Statement_Root     root;
+ };
+};
+static_assert(sizeof(((Meta_Statement*)0)->dummy) ==
+              (sizeof(Meta_Statement) - sizeof(Statement_Head)));
+
 struct Switch_Case
 {
  Meta_Expression expression;
@@ -268,7 +302,8 @@ struct Switch_Case
  b32 break_after;
 };
 //~
-struct Union_Variant{
+struct Union_Variant
+{
  //-Input data
  i32    enum_value;
  String name;
@@ -283,11 +318,11 @@ struct K_Struct
  String name;
  M_Struct_Members members;
 };
-#define k_struct(text)  k_struct_func(strlit(#text))
+//#define k_struct(text)  k_struct_func(strlit(#text))
 function void
 k_print_struct(Printer &p, K_Struct struc);
 //-
-typedef Static_Array2<i32> M_Locations;
+typedef sarray(i32) M_Marked_Positions;
 
 struct M_Text_Range
 {
@@ -296,6 +331,7 @@ struct M_Text_Range
 };
 struct Meta_Slider
 {
+ i32 file;
  M_Text_Range range;
  b32 is_runtime;
  String type;
@@ -304,6 +340,7 @@ struct Meta_Slider
 };
 struct M_Text_Object
 {
+ i32 file;
  M_Text_Range range;
  Text_Object_Kind kind;
  
@@ -318,24 +355,57 @@ struct M_Text_Object
 };
 struct Meta_Vertex
 {
+ i32 file;
  M_Text_Range range;
  i32 indicator_level;
  b32 overlay;
 };
-struct Driver_Collected
-{// NOTE see @klang_main
- darray(i32)          locations;
- darray(M_Text_Range) text_ranges;
+struct FUI_Collector_File
+{// NOTE @finish_fui_file
+ String name;
+ b32 is_driver;
  
+ darray(i32) positions;
+ 
+ Range_i32 text_objects_slice;
+ Range_i32 sliders_slice;
+ Range_i32 vertices_slice;
+};
+struct FUI_Collector
+{// NOTE see @klang_main
+ b32 is_driver;
+ Arena *arena;
+ Arena *file_tmp;
+ FUI_Collector_File file;
+ darray(FUI_Collector_File) files;
+ 
+ // NOTE(kv) Positions isn't stored in a central array because it'd be too confusing.
+ // We don't want positions from different files to mix up.
+ //darray(i32)           positions;
+ 
+ darray(M_Text_Object) text_objects;
+ 
+ // NOTE(kv) Sliders and vertices need to be arranged in source-code order.
+ // TODO(kv) What a silly requirement! We only need to iterate on them,
+ // (Well but maybe we need slider values to be in kinda source order).
+ // Relaxing that requirement makes an argument for creating the file map
+ // in the metaprogram itself, so we won't need to arrange stuff in order anymore.
+ // Well, but we can do that whenever, just do a search and then fix-up all the values.
+ // But I feel like that won't be pretty...
  darray(Meta_Slider) sliders;
- darray(M_Text_Object) objects;
  darray(Meta_Vertex) vertices;
 };
+myinline i32
+get_file_index(FUI_Collector *driver)
+{
+ return driver->files.count;
+}
+
 struct Klang_Parser : Ed_Parser
 {
  Statement_Head *current_statement;
- Driver_Collected *driver;
- Arena *arena;
+ FUI_Collector *driver;
+ Arena *arena;  // NOTE(kv) Arena to house statements and expressions.
  b32 do_generate_cpp;
 };
 //-
@@ -492,17 +562,17 @@ is_right_associative(Binary_Operator op)
 }
 //-
 function sarray(Meta_Statement)
-parse_statement_block(Arena *arena, Klang_Parser *p);
+parse_statement_block(Klang_Parser *p);
 
 function void
-parse_statement_to_pointer(Arena *arena, Klang_Parser *p, Meta_Statement *statement);
+parse_statement_to_pointer(Klang_Parser *p, Meta_Statement *statement);
 
-myinline Statement_Head *
-parse_statement_to_arena(Arena *arena, Klang_Parser *p)
+myinline Meta_Statement *
+parse_statement_to_arena(Klang_Parser *p)
 {
- Meta_Statement *statement = push_struct(arena, Meta_Statement, push_zero());
- parse_statement_to_pointer(arena, p, statement);
- return &statement->head;
+ Meta_Statement *statement = push_struct(p->arena, Meta_Statement, push_zero());
+ parse_statement_to_pointer(p, statement);
+ return statement;
 }
 function M_Struct_Members
 parse_struct_body(Arena *arena, Stringz string);
@@ -526,7 +596,7 @@ function b32
 modify_expression(Arena *arena, Meta_Expression *result);
 
 function b32
-to_cpp_expression(Arena *arena, Driver_Collected *driver,
+to_cpp_expression(Arena *arena, FUI_Collector *driver,
                   Meta_Expression *result);
 function void
 parse_expression_full(Klang_Parser *p, Precedence max_precedence,

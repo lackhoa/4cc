@@ -28,7 +28,8 @@ vim_pattern_inner_v(App *app, Buffer_Seek_String_Flags seek_flags)
                     tkarr_inc(&tk));
     if (token)
     {
-     if (token->kind == TokenBaseKind_Identifier)
+     if (token->kind == TokenBaseKind_Identifier or
+         token->kind == TokenBaseKind_Keyword)
      {
       String token_string = push_token_lexeme(app, scratch, buffer, token);
       if ( string_match(pattern, token_string) )
@@ -220,14 +221,28 @@ vim_to_prev_pattern(App_Cmd *app){ vim_to_pattern_inner(app, true); }
 function void
 vim_search_identifier(App_Cmd *app)
 {
- vim_state.identifier_search_mode = true;
-	View_ID view = get_active_view(app, Access_ReadVisible);
-	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
-	i64 pos = view_get_cursor_pos(app, view);
-	Range_i64 range = enclose_pos_alnum_underscore(app, buffer, pos);
-	vim_state.params.selected_reg = &vim_registers.search;
-	vim_request_vtable[REQUEST_Yank](app, view, buffer, range);
-	vim_default_register();
+ View_ID view = get_active_view(app, Access_ReadVisible);
+ Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+ Token *token = kv_token_at_cursor(app);
+ Range_i64 range = {};
+ if(token->kind == TokenBaseKind_Identifier or
+    token->kind == TokenBaseKind_Keyword)
+ {
+  range = {token->pos, token->pos + token->size};
+  vim_state.identifier_search_mode = 1;
+ }
+ else
+ {
+  i64 pos = view_get_cursor_pos(app, view);
+  range = enclose_pos_alnum_underscore(app, buffer, pos);
+ }
+ 
+ if(range.max > 0)
+ {
+  vim_state.params.selected_reg = &vim_registers.search;
+  vim_request_vtable[REQUEST_Yank](app, view, buffer, range);
+  vim_default_register();
+ }
 }
 
 //~

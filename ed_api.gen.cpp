@@ -13,7 +13,9 @@ vtable->get_active_view = get_active_view;
 vtable->view_get_buffer = view_get_buffer;
 vtable->view_get_cursor_pos = view_get_cursor_pos;
 vtable->buffer_viewport_id = buffer_viewport_id;
+vtable->buffer_compute_cursor = buffer_compute_cursor;
 vtable->view_set_cursor = view_set_cursor;
+vtable->view_set_buffer = view_set_buffer;
 vtable->log_string_core = log_string_core;
 vtable->log_string_spam = log_string_spam;
 vtable->draw_string_oriented = draw_string_oriented;
@@ -60,7 +62,7 @@ vtable->target_set_clip = target_set_clip;
 vtable->im_begin = im_begin;
 vtable->im_end = im_end;
 vtable->im_textv = im_textv;
-vtable->im_image = im_image;
+vtable->get_game_buffer = get_game_buffer;
 }
 #undef STATIC_LINK_API
 #endif
@@ -76,7 +78,9 @@ get_active_view = vtable->get_active_view;
 view_get_buffer = vtable->view_get_buffer;
 view_get_cursor_pos = vtable->view_get_cursor_pos;
 buffer_viewport_id = vtable->buffer_viewport_id;
+buffer_compute_cursor = vtable->buffer_compute_cursor;
 view_set_cursor = vtable->view_set_cursor;
+view_set_buffer = vtable->view_set_buffer;
 log_string_core = vtable->log_string_core;
 log_string_spam = vtable->log_string_spam;
 draw_string_oriented = vtable->draw_string_oriented;
@@ -123,7 +127,7 @@ target_set_clip = vtable->target_set_clip;
 im_begin = vtable->im_begin;
 im_end = vtable->im_end;
 im_textv = vtable->im_textv;
-im_image = vtable->im_image;
+get_game_buffer = vtable->get_game_buffer;
 }
 #undef DYNAMIC_LINK_API
 #endif

@@ -699,11 +699,13 @@ F4_Parse_Buffer(App *app, Buffer_ID buffer_id)
  }
 }
 function void
-F4_Index_Tick(App *app){
+F4_Index_Tick(App *app)
+{
  Scratch_Block scratch(app);
  for(Buffer_Modified_Node *node = global_buffer_modified_set.first; 
      node;
-     node = node->next){
+     node = node->next)
+ {
   Buffer_ID buffer_id = node->buffer;
   F4_Parse_Buffer(app, buffer_id);
  }

@@ -477,7 +477,7 @@ kv_surround_brace_special(App_Cmd *app)
  HISTORY_GROUP_SCOPE;
  
  b32 is_visual = (vim_state.mode == VIM_Visual);
- Range_i64 range;
+ Range_i64 range = {};
  if(is_visual){
   range = view_get_selected_range(app, view);
  }else{
@@ -485,20 +485,11 @@ kv_surround_brace_special(App_Cmd *app)
   range = {curpos, curpos};
  }
  
- b32 is_normal = (vim_state.mode == VIM_Normal);
- b32 is_visual_line = is_visual and (vim_state.params.edit_type == EDIT_LineWise);
- b32 do_newlines = is_normal or is_visual_line;
- if(do_newlines)
- {
-  range.min = get_line_start_pos_from_pos(app, buffer, range.min);
-  range.max = get_line_end_pos_from_pos  (app, buffer, range.max);
- }
+ range.min = get_line_start_pos_from_pos(app, buffer, range.min);
+ range.max = get_line_end_pos_from_pos  (app, buffer, range.max);
  
- String opener = do_newlines ? strlit("{\n") : strlit("{ ");
- String closer = do_newlines ? strlit("\n}") : strlit(" }");
- 
- buffer_insert_pos(app, buffer, range.max, closer);
- buffer_insert_pos(app, buffer, range.min, opener);
+ buffer_insert_pos(app, buffer, range.max, strlit("\n}"));
+ buffer_insert_pos(app, buffer, range.min, strlit("{\n"));
  
  auto_indent_buffer(app, buffer, Ii64(range.min, range.max+4));
  

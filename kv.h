@@ -415,11 +415,11 @@ unilateral(v1 r)
     return (r * 0.5f) + 0.5f;
 }
 
-myinline v1
-lerp(v1 a, v1 t, v1 b)
+template<class T> myinline T
+lerp(T a, v1 t, T b)
 {
-    v1 result = a + t*(b - a);
-    return result;
+ T result = a + t*(b - a);
+ return result;
 }
 
 inline v1
@@ -822,7 +822,8 @@ for(T *p_ = f; p_ != 0; p_ = p_->next){ Assert(p_->prev == 0 || p_->prev->next =
 ////////////////////////////////
 
 typedef u32 ARGB_Color;
-typedef u32 argb;
+typedef u32 argb;  // NOTE(kv) argb is the order in register. See @argb_pack
+typedef u32 abgr;  // NOTE(kv) abgr is register order. This one is for Dear ImGUI
 
 ////////////////////////////////
 
@@ -1343,6 +1344,46 @@ SetInBlock(var, var*mult) \
 #define add_in_block(var, addend) \
 SetInBlock(var, var+addend)
 
+//-
+
+struct Range_i32 {
+ union{ i32 min,start,first,begin; };
+ union{ i32 max,end,opl; };
+};
+struct Range_i64 {
+ union{ i64 min,start,first,begin; };
+ union{ i64 max,end,opl; };
+};
+union Range_u64 {
+ struct{ u64 min; u64 max; };
+ struct{ u64 start; u64 end; };
+ struct{ u64 first; u64 opl; };
+};
+union Range_f32 {
+ struct{ f32 min; f32 max; };
+ struct{ f32 start; f32 end; };
+ struct{ f32 first; };
+};
+#define RangeExpand(range) range.min, range.max
+
+function b32
+range_overlap(Range_i32 a, Range_i32 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_i64 a, Range_i64 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_u64 a, Range_u64 b){
+ return(a.min < b.max && b.min < a.max);
+}
+function b32
+range_overlap(Range_f32 a, Range_f32 b){
+ return(a.min < b.max && b.min < a.max);
+}
+
+
 //~NOTE: Array
 template<class T>
 struct Static_Array2
@@ -1351,16 +1392,41 @@ struct Static_Array2
  i32 count;
  
  myinline T &operator[](i32 index){ return items[index]; }
+ operator T*(){ return items; }
 };
 
 #define sarray(T) Static_Array2<T>
 
 template<class T>
 function void
-init(sarray(T) &array, Arena *arena, i32 count)
+init_static(sarray(T) &array, Arena *arena, i32 count)
 {
  array.count = count;
  array.items = push_array(arena, T, count);
+}
+template<class T>
+function void
+init_zero(sarray(T) &array, Arena *arena, i32 count)
+{
+ init_static(array, arena, count);
+ block_zero(array.items, count*sizeof(T));
+}
+
+template<class T> function sarray(T)
+make_slice(sarray(T) array, Range_i32 slice)
+{
+ sarray(T) result;
+ result.items = array.items + slice.min;
+ result.count = slice.max - slice.min;
+ return result;
+}
+template<class T> function sarray(T)
+make_slice(T *array, Range_i32 slice)
+{
+ sarray(T) result;
+ result.items = array + slice.min;
+ result.count = slice.max - slice.min;
+ return result;
 }
 
 // NOTE(kv) Because I hate the terrible template syntax
@@ -1525,6 +1591,20 @@ push_first(darray(T) *array, T const&new_item, DEBUG_file_line_defparams)
 {
  insert_at(array, new_item, 0, file_line);
 }
+template<class T> function sarray(T)
+copy_array(Arena *arena, sarray(T) src)
+{
+ sarray(T) result = {};
+ init_static(result, arena, src.count);
+ block_copy(result.items, src.items, sizeof(T)*src.count);
+ return result;
+}
+/*template<class T> function sarray(T)
+copy_array(Arena *arena, darray(T) src)
+{// #Stroustrup
+sarray(T) src2 = {src.items, src.count};
+return copy_array(arena, src2);
+}*/
 
 //NOTE(kv) stroustrup!
 function void
@@ -1821,10 +1901,20 @@ printer_delete(Printer &p){
 }
 //-
 #define PrintParens(printer) \
-defer_block(print(printer, '('), print(printer, ')'))
+print(printer, '('); \
+defer(print(printer, ')');) \
 
 #define PrintBraces(printer) \
-defer_block(print(printer, '{'), print(printer, '}'))
+print(printer, '{'); \
+defer(print(printer, '}');) \
+
+#define PrintBracesNewline(printer) \
+print(printer, "{\n"); \
+defer(print(printer, "}\n");) \
+
+#define PrintBracesNewlineSm(printer) \
+print(printer, "{\n"); \
+defer(print(printer, "};\n");) \
 
 function usize
 my_vfprintf(FILE *file, char *format, va_list args)
@@ -1859,7 +1949,7 @@ myfprintf(FILE *file, char *format, ...)
 
 //-NOTE Base print function overloads
 function void
-print_format2v(Printer &p, char *format, va_list args)
+printf2v(Printer &p, char *format, va_list args)
 {
  usize written = 0;
  switch(p.type){
@@ -1881,48 +1971,48 @@ print_format2v(Printer &p, char *format, va_list args)
 }
 //NOTE(kv) omg totally unnecessary
 function void
-print_format_bootstrap(Printer &p, char *format, ...)
+printf_bootstrap(Printer &p, char *format, ...)
 {
  va_list args;
  va_start(args, format);
- print_format2v(p,format,args);
+ printf2v(p,format,args);
  va_end(args);
 }
 function void
-print_formatv(Printer &p, char *format, va_list args)
+printfv(Printer &p, char *format, va_list args)
 {
  if(p.print_separator_before_anything_else)
  {
   p.print_separator_before_anything_else = false;
-  print_format_bootstrap(p, "%.*s", strexpand(p.separator));
+  printf_bootstrap(p, "%.*s", strexpand(p.separator));
  }
- print_format2v(p, format, args);
+ printf2v(p, format, args);
 }
 function void
-print_format(Printer &p, char *format, ...)
+printf(Printer &p, char *format, ...)
 {
  va_list args;
  va_start(args, format);
- print_formatv(p, format, args);
+ printfv(p, format, args);
  va_end(args);
 }
 function void
-print_format(Printer &p, Stringz format, ...)
+printf(Printer &p, Stringz format, ...)
 {
  va_list args;
  va_start(args, format);
- print_formatv(p, to_cstring(format), args);
+ printfv(p, to_cstring(format), args);
  va_end(args);
 }
 //~Printing different types
-myinline void print(Printer &p, const char *cstring) { print_format(p, "%s", cstring); }
-myinline void print(Printer &p, String string) { print_format(p, "%.*s", strexpand(string)); }
-myinline void print(Printer &p, char c)  { print_format(p, "%c", c); }
-myinline void print(Printer &p, u8   c)  { print_format(p, "%c", c); }
-myinline void print(Printer &p, i32 d)   { print_format(p, "%d", d); }
-myinline void print(Printer &p, u32 u)   { print_format(p, "%u", u); }
-myinline void print(Printer &p, i64 ld)  { print_format(p, "%zd", ld); }
-myinline void print(Printer &p, u64 lu)  { print_format(p, "%zu", lu); }
+myinline void print(Printer &p, const char *cstring) { printf(p, "%s", cstring); }
+myinline void print(Printer &p, String string) { printf(p, "%.*s", strexpand(string)); }
+myinline void print(Printer &p, char c)  { printf(p, "%c", c); }
+myinline void print(Printer &p, u8   c)  { printf(p, "%c", c); }
+myinline void print(Printer &p, i32 d)   { printf(p, "%d", d); }
+myinline void print(Printer &p, u32 u)   { printf(p, "%u", u); }
+myinline void print(Printer &p, i64 ld)  { printf(p, "%zd", ld); }
+myinline void print(Printer &p, u64 lu)  { printf(p, "%zu", lu); }
 //-
 // NOTE(kv): This is an absolutely ridiculous hack
 template <class T>
@@ -2240,43 +2330,6 @@ rect_union(Rect_f32 a, Rect_f32 b)
  a.x1 = Max(a.x1, b.x1);
  a.y1 = Max(a.y1, b.y1);
  return(a);
-}
-
-struct Range_i32 {
- union{ i32 min,start,first,begin; };
- union{ i32 max,end,opl; };
-};
-struct Range_i64 {
- union{ i64 min,start,first,begin; };
- union{ i64 max,end,opl; };
-};
-union Range_u64 {
- struct{ u64 min; u64 max; };
- struct{ u64 start; u64 end; };
- struct{ u64 first; u64 opl; };
-};
-union Range_f32 {
- struct{ f32 min; f32 max; };
- struct{ f32 start; f32 end; };
- struct{ f32 first; };
-};
-#define RangeExpand(range) range.min, range.max
-
-function b32
-range_overlap(Range_i32 a, Range_i32 b){
- return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_i64 a, Range_i64 b){
- return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_u64 a, Range_u64 b){
- return(a.min < b.max && b.min < a.max);
-}
-function b32
-range_overlap(Range_f32 a, Range_f32 b){
- return(a.min < b.max && b.min < a.max);
 }
 
 #if 0

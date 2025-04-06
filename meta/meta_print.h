@@ -68,7 +68,7 @@ defer_block( \
 #define m_braces_sm    defer_block((p < "{"), (p < "};"))
 #define m_macro_braces defer_block((p < "\\\n{\\\n"), (p < "\\\n}\\\n"))
 #define m_macro_braces_sm  defer_block((p < "\\\n{\\\n"), (p < "\\\n};\\\n"))
-#define m_locationp(p) p<"// "<      " "<filename_linum<"\n"
+#define m_locationp(p) p<"// " < filename_linum < "\n"
 #define m_location     m_locationp(p)
 #define m_note(note)   p<"// "<note<" "<filename_linum<"\n"
 //-

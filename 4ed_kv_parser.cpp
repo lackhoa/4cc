@@ -479,7 +479,8 @@ ep_char(Ed_Parser *p, char c){
 //-
 //NOTE(kv) Excludes the terminator
 function char
-ep_eat_until_char(Ed_Parser *p, String terminators){
+ep_eat_until_char(Ed_Parser *p, String terminators)
+{
  char result = 0;
  Scratch_Block tmp;
  while(!result && p->ok_)
@@ -523,13 +524,16 @@ ep_eat_until_char(Ed_Parser *p, char terminator){
 }
 
 function String
-ep_capture_until_char(Ed_Parser *p, String terminators){
+ep_capture_until_char(Ed_Parser *p, String terminators)
+{
  kv_assert(p->Token_Gen_Type == TG_String);
  String result = {};
- if(p->ok_){
+ if(p->ok_)
+ {
   Token *first_token = ep_get_token(p);
   char res = ep_eat_until_char(p, terminators);
-  if(res){
+  if(res)
+  {
    // NOTE(kv): The last token is one token to the left of the terminator
    Token *last_token = ep_get_token(p);
    i64 last_pos = last_token->pos;
@@ -540,7 +544,8 @@ ep_capture_until_char(Ed_Parser *p, String terminators){
  return result;
 }
 function String
-ep_capture_until_char(Ed_Parser *p, char terminator){
+ep_capture_until_char(Ed_Parser *p, char terminator)
+{
  return ep_capture_until_char(p, SCu8(terminator));
 }
 function void

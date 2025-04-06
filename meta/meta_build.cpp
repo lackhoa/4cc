@@ -326,17 +326,19 @@ build_editor(Thread_Info info, void *arg)
   strlit("imgui_impl_win32"),
   strlit("imgui_impl_opengl3"),
  };
- for_i32(i, 0, s.imgui_TUs.count){
-  //NOTE Compile imgui
+ for_i32(i, 0, s.imgui_TUs.count)
+ {// NOTE Compile imgui
   add_input_file(params, push_stringf(tmp, "%S.obj", s.imgui_TUs.items[i]));
  }
- for_i32(i, 0, alen(imgui_backend_TUs)){
+ for_i32(i, 0, alen(imgui_backend_TUs))
+ {
   add_input_file(params, push_stringf(tmp, "%S.obj", imgui_backend_TUs[i]));
  }
  
  Compiler compiler = Compiler_MSVC;  // NOTE(kv) clang debug info is busted
  //push(&params.compiler_args, strlit("-fsanitize=undefined"));
- if(s.asan_on){
+ if(s.asan_on)
+ {
   push(&params.compiler_args, strlit("-fsanitize=address"));
  }
  ok = ok and run_compiler(compiler, params);
@@ -513,7 +515,7 @@ build_main(i32 arg_count, String *args)
  
  if(do_build_game)
  {//-Game stuff
-  b32 DEV_BUILD = true;
+  b32 DEV_BUILD = 1;
   Stringz GAME_DIR = dirs.game;
   
   if(not meta.hotload_driver)
@@ -528,6 +530,7 @@ build_main(i32 arg_count, String *args)
     add_define_symbol(common, "KV_INTERNAL", DEV_BUILD);
     add_include(common, dirs.code);
     add_include(common, s.libs_dir);
+    add_include(common, dirs.game);
    }
    
    Stringz precompiled_header = strlit("driver_precompiled.h");
@@ -535,10 +538,10 @@ build_main(i32 arg_count, String *args)
    if(not meta.hotload_driver)
    {//-Precompiled header
     Build_Params params = common;
-    params.compile_only = true;
-    params.no_debug_info = true;
-    params.no_warnings   = true;
-    Stringz precompiled_cpp = pjoin(tmp, GAME_DIR, strlit("driver_precompiled.cpp"));
+    params.compile_only  = 1;
+    params.no_debug_info = 1;
+    params.no_warnings   = 1;
+    Stringz precompiled_cpp = pjoin(tmp, meta.dirs.driver, strlit("driver_precompiled.cpp"));
     add_input_file(params, precompiled_cpp);
     push(&params.compiler_args, strcat(tmp, strlit("-Yc"), precompiled_header));
     
@@ -547,11 +550,12 @@ build_main(i32 arg_count, String *args)
    
    {//-Actual Driver code
     Build_Params params = common;
-    String DRIVER_MAIN = pjoin(tmp, GAME_DIR, strlit("driver_main.cpp"));
+    String DRIVER_MAIN = pjoin(tmp, meta.dirs.driver, strlit("driver_main.cpp"));
     add_input_file(params, DRIVER_MAIN);
     //push(params.compiler_args, strlit("-GF"));  //NOTE(kv) String deduplication, but we don't need it!
     
-    if(meta.hotload_driver){
+    if(meta.hotload_driver)
+    {
      add_input_file(params, strlit("driver_precompiled.obj"));
      add_input_file(params, strcat(tmp, strlit("-Yu"), precompiled_header));
     }
@@ -559,15 +563,15 @@ build_main(i32 arg_count, String *args)
     params.output = strlit("driver.dll");
     if(meta.hotload_driver)
     {// NOTE(kv) We don't actually know that inlining is faster or not.
-     params.no_force_inline = true;
-     params.no_debug_info   = true;
-     params.no_warnings     = true;
+     params.no_force_inline = 1;
+     params.no_debug_info   = 1;
+     params.no_warnings     = 1;
     }
     
     add_linker_arg(params, strlit("-DLL"));
     add_linker_arg(params, strlit("-export:driver_dll_entry"));
-    if(BUILD_USE_SUSPICIOUS_FEATURES){
-     // NOTE(kv) Incremental linking shaves off like 100ms from 300ms build -> worth!
+    if(BUILD_USE_SUSPICIOUS_FEATURES)
+    {// NOTE(kv) Incremental linking shaves off like 100ms from 300ms build -> worth!
      // Don't trust MSVC when they say incremental is on by default.
      add_linker_arg(params, strlit("-INCREMENTAL"));
     }

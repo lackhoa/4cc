@@ -8,24 +8,27 @@ global Game_DLL current_game_dll;
 global API_VTable_ed const_ed_api;
 global API_VTable_ed_new const_ed_api_new;
 global b32 global_game_dll_lock;
-global b32 global_game_enabled = true;  // NOTE: Prevent crash
+global b32 global_game_enabled = true;  // NOTE(kv) To prevent crashing the editor.
 global b32 global_auxiliary_viewports_on;
 global b32 global_debug_camera_on;
+global b32 game_was_turned_on_this_frame;
 
-function b32 
+function void
 turn_game_on() 
 {
- b32 result = false;
+ Game_Status previous_game_status = game_status;
  if(global_game_enabled)
  {
   game_status = Game_On;
-  result = true;
+  if(previous_game_status == Game_Off)
+  {
+   game_was_turned_on_this_frame = 1;
+  }
  }
  else
  { 
   vim_set_bottom_text_lit("game is currently disabled!");
  }
- return result;
 }
 function void turn_game_on(App_Cmd *app) { turn_game_on(); }
 
@@ -36,7 +39,7 @@ turn_game_off()
 }
 function void turn_game_off(App_Cmd *app) { turn_game_off(); }
 
-function Buffer_ID
+api(ed) function Buffer_ID
 get_game_buffer(App *app, Viewport_ID viewport)
 {
  Models *models = app_get_models(app);
@@ -52,27 +55,13 @@ function void
 toggle_game_cmd(App_Cmd *app)
 {// TODO(kv) Can we get rid of the "rendering" crap?
  // I mean we could just make a command to hide the game viewport -> no rendering.
- if(game_status >= Game_Rendering)
+ if(game_status == Game_Off)
  {
-  game_status = Game_On;
+  turn_game_on();
  }
  else
  {
-  b32 turned_on = turn_game_on();
-  if(turned_on)
-  {
-   game_status = Game_Rendering;
-  }
- }
- 
- if(game_status >= Game_Rendering)
- {
-  View_ID view = get_active_view(app, Access_Always);
-  if(is_view_to_the_right(app, view))
-  {// NOTE: switch to the left
-   view = get_other_primary_view(app, view, Access_Always, true);
-  }
-  view_set_buffer(app, view, get_game_buffer(app, 1), 0);
+  turn_game_off();
  }
 }
 
@@ -253,7 +242,6 @@ maybe_update_game(App *app, Frame_Info frame)
   darray(Live_Viewport) live_viewports;
   init_dynamic(live_viewports, tmp);
   //
-  if(is_game_rendering())
   {//-Gather viewports information
    Layout *layout = &models->layout;
    Live_Views *live_views = &models->view_set;
@@ -295,6 +283,7 @@ maybe_update_game(App *app, Frame_Info frame)
      .frame           = frame,
      .debug_camera_on = global_debug_camera_on,
      .live_viewports  = live_viewports,
+     .game_was_turned_on_this_frame = game_was_turned_on_this_frame,
     };
     Game_Update_Return update = game->game_update(params);
     
@@ -304,6 +293,7 @@ maybe_update_game(App *app, Frame_Info frame)
     block_zero_array(global_game_key_state_changes);
    }
   }
+  game_was_turned_on_this_frame = 0;
  }
 }
 //-

@@ -1,13 +1,7 @@
 //-
 // NOTE(kv) Shorthands, helper functions for the scripts.
 //-
-#if 0
-//#define fvec(value) fval( (value), {.flags=Slider_Vector} )
-//#define fdir fvec  // NOTE: Not influenced by scale.
-//#define funit(value)      fvec(value, Slider_Camera_Aligned|Slider_NOZ)
 //#define fhsv(h,s,v) argb_pack(srgb_to_linear(hsv_to_srgb(fval3(h,s,v))))
-#define draw_image draw_image_func
-#endif
 #define fimage(STRING, ...) STRING
 
 // TODO(kv) Just save/restore the whole params structure,
@@ -270,7 +264,7 @@ mk_highlight_params(argb color=0)
 {
  if(color == 0){
   //color = srgb_to_linear(0XFFDBA50F);
-  color = argb_yellow;
+  color = linear_argb_yellow;
  }
  Paint_Params cparams = painter->params;
  cparams.line.flags |= Line_Overlay|Line_No_SymX;

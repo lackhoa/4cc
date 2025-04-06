@@ -10,6 +10,7 @@ global String header_keywords[] = {
  strlit("for_i32"),
  strlit("for_u32"),
  strlit("for_i64"),
+ strlit("for_repeat"),
 };
 function b32
 is_header_keyword(String string)
@@ -23,136 +24,6 @@ is_header_keyword(String string)
  }
  return false;
 }
-
-//-Macro
-struct Klang_Macro
-{// @klang_macro_init
- String name;
- i32 parameter_count;
- sarray(Template_Node) body;
-};
-
-global sarray(Klang_Macro) klang_macros;
-
-function Klang_Macro
-parse_klang_macro(Arena *arena, String text)
-{
- Klang_Macro result = {};
-#if 0
- Scratch_Scope tmp(arena);
- Ed_Parser parser = ed_parser_from_string(tmp, text);
- Ed_Parser *p = &parser;
- 
- //-The pattern
- darray(String) parameters;
- init_dynamic(parameters, tmp);
- 
- result.name = ep_id(p);
- if(ep_maybe_char(p, '('))
- {//-Has parameters
-  while(p->ok_)
-  {
-   if(ep_maybe_char(p, ')')) break;
-   
-   String parameter = ep_id(p);
-   push(&parameters, parameter);
-   
-   if(not ep_maybe_char(p, ','))
-   {
-    ep_char(p, ')');
-    break;
-   }
-  }
- }
- 
- //-The body
- darray(Template_Node) body_tmp;
- init_dynamic(body_tmp, tmp);
- 
- b32 parsing = 1;
- while(parsing)
- {
-  Token *token0 = ep_get_token(p);
-  String token0_string = ep_print_token(p, token0);
-  
-  switch(token0->kind)
-  {
-   case TokenBaseKind_EOF:
-   {
-    parsing = 0;
-   }break;
-   
-   case TokenBaseKind_Identifier:
-   {
-    i32 matching_parameter_index = -1;
-    for_i32(i,0,parameters.count)
-    {
-     if(token0_string == parameters[i])
-     {
-      matching_parameter_index = i;
-      break;
-     }
-    }
-    
-    if(matching_parameter_index != -1)
-    {
-     Template_Node node = {};
-     node.parameter_index = matching_parameter_index;
-     push(&body_tmp, node);
-    }
-    else
-    {
-     Template_Node node = {};
-     node.text = token0_string;
-     push(&body_tmp, node);
-    }
-   }break;
-   
-   default:
-   {
-    Template_Node node = {};
-    node.text = token0_string;
-    push(&body_tmp, node);
-   }
-  }
-  
-  if(not p->ok_) parsing = 0;
-  if(parsing) ep_eat(p);
- }
- 
- kv_assert(p->ok_);
-#endif
- return result;
-}
-
-function void
-klang_macro_init(Arena *arena)
-{
-#if 0
- String text_macros[] = 
- {
-  // NOTE(kv) "M" Macro just turn everything inside parens into strings.
-#define M(a,b) strlit(#a #b)
-  
-  M(fvec_x(X), fvec(X,0,0)),
-  M(fvec_y(Y), fvec(0,Y,0)),
-  M(fvec_z(Z), fvec(0,0,Z)),
-  
-#undef M
- };
- 
- i32 macro_count = alen(text_macros);
- klang_macros.count = macro_count;
- init(klang_macros, arena, klang_macros.count);
- 
- for_i32(i, 0, alen(text_macros))
- {
-  String text = text_macros[i];
-  klang_macros[i] = parse_klang_macro(arena, text);
- }
-#endif
-}
-
 //-Parsing
 function String
 parse_preprocessor(Ed_Parser *p)
@@ -240,14 +111,15 @@ guess_expression_type(Meta_Expression &e)
 }
 
 function i32
-push_file_position(Driver_Collected *driver, i64 byte_pos)
+push_file_position(FUI_Collector *driver, i64 byte_pos)
 {// NOTE(kv) The index returned is not final, which is sad.
+ darray(i32) &positions = driver->file.positions;
  i32 insert_index = 0;
- for(i32 test_index = driver->locations.count-1;
+ for(i32 test_index = positions.count-1;
      test_index >= 0;
      test_index--)
  {
-  i32 test_location = driver->locations.items[test_index];
+  i32 test_location = positions.items[test_index];
   if(byte_pos >= test_location)
   {
    insert_index = test_index + 1;
@@ -256,16 +128,16 @@ push_file_position(Driver_Collected *driver, i64 byte_pos)
  }
  
  if(0){
-  if(insert_index != driver->locations.count){
+  if(insert_index != positions.count){
    breakhere;  // NOTE Just a little trap
   }
  }
  
- insert_at(&driver->locations, i32(byte_pos), insert_index);
+ insert_at(&positions, i32(byte_pos), insert_index);
  return insert_index;
 }
 function M_Text_Range
-push_text_range(Driver_Collected *driver, Range_i32 range)
+push_text_range(FUI_Collector *driver, Range_i32 range)
 {
  M_Text_Range result = {};
  result.range = range;
@@ -274,11 +146,15 @@ push_text_range(Driver_Collected *driver, Range_i32 range)
  return result;
 }
 function i32
-push_text_range_to_list(Driver_Collected *driver, Range_i32 range)
+push_drawn_text_object(FUI_Collector *driver, Range_i32 range)
 {
- M_Text_Range meta_range = push_text_range(driver, range);
- push(&driver->text_ranges, meta_range);
- i32 range_index = driver->text_ranges.count - 1;
+ M_Text_Range text_range = push_text_range(driver, range);
+ M_Text_Object text = {};
+ text.file  = get_file_index(driver);
+ text.range = text_range;
+ text.kind  = Text_Object_Drawn;
+ i32 range_index = (driver->text_objects.count - driver->file.text_objects_slice.min);
+ push(&driver->text_objects, text);
  return range_index;
 }
 function void
@@ -525,14 +401,14 @@ modify_expression_inner(Expression_Modifier *m, Meta_Expression *result)
  }
  
  {//-The core work
-  // NOTE(kv) Doing this after recursing,
-  // so in case we duplicate the children,
-  // we won't have to duplicate the expansion...
-  b32 modified = 1;
-  while(modified)
-  {
-   modified = modify_expression_once(m, result);
-  }
+  // NOTE(kv) Expand the root after expanding the descendants,
+  // so in case the macro duplicate its parameter,
+  // we won't have to duplicate the expansion.
+  //
+  // TODO(kv) I don't think this works!
+  // What if we do macro0(x) -> macro1(x, macro2(x)) ?
+  // Then we won't expand macro2 and that's bad!
+  while(modify_expression_once(m, result));
  }
 }
 function b32
@@ -545,7 +421,7 @@ modify_expression(Arena *arena, Meta_Expression *result)
  return m.ok;
 }
 function b32
-to_cpp_expression_shallow(Arena *arena, Driver_Collected *driver,
+to_cpp_expression_shallow(Arena *arena, FUI_Collector *driver,
                           Meta_Expression *result)
 {
  Scratch_Scope tmp(arena);
@@ -612,6 +488,7 @@ X(fimage) X(fpreset) \
   if(is_slider)
   {//-Slider
    Meta_Slider *slider = push(&driver->sliders);
+   slider->file = get_file_index(driver);
    i32 slider_index = driver->sliders.count - 1;
    
    // NOTE(kv) Runtime slider is kinda ad-hoc,
@@ -650,14 +527,14 @@ X(fimage) X(fpreset) \
    init_keep_range(result, Expression_Kind_Unknown);
    slider->is_runtime = MATCH(runtime_fv);
    if(slider->is_runtime)
-   {//-runtime slider
-    result->as_string = push_stringf(arena, strcode(ReadSliderRuntime(%S, %d, %S)),
-                                     slider->type, slider_index, value_string);
+   {// NOTE Runtime slider
+    result->as_string = push_stringf(arena, strcode(ReadSliderRuntime(%d, %S)),
+                                     slider_index, value_string);
    }
    else
-   {//-data slider
-    result->as_string = push_stringf(arena, cstrcode(ReadSlider(%S, %d)),
-                                     slider->type, slider_index);
+   {// NOTE Data slider
+    result->as_string = push_stringf(arena, cstrcode(ReadSlider(%d)),
+                                     slider_index);
    }
   }
   else
@@ -668,16 +545,13 @@ X(fimage) X(fpreset) \
    {
     //-Annotate these draws/fills with location info.
     String original_string = print_expression(tmp, *result);
-    i32 file_index  = 1;  // TODO(kv) Hacked for now
-    i32 range_index = push_text_range_to_list(driver, result->range);
+    i32 text_object_index = push_drawn_text_object(driver, result->range);
     init_keep_range(result, Expression_Kind_Unknown);
     result->as_string = push_stringf(arena,
-                                     "("
-                                     "set_draw_location({.file=%d, .range_index=%d}), "
-                                     "%S, "
-                                     "clear_draw_location()" 
-                                     ")",
-                                     file_index, range_index,
+                                     cstrcode((set_draw_location_unresolved({%d,%d}),
+                                               %S,
+                                               clear_draw_location())),
+                                     get_file_index(driver), text_object_index,
                                      original_string);
    }
    else
@@ -688,6 +562,8 @@ X(fimage) X(fpreset) \
      case KW(vv0):
      case KW(vv0_overlay):
      {
+      // TODO(kv) We copy pasta these in @modify_statement
+      // We need to combine expressions and statements!
       if(call->args.count == 1)
       {
        Meta_Expression &position = call->args.items[0];
@@ -697,6 +573,7 @@ X(fimage) X(fpreset) \
        b32 overlay = MATCH(vv0_overlay);
        
        Meta_Vertex vertex = {};
+       vertex.file = get_file_index(driver);
        vertex.range = push_text_range(driver, result->range);
        vertex.overlay = overlay;
        vertex.indicator_level = indicator_level;
@@ -704,11 +581,10 @@ X(fimage) X(fpreset) \
        i32 vertex_index = driver->vertices.count-1;
        
        init_keep_range(result, Expression_Kind_Unknown);
-       result->as_string = push_stringf(arena, "send_vert(%d, %S)",
+       result->as_string = push_stringf(arena, cstrcode(send_vert(%d, %S)),
                                         vertex_index, pos_string);
-      }else{
-       ok = false;
       }
+      else{ ok = false; }
      }break;
      
      case KW(fimage):
@@ -719,8 +595,9 @@ X(fimage) X(fpreset) \
       {
        Meta_Expression &string_expr = call->args[0];
        String filename = print_expression(arena, string_expr);  // NOTE(kv) Let's keep the quotes
-       M_Text_Object *image = push(&driver->objects);
-       image->kind = Text_Object_Image;
+       M_Text_Object *image = push(&driver->text_objects);
+       image->file  = get_file_index(driver);
+       image->kind  = Text_Object_Image;
        image->range = push_text_range(driver, result->range);
        image->image.filename = filename;
        
@@ -740,9 +617,10 @@ X(fimage) X(fpreset) \
       {
        Meta_Expression &preset_expr = call->args[0];
        M_Text_Object preset = {.kind = Text_Object_Preset};
+       preset.file   = get_file_index(driver);
        preset.range  = push_text_range(driver, result->range);
        preset.preset = print_expression(arena, preset_expr);
-       push(&driver->objects, preset);
+       push(&driver->text_objects, preset);
        
        // NOTE(kv) This is not even gonna compile to anything, feels weird...
        init_keep_range(result, Expression_Kind_Unknown);
@@ -758,7 +636,7 @@ X(fimage) X(fpreset) \
  return ok;
 }
 function b32
-to_cpp_expression(Arena *arena, Driver_Collected *driver,
+to_cpp_expression(Arena *arena, FUI_Collector *driver,
                   Meta_Expression *result)
 {
  b32 ok = 1;
@@ -767,7 +645,7 @@ to_cpp_expression(Arena *arena, Driver_Collected *driver,
  sarray(Meta_Expression *) children = list_expression_children(tmp, *result);
  for_i32(i, 0, children.count)
  {
-  if(not ok) break;
+  if(not ok){ break; }
   ok = to_cpp_expression(arena, driver, children[i]);
  }
  
@@ -779,36 +657,38 @@ function void
 modify_statement(Klang_Parser *parser, Token *token0, Token *token1,
                  Meta_Statement *result)
 {
- Driver_Collected *driver = parser->driver;
+ FUI_Collector *driver = parser->driver;
  Arena *arena = parser->arena;
  Range_i32 statement_range = {
   i32(token0->pos),
   i32(token1->pos + token1->size)
  };
  
- if(result->head.kind == Statement_Kind_Declaration)
+ if(result->kind == Statement_Kind_Declaration)
  {
-  Statement_Declaration *decl = (Statement_Declaration *)&result->head;
+  Statement_Declaration *decl = (Statement_Declaration *)result;
   b32 is_tvert = (decl->type.kind == 0 and
                   decl->type.pointer_count == 0 and
-                  decl->type.name == strlit("tvert"));
+                  decl->type.name == strcode(tvert));
   b32 has_rhs = decl->rhs.kind != 0;
   if(is_tvert and has_rhs)
   {
    Meta_Vertex vertex = {};
+   vertex.file  = get_file_index(driver);
    vertex.range = push_text_range(driver, statement_range);
    vertex.indicator_level = 99;
    push(&driver->vertices, vertex);
    i32 vertex_index = driver->vertices.count-1;
    
-   String old_result = print_statement(arena, result->head);
-   String new_result_string = push_stringf(arena, "%S\nsend_vert(%d, %S);",
+   String old_result = print_statement(arena, *result);
+   String new_result_string = push_stringf(arena, cstrcode(%S\n
+                                                           send_vert(%d, %S);\n),
                                            old_result, vertex_index, decl->name);
    // NOTE(kv) Hacked double statement
-   i32 source_pos = result->head.pos;
+   i32 source_pos = result->pos;
    *result = {};
-   result->head.kind = Statement_Kind_Misc;
-   result->head.pos  = source_pos;
+   result->kind = Statement_Kind_Misc;
+   result->pos  = source_pos;
    result->misc.as_string = new_result_string;
   }
  }
@@ -882,7 +762,7 @@ string_from_token_to_here(Ed_Parser *parser, Token *token0)
 }
 function void
 parse_expression(Klang_Parser *p, Precedence max_precedence,
-                           Meta_Expression *result)
+                 Meta_Expression *result)
 {
  //TODO(kv) Cleanup terminators when we confirm that we don't need them.
  Arena *arena = p->arena;
@@ -893,15 +773,32 @@ parse_expression(Klang_Parser *p, Precedence max_precedence,
  String token0_string = ep_print_token(p);
  Unary_Operator unary_op = prefix_unary_operator_from_token(token0, token0_string);
  
- if(ep_maybe_kind(p, TokenBaseKind_Identifier))
+ if(token0->kind == TokenBaseKind_Identifier or
+    (token0->kind == TokenBaseKind_Keyword and
+     token0->sub_kind == TokenCppKind_SizeOf))
  {
+  ep_eat(p);
+  
+  String string_after = ep_print_token(p);
   if(ep_maybe_char(p, '{'))
   {// NOTE Brace initializer
    parse_compound_literal(p, result);
    result->compound_type_name = token0_string;
   }
+  else if(string_after == strlit("::"))
+  {// NOTE Namespaced identifier
+   ep_eat(p);
+   Token *token = ep_get_token(p);
+   if(token->kind == TokenBaseKind_Identifier)
+   {
+    ep_eat(p);
+    result->kind = Expression_Kind_Identifier;
+    result->as_string = string_from_token_to_here(p, token0);
+   }
+   else { p->fail(); }
+  }
   else
-  {
+  {// NOTE Normal identifier
    result->kind = Expression_Kind_Identifier;
    result->as_string = token0_string;
   }
@@ -1058,10 +955,12 @@ parse_expression(Klang_Parser *p, Precedence max_precedence,
   }
  }
 }
-function void
-parse_type_and_name(Klang_Parser *p, Parsed_Type *out_type, String *out_name)
+function Type_And_Name
+parse_type_and_name(Klang_Parser *p)
 {// NOTE(kv) We're cheesing the type HARD!
- Parsed_Type type = {};
+ Type_And_Name out = {};
+ Scratch_Block tmp;
+ Parsed_Type &type = out.type;
  // TODO(kv) I still don't know how const work...
  if(ep_maybe_id(p, strlit("const")))
  {
@@ -1083,7 +982,7 @@ parse_type_and_name(Klang_Parser *p, Parsed_Type *out_type, String *out_name)
  {
   type.pointer_count++;
  }
- *out_name = ep_id(p);
+ out.name = ep_id(p);
  
  if(type.pointer_count == 0)
  {
@@ -1093,7 +992,7 @@ parse_type_and_name(Klang_Parser *p, Parsed_Type *out_type, String *out_name)
    if(not ep_maybe_char(p, ']'))
    {
     // TODO(kv) Bad news! Count could be an expression.
-    //  We know that it is a constant but our parser can't evaluate constants.
+    // We know that it is a constant but our parser can't evaluate constants.
     Meta_Expression *count = push_struct(p->arena, Meta_Expression);
     parse_expression_full(p, count);
     type.array_count = print_expression(p->arena, *count);
@@ -1103,9 +1002,20 @@ parse_type_and_name(Klang_Parser *p, Parsed_Type *out_type, String *out_name)
     ep_char(p, ']');
    }
   }
+  else if(ep_maybe_char(p, '('))
+  {
+   // NOTE(kv) The type so far is the return type
+   type.return_type = push_value(p->arena, type);
+   
+   type.kind = Parsed_Type_Function;
+   // NOTE(kv) The name of the lambda is already correct.
+   {// NOTE Parameters, which we don't care about
+    type.parameters = ep_capture_until_char(p, ')');
+    ep_char(p, ')');
+   }
+  }
  }
- 
- *out_type = type;
+ return out;
 }
 function void
 parse_struct_member(Klang_Parser *p, M_Struct_Member *result)
@@ -1114,7 +1024,7 @@ parse_struct_member(Klang_Parser *p, M_Struct_Member *result)
  {
   mpa_parens{ result->discriminator = ep_id(p); }
  }
- parse_type_and_name(p, &result->type, &result->name);
+ result->type_and_name = parse_type_and_name(p);
  ep_skip_semicolons(p);
 }
 myinline M_Struct_Member
@@ -1158,17 +1068,17 @@ parse_struct_body(Arena *arena, Stringz string)
 }
 
 function void
-parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
-                           /*out*/Meta_Statement *ostatement)
+parse_statement_to_pointer(Klang_Parser *p, /*out*/Meta_Statement *ostatement)
 {
+ Arena *arena = p->arena;
  Token *token0 = ep_get_token(p);
- ostatement->head.pos = token0->pos;
- ostatement->head.mom = p->current_statement;
- SetInBlock(p->current_statement, &ostatement->head);
+ ostatement->pos = token0->pos;
+ ostatement->mom = p->current_statement;
+ SetInBlock(p->current_statement, ostatement);
  String token0_string = ep_print_token(p, token0);
  if(token0_string == strlit("no_parse"))
  {
-  ostatement->head.kind = Statement_Kind_Misc;
+  ostatement->kind = Statement_Kind_Misc;
   
   ep_eat(p);
   ep_char(p, '{');
@@ -1177,9 +1087,8 @@ parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
  }
  else if(token0->kind == TokenBaseKind_Preprocessor)
  {//-Preprocessor (not a statement but ok...)
-  ostatement->head.kind = Statement_Kind_Misc;
-  cast_to_var(Statement_Misc *, unknown, ostatement);
-  unknown->as_string = parse_preprocessor(p);
+  ostatement->kind = Statement_Kind_Misc;
+  ostatement->misc.as_string = parse_preprocessor(p);
  }
  else if(token0->kind == TokenBaseKind_Identifier or
          token0->kind == TokenBaseKind_Keyword)
@@ -1187,38 +1096,52 @@ parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
   if(is_header_keyword(token0_string))
   {//-Header and body
    ep_eat(p);
-   ostatement->head.kind = Statement_Kind_Header_And_Body;
-   cast_to_var(Statement_Header_And_Body *, header_body, ostatement);
-   if(ep_maybe_char(p, '(')){
+   ostatement->kind = Statement_Kind_Header_And_Body;
+   Statement_Header_And_Body *header_body = &ostatement->header_and_body;
+   if(ep_maybe_char(p, '('))
+   {
     //NOTE optional parameters
     k_eat_until_char(p, strlit(")"));
     ep_char(p, ')');
    }
    header_body->header = k_string_from_token_to_current(p, token0);
-   header_body->body = parse_statement_to_arena(arena, p);
+   header_body->body = parse_statement_to_arena(p);
+  }
+  else if(token0_string == strlit("function"))
+  {//-NOTE inner function (aka my lambda hack)
+   ep_eat(p);
+   ostatement->kind = Statement_Kind_Function;
+   Statement_Function *fun = &ostatement->function0;
+   fun->has_body = 1;
+   fun->type_and_name = parse_type_and_name(p);
+   if(fun->type.kind == Parsed_Type_Function)
+   {// NOTE(kv) Body
+    fun->body = parse_statement_block(p);
+   }
+   else { p->fail(); }
   }
   else if(token0_string == strlit("if"))
   {//-If
    ep_eat(p);
-   ostatement->head.kind = Statement_Kind_If;
-   cast_to_var(Statement_If *, if0, ostatement);
+   ostatement->kind = Statement_Kind_If;
+   Statement_If *if0 = &ostatement->if0;
    {//-condition
     ep_char(p, '(');
     parse_expression_full(p, &if0->condition);
     ep_char(p, ')');
    }
    {//-body
-    if0->body = parse_statement_to_arena(arena, p);
+    if0->body = parse_statement_to_arena(p);
    }
    if(ep_maybe_id(p, strlit("else")))
    {//-else
-    if0->else0 = parse_statement_to_arena(arena, p);
+    if0->else0 = parse_statement_to_arena(p);
    }
   }
   else if(ep_maybe_id(p, strlit("switch")))
   {//-switch
-   ostatement->head.kind = Statement_Kind_Switch;
-   cast_to_var(Statement_Switch *, switch0, ostatement);
+   ostatement->kind = Statement_Kind_Switch;
+   Statement_Switch *switch0 = &ostatement->switch0;
    {//-expression
     ep_char(p, '(');
     parse_expression_full(p, &switch0->expression);
@@ -1226,12 +1149,13 @@ parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
    }
    {//-cases
     ep_char(p, '{');
-    while(p->ok_ && not ep_maybe_char(p, '}')){
+    while(p->ok_ && not ep_maybe_char(p, '}'))
+    {
      Switch_Case *case0 = switch0->cases.push();
      ep_id(p, strlit("case"));
      parse_expression_full(p, &case0->expression);
      ep_char(p, ':');
-     parse_statement_to_pointer(arena, p, &case0->body);
+     parse_statement_to_pointer(p, &case0->body);
      case0->break_after = ep_maybe_id(p, strlit("break"));
      ep_skip_semicolons(p);
     }
@@ -1239,79 +1163,56 @@ parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
   }
   else if(ep_maybe_id(p, strlit("return")))
   {//-Return
-   ostatement->head.kind = Statement_Kind_Return;
-   cast_to_var(Statement_Return *, return0, ostatement);
-   parse_expression_full(p, &return0->return0);
+   ostatement->kind = Statement_Kind_Return;
+   parse_expression_full(p, &ostatement->return0);
    ep_char(p,';');
-  }
-  else if(ep_maybe_id(p, strlit("cache")))
-  {//-cache
-   ostatement->head.kind = Statement_Kind_Cache;
-   cast_to_var(Statement_Cache *, cache0, ostatement);
-   cache0->id = i32(token0->pos);
-   init_dynamic(cache0->cache_items, arena);
-   ep_char(p, '(');
-   while(p->ok_ && not ep_maybe_char(p, ')')){
-    //-Cached items
-    Cache_Item *cache_item = cache0->cache_items.push();
-    parse_type_and_name(p, &cache_item->type, &cache_item->name);
-    ep_char(p, '=');
-    parse_expression_full(p, &cache_item->rhs);
-    ep_char(p, ';');
-   }
-   {//-Cached computation
-    cache0->body = parse_statement_to_arena(arena, p);
-   }
-   //-Remember this statement so we can print out the metadata later
-   //p->function_cache_list.push_value(cache0);
   }
   else if(token0_string == strlit("continue") or
           token0_string == strlit("break"))
   {
    ep_eat(p);
    ep_char(p, ';');
-   ostatement->head.kind = Statement_Kind_Misc;
-   Statement_Misc *statement = (Statement_Misc *)ostatement;
+   ostatement->kind = Statement_Kind_Misc;
+   Statement_Misc *misc = &ostatement->misc;
    // NOTE(kv) Include the semicolon
-   statement->as_string = string_from_token_to_here(p, token0);
+   misc->as_string = string_from_token_to_here(p, token0);
   }
   else
   {//-Declaration?
    ep_recovery_block(p);
    
-   ostatement->head.kind = Statement_Kind_Declaration;
-   cast_to_var(Statement_Declaration *, decl, ostatement);
-   parse_type_and_name(p, &decl->type, &decl->name);
+   ostatement->kind = Statement_Kind_Declaration;
+   Statement_Declaration *decl = &ostatement->declaration;
+   decl->type_and_name = parse_type_and_name(p);
    if(ep_maybe_char(p,'='))
    {//-Declaration and assignment
     parse_expression_full(p, &decl->rhs);
    }
    ep_char(p,';');
    
-   if(not p->ok_){
-    ostatement->head.kind = Statement_Kind_None;
+   if(not p->ok_)
+   {
+    ostatement->kind = Statement_Kind_None;
    }
   }
  }
  else if(token0->kind == TokenBaseKind_ScopeOpen)
  {//-Block
-  ostatement->head.kind  = Statement_Kind_Block;
-  cast_to_var(Statement_Block*, block, ostatement);
-  block->block = parse_statement_block(arena, p);
+  ostatement->kind  = Statement_Kind_Block;
+  ostatement->block = parse_statement_block(p);
  }
  else if(ep_eat_kind(p, TokenBaseKind_StatementClose))
  {
-  ostatement->head.kind = Statement_Kind_Empty;
+  ostatement->kind = Statement_Kind_Empty;
  }
  
- if(not ostatement->head.kind)
+ if(not ostatement->kind)
  {//-Defaults to expressions
   //NOTE(kv) Warning: sometimes we use macro, forget a semicolon,
   //  and it parses until the end of the file.
   ep_scope_block(p, token0_string, token0);
-  ostatement->head.kind = Statement_Kind_Expression;
-  cast_to_var(Statement_Expression*, expr, ostatement);
-  parse_expression_full(p, &expr->expression);
+  ostatement->kind = Statement_Kind_Expression;
+  parse_expression_full(p, &ostatement->expression);
   ep_char(p, ';');
  }
  
@@ -1322,24 +1223,25 @@ parse_statement_to_pointer(Arena *arena, Klang_Parser *p,
  }
 }
 function sarray(Meta_Statement)
-parse_statement_block(Arena *arena, Klang_Parser *p)
+parse_statement_block(Klang_Parser *p)
 {
  ep_char(p,'{');
  darray(Meta_Statement) statements;
- init_dynamic(statements, arena);
+ init_dynamic(statements, p->arena);
  ep_skip_semicolons(p);
  while(p->ok_ and (not ep_maybe_char(p,'}')))
  {//-Statement
-  parse_statement_to_pointer(arena, p, statements.push());
+  parse_statement_to_pointer(p, statements.push());
   ep_skip_semicolons(p);
  }
  return statements;
 }
 function sarray(Meta_Statement)
-k_process_top_level(Arena *arena, Klang_Parser *p, Meta_Printer &printer,
+k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
                     String source_path,
                     darray(String) *type_info_list)
 {
+ Arena *arena = p->arena;
  darray(Meta_Statement) top_levels;
  init_dynamic(top_levels, arena, 64);
  Scratch_Block tmp_file;
@@ -1516,12 +1418,10 @@ k_process_top_level(Arena *arena, Klang_Parser *p, Meta_Printer &printer,
   }
   else if(ep_maybe_id(p, strlit("global")))
   {//-global (now this is annoying!)
-   Parsed_Type type;
-   String name;
-   parse_type_and_name(p, &type, &name);
+   Type_And_Name type_and_name = parse_type_and_name(p);
    
    print(printer, strlit("global "));
-   print_type_and_name(printer, type, name);
+   print_type_and_name(printer, type_and_name);
    
    if(ep_maybe_char(p, '='))
    {
@@ -1537,10 +1437,9 @@ k_process_top_level(Arena *arena, Klang_Parser *p, Meta_Printer &printer,
   }
   else if(is_function_keyword(token0_string))
   {//-Function
-   //init_dynamic(p->function_cache_list, scratch_top);  //#Tweak
    ep_eat(p);
    
-   String return_type = ep_id(p);  //TODO(kv) cheese!
+   String return_type = ep_id(p);  // TODO(kv) cheese!
    String function_name = ep_id(p);
    ep_scope_block(p, function_name, token0);
    String parameters;
@@ -1548,14 +1447,14 @@ k_process_top_level(Arena *arena, Klang_Parser *p, Meta_Printer &printer,
     parameters = ep_capture_until_char(p,')');
    }
    Meta_Statement *func0 = top_levels.push();
-   cast_to_var(Statement_Function *, func, func0);
-   if(ep_maybe_char(p, ';')){
-    //-Forward declaration
-    func->kind = Statement_Kind_Function;
-   }else{
-    //-Body
-    func->kind = Statement_Kind_Function;
-    func->body = parse_statement_block(arena, p);
+   Statement_Function *func = (Statement_Function *)func0;
+   func0->kind = Statement_Kind_Function;
+   if(ep_maybe_char(p, ';'))
+   {//NOTE Forward declaration
+   }
+   else
+   {//NOTE Body
+    func->body = parse_statement_block(p);
     func->has_body = true;
    }
    
@@ -1599,10 +1498,12 @@ k_process_top_level(Arena *arena, Klang_Parser *p, Meta_Printer &printer,
      }
     }
     if(func->has_body){//-Print body
-     m_braces2(printer){
+     m_braces2(printer)
+     {
       mline(printer);
-      for_i32(statement_index,0,func->body.count){
-       print_statement(printer, func->body[statement_index].head);
+      for_i32(statement_index,0,func->body.count)
+      {
+       print_statement(printer, func->body[statement_index]);
        mline(printer);
       }
      }
@@ -1753,7 +1654,7 @@ k_process_top_level(Arena *arena, Klang_Parser *p, Meta_Printer &printer,
     (Printer&)printer_ = m_open_file_to_write(out_path);
     
     printer_0 = &printer_;
-    print_format(*printer_0, "// NOTE Source template: %S\n", source_path);
+    printf(*printer_0, "// NOTE Source template: %S\n", source_path);
    }
    
    template_codegen_mode(&tables, p, *printer_0);
@@ -1780,12 +1681,12 @@ k_process_top_level(Arena *arena, Klang_Parser *p, Meta_Printer &printer,
 
 function b32
 k_process_file(Arena *arena, Lexed_File source,
-               Driver_Collected *driver,
+               FUI_Collector *driver,
                darray(String) *type_info_list,
                Statement_Root *out_root)
 {
  Scratch_Block tmp_file;
- Statement_Root root = {};
+ Meta_Statement root = {};
  root.kind = Statement_Kind_Root;
  
  Meta_Printer printer_gen;
@@ -1824,7 +1725,7 @@ k_process_file(Arena *arena, Lexed_File source,
   parser->do_generate_cpp = 1;
  }
  
- root.top_levels = k_process_top_level(arena, parser, printer_gen, source.path, type_info_list);
+ root.root.top_levels = k_process_top_level(parser, printer_gen, source.path, type_info_list);
  
  ok = ok and parser->ok_;
  if(ok)
@@ -1891,7 +1792,7 @@ k_process_file(Arena *arena, Lexed_File source,
  }
  close(printer_gen);
  
- *out_root = root;
+ *out_root = root.root;
  return ok;
 }
 //-
@@ -2082,8 +1983,8 @@ k_preprocess_file(Lexed_File source)
       u64(range_size(edit.old_range)),
      };
      // ;edit_marker_syntax
-     print_format(printer, "%S[old=%S][%S]",
-                  edit_marker, old, edit.new_string);
+     printf(printer, "%S[old=%S][%S]",
+            edit_marker, old, edit.new_string);
     }
     
     prev_edit_max = edit.old_range.max;
@@ -2118,7 +2019,7 @@ k_preprocess_file(Lexed_File source)
 //-
 function b32
 klang_main_one_file(Arena *arena, Lexed_File source,
-                    Driver_Collected *driver,
+                    FUI_Collector *driver,
                     darray(String) *type_info_list)
 {
  b32 ok = 1;
@@ -2132,24 +2033,74 @@ klang_main_one_file(Arena *arena, Lexed_File source,
  
  return ok;
 }
+template<class T> function T *
+get_one_past_last(sarray(T) &array)
+{
+ return array.items + array.count;
+}
+
+function void
+finish_fui_file(FUI_Collector *c)
+{
+ // NOTE(kv) Gruntwork
+ FUI_Collector_File &file = c->file;
+ file.text_objects_slice.max = c->text_objects.count;
+ file.sliders_slice.max      = c->sliders.count;
+ file.vertices_slice.max     = c->vertices.count;
+ 
+ // NOTE(kv) Add file if this one is not empty
+ b32 do_make_new_file = file.positions.count > 0;
+ if(do_make_new_file)
+ {
+  sarray(i32) copied_positions = copy_array(c->arena, file.positions);
+  file.positions = {};
+  (sarray(i32) &)file.positions = copied_positions;
+  arena_clear(c->file_tmp);
+  
+  push(&c->files, file);
+  
+  FUI_Collector_File new_file = {};
+  init_dynamic(new_file.positions, c->file_tmp, 2048);
+  // NOTE(kv) Gruntwork
+  new_file.text_objects_slice.min = c->text_objects.count;
+  new_file.sliders_slice.min      = c->sliders.count;
+  new_file.vertices_slice.min     = c->vertices.count;
+  
+  file = new_file;
+ }
+}
 
 function b32
 klang_main(sarray(Lexed_File) all_files)
 {
  b32 ok = true;
  Scratch_Block tmp;
- 
- klang_macro_init(tmp);
- 
- Driver_Collected driver = {};
- init_dynamic(driver.locations,   tmp, 1024);
- init_dynamic(driver.text_ranges, tmp, 512);
- init_dynamic(driver.sliders,     tmp, 512);
- init_dynamic(driver.objects,     tmp, 128);
- init_dynamic(driver.vertices,    tmp, 256);
+ Scratch_Block file_tmp;
  
  darray(String) type_info_list;
  init_dynamic(type_info_list, tmp, 64);
+ 
+ const i32 collector_count = 2;
+ sarray(FUI_Collector) collectors;
+ init_static(collectors, tmp, collector_count);
+ 
+ for_each(driver, collectors)
+ {
+  *driver = {};
+  driver->file_tmp = file_tmp;
+  driver->arena = tmp;
+  init_dynamic(driver->files,        tmp, 16);
+  init_dynamic(driver->sliders,      tmp, 512);
+  init_dynamic(driver->vertices,     tmp, 256);
+  init_dynamic(driver->text_objects, tmp, 512);
+  
+  push(&driver->files);
+  init_dynamic(driver->file.positions, file_tmp, 2048);
+ }
+ 
+ FUI_Collector *driver_collector = &collectors[0];
+ driver_collector->is_driver = 1;
+ FUI_Collector *game_collector = &collectors[1];
  
  for_i32(file_index, 0, all_files.count)
  {//-Parsing all the files
@@ -2158,14 +2109,25 @@ klang_main(sarray(Lexed_File) all_files)
   Lexed_File file = all_files[file_index];
   if(is_klang_file(file.path))
   {
-   ok = ok and klang_main_one_file(tmp, file, &driver, &type_info_list);
+   b32 is_driver = path_contains(file.path, strlit("driver"));
+   FUI_Collector *c = is_driver ? driver_collector : game_collector;
+   
+   c->file.name = path_filename(file.path);
+   c->file.is_driver = is_driver; // NOTE(kv) Redundant
+   
+   ok = ok and klang_main_one_file(tmp, file, c, &type_info_list);
+   
+   finish_fui_file(c);
   }
  }
  
  if(ok)
  {
   print_all_type_info(type_info_list);
-  print_all_script_data(driver); 
+  for_each(c, collectors)
+  {
+   print_all_fui_data(*c);
+  }
  }
  
  return ok;

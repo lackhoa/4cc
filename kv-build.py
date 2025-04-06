@@ -25,17 +25,20 @@ if args.release:
     args.full = True
 run_only = args.action == 'run'
 
+################ 
 ################ NOTE: Configuration begin #########################
-# NOTE(kv) What should we build?
+################ 
+
+notebook_mode     = 0
+
 hotload_driver    = 0
-debug_metaprogram = 0
-do_build_editor   = 0
+do_build_editor   = 1
 do_test_klang     = 0 # NOTE test.kc
 
-do_build_game     = 1
+do_build_game     = 0
 do_build_driver   = 1
 lexer_build_level = 1
-imgui_build_level = 2
+imgui_build_level = 1
 no_force_inline   = 0
 #
 asan_on = 0
@@ -45,12 +48,21 @@ AD_PROFILE = 0
 #STOP_DEBUGGING_BEFORE_BUILD = 1  # NOTE(kv) uncheck when you wanna debug the reload itself
 OPTIMIZE_EDITOR = 0
 
+################ 
 ############## Configuration end ############################
-if do_test_klang:
-    debug_metaprogram = 1
+################ 
+
+do_build_meta = 1
+
+if notebook_mode:
+    print("[notebook mode]")
+    do_build_driver = 0
+    do_build_meta = 0
+    do_build_editor = 0
 
 if hotload_driver:
     print("[hotload driver]")
+    do_build_meta = 0
 
 if args.release:
     do_editor = 1
@@ -220,8 +232,8 @@ def check_extension(extensions, filename):
 def list_all_cpp_files_top_level(root_path):
     extensions = [".cpp", ".c"]
     result = []
-    for (dirpath, dirnames, filenames) in os.walk(root_path):
-        cpp_files = [f for f in filenames
+    for (root, dirnames, filenames) in os.walk(root_path):
+        cpp_files = [pjoin(root, f) for f in filenames
                      if check_extension(extensions, f)]
         result.extend(cpp_files)
         break
@@ -229,7 +241,7 @@ def list_all_cpp_files_top_level(root_path):
 
 def list_all_files(root_path):
     result = []
-    for (dirpath, dirnames, filenames) in os.walk(root_path):
+    for (root, dirnames, filenames) in os.walk(root_path):
         result.extend(filenames)
     return result
 
@@ -349,7 +361,6 @@ base_includes = f"-I{CODE} -I{CODE}/libs"
 
 def build_and_run_metaprogram():
     INCLUDES=f'{base_includes}'
-    slow = debug_metaprogram
     SYMBOLS=f'-DKV_INTERNAL=1'  # NOTE(kv) Don't turn this off, we need asserts!
     compiler_flags=f"{SYMBOLS} {INCLUDES}"
     
@@ -366,12 +377,12 @@ def build_and_run_metaprogram():
         run(f'cpp_lexer_gen.exe {CODE}')
         
     print('====Metaprogram====')
-    if not hotload_driver:
+    if do_build_meta:
         compiler = Compiler.Cl
         run_compiler(compiler, f"{CODE}/meta/meta_main.cpp", "ad_meta.exe",
                      compiler_flags=compiler_flags, linker_flags="userenv.lib",
                      #optimized=True,  #NOTE(kv) Optimized build doesn't really improve that much (like 2x)
-                     debug_symbol=slow)
+                     debug_symbol=1)
     meta_config = ""
     if do_build_editor:
         meta_config += " --build-editor"
@@ -417,7 +428,10 @@ try:
         BINARY_NAME = "4ed" if DEV_BUILD else "4ed_stable"
 
         imgui_dir = f"{CODE}/libs/imgui"
-        imgui_cpp_basenames = list_all_cpp_files_top_level(imgui_dir)
+        imgui_cpp_filenames = list_all_cpp_files_top_level(imgui_dir)
+
+        imgui_cpp_basenames = [os.path.basename(file) for file in imgui_cpp_filenames]
+
         imgui_object_files  = [f"{get_file_stem(file)}{DOT_OBJ}" 
                                for file in imgui_cpp_basenames]
 
@@ -426,11 +440,10 @@ try:
             delete_all_pdb_files(OUTDIR)
 
         # NOTE Compiling DearImgui
-        imgui_files = [pjoin(imgui_dir, f) for f in imgui_cpp_basenames]
         imgui_backend_files = [f"{imgui_dir}/backends/imgui_impl_win32.cpp", f"{imgui_dir}/backends/imgui_impl_opengl3.cpp"]
         imgui_config = '-DIMGUI_USER_CONFIG=\\"ad_imgui_config.h\\"'
         if meets_level(imgui_build_level):
-            for file in (imgui_files + imgui_backend_files):
+            for file in (imgui_cpp_filenames + imgui_backend_files):
                 # NOTE(kv): Since we run the build through the shell, we gotta escape the double-quotes :>
                 run_compiler(Compiler.Cl, file, "",
                              debug_symbol=True,

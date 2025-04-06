@@ -5,7 +5,7 @@ api_table game_api
  Game_State *game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new, App *app, Game_ImGui_State &imgui_state, b32 is_dev_editor);
  void game_shutdown(Game_State *state);
  Game_Update_Return game_update(Game_Update_Params params);
- b32 is_event_handled_by_game(Game_State *state, App *app, Input_Event *event, b32 game_hot, b32 game_rendered);
+ b32 is_event_handled_by_game(Game_State *state, App *app, Input_Event *event, b32 game_hot);
  void game_send_command(Game_State *state, String command_name);
  void game_buffer_edit_range(Game_State *state, App *app, Buffer_ID buffer, Range_i64 new_range, Range_Cursor old_cursor_range);
  b32 game_handle_tab_normal_mode(App_Cmd *app);

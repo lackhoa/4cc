@@ -147,6 +147,7 @@ struct Models
  Render_Target *target;
  u64 edit_counter;
  Buffer_ID game_buffers[GAME_BUFFER_COUNT];
+ Stringz modified_global_face_path;
 };
 
 ////////////////////////////////

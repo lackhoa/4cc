@@ -86,6 +86,7 @@ get_indentation_array(App *app, Arena *arena, Buffer_ID buffer,
  
  Token_Array token_array = get_token_array_from_buffer(app, buffer);
  Token_Array *tokens = &token_array;
+ 
  Token *start_token = find_first_indented_token(app, buffer, tokens, indented_lines.first);
  if (start_token != 0 &&
      start_token >= tokens->tokens &&
@@ -140,7 +141,7 @@ get_indentation_array(App *app, Arena *arena, Buffer_ID buffer,
   {
    token_line = {};
    token_line.line_number = line_number;
-   token_line.range = get_line_pos_range(app, buffer, line_number);
+   token_line.range = kv_get_line_pos_range(app, buffer, line_number);
   };
   
   update_token_line(indented_lines.min);
@@ -160,32 +161,35 @@ get_indentation_array(App *app, Arena *arena, Buffer_ID buffer,
    if(parsing)
    {// NOTE Figure out line info
     i64 updated_line_number = 0;
-    if(token->pos >= token_line.range.max)
+    b32 line_is_wrong = token->pos >= token_line.range.max;
+    if(line_is_wrong)
     {// NOTE Advance line
      if(token->kind != TokenBaseKind_EOF)
      {
-      for_i64(line_number,
-              token_line.line_number+1,
-              total_line_count+1)
+      i64 opl_line = total_line_count+1;
+      for_i64(line_number, token_line.line_number+1, opl_line)
       {
-       Range_i64 line_range = get_line_pos_range(app, buffer, line_number);
+       Range_i64 line_range = kv_get_line_pos_range(app, buffer, line_number);
        if(range_contains(line_range, token->pos))
        {// NOTE
         updated_line_number = line_number;
         break;
        }
       }
-      kv_assert(updated_line_number > 0);
+      
+      if(updated_line_number == 0)
+      {// NOTE(kv) In case we somehow can't find the line for this token...
+       updated_line_number = indented_lines.max;
+      }
      }
      else { updated_line_number = indented_lines.max; }
     }
-    // NOTE Else line is correct
     
     if(updated_line_number > 0)
     {// NOTE Update line
      i64 old_line = token_line.line_number;
      update_token_line(updated_line_number);
-     {//-Write out indentations up to the current token
+     {//NOTE Write out indentations up to the current token.
       i64 min_line_to_write = clamp_min(old_line+1, indented_lines.min);
       i64 max_line_to_write = clamp_max(token_line.line_number, indented_lines.max);
       i64 indentation = current_indentation();
@@ -198,7 +202,9 @@ get_indentation_array(App *app, Arena *arena, Buffer_ID buffer,
     
     if(token->kind == TokenBaseKind_EOF or
        token_line.line_number > indented_lines.max)
-    {
+    {// NOTE(kv) Even if the token was on the last line,
+     // you'd still have to parse it, since it could be a closing brace,
+     // which changes the indentation. I know the logic is compilcated.
      parsing = 0;
     }
    }
